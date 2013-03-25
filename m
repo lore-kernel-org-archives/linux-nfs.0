@@ -1,275 +1,214 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:19796 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:5075 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754389Ab3CSNHs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Mar 2013 09:07:48 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 01/11] NFSv4: Fail I/O if the state recovery fails irrevocably
-Date: Tue, 19 Mar 2013 09:07:33 -0400
-Message-Id: <1363698463-3681-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1756527Ab3CYLoN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Mar 2013 07:44:13 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 01/14] Security: Add hook to calculate context based on a negative dentry.
+Date: Mon, 25 Mar 2013 07:42:45 -0400
+Message-Id: <1364211778-29172-2-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1364211778-29172-1-git-send-email-SteveD@redhat.com>
+References: <1364211778-29172-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If state recovery fails with an ESTALE or a ENOENT, then we shouldn't
-keep retrying. Instead, mark the stateid as being invalid and
-fail the I/O with an EIO error.
-For other operations such as POSIX and BSD file locking, truncate
-etc, fail with an EBADF to indicate that this file descriptor is no
-longer valid.
+From: David Quigley <dpquigl@davequigley.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+There is a time where we need to calculate a context without the
+inode having been created yet. To do this we take the negative dentry and
+calculate a context based on the process and the parent directory contexts.
+
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 ---
- fs/nfs/nfs4_fs.h        |  8 +++++++-
- fs/nfs/nfs4filelayout.c | 12 +++++++++---
- fs/nfs/nfs4proc.c       | 37 +++++++++++++++++++++++++++++--------
- fs/nfs/nfs4state.c      | 19 ++++++++++++++-----
- fs/nfs/pnfs.c           |  2 ++
- 5 files changed, 61 insertions(+), 17 deletions(-)
+ include/linux/security.h | 27 +++++++++++++++++++++++++++
+ security/capability.c    |  8 ++++++++
+ security/security.c      | 10 ++++++++++
+ security/selinux/hooks.c | 35 +++++++++++++++++++++++++++++++++++
+ 4 files changed, 80 insertions(+)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 944c9a5..9ce9013 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -149,6 +149,7 @@ enum {
- 	NFS_STATE_RECLAIM_REBOOT,	/* OPEN stateid server rebooted */
- 	NFS_STATE_RECLAIM_NOGRACE,	/* OPEN stateid needs to recover state */
- 	NFS_STATE_POSIX_LOCKS,		/* Posix locks are supported */
-+	NFS_STATE_RECOVERY_FAILED,	/* OPEN stateid state recovery failed */
- };
+diff --git a/include/linux/security.h b/include/linux/security.h
+index eee7478..a957e7a 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -26,6 +26,7 @@
+ #include <linux/capability.h>
+ #include <linux/slab.h>
+ #include <linux/err.h>
++#include <linux/string.h>
  
- struct nfs4_state {
-@@ -347,7 +348,7 @@ extern int nfs4_wait_clnt_recover(struct nfs_client *clp);
- extern int nfs4_client_recover_expired_lease(struct nfs_client *clp);
- extern void nfs4_schedule_state_manager(struct nfs_client *);
- extern void nfs4_schedule_path_down_recovery(struct nfs_client *clp);
--extern void nfs4_schedule_stateid_recovery(const struct nfs_server *, struct nfs4_state *);
-+extern int nfs4_schedule_stateid_recovery(const struct nfs_server *, struct nfs4_state *);
- extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags);
- extern void nfs41_handle_server_scope(struct nfs_client *,
- 				      struct nfs41_server_scope **);
-@@ -412,6 +413,11 @@ static inline bool nfs4_stateid_match(const nfs4_stateid *dst, const nfs4_statei
- 	return memcmp(dst, src, sizeof(*dst)) == 0;
- }
+ struct linux_binprm;
+ struct cred;
+@@ -306,6 +307,15 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
+  *	Parse a string of security data filling in the opts structure
+  *	@options string containing all mount options known by the LSM
+  *	@opts binary data structure usable by the LSM
++ * @dentry_init_security:
++ *	Compute a context for a dentry as the inode is not yet available
++ *	since NFSv4 has no label backed by an EA anyway.
++ *	@dentry dentry to use in calculating the context.
++ *	@mode mode used to determine resource type.
++ *	@name name of the last path component used to create file
++ *	@ctx pointer to place the pointer to the resulting context in.
++ *	@ctxlen point to place the length of the resulting context.
++ *
+  *
+  * Security hooks for inode operations.
+  *
+@@ -1439,6 +1449,10 @@ struct security_operations {
+ 	void (*sb_clone_mnt_opts) (const struct super_block *oldsb,
+ 				   struct super_block *newsb);
+ 	int (*sb_parse_opts_str) (char *options, struct security_mnt_opts *opts);
++	int (*dentry_init_security) (struct dentry *dentry, int mode,
++					struct qstr *name, void **ctx,
++					u32 *ctxlen);
++
  
-+static inline bool nfs4_valid_open_stateid(const struct nfs4_state *state)
+ #ifdef CONFIG_SECURITY_PATH
+ 	int (*path_unlink) (struct path *dir, struct dentry *dentry);
+@@ -1724,6 +1738,9 @@ int security_sb_set_mnt_opts(struct super_block *sb, struct security_mnt_opts *o
+ void security_sb_clone_mnt_opts(const struct super_block *oldsb,
+ 				struct super_block *newsb);
+ int security_sb_parse_opts_str(char *options, struct security_mnt_opts *opts);
++int security_dentry_init_security(struct dentry *dentry, int mode,
++					struct qstr *name, void **ctx,
++					u32 *ctxlen);
+ 
+ int security_inode_alloc(struct inode *inode);
+ void security_inode_free(struct inode *inode);
+@@ -2028,6 +2045,16 @@ static inline int security_inode_alloc(struct inode *inode)
+ static inline void security_inode_free(struct inode *inode)
+ { }
+ 
++static inline int security_dentry_init_security(struct dentry *dentry,
++						 int mode,
++						 struct qstr *name,
++						 void **ctx,
++						 u32 *ctxlen)
 +{
-+	return test_bit(NFS_STATE_RECOVERY_FAILED, &state->flags) == 0;
++	return -EOPNOTSUPP;
 +}
 +
- #else
- 
- #define nfs4_close_state(a, b) do { } while (0)
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 49eeb04..e4a29fb 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -159,11 +159,14 @@ static int filelayout_async_handle_error(struct rpc_task *task,
- 	case -NFS4ERR_OPENMODE:
- 		if (state == NULL)
- 			break;
--		nfs4_schedule_stateid_recovery(mds_server, state);
-+		if (nfs4_schedule_stateid_recovery(mds_server, state) < 0)
-+			goto out_bad_stateid;
- 		goto wait_on_recovery;
- 	case -NFS4ERR_EXPIRED:
--		if (state != NULL)
--			nfs4_schedule_stateid_recovery(mds_server, state);
-+		if (state != NULL) {
-+			if (nfs4_schedule_stateid_recovery(mds_server, state) < 0)
-+				goto out_bad_stateid;
-+		}
- 		nfs4_schedule_lease_recovery(mds_client);
- 		goto wait_on_recovery;
- 	/* DS session errors */
-@@ -227,6 +230,9 @@ reset:
- out:
- 	task->tk_status = 0;
- 	return -EAGAIN;
-+out_bad_stateid:
-+	task->tk_status = -EIO;
-+	return 0;
- wait_on_recovery:
- 	rpc_sleep_on(&mds_client->cl_rpcwaitq, task, NULL);
- 	if (test_bit(NFS4CLNT_MANAGER_RUNNING, &mds_client->cl_state) == 0)
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index b2671cb..5a6b3c9 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -295,7 +295,9 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
- 			}
- 			if (state == NULL)
- 				break;
--			nfs4_schedule_stateid_recovery(server, state);
-+			ret = nfs4_schedule_stateid_recovery(server, state);
-+			if (ret < 0)
-+				break;
- 			goto wait_on_recovery;
- 		case -NFS4ERR_DELEG_REVOKED:
- 		case -NFS4ERR_ADMIN_REVOKED:
-@@ -303,11 +305,16 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
- 			if (state == NULL)
- 				break;
- 			nfs_remove_bad_delegation(state->inode);
--			nfs4_schedule_stateid_recovery(server, state);
-+			ret = nfs4_schedule_stateid_recovery(server, state);
-+			if (ret < 0)
-+				break;
- 			goto wait_on_recovery;
- 		case -NFS4ERR_EXPIRED:
--			if (state != NULL)
--				nfs4_schedule_stateid_recovery(server, state);
-+			if (state != NULL) {
-+				ret = nfs4_schedule_stateid_recovery(server, state);
-+				if (ret < 0)
-+					break;
-+			}
- 		case -NFS4ERR_STALE_STATEID:
- 		case -NFS4ERR_STALE_CLIENTID:
- 			nfs4_schedule_lease_recovery(clp);
-@@ -2053,7 +2060,7 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 
- 	nfs_fattr_init(fattr);
- 
--	if (state != NULL) {
-+	if (state != NULL && nfs4_valid_open_stateid(state)) {
- 		struct nfs_lockowner lockowner = {
- 			.l_owner = current->files,
- 			.l_pid = current->tgid,
-@@ -2201,6 +2208,8 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 			calldata->arg.fmode &= ~FMODE_WRITE;
- 		}
- 	}
-+	if (!nfs4_valid_open_stateid(state))
-+		call_close = 0;
- 	spin_unlock(&state->owner->so_lock);
- 
- 	if (!call_close) {
-@@ -3980,11 +3989,14 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
- 		case -NFS4ERR_OPENMODE:
- 			if (state == NULL)
- 				break;
--			nfs4_schedule_stateid_recovery(server, state);
-+			if (nfs4_schedule_stateid_recovery(server, state) < 0)
-+				goto stateid_invalid;
- 			goto wait_on_recovery;
- 		case -NFS4ERR_EXPIRED:
--			if (state != NULL)
--				nfs4_schedule_stateid_recovery(server, state);
-+			if (state != NULL) {
-+				if (nfs4_schedule_stateid_recovery(server, state) < 0)
-+					goto stateid_invalid;
-+			}
- 		case -NFS4ERR_STALE_STATEID:
- 		case -NFS4ERR_STALE_CLIENTID:
- 			nfs4_schedule_lease_recovery(clp);
-@@ -4016,6 +4028,9 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
- 	}
- 	task->tk_status = nfs4_map_errors(task->tk_status);
++
+ static inline int security_inode_init_security(struct inode *inode,
+ 						struct inode *dir,
+ 						const struct qstr *qstr,
+diff --git a/security/capability.c b/security/capability.c
+index 5797750..456bd9d 100644
+--- a/security/capability.c
++++ b/security/capability.c
+@@ -108,6 +108,13 @@ static int cap_sb_parse_opts_str(char *options, struct security_mnt_opts *opts)
  	return 0;
-+stateid_invalid:
-+	task->tk_status = -EIO;
-+	return 0;
- wait_on_recovery:
- 	rpc_sleep_on(&clp->cl_rpcwaitq, task, NULL);
- 	if (test_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) == 0)
-@@ -4632,12 +4647,18 @@ static void nfs4_lock_prepare(struct rpc_task *task, void *calldata)
- 		data->res.open_seqid = data->arg.open_seqid;
- 	} else
- 		data->arg.new_lock_owner = 0;
-+	if (!nfs4_valid_open_stateid(state)) {
-+		data->rpc_status = -EBADF;
-+		task->tk_action = NULL;
-+		goto out_release_open_seqid;
-+	}
- 	data->timestamp = jiffies;
- 	if (nfs4_setup_sequence(data->server,
- 				&data->arg.seq_args,
- 				&data->res.seq_res,
- 				task) == 0)
- 		return;
-+out_release_open_seqid:
- 	nfs_release_seqid(data->arg.open_seqid);
- out_release_lock_seqid:
- 	nfs_release_seqid(data->arg.lock_seqid);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 6ace365..fec1c5b 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -699,6 +699,8 @@ __nfs4_find_state_byowner(struct inode *inode, struct nfs4_state_owner *owner)
- 	list_for_each_entry(state, &nfsi->open_states, inode_states) {
- 		if (state->owner != owner)
- 			continue;
-+		if (!nfs4_valid_open_stateid(state))
-+			continue;
- 		if (atomic_inc_not_zero(&state->count))
- 			return state;
- 	}
-@@ -1286,14 +1288,17 @@ static int nfs4_state_mark_reclaim_nograce(struct nfs_client *clp, struct nfs4_s
- 	return 1;
  }
  
--void nfs4_schedule_stateid_recovery(const struct nfs_server *server, struct nfs4_state *state)
-+int nfs4_schedule_stateid_recovery(const struct nfs_server *server, struct nfs4_state *state)
- {
- 	struct nfs_client *clp = server->nfs_client;
- 
-+	if (!nfs4_valid_open_stateid(state))
-+		return -EBADF;
- 	nfs4_state_mark_reclaim_nograce(clp, state);
- 	dprintk("%s: scheduling stateid recovery for server %s\n", __func__,
- 			clp->cl_hostname);
- 	nfs4_schedule_state_manager(clp);
-+	return 0;
- }
- EXPORT_SYMBOL_GPL(nfs4_schedule_stateid_recovery);
- 
-@@ -1323,6 +1328,11 @@ void nfs_inode_find_state_and_recover(struct inode *inode,
- 		nfs4_schedule_state_manager(clp);
- }
- 
-+static void nfs4_state_mark_recovery_failed(struct nfs4_state *state, int error)
++static int cap_dentry_init_security(struct dentry *dentry, int mode,
++					struct qstr *name, void **ctx,
++					u32 *ctxlen)
 +{
-+	set_bit(NFS_STATE_RECOVERY_FAILED, &state->flags);
++	return 0;
 +}
 +
- 
- static int nfs4_reclaim_locks(struct nfs4_state *state, const struct nfs4_state_recovery_ops *ops)
+ static int cap_inode_alloc_security(struct inode *inode)
  {
-@@ -1398,6 +1408,8 @@ restart:
- 	list_for_each_entry(state, &sp->so_states, open_states) {
- 		if (!test_and_clear_bit(ops->state_flag_bit, &state->flags))
- 			continue;
-+		if (!nfs4_valid_open_stateid(state))
-+			continue;
- 		if (state->state == 0)
- 			continue;
- 		atomic_inc(&state->count);
-@@ -1430,10 +1442,7 @@ restart:
- 				 * Open state on this file cannot be recovered
- 				 * All we can do is revert to using the zero stateid.
- 				 */
--				memset(&state->stateid, 0,
--					sizeof(state->stateid));
--				/* Mark the file as being 'closed' */
--				state->state = 0;
-+				nfs4_state_mark_recovery_failed(state, status);
- 				break;
- 			case -NFS4ERR_ADMIN_REVOKED:
- 			case -NFS4ERR_STALE_STATEID:
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 48ac5aa..e86e35f 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -711,6 +711,8 @@ pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
- 	spin_lock(&lo->plh_inode->i_lock);
- 	if (pnfs_layoutgets_blocked(lo, 1)) {
- 		status = -EAGAIN;
-+	} else if (!nfs4_valid_open_stateid(open_state)) {
-+		status = -EBADF;
- 	} else if (list_empty(&lo->plh_segs)) {
- 		int seq;
+ 	return 0;
+@@ -925,6 +932,7 @@ void __init security_fixup_ops(struct security_operations *ops)
+ 	set_to_cap_if_null(ops, sb_set_mnt_opts);
+ 	set_to_cap_if_null(ops, sb_clone_mnt_opts);
+ 	set_to_cap_if_null(ops, sb_parse_opts_str);
++	set_to_cap_if_null(ops, dentry_init_security);
+ 	set_to_cap_if_null(ops, inode_alloc_security);
+ 	set_to_cap_if_null(ops, inode_free_security);
+ 	set_to_cap_if_null(ops, inode_init_security);
+diff --git a/security/security.c b/security/security.c
+index 7b88c6a..723a10c 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -12,6 +12,7 @@
+  */
  
+ #include <linux/capability.h>
++#include <linux/dcache.h>
+ #include <linux/module.h>
+ #include <linux/init.h>
+ #include <linux/kernel.h>
+@@ -324,6 +325,15 @@ void security_inode_free(struct inode *inode)
+ 	security_ops->inode_free_security(inode);
+ }
+ 
++int security_dentry_init_security(struct dentry *dentry, int mode,
++					struct qstr *name, void **ctx,
++					u32 *ctxlen)
++{
++	return security_ops->dentry_init_security(dentry, mode, name,
++							ctx, ctxlen);
++}
++EXPORT_SYMBOL(security_dentry_init_security);
++
+ int security_inode_init_security(struct inode *inode, struct inode *dir,
+ 				 const struct qstr *qstr,
+ 				 const initxattrs initxattrs, void *fs_data)
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index 2fa28c8..c7f1905 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -2483,6 +2483,40 @@ static void selinux_inode_free_security(struct inode *inode)
+ 	inode_free_security(inode);
+ }
+ 
++static int selinux_dentry_init_security(struct dentry *dentry, int mode,
++					struct qstr *name, void **ctx,
++					u32 *ctxlen)
++{
++	const struct cred *cred = current_cred();
++	struct task_security_struct *tsec;
++	struct inode_security_struct *dsec;
++	struct superblock_security_struct *sbsec;
++	struct inode *dir = dentry->d_parent->d_inode;
++	u32 newsid;
++	int rc;
++
++	tsec = cred->security;
++	dsec = dir->i_security;
++	sbsec = dir->i_sb->s_security;
++
++	if (tsec->create_sid && sbsec->behavior != SECURITY_FS_USE_MNTPOINT) {
++		newsid = tsec->create_sid;
++	} else {
++		rc = security_transition_sid(tsec->sid, dsec->sid,
++					     inode_mode_to_security_class(mode),
++					     name,
++					     &newsid);
++		if (rc) {
++			printk(KERN_WARNING
++				"%s: security_transition_sid failed, rc=%d\n",
++			       __func__, -rc);
++			return rc;
++		}
++	}
++
++	return security_sid_to_context(newsid, (char **)ctx, ctxlen);
++}
++
+ static int selinux_inode_init_security(struct inode *inode, struct inode *dir,
+ 				       const struct qstr *qstr, char **name,
+ 				       void **value, size_t *len)
+@@ -5525,6 +5559,7 @@ static struct security_operations selinux_ops = {
+ 	.sb_clone_mnt_opts =		selinux_sb_clone_mnt_opts,
+ 	.sb_parse_opts_str = 		selinux_parse_opts_str,
+ 
++	.dentry_init_security =		selinux_dentry_init_security,
+ 
+ 	.inode_alloc_security =		selinux_inode_alloc_security,
+ 	.inode_free_security =		selinux_inode_free_security,
 -- 
 1.8.1.4
 
