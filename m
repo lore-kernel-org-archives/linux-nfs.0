@@ -1,86 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f48.google.com ([209.85.160.48]:59358 "EHLO
-	mail-pb0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750758Ab3CAFU3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Mar 2013 00:20:29 -0500
-Received: by mail-pb0-f48.google.com with SMTP id wy12so1509588pbc.7
-        for <linux-nfs@vger.kernel.org>; Thu, 28 Feb 2013 21:20:29 -0800 (PST)
-Date: Fri, 1 Mar 2013 13:20:15 +0800
-From: majianpeng <majianpeng@gmail.com>
-To: bfields <bfields@redhat.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Reply-To: majianpeng <majianpeng@gmail.com>
-Subject: Re: Re: BUG: rpc.nfsd/5066 still has locks held!
-References: <201302281623470389097@gmail.com>,
-	<20130228165623.GA14856@pad.fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:43215 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756770Ab3CYMBK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Mar 2013 08:01:10 -0400
+Date: Mon, 25 Mar 2013 08:01:06 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: root <ycnian@gmail.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: nfsv4.1 client refuses to suspend
+Message-ID: <20130325080106.3c5295b5@tlielax.poochiereds.net>
+In-Reply-To: <20130325092740.GA12898@mail.example.com>
+References: <1363921041-5042-1-git-send-email-ycnian@gmail.com>
+	<20130322074003.616911b6@tlielax.poochiereds.net>
+	<20130325092740.GA12898@mail.example.com>
 Mime-Version: 1.0
-Message-ID: <201303011319565894011@gmail.com>
-Content-Type: text/plain;
-	charset="gb2312"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Pk9uIFRodSwgRmViIDI4LCAyMDEzIGF0IDA0OjIzOjQ5UE0gKzA4MDAsIG1hamlhbnBlbmcgd3Jv
-dGU6DQo+PiBBZnRlciAgaSB1cGRhdGVkIHRoZSBsYXN0ZXN0IGNvZGUsDQo+DQo+U29ycnksIEkg
-ZG9uJ3Qga25vdyB3aGF0IHlvdSBtZWFuIGJ5ICJ1cGRhdGVkIHRoZSBsYXN0ZXN0IGNvZGUiLiAg
-V2hhdA0KPmtlcm5lbCB2ZXJzaW9uIHdlcmUgeW91IHJ1bm5pbmcgcHJldmlvdXNseSwgYW5kIHdo
-YXQgdmVyc2lvbiBhcmUgeW91DQo+cnVubmluZyBub3c/DQo+DQpTb3JyeSBteSBmdXp6eSBkZXNj
-cmlwdGlvbi4NCkkgdXNlZCBnaXQtYmlzZWN0IHRvIHRlc3QgYW5kIGZvdW5kIGNvbW1pdCA2YWE5
-NzA3MDk5YzRiMjU3MC4NClVzaW5nIHRoaXMgY29tbWl0LCB0aGUga2VybmVsIG11c3QgcHJpbnQg
-dGhlIG1lc3NhZ2UuDQpJIHRoaW5rIHRoZSBwcm9ibGVtIGlzbid0ICB0aGlzIG1lc3NhZ2UuSXQg
-YWxyZWFkeSBleGlzdGVkLkJlY2F1c2UgdGhlIGNvbW1pdCxpdCBjYW4gcHJpbnQuDQoNClRoYW5r
-cyENCj4tLWIuDQo+DQo+PiB0aG9zZSBtZXNzYWdlcyBvY2N1cmVkLiBFdmVyeSByZWJvb3QsIGl0
-IGNhbiBvY2N1ciBhdCBsZWFzdCAxMCB0aW1lcy4NCj4+IA0KPj4gWyAgIDE3Ljc2MzkzOV0gPT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQ0KPj4gWyAgIDE3Ljc2Mzk0Ml0gWyBC
-VUc6IHJwYy5uZnNkLzUwNjYgc3RpbGwgaGFzIGxvY2tzIGhlbGQhIF0NCj4+IFsgICAxNy43NjM5
-NDRdIDMuOC4wKyAjMTMxIE5vdCB0YWludGVkDQo+PiBbICAgMTcuNzYzOTQ1XSAtLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+PiBbICAgMTcuNzYzOTQ3XSAyIGxvY2tzIGhl
-bGQgYnkgcnBjLm5mc2QvNTA2NjoNCj4+IFsgICAxNy43NjM5NDhdICAjMDogIChuZnNkX211dGV4
-KXsuLi4uLi59LCBhdDogWzxmZmZmZmZmZmEwMTJiNDVmPl0gd3JpdGVfcG9ydHMrMHgyZi8weDNm
-MCBbbmZzZF0NCj4+IFsgICAxNy43NjM5NjNdICAjMTogIChycGNiX2NyZWF0ZV9sb2NhbF9tdXRl
-eCl7Li4uLi4ufSwgYXQ6IFs8ZmZmZmZmZmZhMDA4MjRmZT5dIHJwY2JfY3JlYXRlX2xvY2FsKzB4
-M2UvMHg5MCBbc3VucnBjXQ0KPj4gWyAgIDE3Ljc2Mzk4Nl0gDQo+PiBbICAgMTcuNzYzOTg2XSBz
-dGFjayBiYWNrdHJhY2U6DQo+PiBbICAgMTcuNzYzOTg5XSBQaWQ6IDUwNjYsIGNvbW06IHJwYy5u
-ZnNkIE5vdCB0YWludGVkIDMuOC4wKyAjMTMxDQo+PiBbICAgMTcuNzYzOTkwXSBDYWxsIFRyYWNl
-Og0KPj4gWyAgIDE3Ljc2Mzk5Nl0gIFs8ZmZmZmZmZmY4MTA5MTdlYT5dIGRlYnVnX2NoZWNrX25v
-X2xvY2tzX2hlbGQrMHg5YS8weGEwDQo+PiBbICAgMTcuNzY0MDAzXSAgWzxmZmZmZmZmZmEwMDc2
-YTM1Pl0gcnBjX3dhaXRfYml0X2tpbGxhYmxlKzB4NzUvMHhhMCBbc3VucnBjXQ0KPj4gWyAgIDE3
-Ljc2NDAyMl0gIFs8ZmZmZmZmZmY4MTZmMmRkNz5dIF9fd2FpdF9vbl9iaXQrMHg1Ny8weDgwDQo+
-PiBbICAgMTcuNzY0MDMxXSAgWzxmZmZmZmZmZmEwMDc2OWMwPl0gPyBycGNfcXVldWVfZW1wdHkr
-MHg0MC8weDQwIFtzdW5ycGNdDQo+PiBbICAgMTcuNzY0MDM4XSAgWzxmZmZmZmZmZmEwMDZjZTEw
-Pl0gPyBjYWxsX2JpbmRfc3RhdHVzKzB4MmYwLzB4MmYwIFtzdW5ycGNdDQo+PiBbICAgMTcuNzY0
-MDY0XSAgWzxmZmZmZmZmZjgxNmYyZTc3Pl0gb3V0X29mX2xpbmVfd2FpdF9vbl9iaXQrMHg3Ny8w
-eDkwDQo+PiBbICAgMTcuNzY0MDY4XSAgWzxmZmZmZmZmZjgxMDYwZDgwPl0gPyBhdXRvcmVtb3Zl
-X3dha2VfZnVuY3Rpb24rMHg0MC8weDQwDQo+PiBbICAgMTcuNzY0MDc1XSAgWzxmZmZmZmZmZmEw
-MDZjZTEwPl0gPyBjYWxsX2JpbmRfc3RhdHVzKzB4MmYwLzB4MmYwIFtzdW5ycGNdDQo+PiBbICAg
-MTcuNzY0MDg0XSAgWzxmZmZmZmZmZmEwMDc3ZjZjPl0gX19ycGNfZXhlY3V0ZSsweDExYy8weDQw
-MCBbc3VucnBjXQ0KPj4gWyAgIDE3Ljc2NDA4N10gIFs8ZmZmZmZmZmY4MTA2MDlkOT5dID8gd2Fr
-ZV91cF9iaXQrMHgyOS8weDQwDQo+PiBbICAgMTcuNzY0MDk2XSAgWzxmZmZmZmZmZmEwMDc4OTE4
-Pl0gcnBjX2V4ZWN1dGUrMHg2OC8weGMwIFtzdW5ycGNdDQo+PiBbICAgMTcuNzY0MTA0XSAgWzxm
-ZmZmZmZmZmEwMDZmNGYwPl0gcnBjX3J1bl90YXNrKzB4NzAvMHg5MCBbc3VucnBjXQ0KPj4gWyAg
-IDE3Ljc2NDExMl0gIFs8ZmZmZmZmZmZhMDA2ZjVmZT5dIHJwY19jYWxsX3N5bmMrMHgzZS8weGEw
-IFtzdW5ycGNdDQo+PiBbICAgMTcuNzY0MTIwXSAgWzxmZmZmZmZmZmEwMDZmNmFkPl0gcnBjX3Bp
-bmcrMHg0ZC8weDcwIFtzdW5ycGNdDQo+PiBbICAgMTcuNzY0MTI3XSAgWzxmZmZmZmZmZmEwMDZm
-OGE4Pl0gcnBjX2NyZWF0ZSsweDE1OC8weDFmMCBbc3VucnBjXQ0KPj4gWyAgIDE3Ljc2NDEzN10g
-IFs8ZmZmZmZmZmZhMDA4MjM2YT5dID8gcnBjYl9nZXRfbG9jYWwrMHhhYS8weGQwIFtzdW5ycGNd
-DQo+PiBbICAgMTcuNzY0MTQ3XSAgWzxmZmZmZmZmZmEwMDgyMTQ3Pl0gcnBjYl9jcmVhdGVfbG9j
-YWxfdW5peCsweDU3LzB4ZTAgW3N1bnJwY10NCj4+IFsgICAxNy43NjQxNzNdICBbPGZmZmZmZmZm
-YTAwODI1MzA+XSBycGNiX2NyZWF0ZV9sb2NhbCsweDcwLzB4OTAgW3N1bnJwY10NCj4+IFsgICAx
-Ny43NjQxODJdICBbPGZmZmZmZmZmYTAwN2I0OWU+XSBzdmNfcnBjYl9zZXR1cCsweDFlLzB4NDAg
-W3N1bnJwY10NCj4+IFsgICAxNy43NjQxOTFdICBbPGZmZmZmZmZmYTAwN2I0ZWY+XSBzdmNfYmlu
-ZCsweDJmLzB4NDAgW3N1bnJwY10NCj4+IFsgICAxNy43NjQxOThdICBbPGZmZmZmZmZmYTAxMjk1
-NDY+XSBuZnNkX2NyZWF0ZV9zZXJ2KzB4MTA2LzB4MWUwIFtuZnNkXQ0KPj4gWyAgIDE3Ljc2NDIx
-MF0gIFs8ZmZmZmZmZmZhMDEyOTQ0MD5dID8gbmZzZF9yZXNldF92ZXJzaW9ucysweDgwLzB4ODAg
-W25mc2RdDQo+PiBbICAgMTcuNzY0MjE2XSAgWzxmZmZmZmZmZmEwMTJiNzRjPl0gd3JpdGVfcG9y
-dHMrMHgzMWMvMHgzZjAgW25mc2RdDQo+PiBbICAgMTcuNzY0MjIyXSAgWzxmZmZmZmZmZmEwMTJi
-NjgwPl0gPyB3cml0ZV9wb3J0cysweDI1MC8weDNmMCBbbmZzZF0NCj4+IFsgICAxNy43NjQyMzBd
-ICBbPGZmZmZmZmZmODE2ZjY0MTY+XSA/IF9yYXdfc3Bpbl91bmxvY2srMHgyNi8weDMwDQo+PiBb
-ICAgMTcuNzY0MjM0XSAgWzxmZmZmZmZmZjgxMTY2MGIzPl0gPyBzaW1wbGVfdHJhbnNhY3Rpb25f
-Z2V0KzB4YzMvMHhlMA0KPj4gWyAgIDE3Ljc2NDI0MF0gIFs8ZmZmZmZmZmZhMDEyYjQzMD5dID8g
-ZXhwb3J0c19vcGVuKzB4YjAvMHhiMCBbbmZzZF0NCj4+IFsgICAxNy43NjQyNTBdICBbPGZmZmZm
-ZmZmYTAxMmEzZmM+XSBuZnNjdGxfdHJhbnNhY3Rpb25fd3JpdGUrMHg1Yy8weDgwIFtuZnNkXQ0K
-Pj4gWyAgIDE3Ljc2NDI1NF0gIFs8ZmZmZmZmZmY4MTE0MDY0MT5dIHZmc193cml0ZSsweGIxLzB4
-MTgwDQo+PiBbICAgMTcuNzY0MjU3XSAgWzxmZmZmZmZmZjgxMTQwOTgwPl0gc3lzX3dyaXRlKzB4
-NTAvMHhhMA0KPj4gWyAgIDE3Ljc2NDI2NV0gIFs8ZmZmZmZmZmY4MTZmZTI1Mj5dIHN5c3RlbV9j
-YWxsX2Zhc3RwYXRoKzB4MTYvMHgxYg==
+On Mon, 25 Mar 2013 17:27:40 +0800
+root <ycnian@gmail.com> wrote:
 
+> On Fri, Mar 22, 2013 at 07:40:03AM -0400, Jeff Layton wrote:
+> > On Fri, 22 Mar 2013 10:57:21 +0800
+> > ycnian@gmail.com wrote:
+> > 
+> > > nfsv4.1 client suspending fails with such info
+> > > 
+> > > Freezing of tasks failed after 20.00 seconds (1 tasks refusing to freeze, wq_busy=0):
+> > > nfsv4.1-svc     S ffff88007889f2e0     0  3191      2 0x00000080   
+> > >  ffff88007b2f3e28 0000000000000046 ffff88007b2f2010 00000000000127c0
+> > >  ffff880079b08000 00000000000127c0 ffff88007b2f3fd8 00000000000127c0
+> > >  ffff88007b2f3fd8 00000000000127c0 ffffffff81a14410 ffff880079b08000
+> > > Call Trace:
+> > >  [<ffffffff81441396>] schedule+0x64/0x66
+> > >  [<ffffffffa06a6892>] nfs41_callback_svc+0x100/0x129 [nfsv4]
+> > >  [<ffffffff8104fdb8>] ? wake_up_bit+0x2a/0x2a
+> > >  [<ffffffffa06a6792>] ? nfs_callback_up+0x548/0x548 [nfsv4]
+> > >  [<ffffffff8104f7e0>] kthread+0xb5/0xbd
+> > >  [<ffffffff8104f72b>] ? kthread_freezable_should_stop+0x65/0x65
+> > >  [<ffffffff8144912c>] ret_from_fork+0x7c/0xb0
+> > >  [<ffffffff8104f72b>] ? kthread_freezable_should_stop+0x65/0x65
+> > > 
+> > > I read such threads
+> > > [1] nfs/sunrpc: allow freezing of tasks with NFS calls in flight
+> > > [2] LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
+> > > and then modify nfs41_callback_svc(). It works on my machine. I don't know
+> > > the details of freezing, so I'm not sure if the modification is reasonable.
+> > > This is not a formal patch. Thanks.
+> > > 
+> > > Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
+> > > ---
+> > >  fs/nfs/callback.c |    2 +-
+> > >  1 files changed, 1 insertions(+), 1 deletions(-)
+> > > 
+> > > diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> > > index 5088b57..8addb7b 100644
+> > > --- a/fs/nfs/callback.c
+> > > +++ b/fs/nfs/callback.c
+> > > @@ -138,7 +138,7 @@ nfs41_callback_svc(void *vrqstp)
+> > >  				error);
+> > >  		} else {
+> > >  			spin_unlock_bh(&serv->sv_cb_lock);
+> > > -			schedule();
+> > > +			freezable_schedule();
+> > >  		}
+> > >  		finish_wait(&serv->sv_cb_waitq, &wq);
+> > >  	}
+> > 
+> > I think it'd be better to have that thread call try_to_freeze()
+> > directly instead of doing this. There are some problems with
+> > freezable_schedule() that still need to be resolved and I suspect that
+> > it will eventually go away entirely.
+> > 
+> > It's may be sufficient to simply call try_to_freeze() at the top of
+> > the loop, but that would need to be tested.
+> 
+> Thanks, I tried it as follow
+> echo 'mem' > /sys/power/state
+> and it works ok. No further tests.
+> > 
+
+I'm a little unclear on what patch you tested...
+
+I just sent one that I think should fix this though. Would you be able
+to test it and let me know if it helps?
+
+Thanks,
+-- 
+Jeff Layton <jlayton@redhat.com>
