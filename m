@@ -1,45 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:1565 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751685Ab3CTIAk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Mar 2013 04:00:40 -0400
-Message-ID: <51496CC5.7040400@cn.fujitsu.com>
-Date: Wed, 20 Mar 2013 16:01:09 +0800
-From: fanchaoting <fanchaoting@cn.fujitsu.com>
+Received: from fieldses.org ([174.143.236.118]:49806 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757729Ab3CYNUb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Mar 2013 09:20:31 -0400
+Date: Mon, 25 Mar 2013 09:20:30 -0400
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: nfsd bugfixes for 3.9
+Message-ID: <20130325132030.GC14438@fieldses.org>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH] pnfs-block: removing DM device maybe cause oops when call
- dev_remove
-Content-Type: text/plain; charset=ISO-2022-JP
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-when pnfs block using device mapper,if umounting later,it maybe
-cause oops. we apply "1 + sizeof(bl_umount_request)" memory for
-msg->data, the memory maybe overflow when we do "memcpy(&dataptr
-[sizeof(bl_msg)], &bl_umount_request, sizeof(bl_umount_request))",
-because the size of bl_msg is more than 1 byte.
+Please pull bugfixes for 3.9 from the for-3.9 branch at:
 
-   Signed-off-by: fanchaoting<fanchaoting@cn.fujitsu.com>
+  git://linux-nfs.org/~bfields/linux.git for-3.9
 
----
- fs/nfs/blocklayout/blocklayoutdm.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+Fixes for a couple mistakes in the new DRC code.  And thanks to Kent
+Overstreet for noticing we've been sync'ing the wrong range on stable
+writes since 3.8.
 
-diff --git a/fs/nfs/blocklayout/blocklayoutdm.c b/fs/nfs/blocklayout/blocklayoutdm.c
-index 737d839..8df9afa 100644
---- a/fs/nfs/blocklayout/blocklayoutdm.c
-+++ b/fs/nfs/blocklayout/blocklayoutdm.c
-@@ -55,7 +55,7 @@ static void dev_remove(struct net *net, dev_t dev)
+--b.
 
-        bl_pipe_msg.bl_wq = &nn->bl_wq;
-        memset(msg, 0, sizeof(*msg));
--       msg->data = kzalloc(1 + sizeof(bl_umount_request), GFP_NOFS);
-+       msg->data = kzalloc(sizeof(bl_msg) + sizeof(bl_umount_request), GFP_NOFS);
-        if (!msg->data)
-                goto out;
+----------------------------------------------------------------
+Jeff Layton (2):
+      nfsd: only unhash DRC entries that are in the hashtable
+      nfsd: fix startup order in nfsd_reply_cache_init
 
---
-1.7.1
+Kent Overstreet (1):
+      nfsd: fix bad offset use
 
+ fs/nfsd/nfscache.c |   11 ++++++-----
+ fs/nfsd/vfs.c      |    3 ++-
+ 2 files changed, 8 insertions(+), 6 deletions(-)
