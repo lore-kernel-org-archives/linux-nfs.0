@@ -1,45 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:22786 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51389 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758553Ab3CDUyz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Mar 2013 15:54:55 -0500
-Date: Mon, 4 Mar 2013 21:53:07 +0100
-From: Oleg Nesterov <oleg@redhat.com>
-To: Mandeep Singh Baines <msb@chromium.org>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Ming Lei <ming.lei@canonical.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Andrew Morton <akpm@linux-foundation.org>, Tejun Heo <tj@kernel.org>,
-        Ingo Molnar <mingo@redhat.com>
-Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-Message-ID: <20130304205307.GA13527@redhat.com>
-References: <CACVXFVMKN6aeCvJcn7dyuonJYJDfYxWeW5KE6gfKRKJKFj2M4A@mail.gmail.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9286AD113@sacexcmbx05-prd.hq.netapp.com> <20130304092310.1d21100c@tlielax.poochiereds.net> <CACBanvrc0orXGZ1v+gKHtVPKWYKGEFx46dwoDCjTU78+nPtZyg@mail.gmail.com>
+	id S1751600Ab3CYUWX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Mar 2013 16:22:23 -0400
+Message-ID: <5150B1FD.1070405@RedHat.com>
+Date: Mon, 25 Mar 2013 16:22:21 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CACBanvrc0orXGZ1v+gKHtVPKWYKGEFx46dwoDCjTU78+nPtZyg@mail.gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] mountd: regression in crossmounts
+References: <1364049149-3751-1-git-send-email-steved@redhat.com> <20130325181314.GA10120@fieldses.org>
+In-Reply-To: <20130325181314.GA10120@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/04, Mandeep Singh Baines wrote:
->
-> The problem is that freezer_count() calls try_to_freeze(). In this
-> case, try_to_freeze() is not really adding any value.
 
-Well, I tend to agree.
 
-If a task calls __refrigerator() holding a lock which another freezable
-task can wait for, this is not freezer-friendly.
+On 25/03/13 14:13, J. Bruce Fields wrote:
+> On Sat, Mar 23, 2013 at 10:32:29AM -0400, Steve Dickson wrote:
+>> commit 8e2fb3fc cause a regression in mount export
+>> that are on different local file system.
+>> Exports like (all on different filesystems)
+>>
+>> /home *(rw,fsid=0,crossmnt)
+>> /home/fs1 *(rw,crossmnt)
+>> /home/fs1/fs2/fs3 *(rw,nohide)
+>>
+>> and then a mount of the root 'mount /home /mnt'
+>> would end up mounting /home/fs1/fs2/fs3 not /home
+> 
+> That's strange.
+Yeah... I had this guy reporting from day one that the 
+latest nfs-utils broke his export world... 
+ 
+> 
+>> Reverting the logic of commit 8e2fb3fc until
+>> a better solution can be found for the original
+>> problem.
+> 
+> I can't figure out why the patch below would help.  The only change I
+> can see is to the way that an export of "/" would be handled.
+The reason I didn't debug this further was I did not know how to 
+reproduce the original problem the patch was trying to fix... 
 
-freezable_schedule/freezer_do_not_count/etc not only means "I won't be
-active if freezing()", it should also mean "I won't block suspend/etc".
-
-OTOH, I understand that probably it is not trivial to change this code
-to make it freezer-friendly. But at least  I disagree with "push your
-problems onto others".
-
-Oleg.
-
+steved.
