@@ -1,85 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:16891 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:42243 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751247Ab3CCAIh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Mar 2013 19:08:37 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS client bugfixes
-Date: Sun, 3 Mar 2013 00:08:34 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9286AB5FC@sacexcmbx05-prd.hq.netapp.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1757816Ab3CYORr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Mar 2013 10:17:47 -0400
+Message-ID: <51505C89.90709@RedHat.com>
+Date: Mon, 25 Mar 2013 10:17:45 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] mountd: Add a default flavor to an export's e_secinfo
+ list
+References: <20130320223129.11659.35205.stgit@seurat.1015granger.net>
+In-Reply-To: <20130320223129.11659.35205.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
 
-We've just concluded another Connectathon interoperability testing week,
-and so here are the fixes for the bugs that were discovered.
 
-Cheers,
-  Trond
+On 20/03/13 18:31, Chuck Lever wrote:
+> The list of security flavors that mountd allows for the NFSv4
+> pseudo-fs is constructed from the union of flavors of all current
+> exports.
+> 
+> exports(5) documents that the default security flavor for an
+> export, if "sec=" is not specified, is "sys".  Suppose
+> /etc/exports contains:
+> 
+> /a	*(rw)
+> /b	*(rw,sec=krb5:krb5i:krb5p)
+> 
+> The resulting security flavor list for the pseudo-fs is missing
+> "sec=sys".  /proc/net/rpc/nfsd.export/content contains:
+> 
+> /a	*(rw,root_squash,sync,wdelay,no_subtree_check,
+> 		uuid=095c95bc:08e4407a:91ab8601:05fe0bbf)
+> /b	*(rw,root_squash,sync,wdelay,no_subtree_check,
+> 		uuid=2a6fe811:0cf044a7:8fc75ebe:65180068,
+> 		sec=390003:390004:390005)
+> /	*(ro,root_squash,sync,no_wdelay,v4root,fsid=0,
+> 		uuid=2a6fe811:0cf044a7:8fc75ebe:65180068,
+> 		sec=390003:390004:390005)
+> 
+> The root entry is not correct, as there does exist an export whose
+> unspecified default security flavor is "sys".  The security settings
+> on the root cause sec=sys mount attempts to be incorrectly rejected.
+> 
+> The reason is that when the line in /etc/exports for "/a" is parsed,
+> the e_secinfo list for that exportent is left empty.  Thus the union
+> of e_secinfo lists created by set_pseudofs_security() is
+> "krb5:krb5i:krb5p".
+> 
+> I fixed this by ensuring that if no "sec=" option is specified for
+> an export, its e_secinfo list gets at least an entry for AUTH_UNIX.
+> 
+> [ Yes, we could make the security flavors allowed for the pseudo-fs
+> a fixed list of all flavors the server supports.  That becomes
+> complicated by the special meaning of AUTH_NULL, and we still have
+> to check /etc/exports for whether Kerberos flavors should be listed.
+> I opted for a simple approach for now. ]
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Committed...
 
-The following changes since commit 666b3d803a511fbc9bc5e5ea8ce66010cf03ea13:
-
-  NLM: Ensure that we resend all pending blocking locks after a reclaim (2013-02-19 12:18:27 -0500)
-
-are available in the git repository at:
-
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.9-2
-
-for you to fetch changes up to 512e4b291c0e97af24619a91f3e8963697da00d8:
-
-  SUNRPC: One line comment fix (2013-03-02 15:54:11 -0800)
-
-----------------------------------------------------------------
-NFS client bugfixes for Linux 3.9
-
-- Don't allow NFS silly-renamed files to be deleted
-- Don't start the retransmission timer when out of socket space
-- Fix a couple of pnfs-related Oopses.
-- Fix one more NFSv4 state recovery deadlock
-- Don't loop forever when LAYOUTGET returns NFS4ERR_LAYOUTTRYLATER
-
-----------------------------------------------------------------
-Benny Halevy (1):
-      pnfs: fix resend_to_mds for directio
-
-Jeff Layton (1):
-      nfs: don't allow nfs_find_actor to match inodes of the wrong type
-
-Trond Myklebust (4):
-      NFS: Don't allow NFS silly-renamed files to be deleted, no signal
-      SUNRPC: Don't start the retransmission timer when out of socket space
-      NFSv4: Fix another open/open_recovery deadlock
-      SUNRPC: One line comment fix
-
-Weston Andros Adamson (4):
-      NFSv4.1: Hold reference to layout hdr in layoutget
-      PNFS: set the default DS timeout to 60 seconds
-      SUNRPC: add call to get configured timeout
-      NFSv4.1: LAYOUTGET EDELAY loops timeout to the MDS
-
- fs/nfs/inode.c              |  2 ++
- fs/nfs/nfs4filelayout.c     |  6 ++++--
- fs/nfs/nfs4filelayout.h     |  2 +-
- fs/nfs/nfs4proc.c           | 21 ++++++++++++++++++---
- fs/nfs/pnfs.c               | 21 +++++++++++++--------
- fs/nfs/pnfs.h               |  6 ++++--
- fs/nfs/unlink.c             | 20 +++++++++++++-------
- include/linux/nfs_xdr.h     |  1 +
- include/linux/sunrpc/clnt.h |  1 +
- net/sunrpc/clnt.c           | 15 +++++++++++++++
- net/sunrpc/xprt.c           |  6 +++++-
- 11 files changed, 77 insertions(+), 24 deletions(-)
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+steved.
+> ---
+> 
+>  support/nfs/exports.c |    2 ++
+>  1 files changed, 2 insertions(+), 0 deletions(-)
+> 
+> diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+> index 84a2b08..6c08a2b 100644
+> --- a/support/nfs/exports.c
+> +++ b/support/nfs/exports.c
+> @@ -643,6 +643,8 @@ bad_option:
+>  			cp++;
+>  	}
+>  
+> +	if (ep->e_secinfo[0].flav == NULL)
+> +		secinfo_addflavor(find_flavor("sys"), ep);
+>  	fix_pseudoflavor_flags(ep);
+>  	ep->e_squids = squids;
+>  	ep->e_sqgids = sqgids;
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
