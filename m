@@ -1,67 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:64397 "EHLO mx1.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:58090 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932539Ab3CUOdx convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Mar 2013 10:33:53 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: Benny Halevy <bhalevy@tonian.com>, Boaz Harrosh <bharrosh@panasas.com>,
-        Peng Tao <bergwolf@gmail.com>
-Subject: Re: [PATCH v2 2/3] NFSv4.1: Always clear the NFS_INO_LAYOUTCOMMIT
- in layoutreturn
-Date: Thu, 21 Mar 2013 14:33:36 +0000
-Message-ID: <1363876416.3557.11.camel@leira.trondhjem.org>
-References: <1363875181-7147-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1363875181-7147-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1363875181-7147-2-git-send-email-Trond.Myklebust@netapp.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S932521Ab3CYSNP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Mar 2013 14:13:15 -0400
+Date: Mon, 25 Mar 2013 14:13:14 -0400
+To: Steve Dickson <steved@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] mountd: regression in crossmounts
+Message-ID: <20130325181314.GA10120@fieldses.org>
+References: <1364049149-3751-1-git-send-email-steved@redhat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1364049149-3751-1-git-send-email-steved@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-03-21 at 10:13 -0400, Trond Myklebust wrote:
-> Note that clearing NFS_INO_LAYOUTCOMMIT is tricky, since it requires
-> you to also clear the NFS_LSEG_LAYOUTCOMMIT bits from the layout
-> segments.
-> The only two sites that need to do this are the ones that call
-> pnfs_return_layout() without first doing a layout commit.
+On Sat, Mar 23, 2013 at 10:32:29AM -0400, Steve Dickson wrote:
+> commit 8e2fb3fc cause a regression in mount export
+> that are on different local file system.
+> Exports like (all on different filesystems)
 > 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Acked-by: Benny Halevy <bhalevy@tonian.com>
-> Cc: stable@vger.kernel.org
+> /home *(rw,fsid=0,crossmnt)
+> /home/fs1 *(rw,crossmnt)
+> /home/fs1/fs2/fs3 *(rw,nohide)
+> 
+> and then a mount of the root 'mount /home /mnt'
+> would end up mounting /home/fs1/fs2/fs3 not /home
+
+That's strange.
+
+> Reverting the logic of commit 8e2fb3fc until
+> a better solution can be found for the original
+> problem.
+
+I can't figure out why the patch below would help.  The only change I
+can see is to the way that an export of "/" would be handled.
+
+--b.
+
+> 
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
 > ---
->  fs/nfs/nfs4filelayout.c |  1 -
->  fs/nfs/pnfs.c           | 35 +++++++++++++++++++++++++++--------
->  2 files changed, 27 insertions(+), 9 deletions(-)
+>  utils/mountd/cache.c | 5 ++++-
+>  1 file changed, 4 insertions(+), 1 deletion(-)
 > 
-> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> index 49eeb04..4fb234d 100644
-> --- a/fs/nfs/nfs4filelayout.c
-> +++ b/fs/nfs/nfs4filelayout.c
-> @@ -129,7 +129,6 @@ static void filelayout_fenceme(struct inode *inode, struct pnfs_layout_hdr *lo)
+> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+> index c8aa46f..978698d 100644
+> --- a/utils/mountd/cache.c
+> +++ b/utils/mountd/cache.c
+> @@ -371,8 +371,11 @@ export_matches(nfs_export *exp, char *dom, char *path, struct addrinfo *ai)
+>  static bool subexport(struct exportent *e1, struct exportent *e2)
 >  {
->  	if (!test_and_clear_bit(NFS_LAYOUT_RETURN, &lo->plh_flags))
->  		return;
-> -	clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
->  	pnfs_return_layout(inode);
+>  	char *p1 = e1->e_path, *p2 = e2->e_path;
+> +	size_t l2 = strlen(p2);
+> +
+>  	return e2->e_flags & NFSEXP_CROSSMOUNT
+> -		&& is_subdirectory(p1, p2);
+> +		&& strncmp(p1, p2, l2) == 0
+> +		&& p1[l2] == '/';
 >  }
 >  
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index c6bbb53..b9d0682 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -417,6 +417,16 @@ should_free_lseg(struct pnfs_layout_range *lseg_range,
->  	       lo_seg_intersecting(lseg_range, recall_range);
->  }
->  
-> +static bool lseg_dec_and_remove_zero(struct pnfs_layout_segment *lseg,
-
-I'm adding a 'pnfs' prefix for looks...
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+>  struct parsed_fsid {
+> -- 
+> 1.8.1.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
