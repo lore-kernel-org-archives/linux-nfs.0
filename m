@@ -1,74 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f175.google.com ([209.85.210.175]:49509 "EHLO
-	mail-ia0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751264Ab3CHTql (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Mar 2013 14:46:41 -0500
-Received: by mail-ia0-f175.google.com with SMTP id e16so154887iaa.34
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Mar 2013 11:46:40 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/11] gssd: gssd.man is missing a description of the "-M"
- option
-To: linux-nfs@vger.kernel.org
-Cc: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 08 Mar 2013 14:46:38 -0500
-Message-ID: <20130308194638.5656.3498.stgit@seurat.1015granger.net>
-In-Reply-To: <20130308193830.5656.44184.stgit@seurat.1015granger.net>
-References: <20130308193830.5656.44184.stgit@seurat.1015granger.net>
+Received: from mx12.netapp.com ([216.240.18.77]:56485 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S965142Ab3CZPZI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Mar 2013 11:25:08 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Simo Sorce <simo@redhat.com>
+CC: "libtirpc-devel@lists.sourceforge.net"
+	<libtirpc-devel@lists.sourceforge.net>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        Steve Dickson <steved@redhat.com>
+Subject: Re: Allow building libtirpc directly against GSSAPI
+Date: Tue, 26 Mar 2013 15:25:06 +0000
+Message-ID: <1364311505.4534.0.camel@leira.trondhjem.org>
+References: <1364308888.2660.119.camel@willson.li.ssimo.org>
+In-Reply-To: <1364308888.2660.119.camel@willson.li.ssimo.org>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+On Tue, 2013-03-26 at 10:41 -0400, Simo Sorce wrote:
+> Libgssglue is not really useful anymore, it is a sort of middleman that
+> wraps the actual GSSAPI that is already pluggable/extensible via shared
+> modules.
+> 
+> In particular libgssglue interferes with the workings of gss-proxy in my
+> case.
+> 
+> The attached patch makes building against libgssglue optional and
+> defaults to not build against libgssglue and instead builds directly
+> against the native GSSAPI.
+> 
+> ./configure --enable-gss
+> will now build against GSSAPI
+> 
+> ./configure --enable-gss --with-gssglue
+> will keep building against libgssglue in case someone still needs it for
+> whatever reason.
+> 
+> Simo.
+> 
 
- utils/gssd/gssd.man |   26 ++++++++++++++++----------
- 1 files changed, 16 insertions(+), 10 deletions(-)
+Won't that be a backward compatibility issue?
 
-diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
-index 0cc7bf4..dbbfbbb 100644
---- a/utils/gssd/gssd.man
-+++ b/utils/gssd/gssd.man
-@@ -7,7 +7,7 @@
- rpc.gssd \- rpcsec_gss daemon
- .SH SYNOPSIS
- .B rpc.gssd
--.RB [ \-fnlvr ]
-+.RB [ \-fMnlvr ]
- .RB [ \-k
- .IR keytab ]
- .RB [ \-p
-@@ -112,17 +112,23 @@ Tells
- where to look for the rpc_pipefs filesystem.  The default value is
- .IR /var/lib/nfs/rpc_pipefs .
- .TP
--.BI "-d " directory
--Tells
-+.BI "-d " search-path
-+This option specifies a colon separated list of directories that
- .B rpc.gssd
--where to look for Kerberos credential files.  The default value is
-+searches for credential files.  The default value is
- .IR /tmp:/run/user/%U .
--This can also be a colon separated list of directories to be searched for
--Kerberos credential files.  The sequence "%U", if used, is replaced with
--the UID of the user for whom credentials are being searched.
--Note that if machine credentials are being
--stored in files, then the first directory on this list is where the
--machine credentials are stored.
-+The literal sequence "%U" can be specified to substitue the UID
-+of the user for whom credentials are being searched.
-+.TP
-+.B -M
-+By default, machine credentials are stored in files in the first
-+directory in the credential directory search path (see the
-+.B -d
-+option).  When
-+.B -M
-+is set,
-+.B rpc.gssd
-+stores machine credentials in memory instead.
- .TP
- .B -v
- Increases the verbosity of the output (can be specified multiple times).
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
