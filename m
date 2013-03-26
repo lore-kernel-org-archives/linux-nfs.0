@@ -1,136 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:56913 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752553Ab3C0QR1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Mar 2013 12:17:27 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: fanchaoting <fanchaoting@cn.fujitsu.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: nfs client decode fslocations oops if server
- cheating it
-Date: Wed, 27 Mar 2013 16:17:25 +0000
-Message-ID: <1364401044.11071.21.camel@leira.trondhjem.org>
-References: <51502DB7.1010508@cn.fujitsu.com>
-In-Reply-To: <51502DB7.1010508@cn.fujitsu.com>
-Content-Type: multipart/mixed;
-	boundary="_002_13644010441107121camelleiratrondhjemorg_"
+Received: from mail-pb0-f47.google.com ([209.85.160.47]:33702 "EHLO
+	mail-pb0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759259Ab3CZMQM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Mar 2013 08:16:12 -0400
+Received: by mail-pb0-f47.google.com with SMTP id rp2so4709274pbb.34
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Mar 2013 05:16:11 -0700 (PDT)
+Date: Tue, 26 Mar 2013 20:15:01 +0800
+From: Yanchuan Nian <ycnian@gmail.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: allow the v4.1 callback thread to freeze
+Message-ID: <20130326121049.GB10546@localhost.localdomain>
+References: <1364212797-26097-1-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=gb2312
+In-Reply-To: <1364212797-26097-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---_002_13644010441107121camelleiratrondhjemorg_
-Content-Type: text/plain; charset="iso-8859-1"
-Content-ID: <6DE9D3508E0B9944A1E1AE9BEDB4995A@tahoe.netapp.com>
-Content-Transfer-Encoding: quoted-printable
+On Mon, Mar 25, 2013 at 07:59:57AM -0400, Jeff Layton wrote:
+> The v4.1 callback thread has set_freezable() at the top, but it doesn't
+> ever try to freeze within the loop. Have it call try_to_freeze() at the
+> top of the loop. If a freeze event occurs, recheck kthread_should_stop()
+> after thawing.
+> 
+> Reported-by: Yanchuan Nian <ycnian@gmail.com>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfs/callback.c | 3 +++
+>  1 file changed, 3 insertions(+)
+> 
+> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> index 5088b57..cff089a 100644
+> --- a/fs/nfs/callback.c
+> +++ b/fs/nfs/callback.c
+> @@ -125,6 +125,9 @@ nfs41_callback_svc(void *vrqstp)
+>  	set_freezable();
+>  
+>  	while (!kthread_should_stop()) {
+> +		if (try_to_freeze())
+> +			continue;
+> +
+>  		prepare_to_wait(&serv->sv_cb_waitq, &wq, TASK_INTERRUPTIBLE);
+>  		spin_lock_bh(&serv->sv_cb_lock);
+>  		if (!list_empty(&serv->sv_cb_list)) {
 
-On Mon, 2013-03-25 at 18:57 +0800, fanchaoting wrote:
-> now nfs server will return wrong nlocations,nservers, ncomponents to the =
-client.
-
-These limits are imposed by the client. The server knows nothing about
-them as they are not part of the NFSv4 spec.
-
-> for example if the nlocations is NFS4_FS_LOCATIONS_MAXENTRIES, the nfs cl=
-ient
-> will decode oops when run "struct nfs4_fs_location *loc =3D &res->locatio=
-ns[res->nlocations]"
-
-Your patch means that instead of making a best effort attempt to decode
-what the server sends us, we end up decoding nothing at all and just
-reporting an error.
-
-How about something like the following instead?
-
---=20
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
---_002_13644010441107121camelleiratrondhjemorg_
-Content-Type: text/x-patch;
-	name="0001-NFSv4-Fix-Oopses-in-the-fs_locations-code.patch"
-Content-Description: 0001-NFSv4-Fix-Oopses-in-the-fs_locations-code.patch
-Content-Disposition: attachment;
-	filename="0001-NFSv4-Fix-Oopses-in-the-fs_locations-code.patch"; size=3995;
-	creation-date="Wed, 27 Mar 2013 16:17:24 GMT";
-	modification-date="Wed, 27 Mar 2013 16:17:24 GMT"
-Content-ID: <0BD767B0A433774D96A118A5FB63BEA9@tahoe.netapp.com>
-Content-Transfer-Encoding: base64
-
-RnJvbSA5YmJjZjI1OTVjYTFkOTA2NzViMzBhYzRjMDhkZThiZTM2MzZhZDQ4IE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbT4NCkRhdGU6IFdlZCwgMjcgTWFyIDIwMTMgMTE6NTQ6NDUgLTA0MDANClN1YmplY3Q6
-IFtQQVRDSF0gTkZTdjQ6IEZpeCBPb3BzZXMgaW4gdGhlIGZzX2xvY2F0aW9ucyBjb2RlDQoNCklm
-IHRoZSBzZXJ2ZXIgc2VuZHMgdXMgYSBwYXRobmFtZSB3aXRoIG1vcmUgY29tcG9uZW50cyB0aGFu
-IHRoZSBjbGllbnQNCmxpbWl0IG9mIE5GUzRfUEFUSE5BTUVfTUFYQ09NUE9ORU5UUywgbW9yZSBz
-ZXJ2ZXIgZW50cmllcyB0aGFuIHRoZSBjbGllbnQNCmxpbWl0IG9mIE5GUzRfRlNfTE9DQVRJT05f
-TUFYU0VSVkVSUywgb3Igc2VuZHMgYSB0b3RhbCBudW1iZXIgb2YNCmZzX2xvY2F0aW9ucyBlbnRy
-aWVzIHRoYW4gdGhlIGNsaWVudCBsaW1pdCBvZiBORlM0X0ZTX0xPQ0FUSU9OU19NQVhFTlRSSUVT
-DQp0aGVuIHdlIHdpbGwgY3VycmVudGx5IE9vcHMgYmVjYXVzZSB0aGUgbGltaXQgY2hlY2tzIGFy
-ZSBkb25lIF9hZnRlcl8gd2UndmUNCmRlY29kZWQgdGhlIGRhdGEgaW50byB0aGUgYXJyYXlzLg0K
-DQpSZXBvcnRlZC1ieTogZmFuY2hhb3Rpbmc8ZmFuY2hhb3RpbmdAY24uZnVqaXRzdS5jb20+DQpT
-aWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29t
-Pg0KLS0tDQogZnMvbmZzL25mczR4ZHIuYyB8IDQzICsrKysrKysrKysrKysrKysrKysrLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0NCiAxIGZpbGUgY2hhbmdlZCwgMjAgaW5zZXJ0aW9ucygrKSwgMjMg
-ZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHhkci5jIGIvZnMvbmZzL25m
-czR4ZHIuYw0KaW5kZXggMjM1ZWQ1OS4uN2RhODMyNCAxMDA2NDQNCi0tLSBhL2ZzL25mcy9uZnM0
-eGRyLmMNCisrKyBiL2ZzL25mcy9uZnM0eGRyLmMNCkBAIC0zNDk2LDggKzM0OTYsMTEgQEAgc3Rh
-dGljIGludCBkZWNvZGVfcGF0aG5hbWUoc3RydWN0IHhkcl9zdHJlYW0gKnhkciwgc3RydWN0IG5m
-czRfcGF0aG5hbWUgKnBhdGgpDQogCWlmIChuID09IDApDQogCQlnb3RvIHJvb3RfcGF0aDsNCiAJ
-ZHByaW50aygicGF0aG5hbWU0OiAiKTsNCi0JcGF0aC0+bmNvbXBvbmVudHMgPSAwOw0KLQl3aGls
-ZSAocGF0aC0+bmNvbXBvbmVudHMgPCBuKSB7DQorCWlmIChuID4gTkZTNF9QQVRITkFNRV9NQVhD
-T01QT05FTlRTKSB7DQorCQlkcHJpbnRrKCJjYW5ub3QgcGFyc2UgJWQgY29tcG9uZW50cyBpbiBw
-YXRoXG4iLCBuKTsNCisJCWdvdG8gb3V0X2VpbzsNCisJfQ0KKwlmb3IgKHBhdGgtPm5jb21wb25l
-bnRzID0gMDsgcGF0aC0+bmNvbXBvbmVudHMgPCBuOyBwYXRoLT5uY29tcG9uZW50cysrKSB7DQog
-CQlzdHJ1Y3QgbmZzNF9zdHJpbmcgKmNvbXBvbmVudCA9ICZwYXRoLT5jb21wb25lbnRzW3BhdGgt
-Pm5jb21wb25lbnRzXTsNCiAJCXN0YXR1cyA9IGRlY29kZV9vcGFxdWVfaW5saW5lKHhkciwgJmNv
-bXBvbmVudC0+bGVuLCAmY29tcG9uZW50LT5kYXRhKTsNCiAJCWlmICh1bmxpa2VseShzdGF0dXMg
-IT0gMCkpDQpAQCAtMzUwNiwxMiArMzUwOSw2IEBAIHN0YXRpYyBpbnQgZGVjb2RlX3BhdGhuYW1l
-KHN0cnVjdCB4ZHJfc3RyZWFtICp4ZHIsIHN0cnVjdCBuZnM0X3BhdGhuYW1lICpwYXRoKQ0KIAkJ
-CXByX2NvbnQoIiVzJS4qcyAiLA0KIAkJCQkocGF0aC0+bmNvbXBvbmVudHMgIT0gbiA/ICIvICIg
-OiAiIiksDQogCQkJCWNvbXBvbmVudC0+bGVuLCBjb21wb25lbnQtPmRhdGEpOw0KLQkJaWYgKHBh
-dGgtPm5jb21wb25lbnRzIDwgTkZTNF9QQVRITkFNRV9NQVhDT01QT05FTlRTKQ0KLQkJCXBhdGgt
-Pm5jb21wb25lbnRzKys7DQotCQllbHNlIHsNCi0JCQlkcHJpbnRrKCJjYW5ub3QgcGFyc2UgJWQg
-Y29tcG9uZW50cyBpbiBwYXRoXG4iLCBuKTsNCi0JCQlnb3RvIG91dF9laW87DQotCQl9DQogCX0N
-CiBvdXQ6DQogCXJldHVybiBzdGF0dXM7DQpAQCAtMzU1NiwyNyArMzU1MywyMyBAQCBzdGF0aWMg
-aW50IGRlY29kZV9hdHRyX2ZzX2xvY2F0aW9ucyhzdHJ1Y3QgeGRyX3N0cmVhbSAqeGRyLCB1aW50
-MzJfdCAqYml0bWFwLCBzdA0KIAluID0gYmUzMl90b19jcHVwKHApOw0KIAlpZiAobiA8PSAwKQ0K
-IAkJZ290byBvdXRfZWlvOw0KLQlyZXMtPm5sb2NhdGlvbnMgPSAwOw0KLQl3aGlsZSAocmVzLT5u
-bG9jYXRpb25zIDwgbikgew0KKwlmb3IgKHJlcy0+bmxvY2F0aW9ucyA9IDA7IHJlcy0+bmxvY2F0
-aW9ucyA8IG47IHJlcy0+bmxvY2F0aW9ucysrKSB7DQogCQl1MzIgbTsNCi0JCXN0cnVjdCBuZnM0
-X2ZzX2xvY2F0aW9uICpsb2MgPSAmcmVzLT5sb2NhdGlvbnNbcmVzLT5ubG9jYXRpb25zXTsNCisJ
-CXN0cnVjdCBuZnM0X2ZzX2xvY2F0aW9uICpsb2M7DQogDQorCQlpZiAocmVzLT5ubG9jYXRpb25z
-ID09IE5GUzRfRlNfTE9DQVRJT05TX01BWEVOVFJJRVMpDQorCQkJYnJlYWs7DQorCQlsb2MgPSAm
-cmVzLT5sb2NhdGlvbnNbcmVzLT5ubG9jYXRpb25zXTsNCiAJCXAgPSB4ZHJfaW5saW5lX2RlY29k
-ZSh4ZHIsIDQpOw0KIAkJaWYgKHVubGlrZWx5KCFwKSkNCiAJCQlnb3RvIG91dF9vdmVyZmxvdzsN
-CiAJCW0gPSBiZTMyX3RvX2NwdXAocCk7DQogDQotCQlsb2MtPm5zZXJ2ZXJzID0gMDsNCiAJCWRw
-cmludGsoIiVzOiBzZXJ2ZXJzOlxuIiwgX19mdW5jX18pOw0KLQkJd2hpbGUgKGxvYy0+bnNlcnZl
-cnMgPCBtKSB7DQotCQkJc3RydWN0IG5mczRfc3RyaW5nICpzZXJ2ZXIgPSAmbG9jLT5zZXJ2ZXJz
-W2xvYy0+bnNlcnZlcnNdOw0KLQkJCXN0YXR1cyA9IGRlY29kZV9vcGFxdWVfaW5saW5lKHhkciwg
-JnNlcnZlci0+bGVuLCAmc2VydmVyLT5kYXRhKTsNCi0JCQlpZiAodW5saWtlbHkoc3RhdHVzICE9
-IDApKQ0KLQkJCQlnb3RvIG91dF9laW87DQotCQkJZHByaW50aygiJXMgIiwgc2VydmVyLT5kYXRh
-KTsNCi0JCQlpZiAobG9jLT5uc2VydmVycyA8IE5GUzRfRlNfTE9DQVRJT05fTUFYU0VSVkVSUykN
-Ci0JCQkJbG9jLT5uc2VydmVycysrOw0KLQkJCWVsc2Ugew0KKwkJZm9yIChsb2MtPm5zZXJ2ZXJz
-ID0gMDsgbG9jLT5uc2VydmVycyA8IG07IGxvYy0+bnNlcnZlcnMrKykgew0KKwkJCXN0cnVjdCBu
-ZnM0X3N0cmluZyAqc2VydmVyOw0KKw0KKwkJCWlmIChsb2MtPm5zZXJ2ZXJzID09IE5GUzRfRlNf
-TE9DQVRJT05fTUFYU0VSVkVSUykgew0KIAkJCQl1bnNpZ25lZCBpbnQgaTsNCiAJCQkJZHByaW50
-aygiJXM6IHVzaW5nIGZpcnN0ICV1IG9mICV1IHNlcnZlcnMgIg0KIAkJCQkJInJldHVybmVkIGZv
-ciBsb2NhdGlvbiAldVxuIiwNCkBAIC0zNTkwLDEzICszNTgzLDE3IEBAIHN0YXRpYyBpbnQgZGVj
-b2RlX2F0dHJfZnNfbG9jYXRpb25zKHN0cnVjdCB4ZHJfc3RyZWFtICp4ZHIsIHVpbnQzMl90ICpi
-aXRtYXAsIHN0DQogCQkJCQlpZiAodW5saWtlbHkoc3RhdHVzICE9IDApKQ0KIAkJCQkJCWdvdG8g
-b3V0X2VpbzsNCiAJCQkJfQ0KKwkJCQlicmVhazsNCiAJCQl9DQorCQkJc2VydmVyID0gJmxvYy0+
-c2VydmVyc1tsb2MtPm5zZXJ2ZXJzXTsNCisJCQlzdGF0dXMgPSBkZWNvZGVfb3BhcXVlX2lubGlu
-ZSh4ZHIsICZzZXJ2ZXItPmxlbiwgJnNlcnZlci0+ZGF0YSk7DQorCQkJaWYgKHVubGlrZWx5KHN0
-YXR1cyAhPSAwKSkNCisJCQkJZ290byBvdXRfZWlvOw0KKwkJCWRwcmludGsoIiVzICIsIHNlcnZl
-ci0+ZGF0YSk7DQogCQl9DQogCQlzdGF0dXMgPSBkZWNvZGVfcGF0aG5hbWUoeGRyLCAmbG9jLT5y
-b290cGF0aCk7DQogCQlpZiAodW5saWtlbHkoc3RhdHVzICE9IDApKQ0KIAkJCWdvdG8gb3V0X2Vp
-bzsNCi0JCWlmIChyZXMtPm5sb2NhdGlvbnMgPCBORlM0X0ZTX0xPQ0FUSU9OU19NQVhFTlRSSUVT
-KQ0KLQkJCXJlcy0+bmxvY2F0aW9ucysrOw0KIAl9DQogCWlmIChyZXMtPm5sb2NhdGlvbnMgIT0g
-MCkNCiAJCXN0YXR1cyA9IE5GU19BVFRSX0ZBVFRSX1Y0X0xPQ0FUSU9OUzsNCi0tIA0KMS44LjEu
-NA0KDQo=
-
---_002_13644010441107121camelleiratrondhjemorg_--
+Tested, and the client suspends successfully now.
+> -- 
+> 1.7.11.7
