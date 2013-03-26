@@ -1,98 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:4071 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:47983 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755329Ab3CLXhQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Mar 2013 19:37:16 -0400
-Date: Tue, 12 Mar 2013 19:37:13 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 08/10] gssd: Clean up
- gssd_setup_krb5_user_gss_ccache()
-Message-ID: <20130312193713.69eb4586@tlielax.poochiereds.net>
-In-Reply-To: <20130312203747.2478.64215.stgit@seurat.1015granger.net>
-References: <20130312203105.2478.88903.stgit@seurat.1015granger.net>
-	<20130312203747.2478.64215.stgit@seurat.1015granger.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1751513Ab3CZSRR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Mar 2013 14:17:17 -0400
+Date: Tue, 26 Mar 2013 14:17:17 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Linux Kernel <linux-kernel@vger.kernel.org>
+Subject: Re: kernel 3.8.4 : kernel BUG at fs/locks.c:2093!   part #2
+Message-ID: <20130326181717.GA8978@fieldses.org>
+References: <514F31AF.3080709@gmx.de>
+ <20130325220143.GD10887@fieldses.org>
+ <20130326144640.GB3353@fieldses.org>
+ <5151DEF7.3060003@gmx.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <5151DEF7.3060003@gmx.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 12 Mar 2013 16:37:48 -0400
-Chuck Lever <chuck.lever@oracle.com> wrote:
+On Tue, Mar 26, 2013 at 06:46:31PM +0100, Toralf Förster wrote:
+> On 03/26/2013 03:46 PM, J. Bruce Fields wrote:
+> > Can you run with test patches?
+> > 
+> > This just makes nfsd's fput calls synchronous so that we see in the
+> > backtrace who called them.
+> 
+> Well - the patched 3.8.4 host kernel now survives the stress test of the UML system.
 
-> Remove a contradictory portion of the block comment documenting
-> gssd_find_existing_krb5_ccache().  This should have been removed by
-> commit 289ad31e, which reversed the meaning of the function's return
-> values.
-> 
-> Note that, in user space, typically errno's are positive.  But here
-> we follow the kernel convention of using negative values to return
-> error codes.  Make the documenting comments explicit about the sign
-> of an error return -- it will never be positive in the case of an
-> error.
-> 
-> And a nit: At the last return statement in
-> gssd_setup_krb5_user_gss_ccache(), "err" always contains zero, as
-> far as I can tell.  Make it explicit (to human readers) that when
-> execution reaches this point, gssd_setup_krb5_user_gss_ccache() is
-> going to return "success."
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> Cc: Jeff Layton <jlayton@redhat.com>
-> ---
-> 
->  utils/gssd/krb5_util.c |   16 ++++++++--------
->  1 files changed, 8 insertions(+), 8 deletions(-)
-> 
-> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> index aeb8f70..940f7cd 100644
-> --- a/utils/gssd/krb5_util.c
-> +++ b/utils/gssd/krb5_util.c
-> @@ -169,13 +169,13 @@ select_krb5_ccache(const struct dirent *d)
->  
->  /*
->   * Look in directory "dirname" for files that look like they
-> - * are Kerberos Credential Cache files for a given UID.  Return
-> - * non-zero and the dirent pointer for the entry most likely to be
-> - * what we want. Otherwise, return zero and no dirent pointer.
-> - * The caller is responsible for freeing the dirent if one is returned.
-> + * are Kerberos Credential Cache files for a given UID.
->   *
-> - * Returns 0 if a valid-looking entry was found and a non-zero error
-> - * code otherwise.
-> + * Returns 0 if a valid-looking entry is found.  "*cctype" is
-> + * set to the name of the cache type.  A pointer to the dirent
-> + * is planted in "*d".  Caller must free "*d" with free(3).
-> + *
-> + * Otherwise, a negative errno is returned.
->   */
->  static int
->  gssd_find_existing_krb5_ccache(uid_t uid, char *dirname,
-> @@ -1037,7 +1037,7 @@ err_cache:
->   * given only a UID.  We really need more information, but we
->   * do the best we can.
->   *
-> - * Returns 0 if a ccache was found, and a non-zero error code otherwise.
-> + * Returns 0 if a ccache was found, or a negative errno otherwise.
->   */
->  int
->  gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirpattern)
-> @@ -1082,7 +1082,7 @@ gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirpattern)
->  	printerr(2, "using %s as credentials cache for client with "
->  		    "uid %u for server %s\n", buf, uid, servername);
->  	gssd_set_krb5_ccache_name(buf);
-> -	return err;
-> +	return 0;
->  }
->  
->  /*
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Bah, too bad.  That patch was definitely not a fix, so there may be some
+race here.
 
-Thanks for cleaning that up...
+> What I get at the host is now :
+> 
+> 2013-03-26T18:32:17.487+01:00 n22 kernel: ------------[ cut here ]------------
+> 2013-03-26T18:32:17.487+01:00 n22 kernel: WARNING: at mm/page_alloc.c:2376 __alloc_pages_nodemask+0x262/0x7c0()
+...
+> 2013-03-26T18:32:17.487+01:00 n22 kernel: [<c110f149>] __kmalloc+0x1b9/0x1e0
+> 2013-03-26T18:32:17.487+01:00 n22 kernel: [<f85835bf>] ? cache_check+0x22f/0x340 [sunrpc]
+> 2013-03-26T18:32:17.487+01:00 n22 kernel: [<f90a0b1c>] nfs4_acl_new+0x1c/0x30 [nfsd]
+> 2013-03-26T18:32:17.488+01:00 n22 kernel: [<f9095482>] nfsd4_decode_fattr+0x302/0x6c0 [nfsd]
+...
 
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
+A different bug, but thanks for catching it, I suspect the following is
+all we need.
+
+--b.
+
+commit 814d9d4f9164c3d778dadd093a54bb55d9a0c576
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Tue Mar 26 14:11:13 2013 -0400
+
+    nfsd4: reject "negative" acl lengths
+    
+    Since we only enforce an upper bound, not a lower bound, a "negative"
+    length can get through here.
+    
+    The symptom seen was a warning when we attempt to a kmalloc with an
+    excessive size.
+    
+    Reported-by: Toralf Förster <toralf.foerster@gmx.de>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 0dc1158..d1dd710 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -264,7 +264,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 		iattr->ia_valid |= ATTR_SIZE;
+ 	}
+ 	if (bmval[0] & FATTR4_WORD0_ACL) {
+-		int nace;
++		u32 nace;
+ 		struct nfs4_ace *ace;
+ 
+ 		READ_BUF(4); len += 4;
