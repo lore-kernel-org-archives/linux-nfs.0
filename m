@@ -1,222 +1,257 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from dgate10.ts.fujitsu.com ([80.70.172.49]:53532 "EHLO
-	dgate10.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932182Ab3CMQrg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Mar 2013 12:47:36 -0400
-Message-Id: <d6437a$45a1la@dgate10u.abg.fsc.net>
-Date: 13 Mar 2013 17:47:34 +0100
-From: Bodo Stroesser <bstroesser@ts.fujitsu.com>
-To: neilb@suse.de
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, bstroesser@ts.fujitsu.com
-Subject: Re: sunrpc/cache.c: races while updating cache entries
-Content-Type: text/plain; charset=us-ascii
+Received: from mx1.redhat.com ([209.132.183.28]:60810 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751726Ab3CZRX5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Mar 2013 13:23:57 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r2QHNurn022298
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 26 Mar 2013 13:23:56 -0400
+Subject: Allow building nfs-utils directly against GSSAPI
+From: Simo Sorce <simo@redhat.com>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Cc: Steve Dickson <steved@redhat.com>,
+        =?ISO-8859-1?Q?G=FCnther?= Deschner <gdeschne@redhat.com>
+Content-Type: multipart/mixed; boundary="=-U8cMmHkDRQMh1EJ8P48Q"
+Date: Tue, 26 Mar 2013 13:00:02 -0400
+Message-ID: <1364317202.2660.132.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gMTMgTWFyIDIwMTMgMDc6NTU6MDAgKzAxMDAgTmVpbEJyb3duIDxuZWlsYkBzdXNlLmRl
-PiB3cm90ZToKCj4gT24gMTEgTWFyIDIwMTMgMTc6MTM6NDEgKzAxMDAgQm9kbyBTdHJvZXNz
-ZXIgPGJzdHJvZXNzZXJAdHMuZnVqaXRzdS5jb20+Cj4gd3JvdGU6Cj4gCj4gPiBIaSwKPiA+
-IAo+ID4gQUZBSUNTLCB0aGVyZSBpcyBvbmUgbW9yZSByYWNlIGluIFJQQyBjYWNoZS4KPiA+
-IAo+ID4gVGhlIHByb2JsZW0gc2hvd2VkIHVwIGZvciB0aGUgImF1dGgudW5peC5pcCIgY2Fj
-aGUsIHRoYXQKPiA+IGhhcyBhIHJlYWRlci4KPiA+IAo+ID4gSWYgYSBzZXJ2ZXIgdGhyZWFk
-IHRyaWVzIHRvIGZpbmQgYSBjYWNoZSBlbnRyeSwgaXQgZmlyc3QKPiA+IGRvZXMgYSBsb29r
-dXAgKG9yIGNhbGxzIGlwX21hcF9jYWNoZWRfZ2V0KCkgaW4gdGhpcyBzcGVjaWZpYwo+ID4g
-Y2FzZSkuIFRoZW4sIGl0IGNhbGxzIGNhY2hlX2NoZWNrKCkgZm9yIHRoaXMgZW50cnkuCj4g
-PiAKPiA+IElmIHRoZSByZWFkZXIgdXBkYXRlcyB0aGUgY2FjaGUgZW50cnkganVzdCBiZXR3
-ZWVuIHRoZQo+ID4gdGhyZWFkJ3MgbG9va3VwIGFuZCBjYWNoZV9jaGVjaygpIGV4ZWN1dGlv
-biwgY2FjaGVfY2hlY2soKQo+ID4gd2lsbCBkbyBhbiB1cGNhbGwgZm9yIHRoaXMgY2FjaGUg
-ZW50cnkuIFRoaXMgaXMsIGJlY2F1c2UKPiA+IHN1bnJwY19jYWNoZV91cGRhdGUoKSBjYWxs
-cyBjYWNoZV9mcmVzaF9sb2NrZWQob2xkLCAwKSwKPiA+IHdoaWNoIHNldHMgZXhwaXJ5X3Rp
-bWUgdG8gMC4KPiA+IAo+ID4gVW5mb3J0dW5hdGVseSwgdGhlIHJlcGx5IHRvIHRoZSB1cGNh
-bGwgd2lsbCBub3QgZGVxdWV1ZQo+ID4gdGhlIHF1ZXVlZCBjYWNoZV9yZXF1ZXN0LCBhcyB0
-aGUgcmVwbHkgd2lsbCBiZSBhc3NpZ25lZCB0bwo+ID4gdGhlIGNhY2hlIGVudHJ5IG5ld2x5
-IGNyZWF0ZWQgYnkgdGhlIGFib3ZlIGNhY2hlIHVwZGF0ZS4KPiA+IAo+ID4gVGhlIHJlc3Vs
-dCBpcyBhIGdyb3dpbmcgcXVldWUgb2Ygb3JwaGFuZWQgY2FjaGVfcmVxdWVzdAo+ID4gc3Ry
-dWN0dXJlcyAtLT4gbWVtb3J5IGxlYWsuCj4gPiAKPiA+IEkgZm91bmQgdGhpcyBvbiBhIFNM
-RVMxMSBTUDEgd2l0aCBhIGJhY2twb3J0IG9mIHRoZSBsYXRlc3QKPiA+IHBhdGNoZXMgdGhh
-dCBmaXggdGhlIG90aGVyIFJQQyByYWNlcy4gT24gdGhpcyBvbGQga2VybmVsLAo+ID4gdGhl
-IHByb2JsZW0gYWxzbyBsZWFkcyB0byBzdmNfZHJvcCgpIGJlaW5nIGNhbGxlZCBmb3IgdGhl
-Cj4gPiBhZmZlY3RlZCBSUEMgcmVxdWVzdCAoYWZ0ZXIgc3ZjX2RlZmVyKCkpLgo+ID4gCj4g
-PiBCZXN0IFJlZ2FyZHMKPiA+IEJvZG8KPiAKPiBJIGRvbid0IHRoaW5rIHRoaXMgaXMgYSBy
-ZWFsIHByb2JsZW0uCj4gVGhlIHBlcmlvZGljIGNhbGwgdG8gImNhY2hlX2NsZWFuIiBzaG91
-bGQgZmluZCB0aGVzZSBvcnBoYW5lZCByZXF1ZXN0cyBhbmQKPiBwdXJnZSB0aGVtLiAgU28g
-eW91IGNvdWxkIGdldCBhIHNob3J0IHRlcm0gbWVtb3J5IGxlYWssIGJ1dCBpdCBzaG91bGQK
-PiBjb3JyZWN0IGl0c2VsZi4KPiBEbyB5b3UgYWdyZWU/Cj4gCj4gVGhhbmtzLAo+IE5laWxC
-cm93bgoKSSBhZ3JlZSB0aGF0IGl0IF9zaG91bGRfIGNvcnJlY3QgaXRzZWxmLiBJIHJlYWQg
-dGhlIHNvdXJjZSBhZ2FpbgphbmQgSSBub3cgc2VlIHRoYXQgY2FjaGVfY2xlYW4gc2hvdWxk
-IGRvIHRoZSB3b3JrIGZpbmUuCgpPVE9ILCBvbiBteSBTTEVTMTEgU1AxLCB0aGVyZSAqaXMq
-IGEgbWVtb3J5IGxlYWsgYW5kIGFsc28gUlBDCnJlcXVlc3RzIGFyZSBkcm9wcGVkICh3aGlj
-aCBjYW4ndCBoYXBwZW4gb24gbWFpbmxpbmUsIGJ1dCB0aGF0Cm1hZGUgbWUgbG9vayBpbnRv
-IGl0KS4KUGxlYXNlIHNlZSB0aGUgb3V0cHV0IGZyb20gY3Jhc2ggb24gdGhlIGxpZmUgc3lz
-dGVtIGJlbG93LiBUaGF0Cm91dHB1dCBpcyBmcm9tIGEgdGltZSBmYXIgYWZ0ZXIgYWxsIE5G
-UyBhY3Rpdml0eSB3YXMgc3RvcHBlZCBhbmQKdGhlIG5leHQgY3ljbGUgb2YgY2FjaGVfY2xl
-YW4oKSBoYWQgcnVuIChpcF9tYXBfY2FjaGUubmV4dGNoZWNrCmhhcyBjaGFuZ2VkIHNldmVy
-YWwgdGltZXMgZnJvbSAzMTczIHRvIHRoZSBjdXJyZW50IHZhbHVlIG9mIDEwMzczKS4KCkF0
-IHRoZSBlbmQgb2YgdGhlIGNyYXNoIG91dHB1dCB5b3UnbGwgZmluZCB0d28gZXhhbXBsZXMg
-b2Ygd2hhdApjYWNoZV9yZXF1ZXN0Lml0ZW0gcG9pbnRzIHRvLiBJJ3ZlIGxvb2tlZCBpbnRv
-IHNvbWUgbW9yZSBvZiB0aGVtLgpUaGV5IGFsbCBoYXZlIG5leHQgPT0gMCBhbmQgcmVmY291
-bnQuY291bnRlciA+PSAxIChUaGUgbWF4IGNvdW50ZXIKSSBzYXcgd2FzIDMpLgoKU28sIHRo
-ZSBjYWNoZV9oZWFkIGl0ZW1zIGFsbCBhcmUgYWxyZWFkeSB1bmhhc2hlZCwgYnV0IHRoZQpj
-YWNoZV9yZXF1ZXN0cyBzdGlsbCBhcmUgcXVldWVkLCByaWdodD8KCkkgaGF2ZSBubyBpZGVh
-LCBob3cgdGhpcyBjb3VsZCBoYXBwZW4uIE1heWJlIG15IHBhdGNoZXMgZm9yIFNMRVMxMQpT
-UDEgYXJlIG5vdCBvay4KClNvLCBiZWhpbmQgdGhlIGNyYXNoIG91dHB1dCwgSSBhbHNvIGFk
-ZGVkIG15IHBhdGNoZXMuIE1heWJlIHlvdQpjb3VsZCBoYXZlIGEgbG9vayBvbnRvIGl0PwoK
-VGhlcmUgaXMgb25lIG1vcmUgc21hbGwgcG9pbnQsIHRoYXQgaXNuJ3QgY2xlYXIgdG8gbWU6
-IHdoZW4gdGhlCiJvbGQiIHJhY2VzIGluIGF1dGgudW5peC5naWQgY2F1c2VkIGEgTkZTIHJl
-cXVlc3QgdG8gYmUgZHJvcHBlZCwKdGhlIFRDUCBjb25uZWN0aW9uIGFmdGVyIGEgZmV3IG1p
-bnV0ZXMgd2FzIG1hcmtlZCBieQpzdmNfYWdlX3RlbXBfeHBydHMoKSB0byBiZSBjbG9zZWQu
-CldoZW4gYSByZXF1ZXN0IGlzIGRyb3BwZWQgYmVjYXVzZSBvZiB0aGUgcmFjZSBpbiBhdXRo
-LnVuaXguaXAsCnN2Y19hZ2VfdGVtcF94cHJ0cygpIGRvZXMgbm90IG1hcmsgaXQgdG8gYmUg
-Y2xvc2VkLiBXaHkgZG9lcyBpdApiZWhhdmUgc28gZGlmZmVyZW50bHk/CgpUaGFuayB5b3Ug
-YW5kIGJlc3QgcmVnYXJkcwpCb2RvCgpQUzoKSSBhbHNvIGhhdmUgb25lIGZ1cnRoZXIgcGF0
-Y2gsIHRoYXQgZml4ZXMgdGhlIHByb2JsZW0gYnkgcmV0ZXN0aW5nCnRoZSBjYWNoZSBlbnRy
-eSdzIHN0YXRlIGFmdGVyIGhhdmluZyBzZXQgQ0FDSEVfUEVORElORyBpbgpjYWNoZV9jaGVj
-aygpIGFuZCBieSBleGFtaW5pbmcgZXhwaXJ5X3RpbWUgb25seSBpZiBpdCBpcyBub3QgMC4K
-CgpjcmFzaD4gcHJpbnQgJmlwX21hcF9jYWNoZS5xdWV1ZQokNDMgPSAoc3RydWN0IGxpc3Rf
-aGVhZCAqKSAweGZmZmZmZmZmYTA0YTE0NzgKY3Jhc2g+IGxpc3QgMCAtSCAweGZmZmZmZmZm
-YTA0YTE0NzggLXMgY2FjaGVfcmVxdWVzdApmZmZmODgwMGJiZjgwMTgwCnN0cnVjdCBjYWNo
-ZV9yZXF1ZXN0IHsKICBxID0gewogICAgbGlzdCA9IHsKICAgICAgbmV4dCA9IDB4ZmZmZjg4
-MDBiYTI4ZTk0MCwKICAgICAgcHJldiA9IDB4ZmZmZmZmZmZhMDRhMTQ3OAogICAgfSwKICAg
-IHJlYWRlciA9IDAKICB9LAogIGl0ZW0gPSAweGZmZmY4ODAwYmI4MjJjNDAsCiAgYnVmID0g
-MHhmZmZmODgwMGJhYWRmMDAwICJuZnNkIDE5Mi4xNjguMTAuMlxuIiwKICBsZW4gPSAxOCwK
-ICByZWFkZXJzID0gMAp9CmZmZmY4ODAwYmEyOGU5NDAKc3RydWN0IGNhY2hlX3JlcXVlc3Qg
-ewogIHEgPSB7CiAgICBsaXN0ID0gewogICAgICBuZXh0ID0gMHhmZmZmODgwMGJiNWQ5Yzgw
-LAogICAgICBwcmV2ID0gMHhmZmZmODgwMGJiZjgwMTgwCiAgICB9LAogICAgcmVhZGVyID0g
-MAogIH0sCiAgaXRlbSA9IDB4ZmZmZjg4MDBiYmQ4ODU0MCwKICBidWYgPSAweGZmZmY4ODAw
-YmVkY2IwMDAgIm5mc2QgMTkyLjE2OC4xMS4yXG4iLAogIGxlbiA9IDE4LAogIHJlYWRlcnMg
-PSAwCn0KZmZmZjg4MDBiYjVkOWM4MApzdHJ1Y3QgY2FjaGVfcmVxdWVzdCB7CiAgcSA9IHsK
-ICAgIGxpc3QgPSB7CiAgICAgIG5leHQgPSAweGZmZmY4ODAwYmJkMWI4MDAsCiAgICAgIHBy
-ZXYgPSAweGZmZmY4ODAwYmEyOGU5NDAKICAgIH0sCiAgICByZWFkZXIgPSAwCiAgfSwKICBp
-dGVtID0gMHhmZmZmODgwMjA0YjFiMzQwLAogIGJ1ZiA9IDB4ZmZmZjg4MDBiYjIxYzAwMCAi
-bmZzZCAxOTIuMTY4LjEwLjJcbiIsCiAgbGVuID0gMTgsCiAgcmVhZGVycyA9IDAKfQpmZmZm
-ODgwMGJiZDFiODAwCnN0cnVjdCBjYWNoZV9yZXF1ZXN0IHsKICBxID0gewogICAgbGlzdCA9
-IHsKICAgICAgbmV4dCA9IDB4ZmZmZjg4MDBiNTQ0NGQwMCwKICAgICAgcHJldiA9IDB4ZmZm
-Zjg4MDBiYjVkOWM4MAogICAgfSwKICAgIHJlYWRlciA9IDAKICB9LAogIGl0ZW0gPSAweGZm
-ZmY4ODAwYmI5OTE5NDAsCiAgYnVmID0gMHhmZmZmODgwMGIyOGY5MDAwICJuZnNkIDE5Mi4x
-NjguMTEuMlxuIiwKICBsZW4gPSAxOCwKICByZWFkZXJzID0gMAp9CmZmZmY4ODAwYjU0NDRk
-MDAKc3RydWN0IGNhY2hlX3JlcXVlc3QgewogIHEgPSB7CiAgICBsaXN0ID0gewogICAgICBu
-ZXh0ID0gMHhmZmZmODgwMGJmMjFjYzgwLAogICAgICBwcmV2ID0gMHhmZmZmODgwMGJiZDFi
-ODAwCiAgICB9LAogICAgcmVhZGVyID0gMAogIH0sCiAgaXRlbSA9IDB4ZmZmZjg4MDIwYTM4
-ODVjMCwKICBidWYgPSAweGZmZmY4ODAwYjI4ODAwMDAgIm5mc2QgMTkyLjE2OC4xMC4yXG4i
-LAogIGxlbiA9IDE4LAogIHJlYWRlcnMgPSAwCn0KZmZmZjg4MDBiZjIxY2M4MApzdHJ1Y3Qg
-Y2FjaGVfcmVxdWVzdCB7CiAgcSA9IHsKICAgIGxpc3QgPSB7CiAgICAgIG5leHQgPSAweGZm
-ZmY4ODAwYmVkOWNiODAsCiAgICAgIHByZXYgPSAweGZmZmY4ODAwYjU0NDRkMDAKICAgIH0s
-CiAgICByZWFkZXIgPSAwCiAgfSwKICBpdGVtID0gMHhmZmZmODgwMjA0MzcxZWMwLAogIGJ1
-ZiA9IDB4ZmZmZjg4MDBiMTA5MzAwMCAibmZzZCAxOTIuMTY4LjExLjJcbiIsCiAgbGVuID0g
-MTgsCiAgcmVhZGVycyA9IDAKfQpmZmZmODgwMGJlZDljYjgwCnN0cnVjdCBjYWNoZV9yZXF1
-ZXN0IHsKICBxID0gewogICAgbGlzdCA9IHsKICAgICAgbmV4dCA9IDB4ZmZmZjg4MDBiYWMy
-N2M0MCwKICAgICAgcHJldiA9IDB4ZmZmZjg4MDBiZjIxY2M4MAogICAgfSwKICAgIHJlYWRl
-ciA9IDAKICB9LAogIGl0ZW0gPSAweGZmZmY4ODAyMzU5NzQxYzAsCiAgYnVmID0gMHhmZmZm
-ODgwMGJiNTRjMDAwICJuZnNkIDE5Mi4xNjguMTEuMlxuIiwKICBsZW4gPSAxOCwKICByZWFk
-ZXJzID0gMAp9CmZmZmY4ODAwYmFjMjdjNDAKc3RydWN0IGNhY2hlX3JlcXVlc3QgewogIHEg
-PSB7CiAgICBsaXN0ID0gewogICAgICBuZXh0ID0gMHhmZmZmODgwMGJlZjFkNDgwLAogICAg
-ICBwcmV2ID0gMHhmZmZmODgwMGJlZDljYjgwCiAgICB9LAogICAgcmVhZGVyID0gMAogIH0s
-CiAgaXRlbSA9IDB4ZmZmZjg4MDBiYmQzYzE0MCwKICBidWYgPSAweGZmZmY4ODAwYmI4YWUw
-MDAgIm5mc2QgMTkyLjE2OC4xMC4yXG4iLAogIGxlbiA9IDE4LAogIHJlYWRlcnMgPSAwCn0K
-ZmZmZjg4MDBiZWYxZDQ4MApzdHJ1Y3QgY2FjaGVfcmVxdWVzdCB7CiAgcSA9IHsKICAgIGxp
-c3QgPSB7CiAgICAgIG5leHQgPSAweGZmZmY4ODAwYmFhZTVmODAsCiAgICAgIHByZXYgPSAw
-eGZmZmY4ODAwYmFjMjdjNDAKICAgIH0sCiAgICByZWFkZXIgPSAwCiAgfSwKICBpdGVtID0g
-MHhmZmZmODgwMGJiZmQ2MmMwLAogIGJ1ZiA9IDB4ZmZmZjg4MDBiOWVjZDAwMCAibmZzZCAx
-OTIuMTY4LjEwLjJcbiIsCiAgbGVuID0gMTgsCiAgcmVhZGVycyA9IDAKfQpmZmZmODgwMGJh
-YWU1ZjgwCnN0cnVjdCBjYWNoZV9yZXF1ZXN0IHsKICBxID0gewogICAgbGlzdCA9IHsKICAg
-ICAgbmV4dCA9IDB4ZmZmZjg4MDBiZjBjZDY4MCwKICAgICAgcHJldiA9IDB4ZmZmZjg4MDBi
-ZWYxZDQ4MAogICAgfSwKICAgIHJlYWRlciA9IDAKICB9LAogIGl0ZW0gPSAweGZmZmY4ODAw
-YmI4MjI0YzAsCiAgYnVmID0gMHhmZmZmODgwMGJmMjQ5MDAwICJuZnNkIDE5Mi4xNjguMTEu
-MlxuIiwKICBsZW4gPSAxOCwKICByZWFkZXJzID0gMAp9CmZmZmY4ODAwYmYwY2Q2ODAKc3Ry
-dWN0IGNhY2hlX3JlcXVlc3QgewogIHEgPSB7CiAgICBsaXN0ID0gewogICAgICBuZXh0ID0g
-MHhmZmZmODgwMGJiOTFhNTAwLAogICAgICBwcmV2ID0gMHhmZmZmODgwMGJhYWU1ZjgwCiAg
-ICB9LAogICAgcmVhZGVyID0gMAogIH0sCiAgaXRlbSA9IDB4ZmZmZjg4MDBiZjE4NjVjMCwK
-ICBidWYgPSAweGZmZmY4ODAwYmIxYzgwMDAgIm5mc2QgMTkyLjE2OC4xMC4yXG4iLAogIGxl
-biA9IDE4LAogIHJlYWRlcnMgPSAwCn0KZmZmZjg4MDBiYjkxYTUwMApzdHJ1Y3QgY2FjaGVf
-cmVxdWVzdCB7CiAgcSA9IHsKICAgIGxpc3QgPSB7CiAgICAgIG5leHQgPSAweGZmZmY4ODAw
-YjEyZjMyMDAsCiAgICAgIHByZXYgPSAweGZmZmY4ODAwYmYwY2Q2ODAKICAgIH0sCiAgICBy
-ZWFkZXIgPSAwCiAgfSwKICBpdGVtID0gMHhmZmZmODgwMGJlYzdiOTQwLAogIGJ1ZiA9IDB4
-ZmZmZjg4MDBiMjZiODAwMCAibmZzZCAxOTIuMTY4LjEwLjJcbiIsCiAgbGVuID0gMTgsCiAg
-cmVhZGVycyA9IDAKfQpmZmZmODgwMGIxMmYzMjAwCnN0cnVjdCBjYWNoZV9yZXF1ZXN0IHsK
-ICBxID0gewogICAgbGlzdCA9IHsKICAgICAgbmV4dCA9IDB4ZmZmZjg4MDIzNGM5Nzg0MCwK
-ICAgICAgcHJldiA9IDB4ZmZmZjg4MDBiYjkxYTUwMAogICAgfSwKICAgIHJlYWRlciA9IDAK
-ICB9LAogIGl0ZW0gPSAweGZmZmY4ODAwYjY1MTY0NDAsCiAgYnVmID0gMHhmZmZmODgwMGJi
-OTMzMDAwICJuZnNkIDE5Mi4xNjguMTAuMlxuIiwKICBsZW4gPSAxOCwKICByZWFkZXJzID0g
-MAp9CmZmZmY4ODAyMzRjOTc4NDAKc3RydWN0IGNhY2hlX3JlcXVlc3QgewogIHEgPSB7CiAg
-ICBsaXN0ID0gewogICAgICBuZXh0ID0gMHhmZmZmZmZmZmEwNGExNDc4LAogICAgICBwcmV2
-ID0gMHhmZmZmODgwMGIxMmYzMjAwCiAgICB9LAogICAgcmVhZGVyID0gMQogIH0sCiAgaXRl
-bSA9IDB4MCwKICBidWYgPSAweDMxM2EzMzNhMzAzYTM4IDxBZGRyZXNzIDB4MzEzYTMzM2Ez
-MDNhMzggb3V0IG9mIGJvdW5kcz4sCiAgbGVuID0gMCwKICByZWFkZXJzID0gMAp9CmNyYXNo
-PiBwcmludCAqKHN0cnVjdCBjYWNoZV9oZWFkICopMHhmZmZmODgwMGI2NTE2NDQwCiQ0NCA9
-IHsKICBuZXh0ID0gMHgwLAogIGV4cGlyeV90aW1lID0gMCwKICBsYXN0X3JlZnJlc2ggPSAx
-MTQwLAogIHJlZiA9IHsKICAgIHJlZmNvdW50ID0gewogICAgICBjb3VudGVyID0gMQogICAg
-fQogIH0sCiAgZmxhZ3MgPSA1Cn0KY3Jhc2g+IHByaW50ICooc3RydWN0IGNhY2hlX2hlYWQg
-KikweGZmZmY4ODAwYmVjN2I5NDAKJDQ1ID0gewogIG5leHQgPSAweDAsCiAgZXhwaXJ5X3Rp
-bWUgPSAwLAogIGxhc3RfcmVmcmVzaCA9IDExMzgsCiAgcmVmID0gewogICAgcmVmY291bnQg
-PSB7CiAgICAgIGNvdW50ZXIgPSAyCiAgICB9CiAgfSwKICBmbGFncyA9IDUKfQpjcmFzaD4K
-CgoKCiMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMKCgotLS0gYS9uZXQvc3VucnBjL2Nh
-Y2hlLmMJMjAxMy0wMy0wNSAxMjo1NToyOC4wMDAwMDAwMDAgKzAxMDAKKysrIGIvbmV0L3N1
-bnJwYy9jYWNoZS5jCTIwMTMtMDMtMDUgMTI6NTQ6NDIuMDAwMDAwMDAwICswMTAwCkBAIC05
-NjIsMjMgKzk2MiwzMyBAQCBzdGF0aWMgaW50IGNhY2hlX3JlbGVhc2Uoc3RydWN0IGlub2Rl
-ICppCiAKIHN0YXRpYyB2b2lkIGNhY2hlX2RlcXVldWUoc3RydWN0IGNhY2hlX2RldGFpbCAq
-ZGV0YWlsLCBzdHJ1Y3QgY2FjaGVfaGVhZCAqY2gpCiB7Ci0Jc3RydWN0IGNhY2hlX3F1ZXVl
-ICpjcTsKKwlzdHJ1Y3QgY2FjaGVfcXVldWUgKmNxLCAqdG1wOworCXN0cnVjdCBjYWNoZV9y
-ZXF1ZXN0ICpjcjsKKwlzdHJ1Y3QgbGlzdF9oZWFkIGRlcXVldWVkOworCisJSU5JVF9MSVNU
-X0hFQUQoJmRlcXVldWVkKTsKIAlzcGluX2xvY2soJnF1ZXVlX2xvY2spOwotCWxpc3RfZm9y
-X2VhY2hfZW50cnkoY3EsICZkZXRhaWwtPnF1ZXVlLCBsaXN0KQorCWxpc3RfZm9yX2VhY2hf
-ZW50cnlfc2FmZShjcSwgdG1wLCAmZGV0YWlsLT5xdWV1ZSwgbGlzdCkKIAkJaWYgKCFjcS0+
-cmVhZGVyKSB7Ci0JCQlzdHJ1Y3QgY2FjaGVfcmVxdWVzdCAqY3IgPSBjb250YWluZXJfb2Yo
-Y3EsIHN0cnVjdCBjYWNoZV9yZXF1ZXN0LCBxKTsKKwkJCWNyID0gY29udGFpbmVyX29mKGNx
-LCBzdHJ1Y3QgY2FjaGVfcmVxdWVzdCwgcSk7CiAJCQlpZiAoY3ItPml0ZW0gIT0gY2gpCiAJ
-CQkJY29udGludWU7CisJCQlpZiAodGVzdF9iaXQoQ0FDSEVfUEVORElORywgJmNoLT5mbGFn
-cykpCisJCQkJLyogTG9zdCBhIHJhY2UgYW5kIGl0IGlzIHBlbmRpbmcgYWdhaW4gKi8KKwkJ
-CQlicmVhazsKIAkJCWlmIChjci0+cmVhZGVycyAhPSAwKQogCQkJCWNvbnRpbnVlOwotCQkJ
-bGlzdF9kZWwoJmNyLT5xLmxpc3QpOwotCQkJc3Bpbl91bmxvY2soJnF1ZXVlX2xvY2spOwot
-CQkJY2FjaGVfcHV0KGNyLT5pdGVtLCBkZXRhaWwpOwotCQkJa2ZyZWUoY3ItPmJ1Zik7Ci0J
-CQlrZnJlZShjcik7Ci0JCQlyZXR1cm47CisJCQlsaXN0X21vdmUoJmNyLT5xLmxpc3QsICZk
-ZXF1ZXVlZCk7CiAJCX0KIAlzcGluX3VubG9jaygmcXVldWVfbG9jayk7CisKKwl3aGlsZSAo
-IWxpc3RfZW1wdHkoJmRlcXVldWVkKSkgeworCQljciA9IGxpc3RfZW50cnkoZGVxdWV1ZWQu
-bmV4dCwgc3RydWN0IGNhY2hlX3JlcXVlc3QsIHEubGlzdCk7CisJCWxpc3RfZGVsKCZjci0+
-cS5saXN0KTsKKwkJY2FjaGVfcHV0KGNyLT5pdGVtLCBkZXRhaWwpOworCQlrZnJlZShjci0+
-YnVmKTsKKwkJa2ZyZWUoY3IpOworCX0KIH0KIAogLyoKQEAgLTEwODEsNiArMTA5MSw3IEBA
-IGludCBzdW5ycGNfY2FjaGVfcGlwZV91cGNhbGwoc3RydWN0IGNhY2gKIAlzdHJ1Y3QgY2Fj
-aGVfcmVxdWVzdCAqY3JxOwogCWNoYXIgKmJwOwogCWludCBsZW47CisJaW50IHJldCA9IDA7
-CiAKIAlpZiAoYXRvbWljX3JlYWQoJmRldGFpbC0+cmVhZGVycykgPT0gMCAmJgogCSAgICBk
-ZXRhaWwtPmxhc3RfY2xvc2UgPCBnZXRfc2Vjb25kcygpIC0gMzApIHsKQEAgLTExMTMsMTAg
-KzExMjQsMTggQEAgaW50IHN1bnJwY19jYWNoZV9waXBlX3VwY2FsbChzdHJ1Y3QgY2FjaAog
-CWNycS0+bGVuID0gUEFHRV9TSVpFIC0gbGVuOwogCWNycS0+cmVhZGVycyA9IDA7CiAJc3Bp
-bl9sb2NrKCZxdWV1ZV9sb2NrKTsKLQlsaXN0X2FkZF90YWlsKCZjcnEtPnEubGlzdCwgJmRl
-dGFpbC0+cXVldWUpOworCWlmICh0ZXN0X2JpdChDQUNIRV9QRU5ESU5HLCAmaC0+ZmxhZ3Mp
-KQorCQlsaXN0X2FkZF90YWlsKCZjcnEtPnEubGlzdCwgJmRldGFpbC0+cXVldWUpOworCWVs
-c2UKKwkJLyogTG9zdCBhIHJhY2UsIG5vIGxvbmdlciBQRU5ESU5HLCBzbyBkb24ndCBlbnF1
-ZXVlICovCisJCXJldCA9IC1FQUdBSU47CiAJc3Bpbl91bmxvY2soJnF1ZXVlX2xvY2spOwog
-CXdha2VfdXAoJnF1ZXVlX3dhaXQpOwotCXJldHVybiAwOworCWlmIChyZXQgPT0gLUVBR0FJ
-TikgeworCQlrZnJlZShidWYpOworCQlrZnJlZShjcnEpOworCX0KKwlyZXR1cm4gcmV0Owog
-fQogRVhQT1JUX1NZTUJPTF9HUEwoc3VucnBjX2NhY2hlX3BpcGVfdXBjYWxsKTsKIAojIyMj
-IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjCgotLS0gYS9uZXQvc3VucnBjL2NhY2hlLmMJMjAx
-My0wMy0wNSAxMzoxMDo1OC4wMDAwMDAwMDAgKzAxMDAKKysrIGIvbmV0L3N1bnJwYy9jYWNo
-ZS5jCTIwMTMtMDMtMDUgMTI6NTQ6NDIuMDAwMDAwMDAwICswMTAwCkBAIC0yMzMsMTkgKzIz
-MywxNiBAQCBpbnQgY2FjaGVfY2hlY2soc3RydWN0IGNhY2hlX2RldGFpbCAqZGV0CiAJCWlm
-ICghdGVzdF9hbmRfc2V0X2JpdChDQUNIRV9QRU5ESU5HLCAmaC0+ZmxhZ3MpKSB7CiAJCQlz
-d2l0Y2ggKGNhY2hlX21ha2VfdXBjYWxsKGRldGFpbCwgaCkpIHsKIAkJCWNhc2UgLUVJTlZB
-TDoKLQkJCQljbGVhcl9iaXQoQ0FDSEVfUEVORElORywgJmgtPmZsYWdzKTsKLQkJCQljYWNo
-ZV9yZXZpc2l0X3JlcXVlc3QoaCk7Ci0JCQkJaWYgKHJ2ID09IC1FQUdBSU4pIHsKKwkJCQl3
-cml0ZV9sb2NrKCZkZXRhaWwtPmhhc2hfbG9jayk7CisJCQkJaWYgKHJ2KSB7CiAJCQkJCXNl
-dF9iaXQoQ0FDSEVfTkVHQVRJVkUsICZoLT5mbGFncyk7CiAJCQkJCWNhY2hlX2ZyZXNoX2xv
-Y2tlZChoLCBtb25vdG9uaWNfc2Vjb25kcygpK0NBQ0hFX05FV19FWFBJUlkpOwotCQkJCQlj
-YWNoZV9mcmVzaF91bmxvY2tlZChoLCBkZXRhaWwpOwogCQkJCQlydiA9IC1FTk9FTlQ7CiAJ
-CQkJfQotCQkJCWJyZWFrOwotCisJCQkJd3JpdGVfdW5sb2NrKCZkZXRhaWwtPmhhc2hfbG9j
-ayk7CisJCQkJLyogRkFMTFRIUk9VR0ggKi8KIAkJCWNhc2UgLUVBR0FJTjoKLQkJCQljbGVh
-cl9iaXQoQ0FDSEVfUEVORElORywgJmgtPmZsYWdzKTsKLQkJCQljYWNoZV9yZXZpc2l0X3Jl
-cXVlc3QoaCk7CisJCQkJY2FjaGVfZnJlc2hfdW5sb2NrZWQoaCwgZGV0YWlsKTsKIAkJCQli
-cmVhazsKIAkJCX0KIAkJfQpAQCAtNDA1LDE3ICs0MDIsMTIgQEAgc3RhdGljIGludCBjYWNo
-ZV9jbGVhbih2b2lkKQogCQkJICAgICYmIGNoLT5sYXN0X3JlZnJlc2ggPj0gY3VycmVudF9k
-ZXRhaWwtPmZsdXNoX3RpbWUKIAkJCQkpCiAJCQkJY29udGludWU7Ci0JCQlpZiAodGVzdF9h
-bmRfY2xlYXJfYml0KENBQ0hFX1BFTkRJTkcsICZjaC0+ZmxhZ3MpKQotCQkJCWNhY2hlX2Rl
-cXVldWUoY3VycmVudF9kZXRhaWwsIGNoKTsKIAotCQkJaWYgKGF0b21pY19yZWFkKCZjaC0+
-cmVmLnJlZmNvdW50KSA9PSAxKQotCQkJCWJyZWFrOwotCQl9Ci0JCWlmIChjaCkgewogCQkJ
-KmNwID0gY2gtPm5leHQ7CiAJCQljaC0+bmV4dCA9IE5VTEw7CiAJCQljdXJyZW50X2RldGFp
-bC0+ZW50cmllcy0tOwogCQkJcnYgPSAxOworCQkJYnJlYWs7CiAJCX0KIAkJd3JpdGVfdW5s
-b2NrKCZjdXJyZW50X2RldGFpbC0+aGFzaF9sb2NrKTsKIAkJZCA9IGN1cnJlbnRfZGV0YWls
-OwpAQCAtNDIzLDcgKzQxNSw3IEBAIHN0YXRpYyBpbnQgY2FjaGVfY2xlYW4odm9pZCkKIAkJ
-CWN1cnJlbnRfaW5kZXggKys7CiAJCXNwaW5fdW5sb2NrKCZjYWNoZV9saXN0X2xvY2spOwog
-CQlpZiAoY2gpIHsKLQkJCWNhY2hlX3JldmlzaXRfcmVxdWVzdChjaCk7CisJCQljYWNoZV9m
-cmVzaF91bmxvY2tlZChjaCwgZCk7CiAJCQljYWNoZV9wdXQoY2gsIGQpOwogCQl9CiAJfSBl
-bHNlCg==
 
+--=-U8cMmHkDRQMh1EJ8P48Q
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+
+Libgssglue is not really useful anymore, it is a sort of middleman that
+wraps the actual GSSAPI that is already pluggable/extensible via shared
+modules.
+
+In particular libgssglue interferes with the workings of gss-proxy in my
+case.
+
+The attached patch makes building against libgssglue optional and
+defaults to not build against libgssglue and instead builds directly
+against the native GSSAPI.
+
+./configure --enable-gss
+will now build against GSSAPI
+
+./configure --enable-gss --with-gssglue
+will keep building against libgssglue in case someone still needs it for
+whatever reason.
+
+Simo.
+
+-- 
+Simo Sorce * Red Hat, Inc * New York
+
+--=-U8cMmHkDRQMh1EJ8P48Q
+Content-Disposition: attachment; filename*0=0001-Add-configure-check-for-gss_krb5_free_lucid_sec_cont.pat; filename*1=ch
+Content-Type: text/x-patch; name="0001-Add-configure-check-for-gss_krb5_free_lucid_sec_cont.patch"; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+
+>From cde7338379cb424431eddc4f86b14185b89dc87e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?G=C3=BCnther=20Deschner?= <gdeschner@redhat.com>
+Date: Fri, 22 Mar 2013 18:51:58 +0100
+Subject: [PATCH 1/3] Add configure check for
+ gss_krb5_free_lucid_sec_context().
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Signed-off-by: Simo Sorce <simo@redhat.com>
+Signed-off-by: Günther Deschner <gdeschner@redhat.com>
+---
+ aclocal/kerberos5.m4 | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/aclocal/kerberos5.m4 b/aclocal/kerberos5.m4
+index 7574e2d3b380b22b63908f8586d22e76a2a5bc5b..ef37e28a11cad7552074b99a7805cd16b227cec8 100644
+--- a/aclocal/kerberos5.m4
++++ b/aclocal/kerberos5.m4
+@@ -92,6 +92,8 @@ AC_DEFUN([AC_KERBEROS_V5],[
+     AC_DEFINE(HAVE_SET_ALLOWABLE_ENCTYPES, 1, [Define this if the Kerberos GSS library supports gss_krb5_set_allowable_enctypes]), ,$KRBLIBS)
+   AC_CHECK_LIB($gssapi_lib, gss_krb5_ccache_name,
+     AC_DEFINE(HAVE_GSS_KRB5_CCACHE_NAME, 1, [Define this if the Kerberos GSS library supports gss_krb5_ccache_name]), ,$KRBLIBS)
++  AC_CHECK_LIB($gssapi_lib, gss_krb5_free_lucid_sec_context,
++    AC_DEFINE(HAVE_GSS_KRB5_FREE_LUCID_SEC_CONTEXT, 1, [Define this if the Kerberos GSS library supports gss_krb5_free_lucid_sec_context]), ,$KRBLIBS)
+ 
+   dnl Check for newer error message facility
+   AC_CHECK_LIB($gssapi_lib, krb5_get_error_message,
+-- 
+1.8.1.4
+
+
+--=-U8cMmHkDRQMh1EJ8P48Q
+Content-Disposition: attachment; filename="0002-Provide-macros-for-non-standard-gss-symbols.patch"
+Content-Type: text/x-patch; name="0002-Provide-macros-for-non-standard-gss-symbols.patch"; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+
+>From 67505e175e97efec5e662a23deb3eedff08c3d6e Mon Sep 17 00:00:00 2001
+From: Simo Sorce <simo@redhat.com>
+Date: Tue, 26 Mar 2013 12:04:06 -0400
+Subject: [PATCH 2/3] Provide macros for non-standard gss symbols
+
+libgsglue uses non standard name for mechanism specific extensions to gssapi
+which normally have gss_krb5_* names.
+Provide symbol substitution headers so that nfs-utils can be compiled both
+against libgssglue and the native GSSAPI implementation.
+
+Signed-off-by: Simo Sorce <simo@redhat.com>
+---
+ utils/gssd/gss_util.h | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/utils/gssd/gss_util.h b/utils/gssd/gss_util.h
+index 67b3077a8d252d31346fce6fdbd795a0c0c28287..aa9f77806075f9ab67a7763a75a010369ba2d1b9 100644
+--- a/utils/gssd/gss_util.h
++++ b/utils/gssd/gss_util.h
+@@ -42,4 +42,14 @@ void pgsserr(char *msg, u_int32_t maj_stat, u_int32_t min_stat,
+ 	const gss_OID mech);
+ int gssd_check_mechs(void);
+ 
++#ifndef HAVE_LIBGSSGLUE
++#include <gssapi/gssapi_krb5.h>
++#define gss_free_lucid_sec_context(min, ctx, ret) \
++		gss_krb5_free_lucid_sec_context(min, ret)
++
++#define gss_export_lucid_sec_context gss_krb5_export_lucid_sec_context
++#define gss_set_allowable_enctypes(min, cred, oid, num, types) \
++		gss_krb5_set_allowable_enctypes(min, cred, num, types)
++#endif
++
+ #endif /* _GSS_UTIL_H_ */
+-- 
+1.8.1.4
+
+
+--=-U8cMmHkDRQMh1EJ8P48Q
+Content-Disposition: attachment; filename="0003-Switch-to-use-standard-GSSAPI-by-default.patch"
+Content-Type: text/x-patch; name="0003-Switch-to-use-standard-GSSAPI-by-default.patch"; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+
+>From 34ce971b090b50b0f6a18754f106ad8d2e90e9e2 Mon Sep 17 00:00:00 2001
+From: Simo Sorce <simo@redhat.com>
+Date: Tue, 26 Mar 2013 11:11:41 -0400
+Subject: [PATCH 3/3] Switch to use standard GSSAPI by default
+
+Make libgssglue configurable still but disabled by default.
+There is no reason to use libgssglue anymore, and modern gssapi
+supports all needed features for nfs-utils.
+
+Signed-off-by: Simo Sorce <simo@redhat.com>
+---
+ aclocal/kerberos5.m4   |  4 ++++
+ aclocal/rpcsec_vers.m4 |  7 ++++++-
+ configure.ac           |  9 +++++++++
+ utils/gssd/Makefile.am | 12 ++++++------
+ 4 files changed, 25 insertions(+), 7 deletions(-)
+
+diff --git a/aclocal/kerberos5.m4 b/aclocal/kerberos5.m4
+index ef37e28a11cad7552074b99a7805cd16b227cec8..0bf35d3fddb57a0b977a87f90063cf4500ce377d 100644
+--- a/aclocal/kerberos5.m4
++++ b/aclocal/kerberos5.m4
+@@ -32,6 +32,8 @@ AC_DEFUN([AC_KERBEROS_V5],[
+     if test "$K5CONFIG" != ""; then
+       KRBCFLAGS=`$K5CONFIG --cflags`
+       KRBLIBS=`$K5CONFIG --libs`
++      GSSKRB_CFLAGS=`$K5CONFIG --cflags gssapi`
++      GSSKRB_LIBS=`$K5CONFIG --libs gssapi`
+       K5VERS=`$K5CONFIG --version | head -n 1 | awk '{split($(4),v,"."); if (v@<:@"3"@:>@ == "") v@<:@"3"@:>@ = "0"; print v@<:@"1"@:>@v@<:@"2"@:>@v@<:@"3"@:>@ }'`
+       AC_DEFINE_UNQUOTED(KRB5_VERSION, $K5VERS, [Define this as the Kerberos version number])
+       if test -f $dir/include/gssapi/gssapi_krb5.h -a \
+@@ -113,5 +115,7 @@ AC_DEFUN([AC_KERBEROS_V5],[
+   AC_SUBST([KRBCFLAGS])
+   AC_SUBST([KRBLDFLAGS])
+   AC_SUBST([K5VERS])
++  AC_SUBST([GSSKRB_CFLAGS])
++  AC_SUBST([GSSKRB_LIBS])
+ 
+ ])
+diff --git a/aclocal/rpcsec_vers.m4 b/aclocal/rpcsec_vers.m4
+index 8218372ceaeef3591a064c5bd906fffade0cd578..11d2f18cb241c51c31c5921a342e5ec935e7de84 100644
+--- a/aclocal/rpcsec_vers.m4
++++ b/aclocal/rpcsec_vers.m4
+@@ -1,7 +1,12 @@
+ dnl Checks librpcsec version
+ AC_DEFUN([AC_RPCSEC_VERSION], [
+ 
+-  PKG_CHECK_MODULES([GSSGLUE], [libgssglue >= 0.3])
++  AC_ARG_WITH([gssglue],
++	[AC_HELP_STRING([--with-gssglue], [Use libgssglue for GSS support])])
++  if test x"$with_gssglue" = x"yes"; then
++    PKG_CHECK_MODULES([GSSGLUE], [libgssglue >= 0.3])
++    AC_CHECK_LIB([gssglue], [gss_set_allowable_enctypes])
++  fi
+ 
+   dnl TI-RPC replaces librpcsecgss
+   if test "$enable_tirpc" = no; then
+diff --git a/configure.ac b/configure.ac
+index cc7f3b4b4933c218d2e4cab7369ba5c1afc4e4d7..3d7ab0a2669d33c3cece1844b7eb53f2c1e3f68a 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -344,6 +344,15 @@ if test "$enable_gss" = yes; then
+   dnl but we need to make sure we get the right version
+   if test "$enable_gss" = yes; then
+     AC_RPCSEC_VERSION
++    if test x"$GSSGLUE_LIBS" != x""; then
++      GSSAPI_CFLAGS=$GSSGLUE_CFLAGS
++      GSSAPI_LIBS=$GSSGLUE_LIBS
++    else
++      GSSAPI_CFLAGS=$GSSKRB_CFLAGS
++      GSSAPI_LIBS=$GSSKRB_LIBS
++    fi
++    AC_SUBST([GSSAPI_CFLAGS])
++    AC_SUBST([GSSAPI_LIBS])
+   fi
+ fi
+ 
+diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
+index 2365704c5db9b15d17f42b75adcb17f07f7e216f..a300da2b042baf9b14b77899d6419461a2e615d5 100644
+--- a/utils/gssd/Makefile.am
++++ b/utils/gssd/Makefile.am
+@@ -38,11 +38,11 @@ gssd_SOURCES = \
+ 	write_bytes.h
+ 
+ gssd_LDADD =	../../support/nfs/libnfs.a \
+-		$(RPCSECGSS_LIBS) $(GSSGLUE_LIBS) $(KRBLIBS)
++		$(RPCSECGSS_LIBS) $(KRBLIBS) $(GSSAPI_LIBS)
+ gssd_LDFLAGS = $(KRBLDFLAGS) $(LIBTIRPC)
+ 
+ gssd_CFLAGS = $(AM_CFLAGS) $(CFLAGS) \
+-	      $(RPCSECGSS_CFLAGS) $(GSSGLUE_CFLAGS) $(KRBCFLAGS)
++	      $(RPCSECGSS_CFLAGS) $(KRBCFLAGS) $(GSSAPI_CFLAGS)
+ 
+ svcgssd_SOURCES = \
+ 	$(COMMON_SRCS) \
+@@ -57,18 +57,18 @@ svcgssd_SOURCES = \
+ 
+ svcgssd_LDADD = \
+ 	../../support/nfs/libnfs.a \
+-	$(RPCSECGSS_LIBS) $(GSSGLUE_LIBS) $(LIBNFSIDMAP) \
+-	$(KRBLIBS) $(LIBTIRPC)
++	$(RPCSECGSS_LIBS) $(LIBNFSIDMAP) \
++	$(KRBLIBS) $(GSSAPI_LIBS) $(LIBTIRPC)
+ 
+ svcgssd_LDFLAGS = $(KRBLDFLAGS)
+ 
+ svcgssd_CFLAGS = $(AM_CFLAGS) $(CFLAGS) \
+-		 $(RPCSECGSS_CFLAGS) $(GSSGLUE_CFLAGS) $(KRBCFLAGS)
++		 $(RPCSECGSS_CFLAGS) $(KRBCFLAGS) $(GSSAPI_CFLAGS)
+ 
+ gss_clnt_send_err_SOURCES = gss_clnt_send_err.c
+ 
+ gss_clnt_send_err_CFLAGS = $(AM_CFLAGS) $(CFLAGS) \
+-		 $(RPCSECGSS_CFLAGS) $(GSSGLUE_CFLAGS) $(KRBCFLAGS)
++		 $(RPCSECGSS_CFLAGS) $(KRBCFLAGS) $(GSSAPI_CFLAGS)
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+ 
+-- 
+1.8.1.4
+
+
+--=-U8cMmHkDRQMh1EJ8P48Q--
 
