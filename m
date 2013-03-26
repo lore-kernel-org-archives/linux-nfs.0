@@ -1,42 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f170.google.com ([209.85.220.170]:38718 "EHLO
-	mail-vc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755263Ab3CTRKv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Mar 2013 13:10:51 -0400
-Received: by mail-vc0-f170.google.com with SMTP id lf10so1542711vcb.1
-        for <linux-nfs@vger.kernel.org>; Wed, 20 Mar 2013 10:10:51 -0700 (PDT)
+Received: from mout.perfora.net ([74.208.4.194]:56526 "EHLO mout.perfora.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934899Ab3CZP5A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Mar 2013 11:57:00 -0400
+Date: Tue, 26 Mar 2013 11:56:45 -0400
+From: Jim Rees <rees@umich.edu>
+To: Simo Sorce <simo@redhat.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "libtirpc-devel@lists.sourceforge.net"
+	<libtirpc-devel@lists.sourceforge.net>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        Steve Dickson <steved@redhat.com>
+Subject: Re: Allow building libtirpc directly against GSSAPI
+Message-ID: <20130326155645.GA31975@umich.edu>
+References: <1364308888.2660.119.camel@willson.li.ssimo.org>
+ <1364311505.4534.0.camel@leira.trondhjem.org>
+ <1364312268.2660.122.camel@willson.li.ssimo.org>
+ <1364312636.4534.8.camel@leira.trondhjem.org>
+ <1364312992.2660.126.camel@willson.li.ssimo.org>
 MIME-Version: 1.0
-In-Reply-To: <CAHVgHyV+p61MgJ3f=aRZNdOy8R_gBEgszvAmbzRX95NVQ37q8A@mail.gmail.com>
-References: <CAHVgHyV+p61MgJ3f=aRZNdOy8R_gBEgszvAmbzRX95NVQ37q8A@mail.gmail.com>
-Date: Wed, 20 Mar 2013 13:10:51 -0400
-Message-ID: <CAHVgHyW9z=dyAuo_96ybwyNDs=aopOo9nujWG5ruueM8PBLGkg@mail.gmail.com>
-Subject: June 2013 Bakeathon in Ann Arbor
-From: Andy Adamson <androsadamson@gmail.com>
-To: NFS list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1364312992.2660.126.camel@willson.li.ssimo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-FYI:
-
----------- Forwarded message ----------
-From: Andy Adamson <androsadamson@gmail.com>
-Date: Tue, Mar 19, 2013 at 1:59 PM
-Subject: June 2013 Bakeathon in Ann Arbor
-To: NFSv4 <nfsv4@ietf.org>
-
-
-NetApp is pleased to announce that it is hosting the an NFSv4
-Bakeathon June 10-14 downtown Ann Arbor at the Workantile
-
-Details and registration info is here:
-
-http://nfsv4bat.org/src/bat0613.html
-
-Please register soon as we need to have a good idea of head count. I
-will notify the list with details when a hotel block of rooms is
-reserved.
-
-Thanks
-
--->Andy
+Doesn't nfs-utils build without gssglue if libgssglue is not installed? If
+that's true I see no reason to change the default. If you don't want
+gssglue, uninstall it. If you have it installed and want to build without
+it, use --without-gssglue.
