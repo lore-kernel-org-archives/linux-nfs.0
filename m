@@ -1,78 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f182.google.com ([209.85.220.182]:35998 "EHLO
-	mail-vc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756274Ab3C1OTq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Mar 2013 10:19:46 -0400
-Received: by mail-vc0-f182.google.com with SMTP id ht11so7744544vcb.27
-        for <linux-nfs@vger.kernel.org>; Thu, 28 Mar 2013 07:19:45 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:57024 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934800Ab3CZPs2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Mar 2013 11:48:28 -0400
+Message-ID: <5151C33E.2070008@redhat.com>
+Date: Tue, 26 Mar 2013 10:48:14 -0500
+From: Eric Sandeen <sandeen@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <1364479112.11160.0.camel@leira.trondhjem.org>
-References: <CAK1jPnLSFxLwSbe14mMbrois6bwFzbG_Q1kudBuNyywj70s7LA@mail.gmail.com>
-	<1364479112.11160.0.camel@leira.trondhjem.org>
-Date: Thu, 28 Mar 2013 22:19:45 +0800
-Message-ID: <CAK1jPnK_WHHH3cgnocQKgMDzcQOEn4Edc-MyaV8OwWLpBMQz3g@mail.gmail.com>
-Subject: Re: [PATCH] sunrpc: the cache_detail in cache_is_valid is unused any more
-From: chaoting fan <tingchaofan@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+CC: Anand Avati <anand.avati@gmail.com>, "Theodore Ts'o" <tytso@mit.edu>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, gluster-devel@nongnu.org
+Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
+References: <20130213151455.GB17431@thunk.org> <20130213151953.GJ14195@fieldses.org> <20130213153654.GC17431@thunk.org> <20130213162059.GL14195@fieldses.org> <CAFboF2wXvP+vttiff8iRE9rAgvV8UWGbFprgVp8p7kE43TU=PA@mail.gmail.com> <20130213222052.GD5938@thunk.org> <20130213224141.GU14195@fieldses.org> <20130213224720.GE5938@thunk.org> <CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com> <20130213230511.GW14195@fieldses.org> <20130213234430.GF5938@thunk.org> <CAFboF2zS+YAa0uUxMFUAbqgPh3Kb4xZu40WUjLyGn8qPoP+Oyw@mail.gmail.com> <5151BD5F.30607@itwm.fraunhofer.de>
+In-Reply-To: <5151BD5F.30607@itwm.fraunhofer.de>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> Why not just remove it altogether? There are only 3 callers.
+On 3/26/13 10:23 AM, Bernd Schubert wrote:
+> Sorry for my late reply, I had been rather busy.
+> 
+> On 02/14/2013 01:05 AM, Anand Avati wrote:
+>> On Wed, Feb 13, 2013 at 3:44 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+>>>
+>>> I suspect this would seriously screw over Gluster, though, and this
+>>> wouldn't be a solution for NFSv3, since NFS needs long-lived directory
+>>> cookies, and not the short-lived cookies which is all POSIX/SuSv3
+>>> guarantees.
+>>>
+>>
+>> Actually this would work just fine with Gluster. Except in the case of
+> 
+> Would it really work perfectly? What about a server reboot in the middle of a readdir of a client?
+> 
+>> gluster-NFS, the native client is only acting like a router/proxy of
+>> syscalls to the backend system. A directory opened by an application will
+>> have a matching directory fd opened on ext4, and readdir from an app will
+>> be translated into readdir on the matching fd on ext4. So the
+>> app-on-glusterfs and glusterfsd-on-ext4 are essentially "moving in tandem".
+>> As long as the offs^H^H^H^H cookies do not overflow in the transformation,
+>> Gluster would not have a problem.
+>>
+>> However Gluster-NFS (and NFS in general, too) will break, as we
+>> opendir/closedir potentially on every request.
+> 
+> We don't have reached a conclusion so far, do we? What about the
+> ioctl approach, but a bit differently? Would it work to specify the
+> allowed upper bits for ext4 (for example 16 additional bit) and the
+> remaining part for gluster? One of the mails had the calculation
+> formula:
 
-thanks ,here is the change patch.
+I did throw together an ioctl patch last week, but I think Anand has a new
+approach he's trying out which won't require ext4 code changes.  I'll let
+him reply when he has a moment.  :)
 
-the cache_detail(*detail) in function cache_is_valid is unused any more.
+-Eric
 
-Signed-off-by: fanchaoting <fanchaoting@cn.fujitsu.com>
+> final_d_off = (ext4_d_off * MAX_SERVERS) + server_idx
+> 
+> But what is the value of MAX_SERVERS?
+> 
+> 
+> Cheers,
+> Bernd
+> 
+> 
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
----
- net/sunrpc/cache.c |    8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 9afa439..adbbc19 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -201,7 +201,7 @@ static int cache_make_upcall(struct cache_detail
-*cd, struct cache_head *h)
- 	return cd->cache_upcall(cd, h);
- }
-
--static inline int cache_is_valid(struct cache_detail *detail, struct
-cache_head *h)
-+static inline int cache_is_valid(struct cache_head *h)
- {
- 	if (!test_bit(CACHE_VALID, &h->flags))
- 		return -EAGAIN;
-@@ -227,7 +227,7 @@ static int try_to_negate_entry(struct cache_detail
-*detail, struct cache_head *h
- 	int rv;
-
- 	write_lock(&detail->hash_lock);
--	rv = cache_is_valid(detail, h);
-+	rv = cache_is_valid(h);
- 	if (rv != -EAGAIN) {
- 		write_unlock(&detail->hash_lock);
- 		return rv;
-@@ -260,7 +260,7 @@ int cache_check(struct cache_detail *detail,
- 	long refresh_age, age;
-
- 	/* First decide return status as best we can */
--	rv = cache_is_valid(detail, h);
-+	rv = cache_is_valid(h);
-
- 	/* now see if we want to start an upcall */
- 	refresh_age = (h->expiry_time - h->last_refresh);
-@@ -293,7 +293,7 @@ int cache_check(struct cache_detail *detail,
- 			 * Request was not deferred; handle it as best
- 			 * we can ourselves:
- 			 */
--			rv = cache_is_valid(detail, h);
-+			rv = cache_is_valid(h);
- 			if (rv == -EAGAIN)
- 				rv = -ETIMEDOUT;
- 		}
--- 
-1.7.10.4
