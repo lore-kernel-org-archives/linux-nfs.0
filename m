@@ -1,122 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e34.co.us.ibm.com ([32.97.110.152]:44620 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752466Ab3CTWkQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Mar 2013 18:40:16 -0400
-Received: from /spool/local
-	by e34.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <cvogan@us.ibm.com>;
-	Wed, 20 Mar 2013 16:40:15 -0600
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by d03dlp02.boulder.ibm.com (Postfix) with ESMTP id 5ADE03E4004E
-	for <linux-nfs@vger.kernel.org>; Wed, 20 Mar 2013 16:40:02 -0600 (MDT)
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r2KMeDXD166084
-	for <linux-nfs@vger.kernel.org>; Wed, 20 Mar 2013 16:40:13 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r2KMeC2s010409
-	for <linux-nfs@vger.kernel.org>; Wed, 20 Mar 2013 16:40:13 -0600
-Received: from d03nm116.boulder.ibm.com (d03nm116.boulder.ibm.com [9.63.40.222])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id r2KMeC5H010406
-	for <linux-nfs@vger.kernel.org>; Wed, 20 Mar 2013 16:40:12 -0600
-To: linux-nfs@vger.kernel.org
+Received: from mout.gmx.net ([212.227.17.20]:51029 "EHLO mout.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751656Ab3CZRqn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Mar 2013 13:46:43 -0400
+Received: from mailout-de.gmx.net ([10.1.76.17]) by mrigmx.server.lan
+ (mrigmx001) with ESMTP (Nemesis) id 0MZANm-1U6AN30VFk-00Kze4 for
+ <linux-nfs@vger.kernel.org>; Tue, 26 Mar 2013 18:46:41 +0100
+Message-ID: <5151DEF7.3060003@gmx.de>
+Date: Tue, 26 Mar 2013 18:46:31 +0100
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
 MIME-Version: 1.0
-Subject: Re: What is NFSv4 READDIR doesn't return a filehandle....
-Message-ID: <OF5A466E86.6A319FE3-ON87257B34.007C6188-86257B34.007C87C8@us.ibm.com>
-From: Christopher T Vogan <cvogan@us.ibm.com>
-Date: Wed, 20 Mar 2013 17:40:11 -0500
-Content-Type: text/plain; charset="US-ASCII"
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Linux Kernel <linux-kernel@vger.kernel.org>
+Subject: Re: kernel 3.8.4 : kernel BUG at fs/locks.c:2093!   part #2
+References: <514F31AF.3080709@gmx.de> <20130325220143.GD10887@fieldses.org> <20130326144640.GB3353@fieldses.org>
+In-Reply-To: <20130326144640.GB3353@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All,
-
-Sorry for this late posting, a coworker was made aware of this thread 
-recently and
-has these replies to make.  Our server implementation is the one being
-complained about in this thread.
-
-
-Quoted text is from various entries in this forum.
-
-
-Neil Brown:
-===========
-> Just a thought: while coping with broken servers would not be a good 
-path to
-> follow, detecting protocol violations and reporting an error might be...
-> should the NFS client treat a missing filehandle and a malformed reply?
-
-The server is allowed to remove an attribute bit from an entry in the 
-readdir
-reply, this is not "broken" nor is the reply "malformed".  The lack of a 
-filehandle in the reply is deterministic.
-
-
-
-Trond Myklebust:
-================
-> > A customer has come across a server which does not return the 
-filehandle
-> > information (is that allowed?).
+On 03/26/2013 03:46 PM, J. Bruce Fields wrote:
+> Can you run with test patches?
 > 
-> The filehandle attribute is a mandatory attribute according to RFC3530, 
-so I believe that the answer is "no".
+> This just makes nfsd's fput calls synchronous so that we see in the
+> backtrace who called them.
 
-Mandatory is described in RFS 3530 as that the server must return the 
-attribute
-on a GETATTR.  (Section 5, page 36).  There is nothing saying that it is
-mandatory to return on a READDIR.  Our server will return the filehandle
-on a LOOKUP/GETATTR every time.
+Well - the patched 3.8.4 host kernel now survives the stress test of the UML system.
+What I get at the host is now :
 
-
-Trond Myklebust:
-================
-> My concern is that the client can't objectively judge what constitutes a
-> valid filehandle and what does not until it tries to use it in an RPC
-> call.
-
-Sure it can.  In the context of this discussion, if the readdir entry
-has the filehandle attribute bit off in the reply, there is no filehandle.
-
-I would note in the scenario we sent a trace for, the Linux client had 
-a filehandle for the node in question, and "misplaced" it after a 
-readdir to the directory containing that node did not return the 
-filehandle
-for that entry.  So calling the server "broken" is objectively inaccurate.
-
-I would also note that this problem occurred after we upgraded to RHEL 
-6.3;
-the prior version did not have this issue, and our server did not change 
-its
-behavior.  My conclusion is that the means to obtain the filehandle was 
-either broken by the client adding logic to assume a filehandle and 
-obliterate 
-the prior value after a readdir reply chose not to return it, or 
-previously 
-had a code path to lookup the node and obtain the filehandle, and removed 
-that code path for some reason.  So again, pointing to server "breakage" 
-is objectively inaccurate.
-
-There are many references to "brokenness" or "server bugs" in this 
-thread, and I take exception to it from a design and protocol conformance 
-point of view.
-
-This condition is easily recoverable, as ANY missing attribute on a 
-readdir
-is with a lookup/readdir.  Our decision to not return the FH on a readdir 
-reply under certain narrow conditions is not one of convenience but of 
-limitations of some underlying filesystem types, and if "convenience" is
-to be used as an accusative, it can easily be returned to the client's 
-refusal to deal with the legal withholding of an attribute on a readdir
-reply.
+2013-03-26T18:32:17.487+01:00 n22 kernel: ------------[ cut here ]------------
+2013-03-26T18:32:17.487+01:00 n22 kernel: WARNING: at mm/page_alloc.c:2376 __alloc_pages_nodemask+0x262/0x7c0()
+2013-03-26T18:32:17.487+01:00 n22 kernel: Hardware name: 4180F65
+2013-03-26T18:32:17.487+01:00 n22 kernel: Modules linked in: md5 nfsd auth_rpcgss ipt_MASQUERADE xt_owner xt_multiport ipt_REJECT xt_tcpudp xt_recent xt_conntrack nf_conntrack_ftp xt_limit xt_LOG iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_filter ip_tables x_tables af_packet pppoe pppox ppp_generic slhc bridge stp llc tun msr snd_hda_codec_conexant snd_hda_intel uvcvideo i915 usblp snd_hda_codec sdhci_pci snd_pcm cfbfillrect videobuf2_vmalloc arc4 iwldvm cfbimgblt i2c_algo_bit cfbcopyarea intel_agp videobuf2_memops sdhci coretemp videobuf2_core mac80211 snd_page_alloc kvm_intel acpi_cpufreq fbcon mperf bitblit softcursor font intel_gtt videodev mmc_core snd_timer kvm drm_kms_helper thinkpad_acpi drm nvram agpgart fb snd i2c_i801 video i2c_core tpm_tis soundcore processor 8250_pci 8250_core iwlwifi thermal battery cfg80211 fbdev ac tpm rfkill psmouse serial_core e1000e evdev thermal_sys button tpm_bios wmi hwmon aesni_intel ablk_helper!
+  cryptd lr
+w aes_i586 xts gf128mul cbc sha256_generic fuse nfs lockd sunrpc dm_crypt dm_mod hid_monterey hid_microsoft hid_logitech hid_ezkey hid_cypress hid_chicony hid_cherry hid_belkin hid_apple hid_a4tech hid_generic usbhid hid sr_mod cdrom sg [last unloaded: microcode]
+2013-03-26T18:32:17.487+01:00 n22 kernel: Pid: 6614, comm: nfsd Not tainted 3.8.4 #9
+2013-03-26T18:32:17.487+01:00 n22 kernel: Call Trace:
+2013-03-26T18:32:17.487+01:00 n22 kernel: [<c1033ba2>] warn_slowpath_common+0x72/0xa0
+2013-03-26T18:32:17.487+01:00 n22 kernel: [<c10db802>] ? __alloc_pages_nodemask+0x262/0x7c0
+2013-03-26T18:32:17.487+01:00 n22 kernel: [<c10db802>] ? __alloc_pages_nodemask+0x262/0x7c0
+2013-03-26T18:32:17.487+01:00 n22 kernel: [<c1033bf2>] warn_slowpath_null+0x22/0x30
+2013-03-26T18:32:17.487+01:00 n22 kernel: [<c10db802>] __alloc_pages_nodemask+0x262/0x7c0
+2013-03-26T18:32:17.487+01:00 n22 kernel: [<c1069758>] ? dequeue_task_fair+0x258/0x6f0
+2013-03-26T18:32:17.487+01:00 n22 kernel: [<c13a8803>] ? inet_recvmsg+0x73/0x90
+2013-03-26T18:32:17.487+01:00 n22 kernel: [<c10dbd7c>] __get_free_pages+0x1c/0x30
+2013-03-26T18:32:17.487+01:00 n22 kernel: [<c110e0f9>] kmalloc_order_trace+0x29/0xb0
+2013-03-26T18:32:17.487+01:00 n22 kernel: [<f857e480>] ? ip_map_request+0xd0/0xd0 [sunrpc]
+2013-03-26T18:32:17.487+01:00 n22 kernel: [<f85824d6>] ? cache_revisit_request+0x26/0xd0 [sunrpc]
+2013-03-26T18:32:17.487+01:00 n22 kernel: [<c110f149>] __kmalloc+0x1b9/0x1e0
+2013-03-26T18:32:17.487+01:00 n22 kernel: [<f85835bf>] ? cache_check+0x22f/0x340 [sunrpc]
+2013-03-26T18:32:17.487+01:00 n22 kernel: [<f90a0b1c>] nfs4_acl_new+0x1c/0x30 [nfsd]
+2013-03-26T18:32:17.488+01:00 n22 kernel: [<f9095482>] nfsd4_decode_fattr+0x302/0x6c0 [nfsd]
+2013-03-26T18:32:17.488+01:00 n22 kernel: [<c110f068>] ? __kmalloc+0xd8/0x1e0
+2013-03-26T18:32:17.488+01:00 n22 kernel: [<f9095871>] nfsd4_decode_setattr+0x31/0x40 [nfsd]
+2013-03-26T18:32:17.488+01:00 n22 kernel: [<f909804d>] nfs4svc_decode_compoundargs+0x23d/0x280 [nfsd]
+2013-03-26T18:32:17.488+01:00 n22 kernel: [<f9097e10>] ? nfsd4_release_compoundargs+0x70/0x70 [nfsd]
+2013-03-26T18:32:17.488+01:00 n22 kernel: [<f9081b3f>] nfsd_dispatch+0x3f/0x1b0 [nfsd]
+2013-03-26T18:32:17.488+01:00 n22 kernel: [<f857b8a8>] svc_process+0x3f8/0x6d0 [sunrpc]
+2013-03-26T18:32:17.488+01:00 n22 kernel: [<f8586d5e>] ? svc_xprt_received+0x3e/0x80 [sunrpc]
+2013-03-26T18:32:17.488+01:00 n22 kernel: [<f85879e1>] ? svc_recv+0x2d1/0x3c0 [sunrpc]
+2013-03-26T18:32:17.488+01:00 n22 kernel: [<f908165d>] nfsd+0xad/0x110 [nfsd]
+2013-03-26T18:32:17.488+01:00 n22 kernel: [<f90815b0>] ? nfsd_destroy+0x70/0x70 [nfsd]
+2013-03-26T18:32:17.488+01:00 n22 kernel: [<c1053b94>] kthread+0x94/0xa0
+2013-03-26T18:32:17.488+01:00 n22 kernel: [<c13d0f77>] ret_from_kernel_thread+0x1b/0x28
+2013-03-26T18:32:17.488+01:00 n22 kernel: [<c1053b00>] ? flush_kthread_work+0xd0/0xd0
+2013-03-26T18:32:17.488+01:00 n22 kernel: ---[ end trace 82b96ff8bcd5453f ]---
 
 
-Signed,
-Steve Huntington
-IBM z/OS NFS
-
-
-Christopher Vogan
-Dept. W98 NFS Development & Test
-
+-- 
+MfG/Sincerely
+Toralf Förster
+pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
