@@ -1,141 +1,164 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53070 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:38318 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754702Ab3CKVZk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Mar 2013 17:25:40 -0400
-Date: Mon, 11 Mar 2013 17:25:35 -0400
+	id S933497Ab3CZOql (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Mar 2013 10:46:41 -0400
+Date: Tue, 26 Mar 2013 10:46:40 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tim Gardner <tim.gardner@canonical.com>
-Cc: linux-kernel@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>, Tom Tucker <tom@ogc.us>,
-        Haggai Eran <haggaie@mellanox.com>, Or Gerlitz <ogerlitz@mellanox.com>,
-        Shani Michaeli <shanim@mellanox.com>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: Re: [PATCH linux-next v3] SUNRPC: rpcrdma_register_default_external:
- Dynamically allocate ib_phys_buf
-Message-ID: <20130311212535.GG642@fieldses.org>
-References: <4FA345DA4F4AE44899BD2B03EEEC2FA9286BA156@sacexcmbx05-prd.hq.netapp.com>
- <1363036508-24935-1-git-send-email-tim.gardner@canonical.com>
+To: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Linux Kernel <linux-kernel@vger.kernel.org>
+Subject: Re: kernel 3.8.4 : kernel BUG at fs/locks.c:2093!   part #2
+Message-ID: <20130326144640.GB3353@fieldses.org>
+References: <514F31AF.3080709@gmx.de>
+ <20130325220143.GD10887@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1363036508-24935-1-git-send-email-tim.gardner@canonical.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20130325220143.GD10887@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 11, 2013 at 03:15:08PM -0600, Tim Gardner wrote:
-> rpcrdma_register_default_external() is several frames into the call stack which
-> goes deeper yet. You run the risk of stack corruption by declaring such a large
-> automatic variable, so move the array of 'struct ib_phys_buf' objects into the
-> transport structure 'struct rpcrdma_xprt' (which is dynamically allocated) in
-> order to silence the frame-larger-than warning. Access to each struct
-> rpcrdma_xprt is serialized by XPRT_LOCKED in xprt_reserve_xprt(), so there is
-> no danger of multiple accessors to the array of struct ib_phys_buf objects.
+On Mon, Mar 25, 2013 at 06:01:43PM -0400, bfields wrote:
+> On Sun, Mar 24, 2013 at 06:02:39PM +0100, Toralf Förster wrote:
+> > The following bug was triggered twice under a stable 3.8.4 kernel if I export a NFS (v4) directory
+> > and mount it within a user mode linux (running at the same system) and run within that UML trinity
+> > (16 UML trinity processes at a 4-core host CPU) with victim files+directories within that NFS directory.
+> > 
+> > I could not trigger that bug at the host kernel if I run trinity within UML without victim files
+> > - therefore the issue seems to be tied to NFS. The syslog messages are :
 > 
-> net/sunrpc/xprtrdma/verbs.c: In function 'rpcrdma_register_default_external':
-> net/sunrpc/xprtrdma/verbs.c:1774:1: warning: the frame size of 1056 bytes is larger than 1024 bytes [-Wframe-larger-than=]
+> Thanks!
 > 
-> gcc version 4.6.3
+> fs/locks.c:2093 says that we did the final fput of a file that still had
+> posix locks held on it.
 > 
-> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> Cc: "David S. Miller" <davem@davemloft.net>
-> Cc: Tom Tucker <tom@ogc.us>
-> Cc: Haggai Eran <haggaie@mellanox.com>
-> Cc: Or Gerlitz <ogerlitz@mellanox.com>
-> Cc: Shani Michaeli <shanim@mellanox.com>
-> Cc: linux-nfs@vger.kernel.org
-> Cc: netdev@vger.kernel.org
-> Signed-off-by: Tim Gardner <tim.gardner@canonical.com>
-> ---
-> v1 - Use kmalloc() to dynamically allocate and free the array of 'struct
-> ib_phys_buf' objects
+> I can't see how that would happen, but admittedly the nfsd4 code here is
+> much too complicated for its own good.
 > 
-> v2 - Move the array of 'struct ib_phys_buf' objects into struct rpcrdma_req
-> and pass this request down through rpcrdma_register_external() and
-> rpcrdma_register_default_external(). This is less overhead then using
-> kmalloc() and requires no extra error checking as the allocation burden is
-> shifted to the transport client.
+> If it were possible it would be useful to know what lead up to this.  A
+> network trace (tcpdump -s0 -wtmp.pcap, then send me tmp.pcap) would be
+> useful for that, but I fear it's probably too huge by the time you hit
+> the bug.
 > 
-> v3 - Move the array of 'struct ib_phys_buf' objects into struct rpcrdma_xprt.
-> Pass a pointer to this transport structure into rpcrdma_register_default_external().
-> This is less overhead then using kmalloc() and requires no extra error checking
-> as the allocation burden is shifted to the transport client.
+> (The following warning ("rcu_sched self-detected stall") looks like the
+> result of BUGing while holding file_lock_lock.  That BUG should probably
+> be downgraded to a WARN_ON_ONCE.)
 
-Looks good to me; wish we could get it tested....
+Can you run with test patches?
 
-In future if we do decide to also increase the size of that array we may
-need to allocate it separately from struct rpcrdma_xprt itself, which
-looks already fairly large without it; on x86_64:
+This just makes nfsd's fput calls synchronous so that we see in the
+backtrace who called them.
 
-	$ gdb net/sunrpc/xprtrdma/xprtrdma.ko
-	...
-	(gdb) p sizeof(struct rpcrdma_xprt)
-	$1 = 2912
-
-But that shouldn't be a big deal to do.
+(But assuming it does turn out to be one of these callers, we may then
+need some more printk's in the nfsd code...).
 
 --b.
 
-> 
->  net/sunrpc/xprtrdma/verbs.c     |   10 ++++++----
->  net/sunrpc/xprtrdma/xprt_rdma.h |    5 ++++-
->  2 files changed, 10 insertions(+), 5 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index 93726560..c7aa3da 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -1730,13 +1730,14 @@ rpcrdma_deregister_memwin_external(struct rpcrdma_mr_seg *seg,
->  }
->  
->  static int
-> -rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
-> -			int *nsegs, int writing, struct rpcrdma_ia *ia)
-> +rpcrdma_register_default_external(struct rpcrdma_xprt *r_xprt,
-> +			struct rpcrdma_mr_seg *seg, int *nsegs, int writing,
-> +			struct rpcrdma_ia *ia)
->  {
->  	int mem_priv = (writing ? IB_ACCESS_REMOTE_WRITE :
->  				  IB_ACCESS_REMOTE_READ);
->  	struct rpcrdma_mr_seg *seg1 = seg;
-> -	struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS];
-> +	struct ib_phys_buf *ipb = r_xprt->ipb;
->  	int len, i, rc = 0;
->  
->  	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
-> @@ -1827,7 +1828,8 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
->  
->  	/* Default registration each time */
->  	default:
-> -		rc = rpcrdma_register_default_external(seg, &nsegs, writing, ia);
-> +		rc = rpcrdma_register_default_external(r_xprt, seg, &nsegs,
-> +			writing, ia);
->  		break;
->  	}
->  	if (rc)
-> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-> index cc1445d..d7b440f 100644
-> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
-> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-> @@ -269,7 +269,8 @@ struct rpcrdma_stats {
->   * for convenience. This structure need not be visible externally.
->   *
->   * It is allocated and initialized during mount, and released
-> - * during unmount.
-> + * during unmount. Access to this structure is serialized by XPRT_LOCKED
-> + * in xprt_reserve_xprt().
->   */
->  struct rpcrdma_xprt {
->  	struct rpc_xprt		xprt;
-> @@ -279,6 +280,8 @@ struct rpcrdma_xprt {
->  	struct rpcrdma_create_data_internal rx_data;
->  	struct delayed_work	rdma_connect;
->  	struct rpcrdma_stats	rx_stats;
-> +	/* temp work array */
-> +	struct ib_phys_buf	ipb[RPCRDMA_MAX_DATA_SEGS];
->  };
->  
->  #define rpcx_to_rdmax(x) container_of(x, struct rpcrdma_xprt, xprt)
-> -- 
-> 1.7.9.5
-> 
+commit 27a3395a72e1d9be121f5493e7a330d60b3d1de3
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Tue Mar 26 09:37:07 2013 -0400
+
+    nfsd4: convert fput to fput_sync for debugging purposes
+    
+    Just a temporary hack to get backtraces out of __fput failures.
+    
+    Also, demote a BUG to a WARN_ON_ONCE.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/file_table.c b/fs/file_table.c
+index de9e965..79cb999 100644
+--- a/fs/file_table.c
++++ b/fs/file_table.c
+@@ -337,6 +337,8 @@ void __fput_sync(struct file *file)
+ 	}
+ }
+ 
++EXPORT_SYMBOL(__fput_sync);
++
+ EXPORT_SYMBOL(fput);
+ 
+ void put_filp(struct file *file)
+diff --git a/fs/locks.c b/fs/locks.c
+index a94e331..c962161 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -2090,7 +2090,7 @@ void locks_remove_flock(struct file *filp)
+ 				continue;
+ 			}
+ 			/* What? */
+-			BUG();
++			WARN_ON_ONCE(1);
+  		}
+ 		before = &fl->fl_next;
+ 	}
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 9d1c5db..c01c60c 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -951,7 +951,7 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			     write->wr_offset, rqstp->rq_vec, nvecs,
+ 			     &cnt, &write->wr_how_written);
+ 	if (filp)
+-		fput(filp);
++		__fput_sync(filp);
+ 
+ 	write->wr_bytes_written = cnt;
+ 
+@@ -1325,7 +1325,7 @@ encode_op:
+ 		}
+ 		/* XXX Ugh, we need to get rid of this kind of special case: */
+ 		if (op->opnum == OP_READ && op->u.read.rd_filp)
+-			fput(op->u.read.rd_filp);
++			__fput_sync(op->u.read.rd_filp);
+ 
+ 		nfsd4_increment_op_stats(op->opnum);
+ 	}
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index ba6fdd4..dfdf54c 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -546,7 +546,7 @@ nfsd4_shutdown_recdir(struct nfsd_net *nn)
+ {
+ 	if (!nn->rec_file)
+ 		return;
+-	fput(nn->rec_file);
++	__fput_sync(nn->rec_file);
+ 	nn->rec_file = NULL;
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index a8309c6..0f38b39 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -201,7 +201,7 @@ static void nfs4_file_get_access(struct nfs4_file *fp, int oflag)
+ static void nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
+ {
+ 	if (fp->fi_fds[oflag]) {
+-		fput(fp->fi_fds[oflag]);
++		__fput_sync(fp->fi_fds[oflag]);
+ 		fp->fi_fds[oflag] = NULL;
+ 	}
+ }
+@@ -353,7 +353,7 @@ static void nfs4_put_deleg_lease(struct nfs4_file *fp)
+ 	if (atomic_dec_and_test(&fp->fi_delegees)) {
+ 		vfs_setlease(fp->fi_deleg_file, F_UNLCK, &fp->fi_lease);
+ 		fp->fi_lease = NULL;
+-		fput(fp->fi_deleg_file);
++		__fput_sync(fp->fi_deleg_file);
+ 		fp->fi_deleg_file = NULL;
+ 	}
+ }
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index d586117..76bb67c 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -826,7 +826,7 @@ out:
+ void
+ nfsd_close(struct file *filp)
+ {
+-	fput(filp);
++	__fput_sync(filp);
+ }
+ 
+ /*
