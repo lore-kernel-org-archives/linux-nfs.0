@@ -1,39 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49320 "EHLO fieldses.org"
+Received: from plane.gmane.org ([80.91.229.3]:59475 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932184Ab3CUNra (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Mar 2013 09:47:30 -0400
-Date: Thu, 21 Mar 2013 09:47:29 -0400
-To: Christopher T Vogan <cvogan@us.ibm.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: What is NFSv4 READDIR doesn't return a filehandle....
-Message-ID: <20130321134729.GC27838@fieldses.org>
-References: <OF5A466E86.6A319FE3-ON87257B34.007C6188-86257B34.007C87C8@us.ibm.com>
-MIME-Version: 1.0
+	id S1751360Ab3C0Onp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Mar 2013 10:43:45 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1UKraA-00055u-FU
+	for linux-nfs@vger.kernel.org; Wed, 27 Mar 2013 15:44:06 +0100
+Received: from 60-241-78-133.static.tpgi.com.au ([60.241.78.133])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Mar 2013 15:44:06 +0100
+Received: from oakad by 60-241-78-133.static.tpgi.com.au with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Mar 2013 15:44:06 +0100
+To: linux-nfs@vger.kernel.org
+From: Alex Dubov <oakad@yahoo.com>
+Subject: Re: Allow building nfs-utils directly against GSSAPI
+Date: Wed, 27 Mar 2013 14:43:27 +0000 (UTC)
+Message-ID: <loom.20130327T154155-192@post.gmane.org>
+References: <1364317202.2660.132.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <OF5A466E86.6A319FE3-ON87257B34.007C6188-86257B34.007C87C8@us.ibm.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 20, 2013 at 05:40:11PM -0500, Christopher T Vogan wrote:
-> This condition is easily recoverable, as ANY missing attribute on a 
-> readdir
-> is with a lookup/readdir.
+Simo Sorce <simo@...> writes:
 
-By the same token, the server can just as well recover by doing that
-extra lookup itself, can't it?  (That's more-or-less how the Linux
-server gets attributes on readdir.)
+> 
+> Libgssglue is not really useful anymore, it is a sort of middleman that
+> wraps the actual GSSAPI that is already pluggable/extensible via shared
+> modules.
+> 
+> In particular libgssglue interferes with the workings of gss-proxy in my
+> case.
+> 
+> The attached patch makes building against libgssglue optional and
+> defaults to not build against libgssglue and instead builds directly
+> against the native GSSAPI.
+> 
 
-Understood that it can be a pain (the Linux server's readdir
-implementation has needed some minor surgery over the years to get this
-right), but I do think it's the server's responsibility....
+I have tried your patch with my Heimdal setup and it would not build properly
+with it.
 
---b.
+I can augment my patch to make use of your changes. Would you be willing to
+consider it?
 
-> Our decision to not return the FH on a readdir 
-> reply under certain narrow conditions is not one of convenience but of 
-> limitations of some underlying filesystem types, and if "convenience" is
-> to be used as an accusative, it can easily be returned to the client's 
-> refusal to deal with the legal withholding of an attribute on a readdir
-> reply.
+
