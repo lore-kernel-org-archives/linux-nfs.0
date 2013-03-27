@@ -1,222 +1,186 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60988 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753371Ab3CUO4Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Mar 2013 10:56:24 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 9/9] nfsd4: don't destroy in-use session
-Date: Thu, 21 Mar 2013 10:56:20 -0400
-Message-Id: <1363877780-28825-10-git-send-email-bfields@redhat.com>
-In-Reply-To: <1363877780-28825-1-git-send-email-bfields@redhat.com>
-References: <1363877780-28825-1-git-send-email-bfields@redhat.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:34820 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751804Ab3C0LFC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Mar 2013 07:05:02 -0400
+Message-ID: <5152D277.2040103@cn.fujitsu.com>
+Date: Wed, 27 Mar 2013 19:05:27 +0800
+From: fanchaoting <fanchaoting@cn.fujitsu.com>
+MIME-Version: 1.0
+To: Benny Halevy <benny@tonian.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v1 2/2] pnfsd-block: block layout should cleanup when
+ register nfsd filesystem error
+References: <5152AEE8.8020607@cn.fujitsu.com>
+In-Reply-To: <5152AEE8.8020607@cn.fujitsu.com>
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+this patch can fix:
 
-This changes session destruction to be similar to client destruction in
-that attempts to destroy a session while in use (which should be rare
-corner cases) result in DELAY.  This simplifies things somewhat and
-helps meet a coming 4.2 requirement.
+1. remove /proc/fs/pnfs_block when create /proc/fs/pnfs_block/ctl
+   error.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+2. cleanup /proc/fs/pnfs_block and /proc/fs/pnfs_block/ctl when
+   register nfsd filesystem error.
+3. we can't use proc file when CONFIG_PROC_FS is not set.
+ 
+ Signed-off-by: fanchaoting <fanchaoting@cn.fujitsu.com>
+ Reviewed-by: chendt.fnst <chendt.fnst@cn.fujitsu.com>
+
 ---
- fs/nfsd/nfs4state.c |   72 ++++++++++++++++++++++++++++-----------------------
- fs/nfsd/state.h     |    4 ++-
- 2 files changed, 43 insertions(+), 33 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2a84a31..6f536dc 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -94,17 +94,32 @@ nfs4_lock_state(void)
- 	mutex_lock(&client_mutex);
+---
+ fs/nfsd/bl_com.c      |   21 ++++++++++++++++++---
+ fs/nfsd/bl_ops.c      |    5 +++--
+ fs/nfsd/nfsctl.c      |    7 +++++--
+ fs/nfsd/nfsd4_block.h |   12 ++++++++++--
+ 4 files changed, 36 insertions(+), 9 deletions(-)
+
+diff --git a/fs/nfsd/bl_com.c b/fs/nfsd/bl_com.c
+index 39aac40..2fc74d6 100644
+--- a/fs/nfsd/bl_com.c
++++ b/fs/nfsd/bl_com.c
+@@ -1,3 +1,4 @@
++#if defined(CONFIG_PNFSD_BLOCK)
+ #include <linux/module.h>
+ #include <linux/mutex.h>
+ #include <linux/init.h>
+@@ -271,19 +272,33 @@ static struct file_operations ctl_ops = {
+  * more nodes doesn't present itself shortly this code should revert
+  * to a single top level node. McNeal 11-Aug-2008.
+  */
++#if defined(CONFIG_PROC_FS)
++
+ int
+ bl_init_proc(void)
+ {
+ 	struct proc_dir_entry *e;
+ 
+-	e = proc_mkdir("fs/pnfs_block", NULL);
+-	if (!e)
++	pnfs_block_entry = proc_mkdir("fs/pnfs_block", NULL);
++	if (!pnfs_block_entry)
+ 		return -ENOMEM;
+ 
+ 	e = create_proc_entry("fs/pnfs_block/ctl", 0, NULL);
+-	if (!e)
++	if (!e) {
++		remove_proc_entry("fs/pnfs_block", NULL);
+ 		return -ENOMEM;
++	}
+ 	e->proc_fops = &ctl_ops;
+ 
+ 	return 0;
  }
- 
--static void free_session(struct kref *);
-+static void free_session(struct nfsd4_session *);
- 
--/* Must be called under the client_lock */
--static void nfsd4_put_session_locked(struct nfsd4_session *ses)
-+void nfsd4_put_session(struct nfsd4_session *ses)
++
++void
++bl_cleanup_proc(void)
 +{
-+	atomic_dec(&ses->se_ref);
++	remove_proc_entry("fs/pnfs_block/ctl", NULL);
++	remove_proc_entry("fs/pnfs_block", NULL);
 +}
 +
-+static bool is_session_dead(struct nfsd4_session *ses)
++#endif /*CONFIG_PROC_FS*/
++#endif /*CONFIG_PNFSD_BLOCK*/
+diff --git a/fs/nfsd/bl_ops.c b/fs/nfsd/bl_ops.c
+index a7046c6..74a5f6b 100644
+--- a/fs/nfsd/bl_ops.c
++++ b/fs/nfsd/bl_ops.c
+@@ -120,17 +120,18 @@ static boolean_t extents_process(struct fiemap_extent_info *fei,
+     u64 sbid, dev_t dev, pnfs_blocklayout_layout_t *b);
+ static void extents_cleanup(struct fiemap_extent_info *fei);
+ 
+-void
++int
+ nfsd_bl_init(void)
  {
--	kref_put(&ses->se_ref, free_session);
-+	return ses->se_flags & NFS4_SESSION_DEAD;
-+}
+ 	int	i;
 +
-+static __be32 mark_session_dead_locked(struct nfsd4_session *ses)
-+{
-+	if (atomic_read(&ses->se_ref))
-+		return nfserr_jukebox;
-+	ses->se_flags |= NFS4_SESSION_DEAD;
-+	return nfs_ok;
+ 	dprintk("%s loaded\n", __func__);
+ 
+ 	spin_lock_init(&layout_hashtbl_lock);
+ 	INIT_LIST_HEAD(&layout_hash);
+ 	for (i = 0; i < BL_LAYOUT_HASH_SIZE; i++)
+ 		INIT_LIST_HEAD(&layout_hashtbl[i]);
+-	bl_init_proc();
++	return bl_init_proc();
  }
  
--static void nfsd4_get_session(struct nfsd4_session *ses)
-+static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
+ /*
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 61a61e7..5fe7f52 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1204,8 +1204,9 @@ static int create_proc_exports_entry(void)
+ static int __init init_nfsd(void)
  {
--	kref_get(&ses->se_ref);
-+	if (is_session_dead(ses))
-+		return nfserr_badsession;
-+	atomic_inc(&ses->se_ref);
-+	return nfs_ok;
- }
+ 	int retval;
+-	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
++	int bl_retval;
  
- void
-@@ -935,28 +950,15 @@ static void __free_session(struct nfsd4_session *ses)
- 	kfree(ses);
- }
++	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
+ 	retval = nfsd4_init_slabs();
+ 	if (retval)
+ 		return retval;
+@@ -1227,7 +1228,7 @@ static int __init init_nfsd(void)
+ 	retval = create_proc_exports_entry();
+ 	if (retval)
+ 		goto out_free_idmap;
+-	nfsd_bl_init();
++	bl_retval = nfsd_bl_init();
  
--static void free_session(struct kref *kref)
-+static void free_session(struct nfsd4_session *ses)
- {
--	struct nfsd4_session *ses;
--	struct nfsd_net *nn;
--
--	ses = container_of(kref, struct nfsd4_session, se_ref);
--	nn = net_generic(ses->se_client->net, nfsd_net_id);
-+	struct nfsd_net *nn = net_generic(ses->se_client->net, nfsd_net_id);
+ 	retval = register_filesystem(&nfsd_fs_type);
+ 	if (retval)
+@@ -1236,6 +1237,8 @@ static int __init init_nfsd(void)
+ out_free_all:
+ 	remove_proc_entry("fs/nfs/exports", NULL);
+ 	remove_proc_entry("fs/nfs", NULL);
++	if (!bl_retval)
++		bl_cleanup_proc();
+ out_free_idmap:
+ 	nfsd_idmap_shutdown();
+ out_free_lockd:
+diff --git a/fs/nfsd/nfsd4_block.h b/fs/nfsd/nfsd4_block.h
+index f79c779..5872b4d 100644
+--- a/fs/nfsd/nfsd4_block.h
++++ b/fs/nfsd/nfsd4_block.h
+@@ -78,7 +78,7 @@ typedef struct bl_comm {
+ #ifdef CONFIG_PNFSD_BLOCK
  
- 	lockdep_assert_held(&nn->client_lock);
- 	nfsd4_del_conns(ses);
- 	__free_session(ses);
- }
+ bool pnfs_block_enabled(struct inode *, int ex_flags);
+-void nfsd_bl_init(void);
++int nfsd_bl_init(void);
+ int bl_layout_type(struct super_block *sb);
+ int bl_getdeviceiter(struct super_block *, u32 layout_type,
+ 		     struct nfsd4_pnfs_dev_iter_res *);
+@@ -94,7 +94,13 @@ int bl_layoutcommit(struct inode *,
+ int bl_layoutreturn(struct inode *,
+ 		    const struct nfsd4_pnfs_layoutreturn_arg *);
+ int bl_layoutrecall(struct inode *inode, int type, u64 offset, u64 len, bool with_nfs4_state_lock);
++#ifdef CONFIG_PROC_FS
++
+ int bl_init_proc(void);
++void bl_cleanup_proc(void);
++
++#endif
++
+ int bl_upcall(bl_comm_t *, bl_comm_msg_t *, bl_comm_res_t **);
  
--void nfsd4_put_session(struct nfsd4_session *ses)
--{
--	struct nfsd_net *nn = net_generic(ses->se_client->net, nfsd_net_id);
--
--	spin_lock(&nn->client_lock);
--	nfsd4_put_session_locked(ses);
--	spin_unlock(&nn->client_lock);
--}
--
- static struct nfsd4_session *alloc_session(struct nfsd4_channel_attrs *fchan,
- 					   struct nfsd_net *nn)
- {
-@@ -997,7 +999,7 @@ static void init_session(struct svc_rqst *rqstp, struct nfsd4_session *new, stru
- 	new->se_flags = cses->flags;
- 	new->se_cb_prog = cses->callback_prog;
- 	new->se_cb_sec = cses->cb_sec;
--	kref_init(&new->se_ref);
-+	atomic_set(&new->se_ref, 0);
- 	idx = hash_sessionid(&new->se_sessionid);
- 	spin_lock(&nn->client_lock);
- 	list_add(&new->se_hash, &nn->sessionid_hashtbl[idx]);
-@@ -1095,7 +1097,8 @@ free_client(struct nfs4_client *clp)
- 		ses = list_entry(clp->cl_sessions.next, struct nfsd4_session,
- 				se_perclnt);
- 		list_del(&ses->se_perclnt);
--		nfsd4_put_session_locked(ses);
-+		WARN_ON_ONCE(atomic_read(&ses->se_ref));
-+		free_session(ses);
- 	}
- 	free_svc_cred(&clp->cl_cred);
- 	kfree(clp->cl_name.data);
-@@ -1976,15 +1979,16 @@ nfsd4_destroy_session(struct svc_rqst *r,
- 	status = nfserr_badsession;
- 	if (!ses)
- 		goto out_client_lock;
--
-+	status = mark_session_dead_locked(ses);
-+	if (status)
-+		goto out_client_lock;
- 	unhash_session(ses);
- 	spin_unlock(&nn->client_lock);
  
- 	nfsd4_probe_callback_sync(ses->se_client);
+@@ -112,7 +118,9 @@ extern bl_comm_t	*bl_comm_global;	// Ugly...
+ #else
  
- 	spin_lock(&nn->client_lock);
--	nfsd4_del_conns(ses);
--	nfsd4_put_session_locked(ses);
-+	free_session(ses);
- 	status = nfs_ok;
- out_client_lock:
- 	spin_unlock(&nn->client_lock);
-@@ -2075,18 +2079,21 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	status = get_client_locked(clp);
- 	if (status)
- 		goto out_no_session;
-+	status = nfsd4_get_session_locked(session);
-+	if (status)
-+		goto out_put_client;
+ static inline bool pnfs_block_enabled(struct inode *i, int ex_flags) { return false; }
+-static inline void nfsd_bl_init(void) {}
++static inline int nfsd_bl_init(void) {return false; }
++static inline int bl_init_proc(void) {return false; }
++static inline void bl_cleanup_proc(void) {}
  
- 	status = nfserr_too_many_ops;
- 	if (nfsd4_session_too_many_ops(rqstp, session))
--		goto out_put_client;
-+		goto out_put_session;
- 
- 	status = nfserr_req_too_big;
- 	if (nfsd4_request_too_big(rqstp, session))
--		goto out_put_client;
-+		goto out_put_session;
- 
- 	status = nfserr_badslot;
- 	if (seq->slotid >= session->se_fchannel.maxreqs)
--		goto out_put_client;
-+		goto out_put_session;
- 
- 	slot = session->se_slots[seq->slotid];
- 	dprintk("%s: slotid %d\n", __func__, seq->slotid);
-@@ -2101,7 +2108,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	if (status == nfserr_replay_cache) {
- 		status = nfserr_seq_misordered;
- 		if (!(slot->sl_flags & NFSD4_SLOT_INITIALIZED))
--			goto out_put_client;
-+			goto out_put_session;
- 		cstate->slot = slot;
- 		cstate->session = session;
- 		/* Return the cached reply status and set cstate->status
-@@ -2111,7 +2118,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 		goto out;
- 	}
- 	if (status)
--		goto out_put_client;
-+		goto out_put_session;
- 
- 	nfsd4_sequence_check_conn(conn, session);
- 	conn = NULL;
-@@ -2128,7 +2135,6 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	cstate->session = session;
- 
- out:
--	nfsd4_get_session(cstate->session);
- 	switch (clp->cl_cb_state) {
- 	case NFSD4_CB_DOWN:
- 		seq->status_flags = SEQ4_STATUS_CB_PATH_DOWN;
-@@ -2143,6 +2149,8 @@ out_no_session:
- 	kfree(conn);
- 	spin_unlock(&nn->client_lock);
- 	return status;
-+out_put_session:
-+	nfsd4_put_session(session);
- out_put_client:
- 	put_client_renew_locked(clp);
- 	goto out_no_session;
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 07f8a82..f6ae4db 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -194,9 +194,11 @@ struct nfsd4_conn {
- };
- 
- struct nfsd4_session {
--	struct kref		se_ref;
-+	atomic_t		se_ref;
- 	struct list_head	se_hash;	/* hash by sessionid */
- 	struct list_head	se_perclnt;
-+/* See SESSION4_PERSIST, etc. for standard flags; this is internal-only: */
-+#define NFS4_SESSION_DEAD	0x010
- 	u32			se_flags;
- 	struct nfs4_client	*se_client;
- 	struct nfs4_sessionid	se_sessionid;
+ static inline int bl_recall_layout(struct inode *inode, int type, u64 offset,
+ 				   u64 len, bool with_nfs4_state_lock)
 -- 
-1.7.9.5
+1.5.5.1
+
 
