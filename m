@@ -1,78 +1,144 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f182.google.com ([209.85.223.182]:50232 "EHLO
-	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751242Ab3CTWbd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Mar 2013 18:31:33 -0400
-Received: by mail-ie0-f182.google.com with SMTP id k14so2773251iea.13
-        for <linux-nfs@vger.kernel.org>; Wed, 20 Mar 2013 15:31:32 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] mountd: Add a default flavor to an export's e_secinfo list
-To: linux-nfs@vger.kernel.org
-Date: Wed, 20 Mar 2013 18:31:30 -0400
-Message-ID: <20130320223129.11659.35205.stgit@seurat.1015granger.net>
+Received: from cn.fujitsu.com ([222.73.24.84]:12457 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753579Ab3C0IdN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Mar 2013 04:33:13 -0400
+Message-ID: <5152AEE8.8020607@cn.fujitsu.com>
+Date: Wed, 27 Mar 2013 16:33:44 +0800
+From: fanchaoting <fanchaoting@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Benny Halevy <benny@tonian.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/2] pnfsd-block: block layout should cleanup when register
+ nfsd filesystem error
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The list of security flavors that mountd allows for the NFSv4
-pseudo-fs is constructed from the union of flavors of all current
-exports.
+this patch can do:
 
-exports(5) documents that the default security flavor for an
-export, if "sec=" is not specified, is "sys".  Suppose
-/etc/exports contains:
+1. remove /proc/fs/pnfs_block when create /proc/fs/pnfs_block/ctl
+   error.
 
-/a	*(rw)
-/b	*(rw,sec=krb5:krb5i:krb5p)
-
-The resulting security flavor list for the pseudo-fs is missing
-"sec=sys".  /proc/net/rpc/nfsd.export/content contains:
-
-/a	*(rw,root_squash,sync,wdelay,no_subtree_check,
-		uuid=095c95bc:08e4407a:91ab8601:05fe0bbf)
-/b	*(rw,root_squash,sync,wdelay,no_subtree_check,
-		uuid=2a6fe811:0cf044a7:8fc75ebe:65180068,
-		sec=390003:390004:390005)
-/	*(ro,root_squash,sync,no_wdelay,v4root,fsid=0,
-		uuid=2a6fe811:0cf044a7:8fc75ebe:65180068,
-		sec=390003:390004:390005)
-
-The root entry is not correct, as there does exist an export whose
-unspecified default security flavor is "sys".  The security settings
-on the root cause sec=sys mount attempts to be incorrectly rejected.
-
-The reason is that when the line in /etc/exports for "/a" is parsed,
-the e_secinfo list for that exportent is left empty.  Thus the union
-of e_secinfo lists created by set_pseudofs_security() is
-"krb5:krb5i:krb5p".
-
-I fixed this by ensuring that if no "sec=" option is specified for
-an export, its e_secinfo list gets at least an entry for AUTH_UNIX.
-
-[ Yes, we could make the security flavors allowed for the pseudo-fs
-a fixed list of all flavors the server supports.  That becomes
-complicated by the special meaning of AUTH_NULL, and we still have
-to check /etc/exports for whether Kerberos flavors should be listed.
-I opted for a simple approach for now. ]
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- support/nfs/exports.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
-
-diff --git a/support/nfs/exports.c b/support/nfs/exports.c
-index 84a2b08..6c08a2b 100644
---- a/support/nfs/exports.c
-+++ b/support/nfs/exports.c
-@@ -643,6 +643,8 @@ bad_option:
- 			cp++;
- 	}
+2. cleanup /proc/fs/pnfs_block and /proc/fs/pnfs_block/ctl when
+   register nfsd filesystem error.
  
-+	if (ep->e_secinfo[0].flav == NULL)
-+		secinfo_addflavor(find_flavor("sys"), ep);
- 	fix_pseudoflavor_flags(ep);
- 	ep->e_squids = squids;
- 	ep->e_sqgids = sqgids;
+ Signed-off-by: fanchaoting <fanchaoting@cn.fujitsu.com>
+ Reviewed-by: chendt.fnst <chendt.fnst@cn.fujitsu.com>
+
+---
+ fs/nfsd/bl_com.c      |    4 +++-
+ fs/nfsd/bl_ops.c      |   12 ++++++++++--
+ fs/nfsd/nfsctl.c      |    7 +++++--
+ fs/nfsd/nfsd4_block.h |    6 ++++--
+ 4 files changed, 22 insertions(+), 7 deletions(-)
+
+diff --git a/fs/nfsd/bl_com.c b/fs/nfsd/bl_com.c
+index 39aac40..e003900 100644
+--- a/fs/nfsd/bl_com.c
++++ b/fs/nfsd/bl_com.c
+@@ -281,8 +281,10 @@ bl_init_proc(void)
+ 		return -ENOMEM;
+ 
+ 	e = create_proc_entry("fs/pnfs_block/ctl", 0, NULL);
+-	if (!e)
++	if (!e) {
++		remove_proc_entry("fs/pnfs_block", NULL);
+ 		return -ENOMEM;
++	}
+ 	e->proc_fops = &ctl_ops;
+ 
+ 	return 0;
+diff --git a/fs/nfsd/bl_ops.c b/fs/nfsd/bl_ops.c
+index a7046c6..3807fba 100644
+--- a/fs/nfsd/bl_ops.c
++++ b/fs/nfsd/bl_ops.c
+@@ -120,17 +120,25 @@ static boolean_t extents_process(struct fiemap_extent_info *fei,
+     u64 sbid, dev_t dev, pnfs_blocklayout_layout_t *b);
+ static void extents_cleanup(struct fiemap_extent_info *fei);
+ 
+-void
++int
+ nfsd_bl_init(void)
+ {
+ 	int	i;
++
+ 	dprintk("%s loaded\n", __func__);
+ 
+ 	spin_lock_init(&layout_hashtbl_lock);
+ 	INIT_LIST_HEAD(&layout_hash);
+ 	for (i = 0; i < BL_LAYOUT_HASH_SIZE; i++)
+ 		INIT_LIST_HEAD(&layout_hashtbl[i]);
+-	bl_init_proc();
++	return bl_init_proc();
++}
++
++void
++nfsd_bl_cleanup(void)
++{
++	remove_proc_entry("fs/pnfs_block/ctl", NULL);
++	remove_proc_entry("fs/pnfs_block", NULL);
+ }
+ 
+ /*
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 61a61e7..0af6019 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1204,8 +1204,9 @@ static int create_proc_exports_entry(void)
+ static int __init init_nfsd(void)
+ {
+ 	int retval;
+-	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
++	int bl_retval;
+ 
++	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
+ 	retval = nfsd4_init_slabs();
+ 	if (retval)
+ 		return retval;
+@@ -1227,7 +1228,7 @@ static int __init init_nfsd(void)
+ 	retval = create_proc_exports_entry();
+ 	if (retval)
+ 		goto out_free_idmap;
+-	nfsd_bl_init();
++	bl_retval = nfsd_bl_init();
+ 
+ 	retval = register_filesystem(&nfsd_fs_type);
+ 	if (retval)
+@@ -1236,6 +1237,8 @@ static int __init init_nfsd(void)
+ out_free_all:
+ 	remove_proc_entry("fs/nfs/exports", NULL);
+ 	remove_proc_entry("fs/nfs", NULL);
++	if (!bl_retval)
++		nfsd_bl_cleanup();
+ out_free_idmap:
+ 	nfsd_idmap_shutdown();
+ out_free_lockd:
+diff --git a/fs/nfsd/nfsd4_block.h b/fs/nfsd/nfsd4_block.h
+index f79c779..d46bd0b 100644
+--- a/fs/nfsd/nfsd4_block.h
++++ b/fs/nfsd/nfsd4_block.h
+@@ -78,7 +78,8 @@ typedef struct bl_comm {
+ #ifdef CONFIG_PNFSD_BLOCK
+ 
+ bool pnfs_block_enabled(struct inode *, int ex_flags);
+-void nfsd_bl_init(void);
++int nfsd_bl_init(void);
++void nfsd_bl_cleanup(void);
+ int bl_layout_type(struct super_block *sb);
+ int bl_getdeviceiter(struct super_block *, u32 layout_type,
+ 		     struct nfsd4_pnfs_dev_iter_res *);
+@@ -112,7 +113,8 @@ extern bl_comm_t	*bl_comm_global;	// Ugly...
+ #else
+ 
+ static inline bool pnfs_block_enabled(struct inode *i, int ex_flags) { return false; }
+-static inline void nfsd_bl_init(void) {}
++static inline int nfsd_bl_init(void) {return false; }
++static inline void nfsd_bl_cleanup(void) {}
+ 
+ static inline int bl_recall_layout(struct inode *inode, int type, u64 offset,
+ 				   u64 len, bool with_nfs4_state_lock)
+-- 
+1.5.5.1
+
 
