@@ -1,119 +1,211 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:19963 "EHLO mx1.redhat.com"
+Received: from plane.gmane.org ([80.91.229.3]:58470 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756760Ab3CYLoW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Mar 2013 07:44:22 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 11/14] NFS: Extend NFS xattr handlers to accept the security namespace
-Date: Mon, 25 Mar 2013 07:42:55 -0400
-Message-Id: <1364211778-29172-12-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1364211778-29172-1-git-send-email-SteveD@redhat.com>
-References: <1364211778-29172-1-git-send-email-SteveD@redhat.com>
+	id S1753183Ab3C0OUc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Mar 2013 10:20:32 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1UKrDf-0002Z9-8s
+	for linux-nfs@vger.kernel.org; Wed, 27 Mar 2013 15:20:52 +0100
+Received: from 60-241-78-133.static.tpgi.com.au ([60.241.78.133])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Mar 2013 15:20:51 +0100
+Received: from oakad by 60-241-78-133.static.tpgi.com.au with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Mar 2013 15:20:51 +0100
+To: linux-nfs@vger.kernel.org
+From: Alex Dubov <oakad@yahoo.com>
+Subject: [PATCH] gssd: fix build against Heimdal and remove dependency on  libgssglue
+Date: Wed, 27 Mar 2013 14:20:08 +0000 (UTC)
+Message-ID: <loom.20130327T151933-617@post.gmane.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+This is a preliminary patch, aiming to enable a clean build of gssd
+on systems with Heimdal kerberos flavour. A major part of Heimdal
+breakage until now was caused by problems with gssglue. Now that
+libtirpc can be build independently from libgssglue, why not gssd?
 
-The existing NFSv4 xattr handlers do not accept xattr calls to the security
-namespace. This patch extends these handlers to accept xattrs from the security
-namespace in addition to the default NFSv4 ACL namespace.
+Unfortunately, I could not test this patch againts mit-krb5, hopefully
+somebody can give me a hand here.
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+Signed-off-by: Alex Dubov <oakad@yahoo.com>
 ---
- fs/nfs/nfs4proc.c   | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
- security/security.c |  1 +
- 2 files changed, 51 insertions(+)
+ aclocal/kerberos5.m4       |    5 ++-
+ aclocal/rpcsec_vers.m4     |    2 +-
+ utils/gssd/context_lucid.c |   10 ++++----
+ utils/gssd/krb5_util.c     |   45 ++++++++++++++++++++++++++++++++++++-------
+ utils/gssd/svcgssd_krb5.c  |    2 +-
+ 5 files changed, 47 insertions(+), 17 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 379e036..f51d934 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5503,6 +5503,53 @@ static size_t nfs4_xattr_list_nfs4_acl(struct dentry *dentry, char *list,
- 	return len;
- }
+diff --git a/aclocal/kerberos5.m4 b/aclocal/kerberos5.m4
+index 7574e2d..76914d6 100644
+--- a/aclocal/kerberos5.m4
++++ b/aclocal/kerberos5.m4
+@@ -54,9 +54,10 @@ AC_DEFUN([AC_KERBEROS_V5],[
+          break
+       dnl The following ugly hack brought on by the split installation
+       dnl of Heimdal Kerberos on SuSe
+-      elif test \( -f $dir/include/heim_err.h -o\
++      elif test \( \( -f $dir/include/heim_err.h -o\
+       		 -f $dir/include/heimdal/heim_err.h \) -a \
+-                -f $dir/lib/libroken.a; then
++                 \( -f $dir/lib/libroken.a -o\
++                 -f $dir/lib/libroken.so \) \) ; then
+          AC_DEFINE(HAVE_HEIMDAL, 1, [Define this if you have Heimdal Kerberos
+libraries])
+          KRBDIR="$dir"
+          gssapi_lib=gssapi
+diff --git a/aclocal/rpcsec_vers.m4 b/aclocal/rpcsec_vers.m4
+index 8218372..9cf7556 100644
+--- a/aclocal/rpcsec_vers.m4
++++ b/aclocal/rpcsec_vers.m4
+@@ -1,7 +1,7 @@
+ dnl Checks librpcsec version
+ AC_DEFUN([AC_RPCSEC_VERSION], [
  
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+static inline int nfs4_server_supports_labels(struct nfs_server *server)
-+{
-+	return server->caps & NFS_CAP_SECURITY_LABEL;
-+}
-+
-+static int nfs4_xattr_set_nfs4_label(struct dentry *dentry, const char *key,
-+				   const void *buf, size_t buflen,
-+				   int flags, int type)
-+{
-+	if (security_ismaclabel(key))
-+		return nfs4_set_security_label(dentry, buf, buflen);
-+
-+	return -EOPNOTSUPP;
-+}
-+
-+static int nfs4_xattr_get_nfs4_label(struct dentry *dentry, const char *key,
-+				   void *buf, size_t buflen, int type)
-+{
-+	if (security_ismaclabel(key))
-+		return nfs4_get_security_label(dentry->d_inode, buf, buflen);
-+	return -EOPNOTSUPP;
-+}
-+
-+static size_t nfs4_xattr_list_nfs4_label(struct dentry *dentry, char *list,
-+				       size_t list_len, const char *name,
-+				       size_t name_len, int type)
-+{
-+	size_t len = 0;
-+
-+	if (nfs_server_capable(dentry->d_inode, NFS_CAP_SECURITY_LABEL)) {
-+		len = security_inode_listsecurity(dentry->d_inode, NULL, 0);
-+		if (list && len <= list_len)
-+			security_inode_listsecurity(dentry->d_inode, list, len);
-+	}
-+	return len;
-+}
-+
-+static const struct xattr_handler nfs4_xattr_nfs4_label_handler = {
-+	.prefix = XATTR_SECURITY_PREFIX,
-+	.list	= nfs4_xattr_list_nfs4_label,
-+	.get	= nfs4_xattr_get_nfs4_label,
-+	.set	= nfs4_xattr_set_nfs4_label,
-+};
-+#endif
-+
-+
- /*
-  * nfs_fhget will use either the mounted_on_fileid or the fileid
-  */
-@@ -7254,6 +7301,9 @@ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
+-  PKG_CHECK_MODULES([GSSGLUE], [libgssglue >= 0.3])
++#  PKG_CHECK_MODULES([GSSGLUE], [libgssglue >= 0.3])
  
- const struct xattr_handler *nfs4_xattr_handlers[] = {
- 	&nfs4_xattr_nfs4_acl_handler,
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	&nfs4_xattr_nfs4_label_handler,
-+#endif
- 	NULL
- };
+   dnl TI-RPC replaces librpcsecgss
+   if test "$enable_tirpc" = no; then
+diff --git a/utils/gssd/context_lucid.c b/utils/gssd/context_lucid.c
+index 64146d7..82171da 100644
+--- a/utils/gssd/context_lucid.c
++++ b/utils/gssd/context_lucid.c
+@@ -266,10 +266,10 @@ serialize_krb5_ctx(gss_ctx_id_t ctx, gss_buffer_desc *buf,
+int32_t *endtime)
+ 	int retcode = 0;
  
-diff --git a/security/security.c b/security/security.c
-index dd9e4c8..af835e3 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -660,6 +660,7 @@ int security_inode_listsecurity(struct inode *inode, char *buffer, size_t buffer
- 		return 0;
- 	return security_ops->inode_listsecurity(inode, buffer, buffer_size);
- }
-+EXPORT_SYMBOL(security_inode_listsecurity);
+ 	printerr(2, "DEBUG: %s: lucid version!\n", __FUNCTION__);
+-	maj_stat = gss_export_lucid_sec_context(&min_stat, &ctx,
+-						1, &return_ctx);
++	maj_stat = gss_krb5_export_lucid_sec_context(&min_stat, &ctx,
++							1, &return_ctx);
+ 	if (maj_stat != GSS_S_COMPLETE) {
+-		pgsserr("gss_export_lucid_sec_context",
++		pgsserr("gss_krb5_export_lucid_sec_context",
+ 			maj_stat, min_stat, &krb5oid);
+ 		goto out_err;
+ 	}
+@@ -302,9 +302,9 @@ serialize_krb5_ctx(gss_ctx_id_t ctx, gss_buffer_desc *buf,
+int32_t *endtime)
+ 	else
+ 		retcode = prepare_krb5_rfc4121_buffer(lctx, buf, endtime);
  
- void security_inode_getsecid(const struct inode *inode, u32 *secid)
+-	maj_stat = gss_free_lucid_sec_context(&min_stat, ctx, return_ctx);
++	maj_stat = gss_krb5_free_lucid_sec_context(&min_stat, ctx);
+ 	if (maj_stat != GSS_S_COMPLETE) {
+-		pgsserr("gss_free_lucid_sec_context",
++		pgsserr("gss_krb5_free_lucid_sec_context",
+ 			maj_stat, min_stat, &krb5oid);
+ 		printerr(0, "WARN: failed to free lucid sec context\n");
+ 	}
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index 20b55b3..958ed57 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -115,7 +115,7 @@
+ #include <errno.h>
+ #include <time.h>
+ #include <gssapi/gssapi.h>
+-#ifdef USE_PRIVATE_KRB5_FUNCTIONS
++#if defined(USE_PRIVATE_KRB5_FUNCTIONS) || defined(HAVE_HEIMDAL)
+ #include <gssapi/gssapi_krb5.h>
+ #endif
+ #include <krb5.h>
+@@ -958,9 +958,38 @@ check_for_tgt(krb5_context context, krb5_ccache ccache,
  {
+ 	krb5_error_code ret;
+ 	krb5_creds creds;
+-	krb5_cc_cursor cur;
+ 	int found = 0;
+ 
++#if defined (HAVE_HEIMDAL)
++	krb5_creds pattern;
++	krb5_const_realm client_realm;
++
++	krb5_cc_clear_mcred(&pattern);
++
++	client_realm = krb5_principal_get_realm(context, principal);
++
++	ret = krb5_make_principal(context, &pattern.server,
++				  client_realm, KRB5_TGS_NAME, client_realm,
++				  NULL);
++	if (ret)
++	  krb5_err(context, 1, ret, "krb5_make_principal");
++	pattern.client = principal;
++
++	ret = krb5_cc_retrieve_cred(context, ccache, 0, &pattern, &creds);
++	krb5_free_principal(context, pattern.server);
++	if (ret) {
++	  if (ret == KRB5_CC_END)
++            return 1;
++	  krb5_err(context, 1, ret, "krb5_cc_retrieve_cred");
++	}
++
++	found = creds.times.endtime > time(NULL);
++
++	krb5_free_cred_contents (context, &creds);
++#else
++	krb5_cc_cursor cur;
++
++
+ 	ret = krb5_cc_start_seq_get(context, ccache, &cur);
+ 	if (ret) 
+ 		return 0;
+@@ -980,7 +1009,7 @@ check_for_tgt(krb5_context context, krb5_ccache ccache,
+ 		krb5_free_cred_contents(context, &creds);
+ 	}
+ 	krb5_cc_end_seq_get(context, ccache, &cur);
+-
++#endif
+ 	return found;
+ }
+ 
+@@ -1328,7 +1357,7 @@ gssd_k5_err_msg(krb5_context context, krb5_error_code code)
+ 	return strdup(error_message(code));
+ #else
+ 	if (context != NULL)
+-		return strdup(krb5_get_err_text(context, code));
++		return strdup(krb5_get_error_message(context, code));
+ 	else
+ 		return strdup(error_message(code));
+ #endif
+@@ -1397,11 +1426,11 @@ limit_krb5_enctypes(struct rpc_gss_sec *sec)
+ 	 * list of supported enctypes, use local default here.
+ 	 */
+ 	if (krb5_enctypes == NULL || limit_to_legacy_enctypes)
+-		maj_stat = gss_set_allowable_enctypes(&min_stat, credh,
+-					&krb5oid, num_enctypes, enctypes);
++		maj_stat = gss_krb5_set_allowable_enctypes(&min_stat, credh,
++					num_enctypes, enctypes);
+ 	else
+-		maj_stat = gss_set_allowable_enctypes(&min_stat, credh,
+-					&krb5oid, num_krb5_enctypes, krb5_enctypes);
++		maj_stat = gss_krb5_set_allowable_enctypes(&min_stat, credh,
++					num_krb5_enctypes, krb5_enctypes);
+ 
+ 	if (maj_stat != GSS_S_COMPLETE) {
+ 		pgsserr("gss_set_allowable_enctypes",
+diff --git a/utils/gssd/svcgssd_krb5.c b/utils/gssd/svcgssd_krb5.c
+index 1d44d34..3b10bde 100644
+--- a/utils/gssd/svcgssd_krb5.c
++++ b/utils/gssd/svcgssd_krb5.c
+@@ -217,7 +217,7 @@ svcgssd_limit_krb5_enctypes(void)
+ 			"enctypes from defaults\n", __func__, num_enctypes);
+ 	}
+ 
+-	maj_stat = gss_set_allowable_enctypes(&min_stat, gssd_creds,
++	maj_stat = gss_krb5_set_allowable_enctypes(&min_stat, gssd_creds,
+ 			&krb5oid, num_enctypes, enctypes);
+ 	if (maj_stat != GSS_S_COMPLETE) {
+ 		printerr(1, "WARNING: gss_set_allowable_enctypes failed\n");
 -- 
-1.8.1.4
+1.7.4.5
+
+
 
