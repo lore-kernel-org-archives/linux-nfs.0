@@ -1,90 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:13615 "EHLO mx12.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:56913 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754358Ab3CGRQP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Mar 2013 12:16:15 -0500
+	id S1752553Ab3C0QR1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Mar 2013 12:17:27 -0400
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Jeff Layton <jlayton@redhat.com>, Tejun Heo <tj@kernel.org>,
-        Oleg Nesterov <oleg@redhat.com>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Ming Lei <ming.lei@canonical.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "Linux Kernel Mailing List" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Ingo Molnar <mingo@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>
-Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-Date: Thu, 7 Mar 2013 17:16:12 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9286B5452@sacexcmbx05-prd.hq.netapp.com>
-References: <20130305174954.GG12795@htj.dyndns.org>
-	 <20130305140312.243cb094@tlielax.poochiereds.net>
-	 <20130305190923.GI12795@htj.dyndns.org>
-	 <20130305183941.19ff39ce@tlielax.poochiereds.net>
-	 <20130305234700.GE1227@htj.dyndns.org> <20130306181608.GA18687@redhat.com>
-	 <20130306185304.GM1227@htj.dyndns.org>
-	 <CA+55aFwDogteVd=vwGHXDSASnga-nZZnKaQz9aO1yBU2CPKSbA@mail.gmail.com>
-	 <20130306212452.GO1227@htj.dyndns.org>
-	 <CA+55aFy49AWptMcvEzJxg95ikf-dC+-vcCPq-cnaCCwje3tyoQ@mail.gmail.com>
-	 <20130306213636.GP1227@htj.dyndns.org>
-	 <20130307064140.71c0936b@tlielax.poochiereds.net>
-	 <CA+55aFxe1_x8wvVYciiX8tuee+VsmXGKqEbONQdFM4s4W2iuPg@mail.gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9286B511E@sacexcmbx05-prd.hq.netapp.com>
-	 <CA+55aFySyBP8q5AvPrt-s_ZPdgamfoX-dERw4EJ21EcsDLBjYA@mail.gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9286B52F1@sacexcmbx05-prd.hq.netapp.com>
-	 <CA+55aFwB4Pjki8zg9idwbQbE-TOtTdD5o8d_r1=NY3veVqmPHg@mail.gmail.com>
-In-Reply-To: <CA+55aFwB4Pjki8zg9idwbQbE-TOtTdD5o8d_r1=NY3veVqmPHg@mail.gmail.com>
-Content-Type: text/plain; charset=US-ASCII
+To: fanchaoting <fanchaoting@cn.fujitsu.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: nfs client decode fslocations oops if server
+ cheating it
+Date: Wed, 27 Mar 2013 16:17:25 +0000
+Message-ID: <1364401044.11071.21.camel@leira.trondhjem.org>
+References: <51502DB7.1010508@cn.fujitsu.com>
+In-Reply-To: <51502DB7.1010508@cn.fujitsu.com>
+Content-Type: multipart/mixed;
+	boundary="_002_13644010441107121camelleiratrondhjemorg_"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-03-07 at 09:03 -0800, Linus Torvalds wrote:
-> On Thu, Mar 7, 2013 at 8:45 AM, Myklebust, Trond
-> <Trond.Myklebust@netapp.com> wrote:
-> >
-> > The problem there is that we get into the whole 'hard' vs 'soft' mount
-> > problem. We're supposed to guarantee data integrity for 'hard' mounts,
-> > so no funny business is allowed. OTOH, 'soft' mounts time out and return
-> > EIO to the application anyway, and so shouldn't be a problem.
-> >
-> > Perhaps we could add a '-oslushy' mount option :-) that guarantees data
-> > integrity for all situations _except_ ENETDOWN/ENETUNREACH?
-> 
-> I do think we are probably over-analyzing this. It's not like people
-> who want freezing to work usually use flaky NFS. There's really two
-> main groups:
-> 
->  - the "freezer as a snapshot mechanism" that might use NFS because
-> they are in a server environment.
-> 
->  - the "freeezer for suspend/resume on a laptop"
-> 
-> The first one does use NFS, and cares about it, and probably would
-> prefer the freeze event to take longer and finish for all ongoing IO
-> operations. End result: just ditch the "freezable_schedule()"
-> entirely.
-> 
-> The second one is unlikely to really use NFS anyway. End result:
-> ditching the freezable_schedule() is probably perfectly fine, even if
-> it would cause suspend failures if the network is being troublesome.
-> 
-> So for now, why not just replace freezable_schedule() with plain
-> schedule() in the NFS code, and ignore it until somebody actually
-> complains about it, and then aim to try to do something more targeted
-> for that particular complaint?
+--_002_13644010441107121camelleiratrondhjemorg_
+Content-Type: text/plain; charset="iso-8859-1"
+Content-ID: <6DE9D3508E0B9944A1E1AE9BEDB4995A@tahoe.netapp.com>
+Content-Transfer-Encoding: quoted-printable
 
-We _have_ had complaints about the laptop suspension problem; that was
-why Jeff introduced freezable_schedule() in the first place. We've never
-had complaints about any problems involvinf cgroup_freeze. This is why
-our focus tends to be on the former, and why I'm more worried about
-laptop suspend regressions for any short term fixes.
+On Mon, 2013-03-25 at 18:57 +0800, fanchaoting wrote:
+> now nfs server will return wrong nlocations,nservers, ncomponents to the =
+client.
 
--- 
+These limits are imposed by the client. The server knows nothing about
+them as they are not part of the NFSv4 spec.
+
+> for example if the nlocations is NFS4_FS_LOCATIONS_MAXENTRIES, the nfs cl=
+ient
+> will decode oops when run "struct nfs4_fs_location *loc =3D &res->locatio=
+ns[res->nlocations]"
+
+Your patch means that instead of making a best effort attempt to decode
+what the server sends us, we end up decoding nothing at all and just
+reporting an error.
+
+How about something like the following instead?
+
+--=20
 Trond Myklebust
 Linux NFS client maintainer
 
 NetApp
 Trond.Myklebust@netapp.com
 www.netapp.com
+
+--_002_13644010441107121camelleiratrondhjemorg_
+Content-Type: text/x-patch;
+	name="0001-NFSv4-Fix-Oopses-in-the-fs_locations-code.patch"
+Content-Description: 0001-NFSv4-Fix-Oopses-in-the-fs_locations-code.patch
+Content-Disposition: attachment;
+	filename="0001-NFSv4-Fix-Oopses-in-the-fs_locations-code.patch"; size=3995;
+	creation-date="Wed, 27 Mar 2013 16:17:24 GMT";
+	modification-date="Wed, 27 Mar 2013 16:17:24 GMT"
+Content-ID: <0BD767B0A433774D96A118A5FB63BEA9@tahoe.netapp.com>
+Content-Transfer-Encoding: base64
+
+RnJvbSA5YmJjZjI1OTVjYTFkOTA2NzViMzBhYzRjMDhkZThiZTM2MzZhZDQ4IE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
+YXBwLmNvbT4NCkRhdGU6IFdlZCwgMjcgTWFyIDIwMTMgMTE6NTQ6NDUgLTA0MDANClN1YmplY3Q6
+IFtQQVRDSF0gTkZTdjQ6IEZpeCBPb3BzZXMgaW4gdGhlIGZzX2xvY2F0aW9ucyBjb2RlDQoNCklm
+IHRoZSBzZXJ2ZXIgc2VuZHMgdXMgYSBwYXRobmFtZSB3aXRoIG1vcmUgY29tcG9uZW50cyB0aGFu
+IHRoZSBjbGllbnQNCmxpbWl0IG9mIE5GUzRfUEFUSE5BTUVfTUFYQ09NUE9ORU5UUywgbW9yZSBz
+ZXJ2ZXIgZW50cmllcyB0aGFuIHRoZSBjbGllbnQNCmxpbWl0IG9mIE5GUzRfRlNfTE9DQVRJT05f
+TUFYU0VSVkVSUywgb3Igc2VuZHMgYSB0b3RhbCBudW1iZXIgb2YNCmZzX2xvY2F0aW9ucyBlbnRy
+aWVzIHRoYW4gdGhlIGNsaWVudCBsaW1pdCBvZiBORlM0X0ZTX0xPQ0FUSU9OU19NQVhFTlRSSUVT
+DQp0aGVuIHdlIHdpbGwgY3VycmVudGx5IE9vcHMgYmVjYXVzZSB0aGUgbGltaXQgY2hlY2tzIGFy
+ZSBkb25lIF9hZnRlcl8gd2UndmUNCmRlY29kZWQgdGhlIGRhdGEgaW50byB0aGUgYXJyYXlzLg0K
+DQpSZXBvcnRlZC1ieTogZmFuY2hhb3Rpbmc8ZmFuY2hhb3RpbmdAY24uZnVqaXRzdS5jb20+DQpT
+aWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29t
+Pg0KLS0tDQogZnMvbmZzL25mczR4ZHIuYyB8IDQzICsrKysrKysrKysrKysrKysrKysrLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0NCiAxIGZpbGUgY2hhbmdlZCwgMjAgaW5zZXJ0aW9ucygrKSwgMjMg
+ZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHhkci5jIGIvZnMvbmZzL25m
+czR4ZHIuYw0KaW5kZXggMjM1ZWQ1OS4uN2RhODMyNCAxMDA2NDQNCi0tLSBhL2ZzL25mcy9uZnM0
+eGRyLmMNCisrKyBiL2ZzL25mcy9uZnM0eGRyLmMNCkBAIC0zNDk2LDggKzM0OTYsMTEgQEAgc3Rh
+dGljIGludCBkZWNvZGVfcGF0aG5hbWUoc3RydWN0IHhkcl9zdHJlYW0gKnhkciwgc3RydWN0IG5m
+czRfcGF0aG5hbWUgKnBhdGgpDQogCWlmIChuID09IDApDQogCQlnb3RvIHJvb3RfcGF0aDsNCiAJ
+ZHByaW50aygicGF0aG5hbWU0OiAiKTsNCi0JcGF0aC0+bmNvbXBvbmVudHMgPSAwOw0KLQl3aGls
+ZSAocGF0aC0+bmNvbXBvbmVudHMgPCBuKSB7DQorCWlmIChuID4gTkZTNF9QQVRITkFNRV9NQVhD
+T01QT05FTlRTKSB7DQorCQlkcHJpbnRrKCJjYW5ub3QgcGFyc2UgJWQgY29tcG9uZW50cyBpbiBw
+YXRoXG4iLCBuKTsNCisJCWdvdG8gb3V0X2VpbzsNCisJfQ0KKwlmb3IgKHBhdGgtPm5jb21wb25l
+bnRzID0gMDsgcGF0aC0+bmNvbXBvbmVudHMgPCBuOyBwYXRoLT5uY29tcG9uZW50cysrKSB7DQog
+CQlzdHJ1Y3QgbmZzNF9zdHJpbmcgKmNvbXBvbmVudCA9ICZwYXRoLT5jb21wb25lbnRzW3BhdGgt
+Pm5jb21wb25lbnRzXTsNCiAJCXN0YXR1cyA9IGRlY29kZV9vcGFxdWVfaW5saW5lKHhkciwgJmNv
+bXBvbmVudC0+bGVuLCAmY29tcG9uZW50LT5kYXRhKTsNCiAJCWlmICh1bmxpa2VseShzdGF0dXMg
+IT0gMCkpDQpAQCAtMzUwNiwxMiArMzUwOSw2IEBAIHN0YXRpYyBpbnQgZGVjb2RlX3BhdGhuYW1l
+KHN0cnVjdCB4ZHJfc3RyZWFtICp4ZHIsIHN0cnVjdCBuZnM0X3BhdGhuYW1lICpwYXRoKQ0KIAkJ
+CXByX2NvbnQoIiVzJS4qcyAiLA0KIAkJCQkocGF0aC0+bmNvbXBvbmVudHMgIT0gbiA/ICIvICIg
+OiAiIiksDQogCQkJCWNvbXBvbmVudC0+bGVuLCBjb21wb25lbnQtPmRhdGEpOw0KLQkJaWYgKHBh
+dGgtPm5jb21wb25lbnRzIDwgTkZTNF9QQVRITkFNRV9NQVhDT01QT05FTlRTKQ0KLQkJCXBhdGgt
+Pm5jb21wb25lbnRzKys7DQotCQllbHNlIHsNCi0JCQlkcHJpbnRrKCJjYW5ub3QgcGFyc2UgJWQg
+Y29tcG9uZW50cyBpbiBwYXRoXG4iLCBuKTsNCi0JCQlnb3RvIG91dF9laW87DQotCQl9DQogCX0N
+CiBvdXQ6DQogCXJldHVybiBzdGF0dXM7DQpAQCAtMzU1NiwyNyArMzU1MywyMyBAQCBzdGF0aWMg
+aW50IGRlY29kZV9hdHRyX2ZzX2xvY2F0aW9ucyhzdHJ1Y3QgeGRyX3N0cmVhbSAqeGRyLCB1aW50
+MzJfdCAqYml0bWFwLCBzdA0KIAluID0gYmUzMl90b19jcHVwKHApOw0KIAlpZiAobiA8PSAwKQ0K
+IAkJZ290byBvdXRfZWlvOw0KLQlyZXMtPm5sb2NhdGlvbnMgPSAwOw0KLQl3aGlsZSAocmVzLT5u
+bG9jYXRpb25zIDwgbikgew0KKwlmb3IgKHJlcy0+bmxvY2F0aW9ucyA9IDA7IHJlcy0+bmxvY2F0
+aW9ucyA8IG47IHJlcy0+bmxvY2F0aW9ucysrKSB7DQogCQl1MzIgbTsNCi0JCXN0cnVjdCBuZnM0
+X2ZzX2xvY2F0aW9uICpsb2MgPSAmcmVzLT5sb2NhdGlvbnNbcmVzLT5ubG9jYXRpb25zXTsNCisJ
+CXN0cnVjdCBuZnM0X2ZzX2xvY2F0aW9uICpsb2M7DQogDQorCQlpZiAocmVzLT5ubG9jYXRpb25z
+ID09IE5GUzRfRlNfTE9DQVRJT05TX01BWEVOVFJJRVMpDQorCQkJYnJlYWs7DQorCQlsb2MgPSAm
+cmVzLT5sb2NhdGlvbnNbcmVzLT5ubG9jYXRpb25zXTsNCiAJCXAgPSB4ZHJfaW5saW5lX2RlY29k
+ZSh4ZHIsIDQpOw0KIAkJaWYgKHVubGlrZWx5KCFwKSkNCiAJCQlnb3RvIG91dF9vdmVyZmxvdzsN
+CiAJCW0gPSBiZTMyX3RvX2NwdXAocCk7DQogDQotCQlsb2MtPm5zZXJ2ZXJzID0gMDsNCiAJCWRw
+cmludGsoIiVzOiBzZXJ2ZXJzOlxuIiwgX19mdW5jX18pOw0KLQkJd2hpbGUgKGxvYy0+bnNlcnZl
+cnMgPCBtKSB7DQotCQkJc3RydWN0IG5mczRfc3RyaW5nICpzZXJ2ZXIgPSAmbG9jLT5zZXJ2ZXJz
+W2xvYy0+bnNlcnZlcnNdOw0KLQkJCXN0YXR1cyA9IGRlY29kZV9vcGFxdWVfaW5saW5lKHhkciwg
+JnNlcnZlci0+bGVuLCAmc2VydmVyLT5kYXRhKTsNCi0JCQlpZiAodW5saWtlbHkoc3RhdHVzICE9
+IDApKQ0KLQkJCQlnb3RvIG91dF9laW87DQotCQkJZHByaW50aygiJXMgIiwgc2VydmVyLT5kYXRh
+KTsNCi0JCQlpZiAobG9jLT5uc2VydmVycyA8IE5GUzRfRlNfTE9DQVRJT05fTUFYU0VSVkVSUykN
+Ci0JCQkJbG9jLT5uc2VydmVycysrOw0KLQkJCWVsc2Ugew0KKwkJZm9yIChsb2MtPm5zZXJ2ZXJz
+ID0gMDsgbG9jLT5uc2VydmVycyA8IG07IGxvYy0+bnNlcnZlcnMrKykgew0KKwkJCXN0cnVjdCBu
+ZnM0X3N0cmluZyAqc2VydmVyOw0KKw0KKwkJCWlmIChsb2MtPm5zZXJ2ZXJzID09IE5GUzRfRlNf
+TE9DQVRJT05fTUFYU0VSVkVSUykgew0KIAkJCQl1bnNpZ25lZCBpbnQgaTsNCiAJCQkJZHByaW50
+aygiJXM6IHVzaW5nIGZpcnN0ICV1IG9mICV1IHNlcnZlcnMgIg0KIAkJCQkJInJldHVybmVkIGZv
+ciBsb2NhdGlvbiAldVxuIiwNCkBAIC0zNTkwLDEzICszNTgzLDE3IEBAIHN0YXRpYyBpbnQgZGVj
+b2RlX2F0dHJfZnNfbG9jYXRpb25zKHN0cnVjdCB4ZHJfc3RyZWFtICp4ZHIsIHVpbnQzMl90ICpi
+aXRtYXAsIHN0DQogCQkJCQlpZiAodW5saWtlbHkoc3RhdHVzICE9IDApKQ0KIAkJCQkJCWdvdG8g
+b3V0X2VpbzsNCiAJCQkJfQ0KKwkJCQlicmVhazsNCiAJCQl9DQorCQkJc2VydmVyID0gJmxvYy0+
+c2VydmVyc1tsb2MtPm5zZXJ2ZXJzXTsNCisJCQlzdGF0dXMgPSBkZWNvZGVfb3BhcXVlX2lubGlu
+ZSh4ZHIsICZzZXJ2ZXItPmxlbiwgJnNlcnZlci0+ZGF0YSk7DQorCQkJaWYgKHVubGlrZWx5KHN0
+YXR1cyAhPSAwKSkNCisJCQkJZ290byBvdXRfZWlvOw0KKwkJCWRwcmludGsoIiVzICIsIHNlcnZl
+ci0+ZGF0YSk7DQogCQl9DQogCQlzdGF0dXMgPSBkZWNvZGVfcGF0aG5hbWUoeGRyLCAmbG9jLT5y
+b290cGF0aCk7DQogCQlpZiAodW5saWtlbHkoc3RhdHVzICE9IDApKQ0KIAkJCWdvdG8gb3V0X2Vp
+bzsNCi0JCWlmIChyZXMtPm5sb2NhdGlvbnMgPCBORlM0X0ZTX0xPQ0FUSU9OU19NQVhFTlRSSUVT
+KQ0KLQkJCXJlcy0+bmxvY2F0aW9ucysrOw0KIAl9DQogCWlmIChyZXMtPm5sb2NhdGlvbnMgIT0g
+MCkNCiAJCXN0YXR1cyA9IE5GU19BVFRSX0ZBVFRSX1Y0X0xPQ0FUSU9OUzsNCi0tIA0KMS44LjEu
+NA0KDQo=
+
+--_002_13644010441107121camelleiratrondhjemorg_--
