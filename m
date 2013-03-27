@@ -1,54 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f49.google.com ([209.85.160.49]:38889 "EHLO
-	mail-pb0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758044Ab3CDM7s (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Mar 2013 07:59:48 -0500
-From: Akinobu Mita <akinobu.mita@gmail.com>
-To: linux-kernel@vger.kernel.org, akpm@linux-foundation.org
-Cc: Akinobu Mita <akinobu.mita@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH -v3 17/23] net/sunrpc: rename random32() to prandom_u32()
-Date: Mon,  4 Mar 2013 21:58:25 +0900
-Message-Id: <1362401911-14074-18-git-send-email-akinobu.mita@gmail.com>
-In-Reply-To: <1362401911-14074-1-git-send-email-akinobu.mita@gmail.com>
-References: <1362401911-14074-1-git-send-email-akinobu.mita@gmail.com>
+Received: from vm0854.cs10.seeweb.it ([95.174.23.70]:55134 "EHLO
+	smtpserver01.ergonet.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756934Ab3C0ISs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Mar 2013 04:18:48 -0400
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Date: Wed, 27 Mar 2013 09:10:09 +0100
+From: Michele Roca <michele.rocca@cacciatoritrentini.it>
+To: undisclosed-recipients:;
+Subject: MY GOOD FRIEND!
+Reply-To: <wernererichzeller@yahoo.com>
+Message-ID: <858397a3c3e05f3d5407156d0b746379@cacciatoritrentini.it>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use more preferable function name which implies using a pseudo-random
-number generator.
 
-Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: netdev@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org
----
 
-No change from v2
 
- net/sunrpc/auth_gss/gss_krb5_wrap.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+I am Barrister Werner Erich Zeller; I need your sincere partnership in
+transferring the sum of 15,000,000.00 EUR The details await you as you 
+reply!
 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-index 88edec9..1da52d1 100644
---- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-@@ -130,8 +130,8 @@ gss_krb5_make_confounder(char *p, u32 conflen)
- 
- 	/* initialize to random value */
- 	if (i == 0) {
--		i = random32();
--		i = (i << 32) | random32();
-+		i = prandom_u32();
-+		i = (i << 32) | prandom_u32();
- 	}
- 
- 	switch (conflen) {
+please! Call +44 702 409 0820 (office)
+
 -- 
-1.8.1.2
+Ich bin Barrister Werner Erich Zeller, ich brauche eure aufrichtige
+Partnerschaft intransferring die Summe von 15.000.000,00 EUR auf Ihr
+Bankkonto in dieser Woche für den Nutzen der beiden von uns 50% each.It
+ist 100% legal, legitim und sicher! für Details, schreiben Sie mir auf
+dieser meiner privaten E-Mail statt: Dies ist dringende und ernste Sie
+müssen bereit sein und bereit, bevor Sie mich kontaktieren.
 
+bitte! Rufen Sie +44 702 409 0820 (Büro)
