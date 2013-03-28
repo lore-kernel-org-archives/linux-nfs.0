@@ -1,79 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e35.co.us.ibm.com ([32.97.110.153]:44536 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932275Ab3CSVdX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 17:33:23 -0400
-Received: from /spool/local
-	by e35.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <cvogan@us.ibm.com>;
-	Tue, 19 Mar 2013 15:33:21 -0600
-Received: from d03relay01.boulder.ibm.com (d03relay01.boulder.ibm.com [9.17.195.226])
-	by d03dlp03.boulder.ibm.com (Postfix) with ESMTP id A0ECC19D8042
-	for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 15:32:49 -0600 (MDT)
-Received: from d03av05.boulder.ibm.com (d03av05.boulder.ibm.com [9.17.195.85])
-	by d03relay01.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r2JLWkjH085510
-	for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 15:32:47 -0600
-Received: from d03av05.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av05.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r2JLWf3C017693
-	for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 15:32:42 -0600
-Received: from d03nm116.boulder.ibm.com (d03nm116.boulder.ibm.com [9.63.40.222])
-	by d03av05.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id r2JLWfxI017519
-	for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 15:32:41 -0600
-To: linux-nfs@vger.kernel.org
+Received: from li9-11.members.linode.com ([67.18.176.11]:56773 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756495Ab3C1Ozq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Mar 2013 10:55:46 -0400
+Date: Thu, 28 Mar 2013 10:07:44 -0400
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: Eric Sandeen <sandeen@redhat.com>
+Cc: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        Anand Avati <anand.avati@gmail.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, gluster-devel@nongnu.org
+Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
+Message-ID: <20130328140744.GA4989@thunk.org>
+References: <CAFboF2wXvP+vttiff8iRE9rAgvV8UWGbFprgVp8p7kE43TU=PA@mail.gmail.com>
+ <20130213222052.GD5938@thunk.org>
+ <20130213224141.GU14195@fieldses.org>
+ <20130213224720.GE5938@thunk.org>
+ <CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com>
+ <20130213230511.GW14195@fieldses.org>
+ <20130213234430.GF5938@thunk.org>
+ <CAFboF2zS+YAa0uUxMFUAbqgPh3Kb4xZu40WUjLyGn8qPoP+Oyw@mail.gmail.com>
+ <5151BD5F.30607@itwm.fraunhofer.de>
+ <5151C33E.2070008@redhat.com>
 MIME-Version: 1.0
-Subject: NFS man page patch that moves nordirplus/rdirplus
-Message-ID: <OF0365F8D8.55071FDA-ON87257B33.00762456-86257B33.00765660@us.ibm.com>
-From: Christopher T Vogan <cvogan@us.ibm.com>
-Date: Tue, 19 Mar 2013 16:32:33 -0500
-Content-Type: text/plain; charset="US-ASCII"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5151C33E.2070008@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFS man page patch that moves nordirplus/rdirplus from "Options for NFS 
-versions 2 and 3 only" to "Options supported by all versions".  Its a 
-better fit here since this option is also needed for some NFSv4 servers.
+On Tue, Mar 26, 2013 at 10:48:14AM -0500, Eric Sandeen wrote:
+> > We don't have reached a conclusion so far, do we? What about the
+> > ioctl approach, but a bit differently? Would it work to specify the
+> > allowed upper bits for ext4 (for example 16 additional bit) and the
+> > remaining part for gluster? One of the mails had the calculation
+> > formula:
+> 
+> I did throw together an ioctl patch last week, but I think Anand has a new
+> approach he's trying out which won't require ext4 code changes.  I'll let
+> him reply when he has a moment.  :)
 
+Any update about whether Gluster can address this without needing the
+ioctl patch?  Or should we push the ioctl patch into ext4 for the next
+merge window?
 
-Author: Chris Vogan <cvogan@us.ibm.com>
-Date:   Fri Feb 28 14:40:11 2013 -0700
+Thanks,
 
-    NFS man page needs updating to clarify that nordirplus mount option
-    is also valid for NFSv4. Also should be moved to the section
-    "Options supported by all versions".
-
-    Signed-off-by: Chris Vogan <cvogan@gmail.com>
---- nfs.man.save        2013-02-28 14:40:11.530103375 -0700
-+++ nfs.man     2013-02-28 14:42:48.028996087 -0700
-@@ -345,6 +345,13 @@
- .BR automount (8)
- for details).
- .TP 1.5i
-+.BR rdirplus " / " nordirplus
-+Selects whether to use NFS v3 or v4 READDIRPLUS requests.
-+If this option is not specified, the NFS client uses READDIRPLUS requests
-+on NFS v3 or v4 mounts to read small directories.
-+Some applications perform better if the client uses only READDIR requests
-+for all directories.
-+.TP 1.5i
- .BI retry= n
- The number of minutes that the
- .BR mount (8)
-@@ -710,13 +717,6 @@
- Disabling the NFSACL sideband protocol may be necessary
- if the negotiation causes problems on the client or server.
- Refer to the SECURITY CONSIDERATIONS section for more details.
--.TP 1.5i
--.BR rdirplus " / " nordirplus
--Selects whether to use NFS version 3 READDIRPLUS requests.
--If this option is not specified, the NFS client uses READDIRPLUS requests
--on NFS version 3 mounts to read small directories.
--Some applications perform better if the client uses only READDIR requests
--for all directories.
- .SS "Options for version 4 only"
- Use these options, along with the options in the first subsection above,
- for NFSv4 only. They will be ignored with older versions.
-
-
-Christopher Vogan
-Dept. W98 NFS Development & Test
-
+						- Ted
