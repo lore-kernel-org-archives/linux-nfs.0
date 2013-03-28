@@ -1,58 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f171.google.com ([74.125.82.171]:46575 "EHLO
-	mail-we0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750822Ab3C0MTG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Mar 2013 08:19:06 -0400
-Received: by mail-we0-f171.google.com with SMTP id d46so5428046wer.16
-        for <linux-nfs@vger.kernel.org>; Wed, 27 Mar 2013 05:19:04 -0700 (PDT)
-Message-ID: <5152E3B5.8080402@tonian.com>
-Date: Wed, 27 Mar 2013 14:19:01 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from fieldses.org ([174.143.236.118]:33954 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751453Ab3C1TTV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Mar 2013 15:19:21 -0400
+Date: Thu, 28 Mar 2013 15:19:18 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
+Message-ID: <20130328191918.GA14748@fieldses.org>
+References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
+ <1364478845-29796-14-git-send-email-SteveD@redhat.com>
+ <20130328185845.GI7080@fieldses.org>
 MIME-Version: 1.0
-To: Fred Isaman <faisaman4@gmail.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] pnfs: do not reset to mds if wb_offset != wb_pgbase
-References: <1363617532-24172-1-git-send-email-bhalevy@tonian.com> <1363622128.4351.15.camel@leira.trondhjem.org> <51473F46.10401@tonian.com> <CADnza476e0FpXJJfE8OmXLRQUR3Zm_aZkX7JZRB=vGyZ-U2yDg@mail.gmail.com> <5148BE0B.9080802@tonian.com> <CADnza46Npnn=GquO8s7TPPSGZq9Cs11JJdj6t8ejDh5gYeeTYg@mail.gmail.com>
-In-Reply-To: <CADnza46Npnn=GquO8s7TPPSGZq9Cs11JJdj6t8ejDh5gYeeTYg@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130328185845.GI7080@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-03-19 22:28, Fred Isaman wrote:
-> On Tue, Mar 19, 2013 at 3:35 PM, Benny Halevy <bhalevy@tonian.com> wrote:
->> On 2013-03-18 19:04, Fred Isaman wrote:
->>> A problem case is if the layout ends within the page request, which
->>> can happen due to the misalignment.
->>
->> First, the file layout currently supports only whole file layouts so I don't see
->> how that's a problem.
->> Regardless, I'd rather trim the layout segment to PAGE_SIZE boundaries
->> and get a new layout from the page aligned offset and on with minlength = PAGE_SIZE
->> (as we do today).
->>
->> Benny
->>
-> 
-> Yes, but consider....
-> 
-> let P = PAGE_SIZE
-> 
-> assume you have a layout from 0 to 4P, and you try to do a WRITE from
-> 2P to 6P.  Now if the buffer is not page aligned, one of the nfs_page
-> requests will contain the file's logical 4P offset at a random
-> location within the nfs_page.  What happens then?
+Dave, I think these are both questions for you?
 
-Fred,  Can you please provide a test that reproduces this concern
-so we can verify the system behavior with and without my patch?
+--b.
 
-Benny
-
+On Thu, Mar 28, 2013 at 02:58:45PM -0400, bfields wrote:
+> On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
+> > @@ -1988,6 +2044,50 @@ nfsd4_encode_aclname(struct svc_rqst *rqstp, struct nfs4_ace *ace,
+> >  			      FATTR4_WORD0_RDATTR_ERROR)
+> >  #define WORD1_ABSENT_FS_ATTRS FATTR4_WORD1_MOUNTED_ON_FILEID
+> >  
+> > +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> > +static inline __be32
+> > +nfsd4_encode_security_label(struct svc_rqst *rqstp, struct dentry *dentry, __be32 **pp, int *buflen)
+> > +{
+> > +	void *context;
+> > +	int err;
+> > +	int len;
+> > +	uint32_t pi = 0;
+> > +	uint32_t lfs = 0;
+> > +	__be32 *p = *pp;
+> > +
+> > +	err = 0;
+> > +	(void)security_inode_getsecctx(dentry->d_inode, &context, &len);
+> > +	if (len < 0)
+> > +		return nfserrno(len);
+> > +
+> > +	if (*buflen < ((XDR_QUADLEN(len) << 2) + 4 + 4 + 4)) {
+> > +		err = nfserr_resource;
+> > +		goto out;
+> > +	}
+> > +
+> > +	/* XXX: A call to the translation code should be placed here
+> > +	 * for now send 0  until we have that to indicate the null
+> > +	 * translation */ 
 > 
-> Fred
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Could we better a better comment here?
+...
+> > +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> > +__be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> > +		struct nfs4_label *label)
+> > +{
+> > +	__be32 error;
+> > +	int host_error;
+> > +	struct dentry *dentry;
+> > +
+> > +	/* XXX: should we have a MAY_SSECCTX? */
 > 
+> Again: could we get an answer to this question?
+> 
+> --b.
