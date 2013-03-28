@@ -1,112 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:54562 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:3065 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755155Ab3CDGKz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Mar 2013 01:10:55 -0500
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Mon, 04 Mar 2013 17:09:32 +1100
-Subject: [PATCH 2/2] sunrpc/cache: use cache_fresh_unlocked consistently and
- correctly.
-Cc: Bodo Stroesser <bstroesser@ts.fujitsu.com>, linux-nfs@vger.kernel.org
-Message-ID: <20130304060932.1352.81674.stgit@notabene.brown>
-In-Reply-To: <20130304060801.1352.97857.stgit@notabene.brown>
-References: <20130304060801.1352.97857.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1756055Ab3C1N5X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Mar 2013 09:57:23 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 00/14] nfs: 3.9-rc3 release (v2)
+Date: Thu, 28 Mar 2013 09:53:51 -0400
+Message-Id: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-cache_fresh_unlocked() is called when a cache entry
-has been updated and ensures that if there were any
-pending upcalls, they are cleared.
+From: Steve Dickson <steved@redhat.com>
 
-So every time we update a cache entry, we should call this,
-and this should be the only way that we try to clear
-pending calls (that sort of uniformity makes code sooo much
-easier to read).
+A bug was found in the READDIR code with v4.1 and v4.2 mounts
+which caused the client to request an attribute it did not
+support. Only v4.0 mounts were tested at Connectathon. 
 
-try_to_negate_entry() will (possibly) mark an entry as
-negative.  If it doesn't, it is because the entry already
-is VALID.
-So the entry will be valid on exit, so it is appropriate to
-call cache_fresh_unlocked().
-So tidy up try_to_negate_entry() to do that, and remove
-partial open-coded cache_fresh_unlocked() from the one
-call-site of try_to_negate_entry().
+The v4.2 enabling code will be coming in the next few days. It
+just needs a little more testing. 
 
-In the other branch of the 'switch(cache_make_upcall())',
-we again have a partial open-coded version of cache_fresh_unlocked().
-Replace that with a real call.
+Dave Quigley (2):
+  NFS:Add labels to client function prototypes
+  NFS: Add label lifecycle management
 
-And again in cache_clean(), use a real call to cache_fresh_unlocked().
+David Quigley (10):
+  Security: Add hook to calculate context based on a negative dentry.
+  Security: Add Hook to test if the particular xattr is part of a MAC
+    model.
+  LSM: Add flags field to security_sb_set_mnt_opts for in kernel mount
+    data.
+  SELinux: Add new labeling type native labels
+  NFSv4: Add label recommended attribute and NFSv4 flags
+  NFSv4: Introduce new label structure
+  NFSv4: Extend fattr bitmaps to support all 3 words
+  NFS: Client implementation of Labeled-NFS
+  NFS: Extend NFS xattr handlers to accept the security namespace
+  NFSD: Server implementation of MAC Labeling
 
-These call sites might previously have called
-cache_revisit_request() if CACHE_PENDING wasn't set.
-This is never necessary because cache_revisit_request() can
-only do anything if the item is in the cache_defer_hash,
-However any time that an item is added to the cache_defer_hash
-(setup_deferral), the code immediately tests CACHE_PENDING,
-and removes the entry again if it is clear.  So all other
-places we only need to 'cache_revisit_request' if we've
-just cleared CACHE_PENDING.
+Steve Dickson (2):
+  Kconfig: Add Kconfig entry for Labeled NFS V4 client
+  Kconfig: Add Kconfig entry for Labeled NFS V4 server
 
-Reported-by: Bodo Stroesser <bstroesser@ts.fujitsu.com>
-Signed-off-by: NeilBrown  <neilb@suse.de>
----
- net/sunrpc/cache.c |   20 +++++++-------------
- 1 file changed, 7 insertions(+), 13 deletions(-)
+ fs/nfs/Kconfig                      |  18 ++
+ fs/nfs/client.c                     |   2 +-
+ fs/nfs/dir.c                        |  46 ++-
+ fs/nfs/getroot.c                    |   2 +-
+ fs/nfs/inode.c                      | 129 +++++++--
+ fs/nfs/namespace.c                  |   2 +-
+ fs/nfs/nfs3acl.c                    |   4 +-
+ fs/nfs/nfs3proc.c                   |  41 +--
+ fs/nfs/nfs4_fs.h                    |   8 +-
+ fs/nfs/nfs4namespace.c              |   2 +-
+ fs/nfs/nfs4proc.c                   | 563 ++++++++++++++++++++++++++++++++----
+ fs/nfs/nfs4xdr.c                    | 188 +++++++++---
+ fs/nfs/proc.c                       |  15 +-
+ fs/nfs/super.c                      |  17 +-
+ fs/nfsd/Kconfig                     |  16 +
+ fs/nfsd/nfs4proc.c                  |  41 +++
+ fs/nfsd/nfs4xdr.c                   | 116 +++++++-
+ fs/nfsd/nfsd.h                      |   6 +-
+ fs/nfsd/vfs.c                       |  29 ++
+ fs/nfsd/vfs.h                       |   2 +
+ fs/nfsd/xdr4.h                      |   3 +
+ include/linux/nfs4.h                |   8 +
+ include/linux/nfs_fs.h              |  30 +-
+ include/linux/nfs_fs_sb.h           |  10 +-
+ include/linux/nfs_xdr.h             |  30 +-
+ include/linux/security.h            |  57 +++-
+ include/uapi/linux/nfs4.h           |   2 +-
+ security/capability.c               |  19 +-
+ security/security.c                 |  24 +-
+ security/selinux/hooks.c            |  92 +++++-
+ security/selinux/include/security.h |   2 +
+ security/selinux/ss/policydb.c      |   5 +-
+ security/smack/smack_lsm.c          |  11 +
+ 33 files changed, 1328 insertions(+), 212 deletions(-)
 
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 0400a92..2e07ba1 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -228,15 +228,14 @@ static int try_to_negate_entry(struct cache_detail *detail, struct cache_head *h
- 
- 	write_lock(&detail->hash_lock);
- 	rv = cache_is_valid(detail, h);
--	if (rv != -EAGAIN) {
--		write_unlock(&detail->hash_lock);
--		return rv;
-+	if (rv == -EAGAIN) {
-+		set_bit(CACHE_NEGATIVE, &h->flags);
-+		cache_fresh_locked(h, seconds_since_boot()+CACHE_NEW_EXPIRY);
-+		rv = -ENOENT;
- 	}
--	set_bit(CACHE_NEGATIVE, &h->flags);
--	cache_fresh_locked(h, seconds_since_boot()+CACHE_NEW_EXPIRY);
- 	write_unlock(&detail->hash_lock);
- 	cache_fresh_unlocked(h, detail);
--	return -ENOENT;
-+	return rv;
- }
- 
- /*
-@@ -275,13 +274,10 @@ int cache_check(struct cache_detail *detail,
- 		if (!test_and_set_bit(CACHE_PENDING, &h->flags)) {
- 			switch (cache_make_upcall(detail, h)) {
- 			case -EINVAL:
--				clear_bit(CACHE_PENDING, &h->flags);
--				cache_revisit_request(h);
- 				rv = try_to_negate_entry(detail, h);
- 				break;
- 			case -EAGAIN:
--				clear_bit(CACHE_PENDING, &h->flags);
--				cache_revisit_request(h);
-+				cache_fresh_unlocked(h, detail);
- 				break;
- 			}
- 		}
-@@ -457,9 +453,7 @@ static int cache_clean(void)
- 			current_index ++;
- 		spin_unlock(&cache_list_lock);
- 		if (ch) {
--			if (test_and_clear_bit(CACHE_PENDING, &ch->flags))
--				cache_dequeue(current_detail, ch);
--			cache_revisit_request(ch);
-+			cache_fresh_unlocked(ch, d);
- 			cache_put(ch, d);
- 		}
- 	} else
-
+-- 
+1.8.1.4
 
