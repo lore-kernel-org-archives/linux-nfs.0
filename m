@@ -1,78 +1,213 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47983 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:64184 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751513Ab3CZSRR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Mar 2013 14:17:17 -0400
-Date: Tue, 26 Mar 2013 14:17:17 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: kernel 3.8.4 : kernel BUG at fs/locks.c:2093!   part #2
-Message-ID: <20130326181717.GA8978@fieldses.org>
-References: <514F31AF.3080709@gmx.de>
- <20130325220143.GD10887@fieldses.org>
- <20130326144640.GB3353@fieldses.org>
- <5151DEF7.3060003@gmx.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <5151DEF7.3060003@gmx.de>
+	id S1755733Ab3C1N5X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Mar 2013 09:57:23 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 01/14] Security: Add hook to calculate context based on a negative dentry.
+Date: Thu, 28 Mar 2013 09:53:52 -0400
+Message-Id: <1364478845-29796-2-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
+References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 26, 2013 at 06:46:31PM +0100, Toralf Förster wrote:
-> On 03/26/2013 03:46 PM, J. Bruce Fields wrote:
-> > Can you run with test patches?
-> > 
-> > This just makes nfsd's fput calls synchronous so that we see in the
-> > backtrace who called them.
-> 
-> Well - the patched 3.8.4 host kernel now survives the stress test of the UML system.
+From: David Quigley <dpquigl@davequigley.com>
 
-Bah, too bad.  That patch was definitely not a fix, so there may be some
-race here.
+There is a time where we need to calculate a context without the
+inode having been created yet. To do this we take the negative dentry and
+calculate a context based on the process and the parent directory contexts.
 
-> What I get at the host is now :
-> 
-> 2013-03-26T18:32:17.487+01:00 n22 kernel: ------------[ cut here ]------------
-> 2013-03-26T18:32:17.487+01:00 n22 kernel: WARNING: at mm/page_alloc.c:2376 __alloc_pages_nodemask+0x262/0x7c0()
-...
-> 2013-03-26T18:32:17.487+01:00 n22 kernel: [<c110f149>] __kmalloc+0x1b9/0x1e0
-> 2013-03-26T18:32:17.487+01:00 n22 kernel: [<f85835bf>] ? cache_check+0x22f/0x340 [sunrpc]
-> 2013-03-26T18:32:17.487+01:00 n22 kernel: [<f90a0b1c>] nfs4_acl_new+0x1c/0x30 [nfsd]
-> 2013-03-26T18:32:17.488+01:00 n22 kernel: [<f9095482>] nfsd4_decode_fattr+0x302/0x6c0 [nfsd]
-...
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ include/linux/security.h | 27 +++++++++++++++++++++++++++
+ security/capability.c    |  8 ++++++++
+ security/security.c      | 10 ++++++++++
+ security/selinux/hooks.c | 35 +++++++++++++++++++++++++++++++++++
+ 4 files changed, 80 insertions(+)
 
-A different bug, but thanks for catching it, I suspect the following is
-all we need.
-
---b.
-
-commit 814d9d4f9164c3d778dadd093a54bb55d9a0c576
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Tue Mar 26 14:11:13 2013 -0400
-
-    nfsd4: reject "negative" acl lengths
-    
-    Since we only enforce an upper bound, not a lower bound, a "negative"
-    length can get through here.
-    
-    The symptom seen was a warning when we attempt to a kmalloc with an
-    excessive size.
-    
-    Reported-by: Toralf Förster <toralf.foerster@gmx.de>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 0dc1158..d1dd710 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -264,7 +264,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 		iattr->ia_valid |= ATTR_SIZE;
- 	}
- 	if (bmval[0] & FATTR4_WORD0_ACL) {
--		int nace;
-+		u32 nace;
- 		struct nfs4_ace *ace;
+diff --git a/include/linux/security.h b/include/linux/security.h
+index eee7478..a957e7a 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -26,6 +26,7 @@
+ #include <linux/capability.h>
+ #include <linux/slab.h>
+ #include <linux/err.h>
++#include <linux/string.h>
  
- 		READ_BUF(4); len += 4;
+ struct linux_binprm;
+ struct cred;
+@@ -306,6 +307,15 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
+  *	Parse a string of security data filling in the opts structure
+  *	@options string containing all mount options known by the LSM
+  *	@opts binary data structure usable by the LSM
++ * @dentry_init_security:
++ *	Compute a context for a dentry as the inode is not yet available
++ *	since NFSv4 has no label backed by an EA anyway.
++ *	@dentry dentry to use in calculating the context.
++ *	@mode mode used to determine resource type.
++ *	@name name of the last path component used to create file
++ *	@ctx pointer to place the pointer to the resulting context in.
++ *	@ctxlen point to place the length of the resulting context.
++ *
+  *
+  * Security hooks for inode operations.
+  *
+@@ -1439,6 +1449,10 @@ struct security_operations {
+ 	void (*sb_clone_mnt_opts) (const struct super_block *oldsb,
+ 				   struct super_block *newsb);
+ 	int (*sb_parse_opts_str) (char *options, struct security_mnt_opts *opts);
++	int (*dentry_init_security) (struct dentry *dentry, int mode,
++					struct qstr *name, void **ctx,
++					u32 *ctxlen);
++
+ 
+ #ifdef CONFIG_SECURITY_PATH
+ 	int (*path_unlink) (struct path *dir, struct dentry *dentry);
+@@ -1724,6 +1738,9 @@ int security_sb_set_mnt_opts(struct super_block *sb, struct security_mnt_opts *o
+ void security_sb_clone_mnt_opts(const struct super_block *oldsb,
+ 				struct super_block *newsb);
+ int security_sb_parse_opts_str(char *options, struct security_mnt_opts *opts);
++int security_dentry_init_security(struct dentry *dentry, int mode,
++					struct qstr *name, void **ctx,
++					u32 *ctxlen);
+ 
+ int security_inode_alloc(struct inode *inode);
+ void security_inode_free(struct inode *inode);
+@@ -2028,6 +2045,16 @@ static inline int security_inode_alloc(struct inode *inode)
+ static inline void security_inode_free(struct inode *inode)
+ { }
+ 
++static inline int security_dentry_init_security(struct dentry *dentry,
++						 int mode,
++						 struct qstr *name,
++						 void **ctx,
++						 u32 *ctxlen)
++{
++	return -EOPNOTSUPP;
++}
++
++
+ static inline int security_inode_init_security(struct inode *inode,
+ 						struct inode *dir,
+ 						const struct qstr *qstr,
+diff --git a/security/capability.c b/security/capability.c
+index 5797750..456bd9d 100644
+--- a/security/capability.c
++++ b/security/capability.c
+@@ -108,6 +108,13 @@ static int cap_sb_parse_opts_str(char *options, struct security_mnt_opts *opts)
+ 	return 0;
+ }
+ 
++static int cap_dentry_init_security(struct dentry *dentry, int mode,
++					struct qstr *name, void **ctx,
++					u32 *ctxlen)
++{
++	return 0;
++}
++
+ static int cap_inode_alloc_security(struct inode *inode)
+ {
+ 	return 0;
+@@ -925,6 +932,7 @@ void __init security_fixup_ops(struct security_operations *ops)
+ 	set_to_cap_if_null(ops, sb_set_mnt_opts);
+ 	set_to_cap_if_null(ops, sb_clone_mnt_opts);
+ 	set_to_cap_if_null(ops, sb_parse_opts_str);
++	set_to_cap_if_null(ops, dentry_init_security);
+ 	set_to_cap_if_null(ops, inode_alloc_security);
+ 	set_to_cap_if_null(ops, inode_free_security);
+ 	set_to_cap_if_null(ops, inode_init_security);
+diff --git a/security/security.c b/security/security.c
+index 7b88c6a..723a10c 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -12,6 +12,7 @@
+  */
+ 
+ #include <linux/capability.h>
++#include <linux/dcache.h>
+ #include <linux/module.h>
+ #include <linux/init.h>
+ #include <linux/kernel.h>
+@@ -324,6 +325,15 @@ void security_inode_free(struct inode *inode)
+ 	security_ops->inode_free_security(inode);
+ }
+ 
++int security_dentry_init_security(struct dentry *dentry, int mode,
++					struct qstr *name, void **ctx,
++					u32 *ctxlen)
++{
++	return security_ops->dentry_init_security(dentry, mode, name,
++							ctx, ctxlen);
++}
++EXPORT_SYMBOL(security_dentry_init_security);
++
+ int security_inode_init_security(struct inode *inode, struct inode *dir,
+ 				 const struct qstr *qstr,
+ 				 const initxattrs initxattrs, void *fs_data)
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index 2fa28c8..c7f1905 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -2483,6 +2483,40 @@ static void selinux_inode_free_security(struct inode *inode)
+ 	inode_free_security(inode);
+ }
+ 
++static int selinux_dentry_init_security(struct dentry *dentry, int mode,
++					struct qstr *name, void **ctx,
++					u32 *ctxlen)
++{
++	const struct cred *cred = current_cred();
++	struct task_security_struct *tsec;
++	struct inode_security_struct *dsec;
++	struct superblock_security_struct *sbsec;
++	struct inode *dir = dentry->d_parent->d_inode;
++	u32 newsid;
++	int rc;
++
++	tsec = cred->security;
++	dsec = dir->i_security;
++	sbsec = dir->i_sb->s_security;
++
++	if (tsec->create_sid && sbsec->behavior != SECURITY_FS_USE_MNTPOINT) {
++		newsid = tsec->create_sid;
++	} else {
++		rc = security_transition_sid(tsec->sid, dsec->sid,
++					     inode_mode_to_security_class(mode),
++					     name,
++					     &newsid);
++		if (rc) {
++			printk(KERN_WARNING
++				"%s: security_transition_sid failed, rc=%d\n",
++			       __func__, -rc);
++			return rc;
++		}
++	}
++
++	return security_sid_to_context(newsid, (char **)ctx, ctxlen);
++}
++
+ static int selinux_inode_init_security(struct inode *inode, struct inode *dir,
+ 				       const struct qstr *qstr, char **name,
+ 				       void **value, size_t *len)
+@@ -5525,6 +5559,7 @@ static struct security_operations selinux_ops = {
+ 	.sb_clone_mnt_opts =		selinux_sb_clone_mnt_opts,
+ 	.sb_parse_opts_str = 		selinux_parse_opts_str,
+ 
++	.dentry_init_security =		selinux_dentry_init_security,
+ 
+ 	.inode_alloc_security =		selinux_inode_alloc_security,
+ 	.inode_free_security =		selinux_inode_free_security,
+-- 
+1.8.1.4
+
