@@ -1,75 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53241 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:5883 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1423045Ab3CVUyf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Mar 2013 16:54:35 -0400
-Date: Fri, 22 Mar 2013 16:54:34 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kent Overstreet <koverstreet@google.com>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Zach Brown <zab@redhat.com>
-Subject: Re: [PATCH] nfsd: fix bad offset use
-Message-ID: <20130322205434.GB14438@fieldses.org>
-References: <1363976304-26093-1-git-send-email-koverstreet@google.com>
- <20130322205353.GA14438@fieldses.org>
+	id S1751160Ab3C1ToC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Mar 2013 15:44:02 -0400
+Message-ID: <51549D74.1060703@redhat.com>
+Date: Thu, 28 Mar 2013 15:43:48 -0400
+From: Jeff Darcy <jdarcy@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130322205353.GA14438@fieldses.org>
+To: Anand Avati <anand.avati@gmail.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Eric Sandeen <sandeen@redhat.com>, linux-nfs@vger.kernel.org,
+        "Theodore Ts'o" <tytso@mit.edu>, Zach Brown <zab@redhat.com>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        linux-ext4@vger.kernel.org, gluster-devel@nongnu.org
+Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
+References: <20130213224720.GE5938@thunk.org> <CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com> <20130213230511.GW14195@fieldses.org> <20130213234430.GF5938@thunk.org> <CAFboF2zS+YAa0uUxMFUAbqgPh3Kb4xZu40WUjLyGn8qPoP+Oyw@mail.gmail.com> <5151BD5F.30607@itwm.fraunhofer.de> <5151C33E.2070008@redhat.com> <20130328140744.GA4989@thunk.org> <20130328175205.GD16651@lenny.home.zabbo.net> <CAFboF2ztc06G00z8ga35NrxgnT2YgBiDECgU_9kvVA_Go1_Bww@mail.gmail.com> <20130328183153.GG7080@fieldses.org> <CAFboF2w49Lc0vM0SerbJfL9_RuSHgEU+y_Yk7F4pLxeiqu+KRg@mail.gmail.com>
+In-Reply-To: <CAFboF2w49Lc0vM0SerbJfL9_RuSHgEU+y_Yk7F4pLxeiqu+KRg@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 22, 2013 at 04:53:53PM -0400, J. Bruce Fields wrote:
-> On Fri, Mar 22, 2013 at 11:18:24AM -0700, Kent Overstreet wrote:
-> > vfs_writev() updates the offset argument - but the code then passes the
-> > offset to vfs_fsync_range(). Since offset now points to the offset after
-> > what was just written, this is probably not what was intended
-> 
-> Whoops--thanks!  Looks like this was introduced by my
-> face15025ffdf664de95e86ae831544154d26c9c "nfsd: use vfs_fsync_range(),
-> not O_SYNC, for stable writes", in 3.8.
-> 
-> I'll queue up for 3.9 and stable.
+On 03/28/2013 02:49 PM, Anand Avati wrote:
+> Yes, it should, based on the theory of how ext4 was generating the
+> 63bits. But Jeff's test finds that the experiment is not matching the
+> theory.
 
-(By the way, out of curiosity: how did you stumble across this?)
+FWIW, I was able to re-run my test in between stuff related to That
+Other Problem.  What seems to be happening is that we read correctly
+until just after d_off 0x4000000000000000, then we suddenly wrap around
+- not to the very first d_off we saw, but to a pretty early one (e.g.
+0x0041b6340689a32e).  This is all on a single brick, BTW, so it's pretty
+easy to line up the back-end and front-end d_off values which match
+perfectly up to this point.
 
---b.
+I haven't had a chance to ponder what this all means and debug it
+further.  Hopefully I'll be able to do so soon, but I figured I'd
+mention it in case something about those numbers rang a bell.
 
-> 
-> --b.
-> 
-> > 
-> > Signed-off-by: Kent Overstreet <koverstreet@google.com>
-> > Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> > Cc: Al Viro <viro@zeniv.linux.org.uk>
-> > Cc: "Eric W. Biederman" <ebiederm@xmission.com>
-> > Cc: Zach Brown <zab@redhat.com>
-> > ---
-> >  fs/nfsd/vfs.c | 3 ++-
-> >  1 file changed, 2 insertions(+), 1 deletion(-)
-> > 
-> > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> > index 2a7eb53..2b2e239 100644
-> > --- a/fs/nfsd/vfs.c
-> > +++ b/fs/nfsd/vfs.c
-> > @@ -1013,6 +1013,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
-> >  	int			host_err;
-> >  	int			stable = *stablep;
-> >  	int			use_wgather;
-> > +	loff_t			pos = offset;
-> >  
-> >  	dentry = file->f_path.dentry;
-> >  	inode = dentry->d_inode;
-> > @@ -1025,7 +1026,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
-> >  
-> >  	/* Write the data. */
-> >  	oldfs = get_fs(); set_fs(KERNEL_DS);
-> > -	host_err = vfs_writev(file, (struct iovec __user *)vec, vlen, &offset);
-> > +	host_err = vfs_writev(file, (struct iovec __user *)vec, vlen, &pos);
-> >  	set_fs(oldfs);
-> >  	if (host_err < 0)
-> >  		goto out_nfserr;
-> > -- 
-> > 1.8.1.3
-> > 
+
