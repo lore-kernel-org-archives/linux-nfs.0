@@ -1,76 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:15159 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751724Ab3CRKvF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Mar 2013 06:51:05 -0400
-Message-ID: <5146F0A6.2090103@cn.fujitsu.com>
-Date: Mon, 18 Mar 2013 18:47:02 +0800
-From: chenditang <chendt.fnst@cn.fujitsu.com>
+Received: from fieldses.org ([174.143.236.118]:55459 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754523Ab3C1Sb6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Mar 2013 14:31:58 -0400
+Date: Thu, 28 Mar 2013 14:31:53 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Anand Avati <anand.avati@gmail.com>
+Cc: Zach Brown <zab@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
+        Eric Sandeen <sandeen@redhat.com>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        gluster-devel@nongnu.org
+Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
+Message-ID: <20130328183153.GG7080@fieldses.org>
+References: <20130213224720.GE5938@thunk.org>
+ <CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com>
+ <20130213230511.GW14195@fieldses.org>
+ <20130213234430.GF5938@thunk.org>
+ <CAFboF2zS+YAa0uUxMFUAbqgPh3Kb4xZu40WUjLyGn8qPoP+Oyw@mail.gmail.com>
+ <5151BD5F.30607@itwm.fraunhofer.de>
+ <5151C33E.2070008@redhat.com>
+ <20130328140744.GA4989@thunk.org>
+ <20130328175205.GD16651@lenny.home.zabbo.net>
+ <CAFboF2ztc06G00z8ga35NrxgnT2YgBiDECgU_9kvVA_Go1_Bww@mail.gmail.com>
 MIME-Version: 1.0
-To: Benny Halevy <bhalevy@tonian.com>
-CC: linux-nfs@vger.kernel.org, Trond Myklebust <trond.myklebust@netapp.com>
-Subject: Re: pnfs: WRITE operation will not send LAYOUTCOMMI OP to MDS if
- use filelayout
-References: <5146BE38.2060004@cn.fujitsu.com> <5146D7F6.3010607@tonian.com>
-In-Reply-To: <5146D7F6.3010607@tonian.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAFboF2ztc06G00z8ga35NrxgnT2YgBiDECgU_9kvVA_Go1_Bww@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-于 2013年03月18日 17:01, Benny Halevy 写道:
-> On 2013-03-18 09:11, chenditang wrote:
->> In the recent pnfs kernel versions, WRITE operation will not send
->> LAYOUTCOMMI OP to MDS if use filelayout.
-> I presume that the file server sets NFL4_UFLG_COMMIT_THRU_MDS
-> and that the DS is returning how=FILE_SYNC and that the client
-> is implementing the behavior described in  Errata ID: 2751
-> http://www.rfc-editor.org/errata_search.php?rfc=5661
->
-> Do you have a tcp dump of client, MDS, and DS traffic?
-NFL4_UFLG_COMMIT_THRU_MDS is not set, "nfl_util" is 8192 and "commit_through_mds" is 0 to filelayout_decode_layout.
+On Thu, Mar 28, 2013 at 11:05:41AM -0700, Anand Avati wrote:
+> On Thu, Mar 28, 2013 at 10:52 AM, Zach Brown <zab@redhat.com> wrote:
+> 
+> > On Thu, Mar 28, 2013 at 10:07:44AM -0400, Theodore Ts'o wrote:
+> > > On Tue, Mar 26, 2013 at 10:48:14AM -0500, Eric Sandeen wrote:
+> > > > > We don't have reached a conclusion so far, do we? What about the
+> > > > > ioctl approach, but a bit differently? Would it work to specify the
+> > > > > allowed upper bits for ext4 (for example 16 additional bit) and the
+> > > > > remaining part for gluster? One of the mails had the calculation
+> > > > > formula:
+> > > >
+> > > > I did throw together an ioctl patch last week, but I think Anand has a
+> > new
+> > > > approach he's trying out which won't require ext4 code changes.  I'll
+> > let
+> > > > him reply when he has a moment.  :)
+> > >
+> > > Any update about whether Gluster can address this without needing the
+> > > ioctl patch?  Or should we push the ioctl patch into ext4 for the next
+> > > merge window?
+> >
+> > They're testing a work-around:
+> >
+> >   http://review.gluster.org/#change,4711
+> >
+> > I'm not sure if they've decided that they're going to go with it, or
+> > not.
+> >
+> 
+> Jeff reported that the approach did not work in his testing. I haven't had
+> a chance to look into the failure yet. Independent of the fix, it would
+> certainly be good have the ioctl() support
 
->> In nfs_write_rpcsetup function, the value of the variable 'stable' will
->> always be NFS_FILE_SYNC(ncommit is 0). so NFS_INO_LAYOUTCOMMIT
->> flag will not be set.
-> What's the value of the "how" arg to nfs_write_rpcsetup that you see?
-> At any rate, if you look at filelayout_set_layoutcommit, it will not
-> call pnfs_set_layoutcommit in the following cases:
->
->          if (FILELAYOUT_LSEG(hdr->lseg)->commit_through_mds ||
->              wdata->res.verf->committed == NFS_FILE_SYNC)
->                  return;
-"how" is 32, and "cinfo->mds->ncommit" is 0. pnfs_set_layoutcommit has 
-not beeb called.
-I think "cinfo->mds->ncommit" can not be used here.
+The one advantage of your scheme is that it keeps more of the hash bits;
+the chance of 31-bit cookie collisions is much higher.
 
-I dump the stack, and the initial value of "ncommit" is 0, then it to be 
-used in nfs_write_rpcsetup function,
-but "ncommit++" in nfs_writeback_release_common function(if 
-NFS_FILE_SYNC is not set).
+> Samba could use it too, if it wanted.
 
-static const struct rpc_call_ops nfs_write_common_ops = {
-.rpc_call_prepare = nfs_write_prepare,
-.rpc_call_done = nfs_writeback_done_common,
-.rpc_release = nfs_writeback_release_common,
-};
+It'd be useful to understand their situation.
 
-The code processes:
-step1: init_once --> nfsi->commit_info.ncommit = 0;
-setp2: nfs_flush_one --> nfs_write_rpcsetup
-setp3: nfs_writeback_done --> nfs_writeback_done --> 
-filelayout_write_done_cb --> filelayout_set_layoutcommit
-setp4: nfs_writeback_release_common--> ...-->nfs_write_completion --> 
-.... --> cinfo->mds->ncommit++;
->
->
-> Benny
->
->> The value of the variable ncommit' will be ++ in the later process
->> (nfs_writeback_release_common function).
->>
->>
->> Thanks!
->>
-
-
-
+--b.
