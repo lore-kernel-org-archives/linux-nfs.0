@@ -1,89 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:47470 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:21798 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754360Ab3C3XNI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 30 Mar 2013 19:13:08 -0400
-Message-ID: <5157717D.50304@RedHat.com>
-Date: Sat, 30 Mar 2013 19:13:01 -0400
+	id S1756242Ab3C1N5d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Mar 2013 09:57:33 -0400
 From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
         "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
         Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>,
-        Stephen Smalley <sds@epoch.ncsc.mil>, Eric Paris <eparis@redhat.com>
-Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
-References: <1364478845-29796-1-git-send-email-SteveD@redhat.com> <1364478845-29796-14-git-send-email-SteveD@redhat.com> <20130328161444.GF7080@fieldses.org>
-In-Reply-To: <20130328161444.GF7080@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 14/14] Kconfig: Add Kconfig entry for Labeled NFS V4 server
+Date: Thu, 28 Mar 2013 09:54:05 -0400
+Message-Id: <1364478845-29796-15-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
+References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Steve Dickson <steved@redhat.com>
 
+This patch adds the NFSd_V4_SECURITY_LABEL entry which
+enables security label support for the NFSv4 server
 
-On 28/03/13 12:14, J. Bruce Fields wrote:
-> On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
->> From: David Quigley <dpquigl@davequigley.com>
->>
->> This patch adds the ability to encode and decode file labels on the server for
->> the purpose of sending them to the client and also to process label change
->> requests from the client.
->>
->> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
->> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
->> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
->> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
->> ---
->>  fs/nfsd/nfs4proc.c |  41 +++++++++++++++++++
->>  fs/nfsd/nfs4xdr.c  | 116 ++++++++++++++++++++++++++++++++++++++++++++++++++---
->>  fs/nfsd/nfsd.h     |   6 ++-
->>  fs/nfsd/vfs.c      |  29 ++++++++++++++
->>  fs/nfsd/vfs.h      |   2 +
->>  fs/nfsd/xdr4.h     |   3 ++
->>  6 files changed, 191 insertions(+), 6 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->> index ae73175..bb17589 100644
->> --- a/fs/nfsd/nfs4proc.c
->> +++ b/fs/nfsd/nfs4proc.c
->> @@ -42,6 +42,36 @@
->>  #include "current_stateid.h"
->>  #include "netns.h"
->>  
->> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
->> +#include <linux/security.h>
->> +
->> +static inline void
->> +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
->> +{
->> +	struct inode *inode = resfh->fh_dentry->d_inode;
->> +	int status;
->> +
->> +	mutex_lock(&inode->i_mutex);
->> +	status = security_inode_setsecctx(resfh->fh_dentry,
->> +		label->label, label->len);
->> +	mutex_unlock(&inode->i_mutex);
->> +
->> +	if (status)
->> +		/*
->> +		 * We should probably fail the whole open at this point,
->> +		 * but we've already created or opened the file, so it's 
->> +		 * too late; So this seems the least of evils:
->> +		 */
->> +		bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
-> 
-> Is there any way to avoid this?
-> 
-> How does the vfs open code handle this?  It has to be able to set a
-> security contexts atomically on open(O_CREAT), doesn't it?
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ fs/nfsd/Kconfig | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
-The security guys are going have to answer this definitely but from
-greping through the code, it appears the permission checking on 
-the path to the object is done before the object is created. 
+diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+index 430b687..c37a046 100644
+--- a/fs/nfsd/Kconfig
++++ b/fs/nfsd/Kconfig
+@@ -81,6 +81,22 @@ config NFSD_V4
+ 
+ 	  If unsure, say N.
+ 
++config NFSD_V4_SECURITY_LABEL
++	bool "Provide Security Label support for NFSv4 server"
++	depends on NFSD_V4 && SECURITY
++	help
++
++	Say Y here if you want enable fine-grained security label attribute
++	support for NFS version 4.  Security labels allow security modules like
++	SELinux and Smack to label files to facilitate enforcement of their policies.
++	Without this an NFSv4 mount will have the same label on each file.
++
++	If you do not wish to enable fine-grained security labels SELinux or
++	Smack policies on NFSv4 files, say N.
++
++	WARNING: there is still a chance of backwards-incompatible protocol changes.  
++	For now we recommend "Y" only for developers and testers."
++
+ config NFSD_FAULT_INJECTION
+ 	bool "NFS server manual fault injection"
+ 	depends on NFSD_V4 && DEBUG_KERNEL
+-- 
+1.8.1.4
 
-Stephen, Eric?? 
-
-steved.
