@@ -1,76 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:44852 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755004Ab3CETJ2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Mar 2013 14:09:28 -0500
-Date: Tue, 5 Mar 2013 11:09:23 -0800
-From: Tejun Heo <tj@kernel.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Oleg Nesterov <oleg@redhat.com>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Ming Lei <ming.lei@canonical.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Ingo Molnar <mingo@redhat.com>
-Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-Message-ID: <20130305190923.GI12795@htj.dyndns.org>
-References: <CACVXFVMKN6aeCvJcn7dyuonJYJDfYxWeW5KE6gfKRKJKFj2M4A@mail.gmail.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9286AD113@sacexcmbx05-prd.hq.netapp.com>
- <20130304092310.1d21100c@tlielax.poochiereds.net>
- <CACBanvrc0orXGZ1v+gKHtVPKWYKGEFx46dwoDCjTU78+nPtZyg@mail.gmail.com>
- <20130304205307.GA13527@redhat.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com>
- <20130305082308.6607d4db@tlielax.poochiereds.net>
- <20130305174648.GF12795@htj.dyndns.org>
- <20130305174954.GG12795@htj.dyndns.org>
- <20130305140312.243cb094@tlielax.poochiereds.net>
+Received: from mail-ve0-f175.google.com ([209.85.128.175]:63817 "EHLO
+	mail-ve0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755835Ab3C1OHW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Mar 2013 10:07:22 -0400
+Received: by mail-ve0-f175.google.com with SMTP id pb11so5084760veb.34
+        for <linux-nfs@vger.kernel.org>; Thu, 28 Mar 2013 07:07:21 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130305140312.243cb094@tlielax.poochiereds.net>
+In-Reply-To: <1364479112.11160.0.camel@leira.trondhjem.org>
+References: <CAK1jPnLSFxLwSbe14mMbrois6bwFzbG_Q1kudBuNyywj70s7LA@mail.gmail.com>
+	<1364479112.11160.0.camel@leira.trondhjem.org>
+Date: Thu, 28 Mar 2013 22:07:21 +0800
+Message-ID: <CAK1jPnJYJyC-62uXzJ4er2JZ0Zws1RN+bZ63TchCAVYgW5wNeQ@mail.gmail.com>
+Subject: Re: [PATCH] sunrpc: the cache_detail in cache_is_valid is unused any more
+From: chaoting fan <tingchaofan@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello, Jeff.
+the cache_detail(*detail) in function cache_is_valid is unused any more.
 
-On Tue, Mar 05, 2013 at 02:03:12PM -0500, Jeff Layton wrote:
-> Sounds intriguing...
-> 
-> I'm not sure what this really means for something like NFS though. How
-> would you envision this working when we have long running syscalls that
-> might sit waiting in the kernel indefinitely?
+Signed-off-by: fanchaoting <fanchaoting@cn.fujitsu.com>
 
-I think it is the same problem as being able to handle SIGKILL in
-responsive manner.  It could be tricky to implement for nfs but it at
-least doesn't have to solve the problem twice.
+---
+ net/sunrpc/cache.c |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-> Here's my blue-sky, poorly-thought-out idea...
-> 
-> We could add a signal (e.g. SIGFREEZE) that allows the sleeps in
-> NFS/RPC layer to be interrupted. Those would return back toward
-> userland with a particular type of error (sort of like ERESTARTSYS).
-> 
-> Before returning from the kernel though, we could freeze the process.
-> When it wakes up, then we could go back down and retry the call again
-> (much like an ERESTARTSYS kind of thing).
-> 
-> The tricky part here is that we'd need to distinguish between the case
-> where we caught SIGFREEZE before sending an RPC vs. after. If we sent
-> the call before freezing, then we don't want to resend it again. It
-> might be a non-idempotent operation.
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 9afa439..adbbc19 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -201,7 +201,7 @@ static int cache_make_upcall(struct cache_detail
+*cd, struct cache_head *h)
+ 	return cd->cache_upcall(cd, h);
+ }
 
-So, yeah, you are thinking pretty much the same as I'm.
+-static inline int cache_is_valid(struct cache_detail *detail, struct
+cache_head *h)
++static inline int cache_is_valid(struct cache_head *h)
+ {
+ 	if (!test_bit(CACHE_VALID, &h->flags))
+ 		return -EAGAIN;
+@@ -227,7 +227,7 @@ static int try_to_negate_entry(struct cache_detail
+*detail, struct cache_head *h
+ 	int rv;
 
-> Sounds horrific to code up though... :)
+ 	write_lock(&detail->hash_lock);
+-	rv = cache_is_valid(detail, h);
++	rv = cache_is_valid(h);
+ 	if (rv != -EAGAIN) {
+ 		write_unlock(&detail->hash_lock);
+ 		return rv;
+@@ -260,7 +260,7 @@ int cache_check(struct cache_detail *detail,
+ 	long refresh_age, age;
 
-I don't know the details of nfs but those events could essentially be
-signaling that the system is gonna lose power.  I think it would be a
-good idea to solve it.
+ 	/* First decide return status as best we can */
+-	rv = cache_is_valid(detail, h);
++	rv = cache_is_valid(h);
 
-Thanks.
-
+ 	/* now see if we want to start an upcall */
+ 	refresh_age = (h->expiry_time - h->last_refresh);
+@@ -293,7 +293,7 @@ int cache_check(struct cache_detail *detail,
+ 			 * Request was not deferred; handle it as best
+ 			 * we can ourselves:
+ 			 */
+-			rv = cache_is_valid(detail, h);
++			rv = cache_is_valid(h);
+ 			if (rv == -EAGAIN)
+ 				rv = -ETIMEDOUT;
+ 		}
 -- 
-tejun
+1.7.10.4
