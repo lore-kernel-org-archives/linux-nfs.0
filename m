@@ -1,50 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f47.google.com ([209.85.160.47]:33702 "EHLO
-	mail-pb0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759259Ab3CZMQM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Mar 2013 08:16:12 -0400
-Received: by mail-pb0-f47.google.com with SMTP id rp2so4709274pbb.34
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Mar 2013 05:16:11 -0700 (PDT)
-Date: Tue, 26 Mar 2013 20:15:01 +0800
-From: Yanchuan Nian <ycnian@gmail.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: allow the v4.1 callback thread to freeze
-Message-ID: <20130326121049.GB10546@localhost.localdomain>
-References: <1364212797-26097-1-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:11195 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751259Ab3C1RwQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Mar 2013 13:52:16 -0400
+Date: Thu, 28 Mar 2013 10:52:05 -0700
+From: Zach Brown <zab@redhat.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Eric Sandeen <sandeen@redhat.com>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        Anand Avati <anand.avati@gmail.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, gluster-devel@nongnu.org
+Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
+Message-ID: <20130328175205.GD16651@lenny.home.zabbo.net>
+References: <20130213222052.GD5938@thunk.org>
+ <20130213224141.GU14195@fieldses.org>
+ <20130213224720.GE5938@thunk.org>
+ <CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com>
+ <20130213230511.GW14195@fieldses.org>
+ <20130213234430.GF5938@thunk.org>
+ <CAFboF2zS+YAa0uUxMFUAbqgPh3Kb4xZu40WUjLyGn8qPoP+Oyw@mail.gmail.com>
+ <5151BD5F.30607@itwm.fraunhofer.de>
+ <5151C33E.2070008@redhat.com>
+ <20130328140744.GA4989@thunk.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=gb2312
-In-Reply-To: <1364212797-26097-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130328140744.GA4989@thunk.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 25, 2013 at 07:59:57AM -0400, Jeff Layton wrote:
-> The v4.1 callback thread has set_freezable() at the top, but it doesn't
-> ever try to freeze within the loop. Have it call try_to_freeze() at the
-> top of the loop. If a freeze event occurs, recheck kthread_should_stop()
-> after thawing.
+On Thu, Mar 28, 2013 at 10:07:44AM -0400, Theodore Ts'o wrote:
+> On Tue, Mar 26, 2013 at 10:48:14AM -0500, Eric Sandeen wrote:
+> > > We don't have reached a conclusion so far, do we? What about the
+> > > ioctl approach, but a bit differently? Would it work to specify the
+> > > allowed upper bits for ext4 (for example 16 additional bit) and the
+> > > remaining part for gluster? One of the mails had the calculation
+> > > formula:
+> > 
+> > I did throw together an ioctl patch last week, but I think Anand has a new
+> > approach he's trying out which won't require ext4 code changes.  I'll let
+> > him reply when he has a moment.  :)
 > 
-> Reported-by: Yanchuan Nian <ycnian@gmail.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfs/callback.c | 3 +++
->  1 file changed, 3 insertions(+)
-> 
-> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> index 5088b57..cff089a 100644
-> --- a/fs/nfs/callback.c
-> +++ b/fs/nfs/callback.c
-> @@ -125,6 +125,9 @@ nfs41_callback_svc(void *vrqstp)
->  	set_freezable();
->  
->  	while (!kthread_should_stop()) {
-> +		if (try_to_freeze())
-> +			continue;
-> +
->  		prepare_to_wait(&serv->sv_cb_waitq, &wq, TASK_INTERRUPTIBLE);
->  		spin_lock_bh(&serv->sv_cb_lock);
->  		if (!list_empty(&serv->sv_cb_list)) {
+> Any update about whether Gluster can address this without needing the
+> ioctl patch?  Or should we push the ioctl patch into ext4 for the next
+> merge window?
 
-Tested, and the client suspends successfully now.
-> -- 
-> 1.7.11.7
+They're testing a work-around:
+
+  http://review.gluster.org/#change,4711
+
+I'm not sure if they've decided that they're going to go with it, or
+not.
+
+- z
