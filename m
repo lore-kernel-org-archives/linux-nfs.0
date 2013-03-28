@@ -1,98 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:19305 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:41366 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752994Ab3CKSyi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Mar 2013 14:54:38 -0400
-Date: Mon, 11 Mar 2013 14:54:34 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Pavel Shilovsky <piastry@etersoft.ru>
-Cc: linux-kernel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        wine-devel@winehq.org
-Subject: Re: [PATCH v3 6/7] NFSv4: Add O_DENY* open flags support
-Message-ID: <20130311145434.707f5ed1@corrin.poochiereds.net>
-In-Reply-To: <1362065133-9490-7-git-send-email-piastry@etersoft.ru>
-References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
-	<1362065133-9490-7-git-send-email-piastry@etersoft.ru>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1756215Ab3C1QKK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Mar 2013 12:10:10 -0400
+Date: Thu, 28 Mar 2013 12:10:07 -0400
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
+Message-ID: <20130328161006.GE7080@fieldses.org>
+References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
+ <1364478845-29796-14-git-send-email-SteveD@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1364478845-29796-14-git-send-email-SteveD@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 28 Feb 2013 19:25:32 +0400
-Pavel Shilovsky <piastry@etersoft.ru> wrote:
+On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
+> @@ -888,6 +924,11 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  					    setattr->sa_acl);
+>  	if (status)
+>  		goto out;
+> +	if (setattr->sa_label != NULL)
+> +		status = nfsd4_set_nfs4_label(rqstp, &cstate->current_fh,
+> +				setattr->sa_label);
 
-> by passing these flags to NFSv4 open request.
-> 
-> Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
-> ---
->  fs/nfs/nfs4xdr.c | 24 ++++++++++++++++++++----
->  1 file changed, 20 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 26b1439..58ddc74 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -1325,7 +1325,8 @@ static void encode_lookup(struct xdr_stream *xdr, const struct qstr *name, struc
->  	encode_string(xdr, name->len, name->name);
+I'm getting an error from setattr over NFS4.0, even when I don't have
+nfs4_label support compiled in, I'm not sure why....  Maybe sa_label
+isn't being initialized to NULL in that case?
+
+(Reproduceable with pynfs 4.0 SATT13.)
+
+...
+> index 2b2e239..b2b2e5a 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -28,6 +28,7 @@
+>  #include <asm/uaccess.h>
+>  #include <linux/exportfs.h>
+>  #include <linux/writeback.h>
+> +#include <linux/security.h>
+>  
+>  #ifdef CONFIG_NFSD_V3
+>  #include "xdr3.h"
+> @@ -621,6 +622,34 @@ int nfsd4_is_junction(struct dentry *dentry)
+>  		return 0;
+>  	return 1;
 >  }
->  
-> -static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode)
-> +static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode,
-> +				int open_flags)
->  {
->  	__be32 *p;
->  
-> @@ -1343,7 +1344,22 @@ static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode)
->  	default:
->  		*p++ = cpu_to_be32(0);
->  	}
-> -	*p = cpu_to_be32(0);		/* for linux, share_deny = 0 always */
-> +	if (open_flags & O_DENYMAND) {
+> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> +__be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> +		struct nfs4_label *label)
+> +{
+> +	__be32 error;
+> +	int host_error;
+> +	struct dentry *dentry;
+> +
+> +	/* XXX: should we have a MAY_SSECCTX? */
+> +	error = fh_verify(rqstp, fhp, 0 /* S_IFREG */, NFSD_MAY_SATTR);
+> +	if (error)
+> +		return error;
+> +
+> +	dentry = fhp->fh_dentry;
+> +
+> +	mutex_lock(&dentry->d_inode->i_mutex);
+> +	host_error = security_inode_setsecctx(dentry, label->label, label->len);
+> +	mutex_unlock(&dentry->d_inode->i_mutex);
+> +	return nfserrno(host_error);
+> +}
+> +#else
+> +__be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> +		struct nfs4_label *label)
+> +{
+> +	return -EOPNOTSUPP;
 
+That's returning a kernel error number to an nfs client.  You want
+something else, maybe nfserr_attrnotsupp?
 
-As Bruce mentioned, I think a mount option to enable this on a per-fs
-basis would be a better approach than this new O_DENYMAND flag. 
+But this actually should have been caught earlier by
+check_attr_support().
 
-
-> +		switch (open_flags & (O_DENYREAD|O_DENYWRITE)) {
-> +		case O_DENYREAD:
-> +			*p = cpu_to_be32(NFS4_SHARE_DENY_READ);
-> +			break;
-> +		case O_DENYWRITE:
-> +			*p = cpu_to_be32(NFS4_SHARE_DENY_WRITE);
-> +			break;
-> +		case O_DENYREAD|O_DENYWRITE:
-> +			*p = cpu_to_be32(NFS4_SHARE_DENY_BOTH);
-> +			break;
-> +		default:
-> +			*p = cpu_to_be32(0);
-> +		}
-> +	} else
-> +		*p = cpu_to_be32(0);
->  }
->  
->  static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_openargs *arg)
-> @@ -1354,7 +1370,7 @@ static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_opena
->   * owner 4 = 32
->   */
->  	encode_nfs4_seqid(xdr, arg->seqid);
-> -	encode_share_access(xdr, arg->fmode);
-> +	encode_share_access(xdr, arg->fmode, arg->open_flags);
->  	p = reserve_space(xdr, 36);
->  	p = xdr_encode_hyper(p, arg->clientid);
->  	*p++ = cpu_to_be32(24);
-> @@ -1491,7 +1507,7 @@ static void encode_open_downgrade(struct xdr_stream *xdr, const struct nfs_close
->  	encode_op_hdr(xdr, OP_OPEN_DOWNGRADE, decode_open_downgrade_maxsz, hdr);
->  	encode_nfs4_stateid(xdr, arg->stateid);
->  	encode_nfs4_seqid(xdr, arg->seqid);
-> -	encode_share_access(xdr, arg->fmode);
-> +	encode_share_access(xdr, arg->fmode, 0);
->  }
->  
->  static void
-
-
-Other than that, this seems reasonable.
-
-Acked-by: Jeff Layton <jlayton@redhat.com>
+--b.
