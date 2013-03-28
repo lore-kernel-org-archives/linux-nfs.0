@@ -1,55 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f173.google.com ([209.85.216.173]:33186 "EHLO
-	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751354Ab3CFVgn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Mar 2013 16:36:43 -0500
-Date: Wed, 6 Mar 2013 13:36:36 -0800
-From: Tejun Heo <tj@kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Oleg Nesterov <oleg@redhat.com>, Jeff Layton <jlayton@redhat.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Ming Lei <ming.lei@canonical.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Ingo Molnar <mingo@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>
-Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-Message-ID: <20130306213636.GP1227@htj.dyndns.org>
-References: <20130305174954.GG12795@htj.dyndns.org>
- <20130305140312.243cb094@tlielax.poochiereds.net>
- <20130305190923.GI12795@htj.dyndns.org>
- <20130305183941.19ff39ce@tlielax.poochiereds.net>
- <20130305234700.GE1227@htj.dyndns.org>
- <20130306181608.GA18687@redhat.com>
- <20130306185304.GM1227@htj.dyndns.org>
- <CA+55aFwDogteVd=vwGHXDSASnga-nZZnKaQz9aO1yBU2CPKSbA@mail.gmail.com>
- <20130306212452.GO1227@htj.dyndns.org>
- <CA+55aFy49AWptMcvEzJxg95ikf-dC+-vcCPq-cnaCCwje3tyoQ@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CA+55aFy49AWptMcvEzJxg95ikf-dC+-vcCPq-cnaCCwje3tyoQ@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:13449 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756109Ab3C1N50 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Mar 2013 09:57:26 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 05/14] NFSv4: Add label recommended attribute and NFSv4 flags
+Date: Thu, 28 Mar 2013 09:53:56 -0400
+Message-Id: <1364478845-29796-6-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
+References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 06, 2013 at 01:31:10PM -0800, Linus Torvalds wrote:
-> So I do agree that we probably have *too* many of the stupid "let's
-> check if we can freeze", and I suspect that the NFS code should get
-> rid of the "freezable_schedule()" that is causing this warning
-> (because I also agree that you should *not* freeze while holding
-> locks, because it really can cause deadlocks), but I do suspect that
-> network filesystems do need to have a few places where they check for
-> freezing on their own... Exactly because freezing isn't *quite* like a
-> signal.
+From: David Quigley <dpquigl@davequigley.com>
 
-Well, I don't really know much about nfs so I can't really tell, but
-for most other cases, dealing with freezing like a signal should work
-fine from what I've seen although I can't be sure before actually
-trying.  Trond, Bruce, can you guys please chime in?
+This patch adds several new flags to allow the NFS client and server to
+determine if this attribute is supported and if it is being sent over the wire.
 
-Thanks.
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ include/linux/nfs4.h      | 1 +
+ include/linux/nfs_fs_sb.h | 1 +
+ include/linux/nfs_xdr.h   | 4 +++-
+ 3 files changed, 5 insertions(+), 1 deletion(-)
 
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 7b8fc73..0fa29f4 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -377,6 +377,7 @@ enum lock_type4 {
+ #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
+ #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
+ #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
++#define FATTR4_WORD2_SECURITY_LABEL     (1UL << 17)
+ #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
+ 
+ /* MDS threshold bitmap bits */
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 6c6ed15..d507357 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -197,5 +197,6 @@ struct nfs_server {
+ #define NFS_CAP_MTIME		(1U << 13)
+ #define NFS_CAP_POSIX_LOCK	(1U << 14)
+ #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
++#define NFS_CAP_SECURITY_LABEL	(1U << 16)
+ 
+ #endif
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 4b993d3..9f2dba3 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -104,6 +104,7 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
+ #define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
+ #define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
++#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 25)
+ 
+ #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
+ 		| NFS_ATTR_FATTR_MODE \
+@@ -123,7 +124,8 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
+ 		| NFS_ATTR_FATTR_SPACE_USED)
+ #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
+-		| NFS_ATTR_FATTR_SPACE_USED)
++		| NFS_ATTR_FATTR_SPACE_USED \
++		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
+ 
+ /*
+  * Info on the file system
 -- 
-tejun
+1.8.1.4
+
