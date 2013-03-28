@@ -1,200 +1,174 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:2957 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:32309 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932801Ab3CYUMm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Mar 2013 16:12:42 -0400
-Message-ID: <5150AFB7.6010508@RedHat.com>
-Date: Mon, 25 Mar 2013 16:12:39 -0400
+	id S1756055Ab3C1N5Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Mar 2013 09:57:25 -0400
 From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 10/11] NFSv4.1: Enable open-by-filehandle
-References: <1363698463-3681-9-git-send-email-Trond.Myklebust@netapp.com> <1363698463-3681-10-git-send-email-Trond.Myklebust@netapp.com> <20130319140901.GB7912@fieldses.org> <1363702570.7515.6.camel@leira.trondhjem.org> <20130319143236.GD7912@fieldses.org> <1363704100.7515.12.camel@leira.trondhjem.org> <20130319145035.GE7912@fieldses.org> <1363706205.7515.43.camel@leira.trondhjem.org> <20130319152304.GG7912@fieldses.org> <1363711037.7515.44.camel@leira.trondhjem.org> <20130321152516.GA28922@fieldses.org>
-In-Reply-To: <20130321152516.GA28922@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 04/14] SELinux: Add new labeling type native labels
+Date: Thu, 28 Mar 2013 09:53:55 -0400
+Message-Id: <1364478845-29796-5-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
+References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: David Quigley <dpquigl@davequigley.com>
 
+There currently doesn't exist a labeling type that is adequate for use with
+labeled NFS. Since NFS doesn't really support xattrs we can't use the use xattr
+labeling behavior. For this we developed a new labeling type. The native
+labeling type is used solely by NFS to ensure NFS inodes are labeled at runtime
+by the NFS code instead of relying on the SELinux security server on the client
+end.
 
-On 21/03/13 11:25, J. Bruce Fields wrote:
-> On Tue, Mar 19, 2013 at 04:37:17PM +0000, Myklebust, Trond wrote:
->> On Tue, 2013-03-19 at 11:23 -0400, J. Bruce Fields wrote:
->>> On Tue, Mar 19, 2013 at 03:16:46PM +0000, Myklebust, Trond wrote:
->>>> On Tue, 2013-03-19 at 10:50 -0400, J. Bruce Fields wrote:
->>>>> On Tue, Mar 19, 2013 at 02:41:42PM +0000, Myklebust, Trond wrote:
->>>>>> On Tue, 2013-03-19 at 10:32 -0400, J. Bruce Fields wrote:
->>>>>>> (Sorry for the digression, I was just trying to decide whether I can get
->>>>>>> away with turning on 4.1 by default before implementing SP4_MACH_CRED or
->>>>>>> GSS on the backchannel....)
->>>>>>
->>>>>> If you don't, could you please at least offer up a module parameter that
->>>>>> allows me to do that? The current thing is a PITA, since it isn't
->>>>>> supported by any distro scripts, and it requires you to switch off the
->>>>>> server in order to change the version pseudofile contents.
->>>>>
->>>>> The module parameter on its own wouldn't help with that.
->>>>>
->>>>> We could probably fix the pseudofile interface to allow changing the
->>>>> version on the fly.
->>>>>
->>>>> My vague plan was to teach rpc.nfsd to read this (and other parameters)
->>>>> from a config file, so then it'd be "vi /etc/nfsd && service nfsd
->>>>> restart" or equivalent.
->>>>>
->>>>> So is the main thing you want a more convenient interface or a way to
->>>>> change it without rebooting?
->>>>
->>>> Basically, all I want is to enable 4.1 permanently on those servers that
->>>> I want to use for NFSv4.1 testing.
->>>>
->>>> An --enable-nfs-version option for rpc.nfsd that acts together with
->>>> --no-nfs-version as a convenient interface for /proc/fs/nfsd/versions
->>>> would work fine too. All distro configuration scripts that I'm aware of
->>>> allow you to specify optional arguments to rpc.nfsd.
->>>
->>> Right, got it.  Yes, that's on my todo list.
->>>
->>> (But, of course, patches welcomed if someone wants to beat me to it.)
->>
->> Here you go...
-> 
-> Looks fine to me.--b.
-> 
->>
->> -- 
->> Trond Myklebust
->> Linux NFS client maintainer
->>
->> NetApp
->> Trond.Myklebust@netapp.com
->> www.netapp.com
-> 
->> From 3beebc45d59aa990cb57efbfb55b62f69182d40a Mon Sep 17 00:00:00 2001
->> From: Trond Myklebust <Trond.Myklebust@netapp.com>
->> Date: Tue, 19 Mar 2013 12:28:35 -0400
->> Subject: [PATCH] nfsd: Add support for the -V and --nfs-version optional
->>  arguments
->>
->> Add command line options to enable those NFS versions that are
->> currently disabled by default. We choose to use the options '-V'
->> and '--nfs-version' for compatibility with rpc.mountd.
->>
->> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ include/linux/security.h            |  3 +++
+ security/selinux/hooks.c            | 35 ++++++++++++++++++++++++++---------
+ security/selinux/include/security.h |  2 ++
+ security/selinux/ss/policydb.c      |  5 ++++-
+ 4 files changed, 35 insertions(+), 10 deletions(-)
 
-BTW, A good way to hide patch is to make it and attachment in one 
-of the last emails of a fairly lengthy thread.... 8-)
+diff --git a/include/linux/security.h b/include/linux/security.h
+index 5c4179a..9dc244e 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -61,6 +61,9 @@ struct mm_struct;
+ #define SECURITY_CAP_NOAUDIT 0
+ #define SECURITY_CAP_AUDIT 1
+ 
++/* LSM Agnostic defines for sb_set_mnt_opts */
++#define SECURITY_LSM_NATIVE_LABELS	1
++
+ struct ctl_table;
+ struct audit_krule;
+ struct user_namespace;
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index f9db857..c6d0932 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -80,6 +80,7 @@
+ #include <linux/syslog.h>
+ #include <linux/user_namespace.h>
+ #include <linux/export.h>
++#include <linux/security.h>
+ #include <linux/msg.h>
+ #include <linux/shm.h>
+ 
+@@ -283,13 +284,14 @@ static void superblock_free_security(struct super_block *sb)
+ 
+ /* The file system's label must be initialized prior to use. */
+ 
+-static const char *labeling_behaviors[6] = {
++static const char *labeling_behaviors[7] = {
+ 	"uses xattr",
+ 	"uses transition SIDs",
+ 	"uses task SIDs",
+ 	"uses genfs_contexts",
+ 	"not configured for labeling",
+ 	"uses mountpoint labeling",
++	"uses native labeling",
+ };
+ 
+ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dentry);
+@@ -677,14 +679,21 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	if (strcmp(sb->s_type->name, "proc") == 0)
+ 		sbsec->flags |= SE_SBPROC;
+ 
+-	/* Determine the labeling behavior to use for this filesystem type. */
+-	rc = security_fs_use((sbsec->flags & SE_SBPROC) ? "proc" : sb->s_type->name, &sbsec->behavior, &sbsec->sid);
+-	if (rc) {
+-		printk(KERN_WARNING "%s: security_fs_use(%s) returned %d\n",
+-		       __func__, sb->s_type->name, rc);
+-		goto out;
++	if (!sbsec->behavior) {
++		/*
++		 * Determine the labeling behavior to use for this
++		 * filesystem type.
++		 */
++		rc = security_fs_use((sbsec->flags & SE_SBPROC) ?
++					"proc" : sb->s_type->name,
++					&sbsec->behavior, &sbsec->sid);
++		if (rc) {
++			printk(KERN_WARNING
++				"%s: security_fs_use(%s) returned %d\n",
++					__func__, sb->s_type->name, rc);
++			goto out;
++		}
+ 	}
+-
+ 	/* sets the context of the superblock for the fs being mounted. */
+ 	if (fscontext_sid) {
+ 		rc = may_context_mount_sb_relabel(fscontext_sid, sbsec, cred);
+@@ -699,6 +708,11 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	 * sets the label used on all file below the mountpoint, and will set
+ 	 * the superblock context if not already set.
+ 	 */
++	if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !context_sid) {
++		sbsec->behavior = SECURITY_FS_USE_NATIVE;
++		*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
++	}
++
+ 	if (context_sid) {
+ 		if (!fscontext_sid) {
+ 			rc = may_context_mount_sb_relabel(context_sid, sbsec,
+@@ -730,7 +744,8 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	}
+ 
+ 	if (defcontext_sid) {
+-		if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
++		if (sbsec->behavior != SECURITY_FS_USE_XATTR &&
++			sbsec->behavior != SECURITY_FS_USE_NATIVE) {
+ 			rc = -EINVAL;
+ 			printk(KERN_WARNING "SELinux: defcontext option is "
+ 			       "invalid for this filesystem type\n");
+@@ -1198,6 +1213,8 @@ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dent
+ 	}
+ 
+ 	switch (sbsec->behavior) {
++	case SECURITY_FS_USE_NATIVE:
++		break;
+ 	case SECURITY_FS_USE_XATTR:
+ 		if (!inode->i_op->getxattr) {
+ 			isec->sid = sbsec->def_sid;
+diff --git a/security/selinux/include/security.h b/security/selinux/include/security.h
+index 6d38851..8fd8e18 100644
+--- a/security/selinux/include/security.h
++++ b/security/selinux/include/security.h
+@@ -169,6 +169,8 @@ int security_get_allow_unknown(void);
+ #define SECURITY_FS_USE_GENFS		4 /* use the genfs support */
+ #define SECURITY_FS_USE_NONE		5 /* no labeling support */
+ #define SECURITY_FS_USE_MNTPOINT	6 /* use mountpoint labeling */
++#define SECURITY_FS_USE_NATIVE		7 /* use native label support */
++#define SECURITY_FS_USE_MAX		7 /* Highest SECURITY_FS_USE_XXX */
+ 
+ int security_fs_use(const char *fstype, unsigned int *behavior,
+ 	u32 *sid);
+diff --git a/security/selinux/ss/policydb.c b/security/selinux/ss/policydb.c
+index 9cd9b7c..c8adde3 100644
+--- a/security/selinux/ss/policydb.c
++++ b/security/selinux/ss/policydb.c
+@@ -2168,7 +2168,10 @@ static int ocontext_read(struct policydb *p, struct policydb_compat_info *info,
+ 
+ 				rc = -EINVAL;
+ 				c->v.behavior = le32_to_cpu(buf[0]);
+-				if (c->v.behavior > SECURITY_FS_USE_NONE)
++				/* Determined at runtime, not in policy DB. */
++				if (c->v.behavior == SECURITY_FS_USE_MNTPOINT)
++					goto out;
++				if (c->v.behavior > SECURITY_FS_USE_MAX)
+ 					goto out;
+ 
+ 				rc = -ENOMEM;
+-- 
+1.8.1.4
 
-Committed! 
-
-steved.
-  
->> ---
->>  support/include/nfs/nfs.h |  1 +
->>  utils/nfsd/nfsd.c         | 26 ++++++++++++++++++++++++--
->>  utils/nfsd/nfsd.man       |  9 ++++++++-
->>  3 files changed, 33 insertions(+), 3 deletions(-)
->>
->> diff --git a/support/include/nfs/nfs.h b/support/include/nfs/nfs.h
->> index 320880e..174c2dd 100644
->> --- a/support/include/nfs/nfs.h
->> +++ b/support/include/nfs/nfs.h
->> @@ -52,6 +52,7 @@ struct nfs_fh_old {
->>  #define NFSCTL_UDPISSET(_cltbits)     ((_cltbits) & NFSCTL_UDPBIT) 
->>  #define NFSCTL_TCPISSET(_cltbits)     ((_cltbits) & NFSCTL_TCPBIT) 
->>  
->> +#define NFSCTL_VERSET(_cltbits, _v)   ((_cltbits) |= (1 << ((_v) - 1))) 
->>  #define NFSCTL_UDPSET(_cltbits)       ((_cltbits) |= NFSCTL_UDPBIT)
->>  #define NFSCTL_TCPSET(_cltbits)       ((_cltbits) |= NFSCTL_TCPBIT)
->>  
->> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
->> index 2a3f5cc..e87c0a9 100644
->> --- a/utils/nfsd/nfsd.c
->> +++ b/utils/nfsd/nfsd.c
->> @@ -38,6 +38,7 @@ static struct option longopts[] =
->>  	{ "host", 1, 0, 'H' },
->>  	{ "help", 0, 0, 'h' },
->>  	{ "no-nfs-version", 1, 0, 'N' },
->> +	{ "nfs-version", 1, 0, 'V' },
->>  	{ "no-tcp", 0, 0, 'T' },
->>  	{ "no-udp", 0, 0, 'U' },
->>  	{ "port", 1, 0, 'P' },
->> @@ -119,7 +120,7 @@ main(int argc, char **argv)
->>  	xlog_syslog(0);
->>  	xlog_stderr(1);
->>  
->> -	while ((c = getopt_long(argc, argv, "dH:hN:p:P:sTU", longopts, NULL)) != EOF) {
->> +	while ((c = getopt_long(argc, argv, "dH:hN:V:p:P:sTU", longopts, NULL)) != EOF) {
->>  		switch(c) {
->>  		case 'd':
->>  			xlog_config(D_ALL, 1);
->> @@ -175,6 +176,27 @@ main(int argc, char **argv)
->>  				exit(1);
->>  			}
->>  			break;
->> +		case 'V':
->> +			switch((c = strtol(optarg, &p, 0))) {
->> +			case 4:
->> +				if (*p == '.') {
->> +					int i = atoi(p+1);
->> +					if (i != 1) {
->> +						fprintf(stderr, "%s: unsupported minor version\n", optarg);
->> +						exit(1);
->> +					}
->> +					minorvers41 = 1;
->> +					break;
->> +				}
->> +			case 3:
->> +			case 2:
->> +				NFSCTL_VERSET(versbits, c);
->> +				break;
->> +			default:
->> +				fprintf(stderr, "%s: Unsupported version\n", optarg);
->> +				exit(1);
->> +			}
->> +			break;
->>  		case 's':
->>  			xlog_syslog(1);
->>  			xlog_stderr(0);
->> @@ -312,7 +334,7 @@ static void
->>  usage(const char *prog)
->>  {
->>  	fprintf(stderr, "Usage:\n"
->> -		"%s [-d|--debug] [-H hostname] [-p|-P|--port port] [-N|--no-nfs-version version ] [-s|--syslog] [-T|--no-tcp] [-U|--no-udp] nrservs\n", 
->> +		"%s [-d|--debug] [-H hostname] [-p|-P|--port port] [-N|--no-nfs-version version] [-V|--nfs-version version] [-s|--syslog] [-T|--no-tcp] [-U|--no-udp] nrservs\n", 
->>  		prog);
->>  	exit(2);
->>  }
->> diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
->> index 1cf9296..7de0867 100644
->> --- a/utils/nfsd/nfsd.man
->> +++ b/utils/nfsd/nfsd.man
->> @@ -47,7 +47,7 @@ This option can be used to request that
->>  .B rpc.nfsd
->>  does not offer certain versions of NFS. The current version of
->>  .B rpc.nfsd
->> -can support both NFS version 2,3 and the newer version 4.
->> +can support NFS versions 2,3,4 and the newer version 4.1.
->>  .TP
->>  .B \-s " or " \-\-syslog
->>  By default,
->> @@ -67,6 +67,13 @@ Disable
->>  .B rpc.nfsd
->>  from accepting UDP connections from clients.
->>  .TP
->> +.B \-V " or " \-\-nfs-version vers
->> +This option can be used to request that 
->> +.B rpc.nfsd
->> +offer certain versions of NFS. The current version of
->> +.B rpc.nfsd
->> +can support NFS versions 2,3,4 and the newer version 4.1.
->> +.TP
->>  .I nproc
->>  specify the number of NFS server threads. By default, just one
->>  thread is started. However, for optimum performance several threads
->> -- 
->> 1.8.1.4
->>
-> 
