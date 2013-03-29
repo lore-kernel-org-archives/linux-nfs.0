@@ -1,56 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:15472 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:58842 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751054Ab3CTXsu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Mar 2013 19:48:50 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Christopher T Vogan <cvogan@us.ibm.com>, Neil Brown <neilb@suse.de>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: What is NFSv4 READDIR doesn't return a filehandle....
-Date: Wed, 20 Mar 2013 23:48:48 +0000
-Message-ID: <1363823327.4790.78.camel@leira.trondhjem.org>
-References: <OF5A466E86.6A319FE3-ON87257B34.007C6188-86257B34.007C87C8@us.ibm.com>
-In-Reply-To: <OF5A466E86.6A319FE3-ON87257B34.007C6188-86257B34.007C87C8@us.ibm.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1756255Ab3C2SmW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Mar 2013 14:42:22 -0400
+Date: Fri, 29 Mar 2013 14:42:19 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Casey Schaufler <casey@schaufler-ca.com>
+Cc: David Quigley <dpquigl@davequigley.com>, Steve Dickson <steved@redhat.com>,
+        Trond Myklebust <trond.myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
+Message-ID: <20130329184219.GG22307@fieldses.org>
+References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
+ <1364478845-29796-14-git-send-email-SteveD@redhat.com>
+ <20130328161444.GF7080@fieldses.org>
+ <51550C03.1000107@davequigley.com>
+ <20130329144050.GB22307@fieldses.org>
+ <001ff69afd411b0318d7122bf07bd218@countercultured.net>
+ <5155B0E3.9040108@schaufler-ca.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5155B0E3.9040108@schaufler-ca.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Adding back in the Ccs...
-
-On Wed, 2013-03-20 at 17:40 -0500, Christopher T Vogan wrote:
-
-> Trond Myklebust:
-> ================
-> > > A customer has come across a server which does not return the 
-> filehandle
-> > > information (is that allowed?).
-> > 
-> > The filehandle attribute is a mandatory attribute according to RFC3530, 
-> so I believe that the answer is "no".
+On Fri, Mar 29, 2013 at 08:18:59AM -0700, Casey Schaufler wrote:
+> On 3/29/2013 7:49 AM, David Quigley wrote:
+> > On 03/29/2013 10:40, J. Bruce Fields wrote:
+> >> On Thu, Mar 28, 2013 at 11:35:31PM -0400, Dave Quigley wrote:
+> >>> On 3/28/2013 12:14 PM, J. Bruce Fields wrote:
+> >>> >On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
+> >>> >>From: David Quigley <dpquigl@davequigley.com>
+> >>> >>
+> >>> >>This patch adds the ability to encode and decode file labels on
+> >>> the server for
+> >>> >>the purpose of sending them to the client and also to process
+> >>> label change
+> >>> >>requests from the client.
+> >>> >>
+> >>> >>Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> >>> >>Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> >>> >>Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> >>> >>Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+> >>> >>---
+> >>> >>  fs/nfsd/nfs4proc.c |  41 +++++++++++++++++++
+> >>> >>  fs/nfsd/nfs4xdr.c  | 116
+> >>> ++++++++++++++++++++++++++++++++++++++++++++++++++---
+> >>> >>  fs/nfsd/nfsd.h     |   6 ++-
+> >>> >>  fs/nfsd/vfs.c      |  29 ++++++++++++++
+> >>> >>  fs/nfsd/vfs.h      |   2 +
+> >>> >>  fs/nfsd/xdr4.h     |   3 ++
+> >>> >>  6 files changed, 191 insertions(+), 6 deletions(-)
+> >>> >>
+> >>> >>diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> >>> >>index ae73175..bb17589 100644
+> >>> >>--- a/fs/nfsd/nfs4proc.c
+> >>> >>+++ b/fs/nfsd/nfs4proc.c
+> >>> >>@@ -42,6 +42,36 @@
+> >>> >>  #include "current_stateid.h"
+> >>> >>  #include "netns.h"
+> >>> >>
+> >>> >>+#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> >>> >>+#include <linux/security.h>
+> >>> >>+
+> >>> >>+static inline void
+> >>> >>+nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct
+> >>> nfs4_label *label, u32 *bmval)
+> >>> >>+{
+> >>> >>+    struct inode *inode = resfh->fh_dentry->d_inode;
+> >>> >>+    int status;
+> >>> >>+
+> >>> >>+    mutex_lock(&inode->i_mutex);
+> >>> >>+    status = security_inode_setsecctx(resfh->fh_dentry,
+> >>> >>+        label->label, label->len);
+> >>> >>+    mutex_unlock(&inode->i_mutex);
+> >>> >>+
+> >>> >>+    if (status)
+> >>> >>+        /*
+> >>> >>+         * We should probably fail the whole open at this point,
+> >>> >>+         * but we've already created or opened the file, so it's
+> >>> >>+         * too late; So this seems the least of evils:
+> >>> >>+         */
+> >>> >>+        bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
+> >>> >
+> >>> >Is there any way to avoid this?
+> >>> >
+> >>> >How does the vfs open code handle this?  It has to be able to set a
+> >>> >security contexts atomically on open(O_CREAT), doesn't it?
+> >>> >
+> >>>
+> >>> I believe the way this is handled is that the inode is created and
+> >>> labeled and then only after that is it bound to the namespace.
+> >>> Because of that ordering we can fail and release the inode without
+> >>> it ever having a dentry in the namespace.
+> >>
+> >> Grepping around....  Looks like that's done by
+> >> security_inode_init_security(), from the filesystem's create method.
+> >>
+> >> So we'd need to be able to pass something down to there.
+> >>
+> >> Is the current client actually expected to use this?  (So are we going
+> >> to see a lot of opens that set the label?)
+> >>
+> >> --b.
+> >
+> > I don't have all the code infront of me but we have a different hook
+> > to do that. The call to nfsd4_security_inode_setsecctx is supposed to
+> > be used from the setattr handlers to do the equivalent of a setxattr
+> > on the file over NFS. The actual creation gets done with something
+> > like security_dentry_init_security which should be in an earlier
+> > patch. I'd have to look more clearly at the code to find out. Also
+> > where did we come up with 128 for label length? The SELinux code
+> > assumes a starting point of 255 and goes up from there as needed. The
+> > MLS policies will definitely exceed a 128 byte label.
 > 
-> Mandatory is described in RFS 3530 as that the server must return the 
-> attribute
-> on a GETATTR.  (Section 5, page 36).  There is nothing saying that it is
-> mandatory to return on a READDIR.  Our server will return the filehandle
-> on a LOOKUP/GETATTR every time.
+> If anyone cares, Smack labels can (now) be 255 characters.
+> Also, when (if) we get multiple concurrent LSMs the
+> "security context" may include information for more than
+> one LSM. 128 bytes is going to look pretty tiny then.
+> 
+> smack='com.corportation.service'selinux='system_u:object_r:bin_t:s0'
 
-Section 5.5 lists the filehandle as being REQUIRED, and "primarily for
-readdir requests". What's the point of listing an attribute as REQUIRED,
-but not for the primary (read "only!") operation where it is useful?
+OK.  We need a number.  2k?
 
-There is an exception allowed: if the object is a referral, then you can
-return NFS4ERR_MOVED in the rdattr_error (which is also a REQUIRED
-attribute that only applies to READDIR) if the client requests it.
-Otherwise, you return NFS4ERR_MOVED in the READDIR result...
-
-IOW: I strongly disagree with your argument, and repeat that your server
-is broken as far as the protocol goes...
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+--b.
