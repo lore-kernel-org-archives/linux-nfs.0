@@ -1,50 +1,149 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46112 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756329Ab3CUNhR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Mar 2013 09:37:17 -0400
-Date: Thu, 21 Mar 2013 09:37:13 -0400
-To: Rick Macklem <rmacklem@uoguelph.ca>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Christopher T Vogan <cvogan@us.ibm.com>, Neil Brown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org, nfsv4 list <nfsv4@ietf.org>,
-        Tom Haynes <Tom.Haynes@netapp.com>
-Subject: Re: [nfsv4] What is NFSv4 READDIR doesn't return a filehandle....
-Message-ID: <20130321133713.GB27838@fieldses.org>
-References: <1363826022.4790.89.camel@leira.trondhjem.org>
- <1533754809.4129999.1363830100661.JavaMail.root@erie.cs.uoguelph.ca>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1533754809.4129999.1363830100661.JavaMail.root@erie.cs.uoguelph.ca>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from nm22.bullet.mail.bf1.yahoo.com ([98.139.212.181]:23529 "EHLO
+	nm22.bullet.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754388Ab3C2JtK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Mar 2013 05:49:10 -0400
+From: oakad@yahoo.com
+To: simo@redhat.com
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org, Alex Dubov <oakad@yahoo.com>
+Subject: [PATCH] Fix compilation against Heimdal kerberos implementation
+Date: Fri, 29 Mar 2013 20:48:32 +1100
+Message-Id: <1364550512-14832-1-git-send-email-oakad@yahoo.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 20, 2013 at 09:41:40PM -0400, Rick Macklem wrote:
-> Well, I don't see any difference between a mandatory attribute and a
-> recommended attribute that the server claims to support via the
-> supported_attributes attribute.
-> 
-> I do believe that the server can choose not to return all of the
-> mandatory and supported recommended attributes in the readdir reply.
-> (If not, why have a bitmap of returned attributes?)
-> 
-> One example here is the mounted_on_fileid, which some servers choose
-> to only "support" for server mount points. (The FreeBSD server returns
-> this attribute for all file handles, setting it to the same value as
-> fileid for non-mount-points, but I am pretty sure some other servers
-> do not return mounted_on_fileid for non-mount-points.)
+From: Alex Dubov <oakad@yahoo.com>
 
-That doesn't sound like traditional unix readdir behavior, and isn't the
-behavior described by the spec; looking at 5661 5.8.2.23 (haven't
-compared other rfcs):
+There appear to be only 3 issues remaining with Heimdal after removal of
+compulsory dependency on libgssglue:
 
-	"If the server detects that there is no mounted point at the
-	target file object, then the value for mounted_on_fileid that it
-	returns is the same as that of the fileid attribute."
+1. On some systems, only libroken.so is available (small fix to kerberos5.m4)
 
-Also, the supported_attrs attribute is a filesystem-wide attribute.  I
-don't think we generally allow attributes to vary between "supported"
-and "unsupported" on a single filesystem.
+2. krb5_util.c:check_for_target - Heimdal variant constructs a "pattern"
+   principal and uses krb5_cc_retrieve_cred to get a matching credential.
+   This should work on mit-krb5, so old method of iterating over every
+   credential in cache may possibly be dropped outright and "#$if" guard
+   omitted.
+   For the sake of the above I reformatted the old approach to make it a bit
+   more clear what's going on there.
 
---b.
+3. krb5_util.c:gssd_k5_err_msg - krb5_get_err_text is marked as deprecated,
+   at least on Heimdal. If krb5_get_error_message is available, it should not
+   be reached at all, thus "#elif" guard.
+
+Signed-off-by: Alex Dubov <oakad@yahoo.com>
+---
+ aclocal/kerberos5.m4   |    7 +++--
+ utils/gssd/krb5_util.c |   55 ++++++++++++++++++++++++++++++++++++-----------
+ 2 files changed, 46 insertions(+), 16 deletions(-)
+
+diff --git a/aclocal/kerberos5.m4 b/aclocal/kerberos5.m4
+index 0bf35d3..ebf6f20 100644
+--- a/aclocal/kerberos5.m4
++++ b/aclocal/kerberos5.m4
+@@ -56,9 +56,10 @@ AC_DEFUN([AC_KERBEROS_V5],[
+          break
+       dnl The following ugly hack brought on by the split installation
+       dnl of Heimdal Kerberos on SuSe
+-      elif test \( -f $dir/include/heim_err.h -o\
+-      		 -f $dir/include/heimdal/heim_err.h \) -a \
+-                -f $dir/lib/libroken.a; then
++      elif test \( \( -f $dir/include/heim_err.h -o\
++                      -f $dir/include/heimdal/heim_err.h \) -a \
++                   \( -f $dir/lib/libroken.a -o\
++                      -f $dir/lib/libroken.so \) \) ; then
+          AC_DEFINE(HAVE_HEIMDAL, 1, [Define this if you have Heimdal Kerberos libraries])
+          KRBDIR="$dir"
+          gssapi_lib=gssapi
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index 20b55b3..adef268 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -958,29 +958,57 @@ check_for_tgt(krb5_context context, krb5_ccache ccache,
+ {
+ 	krb5_error_code ret;
+ 	krb5_creds creds;
+-	krb5_cc_cursor cur;
+ 	int found = 0;
+ 
++#if HAVE_HEIMDAL
++	krb5_creds pattern;
++	krb5_const_realm client_realm;
++
++	krb5_cc_clear_mcred(&pattern);
++
++	client_realm = krb5_principal_get_realm(context, principal);
++
++	ret = krb5_make_principal(context, &pattern.server,
++				  client_realm, KRB5_TGS_NAME, client_realm,
++				  NULL);
++	if (ret) {
++		krb5_err(context, 1, ret, "krb5_make_principal");
++		return 0;
++	}
++
++	pattern.client = principal;
++
++	ret = krb5_cc_retrieve_cred(context, ccache, 0, &pattern, &creds);
++	krb5_free_principal(context, pattern.server);
++
++	if (ret) {
++		if (ret != KRB5_CC_END)
++			krb5_err(context, 1, ret, "krb5_cc_retrieve_cred");
++	} else
++		found = creds.times.endtime > time(NULL);
++
++	krb5_free_cred_contents(context, &creds);
++#else
++	krb5_cc_cursor cur;
+ 	ret = krb5_cc_start_seq_get(context, ccache, &cur);
+ 	if (ret) 
+ 		return 0;
+ 
+ 	while (!found &&
+ 		(ret = krb5_cc_next_cred(context, ccache, &cur, &creds)) == 0) {
+-		if (creds.server->length == 2 &&
+-				data_is_equal(creds.server->realm,
+-					      principal->realm) &&
+-				creds.server->data[0].length == 6 &&
+-				memcmp(creds.server->data[0].data,
+-						"krbtgt", 6) == 0 &&
+-				data_is_equal(creds.server->data[1],
+-					      principal->realm) &&
+-				creds.times.endtime > time(NULL))
+-			found = 1;
++		if (
++			creds.server->length == 2
++			&& data_is_equal(creds.server->realm, principal->realm)
++			&& creds.server->data[0].length == 6
++			&& memcmp(creds.server->data[0].data, "krbtgt", 6) == 0
++			&& data_is_equal(creds.server->data[1],
++					 principal->realm)
++			&& creds.times.endtime > time(NULL)
++		) found = 1;
+ 		krb5_free_cred_contents(context, &creds);
+ 	}
+ 	krb5_cc_end_seq_get(context, ccache, &cur);
+-
++#endif
+ 	return found;
+ }
+ 
+@@ -1326,12 +1354,13 @@ gssd_k5_err_msg(krb5_context context, krb5_error_code code)
+ 		return msg;
+ #if HAVE_KRB5
+ 	return strdup(error_message(code));
+-#else
++#elif !HAVE_KRB5_GET_ERROR_MESSAGE
+ 	if (context != NULL)
+ 		return strdup(krb5_get_err_text(context, code));
+ 	else
+ 		return strdup(error_message(code));
+ #endif
++	return NULL;
+ }
+ 
+ /*
+-- 
+1.7.4.5
+
