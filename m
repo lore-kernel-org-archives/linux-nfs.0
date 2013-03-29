@@ -1,200 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:56268 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756482Ab3CSTCC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 15:02:02 -0400
-Received: by mail-ie0-f176.google.com with SMTP id x14so1073539ief.7
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 12:02:01 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/3] NFS: Use server-recommended security flavor by default
- (NFSv3)
-To: linux-nfs@vger.kernel.org
-Date: Tue, 19 Mar 2013 15:01:46 -0400
-Message-ID: <20130319190145.1203.55879.stgit@seurat.1015granger.net>
-In-Reply-To: <20130319185944.1203.38377.stgit@seurat.1015granger.net>
-References: <20130319185944.1203.38377.stgit@seurat.1015granger.net>
+Received: from fieldses.org ([174.143.236.118]:58844 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756553Ab3C2Snc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Mar 2013 14:43:32 -0400
+Date: Fri, 29 Mar 2013 14:43:31 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Linux Kernel <linux-kernel@vger.kernel.org>
+Subject: Re: kernel 3.8.4 : kernel BUG at fs/locks.c:2093!   part #2
+Message-ID: <20130329184331.GH22307@fieldses.org>
+References: <514F31AF.3080709@gmx.de>
+ <20130325220143.GD10887@fieldses.org>
+ <20130326144640.GB3353@fieldses.org>
+ <51536610.7010809@gmx.de>
+ <20130327215727.GB27426@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20130327215727.GB27426@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since commit ec88f28d in 2009, checking if the user-specified flavor
-is in the server's flavor list has been the source of a few
-noticeable regressions (now fixed), but there is one that is still
-vexing.
+On Wed, Mar 27, 2013 at 05:57:27PM -0400, J. Bruce Fields wrote:
+> On Wed, Mar 27, 2013 at 10:35:12PM +0100, Toralf Förster wrote:
+> > On 03/26/2013 03:46 PM, J. Bruce Fields wrote:
+> > > Can you run with test patches?
+> > 
+> > applied - today I got a warning instead a bug at the host kernel (3.8.4):
+> 
+> Excellent!  Thanks, I think I see the bug now....
 
-An NFS server can list AUTH_NULL in its flavor list, which suggests
-a client should try to mount the server with the flavor of the
-client's choice, but the server will squash all accesses.  In some
-cases, our client fails to mount a server because of this check,
-when the mount could have proceeded successfully.
+This logic is just terrible; I'll see what if I can make this more
+sensible.
 
-Skip this check if the user has specified "sec=" on the mount
-command line.  But do consult the server-provided flavor list to
-choose a security flavor if no sec= option is specified on the mount
-command.
+For now, though, this should fix the bug.
 
-If a server lists Kerberos pseudoflavors before "sys" in its export
-options, our client now chooses Kerberos over AUTH_UNIX for mount
-points, when no security flavor is specified by the mount command.
-This could be surprising to some administrators or users, who would
-need to have Kerberos credentials to access the export.
+Thanks again for this testing.
 
-Or, a client administrator may not have enabled
-"nfs-secure.service".  In this case, auth_rpcgss.ko might be
-loadable, which is enough for the new logic to choose Kerberos over
-AUTH_UNIX.  But the mount would fail since no GSS context can be
-created without rpc.gssd running.
+--b.
 
-To retain the use of AUTH_UNIX by default:
+commit 01463db0a864d43bd2c9a69ff37d5a75b7822a49
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Thu Mar 28 20:37:14 2013 -0400
 
-  o  The server administrator can ensure that "sys" is listed before
-     Kerberos flavors in its export security options (see
-     exports(5)),
+    nfsd4: don't close read-write opens too soon
+    
+    Don't actually close any opens until we don't need them at all.
+    
+    This means being left with write access when it's not really necessary,
+    but that's better than putting a file that might still have posix locks
+    held on it, as we have been.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-  o  The client administrator can explicitly specify "sec=sys" on
-     its mount command line (see nfs(5)),
-
-  o  The client administrator can use "Sec=sys" in an appropriate
-     section of /etc/nfsmount.conf (see nfsmount.conf(5)), or
-
-  o  The client administrator can blacklist auth_rpcgss.ko.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/nfs/nfs4super.c |    2 +
- fs/nfs/super.c     |   80 +++++++++++++++++++++++++++-------------------------
- 2 files changed, 44 insertions(+), 38 deletions(-)
-
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index 569b166..3df6c03 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -252,6 +252,8 @@ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
- 
- 	dfprintk(MOUNT, "--> nfs4_try_mount()\n");
- 
-+	if (data->args_flavors[0] == RPC_AUTH_MAXFLAVOR)
-+		data->args_flavors[0] = RPC_AUTH_UNIX;
- 	export_path = data->nfs_server.export_path;
- 	data->nfs_server.export_path = "/";
- 	root_mnt = nfs_do_root_mount(&nfs4_remote_fs_type, flags, mount_info,
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 95cdcb2..cc858f6 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -919,7 +919,7 @@ static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(void)
- 		data->mount_server.port	= NFS_UNSPEC_PORT;
- 		data->nfs_server.port	= NFS_UNSPEC_PORT;
- 		data->nfs_server.protocol = XPRT_TRANSPORT_TCP;
--		data->auth_flavors[0]	= RPC_AUTH_UNIX;
-+		data->auth_flavors[0]	= RPC_AUTH_MAXFLAVOR;
- 		data->auth_flavor_len	= 1;
- 		data->minorversion	= 0;
- 		data->need_mount	= true;
-@@ -1607,49 +1607,57 @@ out_security_failure:
- }
- 
- /*
-- * Match the requested auth flavors with the list returned by
-- * the server.  Returns zero and sets the mount's authentication
-- * flavor on success; returns -EACCES if server does not support
-- * the requested flavor.
-+ * Select a security flavor for this mount.  The selected flavor
-+ * is planted in args->auth_flavors[0].
-  */
--static int nfs_walk_authlist(struct nfs_parsed_mount_data *args,
--			     struct nfs_mount_request *request)
-+static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
-+			      struct nfs_mount_request *request)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index aac878e..285a0c8 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -210,13 +210,7 @@ static void __nfs4_file_put_access(struct nfs4_file *fp, int oflag)
  {
--	unsigned int i, j, server_authlist_len = *(request->auth_flav_len);
-+	unsigned int i, count = *(request->auth_flav_len);
-+	rpc_authflavor_t flavor;
-+
-+	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR)
-+		goto out;
-+
-+	/*
-+	 * The NFSv2 MNT operation does not return a flavor list.
-+	 */
-+	if (args->mount_server.version != NFS_MNT3_VERSION)
-+		goto out_default;
- 
- 	/*
- 	 * Certain releases of Linux's mountd return an empty
--	 * flavor list.  To prevent behavioral regression with
--	 * these servers (ie. rejecting mounts that used to
--	 * succeed), revert to pre-2.6.32 behavior (no checking)
--	 * if the returned flavor list is empty.
-+	 * flavor list in some cases.
- 	 */
--	if (server_authlist_len == 0)
--		return 0;
-+	if (count == 0)
-+		goto out_default;
- 
- 	/*
--	 * We avoid sophisticated negotiating here, as there are
--	 * plenty of cases where we can get it wrong, providing
--	 * either too little or too much security.
--	 *
- 	 * RFC 2623, section 2.7 suggests we SHOULD prefer the
- 	 * flavor listed first.  However, some servers list
--	 * AUTH_NULL first.  Our caller plants AUTH_SYS, the
--	 * preferred default, in args->auth_flavors[0] if user
--	 * didn't specify sec= mount option.
-+	 * AUTH_NULL first.  Avoid ever choosing AUTH_NULL.
- 	 */
--	for (i = 0; i < args->auth_flavor_len; i++)
--		for (j = 0; j < server_authlist_len; j++)
--			if (args->auth_flavors[i] == request->auth_flavs[j]) {
--				dfprintk(MOUNT, "NFS: using auth flavor %d\n",
--					request->auth_flavs[j]);
--				args->auth_flavors[0] = request->auth_flavs[j];
--				return 0;
--			}
-+	for (i = 0; i < count; i++) {
-+		struct rpcsec_gss_info info;
-+
-+		flavor = request->auth_flavs[i];
-+		switch (flavor) {
-+		case RPC_AUTH_UNIX:
-+			goto out_set;
-+		case RPC_AUTH_NULL:
-+			continue;
-+		default:
-+			if (rpcauth_get_gssinfo(flavor, &info) == 0)
-+				goto out_set;
-+		}
-+	}
- 
--	dfprintk(MOUNT, "NFS: server does not support requested auth flavor\n");
--	nfs_umount(request);
--	return -EACCES;
-+out_default:
-+	flavor = RPC_AUTH_UNIX;
-+out_set:
-+	args->auth_flavors[0] = flavor;
-+out:
-+	dfprintk(MOUNT, "NFS: using auth flavor %d\n", args->auth_flavors[0]);
- }
- 
- /*
-@@ -1712,12 +1720,8 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
- 		return status;
+ 	if (atomic_dec_and_test(&fp->fi_access[oflag])) {
+ 		nfs4_file_put_fd(fp, oflag);
+-		/*
+-		 * It's also safe to get rid of the RDWR open *if*
+-		 * we no longer have need of the other kind of access
+-		 * or if we already have the other kind of open:
+-		 */
+-		if (fp->fi_fds[1-oflag]
+-			|| atomic_read(&fp->fi_access[1 - oflag]) == 0)
++		if (atomic_read(&fp->fi_access[1 - oflag]) == 0)
+ 			nfs4_file_put_fd(fp, O_RDWR);
  	}
- 
--	/*
--	 * MNTv1 (NFSv2) does not support auth flavor negotiation.
--	 */
--	if (args->mount_server.version != NFS_MNT3_VERSION)
--		return 0;
--	return nfs_walk_authlist(args, &request);
-+	nfs_select_flavor(args, &request);
-+	return 0;
  }
- 
- struct dentry *nfs_try_mount(int flags, const char *dev_name,
-
