@@ -1,93 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:55264 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752209Ab3CGP7b convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Mar 2013 10:59:31 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Jeff Layton <jlayton@redhat.com>, Tejun Heo <tj@kernel.org>,
-        Oleg Nesterov <oleg@redhat.com>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Ming Lei <ming.lei@canonical.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "Linux Kernel Mailing List" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Ingo Molnar <mingo@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>
-Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-Date: Thu, 7 Mar 2013 15:59:27 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9286B511E@sacexcmbx05-prd.hq.netapp.com>
-References: <20130305174954.GG12795@htj.dyndns.org>
-	 <20130305140312.243cb094@tlielax.poochiereds.net>
-	 <20130305190923.GI12795@htj.dyndns.org>
-	 <20130305183941.19ff39ce@tlielax.poochiereds.net>
-	 <20130305234700.GE1227@htj.dyndns.org> <20130306181608.GA18687@redhat.com>
-	 <20130306185304.GM1227@htj.dyndns.org>
-	 <CA+55aFwDogteVd=vwGHXDSASnga-nZZnKaQz9aO1yBU2CPKSbA@mail.gmail.com>
-	 <20130306212452.GO1227@htj.dyndns.org>
-	 <CA+55aFy49AWptMcvEzJxg95ikf-dC+-vcCPq-cnaCCwje3tyoQ@mail.gmail.com>
-	 <20130306213636.GP1227@htj.dyndns.org>
-	 <20130307064140.71c0936b@tlielax.poochiereds.net>
-	 <CA+55aFxe1_x8wvVYciiX8tuee+VsmXGKqEbONQdFM4s4W2iuPg@mail.gmail.com>
-In-Reply-To: <CA+55aFxe1_x8wvVYciiX8tuee+VsmXGKqEbONQdFM4s4W2iuPg@mail.gmail.com>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+Received: from e39.co.us.ibm.com ([32.97.110.160]:55084 "EHLO
+	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754552Ab3C2T5M (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Mar 2013 15:57:12 -0400
+Received: from /spool/local
+	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Fri, 29 Mar 2013 13:57:12 -0600
+Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
+	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 329206E803F
+	for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2013 15:57:06 -0400 (EDT)
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r2TJv8Ba326386
+	for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2013 15:57:08 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r2TJv8wU001094
+	for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2013 15:57:08 -0400
+Received: from malahal (malahal.austin.ibm.com [9.41.105.170])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id r2TJv7FS001056
+	for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2013 15:57:07 -0400
+From: Malahal Naineni <malahal@us.ibm.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv3/v2: Fix data corruption with NFS short reads.
+Date: Fri, 29 Mar 2013 14:57:06 -0500
+Message-Id: <1364587026-7504-1-git-send-email-malahal@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-03-07 at 07:55 -0800, Linus Torvalds wrote:
-> On Thu, Mar 7, 2013 at 3:41 AM, Jeff Layton <jlayton@redhat.com> wrote:
-> >
-> > I think Trond may be on the right track. We probably need some
-> > mechanism to quiesce the filesystem ahead of any sort of freezer
-> > event.
-> 
-> No, guys. That cannot work. It's a completely moronic idea. Let me
-> count the way:
-> 
->  (a) it's just another form of saying "lock". But since other things
-> are (by definition) going on when it happens, it will just cause
-> deadlocks.
-> 
->  (b) the freeze event might not even be system-global. So *some*
-> processes (a cgroup) might freeze, others would not. You can't shut
-> off the filesystem just because some processes migth freeze.
+This bug seems to be present in v2.6.37 or lower versions. The code was
+re-organized in v2.6.38 that eliminated the bug. Current upstream code
+doesn't have this bug. This may be applicable to some longterm releases!
 
-That's the whole bloody problem in a nutshell.
+Here are the bug details:
 
-We only want to freeze the filesystem when the network goes down, and in
-that case we want time to clean up first. That's why it needs to be
-initiated by something like NetworkManager _before_ the network is shut
-down.
+1. nfs_read_rpcsetup(), args.count and res.count are both set to the
+   actual number of bytes to be read. Let us assume that the request is
+   for 16K, so arg.count = res.count = 16K
+2. nfs3_xdr_readres() conditionally sets res.count to to the actual
+   number of bytes read. This condition is true for the first response
+   as res.count was set to args.count before the first request. Let us
+   say the server returned only 4K bytes. res.count=4K
+3. Another read request is sent for the remaining data. Note that
+   res.count is NOT updated. It is still set to the actual amount of
+   bytes we got in the first response.  The client will send a READ
+   request for the remaining 12K.
+4. Assume that the server gave all 12K bytes. We still think we got ony
+   4K bytes due to conditional update in nfs3_xdr_readres(). The client
+   sends further requests, if not EOF! If this response includes EOF, it
+   truncates pages beyond 4K+4K causing data corruption beyond 8K. The
+   corrupted data is filled with zeros!
 
->  (c) it just moves the same issue somewhere else. If you have some
-> operation that must be done under the lock, then such an operation
-> must be completed before you've quiesced the filesystem, which is your
-> whole point of that "quiesce" event. BUT THAT'S THE EXACT SAME ISSUE
-> AS NOT ALLOWING THE FREEZE TO HAPPEN DURING THAT TIME.
-> 
-> In other words, that suggestion not only introduces new problems (a),
-> it's fundamentally broken anyway (b) *AND* it doesn't even solve
-> anything, it just moves it around.
-> 
-> The solution is damn simple: if you're in some kind of "atomic
-> region", then you cannot freeze. Seriously. SO DON'T CALL
-> "freezable_schedule()", FOR CHRISSAKE! You clearly aren't freezable!
-> 
-> Which is exactly what the new lockdep warning was all about. Don't try
-> to move the problem around, when it's quite clear where the problem
-> is. If you need to do something uninterruptible, you do not say "oh,
-> I'm freezable". Because freezing is by definition an interruption.
-> Seriously, it's that simple.
+Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
+---
+ fs/nfs/nfs2xdr.c | 3 +--
+ fs/nfs/nfs3xdr.c | 3 +--
+ 2 files changed, 2 insertions(+), 4 deletions(-)
 
-It _shouldn't_ be an interruption unless the filesystem can't make
-progress.
-
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 5914a19..710ca56 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -287,8 +287,7 @@ nfs_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
+ 	}
+ 
+ 	dprintk("RPC:      readres OK count %u\n", count);
+-	if (count < res->count)
+-		res->count = count;
++	res->count = count;
+ 
+ 	return count;
+ }
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index f6cc60f..152a5e4 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -914,8 +914,7 @@ nfs3_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
+ 		res->eof = 0;
+ 	}
+ 
+-	if (count < res->count)
+-		res->count = count;
++	res->count = count;
+ 
+ 	return count;
+ }
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.7.11.7
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
