@@ -1,88 +1,207 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41366 "EHLO fieldses.org"
+Received: from e9.ny.us.ibm.com ([32.97.182.139]:36702 "EHLO e9.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756215Ab3C1QKK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Mar 2013 12:10:10 -0400
-Date: Thu, 28 Mar 2013 12:10:07 -0400
+	id S1753826Ab3C2LnG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Mar 2013 07:43:06 -0400
+Received: from /spool/local
+	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <zohar@linux.vnet.ibm.com>;
+	Fri, 29 Mar 2013 07:43:05 -0400
+Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 764C438C8054
+	for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2013 07:43:02 -0400 (EDT)
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r2TBh2j7297604
+	for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2013 07:43:02 -0400
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r2TBh1X4027915
+	for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2013 08:43:02 -0300
+Message-ID: <1364557380.2580.189.camel@falcor1.watson.ibm.com>
+Subject: Re: [PATCH 02/14] Security: Add Hook to test if the particular
+ xattr is part of a MAC model.
+From: Mimi Zohar <zohar@linux.vnet.ibm.com>
 To: Steve Dickson <SteveD@redhat.com>
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
         "J. Bruce Fields" <bfields@redhat.com>,
         "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
-Message-ID: <20130328161006.GE7080@fieldses.org>
+        Linux NFS list <linux-nfs@vger.kernel.org>
+Date: Fri, 29 Mar 2013 07:43:00 -0400
+In-Reply-To: <1364478845-29796-3-git-send-email-SteveD@redhat.com>
 References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
- <1364478845-29796-14-git-send-email-SteveD@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1364478845-29796-14-git-send-email-SteveD@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	 <1364478845-29796-3-git-send-email-SteveD@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
-> @@ -888,6 +924,11 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  					    setattr->sa_acl);
->  	if (status)
->  		goto out;
-> +	if (setattr->sa_label != NULL)
-> +		status = nfsd4_set_nfs4_label(rqstp, &cstate->current_fh,
-> +				setattr->sa_label);
+On Thu, 2013-03-28 at 09:53 -0400, Steve Dickson wrote:
+> From: David Quigley <dpquigl@davequigley.com>
+> 
+> The interface to request security labels from user space is the xattr
+> interface. When requesting the security label from an NFS server it is
+> important to make sure the requested xattr actually is a MAC label. This allows
+> us to make sure that we get the desired semantics from the attribute instead of
+> something else such as capabilities or a time based LSM.
+> 
+> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+> ---
+>  include/linux/security.h   | 14 ++++++++++++++
+>  security/capability.c      |  6 ++++++
+>  security/security.c        |  6 ++++++
+>  security/selinux/hooks.c   |  6 ++++++
+>  security/smack/smack_lsm.c | 11 +++++++++++
+>  5 files changed, 43 insertions(+)
+> 
+> diff --git a/include/linux/security.h b/include/linux/security.h
+> index a957e7a..8a6faff 100644
+> --- a/include/linux/security.h
+> +++ b/include/linux/security.h
+> @@ -1319,6 +1319,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
+>   *	@pages contains the number of pages.
+>   *	Return 0 if permission is granted.
+>   *
+> + * @ismaclabel:
+> + *	Check if the extended attribute specified by @name
+> + *	represents a MAC label. Returns 0 if name is a MAC
+> + *	attribute otherwise returns non-zero.
 
-I'm getting an error from setattr over NFS4.0, even when I don't have
-nfs4_label support compiled in, I'm not sure why....  Maybe sa_label
-isn't being initialized to NULL in that case?
+Sorry, the comment doesn't match the code.
 
-(Reproduceable with pynfs 4.0 SATT13.)
+Mimi
 
-...
-> index 2b2e239..b2b2e5a 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -28,6 +28,7 @@
->  #include <asm/uaccess.h>
->  #include <linux/exportfs.h>
->  #include <linux/writeback.h>
-> +#include <linux/security.h>
->  
->  #ifdef CONFIG_NFSD_V3
->  #include "xdr3.h"
-> @@ -621,6 +622,34 @@ int nfsd4_is_junction(struct dentry *dentry)
->  		return 0;
->  	return 1;
+> + *	@name full extended attribute name to check against
+> + *	LSM as a MAC label.
+> + *
+
+
+>   * @secid_to_secctx:
+>   *	Convert secid to security context.  If secdata is NULL the length of
+>   *	the result will be returned in seclen, but no secdata will be returned.
+> @@ -1600,6 +1607,7 @@ struct security_operations {
+> 
+>  	int (*getprocattr) (struct task_struct *p, char *name, char **value);
+>  	int (*setprocattr) (struct task_struct *p, char *name, void *value, size_t size);
+> +	int (*ismaclabel) (const char *name);
+>  	int (*secid_to_secctx) (u32 secid, char **secdata, u32 *seclen);
+>  	int (*secctx_to_secid) (const char *secdata, u32 seclen, u32 *secid);
+>  	void (*release_secctx) (char *secdata, u32 seclen);
+> @@ -1852,6 +1860,7 @@ void security_d_instantiate(struct dentry *dentry, struct inode *inode);
+>  int security_getprocattr(struct task_struct *p, char *name, char **value);
+>  int security_setprocattr(struct task_struct *p, char *name, void *value, size_t size);
+>  int security_netlink_send(struct sock *sk, struct sk_buff *skb);
+> +int security_ismaclabel(const char *name);
+>  int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen);
+>  int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
+>  void security_release_secctx(char *secdata, u32 seclen);
+> @@ -2540,6 +2549,11 @@ static inline int security_netlink_send(struct sock *sk, struct sk_buff *skb)
+>  	return cap_netlink_send(sk, skb);
 >  }
-> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
-> +__be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
-> +		struct nfs4_label *label)
+> 
+> +static inline int security_ismaclabel(const char *name)
 > +{
-> +	__be32 error;
-> +	int host_error;
-> +	struct dentry *dentry;
-> +
-> +	/* XXX: should we have a MAY_SSECCTX? */
-> +	error = fh_verify(rqstp, fhp, 0 /* S_IFREG */, NFSD_MAY_SATTR);
-> +	if (error)
-> +		return error;
-> +
-> +	dentry = fhp->fh_dentry;
-> +
-> +	mutex_lock(&dentry->d_inode->i_mutex);
-> +	host_error = security_inode_setsecctx(dentry, label->label, label->len);
-> +	mutex_unlock(&dentry->d_inode->i_mutex);
-> +	return nfserrno(host_error);
+> +	return 0;
 > +}
-> +#else
-> +__be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
-> +		struct nfs4_label *label)
+> +
+>  static inline int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+>  {
+>  	return -EOPNOTSUPP;
+> diff --git a/security/capability.c b/security/capability.c
+> index 456bd9d..07a6484 100644
+> --- a/security/capability.c
+> +++ b/security/capability.c
+> @@ -817,6 +817,11 @@ static int cap_setprocattr(struct task_struct *p, char *name, void *value,
+>  	return -EINVAL;
+>  }
+> 
+> +static int cap_ismaclabel(const char *name)
 > +{
-> +	return -EOPNOTSUPP;
+> +	return 0;
+> +}
+> +
+>  static int cap_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+>  {
+>  	return -EOPNOTSUPP;
+> @@ -1036,6 +1041,7 @@ void __init security_fixup_ops(struct security_operations *ops)
+>  	set_to_cap_if_null(ops, d_instantiate);
+>  	set_to_cap_if_null(ops, getprocattr);
+>  	set_to_cap_if_null(ops, setprocattr);
+> +	set_to_cap_if_null(ops, ismaclabel);
+>  	set_to_cap_if_null(ops, secid_to_secctx);
+>  	set_to_cap_if_null(ops, secctx_to_secid);
+>  	set_to_cap_if_null(ops, release_secctx);
+> diff --git a/security/security.c b/security/security.c
+> index 723a10c..6d7389c 100644
+> --- a/security/security.c
+> +++ b/security/security.c
+> @@ -1057,6 +1057,12 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
+>  	return security_ops->netlink_send(sk, skb);
+>  }
+> 
+> +int security_ismaclabel(const char *name)
+> +{
+> +	return security_ops->ismaclabel(name);
+> +}
+> +EXPORT_SYMBOL(security_ismaclabel);
+> +
+>  int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+>  {
+>  	return security_ops->secid_to_secctx(secid, secdata, seclen);
+> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+> index c7f1905..97231a0 100644
+> --- a/security/selinux/hooks.c
+> +++ b/security/selinux/hooks.c
+> @@ -5417,6 +5417,11 @@ abort_change:
+>  	return error;
+>  }
+> 
+> +static int selinux_ismaclabel(const char *name)
+> +{
+> +	return (strcmp(name, XATTR_SELINUX_SUFFIX) == 0);
+> +}
+> +
+>  static int selinux_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+>  {
+>  	return security_sid_to_context(secid, secdata, seclen);
+> @@ -5655,6 +5660,7 @@ static struct security_operations selinux_ops = {
+>  	.getprocattr =			selinux_getprocattr,
+>  	.setprocattr =			selinux_setprocattr,
+> 
+> +	.ismaclabel =			selinux_ismaclabel,
+>  	.secid_to_secctx =		selinux_secid_to_secctx,
+>  	.secctx_to_secid =		selinux_secctx_to_secid,
+>  	.release_secctx =		selinux_release_secctx,
+> diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
+> index fa64740..ca01d71 100644
+> --- a/security/smack/smack_lsm.c
+> +++ b/security/smack/smack_lsm.c
+> @@ -3329,6 +3329,16 @@ static void smack_audit_rule_free(void *vrule)
+>  #endif /* CONFIG_AUDIT */
+> 
+>  /**
+> + * smack_ismaclabel - check if xattr @name references a smack MAC label
+> + * @name: Full xattr name to check.
+> + */
+> +static int smack_ismaclabel(const char *name)
+> +{
+> +	return (strcmp(name, XATTR_SMACK_SUFFIX) == 0);
+> +}
+> +
+> +
+> +/**
+>   * smack_secid_to_secctx - return the smack label for a secid
+>   * @secid: incoming integer
+>   * @secdata: destination
+> @@ -3524,6 +3534,7 @@ struct security_operations smack_ops = {
+>  	.audit_rule_free =		smack_audit_rule_free,
+>  #endif /* CONFIG_AUDIT */
+> 
+> +	.ismaclabel =			smack_ismaclabel,
+>  	.secid_to_secctx = 		smack_secid_to_secctx,
+>  	.secctx_to_secid = 		smack_secctx_to_secid,
+>  	.release_secctx = 		smack_release_secctx,
 
-That's returning a kernel error number to an nfs client.  You want
-something else, maybe nfserr_attrnotsupp?
 
-But this actually should have been caught earlier by
-check_attr_support().
 
---b.
