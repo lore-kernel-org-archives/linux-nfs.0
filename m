@@ -1,133 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f41.google.com ([74.125.83.41]:34062 "EHLO
-	mail-ee0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754254Ab3CRQkv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Mar 2013 12:40:51 -0400
-Received: by mail-ee0-f41.google.com with SMTP id c13so2775454eek.0
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Mar 2013 09:40:49 -0700 (PDT)
-Message-ID: <5147438E.6040106@tonian.com>
-Date: Mon, 18 Mar 2013 18:40:46 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from countercultured.net ([209.51.175.25]:53432 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1755028Ab3C2Otp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Mar 2013 10:49:45 -0400
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] pnfs: clear NFS_INO_LAYOUTCOMMIT* flags on destroy_layout
-References: <1363617514-24102-1-git-send-email-bhalevy@tonian.com> <1363621707.4351.11.camel@leira.trondhjem.org>
-In-Reply-To: <1363621707.4351.11.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Date: Fri, 29 Mar 2013 10:49:44 -0400
+From: David Quigley <dpquigl@davequigley.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Steve Dickson <steved@redhat.com>,
+        Trond Myklebust <trond.myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
+In-Reply-To: <20130329144050.GB22307@fieldses.org>
+References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
+ <1364478845-29796-14-git-send-email-SteveD@redhat.com>
+ <20130328161444.GF7080@fieldses.org> <51550C03.1000107@davequigley.com>
+ <20130329144050.GB22307@fieldses.org>
+Message-ID: <001ff69afd411b0318d7122bf07bd218@countercultured.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-03-18 17:48, Myklebust, Trond wrote:
-> Hi Benny,
-> 
-> On Mon, 2013-03-18 at 16:38 +0200, Benny Halevy wrote:
->> When writing a large file over pNFS, the MDS rebooted and then the client crashed with the following stack trace over RHEL 2.6.32-358.el6.x86_64
+On 03/29/2013 10:40, J. Bruce Fields wrote:
+> On Thu, Mar 28, 2013 at 11:35:31PM -0400, Dave Quigley wrote:
+>> On 3/28/2013 12:14 PM, J. Bruce Fields wrote:
+>> >On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
+>> >>From: David Quigley <dpquigl@davequigley.com>
+>> >>
+>> >>This patch adds the ability to encode and decode file labels on 
+>> the server for
+>> >>the purpose of sending them to the client and also to process 
+>> label change
+>> >>requests from the client.
+>> >>
+>> >>Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+>> >>Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+>> >>Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+>> >>Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+>> >>---
+>> >>  fs/nfsd/nfs4proc.c |  41 +++++++++++++++++++
+>> >>  fs/nfsd/nfs4xdr.c  | 116 
+>> ++++++++++++++++++++++++++++++++++++++++++++++++++---
+>> >>  fs/nfsd/nfsd.h     |   6 ++-
+>> >>  fs/nfsd/vfs.c      |  29 ++++++++++++++
+>> >>  fs/nfsd/vfs.h      |   2 +
+>> >>  fs/nfsd/xdr4.h     |   3 ++
+>> >>  6 files changed, 191 insertions(+), 6 deletions(-)
+>> >>
+>> >>diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+>> >>index ae73175..bb17589 100644
+>> >>--- a/fs/nfsd/nfs4proc.c
+>> >>+++ b/fs/nfsd/nfs4proc.c
+>> >>@@ -42,6 +42,36 @@
+>> >>  #include "current_stateid.h"
+>> >>  #include "netns.h"
+>> >>
+>> >>+#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+>> >>+#include <linux/security.h>
+>> >>+
+>> >>+static inline void
+>> >>+nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct 
+>> nfs4_label *label, u32 *bmval)
+>> >>+{
+>> >>+	struct inode *inode = resfh->fh_dentry->d_inode;
+>> >>+	int status;
+>> >>+
+>> >>+	mutex_lock(&inode->i_mutex);
+>> >>+	status = security_inode_setsecctx(resfh->fh_dentry,
+>> >>+		label->label, label->len);
+>> >>+	mutex_unlock(&inode->i_mutex);
+>> >>+
+>> >>+	if (status)
+>> >>+		/*
+>> >>+		 * We should probably fail the whole open at this point,
+>> >>+		 * but we've already created or opened the file, so it's
+>> >>+		 * too late; So this seems the least of evils:
+>> >>+		 */
+>> >>+		bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
+>> >
+>> >Is there any way to avoid this?
+>> >
+>> >How does the vfs open code handle this?  It has to be able to set a
+>> >security contexts atomically on open(O_CREAT), doesn't it?
+>> >
 >>
-> 
-> You might want to note that this Oops applies to upstream too. :-)
-> 
+>> I believe the way this is handled is that the inode is created and
+>> labeled and then only after that is it bound to the namespace.
+>> Because of that ordering we can fail and release the inode without
+>> it ever having a dentry in the namespace.
+>
+> Grepping around....  Looks like that's done by
+> security_inode_init_security(), from the filesystem's create method.
+>
+> So we'd need to be able to pass something down to there.
+>
+> Is the current client actually expected to use this?  (So are we 
+> going
+> to see a lot of opens that set the label?)
+>
+> --b.
 
-True.
+I don't have all the code infront of me but we have a different hook to 
+do that. The call to nfsd4_security_inode_setsecctx is supposed to be 
+used from the setattr handlers to do the equivalent of a setxattr on the 
+file over NFS. The actual creation gets done with something like 
+security_dentry_init_security which should be in an earlier patch. I'd 
+have to look more clearly at the code to find out. Also where did we 
+come up with 128 for label length? The SELinux code assumes a starting 
+point of 255 and goes up from there as needed. The MLS policies will 
+definitely exceed a 128 byte label.
 
->> <4>RIP: 0010:[<ffffffffa0474f35>]  [<ffffffffa0474f35>] pnfs_layoutcommit_inode+0x115/0x310 [nfs]
->> <4>RSP: 0018:ffff8801bab4db60  EFLAGS: 00010286
->> <4>RAX: ffff8802290755a8 RBX: ffff8802297756a0 RCX: 0000000000000000
->> <4>RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff880229775750
->> <4>RBP: ffff8801bab4dba0 R08: 0000000000000000 R09: 0000000000000000
->> <4>R10: 0000000000000003 R11: 0000000000000000 R12: ffff8802297754d8
->> <4>R13: ffff880229075400 R14: 0000000000000000 R15: ffff880229775568
->> <4>FS:  0000000000000000(0000) GS:ffff880028380000(0000) knlGS:0000000000000000
->> <4>CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
->> <4>CR2: 0000000000000028 CR3: 000000020158a000 CR4: 00000000000027e0
->> <4>DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
->> <4>DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
->> <4>Process flush-0:30 (pid: 3806, threadinfo ffff8801bab4c000, task ffff880228c76ae0)
->> <4>Stack:
->> <4> ffff8802290755a8 ffff880229775750 ffffffffa047ae20 ffff8802297756a0
->> <4><d> ffff8801bab4dd20 0000000000000000 ffff8801bab4dd20 ffff8802297757c0
->> <4><d> ffff8801bab4dbd0 ffffffffa0451217 ffff8801bab4dd20 ffff8802297757c0
->> <4>Call Trace:
->> <4> [<ffffffffa0451217>] nfs_write_inode+0x87/0x100 [nfs]
->> <4> [<ffffffff811ac81c>] writeback_single_inode+0x20c/0x290
->> <4> [<ffffffff811acafe>] writeback_sb_inodes+0xce/0x180
->> <4> [<ffffffff811acc5b>] writeback_inodes_wb+0xab/0x1b0
->> <4> [<ffffffff811acffb>] wb_writeback+0x29b/0x3f0
->> <4> [<ffffffff8150d6e0>] ? thread_return+0x4e/0x76e
->> <4> [<ffffffff81081ac2>] ? del_timer_sync+0x22/0x30
->> <4> [<ffffffff811ad2e9>] wb_do_writeback+0x199/0x240
->> <4> [<ffffffff811ad3f3>] bdi_writeback_task+0x63/0x1b0
->> <4> [<ffffffff81096b47>] ? bit_waitqueue+0x17/0xd0
->> <4> [<ffffffff8113ca40>] ? bdi_start_fn+0x0/0x100
->> <4> [<ffffffff8113cac6>] bdi_start_fn+0x86/0x100
->> <4> [<ffffffff8113ca40>] ? bdi_start_fn+0x0/0x100
->> <4> [<ffffffff81096916>] kthread+0x96/0xa0
->> <4> [<ffffffff8100c0ca>] child_rip+0xa/0x20
->> <4> [<ffffffff81096880>] ? kthread+0x0/0xa0
->> <4> [<ffffffff8100c0c0>] ? child_rip+0x0/0x20
->> <4>Code: 01 00 00 48 89 d7 48 89 55 c8 48 89 45 c0 e8 93 b0 09 e1 f0 41 0f ba 37 09 19 d2 85 d2 48 8b 45 c0 0f 84 af 01 00 00 48 8b 53 f0 <4c> 8b 7a 28 48 8d 4a 28 49 39 cf 75 26 e9 e1 00 00 00 66 0f 1f
->> <1>RIP  [<ffffffffa0474f35>] pnfs_layoutcommit_inode+0x115/0x310 [nfs]
->> <4> RSP <ffff8801bab4db60>
->> <4>CR2: 0000000000000028
->>
->> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
->> ---
->>  fs/nfs/pnfs.c | 11 +++++++++--
->>  1 file changed, 9 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index 48ac5aa..483bd94 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -497,6 +497,8 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
->>  		pnfs_get_layout_hdr(lo);
->>  		pnfs_layout_clear_fail_bit(lo, NFS_LAYOUT_RO_FAILED);
->>  		pnfs_layout_clear_fail_bit(lo, NFS_LAYOUT_RW_FAILED);
->> +		clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags);
->> +		clear_bit(NFS_INO_LAYOUTCOMMITTING, &nfsi->flags);
->>  		spin_unlock(&nfsi->vfs_inode.i_lock);
->>  		pnfs_free_lseg_list(&tmp_list);
->>  		pnfs_put_layout_hdr(lo);
->> @@ -1813,11 +1815,16 @@ void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data)
->>  	loff_t end_pos;
->>  	int status = 0;
->>  
->> -	dprintk("--> %s inode %lu\n", __func__, inode->i_ino);
->> +	if (!test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
->> +		dprintk("%s: inode %lu: not required\n", __func__, inode->i_ino);
->> +		return 0;
->> +	}
->>  
->> -	if (!test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags))
->> +	if (WARN_ON(!nfsi->layout))
->>  		return 0;
-> 
-> 
-> This looks like the wrong thing to do. We know how the system got here:
-> someone called fsync() or sync(), and NFS_INO_LAYOUTCOMMIT was set.
-> What we don't know is why the layout was freed before
-> pnfs_layoutcommit_inode() was called.
-> 
-
-I believe that this happens by pnfs_destroy_all_layouts called from
-nfs4_establish_lease.
-
-> I suggest that we rather put a
-> 
-> 	WARN_ON_ONCE(test_and_clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags));
-> 	WARN_ON_ONCE(test_and_clear_bit(NFS_INO_LAYOUTCOMMITTING, &nfsi->flags));
-> 
-> inside pnfs_detach_layout_hdr(). That should stand a better chance of
-> catching the sort of bug you found above.
-> 
-
-Sounds good.
-
-> BTW: shouldn't pnfs_return_layout() always call
-> pnfs_layoutcommit_inode()?
-> 
-
-Good point.
-
-Benny
-
+Dave
