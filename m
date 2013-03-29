@@ -1,304 +1,190 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:60515 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54543 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757816Ab3CYOSi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Mar 2013 10:18:38 -0400
-Message-ID: <51505CBB.9010608@RedHat.com>
-Date: Mon, 25 Mar 2013 10:18:35 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Mike Frysinger <vapier@gentoo.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsiostat: make it work w/python3
-References: <1364155277-30394-1-git-send-email-vapier@gentoo.org>
-In-Reply-To: <1364155277-30394-1-git-send-email-vapier@gentoo.org>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1755094Ab3C2New (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Mar 2013 09:34:52 -0400
+Subject: Re: [PATCH] Fix compilation against Heimdal kerberos implementation
+From: Simo Sorce <simo@redhat.com>
+To: oakad@yahoo.com
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+In-Reply-To: <1364550512-14832-1-git-send-email-oakad@yahoo.com>
+References: <1364550512-14832-1-git-send-email-oakad@yahoo.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 29 Mar 2013 09:34:50 -0400
+Message-ID: <1364564090.2660.303.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 24/03/13 16:01, Mike Frysinger wrote:
-> Simple fixes here to work with python 2 & 3:
->  - use print() everywhere
->  - dict.iteritems() -> dict.items()
->  - file() -> open()
->  - sys.maxint -> sys.maxsize
+On Fri, 2013-03-29 at 20:48 +1100, oakad@yahoo.com wrote:
+> From: Alex Dubov <oakad@yahoo.com>
 > 
-> Signed-off-by: Mike Frysinger <vapier@gentoo.org>
-Committed... 
-
-steved.
+> There appear to be only 3 issues remaining with Heimdal after removal of
+> compulsory dependency on libgssglue:
+> 
+> 1. On some systems, only libroken.so is available (small fix to kerberos5.m4)
+> 
+> 2. krb5_util.c:check_for_target - Heimdal variant constructs a "pattern"
+>    principal and uses krb5_cc_retrieve_cred to get a matching credential.
+>    This should work on mit-krb5, so old method of iterating over every
+>    credential in cache may possibly be dropped outright and "#$if" guard
+>    omitted.
+>    For the sake of the above I reformatted the old approach to make it a bit
+>    more clear what's going on there.
+> 
+> 3. krb5_util.c:gssd_k5_err_msg - krb5_get_err_text is marked as deprecated,
+>    at least on Heimdal. If krb5_get_error_message is available, it should not
+>    be reached at all, thus "#elif" guard.
+> 
+> Signed-off-by: Alex Dubov <oakad@yahoo.com>
 > ---
->  tools/nfs-iostat/nfs-iostat.py | 130 +++++++++++++++++++++--------------------
->  1 file changed, 66 insertions(+), 64 deletions(-)
+>  aclocal/kerberos5.m4   |    7 +++--
+>  utils/gssd/krb5_util.c |   55 ++++++++++++++++++++++++++++++++++++-----------
+>  2 files changed, 46 insertions(+), 16 deletions(-)
 > 
-> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
-> index d909632..dfbef87 100644
-> --- a/tools/nfs-iostat/nfs-iostat.py
-> +++ b/tools/nfs-iostat/nfs-iostat.py
-> @@ -3,6 +3,8 @@
->  """Emulate iostat for NFS mount points using /proc/self/mountstats
->  """
+> diff --git a/aclocal/kerberos5.m4 b/aclocal/kerberos5.m4
+> index 0bf35d3..ebf6f20 100644
+> --- a/aclocal/kerberos5.m4
+> +++ b/aclocal/kerberos5.m4
+> @@ -56,9 +56,10 @@ AC_DEFUN([AC_KERBEROS_V5],[
+>           break
+>        dnl The following ugly hack brought on by the split installation
+>        dnl of Heimdal Kerberos on SuSe
+> -      elif test \( -f $dir/include/heim_err.h -o\
+> -      		 -f $dir/include/heimdal/heim_err.h \) -a \
+> -                -f $dir/lib/libroken.a; then
+> +      elif test \( \( -f $dir/include/heim_err.h -o\
+> +                      -f $dir/include/heimdal/heim_err.h \) -a \
+> +                   \( -f $dir/lib/libroken.a -o\
+> +                      -f $dir/lib/libroken.so \) \) ; then
+>           AC_DEFINE(HAVE_HEIMDAL, 1, [Define this if you have Heimdal Kerberos libraries])
+>           KRBDIR="$dir"
+>           gssapi_lib=gssapi
+
+This hunk looks good.
+
+> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> index 20b55b3..adef268 100644
+> --- a/utils/gssd/krb5_util.c
+> +++ b/utils/gssd/krb5_util.c
+> @@ -958,29 +958,57 @@ check_for_tgt(krb5_context context, krb5_ccache ccache,
+>  {
+>  	krb5_error_code ret;
+>  	krb5_creds creds;
+> -	krb5_cc_cursor cur;
+>  	int found = 0;
 >  
-> +from __future__ import print_function
+> +#if HAVE_HEIMDAL
+> +	krb5_creds pattern;
+> +	krb5_const_realm client_realm;
 > +
->  __copyright__ = """
->  Copyright (C) 2005, Chuck Lever <cel@netapp.com>
->  
-> @@ -201,9 +203,9 @@ class DeviceData:
->          result = DeviceData()
->  
->          # copy self into result
-> -        for key, value in self.__nfs_data.iteritems():
-> +        for key, value in self.__nfs_data.items():
->              result.__nfs_data[key] = value
-> -        for key, value in self.__rpc_data.iteritems():
-> +        for key, value in self.__rpc_data.items():
->              result.__rpc_data[key] = value
->  
->          # compute the difference of each item in the list
-> @@ -233,9 +235,9 @@ class DeviceData:
->              client_bytes_read = float(nfs_stats['serverreadbytes'] - nfs_stats['directreadbytes'])
->              ratio = ((app_bytes_read - client_bytes_read) * 100) / app_bytes_read
->  
-> -            print
-> -            print 'app bytes: %f  client bytes %f' % (app_bytes_read, client_bytes_read)
-> -            print 'Data cache hit ratio: %4.2f%%' % ratio
-> +            print()
-> +            print('app bytes: %f  client bytes %f' % (app_bytes_read, client_bytes_read))
-> +            print('Data cache hit ratio: %4.2f%%' % ratio)
->  
->      def __print_attr_cache_stats(self, sample_time):
->          """Print attribute cache efficiency stats
-> @@ -255,13 +257,13 @@ class DeviceData:
->              data_invalidates = float(nfs_stats['datainvalidates'])
->              attr_invalidates = float(nfs_stats['attrinvalidates'])
->  
-> -            print
-> -            print '%d inode revalidations, hitting in cache %4.2f%% of the time' % \
-> -                (revalidates, ratio)
-> -            print '%d open operations (mandatory GETATTR requests)' % opens
-> +            print()
-> +            print('%d inode revalidations, hitting in cache %4.2f%% of the time' % \
-> +                (revalidates, ratio))
-> +            print('%d open operations (mandatory GETATTR requests)' % opens)
->              if getattr_ops != 0:
-> -                print '%4.2f%% of GETATTRs resulted in data cache invalidations' % \
-> -                   ((data_invalidates * 100) / getattr_ops)
-> +                print('%4.2f%% of GETATTRs resulted in data cache invalidations' % \
-> +                   ((data_invalidates * 100) / getattr_ops))
->  
->      def __print_dir_cache_stats(self, sample_time):
->          """Print directory stats
-> @@ -277,13 +279,13 @@ class DeviceData:
->          lookups = nfs_stats['vfslookup']
->          getdents = nfs_stats['vfsreaddir']
->  
-> -        print
-> -        print '%d open operations (pathname lookups)' % opens
-> -        print '%d dentry revalidates and %d vfs lookup requests' % \
-> -            (dentry_revals, lookups),
-> -        print 'resulted in %d LOOKUPs on the wire' % lookup_ops
-> -        print '%d vfs getdents calls resulted in %d READDIRs on the wire' % \
-> -            (getdents, readdir_ops)
-> +        print()
-> +        print('%d open operations (pathname lookups)' % opens)
-> +        print('%d dentry revalidates and %d vfs lookup requests' % \
-> +            (dentry_revals, lookups))
-> +        print('resulted in %d LOOKUPs on the wire' % lookup_ops)
-> +        print('%d vfs getdents calls resulted in %d READDIRs on the wire' % \
-> +            (getdents, readdir_ops))
->  
->      def __print_page_stats(self, sample_time):
->          """Print page cache stats
-> @@ -297,33 +299,33 @@ class DeviceData:
->          vfswritepages = nfs_stats['vfswritepages']
->          pages_written = nfs_stats['writepages']
->  
-> -        print
-> -        print '%d nfs_readpage() calls read %d pages' % \
-> -            (vfsreadpage, vfsreadpage)
-> -        print '%d nfs_readpages() calls read %d pages' % \
-> -            (vfsreadpages, pages_read - vfsreadpage),
-> +        print()
-> +        print('%d nfs_readpage() calls read %d pages' % \
-> +            (vfsreadpage, vfsreadpage))
-> +        print('%d nfs_readpages() calls read %d pages' % \
-> +            (vfsreadpages, pages_read - vfsreadpage))
->          if vfsreadpages != 0:
-> -            print '(%.1f pages per call)' % \
-> -                (float(pages_read - vfsreadpage) / vfsreadpages)
-> +            print('(%.1f pages per call)' % \
-> +                (float(pages_read - vfsreadpage) / vfsreadpages))
->          else:
-> -            print
+> +	krb5_cc_clear_mcred(&pattern);
+> +
+> +	client_realm = krb5_principal_get_realm(context, principal);
+> +
+> +	ret = krb5_make_principal(context, &pattern.server,
+> +				  client_realm, KRB5_TGS_NAME, client_realm,
+> +				  NULL);
+> +	if (ret) {
+> +		krb5_err(context, 1, ret, "krb5_make_principal");
+> +		return 0;
+> +	}
+> +
+> +	pattern.client = principal;
+> +
+> +	ret = krb5_cc_retrieve_cred(context, ccache, 0, &pattern, &creds);
+> +	krb5_free_principal(context, pattern.server);
+> +
+> +	if (ret) {
+> +		if (ret != KRB5_CC_END)
+> +			krb5_err(context, 1, ret, "krb5_cc_retrieve_cred");
+> +	} else
+> +		found = creds.times.endtime > time(NULL);
+> +
+> +	krb5_free_cred_contents(context, &creds);
+> +#else
+> +	krb5_cc_cursor cur;
+>  	ret = krb5_cc_start_seq_get(context, ccache, &cur);
+>  	if (ret) 
+>  		return 0;
+
+krb5_cc_retrieve_cred is available in MIT too, I would try to avoid
+using ifedfs here and come up with common code that works for both to
+avoid bugs that may cause different behavior in parallel code paths
+depending on which library is used.
+
+ 
+>  	while (!found &&
+>  		(ret = krb5_cc_next_cred(context, ccache, &cur, &creds)) == 0) {
+> -		if (creds.server->length == 2 &&
+> -				data_is_equal(creds.server->realm,
+> -					      principal->realm) &&
+> -				creds.server->data[0].length == 6 &&
+> -				memcmp(creds.server->data[0].data,
+> -						"krbtgt", 6) == 0 &&
+> -				data_is_equal(creds.server->data[1],
+> -					      principal->realm) &&
+> -				creds.times.endtime > time(NULL))
+> -			found = 1;
+> +		if (
+> +			creds.server->length == 2
+> +			&& data_is_equal(creds.server->realm, principal->realm)
+> +			&& creds.server->data[0].length == 6
+> +			&& memcmp(creds.server->data[0].data, "krbtgt", 6) == 0
+> +			&& data_is_equal(creds.server->data[1],
+> +					 principal->realm)
+> +			&& creds.times.endtime > time(NULL)
+> +		) found = 1;
+
+This looks like just gratuitous re-indentation, I would drop it it's not
+needed and makes the patch bigger.
+
+>  		krb5_free_cred_contents(context, &creds);
+>  	}
+>  	krb5_cc_end_seq_get(context, ccache, &cur);
 > -
-> -        print
-> -        print '%d nfs_updatepage() calls' % nfs_stats['vfsupdatepage']
-> -        print '%d nfs_writepage() calls wrote %d pages' % \
-> -            (vfswritepage, vfswritepage)
-> -        print '%d nfs_writepages() calls wrote %d pages' % \
-> -            (vfswritepages, pages_written - vfswritepage),
-> +            print()
-> +
-> +        print()
-> +        print('%d nfs_updatepage() calls' % nfs_stats['vfsupdatepage'])
-> +        print('%d nfs_writepage() calls wrote %d pages' % \
-> +            (vfswritepage, vfswritepage))
-> +        print('%d nfs_writepages() calls wrote %d pages' % \
-> +            (vfswritepages, pages_written - vfswritepage))
->          if (vfswritepages) != 0:
-> -            print '(%.1f pages per call)' % \
-> -                (float(pages_written - vfswritepage) / vfswritepages)
-> +            print('(%.1f pages per call)' % \
-> +                (float(pages_written - vfswritepage) / vfswritepages))
->          else:
-> -            print
-> +            print()
+> +#endif
+>  	return found;
+>  }
 >  
->          congestionwaits = nfs_stats['congestionwait']
->          if congestionwaits != 0:
-> -            print
-> -            print '%d congestion waits' % congestionwaits
-> +            print()
-> +            print('%d congestion waits' % congestionwaits)
+> @@ -1326,12 +1354,13 @@ gssd_k5_err_msg(krb5_context context, krb5_error_code code)
+>  		return msg;
+>  #if HAVE_KRB5
+>  	return strdup(error_message(code));
+> -#else
+> +#elif !HAVE_KRB5_GET_ERROR_MESSAGE
+>  	if (context != NULL)
+>  		return strdup(krb5_get_err_text(context, code));
+>  	else
+>  		return strdup(error_message(code));
+>  #endif
+> +	return NULL;
+
+MIT doesn't have krb5_get_err_text at all so it shouldn't be tried out
+at all if MIT is available.
+
+I think you should ratrher add a keberos.m4 macro to check for
+krb5_get_err_text then change this to something like:
+
+char *msg = NULL;
+
+#if HAVE_KRB5_GET_ERROR_MESSAGE
+	... <- same code as in the current tree
+#elif HAVE_KRB_GET_ERR_TEXT
+	... <- code in current else branch of 'if HAVE_KRB5'
+#else
+	msg = strdup(error_message(code));
+#endif
+	return msg;
+
+>  }
 >  
->      def __print_rpc_op_stats(self, op, sample_time):
->          """Print generic stats for one RPC op
-> @@ -351,15 +353,15 @@ class DeviceData:
->              exe_per_op = 0.0
->  
->          op += ':'
-> -        print '%s' % op.lower().ljust(15),
-> -        print '  ops/s\t\t   kB/s\t\t  kB/op\t\tretrans\t\tavg RTT (ms)\tavg exe (ms)'
-> +        print('%s' % op.lower().ljust(15))
-> +        print('  ops/s\t\t   kB/s\t\t  kB/op\t\tretrans\t\tavg RTT (ms)\tavg exe (ms)')
->  
-> -        print '\t\t%7.3f' % (ops / sample_time),
-> -        print '\t%7.3f' % (kilobytes / sample_time),
-> -        print '\t%7.3f' % kb_per_op,
-> -        print ' %7d (%3.1f%%)' % (retrans, retrans_percent),
-> -        print '\t%7.3f' % rtt_per_op,
-> -        print '\t%7.3f' % exe_per_op
-> +        print('\t\t%7.3f' % (ops / sample_time))
-> +        print('\t%7.3f' % (kilobytes / sample_time))
-> +        print('\t%7.3f' % kb_per_op)
-> +        print(' %7d (%3.1f%%)' % (retrans, retrans_percent))
-> +        print('\t%7.3f' % rtt_per_op)
-> +        print('\t%7.3f' % exe_per_op)
->  
->      def ops(self, sample_time):
->          sends = float(self.__rpc_data['rpcsends'])
-> @@ -384,14 +386,14 @@ class DeviceData:
->          else:
->              backlog = 0.0
->  
-> -        print
-> -        print '%s mounted on %s:' % \
-> -            (self.__nfs_data['export'], self.__nfs_data['mountpoint'])
-> -        print
-> +        print()
-> +        print('%s mounted on %s:' % \
-> +            (self.__nfs_data['export'], self.__nfs_data['mountpoint']))
-> +        print()
->  
-> -        print '   op/s\t\trpc bklog'
-> -        print '%7.2f' % (sends / sample_time), 
-> -        print '\t%7.2f' % backlog
-> +        print('   op/s\t\trpc bklog')
-> +        print('%7.2f' % (sends / sample_time))
-> +        print('\t%7.2f' % backlog)
->  
->          if which == 0:
->              self.__print_rpc_op_stats('READ', sample_time)
-> @@ -424,7 +426,7 @@ def parse_stats_file(filename):
->      ms_dict = dict()
->      key = ''
->  
-> -    f = file(filename)
-> +    f = open(filename)
->      for line in f.readlines():
->          words = line.split()
->          if len(words) == 0:
-> @@ -494,7 +496,7 @@ def list_nfs_mounts(givenlist, mountstats):
->              if stats.is_nfs_mountpoint():
->                  list += [device]
->      else:
-> -        for device, descr in mountstats.iteritems():
-> +        for device, descr in mountstats.items():
->              stats = DeviceData()
->              stats.parse_stats(descr)
->              if stats.is_nfs_mountpoint():
-> @@ -527,7 +529,7 @@ client are listed.
->          usage="usage: %prog [ <interval> [ <count> ] ] [ <options> ] [ <mount point> ]",
->          description=mydescription,
->          version='version %s' % Iostats_version)
-> -    parser.set_defaults(which=0, sort=False, list=sys.maxint)
-> +    parser.set_defaults(which=0, sort=False, list=sys.maxsize)
->  
->      statgroup = OptionGroup(parser, "Statistics Options",
->                              'File I/O is displayed unless one of the following is specified:')
-> @@ -572,29 +574,29 @@ client are listed.
->              try:
->                  interval = int(arg)
->              except:
-> -                print 'Illegal <interval> value %s' % arg
-> +                print('Illegal <interval> value %s' % arg)
->                  return
->              if interval > 0:
->                  interval_seen = True
->              else:
-> -                print 'Illegal <interval> value %s' % arg
-> +                print('Illegal <interval> value %s' % arg)
->                  return
->          elif not count_seen:
->              try:
->                  count = int(arg)
->              except:
-> -                print 'Ilegal <count> value %s' % arg
-> +                print('Ilegal <count> value %s' % arg)
->                  return
->              if count > 0:
->                  count_seen = True
->              else:
-> -                print 'Illegal <count> value %s' % arg
-> +                print('Illegal <count> value %s' % arg)
->                  return
->  
->      # make certain devices contains only NFS mount points
->      devices = list_nfs_mounts(origdevices, mountstats)
->      if len(devices) == 0:
-> -        print 'No NFS mount points were found'
-> +        print('No NFS mount points were found')
->          return
->  
->  
-> @@ -616,7 +618,7 @@ client are listed.
->              # we need to recheck the devices list when reparsing
->              devices = list_nfs_mounts(origdevices,mountstats)
->              if len(devices) == 0:
-> -                print 'No NFS mount points were found'
-> +                print('No NFS mount points were found')
->                  return
->              count -= 1
->      else: 
-> @@ -630,7 +632,7 @@ client are listed.
->              # we need to recheck the devices list when reparsing
->              devices = list_nfs_mounts(origdevices,mountstats)
->              if len(devices) == 0:
-> -                print 'No NFS mount points were found'
-> +                print('No NFS mount points were found')
->                  return
->  
->  #
-> @@ -641,7 +643,7 @@ prog = os.path.basename(sys.argv[0])
->  try:
->      iostat_command(prog)
->  except KeyboardInterrupt:
-> -    print 'Caught ^C... exiting'
-> +    print('Caught ^C... exiting')
->      sys.exit(1)
->  
->  sys.exit(0)
-> 
+>  /*
+
+
+HTH,
+Simo.
+
+-- 
+Simo Sorce * Red Hat, Inc * New York
+
