@@ -1,55 +1,182 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from youngberry.canonical.com ([91.189.89.112]:54047 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759804Ab3CHRLu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Mar 2013 12:11:50 -0500
-Received: from cpe-70-124-70-187.austin.res.rr.com ([70.124.70.187] helo=[192.168.1.73])
-	by youngberry.canonical.com with esmtpsa (TLS1.0:DHE_RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.71)
-	(envelope-from <dave.chiluk@canonical.com>)
-	id 1UE0pg-0006yy-Jp
-	for linux-nfs@vger.kernel.org; Fri, 08 Mar 2013 17:11:48 +0000
-Message-ID: <513A1BD1.6060709@canonical.com>
-Date: Fri, 08 Mar 2013 11:11:45 -0600
-From: Dave Chiluk <dave.chiluk@canonical.com>
+Received: from mx1.redhat.com ([209.132.183.28]:46390 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754420Ab3C3Wta (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 30 Mar 2013 18:49:30 -0400
+Message-ID: <51576BEF.50001@RedHat.com>
+Date: Sat, 30 Mar 2013 18:49:19 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: NFSv4 setattr null-terminates strings
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
+References: <1364478845-29796-1-git-send-email-SteveD@redhat.com> <1364478845-29796-14-git-send-email-SteveD@redhat.com> <20130328185845.GI7080@fieldses.org> <51575E1D.7000605@RedHat.com> <20130330220759.GB12025@fieldses.org>
+In-Reply-To: <20130330220759.GB12025@fieldses.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As of commit 57e62324e469e092ecc6c94a7a86fe4bd6ac5172, the SETATTR nfsv4
-command now null terminates fattr_owner and fattr_owner_group.
 
-Here is an example excerpt from a tcpdump
-Opcode: SETATTR (34)
-    stateid
-        [StateID Hash: 0xafa9]
-        seqid: 0x00000000
-        Data: 000000000000000000000000
-    obj_attributes
-        attrmask
-            recc_attr: FATTR4_OWNER_GROUP (37)
-                fattr4_owner_group: groupname@domainname.com
-                    length: 25
 
-This means that even though there are actually 24 characters in
-groupname@domainname.com, we now send 24 characters + 1 null character.
-Hence the total length of 25.  Previously the client would send just the
-24 characters and set length to 24.
+On 30/03/13 18:08, J. Bruce Fields wrote:
+> On Sat, Mar 30, 2013 at 05:50:21PM -0400, Steve Dickson wrote:
+>>
+>>
+>> On 28/03/13 14:58, J. Bruce Fields wrote:
+>>> On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
+>>>> From: David Quigley <dpquigl@davequigley.com>
+>>>>
+>>>> This patch adds the ability to encode and decode file labels on the server for
+>>>> the purpose of sending them to the client and also to process label change
+>>>> requests from the client.
+>>>>
+>>>> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+>>>> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+>>>> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+>>>> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+>>>> ---
+>>>>  fs/nfsd/nfs4proc.c |  41 +++++++++++++++++++
+>>>>  fs/nfsd/nfs4xdr.c  | 116 ++++++++++++++++++++++++++++++++++++++++++++++++++---
+>>>>  fs/nfsd/nfsd.h     |   6 ++-
+>>>>  fs/nfsd/vfs.c      |  29 ++++++++++++++
+>>>>  fs/nfsd/vfs.h      |   2 +
+>>>>  fs/nfsd/xdr4.h     |   3 ++
+>>>>  6 files changed, 191 insertions(+), 6 deletions(-)
+>>>>
+>>>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+>>>> index ae73175..bb17589 100644
+>>>> --- a/fs/nfsd/nfs4proc.c
+>>>> +++ b/fs/nfsd/nfs4proc.c
+>>>> @@ -42,6 +42,36 @@
+>>>>  #include "current_stateid.h"
+>>>>  #include "netns.h"
+>>>>  
+>>>> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+>>>> +#include <linux/security.h>
+>>>> +
+>>>> +static inline void
+>>>> +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
+>>>> +{
+>>>> +	struct inode *inode = resfh->fh_dentry->d_inode;
+>>>> +	int status;
+>>>> +
+>>>> +	mutex_lock(&inode->i_mutex);
+>>>> +	status = security_inode_setsecctx(resfh->fh_dentry,
+>>>> +		label->label, label->len);
+>>>> +	mutex_unlock(&inode->i_mutex);
+>>>> +
+>>>> +	if (status)
+>>>> +		/*
+>>>> +		 * We should probably fail the whole open at this point,
+>>>> +		 * but we've already created or opened the file, so it's 
+>>>> +		 * too late; So this seems the least of evils:
+>>>> +		 */
+>>>> +		bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
+>>>> +		
+>>>> +	return;
+>>>> +}
+>>>> +#else 
+>>>> +static inline void 
+>>>> +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
+>>>> +{ }
+>>>> +#endif
+>>>> +
+>>>>  #define NFSDDBG_FACILITY		NFSDDBG_PROC
+>>>>  
+>>>>  static u32 nfsd_attrmask[] = {
+>>>> @@ -230,6 +260,9 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
+>>>>  					(u32 *)open->op_verf.data,
+>>>>  					&open->op_truncate, &open->op_created);
+>>>>  
+>>>> +		if (!status && open->op_label != NULL) 
+>>>> +			nfsd4_security_inode_setsecctx(resfh, open->op_label, open->op_bmval);
+>>>> +
+>>>>  		/*
+>>>>  		 * Following rfc 3530 14.2.16, use the returned bitmask
+>>>>  		 * to indicate which attributes we used to store the
+>>>> @@ -599,6 +632,9 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>>>>  	if (status)
+>>>>  		goto out;
+>>>>  
+>>>> +	if (create->cr_label != NULL)
+>>>> +		nfsd4_security_inode_setsecctx(&resfh, create->cr_label, create->cr_bmval);
+>>>> +
+>>>>  	if (create->cr_acl != NULL)
+>>>>  		do_set_nfs4_acl(rqstp, &resfh, create->cr_acl,
+>>>>  				create->cr_bmval);
+>>>> @@ -888,6 +924,11 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>>>>  					    setattr->sa_acl);
+>>>>  	if (status)
+>>>>  		goto out;
+>>>> +	if (setattr->sa_label != NULL)
+>>>> +		status = nfsd4_set_nfs4_label(rqstp, &cstate->current_fh,
+>>>> +				setattr->sa_label);
+>>>> +	if (status)
+>>>> +		goto out;
+>>>>  	status = nfsd_setattr(rqstp, &cstate->current_fh, &setattr->sa_iattr,
+>>>>  				0, (time_t)0);
+>>>>  out:
+>>>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>>>> index 0116886..52e219c 100644
+>>>> --- a/fs/nfsd/nfs4xdr.c
+>>>> +++ b/fs/nfsd/nfs4xdr.c
+>>>> @@ -55,6 +55,11 @@
+>>>>  #include "cache.h"
+>>>>  #include "netns.h"
+>>>>  
+>>>> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+>>>> +#include <linux/security.h>
+>>>> +#endif
+>>>> +
+>>>> +
+>>>>  #define NFSDDBG_FACILITY		NFSDDBG_XDR
+>>>>  
+>>>>  /*
+>>>> @@ -79,6 +84,24 @@ check_filename(char *str, int len)
+>>>>  			return nfserr_badname;
+>>>>  	return 0;
+>>>>  } 
+>>>> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+>>>> +static struct nfs4_label *nfsd4_label_alloc(u32 len)
+>>>> +{
+>>>> +	struct nfs4_label *label = NULL;
+>>>> +
+>>>> +	if (len > NFS4_MAXLABELLEN)
+>>>> +		return ERR_PTR(-ENAMETOOLONG);
+>>>
+>>> This is returned as NFS4ERR_NAMETOOLONG.
+>>>
+>>> The 4.2 spec should note this case, if it's the right error.  rfc 5661
+>>> says that error's only for filenames, and doesn't allow it for setattr
+>>> (which doesn't take a filename).
+>> The 4.2 spec (draft-ietf-nfsv4-minorversion2-19.txt) defines two Labeled 
+>> NFS errors:
+>> NFS4ERR_BADLABEL  (Error Code 10093)
+>> NFS4ERR_WRONG_LFS (Error Code 10092)
+>>
+>> and we currently don't define either one of them... So I guess that
+>> will have to change... 
+> 
+> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-11.1.3.1
+> just says "The label specified is invalid in some manner" for
+> NFS4ERR_BADLABEL.
+> 
+> Anyway, that sounds like the right one for this case....
+> 
+>> So what should NFS4ERR_BADLABEL map to in nfserrno()?
+> 
+> I don't know; I guess I'd check out what errors can be returned from the
+> code that sets a context.
+Looking looking at the code under security/selinux, the popular returns 
+seem to be are
+-EOPNOTSUPP, -EACCES, -EPERM and -EINVAL. 
 
-This isn't an issue for communication with other Linux machines, but it
-is an issue for interaction with AIX machines.  As is discussed here.
-https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1101292
+I say we go with -EINVAL....
 
-I attempted to read the RFC available here
-http://tools.ietf.org/html/rfc5661, but have not been able to find a
-statement instructing one way or the other.
+steved.
 
-So the question becomes, is it correct for linux to be sending this null
-terminator when read against the RFC, or is it AIX's responsibility to
-handle null-terminated strings?
-
-Thank you,
-Dave.
