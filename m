@@ -1,116 +1,200 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f173.google.com ([209.85.223.173]:39021 "EHLO
-	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751491Ab3CHTrH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Mar 2013 14:47:07 -0500
-Received: by mail-ie0-f173.google.com with SMTP id 9so2553307iec.4
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Mar 2013 11:47:07 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 07/11] gssd: Update description of "-l" option
-To: linux-nfs@vger.kernel.org
-Cc: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 08 Mar 2013 14:47:05 -0500
-Message-ID: <20130308194705.5656.38099.stgit@seurat.1015granger.net>
-In-Reply-To: <20130308193830.5656.44184.stgit@seurat.1015granger.net>
-References: <20130308193830.5656.44184.stgit@seurat.1015granger.net>
+Received: from mx1.redhat.com ([209.132.183.28]:7423 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755750Ab3C3UxV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 30 Mar 2013 16:53:21 -0400
+Message-ID: <51575074.7020401@RedHat.com>
+Date: Sat, 30 Mar 2013 16:52:04 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Mimi Zohar <zohar@linux.vnet.ibm.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 02/14] Security: Add Hook to test if the particular xattr
+ is part of a MAC model.
+References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>  <1364478845-29796-3-git-send-email-SteveD@redhat.com> <1364557380.2580.189.camel@falcor1.watson.ibm.com>
+In-Reply-To: <1364557380.2580.189.camel@falcor1.watson.ibm.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move most of the text in the description of the "-l" option up to
-the DESCRIPTION section, to match what was done for "-n" and "-k".
 
-The discussion is then less restricted by formatting, and we can
-take the space to introduce a few concepts before describing the
-behavior of rpc.gssd.
 
-Fix a few misspellings and grammar issues while here.
+On 29/03/13 07:43, Mimi Zohar wrote:
+> On Thu, 2013-03-28 at 09:53 -0400, Steve Dickson wrote:
+>> From: David Quigley <dpquigl@davequigley.com>
+>>
+>> The interface to request security labels from user space is the xattr
+>> interface. When requesting the security label from an NFS server it is
+>> important to make sure the requested xattr actually is a MAC label. This allows
+>> us to make sure that we get the desired semantics from the attribute instead of
+>> something else such as capabilities or a time based LSM.
+>>
+>> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+>> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+>> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+>> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+>> ---
+>>  include/linux/security.h   | 14 ++++++++++++++
+>>  security/capability.c      |  6 ++++++
+>>  security/security.c        |  6 ++++++
+>>  security/selinux/hooks.c   |  6 ++++++
+>>  security/smack/smack_lsm.c | 11 +++++++++++
+>>  5 files changed, 43 insertions(+)
+>>
+>> diff --git a/include/linux/security.h b/include/linux/security.h
+>> index a957e7a..8a6faff 100644
+>> --- a/include/linux/security.h
+>> +++ b/include/linux/security.h
+>> @@ -1319,6 +1319,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
+>>   *	@pages contains the number of pages.
+>>   *	Return 0 if permission is granted.
+>>   *
+>> + * @ismaclabel:
+>> + *	Check if the extended attribute specified by @name
+>> + *	represents a MAC label. Returns 0 if name is a MAC
+>> + *	attribute otherwise returns non-zero.
+> 
+> Sorry, the comment doesn't match the code.
+Nice catch! thanks!
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+steved.
 
- utils/gssd/gssd.c   |    2 +-
- utils/gssd/gssd.man |   47 ++++++++++++++++++++++++++---------------------
- 2 files changed, 27 insertions(+), 22 deletions(-)
-
-diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index a3292c9..0be2517 100644
---- a/utils/gssd/gssd.c
-+++ b/utils/gssd/gssd.c
-@@ -147,7 +147,7 @@ main(int argc, char *argv[])
- #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
- 				limit_to_legacy_enctypes = 1;
- #else 
--				errx(1, "Setting encryption type not support by Kerberos libraries.");
-+				errx(1, "Encryption type limits not supported by Kerberos libraries.");
- #endif
- 				break;
- 			default:
-diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
-index 1d6fb4c..79d9bf9 100644
---- a/utils/gssd/gssd.man
-+++ b/utils/gssd/gssd.man
-@@ -172,6 +172,27 @@ If
- .B rpc.gssd
- cannot obtain a machine credential (say, the local system has
- no keytab), NFSv4 operations that require machine credentials will fail.
-+.SS Encryption types
-+A realm administrator can choose to add keys encoded in a number of different
-+encryption types to the local system's keytab.
-+For instance, a host/ principal might have keys for the
-+.BR aes256-cts-hmac-sha1-96 ,
-+.BR aes128-cts-hmac-sha1-96 ,
-+.BR des3-cbc-sha1 ", and"
-+.BR arcfour-hmac " encryption types."
-+This permits
-+.B rpc.gssd
-+to choose an appropriate encryption type that the target NFS server
-+supports.
-+.P
-+These encryption types are stronger than legacy single-DES encryption types.
-+To interoperate in environments where servers support
-+only weak encryption types,
-+you can restrict your client to use only single-DES encryption types
-+by specifying the
-+.B -l
-+option when starting
-+.BR rpc.gssd .
- .SH OPTIONS
- .TP
- .B -f
-@@ -193,28 +214,12 @@ The default value is
- .IR /etc/krb5.keytab .
- .TP
- .B -l
--Tells
-+When specified, restricts
- .B rpc.gssd
--to limit session keys to Single DES even if the kernel supports stronger
--encryption types. Service ticket encryption is still governed by what
--the KDC believes the target server supports. This way the client can
--access a server that has strong keys in its keytab for ticket decryption
--but whose kernel only supports Single DES.
--.IP
--The alternative is to put only Single DES keys in the server's keytab
--and limit encryption types for its principal to Single DES on the KDC
--which will cause service tickets for this server to be encrypted using
--only Single DES and (as a side-effect) contain only Single DES session
--keys.
--.IP
--This legacy behaviour is only required for older servers
--(pre nfs-utils-1.2.4). If the server has a recent kernel, Kerberos
--implementation and nfs-utils it will work just fine with stronger
--encryption.
--.IP
--.B Note:
--This option is only available with Kerberos libraries that 
--support setable encryption types.
-+to sessions to weak encryption types such as
-+.BR des-cbc-crc .
-+This option is available only when the local system's Kerberos library
-+supports settable encryption types.
- .TP
- .BI "-p " path
- Tells
-
+> 
+> Mimi
+> 
+>> + *	@name full extended attribute name to check against
+>> + *	LSM as a MAC label.
+>> + *
+> 
+> 
+>>   * @secid_to_secctx:
+>>   *	Convert secid to security context.  If secdata is NULL the length of
+>>   *	the result will be returned in seclen, but no secdata will be returned.
+>> @@ -1600,6 +1607,7 @@ struct security_operations {
+>>
+>>  	int (*getprocattr) (struct task_struct *p, char *name, char **value);
+>>  	int (*setprocattr) (struct task_struct *p, char *name, void *value, size_t size);
+>> +	int (*ismaclabel) (const char *name);
+>>  	int (*secid_to_secctx) (u32 secid, char **secdata, u32 *seclen);
+>>  	int (*secctx_to_secid) (const char *secdata, u32 seclen, u32 *secid);
+>>  	void (*release_secctx) (char *secdata, u32 seclen);
+>> @@ -1852,6 +1860,7 @@ void security_d_instantiate(struct dentry *dentry, struct inode *inode);
+>>  int security_getprocattr(struct task_struct *p, char *name, char **value);
+>>  int security_setprocattr(struct task_struct *p, char *name, void *value, size_t size);
+>>  int security_netlink_send(struct sock *sk, struct sk_buff *skb);
+>> +int security_ismaclabel(const char *name);
+>>  int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen);
+>>  int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
+>>  void security_release_secctx(char *secdata, u32 seclen);
+>> @@ -2540,6 +2549,11 @@ static inline int security_netlink_send(struct sock *sk, struct sk_buff *skb)
+>>  	return cap_netlink_send(sk, skb);
+>>  }
+>>
+>> +static inline int security_ismaclabel(const char *name)
+>> +{
+>> +	return 0;
+>> +}
+>> +
+>>  static inline int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+>>  {
+>>  	return -EOPNOTSUPP;
+>> diff --git a/security/capability.c b/security/capability.c
+>> index 456bd9d..07a6484 100644
+>> --- a/security/capability.c
+>> +++ b/security/capability.c
+>> @@ -817,6 +817,11 @@ static int cap_setprocattr(struct task_struct *p, char *name, void *value,
+>>  	return -EINVAL;
+>>  }
+>>
+>> +static int cap_ismaclabel(const char *name)
+>> +{
+>> +	return 0;
+>> +}
+>> +
+>>  static int cap_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+>>  {
+>>  	return -EOPNOTSUPP;
+>> @@ -1036,6 +1041,7 @@ void __init security_fixup_ops(struct security_operations *ops)
+>>  	set_to_cap_if_null(ops, d_instantiate);
+>>  	set_to_cap_if_null(ops, getprocattr);
+>>  	set_to_cap_if_null(ops, setprocattr);
+>> +	set_to_cap_if_null(ops, ismaclabel);
+>>  	set_to_cap_if_null(ops, secid_to_secctx);
+>>  	set_to_cap_if_null(ops, secctx_to_secid);
+>>  	set_to_cap_if_null(ops, release_secctx);
+>> diff --git a/security/security.c b/security/security.c
+>> index 723a10c..6d7389c 100644
+>> --- a/security/security.c
+>> +++ b/security/security.c
+>> @@ -1057,6 +1057,12 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
+>>  	return security_ops->netlink_send(sk, skb);
+>>  }
+>>
+>> +int security_ismaclabel(const char *name)
+>> +{
+>> +	return security_ops->ismaclabel(name);
+>> +}
+>> +EXPORT_SYMBOL(security_ismaclabel);
+>> +
+>>  int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+>>  {
+>>  	return security_ops->secid_to_secctx(secid, secdata, seclen);
+>> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+>> index c7f1905..97231a0 100644
+>> --- a/security/selinux/hooks.c
+>> +++ b/security/selinux/hooks.c
+>> @@ -5417,6 +5417,11 @@ abort_change:
+>>  	return error;
+>>  }
+>>
+>> +static int selinux_ismaclabel(const char *name)
+>> +{
+>> +	return (strcmp(name, XATTR_SELINUX_SUFFIX) == 0);
+>> +}
+>> +
+>>  static int selinux_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+>>  {
+>>  	return security_sid_to_context(secid, secdata, seclen);
+>> @@ -5655,6 +5660,7 @@ static struct security_operations selinux_ops = {
+>>  	.getprocattr =			selinux_getprocattr,
+>>  	.setprocattr =			selinux_setprocattr,
+>>
+>> +	.ismaclabel =			selinux_ismaclabel,
+>>  	.secid_to_secctx =		selinux_secid_to_secctx,
+>>  	.secctx_to_secid =		selinux_secctx_to_secid,
+>>  	.release_secctx =		selinux_release_secctx,
+>> diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
+>> index fa64740..ca01d71 100644
+>> --- a/security/smack/smack_lsm.c
+>> +++ b/security/smack/smack_lsm.c
+>> @@ -3329,6 +3329,16 @@ static void smack_audit_rule_free(void *vrule)
+>>  #endif /* CONFIG_AUDIT */
+>>
+>>  /**
+>> + * smack_ismaclabel - check if xattr @name references a smack MAC label
+>> + * @name: Full xattr name to check.
+>> + */
+>> +static int smack_ismaclabel(const char *name)
+>> +{
+>> +	return (strcmp(name, XATTR_SMACK_SUFFIX) == 0);
+>> +}
+>> +
+>> +
+>> +/**
+>>   * smack_secid_to_secctx - return the smack label for a secid
+>>   * @secid: incoming integer
+>>   * @secdata: destination
+>> @@ -3524,6 +3534,7 @@ struct security_operations smack_ops = {
+>>  	.audit_rule_free =		smack_audit_rule_free,
+>>  #endif /* CONFIG_AUDIT */
+>>
+>> +	.ismaclabel =			smack_ismaclabel,
+>>  	.secid_to_secctx = 		smack_secid_to_secctx,
+>>  	.secctx_to_secid = 		smack_secctx_to_secid,
+>>  	.release_secctx = 		smack_release_secctx,
+> 
+> 
+> 
