@@ -1,149 +1,190 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from nm22.bullet.mail.bf1.yahoo.com ([98.139.212.181]:23529 "EHLO
-	nm22.bullet.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754388Ab3C2JtK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Mar 2013 05:49:10 -0400
-From: oakad@yahoo.com
-To: simo@redhat.com
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org, Alex Dubov <oakad@yahoo.com>
-Subject: [PATCH] Fix compilation against Heimdal kerberos implementation
-Date: Fri, 29 Mar 2013 20:48:32 +1100
-Message-Id: <1364550512-14832-1-git-send-email-oakad@yahoo.com>
+Received: from fieldses.org ([174.143.236.118]:47525 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754615Ab3CaACi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 30 Mar 2013 20:02:38 -0400
+Date: Sat, 30 Mar 2013 20:02:30 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
+Message-ID: <20130331000230.GJ22307@fieldses.org>
+References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
+ <1364478845-29796-14-git-send-email-SteveD@redhat.com>
+ <20130328185845.GI7080@fieldses.org>
+ <51575E1D.7000605@RedHat.com>
+ <20130330220759.GB12025@fieldses.org>
+ <51576BEF.50001@RedHat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <51576BEF.50001@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Alex Dubov <oakad@yahoo.com>
+On Sat, Mar 30, 2013 at 06:49:19PM -0400, Steve Dickson wrote:
+> 
+> 
+> On 30/03/13 18:08, J. Bruce Fields wrote:
+> > On Sat, Mar 30, 2013 at 05:50:21PM -0400, Steve Dickson wrote:
+> >>
+> >>
+> >> On 28/03/13 14:58, J. Bruce Fields wrote:
+> >>> On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
+> >>>> From: David Quigley <dpquigl@davequigley.com>
+> >>>>
+> >>>> This patch adds the ability to encode and decode file labels on the server for
+> >>>> the purpose of sending them to the client and also to process label change
+> >>>> requests from the client.
+> >>>>
+> >>>> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> >>>> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> >>>> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> >>>> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+> >>>> ---
+> >>>>  fs/nfsd/nfs4proc.c |  41 +++++++++++++++++++
+> >>>>  fs/nfsd/nfs4xdr.c  | 116 ++++++++++++++++++++++++++++++++++++++++++++++++++---
+> >>>>  fs/nfsd/nfsd.h     |   6 ++-
+> >>>>  fs/nfsd/vfs.c      |  29 ++++++++++++++
+> >>>>  fs/nfsd/vfs.h      |   2 +
+> >>>>  fs/nfsd/xdr4.h     |   3 ++
+> >>>>  6 files changed, 191 insertions(+), 6 deletions(-)
+> >>>>
+> >>>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> >>>> index ae73175..bb17589 100644
+> >>>> --- a/fs/nfsd/nfs4proc.c
+> >>>> +++ b/fs/nfsd/nfs4proc.c
+> >>>> @@ -42,6 +42,36 @@
+> >>>>  #include "current_stateid.h"
+> >>>>  #include "netns.h"
+> >>>>  
+> >>>> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> >>>> +#include <linux/security.h>
+> >>>> +
+> >>>> +static inline void
+> >>>> +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
+> >>>> +{
+> >>>> +	struct inode *inode = resfh->fh_dentry->d_inode;
+> >>>> +	int status;
+> >>>> +
+> >>>> +	mutex_lock(&inode->i_mutex);
+> >>>> +	status = security_inode_setsecctx(resfh->fh_dentry,
+> >>>> +		label->label, label->len);
+> >>>> +	mutex_unlock(&inode->i_mutex);
+> >>>> +
+> >>>> +	if (status)
+> >>>> +		/*
+> >>>> +		 * We should probably fail the whole open at this point,
+> >>>> +		 * but we've already created or opened the file, so it's 
+> >>>> +		 * too late; So this seems the least of evils:
+> >>>> +		 */
+> >>>> +		bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
+> >>>> +		
+> >>>> +	return;
+> >>>> +}
+> >>>> +#else 
+> >>>> +static inline void 
+> >>>> +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
+> >>>> +{ }
+> >>>> +#endif
+> >>>> +
+> >>>>  #define NFSDDBG_FACILITY		NFSDDBG_PROC
+> >>>>  
+> >>>>  static u32 nfsd_attrmask[] = {
+> >>>> @@ -230,6 +260,9 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
+> >>>>  					(u32 *)open->op_verf.data,
+> >>>>  					&open->op_truncate, &open->op_created);
+> >>>>  
+> >>>> +		if (!status && open->op_label != NULL) 
+> >>>> +			nfsd4_security_inode_setsecctx(resfh, open->op_label, open->op_bmval);
+> >>>> +
+> >>>>  		/*
+> >>>>  		 * Following rfc 3530 14.2.16, use the returned bitmask
+> >>>>  		 * to indicate which attributes we used to store the
+> >>>> @@ -599,6 +632,9 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >>>>  	if (status)
+> >>>>  		goto out;
+> >>>>  
+> >>>> +	if (create->cr_label != NULL)
+> >>>> +		nfsd4_security_inode_setsecctx(&resfh, create->cr_label, create->cr_bmval);
+> >>>> +
+> >>>>  	if (create->cr_acl != NULL)
+> >>>>  		do_set_nfs4_acl(rqstp, &resfh, create->cr_acl,
+> >>>>  				create->cr_bmval);
+> >>>> @@ -888,6 +924,11 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >>>>  					    setattr->sa_acl);
+> >>>>  	if (status)
+> >>>>  		goto out;
+> >>>> +	if (setattr->sa_label != NULL)
+> >>>> +		status = nfsd4_set_nfs4_label(rqstp, &cstate->current_fh,
+> >>>> +				setattr->sa_label);
+> >>>> +	if (status)
+> >>>> +		goto out;
+> >>>>  	status = nfsd_setattr(rqstp, &cstate->current_fh, &setattr->sa_iattr,
+> >>>>  				0, (time_t)0);
+> >>>>  out:
+> >>>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> >>>> index 0116886..52e219c 100644
+> >>>> --- a/fs/nfsd/nfs4xdr.c
+> >>>> +++ b/fs/nfsd/nfs4xdr.c
+> >>>> @@ -55,6 +55,11 @@
+> >>>>  #include "cache.h"
+> >>>>  #include "netns.h"
+> >>>>  
+> >>>> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> >>>> +#include <linux/security.h>
+> >>>> +#endif
+> >>>> +
+> >>>> +
+> >>>>  #define NFSDDBG_FACILITY		NFSDDBG_XDR
+> >>>>  
+> >>>>  /*
+> >>>> @@ -79,6 +84,24 @@ check_filename(char *str, int len)
+> >>>>  			return nfserr_badname;
+> >>>>  	return 0;
+> >>>>  } 
+> >>>> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> >>>> +static struct nfs4_label *nfsd4_label_alloc(u32 len)
+> >>>> +{
+> >>>> +	struct nfs4_label *label = NULL;
+> >>>> +
+> >>>> +	if (len > NFS4_MAXLABELLEN)
+> >>>> +		return ERR_PTR(-ENAMETOOLONG);
+> >>>
+> >>> This is returned as NFS4ERR_NAMETOOLONG.
+> >>>
+> >>> The 4.2 spec should note this case, if it's the right error.  rfc 5661
+> >>> says that error's only for filenames, and doesn't allow it for setattr
+> >>> (which doesn't take a filename).
+> >> The 4.2 spec (draft-ietf-nfsv4-minorversion2-19.txt) defines two Labeled 
+> >> NFS errors:
+> >> NFS4ERR_BADLABEL  (Error Code 10093)
+> >> NFS4ERR_WRONG_LFS (Error Code 10092)
+> >>
+> >> and we currently don't define either one of them... So I guess that
+> >> will have to change... 
+> > 
+> > http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-11.1.3.1
+> > just says "The label specified is invalid in some manner" for
+> > NFS4ERR_BADLABEL.
+> > 
+> > Anyway, that sounds like the right one for this case....
+> > 
+> >> So what should NFS4ERR_BADLABEL map to in nfserrno()?
+> > 
+> > I don't know; I guess I'd check out what errors can be returned from the
+> > code that sets a context.
+> Looking looking at the code under security/selinux, the popular returns 
+> seem to be are
+> -EOPNOTSUPP, -EACCES, -EPERM and -EINVAL. 
+> 
+> I say we go with -EINVAL....
 
-There appear to be only 3 issues remaining with Heimdal after removal of
-compulsory dependency on libgssglue:
+Note nfserrno() converts from -ERR to nfs4 errors.  You may be thinking
+of the client side nfs4_stat_to_errno().
 
-1. On some systems, only libroken.so is available (small fix to kerberos5.m4)
-
-2. krb5_util.c:check_for_target - Heimdal variant constructs a "pattern"
-   principal and uses krb5_cc_retrieve_cred to get a matching credential.
-   This should work on mit-krb5, so old method of iterating over every
-   credential in cache may possibly be dropped outright and "#$if" guard
-   omitted.
-   For the sake of the above I reformatted the old approach to make it a bit
-   more clear what's going on there.
-
-3. krb5_util.c:gssd_k5_err_msg - krb5_get_err_text is marked as deprecated,
-   at least on Heimdal. If krb5_get_error_message is available, it should not
-   be reached at all, thus "#elif" guard.
-
-Signed-off-by: Alex Dubov <oakad@yahoo.com>
----
- aclocal/kerberos5.m4   |    7 +++--
- utils/gssd/krb5_util.c |   55 ++++++++++++++++++++++++++++++++++++-----------
- 2 files changed, 46 insertions(+), 16 deletions(-)
-
-diff --git a/aclocal/kerberos5.m4 b/aclocal/kerberos5.m4
-index 0bf35d3..ebf6f20 100644
---- a/aclocal/kerberos5.m4
-+++ b/aclocal/kerberos5.m4
-@@ -56,9 +56,10 @@ AC_DEFUN([AC_KERBEROS_V5],[
-          break
-       dnl The following ugly hack brought on by the split installation
-       dnl of Heimdal Kerberos on SuSe
--      elif test \( -f $dir/include/heim_err.h -o\
--      		 -f $dir/include/heimdal/heim_err.h \) -a \
--                -f $dir/lib/libroken.a; then
-+      elif test \( \( -f $dir/include/heim_err.h -o\
-+                      -f $dir/include/heimdal/heim_err.h \) -a \
-+                   \( -f $dir/lib/libroken.a -o\
-+                      -f $dir/lib/libroken.so \) \) ; then
-          AC_DEFINE(HAVE_HEIMDAL, 1, [Define this if you have Heimdal Kerberos libraries])
-          KRBDIR="$dir"
-          gssapi_lib=gssapi
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index 20b55b3..adef268 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -958,29 +958,57 @@ check_for_tgt(krb5_context context, krb5_ccache ccache,
- {
- 	krb5_error_code ret;
- 	krb5_creds creds;
--	krb5_cc_cursor cur;
- 	int found = 0;
- 
-+#if HAVE_HEIMDAL
-+	krb5_creds pattern;
-+	krb5_const_realm client_realm;
-+
-+	krb5_cc_clear_mcred(&pattern);
-+
-+	client_realm = krb5_principal_get_realm(context, principal);
-+
-+	ret = krb5_make_principal(context, &pattern.server,
-+				  client_realm, KRB5_TGS_NAME, client_realm,
-+				  NULL);
-+	if (ret) {
-+		krb5_err(context, 1, ret, "krb5_make_principal");
-+		return 0;
-+	}
-+
-+	pattern.client = principal;
-+
-+	ret = krb5_cc_retrieve_cred(context, ccache, 0, &pattern, &creds);
-+	krb5_free_principal(context, pattern.server);
-+
-+	if (ret) {
-+		if (ret != KRB5_CC_END)
-+			krb5_err(context, 1, ret, "krb5_cc_retrieve_cred");
-+	} else
-+		found = creds.times.endtime > time(NULL);
-+
-+	krb5_free_cred_contents(context, &creds);
-+#else
-+	krb5_cc_cursor cur;
- 	ret = krb5_cc_start_seq_get(context, ccache, &cur);
- 	if (ret) 
- 		return 0;
- 
- 	while (!found &&
- 		(ret = krb5_cc_next_cred(context, ccache, &cur, &creds)) == 0) {
--		if (creds.server->length == 2 &&
--				data_is_equal(creds.server->realm,
--					      principal->realm) &&
--				creds.server->data[0].length == 6 &&
--				memcmp(creds.server->data[0].data,
--						"krbtgt", 6) == 0 &&
--				data_is_equal(creds.server->data[1],
--					      principal->realm) &&
--				creds.times.endtime > time(NULL))
--			found = 1;
-+		if (
-+			creds.server->length == 2
-+			&& data_is_equal(creds.server->realm, principal->realm)
-+			&& creds.server->data[0].length == 6
-+			&& memcmp(creds.server->data[0].data, "krbtgt", 6) == 0
-+			&& data_is_equal(creds.server->data[1],
-+					 principal->realm)
-+			&& creds.times.endtime > time(NULL)
-+		) found = 1;
- 		krb5_free_cred_contents(context, &creds);
- 	}
- 	krb5_cc_end_seq_get(context, ccache, &cur);
--
-+#endif
- 	return found;
- }
- 
-@@ -1326,12 +1354,13 @@ gssd_k5_err_msg(krb5_context context, krb5_error_code code)
- 		return msg;
- #if HAVE_KRB5
- 	return strdup(error_message(code));
--#else
-+#elif !HAVE_KRB5_GET_ERROR_MESSAGE
- 	if (context != NULL)
- 		return strdup(krb5_get_err_text(context, code));
- 	else
- 		return strdup(error_message(code));
- #endif
-+	return NULL;
- }
- 
- /*
--- 
-1.7.4.5
-
+--b.
