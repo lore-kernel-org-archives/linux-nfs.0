@@ -1,74 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58844 "EHLO fieldses.org"
+Received: from e8.ny.us.ibm.com ([32.97.182.138]:51669 "EHLO e8.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756553Ab3C2Snc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Mar 2013 14:43:32 -0400
-Date: Fri, 29 Mar 2013 14:43:31 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: kernel 3.8.4 : kernel BUG at fs/locks.c:2093!   part #2
-Message-ID: <20130329184331.GH22307@fieldses.org>
-References: <514F31AF.3080709@gmx.de>
- <20130325220143.GD10887@fieldses.org>
- <20130326144640.GB3353@fieldses.org>
- <51536610.7010809@gmx.de>
- <20130327215727.GB27426@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20130327215727.GB27426@fieldses.org>
+	id S1755532Ab3CaCrO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 30 Mar 2013 22:47:14 -0400
+Received: from /spool/local
+	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <zohar@linux.vnet.ibm.com>;
+	Sat, 30 Mar 2013 22:47:13 -0400
+Message-ID: <1364698027.2580.243.camel@falcor1.watson.ibm.com>
+Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
+From: Mimi Zohar <zohar@linux.vnet.ibm.com>
+To: David Quigley <dpquigl@davequigley.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Steve Dickson <steved@redhat.com>,
+        Trond Myklebust <trond.myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Date: Sat, 30 Mar 2013 22:47:07 -0400
+In-Reply-To: <001ff69afd411b0318d7122bf07bd218@countercultured.net>
+References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
+	 <1364478845-29796-14-git-send-email-SteveD@redhat.com>
+	 <20130328161444.GF7080@fieldses.org> <51550C03.1000107@davequigley.com>
+	 <20130329144050.GB22307@fieldses.org>
+	 <001ff69afd411b0318d7122bf07bd218@countercultured.net>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 27, 2013 at 05:57:27PM -0400, J. Bruce Fields wrote:
-> On Wed, Mar 27, 2013 at 10:35:12PM +0100, Toralf Förster wrote:
-> > On 03/26/2013 03:46 PM, J. Bruce Fields wrote:
-> > > Can you run with test patches?
-> > 
-> > applied - today I got a warning instead a bug at the host kernel (3.8.4):
+On Fri, 2013-03-29 at 10:49 -0400, David Quigley wrote:
+> On 03/29/2013 10:40, J. Bruce Fields wrote:
+> > On Thu, Mar 28, 2013 at 11:35:31PM -0400, Dave Quigley wrote:
+> >> On 3/28/2013 12:14 PM, J. Bruce Fields wrote:
+> >> >On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
+> >> >>From: David Quigley <dpquigl@davequigley.com>
+> >> >>
+> >> >>This patch adds the ability to encode and decode file labels on 
+> >> the server for
+> >> >>the purpose of sending them to the client and also to process 
+> >> label change
+> >> >>requests from the client.
+> >> >>
+> >> >>Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> >> >>Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> >> >>Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> >> >>Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+> >> >>---
+> >> >>  fs/nfsd/nfs4proc.c |  41 +++++++++++++++++++
+> >> >>  fs/nfsd/nfs4xdr.c  | 116 
+> >> ++++++++++++++++++++++++++++++++++++++++++++++++++---
+> >> >>  fs/nfsd/nfsd.h     |   6 ++-
+> >> >>  fs/nfsd/vfs.c      |  29 ++++++++++++++
+> >> >>  fs/nfsd/vfs.h      |   2 +
+> >> >>  fs/nfsd/xdr4.h     |   3 ++
+> >> >>  6 files changed, 191 insertions(+), 6 deletions(-)
+> >> >>
+> >> >>diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> >> >>index ae73175..bb17589 100644
+> >> >>--- a/fs/nfsd/nfs4proc.c
+> >> >>+++ b/fs/nfsd/nfs4proc.c
+> >> >>@@ -42,6 +42,36 @@
+> >> >>  #include "current_stateid.h"
+> >> >>  #include "netns.h"
+> >> >>
+> >> >>+#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> >> >>+#include <linux/security.h>
+> >> >>+
+> >> >>+static inline void
+> >> >>+nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct 
+> >> nfs4_label *label, u32 *bmval)
+> >> >>+{
+> >> >>+	struct inode *inode = resfh->fh_dentry->d_inode;
+> >> >>+	int status;
+> >> >>+
+> >> >>+	mutex_lock(&inode->i_mutex);
+> >> >>+	status = security_inode_setsecctx(resfh->fh_dentry,
+> >> >>+		label->label, label->len);
+> >> >>+	mutex_unlock(&inode->i_mutex);
+> >> >>+
+> >> >>+	if (status)
+> >> >>+		/*
+> >> >>+		 * We should probably fail the whole open at this point,
+> >> >>+		 * but we've already created or opened the file, so it's
+> >> >>+		 * too late; So this seems the least of evils:
+> >> >>+		 */
+> >> >>+		bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
+> >> >
+> >> >Is there any way to avoid this?
+> >> >
+> >> >How does the vfs open code handle this?  It has to be able to set a
+> >> >security contexts atomically on open(O_CREAT), doesn't it?
+> >> >
+> >>
+> >> I believe the way this is handled is that the inode is created and
+> >> labeled and then only after that is it bound to the namespace.
+> >> Because of that ordering we can fail and release the inode without
+> >> it ever having a dentry in the namespace.
+> >
+> > Grepping around....  Looks like that's done by
+> > security_inode_init_security(), from the filesystem's create method.
+> >
+> > So we'd need to be able to pass something down to there.
+> >
+> > Is the current client actually expected to use this?  (So are we 
+> > going
+> > to see a lot of opens that set the label?)
+> >
+> > --b.
 > 
-> Excellent!  Thanks, I think I see the bug now....
+> I don't have all the code infront of me but we have a different hook to 
+> do that. The call to nfsd4_security_inode_setsecctx is supposed to be 
+> used from the setattr handlers to do the equivalent of a setxattr on the 
+> file over NFS. The actual creation gets done with something like 
+> security_dentry_init_security which should be in an earlier patch. I'd 
+> have to look more clearly at the code to find out. 
 
-This logic is just terrible; I'll see what if I can make this more
-sensible.
+Anytime an EVM 'protected' xattr is created/modified/deleted, EVM needs
+to be called to calculate and write the 'security.evm' hmac.  It looks
+like the security_inode_setsecctx() hook is missing the EVM call.
+Instead of writing the LSM label, immediately followed by the EVM label,
+security_inode_init_security() creates the list of xattrs to be written.
+Only then, it calls the fs to write them.  I would think that
+security_inode_setsecctx() would need to do something similar.
 
-For now, though, this should fix the bug.
+thanks,
 
-Thanks again for this testing.
+Mimi
 
---b.
+> Also where did we 
+> come up with 128 for label length? The SELinux code assumes a starting 
+> point of 255 and goes up from there as needed. The MLS policies will 
+> definitely exceed a 128 byte label.
 
-commit 01463db0a864d43bd2c9a69ff37d5a75b7822a49
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Mar 28 20:37:14 2013 -0400
 
-    nfsd4: don't close read-write opens too soon
-    
-    Don't actually close any opens until we don't need them at all.
-    
-    This means being left with write access when it's not really necessary,
-    but that's better than putting a file that might still have posix locks
-    held on it, as we have been.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index aac878e..285a0c8 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -210,13 +210,7 @@ static void __nfs4_file_put_access(struct nfs4_file *fp, int oflag)
- {
- 	if (atomic_dec_and_test(&fp->fi_access[oflag])) {
- 		nfs4_file_put_fd(fp, oflag);
--		/*
--		 * It's also safe to get rid of the RDWR open *if*
--		 * we no longer have need of the other kind of access
--		 * or if we already have the other kind of open:
--		 */
--		if (fp->fi_fds[1-oflag]
--			|| atomic_read(&fp->fi_access[1 - oflag]) == 0)
-+		if (atomic_read(&fp->fi_access[1 - oflag]) == 0)
- 			nfs4_file_put_fd(fp, O_RDWR);
- 	}
- }
