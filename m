@@ -1,50 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from office2.cesnet.cz ([195.113.144.244]:47218 "EHLO
-	office2.cesnet.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753544Ab3DYMuE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2013 08:50:04 -0400
-Message-ID: <517923D2.2000002@gmail.com>
-Date: Thu, 25 Apr 2013 14:38:42 +0200
-From: Jiri Horky <jiri.horky@gmail.com>
-MIME-Version: 1.0
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: chuck.lever@oracle.com
-Subject: Kerberos security flavors not tried in SETCLIENTID_CONFIRM client
- requests
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from cpsmtpb-ews04.kpnxchange.com ([213.75.39.7]:61590 "EHLO
+	cpsmtpb-ews04.kpnxchange.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758168Ab3DASB5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Apr 2013 14:01:57 -0400
+Message-ID: <1364839315.21627.69.camel@x61.thuisdomein>
+Subject: [PATCH 6/8] nfsd4: do not export "u64" to userspace
+From: Paul Bolle <pebolle@tiscali.nl>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Mon, 01 Apr 2013 20:01:55 +0200
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello all,
+nfs4.h exports "u64" to userspace. Use "__u64" instead.
 
-(everything described below is from a client with 3.6.11-gentoo kernel).
+Signed-off-by: Paul Bolle <pebolle@tiscali.nl>
+---
+0) Tested with a kernel build.
 
-When I mount a filesystem that is exported as follows:
+1) I'm guessing userspace doesn't actually use NFS4_MAX_UINT64.
 
-/exports 
-*(sec=krb5:krb5i:krb5p,rw,fsid=0,sync,no_subtree_check,no_root_squash,insecure,crossmnt)
+ include/uapi/linux/nfs4.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-without specifiying a security flavour on client, the mount will work. 
- From the tcpdump I can tell that the client tries AUTH_UNIX and 
-AUTH_NULL flavours before succeeding with RPCSES_GSS. When I do a "ls" 
-command in the mounted directory it works fine as well - this time 
-clients uses RPCSES_GSS authentication right away.
-
-The problems comes with "cat" command on a file, when the client calls 
-SETCLIENID with AUTH_UNIX credentials and AUTH_NULL verifier, which 
-successes but then call SETCLIENTID_CONFIRM again with just 
-AUTH_UNIX/AUTH_NULL which results in NFS4ERR_WRONGSEC. The client tries 
-to all the SETCLIENTID_CONFIRM multiple times, but it does not try 
-Kerberos authentication. The WRONGSEC error is then propagated as EIO to 
-the application.
-
-I noticed patches from Chuck Level on 03/16/2013 which fix problems with 
-security flavours handling but I am not sure whether they are supposed 
-to fix thix particular problem as well. It would take me considerable 
-amount of time to test it so I would appreciate if you could comment on 
-that.
-
-Regards
-Jiri Horky
-
+diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
+index 788128e..35f5f4c 100644
+--- a/include/uapi/linux/nfs4.h
++++ b/include/uapi/linux/nfs4.h
+@@ -150,7 +150,7 @@
+ #define NFS4_SECINFO_STYLE4_CURRENT_FH	0
+ #define NFS4_SECINFO_STYLE4_PARENT	1
+ 
+-#define NFS4_MAX_UINT64	(~(u64)0)
++#define NFS4_MAX_UINT64	(~(__u64)0)
+ 
+ /* An NFS4 sessions server must support at least NFS4_MAX_OPS operations.
+  * If a compound requires more operations, adjust NFS4_MAX_OPS accordingly.
+-- 
+1.7.11.7
 
