@@ -1,242 +1,174 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:31691 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761435Ab3DBPSs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Apr 2013 11:18:48 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r32FIlWs028243
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 2 Apr 2013 11:18:47 -0400
-Message-ID: <515AF6DB.4000708@RedHat.com>
-Date: Tue, 02 Apr 2013 11:18:51 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from nm8.access.bullet.mail.sp2.yahoo.com ([98.139.44.135]:41399
+	"EHLO nm8.access.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758133Ab3DAQxn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Apr 2013 12:53:43 -0400
+Message-ID: <5159BB9C.20308@schaufler-ca.com>
+Date: Mon, 01 Apr 2013 09:53:48 -0700
+From: Casey Schaufler <casey@schaufler-ca.com>
 MIME-Version: 1.0
-To: Simo Sorce <simo@redhat.com>
-CC: linux-nfs <linux-nfs@vger.kernel.org>, Jeffrey Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] Avoid PTR lookups when possible
-References: <1364910351.2660.1243.camel@willson.li.ssimo.org>
-In-Reply-To: <1364910351.2660.1243.camel@willson.li.ssimo.org>
-Content-Type: text/plain; charset=UTF-8
+To: "Vu, Joseph" <joseph.vu@boeing.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        David Quigley <dpquigl@davequigley.com>,
+        Steve Dickson <steved@redhat.com>,
+        Trond Myklebust <trond.myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>,
+        Casey Schaufler <casey@schaufler-ca.com>
+Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
+References: <1364478845-29796-1-git-send-email-SteveD@redhat.com> <1364478845-29796-14-git-send-email-SteveD@redhat.com> <20130328161444.GF7080@fieldses.org> <51550C03.1000107@davequigley.com> <20130329144050.GB22307@fieldses.org> <001ff69afd411b0318d7122bf07bd218@countercultured.net> <5155B0E3.9040108@schaufler-ca.com> <20130329184219.GG22307@fieldses.org> <5155F51E.8020603@schaufler-ca.com> <756D04455A661C4CA25DC5BA4902A7A722698B22@XCH-PHX-204.sw.nos.boeing.com>
+In-Reply-To: <756D04455A661C4CA25DC5BA4902A7A722698B22@XCH-PHX-204.sw.nos.boeing.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 4/1/2013 5:54 AM, Vu, Joseph wrote:
+> I think 2k will do for a while. I think that in the long run it will come up short. I think the real question is whether NFS will remain viable long enough for it to matter. 
+>
+> What is a good, and working alternative for NFS in term of SE label?
 
+Answering this simple question is complicated.
+For the short term, I don't think there is one.
+For the long term I think that there has to be a
+resource oriented shared storage mechanism that
+will be very different from anything we have today.
+We are on the cusp of the transition from the short
+term to the long term. NFS, CIFS and the like are
+old school solutions to file sharing, just as mode
+bits and SELinux are old school security paradigms.
 
-On 02/04/13 09:45, Simo Sorce wrote:
-> The attached patch adds a new command line switch to rpc.gssd to avoid
-> PTR resolution when possible.
-> 
-> The current code *depends* on PTR resolution for GSSAPI authentication
-> and this is *bad*.
-> It imposes an annoying, and unnecessary, constraint on the correctness
-> of DNS resolution, which prevents mounts from working in networks where
-> the PTR record cannot be easily controlled (for example networks where
-> the forward name is reasonable while the PTR is set to some artificial
-> name based on the IP address or so that is not the canonical name or
-> where no PTR exist at all).
-> 
-> Depending on PTR resolution for GSSAPI is also very bad practice because
-> it opens up DNS spoofing attacks where an attacker can try to redirect a
-> user to the wrong server fooling mutual authentication, and induce a
-> user to trust improper data or disclose (by copying on the impostor
-> server) data that should be confidential.
-> 
-> Ideally people will always use the -N switch, however I added an actual
-> switch to avoid breaking existing configuration where someone may
-> intentionally or inadvertently be using multiple A names instead of
-> using CNAMEs but relying on PTR records to find the "canonical name".
-> 
-> It would be probably nice to switch the behavior on by default in
-> future.
-> 
-> Jeff in CC as he also implemented a similar switch for cifs.upcall
-> (there it is called -t|--trust-dns, but in rpc.gsssd -t is already
-> taken ...).
-> 
-A nits..  
->>>> Please do not post patches as attachments. In-lining them in 
->>>> the email makes it easier to review... 
-
->From 53dade1e5d22eee06a08ace2684257292514cb49 Mon Sep 17 00:00:00 2001
-From: Simo Sorce <simo@redhat.com>
-Date: Mon, 1 Apr 2013 21:00:55 -0400
-Subject: [PATCH] Avoid forced reverse resolution for server name
-
-A NFS client should be able to work properly even if the PTR record for the
-server is not set. there is no excuse to forcefully prevent that from working
-when it can.
-So, use some heuristics to see if the server is a FQDN or an IP address.
-If it is an IP address or a shortname (no '.' in name) then do a PTR lookup,
-otherwise avoid it.
-
-This is enabled by the new -N flag which is off by default for now, ideally we
-will turn this on by default after a transition period.
----
- utils/gssd/gss_util.h  |  2 ++
- utils/gssd/gssd.c      |  4 +++-
- utils/gssd/gssd.man    |  7 ++++++-
- utils/gssd/gssd_proc.c | 31 +++++++++++++++++++++++++++----
- 4 files changed, 38 insertions(+), 6 deletions(-)
-
-diff --git a/utils/gssd/gss_util.h b/utils/gssd/gss_util.h
-index aa9f77806075f9ab67a7763a75a010369ba2d1b9..663fb0998bede6144118f890b9311ee8687176e3 100644
---- a/utils/gssd/gss_util.h
-+++ b/utils/gssd/gss_util.h
-@@ -52,4 +52,6 @@ int gssd_check_mechs(void);
- 		gss_krb5_set_allowable_enctypes(min, cred, num, types)
- #endif
+I am on record as not favoring this implementation
+of security labeling in NFS. I believe that I
+understand the rationale for the approach, and as
+I don't have an alternative that hasn't been shot
+down three ways from Sunday I hope to make the
+best of it.
  
-+extern int avoid_ptr;
-+
- #endif /* _GSS_UTIL_H_ */
-diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index 0be251781bacaa562270f773341126bc95ca6b45..2a98e94812a662f0fd868fce8dc3419f65648a4d 100644
---- a/utils/gssd/gssd.c
-+++ b/utils/gssd/gssd.c
-@@ -85,7 +85,7 @@ sig_hup(int signal)
- static void
- usage(char *progname)
- {
--	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm]\n",
-+	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm] [-N]\n",
->>>> Could please move the [-N] in front of [-n]... At lease that that point in the list things
->>>> are in alphabetical order
 
- 		progname);
- 	exit(1);
- }
-@@ -150,6 +150,8 @@ main(int argc, char *argv[])
- 				errx(1, "Encryption type limits not supported by Kerberos libraries.");
- #endif
- 				break;
-+			case 'N':
-+				avoid_ptr = 1;
- 			default:
- 				usage(argv[0]);
- 				break;
-diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
-index 79d9bf91ac6b976c57d167e60d07f828a3ff5b1f..09253b43ba6502202c17bbc84bd6bcf9dec85e9b 100644
---- a/utils/gssd/gssd.man
-+++ b/utils/gssd/gssd.man
-@@ -8,7 +8,7 @@
- rpc.gssd \- RPCSEC_GSS daemon
- .SH SYNOPSIS
- .B rpc.gssd
--.RB [ \-fMnlvr ]
-+.RB [ \-fMnlvrN ]
->>>>> Same as above....
-
- .RB [ \-k
- .IR keytab ]
- .RB [ \-p
-@@ -266,6 +266,11 @@ new kernel contexts to be negotiated after
- seconds, which allows changing Kerberos tickets and identities frequently.
- The default is no explicit timeout, which means the kernel context will live
- the lifetime of the Kerberos service ticket used in its creation.
-+.TP
-+.B -N
-+Tries to avoid PTR lookups for resolving the server name, if the name used at 
-+mount looks like a Fully Qualified Domain Name. This is import to avoid GSSAPI 
-+issues when PTR records are set and to help avoid some kind of MITM attack.
->>>> I'm sorry this does not make much sense. Can we use more meaningful terms
->>>> like DNS lookups or DNS PTR lookups... something not so condensed 
->>>>
->>>>> Also, could you please talk about who will be needing this new flag and how will 
->>>>> they know they needed?
-
- .SH SEE ALSO
- .BR rpc.svcgssd (8),
- .BR kerberos (1),
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index ea01e92e4565670b97dea1a936d2f0dbdc7c4610..0a584d2084d626ee98a8ad6ff56da95464b882fe 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -67,6 +67,7 @@
- #include <errno.h>
- #include <gssapi/gssapi.h>
- #include <netdb.h>
-+#include <ctype.h>
- 
- #include "gssd.h"
- #include "err_util.h"
-@@ -107,6 +108,8 @@ struct pollfd * pollarray;
- 
- unsigned long pollsize;  /* the size of pollaray (in pollfd's) */
- 
-+int avoid_ptr = 0;
-+
- /*
-  * convert a presentation address string to a sockaddr_storage struct. Returns
-  * true on success or false on failure.
-@@ -165,12 +168,32 @@ addrstr_to_sockaddr(struct sockaddr *sa, const char *node, const char *port)
-  * convert a sockaddr to a hostname
-  */
- static char *
--sockaddr_to_hostname(const struct sockaddr *sa, const char *addr)
-+get_servername(const char *name, const struct sockaddr *sa, const char *addr)
- {
- 	socklen_t		addrlen;
- 	int			err;
- 	char			*hostname;
- 	char			hbuf[NI_MAXHOST];
-+	const char		*p;
-+	int			do_ptr_lookup = 0;
-+
-+	if (avoid_ptr) {
-+		/* try to determine if this is FQDN, or an IP address with
-+		 * basic heuristics, if they fail try a PTR lookup */
-+		p = strrchr(name, '.');
-+		if (!p || strchr(name, ':'))
-+			do_ptr_lookup = 1; /* non-FQDN, or IPv6 */
-+		else {
-+			for (++p; *p; p++)
-+				if (!isdigit(*p))
-+					break;
-+			if (!*p)
-+				do_ptr_lookup = 1; /* IPv4 */
-+		}
-+		if (!do_ptr_lookup) {
-+			return strdup(name);
-+		}
-+	}
-Is this "reinventing the wheel"? ;-) Don't we already have a why of determining a FQDN? 
-Maybe not...
-
-
-steved.
-  
- 
- 	switch (sa->sa_family) {
- 	case AF_INET:
-@@ -208,7 +231,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
- 		  struct sockaddr *addr) {
- #define INFOBUFLEN 256
- 	char		buf[INFOBUFLEN + 1];
--	static char	dummy[128];
-+	static char	server[128];
- 	int		nbytes;
- 	static char	service[128];
- 	static char	address[128];
-@@ -236,7 +259,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
- 		   "service: %127s %15s version %15s\n"
- 		   "address: %127s\n"
- 		   "protocol: %15s\n",
--		   dummy,
-+		   server,
- 		   service, program, version,
- 		   address,
- 		   protoname);
-@@ -258,7 +281,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
- 	if (!addrstr_to_sockaddr(addr, address, port))
- 		goto fail;
- 
--	*servername = sockaddr_to_hostname(addr, address);
-+	*servername = get_servername(server, addr, address);
- 	if (*servername == NULL)
- 		goto fail;
- 
--- 
-1.8.1.4
-
-
+>
+>
+> -----Original Message-----
+> From: owner-selinux@tycho.nsa.gov [mailto:owner-selinux@tycho.nsa.gov] On Behalf Of Casey Schaufler
+> Sent: Friday, March 29, 2013 3:10 PM
+> To: J. Bruce Fields
+> Cc: David Quigley; Steve Dickson; Trond Myklebust; J. Bruce Fields; David P. Quigley; Linux NFS list; Linux Security List; SELinux List; Casey Schaufler
+> Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
+>
+> On 3/29/2013 11:42 AM, J. Bruce Fields wrote:
+>> On Fri, Mar 29, 2013 at 08:18:59AM -0700, Casey Schaufler wrote:
+>>> On 3/29/2013 7:49 AM, David Quigley wrote:
+>>>> On 03/29/2013 10:40, J. Bruce Fields wrote:
+>>>>> On Thu, Mar 28, 2013 at 11:35:31PM -0400, Dave Quigley wrote:
+>>>>>> On 3/28/2013 12:14 PM, J. Bruce Fields wrote:
+>>>>>>> On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
+>>>>>>>> From: David Quigley <dpquigl@davequigley.com>
+>>>>>>>>
+>>>>>>>> This patch adds the ability to encode and decode file labels on
+>>>>>> the server for
+>>>>>>>> the purpose of sending them to the client and also to process
+>>>>>> label change
+>>>>>>>> requests from the client.
+>>>>>>>>
+>>>>>>>> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+>>>>>>>> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+>>>>>>>> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+>>>>>>>> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+>>>>>>>> ---
+>>>>>>>>  fs/nfsd/nfs4proc.c |  41 +++++++++++++++++++  fs/nfsd/nfs4xdr.c  
+>>>>>>>> | 116
+>>>>>> ++++++++++++++++++++++++++++++++++++++++++++++++++---
+>>>>>>>>  fs/nfsd/nfsd.h     |   6 ++-
+>>>>>>>>  fs/nfsd/vfs.c      |  29 ++++++++++++++
+>>>>>>>>  fs/nfsd/vfs.h      |   2 +
+>>>>>>>>  fs/nfsd/xdr4.h     |   3 ++
+>>>>>>>>  6 files changed, 191 insertions(+), 6 deletions(-)
+>>>>>>>>
+>>>>>>>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c index 
+>>>>>>>> ae73175..bb17589 100644
+>>>>>>>> --- a/fs/nfsd/nfs4proc.c
+>>>>>>>> +++ b/fs/nfsd/nfs4proc.c
+>>>>>>>> @@ -42,6 +42,36 @@
+>>>>>>>>  #include "current_stateid.h"
+>>>>>>>>  #include "netns.h"
+>>>>>>>>
+>>>>>>>> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL #include 
+>>>>>>>> +<linux/security.h>
+>>>>>>>> +
+>>>>>>>> +static inline void
+>>>>>>>> +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct
+>>>>>> nfs4_label *label, u32 *bmval)
+>>>>>>>> +{
+>>>>>>>> +    struct inode *inode = resfh->fh_dentry->d_inode;
+>>>>>>>> +    int status;
+>>>>>>>> +
+>>>>>>>> +    mutex_lock(&inode->i_mutex);
+>>>>>>>> +    status = security_inode_setsecctx(resfh->fh_dentry,
+>>>>>>>> +        label->label, label->len);
+>>>>>>>> +    mutex_unlock(&inode->i_mutex);
+>>>>>>>> +
+>>>>>>>> +    if (status)
+>>>>>>>> +        /*
+>>>>>>>> +         * We should probably fail the whole open at this point,
+>>>>>>>> +         * but we've already created or opened the file, so it's
+>>>>>>>> +         * too late; So this seems the least of evils:
+>>>>>>>> +         */
+>>>>>>>> +        bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
+>>>>>>> Is there any way to avoid this?
+>>>>>>>
+>>>>>>> How does the vfs open code handle this?  It has to be able to set 
+>>>>>>> a security contexts atomically on open(O_CREAT), doesn't it?
+>>>>>>>
+>>>>>> I believe the way this is handled is that the inode is created and 
+>>>>>> labeled and then only after that is it bound to the namespace.
+>>>>>> Because of that ordering we can fail and release the inode without 
+>>>>>> it ever having a dentry in the namespace.
+>>>>> Grepping around....  Looks like that's done by 
+>>>>> security_inode_init_security(), from the filesystem's create method.
+>>>>>
+>>>>> So we'd need to be able to pass something down to there.
+>>>>>
+>>>>> Is the current client actually expected to use this?  (So are we 
+>>>>> going to see a lot of opens that set the label?)
+>>>>>
+>>>>> --b.
+>>>> I don't have all the code infront of me but we have a different hook 
+>>>> to do that. The call to nfsd4_security_inode_setsecctx is supposed 
+>>>> to be used from the setattr handlers to do the equivalent of a 
+>>>> setxattr on the file over NFS. The actual creation gets done with 
+>>>> something like security_dentry_init_security which should be in an 
+>>>> earlier patch. I'd have to look more clearly at the code to find 
+>>>> out. Also where did we come up with 128 for label length? The 
+>>>> SELinux code assumes a starting point of 255 and goes up from there 
+>>>> as needed. The MLS policies will definitely exceed a 128 byte label.
+>>> If anyone cares, Smack labels can (now) be 255 characters.
+>>> Also, when (if) we get multiple concurrent LSMs the "security 
+>>> context" may include information for more than one LSM. 128 bytes is 
+>>> going to look pretty tiny then.
+>>>
+>>> smack='com.corportation.service'selinux='system_u:object_r:bin_t:s0'
+>> OK.  We need a number.  2k?
+> Consider some of the kinds of attributes we are likely to see in the not to distant future:
+>
+> Permitted access times, at around 100 bytes each.
+> Bell & LaPadula labels at 500 bytes each.
+> Signatures of various sizes and flavors.
+> HEPA restrictions
+>
+> I think 2k will do for a while. I think that in the long run it will come up short. I think the real question is whether NFS will remain viable long enough for it to matter.
+>
+>> --b.
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe 
+>> linux-security-module" in the body of a message to 
+>> majordomo@vger.kernel.org More majordomo info at  
+>> http://vger.kernel.org/majordomo-info.html
+>>
+>
+> --
+> This message was distributed to subscribers of the selinux mailing list.
+> If you no longer wish to subscribe, send mail to majordomo@tycho.nsa.gov with the words "unsubscribe selinux" without quotes as the message.
+>
 
