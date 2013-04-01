@@ -1,67 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:65347 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S936277Ab3DQSGO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Apr 2013 14:06:14 -0400
-MIME-Version: 1.0
-In-Reply-To: <62745258-4F3B-4C05-BFFD-03EA604576E4@ornl.gov>
-References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com>
-	<CABgxfbF7c9ktSoMSPV21JU76V5J4iwbJQ257S91Y3z36WJbJVA@mail.gmail.com>
-	<62745258-4F3B-4C05-BFFD-03EA604576E4@ornl.gov>
-Date: Wed, 17 Apr 2013 11:06:13 -0700
-Message-ID: <CABgxfbGxhnKj2n0Z-w87rZ6fwCssO31G009gwej957gv1p8PQQ@mail.gmail.com>
-Subject: Re: NFS over RDMA benchmark
-From: Wendy Cheng <s.wendy.cheng@gmail.com>
-To: "Atchley, Scott" <atchleyes@ornl.gov>
-Cc: Yan Burman <yanb@mellanox.com>, "J. Bruce Fields" <bfields@fieldses.org>,
-        Tom Tucker <tom@opengridcomputing.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mx12.netapp.com ([216.240.18.77]:6770 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759676Ab3DAUBk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Apr 2013 16:01:40 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/5] NFSv4: Handle NFS4ERR_DELAY and NFS4ERR_GRACE in nfs4_open_delegation_recall
+Date: Mon,  1 Apr 2013 16:01:30 -0400
+Message-Id: <1364846493-11145-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1364846493-11145-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1364846493-11145-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 17, 2013 at 10:32 AM, Atchley, Scott <atchleyes@ornl.gov> wrote:
-> On Apr 17, 2013, at 1:15 PM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
->
->> On Wed, Apr 17, 2013 at 7:36 AM, Yan Burman <yanb@mellanox.com> wrote:
->>> Hi.
->>>
->>> I've been trying to do some benchmarks for NFS over RDMA and I seem to only get about half of the bandwidth that the HW can give me.
->>> My setup consists of 2 servers each with 16 cores, 32Gb of memory, and Mellanox ConnectX3 QDR card over PCI-e gen3.
->>> These servers are connected to a QDR IB switch. The backing storage on the server is tmpfs mounted with noatime.
->>> I am running kernel 3.5.7.
->>>
->>> When running ib_send_bw, I get 4.3-4.5 GB/sec for block sizes 4-512K.
->>> When I run fio over rdma mounted nfs, I get 260-2200MB/sec for the same block sizes (4-512K). running over IPoIB-CM, I get 200-980MB/sec.
->
-> Yan,
->
-> Are you trying to optimize single client performance or server performance with multiple clients?
->
->
->> Remember there are always gaps between wire speed (that ib_send_bw
->> measures) and real world applications.
->>
->> That being said, does your server use default export (sync) option ?
->> Export the share with "async" option can bring you closer to wire
->> speed. However, the practice (async) is generally not recommended in a
->> real production system - as it can cause data integrity issues, e.g.
->> you have more chances to lose data when the boxes crash.
->>
->> -- Wendy
->
->
-> Wendy,
->
-> It has a been a few years since I looked at RPCRDMA, but I seem to remember that RPCs were limited to 32KB which means that you have to pipeline them to get linerate. In addition to requiring pipelining, the argument from the authors was that the goal was to maximize server performance and not single client performance.
->
-> Scott
->
+A server shouldn't normally return NFS4ERR_GRACE if the client holds a
+delegation, since no conflicting lock reclaims can be granted, however
+the spec does not require the server to grant the open in this
+instance
 
-That (client count) brings up a good point ...
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: stable@vger.kernel.org
+---
+ fs/nfs/nfs4proc.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-FIO is really not a good benchmark for NFS. Does anyone have SPECsfs
-numbers on NFS over RDMA to share ?
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index e7c0e64..a549ffe 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1432,6 +1432,12 @@ int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state
+ 			case -ENOMEM:
+ 				err = 0;
+ 				goto out;
++			case -NFS4ERR_DELAY:
++			case -NFS4ERR_GRACE:
++				set_bit(NFS_DELEGATED_STATE, &state->flags);
++				ssleep(1);
++				err = -EAGAIN;
++				goto out;
+ 		}
+ 		set_bit(NFS_DELEGATED_STATE, &state->flags);
+ 		err = nfs4_handle_exception(server, err, &exception);
+-- 
+1.8.1.4
 
--- Wendy
