@@ -1,77 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52575 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:30032 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932154Ab3DYBnW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Apr 2013 21:43:22 -0400
-Date: Wed, 24 Apr 2013 21:43:14 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Casey Schaufler <casey@schaufler-ca.com>
-Cc: David Quigley <dpquigl@davequigley.com>, Steve Dickson <steved@redhat.com>,
-        Trond Myklebust <trond.myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>, eparis@redhat.com,
-        sds@tycho.nsa.gov
-Subject: Re: [PATCH 04/17] Security: Add hook to calculate context based on a
- negative dentry.
-Message-ID: <20130425014314.GU20275@fieldses.org>
-References: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
- <1366834683-29075-5-git-send-email-SteveD@redhat.com>
- <20130424220258.GO20275@fieldses.org>
- <517858D1.5000406@RedHat.com>
- <faf7db0bcd9b208c201a652c718c720c@countercultured.net>
- <20130424230312.GS20275@fieldses.org>
- <dece1c7129e6927e9a92d38879818a46@countercultured.net>
- <5178867E.30704@schaufler-ca.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5178867E.30704@schaufler-ca.com>
+	id S1759674Ab3DAUBk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Apr 2013 16:01:40 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/5] NFSv4: Handle NFS4ERR_DELAY and NFS4ERR_GRACE in nfs4_lock_delegation_recall
+Date: Mon,  1 Apr 2013 16:01:29 -0400
+Message-Id: <1364846493-11145-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 24, 2013 at 06:27:26PM -0700, Casey Schaufler wrote:
-> On 4/24/2013 4:05 PM, David Quigley wrote:
-> > On 04/24/2013 19:03, J. Bruce Fields wrote:
-> >> On Wed, Apr 24, 2013 at 06:14:16PM -0400, David Quigley wrote:
-> >>> On 04/24/2013 18:12, Steve Dickson wrote:
-> >>> >On 24/04/13 18:02, J. Bruce Fields wrote:
-> >>> >>n Wed, Apr 24, 2013 at 04:17:50PM -0400, Steve Dickson wrote:
-> >>> >>>> From: David Quigley <dpquigl@davequigley.com>
-> >>> >>>>
-> >>> >>>> There is a time where we need to calculate a context without the
-> >>> >>>> inode having been created yet. To do this we take the
-> >>> >>>negative dentry and
-> >>> >>>> calculate a context based on the process and the parent
-> >>> >>>directory contexts.
-> >>> >>How can we get review from security/selinux folks?  I can't
-> >>> >>apply these
-> >>> >>without....
-> >>> >Its my understand they have been reviewed a number times... And
-> >>> >they have not
-> >>> >change since I've working on these patches...
-> >>> >
-> >>> >steved.
-> >>> >--
-> >>> >To unsubscribe from this list: send the line "unsubscribe
-> >>> >linux-nfs" in
-> >>> >the body of a message to majordomo@vger.kernel.org
-> >>> >More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>>
-> >>> That is correct. They have been acked in the past and haven't
-> >>> changed at all since then.
-> 
-> For the record, I haven't ACKed because I have been unable to
-> get the NFS labeling to work with Smack. I also note that I
-> am not NAKing, either, as I have not had the time to determine
-> what's wrong. I do know that the ideas floated at the time turned
-> out to not be the problem. Hopefully I'll have time to look
-> into this sometime.
+A server shouldn't normally return NFS4ERR_GRACE if the client holds a
+delegation, since no conflicting lock reclaims can be granted, however
+the spec does not require the server to grant the lock in this
+instance.
 
-OK, we'll add an:
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: stable@vger.kernel.org
+---
+ fs/nfs/nfs4proc.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-neither-acked-nor-nacked-by: Casey Schaufler <casey@schaufler-ca.com>
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index a8e6d80..e7c0e64 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5196,6 +5196,12 @@ int nfs4_lock_delegation_recall(struct nfs4_state *state, struct file_lock *fl)
+ 				nfs4_schedule_stateid_recovery(server, state);
+ 				err = 0;
+ 				goto out;
++			case -NFS4ERR_DELAY:
++			case -NFS4ERR_GRACE:
++				set_bit(NFS_DELEGATED_STATE, &state->flags);
++				ssleep(1);
++				err = -EAGAIN;
++				goto out;
+ 			case -ENOMEM:
+ 			case -NFS4ERR_DENIED:
+ 				/* kill_proc(fl->fl_pid, SIGLOST, 1); */
+-- 
+1.8.1.4
 
---b.
