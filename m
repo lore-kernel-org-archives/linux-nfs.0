@@ -1,119 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:6019 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:44339 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753184Ab3D2M7S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Apr 2013 08:59:18 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 14/17] NFS: Extend NFS xattr handlers to accept the security namespace
-Date: Mon, 29 Apr 2013 08:57:16 -0400
-Message-Id: <1367240239-19326-15-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
-References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
+	id S1759711Ab3DAUCr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Apr 2013 16:02:47 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4: Fix another reboot recovery race
+Date: Mon,  1 Apr 2013 16:02:44 -0400
+Message-Id: <1364846564-11330-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+If the open_context for the file is not yet fully initialised,
+then open recovery cannot succeed, and since nfs4_state_find_open_context
+returns an ENOENT, we end up treating the file as being irrecoverable.
 
-The existing NFSv4 xattr handlers do not accept xattr calls to the security
-namespace. This patch extends these handlers to accept xattrs from the security
-namespace in addition to the default NFSv4 ACL namespace.
+What we really want to do, is just defer the recovery until later.
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4proc.c   | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
- security/security.c |  1 +
- 2 files changed, 51 insertions(+)
+ fs/nfs/nfs4proc.c  | 8 +++-----
+ fs/nfs/nfs4state.c | 2 ++
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 0e5b319..7b65c99 100644
+index 3e7d42f..8134394 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -5518,6 +5518,53 @@ static size_t nfs4_xattr_list_nfs4_acl(struct dentry *dentry, char *list,
- 	return len;
- }
+@@ -1373,7 +1373,7 @@ static int nfs4_open_reclaim(struct nfs4_state_owner *sp, struct nfs4_state *sta
  
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+static inline int nfs4_server_supports_labels(struct nfs_server *server)
-+{
-+	return server->caps & NFS_CAP_SECURITY_LABEL;
-+}
-+
-+static int nfs4_xattr_set_nfs4_label(struct dentry *dentry, const char *key,
-+				   const void *buf, size_t buflen,
-+				   int flags, int type)
-+{
-+	if (security_ismaclabel(key))
-+		return nfs4_set_security_label(dentry, buf, buflen);
-+
-+	return -EOPNOTSUPP;
-+}
-+
-+static int nfs4_xattr_get_nfs4_label(struct dentry *dentry, const char *key,
-+				   void *buf, size_t buflen, int type)
-+{
-+	if (security_ismaclabel(key))
-+		return nfs4_get_security_label(dentry->d_inode, buf, buflen);
-+	return -EOPNOTSUPP;
-+}
-+
-+static size_t nfs4_xattr_list_nfs4_label(struct dentry *dentry, char *list,
-+				       size_t list_len, const char *name,
-+				       size_t name_len, int type)
-+{
-+	size_t len = 0;
-+
-+	if (nfs_server_capable(dentry->d_inode, NFS_CAP_SECURITY_LABEL)) {
-+		len = security_inode_listsecurity(dentry->d_inode, NULL, 0);
-+		if (list && len <= list_len)
-+			security_inode_listsecurity(dentry->d_inode, list, len);
-+	}
-+	return len;
-+}
-+
-+static const struct xattr_handler nfs4_xattr_nfs4_label_handler = {
-+	.prefix = XATTR_SECURITY_PREFIX,
-+	.list	= nfs4_xattr_list_nfs4_label,
-+	.get	= nfs4_xattr_get_nfs4_label,
-+	.set	= nfs4_xattr_set_nfs4_label,
-+};
-+#endif
-+
-+
- /*
-  * nfs_fhget will use either the mounted_on_fileid or the fileid
-  */
-@@ -7270,6 +7317,9 @@ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
+ 	ctx = nfs4_state_find_open_context(state);
+ 	if (IS_ERR(ctx))
+-		return PTR_ERR(ctx);
++		return -EAGAIN;
+ 	ret = nfs4_do_open_reclaim(ctx, state);
+ 	put_nfs_open_context(ctx);
+ 	return ret;
+@@ -1814,7 +1814,7 @@ static int nfs4_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *sta
  
- const struct xattr_handler *nfs4_xattr_handlers[] = {
- 	&nfs4_xattr_nfs4_acl_handler,
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	&nfs4_xattr_nfs4_label_handler,
-+#endif
- 	NULL
- };
+ 	ctx = nfs4_state_find_open_context(state);
+ 	if (IS_ERR(ctx))
+-		return PTR_ERR(ctx);
++		return -EAGAIN;
+ 	ret = nfs4_do_open_expired(ctx, state);
+ 	put_nfs_open_context(ctx);
+ 	return ret;
+@@ -1936,10 +1936,8 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
+ 	if (ret != 0)
+ 		goto out;
  
-diff --git a/security/security.c b/security/security.c
-index df8ade2..758af6b 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -660,6 +660,7 @@ int security_inode_listsecurity(struct inode *inode, char *buffer, size_t buffer
- 		return 0;
- 	return security_ops->inode_listsecurity(inode, buffer, buffer_size);
- }
-+EXPORT_SYMBOL(security_inode_listsecurity);
- 
- void security_inode_getsecid(const struct inode *inode, u32 *secid)
- {
+-	if (read_seqcount_retry(&sp->so_reclaim_seqcount, seq)) {
++	if (read_seqcount_retry(&sp->so_reclaim_seqcount, seq))
+ 		nfs4_schedule_stateid_recovery(server, state);
+-		nfs4_wait_clnt_recover(server->nfs_client);
+-	}
+ 	*res = state;
+ out:
+ 	return ret;
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 685b1e9..b924bdd 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1476,6 +1476,8 @@ restart:
+ 				 */
+ 				nfs4_state_mark_recovery_failed(state, status);
+ 				break;
++			case -EAGAIN:
++				ssleep(1);
+ 			case -NFS4ERR_ADMIN_REVOKED:
+ 			case -NFS4ERR_STALE_STATEID:
+ 			case -NFS4ERR_BAD_STATEID:
 -- 
 1.8.1.4
 
