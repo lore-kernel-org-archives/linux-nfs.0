@@ -1,49 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:20066 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:2935 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759979Ab3DBSDf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Apr 2013 14:03:35 -0400
-Message-ID: <515B1D7A.6030906@RedHat.com>
-Date: Tue, 02 Apr 2013 14:03:38 -0400
+	id S932535Ab3DBVqR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Apr 2013 17:46:17 -0400
 From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Alex Dubov <oakad@yahoo.com>
-CC: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
-Subject: Re: Allow building nfs-utils directly against GSSAPI
-References: <1364317202.2660.132.camel@willson.li.ssimo.org> <loom.20130327T154155-192@post.gmane.org>
-In-Reply-To: <loom.20130327T154155-192@post.gmane.org>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 14/19] Kconfig: Add Kconfig entry for Labeled NFS V4 server
+Date: Tue,  2 Apr 2013 17:45:55 -0400
+Message-Id: <1364939160-20874-15-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
+References: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-CC-ing Simo since he is not on this mailing list...
+From: Steve Dickson <steved@redhat.com>
 
+This patch adds the NFSd_V4_SECURITY_LABEL entry which
+enables security label support for the NFSv4 server
 
-On 27/03/13 10:43, Alex Dubov wrote:
-> Simo Sorce <simo@...> writes:
-> 
->>
->> Libgssglue is not really useful anymore, it is a sort of middleman that
->> wraps the actual GSSAPI that is already pluggable/extensible via shared
->> modules.
->>
->> In particular libgssglue interferes with the workings of gss-proxy in my
->> case.
->>
->> The attached patch makes building against libgssglue optional and
->> defaults to not build against libgssglue and instead builds directly
->> against the native GSSAPI.
->>
-> 
-> I have tried your patch with my Heimdal setup and it would not build properly
-> with it.
-> 
-> I can augment my patch to make use of your changes. Would you be willing to
-> consider it?
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ fs/nfsd/Kconfig | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+index 430b687..c37a046 100644
+--- a/fs/nfsd/Kconfig
++++ b/fs/nfsd/Kconfig
+@@ -81,6 +81,22 @@ config NFSD_V4
+ 
+ 	  If unsure, say N.
+ 
++config NFSD_V4_SECURITY_LABEL
++	bool "Provide Security Label support for NFSv4 server"
++	depends on NFSD_V4 && SECURITY
++	help
++
++	Say Y here if you want enable fine-grained security label attribute
++	support for NFS version 4.  Security labels allow security modules like
++	SELinux and Smack to label files to facilitate enforcement of their policies.
++	Without this an NFSv4 mount will have the same label on each file.
++
++	If you do not wish to enable fine-grained security labels SELinux or
++	Smack policies on NFSv4 files, say N.
++
++	WARNING: there is still a chance of backwards-incompatible protocol changes.  
++	For now we recommend "Y" only for developers and testers."
++
+ config NFSD_FAULT_INJECTION
+ 	bool "NFS server manual fault injection"
+ 	depends on NFSD_V4 && DEBUG_KERNEL
+-- 
+1.8.1.4
+
