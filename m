@@ -1,61 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:60329 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:43221 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757773Ab3D2M7U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Apr 2013 08:59:20 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 17/17] Kconfig: Add Kconfig entry for Labeled NFS V4 server
-Date: Mon, 29 Apr 2013 08:57:19 -0400
-Message-Id: <1367240239-19326-18-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
-References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
+	id S932378Ab3DBOtr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Apr 2013 10:49:47 -0400
+Date: Tue, 2 Apr 2013 10:49:46 -0400
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: nfsd bugfix for 3.9
+Message-ID: <20130402144946.GC12158@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Steve Dickson <steved@redhat.com>
+Please pull another nfsd bugfix from the for-3.9 branch at
 
-This patch adds the NFSd_V4_SECURITY_LABEL entry which
-enables security label support for the NFSv4 server
+  git://linux-nfs.org/~bfields/linux.git for-3.9
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- fs/nfsd/Kconfig | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+(An xdr decoding error--thanks, Toralf Förster, and Trinity!)
 
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index 430b687..c37a046 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -81,6 +81,22 @@ config NFSD_V4
- 
- 	  If unsure, say N.
- 
-+config NFSD_V4_SECURITY_LABEL
-+	bool "Provide Security Label support for NFSv4 server"
-+	depends on NFSD_V4 && SECURITY
-+	help
-+
-+	Say Y here if you want enable fine-grained security label attribute
-+	support for NFS version 4.  Security labels allow security modules like
-+	SELinux and Smack to label files to facilitate enforcement of their policies.
-+	Without this an NFSv4 mount will have the same label on each file.
-+
-+	If you do not wish to enable fine-grained security labels SELinux or
-+	Smack policies on NFSv4 files, say N.
-+
-+	WARNING: there is still a chance of backwards-incompatible protocol changes.  
-+	For now we recommend "Y" only for developers and testers."
-+
- config NFSD_FAULT_INJECTION
- 	bool "NFS server manual fault injection"
- 	depends on NFSD_V4 && DEBUG_KERNEL
--- 
-1.8.1.4
+--b.
 
+----------------------------------------------------------------
+J. Bruce Fields (1):
+      nfsd4: reject "negative" acl lengths
+
+ fs/nfsd/nfs4xdr.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
