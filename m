@@ -1,64 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:20791 "EHLO mx12.netapp.com"
+Received: from mout.perfora.net ([74.208.4.194]:59625 "EHLO mout.perfora.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757277Ab3DYOKi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2013 10:10:38 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: David Wysochanski <dwysocha@redhat.com>,
-        Dave Chiluk <chiluk@canonical.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Use exponential backoff delay for NFS4_ERRDELAY
-Date: Thu, 25 Apr 2013 14:10:36 +0000
-Message-ID: <1366899034.6812.4.camel@leira.trondhjem.org>
-References: <1366836949-18465-1-git-send-email-chiluk@canonical.com>
-	 <1366838926.22397.25.camel@leira.trondhjem.org>
-	 <5178549A.7010402@canonical.com>
-	 <1366842905.22397.49.camel@leira.trondhjem.org>
-	 <1366892374.26249.294.camel@localhost.localdomain>
-	 <20130425132907.GB31851@fieldses.org>
-	 <1366896654.4719.18.camel@leira.trondhjem.org>
-	 <20130425134918.GC31851@fieldses.org>
-In-Reply-To: <20130425134918.GC31851@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1760667Ab3DBSjQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Apr 2013 14:39:16 -0400
+Date: Tue, 2 Apr 2013 14:39:07 -0400
+From: Jim Rees <rees@umich.edu>
+To: Simo Sorce <simo@redhat.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>, Steve Dickson <steved@redhat.com>,
+        Jeffrey Layton <jlayton@redhat.com>
+Subject: Re: [PATCH] Avoid PTR lookups when possible
+Message-ID: <20130402183907.GB18900@umich.edu>
+References: <1364910351.2660.1243.camel@willson.li.ssimo.org>
+ <20130402150049.GA526@umich.edu>
+ <1364919975.2660.1255.camel@willson.li.ssimo.org>
+ <20130402164631.GA23840@umich.edu>
+ <1364922203.2660.1265.camel@willson.li.ssimo.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1364922203.2660.1265.camel@willson.li.ssimo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-04-25 at 09:49 -0400, bfields@fieldses.org wrote:
-> On Thu, Apr 25, 2013 at 01:30:58PM +0000, Myklebust, Trond wrote:
-> > On Thu, 2013-04-25 at 09:29 -0400, bfields@fieldses.org wrote:
-> > 
-> > > My position is that we simply have no idea what order of magnitude even
-> > > delay should be.  And that in such a situation exponential backoff such
-> > > as implemented in the synchronous case seems the reasonable default as
-> > > it guarantees at worst doubling the delay while still bounding the
-> > > long-term average frequency of retries.
-> > 
-> > So we start with a 15 second delay, and then go to 60 seconds?
-> 
-> I agree that a server should normally be doing the wait on its own if
-> the wait would be on the order of an rpc round trip.
-> 
-> So I'd be inclined to start with a delay that was an order of magnitude
-> or two more than a round trip.
-> 
-> And I'd expect NFS isn't common on networks with 1-second latencies.
-> 
-> So the 1/10 second we're using in the synchronous case sounds closer to
-> the right ballpark to me.
+Simo Sorce wrote:
 
-OK, then. Now all I need is actual motivation for changing the existing
-code other than handwaving arguments about "polling is better than flat
-waits".
-What actual use cases are impacting us now, other than the AIX design
-decision to force CLOSE to retry at least once before succeeding?
+  No this is not what I am saying.
+  The client uses the fully qualified name at the mount command but due to
+  the use of a PTR lookup it is fooled into acquiring a ticket for the
+  wrong server which will then happily allow you to connect.
+  
+  Currently:
+  The mount command tells the kernel both the server name
+  'secure.server.name' and it's IP address 1.2.3.4 however rpc.gssd
+  currently completely ignored the server name passed in by the mount
+  command (see the 'dummy' variable) and instead uses the ip address to do
+  a reverse lookup.
+  
+  PTR lookup of 1.2.3.4 --- MITM ---> public.server.com
+  
+  Then it uses the retrieved name (public..) to construct the GSSAPI name
+  it wants to connect to, the result is that the name
+  nfs@public.server.name is constructed instead of the requested
+  nfs@secure.server.com that should be requested.
+  
+  So the client does ask for the right server but can be easily tricked
+  into connecting to another one.
+  
+  Kerberos itself *is* correctly identifying the server, it's rpc.gssd
+  that opened it'sself to being fooled before involving Kerberos.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Ok, I think I understand now. I suggest adding some of that text into the
+commit log. And stop using the term "mitm". A mitm attack is used to
+convince both ends of a connection that they are talking to each other. DNS
+is not a mutually authenticated exchange.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+This discussion is making me nervous. It makes me think no one has thought
+through the use of kerberos to authenticate nfs connections on linux.
