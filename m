@@ -1,122 +1,261 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:16980 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:37315 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S967565Ab3DRRHG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Apr 2013 13:07:06 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "J. Bruce Fields" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 2/5] SUNRPC: allow disabling idle timeout
-Date: Thu, 18 Apr 2013 17:07:03 +0000
-Message-ID: <1366304823.58246.22.camel@leira.trondhjem.org>
-References: <1366054508-27604-1-git-send-email-bfields@redhat.com>
-	 <1366054508-27604-3-git-send-email-bfields@redhat.com>
-	 <20130418170020.GA31075@fieldses.org>
-In-Reply-To: <20130418170020.GA31075@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1757194Ab3DBBup (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Apr 2013 21:50:45 -0400
+Date: Mon, 1 Apr 2013 21:50:44 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Yanchuan Nian <ycnian@gmail.com>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] nfsd: fix bug on nfs4 stateid deallocation
+Message-ID: <20130402015044.GA12158@fieldses.org>
+References: <1362962774-5141-1-git-send-email-ycnian@gmail.com>
+ <20130311150208.GB16309@fieldses.org>
+ <CAC5OsZPyuOj_3OUJZFu1Haqg=q6GCyyqDL=n+Y5Wr48D1-SkSg@mail.gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAC5OsZPyuOj_3OUJZFu1Haqg=q6GCyyqDL=n+Y5Wr48D1-SkSg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-04-18 at 13:00 -0400, J. Bruce Fields wrote:
-> On Mon, Apr 15, 2013 at 03:35:04PM -0400, J. Bruce Fields wrote:
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > In the gss-proxy case we don't want to have to reconnect at random--we
-> > want to connect only on gss-proxy startup when we can steal gss-proxy's
-> > context to do the connect in the right namespace.
-> > 
-> > So, provide a flag that allows the rpc_create caller to turn off the
-> > idle timeout.
+On Wed, Mar 13, 2013 at 11:04:54PM +0800, Yanchuan Nian wrote:
+> 2013/3/11 J. Bruce Fields <bfields@fieldses.org>
 > 
-> Chuck, the basic ideas was your suggestion, does the executation look OK
-> here?  I had to copy the rpc_create flags down to the xprt_create, I
-> don't know if that's reasonable.
-
-This patch will conflict with commit
-b7993cebb841b0da7a33e9d5ce301a9fd3209165 (SUNRPC: Allow rpc_create() to
-request that TCP slots be unlimited) that was posted on this list
-earlier this week.
-
-> --b.
+> > On Mon, Mar 11, 2013 at 08:46:14AM +0800, ycnian@gmail.com wrote:
+> > > NFS4_OO_PURGE_CLOSE is not handled properly. To avoid memory leak, nfs4
+> > > stateid which is pointed by oo_last_closed_stid is freed in
+> > nfsd4_close(),
+> > > but NFS4_OO_PURGE_CLOSE isn't cleared meanwhile. So the stateid released
+> > in
+> > > THIS close procedure may be freed immediately in the coming encoding
+> > function.
+> >
+> > OK, makes sense.  This code is confusing, I wonder if there's some way
+> > we could make it simpler.
+> >
 > 
-> > 
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > ---
-> >  include/linux/sunrpc/clnt.h |    1 +
-> >  include/linux/sunrpc/xprt.h |    1 +
-> >  net/sunrpc/clnt.c           |    1 +
-> >  net/sunrpc/xprt.c           |    2 ++
-> >  4 files changed, 5 insertions(+)
-> > 
-> > diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-> > index 2cf4ffa..8164986 100644
-> > --- a/include/linux/sunrpc/clnt.h
-> > +++ b/include/linux/sunrpc/clnt.h
-> > @@ -124,6 +124,7 @@ struct rpc_create_args {
-> >  #define RPC_CLNT_CREATE_NOPING		(1UL << 4)
-> >  #define RPC_CLNT_CREATE_DISCRTRY	(1UL << 5)
-> >  #define RPC_CLNT_CREATE_QUIET		(1UL << 6)
-> > +#define RPC_CLNT_CREATE_NO_IDLE_TIMEOUT	(1UL << 7)
-> >  
-> >  struct rpc_clnt *rpc_create(struct rpc_create_args *args);
-> >  struct rpc_clnt	*rpc_bind_new_program(struct rpc_clnt *,
-> > diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-> > index 30834be..df28503 100644
-> > --- a/include/linux/sunrpc/xprt.h
-> > +++ b/include/linux/sunrpc/xprt.h
-> > @@ -263,6 +263,7 @@ struct xprt_create {
-> >  	size_t			addrlen;
-> >  	const char		*servername;
-> >  	struct svc_xprt		*bc_xprt;	/* NFSv4.1 backchannel */
-> > +	unsigned long		flags;
-> >  };
-> >  
-> >  struct xprt_class {
-> > diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> > index dcc446e..a41d64a 100644
-> > --- a/net/sunrpc/clnt.c
-> > +++ b/net/sunrpc/clnt.c
-> > @@ -411,6 +411,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
-> >  		.addrlen = args->addrsize,
-> >  		.servername = args->servername,
-> >  		.bc_xprt = args->bc_xprt,
-> > +		.flags = args->flags,
-> >  	};
-> >  	char servername[48];
-> >  
-> > diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> > index b7478d5..37cbc37 100644
-> > --- a/net/sunrpc/xprt.c
-> > +++ b/net/sunrpc/xprt.c
-> > @@ -1245,6 +1245,8 @@ found:
-> >  				-PTR_ERR(xprt));
-> >  		goto out;
-> >  	}
-> > +	if (args->flags & RPC_CLNT_CREATE_NO_IDLE_TIMEOUT)
-> > +		xprt->idle_timeout = 0;
-> >  	INIT_WORK(&xprt->task_cleanup, xprt_autoclose);
-> >  	if (xprt_has_timer(xprt))
-> >  		setup_timer(&xprt->timer, xprt_init_autodisconnect,
-> > -- 
-> > 1.7.9.5
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> The only purpose of NFS4_OO_PURGE_CLOSE is to decide whether the stateid
+> pointed by last-closed-stateid should be freed or not. I wonder if this
+> flag is necessary. oo_last_closed_stid is set only in CLOSE, so in other
+> procedures, if the pointer is not NULL, it must be set in previous
+> procedure, we can free it directly. In CLOSE procedure, we also free it
+> directly before asigning the new released stateid to it in nfsd4_close(),
+> and then we can ignore it in nfsd4_encode_close(). What do you think?
 
+Yeah, something like that would be simpler, I think.  Maybe the
+following?  (On top of your patch.)
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+> I don't quite understand the difficulties in CLOSE retransmission. RFC3530
+> suggests we deallocate the stateid in next validly sequenced request. If we
+> don't do so, what will happen?
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Nothing bad.  It's just that the stateid isn't useful any more past that
+point, so we may as well get rid of it.  (If the client sends the close
+with sequence number s, and then resends the close, we want to be able
+to reply.  But once it sends another operation with sequence s+1, it's
+saying that it's received the answer to the close now.  And any further
+attempt to send something with sequence number s would fail.)
+
+> I don't see this suggestion in RFC5661, and
+> the stateid is deallocated directly in NFSv4.1, why? Thanks very much.
+
+In 4.1 these stateowner-based sequence numbers aren't used any more.
+(They're still there, but they're ignored.)  Instead 4.1 depends on the
+SEQUENCE operation to provide ordering and exactly-once semantics.
+
+--b.
+
+commit 4e603ce0a56deeac0a83d067a863f96f0619c26d
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Mon Apr 1 16:37:12 2013 -0400
+
+    nfsd4: cleanup handling of nfsv4.0 closed stateid's
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 285a0c8..aa6e77f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -575,7 +575,7 @@ static void unhash_openowner(struct nfs4_openowner *oo)
+ 	}
+ }
+ 
+-static void release_last_closed_stateid(struct nfs4_openowner *oo)
++void release_last_closed_stateid(struct nfs4_openowner *oo)
+ {
+ 	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
+ 
+@@ -3760,26 +3760,6 @@ out:
+ 	return status;
+ }
+ 
+-void nfsd4_purge_closed_stateid(struct nfs4_stateowner *so)
+-{
+-	struct nfs4_openowner *oo;
+-	struct nfs4_ol_stateid *s;
+-
+-	if (!so->so_is_open_owner)
+-		return;
+-	oo = openowner(so);
+-	s = oo->oo_last_closed_stid;
+-	if (!s)
+-		return;
+-	if (!(oo->oo_flags & NFS4_OO_PURGE_CLOSE)) {
+-		/* Release the last_closed_stid on the next seqid bump: */
+-		oo->oo_flags |= NFS4_OO_PURGE_CLOSE;
+-		return;
+-	}
+-	oo->oo_flags &= ~NFS4_OO_PURGE_CLOSE;
+-	release_last_closed_stateid(oo);
+-}
+-
+ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+ {
+ 	unhash_open_stateid(s);
+@@ -3816,9 +3796,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+ 
+ 	nfsd4_close_open_stateid(stp);
+-	release_last_closed_stateid(oo);
+-	oo->oo_flags &= ~NFS4_OO_PURGE_CLOSE;
+-	oo->oo_last_closed_stid = stp;
++	close->cl_closed_stateid = stp;
+ 
+ 	if (list_empty(&oo->oo_owner.so_stateids)) {
+ 		if (cstate->minorversion) {
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index e3dc58d..2324638 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -527,6 +527,7 @@ nfsd4_decode_close(struct nfsd4_compoundargs *argp, struct nfsd4_close *close)
+ {
+ 	DECODE_HEAD;
+ 
++	close->cl_closed_stateid = NULL;
+ 	READ_BUF(4);
+ 	READ32(close->cl_seqid);
+ 	return nfsd4_decode_stateid(argp, &close->cl_stateid);
+@@ -1707,8 +1708,7 @@ static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
+  * Note that we increment sequence id's here, at the last moment, so we're sure
+  * we know whether the error to be returned is a sequence id mutating error.
+  */
+-
+-static void encode_seqid_op_tail(struct nfsd4_compoundres *resp, __be32 *save, __be32 nfserr)
++static void encode_seqid_op_tail(struct nfsd4_compoundres *resp, __be32 *save, __be32 nfserr, struct nfs4_ol_stateid *close_stp)
+ {
+ 	struct nfs4_stateowner *stateowner = resp->cstate.replay_owner;
+ 
+@@ -1719,7 +1719,13 @@ static void encode_seqid_op_tail(struct nfsd4_compoundres *resp, __be32 *save, _
+ 			  (char *)resp->p - (char *)save;
+ 		memcpy(stateowner->so_replay.rp_buf, save,
+ 			stateowner->so_replay.rp_buflen);
+-		nfsd4_purge_closed_stateid(stateowner);
++		if (stateowner->so_is_open_owner) {
++			struct nfs4_openowner *oo = openowner(stateowner);
++
++			release_last_closed_stateid(oo);
++			if (close_stp)
++				oo->oo_last_closed_stid = close_stp;
++		}
+ 	}
+ }
+ 
+@@ -2667,7 +2673,7 @@ nfsd4_encode_close(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_c
+ 	if (!nfserr)
+ 		nfsd4_encode_stateid(resp, &close->cl_stateid);
+ 
+-	encode_seqid_op_tail(resp, save, nfserr);
++	encode_seqid_op_tail(resp, save, nfserr, close->cl_closed_stateid);
+ 	return nfserr;
+ }
+ 
+@@ -2770,7 +2776,7 @@ nfsd4_encode_lock(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_lo
+ 	else if (nfserr == nfserr_denied)
+ 		nfsd4_encode_lock_denied(resp, &lock->lk_denied);
+ 
+-	encode_seqid_op_tail(resp, save, nfserr);
++	encode_seqid_op_tail(resp, save, nfserr, NULL);
+ 	return nfserr;
+ }
+ 
+@@ -2790,7 +2796,7 @@ nfsd4_encode_locku(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_l
+ 	if (!nfserr)
+ 		nfsd4_encode_stateid(resp, &locku->lu_stateid);
+ 
+-	encode_seqid_op_tail(resp, save, nfserr);
++	encode_seqid_op_tail(resp, save, nfserr, NULL);
+ 	return nfserr;
+ }
+ 
+@@ -2885,7 +2891,7 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
+ 	}
+ 	/* XXX save filehandle here */
+ out:
+-	encode_seqid_op_tail(resp, save, nfserr);
++	encode_seqid_op_tail(resp, save, nfserr, NULL);
+ 	return nfserr;
+ }
+ 
+@@ -2897,7 +2903,7 @@ nfsd4_encode_open_confirm(struct nfsd4_compoundres *resp, __be32 nfserr, struct
+ 	if (!nfserr)
+ 		nfsd4_encode_stateid(resp, &oc->oc_resp_stateid);
+ 
+-	encode_seqid_op_tail(resp, save, nfserr);
++	encode_seqid_op_tail(resp, save, nfserr, NULL);
+ 	return nfserr;
+ }
+ 
+@@ -2909,7 +2915,7 @@ nfsd4_encode_open_downgrade(struct nfsd4_compoundres *resp, __be32 nfserr, struc
+ 	if (!nfserr)
+ 		nfsd4_encode_stateid(resp, &od->od_stateid);
+ 
+-	encode_seqid_op_tail(resp, save, nfserr);
++	encode_seqid_op_tail(resp, save, nfserr, NULL);
+ 	return nfserr;
+ }
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 327552b..1401599 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -363,7 +363,6 @@ struct nfs4_openowner {
+ 	struct nfs4_ol_stateid *oo_last_closed_stid;
+ 	time_t			oo_time; /* time of placement on so_close_lru */
+ #define NFS4_OO_CONFIRMED   1
+-#define NFS4_OO_PURGE_CLOSE 2
+ #define NFS4_OO_NEW         4
+ 	unsigned char		oo_flags;
+ };
+@@ -371,7 +370,7 @@ struct nfs4_openowner {
+ struct nfs4_lockowner {
+ 	struct nfs4_stateowner	lo_owner; /* must be first element */
+ 	struct list_head	lo_owner_ino_hash; /* hash by owner,file */
+-	struct list_head        lo_perstateid; /* for lockowners only */
++	struct list_head        lo_perstateid;
+ 	struct list_head	lo_list; /* for temporary uses */
+ };
+ 
+@@ -485,7 +484,7 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
+ 							struct nfsd_net *nn);
+ extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
+ extern void release_session_client(struct nfsd4_session *);
+-extern void nfsd4_purge_closed_stateid(struct nfs4_stateowner *);
++extern void release_last_closed_stateid(struct nfs4_openowner *);
+ 
+ /* nfs4recover operations */
+ extern int nfsd4_client_tracking_init(struct net *net);
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 40e05e6..34766df 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -91,7 +91,8 @@ struct nfsd4_access {
+ 
+ struct nfsd4_close {
+ 	u32		cl_seqid;           /* request */
+-	stateid_t	cl_stateid;         /* request+response */
++	stateid_t	cl_stateid;         /* request */
++	struct nfs4_ol_stateid *cl_closed_stateid; /* response */
+ };
+ 
+ struct nfsd4_commit {
