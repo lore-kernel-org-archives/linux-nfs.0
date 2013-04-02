@@ -1,133 +1,207 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f179.google.com ([209.85.217.179]:43054 "EHLO
-	mail-lb0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1422629Ab3DEQyQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Apr 2013 12:54:16 -0400
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: linux-kernel@vger.kernel.org
-Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wine-devel@winehq.org
-Subject: [PATCH v4 6/7] NFSD: Pass share reservations flags to VFS
-Date: Fri,  5 Apr 2013 20:57:54 +0400
-Message-Id: <1365181075-22540-7-git-send-email-piastry@etersoft.ru>
-In-Reply-To: <1365181075-22540-1-git-send-email-piastry@etersoft.ru>
-References: <1365181075-22540-1-git-send-email-piastry@etersoft.ru>
+Received: from mx1.redhat.com ([209.132.183.28]:15686 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932644Ab3DBVqU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Apr 2013 17:46:20 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 17/19] NFSv4.2: Only set the label attribute on v4.2 mounts
+Date: Tue,  2 Apr 2013 17:45:58 -0400
+Message-Id: <1364939160-20874-18-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
+References: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-that maps them into O_DENY flags and make them visible for
-applications that use O_DENYMAND opens.
+From: Steve Dickson <steved@redhat.com>
 
-Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+Make sure the FATTR4_WORD2_SECURITY_LABEL bit is
+only set in bitmasks and bitmaps when label NFS
+is configured and only on v4.2 mounts.
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/locks.c          |  1 +
- fs/nfsd/nfs4state.c | 46 +++++++++++++++++++++++++++++++++++++++++++++-
- 2 files changed, 46 insertions(+), 1 deletion(-)
+ fs/nfs/nfs4proc.c      | 52 ++++++++++++++++++++++++++++++++++++--------------
+ fs/nfs/pnfs.c          |  2 +-
+ include/linux/nfs_fs.h | 10 ++++++++++
+ 3 files changed, 49 insertions(+), 15 deletions(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 67c68fb..ea5813c 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -869,6 +869,7 @@ deny_lock_file(struct file *filp)
- 	locks_free_lock(lock);
- 	return error;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 3e18d39..0bdc865 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -113,6 +113,24 @@ nfs4_label_release_security(struct nfs4_label *label)
+ 	if (label)
+ 		security_release_secctx(label->label, label->len);
  }
-+EXPORT_SYMBOL(deny_lock_file);
- 
- static int __posix_lock_file(struct inode *inode, struct file_lock *request, struct file_lock *conflock)
- {
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a8309c6..eb40c4f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -476,6 +476,19 @@ test_deny(u32 access, struct nfs4_ol_stateid *stp)
- 	return test_bit(access, &stp->st_deny_bmap);
- }
- 
-+static int nfs4_deny_to_odeny(u32 access)
++static inline u32 *nfs4_bitmap(struct nfs4_label *label, u32 *bitmap)
 +{
-+	switch (access & NFS4_SHARE_DENY_BOTH) {
-+	case NFS4_SHARE_DENY_READ:
-+		return O_DENYREAD;
-+	case NFS4_SHARE_DENY_WRITE:
-+		return O_DENYWRITE;
-+	case NFS4_SHARE_DENY_BOTH:
-+		return O_DENYREAD | O_DENYWRITE;
-+	}
-+	return 0;
-+}
++	bitmap[0] =  nfs4_fattr_bitmap[0];
++	bitmap[1] =  nfs4_fattr_bitmap[1];
++	bitmap[2] =  nfs4_fattr_bitmap[2];
 +
- static int nfs4_access_to_omode(u32 access)
- {
- 	switch (access & NFS4_SHARE_ACCESS_BOTH) {
-@@ -2795,6 +2808,21 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
- }
- 
- static __be32
-+nfs4_vfs_set_deny(struct nfs4_file *fp, unsigned long share_access,
-+		  unsigned long deny_access)
++	if (!label)
++		bitmap[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
++
++	return bitmap;
++}
++static inline u32 *nfs4_bitmask(struct nfs_server *server, struct nfs4_label *label)
 +{
-+	int oflag, rc;
-+	__be32 status = nfs_ok;
++	if (label)
++		return server->attr_bitmask;
 +
-+	oflag = nfs4_access_to_omode(share_access);
-+	fp->fi_fds[oflag]->f_flags |= nfs4_deny_to_odeny(deny_access);
-+	rc = deny_lock_file(fp->fi_fds[oflag]);
-+	if (rc)
-+		status = nfserrno(rc);
-+	return status;
++	return server->attr_bitmask_nl;
 +}
+ #else
+ static inline struct nfs4_label *
+ nfs4_label_init_security(struct inode *dir, struct dentry *dentry, 
+@@ -122,6 +140,12 @@ nfs4_label_init_security(struct inode *dir, struct dentry *dentry,
+ static inline void 
+ nfs4_label_release_security(struct nfs4_label *label) 
+ { return; }
++static inline u32 *
++nfs4_bitmask(struct nfs_server *server, struct nfs4_label *label)
++{ return server->attr_bitmask; }
++static inline const u32 *
++nfs4_bitmap(struct nfs4_label *label, u32 *bitmap)
++{ return &nfs4_fattr_bitmap[0]; }
+ #endif
+ 
+ /* Prevent leaks of NFSv4 errors into userland */
+@@ -824,6 +848,7 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	struct inode *dir = parent->d_inode;
+ 	struct nfs_server *server = NFS_SERVER(dir);
+ 	struct nfs4_opendata *p;
++	u32 bitmap[3];
+ 
+ 	p = kzalloc(sizeof(*p), gfp_mask);
+ 	if (p == NULL)
+@@ -857,8 +882,8 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	p->o_arg.id.uniquifier = sp->so_seqid.owner_id;
+ 	p->o_arg.name = &dentry->d_name;
+ 	p->o_arg.server = server;
+-	p->o_arg.bitmask = server->attr_bitmask;
+-	p->o_arg.open_bitmap = &nfs4_fattr_bitmap[0];
++	p->o_arg.open_bitmap = nfs4_bitmap(label, bitmap);
++	p->o_arg.bitmask = nfs4_bitmask(server, label);
+ 	p->o_arg.claim = NFS4_OPEN_CLAIM_NULL;
+ 	p->o_arg.label = label;
+ 	if (attrs != NULL && attrs->ia_valid != 0) {
+@@ -2126,8 +2151,9 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 	unsigned long timestamp = jiffies;
+ 	int status;
+ 
+-	if (ilabel == NULL || olabel == NULL)
+-		arg.bitmask = server->attr_bitmask_nl;
++	arg.bitmask = nfs4_bitmask(server, ilabel);
++	if (ilabel)
++		arg.bitmask = nfs4_bitmask(server, olabel);
+ 
+ 	nfs_fattr_init(fattr);
+ 
+@@ -2708,8 +2734,7 @@ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
+ 		.rpc_resp = &res,
+ 	};
+ 
+-	if (!label)
+-		args.bitmask = server->attr_bitmask_nl;
++	args.bitmask = nfs4_bitmask(server, label);
+ 
+ 	nfs_fattr_init(fattr);
+ 	return nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
+@@ -2814,8 +2839,7 @@ static int _nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir,
+ 		.rpc_resp = &res,
+ 	};
+ 
+-	if (label == NULL)
+-		args.bitmask = server->attr_bitmask_nl;
++	args.bitmask = nfs4_bitmask(server, label);
+ 
+ 	nfs_fattr_init(fattr);
+ 
+@@ -2952,6 +2976,8 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
+ 		goto out;
+ 	}
+ 
++	args.bitmask = nfs4_cache_bitmask(server, res.label);
 +
-+static __be32
- nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp, struct nfsd4_open *open)
- {
- 	u32 op_share_access = open->op_share_access;
-@@ -2815,6 +2843,14 @@ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *c
- 		}
- 		return status;
+ 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	if (!status) {
+ 		nfs_access_set_mask(entry, res.access);
+@@ -3263,6 +3289,7 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
+ 		status = PTR_ERR(res.label);
+ 		goto out;
  	}
-+	status = nfs4_vfs_set_deny(fp, op_share_access, open->op_share_deny);
-+	if (status) {
-+		if (new_access) {
-+			int oflag = nfs4_access_to_omode(op_share_access);
-+			nfs4_file_put_access(fp, oflag);
-+		}
-+		return status;
-+	}
- 	/* remember the open */
- 	set_access(op_share_access, stp);
- 	set_deny(open->op_share_deny, stp);
-@@ -3048,7 +3084,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
++	arg.bitmask = nfs4_bitmask(server, res.label);
  
- 	/*
- 	 * OPEN the file, or upgrade an existing OPEN.
--	 * If truncate fails, the OPEN fails.
-+	 * If truncate or setting deny fails, the OPEN fails.
- 	 */
- 	if (stp) {
- 		/* Stateid was found, this is an OPEN upgrade */
-@@ -3062,6 +3098,10 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 		status = nfsd4_truncate(rqstp, current_fh, open);
- 		if (status)
- 			goto out;
-+		status = nfs4_vfs_set_deny(fp, open->op_share_access,
-+					   open->op_share_deny);
-+		if (status)
-+			goto out;
- 		stp = open->op_stp;
- 		open->op_stp = NULL;
- 		init_open_stateid(stp, fp, open);
-@@ -3760,6 +3800,10 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+@@ -3320,7 +3347,7 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
+ 		data->arg.name = name;
+ 		data->arg.attrs = sattr;
+ 		data->arg.ftype = ftype;
+-		data->arg.bitmask = server->attr_bitmask;
++		data->arg.bitmask = nfs4_bitmask(server, data->label);
+ 		data->res.server = server;
+ 		data->res.fh = &data->fh;
+ 		data->res.fattr = &data->fattr;
+@@ -3758,11 +3785,8 @@ static void nfs4_proc_write_setup(struct nfs_write_data *data, struct rpc_messag
+ 		data->args.bitmask = NULL;
+ 		data->res.fattr = NULL;
+ 	} else
+-#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+-		data->args.bitmask = server->cache_consistency_bitmask_nl;
+-#else
+-		data->args.bitmask = server->cache_consistency_bitmask;
+-#endif
++
++	data->args.bitmask = nfs4_cache_bitmask(server, NULL);
+ 
+ 	if (!data->write_done_cb)
+ 		data->write_done_cb = nfs4_write_done_cb;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 4bdffe0..0ead05b 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1922,7 +1922,7 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 	data->args.inode = inode;
+ 	data->cred = get_rpccred(nfsi->layout->plh_lc_cred);
+ 	nfs_fattr_init(&data->fattr);
+-	data->args.bitmask = NFS_SERVER(inode)->cache_consistency_bitmask;
++	data->args.bitmask = nfs4_cache_bitmask(NFS_SERVER(inode), NULL);
+ 	data->res.fattr = &data->fattr;
+ 	data->args.lastbytewritten = end_pos - 1;
+ 	data->res.server = NFS_SERVER(inode);
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 6de5336..1510f4f 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -505,9 +505,19 @@ static inline void nfs4_label_free(struct nfs4_label *label)
  	}
- 	nfs4_stateid_downgrade(stp, od->od_share_access);
+ 	return;
+ }
++static inline u32 *nfs4_cache_bitmask(struct nfs_server *server, struct nfs4_label *label)
++{
++	if (label)
++		return server->cache_consistency_bitmask;
++
++	return server->cache_consistency_bitmask_nl;
++}
+ #else
+ static inline struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags) { return NULL; }
+ static inline void nfs4_label_free(void *label) {}
++static inline u32 *
++nfs4_cache_bitmask(struct nfs_server *server, struct nfs4_label *label)
++{ return server->cache_consistency_bitmask; }
+ #endif
  
-+	status = nfs4_vfs_set_deny(stp->st_file, od->od_share_access,
-+				   od->od_share_deny);
-+	if (status)
-+		goto out;
- 	reset_union_bmap_deny(od->od_share_deny, stp);
- 
- 	update_stateid(&stp->st_stid.sc_stateid);
+ /*
 -- 
-1.8.1.5
+1.8.1.4
 
