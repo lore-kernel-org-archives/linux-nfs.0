@@ -1,373 +1,232 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.gmx.net ([212.227.17.22]:54246 "EHLO mout.gmx.net"
+Received: from mx1.redhat.com ([209.132.183.28]:56056 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755094Ab3DXRID (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Apr 2013 13:08:03 -0400
-Received: from mailout-de.gmx.net ([10.1.76.31]) by mrigmx.server.lan
- (mrigmx001) with ESMTP (Nemesis) id 0MCNfL-1UMYiH0QFN-009AT2 for
- <linux-nfs@vger.kernel.org>; Wed, 24 Apr 2013 19:08:00 +0200
-Message-ID: <5178116F.1010608@gmx.de>
-Date: Wed, 24 Apr 2013 19:07:59 +0200
-From: =?UTF-8?B?TWFsdGUgU2NocsO2ZGVy?= <maltesch@gmx.de>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: NFS4 sec=krb5 broken in 3.9-rc8
-References: <5176E715.2070201@gmx.de> <20130423215807.GL3676@fieldses.org> <51777494.8010306@gmx.de> <20130424140152.GA9794@fieldses.org>
-In-Reply-To: <20130424140152.GA9794@fieldses.org>
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="----enig2VSUONLFRQCURMQAGOFSV"
+	id S1760996Ab3DBNp5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Apr 2013 09:45:57 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r32Djvbq032003
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 2 Apr 2013 09:45:57 -0400
+Subject: [PATCH] Avoid PTR lookups when possible
+From: Simo Sorce <simo@redhat.com>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Cc: Steve Dickson <steved@redhat.com>, Jeffrey Layton <jlayton@redhat.com>
+Content-Type: multipart/mixed; boundary="=-01e+ntA1nqbBeu2bLev1"
+Date: Tue, 02 Apr 2013 09:45:51 -0400
+Message-ID: <1364910351.2660.1243.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
-------enig2VSUONLFRQCURMQAGOFSV
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
 
-On 24.04.2013 16:01, J. Bruce Fields wrote:
-> On Wed, Apr 24, 2013 at 07:58:44AM +0200, Malte Schr=C3=B6der wrote:
->> On 23.04.2013 23:58, J. Bruce Fields wrote:
->>> On Tue, Apr 23, 2013 at 09:55:01PM +0200, Malte Schr=C3=B6der wrote:
->>>> Hi,
->>>> when I update my server from kernel 3.8.5 to 3.9-rc8 I cannot mount =
-its
->>>> NFS exports from clients using nfs4 and sec=3Dkrb5. Using sec=3Dsys =
-works,
->>>> using 3.8.5 also works good with both modes.
->>>
->>> Could you get a network trace showing the failure
->>>
->>> Run
->>>
->>> 	tcpdump -s0 -wtmp.pcap
->>>
->>> then send us tmp.pcap.
->>>
->>> (You can also take a look at tmp.pcap yourself in wireshark--it may b=
-e
->>> obvious where the failure occurs.)
->>>
->>> --b.
->>>
->>
->> The trace is attached. It contains two tries, the first using sec=3Dsy=
-s,
->> the second sec=3Dkrb5. I used "mount -tnfs -overs=3D4,sec=3Dkrb5 gatew=
-ay:/
->> /mnt". NFS-Utils have version 1.2.6.
->=20
-> Looks like the context creation succeeds and then the first use of the
-> new context (a PUTROOTFH+GETATTR) never gets a response.
->=20
-> Nothing interesting in the server's logs?
+--=-01e+ntA1nqbBeu2bLev1
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
 
-No, nothing. I used rpcdebug to increase logging, this is what shows up
-in dmesg:
+The attached patch adds a new command line switch to rpc.gssd to avoid
+PTR resolution when possible.
 
-> [78773.778081] svc: socket ffff880167423640 TCP (connected) state chang=
-e 8 (svsk ffff8801619f7000)
-> [78773.778093] svc: transport ffff8801619f7000 served by daemon ffff880=
-212bce000
-> [78773.778098] svc: socket ffff880167423640 TCP data ready (svsk ffff88=
-01619f7000)
-> [78773.778099] svc: transport ffff8801619f7000 busy, not enqueued
-> [78773.778127] svc_recv: found XPT_CLOSE
-> [78773.778132] svc: svc_delete_xprt(ffff8801619f7000)
-> [78773.778134] svc: svc_tcp_sock_detach(ffff8801619f7000)
-> [78773.778135] svc: svc_sock_detach(ffff8801619f7000)
-> [78773.778173] svc: server ffff880212bce000 waiting for data (to =3D 90=
-0000)
-> [78773.778735] svc: socket ffff8802152f8000 TCP (listen) state change 1=
-0
-> [78773.778746] svc: transport ffff880215bfd000 served by daemon ffff880=
-212bce000
-> [78773.778767] svc: socket ffff8802152fe4c0 TCP (listen) state change 1=
+The current code *depends* on PTR resolution for GSSAPI authentication
+and this is *bad*.
+It imposes an annoying, and unnecessary, constraint on the correctness
+of DNS resolution, which prevents mounts from working in networks where
+the PTR record cannot be easily controlled (for example networks where
+the forward name is reasonable while the PTR is set to some artificial
+name based on the IP address or so that is not the canonical name or
+where no PTR exist at all).
 
-> [78773.778780] svc: tcp_accept ffff880215bfd000 sock ffff8802118dd200
-> [78773.778791] nfsd: connect from fdc7:1cc3:ec03:0001:f599:ac9c:6ffb:0f=
-57, port=3D930
-> [78773.778793] svc: svc_setup_socket ffff880215dc4480
-> [78773.778796] setting up TCP socket for reading
-> [78773.778798] svc: svc_setup_socket created ffff8800c0a94000 (inet fff=
-f8802152fe4c0)
-> [78773.778802] svc: transport ffff8800c0a94000 served by daemon ffff880=
-2071f2000
-> [78773.778815] svc: transport ffff880215bfd000 served by daemon ffff880=
-21243c000
-> [78773.778825] svc: server ffff880212bce000 waiting for data (to =3D 90=
-0000)
-> [78773.778846] svc: server ffff8802071f2000, pool 0, transport ffff8800=
-c0a94000, inuse=3D2
-> [78773.778850] svc: tcp_recv ffff8800c0a94000 data 1 conn 0 close 0
-> [78773.778854] svc: socket ffff8800c0a94000 recvfrom(ffff8800c0a942b4, =
-0) =3D 4
-> [78773.778858] svc: tcp_accept ffff880215bfd000 sock ffff8802118dd200
-> [78773.778859] svc: TCP record, 260 bytes
-> [78773.778863] svc: socket ffff8800c0a94000 recvfrom(ffff8801b7758104, =
-3836) =3D 260
-> [78773.778865] svc: server ffff88021243c000 waiting for data (to =3D 90=
-0000)
-> [78773.778868] svc: TCP final record (260 bytes)
-> [78773.778870] svc: got len=3D260
-> [78773.778873] svc: svc_authenticate (6)
-> [78773.778883] RPC:       svcauth_gss: argv->iov_len =3D 232
-> [78773.778895] RPC:       gss_verify_mic_v2
-> [78773.778915] RPC:       gss_get_mic_v2
-> [78773.778925] RPC:       Want update, refage=3D120, age=3D94
-> [78778.777978] svc: svc_process dropit
-> [78778.777983] svc: xprt ffff8800c0a94000 dropped request
-> [78778.777987] svc: server ffff8802071f2000 waiting for data (to =3D 90=
-0000)
-> [78784.954269] svc: socket ffff8802152f8000 TCP (listen) state change 1=
-0
-> [78784.954282] svc: transport ffff880215bfd000 served by daemon ffff880=
-2071f2000
-> [78784.954318] svc: tcp_accept ffff880215bfd000 sock ffff8802118dd200
-> [78784.954327] \x014nfsd: connect from unprivileged port: fdc7:1cc3:ec0=
-3:0001:f599:ac9c:6ffb:0f57, port=3D48090
-> [78784.954330] nfsd: connect from fdc7:1cc3:ec03:0001:f599:ac9c:6ffb:0f=
-57, port=3D48090
-> [78784.954331] svc: svc_setup_socket ffff880154a63cc0
-> [78784.954334] setting up TCP socket for reading
-> [78784.954336] svc: svc_setup_socket created ffff8801619f1000 (inet fff=
-f880167423e00)
-> [78784.954341] svc: transport ffff8801619f1000 served by daemon ffff880=
-21243c000
-> [78784.954353] svc: transport ffff880215bfd000 served by daemon ffff880=
-212bce000
-> [78784.954359] svc: server ffff8802071f2000 waiting for data (to =3D 90=
-0000)
-> [78784.954373] svc: tcp_accept ffff880215bfd000 sock ffff8802118dd200
-> [78784.954381] svc: server ffff88021243c000, pool 0, transport ffff8801=
-619f1000, inuse=3D2
-> [78784.954383] svc: server ffff880212bce000 waiting for data (to =3D 90=
-0000)
-> [78784.954390] svc: tcp_recv ffff8801619f1000 data 1 conn 0 close 0
-> [78784.954394] svc: socket ffff8801619f1000 recvfrom(ffff8801619f12b0, =
-4) =3D -11
-> [78784.954397] RPC: TCP recv_record got -11
-> [78784.954398] RPC: TCP recvfrom got EAGAIN
-> [78784.954400] svc: got len=3D0
-> [78784.954403] svc: server ffff88021243c000 waiting for data (to =3D 90=
-0000)
-> [78784.955459] svc: socket ffff880167423e00 TCP data ready (svsk ffff88=
-01619f1000)
-> [78784.955463] svc: transport ffff8801619f1000 served by daemon ffff880=
-21243c000
-> [78784.955498] svc: server ffff88021243c000, pool 0, transport ffff8801=
-619f1000, inuse=3D2
-> [78784.955501] svc: tcp_recv ffff8801619f1000 data 1 conn 0 close 0
-> [78784.955504] svc: socket ffff8801619f1000 recvfrom(ffff8801619f12b4, =
-0) =3D 4
-> [78784.955506] svc: TCP record, 696 bytes
-> [78784.955510] svc: socket ffff8801619f1000 recvfrom(ffff88010f8612b8, =
-3400) =3D 696
-> [78784.955514] svc: TCP final record (696 bytes)
-> [78784.955516] svc: got len=3D696
-> [78784.955519] svc: svc_authenticate (6)
-> [78784.955522] RPC:       svcauth_gss: argv->iov_len =3D 668
-> [78784.955530] RPC:       Want update, refage=3D120, age=3D0
-> [78784.972344] RPC:       krb5_encrypt returns 0
-> [78784.972348] RPC:       krb5_encrypt returns 0
-> [78784.972357] RPC:       krb5_encrypt returns 0
-> [78784.972358] RPC:       krb5_encrypt returns 0
-> [78784.972366] RPC:       krb5_encrypt returns 0
-> [78784.972367] RPC:       krb5_encrypt returns 0
-> [78784.972373] RPC:       krb5_encrypt returns 0
-> [78784.972375] RPC:       krb5_encrypt returns 0
-> [78784.972381] RPC:       krb5_encrypt returns 0
-> [78784.972383] RPC:       krb5_encrypt returns 0
-> [78784.972388] RPC:       krb5_encrypt returns 0
-> [78784.972390] RPC:       krb5_encrypt returns 0
-> [78784.972394] RPC:       gss_import_sec_context_kerberos: returning 0
-> [78784.972478] RPC:       gss_get_mic_v2
-> [78784.972530] svc: socket ffff8801619f1000 sendto([ffff88010cfdf000 23=
-6... ], 236) =3D 236 (addr fdc7:1cc3:ec03:0001:f599:ac9c:6ffb:0f57, port=3D=
-48090)
-> [78784.972534] svc: server ffff88021243c000 waiting for data (to =3D 90=
-0000)
-> [78784.974655] svc: socket ffff880167423e00 TCP data ready (svsk ffff88=
-01619f1000)
-> [78784.974659] svc: transport ffff8801619f1000 served by daemon ffff880=
-21243c000
-> [78784.974674] svc: socket ffff880167423e00 TCP (connected) state chang=
-e 8 (svsk ffff8801619f1000)
-> [78784.974676] svc: transport ffff8801619f1000 busy, not enqueued
-> [78784.974677] svc: socket ffff880167423e00 TCP data ready (svsk ffff88=
-01619f1000)
-> [78784.974679] svc: transport ffff8801619f1000 busy, not enqueued
-> [78784.974699] svc: socket ffff8802152fe4c0 TCP data ready (svsk ffff88=
-00c0a94000)
-> [78784.974701] svc: transport ffff8800c0a94000 served by daemon ffff880=
-212bce000
-> [78784.974712] svc_recv: found XPT_CLOSE
-> [78784.974714] svc: svc_delete_xprt(ffff8801619f1000)
-> [78784.974715] svc: svc_tcp_sock_detach(ffff8801619f1000)
-> [78784.974717] svc: svc_sock_detach(ffff8801619f1000)
-> [78784.974756] svc: svc_sock_free(ffff8801619f1000)
-> [78784.974766] svc: server ffff880212bce000, pool 0, transport ffff8800=
-c0a94000, inuse=3D3
-> [78784.974768] svc: server ffff88021243c000 waiting for data (to =3D 90=
-0000)
-> [78784.974769] svc: tcp_recv ffff8800c0a94000 data 1 conn 0 close 0
-> [78784.974771] svc: socket ffff8800c0a94000 recvfrom(ffff8800c0a942b4, =
-0) =3D 4
-> [78784.974771] svc: TCP record, 128 bytes
-> [78784.974773] svc: socket ffff8800c0a94000 recvfrom(ffff88010f854080, =
-3968) =3D 128
-> [78784.974774] svc: TCP final record (128 bytes)
-> [78784.974775] svc: got len=3D128
-> [78784.974776] svc: svc_authenticate (6)
-> [78784.974776] RPC:       svcauth_gss: argv->iov_len =3D 100
-> [78784.974778] RPC:       gss_verify_mic_v2
-> [78784.974784] RPC:       gss_get_mic_v2
-> [78784.974807] RPC:       Want update, refage=3D120, age=3D105
-> [78789.975231] svc: svc_process dropit
-> [78789.975236] svc: xprt ffff8800c0a94000 dropped request
-> [78789.975239] svc: server ffff880212bce000 waiting for data (to =3D 90=
-0000)
-> [78828.585290] NFSD: laundromat service - starting
-> [78828.585296] NFSD: laundromat_main - sleeping for 90 seconds
-> [78829.873886] revisit canceled
-> [78829.873892] svc: svc_sock_free(ffff880133911000)
-> [78829.873901] revisit canceled
-> [78829.873903] svc: svc_sock_free(ffff8801619f7000)
-> [78829.873908] revisit queued
-> [78829.873910] svc: transport ffff8800c0a94000 served by daemon ffff880=
-212bce000
-> [78829.873914] revisit queued
-> [78829.873916] svc: transport ffff8800c0a94000 busy, not enqueued
-> [78829.873944] svc: server ffff880212bce000, pool 0, transport ffff8800=
-c0a94000, inuse=3D2
-> [78829.873948] svc: got len=3D128
-> [78829.873950] svc: transport ffff8800c0a94000 served by daemon ffff880=
-21243c000
-> [78829.873957] svc: svc_authenticate (6)
-> [78829.873959] RPC:       svcauth_gss: argv->iov_len =3D 100
-> [78829.873965] RPC:       gss_get_mic_v2
-> [78829.873984] svc: server ffff88021243c000, pool 0, transport ffff8800=
-c0a94000, inuse=3D3
-> [78829.873988] RPC:       Want update, refage=3D120, age=3D0
-> [78829.873991] svc: got len=3D260
-> [78829.873993] svc: transport ffff8800c0a94000 served by daemon ffff880=
-2071f2000
-> [78829.874000] svc: svc_authenticate (6)
-> [78829.874002] RPC:       svcauth_gss: argv->iov_len =3D 232
-> [78829.874007] RPC:       gss_get_mic_v2
-> [78829.874023] RPC:       Want update, refage=3D120, age=3D0
-> [78829.874027] svc: server ffff8802071f2000, pool 0, transport ffff8800=
-c0a94000, inuse=3D4
-> [78829.874029] svc: tcp_recv ffff8800c0a94000 data 0 conn 0 close 0
-> [78829.874032] svc: socket ffff8800c0a94000 recvfrom(ffff8800c0a942b0, =
-4) =3D -11
-> [78829.874036] RPC: TCP recv_record got -11
-> [78829.874037] RPC: TCP recvfrom got EAGAIN
-> [78829.874038] svc: got len=3D0
-> [78829.874041] svc: server ffff8802071f2000 waiting for data (to =3D 90=
-0000)
-> [78834.876234] svc: svc_process dropit
-> [78834.876236] svc: svc_process dropit
-> [78834.876241] svc: xprt ffff8800c0a94000 dropped request
-> [78834.876244] svc: server ffff88021243c000 waiting for data (to =3D 90=
-0000)
-> [78834.876245] svc: xprt ffff8800c0a94000 dropped request
-> [78834.876248] svc: server ffff880212bce000 waiting for data (to =3D 90=
-0000)
-> [78845.235651] svc: socket ffff8802152fe4c0 TCP (connected) state chang=
-e 8 (svsk ffff8800c0a94000)
-> [78845.235664] svc: transport ffff8800c0a94000 served by daemon ffff880=
-21243c000
-> [78845.235669] svc: socket ffff8802152fe4c0 TCP data ready (svsk ffff88=
-00c0a94000)
-> [78845.235670] svc: transport ffff8800c0a94000 busy, not enqueued
-> [78845.235696] svc_recv: found XPT_CLOSE
-> [78845.235700] svc: svc_delete_xprt(ffff8800c0a94000)
-> [78845.235702] svc: svc_tcp_sock_detach(ffff8800c0a94000)
-> [78845.235704] svc: svc_sock_detach(ffff8800c0a94000)
-> [78845.235738] svc: server ffff88021243c000 waiting for data (to =3D 90=
-0000)
-> [78845.236250] svc: socket ffff8802152f8000 TCP (listen) state change 1=
-0
-> [78845.236261] svc: transport ffff880215bfd000 served by daemon ffff880=
-21243c000
-> [78845.236278] svc: socket ffff880167423640 TCP (listen) state change 1=
+Depending on PTR resolution for GSSAPI is also very bad practice because
+it opens up DNS spoofing attacks where an attacker can try to redirect a
+user to the wrong server fooling mutual authentication, and induce a
+user to trust improper data or disclose (by copying on the impostor
+server) data that should be confidential.
 
-> [78845.236290] svc: tcp_accept ffff880215bfd000 sock ffff8802118dd200
-> [78845.236300] nfsd: connect from fdc7:1cc3:ec03:0001:f599:ac9c:6ffb:0f=
-57, port=3D930
-> [78845.236301] svc: svc_setup_socket ffff880154a62880
-> [78845.236306] setting up TCP socket for reading
-> [78845.236313] svc: svc_setup_socket created ffff88011b04d000 (inet fff=
-f880167423640)
-> [78845.236320] svc: transport ffff88011b04d000 served by daemon ffff880=
-212bce000
-> [78845.236326] svc: transport ffff880215bfd000 served by daemon ffff880=
-2071f2000
-> [78845.236330] svc: server ffff88021243c000 waiting for data (to =3D 90=
-0000)
-> [78845.236356] svc: socket ffff880167423640 TCP data ready (svsk ffff88=
-011b04d000)
-> [78845.236359] svc: server ffff880212bce000, pool 0, transport ffff8801=
-1b04d000, inuse=3D2
-> [78845.236362] svc: tcp_accept ffff880215bfd000 sock ffff8802118dd200
-> [78845.236363] svc: tcp_recv ffff88011b04d000 data 1 conn 0 close 0
-> [78845.236369] svc: server ffff8802071f2000 waiting for data (to =3D 90=
-0000)
-> [78845.236380] svc: transport ffff88011b04d000 busy, not enqueued
-> [78845.236389] svc: socket ffff88011b04d000 recvfrom(ffff88011b04d2b4, =
-0) =3D 4
-> [78845.236392] svc: TCP record, 128 bytes
-> [78845.236395] svc: socket ffff88011b04d000 recvfrom(ffff88010f854080, =
-3968) =3D 128
-> [78845.236398] svc: TCP final record (128 bytes)
-> [78845.236399] svc: got len=3D128
-> [78845.236401] svc: transport ffff88011b04d000 served by daemon ffff880=
-2071f2000
-> [78845.236407] svc: svc_authenticate (6)
-> [78845.236409] RPC:       svcauth_gss: argv->iov_len =3D 100
-> [78845.236416] RPC:       gss_verify_mic_v2
-> [78845.236434] svc: server ffff8802071f2000, pool 0, transport ffff8801=
-1b04d000, inuse=3D3
-> [78845.236440] svc: tcp_recv ffff88011b04d000 data 1 conn 0 close 0
-> [78845.236443] RPC:       gss_get_mic_v2
-> [78845.236445] svc: socket ffff88011b04d000 recvfrom(ffff88011b04d2b4, =
-0) =3D 4
-> [78845.236446] svc: TCP record, 260 bytes
-> [78845.236448] svc: socket ffff88011b04d000 recvfrom(ffff8801b7758104, =
-3836) =3D 260
-> [78845.236450] svc: TCP final record (260 bytes)
-> [78845.236452] svc: got len=3D260
-> [78845.236454] svc: svc_authenticate (6)
-> [78845.236455] RPC:       svcauth_gss: argv->iov_len =3D 232
-> [78845.236459] RPC:       gss_verify_mic_v2
-> [78845.236466] RPC:       Want update, refage=3D120, age=3D15
-> [78845.236474] RPC:       gss_get_mic_v2
-> [78845.236489] RPC:       Want update, refage=3D120, age=3D15
-> [78850.235425] svc: svc_process dropit
-> [78850.235430] svc: svc_process dropit
-> [78850.235433] svc: xprt ffff88011b04d000 dropped request
-> [78850.235436] svc: xprt ffff88011b04d000 dropped request
-> [78850.235437] svc: server ffff880212bce000 waiting for data (to =3D 90=
-0000)
-> [78850.235441] svc: server ffff8802071f2000 waiting for data (to =3D 90=
-0000)
+Ideally people will always use the -N switch, however I added an actual
+switch to avoid breaking existing configuration where someone may
+intentionally or inadvertently be using multiple A names instead of
+using CNAMEs but relying on PTR records to find the "canonical name".
 
-/Malte
+It would be probably nice to switch the behavior on by default in
+future.
+
+Jeff in CC as he also implemented a similar switch for cifs.upcall
+(there it is called -t|--trust-dns, but in rpc.gsssd -t is already
+taken ...).
+
+Simo.
+
+-- 
+Simo Sorce * Red Hat, Inc * New York
+
+--=-01e+ntA1nqbBeu2bLev1
+Content-Disposition: attachment; filename="0001-Avoid-forced-reverse-resolution-for-server-name.patch"
+Content-Type: text/x-patch; name="0001-Avoid-forced-reverse-resolution-for-server-name.patch"; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+
+>From 53dade1e5d22eee06a08ace2684257292514cb49 Mon Sep 17 00:00:00 2001
+From: Simo Sorce <simo@redhat.com>
+Date: Mon, 1 Apr 2013 21:00:55 -0400
+Subject: [PATCH] Avoid forced reverse resolution for server name
+
+A NFS client should be able to work properly even if the PTR record for the
+server is not set. there is no excuse to forcefully prevent that from working
+when it can.
+So, use some heuristics to see if the server is a FQDN or an IP address.
+If it is an IP address or a shortname (no '.' in name) then do a PTR lookup,
+otherwise avoid it.
+
+This is enabled by the new -N flag which is off by default for now, ideally we
+will turn this on by default after a transition period.
+---
+ utils/gssd/gss_util.h  |  2 ++
+ utils/gssd/gssd.c      |  4 +++-
+ utils/gssd/gssd.man    |  7 ++++++-
+ utils/gssd/gssd_proc.c | 31 +++++++++++++++++++++++++++----
+ 4 files changed, 38 insertions(+), 6 deletions(-)
+
+diff --git a/utils/gssd/gss_util.h b/utils/gssd/gss_util.h
+index aa9f77806075f9ab67a7763a75a010369ba2d1b9..663fb0998bede6144118f890b9311ee8687176e3 100644
+--- a/utils/gssd/gss_util.h
++++ b/utils/gssd/gss_util.h
+@@ -52,4 +52,6 @@ int gssd_check_mechs(void);
+ 		gss_krb5_set_allowable_enctypes(min, cred, num, types)
+ #endif
+ 
++extern int avoid_ptr;
++
+ #endif /* _GSS_UTIL_H_ */
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index 0be251781bacaa562270f773341126bc95ca6b45..2a98e94812a662f0fd868fce8dc3419f65648a4d 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -85,7 +85,7 @@ sig_hup(int signal)
+ static void
+ usage(char *progname)
+ {
+-	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm]\n",
++	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm] [-N]\n",
+ 		progname);
+ 	exit(1);
+ }
+@@ -150,6 +150,8 @@ main(int argc, char *argv[])
+ 				errx(1, "Encryption type limits not supported by Kerberos libraries.");
+ #endif
+ 				break;
++			case 'N':
++				avoid_ptr = 1;
+ 			default:
+ 				usage(argv[0]);
+ 				break;
+diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
+index 79d9bf91ac6b976c57d167e60d07f828a3ff5b1f..09253b43ba6502202c17bbc84bd6bcf9dec85e9b 100644
+--- a/utils/gssd/gssd.man
++++ b/utils/gssd/gssd.man
+@@ -8,7 +8,7 @@
+ rpc.gssd \- RPCSEC_GSS daemon
+ .SH SYNOPSIS
+ .B rpc.gssd
+-.RB [ \-fMnlvr ]
++.RB [ \-fMnlvrN ]
+ .RB [ \-k
+ .IR keytab ]
+ .RB [ \-p
+@@ -266,6 +266,11 @@ new kernel contexts to be negotiated after
+ seconds, which allows changing Kerberos tickets and identities frequently.
+ The default is no explicit timeout, which means the kernel context will live
+ the lifetime of the Kerberos service ticket used in its creation.
++.TP
++.B -N
++Tries to avoid PTR lookups for resolving the server name, if the name used at 
++mount looks like a Fully Qualified Domain Name. This is import to avoid GSSAPI 
++issues when PTR records are set and to help avoid some kind of MITM attack.
+ .SH SEE ALSO
+ .BR rpc.svcgssd (8),
+ .BR kerberos (1),
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index ea01e92e4565670b97dea1a936d2f0dbdc7c4610..0a584d2084d626ee98a8ad6ff56da95464b882fe 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -67,6 +67,7 @@
+ #include <errno.h>
+ #include <gssapi/gssapi.h>
+ #include <netdb.h>
++#include <ctype.h>
+ 
+ #include "gssd.h"
+ #include "err_util.h"
+@@ -107,6 +108,8 @@ struct pollfd * pollarray;
+ 
+ unsigned long pollsize;  /* the size of pollaray (in pollfd's) */
+ 
++int avoid_ptr = 0;
++
+ /*
+  * convert a presentation address string to a sockaddr_storage struct. Returns
+  * true on success or false on failure.
+@@ -165,12 +168,32 @@ addrstr_to_sockaddr(struct sockaddr *sa, const char *node, const char *port)
+  * convert a sockaddr to a hostname
+  */
+ static char *
+-sockaddr_to_hostname(const struct sockaddr *sa, const char *addr)
++get_servername(const char *name, const struct sockaddr *sa, const char *addr)
+ {
+ 	socklen_t		addrlen;
+ 	int			err;
+ 	char			*hostname;
+ 	char			hbuf[NI_MAXHOST];
++	const char		*p;
++	int			do_ptr_lookup = 0;
++
++	if (avoid_ptr) {
++		/* try to determine if this is FQDN, or an IP address with
++		 * basic heuristics, if they fail try a PTR lookup */
++		p = strrchr(name, '.');
++		if (!p || strchr(name, ':'))
++			do_ptr_lookup = 1; /* non-FQDN, or IPv6 */
++		else {
++			for (++p; *p; p++)
++				if (!isdigit(*p))
++					break;
++			if (!*p)
++				do_ptr_lookup = 1; /* IPv4 */
++		}
++		if (!do_ptr_lookup) {
++			return strdup(name);
++		}
++	}
+ 
+ 	switch (sa->sa_family) {
+ 	case AF_INET:
+@@ -208,7 +231,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+ 		  struct sockaddr *addr) {
+ #define INFOBUFLEN 256
+ 	char		buf[INFOBUFLEN + 1];
+-	static char	dummy[128];
++	static char	server[128];
+ 	int		nbytes;
+ 	static char	service[128];
+ 	static char	address[128];
+@@ -236,7 +259,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+ 		   "service: %127s %15s version %15s\n"
+ 		   "address: %127s\n"
+ 		   "protocol: %15s\n",
+-		   dummy,
++		   server,
+ 		   service, program, version,
+ 		   address,
+ 		   protoname);
+@@ -258,7 +281,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+ 	if (!addrstr_to_sockaddr(addr, address, port))
+ 		goto fail;
+ 
+-	*servername = sockaddr_to_hostname(addr, address);
++	*servername = get_servername(server, addr, address);
+ 	if (*servername == NULL)
+ 		goto fail;
+ 
+-- 
+1.8.1.4
 
 
-------enig2VSUONLFRQCURMQAGOFSV
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
+--=-01e+ntA1nqbBeu2bLev1--
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iEYEARECAAYFAlF4EW8ACgkQ4q3E2oMjYtUHfACg8DBySl+fCsvHSNY0bpftuJHT
-Q4kAn2fbf2O1RWmGf8RMXcRe2DEJ57Eh
-=/Ms1
------END PGP SIGNATURE-----
-
-------enig2VSUONLFRQCURMQAGOFSV--
