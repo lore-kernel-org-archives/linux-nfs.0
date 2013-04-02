@@ -1,75 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42011 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757693Ab3DCOUI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Apr 2013 10:20:08 -0400
-Date: Wed, 3 Apr 2013 10:20:03 -0400
-To: Simo Sorce <simo@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] Document new -z/-Z options
-Message-ID: <20130403142003.GC13951@fieldses.org>
-References: <515B2F8D.3030302@RedHat.com>
- <1364931149-18484-3-git-send-email-simo@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1364931149-18484-3-git-send-email-simo@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-ve0-f171.google.com ([209.85.128.171]:62314 "EHLO
+	mail-ve0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760561Ab3DBNCF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Apr 2013 09:02:05 -0400
+Received: by mail-ve0-f171.google.com with SMTP id b10so420581vea.30
+        for <linux-nfs@vger.kernel.org>; Tue, 02 Apr 2013 06:02:05 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: convert the file_hashtbl to a hlist
+Date: Tue,  2 Apr 2013 09:01:59 -0400
+Message-Id: <1364907719-9616-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 02, 2013 at 03:32:29PM -0400, Simo Sorce wrote:
-> Options are not in alphabetical order but -z/-Z clearly always come last.
-> 
-> Signed-off-by: Simo Sorce <simo@redhat.com>
-> ---
->  utils/gssd/gssd.man |   13 ++++++++++++-
->  1 files changed, 12 insertions(+), 1 deletions(-)
-> 
-> diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
-> index 79d9bf91ac6b976c57d167e60d07f828a3ff5b1f..7918c2a0ff76c3918449cf3e1420f0a289929ac1 100644
-> --- a/utils/gssd/gssd.man
-> +++ b/utils/gssd/gssd.man
-> @@ -8,7 +8,7 @@
->  rpc.gssd \- RPCSEC_GSS daemon
->  .SH SYNOPSIS
->  .B rpc.gssd
-> -.RB [ \-fMnlvr ]
-> +.RB [ \-fMnlvrzZ ]
->  .RB [ \-k
->  .IR keytab ]
->  .RB [ \-p
-> @@ -266,6 +266,17 @@ new kernel contexts to be negotiated after
->  seconds, which allows changing Kerberos tickets and identities frequently.
->  The default is no explicit timeout, which means the kernel context will live
->  the lifetime of the Kerberos service ticket used in its creation.
-> +.TP
-> +.B -z
-> +This option tries to avoid DNS Reverse (PTR) lookups for determining the 
-> +server name to pass to GSSAPI if the name passed at mount point is not an IP 
-> +address. Currently off by default for compatibility reasons.
-> +.TP
-> +.B -Z
-> +This is the inverse of 
-> +.B -z
-> +and forces the use of DNS Reverse resolution of the server's IP address to
-> +retrieve the server name to use in GSAPI authentication.
+We only ever traverse the hash chains in the forward direction, so a
+double pointer list head isn't really necessary.
 
-By the way I think with the "new" upcall, gssd ignores whatever it got
-out of the info file if the "target=" parameter is provided in the
-upcall.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4state.c | 14 ++++----------
+ fs/nfsd/state.h     |  2 +-
+ 2 files changed, 5 insertions(+), 11 deletions(-)
 
-(But looking at the code I think that's only used in the nfsv4.0
-callback case, and isn't worth mentioning here.)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 2efb034..e1c29d6 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -137,7 +137,7 @@ static inline void
+ put_nfs4_file(struct nfs4_file *fi)
+ {
+ 	if (atomic_dec_and_lock(&fi->fi_ref, &recall_lock)) {
+-		list_del(&fi->fi_hash);
++		hlist_del(&fi->fi_hash);
+ 		spin_unlock(&recall_lock);
+ 		iput(fi->fi_inode);
+ 		nfsd4_free_file(fi);
+@@ -181,7 +181,7 @@ static unsigned int file_hashval(struct inode *ino)
+ 	return hash_ptr(ino, FILE_HASH_BITS);
+ }
+ 
+-static struct list_head file_hashtbl[FILE_HASH_SIZE];
++static struct hlist_head file_hashtbl[FILE_HASH_SIZE];
+ 
+ static void __nfs4_file_get_access(struct nfs4_file *fp, int oflag)
+ {
+@@ -2303,7 +2303,6 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
+ 	unsigned int hashval = file_hashval(ino);
+ 
+ 	atomic_set(&fp->fi_ref, 1);
+-	INIT_LIST_HEAD(&fp->fi_hash);
+ 	INIT_LIST_HEAD(&fp->fi_stateids);
+ 	INIT_LIST_HEAD(&fp->fi_delegations);
+ 	fp->fi_inode = igrab(ino);
+@@ -2312,7 +2311,7 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
+ 	memset(fp->fi_fds, 0, sizeof(fp->fi_fds));
+ 	memset(fp->fi_access, 0, sizeof(fp->fi_access));
+ 	spin_lock(&recall_lock);
+-	list_add(&fp->fi_hash, &file_hashtbl[hashval]);
++	hlist_add_head(&fp->fi_hash, &file_hashtbl[hashval]);
+ 	spin_unlock(&recall_lock);
+ }
+ 
+@@ -2498,7 +2497,7 @@ find_file(struct inode *ino)
+ 	struct nfs4_file *fp;
+ 
+ 	spin_lock(&recall_lock);
+-	list_for_each_entry(fp, &file_hashtbl[hashval], fi_hash) {
++	hlist_for_each_entry(fp, &file_hashtbl[hashval], fi_hash) {
+ 		if (fp->fi_inode == ino) {
+ 			get_nfs4_file(fp);
+ 			spin_unlock(&recall_lock);
+@@ -4775,11 +4774,6 @@ struct nfs4_client *nfsd_find_client(struct sockaddr_storage *addr, size_t addr_
+ void
+ nfs4_state_init(void)
+ {
+-	int i;
+-
+-	for (i = 0; i < FILE_HASH_SIZE; i++) {
+-		INIT_LIST_HEAD(&file_hashtbl[i]);
+-	}
+ 	INIT_LIST_HEAD(&del_recall_lru);
+ }
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 1a8c739..5350dac 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -390,7 +390,7 @@ static inline struct nfs4_lockowner * lockowner(struct nfs4_stateowner *so)
+ /* nfs4_file: a file opened by some number of (open) nfs4_stateowners. */
+ struct nfs4_file {
+ 	atomic_t		fi_ref;
+-	struct list_head        fi_hash;    /* hash by "struct inode *" */
++	struct hlist_node       fi_hash;    /* hash by "struct inode *" */
+ 	struct list_head        fi_stateids;
+ 	struct list_head	fi_delegations;
+ 	/* One each for O_RDONLY, O_WRONLY, O_RDWR: */
+-- 
+1.7.11.7
 
---b.
-
->  .SH SEE ALSO
->  .BR rpc.svcgssd (8),
->  .BR kerberos (1),
-> -- 
-> 1.7.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
