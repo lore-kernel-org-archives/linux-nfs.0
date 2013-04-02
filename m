@@ -1,84 +1,252 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f49.google.com ([209.85.213.49]:60944 "EHLO
-	mail-yh0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934899Ab3DJLLt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Apr 2013 07:11:49 -0400
-Received: by mail-yh0-f49.google.com with SMTP id q14so18448yhf.22
-        for <linux-nfs@vger.kernel.org>; Wed, 10 Apr 2013 04:11:48 -0700 (PDT)
-Date: Wed, 10 Apr 2013 07:11:44 -0400
-From: Jeff Layton <jlayton@samba.org>
-To: Pavel Shilovsky <piastry@etersoft.ru>
-Cc: linux-kernel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        wine-devel@winehq.org
-Subject: Re: [PATCH v5 4/7] CIFS: Use NT_CREATE_ANDX command for forcemand
- mounts
-Message-ID: <20130410071144.08ef2983@corrin.poochiereds.net>
-In-Reply-To: <1365511227-17626-5-git-send-email-piastry@etersoft.ru>
-References: <1365511227-17626-1-git-send-email-piastry@etersoft.ru>
-	<1365511227-17626-5-git-send-email-piastry@etersoft.ru>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from userp1040.oracle.com ([156.151.31.81]:44405 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932587Ab3DBPst convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Apr 2013 11:48:49 -0400
+References: <1364910351.2660.1243.camel@willson.li.ssimo.org> <515AF6DB.4000708@RedHat.com>
+In-Reply-To: <515AF6DB.4000708@RedHat.com>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+	charset=us-ascii
+Message-Id: <D550C8E7-AF28-42DC-9777-9999064C9ECF@oracle.com>
+Cc: Simo Sorce <simo@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>,
+        Jeffrey Layton <jlayton@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] Avoid PTR lookups when possible
+Date: Tue, 2 Apr 2013 08:51:29 -0700
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue,  9 Apr 2013 16:40:24 +0400
-Pavel Shilovsky <piastry@etersoft.ru> wrote:
 
-> forcemand mount option now lets us use Windows mandatory style of
-> byte-range locks even if server supports posix ones - switches on
-> Windows locking mechanism. Share flags is another locking mehanism
-> provided by Windows semantic that can be used by NT_CREATE_ANDX
-> command. This patch combines all Windows locking mechanism in one
-> mount option by using NT_CREATE_ANDX to open files if forcemand is on.
+
+On Apr 2, 2013, at 8:18 AM, Steve Dickson <SteveD@redhat.com> wrote:
+
 > 
-> Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+> 
+> On 02/04/13 09:45, Simo Sorce wrote:
+>> The attached patch adds a new command line switch to rpc.gssd to avoid
+>> PTR resolution when possible.
+>> 
+>> The current code *depends* on PTR resolution for GSSAPI authentication
+>> and this is *bad*.
+>> It imposes an annoying, and unnecessary, constraint on the correctness
+>> of DNS resolution, which prevents mounts from working in networks where
+>> the PTR record cannot be easily controlled (for example networks where
+>> the forward name is reasonable while the PTR is set to some artificial
+>> name based on the IP address or so that is not the canonical name or
+>> where no PTR exist at all).
+>> 
+>> Depending on PTR resolution for GSSAPI is also very bad practice because
+>> it opens up DNS spoofing attacks where an attacker can try to redirect a
+>> user to the wrong server fooling mutual authentication, and induce a
+>> user to trust improper data or disclose (by copying on the impostor
+>> server) data that should be confidential.
+>> 
+>> Ideally people will always use the -N switch, however I added an actual
+>> switch to avoid breaking existing configuration where someone may
+>> intentionally or inadvertently be using multiple A names instead of
+>> using CNAMEs but relying on PTR records to find the "canonical name".
+>> 
+>> It would be probably nice to switch the behavior on by default in
+>> future.
+>> 
+>> Jeff in CC as he also implemented a similar switch for cifs.upcall
+>> (there it is called -t|--trust-dns, but in rpc.gsssd -t is already
+>> taken ...).
+>> 
+> A nits..  
+>>>>> Please do not post patches as attachments. In-lining them in 
+>>>>> the email makes it easier to review... 
+> 
+> From 53dade1e5d22eee06a08ace2684257292514cb49 Mon Sep 17 00:00:00 2001
+> From: Simo Sorce <simo@redhat.com>
+> Date: Mon, 1 Apr 2013 21:00:55 -0400
+> Subject: [PATCH] Avoid forced reverse resolution for server name
+> 
+> A NFS client should be able to work properly even if the PTR record for the
+> server is not set. there is no excuse to forcefully prevent that from working
+> when it can.
+> So, use some heuristics to see if the server is a FQDN or an IP address.
+> If it is an IP address or a shortname (no '.' in name) then do a PTR lookup,
+> otherwise avoid it.
+> 
+> This is enabled by the new -N flag which is off by default for now, ideally we
+> will turn this on by default after a transition period.
 > ---
->  fs/cifs/dir.c  | 1 +
->  fs/cifs/file.c | 6 ++++--
->  2 files changed, 5 insertions(+), 2 deletions(-)
+> utils/gssd/gss_util.h  |  2 ++
+> utils/gssd/gssd.c      |  4 +++-
+> utils/gssd/gssd.man    |  7 ++++++-
+> utils/gssd/gssd_proc.c | 31 +++++++++++++++++++++++++++----
+> 4 files changed, 38 insertions(+), 6 deletions(-)
 > 
-> diff --git a/fs/cifs/dir.c b/fs/cifs/dir.c
-> index d4331de..8587021 100644
-> --- a/fs/cifs/dir.c
-> +++ b/fs/cifs/dir.c
-> @@ -217,6 +217,7 @@ cifs_do_create(struct inode *inode, struct dentry *direntry, unsigned int xid,
->  	}
->  
->  	if (tcon->unix_ext && cap_unix(tcon->ses) && !tcon->broken_posix_open &&
-> +	    ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
->  	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
->  			le64_to_cpu(tcon->fsUnixInfo.Capability))) {
->  		rc = cifs_posix_open(full_path, &newinode, inode->i_sb, mode,
-> diff --git a/fs/cifs/file.c b/fs/cifs/file.c
-> index 9394b2b..19038a4 100644
-> --- a/fs/cifs/file.c
-> +++ b/fs/cifs/file.c
-> @@ -455,8 +455,9 @@ int cifs_open(struct inode *inode, struct file *file)
->  	else
->  		oplock = 0;
->  
-> -	if (!tcon->broken_posix_open && tcon->unix_ext &&
-> -	    cap_unix(tcon->ses) && (CIFS_UNIX_POSIX_PATH_OPS_CAP &
-> +	if (!tcon->broken_posix_open && tcon->unix_ext && cap_unix(tcon->ses)
-> +	    && ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
-> +	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
->  				le64_to_cpu(tcon->fsUnixInfo.Capability))) {
->  		/* can not refresh inode info since size could be stale */
->  		rc = cifs_posix_open(full_path, &inode, inode->i_sb,
-> @@ -624,6 +625,7 @@ cifs_reopen_file(struct cifsFileInfo *cfile, bool can_flush)
->  		oplock = 0;
->  
->  	if (tcon->unix_ext && cap_unix(tcon->ses) &&
-> +	    ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
->  	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
->  				le64_to_cpu(tcon->fsUnixInfo.Capability))) {
->  		/*
+> diff --git a/utils/gssd/gss_util.h b/utils/gssd/gss_util.h
+> index aa9f77806075f9ab67a7763a75a010369ba2d1b9..663fb0998bede6144118f890b9311ee8687176e3 100644
+> --- a/utils/gssd/gss_util.h
+> +++ b/utils/gssd/gss_util.h
+> @@ -52,4 +52,6 @@ int gssd_check_mechs(void);
+>        gss_krb5_set_allowable_enctypes(min, cred, num, types)
+> #endif
+> 
+> +extern int avoid_ptr;
+> +
+> #endif /* _GSS_UTIL_H_ */
+> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+> index 0be251781bacaa562270f773341126bc95ca6b45..2a98e94812a662f0fd868fce8dc3419f65648a4d 100644
+> --- a/utils/gssd/gssd.c
+> +++ b/utils/gssd/gssd.c
+> @@ -85,7 +85,7 @@ sig_hup(int signal)
+> static void
+> usage(char *progname)
+> {
+> -    fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm]\n",
+> +    fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm] [-N]\n",
+>>>>> Could please move the [-N] in front of [-n]... At lease that that point in the list things
+>>>>> are in alphabetical order
+> 
+>        progname);
+>    exit(1);
+> }
+> @@ -150,6 +150,8 @@ main(int argc, char *argv[])
+>                errx(1, "Encryption type limits not supported by Kerberos libraries.");
+> #endif
+>                break;
+> +            case 'N':
+> +                avoid_ptr = 1;
+>            default:
+>                usage(argv[0]);
+>                break;
+> diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
+> index 79d9bf91ac6b976c57d167e60d07f828a3ff5b1f..09253b43ba6502202c17bbc84bd6bcf9dec85e9b 100644
+> --- a/utils/gssd/gssd.man
+> +++ b/utils/gssd/gssd.man
+> @@ -8,7 +8,7 @@
+> rpc.gssd \- RPCSEC_GSS daemon
+> .SH SYNOPSIS
+> .B rpc.gssd
+> -.RB [ \-fMnlvr ]
+> +.RB [ \-fMnlvrN ]
+>>>>>> Same as above....
+> 
+> .RB [ \-k
+> .IR keytab ]
+> .RB [ \-p
+> @@ -266,6 +266,11 @@ new kernel contexts to be negotiated after
+> seconds, which allows changing Kerberos tickets and identities frequently.
+> The default is no explicit timeout, which means the kernel context will live
+> the lifetime of the Kerberos service ticket used in its creation.
+> +.TP
+> +.B -N
+> +Tries to avoid PTR lookups for resolving the server name, if the name used at 
+> +mount looks like a Fully Qualified Domain Name. This is import to avoid GSSAPI 
+> +issues when PTR records are set and to help avoid some kind of MITM attack.
+>>>>> I'm sorry this does not make much sense. Can we use more meaningful terms
+>>>>> like DNS lookups or DNS PTR lookups... something not so condensed 
+>>>>> 
+>>>>>> Also, could you please talk about who will be needing this new flag and how will 
+>>>>>> they know they needed?
+> 
+> .SH SEE ALSO
+> .BR rpc.svcgssd (8),
+> .BR kerberos (1),
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index ea01e92e4565670b97dea1a936d2f0dbdc7c4610..0a584d2084d626ee98a8ad6ff56da95464b882fe 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -67,6 +67,7 @@
+> #include <errno.h>
+> #include <gssapi/gssapi.h>
+> #include <netdb.h>
+> +#include <ctype.h>
+> 
+> #include "gssd.h"
+> #include "err_util.h"
+> @@ -107,6 +108,8 @@ struct pollfd * pollarray;
+> 
+> unsigned long pollsize;  /* the size of pollaray (in pollfd's) */
+> 
+> +int avoid_ptr = 0;
+> +
+> /*
+>  * convert a presentation address string to a sockaddr_storage struct. Returns
+>  * true on success or false on failure.
+> @@ -165,12 +168,32 @@ addrstr_to_sockaddr(struct sockaddr *sa, const char *node, const char *port)
+>  * convert a sockaddr to a hostname
+>  */
+> static char *
+> -sockaddr_to_hostname(const struct sockaddr *sa, const char *addr)
+> +get_servername(const char *name, const struct sockaddr *sa, const char *addr)
+> {
+>    socklen_t        addrlen;
+>    int            err;
+>    char            *hostname;
+>    char            hbuf[NI_MAXHOST];
+> +    const char        *p;
+> +    int            do_ptr_lookup = 0;
+> +
+> +    if (avoid_ptr) {
+> +        /* try to determine if this is FQDN, or an IP address with
+> +         * basic heuristics, if they fail try a PTR lookup */
+> +        p = strrchr(name, '.');
+> +        if (!p || strchr(name, ':'))
+> +            do_ptr_lookup = 1; /* non-FQDN, or IPv6 */
+> +        else {
+> +            for (++p; *p; p++)
+> +                if (!isdigit(*p))
+> +                    break;
+> +            if (!*p)
+> +                do_ptr_lookup = 1; /* IPv4 */
+> +        }
+> +        if (!do_ptr_lookup) {
+> +            return strdup(name);
+> +        }
+> +    }
+> Is this "reinventing the wheel"? ;-) Don't we already have a why of determining a FQDN? 
+> Maybe not...
 
-I'm trying to understand why "forcemand" would matter here. Wouldn't
-you just want to switch to using NT_CREATE_ANDX if O_DENY* is set
-instead? What happens if I didn't mount with forcemand and then try to
-use O_DENY*?
+Yes, we do.  Have a look in support/export/hostname.c for tools and helpers for dealing with IP addresses properly.
 
--- 
-Jeff Layton <jlayton@samba.org>
+
+> 
+> 
+> steved.
+> 
+> 
+>    switch (sa->sa_family) {
+>    case AF_INET:
+> @@ -208,7 +231,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+>          struct sockaddr *addr) {
+> #define INFOBUFLEN 256
+>    char        buf[INFOBUFLEN + 1];
+> -    static char    dummy[128];
+> +    static char    server[128];
+>    int        nbytes;
+>    static char    service[128];
+>    static char    address[128];
+> @@ -236,7 +259,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+>           "service: %127s %15s version %15s\n"
+>           "address: %127s\n"
+>           "protocol: %15s\n",
+> -           dummy,
+> +           server,
+>           service, program, version,
+>           address,
+>           protoname);
+> @@ -258,7 +281,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+>    if (!addrstr_to_sockaddr(addr, address, port))
+>        goto fail;
+> 
+> -    *servername = sockaddr_to_hostname(addr, address);
+> +    *servername = get_servername(server, addr, address);
+>    if (*servername == NULL)
+>        goto fail;
+> 
+> -- 
+> 1.8.1.4
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
