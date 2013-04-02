@@ -1,264 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51302 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:2869 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756060Ab3DXPos (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Apr 2013 11:44:48 -0400
-Date: Wed, 24 Apr 2013 11:44:47 -0400
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <trond@netapp.com>, Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] nfsd4: implement minimal SP4_MACH_CRED
-Message-ID: <20130424154447.GG20275@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1761172Ab3DBVqE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Apr 2013 17:46:04 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 00/19] lnfs: 3.9-rc5 release
+Date: Tue,  2 Apr 2013 17:45:41 -0400
+Message-Id: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Steve Dickson <steved@redhat.com>
 
-Do a minimal SP4_MACH_CRED implementation suggested by Trond, ignoring
-the client-provided spo_must_* arrays and just enforcing credential
-checks for the minimum required operations.
+Here is the next release of the Label NFS patches 
+forward ported to linux-3.9-rc3.
 
-Note also that this assumes krb5.  This works in practice, since that's
-the only gss mechanism we support, but we should really pass around a
-gss mechanism and make this general.
+I decided to include the the v4.2 enabling patches since 
+I'm doing all my testing with both sets so at this point 
+I don't think it makes sense to separate them. Plus I'm
+hoping they will take care of the SETATTR problem Bruce was 
+seeing since label attributes were leaking into the bitmask
+when they were not suppose to. 
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |   64 ++++++++++++++++++++++++++++++++++++++++-----------
- fs/nfsd/nfs4xdr.c   |   23 ++++++++++++++++++
- fs/nfsd/state.h     |    1 +
- 3 files changed, 75 insertions(+), 13 deletions(-)
+I also believe I've address all the review comments of the previous
+release. Thank you very much for those cycles, it definitely 
+appreciated!
 
-More of an rfc for now, mostly untested.
+The patches are on a public git tree at
+    git://fedorapeople.org/~steved/linux-steved lnfs-v3.9-rc5
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a964a17..bd7acd2 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1267,6 +1267,20 @@ same_creds(struct svc_cred *cr1, struct svc_cred *cr2)
- 	return 0 == strcmp(cr1->cr_principal, cr2->cr_principal);
- }
- 
-+static bool mach_creds_match(struct nfs4_client *cl, struct svc_rqst *rqstp)
-+{
-+	struct svc_cred *cr = &rqstp->rq_cred;
-+	if (!cl->cl_mach_cred)
-+		return true;
-+	/* XXX: more general test for integrity or privacy needed: */
-+	if (!cr->cr_flavor == RPC_AUTH_GSS_KRB5I &&
-+	    !cr->cr_flavor == RPC_AUTH_GSS_KRB5P)
-+		return false;
-+	if (!cr->cr_principal)
-+		return false;
-+	return 0 == strcmp(cl->cl_cred.cr_principal, cr->cr_principal);
-+}
-+
- static void gen_clid(struct nfs4_client *clp, struct nfsd_net *nn)
- {
- 	static u32 current_clientid = 1;
-@@ -1644,16 +1658,14 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 	if (exid->flags & ~EXCHGID4_FLAG_MASK_A)
- 		return nfserr_inval;
- 
--	/* Currently only support SP4_NONE */
- 	switch (exid->spa_how) {
-+	case SP4_MACH_CRED:
- 	case SP4_NONE:
- 		break;
- 	default:				/* checked by xdr code */
- 		WARN_ON_ONCE(1);
- 	case SP4_SSV:
- 		return nfserr_encr_alg_unsupp;
--	case SP4_MACH_CRED:
--		return nfserr_serverfault;	/* no excuse :-/ */
- 	}
- 
- 	/* Cases below refer to rfc 5661 section 18.35.4: */
-@@ -1668,6 +1680,10 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 				status = nfserr_inval;
- 				goto out;
- 			}
-+			if (!mach_creds_match(conf, rqstp)) {
-+				status = nfserr_wrong_cred;
-+				goto out;
-+			}
- 			if (!creds_match) { /* case 9 */
- 				status = nfserr_perm;
- 				goto out;
-@@ -1715,7 +1731,7 @@ out_new:
- 		goto out;
- 	}
- 	new->cl_minorversion = 1;
--
-+	new->cl_mach_cred = (exid->spa_how == SP4_MACH_CRED);
- 	gen_clid(new, nn);
- 	add_to_unconfirmed(new);
- out_copy:
-@@ -1879,6 +1895,9 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 	WARN_ON_ONCE(conf && unconf);
- 
- 	if (conf) {
-+		status = nfserr_wrong_cred;
-+		if (!mach_creds_match(conf, rqstp))
-+			goto out_free_conn;
- 		cs_slot = &conf->cl_cs_slot;
- 		status = check_slot_seqid(cr_ses->seqid, cs_slot->sl_seqid, 0);
- 		if (status == nfserr_replay_cache) {
-@@ -1895,6 +1914,9 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 			status = nfserr_clid_inuse;
- 			goto out_free_conn;
- 		}
-+		status = nfserr_wrong_cred;
-+		if (!mach_creds_match(unconf, rqstp))
-+			goto out_free_conn;
- 		cs_slot = &unconf->cl_cs_slot;
- 		status = check_slot_seqid(cr_ses->seqid, cs_slot->sl_seqid, 0);
- 		if (status) {
-@@ -1991,6 +2013,9 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
- 	status = nfserr_badsession;
- 	if (!session)
- 		goto out;
-+	status = nfserr_wrong_cred;
-+	if (!mach_creds_match(session->se_client, rqstp))
-+		goto out;
- 	status = nfsd4_map_bcts_dir(&bcts->dir);
- 	if (status)
- 		goto out;
-@@ -2033,6 +2058,9 @@ nfsd4_destroy_session(struct svc_rqst *r,
- 	status = nfserr_badsession;
- 	if (!ses)
- 		goto out_client_lock;
-+	status = nfserr_wrong_cred;
-+	if (!mach_creds_match(ses->se_client, r))
-+		goto out_client_lock;
- 	status = mark_session_dead_locked(ses);
- 	if (status)
- 		goto out_client_lock;
-@@ -2063,26 +2091,31 @@ static struct nfsd4_conn *__nfsd4_find_conn(struct svc_xprt *xpt, struct nfsd4_s
- 	return NULL;
- }
- 
--static void nfsd4_sequence_check_conn(struct nfsd4_conn *new, struct nfsd4_session *ses)
-+static __be32 nfsd4_sequence_check_conn(struct nfsd4_conn *new, struct nfsd4_session *ses)
- {
- 	struct nfs4_client *clp = ses->se_client;
- 	struct nfsd4_conn *c;
-+	__be32 status = nfs_ok;
- 	int ret;
- 
- 	spin_lock(&clp->cl_lock);
- 	c = __nfsd4_find_conn(new->cn_xprt, ses);
--	if (c) {
--		spin_unlock(&clp->cl_lock);
--		free_conn(new);
--		return;
--	}
-+	if (c)
-+		goto out_free;
-+	status = nfserr_conn_not_bound_to_session;
-+	if (clp->cl_mach_cred)
-+		goto out_free;
- 	__nfsd4_hash_conn(new, ses);
- 	spin_unlock(&clp->cl_lock);
- 	ret = nfsd4_register_conn(new);
- 	if (ret)
- 		/* oops; xprt is already down: */
- 		nfsd4_conn_lost(&new->cn_xpt_user);
--	return;
-+	return nfs_ok;
-+out_free:
-+	spin_unlock(&clp->cl_lock);
-+	free_conn(new);
-+	return status;
- }
- 
- static bool nfsd4_session_too_many_ops(struct svc_rqst *rqstp, struct nfsd4_session *session)
-@@ -2174,8 +2207,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	if (status)
- 		goto out_put_session;
- 
--	nfsd4_sequence_check_conn(conn, session);
-+	status = nfsd4_sequence_check_conn(conn, session);
- 	conn = NULL;
-+	if (status)
-+		goto out_put_session;
- 
- 	/* Success! bump slot seqid */
- 	slot->sl_seqid = seq->seqid;
-@@ -2237,7 +2272,10 @@ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
- 		status = nfserr_stale_clientid;
- 		goto out;
- 	}
--
-+	if (!mach_creds_match(clp, rqstp)) {
-+		status = nfserr_wrong_cred;
-+		goto out;
-+	}
- 	expire_client(clp);
- out:
- 	nfs4_unlock_state();
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 888a600..7054fde 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1215,6 +1215,7 @@ nfsd4_decode_exchange_id(struct nfsd4_compoundargs *argp,
- 	case SP4_NONE:
- 		break;
- 	case SP4_MACH_CRED:
-+		/* XXX: uh, what should I be doing with this?: */
- 		/* spo_must_enforce */
- 		READ_BUF(4);
- 		READ32(dummy);
-@@ -3220,6 +3221,14 @@ nfsd4_encode_write(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_w
- 	return nfserr;
- }
- 
-+static const u32 nfs4_minimal_spo_must_enforce[2] = {
-+	[1] = 1 << (OP_BIND_CONN_TO_SESSION - 32) |
-+	      1 << (OP_EXCHANGE_ID - 32) |
-+	      1 << (OP_CREATE_SESSION - 32) |
-+	      1 << (OP_DESTROY_SESSION - 32) |
-+	      1 << (OP_DESTROY_CLIENTID - 32)
-+};
-+
- static __be32
- nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
- 			 struct nfsd4_exchange_id *exid)
-@@ -3258,6 +3267,20 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	/* state_protect4_r. Currently only support SP4_NONE */
- 	BUG_ON(exid->spa_how != SP4_NONE);
- 	WRITE32(exid->spa_how);
-+	switch (exid->spa_how) {
-+	case SP4_NONE:
-+		break;
-+	case SP4_MACH_CRED:
-+		/* spo_must_enforce bitmap: */
-+		WRITE32(2);
-+		WRITE32(nfs4_minimal_spo_must_enforce[0]);
-+		WRITE32(nfs4_minimal_spo_must_enforce[1]);
-+		/* empty spo_must_allow bitmap: */
-+		WRITE32(0);
-+		break;
-+	default:
-+		WARN_ON_ONCE(1);
-+	}
- 
- 	/* The server_owner struct */
- 	WRITE64(minor_id);      /* Minor id */
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 274e2a1..424d8f5 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -246,6 +246,7 @@ struct nfs4_client {
- 	nfs4_verifier		cl_verifier; 	/* generated by client */
- 	time_t                  cl_time;        /* time of last lease renewal */
- 	struct sockaddr_storage	cl_addr; 	/* client ipaddress */
-+	bool			cl_mach_cred;	/* SP4_MACH_CRED in force */
- 	struct svc_cred		cl_cred; 	/* setclientid principal */
- 	clientid_t		cl_clientid;	/* generated by server */
- 	nfs4_verifier		cl_confirm;	/* generated by server */
+Fedora rpms on request. I didn't think anybody was using them so I 
+stopped building them. If that is not the case, please let me know.
+
+David Quigley (12):
+  Security: Add hook to calculate context based on a negative dentry.
+  Security: Add Hook to test if the particular xattr is part of a MAC
+    model.
+  LSM: Add flags field to security_sb_set_mnt_opts for in kernel mount
+    data.
+  SELinux: Add new labeling type native labels
+  NFSv4: Add label recommended attribute and NFSv4 flags
+  NFSv4: Introduce new label structure
+  NFSv4: Extend fattr bitmaps to support all 3 words
+  NFS:Add labels to client function prototypes
+  NFS: Add label lifecycle management
+  NFS: Client implementation of Labeled-NFS
+  NFS: Extend NFS xattr handlers to accept the security namespace
+  NFSD: Server implementation of MAC Labeling
+
+Steve Dickson (7):
+  Kconfig: Add Kconfig entry for Labeled NFS V4 client
+  Kconfig: Add Kconfig entry for Labeled NFS V4 server
+  NFSv4.2: Added NFS v4.2 support to the NFS client
+  NFSv4.2: Only allocate labels on v4.2 mounts
+  NFSv4.2: Only set the label attribute on v4.2 mounts
+  NFSv4.2: Added v4.2 error codes
+  NFSDv4.2: Added NFS v4.2 support to the NFS server
+
+ fs/nfs/Kconfig                      |  28 ++
+ fs/nfs/callback.c                   |   1 +
+ fs/nfs/client.c                     |   2 +-
+ fs/nfs/dir.c                        |  46 ++-
+ fs/nfs/getroot.c                    |   2 +-
+ fs/nfs/inode.c                      | 133 ++++++--
+ fs/nfs/namespace.c                  |   2 +-
+ fs/nfs/nfs3acl.c                    |   4 +-
+ fs/nfs/nfs3proc.c                   |  41 +--
+ fs/nfs/nfs4_fs.h                    |   8 +-
+ fs/nfs/nfs4client.c                 |   5 +
+ fs/nfs/nfs4namespace.c              |   2 +-
+ fs/nfs/nfs4proc.c                   | 614 ++++++++++++++++++++++++++++++++----
+ fs/nfs/nfs4xdr.c                    | 188 ++++++++---
+ fs/nfs/pnfs.c                       |   2 +-
+ fs/nfs/proc.c                       |  15 +-
+ fs/nfs/super.c                      |  24 +-
+ fs/nfsd/Kconfig                     |  16 +
+ fs/nfsd/nfs4proc.c                  |  41 +++
+ fs/nfsd/nfs4xdr.c                   | 117 ++++++-
+ fs/nfsd/nfsd.h                      |  14 +-
+ fs/nfsd/nfsproc.c                   |   1 +
+ fs/nfsd/vfs.c                       |  28 ++
+ fs/nfsd/vfs.h                       |   2 +
+ fs/nfsd/xdr4.h                      |   3 +
+ include/linux/nfs4.h                |  20 ++
+ include/linux/nfs_fs.h              |  40 ++-
+ include/linux/nfs_fs_sb.h           |  10 +-
+ include/linux/nfs_xdr.h             |  30 +-
+ include/linux/security.h            |  57 +++-
+ include/uapi/linux/nfs4.h           |   2 +-
+ security/capability.c               |  19 +-
+ security/security.c                 |  24 +-
+ security/selinux/hooks.c            |  92 +++++-
+ security/selinux/include/security.h |   2 +
+ security/selinux/ss/policydb.c      |   5 +-
+ security/smack/smack_lsm.c          |  11 +
+ 37 files changed, 1432 insertions(+), 219 deletions(-)
+
 -- 
-1.7.9.5
+1.8.1.4
 
