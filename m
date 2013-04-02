@@ -1,56 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from dgate20.ts.fujitsu.com ([80.70.172.51]:39984 "EHLO
-	dgate20.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751054Ab3DSQzy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Apr 2013 12:55:54 -0400
-Message-Id: <61eb00$3kapi3@dgate20u.abg.fsc.net>
-Date: 19 Apr 2013 18:55:53 +0200
-From: Bodo Stroesser <bstroesser@ts.fujitsu.com>
-To: bfields@fieldses.org
-Cc: neilb@suse.de, linux-nfs@vger.kernel.org, bstroesser@ts.fujitsu.com
-Subject: Re: sunrpc/cache.c: races while updating cache entries
-Content-Type: text/plain; charset=us-ascii
+Received: from mx1.redhat.com ([209.132.183.28]:4712 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1762038Ab3DBVqJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Apr 2013 17:46:09 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 05/19] NFSv4: Add label recommended attribute and NFSv4 flags
+Date: Tue,  2 Apr 2013 17:45:46 -0400
+Message-Id: <1364939160-20874-6-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
+References: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gMDUgQXByIDIwMTMgMjM6MDk6MDAgKzAxMDAgSi4gQnJ1Y2UgRmllbGRzIDxiZmllbGRz
-QGZpZWxkc2VzLm9yZz4gd3JvdGU6Cj4gT24gRnJpLCBBcHIgMDUsIDIwMTMgYXQgMDU6MzM6
-NDlQTSArMDIwMCwgQm9kbyBTdHJvZXNzZXIgd3JvdGU6Cj4gPiBPbiAwNSBBcHIgMjAxMyAx
-NDo0MDowMCArMDEwMCBKLiBCcnVjZSBGaWVsZHMgPGJmaWVsZHNAZmllbGRzZXMub3JnPiB3
-cm90ZToKPiA+ID4gT24gVGh1LCBBcHIgMDQsIDIwMTMgYXQgMDc6NTk6MzVQTSArMDIwMCwg
-Qm9kbyBTdHJvZXNzZXIgd3JvdGU6Cj4gPiA+ID4gVGhlcmUgaXMgbm8gcmVhc29uIGZvciBh
-cG9sb2dpZXMuIFRoZSB0aHJlYWQgbWVhbndoaWxlIHNlZW1zIHRvIGJlIGEgYml0Cj4gPiA+
-ID4gY29uZnVzaW5nIDotKQo+ID4gPiA+IAo+ID4gPiA+IEN1cnJlbnQgc3RhdGUgaXM6Cj4g
-PiA+ID4gCj4gPiA+ID4gLSBOZWlsIEJyb3duIGhhcyBjcmVhdGVkIHR3byBzZXJpZXMgb2Yg
-cGF0Y2hlcy4gT25lIGZvciBTTEVTMTEtU1AxIGFuZCBhCj4gPiA+ID4gICBzZWNvbmQgb25l
-IGZvciAtU1AyCj4gPiA+ID4gCj4gPiA+ID4gLSBBRkFJQ1MsIHRoZSBzZXJpZXMgZm9yIC1T
-UDIgd2lsbCBtYXRjaCB3aXRoIG1haW5saW5lIGFsc28uCj4gPiA+ID4gCj4gPiA+ID4gLSBU
-b2RheSBJIGZvdW5kIGFuZCBmaXhlZCB0aGUgKGhvcGVmdWxseSkgbGFzdCBwcm9ibGVtIGlu
-IHRoZSAtU1AxIHNlcmllcy4KPiA+ID4gPiAgIE15IHRlc3QgdXNpbmcgdGhpcyBwYXRjaHNl
-dCB3aWxsIHJ1biB1bnRpbCBNb25kYXkuCj4gPiA+ID4gCj4gPiA+ID4gLSBQcm92aWRlZCB0
-aGUgdGVzdCBvbiBTUDEgc3VjY2VlZHMsIHByb2JhYmx5IG9uIFR1ZXNkYXkgSSdsbCBzdGFy
-dCB0byB0ZXN0Cj4gPiA+ID4gICB0aGUgcGF0Y2hlcyBmb3IgU1AyIChhbmQgbWFpbmxpbmUp
-LiBJZiBpdCBydW5zIGZpbmUsIHdlJ2xsIGhhdmUgYSB0ZXN0ZWQKPiA+ID4gPiAgIHBhdGNo
-c2V0IG5vdCBsYXRlciB0aGFuIE1vbiAxNXRoLgo+ID4gPiAKPiA+ID4gT0ssIGdyZWF0LCBh
-cyBsb25nIGFzIGl0IGhhc24ndCBqdXN0IGJlZW4gZm9yZ290dGVuIQo+ID4gPiAKPiA+ID4g
-SSdkIGFsc28gYmUgY3VyaW91cyB0byB1bmRlcnN0YW5kIHdoeSB3ZSBhcmVuJ3QgZ2V0dGlu
-ZyBhIGxvdCBvZgo+ID4gPiBjb21wbGFpbnRzIGFib3V0IHRoaXMgZnJvbSBlbHNld2hlcmUu
-Li4uICBJcyB0aGVyZSBzb21ldGhpbmcgdW5pcXVlCj4gPiA+IGFib3V0IHlvdXIgc2V0dXA/
-ICBEbyB0aGUgYnVncyB0aGF0IHJlbWFpbiB1cHN0cmVhbSB0YWtlIGEgbG9uZyB0aW1lIHRv
-Cj4gPiA+IHJlcHJvZHVjZT8KPiA+ID4gCj4gPiA+IC0tYi4KPiA+ID4gCj4gPiAKPiA+IEl0
-J3Mgbm8gc2VjcmV0LCB3aGF0IHdlIGFyZSBkb2luZy4gU28gbGV0IG1lIHRyeSB0byBleHBs
-YWluOgo+IAo+IFRoYW5rcyBmb3IgdGhlIGRldGFpbGVkIGV4cGxhbmF0aW9uISAgSSdsbCBs
-b29rIGZvcndhcmQgdG8gdGhlIHBhdGNoZXMuCj4gCj4gLS1iLgo+IAoKTGV0IG1lIGdpdmUg
-YW4gaW50ZXJtZWRpYXRlIHJlc3VsdDoKClRoZSB0ZXN0IG9mIHRoZSAtU1AxIHBhdGNoIHNl
-cmllcyBzdWNjZWVkZWQuCgpXZSBzdGFydGVkIHRoZSB0ZXN0IG9mIHRoZSAtU1AyIChhbmQg
-bWFpbmxpbmUpIHNlcmllcyBvbiBUdWUsIDl0aCwgYnV0IGhhZCBubwpzdWNjZXNzLgpXZSBk
-aWQgX25vdF8gZmluZCBhIHByb2JsZW0gd2l0aCB0aGUgcGF0Y2hlcywgYnV0IHVuZGVyIC1T
-UDIgb3VyIHRlc3Qgc2NlbmFyaW8KaGFzIGxlc3MgdGhhbiA0MCUgb2YgdGhlIHRocm91Z2hw
-dXQgd2Ugc2F3IHVuZGVyIC1TUDEuIFdpdGggdGhhdCBsb3cKcGVyZm9ybWFuY2UsIHdlIGhh
-ZCBhIDQgZGF5IHJ1biB3aXRob3V0IGFueSBkcm9wcGVkIFJQQyByZXF1ZXN0LiBCdXQgd2Ug
-ZG9uJ3QKa25vdyB0aGUgZXJyb3IgcmF0ZSB3aXRob3V0IHRoZSBwYXRjaGVzIHVuZGVyIHRo
-ZXNlIGNvbmRpdGlvbnMuIFNvIHdlIGNhbid0CmdpdmUgYW4gby5rLiBmb3IgdGhlIHBhdGNo
-ZXMgeWV0LgoKQ3VycmVudGx5IHdlIHRyeSB0byBmaW5kIHRoZSByZWFzb24gZm9yIHRoZSBk
-aWZmZXJlbnQgYmVoYXZpb3Igb2YgU1AxIGFuZCBTUDIKCkJvZG8K
+From: David Quigley <dpquigl@davequigley.com>
 
+This patch adds several new flags to allow the NFS client and server to
+determine if this attribute is supported and if it is being sent over the wire.
+
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ include/linux/nfs4.h      | 1 +
+ include/linux/nfs_fs_sb.h | 1 +
+ include/linux/nfs_xdr.h   | 4 +++-
+ 3 files changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 7b8fc73..0fa29f4 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -377,6 +377,7 @@ enum lock_type4 {
+ #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
+ #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
+ #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
++#define FATTR4_WORD2_SECURITY_LABEL     (1UL << 17)
+ #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
+ 
+ /* MDS threshold bitmap bits */
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 6c6ed15..d507357 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -197,5 +197,6 @@ struct nfs_server {
+ #define NFS_CAP_MTIME		(1U << 13)
+ #define NFS_CAP_POSIX_LOCK	(1U << 14)
+ #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
++#define NFS_CAP_SECURITY_LABEL	(1U << 16)
+ 
+ #endif
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 4b993d3..9f2dba3 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -104,6 +104,7 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
+ #define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
+ #define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
++#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 25)
+ 
+ #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
+ 		| NFS_ATTR_FATTR_MODE \
+@@ -123,7 +124,8 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
+ 		| NFS_ATTR_FATTR_SPACE_USED)
+ #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
+-		| NFS_ATTR_FATTR_SPACE_USED)
++		| NFS_ATTR_FATTR_SPACE_USED \
++		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
+ 
+ /*
+  * Info on the file system
+-- 
+1.8.1.4
 
