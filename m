@@ -1,57 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.194]:59625 "EHLO mout.perfora.net"
+Received: from mx1.redhat.com ([209.132.183.28]:9810 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760667Ab3DBSjQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Apr 2013 14:39:16 -0400
-Date: Tue, 2 Apr 2013 14:39:07 -0400
-From: Jim Rees <rees@umich.edu>
-To: Simo Sorce <simo@redhat.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>, Steve Dickson <steved@redhat.com>,
-        Jeffrey Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] Avoid PTR lookups when possible
-Message-ID: <20130402183907.GB18900@umich.edu>
-References: <1364910351.2660.1243.camel@willson.li.ssimo.org>
- <20130402150049.GA526@umich.edu>
- <1364919975.2660.1255.camel@willson.li.ssimo.org>
- <20130402164631.GA23840@umich.edu>
- <1364922203.2660.1265.camel@willson.li.ssimo.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1364922203.2660.1265.camel@willson.li.ssimo.org>
+	id S1761237Ab3DBTce (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Apr 2013 15:32:34 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r32JWXOK030850
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 2 Apr 2013 15:32:34 -0400
+Received: from willson.li.ssimo.org.com (ovpn-113-117.phx2.redhat.com [10.3.113.117])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r32JWXuo021784
+	for <linux-nfs@vger.kernel.org>; Tue, 2 Apr 2013 15:32:33 -0400
+From: Simo Sorce <simo@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/2] Alternative patchset to avoid PTR lookups
+Date: Tue,  2 Apr 2013 15:32:27 -0400
+Message-Id: <1364931149-18484-1-git-send-email-simo@redhat.com>
+In-Reply-To: <515B2F8D.3030302@RedHat.com>
+References: <515B2F8D.3030302@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Simo Sorce wrote:
+This one does the same thing as the previous but uses -z/-Z options.
 
-  No this is not what I am saying.
-  The client uses the fully qualified name at the mount command but due to
-  the use of a PTR lookup it is fooled into acquiring a ticket for the
-  wrong server which will then happily allow you to connect.
-  
-  Currently:
-  The mount command tells the kernel both the server name
-  'secure.server.name' and it's IP address 1.2.3.4 however rpc.gssd
-  currently completely ignored the server name passed in by the mount
-  command (see the 'dummy' variable) and instead uses the ip address to do
-  a reverse lookup.
-  
-  PTR lookup of 1.2.3.4 --- MITM ---> public.server.com
-  
-  Then it uses the retrieved name (public..) to construct the GSSAPI name
-  it wants to connect to, the result is that the name
-  nfs@public.server.name is constructed instead of the requested
-  nfs@secure.server.com that should be requested.
-  
-  So the client does ask for the right server but can be easily tricked
-  into connecting to another one.
-  
-  Kerberos itself *is* correctly identifying the server, it's rpc.gssd
-  that opened it'sself to being fooled before involving Kerberos.
+Pick the one you like most, but this one is less code, so I guess it is
+porefereable.
 
-Ok, I think I understand now. I suggest adding some of that text into the
-commit log. And stop using the term "mitm". A mitm attack is used to
-convince both ends of a connection that they are talking to each other. DNS
-is not a mutually authenticated exchange.
+Simo Sorce (2):
+  Avoid reverse resolution for server name
+  Document new -z/-Z options
 
-This discussion is making me nervous. It makes me think no one has thought
-through the use of kerberos to authenticate nfs connections on linux.
+ utils/gssd/gss_util.h  |    2 ++
+ utils/gssd/gssd.c      |   10 ++++++++--
+ utils/gssd/gssd.man    |   13 ++++++++++++-
+ utils/gssd/gssd_proc.c |   25 +++++++++++++++++++++----
+ 4 files changed, 43 insertions(+), 7 deletions(-)
+
