@@ -1,275 +1,214 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41287 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:23774 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760886Ab3DCSzJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Apr 2013 14:55:09 -0400
-Date: Wed, 3 Apr 2013 14:55:08 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Yanchuan Nian <ycnian@gmail.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2] nfsd: fix bug on nfs4 stateid deallocation
-Message-ID: <20130403185508.GE6044@fieldses.org>
-References: <1362962774-5141-1-git-send-email-ycnian@gmail.com>
- <20130311150208.GB16309@fieldses.org>
- <CAC5OsZPyuOj_3OUJZFu1Haqg=q6GCyyqDL=n+Y5Wr48D1-SkSg@mail.gmail.com>
- <20130402015044.GA12158@fieldses.org>
- <20130403105843.GA22704@mail.example.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130403105843.GA22704@mail.example.com>
+	id S1761176Ab3DBVqF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Apr 2013 17:46:05 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 01/19] Security: Add hook to calculate context based on a negative dentry.
+Date: Tue,  2 Apr 2013 17:45:42 -0400
+Message-Id: <1364939160-20874-2-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
+References: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 03, 2013 at 06:58:43PM +0800, Yanchuan Nian wrote:
-> On Mon, Apr 01, 2013 at 09:50:44PM -0400, J. Bruce Fields wrote:
-> > On Wed, Mar 13, 2013 at 11:04:54PM +0800, Yanchuan Nian wrote:
-> > > 2013/3/11 J. Bruce Fields <bfields@fieldses.org>
-> > > 
-> > > > On Mon, Mar 11, 2013 at 08:46:14AM +0800, ycnian@gmail.com wrote:
-> > > > > NFS4_OO_PURGE_CLOSE is not handled properly. To avoid memory leak, nfs4
-> > > > > stateid which is pointed by oo_last_closed_stid is freed in
-> > > > nfsd4_close(),
-> > > > > but NFS4_OO_PURGE_CLOSE isn't cleared meanwhile. So the stateid released
-> > > > in
-> > > > > THIS close procedure may be freed immediately in the coming encoding
-> > > > function.
-> > > >
-> > > > OK, makes sense.  This code is confusing, I wonder if there's some way
-> > > > we could make it simpler.
-> > > >
-> > > 
-> > > The only purpose of NFS4_OO_PURGE_CLOSE is to decide whether the stateid
-> > > pointed by last-closed-stateid should be freed or not. I wonder if this
-> > > flag is necessary. oo_last_closed_stid is set only in CLOSE, so in other
-> > > procedures, if the pointer is not NULL, it must be set in previous
-> > > procedure, we can free it directly. In CLOSE procedure, we also free it
-> > > directly before asigning the new released stateid to it in nfsd4_close(),
-> > > and then we can ignore it in nfsd4_encode_close(). What do you think?
-> > 
-> > Yeah, something like that would be simpler, I think.  Maybe the
-> > following?  (On top of your patch.)
-> 
+From: David Quigley <dpquigl@davequigley.com>
 
-> This patch may cause memory leak in NFSv4.1. If the stateid released
-> is the last one in nfs4_openowner, nfs4_openowner will be deallocated
-> immediately, and NULL will be assigned to cstate->replay_owner at the
-> same time. In this situation encode_seqid_op_tail() cannot be called.
-> To avoid this problem, we can free the stateid just before or after
-> nfs4_opwnowner deallocation.
+There is a time where we need to calculate a context without the
+inode having been created yet. To do this we take the negative dentry and
+calculate a context based on the process and the parent directory contexts.
 
-Yes, thanks for catching that!:
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ include/linux/security.h | 27 +++++++++++++++++++++++++++
+ security/capability.c    |  8 ++++++++
+ security/security.c      | 10 ++++++++++
+ security/selinux/hooks.c | 35 +++++++++++++++++++++++++++++++++++
+ 4 files changed, 80 insertions(+)
 
- 	nfsd4_close_open_stateid(stp);
--	close->cl_closed_stateid = stp;
-+	if (cstate->minorversion) {
-+		unhash_stid(&stp->st_stid);
-+		free_generic_stateid(stp);
-+	} else
-+		close->cl_closed_stateid = stp;
+diff --git a/include/linux/security.h b/include/linux/security.h
+index eee7478..a957e7a 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -26,6 +26,7 @@
+ #include <linux/capability.h>
+ #include <linux/slab.h>
+ #include <linux/err.h>
++#include <linux/string.h>
  
- 	if (list_empty(&oo->oo_owner.so_stateids)) {
- 		if (cstate->minorversion) {
-
-> Another question, cl_stateid in struct nfsd4_close will be returned to
-> the client, so original comment is right even though applying this
-> patch. Can this struct be commented like this.
-> 
-> struct nfsd4_close {
->         u32             cl_seqid;           /* request */
->         stateid_t       cl_stateid;         /* request+response */
->         struct nfs4_ol_stateid *cl_closed_stateid; /* used during processing */
-
-Agreed; done.  The result is the following (untested).
-
---b.
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3e1101a..9bd6653 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -674,7 +674,7 @@ static void unhash_openowner(struct nfs4_openowner *oo)
- 	}
- }
- 
--static void release_last_closed_stateid(struct nfs4_openowner *oo)
-+void release_last_closed_stateid(struct nfs4_openowner *oo)
- {
- 	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
- 
-@@ -3783,26 +3783,6 @@ out:
- 	return status;
- }
- 
--void nfsd4_purge_closed_stateid(struct nfs4_stateowner *so)
--{
--	struct nfs4_openowner *oo;
--	struct nfs4_ol_stateid *s;
--
--	if (!so->so_is_open_owner)
--		return;
--	oo = openowner(so);
--	s = oo->oo_last_closed_stid;
--	if (!s)
--		return;
--	if (!(oo->oo_flags & NFS4_OO_PURGE_CLOSE)) {
--		/* Release the last_closed_stid on the next seqid bump: */
--		oo->oo_flags |= NFS4_OO_PURGE_CLOSE;
--		return;
--	}
--	oo->oo_flags &= ~NFS4_OO_PURGE_CLOSE;
--	release_last_closed_stateid(oo);
--}
--
- static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
- {
- 	unhash_open_stateid(s);
-@@ -3839,9 +3819,11 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- 
- 	nfsd4_close_open_stateid(stp);
--	release_last_closed_stateid(oo);
--	oo->oo_flags &= ~NFS4_OO_PURGE_CLOSE;
--	oo->oo_last_closed_stid = stp;
-+	if (cstate->minorversion) {
-+		unhash_stid(&stp->st_stid);
-+		free_generic_stateid(stp);
-+	} else
-+		close->cl_closed_stateid = stp;
- 
- 	if (list_empty(&oo->oo_owner.so_stateids)) {
- 		if (cstate->minorversion) {
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 700de01..60e196f 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -527,6 +527,7 @@ nfsd4_decode_close(struct nfsd4_compoundargs *argp, struct nfsd4_close *close)
- {
- 	DECODE_HEAD;
- 
-+	close->cl_closed_stateid = NULL;
- 	READ_BUF(4);
- 	READ32(close->cl_seqid);
- 	return nfsd4_decode_stateid(argp, &close->cl_stateid);
-@@ -1707,8 +1708,7 @@ static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
-  * Note that we increment sequence id's here, at the last moment, so we're sure
-  * we know whether the error to be returned is a sequence id mutating error.
-  */
--
--static void encode_seqid_op_tail(struct nfsd4_compoundres *resp, __be32 *save, __be32 nfserr)
-+static void encode_seqid_op_tail(struct nfsd4_compoundres *resp, __be32 *save, __be32 nfserr, struct nfs4_ol_stateid *close_stp)
- {
- 	struct nfs4_stateowner *stateowner = resp->cstate.replay_owner;
- 
-@@ -1719,7 +1719,13 @@ static void encode_seqid_op_tail(struct nfsd4_compoundres *resp, __be32 *save, _
- 			  (char *)resp->p - (char *)save;
- 		memcpy(stateowner->so_replay.rp_buf, save,
- 			stateowner->so_replay.rp_buflen);
--		nfsd4_purge_closed_stateid(stateowner);
-+		if (stateowner->so_is_open_owner) {
-+			struct nfs4_openowner *oo = openowner(stateowner);
+ struct linux_binprm;
+ struct cred;
+@@ -306,6 +307,15 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
+  *	Parse a string of security data filling in the opts structure
+  *	@options string containing all mount options known by the LSM
+  *	@opts binary data structure usable by the LSM
++ * @dentry_init_security:
++ *	Compute a context for a dentry as the inode is not yet available
++ *	since NFSv4 has no label backed by an EA anyway.
++ *	@dentry dentry to use in calculating the context.
++ *	@mode mode used to determine resource type.
++ *	@name name of the last path component used to create file
++ *	@ctx pointer to place the pointer to the resulting context in.
++ *	@ctxlen point to place the length of the resulting context.
++ *
+  *
+  * Security hooks for inode operations.
+  *
+@@ -1439,6 +1449,10 @@ struct security_operations {
+ 	void (*sb_clone_mnt_opts) (const struct super_block *oldsb,
+ 				   struct super_block *newsb);
+ 	int (*sb_parse_opts_str) (char *options, struct security_mnt_opts *opts);
++	int (*dentry_init_security) (struct dentry *dentry, int mode,
++					struct qstr *name, void **ctx,
++					u32 *ctxlen);
 +
-+			release_last_closed_stateid(oo);
-+			if (close_stp)
-+				oo->oo_last_closed_stid = close_stp;
+ 
+ #ifdef CONFIG_SECURITY_PATH
+ 	int (*path_unlink) (struct path *dir, struct dentry *dentry);
+@@ -1724,6 +1738,9 @@ int security_sb_set_mnt_opts(struct super_block *sb, struct security_mnt_opts *o
+ void security_sb_clone_mnt_opts(const struct super_block *oldsb,
+ 				struct super_block *newsb);
+ int security_sb_parse_opts_str(char *options, struct security_mnt_opts *opts);
++int security_dentry_init_security(struct dentry *dentry, int mode,
++					struct qstr *name, void **ctx,
++					u32 *ctxlen);
+ 
+ int security_inode_alloc(struct inode *inode);
+ void security_inode_free(struct inode *inode);
+@@ -2028,6 +2045,16 @@ static inline int security_inode_alloc(struct inode *inode)
+ static inline void security_inode_free(struct inode *inode)
+ { }
+ 
++static inline int security_dentry_init_security(struct dentry *dentry,
++						 int mode,
++						 struct qstr *name,
++						 void **ctx,
++						 u32 *ctxlen)
++{
++	return -EOPNOTSUPP;
++}
++
++
+ static inline int security_inode_init_security(struct inode *inode,
+ 						struct inode *dir,
+ 						const struct qstr *qstr,
+diff --git a/security/capability.c b/security/capability.c
+index 5797750..456bd9d 100644
+--- a/security/capability.c
++++ b/security/capability.c
+@@ -108,6 +108,13 @@ static int cap_sb_parse_opts_str(char *options, struct security_mnt_opts *opts)
+ 	return 0;
+ }
+ 
++static int cap_dentry_init_security(struct dentry *dentry, int mode,
++					struct qstr *name, void **ctx,
++					u32 *ctxlen)
++{
++	return 0;
++}
++
+ static int cap_inode_alloc_security(struct inode *inode)
+ {
+ 	return 0;
+@@ -925,6 +932,7 @@ void __init security_fixup_ops(struct security_operations *ops)
+ 	set_to_cap_if_null(ops, sb_set_mnt_opts);
+ 	set_to_cap_if_null(ops, sb_clone_mnt_opts);
+ 	set_to_cap_if_null(ops, sb_parse_opts_str);
++	set_to_cap_if_null(ops, dentry_init_security);
+ 	set_to_cap_if_null(ops, inode_alloc_security);
+ 	set_to_cap_if_null(ops, inode_free_security);
+ 	set_to_cap_if_null(ops, inode_init_security);
+diff --git a/security/security.c b/security/security.c
+index 7b88c6a..723a10c 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -12,6 +12,7 @@
+  */
+ 
+ #include <linux/capability.h>
++#include <linux/dcache.h>
+ #include <linux/module.h>
+ #include <linux/init.h>
+ #include <linux/kernel.h>
+@@ -324,6 +325,15 @@ void security_inode_free(struct inode *inode)
+ 	security_ops->inode_free_security(inode);
+ }
+ 
++int security_dentry_init_security(struct dentry *dentry, int mode,
++					struct qstr *name, void **ctx,
++					u32 *ctxlen)
++{
++	return security_ops->dentry_init_security(dentry, mode, name,
++							ctx, ctxlen);
++}
++EXPORT_SYMBOL(security_dentry_init_security);
++
+ int security_inode_init_security(struct inode *inode, struct inode *dir,
+ 				 const struct qstr *qstr,
+ 				 const initxattrs initxattrs, void *fs_data)
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index 2fa28c8..c7f1905 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -2483,6 +2483,40 @@ static void selinux_inode_free_security(struct inode *inode)
+ 	inode_free_security(inode);
+ }
+ 
++static int selinux_dentry_init_security(struct dentry *dentry, int mode,
++					struct qstr *name, void **ctx,
++					u32 *ctxlen)
++{
++	const struct cred *cred = current_cred();
++	struct task_security_struct *tsec;
++	struct inode_security_struct *dsec;
++	struct superblock_security_struct *sbsec;
++	struct inode *dir = dentry->d_parent->d_inode;
++	u32 newsid;
++	int rc;
++
++	tsec = cred->security;
++	dsec = dir->i_security;
++	sbsec = dir->i_sb->s_security;
++
++	if (tsec->create_sid && sbsec->behavior != SECURITY_FS_USE_MNTPOINT) {
++		newsid = tsec->create_sid;
++	} else {
++		rc = security_transition_sid(tsec->sid, dsec->sid,
++					     inode_mode_to_security_class(mode),
++					     name,
++					     &newsid);
++		if (rc) {
++			printk(KERN_WARNING
++				"%s: security_transition_sid failed, rc=%d\n",
++			       __func__, -rc);
++			return rc;
 +		}
- 	}
- }
++	}
++
++	return security_sid_to_context(newsid, (char **)ctx, ctxlen);
++}
++
+ static int selinux_inode_init_security(struct inode *inode, struct inode *dir,
+ 				       const struct qstr *qstr, char **name,
+ 				       void **value, size_t *len)
+@@ -5525,6 +5559,7 @@ static struct security_operations selinux_ops = {
+ 	.sb_clone_mnt_opts =		selinux_sb_clone_mnt_opts,
+ 	.sb_parse_opts_str = 		selinux_parse_opts_str,
  
-@@ -2667,7 +2673,7 @@ nfsd4_encode_close(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_c
- 	if (!nfserr)
- 		nfsd4_encode_stateid(resp, &close->cl_stateid);
++	.dentry_init_security =		selinux_dentry_init_security,
  
--	encode_seqid_op_tail(resp, save, nfserr);
-+	encode_seqid_op_tail(resp, save, nfserr, close->cl_closed_stateid);
- 	return nfserr;
- }
- 
-@@ -2770,7 +2776,7 @@ nfsd4_encode_lock(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_lo
- 	else if (nfserr == nfserr_denied)
- 		nfsd4_encode_lock_denied(resp, &lock->lk_denied);
- 
--	encode_seqid_op_tail(resp, save, nfserr);
-+	encode_seqid_op_tail(resp, save, nfserr, NULL);
- 	return nfserr;
- }
- 
-@@ -2790,7 +2796,7 @@ nfsd4_encode_locku(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_l
- 	if (!nfserr)
- 		nfsd4_encode_stateid(resp, &locku->lu_stateid);
- 
--	encode_seqid_op_tail(resp, save, nfserr);
-+	encode_seqid_op_tail(resp, save, nfserr, NULL);
- 	return nfserr;
- }
- 
-@@ -2885,7 +2891,7 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
- 	}
- 	/* XXX save filehandle here */
- out:
--	encode_seqid_op_tail(resp, save, nfserr);
-+	encode_seqid_op_tail(resp, save, nfserr, NULL);
- 	return nfserr;
- }
- 
-@@ -2897,7 +2903,7 @@ nfsd4_encode_open_confirm(struct nfsd4_compoundres *resp, __be32 nfserr, struct
- 	if (!nfserr)
- 		nfsd4_encode_stateid(resp, &oc->oc_resp_stateid);
- 
--	encode_seqid_op_tail(resp, save, nfserr);
-+	encode_seqid_op_tail(resp, save, nfserr, NULL);
- 	return nfserr;
- }
- 
-@@ -2909,7 +2915,7 @@ nfsd4_encode_open_downgrade(struct nfsd4_compoundres *resp, __be32 nfserr, struc
- 	if (!nfserr)
- 		nfsd4_encode_stateid(resp, &od->od_stateid);
- 
--	encode_seqid_op_tail(resp, save, nfserr);
-+	encode_seqid_op_tail(resp, save, nfserr, NULL);
- 	return nfserr;
- }
- 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index f6ae4db..477f027 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -355,7 +355,6 @@ struct nfs4_openowner {
- 	struct nfs4_ol_stateid *oo_last_closed_stid;
- 	time_t			oo_time; /* time of placement on so_close_lru */
- #define NFS4_OO_CONFIRMED   1
--#define NFS4_OO_PURGE_CLOSE 2
- #define NFS4_OO_NEW         4
- 	unsigned char		oo_flags;
- };
-@@ -363,7 +362,7 @@ struct nfs4_openowner {
- struct nfs4_lockowner {
- 	struct nfs4_stateowner	lo_owner; /* must be first element */
- 	struct list_head	lo_owner_ino_hash; /* hash by owner,file */
--	struct list_head        lo_perstateid; /* for lockowners only */
-+	struct list_head        lo_perstateid;
- 	struct list_head	lo_list; /* for temporary uses */
- };
- 
-@@ -477,7 +476,7 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
- 							struct nfsd_net *nn);
- extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
- extern void put_client_renew(struct nfs4_client *clp);
--extern void nfsd4_purge_closed_stateid(struct nfs4_stateowner *);
-+extern void release_last_closed_stateid(struct nfs4_openowner *);
- 
- /* nfs4recover operations */
- extern int nfsd4_client_tracking_init(struct net *net);
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 40e05e6..4d501db 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -91,7 +91,8 @@ struct nfsd4_access {
- 
- struct nfsd4_close {
- 	u32		cl_seqid;           /* request */
--	stateid_t	cl_stateid;         /* request+response */
-+	stateid_t	cl_stateid;         /* request */
-+	struct nfs4_ol_stateid *cl_closed_stateid; /* used during processing */
- };
- 
- struct nfsd4_commit {
+ 	.inode_alloc_security =		selinux_inode_alloc_security,
+ 	.inode_free_security =		selinux_inode_free_security,
+-- 
+1.8.1.4
+
