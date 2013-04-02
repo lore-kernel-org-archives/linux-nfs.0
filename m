@@ -1,104 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:34653 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759126Ab3DYSvg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2013 14:51:36 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
-Subject: Re: [PATCH] NFSv4: Use exponential backoff delay for NFS4_ERRDELAY
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130425184626.GC5049@fieldses.org>
-Date: Thu, 25 Apr 2013 14:51:20 -0400
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        David Wysochanski <dwysocha@redhat.com>,
-        Dave Chiluk <chiluk@canonical.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Message-Id: <04318EF4-375D-49FD-8DB0-2BC6429543A9@oracle.com>
-References: <1366838926.22397.25.camel@leira.trondhjem.org> <5178549A.7010402@canonical.com> <1366842905.22397.49.camel@leira.trondhjem.org> <1366892374.26249.294.camel@localhost.localdomain> <20130425132907.GB31851@fieldses.org> <1366896654.4719.18.camel@leira.trondhjem.org> <20130425134918.GC31851@fieldses.org> <1366899034.6812.4.camel@leira.trondhjem.org> <20130425181932.GA5049@fieldses.org> <81BBEA25-CDE5-42B1-996D-90C26A43DEF6@oracle.com> <20130425184626.GC5049@fieldses.org>
-To: "bfields@fieldses.org" <bfields@fieldses.org>
+Received: from slb-mbsout-01.boeing.com ([130.76.64.128]:51768 "EHLO
+	slb-mbsout-01.boeing.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760783Ab3DBNJE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Apr 2013 09:09:04 -0400
+From: "Vu, Joseph" <joseph.vu@boeing.com>
+To: David Quigley <dpquigl@davequigley.com>
+CC: Casey Schaufler <casey@schaufler-ca.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Steve Dickson <steved@redhat.com>,
+        Trond Myklebust <trond.myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: RE: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
+Date: Tue, 2 Apr 2013 13:01:12 +0000
+Message-ID: <756D04455A661C4CA25DC5BA4902A7A722698BD4@XCH-PHX-204.sw.nos.boeing.com>
+References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
+ <1364478845-29796-14-git-send-email-SteveD@redhat.com>
+ <20130328161444.GF7080@fieldses.org> <51550C03.1000107@davequigley.com>
+ <20130329144050.GB22307@fieldses.org>
+ <001ff69afd411b0318d7122bf07bd218@countercultured.net>
+ <5155B0E3.9040108@schaufler-ca.com> <20130329184219.GG22307@fieldses.org>
+ <5155F51E.8020603@schaufler-ca.com>
+ <756D04455A661C4CA25DC5BA4902A7A722698B22@XCH-PHX-204.sw.nos.boeing.com>
+ <b226f82606306e86ffaede6909512e6d@countercultured.net>
+In-Reply-To: <b226f82606306e86ffaede6909512e6d@countercultured.net>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Thank you David.
 
-On Apr 25, 2013, at 2:46 PM, "bfields@fieldses.org" <bfields@fieldses.org> wrote:
+It is good that the community at least support some short term solution. 
+Labeled NFS has been working hard to get the community acceptance.
 
-> On Thu, Apr 25, 2013 at 02:40:11PM -0400, Chuck Lever wrote:
->> 
->> On Apr 25, 2013, at 2:19 PM, "bfields@fieldses.org" <bfields@fieldses.org> wrote:
->> 
->>> On Thu, Apr 25, 2013 at 02:10:36PM +0000, Myklebust, Trond wrote:
->>>> On Thu, 2013-04-25 at 09:49 -0400, bfields@fieldses.org wrote:
->>>>> On Thu, Apr 25, 2013 at 01:30:58PM +0000, Myklebust, Trond wrote:
->>>>>> On Thu, 2013-04-25 at 09:29 -0400, bfields@fieldses.org wrote:
->>>>>> 
->>>>>>> My position is that we simply have no idea what order of magnitude even
->>>>>>> delay should be.  And that in such a situation exponential backoff such
->>>>>>> as implemented in the synchronous case seems the reasonable default as
->>>>>>> it guarantees at worst doubling the delay while still bounding the
->>>>>>> long-term average frequency of retries.
->>>>>> 
->>>>>> So we start with a 15 second delay, and then go to 60 seconds?
->>>>> 
->>>>> I agree that a server should normally be doing the wait on its own if
->>>>> the wait would be on the order of an rpc round trip.
->>>>> 
->>>>> So I'd be inclined to start with a delay that was an order of magnitude
->>>>> or two more than a round trip.
->>>>> 
->>>>> And I'd expect NFS isn't common on networks with 1-second latencies.
->>>>> 
->>>>> So the 1/10 second we're using in the synchronous case sounds closer to
->>>>> the right ballpark to me.
->>>> 
->>>> OK, then. Now all I need is actual motivation for changing the existing
->>>> code other than handwaving arguments about "polling is better than flat
->>>> waits".
->>>> What actual use cases are impacting us now, other than the AIX design
->>>> decision to force CLOSE to retry at least once before succeeding?
->>> 
->>> Nah, I've got nothing, and I agree that the AIX problem is there bug.
->>> 
->>> Just for fun I looked at re-checked the Linux server cases.  As far as I
->>> can tell they are:
->>> 
->>> 	- delegations: returned immediately on detection of any
->>> 	  conflict.  The current behavior in the sync case looks
->>> 	  reasonable to me.
->>> 	- allocation failures: not really sure it's the best error, but
->>> 	  it seems to be all the protocol offers.  We probably don't
->>> 	  care much what the client does in this case.
->>> 	- some rare cases that would probably indicate bugs (e.g.,
->>> 	  attempting to destroy a client while other rpc's from that
->>> 	  client are running.)  Again we don't care what the client does
->>> 	  here.
->>> 	- the 4.1 slot-inuse case.
->>> 
->>> We also by default map four errors (ETIMEDOUT, EAGAIN, EWOULDBLOCK,
->>> ENOMEM) to delay.  I thought I remembered one of those being used by
->>> some HFS system, but can't actually find an example now.  A quick grep
->>> doesn't show anything interesting.
->> 
->> It's worth mentioning that servers that have frozen state (say, in preparation for Transparent State Migration) may use NFS4ERR_DELAY to prevent clients from modifying open or lock state until that state has transitioned to a destination server.
-> 
-> I thought they'd decided they'll be forced to find a different way to do
-> that?
-> 
-> (The issue being that it only works if you're using 4.1, and if the
-> session state itself isn't part of the state to be transferred.
-> Otherwise you're forced to modify the state anyway since NFS4ERR_DELAY
-> is seqid-modifying.)
+Thanks. 
+ 
 
-The answer is not to return NFS4ERR_DELAY on seqid-modifying operations.
+-----Original Message-----
+From: David Quigley [mailto:dpquigl@davequigley.com] 
+Sent: Monday, April 01, 2013 10:55 AM
+To: Vu, Joseph
+Cc: Casey Schaufler; J. Bruce Fields; Steve Dickson; Trond Myklebust; J. Bruce Fields; David P. Quigley; Linux NFS list; Linux Security List; SELinux List
+Subject: RE: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
 
-The source server can return NFS4ERR_DELAY to the client's migration recovery operations (the GETATTR(fs_locations) request) for example.
+On 04/01/2013 08:54, Vu, Joseph wrote:
 
-Or, the server could return it on the initial PUTFH operation in a compound containing seqid-modifying operations.
+> What is a good, and working alternative for NFS in term of SE label?
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+There isn't any unless you want to start a labeled cifs project. We looked at CIFS and NFSv4 back when I started this project and from what we saw NFS had the more open community. There are other solutions but they are not ideal. I believe someone did SELinux labels on network attached storage by treating the NAS as an iSCSI device. This isn't ideal because it has concurrency issues. Someone proposed xattr for
+NFSv4/NFSv3 support and that was shot down as well (and for good reason). I don't share Casey's skepticism about the long term importance of NFS. I think with NFSv4 and all the work that has gone into it we'll see NFS being important in Linux and enterprises for a very long time to come.
 
