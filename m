@@ -1,38 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.gmx.net ([212.227.17.21]:54604 "EHLO mout.gmx.net"
+Received: from mx1.redhat.com ([209.132.183.28]:5056 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756632Ab3DAU0e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Apr 2013 16:26:34 -0400
-Received: from mailout-de.gmx.net ([10.1.76.1]) by mrigmx.server.lan
- (mrigmx002) with ESMTP (Nemesis) id 0MEHXK-1UOw5Y2hAm-00FU8u for
- <linux-nfs@vger.kernel.org>; Mon, 01 Apr 2013 22:26:32 +0200
-Message-ID: <5159ED75.4020709@gmx.de>
-Date: Mon, 01 Apr 2013 22:26:29 +0200
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Linux Kernel <linux-kernel@vger.kernel.org>,
-        Dave Jones <davej@redhat.com>
-Subject: Re: kernel 3.8.4 : kernel BUG at fs/locks.c:2093!   part #2
-References: <514F31AF.3080709@gmx.de> <20130325220143.GD10887@fieldses.org> <20130326144640.GB3353@fieldses.org> <51536610.7010809@gmx.de> <20130327215727.GB27426@fieldses.org> <20130329184331.GH22307@fieldses.org>
-In-Reply-To: <20130329184331.GH22307@fieldses.org>
-Content-Type: text/plain; charset=UTF-8
+	id S1759752Ab3DBRtO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Apr 2013 13:49:14 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r32HnDLu019607
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 2 Apr 2013 13:49:14 -0400
+Received: from willson.li.ssimo.org.com (ovpn-113-117.phx2.redhat.com [10.3.113.117])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r32HnB4I006259
+	for <linux-nfs@vger.kernel.org>; Tue, 2 Apr 2013 13:49:13 -0400
+From: Simo Sorce <simo@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 3/3] Document new -N option
+Date: Tue,  2 Apr 2013 13:49:07 -0400
+Message-Id: <1364924947-16985-4-git-send-email-simo@redhat.com>
+In-Reply-To: <1364924947-16985-1-git-send-email-simo@redhat.com>
+References: <1364924947-16985-1-git-send-email-simo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/29/2013 07:43 PM, J. Bruce Fields wrote:
-> For now, though, this should fix the bug.
-> 
-> Thanks again for this testing.
-With this patch applied on top of 3.8.5 the bug could not be reproduced
-any longer (till now).
+Options are not in alphabetical order but I put the new one after the -M,
+let's see this slow bubble sort algorithm to go on in the next decade :)
 
-@Dave
-Just Cc:'ed you for your trinity score card
-:-)
+Signed-off-by: Simo Sorce <simo@redhat.com>
+---
+ utils/gssd/gssd.man |   11 ++++++++++-
+ 1 files changed, 10 insertions(+), 1 deletions(-)
 
+diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
+index 79d9bf91ac6b976c57d167e60d07f828a3ff5b1f..d1851eb0c39d8fda3da6020b35566d391fe2daba 100644
+--- a/utils/gssd/gssd.man
++++ b/utils/gssd/gssd.man
+@@ -8,7 +8,7 @@
+ rpc.gssd \- RPCSEC_GSS daemon
+ .SH SYNOPSIS
+ .B rpc.gssd
+-.RB [ \-fMnlvr ]
++.RB [ \-fMnlvrN ]
+ .RB [ \-k
+ .IR keytab ]
+ .RB [ \-p
+@@ -245,6 +245,15 @@ is set,
+ .B rpc.gssd
+ stores machine credentials in memory instead.
+ .TP
++.B -N [on|off]
++When -N is set to
++.BR on
++the program tries to avoid DNS Reverse (PTR) lookups for resolving the server 
++name if the name passed at mount point is not an IP address. 
++Currently defaults to
++.BR off
++for compatibility reasons.
++.TP
+ .B -v
+ Increases the verbosity of the output (can be specified multiple times).
+ .TP
 -- 
-MfG/Sincerely
-Toralf Förster
-pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+1.7.1
+
