@@ -1,186 +1,417 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:36586 "EHLO
-	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753385Ab3DMOJ4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Apr 2013 10:09:56 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Cc: Simo Sorce <simo@redhat.com>
-Subject: [PATCH] Avoid DNS reverse resolution for server names
-Date: Sat, 13 Apr 2013 10:09:53 -0400
-Message-Id: <1365862193-21986-2-git-send-email-steved@redhat.com>
-In-Reply-To: <1365862193-21986-1-git-send-email-steved@redhat.com>
-References: <1365862193-21986-1-git-send-email-steved@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:30789 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1761659Ab3DBVqM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Apr 2013 17:46:12 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 09/19] NFS: Add label lifecycle management
+Date: Tue,  2 Apr 2013 17:45:50 -0400
+Message-Id: <1364939160-20874-10-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
+References: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Simo Sorce <simo@redhat.com>
+From: David Quigley <dpquigl@davequigley.com>
 
-A NFS client should be able to work properly even if the DNS Reverse
-record for the server is not set. This means a DNS lookup should not be done on
-server names at are passed to GSSAPI. This patch changes the default behavior
-to no longer do those types of lookups
+>From David Quigley <dpquigl@davequigley.com>
 
-This change default behavior could negatively impact some current environments,
-so the -D option is also being added that will re-enable the DNS reverse
-looks on server names, which are passed to GSSAPI.
+This patch adds the lifecycle management for the security label structure
+introduced in an earlier patch. The label is not used yet but allocations and
+freeing of the structure is handled.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 ---
- utils/gssd/gss_util.h  |  2 ++
- utils/gssd/gssd.c      |  7 +++++--
- utils/gssd/gssd.man    |  8 +++++++-
- utils/gssd/gssd_proc.c | 29 +++++++++++++++++++++++++----
- 4 files changed, 39 insertions(+), 7 deletions(-)
+ fs/nfs/dir.c      | 23 ++++++++++++-
+ fs/nfs/inode.c    | 15 +++++++--
+ fs/nfs/nfs4proc.c | 98 +++++++++++++++++++++++++++++++++++++++++++++++++++----
+ 3 files changed, 126 insertions(+), 10 deletions(-)
 
-diff --git a/utils/gssd/gss_util.h b/utils/gssd/gss_util.h
-index aa9f778..c81fc5a 100644
---- a/utils/gssd/gss_util.h
-+++ b/utils/gssd/gss_util.h
-@@ -52,4 +52,6 @@ int gssd_check_mechs(void);
- 		gss_krb5_set_allowable_enctypes(min, cred, num, types)
- #endif
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index e85753b..b911195 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -585,10 +585,16 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 	if (entry.fh == NULL || entry.fattr == NULL)
+ 		goto out;
  
-+extern int avoid_dns;
++	entry.label = nfs4_label_alloc(NFS_SERVER(inode), GFP_NOWAIT);
++	if (IS_ERR(entry.label)) {
++		status = PTR_ERR(entry.label);
++		goto out;
++	}
 +
- #endif /* _GSS_UTIL_H_ */
-diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index 07b1e52..8ee478b 100644
---- a/utils/gssd/gssd.c
-+++ b/utils/gssd/gssd.c
-@@ -85,7 +85,7 @@ sig_hup(int signal)
- static void
- usage(char *progname)
- {
--	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm]\n",
-+	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm] [-D]\n",
- 		progname);
- 	exit(1);
+ 	array = nfs_readdir_get_array(page);
+ 	if (IS_ERR(array)) {
+ 		status = PTR_ERR(array);
+-		goto out;
++		goto out_label_free;
+ 	}
+ 	memset(array, 0, sizeof(struct nfs_cache_array));
+ 	array->eof_index = -1;
+@@ -614,6 +620,8 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 	nfs_readdir_free_large_page(pages_ptr, pages, array_size);
+ out_release_array:
+ 	nfs_readdir_release_array(page);
++out_label_free:
++	nfs4_label_free(entry.label);
+ out:
+ 	nfs_free_fattr(entry.fattr);
+ 	nfs_free_fhandle(entry.fh);
+@@ -1083,6 +1091,10 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+ 	if (fhandle == NULL || fattr == NULL)
+ 		goto out_error;
+ 
++	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_NOWAIT);
++	if (IS_ERR(label))
++		goto out_error;
++
+ 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, label);
+ 	if (error)
+ 		goto out_bad;
+@@ -1093,6 +1105,8 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+ 
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
++	nfs4_label_free(label);
++
+ out_set_verifier:
+ 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+  out_valid:
+@@ -1109,6 +1123,7 @@ out_zap_parent:
+  out_bad:
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
++	nfs4_label_free(label);
+ 	nfs_mark_for_revalidate(dir);
+ 	if (inode && S_ISDIR(inode->i_mode)) {
+ 		/* Purge readdir caches. */
+@@ -1129,6 +1144,7 @@ out_zap_parent:
+ out_error:
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
++	nfs4_label_free(label);
+ 	dput(parent);
+ 	dfprintk(LOOKUPCACHE, "NFS: %s(%s/%s) lookup returned error %d\n",
+ 			__func__, dentry->d_parent->d_name.name,
+@@ -1284,6 +1300,10 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
+ 	if (fhandle == NULL || fattr == NULL)
+ 		goto out;
+ 
++	label = nfs4_label_alloc(NFS_SERVER(dir), GFP_NOWAIT);
++	if (IS_ERR(label))
++		goto out;
++
+ 	parent = dentry->d_parent;
+ 	/* Protect against concurrent sillydeletes */
+ 	nfs_block_sillyrename(parent);
+@@ -1312,6 +1332,7 @@ no_entry:
+ 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+ out_unblock_sillyrename:
+ 	nfs_unblock_sillyrename(parent);
++	nfs4_label_free(label);
+ out:
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 26e92b9..9a5c72f 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -830,6 +830,13 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 		goto out;
+ 
+ 	nfs_inc_stats(inode, NFSIOS_INODEREVALIDATE);
++
++	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_KERNEL);
++	if (IS_ERR(label)) {
++		status = PTR_ERR(label);
++		goto out;
++	}
++
+ 	status = NFS_PROTO(inode)->getattr(server, NFS_FH(inode), fattr, label);
+ 	if (status != 0) {
+ 		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) getattr failed, error=%d\n",
+@@ -840,7 +847,7 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 			if (!S_ISDIR(inode->i_mode))
+ 				set_bit(NFS_INO_STALE, &NFS_I(inode)->flags);
+ 		}
+-		goto out;
++		goto err_out;
+ 	}
+ 
+ 	status = nfs_refresh_inode(inode, fattr, label);
+@@ -848,7 +855,7 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) refresh failed, error=%d\n",
+ 			 inode->i_sb->s_id,
+ 			 (long long)NFS_FILEID(inode), status);
+-		goto out;
++		goto err_out;
+ 	}
+ 
+ 	if (nfsi->cache_validity & NFS_INO_INVALID_ACL)
+@@ -858,7 +865,9 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 		inode->i_sb->s_id,
+ 		(long long)NFS_FILEID(inode));
+ 
+- out:
++err_out:
++	nfs4_label_free(label);
++out:
+ 	nfs_free_fattr(fattr);
+ 	return status;
  }
-@@ -102,7 +102,7 @@ main(int argc, char *argv[])
- 	char *progname;
- 
- 	memset(ccachesearch, 0, sizeof(ccachesearch));
--	while ((opt = getopt(argc, argv, "fvrlmnMp:k:d:t:R:")) != -1) {
-+	while ((opt = getopt(argc, argv, "DfvrlmnMp:k:d:t:R:")) != -1) {
- 		switch (opt) {
- 			case 'f':
- 				fg = 1;
-@@ -150,6 +150,9 @@ main(int argc, char *argv[])
- 				errx(1, "Encryption type limits not supported by Kerberos libraries.");
- #endif
- 				break;
-+			case 'D':
-+				avoid_dns = 0;
-+				break;
- 			default:
- 				usage(argv[0]);
- 				break;
-diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
-index 79d9bf9..1df75c5 100644
---- a/utils/gssd/gssd.man
-+++ b/utils/gssd/gssd.man
-@@ -8,7 +8,7 @@
- rpc.gssd \- RPCSEC_GSS daemon
- .SH SYNOPSIS
- .B rpc.gssd
--.RB [ \-fMnlvr ]
-+.RB [ \-DfMnlvr ]
- .RB [ \-k
- .IR keytab ]
- .RB [ \-p
-@@ -195,6 +195,12 @@ option when starting
- .BR rpc.gssd .
- .SH OPTIONS
- .TP
-+.B -D
-+DNS Reverse lookups are not used for determining the
-+server names pass to GSSAPI. This option will reverses that and forces 
-+the use of DNS Reverse resolution of the server's IP address to 
-+retrieve the server name to use in GSAPI authentication.
-+.TP
- .B -f
- Runs
- .B rpc.gssd
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index d6f07e6..aef5ca5 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -67,6 +67,7 @@
- #include <errno.h>
- #include <gssapi/gssapi.h>
- #include <netdb.h>
-+#include <ctype.h>
- 
- #include "gssd.h"
- #include "err_util.h"
-@@ -107,6 +108,9 @@ struct pollfd * pollarray;
- 
- unsigned long pollsize;  /* the size of pollaray (in pollfd's) */
- 
-+/* Avoid DNS reverse lookups on server names */
-+int avoid_dns = 1;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 68d973f..f60fd42 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -788,9 +788,14 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	p = kzalloc(sizeof(*p), gfp_mask);
+ 	if (p == NULL)
+ 		goto err;
 +
- /*
-  * convert a presentation address string to a sockaddr_storage struct. Returns
-  * true on success or false on failure.
-@@ -165,12 +169,29 @@ addrstr_to_sockaddr(struct sockaddr *sa, const char *node, const char *port)
-  * convert a sockaddr to a hostname
-  */
- static char *
--sockaddr_to_hostname(const struct sockaddr *sa, const char *addr)
-+get_servername(const char *name, const struct sockaddr *sa, const char *addr)
- {
- 	socklen_t		addrlen;
- 	int			err;
- 	char			*hostname;
- 	char			hbuf[NI_MAXHOST];
-+	unsigned char		buf[sizeof(struct in6_addr)];
-+	int			do_dns_lookup = 0;
++	p->f_label = nfs4_label_alloc(server, gfp_mask);
++	if (IS_ERR(p->f_label))
++		goto err_free_p;
 +
-+	if (avoid_dns) {
-+		/*
-+		 * Determine if this is a server name, or an IP address.
-+		 * If it is an IP address, do the DNS lookup
-+		 */
-+		if (strchr(name, '.') && inet_pton(AF_INET, name, buf) == 1)
-+			do_dns_lookup = 1; /* IPv4 */
-+		else if (strchr(name, ':') && inet_pton(AF_INET6, name, buf) == 1)
-+			do_dns_lookup = 1; /* or IPv6 */
+ 	p->o_arg.seqid = nfs_alloc_seqid(&sp->so_seqid, gfp_mask);
+ 	if (p->o_arg.seqid == NULL)
+-		goto err_free;
++		goto err_free_label;
+ 	nfs_sb_active(dentry->d_sb);
+ 	p->dentry = dget(dentry);
+ 	p->dir = parent;
+@@ -833,7 +838,10 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	nfs4_init_opendata_res(p);
+ 	kref_init(&p->kref);
+ 	return p;
+-err_free:
 +
-+		if (!do_dns_lookup) {
-+			return strdup(name);
++err_free_label:
++	nfs4_label_free(p->f_label);
++err_free_p:
+ 	kfree(p);
+ err:
+ 	dput(parent);
+@@ -850,6 +858,9 @@ static void nfs4_opendata_free(struct kref *kref)
+ 	if (p->state != NULL)
+ 		nfs4_put_open_state(p->state);
+ 	nfs4_put_state_owner(p->owner);
++
++	nfs4_label_free(p->f_label);
++
+ 	dput(p->dir);
+ 	dput(p->dentry);
+ 	nfs_sb_deactive(sb);
+@@ -1930,10 +1941,18 @@ static int _nfs4_do_open(struct inode *dir,
+ 	if (opendata == NULL)
+ 		goto err_put_state_owner;
+ 
++	if (label) {
++		olabel = nfs4_label_alloc(server, GFP_KERNEL);
++		if (IS_ERR(olabel)) {
++			status = PTR_ERR(olabel);
++			goto err_opendata_put;
 +		}
 +	}
++
+ 	if (ctx_th && server->attr_bitmask[2] & FATTR4_WORD2_MDSTHRESHOLD) {
+ 		opendata->f_attr.mdsthreshold = pnfs_mdsthreshold_alloc();
+ 		if (!opendata->f_attr.mdsthreshold)
+-			goto err_opendata_put;
++			goto err_free_label;
+ 		opendata->o_arg.open_bitmap = &nfs4_pnfs_open_bitmap[0];
+ 	}
+ 	if (dentry->d_inode != NULL)
+@@ -1941,7 +1960,7 @@ static int _nfs4_do_open(struct inode *dir,
  
- 	switch (sa->sa_family) {
- 	case AF_INET:
-@@ -208,7 +229,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
- 		  struct sockaddr *addr) {
- #define INFOBUFLEN 256
- 	char		buf[INFOBUFLEN + 1];
--	static char	dummy[128];
-+	static char	server[128];
- 	int		nbytes;
- 	static char	service[128];
- 	static char	address[128];
-@@ -236,7 +257,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
- 		   "service: %127s %15s version %15s\n"
- 		   "address: %127s\n"
- 		   "protocol: %15s\n",
--		   dummy,
-+		   server,
- 		   service, program, version,
- 		   address,
- 		   protoname);
-@@ -258,7 +279,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
- 	if (!addrstr_to_sockaddr(addr, address, port))
- 		goto fail;
+ 	status = _nfs4_open_and_get_state(opendata, fmode, flags, &state);
+ 	if (status != 0)
+-		goto err_opendata_put;
++		goto err_free_label;
  
--	*servername = sockaddr_to_hostname(addr, address);
-+	*servername = get_servername(server, addr, address);
- 	if (*servername == NULL)
- 		goto fail;
+ 	if (opendata->o_arg.open_flags & O_EXCL) {
+ 		nfs4_exclusive_attrset(opendata, sattr);
+@@ -1962,10 +1981,14 @@ static int _nfs4_do_open(struct inode *dir,
+ 		kfree(opendata->f_attr.mdsthreshold);
+ 	opendata->f_attr.mdsthreshold = NULL;
+ 
++	nfs4_label_free(olabel);
++
+ 	nfs4_opendata_put(opendata);
+ 	nfs4_put_state_owner(sp);
+ 	*res = state;
+ 	return 0;
++err_free_label:
++	nfs4_label_free(olabel);
+ err_opendata_put:
+ 	kfree(opendata->f_attr.mdsthreshold);
+ 	nfs4_opendata_put(opendata);
+@@ -2531,16 +2554,23 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *mntfh,
+ 		return error;
+ 	}
+ 
++	label = nfs4_label_alloc(server, GFP_KERNEL);
++	if (IS_ERR(label))
++		return PTR_ERR(label);
++
+ 	error = nfs4_proc_getattr(server, mntfh, fattr, label);
+ 	if (error < 0) {
+ 		dprintk("nfs4_get_root: getattr error = %d\n", -error);
+-		return error;
++		goto err_free_label;
+ 	}
+ 
+ 	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
+ 	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
+ 		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
+ 
++err_free_label:
++	nfs4_label_free(label);
++
+ 	return error;
+ }
+ 
+@@ -2646,6 +2676,7 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 	struct inode *inode = dentry->d_inode;
+ 	struct rpc_cred *cred = NULL;
+ 	struct nfs4_state *state = NULL;
++	struct nfs4_label *label = NULL;
+ 	int status;
+ 
+ 	if (pnfs_ld_layoutret_on_setattr(inode))
+@@ -2672,9 +2703,15 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 		}
+ 	}
+ 
+-	status = nfs4_do_setattr(inode, cred, fattr, sattr, state, NULL, NULL);
++	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_KERNEL);
++	if (IS_ERR(label))
++		return PTR_ERR(label);
++
++	status = nfs4_do_setattr(inode, cred, fattr, sattr, state, NULL, label);
+ 	if (status == 0)
+ 		nfs_setattr_update_inode(inode, sattr);
++
++	nfs4_label_free(label);
+ 	return status;
+ }
+ 
+@@ -2829,11 +2866,21 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
+ 	if (res.fattr == NULL)
+ 		return -ENOMEM;
+ 
++	res.label = nfs4_label_alloc(server, GFP_KERNEL);
++	if (IS_ERR(res.label)) {
++		status = PTR_ERR(res.label);
++		goto out;
++	}
++
+ 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	if (!status) {
+ 		nfs_access_set_mask(entry, res.access);
+ 		nfs_refresh_inode(inode, res.fattr, res.label);
+ 	}
++
++	nfs4_label_free(res.label);
++
++out:
+ 	nfs_free_fattr(res.fattr);
+ 	return status;
+ }
+@@ -3058,12 +3105,33 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		.rpc_resp = &res,
+ 	};
+ 	int status = -ENOMEM;
++
++
++	if (server->caps & NFS_CAP_SECURITY_LABEL) {
++		res.old_label = nfs4_label_alloc(server, GFP_NOWAIT);
++		if (IS_ERR(res.old_label)) {
++			status = PTR_ERR(res.old_label);
++			goto out;
++		}
++		res.new_label = nfs4_label_alloc(server, GFP_NOWAIT);
++		if (IS_ERR(res.new_label)) {
++			status = PTR_ERR(res.new_label);
++			nfs4_label_free(res.old_label);
++			goto out;
++		}
++	}
++
+ 	
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+ 		update_changeattr(old_dir, &res.old_cinfo);
+ 		update_changeattr(new_dir, &res.new_cinfo);
+ 	}
++
++	nfs4_label_free(res.old_label);
++	nfs4_label_free(res.new_label);
++
++out:
+ 	return status;
+ }
+ 
+@@ -3105,11 +3173,21 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
+ 	if (res.fattr == NULL)
+ 		goto out;
+ 
++	res.label = nfs4_label_alloc(server, GFP_KERNEL);
++	if (IS_ERR(res.label)) {
++		status = PTR_ERR(res.label);
++		goto out;
++	}
++
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+ 		update_changeattr(dir, &res.cinfo);
+ 		nfs_post_op_update_inode(inode, res.fattr, res.label);
+ 	}
++
++
++	nfs4_label_free(res.label);
++
+ out:
+ 	nfs_free_fattr(res.fattr);
+ 	return status;
+@@ -3145,6 +3223,10 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
+ 	if (data != NULL) {
+ 		struct nfs_server *server = NFS_SERVER(dir);
+ 
++		data->label = nfs4_label_alloc(server, GFP_KERNEL);
++		if (IS_ERR(data->label))
++			goto out_free;
++
+ 		data->msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CREATE];
+ 		data->msg.rpc_argp = &data->arg;
+ 		data->msg.rpc_resp = &data->res;
+@@ -3161,6 +3243,9 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
+ 		nfs_fattr_init(data->res.fattr);
+ 	}
+ 	return data;
++out_free:
++	kfree(data);
++	return NULL;
+ }
+ 
+ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_createdata *data)
+@@ -3176,6 +3261,7 @@ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_
+ 
+ static void nfs4_free_createdata(struct nfs4_createdata *data)
+ {
++	nfs4_label_free(data->label);
+ 	kfree(data);
+ }
  
 -- 
 1.8.1.4
