@@ -1,168 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:60659 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:20922 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757962Ab3DXUXH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Apr 2013 16:23:07 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 06/17] LSM: Add flags field to security_sb_set_mnt_opts for in kernel mount data.
-Date: Wed, 24 Apr 2013 16:17:52 -0400
-Message-Id: <1366834683-29075-7-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
-References: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
+	id S1757549Ab3DCSND (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Apr 2013 14:13:03 -0400
+Subject: Re: [PATCH] Avoid PTR lookups when possible
+From: Simo Sorce <simo@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jim Rees <rees@umich.edu>, linux-nfs <linux-nfs@vger.kernel.org>,
+        Steve Dickson <steved@redhat.com>, Jeffrey Layton <jlayton@redhat.com>
+In-Reply-To: <20130403171213.GB3344@fieldses.org>
+References: <1364910351.2660.1243.camel@willson.li.ssimo.org>
+	 <20130402150049.GA526@umich.edu>
+	 <1364919975.2660.1255.camel@willson.li.ssimo.org>
+	 <20130402164631.GA23840@umich.edu>
+	 <1364922203.2660.1265.camel@willson.li.ssimo.org>
+	 <20130402183907.GB18900@umich.edu>
+	 <1364928519.2660.1279.camel@willson.li.ssimo.org>
+	 <20130403134407.GB13951@fieldses.org> <20130403144055.GA7049@umich.edu>
+	 <1365005018.2660.1315.camel@willson.li.ssimo.org>
+	 <20130403171213.GB3344@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 03 Apr 2013 14:12:57 -0400
+Message-ID: <1365012777.2660.1317.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Wed, 2013-04-03 at 13:12 -0400, J. Bruce Fields wrote:
+> On Wed, Apr 03, 2013 at 12:03:38PM -0400, Simo Sorce wrote:
+> > On Wed, 2013-04-03 at 10:40 -0400, Jim Rees wrote:
+> > > J. Bruce Fields wrote:
+> > > 
+> > >   Like Jim I don't understand how that fits the definition of a "man in
+> > >   the middle" attack.
+> > > 
+> > > If Bruce is having trouble too, I think the explanation needs to be
+> > > improved. But I think the latest patch set drops the talk about a
+> > > vulnerability, and I'm fine with that.
+> > 
+> > Yeah I figured that just concentrating on the functional aspect of being
+> > able to work on networks with missing PTR records is sufficient to
+> > explain why this patchset is good :-)
+> 
+> Definitely, you're fine.  I was just nitpicking language, the problem's
+> clear enough:
+> 
+> > However let me give a try at explaining in a different way using the
+> > same example I gave before but from a different angle.
+> > 
+> > - Assume user Alice has very important documents that are backed up
+> > daily to a server named secure.server.name where Alice can write to and
+> > nobody can read from.
+> > - Assume an attacker Eve, that is in the condition of intercepting and
+> > modifying all network traffic from Alice.
+> > - Assume there exist another server called public.server.name where
+> > Alice can write to and Eve can read from.
+> > 
+> > Eve wants to fool Alice in mounting /export from public.server.name
+> > instead or secure.server.name so she can copy Alice's documents away.
+> > 
+> > 
+> > So Eve, manipulates traffic and when Alice's machine tries to talk to
+> > secure.server.name, Eve redirects all the traffic to public.server.name
+> > instead. (Can be done by a simple DNS poisoning attack that gives back
+> > to Alice computer the public.server.name IP address, or by actual DNAT
+> > on Alice's computer packets).
+> > Now, normally, if Krb5 authentication is used the mount would fail,
+> > because Alice would try to authenticate to public.server.com using a
+> > ticket she obtained to talk to secure.server.com (remember that Alice
+> > thinks she is mounting the secure.server.name share).
+> > 
+> > Here the reverse DNS resolution performed by Alice's computer's rpc.gssd
+> > daemon is what allows Eve to successfully redirect Alice's mount
+> > instead. Because at the time Alice's computer needs to grab a ticket for
+> > the 'target' server, Eve fakes the DNS replies and tells Alice's
+> > computer that the destination name for the secure.server.name's IP
+> > address is 'public.server.name'.
+> > 
+> > So with current behavior Alice's computer asks the KDC for a ticket for
+> > 'public.server.name' instead of 'secure.server.name'.
+> > 
+> > Now Krb5 authentication does not fail anymore because Alice does have
+> > the 'right' ticket for the server it is connecting to.
+> > 
+> > Alice authentication against the 'substituted' (by Eve, through packet
+> > redirection) server therefore succeeds, and her computer is fooled to
+> > think it really mounted secure.server.name when it really has mounted
+> > public.server.name, the cron job for the backup starts and copies all
+> > files to public.server.name, where Eve can find and access them.
+> 
+> Argh, sorry Simo, I didn't mean to make you write all that out.
 
-There is no way to differentiate if a text mount option is passed from user
-space or the kernel. A flags field is being added to the
-security_sb_set_mnt_opts hook to allow for in kernel security flags to be sent
-to the LSM for processing in addition to the text options received from mount.
-This patch also updated existing code to fix compilation errors.
+It's ok, I am planning to make it into a blog post, so next time someone
+asks about this particular issue with PTR records and GSSAPI I can point
+them there. So it is not worthless, I call it a draft :-)
 
-Signed-off-by: David P. Quigley <dpquigl@tycho.nsa.gov>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- fs/nfs/super.c           |  3 ++-
- include/linux/security.h | 13 ++++++++++---
- security/capability.c    |  5 ++++-
- security/security.c      |  7 +++++--
- security/selinux/hooks.c | 12 ++++++++++--
- 5 files changed, 31 insertions(+), 9 deletions(-)
+> > Call it MITM, call it something else,
+> 
+> This was literally my only complaint.  The above doesn't sound to me
+> like what I'd normally call a "man in the middle" attack.
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 29f2d86..d84eb57 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2378,7 +2378,8 @@ static int nfs_bdi_register(struct nfs_server *server)
- int nfs_set_sb_security(struct super_block *s, struct dentry *mntroot,
- 			struct nfs_mount_info *mount_info)
- {
--	return security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts);
-+	return security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts,
-+								0, NULL);
- }
- EXPORT_SYMBOL_GPL(nfs_set_sb_security);
- 
-diff --git a/include/linux/security.h b/include/linux/security.h
-index 934f96f..4ab51e2 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -1456,7 +1456,9 @@ struct security_operations {
- 	int (*sb_pivotroot) (struct path *old_path,
- 			     struct path *new_path);
- 	int (*sb_set_mnt_opts) (struct super_block *sb,
--				struct security_mnt_opts *opts);
-+				struct security_mnt_opts *opts,
-+				unsigned long kern_flags,
-+				unsigned long *set_kern_flags);
- 	void (*sb_clone_mnt_opts) (const struct super_block *oldsb,
- 				   struct super_block *newsb);
- 	int (*sb_parse_opts_str) (char *options, struct security_mnt_opts *opts);
-@@ -1747,7 +1749,10 @@ int security_sb_mount(const char *dev_name, struct path *path,
- 		      const char *type, unsigned long flags, void *data);
- int security_sb_umount(struct vfsmount *mnt, int flags);
- int security_sb_pivotroot(struct path *old_path, struct path *new_path);
--int security_sb_set_mnt_opts(struct super_block *sb, struct security_mnt_opts *opts);
-+int security_sb_set_mnt_opts(struct super_block *sb,
-+				struct security_mnt_opts *opts,
-+				unsigned long kern_flags,
-+				unsigned long *set_kern_flags);
- void security_sb_clone_mnt_opts(const struct super_block *oldsb,
- 				struct super_block *newsb);
- int security_sb_parse_opts_str(char *options, struct security_mnt_opts *opts);
-@@ -2037,7 +2042,9 @@ static inline int security_sb_pivotroot(struct path *old_path,
- }
- 
- static inline int security_sb_set_mnt_opts(struct super_block *sb,
--					   struct security_mnt_opts *opts)
-+					   struct security_mnt_opts *opts,
-+					   unsigned long kern_flags,
-+					   unsigned long *set_kern_flags)
- {
- 	return 0;
- }
-diff --git a/security/capability.c b/security/capability.c
-index 71e5052..4708973 100644
---- a/security/capability.c
-+++ b/security/capability.c
-@@ -91,7 +91,10 @@ static int cap_sb_pivotroot(struct path *old_path, struct path *new_path)
- }
- 
- static int cap_sb_set_mnt_opts(struct super_block *sb,
--			       struct security_mnt_opts *opts)
-+			       struct security_mnt_opts *opts,
-+			       unsigned long kern_flags,
-+			       unsigned long *set_kern_flags)
-+
- {
- 	if (unlikely(opts->num_mnt_opts))
- 		return -EOPNOTSUPP;
-diff --git a/security/security.c b/security/security.c
-index 07391f3..df8ade2 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -294,9 +294,12 @@ int security_sb_pivotroot(struct path *old_path, struct path *new_path)
- }
- 
- int security_sb_set_mnt_opts(struct super_block *sb,
--				struct security_mnt_opts *opts)
-+				struct security_mnt_opts *opts,
-+				unsigned long kern_flags,
-+				unsigned long *set_kern_flags)
- {
--	return security_ops->sb_set_mnt_opts(sb, opts);
-+	return security_ops->sb_set_mnt_opts(sb, opts, kern_flags,
-+						set_kern_flags);
- }
- EXPORT_SYMBOL(security_sb_set_mnt_opts);
- 
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 273e28b..6cb24ec 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -552,7 +552,9 @@ static int bad_option(struct superblock_security_struct *sbsec, char flag,
-  * labeling information.
-  */
- static int selinux_set_mnt_opts(struct super_block *sb,
--				struct security_mnt_opts *opts)
-+				struct security_mnt_opts *opts,
-+				unsigned long kern_flags,
-+				unsigned long *set_kern_flags)
- {
- 	const struct cred *cred = current_cred();
- 	int rc = 0, i;
-@@ -580,6 +582,12 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 			"before the security server is initialized\n");
- 		goto out;
- 	}
-+	if (kern_flags && !set_kern_flags) {
-+		/* Specifying internal flags without providing a place to
-+		 * place the results is not allowed */
-+		rc = -EINVAL;
-+		goto out;
-+	}
- 
- 	/*
- 	 * Binary mount data FS will come through this function twice.  Once
-@@ -949,7 +957,7 @@ static int superblock_doinit(struct super_block *sb, void *data)
- 		goto out_err;
- 
- out:
--	rc = selinux_set_mnt_opts(sb, &opts);
-+	rc = selinux_set_mnt_opts(sb, &opts, 0, NULL);
- 
- out_err:
- 	security_free_mnt_opts(&opts);
+Yup, ok.
+
+So if anyone can ack the actual patches (or tell me if there is anything
+else to change I'd love to move forward, I have other patches in the
+pipeline :-)
+
+Simo.
+
 -- 
-1.8.1.4
+Simo Sorce * Red Hat, Inc * New York
 
