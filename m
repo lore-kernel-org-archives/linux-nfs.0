@@ -1,87 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:57430 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:33662 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753915Ab3DSSwb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Apr 2013 14:52:31 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com, bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] nfsd: Decode and send 64bit time values
-Date: Fri, 19 Apr 2013 14:52:27 -0400
-Message-Id: <1366397547-14639-3-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1366397547-14639-1-git-send-email-bjschuma@netapp.com>
-References: <1366397547-14639-1-git-send-email-bjschuma@netapp.com>
+	id S1763263Ab3DCTYE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Apr 2013 15:24:04 -0400
+Date: Wed, 3 Apr 2013 15:24:00 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: akpm@linux-foundation.org, linux-kernel@vger.kernel.org, tj@kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 4/6] nfsd: convert nfs4_alloc_stid to use
+ idr_alloc_cyclic
+Message-ID: <20130403192400.GH6044@fieldses.org>
+References: <1364390288-30968-1-git-send-email-jlayton@redhat.com>
+ <1364390288-30968-5-git-send-email-jlayton@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1364390288-30968-5-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+ACK.--b.
 
-The seconds field of an nfstime4 structure is 64bit, but we are assuming
-that the first 32bits are zero-filled.  So if the client tries to set
-atime to a value before the epoch (touch -t 196001010101), then the
-server will save the wrong value on disk.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/nfs4xdr.c | 19 +++++--------------
- 1 file changed, 5 insertions(+), 14 deletions(-)
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 2a27456..c3a6ca4 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -344,10 +344,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 			   all 32 bits of 'nseconds'. */
- 			READ_BUF(12);
- 			len += 12;
--			READ32(dummy32);
--			if (dummy32)
--				return nfserr_inval;
--			READ32(iattr->ia_atime.tv_sec);
-+			READ64(iattr->ia_atime.tv_sec);
- 			READ32(iattr->ia_atime.tv_nsec);
- 			if (iattr->ia_atime.tv_nsec >= (u32)1000000000)
- 				return nfserr_inval;
-@@ -370,10 +367,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 			   all 32 bits of 'nseconds'. */
- 			READ_BUF(12);
- 			len += 12;
--			READ32(dummy32);
--			if (dummy32)
--				return nfserr_inval;
--			READ32(iattr->ia_mtime.tv_sec);
-+			READ64(iattr->ia_mtime.tv_sec);
- 			READ32(iattr->ia_mtime.tv_nsec);
- 			if (iattr->ia_mtime.tv_nsec >= (u32)1000000000)
- 				return nfserr_inval;
-@@ -2401,8 +2395,7 @@ out_acl:
- 	if (bmval1 & FATTR4_WORD1_TIME_ACCESS) {
- 		if ((buflen -= 12) < 0)
- 			goto out_resource;
--		WRITE32(0);
--		WRITE32(stat.atime.tv_sec);
-+		WRITE64((long)stat.atime.tv_sec);
- 		WRITE32(stat.atime.tv_nsec);
- 	}
- 	if (bmval1 & FATTR4_WORD1_TIME_DELTA) {
-@@ -2415,15 +2408,13 @@ out_acl:
- 	if (bmval1 & FATTR4_WORD1_TIME_METADATA) {
- 		if ((buflen -= 12) < 0)
- 			goto out_resource;
--		WRITE32(0);
--		WRITE32(stat.ctime.tv_sec);
-+		WRITE64((long)stat.ctime.tv_sec);
- 		WRITE32(stat.ctime.tv_nsec);
- 	}
- 	if (bmval1 & FATTR4_WORD1_TIME_MODIFY) {
- 		if ((buflen -= 12) < 0)
- 			goto out_resource;
--		WRITE32(0);
--		WRITE32(stat.mtime.tv_sec);
-+		WRITE64((long)stat.mtime.tv_sec);
- 		WRITE32(stat.mtime.tv_nsec);
- 	}
- 	if (bmval1 & FATTR4_WORD1_MOUNTED_ON_FILEID) {
--- 
-1.8.2.1
-
+On Wed, Mar 27, 2013 at 09:18:06AM -0400, Jeff Layton wrote:
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> Cc: "J. Bruce Fields" <bfields@fieldses.org>
+> Cc: linux-nfs@vger.kernel.org
+> ---
+>  fs/nfsd/nfs4state.c | 9 ++-------
+>  1 file changed, 2 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 2e27430..2efb034 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -234,7 +234,6 @@ static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct
+>  kmem_cache *slab)
+>  {
+>  	struct idr *stateids = &cl->cl_stateids;
+> -	static int min_stateid = 0;
+>  	struct nfs4_stid *stid;
+>  	int new_id;
+>  
+> @@ -242,7 +241,7 @@ kmem_cache *slab)
+>  	if (!stid)
+>  		return NULL;
+>  
+> -	new_id = idr_alloc(stateids, stid, min_stateid, 0, GFP_KERNEL);
+> +	new_id = idr_alloc_cyclic(stateids, stid, 0, 0, GFP_KERNEL);
+>  	if (new_id < 0)
+>  		goto out_free;
+>  	stid->sc_client = cl;
+> @@ -261,10 +260,6 @@ kmem_cache *slab)
+>  	 * amount of time until an id is reused, by ensuring they always
+>  	 * "increase" (mod INT_MAX):
+>  	 */
+> -
+> -	min_stateid = new_id+1;
+> -	if (min_stateid == INT_MAX)
+> -		min_stateid = 0;
+>  	return stid;
+>  out_free:
+>  	kfree(stid);
+> @@ -1287,7 +1282,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+>  		spin_unlock(&nn->client_lock);
+>  		return NULL;
+>  	}
+> -	idr_init(&clp->cl_stateids);
+> +	idr_init_cyclic(&clp->cl_stateids, 0);
+>  	atomic_set(&clp->cl_refcount, 0);
+>  	clp->cl_cb_state = NFSD4_CB_UNKNOWN;
+>  	INIT_LIST_HEAD(&clp->cl_idhash);
+> -- 
+> 1.7.11.7
+> 
