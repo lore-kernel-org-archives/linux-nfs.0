@@ -1,60 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:18269 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:32967 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758030Ab3DXV2t convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Apr 2013 17:28:49 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Dave Chiluk <chiluk@canonical.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Use exponential backoff delay for NFS4_ERRDELAY
-Date: Wed, 24 Apr 2013 21:28:47 +0000
-Message-ID: <1366838926.22397.25.camel@leira.trondhjem.org>
-References: <1366836949-18465-1-git-send-email-chiluk@canonical.com>
-In-Reply-To: <1366836949-18465-1-git-send-email-chiluk@canonical.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1758698Ab3DCSgT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Apr 2013 14:36:19 -0400
+Date: Wed, 3 Apr 2013 14:36:12 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Bodo Stroesser <bstroesser@ts.fujitsu.com>
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org
+Subject: Re: sunrpc/cache.c: races while updating cache entries
+Message-ID: <20130403183612.GD6044@fieldses.org>
+References: <61eb00$3hon1j@dgate20u.abg.fsc.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <61eb00$3hon1j@dgate20u.abg.fsc.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-04-24 at 15:55 -0500, Dave Chiluk wrote:
-> Changing the retry to start at NFS4_POLL_RETRY_MIN and exponentially grow
-> to NFS4_POLL_RETRY_MAX allow for faster handling of these error conditions.
+On Thu, Mar 21, 2013 at 05:41:35PM +0100, Bodo Stroesser wrote:
+> On 21 Mar 2013 00:34:00 +0100 NeilBrown <neilb@suse.de> wrote:
+> > This applies only to SLES11-SP1 (2.6.32+) right?
+> > In mainline the request won't be dropped because the cache item isn't assumed
+> > to still be valid.
 > 
-> Additionally this alleviates an interoperability problem with the AIX NFSv4
-> Server.  The AIX server frequently (2 out of 3) returns NFS4ERR_DELAY, on a
-> close when it happens in close proximity to a RELEASE_LOCKOWNER.  This would
-> cause a linux client to hang for 15 seconds.
+> I agree, there will be no drop in mainline.
+> 
+> But in mainline there will be a useless upcall. That upcall might even be
+> processed by the reader, if cache_clean isn't faster then the reader.
+> The answer from the reader will again replace the current cache entry
+> (which is just a few microseconds old) by a new one. The new one must be
+> allocated, the replaced one must later be cleaned. The single item cache
+> is invalidated again.
+> 
+> In worst case, the unnecessary replacement also could trigger the next
+> round of the game ...
+> 
+> So in my opinion it would be better to add the patch you suggested below
+> to mainline also.
+> 
+> > 
+> > So we need to make sure that sunrpc_cache_pipe_upcall doesn't make an upcall
+> > on a cache item that has been replaced.  I'd rather not use the CACHE_CLEAN
+> > bit (whether renamed or not) as it has a well defined meaning "has been
+> > removed from cache" and I'd rather not blur that meaning.
+> > We already have a state that means "this has been replace"- ->expiry_time is
+> > 0.
+> > So how about adding
+> >    if (h->expiry_time == 0)
+> >          return -EAGAIN;
+> > to sunrpc_cache_pipe_upcall() in SLES11-SP1.
+> > 
+> > Does that work for you?
+> 
+> Yes, that looks good. My test with this fix is running successfully
+> since 5 hours. I'll let it run until Monday.
 
-Hi Dave,
+Apologies, I've completely lost track of this thread: do we know what
+mainline needs now?
 
-The AIX server is not being motivated by any requirements in the NFSv4
-spec here, so I fail to see the reason why the behaviour that you
-describe can justify changing the client. It is not at all obvious to me
-that we should be retrying aggressively when NFSv4 servers return
-NFS4ERR_DELAY. What makes 1/10sec more correct in these situations than
-the exising 15 seconds?
-
-The motivation for doing it in the case of OPEN, SETATTR, etc is
-clearer: those operations may require the server to recall a delegation,
-in which case aggressive retries are in order since delegation recalls
-are usually fast.
-The motivation in the case of LOCK is less clear, but it is basically
-down to the fact that NFSv4 has a polling model for doing blocking
-locks.
-In all other cases, why should we be treating NFS4ERR_DELAY any
-differently from how we treat NFS3ERR_JUKEBOX in NFSv3?
-
-Note that if we do decide that changing the client is the right thing,
-then I don't want the patch to add new fields to struct rpc_task. That's
-the wrong layer for storing NFSv4 client specific data.
-
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+--b.
