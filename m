@@ -1,60 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:41930 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756264Ab3DYOvz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2013 10:51:55 -0400
+Received: from fieldses.org ([174.143.236.118]:56243 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760603Ab3DCO4G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Apr 2013 10:56:06 -0400
+Date: Wed, 3 Apr 2013 10:56:03 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Simo Sorce <simo@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] Document new -z/-Z options
+Message-ID: <20130403145603.GA3344@fieldses.org>
+References: <515B2F8D.3030302@RedHat.com>
+ <1364931149-18484-3-git-send-email-simo@redhat.com>
+ <20130403142003.GC13951@fieldses.org>
+ <1364999747.10726.3.camel@leira.trondhjem.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
-Subject: Re: [PATCH] NFSv4: Use exponential backoff delay for NFS4_ERRDELAY
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130425134918.GC31851@fieldses.org>
-Date: Thu, 25 Apr 2013 10:51:42 -0400
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        David Wysochanski <dwysocha@redhat.com>,
-        Dave Chiluk <chiluk@canonical.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Message-Id: <C56C9BFD-0B20-4F2B-B282-84566ACBF41B@oracle.com>
-References: <1366836949-18465-1-git-send-email-chiluk@canonical.com> <1366838926.22397.25.camel@leira.trondhjem.org> <5178549A.7010402@canonical.com> <1366842905.22397.49.camel@leira.trondhjem.org> <1366892374.26249.294.camel@localhost.localdomain> <20130425132907.GB31851@fieldses.org> <1366896654.4719.18.camel@leira.trondhjem.org> <20130425134918.GC31851@fieldses.org>
-To: bfields@fieldses.org
+In-Reply-To: <1364999747.10726.3.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Apr 25, 2013, at 9:49 AM, bfields@fieldses.org wrote:
-
-> On Thu, Apr 25, 2013 at 01:30:58PM +0000, Myklebust, Trond wrote:
->> On Thu, 2013-04-25 at 09:29 -0400, bfields@fieldses.org wrote:
->> 
->>> My position is that we simply have no idea what order of magnitude even
->>> delay should be.  And that in such a situation exponential backoff such
->>> as implemented in the synchronous case seems the reasonable default as
->>> it guarantees at worst doubling the delay while still bounding the
->>> long-term average frequency of retries.
->> 
->> So we start with a 15 second delay, and then go to 60 seconds?
+On Wed, Apr 03, 2013 at 02:35:48PM +0000, Myklebust, Trond wrote:
+> On Wed, 2013-04-03 at 10:20 -0400, J. Bruce Fields wrote:
+> > On Tue, Apr 02, 2013 at 03:32:29PM -0400, Simo Sorce wrote:
+> > > Options are not in alphabetical order but -z/-Z clearly always come last.
+> > > 
+> > > Signed-off-by: Simo Sorce <simo@redhat.com>
+> > > ---
+> > >  utils/gssd/gssd.man |   13 ++++++++++++-
+> > >  1 files changed, 12 insertions(+), 1 deletions(-)
+> > > 
+> > > diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
+> > > index 79d9bf91ac6b976c57d167e60d07f828a3ff5b1f..7918c2a0ff76c3918449cf3e1420f0a289929ac1 100644
+> > > --- a/utils/gssd/gssd.man
+> > > +++ b/utils/gssd/gssd.man
+> > > @@ -8,7 +8,7 @@
+> > >  rpc.gssd \- RPCSEC_GSS daemon
+> > >  .SH SYNOPSIS
+> > >  .B rpc.gssd
+> > > -.RB [ \-fMnlvr ]
+> > > +.RB [ \-fMnlvrzZ ]
+> > >  .RB [ \-k
+> > >  .IR keytab ]
+> > >  .RB [ \-p
+> > > @@ -266,6 +266,17 @@ new kernel contexts to be negotiated after
+> > >  seconds, which allows changing Kerberos tickets and identities frequently.
+> > >  The default is no explicit timeout, which means the kernel context will live
+> > >  the lifetime of the Kerberos service ticket used in its creation.
+> > > +.TP
+> > > +.B -z
+> > > +This option tries to avoid DNS Reverse (PTR) lookups for determining the 
+> > > +server name to pass to GSSAPI if the name passed at mount point is not an IP 
+> > > +address. Currently off by default for compatibility reasons.
+> > > +.TP
+> > > +.B -Z
+> > > +This is the inverse of 
+> > > +.B -z
+> > > +and forces the use of DNS Reverse resolution of the server's IP address to
+> > > +retrieve the server name to use in GSAPI authentication.
+> > 
+> > By the way I think with the "new" upcall, gssd ignores whatever it got
+> > out of the info file if the "target=" parameter is provided in the
+> > upcall.
 > 
-> I agree that a server should normally be doing the wait on its own if
-> the wait would be on the order of an rpc round trip.
+> Correct.
 > 
-> So I'd be inclined to start with a delay that was an order of magnitude
-> or two more than a round trip.
+> > (But looking at the code I think that's only used in the nfsv4.0
+> > callback case, and isn't worth mentioning here.)
 > 
-> And I'd expect NFS isn't common on networks with 1-second latencies.
-> 
-> So the 1/10 second we're using in the synchronous case sounds closer to
-> the right ballpark to me.
+> Wrong. It is also used for NFSv4 and NFSv4.1 state management.
+> IOW: SETCLIENTID/RENEW and for NFSv4.1 EXCHANGE_ID/SEQUENCE; anything
+> that uses clp->cl_machine_cred.
 
-The RPC layer already keeps RPC round trip statistics, so the client doesn't have to guess with a "one size fits all" number.
+I was talk about "target=", but I believe you're talking about
+"service=".
 
-I'm all for keeping client recovery time short.  But after following this argument, I think 10xRTT is crazy short.  Aggressive retransmits can lead to data corruption, and RTT on a fast server is going to be on the order of a millisecond.  And what about RDMA, where RTT is about 20usecs? 
+The former is a server name (myserver.example.com), the latter a service
+name (nfs).
 
-A better answer might be to start at one second then exponentially back off to the minimum of 0.25x the lease time and 0.25x the RPC retransmit time out.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+--b.
