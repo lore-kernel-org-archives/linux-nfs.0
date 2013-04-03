@@ -1,65 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:63496 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:27013 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932638Ab3DBVqT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Apr 2013 17:46:19 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 16/19] NFSv4.2: Only allocate labels on v4.2 mounts
-Date: Tue,  2 Apr 2013 17:45:57 -0400
-Message-Id: <1364939160-20874-17-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
-References: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
+	id S1761774Ab3DCXdc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Apr 2013 19:33:32 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 2/4] NFSv4: Fix nfs_server_return_all_delegations
+Date: Wed,  3 Apr 2013 19:33:25 -0400
+Message-Id: <1365032007-59876-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1365032007-59876-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1365032007-59876-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Steve Dickson <steved@redhat.com>
+If the state manager thread is already running, we may end up
+racing with it in nfs_client_return_marked_delegations. Better to
+just allow the state manager thread to do the job.
 
-Before allocating a label or security initialization
-make sure the v4 minor version is at least 2.
-
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/inode.c    | 4 ++++
- fs/nfs/nfs4proc.c | 4 ++++
- 2 files changed, 8 insertions(+)
+ fs/nfs/delegation.c | 24 +++++++++++++++++-------
+ 1 file changed, 17 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 91920fc..cc1c85d 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -287,6 +287,10 @@ void nfs_setsecurity(struct inode *inode, struct nfs_fattr *fattr,
- struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags)
- {
- 	struct nfs4_label *label = NULL;
-+	int minor_version = server->nfs_client->cl_minorversion;
-+
-+	if (minor_version < 2)
-+		return label;
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index a377ea36..213f1bb 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -502,6 +502,18 @@ static void nfs_mark_return_delegation(struct nfs_server *server,
+ 	set_bit(NFS4CLNT_DELEGRETURN, &server->nfs_client->cl_state);
+ }
  
- 	if (!(server->caps & NFS_CAP_SECURITY_LABEL))
- 		return label;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index b7eae1e..3e18d39 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -94,6 +94,10 @@ nfs4_label_init_security(struct inode *dir, struct dentry *dentry,
- 	struct iattr *sattr, struct nfs4_label *l)
- {
- 	int err;
-+	int minor_version = NFS_SERVER(dir)->nfs_client->cl_minorversion;
++static bool nfs_server_mark_return_all_delegations(struct nfs_server *server)
++{
++	struct nfs_delegation *delegation;
++	bool ret = false;
 +
-+	if (minor_version < 2)
-+		return NULL;
++	list_for_each_entry_rcu(delegation, &server->delegations, super_list) {
++		nfs_mark_return_delegation(server, delegation);
++		ret = true;
++	}
++	return ret;
++}
++
+ /**
+  * nfs_super_return_all_delegations - return delegations for one superblock
+  * @sb: sb to process
+@@ -510,21 +522,19 @@ static void nfs_mark_return_delegation(struct nfs_server *server,
+ void nfs_server_return_all_delegations(struct nfs_server *server)
+ {
+ 	struct nfs_client *clp = server->nfs_client;
+-	struct nfs_delegation *delegation;
++	bool need_wait;
  
- 	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
- 		err = security_dentry_init_security(dentry, sattr->ia_mode,
+ 	if (clp == NULL)
+ 		return;
+ 
+ 	rcu_read_lock();
+-	list_for_each_entry_rcu(delegation, &server->delegations, super_list) {
+-		spin_lock(&delegation->lock);
+-		set_bit(NFS_DELEGATION_RETURN, &delegation->flags);
+-		spin_unlock(&delegation->lock);
+-	}
++	need_wait = nfs_server_mark_return_all_delegations(server);
+ 	rcu_read_unlock();
+ 
+-	if (nfs_client_return_marked_delegations(clp) != 0)
++	if (need_wait) {
+ 		nfs4_schedule_state_manager(clp);
++		nfs4_wait_clnt_recover(clp);
++	}
+ }
+ 
+ static void nfs_mark_return_all_delegation_types(struct nfs_server *server,
 -- 
 1.8.1.4
 
