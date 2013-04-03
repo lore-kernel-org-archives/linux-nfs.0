@@ -1,171 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:49199 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:27013 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757408Ab3D2M7E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Apr 2013 08:59:04 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 02/17] NFSv4.2: Added NFS v4.2 support to the NFS client
-Date: Mon, 29 Apr 2013 08:57:04 -0400
-Message-Id: <1367240239-19326-3-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
-References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
+	id S1761880Ab3DCXdc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Apr 2013 19:33:32 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 3/4] NFSv4: Clean up nfs_expire_all_delegations
+Date: Wed,  3 Apr 2013 19:33:26 -0400
+Message-Id: <1365032007-59876-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1365032007-59876-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1365032007-59876-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1365032007-59876-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Steve Dickson <steved@redhat.com>
-
-This enable NFSv4.2 support. To enable this code the
-CONFIG_NFS_V4_2 Kconfig define needs to be set and
-the -o v4.2 mount option need to be used.
-
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/Kconfig       |  9 +++++++++
- fs/nfs/callback.c    |  1 +
- fs/nfs/nfs4client.c  |  5 +++++
- fs/nfs/nfs4proc.c    | 15 +++++++++++++++
- fs/nfs/super.c       |  7 ++++++-
- include/linux/nfs4.h |  4 ++++
- 6 files changed, 40 insertions(+), 1 deletion(-)
+ fs/nfs/delegation.c | 43 +++++++++++++++++++++++++++----------------
+ 1 file changed, 27 insertions(+), 16 deletions(-)
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 13ca196..79c500e 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -104,6 +104,15 @@ config NFS_V4_1
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 213f1bb..60e2e6e 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -514,6 +514,33 @@ static bool nfs_server_mark_return_all_delegations(struct nfs_server *server)
+ 	return ret;
+ }
  
- 	  If unsure, say N.
- 
-+config NFS_V4_2
-+	bool "NFS client support for NFSv4.2"
-+	depends on NFS_V4_1
-+	help
-+	  This option enables support for minor version 1 of the NFSv4 protocol
-+	  in the kernel's NFS client.
++static void nfs_client_mark_return_all_delegations(struct nfs_client *clp)
++{
++	struct nfs_server *server;
 +
-+	  If unsure, say N.
++	rcu_read_lock();
++	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link)
++		nfs_server_mark_return_all_delegations(server);
++	rcu_read_unlock();
++}
 +
- config PNFS_FILE_LAYOUT
- 	tristate
- 	depends on NFS_V4_1
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 5088b57..cb35747 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -279,6 +279,7 @@ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct n
- 			ret = nfs4_callback_up_net(serv, net);
- 			break;
- 		case 1:
-+		case 2:
- 			ret = nfs41_callback_up_net(serv, net);
- 			break;
- 		default:
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 66b6664..a30c6a7 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -66,6 +66,11 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
- 	if (err)
- 		goto error;
- 
-+	if (cl_init->minorversion > NFS4_MAX_MINOR_VERSION) {
-+		err = -EINVAL;
-+		goto error;
-+	}
-+		
- 	spin_lock_init(&clp->cl_lock);
- 	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
- 	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 0ad025e..3fd1040 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6746,11 +6746,26 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
- };
- #endif
- 
-+#if defined(CONFIG_NFS_V4_2)
-+static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
-+	.minor_version = 2,
-+	.call_sync = nfs4_call_sync_sequence,
-+	.match_stateid = nfs41_match_stateid,
-+	.find_root_sec = nfs41_find_root_sec,
-+	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
-+	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
-+	.state_renewal_ops = &nfs41_state_renewal_ops,
-+};
-+#endif
++static void nfs_delegation_run_state_manager(struct nfs_client *clp)
++{
++	if (test_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state))
++		nfs4_schedule_state_manager(clp);
++}
 +
- const struct nfs4_minor_version_ops *nfs_v4_minor_ops[] = {
- 	[0] = &nfs_v4_0_minor_ops,
- #if defined(CONFIG_NFS_V4_1)
- 	[1] = &nfs_v4_1_minor_ops,
- #endif
-+#if defined(CONFIG_NFS_V4_2)
-+	[2] = &nfs_v4_2_minor_ops,
-+#endif
- };
++/**
++ * nfs_expire_all_delegations
++ * @clp: client to process
++ *
++ */
++void nfs_expire_all_delegations(struct nfs_client *clp)
++{
++	nfs_client_mark_return_all_delegations(clp);
++	nfs_delegation_run_state_manager(clp);
++}
++
+ /**
+  * nfs_super_return_all_delegations - return delegations for one superblock
+  * @sb: sb to process
+@@ -561,12 +588,6 @@ static void nfs_client_mark_return_all_delegation_types(struct nfs_client *clp,
+ 	rcu_read_unlock();
+ }
  
- const struct inode_operations nfs4_dir_inode_operations = {
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 2f8a29d..29f2d86 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -269,7 +269,7 @@ static match_table_t nfs_local_lock_tokens = {
+-static void nfs_delegation_run_state_manager(struct nfs_client *clp)
+-{
+-	if (test_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state))
+-		nfs4_schedule_state_manager(clp);
+-}
+-
+ void nfs_remove_bad_delegation(struct inode *inode)
+ {
+ 	struct nfs_delegation *delegation;
+@@ -591,16 +612,6 @@ void nfs_expire_all_delegation_types(struct nfs_client *clp, fmode_t flags)
+ 	nfs_delegation_run_state_manager(clp);
+ }
  
- enum {
- 	Opt_vers_2, Opt_vers_3, Opt_vers_4, Opt_vers_4_0,
--	Opt_vers_4_1,
-+	Opt_vers_4_1, Opt_vers_4_2,
- 
- 	Opt_vers_err
- };
-@@ -280,6 +280,7 @@ static match_table_t nfs_vers_tokens = {
- 	{ Opt_vers_4, "4" },
- 	{ Opt_vers_4_0, "4.0" },
- 	{ Opt_vers_4_1, "4.1" },
-+	{ Opt_vers_4_2, "4.2" },
- 
- 	{ Opt_vers_err, NULL }
- };
-@@ -1097,6 +1098,10 @@ static int nfs_parse_version_string(char *string,
- 		mnt->version = 4;
- 		mnt->minorversion = 1;
- 		break;
-+	case Opt_vers_4_2:
-+		mnt->version = 4;
-+		mnt->minorversion = 2;
-+		break;
- 	default:
- 		return 0;
- 	}
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 377fb3f..7e18a66 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -398,11 +398,15 @@ enum lock_type4 {
- #define NFS4_VERSION 4
- #define NFS4_MINOR_VERSION 0
- 
-+#if defined(CONFIG_NFS_V4_2)
-+#define NFS4_MAX_MINOR_VERSION 2
-+#else
- #if defined(CONFIG_NFS_V4_1)
- #define NFS4_MAX_MINOR_VERSION 1
- #else
- #define NFS4_MAX_MINOR_VERSION 0
- #endif /* CONFIG_NFS_V4_1 */
-+#endif /* CONFIG_NFS_V4_2 */
- 
- #define NFS4_DEBUG 1
- 
+-/**
+- * nfs_expire_all_delegations
+- * @clp: client to process
+- *
+- */
+-void nfs_expire_all_delegations(struct nfs_client *clp)
+-{
+-	nfs_expire_all_delegation_types(clp, FMODE_READ|FMODE_WRITE);
+-}
+-
+ static void nfs_mark_return_unreferenced_delegations(struct nfs_server *server)
+ {
+ 	struct nfs_delegation *delegation;
 -- 
 1.8.1.4
 
