@@ -1,59 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35003 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:27013 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759808Ab3D2SlF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Apr 2013 14:41:05 -0400
-Date: Mon, 29 Apr 2013 14:41:04 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFSv4: Servers should only check SETATTR stateid
- open mode on size change
-Message-ID: <20130429184103.GO17268@fieldses.org>
-References: <1367248534-33387-1-git-send-email-Trond.Myklebust@netapp.com>
- <1367259352.19515.16.camel@leira.trondhjem.org>
- <20130429182145.GL17268@fieldses.org>
- <1367260027.19515.25.camel@leira.trondhjem.org>
- <20130429182939.GN17268@fieldses.org>
- <1367260382.19515.29.camel@leira.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1367260382.19515.29.camel@leira.trondhjem.org>
+	id S1761971Ab3DCXdd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Apr 2013 19:33:33 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 4/4] NFSv4: Fix CB_RECALL_ANY to only return delegations that are not in use
+Date: Wed,  3 Apr 2013 19:33:27 -0400
+Message-Id: <1365032007-59876-4-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1365032007-59876-3-git-send-email-Trond.Myklebust@netapp.com>
+References: <1365032007-59876-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1365032007-59876-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1365032007-59876-3-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 29, 2013 at 06:33:02PM +0000, Myklebust, Trond wrote:
-> On Mon, 2013-04-29 at 14:29 -0400, J. Bruce Fields wrote:
-> > On Mon, Apr 29, 2013 at 06:27:07PM +0000, Myklebust, Trond wrote:
-> > > On Mon, 2013-04-29 at 14:21 -0400, J. Bruce Fields wrote:
-> > > > On Mon, Apr 29, 2013 at 06:15:52PM +0000, Myklebust, Trond wrote:
-> > > > > On Mon, 2013-04-29 at 11:15 -0400, Trond Myklebust wrote:
-> > > > > > The NFSv4 and NFSv4.1 specs are both clear that the server should only check
-> > > > > > stateid open mode if a SETATTR specifies the size attribute. If the
-> > > > > > open mode is not one that allows writing, then it returns NFS4ERR_OPENMODE.
-> > > > > > 
-> > > > > > In the case where the SETATTR is not changing the size, the client will
-> > > > > > still pass it the delegation stateid to ensure that the server does not
-> > > > > > recall that delegation. In that case, the server should _ignore_ the
-> > > > > > delegation open mode, and simply apply standard permission checks.
-> > > > > 
-> > > > > Bruce, what does the Linux server do when we send it a delegation
-> > > > > stateid as part of a SETATTR that just changes the mode or acl (no size
-> > > > > change)? Will it recall the delegation? How about the delegations held
-> > > > > by other clients?
-> > > > 
-> > > > Yes, it breaks all delegations on any setattr.
-> > > 
-> > > Do you plan to change that?
-> > 
-> > I'd take patches.
-> 
-> Have the NFSv4 delegation patches been merged yet, and do they hand out
-> delegations on file creation?
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/callback_proc.c |  2 +-
+ fs/nfs/delegation.c    | 14 +++++++-------
+ fs/nfs/delegation.h    |  2 +-
+ 3 files changed, 9 insertions(+), 9 deletions(-)
 
-The vfs support patches haven't been merged, but nfsd still continues to
-give out read delegations on any confirmed read-open of a file that
-hasn't had a recent delegation conflict.  (They're just not consistent
-w.r.t local metadata operations....)
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 2960512..a13d26e 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -500,7 +500,7 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
+ 		     &args->craa_type_mask))
+ 		pnfs_recall_all_layouts(cps->clp);
+ 	if (flags)
+-		nfs_expire_all_delegation_types(cps->clp, flags);
++		nfs_expire_unused_delegation_types(cps->clp, flags);
+ out:
+ 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
+ 	return status;
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 60e2e6e..f30bd1e 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -564,7 +564,7 @@ void nfs_server_return_all_delegations(struct nfs_server *server)
+ 	}
+ }
+ 
+-static void nfs_mark_return_all_delegation_types(struct nfs_server *server,
++static void nfs_mark_return_unused_delegation_types(struct nfs_server *server,
+ 						 fmode_t flags)
+ {
+ 	struct nfs_delegation *delegation;
+@@ -573,18 +573,18 @@ static void nfs_mark_return_all_delegation_types(struct nfs_server *server,
+ 		if ((delegation->type == (FMODE_READ|FMODE_WRITE)) && !(flags & FMODE_WRITE))
+ 			continue;
+ 		if (delegation->type & flags)
+-			nfs_mark_return_delegation(server, delegation);
++			nfs_mark_return_if_closed_delegation(server, delegation);
+ 	}
+ }
+ 
+-static void nfs_client_mark_return_all_delegation_types(struct nfs_client *clp,
++static void nfs_client_mark_return_unused_delegation_types(struct nfs_client *clp,
+ 							fmode_t flags)
+ {
+ 	struct nfs_server *server;
+ 
+ 	rcu_read_lock();
+ 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link)
+-		nfs_mark_return_all_delegation_types(server, flags);
++		nfs_mark_return_unused_delegation_types(server, flags);
+ 	rcu_read_unlock();
+ }
+ 
+@@ -601,14 +601,14 @@ void nfs_remove_bad_delegation(struct inode *inode)
+ EXPORT_SYMBOL_GPL(nfs_remove_bad_delegation);
+ 
+ /**
+- * nfs_expire_all_delegation_types
++ * nfs_expire_unused_delegation_types
+  * @clp: client to process
+  * @flags: delegation types to expire
+  *
+  */
+-void nfs_expire_all_delegation_types(struct nfs_client *clp, fmode_t flags)
++void nfs_expire_unused_delegation_types(struct nfs_client *clp, fmode_t flags)
+ {
+-	nfs_client_mark_return_all_delegation_types(clp, flags);
++	nfs_client_mark_return_unused_delegation_types(clp, flags);
+ 	nfs_delegation_run_state_manager(clp);
+ }
+ 
+diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
+index 22f0a13..9a79c7a 100644
+--- a/fs/nfs/delegation.h
++++ b/fs/nfs/delegation.h
+@@ -42,7 +42,7 @@ void nfs_inode_return_delegation_noreclaim(struct inode *inode);
+ struct inode *nfs_delegation_find_inode(struct nfs_client *clp, const struct nfs_fh *fhandle);
+ void nfs_server_return_all_delegations(struct nfs_server *);
+ void nfs_expire_all_delegations(struct nfs_client *clp);
+-void nfs_expire_all_delegation_types(struct nfs_client *clp, fmode_t flags);
++void nfs_expire_unused_delegation_types(struct nfs_client *clp, fmode_t flags);
+ void nfs_expire_unreferenced_delegations(struct nfs_client *clp);
+ int nfs_client_return_marked_delegations(struct nfs_client *clp);
+ int nfs_delegations_present(struct nfs_client *clp);
+-- 
+1.8.1.4
 
---b.
