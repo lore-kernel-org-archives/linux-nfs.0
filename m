@@ -1,29 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.194]:65457 "EHLO mout.perfora.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753881Ab3DMPIz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 13 Apr 2013 11:08:55 -0400
-Date: Sat, 13 Apr 2013 11:08:48 -0400
-From: Jim Rees <rees@umich.edu>
-To: Steve Dickson <steved@redhat.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Simo Sorce <simo@redhat.com>
-Subject: Re: [PATCH] Avoid DNS reverse resolution for server names
-Message-ID: <20130413150848.GA780@umich.edu>
-References: <1365862193-21986-1-git-send-email-steved@redhat.com>
- <1365862193-21986-2-git-send-email-steved@redhat.com>
+Received: from mail-vc0-f172.google.com ([209.85.220.172]:57546 "EHLO
+	mail-vc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760675Ab3DDPiC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Apr 2013 11:38:02 -0400
+Received: by mail-vc0-f172.google.com with SMTP id hr11so2441170vcb.31
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Apr 2013 08:38:01 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1365862193-21986-2-git-send-email-steved@redhat.com>
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <20130404151507.GA8484@umich.edu>
+References: <CAGue13pe_ZH_Eto-jL3mLjTNGFK26izTarnZdjs3eL82A2Z37w@mail.gmail.com>
+	<20130404151507.GA8484@umich.edu>
+Date: Thu, 4 Apr 2013 17:38:00 +0200
+Message-ID: <CAGue13o6X5S3ppTX_fmMCTCX=7Mq_57YQEsb_hkOKwN9iOHwEQ@mail.gmail.com>
+Subject: Re: readdir vs. getattr
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: Jim Rees <rees@umich.edu>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I find this very confusing. You've got a global named "avoid_dns", which you
-turn off if you have the "-D" option. And if it's set, you do a dns lookup:
+On Thu, Apr 4, 2013 at 5:15 PM, Jim Rees <rees@umich.edu> wrote:
+> Tigran Mkrtchyan wrote:
+>
+>   we have a directory with 50K (number of )  files in it.
+>   The user does a 'ls' and I can see READDIR4. To
+>   get the complete listing a client need to send ~380 requests.
+>   Now user does yet another 'ls' in the same directory.
+>   The client sends a GETATTR  on directorie's FH
+>   (actually two of GETATTRS - why?!!) and discovers that a
+>   directory didn't change and re-uses existing listing, BUT!!!
+>   for each file in the directory it sends a GETATTR to discover
+>   is  the file's attributes are changed. For 50K files it's a 50K requests.
+>
+> So is this a "ls -l"? Because for "ls" it shouldn't stat all the files.
 
-  +	if (avoid_dns) {
-...
-  +			do_dns_lookup = 1; /* IPv4 */
-
-At the very least I would call it something like "do_ptr_lookup" and invert
-its meaning.
+I believe it's 'ls -l'.  Well, you probably want to say that it's ls
+calling stat on each file. Nevertheless client still should re-use
+cached information.
