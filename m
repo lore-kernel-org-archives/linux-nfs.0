@@ -1,33 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:35743 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1758494Ab3DXWJ6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Apr 2013 18:09:58 -0400
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Wed, 24 Apr 2013 18:09:55 -0400
-From: David Quigley <dpquigl@davequigley.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Steve Dickson <steved@redhat.com>,
-        Trond Myklebust <trond.myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 04/17] Security: Add hook to calculate context based on
- a negative dentry.
-In-Reply-To: <20130424220258.GO20275@fieldses.org>
-References: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
- <1366834683-29075-5-git-send-email-SteveD@redhat.com>
- <20130424220258.GO20275@fieldses.org>
-Message-ID: <6730c521c3317f9b8bf9e9c1d3da87c8@countercultured.net>
+Received: from dgate10.ts.fujitsu.com ([80.70.172.49]:11472 "EHLO
+	dgate10.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1764208Ab3DDR7g (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Apr 2013 13:59:36 -0400
+Message-Id: <d6437a$47g324@dgate10u.abg.fsc.net>
+Date: 04 Apr 2013 19:59:35 +0200
+From: Bodo Stroesser <bstroesser@ts.fujitsu.com>
+To: bfields@fieldses.org
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org, bstroesser@ts.fujitsu.com
+Subject: Re: sunrpc/cache.c: races while updating cache entries
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'll contact Eric Paris about reviewing the patches. I'm sure he would 
-be happy to look them over. Hopefully we can get it done soon.
+T24gMDMgQXByIDIwMTMgMjA6MzY6MDAgKzAxMDAgSi4gQnJ1Y2UgRmllbGRzIDxiZmllbGRz
+QGZpZWxkc2VzLm9yZz4gd3JvdGU6Cj4gT24gVGh1LCBNYXIgMjEsIDIwMTMgYXQgMDU6NDE6
+MzVQTSArMDEwMCwgQm9kbyBTdHJvZXNzZXIgd3JvdGU6Cj4gPiBPbiAyMSBNYXIgMjAxMyAw
+MDozNDowMCArMDEwMCBOZWlsQnJvd24gPG5laWxiQHN1c2UuZGU+IHdyb3RlOgo+ID4gPiBU
+aGlzIGFwcGxpZXMgb25seSB0byBTTEVTMTEtU1AxICgyLjYuMzIrKSByaWdodD8KPiA+ID4g
+SW4gbWFpbmxpbmUgdGhlIHJlcXVlc3Qgd29uJ3QgYmUgZHJvcHBlZCBiZWNhdXNlIHRoZSBj
+YWNoZSBpdGVtIGlzbid0IGFzc3VtZWQKPiA+ID4gdG8gc3RpbGwgYmUgdmFsaWQuCj4gPgo+
+ID4gSSBhZ3JlZSwgdGhlcmUgd2lsbCBiZSBubyBkcm9wIGluIG1haW5saW5lLgo+ID4KPiA+
+IEJ1dCBpbiBtYWlubGluZSB0aGVyZSB3aWxsIGJlIGEgdXNlbGVzcyB1cGNhbGwuIFRoYXQg
+dXBjYWxsIG1pZ2h0IGV2ZW4gYmUKPiA+IHByb2Nlc3NlZCBieSB0aGUgcmVhZGVyLCBpZiBj
+YWNoZV9jbGVhbiBpc24ndCBmYXN0ZXIgdGhlbiB0aGUgcmVhZGVyLgo+ID4gVGhlIGFuc3dl
+ciBmcm9tIHRoZSByZWFkZXIgd2lsbCBhZ2FpbiByZXBsYWNlIHRoZSBjdXJyZW50IGNhY2hl
+IGVudHJ5Cj4gPiAod2hpY2ggaXMganVzdCBhIGZldyBtaWNyb3NlY29uZHMgb2xkKSBieSBh
+IG5ldyBvbmUuIFRoZSBuZXcgb25lIG11c3QgYmUKPiA+IGFsbG9jYXRlZCwgdGhlIHJlcGxh
+Y2VkIG9uZSBtdXN0IGxhdGVyIGJlIGNsZWFuZWQuIFRoZSBzaW5nbGUgaXRlbSBjYWNoZQo+
+ID4gaXMgaW52YWxpZGF0ZWQgYWdhaW4uCj4gPgo+ID4gSW4gd29yc3QgY2FzZSwgdGhlIHVu
+bmVjZXNzYXJ5IHJlcGxhY2VtZW50IGFsc28gY291bGQgdHJpZ2dlciB0aGUgbmV4dAo+ID4g
+cm91bmQgb2YgdGhlIGdhbWUgLi4uCj4gPgo+ID4gU28gaW4gbXkgb3BpbmlvbiBpdCB3b3Vs
+ZCBiZSBiZXR0ZXIgdG8gYWRkIHRoZSBwYXRjaCB5b3Ugc3VnZ2VzdGVkIGJlbG93Cj4gPiB0
+byBtYWlubGluZSBhbHNvLgo+ID4KPiA+ID4KPiA+ID4gU28gd2UgbmVlZCB0byBtYWtlIHN1
+cmUgdGhhdCBzdW5ycGNfY2FjaGVfcGlwZV91cGNhbGwgZG9lc24ndCBtYWtlIGFuIHVwY2Fs
+bAo+ID4gPiBvbiBhIGNhY2hlIGl0ZW0gdGhhdCBoYXMgYmVlbiByZXBsYWNlZC4gIEknZCBy
+YXRoZXIgbm90IHVzZSB0aGUgQ0FDSEVfQ0xFQU4KPiA+ID4gYml0ICh3aGV0aGVyIHJlbmFt
+ZWQgb3Igbm90KSBhcyBpdCBoYXMgYSB3ZWxsIGRlZmluZWQgbWVhbmluZyAiaGFzIGJlZW4K
+PiA+ID4gcmVtb3ZlZCBmcm9tIGNhY2hlIiBhbmQgSSdkIHJhdGhlciBub3QgYmx1ciB0aGF0
+IG1lYW5pbmcuCj4gPiA+IFdlIGFscmVhZHkgaGF2ZSBhIHN0YXRlIHRoYXQgbWVhbnMgInRo
+aXMgaGFzIGJlZW4gcmVwbGFjZSItIC0+ZXhwaXJ5X3RpbWUgaXMKPiA+ID4gMC4KPiA+ID4g
+U28gaG93IGFib3V0IGFkZGluZwo+ID4gPiAgICBpZiAoaC0+ZXhwaXJ5X3RpbWUgPT0gMCkK
+PiA+ID4gICAgICAgICAgcmV0dXJuIC1FQUdBSU47Cj4gPiA+IHRvIHN1bnJwY19jYWNoZV9w
+aXBlX3VwY2FsbCgpIGluIFNMRVMxMS1TUDEuCj4gPiA+Cj4gPiA+IERvZXMgdGhhdCB3b3Jr
+IGZvciB5b3U/Cj4gPgo+ID4gWWVzLCB0aGF0IGxvb2tzIGdvb2QuIE15IHRlc3Qgd2l0aCB0
+aGlzIGZpeCBpcyBydW5uaW5nIHN1Y2Nlc3NmdWxseQo+ID4gc2luY2UgNSBob3Vycy4gSSds
+bCBsZXQgaXQgcnVuIHVudGlsIE1vbmRheS4KPgo+IEFwb2xvZ2llcywgSSd2ZSBjb21wbGV0
+ZWx5IGxvc3QgdHJhY2sgb2YgdGhpcyB0aHJlYWQ6IGRvIHdlIGtub3cgd2hhdAo+IG1haW5s
+aW5lIG5lZWRzIG5vdz8KPgo+IC0tYi4KPgoKVGhlcmUgaXMgbm8gcmVhc29uIGZvciBhcG9s
+b2dpZXMuIFRoZSB0aHJlYWQgbWVhbndoaWxlIHNlZW1zIHRvIGJlIGEgYml0CmNvbmZ1c2lu
+ZyA6LSkKCkN1cnJlbnQgc3RhdGUgaXM6CgotIE5laWwgQnJvd24gaGFzIGNyZWF0ZWQgdHdv
+IHNlcmllcyBvZiBwYXRjaGVzLiBPbmUgZm9yIFNMRVMxMS1TUDEgYW5kIGEKICBzZWNvbmQg
+b25lIGZvciAtU1AyCgotIEFGQUlDUywgdGhlIHNlcmllcyBmb3IgLVNQMiB3aWxsIG1hdGNo
+IHdpdGggbWFpbmxpbmUgYWxzby4KCi0gVG9kYXkgSSBmb3VuZCBhbmQgZml4ZWQgdGhlICho
+b3BlZnVsbHkpIGxhc3QgcHJvYmxlbSBpbiB0aGUgLVNQMSBzZXJpZXMuCiAgTXkgdGVzdCB1
+c2luZyB0aGlzIHBhdGNoc2V0IHdpbGwgcnVuIHVudGlsIE1vbmRheS4KCi0gUHJvdmlkZWQg
+dGhlIHRlc3Qgb24gU1AxIHN1Y2NlZWRzLCBwcm9iYWJseSBvbiBUdWVzZGF5IEknbGwgc3Rh
+cnQgdG8gdGVzdAogIHRoZSBwYXRjaGVzIGZvciBTUDIgKGFuZCBtYWlubGluZSkuIElmIGl0
+IHJ1bnMgZmluZSwgd2UnbGwgaGF2ZSBhIHRlc3RlZAogIHBhdGNoc2V0IG5vdCBsYXRlciB0
+aGFuIE1vbiAxNXRoLgoKQm9kbwo=
 
-Dave
+
