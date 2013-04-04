@@ -1,110 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:28606 "EHLO relay.sw.ru"
+Received: from mout.perfora.net ([74.208.4.195]:60793 "EHLO mout.perfora.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753823Ab3DPLQ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Apr 2013 07:16:29 -0400
-Subject: [PATCH] nfsd: enable UMH client tracker in container
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, jlayton@redhat.com
-Date: Tue, 16 Apr 2013 15:17:44 +0400
-Message-ID: <20130416111344.14621.56912.stgit@localhost.localdomain>
+	id S1762332Ab3DDPPM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Apr 2013 11:15:12 -0400
+Date: Thu, 4 Apr 2013 11:15:07 -0400
+From: Jim Rees <rees@umich.edu>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: readdir vs. getattr
+Message-ID: <20130404151507.GA8484@umich.edu>
+References: <CAGue13pe_ZH_Eto-jL3mLjTNGFK26izTarnZdjs3eL82A2Z37w@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAGue13pe_ZH_Eto-jL3mLjTNGFK26izTarnZdjs3eL82A2Z37w@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch adds support for UserModeHelper tracker in a container.
-The reason for this is that the only containerised tracker ("nfsdcld") is
-going to be removed in 3.10 kernel, thus at least one more tracker have to be
-containerised to replace the deprecated one.
-UMH tracker looks more preferable comparing to legacy since it's the latest
-one.
-To make UMH tracker work in a container, we have to make sure, that it
-executes right binary (i.e., this binary have to be taken from the container
-environment).
-But, UMH is a kernel thread, which works in global root environment by design
-(kernel thread's root is inherited from kthreadd, which in turn inherited it's
-root from global init). So, the root have to be swapped to the container's
-one before binary execution.
+Tigran Mkrtchyan wrote:
 
-This patch passes "init" callback and private "data" to UMH interface, which
-are used to swap root for spawned kernel thread.
+  we have a directory with 50K (number of )  files in it.
+  The user does a 'ls' and I can see READDIR4. To
+  get the complete listing a client need to send ~380 requests.
+  Now user does yet another 'ls' in the same directory.
+  The client sends a GETATTR  on directorie's FH
+  (actually two of GETATTRS - why?!!) and discovers that a
+  directory didn't change and re-uses existing listing, BUT!!!
+  for each file in the directory it sends a GETATTR to discover
+  is  the file's attributes are changed. For 50K files it's a 50K requests.
 
-Note: container's root can be stored on stack, because UMH calls are
-synchronous.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/nfs4recover.c |   29 ++++++++++++++++++++++-------
- 1 files changed, 22 insertions(+), 7 deletions(-)
-
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 899ca26..15f8de6 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -38,6 +38,7 @@
- #include <linux/crypto.h>
- #include <linux/sched.h>
- #include <linux/fs.h>
-+#include <linux/fs_struct.h>
- #include <linux/module.h>
- #include <net/net_namespace.h>
- #include <linux/sunrpc/rpc_pipe_fs.h>
-@@ -1122,12 +1123,28 @@ nfsd4_cltrack_legacy_recdir(const struct xdr_netobj *name)
- 	return result;
- }
- 
-+static int nfsd_swap_root(struct subprocess_info *info, struct cred *new)
-+{
-+	struct path *root = info->data;
-+	struct fs_struct *fs = current->fs;
-+	struct path current_root;
-+
-+	spin_lock(&fs->lock);
-+	current_root = fs->root;
-+	fs->root = *root;
-+	spin_unlock(&fs->lock);
-+	if (current_root.dentry)
-+		path_put(&current_root);
-+	return 0;
-+}
-+
- static int
- nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
- {
- 	char *envp[2];
- 	char *argv[4];
- 	int ret;
-+	struct path root;
- 
- 	if (unlikely(!cltrack_prog[0])) {
- 		dprintk("%s: cltrack_prog is disabled\n", __func__);
-@@ -1146,7 +1163,11 @@ nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
- 	argv[2] = arg;
- 	argv[3] = NULL;
- 
--	ret = call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
-+	get_fs_root(current->fs, &root);
-+
-+	ret = call_usermodehelper_fns(argv[0], argv, envp, UMH_WAIT_PROC,
-+				       nfsd_swap_root, NULL, &root);
-+
- 	/*
- 	 * Disable the upcall mechanism if we're getting an ENOENT or EACCES
- 	 * error. The admin can re-enable it on the fly by using sysfs
-@@ -1185,12 +1206,6 @@ bin_to_hex_dup(const unsigned char *src, int srclen)
- static int
- nfsd4_umh_cltrack_init(struct net __attribute__((unused)) *net)
- {
--	/* XXX: The usermode helper s not working in container yet. */
--	if (net != &init_net) {
--		WARN(1, KERN_ERR "NFSD: attempt to initialize umh client "
--			"tracking in a container!\n");
--		return -EINVAL;
--	}
- 	return nfsd4_umh_cltrack_upcall("init", NULL, NULL);
- }
- 
-
+So is this a "ls -l"? Because for "ls" it shouldn't stat all the files.
