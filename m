@@ -1,80 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:5643 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758934Ab3DBQ0T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Apr 2013 12:26:19 -0400
-Subject: Re: [PATCH] Avoid PTR lookups when possible
-From: Simo Sorce <simo@redhat.com>
+Received: from mail-ve0-f172.google.com ([209.85.128.172]:46629 "EHLO
+	mail-ve0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1764497Ab3DDS2q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Apr 2013 14:28:46 -0400
+Received: by mail-ve0-f172.google.com with SMTP id oz10so2904947veb.17
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Apr 2013 11:28:45 -0700 (PDT)
+MIME-Version: 1.0
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <20130404163525.GA8953@umich.edu>
+References: <CAGue13pe_ZH_Eto-jL3mLjTNGFK26izTarnZdjs3eL82A2Z37w@mail.gmail.com>
+	<20130404151507.GA8484@umich.edu>
+	<05CFAB4A-8329-4657-B250-1A36105086AA@oracle.com>
+	<20130404160142.GA8739@umich.edu>
+	<1365092115.10726.25.camel@leira.trondhjem.org>
+	<20130404163525.GA8953@umich.edu>
+Date: Thu, 4 Apr 2013 20:28:45 +0200
+Message-ID: <CAGue13pQ_QbwHoPpLv5zRoESNoVf_tRb7cfptLdytjk7mzAJmw@mail.gmail.com>
+Subject: Re: readdir vs. getattr
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 To: Jim Rees <rees@umich.edu>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>, Steve Dickson <steved@redhat.com>,
-        Jeffrey Layton <jlayton@redhat.com>
-In-Reply-To: <20130402150049.GA526@umich.edu>
-References: <1364910351.2660.1243.camel@willson.li.ssimo.org>
-	 <20130402150049.GA526@umich.edu>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 02 Apr 2013 12:26:15 -0400
-Message-ID: <1364919975.2660.1255.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-04-02 at 11:00 -0400, Jim Rees wrote:
-> Simo Sorce wrote:
-> 
->   The attached patch adds a new command line switch to rpc.gssd to avoid
->   PTR resolution when possible.
->   
->   The current code *depends* on PTR resolution for GSSAPI authentication
->   and this is *bad*.
->   It imposes an annoying, and unnecessary, constraint on the correctness
->   of DNS resolution, which prevents mounts from working in networks where
->   the PTR record cannot be easily controlled (for example networks where
->   the forward name is reasonable while the PTR is set to some artificial
->   name based on the IP address or so that is not the canonical name or
->   where no PTR exist at all).
->   
->   Depending on PTR resolution for GSSAPI is also very bad practice because
->   it opens up DNS spoofing attacks where an attacker can try to redirect a
->   user to the wrong server fooling mutual authentication, and induce a
->   user to trust improper data or disclose (by copying on the impostor
->   server) data that should be confidential.
-> 
-> What happens if it's a partially qualified domain name?
+Ok, by tweaking the values of acregmin and acregmax I got the expected
+behaviour.
 
-you use the "-N off" switch and rely on reverse resolution I guess.
-(about to send patch that fixes -N as Jeff asked).
+What about this double GETATTR on directory itself?
 
-> Wouldn't it be better to use something like inet_pton?
+Tigran.
 
-I'll look.
-
-> I agree that insisting on correct PTR records is a bad idea, but I don't
-> understand your threat model. It shouldn't be possible for an attacker to do
-> anything bad by redirecting the client to a spoof server. If it is possible,
-> we've got bigger problems. How do you think that would work exactly?
-
-It's a MITM setting.
-
-Suppose you have 2 servers:
-
-secure.server.name where you store confidential documents
-public.server.name where everyone have access for reading (and you can
-write)
-
-If you mount -t nfs secure.server.name/export and rely on PTR records
-and an attacker can spoof your PTR request to return public.server.name
-you will end up acquiring a ticket for public.server.name from the KDC.
-Then the attacker will redirect your mount to public.server.name all the
-while you think you have mounted secure.server.name
-
-Now anything you copy there goes to a public server instead of your
-secure server.
-
-Now imagine your secure server is a backup server which gets mounted by
-a cron job every night for backups of sensitive information.
-
-Simo.
-
--- 
-Simo Sorce * Red Hat, Inc * New York
-
+On Thu, Apr 4, 2013 at 6:35 PM, Jim Rees <rees@umich.edu> wrote:
+> Myklebust, Trond wrote:
+>
+>   On Thu, 2013-04-04 at 12:01 -0400, Jim Rees wrote:
+>   > Chuck Lever wrote:
+>   >
+>   >   > So is this a "ls -l"? Because for "ls" it shouldn't stat all the files.
+>   >
+>   >   Default these days is ls --color
+>   >
+>   > No it's not, at least not on linux. From the man page:
+>   >
+>   > "Using color to distinguish file types is disabled both by default and with
+>   > --color=never."
+>
+>   Yes, but a number of Linux distros override that in /etc/profile. For
+>   instance all Red Hat/Fedora distros have aliases for ls that map them to
+>   'ls --color=auto'
+>
+> I was actually just trying to figure out whether the application (ls) was
+> doing all those file stats, or whether readdir was somehow doing them by
+> mistake. Sounds like it's the application.
