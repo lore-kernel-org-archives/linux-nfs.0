@@ -1,94 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:15435 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761033Ab3DBRD2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Apr 2013 13:03:28 -0400
-Subject: Re: [PATCH] Avoid PTR lookups when possible
-From: Simo Sorce <simo@redhat.com>
-To: Jim Rees <rees@umich.edu>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>, Steve Dickson <steved@redhat.com>,
-        Jeffrey Layton <jlayton@redhat.com>
-In-Reply-To: <20130402164631.GA23840@umich.edu>
-References: <1364910351.2660.1243.camel@willson.li.ssimo.org>
-	 <20130402150049.GA526@umich.edu>
-	 <1364919975.2660.1255.camel@willson.li.ssimo.org>
-	 <20130402164631.GA23840@umich.edu>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 02 Apr 2013 13:03:23 -0400
-Message-ID: <1364922203.2660.1265.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+Received: from mail-vb0-f41.google.com ([209.85.212.41]:41127 "EHLO
+	mail-vb0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1762198Ab3DDOrP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Apr 2013 10:47:15 -0400
+Received: by mail-vb0-f41.google.com with SMTP id f13so1385528vbg.0
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Apr 2013 07:47:14 -0700 (PDT)
+MIME-Version: 1.0
+Reply-To: tigran.mkrtchyan@desy.de
+Date: Thu, 4 Apr 2013 16:47:14 +0200
+Message-ID: <CAGue13pe_ZH_Eto-jL3mLjTNGFK26izTarnZdjs3eL82A2Z37w@mail.gmail.com>
+Subject: readdir vs. getattr
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-04-02 at 12:46 -0400, Jim Rees wrote:
-> Simo Sorce wrote:
-> 
->   It's a MITM setting.
->   
->   Suppose you have 2 servers:
->   
->   secure.server.name where you store confidential documents
->   public.server.name where everyone have access for reading (and you can
->   write)
->   
->   If you mount -t nfs secure.server.name/export and rely on PTR records
->   and an attacker can spoof your PTR request to return public.server.name
->   you will end up acquiring a ticket for public.server.name from the KDC.
->   Then the attacker will redirect your mount to public.server.name all the
->   while you think you have mounted secure.server.name
->   
->   Now anything you copy there goes to a public server instead of your
->   secure server.
->   
->   Now imagine your secure server is a backup server which gets mounted by
->   a cron job every night for backups of sensitive information.
-> 
-> I guess what you're saying is that the client might not know the full name
-> of the secure server, and could be tricked into thinking it's
-> public.server.name. That's not what I'd call mitm; kerberos is pretty much
-> immune to mitm. It's not really a dns mitm either, it's a spoofed reply.
+Hi,
 
-No this is not what I am saying.
-The client uses the fully qualified name at the mount command but due to
-the use of a PTR lookup it is fooled into acquiring a ticket for the
-wrong server which will then happily allow you to connect.
+here is the story:
 
-Currently:
-The mount command tells the kernel both the server name
-'secure.server.name' and it's IP address 1.2.3.4 however rpc.gssd
-currently completely ignored the server name passed in by the mount
-command (see the 'dummy' variable) and instead uses the ip address to do
-a reverse lookup.
+we have a directory with 50K (number of )  files in it.
+The user does a 'ls' and I can see READDIR4. To
+get the complete listing a client need to send ~380 requests.
+Now user does yet another 'ls' in the same directory.
+The client sends a GETATTR  on directorie's FH
+(actually two of GETATTRS - why?!!) and discovers that a
+directory didn't change and re-uses existing listing, BUT!!!
+for each file in the directory it sends a GETATTR to discover
+is  the file's attributes are changed. For 50K files it's a 50K requests.
 
-PTR lookup of 1.2.3.4 --- MITM ---> public.server.com
+I believe there is a way to make client smart and in some
+situations prefer READDIR over GETATTR.
 
-Then it uses the retrieved name (public..) to construct the GSSAPI name
-it wants to connect to, the result is that the name
-nfs@public.server.name is constructed instead of the requested
-nfs@secure.server.com that should be requested.
-
-So the client does ask for the right server but can be easily tricked
-into connecting to another one.
-
-Kerberos itself *is* correctly identifying the server, it's rpc.gssd
-that opened it'sself to being fooled before involving Kerberos.
-
-> I would be in favor of requiring kerberized nfs clients to know the full
-> name of the server they're trying to connect to.
-
-Yes, this would be my preference too.
-
->  Kerberized nfs clients
-> should not be relying on dns for any part of their security. But I guess we
-> haven't been doing that, and to make that a requirement now would be a
-> compatibility problem.
-
-Yes which is why I am adding a switch, I strongly suggest distribution
-to use -N on in newer releases and allow -N off only for existing setups
-for compatibility reasons.
-
-Simo.
-
--- 
-Simo Sorce * Red Hat, Inc * New York
-
+Tigran.
