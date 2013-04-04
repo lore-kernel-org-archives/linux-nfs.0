@@ -1,58 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:18798 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752570Ab3DVMSY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Apr 2013 08:18:24 -0400
-Message-ID: <51752A88.4080301@RedHat.com>
-Date: Mon, 22 Apr 2013 08:18:16 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>
-CC: Libtirpc-devel Mailing List
-	<libtirpc-devel@lists.sourceforge.net>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [Libtirpc-devel] [PATCH] svc_getargs(): Should not be freeing
- arg pointers on failures
-References: <1366310898-9206-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1366310898-9206-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from userp1040.oracle.com ([156.151.31.81]:38169 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1762715Ab3DDPb6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Apr 2013 11:31:58 -0400
+References: <CAGue13pe_ZH_Eto-jL3mLjTNGFK26izTarnZdjs3eL82A2Z37w@mail.gmail.com> <20130404151507.GA8484@umich.edu>
+In-Reply-To: <20130404151507.GA8484@umich.edu>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+	charset=us-ascii
+Message-Id: <05CFAB4A-8329-4657-B250-1A36105086AA@oracle.com>
+Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: readdir vs. getattr
+Date: Thu, 4 Apr 2013 08:32:42 -0700
+To: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 18/04/13 14:48, Steve Dickson wrote:
-> commit 82cc2e61 (SVCAUTH_WRAP/SVCAUTH_UNWRAP) introduce a regression
-> that causes callers of svc_getargs() to crash when svc_freeargs() frees
-> args points that are allocated on the stack.
-> 
-> svc_getargs() should let the callers do the freeing and not make any
-> assumptions on the type of memory passed in.
-> 
-> Also see:
->     https://bugzilla.redhat.com/show_bug.cgi?id=948378
-> and
->     CVE-2013-1950 EMBARGOED rpcbind: invalid pointer free leads to crash
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed...
+On Apr 4, 2013, at 8:15 AM, Jim Rees <rees@umich.edu> wrote:
 
-steved.
+> Tigran Mkrtchyan wrote:
+> 
+>  we have a directory with 50K (number of )  files in it.
+>  The user does a 'ls' and I can see READDIR4. To
+>  get the complete listing a client need to send ~380 requests.
+>  Now user does yet another 'ls' in the same directory.
+>  The client sends a GETATTR  on directorie's FH
+>  (actually two of GETATTRS - why?!!) and discovers that a
+>  directory didn't change and re-uses existing listing, BUT!!!
+>  for each file in the directory it sends a GETATTR to discover
+>  is  the file's attributes are changed. For 50K files it's a 50K requests.
+> 
+> So is this a "ls -l"? Because for "ls" it shouldn't stat all the files.
 
-> ---
->  src/svc_dg.c | 1 -
->  1 file changed, 1 deletion(-)
-> 
-> diff --git a/src/svc_dg.c b/src/svc_dg.c
-> index b1ac462..6e00191 100644
-> --- a/src/svc_dg.c
-> +++ b/src/svc_dg.c
-> @@ -284,7 +284,6 @@ svc_dg_getargs(xprt, xdr_args, args_ptr)
->  {
->  	if (! SVCAUTH_UNWRAP(xprt->xp_auth, &(su_data(xprt)->su_xdrs),
->  			     xdr_args, args_ptr)) {
-> -		(void)svc_freeargs(xprt, xdr_args, args_ptr);
->  		return FALSE;
->  	}
->  	return TRUE;
-> 
+Default these days is ls --color
+
+
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
