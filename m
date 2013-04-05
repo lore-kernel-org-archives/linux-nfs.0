@@ -1,709 +1,430 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43740 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758132Ab3DAOvA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Apr 2013 10:51:00 -0400
-Date: Mon, 1 Apr 2013 10:50:57 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: remove support for nfsdcld
-Message-ID: <20130401145057.GA31864@fieldses.org>
-References: <1363957031-10579-1-git-send-email-jlayton@redhat.com>
- <51593D11.5070702@parallels.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <51593D11.5070702@parallels.com>
+Received: from g4t0016.houston.hp.com ([15.201.24.19]:16444 "EHLO
+	g4t0016.houston.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1162142Ab3DEQ6O (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Apr 2013 12:58:14 -0400
+From: Waiman Long <Waiman.Long@hp.com>
+Cc: Waiman Long <Waiman.Long@hp.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, autofs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-nfs@vger.kernel.org,
+        "Chandramouleeswaran, Aswin" <aswin@hp.com>,
+        "Norton, Scott J" <scott.norton@hp.com>,
+        Andi Kleen <andi@firstfloor.org>, Dave Chinner <david@fromorbit.com>
+Subject: [PATCH v2 1/4] dcache: Don't take unnecessary lock in d_count update
+Date: Fri,  5 Apr 2013 12:57:38 -0400
+Message-Id: <1365181061-30787-2-git-send-email-Waiman.Long@hp.com>
+In-Reply-To: <1365181061-30787-1-git-send-email-Waiman.Long@hp.com>
+References: <1365181061-30787-1-git-send-email-Waiman.Long@hp.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>, Jeff Layton <jlayton@redhat.com>,
+        Miklos Szeredi <mszeredi@suse.cz>, Ian Kent <raven@themaw.net>,
+        Sage Weil <sage@inktank.com>, Steve French <sfrench@samba.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Eric Paris <eparis@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 01, 2013 at 11:53:53AM +0400, Stanislav Kinsbursky wrote:
-> 22.03.2013 16:57, Jeff Layton пишет:
-> >...as advertised for 3.10.
-> >
-> 
-> It looks like UMH should be containerised as fast as possible, doesn't it?
-> Bruce, don't you know, how much time left before 3.10 merge window?
+The current code takes the dentry's d_lock lock whenever the d_count
+reference count is being updated. In reality, nothing big really
+happens until d_count goes to 0 in dput(). So it is not necessary to
+take the lock if the reference count won't go to 0.
 
-"A few weeks" (http://lwn.net/Articles/545399/), but as usual it's good
-to have everything lined up in -next before then.
+Without using a lock, multiple threads may update d_count
+simultaneously.  Therefore, atomic instructions must be used to
+ensure consistency except in shrink_dcache_for_umount*() where the
+whole superblock is being dismounted and locking is not needed.
 
-Thanks for asking about this, that is indeed my one remaining concern
-before ripping this out....
+The worst case scenarios are:
 
---b.
+1. d_lock taken in dput with d_count = 2 in one thread and another
+   thread comes in to atomically decrement d_count without taking
+   the lock. This may result in a d_count of 0 with no deleting
+   action taken.
 
-> >Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> >Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> >---
-> >  fs/nfsd/nfs4recover.c          | 492 +----------------------------------------
-> >  fs/nfsd/nfsctl.c               |   8 +-
-> >  fs/nfsd/nfsd.h                 |   5 -
-> >  include/uapi/linux/nfsd/Kbuild |   1 -
-> >  include/uapi/linux/nfsd/cld.h  |  56 -----
-> >  5 files changed, 6 insertions(+), 556 deletions(-)
-> >  delete mode 100644 include/uapi/linux/nfsd/cld.h
-> >
-> >diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-> >index 899ca26..4e7f47e 100644
-> >--- a/fs/nfsd/nfs4recover.c
-> >+++ b/fs/nfsd/nfs4recover.c
-> >@@ -42,7 +42,6 @@
-> >  #include <net/net_namespace.h>
-> >  #include <linux/sunrpc/rpc_pipe_fs.h>
-> >  #include <linux/sunrpc/clnt.h>
-> >-#include <linux/nfsd/cld.h>
-> >
-> >  #include "nfsd.h"
-> >  #include "state.h"
-> >@@ -625,426 +624,6 @@ static struct nfsd4_client_tracking_ops nfsd4_legacy_tracking_ops = {
-> >  	.grace_done	= nfsd4_recdir_purge_old,
-> >  };
-> >
-> >-/* Globals */
-> >-#define NFSD_PIPE_DIR		"nfsd"
-> >-#define NFSD_CLD_PIPE		"cld"
-> >-
-> >-/* per-net-ns structure for holding cld upcall info */
-> >-struct cld_net {
-> >-	struct rpc_pipe		*cn_pipe;
-> >-	spinlock_t		 cn_lock;
-> >-	struct list_head	 cn_list;
-> >-	unsigned int		 cn_xid;
-> >-};
-> >-
-> >-struct cld_upcall {
-> >-	struct list_head	 cu_list;
-> >-	struct cld_net		*cu_net;
-> >-	struct task_struct	*cu_task;
-> >-	struct cld_msg		 cu_msg;
-> >-};
-> >-
-> >-static int
-> >-__cld_pipe_upcall(struct rpc_pipe *pipe, struct cld_msg *cmsg)
-> >-{
-> >-	int ret;
-> >-	struct rpc_pipe_msg msg;
-> >-
-> >-	memset(&msg, 0, sizeof(msg));
-> >-	msg.data = cmsg;
-> >-	msg.len = sizeof(*cmsg);
-> >-
-> >-	/*
-> >-	 * Set task state before we queue the upcall. That prevents
-> >-	 * wake_up_process in the downcall from racing with schedule.
-> >-	 */
-> >-	set_current_state(TASK_UNINTERRUPTIBLE);
-> >-	ret = rpc_queue_upcall(pipe, &msg);
-> >-	if (ret < 0) {
-> >-		set_current_state(TASK_RUNNING);
-> >-		goto out;
-> >-	}
-> >-
-> >-	schedule();
-> >-	set_current_state(TASK_RUNNING);
-> >-
-> >-	if (msg.errno < 0)
-> >-		ret = msg.errno;
-> >-out:
-> >-	return ret;
-> >-}
-> >-
-> >-static int
-> >-cld_pipe_upcall(struct rpc_pipe *pipe, struct cld_msg *cmsg)
-> >-{
-> >-	int ret;
-> >-
-> >-	/*
-> >-	 * -EAGAIN occurs when pipe is closed and reopened while there are
-> >-	 *  upcalls queued.
-> >-	 */
-> >-	do {
-> >-		ret = __cld_pipe_upcall(pipe, cmsg);
-> >-	} while (ret == -EAGAIN);
-> >-
-> >-	return ret;
-> >-}
-> >-
-> >-static ssize_t
-> >-cld_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
-> >-{
-> >-	struct cld_upcall *tmp, *cup;
-> >-	struct cld_msg __user *cmsg = (struct cld_msg __user *)src;
-> >-	uint32_t xid;
-> >-	struct nfsd_net *nn = net_generic(filp->f_dentry->d_sb->s_fs_info,
-> >-						nfsd_net_id);
-> >-	struct cld_net *cn = nn->cld_net;
-> >-
-> >-	if (mlen != sizeof(*cmsg)) {
-> >-		dprintk("%s: got %zu bytes, expected %zu\n", __func__, mlen,
-> >-			sizeof(*cmsg));
-> >-		return -EINVAL;
-> >-	}
-> >-
-> >-	/* copy just the xid so we can try to find that */
-> >-	if (copy_from_user(&xid, &cmsg->cm_xid, sizeof(xid)) != 0) {
-> >-		dprintk("%s: error when copying xid from userspace", __func__);
-> >-		return -EFAULT;
-> >-	}
-> >-
-> >-	/* walk the list and find corresponding xid */
-> >-	cup = NULL;
-> >-	spin_lock(&cn->cn_lock);
-> >-	list_for_each_entry(tmp, &cn->cn_list, cu_list) {
-> >-		if (get_unaligned(&tmp->cu_msg.cm_xid) == xid) {
-> >-			cup = tmp;
-> >-			list_del_init(&cup->cu_list);
-> >-			break;
-> >-		}
-> >-	}
-> >-	spin_unlock(&cn->cn_lock);
-> >-
-> >-	/* couldn't find upcall? */
-> >-	if (!cup) {
-> >-		dprintk("%s: couldn't find upcall -- xid=%u\n", __func__, xid);
-> >-		return -EINVAL;
-> >-	}
-> >-
-> >-	if (copy_from_user(&cup->cu_msg, src, mlen) != 0)
-> >-		return -EFAULT;
-> >-
-> >-	wake_up_process(cup->cu_task);
-> >-	return mlen;
-> >-}
-> >-
-> >-static void
-> >-cld_pipe_destroy_msg(struct rpc_pipe_msg *msg)
-> >-{
-> >-	struct cld_msg *cmsg = msg->data;
-> >-	struct cld_upcall *cup = container_of(cmsg, struct cld_upcall,
-> >-						 cu_msg);
-> >-
-> >-	/* errno >= 0 means we got a downcall */
-> >-	if (msg->errno >= 0)
-> >-		return;
-> >-
-> >-	wake_up_process(cup->cu_task);
-> >-}
-> >-
-> >-static const struct rpc_pipe_ops cld_upcall_ops = {
-> >-	.upcall		= rpc_pipe_generic_upcall,
-> >-	.downcall	= cld_pipe_downcall,
-> >-	.destroy_msg	= cld_pipe_destroy_msg,
-> >-};
-> >-
-> >-static struct dentry *
-> >-nfsd4_cld_register_sb(struct super_block *sb, struct rpc_pipe *pipe)
-> >-{
-> >-	struct dentry *dir, *dentry;
-> >-
-> >-	dir = rpc_d_lookup_sb(sb, NFSD_PIPE_DIR);
-> >-	if (dir == NULL)
-> >-		return ERR_PTR(-ENOENT);
-> >-	dentry = rpc_mkpipe_dentry(dir, NFSD_CLD_PIPE, NULL, pipe);
-> >-	dput(dir);
-> >-	return dentry;
-> >-}
-> >-
-> >-static void
-> >-nfsd4_cld_unregister_sb(struct rpc_pipe *pipe)
-> >-{
-> >-	if (pipe->dentry)
-> >-		rpc_unlink(pipe->dentry);
-> >-}
-> >-
-> >-static struct dentry *
-> >-nfsd4_cld_register_net(struct net *net, struct rpc_pipe *pipe)
-> >-{
-> >-	struct super_block *sb;
-> >-	struct dentry *dentry;
-> >-
-> >-	sb = rpc_get_sb_net(net);
-> >-	if (!sb)
-> >-		return NULL;
-> >-	dentry = nfsd4_cld_register_sb(sb, pipe);
-> >-	rpc_put_sb_net(net);
-> >-	return dentry;
-> >-}
-> >-
-> >-static void
-> >-nfsd4_cld_unregister_net(struct net *net, struct rpc_pipe *pipe)
-> >-{
-> >-	struct super_block *sb;
-> >-
-> >-	sb = rpc_get_sb_net(net);
-> >-	if (sb) {
-> >-		nfsd4_cld_unregister_sb(pipe);
-> >-		rpc_put_sb_net(net);
-> >-	}
-> >-}
-> >-
-> >-/* Initialize rpc_pipefs pipe for communication with client tracking daemon */
-> >-static int
-> >-nfsd4_init_cld_pipe(struct net *net)
-> >-{
-> >-	int ret;
-> >-	struct dentry *dentry;
-> >-	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-> >-	struct cld_net *cn;
-> >-
-> >-	if (nn->cld_net)
-> >-		return 0;
-> >-
-> >-	cn = kzalloc(sizeof(*cn), GFP_KERNEL);
-> >-	if (!cn) {
-> >-		ret = -ENOMEM;
-> >-		goto err;
-> >-	}
-> >-
-> >-	cn->cn_pipe = rpc_mkpipe_data(&cld_upcall_ops, RPC_PIPE_WAIT_FOR_OPEN);
-> >-	if (IS_ERR(cn->cn_pipe)) {
-> >-		ret = PTR_ERR(cn->cn_pipe);
-> >-		goto err;
-> >-	}
-> >-	spin_lock_init(&cn->cn_lock);
-> >-	INIT_LIST_HEAD(&cn->cn_list);
-> >-
-> >-	dentry = nfsd4_cld_register_net(net, cn->cn_pipe);
-> >-	if (IS_ERR(dentry)) {
-> >-		ret = PTR_ERR(dentry);
-> >-		goto err_destroy_data;
-> >-	}
-> >-
-> >-	cn->cn_pipe->dentry = dentry;
-> >-	nn->cld_net = cn;
-> >-	return 0;
-> >-
-> >-err_destroy_data:
-> >-	rpc_destroy_pipe_data(cn->cn_pipe);
-> >-err:
-> >-	kfree(cn);
-> >-	printk(KERN_ERR "NFSD: unable to create nfsdcld upcall pipe (%d)\n",
-> >-			ret);
-> >-	return ret;
-> >-}
-> >-
-> >-static void
-> >-nfsd4_remove_cld_pipe(struct net *net)
-> >-{
-> >-	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-> >-	struct cld_net *cn = nn->cld_net;
-> >-
-> >-	nfsd4_cld_unregister_net(net, cn->cn_pipe);
-> >-	rpc_destroy_pipe_data(cn->cn_pipe);
-> >-	kfree(nn->cld_net);
-> >-	nn->cld_net = NULL;
-> >-}
-> >-
-> >-static struct cld_upcall *
-> >-alloc_cld_upcall(struct cld_net *cn)
-> >-{
-> >-	struct cld_upcall *new, *tmp;
-> >-
-> >-	new = kzalloc(sizeof(*new), GFP_KERNEL);
-> >-	if (!new)
-> >-		return new;
-> >-
-> >-	/* FIXME: hard cap on number in flight? */
-> >-restart_search:
-> >-	spin_lock(&cn->cn_lock);
-> >-	list_for_each_entry(tmp, &cn->cn_list, cu_list) {
-> >-		if (tmp->cu_msg.cm_xid == cn->cn_xid) {
-> >-			cn->cn_xid++;
-> >-			spin_unlock(&cn->cn_lock);
-> >-			goto restart_search;
-> >-		}
-> >-	}
-> >-	new->cu_task = current;
-> >-	new->cu_msg.cm_vers = CLD_UPCALL_VERSION;
-> >-	put_unaligned(cn->cn_xid++, &new->cu_msg.cm_xid);
-> >-	new->cu_net = cn;
-> >-	list_add(&new->cu_list, &cn->cn_list);
-> >-	spin_unlock(&cn->cn_lock);
-> >-
-> >-	dprintk("%s: allocated xid %u\n", __func__, new->cu_msg.cm_xid);
-> >-
-> >-	return new;
-> >-}
-> >-
-> >-static void
-> >-free_cld_upcall(struct cld_upcall *victim)
-> >-{
-> >-	struct cld_net *cn = victim->cu_net;
-> >-
-> >-	spin_lock(&cn->cn_lock);
-> >-	list_del(&victim->cu_list);
-> >-	spin_unlock(&cn->cn_lock);
-> >-	kfree(victim);
-> >-}
-> >-
-> >-/* Ask daemon to create a new record */
-> >-static void
-> >-nfsd4_cld_create(struct nfs4_client *clp)
-> >-{
-> >-	int ret;
-> >-	struct cld_upcall *cup;
-> >-	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-> >-	struct cld_net *cn = nn->cld_net;
-> >-
-> >-	/* Don't upcall if it's already stored */
-> >-	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-> >-		return;
-> >-
-> >-	cup = alloc_cld_upcall(cn);
-> >-	if (!cup) {
-> >-		ret = -ENOMEM;
-> >-		goto out_err;
-> >-	}
-> >-
-> >-	cup->cu_msg.cm_cmd = Cld_Create;
-> >-	cup->cu_msg.cm_u.cm_name.cn_len = clp->cl_name.len;
-> >-	memcpy(cup->cu_msg.cm_u.cm_name.cn_id, clp->cl_name.data,
-> >-			clp->cl_name.len);
-> >-
-> >-	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_msg);
-> >-	if (!ret) {
-> >-		ret = cup->cu_msg.cm_status;
-> >-		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
-> >-	}
-> >-
-> >-	free_cld_upcall(cup);
-> >-out_err:
-> >-	if (ret)
-> >-		printk(KERN_ERR "NFSD: Unable to create client "
-> >-				"record on stable storage: %d\n", ret);
-> >-}
-> >-
-> >-/* Ask daemon to create a new record */
-> >-static void
-> >-nfsd4_cld_remove(struct nfs4_client *clp)
-> >-{
-> >-	int ret;
-> >-	struct cld_upcall *cup;
-> >-	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-> >-	struct cld_net *cn = nn->cld_net;
-> >-
-> >-	/* Don't upcall if it's already removed */
-> >-	if (!test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-> >-		return;
-> >-
-> >-	cup = alloc_cld_upcall(cn);
-> >-	if (!cup) {
-> >-		ret = -ENOMEM;
-> >-		goto out_err;
-> >-	}
-> >-
-> >-	cup->cu_msg.cm_cmd = Cld_Remove;
-> >-	cup->cu_msg.cm_u.cm_name.cn_len = clp->cl_name.len;
-> >-	memcpy(cup->cu_msg.cm_u.cm_name.cn_id, clp->cl_name.data,
-> >-			clp->cl_name.len);
-> >-
-> >-	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_msg);
-> >-	if (!ret) {
-> >-		ret = cup->cu_msg.cm_status;
-> >-		clear_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
-> >-	}
-> >-
-> >-	free_cld_upcall(cup);
-> >-out_err:
-> >-	if (ret)
-> >-		printk(KERN_ERR "NFSD: Unable to remove client "
-> >-				"record from stable storage: %d\n", ret);
-> >-}
-> >-
-> >-/* Check for presence of a record, and update its timestamp */
-> >-static int
-> >-nfsd4_cld_check(struct nfs4_client *clp)
-> >-{
-> >-	int ret;
-> >-	struct cld_upcall *cup;
-> >-	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-> >-	struct cld_net *cn = nn->cld_net;
-> >-
-> >-	/* Don't upcall if one was already stored during this grace pd */
-> >-	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-> >-		return 0;
-> >-
-> >-	cup = alloc_cld_upcall(cn);
-> >-	if (!cup) {
-> >-		printk(KERN_ERR "NFSD: Unable to check client record on "
-> >-				"stable storage: %d\n", -ENOMEM);
-> >-		return -ENOMEM;
-> >-	}
-> >-
-> >-	cup->cu_msg.cm_cmd = Cld_Check;
-> >-	cup->cu_msg.cm_u.cm_name.cn_len = clp->cl_name.len;
-> >-	memcpy(cup->cu_msg.cm_u.cm_name.cn_id, clp->cl_name.data,
-> >-			clp->cl_name.len);
-> >-
-> >-	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_msg);
-> >-	if (!ret) {
-> >-		ret = cup->cu_msg.cm_status;
-> >-		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
-> >-	}
-> >-
-> >-	free_cld_upcall(cup);
-> >-	return ret;
-> >-}
-> >-
-> >-static void
-> >-nfsd4_cld_grace_done(struct nfsd_net *nn, time_t boot_time)
-> >-{
-> >-	int ret;
-> >-	struct cld_upcall *cup;
-> >-	struct cld_net *cn = nn->cld_net;
-> >-
-> >-	cup = alloc_cld_upcall(cn);
-> >-	if (!cup) {
-> >-		ret = -ENOMEM;
-> >-		goto out_err;
-> >-	}
-> >-
-> >-	cup->cu_msg.cm_cmd = Cld_GraceDone;
-> >-	cup->cu_msg.cm_u.cm_gracetime = (int64_t)boot_time;
-> >-	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_msg);
-> >-	if (!ret)
-> >-		ret = cup->cu_msg.cm_status;
-> >-
-> >-	free_cld_upcall(cup);
-> >-out_err:
-> >-	if (ret)
-> >-		printk(KERN_ERR "NFSD: Unable to end grace period: %d\n", ret);
-> >-}
-> >-
-> >-static struct nfsd4_client_tracking_ops nfsd4_cld_tracking_ops = {
-> >-	.init		= nfsd4_init_cld_pipe,
-> >-	.exit		= nfsd4_remove_cld_pipe,
-> >-	.create		= nfsd4_cld_create,
-> >-	.remove		= nfsd4_cld_remove,
-> >-	.check		= nfsd4_cld_check,
-> >-	.grace_done	= nfsd4_cld_grace_done,
-> >-};
-> >-
-> >  /* upcall via usermodehelper */
-> >  static char cltrack_prog[PATH_MAX] = "/sbin/nfsdcltrack";
-> >  module_param_string(cltrack_prog, cltrack_prog, sizeof(cltrack_prog),
-> >@@ -1287,21 +866,14 @@ nfsd4_client_tracking_init(struct net *net)
-> >  	 * then use the legacy ops.
-> >  	 */
-> >  	nn->client_tracking_ops = &nfsd4_legacy_tracking_ops;
-> >-	status = kern_path(nfs4_recoverydir(), LOOKUP_FOLLOW, &path);
-> >-	if (!status) {
-> >-		status = S_ISDIR(path.dentry->d_inode->i_mode);
-> >-		path_put(&path);
-> >-		if (status)
-> >-			goto do_init;
-> >-	}
-> >+	status = kern_path(nfs4_recoverydir(),
-> >+				LOOKUP_FOLLOW|LOOKUP_DIRECTORY, &path);
-> >+	if (status)
-> >+		goto out_err;
-> >
-> >-	/* Finally, try to use nfsdcld */
-> >-	nn->client_tracking_ops = &nfsd4_cld_tracking_ops;
-> >-	printk(KERN_WARNING "NFSD: the nfsdcld client tracking upcall will be "
-> >-			"removed in 3.10. Please transition to using "
-> >-			"nfsdcltrack.\n");
-> >  do_init:
-> >  	status = nn->client_tracking_ops->init(net);
-> >+out_err:
-> >  	if (status) {
-> >  		printk(KERN_WARNING "NFSD: Unable to initialize client "
-> >  				    "recovery tracking! (%d)\n", status);
-> >@@ -1358,57 +930,3 @@ nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time)
-> >  		nn->client_tracking_ops->grace_done(nn, boot_time);
-> >  }
-> >
-> >-static int
-> >-rpc_pipefs_event(struct notifier_block *nb, unsigned long event, void *ptr)
-> >-{
-> >-	struct super_block *sb = ptr;
-> >-	struct net *net = sb->s_fs_info;
-> >-	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-> >-	struct cld_net *cn = nn->cld_net;
-> >-	struct dentry *dentry;
-> >-	int ret = 0;
-> >-
-> >-	if (!try_module_get(THIS_MODULE))
-> >-		return 0;
-> >-
-> >-	if (!cn) {
-> >-		module_put(THIS_MODULE);
-> >-		return 0;
-> >-	}
-> >-
-> >-	switch (event) {
-> >-	case RPC_PIPEFS_MOUNT:
-> >-		dentry = nfsd4_cld_register_sb(sb, cn->cn_pipe);
-> >-		if (IS_ERR(dentry)) {
-> >-			ret = PTR_ERR(dentry);
-> >-			break;
-> >-		}
-> >-		cn->cn_pipe->dentry = dentry;
-> >-		break;
-> >-	case RPC_PIPEFS_UMOUNT:
-> >-		if (cn->cn_pipe->dentry)
-> >-			nfsd4_cld_unregister_sb(cn->cn_pipe);
-> >-		break;
-> >-	default:
-> >-		ret = -ENOTSUPP;
-> >-		break;
-> >-	}
-> >-	module_put(THIS_MODULE);
-> >-	return ret;
-> >-}
-> >-
-> >-static struct notifier_block nfsd4_cld_block = {
-> >-	.notifier_call = rpc_pipefs_event,
-> >-};
-> >-
-> >-int
-> >-register_cld_notifier(void)
-> >-{
-> >-	return rpc_pipefs_notifier_register(&nfsd4_cld_block);
-> >-}
-> >-
-> >-void
-> >-unregister_cld_notifier(void)
-> >-{
-> >-	rpc_pipefs_notifier_unregister(&nfsd4_cld_block);
-> >-}
-> >diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> >index a830f33..f0aeb93 100644
-> >--- a/fs/nfsd/nfsctl.c
-> >+++ b/fs/nfsd/nfsctl.c
-> >@@ -1163,12 +1163,9 @@ static int __init init_nfsd(void)
-> >  	int retval;
-> >  	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
-> >
-> >-	retval = register_cld_notifier();
-> >-	if (retval)
-> >-		return retval;
-> >  	retval = register_pernet_subsys(&nfsd_net_ops);
-> >  	if (retval < 0)
-> >-		goto out_unregister_notifier;
-> >+		return retval;
-> >  	retval = nfsd4_init_slabs();
-> >  	if (retval)
-> >  		goto out_unregister_pernet;
-> >@@ -1201,8 +1198,6 @@ out_free_slabs:
-> >  	nfsd4_free_slabs();
-> >  out_unregister_pernet:
-> >  	unregister_pernet_subsys(&nfsd_net_ops);
-> >-out_unregister_notifier:
-> >-	unregister_cld_notifier();
-> >  	return retval;
-> >  }
-> >
-> >@@ -1217,7 +1212,6 @@ static void __exit exit_nfsd(void)
-> >  	nfsd_fault_inject_cleanup();
-> >  	unregister_filesystem(&nfsd_fs_type);
-> >  	unregister_pernet_subsys(&nfsd_net_ops);
-> >-	unregister_cld_notifier();
-> >  }
-> >
-> >  MODULE_AUTHOR("Olaf Kirch <okir@monad.swb.de>");
-> >diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> >index 07a473f..8eb2aac 100644
-> >--- a/fs/nfsd/nfsd.h
-> >+++ b/fs/nfsd/nfsd.h
-> >@@ -365,17 +365,12 @@ static inline u32 nfsd_suppattrs2(u32 minorversion)
-> >  	NFSD_WRITEABLE_ATTRS_WORD2
-> >
-> >  extern int nfsd4_is_junction(struct dentry *dentry);
-> >-extern int register_cld_notifier(void);
-> >-extern void unregister_cld_notifier(void);
-> >  #else /* CONFIG_NFSD_V4 */
-> >  static inline int nfsd4_is_junction(struct dentry *dentry)
-> >  {
-> >  	return 0;
-> >  }
-> >
-> >-#define register_cld_notifier() 0
-> >-#define unregister_cld_notifier() do { } while(0)
-> >-
-> >  #endif /* CONFIG_NFSD_V4 */
-> >
-> >  #endif /* LINUX_NFSD_NFSD_H */
-> >diff --git a/include/uapi/linux/nfsd/Kbuild b/include/uapi/linux/nfsd/Kbuild
-> >index c11bc40..88589ac 100644
-> >--- a/include/uapi/linux/nfsd/Kbuild
-> >+++ b/include/uapi/linux/nfsd/Kbuild
-> >@@ -1,5 +1,4 @@
-> >  # UAPI Header export list
-> >-header-y += cld.h
-> >  header-y += debug.h
-> >  header-y += export.h
-> >  header-y += nfsfh.h
-> >diff --git a/include/uapi/linux/nfsd/cld.h b/include/uapi/linux/nfsd/cld.h
-> >deleted file mode 100644
-> >index f14a9ab..0000000
-> >--- a/include/uapi/linux/nfsd/cld.h
-> >+++ /dev/null
-> >@@ -1,56 +0,0 @@
-> >-/*
-> >- * Upcall description for nfsdcld communication
-> >- *
-> >- * Copyright (c) 2012 Red Hat, Inc.
-> >- * Author(s): Jeff Layton <jlayton@redhat.com>
-> >- *
-> >- *  This program is free software; you can redistribute it and/or modify
-> >- *  it under the terms of the GNU General Public License as published by
-> >- *  the Free Software Foundation; either version 2 of the License, or
-> >- *  (at your option) any later version.
-> >- *
-> >- *  This program is distributed in the hope that it will be useful,
-> >- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-> >- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> >- *  GNU General Public License for more details.
-> >- *
-> >- *  You should have received a copy of the GNU General Public License
-> >- *  along with this program; if not, write to the Free Software
-> >- *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-> >- */
-> >-
-> >-#ifndef _NFSD_CLD_H
-> >-#define _NFSD_CLD_H
-> >-
-> >-/* latest upcall version available */
-> >-#define CLD_UPCALL_VERSION 1
-> >-
-> >-/* defined by RFC3530 */
-> >-#define NFS4_OPAQUE_LIMIT 1024
-> >-
-> >-enum cld_command {
-> >-	Cld_Create,		/* create a record for this cm_id */
-> >-	Cld_Remove,		/* remove record of this cm_id */
-> >-	Cld_Check,		/* is this cm_id allowed? */
-> >-	Cld_GraceDone,		/* grace period is complete */
-> >-};
-> >-
-> >-/* representation of long-form NFSv4 client ID */
-> >-struct cld_name {
-> >-	uint16_t	cn_len;				/* length of cm_id */
-> >-	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
-> >-} __attribute__((packed));
-> >-
-> >-/* message struct for communication with userspace */
-> >-struct cld_msg {
-> >-	uint8_t		cm_vers;		/* upcall version */
-> >-	uint8_t		cm_cmd;			/* upcall command */
-> >-	int16_t		cm_status;		/* return code */
-> >-	uint32_t	cm_xid;			/* transaction id */
-> >-	union {
-> >-		int64_t		cm_gracetime;	/* grace period start time */
-> >-		struct cld_name	cm_name;
-> >-	} __attribute__((packed)) cm_u;
-> >-} __attribute__((packed));
-> >-
-> >-#endif /* !_NFSD_CLD_H */
-> >
-> 
-> 
-> -- 
-> Best regards,
-> Stanislav Kinsbursky
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+2. d_lock taken in dput with d_count = 1 in one thread and another
+   thread comes in to atomically increment d_count without taking
+   the lock. This may result in the dentry in the deleted state while
+   having a d_count of 1.
+
+Without taking a lock, we need to make sure the decrementing or
+incrementing action should not be taken while other threads are
+updating d_count simultaneously. This can be done by using the
+atomic cmpxchg instruction which will fail if the underlying value
+is changed.  If the lock is taken, it should be safe to use a simpler
+atomic increment or decrement instruction.
+
+To make sure that the above worst case scenarios will not happen,
+the dget() function must take the lock if d_count <= 1. Similarly,
+the dput() function must take the lock if d_count <= 2. The cmpxchg()
+call to update d_count will be tried twice before falling back to
+using the lock as there is a fairly good chance that the cmpxchg()
+may fail in a busy situation.
+
+Finally, the CPU must have an instructional level cmpxchg instruction
+or the emulated cmpxchg() function may be too expensive to
+use. Therefore, the above mentioned changes will only be applied if
+the __HAVE_ARCH_CMPXCHG flag is set. Most of the major architectures
+supported by Linux have this flag set with the notation exception
+of ARM.
+
+As for the performance of the updated reference counting code, it
+all depends on whether the cmpxchg instruction is used or not. The
+original code has 2 atomic instructions to lock and unlock the
+spinlock. The new code path has either 1 atomic cmpxchg instruction
+or 3 atomic instructions if the lock has to be taken. Depending on
+how frequent the cmpxchg instruction is used (d_count > 1 or 2),
+the new code can be faster or slower than the original one.
+
+This patch has a particular big impact on the short workload of
+the AIM7 benchmark with ramdisk filesystem. The table below show the
+performance improvement due to this patch on an 8-socket 80-core x86-64
+system with a 3.8.5 kernel in a 1/2/4/8 node configuration by using
+numactl to restrict the execution of the workload on certain nodes.
+
++-----------------+------------------+------------------+----------+
+|  Configuration  | Mean Transaction | Mean Transaction | % Change |
+|                 |  Rate w/o patch  | Rate with patch  |          |
++-----------------+------------------------------------------------+
+|                 |              User Range 10 - 100               |
++-----------------+------------------------------------------------+
+| 8 nodes, HT off |     1929234      |     2966230      |  +53.8%  |
+| 4 nodes, HT off |     1700737      |     3177040      |  +86.8%  |
+| 2 nodes, HT off |     1964055      |     3088446      |  +57.3%  |
+| 1 node , HT off |     2187851      |     2127176      |   -2.8%  |
++-----------------+------------------------------------------------+
+|                 |              User Range 200 - 1000             |
++-----------------+------------------------------------------------+
+| 8 nodes, HT off |     1096000      |     2474223      | +125.8%  |
+| 4 nodes, HT off |     1369181      |     2731234      |  +99.5%  |
+| 2 nodes, HT off |      967425      |     2867641      | +196.4%  |
+| 1 node , HT off |     2052671      |     2042276      |   -0.5%  |
++-----------------+------------------------------------------------+
+|                 |              User Range 1100 - 2000            |
++-----------------+------------------------------------------------+
+| 8 nodes, HT off |     1088118      |     2235631      | +105.5%  |
+| 4 nodes, HT off |     1380696      |     2518980      |  +82.4%  |
+| 2 nodes, HT off |      839542      |     2743082      | +226.7%  |
+| 1 node , HT off |     1970821      |     1980873      |   +0.5%  |
++-----------------+------------------+------------------+----------+
+
+It can be seen that with 20 CPUs (2 nodes) or more, this patch can
+significantly improve the short workload performance. With only 1
+node, the performance is similar with or without the patch.
+
+A perf call-graph report of the short workload at 800 users without
+the patch on 8 nodes indicates that about 88% of the workload's total
+time were spent in the _raw_spin_lock() function. Almost all of which
+can be attributed to the following 2 kernel functions:
+ 1. dget_parent (50.14%)
+ 2. dput (49.48%)
+
+With this patch on, the time spent on _raw_spin_lock() is only 1.31%
+which is a huge improvement.
+
+This impact of this patch on other AIM7 workloads were much more
+modest.  The table below show the mean %change due to this patch on
+the same 8-socket system with a 3.7.10 kernel.
+
++--------------+---------------+----------------+-----------------+
+|   Workload   | mean % change | mean % change  | mean % change   |
+|              | 10-100 users  | 200-1000 users | 1100-2000 users |
++--------------+---------------+----------------+-----------------+
+| alltests     |     +0.6%     |     +9.7%      |     +2.9%       |
+| five_sec     |     +0.4%     |      0.0%      |     +0.3%       |
+| fserver      |     +0.7%     |     +2.4%      |     +2.0%       |
+| high_systime |     -1.5%     |    -15.2%      |    -38.0%       |
+| new_fserver  |     -2.2%     |     +6.5%      |     +0.4%       |
+| shared       |     +3.9%     |     +1.1%      |     +6.1%       |
++--------------+---------------+----------------+-----------------+
+
+The regression in the high_systime workload was probably caused
+by the decrease in spinlock contention led to a larger increase in
+mutex contention. In fact, after applying a mutex patch to reduce
+mutex contention, the performance difference due to the addition of
+this dcache patch changed to:
+
++--------------+---------------+----------------+-----------------+
+|   Workload   | mean % change | mean % change  | mean % change   |
+|              | 10-100 users  | 200-1000 users | 1100-2000 users |
++--------------+---------------+----------------+-----------------+
+| high_systime |     -0.1%     |     -0.2%      |     +1.2%       |
++--------------+---------------+----------------+-----------------+
+
+Signed-off-by: Waiman Long <Waiman.Long@hp.com>
+---
+ fs/dcache.c            |   39 ++++++++----------
+ fs/namei.c             |    2 +-
+ include/linux/dcache.h |  101 ++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 117 insertions(+), 25 deletions(-)
+
+diff --git a/fs/dcache.c b/fs/dcache.c
+index fbfae00..48c0680 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -484,7 +484,7 @@ relock:
+ 	}
+ 
+ 	if (ref)
+-		dentry->d_count--;
++		dcount_dec(dentry);
+ 	/*
+ 	 * if dentry was on the d_lru list delete it from there.
+ 	 * inform the fs via d_prune that this dentry is about to be
+@@ -530,10 +530,13 @@ void dput(struct dentry *dentry)
+ repeat:
+ 	if (dentry->d_count == 1)
+ 		might_sleep();
++	if (dcount_dec_cmpxchg(dentry))
++		return;
++
+ 	spin_lock(&dentry->d_lock);
+ 	BUG_ON(!dentry->d_count);
+ 	if (dentry->d_count > 1) {
+-		dentry->d_count--;
++		dcount_dec(dentry);
+ 		spin_unlock(&dentry->d_lock);
+ 		return;
+ 	}
+@@ -550,7 +553,7 @@ repeat:
+ 	dentry->d_flags |= DCACHE_REFERENCED;
+ 	dentry_lru_add(dentry);
+ 
+-	dentry->d_count--;
++	dcount_dec(dentry);
+ 	spin_unlock(&dentry->d_lock);
+ 	return;
+ 
+@@ -621,11 +624,13 @@ EXPORT_SYMBOL(d_invalidate);
+ /* This must be called with d_lock held */
+ static inline void __dget_dlock(struct dentry *dentry)
+ {
+-	dentry->d_count++;
++	dcount_inc(dentry);
+ }
+ 
+ static inline void __dget(struct dentry *dentry)
+ {
++	if (dcount_inc_cmpxchg(dentry))
++		return;
+ 	spin_lock(&dentry->d_lock);
+ 	__dget_dlock(dentry);
+ 	spin_unlock(&dentry->d_lock);
+@@ -635,22 +640,14 @@ struct dentry *dget_parent(struct dentry *dentry)
+ {
+ 	struct dentry *ret;
+ 
+-repeat:
+-	/*
+-	 * Don't need rcu_dereference because we re-check it was correct under
+-	 * the lock.
+-	 */
+ 	rcu_read_lock();
+-	ret = dentry->d_parent;
+-	spin_lock(&ret->d_lock);
+-	if (unlikely(ret != dentry->d_parent)) {
+-		spin_unlock(&ret->d_lock);
+-		rcu_read_unlock();
+-		goto repeat;
+-	}
++	ret = rcu_dereference(dentry->d_parent);
+ 	rcu_read_unlock();
++	if (dcount_inc_cmpxchg(ret))
++		return ret;
++	spin_lock(&ret->d_lock);
+ 	BUG_ON(!ret->d_count);
+-	ret->d_count++;
++	dcount_inc(ret);
+ 	spin_unlock(&ret->d_lock);
+ 	return ret;
+ }
+@@ -780,7 +777,7 @@ static void try_prune_one_dentry(struct dentry *dentry)
+ 	while (dentry) {
+ 		spin_lock(&dentry->d_lock);
+ 		if (dentry->d_count > 1) {
+-			dentry->d_count--;
++			dcount_dec(dentry);
+ 			spin_unlock(&dentry->d_lock);
+ 			return;
+ 		}
+@@ -1981,7 +1978,7 @@ struct dentry *__d_lookup(const struct dentry *parent, const struct qstr *name)
+ 				goto next;
+ 		}
+ 
+-		dentry->d_count++;
++		dcount_inc(dentry);
+ 		found = dentry;
+ 		spin_unlock(&dentry->d_lock);
+ 		break;
+@@ -2943,7 +2940,7 @@ resume:
+ 		}
+ 		if (!(dentry->d_flags & DCACHE_GENOCIDE)) {
+ 			dentry->d_flags |= DCACHE_GENOCIDE;
+-			dentry->d_count--;
++			dcount_dec(dentry);
+ 		}
+ 		spin_unlock(&dentry->d_lock);
+ 	}
+@@ -2951,7 +2948,7 @@ resume:
+ 		struct dentry *child = this_parent;
+ 		if (!(this_parent->d_flags & DCACHE_GENOCIDE)) {
+ 			this_parent->d_flags |= DCACHE_GENOCIDE;
+-			this_parent->d_count--;
++			dcount_dec(this_parent);
+ 		}
+ 		this_parent = try_to_ascend(this_parent, locked, seq);
+ 		if (!this_parent)
+diff --git a/fs/namei.c b/fs/namei.c
+index 57ae9c8..6bbd475 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -537,7 +537,7 @@ static int unlazy_walk(struct nameidata *nd, struct dentry *dentry)
+ 		 */
+ 		BUG_ON(!IS_ROOT(dentry) && dentry->d_parent != parent);
+ 		BUG_ON(!parent->d_count);
+-		parent->d_count++;
++		dcount_inc(parent);
+ 		spin_unlock(&dentry->d_lock);
+ 	}
+ 	spin_unlock(&parent->d_lock);
+diff --git a/include/linux/dcache.h b/include/linux/dcache.h
+index 1a6bb81..99da5e2 100644
+--- a/include/linux/dcache.h
++++ b/include/linux/dcache.h
+@@ -258,6 +258,99 @@ extern int have_submounts(struct dentry *);
+ extern void d_rehash(struct dentry *);
+ 
+ /**
++ * 	dcount_inc, dcount_dec - increment or decrement the dentry reference
++ * 				 count
++ * 	@dentry: dentry to get a reference to
++ */
++static inline void dcount_inc(struct dentry *dentry)
++{
++#ifdef  __HAVE_ARCH_CMPXCHG
++	atomic_inc((atomic_t *)&dentry->d_count);
++#else
++	dentry->d_count++;
++#endif
++}
++
++static inline void dcount_dec(struct dentry *dentry)
++{
++#ifdef  __HAVE_ARCH_CMPXCHG
++	atomic_dec((atomic_t *)&dentry->d_count);
++#else
++	dentry->d_count--;
++#endif
++}
++
++/**
++ * 	dcount_inc_cmpxchg - increment dentry reference count using cmpxchg
++ * 	@dentry: dentry to get a reference to
++ * 	Return : 0 on failure, else 1
++ *
++ * 	N.B. For architectures that do not have a cmpxchg instruction, the
++ * 	     substitute code may not perform better than taking the lock.
++ * 	     So this cmpxchg code path is disabled for those cases.
++ */
++static inline int dcount_inc_cmpxchg(struct dentry *dentry)
++{
++#ifdef	__HAVE_ARCH_CMPXCHG
++	int oldc, newc;
++
++	if ((oldc = dentry->d_count) > 1) {
++		/*
++		 * If reference count > 1, we can safely increment its
++		 * value using atomic cmpxchg without locking. If the
++		 * operation fails, fall back to using the lock.
++		 */
++		newc = oldc + 1;
++		if (cmpxchg(&dentry->d_count, oldc, newc) == oldc)
++			return 1;
++		cpu_relax();
++		/* Retry one more time */
++		if (likely((oldc = ACCESS_ONCE(dentry->d_count)) > 1)) {
++			newc = oldc + 1;
++			if (cmpxchg(&dentry->d_count, oldc, newc) == oldc)
++				return 1;
++			cpu_relax();
++		}
++	}
++#endif
++	return 0;
++}
++
++/**
++ * 	dcount_dec_cmpxchg - decrement dentry reference count using cmpxchg
++ * 	@dentry: dentry to get a reference to
++ * 	Return : 0 on failure, else 1
++ */
++static inline int dcount_dec_cmpxchg(struct dentry *dentry)
++{
++#ifdef	__HAVE_ARCH_CMPXCHG
++	int	oldc, newc;
++
++	/*
++	 * If d_count is bigger than 2, we can safely decrement the
++	 * reference count using atomic cmpxchg instruction without locking.
++	 * Even if d_lock is taken by a thread running dput() with a parallel
++	 * atomic_dec(), the reference count won't go to 0 without anyone
++	 * noticing.
++	 */
++	if ((oldc = dentry->d_count) > 2) {
++		newc = oldc - 1;
++		if (cmpxchg(&dentry->d_count, oldc, newc) == oldc)
++			return 1;
++		cpu_relax();
++		/* Retry one more time */
++		if (likely((oldc = ACCESS_ONCE(dentry->d_count)) > 2)) {
++			newc = oldc - 1;
++			if (cmpxchg(&dentry->d_count, oldc, newc) == oldc)
++				return 1;
++			cpu_relax();
++		}
++	}
++#endif
++	return 0;
++}
++
++/**
+  * d_add - add dentry to hash queues
+  * @entry: dentry to add
+  * @inode: The inode to attach to this dentry
+@@ -319,7 +412,7 @@ static inline int __d_rcu_to_refcount(struct dentry *dentry, unsigned seq)
+ 	assert_spin_locked(&dentry->d_lock);
+ 	if (!read_seqcount_retry(&dentry->d_seq, seq)) {
+ 		ret = 1;
+-		dentry->d_count++;
++		dcount_inc(dentry);
+ 	}
+ 
+ 	return ret;
+@@ -340,7 +433,6 @@ extern char *dentry_path_raw(struct dentry *, char *, int);
+ extern char *dentry_path(struct dentry *, char *, int);
+ 
+ /* Allocation counts.. */
+-
+ /**
+  *	dget, dget_dlock -	get a reference to a dentry
+  *	@dentry: dentry to get a reference to
+@@ -352,13 +444,16 @@ extern char *dentry_path(struct dentry *, char *, int);
+ static inline struct dentry *dget_dlock(struct dentry *dentry)
+ {
+ 	if (dentry)
+-		dentry->d_count++;
++		dcount_inc(dentry);
+ 	return dentry;
+ }
+ 
+ static inline struct dentry *dget(struct dentry *dentry)
+ {
+ 	if (dentry) {
++		if (dcount_inc_cmpxchg(dentry))
++			return dentry;
++
+ 		spin_lock(&dentry->d_lock);
+ 		dget_dlock(dentry);
+ 		spin_unlock(&dentry->d_lock);
+-- 
+1.7.1
+
