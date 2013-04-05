@@ -1,109 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:32693 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754781Ab3DYNTM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2013 09:19:12 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "dwysocha@redhat.com" <dwysocha@redhat.com>
-CC: Dave Chiluk <chiluk@canonical.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Use exponential backoff delay for NFS4_ERRDELAY
-Date: Thu, 25 Apr 2013 13:19:09 +0000
-Message-ID: <1366895944.4719.17.camel@leira.trondhjem.org>
-References: <1366836949-18465-1-git-send-email-chiluk@canonical.com>
-	 <1366838926.22397.25.camel@leira.trondhjem.org>
-	 <5178549A.7010402@canonical.com>
-	 <1366842905.22397.49.camel@leira.trondhjem.org>
-	 <1366892374.26249.294.camel@localhost.localdomain>
-In-Reply-To: <1366892374.26249.294.camel@localhost.localdomain>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+Received: from mail-lb0-f181.google.com ([209.85.217.181]:50277 "EHLO
+	mail-lb0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1162136Ab3DEQyE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Apr 2013 12:54:04 -0400
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v4 0/7] Add O_DENY* support for VFS and CIFS/NFS
+Date: Fri,  5 Apr 2013 20:57:48 +0400
+Message-Id: <1365181075-22540-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-04-25 at 08:19 -0400, David Wysochanski wrote:
-> On Wed, 2013-04-24 at 22:35 +0000, Myklebust, Trond wrote:
-> > On Wed, 2013-04-24 at 16:54 -0500, Dave Chiluk wrote:
-> > > On 04/24/2013 04:28 PM, Myklebust, Trond wrote:
-> > > > On Wed, 2013-04-24 at 15:55 -0500, Dave Chiluk wrote:
-> > > >> Changing the retry to start at NFS4_POLL_RETRY_MIN and exponentially grow
-> > > >> to NFS4_POLL_RETRY_MAX allow for faster handling of these error conditions.
-> > > >>
-> > > >> Additionally this alleviates an interoperability problem with the AIX NFSv4
-> > > >> Server.  The AIX server frequently (2 out of 3) returns NFS4ERR_DELAY, on a
-> > > >> close when it happens in close proximity to a RELEASE_LOCKOWNER.  This would
-> > > >> cause a linux client to hang for 15 seconds.
-> > > > 
-> > > > Hi Dave,
-> > > > 
-> > > > The AIX server is not being motivated by any requirements in the NFSv4
-> > > > spec here, so I fail to see the reason why the behaviour that you
-> > > > describe can justify changing the client. It is not at all obvious to me
-> > > > that we should be retrying aggressively when NFSv4 servers return
-> > > > NFS4ERR_DELAY. What makes 1/10sec more correct in these situations than
-> > > > the exising 15 seconds?
-> > > 
-> > > I agree with you that AIX is at fault, and that the preferable situation
-> > > for the linux client would be for AIX to not return NFS4ERR_DELAY in
-> > > this use case.  I have attached a simple program that causes exacerbates
-> > > the problem on the AIX server.  I have already had a conference call
-> > > with AIX NFS development about this issue, where I vehemently tried to
-> > > convince them to fix their server.  Unfortunately as I don't have much
-> > > reputation in the NFS community, I was unable to convince them to do the
-> > > right thing.  I would be more than happy to set up another call, if
-> > > someone higher up in the linux NFS hierarchy would be willing to
-> > > participate.
-> > 
-> > I'd think that if they have customers that want to use Linux clients,
-> > then those customers are likely to have more influence. This is entirely
-> > a consequence of _their_ design decisions, quite frankly, since
-> > returning NFS4ERR_DELAY in the above situation is downright silly. The
-> > server designers _know_ that the RELEASE_LOCKOWNER will finish whatever
-> > it is doing fairly quickly; it's not as if the CLOSE wouldn't have to do
-> > the exact same state manipulations anyway...
-> > 
-> > > That being said, I think implementing an exponential backoff is an
-> > > improvement in the client regardless of what AIX is doing.  If a server
-> > > needs only 2 seconds to process a request for which NFS4ERR_DELAY was
-> > > returned, this algorithm would get the client back and running after
-> > > only 2.1 seconds of elapsed time.  Whereas the current dumb algorithm
-> > > would simply wait 15 seconds.  This is the reason that I implemented
-> > > this change.
-> > 
-> > Right, but my point above is that _in_general_ if we don't know why the
-> > server is returning NFS4ERR_DELAY, then how can we attach any retry
-> > numbers at all? HSM systems, for instance, have very different latencies
-> > than the above and were the reason for inventing NFS3ERR_JUKEBOX in the
-> > first place.
-> > 
-> 
-> Agreed we can't know why the server is returning NFS4ERR_DELAY so it's
-> hard to pick a retry number.  Can you explain the rationale for the
-> current 15 seconds delay?  Was it just for simplicity or something else?
-> 
+Main changes from the previous one:
+1) O_DENYMAND is removed, sharelock mount option is introduced.
+2) Patch fcntl.h and VFS patches are united into one.
+3) flock/LOCK_MAND is disabled for sharelock mounts.
 
-Our expectation for NFS4ERR_DELAY event that are not listed in
-RFC3530/RFC5661 is that it should be rare, but is expected on average to
-last significantly longer than an RPC round-trip between the server and
-client.
-The other constraint was that we needed a number which is shorter than
-the lease period so that we don't have to keep sending RENEWs. 
+This patchset adds support of O_DENY* flags for Linux fs layer. These flags can be used by any application that needs share reservations to organize a file access. VFS already has some sort of this capability - now it's done through flock/LOCK_MAND mechanis, but that approach is non-atomic. This patchset build new capabilities on top of the existing one but doesn't bring any changes into the flock call semantic.
 
-The 2 main cases we thought we'd have to deal with were:
+These flags can be used by NFS (built-in-kernel) and CIFS (Samba) servers and Wine applications through VFS (for local filesystems) or CIFS/NFS modules. This will help when e.g. Samba and NFS server share the same directory for Windows and Linux users or Wine applications use Samba/NFS share to access the same data from different clients.
 
-- HSM systems fetching data from a tape backup or something similar
-- Idmappers needing to refill their cache from LDAP/NIS/...
+According to the previous discussions the most problematic question is how to prevent situations like DoS attacks where e.g /lib/liba.so file can be open with DENYREAD, or smth like this. That's why extra mount option 'sharelock' is added for switching on/off O_DENY* flags processing. It allows us to avoid use of these flags on critical places (like /, /lib) and turn them on if we really want it proccessed that way.
 
-We did not expect servers to be using NFS4ERR_DELAY as a generic tool
-for avoiding mutexes. That sounds like great a business opportunity for
-the network switch vendors, but a poor one for everyone else...
+So, we have 3 new flags:
+O_DENYREAD - to prevent other opens with read access,
+O_DENYWRITE - to prevent other opens with write access,
+O_DENYDELETE - to prevent delete operations (this flag is not implemented in VFS and NFS part and only suitable for CIFS module),
+
+The patchset avoid data races problem on newely created files: open with O_CREAT can return the -ETXTBSY error for a successfully created file if this files was locked with a deny lock by another task. Also, it turns flock/LOCK_MAND capability off for mounts with 'sharelock' option. This let us not mix one share reservation approach with another.
+
+The #1 patch adds flags to fcntl and implements VFS part. The patches #3, #4, #5 are related to CIFS-specific changes, #6 and #7 describe NFS and NFSD parts.
+
+The preliminary patch for Samba that replaces the existing use of flock/LOCK_MAND mechanism with O_DENY* flags:
+http://git.etersoft.ru/people/piastry/packages/?p=samba.git;a=commitdiff;h=173070262b7f29134ad6b2e49a760017c11aec4a
+
+The future part of open man page patch:
+
+-----
+O_DENYREAD, O_DENYWRIYE, O_DENYDELETE - used to inforce a mandatory share reservation scheme of the file access. If these flag is passed, the open fails with -EBUSY in following cases:
+1) if O_DENYREAD flag is specified and there is another open with O_DENYMAND flag and READ access to the file;
+2) if O_DENYWRITE flag is specified and there is another open with O_DENYMAND flag and WRITE access to the file;
+3) if READ access is requested and there is another open with O_DENYMAND and O_DENYREAD flags;
+4) if WRITE access is requested and there is another open with O_DENYMAND and O_DENYWRITE flags.
+
+If O_DENYDELETE flag is specified and the open succeded, any further unlink operation will fail with -EBUSY untill this open is closed. Now this flag is processed by CIFS filesystems only.
+
+This mechanism is done through flocks. If O_DENY* flags are specified, flock syscall is processed after the open. The share modes are translated into flock according the following rules:
+1) !O_DENYREAD  -> LOCK_READ | LOCK_MAND
+2) !O_DENYWRITE -> LOCK_WRITE | LOCK_MAND
+-----
+
+Pavel Shilovsky (7):
+  fcntl: Introduce new O_DENY* open flags
+  CIFS: Add share_access parm to open request
+  CIFS: Add O_DENY* open flags support
+  CIFS: Use NT_CREATE_ANDX command for forcemand mounts
+  NFSv4: Add O_DENY* open flags support
+  NFSD: Pass share reservations flags to VFS
+  locks: Disable LOCK_MAND support for MS_SHARELOCK mounts
+
+ fs/cifs/cifsacl.c                |   8 +--
+ fs/cifs/cifsglob.h               |  18 ++++++-
+ fs/cifs/cifsproto.h              |   8 +--
+ fs/cifs/cifssmb.c                |  50 +++++++++---------
+ fs/cifs/dir.c                    |  16 +++---
+ fs/cifs/file.c                   |  20 +++++---
+ fs/cifs/inode.c                  |  16 +++---
+ fs/cifs/link.c                   |  25 +++------
+ fs/cifs/readdir.c                |   5 +-
+ fs/cifs/smb1ops.c                |  16 +++---
+ fs/cifs/smb2file.c               |  10 ++--
+ fs/cifs/smb2inode.c              |   4 +-
+ fs/cifs/smb2ops.c                |  10 ++--
+ fs/cifs/smb2pdu.c                |   6 +--
+ fs/cifs/smb2proto.h              |  14 ++---
+ fs/fcntl.c                       |   5 +-
+ fs/locks.c                       | 108 ++++++++++++++++++++++++++++++++++++---
+ fs/namei.c                       |  45 ++++++++++++++--
+ fs/nfs/internal.h                |   3 +-
+ fs/nfs/nfs4proc.c                |   2 +
+ fs/nfs/nfs4xdr.c                 |  21 ++++++--
+ fs/nfs/super.c                   |   3 +-
+ fs/nfsd/nfs4state.c              |  46 ++++++++++++++++-
+ fs/proc_namespace.c              |   1 +
+ include/linux/fs.h               |   7 +++
+ include/uapi/asm-generic/fcntl.h |  11 ++++
+ include/uapi/linux/fs.h          |   1 +
+ 27 files changed, 355 insertions(+), 124 deletions(-)
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.8.1.5
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
