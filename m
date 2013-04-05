@@ -1,215 +1,152 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59442 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753938Ab3D1Omw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 28 Apr 2013 10:42:52 -0400
-Date: Sun, 28 Apr 2013 10:42:48 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Yan Burman <yanb@mellanox.com>
-Cc: Wendy Cheng <s.wendy.cheng@gmail.com>,
-        "Atchley, Scott" <atchleyes@ornl.gov>,
-        Tom Tucker <tom@opengridcomputing.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Or Gerlitz <ogerlitz@mellanox.com>
-Subject: Re: NFS over RDMA benchmark
-Message-ID: <20130428144248.GA2037@fieldses.org>
-References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com>
- <CABgxfbF7c9ktSoMSPV21JU76V5J4iwbJQ257S91Y3z36WJbJVA@mail.gmail.com>
- <62745258-4F3B-4C05-BFFD-03EA604576E4@ornl.gov>
- <CABgxfbGxhnKj2n0Z-w87rZ6fwCssO31G009gwej957gv1p8PQQ@mail.gmail.com>
- <0EE9A1CDC8D6434DB00095CD7DB873462CF9715B@MTLDAG01.mtl.com>
- <20130423210607.GJ3676@fieldses.org>
- <0EE9A1CDC8D6434DB00095CD7DB873462CF988C9@MTLDAG01.mtl.com>
- <20130424150540.GB20275@fieldses.org>
- <20130424152631.GC20275@fieldses.org>
- <0EE9A1CDC8D6434DB00095CD7DB873462CF9A820@MTLDAG01.mtl.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <0EE9A1CDC8D6434DB00095CD7DB873462CF9A820@MTLDAG01.mtl.com>
+Received: from g4t0015.houston.hp.com ([15.201.24.18]:3713 "EHLO
+	g4t0015.houston.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1162134Ab3DEQ6N (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Apr 2013 12:58:13 -0400
+From: Waiman Long <Waiman.Long@hp.com>
+Cc: Waiman Long <Waiman.Long@hp.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, autofs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-nfs@vger.kernel.org,
+        "Chandramouleeswaran, Aswin" <aswin@hp.com>,
+        "Norton, Scott J" <scott.norton@hp.com>,
+        Andi Kleen <andi@firstfloor.org>, Dave Chinner <david@fromorbit.com>
+Subject: [PATCH v2 0/4] dcache: make dcache more scalable on large system
+Date: Fri,  5 Apr 2013 12:57:37 -0400
+Message-Id: <1365181061-30787-1-git-send-email-Waiman.Long@hp.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>, Jeff Layton <jlayton@redhat.com>,
+        Miklos Szeredi <mszeredi@suse.cz>, Ian Kent <raven@themaw.net>,
+        Sage Weil <sage@inktank.com>, Steve French <sfrench@samba.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Eric Paris <eparis@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Apr 28, 2013 at 06:28:16AM +0000, Yan Burman wrote:
-> > > > > > > >> On Wed, Apr 17, 2013 at 7:36 AM, Yan Burman
-> > > > > > > >> <yanb@mellanox.com>
-> > > > > > > >>> I've been trying to do some benchmarks for NFS over RDMA
-> > > > > > > >>> and I seem to
-> > > > > > > only get about half of the bandwidth that the HW can give me.
-> > > > > > > >>> My setup consists of 2 servers each with 16 cores, 32Gb of
-> > > > > > > >>> memory, and
-> > > > > > > Mellanox ConnectX3 QDR card over PCI-e gen3.
-> > > > > > > >>> These servers are connected to a QDR IB switch. The
-> > > > > > > >>> backing storage on
-> > > > > > > the server is tmpfs mounted with noatime.
-> > > > > > > >>> I am running kernel 3.5.7.
-> > > > > > > >>>
-> > > > > > > >>> When running ib_send_bw, I get 4.3-4.5 GB/sec for block sizes 4-
-> > 512K.
-> > > > > > > >>> When I run fio over rdma mounted nfs, I get 260-2200MB/sec
-> > > > > > > >>> for the
-> > > > > > > same block sizes (4-512K). running over IPoIB-CM, I get 200-
-> > 980MB/sec.
-...
-> > > > > > I am trying to get maximum performance from a single server - I
-> > > > > > used 2
-> > > > > processes in fio test - more than 2 did not show any performance boost.
-> > > > > > I tried running fio from 2 different PCs on 2 different files,
-> > > > > > but the sum of
-> > > > > the two is more or less the same as running from single client PC.
-> > > > > >
-> > > > > > What I did see is that server is sweating a lot more than the
-> > > > > > clients and
-> > > > > more than that, it has 1 core (CPU5) in 100% softirq tasklet:
-> > > > > > cat /proc/softirqs
-...
-> > > > Perf top for the CPU with high tasklet count gives:
-> > > >
-> > > >              samples  pcnt         RIP        function                    DSO
-...
-> > > >              2787.00 24.1% ffffffff81062a00 mutex_spin_on_owner
-> > /root/vmlinux
-...
-> > Googling around....  I think we want:
-> > 
-> > 	perf record -a --call-graph
-> > 	(give it a chance to collect some samples, then ^C)
-> > 	perf report --call-graph --stdio
-> > 
-> 
-> Sorry it took me a while to get perf to show the call trace (did not enable frame pointers in kernel and struggled with perf options...), but what I get is:
->     36.18%          nfsd  [kernel.kallsyms]   [k] mutex_spin_on_owner
->                     |
->                     --- mutex_spin_on_owner
->                        |
->                        |--99.99%-- __mutex_lock_slowpath
->                        |          mutex_lock
->                        |          |
->                        |          |--85.30%-- generic_file_aio_write
+Change log:
 
-That's the inode i_mutex.
+v1->v2
+ - Include performance improvement in the AIM7 benchmark results because
+   of this patch.
+ - Modify dget_parent() to avoid taking the lock, if possible, to further
+   improve AIM7 benchmark results.
 
->                        |          |          do_sync_readv_writev
->                        |          |          do_readv_writev
->                        |          |          vfs_writev
->                        |          |          nfsd_vfs_write
->                        |          |          nfsd_write
->                        |          |          nfsd3_proc_write
->                        |          |          nfsd_dispatch
->                        |          |          svc_process_common
->                        |          |          svc_process
->                        |          |          nfsd
->                        |          |          kthread
->                        |          |          kernel_thread_helper
->                        |          |
->                        |           --14.70%-- svc_send
+During some perf-record sessions of the kernel running the high_systime
+workload of the AIM7 benchmark, it was found that quite a large portion
+of the spinlock contention was due to the perf_event_mmap_event()
+function itself. This perf kernel function calls d_path() which,
+in turn, call path_get() and dput() indirectly. These 3 functions
+were the hottest functions shown in the perf-report output of
+the _raw_spin_lock() function in an 8-socket system with 80 cores
+(hyperthreading off) with a 3.7.10 kernel with a mutex patch applied:
 
-That's the xpt_mutex (ensuring rpc replies aren't interleaved).
+-  11.97%          reaim  [kernel.kallsyms]     [k] _raw_spin_lock
+   - _raw_spin_lock
+      + 46.17% d_path
+      + 20.31% path_get
+      + 19.75% dput
 
->                        |                     svc_process
->                        |                     nfsd
->                        |                     kthread
->                        |                     kernel_thread_helper
->                         --0.01%-- [...]
-> 
->      9.63%          nfsd  [kernel.kallsyms]   [k] _raw_spin_lock_irqsave
->                     |
->                     --- _raw_spin_lock_irqsave
->                        |
->                        |--43.97%-- alloc_iova
+In fact, the output of the "perf record -s -a" (without call-graph)
+showed:
 
-And that (and __free_iova below) looks like iova_rbtree_lock.
+ 11.73%          reaim  [kernel.kallsyms]     [k] _raw_spin_lock
+  8.85%             ls  [kernel.kallsyms]     [k] _raw_spin_lock
+  3.97%           true  [kernel.kallsyms]     [k] _raw_spin_lock
 
---b.
+Without using the perf monitoring tool, the actual execution profile
+will be quite different. In fact, with this patch set applied, the
+output of the same "perf record -s -a" command became:
 
->                        |          intel_alloc_iova
->                        |          __intel_map_single
->                        |          intel_map_page
->                        |          |
->                        |          |--60.47%-- svc_rdma_sendto
->                        |          |          svc_send
->                        |          |          svc_process
->                        |          |          nfsd
->                        |          |          kthread
->                        |          |          kernel_thread_helper
->                        |          |
->                        |          |--30.10%-- rdma_read_xdr
->                        |          |          svc_rdma_recvfrom
->                        |          |          svc_recv
->                        |          |          nfsd
->                        |          |          kthread
->                        |          |          kernel_thread_helper
->                        |          |
->                        |          |--6.69%-- svc_rdma_post_recv
->                        |          |          send_reply
->                        |          |          svc_rdma_sendto
->                        |          |          svc_send
->                        |          |          svc_process
->                        |          |          nfsd
->                        |          |          kthread
->                        |          |          kernel_thread_helper
->                        |          |
->                        |           --2.74%-- send_reply
->                        |                     svc_rdma_sendto
->                        |                     svc_send
->                        |                     svc_process
->                        |                     nfsd
->                        |                     kthread
->                        |                     kernel_thread_helper
->                        |
->                        |--37.52%-- __free_iova
->                        |          flush_unmaps
->                        |          add_unmap
->                        |          intel_unmap_page
->                        |          |
->                        |          |--97.18%-- svc_rdma_put_frmr
->                        |          |          sq_cq_reap
->                        |          |          dto_tasklet_func
->                        |          |          tasklet_action
->                        |          |          __do_softirq
->                        |          |          call_softirq
->                        |          |          do_softirq
->                        |          |          |
->                        |          |          |--97.40%-- irq_exit
->                        |          |          |          |
->                        |          |          |          |--99.85%-- do_IRQ
->                        |          |          |          |          ret_from_intr
->                        |          |          |          |          |
->                        |          |          |          |          |--40.74%-- generic_file_buffered_write
->                        |          |          |          |          |          __generic_file_aio_write
->                        |          |          |          |          |          generic_file_aio_write
->                        |          |          |          |          |          do_sync_readv_writev
->                        |          |          |          |          |          do_readv_writev
->                        |          |          |          |          |          vfs_writev
->                        |          |          |          |          |          nfsd_vfs_write
->                        |          |          |          |          |          nfsd_write
->                        |          |          |          |          |          nfsd3_proc_write
->                        |          |          |          |          |          nfsd_dispatch
->                        |          |          |          |          |          svc_process_common
->                        |          |          |          |          |          svc_process
->                        |          |          |          |          |          nfsd
->                        |          |          |          |          |          kthread
->                        |          |          |          |          |          kernel_thread_helper
->                        |          |          |          |          |
->                        |          |          |          |          |--25.21%-- __mutex_lock_slowpath
->                        |          |          |          |          |          mutex_lock
->                        |          |          |          |          |          |
->                        |          |          |          |          |          |--94.84%-- generic_file_aio_write
->                        |          |          |          |          |          |          do_sync_readv_writev
->                        |          |          |          |          |          |          do_readv_writev
->                        |          |          |          |          |          |          vfs_writev
->                        |          |          |          |          |          |          nfsd_vfs_write
->                        |          |          |          |          |          |          nfsd_write
->                        |          |          |          |          |          |          nfsd3_proc_write
->                        |          |          |          |          |          |          nfsd_dispatch
->                        |          |          |          |          |          |          svc_process_common
->                        |          |          |          |          |          |          svc_process
->                        |          |          |          |          |          |          nfsd
->                        |          |          |          |          |          |          kthread
->                        |          |          |          |          |          |          kernel_thread_helper
->                        |          |          |          |          |          |
-> 
-> The entire trace is almost 1MB, so send me an off-list message if you want it.
-> 
-> Yan
-> 
+  2.05%          reaim  [kernel.kallsyms]     [k] _raw_spin_lock
+  0.30%             ls  [kernel.kallsyms]     [k] _raw_spin_lock
+  0.25%           true  [kernel.kallsyms]     [k] _raw_spin_lock
+
+So the time spent on _raw_spin_lock() function went down from 24.55%
+to 2.60%. It can be seen that the performance data collected by the
+perf-record command can be heavily skewed in some cases on a system
+with a large number of CPUs. This set of patches enables the perf
+command to give a more accurate and reliable picture of what is really
+happening in the system. At the same time, they can also improve the
+general performance of systems especially those with a large number
+of CPUs.
+
+The d_path() function takes the following two locks:
+
+1. dentry->d_lock [spinlock] from dget()/dget_parent()/dput()
+2. rename_lock    [seqlock]  from d_path()
+
+This set of patches were designed to minimize the locking overhead
+of these code paths.
+
+The current kernel takes the dentry->d_lock lock whenever it wants to
+increment or decrement the d_count reference count. However, nothing
+big will really happen until the reference count goes all the way to 1
+or 0.  Actually, we don't need to take the lock when reference count
+is bigger than 1. Instead, atomic cmpxchg() function can be used to
+increment or decrement the count in these situations. For safety,
+other reference count update operations have to be changed to use
+atomic instruction as well.
+
+The rename_lock is a sequence lock. The d_path() function takes the
+writer lock because it needs to traverse different dentries through
+pointers to get the full path name. Hence it can't tolerate changes
+in those pointers. But taking the writer lock also prevent multiple
+d_path() calls to proceed concurrently.
+
+A solution is to introduce a new lock type where there will be a
+second type of reader which can block the writers - the sequence
+read/write lock (seqrwlock). The d_path() and related functions will
+then be changed to take the reader lock instead of the writer lock.
+This will allow multiple d_path() operations to proceed concurrently.
+
+Additional performance testing was conducted using the AIM7
+benchmark.  It is mainly the first patch that has impact on the AIM7
+benchmark. Please see the patch description of the first patch on
+more information about the benchmark results.
+
+Incidentally, these patches also have a favorable impact on Oracle
+database performance when measured by the Oracle SLOB benchmark.
+
+The following tests with multiple threads were also run on kernels
+with and without the patch on an 8-socket 80-core system and a PC
+with 4-core i5 processor:
+
+1. find $HOME -size 0b
+2. cat /proc/*/maps /proc/*/numa_maps
+3. git diff
+
+For both the find-size and cat-maps tests, the performance difference
+with hot cache was within a few percentage points and hence within
+the margin of error. Single-thread performance was slightly worse,
+but multithread performance was generally a bit better. Apparently,
+reference count update isn't a significant factor in those tests. Their
+perf traces indicates that there was less spinlock content in
+functions like dput(), but the function itself ran a little bit longer
+on average.
+
+The git-diff test showed no difference in performance. There is a
+slight increase in system time compensated by a slight decrease in
+user time.
+
+Of the 4 patches, patch 3 is dependent on patch 2. The other 2 patches
+are independent can be applied individually.
+
+Signed-off-by: Waiman Long <Waiman.Long@hp.com>
+
+Waiman Long (4):
+  dcache: Don't take unnecessary lock in d_count update
+  dcache: introduce a new sequence read/write lock type
+  dcache: change rename_lock to a sequence read/write lock
+  dcache: don't need to take d_lock in prepend_path()
+
+ fs/autofs4/waitq.c        |    6 +-
+ fs/ceph/mds_client.c      |    4 +-
+ fs/cifs/dir.c             |    4 +-
+ fs/dcache.c               |  125 ++++++++++++++++++++---------------------
+ fs/namei.c                |    2 +-
+ fs/nfs/namespace.c        |    6 +-
+ include/linux/dcache.h    |  105 +++++++++++++++++++++++++++++++++--
+ include/linux/seqrwlock.h |  137 +++++++++++++++++++++++++++++++++++++++++++++
+ kernel/auditsc.c          |    4 +-
+ 9 files changed, 311 insertions(+), 82 deletions(-)
+ create mode 100644 include/linux/seqrwlock.h
+
