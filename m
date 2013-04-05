@@ -1,110 +1,145 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56991 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:61793 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755185Ab3DYS5L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Apr 2013 14:57:11 -0400
-Date: Thu, 25 Apr 2013 14:57:01 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        David Wysochanski <dwysocha@redhat.com>,
-        Dave Chiluk <chiluk@canonical.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Use exponential backoff delay for NFS4_ERRDELAY
-Message-ID: <20130425185701.GD5049@fieldses.org>
-References: <1366842905.22397.49.camel@leira.trondhjem.org>
- <1366892374.26249.294.camel@localhost.localdomain>
- <20130425132907.GB31851@fieldses.org>
- <1366896654.4719.18.camel@leira.trondhjem.org>
- <20130425134918.GC31851@fieldses.org>
- <1366899034.6812.4.camel@leira.trondhjem.org>
- <20130425181932.GA5049@fieldses.org>
- <81BBEA25-CDE5-42B1-996D-90C26A43DEF6@oracle.com>
- <20130425184626.GC5049@fieldses.org>
- <04318EF4-375D-49FD-8DB0-2BC6429543A9@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <04318EF4-375D-49FD-8DB0-2BC6429543A9@oracle.com>
+	id S1162700Ab3DEVQe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Apr 2013 17:16:34 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 2/2] NFSv4/4.1: Fix bugs in nfs4[01]_walk_client_list
+Date: Fri,  5 Apr 2013 17:16:28 -0400
+Message-Id: <1365196588-25403-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1365196588-25403-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1365196588-25403-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1365196588-25403-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 25, 2013 at 02:51:20PM -0400, Chuck Lever wrote:
-> 
-> On Apr 25, 2013, at 2:46 PM, "bfields@fieldses.org" <bfields@fieldses.org> wrote:
-> 
-> > On Thu, Apr 25, 2013 at 02:40:11PM -0400, Chuck Lever wrote:
-> >> 
-> >> On Apr 25, 2013, at 2:19 PM, "bfields@fieldses.org" <bfields@fieldses.org> wrote:
-> >> 
-> >>> On Thu, Apr 25, 2013 at 02:10:36PM +0000, Myklebust, Trond wrote:
-> >>>> On Thu, 2013-04-25 at 09:49 -0400, bfields@fieldses.org wrote:
-> >>>>> On Thu, Apr 25, 2013 at 01:30:58PM +0000, Myklebust, Trond wrote:
-> >>>>>> On Thu, 2013-04-25 at 09:29 -0400, bfields@fieldses.org wrote:
-> >>>>>> 
-> >>>>>>> My position is that we simply have no idea what order of magnitude even
-> >>>>>>> delay should be.  And that in such a situation exponential backoff such
-> >>>>>>> as implemented in the synchronous case seems the reasonable default as
-> >>>>>>> it guarantees at worst doubling the delay while still bounding the
-> >>>>>>> long-term average frequency of retries.
-> >>>>>> 
-> >>>>>> So we start with a 15 second delay, and then go to 60 seconds?
-> >>>>> 
-> >>>>> I agree that a server should normally be doing the wait on its own if
-> >>>>> the wait would be on the order of an rpc round trip.
-> >>>>> 
-> >>>>> So I'd be inclined to start with a delay that was an order of magnitude
-> >>>>> or two more than a round trip.
-> >>>>> 
-> >>>>> And I'd expect NFS isn't common on networks with 1-second latencies.
-> >>>>> 
-> >>>>> So the 1/10 second we're using in the synchronous case sounds closer to
-> >>>>> the right ballpark to me.
-> >>>> 
-> >>>> OK, then. Now all I need is actual motivation for changing the existing
-> >>>> code other than handwaving arguments about "polling is better than flat
-> >>>> waits".
-> >>>> What actual use cases are impacting us now, other than the AIX design
-> >>>> decision to force CLOSE to retry at least once before succeeding?
-> >>> 
-> >>> Nah, I've got nothing, and I agree that the AIX problem is there bug.
-> >>> 
-> >>> Just for fun I looked at re-checked the Linux server cases.  As far as I
-> >>> can tell they are:
-> >>> 
-> >>> 	- delegations: returned immediately on detection of any
-> >>> 	  conflict.  The current behavior in the sync case looks
-> >>> 	  reasonable to me.
-> >>> 	- allocation failures: not really sure it's the best error, but
-> >>> 	  it seems to be all the protocol offers.  We probably don't
-> >>> 	  care much what the client does in this case.
-> >>> 	- some rare cases that would probably indicate bugs (e.g.,
-> >>> 	  attempting to destroy a client while other rpc's from that
-> >>> 	  client are running.)  Again we don't care what the client does
-> >>> 	  here.
-> >>> 	- the 4.1 slot-inuse case.
-> >>> 
-> >>> We also by default map four errors (ETIMEDOUT, EAGAIN, EWOULDBLOCK,
-> >>> ENOMEM) to delay.  I thought I remembered one of those being used by
-> >>> some HFS system, but can't actually find an example now.  A quick grep
-> >>> doesn't show anything interesting.
-> >> 
-> >> It's worth mentioning that servers that have frozen state (say, in preparation for Transparent State Migration) may use NFS4ERR_DELAY to prevent clients from modifying open or lock state until that state has transitioned to a destination server.
-> > 
-> > I thought they'd decided they'll be forced to find a different way to do
-> > that?
-> > 
-> > (The issue being that it only works if you're using 4.1, and if the
-> > session state itself isn't part of the state to be transferred.
-> > Otherwise you're forced to modify the state anyway since NFS4ERR_DELAY
-> > is seqid-modifying.)
-> 
-> The answer is not to return NFS4ERR_DELAY on seqid-modifying operations.
-> 
-> The source server can return NFS4ERR_DELAY to the client's migration recovery operations (the GETATTR(fs_locations) request) for example.
-> 
-> Or, the server could return it on the initial PUTFH operation in a compound containing seqid-modifying operations.
+It is unsafe to use list_for_each_entry_safe() here, because
+when we drop the nn->nfs_client_lock, we pin the _current_ list
+entry and ensure that it stays in the list, but we don't do the
+same for the _next_ list entry. Use of list_for_each_entry() is
+therefore the correct thing to do.
 
-Oh, right, I'd forgotten that approach....
+Also fix the refcounting in nfs41_walk_client_list().
 
---b.
+Finally, ensure that the nfs_client has finished being initialised
+and, in the case of NFSv4.1, that the session is set up.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Cc: Bryan Schumaker <bjschuma@netapp.com>
+Cc: stable@vger.kernel.org [>= 3.7]
+---
+ fs/nfs/nfs4client.c | 44 ++++++++++++++++++++++++++++----------------
+ 1 file changed, 28 insertions(+), 16 deletions(-)
+
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index ac4fc9a..c7b346f 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -300,7 +300,7 @@ int nfs40_walk_client_list(struct nfs_client *new,
+ 			   struct rpc_cred *cred)
+ {
+ 	struct nfs_net *nn = net_generic(new->cl_net, nfs_net_id);
+-	struct nfs_client *pos, *n, *prev = NULL;
++	struct nfs_client *pos, *prev = NULL;
+ 	struct nfs4_setclientid_res clid = {
+ 		.clientid	= new->cl_clientid,
+ 		.confirm	= new->cl_confirm,
+@@ -308,10 +308,23 @@ int nfs40_walk_client_list(struct nfs_client *new,
+ 	int status = -NFS4ERR_STALE_CLIENTID;
+ 
+ 	spin_lock(&nn->nfs_client_lock);
+-	list_for_each_entry_safe(pos, n, &nn->nfs_client_list, cl_share_link) {
++	list_for_each_entry(pos, &nn->nfs_client_list, cl_share_link) {
+ 		/* If "pos" isn't marked ready, we can't trust the
+ 		 * remaining fields in "pos" */
+-		if (pos->cl_cons_state < NFS_CS_READY)
++		if (pos->cl_cons_state > NFS_CS_READY) {
++			atomic_inc(&pos->cl_count);
++			spin_unlock(&nn->nfs_client_lock);
++
++			if (prev)
++				nfs_put_client(prev);
++			prev = pos;
++
++			status = nfs_wait_client_init_complete(pos);
++			spin_lock(&nn->nfs_client_lock);
++			if (status < 0)
++				continue;
++		}
++		if (pos->cl_cons_state != NFS_CS_READY)
+ 			continue;
+ 
+ 		if (pos->rpc_ops != new->rpc_ops)
+@@ -423,16 +436,16 @@ int nfs41_walk_client_list(struct nfs_client *new,
+ 			   struct rpc_cred *cred)
+ {
+ 	struct nfs_net *nn = net_generic(new->cl_net, nfs_net_id);
+-	struct nfs_client *pos, *n, *prev = NULL;
++	struct nfs_client *pos, *prev = NULL;
+ 	int status = -NFS4ERR_STALE_CLIENTID;
+ 
+ 	spin_lock(&nn->nfs_client_lock);
+-	list_for_each_entry_safe(pos, n, &nn->nfs_client_list, cl_share_link) {
++	list_for_each_entry(pos, &nn->nfs_client_list, cl_share_link) {
+ 		/* If "pos" isn't marked ready, we can't trust the
+ 		 * remaining fields in "pos", especially the client
+ 		 * ID and serverowner fields.  Wait for CREATE_SESSION
+ 		 * to finish. */
+-		if (pos->cl_cons_state < NFS_CS_READY) {
++		if (pos->cl_cons_state > NFS_CS_READY) {
+ 			atomic_inc(&pos->cl_count);
+ 			spin_unlock(&nn->nfs_client_lock);
+ 
+@@ -440,18 +453,17 @@ int nfs41_walk_client_list(struct nfs_client *new,
+ 				nfs_put_client(prev);
+ 			prev = pos;
+ 
+-			nfs4_schedule_lease_recovery(pos);
+ 			status = nfs_wait_client_init_complete(pos);
+-			if (status < 0) {
+-				nfs_put_client(pos);
+-				spin_lock(&nn->nfs_client_lock);
+-				continue;
++			if (status == 0) {
++				nfs4_schedule_lease_recovery(pos);
++				status = nfs4_wait_clnt_recover(pos);
+ 			}
+-			status = pos->cl_cons_state;
+ 			spin_lock(&nn->nfs_client_lock);
+ 			if (status < 0)
+ 				continue;
+ 		}
++		if (pos->cl_cons_state != NFS_CS_READY)
++			continue;
+ 
+ 		if (pos->rpc_ops != new->rpc_ops)
+ 			continue;
+@@ -469,17 +481,17 @@ int nfs41_walk_client_list(struct nfs_client *new,
+ 			continue;
+ 
+ 		atomic_inc(&pos->cl_count);
+-		spin_unlock(&nn->nfs_client_lock);
++		*result = pos;
+ 		dprintk("NFS: <-- %s using nfs_client = %p ({%d})\n",
+ 			__func__, pos, atomic_read(&pos->cl_count));
+-
+-		*result = pos;
+-		return 0;
++		break;
+ 	}
+ 
+ 	/* No matching nfs_client found. */
+ 	spin_unlock(&nn->nfs_client_lock);
+ 	dprintk("NFS: <-- %s status = %d\n", __func__, status);
++	if (prev)
++		nfs_put_client(prev);
+ 	return status;
+ }
+ #endif	/* CONFIG_NFS_V4_1 */
+-- 
+1.8.1.4
+
