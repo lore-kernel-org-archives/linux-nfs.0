@@ -1,59 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from p3plsmtpa08-07.prod.phx3.secureserver.net ([173.201.193.108]:36860
-	"EHLO p3plsmtpa08-07.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932087Ab3DYUUZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2013 16:20:25 -0400
-Message-ID: <51798E97.1000200@talpey.com>
-Date: Thu, 25 Apr 2013 16:14:15 -0400
-From: Tom Talpey <tom@talpey.com>
-MIME-Version: 1.0
-To: Phil Pishioneri <pgp@psu.edu>
-CC: Wendy Cheng <s.wendy.cheng@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Yan Burman <yanb@mellanox.com>, "Atchley, Scott" <atchleyes@ornl.gov>,
-        Tom Tucker <tom@opengridcomputing.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Or Gerlitz <ogerlitz@mellanox.com>
-Subject: Re: NFS over RDMA benchmark
-References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com> <CABgxfbF7c9ktSoMSPV21JU76V5J4iwbJQ257S91Y3z36WJbJVA@mail.gmail.com> <62745258-4F3B-4C05-BFFD-03EA604576E4@ornl.gov> <CABgxfbGxhnKj2n0Z-w87rZ6fwCssO31G009gwej957gv1p8PQQ@mail.gmail.com> <0EE9A1CDC8D6434DB00095CD7DB873462CF9715B@MTLDAG01.mtl.com> <20130423210607.GJ3676@fieldses.org> <0EE9A1CDC8D6434DB00095CD7DB873462CF988C9@MTLDAG01.mtl.com> <20130424150540.GB20275@fieldses.org> <20130424152631.GC20275@fieldses.org> <CABgxfbHShU7aEttJ35vdAjXduPFFj8+E4=5LZqOgh4e=5bax5Q@mail.gmail.com> <CABgxfbHpNgQyEjd2OVNMgJoLpt_VyLiOL5hMCLwotMd5kincwg@mail.gmail.com> <517823E0.4000402@talpey.com> <CABgxfbHePAyq6AH9TFKZKUmwEHOupuYUnfc1W99HAuDkYddUqQ@mail.gmail.com> <51797D8D.1080302@psu.edu>
-In-Reply-To: <51797D8D.1080302@psu.edu>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from fieldses.org ([174.143.236.118]:51611 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1161557Ab3DEOIJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Apr 2013 10:08:09 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/4] nfsd4: minor cb_recall simplification
+Date: Fri,  5 Apr 2013 10:08:03 -0400
+Message-Id: <1365170886-2267-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1365170886-2267-1-git-send-email-bfields@redhat.com>
+References: <1365170886-2267-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 4/25/2013 3:01 PM, Phil Pishioneri wrote:
-> On 4/25/13 1:18 PM, Wendy Cheng wrote:
->> On Wed, Apr 24, 2013 at 11:26 AM, Tom Talpey <tom@talpey.com> wrote:
->>> 1)
->>>
->>> The client slot count is not hard-coded, it can easily be changed by
->>> writing a value to /proc and initiating a new mount. But I doubt that
->>> increasing the slot table will improve performance much, unless this is
->>> a small-random-read, and spindle-limited workload.
->> It was a shot in the dark :)  .. as our test bed has not been setup
->> yet .However, since I'll be working on (very) slow clients, increasing
->> this buffer is still interesting (to me). I don't see where it is
->> controlled by a /proc value (?) - but that is not a concern at this
->> moment as /proc entry is easy to add. More questions on the server
->> though (see below) ...
->
-> Might there be confusion between the RDMA slot table and the TCP/UDP
-> ones (which have proc entries under /proc/sys/sunrpc)?
->
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-No, the xprtrdma.ko creates similar slot table controls when it loads.
-See the names below, prefixed with "rdma":
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4callback.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
 
-> tmt@Home:~$ ls /proc/sys/sunrpc
-> max_resvport  nfsd_debug  nlm_debug  tcp_fin_timeout             tcp_slot_table_entries  udp_slot_table_entries
-> min_resvport  nfs_debug   rpc_debug  tcp_max_slot_table_entries  transports
-> tmt@Home:~$ sudo insmod xprtrdma
-> tmt@Home:~$ ls /proc/sys/sunrpc
-> max_resvport  nlm_debug                  rdma_memreg_strategy     tcp_fin_timeout             udp_slot_table_entries
-> min_resvport  rdma_inline_write_padding  rdma_pad_optimize        tcp_max_slot_table_entries
-> nfsd_debug    rdma_max_inline_read       rdma_slot_table_entries  tcp_slot_table_entries
-> nfs_debug     rdma_max_inline_write      rpc_debug                transports
-> tmt@Home:~$
-
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 99bc85f..be3ff0f 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -817,8 +817,7 @@ static bool nfsd41_cb_get_slot(struct nfs4_client *clp, struct rpc_task *task)
+ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfsd4_callback *cb = calldata;
+-	struct nfs4_delegation *dp = container_of(cb, struct nfs4_delegation, dl_recall);
+-	struct nfs4_client *clp = dp->dl_stid.sc_client;
++	struct nfs4_client *clp = cb->cb_clp;
+ 	u32 minorversion = clp->cl_minorversion;
+ 
+ 	cb->cb_minorversion = minorversion;
+@@ -839,8 +838,7 @@ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
+ static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfsd4_callback *cb = calldata;
+-	struct nfs4_delegation *dp = container_of(cb, struct nfs4_delegation, dl_recall);
+-	struct nfs4_client *clp = dp->dl_stid.sc_client;
++	struct nfs4_client *clp = cb->cb_clp;
+ 
+ 	dprintk("%s: minorversion=%d\n", __func__,
+ 		clp->cl_minorversion);
+@@ -863,7 +861,7 @@ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfsd4_callback *cb = calldata;
+ 	struct nfs4_delegation *dp = container_of(cb, struct nfs4_delegation, dl_recall);
+-	struct nfs4_client *clp = dp->dl_stid.sc_client;
++	struct nfs4_client *clp = cb->cb_clp;
+ 	struct rpc_clnt *current_rpc_client = clp->cl_cb_client;
+ 
+ 	nfsd4_cb_done(task, calldata);
+-- 
+1.7.11.7
 
