@@ -1,41 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41893 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756173Ab3DCSUE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Apr 2013 14:20:04 -0400
-Date: Wed, 3 Apr 2013 14:20:01 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Simo Sorce <simo@redhat.com>
-Cc: Jim Rees <rees@umich.edu>, linux-nfs <linux-nfs@vger.kernel.org>,
-        Steve Dickson <steved@redhat.com>, Jeffrey Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] Avoid PTR lookups when possible
-Message-ID: <20130403182001.GB6044@fieldses.org>
-References: <1364919975.2660.1255.camel@willson.li.ssimo.org>
- <20130402164631.GA23840@umich.edu>
- <1364922203.2660.1265.camel@willson.li.ssimo.org>
- <20130402183907.GB18900@umich.edu>
- <1364928519.2660.1279.camel@willson.li.ssimo.org>
- <20130403134407.GB13951@fieldses.org>
- <20130403144055.GA7049@umich.edu>
- <1365005018.2660.1315.camel@willson.li.ssimo.org>
- <20130403171213.GB3344@fieldses.org>
- <1365012777.2660.1317.camel@willson.li.ssimo.org>
-MIME-Version: 1.0
+Received: from dgate20.ts.fujitsu.com ([80.70.172.51]:49270 "EHLO
+	dgate20.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751243Ab3DEPdv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Apr 2013 11:33:51 -0400
+Message-Id: <61eb00$3j0fmg@dgate20u.abg.fsc.net>
+Date: 05 Apr 2013 17:33:49 +0200
+From: Bodo Stroesser <bstroesser@ts.fujitsu.com>
+To: bfields@fieldses.org
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org, bstroesser@ts.fujitsu.com
+Subject: Re: sunrpc/cache.c: races while updating cache entries
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1365012777.2660.1317.camel@willson.li.ssimo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 03, 2013 at 02:12:57PM -0400, Simo Sorce wrote:
-> Yup, ok.
-> 
-> So if anyone can ack the actual patches (or tell me if there is anything
-> else to change I'd love to move forward, I have other patches in the
-> pipeline :-)
+T24gMDUgQXByIDIwMTMgMTQ6NDA6MDAgKzAxMDAgSi4gQnJ1Y2UgRmllbGRzIDxiZmllbGRz
+QGZpZWxkc2VzLm9yZz4gd3JvdGU6Cj4gT24gVGh1LCBBcHIgMDQsIDIwMTMgYXQgMDc6NTk6
+MzVQTSArMDIwMCwgQm9kbyBTdHJvZXNzZXIgd3JvdGU6Cj4gPiBUaGVyZSBpcyBubyByZWFz
+b24gZm9yIGFwb2xvZ2llcy4gVGhlIHRocmVhZCBtZWFud2hpbGUgc2VlbXMgdG8gYmUgYSBi
+aXQKPiA+IGNvbmZ1c2luZyA6LSkKPiA+IAo+ID4gQ3VycmVudCBzdGF0ZSBpczoKPiA+IAo+
+ID4gLSBOZWlsIEJyb3duIGhhcyBjcmVhdGVkIHR3byBzZXJpZXMgb2YgcGF0Y2hlcy4gT25l
+IGZvciBTTEVTMTEtU1AxIGFuZCBhCj4gPiAgIHNlY29uZCBvbmUgZm9yIC1TUDIKPiA+IAo+
+ID4gLSBBRkFJQ1MsIHRoZSBzZXJpZXMgZm9yIC1TUDIgd2lsbCBtYXRjaCB3aXRoIG1haW5s
+aW5lIGFsc28uCj4gPiAKPiA+IC0gVG9kYXkgSSBmb3VuZCBhbmQgZml4ZWQgdGhlIChob3Bl
+ZnVsbHkpIGxhc3QgcHJvYmxlbSBpbiB0aGUgLVNQMSBzZXJpZXMuCj4gPiAgIE15IHRlc3Qg
+dXNpbmcgdGhpcyBwYXRjaHNldCB3aWxsIHJ1biB1bnRpbCBNb25kYXkuCj4gPiAKPiA+IC0g
+UHJvdmlkZWQgdGhlIHRlc3Qgb24gU1AxIHN1Y2NlZWRzLCBwcm9iYWJseSBvbiBUdWVzZGF5
+IEknbGwgc3RhcnQgdG8gdGVzdAo+ID4gICB0aGUgcGF0Y2hlcyBmb3IgU1AyIChhbmQgbWFp
+bmxpbmUpLiBJZiBpdCBydW5zIGZpbmUsIHdlJ2xsIGhhdmUgYSB0ZXN0ZWQKPiA+ICAgcGF0
+Y2hzZXQgbm90IGxhdGVyIHRoYW4gTW9uIDE1dGguCj4gCj4gT0ssIGdyZWF0LCBhcyBsb25n
+IGFzIGl0IGhhc24ndCBqdXN0IGJlZW4gZm9yZ290dGVuIQo+IAo+IEknZCBhbHNvIGJlIGN1
+cmlvdXMgdG8gdW5kZXJzdGFuZCB3aHkgd2UgYXJlbid0IGdldHRpbmcgYSBsb3Qgb2YKPiBj
+b21wbGFpbnRzIGFib3V0IHRoaXMgZnJvbSBlbHNld2hlcmUuLi4uICBJcyB0aGVyZSBzb21l
+dGhpbmcgdW5pcXVlCj4gYWJvdXQgeW91ciBzZXR1cD8gIERvIHRoZSBidWdzIHRoYXQgcmVt
+YWluIHVwc3RyZWFtIHRha2UgYSBsb25nIHRpbWUgdG8KPiByZXByb2R1Y2U/Cj4gCj4gLS1i
+Lgo+IAoKSXQncyBubyBzZWNyZXQsIHdoYXQgd2UgYXJlIGRvaW5nLiBTbyBsZXQgbWUgdHJ5
+IHRvIGV4cGxhaW46CgpXZSBidWlsZCBhcHBsaWFuY2VzIGZvciBzdG9yYWdlIHB1cnBvc2Vz
+LiBFYWNoIGFwcGxpYW5jZSBtYWlubHkgY29uc2lzdHMgb2YKYSBjbHVzdGVyIG9mIHNlcnZl
+cnMgYW5kIGEgYnVuY2ggb2YgRmlicmVDaGFubmVsIFJBSUQgc3lzdGVtcy4gVGhlIHNlcnZl
+cnMKb2YgdGhlIGFwcGxpYW5jZSBydW4gU0xFUzExLgoKT25lIG9yZSBtb3JlIG9mIHRoZSBz
+ZXJ2ZXJzIGluIHRoZSBjbHVzdGVyIGNhbiBhY3QgYXMgYSBORlMgc2VydmVyLgoKRWFjaCBO
+RlMgc2VydmVyIGlzIGNvbm5lY3RlZCB0byB0aGUgUkFJRCBzeXN0ZW1zIGFuZCBoYXMgdHdv
+IDEwIEdCaXQvcyBFdGhlcm5ldApjb250cm9sbGVycyBmb3IgdGhlIGxpbmsgdG8gdGhlIGNs
+aWVudHMuCgpUaGUgYXBwbGlhbmNlIG5vdCBvbmx5IG9mZmVycyBORlMgYWNjZXNzIGZvciBj
+bGllbnRzLCBidXQgYWxzbyBoYXMgc29tZSBvdGhlcgp0eXBlcyBvZiBpbnRlcmZhY2VzIHRv
+IGJlIHVzZWQgYnkgdGhlIGNsaWVudHMuCgpGb3IgUUEgb2YgdGhlIGFwcGxpYW5jZXMgd2Ug
+dXNlIGEgc3BlY2lhbCB0ZXN0IHN5c3RlbSwgdGhhdCBydW5zIHRoZSBlbnRpcmUKYXBwbGlh
+bmNlIHdpdGggYWxsIGl0cyBpbnRlcmZhY2VzIHVuZGVyIGhlYXZ5IGxvYWQuCgpGb3IgdGhl
+IHRlc3Qgb2YgdGhlIE5GUyBpbnRlcmZhY2VzIG9mIHRoZSBhcHBsaWFuY2UsIHdlIGNvbm5l
+Y3QgdGhlIEV0aGVybmV0CmxpbmtzIG9uZSBieSBvbmUgdG8gMTAgR0JpdC9zIEV0aGVybmV0
+IGNvbnRyb2xsZXJzIG9uIGEgbGludXggbWFjaGluZSBvZiB0aGUKdGVzdCBzeXN0ZW0uCgpU
+aGUgU1cgb24gdGhlIHRlc3Qgc3lzdGVtIGZvciBlYWNoIEV0aGVybmV0IGxpbmsgdXNlcyAz
+MiBUQ1AgY29ubmVjdGlvbnMgdG8gdGhlCk5GUyBzZXJ2ZXIgaW4gcGFyYWxsZWwuIAoKU28g
+YmV0d2VlbiBORlMgc2VydmVyIG9mIHRoZSBhcHBsaWFuY2UgYW5kIGxpbnV4IG1hY2hpbmUg
+b2YgdGhlIHRlc3Qgc3lzdGVtIHdlCmhhdmUgdHdvIDEwIEdCaXQvcyBsaW5rcyB3aXRoIDMy
+IFRDUC9SUEMvTkZTX1YzIGNvbm5lY3Rpb25zIGVhY2guIEVhY2ggbGluawppcyBydW5uaW5n
+IGF0IHVwIHRvIDEgR0J5dGUvcyB0aHJvdWdocHV0IChwZXIgc2Vjb25kIGFuZCBwZXIgbGlu
+ayBhIHRvdGFsIG9mCjMyayBORlMzX1JFQUQgb3IgTkZTM19XUklURSBSUENzIG9mIDMyayBk
+YXRhIGVhY2guKQoKTm9ybWFsIExpbnV4LU5GUy1DbGllbnRzIG9wZW4gb25seSBvbmUgc2lu
+Z2xlIGNvbm5lY3Rpb24gdG8gYSBzcGVjaWZpYyBORlMKc2VydmVyLCBldmVuIGlmIHRoZXJl
+IGFyZSBtdWx0aXBsZSBtb3VudHMuIFdlIGRvIG5vdCB1c2UgdGhlIGxpbnV4IGJ1aWx0aW4K
+Y2xpZW50LCBidXQgY3JlYXRlIGEgUlBDIGNsaWVudCBieSBjbG50dGNwX2NyZWF0ZSgpIGFu
+ZCBkbyB0aGUgTkZTIGhhbmRsaW5nCmRpcmVjdGx5LiBUaHVzIHdlIGNhbiBoYXZlIG11bHRp
+cGxlIGNvbm5lY3Rpb25zIGFuZCB3ZSBpbW1lZGlhdGVseSBjYW4Kc2VlIGlmIHNvbWV0aGlu
+ZyBnb2VzIHdyb25nIChlLmcuIGlmIGEgUlBDIHJlcXVlc3QgaXMgZHJvcHBlZCksIHdoaWxl
+IHRoZQpidWlsdGluIGxpbnV4IGNsaWVudCBwcm9iYWJseSB3b3VsZCBkbyBhIHNpbGVudCBy
+ZXRyeS4gKEJ1dCBwcm9iYWJseSBvbmUKY291bGQgc2VlIHNpbmdsZSBjb25uZWN0aW9ucyBo
+YW5nIGZvciBhIGZldyBtaW51dGVzIHNwb3JhZGljYWxseS4gTWF5YmUKc29tZW9uZSBoaXQg
+YnkgdGhpcyB3b3VsZCBjb21wbGFpbiBhYm91dCB0aGUgbmV0d29yayAuLi4pCgpBcyBhIHNp
+ZGUgZWZmZWN0IG9mIHRoaXMgdGVzdCBzZXR1cCBhbGwgNjQgY29ubmVjdGlvbnMgdG8gdGhl
+IE5GUyBzZXJ2ZXIKdXNlIHRoZSBzYW1lIHVpZC9naWQgYW5kIGFsbCAzMiBjb25uZWN0aW9u
+cyBvbiBvbmUgbGluayBjb21lIGZyb20gdGhlIHNhbWUKaXAgYWRkcmVzcy4gVGhpcyAtIGFz
+IHdlIGtub3cgbm93IC0gbWF4aW1pemVzIHRoZSBzdHJlc3MgZm9yIGEgc2luZ2xlIGVudHJ5
+Cm9mIHRoZSBjYWNoZXMuCgpXaXRoIG91ciB0ZXN0IHNldHVwIGF0IHRoZSBiZWdpbm5pbmcg
+d2UgaGFkIG1vcmUgdGhhbiB0d28gZHJvcHBlZCBSUEMgcmVxdWVzdApwZXIgaG91ciBhbmQg
+cGVyIE5GUyBzZXJ2ZXIuIChPZiBjb3Vyc2UsIHRoaXMgcmF0ZSB2YXJpZWQgd2lkZWx5Likg
+V2l0aCBlYWNoCnNpbmdsZSBjaGFuZ2UgaW4gY2FjaGUuYyB0aGUgcmF0ZSB3ZW50IGRvd24u
+IFRoZSBsYXRlc3QgZHJvcCBjYXVzZWQgYnkgYQptaXNzaW5nIGRldGFpbCBpbiB0aGUgbGF0
+ZXN0IHBhdGNoc2V0IGZvciAtU1AxIG9jY3VyZWQgYWZ0ZXIgbW9yZSB0aGFuIDIgZGF5cwpv
+ZiB0ZXN0aW5nIQoKVGh1cywgdG8gdmVyaWZ5IHRoZSBwYXRjaGVzIEkgc2NoZWR1bGUgYSB0
+ZXN0IGZvciBhdCBsZWFzdCA0IGRheXMuCgpIVEgKQm9kbwo=
 
-Look fine to me; I didn't have any objection outside documentation.
 
-I've lost track of which are the latest patches, honestly--hopefully
-Steve's been keeping track, it's up to him to merge them.
-
---b.
