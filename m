@@ -1,42 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:16023 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755921Ab3DYPmx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Apr 2013 11:42:53 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Matt W. Benjamin" <matt@linuxbox.com>
-CC: David Wysochanski <dwysocha@redhat.com>,
-        Dave Chiluk <chiluk@canonical.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>
-Subject: RE: [PATCH] NFSv4: Use exponential backoff delay for Ni
-Date: Thu, 25 Apr 2013 15:42:50 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9287414AA@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1366899034.6812.4.camel@leira.trondhjem.org>
- <916743278.65.1366903701195.JavaMail.root@thunderbeast.private.linuxbox.com>
-In-Reply-To: <916743278.65.1366903701195.JavaMail.root@thunderbeast.private.linuxbox.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-la0-f48.google.com ([209.85.215.48]:33487 "EHLO
+	mail-la0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1162178Ab3DEQyN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Apr 2013 12:54:13 -0400
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v4 4/7] CIFS: Use NT_CREATE_ANDX command for forcemand mounts
+Date: Fri,  5 Apr 2013 20:57:52 +0400
+Message-Id: <1365181075-22540-5-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1365181075-22540-1-git-send-email-piastry@etersoft.ru>
+References: <1365181075-22540-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SXQncyBsZWdhbCwgYnV0IGR1bWIuLi4NCg0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0K
-PiBGcm9tOiBNYXR0IFcuIEJlbmphbWluIFttYWlsdG86bWF0dEBsaW51eGJveC5jb21dDQo+IFNl
-bnQ6IFRodXJzZGF5LCBBcHJpbCAyNSwgMjAxMyAxMToyOCBBTQ0KPiBUbzogTXlrbGVidXN0LCBU
-cm9uZA0KPiBDYzogRGF2aWQgV3lzb2NoYW5za2k7IERhdmUgQ2hpbHVrOyBsaW51eC1uZnNAdmdl
-ci5rZXJuZWwub3JnOyBsaW51eC0NCj4ga2VybmVsQHZnZXIua2VybmVsLm9yZzsgYmZpZWxkc0Bm
-aWVsZHNlcy5vcmcNCj4gU3ViamVjdDogUmU6IFtQQVRDSF0gTkZTdjQ6IFVzZSBleHBvbmVudGlh
-bCBiYWNrb2ZmIGRlbGF5IGZvciBOaQ0KPiANCj4gSGksDQo+IA0KPiBKdXN0IHRvIGNsYXJpZnks
-IHRoZSBJQk0gZGVsYXkgYmVoYXZpb3IgaXMgbm90IGxlZ2FsPw0KPiANCj4gTWF0dA0KPiANCj4g
-LS0tLS0gIlRyb25kIE15a2xlYnVzdCIgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90
-ZToNCj4gDQo+ID4NCj4gPiBPSywgdGhlbi4gTm93IGFsbCBJIG5lZWQgaXMgYWN0dWFsIG1vdGl2
-YXRpb24gZm9yIGNoYW5naW5nIHRoZQ0KPiA+IGV4aXN0aW5nIGNvZGUgb3RoZXIgdGhhbiBoYW5k
-d2F2aW5nIGFyZ3VtZW50cyBhYm91dCAicG9sbGluZyBpcyBiZXR0ZXINCj4gPiB0aGFuIGZsYXQg
-d2FpdHMiLg0KPiA+IFdoYXQgYWN0dWFsIHVzZSBjYXNlcyBhcmUgaW1wYWN0aW5nIHVzIG5vdywg
-b3RoZXIgdGhhbiB0aGUgQUlYIGRlc2lnbg0KPiA+IGRlY2lzaW9uIHRvIGZvcmNlIENMT1NFIHRv
-IHJldHJ5IGF0IGxlYXN0IG9uY2UgYmVmb3JlIHN1Y2NlZWRpbmc/DQo+ID4NCj4gDQo+IA0KPiAt
-LQ0KPiBNYXR0IEJlbmphbWluDQo+IFRoZSBMaW51eCBCb3gNCj4gMjA2IFNvdXRoIEZpZnRoIEF2
-ZS4gU3VpdGUgMTUwDQo+IEFubiBBcmJvciwgTUkgIDQ4MTA0DQo+IA0KPiBodHRwOi8vbGludXhi
-b3guY29tDQo+IA0KPiB0ZWwuICA3MzQtNzYxLTQ2ODkNCj4gZmF4LiAgNzM0LTc2OS04OTM4DQo+
-IGNlbC4gIDczNC0yMTYtNTMwOQ0K
+forcemand mount option now lets us use Windows mandatory style of
+byte-range locks even if server supports posix ones - switches on
+Windows locking mechanism. Share flags is another locking mehanism
+provided by Windows semantic that can be used by NT_CREATE_ANDX
+command. This patch combines all Windows locking mechanism in one
+mount option by using NT_CREATE_ANDX to open files if forcemand is on.
+
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+---
+ fs/cifs/dir.c  | 1 +
+ fs/cifs/file.c | 6 ++++--
+ 2 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/fs/cifs/dir.c b/fs/cifs/dir.c
+index d4331de..8587021 100644
+--- a/fs/cifs/dir.c
++++ b/fs/cifs/dir.c
+@@ -217,6 +217,7 @@ cifs_do_create(struct inode *inode, struct dentry *direntry, unsigned int xid,
+ 	}
+ 
+ 	if (tcon->unix_ext && cap_unix(tcon->ses) && !tcon->broken_posix_open &&
++	    ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
+ 	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
+ 			le64_to_cpu(tcon->fsUnixInfo.Capability))) {
+ 		rc = cifs_posix_open(full_path, &newinode, inode->i_sb, mode,
+diff --git a/fs/cifs/file.c b/fs/cifs/file.c
+index 9394b2b..19038a4 100644
+--- a/fs/cifs/file.c
++++ b/fs/cifs/file.c
+@@ -455,8 +455,9 @@ int cifs_open(struct inode *inode, struct file *file)
+ 	else
+ 		oplock = 0;
+ 
+-	if (!tcon->broken_posix_open && tcon->unix_ext &&
+-	    cap_unix(tcon->ses) && (CIFS_UNIX_POSIX_PATH_OPS_CAP &
++	if (!tcon->broken_posix_open && tcon->unix_ext && cap_unix(tcon->ses)
++	    && ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
++	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
+ 				le64_to_cpu(tcon->fsUnixInfo.Capability))) {
+ 		/* can not refresh inode info since size could be stale */
+ 		rc = cifs_posix_open(full_path, &inode, inode->i_sb,
+@@ -624,6 +625,7 @@ cifs_reopen_file(struct cifsFileInfo *cfile, bool can_flush)
+ 		oplock = 0;
+ 
+ 	if (tcon->unix_ext && cap_unix(tcon->ses) &&
++	    ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
+ 	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
+ 				le64_to_cpu(tcon->fsUnixInfo.Capability))) {
+ 		/*
+-- 
+1.8.1.5
+
