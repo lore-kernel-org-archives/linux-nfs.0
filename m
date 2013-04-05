@@ -1,65 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f182.google.com ([209.85.223.182]:50680 "EHLO
-	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754236Ab3DRTPm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Apr 2013 15:15:42 -0400
+Received: from relay.parallels.com ([195.214.232.42]:41398 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1161562Ab3DEOoM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Apr 2013 10:44:12 -0400
+Message-ID: <515EE2D0.8080006@parallels.com>
+Date: Fri, 5 Apr 2013 18:42:24 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-In-Reply-To: <51703280.03e9440a.06a6.3f9f@mx.google.com>
-References: <51703280.03e9440a.06a6.3f9f@mx.google.com>
-Date: Thu, 18 Apr 2013 12:15:41 -0700
-Message-ID: <CABgxfbF2HSYPF=rAjrKjoMAKqMOzUOUxJbNFspKaZ4ykMyaCbw@mail.gmail.com>
-Subject: Re: NFS over RDMA benchmark
-From: Wendy Cheng <s.wendy.cheng@gmail.com>
-To: Spencer Shepler <spencer.shepler@gmail.com>
-Cc: Yan Burman <yanb@mellanox.com>, "Atchley, Scott" <atchleyes@ornl.gov>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Tom Tucker <tom@opengridcomputing.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Or Gerlitz <ogerlitz@mellanox.com>
-Content-Type: text/plain; charset=ISO-8859-1
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "J. Bruce Fields" <bfields@redhat.com>, <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/4] nfsd4: make del_recall_lru per-network-namespace
+References: <1365170886-2267-1-git-send-email-bfields@redhat.com> <1365170886-2267-4-git-send-email-bfields@redhat.com> <20130405140952.GA2335@fieldses.org>
+In-Reply-To: <20130405140952.GA2335@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 18, 2013 at 10:50 AM, Spencer Shepler
-<spencer.shepler@gmail.com> wrote:
+05.04.2013 18:09, J. Bruce Fields пишет:
+> On Fri, Apr 05, 2013 at 10:08:05AM -0400, J. Bruce Fields wrote:
+>> From: "J. Bruce Fields" <bfields@redhat.com>
+>>
+>> If nothing else this simplifies the nfs4_state_shutdown_net logic a tad.
 >
-> Note that SPEC SFS does not support RDMA.
+> Stanislav, my one worry is that there was some reason you didn't do
+> this, that I've overlooked....
 >
 
-IIRC, the benchmark comes with source code - wondering anyone has
-modified it to run on RDMA ?  Or is there any real user to share the
-experience ?
+Hmm... Currently I can't remember a reason, why I didn't do that...
+This looks reasonable. Thanks!
 
--- Wendy
+BTW, maybe recall_lock should be containerised as well?
 
-> ________________________________
-> From: Wendy Cheng
-> Sent: 4/18/2013 9:16 AM
-> To: Yan Burman
-> Cc: Atchley, Scott; J. Bruce Fields; Tom Tucker; linux-rdma@vger.kernel.org;
-> linux-nfs@vger.kernel.org; Or Gerlitz
+
+> --b.
 >
-> Subject: Re: NFS over RDMA benchmark
->
-> On Thu, Apr 18, 2013 at 5:47 AM, Yan Burman <yanb@mellanox.com> wrote:
 >>
+>> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>> ---
+>>   fs/nfsd/netns.h     |  1 +
+>>   fs/nfsd/nfs4state.c | 15 +++++++--------
+>>   2 files changed, 8 insertions(+), 8 deletions(-)
 >>
->> What do you suggest for benchmarking NFS?
+>> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+>> index 1051beb..849a7c3 100644
+>> --- a/fs/nfsd/netns.h
+>> +++ b/fs/nfsd/netns.h
+>> @@ -80,6 +80,7 @@ struct nfsd_net {
+>>   	 */
+>>   	struct list_head client_lru;
+>>   	struct list_head close_lru;
+>> +	struct list_head del_recall_lru;
 >>
->
-> I believe SPECsfs has been widely used by NFS (server) vendors to
-> position their product lines. Its workload was based on a real life
-> NFS deployment. I think it is more torward office type of workload
-> (large client/user count with smaller file sizes e.g. software
-> development with build, compile, etc).
->
-> BTW, we're experimenting a similar project and would be interested to
-> know your findings.
->
-> -- Wendy
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>   	struct delayed_work laundromat_work;
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 26a03fa..aae9304 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -225,8 +225,6 @@ opaque_hashval(const void *ptr, int nbytes)
+>>   	return x;
+>>   }
+>>
+>> -static struct list_head del_recall_lru;
+>> -
+>>   static void nfsd4_free_file(struct nfs4_file *f)
+>>   {
+>>   	kmem_cache_free(file_slab, f);
+>> @@ -2583,6 +2581,9 @@ out:
+>>
+>>   static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
+>>   {
+>> +	struct nfs4_client *clp = dp->dl_stid.sc_client;
+>> +	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+>> +
+>>   	/* We're assuming the state code never drops its reference
+>>   	 * without first removing the lease.  Since we're in this lease
+>>   	 * callback (and since the lease code is serialized by the kernel
+>> @@ -2590,7 +2591,7 @@ static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
+>>   	 * it's safe to take a reference: */
+>>   	atomic_inc(&dp->dl_count);
+>>
+>> -	list_add_tail(&dp->dl_recall_lru, &del_recall_lru);
+>> +	list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
+>>
+>>   	/* only place dl_time is set. protected by lock_flocks*/
+>>   	dp->dl_time = get_seconds();
+>> @@ -3254,7 +3255,7 @@ nfs4_laundromat(struct nfsd_net *nn)
+>>   		expire_client(clp);
+>>   	}
+>>   	spin_lock(&recall_lock);
+>> -	list_for_each_safe(pos, next, &del_recall_lru) {
+>> +	list_for_each_safe(pos, next, &nn->del_recall_lru) {
+>>   		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+>>   		if (net_generic(dp->dl_stid.sc_client->net, nfsd_net_id) != nn)
+>>   			continue;
+>> @@ -4810,7 +4811,6 @@ struct nfs4_client *nfsd_find_client(struct sockaddr_storage *addr, size_t addr_
+>>   void
+>>   nfs4_state_init(void)
+>>   {
+>> -	INIT_LIST_HEAD(&del_recall_lru);
+>>   }
+>>
+>>   /*
+>> @@ -4874,6 +4874,7 @@ static int nfs4_state_create_net(struct net *net)
+>>   	nn->unconf_name_tree = RB_ROOT;
+>>   	INIT_LIST_HEAD(&nn->client_lru);
+>>   	INIT_LIST_HEAD(&nn->close_lru);
+>> +	INIT_LIST_HEAD(&nn->del_recall_lru);
+>>   	spin_lock_init(&nn->client_lock);
+>>
+>>   	INIT_DELAYED_WORK(&nn->laundromat_work, laundromat_main);
+>> @@ -4986,10 +4987,8 @@ nfs4_state_shutdown_net(struct net *net)
+>>
+>>   	INIT_LIST_HEAD(&reaplist);
+>>   	spin_lock(&recall_lock);
+>> -	list_for_each_safe(pos, next, &del_recall_lru) {
+>> +	list_for_each_safe(pos, next, &nn->del_recall_lru) {
+>>   		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+>> -		if (dp->dl_stid.sc_client->net != net)
+>> -			continue;
+>>   		list_move(&dp->dl_recall_lru, &reaplist);
+>>   	}
+>>   	spin_unlock(&recall_lock);
+>> --
+>> 1.7.11.7
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+-- 
+Best regards,
+Stanislav Kinsbursky
