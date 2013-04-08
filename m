@@ -1,66 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44173 "EHLO mx1.redhat.com"
+Received: from mout.perfora.net ([74.208.4.194]:56113 "EHLO mout.perfora.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932069Ab3DBSoU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Apr 2013 14:44:20 -0400
-Subject: Re: [PATCH 2/3] Avoid reverse resolution for server name
-From: Simo Sorce <simo@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
+	id S935338Ab3DHMGd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Apr 2013 08:06:33 -0400
+Date: Mon, 8 Apr 2013 08:06:25 -0400
+From: Jim Rees <rees@umich.edu>
+To: William Dauchy <wdauchy@gmail.com>
 Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-In-Reply-To: <515B22B3.8030406@RedHat.com>
-References: <1364924947-16985-1-git-send-email-simo@redhat.com>
-	 <1364924947-16985-3-git-send-email-simo@redhat.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9286FB37F@SACEXCMBX04-PRD.hq.netapp.com>
-	 <1364926918.2660.1273.camel@willson.li.ssimo.org>
-	 <515B22B3.8030406@RedHat.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 02 Apr 2013 14:44:17 -0400
-Message-ID: <1364928257.2660.1276.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+Subject: Re: [PATCH 0/2] Stable patches for NFSv4/4.1 trunking
+Message-ID: <20130408120625.GA9924@umich.edu>
+References: <1365196588-25403-1-git-send-email-Trond.Myklebust@netapp.com>
+ <CAJ75kXY-Yt_DNrKz7VfQPudw-1DkcKaK5dr3Wz7KmByyxwMSCQ@mail.gmail.com>
+ <1365280195.3651.4.camel@leira.trondhjem.org>
+ <CAJ75kXac4k07HMcbob2OmAhH4M+Dp1hmZbC+8uAZPB2AdrEbQw@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAJ75kXac4k07HMcbob2OmAhH4M+Dp1hmZbC+8uAZPB2AdrEbQw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-04-02 at 14:25 -0400, Steve Dickson wrote:
-> 
-> On 02/04/13 14:21, Simo Sorce wrote:
-> > On Tue, 2013-04-02 at 17:58 +0000, Myklebust, Trond wrote:
-> >>> -----Original Message-----
-> >>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> >>> owner@vger.kernel.org] On Behalf Of Simo Sorce
-> >>> Sent: Tuesday, April 02, 2013 1:49 PM
-> >>> To: Linux NFS Mailing list
-> >>> Subject: [PATCH 2/3] Avoid reverse resolution for server name
-> >>>
-> >>> A NFS client should be able to work properly even if the DNS Reverse record
-> >>> for the server is not set. There is no excuse to forcefully prevent that from
-> >>> working when it can.
-> >>
-> >> Note that rpc.statd has the same limitation.
-> > 
-> > I checked rpc.statd with a quick "git grep getnameinfo", and as far as I
-> > can see PTR lookups are done only if the 'name' is actually an IP
-> > address, but skipped if not. So I think rpc.statd is ok.
-> > 
-> > I see rpc.statd uses getaddrinfo with hints set to AI_NUMERICHOST, if
-> > that's preferred over using inet_pton I can change my patches to do the
-> > same.
-> Please do.. let try to keep it consistent.... thanks!
+William Dauchy wrote:
 
-Ok I looked at doing it, and looked at a helper function to reuse to
-avoid duplication, however the functions in statd/hostname.c are static,
-then I looked ad host_pton in support/export/hostname.c and realized 2
-things:
-- the comments there say inet_pton is actually better for what I need to
-do, in fact inet_pton is used as a filter before calling getaddrinfo.
-- the function can't be used in gssd_proc.c as the file is not linked
-there.
+  On Sat, Apr 6, 2013 at 10:29 PM, Myklebust, Trond
+  <Trond.Myklebust@netapp.com> wrote:
+  > The main reason is that it should be a _very_ rare event, since it
+  > requires a call to try_to_get_module(THIS) to fail, and so I can't see
+  > that it could ever cause a huge leakage.
+  > If someone can show that it is more of a problem than I suggest above,
+  > then I'm happy to reconsider.
+  
+  Understood. I didn't know a patch fixing a very rare event could not
+  go in stable.
 
-So given the above I would prefer to not change the use of inet_pton in
-the patches and leave them as is.
-
-Simo.
-
--- 
-Simo Sorce * Red Hat, Inc * New York
-
+Every patch, no matter how "obviously" correct, carries a risk of
+introducing new bugs. Trond is responsible for weighing the risk of new bugs
+against the benefit of fixing old ones. He has a lot of experience doing
+this. If he makes a mistake, he takes the heat for your bugs. Introducing a
+new bug into stable is a lot worse than introducing one into -next.
