@@ -1,66 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33666 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:50141 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1763172Ab3DCTYc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Apr 2013 15:24:32 -0400
-Date: Wed, 3 Apr 2013 15:24:29 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: akpm@linux-foundation.org, linux-kernel@vger.kernel.org, tj@kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 4/6] nfsd: convert nfs4_alloc_stid to use
- idr_alloc_cyclic
-Message-ID: <20130403192429.GI6044@fieldses.org>
-References: <1364412578-7462-1-git-send-email-jlayton@redhat.com>
- <1364412578-7462-5-git-send-email-jlayton@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1364412578-7462-5-git-send-email-jlayton@redhat.com>
+	id S935537Ab3DIX6V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Apr 2013 19:58:21 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 03/10] nfsd4: more sessions/open-owner-replay cleanup
+Date: Tue,  9 Apr 2013 19:58:08 -0400
+Message-Id: <1365551896-6936-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1365551896-6936-1-git-send-email-bfields@redhat.com>
+References: <1365551896-6936-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Err, and ack v2.--b.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-On Wed, Mar 27, 2013 at 03:29:36PM -0400, Jeff Layton wrote:
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> Cc: linux-nfs@vger.kernel.org
-> ---
->  fs/nfsd/nfs4state.c | 7 +------
->  1 file changed, 1 insertion(+), 6 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 2e27430..417c848 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -234,7 +234,6 @@ static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct
->  kmem_cache *slab)
->  {
->  	struct idr *stateids = &cl->cl_stateids;
-> -	static int min_stateid = 0;
->  	struct nfs4_stid *stid;
->  	int new_id;
->  
-> @@ -242,7 +241,7 @@ kmem_cache *slab)
->  	if (!stid)
->  		return NULL;
->  
-> -	new_id = idr_alloc(stateids, stid, min_stateid, 0, GFP_KERNEL);
-> +	new_id = idr_alloc_cyclic(stateids, stid, 0, 0, GFP_KERNEL);
->  	if (new_id < 0)
->  		goto out_free;
->  	stid->sc_client = cl;
-> @@ -261,10 +260,6 @@ kmem_cache *slab)
->  	 * amount of time until an id is reused, by ensuring they always
->  	 * "increase" (mod INT_MAX):
->  	 */
-> -
-> -	min_stateid = new_id+1;
-> -	if (min_stateid == INT_MAX)
-> -		min_stateid = 0;
->  	return stid;
->  out_free:
->  	kfree(stid);
-> -- 
-> 1.7.11.7
-> 
+More logic that's unnecessary in the 4.1 case.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c |   28 ++++++++++++++++------------
+ 1 file changed, 16 insertions(+), 12 deletions(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index c97bb42..5dee811 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -191,9 +191,18 @@ static __be32 nfsd_check_obj_isreg(struct svc_fh *fh)
+ 	return nfserr_symlink;
+ }
+ 
++static void nfsd4_set_open_owner_reply_cache(struct nfsd4_compound_state *cstate, struct nfsd4_open *open, struct svc_fh *resfh)
++{
++	if (nfsd4_has_session(cstate))
++		return;
++	fh_copy_shallow(&open->op_openowner->oo_owner.so_replay.rp_openfh,
++			&resfh->fh_handle);
++}
++
+ static __be32
+-do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_open *open)
++do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
+ {
++	struct svc_fh *current_fh = &cstate->current_fh;
+ 	struct svc_fh *resfh;
+ 	int accmode;
+ 	__be32 status;
+@@ -252,9 +261,7 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
+ 	if (is_create_with_attrs(open) && open->op_acl != NULL)
+ 		do_set_nfs4_acl(rqstp, resfh, open->op_acl, open->op_bmval);
+ 
+-	/* set reply cache */
+-	fh_copy_shallow(&open->op_openowner->oo_owner.so_replay.rp_openfh,
+-			&resfh->fh_handle);
++	nfsd4_set_open_owner_reply_cache(cstate, open, resfh);
+ 	accmode = NFSD_MAY_NOP;
+ 	if (open->op_created)
+ 		accmode |= NFSD_MAY_OWNER_OVERRIDE;
+@@ -268,8 +275,9 @@ out:
+ }
+ 
+ static __be32
+-do_open_fhandle(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_open *open)
++do_open_fhandle(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
+ {
++	struct svc_fh *current_fh = &cstate->current_fh;
+ 	__be32 status;
+ 
+ 	/* We don't know the target directory, and therefore can not
+@@ -278,9 +286,7 @@ do_open_fhandle(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_
+ 
+ 	memset(&open->op_cinfo, 0, sizeof(struct nfsd4_change_info));
+ 
+-	/* set replay cache */
+-	fh_copy_shallow(&open->op_openowner->oo_owner.so_replay.rp_openfh,
+-			&current_fh->fh_handle);
++	nfsd4_set_open_owner_reply_cache(cstate, open, current_fh);
+ 
+ 	open->op_truncate = (open->op_iattr.ia_valid & ATTR_SIZE) &&
+ 		(open->op_iattr.ia_size == 0);
+@@ -372,8 +378,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	switch (open->op_claim_type) {
+ 		case NFS4_OPEN_CLAIM_DELEGATE_CUR:
+ 		case NFS4_OPEN_CLAIM_NULL:
+-			status = do_open_lookup(rqstp, &cstate->current_fh,
+-						open);
++			status = do_open_lookup(rqstp, cstate, open);
+ 			if (status)
+ 				goto out;
+ 			break;
+@@ -386,8 +391,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 				goto out;
+ 		case NFS4_OPEN_CLAIM_FH:
+ 		case NFS4_OPEN_CLAIM_DELEG_CUR_FH:
+-			status = do_open_fhandle(rqstp, &cstate->current_fh,
+-						 open);
++			status = do_open_fhandle(rqstp, cstate, open);
+ 			if (status)
+ 				goto out;
+ 			break;
+-- 
+1.7.9.5
+
