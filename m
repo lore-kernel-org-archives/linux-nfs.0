@@ -1,38 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:51632 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751866Ab3DJGFe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 10 Apr 2013 02:05:34 -0400
-Message-ID: <5163AF52.2080303@cn.fujitsu.com>
-Date: Tue, 09 Apr 2013 14:04:02 +0800
-From: fanchaoting <fanchaoting@cn.fujitsu.com>
-MIME-Version: 1.0
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH] nfsd: don't  calculate mem's size in loop every time
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from mail-lb0-f177.google.com ([209.85.217.177]:60005 "EHLO
+	mail-lb0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S936935Ab3DIMgo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Apr 2013 08:36:44 -0400
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v5 6/7] NFSD: Pass share reservations flags to VFS
+Date: Tue,  9 Apr 2013 16:40:26 +0400
+Message-Id: <1365511227-17626-7-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1365511227-17626-1-git-send-email-piastry@etersoft.ru>
+References: <1365511227-17626-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+that maps them into O_DENY flags and make them visible for
+applications that use O_DENYMAND opens.
 
- Signed-off-by: fanchaoting <fanchaoting@cn.fujitsu.com>
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
 ---
- fs/nfsd/nfs4state.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/locks.c          |  1 +
+ fs/nfsd/nfs4state.c | 46 +++++++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 46 insertions(+), 1 deletion(-)
 
+diff --git a/fs/locks.c b/fs/locks.c
+index 52c9ea1..1402a43 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -866,6 +866,7 @@ deny_lock_file(struct file *filp)
+ 	locks_free_lock(lock);
+ 	return error;
+ }
++EXPORT_SYMBOL(deny_lock_file);
+ 
+ static int __posix_lock_file(struct inode *inode, struct file_lock *request, struct file_lock *conflock)
+ {
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2e27430..df3e3fd 100644
+index a8309c6..eb40c4f 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -716,8 +716,8 @@ static struct nfsd4_session *__alloc_session(int slotsize, int numslots)
- 	if (!new)
- 		return NULL;
- 	/* allocate each struct nfsd4_slot and data cache in one piece */
-+	mem = sizeof(struct nfsd4_slot) + slotsize;
- 	for (i = 0; i < numslots; i++) {
--		mem = sizeof(struct nfsd4_slot) + slotsize;
- 		new->se_slots[i] = kzalloc(mem, GFP_KERNEL);
- 		if (!new->se_slots[i])
- 			goto out_free;
+@@ -476,6 +476,19 @@ test_deny(u32 access, struct nfs4_ol_stateid *stp)
+ 	return test_bit(access, &stp->st_deny_bmap);
+ }
+ 
++static int nfs4_deny_to_odeny(u32 access)
++{
++	switch (access & NFS4_SHARE_DENY_BOTH) {
++	case NFS4_SHARE_DENY_READ:
++		return O_DENYREAD;
++	case NFS4_SHARE_DENY_WRITE:
++		return O_DENYWRITE;
++	case NFS4_SHARE_DENY_BOTH:
++		return O_DENYREAD | O_DENYWRITE;
++	}
++	return 0;
++}
++
+ static int nfs4_access_to_omode(u32 access)
+ {
+ 	switch (access & NFS4_SHARE_ACCESS_BOTH) {
+@@ -2795,6 +2808,21 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
+ }
+ 
+ static __be32
++nfs4_vfs_set_deny(struct nfs4_file *fp, unsigned long share_access,
++		  unsigned long deny_access)
++{
++	int oflag, rc;
++	__be32 status = nfs_ok;
++
++	oflag = nfs4_access_to_omode(share_access);
++	fp->fi_fds[oflag]->f_flags |= nfs4_deny_to_odeny(deny_access);
++	rc = deny_lock_file(fp->fi_fds[oflag]);
++	if (rc)
++		status = nfserrno(rc);
++	return status;
++}
++
++static __be32
+ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp, struct nfsd4_open *open)
+ {
+ 	u32 op_share_access = open->op_share_access;
+@@ -2815,6 +2843,14 @@ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *c
+ 		}
+ 		return status;
+ 	}
++	status = nfs4_vfs_set_deny(fp, op_share_access, open->op_share_deny);
++	if (status) {
++		if (new_access) {
++			int oflag = nfs4_access_to_omode(op_share_access);
++			nfs4_file_put_access(fp, oflag);
++		}
++		return status;
++	}
+ 	/* remember the open */
+ 	set_access(op_share_access, stp);
+ 	set_deny(open->op_share_deny, stp);
+@@ -3048,7 +3084,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 
+ 	/*
+ 	 * OPEN the file, or upgrade an existing OPEN.
+-	 * If truncate fails, the OPEN fails.
++	 * If truncate or setting deny fails, the OPEN fails.
+ 	 */
+ 	if (stp) {
+ 		/* Stateid was found, this is an OPEN upgrade */
+@@ -3062,6 +3098,10 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 		status = nfsd4_truncate(rqstp, current_fh, open);
+ 		if (status)
+ 			goto out;
++		status = nfs4_vfs_set_deny(fp, open->op_share_access,
++					   open->op_share_deny);
++		if (status)
++			goto out;
+ 		stp = open->op_stp;
+ 		open->op_stp = NULL;
+ 		init_open_stateid(stp, fp, open);
+@@ -3760,6 +3800,10 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
+ 	}
+ 	nfs4_stateid_downgrade(stp, od->od_share_access);
+ 
++	status = nfs4_vfs_set_deny(stp->st_file, od->od_share_access,
++				   od->od_share_deny);
++	if (status)
++		goto out;
+ 	reset_union_bmap_deny(od->od_share_deny, stp);
+ 
+ 	update_stateid(&stp->st_stid.sc_stateid);
 -- 
-1.7.1
+1.8.1.5
+
