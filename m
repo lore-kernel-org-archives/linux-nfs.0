@@ -1,184 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40505 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58013 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757958Ab3DXUXF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Apr 2013 16:23:05 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 05/17] Security: Add Hook to test if the particular xattr is part of a MAC model.
-Date: Wed, 24 Apr 2013 16:17:51 -0400
-Message-Id: <1366834683-29075-6-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
-References: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
+	id S936061Ab3DIPzB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Apr 2013 11:55:01 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r39Ft0Sf007915
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 9 Apr 2013 11:55:01 -0400
+Received: from caprica.fab.redhat.com (wlan-5-126.fab.redhat.com [10.33.5.126])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r39Ft0no004759
+	for <linux-nfs@vger.kernel.org>; Tue, 9 Apr 2013 11:55:00 -0400
+From: Jose Castillo <jcastillo@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] Add the missing '$' in auth_unix_ip()
+Date: Tue,  9 Apr 2013 16:54:59 +0100
+Message-Id: <1365522899-29123-1-git-send-email-jcastillo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
-
-The interface to request security labels from user space is the xattr
-interface. When requesting the security label from an NFS server it is
-important to make sure the requested xattr actually is a MAC label. This allows
-us to make sure that we get the desired semantics from the attribute instead of
-something else such as capabilities or a time based LSM.
-
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+Signed-off-by: Jose Castillo <jcastillo@redhat.com>
 ---
- include/linux/security.h   | 14 ++++++++++++++
- security/capability.c      |  6 ++++++
- security/security.c        |  6 ++++++
- security/selinux/hooks.c   |  6 ++++++
- security/smack/smack_lsm.c | 11 +++++++++++
- 5 files changed, 43 insertions(+)
+ utils/mountd/cache.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/security.h b/include/linux/security.h
-index f3d7956..934f96f 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -1323,6 +1323,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
-  *	@pages contains the number of pages.
-  *	Return 0 if permission is granted.
-  *
-+ * @ismaclabel:
-+ *	Check if the extended attribute specified by @name
-+ *	represents a MAC label. Returns 1 if name is a MAC
-+ *	attribute otherwise returns 0.
-+ *	@name full extended attribute name to check against
-+ *	LSM as a MAC label.
-+ *
-  * @secid_to_secctx:
-  *	Convert secid to security context.  If secdata is NULL the length of
-  *	the result will be returned in seclen, but no secdata will be returned.
-@@ -1604,6 +1611,7 @@ struct security_operations {
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 978698d..e1027f3 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -80,7 +80,7 @@ static void auth_unix_ip(FILE *f)
+ 	 */
+ 	char *cp;
+ 	char class[20];
+-	char ipaddr[INET6_ADDRSTRLEN];
++	char ipaddr[INET6_ADDRSTRLEN + 1];
+ 	char *client = NULL;
+ 	struct addrinfo *tmp = NULL;
+ 	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
+@@ -94,7 +94,7 @@ static void auth_unix_ip(FILE *f)
+ 	    strcmp(class, "nfsd") != 0)
+ 		return;
  
- 	int (*getprocattr) (struct task_struct *p, char *name, char **value);
- 	int (*setprocattr) (struct task_struct *p, char *name, void *value, size_t size);
-+	int (*ismaclabel) (const char *name);
- 	int (*secid_to_secctx) (u32 secid, char **secdata, u32 *seclen);
- 	int (*secctx_to_secid) (const char *secdata, u32 seclen, u32 *secid);
- 	void (*release_secctx) (char *secdata, u32 seclen);
-@@ -1857,6 +1865,7 @@ void security_d_instantiate(struct dentry *dentry, struct inode *inode);
- int security_getprocattr(struct task_struct *p, char *name, char **value);
- int security_setprocattr(struct task_struct *p, char *name, void *value, size_t size);
- int security_netlink_send(struct sock *sk, struct sk_buff *skb);
-+int security_ismaclabel(const char *name);
- int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen);
- int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
- void security_release_secctx(char *secdata, u32 seclen);
-@@ -2545,6 +2554,11 @@ static inline int security_netlink_send(struct sock *sk, struct sk_buff *skb)
- 	return cap_netlink_send(sk, skb);
- }
+-	if (qword_get(&cp, ipaddr, sizeof(ipaddr)) <= 0)
++	if (qword_get(&cp, ipaddr, sizeof(ipaddr) - 1) <= 0)
+ 		return;
  
-+static inline int security_ismaclabel(const char *name)
-+{
-+	return 0;
-+}
-+
- static inline int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return -EOPNOTSUPP;
-diff --git a/security/capability.c b/security/capability.c
-index 782045e..71e5052 100644
---- a/security/capability.c
-+++ b/security/capability.c
-@@ -822,6 +822,11 @@ static int cap_setprocattr(struct task_struct *p, char *name, void *value,
- 	return -EINVAL;
- }
- 
-+static int cap_ismaclabel(const char *name)
-+{
-+	return 0;
-+}
-+
- static int cap_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return -EOPNOTSUPP;
-@@ -1041,6 +1046,7 @@ void __init security_fixup_ops(struct security_operations *ops)
- 	set_to_cap_if_null(ops, d_instantiate);
- 	set_to_cap_if_null(ops, getprocattr);
- 	set_to_cap_if_null(ops, setprocattr);
-+	set_to_cap_if_null(ops, ismaclabel);
- 	set_to_cap_if_null(ops, secid_to_secctx);
- 	set_to_cap_if_null(ops, secctx_to_secid);
- 	set_to_cap_if_null(ops, release_secctx);
-diff --git a/security/security.c b/security/security.c
-index 7c18e3c..07391f3 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -1057,6 +1057,12 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
- 	return security_ops->netlink_send(sk, skb);
- }
- 
-+int security_ismaclabel(const char *name)
-+{
-+	return security_ops->ismaclabel(name);
-+}
-+EXPORT_SYMBOL(security_ismaclabel);
-+
- int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return security_ops->secid_to_secctx(secid, secdata, seclen);
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 622b205..273e28b 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -5423,6 +5423,11 @@ abort_change:
- 	return error;
- }
- 
-+static int selinux_ismaclabel(const char *name)
-+{
-+	return (strcmp(name, XATTR_SELINUX_SUFFIX) == 0);
-+}
-+
- static int selinux_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return security_sid_to_context(secid, secdata, seclen);
-@@ -5661,6 +5666,7 @@ static struct security_operations selinux_ops = {
- 	.getprocattr =			selinux_getprocattr,
- 	.setprocattr =			selinux_setprocattr,
- 
-+	.ismaclabel =			selinux_ismaclabel,
- 	.secid_to_secctx =		selinux_secid_to_secctx,
- 	.secctx_to_secid =		selinux_secctx_to_secid,
- 	.release_secctx =		selinux_release_secctx,
-diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
-index fa64740..ca01d71 100644
---- a/security/smack/smack_lsm.c
-+++ b/security/smack/smack_lsm.c
-@@ -3329,6 +3329,16 @@ static void smack_audit_rule_free(void *vrule)
- #endif /* CONFIG_AUDIT */
- 
- /**
-+ * smack_ismaclabel - check if xattr @name references a smack MAC label
-+ * @name: Full xattr name to check.
-+ */
-+static int smack_ismaclabel(const char *name)
-+{
-+	return (strcmp(name, XATTR_SMACK_SUFFIX) == 0);
-+}
-+
-+
-+/**
-  * smack_secid_to_secctx - return the smack label for a secid
-  * @secid: incoming integer
-  * @secdata: destination
-@@ -3524,6 +3534,7 @@ struct security_operations smack_ops = {
- 	.audit_rule_free =		smack_audit_rule_free,
- #endif /* CONFIG_AUDIT */
- 
-+	.ismaclabel =			smack_ismaclabel,
- 	.secid_to_secctx = 		smack_secid_to_secctx,
- 	.secctx_to_secid = 		smack_secctx_to_secid,
- 	.release_secctx = 		smack_release_secctx,
+ 	tmp = host_pton(ipaddr);
+@@ -116,9 +116,11 @@ static void auth_unix_ip(FILE *f)
+ 	qword_print(f, "nfsd");
+ 	qword_print(f, ipaddr);
+ 	qword_printtimefrom(f, DEFAULT_TTL);
+-	if (use_ipaddr)
++	if (use_ipaddr) {
++		memmove(ipaddr + 1, ipaddr, strlen(ipaddr) + 1);
++		ipaddr[0] = '$';
+ 		qword_print(f, ipaddr);
+-	else if (client)
++	} else if (client)
+ 		qword_print(f, *client?client:"DEFAULT");
+ 	qword_eol(f);
+ 	xlog(D_CALL, "auth_unix_ip: client %p '%s'", client, client?client: "DEFAULT");
 -- 
-1.8.1.4
+1.7.11.7
 
