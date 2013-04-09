@@ -1,70 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:27201 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:48097 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751069Ab3DVRHF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Apr 2013 13:07:05 -0400
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r3MH75la018062
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Apr 2013 13:07:05 -0400
-Message-ID: <51756E38.6030905@RedHat.com>
-Date: Mon, 22 Apr 2013 13:07:04 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1762512Ab3DITW7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Apr 2013 15:22:59 -0400
+Date: Tue, 9 Apr 2013 15:22:59 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Simo Sorce <simo@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>, jlayton@redhat.com
+Subject: Re: [PATCH 1/2] Avoid reverse resolution for server name
+Message-ID: <20130409192259.GD3800@fieldses.org>
+References: <515B2F8D.3030302@RedHat.com>
+ <1364931149-18484-2-git-send-email-simo@redhat.com>
+ <5162C8A5.4030307@RedHat.com>
+ <1365430116.20560.6.camel@willson.li.ssimo.org>
+ <51644CC5.3070609@RedHat.com>
+ <1365528308.20560.42.camel@willson.li.ssimo.org>
+ <5164514A.7020606@RedHat.com>
+ <20130409185445.GA3800@fieldses.org>
+ <51646838.3050209@RedHat.com>
 MIME-Version: 1.0
-To: Jose Castillo <jcastillo@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Add the missing '$' in auth_unix_ip()
-References: <1365522899-29123-1-git-send-email-jcastillo@redhat.com>
-In-Reply-To: <1365522899-29123-1-git-send-email-jcastillo@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <51646838.3050209@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 09/04/13 11:54, Jose Castillo wrote:
-> Signed-off-by: Jose Castillo <jcastillo@redhat.com>
-Committed...
-
-steved.
-> ---
->  utils/mountd/cache.c | 10 ++++++----
->  1 file changed, 6 insertions(+), 4 deletions(-)
+On Tue, Apr 09, 2013 at 03:12:56PM -0400, Steve Dickson wrote:
 > 
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index 978698d..e1027f3 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -80,7 +80,7 @@ static void auth_unix_ip(FILE *f)
->  	 */
->  	char *cp;
->  	char class[20];
-> -	char ipaddr[INET6_ADDRSTRLEN];
-> +	char ipaddr[INET6_ADDRSTRLEN + 1];
->  	char *client = NULL;
->  	struct addrinfo *tmp = NULL;
->  	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
-> @@ -94,7 +94,7 @@ static void auth_unix_ip(FILE *f)
->  	    strcmp(class, "nfsd") != 0)
->  		return;
->  
-> -	if (qword_get(&cp, ipaddr, sizeof(ipaddr)) <= 0)
-> +	if (qword_get(&cp, ipaddr, sizeof(ipaddr) - 1) <= 0)
->  		return;
->  
->  	tmp = host_pton(ipaddr);
-> @@ -116,9 +116,11 @@ static void auth_unix_ip(FILE *f)
->  	qword_print(f, "nfsd");
->  	qword_print(f, ipaddr);
->  	qword_printtimefrom(f, DEFAULT_TTL);
-> -	if (use_ipaddr)
-> +	if (use_ipaddr) {
-> +		memmove(ipaddr + 1, ipaddr, strlen(ipaddr) + 1);
-> +		ipaddr[0] = '$';
->  		qword_print(f, ipaddr);
-> -	else if (client)
-> +	} else if (client)
->  		qword_print(f, *client?client:"DEFAULT");
->  	qword_eol(f);
->  	xlog(D_CALL, "auth_unix_ip: client %p '%s'", client, client?client: "DEFAULT");
 > 
+> On 09/04/13 14:54, J. Bruce Fields wrote:
+> > Argh, no, one away or another the default needs to be to not do the PTR
+> > lookup.
+> Fine... 
+>  
+> > 
+> > The transition Simo's using was Jeff's suggestion.  Let's just stick to
+> > that if we don't have a good reason.
+> Yeah... I would like to avoid adding to flags... I don't think both are 
+> needed.
+
+So, no flags.
+
+> > (But I don't have strong opinions about how to do it either.  I'd
+> > actually be OK with being harsh and just switching to the new behavior
+> > without any option.)
+> My crutch is I'm not a big DNS guy so I'm not sure how much breakage 
+> would occur... So I would rather be on the safe side and give people
+> a way to go back... 
+
+So, yes to flags.  I'm confused!
+
+I guess we can be moderately harsh: switch to the new default and
+provide only a flag to restore the old default for whoever wants it, but
+not a flag to specify the new default.  Is that what you mean?
+
+--b.
