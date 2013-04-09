@@ -1,58 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:39180 "EHLO mx1.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758372Ab3D2SdE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Apr 2013 14:33:04 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFSv4: Servers should only check SETATTR stateid
- open mode on size change
-Date: Mon, 29 Apr 2013 18:33:02 +0000
-Message-ID: <1367260382.19515.29.camel@leira.trondhjem.org>
-References: <1367248534-33387-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1367259352.19515.16.camel@leira.trondhjem.org>
-	 <20130429182145.GL17268@fieldses.org>
-	 <1367260027.19515.25.camel@leira.trondhjem.org>
-	 <20130429182939.GN17268@fieldses.org>
-In-Reply-To: <20130429182939.GN17268@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from smtp-vbr2.xs4all.nl ([194.109.24.22]:2355 "EHLO
+	smtp-vbr2.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755740Ab3DIMqM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Apr 2013 08:46:12 -0400
+Date: Tue, 9 Apr 2013 14:46:06 +0200
+From: Miquel van Smoorenburg <mikevs@xs4all.net>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/2] RFC: nfs client: lower number of NFS ops in some
+ circumstances
+Message-ID: <20130409124600.GA15201@xs4all.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-04-29 at 14:29 -0400, J. Bruce Fields wrote:
-> On Mon, Apr 29, 2013 at 06:27:07PM +0000, Myklebust, Trond wrote:
-> > On Mon, 2013-04-29 at 14:21 -0400, J. Bruce Fields wrote:
-> > > On Mon, Apr 29, 2013 at 06:15:52PM +0000, Myklebust, Trond wrote:
-> > > > On Mon, 2013-04-29 at 11:15 -0400, Trond Myklebust wrote:
-> > > > > The NFSv4 and NFSv4.1 specs are both clear that the server should only check
-> > > > > stateid open mode if a SETATTR specifies the size attribute. If the
-> > > > > open mode is not one that allows writing, then it returns NFS4ERR_OPENMODE.
-> > > > > 
-> > > > > In the case where the SETATTR is not changing the size, the client will
-> > > > > still pass it the delegation stateid to ensure that the server does not
-> > > > > recall that delegation. In that case, the server should _ignore_ the
-> > > > > delegation open mode, and simply apply standard permission checks.
-> > > > 
-> > > > Bruce, what does the Linux server do when we send it a delegation
-> > > > stateid as part of a SETATTR that just changes the mode or acl (no size
-> > > > change)? Will it recall the delegation? How about the delegations held
-> > > > by other clients?
-> > > 
-> > > Yes, it breaks all delegations on any setattr.
-> > 
-> > Do you plan to change that?
-> 
-> I'd take patches.
+These NFS client patches are posted as an RFC - request for comment.
 
-Have the NFSv4 delegation patches been merged yet, and do they hand out
-delegations on file creation?
+The idea behind these patches is to make it possible to cut down on
+the number of NFS operations used when opening a file in certain
+circumstances and environments (esp. mostly-readonly environments).
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+1/2: "noaccesscheck" mount option
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+     If this option is enabled, the nfs client will not send any
+     NFS ACCESS calls to the server, except for UID 0. For all other
+     uids, access is checked locally using generic_permission().
+
+2/2: "sloppycto=N" mount option
+
+     This mount option is a bit like like "nocto" - it suppresses
+     a GETATTR call when a file is opened if we still have valid
+     attribute data in the cache. The difference is that 1) we
+     only do this for files that are opened read-only and 2) only
+     when the last attribute update was 'N' seconds or less ago.
+
+We've been using these patches in production for a couple of months.
+
+Background:
+
+On our webhosting setup, all our customers data is stored on
+NFS server appliances. A cluster of linux webservers mounts those
+volumes (using NFSv3 over TCP, Unix auth) and serves HTTP,
+using a reasonably standard apache setup.
+
+That works pretty well, the problem is our customers like to run
+"modern" PHP CMSes like Joomla that are built 'modular' and like to
+include hundreds of PHP files to generate just one page. To add
+insult to injury, PHP itself stat()s every file before it open()s it.
+
+This means for every pageview with such a CMS we get hundreds of:
+
+stat():   GETATTR
+open():   ACCESS + GETATTR (for close-to-open consistency).
+
+Obviously we also get a few hundred read() requests, but only
+the very first time, and the content of these files is cached
+pretty well after that.
+
+If a second pageview is within the nfsi->attrtimeo timeout, we
+may see:
+
+stat():   (GETATTR cached)
+open():   ACCESS + GETATTR
+
+or
+
+stat():   (GETATTR cached)
+open():   (ACCESS cached) + GETATTR
+
+But after the attribute timeout it's 3 NFS operations again.
+
+With the 'noaccesscheck' mount option, this gets reduced to two operations:
+
+stat():   GETATTR
+open():   GETATTR
+
+And after adding the 'sloppycto=3' mount option it becomes
+
+stat():   GETATTR
+open():   (GETATTR cached)
+
+This really cuts down on the number of NFS operations. That's good
+for us, as the NFS server solution we're using appears to support a
+high, but still limited maximum number of NFS ops/sec.
+
+I can think of a few enhancements/adjustments to these patches:
+
+- a clearer name than "noaccesscheck" ?
+- instead of "sloppycto=N", perhaps "nocto=ro,acctomin=X,acctomax=Y" ?
+- only allow mounting with 'noaccesscheck' when sec=sys
+- in namei.h, switch LOOKUP_WRITE and LOOKUP_RENAME_TARGET values
+  for cosmetic reasons
+- ....
+
+Thoughts? Comments? Ridicule? Other solutions?
+
+Mike.
