@@ -1,145 +1,213 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:57838 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755559Ab3DYHSR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2013 03:18:17 -0400
-Message-ID: <5178D89C.40103@parallels.com>
-Date: Thu, 25 Apr 2013 11:17:48 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>, <linux-nfs@vger.kernel.org>,
-        <devel@openvz.org>, <Trond.Myklebust@netapp.com>,
-        <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: enable UMH client tracker in container
-References: <20130416111344.14621.56912.stgit@localhost.localdomain> <20130419070150.6937f1e6@corrin.poochiereds.net> <20130423200048.GI3676@fieldses.org>
-In-Reply-To: <20130423200048.GI3676@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from fieldses.org ([174.143.236.118]:50146 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S935446Ab3DIX6W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Apr 2013 19:58:22 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 10/10] nfsd4: implement SEQ4_STATUS_RECALLABLE_STATE_REVOKED
+Date: Tue,  9 Apr 2013 19:58:15 -0400
+Message-Id: <1365551896-6936-11-git-send-email-bfields@redhat.com>
+In-Reply-To: <1365551896-6936-1-git-send-email-bfields@redhat.com>
+References: <1365551896-6936-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-24.04.2013 00:00, J. Bruce Fields пишет:
-> On Fri, Apr 19, 2013 at 07:01:50AM -0700, Jeff Layton wrote:
->> On Tue, 16 Apr 2013 15:17:44 +0400
->> Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
->>
->>> This patch adds support for UserModeHelper tracker in a container.
->>> The reason for this is that the only containerised tracker ("nfsdcld") is
->>> going to be removed in 3.10 kernel, thus at least one more tracker have to be
->>> containerised to replace the deprecated one.
->>> UMH tracker looks more preferable comparing to legacy since it's the latest
->>> one.
->>> To make UMH tracker work in a container, we have to make sure, that it
->>> executes right binary (i.e., this binary have to be taken from the container
->>> environment).
->>> But, UMH is a kernel thread, which works in global root environment by design
->>> (kernel thread's root is inherited from kthreadd, which in turn inherited it's
->>> root from global init). So, the root have to be swapped to the container's
->>> one before binary execution.
->>>
->>> This patch passes "init" callback and private "data" to UMH interface, which
->>> are used to swap root for spawned kernel thread.
->>>
->>> Note: container's root can be stored on stack, because UMH calls are
->>> synchronous.
->>>
->>> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
->>> ---
->>>   fs/nfsd/nfs4recover.c |   29 ++++++++++++++++++++++-------
->>>   1 files changed, 22 insertions(+), 7 deletions(-)
->>>
->>> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
->>> index 899ca26..15f8de6 100644
->>> --- a/fs/nfsd/nfs4recover.c
->>> +++ b/fs/nfsd/nfs4recover.c
->>> @@ -38,6 +38,7 @@
->>>   #include <linux/crypto.h>
->>>   #include <linux/sched.h>
->>>   #include <linux/fs.h>
->>> +#include <linux/fs_struct.h>
->>>   #include <linux/module.h>
->>>   #include <net/net_namespace.h>
->>>   #include <linux/sunrpc/rpc_pipe_fs.h>
->>> @@ -1122,12 +1123,28 @@ nfsd4_cltrack_legacy_recdir(const struct xdr_netobj *name)
->>>   	return result;
->>>   }
->>>
->>> +static int nfsd_swap_root(struct subprocess_info *info, struct cred *new)
->>> +{
->>> +	struct path *root = info->data;
->>> +	struct fs_struct *fs = current->fs;
->>> +	struct path current_root;
->>> +
->>> +	spin_lock(&fs->lock);
->>> +	current_root = fs->root;
->>> +	fs->root = *root;
->>> +	spin_unlock(&fs->lock);
->>> +	if (current_root.dentry)
->>> +		path_put(&current_root);
->>> +	return 0;
->>> +}
->>> +
->>>   static int
->>>   nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
->>>   {
->>>   	char *envp[2];
->>>   	char *argv[4];
->>>   	int ret;
->>> +	struct path root;
->>>
->>>   	if (unlikely(!cltrack_prog[0])) {
->>>   		dprintk("%s: cltrack_prog is disabled\n", __func__);
->>> @@ -1146,7 +1163,11 @@ nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
->>>   	argv[2] = arg;
->>>   	argv[3] = NULL;
->>>
->>> -	ret = call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
->>> +	get_fs_root(current->fs, &root);
->>> +
->>> +	ret = call_usermodehelper_fns(argv[0], argv, envp, UMH_WAIT_PROC,
->>> +				       nfsd_swap_root, NULL, &root);
->>> +
->>>   	/*
->>>   	 * Disable the upcall mechanism if we're getting an ENOENT or EACCES
->>>   	 * error. The admin can re-enable it on the fly by using sysfs
->>> @@ -1185,12 +1206,6 @@ bin_to_hex_dup(const unsigned char *src, int srclen)
->>>   static int
->>>   nfsd4_umh_cltrack_init(struct net __attribute__((unused)) *net)
->>>   {
->>> -	/* XXX: The usermode helper s not working in container yet. */
->>> -	if (net != &init_net) {
->>> -		WARN(1, KERN_ERR "NFSD: attempt to initialize umh client "
->>> -			"tracking in a container!\n");
->>> -		return -EINVAL;
->>> -	}
->>>   	return nfsd4_umh_cltrack_upcall("init", NULL, NULL);
->>>   }
->>>
->>>
->>
->> I think this looks correct and like it'll work, but I wonder whether
->> we'd be best served by making this part of the UMH code itself?
->>
->> IOW, add some fields to the struct subprocess_info to hold the new
->> root, and then do what you're doing in nfsd_swap_root before calling
->> the "init" function?
->>
->> I imagine we'll eventually need do something similar for at least some
->> of the callers of call_usermodehelper so it would make sense to me to
->> not replicate copies of nfsd_swap_root all over the place.
->
-> Agreed.
->
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Hmm. Yes, me too.
-Ok, I'll prepare patch for the UMH itself.
-And resend.
-Thanks, guys.
+A 4.1 server must notify a client that has had any state revoked using
+the SEQ4_STATUS_RECALLABLE_STATE_REVOKED flag.  The client can figure
+out exactly which state is the problem using CHECK_STATEID and then free
+it using FREE_STATEID.  The status flag will be unset once all such
+revoked stateids are freed.
 
-> --b.
->
+Our server's only recallable state is delegations.  So we keep with each
+4.1 client a list of delegations that have timed out and been recalled,
+but haven't yet been freed by FREE_STATEID.
 
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   55 +++++++++++++++++++++++++++++++++++++++++++--------
+ fs/nfsd/state.h     |    3 +++
+ 2 files changed, 50 insertions(+), 8 deletions(-)
 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index add9721..032e024 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -445,7 +445,6 @@ static void unhash_stid(struct nfs4_stid *s)
+ static void
+ unhash_delegation(struct nfs4_delegation *dp)
+ {
+-	unhash_stid(&dp->dl_stid);
+ 	list_del_init(&dp->dl_perclnt);
+ 	spin_lock(&recall_lock);
+ 	list_del_init(&dp->dl_perfile);
+@@ -455,9 +454,36 @@ unhash_delegation(struct nfs4_delegation *dp)
+ 	put_nfs4_file(dp->dl_file);
+ 	dp->dl_file = NULL;
+ 	remove_stid(&dp->dl_stid);
++}
++
++
++
++static void destroy_revoked_delegation(struct nfs4_delegation *dp)
++{
++	unhash_stid(&dp->dl_stid);
++	list_del_init(&dp->dl_recall_lru);
+ 	nfs4_put_delegation(dp);
+ }
+ 
++static void destroy_delegation(struct nfs4_delegation *dp)
++{
++	unhash_stid(&dp->dl_stid);
++	unhash_delegation(dp);
++	nfs4_put_delegation(dp);
++}
++
++static void revoke_delegation(struct nfs4_delegation *dp)
++{
++	struct nfs4_client *clp = dp->dl_stid.sc_client;
++
++	if (clp->cl_minorversion == 0)
++		destroy_delegation(dp);
++	else {
++		dp->dl_stid.sc_type = NFS4_REVOKED_DELEG_STID;
++		list_add(&dp->dl_recall_lru, &clp->cl_revoked);
++	}
++}
++
+ /* 
+  * SETCLIENTID state 
+  */
+@@ -1114,7 +1140,7 @@ destroy_client(struct nfs4_client *clp)
+ 	spin_unlock(&recall_lock);
+ 	while (!list_empty(&reaplist)) {
+ 		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
+-		unhash_delegation(dp);
++		destroy_delegation(dp);
+ 	}
+ 	while (!list_empty(&clp->cl_openowners)) {
+ 		oo = list_entry(clp->cl_openowners.next, struct nfs4_openowner, oo_perclient);
+@@ -1310,6 +1336,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 	INIT_LIST_HEAD(&clp->cl_delegations);
+ 	INIT_LIST_HEAD(&clp->cl_lru);
+ 	INIT_LIST_HEAD(&clp->cl_callbacks);
++	INIT_LIST_HEAD(&clp->cl_revoked);
+ 	spin_lock_init(&clp->cl_lock);
+ 	nfsd4_init_callback(&clp->cl_cb_null);
+ 	clp->cl_time = get_seconds();
+@@ -2171,6 +2198,8 @@ out:
+ 	default:
+ 		seq->status_flags = 0;
+ 	}
++	if (!list_empty(&clp->cl_revoked))
++		seq->status_flags |= SEQ4_STATUS_RECALLABLE_STATE_REVOKED;
+ out_no_session:
+ 	kfree(conn);
+ 	spin_unlock(&nn->client_lock);
+@@ -3297,7 +3326,7 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 	spin_unlock(&recall_lock);
+ 	list_for_each_safe(pos, next, &reaplist) {
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+-		unhash_delegation(dp);
++		revoke_delegation(dp);
+ 	}
+ 	test_val = nn->nfsd4_lease;
+ 	list_for_each_safe(pos, next, &nn->close_lru) {
+@@ -3459,6 +3488,8 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+ 	switch (s->sc_type) {
+ 	case NFS4_DELEG_STID:
+ 		return nfs_ok;
++	case NFS4_REVOKED_DELEG_STID:
++		return nfserr_deleg_revoked;
+ 	case NFS4_OPEN_STID:
+ 	case NFS4_LOCK_STID:
+ 		ols = openlockstateid(s);
+@@ -3602,6 +3633,7 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ {
+ 	stateid_t *stateid = &free_stateid->fr_stateid;
+ 	struct nfs4_stid *s;
++	struct nfs4_delegation *dp;
+ 	struct nfs4_client *cl = cstate->session->se_client;
+ 	__be32 ret = nfserr_bad_stateid;
+ 
+@@ -3623,6 +3655,11 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		else
+ 			ret = nfserr_locks_held;
+ 		break;
++	case NFS4_REVOKED_DELEG_STID:
++		dp = delegstateid(s);
++		destroy_revoked_delegation(dp);
++		ret = nfs_ok;
++		break;
+ 	default:
+ 		ret = nfserr_bad_stateid;
+ 	}
+@@ -3647,10 +3684,12 @@ static __be32 nfs4_seqid_op_checks(struct nfsd4_compound_state *cstate, stateid_
+ 	status = nfsd4_check_seqid(cstate, sop, seqid);
+ 	if (status)
+ 		return status;
+-	if (stp->st_stid.sc_type == NFS4_CLOSED_STID)
++	if (stp->st_stid.sc_type == NFS4_CLOSED_STID
++		|| stp->st_stid.sc_type == NFS4_REVOKED_DELEG_STID)
+ 		/*
+ 		 * "Closed" stateid's exist *only* to return
+-		 * nfserr_replay_me from the previous step.
++		 * nfserr_replay_me from the previous step, and
++		 * revoked delegations are kept only for free_stateid.
+ 		 */
+ 		return nfserr_bad_stateid;
+ 	status = check_stateid_generation(stateid, &stp->st_stid.sc_stateid, nfsd4_has_session(cstate));
+@@ -3913,7 +3952,7 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (status)
+ 		goto out;
+ 
+-	unhash_delegation(dp);
++	destroy_delegation(dp);
+ out:
+ 	nfs4_unlock_state();
+ 
+@@ -4763,7 +4802,7 @@ u64 nfsd_forget_client_delegations(struct nfs4_client *clp, u64 max)
+ 	spin_unlock(&recall_lock);
+ 
+ 	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
+-		unhash_delegation(dp);
++		revoke_delegation(dp);
+ 
+ 	return count;
+ }
+@@ -5018,7 +5057,7 @@ nfs4_state_shutdown_net(struct net *net)
+ 	spin_unlock(&recall_lock);
+ 	list_for_each_safe(pos, next, &reaplist) {
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+-		unhash_delegation(dp);
++		destroy_delegation(dp);
+ 	}
+ 
+ 	nfsd4_client_tracking_exit(net);
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 13ec485..274e2a1 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -79,6 +79,8 @@ struct nfs4_stid {
+ #define NFS4_DELEG_STID 4
+ /* For an open stateid kept around *only* to process close replays: */
+ #define NFS4_CLOSED_STID 8
++/* For a deleg stateid kept around only to process free_stateid's: */
++#define NFS4_REVOKED_DELEG_STID 16
+ 	unsigned char sc_type;
+ 	stateid_t sc_stateid;
+ 	struct nfs4_client *sc_client;
+@@ -238,6 +240,7 @@ struct nfs4_client {
+ 	struct list_head	cl_openowners;
+ 	struct idr		cl_stateids;	/* stateid lookup */
+ 	struct list_head	cl_delegations;
++	struct list_head	cl_revoked;	/* unacknowledged, revoked 4.1 state */
+ 	struct list_head        cl_lru;         /* tail queue */
+ 	struct xdr_netobj	cl_name; 	/* id generated by client */
+ 	nfs4_verifier		cl_verifier; 	/* generated by client */
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.9.5
+
