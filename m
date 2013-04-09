@@ -1,116 +1,187 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:35254 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753998Ab3DLRA7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Apr 2013 13:00:59 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
-Subject: Re: [PATCH] mount: No longer negotiate to v2
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1365782736-9764-2-git-send-email-steved@redhat.com>
-Date: Fri, 12 Apr 2013 13:00:53 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <2A4E5E3D-FCC3-4E16-80CA-77E079EF860F@oracle.com>
-References: <1365782736-9764-1-git-send-email-steved@redhat.com> <1365782736-9764-2-git-send-email-steved@redhat.com>
-To: Steve Dickson <steved@redhat.com>
+Received: from mail-la0-f52.google.com ([209.85.215.52]:64591 "EHLO
+	mail-la0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S936962Ab3DIMgm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Apr 2013 08:36:42 -0400
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v5 5/7] NFSv4: Add O_DENY* open flags support
+Date: Tue,  9 Apr 2013 16:40:25 +0400
+Message-Id: <1365511227-17626-6-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1365511227-17626-1-git-send-email-piastry@etersoft.ru>
+References: <1365511227-17626-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+by passing these flags to NFSv4 open request. Also make it return
+-EBUSY on share conflicts with other opens.
 
-On Apr 12, 2013, at 12:05 PM, Steve Dickson <steved@redhat.com> wrote:
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+---
+ fs/nfs/internal.h  |  3 ++-
+ fs/nfs/nfs4proc.c  |  4 +++-
+ fs/nfs/nfs4super.c |  9 ++++++---
+ fs/nfs/nfs4xdr.c   | 21 +++++++++++++++++----
+ fs/nfs/super.c     |  7 +++++--
+ 5 files changed, 33 insertions(+), 11 deletions(-)
 
-> This patch remove the ability of negotiating to the v2
-> protocol. Explicitly setting the version on the command
-> line will be the only way to use v2.
-
-Just curious: is there a way to do this using the mount configuration file?
-
-
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
-> utils/mount/network.c | 13 +++++--------
-> utils/mount/stropts.c |  2 ++
-> 2 files changed, 7 insertions(+), 8 deletions(-)
-> 
-> diff --git a/utils/mount/network.c b/utils/mount/network.c
-> index e7bd522..4be48cd 100644
-> --- a/utils/mount/network.c
-> +++ b/utils/mount/network.c
-> @@ -155,9 +155,8 @@ static const unsigned long probe_nfs2_only[] = {
-> 	0,
-> };
-> 
-> -static const unsigned long probe_nfs3_first[] = {
-> +static const unsigned long probe_nfs3_only[] = {
-> 	3,
-> -	2,
-> 	0,
-> };
-> 
-> @@ -167,10 +166,8 @@ static const unsigned long probe_mnt1_first[] = {
-> 	0,
-> };
-> 
-> -static const unsigned long probe_mnt3_first[] = {
-> +static const unsigned long probe_mnt3_only[] = {
-> 	3,
-> -	1,
-> -	2,
-> 	0,
-> };
-> 
-> @@ -626,7 +623,7 @@ static int nfs_probe_nfsport(const struct sockaddr *sap, const socklen_t salen,
-> 		probe_proto = nfs_default_proto();
-> 
-> 		return nfs_probe_port(sap, salen, pmap,
-> -					probe_nfs3_first, probe_proto);
-> +					probe_nfs3_only, probe_proto);
-> 	} else
-> 		return nfs_probe_port(sap, salen, pmap,
-> 					probe_nfs2_only, probe_udp_only);
-> @@ -653,7 +650,7 @@ static int nfs_probe_mntport(const struct sockaddr *sap, const socklen_t salen,
-> 
-> 	if (nfs_mount_data_version >= 4)
-> 		return nfs_probe_port(sap, salen, pmap,
-> -					probe_mnt3_first, probe_udp_first);
-> +					probe_mnt3_only, probe_udp_first);
-> 	else
-> 		return nfs_probe_port(sap, salen, pmap,
-> 					probe_mnt1_first, probe_udp_only);
-> @@ -717,7 +714,7 @@ int nfs_probe_bothports(const struct sockaddr *mnt_saddr,
-> 	memcpy(&save_nfs, nfs_pmap, sizeof(save_nfs));
-> 	memcpy(&save_mnt, mnt_pmap, sizeof(save_mnt));
-> 	probe_vers = (nfs_mount_data_version >= 4) ?
-> -			probe_mnt3_first : probe_mnt1_first;
-> +			probe_mnt3_only : probe_mnt1_first;
-> 
-> 	for (; *probe_vers; probe_vers++) {
-> 		nfs_pmap->pm_vers = mntvers_to_nfs(*probe_vers);
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index 8ee3024..1dc38ef 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -542,6 +542,8 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
-> 			errno = EACCES;
-> 		else if (rpc_createerr.cf_stat == RPC_TIMEDOUT)
-> 			errno = ETIMEDOUT;
-> +		else if (rpc_createerr.cf_stat == RPC_PROGVERSMISMATCH)
-> +			errno = EPROTONOSUPPORT;
-> 		else if (rpc_createerr.cf_error.re_errno != 0)
-> 			errno = rpc_createerr.cf_error.re_errno;
-> 		return 0;
-> -- 
-> 1.8.1.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index f0e6c7d..c770830 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -6,7 +6,8 @@
+ #include <linux/mount.h>
+ #include <linux/security.h>
+ 
+-#define NFS_MS_MASK (MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC|MS_SYNCHRONOUS)
++#define NFS_MS_MASK (MS_RDONLY | MS_NOSUID | MS_NODEV | MS_NOEXEC | \
++		     MS_SYNCHRONOUS | MS_SHARELOCK)
+ 
+ struct nfs_string;
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 3cb5e77..5d44763 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -100,7 +100,7 @@ static int nfs4_map_errors(int err)
+ 	case -NFS4ERR_BADNAME:
+ 		return -EINVAL;
+ 	case -NFS4ERR_SHARE_DENIED:
+-		return -EACCES;
++		return -EBUSY;
+ 	case -NFS4ERR_MINOR_VERS_MISMATCH:
+ 		return -EPROTONOSUPPORT;
+ 	case -NFS4ERR_ACCESS:
+@@ -793,6 +793,8 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	atomic_inc(&sp->so_count);
+ 	p->o_arg.fh = NFS_FH(dir);
+ 	p->o_arg.open_flags = flags;
++	if (!IS_SHARELOCK(dir))
++		p->o_arg.open_flags &= ~(O_DENYREAD | O_DENYWRITE);
+ 	p->o_arg.fmode = fmode & (FMODE_READ|FMODE_WRITE);
+ 	/* don't put an ACCESS op in OPEN compound if O_EXCL, because ACCESS
+ 	 * will return permission denied for all bits until close */
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index 84d2e9e..ca791cd 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -28,7 +28,8 @@ static struct file_system_type nfs4_remote_fs_type = {
+ 	.name		= "nfs4",
+ 	.mount		= nfs4_remote_mount,
+ 	.kill_sb	= nfs_kill_super,
+-	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
++	.fs_flags	= FS_RENAME_DOES_D_MOVE | FS_REVAL_DOT |
++			  FS_BINARY_MOUNTDATA | FS_DOES_SHARELOCK,
+ };
+ 
+ static struct file_system_type nfs4_remote_referral_fs_type = {
+@@ -36,7 +37,8 @@ static struct file_system_type nfs4_remote_referral_fs_type = {
+ 	.name		= "nfs4",
+ 	.mount		= nfs4_remote_referral_mount,
+ 	.kill_sb	= nfs_kill_super,
+-	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
++	.fs_flags	= FS_RENAME_DOES_D_MOVE | FS_REVAL_DOT |
++			  FS_BINARY_MOUNTDATA | FS_DOES_SHARELOCK,
+ };
+ 
+ struct file_system_type nfs4_referral_fs_type = {
+@@ -44,7 +46,8 @@ struct file_system_type nfs4_referral_fs_type = {
+ 	.name		= "nfs4",
+ 	.mount		= nfs4_referral_mount,
+ 	.kill_sb	= nfs_kill_super,
+-	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
++	.fs_flags	= FS_RENAME_DOES_D_MOVE | FS_REVAL_DOT |
++			  FS_BINARY_MOUNTDATA | FS_DOES_SHARELOCK,
+ };
+ 
+ static const struct super_operations nfs4_sops = {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 26b1439..8fe0221 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1325,7 +1325,8 @@ static void encode_lookup(struct xdr_stream *xdr, const struct qstr *name, struc
+ 	encode_string(xdr, name->len, name->name);
+ }
+ 
+-static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode)
++static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode,
++				int open_flags)
+ {
+ 	__be32 *p;
+ 
+@@ -1343,7 +1344,19 @@ static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode)
+ 	default:
+ 		*p++ = cpu_to_be32(0);
+ 	}
+-	*p = cpu_to_be32(0);		/* for linux, share_deny = 0 always */
++	switch (open_flags & (O_DENYREAD|O_DENYWRITE)) {
++	case O_DENYREAD:
++		*p = cpu_to_be32(NFS4_SHARE_DENY_READ);
++		break;
++	case O_DENYWRITE:
++		*p = cpu_to_be32(NFS4_SHARE_DENY_WRITE);
++		break;
++	case O_DENYREAD|O_DENYWRITE:
++		*p = cpu_to_be32(NFS4_SHARE_DENY_BOTH);
++		break;
++	default:
++		*p = cpu_to_be32(0);
++	}
+ }
+ 
+ static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_openargs *arg)
+@@ -1354,7 +1367,7 @@ static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_opena
+  * owner 4 = 32
+  */
+ 	encode_nfs4_seqid(xdr, arg->seqid);
+-	encode_share_access(xdr, arg->fmode);
++	encode_share_access(xdr, arg->fmode, arg->open_flags);
+ 	p = reserve_space(xdr, 36);
+ 	p = xdr_encode_hyper(p, arg->clientid);
+ 	*p++ = cpu_to_be32(24);
+@@ -1491,7 +1504,7 @@ static void encode_open_downgrade(struct xdr_stream *xdr, const struct nfs_close
+ 	encode_op_hdr(xdr, OP_OPEN_DOWNGRADE, decode_open_downgrade_maxsz, hdr);
+ 	encode_nfs4_stateid(xdr, arg->stateid);
+ 	encode_nfs4_seqid(xdr, arg->seqid);
+-	encode_share_access(xdr, arg->fmode);
++	encode_share_access(xdr, arg->fmode, 0);
+ }
+ 
+ static void
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index b056b16..cf9db61 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -331,7 +331,8 @@ struct file_system_type nfs4_fs_type = {
+ 	.name		= "nfs4",
+ 	.mount		= nfs_fs_mount,
+ 	.kill_sb	= nfs_kill_super,
+-	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
++	.fs_flags	= FS_RENAME_DOES_D_MOVE | FS_REVAL_DOT |
++			  FS_BINARY_MOUNTDATA | FS_DOES_SHARELOCK,
+ };
+ EXPORT_SYMBOL_GPL(nfs4_fs_type);
+ 
+@@ -2589,6 +2590,8 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
+ 	struct nfs_server *server;
+ 	struct dentry *mntroot = ERR_PTR(-ENOMEM);
+ 	struct nfs_subversion *nfs_mod = NFS_SB(data->sb)->nfs_client->cl_nfs_mod;
++	/* save sharelock option */
++	int sharelock = data->sb->s_flags & MS_SHARELOCK;
+ 
+ 	dprintk("--> nfs_xdev_mount()\n");
+ 
+@@ -2600,7 +2603,7 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
+ 	if (IS_ERR(server))
+ 		mntroot = ERR_CAST(server);
+ 	else
+-		mntroot = nfs_fs_mount_common(server, flags,
++		mntroot = nfs_fs_mount_common(server, flags | sharelock,
+ 				dev_name, &mount_info, nfs_mod);
+ 
+ 	dprintk("<-- nfs_xdev_mount() = %ld\n",
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.8.1.5
 
