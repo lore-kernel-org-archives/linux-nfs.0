@@ -1,69 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47523 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932071Ab3DXXEb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Apr 2013 19:04:31 -0400
-Date: Wed, 24 Apr 2013 19:04:28 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 16/17] NFSD: Server implementation of MAC Labeling
-Message-ID: <20130424230428.GT20275@fieldses.org>
-References: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
- <1366834683-29075-17-git-send-email-SteveD@redhat.com>
- <20130424212827.GK20275@fieldses.org>
- <51785962.7080008@RedHat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <51785962.7080008@RedHat.com>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:59843 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964846Ab3DIMgq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Apr 2013 08:36:46 -0400
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v5 7/7] locks: Disable LOCK_MAND support for MS_SHARELOCK mounts
+Date: Tue,  9 Apr 2013 16:40:27 +0400
+Message-Id: <1365511227-17626-8-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1365511227-17626-1-git-send-email-piastry@etersoft.ru>
+References: <1365511227-17626-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 24, 2013 at 06:14:58PM -0400, Steve Dickson wrote:
-> On 24/04/13 17:28, J. Bruce Fields wrote:
-> >> @@ -3231,11 +3340,13 @@ nfsd4_encode_setattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
-> >> >  		WRITE32(2);
-> >> >  		WRITE32(0);
-> >> >  		WRITE32(0);
-> >> > +		WRITE32(0);
-> > Note that "2" above is the length of the bitmap field that follows.
-> > 
-> >> >  	}
-> >> >  	else {
-> >> >  		WRITE32(2);
-> >> >  		WRITE32(setattr->sa_bmval[0]);
-> >> >  		WRITE32(setattr->sa_bmval[1]);
-> >> > +		WRITE32(setattr->sa_bmval[2]);
-> > Ditto.
-> Right... I did miss that....
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+---
+ fs/locks.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-With that change the pynfs tests all pass this time.
-
---b.
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 75b5b6d..7bbc698 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3310,13 +3310,13 @@ nfsd4_encode_setattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+diff --git a/fs/locks.c b/fs/locks.c
+index 1402a43..a67857c 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1719,6 +1719,12 @@ SYSCALL_DEFINE2(flock, unsigned int, fd, unsigned int, cmd)
+ 	if (!f.file)
+ 		goto out;
  
- 	RESERVE_SPACE(12);
- 	if (nfserr) {
--		WRITE32(2);
-+		WRITE32(3);
- 		WRITE32(0);
- 		WRITE32(0);
- 		WRITE32(0);
- 	}
- 	else {
--		WRITE32(2);
-+		WRITE32(3);
- 		WRITE32(setattr->sa_bmval[0]);
- 		WRITE32(setattr->sa_bmval[1]);
- 		WRITE32(setattr->sa_bmval[2]);
++	/* Disable LOCK_MAND support for FS mounted with MS_SHARELOCK */
++	if (IS_SHARELOCK(f.file->f_path.dentry->d_inode)) {
++		error = -EPERM;
++		goto out;
++	}
++
+ 	can_sleep = !(cmd & LOCK_NB);
+ 	cmd &= ~LOCK_NB;
+ 	unlock = (cmd == LOCK_UN);
+-- 
+1.8.1.5
+
