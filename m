@@ -1,141 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f182.google.com ([209.85.223.182]:44410 "EHLO
-	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S936039Ab3DHOZa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Apr 2013 10:25:30 -0400
+Received: from fieldses.org ([174.143.236.118]:35136 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S935119Ab3DITLT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Apr 2013 15:11:19 -0400
+Date: Tue, 9 Apr 2013 15:11:13 -0400
+To: Jose Castillo <jcastillo@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>, steved@redhat.com
+Subject: Re: [PATCH] Add the missing '$' in auth_unix_ip()
+Message-ID: <20130409191113.GC3800@fieldses.org>
+References: <1365522899-29123-1-git-send-email-jcastillo@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <20130408100504.5e85ad1c@corrin.poochiereds.net>
-References: <1365181075-22540-1-git-send-email-piastry@etersoft.ru>
-	<1365181075-22540-4-git-send-email-piastry@etersoft.ru>
-	<20130408100504.5e85ad1c@corrin.poochiereds.net>
-Date: Mon, 8 Apr 2013 18:25:29 +0400
-Message-ID: <CAKywueQ_hdLwKyFkcyCAobGWC3b3gEji=SUusJG0DWuzMzvADw@mail.gmail.com>
-Subject: Re: [PATCH v4 3/7] CIFS: Add O_DENY* open flags support
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-kernel@vger.kernel.org, linux-cifs <linux-cifs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        wine-devel@winehq.org
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1365522899-29123-1-git-send-email-jcastillo@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2013/4/8 Jeff Layton <jlayton@redhat.com>:
-> On Fri,  5 Apr 2013 20:57:51 +0400
-> Pavel Shilovsky <piastry@etersoft.ru> wrote:
->
->> Construct share_access value from O_DENY* flags and send it to
->> the server.
->>
->> Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
->> ---
->>  fs/cifs/cifsglob.h | 16 +++++++++++++++-
->>  fs/cifs/dir.c      |  3 +++
->>  fs/cifs/file.c     |  4 ++++
->>  fs/locks.c         |  8 ++++++++
->>  4 files changed, 30 insertions(+), 1 deletion(-)
->>
->> diff --git a/fs/cifs/cifsglob.h b/fs/cifs/cifsglob.h
->> index cd4bbf3..7e876b9 100644
->> --- a/fs/cifs/cifsglob.h
->> +++ b/fs/cifs/cifsglob.h
->> @@ -465,7 +465,7 @@ struct smb_vol {
->>                        CIFS_MOUNT_CIFS_BACKUPUID | CIFS_MOUNT_CIFS_BACKUPGID)
->>
->>  #define CIFS_MS_MASK (MS_RDONLY | MS_MANDLOCK | MS_NOEXEC | MS_NOSUID | \
->> -                   MS_NODEV | MS_SYNCHRONOUS)
->> +                   MS_NODEV | MS_SYNCHRONOUS | MS_SHARELOCK)
->>
->>  struct cifs_mnt_data {
->>       struct cifs_sb_info *cifs_sb;
->> @@ -947,6 +947,20 @@ struct cifsFileInfo {
->>       struct work_struct oplock_break; /* work for oplock breaks */
->>  };
->>
->> +static inline int
->> +cifs_get_share_flags(unsigned int flags)
->> +{
->> +     int share_access = 0;
->> +
->> +     if (!(flags & O_DENYREAD))
->> +             share_access |= FILE_SHARE_READ;
->> +     if (!(flags & O_DENYWRITE))
->> +             share_access |= FILE_SHARE_WRITE;
->> +     if (!(flags & O_DENYDELETE))
->> +             share_access |= FILE_SHARE_DELETE;
->> +     return share_access;
->> +}
->> +
->>  struct cifs_io_parms {
->>       __u16 netfid;
->>  #ifdef CONFIG_CIFS_SMB2
->> diff --git a/fs/cifs/dir.c b/fs/cifs/dir.c
->> index 267b608..d4331de 100644
->> --- a/fs/cifs/dir.c
->> +++ b/fs/cifs/dir.c
->> @@ -294,6 +294,9 @@ cifs_do_create(struct inode *inode, struct dentry *direntry, unsigned int xid,
->>       else
->>               cFYI(1, "Create flag not set in create function");
->>
->> +     if (IS_SHARELOCK(inode))
->> +             share_access = cifs_get_share_flags(oflags);
->> +
->>       /*
->>        * BB add processing to set equivalent of mode - e.g. via CreateX with
->>        * ACLs
->> diff --git a/fs/cifs/file.c b/fs/cifs/file.c
->> index 0d524a7..9394b2b 100644
->> --- a/fs/cifs/file.c
->> +++ b/fs/cifs/file.c
->> @@ -210,6 +210,8 @@ cifs_nt_open(char *full_path, struct inode *inode, struct cifs_sb_info *cifs_sb,
->>   *********************************************************************/
->>
->>       disposition = cifs_get_disposition(f_flags);
->> +     if (IS_SHARELOCK(inode))
->> +             share_access = cifs_get_share_flags(f_flags);
->>
->>       /* BB pass O_SYNC flag through on file attributes .. BB */
->>
->> @@ -645,6 +647,8 @@ cifs_reopen_file(struct cifsFileInfo *cfile, bool can_flush)
->>       }
->>
->>       desired_access = cifs_convert_flags(cfile->f_flags);
->> +     if (IS_SHARELOCK(inode))
->> +             share_access = cifs_get_share_flags(cfile->f_flags);
->>
->>       if (backup_cred(cifs_sb))
->>               create_options |= CREATE_OPEN_BACKUP_INTENT;
->> diff --git a/fs/locks.c b/fs/locks.c
->> index 1eccc75..2184ddd 100644
->> --- a/fs/locks.c
->> +++ b/fs/locks.c
->> @@ -846,10 +846,18 @@ deny_lock_file(struct file *filp)
->>  {
->>       struct file_lock *lock;
->>       int error = 0;
->> +     const char *fsname = filp->f_path.dentry->d_inode->i_sb->s_type->name;
->>
->>       if (!IS_SHARELOCK(filp->f_path.dentry->d_inode))
->>               return error;
->>
->> +     /*
->> +      * Don't set a lock on CIFS file systems because they can process it
->> +      * themselves.
->> +      */
->> +     if (!strncmp(fsname, "cifs", 4))
->> +             return error;
->> +
->
-> NAK....
->
-> This is really nasty. Instead of doing this, you should instead create
-> a new file_system_type->fs_flags value. Then, set that flag for cifs
-> and nfs4, and test it here.
+Could you explain a little more?
 
-It seems I missed this fs_flags opportunity. Thank you for pointing it
-out - I will fix and repost.
+I assume this is something I forgot to do as part of
+c2544b77566690ebec32a2d47c9249548b1a0941 "mountd: prepend '$' to make
+use_ipaddr clients self-describing" but I haven't thought about that in
+a while....
 
---
-Best regards,
-Pavel Shilovsky.
+--b.
+
+On Tue, Apr 09, 2013 at 04:54:59PM +0100, Jose Castillo wrote:
+> Signed-off-by: Jose Castillo <jcastillo@redhat.com>
+> ---
+>  utils/mountd/cache.c | 10 ++++++----
+>  1 file changed, 6 insertions(+), 4 deletions(-)
+> 
+> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+> index 978698d..e1027f3 100644
+> --- a/utils/mountd/cache.c
+> +++ b/utils/mountd/cache.c
+> @@ -80,7 +80,7 @@ static void auth_unix_ip(FILE *f)
+>  	 */
+>  	char *cp;
+>  	char class[20];
+> -	char ipaddr[INET6_ADDRSTRLEN];
+> +	char ipaddr[INET6_ADDRSTRLEN + 1];
+>  	char *client = NULL;
+>  	struct addrinfo *tmp = NULL;
+>  	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
+> @@ -94,7 +94,7 @@ static void auth_unix_ip(FILE *f)
+>  	    strcmp(class, "nfsd") != 0)
+>  		return;
+>  
+> -	if (qword_get(&cp, ipaddr, sizeof(ipaddr)) <= 0)
+> +	if (qword_get(&cp, ipaddr, sizeof(ipaddr) - 1) <= 0)
+>  		return;
+>  
+>  	tmp = host_pton(ipaddr);
+> @@ -116,9 +116,11 @@ static void auth_unix_ip(FILE *f)
+>  	qword_print(f, "nfsd");
+>  	qword_print(f, ipaddr);
+>  	qword_printtimefrom(f, DEFAULT_TTL);
+> -	if (use_ipaddr)
+> +	if (use_ipaddr) {
+> +		memmove(ipaddr + 1, ipaddr, strlen(ipaddr) + 1);
+> +		ipaddr[0] = '$';
+>  		qword_print(f, ipaddr);
+> -	else if (client)
+> +	} else if (client)
+>  		qword_print(f, *client?client:"DEFAULT");
+>  	qword_eol(f);
+>  	xlog(D_CALL, "auth_unix_ip: client %p '%s'", client, client?client: "DEFAULT");
+> -- 
+> 1.7.11.7
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
