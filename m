@@ -1,41 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:55530 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:50131 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753135Ab3DSUJk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Apr 2013 16:09:40 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com, bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 0/2] 64bit time fixes
-Date: Fri, 19 Apr 2013 16:09:36 -0400
-Message-Id: <1366402178-1281-1-git-send-email-bjschuma@netapp.com>
+	id S935407Ab3DIX6U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Apr 2013 19:58:20 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 06/10] nfsd4: cleanup check_forechannel_attrs
+Date: Tue,  9 Apr 2013 19:58:11 -0400
+Message-Id: <1365551896-6936-7-git-send-email-bfields@redhat.com>
+In-Reply-To: <1365551896-6936-1-git-send-email-bfields@redhat.com>
+References: <1365551896-6936-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
+Pass this struct by reference, not by value, and return an error instead
+of a boolean to allow for future additions.
 
-xfstests generic/258 attempts to set atime of a file to a value before the
-unix epoch by running touch -t 196001010101.  I found that both the client
-and the server were zero-filling the first 32bits rather than sending the
-correct 64bit time value during a setattr.  These patches fix this on both
-the client and the server.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
 
-Version 2:
-- Cast time.tv_sec values to a s64 instead of a long for 32bit systems
-
-Questions?  Comments?
-
-- Bryan
-
-Bryan Schumaker (2):
-  nfs: Send atime and mtime as a 64bit value
-  nfsd: Decode and send 64bit time values
-
- fs/nfs/nfs4xdr.c  |  6 ++----
- fs/nfsd/nfs4xdr.c | 19 +++++--------------
- 2 files changed, 7 insertions(+), 18 deletions(-)
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 7d2e3b5..f1262f7 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1803,10 +1803,13 @@ nfsd4_replay_create_session(struct nfsd4_create_session *cr_ses,
+ 				/* seqid, slotID, slotID, slotID, status */ \
+ 			5 ) * sizeof(__be32))
+ 
+-static bool check_forechannel_attrs(struct nfsd4_channel_attrs fchannel)
++static __be32 check_forechannel_attrs(struct nfsd4_channel_attrs *ca)
+ {
+-	return fchannel.maxreq_sz < NFSD_MIN_REQ_HDR_SEQ_SZ
+-		|| fchannel.maxresp_sz < NFSD_MIN_RESP_HDR_SEQ_SZ;
++	if (ca->maxreq_sz < NFSD_MIN_REQ_HDR_SEQ_SZ)
++		return nfserr_toosmall;
++	if (ca->maxresp_sz < NFSD_MIN_RESP_HDR_SEQ_SZ)
++		return nfserr_toosmall;
++	return nfs_ok;
+ }
+ 
+ __be32
+@@ -1824,8 +1827,9 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 
+ 	if (cr_ses->flags & ~SESSION4_FLAG_MASK_A)
+ 		return nfserr_inval;
+-	if (check_forechannel_attrs(cr_ses->fore_channel))
+-		return nfserr_toosmall;
++	status = check_forechannel_attrs(&cr_ses->fore_channel);
++	if (status)
++		return status;
+ 	new = alloc_session(&cr_ses->fore_channel, nn);
+ 	if (!new)
+ 		return nfserr_jukebox;
 -- 
-1.8.2.1
+1.7.9.5
 
