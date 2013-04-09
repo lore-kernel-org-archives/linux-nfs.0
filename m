@@ -1,46 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f172.google.com ([209.85.212.172]:58540 "EHLO
-	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753634Ab3DRBHd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Apr 2013 21:07:33 -0400
-Received: by mail-wi0-f172.google.com with SMTP id hq17so3558188wib.17
-        for <linux-nfs@vger.kernel.org>; Wed, 17 Apr 2013 18:07:32 -0700 (PDT)
-MIME-Version: 1.0
-Date: Thu, 18 Apr 2013 09:07:32 +0800
-Message-ID: <CAPgLHd9dZK_t+hfMX1as67wGxWmaRh4-sSY-rRrTVHpRDve0YQ@mail.gmail.com>
-Subject: [PATCH] svcauth_gss: fix error return code in rsc_parse()
-From: Wei Yongjun <weiyj.lk@gmail.com>
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com, ebiederm@xmission.com,
-        skinsbursky@parallels.com, jlayton@redhat.com, simo@redhat.com
-Cc: yongjun_wei@trendmicro.com.cn, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-la0-f49.google.com ([209.85.215.49]:56695 "EHLO
+	mail-la0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S935852Ab3DIMgk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Apr 2013 08:36:40 -0400
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v5 4/7] CIFS: Use NT_CREATE_ANDX command for forcemand mounts
+Date: Tue,  9 Apr 2013 16:40:24 +0400
+Message-Id: <1365511227-17626-5-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1365511227-17626-1-git-send-email-piastry@etersoft.ru>
+References: <1365511227-17626-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
+forcemand mount option now lets us use Windows mandatory style of
+byte-range locks even if server supports posix ones - switches on
+Windows locking mechanism. Share flags is another locking mehanism
+provided by Windows semantic that can be used by NT_CREATE_ANDX
+command. This patch combines all Windows locking mechanism in one
+mount option by using NT_CREATE_ANDX to open files if forcemand is on.
 
-Fix to return a negative error code from the error handling
-case instead of 0, as returned elsewhere in this function.
-
-Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
 ---
- net/sunrpc/auth_gss/svcauth_gss.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ fs/cifs/dir.c  | 1 +
+ fs/cifs/file.c | 6 ++++--
+ 2 files changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 5ead605..c2156fb 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -505,8 +505,10 @@ static int rsc_parse(struct cache_detail *cd,
- 		len = qword_get(&mesg, buf, mlen);
- 		if (len > 0) {
- 			rsci.cred.cr_principal = kstrdup(buf, GFP_KERNEL);
--			if (!rsci.cred.cr_principal)
-+			if (!rsci.cred.cr_principal) {
-+				status = -ENOMEM;
- 				goto out;
-+			}
- 		}
- 
+diff --git a/fs/cifs/dir.c b/fs/cifs/dir.c
+index d4331de..8587021 100644
+--- a/fs/cifs/dir.c
++++ b/fs/cifs/dir.c
+@@ -217,6 +217,7 @@ cifs_do_create(struct inode *inode, struct dentry *direntry, unsigned int xid,
  	}
+ 
+ 	if (tcon->unix_ext && cap_unix(tcon->ses) && !tcon->broken_posix_open &&
++	    ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
+ 	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
+ 			le64_to_cpu(tcon->fsUnixInfo.Capability))) {
+ 		rc = cifs_posix_open(full_path, &newinode, inode->i_sb, mode,
+diff --git a/fs/cifs/file.c b/fs/cifs/file.c
+index 9394b2b..19038a4 100644
+--- a/fs/cifs/file.c
++++ b/fs/cifs/file.c
+@@ -455,8 +455,9 @@ int cifs_open(struct inode *inode, struct file *file)
+ 	else
+ 		oplock = 0;
+ 
+-	if (!tcon->broken_posix_open && tcon->unix_ext &&
+-	    cap_unix(tcon->ses) && (CIFS_UNIX_POSIX_PATH_OPS_CAP &
++	if (!tcon->broken_posix_open && tcon->unix_ext && cap_unix(tcon->ses)
++	    && ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
++	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
+ 				le64_to_cpu(tcon->fsUnixInfo.Capability))) {
+ 		/* can not refresh inode info since size could be stale */
+ 		rc = cifs_posix_open(full_path, &inode, inode->i_sb,
+@@ -624,6 +625,7 @@ cifs_reopen_file(struct cifsFileInfo *cfile, bool can_flush)
+ 		oplock = 0;
+ 
+ 	if (tcon->unix_ext && cap_unix(tcon->ses) &&
++	    ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
+ 	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
+ 				le64_to_cpu(tcon->fsUnixInfo.Capability))) {
+ 		/*
+-- 
+1.8.1.5
 
