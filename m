@@ -1,66 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aa.linuxbox.com ([69.128.83.226]:2957 "EHLO aa.linuxbox.com"
+Received: from fieldses.org ([174.143.236.118]:50133 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756508Ab3DWStl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Apr 2013 14:49:41 -0400
-Date: Tue, 23 Apr 2013 14:43:01 -0400 (EDT)
-From: "Matt W. Benjamin" <matt@linuxbox.com>
-To: Simo Sorce <simo@redhat.com>
-Cc: samba-technical@lists.samba.org,
-        fedfs-utils Developers <fedfs-utils-devel@oss.oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>
-Message-ID: <189824864.86.1366742581325.JavaMail.root@thunderbeast.private.linuxbox.com>
-In-Reply-To: <1366742262.7239.131.camel@willson.li.ssimo.org>
-Subject: Re: Interoperable junctions on Linux
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+	id S935446Ab3DIX6U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Apr 2013 19:58:20 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 09/10] nfsd4: clean up validate_stateid
+Date: Tue,  9 Apr 2013 19:58:14 -0400
+Message-Id: <1365551896-6936-10-git-send-email-bfields@redhat.com>
+In-Reply-To: <1365551896-6936-1-git-send-email-bfields@redhat.com>
+References: <1365551896-6936-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
------ "Simo Sorce" <simo@redhat.com> wrote:
+The logic here is better expressed with a switch statement.
 
-> 
-> Well I have some knowledge in this field, and I do not find it very
-> fiddly, but I may be biased as I have been working for the past 7
-> years
-> to make LDAP+Kerberos simple to manage within the FreeIPA project.
-> Your requirement to set an objectclass on the base suffix is something
-> I
-> find particularly unappealing, and no other tool that I know of
-> requires
-> this (because it is unnecessary).
+While we're here, CLOSED stateids (or stateids of an unkown type--which
+would indicate a server bug) should probably return nfserr_bad_stateid,
+though this behavior shouldn't affect any non-buggy client.
 
-Yes.  Thank you.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   19 ++++++++++++++-----
+ 1 file changed, 14 insertions(+), 5 deletions(-)
 
-> > 
-> 
-> I think you should allow the broadest possibilities of course, which
-> is
-> why I am picking on things like allowing SSAL/GSSAPI explicitly in
-> the
-> RFC language. Whether people will integrate into existing LDAP server
-> or
-> not remains to be seen, if we can avoid the need to add an objectlass
-> on
-> the root suffix I see that we can easily add this a standard feature
-> for
-> FreeIPA as well (we already provide automount data for example) and
-> provide management tools in our framework around it.
-
-I noted this point on a FedFS concall 2 years ago.  I dont understand why
-not -permit- easy integration with existing LDAP infrastructure.
-
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 67017fc..add9721 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3456,13 +3456,22 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+ 	status = check_stateid_generation(stateid, &s->sc_stateid, 1);
+ 	if (status)
+ 		return status;
+-	if (!(s->sc_type & (NFS4_OPEN_STID | NFS4_LOCK_STID)))
++	switch (s->sc_type) {
++	case NFS4_DELEG_STID:
++		return nfs_ok;
++	case NFS4_OPEN_STID:
++	case NFS4_LOCK_STID:
++		ols = openlockstateid(s);
++		if (ols->st_stateowner->so_is_open_owner
++	    			&& !(openowner(ols->st_stateowner)->oo_flags
++						& NFS4_OO_CONFIRMED))
++			return nfserr_bad_stateid;
+ 		return nfs_ok;
+-	ols = openlockstateid(s);
+-	if (ols->st_stateowner->so_is_open_owner
+-	    && !(openowner(ols->st_stateowner)->oo_flags & NFS4_OO_CONFIRMED))
++	default:
++		printk("unknown stateid type %x\n", s->sc_type);
++	case NFS4_CLOSED_STID:
+ 		return nfserr_bad_stateid;
+-	return nfs_ok;
++	}
+ }
+ 
+ static __be32 nfsd4_lookup_stateid(stateid_t *stateid, unsigned char typemask,
 -- 
-Matt Benjamin
-The Linux Box
-206 South Fifth Ave. Suite 150
-Ann Arbor, MI  48104
+1.7.9.5
 
-http://linuxbox.com
-
-tel.  734-761-4689 
-fax.  734-769-8938 
-cel.  734-216-5309 
