@@ -1,104 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:27013 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:13043 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761666Ab3DCXdb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Apr 2013 19:33:31 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/4] NFSv4: Be less aggressive about returning delegations for open files
-Date: Wed,  3 Apr 2013 19:33:24 -0400
-Message-Id: <1365032007-59876-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1763998Ab3DJPj3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Apr 2013 11:39:29 -0400
+Message-ID: <516587AB.7050000@RedHat.com>
+Date: Wed, 10 Apr 2013 11:39:23 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Simo Sorce <simo@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        libtirpc-devel@lists.sourceforge.net
+Subject: Re: [PATCH 1/1] Fix private data giveaway
+References: <1365201425-21702-1-git-send-email-simo@redhat.com> <1365201425-21702-2-git-send-email-simo@redhat.com>
+In-Reply-To: <1365201425-21702-2-git-send-email-simo@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, if the application that holds the file open isn't doing
-I/O, we may end up returning the delegation. This means that we can
-no longer cache the file as aggressively, and often also that we
-multiply the state that both the server and the client needs to track.
 
-This patch adds a check for open files to the routine that scans
-for delegations that are unreferenced.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/delegation.c | 30 +++++++++++++++++++++++++++---
- fs/nfs/delegation.h |  1 +
- 2 files changed, 28 insertions(+), 3 deletions(-)
+On 05/04/13 18:37, Simo Sorce wrote:
+> When the private data is given away the gss context also needs to go,
+> because the caller may destroy it, such as when the context is exported
+> into a lucid context to hand it to the kernel.
+> ---
+>  src/auth_gss.c | 4 +++-
+>  1 file changed, 3 insertions(+), 1 deletion(-)
+Committed...
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index fc8a213..a377ea36 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -389,6 +389,24 @@ out:
- 	return err;
- }
- 
-+static bool nfs_delegation_need_return(struct nfs_delegation *delegation)
-+{
-+	bool ret = false;
-+
-+	if (test_and_clear_bit(NFS_DELEGATION_RETURN, &delegation->flags))
-+		ret = true;
-+	if (test_and_clear_bit(NFS_DELEGATION_RETURN_IF_CLOSED, &delegation->flags) && !ret) {
-+		struct inode *inode;
-+
-+		spin_lock(&delegation->lock);
-+		inode = delegation->inode;
-+		if (inode && list_empty(&NFS_I(inode)->open_files))
-+			ret = true;
-+		spin_unlock(&delegation->lock);
-+	}
-+	return ret;
-+}
-+
- /**
-  * nfs_client_return_marked_delegations - return previously marked delegations
-  * @clp: nfs_client to process
-@@ -411,8 +429,7 @@ restart:
- 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
- 		list_for_each_entry_rcu(delegation, &server->delegations,
- 								super_list) {
--			if (!test_and_clear_bit(NFS_DELEGATION_RETURN,
--							&delegation->flags))
-+			if (!nfs_delegation_need_return(delegation))
- 				continue;
- 			inode = nfs_delegation_grab_inode(delegation);
- 			if (inode == NULL)
-@@ -471,6 +488,13 @@ int nfs4_inode_return_delegation(struct inode *inode)
- 	return err;
- }
- 
-+static void nfs_mark_return_if_closed_delegation(struct nfs_server *server,
-+		struct nfs_delegation *delegation)
-+{
-+	set_bit(NFS_DELEGATION_RETURN_IF_CLOSED, &delegation->flags);
-+	set_bit(NFS4CLNT_DELEGRETURN, &server->nfs_client->cl_state);
-+}
-+
- static void nfs_mark_return_delegation(struct nfs_server *server,
- 		struct nfs_delegation *delegation)
- {
-@@ -574,7 +598,7 @@ static void nfs_mark_return_unreferenced_delegations(struct nfs_server *server)
- 	list_for_each_entry_rcu(delegation, &server->delegations, super_list) {
- 		if (test_and_clear_bit(NFS_DELEGATION_REFERENCED, &delegation->flags))
- 			continue;
--		nfs_mark_return_delegation(server, delegation);
-+		nfs_mark_return_if_closed_delegation(server, delegation);
- 	}
- }
- 
-diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
-index 88573d1..22f0a13 100644
---- a/fs/nfs/delegation.h
-+++ b/fs/nfs/delegation.h
-@@ -28,6 +28,7 @@ struct nfs_delegation {
- enum {
- 	NFS_DELEGATION_NEED_RECLAIM = 0,
- 	NFS_DELEGATION_RETURN,
-+	NFS_DELEGATION_RETURN_IF_CLOSED,
- 	NFS_DELEGATION_REFERENCED,
- 	NFS_DELEGATION_RETURNING,
- };
--- 
-1.8.1.4
+steved.
 
+> 
+> diff --git a/src/auth_gss.c b/src/auth_gss.c
+> index 81ae8aee316c6f42f317f81cd1438369fb2102c5..703bc3f7b42236b0d4cc3ddbd8935df2aaccf85a 100644
+> --- a/src/auth_gss.c
+> +++ b/src/auth_gss.c
+> @@ -269,6 +269,7 @@ authgss_get_private_data(AUTH *auth, struct authgss_private_data *pd)
+>  	 * send an RPCSEC_GSS_DESTROY request which might inappropriately
+>  	 * destroy the context.
+>  	 */
+> +        gd->ctx = GSS_C_NO_CONTEXT;
+>  	gd->gc.gc_ctx.length = 0;
+>  	gd->gc.gc_ctx.value = NULL;
+>  
+> @@ -284,7 +285,8 @@ authgss_free_private_data(struct authgss_private_data *pd)
+>  	if (!pd)
+>  		return (FALSE);
+>  
+> -	pd->pd_ctx = NULL;
+> +	if (pd->pd_ctx != GSS_C_NO_CONTEXT)
+> +		gss_delete_sec_context(&min_stat, &pd->pd_ctx, NULL);
+>  	gss_release_buffer(&min_stat, &pd->pd_ctx_hndl);
+>  	memset(&pd->pd_ctx_hndl, 0, sizeof(pd->pd_ctx_hndl));
+>  	pd->pd_seq_win = 0;
+> 
