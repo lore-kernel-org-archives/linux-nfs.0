@@ -1,188 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:37317 "EHLO
-	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030473Ab3DSOQl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Apr 2013 10:16:41 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Cc: Simo Sorce <simo@redhat.com>
-Subject: [PATCH] Avoid DNS reverse resolution for server names (take 3)
-Date: Fri, 19 Apr 2013 10:16:38 -0400
-Message-Id: <1366380998-2581-1-git-send-email-steved@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:37946 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932795Ab3DJPJp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Apr 2013 11:09:45 -0400
+Date: Wed, 10 Apr 2013 11:09:40 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 00/19] lnfs: 3.9-rc5 release
+Message-ID: <20130410150940.GB24404@pad.fieldses.org>
+References: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Simo Sorce <simo@redhat.com>
+On Tue, Apr 02, 2013 at 05:45:41PM -0400, Steve Dickson wrote:
+> From: Steve Dickson <steved@redhat.com>
+> 
+> Here is the next release of the Label NFS patches 
+> forward ported to linux-3.9-rc3.
+> 
+> I decided to include the the v4.2 enabling patches since 
+> I'm doing all my testing with both sets so at this point 
+> I don't think it makes sense to separate them. Plus I'm
+> hoping they will take care of the SETATTR problem Bruce was 
+> seeing since label attributes were leaking into the bitmask
+> when they were not suppose to. 
 
-A NFS client should be able to work properly even if the DNS Reverse
-record for the server is not set. This means a DNS lookup should not be
-done on server names at are passed to GSSAPI. This patch changes the default
-behavior to no longer do those types of lookups
+Still getting a failure.  All you need to do is something like:
 
-This change default behavior could negatively impact some current
-environments, so the -D option is also being added that will re-enable
-the DNS reverse looks on server names, which are passed to GSSAPI.
+	git clone git://linux-nfs.org/~bfields/pynfs.git
+	cd pynfs
+	./setup.py build
+	./setup.py build_ext --inplace
+	./nfs4.0/testserver.py pip1:/path/to/export/tmpdir ---maketree --rundeps SATT13
 
-Signed-off-by: Simo Sorce <simo@redhat.com>
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/gssd/gss_util.h  |  2 ++
- utils/gssd/gssd.c      |  7 +++++--
- utils/gssd/gssd.man    |  8 +++++++-
- utils/gssd/gssd_proc.c | 31 +++++++++++++++++++++++++++----
- 4 files changed, 41 insertions(+), 7 deletions(-)
+--b.
 
-diff --git a/utils/gssd/gss_util.h b/utils/gssd/gss_util.h
-index aa9f778..c81fc5a 100644
---- a/utils/gssd/gss_util.h
-+++ b/utils/gssd/gss_util.h
-@@ -52,4 +52,6 @@ int gssd_check_mechs(void);
- 		gss_krb5_set_allowable_enctypes(min, cred, num, types)
- #endif
- 
-+extern int avoid_dns;
-+
- #endif /* _GSS_UTIL_H_ */
-diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index 07b1e52..8ee478b 100644
---- a/utils/gssd/gssd.c
-+++ b/utils/gssd/gssd.c
-@@ -85,7 +85,7 @@ sig_hup(int signal)
- static void
- usage(char *progname)
- {
--	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm]\n",
-+	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm] [-D]\n",
- 		progname);
- 	exit(1);
- }
-@@ -102,7 +102,7 @@ main(int argc, char *argv[])
- 	char *progname;
- 
- 	memset(ccachesearch, 0, sizeof(ccachesearch));
--	while ((opt = getopt(argc, argv, "fvrlmnMp:k:d:t:R:")) != -1) {
-+	while ((opt = getopt(argc, argv, "DfvrlmnMp:k:d:t:R:")) != -1) {
- 		switch (opt) {
- 			case 'f':
- 				fg = 1;
-@@ -150,6 +150,9 @@ main(int argc, char *argv[])
- 				errx(1, "Encryption type limits not supported by Kerberos libraries.");
- #endif
- 				break;
-+			case 'D':
-+				avoid_dns = 0;
-+				break;
- 			default:
- 				usage(argv[0]);
- 				break;
-diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
-index 79d9bf9..1df75c5 100644
---- a/utils/gssd/gssd.man
-+++ b/utils/gssd/gssd.man
-@@ -8,7 +8,7 @@
- rpc.gssd \- RPCSEC_GSS daemon
- .SH SYNOPSIS
- .B rpc.gssd
--.RB [ \-fMnlvr ]
-+.RB [ \-DfMnlvr ]
- .RB [ \-k
- .IR keytab ]
- .RB [ \-p
-@@ -195,6 +195,12 @@ option when starting
- .BR rpc.gssd .
- .SH OPTIONS
- .TP
-+.B -D
-+DNS Reverse lookups are not used for determining the
-+server names pass to GSSAPI. This option will reverses that and forces 
-+the use of DNS Reverse resolution of the server's IP address to 
-+retrieve the server name to use in GSAPI authentication.
-+.TP
- .B -f
- Runs
- .B rpc.gssd
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index d6f07e6..e4ab253 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -67,6 +67,7 @@
- #include <errno.h>
- #include <gssapi/gssapi.h>
- #include <netdb.h>
-+#include <ctype.h>
- 
- #include "gssd.h"
- #include "err_util.h"
-@@ -107,6 +108,9 @@ struct pollfd * pollarray;
- 
- unsigned long pollsize;  /* the size of pollaray (in pollfd's) */
- 
-+/* Avoid DNS reverse lookups on server names */
-+int avoid_dns = 1;
-+
- /*
-  * convert a presentation address string to a sockaddr_storage struct. Returns
-  * true on success or false on failure.
-@@ -165,12 +169,31 @@ addrstr_to_sockaddr(struct sockaddr *sa, const char *node, const char *port)
-  * convert a sockaddr to a hostname
-  */
- static char *
--sockaddr_to_hostname(const struct sockaddr *sa, const char *addr)
-+get_servername(const char *name, const struct sockaddr *sa, const char *addr)
- {
- 	socklen_t		addrlen;
- 	int			err;
- 	char			*hostname;
- 	char			hbuf[NI_MAXHOST];
-+	unsigned char		buf[sizeof(struct in6_addr)];
-+	int			servername = 0;
-+
-+	if (avoid_dns) {
-+		/*
-+		 * Determine if this is a server name, or an IP address.
-+		 * If it is an IP address, do the DNS lookup otherwise
-+		 * skip the DNS lookup.
-+		 */
-+		servername = 0;
-+		if (strchr(name, '.') && inet_pton(AF_INET, name, buf) == 1)
-+			servername = 1; /* IPv4 */
-+		else if (strchr(name, ':') && inet_pton(AF_INET6, name, buf) == 1)
-+			servername = 1; /* or IPv6 */
-+
-+		if (servername) {
-+			return strdup(name);
-+		}
-+	}
- 
- 	switch (sa->sa_family) {
- 	case AF_INET:
-@@ -208,7 +231,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
- 		  struct sockaddr *addr) {
- #define INFOBUFLEN 256
- 	char		buf[INFOBUFLEN + 1];
--	static char	dummy[128];
-+	static char	server[128];
- 	int		nbytes;
- 	static char	service[128];
- 	static char	address[128];
-@@ -236,7 +259,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
- 		   "service: %127s %15s version %15s\n"
- 		   "address: %127s\n"
- 		   "protocol: %15s\n",
--		   dummy,
-+		   server,
- 		   service, program, version,
- 		   address,
- 		   protoname);
-@@ -258,7 +281,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
- 	if (!addrstr_to_sockaddr(addr, address, port))
- 		goto fail;
- 
--	*servername = sockaddr_to_hostname(addr, address);
-+	*servername = get_servername(server, addr, address);
- 	if (*servername == NULL)
- 		goto fail;
- 
--- 
-1.8.1.4
-
+> 
+> I also believe I've address all the review comments of the previous
+> release. Thank you very much for those cycles, it definitely 
+> appreciated!
+> 
+> The patches are on a public git tree at
+>     git://fedorapeople.org/~steved/linux-steved lnfs-v3.9-rc5
+> 
+> Fedora rpms on request. I didn't think anybody was using them so I 
+> stopped building them. If that is not the case, please let me know.
+> 
+> David Quigley (12):
+>   Security: Add hook to calculate context based on a negative dentry.
+>   Security: Add Hook to test if the particular xattr is part of a MAC
+>     model.
+>   LSM: Add flags field to security_sb_set_mnt_opts for in kernel mount
+>     data.
+>   SELinux: Add new labeling type native labels
+>   NFSv4: Add label recommended attribute and NFSv4 flags
+>   NFSv4: Introduce new label structure
+>   NFSv4: Extend fattr bitmaps to support all 3 words
+>   NFS:Add labels to client function prototypes
+>   NFS: Add label lifecycle management
+>   NFS: Client implementation of Labeled-NFS
+>   NFS: Extend NFS xattr handlers to accept the security namespace
+>   NFSD: Server implementation of MAC Labeling
+> 
+> Steve Dickson (7):
+>   Kconfig: Add Kconfig entry for Labeled NFS V4 client
+>   Kconfig: Add Kconfig entry for Labeled NFS V4 server
+>   NFSv4.2: Added NFS v4.2 support to the NFS client
+>   NFSv4.2: Only allocate labels on v4.2 mounts
+>   NFSv4.2: Only set the label attribute on v4.2 mounts
+>   NFSv4.2: Added v4.2 error codes
+>   NFSDv4.2: Added NFS v4.2 support to the NFS server
+> 
+>  fs/nfs/Kconfig                      |  28 ++
+>  fs/nfs/callback.c                   |   1 +
+>  fs/nfs/client.c                     |   2 +-
+>  fs/nfs/dir.c                        |  46 ++-
+>  fs/nfs/getroot.c                    |   2 +-
+>  fs/nfs/inode.c                      | 133 ++++++--
+>  fs/nfs/namespace.c                  |   2 +-
+>  fs/nfs/nfs3acl.c                    |   4 +-
+>  fs/nfs/nfs3proc.c                   |  41 +--
+>  fs/nfs/nfs4_fs.h                    |   8 +-
+>  fs/nfs/nfs4client.c                 |   5 +
+>  fs/nfs/nfs4namespace.c              |   2 +-
+>  fs/nfs/nfs4proc.c                   | 614 ++++++++++++++++++++++++++++++++----
+>  fs/nfs/nfs4xdr.c                    | 188 ++++++++---
+>  fs/nfs/pnfs.c                       |   2 +-
+>  fs/nfs/proc.c                       |  15 +-
+>  fs/nfs/super.c                      |  24 +-
+>  fs/nfsd/Kconfig                     |  16 +
+>  fs/nfsd/nfs4proc.c                  |  41 +++
+>  fs/nfsd/nfs4xdr.c                   | 117 ++++++-
+>  fs/nfsd/nfsd.h                      |  14 +-
+>  fs/nfsd/nfsproc.c                   |   1 +
+>  fs/nfsd/vfs.c                       |  28 ++
+>  fs/nfsd/vfs.h                       |   2 +
+>  fs/nfsd/xdr4.h                      |   3 +
+>  include/linux/nfs4.h                |  20 ++
+>  include/linux/nfs_fs.h              |  40 ++-
+>  include/linux/nfs_fs_sb.h           |  10 +-
+>  include/linux/nfs_xdr.h             |  30 +-
+>  include/linux/security.h            |  57 +++-
+>  include/uapi/linux/nfs4.h           |   2 +-
+>  security/capability.c               |  19 +-
+>  security/security.c                 |  24 +-
+>  security/selinux/hooks.c            |  92 +++++-
+>  security/selinux/include/security.h |   2 +
+>  security/selinux/ss/policydb.c      |   5 +-
+>  security/smack/smack_lsm.c          |  11 +
+>  37 files changed, 1432 insertions(+), 219 deletions(-)
+> 
+> -- 
+> 1.8.1.4
+> 
