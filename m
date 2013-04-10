@@ -1,42 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f170.google.com ([209.85.160.170]:60588 "EHLO
-	mail-gh0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752182Ab3DJTgy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Apr 2013 15:36:54 -0400
-Received: by mail-gh0-f170.google.com with SMTP id z2so125959ghb.15
-        for <linux-nfs@vger.kernel.org>; Wed, 10 Apr 2013 12:36:54 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: remove unnecessary check for NULL inode->i_flock from nfs_delegation_claim_locks
-Date: Wed, 10 Apr 2013 15:36:48 -0400
-Message-Id: <1365622608-21015-1-git-send-email-jlayton@redhat.com>
+Received: from mx12.netapp.com ([216.240.18.77]:51955 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S964912Ab3DJRGy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Apr 2013 13:06:54 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Linux linux-kernel <linux-kernel@vger.kernel.org>
+Subject: [GIT PULL] One line typo fix
+Date: Wed, 10 Apr 2013 17:06:45 +0000
+Message-ID: <1365613610.8465.16.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The second check was added in commit 65b62a29 but it will never be true.
+Hi Linus,
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/delegation.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+I suddenly noticed that a one-line issue that I _thought_ I had fixed
+with the nfs41_walk_client_list patch was apparently still there in the
+pull request I sent earlier today. I'm very sorry for not catching that
+in time.
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index f30bd1e..57db324 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -71,10 +71,8 @@ static int nfs_delegation_claim_locks(struct nfs_open_context *ctx, struct nfs4_
- 	int status = 0;
- 
- 	if (inode->i_flock == NULL)
--		return 0;
--
--	if (inode->i_flock == NULL)
- 		goto out;
-+
- 	/* Protect inode->i_flock using the file locks lock */
- 	lock_flocks();
- 	for (fl = inode->i_flock; fl != NULL; fl = fl->fl_next) {
+The following changes since commit fa332941c0c7c00e3420078268b7558d0ef792b5:
+
+  NFSv4: Fix another potential state manager deadlock (2013-04-09 13:19:35 -0400)
+
+are available in the git repository at:
+
+  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.9-5
+
+for you to fetch changes up to eb04e0ac198cec3bab407ad220438dfa65c19c67:
+
+  NFSv4: Doh! Typo in the fix to nfs41_walk_client_list (2013-04-10 12:57:29 -0400)
+
+----------------------------------------------------------------
+NFS client bugfixes for Linux 3.9
+
+- Fix a brain fart in nfs41_walk_client_list
+
+----------------------------------------------------------------
+Trond Myklebust (1):
+      NFSv4: Doh! Typo in the fix to nfs41_walk_client_list
+
+ fs/nfs/nfs4client.c | 1 +
+ 1 file changed, 1 insertion(+)
+
 -- 
-1.7.11.7
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
