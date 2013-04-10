@@ -1,224 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-vbr10.xs4all.nl ([194.109.24.30]:4792 "EHLO
-	smtp-vbr10.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759513Ab3DINBf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Apr 2013 09:01:35 -0400
-Date: Tue, 9 Apr 2013 14:50:11 +0200
-From: Miquel van Smoorenburg <mikevs@xs4all.net>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] "sloppycto=N" mount option
-Message-ID: <20130409125010.GB15231@xs4all.net>
-References: <20130409124600.GA15201@xs4all.net>
+Received: from mx1.redhat.com ([209.132.183.28]:8080 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750990Ab3DJP61 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Apr 2013 11:58:27 -0400
+Message-ID: <51658C23.5030805@RedHat.com>
+Date: Wed, 10 Apr 2013 11:58:27 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130409124600.GA15201@xs4all.net>
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 19/19] NFSDv4.2: Added NFS v4.2 support to the NFS server
+References: <1364939160-20874-1-git-send-email-SteveD@redhat.com> <1364939160-20874-20-git-send-email-SteveD@redhat.com> <20130410152526.GD24404@pad.fieldses.org>
+In-Reply-To: <20130410152526.GD24404@pad.fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2/2: "sloppycto=N" mount option
 
-     This mount option is a bit like like "nocto" - it suppresses
-     a GETATTR call when a file is opened if we still have valid
-     attribute data in the cache. The difference is that 1) we
-     only do this for files that are opened read-only and 2) only
-     when the last attribute update was 'N' seconds or less ago.
 
-diff -ruN linux-3.9-rc6.orig/include/linux/namei.h linux-3.9-rc6/include/linux/namei.h
---- linux-3.9-rc6.orig/include/linux/namei.h	2013-04-08 05:49:54.000000000 +0200
-+++ linux-3.9-rc6/include/linux/namei.h	2013-04-08 15:53:44.546470854 +0200
-@@ -55,6 +55,7 @@
- #define LOOKUP_JUMPED		0x1000
- #define LOOKUP_ROOT		0x2000
- #define LOOKUP_EMPTY		0x4000
-+#define LOOKUP_WRITE		0x8000
+On 10/04/13 11:25, J. Bruce Fields wrote:
+> On Tue, Apr 02, 2013 at 05:46:00PM -0400, Steve Dickson wrote:
+>> From: Steve Dickson <steved@redhat.com>
+>>
+>> This enable NFSv4.2 support for the server. To enable this
+>> code do the following:
+>>   echo "+4.2" >/proc/fs/nfsd/versions
+> 
+> The patches are ordered strangely: labeled nFS support depends on 4.2
+> support, so we should be adding 4.2 support first, then labeled NFS
+> support on top of that.
+Seriously that actually matter? So you want just commit the 4.2 and not
+not the label NFS patches? 
  
- extern int user_path_at(int, const char __user *, unsigned, struct path *);
- extern int user_path_at_empty(int, const char __user *, unsigned, struct path *, int *empty);
-diff -ruN linux-3.9-rc6.orig/include/linux/nfs_fs_sb.h linux-3.9-rc6/include/linux/nfs_fs_sb.h
---- linux-3.9-rc6.orig/include/linux/nfs_fs_sb.h	2013-04-08 05:49:54.000000000 +0200
-+++ linux-3.9-rc6/include/linux/nfs_fs_sb.h	2013-04-08 15:44:15.726470599 +0200
-@@ -124,6 +124,7 @@
- 	unsigned int		acregmax;
- 	unsigned int		acdirmin;
- 	unsigned int		acdirmax;
-+	unsigned int		sloppycto;
- 	unsigned int		namelen;
- 	unsigned int		options;	/* extra options enabled by mount */
- #define NFS_OPTION_FSCACHE	0x00000001	/* - local caching enabled */
-diff -ruN linux-3.9-rc6.orig/fs/nfs/client.c linux-3.9-rc6/fs/nfs/client.c
---- linux-3.9-rc6.orig/fs/nfs/client.c	2013-04-08 05:49:54.000000000 +0200
-+++ linux-3.9-rc6/fs/nfs/client.c	2013-04-08 15:44:15.714470488 +0200
-@@ -779,6 +779,7 @@
- 	server->acregmax = data->acregmax * HZ;
- 	server->acdirmin = data->acdirmin * HZ;
- 	server->acdirmax = data->acdirmax * HZ;
-+	server->sloppycto = data->sloppycto * HZ;
- 
- 	/* Start lockd here, before we might error out */
- 	error = nfs_start_lockd(server);
-@@ -859,6 +860,7 @@
- 	if (server->flags & NFS_MOUNT_NOAC) {
- 		server->acregmin = server->acregmax = 0;
- 		server->acdirmin = server->acdirmax = 0;
-+		server->sloppycto = 0;
- 	}
- 
- 	server->maxfilesize = fsinfo->maxfilesize;
-@@ -926,6 +928,7 @@
- 	target->acregmax = source->acregmax;
- 	target->acdirmin = source->acdirmin;
- 	target->acdirmax = source->acdirmax;
-+	target->sloppycto = source->sloppycto;
- 	target->caps = source->caps;
- 	target->options = source->options;
- }
-diff -ruN linux-3.9-rc6.orig/fs/nfs/dir.c linux-3.9-rc6/fs/nfs/dir.c
---- linux-3.9-rc6.orig/fs/nfs/dir.c	2013-04-08 05:49:54.000000000 +0200
-+++ linux-3.9-rc6/fs/nfs/dir.c	2013-04-08 15:52:33.602470466 +0200
-@@ -972,6 +972,22 @@
- }
- 
- /*
-+ * See if we allow sloppy close-to-open consistency.
-+ */
-+static inline
-+int sloppycto(struct inode *inode, int flags)
-+{
-+	struct nfs_server *server = NFS_SERVER(inode);
-+	struct nfs_inode *nfsi = NFS_I(inode);
-+
-+	return	S_ISREG(inode->i_mode) &&
-+		!(flags & LOOKUP_WRITE) &&
-+		server->sloppycto &&
-+		time_in_range_open(jiffies, nfsi->attrtimeo_timestamp,
-+			nfsi->attrtimeo_timestamp + server->sloppycto);
-+}
-+
-+/*
-  * Inode and filehandle revalidation for lookups.
-  *
-  * We force revalidation in the cases where the VFS sets LOOKUP_REVAL,
-@@ -991,7 +1007,8 @@
- 	if (flags & LOOKUP_REVAL)
- 		goto out_force;
- 	/* This is an open(2) */
--	if ((flags & LOOKUP_OPEN) && !(server->flags & NFS_MOUNT_NOCTO) &&
-+	if ((flags & LOOKUP_OPEN) &&
-+	    !(server->flags & NFS_MOUNT_NOCTO) && !sloppycto(inode, flags) &&
- 	    (S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode)))
- 		goto out_force;
- out:
-diff -ruN linux-3.9-rc6.orig/fs/nfs/fscache.c linux-3.9-rc6/fs/nfs/fscache.c
---- linux-3.9-rc6.orig/fs/nfs/fscache.c	2013-04-08 05:49:54.000000000 +0200
-+++ linux-3.9-rc6/fs/nfs/fscache.c	2013-04-08 15:44:15.722470552 +0200
-@@ -89,6 +89,7 @@
- 	key->key.nfs_server.acregmax = nfss->acregmax;
- 	key->key.nfs_server.acdirmin = nfss->acdirmin;
- 	key->key.nfs_server.acdirmax = nfss->acdirmax;
-+	key->key.nfs_server.sloppycto = nfss->sloppycto;
- 	key->key.nfs_server.fsid = nfss->fsid;
- 	key->key.rpc_auth.au_flavor = nfss->client->cl_auth->au_flavor;
- 
-diff -ruN linux-3.9-rc6.orig/fs/nfs/fscache.h linux-3.9-rc6/fs/nfs/fscache.h
---- linux-3.9-rc6.orig/fs/nfs/fscache.h	2013-04-08 05:49:54.000000000 +0200
-+++ linux-3.9-rc6/fs/nfs/fscache.h	2013-04-08 15:44:15.722470552 +0200
-@@ -43,6 +43,7 @@
- 			unsigned int	acregmax;
- 			unsigned int	acdirmin;
- 			unsigned int	acdirmax;
-+			unsigned int	sloppycto;
- 		} nfs_server;
- 
- 		struct {
-diff -ruN linux-3.9-rc6.orig/fs/nfs/internal.h linux-3.9-rc6/fs/nfs/internal.h
---- linux-3.9-rc6.orig/fs/nfs/internal.h	2013-04-08 05:49:54.000000000 +0200
-+++ linux-3.9-rc6/fs/nfs/internal.h	2013-04-08 15:44:15.726470599 +0200
-@@ -82,6 +82,7 @@
- 	int			flags;
- 	unsigned int		rsize, wsize;
- 	unsigned int		timeo, retrans;
-+	unsigned int		sloppycto;
- 	unsigned int		acregmin, acregmax,
- 				acdirmin, acdirmax;
- 	unsigned int		namlen;
-diff -ruN linux-3.9-rc6.orig/fs/nfs/nfs4client.c linux-3.9-rc6/fs/nfs/nfs4client.c
---- linux-3.9-rc6.orig/fs/nfs/nfs4client.c	2013-04-08 05:49:54.000000000 +0200
-+++ linux-3.9-rc6/fs/nfs/nfs4client.c	2013-04-08 15:44:15.726470599 +0200
-@@ -795,6 +795,7 @@
- 	server->acregmax = data->acregmax * HZ;
- 	server->acdirmin = data->acdirmin * HZ;
- 	server->acdirmax = data->acdirmax * HZ;
-+	server->sloppycto = data->sloppycto * HZ;
- 
- 	server->port = data->nfs_server.port;
- 
-diff -ruN linux-3.9-rc6.orig/fs/nfs/super.c linux-3.9-rc6/fs/nfs/super.c
---- linux-3.9-rc6.orig/fs/nfs/super.c	2013-04-08 05:49:54.000000000 +0200
-+++ linux-3.9-rc6/fs/nfs/super.c	2013-04-08 15:44:15.726470599 +0200
-@@ -98,6 +98,7 @@
- 	Opt_timeo, Opt_retrans,
- 	Opt_acregmin, Opt_acregmax,
- 	Opt_acdirmin, Opt_acdirmax,
-+	Opt_sloppycto,
- 	Opt_actimeo,
- 	Opt_namelen,
- 	Opt_mountport,
-@@ -163,6 +164,7 @@
- 	{ Opt_acregmax, "acregmax=%s" },
- 	{ Opt_acdirmin, "acdirmin=%s" },
- 	{ Opt_acdirmax, "acdirmax=%s" },
-+	{ Opt_sloppycto, "sloppycto=%s" },
- 	{ Opt_actimeo, "actimeo=%s" },
- 	{ Opt_namelen, "namlen=%s" },
- 	{ Opt_mountport, "mountport=%s" },
-@@ -656,6 +658,8 @@
- 		seq_printf(m, ",acdirmin=%u", nfss->acdirmin/HZ);
- 	if (nfss->acdirmax != NFS_DEF_ACDIRMAX*HZ || showdefaults)
- 		seq_printf(m, ",acdirmax=%u", nfss->acdirmax/HZ);
-+	if (nfss->sloppycto != 0)
-+		seq_printf(m, ",sloppycto=%u", nfss->sloppycto/HZ);
- 	for (nfs_infop = nfs_info; nfs_infop->flag; nfs_infop++) {
- 		if (nfss->flags & nfs_infop->flag)
- 			seq_puts(m, nfs_infop->str);
-@@ -1316,6 +1320,11 @@
- 				goto out_invalid_value;
- 			mnt->acdirmax = option;
- 			break;
-+		case Opt_sloppycto:
-+			if (nfs_get_option_ul(args, &option))
-+				goto out_invalid_value;
-+			mnt->sloppycto = option;
-+			break;
- 		case Opt_actimeo:
- 			if (nfs_get_option_ul(args, &option))
- 				goto out_invalid_value;
-@@ -2074,6 +2083,7 @@
- 	    data->acregmax != nfss->acregmax / HZ ||
- 	    data->acdirmin != nfss->acdirmin / HZ ||
- 	    data->acdirmax != nfss->acdirmax / HZ ||
-+	    data->sloppycto != nfss->sloppycto / HZ ||
- 	    data->timeo != (10U * nfss->client->cl_timeout->to_initval / HZ) ||
- 	    data->nfs_server.port != nfss->port ||
- 	    data->nfs_server.addrlen != nfss->nfs_client->cl_addrlen ||
-@@ -2245,6 +2255,8 @@
- 		goto Ebusy;
- 	if (a->acdirmax != b->acdirmax)
- 		goto Ebusy;
-+	if (a->sloppycto != b->sloppycto)
-+		goto Ebusy;
- 	if (clnt_a->cl_auth->au_flavor != clnt_b->cl_auth->au_flavor)
- 		goto Ebusy;
- 	return 1;
-diff -ruN linux-3.9-rc6.orig/fs/open.c linux-3.9-rc6/fs/open.c
---- linux-3.9-rc6.orig/fs/open.c	2013-04-08 05:49:54.000000000 +0200
-+++ linux-3.9-rc6/fs/open.c	2013-04-08 15:57:34.818470456 +0200
-@@ -899,6 +899,8 @@
- 		if (flags & O_EXCL)
- 			op->intent |= LOOKUP_EXCL;
- 	}
-+	if (flags & (O_RDWR|O_WRONLY|O_CREAT))
-+		op->intent |= LOOKUP_WRITE;
- 
- 	if (flags & O_DIRECTORY)
- 		lookup_flags |= LOOKUP_DIRECTORY;
+> 
+> Note a 4.1 client shouldn't see the server return the new attribute as
+> supported unless it's using 4.2, and attempts to set it should error
+> out unless it's using 4.2.
+How is that handled with 4.0 vers 4.1? Just looking for a point to the code... 
+
+steved.
+
+> 
+> --b.
+> 
+>>
+>> after the nfsd kernel module is loaded.
+>>
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> ---
+>>  fs/nfsd/nfs4xdr.c | 1 +
+>>  fs/nfsd/nfsd.h    | 2 +-
+>>  2 files changed, 2 insertions(+), 1 deletion(-)
+>>
+>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> index 818c1ca..d40b6ac 100644
+>> --- a/fs/nfsd/nfs4xdr.c
+>> +++ b/fs/nfsd/nfs4xdr.c
+>> @@ -1628,6 +1628,7 @@ struct nfsd4_minorversion_ops {
+>>  static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
+>>  	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
+>>  	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
+>> +	[2] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
+>>  };
+>>  
+>>  static __be32
+>> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+>> index 3090561..ac518e4 100644
+>> --- a/fs/nfsd/nfsd.h
+>> +++ b/fs/nfsd/nfsd.h
+>> @@ -24,7 +24,7 @@
+>>  /*
+>>   * nfsd version
+>>   */
+>> -#define NFSD_SUPPORTED_MINOR_VERSION	1
+>> +#define NFSD_SUPPORTED_MINOR_VERSION	2
+>>  /*
+>>   * Maximum blocksizes supported by daemon under various circumstances.
+>>   */
+>> -- 
+>> 1.8.1.4
+>>
