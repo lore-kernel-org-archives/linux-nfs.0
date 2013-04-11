@@ -1,62 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:60294 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750990Ab3DJP7i convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Apr 2013 11:59:38 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-        Linux linux-kernel <linux-kernel@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS client fixes
-Date: Wed, 10 Apr 2013 15:59:28 +0000
-Message-ID: <1365609573.8465.5.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:33685 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934043Ab3DKK0t (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Apr 2013 06:26:49 -0400
+Received: by mail-wi0-f178.google.com with SMTP id ez12so378532wid.17
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Apr 2013 03:26:47 -0700 (PDT)
+Message-ID: <51668FE4.5050501@tonian.com>
+Date: Thu, 11 Apr 2013 13:26:44 +0300
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
+To: fanchaoting <fanchaoting@cn.fujitsu.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfsd: remove /proc/fs/nfs when create /proc/fs/nfs/exports
+ error
+References: <5152AE56.5010306@cn.fujitsu.com>
+In-Reply-To: <5152AE56.5010306@cn.fujitsu.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+On 2013-03-27 10:31, fanchaoting wrote:
+> when create /proc/fs/nfs/exports error, we should remove /proc/fs/nfs,
+> if don't do it, it maybe cause Memory leak.
+> 
+>  Signed-off-by: fanchaoting <fanchaoting@cn.fujitsu.com>
+>  Reviewed-by: chendt.fnst <chendt.fnst@cn.fujitsu.com>
 
-The following changes since commit 1166fde6a923c30f4351515b6a9a1efc513e7d00:
+I merged this patch into pnfsd-block as well
+to compliment
+a55abd8 pnfsd-block: block layout should cleanup when register nfsd filesystem error
 
-  SUNRPC: Add barriers to ensure read ordering in rpc_wake_up_task_queue_locked (2013-03-25 11:23:40 -0400)
+Thanks,
 
-are available in the git repository at:
+Benny
 
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.9-4
-
-for you to fetch changes up to fa332941c0c7c00e3420078268b7558d0ef792b5:
-
-  NFSv4: Fix another potential state manager deadlock (2013-04-09 13:19:35 -0400)
-
-----------------------------------------------------------------
-NFS client bugfixes for Linux 3.9
-
-- Stable fix for memory corruption issues in nfs4[01]_walk_client_list
-- Stable fix for an Oopsable bug in rpc_clone_client
-- Another state manager deadlock in the NFSv4 open code
-- Memory leaks in nfs4_discover_server_trunking and rpc_new_client
-
-----------------------------------------------------------------
-Chuck Lever (1):
-      SUNRPC: Remove extra xprt_put()
-
-Trond Myklebust (4):
-      NFSv4: Fix a memory leak in nfs4_discover_server_trunking
-      NFSv4/4.1: Fix bugs in nfs4[01]_walk_client_list
-      SUNRPC: Fix a potential memory leak in rpc_new_client
-      NFSv4: Fix another potential state manager deadlock
-
- fs/nfs/nfs4client.c | 44 ++++++++++++++++++++++++++++----------------
- fs/nfs/nfs4proc.c   |  1 +
- fs/nfs/nfs4state.c  |  8 +++++++-
- net/sunrpc/clnt.c   | 11 +++--------
- 4 files changed, 39 insertions(+), 25 deletions(-)
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> 
+> ---
+>  fs/nfsd/nfsctl.c |    4 +++-
+>  1 files changed, 3 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index f33455b..58e4db4 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -1102,8 +1102,10 @@ static int create_proc_exports_entry(void)
+>  		return -ENOMEM;
+>  	entry = proc_create("exports", 0, entry,
+>  				 &exports_proc_operations);
+> -	if (!entry)
+> +	if (!entry) {
+> +		remove_proc_entry("fs/nfs", NULL);
+>  		return -ENOMEM;
+> +	}
+>  	return 0;
+>  }
+>  #else /* CONFIG_PROC_FS */
+> 
