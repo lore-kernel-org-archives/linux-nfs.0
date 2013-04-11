@@ -1,57 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:61793 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1162690Ab3DEVQl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Apr 2013 17:16:41 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 2/3] NFSv4: Fix issues in nfs4_discover_server_trunking
-Date: Fri,  5 Apr 2013 17:16:35 -0400
-Message-Id: <1365196596-25439-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1365196596-25439-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1365196596-25439-1-git-send-email-Trond.Myklebust@netapp.com>
- <1365196596-25439-2-git-send-email-Trond.Myklebust@netapp.com>
+Received: from esa-jnhn.mail.uoguelph.ca ([131.104.91.44]:52889 "EHLO
+	esa-jnhn.mail.uoguelph.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1765536Ab3DKXPy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Apr 2013 19:15:54 -0400
+Date: Thu, 11 Apr 2013 19:15:52 -0400 (EDT)
+From: Rick Macklem <rmacklem@uoguelph.ca>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Bram Vandoren <brambi@gmail.com>
+Message-ID: <60201423.761959.1365722152352.JavaMail.root@erie.cs.uoguelph.ca>
+In-Reply-To: <452C72A5-F773-4E16-88F4-B1100C505C41@oracle.com>
+Subject: Re: NFS client hangs after server reboot
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-- Ensure that we exit with ENOENT if the call to ops->get_clid_cred()
-  fails.
-- Handle the case where ops->detect_trunking() exits with an
-  unexpected error, and return EIO.
+Chuck Lever wrote:
+> [ Adding Rick Macklem ]
+> 
+> On Apr 9, 2013, at 3:08 PM, J. Bruce Fields <bfields@fieldses.org>
+> wrote:
+> 
+> > On Tue, Apr 09, 2013 at 05:51:40PM +0200, Bram Vandoren wrote:
+> >> Hello,
+> >> we have a FreeBSD 9.1 fileserver and several clients running kernel
+> >> 3.8.4-102.fc17.x86_64. Everything works fine till we reboot the
+> >> server. A fraction (1/10) of the clients don't resume the NFS
+> >> session
+> >> correctly. The server sends a NFS4ERR_STALE_STATEID. The client
+> >> sends
+> >> a RENEW to the server but no SETCLIENTID. (this should be the
+> >> correct
+> >> action from my very quick look at RFC 3530). After that the client
+> >> continues with a few READ call and the process starts again with
+> >> the
+> >> NFS4ERR_STALE_STATEID response from the server. It generates a lot
+> >> of
+> >> useless network traffic.
+> >
+> >   0.003754 a.b.c.2 -> a.b.c.120 NFS 122 V4 Reply (Call In 49) READ
+> >   Status: NFS4ERR_STALE_STATEID
+> >   0.003769 a.b.c.2 -> a.b.c.120 NFS 114 V4 Reply (Call In 71) RENEW
+> >
+> > I don't normally use tshark, so I don't know--does the lack of a
+> > status
+> > on that second line indicate that the RENEW succeeded?
+> >
+> > Assuming the RENEW is for the same clientid that the read stateid's
+> > are
+> > associated with--that's definitely a server bug. The RENEW should be
+> > returning STALE_CLIENTID.
+> 
+> The server is returning NFS4_OK to that RENEW and we appear to be out
+> of the server's grace period. Thus we can assume that state recovery
+> has already been performed following the server reboot, and a fresh
+> client ID has been correctly established. One possible explanation for
+> NFS4ERR_STALE_STATEID is that the client skipped recovering these
+> state IDs for some reason.
+> 
+Just to clarify/correct what I posted yesterday...
+The boot instance is the first 4 bytes of the clientid and the first
+4 bytes of the stateid.other. (Basically, for the FreeBSD server, a
+stateid.other is just the clientid + 4 additional bytes that identify
+which stateid related to the clientid that it is.)
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4state.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+Those first 4 bytes should be the same for all clientids/stateid.others
+issued during a server boot cycle. Any clientid/stateid.other with a
+different first 4 bytes will get the NFS4ERR_STALE_CLIENTID/STATEID
+reply.
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index a30f51e..209df69 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1876,8 +1876,8 @@ int nfs4_discover_server_trunking(struct nfs_client *clp,
- 	i = 0;
- 
- 	mutex_lock(&nfs_clid_init_mutex);
--	status  = -ENOENT;
- again:
-+	status  = -ENOENT;
- 	cred = ops->get_clid_cred(clp);
- 	if (cred == NULL)
- 		goto out_unlock;
-@@ -1916,6 +1916,11 @@ again:
- 	case -NFS4ERR_NOT_SAME: /* FixMe: implement recovery
- 				 * in nfs4_exchange_id */
- 		status = -EKEYEXPIRED;
-+		break;
-+	default:
-+		pr_warn("NFS: %s unhandled error %d. Exiting with error EIO\n",
-+				__func__, status);
-+		status = -EIO;
- 	}
- 
- out_unlock:
--- 
-1.8.1.4
+rick
 
+> A full network capture in pcap format, started before the server
+> reboot occurs, would be needed for us to analyze the issue properly.
+> 
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
