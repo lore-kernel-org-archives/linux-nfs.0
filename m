@@ -1,48 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:29739 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:51729 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759228Ab3DIRPs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Apr 2013 13:15:48 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r39HFl3j019054
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 9 Apr 2013 13:15:47 -0400
-Message-ID: <51644CC5.3070609@RedHat.com>
-Date: Tue, 09 Apr 2013 13:15:49 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S933519Ab3DKM1J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Apr 2013 08:27:09 -0400
+Date: Thu, 11 Apr 2013 08:27:01 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jose Castillo <jcastillo@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>, steved@redhat.com
+Subject: Re: [PATCH] Add the missing '$' in auth_unix_ip()
+Message-ID: <20130411122701.GE7081@fieldses.org>
+References: <1365522899-29123-1-git-send-email-jcastillo@redhat.com>
+ <20130409191113.GC3800@fieldses.org>
+ <516548D8.3070707@redhat.com>
 MIME-Version: 1.0
-To: Simo Sorce <simo@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] Avoid reverse resolution for server name
-References: <515B2F8D.3030302@RedHat.com>  <1364931149-18484-2-git-send-email-simo@redhat.com>  <5162C8A5.4030307@RedHat.com> <1365430116.20560.6.camel@willson.li.ssimo.org>
-In-Reply-To: <1365430116.20560.6.camel@willson.li.ssimo.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <516548D8.3070707@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 08/04/13 10:08, Simo Sorce wrote:
-> On Mon, 2013-04-08 at 09:39 -0400, Steve Dickson wrote:
->>
->> On 02/04/13 15:32, Simo Sorce wrote:
->>> A NFS client should be able to work properly even if the DNS Reverse record
->>> for the server is not set. There is no excuse to forcefully prevent that
->>> from working when it can.
->>>
->>> This patch adds a new pair of options (-z/-Z) that allow to turn on/off
->>> DNS reverse resolution for determining the server name to use with GSSAPI.
->> Again, please tell me why we need the -Z flag when that is the default?
+On Wed, Apr 10, 2013 at 12:11:20PM +0100, Jose Castillo wrote:
+> On 04/09/2013 08:11 PM, J. Bruce Fields wrote:
+> > Could you explain a little more?
+> > 
+> > I assume this is something I forgot to do as part of 
+> > c2544b77566690ebec32a2d47c9249548b1a0941 "mountd: prepend '$' to
+> > make use_ipaddr clients self-describing" but I haven't thought
+> > about that in a while....
+> > 
 > 
-> The idea is to switch the default in the code at some point, so then -Z
-> will be needed to get back to the original behavior.
-I'm thinking that's what major version number changes are for... not flags...
+> Hello,
+> 
+> Yes, sorry, a bit more of background: We found this problem because
+> NFS clients to a RHEL6 NFS server were experiencing periods of ESTALE
+> errors after being mounted and initially working successfully.
+> Tests were run which snapshotted the nfs/sunrpc caches before and
+> after the issue, and it was found that the '$' character at the
+> beginning of the ID strings, used when in use_ipaddr mode, was getting
+> lost:
+> 
+> GOOD, while mount was working:
+> #class IP domain
+> # expiry=1362416801 refcnt=2 flags=1
+> nfsd 1.2.3.4 $1.2.3.4
+> 
+> BAD, after mount started returning ESTALE:
+> #class IP domain
+> # expiry=1362418641 refcnt=2 flags=1
+> nfsd 1.2.3.4 1.2.3.4
+> 
+> This would then cause the export checks to fail by passing '1.2.3.4'
+> instead of '$1.2.3.4' up to rpc.mountd.
+
+Oh, I see--and this stuff probably never worked for v4 either since it
+can't depend on mountd to fill the cache at all....
+
+Thanks!
+
+	Acked-by: J. Bruce Fields <bfields@redhat.com>
+
+(Could you just add the extra details to the commit message and resend
+to steved?
+
+Also, is there a RHEL bug for this?)
+
+--b.
 
 > 
-> The idea is that by having both flags a distribution may choose to
-> decide now what behavior they want and use the relative flag. Then even
-> if we change the default their configuration will not "break".
-I'll do the work to remove the option and repost the patches..
-
-steved.
-
+> The problem appears to be in the auth_unix_ip() function when renewing
+> the auth.unix.ip cache entry.  It would fail to add the '$' character
+> back to the beginning of the string used for the domain string,
+> breaking the use_ipaddr mode.
+> 
+> The issue is reliably repeatable with large numbers of exports and
+> netgroups to cause rpc.mountd to enter use_ipaddr mode.
+> 
+> Steps to reproduce:
+> 
+> 1. Export several hundred exports each with its own unique netgroup
+> 2. Mount from a client (NFS3).  check
+> /proc/net/rpc/auth.unix.ip/content to ensure the '$' character is
+> there from use_ipaddr mode.
+> 3. Wait long enough for the entry to expire (1 hour was used), and try
+> and access a file from the client.  It returned ESTALE and the
+> /proc/net/rpc/auth.unix.ip/content was now missing the '$' character.
+> 
+> Actual results:
+> Mount returns ESTALE on the client after being mounted for an extended
+> period of time.
+> 
+> Expected results:
+> File access should succeed on the mount.
+> 
+> The patch was tested in a reproduction environment, and the issue
+> could no longer be reproduced.
+> 
+> > --b.
+> > 
+> > On Tue, Apr 09, 2013 at 04:54:59PM +0100, Jose Castillo wrote:
+> >> Signed-off-by: Jose Castillo <jcastillo@redhat.com> --- 
+> >> utils/mountd/cache.c | 10 ++++++---- 1 file changed, 6
+> >> insertions(+), 4 deletions(-)
+> >> 
+> >> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c index
+> >> 978698d..e1027f3 100644 --- a/utils/mountd/cache.c +++
+> >> b/utils/mountd/cache.c @@ -80,7 +80,7 @@ static void
+> >> auth_unix_ip(FILE *f) */ char *cp; char class[20]; -	char
+> >> ipaddr[INET6_ADDRSTRLEN]; +	char ipaddr[INET6_ADDRSTRLEN + 1]; 
+> >> char *client = NULL; struct addrinfo *tmp = NULL; if
+> >> (readline(fileno(f), &lbuf, &lbuflen) != 1) @@ -94,7 +94,7 @@
+> >> static void auth_unix_ip(FILE *f) strcmp(class, "nfsd") != 0) 
+> >> return;
+> >> 
+> >> -	if (qword_get(&cp, ipaddr, sizeof(ipaddr)) <= 0) +	if
+> >> (qword_get(&cp, ipaddr, sizeof(ipaddr) - 1) <= 0) return;
+> >> 
+> >> tmp = host_pton(ipaddr); @@ -116,9 +116,11 @@ static void
+> >> auth_unix_ip(FILE *f) qword_print(f, "nfsd"); qword_print(f,
+> >> ipaddr); qword_printtimefrom(f, DEFAULT_TTL); -	if (use_ipaddr) +
+> >> if (use_ipaddr) { +		memmove(ipaddr + 1, ipaddr, strlen(ipaddr) +
+> >> 1); +		ipaddr[0] = '$'; qword_print(f, ipaddr); -	else if
+> >> (client) +	} else if (client) qword_print(f,
+> >> *client?client:"DEFAULT"); qword_eol(f); xlog(D_CALL,
+> >> "auth_unix_ip: client %p '%s'", client, client?client:
+> >> "DEFAULT"); -- 1.7.11.7
+> >> 
+> >> -- To unsubscribe from this list: send the line "unsubscribe
+> >> linux-nfs" in the body of a message to majordomo@vger.kernel.org 
+> >> More majordomo info at
+> >> http://vger.kernel.org/majordomo-info.html
+> 
+> 
