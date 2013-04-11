@@ -1,69 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f49.google.com ([209.85.215.49]:56695 "EHLO
-	mail-la0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S935852Ab3DIMgk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Apr 2013 08:36:40 -0400
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: linux-kernel@vger.kernel.org
-Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wine-devel@winehq.org
-Subject: [PATCH v5 4/7] CIFS: Use NT_CREATE_ANDX command for forcemand mounts
-Date: Tue,  9 Apr 2013 16:40:24 +0400
-Message-Id: <1365511227-17626-5-git-send-email-piastry@etersoft.ru>
-In-Reply-To: <1365511227-17626-1-git-send-email-piastry@etersoft.ru>
-References: <1365511227-17626-1-git-send-email-piastry@etersoft.ru>
+Received: from mail-pa0-f41.google.com ([209.85.220.41]:33520 "EHLO
+	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752843Ab3DKNYT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Apr 2013 09:24:19 -0400
+Received: by mail-pa0-f41.google.com with SMTP id kx1so909984pab.14
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Apr 2013 06:24:18 -0700 (PDT)
+Message-ID: <5166B97D.60805@gmail.com>
+Date: Thu, 11 Apr 2013 21:24:13 +0800
+From: fanchaoting <tingchaofan@gmail.com>
+MIME-Version: 1.0
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/2] nfsd: remove some useless code
+References: <5163AFED.5060902@cn.fujitsu.com>
+In-Reply-To: <5163AFED.5060902@cn.fujitsu.com>
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-forcemand mount option now lets us use Windows mandatory style of
-byte-range locks even if server supports posix ones - switches on
-Windows locking mechanism. Share flags is another locking mehanism
-provided by Windows semantic that can be used by NT_CREATE_ANDX
-command. This patch combines all Windows locking mechanism in one
-mount option by using NT_CREATE_ANDX to open files if forcemand is on.
 
-Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+the "list_empty(&oo->oo_owner.so_stateids)" is aways true ,
+so we remove it.
+
+ Signed-off-by: fanchaoting <fanchaoting@cn.fujitsu.com>
 ---
- fs/cifs/dir.c  | 1 +
- fs/cifs/file.c | 6 ++++--
- 2 files changed, 5 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4state.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
 
-diff --git a/fs/cifs/dir.c b/fs/cifs/dir.c
-index d4331de..8587021 100644
---- a/fs/cifs/dir.c
-+++ b/fs/cifs/dir.c
-@@ -217,6 +217,7 @@ cifs_do_create(struct inode *inode, struct dentry *direntry, unsigned int xid,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 2e27430..e9f1d37 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3830,8 +3830,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			 * In the 4.0 case we need to keep the owners around a
+ 			 * little while to handle CLOSE replay.
+ 			 */
+-			if (list_empty(&oo->oo_owner.so_stateids))
+-				move_to_close_lru(oo, SVC_NET(rqstp));
++			move_to_close_lru(oo, SVC_NET(rqstp));
+ 		}
  	}
- 
- 	if (tcon->unix_ext && cap_unix(tcon->ses) && !tcon->broken_posix_open &&
-+	    ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
- 	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
- 			le64_to_cpu(tcon->fsUnixInfo.Capability))) {
- 		rc = cifs_posix_open(full_path, &newinode, inode->i_sb, mode,
-diff --git a/fs/cifs/file.c b/fs/cifs/file.c
-index 9394b2b..19038a4 100644
---- a/fs/cifs/file.c
-+++ b/fs/cifs/file.c
-@@ -455,8 +455,9 @@ int cifs_open(struct inode *inode, struct file *file)
- 	else
- 		oplock = 0;
- 
--	if (!tcon->broken_posix_open && tcon->unix_ext &&
--	    cap_unix(tcon->ses) && (CIFS_UNIX_POSIX_PATH_OPS_CAP &
-+	if (!tcon->broken_posix_open && tcon->unix_ext && cap_unix(tcon->ses)
-+	    && ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
-+	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
- 				le64_to_cpu(tcon->fsUnixInfo.Capability))) {
- 		/* can not refresh inode info since size could be stale */
- 		rc = cifs_posix_open(full_path, &inode, inode->i_sb,
-@@ -624,6 +625,7 @@ cifs_reopen_file(struct cifsFileInfo *cfile, bool can_flush)
- 		oplock = 0;
- 
- 	if (tcon->unix_ext && cap_unix(tcon->ses) &&
-+	    ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
- 	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
- 				le64_to_cpu(tcon->fsUnixInfo.Capability))) {
- 		/*
+ out:
 -- 
-1.8.1.5
+1.7.1
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
 
