@@ -1,50 +1,202 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:7655 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751875Ab3DBSI6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Apr 2013 14:08:58 -0400
-Subject: RE: [PATCH 2/3] Avoid reverse resolution for server name
-From: Simo Sorce <simo@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9286FB37F@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1364924947-16985-1-git-send-email-simo@redhat.com>
-	 <1364924947-16985-3-git-send-email-simo@redhat.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9286FB37F@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 02 Apr 2013 14:08:56 -0400
-Message-ID: <1364926136.2660.1270.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+Received: from mail-we0-f170.google.com ([74.125.82.170]:45804 "EHLO
+	mail-we0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934043Ab3DKKWd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Apr 2013 06:22:33 -0400
+Received: by mail-we0-f170.google.com with SMTP id z2so1094718wey.15
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Apr 2013 03:22:31 -0700 (PDT)
+Message-ID: <51668EE4.20901@tonian.com>
+Date: Thu, 11 Apr 2013 13:22:28 +0300
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
+To: fanchaoting <fanchaoting@cn.fujitsu.com>
+CC: linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v1 2/2] pnfsd-block: block layout should cleanup when
+ register nfsd filesystem error
+References: <5152AEE8.8020607@cn.fujitsu.com> <5152D277.2040103@cn.fujitsu.com>
+In-Reply-To: <5152D277.2040103@cn.fujitsu.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-04-02 at 17:58 +0000, Myklebust, Trond wrote:
-> > -----Original Message-----
-> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > owner@vger.kernel.org] On Behalf Of Simo Sorce
-> > Sent: Tuesday, April 02, 2013 1:49 PM
-> > To: Linux NFS Mailing list
-> > Subject: [PATCH 2/3] Avoid reverse resolution for server name
-> > 
-> > A NFS client should be able to work properly even if the DNS Reverse record
-> > for the server is not set. There is no excuse to forcefully prevent that from
-> > working when it can.
+On 2013-03-27 13:05, fanchaoting wrote:
+> this patch can fix:
 > 
-> Note that rpc.statd has the same limitation.
+> 1. remove /proc/fs/pnfs_block when create /proc/fs/pnfs_block/ctl
+>    error.
 > 
-> > This patch adds a new -N option that takes an 'on' or 'off' argument and
-> > controls whether forced PTR resolution is avoided (on) or performed (off)
-> 
-> '-N' already has a very different meaning on rpc.mountd and rpc.nfsd. It might therefore be better to choose a different name to avoid confusion.
-> Also, why do a single option with an 'on/off' argument instead of just choosing 2 options ?
+> 2. cleanup /proc/fs/pnfs_block and /proc/fs/pnfs_block/ctl when
+>    register nfsd filesystem error.
+> 3. we can't use proc file when CONFIG_PROC_FS is not set.
 >  
-Well Jeff seemed to suggest that way, I do not have any preference, can
-you please give me 2 letters to use ?
+>  Signed-off-by: fanchaoting <fanchaoting@cn.fujitsu.com>
+>  Reviewed-by: chendt.fnst <chendt.fnst@cn.fujitsu.com>
 
-Meanwhile I'll check rpc.statd as well.
+Merged into the pnfsd-block branch.
+One question though: why do you need the #if defined(CONFIG_PNFSD_BLOCK)
+in bl_com.c?
+The file is compiled conditionally on that same config variable in
+fs/nfsd/Makefile.
 
-Simo.
+Thanks,
 
--- 
-Simo Sorce * Red Hat, Inc * New York
+Benny
 
+> 
+> ---
+> 
+> ---
+>  fs/nfsd/bl_com.c      |   21 ++++++++++++++++++---
+>  fs/nfsd/bl_ops.c      |    5 +++--
+>  fs/nfsd/nfsctl.c      |    7 +++++--
+>  fs/nfsd/nfsd4_block.h |   12 ++++++++++--
+>  4 files changed, 36 insertions(+), 9 deletions(-)
+> 
+> diff --git a/fs/nfsd/bl_com.c b/fs/nfsd/bl_com.c
+> index 39aac40..2fc74d6 100644
+> --- a/fs/nfsd/bl_com.c
+> +++ b/fs/nfsd/bl_com.c
+> @@ -1,3 +1,4 @@
+> +#if defined(CONFIG_PNFSD_BLOCK)
+
+Why?
+
+Benny
+
+>  #include <linux/module.h>
+>  #include <linux/mutex.h>
+>  #include <linux/init.h>
+> @@ -271,19 +272,33 @@ static struct file_operations ctl_ops = {
+>   * more nodes doesn't present itself shortly this code should revert
+>   * to a single top level node. McNeal 11-Aug-2008.
+>   */
+> +#if defined(CONFIG_PROC_FS)
+> +
+>  int
+>  bl_init_proc(void)
+>  {
+>  	struct proc_dir_entry *e;
+>  
+> -	e = proc_mkdir("fs/pnfs_block", NULL);
+> -	if (!e)
+> +	pnfs_block_entry = proc_mkdir("fs/pnfs_block", NULL);
+> +	if (!pnfs_block_entry)
+>  		return -ENOMEM;
+>  
+>  	e = create_proc_entry("fs/pnfs_block/ctl", 0, NULL);
+> -	if (!e)
+> +	if (!e) {
+> +		remove_proc_entry("fs/pnfs_block", NULL);
+>  		return -ENOMEM;
+> +	}
+>  	e->proc_fops = &ctl_ops;
+>  
+>  	return 0;
+>  }
+> +
+> +void
+> +bl_cleanup_proc(void)
+> +{
+> +	remove_proc_entry("fs/pnfs_block/ctl", NULL);
+> +	remove_proc_entry("fs/pnfs_block", NULL);
+> +}
+> +
+> +#endif /*CONFIG_PROC_FS*/
+> +#endif /*CONFIG_PNFSD_BLOCK*/
+> diff --git a/fs/nfsd/bl_ops.c b/fs/nfsd/bl_ops.c
+> index a7046c6..74a5f6b 100644
+> --- a/fs/nfsd/bl_ops.c
+> +++ b/fs/nfsd/bl_ops.c
+> @@ -120,17 +120,18 @@ static boolean_t extents_process(struct fiemap_extent_info *fei,
+>      u64 sbid, dev_t dev, pnfs_blocklayout_layout_t *b);
+>  static void extents_cleanup(struct fiemap_extent_info *fei);
+>  
+> -void
+> +int
+>  nfsd_bl_init(void)
+>  {
+>  	int	i;
+> +
+>  	dprintk("%s loaded\n", __func__);
+>  
+>  	spin_lock_init(&layout_hashtbl_lock);
+>  	INIT_LIST_HEAD(&layout_hash);
+>  	for (i = 0; i < BL_LAYOUT_HASH_SIZE; i++)
+>  		INIT_LIST_HEAD(&layout_hashtbl[i]);
+> -	bl_init_proc();
+> +	return bl_init_proc();
+>  }
+>  
+>  /*
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 61a61e7..5fe7f52 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -1204,8 +1204,9 @@ static int create_proc_exports_entry(void)
+>  static int __init init_nfsd(void)
+>  {
+>  	int retval;
+> -	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
+> +	int bl_retval;
+>  
+> +	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
+>  	retval = nfsd4_init_slabs();
+>  	if (retval)
+>  		return retval;
+> @@ -1227,7 +1228,7 @@ static int __init init_nfsd(void)
+>  	retval = create_proc_exports_entry();
+>  	if (retval)
+>  		goto out_free_idmap;
+> -	nfsd_bl_init();
+> +	bl_retval = nfsd_bl_init();
+>  
+>  	retval = register_filesystem(&nfsd_fs_type);
+>  	if (retval)
+> @@ -1236,6 +1237,8 @@ static int __init init_nfsd(void)
+>  out_free_all:
+>  	remove_proc_entry("fs/nfs/exports", NULL);
+>  	remove_proc_entry("fs/nfs", NULL);
+> +	if (!bl_retval)
+> +		bl_cleanup_proc();
+>  out_free_idmap:
+>  	nfsd_idmap_shutdown();
+>  out_free_lockd:
+> diff --git a/fs/nfsd/nfsd4_block.h b/fs/nfsd/nfsd4_block.h
+> index f79c779..5872b4d 100644
+> --- a/fs/nfsd/nfsd4_block.h
+> +++ b/fs/nfsd/nfsd4_block.h
+> @@ -78,7 +78,7 @@ typedef struct bl_comm {
+>  #ifdef CONFIG_PNFSD_BLOCK
+>  
+>  bool pnfs_block_enabled(struct inode *, int ex_flags);
+> -void nfsd_bl_init(void);
+> +int nfsd_bl_init(void);
+>  int bl_layout_type(struct super_block *sb);
+>  int bl_getdeviceiter(struct super_block *, u32 layout_type,
+>  		     struct nfsd4_pnfs_dev_iter_res *);
+> @@ -94,7 +94,13 @@ int bl_layoutcommit(struct inode *,
+>  int bl_layoutreturn(struct inode *,
+>  		    const struct nfsd4_pnfs_layoutreturn_arg *);
+>  int bl_layoutrecall(struct inode *inode, int type, u64 offset, u64 len, bool with_nfs4_state_lock);
+> +#ifdef CONFIG_PROC_FS
+> +
+>  int bl_init_proc(void);
+> +void bl_cleanup_proc(void);
+> +
+> +#endif
+> +
+>  int bl_upcall(bl_comm_t *, bl_comm_msg_t *, bl_comm_res_t **);
+>  
+>  
+> @@ -112,7 +118,9 @@ extern bl_comm_t	*bl_comm_global;	// Ugly...
+>  #else
+>  
+>  static inline bool pnfs_block_enabled(struct inode *i, int ex_flags) { return false; }
+> -static inline void nfsd_bl_init(void) {}
+> +static inline int nfsd_bl_init(void) {return false; }
+> +static inline int bl_init_proc(void) {return false; }
+> +static inline void bl_cleanup_proc(void) {}
+>  
+>  static inline int bl_recall_layout(struct inode *inode, int type, u64 offset,
+>  				   u64 len, bool with_nfs4_state_lock)
+> 
