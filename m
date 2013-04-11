@@ -1,276 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f48.google.com ([209.85.220.48]:48700 "EHLO
-	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751754Ab3DCLJ1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Apr 2013 07:09:27 -0400
-Date: Wed, 3 Apr 2013 18:58:43 +0800
-From: Yanchuan Nian <ycnian@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2] nfsd: fix bug on nfs4 stateid deallocation
-Message-ID: <20130403105843.GA22704@mail.example.com>
-References: <1362962774-5141-1-git-send-email-ycnian@gmail.com>
- <20130311150208.GB16309@fieldses.org>
- <CAC5OsZPyuOj_3OUJZFu1Haqg=q6GCyyqDL=n+Y5Wr48D1-SkSg@mail.gmail.com>
- <20130402015044.GA12158@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=gb2312
-In-Reply-To: <20130402015044.GA12158@fieldses.org>
+Received: from cantor2.suse.de ([195.135.220.15]:53524 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S935376Ab3DKBVa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Apr 2013 21:21:30 -0400
+Date: Thu, 11 Apr 2013 11:21:21 +1000
+From: NeilBrown <neilb@suse.de>
+To: malahal naineni <malahal@us.ibm.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFSv3/v2: Fix data corruption with NFS short reads.
+Message-ID: <20130411112121.74d996c5@notabene.brown>
+In-Reply-To: <1364587026-7504-1-git-send-email-malahal@us.ibm.com>
+References: <1364587026-7504-1-git-send-email-malahal@us.ibm.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/WRshQDiT_n=Edf4O460f0tY"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 01, 2013 at 09:50:44PM -0400, J. Bruce Fields wrote:
-> On Wed, Mar 13, 2013 at 11:04:54PM +0800, Yanchuan Nian wrote:
-> > 2013/3/11 J. Bruce Fields <bfields@fieldses.org>
-> > 
-> > > On Mon, Mar 11, 2013 at 08:46:14AM +0800, ycnian@gmail.com wrote:
-> > > > NFS4_OO_PURGE_CLOSE is not handled properly. To avoid memory leak, nfs4
-> > > > stateid which is pointed by oo_last_closed_stid is freed in
-> > > nfsd4_close(),
-> > > > but NFS4_OO_PURGE_CLOSE isn't cleared meanwhile. So the stateid released
-> > > in
-> > > > THIS close procedure may be freed immediately in the coming encoding
-> > > function.
-> > >
-> > > OK, makes sense.  This code is confusing, I wonder if there's some way
-> > > we could make it simpler.
-> > >
-> > 
-> > The only purpose of NFS4_OO_PURGE_CLOSE is to decide whether the stateid
-> > pointed by last-closed-stateid should be freed or not. I wonder if this
-> > flag is necessary. oo_last_closed_stid is set only in CLOSE, so in other
-> > procedures, if the pointer is not NULL, it must be set in previous
-> > procedure, we can free it directly. In CLOSE procedure, we also free it
-> > directly before asigning the new released stateid to it in nfsd4_close(),
-> > and then we can ignore it in nfsd4_encode_close(). What do you think?
-> 
-> Yeah, something like that would be simpler, I think.  Maybe the
-> following?  (On top of your patch.)
+--Sig_/WRshQDiT_n=Edf4O460f0tY
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-This patch may cause memory leak in NFSv4.1. If the stateid released is the last one in nfs4_openowner, nfs4_openowner will be deallocated immediately, and NULL will be assigned to cstate->replay_owner at the same time. In this situation encode_seqid_op_tail() cannot be called. To avoid this problem, we can free the stateid just before or after nfs4_opwnowner deallocation.
+On Fri, 29 Mar 2013 19:57:06 -0000 malahal naineni <malahal@us.ibm.com> wro=
+te:
 
-Another question, cl_stateid in struct nfsd4_close will be returned to the client, so original comment is right even though applying this patch. Can this struct be commented like this.
+> This bug seems to be present in v2.6.37 or lower versions. The code was
+> re-organized in v2.6.38 that eliminated the bug. Current upstream code
+> doesn't have this bug. This may be applicable to some longterm releases!
+>=20
+> Here are the bug details:
+>=20
+> 1. nfs_read_rpcsetup(), args.count and res.count are both set to the
+>    actual number of bytes to be read. Let us assume that the request is
+>    for 16K, so arg.count =3D res.count =3D 16K
+> 2. nfs3_xdr_readres() conditionally sets res.count to to the actual
+>    number of bytes read. This condition is true for the first response
+>    as res.count was set to args.count before the first request. Let us
+>    say the server returned only 4K bytes. res.count=3D4K
+> 3. Another read request is sent for the remaining data. Note that
+>    res.count is NOT updated. It is still set to the actual amount of
+>    bytes we got in the first response.  The client will send a READ
+>    request for the remaining 12K.
 
-struct nfsd4_close {
-        u32             cl_seqid;           /* request */
-        stateid_t       cl_stateid;         /* request+response */
-        struct nfs4_ol_stateid *cl_closed_stateid; /* used during processing */
-};
+This is looks like a real bug, but I think the "NOT" above is the best thing
+to fix.
+i.e. when another read request is set, res.count *SHOULD*BE* updated.  That
+makes it consistent with the original send, and consistency is good!
+
+So this patch.
+
+Index: linux-2.6.32-SLE11-SP1-LTSS/fs/nfs/read.c
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+--- linux-2.6.32-SLE11-SP1-LTSS.orig/fs/nfs/read.c	2013-03-20 16:24:31.4266=
+05189 +1100
++++ linux-2.6.32-SLE11-SP1-LTSS/fs/nfs/read.c	2013-04-11 11:19:57.670724540=
+ +1000
+@@ -368,6 +368,7 @@ static void nfs_readpage_retry(struct rp
+ 	argp->offset +=3D resp->count;
+ 	argp->pgbase +=3D resp->count;
+ 	argp->count -=3D resp->count;
++	resp->count =3D argp->count;
+ 	nfs4_restart_rpc(task, NFS_SERVER(data->inode)->nfs_client);
+ 	return;
+ out:
+
+
+This would old affect clients with servers which would sometimes return
+partial reads, and I don't think the Linux NFS server does.  What server ha=
+ve
+you seen this against?
+
+NeilBrown
 
 
 
-> 
-> > I don't quite understand the difficulties in CLOSE retransmission. RFC3530
-> > suggests we deallocate the stateid in next validly sequenced request. If we
-> > don't do so, what will happen?
-> 
-> Nothing bad.  It's just that the stateid isn't useful any more past that
-> point, so we may as well get rid of it.  (If the client sends the close
-> with sequence number s, and then resends the close, we want to be able
-> to reply.  But once it sends another operation with sequence s+1, it's
-> saying that it's received the answer to the close now.  And any further
-> attempt to send something with sequence number s would fail.)
-> 
-> > I don't see this suggestion in RFC5661, and
-> > the stateid is deallocated directly in NFSv4.1, why? Thanks very much.
-> 
-> In 4.1 these stateowner-based sequence numbers aren't used any more.
-> (They're still there, but they're ignored.)  Instead 4.1 depends on the
-> SEQUENCE operation to provide ordering and exactly-once semantics.
-> 
-> --b.
-> 
-> commit 4e603ce0a56deeac0a83d067a863f96f0619c26d
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Mon Apr 1 16:37:12 2013 -0400
-> 
->     nfsd4: cleanup handling of nfsv4.0 closed stateid's
->     
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 285a0c8..aa6e77f 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -575,7 +575,7 @@ static void unhash_openowner(struct nfs4_openowner *oo)
+> 4. Assume that the server gave all 12K bytes. We still think we got ony
+>    4K bytes due to conditional update in nfs3_xdr_readres(). The client
+>    sends further requests, if not EOF! If this response includes EOF, it
+>    truncates pages beyond 4K+4K causing data corruption beyond 8K. The
+>    corrupted data is filled with zeros!
+>=20
+> Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
+>=20
+> ---
+> fs/nfs/nfs2xdr.c | 3 +--
+>  fs/nfs/nfs3xdr.c | 3 +--
+>  2 files changed, 2 insertions(+), 4 deletions(-)
+>=20
+> diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+> index 5914a19..710ca56 100644
+> --- a/fs/nfs/nfs2xdr.c
+> +++ b/fs/nfs/nfs2xdr.c
+> @@ -287,8 +287,7 @@ nfs_xdr_readres(struct rpc_rqst *req, __be32 *p, stru=
+ct nfs_readres *res)
 >  	}
+> =20
+>  	dprintk("RPC:      readres OK count %u\n", count);
+> -	if (count < res->count)
+> -		res->count =3D count;
+> +	res->count =3D count;
+> =20
+>  	return count;
 >  }
->  
-> -static void release_last_closed_stateid(struct nfs4_openowner *oo)
-> +void release_last_closed_stateid(struct nfs4_openowner *oo)
->  {
->  	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
->  
-> @@ -3760,26 +3760,6 @@ out:
->  	return status;
->  }
->  
-> -void nfsd4_purge_closed_stateid(struct nfs4_stateowner *so)
-> -{
-> -	struct nfs4_openowner *oo;
-> -	struct nfs4_ol_stateid *s;
-> -
-> -	if (!so->so_is_open_owner)
-> -		return;
-> -	oo = openowner(so);
-> -	s = oo->oo_last_closed_stid;
-> -	if (!s)
-> -		return;
-> -	if (!(oo->oo_flags & NFS4_OO_PURGE_CLOSE)) {
-> -		/* Release the last_closed_stid on the next seqid bump: */
-> -		oo->oo_flags |= NFS4_OO_PURGE_CLOSE;
-> -		return;
-> -	}
-> -	oo->oo_flags &= ~NFS4_OO_PURGE_CLOSE;
-> -	release_last_closed_stateid(oo);
-> -}
-> -
->  static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
->  {
->  	unhash_open_stateid(s);
-> @@ -3816,9 +3796,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
->  
->  	nfsd4_close_open_stateid(stp);
-> -	release_last_closed_stateid(oo);
-> -	oo->oo_flags &= ~NFS4_OO_PURGE_CLOSE;
-> -	oo->oo_last_closed_stid = stp;
-> +	close->cl_closed_stateid = stp;
->  
->  	if (list_empty(&oo->oo_owner.so_stateids)) {
->  		if (cstate->minorversion) {
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index e3dc58d..2324638 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -527,6 +527,7 @@ nfsd4_decode_close(struct nfsd4_compoundargs *argp, struct nfsd4_close *close)
->  {
->  	DECODE_HEAD;
->  
-> +	close->cl_closed_stateid = NULL;
->  	READ_BUF(4);
->  	READ32(close->cl_seqid);
->  	return nfsd4_decode_stateid(argp, &close->cl_stateid);
-> @@ -1707,8 +1708,7 @@ static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
->   * Note that we increment sequence id's here, at the last moment, so we're sure
->   * we know whether the error to be returned is a sequence id mutating error.
->   */
-> -
-> -static void encode_seqid_op_tail(struct nfsd4_compoundres *resp, __be32 *save, __be32 nfserr)
-> +static void encode_seqid_op_tail(struct nfsd4_compoundres *resp, __be32 *save, __be32 nfserr, struct nfs4_ol_stateid *close_stp)
->  {
->  	struct nfs4_stateowner *stateowner = resp->cstate.replay_owner;
->  
-> @@ -1719,7 +1719,13 @@ static void encode_seqid_op_tail(struct nfsd4_compoundres *resp, __be32 *save, _
->  			  (char *)resp->p - (char *)save;
->  		memcpy(stateowner->so_replay.rp_buf, save,
->  			stateowner->so_replay.rp_buflen);
-> -		nfsd4_purge_closed_stateid(stateowner);
-> +		if (stateowner->so_is_open_owner) {
-> +			struct nfs4_openowner *oo = openowner(stateowner);
-> +
-> +			release_last_closed_stateid(oo);
-> +			if (close_stp)
-> +				oo->oo_last_closed_stid = close_stp;
-> +		}
+> diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+> index f6cc60f..152a5e4 100644
+> --- a/fs/nfs/nfs3xdr.c
+> +++ b/fs/nfs/nfs3xdr.c
+> @@ -914,8 +914,7 @@ nfs3_xdr_readres(struct rpc_rqst *req, __be32 *p, str=
+uct nfs_readres *res)
+>  		res->eof =3D 0;
 >  	}
+> =20
+> -	if (count < res->count)
+> -		res->count =3D count;
+> +	res->count =3D count;
+> =20
+>  	return count;
 >  }
->  
-> @@ -2667,7 +2673,7 @@ nfsd4_encode_close(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_c
->  	if (!nfserr)
->  		nfsd4_encode_stateid(resp, &close->cl_stateid);
->  
-> -	encode_seqid_op_tail(resp, save, nfserr);
-> +	encode_seqid_op_tail(resp, save, nfserr, close->cl_closed_stateid);
->  	return nfserr;
->  }
->  
-> @@ -2770,7 +2776,7 @@ nfsd4_encode_lock(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_lo
->  	else if (nfserr == nfserr_denied)
->  		nfsd4_encode_lock_denied(resp, &lock->lk_denied);
->  
-> -	encode_seqid_op_tail(resp, save, nfserr);
-> +	encode_seqid_op_tail(resp, save, nfserr, NULL);
->  	return nfserr;
->  }
->  
-> @@ -2790,7 +2796,7 @@ nfsd4_encode_locku(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_l
->  	if (!nfserr)
->  		nfsd4_encode_stateid(resp, &locku->lu_stateid);
->  
-> -	encode_seqid_op_tail(resp, save, nfserr);
-> +	encode_seqid_op_tail(resp, save, nfserr, NULL);
->  	return nfserr;
->  }
->  
-> @@ -2885,7 +2891,7 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
->  	}
->  	/* XXX save filehandle here */
->  out:
-> -	encode_seqid_op_tail(resp, save, nfserr);
-> +	encode_seqid_op_tail(resp, save, nfserr, NULL);
->  	return nfserr;
->  }
->  
-> @@ -2897,7 +2903,7 @@ nfsd4_encode_open_confirm(struct nfsd4_compoundres *resp, __be32 nfserr, struct
->  	if (!nfserr)
->  		nfsd4_encode_stateid(resp, &oc->oc_resp_stateid);
->  
-> -	encode_seqid_op_tail(resp, save, nfserr);
-> +	encode_seqid_op_tail(resp, save, nfserr, NULL);
->  	return nfserr;
->  }
->  
-> @@ -2909,7 +2915,7 @@ nfsd4_encode_open_downgrade(struct nfsd4_compoundres *resp, __be32 nfserr, struc
->  	if (!nfserr)
->  		nfsd4_encode_stateid(resp, &od->od_stateid);
->  
-> -	encode_seqid_op_tail(resp, save, nfserr);
-> +	encode_seqid_op_tail(resp, save, nfserr, NULL);
->  	return nfserr;
->  }
->  
-> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> index 327552b..1401599 100644
-> --- a/fs/nfsd/state.h
-> +++ b/fs/nfsd/state.h
-> @@ -363,7 +363,6 @@ struct nfs4_openowner {
->  	struct nfs4_ol_stateid *oo_last_closed_stid;
->  	time_t			oo_time; /* time of placement on so_close_lru */
->  #define NFS4_OO_CONFIRMED   1
-> -#define NFS4_OO_PURGE_CLOSE 2
->  #define NFS4_OO_NEW         4
->  	unsigned char		oo_flags;
->  };
-> @@ -371,7 +370,7 @@ struct nfs4_openowner {
->  struct nfs4_lockowner {
->  	struct nfs4_stateowner	lo_owner; /* must be first element */
->  	struct list_head	lo_owner_ino_hash; /* hash by owner,file */
-> -	struct list_head        lo_perstateid; /* for lockowners only */
-> +	struct list_head        lo_perstateid;
->  	struct list_head	lo_list; /* for temporary uses */
->  };
->  
-> @@ -485,7 +484,7 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
->  							struct nfsd_net *nn);
->  extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
->  extern void release_session_client(struct nfsd4_session *);
-> -extern void nfsd4_purge_closed_stateid(struct nfs4_stateowner *);
-> +extern void release_last_closed_stateid(struct nfs4_openowner *);
->  
->  /* nfs4recover operations */
->  extern int nfsd4_client_tracking_init(struct net *net);
-> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> index 40e05e6..34766df 100644
-> --- a/fs/nfsd/xdr4.h
-> +++ b/fs/nfsd/xdr4.h
-> @@ -91,7 +91,8 @@ struct nfsd4_access {
->  
->  struct nfsd4_close {
->  	u32		cl_seqid;           /* request */
-> -	stateid_t	cl_stateid;         /* request+response */
-> +	stateid_t	cl_stateid;         /* request */
-> +	struct nfs4_ol_stateid *cl_closed_stateid; /* response */
->  };
->  
->  struct nfsd4_commit {
+
+
+--Sig_/WRshQDiT_n=Edf4O460f0tY
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUWYQETnsnt1WYoG5AQJn4A//Tu8gzU5w/Lk0mKBLoFxHyBiEtTvwWVPw
+xGIJ5j8x791EFXXRztxtnITujRbY/DcJJBG0viq2uHizBsiXYkYEO8j9qDq1sor8
+Sav4y+dfna3XDEtDeia4447+4f1Zcuodf1PwMEBo3fjjAiAqLPlblNWUmAM/F9At
+403jMcsPtD5RepIikdYkXIj+PLpDQrMgJWnWpaG5bsdibOp0fYw7bN4aFTASDEpL
+3I0Rf+Amsdi4oNomfpwy3ZSQf+cxGaq21w1wGb889kxl8UinPVFr2z5i+4PibqLq
+sRWiA6aKDRxMqs5UYby46GZ1FCsxcch2GLIBuI+zsOgw4ZQfZNyMYhWt9eyZ9LSL
+K7I2kt15s5w6N5aI6YDSGVGXFBDO4l4FvMQoCSJdXzZZMYdbR14MLx6KBYDYFqCh
+diopeWJ6Qc05CGVEkIMrq8hgpazLKwwaJjdBxYmH6oKOAcy/m9OtIwK0Qml9QUba
+1JGs3GgxdD69LGGbtGrd6o5miEU99GbgDzfEuwT+tYOe3BO5nETOsy/qBTok9fCo
+bzGsgW64IQBZ53+8RGBl80hiYjikBmG2soZEAvCyhIJLFWY9e4k6OsjRIEs7nuCF
+4hARkV3dEcZl3HKKDjQVH/p/6E6mE7VT/XO91WxitoNvey6Ur8Ps+KVD0w9Ac5oN
+V7WoRCe+0Qo=
+=7wVG
+-----END PGP SIGNATURE-----
+
+--Sig_/WRshQDiT_n=Edf4O460f0tY--
