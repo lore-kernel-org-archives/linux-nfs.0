@@ -1,252 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:46733 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752328Ab3DWTwk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Apr 2013 15:52:40 -0400
-Subject: Re: Interoperable junctions on Linux
-Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
+Received: from fieldses.org ([174.143.236.118]:59932 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932840Ab3DKOmX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Apr 2013 10:42:23 -0400
+Date: Thu, 11 Apr 2013 10:42:20 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: fanchaoting <tingchaofan@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] nfsd: remove some useless code
+Message-ID: <20130411144220.GF7081@fieldses.org>
+References: <5163AFED.5060902@cn.fujitsu.com>
+ <5166B97D.60805@gmail.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1366742262.7239.131.camel@willson.li.ssimo.org>
-Date: Tue, 23 Apr 2013 15:52:27 -0400
-Cc: samba-technical@lists.samba.org,
-        fedfs-utils Developers <fedfs-utils-devel@oss.oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <08635513-9147-4AE9-80E5-0122CB9099CB@oracle.com>
-References: <71999CA2-F6E7-4DE1-9DC3-AED77626DE7F@oracle.com> <1366728674.7239.63.camel@willson.li.ssimo.org> <BDD9FCE5-E573-4E01-A5D9-A8A3811895DD@oracle.com> <1366736069.7239.93.camel@willson.li.ssimo.org> <D7E48414-53C9-45AA-B742-A579ABFC953A@oracle.com> <1366742262.7239.131.camel@willson.li.ssimo.org>
-To: Simo Sorce <simo@redhat.com>
+In-Reply-To: <5166B97D.60805@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Apr 11, 2013 at 09:24:13PM +0800, fanchaoting wrote:
+> 
+> the "list_empty(&oo->oo_owner.so_stateids)" is aways true ,
+> so we remove it.
 
-On Apr 23, 2013, at 2:37 PM, Simo Sorce <simo@redhat.com> wrote:
-
-> On Tue, 2013-04-23 at 14:11 -0400, Chuck Lever wrote:
->> On Apr 23, 2013, at 12:54 PM, Simo Sorce <simo@redhat.com> wrote:
-> 
->>> I do not see mention of LDAP URIs, andyou seem to speak in the singular
->>> when mention 'the LDAP server' does it mean you hve no way to specify a
->>> pool of LDAP servers for HA ?
->> 
->> An "NSDB name" (used in a junction) is meant to represent a pool of
->> replicated LDAP server resources, or just one LDAP server.  Note that
->> specifying IP addresses in FedFS Fileset Names is specifically
->> disallowed for this reason.
->> 
->> A FedFS Fileset Name can indeed be represented by an LDAP URI.  See
->> the operational examples in the FedFS NSDB draft.
-> 
-> Sorry I found that after some more searching, the document is vast and I
-> missed it at first glance.
-> 
->>> 
->>>> An explanation of this data is in an IETF draft:
->>>> 
->>>> 
->>>> http://datatracker.ietf.org/doc/draft-ietf-nfsv4-federated-fs-protocol/
->>> 
->>>> See chapter 4 for an overview of the schema used for these lists.  An
->>>> NFS fileserver converts the LDAP records into an fs_locations4 or
->>>> fs_locations_info4 attribute for NFS clients.  Other protocols use a
->>>> different representation for communicating this list to clients.
->>>> 
->>> To be honest the constrains in this document on the LDAP DIT, seem to
->>> indicate it will be possible to use this stuff primarily only with a
->>> dedicated LDAP server, Dictating how the rootDSE/namingContext should
->>> look like is a quite strong demand.
->>> 
->>> Why do you need a full namingContext for FedFS ?
->>> Why a subtree is not sufficient ?
->> 
->> The document does recommend using a dedicated LDAP service for an
->> NSDB, but does not require it.
-> 
-> Ah I didn't realize you recommend a dedicated LDAP server.
-> 
->> One or more of the namingContext records on an NSDB has a new
->> attribute (fedfsNceDN) that points to the FedFS DIT.  So it is
->> entirely possible to use an existing LDAP server for storing FedFS
->> records, simply by adding that attribute to the namingContext under
->> which the FedFS subtree resides.
-> 
-> That 'simply' is not so simple, you may not be allowed to do that.
-
-In which case, you set up your own LDAP server, where you _are_ allowed to do it.
+Thanks!  Applying.--b.
 
 > 
->> The goal is to allow automated discovery of the location of the FedFS
->> DIT using a DN advertised in the LDAP server's rootDSE.  NSDB clients
->> thus need know only the name of the NSDB service.
+>  Signed-off-by: fanchaoting <fanchaoting@cn.fujitsu.com>
+> ---
+>  fs/nfsd/nfs4state.c |    3 +--
+>  1 files changed, 1 insertions(+), 2 deletions(-)
 > 
-> You can do the same w/o forcing the attribute to be on the base suffix,
-> all you need to do is a subtree search with
-> '&(objctclass=fedfsNsdbContainerInfo)' as part of the filter.
-> Given this objectclass is used as the container entry main objectclass
-> it also means the fedfsNceDN would be redundant and could be removed
-> entirely.
-
-Would your search filter be able to find a fedfsNsdbContainerInfo objectclass in a namingContext _and_ under it?  The search base is determined first by this search, then the NSDB client can search for a particular Fileset Name under that base DN.
-
-Although I have been working to simplify this mechanism as specified in the NSDB document, I don't remember the specific reason we require namingContext changes (I inherited this work from the original authors).  I agree that a subtree search would be simpler.
-
-But we may be too far along in the standards process to address this concern in this iteration of the protocol. If we can't fix this protocol specification, it's certainly possible to construct our own implementation without fedfsNceDn that does not interoperate, and then document our implementation in a new protocol specification.
-
-> 
->> By default, NSDBs that my tools set up store the FedFS DIT under the
->> LDAP server's domain controller suffix, rather than using the special
->> "o=fedfs" DN.  By convention the FedFS domain name matches the domain
->> controller suffix, but operation doesn't depend on this.
->> 
->> It is not quite as restrictive as you think, but it is very fiddly to
->> set up on industrial strength LDAP servers like OpenLDAP or 389-ds.
-> 
-> Well I have some knowledge in this field, and I do not find it very
-> fiddly, but I may be biased as I have been working for the past 7 years
-> to make LDAP+Kerberos simple to manage within the FreeIPA project.
-> Your requirement to set an objectclass on the base suffix is something I
-> find particularly unappealing, and no other tool that I know of requires
-> this (because it is unnecessary).
-
-I presented the NSDB schema to both OpenLDAP and 389-ds developers last year.  Neither group suggested that fiddling with an LDAP server's rootDSE was onerous (although they didn't like the way we were doing it, and that has since been changed).
-
-If you can provide back up documentation for your root suffix issue, I can put this in front of the Working Group.  "It's particularly unappealing" is not going to fly ;-)  Can you help me formulate a proper problem statement (off list, of course)?
-
-
->> 
->>> On the security side, you recommend RPCSEC_GSS for NFS, but then TLS
->> for
->>> LDAP, why not use SASL/GSSAPI for LDAP as well so you need a single
->> set
->>> of credentials ?
->> 
->> There are two classes of tasks involving NSDBs: administrative, where
->> an administrator is available to provide credential material; and
->> fileserver, which is an unattended access performed simply to retrieve
->> location lists.
->> 
->> The purpose of TLS is to allow fileservers to authenticate NSDBs
->> without requiring user intervention.  A certificate chain for each
->> NSDB is provisioned on fileservers (using the FedFS ADMIN RPC
->> protocol).  The fileservers use them with START_TLS each time a
->> connection is established to that NSDB.
->> 
->> SASL/GSSAPI can of course be used when performing administrative
->> operations on an NSDB, and that is the plan for the Linux FedFS
->> implementation.  As you observed, an administrator can then use the
->> same credentials for an RPCGSS-protected FedFS ADMIN service and her
->> NSDB.
-> 
-> SASL/GSSAPI can also be used by the file server given the use of
-> RPCSEC_GSS requires you to have a keytab there. This means I have to
-> care only to drop a keytab and I get mutual authentication and
-> encryption of the channel to LDAP w/o having to care to get a x509
-> certificate and configure the server to trust it directly or drop a
-> suitable CA Certificate.
-> 
-> I find that properly configuring SSL is a lot more difficult than simply
-> dropping a keytab in place (especially given you alredy need to do it).
-> 
-> Basically in most setups I encounter for real SSL is effectively
-> "disabled" and by that I mean that peers are configured to ignore
-> untrusted certificates, also certificates expire and the whole lifecycle
-> of using SSL certificates *properly* is a lot more complex than using
-> GSSAPI with a simple keytab file.
-
-Having just implemented TLS support in my NSDB client, I can attest to the challenges.
-
-> So I strongly recommend you put language in your RFC allowing
-> SASL/GSSAPI as a mechanism for securing communication to the LDAP server
-> for both administrative and simple retrieval, you will do a favor to the
-> implementer allowing conformance w/o having to jump though hoops.
-
-We have discussed SASL/GSSAPI with LDAP server implementors, and it is already on the radar.  It should be possible to introduce with another FEDFS_SEC connection security type, but the plan was to introduce SASL/GSSAPI in the next version of the NSDB protocol.
-
-Again, documentation references would help me formulate a problem statement to address this at this late date, and we can still take the approach of building something that doesn't interoperate for now if we think this is a strong requirement.
-
-> [Sorry for the OT, but this really is something you should get right]
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 2e27430..e9f1d37 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -3830,8 +3830,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  			 * In the 4.0 case we need to keep the owners around a
+>  			 * little while to handle CLOSE replay.
+>  			 */
+> -			if (list_empty(&oo->oo_owner.so_stateids))
+> -				move_to_close_lru(oo, SVC_NET(rqstp));
+> +			move_to_close_lru(oo, SVC_NET(rqstp));
+>  		}
+>  	}
+>  out:
+> -- 
+> 1.7.1
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
 > 
->>>> If we are really wily, maybe a small single-purpose daemon can be
->>>> constructed from a minimal LDAP server implementation (or from
->>>> scratch), and it can listen on its own port or only for loopback
->>>> requests.
->>> 
->>> I think in most cases this is what will actually happen, but you do not
->>> need to use a special purpose built server, you can use an existing LDAP
->>> server simply specially configured for your needs. It will cause
->>> administrative overhead to handle this infrastructure though.
->> 
->> Don't I know it.
->> 
->> To simplify initial configuration, I've implemented a script that
->> installs OpenLDAP and performs enough configuration to provide a
->> stand-alone NSDB, with or without TLS.  I already have a number of C
->> tools that can set up the rootDSE and add Fileset Name records on
->> either 389-ds or OpenLDAP servers.
->> 
->> The idea is to allow both types of NSDB (stand-alone, and as part of
->> an existing LDAP service), but that kind of generality adds a lot of
->> complexity to the set up process and documentation.  Going with just
->> one or the other makes life much easier.
 > 
-> I think you should allow the broadest possibilities of course, which is
-> why I am picking on things like allowing SSAL/GSSAPI explicitly in the
-> RFC language.
-
-Because there are so many moving parts to FedFS, I have striven to make set up as simple as possible.  Just because the spec says you can do something, doesn't mean it is wise to do it, or that you should offer it as an option, nor is it appropriate for every implementation.
-
-Practically speaking, implementation resources are limited.  I have to pick the features that offer the most bang for the buck.  I can't afford to implement everything and see which features are appealing.  (And besides, I thought the idea of open source was to let people scratch their own itches -- if someone wants a feature, they have the opportunity to add it themselves).
-
-> Whether people will integrate into existing LDAP server or
-> not remains to be seen, if we can avoid the need to add an objectlass on
-> the root suffix I see that we can easily add this a standard feature for
-> FreeIPA as well (we already provide automount data for example) and
-> provide management tools in our framework around it.
-
-Does FreeIPA manage DFS metadata as well?
-
-
-> 
->>>> I think you are suggesting we ignore this problem for now, and just
->>>> have the tools pretend the other protocol does not exist, while still
->>>> allowing the possibility of storing both types of metadata in the same
->>>> filesystem object.  That may be an easy way to get started.
->>> 
->>> I thought this was what you were proposing actually. With my
->>> 'integrator' hat on I would rather quickly define common tools that can
->>> handle both, and have the old tools return loud warnings (were possible)
->>> if you try to use them.
->> 
->> The "old" FedFS tools in this case are available because they are one
->> of two independent reference implementations required for the IETF
->> standardization process.  However, I think solving the problem of
->> integrating FedFS ADMIN with an existing DFS implementation on a
->> multi-protocol fileserver is going to be very valuable implementation
->> experience that can be fed back into the IETF standards process.
->> 
->> I'm not confident we can fit rpc.fedfsd (Linux's implementation of the
->> FedFS RPC ADMIN service) into this model, so we may end up abandoning
->> its use for managing FedFS junctions, leaving it only to provisioning
->> NSDB certificates.
->> 
->>> In the Samba case the basic tool is 'ln', not sure we can do much about
->>> it :-) But we can certainly patch the RPC code that allows handling via
->>> SMB/RPC although I am not quite sure how to populate all the data the
->>> SMB world has no concept of, perhaps using 'good defaults' ...
->> 
->> Exactly the problem.
->> 
->> My thought was to define a place-holder value for both protocols that
->> can be used by our existing tools, for now.  No xattr for symlinks
->> created on behalf of DFS, and maybe an empty symlink for junctions
->> created by rpc.fedfsd or the nfsref command.
->> 
-> Sound like a good first start to me.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
