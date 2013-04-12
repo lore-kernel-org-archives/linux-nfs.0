@@ -1,38 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:61376 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:33754 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756337Ab3DWS6I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Apr 2013 14:58:08 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/4] NFSv4.1: Don't do a delegated open for NFS4_OPEN_CLAIM_DELEG_CUR_FH modes
-Date: Tue, 23 Apr 2013 14:58:02 -0400
-Message-Id: <1366743483-59247-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1366743483-59247-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1366743483-59247-1-git-send-email-Trond.Myklebust@netapp.com>
- <1366743483-59247-2-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752758Ab3DLOsH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Apr 2013 10:48:07 -0400
+Date: Fri, 12 Apr 2013 10:48:04 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: fanchaoting <fanchaoting@cn.fujitsu.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd: don't  calculate mem's size in loop every time
+Message-ID: <20130412144804.GJ7081@fieldses.org>
+References: <5163AF52.2080303@cn.fujitsu.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5163AF52.2080303@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we're in a delegation recall situation, we can't do a delegated open.
+On Tue, Apr 09, 2013 at 02:04:02PM +0800, fanchaoting wrote:
+> 
+>  Signed-off-by: fanchaoting <fanchaoting@cn.fujitsu.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c | 1 +
- 1 file changed, 1 insertion(+)
+Thanks, this makes sense, but meanwhile I've been rewriting that
+code--now pushed out to my for-3.10 branch.  Let me know if you see
+anything that looks wrong there.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index a411a53..ea50807 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1543,6 +1543,7 @@ static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
- 		rcu_read_lock();
- 		delegation = rcu_dereference(NFS_I(data->state->inode)->delegation);
- 		if (data->o_arg.claim != NFS4_OPEN_CLAIM_DELEGATE_CUR &&
-+		    data->o_arg.claim != NFS4_OPEN_CLAIM_DELEG_CUR_FH &&
- 		    can_open_delegated(delegation, data->o_arg.fmode))
- 			goto unlock_no_action;
- 		rcu_read_unlock();
--- 
-1.8.1.4
+--b.
 
+> ---
+>  fs/nfsd/nfs4state.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 2e27430..df3e3fd 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -716,8 +716,8 @@ static struct nfsd4_session *__alloc_session(int slotsize, int numslots)
+>  	if (!new)
+>  		return NULL;
+>  	/* allocate each struct nfsd4_slot and data cache in one piece */
+> +	mem = sizeof(struct nfsd4_slot) + slotsize;
+>  	for (i = 0; i < numslots; i++) {
+> -		mem = sizeof(struct nfsd4_slot) + slotsize;
+>  		new->se_slots[i] = kzalloc(mem, GFP_KERNEL);
+>  		if (!new->se_slots[i])
+>  			goto out_free;
+> -- 
+> 1.7.1
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
