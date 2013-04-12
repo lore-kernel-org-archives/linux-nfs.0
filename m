@@ -1,63 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from dgate10.ts.fujitsu.com ([80.70.172.49]:11472 "EHLO
-	dgate10.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1764208Ab3DDR7g (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Apr 2013 13:59:36 -0400
-Message-Id: <d6437a$47g324@dgate10u.abg.fsc.net>
-Date: 04 Apr 2013 19:59:35 +0200
-From: Bodo Stroesser <bstroesser@ts.fujitsu.com>
-To: bfields@fieldses.org
-Cc: neilb@suse.de, linux-nfs@vger.kernel.org, bstroesser@ts.fujitsu.com
-Subject: Re: sunrpc/cache.c: races while updating cache entries
+Received: from fieldses.org ([174.143.236.118]:58082 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750800Ab3DLPK3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Apr 2013 11:10:29 -0400
+Date: Fri, 12 Apr 2013 11:10:26 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Bram Vandoren <brambi@gmail.com>
+Cc: Rick Macklem <rmacklem@uoguelph.ca>, Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: NFS client hangs after server reboot
+Message-ID: <20130412151026.GL7081@fieldses.org>
+References: <452C72A5-F773-4E16-88F4-B1100C505C41@oracle.com>
+ <60201423.761959.1365722152352.JavaMail.root@erie.cs.uoguelph.ca>
+ <CACQjR_Arj61HJ-QrKfccg=r38555U-43uwhqtwzrN3nd1uUO-Q@mail.gmail.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CACQjR_Arj61HJ-QrKfccg=r38555U-43uwhqtwzrN3nd1uUO-Q@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gMDMgQXByIDIwMTMgMjA6MzY6MDAgKzAxMDAgSi4gQnJ1Y2UgRmllbGRzIDxiZmllbGRz
-QGZpZWxkc2VzLm9yZz4gd3JvdGU6Cj4gT24gVGh1LCBNYXIgMjEsIDIwMTMgYXQgMDU6NDE6
-MzVQTSArMDEwMCwgQm9kbyBTdHJvZXNzZXIgd3JvdGU6Cj4gPiBPbiAyMSBNYXIgMjAxMyAw
-MDozNDowMCArMDEwMCBOZWlsQnJvd24gPG5laWxiQHN1c2UuZGU+IHdyb3RlOgo+ID4gPiBU
-aGlzIGFwcGxpZXMgb25seSB0byBTTEVTMTEtU1AxICgyLjYuMzIrKSByaWdodD8KPiA+ID4g
-SW4gbWFpbmxpbmUgdGhlIHJlcXVlc3Qgd29uJ3QgYmUgZHJvcHBlZCBiZWNhdXNlIHRoZSBj
-YWNoZSBpdGVtIGlzbid0IGFzc3VtZWQKPiA+ID4gdG8gc3RpbGwgYmUgdmFsaWQuCj4gPgo+
-ID4gSSBhZ3JlZSwgdGhlcmUgd2lsbCBiZSBubyBkcm9wIGluIG1haW5saW5lLgo+ID4KPiA+
-IEJ1dCBpbiBtYWlubGluZSB0aGVyZSB3aWxsIGJlIGEgdXNlbGVzcyB1cGNhbGwuIFRoYXQg
-dXBjYWxsIG1pZ2h0IGV2ZW4gYmUKPiA+IHByb2Nlc3NlZCBieSB0aGUgcmVhZGVyLCBpZiBj
-YWNoZV9jbGVhbiBpc24ndCBmYXN0ZXIgdGhlbiB0aGUgcmVhZGVyLgo+ID4gVGhlIGFuc3dl
-ciBmcm9tIHRoZSByZWFkZXIgd2lsbCBhZ2FpbiByZXBsYWNlIHRoZSBjdXJyZW50IGNhY2hl
-IGVudHJ5Cj4gPiAod2hpY2ggaXMganVzdCBhIGZldyBtaWNyb3NlY29uZHMgb2xkKSBieSBh
-IG5ldyBvbmUuIFRoZSBuZXcgb25lIG11c3QgYmUKPiA+IGFsbG9jYXRlZCwgdGhlIHJlcGxh
-Y2VkIG9uZSBtdXN0IGxhdGVyIGJlIGNsZWFuZWQuIFRoZSBzaW5nbGUgaXRlbSBjYWNoZQo+
-ID4gaXMgaW52YWxpZGF0ZWQgYWdhaW4uCj4gPgo+ID4gSW4gd29yc3QgY2FzZSwgdGhlIHVu
-bmVjZXNzYXJ5IHJlcGxhY2VtZW50IGFsc28gY291bGQgdHJpZ2dlciB0aGUgbmV4dAo+ID4g
-cm91bmQgb2YgdGhlIGdhbWUgLi4uCj4gPgo+ID4gU28gaW4gbXkgb3BpbmlvbiBpdCB3b3Vs
-ZCBiZSBiZXR0ZXIgdG8gYWRkIHRoZSBwYXRjaCB5b3Ugc3VnZ2VzdGVkIGJlbG93Cj4gPiB0
-byBtYWlubGluZSBhbHNvLgo+ID4KPiA+ID4KPiA+ID4gU28gd2UgbmVlZCB0byBtYWtlIHN1
-cmUgdGhhdCBzdW5ycGNfY2FjaGVfcGlwZV91cGNhbGwgZG9lc24ndCBtYWtlIGFuIHVwY2Fs
-bAo+ID4gPiBvbiBhIGNhY2hlIGl0ZW0gdGhhdCBoYXMgYmVlbiByZXBsYWNlZC4gIEknZCBy
-YXRoZXIgbm90IHVzZSB0aGUgQ0FDSEVfQ0xFQU4KPiA+ID4gYml0ICh3aGV0aGVyIHJlbmFt
-ZWQgb3Igbm90KSBhcyBpdCBoYXMgYSB3ZWxsIGRlZmluZWQgbWVhbmluZyAiaGFzIGJlZW4K
-PiA+ID4gcmVtb3ZlZCBmcm9tIGNhY2hlIiBhbmQgSSdkIHJhdGhlciBub3QgYmx1ciB0aGF0
-IG1lYW5pbmcuCj4gPiA+IFdlIGFscmVhZHkgaGF2ZSBhIHN0YXRlIHRoYXQgbWVhbnMgInRo
-aXMgaGFzIGJlZW4gcmVwbGFjZSItIC0+ZXhwaXJ5X3RpbWUgaXMKPiA+ID4gMC4KPiA+ID4g
-U28gaG93IGFib3V0IGFkZGluZwo+ID4gPiAgICBpZiAoaC0+ZXhwaXJ5X3RpbWUgPT0gMCkK
-PiA+ID4gICAgICAgICAgcmV0dXJuIC1FQUdBSU47Cj4gPiA+IHRvIHN1bnJwY19jYWNoZV9w
-aXBlX3VwY2FsbCgpIGluIFNMRVMxMS1TUDEuCj4gPiA+Cj4gPiA+IERvZXMgdGhhdCB3b3Jr
-IGZvciB5b3U/Cj4gPgo+ID4gWWVzLCB0aGF0IGxvb2tzIGdvb2QuIE15IHRlc3Qgd2l0aCB0
-aGlzIGZpeCBpcyBydW5uaW5nIHN1Y2Nlc3NmdWxseQo+ID4gc2luY2UgNSBob3Vycy4gSSds
-bCBsZXQgaXQgcnVuIHVudGlsIE1vbmRheS4KPgo+IEFwb2xvZ2llcywgSSd2ZSBjb21wbGV0
-ZWx5IGxvc3QgdHJhY2sgb2YgdGhpcyB0aHJlYWQ6IGRvIHdlIGtub3cgd2hhdAo+IG1haW5s
-aW5lIG5lZWRzIG5vdz8KPgo+IC0tYi4KPgoKVGhlcmUgaXMgbm8gcmVhc29uIGZvciBhcG9s
-b2dpZXMuIFRoZSB0aHJlYWQgbWVhbndoaWxlIHNlZW1zIHRvIGJlIGEgYml0CmNvbmZ1c2lu
-ZyA6LSkKCkN1cnJlbnQgc3RhdGUgaXM6CgotIE5laWwgQnJvd24gaGFzIGNyZWF0ZWQgdHdv
-IHNlcmllcyBvZiBwYXRjaGVzLiBPbmUgZm9yIFNMRVMxMS1TUDEgYW5kIGEKICBzZWNvbmQg
-b25lIGZvciAtU1AyCgotIEFGQUlDUywgdGhlIHNlcmllcyBmb3IgLVNQMiB3aWxsIG1hdGNo
-IHdpdGggbWFpbmxpbmUgYWxzby4KCi0gVG9kYXkgSSBmb3VuZCBhbmQgZml4ZWQgdGhlICho
-b3BlZnVsbHkpIGxhc3QgcHJvYmxlbSBpbiB0aGUgLVNQMSBzZXJpZXMuCiAgTXkgdGVzdCB1
-c2luZyB0aGlzIHBhdGNoc2V0IHdpbGwgcnVuIHVudGlsIE1vbmRheS4KCi0gUHJvdmlkZWQg
-dGhlIHRlc3Qgb24gU1AxIHN1Y2NlZWRzLCBwcm9iYWJseSBvbiBUdWVzZGF5IEknbGwgc3Rh
-cnQgdG8gdGVzdAogIHRoZSBwYXRjaGVzIGZvciBTUDIgKGFuZCBtYWlubGluZSkuIElmIGl0
-IHJ1bnMgZmluZSwgd2UnbGwgaGF2ZSBhIHRlc3RlZAogIHBhdGNoc2V0IG5vdCBsYXRlciB0
-aGFuIE1vbiAxNXRoLgoKQm9kbwo=
+On Fri, Apr 12, 2013 at 11:19:39AM +0200, Bram Vandoren wrote:
+> > Just to clarify/correct what I posted yesterday...
+> > The boot instance is the first 4 bytes of the clientid and the first
+> > 4 bytes of the stateid.other. (Basically, for the FreeBSD server, a
+> > stateid.other is just the clientid + 4 additional bytes that identify
+> > which stateid related to the clientid that it is.)
+> >
+> > Those first 4 bytes should be the same for all clientids/stateid.others
+> > issued during a server boot cycle. Any clientid/stateid.other with a
+> > different first 4 bytes will get the NFS4ERR_STALE_CLIENTID/STATEID
+> > reply.
+> 
+> Thanks for the clarification. I tried to reproduce the problem using a
+> test setup but so far I didn't succeed. It's clearly not a problem
+> that happens all the time. Also not all the clients lock up in the
+> production system. Only a fraction of them (~ 1 in 10).
+> 
+> I checked the packets again. The Stateid in a read operation is:
+> 9a:b6:5d:51:bc:07:00:00:24:23:00:00
+> The client id:
+> af:c1:63:51:8b:01:00:00
 
+Yeah, so 9a:b6:5d:51 and af:c1:63:51 if you take them as little-endian
+integers look like pretty reasonable recent dates in unix time, so that
+agrees with Rick's description of the FreeBSD server's stateid and
+clientid.
 
+So that does sound like the client failing to toss an old stateid after
+renew?
+
+--b.
+
+> 
+> It seems we ended up with a stale stateid but with a valid client id.
+> 
+> I am going to do some more tests with mutiple clients to try to
+> reproduce the problem. If that doesn't succeed I try to get the data
+> from the production server when we have to reboot it next time (but
+> this can take a while).
+> 
+> Thanks,
+> Bram
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
