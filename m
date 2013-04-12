@@ -1,108 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:2869 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761172Ab3DBVqE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Apr 2013 17:46:04 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 00/19] lnfs: 3.9-rc5 release
-Date: Tue,  2 Apr 2013 17:45:41 -0400
-Message-Id: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:44384 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753031Ab3DLPOW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Apr 2013 11:14:22 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
+Subject: Re: NFS client hangs after server reboot
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CACQjR_CcKwHU8sMrmQ5YfgV5dbuiMLRRqBkDRQEVq2yjGEuzmg@mail.gmail.com>
+Date: Fri, 12 Apr 2013 11:14:10 -0400
+Cc: Rick Macklem <rmacklem@uoguelph.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <DC99B54B-3C48-49A6-B8C4-1410CA707734@oracle.com>
+References: <452C72A5-F773-4E16-88F4-B1100C505C41@oracle.com> <60201423.761959.1365722152352.JavaMail.root@erie.cs.uoguelph.ca> <CACQjR_Arj61HJ-QrKfccg=r38555U-43uwhqtwzrN3nd1uUO-Q@mail.gmail.com> <CACQjR_CcKwHU8sMrmQ5YfgV5dbuiMLRRqBkDRQEVq2yjGEuzmg@mail.gmail.com>
+To: Bram Vandoren <brambi@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Steve Dickson <steved@redhat.com>
+Hi Bram-
 
-Here is the next release of the Label NFS patches 
-forward ported to linux-3.9-rc3.
+I'm going to leave linux-nfs on the cc: line while we debug this.  If there is a privacy issue, you can send raw pcap files directly to us.  The mail archive does not save attachments, IIRC.
 
-I decided to include the the v4.2 enabling patches since 
-I'm doing all my testing with both sets so at this point 
-I don't think it makes sense to separate them. Plus I'm
-hoping they will take care of the SETATTR problem Bruce was 
-seeing since label attributes were leaking into the bitmask
-when they were not suppose to. 
 
-I also believe I've address all the review comments of the previous
-release. Thank you very much for those cycles, it definitely 
-appreciated!
+On Apr 12, 2013, at 5:26 AM, Bram Vandoren <brambi@gmail.com> wrote:
 
-The patches are on a public git tree at
-    git://fedorapeople.org/~steved/linux-steved lnfs-v3.9-rc5
+> Hi Rick, Chuck, Bruce,
+> in attachment is a small pcap when a client is in the locked.
+> Hopefully I can reproduce the problem so I can send you a capture
+> during a reboot cycle.
 
-Fedora rpms on request. I didn't think anybody was using them so I 
-stopped building them. If that is not the case, please let me know.
+The pcap file confirms that the state IDs and client ID do not appear to match, and do appear on the same TCP connection (in different operations).  I think the presence of the RENEW operations here suggest that the client believes it has not been able to renew its lease using stateful operations like READ.  IMO this is evidence in favor of the theory that the client neglected to recover these state IDs for some reason.
 
-David Quigley (12):
-  Security: Add hook to calculate context based on a negative dentry.
-  Security: Add Hook to test if the particular xattr is part of a MAC
-    model.
-  LSM: Add flags field to security_sb_set_mnt_opts for in kernel mount
-    data.
-  SELinux: Add new labeling type native labels
-  NFSv4: Add label recommended attribute and NFSv4 flags
-  NFSv4: Introduce new label structure
-  NFSv4: Extend fattr bitmaps to support all 3 words
-  NFS:Add labels to client function prototypes
-  NFS: Add label lifecycle management
-  NFS: Client implementation of Labeled-NFS
-  NFS: Extend NFS xattr handlers to accept the security namespace
-  NFSD: Server implementation of MAC Labeling
+We'll need to see the actual reboot recovery traffic to analyze further, and that occurs just after the server reboots.  Even better would be to see the initial OPEN of the file where the READ operations are failing.  I recognize this is a non-determinstic problem that will be a challenge to capture properly.
 
-Steve Dickson (7):
-  Kconfig: Add Kconfig entry for Labeled NFS V4 client
-  Kconfig: Add Kconfig entry for Labeled NFS V4 server
-  NFSv4.2: Added NFS v4.2 support to the NFS client
-  NFSv4.2: Only allocate labels on v4.2 mounts
-  NFSv4.2: Only set the label attribute on v4.2 mounts
-  NFSv4.2: Added v4.2 error codes
-  NFSDv4.2: Added NFS v4.2 support to the NFS server
+Rather than capturing the trace on the server, you should be able to capture it on your clients in order to capture traffic before, during, and after the server reboot.  To avoid capturing an enormous amount of data, both tcpdump and tshark provide options to save the captured network data into a small ring of files (see their man pages).  Once a client mount point has locked, you can stop the capture, and hopefully the ring will have everything we need.
 
- fs/nfs/Kconfig                      |  28 ++
- fs/nfs/callback.c                   |   1 +
- fs/nfs/client.c                     |   2 +-
- fs/nfs/dir.c                        |  46 ++-
- fs/nfs/getroot.c                    |   2 +-
- fs/nfs/inode.c                      | 133 ++++++--
- fs/nfs/namespace.c                  |   2 +-
- fs/nfs/nfs3acl.c                    |   4 +-
- fs/nfs/nfs3proc.c                   |  41 +--
- fs/nfs/nfs4_fs.h                    |   8 +-
- fs/nfs/nfs4client.c                 |   5 +
- fs/nfs/nfs4namespace.c              |   2 +-
- fs/nfs/nfs4proc.c                   | 614 ++++++++++++++++++++++++++++++++----
- fs/nfs/nfs4xdr.c                    | 188 ++++++++---
- fs/nfs/pnfs.c                       |   2 +-
- fs/nfs/proc.c                       |  15 +-
- fs/nfs/super.c                      |  24 +-
- fs/nfsd/Kconfig                     |  16 +
- fs/nfsd/nfs4proc.c                  |  41 +++
- fs/nfsd/nfs4xdr.c                   | 117 ++++++-
- fs/nfsd/nfsd.h                      |  14 +-
- fs/nfsd/nfsproc.c                   |   1 +
- fs/nfsd/vfs.c                       |  28 ++
- fs/nfsd/vfs.h                       |   2 +
- fs/nfsd/xdr4.h                      |   3 +
- include/linux/nfs4.h                |  20 ++
- include/linux/nfs_fs.h              |  40 ++-
- include/linux/nfs_fs_sb.h           |  10 +-
- include/linux/nfs_xdr.h             |  30 +-
- include/linux/security.h            |  57 +++-
- include/uapi/linux/nfs4.h           |   2 +-
- security/capability.c               |  19 +-
- security/security.c                 |  24 +-
- security/selinux/hooks.c            |  92 +++++-
- security/selinux/include/security.h |   2 +
- security/selinux/ss/policydb.c      |   5 +-
- security/smack/smack_lsm.c          |  11 +
- 37 files changed, 1432 insertions(+), 219 deletions(-)
+
+
+> 
+> Thanks,
+> Bram.
+> 
+> On Fri, Apr 12, 2013 at 11:19 AM, Bram Vandoren <brambi@gmail.com> wrote:
+>>> Just to clarify/correct what I posted yesterday...
+>>> The boot instance is the first 4 bytes of the clientid and the first
+>>> 4 bytes of the stateid.other. (Basically, for the FreeBSD server, a
+>>> stateid.other is just the clientid + 4 additional bytes that identify
+>>> which stateid related to the clientid that it is.)
+>>> 
+>>> Those first 4 bytes should be the same for all clientids/stateid.others
+>>> issued during a server boot cycle. Any clientid/stateid.other with a
+>>> different first 4 bytes will get the NFS4ERR_STALE_CLIENTID/STATEID
+>>> reply.
+>> 
+>> Thanks for the clarification. I tried to reproduce the problem using a
+>> test setup but so far I didn't succeed. It's clearly not a problem
+>> that happens all the time. Also not all the clients lock up in the
+>> production system. Only a fraction of them (~ 1 in 10).
+>> 
+>> I checked the packets again. The Stateid in a read operation is:
+>> 9a:b6:5d:51:bc:07:00:00:24:23:00:00
+>> The client id:
+>> af:c1:63:51:8b:01:00:00
+>> 
+>> It seems we ended up with a stale stateid but with a valid client id.
+>> 
+>> I am going to do some more tests with mutiple clients to try to
+>> reproduce the problem. If that doesn't succeed I try to get the data
+>> from the production server when we have to reboot it next time (but
+>> this can take a while).
+>> 
+>> Thanks,
+>> Bram
 
 -- 
-1.8.1.4
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
