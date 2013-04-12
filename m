@@ -1,180 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50663 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:61288 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751341Ab3D3Vqv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Apr 2013 17:46:51 -0400
-Date: Tue, 30 Apr 2013 17:46:50 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: linux-nfs@vger.kernel.org
-Cc: Frank S Filz <ffilz@us.ibm.com>
-Subject: Re: [PATCH] nfsd4: don't remap EISDIR errors in rename
-Message-ID: <20130430214650.GB30768@fieldses.org>
-References: <20130430214546.GA30768@fieldses.org>
+	id S1752743Ab3DLVts convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Apr 2013 17:49:48 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        "nfsv4@ietf.org" <nfsv4@ietf.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: [nfsv4] unsupported mandatory server features
+Date: Fri, 12 Apr 2013 21:49:39 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA92871330A@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20130412210100.GP7081@fieldses.org>
+In-Reply-To: <20130412210100.GP7081@fieldses.org>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130430214546.GA30768@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 30, 2013 at 05:45:46PM -0400, bfields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
+> -----Original Message-----
+> From: nfsv4-bounces@ietf.org [mailto:nfsv4-bounces@ietf.org] On Behalf
+> Of J. Bruce Fields
+> Sent: Friday, April 12, 2013 5:01 PM
+> To: nfsv4@ietf.org
+> Cc: linux-nfs@vger.kernel.org
+> Subject: [nfsv4] unsupported mandatory server features
 > 
-> We're going out of our way here to remap an error to make rfc 3530
-> happy--but the rfc itself (nor rfc 1813, which has similar language)
-> gives no justification.  And disagrees with local filesystem behavior,
-> with Linux and posix man pages, and knfsd's implemented behavior for v2
-> and v3.
+> I'm expecting to turn on basic 4.1 support by default on the Linux server
+> before supporting two mandatory 4.1 features, and looking for advice on
+> handling that without too much pain to future clients.  I suspect I'm not the
+> only server in this situation; anyone know what others are doing?
 > 
-> And the documented behavior seems better, in that it gives a little more
-> information--you could implement the 3530 behavior using the posix
-> behavior, but not the other way around.
+> The features are:
 > 
-> Also, the Linux client makes no attempt to remap this error in the v4
-> case, so it can end up just returning EEXIST to the application in a
-> case where it should return EISDIR.
+> 	- State protection (SSV and MACH_CRED): I'm currently returning
+> 	  SERVERFAULT on EXCHANGE_ID's that request this, but this isn't
+> 	  really what SERVERFAULT is for.
 > 
-> So honestly I think the rfc's are just buggy here--or in any case it
-> doesn't see worth the trouble to remap this error.
+> 	  I'm inclined to switch to ENC_ALG_UNSUPP; that leaves future
+> 	  clients unable to distinguish between servers lacking SSV
+> 	  entirely from those lacking support for a particular
+> 	  algorithm, but in practice I think they'd handle both in the
+> 	  same way anyway.
 
-Also did a commit to make pynfs relax on this point:
+Why not just reply with NFS4ERR_ENC_ALG_UNSUPP for SP4_SSV (as you suggest) and return an empty spo_must_allow, and minimal spo_must_enforce sets for SP4_MACH_CRED?
 
-	git://linux-nfs.org/~bfields/pynfs.git
+By minimal spo_must_enforce, I mean EXCHANGE_ID, CREATE_SESSION, DESTROY_SESSION, BIND_CONN_TO_SESSION, and DESTROY_CLIENTID. I'm assuming that you default to checking the principal name for those anyway since NFSv4 requires it for the corresponding SETCLIENTID/CONFIRM?
 
---b.
+> 	- GSS on the backchannel: currently CREATE_SESSION or
+> 	  BACKCHANNEL_CTL will succeed but SEQUENCE will start returning
+> 	  with the CB_DOWN flag set.  I would rather return an error
+> 	  immediately than make the client guess what's going on in
+> 	  recovery.
+> 
+> 	  Could I get away with returning ENC_ALG_UNSUPP here too?  It's
+> 	  not entirely logical, but it's also currently illegal for
+> 	  these two operations so its use wouldn't be confused with some
+> 	  other.
 
-commit 3e158f56db47cb25921dcb2e609ba5e79dc7197c
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Tue Apr 30 16:44:44 2013 -0400
+Why not return NFS4ERR_NOENT to tell the client that the handle does not exist?
 
-    server tests: allow NOTDIR/ISDIR on rename
-    
-    The rfc3530 behavior we're insisting on here looks to me like a mistake,
-    or at least not necessarily a good idea: a server on a posix filesystem
-    (or with posix clients) more likely wants to return the posix-specified
-    errors.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/nfs4.0/servertests/st_rename.py b/nfs4.0/servertests/st_rename.py
-index c5e7725..1e01d8e 100644
---- a/nfs4.0/servertests/st_rename.py
-+++ b/nfs4.0/servertests/st_rename.py
-@@ -374,7 +374,7 @@ def testDotsNewname(t, env):
-           [NFS4_OK])
- 
- def testDirToObj(t, env):
--    """RENAME dir into existing nondir should return NFS4ERR_EXIST
-+    """RENAME dir into existing nondir should fail
- 
-     FLAGS: rename all
-     DEPEND: MKDIR MKFILE
-@@ -385,7 +385,8 @@ def testDirToObj(t, env):
-     basedir = c.homedir + [t.code]
-     c.maketree([t.code, ['dir'], 'file'])
-     res = c.rename_obj(basedir + ['dir'], basedir + ['file'])
--    check(res, NFS4ERR_EXIST, "RENAME dir into existing file")
-+    # note rfc 3530 and 1813 specify EXIST, but posix specifies NOTDIR
-+    checklist(res, [NFS4ERR_EXIST, NFS4ERR_NOTDIR], "RENAME dir into existing file")
- 
- def testDirToDir(t, env):
-     """RENAME dir into existing, empty dir should retrun NFS4_OK
-@@ -401,7 +402,7 @@ def testDirToDir(t, env):
-     check(res, msg="RENAME dir1 into existing, empty dir2")
- 
- def testFileToDir(t, env):
--    """RENAME file into existing dir should return NFS4ERR_EXIST
-+    """RENAME file into existing dir should fail
- 
-     FLAGS: rename all
-     DEPEND: MKDIR MKFILE
-@@ -412,7 +413,8 @@ def testFileToDir(t, env):
-     basedir = c.homedir + [t.code]
-     c.maketree([t.code, ['dir'], 'file'])
-     res = c.rename_obj(basedir + ['file'], basedir + ['dir'])
--    check(res, NFS4ERR_EXIST, "RENAME file into existing dir")
-+    # note rfc 3530 and 1813 specify EXIST, but posix specifies ISDIR
-+    checklist(res, [NFS4ERR_EXIST, NFS4ERR_ISDIR], "RENAME file into existing dir")
- 
- def testFileToFile(t, env):
-     """RENAME file into existing file should return NFS4_OK
-@@ -442,7 +444,7 @@ def testDirToFullDir(t, env):
-     checklist(res, [NFS4ERR_EXIST, NFS4ERR_NOTEMPTY], "RENAME dir1 into existing, nonempty dir2")
- 
- def testFileToFullDir(t, env):
--    """RENAME file into existing, nonempty dir should return NFS4ERR_EXIST
-+    """RENAME file into existing, nonempty dir should fail
- 
-     FLAGS: rename all
-     DEPEND: MKDIR MKFILE
-@@ -453,7 +455,8 @@ def testFileToFullDir(t, env):
-     basedir = c.homedir + [t.code]
-     c.maketree([t.code, 'file', ['dir', ['foo']]])
-     res = c.rename_obj(basedir + ['file'], basedir + ['dir'])
--    check(res, NFS4ERR_EXIST, "RENAME file into existing, nonempty dir")
-+    # note rfc 3530 and 1813 specify EXIST, but posix specifies ISDIR
-+    checklist(res, [NFS4ERR_EXIST, NFS4ERR_ISDIR], "RENAME file into existing, nonempty dir")
- 
- def testSelfRenameDir(t, env):
-     """RENAME that does nothing
-diff --git a/nfs4.1/server41tests/st_rename.py b/nfs4.1/server41tests/st_rename.py
-index 5267129..943587c 100644
---- a/nfs4.1/server41tests/st_rename.py
-+++ b/nfs4.1/server41tests/st_rename.py
-@@ -378,7 +378,7 @@ def testDotsNewname(t, env):
-           [NFS4_OK])
- 
- def testDirToObj(t, env):
--    """RENAME dir into existing nondir should return NFS4ERR_EXIST
-+    """RENAME dir into existing nondir should fail
- 
-     FLAGS: rename all
-     CODE: RNM12
-@@ -388,7 +388,8 @@ def testDirToObj(t, env):
-     basedir = env.c1.homedir + [name]
-     maketree(sess, [name, ['dir'], 'file'])
-     res = rename_obj(sess, basedir + ['dir'], basedir + ['file'])
--    check(res, NFS4ERR_EXIST, "RENAME dir into existing file")
-+    # note rfc 3530 and 1813 specify EXIST, but posix specifies NOTDIR
-+    checklist(res, [NFS4ERR_EXIST, NFS4ERR_NOTDIR], "RENAME dir into existing file")
- 
- def testDirToDir(t, env):
-     """RENAME dir into existing, empty dir should retrun NFS4_OK
-@@ -404,7 +405,7 @@ def testDirToDir(t, env):
-     check(res, msg="RENAME dir1 into existing, empty dir2")
- 
- def testFileToDir(t, env):
--    """RENAME file into existing dir should return NFS4ERR_EXIST
-+    """RENAME file into existing dir should fail
- 
-     FLAGS: rename all
-     CODE: RNM14
-@@ -414,7 +415,8 @@ def testFileToDir(t, env):
-     basedir = env.c1.homedir + [name]
-     maketree(sess, [name, ['dir'], 'file'])
-     res = rename_obj(sess, basedir + ['file'], basedir + ['dir'])
--    check(res, NFS4ERR_EXIST, "RENAME file into existing dir")
-+    # note rfc 3530 and 1813 specify EXIST, but posix specifies ISDIR
-+    checklist(res, [NFS4ERR_EXIST, NFS4ERR_ISDIR], "RENAME file into existing dir")
- 
- def testFileToFile(t, env):
-     """RENAME file into existing file should return NFS4_OK
-@@ -443,7 +445,7 @@ def testDirToFullDir(t, env):
-     checklist(res, [NFS4ERR_EXIST, NFS4ERR_NOTEMPTY], "RENAME dir1 into existing, nonempty dir2")
- 
- def testFileToFullDir(t, env):
--    """RENAME file into existing, nonempty dir should return NFS4ERR_EXIST
-+    """RENAME file into existing, nonempty dir should fail
- 
-     FLAGS: rename all
-     CODE: RNM17
-@@ -453,7 +455,9 @@ def testFileToFullDir(t, env):
-     basedir = env.c1.homedir + [name]
-     maketree(sess, [name, 'file', ['dir', ['foo']]])
-     res = rename_obj(sess, basedir + ['file'], basedir + ['dir'])
--    check(res, NFS4ERR_EXIST, "RENAME file into existing, nonempty dir")
-+    # note rfc 3530 and 1813 specify EXIST, but posix specifies ISDIR
-+    checklist(res, [NFS4ERR_EXIST, NFS4ERR_ISDIR], "RENAME file into existing, nonempty dir")
-+
- 
- def testSelfRenameDir(t, env):
-     """RENAME that does nothing
+> Of course my preference would be just to support these features, but given
+> resource limitations, the lack of interest, and the lack of any implementation
+> to test against, that doesn't look likely to happen in the near future.
+> 
+> --b.
+> _______________________________________________
+> nfsv4 mailing list
+> nfsv4@ietf.org
+> https://www.ietf.org/mailman/listinfo/nfsv4
