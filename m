@@ -1,69 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f48.google.com ([209.85.215.48]:33487 "EHLO
-	mail-la0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1162178Ab3DEQyN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Apr 2013 12:54:13 -0400
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: linux-kernel@vger.kernel.org
-Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wine-devel@winehq.org
-Subject: [PATCH v4 4/7] CIFS: Use NT_CREATE_ANDX command for forcemand mounts
-Date: Fri,  5 Apr 2013 20:57:52 +0400
-Message-Id: <1365181075-22540-5-git-send-email-piastry@etersoft.ru>
-In-Reply-To: <1365181075-22540-1-git-send-email-piastry@etersoft.ru>
-References: <1365181075-22540-1-git-send-email-piastry@etersoft.ru>
+Received: from fieldses.org ([174.143.236.118]:59408 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752409Ab3DLSdk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Apr 2013 14:33:40 -0400
+Date: Fri, 12 Apr 2013 14:33:32 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "simo@redhat.com" <simo@redhat.com>
+Subject: Re: [PATCH 5/6] SUNRPC: Add RPC based upcall mechanism for RPCGSS
+ auth
+Message-ID: <20130412183332.GN7081@fieldses.org>
+References: <1361464705-12340-1-git-send-email-bfields@redhat.com>
+ <1361464705-12340-6-git-send-email-bfields@redhat.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9235DA682@SACEXCMBX04-PRD.hq.netapp.com>
+ <20130412181151.GM7081@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA928712C8D@SACEXCMBX04-PRD.hq.netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA928712C8D@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-forcemand mount option now lets us use Windows mandatory style of
-byte-range locks even if server supports posix ones - switches on
-Windows locking mechanism. Share flags is another locking mehanism
-provided by Windows semantic that can be used by NT_CREATE_ANDX
-command. This patch combines all Windows locking mechanism in one
-mount option by using NT_CREATE_ANDX to open files if forcemand is on.
+On Fri, Apr 12, 2013 at 06:21:11PM +0000, Myklebust, Trond wrote:
+> > -----Original Message-----
+> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > Sent: Friday, April 12, 2013 2:12 PM
+> > To: Myklebust, Trond
+> > Cc: J. Bruce Fields; linux-nfs@vger.kernel.org; chuck.lever@oracle.com;
+> > simo@redhat.com
+> > Subject: Re: [PATCH 5/6] SUNRPC: Add RPC based upcall mechanism for
+> > RPCGSS auth
+> > 
+> > Trond, apologies, I'm just getting back to this and had a couple
+> > questions:
+> > 
+> > On Thu, Feb 21, 2013 at 06:35:46PM +0000, Myklebust, Trond wrote:
+> > > On Thu, 2013-02-21 at 11:38 -0500, J. Bruce Fields wrote:
+> > > > +static int gssx_dec_buffer(struct xdr_stream *xdr,
+> > > > +			   gssx_buffer *buf)
+> > > > +{
+> > > > +	u32 length;
+> > > > +	__be32 *p;
+> > > > +
+> > > > +	p = xdr_inline_decode(xdr, 4);
+> > > > +	if (unlikely(p == NULL))
+> > > > +		return -ENOSPC;
+> > > > +
+> > > > +	length = be32_to_cpup(p);
+> > > > +	p = xdr_inline_decode(xdr, length);
+> > >
+> > > combine for efficiency with the 4 byte allocation above.
+> > 
+> > This was just a think-o on your part, right?  There's no way to decode the
+> > whole thing in one gulp without knowing the length ahead of time.
+> > Or am I missing something?
+> 
+> No. You are right, that was a brain-fart...
+> 
+> > > > +static int gssx_dec_option_array(struct xdr_stream *xdr,
+> > > > +				 struct gssx_option_array *oa)
+> > > > +{
+> > > > +	struct svc_cred *creds;
+> > > > +	u32 count, i;
+> > > > +	__be32 *p;
+> > > > +	int err;
+> > > > +
+> > > > +	p = xdr_inline_decode(xdr, 4);
+> > > > +	if (unlikely(p == NULL))
+> > > > +		return -ENOSPC;
+> > > > +	count = be32_to_cpup(p++);
+> > > > +	if (count != 0) {
+> > > > +		/* we recognize only 1 currently: CREDS_VALUE */
+> > > > +		oa->count = 1;
+> > > > +
+> > > > +		oa->data = kmalloc(sizeof(struct gssx_option), GFP_KERNEL);
+> > >
+> > > Sleeping kmallocs inside XDR encode/decode routines is strongly
+> > > discouraged. Particularly so for something that can be preallocated.
+> > 
+> > And here: I don't mind doing that, but: there's no real problem here as long
+> > as we're only calling this stuff synchronously, right?
+> 
+> If you can guarantee that it won't ever be called from rpciod, then fine.
+> However anything that might end up being called from a rpciod context must at the very least guarantee that there are no __GFP_FS allocations, since those can deadlock the NFS client.
 
-Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
----
- fs/cifs/dir.c  | 1 +
- fs/cifs/file.c | 6 ++++--
- 2 files changed, 5 insertions(+), 2 deletions(-)
+Got it, thanks
 
-diff --git a/fs/cifs/dir.c b/fs/cifs/dir.c
-index d4331de..8587021 100644
---- a/fs/cifs/dir.c
-+++ b/fs/cifs/dir.c
-@@ -217,6 +217,7 @@ cifs_do_create(struct inode *inode, struct dentry *direntry, unsigned int xid,
- 	}
- 
- 	if (tcon->unix_ext && cap_unix(tcon->ses) && !tcon->broken_posix_open &&
-+	    ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
- 	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
- 			le64_to_cpu(tcon->fsUnixInfo.Capability))) {
- 		rc = cifs_posix_open(full_path, &newinode, inode->i_sb, mode,
-diff --git a/fs/cifs/file.c b/fs/cifs/file.c
-index 9394b2b..19038a4 100644
---- a/fs/cifs/file.c
-+++ b/fs/cifs/file.c
-@@ -455,8 +455,9 @@ int cifs_open(struct inode *inode, struct file *file)
- 	else
- 		oplock = 0;
- 
--	if (!tcon->broken_posix_open && tcon->unix_ext &&
--	    cap_unix(tcon->ses) && (CIFS_UNIX_POSIX_PATH_OPS_CAP &
-+	if (!tcon->broken_posix_open && tcon->unix_ext && cap_unix(tcon->ses)
-+	    && ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
-+	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
- 				le64_to_cpu(tcon->fsUnixInfo.Capability))) {
- 		/* can not refresh inode info since size could be stale */
- 		rc = cifs_posix_open(full_path, &inode, inode->i_sb,
-@@ -624,6 +625,7 @@ cifs_reopen_file(struct cifsFileInfo *cfile, bool can_flush)
- 		oplock = 0;
- 
- 	if (tcon->unix_ext && cap_unix(tcon->ses) &&
-+	    ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
- 	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
- 				le64_to_cpu(tcon->fsUnixInfo.Capability))) {
- 		/*
--- 
-1.8.1.5
-
+--b.
