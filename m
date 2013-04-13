@@ -1,42 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f175.google.com ([209.85.210.175]:47378 "EHLO
-	mail-ia0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965578Ab3DQRPN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Apr 2013 13:15:13 -0400
-MIME-Version: 1.0
-In-Reply-To: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com>
-References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com>
-Date: Wed, 17 Apr 2013 10:15:13 -0700
-Message-ID: <CABgxfbF7c9ktSoMSPV21JU76V5J4iwbJQ257S91Y3z36WJbJVA@mail.gmail.com>
-Subject: Re: NFS over RDMA benchmark
-From: Wendy Cheng <s.wendy.cheng@gmail.com>
-To: Yan Burman <yanb@mellanox.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Tom Tucker <tom@opengridcomputing.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from smtp.gentoo.org ([140.211.166.183]:46540 "EHLO smtp.gentoo.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753329Ab3DMUDA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 13 Apr 2013 16:03:00 -0400
+Received: from localhost.localdomain (localhost [127.0.0.1])
+	by smtp.gentoo.org (Postfix) with ESMTP id 7320E33DFA6
+	for <linux-nfs@vger.kernel.org>; Sat, 13 Apr 2013 20:02:59 +0000 (UTC)
+From: Mike Frysinger <vapier@gentoo.org>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH [nfs-utils]] do not fail sqlite check when cross-compiling
+Date: Sat, 13 Apr 2013 16:04:35 -0400
+Message-Id: <1365883476-5288-1-git-send-email-vapier@gentoo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 17, 2013 at 7:36 AM, Yan Burman <yanb@mellanox.com> wrote:
-> Hi.
->
-> I've been trying to do some benchmarks for NFS over RDMA and I seem to only get about half of the bandwidth that the HW can give me.
-> My setup consists of 2 servers each with 16 cores, 32Gb of memory, and Mellanox ConnectX3 QDR card over PCI-e gen3.
-> These servers are connected to a QDR IB switch. The backing storage on the server is tmpfs mounted with noatime.
-> I am running kernel 3.5.7.
->
-> When running ib_send_bw, I get 4.3-4.5 GB/sec for block sizes 4-512K.
-> When I run fio over rdma mounted nfs, I get 260-2200MB/sec for the same block sizes (4-512K). running over IPoIB-CM, I get 200-980MB/sec.
+If we're cross-compiling, we can't do a runtime test of sqlite,
+so just assume that the user has a good enough version rather
+than falling over.
 
-Remember there are always gaps between wire speed (that ib_send_bw
-measures) and real world applications.
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ configure.ac | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
 
-That being said, does your server use default export (sync) option ?
-Export the share with "async" option can bring you closer to wire
-speed. However, the practice (async) is generally not recommended in a
-real production system - as it can cause data integrity issues, e.g.
-you have more chances to lose data when the boxes crash.
+diff --git a/configure.ac b/configure.ac
+index 3d7ab0a..a594a7b 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -274,9 +274,14 @@ if test "$enable_nfsv4" = yes; then
+ 	AC_CHECK_HEADERS([libgen.h sys/inotify.h], ,
+ 		AC_MSG_ERROR([Cannot find header needed for nfsdcltrack]))
+ 
+-  	if test "$libsqlite3_cv_is_recent" != "yes" ; then
+-		AC_MSG_ERROR([nfsdcltrack requires sqlite-devel])
+-	fi
++    case $libsqlite3_cv_is_recent in
++    yes) ;;
++    unknown)
++      dnl do not fail when cross-compiling
++      AC_MSG_WARN([assuming sqlite is at least v3.3]) ;;
++    *)
++      AC_MSG_ERROR([nfsdcltrack requires sqlite-devel]) ;;
++    esac
+   fi
+ 
+ else
+-- 
+1.8.1.2
 
--- Wendy
