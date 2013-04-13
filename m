@@ -1,133 +1,187 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f177.google.com ([209.85.217.177]:60005 "EHLO
-	mail-lb0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S936935Ab3DIMgo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Apr 2013 08:36:44 -0400
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: linux-kernel@vger.kernel.org
-Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wine-devel@winehq.org
-Subject: [PATCH v5 6/7] NFSD: Pass share reservations flags to VFS
-Date: Tue,  9 Apr 2013 16:40:26 +0400
-Message-Id: <1365511227-17626-7-git-send-email-piastry@etersoft.ru>
-In-Reply-To: <1365511227-17626-1-git-send-email-piastry@etersoft.ru>
-References: <1365511227-17626-1-git-send-email-piastry@etersoft.ru>
+Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:36586 "EHLO
+	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753385Ab3DMOJ4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Apr 2013 10:09:56 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Cc: Simo Sorce <simo@redhat.com>
+Subject: [PATCH] Avoid DNS reverse resolution for server names
+Date: Sat, 13 Apr 2013 10:09:53 -0400
+Message-Id: <1365862193-21986-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1365862193-21986-1-git-send-email-steved@redhat.com>
+References: <1365862193-21986-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-that maps them into O_DENY flags and make them visible for
-applications that use O_DENYMAND opens.
+From: Simo Sorce <simo@redhat.com>
 
-Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+A NFS client should be able to work properly even if the DNS Reverse
+record for the server is not set. This means a DNS lookup should not be done on
+server names at are passed to GSSAPI. This patch changes the default behavior
+to no longer do those types of lookups
+
+This change default behavior could negatively impact some current environments,
+so the -D option is also being added that will re-enable the DNS reverse
+looks on server names, which are passed to GSSAPI.
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/locks.c          |  1 +
- fs/nfsd/nfs4state.c | 46 +++++++++++++++++++++++++++++++++++++++++++++-
- 2 files changed, 46 insertions(+), 1 deletion(-)
+ utils/gssd/gss_util.h  |  2 ++
+ utils/gssd/gssd.c      |  7 +++++--
+ utils/gssd/gssd.man    |  8 +++++++-
+ utils/gssd/gssd_proc.c | 29 +++++++++++++++++++++++++----
+ 4 files changed, 39 insertions(+), 7 deletions(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 52c9ea1..1402a43 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -866,6 +866,7 @@ deny_lock_file(struct file *filp)
- 	locks_free_lock(lock);
- 	return error;
- }
-+EXPORT_SYMBOL(deny_lock_file);
+diff --git a/utils/gssd/gss_util.h b/utils/gssd/gss_util.h
+index aa9f778..c81fc5a 100644
+--- a/utils/gssd/gss_util.h
++++ b/utils/gssd/gss_util.h
+@@ -52,4 +52,6 @@ int gssd_check_mechs(void);
+ 		gss_krb5_set_allowable_enctypes(min, cred, num, types)
+ #endif
  
- static int __posix_lock_file(struct inode *inode, struct file_lock *request, struct file_lock *conflock)
++extern int avoid_dns;
++
+ #endif /* _GSS_UTIL_H_ */
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index 07b1e52..8ee478b 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -85,7 +85,7 @@ sig_hup(int signal)
+ static void
+ usage(char *progname)
  {
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a8309c6..eb40c4f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -476,6 +476,19 @@ test_deny(u32 access, struct nfs4_ol_stateid *stp)
- 	return test_bit(access, &stp->st_deny_bmap);
+-	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm]\n",
++	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm] [-D]\n",
+ 		progname);
+ 	exit(1);
  }
+@@ -102,7 +102,7 @@ main(int argc, char *argv[])
+ 	char *progname;
  
-+static int nfs4_deny_to_odeny(u32 access)
-+{
-+	switch (access & NFS4_SHARE_DENY_BOTH) {
-+	case NFS4_SHARE_DENY_READ:
-+		return O_DENYREAD;
-+	case NFS4_SHARE_DENY_WRITE:
-+		return O_DENYWRITE;
-+	case NFS4_SHARE_DENY_BOTH:
-+		return O_DENYREAD | O_DENYWRITE;
-+	}
-+	return 0;
-+}
-+
- static int nfs4_access_to_omode(u32 access)
- {
- 	switch (access & NFS4_SHARE_ACCESS_BOTH) {
-@@ -2795,6 +2808,21 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
- }
+ 	memset(ccachesearch, 0, sizeof(ccachesearch));
+-	while ((opt = getopt(argc, argv, "fvrlmnMp:k:d:t:R:")) != -1) {
++	while ((opt = getopt(argc, argv, "DfvrlmnMp:k:d:t:R:")) != -1) {
+ 		switch (opt) {
+ 			case 'f':
+ 				fg = 1;
+@@ -150,6 +150,9 @@ main(int argc, char *argv[])
+ 				errx(1, "Encryption type limits not supported by Kerberos libraries.");
+ #endif
+ 				break;
++			case 'D':
++				avoid_dns = 0;
++				break;
+ 			default:
+ 				usage(argv[0]);
+ 				break;
+diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
+index 79d9bf9..1df75c5 100644
+--- a/utils/gssd/gssd.man
++++ b/utils/gssd/gssd.man
+@@ -8,7 +8,7 @@
+ rpc.gssd \- RPCSEC_GSS daemon
+ .SH SYNOPSIS
+ .B rpc.gssd
+-.RB [ \-fMnlvr ]
++.RB [ \-DfMnlvr ]
+ .RB [ \-k
+ .IR keytab ]
+ .RB [ \-p
+@@ -195,6 +195,12 @@ option when starting
+ .BR rpc.gssd .
+ .SH OPTIONS
+ .TP
++.B -D
++DNS Reverse lookups are not used for determining the
++server names pass to GSSAPI. This option will reverses that and forces 
++the use of DNS Reverse resolution of the server's IP address to 
++retrieve the server name to use in GSAPI authentication.
++.TP
+ .B -f
+ Runs
+ .B rpc.gssd
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index d6f07e6..aef5ca5 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -67,6 +67,7 @@
+ #include <errno.h>
+ #include <gssapi/gssapi.h>
+ #include <netdb.h>
++#include <ctype.h>
  
- static __be32
-+nfs4_vfs_set_deny(struct nfs4_file *fp, unsigned long share_access,
-+		  unsigned long deny_access)
-+{
-+	int oflag, rc;
-+	__be32 status = nfs_ok;
+ #include "gssd.h"
+ #include "err_util.h"
+@@ -107,6 +108,9 @@ struct pollfd * pollarray;
+ 
+ unsigned long pollsize;  /* the size of pollaray (in pollfd's) */
+ 
++/* Avoid DNS reverse lookups on server names */
++int avoid_dns = 1;
 +
-+	oflag = nfs4_access_to_omode(share_access);
-+	fp->fi_fds[oflag]->f_flags |= nfs4_deny_to_odeny(deny_access);
-+	rc = deny_lock_file(fp->fi_fds[oflag]);
-+	if (rc)
-+		status = nfserrno(rc);
-+	return status;
-+}
-+
-+static __be32
- nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp, struct nfsd4_open *open)
+ /*
+  * convert a presentation address string to a sockaddr_storage struct. Returns
+  * true on success or false on failure.
+@@ -165,12 +169,29 @@ addrstr_to_sockaddr(struct sockaddr *sa, const char *node, const char *port)
+  * convert a sockaddr to a hostname
+  */
+ static char *
+-sockaddr_to_hostname(const struct sockaddr *sa, const char *addr)
++get_servername(const char *name, const struct sockaddr *sa, const char *addr)
  {
- 	u32 op_share_access = open->op_share_access;
-@@ -2815,6 +2843,14 @@ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *c
- 		}
- 		return status;
- 	}
-+	status = nfs4_vfs_set_deny(fp, op_share_access, open->op_share_deny);
-+	if (status) {
-+		if (new_access) {
-+			int oflag = nfs4_access_to_omode(op_share_access);
-+			nfs4_file_put_access(fp, oflag);
+ 	socklen_t		addrlen;
+ 	int			err;
+ 	char			*hostname;
+ 	char			hbuf[NI_MAXHOST];
++	unsigned char		buf[sizeof(struct in6_addr)];
++	int			do_dns_lookup = 0;
++
++	if (avoid_dns) {
++		/*
++		 * Determine if this is a server name, or an IP address.
++		 * If it is an IP address, do the DNS lookup
++		 */
++		if (strchr(name, '.') && inet_pton(AF_INET, name, buf) == 1)
++			do_dns_lookup = 1; /* IPv4 */
++		else if (strchr(name, ':') && inet_pton(AF_INET6, name, buf) == 1)
++			do_dns_lookup = 1; /* or IPv6 */
++
++		if (!do_dns_lookup) {
++			return strdup(name);
 +		}
-+		return status;
 +	}
- 	/* remember the open */
- 	set_access(op_share_access, stp);
- 	set_deny(open->op_share_deny, stp);
-@@ -3048,7 +3084,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
  
- 	/*
- 	 * OPEN the file, or upgrade an existing OPEN.
--	 * If truncate fails, the OPEN fails.
-+	 * If truncate or setting deny fails, the OPEN fails.
- 	 */
- 	if (stp) {
- 		/* Stateid was found, this is an OPEN upgrade */
-@@ -3062,6 +3098,10 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 		status = nfsd4_truncate(rqstp, current_fh, open);
- 		if (status)
- 			goto out;
-+		status = nfs4_vfs_set_deny(fp, open->op_share_access,
-+					   open->op_share_deny);
-+		if (status)
-+			goto out;
- 		stp = open->op_stp;
- 		open->op_stp = NULL;
- 		init_open_stateid(stp, fp, open);
-@@ -3760,6 +3800,10 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 	}
- 	nfs4_stateid_downgrade(stp, od->od_share_access);
+ 	switch (sa->sa_family) {
+ 	case AF_INET:
+@@ -208,7 +229,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+ 		  struct sockaddr *addr) {
+ #define INFOBUFLEN 256
+ 	char		buf[INFOBUFLEN + 1];
+-	static char	dummy[128];
++	static char	server[128];
+ 	int		nbytes;
+ 	static char	service[128];
+ 	static char	address[128];
+@@ -236,7 +257,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+ 		   "service: %127s %15s version %15s\n"
+ 		   "address: %127s\n"
+ 		   "protocol: %15s\n",
+-		   dummy,
++		   server,
+ 		   service, program, version,
+ 		   address,
+ 		   protoname);
+@@ -258,7 +279,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+ 	if (!addrstr_to_sockaddr(addr, address, port))
+ 		goto fail;
  
-+	status = nfs4_vfs_set_deny(stp->st_file, od->od_share_access,
-+				   od->od_share_deny);
-+	if (status)
-+		goto out;
- 	reset_union_bmap_deny(od->od_share_deny, stp);
+-	*servername = sockaddr_to_hostname(addr, address);
++	*servername = get_servername(server, addr, address);
+ 	if (*servername == NULL)
+ 		goto fail;
  
- 	update_stateid(&stp->st_stid.sc_stateid);
 -- 
-1.8.1.5
+1.8.1.4
 
