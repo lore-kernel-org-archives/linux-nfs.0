@@ -1,39 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:31480 "EHLO mx12.netapp.com"
+Received: from mx1.netapp.com ([216.240.18.38]:44596 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757741Ab3DBXfd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Apr 2013 19:35:33 -0400
+	id S1752219Ab3DNQ60 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Apr 2013 12:58:26 -0400
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        "Linux FS devel list" <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 01/19] Security: Add hook to calculate context based on
- a negative dentry.
-Date: Tue, 2 Apr 2013 23:35:29 +0000
-Message-ID: <1364945729.3026.7.camel@leira.trondhjem.org>
-References: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
-	 <1364939160-20874-2-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1364939160-20874-2-git-send-email-SteveD@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/3] NFSv4.1: Set the RPC_CLNT_CREATE_INFINITE_SLOTS
+ flag for NFSv4.1 transports
+Date: Sun, 14 Apr 2013 16:58:23 +0000
+Message-ID: <1365958703.26914.12.camel@leira.trondhjem.org>
+References: <1365954835-35301-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1365954835-35301-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1365954835-35301-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <A04ECD57-AC00-4AB7-B737-D995FDD6905A@oracle.com>
+In-Reply-To: <A04ECD57-AC00-4AB7-B737-D995FDD6905A@oracle.com>
 Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-04-02 at 17:45 -0400, Steve Dickson wrote:
-> From: David Quigley <dpquigl@davequigley.com>
+On Sun, 2013-04-14 at 12:55 -0400, Chuck Lever wrote:
+> On Apr 14, 2013, at 11:53 AM, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 > 
-> There is a time where we need to calculate a context without the
-> inode having been created yet. To do this we take the negative dentry and
-> calculate a context based on the process and the parent directory contexts.
+> > This ensures that the RPC layer doesn't override the NFS session
+> > negotiation.
+> > 
+> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > ---
+> > fs/nfs/client.c           | 2 ++
+> > fs/nfs/nfs4client.c       | 2 ++
+> > include/linux/nfs_fs_sb.h | 1 +
+> > 3 files changed, 5 insertions(+)
+> > 
+> > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> > index 84d8eae..c513b0c 100644
+> > --- a/fs/nfs/client.c
+> > +++ b/fs/nfs/client.c
+> > @@ -593,6 +593,8 @@ int nfs_create_rpc_client(struct nfs_client *clp,
+> > 		args.flags |= RPC_CLNT_CREATE_DISCRTRY;
+> > 	if (test_bit(NFS_CS_NORESVPORT, &clp->cl_flags))
+> > 		args.flags |= RPC_CLNT_CREATE_NONPRIVPORT;
+> > +	if (test_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags))
+> > +		args.flags |= RPC_CLNT_CREATE_INFINITE_SLOTS;
+> > 
+> > 	if (!IS_ERR(clp->cl_rpcclient))
+> > 		return 0;
+> > diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> > index a4f2100..9b711e4 100644
+> > --- a/fs/nfs/nfs4client.c
+> > +++ b/fs/nfs/nfs4client.c
+> > @@ -199,6 +199,8 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+> > 	clp->rpc_ops = &nfs_v4_clientops;
+> > 
+> > 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
+> > +	if (clp->cl_minorversion != 0)
+> > +		__set_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags);
+> > 	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
+> > 	if (error == -EINVAL)
+> > 		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_NULL);
+> > diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> > index d8fdfdc..01b3815 100644
+> > --- a/include/linux/nfs_fs_sb.h
+> > +++ b/include/linux/nfs_fs_sb.h
+> > @@ -40,6 +40,7 @@ struct nfs_client {
+> > #define NFS_CS_NORESVPORT	0		/* - use ephemeral src port */
+> > #define NFS_CS_DISCRTRY		1		/* - disconnect on RPC retry */
+> > #define NFS_CS_MIGRATION	2		/* - transparent state migr */
+> > +#define NFS_CS_INFINITE_SLOTS	3		/* - transparent state migr */
 > 
+> Is that comment correct?
 
-Can you remind me again why this is needed? Basing security decisions on
-the namespace seems just seems to run against the basic selinux concept.
-Is it for apparmor and tomoyo support in LNFS?
+Doh! I'll fix that...
 
 -- 
 Trond Myklebust
