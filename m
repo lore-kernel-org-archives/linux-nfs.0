@@ -1,214 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:23774 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761176Ab3DBVqF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Apr 2013 17:46:05 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 01/19] Security: Add hook to calculate context based on a negative dentry.
-Date: Tue,  2 Apr 2013 17:45:42 -0400
-Message-Id: <1364939160-20874-2-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
-References: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:47361 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752117Ab3DNQzi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Apr 2013 12:55:38 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
+Subject: Re: [PATCH 3/3] NFSv4.1: Set the RPC_CLNT_CREATE_INFINITE_SLOTS flag for NFSv4.1 transports
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1365954835-35301-3-git-send-email-Trond.Myklebust@netapp.com>
+Date: Sun, 14 Apr 2013 12:55:32 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <A04ECD57-AC00-4AB7-B737-D995FDD6905A@oracle.com>
+References: <1365954835-35301-1-git-send-email-Trond.Myklebust@netapp.com> <1365954835-35301-2-git-send-email-Trond.Myklebust@netapp.com> <1365954835-35301-3-git-send-email-Trond.Myklebust@netapp.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
 
-There is a time where we need to calculate a context without the
-inode having been created yet. To do this we take the negative dentry and
-calculate a context based on the process and the parent directory contexts.
+On Apr 14, 2013, at 11:53 AM, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- include/linux/security.h | 27 +++++++++++++++++++++++++++
- security/capability.c    |  8 ++++++++
- security/security.c      | 10 ++++++++++
- security/selinux/hooks.c | 35 +++++++++++++++++++++++++++++++++++
- 4 files changed, 80 insertions(+)
+> This ensures that the RPC layer doesn't override the NFS session
+> negotiation.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> fs/nfs/client.c           | 2 ++
+> fs/nfs/nfs4client.c       | 2 ++
+> include/linux/nfs_fs_sb.h | 1 +
+> 3 files changed, 5 insertions(+)
+> 
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 84d8eae..c513b0c 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -593,6 +593,8 @@ int nfs_create_rpc_client(struct nfs_client *clp,
+> 		args.flags |= RPC_CLNT_CREATE_DISCRTRY;
+> 	if (test_bit(NFS_CS_NORESVPORT, &clp->cl_flags))
+> 		args.flags |= RPC_CLNT_CREATE_NONPRIVPORT;
+> +	if (test_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags))
+> +		args.flags |= RPC_CLNT_CREATE_INFINITE_SLOTS;
+> 
+> 	if (!IS_ERR(clp->cl_rpcclient))
+> 		return 0;
+> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> index a4f2100..9b711e4 100644
+> --- a/fs/nfs/nfs4client.c
+> +++ b/fs/nfs/nfs4client.c
+> @@ -199,6 +199,8 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+> 	clp->rpc_ops = &nfs_v4_clientops;
+> 
+> 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
+> +	if (clp->cl_minorversion != 0)
+> +		__set_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags);
+> 	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
+> 	if (error == -EINVAL)
+> 		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_NULL);
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index d8fdfdc..01b3815 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -40,6 +40,7 @@ struct nfs_client {
+> #define NFS_CS_NORESVPORT	0		/* - use ephemeral src port */
+> #define NFS_CS_DISCRTRY		1		/* - disconnect on RPC retry */
+> #define NFS_CS_MIGRATION	2		/* - transparent state migr */
+> +#define NFS_CS_INFINITE_SLOTS	3		/* - transparent state migr */
 
-diff --git a/include/linux/security.h b/include/linux/security.h
-index eee7478..a957e7a 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -26,6 +26,7 @@
- #include <linux/capability.h>
- #include <linux/slab.h>
- #include <linux/err.h>
-+#include <linux/string.h>
- 
- struct linux_binprm;
- struct cred;
-@@ -306,6 +307,15 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
-  *	Parse a string of security data filling in the opts structure
-  *	@options string containing all mount options known by the LSM
-  *	@opts binary data structure usable by the LSM
-+ * @dentry_init_security:
-+ *	Compute a context for a dentry as the inode is not yet available
-+ *	since NFSv4 has no label backed by an EA anyway.
-+ *	@dentry dentry to use in calculating the context.
-+ *	@mode mode used to determine resource type.
-+ *	@name name of the last path component used to create file
-+ *	@ctx pointer to place the pointer to the resulting context in.
-+ *	@ctxlen point to place the length of the resulting context.
-+ *
-  *
-  * Security hooks for inode operations.
-  *
-@@ -1439,6 +1449,10 @@ struct security_operations {
- 	void (*sb_clone_mnt_opts) (const struct super_block *oldsb,
- 				   struct super_block *newsb);
- 	int (*sb_parse_opts_str) (char *options, struct security_mnt_opts *opts);
-+	int (*dentry_init_security) (struct dentry *dentry, int mode,
-+					struct qstr *name, void **ctx,
-+					u32 *ctxlen);
-+
- 
- #ifdef CONFIG_SECURITY_PATH
- 	int (*path_unlink) (struct path *dir, struct dentry *dentry);
-@@ -1724,6 +1738,9 @@ int security_sb_set_mnt_opts(struct super_block *sb, struct security_mnt_opts *o
- void security_sb_clone_mnt_opts(const struct super_block *oldsb,
- 				struct super_block *newsb);
- int security_sb_parse_opts_str(char *options, struct security_mnt_opts *opts);
-+int security_dentry_init_security(struct dentry *dentry, int mode,
-+					struct qstr *name, void **ctx,
-+					u32 *ctxlen);
- 
- int security_inode_alloc(struct inode *inode);
- void security_inode_free(struct inode *inode);
-@@ -2028,6 +2045,16 @@ static inline int security_inode_alloc(struct inode *inode)
- static inline void security_inode_free(struct inode *inode)
- { }
- 
-+static inline int security_dentry_init_security(struct dentry *dentry,
-+						 int mode,
-+						 struct qstr *name,
-+						 void **ctx,
-+						 u32 *ctxlen)
-+{
-+	return -EOPNOTSUPP;
-+}
-+
-+
- static inline int security_inode_init_security(struct inode *inode,
- 						struct inode *dir,
- 						const struct qstr *qstr,
-diff --git a/security/capability.c b/security/capability.c
-index 5797750..456bd9d 100644
---- a/security/capability.c
-+++ b/security/capability.c
-@@ -108,6 +108,13 @@ static int cap_sb_parse_opts_str(char *options, struct security_mnt_opts *opts)
- 	return 0;
- }
- 
-+static int cap_dentry_init_security(struct dentry *dentry, int mode,
-+					struct qstr *name, void **ctx,
-+					u32 *ctxlen)
-+{
-+	return 0;
-+}
-+
- static int cap_inode_alloc_security(struct inode *inode)
- {
- 	return 0;
-@@ -925,6 +932,7 @@ void __init security_fixup_ops(struct security_operations *ops)
- 	set_to_cap_if_null(ops, sb_set_mnt_opts);
- 	set_to_cap_if_null(ops, sb_clone_mnt_opts);
- 	set_to_cap_if_null(ops, sb_parse_opts_str);
-+	set_to_cap_if_null(ops, dentry_init_security);
- 	set_to_cap_if_null(ops, inode_alloc_security);
- 	set_to_cap_if_null(ops, inode_free_security);
- 	set_to_cap_if_null(ops, inode_init_security);
-diff --git a/security/security.c b/security/security.c
-index 7b88c6a..723a10c 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -12,6 +12,7 @@
-  */
- 
- #include <linux/capability.h>
-+#include <linux/dcache.h>
- #include <linux/module.h>
- #include <linux/init.h>
- #include <linux/kernel.h>
-@@ -324,6 +325,15 @@ void security_inode_free(struct inode *inode)
- 	security_ops->inode_free_security(inode);
- }
- 
-+int security_dentry_init_security(struct dentry *dentry, int mode,
-+					struct qstr *name, void **ctx,
-+					u32 *ctxlen)
-+{
-+	return security_ops->dentry_init_security(dentry, mode, name,
-+							ctx, ctxlen);
-+}
-+EXPORT_SYMBOL(security_dentry_init_security);
-+
- int security_inode_init_security(struct inode *inode, struct inode *dir,
- 				 const struct qstr *qstr,
- 				 const initxattrs initxattrs, void *fs_data)
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 2fa28c8..c7f1905 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -2483,6 +2483,40 @@ static void selinux_inode_free_security(struct inode *inode)
- 	inode_free_security(inode);
- }
- 
-+static int selinux_dentry_init_security(struct dentry *dentry, int mode,
-+					struct qstr *name, void **ctx,
-+					u32 *ctxlen)
-+{
-+	const struct cred *cred = current_cred();
-+	struct task_security_struct *tsec;
-+	struct inode_security_struct *dsec;
-+	struct superblock_security_struct *sbsec;
-+	struct inode *dir = dentry->d_parent->d_inode;
-+	u32 newsid;
-+	int rc;
-+
-+	tsec = cred->security;
-+	dsec = dir->i_security;
-+	sbsec = dir->i_sb->s_security;
-+
-+	if (tsec->create_sid && sbsec->behavior != SECURITY_FS_USE_MNTPOINT) {
-+		newsid = tsec->create_sid;
-+	} else {
-+		rc = security_transition_sid(tsec->sid, dsec->sid,
-+					     inode_mode_to_security_class(mode),
-+					     name,
-+					     &newsid);
-+		if (rc) {
-+			printk(KERN_WARNING
-+				"%s: security_transition_sid failed, rc=%d\n",
-+			       __func__, -rc);
-+			return rc;
-+		}
-+	}
-+
-+	return security_sid_to_context(newsid, (char **)ctx, ctxlen);
-+}
-+
- static int selinux_inode_init_security(struct inode *inode, struct inode *dir,
- 				       const struct qstr *qstr, char **name,
- 				       void **value, size_t *len)
-@@ -5525,6 +5559,7 @@ static struct security_operations selinux_ops = {
- 	.sb_clone_mnt_opts =		selinux_sb_clone_mnt_opts,
- 	.sb_parse_opts_str = 		selinux_parse_opts_str,
- 
-+	.dentry_init_security =		selinux_dentry_init_security,
- 
- 	.inode_alloc_security =		selinux_inode_alloc_security,
- 	.inode_free_security =		selinux_inode_free_security,
+Is that comment correct?
+
+> 	struct sockaddr_storage	cl_addr;	/* server identifier */
+> 	size_t			cl_addrlen;
+> 	char *			cl_hostname;	/* hostname of server */
+> -- 
+> 1.8.1.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-1.8.1.4
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
