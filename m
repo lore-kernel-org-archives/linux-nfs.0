@@ -1,175 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:5474 "EHLO mx1.redhat.com"
+Received: from mx1.netapp.com ([216.240.18.38]:9609 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757976Ab3DXUXH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Apr 2013 16:23:07 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 07/17] SELinux: Add new labeling type native labels
-Date: Wed, 24 Apr 2013 16:17:53 -0400
-Message-Id: <1366834683-29075-8-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
-References: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
+	id S1751877Ab3DNPyA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 14 Apr 2013 11:54:00 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/3] NFSv4.1: Set the RPC_CLNT_CREATE_INFINITE_SLOTS flag for NFSv4.1 transports
+Date: Sun, 14 Apr 2013 11:53:55 -0400
+Message-Id: <1365954835-35301-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1365954835-35301-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1365954835-35301-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1365954835-35301-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+This ensures that the RPC layer doesn't override the NFS session
+negotiation.
 
-There currently doesn't exist a labeling type that is adequate for use with
-labeled NFS. Since NFS doesn't really support xattrs we can't use the use xattr
-labeling behavior. For this we developed a new labeling type. The native
-labeling type is used solely by NFS to ensure NFS inodes are labeled at runtime
-by the NFS code instead of relying on the SELinux security server on the client
-end.
-
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- include/linux/security.h            |  3 +++
- security/selinux/hooks.c            | 35 ++++++++++++++++++++++++++---------
- security/selinux/include/security.h |  2 ++
- security/selinux/ss/policydb.c      |  5 ++++-
- 4 files changed, 35 insertions(+), 10 deletions(-)
+ fs/nfs/client.c           | 2 ++
+ fs/nfs/nfs4client.c       | 2 ++
+ include/linux/nfs_fs_sb.h | 1 +
+ 3 files changed, 5 insertions(+)
 
-diff --git a/include/linux/security.h b/include/linux/security.h
-index 4ab51e2..bc924d7 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -61,6 +61,9 @@ struct mm_struct;
- #define SECURITY_CAP_NOAUDIT 0
- #define SECURITY_CAP_AUDIT 1
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 84d8eae..c513b0c 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -593,6 +593,8 @@ int nfs_create_rpc_client(struct nfs_client *clp,
+ 		args.flags |= RPC_CLNT_CREATE_DISCRTRY;
+ 	if (test_bit(NFS_CS_NORESVPORT, &clp->cl_flags))
+ 		args.flags |= RPC_CLNT_CREATE_NONPRIVPORT;
++	if (test_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags))
++		args.flags |= RPC_CLNT_CREATE_INFINITE_SLOTS;
  
-+/* LSM Agnostic defines for sb_set_mnt_opts */
-+#define SECURITY_LSM_NATIVE_LABELS	1
-+
- struct ctl_table;
- struct audit_krule;
- struct user_namespace;
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 6cb24ec..d7ff806 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -81,6 +81,7 @@
- #include <linux/syslog.h>
- #include <linux/user_namespace.h>
- #include <linux/export.h>
-+#include <linux/security.h>
- #include <linux/msg.h>
- #include <linux/shm.h>
+ 	if (!IS_ERR(clp->cl_rpcclient))
+ 		return 0;
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index a4f2100..9b711e4 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -199,6 +199,8 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+ 	clp->rpc_ops = &nfs_v4_clientops;
  
-@@ -284,13 +285,14 @@ static void superblock_free_security(struct super_block *sb)
- 
- /* The file system's label must be initialized prior to use. */
- 
--static const char *labeling_behaviors[6] = {
-+static const char *labeling_behaviors[7] = {
- 	"uses xattr",
- 	"uses transition SIDs",
- 	"uses task SIDs",
- 	"uses genfs_contexts",
- 	"not configured for labeling",
- 	"uses mountpoint labeling",
-+	"uses native labeling",
- };
- 
- static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dentry);
-@@ -678,14 +680,21 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 	if (strcmp(sb->s_type->name, "proc") == 0)
- 		sbsec->flags |= SE_SBPROC;
- 
--	/* Determine the labeling behavior to use for this filesystem type. */
--	rc = security_fs_use((sbsec->flags & SE_SBPROC) ? "proc" : sb->s_type->name, &sbsec->behavior, &sbsec->sid);
--	if (rc) {
--		printk(KERN_WARNING "%s: security_fs_use(%s) returned %d\n",
--		       __func__, sb->s_type->name, rc);
--		goto out;
-+	if (!sbsec->behavior) {
-+		/*
-+		 * Determine the labeling behavior to use for this
-+		 * filesystem type.
-+		 */
-+		rc = security_fs_use((sbsec->flags & SE_SBPROC) ?
-+					"proc" : sb->s_type->name,
-+					&sbsec->behavior, &sbsec->sid);
-+		if (rc) {
-+			printk(KERN_WARNING
-+				"%s: security_fs_use(%s) returned %d\n",
-+					__func__, sb->s_type->name, rc);
-+			goto out;
-+		}
- 	}
--
- 	/* sets the context of the superblock for the fs being mounted. */
- 	if (fscontext_sid) {
- 		rc = may_context_mount_sb_relabel(fscontext_sid, sbsec, cred);
-@@ -700,6 +709,11 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 	 * sets the label used on all file below the mountpoint, and will set
- 	 * the superblock context if not already set.
- 	 */
-+	if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !context_sid) {
-+		sbsec->behavior = SECURITY_FS_USE_NATIVE;
-+		*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
-+	}
-+
- 	if (context_sid) {
- 		if (!fscontext_sid) {
- 			rc = may_context_mount_sb_relabel(context_sid, sbsec,
-@@ -731,7 +745,8 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 	}
- 
- 	if (defcontext_sid) {
--		if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
-+		if (sbsec->behavior != SECURITY_FS_USE_XATTR &&
-+			sbsec->behavior != SECURITY_FS_USE_NATIVE) {
- 			rc = -EINVAL;
- 			printk(KERN_WARNING "SELinux: defcontext option is "
- 			       "invalid for this filesystem type\n");
-@@ -1199,6 +1214,8 @@ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dent
- 	}
- 
- 	switch (sbsec->behavior) {
-+	case SECURITY_FS_USE_NATIVE:
-+		break;
- 	case SECURITY_FS_USE_XATTR:
- 		if (!inode->i_op->getxattr) {
- 			isec->sid = sbsec->def_sid;
-diff --git a/security/selinux/include/security.h b/security/selinux/include/security.h
-index 6d38851..8fd8e18 100644
---- a/security/selinux/include/security.h
-+++ b/security/selinux/include/security.h
-@@ -169,6 +169,8 @@ int security_get_allow_unknown(void);
- #define SECURITY_FS_USE_GENFS		4 /* use the genfs support */
- #define SECURITY_FS_USE_NONE		5 /* no labeling support */
- #define SECURITY_FS_USE_MNTPOINT	6 /* use mountpoint labeling */
-+#define SECURITY_FS_USE_NATIVE		7 /* use native label support */
-+#define SECURITY_FS_USE_MAX		7 /* Highest SECURITY_FS_USE_XXX */
- 
- int security_fs_use(const char *fstype, unsigned int *behavior,
- 	u32 *sid);
-diff --git a/security/selinux/ss/policydb.c b/security/selinux/ss/policydb.c
-index 9cd9b7c..c8adde3 100644
---- a/security/selinux/ss/policydb.c
-+++ b/security/selinux/ss/policydb.c
-@@ -2168,7 +2168,10 @@ static int ocontext_read(struct policydb *p, struct policydb_compat_info *info,
- 
- 				rc = -EINVAL;
- 				c->v.behavior = le32_to_cpu(buf[0]);
--				if (c->v.behavior > SECURITY_FS_USE_NONE)
-+				/* Determined at runtime, not in policy DB. */
-+				if (c->v.behavior == SECURITY_FS_USE_MNTPOINT)
-+					goto out;
-+				if (c->v.behavior > SECURITY_FS_USE_MAX)
- 					goto out;
- 
- 				rc = -ENOMEM;
+ 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
++	if (clp->cl_minorversion != 0)
++		__set_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags);
+ 	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
+ 	if (error == -EINVAL)
+ 		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_NULL);
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index d8fdfdc..01b3815 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -40,6 +40,7 @@ struct nfs_client {
+ #define NFS_CS_NORESVPORT	0		/* - use ephemeral src port */
+ #define NFS_CS_DISCRTRY		1		/* - disconnect on RPC retry */
+ #define NFS_CS_MIGRATION	2		/* - transparent state migr */
++#define NFS_CS_INFINITE_SLOTS	3		/* - transparent state migr */
+ 	struct sockaddr_storage	cl_addr;	/* server identifier */
+ 	size_t			cl_addrlen;
+ 	char *			cl_hostname;	/* hostname of server */
 -- 
 1.8.1.4
 
