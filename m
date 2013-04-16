@@ -1,187 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f52.google.com ([209.85.215.52]:64591 "EHLO
-	mail-la0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S936962Ab3DIMgm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Apr 2013 08:36:42 -0400
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: linux-kernel@vger.kernel.org
-Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wine-devel@winehq.org
-Subject: [PATCH v5 5/7] NFSv4: Add O_DENY* open flags support
-Date: Tue,  9 Apr 2013 16:40:25 +0400
-Message-Id: <1365511227-17626-6-git-send-email-piastry@etersoft.ru>
-In-Reply-To: <1365511227-17626-1-git-send-email-piastry@etersoft.ru>
-References: <1365511227-17626-1-git-send-email-piastry@etersoft.ru>
+Received: from mx12.netapp.com ([216.240.18.77]:52108 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S935661Ab3DPPhM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Apr 2013 11:37:12 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Joakim Tjernlund <joakim.tjernlund@transmode.se>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFS loop on 3.4.39
+Date: Tue, 16 Apr 2013 15:36:55 +0000
+Message-ID: <1366126613.12556.18.camel@leira.trondhjem.org>
+References: <OF6F031A84.8897519B-ONC1257B4E.002D1BA3-C1257B4E.002DBED0@LocalDomain>
+	 <OF83CD52DB.8DBE497B-ONC1257B4E.002F8695-C1257B4E.002FBBD0@LocalDomain>
+	 <OF64305930.0F7881A0-ONC1257B4E.0030250F-C1257B4E.00306CEC@LocalDomain>
+	 <OFA06D4153.317BAF9A-ONC1257B4F.002F597B-C1257B4F.003AC46C@transmode.se>
+In-Reply-To: <OFA06D4153.317BAF9A-ONC1257B4F.002F597B-C1257B4F.003AC46C@transmode.se>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-by passing these flags to NFSv4 open request. Also make it return
--EBUSY on share conflicts with other opens.
+On Tue, 2013-04-16 at 12:41 +0200, Joakim Tjernlund wrote:
+> Here we go again, this time i happened while browsing the Boston news on 
+> www.dn.se
+> Now gvfsd-metadata is turned off(not running at all) and I get:
+> 10:28:44.616146 IP 192.168.201.44.nfs > 172.20.4.10.3671768838: reply ok 
+> 52 getattr ERROR: unk 10024
 
-Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
----
- fs/nfs/internal.h  |  3 ++-
- fs/nfs/nfs4proc.c  |  4 +++-
- fs/nfs/nfs4super.c |  9 ++++++---
- fs/nfs/nfs4xdr.c   | 21 +++++++++++++++++----
- fs/nfs/super.c     |  7 +++++--
- 5 files changed, 33 insertions(+), 11 deletions(-)
+Part of the reason why you are getting no response to these posts is
+that you are posting tcpdump-decoded data. Tcpdump still has no support
+for NFSv4, and therefore completely garbles the output by trying to
+interpret it as NFSv2/v3.
+In general, if you are posting network traffic, please record it as
+binary raw packet data (using the '-w' option on tcdump) so that we can
+look at the full contents. Either include it as an attachment, or
+provide us with details on how to download it from an http server.
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index f0e6c7d..c770830 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -6,7 +6,8 @@
- #include <linux/mount.h>
- #include <linux/security.h>
- 
--#define NFS_MS_MASK (MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC|MS_SYNCHRONOUS)
-+#define NFS_MS_MASK (MS_RDONLY | MS_NOSUID | MS_NODEV | MS_NOEXEC | \
-+		     MS_SYNCHRONOUS | MS_SHARELOCK)
- 
- struct nfs_string;
- 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 3cb5e77..5d44763 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -100,7 +100,7 @@ static int nfs4_map_errors(int err)
- 	case -NFS4ERR_BADNAME:
- 		return -EINVAL;
- 	case -NFS4ERR_SHARE_DENIED:
--		return -EACCES;
-+		return -EBUSY;
- 	case -NFS4ERR_MINOR_VERS_MISMATCH:
- 		return -EPROTONOSUPPORT;
- 	case -NFS4ERR_ACCESS:
-@@ -793,6 +793,8 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 	atomic_inc(&sp->so_count);
- 	p->o_arg.fh = NFS_FH(dir);
- 	p->o_arg.open_flags = flags;
-+	if (!IS_SHARELOCK(dir))
-+		p->o_arg.open_flags &= ~(O_DENYREAD | O_DENYWRITE);
- 	p->o_arg.fmode = fmode & (FMODE_READ|FMODE_WRITE);
- 	/* don't put an ACCESS op in OPEN compound if O_EXCL, because ACCESS
- 	 * will return permission denied for all bits until close */
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index 84d2e9e..ca791cd 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -28,7 +28,8 @@ static struct file_system_type nfs4_remote_fs_type = {
- 	.name		= "nfs4",
- 	.mount		= nfs4_remote_mount,
- 	.kill_sb	= nfs_kill_super,
--	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
-+	.fs_flags	= FS_RENAME_DOES_D_MOVE | FS_REVAL_DOT |
-+			  FS_BINARY_MOUNTDATA | FS_DOES_SHARELOCK,
- };
- 
- static struct file_system_type nfs4_remote_referral_fs_type = {
-@@ -36,7 +37,8 @@ static struct file_system_type nfs4_remote_referral_fs_type = {
- 	.name		= "nfs4",
- 	.mount		= nfs4_remote_referral_mount,
- 	.kill_sb	= nfs_kill_super,
--	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
-+	.fs_flags	= FS_RENAME_DOES_D_MOVE | FS_REVAL_DOT |
-+			  FS_BINARY_MOUNTDATA | FS_DOES_SHARELOCK,
- };
- 
- struct file_system_type nfs4_referral_fs_type = {
-@@ -44,7 +46,8 @@ struct file_system_type nfs4_referral_fs_type = {
- 	.name		= "nfs4",
- 	.mount		= nfs4_referral_mount,
- 	.kill_sb	= nfs_kill_super,
--	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
-+	.fs_flags	= FS_RENAME_DOES_D_MOVE | FS_REVAL_DOT |
-+			  FS_BINARY_MOUNTDATA | FS_DOES_SHARELOCK,
- };
- 
- static const struct super_operations nfs4_sops = {
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 26b1439..8fe0221 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1325,7 +1325,8 @@ static void encode_lookup(struct xdr_stream *xdr, const struct qstr *name, struc
- 	encode_string(xdr, name->len, name->name);
- }
- 
--static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode)
-+static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode,
-+				int open_flags)
- {
- 	__be32 *p;
- 
-@@ -1343,7 +1344,19 @@ static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode)
- 	default:
- 		*p++ = cpu_to_be32(0);
- 	}
--	*p = cpu_to_be32(0);		/* for linux, share_deny = 0 always */
-+	switch (open_flags & (O_DENYREAD|O_DENYWRITE)) {
-+	case O_DENYREAD:
-+		*p = cpu_to_be32(NFS4_SHARE_DENY_READ);
-+		break;
-+	case O_DENYWRITE:
-+		*p = cpu_to_be32(NFS4_SHARE_DENY_WRITE);
-+		break;
-+	case O_DENYREAD|O_DENYWRITE:
-+		*p = cpu_to_be32(NFS4_SHARE_DENY_BOTH);
-+		break;
-+	default:
-+		*p = cpu_to_be32(0);
-+	}
- }
- 
- static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_openargs *arg)
-@@ -1354,7 +1367,7 @@ static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_opena
-  * owner 4 = 32
-  */
- 	encode_nfs4_seqid(xdr, arg->seqid);
--	encode_share_access(xdr, arg->fmode);
-+	encode_share_access(xdr, arg->fmode, arg->open_flags);
- 	p = reserve_space(xdr, 36);
- 	p = xdr_encode_hyper(p, arg->clientid);
- 	*p++ = cpu_to_be32(24);
-@@ -1491,7 +1504,7 @@ static void encode_open_downgrade(struct xdr_stream *xdr, const struct nfs_close
- 	encode_op_hdr(xdr, OP_OPEN_DOWNGRADE, decode_open_downgrade_maxsz, hdr);
- 	encode_nfs4_stateid(xdr, arg->stateid);
- 	encode_nfs4_seqid(xdr, arg->seqid);
--	encode_share_access(xdr, arg->fmode);
-+	encode_share_access(xdr, arg->fmode, 0);
- }
- 
- static void
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index b056b16..cf9db61 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -331,7 +331,8 @@ struct file_system_type nfs4_fs_type = {
- 	.name		= "nfs4",
- 	.mount		= nfs_fs_mount,
- 	.kill_sb	= nfs_kill_super,
--	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
-+	.fs_flags	= FS_RENAME_DOES_D_MOVE | FS_REVAL_DOT |
-+			  FS_BINARY_MOUNTDATA | FS_DOES_SHARELOCK,
- };
- EXPORT_SYMBOL_GPL(nfs4_fs_type);
- 
-@@ -2589,6 +2590,8 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
- 	struct nfs_server *server;
- 	struct dentry *mntroot = ERR_PTR(-ENOMEM);
- 	struct nfs_subversion *nfs_mod = NFS_SB(data->sb)->nfs_client->cl_nfs_mod;
-+	/* save sharelock option */
-+	int sharelock = data->sb->s_flags & MS_SHARELOCK;
- 
- 	dprintk("--> nfs_xdev_mount()\n");
- 
-@@ -2600,7 +2603,7 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
- 	if (IS_ERR(server))
- 		mntroot = ERR_CAST(server);
- 	else
--		mntroot = nfs_fs_mount_common(server, flags,
-+		mntroot = nfs_fs_mount_common(server, flags | sharelock,
- 				dev_name, &mount_info, nfs_mod);
- 
- 	dprintk("<-- nfs_xdev_mount() = %ld\n",
+Other information that is needed in order to make sense of NFS bug
+reports includes:
+
+- client OS (non-linux) or kernel version (linux)
+- mount options on the client
+- server OS (non-linux) or kernel version (linux)
+- type of exported filesystem on the server
+- contents of /etc/exports on the server
+
+Please ensure that you always include those in your emails.
+
 -- 
-1.8.1.5
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
