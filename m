@@ -1,80 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:3264 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:28606 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755927Ab3DXPD0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Apr 2013 11:03:26 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/5] SUNRPC: allow disabling idle timeout
-Date: Wed, 24 Apr 2013 15:03:23 +0000
-Message-ID: <1366815805.3812.1.camel@leira.trondhjem.org>
-References: <1366054508-27604-1-git-send-email-bfields@redhat.com>
-	 <1366054508-27604-3-git-send-email-bfields@redhat.com>
-	 <20130418170020.GA31075@fieldses.org>
-	 <1366304823.58246.22.camel@leira.trondhjem.org>
-	 <20130418171424.GA30837@pad.fieldses.org>
-	 <F9B356AC-18C0-4BF1-8FBF-1F719801F72F@oracle.com>
-	 <20130424150037.GA20275@fieldses.org>
-In-Reply-To: <20130424150037.GA20275@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1753823Ab3DPLQ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Apr 2013 07:16:29 -0400
+Subject: [PATCH] nfsd: enable UMH client tracker in container
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, jlayton@redhat.com
+Date: Tue, 16 Apr 2013 15:17:44 +0400
+Message-ID: <20130416111344.14621.56912.stgit@localhost.localdomain>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-04-24 at 11:00 -0400, J. Bruce Fields wrote:
-> On Thu, Apr 18, 2013 at 10:25:49AM -0700, Chuck Lever wrote:
-> > 
-> > On Apr 18, 2013, at 10:14 AM, "J. Bruce Fields" <bfields@redhat.com> wrote:
-> > 
-> > > On Thu, Apr 18, 2013 at 05:07:03PM +0000, Myklebust, Trond wrote:
-> > >> On Thu, 2013-04-18 at 13:00 -0400, J. Bruce Fields wrote:
-> > >>> On Mon, Apr 15, 2013 at 03:35:04PM -0400, J. Bruce Fields wrote:
-> > >>>> From: "J. Bruce Fields" <bfields@redhat.com>
-> > >>>> 
-> > >>>> In the gss-proxy case we don't want to have to reconnect at random--we
-> > >>>> want to connect only on gss-proxy startup when we can steal gss-proxy's
-> > >>>> context to do the connect in the right namespace.
-> > >>>> 
-> > >>>> So, provide a flag that allows the rpc_create caller to turn off the
-> > >>>> idle timeout.
-> > >>> 
-> > >>> Chuck, the basic ideas was your suggestion, does the executation look OK
-> > >>> here?  I had to copy the rpc_create flags down to the xprt_create, I
-> > >>> don't know if that's reasonable.
-> > >> 
-> > >> This patch will conflict with commit
-> > >> b7993cebb841b0da7a33e9d5ce301a9fd3209165 (SUNRPC: Allow rpc_create() to
-> > >> request that TCP slots be unlimited) that was posted on this list
-> > >> earlier this week.
-> > > 
-> > > Oh, sorry, I missed that.
-> > > 
-> > > Presumably then I should just work on top of that and do the same
-> > > thing--define a pair of flags
-> > > {RP_CLNT_CREATE|XPRT_CREATE}_NO_IDLE_TIMEOUT and translate between the
-> > > two in rpc_create.
-> > 
-> > Agree.
-> 
-> The result (untested) looks like this.
-> 
-> If this is OK--Trond, do you mind if I merge this commit (or
-> nfs-for-next) into my tree, and then the rest of the gss-proxy patches
-> on top?
-> 
-> Or is the nfs-for-next branch still potentially subject to rewriting?
+This patch adds support for UserModeHelper tracker in a container.
+The reason for this is that the only containerised tracker ("nfsdcld") is
+going to be removed in 3.10 kernel, thus at least one more tracker have to be
+containerised to replace the deprecated one.
+UMH tracker looks more preferable comparing to legacy since it's the latest
+one.
+To make UMH tracker work in a container, we have to make sure, that it
+executes right binary (i.e., this binary have to be taken from the container
+environment).
+But, UMH is a kernel thread, which works in global root environment by design
+(kernel thread's root is inherited from kthreadd, which in turn inherited it's
+root from global init). So, the root have to be swapped to the container's
+one before binary execution.
 
-nfs-for-next is stable, so it should be safe to pull into your nfsd
-tree.
+This patch passes "init" callback and private "data" to UMH interface, which
+are used to swap root for spawned kernel thread.
 
+Note: container's root can be stored on stack, because UMH calls are
+synchronous.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/nfs4recover.c |   29 ++++++++++++++++++++++-------
+ 1 files changed, 22 insertions(+), 7 deletions(-)
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 899ca26..15f8de6 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -38,6 +38,7 @@
+ #include <linux/crypto.h>
+ #include <linux/sched.h>
+ #include <linux/fs.h>
++#include <linux/fs_struct.h>
+ #include <linux/module.h>
+ #include <net/net_namespace.h>
+ #include <linux/sunrpc/rpc_pipe_fs.h>
+@@ -1122,12 +1123,28 @@ nfsd4_cltrack_legacy_recdir(const struct xdr_netobj *name)
+ 	return result;
+ }
+ 
++static int nfsd_swap_root(struct subprocess_info *info, struct cred *new)
++{
++	struct path *root = info->data;
++	struct fs_struct *fs = current->fs;
++	struct path current_root;
++
++	spin_lock(&fs->lock);
++	current_root = fs->root;
++	fs->root = *root;
++	spin_unlock(&fs->lock);
++	if (current_root.dentry)
++		path_put(&current_root);
++	return 0;
++}
++
+ static int
+ nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
+ {
+ 	char *envp[2];
+ 	char *argv[4];
+ 	int ret;
++	struct path root;
+ 
+ 	if (unlikely(!cltrack_prog[0])) {
+ 		dprintk("%s: cltrack_prog is disabled\n", __func__);
+@@ -1146,7 +1163,11 @@ nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
+ 	argv[2] = arg;
+ 	argv[3] = NULL;
+ 
+-	ret = call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
++	get_fs_root(current->fs, &root);
++
++	ret = call_usermodehelper_fns(argv[0], argv, envp, UMH_WAIT_PROC,
++				       nfsd_swap_root, NULL, &root);
++
+ 	/*
+ 	 * Disable the upcall mechanism if we're getting an ENOENT or EACCES
+ 	 * error. The admin can re-enable it on the fly by using sysfs
+@@ -1185,12 +1206,6 @@ bin_to_hex_dup(const unsigned char *src, int srclen)
+ static int
+ nfsd4_umh_cltrack_init(struct net __attribute__((unused)) *net)
+ {
+-	/* XXX: The usermode helper s not working in container yet. */
+-	if (net != &init_net) {
+-		WARN(1, KERN_ERR "NFSD: attempt to initialize umh client "
+-			"tracking in a container!\n");
+-		return -EINVAL;
+-	}
+ 	return nfsd4_umh_cltrack_upcall("init", NULL, NULL);
+ }
+ 
+
