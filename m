@@ -1,48 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:2406 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:36523 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760022Ab3DBTCp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Apr 2013 15:02:45 -0400
-Subject: Re: [PATCH] Avoid PTR lookups when possible
-From: Simo Sorce <simo@redhat.com>
-To: Jim Rees <rees@umich.edu>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>, Steve Dickson <steved@redhat.com>,
-        Jeffrey Layton <jlayton@redhat.com>
-In-Reply-To: <20130402185337.GC18900@umich.edu>
-References: <1364910351.2660.1243.camel@willson.li.ssimo.org>
-	 <20130402150049.GA526@umich.edu>
-	 <1364919975.2660.1255.camel@willson.li.ssimo.org>
-	 <20130402164631.GA23840@umich.edu>
-	 <1364922203.2660.1265.camel@willson.li.ssimo.org>
-	 <20130402183907.GB18900@umich.edu>
-	 <1364928519.2660.1279.camel@willson.li.ssimo.org>
-	 <20130402185337.GC18900@umich.edu>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 02 Apr 2013 15:02:38 -0400
-Message-ID: <1364929358.2660.1280.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+	id S936095Ab3DQBqe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Apr 2013 21:46:34 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 00/12] Implement NFSv4 delegations, take 7
+Date: Tue, 16 Apr 2013 21:46:12 -0400
+Message-Id: <1366163185-10317-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-04-02 at 14:53 -0400, Jim Rees wrote:
-> Simo Sorce wrote:
-> 
->   >  And stop using the term "mitm". A mitm attack is used to
->   > convince both ends of a connection that they are talking to each other. DNS
->   > is not a mutually authenticated exchange.
->   
->   Well it is still a sort of Man in the Middle, as you also have to
->   redirect communications (nfsv4 uses TCP) for it to be effective, it is
->   just not exploiting a crypto issue.
-> 
-> Now you've lost me again. I thought we were discussing dns. What does nfs
-> have to do with it?
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-It's complicated, but if you re-read the scenario I wrote and think how
-the rpcgss communication happens you should see it.
+This is just a rebase of the previous posting.  As far as I can tell, it's
+ready for 3.10.  Introduction (mostly repeated) follows:
 
-Simo.
+
+This patch series implements read delegations, which allow NFSv4 clients
+to perform read opens without contacting the server, by promising to
+call back to clients before modifying the data, metadata, or set of
+links pointing to a file.
+
+The main recent change was in response to review from Linus, who didn't
+want us to hang under directory i_mutex's on timeouts communicating with
+unresponsive clients.
+
+So, this version of the series drops the i_mutex before waiting.  The
+logic ends up looking something like:
+
+        acquire locks
+        look up inode
+        test for delegation; if found:
+                take reference on inode
+                release locks
+                wait for delegation break
+                drop reference on inode
+                retry
+
+
+The initial test for a delegation happens after the lock on the
+delegated inode is acquired, but additional directory mutexes may have
+been acquired further up the call stack.  I therefore add a "struct
+inode **" argument to any intervening functions, which we use to pass
+the inode back up to the caller in the case it needs to wait for the
+delegation to be broken.
+
+I also allow callers to pass in NULL for the "struct inode **" argument
+to indicate they'd rather just fail than wait for a delegation.  For
+example, as long as ecryptfs isn't exportable I assume they'd rather not
+see retry logic there that they won't use.  But I may have misjudged in
+some of these cases.
+
+J. Bruce Fields (12):
+  vfs: pull ext4's double-i_mutex-locking into common code
+  vfs: don't use PARENT/CHILD lock classes for non-directories
+  vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
+  vfs: take i_mutex on renamed file
+  locks: introduce new FL_DELEG lock flag
+  locks: implement delegations
+  namei: minor vfs_unlink cleanup
+  locks: break delegations on unlink
+  locks: helper functions for delegation breaking
+  locks: break delegations on rename
+  locks: break delegations on link
+  locks: break delegations on any attribute modification
+
+ Documentation/filesystems/directory-locking |   31 ++++++++---
+ drivers/base/devtmpfs.c                     |    6 +-
+ fs/attr.c                                   |    5 +-
+ fs/cachefiles/interface.c                   |    4 +-
+ fs/cachefiles/namei.c                       |    4 +-
+ fs/ecryptfs/inode.c                         |    6 +-
+ fs/ext4/move_extent.c                       |   40 +-------------
+ fs/hpfs/namei.c                             |    2 +-
+ fs/inode.c                                  |   35 +++++++++++-
+ fs/locks.c                                  |   51 +++++++++++++----
+ fs/namei.c                                  |   79 +++++++++++++++++++++------
+ fs/nfsd/nfs4state.c                         |    2 +-
+ fs/nfsd/vfs.c                               |   14 +++--
+ fs/open.c                                   |   21 +++++--
+ fs/utimes.c                                 |    9 ++-
+ include/linux/fs.h                          |   72 ++++++++++++++++++++----
+ ipc/mqueue.c                                |    2 +-
+ 17 files changed, 271 insertions(+), 112 deletions(-)
 
 -- 
-Simo Sorce * Red Hat, Inc * New York
+1.7.9.5
 
