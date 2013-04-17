@@ -1,63 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37483 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S936095Ab3DQBy6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Apr 2013 21:54:58 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/2] nfsd: fix EXDEV checking in rename
-Date: Tue, 16 Apr 2013 21:54:56 -0400
-Message-Id: <1366163696-10700-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1366163696-10700-1-git-send-email-bfields@redhat.com>
-References: <1366163696-10700-1-git-send-email-bfields@redhat.com>
+Received: from mail-ia0-f175.google.com ([209.85.210.175]:47378 "EHLO
+	mail-ia0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965578Ab3DQRPN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Apr 2013 13:15:13 -0400
+MIME-Version: 1.0
+In-Reply-To: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com>
+References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com>
+Date: Wed, 17 Apr 2013 10:15:13 -0700
+Message-ID: <CABgxfbF7c9ktSoMSPV21JU76V5J4iwbJQ257S91Y3z36WJbJVA@mail.gmail.com>
+Subject: Re: NFS over RDMA benchmark
+From: Wendy Cheng <s.wendy.cheng@gmail.com>
+To: Yan Burman <yanb@mellanox.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Tom Tucker <tom@opengridcomputing.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, Apr 17, 2013 at 7:36 AM, Yan Burman <yanb@mellanox.com> wrote:
+> Hi.
+>
+> I've been trying to do some benchmarks for NFS over RDMA and I seem to only get about half of the bandwidth that the HW can give me.
+> My setup consists of 2 servers each with 16 cores, 32Gb of memory, and Mellanox ConnectX3 QDR card over PCI-e gen3.
+> These servers are connected to a QDR IB switch. The backing storage on the server is tmpfs mounted with noatime.
+> I am running kernel 3.5.7.
+>
+> When running ib_send_bw, I get 4.3-4.5 GB/sec for block sizes 4-512K.
+> When I run fio over rdma mounted nfs, I get 260-2200MB/sec for the same block sizes (4-512K). running over IPoIB-CM, I get 200-980MB/sec.
 
-We again check for the EXDEV a little later on, so the first check is
-redundant.  This check is also slightly racier, since a badly timed
-eviction from the export cache could leave us with the two fh_export
-pointers pointing to two different cache entries which each refer to the
-same underlying export.
+Remember there are always gaps between wire speed (that ib_send_bw
+measures) and real world applications.
 
-It's better to compare vfsmounts as the later check does, but that
-leaves a minor security hole in the case where the two exports refer to
-two different directories especially if (for example) they have
-different root-squashing options.
+That being said, does your server use default export (sync) option ?
+Export the share with "async" option can bring you closer to wire
+speed. However, the practice (async) is generally not recommended in a
+real production system - as it can cause data integrity issues, e.g.
+you have more chances to lose data when the boxes crash.
 
-So, compare ex_path.dentry too.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/vfs.c |    6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 2b2e239..84ce601 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1758,10 +1758,6 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
- 	tdentry = tfhp->fh_dentry;
- 	tdir = tdentry->d_inode;
- 
--	err = (rqstp->rq_vers == 2) ? nfserr_acces : nfserr_xdev;
--	if (ffhp->fh_export != tfhp->fh_export)
--		goto out;
--
- 	err = nfserr_perm;
- 	if (!flen || isdotent(fname, flen) || !tlen || isdotent(tname, tlen))
- 		goto out;
-@@ -1802,6 +1798,8 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
- 	host_err = -EXDEV;
- 	if (ffhp->fh_export->ex_path.mnt != tfhp->fh_export->ex_path.mnt)
- 		goto out_dput_new;
-+	if (ffhp->fh_export->ex_path.dentry != tfhp->fh_export->ex_path.dentry)
-+		goto out_dput_new;
- 
- 	host_err = nfsd_break_lease(odentry->d_inode);
- 	if (host_err)
--- 
-1.7.9.5
-
+-- Wendy
