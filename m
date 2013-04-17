@@ -1,56 +1,221 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:55530 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:59982 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753135Ab3DSUJm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Apr 2013 16:09:42 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com, bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/2] nfs: Send atime and mtime as a 64bit value
-Date: Fri, 19 Apr 2013 16:09:37 -0400
-Message-Id: <1366402178-1281-2-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1366402178-1281-1-git-send-email-bjschuma@netapp.com>
-References: <1366402178-1281-1-git-send-email-bjschuma@netapp.com>
+	id S936206Ab3DQBqh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Apr 2013 21:46:37 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        David Howells <dhowells@redhat.com>,
+        Tyler Hicks <tyhicks@canonical.com>,
+        Dustin Kirkland <dustin.kirkland@gazzang.com>
+Subject: [PATCH 08/12] locks: break delegations on unlink
+Date: Tue, 16 Apr 2013 21:46:20 -0400
+Message-Id: <1366163185-10317-9-git-send-email-bfields@redhat.com>
+In-Reply-To: <1366163185-10317-1-git-send-email-bfields@redhat.com>
+References: <1366163185-10317-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-RFC 3530 says that the seconds value of a nfstime4 structure is a 64bit
-value, but we are instead sending a 32-bit 0 and then a 32bit conversion
-of the 64bit Linux value.  This means that if we try to set atime to a
-value before the epoch (touch -t 196001010101) the client will only send
-part of the new value due to lost precision.
+We need to break delegations on any operation that changes the set of
+links pointing to an inode.  Start with unlink.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Such operations also hold the i_mutex on a parent directory.  Breaking a
+delegation may require waiting for a timeout (by default 90 seconds) in
+the case of a unresponsive NFS client.  To avoid blocking all directory
+operations, we therefore drop locks before waiting for the delegation.
+The logic then looks like:
+
+	acquire locks
+	...
+	test for delegation; if found:
+		take reference on inode
+		release locks
+		wait for delegation break
+		drop reference on inode
+		retry
+
+It is possible this could never terminate.  (Even if we take precautions
+to prevent another delegation being acquired on the same inode, we could
+get a different inode on each retry.)  But this seems very unlikely.
+
+The initial test for a delegation happens after the lock on the target
+inode is acquired, but the directory inode may have been acquired
+further up the call stack.  We therefore add a "struct inode **"
+argument to any intervening functions, which we use to pass the inode
+back up to the caller in the case it needs a delegation synchronously
+broken.
+
+Cc: David Howells <dhowells@redhat.com>
+Cc: Tyler Hicks <tyhicks@canonical.com>
+Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/nfs4xdr.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+ drivers/base/devtmpfs.c |    2 +-
+ fs/cachefiles/namei.c   |    2 +-
+ fs/ecryptfs/inode.c     |    2 +-
+ fs/namei.c              |   24 +++++++++++++++++++++---
+ fs/nfsd/vfs.c           |    2 +-
+ include/linux/fs.h      |    2 +-
+ ipc/mqueue.c            |    2 +-
+ 7 files changed, 27 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 325eddc..3c79c58 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1054,8 +1054,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 	if (iap->ia_valid & ATTR_ATIME_SET) {
- 		bmval1 |= FATTR4_WORD1_TIME_ACCESS_SET;
- 		*p++ = cpu_to_be32(NFS4_SET_TO_CLIENT_TIME);
--		*p++ = cpu_to_be32(0);
--		*p++ = cpu_to_be32(iap->ia_atime.tv_sec);
-+		p = xdr_encode_hyper(p, (s64)iap->ia_atime.tv_sec);
- 		*p++ = cpu_to_be32(iap->ia_atime.tv_nsec);
+diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
+index 01fc5b0..288f64b 100644
+--- a/drivers/base/devtmpfs.c
++++ b/drivers/base/devtmpfs.c
+@@ -318,7 +318,7 @@ static int handle_remove(const char *nodename, struct device *dev)
+ 			mutex_lock(&dentry->d_inode->i_mutex);
+ 			notify_change(dentry, &newattrs);
+ 			mutex_unlock(&dentry->d_inode->i_mutex);
+-			err = vfs_unlink(parent.dentry->d_inode, dentry);
++			err = vfs_unlink(parent.dentry->d_inode, dentry, NULL);
+ 			if (!err || err == -ENOENT)
+ 				deleted = 1;
+ 		}
+diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
+index 8c01c5fc..d61d884 100644
+--- a/fs/cachefiles/namei.c
++++ b/fs/cachefiles/namei.c
+@@ -294,7 +294,7 @@ static int cachefiles_bury_object(struct cachefiles_cache *cache,
+ 		if (ret < 0) {
+ 			cachefiles_io_error(cache, "Unlink security error");
+ 		} else {
+-			ret = vfs_unlink(dir->d_inode, rep);
++			ret = vfs_unlink(dir->d_inode, rep, NULL);
+ 
+ 			if (preemptive)
+ 				cachefiles_mark_object_buried(cache, rep);
+diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+index 5eab400..af42d88 100644
+--- a/fs/ecryptfs/inode.c
++++ b/fs/ecryptfs/inode.c
+@@ -153,7 +153,7 @@ static int ecryptfs_do_unlink(struct inode *dir, struct dentry *dentry,
+ 
+ 	dget(lower_dentry);
+ 	lower_dir_dentry = lock_parent(lower_dentry);
+-	rc = vfs_unlink(lower_dir_inode, lower_dentry);
++	rc = vfs_unlink(lower_dir_inode, lower_dentry, NULL);
+ 	if (rc) {
+ 		printk(KERN_ERR "Error in vfs_unlink; rc = [%d]\n", rc);
+ 		goto out_unlock;
+diff --git a/fs/namei.c b/fs/namei.c
+index 0c2ee90..6b8698f 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3384,7 +3384,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
+ 	return do_rmdir(AT_FDCWD, pathname);
+ }
+ 
+-int vfs_unlink(struct inode *dir, struct dentry *dentry)
++int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
+ {
+ 	struct inode *target = dentry->d_inode;
+ 	int error = may_delete(dir, dentry, 0);
+@@ -3401,11 +3401,20 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+ 	else {
+ 		error = security_inode_unlink(dir, dentry);
+ 		if (!error) {
++			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
++			if (error) {
++				if (error == -EWOULDBLOCK && delegated_inode) {
++					*delegated_inode = target;
++					ihold(target);
++				}
++				goto out;
++			}
+ 			error = dir->i_op->unlink(dir, dentry);
+ 			if (!error)
+ 				dont_mount(dentry);
+ 		}
  	}
- 	else if (iap->ia_valid & ATTR_ATIME) {
-@@ -1065,8 +1064,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 	if (iap->ia_valid & ATTR_MTIME_SET) {
- 		bmval1 |= FATTR4_WORD1_TIME_MODIFY_SET;
- 		*p++ = cpu_to_be32(NFS4_SET_TO_CLIENT_TIME);
--		*p++ = cpu_to_be32(0);
--		*p++ = cpu_to_be32(iap->ia_mtime.tv_sec);
-+		p = xdr_encode_hyper(p, (s64)iap->ia_mtime.tv_sec);
- 		*p++ = cpu_to_be32(iap->ia_mtime.tv_nsec);
++out:
+ 	mutex_unlock(&target->i_mutex);
+ 
+ 	/* We don't d_delete() NFS sillyrenamed files--they still exist. */
+@@ -3430,6 +3439,7 @@ static long do_unlinkat(int dfd, const char __user *pathname)
+ 	struct dentry *dentry;
+ 	struct nameidata nd;
+ 	struct inode *inode = NULL;
++	struct inode *delegated_inode = NULL;
+ 	unsigned int lookup_flags = 0;
+ retry:
+ 	name = user_path_parent(dfd, pathname, &nd, lookup_flags);
+@@ -3444,7 +3454,7 @@ retry:
+ 	error = mnt_want_write(nd.path.mnt);
+ 	if (error)
+ 		goto exit1;
+-
++retry_deleg:
+ 	mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex, I_MUTEX_PARENT);
+ 	dentry = lookup_hash(&nd);
+ 	error = PTR_ERR(dentry);
+@@ -3459,13 +3469,21 @@ retry:
+ 		error = security_path_unlink(&nd.path, dentry);
+ 		if (error)
+ 			goto exit2;
+-		error = vfs_unlink(nd.path.dentry->d_inode, dentry);
++		error = vfs_unlink(nd.path.dentry->d_inode, dentry, &delegated_inode);
+ exit2:
+ 		dput(dentry);
  	}
- 	else if (iap->ia_valid & ATTR_MTIME) {
+ 	mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
+ 	if (inode)
+ 		iput(inode);	/* truncate the inode here */
++	inode = NULL;
++	if (delegated_inode) {
++		error = break_deleg(delegated_inode, O_WRONLY);
++		iput(delegated_inode);
++		delegated_inode = NULL;
++		if (!error)
++			goto retry_deleg;
++	}
+ 	mnt_drop_write(nd.path.mnt);
+ exit1:
+ 	path_put(&nd.path);
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 2b2e239..b32c66b 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1884,7 +1884,7 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+ 	if (host_err)
+ 		goto out_put;
+ 	if (type != S_IFDIR)
+-		host_err = vfs_unlink(dirp, rdentry);
++		host_err = vfs_unlink(dirp, rdentry, NULL);
+ 	else
+ 		host_err = vfs_rmdir(dirp, rdentry);
+ 	if (!host_err)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 8c78d0d..f2d0194 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1461,7 +1461,7 @@ extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
+ extern int vfs_symlink(struct inode *, struct dentry *, const char *);
+ extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
+ extern int vfs_rmdir(struct inode *, struct dentry *);
+-extern int vfs_unlink(struct inode *, struct dentry *);
++extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
+ extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *);
+ 
+ /*
+diff --git a/ipc/mqueue.c b/ipc/mqueue.c
+index e4e47f6..384eb35 100644
+--- a/ipc/mqueue.c
++++ b/ipc/mqueue.c
+@@ -884,7 +884,7 @@ SYSCALL_DEFINE1(mq_unlink, const char __user *, u_name)
+ 		err = -ENOENT;
+ 	} else {
+ 		ihold(inode);
+-		err = vfs_unlink(dentry->d_parent->d_inode, dentry);
++		err = vfs_unlink(dentry->d_parent->d_inode, dentry, NULL);
+ 	}
+ 	dput(dentry);
+ 
 -- 
-1.8.2.1
+1.7.9.5
 
