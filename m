@@ -1,40 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:7381 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:36520 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935176Ab3DKN2w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Apr 2013 09:28:52 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/1] NFSv4 release the sequence id in the return on close case
-Date: Thu, 11 Apr 2013 09:28:45 -0400
-Message-Id: <1365686925-1112-1-git-send-email-andros@netapp.com>
+	id S935382Ab3DQBqe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Apr 2013 21:46:34 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 03/12] vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
+Date: Tue, 16 Apr 2013 21:46:15 -0400
+Message-Id: <1366163185-10317-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1366163185-10317-1-git-send-email-bfields@redhat.com>
+References: <1366163185-10317-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+I_MUTEX_QUOTA is now just being used whenever we want to lock two
+non-directories.  So the name isn't right.  I_MUTEX_NONDIR2 isn't
+especially elegant but it's the best I could think of.
+
+Also fix some outdated documentation.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/nfs4proc.c |    4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ fs/inode.c         |    4 ++--
+ include/linux/fs.h |    9 ++++++---
+ 2 files changed, 8 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ce87287..36df296 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2276,8 +2276,10 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 	if (calldata->arg.fmode == 0) {
- 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CLOSE];
- 		if (calldata->roc &&
--		    pnfs_roc_drain(inode, &calldata->roc_barrier, task))
-+		    pnfs_roc_drain(inode, &calldata->roc_barrier, task)) {
-+			nfs_release_seqid(calldata->arg.seqid);
- 			goto out_wait;
-+		    }
+diff --git a/fs/inode.c b/fs/inode.c
+index 07af7be..4a00662 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -988,10 +988,10 @@ void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
+ {
+ 	if (inode1 < inode2) {
+ 		mutex_lock(&inode1->i_mutex);
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_QUOTA);
++		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_NONDIR2);
+ 	} else {
+ 		mutex_lock(&inode2->i_mutex);
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_QUOTA);
++		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_NONDIR2);
  	}
+ }
+ EXPORT_SYMBOL(lock_two_nondirectories);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 356c676..6e45aa6 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -620,10 +620,13 @@ static inline int inode_unhashed(struct inode *inode)
+  * 0: the object of the current VFS operation
+  * 1: parent
+  * 2: child/target
+- * 3: quota file
++ * 3: xattr
++ * 4: second non-directory
++ * The last is for certain operations (such as rename) which lock two
++ * non-directories at once.
+  *
+  * The locking order between these classes is
+- * parent -> child -> normal -> xattr -> quota
++ * parent -> child -> normal -> xattr -> second non-directory
+  */
+ enum inode_i_mutex_lock_class
+ {
+@@ -631,7 +634,7 @@ enum inode_i_mutex_lock_class
+ 	I_MUTEX_PARENT,
+ 	I_MUTEX_CHILD,
+ 	I_MUTEX_XATTR,
+-	I_MUTEX_QUOTA
++	I_MUTEX_NONDIR2
+ };
  
- 	nfs_fattr_init(calldata->res.fattr);
+ void lock_two_nondirectories(struct inode *, struct inode*);
 -- 
-1.7.10.2 (Apple Git-33)
+1.7.9.5
 
