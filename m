@@ -1,114 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f49.google.com ([209.85.215.49]:36517 "EHLO
-	mail-la0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755777Ab3DZL7x (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Apr 2013 07:59:53 -0400
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: linux-kernel@vger.kernel.org
-Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wine-devel@winehq.org
-Subject: [PATCH v6 0/7] Add O_DENY* support for VFS and CIFS/NFS
-Date: Fri, 26 Apr 2013 16:04:14 +0400
-Message-Id: <1366977861-27678-1-git-send-email-piastry@etersoft.ru>
+Received: from gw1.transmode.se ([195.58.98.146]:57642 "EHLO gw1.transmode.se"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S966071Ab3DQMDs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Apr 2013 08:03:48 -0400
+In-Reply-To: <1366150010.27817.8.camel@leira.trondhjem.org>
+References: <OF6F031A84.8897519B-ONC1257B4E.002D1BA3-C1257B4E.002DBED0@LocalDomain>		 <OF83CD52DB.8DBE497B-ONC1257B4E.002F8695-C1257B4E.002FBBD0@LocalDomain>
+	 <OF64305930.0F7881A0-ONC1257B4E.0030250F-C1257B4E.00306CEC@LocalDomain>
+	 <OFA06D4153.317BAF9A-ONC1257B4F.002F597B-C1257B4F.003AC46C@transmode.se>
+	 <1366126613.12556.18.camel@leira.trondhjem.org>	 <OFB2555ACD.CF7424A9-ONC1257B4F.00613A5E-C1257B4F.006908CE@transmode.se> <1366150010.27817.8.camel@leira.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+MIME-Version: 1.0
+Subject: Re: NFS loop on 3.4.39
+From: Joakim Tjernlund <joakim.tjernlund@transmode.se>
+Message-ID: <OF16BB01DC.FABF2E5E-ONC1257B50.0042026E-C1257B50.0042434F@transmode.se>
+Date: Wed, 17 Apr 2013 14:03:45 +0200
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Main changes from v5:
-1) O_DENYDELETE is now supported by VFS.
-2) ESHAREDENIED erro code is introduced to be returned on sharelock conflicts.
-3) forcemand dependancy is removed. CIFS module detects if it should use NTCreateAndX command according to existence of O_DENY flags.
-4) Term 'deny lock' is replaced by 'sharelock' (function names, code comments, patch descriptions).
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote on 2013/04/17 
+00:06:51:
+> 
+> On Tue, 2013-04-16 at 21:07 +0200, Joakim Tjernlund wrote:
+> > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote on 2013/04/16 
+> > 17:36:55:
+> > 
+> > > From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+> > > To: Joakim Tjernlund <joakim.tjernlund@transmode.se>, 
+> > > Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+> > > Date: 2013/04/16 17:37
+> > > Subject: Re: NFS loop on 3.4.39
+> > > 
+> > > On Tue, 2013-04-16 at 12:41 +0200, Joakim Tjernlund wrote:
+> > > > Here we go again, this time i happened while browsing the Boston 
+news 
+> > on 
+> > > > www.dn.se
+> > > > Now gvfsd-metadata is turned off(not running at all) and I get:
+> > > > 10:28:44.616146 IP 192.168.201.44.nfs > 172.20.4.10.3671768838: 
+reply 
+> > ok 
+> > > > 52 getattr ERROR: unk 10024
+> > > 
+> > > Part of the reason why you are getting no response to these posts is
+> > > that you are posting tcpdump-decoded data. Tcpdump still has no 
+support
+> > > for NFSv4, and therefore completely garbles the output by trying to
+> > > interpret it as NFSv2/v3.
+> > > In general, if you are posting network traffic, please record it as
+> > > binary raw packet data (using the '-w' option on tcdump) so that we 
+can
+> > > look at the full contents. Either include it as an attachment, or
+> > > provide us with details on how to download it from an http server.
+> > > 
+> > > Other information that is needed in order to make sense of NFS bug
+> > > reports includes:
+> > 
+> > Thank you Trond, I figured there was something missing but I didn't 
+know 
+> > where to start but here goes:
+> > 
+> > > 
+> > > - client OS (non-linux) or kernel version (linux)
+> > Client OS Linux 3.4.39, x86
+> > 
+> > > - mount options on the client
+> > ~ # ypmatch jocke auto.home
+> > -fstype=nfs,soft devsrv:/mnt/home/jocke
+> > 
+> > > - server OS (non-linux) or kernel version (linux)
+> > Server OS Linux 3.4.39, amd64
+> > 
+> > > - type of exported filesystem on the server
+> > XFS
+> > 
+> > > - contents of /etc/exports on the server
+> > more /etc/exports
+> > # /etc/exports: NFS file systems being exported.  See exports(5).
+> > /mnt/home              *(rw,async,root_squash,no_subtree_check)
+> > /mnt/systemtest        *(rw,sync,root_squash,no_subtree_check)
+> > /mnt/TNM               *(rw,sync,root_squash,no_subtree_check)
+> > /tftproot              *(rw,async,root_squash,no_subtree_check)
+> > /mnt/images *(rw,async,no_root_squash,no_subtree_check,insecure)
+> > /rescue *(ro,async,no_root_squash,no_subtree_check,insecure)
+> > 
+> > /mnt/home is the one failing
+> > 
+> > > 
+> > > Please ensure that you always include those in your emails.
+> > 
+> > nfs.pcap: 
+> > http://ftp-us.transmode.se/get/?id=1bf2561ed2e7d4e379b2936319c82c25
+> > 
+> > nfs2.pcap: 
+> > http://ftp-us.transmode.se/get/?id=759c7645248a426720da8e9ba7074040
+> > 
+> > nfs3.pcap: 
+> > http://ftp-us.transmode.se/get/?id=051c6d771978b2407e15e96152bd6e66
+> > 
+> > nfs4.pcap: 
+> > http://ftp-us.transmode.se/get/?id=5dfab4da6cbbe400697bc1621b541c9f
+> > 
+> > nfs3.pcap is the gvsd-metadata problem one can find using google, 
+doesn't 
+> > have to be a NFS problem
+> > The other 3 all come from surfing the www using firefox 17.0.3
+> 
+> The nfs2.pcap file and nfs4.pcap seem to show the server returning
+> NFS4ERR_OLD_STATEID, which usually means that the client has an
+> OPEN/CLOSE/LOCK or LOCKU... in flight and that while the server has
+> updated the stateid, the client has not yet received the reply. The
+> problem is that I see no sign of the OPEN/CLOSE/LOCK/LOCKU...
+> 
+> The nfs.pcap file is resending a load of LOCK requests that are
+> receiving NFS4ERR_BAD_STATEID replies. Normally, I'd expect the recovery
+> engine to kick in and try to recover the OPEN.
+> 
+> So when you do 'ps -efwww', on any of these clients, do you see a
+> process with a name containing the server IP address (192.168.201.44)?
+> 
+> Also, is there anything special in the log when you do 'dmesg -s 90000'?
 
-Main changes from v4:
-1) deny_lock_file uses FS_DOES_SHARELOCK flag from fs_flags to determine whether to use VFS locks or not.
-2) Make nfs code return -EBUSY for share conflicts (was -EACCESS).
+ATM, I cannot reproduce the NFS problem. Don't know what to about it.
+If it happens again I can start tcpdump but I guess you will
+miss the initial NFS traffic again in that case.
 
-Main changes from v3
-1) O_DENYMAND is removed, sharelock mount option is introduced.
-2) Patch fcntl.h and VFS patches are united into one.
-3) flock/LOCK_MAND is disabled for sharelock mounts.
-
-This patchset adds support of O_DENY* flags for Linux fs layer. These flags can be used by any application that needs share reservations to organize a file access. VFS already has some sort of this capability - now it's done through flock/LOCK_MAND mechanis, but that approach is non-atomic. This patchset build new capabilities on top of the existing one but doesn't bring any changes into the flock call semantic.
-
-These flags can be used by NFS (built-in-kernel) and CIFS (Samba) servers and Wine applications through VFS (for local filesystems) or CIFS/NFS modules. This will help when e.g. Samba and NFS server share the same directory for Windows and Linux users or Wine applications use Samba/NFS share to access the same data from different clients.
-
-According to the previous discussions the most problematic question is how to prevent situations like DoS attacks where e.g /lib/liba.so file can be open with DENYREAD, or smth like this. That's why extra mount option 'sharelock' is added for switching on/off O_DENY* flags processing. It allows us to avoid use of these flags on critical places (like /, /lib) and turn them on if we really want it proccessed that way.
-
-So, we have 3 new flags:
-O_DENYREAD - to prevent other opens with read access,
-O_DENYWRITE - to prevent other opens with write access,
-O_DENYDELETE - to prevent delete operations (this flag is not implemented in VFS and NFS part and only suitable for CIFS module),
-
-The patchset avoid data races problem on newely created files: open with O_CREAT can return the -ETXTBSY error for a successfully created file if this files was locked with a sharelock by another task. Also, it turns flock/LOCK_MAND capability off for mounts with 'sharelock' option. This lets us not mix one share reservation approach with another.
-
-The #1 patch adds flags to fcntl and implements VFS part. The patches #3, #4, #5 are related to CIFS-specific changes, #6 and #7 describe NFS and NFSD parts.
-
-The preliminary patch for Samba that replaces the existing use of flock/LOCK_MAND mechanism with O_DENY* flags:
-http://git.etersoft.ru/people/piastry/packages/?p=samba.git;a=commitdiff;h=173070262b7f29134ad6b2e49a760017c11aec4a
-
-The future part of open man page patch:
-
------
-O_DENYREAD, O_DENYWRIYE, O_DENYDELETE - used to inforce a mandatory share reservation scheme of the file access. If these flag is passed, the open fails with -ESHAREDENIED in following cases:
-1) if O_DENYREAD flag is specified and there is another open with READ access to the file;
-2) if O_DENYWRITE flag is specified and there is another open with WRITE access to the file;
-3) if READ access is requested and there is another open with O_DENYREAD flags;
-4) if WRITE access is requested and there is another open with O_DENYWRITE flags.
-
-If O_DENYDELETE flag is specified and the open succeded, any further unlink operation will fail with -ESHAREDENIED untill this open is closed. Now this flag is processed by VFS and CIFS filesystem.
-
-This mechanism is done through flocks. If O_DENY* flags are specified, flock syscall is processed after the open. The share modes are translated into flock according the following rules:
-1) !O_DENYREAD   -> LOCK_READ   | LOCK_MAND
-2) !O_DENYWRITE  -> LOCK_WRITE  | LOCK_MAND
-3) !O_DENYDELETE -> LOCK_DELETE | LOCK_MAND
------
-
-Pavel Shilovsky (7):
-  VFS: Introduce new O_DENY* open flags
-  VFS: Add O_DENYDELETE support for VFS
-  CIFS: Add share_access parm to open request
-  CIFS: Add O_DENY* open flags support
-  NFSv4: Add O_DENY* open flags support
-  NFSD: Pass share reservations flags to VFS
-  locks: Disable LOCK_MAND support for MS_SHARELOCK mounts
-
- fs/cifs/cifsacl.c                |   8 +-
- fs/cifs/cifsfs.c                 |   2 +-
- fs/cifs/cifsglob.h               |  18 ++++-
- fs/cifs/cifsproto.h              |   8 +-
- fs/cifs/cifssmb.c                |  50 +++++++------
- fs/cifs/dir.c                    |  16 ++--
- fs/cifs/file.c                   |  25 +++++--
- fs/cifs/inode.c                  |  21 +++---
- fs/cifs/link.c                   |  25 ++-----
- fs/cifs/netmisc.c                |   2 +-
- fs/cifs/readdir.c                |   5 +-
- fs/cifs/smb1ops.c                |  16 ++--
- fs/cifs/smb2file.c               |  10 +--
- fs/cifs/smb2inode.c              |   4 +-
- fs/cifs/smb2maperror.c           |   2 +-
- fs/cifs/smb2ops.c                |  10 ++-
- fs/cifs/smb2pdu.c                |   6 +-
- fs/cifs/smb2proto.h              |  14 ++--
- fs/fcntl.c                       |   5 +-
- fs/locks.c                       | 158 ++++++++++++++++++++++++++++++++++++---
- fs/namei.c                       |  48 +++++++++++-
- fs/nfs/dir.c                     |   4 +
- fs/nfs/internal.h                |   3 +-
- fs/nfs/nfs4file.c                |   4 +
- fs/nfs/nfs4proc.c                |   4 +-
- fs/nfs/nfs4super.c               |   9 ++-
- fs/nfs/nfs4xdr.c                 |  21 +++++-
- fs/nfs/super.c                   |   7 +-
- fs/nfsd/nfs4state.c              |  46 +++++++++++-
- fs/nfsd/nfsproc.c                |   1 +
- fs/proc_namespace.c              |   1 +
- include/linux/fs.h               |  14 ++++
- include/uapi/asm-generic/errno.h |   2 +
- include/uapi/asm-generic/fcntl.h |  12 +++
- include/uapi/linux/fs.h          |   1 +
- 35 files changed, 443 insertions(+), 139 deletions(-)
-
--- 
-1.8.1.5
-
+ Jocke
