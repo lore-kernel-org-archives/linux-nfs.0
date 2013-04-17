@@ -1,202 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f170.google.com ([74.125.82.170]:45804 "EHLO
-	mail-we0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934043Ab3DKKWd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Apr 2013 06:22:33 -0400
-Received: by mail-we0-f170.google.com with SMTP id z2so1094718wey.15
-        for <linux-nfs@vger.kernel.org>; Thu, 11 Apr 2013 03:22:31 -0700 (PDT)
-Message-ID: <51668EE4.20901@tonian.com>
-Date: Thu, 11 Apr 2013 13:22:28 +0300
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: fanchaoting <fanchaoting@cn.fujitsu.com>
-CC: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v1 2/2] pnfsd-block: block layout should cleanup when
- register nfsd filesystem error
-References: <5152AEE8.8020607@cn.fujitsu.com> <5152D277.2040103@cn.fujitsu.com>
-In-Reply-To: <5152D277.2040103@cn.fujitsu.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:60001 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S936095Ab3DQBqj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Apr 2013 21:46:39 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Tyler Hicks <tyhicks@canonical.com>,
+        Dustin Kirkland <dustin.kirkland@gazzang.com>
+Subject: [PATCH 11/12] locks: break delegations on link
+Date: Tue, 16 Apr 2013 21:46:23 -0400
+Message-Id: <1366163185-10317-12-git-send-email-bfields@redhat.com>
+In-Reply-To: <1366163185-10317-1-git-send-email-bfields@redhat.com>
+References: <1366163185-10317-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-03-27 13:05, fanchaoting wrote:
-> this patch can fix:
-> 
-> 1. remove /proc/fs/pnfs_block when create /proc/fs/pnfs_block/ctl
->    error.
-> 
-> 2. cleanup /proc/fs/pnfs_block and /proc/fs/pnfs_block/ctl when
->    register nfsd filesystem error.
-> 3. we can't use proc file when CONFIG_PROC_FS is not set.
->  
->  Signed-off-by: fanchaoting <fanchaoting@cn.fujitsu.com>
->  Reviewed-by: chendt.fnst <chendt.fnst@cn.fujitsu.com>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Merged into the pnfsd-block branch.
-One question though: why do you need the #if defined(CONFIG_PNFSD_BLOCK)
-in bl_com.c?
-The file is compiled conditionally on that same config variable in
-fs/nfsd/Makefile.
+Cc: Tyler Hicks <tyhicks@canonical.com>
+Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/ecryptfs/inode.c |    2 +-
+ fs/namei.c          |   17 +++++++++++++----
+ fs/nfsd/vfs.c       |    2 +-
+ include/linux/fs.h  |    2 +-
+ 4 files changed, 16 insertions(+), 7 deletions(-)
 
-Thanks,
+diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+index af42d88..19e4435 100644
+--- a/fs/ecryptfs/inode.c
++++ b/fs/ecryptfs/inode.c
+@@ -475,7 +475,7 @@ static int ecryptfs_link(struct dentry *old_dentry, struct inode *dir,
+ 	dget(lower_new_dentry);
+ 	lower_dir_dentry = lock_parent(lower_new_dentry);
+ 	rc = vfs_link(lower_old_dentry, lower_dir_dentry->d_inode,
+-		      lower_new_dentry);
++		      lower_new_dentry, NULL);
+ 	if (rc || !lower_new_dentry->d_inode)
+ 		goto out_lock;
+ 	rc = ecryptfs_interpose(lower_new_dentry, new_dentry, dir->i_sb);
+diff --git a/fs/namei.c b/fs/namei.c
+index 394ea5f..4ad5a0e 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3566,7 +3566,7 @@ SYSCALL_DEFINE2(symlink, const char __user *, oldname, const char __user *, newn
+ 	return sys_symlinkat(oldname, AT_FDCWD, newname);
+ }
+ 
+-int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry)
++int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry, struct inode **delegated_inode)
+ {
+ 	struct inode *inode = old_dentry->d_inode;
+ 	unsigned max_links = dir->i_sb->s_max_links;
+@@ -3602,8 +3602,11 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
+ 		error =  -ENOENT;
+ 	else if (max_links && inode->i_nlink >= max_links)
+ 		error = -EMLINK;
+-	else
+-		error = dir->i_op->link(old_dentry, dir, new_dentry);
++	else {
++		error = try_break_deleg(inode, delegated_inode);
++		if (!error)
++			error = dir->i_op->link(old_dentry, dir, new_dentry);
++	}
+ 	mutex_unlock(&inode->i_mutex);
+ 	if (!error)
+ 		fsnotify_link(dir, inode, new_dentry);
+@@ -3624,6 +3627,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
+ {
+ 	struct dentry *new_dentry;
+ 	struct path old_path, new_path;
++	struct inode *delegated_inode = NULL;
+ 	int how = 0;
+ 	int error;
+ 
+@@ -3662,9 +3666,14 @@ retry:
+ 	error = security_path_link(old_path.dentry, &new_path, new_dentry);
+ 	if (error)
+ 		goto out_dput;
+-	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry);
++	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry, &delegated_inode);
+ out_dput:
+ 	done_path_create(&new_path, new_dentry);
++	if (delegated_inode) {
++		error = break_deleg_wait(&delegated_inode);
++		if (!error)
++			goto retry;
++	}
+ 	if (retry_estale(error, how)) {
+ 		how |= LOOKUP_REVAL;
+ 		goto retry;
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 407e11c..64255a0 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1708,7 +1708,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
+ 		err = nfserrno(host_err);
+ 		goto out_dput;
+ 	}
+-	host_err = vfs_link(dold, dirp, dnew);
++	host_err = vfs_link(dold, dirp, dnew, NULL);
+ 	if (!host_err) {
+ 		err = nfserrno(commit_metadata(ffhp));
+ 		if (!err)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 86b94bc..0244cb1 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1459,7 +1459,7 @@ extern int vfs_create(struct inode *, struct dentry *, umode_t, bool);
+ extern int vfs_mkdir(struct inode *, struct dentry *, umode_t);
+ extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
+ extern int vfs_symlink(struct inode *, struct dentry *, const char *);
+-extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
++extern int vfs_link(struct dentry *, struct inode *, struct dentry *, struct inode **);
+ extern int vfs_rmdir(struct inode *, struct dentry *);
+ extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
+ extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **);
+-- 
+1.7.9.5
 
-Benny
-
-> 
-> ---
-> 
-> ---
->  fs/nfsd/bl_com.c      |   21 ++++++++++++++++++---
->  fs/nfsd/bl_ops.c      |    5 +++--
->  fs/nfsd/nfsctl.c      |    7 +++++--
->  fs/nfsd/nfsd4_block.h |   12 ++++++++++--
->  4 files changed, 36 insertions(+), 9 deletions(-)
-> 
-> diff --git a/fs/nfsd/bl_com.c b/fs/nfsd/bl_com.c
-> index 39aac40..2fc74d6 100644
-> --- a/fs/nfsd/bl_com.c
-> +++ b/fs/nfsd/bl_com.c
-> @@ -1,3 +1,4 @@
-> +#if defined(CONFIG_PNFSD_BLOCK)
-
-Why?
-
-Benny
-
->  #include <linux/module.h>
->  #include <linux/mutex.h>
->  #include <linux/init.h>
-> @@ -271,19 +272,33 @@ static struct file_operations ctl_ops = {
->   * more nodes doesn't present itself shortly this code should revert
->   * to a single top level node. McNeal 11-Aug-2008.
->   */
-> +#if defined(CONFIG_PROC_FS)
-> +
->  int
->  bl_init_proc(void)
->  {
->  	struct proc_dir_entry *e;
->  
-> -	e = proc_mkdir("fs/pnfs_block", NULL);
-> -	if (!e)
-> +	pnfs_block_entry = proc_mkdir("fs/pnfs_block", NULL);
-> +	if (!pnfs_block_entry)
->  		return -ENOMEM;
->  
->  	e = create_proc_entry("fs/pnfs_block/ctl", 0, NULL);
-> -	if (!e)
-> +	if (!e) {
-> +		remove_proc_entry("fs/pnfs_block", NULL);
->  		return -ENOMEM;
-> +	}
->  	e->proc_fops = &ctl_ops;
->  
->  	return 0;
->  }
-> +
-> +void
-> +bl_cleanup_proc(void)
-> +{
-> +	remove_proc_entry("fs/pnfs_block/ctl", NULL);
-> +	remove_proc_entry("fs/pnfs_block", NULL);
-> +}
-> +
-> +#endif /*CONFIG_PROC_FS*/
-> +#endif /*CONFIG_PNFSD_BLOCK*/
-> diff --git a/fs/nfsd/bl_ops.c b/fs/nfsd/bl_ops.c
-> index a7046c6..74a5f6b 100644
-> --- a/fs/nfsd/bl_ops.c
-> +++ b/fs/nfsd/bl_ops.c
-> @@ -120,17 +120,18 @@ static boolean_t extents_process(struct fiemap_extent_info *fei,
->      u64 sbid, dev_t dev, pnfs_blocklayout_layout_t *b);
->  static void extents_cleanup(struct fiemap_extent_info *fei);
->  
-> -void
-> +int
->  nfsd_bl_init(void)
->  {
->  	int	i;
-> +
->  	dprintk("%s loaded\n", __func__);
->  
->  	spin_lock_init(&layout_hashtbl_lock);
->  	INIT_LIST_HEAD(&layout_hash);
->  	for (i = 0; i < BL_LAYOUT_HASH_SIZE; i++)
->  		INIT_LIST_HEAD(&layout_hashtbl[i]);
-> -	bl_init_proc();
-> +	return bl_init_proc();
->  }
->  
->  /*
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 61a61e7..5fe7f52 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -1204,8 +1204,9 @@ static int create_proc_exports_entry(void)
->  static int __init init_nfsd(void)
->  {
->  	int retval;
-> -	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
-> +	int bl_retval;
->  
-> +	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
->  	retval = nfsd4_init_slabs();
->  	if (retval)
->  		return retval;
-> @@ -1227,7 +1228,7 @@ static int __init init_nfsd(void)
->  	retval = create_proc_exports_entry();
->  	if (retval)
->  		goto out_free_idmap;
-> -	nfsd_bl_init();
-> +	bl_retval = nfsd_bl_init();
->  
->  	retval = register_filesystem(&nfsd_fs_type);
->  	if (retval)
-> @@ -1236,6 +1237,8 @@ static int __init init_nfsd(void)
->  out_free_all:
->  	remove_proc_entry("fs/nfs/exports", NULL);
->  	remove_proc_entry("fs/nfs", NULL);
-> +	if (!bl_retval)
-> +		bl_cleanup_proc();
->  out_free_idmap:
->  	nfsd_idmap_shutdown();
->  out_free_lockd:
-> diff --git a/fs/nfsd/nfsd4_block.h b/fs/nfsd/nfsd4_block.h
-> index f79c779..5872b4d 100644
-> --- a/fs/nfsd/nfsd4_block.h
-> +++ b/fs/nfsd/nfsd4_block.h
-> @@ -78,7 +78,7 @@ typedef struct bl_comm {
->  #ifdef CONFIG_PNFSD_BLOCK
->  
->  bool pnfs_block_enabled(struct inode *, int ex_flags);
-> -void nfsd_bl_init(void);
-> +int nfsd_bl_init(void);
->  int bl_layout_type(struct super_block *sb);
->  int bl_getdeviceiter(struct super_block *, u32 layout_type,
->  		     struct nfsd4_pnfs_dev_iter_res *);
-> @@ -94,7 +94,13 @@ int bl_layoutcommit(struct inode *,
->  int bl_layoutreturn(struct inode *,
->  		    const struct nfsd4_pnfs_layoutreturn_arg *);
->  int bl_layoutrecall(struct inode *inode, int type, u64 offset, u64 len, bool with_nfs4_state_lock);
-> +#ifdef CONFIG_PROC_FS
-> +
->  int bl_init_proc(void);
-> +void bl_cleanup_proc(void);
-> +
-> +#endif
-> +
->  int bl_upcall(bl_comm_t *, bl_comm_msg_t *, bl_comm_res_t **);
->  
->  
-> @@ -112,7 +118,9 @@ extern bl_comm_t	*bl_comm_global;	// Ugly...
->  #else
->  
->  static inline bool pnfs_block_enabled(struct inode *i, int ex_flags) { return false; }
-> -static inline void nfsd_bl_init(void) {}
-> +static inline int nfsd_bl_init(void) {return false; }
-> +static inline int bl_init_proc(void) {return false; }
-> +static inline void bl_cleanup_proc(void) {}
->  
->  static inline int bl_recall_layout(struct inode *inode, int type, u64 offset,
->  				   u64 len, bool with_nfs4_state_lock)
-> 
