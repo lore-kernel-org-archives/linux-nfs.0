@@ -1,83 +1,152 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34506 "EHLO fieldses.org"
+Received: from gw1.transmode.se ([195.58.98.146]:59321 "EHLO gw1.transmode.se"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753287Ab3DLWGq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Apr 2013 18:06:46 -0400
-Date: Fri, 12 Apr 2013 18:06:42 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1755895Ab3DRMeI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Apr 2013 08:34:08 -0400
+In-Reply-To: <1366150010.27817.8.camel@leira.trondhjem.org>
+References: <OF6F031A84.8897519B-ONC1257B4E.002D1BA3-C1257B4E.002DBED0@LocalDomain>		 <OF83CD52DB.8DBE497B-ONC1257B4E.002F8695-C1257B4E.002FBBD0@LocalDomain>
+	 <OF64305930.0F7881A0-ONC1257B4E.0030250F-C1257B4E.00306CEC@LocalDomain>
+	 <OFA06D4153.317BAF9A-ONC1257B4F.002F597B-C1257B4F.003AC46C@transmode.se>
+	 <1366126613.12556.18.camel@leira.trondhjem.org>	 <OFB2555ACD.CF7424A9-ONC1257B4F.00613A5E-C1257B4F.006908CE@transmode.se> <1366150010.27817.8.camel@leira.trondhjem.org>
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "nfsv4@ietf.org" <nfsv4@ietf.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfsv4] unsupported mandatory server features
-Message-ID: <20130412220642.GQ7081@fieldses.org>
-References: <20130412210100.GP7081@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA92871330A@SACEXCMBX04-PRD.hq.netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA92871330A@SACEXCMBX04-PRD.hq.netapp.com>
+Subject: Re: NFS loop on 3.4.39
+From: Joakim Tjernlund <joakim.tjernlund@transmode.se>
+Message-ID: <OF97D68E61.A3C35530-ONC1257B51.0043E567-C1257B51.0045096A@transmode.se>
+Date: Thu, 18 Apr 2013 14:34:03 +0200
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 12, 2013 at 09:49:39PM +0000, Myklebust, Trond wrote:
-> > -----Original Message-----
-> > From: nfsv4-bounces@ietf.org [mailto:nfsv4-bounces@ietf.org] On Behalf
-> > Of J. Bruce Fields
-> > Sent: Friday, April 12, 2013 5:01 PM
-> > To: nfsv4@ietf.org
-> > Cc: linux-nfs@vger.kernel.org
-> > Subject: [nfsv4] unsupported mandatory server features
-> > 
-> > I'm expecting to turn on basic 4.1 support by default on the Linux server
-> > before supporting two mandatory 4.1 features, and looking for advice on
-> > handling that without too much pain to future clients.  I suspect I'm not the
-> > only server in this situation; anyone know what others are doing?
-> > 
-> > The features are:
-> > 
-> > 	- State protection (SSV and MACH_CRED): I'm currently returning
-> > 	  SERVERFAULT on EXCHANGE_ID's that request this, but this isn't
-> > 	  really what SERVERFAULT is for.
-> > 
-> > 	  I'm inclined to switch to ENC_ALG_UNSUPP; that leaves future
-> > 	  clients unable to distinguish between servers lacking SSV
-> > 	  entirely from those lacking support for a particular
-> > 	  algorithm, but in practice I think they'd handle both in the
-> > 	  same way anyway.
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote on 2013/04/17 
+00:06:51:
 > 
-> Why not just reply with NFS4ERR_ENC_ALG_UNSUPP for SP4_SSV (as you suggest) and return an empty spo_must_allow, and minimal spo_must_enforce sets for SP4_MACH_CRED?
-> 
-> By minimal spo_must_enforce, I mean EXCHANGE_ID, CREATE_SESSION, DESTROY_SESSION, BIND_CONN_TO_SESSION, and DESTROY_CLIENTID. I'm assuming that you default to checking the principal name for those anyway since NFSv4 requires it for the corresponding SETCLIENTID/CONFIRM?
-
-Yes, I think you're right, I'll try that now!
-
-> 
-> > 	- GSS on the backchannel: currently CREATE_SESSION or
-> > 	  BACKCHANNEL_CTL will succeed but SEQUENCE will start returning
-> > 	  with the CB_DOWN flag set.  I would rather return an error
-> > 	  immediately than make the client guess what's going on in
-> > 	  recovery.
+> On Tue, 2013-04-16 at 21:07 +0200, Joakim Tjernlund wrote:
+> > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote on 2013/04/16 
+> > 17:36:55:
 > > 
-> > 	  Could I get away with returning ENC_ALG_UNSUPP here too?  It's
-> > 	  not entirely logical, but it's also currently illegal for
-> > 	  these two operations so its use wouldn't be confused with some
-> > 	  other.
+> > > From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+> > > To: Joakim Tjernlund <joakim.tjernlund@transmode.se>, 
+> > > Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+> > > Date: 2013/04/16 17:37
+> > > Subject: Re: NFS loop on 3.4.39
+> > > 
+> > > On Tue, 2013-04-16 at 12:41 +0200, Joakim Tjernlund wrote:
+> > > > Here we go again, this time i happened while browsing the Boston 
+news 
+> > on 
+> > > > www.dn.se
+> > > > Now gvfsd-metadata is turned off(not running at all) and I get:
+> > > > 10:28:44.616146 IP 192.168.201.44.nfs > 172.20.4.10.3671768838: 
+reply 
+> > ok 
+> > > > 52 getattr ERROR: unk 10024
+> > > 
+> > > Part of the reason why you are getting no response to these posts is
+> > > that you are posting tcpdump-decoded data. Tcpdump still has no 
+support
+> > > for NFSv4, and therefore completely garbles the output by trying to
+> > > interpret it as NFSv2/v3.
+> > > In general, if you are posting network traffic, please record it as
+> > > binary raw packet data (using the '-w' option on tcdump) so that we 
+can
+> > > look at the full contents. Either include it as an attachment, or
+> > > provide us with details on how to download it from an http server.
+> > > 
+> > > Other information that is needed in order to make sense of NFS bug
+> > > reports includes:
+> > 
+> > Thank you Trond, I figured there was something missing but I didn't 
+know 
+> > where to start but here goes:
+> > 
+> > > 
+> > > - client OS (non-linux) or kernel version (linux)
+> > Client OS Linux 3.4.39, x86
+> > 
+> > > - mount options on the client
+> > ~ # ypmatch jocke auto.home
+> > -fstype=nfs,soft devsrv:/mnt/home/jocke
+> > 
+> > > - server OS (non-linux) or kernel version (linux)
+> > Server OS Linux 3.4.39, amd64
+> > 
+> > > - type of exported filesystem on the server
+> > XFS
+> > 
+> > > - contents of /etc/exports on the server
+> > more /etc/exports
+> > # /etc/exports: NFS file systems being exported.  See exports(5).
+> > /mnt/home              *(rw,async,root_squash,no_subtree_check)
+> > /mnt/systemtest        *(rw,sync,root_squash,no_subtree_check)
+> > /mnt/TNM               *(rw,sync,root_squash,no_subtree_check)
+> > /tftproot              *(rw,async,root_squash,no_subtree_check)
+> > /mnt/images *(rw,async,no_root_squash,no_subtree_check,insecure)
+> > /rescue *(ro,async,no_root_squash,no_subtree_check,insecure)
+> > 
+> > /mnt/home is the one failing
+> > 
+> > > 
+> > > Please ensure that you always include those in your emails.
+> > 
+> > nfs.pcap: 
+> > http://ftp-us.transmode.se/get/?id=1bf2561ed2e7d4e379b2936319c82c25
+> > 
+> > nfs2.pcap: 
+> > http://ftp-us.transmode.se/get/?id=759c7645248a426720da8e9ba7074040
+> > 
+> > nfs3.pcap: 
+> > http://ftp-us.transmode.se/get/?id=051c6d771978b2407e15e96152bd6e66
+> > 
+> > nfs4.pcap: 
+> > http://ftp-us.transmode.se/get/?id=5dfab4da6cbbe400697bc1621b541c9f
+> > 
+> > nfs3.pcap is the gvsd-metadata problem one can find using google, 
+doesn't 
+> > have to be a NFS problem
+> > The other 3 all come from surfing the www using firefox 17.0.3
 > 
-> Why not return NFS4ERR_NOENT to tell the client that the handle does not exist?
+> The nfs2.pcap file and nfs4.pcap seem to show the server returning
+> NFS4ERR_OLD_STATEID, which usually means that the client has an
+> OPEN/CLOSE/LOCK or LOCKU... in flight and that while the server has
+> updated the stateid, the client has not yet received the reply. The
+> problem is that I see no sign of the OPEN/CLOSE/LOCK/LOCKU...
+> 
+> The nfs.pcap file is resending a load of LOCK requests that are
+> receiving NFS4ERR_BAD_STATEID replies. Normally, I'd expect the recovery
+> engine to kick in and try to recover the OPEN.
+> 
+> So when you do 'ps -efwww', on any of these clients, do you see a
+> process with a name containing the server IP address (192.168.201.44)?
+> 
+> Also, is there anything special in the log when you do 'dmesg -s 90000'?
 
-Imagine a client and server both support gss on the backchannel.  The
-most likely cause I can think of (bugs aside) for a NFS4ERR_NOENT return
-in that case is that the server just purged that context from its cache
-for some reason.  It would then seem reasonable for the client to
-attempt to recover by establishing a new context and resending with the
-new handle.
+Of course this happened again while I wasn't looking so I don't know what
+caused it, probably firefox though.
 
-How would the client distinguish between that case and "sorry, gss on
-the backchannel will never work"?
+There is nothing in dmesg and ps -efwww has no hit on IP
+address 192.168.201.44, the closest I can get is:
+ ps -efwww | grep nfs
+root       568     2  0 Apr16 ?        00:00:00 [nfsiod]
+root      2440     2  0 Apr16 ?        00:00:00 [nfsd4]
+root      2441     2  0 Apr16 ?        00:00:00 [nfsd4_callbacks]
+root      2442     2  0 Apr16 ?        00:00:00 [nfsd]
+root      2443     2  0 Apr16 ?        00:00:00 [nfsd]
+root      2444     2  0 Apr16 ?        00:00:00 [nfsd]
+root      2445     2  0 Apr16 ?        00:00:00 [nfsd]
+root      2446     2  0 Apr16 ?        00:00:00 [nfsd]
+root      2447     2  0 Apr16 ?        00:00:00 [nfsd]
+root      2448     2  0 Apr16 ?        00:00:00 [nfsd]
+root      2449     2  0 Apr16 ?        00:00:00 [nfsd]
+root      2667     2  0 Apr16 ?        00:00:00 [nfsv4.0-svc]
+jocke    27048 26888  0 14:28 pts/3    00:00:00 grep --colour=auto nfs
 
-I guess if the server was replying NOENT to a handle over which that
-very call was sent then maybe it'd be safe for the client to assume the
-latter case.
+Got a new pcap file also:
+http://ftp-us.transmode.se/get/?id=6f935e1d7e105d01e9a5b907c6493521 
+nfs5.pcap 
 
-It seems a little subtle.
+The load is not that noticeable so I can stay in this mode a while, until 
+I go home today.
 
---b.
+ Jocke
