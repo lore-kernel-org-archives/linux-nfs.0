@@ -1,38 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:57430 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753472Ab3DSSwa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Apr 2013 14:52:30 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com, bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/2] 64bit time fixes
-Date: Fri, 19 Apr 2013 14:52:25 -0400
-Message-Id: <1366397547-14639-1-git-send-email-bjschuma@netapp.com>
+Received: from sjdciscan02.udc.trendmicro.com ([66.180.82.18]:58048 "EHLO
+	sjdciscan02.udc.trendmicro.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S965179Ab3DRDcL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Apr 2013 23:32:11 -0400
+From: "yongjun_wei@trendmicro.com.cn" <yongjun_wei@trendmicro.com.cn>
+To: Wei Yongjun <weiyj.lk@gmail.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "ebiederm@xmission.com" <ebiederm@xmission.com>,
+        "skinsbursky@parallels.com" <skinsbursky@parallels.com>,
+        "jlayton@redhat.com" <jlayton@redhat.com>,
+        "simo@redhat.com" <simo@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: [PATCH] svcauth_gss: fix error return code in rsc_parse()
+Date: Thu, 18 Apr 2013 03:01:29 +0000
+Message-ID: <A360F954C61C69449463B0606663711259EE5457@CDCEXMBX01.tw.trendnet.org>
+References: <CAPgLHd92VAMpeRhdmWSy_SdPwJqeVPDike6pCyV9b_WEPmK0gg@mail.gmail.com>
+In-Reply-To: <CAPgLHd92VAMpeRhdmWSy_SdPwJqeVPDike6pCyV9b_WEPmK0gg@mail.gmail.com>
+Content-Type: text/plain;
+	charset="gb2312"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-
-xfstests generic/258 attempts to set atime of a file to a value before the
-unix epoch by running touch -t 196001010101.  I found that both the client
-and the server were zero-filling the first 32bits rather than sending the
-correct 64bit time value during a setattr.  These patches fix this on both
-the client and the server.
-
-Questions?  Comments?
-
-- Bryan
-
-Bryan Schumaker (2):
-  nfs: Send atime and mtime as a 64bit value
-  nfsd: Decode and send 64bit time values
-
- fs/nfs/nfs4xdr.c  |  6 ++----
- fs/nfsd/nfs4xdr.c | 19 +++++--------------
- 2 files changed, 7 insertions(+), 18 deletions(-)
-
--- 
-1.8.2.1
+U29ycnksIG15IG1haWwgc2VydmVyIGdvdCBzb21ldGhpbmcgd3JvbmcsIHRob3NlIG1haWwgd2l0
+aCB0aXRsZQ0KJ1tQQVRDSF0gc3ZjYXV0aF9nc3M6IGZpeCBlcnJvciByZXR1cm4gY29kZSBpbiBy
+c2NfcGFyc2UoKScgYXJlIGFsbCB0aGUgc2FtZSwganVzdA0KZHVwIHNlbnQgYnkgdGhlIG1haWwg
+c2VydmVyLg0KDQpSZWdhcmRzLA0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTog
+V2VpIFlvbmdqdW4gW21haWx0bzp3ZWl5ai5sa0BnbWFpbC5jb21dIA0KU2VudDogMjAxM8TqNNTC
+MTjI1SAxMDo0OQ0KVG86IGJmaWVsZHNAZmllbGRzZXMub3JnOyBUcm9uZC5NeWtsZWJ1c3RAbmV0
+YXBwLmNvbTsgZWJpZWRlcm1AeG1pc3Npb24uY29tOyBza2luc2J1cnNreUBwYXJhbGxlbHMuY29t
+OyBqbGF5dG9uQHJlZGhhdC5jb207IHNpbW9AcmVkaGF0LmNvbQ0KQ2M6IFlvbmdqdW4gV2VpIChS
+RC1DTik7IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNClN1YmplY3Q6IFtQQVRDSF0gc3ZjYXV0
+aF9nc3M6IGZpeCBlcnJvciByZXR1cm4gY29kZSBpbiByc2NfcGFyc2UoKQ0KDQpGcm9tOiBXZWkg
+WW9uZ2p1biA8eW9uZ2p1bl93ZWlAdHJlbmRtaWNyby5jb20uY24+DQoNCkZpeCB0byByZXR1cm4g
+YSBuZWdhdGl2ZSBlcnJvciBjb2RlIGZyb20gdGhlIGVycm9yIGhhbmRsaW5nIGNhc2UgaW5zdGVh
+ZCBvZiAwLCBhcyByZXR1cm5lZCBlbHNld2hlcmUgaW4gdGhpcyBmdW5jdGlvbi4NCg0KU2lnbmVk
+LW9mZi1ieTogV2VpIFlvbmdqdW4gPHlvbmdqdW5fd2VpQHRyZW5kbWljcm8uY29tLmNuPg0KLS0t
+DQogbmV0L3N1bnJwYy9hdXRoX2dzcy9zdmNhdXRoX2dzcy5jIHwgNCArKystDQogMSBmaWxlIGNo
+YW5nZWQsIDMgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbigtKQ0KDQpkaWZmIC0tZ2l0IGEvbmV0
+L3N1bnJwYy9hdXRoX2dzcy9zdmNhdXRoX2dzcy5jIGIvbmV0L3N1bnJwYy9hdXRoX2dzcy9zdmNh
+dXRoX2dzcy5jDQppbmRleCA1ZWFkNjA1Li5jMjE1NmZiIDEwMDY0NA0KLS0tIGEvbmV0L3N1bnJw
+Yy9hdXRoX2dzcy9zdmNhdXRoX2dzcy5jDQorKysgYi9uZXQvc3VucnBjL2F1dGhfZ3NzL3N2Y2F1
+dGhfZ3NzLmMNCkBAIC01MDUsOCArNTA1LDEwIEBAIHN0YXRpYyBpbnQgcnNjX3BhcnNlKHN0cnVj
+dCBjYWNoZV9kZXRhaWwgKmNkLA0KIAkJbGVuID0gcXdvcmRfZ2V0KCZtZXNnLCBidWYsIG1sZW4p
+Ow0KIAkJaWYgKGxlbiA+IDApIHsNCiAJCQlyc2NpLmNyZWQuY3JfcHJpbmNpcGFsID0ga3N0cmR1
+cChidWYsIEdGUF9LRVJORUwpOw0KLQkJCWlmICghcnNjaS5jcmVkLmNyX3ByaW5jaXBhbCkNCisJ
+CQlpZiAoIXJzY2kuY3JlZC5jcl9wcmluY2lwYWwpIHsNCisJCQkJc3RhdHVzID0gLUVOT01FTTsN
+CiAJCQkJZ290byBvdXQ7DQorCQkJfQ0KIAkJfQ0KIA0KIAl9DQoNCg0KPHRhYmxlIGNsYXNzPSJU
+TV9FTUFJTF9OT1RJQ0UiPjx0cj48dGQ+PHByZT4NClRSRU5EIE1JQ1JPIEVNQUlMIE5PVElDRQ0K
+VGhlIGluZm9ybWF0aW9uIGNvbnRhaW5lZCBpbiB0aGlzIGVtYWlsIGFuZCBhbnkgYXR0YWNobWVu
+dHMgaXMgY29uZmlkZW50aWFsIA0KYW5kIG1heSBiZSBzdWJqZWN0IHRvIGNvcHlyaWdodCBvciBv
+dGhlciBpbnRlbGxlY3R1YWwgcHJvcGVydHkgcHJvdGVjdGlvbi4gDQpJZiB5b3UgYXJlIG5vdCB0
+aGUgaW50ZW5kZWQgcmVjaXBpZW50LCB5b3UgYXJlIG5vdCBhdXRob3JpemVkIHRvIHVzZSBvciAN
+CmRpc2Nsb3NlIHRoaXMgaW5mb3JtYXRpb24sIGFuZCB3ZSByZXF1ZXN0IHRoYXQgeW91IG5vdGlm
+eSB1cyBieSByZXBseSBtYWlsIG9yDQp0ZWxlcGhvbmUgYW5kIGRlbGV0ZSB0aGUgb3JpZ2luYWwg
+bWVzc2FnZSBmcm9tIHlvdXIgbWFpbCBzeXN0ZW0uDQo8L3ByZT48L3RkPjwvdHI+PC90YWJsZT4=
 
