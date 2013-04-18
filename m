@@ -1,78 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21473 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:15718 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752840Ab3DVRIe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Apr 2013 13:08:34 -0400
-Message-ID: <51756E67.1030604@RedHat.com>
-Date: Mon, 22 Apr 2013 13:07:51 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S967186Ab3DRROa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Apr 2013 13:14:30 -0400
+Date: Thu, 18 Apr 2013 13:14:26 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 2/5] SUNRPC: allow disabling idle timeout
+Message-ID: <20130418171424.GA30837@pad.fieldses.org>
+References: <1366054508-27604-1-git-send-email-bfields@redhat.com>
+ <1366054508-27604-3-git-send-email-bfields@redhat.com>
+ <20130418170020.GA31075@fieldses.org>
+ <1366304823.58246.22.camel@leira.trondhjem.org>
 MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH: nfs-utils] mountd: fix exporting of "/" with sec= setting.
-References: <20130411110150.39f127aa@notabene.brown>
-In-Reply-To: <20130411110150.39f127aa@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1366304823.58246.22.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Apr 18, 2013 at 05:07:03PM +0000, Myklebust, Trond wrote:
+> On Thu, 2013-04-18 at 13:00 -0400, J. Bruce Fields wrote:
+> > On Mon, Apr 15, 2013 at 03:35:04PM -0400, J. Bruce Fields wrote:
+> > > From: "J. Bruce Fields" <bfields@redhat.com>
+> > > 
+> > > In the gss-proxy case we don't want to have to reconnect at random--we
+> > > want to connect only on gss-proxy startup when we can steal gss-proxy's
+> > > context to do the connect in the right namespace.
+> > > 
+> > > So, provide a flag that allows the rpc_create caller to turn off the
+> > > idle timeout.
+> > 
+> > Chuck, the basic ideas was your suggestion, does the executation look OK
+> > here?  I had to copy the rpc_create flags down to the xprt_create, I
+> > don't know if that's reasonable.
+> 
+> This patch will conflict with commit
+> b7993cebb841b0da7a33e9d5ce301a9fd3209165 (SUNRPC: Allow rpc_create() to
+> request that TCP slots be unlimited) that was posted on this list
+> earlier this week.
 
+Oh, sorry, I missed that.
 
-On 10/04/13 21:01, NeilBrown wrote:
-> 
-> 
-> Commit 91bb95f2689e84856ecdf6fac365489d36709cf9
->    4set_root: force "fsid=0" for all exports of '/'
-> 
-> set NFSEXP_FSID for the export of "/" if nothing else had any fsid set,
-> however it didn't also set the flag for all security flavours.  So the
-> kernel complains that the flags on the security flavours don't match and
-> it rejects the export.
-> 
-> So call fix_pseudoflavor_flags() in write_secinfo() to make sure that
-> any fiddling that has been done to e_flags gets copied to e_secinfo.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-Committed...
+Presumably then I should just work on top of that and do the same
+thing--define a pair of flags
+{RP_CLNT_CREATE|XPRT_CREATE}_NO_IDLE_TIMEOUT and translate between the
+two in rpc_create.
 
-steved.
+--b.
 
 > 
-> diff --git a/support/include/exportfs.h b/support/include/exportfs.h
-> index 5960feb..1fbf754 100644
-> --- a/support/include/exportfs.h
-> +++ b/support/include/exportfs.h
-> @@ -177,6 +177,7 @@ struct export_features {
->  };
->  
->  struct export_features *get_export_features(void);
-> +void fix_pseudoflavor_flags(struct exportent *ep);
->  
->  /* Record export error.  */
->  extern int export_errno;
-> diff --git a/support/nfs/exports.c b/support/nfs/exports.c
-> index 6c08a2b..dea040f 100644
-> --- a/support/nfs/exports.c
-> +++ b/support/nfs/exports.c
-> @@ -469,7 +469,7 @@ static void clearflags(int mask, unsigned int active, struct exportent *ep)
->   * ensure that the export flags agree with the flags on each
->   * pseudoflavor:
->   */
-> -static void fix_pseudoflavor_flags(struct exportent *ep)
-> +void fix_pseudoflavor_flags(struct exportent *ep)
->  {
->  	struct export_features *ef;
->  	struct sec_entry *p;
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index 978698d..53552b3 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -735,6 +735,7 @@ static void write_secinfo(FILE *f, struct exportent *ep, int flag_mask)
->  		/* There was no sec= option */
->  		return;
->  	}
-> +	fix_pseudoflavor_flags(ep);
->  	qword_print(f, "secinfo");
->  	qword_printint(f, p - ep->e_secinfo);
->  	for (p = ep->e_secinfo; p->flav; p++) {
+> > --b.
+> > 
+> > > 
+> > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > > ---
+> > >  include/linux/sunrpc/clnt.h |    1 +
+> > >  include/linux/sunrpc/xprt.h |    1 +
+> > >  net/sunrpc/clnt.c           |    1 +
+> > >  net/sunrpc/xprt.c           |    2 ++
+> > >  4 files changed, 5 insertions(+)
+> > > 
+> > > diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+> > > index 2cf4ffa..8164986 100644
+> > > --- a/include/linux/sunrpc/clnt.h
+> > > +++ b/include/linux/sunrpc/clnt.h
+> > > @@ -124,6 +124,7 @@ struct rpc_create_args {
+> > >  #define RPC_CLNT_CREATE_NOPING		(1UL << 4)
+> > >  #define RPC_CLNT_CREATE_DISCRTRY	(1UL << 5)
+> > >  #define RPC_CLNT_CREATE_QUIET		(1UL << 6)
+> > > +#define RPC_CLNT_CREATE_NO_IDLE_TIMEOUT	(1UL << 7)
+> > >  
+> > >  struct rpc_clnt *rpc_create(struct rpc_create_args *args);
+> > >  struct rpc_clnt	*rpc_bind_new_program(struct rpc_clnt *,
+> > > diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+> > > index 30834be..df28503 100644
+> > > --- a/include/linux/sunrpc/xprt.h
+> > > +++ b/include/linux/sunrpc/xprt.h
+> > > @@ -263,6 +263,7 @@ struct xprt_create {
+> > >  	size_t			addrlen;
+> > >  	const char		*servername;
+> > >  	struct svc_xprt		*bc_xprt;	/* NFSv4.1 backchannel */
+> > > +	unsigned long		flags;
+> > >  };
+> > >  
+> > >  struct xprt_class {
+> > > diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> > > index dcc446e..a41d64a 100644
+> > > --- a/net/sunrpc/clnt.c
+> > > +++ b/net/sunrpc/clnt.c
+> > > @@ -411,6 +411,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
+> > >  		.addrlen = args->addrsize,
+> > >  		.servername = args->servername,
+> > >  		.bc_xprt = args->bc_xprt,
+> > > +		.flags = args->flags,
+> > >  	};
+> > >  	char servername[48];
+> > >  
+> > > diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> > > index b7478d5..37cbc37 100644
+> > > --- a/net/sunrpc/xprt.c
+> > > +++ b/net/sunrpc/xprt.c
+> > > @@ -1245,6 +1245,8 @@ found:
+> > >  				-PTR_ERR(xprt));
+> > >  		goto out;
+> > >  	}
+> > > +	if (args->flags & RPC_CLNT_CREATE_NO_IDLE_TIMEOUT)
+> > > +		xprt->idle_timeout = 0;
+> > >  	INIT_WORK(&xprt->task_cleanup, xprt_autoclose);
+> > >  	if (xprt_has_timer(xprt))
+> > >  		setup_timer(&xprt->timer, xprt_init_autodisconnect,
+> > > -- 
+> > > 1.7.9.5
+> > > 
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
