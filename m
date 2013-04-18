@@ -1,83 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from gw1.transmode.se ([195.58.98.146]:55015 "EHLO gw1.transmode.se"
+Received: from fieldses.org ([174.143.236.118]:55221 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755170Ab3DXNQa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Apr 2013 09:16:30 -0400
-In-Reply-To: <1366726687.35524.6.camel@leira.trondhjem.org>
-References: <OF6F031A84.8897519B-ONC1257B4E.002D1BA3-C1257B4E.002DBED0@LocalDomain>	 <OF64305930.0F7881A0-ONC1257B4E.0030250F-C1257B4E.00306CEC@LocalDomain>
-	 <OFA06D4153.317BAF9A-ONC1257B4F.002F597B-C1257B4F.003AC46C@transmode.se>
-	 <1366126613.12556.18.camel@leira.trondhjem.org>			 <OFB2555ACD.CF7424A9-ONC1257B4F.00613A5E-C1257B4F.006908CE@transmode.se>
-	 <1366150010.27817.8.camel@leira.trondhjem.org>		 <OF97D68E61.A3C35530-ONC1257B51.0043E567-C1257B51.00450958@LocalDomain>
-	 <OFF8AA22C1.D96F08FD-ONC1257B52.003B6FD9-C1257B52.003BEEF9@LocalDomain>
-	 <OFAB88709A.0F45CAFB-ONC1257B56.0049D3CA-C1257B56.004AE572@transmode.se>
-	 <1366725123.35524.2.camel@leira.trondhjem.org>	 <OF940BEB3A.13ADB6E5-ONC1257B56.004D412D-C1257B56.004E3C54@tran
- <1366726687.35524.6.camel@leira.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+	id S967514Ab3DRRAV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Apr 2013 13:00:21 -0400
+Date: Thu, 18 Apr 2013 13:00:20 -0400
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 2/5] SUNRPC: allow disabling idle timeout
+Message-ID: <20130418170020.GA31075@fieldses.org>
+References: <1366054508-27604-1-git-send-email-bfields@redhat.com>
+ <1366054508-27604-3-git-send-email-bfields@redhat.com>
 MIME-Version: 1.0
-Subject: Re: NFS loop on 3.4.39
-From: Joakim Tjernlund <joakim.tjernlund@transmode.se>
-Message-ID: <OFDF20F4D8.12606C1E-ONC1257B57.00486945-C1257B57.0048EAA3@transmode.se>
-Date: Wed, 24 Apr 2013 15:16:27 +0200
-Content-Type: text/plain; charset="US-ASCII"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1366054508-27604-3-git-send-email-bfields@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote on 2013/04/23 
-16:18:07:
+On Mon, Apr 15, 2013 at 03:35:04PM -0400, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
 > 
-> On Tue, 2013-04-23 at 16:14 +0200, Joakim Tjernlund wrote:
-> > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote on 2013/04/23 
-> > 15:52:06:
-> > > 
-> > > On Tue, 2013-04-23 at 15:38 +0200, Joakim Tjernlund wrote:
-> > > > So, it happened again. Just when hitting search on bugs.gentoo.org 
-in 
-> > > > firefox 17.0.3
-> > > > 
-> > > > This time I got a NFS loop with NFS4ERR_BAD_STATEID looping over 
-and 
-> > over
-> > > > again and FF was hung. Not posting the logs as it does not appear 
-to
-> > > > do any good. Nothing in dmesg either.
-> > > > 
-> > > > Noticed this patch on the NFS list:
-> > > >   http://marc.info/?l=linux-nfs&m=136643651710066&w=2
-> > > > I wonder if that could be a potential cure and if so, could it be
-> > > > backported to 3.4?
-> > > 
-> > > It is in the testing branch on
-> > > 
-> > >   http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=summary
-> > > 
-> > > if you want to try it out. I'm not planning on backporting anything 
-that
-> > > hasn't been labelled with a Cc: stable in that branch.
-> > 
-> > Well, we won't use tip of linus tree in production so there is
-> > little point to use your testing branch. However it looks like a 
-trivial
-> > backport so I can test it on my client easily.
+> In the gss-proxy case we don't want to have to reconnect at random--we
+> want to connect only on gss-proxy startup when we can steal gss-proxy's
+> context to do the connect in the right namespace.
 > 
-> The point of testing would not be to discover if you can use Linus' tree
-> in production, but rather to see if the problem is already fixed
-> upstream. If it is, we can bisect to figure out which patch is the fix.
+> So, provide a flag that allows the rpc_create caller to turn off the
+> idle timeout.
+
+Chuck, the basic ideas was your suggestion, does the executation look OK
+here?  I had to copy the rpc_create flags down to the xprt_create, I
+don't know if that's reasonable.
+
+--b.
+
 > 
-> > Even the NFS server if required, is the above referenced patch for
-> > NFS client/server or both? Any chance this is the culprit?
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  include/linux/sunrpc/clnt.h |    1 +
+>  include/linux/sunrpc/xprt.h |    1 +
+>  net/sunrpc/clnt.c           |    1 +
+>  net/sunrpc/xprt.c           |    2 ++
+>  4 files changed, 5 insertions(+)
 > 
-> That's a client patch.
-
-Tried 3.4.41+above nfs patch and also 3.8.8, they both have the
-NFS loop problem.
-
-Now I am at your 
-http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=summary, testing 
-branch
-With any luck the error will show soon.
-
-Question though the loop I see, could it be a NFS server bug ?
-If so it does matter what I do on my client I guess.
-
-  Jocke
+> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+> index 2cf4ffa..8164986 100644
+> --- a/include/linux/sunrpc/clnt.h
+> +++ b/include/linux/sunrpc/clnt.h
+> @@ -124,6 +124,7 @@ struct rpc_create_args {
+>  #define RPC_CLNT_CREATE_NOPING		(1UL << 4)
+>  #define RPC_CLNT_CREATE_DISCRTRY	(1UL << 5)
+>  #define RPC_CLNT_CREATE_QUIET		(1UL << 6)
+> +#define RPC_CLNT_CREATE_NO_IDLE_TIMEOUT	(1UL << 7)
+>  
+>  struct rpc_clnt *rpc_create(struct rpc_create_args *args);
+>  struct rpc_clnt	*rpc_bind_new_program(struct rpc_clnt *,
+> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+> index 30834be..df28503 100644
+> --- a/include/linux/sunrpc/xprt.h
+> +++ b/include/linux/sunrpc/xprt.h
+> @@ -263,6 +263,7 @@ struct xprt_create {
+>  	size_t			addrlen;
+>  	const char		*servername;
+>  	struct svc_xprt		*bc_xprt;	/* NFSv4.1 backchannel */
+> +	unsigned long		flags;
+>  };
+>  
+>  struct xprt_class {
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index dcc446e..a41d64a 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -411,6 +411,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
+>  		.addrlen = args->addrsize,
+>  		.servername = args->servername,
+>  		.bc_xprt = args->bc_xprt,
+> +		.flags = args->flags,
+>  	};
+>  	char servername[48];
+>  
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index b7478d5..37cbc37 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -1245,6 +1245,8 @@ found:
+>  				-PTR_ERR(xprt));
+>  		goto out;
+>  	}
+> +	if (args->flags & RPC_CLNT_CREATE_NO_IDLE_TIMEOUT)
+> +		xprt->idle_timeout = 0;
+>  	INIT_WORK(&xprt->task_cleanup, xprt_autoclose);
+>  	if (xprt_has_timer(xprt))
+>  		setup_timer(&xprt->timer, xprt_init_autodisconnect,
+> -- 
+> 1.7.9.5
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
