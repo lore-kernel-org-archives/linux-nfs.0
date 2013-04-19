@@ -1,46 +1,23 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f176.google.com ([74.125.82.176]:38280 "EHLO
-	mail-we0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S964932Ab3DRCbS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Apr 2013 22:31:18 -0400
-Received: by mail-we0-f176.google.com with SMTP id s43so1709269wey.21
-        for <linux-nfs@vger.kernel.org>; Wed, 17 Apr 2013 19:31:17 -0700 (PDT)
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:53610 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030254Ab3DSNdE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Apr 2013 09:33:04 -0400
+Received: by mail-ie0-f172.google.com with SMTP id c12so677570ieb.17
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Apr 2013 06:33:04 -0700 (PDT)
 MIME-Version: 1.0
-Date: Thu, 18 Apr 2013 10:31:17 +0800
-Message-ID: <CAPgLHd8M=ZCQo28xG=d4vf9=PM9SkYbX_-d1TXzrS-3DuEuVxw@mail.gmail.com>
-Subject: [PATCH] svcauth_gss: fix error return code in rsc_parse()
-From: Wei Yongjun <weiyj.lk@gmail.com>
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com, ebiederm@xmission.com,
-        skinsbursky@parallels.com, jlayton@redhat.com, simo@redhat.com
-Cc: yongjun_wei@trendmicro.com.cn, linux-nfs@vger.kernel.org
+Date: Fri, 19 Apr 2013 23:33:04 +1000
+Message-ID: <CADmarkWfv5+U1722Gj8U2xVSa5On34t+bcf_R2gXQ=BjmWiMPg@mail.gmail.com>
+Subject: NFSv4 - Does it suffer from clashes when using crossmnt/nohide?
+From: "linuxinsidev2 ." <linuxinsidev2@gmail.com>
+To: linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
+Hi,
 
-Fix to return a negative error code from the error handling
-case instead of 0, as returned elsewhere in this function.
+>From what I can tell, if I use NFSv3 with nohide for sharing multiple
+disks under one export, it can result in inode clashes.
 
-Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
----
- net/sunrpc/auth_gss/svcauth_gss.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
-
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 5ead605..c2156fb 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -505,8 +505,10 @@ static int rsc_parse(struct cache_detail *cd,
- 		len = qword_get(&mesg, buf, mlen);
- 		if (len > 0) {
- 			rsci.cred.cr_principal = kstrdup(buf, GFP_KERNEL);
--			if (!rsci.cred.cr_principal)
-+			if (!rsci.cred.cr_principal) {
-+				status = -ENOMEM;
- 				goto out;
-+			}
- 		}
- 
- 	}
-
+Does NFSv4 suffer from this too?
