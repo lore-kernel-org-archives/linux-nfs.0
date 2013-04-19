@@ -1,55 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zeniv.linux.org.uk ([195.92.253.2]:52375 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1162035Ab3DERNE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Apr 2013 13:13:04 -0400
-Date: Fri, 5 Apr 2013 18:12:20 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Waiman Long <Waiman.Long@hp.com>
-Cc: Jeff Layton <jlayton@redhat.com>, Miklos Szeredi <mszeredi@suse.cz>,
-        Ian Kent <raven@themaw.net>, Sage Weil <sage@inktank.com>,
-        Steve French <sfrench@samba.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Eric Paris <eparis@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, autofs@vger.kernel.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-nfs@vger.kernel.org,
-        "Chandramouleeswaran, Aswin" <aswin@hp.com>,
-        "Norton, Scott J" <scott.norton@hp.com>,
-        Andi Kleen <andi@firstfloor.org>, Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH v2 1/4] dcache: Don't take unnecessary lock in d_count
- update
-Message-ID: <20130405171220.GD4068@ZenIV.linux.org.uk>
-References: <1365181061-30787-1-git-send-email-Waiman.Long@hp.com>
- <1365181061-30787-2-git-send-email-Waiman.Long@hp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1365181061-30787-2-git-send-email-Waiman.Long@hp.com>
+Received: from mx12.netapp.com ([216.240.18.77]:55530 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753135Ab3DSUJk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Apr 2013 16:09:40 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com, bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 0/2] 64bit time fixes
+Date: Fri, 19 Apr 2013 16:09:36 -0400
+Message-Id: <1366402178-1281-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> @@ -635,22 +640,14 @@ struct dentry *dget_parent(struct dentry *dentry)
->  {
->  	struct dentry *ret;
->  
-> -repeat:
-> -	/*
-> -	 * Don't need rcu_dereference because we re-check it was correct under
-> -	 * the lock.
-> -	 */
->  	rcu_read_lock();
-> -	ret = dentry->d_parent;
-> -	spin_lock(&ret->d_lock);
-> -	if (unlikely(ret != dentry->d_parent)) {
-> -		spin_unlock(&ret->d_lock);
-> -		rcu_read_unlock();
-> -		goto repeat;
-> -	}
-> +	ret = rcu_dereference(dentry->d_parent);
->  	rcu_read_unlock();
-> +	if (dcount_inc_cmpxchg(ret))
-> +		return ret;
-> +	spin_lock(&ret->d_lock);
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-And WTF is going to protect your "ret" from being freed just as you'd done
-rcu_read_unlock()?
+
+xfstests generic/258 attempts to set atime of a file to a value before the
+unix epoch by running touch -t 196001010101.  I found that both the client
+and the server were zero-filling the first 32bits rather than sending the
+correct 64bit time value during a setattr.  These patches fix this on both
+the client and the server.
+
+Version 2:
+- Cast time.tv_sec values to a s64 instead of a long for 32bit systems
+
+Questions?  Comments?
+
+- Bryan
+
+Bryan Schumaker (2):
+  nfs: Send atime and mtime as a 64bit value
+  nfsd: Decode and send 64bit time values
+
+ fs/nfs/nfs4xdr.c  |  6 ++----
+ fs/nfsd/nfs4xdr.c | 19 +++++--------------
+ 2 files changed, 7 insertions(+), 18 deletions(-)
+
+-- 
+1.8.2.1
+
