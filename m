@@ -1,36 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vb0-f41.google.com ([209.85.212.41]:41127 "EHLO
-	mail-vb0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1762198Ab3DDOrP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Apr 2013 10:47:15 -0400
-Received: by mail-vb0-f41.google.com with SMTP id f13so1385528vbg.0
-        for <linux-nfs@vger.kernel.org>; Thu, 04 Apr 2013 07:47:14 -0700 (PDT)
+Received: from mx12.netapp.com ([216.240.18.77]:57964 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932804Ab3DSVWb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Apr 2013 17:22:31 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 1/2] nfs: Send atime and mtime as a 64bit value
+Date: Fri, 19 Apr 2013 21:22:29 +0000
+Message-ID: <1366406549.12513.1.camel@leira.trondhjem.org>
+References: <1366402178-1281-1-git-send-email-bjschuma@netapp.com>
+	 <1366402178-1281-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1366402178-1281-2-git-send-email-bjschuma@netapp.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Reply-To: tigran.mkrtchyan@desy.de
-Date: Thu, 4 Apr 2013 16:47:14 +0200
-Message-ID: <CAGue13pe_ZH_Eto-jL3mLjTNGFK26izTarnZdjs3eL82A2Z37w@mail.gmail.com>
-Subject: readdir vs. getattr
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Fri, 2013-04-19 at 16:09 -0400, bjschuma@netapp.com wrote:
+> From: Bryan Schumaker <bjschuma@netapp.com>
+> 
+> RFC 3530 says that the seconds value of a nfstime4 structure is a 64bit
+> value, but we are instead sending a 32-bit 0 and then a 32bit conversion
+> of the 64bit Linux value.  This means that if we try to set atime to a
+> value before the epoch (touch -t 196001010101) the client will only send
+> part of the new value due to lost precision.
+> 
+> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 
-here is the story:
+Thanks Bryan! Applied.
 
-we have a directory with 50K (number of )  files in it.
-The user does a 'ls' and I can see READDIR4. To
-get the complete listing a client need to send ~380 requests.
-Now user does yet another 'ls' in the same directory.
-The client sends a GETATTR  on directorie's FH
-(actually two of GETATTRS - why?!!) and discovers that a
-directory didn't change and re-uses existing listing, BUT!!!
-for each file in the directory it sends a GETATTR to discover
-is  the file's attributes are changed. For 50K files it's a 50K requests.
+I assume that Bruce will pick up the 2/2.
 
-I believe there is a way to make client smart and in some
-situations prefer READDIR over GETATTR.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Tigran.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
