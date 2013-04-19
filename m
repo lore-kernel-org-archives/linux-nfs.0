@@ -1,61 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:2935 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:57430 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932535Ab3DBVqR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Apr 2013 17:46:17 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 14/19] Kconfig: Add Kconfig entry for Labeled NFS V4 server
-Date: Tue,  2 Apr 2013 17:45:55 -0400
-Message-Id: <1364939160-20874-15-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
-References: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
+	id S1753915Ab3DSSwb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Apr 2013 14:52:31 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com, bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] nfsd: Decode and send 64bit time values
+Date: Fri, 19 Apr 2013 14:52:27 -0400
+Message-Id: <1366397547-14639-3-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1366397547-14639-1-git-send-email-bjschuma@netapp.com>
+References: <1366397547-14639-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Steve Dickson <steved@redhat.com>
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-This patch adds the NFSd_V4_SECURITY_LABEL entry which
-enables security label support for the NFSv4 server
+The seconds field of an nfstime4 structure is 64bit, but we are assuming
+that the first 32bits are zero-filled.  So if the client tries to set
+atime to a value before the epoch (touch -t 196001010101), then the
+server will save the wrong value on disk.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfsd/Kconfig | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+ fs/nfsd/nfs4xdr.c | 19 +++++--------------
+ 1 file changed, 5 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index 430b687..c37a046 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -81,6 +81,22 @@ config NFSD_V4
- 
- 	  If unsure, say N.
- 
-+config NFSD_V4_SECURITY_LABEL
-+	bool "Provide Security Label support for NFSv4 server"
-+	depends on NFSD_V4 && SECURITY
-+	help
-+
-+	Say Y here if you want enable fine-grained security label attribute
-+	support for NFS version 4.  Security labels allow security modules like
-+	SELinux and Smack to label files to facilitate enforcement of their policies.
-+	Without this an NFSv4 mount will have the same label on each file.
-+
-+	If you do not wish to enable fine-grained security labels SELinux or
-+	Smack policies on NFSv4 files, say N.
-+
-+	WARNING: there is still a chance of backwards-incompatible protocol changes.  
-+	For now we recommend "Y" only for developers and testers."
-+
- config NFSD_FAULT_INJECTION
- 	bool "NFS server manual fault injection"
- 	depends on NFSD_V4 && DEBUG_KERNEL
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 2a27456..c3a6ca4 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -344,10 +344,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 			   all 32 bits of 'nseconds'. */
+ 			READ_BUF(12);
+ 			len += 12;
+-			READ32(dummy32);
+-			if (dummy32)
+-				return nfserr_inval;
+-			READ32(iattr->ia_atime.tv_sec);
++			READ64(iattr->ia_atime.tv_sec);
+ 			READ32(iattr->ia_atime.tv_nsec);
+ 			if (iattr->ia_atime.tv_nsec >= (u32)1000000000)
+ 				return nfserr_inval;
+@@ -370,10 +367,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 			   all 32 bits of 'nseconds'. */
+ 			READ_BUF(12);
+ 			len += 12;
+-			READ32(dummy32);
+-			if (dummy32)
+-				return nfserr_inval;
+-			READ32(iattr->ia_mtime.tv_sec);
++			READ64(iattr->ia_mtime.tv_sec);
+ 			READ32(iattr->ia_mtime.tv_nsec);
+ 			if (iattr->ia_mtime.tv_nsec >= (u32)1000000000)
+ 				return nfserr_inval;
+@@ -2401,8 +2395,7 @@ out_acl:
+ 	if (bmval1 & FATTR4_WORD1_TIME_ACCESS) {
+ 		if ((buflen -= 12) < 0)
+ 			goto out_resource;
+-		WRITE32(0);
+-		WRITE32(stat.atime.tv_sec);
++		WRITE64((long)stat.atime.tv_sec);
+ 		WRITE32(stat.atime.tv_nsec);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_TIME_DELTA) {
+@@ -2415,15 +2408,13 @@ out_acl:
+ 	if (bmval1 & FATTR4_WORD1_TIME_METADATA) {
+ 		if ((buflen -= 12) < 0)
+ 			goto out_resource;
+-		WRITE32(0);
+-		WRITE32(stat.ctime.tv_sec);
++		WRITE64((long)stat.ctime.tv_sec);
+ 		WRITE32(stat.ctime.tv_nsec);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_TIME_MODIFY) {
+ 		if ((buflen -= 12) < 0)
+ 			goto out_resource;
+-		WRITE32(0);
+-		WRITE32(stat.mtime.tv_sec);
++		WRITE64((long)stat.mtime.tv_sec);
+ 		WRITE32(stat.mtime.tv_nsec);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_MOUNTED_ON_FILEID) {
 -- 
-1.8.1.4
+1.8.2.1
 
