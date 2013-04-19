@@ -1,155 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36521 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:55530 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935880Ab3DQBqe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Apr 2013 21:46:34 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: [PATCH 01/12] vfs: pull ext4's double-i_mutex-locking into common code
-Date: Tue, 16 Apr 2013 21:46:13 -0400
-Message-Id: <1366163185-10317-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1366163185-10317-1-git-send-email-bfields@redhat.com>
-References: <1366163185-10317-1-git-send-email-bfields@redhat.com>
+	id S1753135Ab3DSUJm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Apr 2013 16:09:42 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com, bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 1/2] nfs: Send atime and mtime as a 64bit value
+Date: Fri, 19 Apr 2013 16:09:37 -0400
+Message-Id: <1366402178-1281-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1366402178-1281-1-git-send-email-bjschuma@netapp.com>
+References: <1366402178-1281-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-We want to do this elsewhere as well.
+RFC 3530 says that the seconds value of a nfstime4 structure is a 64bit
+value, but we are instead sending a 32-bit 0 and then a 32bit conversion
+of the 64bit Linux value.  This means that if we try to set atime to a
+value before the epoch (touch -t 196001010101) the client will only send
+part of the new value due to lost precision.
 
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/ext4/move_extent.c |   40 ++--------------------------------------
- fs/inode.c            |   29 +++++++++++++++++++++++++++++
- include/linux/fs.h    |    3 +++
- 3 files changed, 34 insertions(+), 38 deletions(-)
+ fs/nfs/nfs4xdr.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 33e1c08..78f2c46 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -1209,42 +1209,6 @@ mext_check_arguments(struct inode *orig_inode,
- }
- 
- /**
-- * mext_inode_double_lock - Lock i_mutex on both @inode1 and @inode2
-- *
-- * @inode1:	the inode structure
-- * @inode2:	the inode structure
-- *
-- * Lock two inodes' i_mutex
-- */
--static void
--mext_inode_double_lock(struct inode *inode1, struct inode *inode2)
--{
--	BUG_ON(inode1 == inode2);
--	if (inode1 < inode2) {
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
--	} else {
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
--	}
--}
--
--/**
-- * mext_inode_double_unlock - Release i_mutex on both @inode1 and @inode2
-- *
-- * @inode1:     the inode that is released first
-- * @inode2:     the inode that is released second
-- *
-- */
--
--static void
--mext_inode_double_unlock(struct inode *inode1, struct inode *inode2)
--{
--	mutex_unlock(&inode1->i_mutex);
--	mutex_unlock(&inode2->i_mutex);
--}
--
--/**
-  * ext4_move_extents - Exchange the specified range of a file
-  *
-  * @o_filp:		file structure of the original file
-@@ -1333,7 +1297,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 		return -EINVAL;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 325eddc..3c79c58 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1054,8 +1054,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 	if (iap->ia_valid & ATTR_ATIME_SET) {
+ 		bmval1 |= FATTR4_WORD1_TIME_ACCESS_SET;
+ 		*p++ = cpu_to_be32(NFS4_SET_TO_CLIENT_TIME);
+-		*p++ = cpu_to_be32(0);
+-		*p++ = cpu_to_be32(iap->ia_atime.tv_sec);
++		p = xdr_encode_hyper(p, (s64)iap->ia_atime.tv_sec);
+ 		*p++ = cpu_to_be32(iap->ia_atime.tv_nsec);
  	}
- 	/* Protect orig and donor inodes against a truncate */
--	mext_inode_double_lock(orig_inode, donor_inode);
-+	lock_two_nondirectories(orig_inode, donor_inode);
- 
- 	/* Wait for all existing dio workers */
- 	ext4_inode_block_unlocked_dio(orig_inode);
-@@ -1541,7 +1505,7 @@ out:
- 	double_up_write_data_sem(orig_inode, donor_inode);
- 	ext4_inode_resume_unlocked_dio(orig_inode);
- 	ext4_inode_resume_unlocked_dio(donor_inode);
--	mext_inode_double_unlock(orig_inode, donor_inode);
-+	unlock_two_nondirectories(orig_inode, donor_inode);
- 
- 	return ret;
- }
-diff --git a/fs/inode.c b/fs/inode.c
-index f5f7c06..9815712 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -980,6 +980,35 @@ void unlock_new_inode(struct inode *inode)
- EXPORT_SYMBOL(unlock_new_inode);
- 
- /**
-+ * lock_two_nondirectories - take two i_mutexes on non-directory objects
-+ * @inode1: first inode to lock
-+ * @inode2: second inode to lock
-+ */
-+void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
-+{
-+	if (inode1 < inode2) {
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
-+		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
-+	} else {
-+		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
-+	}
-+}
-+EXPORT_SYMBOL(lock_two_nondirectories);
-+
-+/**
-+ * unlock_two_nondirectories - release locks from lock_two_nondirectories()
-+ * @inode1: first inode to unlock
-+ * @inode2: second inode to unlock
-+ */
-+void unlock_two_nondirectories(struct inode *inode1, struct inode *inode2)
-+{
-+	mutex_unlock(&inode1->i_mutex);
-+	mutex_unlock(&inode2->i_mutex);
-+}
-+EXPORT_SYMBOL(unlock_two_nondirectories);
-+
-+/**
-  * iget5_locked - obtain an inode from a mounted file system
-  * @sb:		super block of file system
-  * @hashval:	hash value (usually inode number) to get
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 2c28271..356c676 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -634,6 +634,9 @@ enum inode_i_mutex_lock_class
- 	I_MUTEX_QUOTA
- };
- 
-+void lock_two_nondirectories(struct inode *, struct inode*);
-+void unlock_two_nondirectories(struct inode *, struct inode*);
-+
- /*
-  * NOTE: in a 32bit arch with a preemptable kernel and
-  * an UP compile the i_size_read/write must be atomic
+ 	else if (iap->ia_valid & ATTR_ATIME) {
+@@ -1065,8 +1064,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 	if (iap->ia_valid & ATTR_MTIME_SET) {
+ 		bmval1 |= FATTR4_WORD1_TIME_MODIFY_SET;
+ 		*p++ = cpu_to_be32(NFS4_SET_TO_CLIENT_TIME);
+-		*p++ = cpu_to_be32(0);
+-		*p++ = cpu_to_be32(iap->ia_mtime.tv_sec);
++		p = xdr_encode_hyper(p, (s64)iap->ia_mtime.tv_sec);
+ 		*p++ = cpu_to_be32(iap->ia_mtime.tv_nsec);
+ 	}
+ 	else if (iap->ia_valid & ATTR_MTIME) {
 -- 
-1.7.9.5
+1.8.2.1
 
