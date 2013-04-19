@@ -1,64 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50133 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:57430 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935446Ab3DIX6U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Apr 2013 19:58:20 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 09/10] nfsd4: clean up validate_stateid
-Date: Tue,  9 Apr 2013 19:58:14 -0400
-Message-Id: <1365551896-6936-10-git-send-email-bfields@redhat.com>
-In-Reply-To: <1365551896-6936-1-git-send-email-bfields@redhat.com>
-References: <1365551896-6936-1-git-send-email-bfields@redhat.com>
+	id S1753536Ab3DSSwb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Apr 2013 14:52:31 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com, bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] nfs: Send atime and mtime as a 64bit value
+Date: Fri, 19 Apr 2013 14:52:26 -0400
+Message-Id: <1366397547-14639-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1366397547-14639-1-git-send-email-bjschuma@netapp.com>
+References: <1366397547-14639-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-The logic here is better expressed with a switch statement.
+RFC 3530 says that the seconds value of a nfstime4 structure is a 64bit
+value, but we are instead sending a 32-bit 0 and then a 32bit conversion
+of the 64bit Linux value.  This means that if we try to set atime to a
+value before the epoch (touch -t 196001010101) the client will only send
+part of the new value due to lost precision.
 
-While we're here, CLOSED stateids (or stateids of an unkown type--which
-would indicate a server bug) should probably return nfserr_bad_stateid,
-though this behavior shouldn't affect any non-buggy client.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfsd/nfs4state.c |   19 ++++++++++++++-----
- 1 file changed, 14 insertions(+), 5 deletions(-)
+ fs/nfs/nfs4xdr.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 67017fc..add9721 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3456,13 +3456,22 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- 	status = check_stateid_generation(stateid, &s->sc_stateid, 1);
- 	if (status)
- 		return status;
--	if (!(s->sc_type & (NFS4_OPEN_STID | NFS4_LOCK_STID)))
-+	switch (s->sc_type) {
-+	case NFS4_DELEG_STID:
-+		return nfs_ok;
-+	case NFS4_OPEN_STID:
-+	case NFS4_LOCK_STID:
-+		ols = openlockstateid(s);
-+		if (ols->st_stateowner->so_is_open_owner
-+	    			&& !(openowner(ols->st_stateowner)->oo_flags
-+						& NFS4_OO_CONFIRMED))
-+			return nfserr_bad_stateid;
- 		return nfs_ok;
--	ols = openlockstateid(s);
--	if (ols->st_stateowner->so_is_open_owner
--	    && !(openowner(ols->st_stateowner)->oo_flags & NFS4_OO_CONFIRMED))
-+	default:
-+		printk("unknown stateid type %x\n", s->sc_type);
-+	case NFS4_CLOSED_STID:
- 		return nfserr_bad_stateid;
--	return nfs_ok;
-+	}
- }
- 
- static __be32 nfsd4_lookup_stateid(stateid_t *stateid, unsigned char typemask,
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 325eddc..b06dcaf 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1054,8 +1054,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 	if (iap->ia_valid & ATTR_ATIME_SET) {
+ 		bmval1 |= FATTR4_WORD1_TIME_ACCESS_SET;
+ 		*p++ = cpu_to_be32(NFS4_SET_TO_CLIENT_TIME);
+-		*p++ = cpu_to_be32(0);
+-		*p++ = cpu_to_be32(iap->ia_atime.tv_sec);
++		p = xdr_encode_hyper(p, (long)iap->ia_atime.tv_sec);
+ 		*p++ = cpu_to_be32(iap->ia_atime.tv_nsec);
+ 	}
+ 	else if (iap->ia_valid & ATTR_ATIME) {
+@@ -1065,8 +1064,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 	if (iap->ia_valid & ATTR_MTIME_SET) {
+ 		bmval1 |= FATTR4_WORD1_TIME_MODIFY_SET;
+ 		*p++ = cpu_to_be32(NFS4_SET_TO_CLIENT_TIME);
+-		*p++ = cpu_to_be32(0);
+-		*p++ = cpu_to_be32(iap->ia_mtime.tv_sec);
++		p = xdr_encode_hyper(p, (long)iap->ia_mtime.tv_sec);
+ 		*p++ = cpu_to_be32(iap->ia_mtime.tv_nsec);
+ 	}
+ 	else if (iap->ia_valid & ATTR_MTIME) {
 -- 
-1.7.9.5
+1.8.2.1
 
