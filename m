@@ -1,45 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.194]:63894 "EHLO mout.perfora.net"
+Received: from mta02.ornl.gov ([128.219.177.12]:11721 "EHLO mta02.ornl.gov"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1763134Ab3DDQfd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Apr 2013 12:35:33 -0400
-Date: Thu, 4 Apr 2013 12:35:25 -0400
-From: Jim Rees <rees@umich.edu>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: readdir vs. getattr
-Message-ID: <20130404163525.GA8953@umich.edu>
-References: <CAGue13pe_ZH_Eto-jL3mLjTNGFK26izTarnZdjs3eL82A2Z37w@mail.gmail.com>
- <20130404151507.GA8484@umich.edu>
- <05CFAB4A-8329-4657-B250-1A36105086AA@oracle.com>
- <20130404160142.GA8739@umich.edu>
- <1365092115.10726.25.camel@leira.trondhjem.org>
+	id S1751625Ab3DSBDv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Apr 2013 21:03:51 -0400
+From: "Atchley, Scott" <atchleyes@ornl.gov>
+To: Wendy Cheng <s.wendy.cheng@gmail.com>
+CC: Spencer Shepler <spencer.shepler@gmail.com>,
+        Yan Burman <yanb@mellanox.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Tom Tucker <tom@opengridcomputing.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Or Gerlitz <ogerlitz@mellanox.com>
+Date: Thu, 18 Apr 2013 21:03:35 -0400
+Subject: Re: NFS over RDMA benchmark
+Message-ID: <47A54DE8-EBCF-4CE2-80AC-58415B985FD7@ornl.gov>
+References: <51703280.03e9440a.06a6.3f9f@mx.google.com>
+ <CABgxfbF2HSYPF=rAjrKjoMAKqMOzUOUxJbNFspKaZ4ykMyaCbw@mail.gmail.com>
+In-Reply-To: <CABgxfbF2HSYPF=rAjrKjoMAKqMOzUOUxJbNFspKaZ4ykMyaCbw@mail.gmail.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1365092115.10726.25.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Myklebust, Trond wrote:
+On Apr 18, 2013, at 3:15 PM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
 
-  On Thu, 2013-04-04 at 12:01 -0400, Jim Rees wrote:
-  > Chuck Lever wrote:
-  > 
-  >   > So is this a "ls -l"? Because for "ls" it shouldn't stat all the files.
-  >   
-  >   Default these days is ls --color
-  > 
-  > No it's not, at least not on linux. From the man page:
-  > 
-  > "Using color to distinguish file types is disabled both by default and with
-  > --color=never."
-  
-  Yes, but a number of Linux distros override that in /etc/profile. For
-  instance all Red Hat/Fedora distros have aliases for ls that map them to
-  'ls --color=auto'
+> On Thu, Apr 18, 2013 at 10:50 AM, Spencer Shepler
+> <spencer.shepler@gmail.com> wrote:
+>> 
+>> Note that SPEC SFS does not support RDMA.
+>> 
+> 
+> IIRC, the benchmark comes with source code - wondering anyone has
+> modified it to run on RDMA ?  Or is there any real user to share the
+> experience ?
 
-I was actually just trying to figure out whether the application (ls) was
-doing all those file stats, or whether readdir was somehow doing them by
-mistake. Sounds like it's the application.
+I am not familiar with SpecSFS, but if it exercises the filesystem, it does not know which RPC layer that NFS uses, no? Or does it implement its own client and directly access the RPC layer?
+
+> 
+> -- Wendy
+> 
+>> ________________________________
+>> From: Wendy Cheng
+>> Sent: 4/18/2013 9:16 AM
+>> To: Yan Burman
+>> Cc: Atchley, Scott; J. Bruce Fields; Tom Tucker; linux-rdma@vger.kernel.org;
+>> linux-nfs@vger.kernel.org; Or Gerlitz
+>> 
+>> Subject: Re: NFS over RDMA benchmark
+>> 
+>> On Thu, Apr 18, 2013 at 5:47 AM, Yan Burman <yanb@mellanox.com> wrote:
+>>> 
+>>> 
+>>> What do you suggest for benchmarking NFS?
+>>> 
+>> 
+>> I believe SPECsfs has been widely used by NFS (server) vendors to
+>> position their product lines. Its workload was based on a real life
+>> NFS deployment. I think it is more torward office type of workload
+>> (large client/user count with smaller file sizes e.g. software
+>> development with build, compile, etc).
+>> 
+>> BTW, we're experimenting a similar project and would be interested to
+>> know your findings.
+>> 
+>> -- Wendy
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> 
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
