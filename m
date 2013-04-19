@@ -1,138 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:55787 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759276Ab3DDKaN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Apr 2013 06:30:13 -0400
+Received: from mx12.netapp.com ([216.240.18.77]:15245 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753394Ab3DSTDy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Apr 2013 15:03:54 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs: Send atime and mtime as a 64bit value
+Date: Fri, 19 Apr 2013 19:03:53 +0000
+Message-ID: <1366398232.11286.3.camel@leira.trondhjem.org>
+References: <1366397547-14639-1-git-send-email-bjschuma@netapp.com>
+	 <1366397547-14639-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1366397547-14639-2-git-send-email-bjschuma@netapp.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-In-Reply-To: <20130312083517.770a17f6@tlielax.poochiereds.net>
-References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
-	<1362065133-9490-7-git-send-email-piastry@etersoft.ru>
-	<20130311145434.707f5ed1@corrin.poochiereds.net>
-	<20130312083517.770a17f6@tlielax.poochiereds.net>
-Date: Thu, 4 Apr 2013 14:30:12 +0400
-Message-ID: <CAKywueRSTipeO8V-oNrM=jM8WUo7Dd0ahj_Xcw8f8ViE3NGEOQ@mail.gmail.com>
-Subject: Re: [PATCH v3 6/7] NFSv4: Add O_DENY* open flags support
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-kernel@vger.kernel.org, linux-cifs <linux-cifs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        wine-devel@winehq.org
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2013/3/12 Jeff Layton <jlayton@redhat.com>:
-> On Mon, 11 Mar 2013 14:54:34 -0400
-> Jeff Layton <jlayton@redhat.com> wrote:
->
->> On Thu, 28 Feb 2013 19:25:32 +0400
->> Pavel Shilovsky <piastry@etersoft.ru> wrote:
->>
->> > by passing these flags to NFSv4 open request.
->> >
->> > Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
->> > ---
->> >  fs/nfs/nfs4xdr.c | 24 ++++++++++++++++++++----
->> >  1 file changed, 20 insertions(+), 4 deletions(-)
->> >
->> > diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
->> > index 26b1439..58ddc74 100644
->> > --- a/fs/nfs/nfs4xdr.c
->> > +++ b/fs/nfs/nfs4xdr.c
->> > @@ -1325,7 +1325,8 @@ static void encode_lookup(struct xdr_stream *xdr, const struct qstr *name, struc
->> >     encode_string(xdr, name->len, name->name);
->> >  }
->> >
->> > -static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode)
->> > +static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode,
->> > +                           int open_flags)
->> >  {
->> >     __be32 *p;
->> >
->> > @@ -1343,7 +1344,22 @@ static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode)
->> >     default:
->> >             *p++ = cpu_to_be32(0);
->> >     }
->> > -   *p = cpu_to_be32(0);            /* for linux, share_deny = 0 always */
->> > +   if (open_flags & O_DENYMAND) {
->>
->>
->> As Bruce mentioned, I think a mount option to enable this on a per-fs
->> basis would be a better approach than this new O_DENYMAND flag.
->>
->>
->> > +           switch (open_flags & (O_DENYREAD|O_DENYWRITE)) {
->> > +           case O_DENYREAD:
->> > +                   *p = cpu_to_be32(NFS4_SHARE_DENY_READ);
->> > +                   break;
->> > +           case O_DENYWRITE:
->> > +                   *p = cpu_to_be32(NFS4_SHARE_DENY_WRITE);
->> > +                   break;
->> > +           case O_DENYREAD|O_DENYWRITE:
->> > +                   *p = cpu_to_be32(NFS4_SHARE_DENY_BOTH);
->> > +                   break;
->> > +           default:
->> > +                   *p = cpu_to_be32(0);
->> > +           }
->> > +   } else
->> > +           *p = cpu_to_be32(0);
->> >  }
->> >
->> >  static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_openargs *arg)
->> > @@ -1354,7 +1370,7 @@ static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_opena
->> >   * owner 4 = 32
->> >   */
->> >     encode_nfs4_seqid(xdr, arg->seqid);
->> > -   encode_share_access(xdr, arg->fmode);
->> > +   encode_share_access(xdr, arg->fmode, arg->open_flags);
->> >     p = reserve_space(xdr, 36);
->> >     p = xdr_encode_hyper(p, arg->clientid);
->> >     *p++ = cpu_to_be32(24);
->> > @@ -1491,7 +1507,7 @@ static void encode_open_downgrade(struct xdr_stream *xdr, const struct nfs_close
->> >     encode_op_hdr(xdr, OP_OPEN_DOWNGRADE, decode_open_downgrade_maxsz, hdr);
->> >     encode_nfs4_stateid(xdr, arg->stateid);
->> >     encode_nfs4_seqid(xdr, arg->seqid);
->> > -   encode_share_access(xdr, arg->fmode);
->> > +   encode_share_access(xdr, arg->fmode, 0);
->> >  }
->> >
->> >  static void
->>
->>
->> Other than that, this seems reasonable.
->>
->> Acked-by: Jeff Layton <jlayton@redhat.com>
->
-> Oh duh...
->
-> Please ignore my comment on patch #7 to add a patch for the NFS client.
-> This one does that. That said, there may be a potential problem here
-> that you need to consider.
->
-> In the case of a local filesystem you'll want to set deny locks using
-> deny_lock_file(). For a network filesystem like CIFS or NFS though,
-> the server will handle that atomically during the open. You need to
-> ensure that you don't go trying to set LOCK_MAND locks on the file once
-> that's done.
->
-> Perhaps you can use a fstype flag to indicate that the filesystem
-> handles this during the open and doesn't need to try and set a flock
-> lock?
+On Fri, 2013-04-19 at 14:52 -0400, bjschuma@netapp.com wrote:
+> From: Bryan Schumaker <bjschuma@netapp.com>
+> 
+> RFC 3530 says that the seconds value of a nfstime4 structure is a 64bit
+> value, but we are instead sending a 32-bit 0 and then a 32bit conversion
+> of the 64bit Linux value.  This means that if we try to set atime to a
+> value before the epoch (touch -t 196001010101) the client will only send
+> part of the new value due to lost precision.
+> 
+> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> ---
+>  fs/nfs/nfs4xdr.c | 6 ++----
+>  1 file changed, 2 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index 325eddc..b06dcaf 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -1054,8 +1054,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+>  	if (iap->ia_valid & ATTR_ATIME_SET) {
+>  		bmval1 |= FATTR4_WORD1_TIME_ACCESS_SET;
+>  		*p++ = cpu_to_be32(NFS4_SET_TO_CLIENT_TIME);
+> -		*p++ = cpu_to_be32(0);
+> -		*p++ = cpu_to_be32(iap->ia_atime.tv_sec);
+> +		p = xdr_encode_hyper(p, (long)iap->ia_atime.tv_sec);
 
-Also, we can simply mask off O_DENY* flags in open (and atomic_open)
-codepath of filesystems that support these flags:
+On 32-bit systems, long is usually just 32-bits, which isn't what you
+want. Please make the an explicit cast to s64.
 
-...
-do open request to the storage
-...
-file->f_flags &= ~(O_DENYREAD | O_DENYWRITE | O_DENYDELETE);
-...
-return to VFS
-...
+>  		*p++ = cpu_to_be32(iap->ia_atime.tv_nsec);
+>  	}
+>  	else if (iap->ia_valid & ATTR_ATIME) {
+> @@ -1065,8 +1064,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+>  	if (iap->ia_valid & ATTR_MTIME_SET) {
+>  		bmval1 |= FATTR4_WORD1_TIME_MODIFY_SET;
+>  		*p++ = cpu_to_be32(NFS4_SET_TO_CLIENT_TIME);
+> -		*p++ = cpu_to_be32(0);
+> -		*p++ = cpu_to_be32(iap->ia_mtime.tv_sec);
+> +		p = xdr_encode_hyper(p, (long)iap->ia_mtime.tv_sec);
 
-Thoughts?
+Ditto...
 
---
-Best regards,
-Pavel Shilovsky.
+>  		*p++ = cpu_to_be32(iap->ia_mtime.tv_nsec);
+>  	}
+>  	else if (iap->ia_valid & ATTR_MTIME) {
+
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
