@@ -1,36 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f172.google.com ([209.85.220.172]:44056 "EHLO
-	mail-vc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S935617Ab3DHKQI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Apr 2013 06:16:08 -0400
-Received: by mail-vc0-f172.google.com with SMTP id gd11so1600060vcb.17
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Apr 2013 03:16:08 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1365280195.3651.4.camel@leira.trondhjem.org>
-References: <1365196588-25403-1-git-send-email-Trond.Myklebust@netapp.com>
- <CAJ75kXY-Yt_DNrKz7VfQPudw-1DkcKaK5dr3Wz7KmByyxwMSCQ@mail.gmail.com> <1365280195.3651.4.camel@leira.trondhjem.org>
-From: William Dauchy <wdauchy@gmail.com>
-Date: Mon, 8 Apr 2013 12:15:47 +0200
-Message-ID: <CAJ75kXac4k07HMcbob2OmAhH4M+Dp1hmZbC+8uAZPB2AdrEbQw@mail.gmail.com>
-Subject: Re: [PATCH 0/2] Stable patches for NFSv4/4.1 trunking
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx12.netapp.com ([216.240.18.77]:5858 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751802Ab3DTFls (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 20 Apr 2013 01:41:48 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] NFSv4: Use the open stateid if the delegation has the wrong mode
+Date: Sat, 20 Apr 2013 01:41:45 -0400
+Message-Id: <1366436506-25033-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Apr 6, 2013 at 10:29 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> The main reason is that it should be a _very_ rare event, since it
-> requires a call to try_to_get_module(THIS) to fail, and so I can't see
-> that it could ever cause a huge leakage.
-> If someone can show that it is more of a problem than I suggest above,
-> then I'm happy to reconsider.
+Fix nfs4_select_rw_stateid() so that it chooses the open stateid
+(or an all-zero stateid) if the delegation does not match the selected
+read/write mode.
 
-Understood. I didn't know a patch fixing a very rare event could not
-go in stable.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4_fs.h   | 1 +
+ fs/nfs/nfs4proc.c  | 1 +
+ fs/nfs/nfs4state.c | 6 +++++-
+ 3 files changed, 7 insertions(+), 1 deletion(-)
 
---
-William
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 7ef19ce..553a83c 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -144,6 +144,7 @@ struct nfs4_lock_state {
+ enum {
+ 	LK_STATE_IN_USE,
+ 	NFS_DELEGATED_STATE,		/* Current stateid is delegation */
++	NFS_OPEN_STATE,			/* OPEN stateid is set */
+ 	NFS_O_RDONLY_STATE,		/* OPEN stateid has read-only state */
+ 	NFS_O_WRONLY_STATE,		/* OPEN stateid has write-only state */
+ 	NFS_O_RDWR_STATE,		/* OPEN stateid has read/write state */
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 282d9fa..3984936 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -978,6 +978,7 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state, nfs4_stateid *
+ 	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
+ 		nfs4_stateid_copy(&state->stateid, stateid);
+ 	nfs4_stateid_copy(&state->open_stateid, stateid);
++	set_bit(NFS_OPEN_STATE, &state->flags);
+ 	switch (fmode) {
+ 		case FMODE_READ:
+ 			set_bit(NFS_O_RDONLY_STATE, &state->flags);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 1eb1728..b779695 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1024,12 +1024,16 @@ out:
+ 
+ static int nfs4_copy_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
+ {
++	const nfs4_stateid *src;
+ 	int ret;
+ 	int seq;
+ 
+ 	do {
++		src = &zero_stateid;
+ 		seq = read_seqbegin(&state->seqlock);
+-		nfs4_stateid_copy(dst, &state->stateid);
++		if (test_bit(NFS_OPEN_STATE, &state->flags))
++			src = &state->open_stateid;
++		nfs4_stateid_copy(dst, src);
+ 		ret = 0;
+ 		smp_rmb();
+ 		if (!list_empty(&state->owner->so_seqid.list))
+-- 
+1.8.1.4
+
