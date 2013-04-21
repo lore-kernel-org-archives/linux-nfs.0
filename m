@@ -1,100 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55221 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:65120 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S967514Ab3DRRAV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Apr 2013 13:00:21 -0400
-Date: Thu, 18 Apr 2013 13:00:20 -0400
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 2/5] SUNRPC: allow disabling idle timeout
-Message-ID: <20130418170020.GA31075@fieldses.org>
-References: <1366054508-27604-1-git-send-email-bfields@redhat.com>
- <1366054508-27604-3-git-send-email-bfields@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1366054508-27604-3-git-send-email-bfields@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1752238Ab3DUWOO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 21 Apr 2013 18:14:14 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Marc Eshel <eshel@us.ibm.com>, Chuck Lever <chuck.lever@oracle.com>,
+        Malahal Naineni <naineni@us.ibm.com>, Manoj Naik <mnaik@us.ibm.com>,
+        Shuzheng Liu <liuszmi@us.ibm.com>, Steve Dickson <SteveD@redhat.com>,
+        Tomer Perry <TOMP@il.ibm.com>
+Subject: [PATCH] LOCKD: Ensure that nlmclnt_block resets block->b_status after a server reboot
+Date: Sun, 21 Apr 2013 18:14:09 -0400
+Message-Id: <1366582449-25569-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 15, 2013 at 03:35:04PM -0400, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> In the gss-proxy case we don't want to have to reconnect at random--we
-> want to connect only on gss-proxy startup when we can steal gss-proxy's
-> context to do the connect in the right namespace.
-> 
-> So, provide a flag that allows the rpc_create caller to turn off the
-> idle timeout.
+After a server reboot, the reclaimer thread will recover all the existing
+locks. For locks that are blocked, however, it will change the value
+of block->b_status to nlm_lck_denied_grace_period in order to signal that
+they need to wake up and resend the original blocking lock request.
 
-Chuck, the basic ideas was your suggestion, does the executation look OK
-here?  I had to copy the rpc_create flags down to the xprt_create, I
-don't know if that's reasonable.
+Due to a bug, however, the block->b_status never gets reset after the
+blocked locks have been woken up, and so the process goes into an
+infinite loop of resends until the blocked lock is satisfied.
 
---b.
+Reported-by: Marc Eshel <eshel@us.ibm.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: stable@vger.kernel.org
+---
+ fs/lockd/clntlock.c | 3 +++
+ fs/lockd/clntproc.c | 3 ---
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  include/linux/sunrpc/clnt.h |    1 +
->  include/linux/sunrpc/xprt.h |    1 +
->  net/sunrpc/clnt.c           |    1 +
->  net/sunrpc/xprt.c           |    2 ++
->  4 files changed, 5 insertions(+)
-> 
-> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-> index 2cf4ffa..8164986 100644
-> --- a/include/linux/sunrpc/clnt.h
-> +++ b/include/linux/sunrpc/clnt.h
-> @@ -124,6 +124,7 @@ struct rpc_create_args {
->  #define RPC_CLNT_CREATE_NOPING		(1UL << 4)
->  #define RPC_CLNT_CREATE_DISCRTRY	(1UL << 5)
->  #define RPC_CLNT_CREATE_QUIET		(1UL << 6)
-> +#define RPC_CLNT_CREATE_NO_IDLE_TIMEOUT	(1UL << 7)
->  
->  struct rpc_clnt *rpc_create(struct rpc_create_args *args);
->  struct rpc_clnt	*rpc_bind_new_program(struct rpc_clnt *,
-> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-> index 30834be..df28503 100644
-> --- a/include/linux/sunrpc/xprt.h
-> +++ b/include/linux/sunrpc/xprt.h
-> @@ -263,6 +263,7 @@ struct xprt_create {
->  	size_t			addrlen;
->  	const char		*servername;
->  	struct svc_xprt		*bc_xprt;	/* NFSv4.1 backchannel */
-> +	unsigned long		flags;
->  };
->  
->  struct xprt_class {
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index dcc446e..a41d64a 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -411,6 +411,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
->  		.addrlen = args->addrsize,
->  		.servername = args->servername,
->  		.bc_xprt = args->bc_xprt,
-> +		.flags = args->flags,
->  	};
->  	char servername[48];
->  
-> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> index b7478d5..37cbc37 100644
-> --- a/net/sunrpc/xprt.c
-> +++ b/net/sunrpc/xprt.c
-> @@ -1245,6 +1245,8 @@ found:
->  				-PTR_ERR(xprt));
->  		goto out;
->  	}
-> +	if (args->flags & RPC_CLNT_CREATE_NO_IDLE_TIMEOUT)
-> +		xprt->idle_timeout = 0;
->  	INIT_WORK(&xprt->task_cleanup, xprt_autoclose);
->  	if (xprt_has_timer(xprt))
->  		setup_timer(&xprt->timer, xprt_init_autodisconnect,
-> -- 
-> 1.7.9.5
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+index 0796c45..01bfe76 100644
+--- a/fs/lockd/clntlock.c
++++ b/fs/lockd/clntlock.c
+@@ -144,6 +144,9 @@ int nlmclnt_block(struct nlm_wait *block, struct nlm_rqst *req, long timeout)
+ 			timeout);
+ 	if (ret < 0)
+ 		return -ERESTARTSYS;
++	/* Reset the lock status after a server reboot so we resend */
++	if (block->b_status == nlm_lck_denied_grace_period)
++		block->b_status = nlm_lck_blocked;
+ 	req->a_res.status = block->b_status;
+ 	return 0;
+ }
+diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+index 7e529c3..9760ecb 100644
+--- a/fs/lockd/clntproc.c
++++ b/fs/lockd/clntproc.c
+@@ -550,9 +550,6 @@ again:
+ 		status = nlmclnt_block(block, req, NLMCLNT_POLL_TIMEOUT);
+ 		if (status < 0)
+ 			break;
+-		/* Resend the blocking lock request after a server reboot */
+-		if (resp->status ==  nlm_lck_denied_grace_period)
+-			continue;
+ 		if (resp->status != nlm_lck_blocked)
+ 			break;
+ 	}
+-- 
+1.8.1.4
+
