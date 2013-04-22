@@ -1,181 +1,202 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:64406 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:24574 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932593Ab3DBVqS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Apr 2013 17:46:18 -0400
+	id S1752926Ab3DVRUa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Apr 2013 13:20:30 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r3MHKULG018060
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Apr 2013 13:20:30 -0400
+Message-ID: <5175715D.6000205@RedHat.com>
+Date: Mon, 22 Apr 2013 13:20:29 -0400
 From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 15/19] NFSv4.2: Added NFS v4.2 support to the NFS client
-Date: Tue,  2 Apr 2013 17:45:56 -0400
-Message-Id: <1364939160-20874-16-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
-References: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
+MIME-Version: 1.0
+To: Steve Dickson <steved@redhat.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Simo Sorce <simo@redhat.com>
+Subject: Re: [PATCH] Avoid DNS reverse resolution for server names (take 3)
+References: <1366380998-2581-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1366380998-2581-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Steve Dickson <steved@redhat.com>
 
-This enable NFSv4.2 support. To enable this code the
-CONFIG_NFS_V4_2 Kconfig define needs to be set and
-the -o v4.2 mount option need to be used.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- fs/nfs/Kconfig       | 12 +++++++++++-
- fs/nfs/callback.c    |  1 +
- fs/nfs/nfs4client.c  |  5 +++++
- fs/nfs/nfs4proc.c    | 15 +++++++++++++++
- fs/nfs/super.c       |  7 ++++++-
- include/linux/nfs4.h |  4 ++++
- 6 files changed, 42 insertions(+), 2 deletions(-)
+On 19/04/13 10:16, Steve Dickson wrote:
+> From: Simo Sorce <simo@redhat.com>
+> 
+> A NFS client should be able to work properly even if the DNS Reverse
+> record for the server is not set. This means a DNS lookup should not be
+> done on server names at are passed to GSSAPI. This patch changes the default
+> behavior to no longer do those types of lookups
+> 
+> This change default behavior could negatively impact some current
+> environments, so the -D option is also being added that will re-enable
+> the DNS reverse looks on server names, which are passed to GSSAPI.
+> 
+> Signed-off-by: Simo Sorce <simo@redhat.com>
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed...
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 3861a1f..b80754b 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -104,6 +104,16 @@ config NFS_V4_1
- 
- 	  If unsure, say N.
- 
-+config NFS_V4_2
-+	bool "NFS client support for NFSv4.2"
-+	depends on NFS_V4_1
-+	select NFS_V4_SECURITY_LABEL
-+	help
-+	  This option enables support for minor version 1 of the NFSv4 protocol
-+	  in the kernel's NFS client.
-+
-+	  If unsure, say N.
-+
- config PNFS_FILE_LAYOUT
- 	tristate
- 	depends on NFS_V4_1
-@@ -133,7 +143,7 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
- 
- config NFS_V4_SECURITY_LABEL
- 	bool "Provide Security Label support for NFSv4 client"
--	depends on NFS_V4 && SECURITY
-+	depends on NFS_V4_2 && SECURITY
- 	help
- 
- 	Say Y here if you want enable fine-grained security label attribute
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 5088b57..cb35747 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -279,6 +279,7 @@ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct n
- 			ret = nfs4_callback_up_net(serv, net);
- 			break;
- 		case 1:
-+		case 2:
- 			ret = nfs41_callback_up_net(serv, net);
- 			break;
- 		default:
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index ac4fc9a..30c70a4 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -66,6 +66,11 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
- 	if (err)
- 		goto error;
- 
-+	if (cl_init->minorversion > NFS4_MAX_MINOR_VERSION) {
-+		err = -EINVAL;
-+		goto error;
-+	}
-+		
- 	spin_lock_init(&clp->cl_lock);
- 	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
- 	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index cd3b02e..b7eae1e 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7185,11 +7185,26 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
- };
- #endif
- 
-+#if defined(CONFIG_NFS_V4_2)
-+static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
-+	.minor_version = 2,
-+	.call_sync = nfs4_call_sync_sequence,
-+	.match_stateid = nfs41_match_stateid,
-+	.find_root_sec = nfs41_find_root_sec,
-+	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
-+	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
-+	.state_renewal_ops = &nfs41_state_renewal_ops,
-+};
-+#endif
-+
- const struct nfs4_minor_version_ops *nfs_v4_minor_ops[] = {
- 	[0] = &nfs_v4_0_minor_ops,
- #if defined(CONFIG_NFS_V4_1)
- 	[1] = &nfs_v4_1_minor_ops,
- #endif
-+#if defined(CONFIG_NFS_V4_2)
-+	[2] = &nfs_v4_2_minor_ops,
-+#endif
- };
- 
- const struct inode_operations nfs4_dir_inode_operations = {
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index d08a783..68c42be 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -269,7 +269,7 @@ static match_table_t nfs_local_lock_tokens = {
- 
- enum {
- 	Opt_vers_2, Opt_vers_3, Opt_vers_4, Opt_vers_4_0,
--	Opt_vers_4_1,
-+	Opt_vers_4_1, Opt_vers_4_2,
- 
- 	Opt_vers_err
- };
-@@ -280,6 +280,7 @@ static match_table_t nfs_vers_tokens = {
- 	{ Opt_vers_4, "4" },
- 	{ Opt_vers_4_0, "4.0" },
- 	{ Opt_vers_4_1, "4.1" },
-+	{ Opt_vers_4_2, "4.2" },
- 
- 	{ Opt_vers_err, NULL }
- };
-@@ -1098,6 +1099,10 @@ static int nfs_parse_version_string(char *string,
- 		mnt->version = 4;
- 		mnt->minorversion = 1;
- 		break;
-+	case Opt_vers_4_2:
-+		mnt->version = 4;
-+		mnt->minorversion = 2;
-+		break;
- 	default:
- 		return 0;
- 	}
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 650a678..445792a 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -398,11 +398,15 @@ enum lock_type4 {
- #define NFS4_VERSION 4
- #define NFS4_MINOR_VERSION 0
- 
-+#if defined(CONFIG_NFS_V4_2)
-+#define NFS4_MAX_MINOR_VERSION 2
-+#else
- #if defined(CONFIG_NFS_V4_1)
- #define NFS4_MAX_MINOR_VERSION 1
- #else
- #define NFS4_MAX_MINOR_VERSION 0
- #endif /* CONFIG_NFS_V4_1 */
-+#endif /* CONFIG_NFS_V4_2 */
- 
- #define NFS4_DEBUG 1
- 
--- 
-1.8.1.4
+steved.
 
+> ---
+>  utils/gssd/gss_util.h  |  2 ++
+>  utils/gssd/gssd.c      |  7 +++++--
+>  utils/gssd/gssd.man    |  8 +++++++-
+>  utils/gssd/gssd_proc.c | 31 +++++++++++++++++++++++++++----
+>  4 files changed, 41 insertions(+), 7 deletions(-)
+> 
+> diff --git a/utils/gssd/gss_util.h b/utils/gssd/gss_util.h
+> index aa9f778..c81fc5a 100644
+> --- a/utils/gssd/gss_util.h
+> +++ b/utils/gssd/gss_util.h
+> @@ -52,4 +52,6 @@ int gssd_check_mechs(void);
+>  		gss_krb5_set_allowable_enctypes(min, cred, num, types)
+>  #endif
+>  
+> +extern int avoid_dns;
+> +
+>  #endif /* _GSS_UTIL_H_ */
+> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+> index 07b1e52..8ee478b 100644
+> --- a/utils/gssd/gssd.c
+> +++ b/utils/gssd/gssd.c
+> @@ -85,7 +85,7 @@ sig_hup(int signal)
+>  static void
+>  usage(char *progname)
+>  {
+> -	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm]\n",
+> +	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm] [-D]\n",
+>  		progname);
+>  	exit(1);
+>  }
+> @@ -102,7 +102,7 @@ main(int argc, char *argv[])
+>  	char *progname;
+>  
+>  	memset(ccachesearch, 0, sizeof(ccachesearch));
+> -	while ((opt = getopt(argc, argv, "fvrlmnMp:k:d:t:R:")) != -1) {
+> +	while ((opt = getopt(argc, argv, "DfvrlmnMp:k:d:t:R:")) != -1) {
+>  		switch (opt) {
+>  			case 'f':
+>  				fg = 1;
+> @@ -150,6 +150,9 @@ main(int argc, char *argv[])
+>  				errx(1, "Encryption type limits not supported by Kerberos libraries.");
+>  #endif
+>  				break;
+> +			case 'D':
+> +				avoid_dns = 0;
+> +				break;
+>  			default:
+>  				usage(argv[0]);
+>  				break;
+> diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
+> index 79d9bf9..1df75c5 100644
+> --- a/utils/gssd/gssd.man
+> +++ b/utils/gssd/gssd.man
+> @@ -8,7 +8,7 @@
+>  rpc.gssd \- RPCSEC_GSS daemon
+>  .SH SYNOPSIS
+>  .B rpc.gssd
+> -.RB [ \-fMnlvr ]
+> +.RB [ \-DfMnlvr ]
+>  .RB [ \-k
+>  .IR keytab ]
+>  .RB [ \-p
+> @@ -195,6 +195,12 @@ option when starting
+>  .BR rpc.gssd .
+>  .SH OPTIONS
+>  .TP
+> +.B -D
+> +DNS Reverse lookups are not used for determining the
+> +server names pass to GSSAPI. This option will reverses that and forces 
+> +the use of DNS Reverse resolution of the server's IP address to 
+> +retrieve the server name to use in GSAPI authentication.
+> +.TP
+>  .B -f
+>  Runs
+>  .B rpc.gssd
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index d6f07e6..e4ab253 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -67,6 +67,7 @@
+>  #include <errno.h>
+>  #include <gssapi/gssapi.h>
+>  #include <netdb.h>
+> +#include <ctype.h>
+>  
+>  #include "gssd.h"
+>  #include "err_util.h"
+> @@ -107,6 +108,9 @@ struct pollfd * pollarray;
+>  
+>  unsigned long pollsize;  /* the size of pollaray (in pollfd's) */
+>  
+> +/* Avoid DNS reverse lookups on server names */
+> +int avoid_dns = 1;
+> +
+>  /*
+>   * convert a presentation address string to a sockaddr_storage struct. Returns
+>   * true on success or false on failure.
+> @@ -165,12 +169,31 @@ addrstr_to_sockaddr(struct sockaddr *sa, const char *node, const char *port)
+>   * convert a sockaddr to a hostname
+>   */
+>  static char *
+> -sockaddr_to_hostname(const struct sockaddr *sa, const char *addr)
+> +get_servername(const char *name, const struct sockaddr *sa, const char *addr)
+>  {
+>  	socklen_t		addrlen;
+>  	int			err;
+>  	char			*hostname;
+>  	char			hbuf[NI_MAXHOST];
+> +	unsigned char		buf[sizeof(struct in6_addr)];
+> +	int			servername = 0;
+> +
+> +	if (avoid_dns) {
+> +		/*
+> +		 * Determine if this is a server name, or an IP address.
+> +		 * If it is an IP address, do the DNS lookup otherwise
+> +		 * skip the DNS lookup.
+> +		 */
+> +		servername = 0;
+> +		if (strchr(name, '.') && inet_pton(AF_INET, name, buf) == 1)
+> +			servername = 1; /* IPv4 */
+> +		else if (strchr(name, ':') && inet_pton(AF_INET6, name, buf) == 1)
+> +			servername = 1; /* or IPv6 */
+> +
+> +		if (servername) {
+> +			return strdup(name);
+> +		}
+> +	}
+>  
+>  	switch (sa->sa_family) {
+>  	case AF_INET:
+> @@ -208,7 +231,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+>  		  struct sockaddr *addr) {
+>  #define INFOBUFLEN 256
+>  	char		buf[INFOBUFLEN + 1];
+> -	static char	dummy[128];
+> +	static char	server[128];
+>  	int		nbytes;
+>  	static char	service[128];
+>  	static char	address[128];
+> @@ -236,7 +259,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+>  		   "service: %127s %15s version %15s\n"
+>  		   "address: %127s\n"
+>  		   "protocol: %15s\n",
+> -		   dummy,
+> +		   server,
+>  		   service, program, version,
+>  		   address,
+>  		   protoname);
+> @@ -258,7 +281,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+>  	if (!addrstr_to_sockaddr(addr, address, port))
+>  		goto fail;
+>  
+> -	*servername = sockaddr_to_hostname(addr, address);
+> +	*servername = get_servername(server, addr, address);
+>  	if (*servername == NULL)
+>  		goto fail;
+>  
+> 
