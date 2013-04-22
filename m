@@ -1,192 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:37316 "EHLO
-	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030421Ab3DSOQk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Apr 2013 10:16:40 -0400
-Received: from tophat.home.4dicksons.org ([192.168.62.20])
-	by Dobby.4dicksons.org with esmtp (Exim 4.63)
-	(envelope-from <steved@redhat.com>)
-	id 1UTC7B-0006kH-HP
-	for linux-nfs@vger.kernel.org; Fri, 19 Apr 2013 10:16:38 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH] Avoid DNS reverse resolution for server names (take 3)
-Date: Fri, 19 Apr 2013 10:16:36 -0400
-Message-Id: <1366380996-2549-1-git-send-email-steved@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:27201 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751069Ab3DVRHF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Apr 2013 13:07:05 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r3MH75la018062
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Apr 2013 13:07:05 -0400
+Message-ID: <51756E38.6030905@RedHat.com>
+Date: Mon, 22 Apr 2013 13:07:04 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Jose Castillo <jcastillo@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Add the missing '$' in auth_unix_ip()
+References: <1365522899-29123-1-git-send-email-jcastillo@redhat.com>
+In-Reply-To: <1365522899-29123-1-git-send-email-jcastillo@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Simo Sorce <simo@redhat.com>
 
-A NFS client should be able to work properly even if the DNS Reverse
-record for the server is not set. This means a DNS lookup should not be
-done on server names at are passed to GSSAPI. This patch changes the default
-behavior to no longer do those types of lookups
 
-This change default behavior could negatively impact some current
-environments, so the -D option is also being added that will re-enable
-the DNS reverse looks on server names, which are passed to GSSAPI.
+On 09/04/13 11:54, Jose Castillo wrote:
+> Signed-off-by: Jose Castillo <jcastillo@redhat.com>
+Committed...
 
-Signed-off-by: Simo Sorce <simo@redhat.com>
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/gssd/gss_util.h  |  2 ++
- utils/gssd/gssd.c      |  7 +++++--
- utils/gssd/gssd.man    |  8 +++++++-
- utils/gssd/gssd_proc.c | 31 +++++++++++++++++++++++++++----
- 4 files changed, 41 insertions(+), 7 deletions(-)
-
-diff --git a/utils/gssd/gss_util.h b/utils/gssd/gss_util.h
-index aa9f778..c81fc5a 100644
---- a/utils/gssd/gss_util.h
-+++ b/utils/gssd/gss_util.h
-@@ -52,4 +52,6 @@ int gssd_check_mechs(void);
- 		gss_krb5_set_allowable_enctypes(min, cred, num, types)
- #endif
- 
-+extern int avoid_dns;
-+
- #endif /* _GSS_UTIL_H_ */
-diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index 07b1e52..8ee478b 100644
---- a/utils/gssd/gssd.c
-+++ b/utils/gssd/gssd.c
-@@ -85,7 +85,7 @@ sig_hup(int signal)
- static void
- usage(char *progname)
- {
--	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm]\n",
-+	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm] [-D]\n",
- 		progname);
- 	exit(1);
- }
-@@ -102,7 +102,7 @@ main(int argc, char *argv[])
- 	char *progname;
- 
- 	memset(ccachesearch, 0, sizeof(ccachesearch));
--	while ((opt = getopt(argc, argv, "fvrlmnMp:k:d:t:R:")) != -1) {
-+	while ((opt = getopt(argc, argv, "DfvrlmnMp:k:d:t:R:")) != -1) {
- 		switch (opt) {
- 			case 'f':
- 				fg = 1;
-@@ -150,6 +150,9 @@ main(int argc, char *argv[])
- 				errx(1, "Encryption type limits not supported by Kerberos libraries.");
- #endif
- 				break;
-+			case 'D':
-+				avoid_dns = 0;
-+				break;
- 			default:
- 				usage(argv[0]);
- 				break;
-diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
-index 79d9bf9..1df75c5 100644
---- a/utils/gssd/gssd.man
-+++ b/utils/gssd/gssd.man
-@@ -8,7 +8,7 @@
- rpc.gssd \- RPCSEC_GSS daemon
- .SH SYNOPSIS
- .B rpc.gssd
--.RB [ \-fMnlvr ]
-+.RB [ \-DfMnlvr ]
- .RB [ \-k
- .IR keytab ]
- .RB [ \-p
-@@ -195,6 +195,12 @@ option when starting
- .BR rpc.gssd .
- .SH OPTIONS
- .TP
-+.B -D
-+DNS Reverse lookups are not used for determining the
-+server names pass to GSSAPI. This option will reverses that and forces 
-+the use of DNS Reverse resolution of the server's IP address to 
-+retrieve the server name to use in GSAPI authentication.
-+.TP
- .B -f
- Runs
- .B rpc.gssd
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index d6f07e6..e4ab253 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -67,6 +67,7 @@
- #include <errno.h>
- #include <gssapi/gssapi.h>
- #include <netdb.h>
-+#include <ctype.h>
- 
- #include "gssd.h"
- #include "err_util.h"
-@@ -107,6 +108,9 @@ struct pollfd * pollarray;
- 
- unsigned long pollsize;  /* the size of pollaray (in pollfd's) */
- 
-+/* Avoid DNS reverse lookups on server names */
-+int avoid_dns = 1;
-+
- /*
-  * convert a presentation address string to a sockaddr_storage struct. Returns
-  * true on success or false on failure.
-@@ -165,12 +169,31 @@ addrstr_to_sockaddr(struct sockaddr *sa, const char *node, const char *port)
-  * convert a sockaddr to a hostname
-  */
- static char *
--sockaddr_to_hostname(const struct sockaddr *sa, const char *addr)
-+get_servername(const char *name, const struct sockaddr *sa, const char *addr)
- {
- 	socklen_t		addrlen;
- 	int			err;
- 	char			*hostname;
- 	char			hbuf[NI_MAXHOST];
-+	unsigned char		buf[sizeof(struct in6_addr)];
-+	int			servername = 0;
-+
-+	if (avoid_dns) {
-+		/*
-+		 * Determine if this is a server name, or an IP address.
-+		 * If it is an IP address, do the DNS lookup otherwise
-+		 * skip the DNS lookup.
-+		 */
-+		servername = 0;
-+		if (strchr(name, '.') && inet_pton(AF_INET, name, buf) == 1)
-+			servername = 1; /* IPv4 */
-+		else if (strchr(name, ':') && inet_pton(AF_INET6, name, buf) == 1)
-+			servername = 1; /* or IPv6 */
-+
-+		if (servername) {
-+			return strdup(name);
-+		}
-+	}
- 
- 	switch (sa->sa_family) {
- 	case AF_INET:
-@@ -208,7 +231,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
- 		  struct sockaddr *addr) {
- #define INFOBUFLEN 256
- 	char		buf[INFOBUFLEN + 1];
--	static char	dummy[128];
-+	static char	server[128];
- 	int		nbytes;
- 	static char	service[128];
- 	static char	address[128];
-@@ -236,7 +259,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
- 		   "service: %127s %15s version %15s\n"
- 		   "address: %127s\n"
- 		   "protocol: %15s\n",
--		   dummy,
-+		   server,
- 		   service, program, version,
- 		   address,
- 		   protoname);
-@@ -258,7 +281,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
- 	if (!addrstr_to_sockaddr(addr, address, port))
- 		goto fail;
- 
--	*servername = sockaddr_to_hostname(addr, address);
-+	*servername = get_servername(server, addr, address);
- 	if (*servername == NULL)
- 		goto fail;
- 
--- 
-1.8.1.4
-
+steved.
+> ---
+>  utils/mountd/cache.c | 10 ++++++----
+>  1 file changed, 6 insertions(+), 4 deletions(-)
+> 
+> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+> index 978698d..e1027f3 100644
+> --- a/utils/mountd/cache.c
+> +++ b/utils/mountd/cache.c
+> @@ -80,7 +80,7 @@ static void auth_unix_ip(FILE *f)
+>  	 */
+>  	char *cp;
+>  	char class[20];
+> -	char ipaddr[INET6_ADDRSTRLEN];
+> +	char ipaddr[INET6_ADDRSTRLEN + 1];
+>  	char *client = NULL;
+>  	struct addrinfo *tmp = NULL;
+>  	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
+> @@ -94,7 +94,7 @@ static void auth_unix_ip(FILE *f)
+>  	    strcmp(class, "nfsd") != 0)
+>  		return;
+>  
+> -	if (qword_get(&cp, ipaddr, sizeof(ipaddr)) <= 0)
+> +	if (qword_get(&cp, ipaddr, sizeof(ipaddr) - 1) <= 0)
+>  		return;
+>  
+>  	tmp = host_pton(ipaddr);
+> @@ -116,9 +116,11 @@ static void auth_unix_ip(FILE *f)
+>  	qword_print(f, "nfsd");
+>  	qword_print(f, ipaddr);
+>  	qword_printtimefrom(f, DEFAULT_TTL);
+> -	if (use_ipaddr)
+> +	if (use_ipaddr) {
+> +		memmove(ipaddr + 1, ipaddr, strlen(ipaddr) + 1);
+> +		ipaddr[0] = '$';
+>  		qword_print(f, ipaddr);
+> -	else if (client)
+> +	} else if (client)
+>  		qword_print(f, *client?client:"DEFAULT");
+>  	qword_eol(f);
+>  	xlog(D_CALL, "auth_unix_ip: client %p '%s'", client, client?client: "DEFAULT");
+> 
