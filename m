@@ -1,80 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f174.google.com ([209.85.210.174]:41505 "EHLO
-	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750753Ab3D2Fev (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Apr 2013 01:34:51 -0400
-MIME-Version: 1.0
-In-Reply-To: <20130428144248.GA2037@fieldses.org>
-References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com>
-	<CABgxfbF7c9ktSoMSPV21JU76V5J4iwbJQ257S91Y3z36WJbJVA@mail.gmail.com>
-	<62745258-4F3B-4C05-BFFD-03EA604576E4@ornl.gov>
-	<CABgxfbGxhnKj2n0Z-w87rZ6fwCssO31G009gwej957gv1p8PQQ@mail.gmail.com>
-	<0EE9A1CDC8D6434DB00095CD7DB873462CF9715B@MTLDAG01.mtl.com>
-	<20130423210607.GJ3676@fieldses.org>
-	<0EE9A1CDC8D6434DB00095CD7DB873462CF988C9@MTLDAG01.mtl.com>
-	<20130424150540.GB20275@fieldses.org>
-	<20130424152631.GC20275@fieldses.org>
-	<0EE9A1CDC8D6434DB00095CD7DB873462CF9A820@MTLDAG01.mtl.com>
-	<20130428144248.GA2037@fieldses.org>
-Date: Sun, 28 Apr 2013 22:34:50 -0700
-Message-ID: <CABgxfbF9MepShtOP8EoTjfMXzU4LLWC7brTmMfa3rtoWBiOweg@mail.gmail.com>
-Subject: Re: NFS over RDMA benchmark
-From: Wendy Cheng <s.wendy.cheng@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Yan Burman <yanb@mellanox.com>, "Atchley, Scott" <atchleyes@ornl.gov>,
-        Tom Tucker <tom@opengridcomputing.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Or Gerlitz <ogerlitz@mellanox.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from aserp1040.oracle.com ([141.146.126.69]:46923 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755011Ab3DVUkO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Apr 2013 16:40:14 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Subject: Interoperable junctions on Linux
+Message-Id: <71999CA2-F6E7-4DE1-9DC3-AED77626DE7F@oracle.com>
+Date: Mon, 22 Apr 2013 16:39:45 -0400
+To: samba-technical@lists.samba.org,
+        fedfs-utils Developers <fedfs-utils-devel@oss.oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Apr 28, 2013 at 7:42 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+Hi-
 
->> On Wed, Apr 17, 2013 at 7:36 AM, Yan Burman
+I led a discussion on Friday at the Linux Storage and Filesystem Summit on how to store {DFS, FedFS} junctions in Linux filesystems.  I'd like to summarize the discussion, then ask a few follow-up questions.  I apologize in advance for the length.
 
->> When running ib_send_bw, I get 4.3-4.5 GB/sec for block sizes 4-512K.
->> When I run fio over rdma mounted nfs, I get 260-2200MB/sec for the
-> > same block sizes (4-512K). running over IPoIB-CM, I get 200-980MB/sec.
-> ...
+FedFS is to NFS as Microsoft DFS is to SMB/CIFS.  FedFS uses NFS referrals to glue together a file namespace out of separate shares, starting with a root share that may contain nothing but referrals.  For more on FedFS, start with RFC 5716.
 
-[snip]
+The physical object that stores referral location target information is called a junction.  It can contain an actual list of locations, or it can contain the DN of an LDAP record where the location list is maintained.
 
->>     36.18%          nfsd  [kernel.kallsyms]   [k] mutex_spin_on_owner
->
-> That's the inode i_mutex.
->
->>     14.70%-- svc_send
->
-> That's the xpt_mutex (ensuring rpc replies aren't interleaved).
->
->>
->>      9.63%          nfsd  [kernel.kallsyms]   [k] _raw_spin_lock_irqsave
->>
->
-> And that (and __free_iova below) looks like iova_rbtree_lock.
->
->
+ +  Samba uses a symlink for this purpose.  The contents of the link represent the location information passed out to CIFS clients.
 
-Let's revisit your command:
+ +  FedFS uses an extended attribute on a directory for this purpose.  The xattr contains XML which encodes location information passed out to NFS clients.
 
-"FIO arguments: --rw=randread --bs=4k --numjobs=2 --iodepth=128
---ioengine=libaio --size=100000k --prioclass=1 --prio=0 --cpumask=255
---loops=25 --direct=1 --invalidate=1 --fsync_on_close=1 --randrepeat=1
---norandommap --group_reporting --exitall --buffered=0"
+The reasons for this difference are simply historical.
 
-* inode's i_mutex:
-If increasing process/file count didn't help, maybe increase "iodepth"
-(say 512 ?) could offset the i_mutex overhead a little bit ?
+Linux is often used as a multi-protocol file service platform, where the same physical data is presented to clients via both NFS and CIFS.  For this reason, we think there would be value in using the same physical representation for both NFSD and Samba so that a single junction object on our exported filesystems can trigger a referral for both NFS and CIFS.
 
-* xpt_mutex:
-(no idea)
+Samba has been around much longer, and DFS support is actually deployed.  FedFS is newer and still experimental.  Thus we decided to change FedFS to use a symlink instead of a directory.  Samba will still use the regular contents of the symlink, and FedFS will store its metadata in an extended attribute attached to the symlink.
 
-* iova_rbtree_lock
-DMA mapping fragmentation ? I have not studied whether NFS-RDMA
-routines such as "svc_rdma_sendto()" could do better but maybe
-sequential IO (instead of "randread") could help ? Bigger block size
-(instead of 4K) can help ?
+There was a rough consensus to prefer JSON over XML in the FedFS xattr, though there are still some who dislike both.  I'm open to suggestion, since we're now essentially replacing the existing FedFS junction format and can change it to anything we like.
 
--- Wendy
+Today FedFS junctions can contain either a location list or an LDAP DN.  One option for FedFS is to support only the LDAP DN junction type, and have a (possibly local) LDAP service available to store the location information.  The FedFS junction xattr would then always contain an LDAP URL.  Storing complex data types (a list containing pathnames, hostnames, integers, and other values) would then be up to LDAP.
+
+We will have to discuss a conjunction of administrative interfaces at some later point.  However, we should clarify how our junction management tools behave now that each junction can have metadata it did not have before.
+
+FedFS:
+
+  nfsref add - if no symlink exists, create it (what contents should it have?)
+             - add an extended attribute
+
+  nfsref remove - remove the extended attribute, leave the symlink
+                - can we remove the symlink if its contents are meaningless?
+
+
+Samba:
+
+  add - if a symlink already exists, replace its contents, preserving xattrs
+
+  remove - if a FedFS extended attribute exists, leave the symlink (what contents should it have?)
+
+
+The FedFS extended attribute is called "trusted.junction.nfs".  Should we rename it?
+
+Note that CAP_SYS_ADMIN capabilities are required to access the xattr.  Will that be a problem for Samba administration tools?
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
