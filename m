@@ -1,79 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:3989 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754895Ab3DVUVn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Apr 2013 16:21:43 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: Retry SETCLIENTID with AUTH_SYS instead of
- AUTH_NONE
-Date: Mon, 22 Apr 2013 20:21:42 +0000
-Message-ID: <1366662101.12400.0.camel@leira.trondhjem.org>
-References: <20130422194240.25157.85632.stgit@seurat.1015granger.net>
-In-Reply-To: <20130422194240.25157.85632.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset=US-ASCII
+Received: from eu1sys200aog110.obsmtp.com ([207.126.144.129]:42236 "EHLO
+	eu1sys200aog110.obsmtp.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751931Ab3DVLHp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Apr 2013 07:07:45 -0400
+From: Yan Burman <yanb@mellanox.com>
+To: Peng Tao <bergwolf@gmail.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Tom Tucker <tom@opengridcomputing.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: NFS over RDMA benchmark
+Date: Mon, 22 Apr 2013 11:07:36 +0000
+Message-ID: <0EE9A1CDC8D6434DB00095CD7DB873462CF97E81@MTLDAG01.mtl.com>
+References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com>
+ <CA+a=Yy7zruyGbjLyYXtPsYs12xs1uCwXo9BJtU1Fg6OMoC2z6g@mail.gmail.com>
+In-Reply-To: <CA+a=Yy7zruyGbjLyYXtPsYs12xs1uCwXo9BJtU1Fg6OMoC2z6g@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-04-22 at 15:42 -0400, Chuck Lever wrote:
-> Recently I changed the SETCLIENTID code to use AUTH_GSS(krb5i), and
-> then retry with AUTH_NONE if that didn't work.  This was to enable
-> Kerberos NFS mounts to work without forcing Linux NFS clients to
-> have a keytab on hand.
-> 
-> Rick Macklem reports that the FreeBSD server accepts AUTH_NONE only
-> for NULL operations (thus certainly not for SETCLIENTID).  Falling
-> back to AUTH_NONE means our proposed 3.10 NFS client will not
-> interoperate with FreeBSD servers over NFSv4 unless Kerberos is
-> fully configured on both ends.
-> 
-> If the Linux client falls back to using AUTH_SYS instead for
-> SETCLIENTID, all should work fine as long as the NFS server is
-> configured to allow AUTH_SYS for SETCLIENTID.
-> 
-> This may still prevent access to Kerberos-only FreeBSD servers by
-> Linux clients with no keytab.  Rick is of the opinion that the
-> security settings the server applies to its pseudo-fs should also
-> apply to the SETCLIENTID operation.
-> 
-> Linux and Solaris NFS servers do not place that limitation on
-> SETCLIENTID.  The security settings for the server's pseudo-fs are
-> determined automatically as the union of security flavors allowed on
-> real exports, as recommended by RFC 3530bis; and the flavors allowed
-> for SETCLIENTID are all flavors supported by the respective server
-> implementation.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
-> Build-tested only.
-> 
->  fs/nfs/nfs4state.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index d684a57f..87ac12b 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -1857,7 +1857,7 @@ again:
->  			break;
->  	case -NFS4ERR_CLID_INUSE:
->  	case -NFS4ERR_WRONGSEC:
-> -		clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_NULL);
-> +		clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_UNIX);
->  		if (IS_ERR(clnt)) {
->  			status = PTR_ERR(clnt);
->  			break;
-> 
-
-Thanks! Applied...
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+DQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogUGVuZyBUYW8gW21haWx0
+bzpiZXJnd29sZkBnbWFpbC5jb21dDQo+IFNlbnQ6IEZyaWRheSwgQXByaWwgMTksIDIwMTMgMDU6
+MjgNCj4gVG86IFlhbiBCdXJtYW4NCj4gQ2M6IEouIEJydWNlIEZpZWxkczsgVG9tIFR1Y2tlcjsg
+bGludXgtcmRtYUB2Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LQ0KPiBuZnNAdmdlci5rZXJuZWwub3Jn
+DQo+IFN1YmplY3Q6IFJlOiBORlMgb3ZlciBSRE1BIGJlbmNobWFyaw0KPiANCj4gT24gV2VkLCBB
+cHIgMTcsIDIwMTMgYXQgMTA6MzYgUE0sIFlhbiBCdXJtYW4gPHlhbmJAbWVsbGFub3guY29tPg0K
+PiB3cm90ZToNCj4gPiBIaS4NCj4gPg0KPiA+IEkndmUgYmVlbiB0cnlpbmcgdG8gZG8gc29tZSBi
+ZW5jaG1hcmtzIGZvciBORlMgb3ZlciBSRE1BIGFuZCBJIHNlZW0gdG8NCj4gb25seSBnZXQgYWJv
+dXQgaGFsZiBvZiB0aGUgYmFuZHdpZHRoIHRoYXQgdGhlIEhXIGNhbiBnaXZlIG1lLg0KPiA+IE15
+IHNldHVwIGNvbnNpc3RzIG9mIDIgc2VydmVycyBlYWNoIHdpdGggMTYgY29yZXMsIDMyR2Igb2Yg
+bWVtb3J5LCBhbmQNCj4gTWVsbGFub3ggQ29ubmVjdFgzIFFEUiBjYXJkIG92ZXIgUENJLWUgZ2Vu
+My4NCj4gPiBUaGVzZSBzZXJ2ZXJzIGFyZSBjb25uZWN0ZWQgdG8gYSBRRFIgSUIgc3dpdGNoLiBU
+aGUgYmFja2luZyBzdG9yYWdlIG9uIHRoZQ0KPiBzZXJ2ZXIgaXMgdG1wZnMgbW91bnRlZCB3aXRo
+IG5vYXRpbWUuDQo+ID4gSSBhbSBydW5uaW5nIGtlcm5lbCAzLjUuNy4NCj4gPg0KPiA+IFdoZW4g
+cnVubmluZyBpYl9zZW5kX2J3LCBJIGdldCA0LjMtNC41IEdCL3NlYyBmb3IgYmxvY2sgc2l6ZXMg
+NC01MTJLLg0KPiA+IFdoZW4gSSBydW4gZmlvIG92ZXIgcmRtYSBtb3VudGVkIG5mcywgSSBnZXQg
+MjYwLTIyMDBNQi9zZWMgZm9yIHRoZSBzYW1lDQo+IGJsb2NrIHNpemVzICg0LTUxMkspLiBydW5u
+aW5nIG92ZXIgSVBvSUItQ00sIEkgZ2V0IDIwMC05ODBNQi9zZWMuDQo+ID4gSSBnb3QgdG8gdGhl
+c2UgcmVzdWx0cyBhZnRlciB0aGUgZm9sbG93aW5nIG9wdGltaXphdGlvbnM6DQo+ID4gMS4gU2V0
+dGluZyBJUlEgYWZmaW5pdHkgdG8gdGhlIENQVXMgdGhhdCBhcmUgcGFydCBvZiB0aGUgTlVNQSBu
+b2RlIHRoZQ0KPiA+IGNhcmQgaXMgb24gMi4gSW5jcmVhc2luZw0KPiA+IC9wcm9jL3N5cy9zdW5y
+cGMvc3ZjX3JkbWEvbWF4X291dGJvdW5kX3JlYWRfcmVxdWVzdHMgYW5kDQo+ID4gL3Byb2Mvc3lz
+L3N1bnJwYy9zdmNfcmRtYS9tYXhfcmVxdWVzdHMgdG8gMjU2IG9uIHNlcnZlciAzLiBJbmNyZWFz
+aW5nDQo+ID4gUlBDTkZTRENPVU5UIHRvIDMyIG9uIHNlcnZlcg0KPiBEaWQgeW91IHRyeSB0byBh
+ZmZpbmUgbmZzZCB0byBjb3JyZXNwb25kaW5nIENQVXMgd2hlcmUgeW91ciBJQiBjYXJkIGxvY2F0
+ZXM/DQo+IEdpdmVuIHRoYXQgeW91IHNlZSBhIGJvdHRsZW5lY2sgb24gQ1BVIChhcyBpbiB5b3Vy
+IGxhdGVyIGVtYWlsKSwgaXQgbWlnaHQgYmUNCj4gd29ydGggdHJ5aW5nLg0KDQpJIHRyaWVkIHRv
+IGFmZmluZSBuZnNkIHRvIENQVXMgb24gdGhlIE5VTUEgbm9kZSB0aGUgSUIgY2FyZCBpcyBvbi4N
+CkkgYWxzbyBzZXQgdG1wZnMgbWVtb3J5IHBvbGljeSB0byBhbGxvY2F0ZSBmcm9tIHRoZSBzYW1l
+IE5VTUEgbm9kZS4NCkkgZGlkIG5vdCBzZWUgYmlnIGRpZmZlcmVuY2UuDQoNCj4gDQo+ID4gNC4g
+RklPIGFyZ3VtZW50czogLS1ydz1yYW5kcmVhZCAtLWJzPTRrIC0tbnVtam9icz0yIC0taW9kZXB0
+aD0xMjgNCj4gPiAtLWlvZW5naW5lPWxpYmFpbyAtLXNpemU9MTAwMDAwayAtLXByaW9jbGFzcz0x
+IC0tcHJpbz0wIC0tY3B1bWFzaz0yNTUNCj4gPiAtLWxvb3BzPTI1IC0tZGlyZWN0PTEgLS1pbnZh
+bGlkYXRlPTEgLS1mc3luY19vbl9jbG9zZT0xIC0tcmFuZHJlcGVhdD0xDQo+ID4gLS1ub3JhbmRv
+bW1hcCAtLWdyb3VwX3JlcG9ydGluZyAtLWV4aXRhbGwgLS1idWZmZXJlZD0wDQo+ID4NCj4gT24g
+Y2xpZW50IHNpZGUsIGl0IG1heSBiZSBnb29kIHRvIGFmZmluZSBGSU8gcHJvY2Vzc2VzIGFuZCBu
+ZnNpb2QgdG8gQ1BVcw0KPiB3aGVyZSBJQiBjYXJkIGxvY2F0ZXMgYXMgd2VsbCwgaW4gY2FzZSBj
+bGllbnQgaXMgdGhlIGJvdHRsZW5lY2suDQo+IA0KDQpJIGFtIGRvaW5nIHRoYXQgLSBjcHVtYXNr
+PTI1NSBhZmZpbmVzIGl0IHRvIHRoZSBOVU1BIG5vZGUgbXkgY2FyZCBpcyBvbi4NCkZvciBzb21l
+IHJlYXNvbiBkb2luZyB0YXNrc2V0IG9uIG5mc2lvZCBmYWlscy4NCg0KPiAtLQ0KPiBUaGFua3Ms
+DQo+IFRhbw0K
