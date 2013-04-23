@@ -1,73 +1,324 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42477 "EHLO fieldses.org"
+Received: from gw1.transmode.se ([195.58.98.146]:64236 "EHLO gw1.transmode.se"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760478Ab3D2TQ4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Apr 2013 15:16:56 -0400
-Date: Mon, 29 Apr 2013 15:16:54 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1756454Ab3DWOen (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Apr 2013 10:34:43 -0400
+In-Reply-To: <1366726687.35524.6.camel@leira.trondhjem.org>
+References: <OF6F031A84.8897519B-ONC1257B4E.002D1BA3-C1257B4E.002DBED0@LocalDomain>	 <OF64305930.0F7881A0-ONC1257B4E.0030250F-C1257B4E.00306CEC@LocalDomain>
+	 <OFA06D4153.317BAF9A-ONC1257B4F.002F597B-C1257B4F.003AC46C@transmode.se>
+	 <1366126613.12556.18.camel@leira.trondhjem.org>			 <OFB2555ACD.CF7424A9-ONC1257B4F.00613A5E-C1257B4F.006908CE@transmode.se>
+	 <1366150010.27817.8.camel@leira.trondhjem.org>		 <OF97D68E61.A3C35530-ONC1257B51.0043E567-C1257B51.00450958@LocalDomain>
+	 <OFF8AA22C1.D96F08FD-ONC1257B52.003B6FD9-C1257B52.003BEEF9@LocalDomain>
+	 <OFAB88709A.0F45CAFB-ONC1257B56.0049D3CA-C1257B56.004AE572@transmode.se>
+	 <1366725123.35524.2.camel@leira.trondhjem.org>	 <OF940BEB3A.13ADB6E5-ONC1257B56.004D412D-C1257B56.004E3C54@tran
+ <1366726687.35524.6.camel@leira.trondhjem.org>
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFSv4: Servers should only check SETATTR stateid
- open mode on size change
-Message-ID: <20130429191654.GQ17268@fieldses.org>
-References: <1367248534-33387-1-git-send-email-Trond.Myklebust@netapp.com>
- <1367259352.19515.16.camel@leira.trondhjem.org>
- <20130429182145.GL17268@fieldses.org>
- <1367260027.19515.25.camel@leira.trondhjem.org>
- <20130429182939.GN17268@fieldses.org>
- <1367260382.19515.29.camel@leira.trondhjem.org>
- <20130429184103.GO17268@fieldses.org>
- <1367262579.19515.33.camel@leira.trondhjem.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1367262579.19515.33.camel@leira.trondhjem.org>
+Subject: Re: NFS loop on 3.4.39
+From: Joakim Tjernlund <joakim.tjernlund@transmode.se>
+Message-ID: <OF073022D4.783A3AB4-ONC1257B56.004FC43F-C1257B56.005014A4@transmode.se>
+Date: Tue, 23 Apr 2013 16:34:41 +0200
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 29, 2013 at 07:09:41PM +0000, Myklebust, Trond wrote:
-> On Mon, 2013-04-29 at 14:41 -0400, J. Bruce Fields wrote:
-> > On Mon, Apr 29, 2013 at 06:33:02PM +0000, Myklebust, Trond wrote:
-> > > On Mon, 2013-04-29 at 14:29 -0400, J. Bruce Fields wrote:
-> > > > On Mon, Apr 29, 2013 at 06:27:07PM +0000, Myklebust, Trond wrote:
-> > > > > On Mon, 2013-04-29 at 14:21 -0400, J. Bruce Fields wrote:
-> > > > > > On Mon, Apr 29, 2013 at 06:15:52PM +0000, Myklebust, Trond wrote:
-> > > > > > > On Mon, 2013-04-29 at 11:15 -0400, Trond Myklebust wrote:
-> > > > > > > > The NFSv4 and NFSv4.1 specs are both clear that the server should only check
-> > > > > > > > stateid open mode if a SETATTR specifies the size attribute. If the
-> > > > > > > > open mode is not one that allows writing, then it returns NFS4ERR_OPENMODE.
-> > > > > > > > 
-> > > > > > > > In the case where the SETATTR is not changing the size, the client will
-> > > > > > > > still pass it the delegation stateid to ensure that the server does not
-> > > > > > > > recall that delegation. In that case, the server should _ignore_ the
-> > > > > > > > delegation open mode, and simply apply standard permission checks.
-> > > > > > > 
-> > > > > > > Bruce, what does the Linux server do when we send it a delegation
-> > > > > > > stateid as part of a SETATTR that just changes the mode or acl (no size
-> > > > > > > change)? Will it recall the delegation? How about the delegations held
-> > > > > > > by other clients?
-> > > > > > 
-> > > > > > Yes, it breaks all delegations on any setattr.
-> > > > > 
-> > > > > Do you plan to change that?
-> > > > 
-> > > > I'd take patches.
-> > > 
-> > > Have the NFSv4 delegation patches been merged yet, and do they hand out
-> > > delegations on file creation?
-> > 
-> > The vfs support patches haven't been merged, but nfsd still continues to
-> > give out read delegations on any confirmed read-open of a file that
-> > hasn't had a recent delegation conflict.  (They're just not consistent
-> > w.r.t local metadata operations....)
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote on 2013/04/23 
+16:18:07:
 > 
-> The problem is that without those there seems to be no VFS level
-> functionality that allows you to say "break the leases for all processes
-> except this one".
+> On Tue, 2013-04-23 at 16:14 +0200, Joakim Tjernlund wrote:
+> > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote on 2013/04/23 
+> > 15:52:06:
+> > > 
+> > > On Tue, 2013-04-23 at 15:38 +0200, Joakim Tjernlund wrote:
+> > > > So, it happened again. Just when hitting search on bugs.gentoo.org 
+in 
+> > > > firefox 17.0.3
+> > > > 
+> > > > This time I got a NFS loop with NFS4ERR_BAD_STATEID looping over 
+and 
+> > over
+> > > > again and FF was hung. Not posting the logs as it does not appear 
+to
+> > > > do any good. Nothing in dmesg either.
+> > > > 
+> > > > Noticed this patch on the NFS list:
+> > > >   http://marc.info/?l=linux-nfs&m=136643651710066&w=2
+> > > > I wonder if that could be a potential cure and if so, could it be
+> > > > backported to 3.4?
+> > > 
+> > > It is in the testing branch on
+> > > 
+> > >   http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=summary
+> > > 
+> > > if you want to try it out. I'm not planning on backporting anything 
+that
+> > > hasn't been labelled with a Cc: stable in that branch.
+> > 
+> > Well, we won't use tip of linus tree in production so there is
+> > little point to use your testing branch. However it looks like a 
+trivial
+> > backport so I can test it on my client easily.
 
-There isn't any *with* those patches, either.  I agree that it would be
-nice to allow a client issuing a write or setattr to continue to hold
-its read delegation, if it's the only holder of a delegation.  But my
-understanding is that a server isn't required to do that.  So I'm taking
-this one step at a time and ignoring that problem for now.
+hmm, after testing a patched 3.4 kernel I could possibly try Linus tree
+on my client but I doubt I will have time to bisect it as it
+can take days to reproduce. Will have it in mind though.
 
---b.
+> 
+> The point of testing would not be to discover if you can use Linus' tree
+> in production, but rather to see if the problem is already fixed
+> upstream. If it is, we can bisect to figure out which patch is the fix.
+> 
+> > Even the NFS server if required, is the above referenced patch for
+> > NFS client/server or both? Any chance this is the culprit?
+> 
+> That's a client patch.
+
+Thanks, rebuilding my clients kernel now.
+
+> 
+> >  Jocke
+> > 
+> > PS.
+> >    I guess I should throw in 
+> >       NFSv4: Ensure the LOCK call cannot use the delegation stateid
+> >    too?
+> > > 
+> > > Cheers
+> > >   Trond
+> > > 
+> > > >  Jocke
+> > > > 
+> > > > Joakim Tjernlund/Transmode wrote on 2013/04/19 12:54:38:
+> > > > > 
+> > > > > Joakim Tjernlund/Transmode wrote on 2013/04/18 14:34:03:
+> > > > > > 
+> > > > > > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote on 
+> > 2013/04/17 
+> > > > 00:06:51:
+> > > > > > > 
+> > > > > > > On Tue, 2013-04-16 at 21:07 +0200, Joakim Tjernlund wrote:
+> > > > > > > > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote on 
+> > > > 2013/04/16 
+> > > > > > > > 17:36:55:
+> > > > > > > > 
+> > > > > > > > > From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+> > > > > > > > > To: Joakim Tjernlund <joakim.tjernlund@transmode.se>, 
+> > > > > > > > > Cc: "linux-nfs@vger.kernel.org" 
+<linux-nfs@vger.kernel.org>
+> > > > > > > > > Date: 2013/04/16 17:37
+> > > > > > > > > Subject: Re: NFS loop on 3.4.39
+> > > > > > > > > 
+> > > > > > > > > On Tue, 2013-04-16 at 12:41 +0200, Joakim Tjernlund 
+wrote:
+> > > > > > > > > > Here we go again, this time i happened while browsing 
+the 
+> > > > Boston news 
+> > > > > > > > on 
+> > > > > > > > > > www.dn.se
+> > > > > > > > > > Now gvfsd-metadata is turned off(not running at all) 
+and I 
+> > 
+> > > > get:
+> > > > > > > > > > 10:28:44.616146 IP 192.168.201.44.nfs > 
+> > > > 172.20.4.10.3671768838: reply 
+> > > > > > > > ok 
+> > > > > > > > > > 52 getattr ERROR: unk 10024
+> > > > > > > > > 
+> > > > > > > > > Part of the reason why you are getting no response to 
+these 
+> > > > posts is
+> > > > > > > > > that you are posting tcpdump-decoded data. Tcpdump still 
+has 
+> > no 
+> > > > support
+> > > > > > > > > for NFSv4, and therefore completely garbles the output 
+by 
+> > trying 
+> > > > to
+> > > > > > > > > interpret it as NFSv2/v3.
+> > > > > > > > > In general, if you are posting network traffic, please 
+> > record it 
+> > > > as
+> > > > > > > > > binary raw packet data (using the '-w' option on tcdump) 
+so 
+> > that 
+> > > > we can
+> > > > > > > > > look at the full contents. Either include it as an 
+> > attachment, 
+> > > > or
+> > > > > > > > > provide us with details on how to download it from an 
+http 
+> > > > server.
+> > > > > > > > > 
+> > > > > > > > > Other information that is needed in order to make sense 
+of 
+> > NFS 
+> > > > bug
+> > > > > > > > > reports includes:
+> > > > > > > > 
+> > > > > > > > Thank you Trond, I figured there was something missing but 
+I 
+> > > > didn't know 
+> > > > > > > > where to start but here goes:
+> > > > > > > > 
+> > > > > > > > > 
+> > > > > > > > > - client OS (non-linux) or kernel version (linux)
+> > > > > > > > Client OS Linux 3.4.39, x86
+> > > > > > > > 
+> > > > > > > > > - mount options on the client
+> > > > > > > > ~ # ypmatch jocke auto.home
+> > > > > > > > -fstype=nfs,soft devsrv:/mnt/home/jocke
+> > > > > > > > 
+> > > > > > > > > - server OS (non-linux) or kernel version (linux)
+> > > > > > > > Server OS Linux 3.4.39, amd64
+> > > > > > > > 
+> > > > > > > > > - type of exported filesystem on the server
+> > > > > > > > XFS
+> > > > > > > > 
+> > > > > > > > > - contents of /etc/exports on the server
+> > > > > > > > more /etc/exports
+> > > > > > > > # /etc/exports: NFS file systems being exported.  See 
+> > exports(5).
+> > > > > > > > /mnt/home *(rw,async,root_squash,no_subtree_check)
+> > > > > > > > /mnt/systemtest *(rw,sync,root_squash,no_subtree_check)
+> > > > > > > > /mnt/TNM *(rw,sync,root_squash,no_subtree_check)
+> > > > > > > > /tftproot *(rw,async,root_squash,no_subtree_check)
+> > > > > > > > /mnt/images 
+> > *(rw,async,no_root_squash,no_subtree_check,insecure)
+> > > > > > > > /rescue 
+*(ro,async,no_root_squash,no_subtree_check,insecure)
+> > > > > > > > 
+> > > > > > > > /mnt/home is the one failing
+> > > > > > > > 
+> > > > > > > > > 
+> > > > > > > > > Please ensure that you always include those in your 
+emails.
+> > > > > > > > 
+> > > > > > > > nfs.pcap: 
+> > > > > > > > 
+> > > > 
+http://ftp-us.transmode.se/get/?id=1bf2561ed2e7d4e379b2936319c82c25
+> > > > > > > > 
+> > > > > > > > nfs2.pcap: 
+> > > > > > > > 
+> > > > 
+http://ftp-us.transmode.se/get/?id=759c7645248a426720da8e9ba7074040
+> > > > > > > > 
+> > > > > > > > nfs3.pcap: 
+> > > > > > > > 
+> > > > 
+http://ftp-us.transmode.se/get/?id=051c6d771978b2407e15e96152bd6e66
+> > > > > > > > 
+> > > > > > > > nfs4.pcap: 
+> > > > > > > > 
+> > > > 
+http://ftp-us.transmode.se/get/?id=5dfab4da6cbbe400697bc1621b541c9f
+> > > > > > > > 
+> > > > > > > > nfs3.pcap is the gvsd-metadata problem one can find using 
+> > google, 
+> > > > doesn't 
+> > > > > > > > have to be a NFS problem
+> > > > > > > > The other 3 all come from surfing the www using firefox 
+17.0.3
+> > > > > > > 
+> > > > > > > The nfs2.pcap file and nfs4.pcap seem to show the server 
+> > returning
+> > > > > > > NFS4ERR_OLD_STATEID, which usually means that the client has 
+an
+> > > > > > > OPEN/CLOSE/LOCK or LOCKU... in flight and that while the 
+server 
+> > has
+> > > > > > > updated the stateid, the client has not yet received the 
+reply. 
+> > The
+> > > > > > > problem is that I see no sign of the 
+OPEN/CLOSE/LOCK/LOCKU...
+> > > > > > > 
+> > > > > > > The nfs.pcap file is resending a load of LOCK requests that 
+are
+> > > > > > > receiving NFS4ERR_BAD_STATEID replies. Normally, I'd expect 
+the 
+> > > > recovery
+> > > > > > > engine to kick in and try to recover the OPEN.
+> > > > > > > 
+> > > > > > > So when you do 'ps -efwww', on any of these clients, do you 
+see 
+> > a
+> > > > > > > process with a name containing the server IP address 
+> > > > (192.168.201.44)?
+> > > > > > > 
+> > > > > > > Also, is there anything special in the log when you do 
+'dmesg -s 
+> > 
+> > > > 90000'?
+> > > > 
+> > > > > > Of course this happened again while I wasn't looking so I 
+don't 
+> > know 
+> > > > what
+> > > > > > caused it, probably firefox though.
+> > > > > > 
+> > > > > > There is nothing in dmesg and ps -efwww has no hit on IP
+> > > > > > address 192.168.201.44, the closest I can get is:
+> > > > > >  ps -efwww | grep nfs
+> > > > > > root       568     2  0 Apr16 ?        00:00:00 [nfsiod]
+> > > > > > root      2440     2  0 Apr16 ?        00:00:00 [nfsd4]
+> > > > > > root      2441     2  0 Apr16 ?        00:00:00 
+[nfsd4_callbacks]
+> > > > > > root      2442     2  0 Apr16 ?        00:00:00 [nfsd]
+> > > > > > root      2443     2  0 Apr16 ?        00:00:00 [nfsd]
+> > > > > > root      2444     2  0 Apr16 ?        00:00:00 [nfsd]
+> > > > > > root      2445     2  0 Apr16 ?        00:00:00 [nfsd]
+> > > > > > root      2446     2  0 Apr16 ?        00:00:00 [nfsd]
+> > > > > > root      2447     2  0 Apr16 ?        00:00:00 [nfsd]
+> > > > > > root      2448     2  0 Apr16 ?        00:00:00 [nfsd]
+> > > > > > root      2449     2  0 Apr16 ?        00:00:00 [nfsd]
+> > > > > > root      2667     2  0 Apr16 ?        00:00:00 [nfsv4.0-svc]
+> > > > > > jocke    27048 26888  0 14:28 pts/3    00:00:00 grep 
+--colour=auto 
+> > nfs
+> > > > > > 
+> > > > > > Got a new pcap file also:
+> > > > > > 
+> > http://ftp-us.transmode.se/get/?id=6f935e1d7e105d01e9a5b907c6493521 
+> > > > nfs5.pcap 
+> > > > > > 
+> > > > > > The load is not that noticeable so I can stay in this mode a 
+> > while, 
+> > > > until I go
+> > > > > > home today.
+> > > > > 
+> > > > > So left it overnight and this morning my NFS client had 
+completely 
+> > > > looked up,
+> > > > > had to press the power button. This has happened twice now.
+> > > > > 
+> > > > > One more piece of info, we think this problem started when NFS 
+> > server
+> > > > > was upgraded from 3.4.28 to 3.4.39
+> > > > > 
+> > > > > I have no idea how to move forward now. Trond, are you also 
+stuck?
+> > > > > 
+> > > > >    Jocke
+> > > 
+> > > 
+> > > -- 
+> > > Trond Myklebust
+> > > Linux NFS client maintainer
+> > > 
+> > > NetApp
+> > > Trond.Myklebust@netapp.com
+> > > www.netapp.com
+> > 
+> 
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+
