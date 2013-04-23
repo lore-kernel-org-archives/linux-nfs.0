@@ -1,129 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:30032 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48090 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759679Ab3DAUBl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Apr 2013 16:01:41 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/5] NFSv4: Clean up nfs4_lock_delegation_recall
-Date: Mon,  1 Apr 2013 16:01:31 -0400
-Message-Id: <1364846493-11145-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1364846493-11145-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1364846493-11145-1-git-send-email-Trond.Myklebust@netapp.com>
- <1364846493-11145-2-git-send-email-Trond.Myklebust@netapp.com>
+	id S932325Ab3DWQ2r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Apr 2013 12:28:47 -0400
+Subject: RE: Interoperable junctions on Linux
+From: Simo Sorce <simo@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
+        fedfs-utils Developers <fedfs-utils-devel@oss.oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA92873BC7E@SACEXCMBX04-PRD.hq.netapp.com>
+References: <71999CA2-F6E7-4DE1-9DC3-AED77626DE7F@oracle.com>
+	 <1366728674.7239.63.camel@willson.li.ssimo.org>
+	 <BDD9FCE5-E573-4E01-A5D9-A8A3811895DD@oracle.com>
+	 <1366732290.35524.13.camel@leira.trondhjem.org>
+	 <1366733972.7239.66.camel@willson.li.ssimo.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA92873BC7E@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 23 Apr 2013 12:28:43 -0400
+Message-ID: <1366734523.7239.67.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All error cases are handled by the switch() statement, meaning that the
-call to nfs4_handle_exception() is unreachable.
+On Tue, 2013-04-23 at 16:24 +0000, Myklebust, Trond wrote:
+> > -----Original Message-----
+> > From: Simo Sorce [mailto:simo@redhat.com]
+> > Sent: Tuesday, April 23, 2013 12:20 PM
+> > To: Myklebust, Trond
+> > Cc: Chuck Lever; samba-technical@lists.samba.org; fedfs-utils Developers;
+> > Linux NFS Mailing List
+> > Subject: Re: Interoperable junctions on Linux
+> > 
+> > On Tue, 2013-04-23 at 15:51 +0000, Myklebust, Trond wrote:
+> > > On Tue, 2013-04-23 at 11:42 -0400, Chuck Lever wrote:
+> > > > On Apr 23, 2013, at 10:51 AM, Simo Sorce <simo@redhat.com> wrote:
+> > >
+> > > > > Also why a xattr in the trusted namespace ? What are the security
+> > > > > considerations that warrants a trusted attribute rather than a
+> > > > > normal one ? (Links to RFCs or other docs are just fine)
+> > > >
+> > > > This is another historical design decision.  If there is consensus that we
+> > don't need to protect junction metadata from unintended or malicious local
+> > changes, then we can put these in another namespace.  However, without
+> > strong security here, redirecting network clients to another server and
+> > export can be hijacked, sending remote users to who knows where.  Is it
+> > enough simply to insist that junctions be owned by root?
+> > >
+> > > Junctions resolve into mountpoints on clients. Allowing arbitrary
+> > > users to change the junction parameters basically means giving them
+> > > the ability to control the namespace on clients. They can for instance
+> > > redirect an application from a trusted server onto an untrusted one.
+> > >
+> > > I therefore strongly recommend that we ensure the creation, deletion
+> > > and modification of a junction remains a privileged operation on the server.
+> > 
+> > Is it not sufficient to make sure the symlink is owned by root ?
+> 
+> How do you check that atomically with the getxattr?
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c | 86 ++++++++++++++++++++++++-------------------------------
- 1 file changed, 38 insertions(+), 48 deletions(-)
+Using fgetxattr() after an open and a fstat() ?
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index a549ffe..e28a726 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5164,59 +5164,49 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
- int nfs4_lock_delegation_recall(struct nfs4_state *state, struct file_lock *fl)
- {
- 	struct nfs_server *server = NFS_SERVER(state->inode);
--	struct nfs4_exception exception = { };
- 	int err;
- 
- 	err = nfs4_set_lock_state(state, fl);
- 	if (err != 0)
- 		goto out;
--	do {
--		err = _nfs4_do_setlk(state, F_SETLK, fl, NFS_LOCK_NEW);
--		switch (err) {
--			default:
--				printk(KERN_ERR "NFS: %s: unhandled error "
--					"%d.\n", __func__, err);
--			case 0:
--			case -ESTALE:
--				goto out;
--			case -NFS4ERR_STALE_CLIENTID:
--			case -NFS4ERR_STALE_STATEID:
--				set_bit(NFS_DELEGATED_STATE, &state->flags);
--			case -NFS4ERR_EXPIRED:
--				nfs4_schedule_lease_recovery(server->nfs_client);
--				err = -EAGAIN;
--				goto out;
--			case -NFS4ERR_BADSESSION:
--			case -NFS4ERR_BADSLOT:
--			case -NFS4ERR_BAD_HIGH_SLOT:
--			case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
--			case -NFS4ERR_DEADSESSION:
--				set_bit(NFS_DELEGATED_STATE, &state->flags);
--				nfs4_schedule_session_recovery(server->nfs_client->cl_session, err);
--				err = -EAGAIN;
--				goto out;
--			case -NFS4ERR_DELEG_REVOKED:
--			case -NFS4ERR_ADMIN_REVOKED:
--			case -NFS4ERR_BAD_STATEID:
--			case -NFS4ERR_OPENMODE:
--				nfs4_schedule_stateid_recovery(server, state);
--				err = 0;
--				goto out;
--			case -NFS4ERR_DELAY:
--			case -NFS4ERR_GRACE:
--				set_bit(NFS_DELEGATED_STATE, &state->flags);
--				ssleep(1);
--				err = -EAGAIN;
--				goto out;
--			case -ENOMEM:
--			case -NFS4ERR_DENIED:
--				/* kill_proc(fl->fl_pid, SIGLOST, 1); */
--				err = 0;
--				goto out;
--		}
--		set_bit(NFS_DELEGATED_STATE, &state->flags);
--		err = nfs4_handle_exception(server, err, &exception);
--	} while (exception.retry);
-+	err = _nfs4_do_setlk(state, F_SETLK, fl, NFS_LOCK_NEW);
-+	switch (err) {
-+		default:
-+			printk(KERN_ERR "NFS: %s: unhandled error "
-+				"%d.\n", __func__, err);
-+		case 0:
-+		case -ESTALE:
-+			goto out;
-+		case -NFS4ERR_STALE_CLIENTID:
-+		case -NFS4ERR_STALE_STATEID:
-+			set_bit(NFS_DELEGATED_STATE, &state->flags);
-+		case -NFS4ERR_EXPIRED:
-+			nfs4_schedule_lease_recovery(server->nfs_client);
-+			return -EAGAIN;
-+		case -NFS4ERR_BADSESSION:
-+		case -NFS4ERR_BADSLOT:
-+		case -NFS4ERR_BAD_HIGH_SLOT:
-+		case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
-+		case -NFS4ERR_DEADSESSION:
-+			set_bit(NFS_DELEGATED_STATE, &state->flags);
-+			nfs4_schedule_session_recovery(server->nfs_client->cl_session, err);
-+			return -EAGAIN;
-+		case -NFS4ERR_DELEG_REVOKED:
-+		case -NFS4ERR_ADMIN_REVOKED:
-+		case -NFS4ERR_BAD_STATEID:
-+		case -NFS4ERR_OPENMODE:
-+			nfs4_schedule_stateid_recovery(server, state);
-+			return 0;
-+		case -NFS4ERR_DELAY:
-+		case -NFS4ERR_GRACE:
-+			set_bit(NFS_DELEGATED_STATE, &state->flags);
-+			ssleep(1);
-+			return -EAGAIN;
-+		case -ENOMEM:
-+		case -NFS4ERR_DENIED:
-+			/* kill_proc(fl->fl_pid, SIGLOST, 1); */
-+			return 0;
-+	}
- out:
- 	return err;
- }
+Simo.
+
 -- 
-1.8.1.4
+Simo Sorce * Red Hat, Inc * New York
 
