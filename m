@@ -1,61 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f173.google.com ([209.85.223.173]:59001 "EHLO
-	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757955Ab3DYW0Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2013 18:26:24 -0400
-MIME-Version: 1.0
-In-Reply-To: <CABgxfbHnqQyucEpbGhsQ8-pA69peHUza7L7WHKD1K1n9Zv0WXQ@mail.gmail.com>
-References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com>
-	<CABgxfbF7c9ktSoMSPV21JU76V5J4iwbJQ257S91Y3z36WJbJVA@mail.gmail.com>
-	<62745258-4F3B-4C05-BFFD-03EA604576E4@ornl.gov>
-	<CABgxfbGxhnKj2n0Z-w87rZ6fwCssO31G009gwej957gv1p8PQQ@mail.gmail.com>
-	<0EE9A1CDC8D6434DB00095CD7DB873462CF9715B@MTLDAG01.mtl.com>
-	<20130423210607.GJ3676@fieldses.org>
-	<0EE9A1CDC8D6434DB00095CD7DB873462CF988C9@MTLDAG01.mtl.com>
-	<20130424150540.GB20275@fieldses.org>
-	<20130424152631.GC20275@fieldses.org>
-	<CABgxfbHShU7aEttJ35vdAjXduPFFj8+E4=5LZqOgh4e=5bax5Q@mail.gmail.com>
-	<CABgxfbHpNgQyEjd2OVNMgJoLpt_VyLiOL5hMCLwotMd5kincwg@mail.gmail.com>
-	<517823E0.4000402@talpey.com>
-	<CABgxfbHePAyq6AH9TFKZKUmwEHOupuYUnfc1W99HAuDkYddUqQ@mail.gmail.com>
-	<51798C51.50209@talpey.com>
-	<51799D52.1040903@opengridcomputing.com>
-	<CABgxfbHnqQyucEpbGhsQ8-pA69peHUza7L7WHKD1K1n9Zv0WXQ@mail.gmail.com>
-Date: Thu, 25 Apr 2013 15:26:24 -0700
-Message-ID: <CABgxfbErgDRi1VeaFWDXZkSmRdM+gSZUcfgm=SPAOpo-XoFdeA@mail.gmail.com>
-Subject: Re: NFS over RDMA benchmark
-From: Wendy Cheng <s.wendy.cheng@gmail.com>
-To: Tom Tucker <tom@opengridcomputing.com>
-Cc: Tom Talpey <tom@talpey.com>, "J. Bruce Fields" <bfields@fieldses.org>,
-        Yan Burman <yanb@mellanox.com>, "Atchley, Scott" <atchleyes@ornl.gov>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Or Gerlitz <ogerlitz@mellanox.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:49305 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756452Ab3DWQTh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Apr 2013 12:19:37 -0400
+Subject: Re: Interoperable junctions on Linux
+From: Simo Sorce <simo@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
+        fedfs-utils Developers <fedfs-utils-devel@oss.oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+In-Reply-To: <1366732290.35524.13.camel@leira.trondhjem.org>
+References: <71999CA2-F6E7-4DE1-9DC3-AED77626DE7F@oracle.com>
+	 <1366728674.7239.63.camel@willson.li.ssimo.org>
+	 <BDD9FCE5-E573-4E01-A5D9-A8A3811895DD@oracle.com>
+	 <1366732290.35524.13.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 23 Apr 2013 12:19:32 -0400
+Message-ID: <1366733972.7239.66.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 25, 2013 at 2:58 PM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
-> On Thu, Apr 25, 2013 at 2:17 PM, Tom Tucker <tom@opengridcomputing.com> wrote:
->> The Mellanox driver uses red-black trees extensively for resource
->> management, e.g. QP ID, CQ ID, etc... When completions come in from the HW,
->> these are used to find the associated software data structures I believe. It
->> is certainly possible that these trees get hot on lookup when we're pushing
->> a lot of data. I'm surprised, however, to see rb_insert_color there because
->> I'm not aware of any where that resources are being inserted into and/or
->> removed from a red-black tree in the data path.
->>
->
-> I think they (rb calls) are from base kernel, not from any NFS and/or
-> IB module (e.g. RPC, MLX, etc). See the right column ? .... it says
-> "/root/vmlinux". Just a guess - I don't know much about this "perf"
-> command.
->
+On Tue, 2013-04-23 at 15:51 +0000, Myklebust, Trond wrote:
+> On Tue, 2013-04-23 at 11:42 -0400, Chuck Lever wrote:
+> > On Apr 23, 2013, at 10:51 AM, Simo Sorce <simo@redhat.com> wrote:
+> 
+> > > Also why a xattr in the trusted namespace ? What are the security
+> > > considerations that warrants a trusted attribute rather than a normal
+> > > one ? (Links to RFCs or other docs are just fine)
+> > 
+> > This is another historical design decision.  If there is consensus that we don't need to protect junction metadata from unintended or malicious local changes, then we can put these in another namespace.  However, without strong security here, redirecting network clients to another server and export can be hijacked, sending remote users to who knows where.  Is it enough simply to insist that junctions be owned by root?
+> 
+> Junctions resolve into mountpoints on clients. Allowing arbitrary users
+> to change the junction parameters basically means giving them the
+> ability to control the namespace on clients. They can for instance
+> redirect an application from a trusted server onto an untrusted one.
+> 
+> I therefore strongly recommend that we ensure the creation, deletion and
+> modification of a junction remains a privileged operation on the server.
 
+Is it not sufficient to make sure the symlink is owned by root ?
 
-Oops .. take my words back ! I confused Linux's RB tree w/ BSD's.
-BSD's is a set of macros inside a header file while Linux's
-implementation is a base kernel library. So every KMOD is a suspect
-here :)
+Simo.
 
--- Wendy
+-- 
+Simo Sorce * Red Hat, Inc * New York
+
