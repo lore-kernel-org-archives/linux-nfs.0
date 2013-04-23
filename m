@@ -1,9 +1,15 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34064 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753539Ab3DLPDv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Apr 2013 11:03:51 -0400
-Date: Fri, 12 Apr 2013 11:03:47 -0400
+Received: from e32.co.us.ibm.com ([32.97.110.150]:49866 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757062Ab3DWSlk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Apr 2013 14:41:40 -0400
+Received: from /spool/local
+	by e32.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <zohar@linux.vnet.ibm.com>;
+	Tue, 23 Apr 2013 12:41:38 -0600
+Message-ID: <1366742457.31304.545.camel@falcor1.watson.ibm.com>
+Subject: Re: [PATCH 00/19] lnfs: 3.9-rc5 release
+From: Mimi Zohar <zohar@linux.vnet.ibm.com>
 To: Steve Dickson <SteveD@redhat.com>
 Cc: "J. Bruce Fields" <bfields@redhat.com>,
         Trond Myklebust <Trond.Myklebust@netapp.com>,
@@ -12,134 +18,54 @@ Cc: "J. Bruce Fields" <bfields@redhat.com>,
         Linux FS devel list <linux-fsdevel@vger.kernel.org>,
         Linux Security List <linux-security-module@vger.kernel.org>,
         SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 00/19] lnfs: 3.9-rc5 release
-Message-ID: <20130412150347.GK7081@fieldses.org>
+Date: Tue, 23 Apr 2013 14:40:57 -0400
+In-Reply-To: <5176CD42.4080405@RedHat.com>
 References: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
- <20130410150940.GB24404@pad.fieldses.org>
- <516589DD.2020901@RedHat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <516589DD.2020901@RedHat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	 <20130410150940.GB24404@pad.fieldses.org> <5176ACE5.2020207@RedHat.com>
+	 <20130423160520.GE20622@pad.fieldses.org>
+	 <20130423172227.GF20622@pad.fieldses.org> <5176CD42.4080405@RedHat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 10, 2013 at 11:48:45AM -0400, Steve Dickson wrote:
-> 
-> 
-> On 10/04/13 11:09, J. Bruce Fields wrote:
-> > On Tue, Apr 02, 2013 at 05:45:41PM -0400, Steve Dickson wrote:
-> >> From: Steve Dickson <steved@redhat.com>
-> >>
-> >> Here is the next release of the Label NFS patches 
-> >> forward ported to linux-3.9-rc3.
-> >>
-> >> I decided to include the the v4.2 enabling patches since 
-> >> I'm doing all my testing with both sets so at this point 
-> >> I don't think it makes sense to separate them. Plus I'm
-> >> hoping they will take care of the SETATTR problem Bruce was 
-> >> seeing since label attributes were leaking into the bitmask
-> >> when they were not suppose to. 
+On Tue, 2013-04-23 at 14:04 -0400, Steve Dickson wrote:
+> On 23/04/13 13:22, J. Bruce Fields wrote:
+> >>> What exactly was failing?
+> >> > 
+> >> > Sorry I can't find the results right now.  I'll re-run and let you know.
+> > The server is returning -EOPNOTSUPP in response to an nfs4 SETATTR which
+> > sets a mode.
 > > 
-> > Still getting a failure.  All you need to do is something like:
+> > The operation shouldn't be failing, and if it does it should return an
+> > NFS error, not -ERRNO.
 > > 
-> > 	git clone git://linux-nfs.org/~bfields/pynfs.git
-> > 	cd pynfs
-> > 	./setup.py build
-> > 	./setup.py build_ext --inplace
-> > 	./nfs4.0/testserver.py pip1:/path/to/export/tmpdir ---maketree --rundeps SATT13
-> Ok... Is this with labels enabled or not enabled?
+> > I can't reproduce this just by doing chmod on the linux client.  I'm not
+> > sure what pynfs is doing differently to trigger the bug.
+> thanks for talking a look...  
+> 
+> Hmm... I wonder if the fact nfsd4_set_nfs4_label() is returning 
+> -EOPNOTSUPP instead of something like nfserr_attrnotsupp when 
+> labels are not configured... Something you've pointed out 
+> twice now... 
+>     http://www.spinics.net/lists/linux-nfs/msg36104.html
+> 
+> If it is this problem I wonder why a chmod would not trigger it...
 
-Whoops, sorry for not seeing the question before.  I believe labels are
-turned off the kernel config.
+Do you by any chance have EVM enabled?  EVM includes the i_mode in the
+HMAC calculation.  Anytime the i_mode changes, the existing HMAC is
+verified, before recalculating the HMAC to reflect the change.  The
+hooks are there to update the HMAC, when using chmod.
 
---b.
+I posted a couple of patches to audit this type of error last week, but
+haven't sent a pull request yet.
 
-> 
-> steved.
-> 
-> > 
-> > --b.
-> > 
-> >>
-> >> I also believe I've address all the review comments of the previous
-> >> release. Thank you very much for those cycles, it definitely 
-> >> appreciated!
-> >>
-> >> The patches are on a public git tree at
-> >>     git://fedorapeople.org/~steved/linux-steved lnfs-v3.9-rc5
-> >>
-> >> Fedora rpms on request. I didn't think anybody was using them so I 
-> >> stopped building them. If that is not the case, please let me know.
-> >>
-> >> David Quigley (12):
-> >>   Security: Add hook to calculate context based on a negative dentry.
-> >>   Security: Add Hook to test if the particular xattr is part of a MAC
-> >>     model.
-> >>   LSM: Add flags field to security_sb_set_mnt_opts for in kernel mount
-> >>     data.
-> >>   SELinux: Add new labeling type native labels
-> >>   NFSv4: Add label recommended attribute and NFSv4 flags
-> >>   NFSv4: Introduce new label structure
-> >>   NFSv4: Extend fattr bitmaps to support all 3 words
-> >>   NFS:Add labels to client function prototypes
-> >>   NFS: Add label lifecycle management
-> >>   NFS: Client implementation of Labeled-NFS
-> >>   NFS: Extend NFS xattr handlers to accept the security namespace
-> >>   NFSD: Server implementation of MAC Labeling
-> >>
-> >> Steve Dickson (7):
-> >>   Kconfig: Add Kconfig entry for Labeled NFS V4 client
-> >>   Kconfig: Add Kconfig entry for Labeled NFS V4 server
-> >>   NFSv4.2: Added NFS v4.2 support to the NFS client
-> >>   NFSv4.2: Only allocate labels on v4.2 mounts
-> >>   NFSv4.2: Only set the label attribute on v4.2 mounts
-> >>   NFSv4.2: Added v4.2 error codes
-> >>   NFSDv4.2: Added NFS v4.2 support to the NFS server
-> >>
-> >>  fs/nfs/Kconfig                      |  28 ++
-> >>  fs/nfs/callback.c                   |   1 +
-> >>  fs/nfs/client.c                     |   2 +-
-> >>  fs/nfs/dir.c                        |  46 ++-
-> >>  fs/nfs/getroot.c                    |   2 +-
-> >>  fs/nfs/inode.c                      | 133 ++++++--
-> >>  fs/nfs/namespace.c                  |   2 +-
-> >>  fs/nfs/nfs3acl.c                    |   4 +-
-> >>  fs/nfs/nfs3proc.c                   |  41 +--
-> >>  fs/nfs/nfs4_fs.h                    |   8 +-
-> >>  fs/nfs/nfs4client.c                 |   5 +
-> >>  fs/nfs/nfs4namespace.c              |   2 +-
-> >>  fs/nfs/nfs4proc.c                   | 614 ++++++++++++++++++++++++++++++++----
-> >>  fs/nfs/nfs4xdr.c                    | 188 ++++++++---
-> >>  fs/nfs/pnfs.c                       |   2 +-
-> >>  fs/nfs/proc.c                       |  15 +-
-> >>  fs/nfs/super.c                      |  24 +-
-> >>  fs/nfsd/Kconfig                     |  16 +
-> >>  fs/nfsd/nfs4proc.c                  |  41 +++
-> >>  fs/nfsd/nfs4xdr.c                   | 117 ++++++-
-> >>  fs/nfsd/nfsd.h                      |  14 +-
-> >>  fs/nfsd/nfsproc.c                   |   1 +
-> >>  fs/nfsd/vfs.c                       |  28 ++
-> >>  fs/nfsd/vfs.h                       |   2 +
-> >>  fs/nfsd/xdr4.h                      |   3 +
-> >>  include/linux/nfs4.h                |  20 ++
-> >>  include/linux/nfs_fs.h              |  40 ++-
-> >>  include/linux/nfs_fs_sb.h           |  10 +-
-> >>  include/linux/nfs_xdr.h             |  30 +-
-> >>  include/linux/security.h            |  57 +++-
-> >>  include/uapi/linux/nfs4.h           |   2 +-
-> >>  security/capability.c               |  19 +-
-> >>  security/security.c                 |  24 +-
-> >>  security/selinux/hooks.c            |  92 +++++-
-> >>  security/selinux/include/security.h |   2 +
-> >>  security/selinux/ss/policydb.c      |   5 +-
-> >>  security/smack/smack_lsm.c          |  11 +
-> >>  37 files changed, 1432 insertions(+), 219 deletions(-)
-> >>
-> >> -- 
-> >> 1.8.1.4
-> >>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+evm: audit integrity metadata failures
+integrity: move integrity_audit_msg()
+evm: calculate HMAC after initializing posix acl
+
+thanks,
+
+Mimi
+
+
