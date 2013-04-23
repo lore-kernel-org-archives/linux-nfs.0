@@ -1,67 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from eu1sys200aog102.obsmtp.com ([207.126.144.113]:50290 "EHLO
-	eu1sys200aog102.obsmtp.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1760050Ab3D3OoC convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Apr 2013 10:44:02 -0400
-From: Yan Burman <yanb@mellanox.com>
-To: Tom Talpey <tom@talpey.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Wendy Cheng <s.wendy.cheng@gmail.com>,
-        "Atchley, Scott" <atchleyes@ornl.gov>,
-        Tom Tucker <tom@opengridcomputing.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Or Gerlitz <ogerlitz@mellanox.com>
-Subject: RE: NFS over RDMA benchmark
-Date: Tue, 30 Apr 2013 14:38:59 +0000
-Message-ID: <0EE9A1CDC8D6434DB00095CD7DB873462CF9CBD0@MTLDAG01.mtl.com>
-References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com>
- <CABgxfbF7c9ktSoMSPV21JU76V5J4iwbJQ257S91Y3z36WJbJVA@mail.gmail.com>
- <62745258-4F3B-4C05-BFFD-03EA604576E4@ornl.gov>
- <CABgxfbGxhnKj2n0Z-w87rZ6fwCssO31G009gwej957gv1p8PQQ@mail.gmail.com>
- <0EE9A1CDC8D6434DB00095CD7DB873462CF9715B@MTLDAG01.mtl.com>
- <20130423210607.GJ3676@fieldses.org>
- <0EE9A1CDC8D6434DB00095CD7DB873462CF988C9@MTLDAG01.mtl.com>
- <20130424150540.GB20275@fieldses.org> <20130424152631.GC20275@fieldses.org>
- <0EE9A1CDC8D6434DB00095CD7DB873462CF9A820@MTLDAG01.mtl.com>
- <20130428144248.GA2037@fieldses.org>
- <0EE9A1CDC8D6434DB00095CD7DB873462CF9C90C@MTLDAG01.mtl.com>
- <517FD327.3060901@talpey.com>
-In-Reply-To: <517FD327.3060901@talpey.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mx1.redhat.com ([209.132.183.28]:6696 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756718Ab3DWQFX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Apr 2013 12:05:23 -0400
+Date: Tue, 23 Apr 2013 12:05:20 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 00/19] lnfs: 3.9-rc5 release
+Message-ID: <20130423160520.GE20622@pad.fieldses.org>
+References: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
+ <20130410150940.GB24404@pad.fieldses.org>
+ <5176ACE5.2020207@RedHat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5176ACE5.2020207@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-> -----Original Message-----
-> From: Tom Talpey [mailto:tom@talpey.com]
-> Sent: Tuesday, April 30, 2013 17:20
-> To: Yan Burman
-> Cc: J. Bruce Fields; Wendy Cheng; Atchley, Scott; Tom Tucker; linux-
-> rdma@vger.kernel.org; linux-nfs@vger.kernel.org; Or Gerlitz
-> Subject: Re: NFS over RDMA benchmark
+On Tue, Apr 23, 2013 at 11:46:45AM -0400, Steve Dickson wrote:
 > 
-> On 4/30/2013 1:09 AM, Yan Burman wrote:
-> > I now get up to ~95K IOPS and 4.1GB/sec bandwidth.
-> >...
-> >  ib_send_bw with intel iommu enabled did get up to 4.5GB/sec
 > 
-> BTW, you may want to verify that these are the same GB. Many benchmarks
-> say KB/MB/GB when they really mean KiB/MiB/GiB.
+> On 10/04/13 11:09, J. Bruce Fields wrote:
+> > On Tue, Apr 02, 2013 at 05:45:41PM -0400, Steve Dickson wrote:
+> >> > From: Steve Dickson <steved@redhat.com>
+> >> > 
+> >> > Here is the next release of the Label NFS patches 
+> >> > forward ported to linux-3.9-rc3.
+> >> > 
+> >> > I decided to include the the v4.2 enabling patches since 
+> >> > I'm doing all my testing with both sets so at this point 
+> >> > I don't think it makes sense to separate them. Plus I'm
+> >> > hoping they will take care of the SETATTR problem Bruce was 
+> >> > seeing since label attributes were leaking into the bitmask
+> >> > when they were not suppose to. 
+> > Still getting a failure.  All you need to do is something like:
+> > 
+> > 	git clone git://linux-nfs.org/~bfields/pynfs.git
+> > 	cd pynfs
+> > 	./setup.py build
+> > 	./setup.py build_ext --inplace
+> > 	./nfs4.0/testserver.py pip1:/path/to/export/tmpdir ---maketree --rundeps SATT13
+> Unfortunately, I'm not able to reproduce this error on any of the following kernels
+> * No labels 
+> * No labels configured
+>     # CONFIG_NFS_V4_2 is not set
+>     # CONFIG_NFSD_V4_SECURITY_LABEL is not set
+> * Labels configured 
+>    CONFIG_NFS_V4_2=y
+>    CONFIG_NFS_V4_SECURITY_LABEL=y
 > 
-> At GB/GiB, the difference is about 7.5%, very close to the difference between
-> 4.1 and 4.5.
-> 
-> Just a thought.
+> What exactly was failing?
 
-The question is not why there is 400MBps difference between ib_send_bw and NFSoRDMA.
-The question is why with IOMMU ib_send_bw got to the same bandwidth as without it while NFSoRDMA got half.
+Sorry I can't find the results right now.  I'll re-run and let you know.
 
->From some googling, it seems that when IOMMU is enabled, dma mapping functions get a lot more expensive.
-Perhaps that is the reason for the performance drop.
-
-Yan
-
+--b.
