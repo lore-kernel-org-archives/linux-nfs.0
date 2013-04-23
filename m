@@ -1,84 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:4712 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:54865 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762038Ab3DBVqJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Apr 2013 17:46:09 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 05/19] NFSv4: Add label recommended attribute and NFSv4 flags
-Date: Tue,  2 Apr 2013 17:45:46 -0400
-Message-Id: <1364939160-20874-6-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
-References: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
+	id S1756993Ab3DWSqY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Apr 2013 14:46:24 -0400
+Date: Tue, 23 Apr 2013 14:46:18 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 1/2] nfs: Send atime and mtime as a 64bit value
+Message-ID: <20130423184618.GG3676@fieldses.org>
+References: <1366402178-1281-1-git-send-email-bjschuma@netapp.com>
+ <1366402178-1281-2-git-send-email-bjschuma@netapp.com>
+ <1366406549.12513.1.camel@leira.trondhjem.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1366406549.12513.1.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Fri, Apr 19, 2013 at 09:22:29PM +0000, Myklebust, Trond wrote:
+> On Fri, 2013-04-19 at 16:09 -0400, bjschuma@netapp.com wrote:
+> > From: Bryan Schumaker <bjschuma@netapp.com>
+> > 
+> > RFC 3530 says that the seconds value of a nfstime4 structure is a 64bit
+> > value, but we are instead sending a 32-bit 0 and then a 32bit conversion
+> > of the 64bit Linux value.  This means that if we try to set atime to a
+> > value before the epoch (touch -t 196001010101) the client will only send
+> > part of the new value due to lost precision.
+> > 
+> > Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> 
+> Thanks Bryan! Applied.
+> 
+> I assume that Bruce will pick up the 2/2.
 
-This patch adds several new flags to allow the NFS client and server to
-determine if this attribute is supported and if it is being sent over the wire.
+Yep, thanks.
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- include/linux/nfs4.h      | 1 +
- include/linux/nfs_fs_sb.h | 1 +
- include/linux/nfs_xdr.h   | 4 +++-
- 3 files changed, 5 insertions(+), 1 deletion(-)
+(These should go to stable too, right?)
 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 7b8fc73..0fa29f4 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -377,6 +377,7 @@ enum lock_type4 {
- #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
- #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
- #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
-+#define FATTR4_WORD2_SECURITY_LABEL     (1UL << 17)
- #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
- 
- /* MDS threshold bitmap bits */
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 6c6ed15..d507357 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -197,5 +197,6 @@ struct nfs_server {
- #define NFS_CAP_MTIME		(1U << 13)
- #define NFS_CAP_POSIX_LOCK	(1U << 14)
- #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
-+#define NFS_CAP_SECURITY_LABEL	(1U << 16)
- 
- #endif
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 4b993d3..9f2dba3 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -104,6 +104,7 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
- #define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
- #define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
-+#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 25)
- 
- #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
- 		| NFS_ATTR_FATTR_MODE \
-@@ -123,7 +124,8 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
- 		| NFS_ATTR_FATTR_SPACE_USED)
- #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
--		| NFS_ATTR_FATTR_SPACE_USED)
-+		| NFS_ATTR_FATTR_SPACE_USED \
-+		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
- 
- /*
-  * Info on the file system
--- 
-1.8.1.4
-
+--b.
