@@ -1,42 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f42.google.com ([209.85.214.42]:41161 "EHLO
-	mail-bk0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1161152Ab3DENWk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Apr 2013 09:22:40 -0400
-Received: by mail-bk0-f42.google.com with SMTP id jc3so2079667bkc.29
-        for <linux-nfs@vger.kernel.org>; Fri, 05 Apr 2013 06:22:39 -0700 (PDT)
+Received: from mx12.netapp.com ([216.240.18.77]:13624 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932380Ab3DWQa2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Apr 2013 12:30:28 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Simo Sorce <simo@redhat.com>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
+        fedfs-utils Developers <fedfs-utils-devel@oss.oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: RE: Interoperable junctions on Linux
+Date: Tue, 23 Apr 2013 16:30:27 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA92873BCF5@SACEXCMBX04-PRD.hq.netapp.com>
+References: <71999CA2-F6E7-4DE1-9DC3-AED77626DE7F@oracle.com>
+	 <1366728674.7239.63.camel@willson.li.ssimo.org>
+	 <BDD9FCE5-E573-4E01-A5D9-A8A3811895DD@oracle.com>
+	 <1366732290.35524.13.camel@leira.trondhjem.org>
+	 <1366733972.7239.66.camel@willson.li.ssimo.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA92873BC7E@SACEXCMBX04-PRD.hq.netapp.com>
+ <1366734523.7239.67.camel@willson.li.ssimo.org>
+In-Reply-To: <1366734523.7239.67.camel@willson.li.ssimo.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Date: Fri, 5 Apr 2013 21:22:39 +0800
-Message-ID: <CAPgLHd-Op0pJQq5SJi5grQB9EhupYWOf=Udrpt_PUjFsB4j9Uw@mail.gmail.com>
-Subject: [PATCH -next] nfsd: make symbol nfsd_reply_cache_shrinker static
-From: Wei Yongjun <weiyj.lk@gmail.com>
-To: bfields@fieldses.org
-Cc: yongjun_wei@trendmicro.com.cn, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
-
-symbol 'nfsd_reply_cache_shrinker' only used within this file. It should
-be static.
-
-Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
----
- fs/nfsd/nfscache.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index f8bb605..890a507 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -56,7 +56,7 @@ static void	cache_cleaner_func(struct work_struct *unused);
- static int 	nfsd_reply_cache_shrink(struct shrinker *shrink,
- 					struct shrink_control *sc);
- 
--struct shrinker nfsd_reply_cache_shrinker = {
-+static struct shrinker nfsd_reply_cache_shrinker = {
- 	.shrink	= nfsd_reply_cache_shrink,
- 	.seeks	= 1,
- };
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBTaW1vIFNvcmNlIFttYWlsdG86
+c2ltb0ByZWRoYXQuY29tXQ0KPiBTZW50OiBUdWVzZGF5LCBBcHJpbCAyMywgMjAxMyAxMjoyOSBQ
+TQ0KPiBUbzogTXlrbGVidXN0LCBUcm9uZA0KPiBDYzogQ2h1Y2sgTGV2ZXI7IHNhbWJhLXRlY2hu
+aWNhbEBsaXN0cy5zYW1iYS5vcmc7IGZlZGZzLXV0aWxzIERldmVsb3BlcnM7DQo+IExpbnV4IE5G
+UyBNYWlsaW5nIExpc3QNCj4gU3ViamVjdDogUkU6IEludGVyb3BlcmFibGUganVuY3Rpb25zIG9u
+IExpbnV4DQo+IA0KPiBPbiBUdWUsIDIwMTMtMDQtMjMgYXQgMTY6MjQgKzAwMDAsIE15a2xlYnVz
+dCwgVHJvbmQgd3JvdGU6DQo+ID4gPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+ID4g
+RnJvbTogU2ltbyBTb3JjZSBbbWFpbHRvOnNpbW9AcmVkaGF0LmNvbV0NCj4gPiA+IFNlbnQ6IFR1
+ZXNkYXksIEFwcmlsIDIzLCAyMDEzIDEyOjIwIFBNDQo+ID4gPiBUbzogTXlrbGVidXN0LCBUcm9u
+ZA0KPiA+ID4gQ2M6IENodWNrIExldmVyOyBzYW1iYS10ZWNobmljYWxAbGlzdHMuc2FtYmEub3Jn
+OyBmZWRmcy11dGlscw0KPiA+ID4gRGV2ZWxvcGVyczsgTGludXggTkZTIE1haWxpbmcgTGlzdA0K
+PiA+ID4gU3ViamVjdDogUmU6IEludGVyb3BlcmFibGUganVuY3Rpb25zIG9uIExpbnV4DQo+ID4g
+Pg0KPiA+ID4gT24gVHVlLCAyMDEzLTA0LTIzIGF0IDE1OjUxICswMDAwLCBNeWtsZWJ1c3QsIFRy
+b25kIHdyb3RlOg0KPiA+ID4gPiBPbiBUdWUsIDIwMTMtMDQtMjMgYXQgMTE6NDIgLTA0MDAsIENo
+dWNrIExldmVyIHdyb3RlOg0KPiA+ID4gPiA+IE9uIEFwciAyMywgMjAxMywgYXQgMTA6NTEgQU0s
+IFNpbW8gU29yY2UgPHNpbW9AcmVkaGF0LmNvbT4gd3JvdGU6DQo+ID4gPiA+DQo+ID4gPiA+ID4g
+PiBBbHNvIHdoeSBhIHhhdHRyIGluIHRoZSB0cnVzdGVkIG5hbWVzcGFjZSA/IFdoYXQgYXJlIHRo
+ZQ0KPiA+ID4gPiA+ID4gc2VjdXJpdHkgY29uc2lkZXJhdGlvbnMgdGhhdCB3YXJyYW50cyBhIHRy
+dXN0ZWQgYXR0cmlidXRlDQo+ID4gPiA+ID4gPiByYXRoZXIgdGhhbiBhIG5vcm1hbCBvbmUgPyAo
+TGlua3MgdG8gUkZDcyBvciBvdGhlciBkb2NzIGFyZQ0KPiA+ID4gPiA+ID4ganVzdCBmaW5lKQ0K
+PiA+ID4gPiA+DQo+ID4gPiA+ID4gVGhpcyBpcyBhbm90aGVyIGhpc3RvcmljYWwgZGVzaWduIGRl
+Y2lzaW9uLiAgSWYgdGhlcmUgaXMNCj4gPiA+ID4gPiBjb25zZW5zdXMgdGhhdCB3ZQ0KPiA+ID4g
+ZG9uJ3QgbmVlZCB0byBwcm90ZWN0IGp1bmN0aW9uIG1ldGFkYXRhIGZyb20gdW5pbnRlbmRlZCBv
+ciBtYWxpY2lvdXMNCj4gPiA+IGxvY2FsIGNoYW5nZXMsIHRoZW4gd2UgY2FuIHB1dCB0aGVzZSBp
+biBhbm90aGVyIG5hbWVzcGFjZS4gIEhvd2V2ZXIsDQo+ID4gPiB3aXRob3V0IHN0cm9uZyBzZWN1
+cml0eSBoZXJlLCByZWRpcmVjdGluZyBuZXR3b3JrIGNsaWVudHMgdG8gYW5vdGhlcg0KPiA+ID4g
+c2VydmVyIGFuZCBleHBvcnQgY2FuIGJlIGhpamFja2VkLCBzZW5kaW5nIHJlbW90ZSB1c2VycyB0
+byB3aG8ga25vd3MNCj4gPiA+IHdoZXJlLiAgSXMgaXQgZW5vdWdoIHNpbXBseSB0byBpbnNpc3Qg
+dGhhdCBqdW5jdGlvbnMgYmUgb3duZWQgYnkgcm9vdD8NCj4gPiA+ID4NCj4gPiA+ID4gSnVuY3Rp
+b25zIHJlc29sdmUgaW50byBtb3VudHBvaW50cyBvbiBjbGllbnRzLiBBbGxvd2luZyBhcmJpdHJh
+cnkNCj4gPiA+ID4gdXNlcnMgdG8gY2hhbmdlIHRoZSBqdW5jdGlvbiBwYXJhbWV0ZXJzIGJhc2lj
+YWxseSBtZWFucyBnaXZpbmcNCj4gPiA+ID4gdGhlbSB0aGUgYWJpbGl0eSB0byBjb250cm9sIHRo
+ZSBuYW1lc3BhY2Ugb24gY2xpZW50cy4gVGhleSBjYW4gZm9yDQo+ID4gPiA+IGluc3RhbmNlIHJl
+ZGlyZWN0IGFuIGFwcGxpY2F0aW9uIGZyb20gYSB0cnVzdGVkIHNlcnZlciBvbnRvIGFuIHVudHJ1
+c3RlZA0KPiBvbmUuDQo+ID4gPiA+DQo+ID4gPiA+IEkgdGhlcmVmb3JlIHN0cm9uZ2x5IHJlY29t
+bWVuZCB0aGF0IHdlIGVuc3VyZSB0aGUgY3JlYXRpb24sDQo+ID4gPiA+IGRlbGV0aW9uIGFuZCBt
+b2RpZmljYXRpb24gb2YgYSBqdW5jdGlvbiByZW1haW5zIGEgcHJpdmlsZWdlZCBvcGVyYXRpb24N
+Cj4gb24gdGhlIHNlcnZlci4NCj4gPiA+DQo+ID4gPiBJcyBpdCBub3Qgc3VmZmljaWVudCB0byBt
+YWtlIHN1cmUgdGhlIHN5bWxpbmsgaXMgb3duZWQgYnkgcm9vdCA/DQo+ID4NCj4gPiBIb3cgZG8g
+eW91IGNoZWNrIHRoYXQgYXRvbWljYWxseSB3aXRoIHRoZSBnZXR4YXR0cj8NCj4gDQo+IFVzaW5n
+IGZnZXR4YXR0cigpIGFmdGVyIGFuIG9wZW4gYW5kIGEgZnN0YXQoKSA/DQoNClNvLCAzIG9wZXJh
+dGlvbnMgaW4gb3JkZXIgdG8gZG8gdGhlIHNhbWUgdGhpbmcgeW91IGNhbiBkbyB3aXRoIGp1c3Qg
+MSBpZiB5b3UgY2hvb3NlIGEgdHJ1c3RlZCB4YXR0cj8NCg0KVHJvbmQNCg==
