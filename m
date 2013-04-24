@@ -1,41 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:57767 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:44230 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752198Ab3DWTkq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Apr 2013 15:40:46 -0400
-Message-ID: <5176E3BB.4020508@RedHat.com>
-Date: Tue, 23 Apr 2013 15:40:43 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1754376Ab3DXPnF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Apr 2013 11:43:05 -0400
+Received: from bfields by fieldses.org with local (Exim 4.76)
+	(envelope-from <bfields@fieldses.org>)
+	id 1UV1qa-0005YJ-Gc
+	for linux-nfs@vger.kernel.org; Wed, 24 Apr 2013 11:43:04 -0400
+Date: Wed, 24 Apr 2013 11:43:04 -0400
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd4: better error return to indicate SSV non-support
+Message-ID: <20130424154304.GF20275@fieldses.org>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 13/19] NFSD: Server implementation of MAC Labeling
-References: <1364939160-20874-1-git-send-email-SteveD@redhat.com> <1364939160-20874-14-git-send-email-SteveD@redhat.com> <20130410151953.GC24404@pad.fieldses.org>
-In-Reply-To: <20130410151953.GC24404@pad.fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
+As 4.1 becomes less experimental and SSV still isn't implemented, we
+have to admit it's not going to be, and return some sensible error
+rather than just saying "our server's broken".  Discussion in the ietf
+group hasn't turned up any objections to using NFS4ERR_ENC_ALG_UNSUPP
+for that purpose.
 
-On 10/04/13 11:19, J. Bruce Fields wrote:
-> On Tue, Apr 02, 2013 at 05:45:54PM -0400, Steve Dickson wrote:
->> +__be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
->> +		struct nfs4_label *label)
->> +{
->> +	return -EOPNOTSUPP;
-> 
-> Anything that returns a __be32 is expecting nfserr_something, not
-> -ERRNO.
-> 
-I think it makes sense when label are not configured for this to
-return nfserr_notsupp which will then get turned into a -EOPNOTSUPP, 
-agreed?
- 
-steved.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+Committing for 3.10.--b.
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e39bf53..a964a17 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1651,6 +1651,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 	default:				/* checked by xdr code */
+ 		WARN_ON_ONCE(1);
+ 	case SP4_SSV:
++		return nfserr_encr_alg_unsupp;
+ 	case SP4_MACH_CRED:
+ 		return nfserr_serverfault;	/* no excuse :-/ */
+ 	}
+-- 
+1.7.9.5
 
