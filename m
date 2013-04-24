@@ -1,71 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e32.co.us.ibm.com ([32.97.110.150]:49866 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757062Ab3DWSlk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Apr 2013 14:41:40 -0400
-Received: from /spool/local
-	by e32.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <zohar@linux.vnet.ibm.com>;
-	Tue, 23 Apr 2013 12:41:38 -0600
-Message-ID: <1366742457.31304.545.camel@falcor1.watson.ibm.com>
-Subject: Re: [PATCH 00/19] lnfs: 3.9-rc5 release
-From: Mimi Zohar <zohar@linux.vnet.ibm.com>
-To: Steve Dickson <SteveD@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:38519 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755099Ab3DXPAk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Apr 2013 11:00:40 -0400
+Date: Wed, 24 Apr 2013 11:00:37 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Date: Tue, 23 Apr 2013 14:40:57 -0400
-In-Reply-To: <5176CD42.4080405@RedHat.com>
-References: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
-	 <20130410150940.GB24404@pad.fieldses.org> <5176ACE5.2020207@RedHat.com>
-	 <20130423160520.GE20622@pad.fieldses.org>
-	 <20130423172227.GF20622@pad.fieldses.org> <5176CD42.4080405@RedHat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/5] SUNRPC: allow disabling idle timeout
+Message-ID: <20130424150037.GA20275@fieldses.org>
+References: <1366054508-27604-1-git-send-email-bfields@redhat.com>
+ <1366054508-27604-3-git-send-email-bfields@redhat.com>
+ <20130418170020.GA31075@fieldses.org>
+ <1366304823.58246.22.camel@leira.trondhjem.org>
+ <20130418171424.GA30837@pad.fieldses.org>
+ <F9B356AC-18C0-4BF1-8FBF-1F719801F72F@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <F9B356AC-18C0-4BF1-8FBF-1F719801F72F@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-04-23 at 14:04 -0400, Steve Dickson wrote:
-> On 23/04/13 13:22, J. Bruce Fields wrote:
-> >>> What exactly was failing?
-> >> > 
-> >> > Sorry I can't find the results right now.  I'll re-run and let you know.
-> > The server is returning -EOPNOTSUPP in response to an nfs4 SETATTR which
-> > sets a mode.
-> > 
-> > The operation shouldn't be failing, and if it does it should return an
-> > NFS error, not -ERRNO.
-> > 
-> > I can't reproduce this just by doing chmod on the linux client.  I'm not
-> > sure what pynfs is doing differently to trigger the bug.
-> thanks for talking a look...  
+On Thu, Apr 18, 2013 at 10:25:49AM -0700, Chuck Lever wrote:
 > 
-> Hmm... I wonder if the fact nfsd4_set_nfs4_label() is returning 
-> -EOPNOTSUPP instead of something like nfserr_attrnotsupp when 
-> labels are not configured... Something you've pointed out 
-> twice now... 
->     http://www.spinics.net/lists/linux-nfs/msg36104.html
+> On Apr 18, 2013, at 10:14 AM, "J. Bruce Fields" <bfields@redhat.com> wrote:
 > 
-> If it is this problem I wonder why a chmod would not trigger it...
+> > On Thu, Apr 18, 2013 at 05:07:03PM +0000, Myklebust, Trond wrote:
+> >> On Thu, 2013-04-18 at 13:00 -0400, J. Bruce Fields wrote:
+> >>> On Mon, Apr 15, 2013 at 03:35:04PM -0400, J. Bruce Fields wrote:
+> >>>> From: "J. Bruce Fields" <bfields@redhat.com>
+> >>>> 
+> >>>> In the gss-proxy case we don't want to have to reconnect at random--we
+> >>>> want to connect only on gss-proxy startup when we can steal gss-proxy's
+> >>>> context to do the connect in the right namespace.
+> >>>> 
+> >>>> So, provide a flag that allows the rpc_create caller to turn off the
+> >>>> idle timeout.
+> >>> 
+> >>> Chuck, the basic ideas was your suggestion, does the executation look OK
+> >>> here?  I had to copy the rpc_create flags down to the xprt_create, I
+> >>> don't know if that's reasonable.
+> >> 
+> >> This patch will conflict with commit
+> >> b7993cebb841b0da7a33e9d5ce301a9fd3209165 (SUNRPC: Allow rpc_create() to
+> >> request that TCP slots be unlimited) that was posted on this list
+> >> earlier this week.
+> > 
+> > Oh, sorry, I missed that.
+> > 
+> > Presumably then I should just work on top of that and do the same
+> > thing--define a pair of flags
+> > {RP_CLNT_CREATE|XPRT_CREATE}_NO_IDLE_TIMEOUT and translate between the
+> > two in rpc_create.
+> 
+> Agree.
 
-Do you by any chance have EVM enabled?  EVM includes the i_mode in the
-HMAC calculation.  Anytime the i_mode changes, the existing HMAC is
-verified, before recalculating the HMAC to reflect the change.  The
-hooks are there to update the HMAC, when using chmod.
+The result (untested) looks like this.
 
-I posted a couple of patches to audit this type of error last week, but
-haven't sent a pull request yet.
+If this is OK--Trond, do you mind if I merge this commit (or
+nfs-for-next) into my tree, and then the rest of the gss-proxy patches
+on top?
 
-evm: audit integrity metadata failures
-integrity: move integrity_audit_msg()
-evm: calculate HMAC after initializing posix acl
+Or is the nfs-for-next branch still potentially subject to rewriting?
 
-thanks,
+--b.
 
-Mimi
+commit 17728da224288679811a9b305ae1211c3c7a6e7e
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Thu Apr 11 15:06:36 2013 -0400
 
+    SUNRPC: allow disabling idle timeout
+    
+    In the gss-proxy case we don't want to have to reconnect at random--we
+    want to connect only on gss-proxy startup when we can steal gss-proxy's
+    context to do the connect in the right namespace.
+    
+    So, provide a flag that allows the rpc_create caller to turn off the
+    idle timeout.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index e7d492c..bfe11be 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -125,6 +125,7 @@ struct rpc_create_args {
+ #define RPC_CLNT_CREATE_DISCRTRY	(1UL << 5)
+ #define RPC_CLNT_CREATE_QUIET		(1UL << 6)
+ #define RPC_CLNT_CREATE_INFINITE_SLOTS	(1UL << 7)
++#define RPC_CLNT_CREATE_NO_IDLE_TIMEOUT	(1UL << 8)
+ 
+ struct rpc_clnt *rpc_create(struct rpc_create_args *args);
+ struct rpc_clnt	*rpc_bind_new_program(struct rpc_clnt *,
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index ff53924..cec7b9b 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -256,6 +256,7 @@ static inline int bc_prealloc(struct rpc_rqst *req)
+ #endif /* CONFIG_SUNRPC_BACKCHANNEL */
+ 
+ #define XPRT_CREATE_INFINITE_SLOTS	(1U)
++#define XPRT_CREATE_NO_IDLE_TIMEOUT	(1U << 1)
+ 
+ struct xprt_create {
+ 	int			ident;		/* XPRT_TRANSPORT identifier */
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 651245a..80cf232 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -416,6 +416,8 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
+ 
+ 	if (args->flags & RPC_CLNT_CREATE_INFINITE_SLOTS)
+ 		xprtargs.flags |= XPRT_CREATE_INFINITE_SLOTS;
++	if (args->flags & RPC_CLNT_CREATE_NO_IDLE_TIMEOUT)
++		xprtargs.flags |= XPRT_CREATE_NO_IDLE_TIMEOUT;
+ 	/*
+ 	 * If the caller chooses not to specify a hostname, whip
+ 	 * up a string representation of the passed-in address.
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 745fca3..095363e 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1300,6 +1300,8 @@ found:
+ 				-PTR_ERR(xprt));
+ 		goto out;
+ 	}
++	if (args->flags & XPRT_CREATE_NO_IDLE_TIMEOUT)
++		xprt->idle_timeout = 0;
+ 	INIT_WORK(&xprt->task_cleanup, xprt_autoclose);
+ 	if (xprt_has_timer(xprt))
+ 		setup_timer(&xprt->timer, xprt_init_autodisconnect,
