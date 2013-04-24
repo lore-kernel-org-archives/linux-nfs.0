@@ -1,296 +1,281 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:41717 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:56945 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757617Ab3DXUXK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Apr 2013 16:23:10 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 09/17] NFSv4: Introduce new label structure
-Date: Wed, 24 Apr 2013 16:17:55 -0400
-Message-Id: <1366834683-29075-10-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
-References: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
+	id S1753407Ab3DXP5u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Apr 2013 11:57:50 -0400
+Date: Wed, 24 Apr 2013 11:57:48 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trond@netapp.com>, Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] nfsd4: implement minimal SP4_MACH_CRED
+Message-ID: <20130424155748.GH20275@fieldses.org>
+References: <20130424154447.GG20275@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130424154447.GG20275@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Wed, Apr 24, 2013 at 11:44:47AM -0400, bfields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> Do a minimal SP4_MACH_CRED implementation suggested by Trond, ignoring
+> the client-provided spo_must_* arrays and just enforcing credential
+> checks for the minimum required operations.
+> 
+> Note also that this assumes krb5.  This works in practice, since that's
+> the only gss mechanism we support, but we should really pass around a
+> gss mechanism and make this general.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/nfsd/nfs4state.c |   64 ++++++++++++++++++++++++++++++++++++++++-----------
+>  fs/nfsd/nfs4xdr.c   |   23 ++++++++++++++++++
+>  fs/nfsd/state.h     |    1 +
+>  3 files changed, 75 insertions(+), 13 deletions(-)
+> 
+> More of an rfc for now, mostly untested.
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index a964a17..bd7acd2 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1267,6 +1267,20 @@ same_creds(struct svc_cred *cr1, struct svc_cred *cr2)
+>  	return 0 == strcmp(cr1->cr_principal, cr2->cr_principal);
+>  }
+>  
+> +static bool mach_creds_match(struct nfs4_client *cl, struct svc_rqst *rqstp)
+> +{
+> +	struct svc_cred *cr = &rqstp->rq_cred;
+> +	if (!cl->cl_mach_cred)
+> +		return true;
+> +	/* XXX: more general test for integrity or privacy needed: */
+> +	if (!cr->cr_flavor == RPC_AUTH_GSS_KRB5I &&
+> +	    !cr->cr_flavor == RPC_AUTH_GSS_KRB5P)
+> +		return false;
 
-In order to mimic the way that NFSv4 ACLs are implemented we have created a
-structure to be used to pass label data up and down the call chain. This patch
-adds the new structure and new members to the required NFSv4 call structures.
+So obviously this all assumes kerberos.
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- fs/nfs/inode.c            | 28 ++++++++++++++++++++++++++++
- include/linux/nfs4.h      |  7 +++++++
- include/linux/nfs_fs.h    | 18 ++++++++++++++++++
- include/linux/nfs_xdr.h   | 21 +++++++++++++++++++++
- include/uapi/linux/nfs4.h |  2 +-
- 5 files changed, 75 insertions(+), 1 deletion(-)
+What we're actually supposed to check is that a) the mechanism matches,
+b) the service is integrity or privacy, c) the principal matches.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 1f94167..c88255c 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -257,6 +257,34 @@ nfs_init_locked(struct inode *inode, void *opaque)
- 	return 0;
- }
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags)
-+{
-+	struct nfs4_label *label = NULL;
-+	int minor_version = server->nfs_client->cl_minorversion;
-+
-+	if (minor_version < 2)
-+		return label;
-+
-+	if (!(server->caps & NFS_CAP_SECURITY_LABEL))
-+		return label;
-+
-+	label = kzalloc(sizeof(struct nfs4_label), flags);
-+	if (label == NULL)
-+		return ERR_PTR(-ENOMEM);
-+
-+	label->label = kzalloc(NFS4_MAXLABELLEN, flags);
-+	if (label->label == NULL) {
-+		kfree(label);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+	label->len = NFS4_MAXLABELLEN;
-+
-+	return label;
-+}
-+EXPORT_SYMBOL_GPL(nfs4_label_alloc);
-+#endif
-+
- /*
-  * This is our front-end to iget that looks up inodes by file handle
-  * instead of inode number.
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 6f44cc1..4c61ef4 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -32,6 +32,13 @@ struct nfs4_acl {
- 	struct nfs4_ace	aces[0];
- };
- 
-+struct nfs4_label {
-+	uint32_t	lfs;
-+	uint32_t	pi;
-+	u32		len;
-+	char	*label;
-+};
-+
- typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
- 
- struct nfs_stateid4 {
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 1cc2568..e0e1806 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -489,6 +489,24 @@ extern int nfs_mountpoint_expiry_timeout;
- extern void nfs_release_automount_timer(void);
- 
- /*
-+ * linux/fs/nfs/nfs4proc.c
-+ */
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+extern struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags);
-+static inline void nfs4_label_free(struct nfs4_label *label)
-+{
-+	if (label) {
-+		kfree(label->label);
-+		kfree(label);
-+	}
-+	return;
-+}
-+#else
-+static inline struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags) { return NULL; }
-+static inline void nfs4_label_free(void *label) {}
-+#endif
-+
-+/*
-  * linux/fs/nfs/unlink.c
-  */
- extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 9f2dba3..4d2fdf6 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -351,6 +351,7 @@ struct nfs_openargs {
- 	const u32 *		bitmask;
- 	const u32 *		open_bitmap;
- 	__u32			claim;
-+	const struct nfs4_label *label;
- };
- 
- struct nfs_openres {
-@@ -360,6 +361,7 @@ struct nfs_openres {
- 	struct nfs4_change_info	cinfo;
- 	__u32                   rflags;
- 	struct nfs_fattr *      f_attr;
-+	struct nfs4_label	*f_label;
- 	struct nfs_seqid *	seqid;
- 	const struct nfs_server *server;
- 	fmode_t			delegation_type;
-@@ -404,6 +406,7 @@ struct nfs_closeres {
- 	struct nfs4_sequence_res	seq_res;
- 	nfs4_stateid            stateid;
- 	struct nfs_fattr *	fattr;
-+	struct nfs4_label	*label;
- 	struct nfs_seqid *	seqid;
- 	const struct nfs_server *server;
- };
-@@ -477,6 +480,7 @@ struct nfs4_delegreturnargs {
- struct nfs4_delegreturnres {
- 	struct nfs4_sequence_res	seq_res;
- 	struct nfs_fattr * fattr;
-+	struct nfs4_label	*label;
- 	const struct nfs_server *server;
- };
- 
-@@ -497,6 +501,7 @@ struct nfs_readargs {
- struct nfs_readres {
- 	struct nfs4_sequence_res	seq_res;
- 	struct nfs_fattr *	fattr;
-+	struct nfs4_label	*label;
- 	__u32			count;
- 	int                     eof;
- };
-@@ -565,6 +570,7 @@ struct nfs_removeres {
- 	struct nfs4_sequence_res 	seq_res;
- 	const struct nfs_server *server;
- 	struct nfs_fattr	*dir_attr;
-+	struct nfs4_label	*dir_label;
- 	struct nfs4_change_info	cinfo;
- };
- 
-@@ -577,6 +583,8 @@ struct nfs_renameargs {
- 	const struct nfs_fh		*new_dir;
- 	const struct qstr		*old_name;
- 	const struct qstr		*new_name;
-+	const struct nfs4_label		*old_label;
-+	const struct nfs4_label		*new_label;
- };
- 
- struct nfs_renameres {
-@@ -584,8 +592,10 @@ struct nfs_renameres {
- 	const struct nfs_server		*server;
- 	struct nfs4_change_info		old_cinfo;
- 	struct nfs_fattr		*old_fattr;
-+	struct nfs4_label		*old_label;
- 	struct nfs4_change_info		new_cinfo;
- 	struct nfs_fattr		*new_fattr;
-+	struct nfs4_label		*new_label;
- };
- 
- /*
-@@ -600,6 +610,7 @@ struct nfs_entry {
- 	int			eof;
- 	struct nfs_fh *		fh;
- 	struct nfs_fattr *	fattr;
-+	struct nfs4_label  *label;
- 	unsigned char		d_type;
- 	struct nfs_server *	server;
- };
-@@ -632,6 +643,7 @@ struct nfs_setattrargs {
- 	struct iattr *                  iap;
- 	const struct nfs_server *	server; /* Needed for name mapping */
- 	const u32 *			bitmask;
-+	const struct nfs4_label		*label;
- };
- 
- struct nfs_setaclargs {
-@@ -667,6 +679,7 @@ struct nfs_getaclres {
- struct nfs_setattrres {
- 	struct nfs4_sequence_res	seq_res;
- 	struct nfs_fattr *              fattr;
-+	struct nfs4_label		*label;
- 	const struct nfs_server *	server;
- };
- 
-@@ -712,6 +725,7 @@ struct nfs3_setaclargs {
- struct nfs_diropok {
- 	struct nfs_fh *		fh;
- 	struct nfs_fattr *	fattr;
-+	struct nfs4_label	*label;
- };
- 
- struct nfs_readlinkargs {
-@@ -842,6 +856,7 @@ struct nfs4_accessres {
- 	struct nfs4_sequence_res	seq_res;
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
-+	struct nfs4_label		*label;
- 	u32				supported;
- 	u32				access;
- };
-@@ -864,6 +879,7 @@ struct nfs4_create_arg {
- 	const struct iattr *		attrs;
- 	const struct nfs_fh *		dir_fh;
- 	const u32 *			bitmask;
-+	const struct nfs4_label		*label;
- };
- 
- struct nfs4_create_res {
-@@ -871,6 +887,7 @@ struct nfs4_create_res {
- 	const struct nfs_server *	server;
- 	struct nfs_fh *			fh;
- 	struct nfs_fattr *		fattr;
-+	struct nfs4_label		*label;
- 	struct nfs4_change_info		dir_cinfo;
- };
- 
-@@ -895,6 +912,7 @@ struct nfs4_getattr_res {
- 	struct nfs4_sequence_res	seq_res;
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
-+	struct nfs4_label		*label;
- };
- 
- struct nfs4_link_arg {
-@@ -909,8 +927,10 @@ struct nfs4_link_res {
- 	struct nfs4_sequence_res	seq_res;
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
-+	struct nfs4_label		*label;
- 	struct nfs4_change_info		cinfo;
- 	struct nfs_fattr *		dir_attr;
-+	struct nfs4_label		*dir_label;
- };
- 
- 
-@@ -926,6 +946,7 @@ struct nfs4_lookup_res {
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
- 	struct nfs_fh *			fh;
-+	struct nfs4_label		*label;
- };
- 
- struct nfs4_lookup_root_arg {
-diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
-index 788128e..78d25b5 100644
---- a/include/uapi/linux/nfs4.h
-+++ b/include/uapi/linux/nfs4.h
-@@ -25,7 +25,7 @@
- #define NFS4_MAXNAMLEN		NAME_MAX
- #define NFS4_OPAQUE_LIMIT	1024
- #define NFS4_MAX_SESSIONID_LEN	16
--
-+#define NFS4_MAXLABELLEN	2048 
- #define NFS4_ACCESS_READ        0x0001
- #define NFS4_ACCESS_LOOKUP      0x0002
- #define NFS4_ACCESS_MODIFY      0x0004
--- 
-1.8.1.4
+So I guess what I actually want to do is store a reference to the struct
+gss_api_mech, compare that, and check the service with
+gss_pseudoflavor_to_service()?
 
+Not sure if your patches change how any of that's done, Chuck.
+
+--b.
+
+> +	if (!cr->cr_principal)
+> +		return false;
+> +	return 0 == strcmp(cl->cl_cred.cr_principal, cr->cr_principal);
+> +}
+> +
+>  static void gen_clid(struct nfs4_client *clp, struct nfsd_net *nn)
+>  {
+>  	static u32 current_clientid = 1;
+> @@ -1644,16 +1658,14 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+>  	if (exid->flags & ~EXCHGID4_FLAG_MASK_A)
+>  		return nfserr_inval;
+>  
+> -	/* Currently only support SP4_NONE */
+>  	switch (exid->spa_how) {
+> +	case SP4_MACH_CRED:
+>  	case SP4_NONE:
+>  		break;
+>  	default:				/* checked by xdr code */
+>  		WARN_ON_ONCE(1);
+>  	case SP4_SSV:
+>  		return nfserr_encr_alg_unsupp;
+> -	case SP4_MACH_CRED:
+> -		return nfserr_serverfault;	/* no excuse :-/ */
+>  	}
+>  
+>  	/* Cases below refer to rfc 5661 section 18.35.4: */
+> @@ -1668,6 +1680,10 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+>  				status = nfserr_inval;
+>  				goto out;
+>  			}
+> +			if (!mach_creds_match(conf, rqstp)) {
+> +				status = nfserr_wrong_cred;
+> +				goto out;
+> +			}
+>  			if (!creds_match) { /* case 9 */
+>  				status = nfserr_perm;
+>  				goto out;
+> @@ -1715,7 +1731,7 @@ out_new:
+>  		goto out;
+>  	}
+>  	new->cl_minorversion = 1;
+> -
+> +	new->cl_mach_cred = (exid->spa_how == SP4_MACH_CRED);
+>  	gen_clid(new, nn);
+>  	add_to_unconfirmed(new);
+>  out_copy:
+> @@ -1879,6 +1895,9 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>  	WARN_ON_ONCE(conf && unconf);
+>  
+>  	if (conf) {
+> +		status = nfserr_wrong_cred;
+> +		if (!mach_creds_match(conf, rqstp))
+> +			goto out_free_conn;
+>  		cs_slot = &conf->cl_cs_slot;
+>  		status = check_slot_seqid(cr_ses->seqid, cs_slot->sl_seqid, 0);
+>  		if (status == nfserr_replay_cache) {
+> @@ -1895,6 +1914,9 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>  			status = nfserr_clid_inuse;
+>  			goto out_free_conn;
+>  		}
+> +		status = nfserr_wrong_cred;
+> +		if (!mach_creds_match(unconf, rqstp))
+> +			goto out_free_conn;
+>  		cs_slot = &unconf->cl_cs_slot;
+>  		status = check_slot_seqid(cr_ses->seqid, cs_slot->sl_seqid, 0);
+>  		if (status) {
+> @@ -1991,6 +2013,9 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
+>  	status = nfserr_badsession;
+>  	if (!session)
+>  		goto out;
+> +	status = nfserr_wrong_cred;
+> +	if (!mach_creds_match(session->se_client, rqstp))
+> +		goto out;
+>  	status = nfsd4_map_bcts_dir(&bcts->dir);
+>  	if (status)
+>  		goto out;
+> @@ -2033,6 +2058,9 @@ nfsd4_destroy_session(struct svc_rqst *r,
+>  	status = nfserr_badsession;
+>  	if (!ses)
+>  		goto out_client_lock;
+> +	status = nfserr_wrong_cred;
+> +	if (!mach_creds_match(ses->se_client, r))
+> +		goto out_client_lock;
+>  	status = mark_session_dead_locked(ses);
+>  	if (status)
+>  		goto out_client_lock;
+> @@ -2063,26 +2091,31 @@ static struct nfsd4_conn *__nfsd4_find_conn(struct svc_xprt *xpt, struct nfsd4_s
+>  	return NULL;
+>  }
+>  
+> -static void nfsd4_sequence_check_conn(struct nfsd4_conn *new, struct nfsd4_session *ses)
+> +static __be32 nfsd4_sequence_check_conn(struct nfsd4_conn *new, struct nfsd4_session *ses)
+>  {
+>  	struct nfs4_client *clp = ses->se_client;
+>  	struct nfsd4_conn *c;
+> +	__be32 status = nfs_ok;
+>  	int ret;
+>  
+>  	spin_lock(&clp->cl_lock);
+>  	c = __nfsd4_find_conn(new->cn_xprt, ses);
+> -	if (c) {
+> -		spin_unlock(&clp->cl_lock);
+> -		free_conn(new);
+> -		return;
+> -	}
+> +	if (c)
+> +		goto out_free;
+> +	status = nfserr_conn_not_bound_to_session;
+> +	if (clp->cl_mach_cred)
+> +		goto out_free;
+>  	__nfsd4_hash_conn(new, ses);
+>  	spin_unlock(&clp->cl_lock);
+>  	ret = nfsd4_register_conn(new);
+>  	if (ret)
+>  		/* oops; xprt is already down: */
+>  		nfsd4_conn_lost(&new->cn_xpt_user);
+> -	return;
+> +	return nfs_ok;
+> +out_free:
+> +	spin_unlock(&clp->cl_lock);
+> +	free_conn(new);
+> +	return status;
+>  }
+>  
+>  static bool nfsd4_session_too_many_ops(struct svc_rqst *rqstp, struct nfsd4_session *session)
+> @@ -2174,8 +2207,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+>  	if (status)
+>  		goto out_put_session;
+>  
+> -	nfsd4_sequence_check_conn(conn, session);
+> +	status = nfsd4_sequence_check_conn(conn, session);
+>  	conn = NULL;
+> +	if (status)
+> +		goto out_put_session;
+>  
+>  	/* Success! bump slot seqid */
+>  	slot->sl_seqid = seq->seqid;
+> @@ -2237,7 +2272,10 @@ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
+>  		status = nfserr_stale_clientid;
+>  		goto out;
+>  	}
+> -
+> +	if (!mach_creds_match(clp, rqstp)) {
+> +		status = nfserr_wrong_cred;
+> +		goto out;
+> +	}
+>  	expire_client(clp);
+>  out:
+>  	nfs4_unlock_state();
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 888a600..7054fde 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -1215,6 +1215,7 @@ nfsd4_decode_exchange_id(struct nfsd4_compoundargs *argp,
+>  	case SP4_NONE:
+>  		break;
+>  	case SP4_MACH_CRED:
+> +		/* XXX: uh, what should I be doing with this?: */
+>  		/* spo_must_enforce */
+>  		READ_BUF(4);
+>  		READ32(dummy);
+> @@ -3220,6 +3221,14 @@ nfsd4_encode_write(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_w
+>  	return nfserr;
+>  }
+>  
+> +static const u32 nfs4_minimal_spo_must_enforce[2] = {
+> +	[1] = 1 << (OP_BIND_CONN_TO_SESSION - 32) |
+> +	      1 << (OP_EXCHANGE_ID - 32) |
+> +	      1 << (OP_CREATE_SESSION - 32) |
+> +	      1 << (OP_DESTROY_SESSION - 32) |
+> +	      1 << (OP_DESTROY_CLIENTID - 32)
+> +};
+> +
+>  static __be32
+>  nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  			 struct nfsd4_exchange_id *exid)
+> @@ -3258,6 +3267,20 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  	/* state_protect4_r. Currently only support SP4_NONE */
+>  	BUG_ON(exid->spa_how != SP4_NONE);
+>  	WRITE32(exid->spa_how);
+> +	switch (exid->spa_how) {
+> +	case SP4_NONE:
+> +		break;
+> +	case SP4_MACH_CRED:
+> +		/* spo_must_enforce bitmap: */
+> +		WRITE32(2);
+> +		WRITE32(nfs4_minimal_spo_must_enforce[0]);
+> +		WRITE32(nfs4_minimal_spo_must_enforce[1]);
+> +		/* empty spo_must_allow bitmap: */
+> +		WRITE32(0);
+> +		break;
+> +	default:
+> +		WARN_ON_ONCE(1);
+> +	}
+>  
+>  	/* The server_owner struct */
+>  	WRITE64(minor_id);      /* Minor id */
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index 274e2a1..424d8f5 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -246,6 +246,7 @@ struct nfs4_client {
+>  	nfs4_verifier		cl_verifier; 	/* generated by client */
+>  	time_t                  cl_time;        /* time of last lease renewal */
+>  	struct sockaddr_storage	cl_addr; 	/* client ipaddress */
+> +	bool			cl_mach_cred;	/* SP4_MACH_CRED in force */
+>  	struct svc_cred		cl_cred; 	/* setclientid principal */
+>  	clientid_t		cl_clientid;	/* generated by server */
+>  	nfs4_verifier		cl_confirm;	/* generated by server */
+> -- 
+> 1.7.9.5
+> 
