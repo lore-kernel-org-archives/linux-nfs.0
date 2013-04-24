@@ -1,53 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp3.ugent.be ([157.193.49.127]:59250 "EHLO smtp3.ugent.be"
+Received: from fieldses.org ([174.143.236.118]:36106 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753904Ab3DOPuw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Apr 2013 11:50:52 -0400
-Received: from localhost (mcheck2.ugent.be [157.193.49.249])
-	by smtp3.ugent.be (Postfix) with ESMTP id 0A87EC389
-	for <linux-nfs@vger.kernel.org>; Mon, 15 Apr 2013 17:43:33 +0200 (CEST)
-Received: from smtp3.ugent.be ([157.193.49.127])
-	by localhost (mcheck2.UGent.be [157.193.43.11]) (amavisd-new, port 10024)
-	with ESMTP id V7W-c_G0xWPi for <linux-nfs@vger.kernel.org>;
-	Mon, 15 Apr 2013 17:43:32 +0200 (CEST)
-Received: from localhost.localdomain (spike.ugent.be [157.193.44.183])
-	(Authenticated sender: stdweird)
-	by smtp3.ugent.be (Postfix) with ESMTPSA id C8476C36C
-	for <linux-nfs@vger.kernel.org>; Mon, 15 Apr 2013 17:43:32 +0200 (CEST)
-Message-ID: <516C2024.9030504@ugent.be>
-Date: Mon, 15 Apr 2013 17:43:32 +0200
-From: Stijn De Weirdt <stijn.deweirdt@ugent.be>
+	id S932074Ab3DXXDQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Apr 2013 19:03:16 -0400
+Date: Wed, 24 Apr 2013 19:03:12 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: David Quigley <dpquigl@davequigley.com>
+Cc: Steve Dickson <steved@redhat.com>,
+        Trond Myklebust <trond.myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>, eparis@redhat.com,
+        sds@tycho.nsa.gov
+Subject: Re: [PATCH 04/17] Security: Add hook to calculate context based on a
+ negative dentry.
+Message-ID: <20130424230312.GS20275@fieldses.org>
+References: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
+ <1366834683-29075-5-git-send-email-SteveD@redhat.com>
+ <20130424220258.GO20275@fieldses.org>
+ <517858D1.5000406@RedHat.com>
+ <faf7db0bcd9b208c201a652c718c720c@countercultured.net>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: replicas and client support
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <faf7db0bcd9b208c201a652c718c720c@countercultured.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-hi all,
+On Wed, Apr 24, 2013 at 06:14:16PM -0400, David Quigley wrote:
+> On 04/24/2013 18:12, Steve Dickson wrote:
+> >On 24/04/13 18:02, J. Bruce Fields wrote:
+> >>n Wed, Apr 24, 2013 at 04:17:50PM -0400, Steve Dickson wrote:
+> >>>> From: David Quigley <dpquigl@davequigley.com>
+> >>>>
+> >>>> There is a time where we need to calculate a context without the
+> >>>> inode having been created yet. To do this we take the
+> >>>negative dentry and
+> >>>> calculate a context based on the process and the parent
+> >>>directory contexts.
+> >>How can we get review from security/selinux folks?  I can't
+> >>apply these
+> >>without....
+> >Its my understand they have been reviewed a number times... And
+> >they have not
+> >change since I've working on these patches...
+> >
+> >steved.
+> >--
+> >To unsubscribe from this list: send the line "unsubscribe
+> >linux-nfs" in
+> >the body of a message to majordomo@vger.kernel.org
+> >More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> That is correct. They have been acked in the past and haven't
+> changed at all since then.
 
-(pls keep me in cc, i'm not subscribed to this list)
+Oh, OK, sorry--I lost track.  (Do you have a pointer?)
 
-i am trying out the replicas feature of exportfs, but i'm unable to get 
-it working.
+> I have contacted Eric Paris about
+> reviewing them anyway so you can have a more recent ack on the
+> patches.
 
-i would like to know if what i'm trying to is actually implemented in 
-linux (or intended behaviour of replicas in the first place).
+But that would be helpful too, thanks.
 
-2 nfs4 servers with cluster filesystem (gpfs in my case). the os is 
-sl6.4, i've enabled the nfs version 4.1 on the server (from my 
-understanding, 4.0 should be enough?).
-
-i would like to test if the replicas features can be used for failover 
-support of a rw nfs export. ie
-a. mount nfs from server1 on client
-b. start some IO activity on client on the mounted filesystem
-c. poweroff server1
-d. after a certain amount of time, IO continues using server2
-
-(the client i'm testing with is also el6.4 atm.)
-
-
-many thanks,
-
-stijn
+--b.
