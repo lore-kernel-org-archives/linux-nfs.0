@@ -1,46 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41553 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932926Ab3DINJT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Apr 2013 09:09:19 -0400
-Date: Tue, 9 Apr 2013 09:09:16 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Wei Yongjun <weiyj.lk@gmail.com>
-Cc: yongjun_wei@trendmicro.com.cn, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: use kmem_cache_free() instead of kfree()
-Message-ID: <20130409130916.GA24657@fieldses.org>
-References: <CAPgLHd_A_6Za0rOZDdrrKSpB39MquPVgUrAgXO=57T6xYyjcKA@mail.gmail.com>
+Received: from countercultured.net ([209.51.175.25]:35743 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1758494Ab3DXWJ6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Apr 2013 18:09:58 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAPgLHd_A_6Za0rOZDdrrKSpB39MquPVgUrAgXO=57T6xYyjcKA@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Date: Wed, 24 Apr 2013 18:09:55 -0400
+From: David Quigley <dpquigl@davequigley.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Steve Dickson <steved@redhat.com>,
+        Trond Myklebust <trond.myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 04/17] Security: Add hook to calculate context based on
+ a negative dentry.
+In-Reply-To: <20130424220258.GO20275@fieldses.org>
+References: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
+ <1366834683-29075-5-git-send-email-SteveD@redhat.com>
+ <20130424220258.GO20275@fieldses.org>
+Message-ID: <6730c521c3317f9b8bf9e9c1d3da87c8@countercultured.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 09, 2013 at 02:15:31PM +0800, Wei Yongjun wrote:
-> From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
-> 
-> memory allocated by kmem_cache_alloc() should be freed using
-> kmem_cache_free(), not kfree().
+I'll contact Eric Paris about reviewing the patches. I'm sure he would 
+be happy to look them over. Hopefully we can get it done soon.
 
-Applying, thanks.--b.
-
-> 
-> Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
-> ---
->  fs/nfsd/nfs4state.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 2e27430..06a520b 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -267,7 +267,7 @@ kmem_cache *slab)
->  		min_stateid = 0;
->  	return stid;
->  out_free:
-> -	kfree(stid);
-> +	kmem_cache_free(slab, stid);
->  	return NULL;
->  }
->  
-> 
+Dave
