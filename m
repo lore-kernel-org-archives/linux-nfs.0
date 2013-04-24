@@ -1,100 +1,264 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:36468 "EHLO
-	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752997Ab3DLQ6K (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Apr 2013 12:58:10 -0400
-Received: from tophat.home.4dicksons.org ([192.168.62.20])
-	by Dobby.4dicksons.org with esmtp (Exim 4.63)
-	(envelope-from <steved@redhat.com>)
-	id 1UQgTp-00032f-JW
-	for linux-nfs@vger.kernel.org; Fri, 12 Apr 2013 12:05:38 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH] mount: No longer negotiate to v2
-Date: Fri, 12 Apr 2013 12:05:36 -0400
-Message-Id: <1365782736-9764-2-git-send-email-steved@redhat.com>
-In-Reply-To: <1365782736-9764-1-git-send-email-steved@redhat.com>
-References: <1365782736-9764-1-git-send-email-steved@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:51302 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756060Ab3DXPos (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Apr 2013 11:44:48 -0400
+Date: Wed, 24 Apr 2013 11:44:47 -0400
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trond@netapp.com>, Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] nfsd4: implement minimal SP4_MACH_CRED
+Message-ID: <20130424154447.GG20275@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch remove the ability of negotiating to the v2
-protocol. Explicitly setting the version on the command
-line will be the only way to use v2.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Do a minimal SP4_MACH_CRED implementation suggested by Trond, ignoring
+the client-provided spo_must_* arrays and just enforcing credential
+checks for the minimum required operations.
+
+Note also that this assumes krb5.  This works in practice, since that's
+the only gss mechanism we support, but we should really pass around a
+gss mechanism and make this general.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- utils/mount/network.c | 13 +++++--------
- utils/mount/stropts.c |  2 ++
- 2 files changed, 7 insertions(+), 8 deletions(-)
+ fs/nfsd/nfs4state.c |   64 ++++++++++++++++++++++++++++++++++++++++-----------
+ fs/nfsd/nfs4xdr.c   |   23 ++++++++++++++++++
+ fs/nfsd/state.h     |    1 +
+ 3 files changed, 75 insertions(+), 13 deletions(-)
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index e7bd522..4be48cd 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -155,9 +155,8 @@ static const unsigned long probe_nfs2_only[] = {
- 	0,
- };
+More of an rfc for now, mostly untested.
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index a964a17..bd7acd2 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1267,6 +1267,20 @@ same_creds(struct svc_cred *cr1, struct svc_cred *cr2)
+ 	return 0 == strcmp(cr1->cr_principal, cr2->cr_principal);
+ }
  
--static const unsigned long probe_nfs3_first[] = {
-+static const unsigned long probe_nfs3_only[] = {
- 	3,
--	2,
- 	0,
- };
++static bool mach_creds_match(struct nfs4_client *cl, struct svc_rqst *rqstp)
++{
++	struct svc_cred *cr = &rqstp->rq_cred;
++	if (!cl->cl_mach_cred)
++		return true;
++	/* XXX: more general test for integrity or privacy needed: */
++	if (!cr->cr_flavor == RPC_AUTH_GSS_KRB5I &&
++	    !cr->cr_flavor == RPC_AUTH_GSS_KRB5P)
++		return false;
++	if (!cr->cr_principal)
++		return false;
++	return 0 == strcmp(cl->cl_cred.cr_principal, cr->cr_principal);
++}
++
+ static void gen_clid(struct nfs4_client *clp, struct nfsd_net *nn)
+ {
+ 	static u32 current_clientid = 1;
+@@ -1644,16 +1658,14 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 	if (exid->flags & ~EXCHGID4_FLAG_MASK_A)
+ 		return nfserr_inval;
  
-@@ -167,10 +166,8 @@ static const unsigned long probe_mnt1_first[] = {
- 	0,
- };
+-	/* Currently only support SP4_NONE */
+ 	switch (exid->spa_how) {
++	case SP4_MACH_CRED:
+ 	case SP4_NONE:
+ 		break;
+ 	default:				/* checked by xdr code */
+ 		WARN_ON_ONCE(1);
+ 	case SP4_SSV:
+ 		return nfserr_encr_alg_unsupp;
+-	case SP4_MACH_CRED:
+-		return nfserr_serverfault;	/* no excuse :-/ */
+ 	}
  
--static const unsigned long probe_mnt3_first[] = {
-+static const unsigned long probe_mnt3_only[] = {
- 	3,
--	1,
--	2,
- 	0,
- };
+ 	/* Cases below refer to rfc 5661 section 18.35.4: */
+@@ -1668,6 +1680,10 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 				status = nfserr_inval;
+ 				goto out;
+ 			}
++			if (!mach_creds_match(conf, rqstp)) {
++				status = nfserr_wrong_cred;
++				goto out;
++			}
+ 			if (!creds_match) { /* case 9 */
+ 				status = nfserr_perm;
+ 				goto out;
+@@ -1715,7 +1731,7 @@ out_new:
+ 		goto out;
+ 	}
+ 	new->cl_minorversion = 1;
+-
++	new->cl_mach_cred = (exid->spa_how == SP4_MACH_CRED);
+ 	gen_clid(new, nn);
+ 	add_to_unconfirmed(new);
+ out_copy:
+@@ -1879,6 +1895,9 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 	WARN_ON_ONCE(conf && unconf);
  
-@@ -626,7 +623,7 @@ static int nfs_probe_nfsport(const struct sockaddr *sap, const socklen_t salen,
- 		probe_proto = nfs_default_proto();
+ 	if (conf) {
++		status = nfserr_wrong_cred;
++		if (!mach_creds_match(conf, rqstp))
++			goto out_free_conn;
+ 		cs_slot = &conf->cl_cs_slot;
+ 		status = check_slot_seqid(cr_ses->seqid, cs_slot->sl_seqid, 0);
+ 		if (status == nfserr_replay_cache) {
+@@ -1895,6 +1914,9 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 			status = nfserr_clid_inuse;
+ 			goto out_free_conn;
+ 		}
++		status = nfserr_wrong_cred;
++		if (!mach_creds_match(unconf, rqstp))
++			goto out_free_conn;
+ 		cs_slot = &unconf->cl_cs_slot;
+ 		status = check_slot_seqid(cr_ses->seqid, cs_slot->sl_seqid, 0);
+ 		if (status) {
+@@ -1991,6 +2013,9 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
+ 	status = nfserr_badsession;
+ 	if (!session)
+ 		goto out;
++	status = nfserr_wrong_cred;
++	if (!mach_creds_match(session->se_client, rqstp))
++		goto out;
+ 	status = nfsd4_map_bcts_dir(&bcts->dir);
+ 	if (status)
+ 		goto out;
+@@ -2033,6 +2058,9 @@ nfsd4_destroy_session(struct svc_rqst *r,
+ 	status = nfserr_badsession;
+ 	if (!ses)
+ 		goto out_client_lock;
++	status = nfserr_wrong_cred;
++	if (!mach_creds_match(ses->se_client, r))
++		goto out_client_lock;
+ 	status = mark_session_dead_locked(ses);
+ 	if (status)
+ 		goto out_client_lock;
+@@ -2063,26 +2091,31 @@ static struct nfsd4_conn *__nfsd4_find_conn(struct svc_xprt *xpt, struct nfsd4_s
+ 	return NULL;
+ }
  
- 		return nfs_probe_port(sap, salen, pmap,
--					probe_nfs3_first, probe_proto);
-+					probe_nfs3_only, probe_proto);
- 	} else
- 		return nfs_probe_port(sap, salen, pmap,
- 					probe_nfs2_only, probe_udp_only);
-@@ -653,7 +650,7 @@ static int nfs_probe_mntport(const struct sockaddr *sap, const socklen_t salen,
+-static void nfsd4_sequence_check_conn(struct nfsd4_conn *new, struct nfsd4_session *ses)
++static __be32 nfsd4_sequence_check_conn(struct nfsd4_conn *new, struct nfsd4_session *ses)
+ {
+ 	struct nfs4_client *clp = ses->se_client;
+ 	struct nfsd4_conn *c;
++	__be32 status = nfs_ok;
+ 	int ret;
  
- 	if (nfs_mount_data_version >= 4)
- 		return nfs_probe_port(sap, salen, pmap,
--					probe_mnt3_first, probe_udp_first);
-+					probe_mnt3_only, probe_udp_first);
- 	else
- 		return nfs_probe_port(sap, salen, pmap,
- 					probe_mnt1_first, probe_udp_only);
-@@ -717,7 +714,7 @@ int nfs_probe_bothports(const struct sockaddr *mnt_saddr,
- 	memcpy(&save_nfs, nfs_pmap, sizeof(save_nfs));
- 	memcpy(&save_mnt, mnt_pmap, sizeof(save_mnt));
- 	probe_vers = (nfs_mount_data_version >= 4) ?
--			probe_mnt3_first : probe_mnt1_first;
-+			probe_mnt3_only : probe_mnt1_first;
+ 	spin_lock(&clp->cl_lock);
+ 	c = __nfsd4_find_conn(new->cn_xprt, ses);
+-	if (c) {
+-		spin_unlock(&clp->cl_lock);
+-		free_conn(new);
+-		return;
+-	}
++	if (c)
++		goto out_free;
++	status = nfserr_conn_not_bound_to_session;
++	if (clp->cl_mach_cred)
++		goto out_free;
+ 	__nfsd4_hash_conn(new, ses);
+ 	spin_unlock(&clp->cl_lock);
+ 	ret = nfsd4_register_conn(new);
+ 	if (ret)
+ 		/* oops; xprt is already down: */
+ 		nfsd4_conn_lost(&new->cn_xpt_user);
+-	return;
++	return nfs_ok;
++out_free:
++	spin_unlock(&clp->cl_lock);
++	free_conn(new);
++	return status;
+ }
  
- 	for (; *probe_vers; probe_vers++) {
- 		nfs_pmap->pm_vers = mntvers_to_nfs(*probe_vers);
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 8ee3024..1dc38ef 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -542,6 +542,8 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
- 			errno = EACCES;
- 		else if (rpc_createerr.cf_stat == RPC_TIMEDOUT)
- 			errno = ETIMEDOUT;
-+		else if (rpc_createerr.cf_stat == RPC_PROGVERSMISMATCH)
-+			errno = EPROTONOSUPPORT;
- 		else if (rpc_createerr.cf_error.re_errno != 0)
- 			errno = rpc_createerr.cf_error.re_errno;
- 		return 0;
+ static bool nfsd4_session_too_many_ops(struct svc_rqst *rqstp, struct nfsd4_session *session)
+@@ -2174,8 +2207,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	if (status)
+ 		goto out_put_session;
+ 
+-	nfsd4_sequence_check_conn(conn, session);
++	status = nfsd4_sequence_check_conn(conn, session);
+ 	conn = NULL;
++	if (status)
++		goto out_put_session;
+ 
+ 	/* Success! bump slot seqid */
+ 	slot->sl_seqid = seq->seqid;
+@@ -2237,7 +2272,10 @@ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
+ 		status = nfserr_stale_clientid;
+ 		goto out;
+ 	}
+-
++	if (!mach_creds_match(clp, rqstp)) {
++		status = nfserr_wrong_cred;
++		goto out;
++	}
+ 	expire_client(clp);
+ out:
+ 	nfs4_unlock_state();
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 888a600..7054fde 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1215,6 +1215,7 @@ nfsd4_decode_exchange_id(struct nfsd4_compoundargs *argp,
+ 	case SP4_NONE:
+ 		break;
+ 	case SP4_MACH_CRED:
++		/* XXX: uh, what should I be doing with this?: */
+ 		/* spo_must_enforce */
+ 		READ_BUF(4);
+ 		READ32(dummy);
+@@ -3220,6 +3221,14 @@ nfsd4_encode_write(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_w
+ 	return nfserr;
+ }
+ 
++static const u32 nfs4_minimal_spo_must_enforce[2] = {
++	[1] = 1 << (OP_BIND_CONN_TO_SESSION - 32) |
++	      1 << (OP_EXCHANGE_ID - 32) |
++	      1 << (OP_CREATE_SESSION - 32) |
++	      1 << (OP_DESTROY_SESSION - 32) |
++	      1 << (OP_DESTROY_CLIENTID - 32)
++};
++
+ static __be32
+ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 			 struct nfsd4_exchange_id *exid)
+@@ -3258,6 +3267,20 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	/* state_protect4_r. Currently only support SP4_NONE */
+ 	BUG_ON(exid->spa_how != SP4_NONE);
+ 	WRITE32(exid->spa_how);
++	switch (exid->spa_how) {
++	case SP4_NONE:
++		break;
++	case SP4_MACH_CRED:
++		/* spo_must_enforce bitmap: */
++		WRITE32(2);
++		WRITE32(nfs4_minimal_spo_must_enforce[0]);
++		WRITE32(nfs4_minimal_spo_must_enforce[1]);
++		/* empty spo_must_allow bitmap: */
++		WRITE32(0);
++		break;
++	default:
++		WARN_ON_ONCE(1);
++	}
+ 
+ 	/* The server_owner struct */
+ 	WRITE64(minor_id);      /* Minor id */
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 274e2a1..424d8f5 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -246,6 +246,7 @@ struct nfs4_client {
+ 	nfs4_verifier		cl_verifier; 	/* generated by client */
+ 	time_t                  cl_time;        /* time of last lease renewal */
+ 	struct sockaddr_storage	cl_addr; 	/* client ipaddress */
++	bool			cl_mach_cred;	/* SP4_MACH_CRED in force */
+ 	struct svc_cred		cl_cred; 	/* setclientid principal */
+ 	clientid_t		cl_clientid;	/* generated by server */
+ 	nfs4_verifier		cl_confirm;	/* generated by server */
 -- 
-1.8.1.4
+1.7.9.5
 
