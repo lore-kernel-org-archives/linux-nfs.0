@@ -1,50 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.gentoo.org ([140.211.166.183]:46540 "EHLO smtp.gentoo.org"
+Received: from mx1.redhat.com ([209.132.183.28]:8956 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753329Ab3DMUDA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 13 Apr 2013 16:03:00 -0400
-Received: from localhost.localdomain (localhost [127.0.0.1])
-	by smtp.gentoo.org (Postfix) with ESMTP id 7320E33DFA6
-	for <linux-nfs@vger.kernel.org>; Sat, 13 Apr 2013 20:02:59 +0000 (UTC)
-From: Mike Frysinger <vapier@gentoo.org>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH [nfs-utils]] do not fail sqlite check when cross-compiling
-Date: Sat, 13 Apr 2013 16:04:35 -0400
-Message-Id: <1365883476-5288-1-git-send-email-vapier@gentoo.org>
+	id S1757876Ab3DXUXP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Apr 2013 16:23:15 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 15/17] Kconfig: Add Kconfig entry for Labeled NFS V4 client
+Date: Wed, 24 Apr 2013 16:18:01 -0400
+Message-Id: <1366834683-29075-16-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
+References: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we're cross-compiling, we can't do a runtime test of sqlite,
-so just assume that the user has a good enough version rather
-than falling over.
+From: Steve Dickson <steved@redhat.com>
 
-Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+This patch adds the NFS_V4_SECURITY_LABEL entry which
+enables security label support for the NFSv4 client
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- configure.ac | 11 ++++++++---
- 1 file changed, 8 insertions(+), 3 deletions(-)
+ fs/nfs/Kconfig | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
 
-diff --git a/configure.ac b/configure.ac
-index 3d7ab0a..a594a7b 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -274,9 +274,14 @@ if test "$enable_nfsv4" = yes; then
- 	AC_CHECK_HEADERS([libgen.h sys/inotify.h], ,
- 		AC_MSG_ERROR([Cannot find header needed for nfsdcltrack]))
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 79c500e..771831d3 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -107,6 +107,7 @@ config NFS_V4_1
+ config NFS_V4_2
+ 	bool "NFS client support for NFSv4.2"
+ 	depends on NFS_V4_1
++	select NFS_V4_SECURITY_LABEL
+ 	help
+ 	  This option enables support for minor version 1 of the NFSv4 protocol
+ 	  in the kernel's NFS client.
+@@ -140,6 +141,24 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
+ 	  If the NFS client is unchanged from the upstream kernel, this
+ 	  option should be set to the default "kernel.org".
  
--  	if test "$libsqlite3_cv_is_recent" != "yes" ; then
--		AC_MSG_ERROR([nfsdcltrack requires sqlite-devel])
--	fi
-+    case $libsqlite3_cv_is_recent in
-+    yes) ;;
-+    unknown)
-+      dnl do not fail when cross-compiling
-+      AC_MSG_WARN([assuming sqlite is at least v3.3]) ;;
-+    *)
-+      AC_MSG_ERROR([nfsdcltrack requires sqlite-devel]) ;;
-+    esac
-   fi
- 
- else
++config NFS_V4_SECURITY_LABEL
++	bool "Provide Security Label support for NFSv4 client"
++	depends on NFS_V4 && SECURITY
++	help
++
++	Say Y here if you want enable fine-grained security label attribute
++	support for NFS version 4.  Security labels allow security modules like
++	SELinux and Smack to label files to facilitate enforcement of their policies.
++	Without this an NFSv4 mount will have the same label on each file.
++
++	If you do not wish to enable fine-grained security labels SELinux or
++	Smack policies on NFSv4 files, say N.
++
++	WARNING: there is still a chance of backwards-incompatible protocol changes.  
++	For now we recommend "Y" only for developers and testers."
++
++	If unsure, say N.
++
+ config ROOT_NFS
+ 	bool "Root file system on NFS"
+ 	depends on NFS_FS=y && IP_PNP
 -- 
-1.8.1.2
+1.8.1.4
 
