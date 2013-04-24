@@ -1,133 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52082 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752328Ab3DWUAw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Apr 2013 16:00:52 -0400
-Date: Tue, 23 Apr 2013 16:00:48 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        linux-nfs@vger.kernel.org, devel@openvz.org,
-        Trond.Myklebust@netapp.com, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] nfsd: enable UMH client tracker in container
-Message-ID: <20130423200048.GI3676@fieldses.org>
-References: <20130416111344.14621.56912.stgit@localhost.localdomain>
- <20130419070150.6937f1e6@corrin.poochiereds.net>
+Received: from e39.co.us.ibm.com ([32.97.110.160]:49487 "EHLO
+	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754376Ab3DXQI1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Apr 2013 12:08:27 -0400
+Received: from /spool/local
+	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <cvogan@us.ibm.com>;
+	Wed, 24 Apr 2013 10:08:25 -0600
+In-Reply-To: <OF1B1919A7.AE5DDE4D-ON87257B39.0065E293-86257B39.0066DDA1@us.ibm.com>
+References: <OF1B1919A7.AE5DDE4D-ON87257B39.0065E293-86257B39.0066DDA1@us.ibm.com>
+To: Christopher T Vogan <cvogan@us.ibm.com>
+Cc: linux-nfs@vger.kernel.org, linux-nfs-owner@vger.kernel.org
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130419070150.6937f1e6@corrin.poochiereds.net>
+Subject: Re: [Patch] nfs.man: Move nfsvers to "Options supported by all versions" section
+Message-ID: <OFC3D6E59E.970CBC4B-ON87257B57.00586B78-86257B57.00588757@us.ibm.com>
+From: Christopher T Vogan <cvogan@us.ibm.com>
+Date: Wed, 24 Apr 2013 11:06:57 -0500
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 19, 2013 at 07:01:50AM -0700, Jeff Layton wrote:
-> On Tue, 16 Apr 2013 15:17:44 +0400
-> Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
-> 
-> > This patch adds support for UserModeHelper tracker in a container.
-> > The reason for this is that the only containerised tracker ("nfsdcld") is
-> > going to be removed in 3.10 kernel, thus at least one more tracker have to be
-> > containerised to replace the deprecated one.
-> > UMH tracker looks more preferable comparing to legacy since it's the latest
-> > one.
-> > To make UMH tracker work in a container, we have to make sure, that it
-> > executes right binary (i.e., this binary have to be taken from the container
-> > environment).
-> > But, UMH is a kernel thread, which works in global root environment by design
-> > (kernel thread's root is inherited from kthreadd, which in turn inherited it's
-> > root from global init). So, the root have to be swapped to the container's
-> > one before binary execution.
-> > 
-> > This patch passes "init" callback and private "data" to UMH interface, which
-> > are used to swap root for spawned kernel thread.
-> > 
-> > Note: container's root can be stored on stack, because UMH calls are
-> > synchronous.
-> > 
-> > Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> > ---
-> >  fs/nfsd/nfs4recover.c |   29 ++++++++++++++++++++++-------
-> >  1 files changed, 22 insertions(+), 7 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-> > index 899ca26..15f8de6 100644
-> > --- a/fs/nfsd/nfs4recover.c
-> > +++ b/fs/nfsd/nfs4recover.c
-> > @@ -38,6 +38,7 @@
-> >  #include <linux/crypto.h>
-> >  #include <linux/sched.h>
-> >  #include <linux/fs.h>
-> > +#include <linux/fs_struct.h>
-> >  #include <linux/module.h>
-> >  #include <net/net_namespace.h>
-> >  #include <linux/sunrpc/rpc_pipe_fs.h>
-> > @@ -1122,12 +1123,28 @@ nfsd4_cltrack_legacy_recdir(const struct xdr_netobj *name)
-> >  	return result;
-> >  }
-> >  
-> > +static int nfsd_swap_root(struct subprocess_info *info, struct cred *new)
-> > +{
-> > +	struct path *root = info->data;
-> > +	struct fs_struct *fs = current->fs;
-> > +	struct path current_root;
-> > +
-> > +	spin_lock(&fs->lock);
-> > +	current_root = fs->root;
-> > +	fs->root = *root;
-> > +	spin_unlock(&fs->lock);
-> > +	if (current_root.dentry)
-> > +		path_put(&current_root);
-> > +	return 0;
-> > +}
-> > +
-> >  static int
-> >  nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
-> >  {
-> >  	char *envp[2];
-> >  	char *argv[4];
-> >  	int ret;
-> > +	struct path root;
-> >  
-> >  	if (unlikely(!cltrack_prog[0])) {
-> >  		dprintk("%s: cltrack_prog is disabled\n", __func__);
-> > @@ -1146,7 +1163,11 @@ nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
-> >  	argv[2] = arg;
-> >  	argv[3] = NULL;
-> >  
-> > -	ret = call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
-> > +	get_fs_root(current->fs, &root);
-> > +
-> > +	ret = call_usermodehelper_fns(argv[0], argv, envp, UMH_WAIT_PROC,
-> > +				       nfsd_swap_root, NULL, &root);
-> > +
-> >  	/*
-> >  	 * Disable the upcall mechanism if we're getting an ENOENT or EACCES
-> >  	 * error. The admin can re-enable it on the fly by using sysfs
-> > @@ -1185,12 +1206,6 @@ bin_to_hex_dup(const unsigned char *src, int srclen)
-> >  static int
-> >  nfsd4_umh_cltrack_init(struct net __attribute__((unused)) *net)
-> >  {
-> > -	/* XXX: The usermode helper s not working in container yet. */
-> > -	if (net != &init_net) {
-> > -		WARN(1, KERN_ERR "NFSD: attempt to initialize umh client "
-> > -			"tracking in a container!\n");
-> > -		return -EINVAL;
-> > -	}
-> >  	return nfsd4_umh_cltrack_upcall("init", NULL, NULL);
-> >  }
-> >  
-> > 
-> 
-> I think this looks correct and like it'll work, but I wonder whether
-> we'd be best served by making this part of the UMH code itself?
-> 
-> IOW, add some fields to the struct subprocess_info to hold the new
-> root, and then do what you're doing in nfsd_swap_root before calling
-> the "init" function?
-> 
-> I imagine we'll eventually need do something similar for at least some
-> of the callers of call_usermodehelper so it would make sense to me to
-> not replicate copies of nfsd_swap_root all over the place.
+Does anyone agree or disagree with a man page update over the placement of 
+nfsvers/vers option?
 
-Agreed.
 
---b.
+Christopher Vogan
+Dept. W98 NFS Development & Test
+
+
+
+From:   Christopher T Vogan/San Jose/IBM@IBMUS
+To:     linux-nfs@vger.kernel.org, 
+Date:   03/25/2013 01:48 PM
+Subject:        [Patch] nfs.man: Move nfsvers to "Options supported by all 
+versions" section
+Sent by:        linux-nfs-owner@vger.kernel.org
+
+
+
+After inclusion of NFSv4.1 it seems that now you can specify an NFSv4 
+mount with either "-tnfs4" or "-overs=4".  I have prepared a patch that 
+moves "nfsvers/vers" from "Options for NFS versions 2 and 3 only" to 
+"Options supported by all versions".
+
+Author: Chris Vogan <cvogan@us.ibm.com>
+Date:   Mon Mar 25 10:12:57 2013 -0700
+
+    Update NFS man page to state that "nfsvers=/vers=" is suitable for all 
+
+NFS version.
+    Move from "Options for NFS versions 2 and 3 only" to "Options 
+supported by all versions".
+
+    Signed-off-by: Chris Vogan <cvogan@gmail.com>
+--- nfs-utils-1.2.7/utils/mount/nfs.man.save    2013-03-25 
+10:05:57.781645020 -0700
++++ nfs-utils-1.2.7/utils/mount/nfs.man 2013-03-25 10:12:57.013454158 
+-0700
+@@ -467,6 +467,18 @@
+ and <kernel_soruce>/Documentation/filesystems/caching
+ for detail on how to configure the FS-Cache facility.
+ Default value is nofsc.
++.TP 1.5i
++.BI nfsvers= n
++The NFS protocol version number used to contact the server's NFS service.
++If the server does not support the requested version, the mount request 
+fails.
++If this option is not specified, the client negotiates a suitable version 
+
+with
++the server, trying version 4 first, version 3 second, and version 2 last.
++.TP 1.5i
++.BI vers= n
++This option is an alternative to the
++.B nfsvers
++option.
++It is included for compatibility with other operating systems.
+ .SS "Options for NFS versions 2 and 3 only"
+ Use these options, along with the options in the above subsection,
+ for NFS versions 2 and 3 only.
+@@ -613,18 +625,6 @@
+ reports the proper maximum component length to applications
+ in such cases.
+ .TP 1.5i
+-.BI nfsvers= n
+-The NFS protocol version number used to contact the server's NFS service.
+-If the server does not support the requested version, the mount request 
+fails.
+-If this option is not specified, the client negotiates a suitable version 
+
+with
+-the server, trying version 4 first, version 3 second, and version 2 last.
+-.TP 1.5i
+-.BI vers= n
+-This option is an alternative to the
+-.B nfsvers
+-option.
+-It is included for compatibility with other operating systems.
+-.TP 1.5i
+ .BR lock " / " nolock
+ Selects whether to use the NLM sideband protocol to lock files on the 
+server.
+ If neither option is specified (or if
+
+Christopher Vogan
+Dept. W98 NFS Development & Test
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+
