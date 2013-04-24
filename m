@@ -1,47 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f171.google.com ([74.125.82.171]:65098 "EHLO
-	mail-we0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S967447Ab3DSC2M convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Apr 2013 22:28:12 -0400
+Received: from fieldses.org ([174.143.236.118]:52139 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757858Ab3DXVLz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Apr 2013 17:11:55 -0400
+Date: Wed, 24 Apr 2013 17:11:53 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Dave Chiluk <chiluk@canonical.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] NFSv4: Use exponential backoff delay for NFS4_ERRDELAY
+Message-ID: <20130424211153.GJ20275@fieldses.org>
+References: <1366836949-18465-1-git-send-email-chiluk@canonical.com>
 MIME-Version: 1.0
-In-Reply-To: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com>
-References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Fri, 19 Apr 2013 10:27:50 +0800
-Message-ID: <CA+a=Yy7zruyGbjLyYXtPsYs12xs1uCwXo9BJtU1Fg6OMoC2z6g@mail.gmail.com>
-Subject: Re: NFS over RDMA benchmark
-To: Yan Burman <yanb@mellanox.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Tom Tucker <tom@opengridcomputing.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1366836949-18465-1-git-send-email-chiluk@canonical.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 17, 2013 at 10:36 PM, Yan Burman <yanb@mellanox.com> wrote:
-> Hi.
->
-> I've been trying to do some benchmarks for NFS over RDMA and I seem to only get about half of the bandwidth that the HW can give me.
-> My setup consists of 2 servers each with 16 cores, 32Gb of memory, and Mellanox ConnectX3 QDR card over PCI-e gen3.
-> These servers are connected to a QDR IB switch. The backing storage on the server is tmpfs mounted with noatime.
-> I am running kernel 3.5.7.
->
-> When running ib_send_bw, I get 4.3-4.5 GB/sec for block sizes 4-512K.
-> When I run fio over rdma mounted nfs, I get 260-2200MB/sec for the same block sizes (4-512K). running over IPoIB-CM, I get 200-980MB/sec.
-> I got to these results after the following optimizations:
-> 1. Setting IRQ affinity to the CPUs that are part of the NUMA node the card is on
-> 2. Increasing /proc/sys/sunrpc/svc_rdma/max_outbound_read_requests and /proc/sys/sunrpc/svc_rdma/max_requests to 256 on server
-> 3. Increasing RPCNFSDCOUNT to 32 on server
-Did you try to affine nfsd to corresponding CPUs where your IB card
-locates? Given that you see a bottleneck on CPU (as in your later
-email), it might be worth trying.
+On Wed, Apr 24, 2013 at 03:55:49PM -0500, Dave Chiluk wrote:
+> Changing the retry to start at NFS4_POLL_RETRY_MIN and exponentially grow
+> to NFS4_POLL_RETRY_MAX allow for faster handling of these error conditions.
+> 
+> Additionally this alleviates an interoperability problem with the AIX NFSv4
+> Server.  The AIX server frequently (2 out of 3) returns NFS4ERR_DELAY, on a
+> close when it happens in close proximity to a RELEASE_LOCKOWNER.  This would
+> cause a linux client to hang for 15 seconds.
+> 
+> Signed-off-by: Dave Chiluk <chiluk@canonical.com>
+> ---
+>  fs/nfs/nfs4proc.c            |   12 ++++++++++++
+>  include/linux/sunrpc/sched.h |    1 +
+>  2 files changed, 13 insertions(+)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 0ad025e..37dad27 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -4006,6 +4006,18 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
+>  #endif /* CONFIG_NFS_V4_1 */
+>  		case -NFS4ERR_DELAY:
+>  			nfs_inc_server_stats(server, NFSIOS_DELAY);
+> +			/* Do an exponential backoff of retries from
+> +			 * NFS4_POLL_RETRY_MIN to NFS4_POLL_RETRY_MAX. */
+> +			task->tk_timeout = NFS4_POLL_RETRY_MIN <<
+> +					(task->tk_delays*2);
+> +			if (task->tk_timeout > NFS4_POLL_RETRY_MAX)
+> +				rpc_delay(task, NFS4_POLL_RETRY_MAX);
+> +			else {
+> +				task->tk_delays++;
+> +				rpc_delay(task, task->tk_timeout);
+> +			}
+> +			task->tk_status = 0;
+> +			return -EAGAIN;
 
-> 4. FIO arguments: --rw=randread --bs=4k --numjobs=2 --iodepth=128 --ioengine=libaio --size=100000k --prioclass=1 --prio=0 --cpumask=255 --loops=25 --direct=1 --invalidate=1 --fsync_on_close=1 --randrepeat=1 --norandommap --group_reporting --exitall --buffered=0
->
-On client side, it may be good to affine FIO processes and nfsiod to
-CPUs where IB card locates as well, in case client is the bottleneck.
+Just as a matter of style, could you stick this in a helper something
+like the existing nfs4_delay?:
 
---
-Thanks,
-Tao
+		case -NFS4ERR_DELAY:
+			nfs_inc_server_stats(server, NFSIOS_DELAY);
+			nfs4_async_delay(task);
+			task->tk_status = 0;
+			return -EAGAIN;
+		...
+
+--b.
+
+>  		case -NFS4ERR_GRACE:
+>  			rpc_delay(task, NFS4_POLL_RETRY_MAX);
+>  			task->tk_status = 0;
+> diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+> index 84ca436..60f82bf 100644
+> --- a/include/linux/sunrpc/sched.h
+> +++ b/include/linux/sunrpc/sched.h
+> @@ -62,6 +62,7 @@ struct rpc_task {
+>  	void *			tk_calldata;
+>  
+>  	unsigned long		tk_timeout;	/* timeout for rpc_sleep() */
+> +	unsigned short		tk_delays;	/* number of times task delayed */
+>  	unsigned long		tk_runstate;	/* Task run status */
+>  	struct workqueue_struct	*tk_workqueue;	/* Normally rpciod, but could
+>  						 * be any workqueue
+> -- 
+> 1.7.9.5
+> 
