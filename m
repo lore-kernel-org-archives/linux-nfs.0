@@ -1,117 +1,197 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:52461 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:50400 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751179Ab3DXFf3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Apr 2013 01:35:29 -0400
-Date: Wed, 24 Apr 2013 15:35:17 +1000
-From: NeilBrown <neilb@suse.de>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH-RFC] NFS: don't use STABLE writes during writeback.
-Message-ID: <20130424153517.4222da09@notabene.brown>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/2U3O=YcfYUAEzrFTQSv4OMu"; protocol="application/pgp-signature"
+	id S1758476Ab3DXWDN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Apr 2013 18:03:13 -0400
+Date: Wed, 24 Apr 2013 18:03:11 -0400
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 05/17] Security: Add Hook to test if the particular xattr
+ is part of a MAC model.
+Message-ID: <20130424220311.GP20275@fieldses.org>
+References: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
+ <1366834683-29075-6-git-send-email-SteveD@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1366834683-29075-6-git-send-email-SteveD@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/2U3O=YcfYUAEzrFTQSv4OMu
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Wed, Apr 24, 2013 at 04:17:51PM -0400, Steve Dickson wrote:
+> From: David Quigley <dpquigl@davequigley.com>
+> 
+> The interface to request security labels from user space is the xattr
+> interface. When requesting the security label from an NFS server it is
+> important to make sure the requested xattr actually is a MAC label. This allows
+> us to make sure that we get the desired semantics from the attribute instead of
+> something else such as capabilities or a time based LSM.
 
+Ditto.--b.
 
-Hi Trond,
- you might remember little over two years ago we discussed an issue with
- small O_SYNC writes which resulted in commit
-   b31268ac793fd300da66b9c28bbf0a200339ab96
- The Subject: of the emails was "Small O_SYNC writes are no longer NFS_DATA=
-_SYNC"
-
- This solved the problem at the time but created a new one.  Now *all* small
- writes are NFS_FILE_SYNC whether they are O_SYNC or not.
- The following seems to work for me without apparently introducing any regr=
-essions.=20
-
- Thoughts?
-
-Thanks,
-NeilBrown
-
-
-
-commit b31268ac793fd300da66b9c28bbf0a200339ab96
-  FS: Use stable writes when not doing a bulk flush
-
-was a bit heavy handed.
-The particular problem that lead to this patch was that
-small writes to an O_SYNC file we being written as UNSTABLE writes
-followed by a commit.
-This is appropriate for large writes (which require multiple NFS
-requests) but for small writes (single NFS request), using
-NFS_FILE_SYNC is more efficient.
-
-So that patch causes the code to select between the two methods
-depending on how many nfs requests get generated.
-
-Unfortunately this ends up applying to non O_SYNC writes as well.
-In particular if you memory-map a file and update random pages, then
-when they are eventually written out by writeback they will go as
-NFS_FILE_SYNC.  This is inefficient and slows down the application.
-
-
-So: only set FLUSH_COND_STABLE when wbc->sync_mode is WB_SYNC_ALL.
-With this patch:
- O_SYNC writes are NFS_FILE_SYNC for single requests, and NFS_UNSTABLE
-    followed by COMMIT for multiple requests
- Writing immediately before close of fsync follow the same pattern.
- Non-O_SYNC writes without an fsync of close eventually get flushed
- out as UNSTABLE and a commit follows eventually as appropriate.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
-
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index c483cc5..05220b5 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -225,11 +225,14 @@ static void nfs_mark_uptodate(struct page *page, unsi=
-gned int base, unsigned int
-=20
- static int wb_priority(struct writeback_control *wbc)
- {
-+	int ret =3D 0;
- 	if (wbc->for_reclaim)
- 		return FLUSH_HIGHPRI | FLUSH_STABLE;
-+	if (wbc->sync_mode =3D=3D WB_SYNC_ALL)
-+		ret =3D FLUSH_COND_STABLE;
- 	if (wbc->for_kupdate || wbc->for_background)
--		return FLUSH_LOWPRI | FLUSH_COND_STABLE;
--	return FLUSH_COND_STABLE;
-+		ret |=3D FLUSH_LOWPRI;
-+	return ret;
- }
-=20
- /*
-
---Sig_/2U3O=YcfYUAEzrFTQSv4OMu
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBUXdvFTnsnt1WYoG5AQJwxQ//b3Ljjm7fNfHzxLuRqIMe25RGYmTNBmyx
-rAGKRXZ0m88ErLh7vjM3R42uYNyd9z5TiKJAIzcDtNWH7rPC0ndPOq+5KAKn778t
-DLtgH7nM/DK8lGMykLIZxk++3nCMZFtwAMQG0WLq1kQvSTdsEkg8qFYV42kUvn16
-0gvS8WT65FwxOkFq2h+kFXwel46ajMqtBZ2/OQqFa4SbB3enBCTyR8m8UHKsl6FF
-rH3CK78erNE5Wp1eOwdoNfIUY9WV48mBdtoMBs4Kao1/hJZXX407M1f6LEx+T2Nf
-kXgVxtYnW3L7U4vZohqXbE7GVpHfZttyVZ/gszUtysn2yjOwWmH7p2nKSl/3dsS+
-9Nlc7xdkuUfbgig+AjJdfAXqX1DwSZ3EFFmQ2hfnaMLdfTLKWPmVzZ7XIVkP2Efs
-WA/5nJlnCHYK4wo4OqlHhlZ8nIxyrnQDdyujy+MJcq/rwuBfQW4X/HTCIAnZ7JKr
-Xwb9uBMS7v+M2tfAERX1AhIPi0rAj11/evwSumUqgnvUDxfNBgmzn2oe7q3q5fbi
-W7uANdq+Kg8KLxSIkDgr+t+8zrnY6H/tAkILCzEeUWxMu2q34jFs+99PEkxLVbi3
-4s0NNO2zHIX9lymCY9sW1ltyt1tMKggMNW20irJ2Ldv3ZVmHphRG6CStr5zTaeuB
-fdzeGE+hp2U=
-=MyFS
------END PGP SIGNATURE-----
-
---Sig_/2U3O=YcfYUAEzrFTQSv4OMu--
+> 
+> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+> ---
+>  include/linux/security.h   | 14 ++++++++++++++
+>  security/capability.c      |  6 ++++++
+>  security/security.c        |  6 ++++++
+>  security/selinux/hooks.c   |  6 ++++++
+>  security/smack/smack_lsm.c | 11 +++++++++++
+>  5 files changed, 43 insertions(+)
+> 
+> diff --git a/include/linux/security.h b/include/linux/security.h
+> index f3d7956..934f96f 100644
+> --- a/include/linux/security.h
+> +++ b/include/linux/security.h
+> @@ -1323,6 +1323,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
+>   *	@pages contains the number of pages.
+>   *	Return 0 if permission is granted.
+>   *
+> + * @ismaclabel:
+> + *	Check if the extended attribute specified by @name
+> + *	represents a MAC label. Returns 1 if name is a MAC
+> + *	attribute otherwise returns 0.
+> + *	@name full extended attribute name to check against
+> + *	LSM as a MAC label.
+> + *
+>   * @secid_to_secctx:
+>   *	Convert secid to security context.  If secdata is NULL the length of
+>   *	the result will be returned in seclen, but no secdata will be returned.
+> @@ -1604,6 +1611,7 @@ struct security_operations {
+>  
+>  	int (*getprocattr) (struct task_struct *p, char *name, char **value);
+>  	int (*setprocattr) (struct task_struct *p, char *name, void *value, size_t size);
+> +	int (*ismaclabel) (const char *name);
+>  	int (*secid_to_secctx) (u32 secid, char **secdata, u32 *seclen);
+>  	int (*secctx_to_secid) (const char *secdata, u32 seclen, u32 *secid);
+>  	void (*release_secctx) (char *secdata, u32 seclen);
+> @@ -1857,6 +1865,7 @@ void security_d_instantiate(struct dentry *dentry, struct inode *inode);
+>  int security_getprocattr(struct task_struct *p, char *name, char **value);
+>  int security_setprocattr(struct task_struct *p, char *name, void *value, size_t size);
+>  int security_netlink_send(struct sock *sk, struct sk_buff *skb);
+> +int security_ismaclabel(const char *name);
+>  int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen);
+>  int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
+>  void security_release_secctx(char *secdata, u32 seclen);
+> @@ -2545,6 +2554,11 @@ static inline int security_netlink_send(struct sock *sk, struct sk_buff *skb)
+>  	return cap_netlink_send(sk, skb);
+>  }
+>  
+> +static inline int security_ismaclabel(const char *name)
+> +{
+> +	return 0;
+> +}
+> +
+>  static inline int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+>  {
+>  	return -EOPNOTSUPP;
+> diff --git a/security/capability.c b/security/capability.c
+> index 782045e..71e5052 100644
+> --- a/security/capability.c
+> +++ b/security/capability.c
+> @@ -822,6 +822,11 @@ static int cap_setprocattr(struct task_struct *p, char *name, void *value,
+>  	return -EINVAL;
+>  }
+>  
+> +static int cap_ismaclabel(const char *name)
+> +{
+> +	return 0;
+> +}
+> +
+>  static int cap_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+>  {
+>  	return -EOPNOTSUPP;
+> @@ -1041,6 +1046,7 @@ void __init security_fixup_ops(struct security_operations *ops)
+>  	set_to_cap_if_null(ops, d_instantiate);
+>  	set_to_cap_if_null(ops, getprocattr);
+>  	set_to_cap_if_null(ops, setprocattr);
+> +	set_to_cap_if_null(ops, ismaclabel);
+>  	set_to_cap_if_null(ops, secid_to_secctx);
+>  	set_to_cap_if_null(ops, secctx_to_secid);
+>  	set_to_cap_if_null(ops, release_secctx);
+> diff --git a/security/security.c b/security/security.c
+> index 7c18e3c..07391f3 100644
+> --- a/security/security.c
+> +++ b/security/security.c
+> @@ -1057,6 +1057,12 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
+>  	return security_ops->netlink_send(sk, skb);
+>  }
+>  
+> +int security_ismaclabel(const char *name)
+> +{
+> +	return security_ops->ismaclabel(name);
+> +}
+> +EXPORT_SYMBOL(security_ismaclabel);
+> +
+>  int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+>  {
+>  	return security_ops->secid_to_secctx(secid, secdata, seclen);
+> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+> index 622b205..273e28b 100644
+> --- a/security/selinux/hooks.c
+> +++ b/security/selinux/hooks.c
+> @@ -5423,6 +5423,11 @@ abort_change:
+>  	return error;
+>  }
+>  
+> +static int selinux_ismaclabel(const char *name)
+> +{
+> +	return (strcmp(name, XATTR_SELINUX_SUFFIX) == 0);
+> +}
+> +
+>  static int selinux_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+>  {
+>  	return security_sid_to_context(secid, secdata, seclen);
+> @@ -5661,6 +5666,7 @@ static struct security_operations selinux_ops = {
+>  	.getprocattr =			selinux_getprocattr,
+>  	.setprocattr =			selinux_setprocattr,
+>  
+> +	.ismaclabel =			selinux_ismaclabel,
+>  	.secid_to_secctx =		selinux_secid_to_secctx,
+>  	.secctx_to_secid =		selinux_secctx_to_secid,
+>  	.release_secctx =		selinux_release_secctx,
+> diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
+> index fa64740..ca01d71 100644
+> --- a/security/smack/smack_lsm.c
+> +++ b/security/smack/smack_lsm.c
+> @@ -3329,6 +3329,16 @@ static void smack_audit_rule_free(void *vrule)
+>  #endif /* CONFIG_AUDIT */
+>  
+>  /**
+> + * smack_ismaclabel - check if xattr @name references a smack MAC label
+> + * @name: Full xattr name to check.
+> + */
+> +static int smack_ismaclabel(const char *name)
+> +{
+> +	return (strcmp(name, XATTR_SMACK_SUFFIX) == 0);
+> +}
+> +
+> +
+> +/**
+>   * smack_secid_to_secctx - return the smack label for a secid
+>   * @secid: incoming integer
+>   * @secdata: destination
+> @@ -3524,6 +3534,7 @@ struct security_operations smack_ops = {
+>  	.audit_rule_free =		smack_audit_rule_free,
+>  #endif /* CONFIG_AUDIT */
+>  
+> +	.ismaclabel =			smack_ismaclabel,
+>  	.secid_to_secctx = 		smack_secid_to_secctx,
+>  	.secctx_to_secid = 		smack_secctx_to_secid,
+>  	.release_secctx = 		smack_release_secctx,
+> -- 
+> 1.8.1.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
