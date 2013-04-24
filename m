@@ -1,125 +1,190 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60001 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:50409 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S936095Ab3DQBqj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Apr 2013 21:46:39 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
+	id S1758481Ab3DXWEA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Apr 2013 18:04:00 -0400
+Date: Wed, 24 Apr 2013 18:03:59 -0400
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
         "J. Bruce Fields" <bfields@redhat.com>,
-        Tyler Hicks <tyhicks@canonical.com>,
-        Dustin Kirkland <dustin.kirkland@gazzang.com>
-Subject: [PATCH 11/12] locks: break delegations on link
-Date: Tue, 16 Apr 2013 21:46:23 -0400
-Message-Id: <1366163185-10317-12-git-send-email-bfields@redhat.com>
-In-Reply-To: <1366163185-10317-1-git-send-email-bfields@redhat.com>
-References: <1366163185-10317-1-git-send-email-bfields@redhat.com>
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 07/17] SELinux: Add new labeling type native labels
+Message-ID: <20130424220359.GR20275@fieldses.org>
+References: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
+ <1366834683-29075-8-git-send-email-SteveD@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1366834683-29075-8-git-send-email-SteveD@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, Apr 24, 2013 at 04:17:53PM -0400, Steve Dickson wrote:
+> From: David Quigley <dpquigl@davequigley.com>
+> 
+> There currently doesn't exist a labeling type that is adequate for use with
+> labeled NFS. Since NFS doesn't really support xattrs we can't use the use xattr
+> labeling behavior. For this we developed a new labeling type. The native
+> labeling type is used solely by NFS to ensure NFS inodes are labeled at runtime
+> by the NFS code instead of relying on the SELinux security server on the client
+> end.
 
-Cc: Tyler Hicks <tyhicks@canonical.com>
-Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/ecryptfs/inode.c |    2 +-
- fs/namei.c          |   17 +++++++++++++----
- fs/nfsd/vfs.c       |    2 +-
- include/linux/fs.h  |    2 +-
- 4 files changed, 16 insertions(+), 7 deletions(-)
+Ditto, can we get get an ACK/NACK from someone responsible for this
+code?
 
-diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-index af42d88..19e4435 100644
---- a/fs/ecryptfs/inode.c
-+++ b/fs/ecryptfs/inode.c
-@@ -475,7 +475,7 @@ static int ecryptfs_link(struct dentry *old_dentry, struct inode *dir,
- 	dget(lower_new_dentry);
- 	lower_dir_dentry = lock_parent(lower_new_dentry);
- 	rc = vfs_link(lower_old_dentry, lower_dir_dentry->d_inode,
--		      lower_new_dentry);
-+		      lower_new_dentry, NULL);
- 	if (rc || !lower_new_dentry->d_inode)
- 		goto out_lock;
- 	rc = ecryptfs_interpose(lower_new_dentry, new_dentry, dir->i_sb);
-diff --git a/fs/namei.c b/fs/namei.c
-index 394ea5f..4ad5a0e 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3566,7 +3566,7 @@ SYSCALL_DEFINE2(symlink, const char __user *, oldname, const char __user *, newn
- 	return sys_symlinkat(oldname, AT_FDCWD, newname);
- }
- 
--int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry)
-+int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry, struct inode **delegated_inode)
- {
- 	struct inode *inode = old_dentry->d_inode;
- 	unsigned max_links = dir->i_sb->s_max_links;
-@@ -3602,8 +3602,11 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
- 		error =  -ENOENT;
- 	else if (max_links && inode->i_nlink >= max_links)
- 		error = -EMLINK;
--	else
--		error = dir->i_op->link(old_dentry, dir, new_dentry);
-+	else {
-+		error = try_break_deleg(inode, delegated_inode);
-+		if (!error)
-+			error = dir->i_op->link(old_dentry, dir, new_dentry);
-+	}
- 	mutex_unlock(&inode->i_mutex);
- 	if (!error)
- 		fsnotify_link(dir, inode, new_dentry);
-@@ -3624,6 +3627,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
- {
- 	struct dentry *new_dentry;
- 	struct path old_path, new_path;
-+	struct inode *delegated_inode = NULL;
- 	int how = 0;
- 	int error;
- 
-@@ -3662,9 +3666,14 @@ retry:
- 	error = security_path_link(old_path.dentry, &new_path, new_dentry);
- 	if (error)
- 		goto out_dput;
--	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry);
-+	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry, &delegated_inode);
- out_dput:
- 	done_path_create(&new_path, new_dentry);
-+	if (delegated_inode) {
-+		error = break_deleg_wait(&delegated_inode);
-+		if (!error)
-+			goto retry;
-+	}
- 	if (retry_estale(error, how)) {
- 		how |= LOOKUP_REVAL;
- 		goto retry;
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 407e11c..64255a0 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1708,7 +1708,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
- 		err = nfserrno(host_err);
- 		goto out_dput;
- 	}
--	host_err = vfs_link(dold, dirp, dnew);
-+	host_err = vfs_link(dold, dirp, dnew, NULL);
- 	if (!host_err) {
- 		err = nfserrno(commit_metadata(ffhp));
- 		if (!err)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 86b94bc..0244cb1 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1459,7 +1459,7 @@ extern int vfs_create(struct inode *, struct dentry *, umode_t, bool);
- extern int vfs_mkdir(struct inode *, struct dentry *, umode_t);
- extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
- extern int vfs_symlink(struct inode *, struct dentry *, const char *);
--extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
-+extern int vfs_link(struct dentry *, struct inode *, struct dentry *, struct inode **);
- extern int vfs_rmdir(struct inode *, struct dentry *);
- extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
- extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **);
--- 
-1.7.9.5
+--b.
 
+> 
+> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+> ---
+>  include/linux/security.h            |  3 +++
+>  security/selinux/hooks.c            | 35 ++++++++++++++++++++++++++---------
+>  security/selinux/include/security.h |  2 ++
+>  security/selinux/ss/policydb.c      |  5 ++++-
+>  4 files changed, 35 insertions(+), 10 deletions(-)
+> 
+> diff --git a/include/linux/security.h b/include/linux/security.h
+> index 4ab51e2..bc924d7 100644
+> --- a/include/linux/security.h
+> +++ b/include/linux/security.h
+> @@ -61,6 +61,9 @@ struct mm_struct;
+>  #define SECURITY_CAP_NOAUDIT 0
+>  #define SECURITY_CAP_AUDIT 1
+>  
+> +/* LSM Agnostic defines for sb_set_mnt_opts */
+> +#define SECURITY_LSM_NATIVE_LABELS	1
+> +
+>  struct ctl_table;
+>  struct audit_krule;
+>  struct user_namespace;
+> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+> index 6cb24ec..d7ff806 100644
+> --- a/security/selinux/hooks.c
+> +++ b/security/selinux/hooks.c
+> @@ -81,6 +81,7 @@
+>  #include <linux/syslog.h>
+>  #include <linux/user_namespace.h>
+>  #include <linux/export.h>
+> +#include <linux/security.h>
+>  #include <linux/msg.h>
+>  #include <linux/shm.h>
+>  
+> @@ -284,13 +285,14 @@ static void superblock_free_security(struct super_block *sb)
+>  
+>  /* The file system's label must be initialized prior to use. */
+>  
+> -static const char *labeling_behaviors[6] = {
+> +static const char *labeling_behaviors[7] = {
+>  	"uses xattr",
+>  	"uses transition SIDs",
+>  	"uses task SIDs",
+>  	"uses genfs_contexts",
+>  	"not configured for labeling",
+>  	"uses mountpoint labeling",
+> +	"uses native labeling",
+>  };
+>  
+>  static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dentry);
+> @@ -678,14 +680,21 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+>  	if (strcmp(sb->s_type->name, "proc") == 0)
+>  		sbsec->flags |= SE_SBPROC;
+>  
+> -	/* Determine the labeling behavior to use for this filesystem type. */
+> -	rc = security_fs_use((sbsec->flags & SE_SBPROC) ? "proc" : sb->s_type->name, &sbsec->behavior, &sbsec->sid);
+> -	if (rc) {
+> -		printk(KERN_WARNING "%s: security_fs_use(%s) returned %d\n",
+> -		       __func__, sb->s_type->name, rc);
+> -		goto out;
+> +	if (!sbsec->behavior) {
+> +		/*
+> +		 * Determine the labeling behavior to use for this
+> +		 * filesystem type.
+> +		 */
+> +		rc = security_fs_use((sbsec->flags & SE_SBPROC) ?
+> +					"proc" : sb->s_type->name,
+> +					&sbsec->behavior, &sbsec->sid);
+> +		if (rc) {
+> +			printk(KERN_WARNING
+> +				"%s: security_fs_use(%s) returned %d\n",
+> +					__func__, sb->s_type->name, rc);
+> +			goto out;
+> +		}
+>  	}
+> -
+>  	/* sets the context of the superblock for the fs being mounted. */
+>  	if (fscontext_sid) {
+>  		rc = may_context_mount_sb_relabel(fscontext_sid, sbsec, cred);
+> @@ -700,6 +709,11 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+>  	 * sets the label used on all file below the mountpoint, and will set
+>  	 * the superblock context if not already set.
+>  	 */
+> +	if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !context_sid) {
+> +		sbsec->behavior = SECURITY_FS_USE_NATIVE;
+> +		*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
+> +	}
+> +
+>  	if (context_sid) {
+>  		if (!fscontext_sid) {
+>  			rc = may_context_mount_sb_relabel(context_sid, sbsec,
+> @@ -731,7 +745,8 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+>  	}
+>  
+>  	if (defcontext_sid) {
+> -		if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
+> +		if (sbsec->behavior != SECURITY_FS_USE_XATTR &&
+> +			sbsec->behavior != SECURITY_FS_USE_NATIVE) {
+>  			rc = -EINVAL;
+>  			printk(KERN_WARNING "SELinux: defcontext option is "
+>  			       "invalid for this filesystem type\n");
+> @@ -1199,6 +1214,8 @@ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dent
+>  	}
+>  
+>  	switch (sbsec->behavior) {
+> +	case SECURITY_FS_USE_NATIVE:
+> +		break;
+>  	case SECURITY_FS_USE_XATTR:
+>  		if (!inode->i_op->getxattr) {
+>  			isec->sid = sbsec->def_sid;
+> diff --git a/security/selinux/include/security.h b/security/selinux/include/security.h
+> index 6d38851..8fd8e18 100644
+> --- a/security/selinux/include/security.h
+> +++ b/security/selinux/include/security.h
+> @@ -169,6 +169,8 @@ int security_get_allow_unknown(void);
+>  #define SECURITY_FS_USE_GENFS		4 /* use the genfs support */
+>  #define SECURITY_FS_USE_NONE		5 /* no labeling support */
+>  #define SECURITY_FS_USE_MNTPOINT	6 /* use mountpoint labeling */
+> +#define SECURITY_FS_USE_NATIVE		7 /* use native label support */
+> +#define SECURITY_FS_USE_MAX		7 /* Highest SECURITY_FS_USE_XXX */
+>  
+>  int security_fs_use(const char *fstype, unsigned int *behavior,
+>  	u32 *sid);
+> diff --git a/security/selinux/ss/policydb.c b/security/selinux/ss/policydb.c
+> index 9cd9b7c..c8adde3 100644
+> --- a/security/selinux/ss/policydb.c
+> +++ b/security/selinux/ss/policydb.c
+> @@ -2168,7 +2168,10 @@ static int ocontext_read(struct policydb *p, struct policydb_compat_info *info,
+>  
+>  				rc = -EINVAL;
+>  				c->v.behavior = le32_to_cpu(buf[0]);
+> -				if (c->v.behavior > SECURITY_FS_USE_NONE)
+> +				/* Determined at runtime, not in policy DB. */
+> +				if (c->v.behavior == SECURITY_FS_USE_MNTPOINT)
+> +					goto out;
+> +				if (c->v.behavior > SECURITY_FS_USE_MAX)
+>  					goto out;
+>  
+>  				rc = -ENOMEM;
+> -- 
+> 1.8.1.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
