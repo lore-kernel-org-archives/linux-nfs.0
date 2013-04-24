@@ -1,197 +1,457 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:24006 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756735Ab3DWSLm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Apr 2013 14:11:42 -0400
+Received: from fieldses.org ([174.143.236.118]:45040 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758030Ab3DXV2a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Apr 2013 17:28:30 -0400
+Date: Wed, 24 Apr 2013 17:28:27 -0400
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 16/17] NFSD: Server implementation of MAC Labeling
+Message-ID: <20130424212827.GK20275@fieldses.org>
+References: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
+ <1366834683-29075-17-git-send-email-SteveD@redhat.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
-Subject: Re: Interoperable junctions on Linux
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1366736069.7239.93.camel@willson.li.ssimo.org>
-Date: Tue, 23 Apr 2013 14:11:31 -0400
-Cc: samba-technical@lists.samba.org,
-        fedfs-utils Developers <fedfs-utils-devel@oss.oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <D7E48414-53C9-45AA-B742-A579ABFC953A@oracle.com>
-References: <71999CA2-F6E7-4DE1-9DC3-AED77626DE7F@oracle.com> <1366728674.7239.63.camel@willson.li.ssimo.org> <BDD9FCE5-E573-4E01-A5D9-A8A3811895DD@oracle.com> <1366736069.7239.93.camel@willson.li.ssimo.org>
-To: Simo Sorce <simo@redhat.com>
+In-Reply-To: <1366834683-29075-17-git-send-email-SteveD@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Apr 23, 2013, at 12:54 PM, Simo Sorce <simo@redhat.com> wrote:
-
-> On Tue, 2013-04-23 at 11:42 -0400, Chuck Lever wrote:
->>> Can you give an example or refernce of what is stored in this XML/JSON
->>> blob ? Why do you need structured data there ?
->> 
->> An "NFS basic junction" stores the location list in place.  Each item
->> in a location list contains a number of pieces of data, including: a
->> server hostname, an export pathname (which is a list of path
->> components), and a number of integer and boolean settings that help
->> clients sort which replica of this data they should mount.
->> 
->> A full explanation of this data is in RFC 5661, section 11.10.  This
->> data is returned to an NFS client when it encounters one of these
->> objects.  The client can redirect its requests to one of the servers
->> and exports listed in the returned data.
->> 
->> A "FedFS junction" stores a reference to a location list stored in
->> LDAP.  The LDAP server's hostname and port number and the UUID of a
->> FedFS Fileset Name record are stored in the junction.  The Fileset
->> Name record has children, each of which constitute a location (see
->> above).
+On Wed, Apr 24, 2013 at 04:18:02PM -0400, Steve Dickson wrote:
+> From: David Quigley <dpquigl@davequigley.com>
 > 
-> I do not see mention of LDAP URIs, andyou seem to speak in the singular
-> when mention 'the LDAP server' does it mean you hve no way to specify a
-> pool of LDAP servers for HA ?
-
-An "NSDB name" (used in a junction) is meant to represent a pool of replicated LDAP server resources, or just one LDAP server.  Note that specifying IP addresses in FedFS Fileset Names is specifically disallowed for this reason.
-
-A FedFS Fileset Name can indeed be represented by an LDAP URI.  See the operational examples in the FedFS NSDB draft.
-
+> This patch adds the ability to encode and decode file labels on the server for
+> the purpose of sending them to the client and also to process label change
+> requests from the client.
 > 
->> An explanation of this data is in an IETF draft:
->> 
->> 
->> http://datatracker.ietf.org/doc/draft-ietf-nfsv4-federated-fs-protocol/
+> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+> ---
+>  fs/nfsd/nfs4proc.c |  41 ++++++++++++++++++
+>  fs/nfsd/nfs4xdr.c  | 121 ++++++++++++++++++++++++++++++++++++++++++++++++++---
+>  fs/nfsd/nfsd.h     |  10 +++++
+>  fs/nfsd/vfs.c      |  28 +++++++++++++
+>  fs/nfsd/vfs.h      |   2 +
+>  fs/nfsd/xdr4.h     |   3 ++
+>  6 files changed, 200 insertions(+), 5 deletions(-)
 > 
->> See chapter 4 for an overview of the schema used for these lists.  An
->> NFS fileserver converts the LDAP records into an fs_locations4 or
->> fs_locations_info4 attribute for NFS clients.  Other protocols use a
->> different representation for communicating this list to clients.
->> 
-> To be honest the constrains in this document on the LDAP DIT, seem to
-> indicate it will be possible to use this stuff primarily only with a
-> dedicated LDAP server, Dictating how the rootDSE/namingContext should
-> look like is a quite strong demand.
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index ae73175..bb17589 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -42,6 +42,36 @@
+>  #include "current_stateid.h"
+>  #include "netns.h"
+>  
+> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> +#include <linux/security.h>
+> +
+> +static inline void
+> +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
+> +{
+> +	struct inode *inode = resfh->fh_dentry->d_inode;
+> +	int status;
+> +
+> +	mutex_lock(&inode->i_mutex);
+> +	status = security_inode_setsecctx(resfh->fh_dentry,
+> +		label->label, label->len);
+> +	mutex_unlock(&inode->i_mutex);
+> +
+> +	if (status)
+> +		/*
+> +		 * We should probably fail the whole open at this point,
+> +		 * but we've already created or opened the file, so it's 
+> +		 * too late; So this seems the least of evils:
+> +		 */
+> +		bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
+> +		
+> +	return;
+> +}
+> +#else 
+> +static inline void 
+> +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
+> +{ }
+> +#endif
+> +
+>  #define NFSDDBG_FACILITY		NFSDDBG_PROC
+>  
+>  static u32 nfsd_attrmask[] = {
+> @@ -230,6 +260,9 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
+>  					(u32 *)open->op_verf.data,
+>  					&open->op_truncate, &open->op_created);
+>  
+> +		if (!status && open->op_label != NULL) 
+> +			nfsd4_security_inode_setsecctx(resfh, open->op_label, open->op_bmval);
+> +
+>  		/*
+>  		 * Following rfc 3530 14.2.16, use the returned bitmask
+>  		 * to indicate which attributes we used to store the
+> @@ -599,6 +632,9 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	if (status)
+>  		goto out;
+>  
+> +	if (create->cr_label != NULL)
+> +		nfsd4_security_inode_setsecctx(&resfh, create->cr_label, create->cr_bmval);
+> +
+>  	if (create->cr_acl != NULL)
+>  		do_set_nfs4_acl(rqstp, &resfh, create->cr_acl,
+>  				create->cr_bmval);
+> @@ -888,6 +924,11 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  					    setattr->sa_acl);
+>  	if (status)
+>  		goto out;
+> +	if (setattr->sa_label != NULL)
+> +		status = nfsd4_set_nfs4_label(rqstp, &cstate->current_fh,
+> +				setattr->sa_label);
+> +	if (status)
+> +		goto out;
+>  	status = nfsd_setattr(rqstp, &cstate->current_fh, &setattr->sa_iattr,
+>  				0, (time_t)0);
+>  out:
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index b38de7a..635b9c1 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -55,6 +55,11 @@
+>  #include "cache.h"
+>  #include "netns.h"
+>  
+> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> +#include <linux/security.h>
+> +#endif
+> +
+> +
+>  #define NFSDDBG_FACILITY		NFSDDBG_XDR
+>  
+>  /*
+> @@ -79,6 +84,24 @@ check_filename(char *str, int len)
+>  			return nfserr_badname;
+>  	return 0;
+>  }
+> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> +static struct nfs4_label *nfsd4_label_alloc(u32 len)
+> +{
+> +	struct nfs4_label *label = NULL;
+> +
+> +	if (len > NFS4_MAXLABELLEN)
+> +		return ERR_PTR(-EMSGSIZE);
+> +
+> +	label = kzalloc(len + sizeof(struct nfs4_label), GFP_KERNEL);
+> +	if (label == NULL)
+> +		return ERR_PTR(-ENOMEM);
+> +
+> +	label->label = (char *)(label + 1);
+> +	label->len = len;
+> +
+> +	return label;
+> +}
+> +#endif
+>  
+>  #define DECODE_HEAD				\
+>  	__be32 *p;				\
+> @@ -242,7 +265,8 @@ nfsd4_decode_bitmap(struct nfsd4_compoundargs *argp, u32 *bmval)
+>  
+>  static __be32
+>  nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+> -		   struct iattr *iattr, struct nfs4_acl **acl)
+> +		   struct iattr *iattr, struct nfs4_acl **acl,
+> +		   struct nfs4_label **label)
+>  {
+>  	int expected_len, len = 0;
+>  	u32 dummy32;
+> @@ -386,6 +410,41 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+>  			goto xdr_error;
+>  		}
+>  	}
+> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> +	if (bmval[2] & FATTR4_WORD2_SECURITY_LABEL) {
+> +		uint32_t pi;
+> +		uint32_t lfs;
+> +
+> +		READ_BUF(4);
+> +		len += 4;
+> +		READ32(lfs);
+> +		READ_BUF(4);
+> +		len += 4;
+> +		READ32(pi);
+> +		READ_BUF(4);
+> +		len += 4;
+> +		READ32(dummy32);
+> +		READ_BUF(dummy32);
+> +		len += (XDR_QUADLEN(dummy32) << 2);
+> +		READMEM(buf, dummy32);
+> +
+> +		*label = nfsd4_label_alloc(dummy32);
+> +		if (IS_ERR(*label)) {
+> +			host_err = PTR_ERR(*label);
+> +			goto out_nfserr;
+> +		}
+> +
+> +		memcpy((*label)->label, buf, (*label)->len);
+> +		((char *)(*label)->label)[(*label)->len] = '\0';
+> +		(*label)->pi = pi;
+> +		(*label)->lfs = lfs;
+> +
+> +		defer_free(argp, kfree, *label);
+> +	}
+> +#else 
+> +	*label = NULL;
+> +#endif
+> +
+>  	if (bmval[0] & ~NFSD_WRITEABLE_ATTRS_WORD0
+>  	    || bmval[1] & ~NFSD_WRITEABLE_ATTRS_WORD1
+>  	    || bmval[2] & ~NFSD_WRITEABLE_ATTRS_WORD2)
+> @@ -582,7 +641,7 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
+>  		return status;
+>  
+>  	status = nfsd4_decode_fattr(argp, create->cr_bmval, &create->cr_iattr,
+> -				    &create->cr_acl);
+> +				    &create->cr_acl, &create->cr_label);
+>  	if (status)
+>  		goto out;
+>  
+> @@ -832,7 +891,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
+>  		case NFS4_CREATE_UNCHECKED:
+>  		case NFS4_CREATE_GUARDED:
+>  			status = nfsd4_decode_fattr(argp, open->op_bmval,
+> -				&open->op_iattr, &open->op_acl);
+> +				&open->op_iattr, &open->op_acl, &open->op_label);
+>  			if (status)
+>  				goto out;
+>  			break;
+> @@ -846,7 +905,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
+>  			READ_BUF(NFS4_VERIFIER_SIZE);
+>  			COPYMEM(open->op_verf.data, NFS4_VERIFIER_SIZE);
+>  			status = nfsd4_decode_fattr(argp, open->op_bmval,
+> -				&open->op_iattr, &open->op_acl);
+> +				&open->op_iattr, &open->op_acl, &open->op_label);
+>  			if (status)
+>  				goto out;
+>  			break;
+> @@ -1068,7 +1127,7 @@ nfsd4_decode_setattr(struct nfsd4_compoundargs *argp, struct nfsd4_setattr *seta
+>  	if (status)
+>  		return status;
+>  	return nfsd4_decode_fattr(argp, setattr->sa_bmval, &setattr->sa_iattr,
+> -				  &setattr->sa_acl);
+> +				  &setattr->sa_acl, &setattr->sa_label);
+>  }
+>  
+>  static __be32
+> @@ -1989,6 +2048,50 @@ nfsd4_encode_aclname(struct svc_rqst *rqstp, struct nfs4_ace *ace,
+>  			      FATTR4_WORD0_RDATTR_ERROR)
+>  #define WORD1_ABSENT_FS_ATTRS FATTR4_WORD1_MOUNTED_ON_FILEID
+>  
+> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> +static inline __be32
+> +nfsd4_encode_security_label(struct svc_rqst *rqstp, struct dentry *dentry, __be32 **pp, int *buflen)
+> +{
+> +	void *context;
+> +	int err;
+> +	int len;
+> +	uint32_t pi = 0;
+> +	uint32_t lfs = 0;
+> +	__be32 *p = *pp;
+> +
+> +	err = 0;
+> +	(void)security_inode_getsecctx(dentry->d_inode, &context, &len);
+> +	if (len < 0)
+> +		return nfserrno(len);
+> +
+> +	if (*buflen < ((XDR_QUADLEN(len) << 2) + 4 + 4 + 4)) {
+> +		err = nfserr_resource;
+> +		goto out;
+> +	}
+> +
+> +	/*
+> +	 * For now we use a 0 here to indicate the null translation; in
+> +	 * the future we may place a call to translation code here.
+> +	 */
+> +	if ((*buflen -= 8) < 0)
+> +		return nfserr_resource;
+> +
+> +	WRITE32(lfs);	
+> +	WRITE32(pi);
+> +	p = xdr_encode_opaque(p, context, len);
+> +	*buflen -= (XDR_QUADLEN(len) << 2) + 4;
+> +
+> +	*pp = p;
+> +out:
+> +	security_release_secctx(context, len);
+> +	return err;
+> +}
+> +#else
+> +static inline __be32
+> +nfsd4_encode_security_label(struct svc_rqst *rqstp, struct dentry *dentry, __be32 **pp, int *buflen)
+> +{ return 0; }
+> +#endif
+> +
+>  static __be32 fattr_handle_absent_fs(u32 *bmval0, u32 *bmval1, u32 *rdattr_err)
+>  {
+>  	/* As per referral draft:  */
+> @@ -2439,6 +2542,12 @@ out_acl:
+>  			get_parent_attributes(exp, &stat);
+>  		WRITE64(stat.ino);
+>  	}
+> +	if (bmval2 & FATTR4_WORD2_SECURITY_LABEL) {
+> +		status = nfsd4_encode_security_label(rqstp, dentry,
+> +				&p, &buflen);
+> +		if (status)
+> +			goto out;
+> +	}
+>  	if (bmval2 & FATTR4_WORD2_SUPPATTR_EXCLCREAT) {
+>  		WRITE32(3);
+>  		WRITE32(NFSD_SUPPATTR_EXCLCREAT_WORD0);
+> @@ -3231,11 +3340,13 @@ nfsd4_encode_setattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+>  		WRITE32(2);
+>  		WRITE32(0);
+>  		WRITE32(0);
+> +		WRITE32(0);
+
+Note that "2" above is the length of the bitmap field that follows.
+
+>  	}
+>  	else {
+>  		WRITE32(2);
+>  		WRITE32(setattr->sa_bmval[0]);
+>  		WRITE32(setattr->sa_bmval[1]);
+> +		WRITE32(setattr->sa_bmval[2]);
+
+Ditto.
+
+--b.
+
+>  	}
+>  	ADJUST_ARGS();
+>  	return nfserr;
+> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> index b5eade7..0a2e30c 100644
+> --- a/fs/nfsd/nfsd.h
+> +++ b/fs/nfsd/nfsd.h
+> @@ -328,7 +328,13 @@ void		nfsd_lockd_shutdown(void);
+>  #define NFSD4_1_SUPPORTED_ATTRS_WORD2 \
+>  	(NFSD4_SUPPORTED_ATTRS_WORD2 | FATTR4_WORD2_SUPPATTR_EXCLCREAT)
+>  
+> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> +#define NFSD4_2_SUPPORTED_ATTRS_WORD2 \
+> +	(NFSD4_SUPPORTED_ATTRS_WORD2 | NFSD4_1_SUPPORTED_ATTRS_WORD2 | \
+> +		FATTR4_WORD2_SECURITY_LABEL)
+> +#else
+>  #define NFSD4_2_SUPPORTED_ATTRS_WORD2 0
+> +#endif
+>  
+>  static inline u32 nfsd_suppattrs0(u32 minorversion)
+>  {
+> @@ -361,7 +367,11 @@ static inline u32 nfsd_suppattrs2(u32 minorversion)
+>  #define NFSD_WRITEABLE_ATTRS_WORD1 \
+>  	(FATTR4_WORD1_MODE | FATTR4_WORD1_OWNER | FATTR4_WORD1_OWNER_GROUP \
+>  	| FATTR4_WORD1_TIME_ACCESS_SET | FATTR4_WORD1_TIME_MODIFY_SET)
+> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> +#define NFSD_WRITEABLE_ATTRS_WORD2 FATTR4_WORD2_SECURITY_LABEL
+> +#else
+>  #define NFSD_WRITEABLE_ATTRS_WORD2 0
+> +#endif
+>  
+>  #define NFSD_SUPPATTR_EXCLCREAT_WORD0 \
+>  	NFSD_WRITEABLE_ATTRS_WORD0
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 2b2e239..96f9a82 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -28,6 +28,7 @@
+>  #include <asm/uaccess.h>
+>  #include <linux/exportfs.h>
+>  #include <linux/writeback.h>
+> +#include <linux/security.h>
+>  
+>  #ifdef CONFIG_NFSD_V3
+>  #include "xdr3.h"
+> @@ -621,6 +622,33 @@ int nfsd4_is_junction(struct dentry *dentry)
+>  		return 0;
+>  	return 1;
+>  }
+> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> +__be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> +		struct nfs4_label *label)
+> +{
+> +	__be32 error;
+> +	int host_error;
+> +	struct dentry *dentry;
+> +
+> +	error = fh_verify(rqstp, fhp, 0 /* S_IFREG */, NFSD_MAY_SATTR);
+> +	if (error)
+> +		return error;
+> +
+> +	dentry = fhp->fh_dentry;
+> +
+> +	mutex_lock(&dentry->d_inode->i_mutex);
+> +	host_error = security_inode_setsecctx(dentry, label->label, label->len);
+> +	mutex_unlock(&dentry->d_inode->i_mutex);
+> +	return nfserrno(host_error);
+> +}
+> +#else
+> +__be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> +		struct nfs4_label *label)
+> +{
+> +	return nfserr_notsupp;
+> +}
+> +#endif
+> +
+>  #endif /* defined(CONFIG_NFSD_V4) */
+>  
+>  #ifdef CONFIG_NFSD_V3
+> diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+> index 5b58941..a9d6f0f 100644
+> --- a/fs/nfsd/vfs.h
+> +++ b/fs/nfsd/vfs.h
+> @@ -56,6 +56,8 @@ int nfsd_mountpoint(struct dentry *, struct svc_export *);
+>  __be32          nfsd4_set_nfs4_acl(struct svc_rqst *, struct svc_fh *,
+>                      struct nfs4_acl *);
+>  int             nfsd4_get_nfs4_acl(struct svc_rqst *, struct dentry *, struct nfs4_acl **);
+> +__be32          nfsd4_set_nfs4_label(struct svc_rqst *, struct svc_fh *,
+> +		    struct nfs4_label *);
+>  #endif /* CONFIG_NFSD_V4 */
+>  __be32		nfsd_create(struct svc_rqst *, struct svc_fh *,
+>  				char *name, int len, struct iattr *attrs,
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index 546f898..132a671 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -118,6 +118,7 @@ struct nfsd4_create {
+>  	struct iattr	cr_iattr;           /* request */
+>  	struct nfsd4_change_info  cr_cinfo; /* response */
+>  	struct nfs4_acl *cr_acl;
+> +	struct nfs4_label *cr_label;
+>  };
+>  #define cr_linklen	u.link.namelen
+>  #define cr_linkname	u.link.name
+> @@ -246,6 +247,7 @@ struct nfsd4_open {
+>  	struct nfs4_file *op_file;          /* used during processing */
+>  	struct nfs4_ol_stateid *op_stp;	    /* used during processing */
+>  	struct nfs4_acl *op_acl;
+> +	struct nfs4_label *op_label;
+>  };
+>  #define op_iattr	iattr
+>  
+> @@ -330,6 +332,7 @@ struct nfsd4_setattr {
+>  	u32		sa_bmval[3];        /* request */
+>  	struct iattr	sa_iattr;           /* request */
+>  	struct nfs4_acl *sa_acl;
+> +	struct nfs4_label *sa_label;
+>  };
+>  
+>  struct nfsd4_setclientid {
+> -- 
+> 1.8.1.4
 > 
-> Why do you need a full namingContext for FedFS ?
-> Why a subtree is not sufficient ?
-
-The document does recommend using a dedicated LDAP service for an NSDB, but does not require it.
-
-One or more of the namingContext records on an NSDB has a new attribute (fedfsNceDN) that points to the FedFS DIT.  So it is entirely possible to use an existing LDAP server for storing FedFS records, simply by adding that attribute to the namingContext under which the FedFS subtree resides.
-
-The goal is to allow automated discovery of the location of the FedFS DIT using a DN advertised in the LDAP server's rootDSE.  NSDB clients thus need know only the name of the NSDB service.
-
-By default, NSDBs that my tools set up store the FedFS DIT under the LDAP server's domain controller suffix, rather than using the special "o=fedfs" DN.  By convention the FedFS domain name matches the domain controller suffix, but operation doesn't depend on this.
-
-It is not quite as restrictive as you think, but it is very fiddly to set up on industrial strength LDAP servers like OpenLDAP or 389-ds.
-
-
-> On the security side, you recommend RPCSEC_GSS for NFS, but then TLS for
-> LDAP, why not use SASL/GSSAPI for LDAP as well so you need a single set
-> of credentials ?
-
-There are two classes of tasks involving NSDBs: administrative, where an administrator is available to provide credential material; and fileserver, which is an unattended access performed simply to retrieve location lists.
-
-The purpose of TLS is to allow fileservers to authenticate NSDBs without requiring user intervention.  A certificate chain for each NSDB is provisioned on fileservers (using the FedFS ADMIN RPC protocol).  The fileservers use them with START_TLS each time a connection is established to that NSDB.
-
-SASL/GSSAPI can of course be used when performing administrative operations on an NSDB, and that is the plan for the Linux FedFS implementation.  As you observed, an administrator can then use the same credentials for an RPCGSS-protected FedFS ADMIN service and her NSDB.
-
-
-> 
->> 
->>> 
->>>> Today FedFS junctions can contain either a location list or an LDAP
->>>> DN.  One option for FedFS is to support only the LDAP DN junction
->>>> type, and have a (possibly local) LDAP service available to store the
->>>> location information.  The FedFS junction xattr would then always
->>>> contain an LDAP URL.  Storing complex data types (a list containing
->>>> pathnames, hostnames, integers, and other values) would then be up to
->>>> LDAP.
->>> 
->>> Having to install a whole LDAP server as a pre-requisite seem very heavy
->>> handed.
->> 
->> True.  Today, the LDAP/NSDB pieces are optional if an admin wants to
->> support only "NFS basic junctions," for just this reason.
->> 
->> However there are certain benefits to allowing location lists to be
->> managed via LDAP, rather than being specified at junction creation.
->> Junctions can share the same location list, for example.  A filesystem
->> migration can update a central location list once, rather than having
->> to find every junction that references the migrated filesystem.
-> 
-> Understood.
-> 
->> In addition, storing these lists in a publicly available LDAP service
->> means that any fileserver, anywhere, can access the lists.
->> 
->> If we are really wily, maybe a small single-purpose daemon can be
->> constructed from a minimal LDAP server implementation (or from
->> scratch), and it can listen on its own port or only for loopback
->> requests.
-> 
-> I think in most cases this is what will actually happen, but you do not
-> need to use a special purpose built server, you can use an existing LDAP
-> server simply specially configured for your needs. It will cause
-> administrative overhead to handle this infrastructure though.
-
-Don't I know it.
-
-To simplify initial configuration, I've implemented a script that installs OpenLDAP and performs enough configuration to provide a stand-alone NSDB, with or without TLS.  I already have a number of C tools that can set up the rootDSE and add Fileset Name records on either 389-ds or OpenLDAP servers.
-
-The idea is to allow both types of NSDB (stand-alone, and as part of an existing LDAP service), but that kind of generality adds a lot of complexity to the set up process and documentation.  Going with just one or the other makes life much easier.
-
-
-> 
-> [..]
-> 
->>> Why should we leave a symlink ? Don't we expect to remove junctions for
->>> all protocols ?
->> 
->> The difficulty I have is how we are going to conjoin the
->> administrative tools that manage junctions.  I imagine that for some
->> time, the tool used for managing DFS junctions will be unaware of
->> FedFS junction content, and vice versa.
-> 
-> Yes, for some time one may end up wiping out the other.
-> 
->>> What I do not get is why are you trying to use the same mechanism (a
->>> symlink) but then treat them as independent and separate entities ?
->>> What is the aim ?
->>> From your premise I thought you wanted to allow parallel functionality,
->>> ie a DFS created in samba would be seen as a junction for nfs and
->>> vice-versa, but the latter points seem to not allow that ?
->> 
->> FedFS junctions can list both NFS and SMB (and other types).  The SMB
->> parts are not defined by the IETF, since SMB is a proprietary protocol
->> controlled by Microsoft.
->> 
->> One way to have DFS and FedFS information in the same filesystem
->> object is to have one object that can contain both.  The tools then
->> have to be designed not to step on each other.  Eventually we figure
->> out how to make this seamless.
->> 
->> I think you are suggesting we ignore this problem for now, and just
->> have the tools pretend the other protocol does not exist, while still
->> allowing the possibility of storing both types of metadata in the same
->> filesystem object.  That may be an easy way to get started.
-> 
-> I thought this was what you were proposing actually. With my
-> 'integrator' hat on I would rather quickly define common tools that can
-> handle both, and have the old tools return loud warnings (were possible)
-> if you try to use them.
-
-The "old" FedFS tools in this case are available because they are one of two independent reference implementations required for the IETF standardization process.  However, I think solving the problem of integrating FedFS ADMIN with an existing DFS implementation on a multi-protocol fileserver is going to be very valuable implementation experience that can be fed back into the IETF standards process.
-
-I'm not confident we can fit rpc.fedfsd (Linux's implementation of the FedFS RPC ADMIN service) into this model, so we may end up abandoning its use for managing FedFS junctions, leaving it only to provisioning NSDB certificates.
-
-> In the Samba case the basic tool is 'ln', not sure we can do much about
-> it :-) But we can certainly patch the RPC code that allows handling via
-> SMB/RPC although I am not quite sure how to populate all the data the
-> SMB world has no concept of, perhaps using 'good defaults' ...
-
-Exactly the problem.
-
-My thought was to define a place-holder value for both protocols that can be used by our existing tools, for now.  No xattr for symlinks created on behalf of DFS, and maybe an empty symlink for junctions created by rpc.fedfsd or the nfsref command.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
