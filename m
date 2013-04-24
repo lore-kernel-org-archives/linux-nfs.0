@@ -1,57 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33655 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:50392 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761228Ab3DCTUH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Apr 2013 15:20:07 -0400
-Date: Wed, 3 Apr 2013 15:20:05 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: fanchaoting <fanchaoting@cn.fujitsu.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: PATCH]nfsd: don't run get_file if nfs4_preprocess_stateid_op
- return error
-Message-ID: <20130403192005.GG6044@fieldses.org>
-References: <5159868A.8080105@cn.fujitsu.com>
+	id S1758403Ab3DXWC3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Apr 2013 18:02:29 -0400
+Date: Wed, 24 Apr 2013 18:02:26 -0400
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 03/17] NFSDv4.2: Added NFS v4.2 support to the NFS server
+Message-ID: <20130424220226.GN20275@fieldses.org>
+References: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
+ <1366834683-29075-4-git-send-email-SteveD@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5159868A.8080105@cn.fujitsu.com>
+In-Reply-To: <1366834683-29075-4-git-send-email-SteveD@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying, and adding a cc: for stable.--b.
-
-On Mon, Apr 01, 2013 at 09:07:22PM +0800, fanchaoting wrote:
-> we should return error status directly when 
-> nfs4_preprocess_stateid_op return error. 
+On Wed, Apr 24, 2013 at 04:17:49PM -0400, Steve Dickson wrote:
+> From: Steve Dickson <steved@redhat.com>
 > 
-> Signed-off-by: fanchaoting <fanchaoting@cn.fujitsu.com>
+> This enable NFSv4.2 support for the server. To enable this
+> code do the following:
+>   echo "+4.2" >/proc/fs/nfsd/versions
+> 
+> after the nfsd kernel module is loaded.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
 > ---
->  fs/nfsd/nfs4proc.c |    8 ++++----
->  1 files changed, 4 insertions(+), 4 deletions(-)
+>  fs/nfsd/nfs4xdr.c | 1 +
+>  fs/nfsd/nfsd.h    | 7 ++++++-
+>  2 files changed, 7 insertions(+), 1 deletion(-)
 > 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index ae73175..8288b08 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -931,14 +931,14 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	nfs4_lock_state();
->  	status = nfs4_preprocess_stateid_op(SVC_NET(rqstp),
->  					cstate, stateid, WR_STATE, &filp);
-> -	if (filp)
-> -		get_file(filp);
-> -	nfs4_unlock_state();
-> -
->  	if (status) {
-> +		nfs4_unlock_state();
->  		dprintk("NFSD: nfsd4_write: couldn't process stateid!\n");
->  		return status;
->  	}
-> +	if (filp)
-> +		get_file(filp);
-> +	nfs4_unlock_state();
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index a272007..b38de7a 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -1572,6 +1572,7 @@ struct nfsd4_minorversion_ops {
+>  static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
+>  	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
+>  	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
+> +	[2] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
+>  };
 >  
->  	cnt = write->wr_buflen;
->  	write->wr_how_written = write->wr_stable_how;
+>  static __be32
+> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> index 553b230..b5eade7 100644
+> --- a/fs/nfsd/nfsd.h
+> +++ b/fs/nfsd/nfsd.h
+> @@ -24,7 +24,7 @@
+>  /*
+>   * nfsd version
+>   */
+> -#define NFSD_SUPPORTED_MINOR_VERSION	1
+> +#define NFSD_SUPPORTED_MINOR_VERSION	2
+>  /*
+>   * Maximum blocksizes supported by daemon under various circumstances.
+>   */
+
+These last two chunks belong with a later patch, whenever we make other
+4.2 attribute changes:
+
+--b.
+
+> @@ -328,6 +328,8 @@ void		nfsd_lockd_shutdown(void);
+>  #define NFSD4_1_SUPPORTED_ATTRS_WORD2 \
+>  	(NFSD4_SUPPORTED_ATTRS_WORD2 | FATTR4_WORD2_SUPPATTR_EXCLCREAT)
+>  
+> +#define NFSD4_2_SUPPORTED_ATTRS_WORD2 0
+> +
+>  static inline u32 nfsd_suppattrs0(u32 minorversion)
+>  {
+>  	return minorversion ? NFSD4_1_SUPPORTED_ATTRS_WORD0
+> @@ -342,6 +344,9 @@ static inline u32 nfsd_suppattrs1(u32 minorversion)
+>  
+>  static inline u32 nfsd_suppattrs2(u32 minorversion)
+>  {
+> +	if (minorversion == 2)
+> +		return NFSD4_2_SUPPORTED_ATTRS_WORD2;
+> +
+>  	return minorversion ? NFSD4_1_SUPPORTED_ATTRS_WORD2
+>  			    : NFSD4_SUPPORTED_ATTRS_WORD2;
+>  }
 > -- 
-> 1.7.1
+> 1.8.1.4
 > 
-> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
