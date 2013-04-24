@@ -1,128 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59989 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S936208Ab3DQBqh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Apr 2013 21:46:37 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 09/12] locks: helper functions for delegation breaking
-Date: Tue, 16 Apr 2013 21:46:21 -0400
-Message-Id: <1366163185-10317-10-git-send-email-bfields@redhat.com>
-In-Reply-To: <1366163185-10317-1-git-send-email-bfields@redhat.com>
-References: <1366163185-10317-1-git-send-email-bfields@redhat.com>
+Received: from countercultured.net ([209.51.175.25]:35821 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1758514Ab3DXWOS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Apr 2013 18:14:18 -0400
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Date: Wed, 24 Apr 2013 18:14:16 -0400
+From: David Quigley <dpquigl@davequigley.com>
+To: Steve Dickson <steved@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>, <eparis@redhat.com>,
+        <sds@tycho.nsa.gov>
+Subject: Re: [PATCH 04/17] Security: Add hook to calculate context based on
+ a negative dentry.
+In-Reply-To: <517858D1.5000406@RedHat.com>
+References: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
+ <1366834683-29075-5-git-send-email-SteveD@redhat.com>
+ <20130424220258.GO20275@fieldses.org> <517858D1.5000406@RedHat.com>
+Message-ID: <faf7db0bcd9b208c201a652c718c720c@countercultured.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On 04/24/2013 18:12, Steve Dickson wrote:
+> On 24/04/13 18:02, J. Bruce Fields wrote:
+>> n Wed, Apr 24, 2013 at 04:17:50PM -0400, Steve Dickson wrote:
+>>> > From: David Quigley <dpquigl@davequigley.com>
+>>> >
+>>> > There is a time where we need to calculate a context without the
+>>> > inode having been created yet. To do this we take the negative 
+>>> dentry and
+>>> > calculate a context based on the process and the parent directory 
+>>> contexts.
+>> How can we get review from security/selinux folks?  I can't apply 
+>> these
+>> without....
+> Its my understand they have been reviewed a number times... And they 
+> have not
+> change since I've working on these patches...
+>
+> steved.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-We'll need the same logic for rename and link.
+That is correct. They have been acked in the past and haven't changed 
+at all since then. I have contacted Eric Paris about reviewing them 
+anyway so you can have a more recent ack on the patches.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/namei.c         |   13 +++----------
- include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
- 2 files changed, 34 insertions(+), 12 deletions(-)
-
-diff --git a/fs/namei.c b/fs/namei.c
-index 6b8698f..f788c3c 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3401,14 +3401,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
- 	else {
- 		error = security_inode_unlink(dir, dentry);
- 		if (!error) {
--			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
--			if (error) {
--				if (error == -EWOULDBLOCK && delegated_inode) {
--					*delegated_inode = target;
--					ihold(target);
--				}
-+			error = try_break_deleg(target, delegated_inode);
-+			if (error)
- 				goto out;
--			}
- 			error = dir->i_op->unlink(dir, dentry);
- 			if (!error)
- 				dont_mount(dentry);
-@@ -3478,9 +3473,7 @@ exit2:
- 		iput(inode);	/* truncate the inode here */
- 	inode = NULL;
- 	if (delegated_inode) {
--		error = break_deleg(delegated_inode, O_WRONLY);
--		iput(delegated_inode);
--		delegated_inode = NULL;
-+		error = break_deleg_wait(&delegated_inode);
- 		if (!error)
- 			goto retry_deleg;
- 	}
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index f2d0194..c2096ed 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1892,6 +1892,9 @@ extern bool our_mnt(struct vfsmount *mnt);
- 
- extern int current_umask(void);
- 
-+extern void ihold(struct inode * inode);
-+extern void iput(struct inode *);
-+
- /* /sys/fs */
- extern struct kobject *fs_kobj;
- 
-@@ -1960,6 +1963,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
- 	return 0;
- }
- 
-+static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
-+{
-+	int ret;
-+
-+	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
-+	if (ret == -EWOULDBLOCK && delegated_inode) {
-+		*delegated_inode = inode;
-+		ihold(inode);
-+	}
-+	return ret;
-+}
-+
-+static inline int break_deleg_wait(struct inode **delegated_inode)
-+{
-+	int ret;
-+
-+	ret = break_deleg(*delegated_inode, O_WRONLY);
-+	iput(*delegated_inode);
-+	*delegated_inode = NULL;
-+	return ret;
-+}
-+
- #else /* !CONFIG_FILE_LOCKING */
- static inline int locks_mandatory_locked(struct inode *inode)
- {
-@@ -2003,6 +2028,12 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
- {
- 	return 0;
- }
-+
-+static inline int try_break_deleg(struct inode *inode, struct delegated_inode **inode)
-+{
-+	return 0;
-+}
-+
- #endif /* CONFIG_FILE_LOCKING */
- 
- /* fs/open.c */
-@@ -2317,8 +2348,6 @@ extern loff_t vfs_llseek(struct file *file, loff_t offset, int whence);
- extern int inode_init_always(struct super_block *, struct inode *);
- extern void inode_init_once(struct inode *);
- extern void address_space_init_once(struct address_space *mapping);
--extern void ihold(struct inode * inode);
--extern void iput(struct inode *);
- extern struct inode * igrab(struct inode *);
- extern ino_t iunique(struct super_block *, ino_t);
- extern int inode_needs_sync(struct inode *inode);
--- 
-1.7.9.5
-
+Dave
