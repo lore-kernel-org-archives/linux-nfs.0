@@ -1,73 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:5858 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:1427 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751802Ab3DTFls (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 20 Apr 2013 01:41:48 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] NFSv4: Use the open stateid if the delegation has the wrong mode
-Date: Sat, 20 Apr 2013 01:41:45 -0400
-Message-Id: <1366436506-25033-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1757484Ab3DXUXO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Apr 2013 16:23:14 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 14/17] NFS: Extend NFS xattr handlers to accept the security namespace
+Date: Wed, 24 Apr 2013 16:18:00 -0400
+Message-Id: <1366834683-29075-15-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
+References: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix nfs4_select_rw_stateid() so that it chooses the open stateid
-(or an all-zero stateid) if the delegation does not match the selected
-read/write mode.
+From: David Quigley <dpquigl@davequigley.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+The existing NFSv4 xattr handlers do not accept xattr calls to the security
+namespace. This patch extends these handlers to accept xattrs from the security
+namespace in addition to the default NFSv4 ACL namespace.
+
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 ---
- fs/nfs/nfs4_fs.h   | 1 +
- fs/nfs/nfs4proc.c  | 1 +
- fs/nfs/nfs4state.c | 6 +++++-
- 3 files changed, 7 insertions(+), 1 deletion(-)
+ fs/nfs/nfs4proc.c   | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ security/security.c |  1 +
+ 2 files changed, 51 insertions(+)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 7ef19ce..553a83c 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -144,6 +144,7 @@ struct nfs4_lock_state {
- enum {
- 	LK_STATE_IN_USE,
- 	NFS_DELEGATED_STATE,		/* Current stateid is delegation */
-+	NFS_OPEN_STATE,			/* OPEN stateid is set */
- 	NFS_O_RDONLY_STATE,		/* OPEN stateid has read-only state */
- 	NFS_O_WRONLY_STATE,		/* OPEN stateid has write-only state */
- 	NFS_O_RDWR_STATE,		/* OPEN stateid has read/write state */
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 282d9fa..3984936 100644
+index c459bbd..53cdb8b 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -978,6 +978,7 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state, nfs4_stateid *
- 	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
- 		nfs4_stateid_copy(&state->stateid, stateid);
- 	nfs4_stateid_copy(&state->open_stateid, stateid);
-+	set_bit(NFS_OPEN_STATE, &state->flags);
- 	switch (fmode) {
- 		case FMODE_READ:
- 			set_bit(NFS_O_RDONLY_STATE, &state->flags);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 1eb1728..b779695 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1024,12 +1024,16 @@ out:
+@@ -5534,6 +5534,53 @@ static size_t nfs4_xattr_list_nfs4_acl(struct dentry *dentry, char *list,
+ 	return len;
+ }
  
- static int nfs4_copy_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++static inline int nfs4_server_supports_labels(struct nfs_server *server)
++{
++	return server->caps & NFS_CAP_SECURITY_LABEL;
++}
++
++static int nfs4_xattr_set_nfs4_label(struct dentry *dentry, const char *key,
++				   const void *buf, size_t buflen,
++				   int flags, int type)
++{
++	if (security_ismaclabel(key))
++		return nfs4_set_security_label(dentry, buf, buflen);
++
++	return -EOPNOTSUPP;
++}
++
++static int nfs4_xattr_get_nfs4_label(struct dentry *dentry, const char *key,
++				   void *buf, size_t buflen, int type)
++{
++	if (security_ismaclabel(key))
++		return nfs4_get_security_label(dentry->d_inode, buf, buflen);
++	return -EOPNOTSUPP;
++}
++
++static size_t nfs4_xattr_list_nfs4_label(struct dentry *dentry, char *list,
++				       size_t list_len, const char *name,
++				       size_t name_len, int type)
++{
++	size_t len = 0;
++
++	if (nfs_server_capable(dentry->d_inode, NFS_CAP_SECURITY_LABEL)) {
++		len = security_inode_listsecurity(dentry->d_inode, NULL, 0);
++		if (list && len <= list_len)
++			security_inode_listsecurity(dentry->d_inode, list, len);
++	}
++	return len;
++}
++
++static const struct xattr_handler nfs4_xattr_nfs4_label_handler = {
++	.prefix = XATTR_SECURITY_PREFIX,
++	.list	= nfs4_xattr_list_nfs4_label,
++	.get	= nfs4_xattr_get_nfs4_label,
++	.set	= nfs4_xattr_set_nfs4_label,
++};
++#endif
++
++
+ /*
+  * nfs_fhget will use either the mounted_on_fileid or the fileid
+  */
+@@ -7286,6 +7333,9 @@ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
+ 
+ const struct xattr_handler *nfs4_xattr_handlers[] = {
+ 	&nfs4_xattr_nfs4_acl_handler,
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	&nfs4_xattr_nfs4_label_handler,
++#endif
+ 	NULL
+ };
+ 
+diff --git a/security/security.c b/security/security.c
+index df8ade2..758af6b 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -660,6 +660,7 @@ int security_inode_listsecurity(struct inode *inode, char *buffer, size_t buffer
+ 		return 0;
+ 	return security_ops->inode_listsecurity(inode, buffer, buffer_size);
+ }
++EXPORT_SYMBOL(security_inode_listsecurity);
+ 
+ void security_inode_getsecid(const struct inode *inode, u32 *secid)
  {
-+	const nfs4_stateid *src;
- 	int ret;
- 	int seq;
- 
- 	do {
-+		src = &zero_stateid;
- 		seq = read_seqbegin(&state->seqlock);
--		nfs4_stateid_copy(dst, &state->stateid);
-+		if (test_bit(NFS_OPEN_STATE, &state->flags))
-+			src = &state->open_stateid;
-+		nfs4_stateid_copy(dst, src);
- 		ret = 0;
- 		smp_rmb();
- 		if (!list_empty(&state->owner->so_seqid.list))
 -- 
 1.8.1.4
 
