@@ -1,174 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from nm8.access.bullet.mail.sp2.yahoo.com ([98.139.44.135]:41399
-	"EHLO nm8.access.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758133Ab3DAQxn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Apr 2013 12:53:43 -0400
-Message-ID: <5159BB9C.20308@schaufler-ca.com>
-Date: Mon, 01 Apr 2013 09:53:48 -0700
-From: Casey Schaufler <casey@schaufler-ca.com>
+Received: from youngberry.canonical.com ([91.189.89.112]:34232 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758090Ab3DXVyw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Apr 2013 17:54:52 -0400
+Message-ID: <5178549A.7010402@canonical.com>
+Date: Wed, 24 Apr 2013 16:54:34 -0500
+From: Dave Chiluk <chiluk@canonical.com>
 MIME-Version: 1.0
-To: "Vu, Joseph" <joseph.vu@boeing.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        David Quigley <dpquigl@davequigley.com>,
-        Steve Dickson <steved@redhat.com>,
-        Trond Myklebust <trond.myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>,
-        Casey Schaufler <casey@schaufler-ca.com>
-Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
-References: <1364478845-29796-1-git-send-email-SteveD@redhat.com> <1364478845-29796-14-git-send-email-SteveD@redhat.com> <20130328161444.GF7080@fieldses.org> <51550C03.1000107@davequigley.com> <20130329144050.GB22307@fieldses.org> <001ff69afd411b0318d7122bf07bd218@countercultured.net> <5155B0E3.9040108@schaufler-ca.com> <20130329184219.GG22307@fieldses.org> <5155F51E.8020603@schaufler-ca.com> <756D04455A661C4CA25DC5BA4902A7A722698B22@XCH-PHX-204.sw.nos.boeing.com>
-In-Reply-To: <756D04455A661C4CA25DC5BA4902A7A722698B22@XCH-PHX-204.sw.nos.boeing.com>
-Content-Type: text/plain; charset=ISO-8859-1
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: Use exponential backoff delay for NFS4_ERRDELAY
+References: <1366836949-18465-1-git-send-email-chiluk@canonical.com> <1366838926.22397.25.camel@leira.trondhjem.org>
+In-Reply-To: <1366838926.22397.25.camel@leira.trondhjem.org>
+Content-Type: multipart/mixed;
+ boundary="------------080807040006020205000201"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 4/1/2013 5:54 AM, Vu, Joseph wrote:
-> I think 2k will do for a while. I think that in the long run it will come up short. I think the real question is whether NFS will remain viable long enough for it to matter. 
->
-> What is a good, and working alternative for NFS in term of SE label?
+This is a multi-part message in MIME format.
+--------------080807040006020205000201
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 
-Answering this simple question is complicated.
-For the short term, I don't think there is one.
-For the long term I think that there has to be a
-resource oriented shared storage mechanism that
-will be very different from anything we have today.
-We are on the cusp of the transition from the short
-term to the long term. NFS, CIFS and the like are
-old school solutions to file sharing, just as mode
-bits and SELinux are old school security paradigms.
-
-I am on record as not favoring this implementation
-of security labeling in NFS. I believe that I
-understand the rationale for the approach, and as
-I don't have an alternative that hasn't been shot
-down three ways from Sunday I hope to make the
-best of it.
- 
-
->
->
-> -----Original Message-----
-> From: owner-selinux@tycho.nsa.gov [mailto:owner-selinux@tycho.nsa.gov] On Behalf Of Casey Schaufler
-> Sent: Friday, March 29, 2013 3:10 PM
-> To: J. Bruce Fields
-> Cc: David Quigley; Steve Dickson; Trond Myklebust; J. Bruce Fields; David P. Quigley; Linux NFS list; Linux Security List; SELinux List; Casey Schaufler
-> Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
->
-> On 3/29/2013 11:42 AM, J. Bruce Fields wrote:
->> On Fri, Mar 29, 2013 at 08:18:59AM -0700, Casey Schaufler wrote:
->>> On 3/29/2013 7:49 AM, David Quigley wrote:
->>>> On 03/29/2013 10:40, J. Bruce Fields wrote:
->>>>> On Thu, Mar 28, 2013 at 11:35:31PM -0400, Dave Quigley wrote:
->>>>>> On 3/28/2013 12:14 PM, J. Bruce Fields wrote:
->>>>>>> On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
->>>>>>>> From: David Quigley <dpquigl@davequigley.com>
->>>>>>>>
->>>>>>>> This patch adds the ability to encode and decode file labels on
->>>>>> the server for
->>>>>>>> the purpose of sending them to the client and also to process
->>>>>> label change
->>>>>>>> requests from the client.
->>>>>>>>
->>>>>>>> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
->>>>>>>> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
->>>>>>>> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
->>>>>>>> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
->>>>>>>> ---
->>>>>>>>  fs/nfsd/nfs4proc.c |  41 +++++++++++++++++++  fs/nfsd/nfs4xdr.c  
->>>>>>>> | 116
->>>>>> ++++++++++++++++++++++++++++++++++++++++++++++++++---
->>>>>>>>  fs/nfsd/nfsd.h     |   6 ++-
->>>>>>>>  fs/nfsd/vfs.c      |  29 ++++++++++++++
->>>>>>>>  fs/nfsd/vfs.h      |   2 +
->>>>>>>>  fs/nfsd/xdr4.h     |   3 ++
->>>>>>>>  6 files changed, 191 insertions(+), 6 deletions(-)
->>>>>>>>
->>>>>>>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c index 
->>>>>>>> ae73175..bb17589 100644
->>>>>>>> --- a/fs/nfsd/nfs4proc.c
->>>>>>>> +++ b/fs/nfsd/nfs4proc.c
->>>>>>>> @@ -42,6 +42,36 @@
->>>>>>>>  #include "current_stateid.h"
->>>>>>>>  #include "netns.h"
->>>>>>>>
->>>>>>>> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL #include 
->>>>>>>> +<linux/security.h>
->>>>>>>> +
->>>>>>>> +static inline void
->>>>>>>> +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct
->>>>>> nfs4_label *label, u32 *bmval)
->>>>>>>> +{
->>>>>>>> +    struct inode *inode = resfh->fh_dentry->d_inode;
->>>>>>>> +    int status;
->>>>>>>> +
->>>>>>>> +    mutex_lock(&inode->i_mutex);
->>>>>>>> +    status = security_inode_setsecctx(resfh->fh_dentry,
->>>>>>>> +        label->label, label->len);
->>>>>>>> +    mutex_unlock(&inode->i_mutex);
->>>>>>>> +
->>>>>>>> +    if (status)
->>>>>>>> +        /*
->>>>>>>> +         * We should probably fail the whole open at this point,
->>>>>>>> +         * but we've already created or opened the file, so it's
->>>>>>>> +         * too late; So this seems the least of evils:
->>>>>>>> +         */
->>>>>>>> +        bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
->>>>>>> Is there any way to avoid this?
->>>>>>>
->>>>>>> How does the vfs open code handle this?  It has to be able to set 
->>>>>>> a security contexts atomically on open(O_CREAT), doesn't it?
->>>>>>>
->>>>>> I believe the way this is handled is that the inode is created and 
->>>>>> labeled and then only after that is it bound to the namespace.
->>>>>> Because of that ordering we can fail and release the inode without 
->>>>>> it ever having a dentry in the namespace.
->>>>> Grepping around....  Looks like that's done by 
->>>>> security_inode_init_security(), from the filesystem's create method.
->>>>>
->>>>> So we'd need to be able to pass something down to there.
->>>>>
->>>>> Is the current client actually expected to use this?  (So are we 
->>>>> going to see a lot of opens that set the label?)
->>>>>
->>>>> --b.
->>>> I don't have all the code infront of me but we have a different hook 
->>>> to do that. The call to nfsd4_security_inode_setsecctx is supposed 
->>>> to be used from the setattr handlers to do the equivalent of a 
->>>> setxattr on the file over NFS. The actual creation gets done with 
->>>> something like security_dentry_init_security which should be in an 
->>>> earlier patch. I'd have to look more clearly at the code to find 
->>>> out. Also where did we come up with 128 for label length? The 
->>>> SELinux code assumes a starting point of 255 and goes up from there 
->>>> as needed. The MLS policies will definitely exceed a 128 byte label.
->>> If anyone cares, Smack labels can (now) be 255 characters.
->>> Also, when (if) we get multiple concurrent LSMs the "security 
->>> context" may include information for more than one LSM. 128 bytes is 
->>> going to look pretty tiny then.
->>>
->>> smack='com.corportation.service'selinux='system_u:object_r:bin_t:s0'
->> OK.  We need a number.  2k?
-> Consider some of the kinds of attributes we are likely to see in the not to distant future:
->
-> Permitted access times, at around 100 bytes each.
-> Bell & LaPadula labels at 500 bytes each.
-> Signatures of various sizes and flavors.
-> HEPA restrictions
->
-> I think 2k will do for a while. I think that in the long run it will come up short. I think the real question is whether NFS will remain viable long enough for it to matter.
->
->> --b.
->> --
->> To unsubscribe from this list: send the line "unsubscribe 
->> linux-security-module" in the body of a message to 
->> majordomo@vger.kernel.org More majordomo info at  
->> http://vger.kernel.org/majordomo-info.html
+On 04/24/2013 04:28 PM, Myklebust, Trond wrote:
+> On Wed, 2013-04-24 at 15:55 -0500, Dave Chiluk wrote:
+>> Changing the retry to start at NFS4_POLL_RETRY_MIN and exponentially grow
+>> to NFS4_POLL_RETRY_MAX allow for faster handling of these error conditions.
 >>
->
-> --
-> This message was distributed to subscribers of the selinux mailing list.
-> If you no longer wish to subscribe, send mail to majordomo@tycho.nsa.gov with the words "unsubscribe selinux" without quotes as the message.
->
+>> Additionally this alleviates an interoperability problem with the AIX NFSv4
+>> Server.  The AIX server frequently (2 out of 3) returns NFS4ERR_DELAY, on a
+>> close when it happens in close proximity to a RELEASE_LOCKOWNER.  This would
+>> cause a linux client to hang for 15 seconds.
+> 
+> Hi Dave,
+> 
+> The AIX server is not being motivated by any requirements in the NFSv4
+> spec here, so I fail to see the reason why the behaviour that you
+> describe can justify changing the client. It is not at all obvious to me
+> that we should be retrying aggressively when NFSv4 servers return
+> NFS4ERR_DELAY. What makes 1/10sec more correct in these situations than
+> the exising 15 seconds?
 
+I agree with you that AIX is at fault, and that the preferable situation
+for the linux client would be for AIX to not return NFS4ERR_DELAY in
+this use case.  I have attached a simple program that causes exacerbates
+the problem on the AIX server.  I have already had a conference call
+with AIX NFS development about this issue, where I vehemently tried to
+convince them to fix their server.  Unfortunately as I don't have much
+reputation in the NFS community, I was unable to convince them to do the
+right thing.  I would be more than happy to set up another call, if
+someone higher up in the linux NFS hierarchy would be willing to
+participate.
+
+That being said, I think implementing an exponential backoff is an
+improvement in the client regardless of what AIX is doing.  If a server
+needs only 2 seconds to process a request for which NFS4ERR_DELAY was
+returned, this algorithm would get the client back and running after
+only 2.1 seconds of elapsed time.  Whereas the current dumb algorithm
+would simply wait 15 seconds.  This is the reason that I implemented
+this change.
+
+
+> The motivation for doing it in the case of OPEN, SETATTR, etc is
+> clearer: those operations may require the server to recall a delegation,
+> in which case aggressive retries are in order since delegation recalls
+> are usually fast.
+> The motivation in the case of LOCK is less clear, but it is basically
+> down to the fact that NFSv4 has a polling model for doing blocking
+> locks.
+
+> In all other cases, why should we be treating NFS4ERR_DELAY any
+> differently from how we treat NFS3ERR_JUKEBOX in NFSv3?
+> 
+> Note that if we do decide that changing the client is the right thing,
+> then I don't want the patch to add new fields to struct rpc_task. That's
+> the wrong layer for storing NFSv4 client specific data.
+
+This is something that I was concerned about as well, but I could not
+find another persistent way to do this.  I am open to suggestions of
+which structures would be more acceptable.
+
+Thanks,
+Dave.
+
+
+--------------080807040006020205000201
+Content-Type: text/x-csrc;
+ name="open-close.c"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="open-close.c"
+
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/file.h>
+#include <unistd.h>
+
+#define FILENAME "testfile"
+
+int main()
+{
+	int	fd = open( FILENAME, O_RDWR );
+
+	if( fd==0 )
+	{
+		fputs( "Failed to open `" FILENAME "'.", stderr );
+		return 1;
+	}
+
+	printf( "flock() returned %d. Now calling close() ...\n",
+		flock( fd, LOCK_EX|LOCK_NB ) );
+	close( fd );
+	return 0;
+}
+
+--------------080807040006020205000201--
