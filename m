@@ -1,107 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55531 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:14240 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1763157Ab3DCTPH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Apr 2013 15:15:07 -0400
-Date: Wed, 3 Apr 2013 15:15:06 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: convert the file_hashtbl to a hlist
-Message-ID: <20130403191506.GF6044@fieldses.org>
-References: <1364907719-9616-1-git-send-email-jlayton@redhat.com>
+	id S1758424Ab3DXWfK convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Apr 2013 18:35:10 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Dave Chiluk <chiluk@canonical.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: Use exponential backoff delay for NFS4_ERRDELAY
+Date: Wed, 24 Apr 2013 22:35:06 +0000
+Message-ID: <1366842905.22397.49.camel@leira.trondhjem.org>
+References: <1366836949-18465-1-git-send-email-chiluk@canonical.com>
+	 <1366838926.22397.25.camel@leira.trondhjem.org>
+	 <5178549A.7010402@canonical.com>
+In-Reply-To: <5178549A.7010402@canonical.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1364907719-9616-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 02, 2013 at 09:01:59AM -0400, Jeff Layton wrote:
-> We only ever traverse the hash chains in the forward direction, so a
-> double pointer list head isn't really necessary.
+On Wed, 2013-04-24 at 16:54 -0500, Dave Chiluk wrote:
+> On 04/24/2013 04:28 PM, Myklebust, Trond wrote:
+> > On Wed, 2013-04-24 at 15:55 -0500, Dave Chiluk wrote:
+> >> Changing the retry to start at NFS4_POLL_RETRY_MIN and exponentially grow
+> >> to NFS4_POLL_RETRY_MAX allow for faster handling of these error conditions.
+> >>
+> >> Additionally this alleviates an interoperability problem with the AIX NFSv4
+> >> Server.  The AIX server frequently (2 out of 3) returns NFS4ERR_DELAY, on a
+> >> close when it happens in close proximity to a RELEASE_LOCKOWNER.  This would
+> >> cause a linux client to hang for 15 seconds.
+> > 
+> > Hi Dave,
+> > 
+> > The AIX server is not being motivated by any requirements in the NFSv4
+> > spec here, so I fail to see the reason why the behaviour that you
+> > describe can justify changing the client. It is not at all obvious to me
+> > that we should be retrying aggressively when NFSv4 servers return
+> > NFS4ERR_DELAY. What makes 1/10sec more correct in these situations than
+> > the exising 15 seconds?
+> 
+> I agree with you that AIX is at fault, and that the preferable situation
+> for the linux client would be for AIX to not return NFS4ERR_DELAY in
+> this use case.  I have attached a simple program that causes exacerbates
+> the problem on the AIX server.  I have already had a conference call
+> with AIX NFS development about this issue, where I vehemently tried to
+> convince them to fix their server.  Unfortunately as I don't have much
+> reputation in the NFS community, I was unable to convince them to do the
+> right thing.  I would be more than happy to set up another call, if
+> someone higher up in the linux NFS hierarchy would be willing to
+> participate.
 
-Thanks, applying.--b.
+I'd think that if they have customers that want to use Linux clients,
+then those customers are likely to have more influence. This is entirely
+a consequence of _their_ design decisions, quite frankly, since
+returning NFS4ERR_DELAY in the above situation is downright silly. The
+server designers _know_ that the RELEASE_LOCKOWNER will finish whatever
+it is doing fairly quickly; it's not as if the CLOSE wouldn't have to do
+the exact same state manipulations anyway...
 
+> That being said, I think implementing an exponential backoff is an
+> improvement in the client regardless of what AIX is doing.  If a server
+> needs only 2 seconds to process a request for which NFS4ERR_DELAY was
+> returned, this algorithm would get the client back and running after
+> only 2.1 seconds of elapsed time.  Whereas the current dumb algorithm
+> would simply wait 15 seconds.  This is the reason that I implemented
+> this change.
+
+Right, but my point above is that _in_general_ if we don't know why the
+server is returning NFS4ERR_DELAY, then how can we attach any retry
+numbers at all? HSM systems, for instance, have very different latencies
+than the above and were the reason for inventing NFS3ERR_JUKEBOX in the
+first place.
+
+> > The motivation for doing it in the case of OPEN, SETATTR, etc is
+> > clearer: those operations may require the server to recall a delegation,
+> > in which case aggressive retries are in order since delegation recalls
+> > are usually fast.
+> > The motivation in the case of LOCK is less clear, but it is basically
+> > down to the fact that NFSv4 has a polling model for doing blocking
+> > locks.
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfsd/nfs4state.c | 14 ++++----------
->  fs/nfsd/state.h     |  2 +-
->  2 files changed, 5 insertions(+), 11 deletions(-)
+> > In all other cases, why should we be treating NFS4ERR_DELAY any
+> > differently from how we treat NFS3ERR_JUKEBOX in NFSv3?
+> > 
+> > Note that if we do decide that changing the client is the right thing,
+> > then I don't want the patch to add new fields to struct rpc_task. That's
+> > the wrong layer for storing NFSv4 client specific data.
 > 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 2efb034..e1c29d6 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -137,7 +137,7 @@ static inline void
->  put_nfs4_file(struct nfs4_file *fi)
->  {
->  	if (atomic_dec_and_lock(&fi->fi_ref, &recall_lock)) {
-> -		list_del(&fi->fi_hash);
-> +		hlist_del(&fi->fi_hash);
->  		spin_unlock(&recall_lock);
->  		iput(fi->fi_inode);
->  		nfsd4_free_file(fi);
-> @@ -181,7 +181,7 @@ static unsigned int file_hashval(struct inode *ino)
->  	return hash_ptr(ino, FILE_HASH_BITS);
->  }
->  
-> -static struct list_head file_hashtbl[FILE_HASH_SIZE];
-> +static struct hlist_head file_hashtbl[FILE_HASH_SIZE];
->  
->  static void __nfs4_file_get_access(struct nfs4_file *fp, int oflag)
->  {
-> @@ -2303,7 +2303,6 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
->  	unsigned int hashval = file_hashval(ino);
->  
->  	atomic_set(&fp->fi_ref, 1);
-> -	INIT_LIST_HEAD(&fp->fi_hash);
->  	INIT_LIST_HEAD(&fp->fi_stateids);
->  	INIT_LIST_HEAD(&fp->fi_delegations);
->  	fp->fi_inode = igrab(ino);
-> @@ -2312,7 +2311,7 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
->  	memset(fp->fi_fds, 0, sizeof(fp->fi_fds));
->  	memset(fp->fi_access, 0, sizeof(fp->fi_access));
->  	spin_lock(&recall_lock);
-> -	list_add(&fp->fi_hash, &file_hashtbl[hashval]);
-> +	hlist_add_head(&fp->fi_hash, &file_hashtbl[hashval]);
->  	spin_unlock(&recall_lock);
->  }
->  
-> @@ -2498,7 +2497,7 @@ find_file(struct inode *ino)
->  	struct nfs4_file *fp;
->  
->  	spin_lock(&recall_lock);
-> -	list_for_each_entry(fp, &file_hashtbl[hashval], fi_hash) {
-> +	hlist_for_each_entry(fp, &file_hashtbl[hashval], fi_hash) {
->  		if (fp->fi_inode == ino) {
->  			get_nfs4_file(fp);
->  			spin_unlock(&recall_lock);
-> @@ -4775,11 +4774,6 @@ struct nfs4_client *nfsd_find_client(struct sockaddr_storage *addr, size_t addr_
->  void
->  nfs4_state_init(void)
->  {
-> -	int i;
-> -
-> -	for (i = 0; i < FILE_HASH_SIZE; i++) {
-> -		INIT_LIST_HEAD(&file_hashtbl[i]);
-> -	}
->  	INIT_LIST_HEAD(&del_recall_lru);
->  }
->  
-> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> index 1a8c739..5350dac 100644
-> --- a/fs/nfsd/state.h
-> +++ b/fs/nfsd/state.h
-> @@ -390,7 +390,7 @@ static inline struct nfs4_lockowner * lockowner(struct nfs4_stateowner *so)
->  /* nfs4_file: a file opened by some number of (open) nfs4_stateowners. */
->  struct nfs4_file {
->  	atomic_t		fi_ref;
-> -	struct list_head        fi_hash;    /* hash by "struct inode *" */
-> +	struct hlist_node       fi_hash;    /* hash by "struct inode *" */
->  	struct list_head        fi_stateids;
->  	struct list_head	fi_delegations;
->  	/* One each for O_RDONLY, O_WRONLY, O_RDWR: */
-> -- 
-> 1.7.11.7
-> 
+> This is something that I was concerned about as well, but I could not
+> find another persistent way to do this.  I am open to suggestions of
+> which structures would be more acceptable.
+
+We could change nfs4_async_handle_error() to take a struct
+nfs4_exception, just like nfs4_handle_exception() does; at some point we
+can use that to unify the two.
+Just store the timeout somewhere in the nfs4_closedata.
+
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
