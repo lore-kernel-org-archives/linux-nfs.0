@@ -1,171 +1,296 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from gw1.transmode.se ([195.58.98.146]:57621 "EHLO gw1.transmode.se"
+Received: from mx1.redhat.com ([209.132.183.28]:41717 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934427Ab3DOI3r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Apr 2013 04:29:47 -0400
-Received: from mail1.transmode.se (mail1.transmode.se [192.168.201.18])
-	by gw1.transmode.se (Postfix) with ESMTP id F08DF258020
-	for <linux-nfs@vger.kernel.org>; Mon, 15 Apr 2013 10:19:40 +0200 (CEST)
-To: linux-nfs@vger.kernel.org
-MIME-Version: 1.0
-Subject: NFS loop on 3.4.39
-From: Joakim Tjernlund <joakim.tjernlund@transmode.se>
-Message-ID: <OF6F031A84.8897519B-ONC1257B4E.002D1BA3-C1257B4E.002DBEFD@transmode.se>
-Date: Mon, 15 Apr 2013 10:19:40 +0200
-Content-Type: text/plain; charset="US-ASCII"
+	id S1757617Ab3DXUXK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Apr 2013 16:23:10 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 09/17] NFSv4: Introduce new label structure
+Date: Wed, 24 Apr 2013 16:17:55 -0400
+Message-Id: <1366834683-29075-10-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
+References: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I get som NFS loop which generates lots of (from tcpdump):
-9:48:43.156252 IP 192.168.201.44.nfs > 172.20.4.10.con: Flags [.], ack 
-8406616, win 32885, options [nop,nop,TS val 43795665 ecr 57419706], length 
-0
-09:48:43.156258 IP 192.168.201.44.nfs > 172.20.4.10.con: Flags [.], ack 
-8426888, win 32885, options [nop,nop,TS val 43795665 ecr 57419706], length 
-0
-09:48:43.156669 IP 192.168.201.44.nfs > 172.20.4.10.con: Flags [.], ack 
-8445712, win 32885, options [nop,nop,TS val 43795665 ecr 57419706], length 
-0
-09:48:43.156675 IP 192.168.201.44.nfs > 172.20.4.10.con: Flags [.], ack 
-8459880, win 32883, options [nop,nop,TS val 43795665 ecr 57419706], length 
-0
-09:48:43.156679 IP 192.168.201.44.nfs > 172.20.4.10.2889942938: reply ok 
-52 getattr ERROR: unk 10024
-09:48:43.156704 IP 172.20.4.10.2923497370 > 192.168.201.44.nfs: 2892 
-getattr fh 0,0/22
-09:48:43.156712 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8462776:8467120, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.156719 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8467120:8471464, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.156725 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8471464:8475808, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.156731 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8475808:8480152, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.156745 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8480152:8484496, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.156748 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8484496:8487392, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 2896
-09:48:43.156751 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8487392:8491736, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.156755 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8491736:8496080, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.156758 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8496080:8500424, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.156764 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8500424:8504768, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.156767 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8504768:8509112, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.156770 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8509112:8512008, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 2896
-09:48:43.156773 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8512008:8516352, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.156778 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8516352:8520696, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.156956 IP 192.168.201.44.nfs > 172.20.4.10.2906720154: reply ok 
-52 getattr ERROR: unk 10024
-09:48:43.156969 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8520696:8525040, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.156975 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8525040:8529384, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.156980 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8529384:8533728, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.156984 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8533728:8536624, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 2896
-09:48:43.156988 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8536624:8540968, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.156994 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8540968:8545312, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.156999 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8545312:8549656, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.157209 IP 192.168.201.44.nfs > 172.20.4.10.con: Flags [.], ack 
-8464224, win 32872, options [nop,nop,TS val 43795665 ecr 57419706], length 
-0
-09:48:43.157219 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8549656:8554000, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.157225 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8554000:8558344, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.157230 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [P.], seq 
-8558344:8558424, ack 9577, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 80
-09:48:43.157235 IP 172.20.4.10.2940274586 > 192.168.201.44.nfs: 532 
-getattr fh 0,0/22
-09:48:43.157460 IP 192.168.201.44.nfs > 172.20.4.10.con: Flags [.], ack 
-8485944, win 32885, options [nop,nop,TS val 43795665 ecr 57419706], length 
-0
-09:48:43.157709 IP 192.168.201.44.nfs > 172.20.4.10.con: Flags [.], ack 
-8504768, win 32885, options [nop,nop,TS val 43795665 ecr 57419706], length 
-0
-09:48:43.157715 IP 192.168.201.44.nfs > 172.20.4.10.con: Flags [.], ack 
-8526488, win 32885, options [nop,nop,TS val 43795665 ecr 57419706], length 
-0
-09:48:43.158126 IP 192.168.201.44.nfs > 172.20.4.10.con: Flags [.], ack 
-8543864, win 32885, options [nop,nop,TS val 43795665 ecr 57419706], length 
-0
-09:48:43.158133 IP 192.168.201.44.nfs > 172.20.4.10.con: Flags [.], ack 
-8558960, win 32883, options [nop,nop,TS val 43795665 ecr 57419706], length 
-0
-09:48:43.158138 IP 192.168.201.44.nfs > 172.20.4.10.2923497370: reply ok 
-52 getattr ERROR: unk 10024
-09:48:43.158143 IP 192.168.201.44.nfs > 172.20.4.10.2940274586: reply ok 
-52 getattr ERROR: unk 10024
-09:48:43.158149 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], ack 
-9745, win 23907, options [nop,nop,TS val 57419706 ecr 43795665], length 0
-09:48:43.158174 IP 172.20.4.10.2957051802 > 192.168.201.44.nfs: 2892 
-getattr fh 0,0/22
-09:48:43.158192 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8561856:8566200, ack 9745, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.158197 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8566200:8570544, ack 9745, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.158204 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8570544:8574888, ack 9745, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.158210 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8574888:8579232, ack 9745, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.158216 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8579232:8583576, ack 9745, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.158222 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8583576:8586472, ack 9745, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 2896
-09:48:43.158226 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8586472:8590816, ack 9745, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.158233 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8590816:8595160, ack 9745, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
-09:48:43.158239 IP 172.20.4.10.con > 192.168.201.44.nfs: Flags [.], seq 
-8595160:8599504, ack 9745, win 23907, options [nop,nop,TS val 57419706 ecr 
-43795665], length 4344
+From: David Quigley <dpquigl@davequigley.com>
 
-I wonder if this is a variant on:
-https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/commit/fs/nfs/nfs4proc.c?h=linux-3.6.y&id=9fa2b82e5592a7aa7a63b7f6a32c5aa9e580643a
+In order to mimic the way that NFSv4 ACLs are implemented we have created a
+structure to be used to pass label data up and down the call chain. This patch
+adds the new structure and new members to the required NFSv4 call structures.
 
-which does seem to be in the 3.4 stable branch?
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ fs/nfs/inode.c            | 28 ++++++++++++++++++++++++++++
+ include/linux/nfs4.h      |  7 +++++++
+ include/linux/nfs_fs.h    | 18 ++++++++++++++++++
+ include/linux/nfs_xdr.h   | 21 +++++++++++++++++++++
+ include/uapi/linux/nfs4.h |  2 +-
+ 5 files changed, 75 insertions(+), 1 deletion(-)
 
- Jocke
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 1f94167..c88255c 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -257,6 +257,34 @@ nfs_init_locked(struct inode *inode, void *opaque)
+ 	return 0;
+ }
+ 
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags)
++{
++	struct nfs4_label *label = NULL;
++	int minor_version = server->nfs_client->cl_minorversion;
++
++	if (minor_version < 2)
++		return label;
++
++	if (!(server->caps & NFS_CAP_SECURITY_LABEL))
++		return label;
++
++	label = kzalloc(sizeof(struct nfs4_label), flags);
++	if (label == NULL)
++		return ERR_PTR(-ENOMEM);
++
++	label->label = kzalloc(NFS4_MAXLABELLEN, flags);
++	if (label->label == NULL) {
++		kfree(label);
++		return ERR_PTR(-ENOMEM);
++	}
++	label->len = NFS4_MAXLABELLEN;
++
++	return label;
++}
++EXPORT_SYMBOL_GPL(nfs4_label_alloc);
++#endif
++
+ /*
+  * This is our front-end to iget that looks up inodes by file handle
+  * instead of inode number.
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 6f44cc1..4c61ef4 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -32,6 +32,13 @@ struct nfs4_acl {
+ 	struct nfs4_ace	aces[0];
+ };
+ 
++struct nfs4_label {
++	uint32_t	lfs;
++	uint32_t	pi;
++	u32		len;
++	char	*label;
++};
++
+ typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
+ 
+ struct nfs_stateid4 {
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 1cc2568..e0e1806 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -489,6 +489,24 @@ extern int nfs_mountpoint_expiry_timeout;
+ extern void nfs_release_automount_timer(void);
+ 
+ /*
++ * linux/fs/nfs/nfs4proc.c
++ */
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++extern struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags);
++static inline void nfs4_label_free(struct nfs4_label *label)
++{
++	if (label) {
++		kfree(label->label);
++		kfree(label);
++	}
++	return;
++}
++#else
++static inline struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags) { return NULL; }
++static inline void nfs4_label_free(void *label) {}
++#endif
++
++/*
+  * linux/fs/nfs/unlink.c
+  */
+ extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 9f2dba3..4d2fdf6 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -351,6 +351,7 @@ struct nfs_openargs {
+ 	const u32 *		bitmask;
+ 	const u32 *		open_bitmap;
+ 	__u32			claim;
++	const struct nfs4_label *label;
+ };
+ 
+ struct nfs_openres {
+@@ -360,6 +361,7 @@ struct nfs_openres {
+ 	struct nfs4_change_info	cinfo;
+ 	__u32                   rflags;
+ 	struct nfs_fattr *      f_attr;
++	struct nfs4_label	*f_label;
+ 	struct nfs_seqid *	seqid;
+ 	const struct nfs_server *server;
+ 	fmode_t			delegation_type;
+@@ -404,6 +406,7 @@ struct nfs_closeres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	nfs4_stateid            stateid;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ 	struct nfs_seqid *	seqid;
+ 	const struct nfs_server *server;
+ };
+@@ -477,6 +480,7 @@ struct nfs4_delegreturnargs {
+ struct nfs4_delegreturnres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs_fattr * fattr;
++	struct nfs4_label	*label;
+ 	const struct nfs_server *server;
+ };
+ 
+@@ -497,6 +501,7 @@ struct nfs_readargs {
+ struct nfs_readres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ 	__u32			count;
+ 	int                     eof;
+ };
+@@ -565,6 +570,7 @@ struct nfs_removeres {
+ 	struct nfs4_sequence_res 	seq_res;
+ 	const struct nfs_server *server;
+ 	struct nfs_fattr	*dir_attr;
++	struct nfs4_label	*dir_label;
+ 	struct nfs4_change_info	cinfo;
+ };
+ 
+@@ -577,6 +583,8 @@ struct nfs_renameargs {
+ 	const struct nfs_fh		*new_dir;
+ 	const struct qstr		*old_name;
+ 	const struct qstr		*new_name;
++	const struct nfs4_label		*old_label;
++	const struct nfs4_label		*new_label;
+ };
+ 
+ struct nfs_renameres {
+@@ -584,8 +592,10 @@ struct nfs_renameres {
+ 	const struct nfs_server		*server;
+ 	struct nfs4_change_info		old_cinfo;
+ 	struct nfs_fattr		*old_fattr;
++	struct nfs4_label		*old_label;
+ 	struct nfs4_change_info		new_cinfo;
+ 	struct nfs_fattr		*new_fattr;
++	struct nfs4_label		*new_label;
+ };
+ 
+ /*
+@@ -600,6 +610,7 @@ struct nfs_entry {
+ 	int			eof;
+ 	struct nfs_fh *		fh;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label  *label;
+ 	unsigned char		d_type;
+ 	struct nfs_server *	server;
+ };
+@@ -632,6 +643,7 @@ struct nfs_setattrargs {
+ 	struct iattr *                  iap;
+ 	const struct nfs_server *	server; /* Needed for name mapping */
+ 	const u32 *			bitmask;
++	const struct nfs4_label		*label;
+ };
+ 
+ struct nfs_setaclargs {
+@@ -667,6 +679,7 @@ struct nfs_getaclres {
+ struct nfs_setattrres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs_fattr *              fattr;
++	struct nfs4_label		*label;
+ 	const struct nfs_server *	server;
+ };
+ 
+@@ -712,6 +725,7 @@ struct nfs3_setaclargs {
+ struct nfs_diropok {
+ 	struct nfs_fh *		fh;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ };
+ 
+ struct nfs_readlinkargs {
+@@ -842,6 +856,7 @@ struct nfs4_accessres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	u32				supported;
+ 	u32				access;
+ };
+@@ -864,6 +879,7 @@ struct nfs4_create_arg {
+ 	const struct iattr *		attrs;
+ 	const struct nfs_fh *		dir_fh;
+ 	const u32 *			bitmask;
++	const struct nfs4_label		*label;
+ };
+ 
+ struct nfs4_create_res {
+@@ -871,6 +887,7 @@ struct nfs4_create_res {
+ 	const struct nfs_server *	server;
+ 	struct nfs_fh *			fh;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	struct nfs4_change_info		dir_cinfo;
+ };
+ 
+@@ -895,6 +912,7 @@ struct nfs4_getattr_res {
+ 	struct nfs4_sequence_res	seq_res;
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ };
+ 
+ struct nfs4_link_arg {
+@@ -909,8 +927,10 @@ struct nfs4_link_res {
+ 	struct nfs4_sequence_res	seq_res;
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	struct nfs4_change_info		cinfo;
+ 	struct nfs_fattr *		dir_attr;
++	struct nfs4_label		*dir_label;
+ };
+ 
+ 
+@@ -926,6 +946,7 @@ struct nfs4_lookup_res {
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
+ 	struct nfs_fh *			fh;
++	struct nfs4_label		*label;
+ };
+ 
+ struct nfs4_lookup_root_arg {
+diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
+index 788128e..78d25b5 100644
+--- a/include/uapi/linux/nfs4.h
++++ b/include/uapi/linux/nfs4.h
+@@ -25,7 +25,7 @@
+ #define NFS4_MAXNAMLEN		NAME_MAX
+ #define NFS4_OPAQUE_LIMIT	1024
+ #define NFS4_MAX_SESSIONID_LEN	16
+-
++#define NFS4_MAXLABELLEN	2048 
+ #define NFS4_ACCESS_READ        0x0001
+ #define NFS4_ACCESS_LOOKUP      0x0002
+ #define NFS4_ACCESS_MODIFY      0x0004
+-- 
+1.8.1.4
+
