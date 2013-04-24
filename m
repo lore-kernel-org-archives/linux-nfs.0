@@ -1,124 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from eu1sys200aog105.obsmtp.com ([207.126.144.119]:42755 "EHLO
-	eu1sys200aog105.obsmtp.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932192Ab3D3O2w convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Apr 2013 10:28:52 -0400
-From: Yan Burman <yanb@mellanox.com>
-To: Tom Talpey <tom@talpey.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Wendy Cheng <s.wendy.cheng@gmail.com>,
-        "Atchley, Scott" <atchleyes@ornl.gov>,
-        Tom Tucker <tom@opengridcomputing.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Or Gerlitz <ogerlitz@mellanox.com>
-Subject: RE: NFS over RDMA benchmark
-Date: Tue, 30 Apr 2013 14:23:13 +0000
-Message-ID: <0EE9A1CDC8D6434DB00095CD7DB873462CF9CBA7@MTLDAG01.mtl.com>
-References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com>
- <CABgxfbF7c9ktSoMSPV21JU76V5J4iwbJQ257S91Y3z36WJbJVA@mail.gmail.com>
- <62745258-4F3B-4C05-BFFD-03EA604576E4@ornl.gov>
- <CABgxfbGxhnKj2n0Z-w87rZ6fwCssO31G009gwej957gv1p8PQQ@mail.gmail.com>
- <0EE9A1CDC8D6434DB00095CD7DB873462CF9715B@MTLDAG01.mtl.com>
- <20130423210607.GJ3676@fieldses.org>
- <0EE9A1CDC8D6434DB00095CD7DB873462CF988C9@MTLDAG01.mtl.com>
- <20130424150540.GB20275@fieldses.org> <20130424152631.GC20275@fieldses.org>
- <0EE9A1CDC8D6434DB00095CD7DB873462CF9A820@MTLDAG01.mtl.com>
- <20130428144248.GA2037@fieldses.org>
- <0EE9A1CDC8D6434DB00095CD7DB873462CF9C90C@MTLDAG01.mtl.com>
- <517FC182.3030703@talpey.com>
-In-Reply-To: <517FC182.3030703@talpey.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from gw1.transmode.se ([195.58.98.146]:55015 "EHLO gw1.transmode.se"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755170Ab3DXNQa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Apr 2013 09:16:30 -0400
+In-Reply-To: <1366726687.35524.6.camel@leira.trondhjem.org>
+References: <OF6F031A84.8897519B-ONC1257B4E.002D1BA3-C1257B4E.002DBED0@LocalDomain>	 <OF64305930.0F7881A0-ONC1257B4E.0030250F-C1257B4E.00306CEC@LocalDomain>
+	 <OFA06D4153.317BAF9A-ONC1257B4F.002F597B-C1257B4F.003AC46C@transmode.se>
+	 <1366126613.12556.18.camel@leira.trondhjem.org>			 <OFB2555ACD.CF7424A9-ONC1257B4F.00613A5E-C1257B4F.006908CE@transmode.se>
+	 <1366150010.27817.8.camel@leira.trondhjem.org>		 <OF97D68E61.A3C35530-ONC1257B51.0043E567-C1257B51.00450958@LocalDomain>
+	 <OFF8AA22C1.D96F08FD-ONC1257B52.003B6FD9-C1257B52.003BEEF9@LocalDomain>
+	 <OFAB88709A.0F45CAFB-ONC1257B56.0049D3CA-C1257B56.004AE572@transmode.se>
+	 <1366725123.35524.2.camel@leira.trondhjem.org>	 <OF940BEB3A.13ADB6E5-ONC1257B56.004D412D-C1257B56.004E3C54@tran
+ <1366726687.35524.6.camel@leira.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 MIME-Version: 1.0
+Subject: Re: NFS loop on 3.4.39
+From: Joakim Tjernlund <joakim.tjernlund@transmode.se>
+Message-ID: <OFDF20F4D8.12606C1E-ONC1257B57.00486945-C1257B57.0048EAA3@transmode.se>
+Date: Wed, 24 Apr 2013 15:16:27 +0200
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-> -----Original Message-----
-> From: Tom Talpey [mailto:tom@talpey.com]
-> Sent: Tuesday, April 30, 2013 16:05
-> To: Yan Burman
-> Cc: J. Bruce Fields; Wendy Cheng; Atchley, Scott; Tom Tucker; linux-
-> rdma@vger.kernel.org; linux-nfs@vger.kernel.org; Or Gerlitz
-> Subject: Re: NFS over RDMA benchmark
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote on 2013/04/23 
+16:18:07:
 > 
-> On 4/30/2013 1:09 AM, Yan Burman wrote:
-> >
-> >
-> >> -----Original Message-----
-> >> From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> >> Sent: Sunday, April 28, 2013 17:43
-> >> To: Yan Burman
-> >> Cc: Wendy Cheng; Atchley, Scott; Tom Tucker;
-> >> linux-rdma@vger.kernel.org; linux-nfs@vger.kernel.org; Or Gerlitz
-> >> Subject: Re: NFS over RDMA benchmark
-> >>
-> >> On Sun, Apr 28, 2013 at 06:28:16AM +0000, Yan Burman wrote:
-> >>>>>>>>>>> On Wed, Apr 17, 2013 at 7:36 AM, Yan Burman
-> >>>>>>>>>>> <yanb@mellanox.com>
-> >>>>>>>>>>>> I've been trying to do some benchmarks for NFS over RDMA
-> >>>>>>>>>>>> and I seem to
-> >>>>>>>>> only get about half of the bandwidth that the HW can give me.
-> >>>>>>>>>>>> My setup consists of 2 servers each with 16 cores, 32Gb of
-> >>>>>>>>>>>> memory, and
-> >>>>>>>>> Mellanox ConnectX3 QDR card over PCI-e gen3.
-> >>>>>>>>>>>> These servers are connected to a QDR IB switch. The backing
-> >>>>>>>>>>>> storage on
-> >>>>>>>>> the server is tmpfs mounted with noatime.
-> >>>>>>>>>>>> I am running kernel 3.5.7.
-> >>>>>>>>>>>>
-> >>>>>>>>>>>> When running ib_send_bw, I get 4.3-4.5 GB/sec for block
-> >>>>>>>>>>>> sizes 4-
-> >>>> 512K.
-> >>>>>>>>>>>> When I run fio over rdma mounted nfs, I get 260-2200MB/sec
-> >>>>>>>>>>>> for the
-> >>>>>>>>> same block sizes (4-512K). running over IPoIB-CM, I get
-> >>>>>>>>> 200-
-> >>>> 980MB/sec.
-> >> ...
-> >>>>>>>> I am trying to get maximum performance from a single server
-> >>>>>>>> - I used 2
-> >>>>>>> processes in fio test - more than 2 did not show any performance
-> >> boost.
-> >>>>>>>> I tried running fio from 2 different PCs on 2 different files,
-> >>>>>>>> but the sum of
-> >>>>>>> the two is more or less the same as running from single client PC.
-> >>>>>>>>
-> >
-> > I finally got up to 4.1GB/sec bandwidth with RDMA (ipoib-CM bandwidth is
-> also way higher now).
-> > For some reason when I had intel IOMMU enabled, the performance
-> dropped significantly.
-> > I now get up to ~95K IOPS and 4.1GB/sec bandwidth.
+> On Tue, 2013-04-23 at 16:14 +0200, Joakim Tjernlund wrote:
+> > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote on 2013/04/23 
+> > 15:52:06:
+> > > 
+> > > On Tue, 2013-04-23 at 15:38 +0200, Joakim Tjernlund wrote:
+> > > > So, it happened again. Just when hitting search on bugs.gentoo.org 
+in 
+> > > > firefox 17.0.3
+> > > > 
+> > > > This time I got a NFS loop with NFS4ERR_BAD_STATEID looping over 
+and 
+> > over
+> > > > again and FF was hung. Not posting the logs as it does not appear 
+to
+> > > > do any good. Nothing in dmesg either.
+> > > > 
+> > > > Noticed this patch on the NFS list:
+> > > >   http://marc.info/?l=linux-nfs&m=136643651710066&w=2
+> > > > I wonder if that could be a potential cure and if so, could it be
+> > > > backported to 3.4?
+> > > 
+> > > It is in the testing branch on
+> > > 
+> > >   http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=summary
+> > > 
+> > > if you want to try it out. I'm not planning on backporting anything 
+that
+> > > hasn't been labelled with a Cc: stable in that branch.
+> > 
+> > Well, we won't use tip of linus tree in production so there is
+> > little point to use your testing branch. However it looks like a 
+trivial
+> > backport so I can test it on my client easily.
 > 
-> Excellent, but is that 95K IOPS a typo? At 4KB, that's less than 400MBps.
+> The point of testing would not be to discover if you can use Linus' tree
+> in production, but rather to see if the problem is already fixed
+> upstream. If it is, we can bisect to figure out which patch is the fix.
 > 
+> > Even the NFS server if required, is the above referenced patch for
+> > NFS client/server or both? Any chance this is the culprit?
+> 
+> That's a client patch.
 
-That is not a typo. I get 95K IOPS with randrw test with block size 4K.
-I get 4.1GBps with block size 256K randread test.
+Tried 3.4.41+above nfs patch and also 3.8.8, they both have the
+NFS loop problem.
 
-> What is the client CPU percentage you see under this workload, and how
-> different are the NFS/RDMA and NFS/IPoIB overheads?
+Now I am at your 
+http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=summary, testing 
+branch
+With any luck the error will show soon.
 
-NFS/RDMA has about more 20-30% CPU usage than NFS/IPoIB, but RDMA has almost twice the bandwidth of IPoIB.
-Overall, CPU usage gets up to about 20% for randread and 50% for randwrite.
+Question though the loop I see, could it be a NFS server bug ?
+If so it does matter what I do on my client I guess.
 
-> 
-> > Now I will take care of the issue that I am running only at 40Gbit/s instead
-> of 56Gbit/s, but that is another unrelated problem (I suspect I have a cable
-> issue).
-> >
-> > This is still strange, since ib_send_bw with intel iommu enabled did get up
-> to 4.5GB/sec, so why did intel iommu affect only nfs code?
-> 
-> You'll need to do more profiling to track that down. I would suspect that
-> ib_send_bw is using some sort of direct hardware access, bypassing the
-> IOMMU management and possibly performing no dynamic memory
-> registration.
-> 
-> The NFS/RDMA code goes via the standard kernel DMA API, and correctly
-> registers/deregisters memory on a per-i/o basis in order to provide storage
-> data integrity. Perhaps there are overheads in the IOMMU management
-> which can be addressed.
+  Jocke
