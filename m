@@ -1,95 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f181.google.com ([209.85.217.181]:50277 "EHLO
-	mail-lb0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1162136Ab3DEQyE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Apr 2013 12:54:04 -0400
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: linux-kernel@vger.kernel.org
-Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wine-devel@winehq.org
-Subject: [PATCH v4 0/7] Add O_DENY* support for VFS and CIFS/NFS
-Date: Fri,  5 Apr 2013 20:57:48 +0400
-Message-Id: <1365181075-22540-1-git-send-email-piastry@etersoft.ru>
+Received: from p3plsmtpa08-07.prod.phx3.secureserver.net ([173.201.193.108]:36860
+	"EHLO p3plsmtpa08-07.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932087Ab3DYUUZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2013 16:20:25 -0400
+Message-ID: <51798E97.1000200@talpey.com>
+Date: Thu, 25 Apr 2013 16:14:15 -0400
+From: Tom Talpey <tom@talpey.com>
+MIME-Version: 1.0
+To: Phil Pishioneri <pgp@psu.edu>
+CC: Wendy Cheng <s.wendy.cheng@gmail.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Yan Burman <yanb@mellanox.com>, "Atchley, Scott" <atchleyes@ornl.gov>,
+        Tom Tucker <tom@opengridcomputing.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Or Gerlitz <ogerlitz@mellanox.com>
+Subject: Re: NFS over RDMA benchmark
+References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com> <CABgxfbF7c9ktSoMSPV21JU76V5J4iwbJQ257S91Y3z36WJbJVA@mail.gmail.com> <62745258-4F3B-4C05-BFFD-03EA604576E4@ornl.gov> <CABgxfbGxhnKj2n0Z-w87rZ6fwCssO31G009gwej957gv1p8PQQ@mail.gmail.com> <0EE9A1CDC8D6434DB00095CD7DB873462CF9715B@MTLDAG01.mtl.com> <20130423210607.GJ3676@fieldses.org> <0EE9A1CDC8D6434DB00095CD7DB873462CF988C9@MTLDAG01.mtl.com> <20130424150540.GB20275@fieldses.org> <20130424152631.GC20275@fieldses.org> <CABgxfbHShU7aEttJ35vdAjXduPFFj8+E4=5LZqOgh4e=5bax5Q@mail.gmail.com> <CABgxfbHpNgQyEjd2OVNMgJoLpt_VyLiOL5hMCLwotMd5kincwg@mail.gmail.com> <517823E0.4000402@talpey.com> <CABgxfbHePAyq6AH9TFKZKUmwEHOupuYUnfc1W99HAuDkYddUqQ@mail.gmail.com> <51797D8D.1080302@psu.edu>
+In-Reply-To: <51797D8D.1080302@psu.edu>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Main changes from the previous one:
-1) O_DENYMAND is removed, sharelock mount option is introduced.
-2) Patch fcntl.h and VFS patches are united into one.
-3) flock/LOCK_MAND is disabled for sharelock mounts.
+On 4/25/2013 3:01 PM, Phil Pishioneri wrote:
+> On 4/25/13 1:18 PM, Wendy Cheng wrote:
+>> On Wed, Apr 24, 2013 at 11:26 AM, Tom Talpey <tom@talpey.com> wrote:
+>>> 1)
+>>>
+>>> The client slot count is not hard-coded, it can easily be changed by
+>>> writing a value to /proc and initiating a new mount. But I doubt that
+>>> increasing the slot table will improve performance much, unless this is
+>>> a small-random-read, and spindle-limited workload.
+>> It was a shot in the dark :)  .. as our test bed has not been setup
+>> yet .However, since I'll be working on (very) slow clients, increasing
+>> this buffer is still interesting (to me). I don't see where it is
+>> controlled by a /proc value (?) - but that is not a concern at this
+>> moment as /proc entry is easy to add. More questions on the server
+>> though (see below) ...
+>
+> Might there be confusion between the RDMA slot table and the TCP/UDP
+> ones (which have proc entries under /proc/sys/sunrpc)?
+>
 
-This patchset adds support of O_DENY* flags for Linux fs layer. These flags can be used by any application that needs share reservations to organize a file access. VFS already has some sort of this capability - now it's done through flock/LOCK_MAND mechanis, but that approach is non-atomic. This patchset build new capabilities on top of the existing one but doesn't bring any changes into the flock call semantic.
+No, the xprtrdma.ko creates similar slot table controls when it loads.
+See the names below, prefixed with "rdma":
 
-These flags can be used by NFS (built-in-kernel) and CIFS (Samba) servers and Wine applications through VFS (for local filesystems) or CIFS/NFS modules. This will help when e.g. Samba and NFS server share the same directory for Windows and Linux users or Wine applications use Samba/NFS share to access the same data from different clients.
+> tmt@Home:~$ ls /proc/sys/sunrpc
+> max_resvport  nfsd_debug  nlm_debug  tcp_fin_timeout             tcp_slot_table_entries  udp_slot_table_entries
+> min_resvport  nfs_debug   rpc_debug  tcp_max_slot_table_entries  transports
+> tmt@Home:~$ sudo insmod xprtrdma
+> tmt@Home:~$ ls /proc/sys/sunrpc
+> max_resvport  nlm_debug                  rdma_memreg_strategy     tcp_fin_timeout             udp_slot_table_entries
+> min_resvport  rdma_inline_write_padding  rdma_pad_optimize        tcp_max_slot_table_entries
+> nfsd_debug    rdma_max_inline_read       rdma_slot_table_entries  tcp_slot_table_entries
+> nfs_debug     rdma_max_inline_write      rpc_debug                transports
+> tmt@Home:~$
 
-According to the previous discussions the most problematic question is how to prevent situations like DoS attacks where e.g /lib/liba.so file can be open with DENYREAD, or smth like this. That's why extra mount option 'sharelock' is added for switching on/off O_DENY* flags processing. It allows us to avoid use of these flags on critical places (like /, /lib) and turn them on if we really want it proccessed that way.
-
-So, we have 3 new flags:
-O_DENYREAD - to prevent other opens with read access,
-O_DENYWRITE - to prevent other opens with write access,
-O_DENYDELETE - to prevent delete operations (this flag is not implemented in VFS and NFS part and only suitable for CIFS module),
-
-The patchset avoid data races problem on newely created files: open with O_CREAT can return the -ETXTBSY error for a successfully created file if this files was locked with a deny lock by another task. Also, it turns flock/LOCK_MAND capability off for mounts with 'sharelock' option. This let us not mix one share reservation approach with another.
-
-The #1 patch adds flags to fcntl and implements VFS part. The patches #3, #4, #5 are related to CIFS-specific changes, #6 and #7 describe NFS and NFSD parts.
-
-The preliminary patch for Samba that replaces the existing use of flock/LOCK_MAND mechanism with O_DENY* flags:
-http://git.etersoft.ru/people/piastry/packages/?p=samba.git;a=commitdiff;h=173070262b7f29134ad6b2e49a760017c11aec4a
-
-The future part of open man page patch:
-
------
-O_DENYREAD, O_DENYWRIYE, O_DENYDELETE - used to inforce a mandatory share reservation scheme of the file access. If these flag is passed, the open fails with -EBUSY in following cases:
-1) if O_DENYREAD flag is specified and there is another open with O_DENYMAND flag and READ access to the file;
-2) if O_DENYWRITE flag is specified and there is another open with O_DENYMAND flag and WRITE access to the file;
-3) if READ access is requested and there is another open with O_DENYMAND and O_DENYREAD flags;
-4) if WRITE access is requested and there is another open with O_DENYMAND and O_DENYWRITE flags.
-
-If O_DENYDELETE flag is specified and the open succeded, any further unlink operation will fail with -EBUSY untill this open is closed. Now this flag is processed by CIFS filesystems only.
-
-This mechanism is done through flocks. If O_DENY* flags are specified, flock syscall is processed after the open. The share modes are translated into flock according the following rules:
-1) !O_DENYREAD  -> LOCK_READ | LOCK_MAND
-2) !O_DENYWRITE -> LOCK_WRITE | LOCK_MAND
------
-
-Pavel Shilovsky (7):
-  fcntl: Introduce new O_DENY* open flags
-  CIFS: Add share_access parm to open request
-  CIFS: Add O_DENY* open flags support
-  CIFS: Use NT_CREATE_ANDX command for forcemand mounts
-  NFSv4: Add O_DENY* open flags support
-  NFSD: Pass share reservations flags to VFS
-  locks: Disable LOCK_MAND support for MS_SHARELOCK mounts
-
- fs/cifs/cifsacl.c                |   8 +--
- fs/cifs/cifsglob.h               |  18 ++++++-
- fs/cifs/cifsproto.h              |   8 +--
- fs/cifs/cifssmb.c                |  50 +++++++++---------
- fs/cifs/dir.c                    |  16 +++---
- fs/cifs/file.c                   |  20 +++++---
- fs/cifs/inode.c                  |  16 +++---
- fs/cifs/link.c                   |  25 +++------
- fs/cifs/readdir.c                |   5 +-
- fs/cifs/smb1ops.c                |  16 +++---
- fs/cifs/smb2file.c               |  10 ++--
- fs/cifs/smb2inode.c              |   4 +-
- fs/cifs/smb2ops.c                |  10 ++--
- fs/cifs/smb2pdu.c                |   6 +--
- fs/cifs/smb2proto.h              |  14 ++---
- fs/fcntl.c                       |   5 +-
- fs/locks.c                       | 108 ++++++++++++++++++++++++++++++++++++---
- fs/namei.c                       |  45 ++++++++++++++--
- fs/nfs/internal.h                |   3 +-
- fs/nfs/nfs4proc.c                |   2 +
- fs/nfs/nfs4xdr.c                 |  21 ++++++--
- fs/nfs/super.c                   |   3 +-
- fs/nfsd/nfs4state.c              |  46 ++++++++++++++++-
- fs/proc_namespace.c              |   1 +
- include/linux/fs.h               |   7 +++
- include/uapi/asm-generic/fcntl.h |  11 ++++
- include/uapi/linux/fs.h          |   1 +
- 27 files changed, 355 insertions(+), 124 deletions(-)
-
--- 
-1.8.1.5
 
