@@ -1,76 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35136 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:47834 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935119Ab3DITLT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Apr 2013 15:11:19 -0400
-Date: Tue, 9 Apr 2013 15:11:13 -0400
-To: Jose Castillo <jcastillo@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>, steved@redhat.com
-Subject: Re: [PATCH] Add the missing '$' in auth_unix_ip()
-Message-ID: <20130409191113.GC3800@fieldses.org>
-References: <1365522899-29123-1-git-send-email-jcastillo@redhat.com>
+	id S1755657Ab3DYN3K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Apr 2013 09:29:10 -0400
+Date: Thu, 25 Apr 2013 09:29:07 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: David Wysochanski <dwysocha@redhat.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Dave Chiluk <chiluk@canonical.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: Use exponential backoff delay for NFS4_ERRDELAY
+Message-ID: <20130425132907.GB31851@fieldses.org>
+References: <1366836949-18465-1-git-send-email-chiluk@canonical.com>
+ <1366838926.22397.25.camel@leira.trondhjem.org>
+ <5178549A.7010402@canonical.com>
+ <1366842905.22397.49.camel@leira.trondhjem.org>
+ <1366892374.26249.294.camel@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1365522899-29123-1-git-send-email-jcastillo@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <1366892374.26249.294.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Could you explain a little more?
+On Thu, Apr 25, 2013 at 08:19:34AM -0400, David Wysochanski wrote:
+> On Wed, 2013-04-24 at 22:35 +0000, Myklebust, Trond wrote:
+> > On Wed, 2013-04-24 at 16:54 -0500, Dave Chiluk wrote:
+> > > On 04/24/2013 04:28 PM, Myklebust, Trond wrote:
+> > > > On Wed, 2013-04-24 at 15:55 -0500, Dave Chiluk wrote:
+> > > >> Changing the retry to start at NFS4_POLL_RETRY_MIN and exponentially grow
+> > > >> to NFS4_POLL_RETRY_MAX allow for faster handling of these error conditions.
+> > > >>
+> > > >> Additionally this alleviates an interoperability problem with the AIX NFSv4
+> > > >> Server.  The AIX server frequently (2 out of 3) returns NFS4ERR_DELAY, on a
+> > > >> close when it happens in close proximity to a RELEASE_LOCKOWNER.  This would
+> > > >> cause a linux client to hang for 15 seconds.
+> > > > 
+> > > > Hi Dave,
+> > > > 
+> > > > The AIX server is not being motivated by any requirements in the NFSv4
+> > > > spec here, so I fail to see the reason why the behaviour that you
+> > > > describe can justify changing the client. It is not at all obvious to me
+> > > > that we should be retrying aggressively when NFSv4 servers return
+> > > > NFS4ERR_DELAY. What makes 1/10sec more correct in these situations than
+> > > > the exising 15 seconds?
+> > > 
+> > > I agree with you that AIX is at fault, and that the preferable situation
+> > > for the linux client would be for AIX to not return NFS4ERR_DELAY in
+> > > this use case.  I have attached a simple program that causes exacerbates
+> > > the problem on the AIX server.  I have already had a conference call
+> > > with AIX NFS development about this issue, where I vehemently tried to
+> > > convince them to fix their server.  Unfortunately as I don't have much
+> > > reputation in the NFS community, I was unable to convince them to do the
+> > > right thing.  I would be more than happy to set up another call, if
+> > > someone higher up in the linux NFS hierarchy would be willing to
+> > > participate.
+> > 
+> > I'd think that if they have customers that want to use Linux clients,
+> > then those customers are likely to have more influence. This is entirely
+> > a consequence of _their_ design decisions, quite frankly, since
+> > returning NFS4ERR_DELAY in the above situation is downright silly. The
+> > server designers _know_ that the RELEASE_LOCKOWNER will finish whatever
+> > it is doing fairly quickly; it's not as if the CLOSE wouldn't have to do
+> > the exact same state manipulations anyway...
+> > 
+> > > That being said, I think implementing an exponential backoff is an
+> > > improvement in the client regardless of what AIX is doing.  If a server
+> > > needs only 2 seconds to process a request for which NFS4ERR_DELAY was
+> > > returned, this algorithm would get the client back and running after
+> > > only 2.1 seconds of elapsed time.  Whereas the current dumb algorithm
+> > > would simply wait 15 seconds.  This is the reason that I implemented
+> > > this change.
+> > 
+> > Right, but my point above is that _in_general_ if we don't know why the
+> > server is returning NFS4ERR_DELAY, then how can we attach any retry
+> > numbers at all? HSM systems, for instance, have very different latencies
+> > than the above and were the reason for inventing NFS3ERR_JUKEBOX in the
+> > first place.
+> > 
+> 
+> Agreed we can't know why the server is returning NFS4ERR_DELAY so it's
+> hard to pick a retry number.  Can you explain the rationale for the
+> current 15 seconds delay?  Was it just for simplicity or something else?
 
-I assume this is something I forgot to do as part of
-c2544b77566690ebec32a2d47c9249548b1a0941 "mountd: prepend '$' to make
-use_ipaddr clients self-describing" but I haven't thought about that in
-a while....
+As I understand it the original idea was that cold data really could
+take multiple seconds or minutes to retrieve (because e.g. a tape
+library might need to go load the right tape and rewind to the right
+spot...).  Is that sort of system really used much these days?
+
+My position is that we simply have no idea what order of magnitude even
+delay should be.  And that in such a situation exponential backoff such
+as implemented in the synchronous case seems the reasonable default as
+it guarantees at worst doubling the delay while still bounding the
+long-term average frequency of retries.
 
 --b.
-
-On Tue, Apr 09, 2013 at 04:54:59PM +0100, Jose Castillo wrote:
-> Signed-off-by: Jose Castillo <jcastillo@redhat.com>
-> ---
->  utils/mountd/cache.c | 10 ++++++----
->  1 file changed, 6 insertions(+), 4 deletions(-)
-> 
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index 978698d..e1027f3 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -80,7 +80,7 @@ static void auth_unix_ip(FILE *f)
->  	 */
->  	char *cp;
->  	char class[20];
-> -	char ipaddr[INET6_ADDRSTRLEN];
-> +	char ipaddr[INET6_ADDRSTRLEN + 1];
->  	char *client = NULL;
->  	struct addrinfo *tmp = NULL;
->  	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
-> @@ -94,7 +94,7 @@ static void auth_unix_ip(FILE *f)
->  	    strcmp(class, "nfsd") != 0)
->  		return;
->  
-> -	if (qword_get(&cp, ipaddr, sizeof(ipaddr)) <= 0)
-> +	if (qword_get(&cp, ipaddr, sizeof(ipaddr) - 1) <= 0)
->  		return;
->  
->  	tmp = host_pton(ipaddr);
-> @@ -116,9 +116,11 @@ static void auth_unix_ip(FILE *f)
->  	qword_print(f, "nfsd");
->  	qword_print(f, ipaddr);
->  	qword_printtimefrom(f, DEFAULT_TTL);
-> -	if (use_ipaddr)
-> +	if (use_ipaddr) {
-> +		memmove(ipaddr + 1, ipaddr, strlen(ipaddr) + 1);
-> +		ipaddr[0] = '$';
->  		qword_print(f, ipaddr);
-> -	else if (client)
-> +	} else if (client)
->  		qword_print(f, *client?client:"DEFAULT");
->  	qword_eol(f);
->  	xlog(D_CALL, "auth_unix_ip: client %p '%s'", client, client?client: "DEFAULT");
-> -- 
-> 1.7.11.7
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
