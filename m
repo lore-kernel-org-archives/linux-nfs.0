@@ -1,10 +1,10 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f179.google.com ([209.85.210.179]:33625 "EHLO
-	mail-ia0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756056Ab3DXQ1t (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Apr 2013 12:27:49 -0400
+Received: from mail-ia0-f177.google.com ([209.85.210.177]:54476 "EHLO
+	mail-ia0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757807Ab3DYRSB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2013 13:18:01 -0400
 MIME-Version: 1.0
-In-Reply-To: <20130424152631.GC20275@fieldses.org>
+In-Reply-To: <517823E0.4000402@talpey.com>
 References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com>
 	<CABgxfbF7c9ktSoMSPV21JU76V5J4iwbJQ257S91Y3z36WJbJVA@mail.gmail.com>
 	<62745258-4F3B-4C05-BFFD-03EA604576E4@ornl.gov>
@@ -14,12 +14,16 @@ References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com>
 	<0EE9A1CDC8D6434DB00095CD7DB873462CF988C9@MTLDAG01.mtl.com>
 	<20130424150540.GB20275@fieldses.org>
 	<20130424152631.GC20275@fieldses.org>
-Date: Wed, 24 Apr 2013 09:27:48 -0700
-Message-ID: <CABgxfbHShU7aEttJ35vdAjXduPFFj8+E4=5LZqOgh4e=5bax5Q@mail.gmail.com>
+	<CABgxfbHShU7aEttJ35vdAjXduPFFj8+E4=5LZqOgh4e=5bax5Q@mail.gmail.com>
+	<CABgxfbHpNgQyEjd2OVNMgJoLpt_VyLiOL5hMCLwotMd5kincwg@mail.gmail.com>
+	<517823E0.4000402@talpey.com>
+Date: Thu, 25 Apr 2013 10:18:00 -0700
+Message-ID: <CABgxfbHePAyq6AH9TFKZKUmwEHOupuYUnfc1W99HAuDkYddUqQ@mail.gmail.com>
 Subject: Re: NFS over RDMA benchmark
 From: Wendy Cheng <s.wendy.cheng@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Yan Burman <yanb@mellanox.com>, "Atchley, Scott" <atchleyes@ornl.gov>,
+To: Tom Talpey <tom@talpey.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, Yan Burman <yanb@mellanox.com>,
+        "Atchley, Scott" <atchleyes@ornl.gov>,
         Tom Tucker <tom@opengridcomputing.com>,
         "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
@@ -28,108 +32,49 @@ Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 24, 2013 at 8:26 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Wed, Apr 24, 2013 at 11:05:40AM -0400, J. Bruce Fields wrote:
->> On Wed, Apr 24, 2013 at 12:35:03PM +0000, Yan Burman wrote:
->> >
->> >
->> >
->> > Perf top for the CPU with high tasklet count gives:
->> >
->> >              samples  pcnt         RIP        function                    DSO
->> >              _______ _____ ________________ ___________________________ ___________________________________________________________________
->> >
->> >              2787.00 24.1% ffffffff81062a00 mutex_spin_on_owner         /root/vmlinux
+On Wed, Apr 24, 2013 at 11:26 AM, Tom Talpey <tom@talpey.com> wrote:
+>> On Wed, Apr 24, 2013 at 9:27 AM, Wendy Cheng <s.wendy.cheng@gmail.com>
+>> wrote:
+>>>
+>> So I did a quick read on sunrpc/xprtrdma source (based on OFA 1.5.4.1
+>> tar ball) ... Here is a random thought (not related to the rb tree
+>> comment).....
 >>
->> I guess that means lots of contention on some mutex?  If only we knew
->> which one.... perf should also be able to collect stack statistics, I
->> forget how.
+>> The inflight packet count seems to be controlled by
+>> xprt_rdma_slot_table_entries that is currently hard-coded as
+>> RPCRDMA_DEF_SLOT_TABLE (32) (?).  I'm wondering whether it could help
+>> with the bandwidth number if we pump it up, say 64 instead ? Not sure
+>> whether FMR pool size needs to get adjusted accordingly though.
 >
-> Googling around....  I think we want:
+> 1)
 >
->         perf record -a --call-graph
->         (give it a chance to collect some samples, then ^C)
->         perf report --call-graph --stdio
+> The client slot count is not hard-coded, it can easily be changed by
+> writing a value to /proc and initiating a new mount. But I doubt that
+> increasing the slot table will improve performance much, unless this is
+> a small-random-read, and spindle-limited workload.
+
+Hi Tom !
+
+It was a shot in the dark :)  .. as our test bed has not been setup
+yet .However, since I'll be working on (very) slow clients, increasing
+this buffer is still interesting (to me). I don't see where it is
+controlled by a /proc value (?) - but that is not a concern at this
+moment as /proc entry is easy to add. More questions on the server
+though (see below) ...
+
+>
+> 2)
+>
+> The observation appears to be that the bandwidth is server CPU limited.
+> Increasing the load offered by the client probably won't move the needle,
+> until that's addressed.
 >
 
-I have not looked at NFS RDMA (and 3.x kernel) source yet. But see
-that "rb_prev" up in the #7 spot ? Do we have Red Black tree somewhere
-in the paths ? Trees like that requires extensive lockings.
+Could you give more hints on which part of the path is CPU limited ?
+Is there a known Linux-based filesystem that is reasonbly tuned for
+NFS-RDMA ? Any specific filesystem features would work well with
+NFS-RDMA ? I'm wondering when disk+FS are added into the
+configuration, how much advantages would NFS-RDMA get when compared
+with a plain TCP/IP, say IPOIB on CM , transport ?
 
 -- Wendy
-
-.
->>
->> >               978.00  8.4% ffffffff810297f0 clflush_cache_range         /root/vmlinux
->> >               445.00  3.8% ffffffff812ea440 __domain_mapping            /root/vmlinux
->> >               441.00  3.8% 0000000000018c30 svc_recv                    /lib/modules/3.5.7-dbg/kernel/net/sunrpc/sunrpc.ko
->> >               344.00  3.0% ffffffff813a1bc0 _raw_spin_lock_bh           /root/vmlinux
->> >               333.00  2.9% ffffffff813a19e0 _raw_spin_lock_irqsave      /root/vmlinux
->> >               288.00  2.5% ffffffff813a07d0 __schedule                  /root/vmlinux
->> >               249.00  2.1% ffffffff811a87e0 rb_prev                     /root/vmlinux
->> >               242.00  2.1% ffffffff813a19b0 _raw_spin_lock              /root/vmlinux
->> >               184.00  1.6% 0000000000002e90 svc_rdma_sendto             /lib/modules/3.5.7-dbg/kernel/net/sunrpc/xprtrdma/svcrdma.ko
->> >               177.00  1.5% ffffffff810ac820 get_page_from_freelist      /root/vmlinux
->> >               174.00  1.5% ffffffff812e6da0 alloc_iova                  /root/vmlinux
->> >               165.00  1.4% ffffffff810b1390 put_page                    /root/vmlinux
->> >               148.00  1.3% 0000000000014760 sunrpc_cache_lookup         /lib/modules/3.5.7-dbg/kernel/net/sunrpc/sunrpc.ko
->> >               128.00  1.1% 0000000000017f20 svc_xprt_enqueue            /lib/modules/3.5.7-dbg/kernel/net/sunrpc/sunrpc.ko
->> >               126.00  1.1% ffffffff8139f820 __mutex_lock_slowpath       /root/vmlinux
->> >               108.00  0.9% ffffffff811a81d0 rb_insert_color             /root/vmlinux
->> >               107.00  0.9% 0000000000004690 svc_rdma_recvfrom           /lib/modules/3.5.7-dbg/kernel/net/sunrpc/xprtrdma/svcrdma.ko
->> >               102.00  0.9% 0000000000002640 send_reply                  /lib/modules/3.5.7-dbg/kernel/net/sunrpc/xprtrdma/svcrdma.ko
->> >                99.00  0.9% ffffffff810e6490 kmem_cache_alloc            /root/vmlinux
->> >                96.00  0.8% ffffffff810e5840 __slab_alloc                /root/vmlinux
->> >                91.00  0.8% 0000000000006d30 mlx4_ib_post_send           /lib/modules/3.5.7-dbg/kernel/drivers/infiniband/hw/mlx4/mlx4_ib.ko
->> >                88.00  0.8% 0000000000000dd0 svc_rdma_get_context        /lib/modules/3.5.7-dbg/kernel/net/sunrpc/xprtrdma/svcrdma.ko
->> >                86.00  0.7% ffffffff813a1a10 _raw_spin_lock_irq          /root/vmlinux
->> >                86.00  0.7% 0000000000001530 svc_rdma_send               /lib/modules/3.5.7-dbg/kernel/net/sunrpc/xprtrdma/svcrdma.ko
->> >                85.00  0.7% ffffffff81060a80 prepare_creds               /root/vmlinux
->> >                83.00  0.7% ffffffff810a5790 find_get_pages_contig       /root/vmlinux
->> >                79.00  0.7% ffffffff810e4620 __slab_free                 /root/vmlinux
->> >                79.00  0.7% ffffffff813a1a40 _raw_spin_unlock_irqrestore /root/vmlinux
->> >                77.00  0.7% ffffffff81065610 finish_task_switch          /root/vmlinux
->> >                76.00  0.7% ffffffff812e9270 pfn_to_dma_pte              /root/vmlinux
->> >                75.00  0.6% ffffffff810976d0 __call_rcu                  /root/vmlinux
->> >                73.00  0.6% ffffffff811a2fa0 _atomic_dec_and_lock        /root/vmlinux
->> >                73.00  0.6% 00000000000002e0 svc_rdma_has_wspace         /lib/modules/3.5.7-dbg/kernel/net/sunrpc/xprtrdma/svcrdma.ko
->> >                67.00  0.6% ffffffff813a1a70 _raw_read_lock              /root/vmlinux
->> >                65.00  0.6% 000000000000f590 svcauth_unix_set_client     /lib/modules/3.5.7-dbg/kernel/net/sunrpc/sunrpc.ko
->> >                63.00  0.5% 00000000000180e0 svc_reserve                 /lib/modules/3.5.7-dbg/kernel/net/sunrpc/sunrpc.ko
->> >                60.00  0.5% 00000000000064d0 stamp_send_wqe              /lib/modules/3.5.7-dbg/kernel/drivers/infiniband/hw/mlx4/mlx4_ib.ko
->> >                57.00  0.5% ffffffff810ac110 free_hot_cold_page          /root/vmlinux
->> >                57.00  0.5% ffffffff811ae540 memcpy                      /root/vmlinux
->> >                56.00  0.5% ffffffff810ad1a0 __alloc_pages_nodemask      /root/vmlinux
->> >                55.00  0.5% ffffffff81118200 splice_to_pipe              /root/vmlinux
->> >                53.00  0.5% ffffffff810e3bc0 get_partial_node            /root/vmlinux
->> >                49.00  0.4% ffffffff812eb840 __intel_map_single          /root/vmlinux
->> >
->> >
->> > > --b.
->> > >
->> > > >                     CPU0       CPU1       CPU2       CPU3       CPU4       CPU5       CPU6
->> > > CPU7       CPU8       CPU9       CPU10      CPU11      CPU12      CPU13      CPU14
->> > > CPU15
->> > > >           HI:          0          0          0          0          0          0          0          0          0
->> > > 0          0          0          0          0          0          0
->> > > >        TIMER:     418767      46596      43515      44547      50099      34815
->> > > 40634      40337      39551      93442      73733      42631      42509      41592
->> > > 40351      61793
->> > > >       NET_TX:      28719        309       1421       1294       1730       1243        832
->> > > 937         11         44         41         20         26         19         15         29
->> > > >       NET_RX:     612070         19         22         21          6        235          3          2
->> > > 9          6         17         16         20         13         16         10
->> > > >        BLOCK:       5941          0          0          0          0          0          0          0
->> > > 519        259       1238        272        253        174        215       2618
->> > > > BLOCK_IOPOLL:          0          0          0          0          0          0          0          0
->> > > 0          0          0          0          0          0          0          0
->> > > >      TASKLET:         28          1          1          1          1    1540653          1          1
->> > > 29          1          1          1          1          1          1          2
->> > > >        SCHED:     364965      26547      16807      18403      22919       8678
->> > > 14358      14091      16981      64903      47141      18517      19179      18036
->> > > 17037      38261
->> > > >      HRTIMER:         13          0          1          1          0          0          0          0
->> > > 0          0          0          0          1          1          0          1
->> > > >          RCU:     945823     841546     715281     892762     823564      42663
->> > > 863063     841622     333577     389013     393501     239103     221524     258159
->> > > 313426     234030
