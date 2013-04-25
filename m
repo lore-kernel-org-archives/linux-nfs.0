@@ -1,50 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:19309 "EHLO mx12.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:3991 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932992Ab3DJQ34 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Apr 2013 12:29:56 -0400
+	id S1757064Ab3DYM74 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2013 08:59:56 -0400
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Simo Sorce <simo@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Steve Dickson <steved@redhat.com>,
-        =?iso-8859-1?Q?G=FCnther_Deschner?= <gdeschner@redhat.com>
-Subject: Re: [PATCH] Allow GSSAPI to try to acquire credentials first.
-Date: Wed, 10 Apr 2013 16:29:45 +0000
-Message-ID: <1365611394.8465.11.camel@leira.trondhjem.org>
-References: <1365605450-3009-1-git-send-email-simo@redhat.com>
-	 <1365606394.3499.3.camel@leira.trondhjem.org>
-	 <1365610175.20560.71.camel@willson.li.ssimo.org>
-In-Reply-To: <1365610175.20560.71.camel@willson.li.ssimo.org>
+To: Jiri Horky <jiri.horky@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+Subject: Re: Kerberos security flavors not tried in SETCLIENTID_CONFIRM
+ client requests
+Date: Thu, 25 Apr 2013 12:59:54 +0000
+Message-ID: <1366894793.4719.4.camel@leira.trondhjem.org>
+References: <517923D2.2000002@gmail.com>
+In-Reply-To: <517923D2.2000002@gmail.com>
 Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-04-10 at 12:09 -0400, Simo Sorce wrote:
-> On Wed, 2013-04-10 at 15:06 +0000, Myklebust, Trond wrote:
-> > On Wed, 2013-04-10 at 10:50 -0400, Simo Sorce wrote:
-> > 
-> > > This way all applications that need access to krb5 protected shares do not need
-> > > to be taught how to initiate crdentials on their own, nor they need to be
-> > > wrapped in additional init scripts like k5start or use wasteful cronjobs to
-> > > keep credentials fresh. All is needed is to drop a keytab with the right keys
-> > > in a special location on the system and gss-proxy will do the rest.
-> > 
-> > Can you explain further? Will this for instance work with Active
-> > Directory servers as well as MIT and Heimdal?
+On Thu, 2013-04-25 at 14:38 +0200, Jiri Horky wrote:
+> Hello all,
 > 
-> GSS-Proxy on the client works only with MIT 1.11 as explained, but the
-> patch itself does not depend on GSS-Proxy so it is safe from rpc.gssd to
-> include it.
+> (everything described below is from a client with 3.6.11-gentoo kernel).
+> 
+> When I mount a filesystem that is exported as follows:
+> 
+> /exports 
+> *(sec=krb5:krb5i:krb5p,rw,fsid=0,sync,no_subtree_check,no_root_squash,insecure,crossmnt)
+> 
+> without specifiying a security flavour on client, the mount will work. 
+>  From the tcpdump I can tell that the client tries AUTH_UNIX and 
+> AUTH_NULL flavours before succeeding with RPCSES_GSS. When I do a "ls" 
+> command in the mounted directory it works fine as well - this time 
+> clients uses RPCSES_GSS authentication right away.
+> 
+> The problems comes with "cat" command on a file, when the client calls 
+> SETCLIENID with AUTH_UNIX credentials and AUTH_NULL verifier, which 
+> successes but then call SETCLIENTID_CONFIRM again with just 
+> AUTH_UNIX/AUTH_NULL which results in NFS4ERR_WRONGSEC. The client tries 
+> to all the SETCLIENTID_CONFIRM multiple times, but it does not try 
+> Kerberos authentication. The WRONGSEC error is then propagated as EIO to 
+> the application.
+> 
+> I noticed patches from Chuck Level on 03/16/2013 which fix problems with 
+> security flavours handling but I am not sure whether they are supposed 
+> to fix thix particular problem as well. It would take me considerable 
+> amount of time to test it so I would appreciate if you could comment on 
+> that.
 
-OK.
-
-> GSS-Proxy doesn't really care what it the Kerberos infrastructure is
-> used on the KDC, so it will work with any KDC, be it MIT, Heimdal or
-> Active Directory.
-
-So what kind of privileges do the keys in this keytab need in order to
-allow gss-proxy to perform automatic renewal of gss sessions?
+That's not a client problem. You have a buggy server: NFS4ERR_WRONGSEC
+is not listed as a valid error for SETCLIENTID or for
+SETCLIENTID_CONFIRM in either RFC3530 or RFC3530bis.
 
 -- 
 Trond Myklebust
