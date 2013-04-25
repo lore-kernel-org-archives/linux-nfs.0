@@ -1,40 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:49824 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752220Ab3DJGFe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 10 Apr 2013 02:05:34 -0400
-Message-ID: <5163AFED.5060902@cn.fujitsu.com>
-Date: Tue, 09 Apr 2013 14:06:37 +0800
-From: fanchaoting <fanchaoting@cn.fujitsu.com>
+Received: from fieldses.org ([174.143.236.118]:52548 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932257Ab3DYNtY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Apr 2013 09:49:24 -0400
+Date: Thu, 25 Apr 2013 09:49:18 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: David Wysochanski <dwysocha@redhat.com>,
+        Dave Chiluk <chiluk@canonical.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: Use exponential backoff delay for NFS4_ERRDELAY
+Message-ID: <20130425134918.GC31851@fieldses.org>
+References: <1366836949-18465-1-git-send-email-chiluk@canonical.com>
+ <1366838926.22397.25.camel@leira.trondhjem.org>
+ <5178549A.7010402@canonical.com>
+ <1366842905.22397.49.camel@leira.trondhjem.org>
+ <1366892374.26249.294.camel@localhost.localdomain>
+ <20130425132907.GB31851@fieldses.org>
+ <1366896654.4719.18.camel@leira.trondhjem.org>
 MIME-Version: 1.0
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH] nfsd: remove some useless code
-Content-Type: text/plain; charset=ISO-2022-JP
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1366896654.4719.18.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-the "list_empty(&oo->oo_owner.so_stateids)" is aways true ,
-so we remove it.
+On Thu, Apr 25, 2013 at 01:30:58PM +0000, Myklebust, Trond wrote:
+> On Thu, 2013-04-25 at 09:29 -0400, bfields@fieldses.org wrote:
+> 
+> > My position is that we simply have no idea what order of magnitude even
+> > delay should be.  And that in such a situation exponential backoff such
+> > as implemented in the synchronous case seems the reasonable default as
+> > it guarantees at worst doubling the delay while still bounding the
+> > long-term average frequency of retries.
+> 
+> So we start with a 15 second delay, and then go to 60 seconds?
 
- Signed-off-by: fanchaoting <fanchaoting@cn.fujitsu.com>
----
- fs/nfsd/nfs4state.c |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
+I agree that a server should normally be doing the wait on its own if
+the wait would be on the order of an rpc round trip.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2e27430..e9f1d37 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3830,8 +3830,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 			 * In the 4.0 case we need to keep the owners around a
- 			 * little while to handle CLOSE replay.
- 			 */
--			if (list_empty(&oo->oo_owner.so_stateids))
--				move_to_close_lru(oo, SVC_NET(rqstp));
-+			move_to_close_lru(oo, SVC_NET(rqstp));
- 		}
- 	}
- out:
--- 
-1.7.1
+So I'd be inclined to start with a delay that was an order of magnitude
+or two more than a round trip.
+
+And I'd expect NFS isn't common on networks with 1-second latencies.
+
+So the 1/10 second we're using in the synchronous case sounds closer to
+the right ballpark to me.
+
+--b.
