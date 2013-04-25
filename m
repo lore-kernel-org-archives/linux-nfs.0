@@ -1,60 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:32967 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:20791 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758698Ab3DCSgT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Apr 2013 14:36:19 -0400
-Date: Wed, 3 Apr 2013 14:36:12 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Bodo Stroesser <bstroesser@ts.fujitsu.com>
-Cc: neilb@suse.de, linux-nfs@vger.kernel.org
-Subject: Re: sunrpc/cache.c: races while updating cache entries
-Message-ID: <20130403183612.GD6044@fieldses.org>
-References: <61eb00$3hon1j@dgate20u.abg.fsc.net>
+	id S1757277Ab3DYOKi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2013 10:10:38 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: David Wysochanski <dwysocha@redhat.com>,
+        Dave Chiluk <chiluk@canonical.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: Use exponential backoff delay for NFS4_ERRDELAY
+Date: Thu, 25 Apr 2013 14:10:36 +0000
+Message-ID: <1366899034.6812.4.camel@leira.trondhjem.org>
+References: <1366836949-18465-1-git-send-email-chiluk@canonical.com>
+	 <1366838926.22397.25.camel@leira.trondhjem.org>
+	 <5178549A.7010402@canonical.com>
+	 <1366842905.22397.49.camel@leira.trondhjem.org>
+	 <1366892374.26249.294.camel@localhost.localdomain>
+	 <20130425132907.GB31851@fieldses.org>
+	 <1366896654.4719.18.camel@leira.trondhjem.org>
+	 <20130425134918.GC31851@fieldses.org>
+In-Reply-To: <20130425134918.GC31851@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <61eb00$3hon1j@dgate20u.abg.fsc.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 21, 2013 at 05:41:35PM +0100, Bodo Stroesser wrote:
-> On 21 Mar 2013 00:34:00 +0100 NeilBrown <neilb@suse.de> wrote:
-> > This applies only to SLES11-SP1 (2.6.32+) right?
-> > In mainline the request won't be dropped because the cache item isn't assumed
-> > to still be valid.
-> 
-> I agree, there will be no drop in mainline.
-> 
-> But in mainline there will be a useless upcall. That upcall might even be
-> processed by the reader, if cache_clean isn't faster then the reader.
-> The answer from the reader will again replace the current cache entry
-> (which is just a few microseconds old) by a new one. The new one must be
-> allocated, the replaced one must later be cleaned. The single item cache
-> is invalidated again.
-> 
-> In worst case, the unnecessary replacement also could trigger the next
-> round of the game ...
-> 
-> So in my opinion it would be better to add the patch you suggested below
-> to mainline also.
-> 
+On Thu, 2013-04-25 at 09:49 -0400, bfields@fieldses.org wrote:
+> On Thu, Apr 25, 2013 at 01:30:58PM +0000, Myklebust, Trond wrote:
+> > On Thu, 2013-04-25 at 09:29 -0400, bfields@fieldses.org wrote:
 > > 
-> > So we need to make sure that sunrpc_cache_pipe_upcall doesn't make an upcall
-> > on a cache item that has been replaced.  I'd rather not use the CACHE_CLEAN
-> > bit (whether renamed or not) as it has a well defined meaning "has been
-> > removed from cache" and I'd rather not blur that meaning.
-> > We already have a state that means "this has been replace"- ->expiry_time is
-> > 0.
-> > So how about adding
-> >    if (h->expiry_time == 0)
-> >          return -EAGAIN;
-> > to sunrpc_cache_pipe_upcall() in SLES11-SP1.
+> > > My position is that we simply have no idea what order of magnitude even
+> > > delay should be.  And that in such a situation exponential backoff such
+> > > as implemented in the synchronous case seems the reasonable default as
+> > > it guarantees at worst doubling the delay while still bounding the
+> > > long-term average frequency of retries.
 > > 
-> > Does that work for you?
+> > So we start with a 15 second delay, and then go to 60 seconds?
 > 
-> Yes, that looks good. My test with this fix is running successfully
-> since 5 hours. I'll let it run until Monday.
+> I agree that a server should normally be doing the wait on its own if
+> the wait would be on the order of an rpc round trip.
+> 
+> So I'd be inclined to start with a delay that was an order of magnitude
+> or two more than a round trip.
+> 
+> And I'd expect NFS isn't common on networks with 1-second latencies.
+> 
+> So the 1/10 second we're using in the synchronous case sounds closer to
+> the right ballpark to me.
 
-Apologies, I've completely lost track of this thread: do we know what
-mainline needs now?
+OK, then. Now all I need is actual motivation for changing the existing
+code other than handwaving arguments about "polling is better than flat
+waits".
+What actual use cases are impacting us now, other than the AIX design
+decision to force CLOSE to retry at least once before succeeding?
 
---b.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
