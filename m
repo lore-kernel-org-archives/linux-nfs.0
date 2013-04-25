@@ -1,59 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51611 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:16023 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1161557Ab3DEOIJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Apr 2013 10:08:09 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/4] nfsd4: minor cb_recall simplification
-Date: Fri,  5 Apr 2013 10:08:03 -0400
-Message-Id: <1365170886-2267-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1365170886-2267-1-git-send-email-bfields@redhat.com>
-References: <1365170886-2267-1-git-send-email-bfields@redhat.com>
+	id S1755921Ab3DYPmx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Apr 2013 11:42:53 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Matt W. Benjamin" <matt@linuxbox.com>
+CC: David Wysochanski <dwysocha@redhat.com>,
+        Dave Chiluk <chiluk@canonical.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>
+Subject: RE: [PATCH] NFSv4: Use exponential backoff delay for Ni
+Date: Thu, 25 Apr 2013 15:42:50 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9287414AA@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1366899034.6812.4.camel@leira.trondhjem.org>
+ <916743278.65.1366903701195.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <916743278.65.1366903701195.JavaMail.root@thunderbeast.private.linuxbox.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4callback.c | 8 +++-----
- 1 file changed, 3 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 99bc85f..be3ff0f 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -817,8 +817,7 @@ static bool nfsd41_cb_get_slot(struct nfs4_client *clp, struct rpc_task *task)
- static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
- {
- 	struct nfsd4_callback *cb = calldata;
--	struct nfs4_delegation *dp = container_of(cb, struct nfs4_delegation, dl_recall);
--	struct nfs4_client *clp = dp->dl_stid.sc_client;
-+	struct nfs4_client *clp = cb->cb_clp;
- 	u32 minorversion = clp->cl_minorversion;
- 
- 	cb->cb_minorversion = minorversion;
-@@ -839,8 +838,7 @@ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
- static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
- {
- 	struct nfsd4_callback *cb = calldata;
--	struct nfs4_delegation *dp = container_of(cb, struct nfs4_delegation, dl_recall);
--	struct nfs4_client *clp = dp->dl_stid.sc_client;
-+	struct nfs4_client *clp = cb->cb_clp;
- 
- 	dprintk("%s: minorversion=%d\n", __func__,
- 		clp->cl_minorversion);
-@@ -863,7 +861,7 @@ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
- {
- 	struct nfsd4_callback *cb = calldata;
- 	struct nfs4_delegation *dp = container_of(cb, struct nfs4_delegation, dl_recall);
--	struct nfs4_client *clp = dp->dl_stid.sc_client;
-+	struct nfs4_client *clp = cb->cb_clp;
- 	struct rpc_clnt *current_rpc_client = clp->cl_cb_client;
- 
- 	nfsd4_cb_done(task, calldata);
--- 
-1.7.11.7
-
+SXQncyBsZWdhbCwgYnV0IGR1bWIuLi4NCg0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0K
+PiBGcm9tOiBNYXR0IFcuIEJlbmphbWluIFttYWlsdG86bWF0dEBsaW51eGJveC5jb21dDQo+IFNl
+bnQ6IFRodXJzZGF5LCBBcHJpbCAyNSwgMjAxMyAxMToyOCBBTQ0KPiBUbzogTXlrbGVidXN0LCBU
+cm9uZA0KPiBDYzogRGF2aWQgV3lzb2NoYW5za2k7IERhdmUgQ2hpbHVrOyBsaW51eC1uZnNAdmdl
+ci5rZXJuZWwub3JnOyBsaW51eC0NCj4ga2VybmVsQHZnZXIua2VybmVsLm9yZzsgYmZpZWxkc0Bm
+aWVsZHNlcy5vcmcNCj4gU3ViamVjdDogUmU6IFtQQVRDSF0gTkZTdjQ6IFVzZSBleHBvbmVudGlh
+bCBiYWNrb2ZmIGRlbGF5IGZvciBOaQ0KPiANCj4gSGksDQo+IA0KPiBKdXN0IHRvIGNsYXJpZnks
+IHRoZSBJQk0gZGVsYXkgYmVoYXZpb3IgaXMgbm90IGxlZ2FsPw0KPiANCj4gTWF0dA0KPiANCj4g
+LS0tLS0gIlRyb25kIE15a2xlYnVzdCIgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90
+ZToNCj4gDQo+ID4NCj4gPiBPSywgdGhlbi4gTm93IGFsbCBJIG5lZWQgaXMgYWN0dWFsIG1vdGl2
+YXRpb24gZm9yIGNoYW5naW5nIHRoZQ0KPiA+IGV4aXN0aW5nIGNvZGUgb3RoZXIgdGhhbiBoYW5k
+d2F2aW5nIGFyZ3VtZW50cyBhYm91dCAicG9sbGluZyBpcyBiZXR0ZXINCj4gPiB0aGFuIGZsYXQg
+d2FpdHMiLg0KPiA+IFdoYXQgYWN0dWFsIHVzZSBjYXNlcyBhcmUgaW1wYWN0aW5nIHVzIG5vdywg
+b3RoZXIgdGhhbiB0aGUgQUlYIGRlc2lnbg0KPiA+IGRlY2lzaW9uIHRvIGZvcmNlIENMT1NFIHRv
+IHJldHJ5IGF0IGxlYXN0IG9uY2UgYmVmb3JlIHN1Y2NlZWRpbmc/DQo+ID4NCj4gDQo+IA0KPiAt
+LQ0KPiBNYXR0IEJlbmphbWluDQo+IFRoZSBMaW51eCBCb3gNCj4gMjA2IFNvdXRoIEZpZnRoIEF2
+ZS4gU3VpdGUgMTUwDQo+IEFubiBBcmJvciwgTUkgIDQ4MTA0DQo+IA0KPiBodHRwOi8vbGludXhi
+b3guY29tDQo+IA0KPiB0ZWwuICA3MzQtNzYxLTQ2ODkNCj4gZmF4LiAgNzM0LTc2OS04OTM4DQo+
+IGNlbC4gIDczNC0yMTYtNTMwOQ0K
