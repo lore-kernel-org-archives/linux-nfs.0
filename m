@@ -1,88 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from p3plsmtpa06-10.prod.phx3.secureserver.net ([173.201.192.111]:44850
-	"EHLO p3plsmtpa06-10.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1760558Ab3D3NFF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Apr 2013 09:05:05 -0400
-Message-ID: <517FC182.3030703@talpey.com>
-Date: Tue, 30 Apr 2013 09:05:06 -0400
-From: Tom Talpey <tom@talpey.com>
-MIME-Version: 1.0
-To: Yan Burman <yanb@mellanox.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Wendy Cheng <s.wendy.cheng@gmail.com>,
-        "Atchley, Scott" <atchleyes@ornl.gov>,
-        Tom Tucker <tom@opengridcomputing.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+Received: from fieldses.org ([174.143.236.118]:45467 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759163Ab3DYSTf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Apr 2013 14:19:35 -0400
+Date: Thu, 25 Apr 2013 14:19:32 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: David Wysochanski <dwysocha@redhat.com>,
+        Dave Chiluk <chiluk@canonical.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Or Gerlitz <ogerlitz@mellanox.com>
-Subject: Re: NFS over RDMA benchmark
-References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com> <CABgxfbF7c9ktSoMSPV21JU76V5J4iwbJQ257S91Y3z36WJbJVA@mail.gmail.com> <62745258-4F3B-4C05-BFFD-03EA604576E4@ornl.gov> <CABgxfbGxhnKj2n0Z-w87rZ6fwCssO31G009gwej957gv1p8PQQ@mail.gmail.com> <0EE9A1CDC8D6434DB00095CD7DB873462CF9715B@MTLDAG01.mtl.com> <20130423210607.GJ3676@fieldses.org> <0EE9A1CDC8D6434DB00095CD7DB873462CF988C9@MTLDAG01.mtl.com> <20130424150540.GB20275@fieldses.org> <20130424152631.GC20275@fieldses.org> <0EE9A1CDC8D6434DB00095CD7DB873462CF9A820@MTLDAG01.mtl.com> <20130428144248.GA2037@fieldses.org> <0EE9A1CDC8D6434DB00095CD7DB873462CF9C90C@MTLDAG01.mtl.com>
-In-Reply-To: <0EE9A1CDC8D6434DB00095CD7DB873462CF9C90C@MTLDAG01.mtl.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: Use exponential backoff delay for NFS4_ERRDELAY
+Message-ID: <20130425181932.GA5049@fieldses.org>
+References: <1366836949-18465-1-git-send-email-chiluk@canonical.com>
+ <1366838926.22397.25.camel@leira.trondhjem.org>
+ <5178549A.7010402@canonical.com>
+ <1366842905.22397.49.camel@leira.trondhjem.org>
+ <1366892374.26249.294.camel@localhost.localdomain>
+ <20130425132907.GB31851@fieldses.org>
+ <1366896654.4719.18.camel@leira.trondhjem.org>
+ <20130425134918.GC31851@fieldses.org>
+ <1366899034.6812.4.camel@leira.trondhjem.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1366899034.6812.4.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 4/30/2013 1:09 AM, Yan Burman wrote:
->
->
->> -----Original Message-----
->> From: J. Bruce Fields [mailto:bfields@fieldses.org]
->> Sent: Sunday, April 28, 2013 17:43
->> To: Yan Burman
->> Cc: Wendy Cheng; Atchley, Scott; Tom Tucker; linux-rdma@vger.kernel.org;
->> linux-nfs@vger.kernel.org; Or Gerlitz
->> Subject: Re: NFS over RDMA benchmark
->>
->> On Sun, Apr 28, 2013 at 06:28:16AM +0000, Yan Burman wrote:
->>>>>>>>>>> On Wed, Apr 17, 2013 at 7:36 AM, Yan Burman
->>>>>>>>>>> <yanb@mellanox.com>
->>>>>>>>>>>> I've been trying to do some benchmarks for NFS over
->>>>>>>>>>>> RDMA and I seem to
->>>>>>>>> only get about half of the bandwidth that the HW can give me.
->>>>>>>>>>>> My setup consists of 2 servers each with 16 cores,
->>>>>>>>>>>> 32Gb of memory, and
->>>>>>>>> Mellanox ConnectX3 QDR card over PCI-e gen3.
->>>>>>>>>>>> These servers are connected to a QDR IB switch. The
->>>>>>>>>>>> backing storage on
->>>>>>>>> the server is tmpfs mounted with noatime.
->>>>>>>>>>>> I am running kernel 3.5.7.
->>>>>>>>>>>>
->>>>>>>>>>>> When running ib_send_bw, I get 4.3-4.5 GB/sec for
->>>>>>>>>>>> block sizes 4-
->>>> 512K.
->>>>>>>>>>>> When I run fio over rdma mounted nfs, I get
->>>>>>>>>>>> 260-2200MB/sec for the
->>>>>>>>> same block sizes (4-512K). running over IPoIB-CM, I get
->>>>>>>>> 200-
->>>> 980MB/sec.
->> ...
->>>>>>>> I am trying to get maximum performance from a single server
->>>>>>>> - I used 2
->>>>>>> processes in fio test - more than 2 did not show any performance
->> boost.
->>>>>>>> I tried running fio from 2 different PCs on 2 different
->>>>>>>> files, but the sum of
->>>>>>> the two is more or less the same as running from single client PC.
->>>>>>>>
->
-> I finally got up to 4.1GB/sec bandwidth with RDMA (ipoib-CM bandwidth is also way higher now).
-> For some reason when I had intel IOMMU enabled, the performance dropped significantly.
-> I now get up to ~95K IOPS and 4.1GB/sec bandwidth.
+On Thu, Apr 25, 2013 at 02:10:36PM +0000, Myklebust, Trond wrote:
+> On Thu, 2013-04-25 at 09:49 -0400, bfields@fieldses.org wrote:
+> > On Thu, Apr 25, 2013 at 01:30:58PM +0000, Myklebust, Trond wrote:
+> > > On Thu, 2013-04-25 at 09:29 -0400, bfields@fieldses.org wrote:
+> > > 
+> > > > My position is that we simply have no idea what order of magnitude even
+> > > > delay should be.  And that in such a situation exponential backoff such
+> > > > as implemented in the synchronous case seems the reasonable default as
+> > > > it guarantees at worst doubling the delay while still bounding the
+> > > > long-term average frequency of retries.
+> > > 
+> > > So we start with a 15 second delay, and then go to 60 seconds?
+> > 
+> > I agree that a server should normally be doing the wait on its own if
+> > the wait would be on the order of an rpc round trip.
+> > 
+> > So I'd be inclined to start with a delay that was an order of magnitude
+> > or two more than a round trip.
+> > 
+> > And I'd expect NFS isn't common on networks with 1-second latencies.
+> > 
+> > So the 1/10 second we're using in the synchronous case sounds closer to
+> > the right ballpark to me.
+> 
+> OK, then. Now all I need is actual motivation for changing the existing
+> code other than handwaving arguments about "polling is better than flat
+> waits".
+> What actual use cases are impacting us now, other than the AIX design
+> decision to force CLOSE to retry at least once before succeeding?
 
-Excellent, but is that 95K IOPS a typo? At 4KB, that's less than 400MBps.
+Nah, I've got nothing, and I agree that the AIX problem is there bug.
 
-What is the client CPU percentage you see under this workload, and
-how different are the NFS/RDMA and NFS/IPoIB overheads?
+Just for fun I looked at re-checked the Linux server cases.  As far as I
+can tell they are:
 
-> Now I will take care of the issue that I am running only at 40Gbit/s instead of 56Gbit/s, but that is another unrelated problem (I suspect I have a cable issue).
->
-> This is still strange, since ib_send_bw with intel iommu enabled did get up to 4.5GB/sec, so why did intel iommu affect only nfs code?
+	- delegations: returned immediately on detection of any
+	  conflict.  The current behavior in the sync case looks
+	  reasonable to me.
+	- allocation failures: not really sure it's the best error, but
+	  it seems to be all the protocol offers.  We probably don't
+	  care much what the client does in this case.
+	- some rare cases that would probably indicate bugs (e.g.,
+	  attempting to destroy a client while other rpc's from that
+	  client are running.)  Again we don't care what the client does
+	  here.
+	- the 4.1 slot-inuse case.
 
-You'll need to do more profiling to track that down. I would suspect
-that ib_send_bw is using some sort of direct hardware access, bypassing
-the IOMMU management and possibly performing no dynamic memory registration.
+We also by default map four errors (ETIMEDOUT, EAGAIN, EWOULDBLOCK,
+ENOMEM) to delay.  I thought I remembered one of those being used by
+some HFS system, but can't actually find an example now.  A quick grep
+doesn't show anything interesting.
 
-The NFS/RDMA code goes via the standard kernel DMA API, and correctly
-registers/deregisters memory on a per-i/o basis in order to provide
-storage data integrity. Perhaps there are overheads in the IOMMU
-management which can be addressed.
+--b.
