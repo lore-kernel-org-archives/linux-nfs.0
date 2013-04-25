@@ -1,56 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:28158 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1763884Ab3DJTd3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Apr 2013 15:33:29 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
-Subject: Re: NFS client hangs after server reboot
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130409190855.GB3800@fieldses.org>
-Date: Wed, 10 Apr 2013 15:33:15 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Rick Macklem <rmacklem@uoguelph.ca>
-Message-Id: <452C72A5-F773-4E16-88F4-B1100C505C41@oracle.com>
-References: <CACQjR_AH-AZDVLGKK8ZOVmkvQ-MEPuNn_y-Tu-ibrb6Rf7aC+Q@mail.gmail.com> <20130409190855.GB3800@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>, Bram Vandoren <brambi@gmail.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:36246 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757914Ab3DYVRH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2013 17:17:07 -0400
+Message-ID: <51799D52.1040903@opengridcomputing.com>
+Date: Thu, 25 Apr 2013 16:17:06 -0500
+From: Tom Tucker <tom@opengridcomputing.com>
+MIME-Version: 1.0
+To: Tom Talpey <tom@talpey.com>
+CC: Wendy Cheng <s.wendy.cheng@gmail.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Yan Burman <yanb@mellanox.com>, "Atchley, Scott" <atchleyes@ornl.gov>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Or Gerlitz <ogerlitz@mellanox.com>
+Subject: Re: NFS over RDMA benchmark
+References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com> <CABgxfbF7c9ktSoMSPV21JU76V5J4iwbJQ257S91Y3z36WJbJVA@mail.gmail.com> <62745258-4F3B-4C05-BFFD-03EA604576E4@ornl.gov> <CABgxfbGxhnKj2n0Z-w87rZ6fwCssO31G009gwej957gv1p8PQQ@mail.gmail.com> <0EE9A1CDC8D6434DB00095CD7DB873462CF9715B@MTLDAG01.mtl.com> <20130423210607.GJ3676@fieldses.org> <0EE9A1CDC8D6434DB00095CD7DB873462CF988C9@MTLDAG01.mtl.com> <20130424150540.GB20275@fieldses.org> <20130424152631.GC20275@fieldses.org> <CABgxfbHShU7aEttJ35vdAjXduPFFj8+E4=5LZqOgh4e=5bax5Q@mail.gmail.com> <CABgxfbHpNgQyEjd2OVNMgJoLpt_VyLiOL5hMCLwotMd5kincwg@mail.gmail.com> <517823E0.4000402@talpey.com> <CABgxfbHePAyq6AH9TFKZKUmwEHOupuYUnfc1W99HAuDkYddUqQ@mail.gmail.com> <51798C51.50209@talpey.com>
+In-Reply-To: <51798C51.50209@talpey.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-[ Adding Rick Macklem ]
+On 4/25/13 3:04 PM, Tom Talpey wrote:
+> On 4/25/2013 1:18 PM, Wendy Cheng wrote:
+>> On Wed, Apr 24, 2013 at 11:26 AM, Tom Talpey <tom@talpey.com> wrote:
+>>>> On Wed, Apr 24, 2013 at 9:27 AM, Wendy Cheng <s.wendy.cheng@gmail.com>
+>>>> wrote:
+>>>>>
+>>>> So I did a quick read on sunrpc/xprtrdma source (based on OFA 1.5.4.1
+>>>> tar ball) ... Here is a random thought (not related to the rb tree
+>>>> comment).....
+>>>>
+>>>> The inflight packet count seems to be controlled by
+>>>> xprt_rdma_slot_table_entries that is currently hard-coded as
+>>>> RPCRDMA_DEF_SLOT_TABLE (32) (?).  I'm wondering whether it could help
+>>>> with the bandwidth number if we pump it up, say 64 instead ? Not sure
+>>>> whether FMR pool size needs to get adjusted accordingly though.
+>>>
+>>> 1)
+>>>
+>>> The client slot count is not hard-coded, it can easily be changed by
+>>> writing a value to /proc and initiating a new mount. But I doubt that
+>>> increasing the slot table will improve performance much, unless this is
+>>> a small-random-read, and spindle-limited workload.
+>>
+>> Hi Tom !
+>>
+>> It was a shot in the dark :)  .. as our test bed has not been setup
+>> yet .However, since I'll be working on (very) slow clients, increasing
+>> this buffer is still interesting (to me). I don't see where it is
+>> controlled by a /proc value (?) - but that is not a concern at this
+>
+> The entries show up in /proc/sys/sunrpc (IIRC). The one you're looking
+> for is called rdma_slot_table_entries.
+>
+>> moment as /proc entry is easy to add. More questions on the server
+>> though (see below) ...
+>>
+>>>
+>>> 2)
+>>>
+>>> The observation appears to be that the bandwidth is server CPU limited.
+>>> Increasing the load offered by the client probably won't move the needle,
+>>> until that's addressed.
+>>>
+>>
+>> Could you give more hints on which part of the path is CPU limited ?
+>
+> Sorry, I don't. The profile showing 25% of the 16-core, 2-socket server
+> spinning on locks is a smoking, flaming gun though. Maybe Tom Tucker
+> has some ideas on the srv rdma code, but it could also be in the sunrpc
+> or infiniband driver layers, can't really tell without the call stacks.
 
-On Apr 9, 2013, at 3:08 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+The Mellanox driver uses red-black trees extensively for resource 
+management, e.g. QP ID, CQ ID, etc... When completions come in from the 
+HW, these are used to find the associated software data structures I 
+believe. It is certainly possible that these trees get hot on lookup when 
+we're pushing a lot of data. I'm surprised, however, to see 
+rb_insert_color there because I'm not aware of any where that resources 
+are being inserted into and/or removed from a red-black tree in the data path.
 
-> On Tue, Apr 09, 2013 at 05:51:40PM +0200, Bram Vandoren wrote:
->> Hello,
->> we have a FreeBSD 9.1 fileserver and several clients running kernel
->> 3.8.4-102.fc17.x86_64. Everything works fine till we reboot the
->> server. A fraction (1/10) of the clients don't resume the NFS session
->> correctly. The server sends a NFS4ERR_STALE_STATEID. The client sends
->> a RENEW to the server but no SETCLIENTID. (this should be the correct
->> action from my very quick look at RFC 3530). After that the client
->> continues with a few READ call and the process starts again with the
->> NFS4ERR_STALE_STATEID response from the server. It generates a lot of
->> useless network traffic.
-> 
->   0.003754  a.b.c.2 -> a.b.c.120 NFS 122 V4 Reply (Call In 49) READ Status: NFS4ERR_STALE_STATEID
->   0.003769  a.b.c.2 -> a.b.c.120 NFS 114 V4 Reply (Call In 71) RENEW
-> 
-> I don't normally use tshark, so I don't know--does the lack of a status
-> on that second line indicate that the RENEW succeeded?
-> 
-> Assuming the RENEW is for the same clientid that the read stateid's are
-> associated with--that's definitely a server bug.  The RENEW should be
-> returning STALE_CLIENTID.
+They are also used by IPoIB and the IB CM, however, connections should not 
+be coming and going unless we've got other problems. IPoIB is only used by 
+the IB transport for connection set up and my impression is that this 
+trace is for the IB transport.
 
-The server is returning NFS4_OK to that RENEW and we appear to be out of the server's grace period.  Thus we can assume that state recovery has already been performed following the server reboot, and a fresh client ID has been correctly established.  One possible explanation for NFS4ERR_STALE_STATEID is that the client skipped recovering these state IDs for some reason.
+I don't believe that red-black trees are used by either the client or 
+server transports directly. Note that the rb_lock in the client is for 
+buffers; not, as the name might imply, a red-black tree.
 
-A full network capture in pcap format, started before the server reboot occurs, would be needed for us to analyze the issue properly.
+I think the key here is to discover what lock is being waited on. Are we 
+certain that it's a lock on a red-black tree and if so, which one?
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+Tom
+>
+>> Is there a known Linux-based filesystem that is reasonbly tuned for
+>> NFS-RDMA ? Any specific filesystem features would work well with
+>> NFS-RDMA ? I'm wondering when disk+FS are added into the
+>> configuration, how much advantages would NFS-RDMA get when compared
+>> with a plain TCP/IP, say IPOIB on CM , transport ?
+>
+> NFS-RDMA is not really filesystem dependent, but certainly there are
+> considerations for filesystems to support NFS, and of course the goal in
+> general is performance. NFS-RDMA is a network transport, applicable to
+> both client and server. Filesystem choice is a server consideration.
+>
+> I don't have a simple answer to your question about how much better
+> NFS-RDMA is over other transports. Architecturally, a lot. In practice,
+> there are many, many variables. Have you seen RFC5532, that I cowrote
+> with the late Chet Juszczak? You may find it's still quite relevant.
+> http://tools.ietf.org/html/rfc5532
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
