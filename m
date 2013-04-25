@@ -1,264 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:5099 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:56991 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752840Ab3DVRH3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Apr 2013 13:07:29 -0400
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r3MH7Tm6000320
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Apr 2013 13:07:29 -0400
-Message-ID: <51756E4F.2010907@RedHat.com>
-Date: Mon, 22 Apr 2013 13:07:27 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1755185Ab3DYS5L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Apr 2013 14:57:11 -0400
+Date: Thu, 25 Apr 2013 14:57:01 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        David Wysochanski <dwysocha@redhat.com>,
+        Dave Chiluk <chiluk@canonical.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: Use exponential backoff delay for NFS4_ERRDELAY
+Message-ID: <20130425185701.GD5049@fieldses.org>
+References: <1366842905.22397.49.camel@leira.trondhjem.org>
+ <1366892374.26249.294.camel@localhost.localdomain>
+ <20130425132907.GB31851@fieldses.org>
+ <1366896654.4719.18.camel@leira.trondhjem.org>
+ <20130425134918.GC31851@fieldses.org>
+ <1366899034.6812.4.camel@leira.trondhjem.org>
+ <20130425181932.GA5049@fieldses.org>
+ <81BBEA25-CDE5-42B1-996D-90C26A43DEF6@oracle.com>
+ <20130425184626.GC5049@fieldses.org>
+ <04318EF4-375D-49FD-8DB0-2BC6429543A9@oracle.com>
 MIME-Version: 1.0
-To: Simo Sorce <simo@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        =?ISO-8859-1?Q?G=FCnther_Deschner?= <gdeschner@redhat.com>
-Subject: Re: [PATCH] Allow GSSAPI to try to acquire credentials first.
-References: <1365605450-3009-1-git-send-email-simo@redhat.com>
-In-Reply-To: <1365605450-3009-1-git-send-email-simo@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <04318EF4-375D-49FD-8DB0-2BC6429543A9@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Apr 25, 2013 at 02:51:20PM -0400, Chuck Lever wrote:
+> 
+> On Apr 25, 2013, at 2:46 PM, "bfields@fieldses.org" <bfields@fieldses.org> wrote:
+> 
+> > On Thu, Apr 25, 2013 at 02:40:11PM -0400, Chuck Lever wrote:
+> >> 
+> >> On Apr 25, 2013, at 2:19 PM, "bfields@fieldses.org" <bfields@fieldses.org> wrote:
+> >> 
+> >>> On Thu, Apr 25, 2013 at 02:10:36PM +0000, Myklebust, Trond wrote:
+> >>>> On Thu, 2013-04-25 at 09:49 -0400, bfields@fieldses.org wrote:
+> >>>>> On Thu, Apr 25, 2013 at 01:30:58PM +0000, Myklebust, Trond wrote:
+> >>>>>> On Thu, 2013-04-25 at 09:29 -0400, bfields@fieldses.org wrote:
+> >>>>>> 
+> >>>>>>> My position is that we simply have no idea what order of magnitude even
+> >>>>>>> delay should be.  And that in such a situation exponential backoff such
+> >>>>>>> as implemented in the synchronous case seems the reasonable default as
+> >>>>>>> it guarantees at worst doubling the delay while still bounding the
+> >>>>>>> long-term average frequency of retries.
+> >>>>>> 
+> >>>>>> So we start with a 15 second delay, and then go to 60 seconds?
+> >>>>> 
+> >>>>> I agree that a server should normally be doing the wait on its own if
+> >>>>> the wait would be on the order of an rpc round trip.
+> >>>>> 
+> >>>>> So I'd be inclined to start with a delay that was an order of magnitude
+> >>>>> or two more than a round trip.
+> >>>>> 
+> >>>>> And I'd expect NFS isn't common on networks with 1-second latencies.
+> >>>>> 
+> >>>>> So the 1/10 second we're using in the synchronous case sounds closer to
+> >>>>> the right ballpark to me.
+> >>>> 
+> >>>> OK, then. Now all I need is actual motivation for changing the existing
+> >>>> code other than handwaving arguments about "polling is better than flat
+> >>>> waits".
+> >>>> What actual use cases are impacting us now, other than the AIX design
+> >>>> decision to force CLOSE to retry at least once before succeeding?
+> >>> 
+> >>> Nah, I've got nothing, and I agree that the AIX problem is there bug.
+> >>> 
+> >>> Just for fun I looked at re-checked the Linux server cases.  As far as I
+> >>> can tell they are:
+> >>> 
+> >>> 	- delegations: returned immediately on detection of any
+> >>> 	  conflict.  The current behavior in the sync case looks
+> >>> 	  reasonable to me.
+> >>> 	- allocation failures: not really sure it's the best error, but
+> >>> 	  it seems to be all the protocol offers.  We probably don't
+> >>> 	  care much what the client does in this case.
+> >>> 	- some rare cases that would probably indicate bugs (e.g.,
+> >>> 	  attempting to destroy a client while other rpc's from that
+> >>> 	  client are running.)  Again we don't care what the client does
+> >>> 	  here.
+> >>> 	- the 4.1 slot-inuse case.
+> >>> 
+> >>> We also by default map four errors (ETIMEDOUT, EAGAIN, EWOULDBLOCK,
+> >>> ENOMEM) to delay.  I thought I remembered one of those being used by
+> >>> some HFS system, but can't actually find an example now.  A quick grep
+> >>> doesn't show anything interesting.
+> >> 
+> >> It's worth mentioning that servers that have frozen state (say, in preparation for Transparent State Migration) may use NFS4ERR_DELAY to prevent clients from modifying open or lock state until that state has transitioned to a destination server.
+> > 
+> > I thought they'd decided they'll be forced to find a different way to do
+> > that?
+> > 
+> > (The issue being that it only works if you're using 4.1, and if the
+> > session state itself isn't part of the state to be transferred.
+> > Otherwise you're forced to modify the state anyway since NFS4ERR_DELAY
+> > is seqid-modifying.)
+> 
+> The answer is not to return NFS4ERR_DELAY on seqid-modifying operations.
+> 
+> The source server can return NFS4ERR_DELAY to the client's migration recovery operations (the GETATTR(fs_locations) request) for example.
+> 
+> Or, the server could return it on the initial PUTFH operation in a compound containing seqid-modifying operations.
 
+Oh, right, I'd forgotten that approach....
 
-On 10/04/13 10:50, Simo Sorce wrote:
-> GSSAPI can be given a uid number as a special name, and then
-> gss_acquire_cred() can use the name to try to find credentials for
-> the user.
-> 
-> Give GSSAPI a chance to do it on its own, then fallback to the classic
-> method of trolling through the file system to find a credential cache.
-> 
-> This patch uses a little know feature of GSSAPI that permits to acquire
-> crdentials specifying the user's UID. Normally GSSAPI will simply perform
-> a getpwuid() call and use the user name to generate a principal name and
-> then see if it can find a TGT for that principal in the local ccache.
-> 
-> This feature is vital to allow the GSS-Proxy to be able to initiate crdentials
-> on behalf of rpc.gssd using client keytabs stored in the filsystem.
-> 
-> GSS-Proxy works through an interposer-type plugin (new feature in MIT 1.11)
-> that allows to intercept all GSSAPI requestes and relay them to a system
-> daemon via a socket. This daemon (GSS-Proxy) then can perform operations on
-> behalf of other applications with additional logic.
-> 
-> In the rpc.gssd case the GSS-Proxy daemon allows applications running as
-> system users to properly access krb5 protected shares by creating a credential
-> cache on the fly when necessary.
-> 
-> This way all applications that need access to krb5 protected shares do not need
-> to be taught how to initiate crdentials on their own, nor they need to be
-> wrapped in additional init scripts like k5start or use wasteful cronjobs to
-> keep credentials fresh. All is needed is to drop a keytab with the right keys
-> in a special location on the system and gss-proxy will do the rest.
-> 
-> Signed-off-by: Simo Sorce <simo@redhat.com>
-Committed 
-
-steved.
-> ---
->  utils/gssd/gssd_proc.c | 22 ++++++++++-----
->  utils/gssd/krb5_util.c | 77 +++++++++++++++++++++++++++++++++++++-------------
->  utils/gssd/krb5_util.h |  2 ++
->  3 files changed, 75 insertions(+), 26 deletions(-)
-> 
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index b1239785500f8e1bc601e4033a5f212c5b5b6c76..afc2076cde74e3cea6764408ec839a6f99b86ea4 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -817,7 +817,8 @@ create_auth_rpc_client(struct clnt_info *clp,
->  		       CLIENT **clnt_return,
->  		       AUTH **auth_return,
->  		       uid_t uid,
-> -		       int authtype)
-> +		       int authtype,
-> +		       gss_cred_id_t cred)
->  {
->  	CLIENT			*rpc_clnt = NULL;
->  	struct rpc_gss_sec	sec;
-> @@ -843,7 +844,7 @@ create_auth_rpc_client(struct clnt_info *clp,
->  
->  	sec.qop = GSS_C_QOP_DEFAULT;
->  	sec.svc = RPCSEC_GSS_SVC_NONE;
-> -	sec.cred = GSS_C_NO_CREDENTIAL;
-> +	sec.cred = cred;
->  	sec.req_flags = 0;
->  	if (authtype == AUTHTYPE_KRB5) {
->  		sec.mech = (gss_OID)&krb5oid;
-> @@ -968,6 +969,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
->  	char			**dirname;
->  	int			create_resp = -1;
->  	int			err, downcall_err = -EACCES;
-> +	gss_cred_id_t		gss_cred;
->  	OM_uint32		maj_stat, min_stat, lifetime_rec;
->  
->  	printerr(1, "handling krb5 upcall (%s)\n", clp->dirname);
-> @@ -1002,15 +1004,20 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
->  	if (uid != 0 || (uid == 0 && root_uses_machine_creds == 0 &&
->  				service == NULL)) {
->  		/* Tell krb5 gss which credentials cache to use */
-> -		for (dirname = ccachesearch; *dirname != NULL; dirname++) {
-> +		/* Try first to acquire credentials directly via GSSAPI */
-> +		err = gssd_acquire_user_cred(uid, &gss_cred);
-> +		if (!err)
-> +			create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
-> +							     AUTHTYPE_KRB5, gss_cred);
-> +		/* if create_auth_rplc_client fails try the traditional method of
-> +		 * trolling for credentials */
-> +		for (dirname = ccachesearch; create_resp != 0 && *dirname != NULL; dirname++) {
->  			err = gssd_setup_krb5_user_gss_ccache(uid, clp->servername, *dirname);
->  			if (err == -EKEYEXPIRED)
->  				downcall_err = -EKEYEXPIRED;
->  			else if (!err)
->  				create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
-> -							     AUTHTYPE_KRB5);
-> -			if (create_resp == 0)
-> -				break;
-> +							     AUTHTYPE_KRB5, GSS_C_NO_CREDENTIAL);
->  		}
->  	}
->  	if (create_resp != 0) {
-> @@ -1036,7 +1043,8 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
->  					gssd_setup_krb5_machine_gss_ccache(*ccname);
->  					if ((create_auth_rpc_client(clp, &rpc_clnt,
->  								    &auth, uid,
-> -								    AUTHTYPE_KRB5)) == 0) {
-> +								    AUTHTYPE_KRB5,
-> +								    GSS_C_NO_CREDENTIAL)) == 0) {
->  						/* Success! */
->  						success++;
->  						break;
-> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> index 20b55b37c0f38405794be18f4bebd8ac089dccd2..6275dd8717c64c69939481444bc4b115a2a93a13 100644
-> --- a/utils/gssd/krb5_util.c
-> +++ b/utils/gssd/krb5_util.c
-> @@ -1350,6 +1350,57 @@ gssd_k5_get_default_realm(char **def_realm)
->  	krb5_free_context(context);
->  }
->  
-> +static int
-> +gssd_acquire_krb5_cred(gss_name_t name, gss_cred_id_t *gss_cred)
-> +{
-> +	OM_uint32 maj_stat, min_stat;
-> +	gss_OID_set_desc desired_mechs = { 1, &krb5oid };
-> +
-> +	maj_stat = gss_acquire_cred(&min_stat, name, GSS_C_INDEFINITE,
-> +				    &desired_mechs, GSS_C_INITIATE,
-> +				    gss_cred, NULL, NULL);
-> +
-> +	if (maj_stat != GSS_S_COMPLETE) {
-> +		if (get_verbosity() > 0)
-> +			pgsserr("gss_acquire_cred",
-> +				maj_stat, min_stat, &krb5oid);
-> +		return -1;
-> +	}
-> +
-> +	return 0;
-> +}
-> +
-> +int
-> +gssd_acquire_user_cred(uid_t uid, gss_cred_id_t *gss_cred)
-> +{
-> +	OM_uint32 maj_stat, min_stat;
-> +	gss_buffer_desc name_buf;
-> +	gss_name_t name;
-> +	char buf[11];
-> +	int ret;
-> +
-> +	ret = snprintf(buf, 11, "%u", uid);
-> +	if (ret < 1 || ret > 10) {
-> +		return -1;
-> +	}
-> +	name_buf.value = buf;
-> +	name_buf.length = ret + 1;
-> +
-> +	maj_stat = gss_import_name(&min_stat, &name_buf,
-> +				   GSS_C_NT_STRING_UID_NAME, &name);
-> +	if (maj_stat != GSS_S_COMPLETE) {
-> +		if (get_verbosity() > 0)
-> +			pgsserr("gss_import_name",
-> +				maj_stat, min_stat, &krb5oid);
-> +		return -1;
-> +	}
-> +
-> +	ret = gssd_acquire_krb5_cred(name, gss_cred);
-> +
-> +	maj_stat = gss_release_name(&min_stat, &name);
-> +	return ret;
-> +}
-> +
->  #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
->  /*
->   * this routine obtains a credentials handle via gss_acquire_cred()
-> @@ -1368,28 +1419,18 @@ int
->  limit_krb5_enctypes(struct rpc_gss_sec *sec)
->  {
->  	u_int maj_stat, min_stat;
-> -	gss_cred_id_t credh;
-> -	gss_OID_set_desc  desired_mechs;
->  	krb5_enctype enctypes[] = { ENCTYPE_DES_CBC_CRC,
->  				    ENCTYPE_DES_CBC_MD5,
->  				    ENCTYPE_DES_CBC_MD4 };
->  	int num_enctypes = sizeof(enctypes) / sizeof(enctypes[0]);
->  	extern int num_krb5_enctypes;
->  	extern krb5_enctype *krb5_enctypes;
-> +	int err = -1;
->  
-> -	/* We only care about getting a krb5 cred */
-> -	desired_mechs.count = 1;
-> -	desired_mechs.elements = &krb5oid;
-> -
-> -	maj_stat = gss_acquire_cred(&min_stat, NULL, 0,
-> -				    &desired_mechs, GSS_C_INITIATE,
-> -				    &credh, NULL, NULL);
-> -
-> -	if (maj_stat != GSS_S_COMPLETE) {
-> -		if (get_verbosity() > 0)
-> -			pgsserr("gss_acquire_cred",
-> -				maj_stat, min_stat, &krb5oid);
-> -		return -1;
-> +	if (sec->cred == GSS_C_NO_CREDENTIAL) {
-> +		err = gssd_acquire_krb5_cred(GSS_C_NO_NAME, &sec->cred);
-> +		if (err)
-> +			return -1;
->  	}
->  
->  	/*
-> @@ -1397,19 +1438,17 @@ limit_krb5_enctypes(struct rpc_gss_sec *sec)
->  	 * list of supported enctypes, use local default here.
->  	 */
->  	if (krb5_enctypes == NULL || limit_to_legacy_enctypes)
-> -		maj_stat = gss_set_allowable_enctypes(&min_stat, credh,
-> +		maj_stat = gss_set_allowable_enctypes(&min_stat, sec->cred,
->  					&krb5oid, num_enctypes, enctypes);
->  	else
-> -		maj_stat = gss_set_allowable_enctypes(&min_stat, credh,
-> +		maj_stat = gss_set_allowable_enctypes(&min_stat, sec->cred,
->  					&krb5oid, num_krb5_enctypes, krb5_enctypes);
->  
->  	if (maj_stat != GSS_S_COMPLETE) {
->  		pgsserr("gss_set_allowable_enctypes",
->  			maj_stat, min_stat, &krb5oid);
-> -		gss_release_cred(&min_stat, &credh);
->  		return -1;
->  	}
-> -	sec->cred = credh;
->  
->  	return 0;
->  }
-> diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
-> index 9f41625858fe136a63f08d757b4140508729423e..eed12944a73024c015d79f1c4aace2a9d31a1688 100644
-> --- a/utils/gssd/krb5_util.h
-> +++ b/utils/gssd/krb5_util.h
-> @@ -36,6 +36,8 @@ int  gssd_refresh_krb5_machine_credential(char *hostname,
->  char *gssd_k5_err_msg(krb5_context context, krb5_error_code code);
->  void gssd_k5_get_default_realm(char **def_realm);
->  
-> +int gssd_acquire_user_cred(uid_t uid, gss_cred_id_t *gss_cred);
-> +
->  #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
->  extern int limit_to_legacy_enctypes;
->  int limit_krb5_enctypes(struct rpc_gss_sec *sec);
-> 
+--b.
