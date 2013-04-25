@@ -1,53 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.194]:56741 "EHLO mout.perfora.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751601Ab3DBQqi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Apr 2013 12:46:38 -0400
-Date: Tue, 2 Apr 2013 12:46:31 -0400
-From: Jim Rees <rees@umich.edu>
-To: Simo Sorce <simo@redhat.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>, Steve Dickson <steved@redhat.com>,
-        Jeffrey Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] Avoid PTR lookups when possible
-Message-ID: <20130402164631.GA23840@umich.edu>
-References: <1364910351.2660.1243.camel@willson.li.ssimo.org>
- <20130402150049.GA526@umich.edu>
- <1364919975.2660.1255.camel@willson.li.ssimo.org>
+Received: from office2.cesnet.cz ([195.113.144.244]:47218 "EHLO
+	office2.cesnet.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753544Ab3DYMuE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2013 08:50:04 -0400
+Message-ID: <517923D2.2000002@gmail.com>
+Date: Thu, 25 Apr 2013 14:38:42 +0200
+From: Jiri Horky <jiri.horky@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1364919975.2660.1255.camel@willson.li.ssimo.org>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: chuck.lever@oracle.com
+Subject: Kerberos security flavors not tried in SETCLIENTID_CONFIRM client
+ requests
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Simo Sorce wrote:
+Hello all,
 
-  It's a MITM setting.
-  
-  Suppose you have 2 servers:
-  
-  secure.server.name where you store confidential documents
-  public.server.name where everyone have access for reading (and you can
-  write)
-  
-  If you mount -t nfs secure.server.name/export and rely on PTR records
-  and an attacker can spoof your PTR request to return public.server.name
-  you will end up acquiring a ticket for public.server.name from the KDC.
-  Then the attacker will redirect your mount to public.server.name all the
-  while you think you have mounted secure.server.name
-  
-  Now anything you copy there goes to a public server instead of your
-  secure server.
-  
-  Now imagine your secure server is a backup server which gets mounted by
-  a cron job every night for backups of sensitive information.
+(everything described below is from a client with 3.6.11-gentoo kernel).
 
-I guess what you're saying is that the client might not know the full name
-of the secure server, and could be tricked into thinking it's
-public.server.name. That's not what I'd call mitm; kerberos is pretty much
-immune to mitm. It's not really a dns mitm either, it's a spoofed reply.
+When I mount a filesystem that is exported as follows:
 
-I would be in favor of requiring kerberized nfs clients to know the full
-name of the server they're trying to connect to. Kerberized nfs clients
-should not be relying on dns for any part of their security. But I guess we
-haven't been doing that, and to make that a requirement now would be a
-compatibility problem.
+/exports 
+*(sec=krb5:krb5i:krb5p,rw,fsid=0,sync,no_subtree_check,no_root_squash,insecure,crossmnt)
+
+without specifiying a security flavour on client, the mount will work. 
+ From the tcpdump I can tell that the client tries AUTH_UNIX and 
+AUTH_NULL flavours before succeeding with RPCSES_GSS. When I do a "ls" 
+command in the mounted directory it works fine as well - this time 
+clients uses RPCSES_GSS authentication right away.
+
+The problems comes with "cat" command on a file, when the client calls 
+SETCLIENID with AUTH_UNIX credentials and AUTH_NULL verifier, which 
+successes but then call SETCLIENTID_CONFIRM again with just 
+AUTH_UNIX/AUTH_NULL which results in NFS4ERR_WRONGSEC. The client tries 
+to all the SETCLIENTID_CONFIRM multiple times, but it does not try 
+Kerberos authentication. The WRONGSEC error is then propagated as EIO to 
+the application.
+
+I noticed patches from Chuck Level on 03/16/2013 which fix problems with 
+security flavours handling but I am not sure whether they are supposed 
+to fix thix particular problem as well. It would take me considerable 
+amount of time to test it so I would appreciate if you could comment on 
+that.
+
+Regards
+Jiri Horky
+
+
