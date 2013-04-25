@@ -1,82 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45467 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759163Ab3DYSTf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Apr 2013 14:19:35 -0400
-Date: Thu, 25 Apr 2013 14:19:32 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: David Wysochanski <dwysocha@redhat.com>,
-        Dave Chiluk <chiluk@canonical.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Use exponential backoff delay for NFS4_ERRDELAY
-Message-ID: <20130425181932.GA5049@fieldses.org>
-References: <1366836949-18465-1-git-send-email-chiluk@canonical.com>
- <1366838926.22397.25.camel@leira.trondhjem.org>
- <5178549A.7010402@canonical.com>
- <1366842905.22397.49.camel@leira.trondhjem.org>
- <1366892374.26249.294.camel@localhost.localdomain>
- <20130425132907.GB31851@fieldses.org>
- <1366896654.4719.18.camel@leira.trondhjem.org>
- <20130425134918.GC31851@fieldses.org>
- <1366899034.6812.4.camel@leira.trondhjem.org>
+Received: from p3plsmtpa06-06.prod.phx3.secureserver.net ([173.201.192.107]:35594
+	"EHLO p3plsmtpa06-06.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756519Ab3DYUEh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2013 16:04:37 -0400
+Message-ID: <51798C51.50209@talpey.com>
+Date: Thu, 25 Apr 2013 16:04:33 -0400
+From: Tom Talpey <tom@talpey.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1366899034.6812.4.camel@leira.trondhjem.org>
+To: Wendy Cheng <s.wendy.cheng@gmail.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, Yan Burman <yanb@mellanox.com>,
+        "Atchley, Scott" <atchleyes@ornl.gov>,
+        Tom Tucker <tom@opengridcomputing.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Or Gerlitz <ogerlitz@mellanox.com>
+Subject: Re: NFS over RDMA benchmark
+References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com> <CABgxfbF7c9ktSoMSPV21JU76V5J4iwbJQ257S91Y3z36WJbJVA@mail.gmail.com> <62745258-4F3B-4C05-BFFD-03EA604576E4@ornl.gov> <CABgxfbGxhnKj2n0Z-w87rZ6fwCssO31G009gwej957gv1p8PQQ@mail.gmail.com> <0EE9A1CDC8D6434DB00095CD7DB873462CF9715B@MTLDAG01.mtl.com> <20130423210607.GJ3676@fieldses.org> <0EE9A1CDC8D6434DB00095CD7DB873462CF988C9@MTLDAG01.mtl.com> <20130424150540.GB20275@fieldses.org> <20130424152631.GC20275@fieldses.org> <CABgxfbHShU7aEttJ35vdAjXduPFFj8+E4=5LZqOgh4e=5bax5Q@mail.gmail.com> <CABgxfbHpNgQyEjd2OVNMgJoLpt_VyLiOL5hMCLwotMd5kincwg@mail.gmail.com> <517823E0.4000402@talpey.com> <CABgxfbHePAyq6AH9TFKZKUmwEHOupuYUnfc1W99HAuDkYddUqQ@mail.gmail.com>
+In-Reply-To: <CABgxfbHePAyq6AH9TFKZKUmwEHOupuYUnfc1W99HAuDkYddUqQ@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 25, 2013 at 02:10:36PM +0000, Myklebust, Trond wrote:
-> On Thu, 2013-04-25 at 09:49 -0400, bfields@fieldses.org wrote:
-> > On Thu, Apr 25, 2013 at 01:30:58PM +0000, Myklebust, Trond wrote:
-> > > On Thu, 2013-04-25 at 09:29 -0400, bfields@fieldses.org wrote:
-> > > 
-> > > > My position is that we simply have no idea what order of magnitude even
-> > > > delay should be.  And that in such a situation exponential backoff such
-> > > > as implemented in the synchronous case seems the reasonable default as
-> > > > it guarantees at worst doubling the delay while still bounding the
-> > > > long-term average frequency of retries.
-> > > 
-> > > So we start with a 15 second delay, and then go to 60 seconds?
-> > 
-> > I agree that a server should normally be doing the wait on its own if
-> > the wait would be on the order of an rpc round trip.
-> > 
-> > So I'd be inclined to start with a delay that was an order of magnitude
-> > or two more than a round trip.
-> > 
-> > And I'd expect NFS isn't common on networks with 1-second latencies.
-> > 
-> > So the 1/10 second we're using in the synchronous case sounds closer to
-> > the right ballpark to me.
-> 
-> OK, then. Now all I need is actual motivation for changing the existing
-> code other than handwaving arguments about "polling is better than flat
-> waits".
-> What actual use cases are impacting us now, other than the AIX design
-> decision to force CLOSE to retry at least once before succeeding?
+On 4/25/2013 1:18 PM, Wendy Cheng wrote:
+> On Wed, Apr 24, 2013 at 11:26 AM, Tom Talpey <tom@talpey.com> wrote:
+>>> On Wed, Apr 24, 2013 at 9:27 AM, Wendy Cheng <s.wendy.cheng@gmail.com>
+>>> wrote:
+>>>>
+>>> So I did a quick read on sunrpc/xprtrdma source (based on OFA 1.5.4.1
+>>> tar ball) ... Here is a random thought (not related to the rb tree
+>>> comment).....
+>>>
+>>> The inflight packet count seems to be controlled by
+>>> xprt_rdma_slot_table_entries that is currently hard-coded as
+>>> RPCRDMA_DEF_SLOT_TABLE (32) (?).  I'm wondering whether it could help
+>>> with the bandwidth number if we pump it up, say 64 instead ? Not sure
+>>> whether FMR pool size needs to get adjusted accordingly though.
+>>
+>> 1)
+>>
+>> The client slot count is not hard-coded, it can easily be changed by
+>> writing a value to /proc and initiating a new mount. But I doubt that
+>> increasing the slot table will improve performance much, unless this is
+>> a small-random-read, and spindle-limited workload.
+>
+> Hi Tom !
+>
+> It was a shot in the dark :)  .. as our test bed has not been setup
+> yet .However, since I'll be working on (very) slow clients, increasing
+> this buffer is still interesting (to me). I don't see where it is
+> controlled by a /proc value (?) - but that is not a concern at this
 
-Nah, I've got nothing, and I agree that the AIX problem is there bug.
+The entries show up in /proc/sys/sunrpc (IIRC). The one you're looking
+for is called rdma_slot_table_entries.
 
-Just for fun I looked at re-checked the Linux server cases.  As far as I
-can tell they are:
+> moment as /proc entry is easy to add. More questions on the server
+> though (see below) ...
+>
+>>
+>> 2)
+>>
+>> The observation appears to be that the bandwidth is server CPU limited.
+>> Increasing the load offered by the client probably won't move the needle,
+>> until that's addressed.
+>>
+>
+> Could you give more hints on which part of the path is CPU limited ?
 
-	- delegations: returned immediately on detection of any
-	  conflict.  The current behavior in the sync case looks
-	  reasonable to me.
-	- allocation failures: not really sure it's the best error, but
-	  it seems to be all the protocol offers.  We probably don't
-	  care much what the client does in this case.
-	- some rare cases that would probably indicate bugs (e.g.,
-	  attempting to destroy a client while other rpc's from that
-	  client are running.)  Again we don't care what the client does
-	  here.
-	- the 4.1 slot-inuse case.
+Sorry, I don't. The profile showing 25% of the 16-core, 2-socket server
+spinning on locks is a smoking, flaming gun though. Maybe Tom Tucker
+has some ideas on the srv rdma code, but it could also be in the sunrpc
+or infiniband driver layers, can't really tell without the call stacks.
 
-We also by default map four errors (ETIMEDOUT, EAGAIN, EWOULDBLOCK,
-ENOMEM) to delay.  I thought I remembered one of those being used by
-some HFS system, but can't actually find an example now.  A quick grep
-doesn't show anything interesting.
+> Is there a known Linux-based filesystem that is reasonbly tuned for
+> NFS-RDMA ? Any specific filesystem features would work well with
+> NFS-RDMA ? I'm wondering when disk+FS are added into the
+> configuration, how much advantages would NFS-RDMA get when compared
+> with a plain TCP/IP, say IPOIB on CM , transport ?
 
---b.
+NFS-RDMA is not really filesystem dependent, but certainly there are
+considerations for filesystems to support NFS, and of course the goal in
+general is performance. NFS-RDMA is a network transport, applicable to
+both client and server. Filesystem choice is a server consideration.
+
+I don't have a simple answer to your question about how much better
+NFS-RDMA is over other transports. Architecturally, a lot. In practice,
+there are many, many variables. Have you seen RFC5532, that I cowrote
+with the late Chet Juszczak? You may find it's still quite relevant.
+http://tools.ietf.org/html/rfc5532
