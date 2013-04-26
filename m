@@ -1,232 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:56056 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760996Ab3DBNp5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Apr 2013 09:45:57 -0400
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r32Djvbq032003
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 2 Apr 2013 09:45:57 -0400
-Subject: [PATCH] Avoid PTR lookups when possible
-From: Simo Sorce <simo@redhat.com>
-To: linux-nfs <linux-nfs@vger.kernel.org>
-Cc: Steve Dickson <steved@redhat.com>, Jeffrey Layton <jlayton@redhat.com>
-Content-Type: multipart/mixed; boundary="=-01e+ntA1nqbBeu2bLev1"
-Date: Tue, 02 Apr 2013 09:45:51 -0400
-Message-ID: <1364910351.2660.1243.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+Received: from mail-lb0-f179.google.com ([209.85.217.179]:32997 "EHLO
+	mail-lb0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755973Ab3DZMAF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Apr 2013 08:00:05 -0400
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v6 6/7] NFSD: Pass share reservations flags to VFS
+Date: Fri, 26 Apr 2013 16:04:20 +0400
+Message-Id: <1366977861-27678-7-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1366977861-27678-1-git-send-email-piastry@etersoft.ru>
+References: <1366977861-27678-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+that maps them into O_DENY* flags and make them visible for
+applications on mounts with sharelock option.
 
---=-01e+ntA1nqbBeu2bLev1
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-
-The attached patch adds a new command line switch to rpc.gssd to avoid
-PTR resolution when possible.
-
-The current code *depends* on PTR resolution for GSSAPI authentication
-and this is *bad*.
-It imposes an annoying, and unnecessary, constraint on the correctness
-of DNS resolution, which prevents mounts from working in networks where
-the PTR record cannot be easily controlled (for example networks where
-the forward name is reasonable while the PTR is set to some artificial
-name based on the IP address or so that is not the canonical name or
-where no PTR exist at all).
-
-Depending on PTR resolution for GSSAPI is also very bad practice because
-it opens up DNS spoofing attacks where an attacker can try to redirect a
-user to the wrong server fooling mutual authentication, and induce a
-user to trust improper data or disclose (by copying on the impostor
-server) data that should be confidential.
-
-Ideally people will always use the -N switch, however I added an actual
-switch to avoid breaking existing configuration where someone may
-intentionally or inadvertently be using multiple A names instead of
-using CNAMEs but relying on PTR records to find the "canonical name".
-
-It would be probably nice to switch the behavior on by default in
-future.
-
-Jeff in CC as he also implemented a similar switch for cifs.upcall
-(there it is called -t|--trust-dns, but in rpc.gsssd -t is already
-taken ...).
-
-Simo.
-
--- 
-Simo Sorce * Red Hat, Inc * New York
-
---=-01e+ntA1nqbBeu2bLev1
-Content-Disposition: attachment; filename="0001-Avoid-forced-reverse-resolution-for-server-name.patch"
-Content-Type: text/x-patch; name="0001-Avoid-forced-reverse-resolution-for-server-name.patch"; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-
->From 53dade1e5d22eee06a08ace2684257292514cb49 Mon Sep 17 00:00:00 2001
-From: Simo Sorce <simo@redhat.com>
-Date: Mon, 1 Apr 2013 21:00:55 -0400
-Subject: [PATCH] Avoid forced reverse resolution for server name
-
-A NFS client should be able to work properly even if the PTR record for the
-server is not set. there is no excuse to forcefully prevent that from working
-when it can.
-So, use some heuristics to see if the server is a FQDN or an IP address.
-If it is an IP address or a shortname (no '.' in name) then do a PTR lookup,
-otherwise avoid it.
-
-This is enabled by the new -N flag which is off by default for now, ideally we
-will turn this on by default after a transition period.
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
 ---
- utils/gssd/gss_util.h  |  2 ++
- utils/gssd/gssd.c      |  4 +++-
- utils/gssd/gssd.man    |  7 ++++++-
- utils/gssd/gssd_proc.c | 31 +++++++++++++++++++++++++++----
- 4 files changed, 38 insertions(+), 6 deletions(-)
+ fs/locks.c          |  1 +
+ fs/nfsd/nfs4state.c | 46 +++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfsd/nfsproc.c   |  1 +
+ 3 files changed, 47 insertions(+), 1 deletion(-)
 
-diff --git a/utils/gssd/gss_util.h b/utils/gssd/gss_util.h
-index aa9f77806075f9ab67a7763a75a010369ba2d1b9..663fb0998bede6144118f890b9311ee8687176e3 100644
---- a/utils/gssd/gss_util.h
-+++ b/utils/gssd/gss_util.h
-@@ -52,4 +52,6 @@ int gssd_check_mechs(void);
- 		gss_krb5_set_allowable_enctypes(min, cred, num, types)
- #endif
- 
-+extern int avoid_ptr;
-+
- #endif /* _GSS_UTIL_H_ */
-diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index 0be251781bacaa562270f773341126bc95ca6b45..2a98e94812a662f0fd868fce8dc3419f65648a4d 100644
---- a/utils/gssd/gssd.c
-+++ b/utils/gssd/gssd.c
-@@ -85,7 +85,7 @@ sig_hup(int signal)
- static void
- usage(char *progname)
- {
--	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm]\n",
-+	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm] [-N]\n",
- 		progname);
- 	exit(1);
+diff --git a/fs/locks.c b/fs/locks.c
+index abe8986..25c3a49 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -897,6 +897,7 @@ sharelock_lock_file(struct file *filp)
+ 	locks_free_lock(lock);
+ 	return error;
  }
-@@ -150,6 +150,8 @@ main(int argc, char *argv[])
- 				errx(1, "Encryption type limits not supported by Kerberos libraries.");
- #endif
- 				break;
-+			case 'N':
-+				avoid_ptr = 1;
- 			default:
- 				usage(argv[0]);
- 				break;
-diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
-index 79d9bf91ac6b976c57d167e60d07f828a3ff5b1f..09253b43ba6502202c17bbc84bd6bcf9dec85e9b 100644
---- a/utils/gssd/gssd.man
-+++ b/utils/gssd/gssd.man
-@@ -8,7 +8,7 @@
- rpc.gssd \- RPCSEC_GSS daemon
- .SH SYNOPSIS
- .B rpc.gssd
--.RB [ \-fMnlvr ]
-+.RB [ \-fMnlvrN ]
- .RB [ \-k
- .IR keytab ]
- .RB [ \-p
-@@ -266,6 +266,11 @@ new kernel contexts to be negotiated after
- seconds, which allows changing Kerberos tickets and identities frequently.
- The default is no explicit timeout, which means the kernel context will live
- the lifetime of the Kerberos service ticket used in its creation.
-+.TP
-+.B -N
-+Tries to avoid PTR lookups for resolving the server name, if the name used at 
-+mount looks like a Fully Qualified Domain Name. This is import to avoid GSSAPI 
-+issues when PTR records are set and to help avoid some kind of MITM attack.
- .SH SEE ALSO
- .BR rpc.svcgssd (8),
- .BR kerberos (1),
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index ea01e92e4565670b97dea1a936d2f0dbdc7c4610..0a584d2084d626ee98a8ad6ff56da95464b882fe 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -67,6 +67,7 @@
- #include <errno.h>
- #include <gssapi/gssapi.h>
- #include <netdb.h>
-+#include <ctype.h>
++EXPORT_SYMBOL(sharelock_lock_file);
  
- #include "gssd.h"
- #include "err_util.h"
-@@ -107,6 +108,8 @@ struct pollfd * pollarray;
- 
- unsigned long pollsize;  /* the size of pollaray (in pollfd's) */
- 
-+int avoid_ptr = 0;
-+
- /*
-  * convert a presentation address string to a sockaddr_storage struct. Returns
-  * true on success or false on failure.
-@@ -165,12 +168,32 @@ addrstr_to_sockaddr(struct sockaddr *sa, const char *node, const char *port)
-  * convert a sockaddr to a hostname
-  */
- static char *
--sockaddr_to_hostname(const struct sockaddr *sa, const char *addr)
-+get_servername(const char *name, const struct sockaddr *sa, const char *addr)
+ static int __posix_lock_file(struct inode *inode, struct file_lock *request, struct file_lock *conflock)
  {
- 	socklen_t		addrlen;
- 	int			err;
- 	char			*hostname;
- 	char			hbuf[NI_MAXHOST];
-+	const char		*p;
-+	int			do_ptr_lookup = 0;
-+
-+	if (avoid_ptr) {
-+		/* try to determine if this is FQDN, or an IP address with
-+		 * basic heuristics, if they fail try a PTR lookup */
-+		p = strrchr(name, '.');
-+		if (!p || strchr(name, ':'))
-+			do_ptr_lookup = 1; /* non-FQDN, or IPv6 */
-+		else {
-+			for (++p; *p; p++)
-+				if (!isdigit(*p))
-+					break;
-+			if (!*p)
-+				do_ptr_lookup = 1; /* IPv4 */
-+		}
-+		if (!do_ptr_lookup) {
-+			return strdup(name);
-+		}
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 2e27430..5043504 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -463,6 +463,19 @@ test_deny(u32 access, struct nfs4_ol_stateid *stp)
+ 	return test_bit(access, &stp->st_deny_bmap);
+ }
+ 
++static int nfs4_deny_to_odeny(u32 access)
++{
++	switch (access & NFS4_SHARE_DENY_BOTH) {
++	case NFS4_SHARE_DENY_READ:
++		return O_DENYREAD;
++	case NFS4_SHARE_DENY_WRITE:
++		return O_DENYWRITE;
++	case NFS4_SHARE_DENY_BOTH:
++		return O_DENYREAD | O_DENYWRITE;
 +	}
++	return 0;
++}
++
+ static int nfs4_access_to_omode(u32 access)
+ {
+ 	switch (access & NFS4_SHARE_ACCESS_BOTH) {
+@@ -2786,6 +2799,21 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
+ }
  
- 	switch (sa->sa_family) {
- 	case AF_INET:
-@@ -208,7 +231,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
- 		  struct sockaddr *addr) {
- #define INFOBUFLEN 256
- 	char		buf[INFOBUFLEN + 1];
--	static char	dummy[128];
-+	static char	server[128];
- 	int		nbytes;
- 	static char	service[128];
- 	static char	address[128];
-@@ -236,7 +259,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
- 		   "service: %127s %15s version %15s\n"
- 		   "address: %127s\n"
- 		   "protocol: %15s\n",
--		   dummy,
-+		   server,
- 		   service, program, version,
- 		   address,
- 		   protoname);
-@@ -258,7 +281,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
- 	if (!addrstr_to_sockaddr(addr, address, port))
- 		goto fail;
+ static __be32
++nfs4_vfs_set_deny(struct nfs4_file *fp, unsigned long share_access,
++		  unsigned long deny_access)
++{
++	int oflag, rc;
++	__be32 status = nfs_ok;
++
++	oflag = nfs4_access_to_omode(share_access);
++	fp->fi_fds[oflag]->f_flags |= nfs4_deny_to_odeny(deny_access);
++	rc = sharelock_lock_file(fp->fi_fds[oflag]);
++	if (rc)
++		status = nfserrno(rc);
++	return status;
++}
++
++static __be32
+ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp, struct nfsd4_open *open)
+ {
+ 	u32 op_share_access = open->op_share_access;
+@@ -2806,6 +2834,14 @@ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *c
+ 		}
+ 		return status;
+ 	}
++	status = nfs4_vfs_set_deny(fp, op_share_access, open->op_share_deny);
++	if (status) {
++		if (new_access) {
++			int oflag = nfs4_access_to_omode(op_share_access);
++			nfs4_file_put_access(fp, oflag);
++		}
++		return status;
++	}
+ 	/* remember the open */
+ 	set_access(op_share_access, stp);
+ 	set_deny(open->op_share_deny, stp);
+@@ -3039,7 +3075,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
  
--	*servername = sockaddr_to_hostname(addr, address);
-+	*servername = get_servername(server, addr, address);
- 	if (*servername == NULL)
- 		goto fail;
+ 	/*
+ 	 * OPEN the file, or upgrade an existing OPEN.
+-	 * If truncate fails, the OPEN fails.
++	 * If truncate or set_deny fails, the OPEN fails.
+ 	 */
+ 	if (stp) {
+ 		/* Stateid was found, this is an OPEN upgrade */
+@@ -3053,6 +3089,10 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 		status = nfsd4_truncate(rqstp, current_fh, open);
+ 		if (status)
+ 			goto out;
++		status = nfs4_vfs_set_deny(fp, open->op_share_access,
++					   open->op_share_deny);
++		if (status)
++			goto out;
+ 		stp = open->op_stp;
+ 		open->op_stp = NULL;
+ 		init_open_stateid(stp, fp, open);
+@@ -3751,6 +3791,10 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
+ 	}
+ 	nfs4_stateid_downgrade(stp, od->od_share_access);
+ 
++	status = nfs4_vfs_set_deny(stp->st_file, od->od_share_access,
++				   od->od_share_deny);
++	if (status)
++		goto out;
+ 	reset_union_bmap_deny(od->od_share_deny, stp);
+ 
+ 	update_stateid(&stp->st_stid.sc_stateid);
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index 54c6b3d..ff95544 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -743,6 +743,7 @@ nfserrno (int errno)
+ 		{ nfserr_notsupp, -EOPNOTSUPP },
+ 		{ nfserr_toosmall, -ETOOSMALL },
+ 		{ nfserr_serverfault, -ESERVERFAULT },
++		{ nfserr_share_denied, -ESHAREDENIED },
+ 	};
+ 	int	i;
  
 -- 
-1.8.1.4
-
-
---=-01e+ntA1nqbBeu2bLev1--
+1.8.1.5
 
