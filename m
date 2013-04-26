@@ -1,84 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:17282 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:62216 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758241Ab3D2M7L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Apr 2013 08:59:11 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 08/17] NFSv4: Add label recommended attribute and NFSv4 flags
-Date: Mon, 29 Apr 2013 08:57:10 -0400
-Message-Id: <1367240239-19326-9-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
-References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
+	id S1753672Ab3DZXKZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Apr 2013 19:10:25 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: SteveD@redhat.com
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
+        Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] statd: exit if a statd is already running
+Date: Fri, 26 Apr 2013 19:10:19 -0400
+Message-Id: <1367017819-11006-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+Moves nfs_probe_statd from mount to nfs support lib to share with statd.
 
-This patch adds several new flags to allow the NFS client and server to
-determine if this attribute is supported and if it is being sent over the wire.
-
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
 ---
- include/linux/nfs4.h      | 1 +
- include/linux/nfs_fs_sb.h | 1 +
- include/linux/nfs_xdr.h   | 4 +++-
- 3 files changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 7e18a66..6f44cc1 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -385,6 +385,7 @@ enum lock_type4 {
- #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
- #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
- #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
-+#define FATTR4_WORD2_SECURITY_LABEL     (1UL << 17)
- #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
- 
- /* MDS threshold bitmap bits */
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 6c6ed15..d507357 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -197,5 +197,6 @@ struct nfs_server {
- #define NFS_CAP_MTIME		(1U << 13)
- #define NFS_CAP_POSIX_LOCK	(1U << 14)
- #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
-+#define NFS_CAP_SECURITY_LABEL	(1U << 16)
- 
- #endif
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 4b993d3..9f2dba3 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -104,6 +104,7 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
- #define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
- #define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
-+#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 25)
- 
- #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
- 		| NFS_ATTR_FATTR_MODE \
-@@ -123,7 +124,8 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
- 		| NFS_ATTR_FATTR_SPACE_USED)
- #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
--		| NFS_ATTR_FATTR_SPACE_USED)
-+		| NFS_ATTR_FATTR_SPACE_USED \
-+		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
+This patch stops users from running multiple instances of statd, which can
+obviously cause a lot of problems.
+
+ support/include/nfsrpc.h |  5 +++++
+ support/nfs/getport.c    | 22 ++++++++++++++++++++++
+ utils/mount/network.c    | 17 -----------------
+ utils/statd/statd.c      |  6 ++++++
+ 4 files changed, 33 insertions(+), 17 deletions(-)
+
+diff --git a/support/include/nfsrpc.h b/support/include/nfsrpc.h
+index a0b80e1..1bfae7a 100644
+--- a/support/include/nfsrpc.h
++++ b/support/include/nfsrpc.h
+@@ -156,6 +156,11 @@ extern unsigned long	nfs_pmap_getport(const struct sockaddr_in *,
+ 				const struct timeval *);
  
  /*
-  * Info on the file system
++ * Use nfs_pmap_getport to see if statd is running locally
++ */
++extern int nfs_probe_statd(void);
++
++/*
+  * Contact a remote RPC service to discover whether it is responding
+  * to requests.
+  */
+diff --git a/support/nfs/getport.c b/support/nfs/getport.c
+index 3331ad4..081594c 100644
+--- a/support/nfs/getport.c
++++ b/support/nfs/getport.c
+@@ -1102,3 +1102,25 @@ unsigned long nfs_pmap_getport(const struct sockaddr_in *sin,
+ 
+ 	return port;
+ }
++
++static const char *nfs_ns_pgmtbl[] = {
++        "status",
++        NULL,
++};
++
++/*
++ * nfs_probe_statd - use nfs_pmap_getport to see if statd is running locally
++ *
++ * Returns non-zero if statd is running locally.
++ */
++int nfs_probe_statd(void)
++{
++        struct sockaddr_in addr = {
++                .sin_family             = AF_INET,
++                .sin_addr.s_addr        = htonl(INADDR_LOOPBACK),
++        };
++        rpcprog_t program = nfs_getrpcbyname(NSMPROG, nfs_ns_pgmtbl);
++
++        return nfs_getport_ping((struct sockaddr *)(char *)&addr, sizeof(addr),
++                                program, (rpcvers_t)1, IPPROTO_UDP);
++}
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 4be48cd..e2cdcaf 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -65,11 +65,6 @@ extern int nfs_mount_data_version;
+ extern char *progname;
+ extern int verbose;
+ 
+-static const char *nfs_ns_pgmtbl[] = {
+-	"status",
+-	NULL,
+-};
+-
+ static const char *nfs_mnt_pgmtbl[] = {
+ 	"mount",
+ 	"mountd",
+@@ -761,18 +756,6 @@ int probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
+ 					&nfs_server->pmap);
+ }
+ 
+-static int nfs_probe_statd(void)
+-{
+-	struct sockaddr_in addr = {
+-		.sin_family		= AF_INET,
+-		.sin_addr.s_addr	= htonl(INADDR_LOOPBACK),
+-	};
+-	rpcprog_t program = nfs_getrpcbyname(NSMPROG, nfs_ns_pgmtbl);
+-
+-	return nfs_getport_ping(SAFE_SOCKADDR(&addr), sizeof(addr),
+-				program, (rpcvers_t)1, IPPROTO_UDP);
+-}
+-
+ /**
+  * start_statd - attempt to start rpc.statd
+  *
+diff --git a/utils/statd/statd.c b/utils/statd/statd.c
+index 652546c..ed9c1db 100644
+--- a/utils/statd/statd.c
++++ b/utils/statd/statd.c
+@@ -237,6 +237,12 @@ int main (int argc, char **argv)
+ 	/* Set hostname */
+ 	MY_NAME = NULL;
+ 
++	/* Refuse to start if another statd is running */
++	if (nfs_probe_statd()) {
++		fprintf(stderr, "Statd service already running!\n");
++		exit(1);
++	}
++
+ 	/* Process command line switches */
+ 	while ((arg = getopt_long(argc, argv, "h?vVFNH:dn:p:o:P:L", longopts, NULL)) != EOF) {
+ 		switch (arg) {
 -- 
-1.8.1.4
+1.7.12.4 (Apple Git-37)
 
