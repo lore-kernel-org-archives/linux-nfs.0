@@ -1,37 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.194]:51393 "EHLO mout.perfora.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760784Ab3DBSxp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Apr 2013 14:53:45 -0400
-Date: Tue, 2 Apr 2013 14:53:38 -0400
-From: Jim Rees <rees@umich.edu>
-To: Simo Sorce <simo@redhat.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>, Steve Dickson <steved@redhat.com>,
-        Jeffrey Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] Avoid PTR lookups when possible
-Message-ID: <20130402185337.GC18900@umich.edu>
-References: <1364910351.2660.1243.camel@willson.li.ssimo.org>
- <20130402150049.GA526@umich.edu>
- <1364919975.2660.1255.camel@willson.li.ssimo.org>
- <20130402164631.GA23840@umich.edu>
- <1364922203.2660.1265.camel@willson.li.ssimo.org>
- <20130402183907.GB18900@umich.edu>
- <1364928519.2660.1279.camel@willson.li.ssimo.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1364928519.2660.1279.camel@willson.li.ssimo.org>
+Received: from mail-lb0-f170.google.com ([209.85.217.170]:59624 "EHLO
+	mail-lb0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753884Ab3DZMAH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Apr 2013 08:00:07 -0400
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v6 7/7] locks: Disable LOCK_MAND support for MS_SHARELOCK mounts
+Date: Fri, 26 Apr 2013 16:04:21 +0400
+Message-Id: <1366977861-27678-8-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1366977861-27678-1-git-send-email-piastry@etersoft.ru>
+References: <1366977861-27678-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Simo Sorce wrote:
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+---
+ fs/locks.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-  >  And stop using the term "mitm". A mitm attack is used to
-  > convince both ends of a connection that they are talking to each other. DNS
-  > is not a mutually authenticated exchange.
-  
-  Well it is still a sort of Man in the Middle, as you also have to
-  redirect communications (nfsv4 uses TCP) for it to be effective, it is
-  just not exploiting a crypto issue.
+diff --git a/fs/locks.c b/fs/locks.c
+index 25c3a49..7d67e0e 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1756,6 +1756,12 @@ SYSCALL_DEFINE2(flock, unsigned int, fd, unsigned int, cmd)
+ 		goto out;
+ 	}
+ 
++	/* Disable LOCK_MAND support for FS mounted with MS_SHARELOCK */
++	if ((cmd & LOCK_MAND) && IS_SHARELOCK(f.file->f_path.dentry->d_inode)) {
++		error = -EPERM;
++		goto out;
++	}
++
+ 	can_sleep = !(cmd & LOCK_NB);
+ 	cmd &= ~LOCK_NB;
+ 	unlock = (cmd == LOCK_UN);
+-- 
+1.8.1.5
 
-Now you've lost me again. I thought we were discussing dns. What does nfs
-have to do with it?
