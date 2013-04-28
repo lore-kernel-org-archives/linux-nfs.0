@@ -1,95 +1,215 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from esa-jnhn.mail.uoguelph.ca ([131.104.91.44]:23589 "EHLO
-	esa-jnhn.mail.uoguelph.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751496Ab3DJXX0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Apr 2013 19:23:26 -0400
-Date: Wed, 10 Apr 2013 19:23:24 -0400 (EDT)
-From: Rick Macklem <rmacklem@uoguelph.ca>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Bram Vandoren <brambi@gmail.com>
-Message-ID: <449485738.724843.1365636204483.JavaMail.root@erie.cs.uoguelph.ca>
-In-Reply-To: <452C72A5-F773-4E16-88F4-B1100C505C41@oracle.com>
-Subject: Re: NFS client hangs after server reboot
+Received: from fieldses.org ([174.143.236.118]:59442 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753938Ab3D1Omw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 28 Apr 2013 10:42:52 -0400
+Date: Sun, 28 Apr 2013 10:42:48 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Yan Burman <yanb@mellanox.com>
+Cc: Wendy Cheng <s.wendy.cheng@gmail.com>,
+        "Atchley, Scott" <atchleyes@ornl.gov>,
+        Tom Tucker <tom@opengridcomputing.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Or Gerlitz <ogerlitz@mellanox.com>
+Subject: Re: NFS over RDMA benchmark
+Message-ID: <20130428144248.GA2037@fieldses.org>
+References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com>
+ <CABgxfbF7c9ktSoMSPV21JU76V5J4iwbJQ257S91Y3z36WJbJVA@mail.gmail.com>
+ <62745258-4F3B-4C05-BFFD-03EA604576E4@ornl.gov>
+ <CABgxfbGxhnKj2n0Z-w87rZ6fwCssO31G009gwej957gv1p8PQQ@mail.gmail.com>
+ <0EE9A1CDC8D6434DB00095CD7DB873462CF9715B@MTLDAG01.mtl.com>
+ <20130423210607.GJ3676@fieldses.org>
+ <0EE9A1CDC8D6434DB00095CD7DB873462CF988C9@MTLDAG01.mtl.com>
+ <20130424150540.GB20275@fieldses.org>
+ <20130424152631.GC20275@fieldses.org>
+ <0EE9A1CDC8D6434DB00095CD7DB873462CF9A820@MTLDAG01.mtl.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <0EE9A1CDC8D6434DB00095CD7DB873462CF9A820@MTLDAG01.mtl.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote:
-> [ Adding Rick Macklem ]
+On Sun, Apr 28, 2013 at 06:28:16AM +0000, Yan Burman wrote:
+> > > > > > > >> On Wed, Apr 17, 2013 at 7:36 AM, Yan Burman
+> > > > > > > >> <yanb@mellanox.com>
+> > > > > > > >>> I've been trying to do some benchmarks for NFS over RDMA
+> > > > > > > >>> and I seem to
+> > > > > > > only get about half of the bandwidth that the HW can give me.
+> > > > > > > >>> My setup consists of 2 servers each with 16 cores, 32Gb of
+> > > > > > > >>> memory, and
+> > > > > > > Mellanox ConnectX3 QDR card over PCI-e gen3.
+> > > > > > > >>> These servers are connected to a QDR IB switch. The
+> > > > > > > >>> backing storage on
+> > > > > > > the server is tmpfs mounted with noatime.
+> > > > > > > >>> I am running kernel 3.5.7.
+> > > > > > > >>>
+> > > > > > > >>> When running ib_send_bw, I get 4.3-4.5 GB/sec for block sizes 4-
+> > 512K.
+> > > > > > > >>> When I run fio over rdma mounted nfs, I get 260-2200MB/sec
+> > > > > > > >>> for the
+> > > > > > > same block sizes (4-512K). running over IPoIB-CM, I get 200-
+> > 980MB/sec.
+...
+> > > > > > I am trying to get maximum performance from a single server - I
+> > > > > > used 2
+> > > > > processes in fio test - more than 2 did not show any performance boost.
+> > > > > > I tried running fio from 2 different PCs on 2 different files,
+> > > > > > but the sum of
+> > > > > the two is more or less the same as running from single client PC.
+> > > > > >
+> > > > > > What I did see is that server is sweating a lot more than the
+> > > > > > clients and
+> > > > > more than that, it has 1 core (CPU5) in 100% softirq tasklet:
+> > > > > > cat /proc/softirqs
+...
+> > > > Perf top for the CPU with high tasklet count gives:
+> > > >
+> > > >              samples  pcnt         RIP        function                    DSO
+...
+> > > >              2787.00 24.1% ffffffff81062a00 mutex_spin_on_owner
+> > /root/vmlinux
+...
+> > Googling around....  I think we want:
+> > 
+> > 	perf record -a --call-graph
+> > 	(give it a chance to collect some samples, then ^C)
+> > 	perf report --call-graph --stdio
+> > 
 > 
-> On Apr 9, 2013, at 3:08 PM, J. Bruce Fields <bfields@fieldses.org>
-> wrote:
+> Sorry it took me a while to get perf to show the call trace (did not enable frame pointers in kernel and struggled with perf options...), but what I get is:
+>     36.18%          nfsd  [kernel.kallsyms]   [k] mutex_spin_on_owner
+>                     |
+>                     --- mutex_spin_on_owner
+>                        |
+>                        |--99.99%-- __mutex_lock_slowpath
+>                        |          mutex_lock
+>                        |          |
+>                        |          |--85.30%-- generic_file_aio_write
+
+That's the inode i_mutex.
+
+>                        |          |          do_sync_readv_writev
+>                        |          |          do_readv_writev
+>                        |          |          vfs_writev
+>                        |          |          nfsd_vfs_write
+>                        |          |          nfsd_write
+>                        |          |          nfsd3_proc_write
+>                        |          |          nfsd_dispatch
+>                        |          |          svc_process_common
+>                        |          |          svc_process
+>                        |          |          nfsd
+>                        |          |          kthread
+>                        |          |          kernel_thread_helper
+>                        |          |
+>                        |           --14.70%-- svc_send
+
+That's the xpt_mutex (ensuring rpc replies aren't interleaved).
+
+>                        |                     svc_process
+>                        |                     nfsd
+>                        |                     kthread
+>                        |                     kernel_thread_helper
+>                         --0.01%-- [...]
 > 
-> > On Tue, Apr 09, 2013 at 05:51:40PM +0200, Bram Vandoren wrote:
-> >> Hello,
-> >> we have a FreeBSD 9.1 fileserver and several clients running kernel
-> >> 3.8.4-102.fc17.x86_64. Everything works fine till we reboot the
-> >> server. A fraction (1/10) of the clients don't resume the NFS
-> >> session
-> >> correctly. The server sends a NFS4ERR_STALE_STATEID. The client
-> >> sends
-> >> a RENEW to the server but no SETCLIENTID. (this should be the
-> >> correct
-> >> action from my very quick look at RFC 3530). After that the client
-> >> continues with a few READ call and the process starts again with
-> >> the
-> >> NFS4ERR_STALE_STATEID response from the server. It generates a lot
-> >> of
-> >> useless network traffic.
-> >
-> >   0.003754 a.b.c.2 -> a.b.c.120 NFS 122 V4 Reply (Call In 49) READ
-> >   Status: NFS4ERR_STALE_STATEID
-> >   0.003769 a.b.c.2 -> a.b.c.120 NFS 114 V4 Reply (Call In 71) RENEW
-> >
-> > I don't normally use tshark, so I don't know--does the lack of a
-> > status
-> > on that second line indicate that the RENEW succeeded?
-> >
-> > Assuming the RENEW is for the same clientid that the read stateid's
-> > are
-> > associated with--that's definitely a server bug. The RENEW should be
-> > returning STALE_CLIENTID.
+>      9.63%          nfsd  [kernel.kallsyms]   [k] _raw_spin_lock_irqsave
+>                     |
+>                     --- _raw_spin_lock_irqsave
+>                        |
+>                        |--43.97%-- alloc_iova
+
+And that (and __free_iova below) looks like iova_rbtree_lock.
+
+--b.
+
+>                        |          intel_alloc_iova
+>                        |          __intel_map_single
+>                        |          intel_map_page
+>                        |          |
+>                        |          |--60.47%-- svc_rdma_sendto
+>                        |          |          svc_send
+>                        |          |          svc_process
+>                        |          |          nfsd
+>                        |          |          kthread
+>                        |          |          kernel_thread_helper
+>                        |          |
+>                        |          |--30.10%-- rdma_read_xdr
+>                        |          |          svc_rdma_recvfrom
+>                        |          |          svc_recv
+>                        |          |          nfsd
+>                        |          |          kthread
+>                        |          |          kernel_thread_helper
+>                        |          |
+>                        |          |--6.69%-- svc_rdma_post_recv
+>                        |          |          send_reply
+>                        |          |          svc_rdma_sendto
+>                        |          |          svc_send
+>                        |          |          svc_process
+>                        |          |          nfsd
+>                        |          |          kthread
+>                        |          |          kernel_thread_helper
+>                        |          |
+>                        |           --2.74%-- send_reply
+>                        |                     svc_rdma_sendto
+>                        |                     svc_send
+>                        |                     svc_process
+>                        |                     nfsd
+>                        |                     kthread
+>                        |                     kernel_thread_helper
+>                        |
+>                        |--37.52%-- __free_iova
+>                        |          flush_unmaps
+>                        |          add_unmap
+>                        |          intel_unmap_page
+>                        |          |
+>                        |          |--97.18%-- svc_rdma_put_frmr
+>                        |          |          sq_cq_reap
+>                        |          |          dto_tasklet_func
+>                        |          |          tasklet_action
+>                        |          |          __do_softirq
+>                        |          |          call_softirq
+>                        |          |          do_softirq
+>                        |          |          |
+>                        |          |          |--97.40%-- irq_exit
+>                        |          |          |          |
+>                        |          |          |          |--99.85%-- do_IRQ
+>                        |          |          |          |          ret_from_intr
+>                        |          |          |          |          |
+>                        |          |          |          |          |--40.74%-- generic_file_buffered_write
+>                        |          |          |          |          |          __generic_file_aio_write
+>                        |          |          |          |          |          generic_file_aio_write
+>                        |          |          |          |          |          do_sync_readv_writev
+>                        |          |          |          |          |          do_readv_writev
+>                        |          |          |          |          |          vfs_writev
+>                        |          |          |          |          |          nfsd_vfs_write
+>                        |          |          |          |          |          nfsd_write
+>                        |          |          |          |          |          nfsd3_proc_write
+>                        |          |          |          |          |          nfsd_dispatch
+>                        |          |          |          |          |          svc_process_common
+>                        |          |          |          |          |          svc_process
+>                        |          |          |          |          |          nfsd
+>                        |          |          |          |          |          kthread
+>                        |          |          |          |          |          kernel_thread_helper
+>                        |          |          |          |          |
+>                        |          |          |          |          |--25.21%-- __mutex_lock_slowpath
+>                        |          |          |          |          |          mutex_lock
+>                        |          |          |          |          |          |
+>                        |          |          |          |          |          |--94.84%-- generic_file_aio_write
+>                        |          |          |          |          |          |          do_sync_readv_writev
+>                        |          |          |          |          |          |          do_readv_writev
+>                        |          |          |          |          |          |          vfs_writev
+>                        |          |          |          |          |          |          nfsd_vfs_write
+>                        |          |          |          |          |          |          nfsd_write
+>                        |          |          |          |          |          |          nfsd3_proc_write
+>                        |          |          |          |          |          |          nfsd_dispatch
+>                        |          |          |          |          |          |          svc_process_common
+>                        |          |          |          |          |          |          svc_process
+>                        |          |          |          |          |          |          nfsd
+>                        |          |          |          |          |          |          kthread
+>                        |          |          |          |          |          |          kernel_thread_helper
+>                        |          |          |          |          |          |
 > 
-> The server is returning NFS4_OK to that RENEW and we appear to be out
-> of the server's grace period. Thus we can assume that state recovery
-> has already been performed following the server reboot, and a fresh
-> client ID has been correctly established. One possible explanation for
-> NFS4ERR_STALE_STATEID is that the client skipped recovering these
-> state IDs for some reason.
+> The entire trace is almost 1MB, so send me an off-list message if you want it.
 > 
-This is a possible explanation. There is a "boottime" field in both
-the clientid and stateid for a FreeBSD NFSv4 server, which is checked
-and generates a NFS4ERR_STALE_CLIENTID or NFS4ERR_STALE_STATEID, depending
-on whether it is a clientid or stateid. In other words, the code would
-generate the stale error message for all clientids/stateids that were
-issued before the server reboot. (Also, the FreeBSD server delays the
-end of grace until it doesn't see any reclaim ops for a while, so it
-shouldn't just run out of grace period, unless the client delays for
-seconds without completing a recovery.)
-
-If you have a capture of the above that you can look at in wireshark,
-you could look at the bits that make up the stateid/clientid. Although
-I don't have the code in front of me, but I think the first 32bits are
-the "boottime" and should be different for the stateid vs clientid for
-the above two RPCs.
-
-> A full network capture in pcap format, started before the server
-> reboot occurs, would be needed for us to analyze the issue properly.
+> Yan
 > 
-I agree. A network capture on the server from when it reboots would
-be needed to analyse this. You could stick a line to start a tcpdump
-capture in the /etc/rc.d/nfsd script or disable starting the nfsd
-in /etc/rc.conf and then start it manually after starting a
-"tcpdump -w reboot.pcap -s 0" or similar.
-
-If you get such a <file>.pcap, I could probably take a look at it,
-although it might not happen until May.
-
-rick
-
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
