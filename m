@@ -1,48 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50127 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1765117Ab3DIX6U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Apr 2013 19:58:20 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 01/10] nfsd4: remove some redundant comments
-Date: Tue,  9 Apr 2013 19:58:06 -0400
-Message-Id: <1365551896-6936-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1365551896-6936-1-git-send-email-bfields@redhat.com>
-References: <1365551896-6936-1-git-send-email-bfields@redhat.com>
+Received: from mail-wi0-f180.google.com ([209.85.212.180]:57407 "EHLO
+	mail-wi0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752372Ab3D1PUu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Apr 2013 11:20:50 -0400
+Received: by mail-wi0-f180.google.com with SMTP id h11so2023929wiv.1
+        for <linux-nfs@vger.kernel.org>; Sun, 28 Apr 2013 08:20:49 -0700 (PDT)
+Message-ID: <517D3E4D.4010607@tonian.com>
+Date: Sun, 28 Apr 2013 18:20:45 +0300
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
+To: Fred Isaman <faisaman4@gmail.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Isaman, Fred" <Fred.Isaman@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] pnfs: do not reset to mds if wb_offset != wb_pgbase
+References: <1363617532-24172-1-git-send-email-bhalevy@tonian.com> <1363622128.4351.15.camel@leira.trondhjem.org> <51473F46.10401@tonian.com> <CADnza476e0FpXJJfE8OmXLRQUR3Zm_aZkX7JZRB=vGyZ-U2yDg@mail.gmail.com> <5148BE0B.9080802@tonian.com> <CADnza46Npnn=GquO8s7TPPSGZq9Cs11JJdj6t8ejDh5gYeeTYg@mail.gmail.com> <5152E3B5.8080402@tonian.com>
+In-Reply-To: <5152E3B5.8080402@tonian.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On 2013-03-27 14:19, Benny Halevy wrote:
+> On 2013-03-19 22:28, Fred Isaman wrote:
+>> On Tue, Mar 19, 2013 at 3:35 PM, Benny Halevy <bhalevy@tonian.com> wrote:
+>>> On 2013-03-18 19:04, Fred Isaman wrote:
+>>>> A problem case is if the layout ends within the page request, which
+>>>> can happen due to the misalignment.
+>>>
+>>> First, the file layout currently supports only whole file layouts so I don't see
+>>> how that's a problem.
+>>> Regardless, I'd rather trim the layout segment to PAGE_SIZE boundaries
+>>> and get a new layout from the page aligned offset and on with minlength = PAGE_SIZE
+>>> (as we do today).
+>>>
+>>> Benny
+>>>
+>>
+>> Yes, but consider....
+>>
+>> let P = PAGE_SIZE
+>>
+>> assume you have a layout from 0 to 4P, and you try to do a WRITE from
+>> 2P to 6P.  Now if the buffer is not page aligned, one of the nfs_page
+>> requests will contain the file's logical 4P offset at a random
+>> location within the nfs_page.  What happens then?
+> 
+> Fred,  Can you please provide a test that reproduces this concern
+> so we can verify the system behavior with and without my patch?
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |    6 ------
- 1 file changed, 6 deletions(-)
+Ping...
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9cb9f6e..1226ff6 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4432,17 +4432,11 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 						locku->lu_length);
- 	nfs4_transform_lock_offset(file_lock);
- 
--	/*
--	*  Try to unlock the file in the VFS.
--	*/
- 	err = vfs_lock_file(filp, F_SETLK, file_lock, NULL);
- 	if (err) {
- 		dprintk("NFSD: nfs4_locku: vfs_lock_file failed!\n");
- 		goto out_nfserr;
- 	}
--	/*
--	* OK, unlock succeeded; the only thing left to do is update the stateid.
--	*/
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&locku->lu_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- 
--- 
-1.7.9.5
-
+> 
+> Benny
+> 
+>>
+>> Fred
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
