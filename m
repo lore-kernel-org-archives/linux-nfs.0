@@ -1,57 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:18777 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:39575 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752885Ab3DVRT3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Apr 2013 13:19:29 -0400
-Message-ID: <5175711C.2090504@RedHat.com>
-Date: Mon, 22 Apr 2013 13:19:24 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Mike Frysinger <vapier@gentoo.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH [nfs-utils]] do not fail sqlite check when cross-compiling
-References: <1365883476-5288-1-git-send-email-vapier@gentoo.org>
-In-Reply-To: <1365883476-5288-1-git-send-email-vapier@gentoo.org>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1750792Ab3D2PPi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Apr 2013 11:15:38 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] NFSv4: Servers should only check SETATTR stateid open mode on size change
+Date: Mon, 29 Apr 2013 11:15:33 -0400
+Message-Id: <1367248534-33387-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The NFSv4 and NFSv4.1 specs are both clear that the server should only check
+stateid open mode if a SETATTR specifies the size attribute. If the
+open mode is not one that allows writing, then it returns NFS4ERR_OPENMODE.
 
+In the case where the SETATTR is not changing the size, the client will
+still pass it the delegation stateid to ensure that the server does not
+recall that delegation. In that case, the server should _ignore_ the
+delegation open mode, and simply apply standard permission checks.
 
-On 13/04/13 16:04, Mike Frysinger wrote:
-> If we're cross-compiling, we can't do a runtime test of sqlite,
-> so just assume that the user has a good enough version rather
-> than falling over.
-> 
-> Signed-off-by: Mike Frysinger <vapier@gentoo.org>
-Committed...
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
-steved.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 3bc847c..982b452 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2142,20 +2142,25 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 		.rpc_cred	= cred,
+         };
+ 	unsigned long timestamp = jiffies;
++	fmode_t fmode;
++	bool truncate;
+ 	int status;
+ 
+ 	nfs_fattr_init(fattr);
+ 
+-	if (state != NULL && nfs4_valid_open_stateid(state)) {
++	/* Servers should only apply open mode checks for file size changes */
++	truncate = (sattr->ia_valid & ATTR_SIZE) ? true : false;
++	fmode = truncate ? FMODE_WRITE : FMODE_READ;
++
++	if (nfs4_copy_delegation_stateid(&arg.stateid, inode, fmode)) {
++		/* Use that stateid */
++	} else if (truncate && state != NULL && nfs4_valid_open_stateid(state)) {
+ 		struct nfs_lockowner lockowner = {
+ 			.l_owner = current->files,
+ 			.l_pid = current->tgid,
+ 		};
+ 		nfs4_select_rw_stateid(&arg.stateid, state, FMODE_WRITE,
+ 				&lockowner);
+-	} else if (nfs4_copy_delegation_stateid(&arg.stateid, inode,
+-				FMODE_WRITE)) {
+-		/* Use that stateid */
+ 	} else
+ 		nfs4_stateid_copy(&arg.stateid, &zero_stateid);
+ 
+-- 
+1.8.1.4
 
-> ---
->  configure.ac | 11 ++++++++---
->  1 file changed, 8 insertions(+), 3 deletions(-)
-> 
-> diff --git a/configure.ac b/configure.ac
-> index 3d7ab0a..a594a7b 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -274,9 +274,14 @@ if test "$enable_nfsv4" = yes; then
->  	AC_CHECK_HEADERS([libgen.h sys/inotify.h], ,
->  		AC_MSG_ERROR([Cannot find header needed for nfsdcltrack]))
->  
-> -  	if test "$libsqlite3_cv_is_recent" != "yes" ; then
-> -		AC_MSG_ERROR([nfsdcltrack requires sqlite-devel])
-> -	fi
-> +    case $libsqlite3_cv_is_recent in
-> +    yes) ;;
-> +    unknown)
-> +      dnl do not fail when cross-compiling
-> +      AC_MSG_WARN([assuming sqlite is at least v3.3]) ;;
-> +    *)
-> +      AC_MSG_ERROR([nfsdcltrack requires sqlite-devel]) ;;
-> +    esac
->    fi
->  
->  else
-> 
