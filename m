@@ -1,42 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.194]:56113 "EHLO mout.perfora.net"
+Received: from fieldses.org ([174.143.236.118]:44361 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935338Ab3DHMGd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Apr 2013 08:06:33 -0400
-Date: Mon, 8 Apr 2013 08:06:25 -0400
-From: Jim Rees <rees@umich.edu>
-To: William Dauchy <wdauchy@gmail.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-Subject: Re: [PATCH 0/2] Stable patches for NFSv4/4.1 trunking
-Message-ID: <20130408120625.GA9924@umich.edu>
-References: <1365196588-25403-1-git-send-email-Trond.Myklebust@netapp.com>
- <CAJ75kXY-Yt_DNrKz7VfQPudw-1DkcKaK5dr3Wz7KmByyxwMSCQ@mail.gmail.com>
- <1365280195.3651.4.camel@leira.trondhjem.org>
- <CAJ75kXac4k07HMcbob2OmAhH4M+Dp1hmZbC+8uAZPB2AdrEbQw@mail.gmail.com>
+	id S1757989Ab3D2S3k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Apr 2013 14:29:40 -0400
+Date: Mon, 29 Apr 2013 14:29:39 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFSv4: Servers should only check SETATTR stateid
+ open mode on size change
+Message-ID: <20130429182939.GN17268@fieldses.org>
+References: <1367248534-33387-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1367259352.19515.16.camel@leira.trondhjem.org>
+ <20130429182145.GL17268@fieldses.org>
+ <1367260027.19515.25.camel@leira.trondhjem.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAJ75kXac4k07HMcbob2OmAhH4M+Dp1hmZbC+8uAZPB2AdrEbQw@mail.gmail.com>
+In-Reply-To: <1367260027.19515.25.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-William Dauchy wrote:
+On Mon, Apr 29, 2013 at 06:27:07PM +0000, Myklebust, Trond wrote:
+> On Mon, 2013-04-29 at 14:21 -0400, J. Bruce Fields wrote:
+> > On Mon, Apr 29, 2013 at 06:15:52PM +0000, Myklebust, Trond wrote:
+> > > On Mon, 2013-04-29 at 11:15 -0400, Trond Myklebust wrote:
+> > > > The NFSv4 and NFSv4.1 specs are both clear that the server should only check
+> > > > stateid open mode if a SETATTR specifies the size attribute. If the
+> > > > open mode is not one that allows writing, then it returns NFS4ERR_OPENMODE.
+> > > > 
+> > > > In the case where the SETATTR is not changing the size, the client will
+> > > > still pass it the delegation stateid to ensure that the server does not
+> > > > recall that delegation. In that case, the server should _ignore_ the
+> > > > delegation open mode, and simply apply standard permission checks.
+> > > 
+> > > Bruce, what does the Linux server do when we send it a delegation
+> > > stateid as part of a SETATTR that just changes the mode or acl (no size
+> > > change)? Will it recall the delegation? How about the delegations held
+> > > by other clients?
+> > 
+> > Yes, it breaks all delegations on any setattr.
+> 
+> Do you plan to change that?
 
-  On Sat, Apr 6, 2013 at 10:29 PM, Myklebust, Trond
-  <Trond.Myklebust@netapp.com> wrote:
-  > The main reason is that it should be a _very_ rare event, since it
-  > requires a call to try_to_get_module(THIS) to fail, and so I can't see
-  > that it could ever cause a huge leakage.
-  > If someone can show that it is more of a problem than I suggest above,
-  > then I'm happy to reconsider.
-  
-  Understood. I didn't know a patch fixing a very rare event could not
-  go in stable.
+I'd take patches.
 
-Every patch, no matter how "obviously" correct, carries a risk of
-introducing new bugs. Trond is responsible for weighing the risk of new bugs
-against the benefit of fixing old ones. He has a lot of experience doing
-this. If he makes a mistake, he takes the heat for your bugs. Introducing a
-new bug into stable is a lot worse than introducing one into -next.
+--b.
+
+> The main problem with the current scheme is that you can't hand out a
+> delegation as part of an exclusive create: the client would have to
+> return it immediately so that it can do the setattr to initialise the
+> file attributes.
