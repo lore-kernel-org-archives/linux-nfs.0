@@ -1,86 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:28893 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758003Ab3DYSkZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2013 14:40:25 -0400
+Received: from fieldses.org ([174.143.236.118]:42477 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760478Ab3D2TQ4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Apr 2013 15:16:56 -0400
+Date: Mon, 29 Apr 2013 15:16:54 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFSv4: Servers should only check SETATTR stateid
+ open mode on size change
+Message-ID: <20130429191654.GQ17268@fieldses.org>
+References: <1367248534-33387-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1367259352.19515.16.camel@leira.trondhjem.org>
+ <20130429182145.GL17268@fieldses.org>
+ <1367260027.19515.25.camel@leira.trondhjem.org>
+ <20130429182939.GN17268@fieldses.org>
+ <1367260382.19515.29.camel@leira.trondhjem.org>
+ <20130429184103.GO17268@fieldses.org>
+ <1367262579.19515.33.camel@leira.trondhjem.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
-Subject: Re: [PATCH] NFSv4: Use exponential backoff delay for NFS4_ERRDELAY
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130425181932.GA5049@fieldses.org>
-Date: Thu, 25 Apr 2013 14:40:11 -0400
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        David Wysochanski <dwysocha@redhat.com>,
-        Dave Chiluk <chiluk@canonical.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Message-Id: <81BBEA25-CDE5-42B1-996D-90C26A43DEF6@oracle.com>
-References: <1366836949-18465-1-git-send-email-chiluk@canonical.com> <1366838926.22397.25.camel@leira.trondhjem.org> <5178549A.7010402@canonical.com> <1366842905.22397.49.camel@leira.trondhjem.org> <1366892374.26249.294.camel@localhost.localdomain> <20130425132907.GB31851@fieldses.org> <1366896654.4719.18.camel@leira.trondhjem.org> <20130425134918.GC31851@fieldses.org> <1366899034.6812.4.camel@leira.trondhjem.org> <20130425181932.GA5049@fieldses.org>
-To: "bfields@fieldses.org" <bfields@fieldses.org>
+In-Reply-To: <1367262579.19515.33.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Apr 25, 2013, at 2:19 PM, "bfields@fieldses.org" <bfields@fieldses.org> wrote:
-
-> On Thu, Apr 25, 2013 at 02:10:36PM +0000, Myklebust, Trond wrote:
->> On Thu, 2013-04-25 at 09:49 -0400, bfields@fieldses.org wrote:
->>> On Thu, Apr 25, 2013 at 01:30:58PM +0000, Myklebust, Trond wrote:
->>>> On Thu, 2013-04-25 at 09:29 -0400, bfields@fieldses.org wrote:
->>>> 
->>>>> My position is that we simply have no idea what order of magnitude even
->>>>> delay should be.  And that in such a situation exponential backoff such
->>>>> as implemented in the synchronous case seems the reasonable default as
->>>>> it guarantees at worst doubling the delay while still bounding the
->>>>> long-term average frequency of retries.
->>>> 
->>>> So we start with a 15 second delay, and then go to 60 seconds?
->>> 
->>> I agree that a server should normally be doing the wait on its own if
->>> the wait would be on the order of an rpc round trip.
->>> 
->>> So I'd be inclined to start with a delay that was an order of magnitude
->>> or two more than a round trip.
->>> 
->>> And I'd expect NFS isn't common on networks with 1-second latencies.
->>> 
->>> So the 1/10 second we're using in the synchronous case sounds closer to
->>> the right ballpark to me.
->> 
->> OK, then. Now all I need is actual motivation for changing the existing
->> code other than handwaving arguments about "polling is better than flat
->> waits".
->> What actual use cases are impacting us now, other than the AIX design
->> decision to force CLOSE to retry at least once before succeeding?
+On Mon, Apr 29, 2013 at 07:09:41PM +0000, Myklebust, Trond wrote:
+> On Mon, 2013-04-29 at 14:41 -0400, J. Bruce Fields wrote:
+> > On Mon, Apr 29, 2013 at 06:33:02PM +0000, Myklebust, Trond wrote:
+> > > On Mon, 2013-04-29 at 14:29 -0400, J. Bruce Fields wrote:
+> > > > On Mon, Apr 29, 2013 at 06:27:07PM +0000, Myklebust, Trond wrote:
+> > > > > On Mon, 2013-04-29 at 14:21 -0400, J. Bruce Fields wrote:
+> > > > > > On Mon, Apr 29, 2013 at 06:15:52PM +0000, Myklebust, Trond wrote:
+> > > > > > > On Mon, 2013-04-29 at 11:15 -0400, Trond Myklebust wrote:
+> > > > > > > > The NFSv4 and NFSv4.1 specs are both clear that the server should only check
+> > > > > > > > stateid open mode if a SETATTR specifies the size attribute. If the
+> > > > > > > > open mode is not one that allows writing, then it returns NFS4ERR_OPENMODE.
+> > > > > > > > 
+> > > > > > > > In the case where the SETATTR is not changing the size, the client will
+> > > > > > > > still pass it the delegation stateid to ensure that the server does not
+> > > > > > > > recall that delegation. In that case, the server should _ignore_ the
+> > > > > > > > delegation open mode, and simply apply standard permission checks.
+> > > > > > > 
+> > > > > > > Bruce, what does the Linux server do when we send it a delegation
+> > > > > > > stateid as part of a SETATTR that just changes the mode or acl (no size
+> > > > > > > change)? Will it recall the delegation? How about the delegations held
+> > > > > > > by other clients?
+> > > > > > 
+> > > > > > Yes, it breaks all delegations on any setattr.
+> > > > > 
+> > > > > Do you plan to change that?
+> > > > 
+> > > > I'd take patches.
+> > > 
+> > > Have the NFSv4 delegation patches been merged yet, and do they hand out
+> > > delegations on file creation?
+> > 
+> > The vfs support patches haven't been merged, but nfsd still continues to
+> > give out read delegations on any confirmed read-open of a file that
+> > hasn't had a recent delegation conflict.  (They're just not consistent
+> > w.r.t local metadata operations....)
 > 
-> Nah, I've got nothing, and I agree that the AIX problem is there bug.
-> 
-> Just for fun I looked at re-checked the Linux server cases.  As far as I
-> can tell they are:
-> 
-> 	- delegations: returned immediately on detection of any
-> 	  conflict.  The current behavior in the sync case looks
-> 	  reasonable to me.
-> 	- allocation failures: not really sure it's the best error, but
-> 	  it seems to be all the protocol offers.  We probably don't
-> 	  care much what the client does in this case.
-> 	- some rare cases that would probably indicate bugs (e.g.,
-> 	  attempting to destroy a client while other rpc's from that
-> 	  client are running.)  Again we don't care what the client does
-> 	  here.
-> 	- the 4.1 slot-inuse case.
-> 
-> We also by default map four errors (ETIMEDOUT, EAGAIN, EWOULDBLOCK,
-> ENOMEM) to delay.  I thought I remembered one of those being used by
-> some HFS system, but can't actually find an example now.  A quick grep
-> doesn't show anything interesting.
+> The problem is that without those there seems to be no VFS level
+> functionality that allows you to say "break the leases for all processes
+> except this one".
 
-It's worth mentioning that servers that have frozen state (say, in preparation for Transparent State Migration) may use NFS4ERR_DELAY to prevent clients from modifying open or lock state until that state has transitioned to a destination server.
+There isn't any *with* those patches, either.  I agree that it would be
+nice to allow a client issuing a write or setattr to continue to hold
+its read delegation, if it's the only holder of a delegation.  But my
+understanding is that a server isn't required to do that.  So I'm taking
+this one step at a time and ignoring that problem for now.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+--b.
