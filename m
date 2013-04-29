@@ -1,75 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36532 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S936118Ab3DQBqe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Apr 2013 21:46:34 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 05/12] locks: introduce new FL_DELEG lock flag
-Date: Tue, 16 Apr 2013 21:46:17 -0400
-Message-Id: <1366163185-10317-6-git-send-email-bfields@redhat.com>
-In-Reply-To: <1366163185-10317-1-git-send-email-bfields@redhat.com>
-References: <1366163185-10317-1-git-send-email-bfields@redhat.com>
+Received: from mail-ia0-f174.google.com ([209.85.210.174]:41505 "EHLO
+	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750753Ab3D2Fev (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Apr 2013 01:34:51 -0400
+MIME-Version: 1.0
+In-Reply-To: <20130428144248.GA2037@fieldses.org>
+References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com>
+	<CABgxfbF7c9ktSoMSPV21JU76V5J4iwbJQ257S91Y3z36WJbJVA@mail.gmail.com>
+	<62745258-4F3B-4C05-BFFD-03EA604576E4@ornl.gov>
+	<CABgxfbGxhnKj2n0Z-w87rZ6fwCssO31G009gwej957gv1p8PQQ@mail.gmail.com>
+	<0EE9A1CDC8D6434DB00095CD7DB873462CF9715B@MTLDAG01.mtl.com>
+	<20130423210607.GJ3676@fieldses.org>
+	<0EE9A1CDC8D6434DB00095CD7DB873462CF988C9@MTLDAG01.mtl.com>
+	<20130424150540.GB20275@fieldses.org>
+	<20130424152631.GC20275@fieldses.org>
+	<0EE9A1CDC8D6434DB00095CD7DB873462CF9A820@MTLDAG01.mtl.com>
+	<20130428144248.GA2037@fieldses.org>
+Date: Sun, 28 Apr 2013 22:34:50 -0700
+Message-ID: <CABgxfbF9MepShtOP8EoTjfMXzU4LLWC7brTmMfa3rtoWBiOweg@mail.gmail.com>
+Subject: Re: NFS over RDMA benchmark
+From: Wendy Cheng <s.wendy.cheng@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Yan Burman <yanb@mellanox.com>, "Atchley, Scott" <atchleyes@ornl.gov>,
+        Tom Tucker <tom@opengridcomputing.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Or Gerlitz <ogerlitz@mellanox.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Sun, Apr 28, 2013 at 7:42 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-For now FL_DELEG is just a synonym for FL_LEASE.  So this patch doesn't
-change behavior.
+>> On Wed, Apr 17, 2013 at 7:36 AM, Yan Burman
 
-Next we'll modify break_lease to treat FL_DELEG leases differently, to
-account for the fact that NFSv4 delegations should be broken in more
-situations than Windows oplocks.
+>> When running ib_send_bw, I get 4.3-4.5 GB/sec for block sizes 4-512K.
+>> When I run fio over rdma mounted nfs, I get 260-2200MB/sec for the
+> > same block sizes (4-512K). running over IPoIB-CM, I get 200-980MB/sec.
+> ...
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/locks.c          |    2 +-
- fs/nfsd/nfs4state.c |    2 +-
- include/linux/fs.h  |    1 +
- 3 files changed, 3 insertions(+), 2 deletions(-)
+[snip]
 
-diff --git a/fs/locks.c b/fs/locks.c
-index cb424a4..deec4de 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -131,7 +131,7 @@
- 
- #define IS_POSIX(fl)	(fl->fl_flags & FL_POSIX)
- #define IS_FLOCK(fl)	(fl->fl_flags & FL_FLOCK)
--#define IS_LEASE(fl)	(fl->fl_flags & FL_LEASE)
-+#define IS_LEASE(fl)	(fl->fl_flags & (FL_LEASE|FL_DELEG))
- 
- static bool lease_breaking(struct file_lock *fl)
- {
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2e27430..6663352 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2842,7 +2842,7 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_delegation *dp, int f
- 		return NULL;
- 	locks_init_lock(fl);
- 	fl->fl_lmops = &nfsd_lease_mng_ops;
--	fl->fl_flags = FL_LEASE;
-+	fl->fl_flags = FL_DELEG;
- 	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
- 	fl->fl_end = OFFSET_MAX;
- 	fl->fl_owner = (fl_owner_t)(dp->dl_file);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 6e45aa6..15985f3 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -882,6 +882,7 @@ static inline int file_check_writeable(struct file *filp)
- 
- #define FL_POSIX	1
- #define FL_FLOCK	2
-+#define FL_DELEG	4	/* NFSv4 delegation */
- #define FL_ACCESS	8	/* not trying to lock, just looking */
- #define FL_EXISTS	16	/* when unlocking, test for existence */
- #define FL_LEASE	32	/* lease held on this file */
--- 
-1.7.9.5
+>>     36.18%          nfsd  [kernel.kallsyms]   [k] mutex_spin_on_owner
+>
+> That's the inode i_mutex.
+>
+>>     14.70%-- svc_send
+>
+> That's the xpt_mutex (ensuring rpc replies aren't interleaved).
+>
+>>
+>>      9.63%          nfsd  [kernel.kallsyms]   [k] _raw_spin_lock_irqsave
+>>
+>
+> And that (and __free_iova below) looks like iova_rbtree_lock.
+>
+>
 
+Let's revisit your command:
+
+"FIO arguments: --rw=randread --bs=4k --numjobs=2 --iodepth=128
+--ioengine=libaio --size=100000k --prioclass=1 --prio=0 --cpumask=255
+--loops=25 --direct=1 --invalidate=1 --fsync_on_close=1 --randrepeat=1
+--norandommap --group_reporting --exitall --buffered=0"
+
+* inode's i_mutex:
+If increasing process/file count didn't help, maybe increase "iodepth"
+(say 512 ?) could offset the i_mutex overhead a little bit ?
+
+* xpt_mutex:
+(no idea)
+
+* iova_rbtree_lock
+DMA mapping fragmentation ? I have not studied whether NFS-RDMA
+routines such as "svc_rdma_sendto()" could do better but maybe
+sequential IO (instead of "randread") could help ? Bigger block size
+(instead of 4K) can help ?
+
+-- Wendy
