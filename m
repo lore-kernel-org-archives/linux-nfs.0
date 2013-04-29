@@ -1,82 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f169.google.com ([209.85.192.169]:54395 "EHLO
-	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S967859Ab3DSDfy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Apr 2013 23:35:54 -0400
-Subject: Re: NFS over RDMA benchmark
-Mime-Version: 1.0 (Apple Message framework v1085)
-Content-Type: text/plain; charset=us-ascii
-From: Spencer <spencer.shepler@gmail.com>
-In-Reply-To: <47A54DE8-EBCF-4CE2-80AC-58415B985FD7@ornl.gov>
-Date: Thu, 18 Apr 2013 20:35:51 -0700
-Cc: Wendy Cheng <s.wendy.cheng@gmail.com>, Yan Burman <yanb@mellanox.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Tom Tucker <tom@opengridcomputing.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Or Gerlitz <ogerlitz@mellanox.com>
-Message-Id: <3006E759-2578-455B-9647-46B000584E7E@gmail.com>
-References: <51703280.03e9440a.06a6.3f9f@mx.google.com> <CABgxfbF2HSYPF=rAjrKjoMAKqMOzUOUxJbNFspKaZ4ykMyaCbw@mail.gmail.com> <47A54DE8-EBCF-4CE2-80AC-58415B985FD7@ornl.gov>
-To: "Atchley, Scott" <atchleyes@ornl.gov>
+Received: from mx1.redhat.com ([209.132.183.28]:24067 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757353Ab3D2M7D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Apr 2013 08:59:03 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 00/17] lnfs: 3.9-rc8 release (take 2)
+Date: Mon, 29 Apr 2013 08:57:02 -0400
+Message-Id: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Steve Dickson <steved@redhat.com>
 
+Here is an updated 3.9-rc8 release of
+the label NFS patches. 
 
-On Apr 18, 2013, at 6:03 PM, Atchley, Scott wrote:
+The following changes were made from the previous 
+release.
 
-> On Apr 18, 2013, at 3:15 PM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
-> 
->> On Thu, Apr 18, 2013 at 10:50 AM, Spencer Shepler
->> <spencer.shepler@gmail.com> wrote:
->>> 
->>> Note that SPEC SFS does not support RDMA.
->>> 
->> 
->> IIRC, the benchmark comes with source code - wondering anyone has
->> modified it to run on RDMA ?  Or is there any real user to share the
->> experience ?
-> 
-> I am not familiar with SpecSFS, but if it exercises the filesystem, it does not know which RPC layer that NFS uses, no? Or does it implement its own client and directly access the RPC layer?
+* Chunks code were moved out of the v4.2 patches
+  and into the server patch.
 
+* Fixed the server xdr encoding code to reserve
+  and set the size of the third bitmask on
+  setattrs.
 
-Yes, the SPEC SFS benchmark implements  its own NFSv3 client, RPC layer, etc.
+* Correctly initialize the label pointer when
+  decoding fattrs on the server.
 
-Spencer
+* Found a problem in the client open code where 
+  stack memory was being used when it should not 
+  have been. 
 
-> 
->> 
->> -- Wendy
->> 
->>> ________________________________
->>> From: Wendy Cheng
->>> Sent: 4/18/2013 9:16 AM
->>> To: Yan Burman
->>> Cc: Atchley, Scott; J. Bruce Fields; Tom Tucker; linux-rdma@vger.kernel.org;
->>> linux-nfs@vger.kernel.org; Or Gerlitz
->>> 
->>> Subject: Re: NFS over RDMA benchmark
->>> 
->>> On Thu, Apr 18, 2013 at 5:47 AM, Yan Burman <yanb@mellanox.com> wrote:
->>>> 
->>>> 
->>>> What do you suggest for benchmarking NFS?
->>>> 
->>> 
->>> I believe SPECsfs has been widely used by NFS (server) vendors to
->>> position their product lines. Its workload was based on a real life
->>> NFS deployment. I think it is more torward office type of workload
->>> (large client/user count with smaller file sizes e.g. software
->>> development with build, compile, etc).
->>> 
->>> BTW, we're experimenting a similar project and would be interested to
->>> know your findings.
->>> 
->>> -- Wendy
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> 
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+David Quigley (12):
+  Security: Add hook to calculate context based on a negative dentry.
+  Security: Add Hook to test if the particular xattr is part of a MAC
+    model.
+  LSM: Add flags field to security_sb_set_mnt_opts for in kernel mount
+    data.
+  SELinux: Add new labeling type native labels
+  NFSv4: Add label recommended attribute and NFSv4 flags
+  NFSv4: Introduce new label structure
+  NFSv4: Extend fattr bitmaps to support all 3 words
+  NFS:Add labels to client function prototypes
+  NFS: Add label lifecycle management
+  NFS: Client implementation of Labeled-NFS
+  NFS: Extend NFS xattr handlers to accept the security namespace
+  NFSD: Server implementation of MAC Labeling
+
+Steve Dickson (5):
+  NFSv4.2: Added v4.2 error codes
+  NFSv4.2: Added NFS v4.2 support to the NFS client
+  NFSDv4.2: Added NFS v4.2 support to the NFS server
+  Kconfig: Add Kconfig entry for Labeled NFS V4 client
+  Kconfig: Add Kconfig entry for Labeled NFS V4 server
+
+ fs/nfs/Kconfig                      |  28 ++
+ fs/nfs/callback.c                   |   1 +
+ fs/nfs/client.c                     |   2 +-
+ fs/nfs/dir.c                        |  46 ++-
+ fs/nfs/getroot.c                    |   2 +-
+ fs/nfs/inode.c                      | 133 ++++++--
+ fs/nfs/namespace.c                  |   2 +-
+ fs/nfs/nfs3acl.c                    |   4 +-
+ fs/nfs/nfs3proc.c                   |  41 +--
+ fs/nfs/nfs4_fs.h                    |   8 +-
+ fs/nfs/nfs4client.c                 |   5 +
+ fs/nfs/nfs4namespace.c              |   2 +-
+ fs/nfs/nfs4proc.c                   | 596 ++++++++++++++++++++++++++++++++----
+ fs/nfs/nfs4xdr.c                    | 188 +++++++++---
+ fs/nfs/pnfs.c                       |   2 +-
+ fs/nfs/proc.c                       |  15 +-
+ fs/nfs/super.c                      |  24 +-
+ fs/nfsd/Kconfig                     |  16 +
+ fs/nfsd/nfs4proc.c                  |  41 +++
+ fs/nfsd/nfs4xdr.c                   | 128 +++++++-
+ fs/nfsd/nfsd.h                      |  23 +-
+ fs/nfsd/nfsproc.c                   |   1 +
+ fs/nfsd/vfs.c                       |  28 ++
+ fs/nfsd/vfs.h                       |   2 +
+ fs/nfsd/xdr4.h                      |   3 +
+ include/linux/nfs4.h                |  20 ++
+ include/linux/nfs_fs.h              |  40 ++-
+ include/linux/nfs_fs_sb.h           |  10 +-
+ include/linux/nfs_xdr.h             |  30 +-
+ include/linux/security.h            |  57 +++-
+ include/uapi/linux/nfs4.h           |   2 +-
+ security/capability.c               |  19 +-
+ security/security.c                 |  24 +-
+ security/selinux/hooks.c            |  92 +++++-
+ security/selinux/include/security.h |   2 +
+ security/selinux/ss/policydb.c      |   5 +-
+ security/smack/smack_lsm.c          |  11 +
+ 37 files changed, 1433 insertions(+), 220 deletions(-)
+
+-- 
+1.8.1.4
 
