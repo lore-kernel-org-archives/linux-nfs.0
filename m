@@ -1,46 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:2429 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:47511 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757001Ab3DWSEy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Apr 2013 14:04:54 -0400
-Message-ID: <5176CD42.4080405@RedHat.com>
-Date: Tue, 23 Apr 2013 14:04:50 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1758588Ab3D2SVs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Apr 2013 14:21:48 -0400
+Date: Mon, 29 Apr 2013 14:21:45 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFSv4: Servers should only check SETATTR stateid
+ open mode on size change
+Message-ID: <20130429182145.GL17268@fieldses.org>
+References: <1367248534-33387-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1367259352.19515.16.camel@leira.trondhjem.org>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 00/19] lnfs: 3.9-rc5 release
-References: <1364939160-20874-1-git-send-email-SteveD@redhat.com> <20130410150940.GB24404@pad.fieldses.org> <5176ACE5.2020207@RedHat.com> <20130423160520.GE20622@pad.fieldses.org> <20130423172227.GF20622@pad.fieldses.org>
-In-Reply-To: <20130423172227.GF20622@pad.fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1367259352.19515.16.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 23/04/13 13:22, J. Bruce Fields wrote:
->>> What exactly was failing?
->> > 
->> > Sorry I can't find the results right now.  I'll re-run and let you know.
-> The server is returning -EOPNOTSUPP in response to an nfs4 SETATTR which
-> sets a mode.
+On Mon, Apr 29, 2013 at 06:15:52PM +0000, Myklebust, Trond wrote:
+> On Mon, 2013-04-29 at 11:15 -0400, Trond Myklebust wrote:
+> > The NFSv4 and NFSv4.1 specs are both clear that the server should only check
+> > stateid open mode if a SETATTR specifies the size attribute. If the
+> > open mode is not one that allows writing, then it returns NFS4ERR_OPENMODE.
+> > 
+> > In the case where the SETATTR is not changing the size, the client will
+> > still pass it the delegation stateid to ensure that the server does not
+> > recall that delegation. In that case, the server should _ignore_ the
+> > delegation open mode, and simply apply standard permission checks.
 > 
-> The operation shouldn't be failing, and if it does it should return an
-> NFS error, not -ERRNO.
-> 
-> I can't reproduce this just by doing chmod on the linux client.  I'm not
-> sure what pynfs is doing differently to trigger the bug.
-thanks for talking a look...  
+> Bruce, what does the Linux server do when we send it a delegation
+> stateid as part of a SETATTR that just changes the mode or acl (no size
+> change)? Will it recall the delegation? How about the delegations held
+> by other clients?
 
-Hmm... I wonder if the fact nfsd4_set_nfs4_label() is returning 
--EOPNOTSUPP instead of something like nfserr_attrnotsupp when 
-labels are not configured... Something you've pointed out 
-twice now... 
-    http://www.spinics.net/lists/linux-nfs/msg36104.html
+Yes, it breaks all delegations on any setattr.
 
-If it is this problem I wonder why a chmod would not trigger it...
-
-steved.
+--b.
