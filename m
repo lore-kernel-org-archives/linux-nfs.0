@@ -1,62 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:6696 "EHLO mx1.redhat.com"
+Received: from mx1.netapp.com ([216.240.18.38]:39180 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756718Ab3DWQFX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Apr 2013 12:05:23 -0400
-Date: Tue, 23 Apr 2013 12:05:20 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 00/19] lnfs: 3.9-rc5 release
-Message-ID: <20130423160520.GE20622@pad.fieldses.org>
-References: <1364939160-20874-1-git-send-email-SteveD@redhat.com>
- <20130410150940.GB24404@pad.fieldses.org>
- <5176ACE5.2020207@RedHat.com>
+	id S1758372Ab3D2SdE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Apr 2013 14:33:04 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFSv4: Servers should only check SETATTR stateid
+ open mode on size change
+Date: Mon, 29 Apr 2013 18:33:02 +0000
+Message-ID: <1367260382.19515.29.camel@leira.trondhjem.org>
+References: <1367248534-33387-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1367259352.19515.16.camel@leira.trondhjem.org>
+	 <20130429182145.GL17268@fieldses.org>
+	 <1367260027.19515.25.camel@leira.trondhjem.org>
+	 <20130429182939.GN17268@fieldses.org>
+In-Reply-To: <20130429182939.GN17268@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5176ACE5.2020207@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 23, 2013 at 11:46:45AM -0400, Steve Dickson wrote:
-> 
-> 
-> On 10/04/13 11:09, J. Bruce Fields wrote:
-> > On Tue, Apr 02, 2013 at 05:45:41PM -0400, Steve Dickson wrote:
-> >> > From: Steve Dickson <steved@redhat.com>
-> >> > 
-> >> > Here is the next release of the Label NFS patches 
-> >> > forward ported to linux-3.9-rc3.
-> >> > 
-> >> > I decided to include the the v4.2 enabling patches since 
-> >> > I'm doing all my testing with both sets so at this point 
-> >> > I don't think it makes sense to separate them. Plus I'm
-> >> > hoping they will take care of the SETATTR problem Bruce was 
-> >> > seeing since label attributes were leaking into the bitmask
-> >> > when they were not suppose to. 
-> > Still getting a failure.  All you need to do is something like:
+On Mon, 2013-04-29 at 14:29 -0400, J. Bruce Fields wrote:
+> On Mon, Apr 29, 2013 at 06:27:07PM +0000, Myklebust, Trond wrote:
+> > On Mon, 2013-04-29 at 14:21 -0400, J. Bruce Fields wrote:
+> > > On Mon, Apr 29, 2013 at 06:15:52PM +0000, Myklebust, Trond wrote:
+> > > > On Mon, 2013-04-29 at 11:15 -0400, Trond Myklebust wrote:
+> > > > > The NFSv4 and NFSv4.1 specs are both clear that the server should only check
+> > > > > stateid open mode if a SETATTR specifies the size attribute. If the
+> > > > > open mode is not one that allows writing, then it returns NFS4ERR_OPENMODE.
+> > > > > 
+> > > > > In the case where the SETATTR is not changing the size, the client will
+> > > > > still pass it the delegation stateid to ensure that the server does not
+> > > > > recall that delegation. In that case, the server should _ignore_ the
+> > > > > delegation open mode, and simply apply standard permission checks.
+> > > > 
+> > > > Bruce, what does the Linux server do when we send it a delegation
+> > > > stateid as part of a SETATTR that just changes the mode or acl (no size
+> > > > change)? Will it recall the delegation? How about the delegations held
+> > > > by other clients?
+> > > 
+> > > Yes, it breaks all delegations on any setattr.
 > > 
-> > 	git clone git://linux-nfs.org/~bfields/pynfs.git
-> > 	cd pynfs
-> > 	./setup.py build
-> > 	./setup.py build_ext --inplace
-> > 	./nfs4.0/testserver.py pip1:/path/to/export/tmpdir ---maketree --rundeps SATT13
-> Unfortunately, I'm not able to reproduce this error on any of the following kernels
-> * No labels 
-> * No labels configured
->     # CONFIG_NFS_V4_2 is not set
->     # CONFIG_NFSD_V4_SECURITY_LABEL is not set
-> * Labels configured 
->    CONFIG_NFS_V4_2=y
->    CONFIG_NFS_V4_SECURITY_LABEL=y
+> > Do you plan to change that?
 > 
-> What exactly was failing?
+> I'd take patches.
 
-Sorry I can't find the results right now.  I'll re-run and let you know.
+Have the NFSv4 delegation patches been merged yet, and do they hand out
+delegations on file creation?
 
---b.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
