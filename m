@@ -1,63 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:9152 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:24471 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762111Ab3DBTcf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Apr 2013 15:32:35 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r32JWZCr021653
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 2 Apr 2013 15:32:35 -0400
-Received: from willson.li.ssimo.org.com (ovpn-113-117.phx2.redhat.com [10.3.113.117])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r32JWXuq021784
-	for <linux-nfs@vger.kernel.org>; Tue, 2 Apr 2013 15:32:34 -0400
-From: Simo Sorce <simo@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2] Document new -z/-Z options
-Date: Tue,  2 Apr 2013 15:32:29 -0400
-Message-Id: <1364931149-18484-3-git-send-email-simo@redhat.com>
-In-Reply-To: <515B2F8D.3030302@RedHat.com>
-References: <515B2F8D.3030302@RedHat.com>
+	id S1757494Ab3D2M7T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Apr 2013 08:59:19 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 15/17] Kconfig: Add Kconfig entry for Labeled NFS V4 client
+Date: Mon, 29 Apr 2013 08:57:17 -0400
+Message-Id: <1367240239-19326-16-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
+References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Options are not in alphabetical order but -z/-Z clearly always come last.
+From: Steve Dickson <steved@redhat.com>
 
-Signed-off-by: Simo Sorce <simo@redhat.com>
+This patch adds the NFS_V4_SECURITY_LABEL entry which
+enables security label support for the NFSv4 client
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- utils/gssd/gssd.man |   13 ++++++++++++-
- 1 files changed, 12 insertions(+), 1 deletions(-)
+ fs/nfs/Kconfig | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
 
-diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
-index 79d9bf91ac6b976c57d167e60d07f828a3ff5b1f..7918c2a0ff76c3918449cf3e1420f0a289929ac1 100644
---- a/utils/gssd/gssd.man
-+++ b/utils/gssd/gssd.man
-@@ -8,7 +8,7 @@
- rpc.gssd \- RPCSEC_GSS daemon
- .SH SYNOPSIS
- .B rpc.gssd
--.RB [ \-fMnlvr ]
-+.RB [ \-fMnlvrzZ ]
- .RB [ \-k
- .IR keytab ]
- .RB [ \-p
-@@ -266,6 +266,17 @@ new kernel contexts to be negotiated after
- seconds, which allows changing Kerberos tickets and identities frequently.
- The default is no explicit timeout, which means the kernel context will live
- the lifetime of the Kerberos service ticket used in its creation.
-+.TP
-+.B -z
-+This option tries to avoid DNS Reverse (PTR) lookups for determining the 
-+server name to pass to GSSAPI if the name passed at mount point is not an IP 
-+address. Currently off by default for compatibility reasons.
-+.TP
-+.B -Z
-+This is the inverse of 
-+.B -z
-+and forces the use of DNS Reverse resolution of the server's IP address to
-+retrieve the server name to use in GSAPI authentication.
- .SH SEE ALSO
- .BR rpc.svcgssd (8),
- .BR kerberos (1),
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 79c500e..771831d3 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -107,6 +107,7 @@ config NFS_V4_1
+ config NFS_V4_2
+ 	bool "NFS client support for NFSv4.2"
+ 	depends on NFS_V4_1
++	select NFS_V4_SECURITY_LABEL
+ 	help
+ 	  This option enables support for minor version 1 of the NFSv4 protocol
+ 	  in the kernel's NFS client.
+@@ -140,6 +141,24 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
+ 	  If the NFS client is unchanged from the upstream kernel, this
+ 	  option should be set to the default "kernel.org".
+ 
++config NFS_V4_SECURITY_LABEL
++	bool "Provide Security Label support for NFSv4 client"
++	depends on NFS_V4 && SECURITY
++	help
++
++	Say Y here if you want enable fine-grained security label attribute
++	support for NFS version 4.  Security labels allow security modules like
++	SELinux and Smack to label files to facilitate enforcement of their policies.
++	Without this an NFSv4 mount will have the same label on each file.
++
++	If you do not wish to enable fine-grained security labels SELinux or
++	Smack policies on NFSv4 files, say N.
++
++	WARNING: there is still a chance of backwards-incompatible protocol changes.  
++	For now we recommend "Y" only for developers and testers."
++
++	If unsure, say N.
++
+ config ROOT_NFS
+ 	bool "Root file system on NFS"
+ 	depends on NFS_FS=y && IP_PNP
 -- 
-1.7.1
+1.8.1.4
 
