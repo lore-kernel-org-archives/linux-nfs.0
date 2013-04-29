@@ -1,57 +1,171 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f172.google.com ([209.85.128.172]:46629 "EHLO
-	mail-ve0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1764497Ab3DDS2q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Apr 2013 14:28:46 -0400
-Received: by mail-ve0-f172.google.com with SMTP id oz10so2904947veb.17
-        for <linux-nfs@vger.kernel.org>; Thu, 04 Apr 2013 11:28:45 -0700 (PDT)
-MIME-Version: 1.0
-Reply-To: tigran.mkrtchyan@desy.de
-In-Reply-To: <20130404163525.GA8953@umich.edu>
-References: <CAGue13pe_ZH_Eto-jL3mLjTNGFK26izTarnZdjs3eL82A2Z37w@mail.gmail.com>
-	<20130404151507.GA8484@umich.edu>
-	<05CFAB4A-8329-4657-B250-1A36105086AA@oracle.com>
-	<20130404160142.GA8739@umich.edu>
-	<1365092115.10726.25.camel@leira.trondhjem.org>
-	<20130404163525.GA8953@umich.edu>
-Date: Thu, 4 Apr 2013 20:28:45 +0200
-Message-ID: <CAGue13pQ_QbwHoPpLv5zRoESNoVf_tRb7cfptLdytjk7mzAJmw@mail.gmail.com>
-Subject: Re: readdir vs. getattr
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: Jim Rees <rees@umich.edu>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:49199 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757408Ab3D2M7E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Apr 2013 08:59:04 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 02/17] NFSv4.2: Added NFS v4.2 support to the NFS client
+Date: Mon, 29 Apr 2013 08:57:04 -0400
+Message-Id: <1367240239-19326-3-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
+References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ok, by tweaking the values of acregmin and acregmax I got the expected
-behaviour.
+From: Steve Dickson <steved@redhat.com>
 
-What about this double GETATTR on directory itself?
+This enable NFSv4.2 support. To enable this code the
+CONFIG_NFS_V4_2 Kconfig define needs to be set and
+the -o v4.2 mount option need to be used.
 
-Tigran.
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ fs/nfs/Kconfig       |  9 +++++++++
+ fs/nfs/callback.c    |  1 +
+ fs/nfs/nfs4client.c  |  5 +++++
+ fs/nfs/nfs4proc.c    | 15 +++++++++++++++
+ fs/nfs/super.c       |  7 ++++++-
+ include/linux/nfs4.h |  4 ++++
+ 6 files changed, 40 insertions(+), 1 deletion(-)
 
-On Thu, Apr 4, 2013 at 6:35 PM, Jim Rees <rees@umich.edu> wrote:
-> Myklebust, Trond wrote:
->
->   On Thu, 2013-04-04 at 12:01 -0400, Jim Rees wrote:
->   > Chuck Lever wrote:
->   >
->   >   > So is this a "ls -l"? Because for "ls" it shouldn't stat all the files.
->   >
->   >   Default these days is ls --color
->   >
->   > No it's not, at least not on linux. From the man page:
->   >
->   > "Using color to distinguish file types is disabled both by default and with
->   > --color=never."
->
->   Yes, but a number of Linux distros override that in /etc/profile. For
->   instance all Red Hat/Fedora distros have aliases for ls that map them to
->   'ls --color=auto'
->
-> I was actually just trying to figure out whether the application (ls) was
-> doing all those file stats, or whether readdir was somehow doing them by
-> mistake. Sounds like it's the application.
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 13ca196..79c500e 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -104,6 +104,15 @@ config NFS_V4_1
+ 
+ 	  If unsure, say N.
+ 
++config NFS_V4_2
++	bool "NFS client support for NFSv4.2"
++	depends on NFS_V4_1
++	help
++	  This option enables support for minor version 1 of the NFSv4 protocol
++	  in the kernel's NFS client.
++
++	  If unsure, say N.
++
+ config PNFS_FILE_LAYOUT
+ 	tristate
+ 	depends on NFS_V4_1
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 5088b57..cb35747 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -279,6 +279,7 @@ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct n
+ 			ret = nfs4_callback_up_net(serv, net);
+ 			break;
+ 		case 1:
++		case 2:
+ 			ret = nfs41_callback_up_net(serv, net);
+ 			break;
+ 		default:
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 66b6664..a30c6a7 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -66,6 +66,11 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
+ 	if (err)
+ 		goto error;
+ 
++	if (cl_init->minorversion > NFS4_MAX_MINOR_VERSION) {
++		err = -EINVAL;
++		goto error;
++	}
++		
+ 	spin_lock_init(&clp->cl_lock);
+ 	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
+ 	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 0ad025e..3fd1040 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6746,11 +6746,26 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
+ };
+ #endif
+ 
++#if defined(CONFIG_NFS_V4_2)
++static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
++	.minor_version = 2,
++	.call_sync = nfs4_call_sync_sequence,
++	.match_stateid = nfs41_match_stateid,
++	.find_root_sec = nfs41_find_root_sec,
++	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
++	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
++	.state_renewal_ops = &nfs41_state_renewal_ops,
++};
++#endif
++
+ const struct nfs4_minor_version_ops *nfs_v4_minor_ops[] = {
+ 	[0] = &nfs_v4_0_minor_ops,
+ #if defined(CONFIG_NFS_V4_1)
+ 	[1] = &nfs_v4_1_minor_ops,
+ #endif
++#if defined(CONFIG_NFS_V4_2)
++	[2] = &nfs_v4_2_minor_ops,
++#endif
+ };
+ 
+ const struct inode_operations nfs4_dir_inode_operations = {
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 2f8a29d..29f2d86 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -269,7 +269,7 @@ static match_table_t nfs_local_lock_tokens = {
+ 
+ enum {
+ 	Opt_vers_2, Opt_vers_3, Opt_vers_4, Opt_vers_4_0,
+-	Opt_vers_4_1,
++	Opt_vers_4_1, Opt_vers_4_2,
+ 
+ 	Opt_vers_err
+ };
+@@ -280,6 +280,7 @@ static match_table_t nfs_vers_tokens = {
+ 	{ Opt_vers_4, "4" },
+ 	{ Opt_vers_4_0, "4.0" },
+ 	{ Opt_vers_4_1, "4.1" },
++	{ Opt_vers_4_2, "4.2" },
+ 
+ 	{ Opt_vers_err, NULL }
+ };
+@@ -1097,6 +1098,10 @@ static int nfs_parse_version_string(char *string,
+ 		mnt->version = 4;
+ 		mnt->minorversion = 1;
+ 		break;
++	case Opt_vers_4_2:
++		mnt->version = 4;
++		mnt->minorversion = 2;
++		break;
+ 	default:
+ 		return 0;
+ 	}
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 377fb3f..7e18a66 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -398,11 +398,15 @@ enum lock_type4 {
+ #define NFS4_VERSION 4
+ #define NFS4_MINOR_VERSION 0
+ 
++#if defined(CONFIG_NFS_V4_2)
++#define NFS4_MAX_MINOR_VERSION 2
++#else
+ #if defined(CONFIG_NFS_V4_1)
+ #define NFS4_MAX_MINOR_VERSION 1
+ #else
+ #define NFS4_MAX_MINOR_VERSION 0
+ #endif /* CONFIG_NFS_V4_1 */
++#endif /* CONFIG_NFS_V4_2 */
+ 
+ #define NFS4_DEBUG 1
+ 
+-- 
+1.8.1.4
+
