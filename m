@@ -1,116 +1,168 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:32994 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:57389 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758738Ab3DYS0N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Apr 2013 14:26:13 -0400
-Date: Thu, 25 Apr 2013 14:26:10 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	id S1758247Ab3D2M7J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Apr 2013 08:59:09 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
         "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
         Linux FS devel list <linux-fsdevel@vger.kernel.org>,
         Linux Security List <linux-security-module@vger.kernel.org>,
         SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 03/17] NFSDv4.2: Added NFS v4.2 support to the NFS server
-Message-ID: <20130425182610.GB5049@fieldses.org>
-References: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
- <1366834683-29075-4-git-send-email-SteveD@redhat.com>
- <20130424220226.GN20275@fieldses.org>
- <5179396C.3070900@RedHat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5179396C.3070900@RedHat.com>
+Subject: [PATCH 06/17] LSM: Add flags field to security_sb_set_mnt_opts for in kernel mount data.
+Date: Mon, 29 Apr 2013 08:57:08 -0400
+Message-Id: <1367240239-19326-7-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
+References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 25, 2013 at 10:10:52AM -0400, Steve Dickson wrote:
-> On 24/04/13 18:02, J. Bruce Fields wrote:
-> > On Wed, Apr 24, 2013 at 04:17:49PM -0400, Steve Dickson wrote:
-> >> From: Steve Dickson <steved@redhat.com>
-> >>
-> >> This enable NFSv4.2 support for the server. To enable this
-> >> code do the following:
-> >>   echo "+4.2" >/proc/fs/nfsd/versions
-> >>
-> >> after the nfsd kernel module is loaded.
-> >>
-> >> Signed-off-by: Steve Dickson <steved@redhat.com>
-> >> ---
-> >>  fs/nfsd/nfs4xdr.c | 1 +
-> >>  fs/nfsd/nfsd.h    | 7 ++++++-
-> >>  2 files changed, 7 insertions(+), 1 deletion(-)
-> >>
-> >> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> >> index a272007..b38de7a 100644
-> >> --- a/fs/nfsd/nfs4xdr.c
-> >> +++ b/fs/nfsd/nfs4xdr.c
-> >> @@ -1572,6 +1572,7 @@ struct nfsd4_minorversion_ops {
-> >>  static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
-> >>  	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
-> >>  	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
-> >> +	[2] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
-> >>  };
-> >>  
-> >>  static __be32
-> >> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> >> index 553b230..b5eade7 100644
-> >> --- a/fs/nfsd/nfsd.h
-> >> +++ b/fs/nfsd/nfsd.h
-> >> @@ -24,7 +24,7 @@
-> >>  /*
-> >>   * nfsd version
-> >>   */
-> >> -#define NFSD_SUPPORTED_MINOR_VERSION	1
-> >> +#define NFSD_SUPPORTED_MINOR_VERSION	2
-> >>  /*
-> >>   * Maximum blocksizes supported by daemon under various circumstances.
-> >>   */
-> > 
-> > These last two chunks belong with a later patch, whenever we make other
-> > 4.2 attribute changes:
-> I'm a bit confused by this request... 
-> 
-> The purpose of this patch is to allow echo "+4.2" >/proc/fs/nfsd/versions 
-> to work. Basically enabling the setting of the v4.2. Without the above two chunks 
-> that echo will fail which means v4.2 can not be set.
+From: David Quigley <dpquigl@davequigley.com>
 
-Right by "last two chunks" I meant the below.--b.
+There is no way to differentiate if a text mount option is passed from user
+space or the kernel. A flags field is being added to the
+security_sb_set_mnt_opts hook to allow for in kernel security flags to be sent
+to the LSM for processing in addition to the text options received from mount.
+This patch also updated existing code to fix compilation errors.
 
-> 
-> Plus the two chunks below are where the generic 4.2 attribute changes are 
-> made:
-> >> @@ -328,6 +328,8 @@ void		nfsd_lockd_shutdown(void);
-> >>  #define NFSD4_1_SUPPORTED_ATTRS_WORD2 \
-> >>  	(NFSD4_SUPPORTED_ATTRS_WORD2 | FATTR4_WORD2_SUPPATTR_EXCLCREAT)
-> >>  
-> >> +#define NFSD4_2_SUPPORTED_ATTRS_WORD2 0
-> >> +
-> >>  static inline u32 nfsd_suppattrs0(u32 minorversion)
-> >>  {
-> >>  	return minorversion ? NFSD4_1_SUPPORTED_ATTRS_WORD0
-> >> @@ -342,6 +344,9 @@ static inline u32 nfsd_suppattrs1(u32 minorversion)
-> >>  
-> >>  static inline u32 nfsd_suppattrs2(u32 minorversion)
-> >>  {
-> >> +	if (minorversion == 2)
-> >> +		return NFSD4_2_SUPPORTED_ATTRS_WORD2;
-> >> +
-> >>  	return minorversion ? NFSD4_1_SUPPORTED_ATTRS_WORD2
-> >>  			    : NFSD4_SUPPORTED_ATTRS_WORD2;
-> >>  }
-> Now in the [PATCH 16/17] NFSD: Server implementation of MAC Labeling
-> patch is where the definition of NFSD4_2_SUPPORTED_ATTRS_WORD2
-> changes when labels are enabled.
-> 
-> So it seems to me this patch does want you wanted it to do.
-> Enable the setting of v4.2 and only return 4.2 attributes 
-> on a v4.2 mount. It's just at this point there are no 4.2
-> attributes defined...
-> 
-> What am I missing?
-> 
-> steved.
->  
->  
+Signed-off-by: David P. Quigley <dpquigl@tycho.nsa.gov>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ fs/nfs/super.c           |  3 ++-
+ include/linux/security.h | 13 ++++++++++---
+ security/capability.c    |  5 ++++-
+ security/security.c      |  7 +++++--
+ security/selinux/hooks.c | 12 ++++++++++--
+ 5 files changed, 31 insertions(+), 9 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 29f2d86..d84eb57 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2378,7 +2378,8 @@ static int nfs_bdi_register(struct nfs_server *server)
+ int nfs_set_sb_security(struct super_block *s, struct dentry *mntroot,
+ 			struct nfs_mount_info *mount_info)
+ {
+-	return security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts);
++	return security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts,
++								0, NULL);
+ }
+ EXPORT_SYMBOL_GPL(nfs_set_sb_security);
+ 
+diff --git a/include/linux/security.h b/include/linux/security.h
+index 934f96f..4ab51e2 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -1456,7 +1456,9 @@ struct security_operations {
+ 	int (*sb_pivotroot) (struct path *old_path,
+ 			     struct path *new_path);
+ 	int (*sb_set_mnt_opts) (struct super_block *sb,
+-				struct security_mnt_opts *opts);
++				struct security_mnt_opts *opts,
++				unsigned long kern_flags,
++				unsigned long *set_kern_flags);
+ 	void (*sb_clone_mnt_opts) (const struct super_block *oldsb,
+ 				   struct super_block *newsb);
+ 	int (*sb_parse_opts_str) (char *options, struct security_mnt_opts *opts);
+@@ -1747,7 +1749,10 @@ int security_sb_mount(const char *dev_name, struct path *path,
+ 		      const char *type, unsigned long flags, void *data);
+ int security_sb_umount(struct vfsmount *mnt, int flags);
+ int security_sb_pivotroot(struct path *old_path, struct path *new_path);
+-int security_sb_set_mnt_opts(struct super_block *sb, struct security_mnt_opts *opts);
++int security_sb_set_mnt_opts(struct super_block *sb,
++				struct security_mnt_opts *opts,
++				unsigned long kern_flags,
++				unsigned long *set_kern_flags);
+ void security_sb_clone_mnt_opts(const struct super_block *oldsb,
+ 				struct super_block *newsb);
+ int security_sb_parse_opts_str(char *options, struct security_mnt_opts *opts);
+@@ -2037,7 +2042,9 @@ static inline int security_sb_pivotroot(struct path *old_path,
+ }
+ 
+ static inline int security_sb_set_mnt_opts(struct super_block *sb,
+-					   struct security_mnt_opts *opts)
++					   struct security_mnt_opts *opts,
++					   unsigned long kern_flags,
++					   unsigned long *set_kern_flags)
+ {
+ 	return 0;
+ }
+diff --git a/security/capability.c b/security/capability.c
+index 71e5052..4708973 100644
+--- a/security/capability.c
++++ b/security/capability.c
+@@ -91,7 +91,10 @@ static int cap_sb_pivotroot(struct path *old_path, struct path *new_path)
+ }
+ 
+ static int cap_sb_set_mnt_opts(struct super_block *sb,
+-			       struct security_mnt_opts *opts)
++			       struct security_mnt_opts *opts,
++			       unsigned long kern_flags,
++			       unsigned long *set_kern_flags)
++
+ {
+ 	if (unlikely(opts->num_mnt_opts))
+ 		return -EOPNOTSUPP;
+diff --git a/security/security.c b/security/security.c
+index 07391f3..df8ade2 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -294,9 +294,12 @@ int security_sb_pivotroot(struct path *old_path, struct path *new_path)
+ }
+ 
+ int security_sb_set_mnt_opts(struct super_block *sb,
+-				struct security_mnt_opts *opts)
++				struct security_mnt_opts *opts,
++				unsigned long kern_flags,
++				unsigned long *set_kern_flags)
+ {
+-	return security_ops->sb_set_mnt_opts(sb, opts);
++	return security_ops->sb_set_mnt_opts(sb, opts, kern_flags,
++						set_kern_flags);
+ }
+ EXPORT_SYMBOL(security_sb_set_mnt_opts);
+ 
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index 273e28b..6cb24ec 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -552,7 +552,9 @@ static int bad_option(struct superblock_security_struct *sbsec, char flag,
+  * labeling information.
+  */
+ static int selinux_set_mnt_opts(struct super_block *sb,
+-				struct security_mnt_opts *opts)
++				struct security_mnt_opts *opts,
++				unsigned long kern_flags,
++				unsigned long *set_kern_flags)
+ {
+ 	const struct cred *cred = current_cred();
+ 	int rc = 0, i;
+@@ -580,6 +582,12 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 			"before the security server is initialized\n");
+ 		goto out;
+ 	}
++	if (kern_flags && !set_kern_flags) {
++		/* Specifying internal flags without providing a place to
++		 * place the results is not allowed */
++		rc = -EINVAL;
++		goto out;
++	}
+ 
+ 	/*
+ 	 * Binary mount data FS will come through this function twice.  Once
+@@ -949,7 +957,7 @@ static int superblock_doinit(struct super_block *sb, void *data)
+ 		goto out_err;
+ 
+ out:
+-	rc = selinux_set_mnt_opts(sb, &opts);
++	rc = selinux_set_mnt_opts(sb, &opts, 0, NULL);
+ 
+ out_err:
+ 	security_free_mnt_opts(&opts);
+-- 
+1.8.1.4
+
