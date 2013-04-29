@@ -1,81 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36520 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:32020 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935382Ab3DQBqe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Apr 2013 21:46:34 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 03/12] vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
-Date: Tue, 16 Apr 2013 21:46:15 -0400
-Message-Id: <1366163185-10317-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1366163185-10317-1-git-send-email-bfields@redhat.com>
-References: <1366163185-10317-1-git-send-email-bfields@redhat.com>
+	id S1757395Ab3D2M7E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Apr 2013 08:59:04 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 01/17] NFSv4.2: Added v4.2 error codes
+Date: Mon, 29 Apr 2013 08:57:03 -0400
+Message-Id: <1367240239-19326-2-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
+References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Steve Dickson <steved@redhat.com>
 
-I_MUTEX_QUOTA is now just being used whenever we want to lock two
-non-directories.  So the name isn't right.  I_MUTEX_NONDIR2 isn't
-especially elegant but it's the best I could think of.
-
-Also fix some outdated documentation.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/inode.c         |    4 ++--
- include/linux/fs.h |    9 ++++++---
- 2 files changed, 8 insertions(+), 5 deletions(-)
+ fs/nfsd/nfsd.h       | 6 ++++++
+ include/linux/nfs4.h | 8 ++++++++
+ 2 files changed, 14 insertions(+)
 
-diff --git a/fs/inode.c b/fs/inode.c
-index 07af7be..4a00662 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -988,10 +988,10 @@ void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
- {
- 	if (inode1 < inode2) {
- 		mutex_lock(&inode1->i_mutex);
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_QUOTA);
-+		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_NONDIR2);
- 	} else {
- 		mutex_lock(&inode2->i_mutex);
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_QUOTA);
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_NONDIR2);
- 	}
- }
- EXPORT_SYMBOL(lock_two_nondirectories);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 356c676..6e45aa6 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -620,10 +620,13 @@ static inline int inode_unhashed(struct inode *inode)
-  * 0: the object of the current VFS operation
-  * 1: parent
-  * 2: child/target
-- * 3: quota file
-+ * 3: xattr
-+ * 4: second non-directory
-+ * The last is for certain operations (such as rename) which lock two
-+ * non-directories at once.
-  *
-  * The locking order between these classes is
-- * parent -> child -> normal -> xattr -> quota
-+ * parent -> child -> normal -> xattr -> second non-directory
-  */
- enum inode_i_mutex_lock_class
- {
-@@ -631,7 +634,7 @@ enum inode_i_mutex_lock_class
- 	I_MUTEX_PARENT,
- 	I_MUTEX_CHILD,
- 	I_MUTEX_XATTR,
--	I_MUTEX_QUOTA
-+	I_MUTEX_NONDIR2
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 07a473f..553b230 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -243,6 +243,12 @@ void		nfsd_lockd_shutdown(void);
+ #define nfserr_reject_deleg		cpu_to_be32(NFS4ERR_REJECT_DELEG)
+ #define nfserr_returnconflict		cpu_to_be32(NFS4ERR_RETURNCONFLICT)
+ #define nfserr_deleg_revoked		cpu_to_be32(NFS4ERR_DELEG_REVOKED)
++#define nfserr_partner_notsupp		cpu_to_be32(NFS4ERR_PARTNER_NOTSUPP)
++#define nfserr_partner_no_auth		cpu_to_be32(NFS4ERR_PARTNER_NO_AUTH)
++#define nfserr_metadata_notsupp		cpu_to_be32(NFS4ERR_METADATA_NOTSUPP)
++#define nfserr_offload_denied		cpu_to_be32(NFS4ERR_OFFLOAD_DENIED)
++#define nfserr_wrong_lfs		cpu_to_be32(NFS4ERR_WRONG_LFS)
++#define nfs4err_badlabel		cpu_to_be32(NFS4ERR_BADLABEL)
+ 
+ /* error codes for internal use */
+ /* if a request fails due to kmalloc failure, it gets dropped.
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 7b8fc73..377fb3f 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -219,6 +219,14 @@ enum nfsstat4 {
+ 	NFS4ERR_REJECT_DELEG	= 10085,	/* on callback */
+ 	NFS4ERR_RETURNCONFLICT	= 10086,	/* outstanding layoutreturn */
+ 	NFS4ERR_DELEG_REVOKED	= 10087,	/* deleg./layout revoked */
++
++	/* nfs42 */
++	NFS4ERR_PARTNER_NOTSUPP	= 10088,
++	NFS4ERR_PARTNER_NO_AUTH	= 10089,
++	NFS4ERR_METADATA_NOTSUPP = 10090,
++	NFS4ERR_OFFLOAD_DENIED = 10091,
++	NFS4ERR_WRONG_LFS = 10092,
++	NFS4ERR_BADLABEL = 10093,
  };
  
- void lock_two_nondirectories(struct inode *, struct inode*);
+ static inline bool seqid_mutating_err(u32 err)
 -- 
-1.7.9.5
+1.8.1.4
 
