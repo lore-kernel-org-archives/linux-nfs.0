@@ -1,130 +1,184 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49898 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:36168 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754886Ab3DOTfK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Apr 2013 15:35:10 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Simo Sorce <simo@redhat.com>, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/5] SUNRPC: conditionally return endtime from import_sec_context
-Date: Mon, 15 Apr 2013 15:35:05 -0400
-Message-Id: <1366054508-27604-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1366054508-27604-1-git-send-email-bfields@redhat.com>
-References: <1366054508-27604-1-git-send-email-bfields@redhat.com>
+	id S1758245Ab3D2M7I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Apr 2013 08:59:08 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 05/17] Security: Add Hook to test if the particular xattr is part of a MAC model.
+Date: Mon, 29 Apr 2013 08:57:07 -0400
+Message-Id: <1367240239-19326-6-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
+References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Simo Sorce <simo@redhat.com>
+From: David Quigley <dpquigl@davequigley.com>
 
-We expose this parameter for a future caller.
-It will be used to extract the endtime from the gss-proxy upcall mechanism,
-in order to set the rsc cache expiration time.
+The interface to request security labels from user space is the xattr
+interface. When requesting the security label from an NFS server it is
+important to make sure the requested xattr actually is a MAC label. This allows
+us to make sure that we get the desired semantics from the attribute instead of
+something else such as capabilities or a time based LSM.
 
-Signed-off-by: Simo Sorce <simo@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 ---
- include/linux/sunrpc/gss_api.h        |    2 ++
- net/sunrpc/auth_gss/auth_gss.c        |    2 +-
- net/sunrpc/auth_gss/gss_krb5_mech.c   |    7 +++++--
- net/sunrpc/auth_gss/gss_mech_switch.c |    5 +++--
- net/sunrpc/auth_gss/svcauth_gss.c     |    3 ++-
- 5 files changed, 13 insertions(+), 6 deletions(-)
+ include/linux/security.h   | 14 ++++++++++++++
+ security/capability.c      |  6 ++++++
+ security/security.c        |  6 ++++++
+ security/selinux/hooks.c   |  6 ++++++
+ security/smack/smack_lsm.c | 11 +++++++++++
+ 5 files changed, 43 insertions(+)
 
-diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-index a19e254..04d03bb 100644
---- a/include/linux/sunrpc/gss_api.h
-+++ b/include/linux/sunrpc/gss_api.h
-@@ -37,6 +37,7 @@ int gss_import_sec_context(
- 		size_t			bufsize,
- 		struct gss_api_mech	*mech,
- 		struct gss_ctx		**ctx_id,
-+		time_t			*endtime,
- 		gfp_t			gfp_mask);
- u32 gss_get_mic(
- 		struct gss_ctx		*ctx_id,
-@@ -92,6 +93,7 @@ struct gss_api_ops {
- 			const void		*input_token,
- 			size_t			bufsize,
- 			struct gss_ctx		*ctx_id,
-+			time_t			*endtime,
- 			gfp_t			gfp_mask);
- 	u32 (*gss_get_mic)(
- 			struct gss_ctx		*ctx_id,
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 5257d29..23563e7 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -238,7 +238,7 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
- 		p = ERR_PTR(-EFAULT);
- 		goto err;
- 	}
--	ret = gss_import_sec_context(p, seclen, gm, &ctx->gc_gss_ctx, GFP_NOFS);
-+	ret = gss_import_sec_context(p, seclen, gm, &ctx->gc_gss_ctx, NULL, GFP_NOFS);
- 	if (ret < 0) {
- 		p = ERR_PTR(ret);
- 		goto err;
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index d3611f1..3bc4a23 100644
---- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -679,6 +679,7 @@ out_err:
- static int
- gss_import_sec_context_kerberos(const void *p, size_t len,
- 				struct gss_ctx *ctx_id,
-+				time_t *endtime,
- 				gfp_t gfp_mask)
- {
- 	const void *end = (const void *)((const char *)p + len);
-@@ -694,9 +695,11 @@ gss_import_sec_context_kerberos(const void *p, size_t len,
- 	else
- 		ret = gss_import_v2_context(p, end, ctx, gfp_mask);
+diff --git a/include/linux/security.h b/include/linux/security.h
+index f3d7956..934f96f 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -1323,6 +1323,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
+  *	@pages contains the number of pages.
+  *	Return 0 if permission is granted.
+  *
++ * @ismaclabel:
++ *	Check if the extended attribute specified by @name
++ *	represents a MAC label. Returns 1 if name is a MAC
++ *	attribute otherwise returns 0.
++ *	@name full extended attribute name to check against
++ *	LSM as a MAC label.
++ *
+  * @secid_to_secctx:
+  *	Convert secid to security context.  If secdata is NULL the length of
+  *	the result will be returned in seclen, but no secdata will be returned.
+@@ -1604,6 +1611,7 @@ struct security_operations {
  
--	if (ret == 0)
-+	if (ret == 0) {
- 		ctx_id->internal_ctx_id = ctx;
--	else
-+		if (endtime)
-+			*endtime = ctx->endtime;
-+	} else
- 		kfree(ctx);
- 
- 	dprintk("RPC:       %s: returning %d\n", __func__, ret);
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index f0f4eee..43fd5bb 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -325,14 +325,15 @@ int
- gss_import_sec_context(const void *input_token, size_t bufsize,
- 		       struct gss_api_mech	*mech,
- 		       struct gss_ctx		**ctx_id,
-+		       time_t			*endtime,
- 		       gfp_t gfp_mask)
- {
- 	if (!(*ctx_id = kzalloc(sizeof(**ctx_id), gfp_mask)))
- 		return -ENOMEM;
- 	(*ctx_id)->mech_type = gss_mech_get(mech);
- 
--	return mech->gm_ops
--		->gss_import_sec_context(input_token, bufsize, *ctx_id, gfp_mask);
-+	return mech->gm_ops->gss_import_sec_context(input_token, bufsize,
-+						*ctx_id, endtime, gfp_mask);
+ 	int (*getprocattr) (struct task_struct *p, char *name, char **value);
+ 	int (*setprocattr) (struct task_struct *p, char *name, void *value, size_t size);
++	int (*ismaclabel) (const char *name);
+ 	int (*secid_to_secctx) (u32 secid, char **secdata, u32 *seclen);
+ 	int (*secctx_to_secid) (const char *secdata, u32 seclen, u32 *secid);
+ 	void (*release_secctx) (char *secdata, u32 seclen);
+@@ -1857,6 +1865,7 @@ void security_d_instantiate(struct dentry *dentry, struct inode *inode);
+ int security_getprocattr(struct task_struct *p, char *name, char **value);
+ int security_setprocattr(struct task_struct *p, char *name, void *value, size_t size);
+ int security_netlink_send(struct sock *sk, struct sk_buff *skb);
++int security_ismaclabel(const char *name);
+ int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen);
+ int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
+ void security_release_secctx(char *secdata, u32 seclen);
+@@ -2545,6 +2554,11 @@ static inline int security_netlink_send(struct sock *sk, struct sk_buff *skb)
+ 	return cap_netlink_send(sk, skb);
  }
  
- /* gss_get_mic: compute a mic over message and return mic_token. */
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 5ead605..20eedec 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -497,7 +497,8 @@ static int rsc_parse(struct cache_detail *cd,
- 		len = qword_get(&mesg, buf, mlen);
- 		if (len < 0)
- 			goto out;
--		status = gss_import_sec_context(buf, len, gm, &rsci.mechctx, GFP_KERNEL);
-+		status = gss_import_sec_context(buf, len, gm, &rsci.mechctx,
-+						NULL, GFP_KERNEL);
- 		if (status)
- 			goto out;
++static inline int security_ismaclabel(const char *name)
++{
++	return 0;
++}
++
+ static inline int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+ {
+ 	return -EOPNOTSUPP;
+diff --git a/security/capability.c b/security/capability.c
+index 782045e..71e5052 100644
+--- a/security/capability.c
++++ b/security/capability.c
+@@ -822,6 +822,11 @@ static int cap_setprocattr(struct task_struct *p, char *name, void *value,
+ 	return -EINVAL;
+ }
  
++static int cap_ismaclabel(const char *name)
++{
++	return 0;
++}
++
+ static int cap_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+ {
+ 	return -EOPNOTSUPP;
+@@ -1041,6 +1046,7 @@ void __init security_fixup_ops(struct security_operations *ops)
+ 	set_to_cap_if_null(ops, d_instantiate);
+ 	set_to_cap_if_null(ops, getprocattr);
+ 	set_to_cap_if_null(ops, setprocattr);
++	set_to_cap_if_null(ops, ismaclabel);
+ 	set_to_cap_if_null(ops, secid_to_secctx);
+ 	set_to_cap_if_null(ops, secctx_to_secid);
+ 	set_to_cap_if_null(ops, release_secctx);
+diff --git a/security/security.c b/security/security.c
+index 7c18e3c..07391f3 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -1057,6 +1057,12 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
+ 	return security_ops->netlink_send(sk, skb);
+ }
+ 
++int security_ismaclabel(const char *name)
++{
++	return security_ops->ismaclabel(name);
++}
++EXPORT_SYMBOL(security_ismaclabel);
++
+ int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+ {
+ 	return security_ops->secid_to_secctx(secid, secdata, seclen);
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index 622b205..273e28b 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -5423,6 +5423,11 @@ abort_change:
+ 	return error;
+ }
+ 
++static int selinux_ismaclabel(const char *name)
++{
++	return (strcmp(name, XATTR_SELINUX_SUFFIX) == 0);
++}
++
+ static int selinux_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+ {
+ 	return security_sid_to_context(secid, secdata, seclen);
+@@ -5661,6 +5666,7 @@ static struct security_operations selinux_ops = {
+ 	.getprocattr =			selinux_getprocattr,
+ 	.setprocattr =			selinux_setprocattr,
+ 
++	.ismaclabel =			selinux_ismaclabel,
+ 	.secid_to_secctx =		selinux_secid_to_secctx,
+ 	.secctx_to_secid =		selinux_secctx_to_secid,
+ 	.release_secctx =		selinux_release_secctx,
+diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
+index fa64740..ca01d71 100644
+--- a/security/smack/smack_lsm.c
++++ b/security/smack/smack_lsm.c
+@@ -3329,6 +3329,16 @@ static void smack_audit_rule_free(void *vrule)
+ #endif /* CONFIG_AUDIT */
+ 
+ /**
++ * smack_ismaclabel - check if xattr @name references a smack MAC label
++ * @name: Full xattr name to check.
++ */
++static int smack_ismaclabel(const char *name)
++{
++	return (strcmp(name, XATTR_SMACK_SUFFIX) == 0);
++}
++
++
++/**
+  * smack_secid_to_secctx - return the smack label for a secid
+  * @secid: incoming integer
+  * @secdata: destination
+@@ -3524,6 +3534,7 @@ struct security_operations smack_ops = {
+ 	.audit_rule_free =		smack_audit_rule_free,
+ #endif /* CONFIG_AUDIT */
+ 
++	.ismaclabel =			smack_ismaclabel,
+ 	.secid_to_secctx = 		smack_secid_to_secctx,
+ 	.secctx_to_secid = 		smack_secctx_to_secid,
+ 	.release_secctx = 		smack_release_secctx,
 -- 
-1.7.9.5
+1.8.1.4
 
