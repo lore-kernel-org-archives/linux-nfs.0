@@ -1,227 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:35706 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1758403Ab3DXWGh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Apr 2013 18:06:37 -0400
+Received: from fieldses.org ([174.143.236.118]:37663 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753781Ab3D3WOd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Apr 2013 18:14:33 -0400
+Date: Tue, 30 Apr 2013 18:14:24 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Wei Yongjun <weiyj.lk@gmail.com>
+Cc: Trond.Myklebust@netapp.com, ebiederm@xmission.com,
+        skinsbursky@parallels.com, jlayton@redhat.com, simo@redhat.com,
+        yongjun_wei@trendmicro.com.cn, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] svcauth_gss: fix error return code in rsc_parse()
+Message-ID: <20130430221424.GE30768@fieldses.org>
+References: <CAPgLHd92VAMpeRhdmWSy_SdPwJqeVPDike6pCyV9b_WEPmK0gg@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Wed, 24 Apr 2013 18:06:32 -0400
-From: David Quigley <dpquigl@davequigley.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>, <eparis@redhat.com>
-Cc: Steve Dickson <steved@redhat.com>,
-        Trond Myklebust <trond.myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 07/17] SELinux: Add new labeling type native labels
-In-Reply-To: <20130424220359.GR20275@fieldses.org>
-References: <1366834683-29075-1-git-send-email-SteveD@redhat.com>
- <1366834683-29075-8-git-send-email-SteveD@redhat.com>
- <20130424220359.GR20275@fieldses.org>
-Message-ID: <143483770355839ca2227b46847efebb@countercultured.net>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAPgLHd92VAMpeRhdmWSy_SdPwJqeVPDike6pCyV9b_WEPmK0gg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/24/2013 18:03, J. Bruce Fields wrote:
-> On Wed, Apr 24, 2013 at 04:17:53PM -0400, Steve Dickson wrote:
->> From: David Quigley <dpquigl@davequigley.com>
->>
->> There currently doesn't exist a labeling type that is adequate for 
->> use with
->> labeled NFS. Since NFS doesn't really support xattrs we can't use 
->> the use xattr
->> labeling behavior. For this we developed a new labeling type. The 
->> native
->> labeling type is used solely by NFS to ensure NFS inodes are labeled 
->> at runtime
->> by the NFS code instead of relying on the SELinux security server on 
->> the client
->> end.
->
-> Ditto, can we get get an ACK/NACK from someone responsible for this
-> code?
->
-> --b.
->
->>
->> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
->> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
->> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
->> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
->> ---
->>  include/linux/security.h            |  3 +++
->>  security/selinux/hooks.c            | 35 
->> ++++++++++++++++++++++++++---------
->>  security/selinux/include/security.h |  2 ++
->>  security/selinux/ss/policydb.c      |  5 ++++-
->>  4 files changed, 35 insertions(+), 10 deletions(-)
->>
->> diff --git a/include/linux/security.h b/include/linux/security.h
->> index 4ab51e2..bc924d7 100644
->> --- a/include/linux/security.h
->> +++ b/include/linux/security.h
->> @@ -61,6 +61,9 @@ struct mm_struct;
->>  #define SECURITY_CAP_NOAUDIT 0
->>  #define SECURITY_CAP_AUDIT 1
->>
->> +/* LSM Agnostic defines for sb_set_mnt_opts */
->> +#define SECURITY_LSM_NATIVE_LABELS	1
->> +
->>  struct ctl_table;
->>  struct audit_krule;
->>  struct user_namespace;
->> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
->> index 6cb24ec..d7ff806 100644
->> --- a/security/selinux/hooks.c
->> +++ b/security/selinux/hooks.c
->> @@ -81,6 +81,7 @@
->>  #include <linux/syslog.h>
->>  #include <linux/user_namespace.h>
->>  #include <linux/export.h>
->> +#include <linux/security.h>
->>  #include <linux/msg.h>
->>  #include <linux/shm.h>
->>
->> @@ -284,13 +285,14 @@ static void superblock_free_security(struct 
->> super_block *sb)
->>
->>  /* The file system's label must be initialized prior to use. */
->>
->> -static const char *labeling_behaviors[6] = {
->> +static const char *labeling_behaviors[7] = {
->>  	"uses xattr",
->>  	"uses transition SIDs",
->>  	"uses task SIDs",
->>  	"uses genfs_contexts",
->>  	"not configured for labeling",
->>  	"uses mountpoint labeling",
->> +	"uses native labeling",
->>  };
->>
->>  static int inode_doinit_with_dentry(struct inode *inode, struct 
->> dentry *opt_dentry);
->> @@ -678,14 +680,21 @@ static int selinux_set_mnt_opts(struct 
->> super_block *sb,
->>  	if (strcmp(sb->s_type->name, "proc") == 0)
->>  		sbsec->flags |= SE_SBPROC;
->>
->> -	/* Determine the labeling behavior to use for this filesystem 
->> type. */
->> -	rc = security_fs_use((sbsec->flags & SE_SBPROC) ? "proc" : 
->> sb->s_type->name, &sbsec->behavior, &sbsec->sid);
->> -	if (rc) {
->> -		printk(KERN_WARNING "%s: security_fs_use(%s) returned %d\n",
->> -		       __func__, sb->s_type->name, rc);
->> -		goto out;
->> +	if (!sbsec->behavior) {
->> +		/*
->> +		 * Determine the labeling behavior to use for this
->> +		 * filesystem type.
->> +		 */
->> +		rc = security_fs_use((sbsec->flags & SE_SBPROC) ?
->> +					"proc" : sb->s_type->name,
->> +					&sbsec->behavior, &sbsec->sid);
->> +		if (rc) {
->> +			printk(KERN_WARNING
->> +				"%s: security_fs_use(%s) returned %d\n",
->> +					__func__, sb->s_type->name, rc);
->> +			goto out;
->> +		}
->>  	}
->> -
->>  	/* sets the context of the superblock for the fs being mounted. */
->>  	if (fscontext_sid) {
->>  		rc = may_context_mount_sb_relabel(fscontext_sid, sbsec, cred);
->> @@ -700,6 +709,11 @@ static int selinux_set_mnt_opts(struct 
->> super_block *sb,
->>  	 * sets the label used on all file below the mountpoint, and will 
->> set
->>  	 * the superblock context if not already set.
->>  	 */
->> +	if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !context_sid) {
->> +		sbsec->behavior = SECURITY_FS_USE_NATIVE;
->> +		*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
->> +	}
->> +
->>  	if (context_sid) {
->>  		if (!fscontext_sid) {
->>  			rc = may_context_mount_sb_relabel(context_sid, sbsec,
->> @@ -731,7 +745,8 @@ static int selinux_set_mnt_opts(struct 
->> super_block *sb,
->>  	}
->>
->>  	if (defcontext_sid) {
->> -		if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
->> +		if (sbsec->behavior != SECURITY_FS_USE_XATTR &&
->> +			sbsec->behavior != SECURITY_FS_USE_NATIVE) {
->>  			rc = -EINVAL;
->>  			printk(KERN_WARNING "SELinux: defcontext option is "
->>  			       "invalid for this filesystem type\n");
->> @@ -1199,6 +1214,8 @@ static int inode_doinit_with_dentry(struct 
->> inode *inode, struct dentry *opt_dent
->>  	}
->>
->>  	switch (sbsec->behavior) {
->> +	case SECURITY_FS_USE_NATIVE:
->> +		break;
->>  	case SECURITY_FS_USE_XATTR:
->>  		if (!inode->i_op->getxattr) {
->>  			isec->sid = sbsec->def_sid;
->> diff --git a/security/selinux/include/security.h 
->> b/security/selinux/include/security.h
->> index 6d38851..8fd8e18 100644
->> --- a/security/selinux/include/security.h
->> +++ b/security/selinux/include/security.h
->> @@ -169,6 +169,8 @@ int security_get_allow_unknown(void);
->>  #define SECURITY_FS_USE_GENFS		4 /* use the genfs support */
->>  #define SECURITY_FS_USE_NONE		5 /* no labeling support */
->>  #define SECURITY_FS_USE_MNTPOINT	6 /* use mountpoint labeling */
->> +#define SECURITY_FS_USE_NATIVE		7 /* use native label support */
->> +#define SECURITY_FS_USE_MAX		7 /* Highest SECURITY_FS_USE_XXX */
->>
->>  int security_fs_use(const char *fstype, unsigned int *behavior,
->>  	u32 *sid);
->> diff --git a/security/selinux/ss/policydb.c 
->> b/security/selinux/ss/policydb.c
->> index 9cd9b7c..c8adde3 100644
->> --- a/security/selinux/ss/policydb.c
->> +++ b/security/selinux/ss/policydb.c
->> @@ -2168,7 +2168,10 @@ static int ocontext_read(struct policydb *p, 
->> struct policydb_compat_info *info,
->>
->>  				rc = -EINVAL;
->>  				c->v.behavior = le32_to_cpu(buf[0]);
->> -				if (c->v.behavior > SECURITY_FS_USE_NONE)
->> +				/* Determined at runtime, not in policy DB. */
->> +				if (c->v.behavior == SECURITY_FS_USE_MNTPOINT)
->> +					goto out;
->> +				if (c->v.behavior > SECURITY_FS_USE_MAX)
->>  					goto out;
->>
->>  				rc = -ENOMEM;
->> --
->> 1.8.1.4
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
->> in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe
-> linux-security-module" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Applying, thanks.--b.
 
-
-Eric,
-    Can I get a review of the code and an ACK? I know people did this a 
-long time ago but we need someone to review it more recently and I've 
-been told you've been the one keeping an eye on SELinux related kernel 
-changes.
-
-Dave
+On Thu, Apr 18, 2013 at 10:49:09AM +0800, Wei Yongjun wrote:
+> From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
+> 
+> Fix to return a negative error code from the error handling
+> case instead of 0, as returned elsewhere in this function.
+> 
+> Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
+> ---
+>  net/sunrpc/auth_gss/svcauth_gss.c | 4 +++-
+>  1 file changed, 3 insertions(+), 1 deletion(-)
+> 
+> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+> index 5ead605..c2156fb 100644
+> --- a/net/sunrpc/auth_gss/svcauth_gss.c
+> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+> @@ -505,8 +505,10 @@ static int rsc_parse(struct cache_detail *cd,
+>  		len = qword_get(&mesg, buf, mlen);
+>  		if (len > 0) {
+>  			rsci.cred.cr_principal = kstrdup(buf, GFP_KERNEL);
+> -			if (!rsci.cred.cr_principal)
+> +			if (!rsci.cred.cr_principal) {
+> +				status = -ENOMEM;
+>  				goto out;
+> +			}
+>  		}
+>  
+>  	}
+> 
