@@ -1,280 +1,186 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f174.google.com ([209.85.192.174]:41883 "EHLO
-	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759986Ab3DDOEM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Apr 2013 10:04:12 -0400
-Date: Thu, 4 Apr 2013 22:04:03 +0800
-From: Yanchuan Nian <ycnian@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2] nfsd: fix bug on nfs4 stateid deallocation
-Message-ID: <20130404140403.GA2134@localhost.localdomain>
-References: <1362962774-5141-1-git-send-email-ycnian@gmail.com>
- <20130311150208.GB16309@fieldses.org>
- <CAC5OsZPyuOj_3OUJZFu1Haqg=q6GCyyqDL=n+Y5Wr48D1-SkSg@mail.gmail.com>
- <20130402015044.GA12158@fieldses.org>
- <20130403105843.GA22704@mail.example.com>
- <20130403185508.GE6044@fieldses.org>
+Received: from mx12.netapp.com ([216.240.18.77]:18217 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760460Ab3D3NvR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Apr 2013 09:51:17 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        "Linux Kernel mailing list" <linux-kernel@vger.kernel.org>
+Subject: [GIT PULL] Please pull NFS client updates for 3.10
+Date: Tue, 30 Apr 2013 13:51:15 +0000
+Message-ID: <1367329875.4260.1.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset=gb2312
-In-Reply-To: <20130403185508.GE6044@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 03, 2013 at 02:55:08PM -0400, J. Bruce Fields wrote:
-> On Wed, Apr 03, 2013 at 06:58:43PM +0800, Yanchuan Nian wrote:
-> > On Mon, Apr 01, 2013 at 09:50:44PM -0400, J. Bruce Fields wrote:
-> > > On Wed, Mar 13, 2013 at 11:04:54PM +0800, Yanchuan Nian wrote:
-> > > > 2013/3/11 J. Bruce Fields <bfields@fieldses.org>
-> > > > 
-> > > > > On Mon, Mar 11, 2013 at 08:46:14AM +0800, ycnian@gmail.com wrote:
-> > > > > > NFS4_OO_PURGE_CLOSE is not handled properly. To avoid memory leak, nfs4
-> > > > > > stateid which is pointed by oo_last_closed_stid is freed in
-> > > > > nfsd4_close(),
-> > > > > > but NFS4_OO_PURGE_CLOSE isn't cleared meanwhile. So the stateid released
-> > > > > in
-> > > > > > THIS close procedure may be freed immediately in the coming encoding
-> > > > > function.
-> > > > >
-> > > > > OK, makes sense.  This code is confusing, I wonder if there's some way
-> > > > > we could make it simpler.
-> > > > >
-> > > > 
-> > > > The only purpose of NFS4_OO_PURGE_CLOSE is to decide whether the stateid
-> > > > pointed by last-closed-stateid should be freed or not. I wonder if this
-> > > > flag is necessary. oo_last_closed_stid is set only in CLOSE, so in other
-> > > > procedures, if the pointer is not NULL, it must be set in previous
-> > > > procedure, we can free it directly. In CLOSE procedure, we also free it
-> > > > directly before asigning the new released stateid to it in nfsd4_close(),
-> > > > and then we can ignore it in nfsd4_encode_close(). What do you think?
-> > > 
-> > > Yeah, something like that would be simpler, I think.  Maybe the
-> > > following?  (On top of your patch.)
-> > 
-> 
-> > This patch may cause memory leak in NFSv4.1. If the stateid released
-> > is the last one in nfs4_openowner, nfs4_openowner will be deallocated
-> > immediately, and NULL will be assigned to cstate->replay_owner at the
-> > same time. In this situation encode_seqid_op_tail() cannot be called.
-> > To avoid this problem, we can free the stateid just before or after
-> > nfs4_opwnowner deallocation.
-> 
-> Yes, thanks for catching that!:
-> 
->  	nfsd4_close_open_stateid(stp);
-> -	close->cl_closed_stateid = stp;
-> +	if (cstate->minorversion) {
-> +		unhash_stid(&stp->st_stid);
-> +		free_generic_stateid(stp);
-> +	} else
-> +		close->cl_closed_stateid = stp;
->  
->  	if (list_empty(&oo->oo_owner.so_stateids)) {
->  		if (cstate->minorversion) {
-> 
-> > Another question, cl_stateid in struct nfsd4_close will be returned to
-> > the client, so original comment is right even though applying this
-> > patch. Can this struct be commented like this.
-> > 
-> > struct nfsd4_close {
-> >         u32             cl_seqid;           /* request */
-> >         stateid_t       cl_stateid;         /* request+response */
-> >         struct nfs4_ol_stateid *cl_closed_stateid; /* used during processing */
-> 
-> Agreed; done.  The result is the following (untested).
+Hi Linus,
 
-Yes, it works on my machine. Just the comment of cl_stateid in struct
-nfsd4_close is still a little misleading.
-> 
-> --b.
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 3e1101a..9bd6653 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -674,7 +674,7 @@ static void unhash_openowner(struct nfs4_openowner *oo)
->  	}
->  }
->  
-> -static void release_last_closed_stateid(struct nfs4_openowner *oo)
-> +void release_last_closed_stateid(struct nfs4_openowner *oo)
->  {
->  	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
->  
-> @@ -3783,26 +3783,6 @@ out:
->  	return status;
->  }
->  
-> -void nfsd4_purge_closed_stateid(struct nfs4_stateowner *so)
-> -{
-> -	struct nfs4_openowner *oo;
-> -	struct nfs4_ol_stateid *s;
-> -
-> -	if (!so->so_is_open_owner)
-> -		return;
-> -	oo = openowner(so);
-> -	s = oo->oo_last_closed_stid;
-> -	if (!s)
-> -		return;
-> -	if (!(oo->oo_flags & NFS4_OO_PURGE_CLOSE)) {
-> -		/* Release the last_closed_stid on the next seqid bump: */
-> -		oo->oo_flags |= NFS4_OO_PURGE_CLOSE;
-> -		return;
-> -	}
-> -	oo->oo_flags &= ~NFS4_OO_PURGE_CLOSE;
-> -	release_last_closed_stateid(oo);
-> -}
-> -
->  static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
->  {
->  	unhash_open_stateid(s);
-> @@ -3839,9 +3819,11 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
->  
->  	nfsd4_close_open_stateid(stp);
-> -	release_last_closed_stateid(oo);
-> -	oo->oo_flags &= ~NFS4_OO_PURGE_CLOSE;
-> -	oo->oo_last_closed_stid = stp;
-> +	if (cstate->minorversion) {
-> +		unhash_stid(&stp->st_stid);
-> +		free_generic_stateid(stp);
-> +	} else
-> +		close->cl_closed_stateid = stp;
->  
->  	if (list_empty(&oo->oo_owner.so_stateids)) {
->  		if (cstate->minorversion) {
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 700de01..60e196f 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -527,6 +527,7 @@ nfsd4_decode_close(struct nfsd4_compoundargs *argp, struct nfsd4_close *close)
->  {
->  	DECODE_HEAD;
->  
-> +	close->cl_closed_stateid = NULL;
->  	READ_BUF(4);
->  	READ32(close->cl_seqid);
->  	return nfsd4_decode_stateid(argp, &close->cl_stateid);
-> @@ -1707,8 +1708,7 @@ static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
->   * Note that we increment sequence id's here, at the last moment, so we're sure
->   * we know whether the error to be returned is a sequence id mutating error.
->   */
-> -
-> -static void encode_seqid_op_tail(struct nfsd4_compoundres *resp, __be32 *save, __be32 nfserr)
-> +static void encode_seqid_op_tail(struct nfsd4_compoundres *resp, __be32 *save, __be32 nfserr, struct nfs4_ol_stateid *close_stp)
->  {
->  	struct nfs4_stateowner *stateowner = resp->cstate.replay_owner;
->  
-> @@ -1719,7 +1719,13 @@ static void encode_seqid_op_tail(struct nfsd4_compoundres *resp, __be32 *save, _
->  			  (char *)resp->p - (char *)save;
->  		memcpy(stateowner->so_replay.rp_buf, save,
->  			stateowner->so_replay.rp_buflen);
-> -		nfsd4_purge_closed_stateid(stateowner);
-> +		if (stateowner->so_is_open_owner) {
-> +			struct nfs4_openowner *oo = openowner(stateowner);
-> +
-> +			release_last_closed_stateid(oo);
-> +			if (close_stp)
-> +				oo->oo_last_closed_stid = close_stp;
-> +		}
->  	}
->  }
->  
-> @@ -2667,7 +2673,7 @@ nfsd4_encode_close(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_c
->  	if (!nfserr)
->  		nfsd4_encode_stateid(resp, &close->cl_stateid);
->  
-> -	encode_seqid_op_tail(resp, save, nfserr);
-> +	encode_seqid_op_tail(resp, save, nfserr, close->cl_closed_stateid);
->  	return nfserr;
->  }
->  
-> @@ -2770,7 +2776,7 @@ nfsd4_encode_lock(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_lo
->  	else if (nfserr == nfserr_denied)
->  		nfsd4_encode_lock_denied(resp, &lock->lk_denied);
->  
-> -	encode_seqid_op_tail(resp, save, nfserr);
-> +	encode_seqid_op_tail(resp, save, nfserr, NULL);
->  	return nfserr;
->  }
->  
-> @@ -2790,7 +2796,7 @@ nfsd4_encode_locku(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_l
->  	if (!nfserr)
->  		nfsd4_encode_stateid(resp, &locku->lu_stateid);
->  
-> -	encode_seqid_op_tail(resp, save, nfserr);
-> +	encode_seqid_op_tail(resp, save, nfserr, NULL);
->  	return nfserr;
->  }
->  
-> @@ -2885,7 +2891,7 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
->  	}
->  	/* XXX save filehandle here */
->  out:
-> -	encode_seqid_op_tail(resp, save, nfserr);
-> +	encode_seqid_op_tail(resp, save, nfserr, NULL);
->  	return nfserr;
->  }
->  
-> @@ -2897,7 +2903,7 @@ nfsd4_encode_open_confirm(struct nfsd4_compoundres *resp, __be32 nfserr, struct
->  	if (!nfserr)
->  		nfsd4_encode_stateid(resp, &oc->oc_resp_stateid);
->  
-> -	encode_seqid_op_tail(resp, save, nfserr);
-> +	encode_seqid_op_tail(resp, save, nfserr, NULL);
->  	return nfserr;
->  }
->  
-> @@ -2909,7 +2915,7 @@ nfsd4_encode_open_downgrade(struct nfsd4_compoundres *resp, __be32 nfserr, struc
->  	if (!nfserr)
->  		nfsd4_encode_stateid(resp, &od->od_stateid);
->  
-> -	encode_seqid_op_tail(resp, save, nfserr);
-> +	encode_seqid_op_tail(resp, save, nfserr, NULL);
->  	return nfserr;
->  }
->  
-> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> index f6ae4db..477f027 100644
-> --- a/fs/nfsd/state.h
-> +++ b/fs/nfsd/state.h
-> @@ -355,7 +355,6 @@ struct nfs4_openowner {
->  	struct nfs4_ol_stateid *oo_last_closed_stid;
->  	time_t			oo_time; /* time of placement on so_close_lru */
->  #define NFS4_OO_CONFIRMED   1
-> -#define NFS4_OO_PURGE_CLOSE 2
->  #define NFS4_OO_NEW         4
->  	unsigned char		oo_flags;
->  };
-> @@ -363,7 +362,7 @@ struct nfs4_openowner {
->  struct nfs4_lockowner {
->  	struct nfs4_stateowner	lo_owner; /* must be first element */
->  	struct list_head	lo_owner_ino_hash; /* hash by owner,file */
-> -	struct list_head        lo_perstateid; /* for lockowners only */
-> +	struct list_head        lo_perstateid;
->  	struct list_head	lo_list; /* for temporary uses */
->  };
->  
-> @@ -477,7 +476,7 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
->  							struct nfsd_net *nn);
->  extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
->  extern void put_client_renew(struct nfs4_client *clp);
-> -extern void nfsd4_purge_closed_stateid(struct nfs4_stateowner *);
-> +extern void release_last_closed_stateid(struct nfs4_openowner *);
->  
->  /* nfs4recover operations */
->  extern int nfsd4_client_tracking_init(struct net *net);
-> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> index 40e05e6..4d501db 100644
-> --- a/fs/nfsd/xdr4.h
-> +++ b/fs/nfsd/xdr4.h
-> @@ -91,7 +91,8 @@ struct nfsd4_access {
->  
->  struct nfsd4_close {
->  	u32		cl_seqid;           /* request */
-> -	stateid_t	cl_stateid;         /* request+response */
-> +	stateid_t	cl_stateid;         /* request */
-> +	struct nfs4_ol_stateid *cl_closed_stateid; /* used during processing */
->  };
->  
->  struct nfsd4_commit {
+The following changes since commit 1166fde6a923c30f4351515b6a9a1efc513e7d00:
+
+  SUNRPC: Add barriers to ensure read ordering in rpc_wake_up_task_queue_locked (2013-03-25 11:23:40 -0400)
+
+are available in the git repository at:
+
+  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.10-1
+
+for you to fetch changes up to 721ccfb79b6f74f4052de70236d24047e73682d4:
+
+  NFSv4: Warn once about servers that incorrectly apply open mode to setattr (2013-04-29 11:11:58 -0400)
+
+----------------------------------------------------------------
+NFS client bugfixes and cleanups for 3.10
+
+- NLM: stable fix for NFSv2/v3 blocking locks
+- NFSv4.x: stable fixes for the delegation recall error handling code
+- NFSv4.x: Security flavour negotiation fixes and cleanups by Chuck Lever
+- SUNRPC: A number of RPCSEC_GSS fixes and cleanups also from Chuck
+- NFSv4.x assorted state management and reboot recovery bugfixes
+- NFSv4.1: In cases where we have already looked up a file, and hold a
+  valid filehandle, use the new open-by-filehandle operation instead of
+  opening by name.
+- Allow the NFSv4.1 callback thread to freeze
+- NFSv4.x: ensure that file unlock waits for readahead to complete
+- NFSv4.1: ensure that the RPC layer doesn't override the NFS session
+  table size negotiation by limiting the number of slots.
+- NFSv4.x: Fix SETATTR spec compatibility issues
+
+----------------------------------------------------------------
+Andy Adamson (1):
+      NFSv4 release the sequence id in the return on close case
+
+Bryan Schumaker (1):
+      nfs: Send atime and mtime as a 64bit value
+
+Chuck Lever (19):
+      SUNRPC: Missing module alias for auth_rpcgss.ko
+      NFS: Remove unneeded forward declaration
+      SUNRPC: Define rpcsec_gss_info structure
+      SUNRPC: Introduce rpcauth_get_pseudoflavor()
+      SUNRPC: Load GSS kernel module by OID
+      SUNRPC: Consider qop when looking up pseudoflavors
+      SUNRPC: Refactor nfsd4_do_encode_secinfo()
+      SUNRPC: Make gss_mech_get() static
+      SUNRPC: Remove EXPORT_SYMBOL_GPL() from GSS mech switch
+      NFS: Handle missing rpc.gssd when looking up root FH
+      NFS: Clean up nfs4_proc_get_rootfh
+      NFS: Avoid PUTROOTFH when managing leases
+      NFS: Use static list of security flavors during root FH lookup recovery
+      NFS: Try AUTH_UNIX when PUTROOTFH gets NFS4ERR_WRONGSEC
+      NFS: Use "krb5i" to establish NFSv4 state whenever possible
+      SUNRPC: Don't recognize RPC_AUTH_MAXFLAVOR
+      NFS: Use server-recommended security flavor by default (NFSv3)
+      SUNRPC: Remove extra xprt_put()
+      NFS: Retry SETCLIENTID with AUTH_SYS instead of AUTH_NONE
+
+Jeff Layton (2):
+      nfs: allow the v4.1 callback thread to freeze
+      nfs: remove unnecessary check for NULL inode->i_flock from nfs_delegation_claim_locks
+
+Paul Bolle (1):
+      sunrpc: drop "select NETVM"
+
+Trond Myklebust (51):
+      SUNRPC: Report network/connection errors correctly for SOFTCONN rpc tasks
+      NFSv4: Fail I/O if the state recovery fails irrevocably
+      NFS: Don't accept more reads/writes if the open context recovery failed
+      NFS: __nfs_find_lock_context needs to check ctx->lock_context for a match too
+      NFSv4: The stateid must remain the same for replayed RPC calls
+      NFSv4: Resend the READ/WRITE RPC call if a stateid change causes an error
+      NFSv4: Prepare for minorversion-specific nfs_server capabilities
+      NFSv4.1: Select the "most recent locking state" for read/write/setattr stateids
+      NFSv4: Clean up nfs4_opendata_alloc in preparation for NFSv4.1 open modes
+      NFSv4.1: Add xdr support for CLAIM_FH and CLAIM_DELEG_CUR_FH opens
+      NFSv4.1: Enable open-by-filehandle
+      NFSv4.1: Use CLAIM_DELEG_CUR_FH opens when available
+      NFSv4: Add a mapping for NFS4ERR_FILE_OPEN in nfs4_map_errors
+      NFSv4: Fix another reboot recovery race
+      NFSv4: Fix Oopses in the fs_locations code
+      NFSv4: Fix the fallback to AUTH_NULL if krb5i is not available
+      NFSv4: Fix issues in nfs4_discover_server_trunking
+      NFSv4: Don't clear the machine cred when client establish returns EACCES
+      NFSv4: Fix a memory leak in nfs4_discover_server_trunking
+      NFSv4/4.1: Fix bugs in nfs4[01]_walk_client_list
+      SUNRPC: Fix a potential memory leak in rpc_new_client
+      NFSv4: Handle NFS4ERR_DELAY and NFS4ERR_GRACE in nfs4_lock_delegation_recall
+      NFSv4: Handle NFS4ERR_DELAY and NFS4ERR_GRACE in nfs4_open_delegation_recall
+      NFSv4: Clean up nfs4_lock_delegation_recall
+      NFSv4: Clean up nfs4_open_delegation_recall
+      NFSv4: Clean up delegation recall error handling
+      NFSv4: Be less aggressive about returning delegations for open files
+      NFSv4: Fix nfs_server_return_all_delegations
+      NFSv4: Clean up nfs_expire_all_delegations
+      NFSv4: Fix CB_RECALL_ANY to only return delegations that are not in use
+      NFSv4: Handle timeouts correctly when probing for lease validity
+      NFS: Add functionality to allow waiting on all outstanding reads to complete
+      NFS: Ensure that NFS file unlock waits for readahead to complete
+      NFSv4: Fix another potential state manager deadlock
+      NFSv4: Doh! Typo in the fix to nfs41_walk_client_list
+      NFSv4: Fix handling of revoked delegations by setattr
+      SUNRPC: Fix a livelock problem in the xprt->backlog queue
+      SUNRPC: Allow rpc_create() to request that TCP slots be unlimited
+      NFSv4.1: Set the RPC_CLNT_CREATE_INFINITE_SLOTS flag for NFSv4.1 transports
+      NFSv4: Record the OPEN create mode used in the nfs4_opendata structure
+      NFSv4: Use the open stateid if the delegation has the wrong mode
+      NFSv4: Ensure the LOCK call cannot use the delegation stateid
+      LOCKD: Ensure that nlmclnt_block resets block->b_status after a server reboot
+      NFSv4: Ensure that we clear the NFS_OPEN_STATE flag when appropriate
+      NFSv4.1: Use the more efficient open_noattr call for open-by-filehandle
+      NFSv4.1: Don't do a delegated open for NFS4_OPEN_CLAIM_DELEG_CUR_FH modes
+      NFSv4: Don't recheck permissions on open in case of recovery cached open
+      Merge branch 'rpcsec_gss-from_cel' into linux-next
+      Merge branch 'bugfixes' into linux-next
+      NFSv4: Servers should only check SETATTR stateid open mode on size change
+      NFSv4: Warn once about servers that incorrectly apply open mode to setattr
+
+ fs/lockd/clntlock.c                   |   3 +
+ fs/lockd/clntproc.c                   |   3 -
+ fs/nfs/callback.c                     |   3 +
+ fs/nfs/callback_proc.c                |   2 +-
+ fs/nfs/client.c                       |   2 +
+ fs/nfs/delegation.c                   | 121 +++++---
+ fs/nfs/delegation.h                   |   5 +-
+ fs/nfs/dir.c                          |   2 +
+ fs/nfs/file.c                         |   9 +
+ fs/nfs/inode.c                        |   8 +-
+ fs/nfs/internal.h                     |   7 +
+ fs/nfs/nfs4_fs.h                      |  16 +-
+ fs/nfs/nfs4client.c                   |  75 +++--
+ fs/nfs/nfs4filelayout.c               |  34 ++-
+ fs/nfs/nfs4namespace.c                |  43 +--
+ fs/nfs/nfs4proc.c                     | 558 +++++++++++++++++++++++-----------
+ fs/nfs/nfs4state.c                    | 149 +++++----
+ fs/nfs/nfs4super.c                    |   2 +
+ fs/nfs/nfs4xdr.c                      | 176 +++++------
+ fs/nfs/pagelist.c                     |  53 ++++
+ fs/nfs/pnfs.c                         |   2 +
+ fs/nfs/read.c                         |   2 +
+ fs/nfs/super.c                        |  80 ++---
+ fs/nfs/write.c                        |   2 +
+ fs/nfsd/nfs4xdr.c                     |  24 +-
+ include/linux/nfs_fs.h                |   8 +
+ include/linux/nfs_fs_sb.h             |   3 +
+ include/linux/nfs_xdr.h               |  27 +-
+ include/linux/sunrpc/auth.h           |   9 +
+ include/linux/sunrpc/clnt.h           |   1 +
+ include/linux/sunrpc/gss_api.h        |  30 +-
+ include/linux/sunrpc/xprt.h           |   5 +
+ net/sunrpc/Kconfig                    |   2 +-
+ net/sunrpc/auth.c                     |  75 ++++-
+ net/sunrpc/auth_gss/auth_gss.c        |   3 +
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |   6 +-
+ net/sunrpc/auth_gss/gss_mech_switch.c | 119 ++++++--
+ net/sunrpc/auth_gss/svcauth_gss.c     |   4 +-
+ net/sunrpc/clnt.c                     |  54 ++--
+ net/sunrpc/xprt.c                     |  61 +++-
+ net/sunrpc/xprtsock.c                 |  14 +-
+ 41 files changed, 1214 insertions(+), 588 deletions(-)
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
