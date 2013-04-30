@@ -1,107 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:50290 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:14777 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759482Ab3DYSwy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2013 14:52:54 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        David Wysochanski <dwysocha@redhat.com>,
-        "Dave Chiluk" <chiluk@canonical.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Use exponential backoff delay for NFS4_ERRDELAY
-Date: Thu, 25 Apr 2013 18:52:53 +0000
-Message-ID: <F6EFC293-3201-4BC2-A31F-91771E9E99EC@netapp.com>
-References: <1366838926.22397.25.camel@leira.trondhjem.org>
- <5178549A.7010402@canonical.com>
- <1366842905.22397.49.camel@leira.trondhjem.org>
- <1366892374.26249.294.camel@localhost.localdomain>
- <20130425132907.GB31851@fieldses.org>
- <1366896654.4719.18.camel@leira.trondhjem.org>
- <20130425134918.GC31851@fieldses.org>
- <1366899034.6812.4.camel@leira.trondhjem.org>
- <20130425181932.GA5049@fieldses.org>
- <81BBEA25-CDE5-42B1-996D-90C26A43DEF6@oracle.com>
- <20130425184626.GC5049@fieldses.org>
-In-Reply-To: <20130425184626.GC5049@fieldses.org>
-Content-Type: text/plain; charset="us-ascii"
+	id S1760692Ab3D3Rcg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Apr 2013 13:32:36 -0400
+Message-ID: <5180002D.4070002@RedHat.com>
+Date: Tue, 30 Apr 2013 13:32:29 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 00/17] lnfs: 3.9-rc8 release (take 2)
+References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>  <20130430155740.GX17268@fieldses.org> <1367338308.4260.18.camel@leira.trondhjem.org>
+In-Reply-To: <1367338308.4260.18.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Apr 25, 2013, at 2:46 PM, "bfields@fieldses.org" <bfields@fieldses.org>
- wrote:
 
-> On Thu, Apr 25, 2013 at 02:40:11PM -0400, Chuck Lever wrote:
->> 
->> On Apr 25, 2013, at 2:19 PM, "bfields@fieldses.org" <bfields@fieldses.org> wrote:
->> 
->>> On Thu, Apr 25, 2013 at 02:10:36PM +0000, Myklebust, Trond wrote:
->>>> On Thu, 2013-04-25 at 09:49 -0400, bfields@fieldses.org wrote:
->>>>> On Thu, Apr 25, 2013 at 01:30:58PM +0000, Myklebust, Trond wrote:
->>>>>> On Thu, 2013-04-25 at 09:29 -0400, bfields@fieldses.org wrote:
->>>>>> 
->>>>>>> My position is that we simply have no idea what order of magnitude even
->>>>>>> delay should be.  And that in such a situation exponential backoff such
->>>>>>> as implemented in the synchronous case seems the reasonable default as
->>>>>>> it guarantees at worst doubling the delay while still bounding the
->>>>>>> long-term average frequency of retries.
->>>>>> 
->>>>>> So we start with a 15 second delay, and then go to 60 seconds?
->>>>> 
->>>>> I agree that a server should normally be doing the wait on its own if
->>>>> the wait would be on the order of an rpc round trip.
->>>>> 
->>>>> So I'd be inclined to start with a delay that was an order of magnitude
->>>>> or two more than a round trip.
->>>>> 
->>>>> And I'd expect NFS isn't common on networks with 1-second latencies.
->>>>> 
->>>>> So the 1/10 second we're using in the synchronous case sounds closer to
->>>>> the right ballpark to me.
->>>> 
->>>> OK, then. Now all I need is actual motivation for changing the existing
->>>> code other than handwaving arguments about "polling is better than flat
->>>> waits".
->>>> What actual use cases are impacting us now, other than the AIX design
->>>> decision to force CLOSE to retry at least once before succeeding?
->>> 
->>> Nah, I've got nothing, and I agree that the AIX problem is there bug.
->>> 
->>> Just for fun I looked at re-checked the Linux server cases.  As far as I
->>> can tell they are:
->>> 
->>> 	- delegations: returned immediately on detection of any
->>> 	  conflict.  The current behavior in the sync case looks
->>> 	  reasonable to me.
->>> 	- allocation failures: not really sure it's the best error, but
->>> 	  it seems to be all the protocol offers.  We probably don't
->>> 	  care much what the client does in this case.
->>> 	- some rare cases that would probably indicate bugs (e.g.,
->>> 	  attempting to destroy a client while other rpc's from that
->>> 	  client are running.)  Again we don't care what the client does
->>> 	  here.
->>> 	- the 4.1 slot-inuse case.
->>> 
->>> We also by default map four errors (ETIMEDOUT, EAGAIN, EWOULDBLOCK,
->>> ENOMEM) to delay.  I thought I remembered one of those being used by
->>> some HFS system, but can't actually find an example now.  A quick grep
->>> doesn't show anything interesting.
->> 
->> It's worth mentioning that servers that have frozen state (say, in preparation for Transparent State Migration) may use NFS4ERR_DELAY to prevent clients from modifying open or lock state until that state has transitioned to a destination server.
+On 30/04/13 12:11, Myklebust, Trond wrote:
+> On Tue, 2013-04-30 at 11:57 -0400, J. Bruce Fields wrote:
+>> On Mon, Apr 29, 2013 at 08:57:02AM -0400, Steve Dickson wrote:
+>>> From: Steve Dickson <steved@redhat.com>
+>>>
+>>> Here is an updated 3.9-rc8 release of
+>>> the label NFS patches. 
+>>
+>> The nfsd patches look mergeable to me (with a few one-line fixes).
+>>
+>> I'm missing ACKs from Trond and security folks.
+>>
+>> The merge window is already open, which is late to be queueing up a
+>> significant new feature.
+>>
+>> It might be reasonable if we could get the needed ACKs now, but more
+>> likely it looks like 3.11 to me.
 > 
-> I thought they'd decided they'll be forced to find a different way to do
-> that?
+> I'm not going to add another 1000 lines of code to the NFS client during
+> a merge window. Both Linus and Stephen (Rothwell) would throttle me if I
+> did.
 > 
-> (The issue being that it only works if you're using 4.1, and if the
-> session state itself isn't part of the state to be transferred.
-> Otherwise you're forced to modify the state anyway since NFS4ERR_DELAY
-> is seqid-modifying.)
+> Let's spend this week on reviewing and making sure that all the issues
+> that were reported are fixed. I'll cut a new nfs-for-next client branch
+> as soon as I'm sure that is the case.
+> 
+Thanks for the cycles!
 
-Either way, migration is not a performance-critical path that needs 1second or less response times on those NFS4ERR_DELAY replies.
-
-Trond
-
+steved.
