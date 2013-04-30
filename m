@@ -1,68 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:32020 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757395Ab3D2M7E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Apr 2013 08:59:04 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 01/17] NFSv4.2: Added v4.2 error codes
-Date: Mon, 29 Apr 2013 08:57:03 -0400
-Message-Id: <1367240239-19326-2-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
-References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:56033 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933885Ab3D3WtH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Apr 2013 18:49:07 -0400
+Received: by mail-ie0-f180.google.com with SMTP id to1so1311600ieb.39
+        for <linux-nfs@vger.kernel.org>; Tue, 30 Apr 2013 15:49:07 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/3] NFSD: Simplify GSS flavor encoding in
+ nfsd4_do_encode_secinfo()
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 30 Apr 2013 18:48:45 -0400
+Message-ID: <20130430224845.21406.96490.stgit@seurat.1015granger.net>
+In-Reply-To: <20130430224730.21406.27294.stgit@seurat.1015granger.net>
+References: <20130430224730.21406.27294.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Steve Dickson <steved@redhat.com>
+Clean up.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfsd.h       | 6 ++++++
- include/linux/nfs4.h | 8 ++++++++
- 2 files changed, 14 insertions(+)
 
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 07a473f..553b230 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -243,6 +243,12 @@ void		nfsd_lockd_shutdown(void);
- #define nfserr_reject_deleg		cpu_to_be32(NFS4ERR_REJECT_DELEG)
- #define nfserr_returnconflict		cpu_to_be32(NFS4ERR_RETURNCONFLICT)
- #define nfserr_deleg_revoked		cpu_to_be32(NFS4ERR_DELEG_REVOKED)
-+#define nfserr_partner_notsupp		cpu_to_be32(NFS4ERR_PARTNER_NOTSUPP)
-+#define nfserr_partner_no_auth		cpu_to_be32(NFS4ERR_PARTNER_NO_AUTH)
-+#define nfserr_metadata_notsupp		cpu_to_be32(NFS4ERR_METADATA_NOTSUPP)
-+#define nfserr_offload_denied		cpu_to_be32(NFS4ERR_OFFLOAD_DENIED)
-+#define nfserr_wrong_lfs		cpu_to_be32(NFS4ERR_WRONG_LFS)
-+#define nfs4err_badlabel		cpu_to_be32(NFS4ERR_BADLABEL)
+ fs/nfsd/nfs4xdr.c |    8 +-------
+ 1 files changed, 1 insertions(+), 7 deletions(-)
+
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 2502951..ce327e3 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3174,17 +3174,11 @@ nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
+ 		struct rpcsec_gss_info info;
  
- /* error codes for internal use */
- /* if a request fails due to kmalloc failure, it gets dropped.
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 7b8fc73..377fb3f 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -219,6 +219,14 @@ enum nfsstat4 {
- 	NFS4ERR_REJECT_DELEG	= 10085,	/* on callback */
- 	NFS4ERR_RETURNCONFLICT	= 10086,	/* outstanding layoutreturn */
- 	NFS4ERR_DELEG_REVOKED	= 10087,	/* deleg./layout revoked */
-+
-+	/* nfs42 */
-+	NFS4ERR_PARTNER_NOTSUPP	= 10088,
-+	NFS4ERR_PARTNER_NO_AUTH	= 10089,
-+	NFS4ERR_METADATA_NOTSUPP = 10090,
-+	NFS4ERR_OFFLOAD_DENIED = 10091,
-+	NFS4ERR_WRONG_LFS = 10092,
-+	NFS4ERR_BADLABEL = 10093,
- };
- 
- static inline bool seqid_mutating_err(u32 err)
--- 
-1.8.1.4
+ 		if (rpcauth_get_gssinfo(flavs[i].pseudoflavor, &info) == 0) {
+-			RESERVE_SPACE(4);
++			RESERVE_SPACE(4 + 4 + info.oid.len + 4 + 4);
+ 			WRITE32(RPC_AUTH_GSS);
+-			ADJUST_ARGS();
+-			RESERVE_SPACE(4 + info.oid.len);
+ 			WRITE32(info.oid.len);
+ 			WRITEMEM(info.oid.data, info.oid.len);
+-			ADJUST_ARGS();
+-			RESERVE_SPACE(4);
+ 			WRITE32(info.qop);
+-			ADJUST_ARGS();
+-			RESERVE_SPACE(4);
+ 			WRITE32(info.service);
+ 			ADJUST_ARGS();
+ 		} else {
 
