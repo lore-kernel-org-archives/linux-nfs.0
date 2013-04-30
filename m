@@ -1,87 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:47361 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752117Ab3DNQzi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Apr 2013 12:55:38 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
-Subject: Re: [PATCH 3/3] NFSv4.1: Set the RPC_CLNT_CREATE_INFINITE_SLOTS flag for NFSv4.1 transports
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1365954835-35301-3-git-send-email-Trond.Myklebust@netapp.com>
-Date: Sun, 14 Apr 2013 12:55:32 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <A04ECD57-AC00-4AB7-B737-D995FDD6905A@oracle.com>
-References: <1365954835-35301-1-git-send-email-Trond.Myklebust@netapp.com> <1365954835-35301-2-git-send-email-Trond.Myklebust@netapp.com> <1365954835-35301-3-git-send-email-Trond.Myklebust@netapp.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:42249 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S933457Ab3D3S6h (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Apr 2013 14:58:37 -0400
+Message-ID: <5180145A.5030305@opengridcomputing.com>
+Date: Tue, 30 Apr 2013 13:58:34 -0500
+From: Tom Tucker <tom@opengridcomputing.com>
+MIME-Version: 1.0
+To: Yan Burman <yanb@mellanox.com>
+CC: Tom Talpey <tom@talpey.com>, "J. Bruce Fields" <bfields@fieldses.org>,
+        Wendy Cheng <s.wendy.cheng@gmail.com>,
+        "Atchley, Scott" <atchleyes@ornl.gov>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Or Gerlitz <ogerlitz@mellanox.com>
+Subject: Re: NFS over RDMA benchmark
+References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com> <CABgxfbF7c9ktSoMSPV21JU76V5J4iwbJQ257S91Y3z36WJbJVA@mail.gmail.com> <62745258-4F3B-4C05-BFFD-03EA604576E4@ornl.gov> <CABgxfbGxhnKj2n0Z-w87rZ6fwCssO31G009gwej957gv1p8PQQ@mail.gmail.com> <0EE9A1CDC8D6434DB00095CD7DB873462CF9715B@MTLDAG01.mtl.com> <20130423210607.GJ3676@fieldses.org> <0EE9A1CDC8D6434DB00095CD7DB873462CF988C9@MTLDAG01.mtl.com> <20130424150540.GB20275@fieldses.org> <20130424152631.GC20275@fieldses.org> <0EE9A1CDC8D6434DB00095CD7DB873462CF9A820@MTLDAG01.mtl.com> <20130428144248.GA2037@fieldses.org> <0EE9A1CDC8D6434DB00095CD7DB873462CF9C90C@MTLDAG01.mtl.com> <517FD327.3060901@talpey.com> <0EE9A1CDC8D6434DB00095CD7DB873462CF9CBD0@MTLDAG01.mtl.com>
+In-Reply-To: <0EE9A1CDC8D6434DB00095CD7DB873462CF9CBD0@MTLDAG01.mtl.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 4/30/13 9:38 AM, Yan Burman wrote:
+>
+>> -----Original Message-----
+>> From: Tom Talpey [mailto:tom@talpey.com]
+>> Sent: Tuesday, April 30, 2013 17:20
+>> To: Yan Burman
+>> Cc: J. Bruce Fields; Wendy Cheng; Atchley, Scott; Tom Tucker; linux-
+>> rdma@vger.kernel.org; linux-nfs@vger.kernel.org; Or Gerlitz
+>> Subject: Re: NFS over RDMA benchmark
+>>
+>> On 4/30/2013 1:09 AM, Yan Burman wrote:
+>>> I now get up to ~95K IOPS and 4.1GB/sec bandwidth.
+>>> ...
+>>>   ib_send_bw with intel iommu enabled did get up to 4.5GB/sec
+>> BTW, you may want to verify that these are the same GB. Many benchmarks
+>> say KB/MB/GB when they really mean KiB/MiB/GiB.
+>>
+>> At GB/GiB, the difference is about 7.5%, very close to the difference between
+>> 4.1 and 4.5.
+>>
+>> Just a thought.
+> The question is not why there is 400MBps difference between ib_send_bw and NFSoRDMA.
+> The question is why with IOMMU ib_send_bw got to the same bandwidth as without it while NFSoRDMA got half.
+NFSRDMA is constantly registering and unregistering memory when you use 
+FRMR mode. By contrast IPoIB has a descriptor ring that is set up once 
+and re-used. I suspect this is the difference maker. Have you tried 
+running the server in ALL_PHYSICAL mode, i.e. where it uses a DMA_MR for 
+all of memory?
 
-On Apr 14, 2013, at 11:53 AM, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-
-> This ensures that the RPC layer doesn't override the NFS session
-> negotiation.
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> fs/nfs/client.c           | 2 ++
-> fs/nfs/nfs4client.c       | 2 ++
-> include/linux/nfs_fs_sb.h | 1 +
-> 3 files changed, 5 insertions(+)
-> 
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 84d8eae..c513b0c 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -593,6 +593,8 @@ int nfs_create_rpc_client(struct nfs_client *clp,
-> 		args.flags |= RPC_CLNT_CREATE_DISCRTRY;
-> 	if (test_bit(NFS_CS_NORESVPORT, &clp->cl_flags))
-> 		args.flags |= RPC_CLNT_CREATE_NONPRIVPORT;
-> +	if (test_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags))
-> +		args.flags |= RPC_CLNT_CREATE_INFINITE_SLOTS;
-> 
-> 	if (!IS_ERR(clp->cl_rpcclient))
-> 		return 0;
-> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-> index a4f2100..9b711e4 100644
-> --- a/fs/nfs/nfs4client.c
-> +++ b/fs/nfs/nfs4client.c
-> @@ -199,6 +199,8 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
-> 	clp->rpc_ops = &nfs_v4_clientops;
-> 
-> 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
-> +	if (clp->cl_minorversion != 0)
-> +		__set_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags);
-> 	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
-> 	if (error == -EINVAL)
-> 		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_NULL);
-> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-> index d8fdfdc..01b3815 100644
-> --- a/include/linux/nfs_fs_sb.h
-> +++ b/include/linux/nfs_fs_sb.h
-> @@ -40,6 +40,7 @@ struct nfs_client {
-> #define NFS_CS_NORESVPORT	0		/* - use ephemeral src port */
-> #define NFS_CS_DISCRTRY		1		/* - disconnect on RPC retry */
-> #define NFS_CS_MIGRATION	2		/* - transparent state migr */
-> +#define NFS_CS_INFINITE_SLOTS	3		/* - transparent state migr */
-
-Is that comment correct?
-
-> 	struct sockaddr_storage	cl_addr;	/* server identifier */
-> 	size_t			cl_addrlen;
-> 	char *			cl_hostname;	/* hostname of server */
-> -- 
-> 1.8.1.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+Tom
+> >From some googling, it seems that when IOMMU is enabled, dma mapping functions get a lot more expensive.
+> Perhaps that is the reason for the performance drop.
+>
+> Yan
 
