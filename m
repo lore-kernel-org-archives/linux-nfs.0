@@ -1,132 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51729 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:45728 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933519Ab3DKM1J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Apr 2013 08:27:09 -0400
-Date: Thu, 11 Apr 2013 08:27:01 -0400
+	id S933978Ab3D3Xmu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Apr 2013 19:42:50 -0400
+Date: Tue, 30 Apr 2013 19:42:42 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jose Castillo <jcastillo@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>, steved@redhat.com
-Subject: Re: [PATCH] Add the missing '$' in auth_unix_ip()
-Message-ID: <20130411122701.GE7081@fieldses.org>
-References: <1365522899-29123-1-git-send-email-jcastillo@redhat.com>
- <20130409191113.GC3800@fieldses.org>
- <516548D8.3070707@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] NFSD: Kill some mixed sign comparisons in
+ fs/nfsd/nfs4xdr.c
+Message-ID: <20130430234242.GA32031@fieldses.org>
+References: <20130430224730.21406.27294.stgit@seurat.1015granger.net>
+ <20130430224903.21406.2877.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <516548D8.3070707@redhat.com>
+In-Reply-To: <20130430224903.21406.2877.stgit@seurat.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 10, 2013 at 12:11:20PM +0100, Jose Castillo wrote:
-> On 04/09/2013 08:11 PM, J. Bruce Fields wrote:
-> > Could you explain a little more?
-> > 
-> > I assume this is something I forgot to do as part of 
-> > c2544b77566690ebec32a2d47c9249548b1a0941 "mountd: prepend '$' to
-> > make use_ipaddr clients self-describing" but I haven't thought
-> > about that in a while....
-> > 
-> 
-> Hello,
-> 
-> Yes, sorry, a bit more of background: We found this problem because
-> NFS clients to a RHEL6 NFS server were experiencing periods of ESTALE
-> errors after being mounted and initially working successfully.
-> Tests were run which snapshotted the nfs/sunrpc caches before and
-> after the issue, and it was found that the '$' character at the
-> beginning of the ID strings, used when in use_ipaddr mode, was getting
-> lost:
-> 
-> GOOD, while mount was working:
-> #class IP domain
-> # expiry=1362416801 refcnt=2 flags=1
-> nfsd 1.2.3.4 $1.2.3.4
-> 
-> BAD, after mount started returning ESTALE:
-> #class IP domain
-> # expiry=1362418641 refcnt=2 flags=1
-> nfsd 1.2.3.4 1.2.3.4
-> 
-> This would then cause the export checks to fail by passing '1.2.3.4'
-> instead of '$1.2.3.4' up to rpc.mountd.
+On Tue, Apr 30, 2013 at 06:49:03PM -0400, Chuck Lever wrote:
+> Clean up.
 
-Oh, I see--and this stuff probably never worked for v4 either since it
-can't depend on mountd to fill the cache at all....
+I don't want to describe something as cleanup unless it's obvious it
+won't change behavior.  But:
 
-Thanks!
+> @@ -3033,7 +3032,7 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
+>  static __be32
+>  nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_readdir *readdir)
+>  {
+> -	int maxcount;
+> +	unsigned int maxcount;
+>  	loff_t offset;
+>  	__be32 *page, *savep, *tailbase;
+>  	__be32 *p;
 
-	Acked-by: J. Bruce Fields <bfields@redhat.com>
+This one, at least, is an actual behavior change.  (Note we've got an
+"if (maxcount < 0) ..." later on.)  Maybe not a real problem, I haven't
+checked.
 
-(Could you just add the extra details to the commit message and resend
-to steved?
-
-Also, is there a RHEL bug for this?)
+And I haven't checked the others carefully.
 
 --b.
-
-> 
-> The problem appears to be in the auth_unix_ip() function when renewing
-> the auth.unix.ip cache entry.  It would fail to add the '$' character
-> back to the beginning of the string used for the domain string,
-> breaking the use_ipaddr mode.
-> 
-> The issue is reliably repeatable with large numbers of exports and
-> netgroups to cause rpc.mountd to enter use_ipaddr mode.
-> 
-> Steps to reproduce:
-> 
-> 1. Export several hundred exports each with its own unique netgroup
-> 2. Mount from a client (NFS3).  check
-> /proc/net/rpc/auth.unix.ip/content to ensure the '$' character is
-> there from use_ipaddr mode.
-> 3. Wait long enough for the entry to expire (1 hour was used), and try
-> and access a file from the client.  It returned ESTALE and the
-> /proc/net/rpc/auth.unix.ip/content was now missing the '$' character.
-> 
-> Actual results:
-> Mount returns ESTALE on the client after being mounted for an extended
-> period of time.
-> 
-> Expected results:
-> File access should succeed on the mount.
-> 
-> The patch was tested in a reproduction environment, and the issue
-> could no longer be reproduced.
-> 
-> > --b.
-> > 
-> > On Tue, Apr 09, 2013 at 04:54:59PM +0100, Jose Castillo wrote:
-> >> Signed-off-by: Jose Castillo <jcastillo@redhat.com> --- 
-> >> utils/mountd/cache.c | 10 ++++++---- 1 file changed, 6
-> >> insertions(+), 4 deletions(-)
-> >> 
-> >> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c index
-> >> 978698d..e1027f3 100644 --- a/utils/mountd/cache.c +++
-> >> b/utils/mountd/cache.c @@ -80,7 +80,7 @@ static void
-> >> auth_unix_ip(FILE *f) */ char *cp; char class[20]; -	char
-> >> ipaddr[INET6_ADDRSTRLEN]; +	char ipaddr[INET6_ADDRSTRLEN + 1]; 
-> >> char *client = NULL; struct addrinfo *tmp = NULL; if
-> >> (readline(fileno(f), &lbuf, &lbuflen) != 1) @@ -94,7 +94,7 @@
-> >> static void auth_unix_ip(FILE *f) strcmp(class, "nfsd") != 0) 
-> >> return;
-> >> 
-> >> -	if (qword_get(&cp, ipaddr, sizeof(ipaddr)) <= 0) +	if
-> >> (qword_get(&cp, ipaddr, sizeof(ipaddr) - 1) <= 0) return;
-> >> 
-> >> tmp = host_pton(ipaddr); @@ -116,9 +116,11 @@ static void
-> >> auth_unix_ip(FILE *f) qword_print(f, "nfsd"); qword_print(f,
-> >> ipaddr); qword_printtimefrom(f, DEFAULT_TTL); -	if (use_ipaddr) +
-> >> if (use_ipaddr) { +		memmove(ipaddr + 1, ipaddr, strlen(ipaddr) +
-> >> 1); +		ipaddr[0] = '$'; qword_print(f, ipaddr); -	else if
-> >> (client) +	} else if (client) qword_print(f,
-> >> *client?client:"DEFAULT"); qword_eol(f); xlog(D_CALL,
-> >> "auth_unix_ip: client %p '%s'", client, client?client:
-> >> "DEFAULT"); -- 1.7.11.7
-> >> 
-> >> -- To unsubscribe from this list: send the line "unsubscribe
-> >> linux-nfs" in the body of a message to majordomo@vger.kernel.org 
-> >> More majordomo info at
-> >> http://vger.kernel.org/majordomo-info.html
-> 
-> 
