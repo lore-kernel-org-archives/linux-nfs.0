@@ -1,56 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:45618 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932321Ab3DWQYK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Apr 2013 12:24:10 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Simo Sorce <simo@redhat.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
-        fedfs-utils Developers <fedfs-utils-devel@oss.oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: RE: Interoperable junctions on Linux
-Date: Tue, 23 Apr 2013 16:24:08 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA92873BC7E@SACEXCMBX04-PRD.hq.netapp.com>
-References: <71999CA2-F6E7-4DE1-9DC3-AED77626DE7F@oracle.com>
-	 <1366728674.7239.63.camel@willson.li.ssimo.org>
-	 <BDD9FCE5-E573-4E01-A5D9-A8A3811895DD@oracle.com>
-	 <1366732290.35524.13.camel@leira.trondhjem.org>
- <1366733972.7239.66.camel@willson.li.ssimo.org>
-In-Reply-To: <1366733972.7239.66.camel@willson.li.ssimo.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from p3plsmtpa06-10.prod.phx3.secureserver.net ([173.201.192.111]:44850
+	"EHLO p3plsmtpa06-10.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1760558Ab3D3NFF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Apr 2013 09:05:05 -0400
+Message-ID: <517FC182.3030703@talpey.com>
+Date: Tue, 30 Apr 2013 09:05:06 -0400
+From: Tom Talpey <tom@talpey.com>
 MIME-Version: 1.0
+To: Yan Burman <yanb@mellanox.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Wendy Cheng <s.wendy.cheng@gmail.com>,
+        "Atchley, Scott" <atchleyes@ornl.gov>,
+        Tom Tucker <tom@opengridcomputing.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Or Gerlitz <ogerlitz@mellanox.com>
+Subject: Re: NFS over RDMA benchmark
+References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com> <CABgxfbF7c9ktSoMSPV21JU76V5J4iwbJQ257S91Y3z36WJbJVA@mail.gmail.com> <62745258-4F3B-4C05-BFFD-03EA604576E4@ornl.gov> <CABgxfbGxhnKj2n0Z-w87rZ6fwCssO31G009gwej957gv1p8PQQ@mail.gmail.com> <0EE9A1CDC8D6434DB00095CD7DB873462CF9715B@MTLDAG01.mtl.com> <20130423210607.GJ3676@fieldses.org> <0EE9A1CDC8D6434DB00095CD7DB873462CF988C9@MTLDAG01.mtl.com> <20130424150540.GB20275@fieldses.org> <20130424152631.GC20275@fieldses.org> <0EE9A1CDC8D6434DB00095CD7DB873462CF9A820@MTLDAG01.mtl.com> <20130428144248.GA2037@fieldses.org> <0EE9A1CDC8D6434DB00095CD7DB873462CF9C90C@MTLDAG01.mtl.com>
+In-Reply-To: <0EE9A1CDC8D6434DB00095CD7DB873462CF9C90C@MTLDAG01.mtl.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBTaW1vIFNvcmNlIFttYWlsdG86
-c2ltb0ByZWRoYXQuY29tXQ0KPiBTZW50OiBUdWVzZGF5LCBBcHJpbCAyMywgMjAxMyAxMjoyMCBQ
-TQ0KPiBUbzogTXlrbGVidXN0LCBUcm9uZA0KPiBDYzogQ2h1Y2sgTGV2ZXI7IHNhbWJhLXRlY2hu
-aWNhbEBsaXN0cy5zYW1iYS5vcmc7IGZlZGZzLXV0aWxzIERldmVsb3BlcnM7DQo+IExpbnV4IE5G
-UyBNYWlsaW5nIExpc3QNCj4gU3ViamVjdDogUmU6IEludGVyb3BlcmFibGUganVuY3Rpb25zIG9u
-IExpbnV4DQo+IA0KPiBPbiBUdWUsIDIwMTMtMDQtMjMgYXQgMTU6NTEgKzAwMDAsIE15a2xlYnVz
-dCwgVHJvbmQgd3JvdGU6DQo+ID4gT24gVHVlLCAyMDEzLTA0LTIzIGF0IDExOjQyIC0wNDAwLCBD
-aHVjayBMZXZlciB3cm90ZToNCj4gPiA+IE9uIEFwciAyMywgMjAxMywgYXQgMTA6NTEgQU0sIFNp
-bW8gU29yY2UgPHNpbW9AcmVkaGF0LmNvbT4gd3JvdGU6DQo+ID4NCj4gPiA+ID4gQWxzbyB3aHkg
-YSB4YXR0ciBpbiB0aGUgdHJ1c3RlZCBuYW1lc3BhY2UgPyBXaGF0IGFyZSB0aGUgc2VjdXJpdHkN
-Cj4gPiA+ID4gY29uc2lkZXJhdGlvbnMgdGhhdCB3YXJyYW50cyBhIHRydXN0ZWQgYXR0cmlidXRl
-IHJhdGhlciB0aGFuIGENCj4gPiA+ID4gbm9ybWFsIG9uZSA/IChMaW5rcyB0byBSRkNzIG9yIG90
-aGVyIGRvY3MgYXJlIGp1c3QgZmluZSkNCj4gPiA+DQo+ID4gPiBUaGlzIGlzIGFub3RoZXIgaGlz
-dG9yaWNhbCBkZXNpZ24gZGVjaXNpb24uICBJZiB0aGVyZSBpcyBjb25zZW5zdXMgdGhhdCB3ZQ0K
-PiBkb24ndCBuZWVkIHRvIHByb3RlY3QganVuY3Rpb24gbWV0YWRhdGEgZnJvbSB1bmludGVuZGVk
-IG9yIG1hbGljaW91cyBsb2NhbA0KPiBjaGFuZ2VzLCB0aGVuIHdlIGNhbiBwdXQgdGhlc2UgaW4g
-YW5vdGhlciBuYW1lc3BhY2UuICBIb3dldmVyLCB3aXRob3V0DQo+IHN0cm9uZyBzZWN1cml0eSBo
-ZXJlLCByZWRpcmVjdGluZyBuZXR3b3JrIGNsaWVudHMgdG8gYW5vdGhlciBzZXJ2ZXIgYW5kDQo+
-IGV4cG9ydCBjYW4gYmUgaGlqYWNrZWQsIHNlbmRpbmcgcmVtb3RlIHVzZXJzIHRvIHdobyBrbm93
-cyB3aGVyZS4gIElzIGl0DQo+IGVub3VnaCBzaW1wbHkgdG8gaW5zaXN0IHRoYXQganVuY3Rpb25z
-IGJlIG93bmVkIGJ5IHJvb3Q/DQo+ID4NCj4gPiBKdW5jdGlvbnMgcmVzb2x2ZSBpbnRvIG1vdW50
-cG9pbnRzIG9uIGNsaWVudHMuIEFsbG93aW5nIGFyYml0cmFyeQ0KPiA+IHVzZXJzIHRvIGNoYW5n
-ZSB0aGUganVuY3Rpb24gcGFyYW1ldGVycyBiYXNpY2FsbHkgbWVhbnMgZ2l2aW5nIHRoZW0NCj4g
-PiB0aGUgYWJpbGl0eSB0byBjb250cm9sIHRoZSBuYW1lc3BhY2Ugb24gY2xpZW50cy4gVGhleSBj
-YW4gZm9yIGluc3RhbmNlDQo+ID4gcmVkaXJlY3QgYW4gYXBwbGljYXRpb24gZnJvbSBhIHRydXN0
-ZWQgc2VydmVyIG9udG8gYW4gdW50cnVzdGVkIG9uZS4NCj4gPg0KPiA+IEkgdGhlcmVmb3JlIHN0
-cm9uZ2x5IHJlY29tbWVuZCB0aGF0IHdlIGVuc3VyZSB0aGUgY3JlYXRpb24sIGRlbGV0aW9uDQo+
-ID4gYW5kIG1vZGlmaWNhdGlvbiBvZiBhIGp1bmN0aW9uIHJlbWFpbnMgYSBwcml2aWxlZ2VkIG9w
-ZXJhdGlvbiBvbiB0aGUgc2VydmVyLg0KPiANCj4gSXMgaXQgbm90IHN1ZmZpY2llbnQgdG8gbWFr
-ZSBzdXJlIHRoZSBzeW1saW5rIGlzIG93bmVkIGJ5IHJvb3QgPw0KDQpIb3cgZG8geW91IGNoZWNr
-IHRoYXQgYXRvbWljYWxseSB3aXRoIHRoZSBnZXR4YXR0cj8NCg0KVHJvbmQNCg==
+On 4/30/2013 1:09 AM, Yan Burman wrote:
+>
+>
+>> -----Original Message-----
+>> From: J. Bruce Fields [mailto:bfields@fieldses.org]
+>> Sent: Sunday, April 28, 2013 17:43
+>> To: Yan Burman
+>> Cc: Wendy Cheng; Atchley, Scott; Tom Tucker; linux-rdma@vger.kernel.org;
+>> linux-nfs@vger.kernel.org; Or Gerlitz
+>> Subject: Re: NFS over RDMA benchmark
+>>
+>> On Sun, Apr 28, 2013 at 06:28:16AM +0000, Yan Burman wrote:
+>>>>>>>>>>> On Wed, Apr 17, 2013 at 7:36 AM, Yan Burman
+>>>>>>>>>>> <yanb@mellanox.com>
+>>>>>>>>>>>> I've been trying to do some benchmarks for NFS over
+>>>>>>>>>>>> RDMA and I seem to
+>>>>>>>>> only get about half of the bandwidth that the HW can give me.
+>>>>>>>>>>>> My setup consists of 2 servers each with 16 cores,
+>>>>>>>>>>>> 32Gb of memory, and
+>>>>>>>>> Mellanox ConnectX3 QDR card over PCI-e gen3.
+>>>>>>>>>>>> These servers are connected to a QDR IB switch. The
+>>>>>>>>>>>> backing storage on
+>>>>>>>>> the server is tmpfs mounted with noatime.
+>>>>>>>>>>>> I am running kernel 3.5.7.
+>>>>>>>>>>>>
+>>>>>>>>>>>> When running ib_send_bw, I get 4.3-4.5 GB/sec for
+>>>>>>>>>>>> block sizes 4-
+>>>> 512K.
+>>>>>>>>>>>> When I run fio over rdma mounted nfs, I get
+>>>>>>>>>>>> 260-2200MB/sec for the
+>>>>>>>>> same block sizes (4-512K). running over IPoIB-CM, I get
+>>>>>>>>> 200-
+>>>> 980MB/sec.
+>> ...
+>>>>>>>> I am trying to get maximum performance from a single server
+>>>>>>>> - I used 2
+>>>>>>> processes in fio test - more than 2 did not show any performance
+>> boost.
+>>>>>>>> I tried running fio from 2 different PCs on 2 different
+>>>>>>>> files, but the sum of
+>>>>>>> the two is more or less the same as running from single client PC.
+>>>>>>>>
+>
+> I finally got up to 4.1GB/sec bandwidth with RDMA (ipoib-CM bandwidth is also way higher now).
+> For some reason when I had intel IOMMU enabled, the performance dropped significantly.
+> I now get up to ~95K IOPS and 4.1GB/sec bandwidth.
+
+Excellent, but is that 95K IOPS a typo? At 4KB, that's less than 400MBps.
+
+What is the client CPU percentage you see under this workload, and
+how different are the NFS/RDMA and NFS/IPoIB overheads?
+
+> Now I will take care of the issue that I am running only at 40Gbit/s instead of 56Gbit/s, but that is another unrelated problem (I suspect I have a cable issue).
+>
+> This is still strange, since ib_send_bw with intel iommu enabled did get up to 4.5GB/sec, so why did intel iommu affect only nfs code?
+
+You'll need to do more profiling to track that down. I would suspect
+that ib_send_bw is using some sort of direct hardware access, bypassing
+the IOMMU management and possibly performing no dynamic memory registration.
+
+The NFS/RDMA code goes via the standard kernel DMA API, and correctly
+registers/deregisters memory on a per-i/o basis in order to provide
+storage data integrity. Perhaps there are overheads in the IOMMU
+management which can be addressed.
