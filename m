@@ -1,164 +1,502 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45334 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:38223 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750739Ab3DONGQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Apr 2013 09:06:16 -0400
-Date: Mon, 15 Apr 2013 09:06:14 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Takashi Iwai <tiwai@suse.de>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] nfsd4: Fix NULL dereference in legacy_recdir_name_error()
-Message-ID: <20130415130614.GA20479@fieldses.org>
-References: <s5hfvz71swh.wl%tiwai@suse.de>
- <20130403182410.GC6044@fieldses.org>
- <s5hr4icvutg.wl%tiwai@suse.de>
+	id S1760799Ab3D3Ptu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Apr 2013 11:49:50 -0400
+Date: Tue, 30 Apr 2013 11:49:47 -0400
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 16/17] NFSD: Server implementation of MAC Labeling
+Message-ID: <20130430154947.GW17268@fieldses.org>
+References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
+ <1367240239-19326-17-git-send-email-SteveD@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <s5hr4icvutg.wl%tiwai@suse.de>
+In-Reply-To: <1367240239-19326-17-git-send-email-SteveD@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 15, 2013 at 02:31:55PM +0200, Takashi Iwai wrote:
-> At Wed, 3 Apr 2013 14:24:10 -0400,
-> J. Bruce Fields wrote:
-> > 
-> > On Wed, Apr 03, 2013 at 06:27:26PM +0200, Takashi Iwai wrote:
-> > > The recent rewrite of NFSv4 recovery client tracking options per net
-> > > (commit 9a9c6478) introduced Oops when it faces an error for recdir
-> > > generation.
-> > 
-> > Thanks.  Looks like that could hit a lot of people actually, so I'll
-> > pass that along for 3.9 soon.--b.
+On Mon, Apr 29, 2013 at 08:57:18AM -0400, Steve Dickson wrote:
+> From: David Quigley <dpquigl@davequigley.com>
 > 
-> Any chance for this to be merged in 3.9-final in time?
+> This patch adds the ability to encode and decode file labels on the server for
+> the purpose of sending them to the client and also to process label change
+> requests from the client.
 
-Apologies, I changed my mind: since the bug was already in 3.8, I
-decided maybe I was overestimating the scope of the problem.  And we're
-very close to 3.9 now--so I'd rather wait till the merge window.  Then
-it should be backported to 3.9.x fairly quickly.
+One overflow and a few nits:
+
+> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+> ---
+>  fs/nfsd/nfs4proc.c |  41 +++++++++++++++++
+>  fs/nfsd/nfs4xdr.c  | 127 +++++++++++++++++++++++++++++++++++++++++++++++++----
+>  fs/nfsd/nfsd.h     |  15 +++++++
+>  fs/nfsd/nfsproc.c  |   1 +
+>  fs/nfsd/vfs.c      |  28 ++++++++++++
+>  fs/nfsd/vfs.h      |   2 +
+>  fs/nfsd/xdr4.h     |   3 ++
+>  7 files changed, 209 insertions(+), 8 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index ae73175..bb17589 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -42,6 +42,36 @@
+>  #include "current_stateid.h"
+>  #include "netns.h"
+>  
+> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> +#include <linux/security.h>
+> +
+> +static inline void
+> +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
+> +{
+> +	struct inode *inode = resfh->fh_dentry->d_inode;
+> +	int status;
+> +
+> +	mutex_lock(&inode->i_mutex);
+> +	status = security_inode_setsecctx(resfh->fh_dentry,
+> +		label->label, label->len);
+> +	mutex_unlock(&inode->i_mutex);
+> +
+> +	if (status)
+> +		/*
+> +		 * We should probably fail the whole open at this point,
+> +		 * but we've already created or opened the file, so it's 
+> +		 * too late; So this seems the least of evils:
+> +		 */
+> +		bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
+> +		
+> +	return;
+> +}
+> +#else 
+> +static inline void 
+> +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
+> +{ }
+> +#endif
+> +
+>  #define NFSDDBG_FACILITY		NFSDDBG_PROC
+>  
+>  static u32 nfsd_attrmask[] = {
+> @@ -230,6 +260,9 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
+>  					(u32 *)open->op_verf.data,
+>  					&open->op_truncate, &open->op_created);
+>  
+> +		if (!status && open->op_label != NULL) 
+> +			nfsd4_security_inode_setsecctx(resfh, open->op_label, open->op_bmval);
+> +
+>  		/*
+>  		 * Following rfc 3530 14.2.16, use the returned bitmask
+>  		 * to indicate which attributes we used to store the
+> @@ -599,6 +632,9 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	if (status)
+>  		goto out;
+>  
+> +	if (create->cr_label != NULL)
+> +		nfsd4_security_inode_setsecctx(&resfh, create->cr_label, create->cr_bmval);
+> +
+>  	if (create->cr_acl != NULL)
+>  		do_set_nfs4_acl(rqstp, &resfh, create->cr_acl,
+>  				create->cr_bmval);
+> @@ -888,6 +924,11 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  					    setattr->sa_acl);
+>  	if (status)
+>  		goto out;
+> +	if (setattr->sa_label != NULL)
+> +		status = nfsd4_set_nfs4_label(rqstp, &cstate->current_fh,
+> +				setattr->sa_label);
+> +	if (status)
+> +		goto out;
+>  	status = nfsd_setattr(rqstp, &cstate->current_fh, &setattr->sa_iattr,
+>  				0, (time_t)0);
+>  out:
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index b38de7a..9d7af7a 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -55,6 +55,11 @@
+>  #include "cache.h"
+>  #include "netns.h"
+>  
+> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> +#include <linux/security.h>
+> +#endif
+> +
+> +
+>  #define NFSDDBG_FACILITY		NFSDDBG_XDR
+>  
+>  /*
+> @@ -79,6 +84,24 @@ check_filename(char *str, int len)
+>  			return nfserr_badname;
+>  	return 0;
+>  }
+> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> +static struct nfs4_label *nfsd4_label_alloc(u32 len)
+> +{
+> +	struct nfs4_label *label = NULL;
+> +
+> +	if (len > NFS4_MAXLABELLEN)
+> +		return ERR_PTR(-EMSGSIZE);
+> +
+> +	label = kzalloc(len + sizeof(struct nfs4_label), GFP_KERNEL);
+
+That should be len + sizeof(struct nfs4_label) + 1, since decode_fattr
+null-terminates the label.
+
+> +	if (label == NULL)
+> +		return ERR_PTR(-ENOMEM);
+> +
+> +	label->label = (char *)(label + 1);
+> +	label->len = len;
+> +
+> +	return label;
+> +}
+> +#endif
+>  
+>  #define DECODE_HEAD				\
+>  	__be32 *p;				\
+> @@ -242,7 +265,8 @@ nfsd4_decode_bitmap(struct nfsd4_compoundargs *argp, u32 *bmval)
+>  
+>  static __be32
+>  nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+> -		   struct iattr *iattr, struct nfs4_acl **acl)
+> +		   struct iattr *iattr, struct nfs4_acl **acl,
+> +		   struct nfs4_label **label)
+>  {
+>  	int expected_len, len = 0;
+>  	u32 dummy32;
+> @@ -386,6 +410,41 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+>  			goto xdr_error;
+>  		}
+>  	}
+> +
+> +	*label = NULL;
+> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> +	if (bmval[2] & FATTR4_WORD2_SECURITY_LABEL) {
+> +		uint32_t pi;
+> +		uint32_t lfs;
+> +
+> +		READ_BUF(4);
+> +		len += 4;
+> +		READ32(lfs);
+> +		READ_BUF(4);
+> +		len += 4;
+> +		READ32(pi);
+> +		READ_BUF(4);
+> +		len += 4;
+> +		READ32(dummy32);
+> +		READ_BUF(dummy32);
+> +		len += (XDR_QUADLEN(dummy32) << 2);
+> +		READMEM(buf, dummy32);
+> +
+> +		*label = nfsd4_label_alloc(dummy32);
+> +		if (IS_ERR(*label)) {
+> +			host_err = PTR_ERR(*label);
+> +			goto out_nfserr;
+> +		}
+> +
+> +		memcpy((*label)->label, buf, (*label)->len);
+> +		((char *)(*label)->label)[(*label)->len] = '\0';
+
+As noted above, this is past the end of the allocated label.
+
+Also, label is already defined as (char *), so the cast's unnecessary.
+
+> +		(*label)->pi = pi;
+> +		(*label)->lfs = lfs;
+> +
+> +		defer_free(argp, kfree, *label);
+> +	}
+> +#endif
+> +
+>  	if (bmval[0] & ~NFSD_WRITEABLE_ATTRS_WORD0
+>  	    || bmval[1] & ~NFSD_WRITEABLE_ATTRS_WORD1
+>  	    || bmval[2] & ~NFSD_WRITEABLE_ATTRS_WORD2)
+> @@ -582,7 +641,7 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
+>  		return status;
+>  
+>  	status = nfsd4_decode_fattr(argp, create->cr_bmval, &create->cr_iattr,
+> -				    &create->cr_acl);
+> +				    &create->cr_acl, &create->cr_label);
+>  	if (status)
+>  		goto out;
+>  
+> @@ -832,7 +891,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
+>  		case NFS4_CREATE_UNCHECKED:
+>  		case NFS4_CREATE_GUARDED:
+>  			status = nfsd4_decode_fattr(argp, open->op_bmval,
+> -				&open->op_iattr, &open->op_acl);
+> +				&open->op_iattr, &open->op_acl, &open->op_label);
+>  			if (status)
+>  				goto out;
+>  			break;
+> @@ -846,7 +905,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
+>  			READ_BUF(NFS4_VERIFIER_SIZE);
+>  			COPYMEM(open->op_verf.data, NFS4_VERIFIER_SIZE);
+>  			status = nfsd4_decode_fattr(argp, open->op_bmval,
+> -				&open->op_iattr, &open->op_acl);
+> +				&open->op_iattr, &open->op_acl, &open->op_label);
+>  			if (status)
+>  				goto out;
+>  			break;
+> @@ -1068,7 +1127,7 @@ nfsd4_decode_setattr(struct nfsd4_compoundargs *argp, struct nfsd4_setattr *seta
+>  	if (status)
+>  		return status;
+>  	return nfsd4_decode_fattr(argp, setattr->sa_bmval, &setattr->sa_iattr,
+> -				  &setattr->sa_acl);
+> +				  &setattr->sa_acl, &setattr->sa_label);
+>  }
+>  
+>  static __be32
+> @@ -1989,6 +2048,50 @@ nfsd4_encode_aclname(struct svc_rqst *rqstp, struct nfs4_ace *ace,
+>  			      FATTR4_WORD0_RDATTR_ERROR)
+>  #define WORD1_ABSENT_FS_ATTRS FATTR4_WORD1_MOUNTED_ON_FILEID
+>  
+> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> +static inline __be32
+> +nfsd4_encode_security_label(struct svc_rqst *rqstp, struct dentry *dentry, __be32 **pp, int *buflen)
+> +{
+> +	void *context;
+> +	int err;
+> +	int len;
+> +	uint32_t pi = 0;
+> +	uint32_t lfs = 0;
+> +	__be32 *p = *pp;
+> +
+> +	err = 0;
+> +	(void)security_inode_getsecctx(dentry->d_inode, &context, &len);
+> +	if (len < 0)
+> +		return nfserrno(len);
+> +
+> +	if (*buflen < ((XDR_QUADLEN(len) << 2) + 4 + 4 + 4)) {
+> +		err = nfserr_resource;
+> +		goto out;
+> +	}
+> +
+> +	/*
+> +	 * For now we use a 0 here to indicate the null translation; in
+> +	 * the future we may place a call to translation code here.
+> +	 */
+> +	if ((*buflen -= 8) < 0)
+> +		return nfserr_resource;
+> +
+> +	WRITE32(lfs);	
+> +	WRITE32(pi);
+> +	p = xdr_encode_opaque(p, context, len);
+> +	*buflen -= (XDR_QUADLEN(len) << 2) + 4;
+> +
+> +	*pp = p;
+> +out:
+> +	security_release_secctx(context, len);
+> +	return err;
+> +}
+> +#else
+> +static inline __be32
+> +nfsd4_encode_security_label(struct svc_rqst *rqstp, struct dentry *dentry, __be32 **pp, int *buflen)
+> +{ return 0; }
+> +#endif
+> +
+>  static __be32 fattr_handle_absent_fs(u32 *bmval0, u32 *bmval1, u32 *rdattr_err)
+>  {
+>  	/* As per referral draft:  */
+> @@ -2439,6 +2542,12 @@ out_acl:
+>  			get_parent_attributes(exp, &stat);
+>  		WRITE64(stat.ino);
+>  	}
+> +	if (bmval2 & FATTR4_WORD2_SECURITY_LABEL) {
+> +		status = nfsd4_encode_security_label(rqstp, dentry,
+> +				&p, &buflen);
+> +		if (status)
+> +			goto out;
+> +	}
+>  	if (bmval2 & FATTR4_WORD2_SUPPATTR_EXCLCREAT) {
+>  		WRITE32(3);
+>  		WRITE32(NFSD_SUPPATTR_EXCLCREAT_WORD0);
+> @@ -3226,16 +3335,18 @@ nfsd4_encode_setattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+>  {
+>  	__be32 *p;
+>  
+> -	RESERVE_SPACE(12);
+> +	RESERVE_SPACE(16);
+>  	if (nfserr) {
+> -		WRITE32(2);
+> +		WRITE32(3);
+> +		WRITE32(0);
+>  		WRITE32(0);
+>  		WRITE32(0);
+>  	}
+>  	else {
+> -		WRITE32(2);
+> +		WRITE32(3);
+>  		WRITE32(setattr->sa_bmval[0]);
+>  		WRITE32(setattr->sa_bmval[1]);
+> +		WRITE32(setattr->sa_bmval[2]);
+>  	}
+>  	ADJUST_ARGS();
+>  	return nfserr;
+> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> index 4c682fd..0a2e30c 100644
+> --- a/fs/nfsd/nfsd.h
+> +++ b/fs/nfsd/nfsd.h
+> @@ -328,6 +328,14 @@ void		nfsd_lockd_shutdown(void);
+>  #define NFSD4_1_SUPPORTED_ATTRS_WORD2 \
+>  	(NFSD4_SUPPORTED_ATTRS_WORD2 | FATTR4_WORD2_SUPPATTR_EXCLCREAT)
+>  
+> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> +#define NFSD4_2_SUPPORTED_ATTRS_WORD2 \
+> +	(NFSD4_SUPPORTED_ATTRS_WORD2 | NFSD4_1_SUPPORTED_ATTRS_WORD2 | \
+> +		FATTR4_WORD2_SECURITY_LABEL)
+
+Note NFSD4_1_SUPPORTED_ATTRS_WORD2 was already defined to include
+NFSD4_SUPPORTED_ATTRS_WORD2, so the above is overkill.
+
+> +#else
+> +#define NFSD4_2_SUPPORTED_ATTRS_WORD2 0
+> +#endif
+> +
+>  static inline u32 nfsd_suppattrs0(u32 minorversion)
+>  {
+>  	return minorversion ? NFSD4_1_SUPPORTED_ATTRS_WORD0
+> @@ -342,6 +350,9 @@ static inline u32 nfsd_suppattrs1(u32 minorversion)
+>  
+>  static inline u32 nfsd_suppattrs2(u32 minorversion)
+>  {
+> +	if (minorversion == 2)
+> +		return NFSD4_2_SUPPORTED_ATTRS_WORD2;
+> +
+>  	return minorversion ? NFSD4_1_SUPPORTED_ATTRS_WORD2
+>  			    : NFSD4_SUPPORTED_ATTRS_WORD2;
+>  }
+> @@ -356,7 +367,11 @@ static inline u32 nfsd_suppattrs2(u32 minorversion)
+>  #define NFSD_WRITEABLE_ATTRS_WORD1 \
+>  	(FATTR4_WORD1_MODE | FATTR4_WORD1_OWNER | FATTR4_WORD1_OWNER_GROUP \
+>  	| FATTR4_WORD1_TIME_ACCESS_SET | FATTR4_WORD1_TIME_MODIFY_SET)
+> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> +#define NFSD_WRITEABLE_ATTRS_WORD2 FATTR4_WORD2_SECURITY_LABEL
+> +#else
+>  #define NFSD_WRITEABLE_ATTRS_WORD2 0
+> +#endif
+>  
+>  #define NFSD_SUPPATTR_EXCLCREAT_WORD0 \
+>  	NFSD_WRITEABLE_ATTRS_WORD0
+> diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+> index 54c6b3d..85289a5 100644
+> --- a/fs/nfsd/nfsproc.c
+> +++ b/fs/nfsd/nfsproc.c
+> @@ -743,6 +743,7 @@ nfserrno (int errno)
+>  		{ nfserr_notsupp, -EOPNOTSUPP },
+>  		{ nfserr_toosmall, -ETOOSMALL },
+>  		{ nfserr_serverfault, -ESERVERFAULT },
+> +		{ nfs4err_badlabel, -EMSGSIZE },
+
+The only place we use this is to enforce the maximum label size in
+nfsd4_label_alloc, called only in decode_fattr.
+
+I'd actually rather enforce the maximum label size in decode_fattr,
+where we can easily return nfs4err_badlabel.  And do away with this
+mapping.
 
 --b.
 
+>  	};
+>  	int	i;
+>  
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 2b2e239..96f9a82 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -28,6 +28,7 @@
+>  #include <asm/uaccess.h>
+>  #include <linux/exportfs.h>
+>  #include <linux/writeback.h>
+> +#include <linux/security.h>
+>  
+>  #ifdef CONFIG_NFSD_V3
+>  #include "xdr3.h"
+> @@ -621,6 +622,33 @@ int nfsd4_is_junction(struct dentry *dentry)
+>  		return 0;
+>  	return 1;
+>  }
+> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> +__be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> +		struct nfs4_label *label)
+> +{
+> +	__be32 error;
+> +	int host_error;
+> +	struct dentry *dentry;
+> +
+> +	error = fh_verify(rqstp, fhp, 0 /* S_IFREG */, NFSD_MAY_SATTR);
+> +	if (error)
+> +		return error;
+> +
+> +	dentry = fhp->fh_dentry;
+> +
+> +	mutex_lock(&dentry->d_inode->i_mutex);
+> +	host_error = security_inode_setsecctx(dentry, label->label, label->len);
+> +	mutex_unlock(&dentry->d_inode->i_mutex);
+> +	return nfserrno(host_error);
+> +}
+> +#else
+> +__be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> +		struct nfs4_label *label)
+> +{
+> +	return nfserr_notsupp;
+> +}
+> +#endif
+> +
+>  #endif /* defined(CONFIG_NFSD_V4) */
+>  
+>  #ifdef CONFIG_NFSD_V3
+> diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+> index 5b58941..a9d6f0f 100644
+> --- a/fs/nfsd/vfs.h
+> +++ b/fs/nfsd/vfs.h
+> @@ -56,6 +56,8 @@ int nfsd_mountpoint(struct dentry *, struct svc_export *);
+>  __be32          nfsd4_set_nfs4_acl(struct svc_rqst *, struct svc_fh *,
+>                      struct nfs4_acl *);
+>  int             nfsd4_get_nfs4_acl(struct svc_rqst *, struct dentry *, struct nfs4_acl **);
+> +__be32          nfsd4_set_nfs4_label(struct svc_rqst *, struct svc_fh *,
+> +		    struct nfs4_label *);
+>  #endif /* CONFIG_NFSD_V4 */
+>  __be32		nfsd_create(struct svc_rqst *, struct svc_fh *,
+>  				char *name, int len, struct iattr *attrs,
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index 546f898..132a671 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -118,6 +118,7 @@ struct nfsd4_create {
+>  	struct iattr	cr_iattr;           /* request */
+>  	struct nfsd4_change_info  cr_cinfo; /* response */
+>  	struct nfs4_acl *cr_acl;
+> +	struct nfs4_label *cr_label;
+>  };
+>  #define cr_linklen	u.link.namelen
+>  #define cr_linkname	u.link.name
+> @@ -246,6 +247,7 @@ struct nfsd4_open {
+>  	struct nfs4_file *op_file;          /* used during processing */
+>  	struct nfs4_ol_stateid *op_stp;	    /* used during processing */
+>  	struct nfs4_acl *op_acl;
+> +	struct nfs4_label *op_label;
+>  };
+>  #define op_iattr	iattr
+>  
+> @@ -330,6 +332,7 @@ struct nfsd4_setattr {
+>  	u32		sa_bmval[3];        /* request */
+>  	struct iattr	sa_iattr;           /* request */
+>  	struct nfs4_acl *sa_acl;
+> +	struct nfs4_label *sa_label;
+>  };
+>  
+>  struct nfsd4_setclientid {
+> -- 
+> 1.8.1.4
 > 
-> 
-> thanks,
-> 
-> Takashi
-> 
-> > > 
-> > >   NFSD: unable to generate recoverydir name (-2).
-> > >   NFSD: disabling legacy clientid tracking. Reboot recovery will not function correctly!
-> > >   BUG: unable to handle kernel NULL pointer dereference at 00000000000007a8
-> > >   IP: [<ffffffffa060c6c7>] nfsd4_client_tracking_exit+0x17/0x70 [nfsd]
-> > >   PGD 0
-> > >   Oops: 0000 [#1] PREEMPT SMP
-> > >   Modules linked in: nfsd fuse nfsv3 nfs_acl nfsv4 auth_rpcgss nfs lockd sunrpc cpufreq_conservative cpufreq_userspace cpufreq_powersave snd_hda_codec_hdmi snd_hda_codec_realtek intel_powerclamp acpi_cpufreq mperf coretemp ghash_clmulni_intel aesni_intel kvm_intel snd_hda_intel ablk_helper snd_hda_codec snd_hwdep kvm snd_pcm cryptd lrw aes_x86_64 snd_timer xts gf128mul e1000e snd sr_mod iTCO_wdt microcode cdrom usb_storage dcdbas iTCO_vendor_support i2c_i801 cdc_acm sg ptp lpc_ich mei soundcore pps_core mfd_core snd_page_alloc pciehp pci_hotplug autofs4 btrfs raid6_pq zlib_deflate xor libcrc32c i915 crc32c_intel drm_kms_helper drm xhci_hcd i2c_algo_bit thermal button video processor thermal_sys scsi_dh_rdac scsi_dh_hp_sw scsi_dh_emc scsi_dh_alua scsi_dh
-> > >   CPU 1
-> > >   Pid: 19567, comm: nfsd Not tainted 3.9.0-rc5-test+ #3 Dell Inc. OptiPlex 9010/0M9KCM
-> > >   RIP: 0010:[<ffffffffa060c6c7>]  [<ffffffffa060c6c7>] nfsd4_client_tracking_exit+0x17/0x70 [nfsd]
-> > >   RSP: 0018:ffff880181099c28  EFLAGS: 00010202
-> > >   RAX: ffff8801810900c0 RBX: 0000000000000004 RCX: 0000000000000006
-> > >   RDX: 0000000000000007 RSI: 0000000000000046 RDI: 0000000000000000
-> > >   RBP: ffff880181099c38 R08: 000000000000000a R09: 000000000000039f
-> > >   R10: 0000000000000000 R11: 000000000000039e R12: 0000000000000000
-> > >   R13: ffffffff81a87280 R14: ffff88014c819220 R15: ffff88020b75d200
-> > >   FS:  0000000000000000(0000) GS:ffff88021e240000(0000) knlGS:0000000000000000
-> > >   CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> > >   CR2: 00000000000007a8 CR3: 0000000001a0d000 CR4: 00000000001407e0
-> > >   DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> > >   DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> > >   Process nfsd (pid: 19567, threadinfo ffff880181098000, task ffff8801810900c0)
-> > >   Stack:
-> > >    00000000fffffffe ffff88020b75d200 ffff880181099c58 ffffffffa060c75c
-> > >    ffffffff81a87280 ffff880002ba7000 ffff880181099cc8 ffffffffa060cb37
-> > >    ffff880181099d20 ffff88014c819220 0000000000000001 ffff88020b75d200
-> > >   Call Trace:
-> > >    [<ffffffffa060c75c>] legacy_recdir_name_error+0x3c/0x40 [nfsd]
-> > >    [<ffffffffa060cb37>] nfsd4_create_clid_dir+0xe7/0x200 [nfsd]
-> > >    [<ffffffffa0600323>] ? nfs4_preprocess_seqid_op+0x63/0x160 [nfsd]
-> > >    [<ffffffffa060ccaf>] nfsd4_client_record_create+0x5f/0x80 [nfsd]
-> > >    [<ffffffffa0604eef>] nfsd4_open_confirm+0x12f/0x1b0 [nfsd]
-> > >    [<ffffffffa05f35cf>] nfsd4_proc_compound+0x55f/0x770 [nfsd]
-> > >    [<ffffffffa05e0ded>] nfsd_dispatch+0xdd/0x220 [nfsd]
-> > >    [<ffffffffa04e58b8>] svc_process_common+0x328/0x6d0 [sunrpc]
-> > >    [<ffffffffa04e5fbc>] svc_process+0x10c/0x160 [sunrpc]
-> > >    [<ffffffffa05e079f>] nfsd+0xbf/0x130 [nfsd]
-> > >    [<ffffffffa05e06e0>] ? nfsd_destroy+0x90/0x90 [nfsd]
-> > >    [<ffffffff8106a4cb>] kthread+0xbb/0xc0
-> > >    [<ffffffff8106a410>] ? kthread_create_on_node+0x130/0x130
-> > >    [<ffffffff815b373c>] ret_from_fork+0x7c/0xb0
-> > >    [<ffffffff8106a410>] ? kthread_create_on_node+0x130/0x130
-> > >   Code: e0 49 8b 84 24 48 01 00 00 e9 25 ff ff ff 66 0f 1f 44 00 00 55 48 89 e5 41 54 49 89 fc 53 8b 1d 44 b4 00 00 e8 bb a9 a5 e0 85 db <49> 8b 84 24 a8 07 00 00 74 43 3b 18 77 3f 83 eb 01 48 63 db 48
-> > >   RIP  [<ffffffffa060c6c7>] nfsd4_client_tracking_exit+0x17/0x70 [nfsd]
-> > >    RSP <ffff880181099c28>
-> > >   CR2: 00000000000007a8
-> > >   ---[ end trace 5dd4307598e98cef ]---
-> > > 
-> > > This patch fixes it by passing the proper net instance instead of
-> > > NULL.
-> > > 
-> > > Signed-off-by: Takashi Iwai <tiwai@suse.de>
-> > > Cc: <stable@vger.kernel.org> [v3.8+]
-> > > ---
-> > >  fs/nfsd/nfs4recover.c | 11 +++++------
-> > >  1 file changed, 5 insertions(+), 6 deletions(-)
-> > > 
-> > > diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-> > > index 899ca26..ae0d5c9 100644
-> > > --- a/fs/nfsd/nfs4recover.c
-> > > +++ b/fs/nfsd/nfs4recover.c
-> > > @@ -146,7 +146,7 @@ out_no_tfm:
-> > >   * then disable recovery tracking.
-> > >   */
-> > >  static void
-> > > -legacy_recdir_name_error(int error)
-> > > +legacy_recdir_name_error(struct net *net, int error)
-> > >  {
-> > >  	printk(KERN_ERR "NFSD: unable to generate recoverydir "
-> > >  			"name (%d).\n", error);
-> > > @@ -160,8 +160,7 @@ legacy_recdir_name_error(int error)
-> > >  		printk(KERN_ERR "NFSD: disabling legacy clientid tracking. "
-> > >  			"Reboot recovery will not function correctly!\n");
-> > >  
-> > > -		/* the argument is ignored by the legacy exit function */
-> > > -		nfsd4_client_tracking_exit(NULL);
-> > > +		nfsd4_client_tracking_exit(net);
-> > >  	}
-> > >  }
-> > >  
-> > > @@ -184,7 +183,7 @@ nfsd4_create_clid_dir(struct nfs4_client *clp)
-> > >  
-> > >  	status = nfs4_make_rec_clidname(dname, &clp->cl_name);
-> > >  	if (status)
-> > > -		return legacy_recdir_name_error(status);
-> > > +		return legacy_recdir_name_error(clp->net, status);
-> > >  
-> > >  	status = nfs4_save_creds(&original_cred);
-> > >  	if (status < 0)
-> > > @@ -341,7 +340,7 @@ nfsd4_remove_clid_dir(struct nfs4_client *clp)
-> > >  
-> > >  	status = nfs4_make_rec_clidname(dname, &clp->cl_name);
-> > >  	if (status)
-> > > -		return legacy_recdir_name_error(status);
-> > > +		return legacy_recdir_name_error(clp->net, status);
-> > >  
-> > >  	status = mnt_want_write_file(nn->rec_file);
-> > >  	if (status)
-> > > @@ -601,7 +600,7 @@ nfsd4_check_legacy_client(struct nfs4_client *clp)
-> > >  
-> > >  	status = nfs4_make_rec_clidname(dname, &clp->cl_name);
-> > >  	if (status) {
-> > > -		legacy_recdir_name_error(status);
-> > > +		legacy_recdir_name_error(clp->net, status);
-> > >  		return status;
-> > >  	}
-> > >  
-> > > -- 
-> > > 1.8.1.4
-> > > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > Please read the FAQ at  http://www.tux.org/lkml/
-> > 
