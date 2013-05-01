@@ -1,74 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f177.google.com ([74.125.82.177]:65246 "EHLO
-	mail-we0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756664Ab3EKCoq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:44:46 -0400
-Received: by mail-we0-f177.google.com with SMTP id q58so4589109wes.22
-        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:44:45 -0700 (PDT)
-Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
-        by mx.google.com with ESMTPSA id bs20sm1270112wib.0.2013.05.10.19.44.44
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 10 May 2013 19:44:45 -0700 (PDT)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 35/38] pnfsd: use layout stateid for is_layout_recalled
-Date: Sat, 11 May 2013 05:44:40 +0300
-Message-Id: <1368240280-1083-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <518B6377.3000207@tonian.com>
-References: <518B6377.3000207@tonian.com>
+Received: from mout.gmx.net ([212.227.17.20]:61981 "EHLO mout.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755199Ab3EAUWj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 May 2013 16:22:39 -0400
+Received: from mailout-de.gmx.net ([10.1.76.24]) by mrigmx.server.lan
+ (mrigmx002) with ESMTP (Nemesis) id 0LqoQe-1U3VjI1YGo-00eIYA for
+ <linux-nfs@vger.kernel.org>; Wed, 01 May 2013 22:22:38 +0200
+Message-ID: <51817989.6000006@gmx.de>
+Date: Wed, 01 May 2013 22:22:33 +0200
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: Pseudoflavor 390004 not found!
+References: <5180DBCF.8070303@gmx.de> <1367415199.4189.6.camel@leira.trondhjem.org>
+In-Reply-To: <1367415199.4189.6.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-rather than clientid
+On 05/01/2013 03:33 PM, Myklebust, Trond wrote:
+> We should just disable the above warnings.
+> 
+> Note that even if the lease negotiation uses krb5i, the actual mount
+> will continue to use whatever flavour you specify in your 'sec=' mount
+> option (or it will use NFSv4 security negotiation) when doing operations
+> on the filesystem.
+> 
+> The attached patch will turn off those messages for you.
+> 
+Ah - thx for explanation.
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/nfs4pnfsd.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+I just applied the patch manually, my patch command was indisposed for
+some reasons to apply it against current git.
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index 0b256f5..0ef351d 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -548,10 +548,10 @@ struct super_block *
-  */
- static int
- is_layout_recalled(struct nfs4_client *clp,
--		   struct svc_fh *current_fh,
--		   struct nfsd4_layout_seg *seg)
-+		   struct nfsd4_pnfs_layoutget *lgp)
- {
- 	struct nfs4_layoutrecall *clr;
-+	struct nfsd4_layout_seg *seg = &lgp->lg_seg;
- 
- 	spin_lock(&layout_lock);
- 	list_for_each_entry (clr, &clp->cl_layoutrecalls, clr_perclnt) {
-@@ -560,13 +560,13 @@ struct super_block *
- 		if (clr->cb.cbl_recall_type == RETURN_ALL)
- 			goto found;
- 		if (clr->cb.cbl_recall_type == RETURN_FSID) {
--			if (same_fsid(&clr->cb.cbl_fsid, current_fh))
-+			if (same_fsid(&clr->cb.cbl_fsid, lgp->lg_fhp))
- 				goto found;
- 			else
- 				continue;
- 		}
- 		BUG_ON(clr->cb.cbl_recall_type != RETURN_FILE);
--		if (clr->cb.cbl_seg.clientid == seg->clientid &&
-+		if (same_stid((stateid_t *)&clr->cb.cbl_sid, &lgp->lg_sid) &&
- 		    lo_seg_overlapping(&clr->cb.cbl_seg, seg))
- 			goto found;
- 	}
-@@ -704,7 +704,7 @@ struct super_block *
- 	if (nfserr)
- 		goto out_unlock;
- 
--	if (is_layout_recalled(clp, lgp->lg_fhp, &lgp->lg_seg)) {
-+	if (is_layout_recalled(clp, lgp)) {
- 		nfserr = nfserr_recallconflict;
- 		goto out_unlock;
- 	}
 -- 
-1.7.11.7
-
+MfG/Sincerely
+Toralf Förster
+pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
