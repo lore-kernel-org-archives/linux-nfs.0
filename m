@@ -1,159 +1,296 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f74.google.com ([209.85.213.74]:41637 "EHLO
-	mail-yh0-f74.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758835Ab3EFX6a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 19:58:30 -0400
-Received: by mail-yh0-f74.google.com with SMTP id t59so450376yho.5
-        for <linux-nfs@vger.kernel.org>; Mon, 06 May 2013 16:58:30 -0700 (PDT)
-From: Colin Cross <ccross@android.com>
-To: linux-kernel@vger.kernel.org
-Cc: Pavel Machek <pavel@ucw.cz>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Colin Cross <ccross@android.com>, Oleg Nesterov <oleg@redhat.com>,
-        linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org,
-        netdev@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, Len Brown <len.brown@intel.com>
-Subject: [PATCH v3 09/16] freezer: add new freezable helpers using freezer_do_not_count()
-Date: Mon,  6 May 2013 16:50:14 -0700
-Message-Id: <1367884221-20462-10-git-send-email-ccross@android.com>
-In-Reply-To: <1367884221-20462-1-git-send-email-ccross@android.com>
-References: <1367884221-20462-1-git-send-email-ccross@android.com>
+Received: from mx1.redhat.com ([209.132.183.28]:4251 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760848Ab3EBRTZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 May 2013 13:19:25 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 09/17] NFSv4: Introduce new label structure
+Date: Thu,  2 May 2013 13:19:03 -0400
+Message-Id: <1367515151-31015-10-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
+References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Freezing tasks will wake up almost every userspace task from
-where it is blocking and force it to run until it hits a
-call to try_to_sleep(), generally on the exit path from the syscall
-it is blocking in.  On resume each task will run again, usually
-restarting the syscall and running until it hits the same
-blocking call as it was originally blocked in.
+From: David Quigley <dpquigl@davequigley.com>
 
-To allow tasks to avoid running on every suspend/resume cycle,
-this patch adds additional freezable wrappers around blocking calls
-that call freezer_do_not_count().  Combined with the previous patch,
-these tasks will not run during suspend or resume unless they wake
-up for another reason, in which case they will run until they hit
-the try_to_freeze() in freezer_count(), and then continue processing
-the wakeup after tasks are thawed.
+In order to mimic the way that NFSv4 ACLs are implemented we have created a
+structure to be used to pass label data up and down the call chain. This patch
+adds the new structure and new members to the required NFSv4 call structures.
 
-Additional patches will convert the most common locations that
-userspace blocks in to use freezable helpers.
-
-Signed-off-by: Colin Cross <ccross@android.com>
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 ---
-v3:
-   split out the changes to existing helpers to a separate patch
+ fs/nfs/inode.c            | 28 ++++++++++++++++++++++++++++
+ include/linux/nfs4.h      |  7 +++++++
+ include/linux/nfs_fs.h    | 18 ++++++++++++++++++
+ include/linux/nfs_xdr.h   | 21 +++++++++++++++++++++
+ include/uapi/linux/nfs4.h |  2 +-
+ 5 files changed, 75 insertions(+), 1 deletion(-)
 
- include/linux/freezer.h | 61 +++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 61 insertions(+)
-
-diff --git a/include/linux/freezer.h b/include/linux/freezer.h
-index 8430d4c5..7fd81b8 100644
---- a/include/linux/freezer.h
-+++ b/include/linux/freezer.h
-@@ -180,6 +180,32 @@ static inline void freezable_schedule_unsafe(void)
- 	freezer_count_unsafe();
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 1f94167..c88255c 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -257,6 +257,34 @@ nfs_init_locked(struct inode *inode, void *opaque)
+ 	return 0;
  }
  
-+/*
-+ * Like freezable_schedule_timeout(), but should not block the freezer.  Do not
-+ * call this with locks held.
-+ */
-+static inline long freezable_schedule_timeout(long timeout)
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags)
 +{
-+	long __retval;
-+	freezer_do_not_count();
-+	__retval = schedule_timeout(timeout);
-+	freezer_count();
-+	return __retval;
-+}
++	struct nfs4_label *label = NULL;
++	int minor_version = server->nfs_client->cl_minorversion;
 +
-+/*
-+ * Like schedule_timeout_interruptible(), but should not block the freezer.  Do not
-+ * call this with locks held.
-+ */
-+static inline long freezable_schedule_timeout_interruptible(long timeout)
-+{
-+	long __retval;
-+	freezer_do_not_count();
-+	__retval = schedule_timeout_interruptible(timeout);
-+	freezer_count();
-+	return __retval;
-+}
++	if (minor_version < 2)
++		return label;
 +
- /* Like schedule_timeout_killable(), but should not block the freezer. */
- static inline long freezable_schedule_timeout_killable(long timeout)
- {
-@@ -201,6 +227,20 @@ static inline long freezable_schedule_timeout_killable_unsafe(long timeout)
- }
++	if (!(server->caps & NFS_CAP_SECURITY_LABEL))
++		return label;
++
++	label = kzalloc(sizeof(struct nfs4_label), flags);
++	if (label == NULL)
++		return ERR_PTR(-ENOMEM);
++
++	label->label = kzalloc(NFS4_MAXLABELLEN, flags);
++	if (label->label == NULL) {
++		kfree(label);
++		return ERR_PTR(-ENOMEM);
++	}
++	label->len = NFS4_MAXLABELLEN;
++
++	return label;
++}
++EXPORT_SYMBOL_GPL(nfs4_label_alloc);
++#endif
++
+ /*
+  * This is our front-end to iget that looks up inodes by file handle
+  * instead of inode number.
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 6f44cc1..4c61ef4 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -32,6 +32,13 @@ struct nfs4_acl {
+ 	struct nfs4_ace	aces[0];
+ };
+ 
++struct nfs4_label {
++	uint32_t	lfs;
++	uint32_t	pi;
++	u32		len;
++	char	*label;
++};
++
+ typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
+ 
+ struct nfs_stateid4 {
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 1cc2568..e0e1806 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -489,6 +489,24 @@ extern int nfs_mountpoint_expiry_timeout;
+ extern void nfs_release_automount_timer(void);
  
  /*
-+ * Like schedule_hrtimeout_range(), but should not block the freezer.  Do not
-+ * call this with locks held.
++ * linux/fs/nfs/nfs4proc.c
 + */
-+static inline int freezable_schedule_hrtimeout_range(ktime_t *expires,
-+		unsigned long delta, const enum hrtimer_mode mode)
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++extern struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags);
++static inline void nfs4_label_free(struct nfs4_label *label)
 +{
-+	int __retval;
-+	freezer_do_not_count();
-+	__retval = schedule_hrtimeout_range(expires, delta, mode);
-+	freezer_count();
-+	return __retval;
++	if (label) {
++		kfree(label->label);
++		kfree(label);
++	}
++	return;
 +}
++#else
++static inline struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags) { return NULL; }
++static inline void nfs4_label_free(void *label) {}
++#endif
 +
 +/*
-  * Freezer-friendly wrappers around wait_event_interruptible(),
-  * wait_event_killable() and wait_event_interruptible_timeout(), originally
-  * defined in <linux/wait.h>
-@@ -244,6 +284,16 @@ static inline long freezable_schedule_timeout_killable_unsafe(long timeout)
- 	__retval;							\
- })
+  * linux/fs/nfs/unlink.c
+  */
+ extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 9f2dba3..4d2fdf6 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -351,6 +351,7 @@ struct nfs_openargs {
+ 	const u32 *		bitmask;
+ 	const u32 *		open_bitmap;
+ 	__u32			claim;
++	const struct nfs4_label *label;
+ };
  
-+#define wait_event_freezable_exclusive(wq, condition)			\
-+({									\
-+	int __retval;							\
-+	freezer_do_not_count();						\
-+	__retval = wait_event_interruptible_exclusive(wq, condition);	\
-+	freezer_count();						\
-+	__retval;							\
-+})
-+
-+
- #else /* !CONFIG_FREEZER */
- static inline bool frozen(struct task_struct *p) { return false; }
- static inline bool freezing(struct task_struct *p) { return false; }
-@@ -267,18 +317,29 @@ static inline void set_freezable(void) {}
+ struct nfs_openres {
+@@ -360,6 +361,7 @@ struct nfs_openres {
+ 	struct nfs4_change_info	cinfo;
+ 	__u32                   rflags;
+ 	struct nfs_fattr *      f_attr;
++	struct nfs4_label	*f_label;
+ 	struct nfs_seqid *	seqid;
+ 	const struct nfs_server *server;
+ 	fmode_t			delegation_type;
+@@ -404,6 +406,7 @@ struct nfs_closeres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	nfs4_stateid            stateid;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ 	struct nfs_seqid *	seqid;
+ 	const struct nfs_server *server;
+ };
+@@ -477,6 +480,7 @@ struct nfs4_delegreturnargs {
+ struct nfs4_delegreturnres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs_fattr * fattr;
++	struct nfs4_label	*label;
+ 	const struct nfs_server *server;
+ };
  
- #define freezable_schedule_unsafe()  schedule()
+@@ -497,6 +501,7 @@ struct nfs_readargs {
+ struct nfs_readres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ 	__u32			count;
+ 	int                     eof;
+ };
+@@ -565,6 +570,7 @@ struct nfs_removeres {
+ 	struct nfs4_sequence_res 	seq_res;
+ 	const struct nfs_server *server;
+ 	struct nfs_fattr	*dir_attr;
++	struct nfs4_label	*dir_label;
+ 	struct nfs4_change_info	cinfo;
+ };
  
-+#define freezable_schedule_timeout(timeout)  schedule_timeout(timeout)
-+
-+#define freezable_schedule_timeout_interruptible(timeout)		\
-+	schedule_timeout_interruptible(timeout)
-+
- #define freezable_schedule_timeout_killable(timeout)			\
- 	schedule_timeout_killable(timeout)
+@@ -577,6 +583,8 @@ struct nfs_renameargs {
+ 	const struct nfs_fh		*new_dir;
+ 	const struct qstr		*old_name;
+ 	const struct qstr		*new_name;
++	const struct nfs4_label		*old_label;
++	const struct nfs4_label		*new_label;
+ };
  
- #define freezable_schedule_timeout_killable_unsafe(timeout)		\
- 	schedule_timeout_killable(timeout)
+ struct nfs_renameres {
+@@ -584,8 +592,10 @@ struct nfs_renameres {
+ 	const struct nfs_server		*server;
+ 	struct nfs4_change_info		old_cinfo;
+ 	struct nfs_fattr		*old_fattr;
++	struct nfs4_label		*old_label;
+ 	struct nfs4_change_info		new_cinfo;
+ 	struct nfs_fattr		*new_fattr;
++	struct nfs4_label		*new_label;
+ };
  
-+#define freezable_schedule_hrtimeout_range(expires, delta, mode)	\
-+	schedule_hrtimeout_range(expires, delta, mode)
-+
- #define wait_event_freezable(wq, condition)				\
- 		wait_event_interruptible(wq, condition)
+ /*
+@@ -600,6 +610,7 @@ struct nfs_entry {
+ 	int			eof;
+ 	struct nfs_fh *		fh;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label  *label;
+ 	unsigned char		d_type;
+ 	struct nfs_server *	server;
+ };
+@@ -632,6 +643,7 @@ struct nfs_setattrargs {
+ 	struct iattr *                  iap;
+ 	const struct nfs_server *	server; /* Needed for name mapping */
+ 	const u32 *			bitmask;
++	const struct nfs4_label		*label;
+ };
  
- #define wait_event_freezable_timeout(wq, condition, timeout)		\
- 		wait_event_interruptible_timeout(wq, condition, timeout)
+ struct nfs_setaclargs {
+@@ -667,6 +679,7 @@ struct nfs_getaclres {
+ struct nfs_setattrres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs_fattr *              fattr;
++	struct nfs4_label		*label;
+ 	const struct nfs_server *	server;
+ };
  
-+#define wait_event_freezable_exclusive(wq, condition)			\
-+		wait_event_interruptible_exclusive(wq, condition)
-+
- #define wait_event_freezekillable(wq, condition)		\
- 		wait_event_killable(wq, condition)
+@@ -712,6 +725,7 @@ struct nfs3_setaclargs {
+ struct nfs_diropok {
+ 	struct nfs_fh *		fh;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ };
  
+ struct nfs_readlinkargs {
+@@ -842,6 +856,7 @@ struct nfs4_accessres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	u32				supported;
+ 	u32				access;
+ };
+@@ -864,6 +879,7 @@ struct nfs4_create_arg {
+ 	const struct iattr *		attrs;
+ 	const struct nfs_fh *		dir_fh;
+ 	const u32 *			bitmask;
++	const struct nfs4_label		*label;
+ };
+ 
+ struct nfs4_create_res {
+@@ -871,6 +887,7 @@ struct nfs4_create_res {
+ 	const struct nfs_server *	server;
+ 	struct nfs_fh *			fh;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	struct nfs4_change_info		dir_cinfo;
+ };
+ 
+@@ -895,6 +912,7 @@ struct nfs4_getattr_res {
+ 	struct nfs4_sequence_res	seq_res;
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ };
+ 
+ struct nfs4_link_arg {
+@@ -909,8 +927,10 @@ struct nfs4_link_res {
+ 	struct nfs4_sequence_res	seq_res;
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	struct nfs4_change_info		cinfo;
+ 	struct nfs_fattr *		dir_attr;
++	struct nfs4_label		*dir_label;
+ };
+ 
+ 
+@@ -926,6 +946,7 @@ struct nfs4_lookup_res {
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
+ 	struct nfs_fh *			fh;
++	struct nfs4_label		*label;
+ };
+ 
+ struct nfs4_lookup_root_arg {
+diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
+index 788128e..78d25b5 100644
+--- a/include/uapi/linux/nfs4.h
++++ b/include/uapi/linux/nfs4.h
+@@ -25,7 +25,7 @@
+ #define NFS4_MAXNAMLEN		NAME_MAX
+ #define NFS4_OPAQUE_LIMIT	1024
+ #define NFS4_MAX_SESSIONID_LEN	16
+-
++#define NFS4_MAXLABELLEN	2048 
+ #define NFS4_ACCESS_READ        0x0001
+ #define NFS4_ACCESS_LOOKUP      0x0002
+ #define NFS4_ACCESS_MODIFY      0x0004
 -- 
-1.8.2.1
+1.8.1.4
 
