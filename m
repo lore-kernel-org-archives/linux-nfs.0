@@ -1,70 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:60406 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56132 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753111Ab3EPP47 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 May 2013 11:56:59 -0400
+	id S1760373Ab3EBRTS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 May 2013 13:19:18 -0400
 From: Steve Dickson <SteveD@redhat.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
         "David P. Quigley" <dpquigl@tycho.nsa.gov>
 Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
         Linux FS devel list <linux-fsdevel@vger.kernel.org>,
         Linux Security List <linux-security-module@vger.kernel.org>,
         SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 06/13] NFSv4: Add label recommended attribute and NFSv4 flags
-Date: Thu, 16 May 2013 11:56:41 -0400
-Message-Id: <1368719808-14584-7-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
-References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
+Subject: [PATCH 01/17] NFSv4.2: Added v4.2 error codes
+Date: Thu,  2 May 2013 13:18:55 -0400
+Message-Id: <1367515151-31015-2-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
+References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+From: Steve Dickson <steved@redhat.com>
 
-This patch adds several new flags to allow the NFS client and server to
-determine if this attribute is supported and if it is being sent over the wire.
-
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- include/linux/nfs_fs_sb.h | 1 +
- include/linux/nfs_xdr.h   | 4 +++-
- 2 files changed, 4 insertions(+), 1 deletion(-)
+ fs/nfsd/nfsd.h       | 6 ++++++
+ include/linux/nfs4.h | 8 ++++++++
+ 2 files changed, 14 insertions(+)
 
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 3b7fa2a..2ddd00a 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -200,5 +200,6 @@ struct nfs_server {
- #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
- #define NFS_CAP_STATEID_NFSV41	(1U << 16)
- #define NFS_CAP_ATOMIC_OPEN_V1	(1U << 17)
-+#define NFS_CAP_SECURITY_LABEL	(1U << 18)
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 07a473f..c0d9317 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -243,6 +243,12 @@ void		nfsd_lockd_shutdown(void);
+ #define nfserr_reject_deleg		cpu_to_be32(NFS4ERR_REJECT_DELEG)
+ #define nfserr_returnconflict		cpu_to_be32(NFS4ERR_RETURNCONFLICT)
+ #define nfserr_deleg_revoked		cpu_to_be32(NFS4ERR_DELEG_REVOKED)
++#define nfserr_partner_notsupp		cpu_to_be32(NFS4ERR_PARTNER_NOTSUPP)
++#define nfserr_partner_no_auth		cpu_to_be32(NFS4ERR_PARTNER_NO_AUTH)
++#define nfserr_metadata_notsupp		cpu_to_be32(NFS4ERR_METADATA_NOTSUPP)
++#define nfserr_offload_denied		cpu_to_be32(NFS4ERR_OFFLOAD_DENIED)
++#define nfserr_wrong_lfs		cpu_to_be32(NFS4ERR_WRONG_LFS)
++#define nfserr_badlabel		cpu_to_be32(NFS4ERR_BADLABEL)
  
- #endif
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 104b62f..bfdf6e0 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -101,6 +101,7 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
- #define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
- #define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
-+#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 25)
+ /* error codes for internal use */
+ /* if a request fails due to kmalloc failure, it gets dropped.
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 7b8fc73..377fb3f 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -219,6 +219,14 @@ enum nfsstat4 {
+ 	NFS4ERR_REJECT_DELEG	= 10085,	/* on callback */
+ 	NFS4ERR_RETURNCONFLICT	= 10086,	/* outstanding layoutreturn */
+ 	NFS4ERR_DELEG_REVOKED	= 10087,	/* deleg./layout revoked */
++
++	/* nfs42 */
++	NFS4ERR_PARTNER_NOTSUPP	= 10088,
++	NFS4ERR_PARTNER_NO_AUTH	= 10089,
++	NFS4ERR_METADATA_NOTSUPP = 10090,
++	NFS4ERR_OFFLOAD_DENIED = 10091,
++	NFS4ERR_WRONG_LFS = 10092,
++	NFS4ERR_BADLABEL = 10093,
+ };
  
- #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
- 		| NFS_ATTR_FATTR_MODE \
-@@ -120,7 +121,8 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
- 		| NFS_ATTR_FATTR_SPACE_USED)
- #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
--		| NFS_ATTR_FATTR_SPACE_USED)
-+		| NFS_ATTR_FATTR_SPACE_USED \
-+		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
- 
- /*
-  * Info on the file system
+ static inline bool seqid_mutating_err(u32 err)
 -- 
 1.8.1.4
 
