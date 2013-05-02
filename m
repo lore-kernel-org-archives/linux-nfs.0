@@ -1,159 +1,454 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:21599 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932863Ab3E2BOJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 May 2013 21:14:09 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
-Subject: Re: NFS client hangs after server reboot
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <E626E85E-BC60-4FBA-BF02-536508991C65@oracle.com>
-Date: Tue, 28 May 2013 21:13:57 -0400
-Cc: Bram Vandoren <brambi@gmail.com>, "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <BC47EE42-5F58-4555-A49C-4175B75943D8@oracle.com>
-References: <1480713067.24683.1369783846612.JavaMail.root@erie.cs.uoguelph.ca> <E626E85E-BC60-4FBA-BF02-536508991C65@oracle.com>
-To: Rick Macklem <rmacklem@uoguelph.ca>
+Received: from mx1.redhat.com ([209.132.183.28]:38267 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760919Ab3EBRTc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 May 2013 13:19:32 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 16/17] NFSD: Server implementation of MAC Labeling
+Date: Thu,  2 May 2013 13:19:10 -0400
+Message-Id: <1367515151-31015-17-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
+References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: David Quigley <dpquigl@davequigley.com>
 
-On May 28, 2013, at 9:04 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+This patch adds the ability to encode and decode file labels on the server for
+the purpose of sending them to the client and also to process label change
+requests from the client.
 
-> 
-> On May 28, 2013, at 7:30 PM, Rick Macklem <rmacklem@uoguelph.ca> wrote:
-> 
->> Bram Vandoren wrote:
->>>>> Hi Rick, Chuck, Bruce,
->>>>> in attachment is a small pcap when a client is in the locked.
->>>>> Hopefully I can reproduce the problem so I can send you a capture
->>>>> during a reboot cycle.
->>>> 
->>>> The pcap file confirms that the state IDs and client ID do not
->>>> appear to match, and do appear on the same TCP connection (in
->>>> different operations). I think the presence of the RENEW operations
->>>> here suggest that the client believes it has not been able to renew
->>>> its lease using stateful operations like READ. IMO this is evidence
->>>> in favor of the theory that the client neglected to recover these
->>>> state IDs for some reason.
->>>> 
->>>> We'll need to see the actual reboot recovery traffic to analyze
->>>> further, and that occurs just after the server reboots. Even better
->>>> would be to see the initial OPEN of the file where the READ
->>>> operations are failing. I recognize this is a non-determinstic
->>>> problem that will be a challenge to capture properly.
->>>> 
->>>> Rather than capturing the trace on the server, you should be able to
->>>> capture it on your clients in order to capture traffic before,
->>>> during, and after the server reboot. To avoid capturing an enormous
->>>> amount of data, both tcpdump and tshark provide options to save the
->>>> captured network data into a small ring of files (see their man
->>>> pages). Once a client mount point has locked, you can stop the
->>>> capture, and hopefully the ring will have everything we need.
->>> 
->>> Hi All,
->>> I managed to capture the packets after a reboot. I send the pcap file
->>> to the people in cc (privacy issue, contact me if someone on the list
->>> wants a copy). This is a summary of what happens after a reboot
->>> (perhaps a missed some relevant information):
->>> 
->>> 38:
->>> - client -> server: client executes 3 writes with a stale clientid (A)
->>> - client -> server: RENEW
->>> 44:
->>> - server -> client: NFS4ERR_STALE_STATEID (in reponse to A)
->>> 45:
->>> - server -> client: NFS4ERR_STALE_CLIENTID
->>> 65:
->>> - client -> server: RENEW
->>> 66
->>> - server -> client: NFS4ERR_STALE_CLIENTID
->>> 67,85,87,93:
->>> SETCLIENTID/SETCLIENTID_CONFIRM sequence (ok)
->>> 78,79:
->>> NFS4STALE_STATEID (reponse to the other 2 writes in A)
->>> 
->>> 98: OPEN with CLAIM_PREVIOUS
->>> 107: response to open: NFS4ERR_NO_GRACE (strange?)
->>> after that the client re-opens the files without CLAIM_PREVIOUS option
->>> and they are all succesful.
->>> 
->>> The client starts using the new stateids except for the files in A.
->>> The server returns a NFS4_STALE_STATEID, the client executes a RENEW
->>> (IMO this should be an OPEN request) and retries the WRITE, the server
->>> returns a NFS4_STALE_STATEID
->>> 
->>> Server: FreeBSD 9.1 with new NFS server implementation
->>> Client: Fedora 17, 3.8.11-100.fc17.x86_64
->>> 
->>> Any clues?
->>> 
->>> Thanks,
->>> Bram
->> I just took a look at the packet capture (I hadn't realized you had
->> posted one when I did the last reply).
->> 
->> I think the problem is a TCP layer one, from looking at the first 8
->> packets captured amd their timestamps. However, my TCP is old and
->> tired, so I'm not sure. From the first 8 packets:
->> Time(sec)
->> 0  - client sends a SYN
->> 0  - server replies [RST, ACK]
->>    Since Reset is in the reply, is this when the server rebooted?
->> 6  - client sends a SYN with same port#s. Wireshark thinks this is
->>    a new connection using same port#s.
->> 6  - FreeBSD replies with [RST, ACK] again, thinking it is a resend
->>    of the first packet and still considers it the old Reset connection.
->> 15 - Repeat of what happened at 6sec.
->> 30,31 - client sends SYN twice, still from the same port#s
->>  - no reply from FreeBSD
->> 4393 - client sends SYN again with same port#s
->> 4393 - server replies with [SYN, ACK] establishing the new TCP
->>    connection on the same port#s, but over an hour later.
-> 
-> To be clear, this is very early in the capture, just frame 9 and 10.  The Linux client attempts to re-use the previous connection's source port to preserve the server's duplicate reply cache.
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ fs/nfsd/nfs4proc.c |  41 ++++++++++++++++++
+ fs/nfsd/nfs4xdr.c  | 123 +++++++++++++++++++++++++++++++++++++++++++++++++----
+ fs/nfsd/nfsd.h     |  14 ++++++
+ fs/nfsd/vfs.c      |  28 ++++++++++++
+ fs/nfsd/vfs.h      |   2 +
+ fs/nfsd/xdr4.h     |   3 ++
+ 6 files changed, 203 insertions(+), 8 deletions(-)
 
-And by the way, if the server actually did reboot, it shouldn't have noticed the client's port re-use.  TCP connection state should have been wiped by the system restart.
-
-> But it's not clear why the client is not retrying SYN during the period between frame 8 and frame 9.  The client should retry SYN after just another minute or two, and by that time the server's TCP connection state should allow a connection on that port.
-> 
-> It's not typical for a client with an active workload to wait 4400 seconds to send a fresh SYN.  Bram, can you shed any light on this?
-> 
->> Since this is now over an hour after packet 0, it isn't
->> surprising that Grace is over.
-> 
-> Fair enough.  However, it does not explain why the client fails to recover the open state for one file.
-> 
->> I'd guess that the problem occurs because the client reconnect
->> uses the same client side port# even though the server did a
->> Reset for that port#, but I'm not enough of a TCP guy to know
->> what should be correct TCP behaviour.
->> 
->> If you don't mind the first part of this packet capture being
->> posted (email me to say if it ok to post it), I can post it to
->> freebsd-net@freebsd.org, since there are a bunch of TCP savy
->> types that might be able to help. (If you give the ok for this,
->> please also email me what version of FreeBSD the server is
->> running.)
-> 
-> Thanks for the extra set of eyes.
-> 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index ae73175..bb17589 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -42,6 +42,36 @@
+ #include "current_stateid.h"
+ #include "netns.h"
+ 
++#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
++#include <linux/security.h>
++
++static inline void
++nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
++{
++	struct inode *inode = resfh->fh_dentry->d_inode;
++	int status;
++
++	mutex_lock(&inode->i_mutex);
++	status = security_inode_setsecctx(resfh->fh_dentry,
++		label->label, label->len);
++	mutex_unlock(&inode->i_mutex);
++
++	if (status)
++		/*
++		 * We should probably fail the whole open at this point,
++		 * but we've already created or opened the file, so it's 
++		 * too late; So this seems the least of evils:
++		 */
++		bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
++		
++	return;
++}
++#else 
++static inline void 
++nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
++{ }
++#endif
++
+ #define NFSDDBG_FACILITY		NFSDDBG_PROC
+ 
+ static u32 nfsd_attrmask[] = {
+@@ -230,6 +260,9 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
+ 					(u32 *)open->op_verf.data,
+ 					&open->op_truncate, &open->op_created);
+ 
++		if (!status && open->op_label != NULL) 
++			nfsd4_security_inode_setsecctx(resfh, open->op_label, open->op_bmval);
++
+ 		/*
+ 		 * Following rfc 3530 14.2.16, use the returned bitmask
+ 		 * to indicate which attributes we used to store the
+@@ -599,6 +632,9 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (status)
+ 		goto out;
+ 
++	if (create->cr_label != NULL)
++		nfsd4_security_inode_setsecctx(&resfh, create->cr_label, create->cr_bmval);
++
+ 	if (create->cr_acl != NULL)
+ 		do_set_nfs4_acl(rqstp, &resfh, create->cr_acl,
+ 				create->cr_bmval);
+@@ -888,6 +924,11 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 					    setattr->sa_acl);
+ 	if (status)
+ 		goto out;
++	if (setattr->sa_label != NULL)
++		status = nfsd4_set_nfs4_label(rqstp, &cstate->current_fh,
++				setattr->sa_label);
++	if (status)
++		goto out;
+ 	status = nfsd_setattr(rqstp, &cstate->current_fh, &setattr->sa_iattr,
+ 				0, (time_t)0);
+ out:
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index b38de7a..1a8b347 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -55,6 +55,11 @@
+ #include "cache.h"
+ #include "netns.h"
+ 
++#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
++#include <linux/security.h>
++#endif
++
++
+ #define NFSDDBG_FACILITY		NFSDDBG_XDR
+ 
+ /*
+@@ -79,6 +84,23 @@ check_filename(char *str, int len)
+ 			return nfserr_badname;
+ 	return 0;
+ }
++#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
++static __be32
++nfsd4_label_alloc(u32 len, struct nfs4_label **label)
++{
++	if (len > NFS4_MAXLABELLEN)
++		return nfserr_badlabel;
++
++	*label = kzalloc(len + sizeof(struct nfs4_label) + 1, GFP_KERNEL);
++	if (*label == NULL)
++		return nfserr_jukebox;
++
++	(*label)->label = (char *)(*label + 1);
++	(*label)->len = len;
++
++	return nfs_ok;
++}
++#endif
+ 
+ #define DECODE_HEAD				\
+ 	__be32 *p;				\
+@@ -242,7 +264,8 @@ nfsd4_decode_bitmap(struct nfsd4_compoundargs *argp, u32 *bmval)
+ 
+ static __be32
+ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+-		   struct iattr *iattr, struct nfs4_acl **acl)
++		   struct iattr *iattr, struct nfs4_acl **acl,
++		   struct nfs4_label **label)
+ {
+ 	int expected_len, len = 0;
+ 	u32 dummy32;
+@@ -386,6 +409,38 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 			goto xdr_error;
+ 		}
+ 	}
++
++	*label = NULL;
++#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
++	if (bmval[2] & FATTR4_WORD2_SECURITY_LABEL) {
++		uint32_t pi;
++		uint32_t lfs;
++
++		READ_BUF(4);
++		len += 4;
++		READ32(lfs);
++		READ_BUF(4);
++		len += 4;
++		READ32(pi);
++		READ_BUF(4);
++		len += 4;
++		READ32(dummy32);
++		READ_BUF(dummy32);
++		len += (XDR_QUADLEN(dummy32) << 2);
++		READMEM(buf, dummy32);
++
++		if ((status = nfsd4_label_alloc(dummy32, label)))
++			return status;
++
++		memcpy((*label)->label, buf, (*label)->len);
++		((*label)->label)[(*label)->len] = '\0';
++		(*label)->pi = pi;
++		(*label)->lfs = lfs;
++
++		defer_free(argp, kfree, *label);
++	}
++#endif
++
+ 	if (bmval[0] & ~NFSD_WRITEABLE_ATTRS_WORD0
+ 	    || bmval[1] & ~NFSD_WRITEABLE_ATTRS_WORD1
+ 	    || bmval[2] & ~NFSD_WRITEABLE_ATTRS_WORD2)
+@@ -582,7 +637,7 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
+ 		return status;
+ 
+ 	status = nfsd4_decode_fattr(argp, create->cr_bmval, &create->cr_iattr,
+-				    &create->cr_acl);
++				    &create->cr_acl, &create->cr_label);
+ 	if (status)
+ 		goto out;
+ 
+@@ -832,7 +887,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
+ 		case NFS4_CREATE_UNCHECKED:
+ 		case NFS4_CREATE_GUARDED:
+ 			status = nfsd4_decode_fattr(argp, open->op_bmval,
+-				&open->op_iattr, &open->op_acl);
++				&open->op_iattr, &open->op_acl, &open->op_label);
+ 			if (status)
+ 				goto out;
+ 			break;
+@@ -846,7 +901,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
+ 			READ_BUF(NFS4_VERIFIER_SIZE);
+ 			COPYMEM(open->op_verf.data, NFS4_VERIFIER_SIZE);
+ 			status = nfsd4_decode_fattr(argp, open->op_bmval,
+-				&open->op_iattr, &open->op_acl);
++				&open->op_iattr, &open->op_acl, &open->op_label);
+ 			if (status)
+ 				goto out;
+ 			break;
+@@ -1068,7 +1123,7 @@ nfsd4_decode_setattr(struct nfsd4_compoundargs *argp, struct nfsd4_setattr *seta
+ 	if (status)
+ 		return status;
+ 	return nfsd4_decode_fattr(argp, setattr->sa_bmval, &setattr->sa_iattr,
+-				  &setattr->sa_acl);
++				  &setattr->sa_acl, &setattr->sa_label);
+ }
+ 
+ static __be32
+@@ -1989,6 +2044,50 @@ nfsd4_encode_aclname(struct svc_rqst *rqstp, struct nfs4_ace *ace,
+ 			      FATTR4_WORD0_RDATTR_ERROR)
+ #define WORD1_ABSENT_FS_ATTRS FATTR4_WORD1_MOUNTED_ON_FILEID
+ 
++#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
++static inline __be32
++nfsd4_encode_security_label(struct svc_rqst *rqstp, struct dentry *dentry, __be32 **pp, int *buflen)
++{
++	void *context;
++	int err;
++	int len;
++	uint32_t pi = 0;
++	uint32_t lfs = 0;
++	__be32 *p = *pp;
++
++	err = 0;
++	(void)security_inode_getsecctx(dentry->d_inode, &context, &len);
++	if (len < 0)
++		return nfserrno(len);
++
++	if (*buflen < ((XDR_QUADLEN(len) << 2) + 4 + 4 + 4)) {
++		err = nfserr_resource;
++		goto out;
++	}
++
++	/*
++	 * For now we use a 0 here to indicate the null translation; in
++	 * the future we may place a call to translation code here.
++	 */
++	if ((*buflen -= 8) < 0)
++		return nfserr_resource;
++
++	WRITE32(lfs);	
++	WRITE32(pi);
++	p = xdr_encode_opaque(p, context, len);
++	*buflen -= (XDR_QUADLEN(len) << 2) + 4;
++
++	*pp = p;
++out:
++	security_release_secctx(context, len);
++	return err;
++}
++#else
++static inline __be32
++nfsd4_encode_security_label(struct svc_rqst *rqstp, struct dentry *dentry, __be32 **pp, int *buflen)
++{ return 0; }
++#endif
++
+ static __be32 fattr_handle_absent_fs(u32 *bmval0, u32 *bmval1, u32 *rdattr_err)
+ {
+ 	/* As per referral draft:  */
+@@ -2439,6 +2538,12 @@ out_acl:
+ 			get_parent_attributes(exp, &stat);
+ 		WRITE64(stat.ino);
+ 	}
++	if (bmval2 & FATTR4_WORD2_SECURITY_LABEL) {
++		status = nfsd4_encode_security_label(rqstp, dentry,
++				&p, &buflen);
++		if (status)
++			goto out;
++	}
+ 	if (bmval2 & FATTR4_WORD2_SUPPATTR_EXCLCREAT) {
+ 		WRITE32(3);
+ 		WRITE32(NFSD_SUPPATTR_EXCLCREAT_WORD0);
+@@ -3226,16 +3331,18 @@ nfsd4_encode_setattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+ {
+ 	__be32 *p;
+ 
+-	RESERVE_SPACE(12);
++	RESERVE_SPACE(16);
+ 	if (nfserr) {
+-		WRITE32(2);
++		WRITE32(3);
++		WRITE32(0);
+ 		WRITE32(0);
+ 		WRITE32(0);
+ 	}
+ 	else {
+-		WRITE32(2);
++		WRITE32(3);
+ 		WRITE32(setattr->sa_bmval[0]);
+ 		WRITE32(setattr->sa_bmval[1]);
++		WRITE32(setattr->sa_bmval[2]);
+ 	}
+ 	ADJUST_ARGS();
+ 	return nfserr;
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 15e7e1d..875e0d4 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -328,6 +328,13 @@ void		nfsd_lockd_shutdown(void);
+ #define NFSD4_1_SUPPORTED_ATTRS_WORD2 \
+ 	(NFSD4_SUPPORTED_ATTRS_WORD2 | FATTR4_WORD2_SUPPATTR_EXCLCREAT)
+ 
++#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
++#define NFSD4_2_SUPPORTED_ATTRS_WORD2 \
++	(NFSD4_1_SUPPORTED_ATTRS_WORD2 | FATTR4_WORD2_SECURITY_LABEL)
++#else
++#define NFSD4_2_SUPPORTED_ATTRS_WORD2 0
++#endif
++
+ static inline u32 nfsd_suppattrs0(u32 minorversion)
+ {
+ 	return minorversion ? NFSD4_1_SUPPORTED_ATTRS_WORD0
+@@ -342,6 +349,9 @@ static inline u32 nfsd_suppattrs1(u32 minorversion)
+ 
+ static inline u32 nfsd_suppattrs2(u32 minorversion)
+ {
++	if (minorversion == 2)
++		return NFSD4_2_SUPPORTED_ATTRS_WORD2;
++
+ 	return minorversion ? NFSD4_1_SUPPORTED_ATTRS_WORD2
+ 			    : NFSD4_SUPPORTED_ATTRS_WORD2;
+ }
+@@ -356,7 +366,11 @@ static inline u32 nfsd_suppattrs2(u32 minorversion)
+ #define NFSD_WRITEABLE_ATTRS_WORD1 \
+ 	(FATTR4_WORD1_MODE | FATTR4_WORD1_OWNER | FATTR4_WORD1_OWNER_GROUP \
+ 	| FATTR4_WORD1_TIME_ACCESS_SET | FATTR4_WORD1_TIME_MODIFY_SET)
++#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
++#define NFSD_WRITEABLE_ATTRS_WORD2 FATTR4_WORD2_SECURITY_LABEL
++#else
+ #define NFSD_WRITEABLE_ATTRS_WORD2 0
++#endif
+ 
+ #define NFSD_SUPPATTR_EXCLCREAT_WORD0 \
+ 	NFSD_WRITEABLE_ATTRS_WORD0
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 2b2e239..96f9a82 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -28,6 +28,7 @@
+ #include <asm/uaccess.h>
+ #include <linux/exportfs.h>
+ #include <linux/writeback.h>
++#include <linux/security.h>
+ 
+ #ifdef CONFIG_NFSD_V3
+ #include "xdr3.h"
+@@ -621,6 +622,33 @@ int nfsd4_is_junction(struct dentry *dentry)
+ 		return 0;
+ 	return 1;
+ }
++#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
++__be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
++		struct nfs4_label *label)
++{
++	__be32 error;
++	int host_error;
++	struct dentry *dentry;
++
++	error = fh_verify(rqstp, fhp, 0 /* S_IFREG */, NFSD_MAY_SATTR);
++	if (error)
++		return error;
++
++	dentry = fhp->fh_dentry;
++
++	mutex_lock(&dentry->d_inode->i_mutex);
++	host_error = security_inode_setsecctx(dentry, label->label, label->len);
++	mutex_unlock(&dentry->d_inode->i_mutex);
++	return nfserrno(host_error);
++}
++#else
++__be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
++		struct nfs4_label *label)
++{
++	return nfserr_notsupp;
++}
++#endif
++
+ #endif /* defined(CONFIG_NFSD_V4) */
+ 
+ #ifdef CONFIG_NFSD_V3
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index 5b58941..a9d6f0f 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -56,6 +56,8 @@ int nfsd_mountpoint(struct dentry *, struct svc_export *);
+ __be32          nfsd4_set_nfs4_acl(struct svc_rqst *, struct svc_fh *,
+                     struct nfs4_acl *);
+ int             nfsd4_get_nfs4_acl(struct svc_rqst *, struct dentry *, struct nfs4_acl **);
++__be32          nfsd4_set_nfs4_label(struct svc_rqst *, struct svc_fh *,
++		    struct nfs4_label *);
+ #endif /* CONFIG_NFSD_V4 */
+ __be32		nfsd_create(struct svc_rqst *, struct svc_fh *,
+ 				char *name, int len, struct iattr *attrs,
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 546f898..132a671 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -118,6 +118,7 @@ struct nfsd4_create {
+ 	struct iattr	cr_iattr;           /* request */
+ 	struct nfsd4_change_info  cr_cinfo; /* response */
+ 	struct nfs4_acl *cr_acl;
++	struct nfs4_label *cr_label;
+ };
+ #define cr_linklen	u.link.namelen
+ #define cr_linkname	u.link.name
+@@ -246,6 +247,7 @@ struct nfsd4_open {
+ 	struct nfs4_file *op_file;          /* used during processing */
+ 	struct nfs4_ol_stateid *op_stp;	    /* used during processing */
+ 	struct nfs4_acl *op_acl;
++	struct nfs4_label *op_label;
+ };
+ #define op_iattr	iattr
+ 
+@@ -330,6 +332,7 @@ struct nfsd4_setattr {
+ 	u32		sa_bmval[3];        /* request */
+ 	struct iattr	sa_iattr;           /* request */
+ 	struct nfs4_acl *sa_acl;
++	struct nfs4_label *sa_label;
+ };
+ 
+ struct nfsd4_setclientid {
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.8.1.4
 
