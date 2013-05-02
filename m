@@ -1,69 +1,171 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f201.google.com ([209.85.216.201]:43613 "EHLO
-	mail-qc0-f201.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932578Ab3EFXui (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 19:50:38 -0400
-Received: by mail-qc0-f201.google.com with SMTP id c10so10604qcz.4
-        for <linux-nfs@vger.kernel.org>; Mon, 06 May 2013 16:50:37 -0700 (PDT)
-From: Colin Cross <ccross@android.com>
-To: linux-kernel@vger.kernel.org
-Cc: Pavel Machek <pavel@ucw.cz>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Colin Cross <ccross@android.com>, Oleg Nesterov <oleg@redhat.com>,
-        linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org,
-        netdev@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Gao feng <gaofeng@cn.fujitsu.com>
-Subject: [PATCH v3 16/16] af_unix: use freezable blocking calls in read
-Date: Mon,  6 May 2013 16:50:21 -0700
-Message-Id: <1367884221-20462-17-git-send-email-ccross@android.com>
-In-Reply-To: <1367884221-20462-1-git-send-email-ccross@android.com>
-References: <1367884221-20462-1-git-send-email-ccross@android.com>
+Received: from mx1.redhat.com ([209.132.183.28]:20159 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758913Ab3EBRTT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 May 2013 13:19:19 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 02/17] NFSv4.2: Added NFS v4.2 support to the NFS client
+Date: Thu,  2 May 2013 13:18:56 -0400
+Message-Id: <1367515151-31015-3-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
+References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Avoid waking up every thread sleeping in read call on an AF_UNIX
-socket during suspend and resume by calling a freezable blocking
-call.  Previous patches modified the freezer to avoid sending
-wakeups to threads that are blocked in freezable blocking calls.
+From: Steve Dickson <steved@redhat.com>
 
-This call was selected to be converted to a freezable call because
-it doesn't hold any locks or release any resources when interrupted
-that might be needed by another freezing task or a kernel driver
-during suspend, and is a common site where idle userspace tasks are
-blocked.
+This enable NFSv4.2 support. To enable this code the
+CONFIG_NFS_V4_2 Kconfig define needs to be set and
+the -o v4.2 mount option need to be used.
 
-Acked-by: Tejun Heo <tj@kernel.org>
-Signed-off-by: Colin Cross <ccross@android.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- net/unix/af_unix.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/nfs/Kconfig       |  9 +++++++++
+ fs/nfs/callback.c    |  1 +
+ fs/nfs/nfs4client.c  |  5 +++++
+ fs/nfs/nfs4proc.c    | 15 +++++++++++++++
+ fs/nfs/super.c       |  7 ++++++-
+ include/linux/nfs4.h |  4 ++++
+ 6 files changed, 40 insertions(+), 1 deletion(-)
 
-diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c
-index 2db702d..2bcac57 100644
---- a/net/unix/af_unix.c
-+++ b/net/unix/af_unix.c
-@@ -114,6 +114,7 @@
- #include <linux/mount.h>
- #include <net/checksum.h>
- #include <linux/security.h>
-+#include <linux/freezer.h>
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 13ca196..79c500e 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -104,6 +104,15 @@ config NFS_V4_1
  
- struct hlist_head unix_socket_table[2 * UNIX_HASH_SIZE];
- EXPORT_SYMBOL_GPL(unix_socket_table);
-@@ -1880,7 +1881,7 @@ static long unix_stream_data_wait(struct sock *sk, long timeo)
+ 	  If unsure, say N.
  
- 		set_bit(SOCK_ASYNC_WAITDATA, &sk->sk_socket->flags);
- 		unix_state_unlock(sk);
--		timeo = schedule_timeout(timeo);
-+		timeo = freezable_schedule_timeout(timeo);
- 		unix_state_lock(sk);
- 		clear_bit(SOCK_ASYNC_WAITDATA, &sk->sk_socket->flags);
++config NFS_V4_2
++	bool "NFS client support for NFSv4.2"
++	depends on NFS_V4_1
++	help
++	  This option enables support for minor version 1 of the NFSv4 protocol
++	  in the kernel's NFS client.
++
++	  If unsure, say N.
++
+ config PNFS_FILE_LAYOUT
+ 	tristate
+ 	depends on NFS_V4_1
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 5088b57..cb35747 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -279,6 +279,7 @@ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct n
+ 			ret = nfs4_callback_up_net(serv, net);
+ 			break;
+ 		case 1:
++		case 2:
+ 			ret = nfs41_callback_up_net(serv, net);
+ 			break;
+ 		default:
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 66b6664..a30c6a7 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -66,6 +66,11 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
+ 	if (err)
+ 		goto error;
+ 
++	if (cl_init->minorversion > NFS4_MAX_MINOR_VERSION) {
++		err = -EINVAL;
++		goto error;
++	}
++		
+ 	spin_lock_init(&clp->cl_lock);
+ 	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
+ 	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 0ad025e..3fd1040 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6746,11 +6746,26 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
+ };
+ #endif
+ 
++#if defined(CONFIG_NFS_V4_2)
++static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
++	.minor_version = 2,
++	.call_sync = nfs4_call_sync_sequence,
++	.match_stateid = nfs41_match_stateid,
++	.find_root_sec = nfs41_find_root_sec,
++	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
++	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
++	.state_renewal_ops = &nfs41_state_renewal_ops,
++};
++#endif
++
+ const struct nfs4_minor_version_ops *nfs_v4_minor_ops[] = {
+ 	[0] = &nfs_v4_0_minor_ops,
+ #if defined(CONFIG_NFS_V4_1)
+ 	[1] = &nfs_v4_1_minor_ops,
+ #endif
++#if defined(CONFIG_NFS_V4_2)
++	[2] = &nfs_v4_2_minor_ops,
++#endif
+ };
+ 
+ const struct inode_operations nfs4_dir_inode_operations = {
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 2f8a29d..29f2d86 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -269,7 +269,7 @@ static match_table_t nfs_local_lock_tokens = {
+ 
+ enum {
+ 	Opt_vers_2, Opt_vers_3, Opt_vers_4, Opt_vers_4_0,
+-	Opt_vers_4_1,
++	Opt_vers_4_1, Opt_vers_4_2,
+ 
+ 	Opt_vers_err
+ };
+@@ -280,6 +280,7 @@ static match_table_t nfs_vers_tokens = {
+ 	{ Opt_vers_4, "4" },
+ 	{ Opt_vers_4_0, "4.0" },
+ 	{ Opt_vers_4_1, "4.1" },
++	{ Opt_vers_4_2, "4.2" },
+ 
+ 	{ Opt_vers_err, NULL }
+ };
+@@ -1097,6 +1098,10 @@ static int nfs_parse_version_string(char *string,
+ 		mnt->version = 4;
+ 		mnt->minorversion = 1;
+ 		break;
++	case Opt_vers_4_2:
++		mnt->version = 4;
++		mnt->minorversion = 2;
++		break;
+ 	default:
+ 		return 0;
  	}
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 377fb3f..7e18a66 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -398,11 +398,15 @@ enum lock_type4 {
+ #define NFS4_VERSION 4
+ #define NFS4_MINOR_VERSION 0
+ 
++#if defined(CONFIG_NFS_V4_2)
++#define NFS4_MAX_MINOR_VERSION 2
++#else
+ #if defined(CONFIG_NFS_V4_1)
+ #define NFS4_MAX_MINOR_VERSION 1
+ #else
+ #define NFS4_MAX_MINOR_VERSION 0
+ #endif /* CONFIG_NFS_V4_1 */
++#endif /* CONFIG_NFS_V4_2 */
+ 
+ #define NFS4_DEBUG 1
+ 
 -- 
-1.8.2.1
+1.8.1.4
 
