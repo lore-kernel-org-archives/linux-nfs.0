@@ -1,66 +1,193 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:50749 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55464 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750903Ab3EIRBV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 May 2013 13:01:21 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Vyacheslav Dubeyko <slava@dubeyko.com>
-CC: Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
+	id S1760373Ab3EBRT0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 May 2013 13:19:26 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
         "J. Bruce Fields" <bfields@redhat.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>,
-        "Hin-Tak Leung" <htl10@users.sourceforge.net>,
-        Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH v4 0/5] nfsd + hfsplus: introduce generalized version of
- NFSv4 ACLs <-> POSIX ACLs mapping algorithms
-Date: Thu, 9 May 2013 17:01:18 +0000
-Message-ID: <1368118877.3282.104.camel@leira.trondhjem.org>
-References: <1368117430.5695.30.camel@slavad-ubuntu-12.04>
-In-Reply-To: <1368117430.5695.30.camel@slavad-ubuntu-12.04>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 10/17] NFSv4: Extend fattr bitmaps to support all 3 words
+Date: Thu,  2 May 2013 13:19:04 -0400
+Message-Id: <1367515151-31015-11-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
+References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-05-09 at 20:37 +0400, Vyacheslav Dubeyko wrote:
-> Hi,
-> 
-> This patchset implements ACLs support in hfsplus driver and generalizes NFSv4 ACLs <-> POSIX ACLs mapping algorithms.
-> 
-> v3->v4
-> * Introduce interface of NFSv4 ACLs <-> POSIX ACLs mapping (J. Bruce Fields request).
-> * Introduce generalization of NFSv4 ACLs <-> POSIX ACLs mapping algorithms (J. Bruce Fields request).
-> * Rework ACLs support in HFS+ driver with the purpose of using generalized mapping algorithms.
-> * Change dprint() on hfs_dbg() calls.
-> * Enhance debug output in fs/hfsplus/acl.c.
-> 
-> v2->v3
-> * Fix errors in dprint_hexdump() macro.
-> * Correct format on %zd for size_t in dprint() calls.
-> 
-> v1->v2
-> * Add several dprint() messages.
-> * Change hardcoded function names on __func__ macro.
-> * Fix coding style errors.
-> 
-> The include/linux/nfs4acl.h header file is created with the purpose of sharing declarations and structures that were moved from fs/nfsd/nfs4acl.c and fs/nfsd/acl.h. Moreover, this header file introduces declaration of operations (nfsv4_ace_operations, nfsv4_ace_flags_operations, nfsv4_acl_id_operations, nfsv4_acl_mapping_operations) that can be specialized in concrete file system driver in the case of necessity. Otherwise, it is possible to use generalized mapping code without operations specialization. And, finally, it is declared nfsv4_acl_info structure that includes operations, pointer on mapping NFSv4 ACL and pointer on special mapping environment of concrete file system.
-> 
-> The essence of mapping algorithms (located in fs/nfsd/nfs4acl.c, previously) were generalized and moved in fs/nfs4acl.c with the purpose of sharing between file system drivers. A concrete file system driver can use mapping code by means of map_posix_acl_to_nfsv4_one(), map_nfsv4_acl_to_posix(), nfs4_acl_posix_to_nfsv4(), nfs4_acl_nfsv4_to_posix() methods. Also, it is possible to specialize internal mapping operations in the case of very special way of operations under raw structures for concrete file system driver case.
-> 
-> Mac OS X supports NFSv4 ACLs. It keeps its in the form of specially named xattr (com.apple.system.Security). HFS+ driver uses generalized implementation of NFSv4 ACLs <-> POSIX ACLs mapping algorithms. But it should be specialized internal mapping operations for the proper conversion of raw NFSv4 ACLs representation on HFS+ volume into POSIX ACLs. Thereby, it were implemented in hfsplus driver all necessary specialized internal mapping operations.
+From: David Quigley <dpquigl@davequigley.com>
 
-How does this make sense? There is no lossless mapping of NFSv4 acls
-into POSIX acls; the latter doesn't have any equivalent of the DENY aces
-so you cannot represent the full set of acls that can be set using MacOS
-on the same filesystem.
+The fattr handling bitmap code only uses the first two fattr words sofar. This
+patch adds the 3rd word to being sent but doesn't populate it yet.
 
-Shouldn't you rather be looking at the richacl patch sets?
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ fs/nfs/nfs4_fs.h          |  6 +++---
+ fs/nfs/nfs4proc.c         | 10 +++++-----
+ fs/nfs/nfs4xdr.c          | 20 ++++++++++++--------
+ fs/nfs/super.c            |  1 +
+ include/linux/nfs_fs_sb.h |  2 +-
+ 5 files changed, 22 insertions(+), 17 deletions(-)
 
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 944c9a5..1de30a8 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -295,10 +295,10 @@ is_ds_client(struct nfs_client *clp)
+ extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
+ 
+ extern const u32 nfs4_fattr_bitmap[3];
+-extern const u32 nfs4_statfs_bitmap[2];
+-extern const u32 nfs4_pathconf_bitmap[2];
++extern const u32 nfs4_statfs_bitmap[3];
++extern const u32 nfs4_pathconf_bitmap[3];
+ extern const u32 nfs4_fsinfo_bitmap[3];
+-extern const u32 nfs4_fs_locations_bitmap[2];
++extern const u32 nfs4_fs_locations_bitmap[3];
+ 
+ void nfs4_free_client(struct nfs_client *);
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 3fd1040..5c50495 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -159,7 +159,7 @@ static const u32 nfs4_open_noattr_bitmap[3] = {
+ 	| FATTR4_WORD0_FILEID,
+ };
+ 
+-const u32 nfs4_statfs_bitmap[2] = {
++const u32 nfs4_statfs_bitmap[3] = {
+ 	FATTR4_WORD0_FILES_AVAIL
+ 	| FATTR4_WORD0_FILES_FREE
+ 	| FATTR4_WORD0_FILES_TOTAL,
+@@ -168,7 +168,7 @@ const u32 nfs4_statfs_bitmap[2] = {
+ 	| FATTR4_WORD1_SPACE_TOTAL
+ };
+ 
+-const u32 nfs4_pathconf_bitmap[2] = {
++const u32 nfs4_pathconf_bitmap[3] = {
+ 	FATTR4_WORD0_MAXLINK
+ 	| FATTR4_WORD0_MAXNAME,
+ 	0
+@@ -183,7 +183,7 @@ const u32 nfs4_fsinfo_bitmap[3] = { FATTR4_WORD0_MAXFILESIZE
+ 			FATTR4_WORD2_LAYOUT_BLKSIZE
+ };
+ 
+-const u32 nfs4_fs_locations_bitmap[2] = {
++const u32 nfs4_fs_locations_bitmap[3] = {
+ 	FATTR4_WORD0_TYPE
+ 	| FATTR4_WORD0_CHANGE
+ 	| FATTR4_WORD0_SIZE
+@@ -199,7 +199,7 @@ const u32 nfs4_fs_locations_bitmap[2] = {
+ 	| FATTR4_WORD1_TIME_ACCESS
+ 	| FATTR4_WORD1_TIME_METADATA
+ 	| FATTR4_WORD1_TIME_MODIFY
+-	| FATTR4_WORD1_MOUNTED_ON_FILEID
++	| FATTR4_WORD1_MOUNTED_ON_FILEID,
+ };
+ 
+ static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dentry,
+@@ -5136,7 +5136,7 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
+ 				   struct page *page)
+ {
+ 	struct nfs_server *server = NFS_SERVER(dir);
+-	u32 bitmask[2] = {
++	u32 bitmask[3] = {
+ 		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS,
+ 	};
+ 	struct nfs4_fs_locations_arg args = {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index e3edda5..4fa0bf1 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -983,15 +983,16 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 	int len;
+ 	uint32_t bmval0 = 0;
+ 	uint32_t bmval1 = 0;
++	uint32_t bmval2 = 0;
+ 
+ 	/*
+ 	 * We reserve enough space to write the entire attribute buffer at once.
+ 	 * In the worst-case, this would be
+-	 *   12(bitmap) + 4(attrlen) + 8(size) + 4(mode) + 4(atime) + 4(mtime)
+-	 *          = 36 bytes, plus any contribution from variable-length fields
++	 * 16(bitmap) + 4(attrlen) + 8(size) + 4(mode) + 4(atime) + 4(mtime)
++	 * = 40 bytes, plus any contribution from variable-length fields
+ 	 *            such as owner/group.
+ 	 */
+-	len = 16;
++	len = 20;
+ 
+ 	/* Sigh */
+ 	if (iap->ia_valid & ATTR_SIZE)
+@@ -1035,9 +1036,9 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 	 * We write the bitmap length now, but leave the bitmap and the attribute
+ 	 * buffer length to be backfilled at the end of this routine.
+ 	 */
+-	*p++ = cpu_to_be32(2);
++	*p++ = cpu_to_be32(3);
+ 	q = p;
+-	p += 3;
++	p += 4;
+ 
+ 	if (iap->ia_valid & ATTR_SIZE) {
+ 		bmval0 |= FATTR4_WORD0_SIZE;
+@@ -1086,9 +1087,10 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 				len, ((char *)p - (char *)q) + 4);
+ 		BUG();
+ 	}
+-	len = (char *)p - (char *)q - 12;
++	len = (char *)p - (char *)q - 16;
+ 	*q++ = htonl(bmval0);
+ 	*q++ = htonl(bmval1);
++	*q++ = htonl(bmval2);
+ 	*q = htonl(len);
+ 
+ /* out: */
+@@ -1194,8 +1196,10 @@ encode_getattr_three(struct xdr_stream *xdr,
+ 
+ static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
+ {
+-	encode_getattr_two(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
+-			   bitmask[1] & nfs4_fattr_bitmap[1], hdr);
++	encode_getattr_three(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
++			   bitmask[1] & nfs4_fattr_bitmap[1],
++			   bitmask[2] & nfs4_fattr_bitmap[2],
++			   hdr);
+ }
+ 
+ static void encode_getfattr_open(struct xdr_stream *xdr, const u32 *bitmask,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index d84eb57..00af026 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -833,6 +833,7 @@ int nfs_show_stats(struct seq_file *m, struct dentry *root)
+ 		seq_printf(m, "\n\tnfsv4:\t");
+ 		seq_printf(m, "bm0=0x%x", nfss->attr_bitmask[0]);
+ 		seq_printf(m, ",bm1=0x%x", nfss->attr_bitmask[1]);
++		seq_printf(m, ",bm2=0x%x", nfss->attr_bitmask[2]);
+ 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
+ 		show_sessions(m, nfss);
+ 		show_pnfs(m, nfss);
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index d507357..e6ed3c2 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -145,7 +145,7 @@ struct nfs_server {
+ 	u32			attr_bitmask[3];/* V4 bitmask representing the set
+ 						   of attributes supported on this
+ 						   filesystem */
+-	u32			cache_consistency_bitmask[2];
++	u32			cache_consistency_bitmask[3];
+ 						/* V4 bitmask representing the subset
+ 						   of change attribute, size, ctime
+ 						   and mtime attributes supported by
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.8.1.4
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
