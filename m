@@ -1,69 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:13797 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:56290 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753738Ab3EGO14 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 May 2013 10:27:56 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jiri Slaby <jslaby@suse.cz>
-CC: "jirislaby@gmail.com" <jirislaby@gmail.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        NeilBrown <neilb@suse.de>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 09/15] Make selection of 'readdir-plus' adapt to usage
- patterns.
-Date: Tue, 7 May 2013 14:27:54 +0000
-Message-ID: <1367936852.3580.6.camel@leira.trondhjem.org>
-References: <1367936303-13386-1-git-send-email-jslaby@suse.cz>
-	 <1367936303-13386-9-git-send-email-jslaby@suse.cz>
-In-Reply-To: <1367936303-13386-9-git-send-email-jslaby@suse.cz>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+	id S1750822Ab3EBGxN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 May 2013 02:53:13 -0400
+Date: Thu, 2 May 2013 16:53:02 +1000
+From: NeilBrown <neilb@suse.de>
+To: Steve Dickson <steved@redhat.com>
+Cc: Simo Sorce <simo@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Avoid DNS reverse resolution for server names (take 3)
+Message-ID: <20130502165302.593ec4b6@notabene.brown>
+In-Reply-To: <20130502131332.5c0ce2b0@notabene.brown>
+References: <1366380998-2581-1-git-send-email-steved@redhat.com>
+	<20130502131332.5c0ce2b0@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/Z/8EaNtmNTTZhXK.q4o0NhV"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-05-07 at 16:18 +0200, Jiri Slaby wrote:
-> From: NeilBrown <neilb@suse.de>
-> 
-> While the use of READDIRPLUS is significantly more efficient than
-> READDIR followed by many GETATTR calls, it is still less efficient
-> than just READDIR if the attributes are not required.
-> 
-> We can get a hint as to whether the application requires attr information
-> by looking at whether any ->getattr calls are made between
-> ->readdir calls.
-> If there are any, then getting the attributes seems to be worth while.
-> 
-> This patch tracks whether there have been recent getattr calls on
-> children of a directory and uses that information to selectively
-> disable READDIRPLUS on that directory.
-> 
-> The first 'readdir' call is always served using READDIRPLUS.
-> Subsequent calls only use READDIRPLUS if there was a getattr on a child
-> in the mean time.
-> 
-> The locking of ->d_parent access needs to be reviewed.
-> As the bit is simply a hint, it isn't critical that it is set
-> on the "correct" parent if a rename is happening, but it is
-> critical that the 'set' doesn't set a bit in something that
-> isn't even an inode any more.
-> 
-> Acked-by: NeilBrown <neilb@suse.de>
-> Signed-off-by: Neil Brown <neilb@suse.de>
-> Signed-off-by: Jiri Slaby <jslaby@suse.cz>
-> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: linux-nfs@vger.kernel.org
-> ---
+--Sig_/Z/8EaNtmNTTZhXK.q4o0NhV
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Why am I being Cced on this?
+On Thu, 2 May 2013 13:13:32 +1000 NeilBrown <neilb@suse.de> wrote:
 
-You have looked at commit d69ee9b85541a69a1092f5da675bd23256dc62af (NFS:
-Adapt readdirplus to application usage patterns) which was upstreamed in
-Linux 3.5, right?
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+> Possible patch below.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+BTW if you end up applying that without requiring a second revision, please
+add
+
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -67,7 +67,6 @@
+ #include <errno.h>
+ #include <gssapi/gssapi.h>
+ #include <netdb.h>
+-#include <ctype.h>
+=20
+ #include "gssd.h"
+ #include "err_util.h"
+
+
+original patch added this include, but doesn't need it.
+
+NeilBrown
+
+--Sig_/Z/8EaNtmNTTZhXK.q4o0NhV
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUYINTznsnt1WYoG5AQIbbhAArRwHw5LNnXkSAUQqtWwcsHUGGrhOtLZ6
+nNt3hFXGRlpcHQuE2Xg0FNEX7FqbNNqhKwUmp2hVytSo7rzC1eOfAoMhM3Cj1VY5
+8j3uiguwB1qaVxCpK0eP4/yEY+/mN7p3Y+eV2Wm/bviT9svG6cJcKpKhXHoktT/N
+ecV1K69y/imzT7VqWEhPmssJ8cK7lg1m0F431XQShCmW1+4xXv/9zfr56yILHqmy
+Kb34YvEmhhMgSFlHjmPnZCZDKK928tHX84jfQdpymFLu8qKJboP5c7zki2AUb2/h
+sXLhYoVXej9PFjOpxF3ThrV9orQXFZu/LVvW2j0x2Lr+elQPt+ea9flGxbGSkMNV
+Bmd04LhUx5xrQktF12oJdtf2n/krWnzlNYIbM3ZGzrxzzy+HdEyaFdl5i9e3DdRu
+dai7+YUMUCop6WeO7IYAjkQFpozSnTg1Knn7fbxOfS4pxGQaTq3Yi+JcmhAuiWRF
+hrsufeGctoxfiymZdDSbMxK7ofL/Lth71s/GFV48oggVPcfGPdKoCHDw4xBeJzSa
+BxPec7LRcDlUUnpOPcCIfmpQFxpr+0Kq/nT3ab/8/ip/XAruGnWHv9zqztdsXfH/
+Pa02Ze3RPHN+CjZqxuUNmuHxM5DkUBwUTiU21aWzIubzOv4aieJUVFLeapRYKv80
+NJtJb0GmcqE=
+=0FY7
+-----END PGP SIGNATURE-----
+
+--Sig_/Z/8EaNtmNTTZhXK.q4o0NhV--
