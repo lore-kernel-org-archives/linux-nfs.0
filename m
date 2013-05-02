@@ -1,56 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:54579 "EHLO mx12.netapp.com"
+Received: from tundra.namei.org ([65.99.196.166]:39924 "EHLO tundra.namei.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752630Ab3EMRhZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 May 2013 13:37:25 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+	id S1752374Ab3EBXeR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 May 2013 19:34:17 -0400
+Date: Fri, 3 May 2013 09:37:47 +1000 (EST)
+From: James Morris <jmorris@namei.org>
 To: Steve Dickson <SteveD@redhat.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: 3.11 patches
-Date: Mon, 13 May 2013 17:37:17 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA928778002@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20130513152312.GB1931@fieldses.org>
- <1368458889.3563.7.camel@leira.trondhjem.org> <51912356.4080100@RedHat.com>
-In-Reply-To: <51912356.4080100@RedHat.com>
-Content-Type: text/plain; charset="Windows-1252"
+cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 14/17] NFS: Extend NFS xattr handlers to accept the
+ security namespace
+In-Reply-To: <1367515151-31015-15-git-send-email-SteveD@redhat.com>
+Message-ID: <alpine.LRH.2.02.1305030937410.1113@tundra.namei.org>
+References: <1367515151-31015-1-git-send-email-SteveD@redhat.com> <1367515151-31015-15-git-send-email-SteveD@redhat.com>
 MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Steve Dickson [mailto:SteveD@redhat.com]
-> Sent: Monday, May 13, 2013 1:31 PM
-> To: Myklebust, Trond
-> Cc: J. Bruce Fields; linux-nfs@vger.kernel.org
-> Subject: Re: 3.11 patches
-> 
-> 
-> 
-> On 13/05/13 11:28, Myklebust, Trond wrote:
-> > On Mon, 2013-05-13 at 11:23 -0400, J. Bruce Fields wrote:
-> >> I've added a labeled-nfs-common branch at
-> >>
-> >> 	git://linux-nfs.org/~bfields/linux.git labeled-nfs-common
-> >>
-> >> with 3.10-rc1 + the one labeled NFS patch shared by client and server
-> >> (with just some protocol constants).
-> >>
-> >> So we can all work on top of that if we want.
-> >
-> > OK. I've pushed out a 'labeled-nfs' branch for the client side that is
-> > based upon the above branch.
-> Momentary I will be posting the  3.10-rc1 forward port.
-> 
-> >
-> > Has James added the security patches to a public branch that we can
-> > pull yet?
-> >
-> No and he does not plan to... because "It won't be functional without the
-> security subsystem patches, so they should all be in his tree." Meaning your
-> tree...
+On Thu, 2 May 2013, Steve Dickson wrote:
 
-As long as James is fine with me pushing those patches, then I'm happy to do so...
+> From: David Quigley <dpquigl@davequigley.com>
+> 
+> The existing NFSv4 xattr handlers do not accept xattr calls to the security
+> namespace. This patch extends these handlers to accept xattrs from the security
+> namespace in addition to the default NFSv4 ACL namespace.
+> 
+> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 
-Cheers
-  Trond
+Acked-by: James Morris <james.l.morris@oracle.com>
+
+
+> ---
+>  fs/nfs/nfs4proc.c   | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
+>  security/security.c |  1 +
+>  2 files changed, 51 insertions(+)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 0e5b319..7b65c99 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -5518,6 +5518,53 @@ static size_t nfs4_xattr_list_nfs4_acl(struct dentry *dentry, char *list,
+>  	return len;
+>  }
+>  
+> +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+> +static inline int nfs4_server_supports_labels(struct nfs_server *server)
+> +{
+> +	return server->caps & NFS_CAP_SECURITY_LABEL;
+> +}
+> +
+> +static int nfs4_xattr_set_nfs4_label(struct dentry *dentry, const char *key,
+> +				   const void *buf, size_t buflen,
+> +				   int flags, int type)
+> +{
+> +	if (security_ismaclabel(key))
+> +		return nfs4_set_security_label(dentry, buf, buflen);
+> +
+> +	return -EOPNOTSUPP;
+> +}
+> +
+> +static int nfs4_xattr_get_nfs4_label(struct dentry *dentry, const char *key,
+> +				   void *buf, size_t buflen, int type)
+> +{
+> +	if (security_ismaclabel(key))
+> +		return nfs4_get_security_label(dentry->d_inode, buf, buflen);
+> +	return -EOPNOTSUPP;
+> +}
+> +
+> +static size_t nfs4_xattr_list_nfs4_label(struct dentry *dentry, char *list,
+> +				       size_t list_len, const char *name,
+> +				       size_t name_len, int type)
+> +{
+> +	size_t len = 0;
+> +
+> +	if (nfs_server_capable(dentry->d_inode, NFS_CAP_SECURITY_LABEL)) {
+> +		len = security_inode_listsecurity(dentry->d_inode, NULL, 0);
+> +		if (list && len <= list_len)
+> +			security_inode_listsecurity(dentry->d_inode, list, len);
+> +	}
+> +	return len;
+> +}
+> +
+> +static const struct xattr_handler nfs4_xattr_nfs4_label_handler = {
+> +	.prefix = XATTR_SECURITY_PREFIX,
+> +	.list	= nfs4_xattr_list_nfs4_label,
+> +	.get	= nfs4_xattr_get_nfs4_label,
+> +	.set	= nfs4_xattr_set_nfs4_label,
+> +};
+> +#endif
+> +
+> +
+>  /*
+>   * nfs_fhget will use either the mounted_on_fileid or the fileid
+>   */
+> @@ -7270,6 +7317,9 @@ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
+>  
+>  const struct xattr_handler *nfs4_xattr_handlers[] = {
+>  	&nfs4_xattr_nfs4_acl_handler,
+> +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+> +	&nfs4_xattr_nfs4_label_handler,
+> +#endif
+>  	NULL
+>  };
+>  
+> diff --git a/security/security.c b/security/security.c
+> index df8ade2..758af6b 100644
+> --- a/security/security.c
+> +++ b/security/security.c
+> @@ -660,6 +660,7 @@ int security_inode_listsecurity(struct inode *inode, char *buffer, size_t buffer
+>  		return 0;
+>  	return security_ops->inode_listsecurity(inode, buffer, buffer_size);
+>  }
+> +EXPORT_SYMBOL(security_inode_listsecurity);
+>  
+>  void security_inode_getsecid(const struct inode *inode, u32 *secid)
+>  {
+> -- 
+> 1.8.1.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+-- 
+James Morris
+<jmorris@namei.org>
