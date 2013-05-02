@@ -1,187 +1,193 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39407 "EHLO fieldses.org"
+Received: from tundra.namei.org ([65.99.196.166]:39919 "EHLO tundra.namei.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754808Ab3EFPcR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 May 2013 11:32:17 -0400
-Date: Mon, 6 May 2013 11:32:14 -0400
-To: Weston Andros Adamson <dros@netapp.com>
-Cc: chuck.lever@oracle.com, Trond.Myklebust@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSv3: match sec= flavor against server list
-Message-ID: <20130506153214.GE15476@fieldses.org>
-References: <1367846874-1234-1-git-send-email-dros@netapp.com>
+	id S1758841Ab3EBXdm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 May 2013 19:33:42 -0400
+Date: Fri, 3 May 2013 09:37:14 +1000 (EST)
+From: James Morris <jmorris@namei.org>
+To: Steve Dickson <SteveD@redhat.com>
+cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 07/17] SELinux: Add new labeling type native labels
+In-Reply-To: <1367515151-31015-8-git-send-email-SteveD@redhat.com>
+Message-ID: <alpine.LRH.2.02.1305030937070.1113@tundra.namei.org>
+References: <1367515151-31015-1-git-send-email-SteveD@redhat.com> <1367515151-31015-8-git-send-email-SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1367846874-1234-1-git-send-email-dros@netapp.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 06, 2013 at 09:27:54AM -0400, Weston Andros Adamson wrote:
-> Older clients match the 'sec=' mount option flavor against the server's
-> flavor list (if available) and return EPERM if the specified flavor is not
-> found. Recent changes would skip this step and allow the vfs mount even
-> though no operations will succeed.
+On Thu, 2 May 2013, Steve Dickson wrote:
+
+> From: David Quigley <dpquigl@davequigley.com>
 > 
-> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> There currently doesn't exist a labeling type that is adequate for use with
+> labeled NFS. Since NFS doesn't really support xattrs we can't use the use xattr
+> labeling behavior. For this we developed a new labeling type. The native
+> labeling type is used solely by NFS to ensure NFS inodes are labeled at runtime
+> by the NFS code instead of relying on the SELinux security server on the client
+> end.
+> 
+> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+
+
+Acked-by: James Morris <james.l.morris@oracle.com>
+
 > ---
+>  include/linux/security.h            |  3 +++
+>  security/selinux/hooks.c            | 35 ++++++++++++++++++++++++++---------
+>  security/selinux/include/security.h |  2 ++
+>  security/selinux/ss/policydb.c      |  5 ++++-
+>  4 files changed, 35 insertions(+), 10 deletions(-)
 > 
-> Hey Chuck,
-> 
-> This fixes a regression that was introduced with the recent nfs_select_flavor 
-> changes - I'm pretty sure we want to match the specified flavor instead of just
-> using it.
-> 
-> Example of the regression:
-> 
-> the server's /etc/exports:
-> 
-> /export/krb5      *(sec=krb5,sec=none,rw,no_root_squash)
-> 
-> old client behavior:
-> 
-> $ uname -a
-> Linux one.apikia.fake 3.8.8-202.fc18.x86_64 #1 SMP Wed Apr 17 23:25:17 UTC 2013 x86_64 x86_64 x86_64 GNU/Linux
-> $ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
-> mount.nfs: timeout set for Sun May  5 17:32:04 2013
-> mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
-> mount.nfs: prog 100003, trying vers=3, prot=6
-> mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
-> mount.nfs: prog 100005, trying vers=3, prot=17
-> mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
-> mount.nfs: mount(2): Permission denied
-> mount.nfs: access denied by server while mounting zero:/export/krb5
-> 
-> recently changed behavior:
-> 
-> $ uname -a
-> Linux one.apikia.fake 3.9.0-testing+ #2 SMP Fri May 3 20:29:32 EDT 2013 x86_64 x86_64 x86_64 GNU/Linux
-> $ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
-> mount.nfs: timeout set for Sun May  5 17:37:17 2013
-> mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
-> mount.nfs: prog 100003, trying vers=3, prot=6
-> mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
-> mount.nfs: prog 100005, trying vers=3, prot=17
-> mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
-> $ ls /mnt
-> ls: cannot open directory /mnt: Permission denied
-> $ sudo ls /mnt
-> ls: cannot open directory /mnt: Permission denied
-> $ sudo df /mnt
-> df: ‘/mnt’: Permission denied
-> df: no file systems processed
-> $ sudo umount /mnt
-> $
-> 
-> I also made an attempt to support "AUTH_NULL means the server will ignore the
-> cred, so just use the specified flavor" behavior from much older kernels, but 
-> I'm not sure if we want this logic.
-> 
-> I'd actually prefer getting rid of this AUTH_NULL logic, it's just that some 
-> older clients (RHEL 5, etc) would succeed in mounting when sec=sys specified,
-> server list = [AUTH_NULL] (the client ends up sending AUTH_UNIX creds that are
-> ignored by the server), while newer kernels do not. The workaround in newer
-> kernels is to specify sec=none.
-
-Nit: the above examples would actually be really useful, for example, to
-a distribution maintainer trying to figure out whether this patch would
-solve a given user problem.
-
-Could you include them in the changelog?
-
---b.
-
-> 
-> Thoughts?
-> 
->  -dros
-> 
->  fs/nfs/super.c | 39 ++++++++++++++++++++++++++++++++-------
->  1 file changed, 32 insertions(+), 7 deletions(-)
-> 
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index eb494f6..6476b5d 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -1611,14 +1611,12 @@ out_security_failure:
->   * Select a security flavor for this mount.  The selected flavor
->   * is planted in args->auth_flavors[0].
->   */
-> -static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
-> +static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
->  			      struct nfs_mount_request *request)
->  {
->  	unsigned int i, count = *(request->auth_flav_len);
->  	rpc_authflavor_t flavor;
-> -
-> -	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR)
+> diff --git a/include/linux/security.h b/include/linux/security.h
+> index 4ab51e2..bc924d7 100644
+> --- a/include/linux/security.h
+> +++ b/include/linux/security.h
+> @@ -61,6 +61,9 @@ struct mm_struct;
+>  #define SECURITY_CAP_NOAUDIT 0
+>  #define SECURITY_CAP_AUDIT 1
+>  
+> +/* LSM Agnostic defines for sb_set_mnt_opts */
+> +#define SECURITY_LSM_NATIVE_LABELS	1
+> +
+>  struct ctl_table;
+>  struct audit_krule;
+>  struct user_namespace;
+> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+> index 6cb24ec..d7ff806 100644
+> --- a/security/selinux/hooks.c
+> +++ b/security/selinux/hooks.c
+> @@ -81,6 +81,7 @@
+>  #include <linux/syslog.h>
+>  #include <linux/user_namespace.h>
+>  #include <linux/export.h>
+> +#include <linux/security.h>
+>  #include <linux/msg.h>
+>  #include <linux/shm.h>
+>  
+> @@ -284,13 +285,14 @@ static void superblock_free_security(struct super_block *sb)
+>  
+>  /* The file system's label must be initialized prior to use. */
+>  
+> -static const char *labeling_behaviors[6] = {
+> +static const char *labeling_behaviors[7] = {
+>  	"uses xattr",
+>  	"uses transition SIDs",
+>  	"uses task SIDs",
+>  	"uses genfs_contexts",
+>  	"not configured for labeling",
+>  	"uses mountpoint labeling",
+> +	"uses native labeling",
+>  };
+>  
+>  static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dentry);
+> @@ -678,14 +680,21 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+>  	if (strcmp(sb->s_type->name, "proc") == 0)
+>  		sbsec->flags |= SE_SBPROC;
+>  
+> -	/* Determine the labeling behavior to use for this filesystem type. */
+> -	rc = security_fs_use((sbsec->flags & SE_SBPROC) ? "proc" : sb->s_type->name, &sbsec->behavior, &sbsec->sid);
+> -	if (rc) {
+> -		printk(KERN_WARNING "%s: security_fs_use(%s) returned %d\n",
+> -		       __func__, sb->s_type->name, rc);
 > -		goto out;
-> +	bool auth_null_seen = false;
->  
->  	/*
->  	 * The NFSv2 MNT operation does not return a flavor list.
-> @@ -1634,6 +1632,26 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
->  		goto out_default;
->  
->  	/*
-> +	 * If the sec= mount option is used, the flavor must be in the list
-> +	 * returned by the server.
-> +	 *
-> +	 * One exception is when the server's flavor list includes AUTH_NULL:
-> +	 * Some servers implement AUTH_NULL by completely ignoring the rpc
-> +	 * cred, so the client can use any flavor.
-> +	 */
-> +	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR) {
-> +		for (i = 0; i < count; i++) {
-> +			if (args->auth_flavors[0] == request->auth_flavs[i])
-> +				goto out;
-> +			if (request->auth_flavs[i] == RPC_AUTH_NULL)
-> +				auth_null_seen = true;
-> +		}
-> +		if (auth_null_seen)
+> +	if (!sbsec->behavior) {
+> +		/*
+> +		 * Determine the labeling behavior to use for this
+> +		 * filesystem type.
+> +		 */
+> +		rc = security_fs_use((sbsec->flags & SE_SBPROC) ?
+> +					"proc" : sb->s_type->name,
+> +					&sbsec->behavior, &sbsec->sid);
+> +		if (rc) {
+> +			printk(KERN_WARNING
+> +				"%s: security_fs_use(%s) returned %d\n",
+> +					__func__, sb->s_type->name, rc);
 > +			goto out;
-> +		goto out_nomatch;
+> +		}
+>  	}
+> -
+>  	/* sets the context of the superblock for the fs being mounted. */
+>  	if (fscontext_sid) {
+>  		rc = may_context_mount_sb_relabel(fscontext_sid, sbsec, cred);
+> @@ -700,6 +709,11 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+>  	 * sets the label used on all file below the mountpoint, and will set
+>  	 * the superblock context if not already set.
+>  	 */
+> +	if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !context_sid) {
+> +		sbsec->behavior = SECURITY_FS_USE_NATIVE;
+> +		*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
 > +	}
 > +
-> +	/*
->  	 * RFC 2623, section 2.7 suggests we SHOULD prefer the
->  	 * flavor listed first.  However, some servers list
->  	 * AUTH_NULL first.  Avoid ever choosing AUTH_NULL.
-> @@ -1654,11 +1672,19 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
+>  	if (context_sid) {
+>  		if (!fscontext_sid) {
+>  			rc = may_context_mount_sb_relabel(context_sid, sbsec,
+> @@ -731,7 +745,8 @@ static int selinux_set_mnt_opts(struct super_block *sb,
 >  	}
 >  
->  out_default:
-> -	flavor = RPC_AUTH_UNIX;
-> +	/* use default if flavor not already set */
-> +	flavor = (args->auth_flavors[0] == RPC_AUTH_MAXFLAVOR) ?
-> +		RPC_AUTH_UNIX : args->auth_flavors[0];
->  out_set:
->  	args->auth_flavors[0] = flavor;
->  out:
->  	dfprintk(MOUNT, "NFS: using auth flavor %d\n", args->auth_flavors[0]);
-> +	return 0;
-> +
-> +out_nomatch:
-> +	dfprintk(MOUNT, "NFS: auth flavor %d not supported by server\n",
-> +		args->auth_flavors[0]);
-> +	return -EPERM;
->  }
->  
->  /*
-> @@ -1721,8 +1747,7 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
->  		return status;
+>  	if (defcontext_sid) {
+> -		if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
+> +		if (sbsec->behavior != SECURITY_FS_USE_XATTR &&
+> +			sbsec->behavior != SECURITY_FS_USE_NATIVE) {
+>  			rc = -EINVAL;
+>  			printk(KERN_WARNING "SELinux: defcontext option is "
+>  			       "invalid for this filesystem type\n");
+> @@ -1199,6 +1214,8 @@ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dent
 >  	}
 >  
-> -	nfs_select_flavor(args, &request);
-> -	return 0;
-> +	return nfs_select_flavor(args, &request);
->  }
+>  	switch (sbsec->behavior) {
+> +	case SECURITY_FS_USE_NATIVE:
+> +		break;
+>  	case SECURITY_FS_USE_XATTR:
+>  		if (!inode->i_op->getxattr) {
+>  			isec->sid = sbsec->def_sid;
+> diff --git a/security/selinux/include/security.h b/security/selinux/include/security.h
+> index 6d38851..8fd8e18 100644
+> --- a/security/selinux/include/security.h
+> +++ b/security/selinux/include/security.h
+> @@ -169,6 +169,8 @@ int security_get_allow_unknown(void);
+>  #define SECURITY_FS_USE_GENFS		4 /* use the genfs support */
+>  #define SECURITY_FS_USE_NONE		5 /* no labeling support */
+>  #define SECURITY_FS_USE_MNTPOINT	6 /* use mountpoint labeling */
+> +#define SECURITY_FS_USE_NATIVE		7 /* use native label support */
+> +#define SECURITY_FS_USE_MAX		7 /* Highest SECURITY_FS_USE_XXX */
 >  
->  struct dentry *nfs_try_mount(int flags, const char *dev_name,
+>  int security_fs_use(const char *fstype, unsigned int *behavior,
+>  	u32 *sid);
+> diff --git a/security/selinux/ss/policydb.c b/security/selinux/ss/policydb.c
+> index 9cd9b7c..c8adde3 100644
+> --- a/security/selinux/ss/policydb.c
+> +++ b/security/selinux/ss/policydb.c
+> @@ -2168,7 +2168,10 @@ static int ocontext_read(struct policydb *p, struct policydb_compat_info *info,
+>  
+>  				rc = -EINVAL;
+>  				c->v.behavior = le32_to_cpu(buf[0]);
+> -				if (c->v.behavior > SECURITY_FS_USE_NONE)
+> +				/* Determined at runtime, not in policy DB. */
+> +				if (c->v.behavior == SECURITY_FS_USE_MNTPOINT)
+> +					goto out;
+> +				if (c->v.behavior > SECURITY_FS_USE_MAX)
+>  					goto out;
+>  
+>  				rc = -ENOMEM;
 > -- 
-> 1.7.12.4 (Apple Git-37)
+> 1.8.1.4
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+-- 
+James Morris
+<jmorris@namei.org>
