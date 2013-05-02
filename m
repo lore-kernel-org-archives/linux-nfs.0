@@ -1,112 +1,175 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f182.google.com ([209.85.212.182]:48665 "EHLO
-	mail-wi0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755990Ab3EKCoG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:44:06 -0400
-Received: by mail-wi0-f182.google.com with SMTP id m6so1207015wiv.9
-        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:44:05 -0700 (PDT)
-Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
-        by mx.google.com with ESMTPSA id ed20sm1428305wic.0.2013.05.10.19.44.03
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 10 May 2013 19:44:04 -0700 (PDT)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 24/38] pnfsd: cause oops when stop the nfs server
-Date: Sat, 11 May 2013 05:44:00 +0300
-Message-Id: <1368240240-421-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <518B6377.3000207@tonian.com>
-References: <518B6377.3000207@tonian.com>
+Received: from mx1.redhat.com ([209.132.183.28]:31348 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760841Ab3EBRTX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 May 2013 13:19:23 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 07/17] SELinux: Add new labeling type native labels
+Date: Thu,  2 May 2013 13:19:01 -0400
+Message-Id: <1367515151-31015-8-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
+References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: chenditang <chendt.fnst@cn.fujitsu.com>
+From: David Quigley <dpquigl@davequigley.com>
 
-mount nfs dir in the client, and then restart the NFS service in MDS,
-that will cause oops for client_mutex_owner is NULL in the
-destroy_client() function.
+There currently doesn't exist a labeling type that is adequate for use with
+labeled NFS. Since NFS doesn't really support xattrs we can't use the use xattr
+labeling behavior. For this we developed a new labeling type. The native
+labeling type is used solely by NFS to ensure NFS inodes are labeled at runtime
+by the NFS code instead of relying on the SELinux security server on the client
+end.
 
-kernel BUG at fs/nfsd/nfs4state.c:1130!
-invalid opcode: 0000 [#1] SMP
-Modules linked in: nfsd(OF) lockd exportfs nfs_acl auth_rpcgss autofs4
-dlm sctp libcrc32c configfs sunrpc be2iscsi iscsi_boot_sysfs bnx2i cnic
-uio cxgb4i cxgb4 cxgb3i libcxgbi cxgb3 mdio ib_iser rdma_cm ib_cm iw_cm
-ib_sa ib_mad ib_core ib_addr ipv6 iscsi_tcp libiscsi_tcp libiscsi
-scsi_transport_iscsi dm_mirror dm_region_hash dm_log dm_mod ppdev
-parport_pc parport microcode pcspkr i2c_piix4 i2c_core e1000 sg ext4(F)
-mbcache(F) jbd2(F) sr_mod(F) cdrom(F) sd_mod(F) crc_t10dif(F)
-pata_acpi(F) ata_generic(F) ata_piix(F) ahci(F) libahci(F) [last
-unloaded: speedstep_lib]
-CPU 0
-Pid: 2893, comm: nfsd Tainted: GF O 3.8.0-rc4_fl+ #2 innotek GmbH
-VirtualBox/VirtualBox
-RIP: 0010:[<ffffffffa045a4cf>] [<ffffffffa045a4cf>]
-destroy_client+0x2ff/0x330 [nfsd]
-RSP: 0018:ffff8800256b9d38 EFLAGS: 00010203
-RAX: 0000000000000010 RBX: ffff880025630000 RCX: 0000000000001440
-RDX: 00000000000025fc RSI: 0000000000000082 RDI: 0000000000000246
-RBP: ffff8800256b9d88 R08: ffffffff81cdfba0 R09: 0000000000007768
-R10: 00000000000001b1 R11: 00000000000001b1 R12: ffff880037988400
-R13: ffff88003d58ea80 R14: ffffffff81ab2080 R15: 0000000000000000
-FS: 0000000000000000(0000) GS:ffff88003fc00000(0000) knlGS:0000000000000000
-CS: 0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 00000000006d39d8 CR3: 00000000255be000 CR4: 00000000000006f0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Process nfsd (pid: 2893, threadinfo ffff8800256b8000, task ffff88003d58ea80)
-Stack:
-ffff8800256b9d78 ffff88003d51bdc0 ffff8800256b9d58 ffff880037988400
-ffffffff81ab2080 ffff880037988400 0000000000000020 ffffffffa04709b0
-ffffffff81ab2080 0000000000000000 ffff8800256b9dc8 ffffffffa045a555
-Call Trace:
-[<ffffffffa045a555>] nfs4_state_destroy_net+0x55/0x120 [nfsd]
-[<ffffffffa045a718>] nfs4_state_shutdown_net+0xf8/0x140 [nfsd]
-[<ffffffffa04349b0>] ? nfsd_pool_stats_release+0x50/0x50 [nfsd]
-[<ffffffffa0434835>] nfsd_shutdown_net+0x35/0x60 [nfsd]
-[<ffffffffa04348ad>] nfsd_last_thread+0x4d/0x80 [nfsd]
-[<ffffffffa037f3e5>] svc_shutdown_net+0x35/0x40 [sunrpc]
-[<ffffffffa0434935>] nfsd_destroy+0x55/0x80 [nfsd]
-[<ffffffffa0434ab4>] nfsd+0x104/0x130 [nfsd]
-[<ffffffffa04349b0>] ? nfsd_pool_stats_release+0x50/0x50 [nfsd]
-[<ffffffff8107951e>] kthread+0xce/0xe0
-[<ffffffff81079450>] ? kthread_freezable_should_stop+0x70/0x70
-[<ffffffff8155c56c>] ret_from_fork+0x7c/0xb0
-[<ffffffff81079450>] ? kthread_freezable_should_stop+0x70/0x70
-Code: 38 d1 e0 48 89 df e8 81 38 d1 e0 e9 2f ff ff ff 0f 1f 40 00 48 c7
-c7 72 8a 46 a0 31 c0 e8 86 6b 0f e1 e9 70 fd ff ff 0f 0b eb fe <0f> 0b
-eb fe 0f 0b 66 66 2e 0f 1f 84 00 00 00 00 00 eb f3 0f 0b
-RIP [<ffffffffa045a4cf>] destroy_client+0x2ff/0x330 [nfsd]
-RSP <ffff8800256b9d38>
----[ end trace c2d9f251eabc7c2d ]---
-
-Signed-off-by: chendt.fnst <chendt.fnst@cn.fujitsu.com>
-Reviewed-by: fanchaoting <fanchaoting@cn.fujitsu.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 ---
- fs/nfsd/nfs4state.c | 3 +++
- 1 file changed, 3 insertions(+)
+ include/linux/security.h            |  3 +++
+ security/selinux/hooks.c            | 35 ++++++++++++++++++++++++++---------
+ security/selinux/include/security.h |  2 ++
+ security/selinux/ss/policydb.c      |  5 ++++-
+ 4 files changed, 35 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1170f8a..282be50 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4937,6 +4937,8 @@ static int nfs4_state_create_net(struct net *net)
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 	struct rb_node *node, *tmp;
+diff --git a/include/linux/security.h b/include/linux/security.h
+index 4ab51e2..bc924d7 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -61,6 +61,9 @@ struct mm_struct;
+ #define SECURITY_CAP_NOAUDIT 0
+ #define SECURITY_CAP_AUDIT 1
  
-+	nfs4_lock_state();
++/* LSM Agnostic defines for sb_set_mnt_opts */
++#define SECURITY_LSM_NATIVE_LABELS	1
 +
- 	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
- 		while (!list_empty(&nn->conf_id_hashtbl[i])) {
- 			clp = list_entry(nn->conf_id_hashtbl[i].next, struct nfs4_client, cl_idhash);
-@@ -4953,6 +4955,7 @@ static int nfs4_state_create_net(struct net *net)
- 		destroy_client(clp);
+ struct ctl_table;
+ struct audit_krule;
+ struct user_namespace;
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index 6cb24ec..d7ff806 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -81,6 +81,7 @@
+ #include <linux/syslog.h>
+ #include <linux/user_namespace.h>
+ #include <linux/export.h>
++#include <linux/security.h>
+ #include <linux/msg.h>
+ #include <linux/shm.h>
+ 
+@@ -284,13 +285,14 @@ static void superblock_free_security(struct super_block *sb)
+ 
+ /* The file system's label must be initialized prior to use. */
+ 
+-static const char *labeling_behaviors[6] = {
++static const char *labeling_behaviors[7] = {
+ 	"uses xattr",
+ 	"uses transition SIDs",
+ 	"uses task SIDs",
+ 	"uses genfs_contexts",
+ 	"not configured for labeling",
+ 	"uses mountpoint labeling",
++	"uses native labeling",
+ };
+ 
+ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dentry);
+@@ -678,14 +680,21 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	if (strcmp(sb->s_type->name, "proc") == 0)
+ 		sbsec->flags |= SE_SBPROC;
+ 
+-	/* Determine the labeling behavior to use for this filesystem type. */
+-	rc = security_fs_use((sbsec->flags & SE_SBPROC) ? "proc" : sb->s_type->name, &sbsec->behavior, &sbsec->sid);
+-	if (rc) {
+-		printk(KERN_WARNING "%s: security_fs_use(%s) returned %d\n",
+-		       __func__, sb->s_type->name, rc);
+-		goto out;
++	if (!sbsec->behavior) {
++		/*
++		 * Determine the labeling behavior to use for this
++		 * filesystem type.
++		 */
++		rc = security_fs_use((sbsec->flags & SE_SBPROC) ?
++					"proc" : sb->s_type->name,
++					&sbsec->behavior, &sbsec->sid);
++		if (rc) {
++			printk(KERN_WARNING
++				"%s: security_fs_use(%s) returned %d\n",
++					__func__, sb->s_type->name, rc);
++			goto out;
++		}
+ 	}
+-
+ 	/* sets the context of the superblock for the fs being mounted. */
+ 	if (fscontext_sid) {
+ 		rc = may_context_mount_sb_relabel(fscontext_sid, sbsec, cred);
+@@ -700,6 +709,11 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	 * sets the label used on all file below the mountpoint, and will set
+ 	 * the superblock context if not already set.
+ 	 */
++	if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !context_sid) {
++		sbsec->behavior = SECURITY_FS_USE_NATIVE;
++		*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
++	}
++
+ 	if (context_sid) {
+ 		if (!fscontext_sid) {
+ 			rc = may_context_mount_sb_relabel(context_sid, sbsec,
+@@ -731,7 +745,8 @@ static int selinux_set_mnt_opts(struct super_block *sb,
  	}
  
-+	nfs4_unlock_state();
- 	kfree(nn->sessionid_hashtbl);
- 	kfree(nn->lockowner_ino_hashtbl);
- 	kfree(nn->ownerstr_hashtbl);
+ 	if (defcontext_sid) {
+-		if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
++		if (sbsec->behavior != SECURITY_FS_USE_XATTR &&
++			sbsec->behavior != SECURITY_FS_USE_NATIVE) {
+ 			rc = -EINVAL;
+ 			printk(KERN_WARNING "SELinux: defcontext option is "
+ 			       "invalid for this filesystem type\n");
+@@ -1199,6 +1214,8 @@ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dent
+ 	}
+ 
+ 	switch (sbsec->behavior) {
++	case SECURITY_FS_USE_NATIVE:
++		break;
+ 	case SECURITY_FS_USE_XATTR:
+ 		if (!inode->i_op->getxattr) {
+ 			isec->sid = sbsec->def_sid;
+diff --git a/security/selinux/include/security.h b/security/selinux/include/security.h
+index 6d38851..8fd8e18 100644
+--- a/security/selinux/include/security.h
++++ b/security/selinux/include/security.h
+@@ -169,6 +169,8 @@ int security_get_allow_unknown(void);
+ #define SECURITY_FS_USE_GENFS		4 /* use the genfs support */
+ #define SECURITY_FS_USE_NONE		5 /* no labeling support */
+ #define SECURITY_FS_USE_MNTPOINT	6 /* use mountpoint labeling */
++#define SECURITY_FS_USE_NATIVE		7 /* use native label support */
++#define SECURITY_FS_USE_MAX		7 /* Highest SECURITY_FS_USE_XXX */
+ 
+ int security_fs_use(const char *fstype, unsigned int *behavior,
+ 	u32 *sid);
+diff --git a/security/selinux/ss/policydb.c b/security/selinux/ss/policydb.c
+index 9cd9b7c..c8adde3 100644
+--- a/security/selinux/ss/policydb.c
++++ b/security/selinux/ss/policydb.c
+@@ -2168,7 +2168,10 @@ static int ocontext_read(struct policydb *p, struct policydb_compat_info *info,
+ 
+ 				rc = -EINVAL;
+ 				c->v.behavior = le32_to_cpu(buf[0]);
+-				if (c->v.behavior > SECURITY_FS_USE_NONE)
++				/* Determined at runtime, not in policy DB. */
++				if (c->v.behavior == SECURITY_FS_USE_MNTPOINT)
++					goto out;
++				if (c->v.behavior > SECURITY_FS_USE_MAX)
+ 					goto out;
+ 
+ 				rc = -ENOMEM;
 -- 
-1.7.11.7
+1.8.1.4
 
