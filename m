@@ -1,98 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:37427 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53286 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755487Ab3ETRRs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 May 2013 13:17:48 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/6] NFSv4.1: Ensure that reclaim_complete uses the right credential
-Date: Mon, 20 May 2013 13:17:04 -0400
-Message-Id: <1369070227-40671-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1369070227-40671-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1369070227-40671-1-git-send-email-Trond.Myklebust@netapp.com>
- <1369070227-40671-2-git-send-email-Trond.Myklebust@netapp.com>
+	id S1758913Ab3EBRTR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 May 2013 13:19:17 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 00/17] lnfs: linux-3.9 release
+Date: Thu,  2 May 2013 13:18:54 -0400
+Message-Id: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We want to use the same credential for reclaim_complete as we used
-for the exchange_id call.
+From: Steve Dickson <steved@redhat.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4_fs.h   |  2 +-
- fs/nfs/nfs4proc.c  |  4 +++-
- fs/nfs/nfs4state.c | 13 ++++++++++---
- 3 files changed, 14 insertions(+), 5 deletions(-)
+Here is an the next rlease of the label NFS patches
+ported to the linux-3.9 release
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index a1dd768..e64a00c 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -194,7 +194,7 @@ struct nfs4_state_recovery_ops {
- 	int (*recover_lock)(struct nfs4_state *, struct file_lock *);
- 	int (*establish_clid)(struct nfs_client *, struct rpc_cred *);
- 	struct rpc_cred * (*get_clid_cred)(struct nfs_client *);
--	int (*reclaim_complete)(struct nfs_client *);
-+	int (*reclaim_complete)(struct nfs_client *, struct rpc_cred *);
- 	int (*detect_trunking)(struct nfs_client *, struct nfs_client **,
- 		struct rpc_cred *);
- };
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 2956973..9d90f57 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6159,12 +6159,14 @@ static const struct rpc_call_ops nfs4_reclaim_complete_call_ops = {
- /*
-  * Issue a global reclaim complete.
-  */
--static int nfs41_proc_reclaim_complete(struct nfs_client *clp)
-+static int nfs41_proc_reclaim_complete(struct nfs_client *clp,
-+		struct rpc_cred *cred)
- {
- 	struct nfs4_reclaim_complete_data *calldata;
- 	struct rpc_task *task;
- 	struct rpc_message msg = {
- 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_RECLAIM_COMPLETE],
-+		.rpc_cred = cred,
- 	};
- 	struct rpc_task_setup task_setup_data = {
- 		.rpc_client = clp->cl_rpcclient,
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 300d17d..30b9ba1 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1564,11 +1564,12 @@ static void nfs4_state_start_reclaim_reboot(struct nfs_client *clp)
- }
- 
- static void nfs4_reclaim_complete(struct nfs_client *clp,
--				 const struct nfs4_state_recovery_ops *ops)
-+				 const struct nfs4_state_recovery_ops *ops,
-+				 struct rpc_cred *cred)
- {
- 	/* Notify the server we're done reclaiming our state */
- 	if (ops->reclaim_complete)
--		(void)ops->reclaim_complete(clp);
-+		(void)ops->reclaim_complete(clp, cred);
- }
- 
- static void nfs4_clear_reclaim_server(struct nfs_server *server)
-@@ -1613,9 +1614,15 @@ static int nfs4_state_clear_reclaim_reboot(struct nfs_client *clp)
- 
- static void nfs4_state_end_reclaim_reboot(struct nfs_client *clp)
- {
-+	const struct nfs4_state_recovery_ops *ops;
-+	struct rpc_cred *cred;
-+
- 	if (!nfs4_state_clear_reclaim_reboot(clp))
- 		return;
--	nfs4_reclaim_complete(clp, clp->cl_mvops->reboot_recovery_ops);
-+	ops = clp->cl_mvops->reboot_recovery_ops;
-+	cred = ops->get_clid_cred(clp);
-+	nfs4_reclaim_complete(clp, ops, cred);
-+	put_rpccred(cred);
- }
- 
- static void nfs_delegation_clear_all(struct nfs_client *clp)
+The following changes were made from the previous release.
+(Note, only the server patch changed in this release)
+
+* Remove the buffer overflow in the allocation of labels.
+
+* Removed needless char * casting
+
+* Removed the -EMSGSIZE to nfs4err_badlabel errno mapping 
+  by changing the return value of nfsd4_label_alloc() to 
+  be a _be32 value. 
+
+
+David Quigley (12):
+  Security: Add hook to calculate context based on a negative dentry.
+  Security: Add Hook to test if the particular xattr is part of a MAC
+    model.
+  LSM: Add flags field to security_sb_set_mnt_opts for in kernel mount
+    data.
+  SELinux: Add new labeling type native labels
+  NFSv4: Add label recommended attribute and NFSv4 flags
+  NFSv4: Introduce new label structure
+  NFSv4: Extend fattr bitmaps to support all 3 words
+  NFS:Add labels to client function prototypes
+  NFS: Add label lifecycle management
+  NFS: Client implementation of Labeled-NFS
+  NFS: Extend NFS xattr handlers to accept the security namespace
+  NFSD: Server implementation of MAC Labeling
+
+Steve Dickson (5):
+  NFSv4.2: Added v4.2 error codes
+  NFSv4.2: Added NFS v4.2 support to the NFS client
+  NFSDv4.2: Added NFS v4.2 support to the NFS server
+  Kconfig: Add Kconfig entry for Labeled NFS V4 client
+  Kconfig: Add Kconfig entry for Labeled NFS V4 server
+
+ fs/nfs/Kconfig                      |  28 ++
+ fs/nfs/callback.c                   |   1 +
+ fs/nfs/client.c                     |   2 +-
+ fs/nfs/dir.c                        |  46 ++-
+ fs/nfs/getroot.c                    |   2 +-
+ fs/nfs/inode.c                      | 133 ++++++--
+ fs/nfs/namespace.c                  |   2 +-
+ fs/nfs/nfs3acl.c                    |   4 +-
+ fs/nfs/nfs3proc.c                   |  41 +--
+ fs/nfs/nfs4_fs.h                    |   8 +-
+ fs/nfs/nfs4client.c                 |   5 +
+ fs/nfs/nfs4namespace.c              |   2 +-
+ fs/nfs/nfs4proc.c                   | 596 ++++++++++++++++++++++++++++++++----
+ fs/nfs/nfs4xdr.c                    | 188 +++++++++---
+ fs/nfs/pnfs.c                       |   2 +-
+ fs/nfs/proc.c                       |  15 +-
+ fs/nfs/super.c                      |  24 +-
+ fs/nfsd/Kconfig                     |  16 +
+ fs/nfsd/nfs4proc.c                  |  41 +++
+ fs/nfsd/nfs4xdr.c                   | 124 +++++++-
+ fs/nfsd/nfsd.h                      |  22 +-
+ fs/nfsd/vfs.c                       |  28 ++
+ fs/nfsd/vfs.h                       |   2 +
+ fs/nfsd/xdr4.h                      |   3 +
+ include/linux/nfs4.h                |  20 ++
+ include/linux/nfs_fs.h              |  40 ++-
+ include/linux/nfs_fs_sb.h           |  10 +-
+ include/linux/nfs_xdr.h             |  30 +-
+ include/linux/security.h            |  57 +++-
+ include/uapi/linux/nfs4.h           |   2 +-
+ security/capability.c               |  19 +-
+ security/security.c                 |  24 +-
+ security/selinux/hooks.c            |  92 +++++-
+ security/selinux/include/security.h |   2 +
+ security/selinux/ss/policydb.c      |   5 +-
+ security/smack/smack_lsm.c          |  11 +
+ 36 files changed, 1427 insertions(+), 220 deletions(-)
+
 -- 
 1.8.1.4
 
