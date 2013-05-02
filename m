@@ -1,61 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37742 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:42248 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754055Ab3EIBng (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 May 2013 21:43:36 -0400
-Date: Wed, 8 May 2013 21:43:29 -0400
-To: Serge Hallyn <serge.hallyn@canonical.com>
-Cc: linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] security: cap_inode_getsecctx returning garbage
-Message-ID: <20130509014329.GH23747@fieldses.org>
+	id S1760819Ab3EBSbc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 May 2013 14:31:32 -0400
+Message-ID: <5182B100.2080900@RedHat.com>
+Date: Thu, 02 May 2013 14:31:28 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 09/17] NFSv4: Introduce new label structure
+References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>  <1367240239-19326-10-git-send-email-SteveD@redhat.com> <1367434764.4189.33.camel@leira.trondhjem.org>
+In-Reply-To: <1367434764.4189.33.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On 01/05/13 14:59, Myklebust, Trond wrote:
+>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+>> > index 9f2dba3..4d2fdf6 100644
+>> > --- a/include/linux/nfs_xdr.h
+>> > +++ b/include/linux/nfs_xdr.h
+>> > @@ -351,6 +351,7 @@ struct nfs_openargs {
+>> >  	const u32 *		bitmask;
+>> >  	const u32 *		open_bitmap;
+>> >  	__u32			claim;
+>> > +	const struct nfs4_label *label;
+>> >  };
+>> >  
+>> >  struct nfs_openres {
+>> > @@ -360,6 +361,7 @@ struct nfs_openres {
+>> >  	struct nfs4_change_info	cinfo;
+>> >  	__u32                   rflags;
+>> >  	struct nfs_fattr *      f_attr;
+>> > +	struct nfs4_label	*f_label;
+>> >  	struct nfs_seqid *	seqid;
+>> >  	const struct nfs_server *server;
+>> >  	fmode_t			delegation_type;
+>> > @@ -404,6 +406,7 @@ struct nfs_closeres {
+>> >  	struct nfs4_sequence_res	seq_res;
+>> >  	nfs4_stateid            stateid;
+>> >  	struct nfs_fattr *	fattr;
+>> > +	struct nfs4_label	*label;
+>> >  	struct nfs_seqid *	seqid;
+>> >  	const struct nfs_server *server;
+>> >  };
+>> > @@ -477,6 +480,7 @@ struct nfs4_delegreturnargs {
+>> >  struct nfs4_delegreturnres {
+>> >  	struct nfs4_sequence_res	seq_res;
+>> >  	struct nfs_fattr * fattr;
+>> > +	struct nfs4_label	*label;
+>> >  	const struct nfs_server *server;
+>> >  };
+>> >  
+>> > @@ -497,6 +501,7 @@ struct nfs_readargs {
+>> >  struct nfs_readres {
+>> >  	struct nfs4_sequence_res	seq_res;
+>> >  	struct nfs_fattr *	fattr;
+>> > +	struct nfs4_label	*label;
+> Why do we need to check labels on close, delegreturn, read, remove,
+> rename, etc? Do any of those operations cause our cached labels to
+> change?
+I was not around then this decision was made... Maybe some of the 
+security people can address that.... 
 
-We shouldn't be returning success from this function without also
-filling in the return values ctx and ctxlen.
+What operation do you think they are needed for?
 
-Note currently this doesn't appear to cause bugs since the only
-inode_getsecctx caller I can find is fs/sysfs/inode.c, which only calls
-this if security_inode_setsecurity succeeds.  Assuming
-security_inode_setsecurity is set to cap_inode_setsecurity whenever
-inode_getsecctx is set to cap_inode_getsecctx, this function can never
-actually called.
-
-So I noticed this only because the server labeled NFS patches add a real
-caller.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- security/capability.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-Also, assuming this is correct, would you be willing to apply it for
-3.10?
-
-If you'd prefer it wait till the next merge window: could you ACK it,
-and let me merge it through the nfsd tree?  (It's a prerequisite for
-the labeled NFS patches that I hope to merge for 3.11.)
-
-diff --git a/security/capability.c b/security/capability.c
-index d32e16e..32b5157 100644
---- a/security/capability.c
-+++ b/security/capability.c
-@@ -858,7 +858,7 @@ static int cap_inode_setsecctx(struct dentry *dentry, void *ctx, u32 ctxlen)
+steved.
  
- static int cap_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen)
- {
--	return 0;
-+	return -EOPNOTSUPP;
- }
- #ifdef CONFIG_KEYS
- static int cap_key_alloc(struct key *key, const struct cred *cred,
--- 
-1.7.9.5
-
