@@ -1,109 +1,187 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga01.intel.com ([192.55.52.88]:28480 "EHLO mga01.intel.com"
+Received: from tundra.namei.org ([65.99.196.166]:39914 "EHLO tundra.namei.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753373Ab3EVXHK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 May 2013 19:07:10 -0400
-From: "Dilger, Andreas" <andreas.dilger@intel.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Yong, Fan" <fan.yong@intel.com>
-Subject: [PATCH] nfs: support 64-bit root inode number in NFS FSID
-Date: Wed, 22 May 2013 23:06:54 +0000
-Message-ID: <CDC2ABAC.3341C%andreas.dilger@intel.com>
-Content-Type: multipart/mixed;
-	boundary="_002_CDC2ABAC3341Candreasdilgerintelcom_"
+	id S1760176Ab3EBXdb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 May 2013 19:33:31 -0400
+Date: Fri, 3 May 2013 09:37:03 +1000 (EST)
+From: James Morris <jmorris@namei.org>
+To: Steve Dickson <SteveD@redhat.com>
+cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 06/17] LSM: Add flags field to security_sb_set_mnt_opts
+ for in kernel mount data.
+In-Reply-To: <1367515151-31015-7-git-send-email-SteveD@redhat.com>
+Message-ID: <alpine.LRH.2.02.1305030936480.1113@tundra.namei.org>
+References: <1367515151-31015-1-git-send-email-SteveD@redhat.com> <1367515151-31015-7-git-send-email-SteveD@redhat.com>
 MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---_002_CDC2ABAC3341Candreasdilgerintelcom_
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <2E06987E30F1454E92F1DBD65D91BB03@intel.com>
-Content-Transfer-Encoding: quoted-printable
+On Thu, 2 May 2013, Steve Dickson wrote:
 
-When exporting a filesystem via NFS, it can generate several kinds
-of NFS filesystem IDs. For most of cases, it uses a 32-bit inode
-number in the NFS FSID, but this does not work on a filesystem
-using a 64-bit root inode number.
+> From: David Quigley <dpquigl@davequigley.com>
+> 
+> There is no way to differentiate if a text mount option is passed from user
+> space or the kernel. A flags field is being added to the
+> security_sb_set_mnt_opts hook to allow for in kernel security flags to be sent
+> to the LSM for processing in addition to the text options received from mount.
+> This patch also updated existing code to fix compilation errors.
+> 
+> Signed-off-by: David P. Quigley <dpquigl@tycho.nsa.gov>
+> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 
-In kernel space, NFS can generate/use NFS FSID with a 64-bit inode
-number for the "FSID_UUID16_INUM" type. Unfortunately, while the
-user space nfs-utils decode the 64-bit inode number from the FSID
-correctly, it is truncated when storing it in "struct parsed_fsid".
-Expand the "struct parsed_fsid" inode field to store the full 64-bit
-root inode number.
-
-Intel-bug-id: LU-2904
-Signed-off-by: Fan Yong <fan.yong@intel.com>
-Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
----
- utils/mountd/cache.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 517aa62..a7212e7 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -388,7 +388,7 @@ struct parsed_fsid {
- 	int fsidtype;
- 	/* We could use a union for this, but it would be more
- 	 * complicated; why bother? */
--	unsigned int inode;
-+	unsigned long long inode; /* We need 64-bits ino# */
- 	unsigned int minor;
- 	unsigned int major;
- 	unsigned int fsidnum;
---1.7.1
-
-Patch is also attached separately, since it will likely be butchered
-by this email client.
+Acked-by: James Morris <james.l.morris@oracle.com>
 
 
-Cheers, Andreas
---=20
-Andreas Dilger
+> ---
+>  fs/nfs/super.c           |  3 ++-
+>  include/linux/security.h | 13 ++++++++++---
+>  security/capability.c    |  5 ++++-
+>  security/security.c      |  7 +++++--
+>  security/selinux/hooks.c | 12 ++++++++++--
+>  5 files changed, 31 insertions(+), 9 deletions(-)
+> 
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index 29f2d86..d84eb57 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -2378,7 +2378,8 @@ static int nfs_bdi_register(struct nfs_server *server)
+>  int nfs_set_sb_security(struct super_block *s, struct dentry *mntroot,
+>  			struct nfs_mount_info *mount_info)
+>  {
+> -	return security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts);
+> +	return security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts,
+> +								0, NULL);
+>  }
+>  EXPORT_SYMBOL_GPL(nfs_set_sb_security);
+>  
+> diff --git a/include/linux/security.h b/include/linux/security.h
+> index 934f96f..4ab51e2 100644
+> --- a/include/linux/security.h
+> +++ b/include/linux/security.h
+> @@ -1456,7 +1456,9 @@ struct security_operations {
+>  	int (*sb_pivotroot) (struct path *old_path,
+>  			     struct path *new_path);
+>  	int (*sb_set_mnt_opts) (struct super_block *sb,
+> -				struct security_mnt_opts *opts);
+> +				struct security_mnt_opts *opts,
+> +				unsigned long kern_flags,
+> +				unsigned long *set_kern_flags);
+>  	void (*sb_clone_mnt_opts) (const struct super_block *oldsb,
+>  				   struct super_block *newsb);
+>  	int (*sb_parse_opts_str) (char *options, struct security_mnt_opts *opts);
+> @@ -1747,7 +1749,10 @@ int security_sb_mount(const char *dev_name, struct path *path,
+>  		      const char *type, unsigned long flags, void *data);
+>  int security_sb_umount(struct vfsmount *mnt, int flags);
+>  int security_sb_pivotroot(struct path *old_path, struct path *new_path);
+> -int security_sb_set_mnt_opts(struct super_block *sb, struct security_mnt_opts *opts);
+> +int security_sb_set_mnt_opts(struct super_block *sb,
+> +				struct security_mnt_opts *opts,
+> +				unsigned long kern_flags,
+> +				unsigned long *set_kern_flags);
+>  void security_sb_clone_mnt_opts(const struct super_block *oldsb,
+>  				struct super_block *newsb);
+>  int security_sb_parse_opts_str(char *options, struct security_mnt_opts *opts);
+> @@ -2037,7 +2042,9 @@ static inline int security_sb_pivotroot(struct path *old_path,
+>  }
+>  
+>  static inline int security_sb_set_mnt_opts(struct super_block *sb,
+> -					   struct security_mnt_opts *opts)
+> +					   struct security_mnt_opts *opts,
+> +					   unsigned long kern_flags,
+> +					   unsigned long *set_kern_flags)
+>  {
+>  	return 0;
+>  }
+> diff --git a/security/capability.c b/security/capability.c
+> index 71e5052..4708973 100644
+> --- a/security/capability.c
+> +++ b/security/capability.c
+> @@ -91,7 +91,10 @@ static int cap_sb_pivotroot(struct path *old_path, struct path *new_path)
+>  }
+>  
+>  static int cap_sb_set_mnt_opts(struct super_block *sb,
+> -			       struct security_mnt_opts *opts)
+> +			       struct security_mnt_opts *opts,
+> +			       unsigned long kern_flags,
+> +			       unsigned long *set_kern_flags)
+> +
+>  {
+>  	if (unlikely(opts->num_mnt_opts))
+>  		return -EOPNOTSUPP;
+> diff --git a/security/security.c b/security/security.c
+> index 07391f3..df8ade2 100644
+> --- a/security/security.c
+> +++ b/security/security.c
+> @@ -294,9 +294,12 @@ int security_sb_pivotroot(struct path *old_path, struct path *new_path)
+>  }
+>  
+>  int security_sb_set_mnt_opts(struct super_block *sb,
+> -				struct security_mnt_opts *opts)
+> +				struct security_mnt_opts *opts,
+> +				unsigned long kern_flags,
+> +				unsigned long *set_kern_flags)
+>  {
+> -	return security_ops->sb_set_mnt_opts(sb, opts);
+> +	return security_ops->sb_set_mnt_opts(sb, opts, kern_flags,
+> +						set_kern_flags);
+>  }
+>  EXPORT_SYMBOL(security_sb_set_mnt_opts);
+>  
+> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+> index 273e28b..6cb24ec 100644
+> --- a/security/selinux/hooks.c
+> +++ b/security/selinux/hooks.c
+> @@ -552,7 +552,9 @@ static int bad_option(struct superblock_security_struct *sbsec, char flag,
+>   * labeling information.
+>   */
+>  static int selinux_set_mnt_opts(struct super_block *sb,
+> -				struct security_mnt_opts *opts)
+> +				struct security_mnt_opts *opts,
+> +				unsigned long kern_flags,
+> +				unsigned long *set_kern_flags)
+>  {
+>  	const struct cred *cred = current_cred();
+>  	int rc = 0, i;
+> @@ -580,6 +582,12 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+>  			"before the security server is initialized\n");
+>  		goto out;
+>  	}
+> +	if (kern_flags && !set_kern_flags) {
+> +		/* Specifying internal flags without providing a place to
+> +		 * place the results is not allowed */
+> +		rc = -EINVAL;
+> +		goto out;
+> +	}
+>  
+>  	/*
+>  	 * Binary mount data FS will come through this function twice.  Once
+> @@ -949,7 +957,7 @@ static int superblock_doinit(struct super_block *sb, void *data)
+>  		goto out_err;
+>  
+>  out:
+> -	rc = selinux_set_mnt_opts(sb, &opts);
+> +	rc = selinux_set_mnt_opts(sb, &opts, 0, NULL);
+>  
+>  out_err:
+>  	security_free_mnt_opts(&opts);
+> -- 
+> 1.8.1.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-Lustre Software Architect
-Intel High Performance Data Division
-
-
-
---_002_CDC2ABAC3341Candreasdilgerintelcom_
-Content-Type: application/octet-stream;
-	name="nfs-suport-64-bit-root-inode-number.patch"
-Content-Description: nfs-suport-64-bit-root-inode-number.patch
-Content-Disposition: attachment;
-	filename="nfs-suport-64-bit-root-inode-number.patch"; size=1453;
-	creation-date="Wed, 22 May 2013 23:06:53 GMT";
-	modification-date="Wed, 22 May 2013 23:06:53 GMT"
-Content-ID: <085CC010FF0AED41B35B03D1F6857E7E@intel.com>
-Content-Transfer-Encoding: base64
-
-RnJvbSBiZWJmNTVkOTkxMzIyYzcyZDViMDliMjE2Yzc3NmFiMDM4N2MwNDNlIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBGYW4gWW9uZyA8ZmFuLnlvbmdAaW50ZWwuY29tPgpEYXRlOiBN
-b24sIDEzIE1heSAyMDEzIDEzOjUzOjQyICswODAwClN1YmplY3Q6IFtQQVRDSF0gbmZzOiBzdXBw
-b3J0IDY0LWJpdCByb290IGlub2RlIG51bWJlciBpbiBORlMgRlNJRAoKV2hlbiBleHBvcnRpbmcg
-YSBmaWxlc3lzdGVtIHZpYSBORlMsIGl0IGNhbiBnZW5lcmF0ZSBzZXZlcmFsIGtpbmRzCm9mIE5G
-UyBmaWxlc3lzdGVtIElEcy4gRm9yIG1vc3Qgb2YgY2FzZXMsIGl0IHVzZXMgYSAzMi1iaXQgaW5v
-ZGUKbnVtYmVyIGluIHRoZSBORlMgRlNJRCwgYnV0IHRoaXMgZG9lcyBub3Qgd29yayBvbiBhIGZp
-bGVzeXN0ZW0KdXNpbmcgYSA2NC1iaXQgcm9vdCBpbm9kZSBudW1iZXIuCgpJbiBrZXJuZWwgc3Bh
-Y2UsIE5GUyBjYW4gZ2VuZXJhdGUvdXNlIE5GUyBGU0lEIHdpdGggYSA2NC1iaXQgaW5vZGUKbnVt
-YmVyIGZvciB0aGUgIkZTSURfVVVJRDE2X0lOVU0iIHR5cGUuIFVuZm9ydHVuYXRlbHksIHdoaWxl
-IHRoZQp1c2VyIHNwYWNlIG5mcy11dGlscyBkZWNvZGUgdGhlIDY0LWJpdCBpbm9kZSBudW1iZXIg
-ZnJvbSB0aGUgRlNJRApjb3JyZWN0bHksIGl0IGlzIHRydW5jYXRlZCB3aGVuIHN0b3JpbmcgaXQg
-aW4gInN0cnVjdCBwYXJzZWRfZnNpZCIuCkV4cGFuZCB0aGUgInN0cnVjdCBwYXJzZWRfZnNpZCIg
-aW5vZGUgZmllbGQgdG8gc3RvcmUgdGhlIGZ1bGwgNjQtYml0CnJvb3QgaW5vZGUgbnVtYmVyLgoK
-SW50ZWwtYnVnLWlkOiBMVS0yOTA0ClNpZ25lZC1vZmYtYnk6IEZhbiBZb25nIDxmYW4ueW9uZ0Bp
-bnRlbC5jb20+ClNpZ25lZC1vZmYtYnk6IEFuZHJlYXMgRGlsZ2VyIDxhbmRyZWFzLmRpbGdlckBp
-bnRlbC5jb20+Ci0tLQogdXRpbHMvbW91bnRkL2NhY2hlLmMgfCAgICAyICstCiAxIGZpbGVzIGNo
-YW5nZWQsIDEgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbnMoLSkKCmRpZmYgLS1naXQgYS91dGls
-cy9tb3VudGQvY2FjaGUuYyBiL3V0aWxzL21vdW50ZC9jYWNoZS5jCmluZGV4IDUxN2FhNjIuLmE3
-MjEyZTcgMTAwNjQ0Ci0tLSBhL3V0aWxzL21vdW50ZC9jYWNoZS5jCisrKyBiL3V0aWxzL21vdW50
-ZC9jYWNoZS5jCkBAIC0zODgsNyArMzg4LDcgQEAgc3RydWN0IHBhcnNlZF9mc2lkIHsKIAlpbnQg
-ZnNpZHR5cGU7CiAJLyogV2UgY291bGQgdXNlIGEgdW5pb24gZm9yIHRoaXMsIGJ1dCBpdCB3b3Vs
-ZCBiZSBtb3JlCiAJICogY29tcGxpY2F0ZWQ7IHdoeSBib3RoZXI/ICovCi0JdW5zaWduZWQgaW50
-IGlub2RlOworCXVuc2lnbmVkIGxvbmcgbG9uZyBpbm9kZTsgLyogV2UgbmVlZCA2NC1iaXRzIGlu
-byMgKi8KIAl1bnNpZ25lZCBpbnQgbWlub3I7CiAJdW5zaWduZWQgaW50IG1ham9yOwogCXVuc2ln
-bmVkIGludCBmc2lkbnVtOwotLSAKMS43LjEKCg==
-
---_002_CDC2ABAC3341Candreasdilgerintelcom_--
+-- 
+James Morris
+<jmorris@namei.org>
