@@ -1,154 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42750 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:13156 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758551Ab3ENVMz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 May 2013 17:12:55 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/3] svcrpc: store gss mech in svc_cred
-Date: Tue, 14 May 2013 17:12:52 -0400
-Message-Id: <1368565973-16739-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1368565973-16739-1-git-send-email-bfields@redhat.com>
-References: <1368565973-16739-1-git-send-email-bfields@redhat.com>
+	id S1760373Ab3EBRTY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 May 2013 13:19:24 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 08/17] NFSv4: Add label recommended attribute and NFSv4 flags
+Date: Thu,  2 May 2013 13:19:02 -0400
+Message-Id: <1367515151-31015-9-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
+References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: David Quigley <dpquigl@davequigley.com>
 
-Store a pointer to the gss mechanism used in the rq_cred and cl_cred.
-This will make it easier to enforce SP4_MACH_CRED, which needs to
-compare the mechanism used on the exchange_id with that used on
-protected operations.
+This patch adds several new flags to allow the NFS client and server to
+determine if this attribute is supported and if it is being sent over the wire.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 ---
- fs/nfsd/nfs4state.c                   |    3 +++
- include/linux/sunrpc/gss_api.h        |    2 ++
- include/linux/sunrpc/svcauth.h        |    4 ++++
- net/sunrpc/auth_gss/gss_mech_switch.c |    5 ++++-
- net/sunrpc/auth_gss/svcauth_gss.c     |    4 +---
- 5 files changed, 14 insertions(+), 4 deletions(-)
+ include/linux/nfs4.h      | 1 +
+ include/linux/nfs_fs_sb.h | 1 +
+ include/linux/nfs_xdr.h   | 4 +++-
+ 3 files changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 91ead0e..52f9e92 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1188,6 +1188,9 @@ static int copy_cred(struct svc_cred *target, struct svc_cred *source)
- 	target->cr_gid = source->cr_gid;
- 	target->cr_group_info = source->cr_group_info;
- 	get_group_info(target->cr_group_info);
-+	target->cr_gss_mech = source->cr_gss_mech;
-+	if (source->cr_gss_mech)
-+		gss_mech_get(source->cr_gss_mech);
- 	return 0;
- }
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 7e18a66..6f44cc1 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -385,6 +385,7 @@ enum lock_type4 {
+ #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
+ #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
+ #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
++#define FATTR4_WORD2_SECURITY_LABEL     (1UL << 17)
+ #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
  
-diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-index 161463e..1f911cc 100644
---- a/include/linux/sunrpc/gss_api.h
-+++ b/include/linux/sunrpc/gss_api.h
-@@ -151,6 +151,8 @@ struct gss_api_mech *gss_mech_get_by_pseudoflavor(u32);
- /* Fill in an array with a list of supported pseudoflavors */
- int gss_mech_list_pseudoflavors(rpc_authflavor_t *, int);
+ /* MDS threshold bitmap bits */
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 6c6ed15..d507357 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -197,5 +197,6 @@ struct nfs_server {
+ #define NFS_CAP_MTIME		(1U << 13)
+ #define NFS_CAP_POSIX_LOCK	(1U << 14)
+ #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
++#define NFS_CAP_SECURITY_LABEL	(1U << 16)
  
-+struct gss_api_mech * gss_mech_get(struct gss_api_mech *);
-+
- /* For every successful gss_mech_get or gss_mech_get_by_* call there must be a
-  * corresponding call to gss_mech_put. */
- void gss_mech_put(struct gss_api_mech *);
-diff --git a/include/linux/sunrpc/svcauth.h b/include/linux/sunrpc/svcauth.h
-index 95c9566..8d71d65 100644
---- a/include/linux/sunrpc/svcauth.h
-+++ b/include/linux/sunrpc/svcauth.h
-@@ -14,6 +14,7 @@
- #include <linux/string.h>
- #include <linux/sunrpc/msg_prot.h>
- #include <linux/sunrpc/cache.h>
-+#include <linux/sunrpc/gss_api.h>
- #include <linux/hash.h>
- #include <linux/cred.h>
+ #endif
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 4b993d3..9f2dba3 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -104,6 +104,7 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
+ #define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
+ #define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
++#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 25)
  
-@@ -23,6 +24,7 @@ struct svc_cred {
- 	struct group_info	*cr_group_info;
- 	u32			cr_flavor; /* pseudoflavor */
- 	char			*cr_principal; /* for gss */
-+	struct gss_api_mech	*cr_gss_mech;
- };
+ #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
+ 		| NFS_ATTR_FATTR_MODE \
+@@ -123,7 +124,8 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
+ 		| NFS_ATTR_FATTR_SPACE_USED)
+ #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
+-		| NFS_ATTR_FATTR_SPACE_USED)
++		| NFS_ATTR_FATTR_SPACE_USED \
++		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
  
- static inline void init_svc_cred(struct svc_cred *cred)
-@@ -37,6 +39,8 @@ static inline void free_svc_cred(struct svc_cred *cred)
- 	if (cred->cr_group_info)
- 		put_group_info(cred->cr_group_info);
- 	kfree(cred->cr_principal);
-+	gss_mech_put(cred->cr_gss_mech);
-+	init_svc_cred(cred);
- }
- 
- struct svc_rqst;		/* forward decl */
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index defa9d3..27ce262 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -139,11 +139,12 @@ void gss_mech_unregister(struct gss_api_mech *gm)
- }
- EXPORT_SYMBOL_GPL(gss_mech_unregister);
- 
--static struct gss_api_mech *gss_mech_get(struct gss_api_mech *gm)
-+struct gss_api_mech *gss_mech_get(struct gss_api_mech *gm)
- {
- 	__module_get(gm->gm_owner);
- 	return gm;
- }
-+EXPORT_SYMBOL(gss_mech_get);
- 
- static struct gss_api_mech *
- _gss_mech_get_by_name(const char *name)
-@@ -360,6 +361,7 @@ gss_pseudoflavor_to_service(struct gss_api_mech *gm, u32 pseudoflavor)
- 	}
- 	return 0;
- }
-+EXPORT_SYMBOL(gss_pseudoflavor_to_service);
- 
- char *
- gss_service_to_auth_domain_name(struct gss_api_mech *gm, u32 service)
-@@ -379,6 +381,7 @@ gss_mech_put(struct gss_api_mech * gm)
- 	if (gm)
- 		module_put(gm->gm_owner);
- }
-+EXPORT_SYMBOL(gss_mech_put);
- 
- /* The mech could probably be determined from the token instead, but it's just
-  * as easy for now to pass it in. */
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index c59f875..9f0f017 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -391,7 +391,6 @@ update_rsc(struct cache_head *cnew, struct cache_head *ctmp)
- 	memset(&new->seqdata, 0, sizeof(new->seqdata));
- 	spin_lock_init(&new->seqdata.sd_lock);
- 	new->cred = tmp->cred;
--	new->cred.cr_principal = tmp->cred.cr_principal;
- 	init_svc_cred(&tmp->cred);
- }
- 
-@@ -485,7 +484,7 @@ static int rsc_parse(struct cache_detail *cd,
- 		len = qword_get(&mesg, buf, mlen);
- 		if (len < 0)
- 			goto out;
--		gm = gss_mech_get_by_name(buf);
-+		gm = rsci.cred.cr_gss_mech = gss_mech_get_by_name(buf);
- 		status = -EOPNOTSUPP;
- 		if (!gm)
- 			goto out;
-@@ -515,7 +514,6 @@ static int rsc_parse(struct cache_detail *cd,
- 	rscp = rsc_update(cd, &rsci, rscp);
- 	status = 0;
- out:
--	gss_mech_put(gm);
- 	rsc_free(&rsci);
- 	if (rscp)
- 		cache_put(&rscp->h, cd);
+ /*
+  * Info on the file system
 -- 
-1.7.9.5
+1.8.1.4
 
