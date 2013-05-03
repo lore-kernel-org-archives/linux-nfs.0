@@ -1,77 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from esa-jnhn.mail.uoguelph.ca ([131.104.91.44]:4475 "EHLO
-	esa-jnhn.mail.uoguelph.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757517Ab3EaXYF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 May 2013 19:24:05 -0400
-Date: Fri, 31 May 2013 19:24:03 -0400 (EDT)
-From: Rick Macklem <rmacklem@uoguelph.ca>
-To: Bram Vandoren <brambi@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>
-Message-ID: <785211889.113142.1370042643416.JavaMail.root@erie.cs.uoguelph.ca>
-In-Reply-To: <CACQjR_CsRY4O+S1Zx-QabXYBUtRMKHa8o7ymCmLqSHa9UdgNFQ@mail.gmail.com>
-Subject: Re: NFS client hangs after server reboot
+Received: from szxga01-in.huawei.com ([119.145.14.64]:19172 "EHLO
+	szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760877Ab3ECKJ1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 May 2013 06:09:27 -0400
+Message-ID: <51838C98.2090205@huawei.com>
+Date: Fri, 3 May 2013 18:08:24 +0800
+From: Zhao Hongjiang <zhaohongjiang@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+To: <bfields@redhat.com>
+CC: <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Subject: [PATCH] nfsd: get rid of the unused functions in vfs
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bram Vandoren wrote:
-> > Did both the client and server have the same IP addresses before the
-> > reboot?
-> 
-> Yes.
-> 
-> > If not, the Linux client's nfs_client_id4.id SetClientID argument
-> > will be different (it has the client/side IP# in it).
-> > nfs_client_id4.id
-> > isn't supposed to change for a given client when it is rebooted.
-> > That will make the FreeBSD NFSv4 server see "new client" (which is
-> > not in the
-> > stablerestart file used to avoid certain reboot edge conditions) and
-> > will not give it a grace period.
-> > This is the only explanation I can think of for the NFS4ERR_NO_GRACE
-> > reply shortly after the reboot.
-> 
-> I checked some other clients and they all receive the
-> NFS4ERR_NO_GRACE response from the server. It's not unique for the
-> clients that hang. I was unable to reproduce this is a minimal test
-> configuration. Perhaps the nfs-stablerestart file is corrupt on the
-> server?
-> 
-> I checked
-> strings nfs-stablerestart
-> and I see a lot of duplicate entries. In total there are ~10000 lines
-> but we only have ~50 clients.
-> Most clients have 3 types of entries:
-> Linux NFSv4.0 a.b.c.d/e.f.g.h tcp
-> Linux NFSv4.0 a.b.c.d/e.f.g.h tcp*
-> Linux NFSv4.0 a.b.c.d/e.f.g.h tcp+
-> 
-I'll take a look. I wrote that code about 10 years ago, so I don't remember
-all the details w.r.t. the records in the stable restart file. If you truncate
-the file, there won't be any recovery on the next reboot, so you need to
-unmount all the NFSv4 mounts on it before rebooting for that case.
+The fh_lock_parent(), nfsd_truncate(), nfsd_notify_change() and nfsd_sync_dir()
+fuctions were never implement and used, just remove them.
 
-What you packet trace didn't indicate was when the server was rebooted vs
-when the client sent it a SYN that started a new connection. During the
-approx. 4400 sec the server was down there should have been repeated attempts
-to connect to it (basically a TCP packet with SYN in it) at least once every
-30sec. Basically, after the server reboots, the client must establish a TCP
-connection and attempt recovery within 2 minutes or it just isn't going to
-work.
+Signed-off-by: Zhao Hongjiang <zhaohongjiang@huawei.com>
+---
+ fs/nfsd/vfs.h |    5 -----
+ 1 files changed, 0 insertions(+), 5 deletions(-)
 
-Btw, server reboot recovery doesn't get a lot of testing. Some of that is
-logistics (no one pays for FreeBSD NFS development, etc) and the rest is that
-most assume a server will remain up for months/years at a time. If the FreeBSD
-server is crashing, you need to try and resolve that. If the approx. 4400 sec
-downtime was a scheduled maintenance type of thing, you should consider unmounting
-the volumes before the server is shut down and doing fresh mounts after it
-is rebooted.
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index 5b58941..8d2b40d 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -39,7 +39,6 @@
+ typedef int (*nfsd_dirop_t)(struct inode *, struct dentry *, int, int);
+ 
+ /* nfsd/vfs.c */
+-int		fh_lock_parent(struct svc_fh *, struct dentry *);
+ int		nfsd_racache_init(int);
+ void		nfsd_racache_shutdown(void);
+ int		nfsd_cross_mnt(struct svc_rqst *rqstp, struct dentry **dpp,
+@@ -92,17 +91,13 @@ __be32		nfsd_remove(struct svc_rqst *,
+ 				struct svc_fh *, char *, int);
+ __be32		nfsd_unlink(struct svc_rqst *, struct svc_fh *, int type,
+ 				char *name, int len);
+-int		nfsd_truncate(struct svc_rqst *, struct svc_fh *,
+-				unsigned long size);
+ __be32		nfsd_readdir(struct svc_rqst *, struct svc_fh *,
+ 			     loff_t *, struct readdir_cd *, filldir_t);
+ __be32		nfsd_statfs(struct svc_rqst *, struct svc_fh *,
+ 				struct kstatfs *, int access);
+ 
+-int		nfsd_notify_change(struct inode *, struct iattr *);
+ __be32		nfsd_permission(struct svc_rqst *, struct svc_export *,
+ 				struct dentry *, int);
+-int		nfsd_sync_dir(struct dentry *dp);
+ 
+ #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+ struct posix_acl *nfsd_get_posix_acl(struct svc_fh *, int);
+-- 
+1.7.1
 
-rick
-
-> Again, thanks a lot for looking into this.
-> 
-> Bram.
