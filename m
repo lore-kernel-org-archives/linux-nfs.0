@@ -1,63 +1,145 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12212 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:43730 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760715Ab3EBRTU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 May 2013 13:19:20 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 03/17] NFSDv4.2: Added NFS v4.2 support to the NFS server
-Date: Thu,  2 May 2013 13:18:57 -0400
-Message-Id: <1367515151-31015-4-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
-References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
+	id S1760475Ab3ECTRb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 May 2013 15:17:31 -0400
+Date: Fri, 3 May 2013 15:17:27 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: long delay when mounting due to SETCLIENTID AUTH_GSS attempts
+Message-ID: <20130503151727.09d684f4@tlielax.poochiereds.net>
+In-Reply-To: <A2E5B3F1-A8F1-4731-A66C-548B9C8FD429@oracle.com>
+References: <20130503132557.2fdf794d@tlielax.poochiereds.net>
+	<AE700845-4032-4BEC-817C-97EB08A831E8@oracle.com>
+	<20130503142421.19fb3ca6@tlielax.poochiereds.net>
+	<1367606034.3556.25.camel@leira.trondhjem.org>
+	<20130503144437.3a47e476@tlielax.poochiereds.net>
+	<A2E5B3F1-A8F1-4731-A66C-548B9C8FD429@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Steve Dickson <steved@redhat.com>
+On Fri, 3 May 2013 14:48:59 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-This enable NFSv4.2 support for the server. To enable this
-code do the following:
-  echo "+4.2" >/proc/fs/nfsd/versions
+> 
+> On May 3, 2013, at 2:44 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> > On Fri, 3 May 2013 18:33:54 +0000
+> > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+> > 
+> >> On Fri, 2013-05-03 at 14:24 -0400, Jeff Layton wrote:
+> >>> On Fri, 3 May 2013 13:56:13 -0400
+> >>> Chuck Lever <chuck.lever@oracle.com> wrote:
+> >>> 
+> >>>> 
+> >>>> On May 3, 2013, at 1:25 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> >>>> 
+> >>>>> I've noticed that when running a 3.10-pre kernel that if I try to mount
+> >>>>> up a NFSv4 filesystem that it now takes ~15s for the mount to complete.
+> >>>>> 
+> >>>>> Here's a little rpcdebug output:
+> >>>>> 
+> >>>>> [ 3056.385078] svc: server ffff8800368fc000 waiting for data (to = 9223372036854775807)
+> >>>>> [ 3056.392056] RPC:       new task initialized, procpid 2471
+> >>>>> [ 3056.392758] RPC:       allocated task ffff88010cd90100
+> >>>>> [ 3056.393303] RPC:    42 __rpc_execute flags=0x1280
+> >>>>> [ 3056.393630] RPC:    42 call_start nfs4 proc SETCLIENTID (sync)
+> >>>>> [ 3056.394056] RPC:    42 call_reserve (status 0)
+> >>>>> [ 3056.394368] RPC:    42 reserved req ffff8801019f9600 xid 21ad6c40
+> >>>>> [ 3056.394783] RPC:       wake_up_first(ffff88010a989990 "xprt_sending")
+> >>>>> [ 3056.395252] RPC:    42 call_reserveresult (status 0)
+> >>>>> [ 3056.395595] RPC:    42 call_refresh (status 0)
+> >>>>> [ 3056.395901] RPC:       gss_create_cred for uid 0, flavor 390004
+> >>>>> [ 3056.396361] RPC:       gss_create_upcall for uid 0
+> >>>>> [ 3071.396134] RPC: AUTH_GSS upcall timed out.
+> >>>>> Please check user daemon is running.
+> >>>>> [ 3071.397374] RPC:       gss_create_upcall for uid 0 result -13
+> >>>>> [ 3071.398192] RPC:    42 call_refreshresult (status -13)
+> >>>>> [ 3071.398873] RPC:    42 call_refreshresult: refresh creds failed with error -13
+> >>>>> [ 3071.399881] RPC:    42 return 0, status -13
+> >>>>> 
+> >>>>> The problem is that we're now trying to upcall for GSS creds to do the
+> >>>>> SETCLIENTID call, but this host isn't running rpc.gssd. Not running
+> >>>>> rpc.gssd is pretty common for people not using kerberized NFS. I think
+> >>>>> we'll see a lot of complaints about this.
+> >>>>> 
+> >>>>> Is this expected?
+> >>>> 
+> >>>> Yes.
+> >>>> 
+> >>>> There are operations like SETCLIENTID and GETATTR(fs_locations) which should always use an integrity-checking security flavor, even if particular mount points use sec=sys.
+> >>>> 
+> >>>> There are cases where GSS is not available, and we fall back to using AUTH_SYS.  That should happen as quickly as possible, I agree.
+> >>>> 
+> >>>>> If so, what's the proposed remedy?
+> >>>>> Simply have everyone run rpc.gssd even if they're not using kerberized NFS?
+> >>>> 
+> >>>> 
+> >>>> That's one possibility.  Or we could shorten the upcall timeout.  Or, add a mechanism by which rpc.gssd can provide a positive indication to the kernel that it is running.
+> >>>> 
+> >>>> It doesn't seem like an intractable problem.
+> >>>> 
+> >>> 
+> >>> Nope, it's not intractable at all...
+> >>> 
+> >>> Currently, the gssd upcall uses the RPC_PIPE_WAIT_FOR_OPEN flag to
+> >>> allow you to queue upcalls to be processed when the daemon isn't up
+> >>> yet. When the daemon starts, it processes that queue. The caller gives
+> >>> up after 15s (which is what's happening here), and the upcall
+> >>> eventually gets scraped out of the queue after 30s.
+> >>> 
+> >>> We could stop using that flag on this rpc_pipe and simply require that
+> >>> the daemon be up and running before attempting any sort of AUTH_GSS
+> >>> rpc. That might be a little less friendly in the face of boot-time
+> >>> ordering problems, but it should presumably make this problem go away.
+> >> 
+> >> You probably don't want to do that... The main reason for the
+> >> RPC_PIPE_WAIT_FOR_OPEN is that even if the gssd daemon is running, it
+> >> takes it a moment or two to notice that a new client directory has been
+> >> created, and that there is a new 'krb' pipe to attach to.
+> >> 
+> > 
+> > Ok yeah, good point...
+> > 
+> > Shortening the timeout will also suck -- that'll just reduce the pain
+> > somewhat but will still be a performance regression. It looks like even
+> > specifying '-o sec=sys' doesn't disable this behavior. Should it?
+> 
+> Nope.
+> 
+> We should always use krb5i if a GSS context can be established with our machine cred.  As I said before, SETCLIENTID and GETATTR(fs_locations) really should use an integrity-protecting security flavor no matter what flavor is in effect on the mount points themselves.
+> 
+> > Instead of using AUTH_GSS for SETCLIENTID by default, would it make
+> > sense to add a switch (module parm?) that turns it on so that it can be
+> > an opt-in thing rather than doing this by default?
+> 
+> Why add another tunable when we really should just fix the delay?
+> 
 
-after the nfsd kernel module is loaded.
+Because just shortening the delay will still leave you with a delay.
+Less people might notice and complain if it's shorter, but it'll still
+be there. It'll be particularly annoying with autofs...
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- fs/nfsd/nfs4xdr.c | 1 +
- fs/nfsd/nfsd.h    | 2 +-
- 2 files changed, 2 insertions(+), 1 deletion(-)
+You also run the risk of hitting the problem Trond mentioned if you
+shorten it too much (timing out the upcall before gssd's duty cycle has
+a chance to get to it).
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index a272007..b38de7a 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1572,6 +1572,7 @@ struct nfsd4_minorversion_ops {
- static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
- 	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
- 	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
-+	[2] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
- };
- 
- static __be32
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index c0d9317..15e7e1d 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -24,7 +24,7 @@
- /*
-  * nfsd version
-  */
--#define NFSD_SUPPORTED_MINOR_VERSION	1
-+#define NFSD_SUPPORTED_MINOR_VERSION	2
- /*
-  * Maximum blocksizes supported by daemon under various circumstances.
-  */
+> Besides, if gssd is running and no keytab exists, then the fallback to AUTH_SYS should be fast. Is that not an effective workaround until we address the delay problem?
+> 
+
+Yep, no problem if gssd is running. I'm concerned about the common case
+where it isn't. The expectation in the past has always been that if you
+weren't running kerberized NFS that you didn't need to run gssd. That
+has now changed and if you don't want to suffer a delay when mounting
+(however short it eventually is) then you need to run it.
+
+Might it make sense to introduce this change more gradually? Somehow
+warn people who aren't running gssd that they ought to start turning it
+on before we do this by default?
+
 -- 
-1.8.1.4
-
+Jeff Layton <jlayton@redhat.com>
