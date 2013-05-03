@@ -1,116 +1,175 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:54705 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:10796 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752548Ab3E1SlB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 May 2013 14:41:01 -0400
-Message-ID: <51A4FA3A.1080805@RedHat.com>
-Date: Tue, 28 May 2013 14:40:58 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: Simo Sorce <simo@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Avoid DNS reverse resolution for server names (take 3)
-References: <1366380998-2581-1-git-send-email-steved@redhat.com> <20130502131332.5c0ce2b0@notabene.brown>
-In-Reply-To: <20130502131332.5c0ce2b0@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S933810Ab3ECU1p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 May 2013 16:27:45 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] NFSv4: Convert nfs41_free_stateid to use an asynchronous RPC call
+Date: Fri,  3 May 2013 16:27:40 -0400
+Message-Id: <1367612861-37915-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The main reason for doing this is will be to allow for an asynchronous
+RPC mode that we can use for freeing lock stateids as per section
+8.2.4 of RFC5661.
 
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c       | 98 +++++++++++++++++++++++++++++++++++++------------
+ fs/nfs/nfs4xdr.c        |  2 +-
+ include/linux/nfs_xdr.h |  2 +-
+ 3 files changed, 77 insertions(+), 25 deletions(-)
 
-On 01/05/13 23:13, NeilBrown wrote:
-> Subject: Fix recent fix to Avoid DNS reverse resolution in gssd.
-> 
-> The final version for this fix that was committed inverted the test
-> so makes no change in the important cases.
-> The documentation didn't really help a naive user know when the new -D flag
-> should be used.
-> And the code (once fixed) avoided DNS resolution on non-qualified names too,
-> which probably isn't a good idea.
-> 
-> This patch fixes all three issues.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-Committed....
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 3f4e512..95f73ca 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6783,26 +6783,76 @@ static int nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
+ 	return err;
+ }
+ 
+-static int _nfs4_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
+-{
+-	struct nfs41_free_stateid_args args = {
+-		.stateid = stateid,
+-	};
++struct nfs_free_stateid_data {
++	struct nfs_server *server;
++	struct nfs41_free_stateid_args args;
+ 	struct nfs41_free_stateid_res res;
++};
++
++static void nfs41_free_stateid_prepare(struct rpc_task *task, void *calldata)
++{
++	struct nfs_free_stateid_data *data = calldata;
++	nfs41_setup_sequence(nfs4_get_session(data->server),
++			&data->args.seq_args,
++			&data->res.seq_res,
++			task);
++}
++
++static void nfs41_free_stateid_done(struct rpc_task *task, void *calldata)
++{
++	struct nfs_free_stateid_data *data = calldata;
++
++	nfs41_sequence_done(task, &data->res.seq_res);
++
++	switch (task->tk_status) {
++	case -NFS4ERR_DELAY:
++		if (nfs4_async_handle_error(task, data->server, NULL) == -EAGAIN)
++			rpc_restart_call_prepare(task);
++	}
++}
++
++static void nfs41_free_stateid_release(void *calldata)
++{
++	kfree(calldata);
++}
++
++const struct rpc_call_ops nfs41_free_stateid_ops = {
++	.rpc_call_prepare = nfs41_free_stateid_prepare,
++	.rpc_call_done = nfs41_free_stateid_done,
++	.rpc_release = nfs41_free_stateid_release,
++};
++
++static struct rpc_task *_nfs41_free_stateid(struct nfs_server *server,
++		nfs4_stateid *stateid,
++		bool privileged)
++{
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_FREE_STATEID],
+-		.rpc_argp = &args,
+-		.rpc_resp = &res,
+ 	};
+-	int status;
++	struct rpc_task_setup task_setup = {
++		.rpc_client = server->client,
++		.rpc_message = &msg,
++		.callback_ops = &nfs41_free_stateid_ops,
++		.flags = RPC_TASK_ASYNC,
++	};
++	struct nfs_free_stateid_data *data;
+ 
+ 	dprintk("NFS call  free_stateid %p\n", stateid);
+-	nfs41_init_sequence(&args.seq_args, &res.seq_res, 0);
+-	nfs4_set_sequence_privileged(&args.seq_args);
+-	status = nfs4_call_sync_sequence(server->client, server, &msg,
+-			&args.seq_args, &res.seq_res);
+-	dprintk("NFS reply free_stateid: %d\n", status);
+-	return status;
++	data = kmalloc(sizeof(*data), GFP_NOFS);
++	if (!data)
++		return ERR_PTR(-ENOMEM);
++	data->server = server;
++	nfs4_stateid_copy(&data->args.stateid, stateid);
++
++	task_setup.callback_data = data;
++
++	msg.rpc_argp = &data->args;
++	msg.rpc_resp = &data->res;
++	nfs41_init_sequence(&data->args.seq_args, &data->res.seq_res, 0);
++	if (privileged)
++		nfs4_set_sequence_privileged(&data->args.seq_args);
++
++	return rpc_run_task(&task_setup);
+ }
+ 
+ /**
+@@ -6816,15 +6866,17 @@ static int _nfs4_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
+  */
+ static int nfs41_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
+ {
+-	struct nfs4_exception exception = { };
+-	int err;
+-	do {
+-		err = _nfs4_free_stateid(server, stateid);
+-		if (err != -NFS4ERR_DELAY)
+-			break;
+-		nfs4_handle_exception(server, err, &exception);
+-	} while (exception.retry);
+-	return err;
++	struct rpc_task *task;
++	int ret;
++
++	task = _nfs41_free_stateid(server, stateid, true);
++	if (IS_ERR(task))
++		return PTR_ERR(task);
++	ret = rpc_wait_for_completion_task(task);
++	if (!ret)
++		ret = task->tk_status;
++	rpc_put_task(task);
++	return ret;
+ }
+ 
+ static bool nfs41_match_stateid(const nfs4_stateid *s1,
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index d40a89b..9be2326e 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -2003,7 +2003,7 @@ static void encode_free_stateid(struct xdr_stream *xdr,
+ 				struct compound_hdr *hdr)
+ {
+ 	encode_op_hdr(xdr, OP_FREE_STATEID, decode_free_stateid_maxsz, hdr);
+-	encode_nfs4_stateid(xdr, args->stateid);
++	encode_nfs4_stateid(xdr, &args->stateid);
+ }
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 766c5bc..104b62f 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1176,7 +1176,7 @@ struct nfs41_test_stateid_res {
+ 
+ struct nfs41_free_stateid_args {
+ 	struct nfs4_sequence_args	seq_args;
+-	nfs4_stateid			*stateid;
++	nfs4_stateid			stateid;
+ };
+ 
+ struct nfs41_free_stateid_res {
+-- 
+1.8.1.4
 
-steved.
-
-> 
-> 
-> diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
-> index 1df75c5..ac13fd4 100644
-> --- a/utils/gssd/gssd.man
-> +++ b/utils/gssd/gssd.man
-> @@ -195,11 +195,28 @@ option when starting
->  .BR rpc.gssd .
->  .SH OPTIONS
->  .TP
-> -.B -D
-> -DNS Reverse lookups are not used for determining the
-> -server names pass to GSSAPI. This option will reverses that and forces 
-> -the use of DNS Reverse resolution of the server's IP address to 
-> -retrieve the server name to use in GSAPI authentication.
-> +.B \-D
-> +The server name passed to GSSAPI for authentication is normally the
-> +name exactly as requested.  e.g. for NFS
-> +it is the server name in the "servername:/path" mount request.  Only if this
-> +servername appears to be an IP address (IPv4 or IPv6) or an
-> +unqualified name (no dots) will a reverse DNS lookup
-> +will be performed to get the canoncial server name.
-> +
-> +If
-> +.B \-D
-> +is present, a reverse DNS lookup will
-> +.I always
-> +be used, even if the server name looks like a canonical name.  So it
-> +is needed if partially qualified, or non canonical names are regularly
-> +used.
-> +
-> +Using
-> +.B \-D
-> +can introduce a security vulnerability, so it is recommended that
-> +.B \-D
-> +not be used, and that canonical names always be used when requesting
-> +services.
->  .TP
->  .B -f
->  Runs
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index af1844c..d381664 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -176,7 +176,6 @@ get_servername(const char *name, const struct sockaddr *sa, const char *addr)
->  	char			*hostname;
->  	char			hbuf[NI_MAXHOST];
->  	unsigned char		buf[sizeof(struct in6_addr)];
-> -	int			servername = 0;
->  
->  	if (avoid_dns) {
->  		/*
-> @@ -184,15 +183,18 @@ get_servername(const char *name, const struct sockaddr *sa, const char *addr)
->  		 * If it is an IP address, do the DNS lookup otherwise
->  		 * skip the DNS lookup.
->  		 */
-> -		servername = 0;
-> -		if (strchr(name, '.') && inet_pton(AF_INET, name, buf) == 1)
-> -			servername = 1; /* IPv4 */
-> -		else if (strchr(name, ':') && inet_pton(AF_INET6, name, buf) == 1)
-> -			servername = 1; /* or IPv6 */
-> -
-> -		if (servername) {
-> +		int is_fqdn = 1;
-> +		if (strchr(name, '.') == NULL)
-> +			is_fqdn = 0; /* local name */
-> +		else if (inet_pton(AF_INET, name, buf) == 1)
-> +			is_fqdn = 0; /* IPv4 address */
-> +		else if (inet_pton(AF_INET6, name, buf) == 1)
-> +			is_fqdn = 0; /* IPv6 addrss */
-> +
-> +		if (is_fqdn) {
->  			return strdup(name);
->  		}
-> +		/* Sorry, cannot avoid dns after all */
->  	}
->  
->  	switch (sa->sa_family) {
