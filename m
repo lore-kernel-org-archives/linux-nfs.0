@@ -1,57 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from szxga01-in.huawei.com ([119.145.14.64]:19172 "EHLO
-	szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760877Ab3ECKJ1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 May 2013 06:09:27 -0400
-Message-ID: <51838C98.2090205@huawei.com>
-Date: Fri, 3 May 2013 18:08:24 +0800
-From: Zhao Hongjiang <zhaohongjiang@huawei.com>
+Received: from mx1.redhat.com ([209.132.183.28]:35761 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753238Ab3ECAdT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 May 2013 20:33:19 -0400
+Subject: [PATCH 0/8] Fix assorted FS-Cache issues
+To: linux-cachefs@redhat.com
+From: David Howells <dhowells@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        hjayasur@redhat.com, jlayton@redhat.com, linux-kernel@vger.kernel.org
+Date: Fri, 03 May 2013 01:33:16 +0100
+Message-ID: <20130503003316.14952.51791.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
-To: <bfields@redhat.com>
-CC: <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
-Subject: [PATCH] nfsd: get rid of the unused functions in vfs
-Content-Type: text/plain; charset="ISO-8859-1"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The fh_lock_parent(), nfsd_truncate(), nfsd_notify_change() and nfsd_sync_dir()
-fuctions were never implement and used, just remove them.
 
-Signed-off-by: Zhao Hongjiang <zhaohongjiang@huawei.com>
+
+Following this mail is a series of patches to fix a number of FS-Cache issues,
+including a number of oopses.  The patches can also be found at:
+
+	http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/log/?h=fscache
+
+The patches are as follows:
+
+ (1) Don't put spin_lock() in a while-condition as spin_lock() may be wrapped
+     with do {} while(0) (cleanup).
+
+ (2) Name i_mutex lock classes rather than using numbers in CacheFiles (cleanup).
+
+ (3) Don't sleep in page release if __GFP_FS is not set (deadlock vs ext4).
+
+ (4) Uninline fscache_object_init() (cleanup).
+
+ (5) Wrap checks on object state (cleanup).
+
+ (6) Provide a system wait_on_atomic_t() and wake_up_atomic_t() (enhancement).
+
+ (7) Simplify the object state machine (need #4 and #5).
+
+ (8) Simplify cookie retention by objects (oops fix, need #6 and #7).
+
+David
 ---
- fs/nfsd/vfs.h |    5 -----
- 1 files changed, 0 insertions(+), 5 deletions(-)
+David Howells (6):
+      FS-Cache: Don't sleep in page release if __GFP_FS is not set
+      FS-Cache: Uninline fscache_object_init()
+      FS-Cache: Wrap checks on object state
+      Add wait_on_atomic_t() and wake_up_atomic_t()
+      FS-Cache: Fix object state machine to have separate work and wait states
+      FS-Cache: Simplify cookie retention for fscache_objects, fixing access problems
 
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 5b58941..8d2b40d 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -39,7 +39,6 @@
- typedef int (*nfsd_dirop_t)(struct inode *, struct dentry *, int, int);
- 
- /* nfsd/vfs.c */
--int		fh_lock_parent(struct svc_fh *, struct dentry *);
- int		nfsd_racache_init(int);
- void		nfsd_racache_shutdown(void);
- int		nfsd_cross_mnt(struct svc_rqst *rqstp, struct dentry **dpp,
-@@ -92,17 +91,13 @@ __be32		nfsd_remove(struct svc_rqst *,
- 				struct svc_fh *, char *, int);
- __be32		nfsd_unlink(struct svc_rqst *, struct svc_fh *, int type,
- 				char *name, int len);
--int		nfsd_truncate(struct svc_rqst *, struct svc_fh *,
--				unsigned long size);
- __be32		nfsd_readdir(struct svc_rqst *, struct svc_fh *,
- 			     loff_t *, struct readdir_cd *, filldir_t);
- __be32		nfsd_statfs(struct svc_rqst *, struct svc_fh *,
- 				struct kstatfs *, int access);
- 
--int		nfsd_notify_change(struct inode *, struct iattr *);
- __be32		nfsd_permission(struct svc_rqst *, struct svc_export *,
- 				struct dentry *, int);
--int		nfsd_sync_dir(struct dentry *dp);
- 
- #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
- struct posix_acl *nfsd_get_posix_acl(struct svc_fh *, int);
--- 
-1.7.1
+J. Bruce Fields (1):
+      CacheFiles: name i_mutex lock class explicitly
+
+Sebastian Andrzej Siewior (1):
+      fs/fscache: remove spin_lock() from the condition in while()
+
+
+ fs/cachefiles/interface.c     |   11 
+ fs/cachefiles/namei.c         |   10 
+ fs/cachefiles/xattr.c         |    6 
+ fs/fscache/cache.c            |   34 +
+ fs/fscache/cookie.c           |   93 +---
+ fs/fscache/fsdef.c            |    1 
+ fs/fscache/internal.h         |   11 
+ fs/fscache/main.c             |   11 
+ fs/fscache/netfs.c            |    1 
+ fs/fscache/object-list.c      |  103 ++--
+ fs/fscache/object.c           | 1077 +++++++++++++++++++++--------------------
+ fs/fscache/operation.c        |   36 +
+ fs/fscache/page.c             |   55 +-
+ include/linux/fscache-cache.h |  170 +++---
+ include/linux/wait.h          |   29 +
+ kernel/wait.c                 |   85 +++
+ 16 files changed, 922 insertions(+), 811 deletions(-)
 
