@@ -1,64 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f182.google.com ([209.85.220.182]:59457 "EHLO
-	mail-vc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755573Ab3EFTaU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 15:30:20 -0400
-Received: by mail-vc0-f182.google.com with SMTP id ia10so3409873vcb.13
-        for <linux-nfs@vger.kernel.org>; Mon, 06 May 2013 12:30:19 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20130506190115.GB800@mtj.dyndns.org>
-References: <1367615050-3894-1-git-send-email-ccross@android.com>
-	<1367615050-3894-2-git-send-email-ccross@android.com>
-	<20130506190115.GB800@mtj.dyndns.org>
-Date: Mon, 6 May 2013 12:30:19 -0700
-Message-ID: <CAMbhsRRcfpXBGAPThjrmB_judgn85TioR_6A6qwh_fBQCent7A@mail.gmail.com>
-Subject: Re: [PATCH 2/2] lockdep: check that no locks held at freeze time
-From: Colin Cross <ccross@android.com>
-To: Tejun Heo <tj@kernel.org>
-Cc: lkml <linux-kernel@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Len Brown <len.brown@intel.com>, Pavel Machek <pavel@ucw.cz>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>,
-        Linux PM list <linux-pm@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Ben Chan <benchan@chromium.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx12.netapp.com ([216.240.18.77]:10796 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934204Ab3ECU1q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 May 2013 16:27:46 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] NFSv4.1: Ensure that we free the lock stateid on the server
+Date: Fri,  3 May 2013 16:27:41 -0400
+Message-Id: <1367612861-37915-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1367612861-37915-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1367612861-37915-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 6, 2013 at 12:01 PM, Tejun Heo <tj@kernel.org> wrote:
-> On Fri, May 03, 2013 at 02:04:10PM -0700, Colin Cross wrote:
->> From: Mandeep Singh Baines <msb@chromium.org>
->>
->> We shouldn't try_to_freeze if locks are held.  Holding a lock can cause a
->> deadlock if the lock is later acquired in the suspend or hibernate path
->> (e.g.  by dpm).  Holding a lock can also cause a deadlock in the case of
->> cgroup_freezer if a lock is held inside a frozen cgroup that is later
->> acquired by a process outside that group.
->>
->> History:
->> This patch was originally applied as 6aa9707099c and reverted in
->> dbf520a9d7d4 because NFS was freezing with locks held.  It was
->> deemed better to keep the bad freeze point in NFS to allow laptops
->> to suspend consistently.  The previous patch in this series converts
->> NFS to call _unsafe versions of the freezable helpers so that
->> lockdep doesn't complain about them until a more correct fix
->> can be applied.
->
-> I don't care about %current change, especially given that it's a debug
-> interface but that really should be a separate patch, so please split
-> it out if you want it (and I think we want it).
+This ensures that the server doesn't need to keep huge numbers of
+lock stateids waiting around for the final CLOSE.
+See section 8.2.4 in RFC5661.
 
-The current change was requested by akpm and was part of the original
-patch.  Is it really worth confusing the history of this patch even
-more, applying it the first time, reverting it, and then applying it
-again in two parts?
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4_fs.h   |  3 ++-
+ fs/nfs/nfs4proc.c  | 17 +++++++++++++++--
+ fs/nfs/nfs4state.c | 11 +++++++----
+ 3 files changed, 24 insertions(+), 7 deletions(-)
+
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index f617bdc..a1e52d5 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -48,6 +48,8 @@ struct nfs4_minor_version_ops {
+ 			const nfs4_stateid *);
+ 	int	(*find_root_sec)(struct nfs_server *, struct nfs_fh *,
+ 			struct nfs_fsinfo *);
++	int	(*free_lock_state)(struct nfs_server *,
++			struct nfs4_lock_state *);
+ 	const struct nfs4_state_recovery_ops *reboot_recovery_ops;
+ 	const struct nfs4_state_recovery_ops *nograce_recovery_ops;
+ 	const struct nfs4_state_maintenance_ops *state_renewal_ops;
+@@ -235,7 +237,6 @@ extern int nfs4_proc_fs_locations(struct rpc_clnt *, struct inode *, const struc
+ extern struct rpc_clnt *nfs4_proc_lookup_mountpoint(struct inode *, struct qstr *,
+ 			    struct nfs_fh *, struct nfs_fattr *);
+ extern int nfs4_proc_secinfo(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
+-extern int nfs4_release_lockowner(struct nfs4_lock_state *);
+ extern const struct xattr_handler *nfs4_xattr_handlers[];
+ extern int nfs4_set_rw_stateid(nfs4_stateid *stateid,
+ 		const struct nfs_open_context *ctx,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 95f73ca..236972d 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5238,9 +5238,8 @@ static const struct rpc_call_ops nfs4_release_lockowner_ops = {
+ 	.rpc_release = nfs4_release_lockowner_release,
+ };
+ 
+-int nfs4_release_lockowner(struct nfs4_lock_state *lsp)
++static int nfs4_release_lockowner(struct nfs_server *server, struct nfs4_lock_state *lsp)
+ {
+-	struct nfs_server *server = lsp->ls_state->owner->so_server;
+ 	struct nfs_release_lockowner_data *data;
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_RELEASE_LOCKOWNER],
+@@ -6879,6 +6878,18 @@ static int nfs41_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
+ 	return ret;
+ }
+ 
++static int nfs41_free_lock_state(struct nfs_server *server, struct nfs4_lock_state *lsp)
++{
++	struct rpc_task *task;
++
++	task = _nfs41_free_stateid(server, &lsp->ls_stateid, false);
++	nfs4_free_lock_state(server, lsp);
++	if (IS_ERR(task))
++		return PTR_ERR(task);
++	rpc_put_task(task);
++	return 0;
++}
++
+ static bool nfs41_match_stateid(const nfs4_stateid *s1,
+ 		const nfs4_stateid *s2)
+ {
+@@ -6975,6 +6986,7 @@ static const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
+ 	.call_sync = _nfs4_call_sync,
+ 	.match_stateid = nfs4_match_stateid,
+ 	.find_root_sec = nfs4_find_root_sec,
++	.free_lock_state = nfs4_release_lockowner,
+ 	.reboot_recovery_ops = &nfs40_reboot_recovery_ops,
+ 	.nograce_recovery_ops = &nfs40_nograce_recovery_ops,
+ 	.state_renewal_ops = &nfs40_state_renewal_ops,
+@@ -6992,6 +7004,7 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
+ 	.call_sync = nfs4_call_sync_sequence,
+ 	.match_stateid = nfs41_match_stateid,
+ 	.find_root_sec = nfs41_find_root_sec,
++	.free_lock_state = nfs41_free_lock_state,
+ 	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
+ 	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
+ 	.state_renewal_ops = &nfs41_state_renewal_ops,
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index a31e0ab..ff8c038 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -921,6 +921,7 @@ static struct nfs4_lock_state *nfs4_get_lock_state(struct nfs4_state *state, fl_
+  */
+ void nfs4_put_lock_state(struct nfs4_lock_state *lsp)
+ {
++	struct nfs_server *server;
+ 	struct nfs4_state *state;
+ 
+ 	if (lsp == NULL)
+@@ -932,11 +933,13 @@ void nfs4_put_lock_state(struct nfs4_lock_state *lsp)
+ 	if (list_empty(&state->lock_states))
+ 		clear_bit(LK_STATE_IN_USE, &state->flags);
+ 	spin_unlock(&state->state_lock);
++	server = state->owner->so_server;
+ 	if (test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags)) {
+-		if (nfs4_release_lockowner(lsp) == 0)
+-			return;
+-	}
+-	nfs4_free_lock_state(lsp->ls_state->owner->so_server, lsp);
++		struct nfs_client *clp = server->nfs_client;
++
++		clp->cl_mvops->free_lock_state(server, lsp);
++	} else
++		nfs4_free_lock_state(server, lsp);
+ }
+ 
+ static void nfs4_fl_copy_lock(struct file_lock *dst, struct file_lock *src)
+-- 
+1.8.1.4
+
