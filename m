@@ -1,107 +1,186 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from oproxy9.bluehost.com ([69.89.24.6]:55811 "HELO
-	oproxy9.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753685Ab3EIQig (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 May 2013 12:38:36 -0400
-Message-ID: <1368117511.5695.34.camel@slavad-ubuntu-12.04>
-Subject: [PATCH v4 3/5] hfsplus: add all neccessary declarations for ACLs
- support
-From: Vyacheslav Dubeyko <slava@dubeyko.com>
-To: Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux NFS list <linux-nfs@vger.kernel.org>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>,
-        Hin-Tak Leung <htl10@users.sourceforge.net>,
-        Andrew Morton <akpm@linux-foundation.org>
-Date: Thu, 09 May 2013 20:38:31 +0400
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:34062 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932501Ab3ECAdq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 May 2013 20:33:46 -0400
+Subject: [PATCH 6/8] Add wait_on_atomic_t() and wake_up_atomic_t()
+To: linux-cachefs@redhat.com
+From: David Howells <dhowells@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        hjayasur@redhat.com, jlayton@redhat.com, linux-kernel@vger.kernel.org
+Date: Fri, 03 May 2013 01:33:44 +0100
+Message-ID: <20130503003344.14952.62121.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20130503003316.14952.51791.stgit@warthog.procyon.org.uk>
+References: <20130503003316.14952.51791.stgit@warthog.procyon.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Vyacheslav Dubeyko <slava@dubeyko.com>
-Subject: [PATCH v4 3/5] hfsplus: add all neccessary declarations for ACLs support
+Add wait_on_atomic_t() and wake_up_atomic_t() to indicate became-zero events
+on atomic_t types.  This uses the bit-wake waitqueue table.
 
-This patch adds declaration of all necessary structures that are necessary for ACLs support, special ACL-related flag for debug output and dprint_hexdump() macro.
-
-Signed-off-by: Vyacheslav Dubeyko <slava@dubeyko.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: "J. Bruce Fields" <bfields@redhat.com>
-CC: Al Viro <viro@zeniv.linux.org.uk>
-CC: Christoph Hellwig <hch@infradead.org>
-CC: Hin-Tak Leung <htl10@users.sourceforge.net>
+Signed-off-by: David Howells <dhowells@redhat.com>
 ---
- fs/hfsplus/hfsplus_fs.h  |    8 ++++++++
- fs/hfsplus/hfsplus_raw.h |   26 ++++++++++++++++++++++++++
- 2 files changed, 34 insertions(+)
 
-diff --git a/fs/hfsplus/hfsplus_fs.h b/fs/hfsplus/hfsplus_fs.h
-index 60b0a33..3b3896a 100644
---- a/fs/hfsplus/hfsplus_fs.h
-+++ b/fs/hfsplus/hfsplus_fs.h
-@@ -30,6 +30,7 @@
- #define DBG_EXTENT	0x00000020
- #define DBG_BITMAP	0x00000040
- #define DBG_ATTR_MOD	0x00000080
-+#define DBG_ACL_MOD	0x00000100
- 
- #if 0
- #define DBG_MASK	(DBG_EXTENT|DBG_INODE|DBG_BNODE_MOD)
-@@ -50,6 +51,13 @@ do {								\
- 		pr_cont(fmt, ##__VA_ARGS__);			\
- } while (0)
- 
-+#define hfs_dbg_hexdump(flg, prefix, ptr, size)			\
-+do {								\
-+	if (DBG_##flg & DBG_MASK)				\
-+		print_hex_dump_bytes(prefix,			\
-+				DUMP_PREFIX_NONE, ptr, size);	\
-+} while (0)
-+
- /* Runtime config options */
- #define HFSPLUS_DEF_CR_TYPE    0x3F3F3F3F  /* '????' */
- 
-diff --git a/fs/hfsplus/hfsplus_raw.h b/fs/hfsplus/hfsplus_raw.h
-index 452ede0..758b7ad 100644
---- a/fs/hfsplus/hfsplus_raw.h
-+++ b/fs/hfsplus/hfsplus_raw.h
-@@ -382,6 +382,32 @@ struct hfsplus_attr_inline_data {
- 	u8 raw_bytes[HFSPLUS_MAX_INLINE_DATA_SIZE];
- } __packed;
- 
-+#define HFSPLUS_GUID_SIZE 16 /* 128-bit */
-+
-+/* Access Control List Entry (ACE) */
-+struct hfsplus_acl_entry {
-+	u8 ace_applicable[HFSPLUS_GUID_SIZE]; /* Apple-style identifier */
-+	__be32 ace_flags;
-+	__be32 ace_rights;
-+} __packed;
-+
-+/* Access Control List */
-+struct hfsplus_acl_record {
-+	__be32 acl_entrycount;
-+	__be32 acl_flags;
-+	struct hfsplus_acl_entry acl_ace[0];
-+} __packed;
-+
-+#define HFSPLUS_FILESEC_MAGIC 0x012cc16d
-+
-+/* HFS+ File Security information */
-+struct hfsplus_filesec {
-+	__be32 fsec_magic;
-+	u8 fsec_owner[HFSPLUS_GUID_SIZE];
-+	u8 fsec_group[HFSPLUS_GUID_SIZE];
-+	struct hfsplus_acl_record fsec_acl;
-+} __packed;
-+
- /* A data record in the attributes tree */
- typedef union {
- 	__be32 record_type;
--- 
-1.7.9.5
+ include/linux/wait.h |   29 ++++++++++++++++-
+ kernel/wait.c        |   85 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 113 insertions(+), 1 deletion(-)
 
-
+diff --git a/include/linux/wait.h b/include/linux/wait.h
+index 7cb64d4..1379562 100644
+--- a/include/linux/wait.h
++++ b/include/linux/wait.h
+@@ -21,8 +21,12 @@ struct __wait_queue {
+ };
+ 
+ struct wait_bit_key {
+-	void *flags;
++	union {
++		void *flags;
++		atomic_t *atomic_val;
++	};
+ 	int bit_nr;
++#define WAIT_ATOMIC_T_BIT_NR -1
+ };
+ 
+ struct wait_bit_queue {
+@@ -60,6 +64,9 @@ struct task_struct;
+ #define __WAIT_BIT_KEY_INITIALIZER(word, bit)				\
+ 	{ .flags = word, .bit_nr = bit, }
+ 
++#define __WAIT_ATOMIC_T_KEY_INITIALIZER(p)				\
++	{ .atomic_val = p, .bit_nr = WAIT_ATOMIC_T_BIT_NR, }
++
+ extern void __init_waitqueue_head(wait_queue_head_t *q, const char *name, struct lock_class_key *);
+ 
+ #define init_waitqueue_head(q)				\
+@@ -146,8 +153,10 @@ void __wake_up_bit(wait_queue_head_t *, void *, int);
+ int __wait_on_bit(wait_queue_head_t *, struct wait_bit_queue *, int (*)(void *), unsigned);
+ int __wait_on_bit_lock(wait_queue_head_t *, struct wait_bit_queue *, int (*)(void *), unsigned);
+ void wake_up_bit(void *, int);
++void wake_up_atomic_t(atomic_t *);
+ int out_of_line_wait_on_bit(void *, int, int (*)(void *), unsigned);
+ int out_of_line_wait_on_bit_lock(void *, int, int (*)(void *), unsigned);
++int out_of_line_wait_on_atomic_t(atomic_t *, int (*)(atomic_t *), unsigned);
+ wait_queue_head_t *bit_waitqueue(void *, int);
+ 
+ #define wake_up(x)			__wake_up(x, TASK_NORMAL, 1, NULL)
+@@ -810,5 +819,23 @@ static inline int wait_on_bit_lock(void *word, int bit,
+ 		return 0;
+ 	return out_of_line_wait_on_bit_lock(word, bit, action, mode);
+ }
++
++/**
++ * wait_on_atomic_t - Wait for an atomic_t to become 0
++ * @val: The atomic value being waited on, a kernel virtual address
++ * @action: the function used to sleep, which may take special actions
++ * @mode: the task state to sleep in
++ *
++ * Wait for an atomic_t to become 0.  We abuse the bit-wait waitqueue table for
++ * the purpose of getting a waitqueue, but we set the key to a bit number
++ * outside of the target 'word'.
++ */
++static inline
++int wait_on_atomic_t(atomic_t *val, int (*action)(atomic_t *), unsigned mode)
++{
++	if (atomic_read(val) == 0)
++		return 0;
++	return out_of_line_wait_on_atomic_t(val, action, mode);
++}
+ 	
+ #endif
+diff --git a/kernel/wait.c b/kernel/wait.c
+index 6698e0c..ec5b23c 100644
+--- a/kernel/wait.c
++++ b/kernel/wait.c
+@@ -287,3 +287,88 @@ wait_queue_head_t *bit_waitqueue(void *word, int bit)
+ 	return &zone->wait_table[hash_long(val, zone->wait_table_bits)];
+ }
+ EXPORT_SYMBOL(bit_waitqueue);
++
++/*
++ * Manipulate the atomic_t address to produce a better bit waitqueue table hash
++ * index (we're keying off bit -1, but that would produce a horrible hash
++ * value).
++ */
++static inline wait_queue_head_t *atomic_t_waitqueue(atomic_t *p)
++{
++	if (BITS_PER_LONG == 64) {
++		unsigned long q = (unsigned long)p;
++		return bit_waitqueue((void *)(q & ~1), q & 1);
++	}
++	return bit_waitqueue(p, 0);
++}
++
++static int wake_atomic_t_function(wait_queue_t *wait, unsigned mode, int sync,
++				  void *arg)
++{
++	struct wait_bit_key *key = arg;
++	struct wait_bit_queue *wait_bit
++		= container_of(wait, struct wait_bit_queue, wait);
++
++	if (wait_bit->key.atomic_val != key->atomic_val ||
++	    wait_bit->key.bit_nr != key->bit_nr ||
++	    atomic_read(key->atomic_val) != 0)
++		return 0;
++	return autoremove_wake_function(wait, mode, sync, key);
++}
++
++/*
++ * To allow interruptible waiting and asynchronous (i.e. nonblocking) waiting,
++ * the actions of __wait_on_atomic_t() are permitted return codes.  Nonzero
++ * return codes halt waiting and return.
++ */
++static __sched
++int __wait_on_atomic_t(wait_queue_head_t *wq, struct wait_bit_queue *q,
++		       int (*action)(atomic_t *), unsigned mode)
++{
++	int ret = 0;
++
++	do {
++		prepare_to_wait(wq, &q->wait, mode);
++		if (atomic_read(q->key.atomic_val) == 0)
++			ret = (*action)(q->key.atomic_val);
++	} while (!ret && atomic_read(q->key.atomic_val) != 0);
++	finish_wait(wq, &q->wait);
++	return ret;
++}
++
++#define DEFINE_WAIT_ATOMIC_T(name, p)					\
++	struct wait_bit_queue name = {					\
++		.key = __WAIT_ATOMIC_T_KEY_INITIALIZER(p),		\
++		.wait	= {						\
++			.private	= current,			\
++			.func		= wake_atomic_t_function,	\
++			.task_list	=				\
++				LIST_HEAD_INIT((name).wait.task_list),	\
++		},							\
++	}
++
++__sched int out_of_line_wait_on_atomic_t(atomic_t *p, int (*action)(atomic_t *),
++					 unsigned mode)
++{
++	wait_queue_head_t *wq = atomic_t_waitqueue(p);
++	DEFINE_WAIT_ATOMIC_T(wait, p);
++
++	return __wait_on_atomic_t(wq, &wait, action, mode);
++}
++EXPORT_SYMBOL(out_of_line_wait_on_atomic_t);
++
++/**
++ * wake_up_atomic_t - Wake up a waiter on a atomic_t
++ * @word: The word being waited on, a kernel virtual address
++ * @bit: The bit of the word being waited on
++ *
++ * Wake up anyone waiting for the atomic_t to go to zero.
++ *
++ * Abuse the bit-waker function and its waitqueue hash table set (the atomic_t
++ * check is done by the waiter's wake function, not the by the waker itself).
++ */
++void wake_up_atomic_t(atomic_t *p)
++{
++	__wake_up_bit(atomic_t_waitqueue(p), p, WAIT_ATOMIC_T_BIT_NR);
++}
++EXPORT_SYMBOL(wake_up_atomic_t);
 
