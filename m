@@ -1,25 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.194]:52669 "EHLO mout.perfora.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752029Ab3EBF4f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 May 2013 01:56:35 -0400
-Date: Thu, 2 May 2013 01:56:25 -0400
-From: Jim Rees <rees@umich.edu>
-To: NeilBrown <neilb@suse.de>
-Cc: Steve Dickson <steved@redhat.com>, Simo Sorce <simo@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Avoid DNS reverse resolution for server names (take 3)
-Message-ID: <20130502055625.GA11376@umich.edu>
-References: <1366380998-2581-1-git-send-email-steved@redhat.com>
- <20130502131332.5c0ce2b0@notabene.brown>
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:32824 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1763031Ab3ECTRx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 May 2013 15:17:53 -0400
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130502131332.5c0ce2b0@notabene.brown>
+Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
+Subject: Re: [PATCH 1/2] NFSv4.x: Fix handling of partially delegated locks
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1367597884.3556.6.camel@leira.trondhjem.org>
+Date: Fri, 3 May 2013 15:17:49 -0400
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <361E61FA-0F58-465D-85CD-63F6B4C1C6BE@oracle.com>
+References: <1367515168-11158-1-git-send-email-Trond.Myklebust@netapp.com> <9873A24B-BCB9-4F95-9EC7-0DE38513505D@oracle.com> <1367597884.3556.6.camel@leira.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I really disliked the man page wording in the original patch. Yours is much
-better.
 
-Note that it's possible to have a fqdn with no dots in it, but I expect this
-will never happen.
+On May 3, 2013, at 12:18 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+
+> On Fri, 2013-05-03 at 12:12 -0400, Chuck Lever wrote:
+>> Hi-
+>> 
+>> On May 2, 2013, at 1:19 PM, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+>> 
+>>> If a NFS client receives a delegation for a file after it has taken
+>>> a lock on that file, we can currently end up in a situation where
+>>> we mistakenly skip unlocking that file.
+>>> 
+>>> The following patch swaps an erroneous check in nfs4_proc_unlck for
+>>> whether or not the file has a delegation to one which checks whether
+>>> or not we hold a lock stateid for that file.
+>>> 
+>>> Reported-by: Chuck Lever <Chuck.Lever@oracle.com>
+>>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+>>> Cc: stable@vger.kernel.org
+>> 
+>> Although this patch may apply cleanly to, say, 3.0-stable, the result is that LOCKUs now never appear on the wire.  It seems that older stable kernels are missing something that is needed to make this simple fix work correctly.
+> 
+> Yes. There is a dependency on commit
+> 795a88c968eef031f370973512b42124bacb2f17 (NFSv4: Convert the
+> nfs4_lock_state->ls_flags to a bit field).
+
+For the record, 795a88c9 appears in 3.7.  Thus the specific patch proposed in this thread applies to 3.7, 3.8, and 3.9.
+
+We applied this patch to a 3.0-based kernel and then adjusted for the absence of 795a88c9.  It works as expected.  We'll also check as far back as 2.6.32.  More later.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
