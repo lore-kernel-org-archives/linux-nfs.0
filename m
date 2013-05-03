@@ -1,127 +1,209 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55390 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:34894 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754592Ab3EFPEb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 May 2013 11:04:31 -0400
-Date: Mon, 6 May 2013 11:04:28 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mountd: Fix is_subdirectory again.
-Message-ID: <20130506150428.GD15476@fieldses.org>
-References: <20130502170511.646e2717@notabene.brown>
- <20130502151634.GE15728@fieldses.org>
- <20130506144413.46b6f37b@notabene.brown>
+	id S1762448Ab3ECAdm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 May 2013 20:33:42 -0400
+Subject: [PATCH 5/8] FS-Cache: Wrap checks on object state
+To: linux-cachefs@redhat.com
+From: David Howells <dhowells@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        hjayasur@redhat.com, jlayton@redhat.com, linux-kernel@vger.kernel.org
+Date: Fri, 03 May 2013 01:33:39 +0100
+Message-ID: <20130503003339.14952.33070.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20130503003316.14952.51791.stgit@warthog.procyon.org.uk>
+References: <20130503003316.14952.51791.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130506144413.46b6f37b@notabene.brown>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 06, 2013 at 02:44:13PM +1000, NeilBrown wrote:
-> On Thu, 2 May 2013 11:16:34 -0400 "J. Bruce Fields" <bfields@fieldses.org>
-> wrote:
-> 
-> > On Thu, May 02, 2013 at 05:05:11PM +1000, NeilBrown wrote:
-> > > 
-> > > 
-> > > Hi Steve,
-> > >  I just noticed
-> > > 
-> > > commit ebe2826ca571a3959c3b5c8e29686c621f2775cf
-> > > Author: Steve Dickson <steved@redhat.com>
-> > > Date:   Sat Mar 23 10:30:17 2013 -0400
-> > > 
-> > >     mountd: regression in crossmounts
-> > > 
-> > > Sorry I missed the email you presumably sent me to let me know
-> > > that I had caused a regression.
-> > 
-> > Yup.  The strategy around here is to bury people in email and trust they
-> > have industrial-strength filtering.
-> > 
-> > And I could have added Neil on the cc: too and forgot, oops:
-> > 
-> > 	http://marc.info/?l=linux-nfs&m=136404930104976&w=2
-> > 
-> > > Here is the proper fix.
-> > 
-> > I'm dense.  I still had to scratch my head a while:
-> > 
-> > So: in a case like the one steved gives:
-> > 
-> > 	/home *(rw,fsid=0,crossmnt)
-> > 	/home/fs1 *(rw,crossmnt)
-> > 	/home/fs1/fs2/fs3 *(rw,nohide)
-> > 
-> > where nfsd_fh is asked to look for an export with fsid=0, it gets a
-> > match on the export of /home.  But that loop there keeps going in case
-> > it finds some better match.  In particular it considers any mountpoints
-> > under /home as candidates, since /home has "crossmnt".  And they all
-> > match too.  So it considers in sequence the possibilities:
-> > 
-> > 	(found=/export of /home, found_path=/home)
-> > 	(found=/export of /home, found_path=/home/fs1)
-> > 	(found=/export of /home, found_path=/home/fs1/fs2/fs3)
-> > 
-> > The subexport() test--designed to favor crossmnt exports which are
-> > "closer" to the target filesystem--passes in each case, so we end up
-> > taking the last.
-> > 
-> > So we pass down the longest path to the kernel, it does an export upcall
-> > for that path, the hilarity ensues.
-> > 
-> > Anyway:
-> > 
-> > 	Acked-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> Thanks.
-> 
-> > 
-> > But this all still gives me a mild headache:
-> > 
-> > 	- it only works if we iterate through the submounts in the
-> > 	  correct order?
-> 
-> Does it?  nfsd_fh() is trying to find the export for a given file handle.
->   For every export it tries that filesystem and (if CROSSMOUNT) ever
->   filesystem mounted below there.
->   It only considers filesystem for which the fsid matches.
->   Of those, it chooses the exp which is 'lowest' in the hierarchy.
-> 
-> I don't think the result of that can be dependant on order.
+Wrap checks on object state (mostly outside of fs/fscache/object.c) with
+inline functions so that the mechanism can be replaced.
 
-Well, my only point was that we depend on first trying the main export
-and then the filesystems mounted below--as that's probably how it would
-work under any reasonable organization of the code, I suppose that's not
-so fragile.
+Some of the state checks within object.c are left as-is as they will be
+replaced.
 
-> > 	- should fsid= be inherited by crossmnt anyway?
-> 
-> No...
-> If you have an export with fsid=N,crossmnt and a filehandle arrives for
-> fsid=N, then when we first look at that export match_fsid() will report a
-> match and 'found' will be set.
-> nfsd_fh() will loop around and try again for the next entry in /etc/mtab
-> which is under that same filesystem.  It will get a match_fsid() as well but
-> as subexport() will report "no" (as it is the same export), no change will be
-> made to found.  It also will not report that "X and Y have same file handle
-> for Z, using first" as the e_paths will match.
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
 
-Oh, I see--you're right.
+ fs/cachefiles/namei.c         |    4 ++--
+ fs/fscache/cache.c            |    2 +-
+ fs/fscache/cookie.c           |    8 ++++----
+ fs/fscache/object.c           |    8 ++++----
+ fs/fscache/operation.c        |    2 +-
+ include/linux/fscache-cache.h |   37 ++++++++++++++++++++++++++++---------
+ 6 files changed, 40 insertions(+), 21 deletions(-)
 
-> So it works as is.  Maybe the code could be made clearer though.
-> 
-> 
-> > 	- nfsd_fh() is too long, and the logic (with those extra loop
-> > 	  control variables declared static inside the CROSSMOUNT case)
-> > 	  could be more straightforward.
-> 
-> You have a history of taking my too-long functions and breaking them up into
-> manageable bits (kernel commit 3211af1119174fbe8b).  Maybe you could try
-> again :-)
+diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
+index 07cbd44..01979a3 100644
+--- a/fs/cachefiles/namei.c
++++ b/fs/cachefiles/namei.c
+@@ -130,7 +130,7 @@ found_dentry:
+ 	       fscache_object_states[object->fscache.state],
+ 	       dentry);
+ 
+-	if (object->fscache.state < FSCACHE_OBJECT_DYING) {
++	if (fscache_object_is_live(&object->fscache)) {
+ 		printk(KERN_ERR "\n");
+ 		printk(KERN_ERR "CacheFiles: Error:"
+ 		       " Can't preemptively bury live object\n");
+@@ -192,7 +192,7 @@ try_again:
+ 	/* an old object from a previous incarnation is hogging the slot - we
+ 	 * need to wait for it to be destroyed */
+ wait_for_old_object:
+-	if (xobject->fscache.state < FSCACHE_OBJECT_DYING) {
++	if (fscache_object_is_live(&object->fscache)) {
+ 		printk(KERN_ERR "\n");
+ 		printk(KERN_ERR "CacheFiles: Error:"
+ 		       " Unexpected object collision\n");
+diff --git a/fs/fscache/cache.c b/fs/fscache/cache.c
+index b52aed1..129ea53 100644
+--- a/fs/fscache/cache.c
++++ b/fs/fscache/cache.c
+@@ -115,7 +115,7 @@ struct fscache_cache *fscache_select_cache_for_object(
+ 				     struct fscache_object, cookie_link);
+ 
+ 		cache = object->cache;
+-		if (object->state >= FSCACHE_OBJECT_DYING ||
++		if (fscache_object_is_dying(object) ||
+ 		    test_bit(FSCACHE_IOERROR, &cache->flags))
+ 			cache = NULL;
+ 
+diff --git a/fs/fscache/cookie.c b/fs/fscache/cookie.c
+index e2cba1f..a5f36c9 100644
+--- a/fs/fscache/cookie.c
++++ b/fs/fscache/cookie.c
+@@ -285,7 +285,7 @@ static int fscache_alloc_object(struct fscache_cache *cache,
+ 
+ object_already_extant:
+ 	ret = -ENOBUFS;
+-	if (object->state >= FSCACHE_OBJECT_DYING) {
++	if (fscache_object_is_dead(object)) {
+ 		spin_unlock(&cookie->lock);
+ 		goto error;
+ 	}
+@@ -321,7 +321,7 @@ static int fscache_attach_object(struct fscache_cookie *cookie,
+ 	ret = -EEXIST;
+ 	hlist_for_each_entry(p, &cookie->backing_objects, cookie_link) {
+ 		if (p->cache == object->cache) {
+-			if (p->state >= FSCACHE_OBJECT_DYING)
++			if (fscache_object_is_dying(p))
+ 				ret = -ENOBUFS;
+ 			goto cant_attach_object;
+ 		}
+@@ -332,7 +332,7 @@ static int fscache_attach_object(struct fscache_cookie *cookie,
+ 	hlist_for_each_entry(p, &cookie->parent->backing_objects,
+ 			     cookie_link) {
+ 		if (p->cache == object->cache) {
+-			if (p->state >= FSCACHE_OBJECT_DYING) {
++			if (fscache_object_is_dying(p)) {
+ 				ret = -ENOBUFS;
+ 				spin_unlock(&cookie->parent->lock);
+ 				goto cant_attach_object;
+@@ -400,7 +400,7 @@ void __fscache_invalidate(struct fscache_cookie *cookie)
+ 			object = hlist_entry(cookie->backing_objects.first,
+ 					     struct fscache_object,
+ 					     cookie_link);
+-			if (object->state < FSCACHE_OBJECT_DYING)
++			if (fscache_object_is_live(object))
+ 				fscache_raise_event(
+ 					object, FSCACHE_OBJECT_EV_INVALIDATE);
+ 		}
+diff --git a/fs/fscache/object.c b/fs/fscache/object.c
+index 0133699..863f687 100644
+--- a/fs/fscache/object.c
++++ b/fs/fscache/object.c
+@@ -457,10 +457,10 @@ static void fscache_initialise_object(struct fscache_object *object)
+ 		spin_lock_nested(&parent->lock, 1);
+ 		_debug("parent %s", fscache_object_states[parent->state]);
+ 
+-		if (parent->state >= FSCACHE_OBJECT_DYING) {
++		if (fscache_object_is_dying(parent)) {
+ 			_debug("bad parent");
+ 			set_bit(FSCACHE_OBJECT_EV_WITHDRAW, &object->events);
+-		} else if (parent->state < FSCACHE_OBJECT_AVAILABLE) {
++		} else if (!fscache_object_is_available(parent)) {
+ 			_debug("wait");
+ 
+ 			/* we may get woken up in this state by child objects
+@@ -517,9 +517,9 @@ static void fscache_lookup_object(struct fscache_object *object)
+ 	ASSERTCMP(parent->n_obj_ops, >, 0);
+ 
+ 	/* make sure the parent is still available */
+-	ASSERTCMP(parent->state, >=, FSCACHE_OBJECT_AVAILABLE);
++	ASSERT(fscache_object_is_available(parent));
+ 
+-	if (parent->state >= FSCACHE_OBJECT_DYING ||
++	if (fscache_object_is_dying(parent) ||
+ 	    test_bit(FSCACHE_IOERROR, &object->cache->flags)) {
+ 		_debug("unavailable");
+ 		set_bit(FSCACHE_OBJECT_EV_WITHDRAW, &object->events);
+diff --git a/fs/fscache/operation.c b/fs/fscache/operation.c
+index 762a9ec..ccf0219 100644
+--- a/fs/fscache/operation.c
++++ b/fs/fscache/operation.c
+@@ -35,7 +35,7 @@ void fscache_enqueue_operation(struct fscache_operation *op)
+ 
+ 	ASSERT(list_empty(&op->pend_link));
+ 	ASSERT(op->processor != NULL);
+-	ASSERTCMP(op->object->state, >=, FSCACHE_OBJECT_AVAILABLE);
++	ASSERT(fscache_object_is_available(op->object));
+ 	ASSERTCMP(atomic_read(&op->usage), >, 0);
+ 	ASSERTCMP(op->state, ==, FSCACHE_OP_ST_IN_PROGRESS);
+ 
+diff --git a/include/linux/fscache-cache.h b/include/linux/fscache-cache.h
+index 9b9c1de..c5f9234 100644
+--- a/include/linux/fscache-cache.h
++++ b/include/linux/fscache-cache.h
+@@ -417,15 +417,6 @@ struct fscache_object {
+ 
+ extern const char *fscache_object_states[];
+ 
+-#define fscache_object_is_active(obj)			      \
+-	(!test_bit(FSCACHE_IOERROR, &(obj)->cache->flags) &&  \
+-	 (obj)->state >= FSCACHE_OBJECT_AVAILABLE &&	      \
+-	 (obj)->state < FSCACHE_OBJECT_DYING)
+-
+-#define fscache_object_is_dead(obj)				\
+-	(test_bit(FSCACHE_IOERROR, &(obj)->cache->flags) &&	\
+-	 (obj)->state >= FSCACHE_OBJECT_DYING)
+-
+ extern void fscache_object_init(struct fscache_object *, struct fscache_cookie *,
+ 				struct fscache_cache *);
+ 
+@@ -438,6 +429,34 @@ extern void fscache_object_destroy(struct fscache_object *object);
+ #define fscache_object_destroy(object) do {} while(0)
+ #endif
+ 
++static inline bool fscache_object_is_live(struct fscache_object *object)
++{
++	return object->state < FSCACHE_OBJECT_DYING;
++}
++
++static inline bool fscache_object_is_dying(struct fscache_object *object)
++{
++	return !fscache_object_is_live(object);
++}
++
++static inline bool fscache_object_is_available(struct fscache_object *object)
++{
++	return object->state >= FSCACHE_OBJECT_AVAILABLE;
++}
++
++static inline bool fscache_object_is_active(struct fscache_object *object)
++{
++	return fscache_object_is_available(object) &&
++		fscache_object_is_live(object) &&
++		!test_bit(FSCACHE_IOERROR, &object->cache->flags);
++}
++
++static inline bool fscache_object_is_dead(struct fscache_object *object)
++{
++	return fscache_object_is_dying(object) &&
++		test_bit(FSCACHE_IOERROR, &object->cache->flags);
++}
++
+ /**
+  * fscache_object_destroyed - Note destruction of an object in a cache
+  * @cache: The cache from which the object came
 
-Yeah, yeah, yeah.  Maybe the compulsion will take me some day.  For the
-sake of several other pressing projects, hopefully not today.
-
---b.
