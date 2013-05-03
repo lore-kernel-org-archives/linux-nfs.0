@@ -1,62 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hydra.sisk.pl ([212.160.235.94]:34700 "EHLO hydra.sisk.pl"
+Received: from mx1.redhat.com ([209.132.183.28]:13741 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756454Ab3EFT5q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 May 2013 15:57:46 -0400
-From: "Rafael J. Wysocki" <rjw@sisk.pl>
-To: Tejun Heo <tj@kernel.org>, Colin Cross <ccross@android.com>
-Cc: lkml <linux-kernel@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Len Brown <len.brown@intel.com>, Pavel Machek <pavel@ucw.cz>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>,
-        Linux PM list <linux-pm@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Ben Chan <benchan@chromium.org>
-Subject: Re: [PATCH 2/2] lockdep: check that no locks held at freeze time
-Date: Mon, 06 May 2013 22:06:05 +0200
-Message-ID: <2307385.H0igaKqWJi@vostro.rjw.lan>
-In-Reply-To: <20130506193307.GD800@mtj.dyndns.org>
-References: <1367615050-3894-1-git-send-email-ccross@android.com> <CAMbhsRRcfpXBGAPThjrmB_judgn85TioR_6A6qwh_fBQCent7A@mail.gmail.com> <20130506193307.GD800@mtj.dyndns.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1763087Ab3ECSYY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 May 2013 14:24:24 -0400
+Date: Fri, 3 May 2013 14:24:21 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: long delay when mounting due to SETCLIENTID AUTH_GSS attempts
+Message-ID: <20130503142421.19fb3ca6@tlielax.poochiereds.net>
+In-Reply-To: <AE700845-4032-4BEC-817C-97EB08A831E8@oracle.com>
+References: <20130503132557.2fdf794d@tlielax.poochiereds.net>
+	<AE700845-4032-4BEC-817C-97EB08A831E8@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Monday, May 06, 2013 12:33:07 PM Tejun Heo wrote:
-> Hello,
+On Fri, 3 May 2013 13:56:13 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
+
 > 
-> On Mon, May 06, 2013 at 12:30:19PM -0700, Colin Cross wrote:
-> > > I don't care about %current change, especially given that it's a debug
-> > > interface but that really should be a separate patch, so please split
-> > > it out if you want it (and I think we want it).
+> On May 3, 2013, at 1:25 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> > I've noticed that when running a 3.10-pre kernel that if I try to mount
+> > up a NFSv4 filesystem that it now takes ~15s for the mount to complete.
 > > 
-> > The current change was requested by akpm and was part of the original
-> > patch.  Is it really worth confusing the history of this patch even
-> > more, applying it the first time, reverting it, and then applying it
-> > again in two parts?
+> > Here's a little rpcdebug output:
+> > 
+> > [ 3056.385078] svc: server ffff8800368fc000 waiting for data (to = 9223372036854775807)
+> > [ 3056.392056] RPC:       new task initialized, procpid 2471
+> > [ 3056.392758] RPC:       allocated task ffff88010cd90100
+> > [ 3056.393303] RPC:    42 __rpc_execute flags=0x1280
+> > [ 3056.393630] RPC:    42 call_start nfs4 proc SETCLIENTID (sync)
+> > [ 3056.394056] RPC:    42 call_reserve (status 0)
+> > [ 3056.394368] RPC:    42 reserved req ffff8801019f9600 xid 21ad6c40
+> > [ 3056.394783] RPC:       wake_up_first(ffff88010a989990 "xprt_sending")
+> > [ 3056.395252] RPC:    42 call_reserveresult (status 0)
+> > [ 3056.395595] RPC:    42 call_refresh (status 0)
+> > [ 3056.395901] RPC:       gss_create_cred for uid 0, flavor 390004
+> > [ 3056.396361] RPC:       gss_create_upcall for uid 0
+> > [ 3071.396134] RPC: AUTH_GSS upcall timed out.
+> > Please check user daemon is running.
+> > [ 3071.397374] RPC:       gss_create_upcall for uid 0 result -13
+> > [ 3071.398192] RPC:    42 call_refreshresult (status -13)
+> > [ 3071.398873] RPC:    42 call_refreshresult: refresh creds failed with error -13
+> > [ 3071.399881] RPC:    42 return 0, status -13
+> > 
+> > The problem is that we're now trying to upcall for GSS creds to do the
+> > SETCLIENTID call, but this host isn't running rpc.gssd. Not running
+> > rpc.gssd is pretty common for people not using kerberized NFS. I think
+> > we'll see a lot of complaints about this.
+> > 
+> > Is this expected?
 > 
-> I don't know.  The patch seems confusing to me.  It really is about
-> adding single lockdep annotation but comes with other changes.  I
-> don't think it's a big deal either way but at least we wouldn't be
-> having this %current vs. @tsk conversation which is mostly irrelevant
-> to the actual proposed change, right?  It really should have been a
-> separate patch from the beginning.  Just refer to the original commit
-> and explain what happened?
+> Yes.
+> 
+> There are operations like SETCLIENTID and GETATTR(fs_locations) which should always use an integrity-checking security flavor, even if particular mount points use sec=sys.
+> 
+> There are cases where GSS is not available, and we fall back to using AUTH_SYS.  That should happen as quickly as possible, I agree.
+> 
+> > If so, what's the proposed remedy?
+> > Simply have everyone run rpc.gssd even if they're not using kerberized NFS?
+> 
+> 
+> That's one possibility.  Or we could shorten the upcall timeout.  Or, add a mechanism by which rpc.gssd can provide a positive indication to the kernel that it is running.
+> 
+> It doesn't seem like an intractable problem.
+> 
 
-Yeah.  I'd prefer that very much.
+Nope, it's not intractable at all...
 
-Thanks,
-Rafael
+Currently, the gssd upcall uses the RPC_PIPE_WAIT_FOR_OPEN flag to
+allow you to queue upcalls to be processed when the daemon isn't up
+yet. When the daemon starts, it processes that queue. The caller gives
+up after 15s (which is what's happening here), and the upcall
+eventually gets scraped out of the queue after 30s.
 
+We could stop using that flag on this rpc_pipe and simply require that
+the daemon be up and running before attempting any sort of AUTH_GSS
+rpc. That might be a little less friendly in the face of boot-time
+ordering problems, but it should presumably make this problem go away.
 
 -- 
-I speak only for myself.
-Rafael J. Wysocki, Intel Open Source Technology Center.
+Jeff Layton <jlayton@redhat.com>
