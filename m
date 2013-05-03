@@ -1,73 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:23794 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:16175 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755677Ab3FADIL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 31 May 2013 23:08:11 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
-Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
-        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v1 04/11] locks: make "added" in __posix_lock_file a bool
-Date: Fri, 31 May 2013 23:07:27 -0400
-Message-Id: <1370056054-25449-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
-References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
+	id S1763387Ab3ECTig (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 May 2013 15:38:36 -0400
+Subject: [PATCH] Give the OID registry file module info to avoid kernel
+ tainting
+To: Weston.Adamson@netapp.com, Trond.Myklebust@netapp.com
+From: David Howells <dhowells@redhat.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        stable@vger.kernel.org
+Date: Fri, 03 May 2013 20:38:32 +0100
+Message-ID: <20130503193832.8586.96066.stgit@warthog.procyon.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...save 3 bytes of stack space.
+Give the OID registry file module information so that it doesn't taint the
+kernel when compiled as a module and loaded.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Reported-by: Dros Adamson <Weston.Adamson@netapp.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
+cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+cc: stable@vger.kernel.org
+cc: linux-nfs@vger.kernel.org
 ---
- fs/locks.c |    9 +++++----
- 1 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index a7d2253..cef0e04 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -800,7 +800,8 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 	struct file_lock *left = NULL;
- 	struct file_lock *right = NULL;
- 	struct file_lock **before;
--	int error, added = 0;
-+	int error;
-+	bool added = false;
+ lib/oid_registry.c |    5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/lib/oid_registry.c b/lib/oid_registry.c
+index d8de11f..318f382 100644
+--- a/lib/oid_registry.c
++++ b/lib/oid_registry.c
+@@ -9,6 +9,7 @@
+  * 2 of the Licence, or (at your option) any later version.
+  */
  
- 	/*
- 	 * We may need two file_lock structures for this operation,
-@@ -894,7 +895,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 				continue;
- 			}
- 			request = fl;
--			added = 1;
-+			added = true;
- 		}
- 		else {
- 			/* Processing for different lock types is a bit
-@@ -905,7 +906,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 			if (fl->fl_start > request->fl_end)
- 				break;
- 			if (request->fl_type == F_UNLCK)
--				added = 1;
-+				added = true;
- 			if (fl->fl_start < request->fl_start)
- 				left = fl;
- 			/* If the next lock in the list has a higher end
-@@ -935,7 +936,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 				locks_release_private(fl);
- 				locks_copy_private(fl, request);
- 				request = fl;
--				added = 1;
-+				added = true;
- 			}
- 		}
- 		/* Go on to next lock.
--- 
-1.7.1
++#include <linux/module.h>
+ #include <linux/export.h>
+ #include <linux/oid_registry.h>
+ #include <linux/kernel.h>
+@@ -16,6 +17,10 @@
+ #include <linux/bug.h>
+ #include "oid_registry_data.c"
+ 
++MODULE_DESCRIPTION("OID Registry");
++MODULE_AUTHOR("Red Hat, Inc.");
++MODULE_LICENSE("GPL");
++
+ /**
+  * look_up_OID - Find an OID registration for the specified data
+  * @data: Binary representation of the OID
 
