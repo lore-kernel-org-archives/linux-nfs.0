@@ -1,44 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:56212 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753018Ab3EVN4i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 May 2013 09:56:38 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: expected unxpected behavior
-Date: Wed, 22 May 2013 13:56:35 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA92878C29B@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1164976622.1510880.1369209469446.JavaMail.root@desy.de>
- <2007295634.1529248.1369216706282.JavaMail.root@desy.de>
-In-Reply-To: <2007295634.1529248.1369216706282.JavaMail.root@desy.de>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-vb0-f44.google.com ([209.85.212.44]:57129 "EHLO
+	mail-vb0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753603Ab3EDUX4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 4 May 2013 16:23:56 -0400
+Received: by mail-vb0-f44.google.com with SMTP id e13so2151933vbg.17
+        for <linux-nfs@vger.kernel.org>; Sat, 04 May 2013 13:23:55 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <20130504130033.GB13770@amd.pavel.ucw.cz>
+References: <1367615050-3894-1-git-send-email-ccross@android.com>
+	<20130504130033.GB13770@amd.pavel.ucw.cz>
+Date: Sat, 4 May 2013 13:23:54 -0700
+Message-ID: <CAMbhsRS6+hjTmrihVzgu3Dtyp8XAhJJ4VKMj=28G6xH3H73=6Q@mail.gmail.com>
+Subject: Re: [PATCH 1/2] freezer: add unsafe versions of freezable helpers
+From: Colin Cross <ccross@android.com>
+To: Pavel Machek <pavel@ucw.cz>
+Cc: lkml <linux-kernel@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Len Brown <len.brown@intel.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
+        Linux PM list <linux-pm@vger.kernel.org>, netdev@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Tejun Heo <tj@kernel.org>, Ben Chan <benchan@chromium.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
-ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLQ0KPiBvd25lckB2Z2VyLmtlcm5lbC5vcmdd
-IE9uIEJlaGFsZiBPZiBNa3J0Y2h5YW4sIFRpZ3Jhbg0KPiBTZW50OiBXZWRuZXNkYXksIE1heSAy
-MiwgMjAxMyA1OjU4IEFNDQo+IFRvOiBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnDQo+IFN1Ympl
-Y3Q6IGV4cGVjdGVkIHVueHBlY3RlZCBiZWhhdmlvcg0KPiANCj4gDQo+IA0KPiBIaSwNCj4gDQo+
-IHdlIGhpdCBzb21lIHN0cmFuZ2UgYmVoYXZpb3Igd2hpY2ggaXMgZXhwZWN0ZWQgZnJvbSBvbmUg
-c2lkZSwgYnV0DQo+IHVuZXhwZWN0ZWQgYXQgdGhlIHNhbWUgdGltZS4NCj4gV2UgcnVuIG91ciBu
-ZnMgc2VydmVyIHdpdGggdjMgYW5kIHY0LiBEdWUgdG8gbWlzY29uZmlndXJhdGlvbiBpbiBpZG1h
-cHBpbmcsDQo+IHdlIGdvdCBzb21lIGZpbGVzIHRvIGJlIG93bmVkIGJ5IHVpZCAtMS4gV2hpY2gg
-aXMgb2ssIGFzIHdpdGggdjQgc2VydmVyDQo+IHJldHVybnMgbm9ib2R5LiBOZXZlcnRoZWxlc3Ms
-IHRoaXMgcHJldmVudCB0byBsaXN0IHRoZSBkaXJlY3Rvcnkgd2l0aCB2My4gVGhpcw0KPiBpcyB0
-aGUgcmVzdWx0IG9mIHVpZF92YWxpZCgpL2dpZF92YWxpZCgpIGNhbGxzIGluIG5mczN4ZHIuYzpk
-ZWNvZGVfZmF0dHIzLiBUaGUNCj4gdWlkX3ZhbGlkL2dpZF92YWxpZCBjaGVja3MgdGhhdCBwcm92
-aWRlZCB1aWQvZ2lkIGFyZSBub3QgLTEuDQo+IFByb2JhYmx5IHRoaXMgaXMgb2suIE15IGNvbmZ1
-c2lvbiBpczogYSkgb25lIGZpbGUgd2l0aCBiYWQgdWlkL2dpZCBwcmV2ZW50cw0KPiBsaXN0aW5n
-IG9mIGEgZGlyZWN0b3J5LCBiKSBpbiBuZnMgdjMgc3BlYyB1aWQzIChhcyB3ZWxsIGFzIHVpZF90
-IGluIGxpbnV4KSBpcw0KPiB1bnNpZ25lZCBpbnQgMzIgYW5kIHZhbHVlIDB4ZmZmZmZmZmYgaXMg
-YWJzb2x1dGVseSB2YWxpZC4NCj4gDQoNClNvLCB0aGVvcnkgaGFzIGl0IHRoYXQgdWlkL2dpZCA9
-PSAtMSBpcyBpbnZhbGlkIGluIFBPU0lYLiBJZiB5b3UgbG9vayBhdCBmdW5jdGlvbnMgbGlrZSBj
-aG93bigpLCBzZXRyZXVpZCgpLCBldGMsIHRoZW4gdGhlIHZhbHVlICctMScgaXMgdXNlZCB0byBp
-bmRpY2F0ZSBhYnNlbmNlIG9mIGFuIGFyZ3VtZW50Lg0KVGhhdCBzYWlkLCBJIGFncmVlIHdpdGgg
-eW91IHRoYXQgdGhpcyBraW5kIG9mIGNsaWVudC1zaWRlIHZhbGlkYXRpb24gb2YgdGhlIHVpZC9n
-aWQgdmFsdWVzIGlzIGJvZ3VzLCBhbmQgd2Ugc2hvdWxkIGNlcnRhaW5seSBub3QgYmUgZG9pbmcg
-aXQgaW4gdGhlIFhEUiBjb2RlLg0KDQpJJ2xsIHNlZSB3aGF0IHdlIGNhbiBkbyBhYm91dCBhIGZp
-eC4NCg0KQ2hlZXJzDQogIFRyb25kDQo=
+On Sat, May 4, 2013 at 6:00 AM, Pavel Machek <pavel@ucw.cz> wrote:
+> Hi!
+>
+>> NFS calls the freezable helpers with locks held, which is unsafe
+>> and caused lockdep warnings when 6aa9707 "lockdep: check that no
+>> locks held at freeze time" was applied (reverted in dbf520a).
+>> Add new *_unsafe versions of the helpers that will not run the
+>> lockdep test when 6aa9707 is reapplied, and call them from NFS.
+>>
+>> Signed-off-by: Colin Cross <ccross@android.com>
+>
+> Looks mostly good.
+>
+>> @@ -152,6 +169,14 @@ static inline bool freezer_should_skip(struct task_struct *p)
+>>       freezer_count();                                                \
+>>  })
+>>
+>> +/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
+>> +#define freezable_schedule_unsafe()                                  \
+>> +({                                                                   \
+>> +     freezer_do_not_count();                                         \
+>> +     schedule();                                                     \
+>> +     freezer_count_unsafe();                                         \
+>> +})
+>> +
+>
+> Make it inline function? :-). Add short explanation why it is good
+> idea?
+
+These are exact copies of the existing non-unsafe versions, except
+they call freezer_count_unsafe() instead of freezer_count().  The next
+version of my other patch stack that goes on top of this has a patch
+to convert the macros in this file to static inline functions (at
+least the ones that can be).  I'd rather not mix it in with this patch
+for ease of comparison with the existing calls.
+
+>> +/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
+>> +#define freezable_schedule_timeout_killable_unsafe(timeout)          \
+>> +({                                                                   \
+>> +     long __retval;                                                  \
+>> +     freezer_do_not_count();                                         \
+>> +     __retval = schedule_timeout_killable(timeout);                  \
+>> +     freezer_count_unsafe();                                         \
+>> +     __retval;                                                       \
+>> +})
+>
+> Function too?
+>                                                                         Pavel
+> --
+> (english) http://www.livejournal.com/~pavelmachek
+> (cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
