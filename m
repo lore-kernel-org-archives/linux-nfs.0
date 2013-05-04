@@ -1,39 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:50909 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751257Ab3EUTuX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 May 2013 15:50:23 -0400
-Date: Tue, 21 May 2013 12:50:20 -0700
-From: Zach Brown <zab@redhat.com>
-To: Eric Wong <normalperson@yhbt.net>
-Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [RFC v0 1/4] vfs: add copy_range syscall and vfs entry point
-Message-ID: <20130521195020.GC14767@lenny.home.zabbo.net>
-References: <1368566126-17610-1-git-send-email-zab@redhat.com>
- <1368566126-17610-2-git-send-email-zab@redhat.com>
- <20130515194405.GA28720@dcvr.yhbt.net>
- <20130515200307.GD318@lenny.home.zabbo.net>
- <20130521194719.GA2957@dcvr.yhbt.net>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:36203 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753401Ab3EDNEm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 4 May 2013 09:04:42 -0400
+Date: Sat, 4 May 2013 15:04:40 +0200
+From: Pavel Machek <pavel@ucw.cz>
+To: Colin Cross <ccross@android.com>
+Cc: linux-kernel@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Len Brown <len.brown@intel.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-pm@vger.kernel.org, netdev@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Tejun Heo <tj@kernel.org>, Ben Chan <benchan@chromium.org>
+Subject: Re: [PATCH 2/2] lockdep: check that no locks held at freeze time
+Message-ID: <20130504130440.GC13770@amd.pavel.ucw.cz>
+References: <1367615050-3894-1-git-send-email-ccross@android.com>
+ <1367615050-3894-2-git-send-email-ccross@android.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130521194719.GA2957@dcvr.yhbt.net>
+In-Reply-To: <1367615050-3894-2-git-send-email-ccross@android.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 21, 2013 at 07:47:19PM +0000, Eric Wong wrote:
-> Zach Brown <zab@redhat.com> wrote:
-> > On Wed, May 15, 2013 at 07:44:05PM +0000, Eric Wong wrote:
-> > > Why introduce a new syscall instead of extending sys_splice?
-> > 
-> > Personally, I think it's ugly to have different operations use the same
-> > syscall just because their arguments match.
+On Fri 2013-05-03 14:04:10, Colin Cross wrote:
+> From: Mandeep Singh Baines <msb@chromium.org>
 > 
-> Fair enough.  I think adding a (currently unused) flags parameter would
-> make sense for future-proofing.
+> We shouldn't try_to_freeze if locks are held.  Holding a lock can cause a
+> deadlock if the lock is later acquired in the suspend or hibernate path
+> (e.g.  by dpm).  Holding a lock can also cause a deadlock in the case of
+> cgroup_freezer if a lock is held inside a frozen cgroup that is later
+> acquired by a process outside that group.
 
-Yeah, that seems reasonble.  
+Ok, but this does not explain why
 
-- z
+> --- a/include/linux/debug_locks.h
+> +++ b/include/linux/debug_locks.h
+> @@ -51,7 +51,7 @@ struct task_struct;
+>  extern void debug_show_all_locks(void);
+>  extern void debug_show_held_locks(struct task_struct *task);
+>  extern void debug_check_no_locks_freed(const void *from, unsigned long len);
+> -extern void debug_check_no_locks_held(struct task_struct *task);
+> +extern void debug_check_no_locks_held(void);
+>  #else
+>  static inline void debug_show_all_locks(void)
+>  {
+
+Removing task_struct argument from  those functions is good idea?
+
+> --- a/kernel/exit.c
+> +++ b/kernel/exit.c
+> @@ -835,7 +835,7 @@ void do_exit(long code)
+>  	/*
+>  	 * Make sure we are holding no locks:
+>  	 */
+> -	debug_check_no_locks_held(tsk);
+> +	debug_check_no_locks_held();
+
+Is task guaranteed == current?
+
+									Pavel
+-- 
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
