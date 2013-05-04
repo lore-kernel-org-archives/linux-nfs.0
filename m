@@ -1,93 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52073 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757995Ab3EHScs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 May 2013 14:32:48 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        "Linux FS devel list" <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 13/17] NFS: Client implementation of Labeled-NFS
-Date: Wed, 8 May 2013 18:31:16 +0000
-Message-ID: <1368037873.5978.34.camel@leira.trondhjem.org>
-References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
-	    <1367240239-19326-14-git-send-email-SteveD@redhat.com>
-	   <1367435005.4189.36.camel@leira.trondhjem.org>
-	   <518A7FA6.4090703@RedHat.com>
-	  <1368031432.5978.3.camel@leira.trondhjem.org>
-	 <518A8DBE.3010107@RedHat.com>
-	 <1368036422.5978.25.camel@leira.trondhjem.org>
-	 <518A9920.2030302@RedHat.com>
-In-Reply-To: <518A9920.2030302@RedHat.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-vb0-f52.google.com ([209.85.212.52]:35573 "EHLO
+	mail-vb0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750792Ab3EDXt5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 4 May 2013 19:49:57 -0400
+Received: by mail-vb0-f52.google.com with SMTP id p13so2180569vbe.39
+        for <linux-nfs@vger.kernel.org>; Sat, 04 May 2013 16:49:57 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <20130504225715.GB24276@amd.pavel.ucw.cz>
+References: <1367615050-3894-1-git-send-email-ccross@android.com>
+	<1367615050-3894-2-git-send-email-ccross@android.com>
+	<20130504130440.GC13770@amd.pavel.ucw.cz>
+	<CAMbhsRScr+3Zk5Bi6390bGRbtE4oh2H-mHrGHS0wew5hdkivUg@mail.gmail.com>
+	<20130504225715.GB24276@amd.pavel.ucw.cz>
+Date: Sat, 4 May 2013 16:49:56 -0700
+Message-ID: <CAMbhsRS_cF7kF-QZ9BMBUS3ytU0ukRCbC3D549HW_XOsQbEZhg@mail.gmail.com>
+Subject: Re: [PATCH 2/2] lockdep: check that no locks held at freeze time
+From: Colin Cross <ccross@android.com>
+To: Pavel Machek <pavel@ucw.cz>
+Cc: lkml <linux-kernel@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Len Brown <len.brown@intel.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
+        Linux PM list <linux-pm@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Tejun Heo <tj@kernel.org>, Ben Chan <benchan@chromium.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-05-08 at 14:27 -0400, Steve Dickson wrote:
-> 
-> On 08/05/13 14:07, Myklebust, Trond wrote:
-> > On Wed, 2013-05-08 at 13:39 -0400, Steve Dickson wrote:
-> >>
-> >> On 08/05/13 12:43, Myklebust, Trond wrote:
-> >>> On Wed, 2013-05-08 at 12:39 -0400, Steve Dickson wrote:
-> >>>>
-> >>>> On 01/05/13 15:03, Myklebust, Trond wrote:
-> >>>>>> @@ -2409,10 +2468,26 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
-> >>>>>>>  			server->caps |= NFS_CAP_CTIME;
-> >>>>>>>  		if (res.attr_bitmask[1] & FATTR4_WORD1_TIME_MODIFY)
-> >>>>>>>  			server->caps |= NFS_CAP_MTIME;
-> >>>>>>> +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-> >>>>>>> +		if (res.attr_bitmask[2] & FATTR4_WORD2_SECURITY_LABEL)
-> >>>>>>> +			server->caps |= NFS_CAP_SECURITY_LABEL;
-> >>>>>>> +#endif
-> >>>>>>> +		memcpy(server->attr_bitmask_nl, res.attr_bitmask, 
-> >>>>>>> +				sizeof(server->attr_bitmask));
-> >>>>>>> +
-> >>>>>>> +		if (server->caps & NFS_CAP_SECURITY_LABEL)
-> >>>>>>> +			server->attr_bitmask_nl[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
-> >>>>>>>  
-> >>>>>>>  		memcpy(server->cache_consistency_bitmask, res.attr_bitmask, sizeof(server->cache_consistency_bitmask));
-> >>>>>>>  		server->cache_consistency_bitmask[0] &= FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE;
-> >>>>>>> -		server->cache_consistency_bitmask[1] &= FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
-> >>>>>>> +		server->cache_consistency_bitmask[1] &= FATTR4_WORD1_TIME_METADATA |
-> >>>>>>> +							FATTR4_WORD1_TIME_MODIFY;
-> >>>>>>> +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-> >>>>>>> +		server->cache_consistency_bitmask[2] &= FATTR4_WORD2_SECURITY_LABEL;
-> >>>>> Why? How is the security label relevant to cache consistency?
-> >>>> Its used to the set label bit in the GETATTR that goes out with ACCESS compound.
-> >>>
-> >>> The GETATTR that goes out with ACCESS is only there in order to get the
-> >>> change attribute so that we know when to invalidate the access cache. It
-> >>> is _only_ for cache consistency.
-> >>>
-> >>> Why do we need to fetch the label too?
-> >>>
-> >> I think I answer this in the other thread but in short 
-> >> access updates the inode and so it appears the goal 
-> >> is to synchronize inode updates and label updates.
-> > 
-> > Those are not inode updates.
-> Ah... OK... but they all end up calling nfs_refresh_inode() with 
-> the valid label pointer... So there is an effort to keep the 
-> inode attribute cache updates synchronized with label updates... 
-> 
-> So I guess the question is that needed... Is the setting of 
-> the label in nfs_fhget() and/or _nfs4_do_open() good enough.
+On Sat, May 4, 2013 at 3:57 PM, Pavel Machek <pavel@ucw.cz> wrote:
+> On Sat 2013-05-04 13:27:23, Colin Cross wrote:
+>> On Sat, May 4, 2013 at 6:04 AM, Pavel Machek <pavel@ucw.cz> wrote:
+>> > On Fri 2013-05-03 14:04:10, Colin Cross wrote:
+>> >> From: Mandeep Singh Baines <msb@chromium.org>
+>> >>
+>> >> We shouldn't try_to_freeze if locks are held.  Holding a lock can cause a
+>> >> deadlock if the lock is later acquired in the suspend or hibernate path
+>> >> (e.g.  by dpm).  Holding a lock can also cause a deadlock in the case of
+>> >> cgroup_freezer if a lock is held inside a frozen cgroup that is later
+>> >> acquired by a process outside that group.
+>> >
+>> > Ok, but this does not explain why
+>> >
+>> >> --- a/include/linux/debug_locks.h
+>> >> +++ b/include/linux/debug_locks.h
+>> >> @@ -51,7 +51,7 @@ struct task_struct;
+>> >>  extern void debug_show_all_locks(void);
+>> >>  extern void debug_show_held_locks(struct task_struct *task);
+>> >>  extern void debug_check_no_locks_freed(const void *from, unsigned long len);
+>> >> -extern void debug_check_no_locks_held(struct task_struct *task);
+>> >> +extern void debug_check_no_locks_held(void);
+>> >>  #else
+>> >>  static inline void debug_show_all_locks(void)
+>> >>  {
+>> >
+>> > Removing task_struct argument from  those functions is good idea?
+>>
+>> This is an existing patch that was merged in 3.9 and then reverted
+>> again, so it has already been reviewed and accepted once.
+>
+> Well, it was also reverted once :-).
 
-Until someone comes up with a different cache consistency model, then
-I'd say yes. The only other case that comes to mind, is when our client
-actively changes the label...
+It was reverted because of problems in NFS, not because of any problem
+with this patch.
 
+>> >> --- a/kernel/exit.c
+>> >> +++ b/kernel/exit.c
+>> >> @@ -835,7 +835,7 @@ void do_exit(long code)
+>> >>       /*
+>> >>        * Make sure we are holding no locks:
+>> >>        */
+>> >> -     debug_check_no_locks_held(tsk);
+>> >> +     debug_check_no_locks_held();
+>> >
+>> > Is task guaranteed == current?
+>>
+>> Yes, the first line of do_exit is:
+>>         struct task_struct *tsk = current;
+>
+> Aha, I understand it now.
+>
+> Accessing current is slower than local variable. So your "new" code
+> will work but will be slower. Please revert this part.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Using current instead of passing in tsk was done at Andrew Morton's
+suggestion, and makes no difference from the freezer's perspective
+since it would have to use current to get the task to pass in, so I'm
+going to leave it as is.
