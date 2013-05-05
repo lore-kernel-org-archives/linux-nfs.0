@@ -1,50 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:63863 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753215Ab3EPVQs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 May 2013 17:16:48 -0400
-Message-ID: <51954CBC.7070308@redhat.com>
-Date: Thu, 16 May 2013 17:16:44 -0400
-From: Ric Wheeler <rwheeler@redhat.com>
-MIME-Version: 1.0
-To: Zach Brown <zab@redhat.com>
-CC: Eric Wong <normalperson@yhbt.net>,
-        "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [RFC v0 1/4] vfs: add copy_range syscall and vfs entry point
-References: <1368566126-17610-1-git-send-email-zab@redhat.com> <1368566126-17610-2-git-send-email-zab@redhat.com> <20130515194405.GA28720@dcvr.yhbt.net> <20130515200307.GD318@lenny.home.zabbo.net>
-In-Reply-To: <20130515200307.GD318@lenny.home.zabbo.net>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from userp1040.oracle.com ([156.151.31.81]:31539 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752066Ab3EEWt0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 May 2013 18:49:26 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
+Subject: Re: long delay when mounting due to SETCLIENTID AUTH_GSS attempts
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20130503153941.345d3b9a@tlielax.poochiereds.net>
+Date: Sun, 5 May 2013 18:49:24 -0400
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <8BBFFB78-5E28-4206-AB13-DD84E30EBF1B@oracle.com>
+References: <20130503132557.2fdf794d@tlielax.poochiereds.net> <AE700845-4032-4BEC-817C-97EB08A831E8@oracle.com> <20130503142421.19fb3ca6@tlielax.poochiereds.net> <1367606034.3556.25.camel@leira.trondhjem.org> <20130503144437.3a47e476@tlielax.poochiereds.net> <A2E5B3F1-A8F1-4731-A66C-548B9C8FD429@oracle.com> <20130503151727.09d684f4@tlielax.poochiereds.net> <EB1CC0C3-1E31-4A3F-90E7-A79098161D1B@oracle.com> <20130503153941.345d3b9a@tlielax.poochiereds.net>
+To: Jeff Layton <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/15/2013 04:03 PM, Zach Brown wrote:
-> On Wed, May 15, 2013 at 07:44:05PM +0000, Eric Wong wrote:
->> Why introduce a new syscall instead of extending sys_splice?
-> Personally, I think it's ugly to have different operations use the same
-> syscall just because their arguments match.
 
-I agree with Zach - having a system call called "splice" do copy offloads is not 
-intuitive.
+On May 3, 2013, at 3:39 PM, Jeff Layton <jlayton@redhat.com> wrote:
 
-This is a very reasonable name for something that battled its way through 
-several standards bodies (for NFS and SCSI :)), so we should give it a 
-reasonable name
+> On Fri, 3 May 2013 15:26:09 -0400
+> Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+>> I don't expect this issue to last for release after release.  A moment ago you agreed that this shouldn't be intractable, so I fail to see the need to start wiring up long-term workarounds.
+>> 
+>> Can't we just agree on a fix, and then get that into 3.10 as a regression fix?
+>> 
+> 
+> I'm happy to help...I'm just not sure what you're proposing as the fix
+> for the problem. What are you suggesting we do?
 
-thanks!
+The kernel has historically had difficulty determining the status of GSS support in user space.
 
-Ric
+One way to remedy this would be to have "systemctl disable nfs-server.service" blacklist the kernel's GSS module, and "systemctl enable nfs-server.service" remove the blacklisting.  This mechanism would have to be sensitive to both gssd and svcgssd, of course.
 
->
-> But that preference aside, sure, if the consensus is that we'd rather
-> use the splice() entry point then I can duck tape the pieces together to
-> make it work.
->
->> If the user doesn't need a out offset, then sendfile() should also be
->> able to transparently utilize COPY/CLONE_RANGE, too.
-> Perhaps, yeah.
->
-> - z
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
