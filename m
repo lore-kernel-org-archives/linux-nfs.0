@@ -1,44 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from tundra.namei.org ([65.99.196.166]:40195 "EHLO tundra.namei.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753701Ab3EFIPB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 May 2013 04:15:01 -0400
-Date: Mon, 6 May 2013 18:19:10 +1000 (EST)
-From: James Morris <jmorris@namei.org>
-To: Ric Wheeler <rwheeler@redhat.com>
-cc: Steve Dickson <SteveD@redhat.com>,
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:46440 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751988Ab3EEWMi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 May 2013 18:12:38 -0400
+Date: Mon, 6 May 2013 00:12:34 +0200
+From: Pavel Machek <pavel@ucw.cz>
+To: Ingo Molnar <mingo@kernel.org>
+Cc: Colin Cross <ccross@android.com>, linux-kernel@vger.kernel.org,
         Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>, Jack Rieden <jrieden@redhat.com>
-Subject: Re: [PATCH 00/17] lnfs: linux-3.9 release
-In-Reply-To: <51848BE0.2080901@redhat.com>
-Message-ID: <alpine.LRH.2.02.1305061817290.28613@tundra.namei.org>
-References: <1367515151-31015-1-git-send-email-SteveD@redhat.com> <51848BE0.2080901@redhat.com>
+        Len Brown <len.brown@intel.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-pm@vger.kernel.org, netdev@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Tejun Heo <tj@kernel.org>, Ben Chan <benchan@chromium.org>
+Subject: Re: [PATCH 1/2] freezer: add unsafe versions of freezable helpers
+Message-ID: <20130505221234.GA18470@amd.pavel.ucw.cz>
+References: <1367615050-3894-1-git-send-email-ccross@android.com>
+ <20130505092318.GD22239@gmail.com>
 MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130505092318.GD22239@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 4 May 2013, Ric Wheeler wrote:
+Hi!
 
-> It would be great to see this patch series land in time for 3.10 - seems like
-> a major feature that has had been held in development for years and it does
-> have a very interested user base waiting for this to land.
+> > NFS calls the freezable helpers with locks held, which is unsafe
+> > and caused lockdep warnings when 6aa9707 "lockdep: check that no
+> > locks held at freeze time" was applied (reverted in dbf520a).
+> > Add new *_unsafe versions of the helpers that will not run the
+> > lockdep test when 6aa9707 is reapplied, and call them from NFS.
+> > 
+> > Signed-off-by: Colin Cross <ccross@android.com>
+> > ---
+> >  fs/nfs/inode.c          |  2 +-
+> >  fs/nfs/nfs3proc.c       |  2 +-
+> >  fs/nfs/nfs4proc.c       |  4 ++--
+> >  include/linux/freezer.h | 42 +++++++++++++++++++++++++++++++++++++++++-
+> >  net/sunrpc/sched.c      |  2 +-
+> >  5 files changed, 46 insertions(+), 6 deletions(-)
+> > 
+> > diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> > index 1f94167..53cbee5 100644
+> > --- a/fs/nfs/inode.c
+> > +++ b/fs/nfs/inode.c
+> > @@ -79,7 +79,7 @@ int nfs_wait_bit_killable(void *word)
+> >  {
+> >  	if (fatal_signal_pending(current))
+> >  		return -ERESTARTSYS;
+> > -	freezable_schedule();
+> > +	freezable_schedule_unsafe();
 > 
-> Are there any existing roadblocks to having this make it this merge window?
+> I'd suggest naming such variants _unkillable() instead of _unsafe().
+> 
+> There's nothing inherently 'unsafe' about it: the user asked for a hard 
+> NFS mount and is getting it: with the side effect that it exposes the 
+> machine to network delays in a 'hard' way as well. Which means suspend may 
+> block indefinitely as well on network failure.
 
+You only want to use _unsafe() variants when you enter refrigerator
+with locks held.
 
-Not that I'm aware of, but I feel they should all go in via the same tree 
-(an NFS one), rather than being split across subsystems, which has been 
-suggested off list.  It's better to keep them all in one place where they 
-can be tested and maintained together.
+And entering refrigerator with locks is tricky... and unsafe :-). It
+is not directly related to killability.
 
-
-- James
+									Pavel
 -- 
-James Morris
-<jmorris@namei.org>
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
