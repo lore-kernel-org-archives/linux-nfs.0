@@ -1,126 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f171.google.com ([209.85.212.171]:35477 "EHLO
-	mail-wi0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757013Ab3EKCnj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:43:39 -0400
-Received: by mail-wi0-f171.google.com with SMTP id hn3so1205878wib.4
-        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:43:38 -0700 (PDT)
-Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
-        by mx.google.com with ESMTPSA id e8sm1217483wic.5.2013.05.10.19.43.37
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 10 May 2013 19:43:37 -0700 (PDT)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 17/38] SQUASHME: use nfsd_net for layoutreturn starting v3.8
-Date: Sat, 11 May 2013 05:43:33 +0300
-Message-Id: <1368240213-32377-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <518B6377.3000207@tonian.com>
-References: <518B6377.3000207@tonian.com>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:49948 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750809Ab3EEAFb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 4 May 2013 20:05:31 -0400
+Date: Sun, 5 May 2013 02:05:28 +0200
+From: Pavel Machek <pavel@ucw.cz>
+To: Colin Cross <ccross@android.com>, Andrew Morton <akpm@osdl.org>
+Cc: lkml <linux-kernel@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Len Brown <len.brown@intel.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
+        Linux PM list <linux-pm@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Tejun Heo <tj@kernel.org>, Ben Chan <benchan@chromium.org>
+Subject: Re: [PATCH 2/2] lockdep: check that no locks held at freeze time
+Message-ID: <20130505000528.GA25454@amd.pavel.ucw.cz>
+References: <1367615050-3894-1-git-send-email-ccross@android.com>
+ <1367615050-3894-2-git-send-email-ccross@android.com>
+ <20130504130440.GC13770@amd.pavel.ucw.cz>
+ <CAMbhsRScr+3Zk5Bi6390bGRbtE4oh2H-mHrGHS0wew5hdkivUg@mail.gmail.com>
+ <20130504225715.GB24276@amd.pavel.ucw.cz>
+ <CAMbhsRS_cF7kF-QZ9BMBUS3ytU0ukRCbC3D549HW_XOsQbEZhg@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAMbhsRS_cF7kF-QZ9BMBUS3ytU0ukRCbC3D549HW_XOsQbEZhg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
----
- fs/nfsd/nfs4pnfsd.c |  7 +++++--
- fs/nfsd/nfs4proc.c  |  2 +-
- fs/nfsd/nfs4state.c | 18 ------------------
- fs/nfsd/pnfsd.h     |  3 +--
- fs/nfsd/state.h     |  1 -
- 5 files changed, 7 insertions(+), 24 deletions(-)
+Hi!
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index e516eba..96206d9 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -1002,7 +1002,9 @@ struct super_block *
- 	       lo_seg_overlapping(&clr->cb.cbl_seg, &lrp->args.lr_seg);
- }
- 
--int nfs4_pnfs_return_layout(struct super_block *sb, struct svc_fh *current_fh,
-+int nfs4_pnfs_return_layout(struct svc_rqst *rqstp,
-+			    struct super_block *sb,
-+			    struct svc_fh *current_fh,
- 			    struct nfsd4_pnfs_layoutreturn *lrp)
- {
- 	int status = 0;
-@@ -1019,7 +1021,8 @@ int nfs4_pnfs_return_layout(struct super_block *sb, struct svc_fh *current_fh,
- 	dprintk("NFSD: %s\n", __func__);
- 
- 	nfs4_lock_state();
--	clp = find_confirmed_client((clientid_t *)&lrp->args.lr_seg.clientid, true);
-+	clp = find_confirmed_client((clientid_t *)&lrp->args.lr_seg.clientid,
-+				    true, net_generic(SVC_NET(rqstp), nfsd_net_id));
- 	if (!clp)
- 		goto out;
- 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index c9befff..4fd5549 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1327,7 +1327,7 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
- 	/* Set clientid from sessionid */
- 	copy_clientid((clientid_t *)&lrp->args.lr_seg.clientid, cstate->session);
- 	lrp->lrs_present = 0;
--	status = nfs4_pnfs_return_layout(sb, current_fh, lrp);
-+	status = nfs4_pnfs_return_layout(rqstp, sb, current_fh, lrp);
- out:
- 	dprintk("pNFS %s: status %d return_type 0x%x lrs_present %d\n",
- 		__func__, status, lrp->args.lr_return_type, lrp->lrs_present);
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0871146..1170f8a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1456,24 +1456,6 @@ static bool clp_used_exchangeid(struct nfs4_client *clp)
- 	return find_clp_in_name_tree(name, &nn->unconf_name_tree);
- }
- 
--int
--filter_confirmed_clients(int (* func)(struct nfs4_client *, void *),
--			 void *arg)
--{
--	struct nfs4_client *clp, *next;
--	int i, status = 0;
--
--	for (i = 0; i < CLIENT_HASH_SIZE; i++)
--		list_for_each_entry_safe (clp, next, &conf_str_hashtbl[i],
--					  cl_strhash) {
--			status = func(clp, arg);
--			if (status)
--				break;
--		}
--
--	return status;
--}
--
- static void
- gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, struct svc_rqst *rqstp)
- {
-diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
-index d40694b..2507d31 100644
---- a/fs/nfsd/pnfsd.h
-+++ b/fs/nfsd/pnfsd.h
-@@ -61,8 +61,7 @@ struct nfs4_layout {
- u64 find_create_sbid(struct super_block *);
- struct super_block *find_sbid_id(u64);
- __be32 nfs4_pnfs_get_layout(struct svc_rqst *, struct nfsd4_pnfs_layoutget *, struct exp_xdr_stream *);
--int nfs4_pnfs_return_layout(struct super_block *, struct svc_fh *,
--					struct nfsd4_pnfs_layoutreturn *);
-+int nfs4_pnfs_return_layout(struct svc_rqst *, struct super_block *, struct svc_fh *, struct nfsd4_pnfs_layoutreturn *);
- int put_layoutrecall(struct nfs4_layoutrecall *);
- void nomatching_layout(struct nfs4_layoutrecall *);
- void *layoutrecall_done(struct nfs4_layoutrecall *);
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 2e5b600..5c613ba 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -510,7 +510,6 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
- extern void nfsd4_unhash_stid(struct nfs4_stid *);
- extern struct nfs4_stid *find_stateid(struct nfs4_client *, stateid_t *);
- extern __be32 nfsd4_lookup_stateid(stateid_t *, unsigned char typemask, struct nfs4_stid **, bool sessions, struct nfsd_net *);
--extern int filter_confirmed_clients(int (* func)(struct nfs4_client *, void *), void *);
- 
- #if defined(CONFIG_PNFSD)
- extern int nfsd4_init_pnfs_slabs(void);
+> >> >> --- a/kernel/exit.c
+> >> >> +++ b/kernel/exit.c
+> >> >> @@ -835,7 +835,7 @@ void do_exit(long code)
+> >> >>       /*
+> >> >>        * Make sure we are holding no locks:
+> >> >>        */
+> >> >> -     debug_check_no_locks_held(tsk);
+> >> >> +     debug_check_no_locks_held();
+> >> >
+> >> > Is task guaranteed == current?
+> >>
+> >> Yes, the first line of do_exit is:
+> >>         struct task_struct *tsk = current;
+> >
+> > Aha, I understand it now.
+> >
+> > Accessing current is slower than local variable. So your "new" code
+> > will work but will be slower. Please revert this part.
+> 
+> Using current instead of passing in tsk was done at Andrew Morton's
+> suggestion, and makes no difference from the freezer's perspective
+> since it would have to use current to get the task to pass in, so I'm
+> going to leave it as is.
+
+Well, current is:
+
+static inline struct thread_info *current_thread_info(void)
+{
+        register unsigned long sp asm ("sp");
+        return (struct thread_info *)(sp & ~(THREAD_SIZE - 1));
+}
+
+#define get_current() (current_thread_info()->task)
+
+#define current get_current()
+
+Instead of passing computed value to debug_check_no_locks_held(), you
+force it to be computed again. do_exit() performance matters for
+configure scripts, etc.
+
+I'd say it makes sense to keep the optimalization. akpm can correct
+me.
+
+									Pavel
 -- 
-1.7.11.7
-
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
