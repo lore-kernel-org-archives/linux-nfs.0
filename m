@@ -1,76 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:28373 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750811Ab3E3UlA convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 May 2013 16:41:00 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Jim Schutt <jaschut@sandia.gov>,
-        "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        LKML Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: 3.10-rc3 NFSv3 mount issues
-Date: Thu, 30 May 2013 20:40:58 +0000
-Message-ID: <1369946457.3111.17.camel@leira.trondhjem.org>
-References: <51A7B442.9010108@sandia.gov>
-	 <D74C8145-AD4D-4CFE-963C-643B8D7DBA10@oracle.com>
-In-Reply-To: <D74C8145-AD4D-4CFE-963C-643B8D7DBA10@oracle.com>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+Received: from mail-vc0-f202.google.com ([209.85.220.202]:49710 "EHLO
+	mail-vc0-f202.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932365Ab3EFXu3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 19:50:29 -0400
+Received: by mail-vc0-f202.google.com with SMTP id gf12so447593vcb.3
+        for <linux-nfs@vger.kernel.org>; Mon, 06 May 2013 16:50:27 -0700 (PDT)
+From: Colin Cross <ccross@android.com>
+To: linux-kernel@vger.kernel.org
+Cc: Pavel Machek <pavel@ucw.cz>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Colin Cross <ccross@android.com>, Oleg Nesterov <oleg@redhat.com>,
+        linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org,
+        netdev@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>,
+        Tejun Heo <tj@kernel.org>, Len Brown <len.brown@intel.com>
+Subject: [PATCH v3 05/16] freezer: shorten freezer sleep time using exponential backoff
+Date: Mon,  6 May 2013 16:50:10 -0700
+Message-Id: <1367884221-20462-6-git-send-email-ccross@android.com>
+In-Reply-To: <1367884221-20462-1-git-send-email-ccross@android.com>
+References: <1367884221-20462-1-git-send-email-ccross@android.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-05-30 at 16:26 -0400, Chuck Lever wrote:
-> On May 30, 2013, at 4:19 PM, Jim Schutt <jaschut@sandia.gov> wrote:
-> 
-> > Hi,
-> > 
-> > I've been trying to test 3.10-rc3 on some diskless clients, and found
-> > that I can no longer mount my root file system via NFSv3.
-> > 
-> > I poked around looking at NFS changes for 3.10, and found these two
-> > commits:
-> > 
-> > d497ab9751 "NFSv3: match sec= flavor against server list"
-> > 4580a92d44 "NFS: Use server-recommended security flavor by default (NFSv3)"
-> > 
-> > If I revert both of these commits from 3.10-rc3, then my diskless
-> > client can mount its root file system.
-> > 
-> > The busybox mount command fails like this, when using 3.10-rc3:
-> > 
-> > / # mount  -t nfs -o ro,nolock,vers=3,proto=tcp 172.17.0.122:/gmi/images/jaschut/ceph.toss-2x /mnt
-> > mount: mounting 172.17.0.122:/gmi/images/jaschut/ceph.toss-2x on /mnt failed: Invalid argument
-> > 
-> > The commit messages for both these commits seem to say that mounting
-> > with the "sys=sec" option should work, but unfortunately, my busybox doesn't
-> > seem to understand the "sec=" mount option:
-> > 
-> > / # mount  -t nfs -o ro,nolock,vers=3,proto=tcp,sec=sys 172.17.0.122:/gmi/images/jaschut/ceph.toss-2x /mnt
-> > mount: invalid number 'sys'
-> > 
-> > My NFS server is based on RHEL6, and is not using any "sec=" option
-> > in its export for this file system.  I did try exporting with "sec=sys",
-> > but it didn't seem to make any difference either.
-> > 
-> > So far, this seems like a regression to me ....
-> > Any ideas what I might be doing wrong?  How can I
-> > help make this work again?
-> 
-> 3.10-rc3 appears to be missing the fix for this.  See:
-> 
->   http://marc.info/?l=linux-nfs&m=136855668104598&w=2
-> 
-> Trond, can we get this applied?
-> 
+All tasks can easily be frozen in under 10 ms, switch to using
+an initial 1 ms sleep followed by exponential backoff until
+8 ms.  Also convert the printed time to ms instead of centiseconds.
 
-For some reason it got lost in the mail heap. I've applied it now to the
-'bugfixes' branch. Will push upstream in the next few days...
+Acked-by: Pavel Machek <pavel@ucw.cz>
+Acked-by: Tejun Heo <tj@kernel.org>
+Signed-off-by: Colin Cross <ccross@android.com>
+---
+ kernel/power/process.c | 26 +++++++++++++++-----------
+ 1 file changed, 15 insertions(+), 11 deletions(-)
 
+diff --git a/kernel/power/process.c b/kernel/power/process.c
+index 98088e0..fc0df84 100644
+--- a/kernel/power/process.c
++++ b/kernel/power/process.c
+@@ -30,9 +30,10 @@ static int try_to_freeze_tasks(bool user_only)
+ 	unsigned int todo;
+ 	bool wq_busy = false;
+ 	struct timeval start, end;
+-	u64 elapsed_csecs64;
+-	unsigned int elapsed_csecs;
++	u64 elapsed_msecs64;
++	unsigned int elapsed_msecs;
+ 	bool wakeup = false;
++	int sleep_usecs = USEC_PER_MSEC;
+ 
+ 	do_gettimeofday(&start);
+ 
+@@ -68,22 +69,25 @@ static int try_to_freeze_tasks(bool user_only)
+ 
+ 		/*
+ 		 * We need to retry, but first give the freezing tasks some
+-		 * time to enter the refrigerator.
++		 * time to enter the refrigerator.  Start with an initial
++		 * 1 ms sleep followed by exponential backoff until 8 ms.
+ 		 */
+-		msleep(10);
++		usleep_range(sleep_usecs / 2, sleep_usecs);
++		if (sleep_usecs < 8 * USEC_PER_MSEC)
++			sleep_usecs *= 2;
+ 	}
+ 
+ 	do_gettimeofday(&end);
+-	elapsed_csecs64 = timeval_to_ns(&end) - timeval_to_ns(&start);
+-	do_div(elapsed_csecs64, NSEC_PER_SEC / 100);
+-	elapsed_csecs = elapsed_csecs64;
++	elapsed_msecs64 = timeval_to_ns(&end) - timeval_to_ns(&start);
++	do_div(elapsed_msecs64, NSEC_PER_MSEC);
++	elapsed_msecs = elapsed_msecs64;
+ 
+ 	if (todo) {
+ 		printk("\n");
+-		printk(KERN_ERR "Freezing of tasks %s after %d.%02d seconds "
++		printk(KERN_ERR "Freezing of tasks %s after %d.%03d seconds "
+ 		       "(%d tasks refusing to freeze, wq_busy=%d):\n",
+ 		       wakeup ? "aborted" : "failed",
+-		       elapsed_csecs / 100, elapsed_csecs % 100,
++		       elapsed_msecs / 1000, elapsed_msecs % 1000,
+ 		       todo - wq_busy, wq_busy);
+ 
+ 		if (!wakeup) {
+@@ -96,8 +100,8 @@ static int try_to_freeze_tasks(bool user_only)
+ 			read_unlock(&tasklist_lock);
+ 		}
+ 	} else {
+-		printk("(elapsed %d.%02d seconds) ", elapsed_csecs / 100,
+-			elapsed_csecs % 100);
++		printk("(elapsed %d.%03d seconds) ", elapsed_msecs / 1000,
++			elapsed_msecs % 1000);
+ 	}
+ 
+ 	return todo ? -EBUSY : 0;
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.8.2.1
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
