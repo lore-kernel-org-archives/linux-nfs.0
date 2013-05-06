@@ -1,65 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:42166 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757299Ab3EHRjP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 May 2013 13:39:15 -0400
-Message-ID: <518A8DBE.3010107@RedHat.com>
-Date: Wed, 08 May 2013 13:39:10 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-ye0-f178.google.com ([209.85.213.178]:44019 "EHLO
+	mail-ye0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754882Ab3EFTBW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 15:01:22 -0400
+Date: Mon, 6 May 2013 12:01:15 -0700
+From: Tejun Heo <tj@kernel.org>
+To: Colin Cross <ccross@android.com>
+Cc: linux-kernel@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Len Brown <len.brown@intel.com>, Pavel Machek <pavel@ucw.cz>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-pm@vger.kernel.org, netdev@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Ben Chan <benchan@chromium.org>
+Subject: Re: [PATCH 2/2] lockdep: check that no locks held at freeze time
+Message-ID: <20130506190115.GB800@mtj.dyndns.org>
+References: <1367615050-3894-1-git-send-email-ccross@android.com>
+ <1367615050-3894-2-git-send-email-ccross@android.com>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 13/17] NFS: Client implementation of Labeled-NFS
-References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>   <1367240239-19326-14-git-send-email-SteveD@redhat.com>  <1367435005.4189.36.camel@leira.trondhjem.org>  <518A7FA6.4090703@RedHat.com> <1368031432.5978.3.camel@leira.trondhjem.org>
-In-Reply-To: <1368031432.5978.3.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1367615050-3894-2-git-send-email-ccross@android.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 08/05/13 12:43, Myklebust, Trond wrote:
-> On Wed, 2013-05-08 at 12:39 -0400, Steve Dickson wrote:
->>
->> On 01/05/13 15:03, Myklebust, Trond wrote:
->>>> @@ -2409,10 +2468,26 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
->>>>>  			server->caps |= NFS_CAP_CTIME;
->>>>>  		if (res.attr_bitmask[1] & FATTR4_WORD1_TIME_MODIFY)
->>>>>  			server->caps |= NFS_CAP_MTIME;
->>>>> +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
->>>>> +		if (res.attr_bitmask[2] & FATTR4_WORD2_SECURITY_LABEL)
->>>>> +			server->caps |= NFS_CAP_SECURITY_LABEL;
->>>>> +#endif
->>>>> +		memcpy(server->attr_bitmask_nl, res.attr_bitmask, 
->>>>> +				sizeof(server->attr_bitmask));
->>>>> +
->>>>> +		if (server->caps & NFS_CAP_SECURITY_LABEL)
->>>>> +			server->attr_bitmask_nl[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
->>>>>  
->>>>>  		memcpy(server->cache_consistency_bitmask, res.attr_bitmask, sizeof(server->cache_consistency_bitmask));
->>>>>  		server->cache_consistency_bitmask[0] &= FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE;
->>>>> -		server->cache_consistency_bitmask[1] &= FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
->>>>> +		server->cache_consistency_bitmask[1] &= FATTR4_WORD1_TIME_METADATA |
->>>>> +							FATTR4_WORD1_TIME_MODIFY;
->>>>> +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
->>>>> +		server->cache_consistency_bitmask[2] &= FATTR4_WORD2_SECURITY_LABEL;
->>> Why? How is the security label relevant to cache consistency?
->> Its used to the set label bit in the GETATTR that goes out with ACCESS compound.
+On Fri, May 03, 2013 at 02:04:10PM -0700, Colin Cross wrote:
+> From: Mandeep Singh Baines <msb@chromium.org>
 > 
-> The GETATTR that goes out with ACCESS is only there in order to get the
-> change attribute so that we know when to invalidate the access cache. It
-> is _only_ for cache consistency.
+> We shouldn't try_to_freeze if locks are held.  Holding a lock can cause a
+> deadlock if the lock is later acquired in the suspend or hibernate path
+> (e.g.  by dpm).  Holding a lock can also cause a deadlock in the case of
+> cgroup_freezer if a lock is held inside a frozen cgroup that is later
+> acquired by a process outside that group.
 > 
-> Why do we need to fetch the label too?
-> 
-I think I answer this in the other thread but in short 
-access updates the inode and so it appears the goal 
-is to synchronize inode updates and label updates.
+> History:
+> This patch was originally applied as 6aa9707099c and reverted in
+> dbf520a9d7d4 because NFS was freezing with locks held.  It was
+> deemed better to keep the bad freeze point in NFS to allow laptops
+> to suspend consistently.  The previous patch in this series converts
+> NFS to call _unsafe versions of the freezable helpers so that
+> lockdep doesn't complain about them until a more correct fix
+> can be applied.
 
-steved.
- 
+I don't care about %current change, especially given that it's a debug
+interface but that really should be a separate patch, so please split
+it out if you want it (and I think we want it).
+
+Thanks.
+
+-- 
+tejun
