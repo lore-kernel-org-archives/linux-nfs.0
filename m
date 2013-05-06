@@ -1,58 +1,173 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ye0-f178.google.com ([209.85.213.178]:44019 "EHLO
-	mail-ye0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754882Ab3EFTBW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 15:01:22 -0400
-Date: Mon, 6 May 2013 12:01:15 -0700
-From: Tejun Heo <tj@kernel.org>
-To: Colin Cross <ccross@android.com>
-Cc: linux-kernel@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Len Brown <len.brown@intel.com>, Pavel Machek <pavel@ucw.cz>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-pm@vger.kernel.org, netdev@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Ben Chan <benchan@chromium.org>
-Subject: Re: [PATCH 2/2] lockdep: check that no locks held at freeze time
-Message-ID: <20130506190115.GB800@mtj.dyndns.org>
-References: <1367615050-3894-1-git-send-email-ccross@android.com>
- <1367615050-3894-2-git-send-email-ccross@android.com>
+Received: from mx12.netapp.com ([216.240.18.77]:25735 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755504Ab3EFTlO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 May 2013 15:41:14 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
+        Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] NFSv3: match sec= flavor against server list
+Date: Mon,  6 May 2013 15:41:08 -0400
+Message-Id: <1367869268-3741-1-git-send-email-dros@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1367615050-3894-2-git-send-email-ccross@android.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 03, 2013 at 02:04:10PM -0700, Colin Cross wrote:
-> From: Mandeep Singh Baines <msb@chromium.org>
-> 
-> We shouldn't try_to_freeze if locks are held.  Holding a lock can cause a
-> deadlock if the lock is later acquired in the suspend or hibernate path
-> (e.g.  by dpm).  Holding a lock can also cause a deadlock in the case of
-> cgroup_freezer if a lock is held inside a frozen cgroup that is later
-> acquired by a process outside that group.
-> 
-> History:
-> This patch was originally applied as 6aa9707099c and reverted in
-> dbf520a9d7d4 because NFS was freezing with locks held.  It was
-> deemed better to keep the bad freeze point in NFS to allow laptops
-> to suspend consistently.  The previous patch in this series converts
-> NFS to call _unsafe versions of the freezable helpers so that
-> lockdep doesn't complain about them until a more correct fix
-> can be applied.
+Older linux clients match the 'sec=' mount option flavor against the server's
+flavor list (if available) and return EPERM if the specified flavor or AUTH_NULL
+(which "matches" any flavor) is not found.
 
-I don't care about %current change, especially given that it's a debug
-interface but that really should be a separate patch, so please split
-it out if you want it (and I think we want it).
+Recent changes skip this step and allow the vfs mount even though no operations
+will succeed, creating a 'dud' mount.
 
-Thanks.
+This patch reverts back to the old behavior of matching specified flavors
+against the server list and also returns EPERM when no sec= is specified and
+none of the flavors returned by the server are supported by the client.
 
+Example of behavior change:
+
+the server's /etc/exports:
+
+/export/krb5      *(sec=krb5,rw,no_root_squash)
+
+old client behavior:
+
+$ uname -a
+Linux one.apikia.fake 3.8.8-202.fc18.x86_64 #1 SMP Wed Apr 17 23:25:17 UTC 2013 x86_64 x86_64 x86_64 GNU/Linux
+$ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
+mount.nfs: timeout set for Sun May  5 17:32:04 2013
+mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
+mount.nfs: prog 100003, trying vers=3, prot=6
+mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
+mount.nfs: prog 100005, trying vers=3, prot=17
+mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
+mount.nfs: mount(2): Permission denied
+mount.nfs: access denied by server while mounting zero:/export/krb5
+
+recently changed behavior:
+
+$ uname -a
+Linux one.apikia.fake 3.9.0-testing+ #2 SMP Fri May 3 20:29:32 EDT 2013 x86_64 x86_64 x86_64 GNU/Linux
+$ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
+mount.nfs: timeout set for Sun May  5 17:37:17 2013
+mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
+mount.nfs: prog 100003, trying vers=3, prot=6
+mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
+mount.nfs: prog 100005, trying vers=3, prot=17
+mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
+$ ls /mnt
+ls: cannot open directory /mnt: Permission denied
+$ sudo ls /mnt
+ls: cannot open directory /mnt: Permission denied
+$ sudo df /mnt
+df: ‘/mnt’: Permission denied
+df: no file systems processed
+$ sudo umount /mnt
+$
+
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+
+Version 2:
+ - now just uses specified flavor when:
+   - AUTH_NULL is in the server list
+   - flavor is in the server list
+
+ - now returns EPERM when no sec= specified and no client supported flavors are
+   in the server list
+
+ - includes example in the changelog
+
+ fs/nfs/super.c | 37 ++++++++++++++++++++++++++++++-------
+ 1 file changed, 30 insertions(+), 7 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index eb494f6..0e36807 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1611,14 +1611,12 @@ out_security_failure:
+  * Select a security flavor for this mount.  The selected flavor
+  * is planted in args->auth_flavors[0].
+  */
+-static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
++static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
+ 			      struct nfs_mount_request *request)
+ {
+ 	unsigned int i, count = *(request->auth_flav_len);
+ 	rpc_authflavor_t flavor;
+-
+-	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR)
+-		goto out;
++	bool auth_null_seen = false;
+ 
+ 	/*
+ 	 * The NFSv2 MNT operation does not return a flavor list.
+@@ -1634,6 +1632,21 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
+ 		goto out_default;
+ 
+ 	/*
++	 * If the sec= mount option is used, the specified flavor or AUTH_NULL
++	 * must be in the list returned by the server.
++	 */
++	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR) {
++		for (i = 0; i < count; i++) {
++			if (args->auth_flavors[0] == request->auth_flavs[i] ||
++			    request->auth_flavs[i] == RPC_AUTH_NULL)
++				goto out;
++		}
++		dfprintk(MOUNT, "NFS: auth flavor %d not supported server\n",
++			args->auth_flavors[0]);
++		goto out_err;
++	}
++
++	/*
+ 	 * RFC 2623, section 2.7 suggests we SHOULD prefer the
+ 	 * flavor listed first.  However, some servers list
+ 	 * AUTH_NULL first.  Avoid ever choosing AUTH_NULL.
+@@ -1646,6 +1659,7 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
+ 		case RPC_AUTH_UNIX:
+ 			goto out_set;
+ 		case RPC_AUTH_NULL:
++			auth_null_seen = true;
+ 			continue;
+ 		default:
+ 			if (rpcauth_get_gssinfo(flavor, &info) == 0)
+@@ -1653,12 +1667,22 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
+ 		}
+ 	}
+ 
++	if (!auth_null_seen) {
++		dfprintk(MOUNT, "NFS: no auth flavors in common with server\n");
++		goto out_err;
++	}
++
+ out_default:
+-	flavor = RPC_AUTH_UNIX;
++	/* use default if flavor not already set */
++	flavor = (args->auth_flavors[0] == RPC_AUTH_MAXFLAVOR) ?
++		RPC_AUTH_UNIX : args->auth_flavors[0];
+ out_set:
+ 	args->auth_flavors[0] = flavor;
+ out:
+ 	dfprintk(MOUNT, "NFS: using auth flavor %d\n", args->auth_flavors[0]);
++	return 0;
++out_err:
++	return -EPERM;
+ }
+ 
+ /*
+@@ -1721,8 +1745,7 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+ 		return status;
+ 	}
+ 
+-	nfs_select_flavor(args, &request);
+-	return 0;
++	return nfs_select_flavor(args, &request);
+ }
+ 
+ struct dentry *nfs_try_mount(int flags, const char *dev_name,
 -- 
-tejun
+1.7.12.4 (Apple Git-37)
+
