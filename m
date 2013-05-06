@@ -1,88 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:49078 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752700Ab3EDW5S (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 4 May 2013 18:57:18 -0400
-Date: Sun, 5 May 2013 00:57:15 +0200
-From: Pavel Machek <pavel@ucw.cz>
-To: Colin Cross <ccross@android.com>
-Cc: lkml <linux-kernel@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Len Brown <len.brown@intel.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+Received: from mail-qa0-f74.google.com ([209.85.216.74]:59400 "EHLO
+	mail-qa0-f74.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758750Ab3EFX6Q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 19:58:16 -0400
+Received: by mail-qa0-f74.google.com with SMTP id i13so22678qae.3
+        for <linux-nfs@vger.kernel.org>; Mon, 06 May 2013 16:58:16 -0700 (PDT)
+From: Colin Cross <ccross@android.com>
+To: linux-kernel@vger.kernel.org
+Cc: Pavel Machek <pavel@ucw.cz>, "Rafael J. Wysocki" <rjw@sisk.pl>,
         Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
         Andrew Morton <akpm@linux-foundation.org>,
         Mandeep Singh Baines <msb@chromium.org>,
-        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
-        Linux PM list <linux-pm@vger.kernel.org>, netdev@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, Ben Chan <benchan@chromium.org>
-Subject: Re: [PATCH 2/2] lockdep: check that no locks held at freeze time
-Message-ID: <20130504225715.GB24276@amd.pavel.ucw.cz>
-References: <1367615050-3894-1-git-send-email-ccross@android.com>
- <1367615050-3894-2-git-send-email-ccross@android.com>
- <20130504130440.GC13770@amd.pavel.ucw.cz>
- <CAMbhsRScr+3Zk5Bi6390bGRbtE4oh2H-mHrGHS0wew5hdkivUg@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAMbhsRScr+3Zk5Bi6390bGRbtE4oh2H-mHrGHS0wew5hdkivUg@mail.gmail.com>
+        Colin Cross <ccross@android.com>, Oleg Nesterov <oleg@redhat.com>,
+        linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org,
+        netdev@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>,
+        Tejun Heo <tj@kernel.org>, Thomas Gleixner <tglx@linutronix.de>
+Subject: [PATCH v3 14/16] nanosleep: use freezable blocking call
+Date: Mon,  6 May 2013 16:50:19 -0700
+Message-Id: <1367884221-20462-15-git-send-email-ccross@android.com>
+In-Reply-To: <1367884221-20462-1-git-send-email-ccross@android.com>
+References: <1367884221-20462-1-git-send-email-ccross@android.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat 2013-05-04 13:27:23, Colin Cross wrote:
-> On Sat, May 4, 2013 at 6:04 AM, Pavel Machek <pavel@ucw.cz> wrote:
-> > On Fri 2013-05-03 14:04:10, Colin Cross wrote:
-> >> From: Mandeep Singh Baines <msb@chromium.org>
-> >>
-> >> We shouldn't try_to_freeze if locks are held.  Holding a lock can cause a
-> >> deadlock if the lock is later acquired in the suspend or hibernate path
-> >> (e.g.  by dpm).  Holding a lock can also cause a deadlock in the case of
-> >> cgroup_freezer if a lock is held inside a frozen cgroup that is later
-> >> acquired by a process outside that group.
-> >
-> > Ok, but this does not explain why
-> >
-> >> --- a/include/linux/debug_locks.h
-> >> +++ b/include/linux/debug_locks.h
-> >> @@ -51,7 +51,7 @@ struct task_struct;
-> >>  extern void debug_show_all_locks(void);
-> >>  extern void debug_show_held_locks(struct task_struct *task);
-> >>  extern void debug_check_no_locks_freed(const void *from, unsigned long len);
-> >> -extern void debug_check_no_locks_held(struct task_struct *task);
-> >> +extern void debug_check_no_locks_held(void);
-> >>  #else
-> >>  static inline void debug_show_all_locks(void)
-> >>  {
-> >
-> > Removing task_struct argument from  those functions is good idea?
-> 
-> This is an existing patch that was merged in 3.9 and then reverted
-> again, so it has already been reviewed and accepted once.
+Avoid waking up every thread sleeping in a nanosleep call during
+suspend and resume by calling a freezable blocking call.  Previous
+patches modified the freezer to avoid sending wakeups to threads
+that are blocked in freezable blocking calls.
 
-Well, it was also reverted once :-).
+This call was selected to be converted to a freezable call because
+it doesn't hold any locks or release any resources when interrupted
+that might be needed by another freezing task or a kernel driver
+during suspend, and is a common site where idle userspace tasks are
+blocked.
 
-> >> --- a/kernel/exit.c
-> >> +++ b/kernel/exit.c
-> >> @@ -835,7 +835,7 @@ void do_exit(long code)
-> >>       /*
-> >>        * Make sure we are holding no locks:
-> >>        */
-> >> -     debug_check_no_locks_held(tsk);
-> >> +     debug_check_no_locks_held();
-> >
-> > Is task guaranteed == current?
-> 
-> Yes, the first line of do_exit is:
->         struct task_struct *tsk = current;
+Acked-by: Tejun Heo <tj@kernel.org>
+Acked-by: Thomas Gleixner <tglx@linutronix.de>
+Signed-off-by: Colin Cross <ccross@android.com>
+---
+ kernel/hrtimer.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-Aha, I understand it now.
-
-Accessing current is slower than local variable. So your "new" code
-will work but will be slower. Please revert this part.
-									Pavel
+diff --git a/kernel/hrtimer.c b/kernel/hrtimer.c
+index 14be27f..e036276 100644
+--- a/kernel/hrtimer.c
++++ b/kernel/hrtimer.c
+@@ -47,6 +47,7 @@
+ #include <linux/sched/sysctl.h>
+ #include <linux/sched/rt.h>
+ #include <linux/timer.h>
++#include <linux/freezer.h>
+ 
+ #include <asm/uaccess.h>
+ 
+@@ -1525,7 +1526,7 @@ static int __sched do_nanosleep(struct hrtimer_sleeper *t, enum hrtimer_mode mod
+ 			t->task = NULL;
+ 
+ 		if (likely(t->task))
+-			schedule();
++			freezable_schedule();
+ 
+ 		hrtimer_cancel(&t->timer);
+ 		mode = HRTIMER_MODE_ABS;
 -- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+1.8.2.1
+
