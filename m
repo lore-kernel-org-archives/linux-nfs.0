@@ -1,55 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx5.framestore.com ([193.203.83.15]:56129 "EHLO
-	mx5.framestore.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754751Ab3EONqj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 09:46:39 -0400
-Date: Wed, 15 May 2013 14:42:42 +0100 (BST)
-From: James Vanns <james.vanns@framestore.com>
-Reply-To: james.vanns@framestore.com
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-ID: <1045951723.19965005.1368625362930.JavaMail.root@framestore.com>
-In-Reply-To: <20130514220122.GE16811@fieldses.org>
-Subject: Re: Where in the server code is fsinfo rtpref calculated?
+Received: from mx1.redhat.com ([209.132.183.28]:17587 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755573Ab3EFT5E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 May 2013 15:57:04 -0400
+Message-ID: <51880B01.5040907@redhat.com>
+Date: Mon, 06 May 2013 22:56:49 +0300
+From: Ric Wheeler <rwheeler@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+To: James Bottomley <James.Bottomley@HansenPartnership.com>
+CC: Steve Dickson <SteveD@redhat.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>, Jack Rieden <jrieden@redhat.com>
+Subject: Re: [PATCH 00/17] lnfs: linux-3.9 release
+References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>  <51848BE0.2080901@redhat.com> <1367855617.1868.16.camel@dabdike>
+In-Reply-To: <1367855617.1868.16.camel@dabdike>
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> fs/nfsd/nfssvc.c:nfsd_get_default_maxblksize() is probably a good
-> starting point.  Its caller, nfsd_create_serv(), calls
-> svc_create_pooled() with the result that's calculated.
+On 05/06/2013 06:53 PM, James Bottomley wrote:
+> On Sat, 2013-05-04 at 07:17 +0300, Ric Wheeler wrote:
+>> On 05/02/2013 08:18 PM, Steve Dickson wrote:
+>>> From: Steve Dickson <steved@redhat.com>
+>>>
+>>> Here is an the next rlease of the label NFS patches
+>>> ported to the linux-3.9 release
+>>>
+>>> The following changes were made from the previous release.
+>>> (Note, only the server patch changed in this release)
+>>>
+>>> * Remove the buffer overflow in the allocation of labels.
+>>>
+>>> * Removed needless char * casting
+>>>
+>>> * Removed the -EMSGSIZE to nfs4err_badlabel errno mapping
+>>>     by changing the return value of nfsd4_label_alloc() to
+>>>     be a _be32 value.
+>> It would be great to see this patch series land in time for 3.10 - seems like a
+>> major feature that has had been held in development for years and it does have a
+>> very interested user base waiting for this to land.
+>>
+>> Are there any existing roadblocks to having this make it this merge
+>> window?
+> You mean other than the one Bruce and Trond already mentioned and which
+> you presumably already read? i.e. it's a large feature whose final
+> incarnation landed when the merge window was already open which by
+> process should receive incubation in linux-next before being merged.
+>
+> It is entirely within the gift of the maintainers to vary the incubation
+> requirements, but if they do and it comes back with a ton of problems
+> from the 0 day project or smatch or even a build failure that would have
+> been picked up by linux-next, they'll be at the wrong end of Linus'
+> flame thrower not you.  So it is rather unfair to pressure the
+> maintainers like this.
+>
+> Kernel processes exist for a reason and almost every maintainer has the
+> scars that remind them of this.
+>
+> James
+>
+>
 
-Hmm. If I've read this section of code correctly, it seems to me
-that on most modern NFS servers (using TCP as the transport) the default
-and preferred blocksize negotiated with clients will almost always be
-1MB - the maximum RPC payload. The nfsd_get_default_maxblksize() function
-seems obsolete for modern 64-bit servers with at least 4G of RAM as it'll
-always prefer this upper bound instead of any value calculated according to
-available RAM.
+Don't worry James - this one has had at least as much testing as the average 
+SCSI driver update :)
 
-For what it's worth (not sure if I specified this) I'm running kernel 2.6.32.
+This is was not meant as pressure, James Morris (not you) had replied that his 
+patches are ready and he expected them to be pulled via the NFS trees.
 
-Anyway, this file/function appears to set the default *max* blocksize. I haven't 
-read all the related code yet, but does the preferred block size derive 
-from this maximum too?
+This was meant to facilitate getting this multi-tree, multi-maintainer series 
+ready to merge and make sure we aren't stuck each waiting for a response from 
+the next person in the loop.
 
-Thanks,
+Note that this patch set has been in development for *years*, been tested at 
+connectathon, tested by interested parties who promoted the earliest versions of 
+the patches and tested by RHEL (of course, the series has evolved over time).
 
-Jim
+Ric
 
-> For fsinfo see fs/nfsd/nfs3proc.c:nfsd3_proc_fsinfo, which uses
-> svc_max_payload().
-> 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
--- 
-Jim Vanns
-Senior Software Developer
-Framestore
