@@ -1,145 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:35598 "EHLO mx2.suse.de"
+Received: from mx1.netapp.com ([216.240.18.38]:49484 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752438Ab3EFEo1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 May 2013 00:44:27 -0400
-Date: Mon, 6 May 2013 14:44:13 +1000
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mountd: Fix is_subdirectory again.
-Message-ID: <20130506144413.46b6f37b@notabene.brown>
-In-Reply-To: <20130502151634.GE15728@fieldses.org>
-References: <20130502170511.646e2717@notabene.brown>
-	<20130502151634.GE15728@fieldses.org>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/RkJWcDiQ=TBIM05gp7mOek8"; protocol="application/pgp-signature"
+	id S1757084Ab3EFUfl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 16:35:41 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv3: match sec= flavor against server list
+Date: Mon, 6 May 2013 20:35:40 +0000
+Message-ID: <9BC67816-C04D-4886-8C13-0820A16298D3@netapp.com>
+References: <1367869268-3741-1-git-send-email-dros@netapp.com>
+ <1367869418.9004.47.camel@leira.trondhjem.org>
+In-Reply-To: <1367869418.9004.47.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/RkJWcDiQ=TBIM05gp7mOek8
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
 
-On Thu, 2 May 2013 11:16:34 -0400 "J. Bruce Fields" <bfields@fieldses.org>
-wrote:
+On May 6, 2013, at 3:43 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-> On Thu, May 02, 2013 at 05:05:11PM +1000, NeilBrown wrote:
-> >=20
-> >=20
-> > Hi Steve,
-> >  I just noticed
-> >=20
-> > commit ebe2826ca571a3959c3b5c8e29686c621f2775cf
-> > Author: Steve Dickson <steved@redhat.com>
-> > Date:   Sat Mar 23 10:30:17 2013 -0400
-> >=20
-> >     mountd: regression in crossmounts
-> >=20
-> > Sorry I missed the email you presumably sent me to let me know
-> > that I had caused a regression.
->=20
-> Yup.  The strategy around here is to bury people in email and trust they
-> have industrial-strength filtering.
->=20
-> And I could have added Neil on the cc: too and forgot, oops:
->=20
-> 	http://marc.info/?l=3Dlinux-nfs&m=3D136404930104976&w=3D2
->=20
-> > Here is the proper fix.
->=20
-> I'm dense.  I still had to scratch my head a while:
->=20
-> So: in a case like the one steved gives:
->=20
-> 	/home *(rw,fsid=3D0,crossmnt)
-> 	/home/fs1 *(rw,crossmnt)
-> 	/home/fs1/fs2/fs3 *(rw,nohide)
->=20
-> where nfsd_fh is asked to look for an export with fsid=3D0, it gets a
-> match on the export of /home.  But that loop there keeps going in case
-> it finds some better match.  In particular it considers any mountpoints
-> under /home as candidates, since /home has "crossmnt".  And they all
-> match too.  So it considers in sequence the possibilities:
->=20
-> 	(found=3D/export of /home, found_path=3D/home)
-> 	(found=3D/export of /home, found_path=3D/home/fs1)
-> 	(found=3D/export of /home, found_path=3D/home/fs1/fs2/fs3)
->=20
-> The subexport() test--designed to favor crossmnt exports which are
-> "closer" to the target filesystem--passes in each case, so we end up
-> taking the last.
->=20
-> So we pass down the longest path to the kernel, it does an export upcall
-> for that path, the hilarity ensues.
->=20
-> Anyway:
->=20
-> 	Acked-by: J. Bruce Fields <bfields@redhat.com>
+> On Mon, 2013-05-06 at 15:41 -0400, Weston Andros Adamson wrote:
+>> Older linux clients match the 'sec=' mount option flavor against the server's
+>> flavor list (if available) and return EPERM if the specified flavor or AUTH_NULL
+>> (which "matches" any flavor) is not found.
+>> 
+>> Recent changes skip this step and allow the vfs mount even though no operations
+>> will succeed, creating a 'dud' mount.
+>> 
+>> This patch reverts back to the old behavior of matching specified flavors
+>> against the server list and also returns EPERM when no sec= is specified and
+>> none of the flavors returned by the server are supported by the client.
+>> 
+>> Example of behavior change:
+>> 
+>> the server's /etc/exports:
+>> 
+>> /export/krb5      *(sec=krb5,rw,no_root_squash)
+>> 
+>> old client behavior:
+>> 
+>> $ uname -a
+>> Linux one.apikia.fake 3.8.8-202.fc18.x86_64 #1 SMP Wed Apr 17 23:25:17 UTC 2013 x86_64 x86_64 x86_64 GNU/Linux
+>> $ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
+>> mount.nfs: timeout set for Sun May  5 17:32:04 2013
+>> mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
+>> mount.nfs: prog 100003, trying vers=3, prot=6
+>> mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
+>> mount.nfs: prog 100005, trying vers=3, prot=17
+>> mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
+>> mount.nfs: mount(2): Permission denied
+>> mount.nfs: access denied by server while mounting zero:/export/krb5
+>> 
+>> recently changed behavior:
+>> 
+>> $ uname -a
+>> Linux one.apikia.fake 3.9.0-testing+ #2 SMP Fri May 3 20:29:32 EDT 2013 x86_64 x86_64 x86_64 GNU/Linux
+>> $ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
+>> mount.nfs: timeout set for Sun May  5 17:37:17 2013
+>> mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
+>> mount.nfs: prog 100003, trying vers=3, prot=6
+>> mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
+>> mount.nfs: prog 100005, trying vers=3, prot=17
+>> mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
+>> $ ls /mnt
+>> ls: cannot open directory /mnt: Permission denied
+>> $ sudo ls /mnt
+>> ls: cannot open directory /mnt: Permission denied
+>> $ sudo df /mnt
+>> df: ‘/mnt’: Permission denied
+>> df: no file systems processed
+>> $ sudo umount /mnt
+>> $
+>> 
+>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>> ---
+>> 
+>> Version 2:
+>> - now just uses specified flavor when:
+>>   - AUTH_NULL is in the server list
+>>   - flavor is in the server list
+>> 
+>> - now returns EPERM when no sec= specified and no client supported flavors are
+>>   in the server list
+>> 
+> 
+> Shouldn't that be EACCES?
 
-Thanks.
+Yes. I think both cases should be EACCES.
 
->=20
-> But this all still gives me a mild headache:
->=20
-> 	- it only works if we iterate through the submounts in the
-> 	  correct order?
+Will test and repost
 
-Does it?  nfsd_fh() is trying to find the export for a given file handle.
-  For every export it tries that filesystem and (if CROSSMOUNT) ever
-  filesystem mounted below there.
-  It only considers filesystem for which the fsid matches.
-  Of those, it chooses the exp which is 'lowest' in the hierarchy.
+-dros
 
-I don't think the result of that can be dependant on order.
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
 
-> 	- should fsid=3D be inherited by crossmnt anyway?
-
-No...
-If you have an export with fsid=3DN,crossmnt and a filehandle arrives for
-fsid=3DN, then when we first look at that export match_fsid() will report a
-match and 'found' will be set.
-nfsd_fh() will loop around and try again for the next entry in /etc/mtab
-which is under that same filesystem.  It will get a match_fsid() as well but
-as subexport() will report "no" (as it is the same export), no change will =
-be
-made to found.  It also will not report that "X and Y have same file handle
-for Z, using first" as the e_paths will match.
-
-So it works as is.  Maybe the code could be made clearer though.
-
-
-> 	- nfsd_fh() is too long, and the logic (with those extra loop
-> 	  control variables declared static inside the CROSSMOUNT case)
-> 	  could be more straightforward.
-
-You have a history of taking my too-long functions and breaking them up into
-manageable bits (kernel commit 3211af1119174fbe8b).  Maybe you could try
-again :-)
-
-NeilBrown
-
---Sig_/RkJWcDiQ=TBIM05gp7mOek8
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBUYc1HTnsnt1WYoG5AQLEqA/+KQT6pw2ETG/6kqQPXU+KSIiw3taEIcCj
-dKgAYc/Xp9w7JXeoGCXUz00s90WnI796dLuruCE6bgW1RnURC67ql4po2VcJzJJc
-igsTpaneK/tW0JTdkEC9DppiH8kyRLB9+xjYI8cBbS0Gwy4h75ggq0THlewVFpc7
-laaKJZ605BceNL2+Yao9JGLaeqYCHFOuqur6y2lZjiavT8C3ji0KqqFuF/znOYvx
-h3wSZ7rjSKcWpHGuYZa9SIw1dLa8zDPhB5m348yPrefiUb5uQxduRfdcATgCdEij
-Kkp9vwW2KKHIvzMjjNIQfruRF5G0a8pe3+Tb9c/fO0V3XKQ2N66FBcqoxtiSHB9B
-JyzzqtyB6fUm6cVdITPtB9MPb3k24vjdMpHmcZamcbz59ArPzqugHtal77AT8ERk
-ES7DTj5yj9CwQKySNKVgMpNUIndGmJME9o7zqFXipC8449CqhMzHAAx1ecGDJnpS
-oaCkC4AT5eoWxswtecni855UBDrsZjqTcng8gIvglkSWum5FRGwknX0oY7kWLSib
-7KnDb11e3t+r9x6C2yvIkL3mSzzvU/5e4Mt/5Vz9IlaRcyh+W74l17+cFcJkLIR4
-R9U3QRwY3Dv9Ka5tvH4H35Hf70VCrFCf8eRVTUGr1l9CKlZwhsG8UcJUoVa7kpri
-ZjjwqI9bOKE=
-=aLvQ
------END PGP SIGNATURE-----
-
---Sig_/RkJWcDiQ=TBIM05gp7mOek8--
