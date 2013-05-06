@@ -1,65 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ea0-f182.google.com ([209.85.215.182]:51595 "EHLO
-	mail-ea0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932750Ab3E1MvC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 May 2013 08:51:02 -0400
-Received: by mail-ea0-f182.google.com with SMTP id r16so4552047ead.41
-        for <linux-nfs@vger.kernel.org>; Tue, 28 May 2013 05:51:00 -0700 (PDT)
-Message-ID: <51A4A830.5040103@tonian.com>
-Date: Tue, 28 May 2013 15:50:56 +0300
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from fieldses.org ([174.143.236.118]:42498 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753053Ab3EFMzg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 May 2013 08:55:36 -0400
+Date: Mon, 6 May 2013 08:55:31 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Geert Uytterhoeven <geert@linux-m68k.org>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] SUNRPC: Refactor gssx_dec_option_array() to kill
+ uninitialized warning
+Message-ID: <20130506125531.GC15476@fieldses.org>
+References: <1367824863-1857-1-git-send-email-geert@linux-m68k.org>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@netapp.com>
-CC: NFS list <linux-nfs@vger.kernel.org>, nfsv4 mailing list <nfsv4@ietf.org>,
-        Idan Keidar <idank@tonian.com>, Lev Solomonov <solo@tonian.com>,
-        Nadav Shemer <nadav@tonian.com>, "Welch, Brent" <welch@panasas.com>,
-        Boaz Harrosh <bharrosh@panasas.com>, Peng Tao <peng_tao@emc.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: Client security considerations for out of band I/O
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1367824863-1857-1-git-send-email-geert@linux-m68k.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond, with the latest code for issuing LAYOUTGET with the right credentials
-we still seem to have a problem with the objects and blocks layout where
-the security enforcement over out-of-band I/O differs from than the one
-over in-band I/O.
+On Mon, May 06, 2013 at 09:21:03AM +0200, Geert Uytterhoeven wrote:
+> net/sunrpc/auth_gss/gss_rpc_xdr.c: In function ‘gssx_dec_option_array’:
+> net/sunrpc/auth_gss/gss_rpc_xdr.c:258: warning: ‘creds’ may be used uninitialized in this function
+> 
+> Return early if count is zero, to make it clearer to the compiler (and the
+> casual reviewer) that no more processing is done.
 
-Consider the following scenario:
+Looks reasonable; applying for 3.10.--b.
 
-file is owned by <uid1, gid1>, mode 660
-process p1 successfully opens the file for RW with <uid1, gid1> (client sent OPEN)
-process p2 successfully opens the file for RW with <uid2, gid1> (client sent ACCESS)
-client gets a layout using LAYOUTGET for IOMODE_RW
-the file is chmod'ed to 600
-
-now, empirically, in-band I/O would succeed for p1 and fail for p2 (as seen on linux
-and some commercial servers)
-
-for out-of-band I/O, an object-based server will fence-off the object and recall the layout
-to enforce the client to refresh its layout, send a LAYOUTGET, reauthorize, and get
-a new capability. BUT, that's not enough as the new layout and capability, would allow both
-p1 and p2 access to the object (as the layout is global to the client), yet we want only p1
-to have access now.
-
-How about sending ACCESS for any principal before using a newly retrieved layout
-at OPEN time or after the layout was revoked/reacquired to simulate the in-band behavior in
-a practical manner?
-
-Note that I expect some inaccuracies in behavior even with sending ACCESS as
-the linux nfs server and other commercial servers bypass permission checking for the file owner
-at I/O time but not for ACCESS.  I believe this was done to simulate (sort of) Posix behavior
-that allows I/O to an open file even after changing its security attributes.
-
-Also, do we deal correctly with LAYOUTGET failing on NFS4ERR_ACCESS?
-In the example above, if the open order was reversed, LAYOUTGET would have failed for p2's
-creds as it doesn't have RW access to the file.  That would result to reverting to the MDS
-and the I/O would fail on NFS4ERR_ACCESS as well, yet we'll keep trying (and failing)
-LAYOUTGET.  Optionally, the client could try other creds that opened the file.
-If the first process to open the file closes it, should we use different creds for LAYOUTGET?
-With the latest implementation we keep the first opener creds referenced until we return the
-whole layout, right?
-
-Regards,
-
-Benny
+> 
+> Signed-off-by: Geert Uytterhoeven <geert@linux-m68k.org>
+> ---
+>  net/sunrpc/auth_gss/gss_rpc_xdr.c |   32 +++++++++++++++++---------------
+>  1 files changed, 17 insertions(+), 15 deletions(-)
+> 
+> diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+> index 5c4c61d..a1e1b1a 100644
+> --- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
+> +++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+> @@ -264,25 +264,27 @@ static int gssx_dec_option_array(struct xdr_stream *xdr,
+>  	if (unlikely(p == NULL))
+>  		return -ENOSPC;
+>  	count = be32_to_cpup(p++);
+> -	if (count != 0) {
+> -		/* we recognize only 1 currently: CREDS_VALUE */
+> -		oa->count = 1;
+> +	if (!count)
+> +		return 0;
+>  
+> -		oa->data = kmalloc(sizeof(struct gssx_option), GFP_KERNEL);
+> -		if (!oa->data)
+> -			return -ENOMEM;
+> +	/* we recognize only 1 currently: CREDS_VALUE */
+> +	oa->count = 1;
+>  
+> -		creds = kmalloc(sizeof(struct svc_cred), GFP_KERNEL);
+> -		if (!creds) {
+> -			kfree(oa->data);
+> -			return -ENOMEM;
+> -		}
+> +	oa->data = kmalloc(sizeof(struct gssx_option), GFP_KERNEL);
+> +	if (!oa->data)
+> +		return -ENOMEM;
+>  
+> -		oa->data[0].option.data = CREDS_VALUE;
+> -		oa->data[0].option.len = sizeof(CREDS_VALUE);
+> -		oa->data[0].value.data = (void *)creds;
+> -		oa->data[0].value.len = 0;
+> +	creds = kmalloc(sizeof(struct svc_cred), GFP_KERNEL);
+> +	if (!creds) {
+> +		kfree(oa->data);
+> +		return -ENOMEM;
+>  	}
+> +
+> +	oa->data[0].option.data = CREDS_VALUE;
+> +	oa->data[0].option.len = sizeof(CREDS_VALUE);
+> +	oa->data[0].value.data = (void *)creds;
+> +	oa->data[0].value.len = 0;
+> +
+>  	for (i = 0; i < count; i++) {
+>  		gssx_buffer dummy = { 0, NULL };
+>  		u32 length;
+> -- 
+> 1.7.0.4
+> 
