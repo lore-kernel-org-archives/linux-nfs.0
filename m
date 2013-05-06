@@ -1,1190 +1,242 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:18902 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756699Ab3EVQvB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 May 2013 12:51:01 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 11/13] NFS: Client implementation of Labeled-NFS
-Date: Wed, 22 May 2013 12:50:44 -0400
-Message-Id: <1369241446-7680-12-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
-References: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:37387 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753652Ab3EFPRy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 11:17:54 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
+Subject: Re: [PATCH] NFSv3: match sec= flavor against server list
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <5FA4CAE8-023D-4799-A721-F5CD2D4513EF@netapp.com>
+Date: Mon, 6 May 2013 11:17:48 -0400
+Cc: "Haynes, Tom" <Tom.Haynes@netapp.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <0CB40479-AD64-4E36-8D36-C0232E64BABB@oracle.com>
+References: <1367846874-1234-1-git-send-email-dros@netapp.com> <CFCA1AF9-4CC3-46A6-8E08-BAC8BF030146@oracle.com> <5FA4CAE8-023D-4799-A721-F5CD2D4513EF@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
 
-This patch implements the client transport and handling support for labeled
-NFS. The patch adds two functions to encode and decode the security label
-recommended attribute which makes use of the LSM hooks added earlier. It also
-adds code to grab the label from the file attribute structures and encode the
-label to be sent back to the server.
+On May 6, 2013, at 10:49 AM, "Adamson, Dros" <Weston.Adamson@netapp.com> wrote:
 
-Acked-by: James Morris <james.l.morris@oracle.com>
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- fs/nfs/dir.c              |   7 +-
- fs/nfs/inode.c            |  61 ++++++++--
- fs/nfs/nfs4proc.c         | 292 +++++++++++++++++++++++++++++++++++++++++++---
- fs/nfs/nfs4xdr.c          | 154 +++++++++++++++++++-----
- fs/nfs/super.c            |  17 ++-
- include/linux/nfs_fs.h    |   3 +
- include/linux/nfs_fs_sb.h |   5 +
- security/selinux/hooks.c  |   4 +
- 8 files changed, 489 insertions(+), 54 deletions(-)
+> 
+> On May 6, 2013, at 9:52 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+>> Hi-
+>> 
+>> On May 6, 2013, at 9:27 AM, Weston Andros Adamson <dros@netapp.com> wrote:
+>> 
+>>> Older clients match the 'sec=' mount option flavor against the server's
+>>> flavor list (if available) and return EPERM if the specified flavor is not
+>>> found. Recent changes would skip this step and allow the vfs mount even
+>>> though no operations will succeed.
+>>> 
+>>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>>> ---
+>>> 
+>>> Hey Chuck,
+>>> 
+>>> This fixes a regression that was introduced with the recent nfs_select_flavor 
+>>> changes - I'm pretty sure we want to match the specified flavor instead of just
+>>> using it.
+>>> 
+>>> Example of the regression:
+>>> 
+>>> the server's /etc/exports:
+>>> 
+>>> /export/krb5      *(sec=krb5,sec=none,rw,no_root_squash)
+>>> 
+>>> old client behavior:
+>>> 
+>>> $ uname -a
+>>> Linux one.apikia.fake 3.8.8-202.fc18.x86_64 #1 SMP Wed Apr 17 23:25:17 UTC 2013 x86_64 x86_64 x86_64 GNU/Linux
+>>> $ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
+>>> mount.nfs: timeout set for Sun May  5 17:32:04 2013
+>>> mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
+>>> mount.nfs: prog 100003, trying vers=3, prot=6
+>>> mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
+>>> mount.nfs: prog 100005, trying vers=3, prot=17
+>>> mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
+>>> mount.nfs: mount(2): Permission denied
+>>> mount.nfs: access denied by server while mounting zero:/export/krb5
+>> 
+>> This is wrong behavior, and is fixed by my patch.
+>> 
+>>> recently changed behavior:
+>>> 
+>>> $ uname -a
+>>> Linux one.apikia.fake 3.9.0-testing+ #2 SMP Fri May 3 20:29:32 EDT 2013 x86_64 x86_64 x86_64 GNU/Linux
+>>> $ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
+>>> mount.nfs: timeout set for Sun May  5 17:37:17 2013
+>>> mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
+>>> mount.nfs: prog 100003, trying vers=3, prot=6
+>>> mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
+>>> mount.nfs: prog 100005, trying vers=3, prot=17
+>>> mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
+>>> $ ls /mnt
+>>> ls: cannot open directory /mnt: Permission denied
+>>> $ sudo ls /mnt
+>>> ls: cannot open directory /mnt: Permission denied
+>>> $ sudo df /mnt
+>>> df: ‘/mnt’: Permission denied
+>>> df: no file systems processed
+>>> $ sudo umount /mnt
+>>> $
+>> 
+>> This is correct behavior.  The server should map the user's AUTH_SYS credential to anonymous.  If anonymous does not have permission on /export/krb5, then the server should prevent its access to the export.
+> 
+> You're talking about AUTH_NULL behavior here, right?
+> 
+>> 
+>> I assume this is a Linux NFS server.  Does the Linux server support sec=none listed in the export options in the same way that NetApp and Oracle Solaris do?
+> 
+> 
+> So there are two issues here and I think they're getting confused.
+> 
+> The example is of the first issue: mounting a krb5 only export with sec=sys
+> - client mounts sec=sys
+> - the server list is [krb5]
+> - the client completely ignores this list and just uses sys.
+> - no operations work, it's a 'dud mount'
+> 
+> The second issue is the AUTH_NULL stuff - lets just ignore that for now.
+> 
+> Are you saying that the client should just use whatever sec= is specified and never try to match against the server list?
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 736b607..743d3b5 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -435,6 +435,7 @@ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry)
- 	struct dentry *alias;
- 	struct inode *dir = parent->d_inode;
- 	struct inode *inode;
-+	int status;
- 
- 	if (filename.name[0] == '.') {
- 		if (filename.len == 1)
-@@ -447,7 +448,9 @@ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry)
- 	dentry = d_lookup(parent, &filename);
- 	if (dentry != NULL) {
- 		if (nfs_same_file(dentry, entry)) {
--			nfs_refresh_inode(dentry->d_inode, entry->fattr);
-+			status = nfs_refresh_inode(dentry->d_inode, entry->fattr);
-+			if (!status)
-+				nfs_setsecurity(dentry->d_inode, entry->fattr, entry->label);
- 			goto out;
- 		} else {
- 			if (d_invalidate(dentry) != 0)
-@@ -1103,6 +1106,8 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 	if ((error = nfs_refresh_inode(inode, fattr)) != 0)
- 		goto out_bad;
- 
-+	nfs_setsecurity(inode, fattr, label);
-+
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fhandle);
- 	nfs4_label_free(label);
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 12e8ad8..f908af6 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -162,11 +162,19 @@ static void nfs_zap_caches_locked(struct inode *inode)
- 
- 	memset(NFS_I(inode)->cookieverf, 0, sizeof(NFS_I(inode)->cookieverf));
- 	if (S_ISREG(mode) || S_ISDIR(mode) || S_ISLNK(mode)) {
--		nfsi->cache_validity |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA|NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL|NFS_INO_REVAL_PAGECACHE;
- 		nfs_fscache_invalidate(inode);
--	} else {
--		nfsi->cache_validity |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL|NFS_INO_REVAL_PAGECACHE;
--	}
-+		nfsi->cache_validity |= NFS_INO_INVALID_ATTR
-+					| NFS_INO_INVALID_LABEL
-+					| NFS_INO_INVALID_DATA
-+					| NFS_INO_INVALID_ACCESS
-+					| NFS_INO_INVALID_ACL
-+					| NFS_INO_REVAL_PAGECACHE;
-+	} else
-+		nfsi->cache_validity |= NFS_INO_INVALID_ATTR
-+					| NFS_INO_INVALID_LABEL
-+					| NFS_INO_INVALID_ACCESS
-+					| NFS_INO_INVALID_ACL
-+					| NFS_INO_REVAL_PAGECACHE;
- }
- 
- void nfs_zap_caches(struct inode *inode)
-@@ -258,6 +266,32 @@ nfs_init_locked(struct inode *inode, void *opaque)
- }
- 
- #ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+void nfs_setsecurity(struct inode *inode, struct nfs_fattr *fattr,
-+					struct nfs4_label *label)
-+{
-+	int error;
-+
-+	if (label == NULL)
-+		return;
-+
-+	if (nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL) == 0)
-+		return;
-+
-+	if (NFS_SERVER(inode)->nfs_client->cl_minorversion < 2)
-+		return;
-+
-+	if ((fattr->valid & NFS_ATTR_FATTR_V4_SECURITY_LABEL) && inode->i_security) {
-+		error = security_inode_notifysecctx(inode, label->label,
-+				label->len);
-+		if (error)
-+			printk(KERN_ERR "%s() %s %d "
-+					"security_inode_notifysecctx() %d\n",
-+					__func__,
-+					(char *)label->label,
-+					label->len, error);
-+	}
-+}
-+
- struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags)
- {
- 	struct nfs4_label *label = NULL;
-@@ -283,7 +317,13 @@ struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags)
- 	return label;
- }
- EXPORT_SYMBOL_GPL(nfs4_label_alloc);
-+#else
-+void inline nfs_setsecurity(struct inode *inode, struct nfs_fattr *fattr,
-+					struct nfs4_label *label)
-+{
-+}
- #endif
-+EXPORT_SYMBOL_GPL(nfs_setsecurity);
- 
- /*
-  * This is our front-end to iget that looks up inodes by file handle
-@@ -412,6 +452,9 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr, st
- 			 */
- 			inode->i_blocks = nfs_calc_block_size(fattr->du.nfs3.used);
- 		}
-+
-+		nfs_setsecurity(inode, fattr, label);
-+
- 		nfsi->attrtimeo = NFS_MINATTRTIMEO(inode);
- 		nfsi->attrtimeo_timestamp = now;
- 		nfsi->access_cache = RB_ROOT;
-@@ -421,6 +464,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr, st
- 		unlock_new_inode(inode);
- 	} else
- 		nfs_refresh_inode(inode, fattr);
-+		nfs_setsecurity(inode, fattr, label);
- 	dprintk("NFS: nfs_fhget(%s/%Ld fh_crc=0x%08x ct=%d)\n",
- 		inode->i_sb->s_id,
- 		(long long)NFS_FILEID(inode),
-@@ -477,7 +521,7 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
- 		NFS_PROTO(inode)->return_delegation(inode);
- 	error = NFS_PROTO(inode)->setattr(dentry, fattr, attr);
- 	if (error == 0)
--		nfs_refresh_inode(inode, fattr);
-+		error = nfs_refresh_inode(inode, fattr);
- 	nfs_free_fattr(fattr);
- out:
- 	return error;
-@@ -901,7 +945,8 @@ static int nfs_attribute_cache_expired(struct inode *inode)
-  */
- int nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
- {
--	if (!(NFS_I(inode)->cache_validity & NFS_INO_INVALID_ATTR)
-+	if (!(NFS_I(inode)->cache_validity &
-+			(NFS_INO_INVALID_ATTR|NFS_INO_INVALID_LABEL))
- 			&& !nfs_attribute_cache_expired(inode))
- 		return NFS_STALE(inode) ? -ESTALE : 0;
- 	return __nfs_revalidate_inode(server, inode);
-@@ -1281,6 +1326,7 @@ int nfs_post_op_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	spin_lock(&inode->i_lock);
- 	status = nfs_post_op_update_inode_locked(inode, fattr);
- 	spin_unlock(&inode->i_lock);
-+
- 	return status;
- }
- EXPORT_SYMBOL_GPL(nfs_post_op_update_inode);
-@@ -1521,7 +1567,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 		inode->i_blocks = fattr->du.nfs2.blocks;
- 
- 	/* Update attrtimeo value if we're out of the unstable period */
--	if (invalid & NFS_INO_INVALID_ATTR) {
-+	if (invalid & (NFS_INO_INVALID_ATTR|NFS_INO_INVALID_LABEL)) {
- 		nfs_inc_stats(inode, NFSIOS_ATTRINVALIDATE);
- 		nfsi->attrtimeo = NFS_MINATTRTIMEO(inode);
- 		nfsi->attrtimeo_timestamp = now;
-@@ -1534,6 +1580,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 		}
- 	}
- 	invalid &= ~NFS_INO_INVALID_ATTR;
-+	invalid &= ~NFS_INO_INVALID_LABEL;
- 	/* Don't invalidate the data if we were to blame */
- 	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode)
- 				|| S_ISLNK(inode->i_mode)))
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index e9488f5..3cd1911 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -87,6 +87,56 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- static int nfs41_test_stateid(struct nfs_server *, nfs4_stateid *);
- static int nfs41_free_stateid(struct nfs_server *, nfs4_stateid *);
- #endif
-+
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+static inline struct nfs4_label *
-+nfs4_label_init_security(struct inode *dir, struct dentry *dentry, 
-+	struct iattr *sattr, struct nfs4_label *label)
-+{
-+	int err;
-+
-+	if (label == NULL)
-+		return NULL;
-+
-+	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL) == 0)
-+		return NULL;
-+
-+	if (NFS_SERVER(dir)->nfs_client->cl_minorversion < 2)
-+		return NULL;
-+
-+	err = security_dentry_init_security(dentry, sattr->ia_mode,
-+				&dentry->d_name, (void **)&label->label, &label->len);
-+	if (err == 0)
-+		return label;
-+
-+	return NULL;
-+}
-+static inline void 
-+nfs4_label_release_security(struct nfs4_label *label) 
-+{
-+	if (label)
-+		security_release_secctx(label->label, label->len);
-+}
-+static inline u32 *nfs4_bitmask(struct nfs_server *server, struct nfs4_label *label)
-+{
-+	if (label)
-+		return server->attr_bitmask;
-+
-+	return server->attr_bitmask_nl;
-+}
-+#else
-+static inline struct nfs4_label *
-+nfs4_label_init_security(struct inode *dir, struct dentry *dentry, 
-+	struct iattr *sattr, struct nfs4_label *l)
-+{ return NULL; }
-+static inline void 
-+nfs4_label_release_security(struct nfs4_label *label) 
-+{ return; }
-+static inline u32 *
-+nfs4_bitmask(struct nfs_server *server, struct nfs4_label *label)
-+{ return server->attr_bitmask; }
-+#endif
-+
- /* Prevent leaks of NFSv4 errors into userland */
- static int nfs4_map_errors(int err)
- {
-@@ -135,7 +185,10 @@ const u32 nfs4_fattr_bitmap[3] = {
- 	| FATTR4_WORD1_SPACE_USED
- 	| FATTR4_WORD1_TIME_ACCESS
- 	| FATTR4_WORD1_TIME_METADATA
--	| FATTR4_WORD1_TIME_MODIFY
-+	| FATTR4_WORD1_TIME_MODIFY,
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	FATTR4_WORD2_SECURITY_LABEL
-+#endif
- };
- 
- static const u32 nfs4_pnfs_open_bitmap[3] = {
-@@ -861,7 +914,7 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 	p->o_arg.id.uniquifier = sp->so_seqid.owner_id;
- 	p->o_arg.name = &dentry->d_name;
- 	p->o_arg.server = server;
--	p->o_arg.bitmask = server->attr_bitmask;
-+	p->o_arg.bitmask = nfs4_bitmask(server, label);
- 	p->o_arg.open_bitmap = &nfs4_fattr_bitmap[0];
- 	p->o_arg.label = label;
- 	p->o_arg.claim = nfs4_map_atomic_open_claim(server, claim);
-@@ -1195,6 +1248,8 @@ _nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
- 	if (ret)
- 		goto err;
- 
-+	nfs_setsecurity(inode, &data->f_attr, data->f_label);
-+
- 	if (data->o_res.delegation_type != 0)
- 		nfs4_opendata_check_deleg(data, state);
- 	update_open_stateid(state, &data->o_res.stateid, NULL,
-@@ -2063,6 +2118,7 @@ static int _nfs4_do_open(struct inode *dir,
- 		if (status == 0) {
- 			nfs_setattr_update_inode(state->inode, sattr);
- 			nfs_post_op_update_inode(state->inode, opendata->o_res.f_attr);
-+			nfs_setsecurity(state->inode, opendata->o_res.f_attr, olabel);
- 		}
- 	}
- 
-@@ -2181,6 +2237,10 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 	bool truncate;
- 	int status;
- 
-+	arg.bitmask = nfs4_bitmask(server, ilabel);
-+	if (ilabel)
-+		arg.bitmask = nfs4_bitmask(server, olabel);
-+
- 	nfs_fattr_init(fattr);
- 
- 	/* Servers should only apply open mode checks for file size changes */
-@@ -2462,11 +2522,16 @@ static struct inode *
- nfs4_atomic_open(struct inode *dir, struct nfs_open_context *ctx, int open_flags, struct iattr *attr)
- {
- 	struct nfs4_state *state;
--	struct nfs4_label *label = NULL;
-+	struct nfs4_label l = {0, 0, 0, NULL}, *label = NULL;
-+
-+	label = nfs4_label_init_security(dir, ctx->dentry, attr, &l);
- 
- 	/* Protect against concurrent sillydeletes */
- 	state = nfs4_do_open(dir, ctx->dentry, ctx->mode, open_flags, attr, label,
- 			     ctx->cred, &ctx->mdsthreshold);
-+
-+	nfs4_label_release_security(label);
-+
- 	if (IS_ERR(state))
- 		return ERR_CAST(state);
- 	ctx->state = state;
-@@ -2526,7 +2591,17 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
- 			server->caps |= NFS_CAP_CTIME;
- 		if (res.attr_bitmask[1] & FATTR4_WORD1_TIME_MODIFY)
- 			server->caps |= NFS_CAP_MTIME;
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+		if (res.attr_bitmask[2] & FATTR4_WORD2_SECURITY_LABEL)
-+			server->caps |= NFS_CAP_SECURITY_LABEL;
-+#endif
-+		memcpy(server->attr_bitmask_nl, res.attr_bitmask, 
-+				sizeof(server->attr_bitmask));
- 
-+		if (server->caps & NFS_CAP_SECURITY_LABEL) {
-+			server->attr_bitmask_nl[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
-+			res.attr_bitmask[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
-+		}
- 		memcpy(server->cache_consistency_bitmask, res.attr_bitmask, sizeof(server->cache_consistency_bitmask));
- 		server->cache_consistency_bitmask[0] &= FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE;
- 		server->cache_consistency_bitmask[1] &= FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
-@@ -2552,8 +2627,9 @@ int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle)
- static int _nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 		struct nfs_fsinfo *info)
- {
-+	u32 bitmask[3];
- 	struct nfs4_lookup_root_arg args = {
--		.bitmask = nfs4_fattr_bitmap,
-+		.bitmask = bitmask,
- 	};
- 	struct nfs4_lookup_res res = {
- 		.server = server,
-@@ -2566,6 +2642,13 @@ static int _nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 		.rpc_resp = &res,
- 	};
- 
-+	bitmask[0] = nfs4_fattr_bitmap[0];
-+	bitmask[1] = nfs4_fattr_bitmap[1];
-+	/*
-+	 * Process the label in the upcoming getfattr 
-+	 */
-+	bitmask[2] = nfs4_fattr_bitmap[2] & ~FATTR4_WORD2_SECURITY_LABEL;
-+
- 	nfs_fattr_init(info->fattr);
- 	return nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
- }
-@@ -2773,7 +2856,9 @@ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
- 		.rpc_argp = &args,
- 		.rpc_resp = &res,
- 	};
--	
-+
-+	args.bitmask = nfs4_bitmask(server, label);
-+
- 	nfs_fattr_init(fattr);
- 	return nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
- }
-@@ -2847,9 +2932,10 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 		return PTR_ERR(label);
- 
- 	status = nfs4_do_setattr(inode, cred, fattr, sattr, state, NULL, label);
--	if (status == 0)
-+	if (status == 0) {
- 		nfs_setattr_update_inode(inode, sattr);
--
-+		nfs_setsecurity(inode, fattr, label);
-+	}
- 	nfs4_label_free(label);
- 	return status;
- }
-@@ -2868,6 +2954,7 @@ static int _nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir,
- 	struct nfs4_lookup_res res = {
- 		.server = server,
- 		.fattr = fattr,
-+		.label = label,
- 		.fh = fhandle,
- 	};
- 	struct rpc_message msg = {
-@@ -2876,6 +2963,8 @@ static int _nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir,
- 		.rpc_resp = &res,
- 	};
- 
-+	args.bitmask = nfs4_bitmask(server, label);
-+
- 	nfs_fattr_init(fattr);
- 
- 	dprintk("NFS call  lookup %s\n", name->name);
-@@ -2980,7 +3069,7 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
- 		.rpc_cred = entry->cred,
- 	};
- 	int mode = entry->mask;
--	int status;
-+	int status = 0;
- 
- 	/*
- 	 * Determine which access bits we want to ask for...
-@@ -3085,7 +3174,7 @@ static int
- nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
- 		 int flags)
- {
--	struct nfs4_label *ilabel = NULL;
-+	struct nfs4_label l, *ilabel = NULL;
- 	struct nfs_open_context *ctx;
- 	struct nfs4_state *state;
- 	int status = 0;
-@@ -3094,6 +3183,8 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
- 	if (IS_ERR(ctx))
- 		return PTR_ERR(ctx);
- 
-+	ilabel = nfs4_label_init_security(dir, dentry, sattr, &l);
-+
- 	sattr->ia_mode &= ~current_umask();
- 	state = nfs4_do_open(dir, dentry, ctx->mode,
- 			flags, sattr, ilabel, ctx->cred,
-@@ -3107,6 +3198,7 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
- 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
- 	ctx->state = state;
- out:
-+	nfs4_label_release_security(ilabel);
- 	put_nfs_open_context(ctx);
- 	return status;
- }
-@@ -3155,6 +3247,8 @@ static void nfs4_proc_unlink_setup(struct rpc_message *msg, struct inode *dir)
- 	res->server = server;
- 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_REMOVE];
- 	nfs41_init_sequence(&args->seq_args, &res->seq_res, 1);
-+
-+	nfs_fattr_init(res->dir_attr);
- }
- 
- static void nfs4_proc_unlink_rpc_prepare(struct rpc_task *task, struct nfs_unlinkdata *data)
-@@ -3282,11 +3376,14 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
- 		status = PTR_ERR(res.label);
- 		goto out;
- 	}
-+	arg.bitmask = nfs4_bitmask(server, res.label);
- 
- 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(dir, &res.cinfo);
--		nfs_post_op_update_inode(inode, res.fattr);
-+		status = nfs_post_op_update_inode(inode, res.fattr);
-+		if (!status)
-+			nfs_setsecurity(inode, res.fattr, res.label);
- 	}
- 
- 
-@@ -3339,7 +3436,7 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
- 		data->arg.name = name;
- 		data->arg.attrs = sattr;
- 		data->arg.ftype = ftype;
--		data->arg.bitmask = server->attr_bitmask;
-+		data->arg.bitmask = nfs4_bitmask(server, data->label);
- 		data->res.server = server;
- 		data->res.fh = &data->fh;
- 		data->res.fattr = &data->fattr;
-@@ -3400,14 +3497,19 @@ static int nfs4_proc_symlink(struct inode *dir, struct dentry *dentry,
- 		struct page *page, unsigned int len, struct iattr *sattr)
- {
- 	struct nfs4_exception exception = { };
--	struct nfs4_label *label = NULL;
-+	struct nfs4_label l, *label = NULL;
- 	int err;
-+
-+	label = nfs4_label_init_security(dir, dentry, sattr, &l);
-+
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(dir),
- 				_nfs4_proc_symlink(dir, dentry, page,
- 							len, sattr, label),
- 				&exception);
- 	} while (exception.retry);
-+
-+	nfs4_label_release_security(label);
- 	return err;
- }
- 
-@@ -3433,15 +3535,19 @@ static int nfs4_proc_mkdir(struct inode *dir, struct dentry *dentry,
- 		struct iattr *sattr)
- {
- 	struct nfs4_exception exception = { };
--	struct nfs4_label *label = NULL;
-+	struct nfs4_label l, *label = NULL;
- 	int err;
- 
-+	label = nfs4_label_init_security(dir, dentry, sattr, &l);
-+
- 	sattr->ia_mode &= ~current_umask();
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(dir),
- 				_nfs4_proc_mkdir(dir, dentry, sattr, label),
- 				&exception);
- 	} while (exception.retry);
-+	nfs4_label_release_security(label);
-+
- 	return err;
- }
- 
-@@ -3499,7 +3605,7 @@ static int nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
- }
- 
- static int _nfs4_proc_mknod(struct inode *dir, struct dentry *dentry,
--		struct iattr *sattr, dev_t rdev)
-+		struct iattr *sattr, struct nfs4_label *label, dev_t rdev)
- {
- 	struct nfs4_createdata *data;
- 	int mode = sattr->ia_mode;
-@@ -3525,6 +3631,7 @@ static int _nfs4_proc_mknod(struct inode *dir, struct dentry *dentry,
- 		goto out_free;
- 	}
- 
-+	data->arg.label = label;
- 	status = nfs4_do_create(dir, dentry, data);
- out_free:
- 	nfs4_free_createdata(data);
-@@ -3536,14 +3643,20 @@ static int nfs4_proc_mknod(struct inode *dir, struct dentry *dentry,
- 		struct iattr *sattr, dev_t rdev)
- {
- 	struct nfs4_exception exception = { };
-+	struct nfs4_label l, *label = NULL;
- 	int err;
- 
-+	label = nfs4_label_init_security(dir, dentry, sattr, &l);
-+
- 	sattr->ia_mode &= ~current_umask();
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(dir),
--				_nfs4_proc_mknod(dir, dentry, sattr, rdev),
-+				_nfs4_proc_mknod(dir, dentry, sattr, label, rdev),
- 				&exception);
- 	} while (exception.retry);
-+
-+	nfs4_label_release_security(label);
-+
- 	return err;
- }
- 
-@@ -4270,6 +4383,155 @@ static int nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t buflen
- 	return err;
- }
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+static int _nfs4_get_security_label(struct inode *inode, void *buf,
-+					size_t buflen)
-+{
-+	struct nfs_server *server = NFS_SERVER(inode);
-+	struct nfs_fattr fattr;
-+	struct nfs4_label label = {0, 0, buflen, buf};
-+
-+	u32 bitmask[3] = { 0, 0, FATTR4_WORD2_SECURITY_LABEL };
-+	struct nfs4_getattr_arg args = {
-+		.fh		= NFS_FH(inode),
-+		.bitmask	= bitmask,
-+	};
-+	struct nfs4_getattr_res res = {
-+		.fattr		= &fattr,
-+		.label		= &label,
-+		.server		= server,
-+	};
-+	struct rpc_message msg = {
-+		.rpc_proc	= &nfs4_procedures[NFSPROC4_CLNT_GETATTR],
-+		.rpc_argp	= &args,
-+		.rpc_resp	= &res,
-+	};
-+	int ret;
-+
-+	nfs_fattr_init(&fattr);
-+
-+	ret = rpc_call_sync(server->client, &msg, 0);
-+	if (ret)
-+		return ret;
-+	if (!(fattr.valid & NFS_ATTR_FATTR_V4_SECURITY_LABEL))
-+		return -ENOENT;
-+	if (buflen < label.len)
-+		return -ERANGE;
-+	return 0;
-+}
-+
-+static int nfs4_get_security_label(struct inode *inode, void *buf,
-+					size_t buflen)
-+{
-+	struct nfs4_exception exception = { };
-+	int err;
-+
-+	if (!nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL))
-+		return -EOPNOTSUPP;
-+
-+	do {
-+		err = nfs4_handle_exception(NFS_SERVER(inode),
-+				_nfs4_get_security_label(inode, buf, buflen),
-+				&exception);
-+	} while (exception.retry);
-+	return err;
-+}
-+
-+static int _nfs4_do_set_security_label(struct inode *inode,
-+		struct nfs4_label *ilabel,
-+		struct nfs_fattr *fattr,
-+		struct nfs4_label *olabel)
-+{
-+
-+	struct iattr sattr = {0};
-+	struct nfs_server *server = NFS_SERVER(inode);
-+	const u32 bitmask[3] = { 0, 0, FATTR4_WORD2_SECURITY_LABEL };
-+	struct nfs_setattrargs args = {
-+		.fh             = NFS_FH(inode),
-+		.iap            = &sattr,
-+		.server		= server,
-+		.bitmask	= bitmask,
-+		.label		= ilabel,
-+	};
-+	struct nfs_setattrres res = {
-+		.fattr		= fattr,
-+		.label		= olabel,
-+		.server		= server,
-+	};
-+	struct rpc_message msg = {
-+		.rpc_proc       = &nfs4_procedures[NFSPROC4_CLNT_SETATTR],
-+		.rpc_argp       = &args,
-+		.rpc_resp       = &res,
-+	};
-+	int status;
-+
-+	nfs4_stateid_copy(&args.stateid, &zero_stateid);
-+
-+	status = rpc_call_sync(server->client, &msg, 0);
-+	if (status)
-+		dprintk("%s failed: %d\n", __func__, status);
-+
-+	return status;
-+}
-+
-+static int nfs4_do_set_security_label(struct inode *inode,
-+		struct nfs4_label *ilabel,
-+		struct nfs_fattr *fattr,
-+		struct nfs4_label *olabel)
-+{
-+	struct nfs4_exception exception = { };
-+	int err;
-+
-+	do {
-+		err = nfs4_handle_exception(NFS_SERVER(inode),
-+				_nfs4_do_set_security_label(inode, ilabel,
-+				fattr, olabel),
-+				&exception);
-+	} while (exception.retry);
-+	return err;
-+}
-+
-+static int
-+nfs4_set_security_label(struct dentry *dentry, const void *buf, size_t buflen)
-+{
-+	struct nfs4_label ilabel, *olabel = NULL;
-+	struct nfs_fattr fattr;
-+	struct rpc_cred *cred;
-+	struct inode *inode = dentry->d_inode;
-+	int status;
-+
-+	if (!nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL))
-+		return -EOPNOTSUPP;
-+
-+	nfs_fattr_init(&fattr);
-+
-+	ilabel.pi = 0;
-+	ilabel.lfs = 0;
-+	ilabel.label = (char *)buf;
-+	ilabel.len = buflen;
-+
-+	cred = rpc_lookup_cred();
-+	if (IS_ERR(cred))
-+		return PTR_ERR(cred);
-+
-+	olabel = nfs4_label_alloc(NFS_SERVER(inode), GFP_KERNEL);
-+	if (IS_ERR(olabel)) {
-+		status = -PTR_ERR(olabel);
-+		goto out;
-+	}
-+
-+	status = nfs4_do_set_security_label(inode, &ilabel, &fattr, olabel);
-+	if (status == 0)
-+		nfs_setsecurity(inode, &fattr, olabel);
-+
-+	nfs4_label_free(olabel);
-+out:
-+	put_rpccred(cred);
-+	return status;
-+}
-+#endif	/* CONFIG_NFS_V4_SECURITY_LABEL */
-+
-+
- static int
- nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server, struct nfs4_state *state)
- {
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 727cfe0..2a3f77e1 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -102,12 +102,23 @@ static int nfs4_stat_to_errno(int);
- #define nfs4_path_maxsz		(1 + ((3 + NFS4_MAXPATHLEN) >> 2))
- #define nfs4_owner_maxsz	(1 + XDR_QUADLEN(IDMAP_NAMESZ))
- #define nfs4_group_maxsz	(1 + XDR_QUADLEN(IDMAP_NAMESZ))
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+/* PI(4 bytes) + LFS(4 bytes) + 1(for null terminator?) + MAXLABELLEN */
-+#define	nfs4_label_maxsz	(4 + 4 + 1 + XDR_QUADLEN(NFS4_MAXLABELLEN))
-+#define encode_readdir_space 24
-+#define encode_readdir_bitmask_sz 3
-+#else
-+#define	nfs4_label_maxsz	0
-+#define encode_readdir_space 20
-+#define encode_readdir_bitmask_sz 2
-+#endif
- /* We support only one layout type per file system */
- #define decode_mdsthreshold_maxsz (1 + 1 + nfs4_fattr_bitmap_maxsz + 1 + 8)
- /* This is based on getfattr, which uses the most attributes: */
- #define nfs4_fattr_value_maxsz	(1 + (1 + 2 + 2 + 4 + 2 + 1 + 1 + 2 + 2 + \
- 				3 + 3 + 3 + nfs4_owner_maxsz + \
--				nfs4_group_maxsz + decode_mdsthreshold_maxsz))
-+				nfs4_group_maxsz + nfs4_label_maxsz + \
-+				 decode_mdsthreshold_maxsz))
- #define nfs4_fattr_maxsz	(nfs4_fattr_bitmap_maxsz + \
- 				nfs4_fattr_value_maxsz)
- #define decode_getattr_maxsz    (op_decode_hdr_maxsz + nfs4_fattr_maxsz)
-@@ -115,6 +126,7 @@ static int nfs4_stat_to_errno(int);
- 				 1 + 2 + 1 + \
- 				nfs4_owner_maxsz + \
- 				nfs4_group_maxsz + \
-+				nfs4_label_maxsz + \
- 				4 + 4)
- #define encode_savefh_maxsz     (op_encode_hdr_maxsz)
- #define decode_savefh_maxsz     (op_decode_hdr_maxsz)
-@@ -192,9 +204,11 @@ static int nfs4_stat_to_errno(int);
- 				 encode_stateid_maxsz + 3)
- #define decode_read_maxsz	(op_decode_hdr_maxsz + 2)
- #define encode_readdir_maxsz	(op_encode_hdr_maxsz + \
--				 2 + encode_verifier_maxsz + 5)
-+				 2 + encode_verifier_maxsz + 5 + \
-+				nfs4_label_maxsz)
- #define decode_readdir_maxsz	(op_decode_hdr_maxsz + \
--				 decode_verifier_maxsz)
-+				 decode_verifier_maxsz + \
-+				nfs4_label_maxsz + nfs4_fattr_maxsz)
- #define encode_readlink_maxsz	(op_encode_hdr_maxsz)
- #define decode_readlink_maxsz	(op_decode_hdr_maxsz + 1)
- #define encode_write_maxsz	(op_encode_hdr_maxsz + \
-@@ -968,7 +982,9 @@ static void encode_nfs4_verifier(struct xdr_stream *xdr, const nfs4_verifier *ve
- 	encode_opaque_fixed(xdr, verf->data, NFS4_VERIFIER_SIZE);
- }
- 
--static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const struct nfs_server *server)
-+static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
-+				const struct nfs4_label *label,
-+				const struct nfs_server *server)
- {
- 	char owner_name[IDMAP_NAMESZ];
- 	char owner_group[IDMAP_NAMESZ];
-@@ -1018,6 +1034,8 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 		}
- 		len += 4 + (XDR_QUADLEN(owner_grouplen) << 2);
- 	}
-+	if (label)
-+		len += 4 + 4 + 4 + (XDR_QUADLEN(label->len) << 2);
- 	if (iap->ia_valid & ATTR_ATIME_SET)
- 		len += 16;
- 	else if (iap->ia_valid & ATTR_ATIME)
-@@ -1072,6 +1090,13 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 		bmval1 |= FATTR4_WORD1_TIME_MODIFY_SET;
- 		*p++ = cpu_to_be32(NFS4_SET_TO_SERVER_TIME);
- 	}
-+	if (label) {
-+		bmval2 |= FATTR4_WORD2_SECURITY_LABEL;
-+		*p++ = cpu_to_be32(label->lfs);
-+		*p++ = cpu_to_be32(label->pi);
-+		*p++ = cpu_to_be32(label->len);
-+		p = xdr_encode_opaque_fixed(p, label->label, label->len);
-+	}
- 
- 	/*
- 	 * Now we backfill the bitmap and the attribute buffer length.
-@@ -1138,7 +1163,7 @@ static void encode_create(struct xdr_stream *xdr, const struct nfs4_create_arg *
- 	}
- 
- 	encode_string(xdr, create->name->len, create->name->name);
--	encode_attrs(xdr, create->attrs, create->server);
-+	encode_attrs(xdr, create->attrs, create->label, create->server);
- }
- 
- static void encode_getattr_one(struct xdr_stream *xdr, uint32_t bitmap, struct compound_hdr *hdr)
-@@ -1371,11 +1396,11 @@ static inline void encode_createmode(struct xdr_stream *xdr, const struct nfs_op
- 	switch(arg->createmode) {
- 	case NFS4_CREATE_UNCHECKED:
- 		*p = cpu_to_be32(NFS4_CREATE_UNCHECKED);
--		encode_attrs(xdr, arg->u.attrs, arg->server);
-+		encode_attrs(xdr, arg->u.attrs, arg->label, arg->server);
- 		break;
- 	case NFS4_CREATE_GUARDED:
- 		*p = cpu_to_be32(NFS4_CREATE_GUARDED);
--		encode_attrs(xdr, arg->u.attrs, arg->server);
-+		encode_attrs(xdr, arg->u.attrs, arg->label, arg->server);
- 		break;
- 	case NFS4_CREATE_EXCLUSIVE:
- 		*p = cpu_to_be32(NFS4_CREATE_EXCLUSIVE);
-@@ -1385,7 +1410,7 @@ static inline void encode_createmode(struct xdr_stream *xdr, const struct nfs_op
- 		*p = cpu_to_be32(NFS4_CREATE_EXCLUSIVE4_1);
- 		encode_nfs4_verifier(xdr, &arg->u.verifier);
- 		dummy.ia_valid = 0;
--		encode_attrs(xdr, &dummy, arg->server);
-+		encode_attrs(xdr, &dummy, arg->label, arg->server);
- 	}
- }
- 
-@@ -1536,7 +1561,7 @@ static void encode_read(struct xdr_stream *xdr, const struct nfs_readargs *args,
- 
- static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg *readdir, struct rpc_rqst *req, struct compound_hdr *hdr)
- {
--	uint32_t attrs[2] = {
-+	uint32_t attrs[3] = {
- 		FATTR4_WORD0_RDATTR_ERROR,
- 		FATTR4_WORD1_MOUNTED_ON_FILEID,
- 	};
-@@ -1559,20 +1584,26 @@ static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg
- 	encode_op_hdr(xdr, OP_READDIR, decode_readdir_maxsz, hdr);
- 	encode_uint64(xdr, readdir->cookie);
- 	encode_nfs4_verifier(xdr, &readdir->verifier);
--	p = reserve_space(xdr, 20);
-+	p = reserve_space(xdr, encode_readdir_space);
- 	*p++ = cpu_to_be32(dircount);
- 	*p++ = cpu_to_be32(readdir->count);
--	*p++ = cpu_to_be32(2);
--
-+	*p++ = cpu_to_be32(encode_readdir_bitmask_sz);
- 	*p++ = cpu_to_be32(attrs[0] & readdir->bitmask[0]);
--	*p = cpu_to_be32(attrs[1] & readdir->bitmask[1]);
-+	*p   = cpu_to_be32(attrs[1] & readdir->bitmask[1]);
-+	if (encode_readdir_bitmask_sz > 2) {
-+		if (hdr->minorversion > 1)
-+			attrs[2] |= FATTR4_WORD2_SECURITY_LABEL;
-+		p++, *p++ = cpu_to_be32(attrs[2] & readdir->bitmask[2]);
-+	}
- 	memcpy(verf, readdir->verifier.data, sizeof(verf));
--	dprintk("%s: cookie = %Lu, verifier = %08x:%08x, bitmap = %08x:%08x\n",
-+
-+	dprintk("%s: cookie = %llu, verifier = %08x:%08x, bitmap = %08x:%08x:%08x\n",
- 			__func__,
- 			(unsigned long long)readdir->cookie,
- 			verf[0], verf[1],
- 			attrs[0] & readdir->bitmask[0],
--			attrs[1] & readdir->bitmask[1]);
-+			attrs[1] & readdir->bitmask[1],
-+			attrs[2] & readdir->bitmask[2]);
- }
- 
- static void encode_readlink(struct xdr_stream *xdr, const struct nfs4_readlink *readlink, struct rpc_rqst *req, struct compound_hdr *hdr)
-@@ -1631,7 +1662,7 @@ static void encode_setattr(struct xdr_stream *xdr, const struct nfs_setattrargs
- {
- 	encode_op_hdr(xdr, OP_SETATTR, decode_setattr_maxsz, hdr);
- 	encode_nfs4_stateid(xdr, &arg->stateid);
--	encode_attrs(xdr, arg->iap, server);
-+	encode_attrs(xdr, arg->iap, arg->label, server);
- }
- 
- static void encode_setclientid(struct xdr_stream *xdr, const struct nfs4_setclientid *setclientid, struct compound_hdr *hdr)
-@@ -4042,6 +4073,56 @@ static int decode_attr_time_delta(struct xdr_stream *xdr, uint32_t *bitmap,
- 	return status;
- }
- 
-+static int decode_attr_security_label(struct xdr_stream *xdr, uint32_t *bitmap,
-+					struct nfs4_label *label)
-+{
-+	uint32_t pi = 0;
-+	uint32_t lfs = 0;
-+	__u32 len;
-+	__be32 *p;
-+	int status = 0;
-+
-+	if (unlikely(bitmap[2] & (FATTR4_WORD2_SECURITY_LABEL - 1U)))
-+		return -EIO;
-+	if (likely(bitmap[2] & FATTR4_WORD2_SECURITY_LABEL)) {
-+		p = xdr_inline_decode(xdr, 4);
-+		if (unlikely(!p))
-+			goto out_overflow;
-+		lfs = be32_to_cpup(p++);
-+		p = xdr_inline_decode(xdr, 4);
-+		if (unlikely(!p))
-+			goto out_overflow;
-+		pi = be32_to_cpup(p++);
-+		p = xdr_inline_decode(xdr, 4);
-+		if (unlikely(!p))
-+			goto out_overflow;
-+		len = be32_to_cpup(p++);
-+		p = xdr_inline_decode(xdr, len);
-+		if (unlikely(!p))
-+			goto out_overflow;
-+		if (len < NFS4_MAXLABELLEN) {
-+			if (label) {
-+				memcpy(label->label, p, len);
-+				label->len = len;
-+				label->pi = pi;
-+				label->lfs = lfs;
-+				status = NFS_ATTR_FATTR_V4_SECURITY_LABEL;
-+			}
-+			bitmap[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
-+		} else
-+			printk(KERN_WARNING "%s: label too long (%u)!\n",
-+					__func__, len);
-+	}
-+	if (label && label->label)
-+		dprintk("%s: label=%s, len=%d, PI=%d, LFS=%d\n", __func__,
-+			(char *)label->label, label->len, label->pi, label->lfs);
-+	return status;
-+
-+out_overflow:
-+	print_overflow_msg(__func__, xdr);
-+	return -EIO;
-+}
-+
- static int decode_attr_time_modify(struct xdr_stream *xdr, uint32_t *bitmap, struct timespec *time)
- {
- 	int status = 0;
-@@ -4384,7 +4465,7 @@ out_overflow:
- 
- static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
- 		struct nfs_fattr *fattr, struct nfs_fh *fh,
--		struct nfs4_fs_locations *fs_loc,
-+		struct nfs4_fs_locations *fs_loc, struct nfs4_label *label,
- 		const struct nfs_server *server)
- {
- 	int status;
-@@ -4492,6 +4573,13 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
- 	if (status < 0)
- 		goto xdr_error;
- 
-+	if (label) {
-+		status = decode_attr_security_label(xdr, bitmap, label);
-+		if (status < 0)
-+			goto xdr_error;
-+		fattr->valid |= status;
-+	}
-+
- xdr_error:
- 	dprintk("%s: xdr returned %d\n", __func__, -status);
- 	return status;
-@@ -4499,7 +4587,7 @@ xdr_error:
- 
- static int decode_getfattr_generic(struct xdr_stream *xdr, struct nfs_fattr *fattr,
- 		struct nfs_fh *fh, struct nfs4_fs_locations *fs_loc,
--		const struct nfs_server *server)
-+		struct nfs4_label *label, const struct nfs_server *server)
- {
- 	unsigned int savep;
- 	uint32_t attrlen,
-@@ -4518,7 +4606,8 @@ static int decode_getfattr_generic(struct xdr_stream *xdr, struct nfs_fattr *fat
- 	if (status < 0)
- 		goto xdr_error;
- 
--	status = decode_getfattr_attrs(xdr, bitmap, fattr, fh, fs_loc, server);
-+	status = decode_getfattr_attrs(xdr, bitmap, fattr, fh, fs_loc,
-+					label, server);
- 	if (status < 0)
- 		goto xdr_error;
- 
-@@ -4528,10 +4617,16 @@ xdr_error:
- 	return status;
- }
- 
-+static int decode_getfattr_label(struct xdr_stream *xdr, struct nfs_fattr *fattr,
-+		struct nfs4_label *label, const struct nfs_server *server)
-+{
-+	return decode_getfattr_generic(xdr, fattr, NULL, NULL, label, server);
-+}
-+
- static int decode_getfattr(struct xdr_stream *xdr, struct nfs_fattr *fattr,
- 		const struct nfs_server *server)
- {
--	return decode_getfattr_generic(xdr, fattr, NULL, NULL, server);
-+	return decode_getfattr_generic(xdr, fattr, NULL, NULL, NULL, server);
- }
- 
- /*
-@@ -5923,7 +6018,7 @@ static int nfs4_xdr_dec_lookup(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	status = decode_getfh(xdr, res->fh);
- 	if (status)
- 		goto out;
--	status = decode_getfattr(xdr, res->fattr, res->server);
-+	status = decode_getfattr_label(xdr, res->fattr, res->label, res->server);
- out:
- 	return status;
- }
-@@ -5949,7 +6044,8 @@ static int nfs4_xdr_dec_lookup_root(struct rpc_rqst *rqstp,
- 		goto out;
- 	status = decode_getfh(xdr, res->fh);
- 	if (status == 0)
--		status = decode_getfattr(xdr, res->fattr, res->server);
-+		status = decode_getfattr_label(xdr, res->fattr,
-+						res->label, res->server);
- out:
- 	return status;
- }
-@@ -6040,7 +6136,7 @@ static int nfs4_xdr_dec_link(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	status = decode_restorefh(xdr);
- 	if (status)
- 		goto out;
--	decode_getfattr(xdr, res->fattr, res->server);
-+	decode_getfattr_label(xdr, res->fattr, res->label, res->server);
- out:
- 	return status;
- }
-@@ -6069,7 +6165,7 @@ static int nfs4_xdr_dec_create(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	status = decode_getfh(xdr, res->fh);
- 	if (status)
- 		goto out;
--	decode_getfattr(xdr, res->fattr, res->server);
-+	decode_getfattr_label(xdr, res->fattr, res->label, res->server);
- out:
- 	return status;
- }
-@@ -6101,7 +6197,7 @@ static int nfs4_xdr_dec_getattr(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	status = decode_putfh(xdr);
- 	if (status)
- 		goto out;
--	status = decode_getfattr(xdr, res->fattr, res->server);
-+	status = decode_getfattr_label(xdr, res->fattr, res->label, res->server);
- out:
- 	return status;
- }
-@@ -6234,7 +6330,7 @@ static int nfs4_xdr_dec_open(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 		goto out;
- 	if (res->access_request)
- 		decode_access(xdr, &res->access_supported, &res->access_result);
--	decode_getfattr(xdr, res->f_attr, res->server);
-+	decode_getfattr_label(xdr, res->f_attr, res->f_label, res->server);
- out:
- 	return status;
- }
-@@ -6311,7 +6407,7 @@ static int nfs4_xdr_dec_setattr(struct rpc_rqst *rqstp,
- 	status = decode_setattr(xdr);
- 	if (status)
- 		goto out;
--	decode_getfattr(xdr, res->fattr, res->server);
-+	decode_getfattr_label(xdr, res->fattr, res->label, res->server);
- out:
- 	return status;
- }
-@@ -6700,7 +6796,7 @@ static int nfs4_xdr_dec_fs_locations(struct rpc_rqst *req,
- 	xdr_enter_page(xdr, PAGE_SIZE);
- 	status = decode_getfattr_generic(xdr, &res->fs_locations->fattr,
- 					 NULL, res->fs_locations,
--					 res->fs_locations->server);
-+					 NULL, res->fs_locations->server);
- out:
- 	return status;
- }
-@@ -7113,7 +7209,7 @@ int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
- 		goto out_overflow;
- 
- 	if (decode_getfattr_attrs(xdr, bitmap, entry->fattr, entry->fh,
--				  NULL, entry->server) < 0)
-+			NULL, entry->label, entry->server) < 0)
- 		goto out_overflow;
- 	if (entry->fattr->valid & NFS_ATTR_FATTR_MOUNTED_ON_FILEID)
- 		entry->ino = entry->fattr->mounted_on_fileid;
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index b30c003..76e1ee5 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2417,8 +2417,21 @@ static int nfs_bdi_register(struct nfs_server *server)
- int nfs_set_sb_security(struct super_block *s, struct dentry *mntroot,
- 			struct nfs_mount_info *mount_info)
- {
--	return security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts,
--								0, NULL);
-+	int error;
-+	unsigned long kflags = 0, kflags_out = 0;
-+	if (NFS_SB(s)->caps & NFS_CAP_SECURITY_LABEL)
-+		kflags |= SECURITY_LSM_NATIVE_LABELS;
-+
-+	error = security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts,
-+						kflags, &kflags_out);
-+	if (error)
-+		goto err;
-+
-+	if (NFS_SB(s)->caps & NFS_CAP_SECURITY_LABEL &&
-+		!(kflags_out & SECURITY_LSM_NATIVE_LABELS))
-+		NFS_SB(s)->caps &= ~NFS_CAP_SECURITY_LABEL;
-+err:
-+	return error;
- }
- EXPORT_SYMBOL_GPL(nfs_set_sb_security);
- 
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 3489015..d4b003d 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -207,6 +207,7 @@ struct nfs_inode {
- #define NFS_INO_INVALID_ACL	0x0010		/* cached acls are invalid */
- #define NFS_INO_REVAL_PAGECACHE	0x0020		/* must revalidate pagecache */
- #define NFS_INO_REVAL_FORCED	0x0040		/* force revalidation ignoring a delegation */
-+#define NFS_INO_INVALID_LABEL	0x0080		/* cached label is invalid */
- 
- /*
-  * Bit offsets in flags field
-@@ -352,6 +353,8 @@ extern int __nfs_revalidate_inode(struct nfs_server *, struct inode *);
- extern int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping);
- extern int nfs_setattr(struct dentry *, struct iattr *);
- extern void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr);
-+extern void nfs_setsecurity(struct inode *inode, struct nfs_fattr *fattr,
-+				struct nfs4_label *label);
- extern struct nfs_open_context *get_nfs_open_context(struct nfs_open_context *ctx);
- extern void put_nfs_open_context(struct nfs_open_context *ctx);
- extern struct nfs_open_context *nfs_find_open_context(struct inode *inode, struct rpc_cred *cred, fmode_t mode);
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index d4348ab..d221243 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -146,6 +146,11 @@ struct nfs_server {
- 	u32			attr_bitmask[3];/* V4 bitmask representing the set
- 						   of attributes supported on this
- 						   filesystem */
-+	u32			attr_bitmask_nl[3];
-+						/* V4 bitmask representing the
-+						   set of attributes supported
-+						   on this filesystem excluding
-+						   the label support bit. */
- 	u32			cache_consistency_bitmask[3];
- 						/* V4 bitmask representing the subset
- 						   of change attribute, size, ctime
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 6149633..9f8e9b2 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -2908,7 +2908,10 @@ static void selinux_inode_post_setxattr(struct dentry *dentry, const char *name,
- 		return;
- 	}
- 
-+	isec->sclass = inode_mode_to_security_class(inode->i_mode);
- 	isec->sid = newsid;
-+	isec->initialized = 1;
-+
- 	return;
- }
- 
-@@ -2996,6 +2999,7 @@ static int selinux_inode_setsecurity(struct inode *inode, const char *name,
- 	if (rc)
- 		return rc;
- 
-+	isec->sclass = inode_mode_to_security_class(inode->i_mode);
- 	isec->sid = newsid;
- 	isec->initialized = 1;
- 	return 0;
+That's what my patch does.  The reason for this is that the server can interpret the mount's security flavor any way it likes.
+
+Perhaps we should take that fallback position only if the server lists AUTH_NULL in the flavor list.  If AUTH_NULL is not listed, ensure the flavor requested on the mount command line is available on the server (the most recent previous behavior); fail if no matching flavor is found.
+
+If the mount command line does not specify a flavor, we could look in the server's list for a flavor we support, then fail if none is found.
+
+> A little background - I ran into this implementing a different patch that makes sure v4.x mounts are actually using the specified flavor (if one exists) to mount the export -- that is, it can follow SECINFOs to do initial lookup, but must be using the specified flavor on the export path passed to mount.  After the initial mount lookup, SECINFOs will be used normally. Trond thought that this was a bug that should be fixed - that it's wrong when client reports that it's using one flavor (as seen in mount output, etc) when it's really using another. This (other) patch works, but when no version is specified, it always falls back to v3 and the mount will always succeed - even if the auth flavor isn't supported by the export.
+> 
+> -dros
+> 
+> 
+>> 
+>>> I also made an attempt to support "AUTH_NULL means the server will ignore the
+>>> cred, so just use the specified flavor" behavior from much older kernels, but 
+>>> I'm not sure if we want this logic.
+>>> 
+>>> I'd actually prefer getting rid of this AUTH_NULL logic, it's just that some 
+>>> older clients (RHEL 5, etc) would succeed in mounting when sec=sys specified,
+>>> server list = [AUTH_NULL] (the client ends up sending AUTH_UNIX creds that are
+>>> ignored by the server), while newer kernels do not. The workaround in newer
+>>> kernels is to specify sec=none.
+>>> 
+>>> Thoughts?
+>>> 
+>>> -dros
+>>> 
+>>> fs/nfs/super.c | 39 ++++++++++++++++++++++++++++++++-------
+>>> 1 file changed, 32 insertions(+), 7 deletions(-)
+>>> 
+>>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>>> index eb494f6..6476b5d 100644
+>>> --- a/fs/nfs/super.c
+>>> +++ b/fs/nfs/super.c
+>>> @@ -1611,14 +1611,12 @@ out_security_failure:
+>>> * Select a security flavor for this mount.  The selected flavor
+>>> * is planted in args->auth_flavors[0].
+>>> */
+>>> -static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
+>>> +static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
+>>> 			      struct nfs_mount_request *request)
+>>> {
+>>> 	unsigned int i, count = *(request->auth_flav_len);
+>>> 	rpc_authflavor_t flavor;
+>>> -
+>>> -	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR)
+>>> -		goto out;
+>>> +	bool auth_null_seen = false;
+>>> 
+>>> 	/*
+>>> 	 * The NFSv2 MNT operation does not return a flavor list.
+>>> @@ -1634,6 +1632,26 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
+>>> 		goto out_default;
+>>> 
+>>> 	/*
+>>> +	 * If the sec= mount option is used, the flavor must be in the list
+>>> +	 * returned by the server.
+>>> +	 *
+>>> +	 * One exception is when the server's flavor list includes AUTH_NULL:
+>>> +	 * Some servers implement AUTH_NULL by completely ignoring the rpc
+>>> +	 * cred, so the client can use any flavor.
+>>> +	 */
+>>> +	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR) {
+>>> +		for (i = 0; i < count; i++) {
+>>> +			if (args->auth_flavors[0] == request->auth_flavs[i])
+>>> +				goto out;
+>>> +			if (request->auth_flavs[i] == RPC_AUTH_NULL)
+>>> +				auth_null_seen = true;
+>>> +		}
+>>> +		if (auth_null_seen)
+>>> +			goto out;
+>>> +		goto out_nomatch;
+>>> +	}
+>>> +
+>>> +	/*
+>>> 	 * RFC 2623, section 2.7 suggests we SHOULD prefer the
+>>> 	 * flavor listed first.  However, some servers list
+>>> 	 * AUTH_NULL first.  Avoid ever choosing AUTH_NULL.
+>>> @@ -1654,11 +1672,19 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
+>>> 	}
+>>> 
+>>> out_default:
+>>> -	flavor = RPC_AUTH_UNIX;
+>>> +	/* use default if flavor not already set */
+>>> +	flavor = (args->auth_flavors[0] == RPC_AUTH_MAXFLAVOR) ?
+>>> +		RPC_AUTH_UNIX : args->auth_flavors[0];
+>>> out_set:
+>>> 	args->auth_flavors[0] = flavor;
+>>> out:
+>>> 	dfprintk(MOUNT, "NFS: using auth flavor %d\n", args->auth_flavors[0]);
+>>> +	return 0;
+>>> +
+>>> +out_nomatch:
+>>> +	dfprintk(MOUNT, "NFS: auth flavor %d not supported by server\n",
+>>> +		args->auth_flavors[0]);
+>>> +	return -EPERM;
+>>> }
+>>> 
+>>> /*
+>>> @@ -1721,8 +1747,7 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+>>> 		return status;
+>>> 	}
+>>> 
+>>> -	nfs_select_flavor(args, &request);
+>>> -	return 0;
+>>> +	return nfs_select_flavor(args, &request);
+>>> }
+>>> 
+>>> struct dentry *nfs_try_mount(int flags, const char *dev_name,
+>>> -- 
+>>> 1.7.12.4 (Apple Git-37)
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>> 
+>> 
+>> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-1.8.1.4
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
