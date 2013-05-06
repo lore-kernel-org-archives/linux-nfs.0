@@ -1,167 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50084 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932296Ab3EBPQh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 May 2013 11:16:37 -0400
-Date: Thu, 2 May 2013 11:16:34 -0400
-To: NeilBrown <neilb@suse.de>
-Cc: Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mountd: Fix is_subdirectory again.
-Message-ID: <20130502151634.GE15728@fieldses.org>
-References: <20130502170511.646e2717@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130502170511.646e2717@notabene.brown>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-ye0-f201.google.com ([209.85.213.201]:53901 "EHLO
+	mail-ye0-f201.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932273Ab3EFXuY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 19:50:24 -0400
+Received: by mail-ye0-f201.google.com with SMTP id m14so447953yen.2
+        for <linux-nfs@vger.kernel.org>; Mon, 06 May 2013 16:50:23 -0700 (PDT)
+From: Colin Cross <ccross@android.com>
+To: linux-kernel@vger.kernel.org
+Cc: Pavel Machek <pavel@ucw.cz>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Colin Cross <ccross@android.com>, Oleg Nesterov <oleg@redhat.com>,
+        linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org,
+        netdev@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>,
+        Tejun Heo <tj@kernel.org>
+Subject: [PATCH v2 00/10] optimize freezing tasks by reducing task wakeups
+Date: Mon,  6 May 2013 16:50:05 -0700
+Message-Id: <1367884221-20462-1-git-send-email-ccross@android.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 02, 2013 at 05:05:11PM +1000, NeilBrown wrote:
-> 
-> 
-> Hi Steve,
->  I just noticed
-> 
-> commit ebe2826ca571a3959c3b5c8e29686c621f2775cf
-> Author: Steve Dickson <steved@redhat.com>
-> Date:   Sat Mar 23 10:30:17 2013 -0400
-> 
->     mountd: regression in crossmounts
-> 
-> Sorry I missed the email you presumably sent me to let me know
-> that I had caused a regression.
+On slow cpus the large number of task wakeups and context switches
+triggered by freezing and thawing tasks can take a significant amount
+of cpu time.  This patch series reduces the amount of work done during
+freezing tasks by avoiding waking up tasks that are already in a freezable
+state.
 
-Yup.  The strategy around here is to bury people in email and trust they
-have industrial-strength filtering.
+The first 4 patches reintroduce 6aa9707099c (lockdep: check that no locks
+held at freeze time) which was reverted in dbf520a9d7d4, and fix up the
+known callers with locks held in NFS and CIFS to skip the lockdep check
+for now.  The lockdep check will warn any future incorrect users of the
+freezable helpers.
 
-And I could have added Neil on the cc: too and forgot, oops:
+The fifth patch reduces the wasted time in try_to_freeze_tasks() by
+starting with a 1 ms sleep during the first loop and backing off
+up to an 8 ms sleep if all tasks are not frozen.
 
-	http://marc.info/?l=linux-nfs&m=136404930104976&w=2
+The sixth patch modifies the freeze_task() function to skip tasks
+that have set the PF_FREEZER_SKIP flag by calling freezer_do_not_count().
+These tasks will not enter the refrigerator during the suspend/resume
+cycle unless they woken up by something else, in which case they will
+enter the refrigerator in freezer_count() before they access any
+resources that would not be available in suspend or deadlock with
+another freezing/frozen task.
 
-> Here is the proper fix.
+The rest of the series adds a few more freezable helpers and converts the
+top call sites that userspace tasks are usually blocked at to freezable
+helpers.  The list of call sites was collected on a Nexus 10 (ARM Exynos
+5250 SoC), but all the top call sites other than binder show up at the
+top of the list on Ubuntu x86-64 as well.
 
-I'm dense.  I still had to scratch my head a while:
+This series cuts the time for freezing tasks from 50 ms to 5 ms when
+the cpu speed is locked at its lowest setting (200MHz), and reduces
+the number of context switches and restarted syscalls from 1000 to
+25.
 
-So: in a case like the one steved gives:
+v2 moves the skip check to freeze_task(), and expands the commit
+messages.
 
-	/home *(rw,fsid=0,crossmnt)
-	/home/fs1 *(rw,crossmnt)
-	/home/fs1/fs2/fs3 *(rw,nohide)
-
-where nfsd_fh is asked to look for an export with fsid=0, it gets a
-match on the export of /home.  But that loop there keeps going in case
-it finds some better match.  In particular it considers any mountpoints
-under /home as candidates, since /home has "crossmnt".  And they all
-match too.  So it considers in sequence the possibilities:
-
-	(found=/export of /home, found_path=/home)
-	(found=/export of /home, found_path=/home/fs1)
-	(found=/export of /home, found_path=/home/fs1/fs2/fs3)
-
-The subexport() test--designed to favor crossmnt exports which are
-"closer" to the target filesystem--passes in each case, so we end up
-taking the last.
-
-So we pass down the longest path to the kernel, it does an export upcall
-for that path, the hilarity ensues.
-
-Anyway:
-
-	Acked-by: J. Bruce Fields <bfields@redhat.com>
-
-But this all still gives me a mild headache:
-
-	- it only works if we iterate through the submounts in the
-	  correct order?
-	- should fsid= be inherited by crossmnt anyway?
-	- nfsd_fh() is too long, and the logic (with those extra loop
-	  control variables declared static inside the CROSSMOUNT case)
-	  could be more straightforward.
-
---b.
-
-> 
-> Thanks,
-> NeilBrown
-> 
-> 
-> Subject: [PATCH] mountd: Fix is_subdirectory again.
-> 
-> commit ebe2826ca571a (mountd: regression in crossmounts)
-> said it was:
->     Reverting the logic of commit 8e2fb3fc until
->     a better solution can be found for the original
->     problem.
-> 
-> here is the "something better".
-> 
-> The problem was that is_subdirectory() would also succeed if the two
-> directories were the same.  This is needed for path_matches() which
-> needs to see if the child is same-or-descendant.
-> 
-> So this patch rearranges path_matches() to do the "are they the same"
-> test itself and only bother with is_subdirectory() if it they are not
-> the same.
-> 
-> So now is_subdirectory() can be strict, and so can be usable for
-> subexport(), which needs a strong 'in subdirectory - not the same' test.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> 
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index 737927c..517aa62 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -347,20 +347,26 @@ static char *next_mnt(void **v, char *p)
->  
->  static int is_subdirectory(char *child, char *parent)
->  {
-> +	/* Check is child is strictly a subdirectory of
-> +	 * parent or a more distant descendant.
-> +	 */
->  	size_t l = strlen(parent);
->  
-> -	if (strcmp(parent, "/") == 0)
-> +	if (strcmp(parent, "/") == 0 && child[1] != 0)
->  		return 1;
->  
-> -	return strcmp(child, parent) == 0
-> -		|| (strncmp(child, parent, l) == 0 && child[l] == '/');
-> +	return (strncmp(child, parent, l) == 0 && child[l] == '/');
->  }
->  
->  static int path_matches(nfs_export *exp, char *path)
->  {
-> -	if (exp->m_export.e_flags & NFSEXP_CROSSMOUNT)
-> -		return is_subdirectory(path, exp->m_export.e_path);
-> -	return strcmp(path, exp->m_export.e_path) == 0;
-> +	/* Does the path match the export?  I.e. is it an
-> +	 * exact match, or does the export have CROSSMOUNT, and path
-> +	 * is a descendant?
-> +	 */
-> +	return strcmp(path, exp->m_export.e_path) == 0
-> +		|| ((exp->m_export.e_flags & NFSEXP_CROSSMOUNT)
-> +		    && is_subdirectory(path, exp->m_export.e_path));
->  }
->  
->  static int
-> @@ -369,15 +375,13 @@ export_matches(nfs_export *exp, char *dom, char *path, struct addrinfo *ai)
->  	return path_matches(exp, path) && client_matches(exp, dom, ai);
->  }
->  
-> -/* True iff e1 is a child of e2 and e2 has crossmnt set: */
-> +/* True iff e1 is a child of e2 (or descendant) and e2 has crossmnt set: */
->  static bool subexport(struct exportent *e1, struct exportent *e2)
->  {
->  	char *p1 = e1->e_path, *p2 = e2->e_path;
-> -	size_t l2 = strlen(p2);
->  
->  	return e2->e_flags & NFSEXP_CROSSMOUNT
-> -		&& strncmp(p1, p2, l2) == 0
-> -		&& p1[l2] == '/';
-> +		&& is_subdirectory(p1, p2);
->  }
->  
->  struct parsed_fsid {
-
-
+v3 adds the patches to reintroduce the lockdep check to this patchset,
+adds a patch to convert the freezable helpers to static inlines when
+possible, and splits the patch that adds the new helpers out of the one
+that converts the existing helpers to use freezer_do_not_count.
