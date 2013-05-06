@@ -1,62 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:9896 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:38219 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757519Ab3ETRRg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 May 2013 13:17:36 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/6] NFSv4.1: Ensure that layoutget is called using the layout credential
-Date: Mon, 20 May 2013 13:17:02 -0400
-Message-Id: <1369070227-40671-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1754177Ab3EFPy4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 May 2013 11:54:56 -0400
+Subject: re: SUNRPC: Add RPC based upcall mechanism for RPCGSS auth
+From: Simo Sorce <simo@redhat.com>
+To: Dan Carpenter <dan.carpenter@oracle.com>
+Cc: linux-nfs@vger.kernel.org, Bruce Fields <bfields@redhat.com>
+In-Reply-To: <20130506154435.GA14732@elgon.mountain>
+References: <20130506154435.GA14732@elgon.mountain>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 06 May 2013 11:54:53 -0400
+Message-ID: <1367855693.2976.205.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that we use the same credential for layoutget, layoutcommit and
-layoutreturn.
+On Mon, 2013-05-06 at 18:44 +0300, Dan Carpenter wrote:
+> Hello Simo Sorce,
+> 
+> The patch 1d658336b05f: "SUNRPC: Add RPC based upcall mechanism for 
+> RPCGSS auth" from May 25, 2012, leads to the following warning:
+> "net/sunrpc/auth_gss/gss_rpc_xdr.c:30 gssx_check_pointer()
+> 	 warn: signedness bug returning '(-28)'"
+> 
+> net/sunrpc/auth_gss/gss_rpc_xdr.c
+>     24  static bool gssx_check_pointer(struct xdr_stream *xdr)
+>     25  {
+>     26          __be32 *p;
+>     27  
+>     28          p = xdr_reserve_space(xdr, 4);
+>     29          if (unlikely(p == NULL))
+>     30                  return -ENOSPC;
+>                                ^^^^^^^
+> This is casted implicitly to "true".  Functions named "check" are a bad
+> idea anyways because it's not clear what the return value will be.  It's
+> better to use "gssx_pointer_ok()" or "valid" where obviously true means
+> that the pointer is ok.
+> 
+>     31          return *p?true:false;
+> 
+> We just reserved "*p" so doesn't this point to uninitialized data?  It
+> points to a __be32.  So we're not really checking a pointer we're
+> checking that __be32 is non-zero.
+> 
+>     32  }
+> 
+> regards,
+> dan carpenter
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c       | 1 +
- fs/nfs/pnfs.c           | 1 +
- include/linux/nfs_xdr.h | 1 +
- 3 files changed, 3 insertions(+)
+Dan,
+thanks a lot for pointing this one out.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8fbc100..a05397b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6348,6 +6348,7 @@ nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
- 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LAYOUTGET],
- 		.rpc_argp = &lgp->args,
- 		.rpc_resp = &lgp->res,
-+		.rpc_cred = lgp->cred,
- 	};
- 	struct rpc_task_setup task_setup_data = {
- 		.rpc_client = server->client,
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index c5bd758e..2f86115 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -766,6 +766,7 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 	lgp->args.inode = ino;
- 	lgp->args.ctx = get_nfs_open_context(ctx);
- 	lgp->gfp_flags = gfp_flags;
-+	lgp->cred = lo->plh_lc_cred;
- 
- 	/* Synchronously retrieve layout information from server and
- 	 * store in lseg.
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 104b62f..32c95d6 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -246,6 +246,7 @@ struct nfs4_layoutget_res {
- struct nfs4_layoutget {
- 	struct nfs4_layoutget_args args;
- 	struct nfs4_layoutget_res res;
-+	struct rpc_cred *cred;
- 	gfp_t gfp_flags;
- };
- 
+Bruce,
+we should fix it in 3.10 if we can make it.
+
+probably easiest way is to kill lines 29/30 and do:
+return (p && *p) ? true : false;
+
+It would be also ok to change the name to gssx_pointer_is_valid() I
+guess.
+
+Simo.
+
 -- 
-1.8.1.4
+Simo Sorce * Red Hat, Inc * New York
 
