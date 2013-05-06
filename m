@@ -1,79 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60765 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755535Ab3EUSwE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 May 2013 14:52:04 -0400
-Date: Tue, 21 May 2013 14:52:03 -0400
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Bruce Fields <bfields@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSD: Don't give out read delegations on exclusive
- creates
-Message-ID: <20130521185203.GB12114@fieldses.org>
-References: <1368643909-8059-1-git-send-email-steved@redhat.com>
- <519BC044.8000808@RedHat.com>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:35715 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751525Ab3EFMLI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 08:11:08 -0400
+Date: Mon, 6 May 2013 14:11:06 +0200
+From: Pavel Machek <pavel@ucw.cz>
+To: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Cc: Ingo Molnar <mingo@kernel.org>, Colin Cross <ccross@android.com>,
+        Andrew Morton <akpm@osdl.org>, lkml <linux-kernel@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Len Brown <len.brown@intel.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Ingo Molnar <mingo@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
+        Linux PM list <linux-pm@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Tejun Heo <tj@kernel.org>, Ben Chan <benchan@chromium.org>
+Subject: Re: [PATCH 2/2] lockdep: check that no locks held at freeze time
+Message-ID: <20130506121106.GA25615@amd.pavel.ucw.cz>
+References: <1367615050-3894-1-git-send-email-ccross@android.com>
+ <1367615050-3894-2-git-send-email-ccross@android.com>
+ <20130504130440.GC13770@amd.pavel.ucw.cz>
+ <CAMbhsRScr+3Zk5Bi6390bGRbtE4oh2H-mHrGHS0wew5hdkivUg@mail.gmail.com>
+ <20130504225715.GB24276@amd.pavel.ucw.cz>
+ <CAMbhsRS_cF7kF-QZ9BMBUS3ytU0ukRCbC3D549HW_XOsQbEZhg@mail.gmail.com>
+ <20130505000528.GA25454@amd.pavel.ucw.cz>
+ <20130505091844.GC22239@gmail.com>
+ <20130506085547.GC13861@dyad.programming.kicks-ass.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <519BC044.8000808@RedHat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20130506085547.GC13861@dyad.programming.kicks-ass.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 21, 2013 at 02:43:16PM -0400, Steve Dickson wrote:
-> Hey Bruce,
+1;2403;0cOn Mon 2013-05-06 10:55:47, Peter Zijlstra wrote:
+> On Sun, May 05, 2013 at 11:18:44AM +0200, Ingo Molnar wrote:
+> > That's the old 32-bit x86 trick to compute 'current' from the kernel stack 
+> > pointer.
+> > 
+> > It can be done better - for example on platforms with optimized percpu 
+> > variables (x86-64) it looks like this:
 > 
-> Ping... ;-) I just pull from your for-3.11-incoming branch
-> and notice it was not there... 
+> Doesn't i386 have all the funny per-cpu stuff too? So the only reason it still
+> does the fugly stack based thing is because nobody could be arsed to do the
+> work of converting it.
 
-Whoops, this had gotten buried in my inbox somehow.  I'll take a look,
-thanks for the reminder.
-
---b.
-
-> 
-> This  really does help with  exclusive creates 
-> not being delayed... So you might want to consider it... 
-> 
-> steved.
-> 
-> On 15/05/13 14:51, Steve Dickson wrote:
-> > When an exclusive create is done with the mode bits
-> > set (aka open(testfile, O_CREAT | O_EXCL, 0777)) this
-> > causes a OPEN op followed by a SETATTR op. When a
-> > read delegation is given in the OPEN, it causes
-> > the SETATTR to delay with EAGAIN until the
-> > delegation is recalled.
-> > 
-> > This patch caused exclusive creates to give out
-> > a write delegation (which turn into no delegation)
-> > which allows the SETATTR seamlessly succeed.
-> > 
-> > Signed-off-by: Steve Dickson <steved@redhat.com>
-> > ---
-> >  fs/nfsd/nfs4state.c | 12 ++++++++++--
-> >  1 file changed, 10 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index 316ec84..6b45d0e 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -3035,8 +3035,16 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
-> >  				goto out;
-> >  			if (open->op_share_access & NFS4_SHARE_ACCESS_WRITE)
-> >  				flag = NFS4_OPEN_DELEGATE_WRITE;
-> > -			else
-> > -				flag = NFS4_OPEN_DELEGATE_READ;
-> > +			else {
-> > +				switch(open->op_createmode) {
-> > +				case NFS4_CREATE_EXCLUSIVE:
-> > +				case NFS4_CREATE_EXCLUSIVE4_1:
-> > +					flag = NFS4_OPEN_DELEGATE_WRITE;
-> > +					break;
-> > +				default:
-> > +					flag = NFS4_OPEN_DELEGATE_READ;
-> > +				}
-> > +			}
-> >  			break;
-> >  		default:
-> >  			goto out;
-> > 
+(Note that the quoted example was from ARM. But also note that the
+percpu stuff requires memory access, so...)
+									Pavel
+-- 
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
