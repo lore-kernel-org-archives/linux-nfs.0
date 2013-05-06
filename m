@@ -1,122 +1,201 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from esa-annu.mail.uoguelph.ca ([131.104.91.36]:51147 "EHLO
-	esa-annu.net.uoguelph.ca" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1759270Ab3E1Xas (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 May 2013 19:30:48 -0400
-Date: Tue, 28 May 2013 19:30:46 -0400 (EDT)
-From: Rick Macklem <rmacklem@uoguelph.ca>
-To: Bram Vandoren <brambi@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>
-Message-ID: <1480713067.24683.1369783846612.JavaMail.root@erie.cs.uoguelph.ca>
-In-Reply-To: <CACQjR_D3rFy9dfb4LvywrDi24D0hucvsifXavivJ7UpkEgTLjA@mail.gmail.com>
-Subject: Re: NFS client hangs after server reboot
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from userp1040.oracle.com ([156.151.31.81]:43515 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756828Ab3EFUoP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 16:44:15 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
+Subject: Re: [PATCH] NFSv3: match sec= flavor against server list
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1367869268-3741-1-git-send-email-dros@netapp.com>
+Date: Mon, 6 May 2013 16:44:10 -0400
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Message-Id: <E6F80985-86E0-469A-AD79-433837BBFEC1@oracle.com>
+References: <1367869268-3741-1-git-send-email-dros@netapp.com>
+To: Weston Andros Adamson <dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bram Vandoren wrote:
-> >> Hi Rick, Chuck, Bruce,
-> >> in attachment is a small pcap when a client is in the locked.
-> >> Hopefully I can reproduce the problem so I can send you a capture
-> >> during a reboot cycle.
-> >
-> > The pcap file confirms that the state IDs and client ID do not
-> > appear to match, and do appear on the same TCP connection (in
-> > different operations). I think the presence of the RENEW operations
-> > here suggest that the client believes it has not been able to renew
-> > its lease using stateful operations like READ. IMO this is evidence
-> > in favor of the theory that the client neglected to recover these
-> > state IDs for some reason.
-> >
-> > We'll need to see the actual reboot recovery traffic to analyze
-> > further, and that occurs just after the server reboots. Even better
-> > would be to see the initial OPEN of the file where the READ
-> > operations are failing. I recognize this is a non-determinstic
-> > problem that will be a challenge to capture properly.
-> >
-> > Rather than capturing the trace on the server, you should be able to
-> > capture it on your clients in order to capture traffic before,
-> > during, and after the server reboot. To avoid capturing an enormous
-> > amount of data, both tcpdump and tshark provide options to save the
-> > captured network data into a small ring of files (see their man
-> > pages). Once a client mount point has locked, you can stop the
-> > capture, and hopefully the ring will have everything we need.
-> 
-> Hi All,
-> I managed to capture the packets after a reboot. I send the pcap file
-> to the people in cc (privacy issue, contact me if someone on the list
-> wants a copy). This is a summary of what happens after a reboot
-> (perhaps a missed some relevant information):
-> 
-> 38:
-> - client -> server: client executes 3 writes with a stale clientid (A)
-> - client -> server: RENEW
-> 44:
-> - server -> client: NFS4ERR_STALE_STATEID (in reponse to A)
-> 45:
-> - server -> client: NFS4ERR_STALE_CLIENTID
-> 65:
-> - client -> server: RENEW
-> 66
-> - server -> client: NFS4ERR_STALE_CLIENTID
-> 67,85,87,93:
-> SETCLIENTID/SETCLIENTID_CONFIRM sequence (ok)
-> 78,79:
-> NFS4STALE_STATEID (reponse to the other 2 writes in A)
-> 
-> 98: OPEN with CLAIM_PREVIOUS
-> 107: response to open: NFS4ERR_NO_GRACE (strange?)
-> after that the client re-opens the files without CLAIM_PREVIOUS option
-> and they are all succesful.
-> 
-> The client starts using the new stateids except for the files in A.
-> The server returns a NFS4_STALE_STATEID, the client executes a RENEW
-> (IMO this should be an OPEN request) and retries the WRITE, the server
-> returns a NFS4_STALE_STATEID
-> 
-> Server: FreeBSD 9.1 with new NFS server implementation
-> Client: Fedora 17, 3.8.11-100.fc17.x86_64
-> 
-> Any clues?
-> 
-> Thanks,
-> Bram
-I just took a look at the packet capture (I hadn't realized you had
-posted one when I did the last reply).
 
-I think the problem is a TCP layer one, from looking at the first 8
-packets captured amd their timestamps. However, my TCP is old and
-tired, so I'm not sure. From the first 8 packets:
-Time(sec)
-0  - client sends a SYN
-0  - server replies [RST, ACK]
-     Since Reset is in the reply, is this when the server rebooted?
-6  - client sends a SYN with same port#s. Wireshark thinks this is
-     a new connection using same port#s.
-6  - FreeBSD replies with [RST, ACK] again, thinking it is a resend
-     of the first packet and still considers it the old Reset connection.
-15 - Repeat of what happened at 6sec.
-30,31 - client sends SYN twice, still from the same port#s
-   - no reply from FreeBSD
-4393 - client sends SYN again with same port#s
-4393 - server replies with [SYN, ACK] establishing the new TCP
-     connection on the same port#s, but over an hour later.
-Since this is now over an hour after packet 0, it isn't
-surprising that Grace is over.
+On May 6, 2013, at 3:41 PM, Weston Andros Adamson <dros@netapp.com> wrote:
 
-I'd guess that the problem occurs because the client reconnect
-uses the same client side port# even though the server did a
-Reset for that port#, but I'm not enough of a TCP guy to know
-what should be correct TCP behaviour.
+> Older linux clients match the 'sec=' mount option flavor against the server's
+> flavor list (if available) and return EPERM if the specified flavor or AUTH_NULL
+> (which "matches" any flavor) is not found.
+> 
+> Recent changes skip this step and allow the vfs mount even though no operations
+> will succeed, creating a 'dud' mount.
+> 
+> This patch reverts back to the old behavior of matching specified flavors
+> against the server list and also returns EPERM when no sec= is specified and
+> none of the flavors returned by the server are supported by the client.
+> 
+> Example of behavior change:
+> 
+> the server's /etc/exports:
+> 
+> /export/krb5      *(sec=krb5,rw,no_root_squash)
+> 
+> old client behavior:
+> 
+> $ uname -a
+> Linux one.apikia.fake 3.8.8-202.fc18.x86_64 #1 SMP Wed Apr 17 23:25:17 UTC 2013 x86_64 x86_64 x86_64 GNU/Linux
+> $ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
+> mount.nfs: timeout set for Sun May  5 17:32:04 2013
+> mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
+> mount.nfs: prog 100003, trying vers=3, prot=6
+> mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
+> mount.nfs: prog 100005, trying vers=3, prot=17
+> mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
+> mount.nfs: mount(2): Permission denied
+> mount.nfs: access denied by server while mounting zero:/export/krb5
+> 
+> recently changed behavior:
+> 
+> $ uname -a
+> Linux one.apikia.fake 3.9.0-testing+ #2 SMP Fri May 3 20:29:32 EDT 2013 x86_64 x86_64 x86_64 GNU/Linux
+> $ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
+> mount.nfs: timeout set for Sun May  5 17:37:17 2013
+> mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
+> mount.nfs: prog 100003, trying vers=3, prot=6
+> mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
+> mount.nfs: prog 100005, trying vers=3, prot=17
+> mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
+> $ ls /mnt
+> ls: cannot open directory /mnt: Permission denied
+> $ sudo ls /mnt
+> ls: cannot open directory /mnt: Permission denied
+> $ sudo df /mnt
+> df: ‘/mnt’: Permission denied
+> df: no file systems processed
+> $ sudo umount /mnt
+> $
+> 
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
 
-If you don't mind the first part of this packet capture being
-posted (email me to say if it ok to post it), I can post it to
-freebsd-net@freebsd.org, since there are a bunch of TCP savy
-types that might be able to help. (If you give the ok for this,
-please also email me what version of FreeBSD the server is
-running.)
+I don't have any hard objections to this patch, so barring the change to return EACCES,
 
-rick
+  Acked-by: Chuck Lever <chuck.lever@oracle.com>
+
+Just a nit, perhaps, but...
+
+I think that the optimization of setting the boolean, so that only one walk through the server list is needed, is premature.  It might be more clear if each test was done independently of the next to make it easier to reorder the tests, fix bugs in each test, and for readers to see exactly what each of these tests do.
+
+This code is really our only documentation of the security flavor selection process, so making it as clear as possible should be a priority, IMO, over saving a few CPU cycles.
+
+
+> ---
+> 
+> Version 2:
+> - now just uses specified flavor when:
+>   - AUTH_NULL is in the server list
+>   - flavor is in the server list
+> 
+> - now returns EPERM when no sec= specified and no client supported flavors are
+>   in the server list
+> 
+> - includes example in the changelog
+> 
+> fs/nfs/super.c | 37 ++++++++++++++++++++++++++++++-------
+> 1 file changed, 30 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index eb494f6..0e36807 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -1611,14 +1611,12 @@ out_security_failure:
+>  * Select a security flavor for this mount.  The selected flavor
+>  * is planted in args->auth_flavors[0].
+>  */
+> -static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
+> +static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
+> 			      struct nfs_mount_request *request)
+> {
+> 	unsigned int i, count = *(request->auth_flav_len);
+> 	rpc_authflavor_t flavor;
+> -
+> -	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR)
+> -		goto out;
+> +	bool auth_null_seen = false;
+> 
+> 	/*
+> 	 * The NFSv2 MNT operation does not return a flavor list.
+> @@ -1634,6 +1632,21 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
+> 		goto out_default;
+> 
+> 	/*
+> +	 * If the sec= mount option is used, the specified flavor or AUTH_NULL
+> +	 * must be in the list returned by the server.
+> +	 */
+> +	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR) {
+> +		for (i = 0; i < count; i++) {
+> +			if (args->auth_flavors[0] == request->auth_flavs[i] ||
+> +			    request->auth_flavs[i] == RPC_AUTH_NULL)
+> +				goto out;
+> +		}
+> +		dfprintk(MOUNT, "NFS: auth flavor %d not supported server\n",
+> +			args->auth_flavors[0]);
+> +		goto out_err;
+> +	}
+> +
+> +	/*
+> 	 * RFC 2623, section 2.7 suggests we SHOULD prefer the
+> 	 * flavor listed first.  However, some servers list
+> 	 * AUTH_NULL first.  Avoid ever choosing AUTH_NULL.
+> @@ -1646,6 +1659,7 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
+> 		case RPC_AUTH_UNIX:
+> 			goto out_set;
+> 		case RPC_AUTH_NULL:
+> +			auth_null_seen = true;
+> 			continue;
+> 		default:
+> 			if (rpcauth_get_gssinfo(flavor, &info) == 0)
+> @@ -1653,12 +1667,22 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
+> 		}
+> 	}
+> 
+> +	if (!auth_null_seen) {
+> +		dfprintk(MOUNT, "NFS: no auth flavors in common with server\n");
+> +		goto out_err;
+> +	}
+> +
+> out_default:
+> -	flavor = RPC_AUTH_UNIX;
+> +	/* use default if flavor not already set */
+> +	flavor = (args->auth_flavors[0] == RPC_AUTH_MAXFLAVOR) ?
+> +		RPC_AUTH_UNIX : args->auth_flavors[0];
+> out_set:
+> 	args->auth_flavors[0] = flavor;
+> out:
+> 	dfprintk(MOUNT, "NFS: using auth flavor %d\n", args->auth_flavors[0]);
+> +	return 0;
+> +out_err:
+> +	return -EPERM;
+> }
+> 
+> /*
+> @@ -1721,8 +1745,7 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+> 		return status;
+> 	}
+> 
+> -	nfs_select_flavor(args, &request);
+> -	return 0;
+> +	return nfs_select_flavor(args, &request);
+> }
+> 
+> struct dentry *nfs_try_mount(int flags, const char *dev_name,
+> -- 
+> 1.7.12.4 (Apple Git-37)
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
