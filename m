@@ -1,67 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:48137 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759180Ab3EOQa0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 12:30:26 -0400
+Received: from fieldses.org ([174.143.236.118]:55390 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754592Ab3EFPEb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 May 2013 11:04:31 -0400
+Date: Mon, 6 May 2013 11:04:28 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] mountd: Fix is_subdirectory again.
+Message-ID: <20130506150428.GD15476@fieldses.org>
+References: <20130502170511.646e2717@notabene.brown>
+ <20130502151634.GE15728@fieldses.org>
+ <20130506144413.46b6f37b@notabene.brown>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
-Subject: Re: [PATCH 0/2] [RFC] Maybe avoid gssd upcall timeout
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1368635073.3568.7.camel@leira.trondhjem.org>
-Date: Wed, 15 May 2013 12:30:22 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <5E95E534-4C1A-4AF5-B0CD-240EB5592E96@oracle.com>
-References: <20130513161515.1942.845.stgit@seurat.1015granger.net> <1368634683.3568.5.camel@leira.trondhjem.org> <13B2D107-E7C3-4AF8-B205-7BF1304DFF25@oracle.com> <1368635073.3568.7.camel@leira.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+In-Reply-To: <20130506144413.46b6f37b@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On May 15, 2013, at 12:24 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-
-> On Wed, 2013-05-15 at 12:22 -0400, Chuck Lever wrote:
->> On May 15, 2013, at 12:18 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
->> 
->>> On Mon, 2013-05-13 at 12:25 -0400, Chuck Lever wrote:
->>>> Hi-
->>>> 
->>>> Here's a stab at addressing the 15 second wait for some 3.10 sec=sys
->>>> mounts where the client is not running rpc.gssd.
->>>> 
->>>> After reverting the "use krb5i for SETCLIENTID" patch, I've added
->>>> the AUTH_SYS fallback in the EACCES case in
->>>> nfs4_discover_server_trunking().  I'm not sure whether we need to
->>>> supplement what's there now, or replace it.
->>>> 
->>>> "case -ENOKEY:" is added so the kernel will recognize that when gssd
->>>> is changed to return that instead of EACCES in this case.  If the
->>>> second patch is appled to 3.7 stable and following, it might be a way
->>>> to address the same regression in older kernels.
->>>> 
->>>> I've been focused on another bug this week, so this has seen very
->>>> light testing only.  Looking for comments.
->>> 
->>> I'd like to propose a different approach: we can set up rpc_pipefs files
->>> clnt/gssd and clnt/krb5 as "honeypots" that rpc.gssd will connect to,
->>> but that won't do any upcalls. When gssd connects, we set a
->>> per-rpc_net_ns variable that tells us 'gssd' is up and running. That
->>> variable only gets cleared if we see a timeout.
->> 
->> Note my solution is a short term gap filler.  Bruce and Jeff seem to want something that can fix current kernels without requiring user space changes, and I need something that will allow sec=krb5 mounts to work without a client keytab on kernels since 3.7.
->> 
->> I see your proposal as a long term fix, and not something that we can expect to apply without deploying gssd support at the same time.
+On Mon, May 06, 2013 at 02:44:13PM +1000, NeilBrown wrote:
+> On Thu, 2 May 2013 11:16:34 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+> wrote:
 > 
-> How does it require gssd modifications?
+> > On Thu, May 02, 2013 at 05:05:11PM +1000, NeilBrown wrote:
+> > > 
+> > > 
+> > > Hi Steve,
+> > >  I just noticed
+> > > 
+> > > commit ebe2826ca571a3959c3b5c8e29686c621f2775cf
+> > > Author: Steve Dickson <steved@redhat.com>
+> > > Date:   Sat Mar 23 10:30:17 2013 -0400
+> > > 
+> > >     mountd: regression in crossmounts
+> > > 
+> > > Sorry I missed the email you presumably sent me to let me know
+> > > that I had caused a regression.
+> > 
+> > Yup.  The strategy around here is to bury people in email and trust they
+> > have industrial-strength filtering.
+> > 
+> > And I could have added Neil on the cc: too and forgot, oops:
+> > 
+> > 	http://marc.info/?l=linux-nfs&m=136404930104976&w=2
+> > 
+> > > Here is the proper fix.
+> > 
+> > I'm dense.  I still had to scratch my head a while:
+> > 
+> > So: in a case like the one steved gives:
+> > 
+> > 	/home *(rw,fsid=0,crossmnt)
+> > 	/home/fs1 *(rw,crossmnt)
+> > 	/home/fs1/fs2/fs3 *(rw,nohide)
+> > 
+> > where nfsd_fh is asked to look for an export with fsid=0, it gets a
+> > match on the export of /home.  But that loop there keeps going in case
+> > it finds some better match.  In particular it considers any mountpoints
+> > under /home as candidates, since /home has "crossmnt".  And they all
+> > match too.  So it considers in sequence the possibilities:
+> > 
+> > 	(found=/export of /home, found_path=/home)
+> > 	(found=/export of /home, found_path=/home/fs1)
+> > 	(found=/export of /home, found_path=/home/fs1/fs2/fs3)
+> > 
+> > The subexport() test--designed to favor crossmnt exports which are
+> > "closer" to the target filesystem--passes in each case, so we end up
+> > taking the last.
+> > 
+> > So we pass down the longest path to the kernel, it does an export upcall
+> > for that path, the hilarity ensues.
+> > 
+> > Anyway:
+> > 
+> > 	Acked-by: J. Bruce Fields <bfields@redhat.com>
 > 
-> The whole point is that it requires kernel-only changes, and only minor
-> changes at that...
+> Thanks.
+> 
+> > 
+> > But this all still gives me a mild headache:
+> > 
+> > 	- it only works if we iterate through the submounts in the
+> > 	  correct order?
+> 
+> Does it?  nfsd_fh() is trying to find the export for a given file handle.
+>   For every export it tries that filesystem and (if CROSSMOUNT) ever
+>   filesystem mounted below there.
+>   It only considers filesystem for which the fsid matches.
+>   Of those, it chooses the exp which is 'lowest' in the hierarchy.
+> 
+> I don't think the result of that can be dependant on order.
 
-You'll have to be more specific then.  The impression I was left with last week was that this solution was a non-starter because one of the two end points wipes all the directories at certain times.
+Well, my only point was that we depend on first trying the main export
+and then the filesystems mounted below--as that's probably how it would
+work under any reasonable organization of the code, I suppose that's not
+so fragile.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+> > 	- should fsid= be inherited by crossmnt anyway?
+> 
+> No...
+> If you have an export with fsid=N,crossmnt and a filehandle arrives for
+> fsid=N, then when we first look at that export match_fsid() will report a
+> match and 'found' will be set.
+> nfsd_fh() will loop around and try again for the next entry in /etc/mtab
+> which is under that same filesystem.  It will get a match_fsid() as well but
+> as subexport() will report "no" (as it is the same export), no change will be
+> made to found.  It also will not report that "X and Y have same file handle
+> for Z, using first" as the e_paths will match.
 
+Oh, I see--you're right.
 
+> So it works as is.  Maybe the code could be made clearer though.
+> 
+> 
+> > 	- nfsd_fh() is too long, and the logic (with those extra loop
+> > 	  control variables declared static inside the CROSSMOUNT case)
+> > 	  could be more straightforward.
+> 
+> You have a history of taking my too-long functions and breaking them up into
+> manageable bits (kernel commit 3211af1119174fbe8b).  Maybe you could try
+> again :-)
 
+Yeah, yeah, yeah.  Maybe the compulsion will take me some day.  For the
+sake of several other pressing projects, hopefully not today.
 
+--b.
