@@ -1,56 +1,145 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:36556 "EHLO mx12.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:35598 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751853Ab3EISKY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 May 2013 14:10:24 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Vyacheslav Dubeyko <slava@dubeyko.com>
-CC: Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>,
-        "Hin-Tak Leung" <htl10@users.sourceforge.net>,
-        Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH v4 0/5] nfsd + hfsplus: introduce generalized version of
- NFSv4 ACLs <-> POSIX ACLs mapping algorithms
-Date: Thu, 9 May 2013 18:10:22 +0000
-Message-ID: <1368123021.3282.117.camel@leira.trondhjem.org>
-References: <1368117430.5695.30.camel@slavad-ubuntu-12.04>
-	 <1368118877.3282.104.camel@leira.trondhjem.org>
-	 <9841F318-DA62-4ACF-AA33-0474DBC2B107@dubeyko.com>
-In-Reply-To: <9841F318-DA62-4ACF-AA33-0474DBC2B107@dubeyko.com>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+	id S1752438Ab3EFEo1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 May 2013 00:44:27 -0400
+Date: Mon, 6 May 2013 14:44:13 +1000
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] mountd: Fix is_subdirectory again.
+Message-ID: <20130506144413.46b6f37b@notabene.brown>
+In-Reply-To: <20130502151634.GE15728@fieldses.org>
+References: <20130502170511.646e2717@notabene.brown>
+	<20130502151634.GE15728@fieldses.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/RkJWcDiQ=TBIM05gp7mOek8"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-05-09 at 21:34 +0400, Vyacheslav Dubeyko wrote:
-> On May 9, 2013, at 9:01 PM, Myklebust, Trond wrote:
-> 
-> [snip]
-> > 
-> > How does this make sense? There is no lossless mapping of NFSv4 acls
-> > into POSIX acls; the latter doesn't have any equivalent of the DENY aces
-> > so you cannot represent the full set of acls that can be set using MacOS
-> > on the same filesystem.
-> > 
-> > Shouldn't you rather be looking at the richacl patch sets?
-> > 
-> 
-> Yes, I understand the nature of such mapping and impossibility of mapping NFSv4 ACLs to POSIX ACLs in some cases. But, as I understand, the richacl patch set is not mainline yet. And even if it will be in mainline then a user can have choice to use POSIX ACLs or richacls. So, we need to map NFSv4 ACLs <-> POSIX ACLs in hfsplus for the case of using POSIX ACLs model. I think that to have such mapping is better than to have nothing. Moreover, a user can use HFS+ filesystem with using POSIX ACLs only under Linux. Thereby, the generalization of mapping NFSv4 ACLs <-> POSIX ACLs makes sense, from my viewpoint.
+--Sig_/RkJWcDiQ=TBIM05gp7mOek8
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-No, there is no requirement that you must support the POSIX acl
-interface in addition to NFSv4/richacls.
+On Thu, 2 May 2013 11:16:34 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
-No, supporting a POSIX mapping is not necessarily "better than nothing"
-if it cannot faithfully represent the original NFSv4 acl. Do you at
-least enforce the original acl in permissions checks?
+> On Thu, May 02, 2013 at 05:05:11PM +1000, NeilBrown wrote:
+> >=20
+> >=20
+> > Hi Steve,
+> >  I just noticed
+> >=20
+> > commit ebe2826ca571a3959c3b5c8e29686c621f2775cf
+> > Author: Steve Dickson <steved@redhat.com>
+> > Date:   Sat Mar 23 10:30:17 2013 -0400
+> >=20
+> >     mountd: regression in crossmounts
+> >=20
+> > Sorry I missed the email you presumably sent me to let me know
+> > that I had caused a regression.
+>=20
+> Yup.  The strategy around here is to bury people in email and trust they
+> have industrial-strength filtering.
+>=20
+> And I could have added Neil on the cc: too and forgot, oops:
+>=20
+> 	http://marc.info/?l=3Dlinux-nfs&m=3D136404930104976&w=3D2
+>=20
+> > Here is the proper fix.
+>=20
+> I'm dense.  I still had to scratch my head a while:
+>=20
+> So: in a case like the one steved gives:
+>=20
+> 	/home *(rw,fsid=3D0,crossmnt)
+> 	/home/fs1 *(rw,crossmnt)
+> 	/home/fs1/fs2/fs3 *(rw,nohide)
+>=20
+> where nfsd_fh is asked to look for an export with fsid=3D0, it gets a
+> match on the export of /home.  But that loop there keeps going in case
+> it finds some better match.  In particular it considers any mountpoints
+> under /home as candidates, since /home has "crossmnt".  And they all
+> match too.  So it considers in sequence the possibilities:
+>=20
+> 	(found=3D/export of /home, found_path=3D/home)
+> 	(found=3D/export of /home, found_path=3D/home/fs1)
+> 	(found=3D/export of /home, found_path=3D/home/fs1/fs2/fs3)
+>=20
+> The subexport() test--designed to favor crossmnt exports which are
+> "closer" to the target filesystem--passes in each case, so we end up
+> taking the last.
+>=20
+> So we pass down the longest path to the kernel, it does an export upcall
+> for that path, the hilarity ensues.
+>=20
+> Anyway:
+>=20
+> 	Acked-by: J. Bruce Fields <bfields@redhat.com>
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Thanks.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+>=20
+> But this all still gives me a mild headache:
+>=20
+> 	- it only works if we iterate through the submounts in the
+> 	  correct order?
+
+Does it?  nfsd_fh() is trying to find the export for a given file handle.
+  For every export it tries that filesystem and (if CROSSMOUNT) ever
+  filesystem mounted below there.
+  It only considers filesystem for which the fsid matches.
+  Of those, it chooses the exp which is 'lowest' in the hierarchy.
+
+I don't think the result of that can be dependant on order.
+
+> 	- should fsid=3D be inherited by crossmnt anyway?
+
+No...
+If you have an export with fsid=3DN,crossmnt and a filehandle arrives for
+fsid=3DN, then when we first look at that export match_fsid() will report a
+match and 'found' will be set.
+nfsd_fh() will loop around and try again for the next entry in /etc/mtab
+which is under that same filesystem.  It will get a match_fsid() as well but
+as subexport() will report "no" (as it is the same export), no change will =
+be
+made to found.  It also will not report that "X and Y have same file handle
+for Z, using first" as the e_paths will match.
+
+So it works as is.  Maybe the code could be made clearer though.
+
+
+> 	- nfsd_fh() is too long, and the logic (with those extra loop
+> 	  control variables declared static inside the CROSSMOUNT case)
+> 	  could be more straightforward.
+
+You have a history of taking my too-long functions and breaking them up into
+manageable bits (kernel commit 3211af1119174fbe8b).  Maybe you could try
+again :-)
+
+NeilBrown
+
+--Sig_/RkJWcDiQ=TBIM05gp7mOek8
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUYc1HTnsnt1WYoG5AQLEqA/+KQT6pw2ETG/6kqQPXU+KSIiw3taEIcCj
+dKgAYc/Xp9w7JXeoGCXUz00s90WnI796dLuruCE6bgW1RnURC67ql4po2VcJzJJc
+igsTpaneK/tW0JTdkEC9DppiH8kyRLB9+xjYI8cBbS0Gwy4h75ggq0THlewVFpc7
+laaKJZ605BceNL2+Yao9JGLaeqYCHFOuqur6y2lZjiavT8C3ji0KqqFuF/znOYvx
+h3wSZ7rjSKcWpHGuYZa9SIw1dLa8zDPhB5m348yPrefiUb5uQxduRfdcATgCdEij
+Kkp9vwW2KKHIvzMjjNIQfruRF5G0a8pe3+Tb9c/fO0V3XKQ2N66FBcqoxtiSHB9B
+JyzzqtyB6fUm6cVdITPtB9MPb3k24vjdMpHmcZamcbz59ArPzqugHtal77AT8ERk
+ES7DTj5yj9CwQKySNKVgMpNUIndGmJME9o7zqFXipC8449CqhMzHAAx1ecGDJnpS
+oaCkC4AT5eoWxswtecni855UBDrsZjqTcng8gIvglkSWum5FRGwknX0oY7kWLSib
+7KnDb11e3t+r9x6C2yvIkL3mSzzvU/5e4Mt/5Vz9IlaRcyh+W74l17+cFcJkLIR4
+R9U3QRwY3Dv9Ka5tvH4H35Hf70VCrFCf8eRVTUGr1l9CKlZwhsG8UcJUoVa7kpri
+ZjjwqI9bOKE=
+=aLvQ
+-----END PGP SIGNATURE-----
+
+--Sig_/RkJWcDiQ=TBIM05gp7mOek8--
