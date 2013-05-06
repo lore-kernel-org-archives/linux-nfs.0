@@ -1,78 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:38783 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:21863 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751844Ab3EPP4x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 May 2013 11:56:53 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Froe e71bf1d708e1294b3bae64d04f03228b3625f2a3 Mon Sep 17 00:00:00 2001
-Date: Thu, 16 May 2013 11:56:35 -0400
-Message-Id: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
+	id S1756042Ab3EFVZu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 May 2013 17:25:50 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv3: match sec= flavor against server list
+Date: Mon, 6 May 2013 21:25:49 +0000
+Message-ID: <1367875548.9004.54.camel@leira.trondhjem.org>
+References: <1367874733-4746-1-git-send-email-dros@netapp.com>
+In-Reply-To: <1367874733-4746-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an updated to the linux-3-10.rc1 release. The minor 
-changes in this release are:
-
-* Added the needed Acked-by:
-
-* Stop labels leaking into the cache_consistency_bitmask
-
-David Quigley (7):
-  Security: Add Hook to test if the particular xattr is part of a MAC
-    model.
-  LSM: Add flags field to security_sb_set_mnt_opts for in kernel mount
-    data.
-  SELinux: Add new labeling type native labels
-  NFSv4: Add label recommended attribute and NFSv4 flags
-  NFSv4: Introduce new label structure
-  NFSv4: Extend fattr bitmaps to support all 3 words
-  NFS: Extend NFS xattr handlers to accept the security namespace
-
-Steve Dickson (6):
-  Security: Add hook to calculate context based on a negative dentry.
-  NFSv4.2: Added NFS v4.2 support to the NFS client
-  NFS:Add labels to client function prototypes
-  NFS: Add label lifecycle management
-  NFS: Client implementation of Labeled-NFS
-  Kconfig: Add Kconfig entry for Labeled NFS V4 client
-
- fs/nfs/Kconfig                      |  28 ++
- fs/nfs/callback.c                   |   1 +
- fs/nfs/callback_xdr.c               |   6 +-
- fs/nfs/client.c                     |   2 +-
- fs/nfs/dir.c                        |  46 ++-
- fs/nfs/getroot.c                    |   2 +-
- fs/nfs/inode.c                      | 133 +++++++--
- fs/nfs/namespace.c                  |   2 +-
- fs/nfs/nfs3acl.c                    |   4 +-
- fs/nfs/nfs3proc.c                   |  41 +--
- fs/nfs/nfs4_fs.h                    |   8 +-
- fs/nfs/nfs4client.c                 |   5 +
- fs/nfs/nfs4namespace.c              |   2 +-
- fs/nfs/nfs4proc.c                   | 549 ++++++++++++++++++++++++++++++++----
- fs/nfs/nfs4xdr.c                    | 184 +++++++++---
- fs/nfs/proc.c                       |  15 +-
- fs/nfs/super.c                      |  24 +-
- include/linux/nfs4.h                |  11 +
- include/linux/nfs_fs.h              |  30 +-
- include/linux/nfs_fs_sb.h           |   8 +-
- include/linux/nfs_xdr.h             |  30 +-
- include/linux/security.h            |  57 +++-
- include/uapi/linux/nfs4.h           |   2 +-
- security/capability.c               |  19 +-
- security/security.c                 |  24 +-
- security/selinux/hooks.c            |  92 +++++-
- security/selinux/include/security.h |   2 +
- security/selinux/ss/policydb.c      |   5 +-
- security/smack/smack_lsm.c          |  11 +
- 29 files changed, 1133 insertions(+), 210 deletions(-)
-
--- 
-1.8.1.4
-
+T24gTW9uLCAyMDEzLTA1LTA2IGF0IDE3OjEyIC0wNDAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
+d3JvdGU6DQo+IE9sZGVyIGxpbnV4IGNsaWVudHMgbWF0Y2ggdGhlICdzZWM9JyBtb3VudCBvcHRp
+b24gZmxhdm9yIGFnYWluc3QgdGhlIHNlcnZlcidzDQo+IGZsYXZvciBsaXN0IChpZiBhdmFpbGFi
+bGUpIGFuZCByZXR1cm4gRVBFUk0gaWYgdGhlIHNwZWNpZmllZCBmbGF2b3Igb3IgQVVUSF9OVUxM
+DQo+ICh3aGljaCAibWF0Y2hlcyIgYW55IGZsYXZvcikgaXMgbm90IGZvdW5kLg0KPiANCj4gUmVj
+ZW50IGNoYW5nZXMgc2tpcCB0aGlzIHN0ZXAgYW5kIGFsbG93IHRoZSB2ZnMgbW91bnQgZXZlbiB0
+aG91Z2ggbm8gb3BlcmF0aW9ucw0KPiB3aWxsIHN1Y2NlZWQsIGNyZWF0aW5nIGEgJ2R1ZCcgbW91
+bnQuDQo+IA0KPiBUaGlzIHBhdGNoIHJldmVydHMgYmFjayB0byB0aGUgb2xkIGJlaGF2aW9yIG9m
+IG1hdGNoaW5nIHNwZWNpZmllZCBmbGF2b3JzDQo+IGFnYWluc3QgdGhlIHNlcnZlciBsaXN0IGFu
+ZCBhbHNvIHJldHVybnMgRVBFUk0gd2hlbiBubyBzZWM9IGlzIHNwZWNpZmllZCBhbmQNCj4gbm9u
+ZSBvZiB0aGUgZmxhdm9ycyByZXR1cm5lZCBieSB0aGUgc2VydmVyIGFyZSBzdXBwb3J0ZWQgYnkg
+dGhlIGNsaWVudC4NCj4gDQo+IEV4YW1wbGUgb2YgYmVoYXZpb3IgY2hhbmdlOg0KPiANCj4gdGhl
+IHNlcnZlcidzIC9ldGMvZXhwb3J0czoNCj4gDQo+IC9leHBvcnQva3JiNSAgICAgICooc2VjPWty
+YjUscncsbm9fcm9vdF9zcXVhc2gpDQo+IA0KPiBvbGQgY2xpZW50IGJlaGF2aW9yOg0KPiANCj4g
+JCB1bmFtZSAtYQ0KPiBMaW51eCBvbmUuYXBpa2lhLmZha2UgMy44LjgtMjAyLmZjMTgueDg2XzY0
+ICMxIFNNUCBXZWQgQXByIDE3IDIzOjI1OjE3IFVUQyAyMDEzIHg4Nl82NCB4ODZfNjQgeDg2XzY0
+IEdOVS9MaW51eA0KPiAkIHN1ZG8gbW91bnQgLXYgLW8gc2VjPXN5cyx2ZXJzPTMgemVybzovZXhw
+b3J0L2tyYjUgL21udA0KPiBtb3VudC5uZnM6IHRpbWVvdXQgc2V0IGZvciBTdW4gTWF5ICA1IDE3
+OjMyOjA0IDIwMTMNCj4gbW91bnQubmZzOiB0cnlpbmcgdGV4dC1iYXNlZCBvcHRpb25zICdzZWM9
+c3lzLHZlcnM9MyxhZGRyPTE5Mi4xNjguMTAwLjEwJw0KPiBtb3VudC5uZnM6IHByb2cgMTAwMDAz
+LCB0cnlpbmcgdmVycz0zLCBwcm90PTYNCj4gbW91bnQubmZzOiB0cnlpbmcgMTkyLjE2OC4xMDAu
+MTAgcHJvZyAxMDAwMDMgdmVycyAzIHByb3QgVENQIHBvcnQgMjA0OQ0KPiBtb3VudC5uZnM6IHBy
+b2cgMTAwMDA1LCB0cnlpbmcgdmVycz0zLCBwcm90PTE3DQo+IG1vdW50Lm5mczogdHJ5aW5nIDE5
+Mi4xNjguMTAwLjEwIHByb2cgMTAwMDA1IHZlcnMgMyBwcm90IFVEUCBwb3J0IDIwMDQ4DQo+IG1v
+dW50Lm5mczogbW91bnQoMik6IFBlcm1pc3Npb24gZGVuaWVkDQo+IG1vdW50Lm5mczogYWNjZXNz
+IGRlbmllZCBieSBzZXJ2ZXIgd2hpbGUgbW91bnRpbmcgemVybzovZXhwb3J0L2tyYjUNCj4gDQo+
+IHJlY2VudGx5IGNoYW5nZWQgYmVoYXZpb3I6DQo+IA0KPiAkIHVuYW1lIC1hDQo+IExpbnV4IG9u
+ZS5hcGlraWEuZmFrZSAzLjkuMC10ZXN0aW5nKyAjMiBTTVAgRnJpIE1heSAzIDIwOjI5OjMyIEVE
+VCAyMDEzIHg4Nl82NCB4ODZfNjQgeDg2XzY0IEdOVS9MaW51eA0KPiAkIHN1ZG8gbW91bnQgLXYg
+LW8gc2VjPXN5cyx2ZXJzPTMgemVybzovZXhwb3J0L2tyYjUgL21udA0KPiBtb3VudC5uZnM6IHRp
+bWVvdXQgc2V0IGZvciBTdW4gTWF5ICA1IDE3OjM3OjE3IDIwMTMNCj4gbW91bnQubmZzOiB0cnlp
+bmcgdGV4dC1iYXNlZCBvcHRpb25zICdzZWM9c3lzLHZlcnM9MyxhZGRyPTE5Mi4xNjguMTAwLjEw
+Jw0KPiBtb3VudC5uZnM6IHByb2cgMTAwMDAzLCB0cnlpbmcgdmVycz0zLCBwcm90PTYNCj4gbW91
+bnQubmZzOiB0cnlpbmcgMTkyLjE2OC4xMDAuMTAgcHJvZyAxMDAwMDMgdmVycyAzIHByb3QgVENQ
+IHBvcnQgMjA0OQ0KPiBtb3VudC5uZnM6IHByb2cgMTAwMDA1LCB0cnlpbmcgdmVycz0zLCBwcm90
+PTE3DQo+IG1vdW50Lm5mczogdHJ5aW5nIDE5Mi4xNjguMTAwLjEwIHByb2cgMTAwMDA1IHZlcnMg
+MyBwcm90IFVEUCBwb3J0IDIwMDQ4DQo+ICQgbHMgL21udA0KPiBsczogY2Fubm90IG9wZW4gZGly
+ZWN0b3J5IC9tbnQ6IFBlcm1pc3Npb24gZGVuaWVkDQo+ICQgc3VkbyBscyAvbW50DQo+IGxzOiBj
+YW5ub3Qgb3BlbiBkaXJlY3RvcnkgL21udDogUGVybWlzc2lvbiBkZW5pZWQNCj4gJCBzdWRvIGRm
+IC9tbnQNCj4gZGY6IOKAmC9tbnTigJk6IFBlcm1pc3Npb24gZGVuaWVkDQo+IGRmOiBubyBmaWxl
+IHN5c3RlbXMgcHJvY2Vzc2VkDQo+ICQgc3VkbyB1bW91bnQgL21udA0KPiAkDQo+IA0KPiBTaWdu
+ZWQtb2ZmLWJ5OiBXZXN0b24gQW5kcm9zIEFkYW1zb24gPGRyb3NAbmV0YXBwLmNvbT4NCj4gLS0t
+DQo+IA0KPiBWNCAtIGJldHRlciByZWFkYWJpbGl0eSwgYmV0dGVyIGNvbW1lbnRzDQo+IA0KPiAg
+ZnMvbmZzL3N1cGVyLmMgfCA0OCArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
+KysrKy0tLS0tLS0NCj4gIDEgZmlsZSBjaGFuZ2VkLCA0MSBpbnNlcnRpb25zKCspLCA3IGRlbGV0
+aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9zdXBlci5jIGIvZnMvbmZzL3N1cGVy
+LmMNCj4gaW5kZXggZWI0OTRmNi4uNTNjMjY1NyAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL3N1cGVy
+LmMNCj4gKysrIGIvZnMvbmZzL3N1cGVyLmMNCj4gQEAgLTE2MTAsMTYgKzE2MTAsMTUgQEAgb3V0
+X3NlY3VyaXR5X2ZhaWx1cmU6DQo+ICAvKg0KPiAgICogU2VsZWN0IGEgc2VjdXJpdHkgZmxhdm9y
+IGZvciB0aGlzIG1vdW50LiAgVGhlIHNlbGVjdGVkIGZsYXZvcg0KPiAgICogaXMgcGxhbnRlZCBp
+biBhcmdzLT5hdXRoX2ZsYXZvcnNbMF0uDQo+ICsgKg0KPiArICogUmV0dXJucyAwIG9uIHN1Y2Nl
+c3MsIC1FQUNDRVMgb24gZmFpbHVyZS4NCj4gICAqLw0KPiAtc3RhdGljIHZvaWQgbmZzX3NlbGVj
+dF9mbGF2b3Ioc3RydWN0IG5mc19wYXJzZWRfbW91bnRfZGF0YSAqYXJncywNCj4gK3N0YXRpYyBp
+bnQgbmZzX3NlbGVjdF9mbGF2b3Ioc3RydWN0IG5mc19wYXJzZWRfbW91bnRfZGF0YSAqYXJncywN
+Cj4gIAkJCSAgICAgIHN0cnVjdCBuZnNfbW91bnRfcmVxdWVzdCAqcmVxdWVzdCkNCj4gIHsNCj4g
+IAl1bnNpZ25lZCBpbnQgaSwgY291bnQgPSAqKHJlcXVlc3QtPmF1dGhfZmxhdl9sZW4pOw0KPiAg
+CXJwY19hdXRoZmxhdm9yX3QgZmxhdm9yOw0KPiAgDQo+IC0JaWYgKGFyZ3MtPmF1dGhfZmxhdm9y
+c1swXSAhPSBSUENfQVVUSF9NQVhGTEFWT1IpDQo+IC0JCWdvdG8gb3V0Ow0KPiAtDQo+ICAJLyoN
+Cj4gIAkgKiBUaGUgTkZTdjIgTU5UIG9wZXJhdGlvbiBkb2VzIG5vdCByZXR1cm4gYSBmbGF2b3Ig
+bGlzdC4NCj4gIAkgKi8NCj4gQEAgLTE2MzQsNiArMTYzMywyNSBAQCBzdGF0aWMgdm9pZCBuZnNf
+c2VsZWN0X2ZsYXZvcihzdHJ1Y3QgbmZzX3BhcnNlZF9tb3VudF9kYXRhICphcmdzLA0KPiAgCQln
+b3RvIG91dF9kZWZhdWx0Ow0KPiAgDQo+ICAJLyoNCj4gKwkgKiBJZiB0aGUgc2VjPSBtb3VudCBv
+cHRpb24gaXMgdXNlZCwgdGhlIHNwZWNpZmllZCBmbGF2b3Igb3IgQVVUSF9OVUxMDQo+ICsJICog
+bXVzdCBiZSBpbiB0aGUgbGlzdCByZXR1cm5lZCBieSB0aGUgc2VydmVyLg0KPiArCSAqDQo+ICsJ
+ICogQVVUSF9OVUxMIGhhcyBhIHNwZWNpYWwgbWVhbmluZyB3aGVuIGl0J3MgaW4gdGhlIHNlcnZl
+ciBsaXN0IC0gaXQNCj4gKwkgKiBtZWFucyB0aGF0IHRoZSBzZXJ2ZXIgd2lsbCBpZ25vcmUgdGhl
+IHJwYyBjcmVkcywgc28gYW55IGZsYXZvcg0KPiArCSAqIGNhbiBiZSB1c2VkLg0KPiArCSAqLw0K
+PiArCWlmIChhcmdzLT5hdXRoX2ZsYXZvcnNbMF0gIT0gUlBDX0FVVEhfTUFYRkxBVk9SKSB7DQo+
+ICsJCWZvciAoaSA9IDA7IGkgPCBjb3VudDsgaSsrKSB7DQo+ICsJCQlpZiAoYXJncy0+YXV0aF9m
+bGF2b3JzWzBdID09IHJlcXVlc3QtPmF1dGhfZmxhdnNbaV0gfHwNCj4gKwkJCSAgICByZXF1ZXN0
+LT5hdXRoX2ZsYXZzW2ldID09IFJQQ19BVVRIX05VTEwpDQo+ICsJCQkJZ290byBvdXQ7DQo+ICsJ
+CX0NCj4gKwkJZGZwcmludGsoTU9VTlQsICJORlM6IGF1dGggZmxhdm9yICVkIG5vdCBzdXBwb3J0
+ZWQgYnkgc2VydmVyXG4iLA0KPiArCQkJYXJncy0+YXV0aF9mbGF2b3JzWzBdKTsNCj4gKwkJZ290
+byBvdXRfZXJyOw0KPiArCX0NCj4gKw0KPiArCS8qDQo+ICAJICogUkZDIDI2MjMsIHNlY3Rpb24g
+Mi43IHN1Z2dlc3RzIHdlIFNIT1VMRCBwcmVmZXIgdGhlDQo+ICAJICogZmxhdm9yIGxpc3RlZCBm
+aXJzdC4gIEhvd2V2ZXIsIHNvbWUgc2VydmVycyBsaXN0DQo+ICAJICogQVVUSF9OVUxMIGZpcnN0
+LiAgQXZvaWQgZXZlciBjaG9vc2luZyBBVVRIX05VTEwuDQo+IEBAIC0xNjUzLDEyICsxNjcxLDI5
+IEBAIHN0YXRpYyB2b2lkIG5mc19zZWxlY3RfZmxhdm9yKHN0cnVjdCBuZnNfcGFyc2VkX21vdW50
+X2RhdGEgKmFyZ3MsDQo+ICAJCX0NCj4gIAl9DQo+ICANCj4gKwkvKg0KPiArCSAqIEFzIGEgbGFz
+dCBjaGFuY2UsIHNlZSBpZiB0aGUgc2VydmVyIGxpc3QgY29udGFpbnMgQVVUSF9OVUxMIC0NCj4g
+KwkgKiBpZiBpdCBkb2VzLCB1c2UgdGhlIGRlZmF1bHQgZmxhdm9yLg0KPiArCSAqLw0KPiArCWZv
+ciAoaSA9IDA7IGkgPCBjb3VudDsgaSsrKSB7DQo+ICsJCWlmIChyZXF1ZXN0LT5hdXRoX2ZsYXZz
+W2ldID09IFJQQ19BVVRIX05VTEwpDQo+ICsJCQlnb3RvIG91dF9kZWZhdWx0Ow0KPiArCX0NCj4g
+Kw0KPiArCWRmcHJpbnRrKE1PVU5ULCAiTkZTOiBubyBhdXRoIGZsYXZvcnMgaW4gY29tbW9uIHdp
+dGggc2VydmVyXG4iKTsNCj4gKwlnb3RvIG91dF9lcnI7DQo+ICsNCj4gIG91dF9kZWZhdWx0Og0K
+PiAtCWZsYXZvciA9IFJQQ19BVVRIX1VOSVg7DQo+ICsJLyogdXNlIGRlZmF1bHQgaWYgZmxhdm9y
+IG5vdCBhbHJlYWR5IHNldCAqLw0KPiArCWZsYXZvciA9IChhcmdzLT5hdXRoX2ZsYXZvcnNbMF0g
+PT0gUlBDX0FVVEhfTUFYRkxBVk9SKSA/DQo+ICsJCVJQQ19BVVRIX1VOSVggOiBhcmdzLT5hdXRo
+X2ZsYXZvcnNbMF07DQo+ICBvdXRfc2V0Og0KPiAgCWFyZ3MtPmF1dGhfZmxhdm9yc1swXSA9IGZs
+YXZvcjsNCj4gIG91dDoNCj4gIAlkZnByaW50ayhNT1VOVCwgIk5GUzogdXNpbmcgYXV0aCBmbGF2
+b3IgJWRcbiIsIGFyZ3MtPmF1dGhfZmxhdm9yc1swXSk7DQo+ICsJcmV0dXJuIDA7DQo+ICtvdXRf
+ZXJyOg0KPiArCXJldHVybiAtRUFDQ0VTOw0KPiAgfQ0KPiAgDQo+ICAvKg0KPiBAQCAtMTcyMSw4
+ICsxNzU2LDcgQEAgc3RhdGljIGludCBuZnNfcmVxdWVzdF9tb3VudChzdHJ1Y3QgbmZzX3BhcnNl
+ZF9tb3VudF9kYXRhICphcmdzLA0KPiAgCQlyZXR1cm4gc3RhdHVzOw0KPiAgCX0NCj4gIA0KPiAt
+CW5mc19zZWxlY3RfZmxhdm9yKGFyZ3MsICZyZXF1ZXN0KTsNCj4gLQlyZXR1cm4gMDsNCj4gKwly
+ZXR1cm4gbmZzX3NlbGVjdF9mbGF2b3IoYXJncywgJnJlcXVlc3QpOw0KPiAgfQ0KPiAgDQo+ICBz
+dHJ1Y3QgZGVudHJ5ICpuZnNfdHJ5X21vdW50KGludCBmbGFncywgY29uc3QgY2hhciAqZGV2X25h
+bWUsDQoNClRoYW5rcyEgQXBwbGllZC4uLg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5G
+UyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29t
+DQp3d3cubmV0YXBwLmNvbQ0K
