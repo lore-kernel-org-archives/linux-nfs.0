@@ -1,167 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:3082 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754131Ab3EMTMt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 May 2013 15:12:49 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 03/13] LSM: Add flags field to security_sb_set_mnt_opts for in kernel mount data.
-Date: Mon, 13 May 2013 15:11:47 -0400
-Message-Id: <1368472317-5602-4-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1368472317-5602-1-git-send-email-SteveD@redhat.com>
-References: <1368472317-5602-1-git-send-email-SteveD@redhat.com>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:35129
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752718Ab3EFOoh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 10:44:37 -0400
+Date: Mon, 6 May 2013 16:42:48 +0200
+From: Peter Zijlstra <a.p.zijlstra@chello.nl>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>, Ingo Molnar <mingo@kernel.org>,
+        Pavel Machek <pavel@ucw.cz>, Colin Cross <ccross@android.com>,
+        Andrew Morton <akpm@osdl.org>, lkml <linux-kernel@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Len Brown <len.brown@intel.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Ingo Molnar <mingo@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Oleg Nesterov <oleg@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux PM list <linux-pm@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>, Tejun Heo <tj@kernel.org>,
+        Ben Chan <benchan@chromium.org>
+Subject: Re: [PATCH 2/2] lockdep: check that no locks held at freeze time
+Message-ID: <20130506144248.GB15446@dyad.programming.kicks-ass.net>
+References: <1367615050-3894-1-git-send-email-ccross@android.com>
+ <1367615050-3894-2-git-send-email-ccross@android.com>
+ <20130504130440.GC13770@amd.pavel.ucw.cz>
+ <CAMbhsRScr+3Zk5Bi6390bGRbtE4oh2H-mHrGHS0wew5hdkivUg@mail.gmail.com>
+ <20130504225715.GB24276@amd.pavel.ucw.cz>
+ <CAMbhsRS_cF7kF-QZ9BMBUS3ytU0ukRCbC3D549HW_XOsQbEZhg@mail.gmail.com>
+ <20130505000528.GA25454@amd.pavel.ucw.cz>
+ <20130505091844.GC22239@gmail.com>
+ <20130506085547.GC13861@dyad.programming.kicks-ass.net>
+ <CA+55aFzVNwCJhvp4f0EcHK3Vk1ZVKY0fAeu-6FdjhCFiafTAPQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CA+55aFzVNwCJhvp4f0EcHK3Vk1ZVKY0fAeu-6FdjhCFiafTAPQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Mon, May 06, 2013 at 07:33:28AM -0700, Linus Torvalds wrote:
+> On Mon, May 6, 2013 at 1:55 AM, Peter Zijlstra <a.p.zijlstra@chello.nl> wrote:
+> >
+> > Doesn't i386 have all the funny per-cpu stuff too? So the only reason it still
+> > does the fugly stack based thing is because nobody could be arsed to do the
+> > work of converting it.
+> 
+> Umm. That "fugly stack-based" thing is better than the per-cpu crap.
+> 
+> The percpu stuff implies a memory load. The stack based thing gets
+> thread_info with pure register accesses. Much better.
+> 
+> For "current()" the per-cpu thing may be better, but if you actually
+> need the thread-info (not the case here, but in other places), the
+> stack masking is superior when it works (ie when you don't have
+> multi-stack issues due to irq's etc)
 
-There is no way to differentiate if a text mount option is passed from user
-space or the kernel. A flags field is being added to the
-security_sb_set_mnt_opts hook to allow for in kernel security flags to be sent
-to the LSM for processing in addition to the text options received from mount.
-This patch also updated existing code to fix compilation errors.
+But you can do both right? Use per-cpu for current and stack frobbery for
+current_thread_info().
 
-Signed-off-by: David P. Quigley <dpquigl@tycho.nsa.gov>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- fs/nfs/super.c           |  3 ++-
- include/linux/security.h | 13 ++++++++++---
- security/capability.c    |  5 ++++-
- security/security.c      |  7 +++++--
- security/selinux/hooks.c | 12 ++++++++++--
- 5 files changed, 31 insertions(+), 9 deletions(-)
+That said, ISTR some risky bits where the stack frobbery went awry due to
+irq-stacks which is the source for my feelings towards the stack frobbery.
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index a366107..c1bbb53 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2411,7 +2411,8 @@ static int nfs_bdi_register(struct nfs_server *server)
- int nfs_set_sb_security(struct super_block *s, struct dentry *mntroot,
- 			struct nfs_mount_info *mount_info)
- {
--	return security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts);
-+	return security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts,
-+								0, NULL);
- }
- EXPORT_SYMBOL_GPL(nfs_set_sb_security);
- 
-diff --git a/include/linux/security.h b/include/linux/security.h
-index cff3e4f..aa656fb 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -1456,7 +1456,9 @@ struct security_operations {
- 	int (*sb_pivotroot) (struct path *old_path,
- 			     struct path *new_path);
- 	int (*sb_set_mnt_opts) (struct super_block *sb,
--				struct security_mnt_opts *opts);
-+				struct security_mnt_opts *opts,
-+				unsigned long kern_flags,
-+				unsigned long *set_kern_flags);
- 	int (*sb_clone_mnt_opts) (const struct super_block *oldsb,
- 				   struct super_block *newsb);
- 	int (*sb_parse_opts_str) (char *options, struct security_mnt_opts *opts);
-@@ -1747,7 +1749,10 @@ int security_sb_mount(const char *dev_name, struct path *path,
- 		      const char *type, unsigned long flags, void *data);
- int security_sb_umount(struct vfsmount *mnt, int flags);
- int security_sb_pivotroot(struct path *old_path, struct path *new_path);
--int security_sb_set_mnt_opts(struct super_block *sb, struct security_mnt_opts *opts);
-+int security_sb_set_mnt_opts(struct super_block *sb,
-+				struct security_mnt_opts *opts,
-+				unsigned long kern_flags,
-+				unsigned long *set_kern_flags);
- int security_sb_clone_mnt_opts(const struct super_block *oldsb,
- 				struct super_block *newsb);
- int security_sb_parse_opts_str(char *options, struct security_mnt_opts *opts);
-@@ -2037,7 +2042,9 @@ static inline int security_sb_pivotroot(struct path *old_path,
- }
- 
- static inline int security_sb_set_mnt_opts(struct super_block *sb,
--					   struct security_mnt_opts *opts)
-+					   struct security_mnt_opts *opts,
-+					   unsigned long kern_flags,
-+					   unsigned long *set_kern_flags)
- {
- 	return 0;
- }
-diff --git a/security/capability.c b/security/capability.c
-index b3e8b93..32b5157 100644
---- a/security/capability.c
-+++ b/security/capability.c
-@@ -91,7 +91,10 @@ static int cap_sb_pivotroot(struct path *old_path, struct path *new_path)
- }
- 
- static int cap_sb_set_mnt_opts(struct super_block *sb,
--			       struct security_mnt_opts *opts)
-+			       struct security_mnt_opts *opts,
-+			       unsigned long kern_flags,
-+			       unsigned long *set_kern_flags)
-+
- {
- 	if (unlikely(opts->num_mnt_opts))
- 		return -EOPNOTSUPP;
-diff --git a/security/security.c b/security/security.c
-index c3ceb75..8d0b9a7 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -294,9 +294,12 @@ int security_sb_pivotroot(struct path *old_path, struct path *new_path)
- }
- 
- int security_sb_set_mnt_opts(struct super_block *sb,
--				struct security_mnt_opts *opts)
-+				struct security_mnt_opts *opts,
-+				unsigned long kern_flags,
-+				unsigned long *set_kern_flags)
- {
--	return security_ops->sb_set_mnt_opts(sb, opts);
-+	return security_ops->sb_set_mnt_opts(sb, opts, kern_flags,
-+						set_kern_flags);
- }
- EXPORT_SYMBOL(security_sb_set_mnt_opts);
- 
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index bbf219a..f3b5446 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -552,7 +552,9 @@ static int bad_option(struct superblock_security_struct *sbsec, char flag,
-  * labeling information.
-  */
- static int selinux_set_mnt_opts(struct super_block *sb,
--				struct security_mnt_opts *opts)
-+				struct security_mnt_opts *opts,
-+				unsigned long kern_flags,
-+				unsigned long *set_kern_flags)
- {
- 	const struct cred *cred = current_cred();
- 	int rc = 0, i;
-@@ -580,6 +582,12 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 			"before the security server is initialized\n");
- 		goto out;
- 	}
-+	if (kern_flags && !set_kern_flags) {
-+		/* Specifying internal flags without providing a place to
-+		 * place the results is not allowed */
-+		rc = -EINVAL;
-+		goto out;
-+	}
- 
- 	/*
- 	 * Binary mount data FS will come through this function twice.  Once
-@@ -980,7 +988,7 @@ static int superblock_doinit(struct super_block *sb, void *data)
- 		goto out_err;
- 
- out:
--	rc = selinux_set_mnt_opts(sb, &opts);
-+	rc = selinux_set_mnt_opts(sb, &opts, 0, NULL);
- 
- out_err:
- 	security_free_mnt_opts(&opts);
--- 
-1.8.1.4
-
+That and of course that i386 and x86-64 behave differently for no apparent
+reason.
