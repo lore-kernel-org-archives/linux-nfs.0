@@ -1,84 +1,195 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:30310 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755417Ab3E2RDh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 May 2013 13:03:37 -0400
-Subject: Re: [PATCH 0/3 v3] dcache: make it more scalable on large system
-From: Simo Sorce <simo@redhat.com>
-To: Andi Kleen <andi@firstfloor.org>
-Cc: Waiman Long <waiman.long@hp.com>, Dave Chinner <david@fromorbit.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Jeff Layton <jlayton@redhat.com>, Miklos Szeredi <mszeredi@suse.cz>,
-        Ian Kent <raven@themaw.net>, Sage Weil <sage@inktank.com>,
-        Steve French <sfrench@samba.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Eric Paris <eparis@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, autofs@vger.kernel.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, "Chandramouleeswaran, Aswin" <aswin@hp.com>,
-        "Norton, Scott J" <scott.norton@hp.com>
-In-Reply-To: <20130529165603.GL6123@two.firstfloor.org>
-References: <1369273048-60256-1-git-send-email-Waiman.Long@hp.com>
-	 <20130523094201.GA24543@dastard> <519E8B5F.3080905@hp.com>
-	 <20130527020903.GR29466@dastard> <51A624E2.3000301@hp.com>
-	 <1369844289.2769.146.camel@willson.li.ssimo.org>
-	 <20130529165603.GL6123@two.firstfloor.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 29 May 2013 13:03:12 -0400
-Message-ID: <1369846992.2769.149.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:40249 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753580Ab3EFNwe convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 09:52:34 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
+Subject: Re: [PATCH] NFSv3: match sec= flavor against server list
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1367846874-1234-1-git-send-email-dros@netapp.com>
+Date: Mon, 6 May 2013 09:52:37 -0400
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <CFCA1AF9-4CC3-46A6-8E08-BAC8BF030146@oracle.com>
+References: <1367846874-1234-1-git-send-email-dros@netapp.com>
+To: Weston Andros Adamson <dros@netapp.com>,
+        Tom Haynes <Tom.Haynes@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-05-29 at 18:56 +0200, Andi Kleen wrote:
-> On Wed, May 29, 2013 at 12:18:09PM -0400, Simo Sorce wrote:
-> > On Wed, 2013-05-29 at 11:55 -0400, Waiman Long wrote:
-> > 
-> > > My patch set consists of 2 different changes. The first one is to avoid 
-> > > taking the d_lock lock when updating the reference count in the 
-> > > dentries. This particular change also benefit some other workloads that 
-> > > are filesystem intensive. One particular example is the short workload 
-> > > in the AIM7 benchmark. One of the job type in the short workload is 
-> > > "misc_rtns_1" which calls security functions like getpwnam(), 
-> > > getpwuid(), getgrgid() a couple of times. These functions open the 
-> > > /etc/passwd or /etc/group files, read their content and close the files. 
-> > > It is the intensive open/read/close sequence from multiple threads that 
-> > > is causing 80%+ contention in the d_lock on a system with large number 
-> > > of cores.
-> > 
-> > To be honest a workload base on /etc/passwd or /etc/group is completely
-> > artificial, in actual usage, if you really have  such access you use
-> > nscd or sssd with their shared memory caches to completely remove most
-> > of the file access.
+Hi-
+
+On May 6, 2013, at 9:27 AM, Weston Andros Adamson <dros@netapp.com> wrote:
+
+> Older clients match the 'sec=' mount option flavor against the server's
+> flavor list (if available) and return EPERM if the specified flavor is not
+> found. Recent changes would skip this step and allow the vfs mount even
+> though no operations will succeed.
 > 
-> I don't fully agree at this point. A lot of things can be tuned away,
-> but in practice we want things to perform well out of the box without
-> needing all kinds of magic tuning that only 
-
-Phrase seem cut mid-sentence ?
-
-> Also this is just normal file access, nothing special about it.
-> It simply has to scale. For all kinds of workloads.
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> ---
 > 
-> And it does, just d_path messes it up.
-
-Well there are reasonable workloads and artificial ones, I am just
-warning not to use 'that' specific test as a good indicator, if you have
-other reasonable workloads that show a similar flow feel free to bring
-it up.
-
-> > I have no beef on the rest but repeated access to Nsswitch information
-> > is not something you need to optimize at the file system layer and
-> > should not be brought up as a point in favor.
+> Hey Chuck,
 > 
-> This is about repeated access to arbitrary files.
+> This fixes a regression that was introduced with the recent nfs_select_flavor 
+> changes - I'm pretty sure we want to match the specified flavor instead of just
+> using it.
+> 
+> Example of the regression:
+> 
+> the server's /etc/exports:
+> 
+> /export/krb5      *(sec=krb5,sec=none,rw,no_root_squash)
+> 
+> old client behavior:
+> 
+> $ uname -a
+> Linux one.apikia.fake 3.8.8-202.fc18.x86_64 #1 SMP Wed Apr 17 23:25:17 UTC 2013 x86_64 x86_64 x86_64 GNU/Linux
+> $ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
+> mount.nfs: timeout set for Sun May  5 17:32:04 2013
+> mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
+> mount.nfs: prog 100003, trying vers=3, prot=6
+> mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
+> mount.nfs: prog 100005, trying vers=3, prot=17
+> mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
+> mount.nfs: mount(2): Permission denied
+> mount.nfs: access denied by server while mounting zero:/export/krb5
 
-Ok. I do not want to start a discussion on this, I just pointed out the
-specific point was not really a good example hopefully there are others
-that justify the patchset.
+This is wrong behavior, and is fixed by my patch.
 
-Simo.
+> recently changed behavior:
+> 
+> $ uname -a
+> Linux one.apikia.fake 3.9.0-testing+ #2 SMP Fri May 3 20:29:32 EDT 2013 x86_64 x86_64 x86_64 GNU/Linux
+> $ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
+> mount.nfs: timeout set for Sun May  5 17:37:17 2013
+> mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
+> mount.nfs: prog 100003, trying vers=3, prot=6
+> mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
+> mount.nfs: prog 100005, trying vers=3, prot=17
+> mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
+> $ ls /mnt
+> ls: cannot open directory /mnt: Permission denied
+> $ sudo ls /mnt
+> ls: cannot open directory /mnt: Permission denied
+> $ sudo df /mnt
+> df: ‘/mnt’: Permission denied
+> df: no file systems processed
+> $ sudo umount /mnt
+> $
 
--- 
-Simo Sorce * Red Hat, Inc * New York
+This is correct behavior.  The server should map the user's AUTH_SYS credential to anonymous.  If anonymous does not have permission on /export/krb5, then the server should prevent its access to the export.
+
+I assume this is a Linux NFS server.  Does the Linux server support sec=none listed in the export options in the same way that NetApp and Oracle Solaris do?
+
+> I also made an attempt to support "AUTH_NULL means the server will ignore the
+> cred, so just use the specified flavor" behavior from much older kernels, but 
+> I'm not sure if we want this logic.
+> 
+> I'd actually prefer getting rid of this AUTH_NULL logic, it's just that some 
+> older clients (RHEL 5, etc) would succeed in mounting when sec=sys specified,
+> server list = [AUTH_NULL] (the client ends up sending AUTH_UNIX creds that are
+> ignored by the server), while newer kernels do not. The workaround in newer
+> kernels is to specify sec=none.
+> 
+> Thoughts?
+> 
+> -dros
+> 
+> fs/nfs/super.c | 39 ++++++++++++++++++++++++++++++++-------
+> 1 file changed, 32 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index eb494f6..6476b5d 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -1611,14 +1611,12 @@ out_security_failure:
+>  * Select a security flavor for this mount.  The selected flavor
+>  * is planted in args->auth_flavors[0].
+>  */
+> -static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
+> +static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
+> 			      struct nfs_mount_request *request)
+> {
+> 	unsigned int i, count = *(request->auth_flav_len);
+> 	rpc_authflavor_t flavor;
+> -
+> -	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR)
+> -		goto out;
+> +	bool auth_null_seen = false;
+> 
+> 	/*
+> 	 * The NFSv2 MNT operation does not return a flavor list.
+> @@ -1634,6 +1632,26 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
+> 		goto out_default;
+> 
+> 	/*
+> +	 * If the sec= mount option is used, the flavor must be in the list
+> +	 * returned by the server.
+> +	 *
+> +	 * One exception is when the server's flavor list includes AUTH_NULL:
+> +	 * Some servers implement AUTH_NULL by completely ignoring the rpc
+> +	 * cred, so the client can use any flavor.
+> +	 */
+> +	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR) {
+> +		for (i = 0; i < count; i++) {
+> +			if (args->auth_flavors[0] == request->auth_flavs[i])
+> +				goto out;
+> +			if (request->auth_flavs[i] == RPC_AUTH_NULL)
+> +				auth_null_seen = true;
+> +		}
+> +		if (auth_null_seen)
+> +			goto out;
+> +		goto out_nomatch;
+> +	}
+> +
+> +	/*
+> 	 * RFC 2623, section 2.7 suggests we SHOULD prefer the
+> 	 * flavor listed first.  However, some servers list
+> 	 * AUTH_NULL first.  Avoid ever choosing AUTH_NULL.
+> @@ -1654,11 +1672,19 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
+> 	}
+> 
+> out_default:
+> -	flavor = RPC_AUTH_UNIX;
+> +	/* use default if flavor not already set */
+> +	flavor = (args->auth_flavors[0] == RPC_AUTH_MAXFLAVOR) ?
+> +		RPC_AUTH_UNIX : args->auth_flavors[0];
+> out_set:
+> 	args->auth_flavors[0] = flavor;
+> out:
+> 	dfprintk(MOUNT, "NFS: using auth flavor %d\n", args->auth_flavors[0]);
+> +	return 0;
+> +
+> +out_nomatch:
+> +	dfprintk(MOUNT, "NFS: auth flavor %d not supported by server\n",
+> +		args->auth_flavors[0]);
+> +	return -EPERM;
+> }
+> 
+> /*
+> @@ -1721,8 +1747,7 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+> 		return status;
+> 	}
+> 
+> -	nfs_select_flavor(args, &request);
+> -	return 0;
+> +	return nfs_select_flavor(args, &request);
+> }
+> 
+> struct dentry *nfs_try_mount(int flags, const char *dev_name,
+> -- 
+> 1.7.12.4 (Apple Git-37)
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
