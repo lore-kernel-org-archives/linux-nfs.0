@@ -1,116 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:63344 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752524Ab3E3Txh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 May 2013 15:53:37 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 00/13] lnfs: 3.10-rc2 release
-Date: Thu, 30 May 2013 19:53:30 +0000
-Message-ID: <1369943609.3111.4.camel@leira.trondhjem.org>
-References: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+Received: from fw1.franz.com ([67.207.112.66]:46106 "EHLO mas.franz.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753336Ab3EFSGH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 May 2013 14:06:07 -0400
+From: Ahmon Dancy <dancy@franz.com>
+To: Wendy Cheng <s.wendy.cheng@gmail.com>
+cc: linux-nfs@vger.kernel.org
+Subject: Re: Unexpected NFS client cache drops
+In-reply-to: <CABgxfbEuf-YfJT+7PTnXJvtetjaUCVez2EAoK1Q6azYN4Oib=g@mail.gmail.com>
+References: <16805.1367508760@mas.franz.com> <CABgxfbEuf-YfJT+7PTnXJvtetjaUCVez2EAoK1Q6azYN4Oib=g@mail.gmail.com>
+Date: Mon, 06 May 2013 11:05:45 -0700
+Message-ID: <11469.1367863545@mas.franz.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-05-22 at 12:50 -0400, Steve Dickson wrote:
-> From: Steve Dickson <steved@redhat.com>
-> 
-> Here is the next release the label NFS patches ported to 
-> linux-3-10.rc2 release.
-> 
-> The changes made in this release:
-> 
-> * Add new Ack-by's 
-> 
-> * Fixed typo in v4.2 section of Kconfig
-> 
-> * Removed all the label points that are no longer needed in linux/nfs_xdr.h
-> 
-> * Move NFS4_MAXLABELLEN to linux/nfs4.h
-> 
-> * Move the label processing out of nfs_post_op_update_inode() and
->   nfs_refresh_inode(), putting it around them. 
-> 
-> * Removed the state processing from set security label code.
-> 
-> * Added a new decode_getfattr_label() routine which is by 
->   ops that process labels. 
-> 
-> * Removed the select from the Kconfig file
-> 
-> 
-> David Quigley (9):
->   Security: Add Hook to test if the particular xattr is part of a MAC
->     model.
->   LSM: Add flags field to security_sb_set_mnt_opts for in kernel mount
->     data.
->   SELinux: Add new labeling type native labels
->   NFSv4: Add label recommended attribute and NFSv4 flags
->   NFSv4: Extend fattr bitmaps to support all 3 words
->   NFS:Add labels to client function prototypes
->   NFS: Add label lifecycle management
->   NFS: Client implementation of Labeled-NFS
->   NFS: Extend NFS xattr handlers to accept the security namespace
-> 
-> Steve Dickson (4):
->   Security: Add hook to calculate context based on a negative dentry.
->   NFSv4.2: Added NFS v4.2 support to the NFS client
->   NFSv4: Introduce new label structure
->   Kconfig: Add Kconfig entry for Labeled NFS V4 client
-> 
->  fs/nfs/Kconfig                      |  28 ++
->  fs/nfs/callback.c                   |   1 +
->  fs/nfs/callback_xdr.c               |   6 +-
->  fs/nfs/client.c                     |   2 +-
->  fs/nfs/dir.c                        |  49 +++-
->  fs/nfs/getroot.c                    |   2 +-
->  fs/nfs/inode.c                      | 109 +++++++-
->  fs/nfs/namespace.c                  |   2 +-
->  fs/nfs/nfs3proc.c                   |   7 +-
->  fs/nfs/nfs4_fs.h                    |   6 +-
->  fs/nfs/nfs4client.c                 |   5 +
->  fs/nfs/nfs4proc.c                   | 518 ++++++++++++++++++++++++++++++++----
->  fs/nfs/nfs4xdr.c                    | 174 +++++++++---
->  fs/nfs/proc.c                       |  13 +-
->  fs/nfs/super.c                      |  24 +-
->  include/linux/nfs4.h                |  13 +
->  include/linux/nfs_fs.h              |  26 +-
->  include/linux/nfs_fs_sb.h           |   8 +-
->  include/linux/nfs_xdr.h             |  20 +-
->  include/linux/security.h            |  57 +++-
->  security/capability.c               |  19 +-
->  security/security.c                 |  24 +-
->  security/selinux/hooks.c            |  92 ++++++-
->  security/selinux/include/security.h |   2 +
->  security/selinux/ss/policydb.c      |   5 +-
->  security/smack/smack_lsm.c          |  11 +
->  26 files changed, 1066 insertions(+), 157 deletions(-)
-> 
-Hi Steve,
+Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
 
-Bryan found a problem with the NFSv4.2 enabling patch above: the
-callback channel needs to recognise minor version 2 CB_COMPOUND. There
-are several places in the current callback code where people have hacked
-the hard coded value '1' for the minor version field... :-(
+>> On Thu, May 2, 2013 at 8:32 AM, Ahmon Dancy <dancy@franz.com> wrote:
+>> > Hello Linux NFS folks.  I need help figuring out why the kernel is
+>> > sometimes discarding large portions of the page cache for a file that
+>> > I'm manipulating via NFS.
+>> 
+>> It is quite normal for kernel to flush out page cache and there are
+>> tunables to control the intervals and/or percentage. For example, a
+>> quick googling shows results such as:
+>> http://www.westnet.com/~gsmith/content/linux-pdflush.htm  .. Did you
+>> try that out yet ?
 
-Bryan is working on a fix for us that I will just apply on top of the
-existing labeled NFS branch.
+The document you refer to is about how the kernel performs writeback.
+My complaint is about the kernel unnecessarily invalidating the cache.
 
-Cheers,
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
+>> 
+>> Different filesystems have different policies for flushing as well -
+>> this applies to NFS client and local filesystems. NFS client kmod
+>> might clean its house more frequently due to:
+>> 
+>> 1. It has more memory pressure (vs. local filesystem that does not
+>> require socket buffers), particularly you run this on top of IB
+>> interconnect that uses DMA extensively. Did you use IPOIB datagram or
+>> IPOIB cm ?
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+I should note that I also witnessed the bad behavior on a system that
+did not use Infiniband so, while I mentioned it in my original problem
+report, I don't think Infiniband is really implicated in this issue.
+
+>> 2. NFS default with sync export - so the client side pages may have
+>> zero reference count (read as "un-used") after the contents reach the
+>> server. At that point, kernel is free to grab them
+
+So that's where my question comes in. Why is it doing so when there is
+no memory pressure (tens of gigabytes free on both NUMA nodes while
+I'm testing).
+
+>> > Attached is the source for a test program which models the behavior of
+>> > a larger program.  The program works as follows:
+>> >
+>> 
+>> A test program is always a great way to kickoff the discussion. If you
+>> don't get further comment here, you might want to open a Fedora
+>> bugzilla to see whether anyone has cycles to run it and analyse the
+>> result. I suspect there are more tunable can be done on the NUMA
+>> side.
+
+Will do.  I wasn't sure which was the best course of action (going
+through RedHat or going directly to the NFS mailing list).
+
+>> I assume the hardware used by the xfs runs were identical to the NFS
+>> client machine.
+
+That's correct. 
+
+
+
+Additional note: I did another test from the same client against an
+NFS server exporting an ext3 filesystem and the problem happens much
+sooner.  I'm guessing filesystem timestamp resolution is coming into
+play here.
