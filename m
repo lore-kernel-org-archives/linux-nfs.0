@@ -1,69 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:3031 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762250Ab3ECAdX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 May 2013 20:33:23 -0400
-Subject: [PATCH 1/8] fs/fscache: remove spin_lock() from the condition in
- while()
-To: linux-cachefs@redhat.com
-From: David Howells <dhowells@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        hjayasur@redhat.com, jlayton@redhat.com, linux-kernel@vger.kernel.org
-Date: Fri, 03 May 2013 01:33:21 +0100
-Message-ID: <20130503003321.14952.50141.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20130503003316.14952.51791.stgit@warthog.procyon.org.uk>
-References: <20130503003316.14952.51791.stgit@warthog.procyon.org.uk>
+Received: from mail-gg0-f181.google.com ([209.85.161.181]:54064 "EHLO
+	mail-gg0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755232Ab3EFTdO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 15:33:14 -0400
+Date: Mon, 6 May 2013 12:33:07 -0700
+From: Tejun Heo <tj@kernel.org>
+To: Colin Cross <ccross@android.com>
+Cc: lkml <linux-kernel@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Len Brown <len.brown@intel.com>, Pavel Machek <pavel@ucw.cz>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Oleg Nesterov <oleg@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>,
+        Linux PM list <linux-pm@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Ben Chan <benchan@chromium.org>
+Subject: Re: [PATCH 2/2] lockdep: check that no locks held at freeze time
+Message-ID: <20130506193307.GD800@mtj.dyndns.org>
+References: <1367615050-3894-1-git-send-email-ccross@android.com>
+ <1367615050-3894-2-git-send-email-ccross@android.com>
+ <20130506190115.GB800@mtj.dyndns.org>
+ <CAMbhsRRcfpXBGAPThjrmB_judgn85TioR_6A6qwh_fBQCent7A@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAMbhsRRcfpXBGAPThjrmB_judgn85TioR_6A6qwh_fBQCent7A@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Hello,
 
-The spinlock() within the condition in while() will cause a compile error
-if it is not a function. This is not a problem on mainline but it does not
-look pretty and there is no reason to do it that way.
-That patch writes it a little differently and avoids the double condition.
+On Mon, May 06, 2013 at 12:30:19PM -0700, Colin Cross wrote:
+> > I don't care about %current change, especially given that it's a debug
+> > interface but that really should be a separate patch, so please split
+> > it out if you want it (and I think we want it).
+> 
+> The current change was requested by akpm and was part of the original
+> patch.  Is it really worth confusing the history of this patch even
+> more, applying it the first time, reverting it, and then applying it
+> again in two parts?
 
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+I don't know.  The patch seems confusing to me.  It really is about
+adding single lockdep annotation but comes with other changes.  I
+don't think it's a big deal either way but at least we wouldn't be
+having this %current vs. @tsk conversation which is mostly irrelevant
+to the actual proposed change, right?  It really should have been a
+separate patch from the beginning.  Just refer to the original commit
+and explain what happened?
 
- fs/fscache/page.c |   16 ++++++++++------
- 1 file changed, 10 insertions(+), 6 deletions(-)
+Thanks.
 
-diff --git a/fs/fscache/page.c b/fs/fscache/page.c
-index ff000e5..4882c80 100644
---- a/fs/fscache/page.c
-+++ b/fs/fscache/page.c
-@@ -796,11 +796,16 @@ void fscache_invalidate_writes(struct fscache_cookie *cookie)
- 
- 	_enter("");
- 
--	while (spin_lock(&cookie->stores_lock),
--	       n = radix_tree_gang_lookup_tag(&cookie->stores, results, 0,
--					      ARRAY_SIZE(results),
--					      FSCACHE_COOKIE_PENDING_TAG),
--	       n > 0) {
-+	for (;;) {
-+		spin_lock(&cookie->stores_lock);
-+		n = radix_tree_gang_lookup_tag(&cookie->stores, results, 0,
-+					       ARRAY_SIZE(results),
-+					       FSCACHE_COOKIE_PENDING_TAG);
-+		if (n == 0) {
-+			spin_unlock(&cookie->stores_lock);
-+			break;
-+		}
-+
- 		for (i = n - 1; i >= 0; i--) {
- 			page = results[i];
- 			radix_tree_delete(&cookie->stores, page->index);
-@@ -812,7 +817,6 @@ void fscache_invalidate_writes(struct fscache_cookie *cookie)
- 			page_cache_release(results[i]);
- 	}
- 
--	spin_unlock(&cookie->stores_lock);
- 	_leave("");
- }
- 
-
+-- 
+tejun
