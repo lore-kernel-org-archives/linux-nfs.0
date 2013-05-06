@@ -1,111 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga09.intel.com ([134.134.136.24]:22036 "EHLO mga09.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758191Ab3EWM7f convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 May 2013 08:59:35 -0400
-From: "Yong, Fan" <fan.yong@intel.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Peng Tao <bergwolf@gmail.com>
-CC: "Dilger, Andreas" <andreas.dilger@intel.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Steve Dickson <steved@redhat.com>
-Subject: RE: [PATCH] nfs: support 64-bit root inode number in NFS FSID
-Date: Thu, 23 May 2013 12:59:34 +0000
-Message-ID: <7FB055E0B36B6F4EB93E637E0640A56F5B4AA961@FMSMSX114.amr.corp.intel.com>
-References: <CDC2ABAC.3341C%andreas.dilger@intel.com>
-	 <CA+a=Yy4CQ7zG48dGOVjh8YBv0e+X1Gk4RxpDzdR4vM8JmqossQ@mail.gmail.com>
- <1369313382.3764.2.camel@leira.trondhjem.org>
-In-Reply-To: <1369313382.3764.2.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+Received: from mail-vc0-f202.google.com ([209.85.220.202]:35683 "EHLO
+	mail-vc0-f202.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932558Ab3EFXug (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 19:50:36 -0400
+Received: by mail-vc0-f202.google.com with SMTP id gf12so447585vcb.1
+        for <linux-nfs@vger.kernel.org>; Mon, 06 May 2013 16:50:35 -0700 (PDT)
+From: Colin Cross <ccross@android.com>
+To: linux-kernel@vger.kernel.org
+Cc: Pavel Machek <pavel@ucw.cz>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Colin Cross <ccross@android.com>, Oleg Nesterov <oleg@redhat.com>,
+        linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org,
+        netdev@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>,
+        Tejun Heo <tj@kernel.org>, Al Viro <viro@zeniv.linux.org.uk>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Kees Cook <keescook@chromium.org>
+Subject: [PATCH v3 15/16] sigtimedwait: use freezable blocking call
+Date: Mon,  6 May 2013 16:50:20 -0700
+Message-Id: <1367884221-20462-16-git-send-email-ccross@android.com>
+In-Reply-To: <1367884221-20462-1-git-send-email-ccross@android.com>
+References: <1367884221-20462-1-git-send-email-ccross@android.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Just make it match the "inode64" in nfs-utils parse_fsid(), which is defined as "unsigned long long", and the parsed_fsid:: inode is copied from "inode64" as following:
+Avoid waking up every thread sleeping in a sigtimedwait call during
+suspend and resume by calling a freezable blocking call.  Previous
+patches modified the freezer to avoid sending wakeups to threads
+that are blocked in freezable blocking calls.
 
-static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
-                struct parsed_fsid *parsed)
-{
-        unsigned int dev;
-        unsigned long long inode64;
-...
-        case FSID_UUID16_INUM: /* 8 byte inode number and 16 byte uuid */
-                if (fsidlen != 24)
-                        return -1;
-                memcpy(&inode64, fsid, 8);
-                parsed->inode = inode64;
-                parsed->uuidlen = 16;
-                parsed->fhuuid = fsid+8;
-                break;
-        }
+This call was selected to be converted to a freezable call because
+it doesn't hold any locks or release any resources when interrupted
+that might be needed by another freezing task or a kernel driver
+during suspend, and is a common site where idle userspace tasks are
+blocked.
 
---
-Cheers,
-Nasf
+Acked-by: Tejun Heo <tj@kernel.org>
+Signed-off-by: Colin Cross <ccross@android.com>
+---
+ kernel/signal.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
+diff --git a/kernel/signal.c b/kernel/signal.c
+index 598dc06..10a70a0 100644
+--- a/kernel/signal.c
++++ b/kernel/signal.c
+@@ -2845,7 +2845,7 @@ int do_sigtimedwait(const sigset_t *which, siginfo_t *info,
+ 		recalc_sigpending();
+ 		spin_unlock_irq(&tsk->sighand->siglock);
+ 
+-		timeout = schedule_timeout_interruptible(timeout);
++		timeout = freezable_schedule_timeout_interruptible(timeout);
+ 
+ 		spin_lock_irq(&tsk->sighand->siglock);
+ 		__set_task_blocked(tsk, &tsk->real_blocked);
+-- 
+1.8.2.1
 
-
------Original Message-----
-From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com] 
-Sent: Thursday, May 23, 2013 8:50 PM
-To: Peng Tao
-Cc: Dilger, Andreas; J. Bruce Fields; linux-nfs@vger.kernel.org; Yong, Fan; Steve Dickson
-Subject: Re: [PATCH] nfs: support 64-bit root inode number in NFS FSID
-
-On Thu, 2013-05-23 at 16:12 +0800, Peng Tao wrote:
-> [nfs-utils patch needs to be sent to Steve Dickson (CC'ed)]
-> 
-> On Thu, May 23, 2013 at 7:06 AM, Dilger, Andreas 
-> <andreas.dilger@intel.com> wrote:
-> > When exporting a filesystem via NFS, it can generate several kinds 
-> > of NFS filesystem IDs. For most of cases, it uses a 32-bit inode 
-> > number in the NFS FSID, but this does not work on a filesystem using 
-> > a 64-bit root inode number.
-> >
-> > In kernel space, NFS can generate/use NFS FSID with a 64-bit inode 
-> > number for the "FSID_UUID16_INUM" type. Unfortunately, while the 
-> > user space nfs-utils decode the 64-bit inode number from the FSID 
-> > correctly, it is truncated when storing it in "struct parsed_fsid".
-> > Expand the "struct parsed_fsid" inode field to store the full 64-bit 
-> > root inode number.
-> >
-> > Intel-bug-id: LU-2904
-> > Signed-off-by: Fan Yong <fan.yong@intel.com>
-> > Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
-> > ---
-> >  utils/mountd/cache.c |    2 +-
-> >  1 files changed, 1 insertions(+), 1 deletions(-)
-> >
-> > diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c index 
-> > 517aa62..a7212e7 100644
-> > --- a/utils/mountd/cache.c
-> > +++ b/utils/mountd/cache.c
-> > @@ -388,7 +388,7 @@ struct parsed_fsid {
-> >         int fsidtype;
-> >         /* We could use a union for this, but it would be more
-> >          * complicated; why bother? */
-> > -       unsigned int inode;
-> > +       unsigned long long inode; /* We need 64-bits ino# */
-> >         unsigned int minor;
-> >         unsigned int major;
-> >         unsigned int fsidnum;
-> > --1.7.1
-> >
-> > Patch is also attached separately, since it will likely be butchered 
-> > by this email client.
-> >
-> >
-> > Cheers, Andreas
-> > --
-> > Andreas Dilger
-
-Why not just specify a uint64_t size then?
-
---
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
