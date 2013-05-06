@@ -1,157 +1,209 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:19807 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1763031Ab3ECT0R convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 May 2013 15:26:17 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
-Subject: Re: long delay when mounting due to SETCLIENTID AUTH_GSS attempts
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130503151727.09d684f4@tlielax.poochiereds.net>
-Date: Fri, 3 May 2013 15:26:09 -0400
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <EB1CC0C3-1E31-4A3F-90E7-A79098161D1B@oracle.com>
-References: <20130503132557.2fdf794d@tlielax.poochiereds.net> <AE700845-4032-4BEC-817C-97EB08A831E8@oracle.com> <20130503142421.19fb3ca6@tlielax.poochiereds.net> <1367606034.3556.25.camel@leira.trondhjem.org> <20130503144437.3a47e476@tlielax.poochiereds.net> <A2E5B3F1-A8F1-4731-A66C-548B9C8FD429@oracle.com> <20130503151727.09d684f4@tlielax.poochiereds.net>
-To: Jeff Layton <jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:25120 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753787Ab3EFK4w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 May 2013 06:56:52 -0400
+Date: Mon, 6 May 2013 06:56:05 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Colin Cross <ccross@android.com>
+Cc: linux-kernel@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Len Brown <len.brown@intel.com>, Pavel Machek <pavel@ucw.cz>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-pm@vger.kernel.org, netdev@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Tejun Heo <tj@kernel.org>, Ben Chan <benchan@chromium.org>,
+        smfrench@gmail.com
+Subject: Re: [PATCH 1/2] freezer: add unsafe versions of freezable helpers
+Message-ID: <20130506065605.6e5ed5e2@tlielax.poochiereds.net>
+In-Reply-To: <1367615050-3894-1-git-send-email-ccross@android.com>
+References: <1367615050-3894-1-git-send-email-ccross@android.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri,  3 May 2013 14:04:09 -0700
+Colin Cross <ccross@android.com> wrote:
 
-On May 3, 2013, at 3:17 PM, Jeff Layton <jlayton@redhat.com> wrote:
-
-> On Fri, 3 May 2013 14:48:59 -0400
-> Chuck Lever <chuck.lever@oracle.com> wrote:
+> NFS calls the freezable helpers with locks held, which is unsafe
+> and caused lockdep warnings when 6aa9707 "lockdep: check that no
+> locks held at freeze time" was applied (reverted in dbf520a).
+> Add new *_unsafe versions of the helpers that will not run the
+> lockdep test when 6aa9707 is reapplied, and call them from NFS.
 > 
->> 
->> On May 3, 2013, at 2:44 PM, Jeff Layton <jlayton@redhat.com> wrote:
->> 
->>> On Fri, 3 May 2013 18:33:54 +0000
->>> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
->>> 
->>>> On Fri, 2013-05-03 at 14:24 -0400, Jeff Layton wrote:
->>>>> On Fri, 3 May 2013 13:56:13 -0400
->>>>> Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>> 
->>>>>> 
->>>>>> On May 3, 2013, at 1:25 PM, Jeff Layton <jlayton@redhat.com> wrote:
->>>>>> 
->>>>>>> I've noticed that when running a 3.10-pre kernel that if I try to mount
->>>>>>> up a NFSv4 filesystem that it now takes ~15s for the mount to complete.
->>>>>>> 
->>>>>>> Here's a little rpcdebug output:
->>>>>>> 
->>>>>>> [ 3056.385078] svc: server ffff8800368fc000 waiting for data (to = 9223372036854775807)
->>>>>>> [ 3056.392056] RPC:       new task initialized, procpid 2471
->>>>>>> [ 3056.392758] RPC:       allocated task ffff88010cd90100
->>>>>>> [ 3056.393303] RPC:    42 __rpc_execute flags=0x1280
->>>>>>> [ 3056.393630] RPC:    42 call_start nfs4 proc SETCLIENTID (sync)
->>>>>>> [ 3056.394056] RPC:    42 call_reserve (status 0)
->>>>>>> [ 3056.394368] RPC:    42 reserved req ffff8801019f9600 xid 21ad6c40
->>>>>>> [ 3056.394783] RPC:       wake_up_first(ffff88010a989990 "xprt_sending")
->>>>>>> [ 3056.395252] RPC:    42 call_reserveresult (status 0)
->>>>>>> [ 3056.395595] RPC:    42 call_refresh (status 0)
->>>>>>> [ 3056.395901] RPC:       gss_create_cred for uid 0, flavor 390004
->>>>>>> [ 3056.396361] RPC:       gss_create_upcall for uid 0
->>>>>>> [ 3071.396134] RPC: AUTH_GSS upcall timed out.
->>>>>>> Please check user daemon is running.
->>>>>>> [ 3071.397374] RPC:       gss_create_upcall for uid 0 result -13
->>>>>>> [ 3071.398192] RPC:    42 call_refreshresult (status -13)
->>>>>>> [ 3071.398873] RPC:    42 call_refreshresult: refresh creds failed with error -13
->>>>>>> [ 3071.399881] RPC:    42 return 0, status -13
->>>>>>> 
->>>>>>> The problem is that we're now trying to upcall for GSS creds to do the
->>>>>>> SETCLIENTID call, but this host isn't running rpc.gssd. Not running
->>>>>>> rpc.gssd is pretty common for people not using kerberized NFS. I think
->>>>>>> we'll see a lot of complaints about this.
->>>>>>> 
->>>>>>> Is this expected?
->>>>>> 
->>>>>> Yes.
->>>>>> 
->>>>>> There are operations like SETCLIENTID and GETATTR(fs_locations) which should always use an integrity-checking security flavor, even if particular mount points use sec=sys.
->>>>>> 
->>>>>> There are cases where GSS is not available, and we fall back to using AUTH_SYS.  That should happen as quickly as possible, I agree.
->>>>>> 
->>>>>>> If so, what's the proposed remedy?
->>>>>>> Simply have everyone run rpc.gssd even if they're not using kerberized NFS?
->>>>>> 
->>>>>> 
->>>>>> That's one possibility.  Or we could shorten the upcall timeout.  Or, add a mechanism by which rpc.gssd can provide a positive indication to the kernel that it is running.
->>>>>> 
->>>>>> It doesn't seem like an intractable problem.
->>>>>> 
->>>>> 
->>>>> Nope, it's not intractable at all...
->>>>> 
->>>>> Currently, the gssd upcall uses the RPC_PIPE_WAIT_FOR_OPEN flag to
->>>>> allow you to queue upcalls to be processed when the daemon isn't up
->>>>> yet. When the daemon starts, it processes that queue. The caller gives
->>>>> up after 15s (which is what's happening here), and the upcall
->>>>> eventually gets scraped out of the queue after 30s.
->>>>> 
->>>>> We could stop using that flag on this rpc_pipe and simply require that
->>>>> the daemon be up and running before attempting any sort of AUTH_GSS
->>>>> rpc. That might be a little less friendly in the face of boot-time
->>>>> ordering problems, but it should presumably make this problem go away.
->>>> 
->>>> You probably don't want to do that... The main reason for the
->>>> RPC_PIPE_WAIT_FOR_OPEN is that even if the gssd daemon is running, it
->>>> takes it a moment or two to notice that a new client directory has been
->>>> created, and that there is a new 'krb' pipe to attach to.
->>>> 
->>> 
->>> Ok yeah, good point...
->>> 
->>> Shortening the timeout will also suck -- that'll just reduce the pain
->>> somewhat but will still be a performance regression. It looks like even
->>> specifying '-o sec=sys' doesn't disable this behavior. Should it?
->> 
->> Nope.
->> 
->> We should always use krb5i if a GSS context can be established with our machine cred.  As I said before, SETCLIENTID and GETATTR(fs_locations) really should use an integrity-protecting security flavor no matter what flavor is in effect on the mount points themselves.
->> 
->>> Instead of using AUTH_GSS for SETCLIENTID by default, would it make
->>> sense to add a switch (module parm?) that turns it on so that it can be
->>> an opt-in thing rather than doing this by default?
->> 
->> Why add another tunable when we really should just fix the delay?
->> 
+> Signed-off-by: Colin Cross <ccross@android.com>
+> ---
+>  fs/nfs/inode.c          |  2 +-
+>  fs/nfs/nfs3proc.c       |  2 +-
+>  fs/nfs/nfs4proc.c       |  4 ++--
+>  include/linux/freezer.h | 42 +++++++++++++++++++++++++++++++++++++++++-
+>  net/sunrpc/sched.c      |  2 +-
+>  5 files changed, 46 insertions(+), 6 deletions(-)
 > 
-> Because just shortening the delay will still leave you with a delay.
-> Less people might notice and complain if it's shorter, but it'll still
-> be there. It'll be particularly annoying with autofs...
-> 
-> You also run the risk of hitting the problem Trond mentioned if you
-> shorten it too much (timing out the upcall before gssd's duty cycle has
-> a chance to get to it).
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 1f94167..53cbee5 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -79,7 +79,7 @@ int nfs_wait_bit_killable(void *word)
+>  {
+>  	if (fatal_signal_pending(current))
+>  		return -ERESTARTSYS;
+> -	freezable_schedule();
+> +	freezable_schedule_unsafe();
+>  	return 0;
+>  }
+>  EXPORT_SYMBOL_GPL(nfs_wait_bit_killable);
+> diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+> index 43ea96c..ce90eb4 100644
+> --- a/fs/nfs/nfs3proc.c
+> +++ b/fs/nfs/nfs3proc.c
+> @@ -33,7 +33,7 @@ nfs3_rpc_wrapper(struct rpc_clnt *clnt, struct rpc_message *msg, int flags)
+>  		res = rpc_call_sync(clnt, msg, flags);
+>  		if (res != -EJUKEBOX)
+>  			break;
+> -		freezable_schedule_timeout_killable(NFS_JUKEBOX_RETRY_TIME);
+> +		freezable_schedule_timeout_killable_unsafe(NFS_JUKEBOX_RETRY_TIME);
+>  		res = -ERESTARTSYS;
+>  	} while (!fatal_signal_pending(current));
+>  	return res;
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 0ad025e..a236077 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -266,7 +266,7 @@ static int nfs4_delay(struct rpc_clnt *clnt, long *timeout)
+>  		*timeout = NFS4_POLL_RETRY_MIN;
+>  	if (*timeout > NFS4_POLL_RETRY_MAX)
+>  		*timeout = NFS4_POLL_RETRY_MAX;
+> -	freezable_schedule_timeout_killable(*timeout);
+> +	freezable_schedule_timeout_killable_unsafe(*timeout);
+>  	if (fatal_signal_pending(current))
+>  		res = -ERESTARTSYS;
+>  	*timeout <<= 1;
+> @@ -4309,7 +4309,7 @@ int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4
+>  static unsigned long
+>  nfs4_set_lock_task_retry(unsigned long timeout)
+>  {
+> -	freezable_schedule_timeout_killable(timeout);
+> +	freezable_schedule_timeout_killable_unsafe(timeout);
+>  	timeout <<= 1;
+>  	if (timeout > NFS4_LOCK_MAXTIMEOUT)
+>  		return NFS4_LOCK_MAXTIMEOUT;
+> diff --git a/include/linux/freezer.h b/include/linux/freezer.h
+> index e70df40..5b31e21c 100644
+> --- a/include/linux/freezer.h
+> +++ b/include/linux/freezer.h
+> @@ -46,7 +46,11 @@ extern int freeze_kernel_threads(void);
+>  extern void thaw_processes(void);
+>  extern void thaw_kernel_threads(void);
+>  
+> -static inline bool try_to_freeze(void)
+> +/*
+> + * DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION
+> + * If try_to_freeze causes a lockdep warning it means the caller may deadlock
+> + */
+> +static inline bool try_to_freeze_unsafe(void)
+>  {
+>  	might_sleep();
+>  	if (likely(!freezing(current)))
+> @@ -54,6 +58,11 @@ static inline bool try_to_freeze(void)
+>  	return __refrigerator(false);
+>  }
+>  
+> +static inline bool try_to_freeze(void)
+> +{
+> +	return try_to_freeze_unsafe();
+> +}
+> +
+>  extern bool freeze_task(struct task_struct *p);
+>  extern bool set_freezable(void);
+>  
+> @@ -115,6 +124,14 @@ static inline void freezer_count(void)
+>  	try_to_freeze();
+>  }
+>  
+> +/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
+> +static inline void freezer_count_unsafe(void)
+> +{
+> +	current->flags &= ~PF_FREEZER_SKIP;
+> +	smp_mb();
+> +	try_to_freeze_unsafe();
+> +}
+> +
+>  /**
+>   * freezer_should_skip - whether to skip a task when determining frozen
+>   *			 state is reached
+> @@ -152,6 +169,14 @@ static inline bool freezer_should_skip(struct task_struct *p)
+>  	freezer_count();						\
+>  })
+>  
+> +/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
+> +#define freezable_schedule_unsafe()					\
+> +({									\
+> +	freezer_do_not_count();						\
+> +	schedule();							\
+> +	freezer_count_unsafe();						\
+> +})
+> +
+>  /* Like schedule_timeout_killable(), but should not block the freezer. */
+>  #define freezable_schedule_timeout_killable(timeout)			\
+>  ({									\
+> @@ -162,6 +187,16 @@ static inline bool freezer_should_skip(struct task_struct *p)
+>  	__retval;							\
+>  })
+>  
+> +/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
+> +#define freezable_schedule_timeout_killable_unsafe(timeout)		\
+> +({									\
+> +	long __retval;							\
+> +	freezer_do_not_count();						\
+> +	__retval = schedule_timeout_killable(timeout);			\
+> +	freezer_count_unsafe();						\
+> +	__retval;							\
+> +})
+> +
+>  /*
+>   * Freezer-friendly wrappers around wait_event_interruptible(),
+>   * wait_event_killable() and wait_event_interruptible_timeout(), originally
+> @@ -225,9 +260,14 @@ static inline void set_freezable(void) {}
+>  
+>  #define freezable_schedule()  schedule()
+>  
+> +#define freezable_schedule_unsafe()  schedule()
+> +
+>  #define freezable_schedule_timeout_killable(timeout)			\
+>  	schedule_timeout_killable(timeout)
+>  
+> +#define freezable_schedule_timeout_killable_unsafe(timeout)		\
+> +	schedule_timeout_killable(timeout)
+> +
+>  #define wait_event_freezable(wq, condition)				\
+>  		wait_event_interruptible(wq, condition)
+>  
+> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+> index f8529fc..8dcfadc 100644
+> --- a/net/sunrpc/sched.c
+> +++ b/net/sunrpc/sched.c
+> @@ -254,7 +254,7 @@ static int rpc_wait_bit_killable(void *word)
+>  {
+>  	if (fatal_signal_pending(current))
+>  		return -ERESTARTSYS;
+> -	freezable_schedule();
+> +	freezable_schedule_unsafe();
+>  	return 0;
+>  }
+>  
 
-So what about taking one of the other approaches I mentioned?
-
-> 
->> Besides, if gssd is running and no keytab exists, then the fallback to AUTH_SYS should be fast. Is that not an effective workaround until we address the delay problem?
->> 
-> 
-> Yep, no problem if gssd is running. I'm concerned about the common case
-> where it isn't. The expectation in the past has always been that if you
-> weren't running kerberized NFS that you didn't need to run gssd. That
-> has now changed and if you don't want to suffer a delay when mounting
-> (however short it eventually is) then you need to run it.
-
-Why are you assuming this is a permanent change?
-
-> Might it make sense to introduce this change more gradually? Somehow
-> warn people who aren't running gssd that they ought to start turning it
-> on before we do this by default?
-
-I don't expect this issue to last for release after release.  A moment ago you agreed that this shouldn't be intractable, so I fail to see the need to start wiring up long-term workarounds.
-
-Can't we just agree on a fix, and then get that into 3.10 as a regression fix?
+Looks reasonable, but note that CIFS uses wait_event_freezekillable
+with locks held too, which will likely have the same problem and will
+need the same workaround for now.
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Jeff Layton <jlayton@redhat.com>
