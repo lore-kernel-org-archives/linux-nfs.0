@@ -1,222 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:18651 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753800Ab3EFOtn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 10:49:43 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "Haynes, Tom" <Tom.Haynes@netapp.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv3: match sec= flavor against server list
-Date: Mon, 6 May 2013 14:49:41 +0000
-Message-ID: <5FA4CAE8-023D-4799-A721-F5CD2D4513EF@netapp.com>
-References: <1367846874-1234-1-git-send-email-dros@netapp.com>
- <CFCA1AF9-4CC3-46A6-8E08-BAC8BF030146@oracle.com>
-In-Reply-To: <CFCA1AF9-4CC3-46A6-8E08-BAC8BF030146@oracle.com>
-Content-Type: text/plain; charset="Windows-1252"
+Received: from papaya.imsweb.com ([204.132.58.134]:58192 "EHLO
+	papaya.imsweb.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755573Ab3EFTHM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 15:07:12 -0400
+Received: from VARUNA.omni.imsweb.com (varuna.omni.imsweb.com [172.22.64.28])
+	by papaya.imsweb.com (Postfix) with ESMTP id 12B255FF16
+	for <linux-nfs@vger.kernel.org>; Mon,  6 May 2013 15:07:02 -0400 (EDT)
+From: "Ashby, Jason (IMS)" <AshbyJ@imsweb.com>
+To: "'linux-nfs@vger.kernel.org'" <linux-nfs@vger.kernel.org>
+Subject: authrefrsh
+Date: Mon, 6 May 2013 19:06:59 +0000
+Message-ID: <B10E49DFB64A0A4D89A00D7C82B026D811EC51CD@VARUNA.omni.imsweb.com>
+References: <B10E49DFB64A0A4D89A00D7C82B026D811EC5001@VARUNA.omni.imsweb.com>
+ <B10E49DFB64A0A4D89A00D7C82B026D811EC51A6@VARUNA.omni.imsweb.com>
+In-Reply-To: <B10E49DFB64A0A4D89A00D7C82B026D811EC51A6@VARUNA.omni.imsweb.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi, I'm having a difficult time finding any info on the net about the "authrefrsh" value shown in the output of nfsstat -rc.  I understand it to mean "number of times authentication information had to be refreshed", but does it add to the overhead of nfs requests?  Does an authrefresh mean my nfs client is sending an authentication request to the nfs server?  I'm wondering if there is a correlation between degraded nfs performance and the number of authrefrsh?  I thought an authentication request with NFSv3 was only made when the client first mounts something.
 
-On May 6, 2013, at 9:52 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+Our Linux clients mount from a NetApp NFS server using NFSv3.  Our older Linux clients (SLES 9 SP4) have show better NFS performance than newer clients (SLES 11 SP2 and CentOS 6.4).  The only difference I see is that the old clients have authrefrsh=0 and the new clients have a very high number of authrefrsh.
 
-> Hi-
-> 
-> On May 6, 2013, at 9:27 AM, Weston Andros Adamson <dros@netapp.com> wrote:
-> 
->> Older clients match the 'sec=' mount option flavor against the server's
->> flavor list (if available) and return EPERM if the specified flavor is not
->> found. Recent changes would skip this step and allow the vfs mount even
->> though no operations will succeed.
->> 
->> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->> ---
->> 
->> Hey Chuck,
->> 
->> This fixes a regression that was introduced with the recent nfs_select_flavor 
->> changes - I'm pretty sure we want to match the specified flavor instead of just
->> using it.
->> 
->> Example of the regression:
->> 
->> the server's /etc/exports:
->> 
->> /export/krb5      *(sec=krb5,sec=none,rw,no_root_squash)
->> 
->> old client behavior:
->> 
->> $ uname -a
->> Linux one.apikia.fake 3.8.8-202.fc18.x86_64 #1 SMP Wed Apr 17 23:25:17 UTC 2013 x86_64 x86_64 x86_64 GNU/Linux
->> $ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
->> mount.nfs: timeout set for Sun May  5 17:32:04 2013
->> mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
->> mount.nfs: prog 100003, trying vers=3, prot=6
->> mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
->> mount.nfs: prog 100005, trying vers=3, prot=17
->> mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
->> mount.nfs: mount(2): Permission denied
->> mount.nfs: access denied by server while mounting zero:/export/krb5
-> 
-> This is wrong behavior, and is fixed by my patch.
-> 
->> recently changed behavior:
->> 
->> $ uname -a
->> Linux one.apikia.fake 3.9.0-testing+ #2 SMP Fri May 3 20:29:32 EDT 2013 x86_64 x86_64 x86_64 GNU/Linux
->> $ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
->> mount.nfs: timeout set for Sun May  5 17:37:17 2013
->> mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
->> mount.nfs: prog 100003, trying vers=3, prot=6
->> mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
->> mount.nfs: prog 100005, trying vers=3, prot=17
->> mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
->> $ ls /mnt
->> ls: cannot open directory /mnt: Permission denied
->> $ sudo ls /mnt
->> ls: cannot open directory /mnt: Permission denied
->> $ sudo df /mnt
->> df: ‘/mnt’: Permission denied
->> df: no file systems processed
->> $ sudo umount /mnt
->> $
-> 
-> This is correct behavior.  The server should map the user's AUTH_SYS credential to anonymous.  If anonymous does not have permission on /export/krb5, then the server should prevent its access to the export.
+Mount options used by all clients:  rsize=32768,wsize=32768,hard,nointr,rw,bg,vers=3,tcp,actimeo=0 0 0
 
-You're talking about AUTH_NULL behavior here, right?
+Old clients...SLES 9 SP4 client (nfs-utils-1.0.6-103.28)
+foo:~ # uname -a
+Linux foo 2.6.5-7.308-smp #1 SMP Mon Dec 10 11:36:40 UTC 2007 x86_64 x86_64 x86_64 GNU/Linux
 
-> 
-> I assume this is a Linux NFS server.  Does the Linux server support sec=none listed in the export options in the same way that NetApp and Oracle Solaris do?
+$ nfsstat -rc
+Client rpc stats:
+calls      retrans    authrefrsh
+815256992   196        0
+
+I have 10-15 sles 9 sp4 clients whose stats look like this, i.e. authrefrsh=0.
+
+Newer clients...SLES 11 and CentOS 6 (nfs-utils-1.2.3-36.el6.x86_64)
+$ nfsstat -rc
+Client rpc stats:
+calls      retrans    authrefrsh
+152946408   0          152968735
 
 
-So there are two issues here and I think they're getting confused.
+These questions are about all I could find on the matter:
+http://unix.stackexchange.com/questions/13557/slow-nfs-nfsstat-c-what-is-authrefrsh-aka-newcreds-field-about-in-detail
+http://serverfault.com/questions/362442/what-causes-repeated-linux-nfs-client-side-rpc-credential-refreshing
 
-The example is of the first issue: mounting a krb5 only export with sec=sys
- - client mounts sec=sys
- - the server list is [krb5]
- - the client completely ignores this list and just uses sys.
- - no operations work, it's a 'dud mount'
+Sorry if this is not the correct mailing list for this type of question, so please point me in the right direction if not.  Thanks for any info.
 
-The second issue is the AUTH_NULL stuff - lets just ignore that for now.
+________________________________
 
-Are you saying that the client should just use whatever sec= is specified and never try to match against the server list?
-
-A little background - I ran into this implementing a different patch that makes sure v4.x mounts are actually using the specified flavor (if one exists) to mount the export -- that is, it can follow SECINFOs to do initial lookup, but must be using the specified flavor on the export path passed to mount.  After the initial mount lookup, SECINFOs will be used normally. Trond thought that this was a bug that should be fixed - that it's wrong when client reports that it's using one flavor (as seen in mount output, etc) when it's really using another. This (other) patch works, but when no version is specified, it always falls back to v3 and the mount will always succeed - even if the auth flavor isn't supported by the export.
-
--dros
-
-
-> 
->> I also made an attempt to support "AUTH_NULL means the server will ignore the
->> cred, so just use the specified flavor" behavior from much older kernels, but 
->> I'm not sure if we want this logic.
->> 
->> I'd actually prefer getting rid of this AUTH_NULL logic, it's just that some 
->> older clients (RHEL 5, etc) would succeed in mounting when sec=sys specified,
->> server list = [AUTH_NULL] (the client ends up sending AUTH_UNIX creds that are
->> ignored by the server), while newer kernels do not. The workaround in newer
->> kernels is to specify sec=none.
->> 
->> Thoughts?
->> 
->> -dros
->> 
->> fs/nfs/super.c | 39 ++++++++++++++++++++++++++++++++-------
->> 1 file changed, 32 insertions(+), 7 deletions(-)
->> 
->> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->> index eb494f6..6476b5d 100644
->> --- a/fs/nfs/super.c
->> +++ b/fs/nfs/super.c
->> @@ -1611,14 +1611,12 @@ out_security_failure:
->> * Select a security flavor for this mount.  The selected flavor
->> * is planted in args->auth_flavors[0].
->> */
->> -static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
->> +static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
->> 			      struct nfs_mount_request *request)
->> {
->> 	unsigned int i, count = *(request->auth_flav_len);
->> 	rpc_authflavor_t flavor;
->> -
->> -	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR)
->> -		goto out;
->> +	bool auth_null_seen = false;
->> 
->> 	/*
->> 	 * The NFSv2 MNT operation does not return a flavor list.
->> @@ -1634,6 +1632,26 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
->> 		goto out_default;
->> 
->> 	/*
->> +	 * If the sec= mount option is used, the flavor must be in the list
->> +	 * returned by the server.
->> +	 *
->> +	 * One exception is when the server's flavor list includes AUTH_NULL:
->> +	 * Some servers implement AUTH_NULL by completely ignoring the rpc
->> +	 * cred, so the client can use any flavor.
->> +	 */
->> +	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR) {
->> +		for (i = 0; i < count; i++) {
->> +			if (args->auth_flavors[0] == request->auth_flavs[i])
->> +				goto out;
->> +			if (request->auth_flavs[i] == RPC_AUTH_NULL)
->> +				auth_null_seen = true;
->> +		}
->> +		if (auth_null_seen)
->> +			goto out;
->> +		goto out_nomatch;
->> +	}
->> +
->> +	/*
->> 	 * RFC 2623, section 2.7 suggests we SHOULD prefer the
->> 	 * flavor listed first.  However, some servers list
->> 	 * AUTH_NULL first.  Avoid ever choosing AUTH_NULL.
->> @@ -1654,11 +1672,19 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
->> 	}
->> 
->> out_default:
->> -	flavor = RPC_AUTH_UNIX;
->> +	/* use default if flavor not already set */
->> +	flavor = (args->auth_flavors[0] == RPC_AUTH_MAXFLAVOR) ?
->> +		RPC_AUTH_UNIX : args->auth_flavors[0];
->> out_set:
->> 	args->auth_flavors[0] = flavor;
->> out:
->> 	dfprintk(MOUNT, "NFS: using auth flavor %d\n", args->auth_flavors[0]);
->> +	return 0;
->> +
->> +out_nomatch:
->> +	dfprintk(MOUNT, "NFS: auth flavor %d not supported by server\n",
->> +		args->auth_flavors[0]);
->> +	return -EPERM;
->> }
->> 
->> /*
->> @@ -1721,8 +1747,7 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
->> 		return status;
->> 	}
->> 
->> -	nfs_select_flavor(args, &request);
->> -	return 0;
->> +	return nfs_select_flavor(args, &request);
->> }
->> 
->> struct dentry *nfs_try_mount(int flags, const char *dev_name,
->> -- 
->> 1.7.12.4 (Apple Git-37)
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-
+Information in this e-mail may be confidential. It is intended only for the addressee(s) identified above. If you are not the addressee(s), or an employee or agent of the addressee(s), please note that any dissemination, distribution, or copying of this communication is strictly prohibited. If you have received this e-mail in error, please notify the sender of the error.
