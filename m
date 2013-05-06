@@ -1,68 +1,199 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f74.google.com ([209.85.128.74]:59680 "EHLO
-	mail-qe0-f74.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932494Ab3EFXuc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 19:50:32 -0400
-Received: by mail-qe0-f74.google.com with SMTP id 1so447754qec.5
-        for <linux-nfs@vger.kernel.org>; Mon, 06 May 2013 16:50:31 -0700 (PDT)
-From: Colin Cross <ccross@android.com>
-To: linux-kernel@vger.kernel.org
-Cc: Pavel Machek <pavel@ucw.cz>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Colin Cross <ccross@android.com>, Oleg Nesterov <oleg@redhat.com>,
-        linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org,
-        netdev@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org
-Subject: [PATCH v3 12/16] select: use freezable blocking call
-Date: Mon,  6 May 2013 16:50:17 -0700
-Message-Id: <1367884221-20462-13-git-send-email-ccross@android.com>
-In-Reply-To: <1367884221-20462-1-git-send-email-ccross@android.com>
-References: <1367884221-20462-1-git-send-email-ccross@android.com>
+Received: from mx1.netapp.com ([216.240.18.38]:31422 "EHLO mx1.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755038Ab3EFPfs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 11:35:48 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "<chuck.lever@oracle.com>" <chuck.lever@oracle.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv3: match sec= flavor against server list
+Date: Mon, 6 May 2013 15:35:46 +0000
+Message-ID: <57B13427-1CA1-455A-AA41-103289AC6C77@netapp.com>
+References: <1367846874-1234-1-git-send-email-dros@netapp.com>
+ <20130506153214.GE15476@fieldses.org>
+In-Reply-To: <20130506153214.GE15476@fieldses.org>
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Avoid waking up every thread sleeping in a select call during
-suspend and resume by calling a freezable blocking call.  Previous
-patches modified the freezer to avoid sending wakeups to threads
-that are blocked in freezable blocking calls.
 
-This call was selected to be converted to a freezable call because
-it doesn't hold any locks or release any resources when interrupted
-that might be needed by another freezing task or a kernel driver
-during suspend, and is a common site where idle userspace tasks are
-blocked.
+On May 6, 2013, at 11:32 AM, "J. Bruce Fields" <bfields@fieldses.org>
+ wrote:
 
-Acked-by: Tejun Heo <tj@kernel.org>
-Signed-off-by: Colin Cross <ccross@android.com>
----
- fs/select.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+> On Mon, May 06, 2013 at 09:27:54AM -0400, Weston Andros Adamson wrote:
+>> Older clients match the 'sec=' mount option flavor against the server's
+>> flavor list (if available) and return EPERM if the specified flavor is not
+>> found. Recent changes would skip this step and allow the vfs mount even
+>> though no operations will succeed.
+>> 
+>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>> ---
+>> 
+>> Hey Chuck,
+>> 
+>> This fixes a regression that was introduced with the recent nfs_select_flavor 
+>> changes - I'm pretty sure we want to match the specified flavor instead of just
+>> using it.
+>> 
+>> Example of the regression:
+>> 
+>> the server's /etc/exports:
+>> 
+>> /export/krb5      *(sec=krb5,sec=none,rw,no_root_squash)
+>> 
+>> old client behavior:
+>> 
+>> $ uname -a
+>> Linux one.apikia.fake 3.8.8-202.fc18.x86_64 #1 SMP Wed Apr 17 23:25:17 UTC 2013 x86_64 x86_64 x86_64 GNU/Linux
+>> $ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
+>> mount.nfs: timeout set for Sun May  5 17:32:04 2013
+>> mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
+>> mount.nfs: prog 100003, trying vers=3, prot=6
+>> mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
+>> mount.nfs: prog 100005, trying vers=3, prot=17
+>> mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
+>> mount.nfs: mount(2): Permission denied
+>> mount.nfs: access denied by server while mounting zero:/export/krb5
+>> 
+>> recently changed behavior:
+>> 
+>> $ uname -a
+>> Linux one.apikia.fake 3.9.0-testing+ #2 SMP Fri May 3 20:29:32 EDT 2013 x86_64 x86_64 x86_64 GNU/Linux
+>> $ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
+>> mount.nfs: timeout set for Sun May  5 17:37:17 2013
+>> mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
+>> mount.nfs: prog 100003, trying vers=3, prot=6
+>> mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
+>> mount.nfs: prog 100005, trying vers=3, prot=17
+>> mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
+>> $ ls /mnt
+>> ls: cannot open directory /mnt: Permission denied
+>> $ sudo ls /mnt
+>> ls: cannot open directory /mnt: Permission denied
+>> $ sudo df /mnt
+>> df: ‘/mnt’: Permission denied
+>> df: no file systems processed
+>> $ sudo umount /mnt
+>> $
+>> 
+>> I also made an attempt to support "AUTH_NULL means the server will ignore the
+>> cred, so just use the specified flavor" behavior from much older kernels, but 
+>> I'm not sure if we want this logic.
+>> 
+>> I'd actually prefer getting rid of this AUTH_NULL logic, it's just that some 
+>> older clients (RHEL 5, etc) would succeed in mounting when sec=sys specified,
+>> server list = [AUTH_NULL] (the client ends up sending AUTH_UNIX creds that are
+>> ignored by the server), while newer kernels do not. The workaround in newer
+>> kernels is to specify sec=none.
+> 
+> Nit: the above examples would actually be really useful, for example, to
+> a distribution maintainer trying to figure out whether this patch would
+> solve a given user problem.
+> 
+> Could you include them in the change log?
 
-diff --git a/fs/select.c b/fs/select.c
-index 8c1c96c..6b14dc7 100644
---- a/fs/select.c
-+++ b/fs/select.c
-@@ -27,6 +27,7 @@
- #include <linux/rcupdate.h>
- #include <linux/hrtimer.h>
- #include <linux/sched/rt.h>
-+#include <linux/freezer.h>
- 
- #include <asm/uaccess.h>
- 
-@@ -236,7 +237,8 @@ int poll_schedule_timeout(struct poll_wqueues *pwq, int state,
- 
- 	set_current_state(state);
- 	if (!pwq->triggered)
--		rc = schedule_hrtimeout_range(expires, slack, HRTIMER_MODE_ABS);
-+		rc = freezable_schedule_hrtimeout_range(expires, slack,
-+							HRTIMER_MODE_ABS);
- 	__set_current_state(TASK_RUNNING);
- 
- 	/*
--- 
-1.8.2.1
+Yes, great suggestion. If/when we agree on this behavior, I'll repost.
+
+-dros
+
+> 
+> --b.
+> 
+>> 
+>> Thoughts?
+>> 
+>> -dros
+>> 
+>> fs/nfs/super.c | 39 ++++++++++++++++++++++++++++++++-------
+>> 1 file changed, 32 insertions(+), 7 deletions(-)
+>> 
+>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>> index eb494f6..6476b5d 100644
+>> --- a/fs/nfs/super.c
+>> +++ b/fs/nfs/super.c
+>> @@ -1611,14 +1611,12 @@ out_security_failure:
+>>  * Select a security flavor for this mount.  The selected flavor
+>>  * is planted in args->auth_flavors[0].
+>>  */
+>> -static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
+>> +static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
+>> 			      struct nfs_mount_request *request)
+>> {
+>> 	unsigned int i, count = *(request->auth_flav_len);
+>> 	rpc_authflavor_t flavor;
+>> -
+>> -	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR)
+>> -		goto out;
+>> +	bool auth_null_seen = false;
+>> 
+>> 	/*
+>> 	 * The NFSv2 MNT operation does not return a flavor list.
+>> @@ -1634,6 +1632,26 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
+>> 		goto out_default;
+>> 
+>> 	/*
+>> +	 * If the sec= mount option is used, the flavor must be in the list
+>> +	 * returned by the server.
+>> +	 *
+>> +	 * One exception is when the server's flavor list includes AUTH_NULL:
+>> +	 * Some servers implement AUTH_NULL by completely ignoring the rpc
+>> +	 * cred, so the client can use any flavor.
+>> +	 */
+>> +	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR) {
+>> +		for (i = 0; i < count; i++) {
+>> +			if (args->auth_flavors[0] == request->auth_flavs[i])
+>> +				goto out;
+>> +			if (request->auth_flavs[i] == RPC_AUTH_NULL)
+>> +				auth_null_seen = true;
+>> +		}
+>> +		if (auth_null_seen)
+>> +			goto out;
+>> +		goto out_nomatch;
+>> +	}
+>> +
+>> +	/*
+>> 	 * RFC 2623, section 2.7 suggests we SHOULD prefer the
+>> 	 * flavor listed first.  However, some servers list
+>> 	 * AUTH_NULL first.  Avoid ever choosing AUTH_NULL.
+>> @@ -1654,11 +1672,19 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
+>> 	}
+>> 
+>> out_default:
+>> -	flavor = RPC_AUTH_UNIX;
+>> +	/* use default if flavor not already set */
+>> +	flavor = (args->auth_flavors[0] == RPC_AUTH_MAXFLAVOR) ?
+>> +		RPC_AUTH_UNIX : args->auth_flavors[0];
+>> out_set:
+>> 	args->auth_flavors[0] = flavor;
+>> out:
+>> 	dfprintk(MOUNT, "NFS: using auth flavor %d\n", args->auth_flavors[0]);
+>> +	return 0;
+>> +
+>> +out_nomatch:
+>> +	dfprintk(MOUNT, "NFS: auth flavor %d not supported by server\n",
+>> +		args->auth_flavors[0]);
+>> +	return -EPERM;
+>> }
+>> 
+>> /*
+>> @@ -1721,8 +1747,7 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+>> 		return status;
+>> 	}
+>> 
+>> -	nfs_select_flavor(args, &request);
+>> -	return 0;
+>> +	return nfs_select_flavor(args, &request);
+>> }
+>> 
+>> struct dentry *nfs_try_mount(int flags, const char *dev_name,
+>> -- 
+>> 1.7.12.4 (Apple Git-37)
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
