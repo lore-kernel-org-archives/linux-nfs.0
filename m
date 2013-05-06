@@ -1,60 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36156 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751643Ab3EMQPx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 May 2013 12:15:53 -0400
-Date: Mon, 13 May 2013 12:15:51 -0400
-To: Oliver Lee <oliver.lee2007@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: recursive ACL inherit
-Message-ID: <20130513161551.GD1931@fieldses.org>
-References: <CAEBR3EH71A3jbxhEBcBX7_QFzVw6C9SQuer2zwZ+DDYzqOOWBg@mail.gmail.com>
+Received: from mail-yh0-f45.google.com ([209.85.213.45]:61172 "EHLO
+	mail-yh0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754882Ab3EFTD1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 15:03:27 -0400
+Date: Mon, 6 May 2013 11:55:13 -0700
+From: Tejun Heo <tj@kernel.org>
+To: Colin Cross <ccross@android.com>
+Cc: linux-kernel@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Len Brown <len.brown@intel.com>, Pavel Machek <pavel@ucw.cz>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-pm@vger.kernel.org, netdev@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Ben Chan <benchan@chromium.org>
+Subject: Re: [PATCH 1/2] freezer: add unsafe versions of freezable helpers
+Message-ID: <20130506185513.GA800@mtj.dyndns.org>
+References: <1367615050-3894-1-git-send-email-ccross@android.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAEBR3EH71A3jbxhEBcBX7_QFzVw6C9SQuer2zwZ+DDYzqOOWBg@mail.gmail.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <1367615050-3894-1-git-send-email-ccross@android.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 13, 2013 at 01:22:22PM +0100, Oliver Lee wrote:
-> Hello,
+On Fri, May 03, 2013 at 02:04:09PM -0700, Colin Cross wrote:
+> NFS calls the freezable helpers with locks held, which is unsafe
+> and caused lockdep warnings when 6aa9707 "lockdep: check that no
+> locks held at freeze time" was applied (reverted in dbf520a).
+> Add new *_unsafe versions of the helpers that will not run the
+> lockdep test when 6aa9707 is reapplied, and call them from NFS.
 > 
-> When using the nfs4_setfacl tool I've found that recursive operations
-> fail when using the d or f inheritance flags because nfs4_setfacl
-> tries to apply them to files as well as directories, which obviously
-> doesn't make sense.
-> 
-> so
-> 
-> nfs4_setfacl -R -s A:df:OWNER@:RWX,A:dfg:GROUP@:RWX,A:df:EVERYONE@:RX /directory
-> 
-> You would expect to allow:
-> owner read,write and execute
-> group read,write and execute
-> others read and execute
-> applied to all directories and files under (and including) /directory,
-> so that newly created files and directories also have the same
-> permissions
-> 
-> This fails with:
-> Failed setxattr operation: Input/output error
-> An error occurred during recursive file tree walk.
-> 
-> When nfs4_setfacl encounters the first file. All directories before
-> the first file are changed correctly
-> 
-> Am I doing something wrong or is this a bug/missing feature?
+> Signed-off-by: Colin Cross <ccross@android.com>
 
-I agree, that looks like a bug to me.
+Acked-by: Tejun Heo <tj@kernel.org>
 
-> Also, the man page for nfs4_acl references nfs4_setacl in its SEE ALSO
-> section, presumably this should be nfs4_setfacl?
-> Finally, the man page references nfsv4@linux-nfs.org in its CONTACT section
+Thanks.
 
-Fixed those two and pushed results to
-
-	git://linux-nfs.org/~bfields/nfs4-acl-tools.git
-
-For anything else: patches against that git tree welcomed.
-
---b.
+-- 
+tejun
