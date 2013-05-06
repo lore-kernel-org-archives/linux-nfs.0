@@ -1,71 +1,213 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:48117 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759811Ab3EWWYw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 May 2013 18:24:52 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r4NMOqWM019403
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 23 May 2013 18:24:52 -0400
-Date: Thu, 23 May 2013 18:24:50 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Scott Mayhew <smayhew@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC 1/1] NFS: Allow nfs_updatepage to extend a write to
- cover a full page when we have a lock that covers the entire file
-Message-ID: <20130523182450.18adbcd8@tlielax.poochiereds.net>
-In-Reply-To: <1369346021-20041-2-git-send-email-smayhew@redhat.com>
-References: <1369346021-20041-1-git-send-email-smayhew@redhat.com>
-	<1369346021-20041-2-git-send-email-smayhew@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qa0-f73.google.com ([209.85.216.73]:54325 "EHLO
+	mail-qa0-f73.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932296Ab3EFXuZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 19:50:25 -0400
+Received: by mail-qa0-f73.google.com with SMTP id bs12so21993qab.4
+        for <linux-nfs@vger.kernel.org>; Mon, 06 May 2013 16:50:23 -0700 (PDT)
+From: Colin Cross <ccross@android.com>
+To: linux-kernel@vger.kernel.org
+Cc: Pavel Machek <pavel@ucw.cz>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Colin Cross <ccross@android.com>, Oleg Nesterov <oleg@redhat.com>,
+        linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org,
+        netdev@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>,
+        Tejun Heo <tj@kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Len Brown <len.brown@intel.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>
+Subject: [PATCH v3 01/16] freezer: add unsafe versions of freezable helpers for NFS
+Date: Mon,  6 May 2013 16:50:06 -0700
+Message-Id: <1367884221-20462-2-git-send-email-ccross@android.com>
+In-Reply-To: <1367884221-20462-1-git-send-email-ccross@android.com>
+References: <1367884221-20462-1-git-send-email-ccross@android.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 23 May 2013 17:53:41 -0400
-Scott Mayhew <smayhew@redhat.com> wrote:
+NFS calls the freezable helpers with locks held, which is unsafe
+and will cause lockdep warnings when 6aa9707 "lockdep: check
+that no locks held at freeze time" is reapplied (it was reverted
+in dbf520a).  NFS shouldn't be doing this, but it has
+long-running syscalls that must hold a lock but also shouldn't
+block suspend.  Until NFS freeze handling is rewritten to use a
+signal to exit out of the critical section, add new *_unsafe
+versions of the helpers that will not run the lockdep test when
+6aa9707 is reapplied, and call them from NFS.
 
-> Currently nfs_updatepage allows a write to be extended to cover a full
-> page only if we don't have a byte range lock on the file... but if we've
-> got the whole file locked, then we should be allowed to extend the
-> write.
-> 
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> ---
->  fs/nfs/write.c | 7 +++++--
->  1 file changed, 5 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index a2c7c28..f35fb4f 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -908,13 +908,16 @@ int nfs_updatepage(struct file *file, struct page *page,
->  		file->f_path.dentry->d_name.name, count,
->  		(long long)(page_file_offset(page) + offset));
->  
-> -	/* If we're not using byte range locks, and we know the page
-> +	/* If we're not using byte range locks (or if the range of the
-> +	 * lock covers the entire file), and we know the page
->  	 * is up to date, it may be more efficient to extend the write
->  	 * to cover the entire page in order to avoid fragmentation
->  	 * inefficiencies.
->  	 */
->  	if (nfs_write_pageuptodate(page, inode) &&
-> -			inode->i_flock == NULL &&
-> +			(inode->i_flock == NULL ||
-> +			(inode->i_flock->fl_start == 0 &&
-> +			inode->i_flock->fl_end == OFFSET_MAX)) &&
->  			!(file->f_flags & O_DSYNC)) {
->  		count = max(count + offset, nfs_page_length(page));
->  		offset = 0;
+In practice the likley result of holding the lock while freezing
+is that a second task blocked on the lock will never freeze,
+aborting suspend, but it is possible to manufacture a case using
+the cgroup freezer, the lock, and the suspend freezer to create
+a deadlock.  Silencing the lockdep warning here will allow
+problems to be found in other drivers that may have a more
+serious deadlock risk, and prevent new problems from being added.
 
-Sounds like a reasonable proposition, but I think you might need to do
-more vetting of the locks...
+Acked-by: Pavel Machek <pavel@ucw.cz>
+Acked-by: Tejun Heo <tj@kernel.org>
+Signed-off-by: Colin Cross <ccross@android.com>
+---
+ fs/nfs/inode.c          |  2 +-
+ fs/nfs/nfs3proc.c       |  2 +-
+ fs/nfs/nfs4proc.c       |  4 ++--
+ include/linux/freezer.h | 42 +++++++++++++++++++++++++++++++++++++++++-
+ net/sunrpc/sched.c      |  2 +-
+ 5 files changed, 46 insertions(+), 6 deletions(-)
 
-For instance, does it make sense to do this if it's a F_RDLCK? Also,
-you're only looking at the first lock in the i_flock list. Might it
-make more sense to walk the list and see whether the page might be
-entirely covered by a lock that doesn't extend over the whole file?
-
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 1f94167..53cbee5 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -79,7 +79,7 @@ int nfs_wait_bit_killable(void *word)
+ {
+ 	if (fatal_signal_pending(current))
+ 		return -ERESTARTSYS;
+-	freezable_schedule();
++	freezable_schedule_unsafe();
+ 	return 0;
+ }
+ EXPORT_SYMBOL_GPL(nfs_wait_bit_killable);
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index 43ea96c..ce90eb4 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -33,7 +33,7 @@ nfs3_rpc_wrapper(struct rpc_clnt *clnt, struct rpc_message *msg, int flags)
+ 		res = rpc_call_sync(clnt, msg, flags);
+ 		if (res != -EJUKEBOX)
+ 			break;
+-		freezable_schedule_timeout_killable(NFS_JUKEBOX_RETRY_TIME);
++		freezable_schedule_timeout_killable_unsafe(NFS_JUKEBOX_RETRY_TIME);
+ 		res = -ERESTARTSYS;
+ 	} while (!fatal_signal_pending(current));
+ 	return res;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 0ad025e..a236077 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -266,7 +266,7 @@ static int nfs4_delay(struct rpc_clnt *clnt, long *timeout)
+ 		*timeout = NFS4_POLL_RETRY_MIN;
+ 	if (*timeout > NFS4_POLL_RETRY_MAX)
+ 		*timeout = NFS4_POLL_RETRY_MAX;
+-	freezable_schedule_timeout_killable(*timeout);
++	freezable_schedule_timeout_killable_unsafe(*timeout);
+ 	if (fatal_signal_pending(current))
+ 		res = -ERESTARTSYS;
+ 	*timeout <<= 1;
+@@ -4309,7 +4309,7 @@ int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4
+ static unsigned long
+ nfs4_set_lock_task_retry(unsigned long timeout)
+ {
+-	freezable_schedule_timeout_killable(timeout);
++	freezable_schedule_timeout_killable_unsafe(timeout);
+ 	timeout <<= 1;
+ 	if (timeout > NFS4_LOCK_MAXTIMEOUT)
+ 		return NFS4_LOCK_MAXTIMEOUT;
+diff --git a/include/linux/freezer.h b/include/linux/freezer.h
+index e70df40..5b31e21c 100644
+--- a/include/linux/freezer.h
++++ b/include/linux/freezer.h
+@@ -46,7 +46,11 @@ extern int freeze_kernel_threads(void);
+ extern void thaw_processes(void);
+ extern void thaw_kernel_threads(void);
+ 
+-static inline bool try_to_freeze(void)
++/*
++ * DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION
++ * If try_to_freeze causes a lockdep warning it means the caller may deadlock
++ */
++static inline bool try_to_freeze_unsafe(void)
+ {
+ 	might_sleep();
+ 	if (likely(!freezing(current)))
+@@ -54,6 +58,11 @@ static inline bool try_to_freeze(void)
+ 	return __refrigerator(false);
+ }
+ 
++static inline bool try_to_freeze(void)
++{
++	return try_to_freeze_unsafe();
++}
++
+ extern bool freeze_task(struct task_struct *p);
+ extern bool set_freezable(void);
+ 
+@@ -115,6 +124,14 @@ static inline void freezer_count(void)
+ 	try_to_freeze();
+ }
+ 
++/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
++static inline void freezer_count_unsafe(void)
++{
++	current->flags &= ~PF_FREEZER_SKIP;
++	smp_mb();
++	try_to_freeze_unsafe();
++}
++
+ /**
+  * freezer_should_skip - whether to skip a task when determining frozen
+  *			 state is reached
+@@ -152,6 +169,14 @@ static inline bool freezer_should_skip(struct task_struct *p)
+ 	freezer_count();						\
+ })
+ 
++/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
++#define freezable_schedule_unsafe()					\
++({									\
++	freezer_do_not_count();						\
++	schedule();							\
++	freezer_count_unsafe();						\
++})
++
+ /* Like schedule_timeout_killable(), but should not block the freezer. */
+ #define freezable_schedule_timeout_killable(timeout)			\
+ ({									\
+@@ -162,6 +187,16 @@ static inline bool freezer_should_skip(struct task_struct *p)
+ 	__retval;							\
+ })
+ 
++/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
++#define freezable_schedule_timeout_killable_unsafe(timeout)		\
++({									\
++	long __retval;							\
++	freezer_do_not_count();						\
++	__retval = schedule_timeout_killable(timeout);			\
++	freezer_count_unsafe();						\
++	__retval;							\
++})
++
+ /*
+  * Freezer-friendly wrappers around wait_event_interruptible(),
+  * wait_event_killable() and wait_event_interruptible_timeout(), originally
+@@ -225,9 +260,14 @@ static inline void set_freezable(void) {}
+ 
+ #define freezable_schedule()  schedule()
+ 
++#define freezable_schedule_unsafe()  schedule()
++
+ #define freezable_schedule_timeout_killable(timeout)			\
+ 	schedule_timeout_killable(timeout)
+ 
++#define freezable_schedule_timeout_killable_unsafe(timeout)		\
++	schedule_timeout_killable(timeout)
++
+ #define wait_event_freezable(wq, condition)				\
+ 		wait_event_interruptible(wq, condition)
+ 
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index f8529fc..8dcfadc 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -254,7 +254,7 @@ static int rpc_wait_bit_killable(void *word)
+ {
+ 	if (fatal_signal_pending(current))
+ 		return -ERESTARTSYS;
+-	freezable_schedule();
++	freezable_schedule_unsafe();
+ 	return 0;
+ }
+ 
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.8.2.1
+
