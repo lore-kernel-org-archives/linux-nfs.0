@@ -1,54 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from esa-annu.mail.uoguelph.ca ([131.104.91.36]:52980 "EHLO
-	esa-annu.net.uoguelph.ca" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751765Ab3E3LzV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 May 2013 07:55:21 -0400
-Date: Thu, 30 May 2013 07:55:19 -0400 (EDT)
-From: Rick Macklem <rmacklem@uoguelph.ca>
-To: Bram Vandoren <brambi@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>
-Message-ID: <1562611687.61201.1369914919633.JavaMail.root@erie.cs.uoguelph.ca>
-In-Reply-To: <CACQjR_DV_2QFd0O1e6R6M34_R87+Bn+zvn3w_BkhS9YESNVUzg@mail.gmail.com>
-Subject: Re: NFS client hangs after server reboot
+Received: from mail-vc0-f177.google.com ([209.85.220.177]:50888 "EHLO
+	mail-vc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752120Ab3EFOdb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 10:33:31 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20130506085547.GC13861@dyad.programming.kicks-ass.net>
+References: <1367615050-3894-1-git-send-email-ccross@android.com>
+	<1367615050-3894-2-git-send-email-ccross@android.com>
+	<20130504130440.GC13770@amd.pavel.ucw.cz>
+	<CAMbhsRScr+3Zk5Bi6390bGRbtE4oh2H-mHrGHS0wew5hdkivUg@mail.gmail.com>
+	<20130504225715.GB24276@amd.pavel.ucw.cz>
+	<CAMbhsRS_cF7kF-QZ9BMBUS3ytU0ukRCbC3D549HW_XOsQbEZhg@mail.gmail.com>
+	<20130505000528.GA25454@amd.pavel.ucw.cz>
+	<20130505091844.GC22239@gmail.com>
+	<20130506085547.GC13861@dyad.programming.kicks-ass.net>
+Date: Mon, 6 May 2013 07:33:28 -0700
+Message-ID: <CA+55aFzVNwCJhvp4f0EcHK3Vk1ZVKY0fAeu-6FdjhCFiafTAPQ@mail.gmail.com>
+Subject: Re: [PATCH 2/2] lockdep: check that no locks held at freeze time
+From: Linus Torvalds <torvalds@linux-foundation.org>
+To: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Cc: Ingo Molnar <mingo@kernel.org>, Pavel Machek <pavel@ucw.cz>,
+        Colin Cross <ccross@android.com>, Andrew Morton <akpm@osdl.org>,
+        lkml <linux-kernel@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Len Brown <len.brown@intel.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Ingo Molnar <mingo@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Oleg Nesterov <oleg@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux PM list <linux-pm@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>, Tejun Heo <tj@kernel.org>,
+        Ben Chan <benchan@chromium.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bram Vandoren wrote:
-> > It's not typical for a client with an active workload to wait 4400
-> > seconds to send a fresh SYN. Bram, can you shed any light on this?
-> 
-> The server was down for ~4400 seconds (I started the capture before
-> the maintanance period). I captured the packets using a switch mirror
-> port (it's possible some packets are lost during capture). After a
-> while an arp timeout occurs and we don't capture the SYNs from the
-> client any more (I doubt the client sends the SYN because it doesn't
-> know where to send it).
-> 
-> If it helps, I can filter extra information from the big pcap file
-> (~20G) (eg capture from other clients or from the same client just
-> before the server reboot).
-> 
-> Thanks,
-> Bram.
-Did both the client and server have the same IP addresses before the
-reboot?
+On Mon, May 6, 2013 at 1:55 AM, Peter Zijlstra <a.p.zijlstra@chello.nl> wrote:
+>
+> Doesn't i386 have all the funny per-cpu stuff too? So the only reason it still
+> does the fugly stack based thing is because nobody could be arsed to do the
+> work of converting it.
 
-If not, the Linux client's nfs_client_id4.id SetClientID argument
-will be different (it has the client/side IP# in it). nfs_client_id4.id
-isn't supposed to change for a given client when it is rebooted.
-That will make the FreeBSD NFSv4 server see "new client" (which is not in the
-stablerestart file used to avoid certain reboot edge conditions) and
-will not give it a grace period. 
-This is the only explanation I can think of for the NFS4ERR_NO_GRACE
-reply shortly after the reboot.
+Umm. That "fugly stack-based" thing is better than the per-cpu crap.
 
-I'd guess the RSTs are because the nfsd has terminated (nothing on
-port# 2049) just before the system was shut down, so I suspect the
-RSTs are not an issue? (I have assumed the packet trace started after
-the server rebooted.)
+The percpu stuff implies a memory load. The stack based thing gets
+thread_info with pure register accesses. Much better.
 
-rick
+For "current()" the per-cpu thing may be better, but if you actually
+need the thread-info (not the case here, but in other places), the
+stack masking is superior when it works (ie when you don't have
+multi-stack issues due to irq's etc)
+
+                Linus
