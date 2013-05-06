@@ -1,176 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43058 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756661Ab3EVQuy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 May 2013 12:50:54 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 04/13] SELinux: Add new labeling type native labels
-Date: Wed, 22 May 2013 12:50:37 -0400
-Message-Id: <1369241446-7680-5-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
-References: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:33304
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752388Ab3EFI5h (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 04:57:37 -0400
+Date: Mon, 6 May 2013 10:55:47 +0200
+From: Peter Zijlstra <a.p.zijlstra@chello.nl>
+To: Ingo Molnar <mingo@kernel.org>
+Cc: Pavel Machek <pavel@ucw.cz>, Colin Cross <ccross@android.com>,
+        Andrew Morton <akpm@osdl.org>, lkml <linux-kernel@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Len Brown <len.brown@intel.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Ingo Molnar <mingo@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
+        Linux PM list <linux-pm@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Tejun Heo <tj@kernel.org>, Ben Chan <benchan@chromium.org>
+Subject: Re: [PATCH 2/2] lockdep: check that no locks held at freeze time
+Message-ID: <20130506085547.GC13861@dyad.programming.kicks-ass.net>
+References: <1367615050-3894-1-git-send-email-ccross@android.com>
+ <1367615050-3894-2-git-send-email-ccross@android.com>
+ <20130504130440.GC13770@amd.pavel.ucw.cz>
+ <CAMbhsRScr+3Zk5Bi6390bGRbtE4oh2H-mHrGHS0wew5hdkivUg@mail.gmail.com>
+ <20130504225715.GB24276@amd.pavel.ucw.cz>
+ <CAMbhsRS_cF7kF-QZ9BMBUS3ytU0ukRCbC3D549HW_XOsQbEZhg@mail.gmail.com>
+ <20130505000528.GA25454@amd.pavel.ucw.cz>
+ <20130505091844.GC22239@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130505091844.GC22239@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Sun, May 05, 2013 at 11:18:44AM +0200, Ingo Molnar wrote:
+> That's the old 32-bit x86 trick to compute 'current' from the kernel stack 
+> pointer.
+> 
+> It can be done better - for example on platforms with optimized percpu 
+> variables (x86-64) it looks like this:
 
-There currently doesn't exist a labeling type that is adequate for use with
-labeled NFS. Since NFS doesn't really support xattrs we can't use the use xattr
-labeling behavior. For this we developed a new labeling type. The native
-labeling type is used solely by NFS to ensure NFS inodes are labeled at runtime
-by the NFS code instead of relying on the SELinux security server on the client
-end.
-
-Acked-by: Eric Paris <eparis@redhat.com>
-Acked-by: James Morris <james.l.morris@oracle.com>
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- include/linux/security.h            |  3 +++
- security/selinux/hooks.c            | 35 ++++++++++++++++++++++++++---------
- security/selinux/include/security.h |  2 ++
- security/selinux/ss/policydb.c      |  5 ++++-
- 4 files changed, 35 insertions(+), 10 deletions(-)
-
-diff --git a/include/linux/security.h b/include/linux/security.h
-index aa656fb..a585a90 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -61,6 +61,9 @@ struct mm_struct;
- #define SECURITY_CAP_NOAUDIT 0
- #define SECURITY_CAP_AUDIT 1
- 
-+/* LSM Agnostic defines for sb_set_mnt_opts */
-+#define SECURITY_LSM_NATIVE_LABELS	1
-+
- struct ctl_table;
- struct audit_krule;
- struct user_namespace;
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index f3b5446..6149633 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -81,6 +81,7 @@
- #include <linux/syslog.h>
- #include <linux/user_namespace.h>
- #include <linux/export.h>
-+#include <linux/security.h>
- #include <linux/msg.h>
- #include <linux/shm.h>
- 
-@@ -284,13 +285,14 @@ static void superblock_free_security(struct super_block *sb)
- 
- /* The file system's label must be initialized prior to use. */
- 
--static const char *labeling_behaviors[6] = {
-+static const char *labeling_behaviors[7] = {
- 	"uses xattr",
- 	"uses transition SIDs",
- 	"uses task SIDs",
- 	"uses genfs_contexts",
- 	"not configured for labeling",
- 	"uses mountpoint labeling",
-+	"uses native labeling",
- };
- 
- static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dentry);
-@@ -678,14 +680,21 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 	if (strcmp(sb->s_type->name, "proc") == 0)
- 		sbsec->flags |= SE_SBPROC;
- 
--	/* Determine the labeling behavior to use for this filesystem type. */
--	rc = security_fs_use((sbsec->flags & SE_SBPROC) ? "proc" : sb->s_type->name, &sbsec->behavior, &sbsec->sid);
--	if (rc) {
--		printk(KERN_WARNING "%s: security_fs_use(%s) returned %d\n",
--		       __func__, sb->s_type->name, rc);
--		goto out;
-+	if (!sbsec->behavior) {
-+		/*
-+		 * Determine the labeling behavior to use for this
-+		 * filesystem type.
-+		 */
-+		rc = security_fs_use((sbsec->flags & SE_SBPROC) ?
-+					"proc" : sb->s_type->name,
-+					&sbsec->behavior, &sbsec->sid);
-+		if (rc) {
-+			printk(KERN_WARNING
-+				"%s: security_fs_use(%s) returned %d\n",
-+					__func__, sb->s_type->name, rc);
-+			goto out;
-+		}
- 	}
--
- 	/* sets the context of the superblock for the fs being mounted. */
- 	if (fscontext_sid) {
- 		rc = may_context_mount_sb_relabel(fscontext_sid, sbsec, cred);
-@@ -700,6 +709,11 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 	 * sets the label used on all file below the mountpoint, and will set
- 	 * the superblock context if not already set.
- 	 */
-+	if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !context_sid) {
-+		sbsec->behavior = SECURITY_FS_USE_NATIVE;
-+		*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
-+	}
-+
- 	if (context_sid) {
- 		if (!fscontext_sid) {
- 			rc = may_context_mount_sb_relabel(context_sid, sbsec,
-@@ -731,7 +745,8 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 	}
- 
- 	if (defcontext_sid) {
--		if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
-+		if (sbsec->behavior != SECURITY_FS_USE_XATTR &&
-+			sbsec->behavior != SECURITY_FS_USE_NATIVE) {
- 			rc = -EINVAL;
- 			printk(KERN_WARNING "SELinux: defcontext option is "
- 			       "invalid for this filesystem type\n");
-@@ -1230,6 +1245,8 @@ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dent
- 	}
- 
- 	switch (sbsec->behavior) {
-+	case SECURITY_FS_USE_NATIVE:
-+		break;
- 	case SECURITY_FS_USE_XATTR:
- 		if (!inode->i_op->getxattr) {
- 			isec->sid = sbsec->def_sid;
-diff --git a/security/selinux/include/security.h b/security/selinux/include/security.h
-index 6d38851..8fd8e18 100644
---- a/security/selinux/include/security.h
-+++ b/security/selinux/include/security.h
-@@ -169,6 +169,8 @@ int security_get_allow_unknown(void);
- #define SECURITY_FS_USE_GENFS		4 /* use the genfs support */
- #define SECURITY_FS_USE_NONE		5 /* no labeling support */
- #define SECURITY_FS_USE_MNTPOINT	6 /* use mountpoint labeling */
-+#define SECURITY_FS_USE_NATIVE		7 /* use native label support */
-+#define SECURITY_FS_USE_MAX		7 /* Highest SECURITY_FS_USE_XXX */
- 
- int security_fs_use(const char *fstype, unsigned int *behavior,
- 	u32 *sid);
-diff --git a/security/selinux/ss/policydb.c b/security/selinux/ss/policydb.c
-index 9cd9b7c..c8adde3 100644
---- a/security/selinux/ss/policydb.c
-+++ b/security/selinux/ss/policydb.c
-@@ -2168,7 +2168,10 @@ static int ocontext_read(struct policydb *p, struct policydb_compat_info *info,
- 
- 				rc = -EINVAL;
- 				c->v.behavior = le32_to_cpu(buf[0]);
--				if (c->v.behavior > SECURITY_FS_USE_NONE)
-+				/* Determined at runtime, not in policy DB. */
-+				if (c->v.behavior == SECURITY_FS_USE_MNTPOINT)
-+					goto out;
-+				if (c->v.behavior > SECURITY_FS_USE_MAX)
- 					goto out;
- 
- 				rc = -ENOMEM;
--- 
-1.8.1.4
-
+Doesn't i386 have all the funny per-cpu stuff too? So the only reason it still
+does the fugly stack based thing is because nobody could be arsed to do the
+work of converting it.
