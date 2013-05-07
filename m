@@ -1,90 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f169.google.com ([209.85.220.169]:40523 "EHLO
-	mail-vc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750922Ab3EEAXC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 4 May 2013 20:23:02 -0400
-Received: by mail-vc0-f169.google.com with SMTP id gd11so2287355vcb.14
-        for <linux-nfs@vger.kernel.org>; Sat, 04 May 2013 17:23:01 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:40872 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758876Ab3EGUxa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 May 2013 16:53:30 -0400
+Date: Tue, 7 May 2013 16:53:21 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: long delay when mounting due to SETCLIENTID AUTH_GSS attempts
+Message-ID: <20130507205321.GE32743@fieldses.org>
+References: <20130503132557.2fdf794d@tlielax.poochiereds.net>
+ <AE700845-4032-4BEC-817C-97EB08A831E8@oracle.com>
+ <20130503142421.19fb3ca6@tlielax.poochiereds.net>
+ <1367606034.3556.25.camel@leira.trondhjem.org>
+ <20130503144437.3a47e476@tlielax.poochiereds.net>
+ <A2E5B3F1-A8F1-4731-A66C-548B9C8FD429@oracle.com>
+ <20130503211810.GF5715@fieldses.org>
+ <8F91C5FB-EE7F-48F8-9ED5-6B5D8503E248@oracle.com>
 MIME-Version: 1.0
-In-Reply-To: <20130505000528.GA25454@amd.pavel.ucw.cz>
-References: <1367615050-3894-1-git-send-email-ccross@android.com>
-	<1367615050-3894-2-git-send-email-ccross@android.com>
-	<20130504130440.GC13770@amd.pavel.ucw.cz>
-	<CAMbhsRScr+3Zk5Bi6390bGRbtE4oh2H-mHrGHS0wew5hdkivUg@mail.gmail.com>
-	<20130504225715.GB24276@amd.pavel.ucw.cz>
-	<CAMbhsRS_cF7kF-QZ9BMBUS3ytU0ukRCbC3D549HW_XOsQbEZhg@mail.gmail.com>
-	<20130505000528.GA25454@amd.pavel.ucw.cz>
-Date: Sat, 4 May 2013 17:23:01 -0700
-Message-ID: <CAMbhsRQso4fW_DVL6U3zfbX3YbLsTy8-rUA-fo61Aw93bU+sQQ@mail.gmail.com>
-Subject: Re: [PATCH 2/2] lockdep: check that no locks held at freeze time
-From: Colin Cross <ccross@android.com>
-To: Pavel Machek <pavel@ucw.cz>
-Cc: Andrew Morton <akpm@osdl.org>, lkml <linux-kernel@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Len Brown <len.brown@intel.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
-        Linux PM list <linux-pm@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, Ben Chan <benchan@chromium.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <8F91C5FB-EE7F-48F8-9ED5-6B5D8503E248@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, May 4, 2013 at 5:05 PM, Pavel Machek <pavel@ucw.cz> wrote:
-> Hi!
->
->> >> >> --- a/kernel/exit.c
->> >> >> +++ b/kernel/exit.c
->> >> >> @@ -835,7 +835,7 @@ void do_exit(long code)
->> >> >>       /*
->> >> >>        * Make sure we are holding no locks:
->> >> >>        */
->> >> >> -     debug_check_no_locks_held(tsk);
->> >> >> +     debug_check_no_locks_held();
->> >> >
->> >> > Is task guaranteed == current?
->> >>
->> >> Yes, the first line of do_exit is:
->> >>         struct task_struct *tsk = current;
->> >
->> > Aha, I understand it now.
->> >
->> > Accessing current is slower than local variable. So your "new" code
->> > will work but will be slower. Please revert this part.
->>
->> Using current instead of passing in tsk was done at Andrew Morton's
->> suggestion, and makes no difference from the freezer's perspective
->> since it would have to use current to get the task to pass in, so I'm
->> going to leave it as is.
->
-> Well, current is:
->
-> static inline struct thread_info *current_thread_info(void)
-> {
->         register unsigned long sp asm ("sp");
->         return (struct thread_info *)(sp & ~(THREAD_SIZE - 1));
-> }
->
-> #define get_current() (current_thread_info()->task)
->
-> #define current get_current()
->
-> Instead of passing computed value to debug_check_no_locks_held(), you
-> force it to be computed again. do_exit() performance matters for
-> configure scripts, etc.
->
-> I'd say it makes sense to keep the optimalization. akpm can correct
-> me.
+On Fri, May 03, 2013 at 05:50:49PM -0400, Chuck Lever wrote:
+> 
+> On May 3, 2013, at 5:18 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Fri, May 03, 2013 at 02:48:59PM -0400, Chuck Lever wrote:
+> >> We should always use krb5i if a GSS context can be established with
+> >> our machine cred.  As I said before, SETCLIENTID and
+> >> GETATTR(fs_locations) really should use an integrity-protecting
+> >> security flavor no matter what flavor is in effect on the mount points
+> >> themselves.
+> > 
+> > Can you give an example of a threat that could be avoided by this?
+> > 
+> > My suspicion is that in most cases an attacker with the ability to
+> > subvert auth_sys could *also* DOS gssd, and hence force the fallback to
+> > auth_sys.
+> > 
+> > krb5i plus a fallback to auth_sys on failure to authenticate doesn't
+> > sound to me much more secure than just auth_sys.
+> 
+> Our current situation is that the first mount of a server determines the flavor to use for SETCLIENTID.  So if that mount happens to be "sec=sys" the SETCLIENTID is done with AUTH_SYS no matter what the subsequent mounts request.
+> 
+> That's just about as secure in many cases as falling back.
+> 
+> > If we really want much security benefit from krb5i on state operations,
+> > I think we need to really *require* krb5i.
+> > 
+> > So I'm inclined towards Jeff's solution: don't do this unless userspace
+> > somehow affirmatively states that it requires krb5i on state operations.
+> 
+> This would have to be on a per-server basis.  Where would an admin specify such an option?  I don't believe either a mount option (too fine) or a module parameter (too coarse) is appropriate.
 
-That translates to 3 instructions, with no memory accesses:
-c0008350:       e1a0300d        mov     r3, sp
-c0008354:       e3c32d7f        bic     r2, r3, #8128   ; 0x1fc0
-c0008358:       e3c2203f        bic     r2, r2, #63     ; 0x3f
+Why do you think a mount option is too fine?  They can use nfsmount.conf
+to specify per-server or global defaults.
+
+> > I agree that we should default to this when we can.  But the way to move
+> > towards that default is then to get distributions to turn on the new
+> > module parm (or whatever it is) by default.  As they do so, they can
+> > also ensure that e.g. gssd is started.
+> 
+> gssd is not all that's required.
+
+Isn't that's all that's required to fix the delay problem?  Or do you
+still get a delay if you run gssd but don't create a keytab?
+
+--b.
+
+> A keytab must be provisioned on the client and server for it to work, and that's the main issue I'm trying to address:  We need "sec=krb5" mounts to work when the client has no GSS machine credential.
+> 
+> And I think we already have a problem with gssd not picking up kernel requests quickly, as Trond pointed out.
+> 
+> I don't feel like any of this is new, or that any of this is a strong reason to revert.  But it could be a reason to move forward from here.
+> 
+> Does gssd distinguish between:
+> 
+>   - no local keytab
+> 
+>   - no local support for GSS
+> 
+>   - server doesn't grok GSS
+> 
+>   - some network problem occurred
+> 
+> Can it communicate that distinction to the kernel?  What if we fall back only in the "no keytab" and "client's kernel has no GSS support" cases?  In the "server doesn't grok" case, do not fall back if "sec=krb5*" is specified on the mount point?  "A network problem occurred" is an "always fail" case.
+> 
+> 
+> 
+> > 
+> > --b.
+> > 
+> >>> Instead of using AUTH_GSS for SETCLIENTID by default, would it make
+> >>> sense to add a switch (module parm?) that turns it on so that it can be
+> >>> an opt-in thing rather than doing this by default?
+> >> 
+> >> Why add another tunable when we really should just fix the delay?
+> >> 
+> >> Besides, if gssd is running and no keytab exists, then the fallback to AUTH_SYS should be fast. Is that not an effective workaround until we address the delay problem?
+> >> 
+> >> -- 
+> >> Chuck Lever
+> >> chuck[dot]lever[at]oracle[dot]com
+> >> 
+> >> 
+> >> 
+> >> 
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+> 
