@@ -1,193 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:55464 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760373Ab3EBRT0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 May 2013 13:19:26 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 10/17] NFSv4: Extend fattr bitmaps to support all 3 words
-Date: Thu,  2 May 2013 13:19:04 -0400
-Message-Id: <1367515151-31015-11-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
-References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
+Received: from mail-gg0-f201.google.com ([209.85.161.201]:57372 "EHLO
+	mail-gg0-f201.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753154Ab3EGR50 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 May 2013 13:57:26 -0400
+Received: by mail-gg0-f201.google.com with SMTP id k25so87143ggl.2
+        for <linux-nfs@vger.kernel.org>; Tue, 07 May 2013 10:57:25 -0700 (PDT)
+From: Colin Cross <ccross@android.com>
+To: linux-kernel@vger.kernel.org
+Cc: Pavel Machek <pavel@ucw.cz>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Colin Cross <ccross@android.com>, Oleg Nesterov <oleg@redhat.com>,
+        linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org,
+        netdev@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>,
+        Tejun Heo <tj@kernel.org>, Steve French <sfrench@samba.org>,
+        Len Brown <len.brown@intel.com>, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org
+Subject: Re: [PATCH v4 02/16] freezer: add unsafe versions of freezable helpers for CIFS
+Date: Tue,  7 May 2013 10:52:05 -0700
+Message-Id: <1367949125-21809-1-git-send-email-ccross@android.com>
+In-Reply-To: <CAMbhsRQ1i_dFctwjkqjg3=GJdEc8ReEDk=NnEFEXj8u3MaEqDA@mail.gmail.com>
+References: <CAMbhsRQ1i_dFctwjkqjg3=GJdEc8ReEDk=NnEFEXj8u3MaEqDA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+CIFS calls wait_event_freezekillable_unsafe with a VFS lock held,
+which is unsafe and will cause lockdep warnings when 6aa9707
+"lockdep: check that no locks held at freeze time" is reapplied
+(it was reverted in dbf520a).  CIFS shouldn't be doing this, but
+it has long-running syscalls that must hold a lock but also
+shouldn't block suspend.  Until CIFS freeze handling is rewritten
+to use a signal to exit out of the critical section, add a new
+wait_event_freezekillable_unsafe helper that will not run the
+lockdep test when 6aa9707 is reapplied, and call it from CIFS.
 
-The fattr handling bitmap code only uses the first two fattr words sofar. This
-patch adds the 3rd word to being sent but doesn't populate it yet.
+In practice the likley result of holding the lock while freezing
+is that a second task blocked on the lock will never freeze,
+aborting suspend, but it is possible to manufacture a case using
+the cgroup freezer, the lock, and the suspend freezer to create
+a deadlock.  Silencing the lockdep warning here will allow
+problems to be found in other drivers that may have a more
+serious deadlock risk, and prevent new problems from being added.
 
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+Acked-by: Pavel Machek <pavel@ucw.cz>
+Signed-off-by: Colin Cross <ccross@android.com>
 ---
- fs/nfs/nfs4_fs.h          |  6 +++---
- fs/nfs/nfs4proc.c         | 10 +++++-----
- fs/nfs/nfs4xdr.c          | 20 ++++++++++++--------
- fs/nfs/super.c            |  1 +
- include/linux/nfs_fs_sb.h |  2 +-
- 5 files changed, 22 insertions(+), 17 deletions(-)
+v4:
+  Corrected to include CIFS wait_for_response hunk.
+  The rest of this series is still at v3.
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 944c9a5..1de30a8 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -295,10 +295,10 @@ is_ds_client(struct nfs_client *clp)
- extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
- 
- extern const u32 nfs4_fattr_bitmap[3];
--extern const u32 nfs4_statfs_bitmap[2];
--extern const u32 nfs4_pathconf_bitmap[2];
-+extern const u32 nfs4_statfs_bitmap[3];
-+extern const u32 nfs4_pathconf_bitmap[3];
- extern const u32 nfs4_fsinfo_bitmap[3];
--extern const u32 nfs4_fs_locations_bitmap[2];
-+extern const u32 nfs4_fs_locations_bitmap[3];
- 
- void nfs4_free_client(struct nfs_client *);
- 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 3fd1040..5c50495 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -159,7 +159,7 @@ static const u32 nfs4_open_noattr_bitmap[3] = {
- 	| FATTR4_WORD0_FILEID,
- };
- 
--const u32 nfs4_statfs_bitmap[2] = {
-+const u32 nfs4_statfs_bitmap[3] = {
- 	FATTR4_WORD0_FILES_AVAIL
- 	| FATTR4_WORD0_FILES_FREE
- 	| FATTR4_WORD0_FILES_TOTAL,
-@@ -168,7 +168,7 @@ const u32 nfs4_statfs_bitmap[2] = {
- 	| FATTR4_WORD1_SPACE_TOTAL
- };
- 
--const u32 nfs4_pathconf_bitmap[2] = {
-+const u32 nfs4_pathconf_bitmap[3] = {
- 	FATTR4_WORD0_MAXLINK
- 	| FATTR4_WORD0_MAXNAME,
- 	0
-@@ -183,7 +183,7 @@ const u32 nfs4_fsinfo_bitmap[3] = { FATTR4_WORD0_MAXFILESIZE
- 			FATTR4_WORD2_LAYOUT_BLKSIZE
- };
- 
--const u32 nfs4_fs_locations_bitmap[2] = {
-+const u32 nfs4_fs_locations_bitmap[3] = {
- 	FATTR4_WORD0_TYPE
- 	| FATTR4_WORD0_CHANGE
- 	| FATTR4_WORD0_SIZE
-@@ -199,7 +199,7 @@ const u32 nfs4_fs_locations_bitmap[2] = {
- 	| FATTR4_WORD1_TIME_ACCESS
- 	| FATTR4_WORD1_TIME_METADATA
- 	| FATTR4_WORD1_TIME_MODIFY
--	| FATTR4_WORD1_MOUNTED_ON_FILEID
-+	| FATTR4_WORD1_MOUNTED_ON_FILEID,
- };
- 
- static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dentry,
-@@ -5136,7 +5136,7 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
- 				   struct page *page)
+ fs/cifs/transport.c     |  2 +-
+ include/linux/freezer.h | 13 +++++++++++++
+ 2 files changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/fs/cifs/transport.c b/fs/cifs/transport.c
+index 1a52868..e7f22f8 100644
+--- a/fs/cifs/transport.c
++++ b/fs/cifs/transport.c
+@@ -452,7 +452,7 @@ wait_for_response(struct TCP_Server_Info *server, struct mid_q_entry *midQ)
  {
- 	struct nfs_server *server = NFS_SERVER(dir);
--	u32 bitmask[2] = {
-+	u32 bitmask[3] = {
- 		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS,
- 	};
- 	struct nfs4_fs_locations_arg args = {
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index e3edda5..4fa0bf1 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -983,15 +983,16 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 	int len;
- 	uint32_t bmval0 = 0;
- 	uint32_t bmval1 = 0;
-+	uint32_t bmval2 = 0;
+ 	int error;
  
- 	/*
- 	 * We reserve enough space to write the entire attribute buffer at once.
- 	 * In the worst-case, this would be
--	 *   12(bitmap) + 4(attrlen) + 8(size) + 4(mode) + 4(atime) + 4(mtime)
--	 *          = 36 bytes, plus any contribution from variable-length fields
-+	 * 16(bitmap) + 4(attrlen) + 8(size) + 4(mode) + 4(atime) + 4(mtime)
-+	 * = 40 bytes, plus any contribution from variable-length fields
- 	 *            such as owner/group.
- 	 */
--	len = 16;
-+	len = 20;
+-	error = wait_event_freezekillable(server->response_q,
++	error = wait_event_freezekillable_unsafe(server->response_q,
+ 				    midQ->mid_state != MID_REQUEST_SUBMITTED);
+ 	if (error < 0)
+ 		return -ERESTARTSYS;
+diff --git a/include/linux/freezer.h b/include/linux/freezer.h
+index 5b31e21c..d3c038e 100644
+--- a/include/linux/freezer.h
++++ b/include/linux/freezer.h
+@@ -212,6 +212,16 @@ static inline bool freezer_should_skip(struct task_struct *p)
+ 	__retval;							\
+ })
  
- 	/* Sigh */
- 	if (iap->ia_valid & ATTR_SIZE)
-@@ -1035,9 +1036,9 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 	 * We write the bitmap length now, but leave the bitmap and the attribute
- 	 * buffer length to be backfilled at the end of this routine.
- 	 */
--	*p++ = cpu_to_be32(2);
-+	*p++ = cpu_to_be32(3);
- 	q = p;
--	p += 3;
-+	p += 4;
++/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
++#define wait_event_freezekillable_unsafe(wq, condition)			\
++({									\
++	int __retval;							\
++	freezer_do_not_count();						\
++	__retval = wait_event_killable(wq, (condition));		\
++	freezer_count_unsafe();						\
++	__retval;							\
++})
++
+ #define wait_event_freezable(wq, condition)				\
+ ({									\
+ 	int __retval;							\
+@@ -277,6 +287,9 @@ static inline void set_freezable(void) {}
+ #define wait_event_freezekillable(wq, condition)		\
+ 		wait_event_killable(wq, condition)
  
- 	if (iap->ia_valid & ATTR_SIZE) {
- 		bmval0 |= FATTR4_WORD0_SIZE;
-@@ -1086,9 +1087,10 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 				len, ((char *)p - (char *)q) + 4);
- 		BUG();
- 	}
--	len = (char *)p - (char *)q - 12;
-+	len = (char *)p - (char *)q - 16;
- 	*q++ = htonl(bmval0);
- 	*q++ = htonl(bmval1);
-+	*q++ = htonl(bmval2);
- 	*q = htonl(len);
++#define wait_event_freezekillable_unsafe(wq, condition)			\
++		wait_event_killable(wq, condition)
++
+ #endif /* !CONFIG_FREEZER */
  
- /* out: */
-@@ -1194,8 +1196,10 @@ encode_getattr_three(struct xdr_stream *xdr,
- 
- static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
- {
--	encode_getattr_two(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
--			   bitmask[1] & nfs4_fattr_bitmap[1], hdr);
-+	encode_getattr_three(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
-+			   bitmask[1] & nfs4_fattr_bitmap[1],
-+			   bitmask[2] & nfs4_fattr_bitmap[2],
-+			   hdr);
- }
- 
- static void encode_getfattr_open(struct xdr_stream *xdr, const u32 *bitmask,
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index d84eb57..00af026 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -833,6 +833,7 @@ int nfs_show_stats(struct seq_file *m, struct dentry *root)
- 		seq_printf(m, "\n\tnfsv4:\t");
- 		seq_printf(m, "bm0=0x%x", nfss->attr_bitmask[0]);
- 		seq_printf(m, ",bm1=0x%x", nfss->attr_bitmask[1]);
-+		seq_printf(m, ",bm2=0x%x", nfss->attr_bitmask[2]);
- 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
- 		show_sessions(m, nfss);
- 		show_pnfs(m, nfss);
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index d507357..e6ed3c2 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -145,7 +145,7 @@ struct nfs_server {
- 	u32			attr_bitmask[3];/* V4 bitmask representing the set
- 						   of attributes supported on this
- 						   filesystem */
--	u32			cache_consistency_bitmask[2];
-+	u32			cache_consistency_bitmask[3];
- 						/* V4 bitmask representing the subset
- 						   of change attribute, size, ctime
- 						   and mtime attributes supported by
+ #endif	/* FREEZER_H_INCLUDED */
 -- 
-1.8.1.4
+1.8.2.1
 
