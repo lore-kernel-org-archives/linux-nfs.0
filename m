@@ -1,88 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:31540 "EHLO
-	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758357Ab3ENVm5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 May 2013 17:42:57 -0400
-Date: Wed, 15 May 2013 07:42:51 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: Zach Brown <zab@redhat.com>
-Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [RFC v0 0/4] sys_copy_range() rough draft
-Message-ID: <20130514214251.GK29466@dastard>
-References: <1368566126-17610-1-git-send-email-zab@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:33419 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753119Ab3EGVFD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 May 2013 17:05:03 -0400
+Date: Tue, 7 May 2013 17:05:00 -0400
+To: Zhao Hongjiang <zhaohongjiang@huawei.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] nfsd: get rid of the unused functions in vfs
+Message-ID: <20130507210500.GG32743@fieldses.org>
+References: <51838C98.2090205@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1368566126-17610-1-git-send-email-zab@redhat.com>
+In-Reply-To: <51838C98.2090205@huawei.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 14, 2013 at 02:15:22PM -0700, Zach Brown wrote:
-> We've been talking about implementing some form of bulk data copy
-> offloading for a while now.  BTRFS and OCFS2 implement forms of copy
-> offloading with ioctls, NFS 4.2 will include a byte-granular COPY
-> operation, and the SCSI XCOPY command is being implemented now that
-> Windows can issue it.
-> 
-> In the past we've discussed promoting the ocfs2 reflink ioctl into a
-> system call that would create a new file and implicitly copy the
-> source data into the new file:
-> https://lkml.org/lkml/2009/9/14/481
-> 
-> These draft patches take the simpler approach of only copying data
-> between existing files.  The patches 1) make a system call out of the
-> btrfs CLONE_RANGE ioctl, 2) implement the btrfs .copy_range method with
-> the ioctl's guts, 3) implement the nfs .copy_range by sending a COPY
-> op, and 4) serve the COPY op in nfsd by calling the .copy_range method
-> again.
-> 
-> The nfs patch is an untested hack.  I'm happy to beat it in to shape
-> but I'll need some guidance.
-> 
-> I'd like strong review feedback on the interfaces, here are some
-> possible topics:
-> 
-> a) Hopefully being able to specify a portion of the data to copy will
-> avoid *huge* syscall latencies and the motivation for new async
-> semantics.
-> 
-> b) The BTRFS ioctl and nfs COPY let you specify a count of 0 to copy
-> from the start offset to the end of the file.  Does anyone have a
-> strong feeling about this?  I'm leaning towards not bothering with it
-> in the syscall interface.
-> 
-> c) I chose to return partial progess in the ssize_t return code.  This
-> limits the length of the range and the size_t count argument can be too
-> large and return errors, much like other io syscalls.  This seemed
-> less awful than some extra argument with a pointer to a status value.
-> 
-> d) I'm dreading mentioning a vector of ranges to copy in one syscall
-> because I don't want to think about overlaping ranges and file systems
-> that use range locks -- xfs for now, but more if Jan gets his way.
+Thanks, applying for 3.11.
 
-XFS doesn't use range locks (yet).
+--b.
 
-> I'd rather that we get some experience with this simpler syscall before
-> taking on that headache.
+On Fri, May 03, 2013 at 06:08:24PM +0800, Zhao Hongjiang wrote:
+> The fh_lock_parent(), nfsd_truncate(), nfsd_notify_change() and nfsd_sync_dir()
+> fuctions were never implement and used, just remove them.
 > 
-> I'm sure I'm forgetting some other details.
+> Signed-off-by: Zhao Hongjiang <zhaohongjiang@huawei.com>
+> ---
+>  fs/nfsd/vfs.h |    5 -----
+>  1 files changed, 0 insertions(+), 5 deletions(-)
 > 
-> I'm going to keep hacking away at this.  My next step is to get ext4
-> supporting .copy_range, probably with a quick hack to copy the
-> contents of bios.  Hopefully that'll give enough time to also integrate
-> review feedback.
-
-Wouldn't the easiest "support all filesystems" hack just be to add
-a destination offset parameter to do_splice_direct() and call that
-when the filesystem doesn't supply a ->copy_range method? i.e. use
-the mechanisms we already have for copying from one file to another
-via the page cache as efficiently as possible?
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+> diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+> index 5b58941..8d2b40d 100644
+> --- a/fs/nfsd/vfs.h
+> +++ b/fs/nfsd/vfs.h
+> @@ -39,7 +39,6 @@
+>  typedef int (*nfsd_dirop_t)(struct inode *, struct dentry *, int, int);
+>  
+>  /* nfsd/vfs.c */
+> -int		fh_lock_parent(struct svc_fh *, struct dentry *);
+>  int		nfsd_racache_init(int);
+>  void		nfsd_racache_shutdown(void);
+>  int		nfsd_cross_mnt(struct svc_rqst *rqstp, struct dentry **dpp,
+> @@ -92,17 +91,13 @@ __be32		nfsd_remove(struct svc_rqst *,
+>  				struct svc_fh *, char *, int);
+>  __be32		nfsd_unlink(struct svc_rqst *, struct svc_fh *, int type,
+>  				char *name, int len);
+> -int		nfsd_truncate(struct svc_rqst *, struct svc_fh *,
+> -				unsigned long size);
+>  __be32		nfsd_readdir(struct svc_rqst *, struct svc_fh *,
+>  			     loff_t *, struct readdir_cd *, filldir_t);
+>  __be32		nfsd_statfs(struct svc_rqst *, struct svc_fh *,
+>  				struct kstatfs *, int access);
+>  
+> -int		nfsd_notify_change(struct inode *, struct iattr *);
+>  __be32		nfsd_permission(struct svc_rqst *, struct svc_export *,
+>  				struct dentry *, int);
+> -int		nfsd_sync_dir(struct dentry *dp);
+>  
+>  #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+>  struct posix_acl *nfsd_get_posix_acl(struct svc_fh *, int);
+> -- 
+> 1.7.1
+> 
