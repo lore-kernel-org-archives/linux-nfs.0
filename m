@@ -1,103 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:26528 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:28235 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752986Ab3EHXXJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 May 2013 19:23:09 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Linux linux-kernel <linux-kernel@vger.kernel.org>
-Subject: [GIT Pull] Please pull more NFS client bug fixes
-Date: Wed, 8 May 2013 23:23:07 +0000
-Message-ID: <1368055385.3282.25.camel@leira.trondhjem.org>
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="=-sYvO21jkWTjQruE2rVGt"
+	id S1757929Ab3EGQBk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 May 2013 12:01:40 -0400
+Message-ID: <51892562.1050903@RedHat.com>
+Date: Tue, 07 May 2013 12:01:38 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: NeilBrown <neilb@suse.de>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] mountd: Fix is_subdirectory again.
+References: <20130502170511.646e2717@notabene.brown>
+In-Reply-To: <20130502170511.646e2717@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-sYvO21jkWTjQruE2rVGt
-Content-Type: text/plain; charset="ISO-8859-1"
-Content-Transfer-Encoding: quoted-printable
 
-The following changes since commit 721ccfb79b6f74f4052de70236d24047e73682d4=
-:
 
-  NFSv4: Warn once about servers that incorrectly apply open mode to setatt=
-r (2013-04-29 11:11:58 -0400)
+On 02/05/13 03:05, NeilBrown wrote:
+> 
+> 
+> Hi Steve,
+>  I just noticed
+> 
+> commit ebe2826ca571a3959c3b5c8e29686c621f2775cf
+> Author: Steve Dickson <steved@redhat.com>
+> Date:   Sat Mar 23 10:30:17 2013 -0400
+> 
+>     mountd: regression in crossmounts
+> 
+> Sorry I missed the email you presumably sent me to let me know
+> that I had caused a regression.
+Yes I should have... That was my bad... 
+> 
+> Here is the proper fix.
+Yes it does work..  thanks! 
 
-are available in the git repository at:
+The new is committed!
 
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.10-=
-2
-
-for you to fetch changes up to c23266d532b4de796a346f57a66587c5db17d27e:
-
-  NFS4.1 Fix data server connection race (2013-05-08 17:19:32 -0400)
-
-----------------------------------------------------------------
-More NFS client bugfixes for 3.10
-
-- Ensure that we match the 'sec=3D' mount flavour against the server list
-- Fix the NFSv4 byte range locking in the presence of delegations
-- Ensure that we conform to the NFSv4.1 spec w.r.t. freeing lock stateids
-- Fix a pNFS data server connection race
-
-----------------------------------------------------------------
-Andy Adamson (1):
-      NFS4.1 Fix data server connection race
-
-Trond Myklebust (4):
-      NFSv4.x: Fix handling of partially delegated locks
-      SUNRPC: Don't spam syslog with "Pseudoflavor not found" messages
-      NFSv4: Convert nfs41_free_stateid to use an asynchronous RPC call
-      NFSv4.1: Ensure that we free the lock stateid on the server
-
-Weston Andros Adamson (1):
-      NFSv3: match sec=3D flavor against server list
-
- fs/nfs/nfs4_fs.h               |   3 +-
- fs/nfs/nfs4filelayout.h        |   2 +
- fs/nfs/nfs4filelayoutdev.c     |  26 ++++++++-
- fs/nfs/nfs4proc.c              | 119 +++++++++++++++++++++++++++++++------=
-----
- fs/nfs/nfs4state.c             |  11 ++--
- fs/nfs/nfs4xdr.c               |   2 +-
- fs/nfs/super.c                 |  48 ++++++++++++++---
- include/linux/nfs_xdr.h        |   2 +-
- net/sunrpc/auth_gss/auth_gss.c |   3 +-
- net/sunrpc/clnt.c              |   2 +-
- 10 files changed, 172 insertions(+), 46 deletions(-)
-
---=20
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
---=-sYvO21jkWTjQruE2rVGt
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-Content-Transfer-Encoding: 7bit
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.13 (GNU/Linux)
-
-iQIcBAABAgAGBQJRit5ZAAoJEGcL54qWCgDyXccP/1/tl4G611j6yR7tGypCIkmR
-viZUQEe9kLVJiNRu/GbO/jlqHxa14SWpx0R07A48EXE41VmPsG4Pu27pRGf9o8vx
-3k7kxo9YihA1Kyhsrdyuifdhu5xu6NGsLXseUC1o72t5uQyrvVac3rEVsTqTlXvq
-E1/AImpQAxpbT/j2nThJCN5MfTKvUe+U0QXmHdOA7iBna+avFzrRs4ynJAEycNhl
-S+g4JfYQnH/YtffqsSNAQGC8OoeG4Wr1QBOBcQ6h9Sv6NalF5o81UfpuVqv67fCR
-4LeYooCEji3PlAyK42JZKBXZB/5VSh/iuf2lEIPxvbPfzWHtIxcIBgCRHh3ZNGh3
-82LdSFJDWGDg2kidph/i5VlX+BSb+tWSjYEk9iL8B7N7jR9BgYFZ6UW1BZQr6eJF
-nLvnTHsCR31934DhjFME69nKT0590o97IKD5iLPGjDR+vcu7cAex2DreIOPP+MWx
-gdpJaFnuvMWX83ybfLdQz5UiN0PvA2DkCQ+NaNGtvDgCfXtnXrjGh6sGYcNUdvQc
-DN9d0rspTCJdyVs+/A7RxYwYp+8CEumctizeT21EAt0fTNZq6ONYmznAOzbpyfaa
-lMrP8b5geV9Ilv8OaoRxMR0z5rAyp7Dg/JtXms7+ydXLLaLMrbaHOD29eqmQG5PR
-ovG2seXMAmW5sX+CI6TN
-=H4sS
------END PGP SIGNATURE-----
-
---=-sYvO21jkWTjQruE2rVGt--
+steved.
+> 
+> Thanks,
+> NeilBrown
+> 
+> 
+> Subject: [PATCH] mountd: Fix is_subdirectory again.
+> 
+> commit ebe2826ca571a (mountd: regression in crossmounts)
+> said it was:
+>     Reverting the logic of commit 8e2fb3fc until
+>     a better solution can be found for the original
+>     problem.
+> 
+> here is the "something better".
+> 
+> The problem was that is_subdirectory() would also succeed if the two
+> directories were the same.  This is needed for path_matches() which
+> needs to see if the child is same-or-descendant.
+> 
+> So this patch rearranges path_matches() to do the "are they the same"
+> test itself and only bother with is_subdirectory() if it they are not
+> the same.
+> 
+> So now is_subdirectory() can be strict, and so can be usable for
+> subexport(), which needs a strong 'in subdirectory - not the same' test.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> 
+> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+> index 737927c..517aa62 100644
+> --- a/utils/mountd/cache.c
+> +++ b/utils/mountd/cache.c
+> @@ -347,20 +347,26 @@ static char *next_mnt(void **v, char *p)
+>  
+>  static int is_subdirectory(char *child, char *parent)
+>  {
+> +	/* Check is child is strictly a subdirectory of
+> +	 * parent or a more distant descendant.
+> +	 */
+>  	size_t l = strlen(parent);
+>  
+> -	if (strcmp(parent, "/") == 0)
+> +	if (strcmp(parent, "/") == 0 && child[1] != 0)
+>  		return 1;
+>  
+> -	return strcmp(child, parent) == 0
+> -		|| (strncmp(child, parent, l) == 0 && child[l] == '/');
+> +	return (strncmp(child, parent, l) == 0 && child[l] == '/');
+>  }
+>  
+>  static int path_matches(nfs_export *exp, char *path)
+>  {
+> -	if (exp->m_export.e_flags & NFSEXP_CROSSMOUNT)
+> -		return is_subdirectory(path, exp->m_export.e_path);
+> -	return strcmp(path, exp->m_export.e_path) == 0;
+> +	/* Does the path match the export?  I.e. is it an
+> +	 * exact match, or does the export have CROSSMOUNT, and path
+> +	 * is a descendant?
+> +	 */
+> +	return strcmp(path, exp->m_export.e_path) == 0
+> +		|| ((exp->m_export.e_flags & NFSEXP_CROSSMOUNT)
+> +		    && is_subdirectory(path, exp->m_export.e_path));
+>  }
+>  
+>  static int
+> @@ -369,15 +375,13 @@ export_matches(nfs_export *exp, char *dom, char *path, struct addrinfo *ai)
+>  	return path_matches(exp, path) && client_matches(exp, dom, ai);
+>  }
+>  
+> -/* True iff e1 is a child of e2 and e2 has crossmnt set: */
+> +/* True iff e1 is a child of e2 (or descendant) and e2 has crossmnt set: */
+>  static bool subexport(struct exportent *e1, struct exportent *e2)
+>  {
+>  	char *p1 = e1->e_path, *p2 = e2->e_path;
+> -	size_t l2 = strlen(p2);
+>  
+>  	return e2->e_flags & NFSEXP_CROSSMOUNT
+> -		&& strncmp(p1, p2, l2) == 0
+> -		&& p1[l2] == '/';
+> +		&& is_subdirectory(p1, p2);
+>  }
+>  
+>  struct parsed_fsid {
+> 
