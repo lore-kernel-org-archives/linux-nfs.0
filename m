@@ -1,55 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42667 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:50696 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759547Ab3EORmr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 May 2013 13:42:47 -0400
-Date: Wed, 15 May 2013 13:42:45 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: James Vanns <james.vanns@framestore.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Where in the server code is fsinfo rtpref calculated?
-Message-ID: <20130515174245.GN16811@fieldses.org>
-References: <20130515144749.GI16811@fieldses.org>
- <1706515764.20038371.1368635535864.JavaMail.root@framestore.com>
+	id S1757618Ab3EGUok (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 May 2013 16:44:40 -0400
+Date: Tue, 7 May 2013 16:44:33 -0400
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 03/17] NFSDv4.2: Added NFS v4.2 support to the NFS server
+Message-ID: <20130507204433.GC32743@fieldses.org>
+References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
+ <1367240239-19326-4-git-send-email-SteveD@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1706515764.20038371.1368635535864.JavaMail.root@framestore.com>
+In-Reply-To: <1367240239-19326-4-git-send-email-SteveD@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 15, 2013 at 05:32:15PM +0100, James Vanns wrote:
-> <snip>
+On Mon, Apr 29, 2013 at 08:57:05AM -0400, Steve Dickson wrote:
+> From: Steve Dickson <steved@redhat.com>
 > 
-> > > I've just returned from nfsd3_proc_fsinfo() and found what I would
-> > > consider an odd decision - perhaps nothing better was suggested at
-> > > the time. It seems to me that in response to an FSINFO call the
-> > > reply stuffs the max_block_size value in  both the maximum *and*
-> > > preferred block sizes for both read and write. A 1MB block size
-> > > for a preferred default is a little high! If a disk is reading at
-> > > 33MB/s and we have just a single server running 64 knfsd and each
-> > > READ call is requesting 1MB of data then all of a sudden we have
-> > > an aggregate read speed of ~512k/s
-> > 
-> > I lost you here.
+> This enable NFSv4.2 support for the server. To enable this
+> code do the following:
+>   echo "+4.2" >/proc/fs/nfsd/versions
 > 
-> OK, so what we're seeing is the large majority of our nr. ~700 clients
-> (all Linux 2.6.32 based NFS clients) issuing READ requests of 1MB in
-> size.
+> after the nfsd kernel module is loaded.
 
-Knowing nothing about your situation, I'd assume the clients are doing
-that because they actually want that 1MB of data.
-
-Would you prefer they each send 1024 1k READs?  I don't understand why
-it's the read size you're focused on here.
+We also need one more change to get working 4.2.
 
 --b.
 
-> 
-> After the initial MOUNT request has been granted an FSINFO call is
-> made. The contents of the REPLY from the server (another Linux 2.6.32
-> server) include rtmax, rtpref, wtmax and wtpref all of which are set
-> to 1MB. This 1MB appears to come from that code/explanation I
-> described earlier  - all values are basically getting set to whatever
-> comes out of nfsd_get_default_max_blksize().
+commit e4819461ed826bfafd899eb8719edb15f0fb68f4
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Tue May 7 11:57:52 2013 -0400
 
+    nfsd4: store correct client minorversion for >=4.2
+    
+    This code assumes that any client using exchange_id is using NFSv4.1,
+    but with the introduction of 4.2 that's no longer true.
+    
+    This main effect of this is that client callbacks will use the same
+    minorversion as that used on the exchange_id.
+    
+    Note that clients are forbidden from mixing 4.1 and 4.2 compounds.  (See
+    rfc 5661, section 2.7, #13: "A client MUST NOT attempt to use a stateid,
+    filehandle, or similar returned object from the COMPOUND procedure with
+    minor version X for another COMPOUND procedure with minor version Y,
+    where X != Y.")  However, we do not currently attempt to enforce this
+    except in the case of mixing zero minor version with non-zero minor
+    versions.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 316ec84..91ead0e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1709,7 +1709,7 @@ out_new:
+ 		status = nfserr_jukebox;
+ 		goto out;
+ 	}
+-	new->cl_minorversion = 1;
++	new->cl_minorversion = cstate->minorversion;
+ 
+ 	gen_clid(new, nn);
+ 	add_to_unconfirmed(new);
