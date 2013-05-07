@@ -1,69 +1,140 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bedivere.hansenpartnership.com ([66.63.167.143]:43292 "EHLO
-	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755154Ab3EFPxj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 11:53:39 -0400
-Message-ID: <1367855617.1868.16.camel@dabdike>
-Subject: Re: [PATCH 00/17] lnfs: linux-3.9 release
-From: James Bottomley <James.Bottomley@HansenPartnership.com>
-To: Ric Wheeler <rwheeler@redhat.com>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>, Jack Rieden <jrieden@redhat.com>
-Date: Mon, 06 May 2013 08:53:37 -0700
-In-Reply-To: <51848BE0.2080901@redhat.com>
-References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
-	 <51848BE0.2080901@redhat.com>
-Content-Type: text/plain; charset="ISO-8859-15"
-Mime-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:38192 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755233Ab3EGV1V convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 May 2013 17:27:21 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
+Subject: Re: long delay when mounting due to SETCLIENTID AUTH_GSS attempts
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20130507205321.GE32743@fieldses.org>
+Date: Tue, 7 May 2013 17:27:04 -0400
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <4CC24019-8937-49D3-83A1-FF2E5BCC9FB3@oracle.com>
+References: <20130503132557.2fdf794d@tlielax.poochiereds.net> <AE700845-4032-4BEC-817C-97EB08A831E8@oracle.com> <20130503142421.19fb3ca6@tlielax.poochiereds.net> <1367606034.3556.25.camel@leira.trondhjem.org> <20130503144437.3a47e476@tlielax.poochiereds.net> <A2E5B3F1-A8F1-4731-A66C-548B9C8FD429@oracle.com> <20130503211810.GF5715@fieldses.org> <8F91C5FB-EE7F-48F8-9ED5-6B5D8503E248@oracle.com> <20130507205321.GE32743@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2013-05-04 at 07:17 +0300, Ric Wheeler wrote:
-> On 05/02/2013 08:18 PM, Steve Dickson wrote:
-> > From: Steve Dickson <steved@redhat.com>
-> >
-> > Here is an the next rlease of the label NFS patches
-> > ported to the linux-3.9 release
-> >
-> > The following changes were made from the previous release.
-> > (Note, only the server patch changed in this release)
-> >
-> > * Remove the buffer overflow in the allocation of labels.
-> >
-> > * Removed needless char * casting
-> >
-> > * Removed the -EMSGSIZE to nfs4err_badlabel errno mapping
-> >    by changing the return value of nfsd4_label_alloc() to
-> >    be a _be32 value.
+
+On May 7, 2013, at 4:53 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Fri, May 03, 2013 at 05:50:49PM -0400, Chuck Lever wrote:
+>> 
+>> On May 3, 2013, at 5:18 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>> 
+>>> On Fri, May 03, 2013 at 02:48:59PM -0400, Chuck Lever wrote:
+>>>> We should always use krb5i if a GSS context can be established with
+>>>> our machine cred.  As I said before, SETCLIENTID and
+>>>> GETATTR(fs_locations) really should use an integrity-protecting
+>>>> security flavor no matter what flavor is in effect on the mount points
+>>>> themselves.
+>>> 
+>>> Can you give an example of a threat that could be avoided by this?
+>>> 
+>>> My suspicion is that in most cases an attacker with the ability to
+>>> subvert auth_sys could *also* DOS gssd, and hence force the fallback to
+>>> auth_sys.
+>>> 
+>>> krb5i plus a fallback to auth_sys on failure to authenticate doesn't
+>>> sound to me much more secure than just auth_sys.
+>> 
+>> Our current situation is that the first mount of a server determines the flavor to use for SETCLIENTID.  So if that mount happens to be "sec=sys" the SETCLIENTID is done with AUTH_SYS no matter what the subsequent mounts request.
+>> 
+>> That's just about as secure in many cases as falling back.
+>> 
+>>> If we really want much security benefit from krb5i on state operations,
+>>> I think we need to really *require* krb5i.
+>>> 
+>>> So I'm inclined towards Jeff's solution: don't do this unless userspace
+>>> somehow affirmatively states that it requires krb5i on state operations.
+>> 
+>> This would have to be on a per-server basis.  Where would an admin specify such an option?  I don't believe either a mount option (too fine) or a module parameter (too coarse) is appropriate.
 > 
-> It would be great to see this patch series land in time for 3.10 - seems like a 
-> major feature that has had been held in development for years and it does have a 
-> very interested user base waiting for this to land.
+> Why do you think a mount option is too fine?  They can use nfsmount.conf
+> to specify per-server or global defaults.
 > 
-> Are there any existing roadblocks to having this make it this merge
-> window?
+>>> I agree that we should default to this when we can.  But the way to move
+>>> towards that default is then to get distributions to turn on the new
+>>> module parm (or whatever it is) by default.  As they do so, they can
+>>> also ensure that e.g. gssd is started.
+>> 
+>> gssd is not all that's required.
+> 
+> Isn't that's all that's required to fix the delay problem?
 
-You mean other than the one Bruce and Trond already mentioned and which
-you presumably already read? i.e. it's a large feature whose final
-incarnation landed when the merge window was already open which by
-process should receive incubation in linux-next before being merged.
+It's all that is required to work around the delay.  But it does not address the security concern you brought up last week.
 
-It is entirely within the gift of the maintainers to vary the incubation
-requirements, but if they do and it comes back with a ton of problems
-from the 0 day project or smatch or even a build failure that would have
-been picked up by linux-next, they'll be at the wrong end of Linus'
-flame thrower not you.  So it is rather unfair to pressure the
-maintainers like this.
+> Or do you
+> still get a delay if you run gssd but don't create a keytab?
+> 
+> --b.
+> 
+>> A keytab must be provisioned on the client and server for it to work, and that's the main issue I'm trying to address:  We need "sec=krb5" mounts to work when the client has no GSS machine credential.
+>> 
+>> And I think we already have a problem with gssd not picking up kernel requests quickly, as Trond pointed out.
+>> 
+>> I don't feel like any of this is new, or that any of this is a strong reason to revert.  But it could be a reason to move forward from here.
+>> 
+>> Does gssd distinguish between:
+>> 
+>>  - no local keytab
+>> 
+>>  - no local support for GSS
+>> 
+>>  - server doesn't grok GSS
+>> 
+>>  - some network problem occurred
+>> 
+>> Can it communicate that distinction to the kernel?  What if we fall back only in the "no keytab" and "client's kernel has no GSS support" cases?  In the "server doesn't grok" case, do not fall back if "sec=krb5*" is specified on the mount point?  "A network problem occurred" is an "always fail" case.
+>> 
+>> 
+>> 
+>>> 
+>>> --b.
+>>> 
+>>>>> Instead of using AUTH_GSS for SETCLIENTID by default, would it make
+>>>>> sense to add a switch (module parm?) that turns it on so that it can be
+>>>>> an opt-in thing rather than doing this by default?
+>>>> 
+>>>> Why add another tunable when we really should just fix the delay?
+>>>> 
+>>>> Besides, if gssd is running and no keytab exists, then the fallback to AUTH_SYS should be fast. Is that not an effective workaround until we address the delay problem?
+>>>> 
+>>>> -- 
+>>>> Chuck Lever
+>>>> chuck[dot]lever[at]oracle[dot]com
+>>>> 
+>>>> 
+>>>> 
+>>>> 
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> -- 
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>> 
+>> 
+>> 
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Kernel processes exist for a reason and almost every maintainer has the
-scars that remind them of this.
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-James
+
 
 
