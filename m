@@ -1,74 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:36954 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:44807 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751601Ab3EUSnS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 May 2013 14:43:18 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r4LIhIUu032460
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 21 May 2013 14:43:18 -0400
-Message-ID: <519BC044.8000808@RedHat.com>
-Date: Tue, 21 May 2013 14:43:16 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1756450Ab3EGVoY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 May 2013 17:44:24 -0400
+Date: Tue, 7 May 2013 17:44:21 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: long delay when mounting due to SETCLIENTID AUTH_GSS attempts
+Message-ID: <20130507214421.GJ32743@fieldses.org>
+References: <AE700845-4032-4BEC-817C-97EB08A831E8@oracle.com>
+ <20130503142421.19fb3ca6@tlielax.poochiereds.net>
+ <1367606034.3556.25.camel@leira.trondhjem.org>
+ <20130503144437.3a47e476@tlielax.poochiereds.net>
+ <A2E5B3F1-A8F1-4731-A66C-548B9C8FD429@oracle.com>
+ <20130503211810.GF5715@fieldses.org>
+ <8F91C5FB-EE7F-48F8-9ED5-6B5D8503E248@oracle.com>
+ <7F5CD894-42E9-4C65-A1BC-0885C63E560B@oracle.com>
+ <20130507210200.GF32743@fieldses.org>
+ <1367962608.3580.10.camel@leira.trondhjem.org>
 MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>
-CC: Bruce Fields <bfields@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSD: Don't give out read delegations on exclusive creates
-References: <1368643909-8059-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1368643909-8059-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1367962608.3580.10.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Bruce,
-
-Ping... ;-) I just pull from your for-3.11-incoming branch
-and notice it was not there... 
-
-This  really does help with  exclusive creates 
-not being delayed... So you might want to consider it... 
-
-steved.
-
-On 15/05/13 14:51, Steve Dickson wrote:
-> When an exclusive create is done with the mode bits
-> set (aka open(testfile, O_CREAT | O_EXCL, 0777)) this
-> causes a OPEN op followed by a SETATTR op. When a
-> read delegation is given in the OPEN, it causes
-> the SETATTR to delay with EAGAIN until the
-> delegation is recalled.
+On Tue, May 07, 2013 at 09:36:49PM +0000, Myklebust, Trond wrote:
+> On Tue, 2013-05-07 at 17:02 -0400, J. Bruce Fields wrote:
+> > I suppose if gssd is running then it should always hold open the parent
+> > (rpc_pipefs/nfs) directory.  So if that isn't open it might be safe to
+> > assume we can fail immediately.
 > 
-> This patch caused exclusive creates to give out
-> a write delegation (which turn into no delegation)
-> which allows the SETATTR seamlessly succeed.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  fs/nfsd/nfs4state.c | 12 ++++++++++--
->  1 file changed, 10 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 316ec84..6b45d0e 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -3035,8 +3035,16 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
->  				goto out;
->  			if (open->op_share_access & NFS4_SHARE_ACCESS_WRITE)
->  				flag = NFS4_OPEN_DELEGATE_WRITE;
-> -			else
-> -				flag = NFS4_OPEN_DELEGATE_READ;
-> +			else {
-> +				switch(open->op_createmode) {
-> +				case NFS4_CREATE_EXCLUSIVE:
-> +				case NFS4_CREATE_EXCLUSIVE4_1:
-> +					flag = NFS4_OPEN_DELEGATE_WRITE;
-> +					break;
-> +				default:
-> +					flag = NFS4_OPEN_DELEGATE_READ;
-> +				}
-> +			}
->  			break;
->  		default:
->  			goto out;
-> 
+> If rpc.idmapd is running, then it will do the same.
+
+Whoops, you're right.
+
+> One possible solution might simply be to put up a 'gssd' pipe in
+> rpc_pipefs/nfs and use that as a metric. The problem is that IIRC,
+> rpc.gssd will release all pipes and then reopen them on getting a new
+> directory notification...
+
+Yeah, longer term it'd be nice to have some better way to recognize when
+gssd is up than that wait_for_pipe_open hack, but I don't see anything
+that works with current gssd.
+
+--b.
