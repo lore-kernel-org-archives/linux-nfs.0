@@ -1,39 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:22293 "EHLO mx12.netapp.com"
+Received: from mx1.netapp.com ([216.240.18.38]:5299 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756504Ab3EQR4X convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 May 2013 13:56:23 -0400
+	id S1752615Ab3EGVgv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 May 2013 17:36:51 -0400
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/3] SUNRPC: Convert auth_gss pipe detection to work in
- namespaces
-Date: Fri, 17 May 2013 17:55:28 +0000
-Message-ID: <1368813327.9073.5.camel@leira.trondhjem.org>
-References: <1368647441-24815-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1368647441-24815-2-git-send-email-Trond.Myklebust@netapp.com>
-	 <1368647441-24815-3-git-send-email-Trond.Myklebust@netapp.com>
-	 <1368647441-24815-4-git-send-email-Trond.Myklebust@netapp.com>
-	 <20130516202142.GB3216@fieldses.org>
-In-Reply-To: <20130516202142.GB3216@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: long delay when mounting due to SETCLIENTID AUTH_GSS attempts
+Date: Tue, 7 May 2013 21:36:49 +0000
+Message-ID: <1367962608.3580.10.camel@leira.trondhjem.org>
+References: <20130503132557.2fdf794d@tlielax.poochiereds.net>
+	 <AE700845-4032-4BEC-817C-97EB08A831E8@oracle.com>
+	 <20130503142421.19fb3ca6@tlielax.poochiereds.net>
+	 <1367606034.3556.25.camel@leira.trondhjem.org>
+	 <20130503144437.3a47e476@tlielax.poochiereds.net>
+	 <A2E5B3F1-A8F1-4731-A66C-548B9C8FD429@oracle.com>
+	 <20130503211810.GF5715@fieldses.org>
+	 <8F91C5FB-EE7F-48F8-9ED5-6B5D8503E248@oracle.com>
+	 <7F5CD894-42E9-4C65-A1BC-0885C63E560B@oracle.com>
+	 <20130507210200.GF32743@fieldses.org>
+In-Reply-To: <20130507210200.GF32743@fieldses.org>
 Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-05-16 at 16:21 -0400, J. Bruce Fields wrote:
-> On Wed, May 15, 2013 at 12:50:41PM -0700, Trond Myklebust wrote:
-> > This seems to have been overlooked when we did the namespace
-> > conversion. If a container is running a legacy version of rpc.gssd
-> > then it will be disrupted if the global 'pipe_version' is set by a
-> > container running the new version of rpc.gssd.
-> 
-> Might be worth deprecating the "legacy" version--add a warning in for
-> any users and then remove it if we don't see any evidence anyone's hit
-> it recently.
+On Tue, 2013-05-07 at 17:02 -0400, J. Bruce Fields wrote:
+> I suppose if gssd is running then it should always hold open the parent
+> (rpc_pipefs/nfs) directory.  So if that isn't open it might be safe to
+> assume we can fail immediately.
 
-Possibly, however given that we're still seeing distros using the binary
-mount interface that was replaced 6 years ago...
+If rpc.idmapd is running, then it will do the same.
+
+One possible solution might simply be to put up a 'gssd' pipe in
+rpc_pipefs/nfs and use that as a metric. The problem is that IIRC,
+rpc.gssd will release all pipes and then reopen them on getting a new
+directory notification...
 
 -- 
 Trond Myklebust
