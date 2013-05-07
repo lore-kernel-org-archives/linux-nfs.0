@@ -1,107 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f54.google.com ([74.125.83.54]:47753 "EHLO
-	mail-ee0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751597Ab3EEJSt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 May 2013 05:18:49 -0400
-Date: Sun, 5 May 2013 11:18:44 +0200
-From: Ingo Molnar <mingo@kernel.org>
-To: Pavel Machek <pavel@ucw.cz>
-Cc: Colin Cross <ccross@android.com>, Andrew Morton <akpm@osdl.org>,
-        lkml <linux-kernel@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Len Brown <len.brown@intel.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:47136 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757131Ab3EGM2I (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 May 2013 08:28:08 -0400
+Date: Tue, 7 May 2013 14:28:04 +0200
+From: Pavel Machek <pavel@ucw.cz>
+To: Colin Cross <ccross@android.com>
+Cc: linux-kernel@vger.kernel.org, "Rafael J. Wysocki" <rjw@sisk.pl>,
         Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
         Andrew Morton <akpm@linux-foundation.org>,
         Mandeep Singh Baines <msb@chromium.org>,
-        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
         Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
-        Linux PM list <linux-pm@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>,
+        linux-pm@vger.kernel.org, netdev@vger.kernel.org,
         Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, Ben Chan <benchan@chromium.org>
-Subject: Re: [PATCH 2/2] lockdep: check that no locks held at freeze time
-Message-ID: <20130505091844.GC22239@gmail.com>
-References: <1367615050-3894-1-git-send-email-ccross@android.com>
- <1367615050-3894-2-git-send-email-ccross@android.com>
- <20130504130440.GC13770@amd.pavel.ucw.cz>
- <CAMbhsRScr+3Zk5Bi6390bGRbtE4oh2H-mHrGHS0wew5hdkivUg@mail.gmail.com>
- <20130504225715.GB24276@amd.pavel.ucw.cz>
- <CAMbhsRS_cF7kF-QZ9BMBUS3ytU0ukRCbC3D549HW_XOsQbEZhg@mail.gmail.com>
- <20130505000528.GA25454@amd.pavel.ucw.cz>
+        Tejun Heo <tj@kernel.org>, Len Brown <len.brown@intel.com>
+Subject: Re: [PATCH v3 02/16] freezer: add unsafe versions of freezable
+ helpers for CIFS
+Message-ID: <20130507122803.GA2585@elf.ucw.cz>
+References: <1367884221-20462-1-git-send-email-ccross@android.com>
+ <1367884221-20462-3-git-send-email-ccross@android.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130505000528.GA25454@amd.pavel.ucw.cz>
+In-Reply-To: <1367884221-20462-3-git-send-email-ccross@android.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-* Pavel Machek <pavel@ucw.cz> wrote:
-
-> Hi!
+On Mon 2013-05-06 16:50:07, Colin Cross wrote:
+> CIFS calls wait_event_freezekillable_unsafe with a VFS lock held,
+> which is unsafe and will cause lockdep warnings when 6aa9707
+> "lockdep: check that no locks held at freeze time" is reapplied
+> (it was reverted in dbf520a).  CIFS shouldn't be doing this, but
+> it has long-running syscalls that must hold a lock but also
+> shouldn't block suspend.  Until CIFS freeze handling is rewritten
+> to use a signal to exit out of the critical section, add a new
+> wait_event_freezekillable_unsafe helper that will not run the
+> lockdep test when 6aa9707 is reapplied, and call it from CIFS.
 > 
-> > >> >> --- a/kernel/exit.c
-> > >> >> +++ b/kernel/exit.c
-> > >> >> @@ -835,7 +835,7 @@ void do_exit(long code)
-> > >> >>       /*
-> > >> >>        * Make sure we are holding no locks:
-> > >> >>        */
-> > >> >> -     debug_check_no_locks_held(tsk);
-> > >> >> +     debug_check_no_locks_held();
-> > >> >
-> > >> > Is task guaranteed == current?
-> > >>
-> > >> Yes, the first line of do_exit is:
-> > >>         struct task_struct *tsk = current;
-> > >
-> > > Aha, I understand it now.
-> > >
-> > > Accessing current is slower than local variable. So your "new" code
-> > > will work but will be slower. Please revert this part.
-> > 
-> > Using current instead of passing in tsk was done at Andrew Morton's
-> > suggestion, and makes no difference from the freezer's perspective
-> > since it would have to use current to get the task to pass in, so I'm
-> > going to leave it as is.
+> In practice the likley result of holding the lock while freezing
+> is that a second task blocked on the lock will never freeze,
+> aborting suspend, but it is possible to manufacture a case using
+> the cgroup freezer, the lock, and the suspend freezer to create
+> a deadlock.  Silencing the lockdep warning here will allow
+> problems to be found in other drivers that may have a more
+> serious deadlock risk, and prevent new problems from being added.
 > 
-> Well, current is:
-> 
-> static inline struct thread_info *current_thread_info(void)
-> {
->         register unsigned long sp asm ("sp");
->         return (struct thread_info *)(sp & ~(THREAD_SIZE - 1));
-> }
+> Signed-off-by: Colin Cross <ccross@android.com>
 
-That's the old 32-bit x86 trick to compute 'current' from the kernel stack 
-pointer.
+Acked-by: Pavel Machek <pavel@ucw.cz>
 
-It can be done better - for example on platforms with optimized percpu 
-variables (x86-64) it looks like this:
-
-static inline struct thread_info *current_thread_info(void)
-{
-        struct thread_info *ti;
-        ti = (void *)(this_cpu_read_stable(kernel_stack) +
-                      KERNEL_STACK_OFFSET - THREAD_SIZE);
-        return ti;
-}
-
-Which turns the computation of 'current' into a single instruction. For 
-example, to access current->pid [which fields is at offset 0x2a4], we get:
-
-    3ad0:       65 48 8b 04 25 00 00    mov    %gs:0x0,%rax
-    3ad7:       00 00
-    3ad9:       8b 80 a4 02 00 00       mov    0x2a4(%rax),%eax
-
-I also agree with the removal of the 'tsk' parameter because the function 
-itself internally assumes that tsk == current.
-
-[ We could perhaps rename the function to 
-  debug_check_no_locks_held_curr(), to make it clear it operates on the 
-  current task. ]
-
-Thanks,
-
-	Ingo
+-- 
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
