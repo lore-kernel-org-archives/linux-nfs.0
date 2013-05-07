@@ -1,50 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f180.google.com ([209.85.212.180]:59626 "EHLO
-	mail-wi0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754337Ab3EKCmx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:42:53 -0400
-Received: by mail-wi0-f180.google.com with SMTP id h11so1205879wiv.13
-        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:42:51 -0700 (PDT)
-Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
-        by mx.google.com with ESMTPSA id u17sm1176053wiv.8.2013.05.10.19.42.50
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 10 May 2013 19:42:51 -0700 (PDT)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 05/38] Revert "FIXME pnfsd: gfs2 temp turn off DS stateid processing."
-Date: Sat, 11 May 2013 05:42:46 +0300
-Message-Id: <1368240166-31910-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <518B6377.3000207@tonian.com>
-References: <518B6377.3000207@tonian.com>
+Received: from mx1.redhat.com ([209.132.183.28]:49714 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756181Ab3EGKIG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 May 2013 06:08:06 -0400
+Date: Tue, 7 May 2013 06:07:30 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Colin Cross <ccross@android.com>
+Cc: linux-kernel@vger.kernel.org, Pavel Machek <pavel@ucw.cz>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-pm@vger.kernel.org, netdev@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Tejun Heo <tj@kernel.org>, Len Brown <len.brown@intel.com>
+Subject: Re: [PATCH v3 02/16] freezer: add unsafe versions of freezable
+ helpers for CIFS
+Message-ID: <20130507060730.03364687@tlielax.poochiereds.net>
+In-Reply-To: <1367884221-20462-3-git-send-email-ccross@android.com>
+References: <1367884221-20462-1-git-send-email-ccross@android.com>
+	<1367884221-20462-3-git-send-email-ccross@android.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This reverts commit 9f47c0b97353c433f6c83a1bc665ea76eb12e25f.
----
- fs/nfsd/nfs4state.c | 7 -------
- 1 file changed, 7 deletions(-)
+On Mon,  6 May 2013 16:50:07 -0700
+Colin Cross <ccross@android.com> wrote:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d2256d8..84fa1af 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3556,15 +3556,8 @@ __be32 nfsd4_lookup_stateid(stateid_t *stateid, unsigned char typemask,
- 		if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
- 			status = nfserr_bad_stateid;
- 		else
--#ifdef CONFIG_GFS2_FS_LOCKING_DLM
--		{
--			dprintk("%s Don't check DS stateid\n", __func__);
--			return 0;
--		}
--#else /* CONFIG_GFS2_FS_LOCKING_DLM */
- 			status = nfs4_preprocess_pnfs_ds_stateid(current_fh,
- 								 stateid);
--#endif /* CONFIG_GFS2_FS_LOCKING_DLM */
- 		goto out;
- 	}
- #endif /* CONFIG_PNFSD */
+> CIFS calls wait_event_freezekillable_unsafe with a VFS lock held,
+> which is unsafe and will cause lockdep warnings when 6aa9707
+> "lockdep: check that no locks held at freeze time" is reapplied
+> (it was reverted in dbf520a).  CIFS shouldn't be doing this, but
+> it has long-running syscalls that must hold a lock but also
+> shouldn't block suspend.  Until CIFS freeze handling is rewritten
+> to use a signal to exit out of the critical section, add a new
+> wait_event_freezekillable_unsafe helper that will not run the
+> lockdep test when 6aa9707 is reapplied, and call it from CIFS.
+> 
+> In practice the likley result of holding the lock while freezing
+> is that a second task blocked on the lock will never freeze,
+> aborting suspend, but it is possible to manufacture a case using
+> the cgroup freezer, the lock, and the suspend freezer to create
+> a deadlock.  Silencing the lockdep warning here will allow
+> problems to be found in other drivers that may have a more
+> serious deadlock risk, and prevent new problems from being added.
+> 
+> Signed-off-by: Colin Cross <ccross@android.com>
+> ---
+>  include/linux/freezer.h | 13 +++++++++++++
+>  1 file changed, 13 insertions(+)
+> 
+> diff --git a/include/linux/freezer.h b/include/linux/freezer.h
+> index 5b31e21c..d3c038e 100644
+> --- a/include/linux/freezer.h
+> +++ b/include/linux/freezer.h
+> @@ -212,6 +212,16 @@ static inline bool freezer_should_skip(struct task_struct *p)
+>  	__retval;							\
+>  })
+>  
+> +/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
+> +#define wait_event_freezekillable_unsafe(wq, condition)			\
+> +({									\
+> +	int __retval;							\
+> +	freezer_do_not_count();						\
+> +	__retval = wait_event_killable(wq, (condition));		\
+> +	freezer_count_unsafe();						\
+> +	__retval;							\
+> +})
+> +
+>  #define wait_event_freezable(wq, condition)				\
+>  ({									\
+>  	int __retval;							\
+> @@ -277,6 +287,9 @@ static inline void set_freezable(void) {}
+>  #define wait_event_freezekillable(wq, condition)		\
+>  		wait_event_killable(wq, condition)
+>  
+> +#define wait_event_freezekillable_unsafe(wq, condition)			\
+> +		wait_event_killable(wq, condition)
+> +
+>  #endif /* !CONFIG_FREEZER */
+>  
+>  #endif	/* FREEZER_H_INCLUDED */
+
+I think you also need to convert wait_for_response in the cifs code to
+use this helper. While it's a pretty straightforward change, you should
+probably cc linux-cifs@vger.kernel.org as well.
+
 -- 
-1.7.11.7
-
+Jeff Layton <jlayton@redhat.com>
