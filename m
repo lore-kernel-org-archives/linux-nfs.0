@@ -1,238 +1,155 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:1105 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:15014 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757894Ab3ENVQH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 May 2013 17:16:07 -0400
-From: Zach Brown <zab@redhat.com>
-To: "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [RFC v0 3/4] btrfs: add .copy_range file operation
-Date: Tue, 14 May 2013 14:15:25 -0700
-Message-Id: <1368566126-17610-4-git-send-email-zab@redhat.com>
-In-Reply-To: <1368566126-17610-1-git-send-email-zab@redhat.com>
-References: <1368566126-17610-1-git-send-email-zab@redhat.com>
+	id S1757596Ab3EGVtx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 May 2013 17:49:53 -0400
+Date: Tue, 7 May 2013 17:49:50 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Simo Sorce <simo@redhat.com>
+Cc: Dan Carpenter <dan.carpenter@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: SUNRPC: Add RPC based upcall mechanism for RPCGSS auth
+Message-ID: <20130507214950.GD27004@pad.fieldses.org>
+References: <20130506154435.GA14732@elgon.mountain>
+ <1367855693.2976.205.camel@willson.li.ssimo.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1367855693.2976.205.camel@willson.li.ssimo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This rearranges the existing COPY_RANGE ioctl implementation so that the
-.copy_range file operation can call the core loop that copies file data
-extent items.
+On Mon, May 06, 2013 at 11:54:53AM -0400, Simo Sorce wrote:
+> On Mon, 2013-05-06 at 18:44 +0300, Dan Carpenter wrote:
+> > Hello Simo Sorce,
+> > 
+> > The patch 1d658336b05f: "SUNRPC: Add RPC based upcall mechanism for 
+> > RPCGSS auth" from May 25, 2012, leads to the following warning:
+> > "net/sunrpc/auth_gss/gss_rpc_xdr.c:30 gssx_check_pointer()
+> > 	 warn: signedness bug returning '(-28)'"
+> > 
+> > net/sunrpc/auth_gss/gss_rpc_xdr.c
+> >     24  static bool gssx_check_pointer(struct xdr_stream *xdr)
+> >     25  {
+> >     26          __be32 *p;
+> >     27  
+> >     28          p = xdr_reserve_space(xdr, 4);
+> >     29          if (unlikely(p == NULL))
+> >     30                  return -ENOSPC;
+> >                                ^^^^^^^
+> > This is casted implicitly to "true".  Functions named "check" are a bad
+> > idea anyways because it's not clear what the return value will be.  It's
+> > better to use "gssx_pointer_ok()" or "valid" where obviously true means
+> > that the pointer is ok.
+> > 
+> >     31          return *p?true:false;
+> > 
+> > We just reserved "*p" so doesn't this point to uninitialized data?  It
+> > points to a __be32.  So we're not really checking a pointer we're
+> > checking that __be32 is non-zero.
+> > 
+> >     32  }
+> > 
+> > regards,
+> > dan carpenter
+> 
+> Dan,
+> thanks a lot for pointing this one out.
 
-The extent copying loop is lifted up into its own function.  It retains
-the core btrfs error checks that should be shared between the
-CLONE_RANGE ioctl and copy_range syscall.
+Yes, thanks!
 
-Signed-off-by: Zach Brown <zab@redhat.com>
----
- fs/btrfs/ctree.h |   3 ++
- fs/btrfs/file.c  |   1 +
- fs/btrfs/ioctl.c | 122 +++++++++++++++++++++++++++++++++----------------------
- 3 files changed, 77 insertions(+), 49 deletions(-)
+> Bruce,
+> we should fix it in 3.10 if we can make it.
 
-diff --git a/fs/btrfs/ctree.h b/fs/btrfs/ctree.h
-index 63c328a..bf9555c 100644
---- a/fs/btrfs/ctree.h
-+++ b/fs/btrfs/ctree.h
-@@ -3612,6 +3612,9 @@ int btrfs_dirty_pages(struct btrfs_root *root, struct inode *inode,
- 		      struct page **pages, size_t num_pages,
- 		      loff_t pos, size_t write_bytes,
- 		      struct extent_state **cached);
-+ssize_t btrfs_copy_range(struct file *file_in, loff_t pos_in,
-+			 struct file *file_out, loff_t pos_out,
-+			 size_t count);
+Agreed.  Probably the following attempt to decode will fail with an
+-ENOSPC anyway, but this is ugly at least.
+
+> probably easiest way is to kill lines 29/30 and do:
+> return (p && *p) ? true : false;
+> 
+> It would be also ok to change the name to gssx_pointer_is_valid() I
+> guess.
+
+It still seems a little yuch to lump a decoding failure with a succesful
+decode of a particular value....
+
+How about just killing gssx_check_pointer, as follows.  Admittedly it's
+a bit verbose, but it's straightforward.  Any objections?
+
+--b.
+
+commit fb43f11c666a4f99f23f0be4fa528dcd288c0da2
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Tue May 7 17:45:20 2013 -0400
+
+    SUNRPC: fix decoding of optional gss-proxy xdr fields
+    
+    The current code works, but sort of by accident: it obviously didn't
+    intend the error return to be interpreted as "true".
+    
+    Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+index a1e1b1a..357f613 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
++++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+@@ -21,16 +21,6 @@
+ #include <linux/sunrpc/svcauth.h>
+ #include "gss_rpc_xdr.h"
  
- /* tree-defrag.c */
- int btrfs_defrag_leaves(struct btrfs_trans_handle *trans,
-diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
-index 4205ba7..d75cc07 100644
---- a/fs/btrfs/file.c
-+++ b/fs/btrfs/file.c
-@@ -2460,6 +2460,7 @@ const struct file_operations btrfs_file_operations = {
- #ifdef CONFIG_COMPAT
- 	.compat_ioctl	= btrfs_ioctl,
- #endif
-+	.copy_range	= btrfs_copy_range,
- };
- 
- void btrfs_auto_defrag_exit(void)
-diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
-index 0de4a2f..ac035d8 100644
---- a/fs/btrfs/ioctl.c
-+++ b/fs/btrfs/ioctl.c
-@@ -2463,13 +2463,10 @@ out:
- 	return ret;
- }
- 
--static noinline long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
--				       u64 off, u64 olen, u64 destoff)
-+static noinline int btrfs_clone_extents(struct inode *inode, struct inode *src,
-+					u64 off, u64 olen, u64 destoff)
+-static bool gssx_check_pointer(struct xdr_stream *xdr)
+-{
+-	__be32 *p;
+-
+-	p = xdr_reserve_space(xdr, 4);
+-	if (unlikely(p == NULL))
+-		return -ENOSPC;
+-	return *p?true:false;
+-}
+-
+ static int gssx_enc_bool(struct xdr_stream *xdr, int v)
  {
--	struct inode *inode = file_inode(file);
- 	struct btrfs_root *root = BTRFS_I(inode)->root;
--	struct fd src_file;
--	struct inode *src;
- 	struct btrfs_trans_handle *trans;
- 	struct btrfs_path *path;
- 	struct extent_buffer *leaf;
-@@ -2491,59 +2488,22 @@ static noinline long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
- 	 *   they don't overlap)?
- 	 */
+ 	__be32 *p;
+@@ -802,6 +792,7 @@ int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
+ 				struct xdr_stream *xdr,
+ 				struct gssx_res_accept_sec_context *res)
+ {
++	u32 value_follows;
+ 	int err;
  
--	/* the destination must be opened for writing */
--	if (!(file->f_mode & FMODE_WRITE) || (file->f_flags & O_APPEND))
--		return -EINVAL;
--
- 	if (btrfs_root_readonly(root))
- 		return -EROFS;
+ 	/* res->status */
+@@ -810,7 +801,10 @@ int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
+ 		return err;
  
--	ret = mnt_want_write_file(file);
--	if (ret)
--		return ret;
--
--	src_file = fdget(srcfd);
--	if (!src_file.file) {
--		ret = -EBADF;
--		goto out_drop_write;
--	}
--
--	ret = -EXDEV;
--	if (src_file.file->f_path.mnt != file->f_path.mnt)
--		goto out_fput;
--
--	src = file_inode(src_file.file);
--
--	ret = -EINVAL;
--	if (src == inode)
--		goto out_fput;
--
--	/* the src must be open for reading */
--	if (!(src_file.file->f_mode & FMODE_READ))
--		goto out_fput;
--
- 	/* don't make the dst file partly checksummed */
- 	if ((BTRFS_I(src)->flags & BTRFS_INODE_NODATASUM) !=
- 	    (BTRFS_I(inode)->flags & BTRFS_INODE_NODATASUM))
--		goto out_fput;
--
--	ret = -EISDIR;
--	if (S_ISDIR(src->i_mode) || S_ISDIR(inode->i_mode))
--		goto out_fput;
--
--	ret = -EXDEV;
--	if (src->i_sb != inode->i_sb)
--		goto out_fput;
-+		return -EINVAL;
- 
--	ret = -ENOMEM;
- 	buf = vmalloc(btrfs_level_size(root, 0));
- 	if (!buf)
--		goto out_fput;
-+		return -ENOMEM;
- 
- 	path = btrfs_alloc_path();
- 	if (!path) {
- 		vfree(buf);
--		goto out_fput;
-+		return -ENOMEM;
- 	}
- 	path->reada = 2;
- 
-@@ -2555,10 +2515,7 @@ static noinline long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
- 		mutex_lock_nested(&inode->i_mutex, I_MUTEX_CHILD);
+ 	/* res->context_handle */
+-	if (gssx_check_pointer(xdr)) {
++	err = gssx_dec_bool(xdr, &value_follows);
++	if (err)
++		return err;
++	if (value_follows) {
+ 		err = gssx_dec_ctx(xdr, res->context_handle);
+ 		if (err)
+ 			return err;
+@@ -819,7 +813,10 @@ int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
  	}
  
--	/* determine range to clone */
--	ret = -EINVAL;
--	if (off + len > src->i_size || off + len < off)
--		goto out_unlock;
-+	/* CLONE_RANGE can have len == 0, copy_range won't */
- 	if (len == 0)
- 		olen = len = src->i_size - off;
- 	/* if we extend to eof, continue to block boundary */
-@@ -2566,6 +2523,7 @@ static noinline long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
- 		len = ALIGN(src->i_size, bs) - off;
+ 	/* res->output_token */
+-	if (gssx_check_pointer(xdr)) {
++	err = gssx_dec_bool(xdr, &value_follows);
++	if (err)
++		return err;
++	if (value_follows) {
+ 		err = gssx_dec_buffer(xdr, res->output_token);
+ 		if (err)
+ 			return err;
+@@ -828,7 +825,10 @@ int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
+ 	}
  
- 	/* verify the end result is block aligned */
-+	ret = -EINVAL;
- 	if (!IS_ALIGNED(off, bs) || !IS_ALIGNED(off + len, bs) ||
- 	    !IS_ALIGNED(destoff, bs))
- 		goto out_unlock;
-@@ -2849,6 +2807,72 @@ out_unlock:
- 	mutex_unlock(&inode->i_mutex);
- 	vfree(buf);
- 	btrfs_free_path(path);
-+	return ret;
-+}
-+
-+ssize_t btrfs_copy_range(struct file *file_in, loff_t pos_in,
-+			 struct file *file_out, loff_t pos_out,
-+			 size_t count)
-+{
-+	ssize_t ret;
-+
-+	ret = btrfs_clone_extents(file_inode(file_out), file_inode(file_in),
-+				  pos_in, count, pos_out);
-+	if (ret == 0)
-+		ret = count;
-+	return ret;
-+}
-+
-+static noinline long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
-+				       u64 off, u64 len, u64 destoff)
-+{
-+	struct inode *inode = file_inode(file);
-+	struct fd src_file;
-+	struct inode *src;
-+	long ret;
-+
-+	/* the destination must be opened for writing */
-+	if (!(file->f_mode & FMODE_WRITE) || (file->f_flags & O_APPEND))
-+		return -EINVAL;
-+
-+	ret = mnt_want_write_file(file);
-+	if (ret)
-+		return ret;
-+
-+	src_file = fdget(srcfd);
-+	if (!src_file.file) {
-+		ret = -EBADF;
-+		goto out_drop_write;
-+	}
-+
-+	ret = -EXDEV;
-+	if (src_file.file->f_path.mnt != file->f_path.mnt)
-+		goto out_fput;
-+
-+	src = file_inode(src_file.file);
-+
-+	ret = -EINVAL;
-+	if (src == inode)
-+		goto out_fput;
-+
-+	/* the src must be open for reading */
-+	if (!(src_file.file->f_mode & FMODE_READ))
-+		goto out_fput;
-+
-+	ret = -EISDIR;
-+	if (S_ISDIR(src->i_mode) || S_ISDIR(inode->i_mode))
-+		goto out_fput;
-+
-+	ret = -EXDEV;
-+	if (src->i_sb != inode->i_sb)
-+		goto out_fput;
-+
-+	ret = -EINVAL;
-+	if (off + len > src->i_size || off + len < off)
-+		goto out_fput;
-+
-+	ret = btrfs_clone_extents(inode, src, off, len, destoff);
-+
- out_fput:
- 	fdput(src_file);
- out_drop_write:
--- 
-1.7.11.7
-
+ 	/* res->delegated_cred_handle */
+-	if (gssx_check_pointer(xdr)) {
++	err = gssx_dec_bool(xdr, &value_follows);
++	if (err)
++		return err;
++	if (value_follows) {
+ 		/* we do not support upcall servers sending this data. */
+ 		return -EINVAL;
+ 	}
