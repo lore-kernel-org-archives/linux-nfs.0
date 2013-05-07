@@ -1,70 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from youngberry.canonical.com ([91.189.89.112]:60065 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753181Ab3EIPNy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 May 2013 11:13:54 -0400
-Date: Thu, 9 May 2013 10:13:33 -0500
-From: Serge Hallyn <serge.hallyn@ubuntu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Serge Hallyn <serge.hallyn@canonical.com>,
-        linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] security: cap_inode_getsecctx returning garbage
-Message-ID: <20130509151333.GA2211@tp>
-References: <20130509014329.GH23747@fieldses.org>
- <20130509054926.GA31134@tp>
- <20130509140820.GB9316@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:17312 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756820Ab3EGP7w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 May 2013 11:59:52 -0400
+Message-ID: <518924F3.5090208@RedHat.com>
+Date: Tue, 07 May 2013 11:59:47 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130509140820.GB9316@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+CC: Simo Sorce <simo@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Avoid DNS reverse resolution for server names (take 3)
+References: <1366380998-2581-1-git-send-email-steved@redhat.com> <20130502131332.5c0ce2b0@notabene.brown> <20130502165302.593ec4b6@notabene.brown>
+In-Reply-To: <20130502165302.593ec4b6@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Quoting J. Bruce Fields (bfields@fieldses.org):
-> On Thu, May 09, 2013 at 12:49:26AM -0500, Serge Hallyn wrote:
-> > Quoting J. Bruce Fields (bfields@fieldses.org):
-> > > From: "J. Bruce Fields" <bfields@redhat.com>
-> > > 
-> > > We shouldn't be returning success from this function without also
-> > > filling in the return values ctx and ctxlen.
-> > > 
-> > > Note currently this doesn't appear to cause bugs since the only
-> > > inode_getsecctx caller I can find is fs/sysfs/inode.c, which only calls
-> > > this if security_inode_setsecurity succeeds.  Assuming
-> > > security_inode_setsecurity is set to cap_inode_setsecurity whenever
-> > > inode_getsecctx is set to cap_inode_getsecctx, this function can never
-> > > actually called.
-> > > 
-> > > So I noticed this only because the server labeled NFS patches add a real
-> > > caller.
-> > > 
-> > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > 
-> > Thanks, the comment in include/linux/security.h doesn't mention the
-> > return value at all, but based on the other implementations this looks
-> > right.
-> > 
-> > Acked-by: Serge E. Hallyn <serge.hallyn@ubuntu.com>
+
+
+On 02/05/13 02:53, NeilBrown wrote:
+> On Thu, 2 May 2013 13:13:32 +1000 NeilBrown <neilb@suse.de> wrote:
 > 
-> Thanks!  Hm, would something like this help clarify?:
 > 
-> @@ -1412,7 +1412,8 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
->   * 	@ctxlen contains the length of @ctx.
->   *
->   * @inode_getsecctx:
-> - *	Returns a string containing all relevant security context information
-> + *	On success, fills out @ctx and @ctxlen with the security context
-> + *	for the given @inode.
-
-...  and returns 0.
-
-That would be great, thanks!
-
-Acked-by: Serge E. Hallyn <serge.hallyn@ubuntu.com>
-
->   *
->   * 	@inode we wish to get the security context of.
->   *	@ctx is a pointer in which to place the allocated security context.
+>> Possible patch below.
 > 
-> --b.
+> BTW if you end up applying that without requiring a second revision, please
+> add
+> 
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -67,7 +67,6 @@
+>  #include <errno.h>
+>  #include <gssapi/gssapi.h>
+>  #include <netdb.h>
+> -#include <ctype.h>
+>  
+>  #include "gssd.h"
+>  #include "err_util.h"
+> 
+> 
+> original patch added this include, but doesn't need it.
+Fixed... 
+
+steved.
+
+> 
+> NeilBrown
+> 
