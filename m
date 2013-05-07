@@ -1,135 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx5.framestore.com ([193.203.83.15]:49354 "EHLO
-	mx5.framestore.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751813Ab3EOJ1U (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 05:27:20 -0400
-Date: Wed, 15 May 2013 10:23:17 +0100 (BST)
-From: James Vanns <james.vanns@framestore.com>
-Reply-To: james.vanns@framestore.com
-To: Andreas Dilger <andreas.dilger@intel.com>
-Cc: lustre-devel@lists.lustre.org, linux-nfs@vger.kernel.org
-Message-ID: <2121037782.19846759.1368609797839.JavaMail.root@framestore.com>
-In-Reply-To: <CDB80F65.32491%andreas.dilger@intel.com>
-Subject: Re: [Lustre-devel] Export over NFS sets rsize to 1MB?
+Received: from mx1.redhat.com ([209.132.183.28]:30174 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756958Ab3EGPUv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 May 2013 11:20:51 -0400
+Message-ID: <51891BD1.2050402@RedHat.com>
+Date: Tue, 07 May 2013 11:20:49 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+To: NeilBrown <neilb@suse.de>
+CC: Simo Sorce <simo@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Avoid DNS reverse resolution for server names (take 3)
+References: <1366380998-2581-1-git-send-email-steved@redhat.com> <20130502131332.5c0ce2b0@notabene.brown> <20130502165302.593ec4b6@notabene.brown>
+In-Reply-To: <20130502165302.593ec4b6@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks for the help Andreas - I too asked the NFS developers (on the list)
-and they came back with /proc/fs/nfsd/max_block_size and nfsd_get_default_max_blksize()
-in fs/nfsd/nfssvc.c.
-
-For what it's worth, this is kernel 2.6.32 and Lustre 1.8.8.
-
-Reckon I've got what I asked for now ;)
-
-Jim
-
------ Original Message -----
-From: "Andreas Dilger" <andreas.dilger@intel.com>
-To: "james vanns" <james.vanns@framestore.com>
-Cc: lustre-devel@lists.lustre.org, linux-nfs@vger.kernel.org
-Sent: Tuesday, 14 May, 2013 11:06:08 PM
-Subject: Re: [Lustre-devel] Export over NFS sets rsize to 1MB?
-
-On 2013/14/05 9:07 AM, "James Vanns" <james.vanns@framestore.com> wrote:
->> On 2013/13/05 7:19 AM, "James Vanns" <james.vanns@framestore.com>
->> wrote:
->> >Hello dev list. Apologies for a post to perhaps the wrong group but
->> >I'm having a bit of difficulty locating any document or wiki describing
->> >how and/or where the preferred read and write block size for NFS
->> >exports of a Lustre filesystem are set to 1MB?
->> 
->> 1MB is the RPC size and "optimal IO size" for Lustre.  This would
->> normally be exported to applications via the stat(2) "st_blksize" field,
->> though it is typically 2MB (2x the RPC size in order to allow some
->>pipelining).  I suspect this is where NFS is getting the value, since
->>it is not passed up via the statfs(2) call.
->
->Hmm. OK. I've confirmed it isn't from any struct stat{} attribute
->(st_blksize
->is still just 4k) but yes, our RPC size is 1MB. It isn't coming from
->statfs()
->or statvfs() either.
-
-I've CC'd the Linux NFS mailing list, since I don't know enough about the
-NFS client/server code to decide where this is coming from either.
-
-James, what kernel version do you have on the Lustre clients (NFS servers)
-and on the NFS clients?
-
->> >Basically we have two Lustre filesystems exported over NFSv3. Our
->> >lustre block size is 4k and the max r/w size is 1MB. Without any
->> >special rsize/wsize options set for the export the default one
->> >suggested to clients (MOUNT->FSINFO RPC) as the preferred
->> >size is set to 1MB. How does Lustre figure this out? Other
->> >non-Lustre exports are generally much less; 4, 8, 16 or 32 kilobytes.
->> 
->> Taking a quick look at the code, it looks like NFS TCP connections
->> all have a maximum max_payload of 1MB, but this is limited in a number
->>of places in the code by the actual read size, and other maxima (for
->> which I can't easily find the source value).
->
->Yes it seems that 1MB is the maximum but also the optimal or preferred.
->
->> >Any hints would be appreciated. Documentation or code paths welcome
->> >as are annotated /proc locations.
->> 
->> To clarify from your question - is this large blocksize causing a
->> performance problem?  I recall some applications having problems with
->> stdio "fread()" and friends reading too much data into their buffers
->> if they are doing random IO.  Ideally stdio shouldn't be reading more
->> than it needs when doing random IO.
->
->We're experiencing what appears to be (as of yet I have no hard evidence)
->contention due to connection 'hogging' for these large reads. We have a
->set
->of 4 NFS servers in a DNS round-robin all configured to serve up our
->Lustre
->filesystem across 64 knfsds (per host). It's possible that we simply don't
->have enough hosts (or knfsds) for the #clients because many of the clients
->will be reading large amounts of data (1MB at a time) and therefore
->preventing
->other queued clients from getting a look-in. Of course this appears to
->the user
->as just a very slow experience.
->
->At the moment, I'm just trying to understand where this 1MB is coming
->from!
->The RPC transport size (I forgot to confirm - yes, we're serving NFS over
->TCP) is 1MB for all other 'regular' NFS servers yet their r/wsize are
->quite different.
->
->Thanks for the feedback and sorry I can't be more accurate at the moment
->:\
-
-It should also be possible to explicitly mount the clients with rsize=65536
-and wsize=65536, but it would be better to understand the cause of this.
-
->> At one time in the past, we derived the st_blksize from the file
->> stripe_size, but this caused problems with the NFS "Connectathon" or
->> similar because the block size would change from when the file was
->>first opened.  It is currently limited by LL_MAX_BLKSIZE_BITS for all
->> files, but I wouldn't recommend reducing this directly, since it would
->> also affect "cp" and others that also depend on st_blksize for the
->> "optimal IO size".  It would be possible to reintroduce the per-file
->> tunable in ll_update_inode() I think.
-
-Cheers, Andreas
--- 
-Andreas Dilger
-
-Lustre Software Architect
-Intel High Performance Data Division
 
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On 02/05/13 02:53, NeilBrown wrote:
+> On Thu, 2 May 2013 13:13:32 +1000 NeilBrown <neilb@suse.de> wrote:
+> 
+> 
+>> Possible patch below.
+> 
+> BTW if you end up applying that without requiring a second revision, please
+> add
+> 
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -67,7 +67,6 @@
+>  #include <errno.h>
+>  #include <gssapi/gssapi.h>
+>  #include <netdb.h>
+> -#include <ctype.h>
+>  
+>  #include "gssd.h"
+>  #include "err_util.h"
+> 
+> 
+> original patch added this include, but doesn't need it.
+I'll remove it when I apply your other patch that 
+fixes is_subdirectory...
 
--- 
-Jim Vanns
-Senior Software Developer
-Framestore
+thanks!
+
+steved.
+
