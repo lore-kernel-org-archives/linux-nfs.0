@@ -1,199 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:31422 "EHLO mx1.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:33588 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755038Ab3EFPfs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 11:35:48 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "<chuck.lever@oracle.com>" <chuck.lever@oracle.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv3: match sec= flavor against server list
-Date: Mon, 6 May 2013 15:35:46 +0000
-Message-ID: <57B13427-1CA1-455A-AA41-103289AC6C77@netapp.com>
-References: <1367846874-1234-1-git-send-email-dros@netapp.com>
- <20130506153214.GE15476@fieldses.org>
-In-Reply-To: <20130506153214.GE15476@fieldses.org>
-Content-Type: text/plain; charset="Windows-1252"
+	id S1751031Ab3EHSne convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 May 2013 14:43:34 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        "Linux FS devel list" <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 09/17] NFSv4: Introduce new label structure
+Date: Wed, 8 May 2013 18:06:24 +0000
+Message-ID: <1368036382.5978.24.camel@leira.trondhjem.org>
+References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
+	  <1367240239-19326-10-git-send-email-SteveD@redhat.com>
+	 <1367434764.4189.33.camel@leira.trondhjem.org>
+	 <518A8C3D.9000407@RedHat.com>
+In-Reply-To: <518A8C3D.9000407@RedHat.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, 2013-05-08 at 13:32 -0400, Steve Dickson wrote:
+> On 01/05/13 14:59, Myklebust, Trond wrote:
+> >> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> >> > index 9f2dba3..4d2fdf6 100644
+> >> > --- a/include/linux/nfs_xdr.h
+> >> > +++ b/include/linux/nfs_xdr.h
+> >> > @@ -351,6 +351,7 @@ struct nfs_openargs {
+> >> >  	const u32 *		bitmask;
+> >> >  	const u32 *		open_bitmap;
+> >> >  	__u32			claim;
+> >> > +	const struct nfs4_label *label;
+> >> >  };
+> >> >  
+> >> >  struct nfs_openres {
+> >> > @@ -360,6 +361,7 @@ struct nfs_openres {
+> >> >  	struct nfs4_change_info	cinfo;
+> >> >  	__u32                   rflags;
+> >> >  	struct nfs_fattr *      f_attr;
+> >> > +	struct nfs4_label	*f_label;
+> >> >  	struct nfs_seqid *	seqid;
+> >> >  	const struct nfs_server *server;
+> >> >  	fmode_t			delegation_type;
+> >> > @@ -404,6 +406,7 @@ struct nfs_closeres {
+> >> >  	struct nfs4_sequence_res	seq_res;
+> >> >  	nfs4_stateid            stateid;
+> >> >  	struct nfs_fattr *	fattr;
+> >> > +	struct nfs4_label	*label;
+> >> >  	struct nfs_seqid *	seqid;
+> >> >  	const struct nfs_server *server;
+> >> >  };
+> >> > @@ -477,6 +480,7 @@ struct nfs4_delegreturnargs {
+> >> >  struct nfs4_delegreturnres {
+> >> >  	struct nfs4_sequence_res	seq_res;
+> >> >  	struct nfs_fattr * fattr;
+> >> > +	struct nfs4_label	*label;
+> >> >  	const struct nfs_server *server;
+> >> >  };
+> >> >  
+> >> > @@ -497,6 +501,7 @@ struct nfs_readargs {
+> >> >  struct nfs_readres {
+> >> >  	struct nfs4_sequence_res	seq_res;
+> >> >  	struct nfs_fattr *	fattr;
+> >> > +	struct nfs4_label	*label;
+> > Why do we need to check labels on close, delegreturn, read, remove,
+> > rename, etc? 
+> All of these have GETATTR in the compound they send out. So I'm
+> assuming to keep consistence, the label bit needs to be set 
+> on all *most* of the GEATTRs. Ones that actually nfs_refresh_inode()
+> the inode.
 
-On May 6, 2013, at 11:32 AM, "J. Bruce Fields" <bfields@fieldses.org>
- wrote:
+We need to distinguish between cache consistency GETATTRs, and metadata
+refresh GETATTRs.
 
-> On Mon, May 06, 2013 at 09:27:54AM -0400, Weston Andros Adamson wrote:
->> Older clients match the 'sec=' mount option flavor against the server's
->> flavor list (if available) and return EPERM if the specified flavor is not
->> found. Recent changes would skip this step and allow the vfs mount even
->> though no operations will succeed.
->> 
->> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->> ---
->> 
->> Hey Chuck,
->> 
->> This fixes a regression that was introduced with the recent nfs_select_flavor 
->> changes - I'm pretty sure we want to match the specified flavor instead of just
->> using it.
->> 
->> Example of the regression:
->> 
->> the server's /etc/exports:
->> 
->> /export/krb5      *(sec=krb5,sec=none,rw,no_root_squash)
->> 
->> old client behavior:
->> 
->> $ uname -a
->> Linux one.apikia.fake 3.8.8-202.fc18.x86_64 #1 SMP Wed Apr 17 23:25:17 UTC 2013 x86_64 x86_64 x86_64 GNU/Linux
->> $ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
->> mount.nfs: timeout set for Sun May  5 17:32:04 2013
->> mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
->> mount.nfs: prog 100003, trying vers=3, prot=6
->> mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
->> mount.nfs: prog 100005, trying vers=3, prot=17
->> mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
->> mount.nfs: mount(2): Permission denied
->> mount.nfs: access denied by server while mounting zero:/export/krb5
->> 
->> recently changed behavior:
->> 
->> $ uname -a
->> Linux one.apikia.fake 3.9.0-testing+ #2 SMP Fri May 3 20:29:32 EDT 2013 x86_64 x86_64 x86_64 GNU/Linux
->> $ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
->> mount.nfs: timeout set for Sun May  5 17:37:17 2013
->> mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
->> mount.nfs: prog 100003, trying vers=3, prot=6
->> mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
->> mount.nfs: prog 100005, trying vers=3, prot=17
->> mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
->> $ ls /mnt
->> ls: cannot open directory /mnt: Permission denied
->> $ sudo ls /mnt
->> ls: cannot open directory /mnt: Permission denied
->> $ sudo df /mnt
->> df: ‘/mnt’: Permission denied
->> df: no file systems processed
->> $ sudo umount /mnt
->> $
->> 
->> I also made an attempt to support "AUTH_NULL means the server will ignore the
->> cred, so just use the specified flavor" behavior from much older kernels, but 
->> I'm not sure if we want this logic.
->> 
->> I'd actually prefer getting rid of this AUTH_NULL logic, it's just that some 
->> older clients (RHEL 5, etc) would succeed in mounting when sec=sys specified,
->> server list = [AUTH_NULL] (the client ends up sending AUTH_UNIX creds that are
->> ignored by the server), while newer kernels do not. The workaround in newer
->> kernels is to specify sec=none.
+Cache consistency GETATTRs are basically all about making sure that
+we're keeping the change_attribute (and size) up to date so that we know
+whether or not the data and metadata caches are correct.
+
+Metadata refresh GETATTRs are sent if we know or suspect that our cached
+metadata is incorrect, and we need to _use_ some of that cached data (in
+a stat() syscall, or as part of a path lookup or an open()).
+
+> > Do any of those operations cause our cached labels to change?
+> Not the label but the inode. The bit is set in ACCESS, LOOKUP, 
+> LINK, OPEN, CREAT, SETATTR which all clearly update the inode.
 > 
-> Nit: the above examples would actually be really useful, for example, to
-> a distribution maintainer trying to figure out whether this patch would
-> solve a given user problem.
-> 
-> Could you include them in the change log?
+> So I guess my question is if the bit is not set in any of these 
+> ops how do we know if the label has changed? Should label changes
+> be synchronized with inode updates? 
 
-Yes, great suggestion. If/when we agree on this behavior, I'll repost.
+I know that Bruce doesn't like FATTR4_CHANGE_SEC_LABEL, but that is the
+only option I can see for implementing a cache consistency model for
+labels. Without it, the choices are:
 
--dros
+1) always fetch the label as part of every COMPOUND.
+2) assume the label never changes on the server.
 
-> 
-> --b.
-> 
->> 
->> Thoughts?
->> 
->> -dros
->> 
->> fs/nfs/super.c | 39 ++++++++++++++++++++++++++++++++-------
->> 1 file changed, 32 insertions(+), 7 deletions(-)
->> 
->> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->> index eb494f6..6476b5d 100644
->> --- a/fs/nfs/super.c
->> +++ b/fs/nfs/super.c
->> @@ -1611,14 +1611,12 @@ out_security_failure:
->>  * Select a security flavor for this mount.  The selected flavor
->>  * is planted in args->auth_flavors[0].
->>  */
->> -static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
->> +static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
->> 			      struct nfs_mount_request *request)
->> {
->> 	unsigned int i, count = *(request->auth_flav_len);
->> 	rpc_authflavor_t flavor;
->> -
->> -	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR)
->> -		goto out;
->> +	bool auth_null_seen = false;
->> 
->> 	/*
->> 	 * The NFSv2 MNT operation does not return a flavor list.
->> @@ -1634,6 +1632,26 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
->> 		goto out_default;
->> 
->> 	/*
->> +	 * If the sec= mount option is used, the flavor must be in the list
->> +	 * returned by the server.
->> +	 *
->> +	 * One exception is when the server's flavor list includes AUTH_NULL:
->> +	 * Some servers implement AUTH_NULL by completely ignoring the rpc
->> +	 * cred, so the client can use any flavor.
->> +	 */
->> +	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR) {
->> +		for (i = 0; i < count; i++) {
->> +			if (args->auth_flavors[0] == request->auth_flavs[i])
->> +				goto out;
->> +			if (request->auth_flavs[i] == RPC_AUTH_NULL)
->> +				auth_null_seen = true;
->> +		}
->> +		if (auth_null_seen)
->> +			goto out;
->> +		goto out_nomatch;
->> +	}
->> +
->> +	/*
->> 	 * RFC 2623, section 2.7 suggests we SHOULD prefer the
->> 	 * flavor listed first.  However, some servers list
->> 	 * AUTH_NULL first.  Avoid ever choosing AUTH_NULL.
->> @@ -1654,11 +1672,19 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
->> 	}
->> 
->> out_default:
->> -	flavor = RPC_AUTH_UNIX;
->> +	/* use default if flavor not already set */
->> +	flavor = (args->auth_flavors[0] == RPC_AUTH_MAXFLAVOR) ?
->> +		RPC_AUTH_UNIX : args->auth_flavors[0];
->> out_set:
->> 	args->auth_flavors[0] = flavor;
->> out:
->> 	dfprintk(MOUNT, "NFS: using auth flavor %d\n", args->auth_flavors[0]);
->> +	return 0;
->> +
->> +out_nomatch:
->> +	dfprintk(MOUNT, "NFS: auth flavor %d not supported by server\n",
->> +		args->auth_flavors[0]);
->> +	return -EPERM;
->> }
->> 
->> /*
->> @@ -1721,8 +1747,7 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
->> 		return status;
->> 	}
->> 
->> -	nfs_select_flavor(args, &request);
->> -	return 0;
->> +	return nfs_select_flavor(args, &request);
->> }
->> 
->> struct dentry *nfs_try_mount(int flags, const char *dev_name,
->> -- 
->> 1.7.12.4 (Apple Git-37)
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The main use cases that have been presented for Labeled NFS on Linux
+would tend to push me towards door number 2, Monty please...
 
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
