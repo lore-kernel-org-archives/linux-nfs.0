@@ -1,71 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:36203 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753401Ab3EDNEm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 4 May 2013 09:04:42 -0400
-Date: Sat, 4 May 2013 15:04:40 +0200
-From: Pavel Machek <pavel@ucw.cz>
-To: Colin Cross <ccross@android.com>
-Cc: linux-kernel@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Len Brown <len.brown@intel.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-pm@vger.kernel.org, netdev@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, Ben Chan <benchan@chromium.org>
-Subject: Re: [PATCH 2/2] lockdep: check that no locks held at freeze time
-Message-ID: <20130504130440.GC13770@amd.pavel.ucw.cz>
-References: <1367615050-3894-1-git-send-email-ccross@android.com>
- <1367615050-3894-2-git-send-email-ccross@android.com>
+Received: from mx12.netapp.com ([216.240.18.77]:60339 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755276Ab3EHQnz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 May 2013 12:43:55 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        "Linux FS devel list" <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 13/17] NFS: Client implementation of Labeled-NFS
+Date: Wed, 8 May 2013 16:43:53 +0000
+Message-ID: <1368031432.5978.3.camel@leira.trondhjem.org>
+References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
+	  <1367240239-19326-14-git-send-email-SteveD@redhat.com>
+	 <1367435005.4189.36.camel@leira.trondhjem.org>
+	 <518A7FA6.4090703@RedHat.com>
+In-Reply-To: <518A7FA6.4090703@RedHat.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1367615050-3894-2-git-send-email-ccross@android.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri 2013-05-03 14:04:10, Colin Cross wrote:
-> From: Mandeep Singh Baines <msb@chromium.org>
+On Wed, 2013-05-08 at 12:39 -0400, Steve Dickson wrote:
 > 
-> We shouldn't try_to_freeze if locks are held.  Holding a lock can cause a
-> deadlock if the lock is later acquired in the suspend or hibernate path
-> (e.g.  by dpm).  Holding a lock can also cause a deadlock in the case of
-> cgroup_freezer if a lock is held inside a frozen cgroup that is later
-> acquired by a process outside that group.
+> On 01/05/13 15:03, Myklebust, Trond wrote:
+> >> @@ -2409,10 +2468,26 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
+> >> >  			server->caps |= NFS_CAP_CTIME;
+> >> >  		if (res.attr_bitmask[1] & FATTR4_WORD1_TIME_MODIFY)
+> >> >  			server->caps |= NFS_CAP_MTIME;
+> >> > +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+> >> > +		if (res.attr_bitmask[2] & FATTR4_WORD2_SECURITY_LABEL)
+> >> > +			server->caps |= NFS_CAP_SECURITY_LABEL;
+> >> > +#endif
+> >> > +		memcpy(server->attr_bitmask_nl, res.attr_bitmask, 
+> >> > +				sizeof(server->attr_bitmask));
+> >> > +
+> >> > +		if (server->caps & NFS_CAP_SECURITY_LABEL)
+> >> > +			server->attr_bitmask_nl[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
+> >> >  
+> >> >  		memcpy(server->cache_consistency_bitmask, res.attr_bitmask, sizeof(server->cache_consistency_bitmask));
+> >> >  		server->cache_consistency_bitmask[0] &= FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE;
+> >> > -		server->cache_consistency_bitmask[1] &= FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
+> >> > +		server->cache_consistency_bitmask[1] &= FATTR4_WORD1_TIME_METADATA |
+> >> > +							FATTR4_WORD1_TIME_MODIFY;
+> >> > +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+> >> > +		server->cache_consistency_bitmask[2] &= FATTR4_WORD2_SECURITY_LABEL;
+> > Why? How is the security label relevant to cache consistency?
+> Its used to the set label bit in the GETATTR that goes out with ACCESS compound.
 
-Ok, but this does not explain why
+The GETATTR that goes out with ACCESS is only there in order to get the
+change attribute so that we know when to invalidate the access cache. It
+is _only_ for cache consistency.
 
-> --- a/include/linux/debug_locks.h
-> +++ b/include/linux/debug_locks.h
-> @@ -51,7 +51,7 @@ struct task_struct;
->  extern void debug_show_all_locks(void);
->  extern void debug_show_held_locks(struct task_struct *task);
->  extern void debug_check_no_locks_freed(const void *from, unsigned long len);
-> -extern void debug_check_no_locks_held(struct task_struct *task);
-> +extern void debug_check_no_locks_held(void);
->  #else
->  static inline void debug_show_all_locks(void)
->  {
+Why do we need to fetch the label too?
 
-Removing task_struct argument from  those functions is good idea?
-
-> --- a/kernel/exit.c
-> +++ b/kernel/exit.c
-> @@ -835,7 +835,7 @@ void do_exit(long code)
->  	/*
->  	 * Make sure we are holding no locks:
->  	 */
-> -	debug_check_no_locks_held(tsk);
-> +	debug_check_no_locks_held();
-
-Is task guaranteed == current?
-
-									Pavel
 -- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
