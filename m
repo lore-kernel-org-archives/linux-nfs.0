@@ -1,38 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:18060 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:14836 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752463Ab3EBMIy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 May 2013 08:08:54 -0400
-Subject: Re: [PATCH] Avoid DNS reverse resolution for server names (take 3)
-From: Simo Sorce <simo@redhat.com>
-To: Jim Rees <rees@umich.edu>
-Cc: NeilBrown <neilb@suse.de>, Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-In-Reply-To: <20130502055625.GA11376@umich.edu>
-References: <1366380998-2581-1-git-send-email-steved@redhat.com>
-	 <20130502131332.5c0ce2b0@notabene.brown> <20130502055625.GA11376@umich.edu>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 02 May 2013 08:08:47 -0400
-Message-ID: <1367496527.2976.30.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+	id S1751657Ab3EHSk1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 May 2013 14:40:27 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: sds@tycho.nsa.gov, james.l.morris@oracle.com, eparis@parisplace.org
+Cc: linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH] selinux: make return code consistent with conflicting context= settings on same superblock
+Date: Wed,  8 May 2013 14:40:20 -0400
+Message-Id: <1368038420-19879-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-05-02 at 01:56 -0400, Jim Rees wrote:
-> I really disliked the man page wording in the original patch. Yours is much
-> better.
+Commit 094f7b69ea73 adds a new check to ensure that when we clone an
+existing superblock that the contexts match properly. We do however have
+another place where you can hit similar problems in
+selinux_set_mnt_opts. That function returns -EINVAL, whereas
+selinux_sb_clone_mnt_opts returns -EBUSY in this situation.
 
-I agree the man page wording is much better +1
+I think -EBUSY is probably more descriptive of the situation here. The
+context= option would have worked had the superblock not already been in
+use. Fix selinux_set_mnt_opts to return -EBUSY instead of -EINVAL in
+this situation.
 
-> Note that it's possible to have a fqdn with no dots in it, but I expect this
-> will never happen.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ security/selinux/hooks.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-A FQDN with no dots in it is a top level domain name, it is extremely
-unlikely you will have a NFS server that uses a TLD as name although
-theoretically possible :-)
-
-Simo.
-
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index 5c6f2cd..348f069 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -745,7 +745,7 @@ out:
+ 	mutex_unlock(&sbsec->lock);
+ 	return rc;
+ out_double_mount:
+-	rc = -EINVAL;
++	rc = -EBUSY;
+ 	printk(KERN_WARNING "SELinux: mount invalid.  Same superblock, different "
+ 	       "security settings for (dev %s, type %s)\n", sb->s_id, name);
+ 	goto out;
 -- 
-Simo Sorce * Red Hat, Inc * New York
+1.7.1
 
