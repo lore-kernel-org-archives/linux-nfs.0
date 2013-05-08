@@ -1,52 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59535 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:42444 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756561Ab3ETVZF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 May 2013 17:25:05 -0400
-Date: Mon, 20 May 2013 17:25:03 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1751653Ab3EHS4i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 May 2013 14:56:38 -0400
+Date: Wed, 8 May 2013 14:56:35 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 6/6] NFSv4.1: Enable state protection
-Message-ID: <20130520212502.GJ14677@fieldses.org>
-References: <1369070227-40671-1-git-send-email-Trond.Myklebust@netapp.com>
- <1369070227-40671-2-git-send-email-Trond.Myklebust@netapp.com>
- <1369070227-40671-3-git-send-email-Trond.Myklebust@netapp.com>
- <1369070227-40671-4-git-send-email-Trond.Myklebust@netapp.com>
- <1369070227-40671-5-git-send-email-Trond.Myklebust@netapp.com>
- <1369070227-40671-6-git-send-email-Trond.Myklebust@netapp.com>
- <20130520204009.GH14677@fieldses.org>
- <1369084243.52168.1.camel@leira.trondhjem.org>
+Cc: Steve Dickson <SteveD@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 09/17] NFSv4: Introduce new label structure
+Message-ID: <20130508185635.GB11497@pad.fieldses.org>
+References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
+ <1367240239-19326-10-git-send-email-SteveD@redhat.com>
+ <1367434764.4189.33.camel@leira.trondhjem.org>
+ <518A8C3D.9000407@RedHat.com>
+ <1368036382.5978.24.camel@leira.trondhjem.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1369084243.52168.1.camel@leira.trondhjem.org>
+In-Reply-To: <1368036382.5978.24.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 20, 2013 at 09:10:46PM +0000, Myklebust, Trond wrote:
-> On Mon, 2013-05-20 at 16:40 -0400, J. Bruce Fields wrote:
-> > On Mon, May 20, 2013 at 01:17:07PM -0400, Trond Myklebust wrote:
-> > > Use the EXCHGID4_FLAG_BIND_PRINC_STATEID exchange_id flag to enable
-> > > stateid protection. This means that if we create a stateid using a
-> > > particular principal, then we must use the same principal if we
-> > > want to change that state.
+On Wed, May 08, 2013 at 06:06:24PM +0000, Myklebust, Trond wrote:
+> On Wed, 2013-05-08 at 13:32 -0400, Steve Dickson wrote:
+> > Not the label but the inode. The bit is set in ACCESS, LOOKUP, 
+> > LINK, OPEN, CREAT, SETATTR which all clearly update the inode.
 > > 
-> > Note that knfsd ignores this--its EXCHANGE_ID will always return with
-> > the flag unset regardless of what the client requests.  My understanding
-> > is that that's legal ("Whether a bit is set or cleared on the arguments'
-> > flags does not force the server to set or clear the same bit on the
-> > results' side.")
-> > 
-> > (Definitely not opposed to implementing it, just haven't gotten around
-> > to it.)
+> > So I guess my question is if the bit is not set in any of these 
+> > ops how do we know if the label has changed? Should label changes
+> > be synchronized with inode updates? 
 > 
-> Right, but the point here is that the server is allowed to set
-> EXCHGID4_FLAG_BIND_PRINC_STATEID without the client requesting it, so
-> the client is supposed to always be ready for that situation.
-> 
-> This patch series is therefore more about ensuring that the Linux client
-> is spec compliant.
+> I know that Bruce doesn't like FATTR4_CHANGE_SEC_LABEL,
 
-Sure, makes sense.
+Not true at all, sorry to give that impression.
+
+It doesn't look like a lot of work to implement (how much work would it
+be to use on the client side?), and I'd be perfectly happy if someone
+would do so.
+
+It's just that noone's volunteered, and my todo list is out of control
+as it is.
+
+> but that is the
+> only option I can see for implementing a cache consistency model for
+> labels. Without it, the choices are:
+> 
+> 1) always fetch the label as part of every COMPOUND.
+> 2) assume the label never changes on the server.
+> 
+> The main use cases that have been presented for Labeled NFS on Linux
+> would tend to push me towards door number 2, Monty please...
+
+And that's fine with me too.
 
 --b.
