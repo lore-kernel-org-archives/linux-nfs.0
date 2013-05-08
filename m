@@ -1,55 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f173.google.com ([74.125.82.173]:62130 "EHLO
-	mail-we0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756664Ab3EKCog (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:44:36 -0400
-Received: by mail-we0-f173.google.com with SMTP id q54so4517020wes.32
-        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:44:34 -0700 (PDT)
-Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
-        by mx.google.com with ESMTPSA id i11sm1314215wiw.11.2013.05.10.19.44.33
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 10 May 2013 19:44:34 -0700 (PDT)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 32/38] pnfsd: cosmetic fixes
-Date: Sat, 11 May 2013 05:44:30 +0300
-Message-Id: <1368240270-968-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <518B6377.3000207@tonian.com>
-References: <518B6377.3000207@tonian.com>
+Received: from mx2.mendoza-conicet.gob.ar ([200.69.149.90]:40948 "EHLO
+	mx2.mendoza-conicet.gob.ar" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751190Ab3EHJG6 convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 May 2013 05:06:58 -0400
+Date: Wed, 8 May 2013 05:46:28 -0300 (ART)
+From: "John P. Goldman" <gliceaga@mendoza-conicet.gob.ar>
+Reply-To: "John P. Goldman" <johnp.goldman@yahoo.com>
+Message-ID: <351326728.69416.1368002788604.JavaMail.root@correo.mendoza-conicet.gob.ar>
+Subject: dringender Vorschlag
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+To: undisclosed-recipients:;
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
----
- fs/nfsd/nfs4pnfsd.c | 8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index 27f717f..7a5ba09 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -1268,8 +1268,10 @@ struct create_recall_list_arg {
- 	return ret;
- }
- 
--/* Create a layoutrecall structure for each client based on the
-- * original structure. */
-+/*
-+ * Create a layoutrecall structure for each client based on the
-+ * original structure.
-+ */
- int
- create_layout_recall_list(struct list_head *todolist, unsigned *todo_len,
- 			  struct nfsd4_pnfs_cb_layout *cbl,
-@@ -1348,7 +1350,7 @@ struct create_recall_list_arg {
- 				put_layoutrecall(pending);
- 			}
- 			--todo_len;
--				status = -ENOMEM;
-+			status = -ENOMEM;
- 		}
- 	}
- 
--- 
-1.7.11.7
 
+Entschuldigungen für kommen in Ihre Privatsphäre! Ich bin Rechtsanwalt
+Werner Erich Zeller; Ich habe einen meiner einflussreichen und
+wohlhabenden Kunden zum Tode; und er hatte eine sehr geheime und private
+Investitionen von €15,000,000.00 bei einer privaten Bank in Großbritannien
+hier zu Lebzeiten. Diese Investition wurde ohne einen deklarierten
+nächsten Angehörigen und begünstigte. Jetzt brauche ich Sie arbeiten mit
+mir als mein Partner zu erholen und zu je 50 % Aktienfonds. Alle Dokumente
+werden rechtlich beantragt und beschafft, und in 5 Werktage, wird diese
+Transaktion auftreten. Aber ich brauche einen ernsten, treuen und
+glaubwürdigen Partner.
+
+Bitte senden Sie mir eine vertrauliche Antwort, wenn Sie denken, Sie
+vertraut werden können und sind von den Qualitäten! Ich warte auf Ihre
+schnelle Antwort.
+
+Werner Erich Zeller (Rechtsanwalt)
+Rufen Sie + 44-702-409-0820 (Office)
