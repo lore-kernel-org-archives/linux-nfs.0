@@ -1,95 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:42957 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:42166 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756460Ab3EGPSG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 May 2013 11:18:06 -0400
-Message-ID: <51891B13.60104@RedHat.com>
-Date: Tue, 07 May 2013 11:17:39 -0400
+	id S1757299Ab3EHRjP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 May 2013 13:39:15 -0400
+Message-ID: <518A8DBE.3010107@RedHat.com>
+Date: Wed, 08 May 2013 13:39:10 -0400
 From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Christopher T Vogan <cvogan@us.ibm.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [Patch] nfs.man: Move nfsvers to "Options supported by all versions"
- section
-References: <OF1B1919A7.AE5DDE4D-ON87257B39.0065E293-86257B39.0066DDA1@us.ibm.com>
-In-Reply-To: <OF1B1919A7.AE5DDE4D-ON87257B39.0065E293-86257B39.0066DDA1@us.ibm.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 13/17] NFS: Client implementation of Labeled-NFS
+References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>   <1367240239-19326-14-git-send-email-SteveD@redhat.com>  <1367435005.4189.36.camel@leira.trondhjem.org>  <518A7FA6.4090703@RedHat.com> <1368031432.5978.3.camel@leira.trondhjem.org>
+In-Reply-To: <1368031432.5978.3.camel@leira.trondhjem.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 25/03/13 14:43, Christopher T Vogan wrote:
-> After inclusion of NFSv4.1 it seems that now you can specify an NFSv4 
-> mount with either "-tnfs4" or "-overs=4".  I have prepared a patch that 
-> moves "nfsvers/vers" from "Options for NFS versions 2 and 3 only" to 
-> "Options supported by all versions".
+On 08/05/13 12:43, Myklebust, Trond wrote:
+> On Wed, 2013-05-08 at 12:39 -0400, Steve Dickson wrote:
+>>
+>> On 01/05/13 15:03, Myklebust, Trond wrote:
+>>>> @@ -2409,10 +2468,26 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
+>>>>>  			server->caps |= NFS_CAP_CTIME;
+>>>>>  		if (res.attr_bitmask[1] & FATTR4_WORD1_TIME_MODIFY)
+>>>>>  			server->caps |= NFS_CAP_MTIME;
+>>>>> +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+>>>>> +		if (res.attr_bitmask[2] & FATTR4_WORD2_SECURITY_LABEL)
+>>>>> +			server->caps |= NFS_CAP_SECURITY_LABEL;
+>>>>> +#endif
+>>>>> +		memcpy(server->attr_bitmask_nl, res.attr_bitmask, 
+>>>>> +				sizeof(server->attr_bitmask));
+>>>>> +
+>>>>> +		if (server->caps & NFS_CAP_SECURITY_LABEL)
+>>>>> +			server->attr_bitmask_nl[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
+>>>>>  
+>>>>>  		memcpy(server->cache_consistency_bitmask, res.attr_bitmask, sizeof(server->cache_consistency_bitmask));
+>>>>>  		server->cache_consistency_bitmask[0] &= FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE;
+>>>>> -		server->cache_consistency_bitmask[1] &= FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
+>>>>> +		server->cache_consistency_bitmask[1] &= FATTR4_WORD1_TIME_METADATA |
+>>>>> +							FATTR4_WORD1_TIME_MODIFY;
+>>>>> +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+>>>>> +		server->cache_consistency_bitmask[2] &= FATTR4_WORD2_SECURITY_LABEL;
+>>> Why? How is the security label relevant to cache consistency?
+>> Its used to the set label bit in the GETATTR that goes out with ACCESS compound.
 > 
-> Author: Chris Vogan <cvogan@us.ibm.com>
-> Date:   Mon Mar 25 10:12:57 2013 -0700
-Committed... 
+> The GETATTR that goes out with ACCESS is only there in order to get the
+> change attribute so that we know when to invalidate the access cache. It
+> is _only_ for cache consistency.
+> 
+> Why do we need to fetch the label too?
+> 
+I think I answer this in the other thread but in short 
+access updates the inode and so it appears the goal 
+is to synchronize inode updates and label updates.
 
 steved.
-> 
->     Update NFS man page to state that "nfsvers=/vers=" is suitable for all 
-> NFS version.
->     Move from "Options for NFS versions 2 and 3 only" to "Options 
-> supported by all versions".
-> 
->     Signed-off-by: Chris Vogan <cvogan@gmail.com>
-> --- nfs-utils-1.2.7/utils/mount/nfs.man.save    2013-03-25 
-> 10:05:57.781645020 -0700
-> +++ nfs-utils-1.2.7/utils/mount/nfs.man 2013-03-25 10:12:57.013454158 
-> -0700
-> @@ -467,6 +467,18 @@
->  and <kernel_soruce>/Documentation/filesystems/caching
->  for detail on how to configure the FS-Cache facility.
->  Default value is nofsc.
-> +.TP 1.5i
-> +.BI nfsvers= n
-> +The NFS protocol version number used to contact the server's NFS service.
-> +If the server does not support the requested version, the mount request 
-> fails.
-> +If this option is not specified, the client negotiates a suitable version 
-> with
-> +the server, trying version 4 first, version 3 second, and version 2 last.
-> +.TP 1.5i
-> +.BI vers= n
-> +This option is an alternative to the
-> +.B nfsvers
-> +option.
-> +It is included for compatibility with other operating systems.
->  .SS "Options for NFS versions 2 and 3 only"
->  Use these options, along with the options in the above subsection,
->  for NFS versions 2 and 3 only.
-> @@ -613,18 +625,6 @@
->  reports the proper maximum component length to applications
->  in such cases.
->  .TP 1.5i
-> -.BI nfsvers= n
-> -The NFS protocol version number used to contact the server's NFS service.
-> -If the server does not support the requested version, the mount request 
-> fails.
-> -If this option is not specified, the client negotiates a suitable version 
-> with
-> -the server, trying version 4 first, version 3 second, and version 2 last.
-> -.TP 1.5i
-> -.BI vers= n
-> -This option is an alternative to the
-> -.B nfsvers
-> -option.
-> -It is included for compatibility with other operating systems.
-> -.TP 1.5i
->  .BR lock " / " nolock
->  Selects whether to use the NLM sideband protocol to lock files on the 
-> server.
->  If neither option is specified (or if
-> 
-> Christopher Vogan
-> Dept. W98 NFS Development & Test
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+ 
