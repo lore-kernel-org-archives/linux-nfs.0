@@ -1,206 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from esa-jnhn.mail.uoguelph.ca ([131.104.91.44]:27483 "EHLO
-	esa-jnhn.mail.uoguelph.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965596Ab3E3AYk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 May 2013 20:24:40 -0400
-Date: Wed, 29 May 2013 20:24:38 -0400 (EDT)
-From: Rick Macklem <rmacklem@uoguelph.ca>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Bram Vandoren <brambi@gmail.com>, "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-ID: <874181392.56120.1369873478318.JavaMail.root@erie.cs.uoguelph.ca>
-In-Reply-To: <BC47EE42-5F58-4555-A49C-4175B75943D8@oracle.com>
-Subject: Re: NFS client hangs after server reboot
+Received: from mx12.netapp.com ([216.240.18.77]:48171 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757995Ab3EHSHf convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 May 2013 14:07:35 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        "Linux FS devel list" <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 13/17] NFS: Client implementation of Labeled-NFS
+Date: Wed, 8 May 2013 18:07:02 +0000
+Message-ID: <1368036422.5978.25.camel@leira.trondhjem.org>
+References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
+	   <1367240239-19326-14-git-send-email-SteveD@redhat.com>
+	  <1367435005.4189.36.camel@leira.trondhjem.org>
+	  <518A7FA6.4090703@RedHat.com>
+	 <1368031432.5978.3.camel@leira.trondhjem.org> <518A8DBE.3010107@RedHat.com>
+In-Reply-To: <518A8DBE.3010107@RedHat.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote:
-> On May 28, 2013, at 9:04 PM, Chuck Lever <chuck.lever@oracle.com>
-> wrote:
+On Wed, 2013-05-08 at 13:39 -0400, Steve Dickson wrote:
 > 
-> >
-> > On May 28, 2013, at 7:30 PM, Rick Macklem <rmacklem@uoguelph.ca>
-> > wrote:
-> >
-> >> Bram Vandoren wrote:
-> >>>>> Hi Rick, Chuck, Bruce,
-> >>>>> in attachment is a small pcap when a client is in the locked.
-> >>>>> Hopefully I can reproduce the problem so I can send you a
-> >>>>> capture
-> >>>>> during a reboot cycle.
-> >>>>
-> >>>> The pcap file confirms that the state IDs and client ID do not
-> >>>> appear to match, and do appear on the same TCP connection (in
-> >>>> different operations). I think the presence of the RENEW
-> >>>> operations
-> >>>> here suggest that the client believes it has not been able to
-> >>>> renew
-> >>>> its lease using stateful operations like READ. IMO this is
-> >>>> evidence
-> >>>> in favor of the theory that the client neglected to recover these
-> >>>> state IDs for some reason.
-> >>>>
-> >>>> We'll need to see the actual reboot recovery traffic to analyze
-> >>>> further, and that occurs just after the server reboots. Even
-> >>>> better
-> >>>> would be to see the initial OPEN of the file where the READ
-> >>>> operations are failing. I recognize this is a non-determinstic
-> >>>> problem that will be a challenge to capture properly.
-> >>>>
-> >>>> Rather than capturing the trace on the server, you should be able
-> >>>> to
-> >>>> capture it on your clients in order to capture traffic before,
-> >>>> during, and after the server reboot. To avoid capturing an
-> >>>> enormous
-> >>>> amount of data, both tcpdump and tshark provide options to save
-> >>>> the
-> >>>> captured network data into a small ring of files (see their man
-> >>>> pages). Once a client mount point has locked, you can stop the
-> >>>> capture, and hopefully the ring will have everything we need.
-> >>>
-> >>> Hi All,
-> >>> I managed to capture the packets after a reboot. I send the pcap
-> >>> file
-> >>> to the people in cc (privacy issue, contact me if someone on the
-> >>> list
-> >>> wants a copy). This is a summary of what happens after a reboot
-> >>> (perhaps a missed some relevant information):
-> >>>
-> >>> 38:
-> >>> - client -> server: client executes 3 writes with a stale clientid
-> >>> (A)
-> >>> - client -> server: RENEW
-> >>> 44:
-> >>> - server -> client: NFS4ERR_STALE_STATEID (in reponse to A)
-> >>> 45:
-> >>> - server -> client: NFS4ERR_STALE_CLIENTID
-> >>> 65:
-> >>> - client -> server: RENEW
-> >>> 66
-> >>> - server -> client: NFS4ERR_STALE_CLIENTID
-> >>> 67,85,87,93:
-> >>> SETCLIENTID/SETCLIENTID_CONFIRM sequence (ok)
-> >>> 78,79:
-> >>> NFS4STALE_STATEID (reponse to the other 2 writes in A)
-> >>>
-> >>> 98: OPEN with CLAIM_PREVIOUS
-> >>> 107: response to open: NFS4ERR_NO_GRACE (strange?)
-> >>> after that the client re-opens the files without CLAIM_PREVIOUS
-> >>> option
-> >>> and they are all succesful.
-> >>>
-> >>> The client starts using the new stateids except for the files in
-> >>> A.
-> >>> The server returns a NFS4_STALE_STATEID, the client executes a
-> >>> RENEW
-> >>> (IMO this should be an OPEN request) and retries the WRITE, the
-> >>> server
-> >>> returns a NFS4_STALE_STATEID
-> >>>
-> >>> Server: FreeBSD 9.1 with new NFS server implementation
-> >>> Client: Fedora 17, 3.8.11-100.fc17.x86_64
-> >>>
-> >>> Any clues?
-> >>>
-> >>> Thanks,
-> >>> Bram
-> >> I just took a look at the packet capture (I hadn't realized you had
-> >> posted one when I did the last reply).
+> On 08/05/13 12:43, Myklebust, Trond wrote:
+> > On Wed, 2013-05-08 at 12:39 -0400, Steve Dickson wrote:
 > >>
-> >> I think the problem is a TCP layer one, from looking at the first 8
-> >> packets captured amd their timestamps. However, my TCP is old and
-> >> tired, so I'm not sure. From the first 8 packets:
-> >> Time(sec)
-> >> 0 - client sends a SYN
-> >> 0 - server replies [RST, ACK]
-> >>    Since Reset is in the reply, is this when the server rebooted?
-> >> 6 - client sends a SYN with same port#s. Wireshark thinks this is
-> >>    a new connection using same port#s.
-> >> 6 - FreeBSD replies with [RST, ACK] again, thinking it is a resend
-> >>    of the first packet and still considers it the old Reset
-> >>    connection.
-> >> 15 - Repeat of what happened at 6sec.
-> >> 30,31 - client sends SYN twice, still from the same port#s
-> >>  - no reply from FreeBSD
-> >> 4393 - client sends SYN again with same port#s
-> >> 4393 - server replies with [SYN, ACK] establishing the new TCP
-> >>    connection on the same port#s, but over an hour later.
-> >
-> > To be clear, this is very early in the capture, just frame 9 and 10.
-> > The Linux client attempts to re-use the previous connection's source
-> > port to preserve the server's duplicate reply cache.
-> 
-Btw, I have seen a case a few years ago where the network fabric between
-client and server injected RSTs in the packet stream, causing havok for
-NFS TCP (re)connects. (I was never able to isolate exactly what did the
-injection, but I caught it by doing packet captures at both the client
-and server ends and found them identical, except for the RSTs which were
-not sent by the server end but came out of the network port on the client
-end.)
+> >> On 01/05/13 15:03, Myklebust, Trond wrote:
+> >>>> @@ -2409,10 +2468,26 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
+> >>>>>  			server->caps |= NFS_CAP_CTIME;
+> >>>>>  		if (res.attr_bitmask[1] & FATTR4_WORD1_TIME_MODIFY)
+> >>>>>  			server->caps |= NFS_CAP_MTIME;
+> >>>>> +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+> >>>>> +		if (res.attr_bitmask[2] & FATTR4_WORD2_SECURITY_LABEL)
+> >>>>> +			server->caps |= NFS_CAP_SECURITY_LABEL;
+> >>>>> +#endif
+> >>>>> +		memcpy(server->attr_bitmask_nl, res.attr_bitmask, 
+> >>>>> +				sizeof(server->attr_bitmask));
+> >>>>> +
+> >>>>> +		if (server->caps & NFS_CAP_SECURITY_LABEL)
+> >>>>> +			server->attr_bitmask_nl[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
+> >>>>>  
+> >>>>>  		memcpy(server->cache_consistency_bitmask, res.attr_bitmask, sizeof(server->cache_consistency_bitmask));
+> >>>>>  		server->cache_consistency_bitmask[0] &= FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE;
+> >>>>> -		server->cache_consistency_bitmask[1] &= FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
+> >>>>> +		server->cache_consistency_bitmask[1] &= FATTR4_WORD1_TIME_METADATA |
+> >>>>> +							FATTR4_WORD1_TIME_MODIFY;
+> >>>>> +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+> >>>>> +		server->cache_consistency_bitmask[2] &= FATTR4_WORD2_SECURITY_LABEL;
+> >>> Why? How is the security label relevant to cache consistency?
+> >> Its used to the set label bit in the GETATTR that goes out with ACCESS compound.
+> > 
+> > The GETATTR that goes out with ACCESS is only there in order to get the
+> > change attribute so that we know when to invalidate the access cache. It
+> > is _only_ for cache consistency.
+> > 
+> > Why do we need to fetch the label too?
+> > 
+> I think I answer this in the other thread but in short 
+> access updates the inode and so it appears the goal 
+> is to synchronize inode updates and label updates.
 
-I believe some network firewalls/switches will do the RST injection if
-they think a SYN flood DOS is being attempted.
+Those are not inode updates.
 
-I wasn't able to get much information on the network fabric, but it was
-mainly made up of 3 Cisco switches (although Cisco doesn't claim to do RST
-injection, as far as I know).
 
-Here's the thread, in case you want to read it:
-  http://lists.freebsd.org/pipermail/freebsd-current/2009-November/013154.html
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-So, this just might be the source of your problem. If you can capture packets
-at both client and server ends and then compare them to see if all RSTs are
-in both captures, it  might be worth the effort.
-
-Good luck with it, rick
-
-> And by the way, if the server actually did reboot, it shouldn't have
-> noticed the client's port re-use. TCP connection state should have
-> been wiped by the system restart.
-> 
-> > But it's not clear why the client is not retrying SYN during the
-> > period between frame 8 and frame 9. The client should retry SYN
-> > after just another minute or two, and by that time the server's TCP
-> > connection state should allow a connection on that port.
-> >
-> > It's not typical for a client with an active workload to wait 4400
-> > seconds to send a fresh SYN. Bram, can you shed any light on this?
-> >
-> >> Since this is now over an hour after packet 0, it isn't
-> >> surprising that Grace is over.
-> >
-> > Fair enough. However, it does not explain why the client fails to
-> > recover the open state for one file.
-> >
-> >> I'd guess that the problem occurs because the client reconnect
-> >> uses the same client side port# even though the server did a
-> >> Reset for that port#, but I'm not enough of a TCP guy to know
-> >> what should be correct TCP behaviour.
-> >>
-> >> If you don't mind the first part of this packet capture being
-> >> posted (email me to say if it ok to post it), I can post it to
-> >> freebsd-net@freebsd.org, since there are a bunch of TCP savy
-> >> types that might be able to help. (If you give the ok for this,
-> >> please also email me what version of FreeBSD the server is
-> >> running.)
-> >
-> > Thanks for the extra set of eyes.
-> >
-> > --
-> > Chuck Lever
-> > chuck[dot]lever[at]oracle[dot]com
-> >
-> >
-> >
-> >
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> > in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
