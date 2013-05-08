@@ -1,60 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:42444 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:52885 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751653Ab3EHS4i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 May 2013 14:56:38 -0400
-Date: Wed, 8 May 2013 14:56:35 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Steve Dickson <SteveD@redhat.com>,
+	id S1751453Ab3EHSr4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 May 2013 14:47:56 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: "J. Bruce Fields" <bfields@redhat.com>,
         "David P. Quigley" <dpquigl@tycho.nsa.gov>,
         Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        "Linux FS devel list" <linux-fsdevel@vger.kernel.org>,
         Linux Security List <linux-security-module@vger.kernel.org>,
         SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 09/17] NFSv4: Introduce new label structure
-Message-ID: <20130508185635.GB11497@pad.fieldses.org>
+Subject: Re: [PATCH 13/17] NFS: Client implementation of Labeled-NFS
+Date: Wed, 8 May 2013 18:47:54 +0000
+Message-ID: <1368038873.5978.40.camel@leira.trondhjem.org>
 References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
- <1367240239-19326-10-git-send-email-SteveD@redhat.com>
- <1367434764.4189.33.camel@leira.trondhjem.org>
- <518A8C3D.9000407@RedHat.com>
- <1368036382.5978.24.camel@leira.trondhjem.org>
+	     <1367240239-19326-14-git-send-email-SteveD@redhat.com>
+	    <1367435005.4189.36.camel@leira.trondhjem.org>
+	    <518A7FA6.4090703@RedHat.com>
+	   <1368031432.5978.3.camel@leira.trondhjem.org>
+	  <518A8DBE.3010107@RedHat.com>
+	  <1368036422.5978.25.camel@leira.trondhjem.org>
+	  <518A9920.2030302@RedHat.com>
+	 <1368037873.5978.34.camel@leira.trondhjem.org>
+	 <518A9C55.9060606@RedHat.com>
+In-Reply-To: <518A9C55.9060606@RedHat.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1368036382.5978.24.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 08, 2013 at 06:06:24PM +0000, Myklebust, Trond wrote:
-> On Wed, 2013-05-08 at 13:32 -0400, Steve Dickson wrote:
-> > Not the label but the inode. The bit is set in ACCESS, LOOKUP, 
-> > LINK, OPEN, CREAT, SETATTR which all clearly update the inode.
+On Wed, 2013-05-08 at 14:41 -0400, Steve Dickson wrote:
+> 
+> On 08/05/13 14:31, Myklebust, Trond wrote:
+> > On Wed, 2013-05-08 at 14:27 -0400, Steve Dickson wrote:
+> >>
+> >> On 08/05/13 14:07, Myklebust, Trond wrote:
+> >>> On Wed, 2013-05-08 at 13:39 -0400, Steve Dickson wrote:
+> >>>>
+> >>>> On 08/05/13 12:43, Myklebust, Trond wrote:
+> >>>>> On Wed, 2013-05-08 at 12:39 -0400, Steve Dickson wrote:
+> >>>>>>
+> >>>>>> On 01/05/13 15:03, Myklebust, Trond wrote:
+> >>>>>>>> @@ -2409,10 +2468,26 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
+> >>>>>>>>>  			server->caps |= NFS_CAP_CTIME;
+> >>>>>>>>>  		if (res.attr_bitmask[1] & FATTR4_WORD1_TIME_MODIFY)
+> >>>>>>>>>  			server->caps |= NFS_CAP_MTIME;
+> >>>>>>>>> +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+> >>>>>>>>> +		if (res.attr_bitmask[2] & FATTR4_WORD2_SECURITY_LABEL)
+> >>>>>>>>> +			server->caps |= NFS_CAP_SECURITY_LABEL;
+> >>>>>>>>> +#endif
+> >>>>>>>>> +		memcpy(server->attr_bitmask_nl, res.attr_bitmask, 
+> >>>>>>>>> +				sizeof(server->attr_bitmask));
+> >>>>>>>>> +
+> >>>>>>>>> +		if (server->caps & NFS_CAP_SECURITY_LABEL)
+> >>>>>>>>> +			server->attr_bitmask_nl[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
+> >>>>>>>>>  
+> >>>>>>>>>  		memcpy(server->cache_consistency_bitmask, res.attr_bitmask, sizeof(server->cache_consistency_bitmask));
+> >>>>>>>>>  		server->cache_consistency_bitmask[0] &= FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE;
+> >>>>>>>>> -		server->cache_consistency_bitmask[1] &= FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
+> >>>>>>>>> +		server->cache_consistency_bitmask[1] &= FATTR4_WORD1_TIME_METADATA |
+> >>>>>>>>> +							FATTR4_WORD1_TIME_MODIFY;
+> >>>>>>>>> +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+> >>>>>>>>> +		server->cache_consistency_bitmask[2] &= FATTR4_WORD2_SECURITY_LABEL;
+> >>>>>>> Why? How is the security label relevant to cache consistency?
+> >>>>>> Its used to the set label bit in the GETATTR that goes out with ACCESS compound.
+> >>>>>
+> >>>>> The GETATTR that goes out with ACCESS is only there in order to get the
+> >>>>> change attribute so that we know when to invalidate the access cache. It
+> >>>>> is _only_ for cache consistency.
+> >>>>>
+> >>>>> Why do we need to fetch the label too?
+> >>>>>
+> >>>> I think I answer this in the other thread but in short 
+> >>>> access updates the inode and so it appears the goal 
+> >>>> is to synchronize inode updates and label updates.
+> >>>
+> >>> Those are not inode updates.
+> >> Ah... OK... but they all end up calling nfs_refresh_inode() with 
+> >> the valid label pointer... So there is an effort to keep the 
+> >> inode attribute cache updates synchronized with label updates... 
+> >>
+> >> So I guess the question is that needed... Is the setting of 
+> >> the label in nfs_fhget() and/or _nfs4_do_open() good enough.
 > > 
-> > So I guess my question is if the bit is not set in any of these 
-> > ops how do we know if the label has changed? Should label changes
-> > be synchronized with inode updates? 
-> 
-> I know that Bruce doesn't like FATTR4_CHANGE_SEC_LABEL,
+> > Until someone comes up with a different cache consistency model, then
+> > I'd say yes. The only other case that comes to mind, is when our client
+> > actively changes the label...
+> On the server side as well, correct? What stops a process on the server side
+> from changing the label? 
 
-Not true at all, sorry to give that impression.
+Nothing, but what is the expectation for how that will change client behaviour?
 
-It doesn't look like a lot of work to implement (how much work would it
-be to use on the client side?), and I'd be perfectly happy if someone
-would do so.
+> I'm thinking that is reason the label was put in all those GETATTRs  
 
-It's just that noone's volunteered, and my todo list is out of control
-as it is.
+They are not part of a well thought-out caching model. Instead, these
+are just random revalidations. If someone changes the label on the
+server, then I can still do a million things on the client through
+caching until I discover that the label has changed.
 
-> but that is the
-> only option I can see for implementing a cache consistency model for
-> labels. Without it, the choices are:
-> 
-> 1) always fetch the label as part of every COMPOUND.
-> 2) assume the label never changes on the server.
-> 
-> The main use cases that have been presented for Labeled NFS on Linux
-> would tend to push me towards door number 2, Monty please...
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-And that's fine with me too.
-
---b.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
