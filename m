@@ -1,151 +1,184 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:27168 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756405Ab3EFWeF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 18:34:05 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
-Subject: Re: long delay when mounting due to SETCLIENTID AUTH_GSS attempts
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <8F91C5FB-EE7F-48F8-9ED5-6B5D8503E248@oracle.com>
-Date: Mon, 6 May 2013 18:33:48 -0400
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <7F5CD894-42E9-4C65-A1BC-0885C63E560B@oracle.com>
-References: <20130503132557.2fdf794d@tlielax.poochiereds.net> <AE700845-4032-4BEC-817C-97EB08A831E8@oracle.com> <20130503142421.19fb3ca6@tlielax.poochiereds.net> <1367606034.3556.25.camel@leira.trondhjem.org> <20130503144437.3a47e476@tlielax.poochiereds.net> <A2E5B3F1-A8F1-4731-A66C-548B9C8FD429@oracle.com> <20130503211810.GF5715@fieldses.org> <8F91C5FB-EE7F-48F8-9ED5-6B5D8503E248@oracle.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:64334 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756443Ab3EHNna (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 May 2013 09:43:30 -0400
+Message-ID: <518A567F.5060405@RedHat.com>
+Date: Wed, 08 May 2013 09:43:27 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>,
+        Daniel J Walsh <dwalsh@redhat.com>
+Subject: Re: [PATCH 09/17] NFSv4: Introduce new label structure
+References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>  <1367240239-19326-10-git-send-email-SteveD@redhat.com> <1367434764.4189.33.camel@leira.trondhjem.org>
+In-Reply-To: <1367434764.4189.33.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On May 3, 2013, at 5:50 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
 
+On 01/05/13 14:59, Myklebust, Trond wrote:
+> On Mon, 2013-04-29 at 08:57 -0400, Steve Dickson wrote:
+>> From: David Quigley <dpquigl@davequigley.com>
+>>
+>> In order to mimic the way that NFSv4 ACLs are implemented we have created a
+>> structure to be used to pass label data up and down the call chain. This patch
+>> adds the new structure and new members to the required NFSv4 call structures.
+>>
+>> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+>> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+>> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+>> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+>> ---
+>>  fs/nfs/inode.c            | 28 ++++++++++++++++++++++++++++
+>>  include/linux/nfs4.h      |  7 +++++++
+>>  include/linux/nfs_fs.h    | 18 ++++++++++++++++++
+>>  include/linux/nfs_xdr.h   | 21 +++++++++++++++++++++
+>>  include/uapi/linux/nfs4.h |  2 +-
+>>  5 files changed, 75 insertions(+), 1 deletion(-)
+>>
+>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+>> index 1f94167..c88255c 100644
+>> --- a/fs/nfs/inode.c
+>> +++ b/fs/nfs/inode.c
+>> @@ -257,6 +257,34 @@ nfs_init_locked(struct inode *inode, void *opaque)
+>>  	return 0;
+>>  }
+>>  
+>> +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+>> +struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags)
+>> +{
+>> +	struct nfs4_label *label = NULL;
+>> +	int minor_version = server->nfs_client->cl_minorversion;
+>> +
+>> +	if (minor_version < 2)
+>> +		return label;
+>> +
+>> +	if (!(server->caps & NFS_CAP_SECURITY_LABEL))
+>> +		return label;
+>> +
+>> +	label = kzalloc(sizeof(struct nfs4_label), flags);
+>> +	if (label == NULL)
+>> +		return ERR_PTR(-ENOMEM);
+>> +
+>> +	label->label = kzalloc(NFS4_MAXLABELLEN, flags);
+>> +	if (label->label == NULL) {
+>> +		kfree(label);
+>> +		return ERR_PTR(-ENOMEM);
+>> +	}
+>> +	label->len = NFS4_MAXLABELLEN;
+>> +
+>> +	return label;
+>> +}
+>> +EXPORT_SYMBOL_GPL(nfs4_label_alloc);
+>> +#endif
+>> +
+>>  /*
+>>   * This is our front-end to iget that looks up inodes by file handle
+>>   * instead of inode number.
+>> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+>> index 6f44cc1..4c61ef4 100644
+>> --- a/include/linux/nfs4.h
+>> +++ b/include/linux/nfs4.h
+>> @@ -32,6 +32,13 @@ struct nfs4_acl {
+>>  	struct nfs4_ace	aces[0];
+>>  };
+>>  
+>> +struct nfs4_label {
+>> +	uint32_t	lfs;
+>> +	uint32_t	pi;
+>> +	u32		len;
+>> +	char	*label;
+>> +};
+>> +
+>>  typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
+>>  
+>>  struct nfs_stateid4 {
+>> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+>> index 1cc2568..e0e1806 100644
+>> --- a/include/linux/nfs_fs.h
+>> +++ b/include/linux/nfs_fs.h
+>> @@ -489,6 +489,24 @@ extern int nfs_mountpoint_expiry_timeout;
+>>  extern void nfs_release_automount_timer(void);
+>>  
+>>  /*
+>> + * linux/fs/nfs/nfs4proc.c
+>> + */
+>> +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+>> +extern struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags);
+>> +static inline void nfs4_label_free(struct nfs4_label *label)
+>> +{
+>> +	if (label) {
+>> +		kfree(label->label);
+>> +		kfree(label);
+>> +	}
+>> +	return;
+>> +}
+>> +#else
+>> +static inline struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags) { return NULL; }
+>> +static inline void nfs4_label_free(void *label) {}
+>> +#endif
+>> +
+>> +/*
+>>   * linux/fs/nfs/unlink.c
+>>   */
+>>  extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
+>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+>> index 9f2dba3..4d2fdf6 100644
+>> --- a/include/linux/nfs_xdr.h
+>> +++ b/include/linux/nfs_xdr.h
+>> @@ -351,6 +351,7 @@ struct nfs_openargs {
+>>  	const u32 *		bitmask;
+>>  	const u32 *		open_bitmap;
+>>  	__u32			claim;
+>> +	const struct nfs4_label *label;
+>>  };
+>>  
+>>  struct nfs_openres {
+>> @@ -360,6 +361,7 @@ struct nfs_openres {
+>>  	struct nfs4_change_info	cinfo;
+>>  	__u32                   rflags;
+>>  	struct nfs_fattr *      f_attr;
+>> +	struct nfs4_label	*f_label;
+>>  	struct nfs_seqid *	seqid;
+>>  	const struct nfs_server *server;
+>>  	fmode_t			delegation_type;
+>> @@ -404,6 +406,7 @@ struct nfs_closeres {
+>>  	struct nfs4_sequence_res	seq_res;
+>>  	nfs4_stateid            stateid;
+>>  	struct nfs_fattr *	fattr;
+>> +	struct nfs4_label	*label;
+>>  	struct nfs_seqid *	seqid;
+>>  	const struct nfs_server *server;
+>>  };
+>> @@ -477,6 +480,7 @@ struct nfs4_delegreturnargs {
+>>  struct nfs4_delegreturnres {
+>>  	struct nfs4_sequence_res	seq_res;
+>>  	struct nfs_fattr * fattr;
+>> +	struct nfs4_label	*label;
+>>  	const struct nfs_server *server;
+>>  };
+>>  
+>> @@ -497,6 +501,7 @@ struct nfs_readargs {
+>>  struct nfs_readres {
+>>  	struct nfs4_sequence_res	seq_res;
+>>  	struct nfs_fattr *	fattr;
+>> +	struct nfs4_label	*label;
 > 
-> On May 3, 2013, at 5:18 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> Why do we need to check labels on close, delegreturn, read, remove,
+> rename, etc? Do any of those operations cause our cached labels to
+> change?
 > 
->> On Fri, May 03, 2013 at 02:48:59PM -0400, Chuck Lever wrote:
->>> We should always use krb5i if a GSS context can be established with
->>> our machine cred.  As I said before, SETCLIENTID and
->>> GETATTR(fs_locations) really should use an integrity-protecting
->>> security flavor no matter what flavor is in effect on the mount points
->>> themselves.
->> 
->> Can you give an example of a threat that could be avoided by this?
->> 
->> My suspicion is that in most cases an attacker with the ability to
->> subvert auth_sys could *also* DOS gssd, and hence force the fallback to
->> auth_sys.
->> 
->> krb5i plus a fallback to auth_sys on failure to authenticate doesn't
->> sound to me much more secure than just auth_sys.
-> 
-> Our current situation is that the first mount of a server determines the flavor to use for SETCLIENTID.  So if that mount happens to be "sec=sys" the SETCLIENTID is done with AUTH_SYS no matter what the subsequent mounts request.
-> 
-> That's just about as secure in many cases as falling back.
-> 
->> If we really want much security benefit from krb5i on state operations,
->> I think we need to really *require* krb5i.
->> 
->> So I'm inclined towards Jeff's solution: don't do this unless userspace
->> somehow affirmatively states that it requires krb5i on state operations.
-> 
-> This would have to be on a per-server basis.  Where would an admin specify such an option?  I don't believe either a mount option (too fine) or a module parameter (too coarse) is appropriate.
-> 
->> I agree that we should default to this when we can.  But the way to move
->> towards that default is then to get distributions to turn on the new
->> module parm (or whatever it is) by default.  As they do so, they can
->> also ensure that e.g. gssd is started.
-> 
-> gssd is not all that's required.  A keytab must be provisioned on the client and server for it to work, and that's the main issue I'm trying to address:  We need "sec=krb5" mounts to work when the client has no GSS machine credential.
-> 
-> And I think we already have a problem with gssd not picking up kernel requests quickly, as Trond pointed out.
-> 
-> I don't feel like any of this is new, or that any of this is a strong reason to revert.  But it could be a reason to move forward from here.
-> 
-> Does gssd distinguish between:
-> 
->  - no local keytab
-> 
->  - no local support for GSS
-> 
->  - server doesn't grok GSS
-> 
->  - some network problem occurred
-> 
-> Can it communicate that distinction to the kernel?  What if we fall back only in the "no keytab" and "client's kernel has no GSS support" cases?  In the "server doesn't grok" case, do not fall back if "sec=krb5*" is specified on the mount point?  "A network problem occurred" is an "always fail" case.
+Being I've got complete silence from the security community for
+over a week now (publicly and privately), I'm going to assume the answer 
+to your questions is No and No... and I'll start working on ripping the 
+code out today... 
 
-After some thought, here's an algorithm for selecting a flavor to use for state management operations:
-
-  Start with krb5i.
-
-  -  If a GSS flavor is specified on the mount point, and if
-     there is no local keytab, fall back to AUTH_SYS; otherwise
-     if any other issue occurs, fail immediately.  This
-     modification should address your security concern.
-
-  -  If a non-GSS flavor is specified on the mount point, or no
-     flavor is specified, and there is any problem with krb5i,
-     fall back to AUTH_SYS.  This is the current 3.10 behavior,
-     and assumes there is a solution to Jeff's 15 second upcall
-     delay issue.
-
-We need the client to be more deterministic than "use the security flavor on the first mount operation done by this client" when selecting a flavor for state management.  If the client chooses arbitrarily among multiple flavors, it runs the risk of getting NFS4ERR_CLID_INUSE from servers, since this flavor is no longer part of the nfs_client_id4.id string.
-
-I'm happy to consider a separate setting on the client for this purpose, but I'm having a hard time imagining what the administrative interface might look like.
-
-The prospect of getting a distinctive error code from rpc.gssd on current systems for the "no keytab" case is not good.  I'm looking at process_krb5_upcall() in nfs-utils 1.2.8: from what I can tell, the downcall error is either -EKEYEXPIRED when the user credential has expired, or -EACCES for everything else.
-
-However, I can write a patch to change rpc.gssd to return, say, -ENOKEY, if no keytab is available when the kernel requests a machine credential.
-
-Is that worth pursuing in the long run?
-
-
-> 
-> 
->> 
->> --b.
->> 
->>>> Instead of using AUTH_GSS for SETCLIENTID by default, would it make
->>>> sense to add a switch (module parm?) that turns it on so that it can be
->>>> an opt-in thing rather than doing this by default?
->>> 
->>> Why add another tunable when we really should just fix the delay?
->>> 
->>> Besides, if gssd is running and no keytab exists, then the fallback to AUTH_SYS should be fast. Is that not an effective workaround until we address the delay problem?
->>> 
->>> -- 
->>> Chuck Lever
->>> chuck[dot]lever[at]oracle[dot]com
->>> 
->>> 
->>> 
->>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+steved.
