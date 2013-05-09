@@ -1,71 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ye0-f202.google.com ([209.85.213.202]:54956 "EHLO
-	mail-ye0-f202.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758750Ab3EFX6a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 19:58:30 -0400
-Received: by mail-ye0-f202.google.com with SMTP id r13so448554yen.1
-        for <linux-nfs@vger.kernel.org>; Mon, 06 May 2013 16:58:30 -0700 (PDT)
-From: Colin Cross <ccross@android.com>
-To: linux-kernel@vger.kernel.org
-Cc: Pavel Machek <pavel@ucw.cz>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Colin Cross <ccross@android.com>, Oleg Nesterov <oleg@redhat.com>,
-        linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org,
-        netdev@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, Darren Hart <dvhart@linux.intel.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Randy Dunlap <rdunlap@infradead.org>,
-        Al Viro <viro@zeniv.linux.org.uk>
-Subject: [PATCH v3 13/16] futex: use freezable blocking call
-Date: Mon,  6 May 2013 16:50:18 -0700
-Message-Id: <1367884221-20462-14-git-send-email-ccross@android.com>
-In-Reply-To: <1367884221-20462-1-git-send-email-ccross@android.com>
-References: <1367884221-20462-1-git-send-email-ccross@android.com>
+Received: from mx1.redhat.com ([209.132.183.28]:49093 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751424Ab3EISRk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 May 2013 14:17:40 -0400
+Date: Thu, 9 May 2013 14:16:47 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Vyacheslav Dubeyko <slava@dubeyko.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@infradead.org>,
+        Hin-Tak Leung <htl10@users.sourceforge.net>,
+        Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH v4 0/5] nfsd + hfsplus: introduce generalized version of
+ NFSv4 ACLs <-> POSIX ACLs mapping algorithms
+Message-ID: <20130509181647.GA18541@pad.fieldses.org>
+References: <1368117430.5695.30.camel@slavad-ubuntu-12.04>
+ <1368118877.3282.104.camel@leira.trondhjem.org>
+ <9841F318-DA62-4ACF-AA33-0474DBC2B107@dubeyko.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <9841F318-DA62-4ACF-AA33-0474DBC2B107@dubeyko.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Avoid waking up every thread sleeping in a futex_wait call during
-suspend and resume by calling a freezable blocking call.  Previous
-patches modified the freezer to avoid sending wakeups to threads
-that are blocked in freezable blocking calls.
+On Thu, May 09, 2013 at 09:34:50PM +0400, Vyacheslav Dubeyko wrote:
+> On May 9, 2013, at 9:01 PM, Myklebust, Trond wrote:
+> 
+> [snip]
+> > 
+> > How does this make sense? There is no lossless mapping of NFSv4 acls
+> > into POSIX acls; the latter doesn't have any equivalent of the DENY
+> > aces so you cannot represent the full set of acls that can be set
+> > using MacOS on the same filesystem.
+> > 
+> > Shouldn't you rather be looking at the richacl patch sets?
+> > 
+> 
+> Yes, I understand the nature of such mapping and impossibility of
+> mapping NFSv4 ACLs to POSIX ACLs in some cases. But, as I understand,
+> the richacl patch set is not mainline yet.
 
-This call was selected to be converted to a freezable call because
-it doesn't hold any locks or release any resources when interrupted
-that might be needed by another freezing task or a kernel driver
-during suspend, and is a common site where idle userspace tasks are
-blocked.
+Neither are these patches.  You could pick up the richacl patches and
+work on them instead.  That might be more work, I don't know, but the
+result would certainly be more useful, to many more people....
 
-Acked-by: Tejun Heo <tj@kernel.org>
-Acked-by: Thomas Gleixner <tglx@linutronix.de>
-Acked-by: Darren Hart <dvhart@linux.intel.com>
-Signed-off-by: Colin Cross <ccross@android.com>
----
- kernel/futex.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+> And even if it will be in mainline then a user can have choice to use
+> POSIX ACLs or richacls.
 
-diff --git a/kernel/futex.c b/kernel/futex.c
-index b26dcfc..d710fae 100644
---- a/kernel/futex.c
-+++ b/kernel/futex.c
-@@ -61,6 +61,7 @@
- #include <linux/nsproxy.h>
- #include <linux/ptrace.h>
- #include <linux/sched/rt.h>
-+#include <linux/freezer.h>
- 
- #include <asm/futex.h>
- 
-@@ -1807,7 +1808,7 @@ static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,
- 		 * is no timeout, or if it has yet to expire.
- 		 */
- 		if (!timeout || timeout->task)
--			schedule();
-+			freezable_schedule();
- 	}
- 	__set_current_state(TASK_RUNNING);
- }
--- 
-1.8.2.1
+I actually kinda like the idea of allowing people to use either model
+and translating automatically between them.  But it is complicated, and
+I'm not convinced it's necessary.
 
+> So, we need to map NFSv4 ACLs <-> POSIX ACLs in hfsplus for the case
+> of using POSIX ACLs model. I think that to have such mapping is better
+> than to have nothing.
+
+So, in the "better than nothing" spirit, I'll take a look at these, but
+I would still rather we get the richacl stuff done....
+
+--b.
+
+> Moreover, a user can use HFS+ filesystem with
+> using POSIX ACLs only under Linux. Thereby, the generalization of
+> mapping NFSv4 ACLs <-> POSIX ACLs makes sense, from my viewpoint.
+> 
+> With the best regards, Vyacheslav Dubeyko.
+> 
+> > -- Trond Myklebust Linux NFS client maintainer
+> > 
+> > NetApp Trond.Myklebust@netapp.com www.netapp.com
+> 
