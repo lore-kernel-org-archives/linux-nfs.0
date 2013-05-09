@@ -1,200 +1,153 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f202.google.com ([209.85.220.202]:45503 "EHLO
-	mail-vc0-f202.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1763435Ab3ECVES (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 May 2013 17:04:18 -0400
-Received: by mail-vc0-f202.google.com with SMTP id gf12so216773vcb.5
-        for <linux-nfs@vger.kernel.org>; Fri, 03 May 2013 14:04:18 -0700 (PDT)
-From: Colin Cross <ccross@android.com>
-To: linux-kernel@vger.kernel.org
+Received: from fieldses.org ([174.143.236.118]:48026 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753353Ab3EIBuh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 May 2013 21:50:37 -0400
+Date: Wed, 8 May 2013 21:50:33 -0400
+To: Steve Dickson <SteveD@redhat.com>
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Len Brown <len.brown@intel.com>, Pavel Machek <pavel@ucw.cz>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Paul Walmsley <paul@pwsan.com>, Colin Cross <ccross@android.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-pm@vger.kernel.org, netdev@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, Ben Chan <benchan@chromium.org>
-Subject: [PATCH 1/2] freezer: add unsafe versions of freezable helpers
-Date: Fri,  3 May 2013 14:04:09 -0700
-Message-Id: <1367615050-3894-1-git-send-email-ccross@android.com>
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 16/17] NFSD: Server implementation of MAC Labeling
+Message-ID: <20130509015033.GI23747@fieldses.org>
+References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
+ <1367515151-31015-17-git-send-email-SteveD@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1367515151-31015-17-git-send-email-SteveD@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFS calls the freezable helpers with locks held, which is unsafe
-and caused lockdep warnings when 6aa9707 "lockdep: check that no
-locks held at freeze time" was applied (reverted in dbf520a).
-Add new *_unsafe versions of the helpers that will not run the
-lockdep test when 6aa9707 is reapplied, and call them from NFS.
+This also doesn't handle the unsupported case correctly.
 
-Signed-off-by: Colin Cross <ccross@android.com>
----
- fs/nfs/inode.c          |  2 +-
- fs/nfs/nfs3proc.c       |  2 +-
- fs/nfs/nfs4proc.c       |  4 ++--
- include/linux/freezer.h | 42 +++++++++++++++++++++++++++++++++++++++++-
- net/sunrpc/sched.c      |  2 +-
- 5 files changed, 46 insertions(+), 6 deletions(-)
+Applying the following fix to my tree.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 1f94167..53cbee5 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -79,7 +79,7 @@ int nfs_wait_bit_killable(void *word)
- {
- 	if (fatal_signal_pending(current))
- 		return -ERESTARTSYS;
--	freezable_schedule();
-+	freezable_schedule_unsafe();
- 	return 0;
- }
- EXPORT_SYMBOL_GPL(nfs_wait_bit_killable);
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 43ea96c..ce90eb4 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -33,7 +33,7 @@ nfs3_rpc_wrapper(struct rpc_clnt *clnt, struct rpc_message *msg, int flags)
- 		res = rpc_call_sync(clnt, msg, flags);
- 		if (res != -EJUKEBOX)
- 			break;
--		freezable_schedule_timeout_killable(NFS_JUKEBOX_RETRY_TIME);
-+		freezable_schedule_timeout_killable_unsafe(NFS_JUKEBOX_RETRY_TIME);
- 		res = -ERESTARTSYS;
- 	} while (!fatal_signal_pending(current));
- 	return res;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 0ad025e..a236077 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -266,7 +266,7 @@ static int nfs4_delay(struct rpc_clnt *clnt, long *timeout)
- 		*timeout = NFS4_POLL_RETRY_MIN;
- 	if (*timeout > NFS4_POLL_RETRY_MAX)
- 		*timeout = NFS4_POLL_RETRY_MAX;
--	freezable_schedule_timeout_killable(*timeout);
-+	freezable_schedule_timeout_killable_unsafe(*timeout);
- 	if (fatal_signal_pending(current))
- 		res = -ERESTARTSYS;
- 	*timeout <<= 1;
-@@ -4309,7 +4309,7 @@ int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4
- static unsigned long
- nfs4_set_lock_task_retry(unsigned long timeout)
- {
--	freezable_schedule_timeout_killable(timeout);
-+	freezable_schedule_timeout_killable_unsafe(timeout);
- 	timeout <<= 1;
- 	if (timeout > NFS4_LOCK_MAXTIMEOUT)
- 		return NFS4_LOCK_MAXTIMEOUT;
-diff --git a/include/linux/freezer.h b/include/linux/freezer.h
-index e70df40..5b31e21c 100644
---- a/include/linux/freezer.h
-+++ b/include/linux/freezer.h
-@@ -46,7 +46,11 @@ extern int freeze_kernel_threads(void);
- extern void thaw_processes(void);
- extern void thaw_kernel_threads(void);
- 
--static inline bool try_to_freeze(void)
-+/*
-+ * DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION
-+ * If try_to_freeze causes a lockdep warning it means the caller may deadlock
-+ */
-+static inline bool try_to_freeze_unsafe(void)
- {
- 	might_sleep();
- 	if (likely(!freezing(current)))
-@@ -54,6 +58,11 @@ static inline bool try_to_freeze(void)
- 	return __refrigerator(false);
- }
- 
-+static inline bool try_to_freeze(void)
-+{
-+	return try_to_freeze_unsafe();
-+}
-+
- extern bool freeze_task(struct task_struct *p);
- extern bool set_freezable(void);
- 
-@@ -115,6 +124,14 @@ static inline void freezer_count(void)
- 	try_to_freeze();
- }
- 
-+/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
-+static inline void freezer_count_unsafe(void)
-+{
-+	current->flags &= ~PF_FREEZER_SKIP;
-+	smp_mb();
-+	try_to_freeze_unsafe();
-+}
-+
- /**
-  * freezer_should_skip - whether to skip a task when determining frozen
-  *			 state is reached
-@@ -152,6 +169,14 @@ static inline bool freezer_should_skip(struct task_struct *p)
- 	freezer_count();						\
- })
- 
-+/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
-+#define freezable_schedule_unsafe()					\
-+({									\
-+	freezer_do_not_count();						\
-+	schedule();							\
-+	freezer_count_unsafe();						\
-+})
-+
- /* Like schedule_timeout_killable(), but should not block the freezer. */
- #define freezable_schedule_timeout_killable(timeout)			\
- ({									\
-@@ -162,6 +187,16 @@ static inline bool freezer_should_skip(struct task_struct *p)
- 	__retval;							\
- })
- 
-+/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
-+#define freezable_schedule_timeout_killable_unsafe(timeout)		\
-+({									\
-+	long __retval;							\
-+	freezer_do_not_count();						\
-+	__retval = schedule_timeout_killable(timeout);			\
-+	freezer_count_unsafe();						\
-+	__retval;							\
-+})
-+
- /*
-  * Freezer-friendly wrappers around wait_event_interruptible(),
-  * wait_event_killable() and wait_event_interruptible_timeout(), originally
-@@ -225,9 +260,14 @@ static inline void set_freezable(void) {}
- 
- #define freezable_schedule()  schedule()
- 
-+#define freezable_schedule_unsafe()  schedule()
-+
- #define freezable_schedule_timeout_killable(timeout)			\
- 	schedule_timeout_killable(timeout)
- 
-+#define freezable_schedule_timeout_killable_unsafe(timeout)		\
-+	schedule_timeout_killable(timeout)
-+
- #define wait_event_freezable(wq, condition)				\
- 		wait_event_interruptible(wq, condition)
- 
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index f8529fc..8dcfadc 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -254,7 +254,7 @@ static int rpc_wait_bit_killable(void *word)
- {
- 	if (fatal_signal_pending(current))
- 		return -ERESTARTSYS;
--	freezable_schedule();
-+	freezable_schedule_unsafe();
- 	return 0;
- }
- 
--- 
-1.8.2.1
+--b.
 
+commit 4438e5f801c43cc0f383fdc85f3ec294a4155df1
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Wed May 8 21:38:00 2013 -0400
+
+    nfsd4: fix handling of case when labels are unsupported
+    
+    Copy the logic in the ACL case to ensure that we just turn off the
+    bitmap in the getattr case instead of erroring out, and to ensure that
+    we get the supported_attributes attribute right.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 6e96c0d..3b4e59c 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2010,29 +2010,21 @@ nfsd4_encode_aclname(struct svc_rqst *rqstp, struct nfs4_ace *ace,
+ 
+ #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+ static inline __be32
+-nfsd4_encode_security_label(struct svc_rqst *rqstp, struct dentry *dentry, __be32 **pp, int *buflen)
++nfsd4_encode_security_label(struct svc_rqst *rqstp, void *context, int len, __be32 **pp, int *buflen)
+ {
+-	void *context;
+-	int host_err;
+-	__be32 err = nfserr_resource;
+-	u32 len;
+ 	uint32_t pi = 0;
+ 	uint32_t lfs = 0;
+ 	__be32 *p = *pp;
+ 
+-	host_err = security_inode_getsecctx(dentry->d_inode, &context, &len);
+-	if (host_err)
+-		return nfserrno(host_err);
+-
+ 	if (*buflen < ((XDR_QUADLEN(len) << 2) + 4 + 4 + 4))
+-		goto out;
++		return nfserr_resource;
+ 
+ 	/*
+ 	 * For now we use a 0 here to indicate the null translation; in
+ 	 * the future we may place a call to translation code here.
+ 	 */
+ 	if ((*buflen -= 8) < 0)
+-		goto out;
++		return nfserr_resource;
+ 
+ 	WRITE32(lfs);
+ 	WRITE32(pi);
+@@ -2040,10 +2032,7 @@ nfsd4_encode_security_label(struct svc_rqst *rqstp, struct dentry *dentry, __be3
+ 	*buflen -= (XDR_QUADLEN(len) << 2) + 4;
+ 
+ 	*pp = p;
+-	err = 0;
+-out:
+-	security_release_secctx(context, len);
+-	return err;
++	return 0;
+ }
+ #else
+ static inline __be32
+@@ -2110,6 +2099,9 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+ 	int err;
+ 	int aclsupport = 0;
+ 	struct nfs4_acl *acl = NULL;
++	void *context = NULL;
++	int contextlen;
++	bool contextsupport = false;
+ 	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+ 	u32 minorversion = resp->cstate.minorversion;
+ 	struct path path = {
+@@ -2163,6 +2155,21 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+ 		}
+ 	}
+ 
++#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
++	if ((bmval[2] & FATTR4_WORD2_SECURITY_LABEL) ||
++			bmval[0] & FATTR4_WORD0_SUPPORTED_ATTRS) {
++		err = security_inode_getsecctx(dentry->d_inode,
++						&context, &contextlen);
++		contextsupport = (err = 0);
++		if (bmval2 & FATTR4_WORD2_SECURITY_LABEL) {
++			if (err == -EOPNOTSUPP)
++				bmval2 &= ~FATTR4_WORD2_SECURITY_LABEL;
++			else if (err)
++				goto out_nfserr;
++		}
++	}
++#endif /* CONFIG_NFSD_V4_SECURITY_LABEL */
++
+ 	if (bmval2) {
+ 		if ((buflen -= 16) < 0)
+ 			goto out_resource;
+@@ -2191,6 +2198,8 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+ 
+ 		if (!aclsupport)
+ 			word0 &= ~FATTR4_WORD0_ACL;
++		if (!contextsupport)
++			word2 &= ~FATTR4_WORD2_SECURITY_LABEL;
+ 		if (!word2) {
+ 			if ((buflen -= 12) < 0)
+ 				goto out_resource;
+@@ -2499,8 +2508,8 @@ out_acl:
+ 		WRITE64(stat.ino);
+ 	}
+ 	if (bmval2 & FATTR4_WORD2_SECURITY_LABEL) {
+-		status = nfsd4_encode_security_label(rqstp, dentry,
+-				&p, &buflen);
++		status = nfsd4_encode_security_label(rqstp, context,
++				contextlen, &p, &buflen);
+ 		if (status)
+ 			goto out;
+ 	}
+@@ -2516,6 +2525,8 @@ out_acl:
+ 	status = nfs_ok;
+ 
+ out:
++	if (context)
++		security_release_secctx(context, contextlen);
+ 	kfree(acl);
+ 	if (fhp == &tempfh)
+ 		fh_put(&tempfh);
