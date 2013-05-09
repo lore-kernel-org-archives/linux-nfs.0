@@ -1,74 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.194]:61367 "EHLO mout.perfora.net"
+Received: from mx1.redhat.com ([209.132.183.28]:59306 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754345Ab3EVLvh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 May 2013 07:51:37 -0400
-Date: Wed, 22 May 2013 07:51:33 -0400
-From: Jim Rees <rees@umich.edu>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: include invalid uid/gid in the error message
-Message-ID: <20130522115133.GA6274@umich.edu>
-References: <1369216794-18044-1-git-send-email-tigran.mkrtchyan@desy.de>
+	id S1753947Ab3EIWTs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 May 2013 18:19:48 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r49MJm9S015417
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 9 May 2013 18:19:48 -0400
+Received: from smallhat.bos.devel.redhat.com ([10.16.60.65])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r49MJmIF031389
+	for <linux-nfs@vger.kernel.org>; Thu, 9 May 2013 18:19:48 -0400
+Message-ID: <518C2104.7060107@RedHat.com>
+Date: Thu, 09 May 2013 18:19:48 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1369216794-18044-1-git-send-email-tigran.mkrtchyan@desy.de>
+To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: RPC: AUTH_GSS upcall timed out.
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Tigran Mkrtchyan wrote:
+Hello,
 
-  if client receives an invalid uid/gid debug message is generated.
-  Unfortunately the actual invalid value is not included.
-  
-  Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-  ---
-   fs/nfs/nfs2xdr.c | 4 ++--
-   fs/nfs/nfs3xdr.c | 4 ++--
-   2 files changed, 4 insertions(+), 4 deletions(-)
-  
-  diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-  index 62db136..85c0646 100644
-  --- a/fs/nfs/nfs2xdr.c
-  +++ b/fs/nfs/nfs2xdr.c
-  @@ -319,10 +319,10 @@ static int decode_fattr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
-   
-   	return 0;
-   out_uid:
-  -	dprintk("NFS: returned invalid uid\n");
-  +	dprintk("NFS: returned invalid uid %d\n", fattr->uid);
-   	return -EINVAL;
-   out_gid:
-  -	dprintk("NFS: returned invalid gid\n");
-  +	dprintk("NFS: returned invalid gid %d\n", fattr->gid);
-   	return -EINVAL;
-   out_overflow:
-   	print_overflow_msg(__func__, xdr);
-  diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-  index fa6d721..cd52069 100644
-  --- a/fs/nfs/nfs3xdr.c
-  +++ b/fs/nfs/nfs3xdr.c
-  @@ -680,10 +680,10 @@ static int decode_fattr3(struct xdr_stream *xdr, struct nfs_fattr *fattr)
-   	fattr->valid |= NFS_ATTR_FATTR_V3;
-   	return 0;
-   out_uid:
-  -	dprintk("NFS: returned invalid uid\n");
-  +	dprintk("NFS: returned invalid uid %d\n", fattr->uid);
-   	return -EINVAL;
-   out_gid:
-  -	dprintk("NFS: returned invalid gid\n");
-  +	dprintk("NFS: returned invalid gid %d\n", fattr->gid);
-   	return -EINVAL;
-   out_overflow:
-   	print_overflow_msg(__func__, xdr);
-  -- 
-  1.8.1.4
-  
-  --
-  To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-  the body of a message to majordomo@vger.kernel.org
-  More majordomo info at  http://vger.kernel.org/majordomo-info.html
+commit 4edaa308888b4bd629fa025cc6d5b2bf1a2a51db
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Sat Mar 16 15:56:20 2013 -0400
 
-I can't tell what the type of fattr->uid is through the maze of include
-files, but would it be a good idea to cast this to unsigned long for
-printing?
+    NFS: Use "krb5i" to establish NFSv4 state whenever possible
+
+Introduced a hard code call to nfs_create_rpc_client(RPC_AUTH_GSS_KRB5I)
+in nfs4_init_client() which means if rpc.gssd is not running the mount 
+hangs for a bit logs the "RPC: AUTH_GSS upcall timed out" and then tries 
+nfs_create_rpc_client(RPC_AUTH_NULL) allowing the mount to succeed.
+
+Is this a known "feature"? 
+
+steved.
+ 
