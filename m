@@ -1,31 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.gmx.net ([212.227.15.19]:55794 "EHLO mout.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751983Ab3EIQSK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 May 2013 12:18:10 -0400
-Received: from mailout-de.gmx.net ([10.1.76.12]) by mrigmx.server.lan
- (mrigmx002) with ESMTP (Nemesis) id 0M0ei8-1UH0gh0W5O-00untm for
- <linux-nfs@vger.kernel.org>; Thu, 09 May 2013 18:18:09 +0200
-Message-ID: <518BCC3E.8060501@gmx.de>
-Date: Thu, 09 May 2013 18:18:06 +0200
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+Received: from mail-ea0-f181.google.com ([209.85.215.181]:61813 "EHLO
+	mail-ea0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751305Ab3EIIvH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 May 2013 04:51:07 -0400
+Received: by mail-ea0-f181.google.com with SMTP id a15so1397406eae.12
+        for <linux-nfs@vger.kernel.org>; Thu, 09 May 2013 01:51:05 -0700 (PDT)
+Received: from bhalevy-lt.il.tonian.com (bzq-80-49-130.static.bezeqint.net. [82.80.49.130])
+        by mx.google.com with ESMTPSA id t9sm2716764eeo.11.2013.05.09.01.51.04
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=RC4-SHA bits=128/128);
+        Thu, 09 May 2013 01:51:04 -0700 (PDT)
+Message-ID: <518B6377.3000207@tonian.com>
+Date: Thu, 09 May 2013 11:51:03 +0300
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: NFSD: unable to generate recoverydir name (-2).
-References: <518AA163.2060906@gmx.de> <518B54D7.3090605@gmx.de> <20130509083515.1f138786@tlielax.poochiereds.net>
-In-Reply-To: <20130509083515.1f138786@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=UTF-8
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/38] pnfsd: Use layout state to track layouts and misc.
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/09/2013 02:35 PM, Jeff Layton wrote:
-> Nice catch -- thanks for reporting this. I see the bug and have a patch
-> that I'll send along in a bit. It's fairly straightforward but if you
-> can test it, then that would be wonderful.
-tested - works fine so far :-)
+The following patchset includes:
+- API usage changes that originated in v3.8 around the use of nfsd_net
+  to search clientid and stateid.
+  - temporary removal of notify_deviceid and get_state pnfs callback API
+    until we implement a mechanism to look up global stateids and clientids
+    provided by the file system.
+- rewriting of the layout tracking mechanism, using
+  the layout_state structure to keep a list of all derived layout
+  and enlisting the layout_state on its respective file and client rather
+  than the layout structure themselves.
+- various bug fixes
 
--- 
-MfG/Sincerely
-Toralf Förster
-pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+API related reverts:
+[PATCH 01/38] Revert "SQUASHME: pnfsd: Fix compiler warning when
+[PATCH 02/38] Revert "pnfsd: Clean up all stateids on DS on
+[PATCH 03/38] Revert "pnfsd: update ds stateid from mds"
+[PATCH 04/38] pnfsd-lexp: remove get_state
+[PATCH 05/38] Revert "FIXME pnfsd: gfs2 temp turn off DS stateid
+[PATCH 06/38] Revert "pnfsd: nfs4_preprocess_pnfs_ds_stateid"
+[PATCH 07/38] Revert "pnfsd: Add way of determining if a client has
+[PATCH 08/38] Revert "pnfsd: Notify device ID changes"
+[PATCH 09/38] Revert "pnfsd: filelayout: file layout specific
+[PATCH 10/38] Revert "pnfsd: Use ds_state_lock to protect retrieving
+[PATCH 11/38] Revert "pnfsd: ds state"
+[PATCH 12/38] Revert "pnfsd: decode getdeviceinfo notify types."
+[PATCH 13/38] Revert "pnfsd: set_device_notify"
+[PATCH 14/38] FIXME: temporarily disable create_layout_recall_list
+
+API related changes:
+[PATCH 15/38] SQUASHME: pnfsd: use nfsd_net for layoutget starting
+[PATCH 16/38] SQUASHME: pnfsd: use nfsd4_init_callback starting v3.8
+[PATCH 17/38] SQUASHME: use nfsd_net for layoutreturn starting v3.8
+
+bug fixes:
+[PATCH 18/38] SQUASHME: pnfsd: fix destroy_layout_state
+[PATCH 19/38] SQUASHME: pnfsd: get rid of depdency on nfsd_serv
+[PATCH 20/38] SQUASHME: pnfsd: merge_layout needs to acquire the
+[PATCH 21/38] SQUASHME: pnfsd: return bool from merge_layout and fix
+[PATCH 22/38] SQUASHME: pnfsd: hanging nfs4_layoutrecall on the
+[PATCH 23/38] DEBUG: pnfsd: ASSERT_LAYOUT_LOCKED
+[PATCH 24/38] pnfsd: cause oops when stop the nfs server
+
+layout tracking:
+[PATCH 25/38] pnfsd: layout state: rename fi_layout_states member
+[PATCH 26/38] pnfsd: layout state: move initialization of ls_roc
+[PATCH 27/38] pnfsd: layout state: introduce ls_file backpointer
+[PATCH 28/38] pnfsd: layout state: introduce ls_client backpointer
+[PATCH 29/38] pnfsd: layout state: hang layouts on layout state
+[PATCH 30/38] pnfsd-lexp: fixup recall_layout
+[PATCH 31/38] pnfsd: use the layout stateid for layout recalls
+[PATCH 32/38] pnfsd: cosmetic fixes
+[PATCH 33/38] pnfsd: pass layout stateid down to fs on layoutget
+[PATCH 34/38] pnfsd: pass layout stateid down to fs on layoutreturn
+[PATCH 35/38] pnfsd: use layout stateid for is_layout_recalled
+[PATCH 36/38] pnfsd: deprecate cbl_seg.clientid
+[PATCH 37/38] pnfsd: don't use clientid in merge_layout
+[PATCH 38/38] pnfsd: remove clientid member from struct
