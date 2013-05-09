@@ -1,97 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f170.google.com ([74.125.82.170]:44020 "EHLO
-	mail-we0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754337Ab3EKCmj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:42:39 -0400
-Received: by mail-we0-f170.google.com with SMTP id u54so4661318wes.29
-        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:42:38 -0700 (PDT)
-Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
-        by mx.google.com with ESMTPSA id ge7sm1363458wib.6.2013.05.10.19.42.37
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 10 May 2013 19:42:38 -0700 (PDT)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 02/38] Revert "pnfsd: Clean up all stateids on DS on shutdown"
-Date: Sat, 11 May 2013 05:42:33 +0300
-Message-Id: <1368240153-31792-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <518B6377.3000207@tonian.com>
-References: <518B6377.3000207@tonian.com>
+Received: from mail-gh0-f181.google.com ([209.85.160.181]:55986 "EHLO
+	mail-gh0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751260Ab3EIMnb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 May 2013 08:43:31 -0400
+Received: by mail-gh0-f181.google.com with SMTP id z12so607795ghb.26
+        for <linux-nfs@vger.kernel.org>; Thu, 09 May 2013 05:43:31 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, skinsbursky@parallels.com,
+        toralf.foerster@gmx.de
+Subject: [PATCH] nfsd: fix oops when legacy_recdir_name_error is passed a -ENOENT error
+Date: Thu,  9 May 2013 08:36:23 -0400
+Message-Id: <1368102983-5264-1-git-send-email-jlayton@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This reverts commit 82d356f0294487cfc6b98d16ddea74d67eabddb4.
+Toralf reported the following oops to the linux-nfs mailing list:
 
-Conflicts:
-	fs/nfsd/state.h
+    -----------------[snip]------------------
+    NFSD: unable to generate recoverydir name (-2).
+    NFSD: disabling legacy clientid tracking. Reboot recovery will not function correctly!
+    BUG: unable to handle kernel NULL pointer dereference at 000003c8
+    IP: [<f90a3d91>] nfsd4_client_tracking_exit+0x11/0x50 [nfsd]
+    *pdpt = 000000002ba33001 *pde = 0000000000000000
+    Oops: 0000 [#1] SMP
+    Modules linked in: loop nfsd auth_rpcgss ipt_MASQUERADE xt_owner xt_multiport ipt_REJECT xt_tcpudp xt_recent xt_conntrack nf_conntrack_ftp xt_limit xt_LOG iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_filter ip_tables x_tables af_packet pppoe pppox ppp_generic slhc bridge stp llc tun arc4 iwldvm mac80211 coretemp kvm_intel uvcvideo sdhci_pci sdhci mmc_core videobuf2_vmalloc videobuf2_memops usblp videobuf2_core i915 iwlwifi psmouse videodev cfg80211 kvm fbcon bitblit cfbfillrect acpi_cpufreq mperf evdev softcursor font cfbimgblt i2c_algo_bit cfbcopyarea intel_agp intel_gtt drm_kms_helper snd_hda_codec_conexant drm agpgart fb fbdev tpm_tis thinkpad_acpi tpm nvram e1000e rfkill thermal ptp wmi pps_core tpm_bios 8250_pci processor 8250 ac snd_hda_intel snd_hda_codec snd_pcm battery video i2c_i801 snd_page_alloc snd_timer button serial_core i2c_core snd soundcore thermal_sys hwmon aesni_intel ablk_helper cryp
+td lrw aes_i586 xts gf128mul cbc fuse nfs lockd sunrpc dm_crypt dm_mod hid_monterey hid_microsoft hid_logitech hid_ezkey hid_cypress hid_chicony hid_cherry hid_belkin hid_apple hid_a4tech hid_generic usbhid hid sr_mod cdrom sg [last unloaded: microcode]
+    Pid: 6374, comm: nfsd Not tainted 3.9.1 #6 LENOVO 4180F65/4180F65
+    EIP: 0060:[<f90a3d91>] EFLAGS: 00010202 CPU: 0
+    EIP is at nfsd4_client_tracking_exit+0x11/0x50 [nfsd]
+    EAX: 00000000 EBX: fffffffe ECX: 00000007 EDX: 00000007
+    ESI: eb9dcb00 EDI: eb2991c0 EBP: eb2bde38 ESP: eb2bde34
+    DS: 007b ES: 007b FS: 00d8 GS: 00e0 SS: 0068
+    CR0: 80050033 CR2: 000003c8 CR3: 2ba80000 CR4: 000407f0
+    DR0: 00000000 DR1: 00000000 DR2: 00000000 DR3: 00000000
+    DR6: ffff0ff0 DR7: 00000400
+    Process nfsd (pid: 6374, ti=eb2bc000 task=eb2711c0 task.ti=eb2bc000)
+    Stack:
+    fffffffe eb2bde4c f90a3e0c f90a7754 fffffffe eb0a9c00 eb2bdea0 f90a41ed
+    eb2991c0 1b270000 eb2991c0 eb2bde7c f9099ce9 eb2bde98 0129a020 eb29a020
+    eb2bdecc eb2991c0 eb2bdea8 f9099da5 00000000 eb9dcb00 00000001 67822f08
+    Call Trace:
+    [<f90a3e0c>] legacy_recdir_name_error+0x3c/0x40 [nfsd]
+    [<f90a41ed>] nfsd4_create_clid_dir+0x15d/0x1c0 [nfsd]
+    [<f9099ce9>] ? nfsd4_lookup_stateid+0x99/0xd0 [nfsd]
+    [<f9099da5>] ? nfs4_preprocess_seqid_op+0x85/0x100 [nfsd]
+    [<f90a4287>] nfsd4_client_record_create+0x37/0x50 [nfsd]
+    [<f909d6ce>] nfsd4_open_confirm+0xfe/0x130 [nfsd]
+    [<f90980b1>] ? nfsd4_encode_operation+0x61/0x90 [nfsd]
+    [<f909d5d0>] ? nfsd4_free_stateid+0xc0/0xc0 [nfsd]
+    [<f908fd0b>] nfsd4_proc_compound+0x41b/0x530 [nfsd]
+    [<f9081b7b>] nfsd_dispatch+0x8b/0x1a0 [nfsd]
+    [<f857b85d>] svc_process+0x3dd/0x640 [sunrpc]
+    [<f908165d>] nfsd+0xad/0x110 [nfsd]
+    [<f90815b0>] ? nfsd_destroy+0x70/0x70 [nfsd]
+    [<c1054824>] kthread+0x94/0xa0
+    [<c1486937>] ret_from_kernel_thread+0x1b/0x28
+    [<c1054790>] ? flush_kthread_work+0xd0/0xd0
+    Code: 86 b0 00 00 00 90 c5 0a f9 c7 04 24 70 76 0a f9 e8 74 a9 3d c8 eb ba 8d 76 00 55 89 e5 53 66 66 66 66 90 8b 15 68 c7 0a f9 85 d2 <8b> 88 c8 03 00 00 74 2c 3b 11 77 28 8b 5c 91 08 85 db 74 22 8b
+    EIP: [<f90a3d91>] nfsd4_client_tracking_exit+0x11/0x50 [nfsd] SS:ESP 0068:eb2bde34
+    CR2: 00000000000003c8
+    ---[ end trace 09e54015d145c9c6 ]---
+
+The problem appears to be a regression that was introduced in commit
+9a9c6478. Prior to that commit, it was safe to pass a NULL net pointer
+to nfsd4_client_tracking_exit in the legacy recdir case, and
+legacy_recdir_name_error did so. After that comit, the net pointer must
+be valid.
+
+This patch just fixes legacy_recdir_name_error to pass in a valid net
+pointer to that function.
+
+Cc: <stable@vger.kernel.org> # v3.8+
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Reported-by: Toralf Förster <toralf.foerster@gmx.de>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfs4pnfsds.c | 19 -------------------
- fs/nfsd/nfs4state.c  |  1 -
- fs/nfsd/state.h      |  2 --
- 3 files changed, 22 deletions(-)
+ fs/nfsd/nfs4recover.c | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfsd/nfs4pnfsds.c b/fs/nfsd/nfs4pnfsds.c
-index 2732f20..13fe811 100644
---- a/fs/nfsd/nfs4pnfsds.c
-+++ b/fs/nfsd/nfs4pnfsds.c
-@@ -274,25 +274,6 @@ static int stateid_hashval(stateid_t *stidp)
- 	kref_get(&dsp->ds_ref);
- }
- 
--void
--nfs4_pnfs_state_shutdown(void)
--{
--	struct pnfs_ds_stateid *dsp;
--	int i;
--
--	dprintk("pNFSD %s: -->\n", __func__);
--
--	ds_lock_state();
--	for (i = 0; i < STATEID_HASH_SIZE; i++) {
--		while (!list_empty(&ds_stid_hashtbl[i])) {
--			dsp = list_entry(ds_stid_hashtbl[i].next,
--					 struct pnfs_ds_stateid, ds_hash);
--			put_ds_stateid(dsp);
--		}
--	}
--	ds_unlock_state();
--}
--
- static struct pnfs_mds_id *
- alloc_init_mds_id(struct pnfs_get_state *gsp)
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 899ca26..4e9a21d 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -146,7 +146,7 @@ out_no_tfm:
+  * then disable recovery tracking.
+  */
+ static void
+-legacy_recdir_name_error(int error)
++legacy_recdir_name_error(struct nfs4_client *clp, int error)
  {
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3c25405..d2256d8 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5090,7 +5090,6 @@ static int nfs4_state_create_net(struct net *net)
- 
- 	nfsd4_client_tracking_exit(net);
- 	nfs4_state_destroy_net(net);
--	nfs4_pnfs_state_shutdown();
+ 	printk(KERN_ERR "NFSD: unable to generate recoverydir "
+ 			"name (%d).\n", error);
+@@ -159,9 +159,7 @@ legacy_recdir_name_error(int error)
+ 	if (error == -ENOENT) {
+ 		printk(KERN_ERR "NFSD: disabling legacy clientid tracking. "
+ 			"Reboot recovery will not function correctly!\n");
+-
+-		/* the argument is ignored by the legacy exit function */
+-		nfsd4_client_tracking_exit(NULL);
++		nfsd4_client_tracking_exit(clp->net);
+ 	}
  }
  
- void
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 9935edc..31d5d0f 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -531,7 +531,6 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
- extern void pnfs_expire_client(struct nfs4_client *);
- extern void release_pnfs_ds_dev_list(struct nfs4_ol_stateid *);
- extern void nfs4_pnfs_state_init(void);
--extern void nfs4_pnfs_state_shutdown(void);
- extern void nfs4_ds_get_verifier(stateid_t *, struct super_block *, u32 *);
- extern int nfs4_preprocess_pnfs_ds_stateid(struct svc_fh *, stateid_t *);
- extern void pnfsd_roc(struct nfs4_client *clp, struct nfs4_file *fp);
-@@ -540,7 +539,6 @@ static inline void nfsd4_free_pnfs_slabs(void) {}
- static inline int nfsd4_init_pnfs_slabs(void) { return 0; }
- static inline void pnfs_expire_client(struct nfs4_client *clp) {}
- static inline void release_pnfs_ds_dev_list(struct nfs4_ol_stateid *stp) {}
--static inline void nfs4_pnfs_state_shutdown(void) {}
- static inline void pnfsd_roc(struct nfs4_client *clp, struct nfs4_file *fp) {}
- #endif /* CONFIG_PNFSD */
+@@ -184,7 +182,7 @@ nfsd4_create_clid_dir(struct nfs4_client *clp)
+ 
+ 	status = nfs4_make_rec_clidname(dname, &clp->cl_name);
+ 	if (status)
+-		return legacy_recdir_name_error(status);
++		return legacy_recdir_name_error(clp, status);
+ 
+ 	status = nfs4_save_creds(&original_cred);
+ 	if (status < 0)
+@@ -341,7 +339,7 @@ nfsd4_remove_clid_dir(struct nfs4_client *clp)
+ 
+ 	status = nfs4_make_rec_clidname(dname, &clp->cl_name);
+ 	if (status)
+-		return legacy_recdir_name_error(status);
++		return legacy_recdir_name_error(clp, status);
+ 
+ 	status = mnt_want_write_file(nn->rec_file);
+ 	if (status)
+@@ -601,7 +599,7 @@ nfsd4_check_legacy_client(struct nfs4_client *clp)
+ 
+ 	status = nfs4_make_rec_clidname(dname, &clp->cl_name);
+ 	if (status) {
+-		legacy_recdir_name_error(status);
++		legacy_recdir_name_error(clp, status);
+ 		return status;
+ 	}
  
 -- 
-1.7.11.7
+1.8.1.4
 
