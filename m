@@ -1,58 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40601 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:11106 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965259Ab3E2QSf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 May 2013 12:18:35 -0400
-Subject: Re: [PATCH 0/3 v3] dcache: make it more scalable on large system
-From: Simo Sorce <simo@redhat.com>
-To: Waiman Long <waiman.long@hp.com>
-Cc: Dave Chinner <david@fromorbit.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Jeff Layton <jlayton@redhat.com>, Miklos Szeredi <mszeredi@suse.cz>,
-        Ian Kent <raven@themaw.net>, Sage Weil <sage@inktank.com>,
-        Steve French <sfrench@samba.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Eric Paris <eparis@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, autofs@vger.kernel.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, "Chandramouleeswaran, Aswin" <aswin@hp.com>,
-        "Norton, Scott J" <scott.norton@hp.com>,
-        Andi Kleen <andi@firstfloor.org>
-In-Reply-To: <51A624E2.3000301@hp.com>
-References: <1369273048-60256-1-git-send-email-Waiman.Long@hp.com>
-	 <20130523094201.GA24543@dastard> <519E8B5F.3080905@hp.com>
-	 <20130527020903.GR29466@dastard>  <51A624E2.3000301@hp.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 29 May 2013 12:18:09 -0400
-Message-ID: <1369844289.2769.146.camel@willson.li.ssimo.org>
+	id S1753078Ab3EIMfU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 May 2013 08:35:20 -0400
+Date: Thu, 9 May 2013 08:35:15 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Toralf =?ISO-8859-1?B?RvZyc3Rlcg==?= <toralf.foerster@gmx.de>
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: NFSD: unable to generate recoverydir name (-2).
+Message-ID: <20130509083515.1f138786@tlielax.poochiereds.net>
+In-Reply-To: <518B54D7.3090605@gmx.de>
+References: <518AA163.2060906@gmx.de>
+	<518B54D7.3090605@gmx.de>
 Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-05-29 at 11:55 -0400, Waiman Long wrote:
+On Thu, 09 May 2013 09:48:39 +0200
+Toralf Förster <toralf.foerster@gmx.de> wrote:
 
-> My patch set consists of 2 different changes. The first one is to avoid 
-> taking the d_lock lock when updating the reference count in the 
-> dentries. This particular change also benefit some other workloads that 
-> are filesystem intensive. One particular example is the short workload 
-> in the AIM7 benchmark. One of the job type in the short workload is 
-> "misc_rtns_1" which calls security functions like getpwnam(), 
-> getpwuid(), getgrgid() a couple of times. These functions open the 
-> /etc/passwd or /etc/group files, read their content and close the files. 
-> It is the intensive open/read/close sequence from multiple threads that 
-> is causing 80%+ contention in the d_lock on a system with large number 
-> of cores.
+> On 05/08/2013 09:02 PM, Toralf Förster wrote:
+> > 2013-05-08T20:43:19.416+02:00 n22 kernel: NFSD: unable to generate recoverydir name (-2).
+> > 2013-05-08T20:43:19.416+02:00 n22 kernel: NFSD: disabling legacy clientid tracking. Reboot recovery will not function correctly!
+> > 2013-05-08T20:43:19.416+02:00 n22 kernel: BUG: unable to handle kernel NULL pointer dereference at 000003c8
+> 
+> After this the NFS daemon itself at the host hangs completely.
+> The whole server has to be rebooted to get the NFS service back.
+> 
+> This behaviour is reproducible.
+> 
 
-To be honest a workload base on /etc/passwd or /etc/group is completely
-artificial, in actual usage, if you really have  such access you use
-nscd or sssd with their shared memory caches to completely remove most
-of the file access.
-I have no beef on the rest but repeated access to Nsswitch information
-is not something you need to optimize at the file system layer and
-should not be brought up as a point in favor.
+Nice catch -- thanks for reporting this. I see the bug and have a patch
+that I'll send along in a bit. It's fairly straightforward but if you
+can test it, then that would be wonderful.
 
-Simo.
-
+Thanks!
 -- 
-Simo Sorce * Red Hat, Inc * New York
-
+Jeff Layton <jlayton@redhat.com>
