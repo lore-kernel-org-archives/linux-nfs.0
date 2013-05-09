@@ -1,175 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f174.google.com ([209.85.212.174]:38243 "EHLO
-	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756801Ab3EKCnB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:43:01 -0400
-Received: by mail-wi0-f174.google.com with SMTP id m6so1202506wiv.13
-        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:42:59 -0700 (PDT)
-Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
-        by mx.google.com with ESMTPSA id ek7sm1226193wic.4.2013.05.10.19.42.58
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 10 May 2013 19:42:59 -0700 (PDT)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 07/38] Revert "pnfsd: Add way of determining if a client has a device."
-Date: Sat, 11 May 2013 05:42:54 +0300
-Message-Id: <1368240174-31997-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <518B6377.3000207@tonian.com>
-References: <518B6377.3000207@tonian.com>
+Received: from youngberry.canonical.com ([91.189.89.112]:56584 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753023Ab3EIFtf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 May 2013 01:49:35 -0400
+Date: Thu, 9 May 2013 00:49:26 -0500
+From: Serge Hallyn <serge.hallyn@ubuntu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Serge Hallyn <serge.hallyn@canonical.com>,
+        linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] security: cap_inode_getsecctx returning garbage
+Message-ID: <20130509054926.GA31134@tp>
+References: <20130509014329.GH23747@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130509014329.GH23747@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This reverts commit 3573c750c335ddff65c063f12bda1b54b288a674.
----
- fs/nfsd/nfs4pnfsd.c | 35 -----------------------------------
- fs/nfsd/nfs4proc.c  |  5 -----
- fs/nfsd/nfs4state.c |  1 -
- fs/nfsd/pnfsd.h     |  2 --
- fs/nfsd/state.h     |  1 -
- fs/nfsd/xdr4.h      |  1 -
- 6 files changed, 45 deletions(-)
+Quoting J. Bruce Fields (bfields@fieldses.org):
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> We shouldn't be returning success from this function without also
+> filling in the return values ctx and ctxlen.
+> 
+> Note currently this doesn't appear to cause bugs since the only
+> inode_getsecctx caller I can find is fs/sysfs/inode.c, which only calls
+> this if security_inode_setsecurity succeeds.  Assuming
+> security_inode_setsecurity is set to cap_inode_setsecurity whenever
+> inode_getsecctx is set to cap_inode_getsecctx, this function can never
+> actually called.
+> 
+> So I noticed this only because the server labeled NFS patches add a real
+> caller.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index 35f43cf..8653719 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -114,35 +114,6 @@ struct sbid_tracker {
- 	return 0;
- }
- 
--/* XXX: Need to implement the notify types and track which
-- * clients have which devices. */
--void pnfs_set_device_notify(clientid_t *clid, unsigned int types)
--{
--	struct nfs4_client *clp;
--	dprintk("%s: -->\n", __func__);
--
--	nfs4_lock_state();
--	/* Indicate that client has a device so we can only notify
--	 * the correct clients */
--	clp = find_confirmed_client(clid, true);
--	if (clp) {
--		atomic_inc(&clp->cl_deviceref);
--		dprintk("%s: Incr device count (clnt %p) to %d\n",
--			__func__, clp, atomic_read(&clp->cl_deviceref));
--	}
--	nfs4_unlock_state();
--}
--
--/* Clear notifications for this client
-- * XXX: Do we need to loop through a clean up all
-- *      krefs when nfsd cleans up the client? */
--void pnfs_clear_device_notify(struct nfs4_client *clp)
--{
--	atomic_dec(&clp->cl_deviceref);
--	dprintk("%s: Decr device count (clnt %p) to %d\n",
--		__func__, clp, atomic_read(&clp->cl_deviceref));
--}
--
- /*
-  * Note: must be called under the state lock
-  */
-@@ -1593,9 +1564,6 @@ struct create_device_notify_list_arg {
- 	struct nfs4_notify_device *cbnd;
- 	struct create_device_notify_list_arg *arg = p;
- 
--	if (atomic_read(&clp->cl_deviceref) <= 0)
--		return 0;
--
- 	cbnd = kzalloc(sizeof(*cbnd), GFP_KERNEL);
- 	if (!cbnd)
- 		return -ENOMEM;
-@@ -1633,7 +1601,6 @@ int nfsd_device_notify_cb(struct super_block *sb,
- 			  struct nfsd4_pnfs_cb_dev_list *ndl)
- {
- 	struct nfs4_notify_device *cbnd;
--	struct nfs4_client *nd_client;
- 	unsigned int notify_num = 0;
- 	int status = 0;
- 	struct list_head todolist;
-@@ -1653,9 +1620,7 @@ int nfsd_device_notify_cb(struct super_block *sb,
- 		cbnd = list_entry(todolist.next, struct nfs4_notify_device,
- 				  nd_perclnt);
- 		list_del_init(&cbnd->nd_perclnt);
--		nd_client = cbnd->nd_client;
- 		nfsd4_cb_notify_device(cbnd);
--		pnfs_clear_device_notify(nd_client);
- 		notify_num++;
- 	}
- 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 4a79281..2f1786a 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1143,7 +1143,6 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
- {
- 	struct super_block *sb;
- 	int status;
--	clientid_t clid;
- 
- 	dprintk("%s: layout_type %u dev_id %llx:%llx maxcnt %u\n",
- 	       __func__, gdp->gd_layout_type, gdp->gd_devid.sbid,
-@@ -1166,10 +1165,6 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
- 
- 	/* Set up arguments so device can be retrieved at encode time */
- 	gdp->gd_sb = sb;
--
--	/* Update notifications */
--	copy_clientid(&clid, cstate->session);
--	pnfs_set_device_notify(&clid, gdp->gd_notify_types);
- out:
- 	return status;
- }
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index b404d33..664c7cb 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1324,7 +1324,6 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
- #if defined(CONFIG_PNFSD)
- 	INIT_LIST_HEAD(&clp->cl_layouts);
- 	INIT_LIST_HEAD(&clp->cl_layoutrecalls);
--	atomic_set(&clp->cl_deviceref, 0);
- #endif /* CONFIG_PNFSD */
- 	INIT_LIST_HEAD(&clp->cl_lru);
- 	INIT_LIST_HEAD(&clp->cl_callbacks);
-diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
-index 35859ff..5b3657c 100644
---- a/fs/nfsd/pnfsd.h
-+++ b/fs/nfsd/pnfsd.h
-@@ -131,8 +131,6 @@ int nfsd_layout_recall_cb(struct super_block *, struct inode *,
- int nfsd_device_notify_cb(struct super_block *,
- 			  struct nfsd4_pnfs_cb_dev_list *);
- void nfsd4_cb_notify_device(struct nfs4_notify_device *);
--void pnfs_set_device_notify(clientid_t *, unsigned int types);
--void pnfs_clear_device_notify(struct nfs4_client *);
- 
- static inline struct nfs4_layout_state *layoutstateid(struct nfs4_stid *s)
- {
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 788e5e8..774927c 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -285,7 +285,6 @@ struct nfs4_client {
- 	struct list_head	cl_layouts;	/* outstanding layouts */
- 	struct list_head	cl_layoutrecalls; /* outstanding layoutrecall
- 						     callbacks */
--	atomic_t		cl_deviceref;	/* Num outstanding devs */
- #endif /* CONFIG_PNFSD */
- };
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 617e195..459d8ba 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -432,7 +432,6 @@ struct nfsd4_pnfs_getdevinfo {
- 	struct nfsd4_pnfs_deviceid gd_devid;	/* request */
- 	u32			gd_layout_type;	/* request */
- 	u32			gd_maxcount;	/* request */
--	u32			gd_notify_types;/* request */
- 	struct super_block	*gd_sb;
- };
- 
--- 
-1.7.11.7
+Thanks, the comment in include/linux/security.h doesn't mention the
+return value at all, but based on the other implementations this looks
+right.
 
+Acked-by: Serge E. Hallyn <serge.hallyn@ubuntu.com>
+
+
+> ---
+>  security/capability.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> Also, assuming this is correct, would you be willing to apply it for
+> 3.10?
+> 
+> If you'd prefer it wait till the next merge window: could you ACK it,
+> and let me merge it through the nfsd tree?  (It's a prerequisite for
+> the labeled NFS patches that I hope to merge for 3.11.)
+> 
+> diff --git a/security/capability.c b/security/capability.c
+> index d32e16e..32b5157 100644
+> --- a/security/capability.c
+> +++ b/security/capability.c
+> @@ -858,7 +858,7 @@ static int cap_inode_setsecctx(struct dentry *dentry, void *ctx, u32 ctxlen)
+>  
+>  static int cap_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen)
+>  {
+> -	return 0;
+> +	return -EOPNOTSUPP;
+>  }
+>  #ifdef CONFIG_KEYS
+>  static int cap_key_alloc(struct key *key, const struct cred *cred,
+> -- 
+> 1.7.9.5
+> 
