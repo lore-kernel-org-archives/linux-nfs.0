@@ -1,68 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:47849 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:58434 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755722Ab3EFTnm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 May 2013 15:43:42 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv3: match sec= flavor against server list
-Date: Mon, 6 May 2013 19:43:38 +0000
-Message-ID: <1367869418.9004.47.camel@leira.trondhjem.org>
-References: <1367869268-3741-1-git-send-email-dros@netapp.com>
-In-Reply-To: <1367869268-3741-1-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1754852Ab3EIPlG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 May 2013 11:41:06 -0400
+Date: Thu, 9 May 2013 11:41:04 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: James Morris <james.l.morris@oracle.com>
+Cc: Serge Hallyn <serge.hallyn@canonical.com>,
+        linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH] security: clarify cap_inode_getsecctx description
+Message-ID: <20130509154104.GD9316@fieldses.org>
+References: <20130509014329.GH23747@fieldses.org>
+ <20130509054926.GA31134@tp>
+ <20130509140820.GB9316@fieldses.org>
+ <20130509151333.GA2211@tp>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130509151333.GA2211@tp>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEzLTA1LTA2IGF0IDE1OjQxIC0wNDAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
-d3JvdGU6DQo+IE9sZGVyIGxpbnV4IGNsaWVudHMgbWF0Y2ggdGhlICdzZWM9JyBtb3VudCBvcHRp
-b24gZmxhdm9yIGFnYWluc3QgdGhlIHNlcnZlcidzDQo+IGZsYXZvciBsaXN0IChpZiBhdmFpbGFi
-bGUpIGFuZCByZXR1cm4gRVBFUk0gaWYgdGhlIHNwZWNpZmllZCBmbGF2b3Igb3IgQVVUSF9OVUxM
-DQo+ICh3aGljaCAibWF0Y2hlcyIgYW55IGZsYXZvcikgaXMgbm90IGZvdW5kLg0KPiANCj4gUmVj
-ZW50IGNoYW5nZXMgc2tpcCB0aGlzIHN0ZXAgYW5kIGFsbG93IHRoZSB2ZnMgbW91bnQgZXZlbiB0
-aG91Z2ggbm8gb3BlcmF0aW9ucw0KPiB3aWxsIHN1Y2NlZWQsIGNyZWF0aW5nIGEgJ2R1ZCcgbW91
-bnQuDQo+IA0KPiBUaGlzIHBhdGNoIHJldmVydHMgYmFjayB0byB0aGUgb2xkIGJlaGF2aW9yIG9m
-IG1hdGNoaW5nIHNwZWNpZmllZCBmbGF2b3JzDQo+IGFnYWluc3QgdGhlIHNlcnZlciBsaXN0IGFu
-ZCBhbHNvIHJldHVybnMgRVBFUk0gd2hlbiBubyBzZWM9IGlzIHNwZWNpZmllZCBhbmQNCj4gbm9u
-ZSBvZiB0aGUgZmxhdm9ycyByZXR1cm5lZCBieSB0aGUgc2VydmVyIGFyZSBzdXBwb3J0ZWQgYnkg
-dGhlIGNsaWVudC4NCj4gDQo+IEV4YW1wbGUgb2YgYmVoYXZpb3IgY2hhbmdlOg0KPiANCj4gdGhl
-IHNlcnZlcidzIC9ldGMvZXhwb3J0czoNCj4gDQo+IC9leHBvcnQva3JiNSAgICAgICooc2VjPWty
-YjUscncsbm9fcm9vdF9zcXVhc2gpDQo+IA0KPiBvbGQgY2xpZW50IGJlaGF2aW9yOg0KPiANCj4g
-JCB1bmFtZSAtYQ0KPiBMaW51eCBvbmUuYXBpa2lhLmZha2UgMy44LjgtMjAyLmZjMTgueDg2XzY0
-ICMxIFNNUCBXZWQgQXByIDE3IDIzOjI1OjE3IFVUQyAyMDEzIHg4Nl82NCB4ODZfNjQgeDg2XzY0
-IEdOVS9MaW51eA0KPiAkIHN1ZG8gbW91bnQgLXYgLW8gc2VjPXN5cyx2ZXJzPTMgemVybzovZXhw
-b3J0L2tyYjUgL21udA0KPiBtb3VudC5uZnM6IHRpbWVvdXQgc2V0IGZvciBTdW4gTWF5ICA1IDE3
-OjMyOjA0IDIwMTMNCj4gbW91bnQubmZzOiB0cnlpbmcgdGV4dC1iYXNlZCBvcHRpb25zICdzZWM9
-c3lzLHZlcnM9MyxhZGRyPTE5Mi4xNjguMTAwLjEwJw0KPiBtb3VudC5uZnM6IHByb2cgMTAwMDAz
-LCB0cnlpbmcgdmVycz0zLCBwcm90PTYNCj4gbW91bnQubmZzOiB0cnlpbmcgMTkyLjE2OC4xMDAu
-MTAgcHJvZyAxMDAwMDMgdmVycyAzIHByb3QgVENQIHBvcnQgMjA0OQ0KPiBtb3VudC5uZnM6IHBy
-b2cgMTAwMDA1LCB0cnlpbmcgdmVycz0zLCBwcm90PTE3DQo+IG1vdW50Lm5mczogdHJ5aW5nIDE5
-Mi4xNjguMTAwLjEwIHByb2cgMTAwMDA1IHZlcnMgMyBwcm90IFVEUCBwb3J0IDIwMDQ4DQo+IG1v
-dW50Lm5mczogbW91bnQoMik6IFBlcm1pc3Npb24gZGVuaWVkDQo+IG1vdW50Lm5mczogYWNjZXNz
-IGRlbmllZCBieSBzZXJ2ZXIgd2hpbGUgbW91bnRpbmcgemVybzovZXhwb3J0L2tyYjUNCj4gDQo+
-IHJlY2VudGx5IGNoYW5nZWQgYmVoYXZpb3I6DQo+IA0KPiAkIHVuYW1lIC1hDQo+IExpbnV4IG9u
-ZS5hcGlraWEuZmFrZSAzLjkuMC10ZXN0aW5nKyAjMiBTTVAgRnJpIE1heSAzIDIwOjI5OjMyIEVE
-VCAyMDEzIHg4Nl82NCB4ODZfNjQgeDg2XzY0IEdOVS9MaW51eA0KPiAkIHN1ZG8gbW91bnQgLXYg
-LW8gc2VjPXN5cyx2ZXJzPTMgemVybzovZXhwb3J0L2tyYjUgL21udA0KPiBtb3VudC5uZnM6IHRp
-bWVvdXQgc2V0IGZvciBTdW4gTWF5ICA1IDE3OjM3OjE3IDIwMTMNCj4gbW91bnQubmZzOiB0cnlp
-bmcgdGV4dC1iYXNlZCBvcHRpb25zICdzZWM9c3lzLHZlcnM9MyxhZGRyPTE5Mi4xNjguMTAwLjEw
-Jw0KPiBtb3VudC5uZnM6IHByb2cgMTAwMDAzLCB0cnlpbmcgdmVycz0zLCBwcm90PTYNCj4gbW91
-bnQubmZzOiB0cnlpbmcgMTkyLjE2OC4xMDAuMTAgcHJvZyAxMDAwMDMgdmVycyAzIHByb3QgVENQ
-IHBvcnQgMjA0OQ0KPiBtb3VudC5uZnM6IHByb2cgMTAwMDA1LCB0cnlpbmcgdmVycz0zLCBwcm90
-PTE3DQo+IG1vdW50Lm5mczogdHJ5aW5nIDE5Mi4xNjguMTAwLjEwIHByb2cgMTAwMDA1IHZlcnMg
-MyBwcm90IFVEUCBwb3J0IDIwMDQ4DQo+ICQgbHMgL21udA0KPiBsczogY2Fubm90IG9wZW4gZGly
-ZWN0b3J5IC9tbnQ6IFBlcm1pc3Npb24gZGVuaWVkDQo+ICQgc3VkbyBscyAvbW50DQo+IGxzOiBj
-YW5ub3Qgb3BlbiBkaXJlY3RvcnkgL21udDogUGVybWlzc2lvbiBkZW5pZWQNCj4gJCBzdWRvIGRm
-IC9tbnQNCj4gZGY6IOKAmC9tbnTigJk6IFBlcm1pc3Npb24gZGVuaWVkDQo+IGRmOiBubyBmaWxl
-IHN5c3RlbXMgcHJvY2Vzc2VkDQo+ICQgc3VkbyB1bW91bnQgL21udA0KPiAkDQo+IA0KPiBTaWdu
-ZWQtb2ZmLWJ5OiBXZXN0b24gQW5kcm9zIEFkYW1zb24gPGRyb3NAbmV0YXBwLmNvbT4NCj4gLS0t
-DQo+IA0KPiBWZXJzaW9uIDI6DQo+ICAtIG5vdyBqdXN0IHVzZXMgc3BlY2lmaWVkIGZsYXZvciB3
-aGVuOg0KPiAgICAtIEFVVEhfTlVMTCBpcyBpbiB0aGUgc2VydmVyIGxpc3QNCj4gICAgLSBmbGF2
-b3IgaXMgaW4gdGhlIHNlcnZlciBsaXN0DQo+IA0KPiAgLSBub3cgcmV0dXJucyBFUEVSTSB3aGVu
-IG5vIHNlYz0gc3BlY2lmaWVkIGFuZCBubyBjbGllbnQgc3VwcG9ydGVkIGZsYXZvcnMgYXJlDQo+
-ICAgIGluIHRoZSBzZXJ2ZXIgbGlzdA0KPiANCg0KU2hvdWxkbid0IHRoYXQgYmUgRUFDQ0VTPw0K
-DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5l
-dEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+Make it clear that cap_inode_getsecctx shouldn't return success without
+filling in the context data.
+
+Acked-by: Serge E. Hallyn <serge.hallyn@ubuntu.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ include/linux/security.h |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/include/linux/security.h b/include/linux/security.h
+index 4686491..40560f4 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -1392,7 +1392,8 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
+  * 	@ctxlen contains the length of @ctx.
+  *
+  * @inode_getsecctx:
+- *	Returns a string containing all relevant security context information
++ *	On success, returns 0 and fills out @ctx and @ctxlen with the security
++ *	context for the given @inode.
+  *
+  * 	@inode we wish to get the security context of.
+  *	@ctx is a pointer in which to place the allocated security context.
+-- 
+1.7.9.5
+
