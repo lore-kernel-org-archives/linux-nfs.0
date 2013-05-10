@@ -1,137 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55957 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:11782 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751083Ab3EPUT5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 May 2013 16:19:57 -0400
-Date: Thu, 16 May 2013 16:19:54 -0400
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/3] SUNRPC: Faster detection if gssd is actually running
-Message-ID: <20130516201954.GA3216@fieldses.org>
-References: <1368647441-24815-1-git-send-email-Trond.Myklebust@netapp.com>
- <1368647441-24815-2-git-send-email-Trond.Myklebust@netapp.com>
- <1368647441-24815-3-git-send-email-Trond.Myklebust@netapp.com>
+	id S1753380Ab3EJTdn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 May 2013 15:33:43 -0400
+Subject: [PATCH 5/8] FS-Cache: Uninline fscache_object_init() [ver #2]
+To: Trond.Myklebust@netapp.com, torvalds@linux-foundation.org
+From: David Howells <dhowells@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cachefs@redhat.com, linux-kernel@vger.kernel.org
+Date: Fri, 10 May 2013 20:33:39 +0100
+Message-ID: <20130510193339.3045.29012.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20130510193257.3045.77981.stgit@warthog.procyon.org.uk>
+References: <20130510193257.3045.77981.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1368647441-24815-3-git-send-email-Trond.Myklebust@netapp.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 15, 2013 at 12:50:40PM -0700, Trond Myklebust wrote:
-> Recent changes to the NFS security flavour negotiation mean that
-> we have a stronger dependency on rpc.gssd. If the latter is not
-> running, because the user failed to start it, then we time out
-> and mark the container as not having an instance. We then
-> use that information to time out faster the next time.
-> 
-> If, on the other hand, the rpc.gssd successfully binds to an rpc_pipe,
-> then we mark the container as having an rpc.gssd instance.
+Uninline fscache_object_init() so as not to expose some of the FS-Cache
+internals to the cache backend.
 
-So it's still a 15 second delay on the first mount, then 7 on the
-second, then 3, 1, and no delay thereafter.  Is that right?
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
 
-Why not be harsher and go straight to 0 after the first failure?
+ fs/fscache/object.c           |   40 ++++++++++++++++++++++++++++++++++++++--
+ include/linux/fscache-cache.h |   38 ++------------------------------------
+ 2 files changed, 40 insertions(+), 38 deletions(-)
 
---b.
+diff --git a/fs/fscache/object.c b/fs/fscache/object.c
+index 50d41c1..0133699 100644
+--- a/fs/fscache/object.c
++++ b/fs/fscache/object.c
+@@ -363,7 +363,7 @@ unsupported_event:
+ /*
+  * execute an object
+  */
+-void fscache_object_work_func(struct work_struct *work)
++static void fscache_object_work_func(struct work_struct *work)
+ {
+ 	struct fscache_object *object =
+ 		container_of(work, struct fscache_object, work);
+@@ -379,7 +379,43 @@ void fscache_object_work_func(struct work_struct *work)
+ 	clear_bit(FSCACHE_OBJECT_EV_REQUEUE, &object->events);
+ 	fscache_put_object(object);
+ }
+-EXPORT_SYMBOL(fscache_object_work_func);
++
++/**
++ * fscache_object_init - Initialise a cache object description
++ * @object: Object description
++ * @cookie: Cookie object will be attached to
++ * @cache: Cache in which backing object will be found
++ *
++ * Initialise a cache object description to its basic values.
++ *
++ * See Documentation/filesystems/caching/backend-api.txt for a complete
++ * description.
++ */
++void fscache_object_init(struct fscache_object *object,
++			 struct fscache_cookie *cookie,
++			 struct fscache_cache *cache)
++{
++	atomic_inc(&cache->object_count);
++
++	object->state = FSCACHE_OBJECT_INIT;
++	spin_lock_init(&object->lock);
++	INIT_LIST_HEAD(&object->cache_link);
++	INIT_HLIST_NODE(&object->cookie_link);
++	INIT_WORK(&object->work, fscache_object_work_func);
++	INIT_LIST_HEAD(&object->dependents);
++	INIT_LIST_HEAD(&object->dep_link);
++	INIT_LIST_HEAD(&object->pending_ops);
++	object->n_children = 0;
++	object->n_ops = object->n_in_progress = object->n_exclusive = 0;
++	object->events = object->event_mask = 0;
++	object->flags = 0;
++	object->store_limit = 0;
++	object->store_limit_l = 0;
++	object->cache = cache;
++	object->cookie = cookie;
++	object->parent = NULL;
++}
++EXPORT_SYMBOL(fscache_object_init);
+ 
+ /*
+  * initialise an object
+diff --git a/include/linux/fscache-cache.h b/include/linux/fscache-cache.h
+index 5dfa0aa..9b9c1de 100644
+--- a/include/linux/fscache-cache.h
++++ b/include/linux/fscache-cache.h
+@@ -426,42 +426,8 @@ extern const char *fscache_object_states[];
+ 	(test_bit(FSCACHE_IOERROR, &(obj)->cache->flags) &&	\
+ 	 (obj)->state >= FSCACHE_OBJECT_DYING)
+ 
+-extern void fscache_object_work_func(struct work_struct *work);
+-
+-/**
+- * fscache_object_init - Initialise a cache object description
+- * @object: Object description
+- *
+- * Initialise a cache object description to its basic values.
+- *
+- * See Documentation/filesystems/caching/backend-api.txt for a complete
+- * description.
+- */
+-static inline
+-void fscache_object_init(struct fscache_object *object,
+-			 struct fscache_cookie *cookie,
+-			 struct fscache_cache *cache)
+-{
+-	atomic_inc(&cache->object_count);
+-
+-	object->state = FSCACHE_OBJECT_INIT;
+-	spin_lock_init(&object->lock);
+-	INIT_LIST_HEAD(&object->cache_link);
+-	INIT_HLIST_NODE(&object->cookie_link);
+-	INIT_WORK(&object->work, fscache_object_work_func);
+-	INIT_LIST_HEAD(&object->dependents);
+-	INIT_LIST_HEAD(&object->dep_link);
+-	INIT_LIST_HEAD(&object->pending_ops);
+-	object->n_children = 0;
+-	object->n_ops = object->n_in_progress = object->n_exclusive = 0;
+-	object->events = object->event_mask = 0;
+-	object->flags = 0;
+-	object->store_limit = 0;
+-	object->store_limit_l = 0;
+-	object->cache = cache;
+-	object->cookie = cookie;
+-	object->parent = NULL;
+-}
++extern void fscache_object_init(struct fscache_object *, struct fscache_cookie *,
++				struct fscache_cache *);
+ 
+ extern void fscache_object_lookup_negative(struct fscache_object *object);
+ extern void fscache_obtained_object(struct fscache_object *object);
 
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->  net/sunrpc/auth_gss/auth_gss.c | 13 ++++++++++++-
->  net/sunrpc/netns.h             |  2 ++
->  net/sunrpc/rpc_pipe.c          |  4 ++++
->  3 files changed, 18 insertions(+), 1 deletion(-)
-> 
-> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> index f17f3c5..3aff72f 100644
-> --- a/net/sunrpc/auth_gss/auth_gss.c
-> +++ b/net/sunrpc/auth_gss/auth_gss.c
-> @@ -52,6 +52,8 @@
->  #include <linux/sunrpc/gss_api.h>
->  #include <asm/uaccess.h>
->  
-> +#include "../netns.h"
-> +
->  static const struct rpc_authops authgss_ops;
->  
->  static const struct rpc_credops gss_credops;
-> @@ -559,9 +561,12 @@ out:
->  static inline int
->  gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
->  {
-> +	struct net *net = rpc_net_ns(gss_auth->client);
-> +	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
->  	struct rpc_pipe *pipe;
->  	struct rpc_cred *cred = &gss_cred->gc_base;
->  	struct gss_upcall_msg *gss_msg;
-> +	unsigned long timeout;
->  	DEFINE_WAIT(wait);
->  	int err;
->  
-> @@ -569,11 +574,17 @@ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
->  		__func__, from_kuid(&init_user_ns, cred->cr_uid));
->  retry:
->  	err = 0;
-> +	/* Default timeout is 15s unless we know that gssd is not running */
-> +	timeout = 15 * HZ;
-> +	if (!sn->gssd_running)
-> +		timeout = HZ >> 2;
->  	gss_msg = gss_setup_upcall(gss_auth->client, gss_auth, cred);
->  	if (PTR_ERR(gss_msg) == -EAGAIN) {
->  		err = wait_event_interruptible_timeout(pipe_version_waitqueue,
-> -				pipe_version >= 0, 15*HZ);
-> +				pipe_version >= 0, timeout);
->  		if (pipe_version < 0) {
-> +			if (err == 0)
-> +				sn->gssd_running = 0;
->  			warn_gssd();
->  			err = -EACCES;
->  		}
-> diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
-> index 7111a4c..0827f64 100644
-> --- a/net/sunrpc/netns.h
-> +++ b/net/sunrpc/netns.h
-> @@ -29,6 +29,8 @@ struct sunrpc_net {
->  	struct rpc_clnt *gssp_clnt;
->  	int use_gss_proxy;
->  	struct proc_dir_entry *use_gssp_proc;
-> +
-> +	unsigned int gssd_running;
->  };
->  
->  extern int sunrpc_net_id;
-> diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-> index a9129f8..415b705 100644
-> --- a/net/sunrpc/rpc_pipe.c
-> +++ b/net/sunrpc/rpc_pipe.c
-> @@ -216,11 +216,14 @@ rpc_destroy_inode(struct inode *inode)
->  static int
->  rpc_pipe_open(struct inode *inode, struct file *filp)
->  {
-> +	struct net *net = inode->i_sb->s_fs_info;
-> +	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
->  	struct rpc_pipe *pipe;
->  	int first_open;
->  	int res = -ENXIO;
->  
->  	mutex_lock(&inode->i_mutex);
-> +	sn->gssd_running = 1;
->  	pipe = RPC_I(inode)->pipe;
->  	if (pipe == NULL)
->  		goto out;
-> @@ -1069,6 +1072,7 @@ void rpc_pipefs_init_net(struct net *net)
->  	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
->  
->  	mutex_init(&sn->pipefs_sb_lock);
-> +	sn->gssd_running = -1;
->  }
->  
->  /*
-> -- 
-> 1.8.1.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
