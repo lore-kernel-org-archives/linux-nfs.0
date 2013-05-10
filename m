@@ -1,2056 +1,1182 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from oproxy9.bluehost.com ([69.89.24.6]:51951 "HELO
-	oproxy9.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753685Ab3EIQi4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 May 2013 12:38:56 -0400
-Message-ID: <1368117530.5695.36.camel@slavad-ubuntu-12.04>
-Subject: [PATCH v4 4/5] hfsplus: introduce implementation of the ACLs support
-From: Vyacheslav Dubeyko <slava@dubeyko.com>
-To: Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux NFS list <linux-nfs@vger.kernel.org>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>,
-        Hin-Tak Leung <htl10@users.sourceforge.net>,
-        Andrew Morton <akpm@linux-foundation.org>
-Date: Thu, 09 May 2013 20:38:50 +0400
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:63013 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754227Ab3EJTeI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 May 2013 15:34:08 -0400
+Subject: [PATCH 8/8] FS-Cache: Simplify cookie retention for fscache_objects,
+ fixing access problems [ver #2]
+To: Trond.Myklebust@netapp.com, torvalds@linux-foundation.org
+From: David Howells <dhowells@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cachefs@redhat.com, linux-kernel@vger.kernel.org
+Date: Fri, 10 May 2013 20:34:03 +0100
+Message-ID: <20130510193403.3045.42085.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20130510193257.3045.77981.stgit@warthog.procyon.org.uk>
+References: <20130510193257.3045.77981.stgit@warthog.procyon.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Vyacheslav Dubeyko <slava@dubeyko.com>
-Subject: [PATCH v4 4/5] hfsplus: introduce implementation of the ACLs support
+Simplify the way fscache cache objects retain their cookie.  The way I
+implemented the cookie storage handling made synchronisation a pain (ie. the
+object state machine can't rely on the cookie actually still being there).
 
-This patch adds implementation of the ACLs support for hfsplus driver.
+Instead of the the object being detached from the cookie and the cookie being
+freed in __fscache_relinquish_cookie(), we defer both operations:
 
-Signed-off-by: Vyacheslav Dubeyko <slava@dubeyko.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: "J. Bruce Fields" <bfields@redhat.com>
-CC: Al Viro <viro@zeniv.linux.org.uk>
-CC: Christoph Hellwig <hch@infradead.org>
-CC: Hin-Tak Leung <htl10@users.sourceforge.net>
+ (*) The detachment of the object from the list in the cookie now takes place
+     in fscache_drop_object() and is thus governed by the object state machine
+     (fscache_detach_from_cookie() has been removed).
+
+ (*) The release of the cookie is now in fscache_object_destroy() - which is
+     called by the cache backend just before it frees the object.
+
+This means that the fscache_cookie struct is now available to the cache all the
+way through from ->alloc_object() to ->drop_object() and ->put_object() -
+meaning that it's no longer necessary to take object->lock to guarantee access.
+
+However, __fscache_relinquish_cookie() doesn't wait for the object to go all
+the way through to destruction before letting the netfs proceed.  That would
+massively slow down the netfs.  Since __fscache_relinquish_cookie() leaves the
+cookie around, in must therefore break all attachments to the netfs - which
+includes ->def, ->netfs_data and any outstanding page read/writes.
+
+To handle this, struct fscache_cookie now has an n_active counter:
+
+ (1) This starts off initialised to 1.
+
+ (2) Any time the cache needs to get at the netfs data, it calls
+     fscache_use_cookie() to increment it - if it is not zero.  If it was zero,
+     then access is not permitted.
+
+ (3) When the cache has finished with the data, it calls fscache_unuse_cookie()
+     to decrement it.  This does a wake-up on it if it reaches 0.
+
+ (4) __fscache_relinquish_cookie() decrements n_active and then waits for it to
+     reach 0.  The initialisation to 1 in step (1) ensures that we only get
+     wake ups when we're trying to get rid of the cookie.
+
+This leaves __fscache_relinquish_cookie() a lot simpler.
+
+
+***
+This fixes a problem in the current code whereby if fscache_invalidate() is
+followed sufficiently quickly by fscache_relinquish_cookie() then it is
+possible for __fscache_relinquish_cookie() to have detached the cookie from the
+object and cleared the pointer before a thread is dispatched to process the
+invalidation state in the object state machine.
+
+Since the pending write clearance was deferred to the invalidation state to
+make it asynchronous, we need to either wait in relinquishment for the stores
+tree to be cleared in the invalidation state or we need to handle the clearance
+in relinquishment.
+
+Further, if the relinquishment code does clear the tree, then the invalidation
+state need to make the clearance contingent on still having the cookie to hand
+(since that's where the tree is rooted) and we have to prevent the cookie from
+disappearing for the duration.
+
+This can lead to an oops like the following:
+
+BUG: unable to handle kernel NULL pointer dereference at 000000000000000c
+...
+RIP: 0010:[<ffffffff8151023e>] _spin_lock+0xe/0x30
+...
+CR2: 000000000000000c ...
+...
+Process kslowd002 (...)
+....
+Call Trace:
+ [<ffffffffa01c3278>] fscache_invalidate_writes+0x38/0xd0 [fscache]
+ [<ffffffff810096f0>] ? __switch_to+0xd0/0x320
+ [<ffffffff8105e759>] ? find_busiest_queue+0x69/0x150
+ [<ffffffff8110ddd4>] ? slow_work_enqueue+0x104/0x180
+ [<ffffffffa01c1303>] fscache_object_slow_work_execute+0x5e3/0x9d0 [fscache]
+ [<ffffffff81096b67>] ? bit_waitqueue+0x17/0xd0
+ [<ffffffff8110e233>] slow_work_execute+0x233/0x310
+ [<ffffffff8110e515>] slow_work_thread+0x205/0x360
+ [<ffffffff81096ca0>] ? autoremove_wake_function+0x0/0x40
+ [<ffffffff8110e310>] ? slow_work_thread+0x0/0x360
+ [<ffffffff81096936>] kthread+0x96/0xa0
+ [<ffffffff8100c0ca>] child_rip+0xa/0x20
+ [<ffffffff810968a0>] ? kthread+0x0/0xa0
+ [<ffffffff8100c0c0>] ? child_rip+0x0/0x20
+
+The parameter to fscache_invalidate_writes() was object->cookie which is NULL.
+
+Signed-off-by: David Howells <dhowells@redhat.com>
 ---
- fs/hfsplus/acl.c | 1903 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/hfsplus/acl.h |   96 +++
- 2 files changed, 1999 insertions(+)
- create mode 100644 fs/hfsplus/acl.c
- create mode 100644 fs/hfsplus/acl.h
 
-diff --git a/fs/hfsplus/acl.c b/fs/hfsplus/acl.c
-new file mode 100644
-index 0000000..ce6cfb2
---- /dev/null
-+++ b/fs/hfsplus/acl.c
-@@ -0,0 +1,1903 @@
-+/*
-+ * linux/fs/hfsplus/acl.c
-+ *
-+ * Vyacheslav Dubeyko <slava@dubeyko.com>
-+ *
-+ * Handler for Posix Access Control Lists (ACLs) support.
-+ */
+ fs/cachefiles/interface.c     |   11 ++
+ fs/cachefiles/xattr.c         |    6 -
+ fs/fscache/cookie.c           |   80 ++++++-----------
+ fs/fscache/fsdef.c            |    1 
+ fs/fscache/internal.h         |    3 +
+ fs/fscache/main.c             |   11 ++
+ fs/fscache/netfs.c            |    1 
+ fs/fscache/object-list.c      |   93 +++++++++-----------
+ fs/fscache/object.c           |  188 ++++++++++++++++-------------------------
+ fs/fscache/operation.c        |   12 +--
+ fs/fscache/page.c             |   26 ++++--
+ include/linux/fscache-cache.h |   57 +++++++++---
+ 12 files changed, 232 insertions(+), 257 deletions(-)
+
+diff --git a/fs/cachefiles/interface.c b/fs/cachefiles/interface.c
+index 3d76321..eeb3f7d 100644
+--- a/fs/cachefiles/interface.c
++++ b/fs/cachefiles/interface.c
+@@ -212,20 +212,29 @@ static void cachefiles_update_object(struct fscache_object *_object)
+ 	object = container_of(_object, struct cachefiles_object, fscache);
+ 	cache = container_of(object->fscache.cache, struct cachefiles_cache,
+ 			     cache);
 +
-+#include <linux/uuid.h>
-+
-+#include "hfsplus_fs.h"
-+#include "xattr.h"
-+#include "acl.h"
-+
-+#define HFSPLUS_ACE_ID_MASK 0xFFFFFFFF
-+
-+static unsigned char hfsplus_group_fingerprint[] = {0xab, 0xcd, 0xef,
-+						    0xab, 0xcd, 0xef,
-+						    0xab, 0xcd, 0xef,
-+						    0xab, 0xcd, 0xef};
-+
-+static unsigned char hfsplus_user_fingerprint[] = {0xff, 0xff,
-+						   0xee, 0xee,
-+						   0xdd, 0xdd,
-+						   0xcc, 0xcc,
-+						   0xbb, 0xbb,
-+						   0xaa, 0xaa};
-+
-+#define HFSPLUS_FINGERPRINT_SIZE \
-+	(HFSPLUS_GUID_SIZE - sizeof(HFSPLUS_ACE_ID_MASK))
-+
-+#define HFSPLUS_EVERYBODY_ID 0xc
-+
-+struct hfsplus_nfsv4_mapping_env {
-+	struct inode *inode;
-+	u8 ace_applicable[HFSPLUS_GUID_SIZE];
-+	size_t allocated_acl_size;
-+	size_t composed_acl_size;
-+};
-+
-+static uint32_t hfsplus_get_naces(const void *nfsv4_acl)
-+{
-+	const struct hfsplus_acl_record *raw_acl_rec =
-+		(const struct hfsplus_acl_record *)nfsv4_acl;
-+	uint32_t entrycount;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: acl %p\n", __func__, nfsv4_acl);
-+
-+	entrycount = be32_to_cpu(raw_acl_rec->acl_entrycount);
-+
-+	hfs_dbg(ACL_MOD, "[%s]: entry_count %u\n",
-+			__func__, entrycount);
-+
-+	return entrycount;
-+}
-+
-+static void *hfsplus_get_ace(const void *nfsv4_acl, uint32_t index)
-+{
-+	const struct hfsplus_acl_record *raw_acl_rec =
-+		(const struct hfsplus_acl_record *)nfsv4_acl;
-+	struct hfsplus_acl_entry *ace;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: acl %p, index %u\n",
-+			__func__, nfsv4_acl, index);
-+
-+	ace = (struct hfsplus_acl_entry *)(raw_acl_rec->acl_ace + index);
-+
-+	hfs_dbg(ACL_MOD, "[%s]: &ace[0] %p, &ace[index] %p\n",
-+			__func__, raw_acl_rec->acl_ace, ace);
-+	hfs_dbg_hexdump(ACL_MOD, "ace->ace_applicable: ",
-+				ace->ace_applicable, HFSPLUS_GUID_SIZE);
-+	hfs_dbg(ACL_MOD, "[%s]: ace->ace_flags %#x, ace->ace_rights %#x\n",
-+			__func__,
-+			be32_to_cpu(ace->ace_flags),
-+			be32_to_cpu(ace->ace_rights));
-+
-+	return (void *)ace;
-+}
-+
-+static uint32_t hfsplus_get_access_mask(const void *nfsv4_ace)
-+{
-+	const struct hfsplus_acl_entry *ace =
-+		(const struct hfsplus_acl_entry *)nfsv4_ace;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: ace %p\n", __func__, nfsv4_ace);
-+
-+	return be32_to_cpu(ace->ace_rights);
-+}
-+
-+static bool hfsplus_ace_type_valid(const void *nfsv4_ace)
-+{
-+	const struct hfsplus_acl_entry *ace =
-+		(const struct hfsplus_acl_entry *)nfsv4_ace;
-+	u32 ace_flags = be32_to_cpu(ace->ace_flags);
-+	u32 ace_type = ace_flags & HFSPLUS_ACE_KINDMASK;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: ace %p, ace_flags %#x, ace_type %#x\n",
-+			__func__, nfsv4_ace, ace_flags, ace_type);
-+
-+	return ace_type == HFSPLUS_ACE_PERMIT || ace_type == HFSPLUS_ACE_DENY;
-+}
-+
-+static bool hfsplus_is_allowed_ace_type(const void *nfsv4_ace)
-+{
-+	const struct hfsplus_acl_entry *ace =
-+		(const struct hfsplus_acl_entry *)nfsv4_ace;
-+	u32 ace_flags = be32_to_cpu(ace->ace_flags);
-+	u32 ace_type = ace_flags & HFSPLUS_ACE_KINDMASK;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: ace %p, ace_flags %#x, ace_type %#x\n",
-+			__func__, nfsv4_ace, ace_flags, ace_type);
-+
-+	return ace_type == HFSPLUS_ACE_PERMIT;
-+}
-+
-+static unsigned char empty_guid[HFSPLUS_GUID_SIZE] = {0};
-+
-+static inline int empty_ace(const struct hfsplus_acl_entry *ace)
-+{
-+	return memcmp(empty_guid, ace->ace_applicable, HFSPLUS_GUID_SIZE) == 0;
-+}
-+
-+#define IS_GROUP_FINGERPRINT(ace_applicable) \
-+	(memcmp(ace_applicable, \
-+		hfsplus_group_fingerprint, HFSPLUS_FINGERPRINT_SIZE) == 0)
-+
-+#define IS_USER_FINGERPRINT(ace_applicable) \
-+	(memcmp(ace_applicable, \
-+		hfsplus_user_fingerprint, HFSPLUS_FINGERPRINT_SIZE) == 0)
-+
-+static bool hfsplus_is_acl_user_obj(const struct nfsv4_acl_info *nfsv4_acl_info,
-+						const void *nfsv4_ace)
-+{
-+	const struct hfsplus_acl_entry *ace =
-+		(const struct hfsplus_acl_entry *)nfsv4_ace;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: acl_info %p, ace %p\n",
-+			__func__, nfsv4_acl_info, nfsv4_ace);
-+
-+	if (!IS_GROUP_FINGERPRINT(ace->ace_applicable) &&
-+			!IS_USER_FINGERPRINT(ace->ace_applicable) &&
-+			!empty_ace(ace)) {
-+		hfs_dbg(ACL_MOD, "[%s]: found user obj\n", __func__);
-+		return true;
-+	} else
-+		return false;
-+}
-+
-+static bool hfsplus_is_acl_group_obj(
-+				const struct nfsv4_acl_info *nfsv4_acl_info,
-+				const void *nfsv4_ace)
-+{
-+	const struct hfsplus_acl_entry *ace =
-+		(const struct hfsplus_acl_entry *)nfsv4_ace;
-+	int size = HFSPLUS_FINGERPRINT_SIZE;
-+	__be32 *raw_gid_ptr;
-+	const struct hfsplus_nfsv4_mapping_env *mapping_env =
-+	    (const struct hfsplus_nfsv4_mapping_env *)nfsv4_acl_info->private;
-+	const struct inode *inode = mapping_env->inode;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: acl_info %p, ace %p\n",
-+			__func__, nfsv4_acl_info, nfsv4_ace);
-+
-+	if (IS_GROUP_FINGERPRINT(ace->ace_applicable)) {
-+		raw_gid_ptr = (__be32 *)&ace->ace_applicable[size];
-+		if (be32_to_cpu(*raw_gid_ptr) == i_gid_read(inode)) {
-+			hfs_dbg(ACL_MOD, "[%s]: found group obj\n",
-+								__func__);
-+			return true;
-+		}
++	if (!fscache_use_cookie(_object)) {
++		_leave(" [relinq]");
++		return;
 +	}
 +
-+	return false;
-+}
-+
-+static bool hfsplus_is_acl_other(const struct nfsv4_acl_info *nfsv4_acl_info,
-+						const void *nfsv4_ace)
-+{
-+	const struct hfsplus_acl_entry *ace =
-+		(const struct hfsplus_acl_entry *)nfsv4_ace;
-+	int size = HFSPLUS_FINGERPRINT_SIZE;
-+	__be32 *raw_id_ptr;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: acl_info %p, ace %p\n",
-+			__func__, nfsv4_acl_info, nfsv4_ace);
-+
-+	if (IS_GROUP_FINGERPRINT(ace->ace_applicable)) {
-+		raw_id_ptr = (__be32 *)&ace->ace_applicable[size];
-+		if (be32_to_cpu(*raw_id_ptr) == HFSPLUS_EVERYBODY_ID) {
-+			hfs_dbg(ACL_MOD, "[%s]: found other\n", __func__);
-+			return true;
-+		}
-+	}
-+
-+	return false;
-+}
-+
-+static bool hfsplus_is_acl_user(const struct nfsv4_acl_info *nfsv4_acl_info,
-+						const void *nfsv4_ace)
-+{
-+	const struct hfsplus_acl_entry *ace =
-+		(const struct hfsplus_acl_entry *)nfsv4_ace;
-+	int size = HFSPLUS_FINGERPRINT_SIZE;
-+	__be32 *raw_id_ptr;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: acl_info %p, ace %p\n",
-+			__func__, nfsv4_acl_info, nfsv4_ace);
-+
-+	if (IS_USER_FINGERPRINT(ace->ace_applicable)) {
-+		raw_id_ptr = (__be32 *)&ace->ace_applicable[size];
-+		if (be32_to_cpu(*raw_id_ptr) != HFSPLUS_EVERYBODY_ID) {
-+			hfs_dbg(ACL_MOD, "[%s]: found user %#x\n",
-+					__func__, be32_to_cpu(*raw_id_ptr));
-+			return true;
-+		}
-+	}
-+
-+	return false;
-+}
-+
-+static bool hfsplus_is_acl_group(const struct nfsv4_acl_info *nfsv4_acl_info,
-+						const void *nfsv4_ace)
-+{
-+	const struct hfsplus_acl_entry *ace =
-+		(const struct hfsplus_acl_entry *)nfsv4_ace;
-+	int size = HFSPLUS_FINGERPRINT_SIZE;
-+	__be32 *raw_id_ptr;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: acl_info %p, ace %p\n",
-+			__func__, nfsv4_acl_info, nfsv4_ace);
-+
-+	if (IS_GROUP_FINGERPRINT(ace->ace_applicable)) {
-+		raw_id_ptr = (__be32 *)&ace->ace_applicable[size];
-+		if (be32_to_cpu(*raw_id_ptr) != HFSPLUS_EVERYBODY_ID) {
-+			hfs_dbg(ACL_MOD, "[%s]: found group %#x\n",
-+					__func__, be32_to_cpu(*raw_id_ptr));
-+			return true;
-+		}
-+	}
-+
-+	return false;
-+}
-+
-+static bool hfsplus_ace_has_unknown_flags(const void *nfsv4_ace)
-+{
-+	const struct hfsplus_acl_entry *ace =
-+		(const struct hfsplus_acl_entry *)nfsv4_ace;
-+	u32 ace_flags = be32_to_cpu(ace->ace_flags);
-+	ace_flags &= ~HFSPLUS_ACE_KINDMASK;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: ace %p, ace_flags %#x\n",
-+			__func__, nfsv4_ace, ace_flags);
-+
-+	return ace_flags & ~HFSPLUS_ACE_INHERIT_CONTROL_FLAGS;
-+}
-+
-+static bool hfsplus_ace_has_inheritance_flags(const void *nfsv4_ace)
-+{
-+	const struct hfsplus_acl_entry *ace =
-+		(const struct hfsplus_acl_entry *)nfsv4_ace;
-+	u32 ace_flags = be32_to_cpu(ace->ace_flags);
-+	ace_flags &= ~HFSPLUS_ACE_KINDMASK;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: ace %p, ace_flags %#x\n",
-+			__func__, nfsv4_ace, ace_flags);
-+
-+	return ace_flags & HFSPLUS_ACE_INHERIT_CONTROL_FLAGS;
-+}
-+
-+static bool hfsplus_ace_inherit_only_flag(const void *nfsv4_ace)
-+{
-+	const struct hfsplus_acl_entry *ace =
-+		(const struct hfsplus_acl_entry *)nfsv4_ace;
-+	u32 ace_flags = be32_to_cpu(ace->ace_flags);
-+	ace_flags &= ~HFSPLUS_ACE_KINDMASK;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: ace %p, ace_flags %#x\n",
-+			__func__, nfsv4_ace, ace_flags);
-+
-+	return ace_flags & HFSPLUS_ACE_ONLY_INHERIT;
-+}
-+
-+static int hfsplus_check_deny(u32 rights, int isowner)
-+{
-+	hfs_dbg(ACL_MOD, "[%s]: rights %#x, isowner %u\n",
-+			__func__, rights, isowner);
-+
-+	if (rights & (HFSPLUS_VNODE_READ_ATTRIBUTES |
-+			HFSPLUS_VNODE_READ_EXTATTRIBUTES |
-+			HFSPLUS_VNODE_READ_SECURITY)) {
-+		if (rights & HFSPLUS_VNODE_READ_ATTRIBUTES)
-+			pr_warn("can't deny read attr\n");
-+		if (rights & HFSPLUS_VNODE_READ_EXTATTRIBUTES)
-+			pr_warn("can't deny read xattr\n");
-+		if (rights & HFSPLUS_VNODE_READ_SECURITY)
-+			pr_warn("can't deny read security\n");
-+		return -EINVAL;
-+	}
-+	if (!isowner)
-+		return 0;
-+	if (rights & (HFSPLUS_VNODE_WRITE_ATTRIBUTES |
-+			HFSPLUS_VNODE_WRITE_EXTATTRIBUTES |
-+			HFSPLUS_VNODE_WRITE_SECURITY)) {
-+		if (rights & HFSPLUS_VNODE_WRITE_ATTRIBUTES)
-+			pr_warn("can't deny write attr\n");
-+		if (rights & HFSPLUS_VNODE_WRITE_EXTATTRIBUTES)
-+			pr_warn("can't deny write xattr\n");
-+		if (rights & HFSPLUS_VNODE_WRITE_SECURITY)
-+			pr_warn("can't deny write security\n");
-+		return -EINVAL;
-+	}
-+	return 0;
-+}
-+
-+static void hfsplus_low_mode_from_nfs4(u32 perm, unsigned short *mode,
-+						unsigned int flags)
-+{
-+	u32 write_mode = HFSPLUS_VNODE_WRITE_DATA;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: perm %#x, mode ptr %p, flags %#x\n",
-+			__func__, perm, mode, flags);
-+
-+	if (flags & NFS4_ACL_DIR)
-+		write_mode |= HFSPLUS_VNODE_DELETE_CHILD;
-+	*mode = 0;
-+	if ((perm & HFSPLUS_VNODE_READ_DATA) == HFSPLUS_VNODE_READ_DATA)
-+		*mode |= ACL_READ;
-+	if ((perm & write_mode) == write_mode)
-+		*mode |= ACL_WRITE;
-+	if ((perm & HFSPLUS_VNODE_EXECUTE) == HFSPLUS_VNODE_EXECUTE)
-+		*mode |= ACL_EXECUTE;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: mode %#x\n", __func__, *mode);
-+}
-+
-+static unsigned int hfsplus_calculate_eflag(unsigned int flags)
-+{
-+	hfs_dbg(ACL_MOD, "[%s]: flags %#x\n", __func__, flags);
-+
-+	return (flags & NFS4_ACL_TYPE_DEFAULT) ?
-+			HFSPLUS_ACE_INHERIT_CONTROL_FLAGS : 0;
-+}
-+
-+static int hfsplus_find_uid(struct posix_acl_state *state,
-+					const void *nfsv4_ace)
-+{
-+	const struct hfsplus_acl_entry *ace =
-+		(const struct hfsplus_acl_entry *)nfsv4_ace;
-+	struct posix_ace_state_array *a = state->users;
-+	int size = HFSPLUS_FINGERPRINT_SIZE;
-+	__be32 *raw_id_ptr;
-+	kuid_t uid;
-+	int i;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: state %p, ace %p\n",
-+			__func__, state, nfsv4_ace);
-+
-+	if (IS_USER_FINGERPRINT(ace->ace_applicable)) {
-+		raw_id_ptr = (__be32 *)&ace->ace_applicable[size];
-+		uid = be32_to_cpu(*raw_id_ptr);
-+		hfs_dbg(ACL_MOD, "[%s]: uid %#x\n", __func__, uid);
-+	} else if (IS_GROUP_FINGERPRINT(ace->ace_applicable)) {
-+		pr_warn("can't find group id\n");
-+		return -1;
-+	} else {
-+		hfs_dbg(ACL_MOD, "[%s]: can't convert uid\n", __func__);
-+		return -1;
-+	}
-+
-+	for (i = 0; i < a->n; i++) {
-+		if (uid_eq(a->aces[i].uid, uid)) {
-+			hfs_dbg(ACL_MOD, "[%s]: index %d\n", __func__, i);
-+			return i;
-+		}
-+	}
-+	/* Not found: */
-+	a->n++;
-+	a->aces[i].uid = uid;
-+	a->aces[i].perms.allow = state->everyone.allow;
-+	a->aces[i].perms.deny  = state->everyone.deny;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: index %d\n", __func__, i);
-+	return i;
-+}
-+
-+static int hfsplus_find_gid(struct posix_acl_state *state,
-+					const void *nfsv4_ace)
-+{
-+	const struct hfsplus_acl_entry *ace =
-+		(const struct hfsplus_acl_entry *)nfsv4_ace;
-+	struct posix_ace_state_array *a = state->groups;
-+	int size = HFSPLUS_FINGERPRINT_SIZE;
-+	__be32 *raw_id_ptr;
-+	kgid_t gid;
-+	int i;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: state %p, ace %p\n",
-+			__func__, state, nfsv4_ace);
-+
-+	if (IS_GROUP_FINGERPRINT(ace->ace_applicable)) {
-+		raw_id_ptr = (__be32 *)&ace->ace_applicable[size];
-+		gid = be32_to_cpu(*raw_id_ptr);
-+		hfs_dbg(ACL_MOD, "[%s]: gid %#x\n", __func__, gid);
-+	} else if (IS_USER_FINGERPRINT(ace->ace_applicable)) {
-+		pr_warn("can't find user id\n");
-+		return -1;
-+	} else {
-+		hfs_dbg(ACL_MOD, "[%s]: can't convert uid\n", __func__);
-+		return -1;
-+	}
-+
-+	for (i = 0; i < a->n; i++) {
-+		if (gid_eq(a->aces[i].gid, gid)) {
-+			hfs_dbg(ACL_MOD, "[%s]: index %d\n", __func__, i);
-+			return i;
-+		}
-+	}
-+	/* Not found: */
-+	a->n++;
-+	a->aces[i].gid = gid;
-+	a->aces[i].perms.allow = state->everyone.allow;
-+	a->aces[i].perms.deny  = state->everyone.deny;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: index %d\n", __func__, i);
-+	return i;
-+}
-+
-+static int hfsplus_set_posix_ace_uid(struct user_namespace *user_ns,
-+					struct posix_acl_entry *pace,
-+					kuid_t uid)
-+{
-+	hfs_dbg(ACL_MOD, "[%s]: pace %p, uid %#x\n",
-+			__func__, pace, uid);
-+
-+	pace->e_uid = make_kuid(user_ns, uid);
-+	if (!uid_valid(pace->e_uid)) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -EINVAL);
-+		return -EINVAL;
-+	}
-+
-+	return 0;
-+}
-+
-+static int hfsplus_set_posix_ace_gid(struct user_namespace *user_ns,
-+					struct posix_acl_entry *pace,
-+					kgid_t gid)
-+{
-+	hfs_dbg(ACL_MOD, "[%s]: pace %p, gid %#x\n",
-+			__func__, pace, gid);
-+
-+	pace->e_gid = make_kgid(user_ns, gid);
-+	if (!gid_valid(pace->e_gid)) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -EINVAL);
-+		return -EINVAL;
-+	}
-+
-+	return 0;
-+}
-+
-+#define HFSPLUS_ACE_SET_OWNER_USER_ID(ace_applicable) \
-+	do { \
-+		uuid_be generated_uuid; \
-+		uuid_be_gen(&generated_uuid); \
-+		memcpy(ace_applicable, \
-+			generated_uuid.b, sizeof(generated_uuid)); \
-+	} while (0)
-+
-+#define HFSPLUS_ACE_SET_USER_ID(ace_applicable, id) \
-+	do { \
-+		memset(ace_applicable, 0, HFSPLUS_GUID_SIZE); \
-+		memcpy(&ace_applicable[0], \
-+			&hfsplus_user_fingerprint[0], \
-+			HFSPLUS_FINGERPRINT_SIZE); \
-+		(*((__be32 *)&ace_applicable[HFSPLUS_FINGERPRINT_SIZE]) = \
-+			cpu_to_be32(id)); \
-+	} while (0)
-+
-+#define HFSPLUS_ACE_SET_GROUP_ID(ace_applicable, id) \
-+	do { \
-+		memset(ace_applicable, 0, HFSPLUS_GUID_SIZE); \
-+		memcpy(&ace_applicable[0], \
-+			&hfsplus_group_fingerprint[0], \
-+			HFSPLUS_FINGERPRINT_SIZE); \
-+		(*((__be32 *)&ace_applicable[HFSPLUS_FINGERPRINT_SIZE]) = \
-+			cpu_to_be32(id)); \
-+	} while (0)
-+
-+#define HFSPLUS_COMPOSE_DENY_ACE(ace, ace_applicable_buf, eflag, perms) \
-+	do { \
-+		memcpy(ace->ace_applicable, \
-+				ace_applicable_buf, HFSPLUS_GUID_SIZE); \
-+		ace->ace_flags = cpu_to_be32(HFSPLUS_ACE_DENY | eflag); \
-+		ace->ace_rights = cpu_to_be32(perms); \
-+		hfs_dbg_hexdump(ACL_MOD, "ace_applicable: ", \
-+				ace->ace_applicable, HFSPLUS_GUID_SIZE); \
-+		hfs_dbg(ACL_MOD, \
-+			"[%s]: ace_flags %#x, ace_rights %#x\n", \
-+				__func__, be32_to_cpu(ace->ace_flags), \
-+				perms); \
-+	} while (0)
-+
-+#define HFSPLUS_COMPOSE_PERMIT_ACE(ace, ace_applicable_buf, eflag, perms) \
-+	do { \
-+		memcpy(ace->ace_applicable, \
-+				ace_applicable_buf, HFSPLUS_GUID_SIZE); \
-+		ace->ace_flags = cpu_to_be32(HFSPLUS_ACE_PERMIT | eflag); \
-+		ace->ace_rights = cpu_to_be32(perms); \
-+		hfs_dbg_hexdump(ACL_MOD, "ace_applicable: ", \
-+				ace->ace_applicable, HFSPLUS_GUID_SIZE); \
-+		hfs_dbg(ACL_MOD, \
-+			"[%s]: ace_flags %#x, ace_rights %#x\n", \
-+				__func__, be32_to_cpu(ace->ace_flags), \
-+				perms); \
-+	} while (0)
-+
-+static int hfsplus_prepare_nfsv4_acl_mapping(
-+				struct nfsv4_acl_info *nfsv4_acl_info,
-+				void **nfsv4_ace)
-+{
-+	struct hfsplus_acl_record *fsec_acl;
-+	struct hfsplus_nfsv4_mapping_env *mapping_env;
-+	size_t allocated_size;
-+	size_t filesec_hdr_size = sizeof(struct hfsplus_filesec);
-+
-+	hfs_dbg(ACL_MOD, "[%s]: nfsv4_acl_info %p, nfsv4_ace %p\n",
-+				__func__, nfsv4_acl_info, nfsv4_ace);
-+
-+	BUG_ON(!nfsv4_acl_info || !nfsv4_ace);
-+
-+	fsec_acl = (struct hfsplus_acl_record *)(nfsv4_acl_info->raw_acl);
-+	mapping_env =
-+		(struct hfsplus_nfsv4_mapping_env *)(nfsv4_acl_info->private);
-+
-+	hfs_dbg(ACL_MOD, "[%s]: fsec_acl %p, mapping_env %p\n",
-+				__func__, fsec_acl, mapping_env);
-+
-+	BUG_ON(*nfsv4_ace != NULL);
-+
-+	allocated_size = mapping_env->allocated_acl_size;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: allocated_size %zu\n",
-+			__func__, allocated_size);
-+
-+	if (allocated_size <= 0 ||
-+			allocated_size > HFSPLUS_MAX_INLINE_DATA_SIZE) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -EINVAL);
-+		return -EINVAL;
-+	}
-+
-+	if (mapping_env->composed_acl_size != filesec_hdr_size ||
-+			mapping_env->composed_acl_size >= allocated_size) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -EINVAL);
-+		return -EINVAL;
-+	}
-+
-+	*nfsv4_ace = (void *)fsec_acl->acl_ace;
-+	hfs_dbg(ACL_MOD, "[%s]: ace %p\n", __func__, *nfsv4_ace);
-+	return 0;
-+}
-+
-+static u32 hfsplus_mask_from_posix(struct nfsv4_acl_info *nfsv4_acl_info,
-+					unsigned short perm,
-+					unsigned int flags)
-+{
-+	struct hfsplus_nfsv4_mapping_env *mapping_env =
-+		(struct hfsplus_nfsv4_mapping_env *)nfsv4_acl_info->private;
-+	int mask = HFSPLUS_VNODE_ANYONE_MODE;
-+
-+	if (flags & NFS4_ACL_OWNER)
-+		mask |= HFSPLUS_VNODE_OWNER_MODE;
-+	if (perm & ACL_READ)
-+		mask |= HFSPLUS_VNODE_READ_DATA;
-+	if (perm & ACL_WRITE)
-+		mask |= HFSPLUS_VNODE_WRITE_MODE;
-+	if ((perm & ACL_WRITE) && S_ISDIR(mapping_env->inode->i_mode))
-+		mask |= HFSPLUS_VNODE_DELETE_CHILD;
-+	if (perm & ACL_EXECUTE)
-+		mask |= HFSPLUS_VNODE_EXECUTE;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: perm %#x, mask %#x\n", __func__, perm, mask);
-+
-+	return mask;
-+}
-+
-+static u32 hfsplus_deny_mask_from_posix(struct nfsv4_acl_info *nfsv4_acl_info,
-+					unsigned short perm,
-+					unsigned int flags)
-+{
-+	struct hfsplus_nfsv4_mapping_env *mapping_env =
-+		(struct hfsplus_nfsv4_mapping_env *)nfsv4_acl_info->private;
-+	u32 mask = 0;
-+
-+	if (perm & ACL_READ)
-+		mask |= HFSPLUS_VNODE_READ_DATA;
-+	if (perm & ACL_WRITE)
-+		mask |= HFSPLUS_VNODE_WRITE_MODE;
-+	if ((perm & ACL_WRITE) && S_ISDIR(mapping_env->inode->i_mode))
-+		mask |= HFSPLUS_VNODE_DELETE_CHILD;
-+	if (perm & ACL_EXECUTE)
-+		mask |= HFSPLUS_VNODE_EXECUTE;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: perm %#x, mask %#x\n", __func__, perm, mask);
-+
-+	return mask;
-+}
-+
-+static int hfsplus_map_owner_ace(struct user_namespace *user_ns,
-+				    unsigned int eflag,
-+				    unsigned int flags,
-+				    unsigned short deny,
-+				    struct posix_acl_entry *pa,
-+				    struct posix_acl_summary *pas,
-+				    struct nfsv4_acl_info *nfsv4_acl_info,
-+				    void **nfsv4_ace)
-+{
-+	struct hfsplus_acl_record *fsec_acl =
-+		(struct hfsplus_acl_record *)nfsv4_acl_info->raw_acl;
-+	struct hfsplus_acl_entry *ace =
-+		*(struct hfsplus_acl_entry **)nfsv4_ace;
-+	struct hfsplus_nfsv4_mapping_env *mapping_env =
-+		(struct hfsplus_nfsv4_mapping_env *)nfsv4_acl_info->private;
-+	const size_t allocated_size = mapping_env->allocated_acl_size;
-+	size_t ace_size = sizeof(struct hfsplus_acl_entry);
-+	u32 ace_entries = be32_to_cpu(fsec_acl->acl_entrycount);
-+	u32 rights;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: eflag %#x, flags %#x, deny %#x\n",
-+			__func__, eflag, flags, deny);
-+	hfs_dbg(ACL_MOD, "[%s]: pa %p, pas %p\n", __func__, pa, pas);
-+	hfs_dbg(ACL_MOD, "[%s]: acl_info %p, nfsv4_ace %p\n",
-+			__func__, nfsv4_acl_info, nfsv4_ace);
-+
-+	BUG_ON(ace == NULL || pa == NULL);
-+
-+	hfs_dbg(ACL_MOD, "[%s]: ace %p\n", __func__, *nfsv4_ace);
-+
-+	HFSPLUS_ACE_SET_OWNER_USER_ID(mapping_env->ace_applicable);
-+
-+	if (deny) {
-+		hfs_dbg(ACL_MOD,
-+			"[%s]: compose owner (%#x) deny ACE\n",
-+			__func__, i_uid_read(mapping_env->inode));
-+
-+		if ((mapping_env->composed_acl_size + ace_size) >
-+					allocated_size) {
-+			hfs_dbg(ACL_MOD,
-+				"(%s, %d): %s: err %d\n",
-+				__FILE__, __LINE__, __func__, -ENOMEM);
-+			return -ENOMEM;
-+		}
-+
-+		rights = hfsplus_deny_mask_from_posix(nfsv4_acl_info,
-+							deny, flags);
-+		HFSPLUS_COMPOSE_DENY_ACE(ace, mapping_env->ace_applicable,
-+						eflag, rights);
-+		*nfsv4_ace = (void *)(++ace);
-+		ace_entries++;
-+		mapping_env->composed_acl_size += ace_size;
-+	}
-+
-+	hfs_dbg(ACL_MOD,
-+		"[%s]: compose owner (%#x) permit ACE\n",
-+		__func__, i_uid_read(mapping_env->inode));
-+
-+	if ((mapping_env->composed_acl_size + ace_size) > allocated_size) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -ENOMEM);
-+		return -ENOMEM;
-+	}
-+
-+	rights = hfsplus_mask_from_posix(nfsv4_acl_info, pa->e_perm,
-+						flags | NFS4_ACL_OWNER);
-+	HFSPLUS_COMPOSE_PERMIT_ACE(ace, mapping_env->ace_applicable,
-+						eflag, rights);
-+	*nfsv4_ace = (void *)(++ace);
-+	ace_entries++;
-+	mapping_env->composed_acl_size += ace_size;
-+
-+	fsec_acl->acl_entrycount = cpu_to_be32(ace_entries);
-+
-+	return 0;
-+}
-+
-+static int hfsplus_map_user_ace(struct user_namespace *user_ns,
-+				unsigned int eflag,
-+				unsigned int flags,
-+				unsigned short deny,
-+				struct posix_acl_entry *pa,
-+				struct posix_acl_summary *pas,
-+				struct nfsv4_acl_info *nfsv4_acl_info,
-+				void **nfsv4_ace)
-+{
-+	struct hfsplus_acl_record *fsec_acl =
-+		(struct hfsplus_acl_record *)nfsv4_acl_info->raw_acl;
-+	struct hfsplus_acl_entry *ace =
-+		*(struct hfsplus_acl_entry **)nfsv4_ace;
-+	struct hfsplus_nfsv4_mapping_env *mapping_env =
-+		(struct hfsplus_nfsv4_mapping_env *)nfsv4_acl_info->private;
-+	const size_t allocated_size = mapping_env->allocated_acl_size;
-+	size_t ace_size = sizeof(struct hfsplus_acl_entry);
-+	u32 ace_entries = be32_to_cpu(fsec_acl->acl_entrycount);
-+	u32 rights;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: eflag %#x, flags %#x, deny %#x\n",
-+			__func__, eflag, flags, deny);
-+	hfs_dbg(ACL_MOD, "[%s]: pa %p, pas %p\n", __func__, pa, pas);
-+	hfs_dbg(ACL_MOD, "[%s]: acl_info %p, nfsv4_ace %p\n",
-+			__func__, nfsv4_acl_info, nfsv4_ace);
-+
-+	BUG_ON(ace == NULL || pa == NULL || pas == NULL);
-+
-+	hfs_dbg(ACL_MOD, "[%s]: ace %p\n", __func__, *nfsv4_ace);
-+
-+	HFSPLUS_ACE_SET_USER_ID(mapping_env->ace_applicable,
-+			from_kuid_munged(user_ns, pa->e_id));
-+
-+	if (deny) {
-+		hfs_dbg(ACL_MOD,
-+			"[%s]: compose user (%#x) deny ACE\n",
-+			__func__, from_kuid_munged(user_ns, pa->e_id));
-+
-+		if ((mapping_env->composed_acl_size + ace_size) >
-+					allocated_size) {
-+			hfs_dbg(ACL_MOD,
-+				"(%s, %d): %s: err %d\n",
-+				__FILE__, __LINE__, __func__, -ENOMEM);
-+			return -ENOMEM;
-+		}
-+
-+		rights = hfsplus_deny_mask_from_posix(nfsv4_acl_info,
-+							deny, flags);
-+		HFSPLUS_COMPOSE_DENY_ACE(ace, mapping_env->ace_applicable,
-+							eflag, rights);
-+		*nfsv4_ace = (void *)(++ace);
-+		ace_entries++;
-+		mapping_env->composed_acl_size += ace_size;
-+	}
-+
-+	hfs_dbg(ACL_MOD,
-+			"[%s]: compose user (%#x) permit ACE\n",
-+			__func__, from_kuid_munged(user_ns, pa->e_id));
-+
-+	if ((mapping_env->composed_acl_size + ace_size) > allocated_size) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -ENOMEM);
-+		return -ENOMEM;
-+	}
-+
-+	rights = hfsplus_mask_from_posix(nfsv4_acl_info,
-+					pa->e_perm & pas->mask, flags);
-+	HFSPLUS_COMPOSE_PERMIT_ACE(ace, mapping_env->ace_applicable,
-+					eflag, rights);
-+	*nfsv4_ace = (void *)(++ace);
-+	ace_entries++;
-+	mapping_env->composed_acl_size += ace_size;
-+
-+	fsec_acl->acl_entrycount = cpu_to_be32(ace_entries);
-+
-+	return 0;
-+}
-+
-+static int hfsplus_map_group_owner_deny_ace(struct user_namespace *user_ns,
-+					unsigned int eflag,
-+					unsigned int flags,
-+					unsigned short deny,
-+					struct posix_acl_entry *pa,
-+					struct posix_acl_summary *pas,
-+					struct nfsv4_acl_info *nfsv4_acl_info,
-+					void **nfsv4_ace)
-+{
-+	struct hfsplus_acl_record *fsec_acl =
-+		(struct hfsplus_acl_record *)nfsv4_acl_info->raw_acl;
-+	struct hfsplus_acl_entry *ace =
-+		*(struct hfsplus_acl_entry **)nfsv4_ace;
-+	struct hfsplus_nfsv4_mapping_env *mapping_env =
-+		(struct hfsplus_nfsv4_mapping_env *)nfsv4_acl_info->private;
-+	const size_t allocated_size = mapping_env->allocated_acl_size;
-+	size_t ace_size = sizeof(struct hfsplus_acl_entry);
-+	u32 ace_entries = be32_to_cpu(fsec_acl->acl_entrycount);
-+	u32 rights;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: eflag %#x, flags %#x, deny %#x\n",
-+			__func__, eflag, flags, deny);
-+	hfs_dbg(ACL_MOD, "[%s]: pa %p, pas %p\n", __func__, pa, pas);
-+	hfs_dbg(ACL_MOD, "[%s]: acl_info %p, nfsv4_ace %p\n",
-+			__func__, nfsv4_acl_info, nfsv4_ace);
-+
-+	BUG_ON(ace == NULL);
-+
-+	hfs_dbg(ACL_MOD, "[%s]: ace %p\n", __func__, *nfsv4_ace);
-+
-+	if (deny) {
-+		HFSPLUS_ACE_SET_GROUP_ID(mapping_env->ace_applicable,
-+					i_gid_read(mapping_env->inode));
-+
-+		hfs_dbg(ACL_MOD,
-+			"[%s]: compose group of owner (%#x) deny ACE\n",
-+			__func__, i_gid_read(mapping_env->inode));
-+
-+		if ((mapping_env->composed_acl_size + ace_size) >
-+					allocated_size) {
-+			hfs_dbg(ACL_MOD,
-+				"(%s, %d): %s: err %d\n",
-+				__FILE__, __LINE__, __func__, -ENOMEM);
-+			return -ENOMEM;
-+		}
-+
-+		rights = hfsplus_deny_mask_from_posix(nfsv4_acl_info,
-+							deny, flags);
-+		HFSPLUS_COMPOSE_DENY_ACE(ace, mapping_env->ace_applicable,
-+						eflag, rights);
-+		*nfsv4_ace = (void *)(++ace);
-+		ace_entries++;
-+		mapping_env->composed_acl_size += ace_size;
-+		fsec_acl->acl_entrycount = cpu_to_be32(ace_entries);
-+	}
-+
-+	return 0;
-+}
-+
-+static int hfsplus_map_group_owner_permit_ace(struct user_namespace *user_ns,
-+					unsigned int eflag,
-+					unsigned int flags,
-+					unsigned short deny,
-+					struct posix_acl_entry *pa,
-+					struct posix_acl_summary *pas,
-+					struct nfsv4_acl_info *nfsv4_acl_info,
-+					void **nfsv4_ace)
-+{
-+	struct hfsplus_acl_record *fsec_acl =
-+		(struct hfsplus_acl_record *)nfsv4_acl_info->raw_acl;
-+	struct hfsplus_acl_entry *ace =
-+		*(struct hfsplus_acl_entry **)nfsv4_ace;
-+	struct hfsplus_nfsv4_mapping_env *mapping_env =
-+		(struct hfsplus_nfsv4_mapping_env *)nfsv4_acl_info->private;
-+	const size_t allocated_size = mapping_env->allocated_acl_size;
-+	size_t ace_size = sizeof(struct hfsplus_acl_entry);
-+	u32 ace_entries = be32_to_cpu(fsec_acl->acl_entrycount);
-+	u32 rights;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: eflag %#x, flags %#x, deny %#x\n",
-+			__func__, eflag, flags, deny);
-+	hfs_dbg(ACL_MOD, "[%s]: pa %p, pas %p\n", __func__, pa, pas);
-+	hfs_dbg(ACL_MOD, "[%s]: acl_info %p, nfsv4_ace %p\n",
-+			__func__, nfsv4_acl_info, nfsv4_ace);
-+
-+	BUG_ON(ace == NULL || pas == NULL);
-+
-+	hfs_dbg(ACL_MOD, "[%s]: ace %p\n", __func__, *nfsv4_ace);
-+
-+	HFSPLUS_ACE_SET_GROUP_ID(mapping_env->ace_applicable,
-+				i_gid_read(mapping_env->inode));
-+
-+	hfs_dbg(ACL_MOD,
-+		"[%s]: compose group of owner (%#x) permit ACE\n",
-+		__func__, i_gid_read(mapping_env->inode));
-+
-+	if ((mapping_env->composed_acl_size + ace_size) >
-+				allocated_size) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -ENOMEM);
-+		return -ENOMEM;
-+	}
-+
-+	rights = hfsplus_mask_from_posix(nfsv4_acl_info,
-+					pas->group, flags);
-+	HFSPLUS_COMPOSE_PERMIT_ACE(ace, mapping_env->ace_applicable,
-+					eflag, rights);
-+	*nfsv4_ace = (void *)(++ace);
-+	ace_entries++;
-+	mapping_env->composed_acl_size += ace_size;
-+
-+	fsec_acl->acl_entrycount = cpu_to_be32(ace_entries);
-+
-+	return 0;
-+}
-+
-+static int hfsplus_map_group_deny_ace(struct user_namespace *user_ns,
-+					unsigned int eflag,
-+					unsigned int flags,
-+					unsigned short deny,
-+					struct posix_acl_entry *pa,
-+					struct posix_acl_summary *pas,
-+					struct nfsv4_acl_info *nfsv4_acl_info,
-+					void **nfsv4_ace)
-+{
-+	struct hfsplus_acl_record *fsec_acl =
-+		(struct hfsplus_acl_record *)nfsv4_acl_info->raw_acl;
-+	struct hfsplus_acl_entry *ace =
-+		*(struct hfsplus_acl_entry **)nfsv4_ace;
-+	struct hfsplus_nfsv4_mapping_env *mapping_env =
-+		(struct hfsplus_nfsv4_mapping_env *)nfsv4_acl_info->private;
-+	const size_t allocated_size = mapping_env->allocated_acl_size;
-+	size_t ace_size = sizeof(struct hfsplus_acl_entry);
-+	u32 ace_entries = be32_to_cpu(fsec_acl->acl_entrycount);
-+	u32 rights;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: eflag %#x, flags %#x, deny %#x\n",
-+			__func__, eflag, flags, deny);
-+	hfs_dbg(ACL_MOD, "[%s]: pa %p, pas %p\n", __func__, pa, pas);
-+	hfs_dbg(ACL_MOD, "[%s]: acl_info %p, nfsv4_ace %p\n",
-+			__func__, nfsv4_acl_info, nfsv4_ace);
-+
-+	BUG_ON(ace == NULL || pa == NULL);
-+
-+	hfs_dbg(ACL_MOD, "[%s]: ace %p\n", __func__, *nfsv4_ace);
-+
-+	if (deny) {
-+		HFSPLUS_ACE_SET_GROUP_ID(mapping_env->ace_applicable,
-+				from_kgid_munged(user_ns, pa->e_id));
-+
-+		hfs_dbg(ACL_MOD,
-+			"[%s]: compose group (%#x) deny ACE\n",
-+			__func__, from_kgid_munged(user_ns, pa->e_id));
-+
-+		if ((mapping_env->composed_acl_size + ace_size) >
-+					allocated_size) {
-+			hfs_dbg(ACL_MOD,
-+				"(%s, %d): %s: err %d\n",
-+				__FILE__, __LINE__, __func__, -ENOMEM);
-+			return -ENOMEM;
-+		}
-+
-+		rights = hfsplus_deny_mask_from_posix(nfsv4_acl_info,
-+							deny, flags);
-+		HFSPLUS_COMPOSE_DENY_ACE(ace, mapping_env->ace_applicable,
-+						eflag, rights);
-+		*nfsv4_ace = (void *)(++ace);
-+		ace_entries++;
-+		mapping_env->composed_acl_size += ace_size;
-+		fsec_acl->acl_entrycount = cpu_to_be32(ace_entries);
-+	}
-+
-+	return 0;
-+}
-+
-+static int hfsplus_map_group_permit_ace(struct user_namespace *user_ns,
-+					unsigned int eflag,
-+					unsigned int flags,
-+					unsigned short deny,
-+					struct posix_acl_entry *pa,
-+					struct posix_acl_summary *pas,
-+					struct nfsv4_acl_info *nfsv4_acl_info,
-+					void **nfsv4_ace)
-+{
-+	struct hfsplus_acl_record *fsec_acl =
-+		(struct hfsplus_acl_record *)nfsv4_acl_info->raw_acl;
-+	struct hfsplus_acl_entry *ace =
-+		*(struct hfsplus_acl_entry **)nfsv4_ace;
-+	struct hfsplus_nfsv4_mapping_env *mapping_env =
-+		(struct hfsplus_nfsv4_mapping_env *)nfsv4_acl_info->private;
-+	const size_t allocated_size = mapping_env->allocated_acl_size;
-+	size_t ace_size = sizeof(struct hfsplus_acl_entry);
-+	u32 ace_entries = be32_to_cpu(fsec_acl->acl_entrycount);
-+	u32 rights;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: eflag %#x, flags %#x, deny %#x\n",
-+			__func__, eflag, flags, deny);
-+	hfs_dbg(ACL_MOD, "[%s]: pa %p, pas %p\n", __func__, pa, pas);
-+	hfs_dbg(ACL_MOD, "[%s]: acl_info %p, nfsv4_ace %p\n",
-+			__func__, nfsv4_acl_info, nfsv4_ace);
-+
-+	BUG_ON(ace == NULL || pa == NULL || pas == NULL);
-+
-+	hfs_dbg(ACL_MOD, "[%s]: ace %p\n", __func__, *nfsv4_ace);
-+
-+	HFSPLUS_ACE_SET_GROUP_ID(mapping_env->ace_applicable,
-+				from_kgid_munged(user_ns, pa->e_id));
-+
-+	hfs_dbg(ACL_MOD,
-+		"[%s]: compose group (%#x) permit ACE\n",
-+		__func__, from_kgid_munged(user_ns, pa->e_id));
-+
-+	if ((mapping_env->composed_acl_size + ace_size) >
-+				allocated_size) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -ENOMEM);
-+		return -ENOMEM;
-+	}
-+
-+	rights = hfsplus_mask_from_posix(nfsv4_acl_info,
-+					pa->e_perm & pas->mask, flags);
-+	HFSPLUS_COMPOSE_PERMIT_ACE(ace, mapping_env->ace_applicable,
-+					eflag, rights);
-+	*nfsv4_ace = (void *)(++ace);
-+	ace_entries++;
-+	mapping_env->composed_acl_size += ace_size;
-+
-+	fsec_acl->acl_entrycount = cpu_to_be32(ace_entries);
-+
-+	return 0;
-+}
-+
-+static int hfsplus_map_everyone_permit_ace(unsigned int eflag,
-+					unsigned int flags,
-+					struct posix_acl_entry *pa,
-+					struct nfsv4_acl_info *nfsv4_acl_info,
-+					void **nfsv4_ace)
-+{
-+	struct hfsplus_acl_record *fsec_acl =
-+		(struct hfsplus_acl_record *)nfsv4_acl_info->raw_acl;
-+	struct hfsplus_acl_entry *ace =
-+		*(struct hfsplus_acl_entry **)nfsv4_ace;
-+	struct hfsplus_nfsv4_mapping_env *mapping_env =
-+		(struct hfsplus_nfsv4_mapping_env *)nfsv4_acl_info->private;
-+	const size_t allocated_size = mapping_env->allocated_acl_size;
-+	size_t ace_size = sizeof(struct hfsplus_acl_entry);
-+	u32 ace_entries = be32_to_cpu(fsec_acl->acl_entrycount);
-+	u32 rights;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: eflag %#x, flags %#x\n",
-+			__func__, eflag, flags);
-+	hfs_dbg(ACL_MOD, "[%s]: pa %p\n", __func__, pa);
-+	hfs_dbg(ACL_MOD, "[%s]: acl_info %p, nfsv4_ace %p\n",
-+			__func__, nfsv4_acl_info, nfsv4_ace);
-+
-+	BUG_ON(ace == NULL || pa == NULL);
-+
-+	hfs_dbg(ACL_MOD, "[%s]: ace %p\n", __func__, *nfsv4_ace);
-+	hfs_dbg(ACL_MOD, "[%s]: compose EVERYBODY permit ACE\n", __func__);
-+
-+	HFSPLUS_ACE_SET_GROUP_ID(mapping_env->ace_applicable,
-+					HFSPLUS_EVERYBODY_ID);
-+
-+	if ((mapping_env->composed_acl_size + ace_size) >
-+				allocated_size) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -ENOMEM);
-+		return -ENOMEM;
-+	}
-+
-+	rights = hfsplus_mask_from_posix(nfsv4_acl_info,
-+					pa->e_perm, flags);
-+	HFSPLUS_COMPOSE_PERMIT_ACE(ace, mapping_env->ace_applicable,
-+					eflag, rights);
-+	ace_entries++;
-+	mapping_env->composed_acl_size += ace_size;
-+
-+	fsec_acl->acl_entrycount = cpu_to_be32(ace_entries);
-+
-+	return 0;
-+}
-+
-+static struct nfsv4_ace_operations hfsplus_ace_ops = {
-+	.get_naces = hfsplus_get_naces,
-+	.get_ace = hfsplus_get_ace,
-+	.get_access_mask = hfsplus_get_access_mask,
-+	.ace_type_valid = hfsplus_ace_type_valid,
-+	.is_allowed_ace_type = hfsplus_is_allowed_ace_type,
-+	.is_acl_user_obj = hfsplus_is_acl_user_obj,
-+	.is_acl_group_obj = hfsplus_is_acl_group_obj,
-+	.is_acl_other = hfsplus_is_acl_other,
-+	.is_acl_user = hfsplus_is_acl_user,
-+	.is_acl_group = hfsplus_is_acl_group,
-+};
-+
-+static struct nfsv4_ace_flags_operations hfsplus_ace_flags_ops = {
-+	.ace_has_unknown_flags = hfsplus_ace_has_unknown_flags,
-+	.ace_has_inheritance_flags = hfsplus_ace_has_inheritance_flags,
-+	.ace_inherit_only_flag = hfsplus_ace_inherit_only_flag,
-+	.check_deny = hfsplus_check_deny,
-+	.low_mode_from_nfs4 = hfsplus_low_mode_from_nfs4,
-+	.calculate_eflag = hfsplus_calculate_eflag,
-+};
-+
-+static struct nfsv4_acl_id_operations hfsplus_acl_id_ops = {
-+	.find_uid = hfsplus_find_uid,
-+	.find_gid = hfsplus_find_gid,
-+	.set_posix_ace_uid = hfsplus_set_posix_ace_uid,
-+	.set_posix_ace_gid = hfsplus_set_posix_ace_gid,
-+};
-+
-+static struct nfsv4_acl_mapping_operations hfsplus_acl_mapping_ops = {
-+	.prepare_nfsv4_acl_mapping = hfsplus_prepare_nfsv4_acl_mapping,
-+	.mask_from_posix = hfsplus_mask_from_posix,
-+	.deny_mask_from_posix = hfsplus_deny_mask_from_posix,
-+	.map_owner_ace = hfsplus_map_owner_ace,
-+	.map_user_ace = hfsplus_map_user_ace,
-+	.map_group_owner_deny_ace = hfsplus_map_group_owner_deny_ace,
-+	.map_group_owner_permit_ace = hfsplus_map_group_owner_permit_ace,
-+	.map_group_deny_ace = hfsplus_map_group_deny_ace,
-+	.map_group_permit_ace = hfsplus_map_group_permit_ace,
-+	.map_everyone_permit_ace = hfsplus_map_everyone_permit_ace,
-+};
-+
-+static struct hfsplus_acl_record *hfsplus_acl_record_from_xattr(
-+							void *value,
-+							size_t size)
-+{
-+	struct hfsplus_filesec *filesec_ptr =
-+			(struct hfsplus_filesec *)value;
-+	struct hfsplus_acl_record *acl_record_ptr = NULL;
-+	size_t filesec_hdr_size = offsetof(struct hfsplus_filesec, fsec_acl);
-+	size_t acl_record_hdr_size =
-+		offsetof(struct hfsplus_acl_record, acl_ace);
-+	size_t known_size = filesec_hdr_size;
-+	u32 acl_entries_count = 0;
-+	u32 acl_entries_size = 0;
-+
-+	hfs_dbg(ACL_MOD,
-+		"[%s]: value %p, size %zu\n",
-+		__func__, value, size);
-+
-+	if (unlikely(size < known_size)) {
-+		pr_err("filesec hdr corrupted\n");
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -EINVAL);
-+		return ERR_PTR(-EINVAL);
-+	}
-+
-+	if (unlikely(be32_to_cpu(filesec_ptr->fsec_magic) !=
-+				HFSPLUS_FILESEC_MAGIC)) {
-+		pr_err("invalid fsec_magic\n");
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -EINVAL);
-+		return ERR_PTR(-EINVAL);
-+	}
-+
-+	known_size += acl_record_hdr_size;
-+
-+	if (unlikely(size < known_size)) {
-+		pr_err("acl record hdr corrupted\n");
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -EINVAL);
-+		return ERR_PTR(-EINVAL);
-+	}
-+
-+	acl_record_ptr = &(filesec_ptr->fsec_acl);
-+	acl_entries_count = be32_to_cpu(acl_record_ptr->acl_entrycount);
-+	acl_entries_size =
-+		acl_entries_count * sizeof(struct hfsplus_acl_entry);
-+	known_size += acl_entries_size;
-+
-+	if (unlikely(size < known_size)) {
-+		pr_err("acl entries array corrupted\n");
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -EINVAL);
-+		return ERR_PTR(-EINVAL);
-+	}
-+
-+	return acl_record_ptr;
-+}
-+
-+static uid_t extract_uid_from_ace(struct hfsplus_acl_entry *ace)
-+{
-+	int size = HFSPLUS_FINGERPRINT_SIZE;
-+	__be32 *raw_id_ptr;
-+	uid_t uid;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: ace %p\n", __func__, ace);
-+
-+	if (IS_GROUP_FINGERPRINT(ace->ace_applicable) ||
-+			IS_USER_FINGERPRINT(ace->ace_applicable)) {
-+		raw_id_ptr = (__be32 *)&ace->ace_applicable[size];
-+		uid = be32_to_cpu(*raw_id_ptr);
-+		hfs_dbg(ACL_MOD, "[%s]: uid/gid %#x\n", __func__, uid);
-+	} else {
-+		hfs_dbg(ACL_MOD, "[%s]: uid/gid %#x\n",
-+				__func__, ACL_UNDEFINED_ID);
-+		return ACL_UNDEFINED_ID;
-+	}
-+
-+	return uid;
-+}
-+
-+/* It is expected that ace is not empty */
-+static int compare_ace_type(struct hfsplus_acl_entry *left_ace,
-+				struct hfsplus_acl_entry *right_ace)
-+{
-+	u32 left_ace_flags = be32_to_cpu(left_ace->ace_flags);
-+	u32 left_ace_type = left_ace_flags & HFSPLUS_ACE_KINDMASK;
-+	u32 right_ace_flags = be32_to_cpu(right_ace->ace_flags);
-+	u32 right_ace_type = right_ace_flags & HFSPLUS_ACE_KINDMASK;
-+
-+	if (left_ace_type == HFSPLUS_ACE_DENY &&
-+			right_ace_type == HFSPLUS_ACE_DENY)
-+		return 0;
-+	else if (left_ace_type == HFSPLUS_ACE_PERMIT &&
-+			right_ace_type == HFSPLUS_ACE_PERMIT)
-+		return 0;
-+	else if (left_ace_type == HFSPLUS_ACE_DENY)
-+		return -1;
-+	else if (left_ace_type == HFSPLUS_ACE_PERMIT) {
-+		if (right_ace_type == HFSPLUS_ACE_DENY)
-+			return 1;
-+		else
-+			return -1;
-+	} else if (right_ace_type == HFSPLUS_ACE_DENY ||
-+			right_ace_type == HFSPLUS_ACE_PERMIT)
-+		return -1;
-+
-+	return 0;
-+}
-+
-+static int compare_ace(struct nfsv4_acl_info *nfsv4_acl_info,
-+			struct hfsplus_acl_entry *left_ace,
-+			struct hfsplus_acl_entry *right_ace)
-+{
-+	uid_t left_uid, right_uid;
-+
-+	if (empty_ace(left_ace) && empty_ace(right_ace))
-+		return 0;
-+
-+	if (hfsplus_is_acl_user_obj(nfsv4_acl_info, left_ace)) {
-+		if (hfsplus_is_acl_user_obj(nfsv4_acl_info, right_ace))
-+			return compare_ace_type(left_ace, right_ace);
-+		else
-+			return -1;
-+	} else if (hfsplus_is_acl_user_obj(nfsv4_acl_info, right_ace))
-+		return 1;
-+
-+	if (hfsplus_is_acl_group_obj(nfsv4_acl_info, left_ace)) {
-+		if (hfsplus_is_acl_group_obj(nfsv4_acl_info, right_ace))
-+			return compare_ace_type(left_ace, right_ace);
-+		else
-+			return -1;
-+	} else if (hfsplus_is_acl_group_obj(nfsv4_acl_info, right_ace))
-+		return 1;
-+
-+	if (hfsplus_is_acl_other(nfsv4_acl_info, left_ace)) {
-+		if (hfsplus_is_acl_other(nfsv4_acl_info, right_ace))
-+			return compare_ace_type(left_ace, right_ace);
-+		else
-+			return -1;
-+	} else if (hfsplus_is_acl_other(nfsv4_acl_info, right_ace))
-+		return 1;
-+
-+	left_uid = extract_uid_from_ace(left_ace);
-+	right_uid = extract_uid_from_ace(right_ace);
-+
-+	/* ACL_UNDEFINED_ID is greater always */
-+	if (left_uid == ACL_UNDEFINED_ID) {
-+		if (right_uid == ACL_UNDEFINED_ID)
-+			return 0;
-+		else
-+			return 1;
-+	} else if (right_uid == ACL_UNDEFINED_ID)
-+		return 1;
-+
-+	if (left_uid == right_uid)
-+		return compare_ace_type(left_ace, right_ace);
-+
-+	return left_uid < right_uid ? -1 : 1;
-+}
-+
-+/*
-+ * Insertion sort.
-+ * Algorithm of the method is based on psevdocode from:
-+ * http://en.wikipedia.org/wiki/Insertion_sort
-+ */
-+static int sort_hfsplus_ace(struct nfsv4_acl_info *nfsv4_acl_info)
-+{
-+	struct hfsplus_acl_record *fsec_acl =
-+		(struct hfsplus_acl_record *)nfsv4_acl_info->raw_acl;
-+	struct hfsplus_nfsv4_mapping_env *mapping_env =
-+		(struct hfsplus_nfsv4_mapping_env *)nfsv4_acl_info->private;
-+	struct hfsplus_acl_entry *ace = fsec_acl->acl_ace;
-+	struct hfsplus_acl_entry temp_buf;
-+	int entries_count = be32_to_cpu(fsec_acl->acl_entrycount);
-+	ssize_t calculated_size = sizeof(struct hfsplus_filesec) +
-+			(entries_count * sizeof(struct hfsplus_acl_entry));
-+	int i;
-+
-+	if (entries_count == 0)
-+		return 0;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: fsec_acl (%p)\n",
-+			__func__, fsec_acl);
-+	hfs_dbg(ACL_MOD, "[%s]: calculated_size (%zu)\n",
-+			__func__, calculated_size);
-+	hfs_dbg(ACL_MOD, "[%s]: composed_acl_size (%zu)\n",
-+			__func__, mapping_env->composed_acl_size);
-+	hfs_dbg(ACL_MOD, "[%s]: allocated_acl_size (%zu)\n",
-+			__func__, mapping_env->allocated_acl_size);
-+	hfs_dbg_hexdump(ACL_MOD, "unsorted composed_filesec: ",
-+				fsec_acl, mapping_env->composed_acl_size);
-+
-+	if (calculated_size != mapping_env->composed_acl_size ||
-+			calculated_size > mapping_env->allocated_acl_size) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -EINVAL);
-+		return -EINVAL;
-+	}
-+
-+	for (i = 1; i < entries_count; i++) {
-+		int hole_index = i;
-+		memcpy(&temp_buf, &ace[i], sizeof(struct hfsplus_acl_entry));
-+
-+		while (hole_index > 0 &&
-+				(compare_ace(nfsv4_acl_info,
-+						&ace[hole_index - 1],
-+						&temp_buf) > 0)) {
-+			/* move hole to next smaller index */
-+			memcpy(&ace[hole_index], &ace[hole_index - 1],
-+					sizeof(struct hfsplus_acl_entry));
-+			hole_index -= 1;
-+		}
-+
-+		memcpy(&ace[hole_index], &temp_buf,
-+				sizeof(struct hfsplus_acl_entry));
-+	}
-+
-+	hfs_dbg_hexdump(ACL_MOD, "sorted composed_filesec: ",
-+				fsec_acl, mapping_env->composed_acl_size);
-+
-+	return 0;
-+}
-+
-+struct posix_acl *hfsplus_posix_acl_from_xattr(struct inode *inode,
-+					struct user_namespace *user_ns,
-+					void *value,
-+					size_t size,
-+					int type)
-+{
-+	int err = 0;
-+	struct hfsplus_nfsv4_mapping_env mapping_env = {
-+		.inode = inode,
-+		.composed_acl_size = 0,
-+		.allocated_acl_size = size,
-+	};
-+	struct nfsv4_acl_info acl_info = {
-+		.ace_ops = &hfsplus_ace_ops,
-+		.flags_ops = &hfsplus_ace_flags_ops,
-+		.id_ops = &hfsplus_acl_id_ops,
-+		.mapping_ops = &hfsplus_acl_mapping_ops,
-+		.raw_acl = NULL,
-+		.private = &mapping_env,
-+	};
-+	struct posix_acl *pacl = NULL, *dpacl = NULL;
-+	struct hfsplus_filesec *filesec =
-+			(struct hfsplus_filesec *)value;
-+	u32 acl_entries_count = 0;
-+	unsigned int flags = 0;
-+
-+	hfs_dbg(ACL_MOD,
-+		"[%s]: ino %lu, value %p, size %zu, type %#x\n",
-+		__func__, inode->i_ino, value, size, type);
-+
-+	if (!value)
-+		return NULL;
-+
-+	if (type != ACL_TYPE_ACCESS && type != ACL_TYPE_DEFAULT)
-+		return NULL;
-+
-+	acl_info.raw_acl = hfsplus_acl_record_from_xattr(value, size);
-+	if (unlikely(IS_ERR(acl_info.raw_acl))) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %ld\n",
-+			__FILE__, __LINE__, __func__,
-+			PTR_ERR(acl_info.raw_acl));
-+		return NULL;
-+	}
-+
-+	acl_entries_count = be32_to_cpu(filesec->fsec_acl.acl_entrycount);
-+	mapping_env.composed_acl_size = sizeof(struct hfsplus_filesec) +
-+		(acl_entries_count * sizeof(struct hfsplus_acl_entry));
-+	err = sort_hfsplus_ace(&acl_info);
-+	if (unlikely(err)) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, err);
-+		return ERR_PTR(err);
-+	}
-+
-+	if (S_ISDIR(inode->i_mode))
-+		flags |= NFS4_ACL_DIR;
-+
-+	err = map_nfsv4_acl_to_posix(user_ns, &acl_info, &pacl, &dpacl, flags);
-+	if (unlikely(err)) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, err);
-+		goto failed_conversion;
-+	}
-+
-+	switch (type) {
-+	case ACL_TYPE_ACCESS:
-+		posix_acl_release(dpacl);
-+		return pacl;
-+
-+	case ACL_TYPE_DEFAULT:
-+		posix_acl_release(pacl);
-+		return dpacl;
-+
-+	default:
-+		BUG();
-+	}
-+
-+failed_conversion:
-+	if (pacl)
-+		posix_acl_release(pacl);
-+	if (dpacl)
-+		posix_acl_release(dpacl);
-+	return ERR_PTR(err);
-+}
-+
-+static int hfsplus_compose_filesec_from_posix_acl(struct inode *inode,
-+						struct user_namespace *user_ns,
-+						struct posix_acl *pacl,
-+						struct hfsplus_filesec *filesec,
-+						size_t allocated_size,
-+						int type)
-+{
-+	int err;
-+	struct hfsplus_nfsv4_mapping_env mapping_env = {
-+		.inode = inode,
-+		.allocated_acl_size = allocated_size,
-+		.composed_acl_size = 0,
-+	};
-+	struct nfsv4_acl_info acl_info = {
-+		.ace_ops = &hfsplus_ace_ops,
-+		.flags_ops = &hfsplus_ace_flags_ops,
-+		.id_ops = &hfsplus_acl_id_ops,
-+		.mapping_ops = &hfsplus_acl_mapping_ops,
-+		.raw_acl = NULL,
-+		.private = &mapping_env,
-+	};
-+	size_t filesec_hdr_size = sizeof(struct hfsplus_filesec);
-+	unsigned int flags = 0;
-+
-+	hfs_dbg(ACL_MOD,
-+		"[%s]: ino %lu, pacl %p, filesec %p, alloc_sz %zu, type %#x\n",
-+		__func__, inode->i_ino, pacl, filesec, allocated_size, type);
-+
-+	BUG_ON(!filesec);
-+
-+	acl_info.raw_acl = &(filesec->fsec_acl);
-+
-+	if ((mapping_env.composed_acl_size + filesec_hdr_size) >
-+				allocated_size) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -ENOMEM);
-+		return -ENOMEM;
-+	}
-+
-+	memset(filesec, 0, sizeof(struct hfsplus_filesec));
-+	filesec->fsec_magic = cpu_to_be32(HFSPLUS_FILESEC_MAGIC);
-+	mapping_env.composed_acl_size += filesec_hdr_size;
-+
-+	switch (type) {
-+	case ACL_TYPE_ACCESS:
-+		flags &= ~NFS4_ACL_TYPE_DEFAULT;
-+		break;
-+
-+	case ACL_TYPE_DEFAULT:
-+		flags |= NFS4_ACL_TYPE_DEFAULT;
-+		break;
-+	}
-+
-+	err = map_posix_acl_to_nfsv4_one(user_ns, pacl, &acl_info, flags);
-+	if (unlikely(err)) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, err);
-+		return err;
-+	}
-+
-+	err = sort_hfsplus_ace(&acl_info);
-+	if (unlikely(err)) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, err);
-+		return err;
-+	}
-+
-+	return 0;
-+}
-+
-+static struct hfsplus_filesec *hfsplus_posix_acl_to_filesec(struct inode *inode,
-+						struct user_namespace *user_ns,
-+						struct posix_acl *acl,
-+						int type)
-+{
-+	int err = 0;
-+	struct hfsplus_filesec *composed_filesec = NULL;
-+
-+	hfs_dbg(ACL_MOD,
-+		"[%s]: ino %lu, type %#x, acl %p\n",
-+		__func__, inode->i_ino, type, acl);
-+
-+	if (posix_acl_valid(acl) < 0) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -EINVAL);
-+		return ERR_PTR(-EINVAL);
-+	}
-+
-+	/*
-+	 * Mac OS X supports only inline xattr.
-+	 * The online xattr can't be greater than
-+	 * HFSPLUS_MAX_INLINE_DATA_SIZE (3802) bytes
-+	 * in size.
+ 	cookie = object->fscache.cookie;
+ 
+ 	if (!cookie->def->get_aux) {
++		fscache_unuse_cookie(_object);
+ 		_leave(" [no aux]");
+ 		return;
+ 	}
+ 
+ 	auxdata = kmalloc(2 + 512 + 3, cachefiles_gfp);
+ 	if (!auxdata) {
++		fscache_unuse_cookie(_object);
+ 		_leave(" [nomem]");
+ 		return;
+ 	}
+ 
+ 	auxlen = cookie->def->get_aux(cookie->netfs_data, auxdata->data, 511);
++	fscache_unuse_cookie(_object);
+ 	ASSERTCMP(auxlen, <, 511);
+ 
+ 	auxdata->len = auxlen + 1;
+@@ -263,7 +272,7 @@ static void cachefiles_drop_object(struct fscache_object *_object)
+ #endif
+ 
+ 	/* delete retired objects */
+-	if (test_bit(FSCACHE_OBJECT_RETIRE, &object->fscache.flags) &&
++	if (test_bit(FSCACHE_COOKIE_RETIRED, &object->fscache.cookie->flags) &&
+ 	    _object != cache->cache.fsdef
+ 	    ) {
+ 		_debug("- retire object OBJ%x", object->fscache.debug_id);
+diff --git a/fs/cachefiles/xattr.c b/fs/cachefiles/xattr.c
+index 73b4628..2476e51 100644
+--- a/fs/cachefiles/xattr.c
++++ b/fs/cachefiles/xattr.c
+@@ -109,13 +109,12 @@ int cachefiles_set_object_xattr(struct cachefiles_object *object,
+ 	struct dentry *dentry = object->dentry;
+ 	int ret;
+ 
+-	ASSERT(object->fscache.cookie);
+ 	ASSERT(dentry);
+ 
+ 	_enter("%p,#%d", object, auxdata->len);
+ 
+ 	/* attempt to install the cache metadata directly */
+-	_debug("SET %s #%u", object->fscache.cookie->def->name, auxdata->len);
++	_debug("SET #%u", auxdata->len);
+ 
+ 	ret = vfs_setxattr(dentry, cachefiles_xattr_cache,
+ 			   &auxdata->type, auxdata->len,
+@@ -138,13 +137,12 @@ int cachefiles_update_object_xattr(struct cachefiles_object *object,
+ 	struct dentry *dentry = object->dentry;
+ 	int ret;
+ 
+-	ASSERT(object->fscache.cookie);
+ 	ASSERT(dentry);
+ 
+ 	_enter("%p,#%d", object, auxdata->len);
+ 
+ 	/* attempt to install the cache metadata directly */
+-	_debug("SET %s #%u", object->fscache.cookie->def->name, auxdata->len);
++	_debug("SET #%u", auxdata->len);
+ 
+ 	ret = vfs_setxattr(dentry, cachefiles_xattr_cache,
+ 			   &auxdata->type, auxdata->len,
+diff --git a/fs/fscache/cookie.c b/fs/fscache/cookie.c
+index eee4366..0e91a3c 100644
+--- a/fs/fscache/cookie.c
++++ b/fs/fscache/cookie.c
+@@ -95,6 +95,11 @@ struct fscache_cookie *__fscache_acquire_cookie(
+ 	atomic_set(&cookie->usage, 1);
+ 	atomic_set(&cookie->n_children, 0);
+ 
++	/* We keep the active count elevated until relinquishment to prevent an
++	 * attempt to wake up every time the object operations queue quiesces.
 +	 */
-+	composed_filesec = kzalloc(HFSPLUS_MAX_INLINE_DATA_SIZE, GFP_KERNEL);
-+	if (unlikely(!composed_filesec)) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -ENOMEM);
-+		return ERR_PTR(-ENOMEM);
-+	}
++	atomic_set(&cookie->n_active, 1);
 +
-+	err = hfsplus_compose_filesec_from_posix_acl(inode, user_ns,
-+						acl, composed_filesec,
-+						HFSPLUS_MAX_INLINE_DATA_SIZE,
-+						type);
-+	if (err) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, err);
-+		goto failed_conversion;
-+	}
+ 	atomic_inc(&parent->usage);
+ 	atomic_inc(&parent->n_children);
+ 
+@@ -177,7 +182,6 @@ static int fscache_acquire_non_index_cookie(struct fscache_cookie *cookie)
+ 
+ 	cookie->flags =
+ 		(1 << FSCACHE_COOKIE_LOOKING_UP) |
+-		(1 << FSCACHE_COOKIE_CREATING) |
+ 		(1 << FSCACHE_COOKIE_NO_DATA_YET);
+ 
+ 	/* ask the cache to allocate objects for this cookie and its parent
+@@ -467,7 +471,6 @@ EXPORT_SYMBOL(__fscache_update_cookie);
+  */
+ void __fscache_relinquish_cookie(struct fscache_cookie *cookie, int retire)
+ {
+-	struct fscache_cache *cache;
+ 	struct fscache_object *object;
+ 
+ 	fscache_stat(&fscache_n_relinquishes);
+@@ -480,8 +483,11 @@ void __fscache_relinquish_cookie(struct fscache_cookie *cookie, int retire)
+ 		return;
+ 	}
+ 
+-	_enter("%p{%s,%p},%d",
+-	       cookie, cookie->def->name, cookie->netfs_data, retire);
++	_enter("%p{%s,%p,%d},%d",
++	       cookie, cookie->def->name, cookie->netfs_data,
++	       atomic_read(&cookie->n_active), retire);
 +
-+	return composed_filesec;
-+
-+failed_conversion:
-+	kfree(composed_filesec);
-+	return ERR_PTR(err);
-+}
-+
-+struct posix_acl *hfsplus_get_acl(struct inode *inode, int type)
-+{
-+	struct posix_acl *acl;
-+	char *xattr_name;
-+	char *value = NULL;
-+	ssize_t size;
-+
-+	hfs_dbg(ACL_MOD,
-+		"[%s]: ino %lu, type %#x\n",
-+		__func__, inode->i_ino, type);
-+
-+	acl = get_cached_acl(inode, type);
-+	if (acl != ACL_NOT_CACHED)
-+		return acl;
-+
-+	switch (type) {
-+	case ACL_TYPE_ACCESS:
-+	case ACL_TYPE_DEFAULT:
-+		xattr_name = HFSPLUS_XATTR_ACL_NAME;
-+		break;
-+	default:
-+		return ERR_PTR(-EINVAL);
-+	}
-+
-+	size = __hfsplus_getxattr(inode, xattr_name, NULL, 0);
-+
-+	if (size > 0) {
-+		value = kzalloc(size, GFP_NOFS);
-+		if (unlikely(!value)) {
-+			hfs_dbg(ACL_MOD,
-+				"(%s, %d): %s: err %d\n",
-+				__FILE__, __LINE__, __func__, -ENOMEM);
-+			return ERR_PTR(-ENOMEM);
-+		}
-+		size = __hfsplus_getxattr(inode, xattr_name, value, size);
-+	}
-+
-+	if (size > 0)
-+		acl = hfsplus_posix_acl_from_xattr(inode, &init_user_ns,
-+							value, size, type);
-+	else if (size == -ENODATA)
-+		acl = NULL;
-+	else {
-+		acl = ERR_PTR(size);
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %zd\n",
-+			__FILE__, __LINE__, __func__, size);
-+	}
-+
-+	kfree(value);
-+
-+	if (!IS_ERR(acl))
-+		set_cached_acl(inode, type, acl);
-+
-+	return acl;
-+}
-+
-+static int hfsplus_set_acl(struct inode *inode, int type, struct posix_acl *acl)
-+{
-+	int err;
-+	char *xattr_name = HFSPLUS_XATTR_ACL_NAME;
-+	struct hfsplus_filesec *filesec = NULL;
-+	size_t size = 0;
-+	size_t ace_size = sizeof(struct hfsplus_acl_entry);
-+
-+	hfs_dbg(ACL_MOD,
-+		"[%s]: ino %lu, type %#x, acl %p\n",
-+		__func__, inode->i_ino, type, acl);
-+
-+	if (S_ISLNK(inode->i_mode)) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -EOPNOTSUPP);
-+		return -EOPNOTSUPP;
-+	}
-+
-+	switch (type) {
-+	case ACL_TYPE_ACCESS:
-+		if (acl) {
-+			err = posix_acl_equiv_mode(acl, &inode->i_mode);
-+			if (err < 0) {
-+				hfs_dbg(ACL_MOD,
-+					"(%s, %d): %s: err %d\n",
-+					__FILE__, __LINE__, __func__, err);
-+				return err;
-+			}
-+		}
-+		err = 0;
-+		break;
-+
-+	case ACL_TYPE_DEFAULT:
-+		if (!S_ISDIR(inode->i_mode))
-+			return acl ? -EACCES : 0;
-+		break;
-+
-+	default:
-+		return -EINVAL;
-+	}
-+
-+	if (acl) {
-+		filesec = hfsplus_posix_acl_to_filesec(inode, &init_user_ns,
-+							acl, type);
-+		if (unlikely(!filesec)) {
-+			err = -ENOMEM;
-+			hfs_dbg(ACL_MOD,
-+				"(%s, %d): %s: err %d\n",
-+				__FILE__, __LINE__, __func__, err);
-+			goto end_set_acl;
-+		} else if (IS_ERR(filesec)) {
-+			err = PTR_ERR(filesec);
-+			hfs_dbg(ACL_MOD,
-+				"(%s, %d): %s: err %d\n",
-+				__FILE__, __LINE__, __func__, err);
-+			goto end_set_acl;
-+		}
-+
-+		size = sizeof(struct hfsplus_filesec) +
-+			(be32_to_cpu(filesec->fsec_acl.acl_entrycount) *
-+				ace_size);
-+		if (unlikely(size > HFSPLUS_MAX_INLINE_DATA_SIZE)) {
-+			err = -ENOMEM;
-+			hfs_dbg(ACL_MOD,
-+				"(%s, %d): %s: err %d\n",
-+				__FILE__, __LINE__, __func__, err);
-+			goto end_set_acl;
-+		}
-+	}
-+
-+	err = __hfsplus_setxattr(inode, xattr_name, filesec, size, 0);
-+	if (unlikely(err)) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, err);
-+	}
-+
-+end_set_acl:
-+	kfree(filesec);
-+
-+	if (!err)
-+		set_cached_acl(inode, type, acl);
-+
-+	return err;
-+}
-+
-+int hfsplus_init_acl(struct inode *inode, struct inode *dir)
-+{
-+	int err = 0;
-+	struct posix_acl *acl = NULL;
-+
-+	hfs_dbg(ACL_MOD,
-+		"[%s]: ino %lu, dir->ino %lu\n",
-+		__func__, inode->i_ino, dir->i_ino);
-+
-+	if (S_ISLNK(inode->i_mode))
-+		return 0;
-+
-+	acl = hfsplus_get_acl(dir, ACL_TYPE_DEFAULT);
-+	if (IS_ERR(acl)) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %ld\n",
-+			__FILE__, __LINE__, __func__, PTR_ERR(acl));
-+		return PTR_ERR(acl);
-+	}
-+
-+	if (acl) {
-+		if (S_ISDIR(inode->i_mode)) {
-+			err = hfsplus_set_acl(inode, ACL_TYPE_DEFAULT, acl);
-+			if (unlikely(err)) {
-+				hfs_dbg(ACL_MOD,
-+					"(%s, %d): %s: err %d\n",
-+					__FILE__, __LINE__, __func__, err);
-+				goto init_acl_cleanup;
-+			}
-+		}
-+
-+		err = posix_acl_create(&acl, GFP_NOFS, &inode->i_mode);
-+		if (unlikely(err < 0)) {
-+			hfs_dbg(ACL_MOD,
-+				"(%s, %d): %s: err %d\n",
-+				__FILE__, __LINE__, __func__, err);
-+			return err;
-+		}
-+
-+		if (err > 0) {
-+			err = hfsplus_set_acl(inode, ACL_TYPE_ACCESS, acl);
-+			if (unlikely(err)) {
-+				hfs_dbg(ACL_MOD,
-+					"(%s, %d): %s: err %d\n",
-+					__FILE__, __LINE__, __func__, err);
-+			}
-+		}
-+	} else
-+		inode->i_mode &= ~current_umask();
-+
-+init_acl_cleanup:
-+	posix_acl_release(acl);
-+	return err;
-+}
-+
-+int hfsplus_acl_chmod(struct inode *inode)
-+{
-+	int err;
-+	struct posix_acl *acl;
-+
-+	hfs_dbg(ACL_MOD, "[%s]: ino %lu\n", __func__, inode->i_ino);
-+
-+	if (S_ISLNK(inode->i_mode)) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -EOPNOTSUPP);
-+		return -EOPNOTSUPP;
-+	}
-+
-+	acl = hfsplus_get_acl(inode, ACL_TYPE_ACCESS);
-+	if (IS_ERR(acl) || !acl) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %ld\n",
-+			__FILE__, __LINE__, __func__, PTR_ERR(acl));
-+		return PTR_ERR(acl);
-+	}
-+
-+	err = posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
-+	if (unlikely(err)) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, err);
-+		return err;
-+	}
-+
-+	err = hfsplus_set_acl(inode, ACL_TYPE_ACCESS, acl);
-+	if (unlikely(err)) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, err);
-+	}
-+
-+	posix_acl_release(acl);
-+	return err;
-+}
-+
-+static int hfsplus_xattr_get_acl(struct dentry *dentry,
-+					const char *name,
-+					void *buffer,
-+					size_t size,
-+					int type)
-+{
-+	int res = 0;
-+	struct posix_acl *acl;
-+
-+	hfs_dbg(ACL_MOD,
-+		"[%s]: ino %lu, buffer %p, size %zu, type %#x\n",
-+		__func__, dentry->d_inode->i_ino, buffer, size, type);
-+
-+	if (strcmp(name, "") != 0) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -EINVAL);
-+		return -EINVAL;
-+	}
-+
-+	acl = hfsplus_get_acl(dentry->d_inode, type);
-+	if (IS_ERR(acl)) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %ld\n",
-+			__FILE__, __LINE__, __func__, PTR_ERR(acl));
-+		return PTR_ERR(acl);
-+	}
-+	if (acl == NULL) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -ENODATA);
-+		return -ENODATA;
-+	}
-+
-+	res = posix_acl_to_xattr(&init_user_ns, acl, buffer, size);
-+	hfs_dbg(ACL_MOD, "[%s]: real_size %d\n", __func__, res);
-+
-+	posix_acl_release(acl);
-+	return res;
-+}
-+
-+static int hfsplus_xattr_set_acl(struct dentry *dentry,
-+					const char *name,
-+					const void *value,
-+					size_t size,
-+					int flags,
-+					int type)
-+{
-+	int err = 0;
-+	struct inode *inode = dentry->d_inode;
-+	struct posix_acl *acl = NULL;
-+
-+	hfs_dbg(ACL_MOD,
-+		"[%s]: ino %lu, value %p, size %zu, flags %#x, type %#x\n",
-+		__func__, inode->i_ino, value, size, flags, type);
-+
-+	if (strcmp(name, "") != 0) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -EINVAL);
-+		return -EINVAL;
-+	}
-+
-+	if (!inode_owner_or_capable(inode)) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, -EPERM);
-+		return -EPERM;
-+	}
-+
-+	if (value) {
-+		acl = posix_acl_from_xattr(&init_user_ns, value, size);
-+		if (IS_ERR(acl)) {
-+			hfs_dbg(ACL_MOD,
-+				"(%s, %d): %s: err %ld\n",
-+				__FILE__, __LINE__, __func__, PTR_ERR(acl));
-+			return PTR_ERR(acl);
-+		} else if (acl) {
-+			err = posix_acl_valid(acl);
-+			if (err) {
-+				hfs_dbg(ACL_MOD,
-+					"(%s, %d): %s: err %d\n",
-+					__FILE__, __LINE__, __func__, err);
-+				goto end_xattr_set_acl;
-+			}
-+		}
-+	}
-+
-+	err = hfsplus_set_acl(inode, type, acl);
-+	if (unlikely(err)) {
-+		hfs_dbg(ACL_MOD,
-+			"(%s, %d): %s: err %d\n",
-+			__FILE__, __LINE__, __func__, err);
-+	}
-+
-+end_xattr_set_acl:
-+	posix_acl_release(acl);
-+	return err;
-+}
-+
-+static size_t hfsplus_xattr_list_acl(struct dentry *dentry, char *list,
-+		size_t list_size, const char *name, size_t name_len, int type)
-+{
-+	/*
-+	 * This method is not used.
-+	 * It is used hfsplus_listxattr() instead of generic_listxattr().
++	ASSERTCMP(atomic_read(&cookie->n_active), >, 0);
+ 
+ 	if (atomic_read(&cookie->n_children) != 0) {
+ 		printk(KERN_ERR "FS-Cache: Cookie '%s' still has children\n",
+@@ -489,62 +495,28 @@ void __fscache_relinquish_cookie(struct fscache_cookie *cookie, int retire)
+ 		BUG();
+ 	}
+ 
+-	/* wait for the cookie to finish being instantiated (or to fail) */
+-	if (test_bit(FSCACHE_COOKIE_CREATING, &cookie->flags)) {
+-		fscache_stat(&fscache_n_relinquishes_waitcrt);
+-		wait_on_bit(&cookie->flags, FSCACHE_COOKIE_CREATING,
+-			    fscache_wait_bit, TASK_UNINTERRUPTIBLE);
+-	}
++	/* No further netfs-accessing operations on this cookie permitted */
++	set_bit(FSCACHE_COOKIE_RELINQUISHED, &cookie->flags);
++	if (retire)
++		set_bit(FSCACHE_COOKIE_RETIRED, &cookie->flags);
+ 
+-try_again:
+ 	spin_lock(&cookie->lock);
+-
+-	/* break links with all the active objects */
+-	while (!hlist_empty(&cookie->backing_objects)) {
+-		int n_reads;
+-		object = hlist_entry(cookie->backing_objects.first,
+-				     struct fscache_object,
+-				     cookie_link);
+-
+-		_debug("RELEASE OBJ%x", object->debug_id);
+-
+-		set_bit(FSCACHE_COOKIE_WAITING_ON_READS, &cookie->flags);
+-		n_reads = atomic_read(&object->n_reads);
+-		if (n_reads) {
+-			int n_ops = object->n_ops;
+-			int n_in_progress = object->n_in_progress;
+-			spin_unlock(&cookie->lock);
+-			printk(KERN_ERR "FS-Cache:"
+-			       " Cookie '%s' still has %d outstanding reads (%d,%d)\n",
+-			       cookie->def->name,
+-			       n_reads, n_ops, n_in_progress);
+-			wait_on_bit(&cookie->flags, FSCACHE_COOKIE_WAITING_ON_READS,
+-				    fscache_wait_bit, TASK_UNINTERRUPTIBLE);
+-			printk("Wait finished\n");
+-			goto try_again;
+-		}
+-
+-		/* detach each cache object from the object cookie */
+-		spin_lock(&object->lock);
+-		hlist_del_init(&object->cookie_link);
+-
+-		cache = object->cache;
+-		object->cookie = NULL;
+-		if (retire)
+-			set_bit(FSCACHE_OBJECT_RETIRE, &object->flags);
++	hlist_for_each_entry(object, &cookie->backing_objects, cookie_link) {
+ 		fscache_raise_event(object, FSCACHE_OBJECT_EV_KILL);
+-		spin_unlock(&object->lock);
+-
+-		if (atomic_dec_and_test(&cookie->usage))
+-			/* the cookie refcount shouldn't be reduced to 0 yet */
+-			BUG();
+ 	}
++	spin_unlock(&cookie->lock);
+ 
+-	/* detach pointers back to the netfs */
++	/* Wait for cessation of activity requiring access to the netfs (when
++	 * n_active reaches 0).
 +	 */
-+	return -EOPNOTSUPP;
++	if (!atomic_dec_and_test(&cookie->n_active))
++		wait_on_atomic_t(&cookie->n_active, fscache_wait_atomic_t,
++				 TASK_UNINTERRUPTIBLE);
++
++	/* Clear pointers back to the netfs */
+ 	cookie->netfs_data	= NULL;
+ 	cookie->def		= NULL;
+-
+-	spin_unlock(&cookie->lock);
++	BUG_ON(cookie->stores.rnode);
+ 
+ 	if (cookie->parent) {
+ 		ASSERTCMP(atomic_read(&cookie->parent->usage), >, 0);
+@@ -552,7 +524,7 @@ try_again:
+ 		atomic_dec(&cookie->parent->n_children);
+ 	}
+ 
+-	/* finally dispose of the cookie */
++	/* Dispose of the netfs's link to the cookie */
+ 	ASSERTCMP(atomic_read(&cookie->usage), >, 0);
+ 	fscache_cookie_put(cookie);
+ 
+diff --git a/fs/fscache/fsdef.c b/fs/fscache/fsdef.c
+index f5b4bae..10a2ade 100644
+--- a/fs/fscache/fsdef.c
++++ b/fs/fscache/fsdef.c
+@@ -55,6 +55,7 @@ static struct fscache_cookie_def fscache_fsdef_index_def = {
+ 
+ struct fscache_cookie fscache_fsdef_index = {
+ 	.usage		= ATOMIC_INIT(1),
++	.n_active	= ATOMIC_INIT(1),
+ 	.lock		= __SPIN_LOCK_UNLOCKED(fscache_fsdef_index.lock),
+ 	.backing_objects = HLIST_HEAD_INIT,
+ 	.def		= &fscache_fsdef_index_def,
+diff --git a/fs/fscache/internal.h b/fs/fscache/internal.h
+index 3322d3c..12d505b 100644
+--- a/fs/fscache/internal.h
++++ b/fs/fscache/internal.h
+@@ -93,6 +93,7 @@ static inline bool fscache_object_congested(void)
+ 
+ extern int fscache_wait_bit(void *);
+ extern int fscache_wait_bit_interruptible(void *);
++extern int fscache_wait_atomic_t(atomic_t *);
+ 
+ /*
+  * object.c
+@@ -106,8 +107,10 @@ extern void fscache_enqueue_object(struct fscache_object *);
+ extern const struct file_operations fscache_objlist_fops;
+ 
+ extern void fscache_objlist_add(struct fscache_object *);
++extern void fscache_objlist_remove(struct fscache_object *);
+ #else
+ #define fscache_objlist_add(object) do {} while(0)
++#define fscache_objlist_remove(object) do {} while(0)
+ #endif
+ 
+ /*
+diff --git a/fs/fscache/main.c b/fs/fscache/main.c
+index f9d8567..7c27907 100644
+--- a/fs/fscache/main.c
++++ b/fs/fscache/main.c
+@@ -205,7 +205,6 @@ int fscache_wait_bit(void *flags)
+ 	schedule();
+ 	return 0;
+ }
+-EXPORT_SYMBOL(fscache_wait_bit);
+ 
+ /*
+  * wait_on_bit() sleep function for interruptible waiting
+@@ -215,4 +214,12 @@ int fscache_wait_bit_interruptible(void *flags)
+ 	schedule();
+ 	return signal_pending(current);
+ }
+-EXPORT_SYMBOL(fscache_wait_bit_interruptible);
++
++/*
++ * wait_on_atomic_t() sleep function for uninterruptible waiting
++ */
++int fscache_wait_atomic_t(atomic_t *p)
++{
++	schedule();
++	return 0;
++}
+diff --git a/fs/fscache/netfs.c b/fs/fscache/netfs.c
+index e028b8e..b1bb611 100644
+--- a/fs/fscache/netfs.c
++++ b/fs/fscache/netfs.c
+@@ -40,6 +40,7 @@ int __fscache_register_netfs(struct fscache_netfs *netfs)
+ 	/* initialise the primary index cookie */
+ 	atomic_set(&netfs->primary_index->usage, 1);
+ 	atomic_set(&netfs->primary_index->n_children, 0);
++	atomic_set(&netfs->primary_index->n_active, 1);
+ 
+ 	netfs->primary_index->def		= &fscache_fsdef_netfs_def;
+ 	netfs->primary_index->parent		= &fscache_fsdef_index;
+diff --git a/fs/fscache/object-list.c b/fs/fscache/object-list.c
+index 4a386b0..e1959ef 100644
+--- a/fs/fscache/object-list.c
++++ b/fs/fscache/object-list.c
+@@ -70,13 +70,10 @@ void fscache_objlist_add(struct fscache_object *obj)
+ 	write_unlock(&fscache_object_list_lock);
+ }
+ 
+-/**
+- * fscache_object_destroy - Note that a cache object is about to be destroyed
+- * @object: The object to be destroyed
+- *
+- * Note the imminent destruction and deallocation of a cache object record.
++/*
++ * Remove an object from the object list.
+  */
+-void fscache_object_destroy(struct fscache_object *obj)
++void fscache_objlist_remove(struct fscache_object *obj)
+ {
+ 	write_lock(&fscache_object_list_lock);
+ 
+@@ -85,7 +82,6 @@ void fscache_object_destroy(struct fscache_object *obj)
+ 
+ 	write_unlock(&fscache_object_list_lock);
+ }
+-EXPORT_SYMBOL(fscache_object_destroy);
+ 
+ /*
+  * find the object in the tree on or after the specified index
+@@ -166,10 +162,9 @@ static int fscache_objlist_show(struct seq_file *m, void *v)
+ {
+ 	struct fscache_objlist_data *data = m->private;
+ 	struct fscache_object *obj = v;
++	struct fscache_cookie *cookie;
+ 	unsigned long config = data->config;
+-	uint16_t keylen, auxlen;
+ 	char _type[3], *type;
+-	bool no_cookie;
+ 	u8 *buf = data->buf, *p;
+ 
+ 	if ((unsigned long) v == 1) {
+@@ -216,8 +211,9 @@ static int fscache_objlist_show(struct seq_file *m, void *v)
+ 		}							\
+ 	} while(0)
+ 
++	cookie = obj->cookie;
+ 	if (~config) {
+-		FILTER(obj->cookie,
++		FILTER(cookie->def,
+ 		       COOKIE, NOCOOKIE);
+ 		FILTER(fscache_object_is_active(obj) ||
+ 		       obj->n_ops != 0 ||
+@@ -250,48 +246,40 @@ static int fscache_objlist_show(struct seq_file *m, void *v)
+ 		   obj->flags,
+ 		   work_busy(&obj->work));
+ 
+-	no_cookie = true;
+-	keylen = auxlen = 0;
+-	if (obj->cookie) {
+-		spin_lock(&obj->lock);
+-		if (obj->cookie) {
+-			switch (obj->cookie->def->type) {
+-			case 0:
+-				type = "IX";
+-				break;
+-			case 1:
+-				type = "DT";
+-				break;
+-			default:
+-				sprintf(_type, "%02u",
+-					obj->cookie->def->type);
+-				type = _type;
+-				break;
+-			}
++	if (fscache_use_cookie(obj)) {
++		uint16_t keylen = 0, auxlen = 0;
+ 
+-			seq_printf(m, "%-16s %s %2lx %16p",
+-				   obj->cookie->def->name,
+-				   type,
+-				   obj->cookie->flags,
+-				   obj->cookie->netfs_data);
+-
+-			if (obj->cookie->def->get_key &&
+-			    config & FSCACHE_OBJLIST_CONFIG_KEY)
+-				keylen = obj->cookie->def->get_key(
+-					obj->cookie->netfs_data,
+-					buf, 400);
+-
+-			if (obj->cookie->def->get_aux &&
+-			    config & FSCACHE_OBJLIST_CONFIG_AUX)
+-				auxlen = obj->cookie->def->get_aux(
+-					obj->cookie->netfs_data,
+-					buf + keylen, 512 - keylen);
+-
+-			no_cookie = false;
++		switch (cookie->def->type) {
++		case 0:
++			type = "IX";
++			break;
++		case 1:
++			type = "DT";
++			break;
++		default:
++			sprintf(_type, "%02u", cookie->def->type);
++			type = _type;
++			break;
+ 		}
+-		spin_unlock(&obj->lock);
+ 
+-		if (!no_cookie && (keylen > 0 || auxlen > 0)) {
++		seq_printf(m, "%-16s %s %2lx %16p",
++			   cookie->def->name,
++			   type,
++			   cookie->flags,
++			   cookie->netfs_data);
++
++		if (cookie->def->get_key &&
++		    config & FSCACHE_OBJLIST_CONFIG_KEY)
++			keylen = cookie->def->get_key(cookie->netfs_data,
++						      buf, 400);
++
++		if (cookie->def->get_aux &&
++		    config & FSCACHE_OBJLIST_CONFIG_AUX)
++			auxlen = cookie->def->get_aux(cookie->netfs_data,
++						      buf + keylen, 512 - keylen);
++		fscache_unuse_cookie(obj);
++
++		if (keylen > 0 || auxlen > 0) {
+ 			seq_printf(m, " ");
+ 			for (p = buf; keylen > 0; keylen--)
+ 				seq_printf(m, "%02x", *p++);
+@@ -302,12 +290,11 @@ static int fscache_objlist_show(struct seq_file *m, void *v)
+ 					seq_printf(m, "%02x", *p++);
+ 			}
+ 		}
+-	}
+ 
+-	if (no_cookie)
+-		seq_printf(m, "<no_cookie>\n");
+-	else
+ 		seq_printf(m, "\n");
++	} else {
++		seq_printf(m, "<no_netfs>\n");
++	}
+ 	return 0;
+ }
+ 
+diff --git a/fs/fscache/object.c b/fs/fscache/object.c
+index 8f17deb..86d75a6 100644
+--- a/fs/fscache/object.c
++++ b/fs/fscache/object.c
+@@ -30,7 +30,6 @@ static const struct fscache_state *fscache_look_up_object(struct fscache_object
+ static const struct fscache_state *fscache_object_available(struct fscache_object *, int);
+ static const struct fscache_state *fscache_parent_ready(struct fscache_object *, int);
+ static const struct fscache_state *fscache_update_object(struct fscache_object *, int);
+-static const struct fscache_state *fscache_detach_from_cookie(struct fscache_object *, int);
+ 
+ #define __STATE_NAME(n) fscache_osm_##n
+ #define STATE(n) (&__STATE_NAME(n))
+@@ -92,7 +91,6 @@ static WORK_STATE(LOOKUP_FAILURE,	"LCFL", fscache_lookup_failure);
+ static WORK_STATE(KILL_OBJECT,		"KILL", fscache_kill_object);
+ static WORK_STATE(KILL_DEPENDENTS,	"KDEP", fscache_kill_dependents);
+ static WORK_STATE(DROP_OBJECT,		"DROP", fscache_drop_object);
+-static WORK_STATE(DETACH_FROM_COOKIE,	"DTCH", fscache_detach_from_cookie);
+ static WORK_STATE(OBJECT_DEAD,		"DEAD", (void*)2UL);
+ 
+ static WAIT_STATE(WAIT_FOR_INIT,	"?INI",
+@@ -156,8 +154,8 @@ static inline void fscache_done_parent_op(struct fscache_object *object)
+ 	       object->debug_id, parent->debug_id, parent->n_ops);
+ 
+ 	spin_lock_nested(&parent->lock, 1);
+-	parent->n_ops--;
+ 	parent->n_obj_ops--;
++	parent->n_ops--;
+ 	if (parent->n_ops == 0)
+ 		fscache_raise_event(parent, FSCACHE_OBJECT_EV_CLEARED);
+ 	spin_unlock(&parent->lock);
+@@ -332,22 +330,10 @@ EXPORT_SYMBOL(fscache_object_init);
+ static const struct fscache_state *fscache_abort_initialisation(struct fscache_object *object,
+ 								int event)
+ {
+-	struct fscache_cookie *cookie;
+-
+ 	_enter("{OBJ%x},%d", object->debug_id, event);
+ 
+ 	object->oob_event_mask = 0;
+-	clear_bit(FSCACHE_OBJECT_IS_LIVE, &object->flags);
+-
+ 	fscache_dequeue_object(object);
+-
+-	spin_lock(&object->lock);
+-	cookie = object->cookie;
+-	clear_bit_unlock(FSCACHE_COOKIE_CREATING, &cookie->flags);
+-	spin_unlock(&object->lock);
+-
+-	wake_up_bit(&cookie->flags, FSCACHE_COOKIE_CREATING);
+-
+ 	return transit_to(KILL_OBJECT);
+ }
+ 
+@@ -357,8 +343,6 @@ static const struct fscache_state *fscache_abort_initialisation(struct fscache_o
+  *   immediately to do a creation
+  * - we may need to start the process of creating a parent and we need to wait
+  *   for the parent's lookup and creation to complete if it's not there yet
+- * - an object's cookie is pinned until we clear FSCACHE_COOKIE_CREATING on the
+- *   leaf-most cookies of the object and all its children
+  */
+ static const struct fscache_state *fscache_initialise_object(struct fscache_object *object,
+ 							     int event)
+@@ -373,14 +357,14 @@ static const struct fscache_state *fscache_initialise_object(struct fscache_obje
+ 	parent = object->parent;
+ 	if (!parent) {
+ 		_leave(" [no parent]");
+-		return transit_to(DETACH_FROM_COOKIE);
++		return transit_to(DROP_OBJECT);
+ 	}
+ 
+-	_debug("parent %s", parent->state->name);
++	_debug("parent: %s of:%lx", parent->state->name, parent->flags);
+ 
+ 	if (fscache_object_is_dying(parent)) {
+ 		_leave(" [bad parent]");
+-		return transit_to(DETACH_FROM_COOKIE);
++		return transit_to(DROP_OBJECT);
+ 	}
+ 
+ 	if (fscache_object_is_available(parent)) {
+@@ -402,7 +386,7 @@ static const struct fscache_state *fscache_initialise_object(struct fscache_obje
+ 	spin_unlock(&parent->lock);
+ 	if (!success) {
+ 		_leave(" [grab failed]");
+-		return transit_to(DETACH_FROM_COOKIE);
++		return transit_to(DROP_OBJECT);
+ 	}
+ 
+ 	/* fscache_acquire_non_index_cookie() uses this
+@@ -438,8 +422,6 @@ static const struct fscache_state *fscache_parent_ready(struct fscache_object *o
+  * look an object up in the cache from which it was allocated
+  * - we hold an "access lock" on the parent object, so the parent object cannot
+  *   be withdrawn by either party till we've finished
+- * - an object's cookie is pinned until we clear FSCACHE_COOKIE_CREATING on the
+- *   leaf-most cookies of the object and all its children
+  */
+ static const struct fscache_state *fscache_look_up_object(struct fscache_object *object,
+ 							  int event)
+@@ -460,22 +442,21 @@ static const struct fscache_state *fscache_look_up_object(struct fscache_object
+ 	ASSERT(fscache_object_is_available(parent));
+ 
+ 	if (fscache_object_is_dying(parent) ||
+-	    test_bit(FSCACHE_IOERROR, &object->cache->flags)) {
++	    test_bit(FSCACHE_IOERROR, &object->cache->flags) ||
++	    !fscache_use_cookie(object)) {
+ 		_leave(" [unavailable]");
+ 		return transit_to(LOOKUP_FAILURE);
+ 	}
+ 
+-	_debug("LOOKUP \"%s/%s\" in \"%s\"",
+-	       parent->cookie->def->name, cookie->def->name,
+-	       object->cache->tag->name);
++	_debug("LOOKUP \"%s\" in \"%s\"",
++	       cookie->def->name, object->cache->tag->name);
+ 
+ 	fscache_stat(&fscache_n_object_lookups);
+ 	fscache_stat(&fscache_n_cop_lookup_object);
+ 	ret = object->cache->ops->lookup_object(object);
+ 	fscache_stat_d(&fscache_n_cop_lookup_object);
+ 
+-	if (test_bit(FSCACHE_OBJECT_EV_ERROR, &object->events))
+-		set_bit(FSCACHE_COOKIE_UNAVAILABLE, &cookie->flags);
++	fscache_unuse_cookie(object);
+ 
+ 	if (ret == -ETIMEDOUT) {
+ 		/* probably stuck behind another object, so move this one to
+@@ -557,11 +538,6 @@ void fscache_obtained_object(struct fscache_object *object)
+ 	}
+ 
+ 	set_bit(FSCACHE_OBJECT_IS_AVAILABLE, &object->flags);
+-
+-	/* Permit __fscache_relinquish_cookie() to proceed */
+-	clear_bit_unlock(FSCACHE_COOKIE_CREATING, &cookie->flags);
+-	wake_up_bit(&cookie->flags, FSCACHE_COOKIE_CREATING);
+-
+ 	_leave("");
+ }
+ EXPORT_SYMBOL(fscache_obtained_object);
+@@ -572,16 +548,12 @@ EXPORT_SYMBOL(fscache_obtained_object);
+ static const struct fscache_state *fscache_object_available(struct fscache_object *object,
+ 							    int event)
+ {
+-	struct fscache_cookie *cookie = object->cookie;
+-
+ 	_enter("{OBJ%x},%d", object->debug_id, event);
+ 
+ 	object->oob_table = fscache_osm_run_oob;
+ 
+ 	spin_lock(&object->lock);
+ 
+-	ASSERTIF(cookie, !test_bit(FSCACHE_COOKIE_CREATING, &object->cookie->flags));
+-
+ 	fscache_done_parent_op(object);
+ 	if (object->n_in_progress == 0) {
+ 		if (object->n_ops > 0) {
+@@ -624,7 +596,6 @@ static const struct fscache_state *fscache_lookup_failure(struct fscache_object
+ 							  int event)
+ {
+ 	struct fscache_cookie *cookie;
+-	bool wake_looking_up = false;
+ 
+ 	_enter("{OBJ%x},%d", object->debug_id, event);
+ 
+@@ -634,19 +605,10 @@ static const struct fscache_state *fscache_lookup_failure(struct fscache_object
+ 	object->cache->ops->lookup_complete(object);
+ 	fscache_stat_d(&fscache_n_cop_lookup_complete);
+ 
+-	spin_lock(&object->lock);
+ 	cookie = object->cookie;
+ 	set_bit(FSCACHE_COOKIE_UNAVAILABLE, &cookie->flags);
+-	if (cookie) {
+-		if (test_and_clear_bit(FSCACHE_COOKIE_LOOKING_UP, &cookie->flags))
+-			wake_looking_up = true;
+-		clear_bit_unlock(FSCACHE_COOKIE_CREATING, &cookie->flags);
+-	}
+-	spin_unlock(&object->lock);
+-
+-	if (wake_looking_up)
++	if (test_and_clear_bit(FSCACHE_COOKIE_LOOKING_UP, &cookie->flags))
+ 		wake_up_bit(&cookie->flags, FSCACHE_COOKIE_LOOKING_UP);
+-	wake_up_bit(&cookie->flags, FSCACHE_COOKIE_CREATING);
+ 
+ 	fscache_done_parent_op(object);
+ 	return transit_to(KILL_OBJECT);
+@@ -662,21 +624,20 @@ static const struct fscache_state *fscache_kill_object(struct fscache_object *ob
+ 	_enter("{OBJ%x,%d,%d},%d",
+ 	       object->debug_id, object->n_ops, object->n_children, event);
+ 
+-	object->oob_event_mask = 0;
+-
+-	spin_lock(&object->lock);
+ 	clear_bit(FSCACHE_OBJECT_IS_LIVE, &object->flags);
+-	spin_unlock(&object->lock);
++	object->oob_event_mask = 0;
+ 
+ 	if (list_empty(&object->dependents) &&
+ 	    object->n_ops == 0 &&
+ 	    object->n_children == 0)
+-		return object->cookie ?
+-			transit_to(DETACH_FROM_COOKIE) : transit_to(DROP_OBJECT);
++		return transit_to(DROP_OBJECT);
+ 
+-	spin_lock(&object->lock);
+-	fscache_start_operations(object);
+-	spin_unlock(&object->lock);
++	if (object->n_in_progress == 0) {
++		spin_lock(&object->lock);
++		if (object->n_ops > 0 && object->n_in_progress == 0)
++			fscache_start_operations(object);
++		spin_unlock(&object->lock);
++	}
+ 
+ 	if (!list_empty(&object->dependents))
+ 		return transit_to(KILL_DEPENDENTS);
+@@ -698,64 +659,32 @@ static const struct fscache_state *fscache_kill_dependents(struct fscache_object
+ }
+ 
+ /*
+- * withdraw an object from active service
+- */
+-static const struct fscache_state *fscache_detach_from_cookie(struct fscache_object *object,
+-							      int event)
+-{
+-	struct fscache_cookie *cookie;
+-	bool detached = false, awaken = false;
+-
+-	_enter("{OBJ%x},%d", object->debug_id, event);
+-
+-	spin_lock(&object->lock);
+-	cookie = object->cookie;
+-	if (cookie) {
+-		/* need to get the cookie lock before the object lock, starting
+-		 * from the object pointer */
+-		atomic_inc(&cookie->usage);
+-		spin_unlock(&object->lock);
+-
+-		spin_lock(&cookie->lock);
+-		spin_lock(&object->lock);
+-
+-		if (object->cookie == cookie) {
+-			hlist_del_init(&object->cookie_link);
+-			object->cookie = NULL;
+-			if (test_and_clear_bit(FSCACHE_COOKIE_INVALIDATING,
+-					       &cookie->flags))
+-				awaken = true;
+-			detached = true;
+-		}
+-		spin_unlock(&cookie->lock);
+-		fscache_cookie_put(cookie);
+-		if (detached)
+-			fscache_cookie_put(cookie);
+-	}
+-
+-	spin_unlock(&object->lock);
+-
+-	if (awaken)
+-		wake_up_bit(&cookie->flags, FSCACHE_COOKIE_INVALIDATING);
+-
+-	fscache_stat(&fscache_n_object_dead);
+-	_leave("");
+-	return transit_to(DROP_OBJECT);
+-}
+-
+-/*
+  * Drop an object's attachments
+  */
+ static const struct fscache_state *fscache_drop_object(struct fscache_object *object,
+ 						       int event)
+ {
+ 	struct fscache_object *parent = object->parent;
++	struct fscache_cookie *cookie = object->cookie;
+ 	struct fscache_cache *cache = object->cache;
++	bool awaken = false;
+ 
+ 	_enter("{OBJ%x,%d},%d", object->debug_id, object->n_children, event);
+ 
+-	ASSERTCMP(object->cookie, ==, NULL);
+-	ASSERT(hlist_unhashed(&object->cookie_link));
++	ASSERT(cookie != NULL);
++	ASSERT(!hlist_unhashed(&object->cookie_link));
++
++	/* Make sure the cookie no longer points here and that the netfs isn't
++	 * waiting for us.
++	 */
++	spin_lock(&cookie->lock);
++	hlist_del_init(&object->cookie_link);
++	if (test_and_clear_bit(FSCACHE_COOKIE_INVALIDATING, &cookie->flags))
++		awaken = true;
++	spin_unlock(&cookie->lock);
++
++	if (awaken)
++		wake_up_bit(&cookie->flags, FSCACHE_COOKIE_INVALIDATING);
+ 
+ 	/* Prevent a race with our last child, which has to signal EV_CLEARED
+ 	 * before dropping our spinlock.
+@@ -816,6 +745,22 @@ static void fscache_put_object(struct fscache_object *object)
+ 	fscache_stat_d(&fscache_n_cop_put_object);
+ }
+ 
++/**
++ * fscache_object_destroy - Note that a cache object is about to be destroyed
++ * @object: The object to be destroyed
++ *
++ * Note the imminent destruction and deallocation of a cache object record.
++ */
++void fscache_object_destroy(struct fscache_object *object)
++{
++	fscache_objlist_remove(object);
++
++	/* We can get rid of the cookie now */
++	fscache_cookie_put(object->cookie);
++	object->cookie = NULL;
++}
++EXPORT_SYMBOL(fscache_object_destroy);
++
+ /*
+  * enqueue an object for metadata-type processing
+  */
+@@ -925,7 +870,10 @@ static void fscache_dequeue_object(struct fscache_object *object)
+  * @data: The auxiliary data for the object
+  * @datalen: The size of the auxiliary data
+  *
+- * This function consults the netfs about the coherency state of an object
++ * This function consults the netfs about the coherency state of an object.
++ * The caller must be holding a ref on cookie->n_active (held by
++ * fscache_look_up_object() on behalf of the cache backend during object lookup
++ * and creation).
+  */
+ enum fscache_checkaux fscache_check_aux(struct fscache_object *object,
+ 					const void *data, uint16_t datalen)
+@@ -974,6 +922,15 @@ static const struct fscache_state *_fscache_invalidate_object(struct fscache_obj
+ 
+ 	_enter("{OBJ%x},%d", object->debug_id, event);
+ 
++	/* We're going to need the cookie.  If the cookie is not available then
++	 * retire the object instead.
++	 */
++	if (!fscache_use_cookie(object)) {
++		ASSERT(object->cookie->stores.rnode == NULL);
++		set_bit(FSCACHE_COOKIE_RETIRED, &cookie->flags);
++		_leave(" [no cookie]");
++		return transit_to(KILL_OBJECT);
++	}
+ 
+ 	/* Reject any new read/write ops and abort any that are pending. */
+ 	fscache_invalidate_writes(cookie);
+@@ -982,14 +939,13 @@ static const struct fscache_state *_fscache_invalidate_object(struct fscache_obj
+ 
+ 	/* Now we have to wait for in-progress reads and writes */
+ 	op = kzalloc(sizeof(*op), GFP_KERNEL);
+-	if (!op) {
+-		clear_bit(FSCACHE_OBJECT_IS_LIVE, &object->flags);
+-		_leave(" [ENOMEM]");
+-		return transit_to(KILL_OBJECT);
+-	}
++	if (!op)
++		goto nomem;
+ 
+ 	fscache_operation_init(op, object->cache->ops->invalidate_object, NULL);
+-	op->flags = FSCACHE_OP_ASYNC | (1 << FSCACHE_OP_EXCLUSIVE);
++	op->flags = FSCACHE_OP_ASYNC |
++		(1 << FSCACHE_OP_EXCLUSIVE) |
++		(1 << FSCACHE_OP_UNUSE_COOKIE);
+ 
+ 	spin_lock(&cookie->lock);
+ 	if (fscache_submit_exclusive_op(object, op) < 0)
+@@ -1011,6 +967,12 @@ static const struct fscache_state *_fscache_invalidate_object(struct fscache_obj
+ 	_leave(" [ok]");
+ 	return transit_to(UPDATE_OBJECT);
+ 
++nomem:
++	clear_bit(FSCACHE_OBJECT_IS_LIVE, &object->flags);
++	fscache_unuse_cookie(object);
++	_leave(" [ENOMEM]");
++	return transit_to(KILL_OBJECT);
++
+ submit_op_failed:
+ 	clear_bit(FSCACHE_OBJECT_IS_LIVE, &object->flags);
+ 	spin_unlock(&cookie->lock);
+diff --git a/fs/fscache/operation.c b/fs/fscache/operation.c
+index 4da211b..6935901 100644
+--- a/fs/fscache/operation.c
++++ b/fs/fscache/operation.c
+@@ -424,14 +424,10 @@ void fscache_put_operation(struct fscache_operation *op)
+ 
+ 	object = op->object;
+ 
+-	if (test_bit(FSCACHE_OP_DEC_READ_CNT, &op->flags)) {
+-		if (atomic_dec_and_test(&object->n_reads)) {
+-			clear_bit(FSCACHE_COOKIE_WAITING_ON_READS,
+-				  &object->cookie->flags);
+-			wake_up_bit(&object->cookie->flags,
+-				    FSCACHE_COOKIE_WAITING_ON_READS);
+-		}
+-	}
++	if (test_bit(FSCACHE_OP_DEC_READ_CNT, &op->flags))
++		atomic_dec(&object->n_reads);
++	if (test_bit(FSCACHE_OP_UNUSE_COOKIE, &op->flags))
++		fscache_unuse_cookie(object);
+ 
+ 	/* now... we may get called with the object spinlock held, so we
+ 	 * complete the cleanup here only if we can immediately acquire the
+diff --git a/fs/fscache/page.c b/fs/fscache/page.c
+index b4e4b42..780bac6 100644
+--- a/fs/fscache/page.c
++++ b/fs/fscache/page.c
+@@ -163,10 +163,12 @@ static void fscache_attr_changed_op(struct fscache_operation *op)
+ 
+ 	fscache_stat(&fscache_n_attr_changed_calls);
+ 
+-	if (fscache_object_is_active(object)) {
++	if (fscache_object_is_active(object) &&
++	    fscache_use_cookie(object)) {
+ 		fscache_stat(&fscache_n_cop_attr_changed);
+ 		ret = object->cache->ops->attr_changed(object);
+ 		fscache_stat_d(&fscache_n_cop_attr_changed);
++		fscache_unuse_cookie(object);
+ 		if (ret < 0)
+ 			fscache_abort_object(object);
+ 	}
+@@ -246,6 +248,7 @@ static void fscache_release_retrieval_op(struct fscache_operation *_op)
+  * allocate a retrieval op
+  */
+ static struct fscache_retrieval *fscache_alloc_retrieval(
++	struct fscache_cookie *cookie,
+ 	struct address_space *mapping,
+ 	fscache_rw_complete_t end_io_func,
+ 	void *context)
+@@ -260,7 +263,10 @@ static struct fscache_retrieval *fscache_alloc_retrieval(
+ 	}
+ 
+ 	fscache_operation_init(&op->op, NULL, fscache_release_retrieval_op);
+-	op->op.flags	= FSCACHE_OP_MYTHREAD | (1 << FSCACHE_OP_WAITING);
++	atomic_inc(&cookie->n_active);
++	op->op.flags	= FSCACHE_OP_MYTHREAD |
++		(1UL << FSCACHE_OP_WAITING) |
++		(1UL << FSCACHE_OP_UNUSE_COOKIE);
+ 	op->mapping	= mapping;
+ 	op->end_io_func	= end_io_func;
+ 	op->context	= context;
+@@ -394,7 +400,8 @@ int __fscache_read_or_alloc_page(struct fscache_cookie *cookie,
+ 	if (fscache_wait_for_deferred_lookup(cookie) < 0)
+ 		return -ERESTARTSYS;
+ 
+-	op = fscache_alloc_retrieval(page->mapping, end_io_func, context);
++	op = fscache_alloc_retrieval(cookie, page->mapping,
++				     end_io_func,context);
+ 	if (!op) {
+ 		_leave(" = -ENOMEM");
+ 		return -ENOMEM;
+@@ -465,6 +472,7 @@ nobufs_unlock_dec:
+ 	atomic_dec(&object->n_reads);
+ nobufs_unlock:
+ 	spin_unlock(&cookie->lock);
++	atomic_dec(&cookie->n_active);
+ 	kfree(op);
+ nobufs:
+ 	fscache_stat(&fscache_n_retrievals_nobufs);
+@@ -522,7 +530,7 @@ int __fscache_read_or_alloc_pages(struct fscache_cookie *cookie,
+ 	if (fscache_wait_for_deferred_lookup(cookie) < 0)
+ 		return -ERESTARTSYS;
+ 
+-	op = fscache_alloc_retrieval(mapping, end_io_func, context);
++	op = fscache_alloc_retrieval(cookie, mapping, end_io_func, context);
+ 	if (!op)
+ 		return -ENOMEM;
+ 	op->n_pages = *nr_pages;
+@@ -589,6 +597,7 @@ nobufs_unlock_dec:
+ 	atomic_dec(&object->n_reads);
+ nobufs_unlock:
+ 	spin_unlock(&cookie->lock);
++	atomic_dec(&cookie->n_active);
+ 	kfree(op);
+ nobufs:
+ 	fscache_stat(&fscache_n_retrievals_nobufs);
+@@ -631,7 +640,7 @@ int __fscache_alloc_page(struct fscache_cookie *cookie,
+ 	if (fscache_wait_for_deferred_lookup(cookie) < 0)
+ 		return -ERESTARTSYS;
+ 
+-	op = fscache_alloc_retrieval(page->mapping, NULL, NULL);
++	op = fscache_alloc_retrieval(cookie, page->mapping, NULL, NULL);
+ 	if (!op)
+ 		return -ENOMEM;
+ 	op->n_pages = 1;
+@@ -675,6 +684,7 @@ error:
+ 
+ nobufs_unlock:
+ 	spin_unlock(&cookie->lock);
++	atomic_dec(&cookie->n_active);
+ 	kfree(op);
+ nobufs:
+ 	fscache_stat(&fscache_n_allocs_nobufs);
+@@ -876,7 +886,9 @@ int __fscache_write_page(struct fscache_cookie *cookie,
+ 
+ 	fscache_operation_init(&op->op, fscache_write_op,
+ 			       fscache_release_write_op);
+-	op->op.flags = FSCACHE_OP_ASYNC | (1 << FSCACHE_OP_WAITING);
++	op->op.flags = FSCACHE_OP_ASYNC |
++		(1 << FSCACHE_OP_WAITING) |
++		(1 << FSCACHE_OP_UNUSE_COOKIE);
+ 
+ 	ret = radix_tree_preload(gfp & ~__GFP_HIGHMEM);
+ 	if (ret < 0)
+@@ -922,6 +934,7 @@ int __fscache_write_page(struct fscache_cookie *cookie,
+ 	op->op.debug_id	= atomic_inc_return(&fscache_op_debug_id);
+ 	op->store_limit = object->store_limit;
+ 
++	atomic_inc(&cookie->n_active);
+ 	if (fscache_submit_op(object, &op->op) < 0)
+ 		goto submit_failed;
+ 
+@@ -948,6 +961,7 @@ already_pending:
+ 	return 0;
+ 
+ submit_failed:
++	atomic_dec(&cookie->n_active);
+ 	spin_lock(&cookie->stores_lock);
+ 	radix_tree_delete(&cookie->stores, page->index);
+ 	spin_unlock(&cookie->stores_lock);
+diff --git a/include/linux/fscache-cache.h b/include/linux/fscache-cache.h
+index 9ff516b..e7802a5 100644
+--- a/include/linux/fscache-cache.h
++++ b/include/linux/fscache-cache.h
+@@ -97,7 +97,8 @@ struct fscache_operation {
+ #define FSCACHE_OP_WAITING	4	/* cleared when op is woken */
+ #define FSCACHE_OP_EXCLUSIVE	5	/* exclusive op, other ops must wait */
+ #define FSCACHE_OP_DEC_READ_CNT	6	/* decrement object->n_reads on destruction */
+-#define FSCACHE_OP_KEEP_FLAGS	0x0070	/* flags to keep when repurposing an op */
++#define FSCACHE_OP_UNUSE_COOKIE	7	/* call fscache_unuse_cookie() on completion */
++#define FSCACHE_OP_KEEP_FLAGS	0x00f0	/* flags to keep when repurposing an op */
+ 
+ 	enum fscache_operation_state state;
+ 	atomic_t		usage;
+@@ -314,6 +315,7 @@ struct fscache_cache_ops {
+ struct fscache_cookie {
+ 	atomic_t			usage;		/* number of users of this cookie */
+ 	atomic_t			n_children;	/* number of children of this cookie */
++	atomic_t			n_active;	/* number of active users of netfs ptrs */
+ 	spinlock_t			lock;
+ 	spinlock_t			stores_lock;	/* lock on page store tree */
+ 	struct hlist_head		backing_objects; /* object(s) backing this file/index */
+@@ -326,11 +328,11 @@ struct fscache_cookie {
+ 
+ 	unsigned long			flags;
+ #define FSCACHE_COOKIE_LOOKING_UP	0	/* T if non-index cookie being looked up still */
+-#define FSCACHE_COOKIE_CREATING		1	/* T if non-index object being created still */
+-#define FSCACHE_COOKIE_NO_DATA_YET	2	/* T if new object with no cached data yet */
+-#define FSCACHE_COOKIE_UNAVAILABLE	3	/* T if cookie is unavailable (error, etc) */
+-#define FSCACHE_COOKIE_WAITING_ON_READS	4	/* T if cookie is waiting on reads */
+-#define FSCACHE_COOKIE_INVALIDATING	5	/* T if cookie is being invalidated */
++#define FSCACHE_COOKIE_NO_DATA_YET	1	/* T if new object with no cached data yet */
++#define FSCACHE_COOKIE_UNAVAILABLE	2	/* T if cookie is unavailable (error, etc) */
++#define FSCACHE_COOKIE_INVALIDATING	3	/* T if cookie is being invalidated */
++#define FSCACHE_COOKIE_RELINQUISHED	4	/* T if cookie has been relinquished */
++#define FSCACHE_COOKIE_RETIRED		5	/* T if cookie was retired */
+ };
+ 
+ extern struct fscache_cookie fscache_fsdef_index;
+@@ -392,10 +394,9 @@ struct fscache_object {
+ #define FSCACHE_OBJECT_LOCK		0	/* T if object is busy being processed */
+ #define FSCACHE_OBJECT_PENDING_WRITE	1	/* T if object has pending write */
+ #define FSCACHE_OBJECT_WAITING		2	/* T if object is waiting on its parent */
+-#define FSCACHE_OBJECT_RETIRE		3	/* T if object should be retired */
+-#define FSCACHE_OBJECT_IS_LIVE		4	/* T if object is not withdrawn or relinquished */
+-#define FSCACHE_OBJECT_IS_LOOKED_UP	5	/* T if object has been looked up */
+-#define FSCACHE_OBJECT_IS_AVAILABLE	6	/* T if object has become active */
++#define FSCACHE_OBJECT_IS_LIVE		3	/* T if object is not withdrawn or relinquished */
++#define FSCACHE_OBJECT_IS_LOOKED_UP	4	/* T if object has been looked up */
++#define FSCACHE_OBJECT_IS_AVAILABLE	5	/* T if object has become active */
+ 
+ 	struct list_head	cache_link;	/* link in cache->object_list */
+ 	struct hlist_node	cookie_link;	/* link in cookie->backing_objects */
+@@ -415,16 +416,11 @@ struct fscache_object {
+ 
+ extern void fscache_object_init(struct fscache_object *, struct fscache_cookie *,
+ 				struct fscache_cache *);
++extern void fscache_object_destroy(struct fscache_object *);
+ 
+ extern void fscache_object_lookup_negative(struct fscache_object *object);
+ extern void fscache_obtained_object(struct fscache_object *object);
+ 
+-#ifdef CONFIG_FSCACHE_OBJECT_LIST
+-extern void fscache_object_destroy(struct fscache_object *object);
+-#else
+-#define fscache_object_destroy(object) do {} while(0)
+-#endif
+-
+ static inline bool fscache_object_is_live(struct fscache_object *object)
+ {
+ 	return test_bit(FSCACHE_OBJECT_IS_LIVE, &object->flags);
+@@ -512,6 +508,35 @@ static inline void fscache_end_io(struct fscache_retrieval *op,
+ 	op->end_io_func(page, op->context, error);
+ }
+ 
++/**
++ * fscache_use_cookie - Request usage of cookie attached to an object
++ * @object: Object description
++ * 
++ * Request usage of the cookie attached to an object.  NULL is returned if the
++ * relinquishment had reduced the cookie usage count to 0.
++ */
++static inline bool fscache_use_cookie(struct fscache_object *object)
++{
++	struct fscache_cookie *cookie = object->cookie;
++	return atomic_inc_not_zero(&cookie->n_active) != 0;
 +}
 +
-+const struct xattr_handler hfsplus_xattr_acl_access_handler = {
-+	.prefix	= POSIX_ACL_XATTR_ACCESS,
-+	.flags	= ACL_TYPE_ACCESS,
-+	.list	= hfsplus_xattr_list_acl,
-+	.get	= hfsplus_xattr_get_acl,
-+	.set	= hfsplus_xattr_set_acl,
-+};
-+
-+const struct xattr_handler hfsplus_xattr_acl_default_handler = {
-+	.prefix	= POSIX_ACL_XATTR_DEFAULT,
-+	.flags	= ACL_TYPE_DEFAULT,
-+	.list	= hfsplus_xattr_list_acl,
-+	.get	= hfsplus_xattr_get_acl,
-+	.set	= hfsplus_xattr_set_acl,
-+};
-diff --git a/fs/hfsplus/acl.h b/fs/hfsplus/acl.h
-new file mode 100644
-index 0000000..a2efb9d
---- /dev/null
-+++ b/fs/hfsplus/acl.h
-@@ -0,0 +1,96 @@
-+/*
-+ * linux/fs/hfsplus/acl.h
-+ *
-+ * Vyacheslav Dubeyko <slava@dubeyko.com>
-+ *
-+ * Handler for Posix Access Control Lists (ACLs) support.
++/**
++ * fscache_unuse_cookie - Cease usage of cookie attached to an object
++ * @object: Object description
++ * 
++ * Cease usage of the cookie attached to an object.  When the users count
++ * reaches zero then the cookie relinquishment will be permitted to proceed.
 + */
++static inline void fscache_unuse_cookie(struct fscache_object *object)
++{
++	struct fscache_cookie *cookie = object->cookie;
++	if (atomic_dec_and_test(&cookie->n_active)) {
++		printk("*** Reduce to 0: %s\n", cookie->def->name);
++		wake_up_atomic_t(&cookie->n_active);
++	}
++}
 +
-+#ifndef _LINUX_HFSPLUS_ACL_H
-+#define _LINUX_HFSPLUS_ACL_H
-+
-+#include <linux/nfs4acl.h>
-+#include <linux/posix_acl_xattr.h>
-+
-+/* HFS+ Access Control List Entry (ACE) flags */
-+#define HFSPLUS_ACE_KINDMASK		0xf
-+#define HFSPLUS_ACE_PERMIT		1
-+#define HFSPLUS_ACE_DENY		2
-+#define HFSPLUS_ACE_AUDIT		3
-+#define HFSPLUS_ACE_ALARM		4
-+#define HFSPLUS_ACE_INHERITED		(1<<4)
-+#define HFSPLUS_ACE_FILE_INHERIT	(1<<5)
-+#define HFSPLUS_ACE_DIRECTORY_INHERIT	(1<<6)
-+#define HFSPLUS_ACE_LIMIT_INHERIT	(1<<7)
-+#define HFSPLUS_ACE_ONLY_INHERIT	(1<<8)
-+#define HFSPLUS_ACE_SUCCESS		(1<<9)
-+#define HFSPLUS_ACE_FAILURE		(1<<10)
-+
-+/* All flag bits controlling ACE inheritance */
-+#define HFSPLUS_ACE_INHERIT_CONTROL_FLAGS \
-+		(HFSPLUS_ACE_FILE_INHERIT | \
-+		 HFSPLUS_ACE_DIRECTORY_INHERIT | \
-+		 HFSPLUS_ACE_LIMIT_INHERIT | \
-+		 HFSPLUS_ACE_ONLY_INHERIT)
-+
-+/* HFS+ Access Control List Entry (ACE) rights */
-+#define HFSPLUS_VNODE_READ_DATA			(1<<1)
-+#define HFSPLUS_VNODE_LIST_DIRECTORY		HFSPLUS_VNODE_READ_DATA
-+#define HFSPLUS_VNODE_WRITE_DATA		(1<<2)
-+#define HFSPLUS_VNODE_ADD_FILE			HFSPLUS_VNODE_WRITE_DATA
-+#define HFSPLUS_VNODE_EXECUTE			(1<<3)
-+#define HFSPLUS_VNODE_SEARCH			HFSPLUS_VNODE_EXECUTE
-+#define HFSPLUS_VNODE_DELETE			(1<<4)
-+#define HFSPLUS_VNODE_APPEND_DATA		(1<<5)
-+#define HFSPLUS_VNODE_ADD_SUBDIRECTORY		HFSPLUS_VNODE_APPEND_DATA
-+#define HFSPLUS_VNODE_DELETE_CHILD		(1<<6)
-+#define HFSPLUS_VNODE_READ_ATTRIBUTES		(1<<7)
-+#define HFSPLUS_VNODE_WRITE_ATTRIBUTES		(1<<8)
-+#define HFSPLUS_VNODE_READ_EXTATTRIBUTES	(1<<9)
-+#define HFSPLUS_VNODE_WRITE_EXTATTRIBUTES	(1<<10)
-+#define HFSPLUS_VNODE_READ_SECURITY		(1<<11)
-+#define HFSPLUS_VNODE_WRITE_SECURITY		(1<<12)
-+#define HFSPLUS_VNODE_TAKE_OWNERSHIP		(1<<13)
-+
-+#define HFSPLUS_ACE_GENERIC_ALL			(1<<21)
-+#define HFSPLUS_ACE_GENERIC_EXECUTE		(1<<22)
-+#define HFSPLUS_ACE_GENERIC_WRITE		(1<<23)
-+#define HFSPLUS_ACE_GENERIC_READ		(1<<24)
-+
-+#define HFSPLUS_VNODE_ANYONE_MODE (HFSPLUS_VNODE_READ_ATTRIBUTES | \
-+					 HFSPLUS_VNODE_READ_EXTATTRIBUTES | \
-+					 HFSPLUS_VNODE_READ_SECURITY)
-+
-+#define HFSPLUS_VNODE_GENERIC_READ_BITS (HFSPLUS_VNODE_READ_DATA | \
-+					 HFSPLUS_VNODE_READ_ATTRIBUTES | \
-+					 HFSPLUS_VNODE_READ_EXTATTRIBUTES | \
-+					 HFSPLUS_VNODE_READ_SECURITY)
-+
-+#define HFSPLUS_VNODE_OWNER_MODE (HFSPLUS_VNODE_WRITE_ATTRIBUTES | \
-+					 HFSPLUS_VNODE_WRITE_EXTATTRIBUTES | \
-+					 HFSPLUS_VNODE_WRITE_SECURITY)
-+
-+#define HFSPLUS_VNODE_WRITE_MODE (HFSPLUS_VNODE_WRITE_DATA | \
-+					  HFSPLUS_VNODE_APPEND_DATA | \
-+					  HFSPLUS_VNODE_DELETE)
-+
-+#define HFSPLUS_VNODE_GENERIC_WRITE_BITS (HFSPLUS_VNODE_WRITE_DATA | \
-+					  HFSPLUS_VNODE_APPEND_DATA | \
-+					  HFSPLUS_VNODE_DELETE | \
-+					  HFSPLUS_VNODE_DELETE_CHILD | \
-+					  HFSPLUS_VNODE_WRITE_ATTRIBUTES | \
-+					  HFSPLUS_VNODE_WRITE_EXTATTRIBUTES | \
-+					  HFSPLUS_VNODE_WRITE_SECURITY)
-+
-+#define HFSPLUS_VNODE_GENERIC_EXECUTE_BITS (HFSPLUS_VNODE_EXECUTE)
-+
-+#define HFSPLUS_VNODE_GENERIC_ALL_BITS	(HFSPLUS_VNODE_GENERIC_READ_BITS | \
-+					 HFSPLUS_VNODE_GENERIC_WRITE_BITS | \
-+					 HFSPLUS_VNODE_GENERIC_EXECUTE_BITS)
-+
-+/* acl.c */
-+struct posix_acl *hfsplus_get_acl(struct inode *inode, int type);
-+int hfsplus_acl_chmod(struct inode *inode);
-+int hfsplus_init_acl(struct inode *, struct inode *);
-+
-+#endif
--- 
-1.7.9.5
-
-
+ /*
+  * out-of-line cache backend functions
+  */
 
