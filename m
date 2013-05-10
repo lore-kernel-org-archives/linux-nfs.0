@@ -1,213 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f73.google.com ([209.85.216.73]:54325 "EHLO
-	mail-qa0-f73.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932296Ab3EFXuZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 19:50:25 -0400
-Received: by mail-qa0-f73.google.com with SMTP id bs12so21993qab.4
-        for <linux-nfs@vger.kernel.org>; Mon, 06 May 2013 16:50:23 -0700 (PDT)
-From: Colin Cross <ccross@android.com>
-To: linux-kernel@vger.kernel.org
-Cc: Pavel Machek <pavel@ucw.cz>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Colin Cross <ccross@android.com>, Oleg Nesterov <oleg@redhat.com>,
-        linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org,
-        netdev@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Len Brown <len.brown@intel.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>
-Subject: [PATCH v3 01/16] freezer: add unsafe versions of freezable helpers for NFS
-Date: Mon,  6 May 2013 16:50:06 -0700
-Message-Id: <1367884221-20462-2-git-send-email-ccross@android.com>
-In-Reply-To: <1367884221-20462-1-git-send-email-ccross@android.com>
-References: <1367884221-20462-1-git-send-email-ccross@android.com>
+Received: from fieldses.org ([174.143.236.118]:53718 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755632Ab3EJR3c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 May 2013 13:29:32 -0400
+Date: Fri, 10 May 2013 13:29:30 -0400
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/38] pnfsd: Use layout state to track layouts and misc.
+Message-ID: <20130510172930.GB14936@fieldses.org>
+References: <518B6377.3000207@tonian.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <518B6377.3000207@tonian.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFS calls the freezable helpers with locks held, which is unsafe
-and will cause lockdep warnings when 6aa9707 "lockdep: check
-that no locks held at freeze time" is reapplied (it was reverted
-in dbf520a).  NFS shouldn't be doing this, but it has
-long-running syscalls that must hold a lock but also shouldn't
-block suspend.  Until NFS freeze handling is rewritten to use a
-signal to exit out of the critical section, add new *_unsafe
-versions of the helpers that will not run the lockdep test when
-6aa9707 is reapplied, and call them from NFS.
+On Thu, May 09, 2013 at 11:51:03AM +0300, Benny Halevy wrote:
+> The following patchset includes:
+> - API usage changes that originated in v3.8 around the use of nfsd_net
+>   to search clientid and stateid.
+>   - temporary removal of notify_deviceid and get_state pnfs callback API
+>     until we implement a mechanism to look up global stateids and clientids
+>     provided by the file system.
+> - rewriting of the layout tracking mechanism, using
+>   the layout_state structure to keep a list of all derived layout
+>   and enlisting the layout_state on its respective file and client rather
+>   than the layout structure themselves.
+> - various bug fixes
 
-In practice the likley result of holding the lock while freezing
-is that a second task blocked on the lock will never freeze,
-aborting suspend, but it is possible to manufacture a case using
-the cgroup freezer, the lock, and the suspend freezer to create
-a deadlock.  Silencing the lockdep warning here will allow
-problems to be found in other drivers that may have a more
-serious deadlock risk, and prevent new problems from being added.
+Were there supposed to be patches following this?
 
-Acked-by: Pavel Machek <pavel@ucw.cz>
-Acked-by: Tejun Heo <tj@kernel.org>
-Signed-off-by: Colin Cross <ccross@android.com>
----
- fs/nfs/inode.c          |  2 +-
- fs/nfs/nfs3proc.c       |  2 +-
- fs/nfs/nfs4proc.c       |  4 ++--
- include/linux/freezer.h | 42 +++++++++++++++++++++++++++++++++++++++++-
- net/sunrpc/sched.c      |  2 +-
- 5 files changed, 46 insertions(+), 6 deletions(-)
+Also, is there some minimal subset of the pnfsd patches that it would
+make sense to start merging some day?
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 1f94167..53cbee5 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -79,7 +79,7 @@ int nfs_wait_bit_killable(void *word)
- {
- 	if (fatal_signal_pending(current))
- 		return -ERESTARTSYS;
--	freezable_schedule();
-+	freezable_schedule_unsafe();
- 	return 0;
- }
- EXPORT_SYMBOL_GPL(nfs_wait_bit_killable);
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 43ea96c..ce90eb4 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -33,7 +33,7 @@ nfs3_rpc_wrapper(struct rpc_clnt *clnt, struct rpc_message *msg, int flags)
- 		res = rpc_call_sync(clnt, msg, flags);
- 		if (res != -EJUKEBOX)
- 			break;
--		freezable_schedule_timeout_killable(NFS_JUKEBOX_RETRY_TIME);
-+		freezable_schedule_timeout_killable_unsafe(NFS_JUKEBOX_RETRY_TIME);
- 		res = -ERESTARTSYS;
- 	} while (!fatal_signal_pending(current));
- 	return res;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 0ad025e..a236077 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -266,7 +266,7 @@ static int nfs4_delay(struct rpc_clnt *clnt, long *timeout)
- 		*timeout = NFS4_POLL_RETRY_MIN;
- 	if (*timeout > NFS4_POLL_RETRY_MAX)
- 		*timeout = NFS4_POLL_RETRY_MAX;
--	freezable_schedule_timeout_killable(*timeout);
-+	freezable_schedule_timeout_killable_unsafe(*timeout);
- 	if (fatal_signal_pending(current))
- 		res = -ERESTARTSYS;
- 	*timeout <<= 1;
-@@ -4309,7 +4309,7 @@ int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4
- static unsigned long
- nfs4_set_lock_task_retry(unsigned long timeout)
- {
--	freezable_schedule_timeout_killable(timeout);
-+	freezable_schedule_timeout_killable_unsafe(timeout);
- 	timeout <<= 1;
- 	if (timeout > NFS4_LOCK_MAXTIMEOUT)
- 		return NFS4_LOCK_MAXTIMEOUT;
-diff --git a/include/linux/freezer.h b/include/linux/freezer.h
-index e70df40..5b31e21c 100644
---- a/include/linux/freezer.h
-+++ b/include/linux/freezer.h
-@@ -46,7 +46,11 @@ extern int freeze_kernel_threads(void);
- extern void thaw_processes(void);
- extern void thaw_kernel_threads(void);
- 
--static inline bool try_to_freeze(void)
-+/*
-+ * DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION
-+ * If try_to_freeze causes a lockdep warning it means the caller may deadlock
-+ */
-+static inline bool try_to_freeze_unsafe(void)
- {
- 	might_sleep();
- 	if (likely(!freezing(current)))
-@@ -54,6 +58,11 @@ static inline bool try_to_freeze(void)
- 	return __refrigerator(false);
- }
- 
-+static inline bool try_to_freeze(void)
-+{
-+	return try_to_freeze_unsafe();
-+}
-+
- extern bool freeze_task(struct task_struct *p);
- extern bool set_freezable(void);
- 
-@@ -115,6 +124,14 @@ static inline void freezer_count(void)
- 	try_to_freeze();
- }
- 
-+/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
-+static inline void freezer_count_unsafe(void)
-+{
-+	current->flags &= ~PF_FREEZER_SKIP;
-+	smp_mb();
-+	try_to_freeze_unsafe();
-+}
-+
- /**
-  * freezer_should_skip - whether to skip a task when determining frozen
-  *			 state is reached
-@@ -152,6 +169,14 @@ static inline bool freezer_should_skip(struct task_struct *p)
- 	freezer_count();						\
- })
- 
-+/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
-+#define freezable_schedule_unsafe()					\
-+({									\
-+	freezer_do_not_count();						\
-+	schedule();							\
-+	freezer_count_unsafe();						\
-+})
-+
- /* Like schedule_timeout_killable(), but should not block the freezer. */
- #define freezable_schedule_timeout_killable(timeout)			\
- ({									\
-@@ -162,6 +187,16 @@ static inline bool freezer_should_skip(struct task_struct *p)
- 	__retval;							\
- })
- 
-+/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
-+#define freezable_schedule_timeout_killable_unsafe(timeout)		\
-+({									\
-+	long __retval;							\
-+	freezer_do_not_count();						\
-+	__retval = schedule_timeout_killable(timeout);			\
-+	freezer_count_unsafe();						\
-+	__retval;							\
-+})
-+
- /*
-  * Freezer-friendly wrappers around wait_event_interruptible(),
-  * wait_event_killable() and wait_event_interruptible_timeout(), originally
-@@ -225,9 +260,14 @@ static inline void set_freezable(void) {}
- 
- #define freezable_schedule()  schedule()
- 
-+#define freezable_schedule_unsafe()  schedule()
-+
- #define freezable_schedule_timeout_killable(timeout)			\
- 	schedule_timeout_killable(timeout)
- 
-+#define freezable_schedule_timeout_killable_unsafe(timeout)		\
-+	schedule_timeout_killable(timeout)
-+
- #define wait_event_freezable(wq, condition)				\
- 		wait_event_interruptible(wq, condition)
- 
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index f8529fc..8dcfadc 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -254,7 +254,7 @@ static int rpc_wait_bit_killable(void *word)
- {
- 	if (fatal_signal_pending(current))
- 		return -ERESTARTSYS;
--	freezable_schedule();
-+	freezable_schedule_unsafe();
- 	return 0;
- }
- 
--- 
-1.8.2.1
+--b.
 
+> 
+> API related reverts:
+> [PATCH 01/38] Revert "SQUASHME: pnfsd: Fix compiler warning when
+> [PATCH 02/38] Revert "pnfsd: Clean up all stateids on DS on
+> [PATCH 03/38] Revert "pnfsd: update ds stateid from mds"
+> [PATCH 04/38] pnfsd-lexp: remove get_state
+> [PATCH 05/38] Revert "FIXME pnfsd: gfs2 temp turn off DS stateid
+> [PATCH 06/38] Revert "pnfsd: nfs4_preprocess_pnfs_ds_stateid"
+> [PATCH 07/38] Revert "pnfsd: Add way of determining if a client has
+> [PATCH 08/38] Revert "pnfsd: Notify device ID changes"
+> [PATCH 09/38] Revert "pnfsd: filelayout: file layout specific
+> [PATCH 10/38] Revert "pnfsd: Use ds_state_lock to protect retrieving
+> [PATCH 11/38] Revert "pnfsd: ds state"
+> [PATCH 12/38] Revert "pnfsd: decode getdeviceinfo notify types."
+> [PATCH 13/38] Revert "pnfsd: set_device_notify"
+> [PATCH 14/38] FIXME: temporarily disable create_layout_recall_list
+> 
+> API related changes:
+> [PATCH 15/38] SQUASHME: pnfsd: use nfsd_net for layoutget starting
+> [PATCH 16/38] SQUASHME: pnfsd: use nfsd4_init_callback starting v3.8
+> [PATCH 17/38] SQUASHME: use nfsd_net for layoutreturn starting v3.8
+> 
+> bug fixes:
+> [PATCH 18/38] SQUASHME: pnfsd: fix destroy_layout_state
+> [PATCH 19/38] SQUASHME: pnfsd: get rid of depdency on nfsd_serv
+> [PATCH 20/38] SQUASHME: pnfsd: merge_layout needs to acquire the
+> [PATCH 21/38] SQUASHME: pnfsd: return bool from merge_layout and fix
+> [PATCH 22/38] SQUASHME: pnfsd: hanging nfs4_layoutrecall on the
+> [PATCH 23/38] DEBUG: pnfsd: ASSERT_LAYOUT_LOCKED
+> [PATCH 24/38] pnfsd: cause oops when stop the nfs server
+> 
+> layout tracking:
+> [PATCH 25/38] pnfsd: layout state: rename fi_layout_states member
+> [PATCH 26/38] pnfsd: layout state: move initialization of ls_roc
+> [PATCH 27/38] pnfsd: layout state: introduce ls_file backpointer
+> [PATCH 28/38] pnfsd: layout state: introduce ls_client backpointer
+> [PATCH 29/38] pnfsd: layout state: hang layouts on layout state
+> [PATCH 30/38] pnfsd-lexp: fixup recall_layout
+> [PATCH 31/38] pnfsd: use the layout stateid for layout recalls
+> [PATCH 32/38] pnfsd: cosmetic fixes
+> [PATCH 33/38] pnfsd: pass layout stateid down to fs on layoutget
+> [PATCH 34/38] pnfsd: pass layout stateid down to fs on layoutreturn
+> [PATCH 35/38] pnfsd: use layout stateid for is_layout_recalled
+> [PATCH 36/38] pnfsd: deprecate cbl_seg.clientid
+> [PATCH 37/38] pnfsd: don't use clientid in merge_layout
+> [PATCH 38/38] pnfsd: remove clientid member from struct
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
