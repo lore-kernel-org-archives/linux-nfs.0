@@ -1,68 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:16944 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756543Ab3EFWF6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 May 2013 18:05:58 -0400
-Date: Mon, 6 May 2013 18:05:17 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Colin Cross <ccross@android.com>, lkml <linux-kernel@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Len Brown <len.brown@intel.com>, Pavel Machek <pavel@ucw.cz>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>,
-        Linux PM list <linux-pm@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>, Tejun Heo <tj@kernel.org>,
-        Ben Chan <benchan@chromium.org>, Steve French <smfrench@gmail.com>
-Subject: Re: [PATCH 1/2] freezer: add unsafe versions of freezable helpers
-Message-ID: <20130506180517.070bc3e2@tlielax.poochiereds.net>
-In-Reply-To: <CA+55aFwbXk_r-4p37YiMTQj2HNRA94xohr6DADuQXpHsKSA7NQ@mail.gmail.com>
-References: <1367615050-3894-1-git-send-email-ccross@android.com>
-	<20130506065605.6e5ed5e2@tlielax.poochiereds.net>
-	<CAMbhsRQsFT2j_CuPL45J03itymcp3PNP8ckt3fAAo+hzavNrbw@mail.gmail.com>
-	<20130506174336.447d0d75@tlielax.poochiereds.net>
-	<CAMbhsRQP+NFwn8C9-mXUVCZNi_oE+TCK1L1NgdGUA_CTw0eiMA@mail.gmail.com>
-	<CA+55aFwbXk_r-4p37YiMTQj2HNRA94xohr6DADuQXpHsKSA7NQ@mail.gmail.com>
+Received: from mail-in-06.arcor-online.net ([151.189.21.46]:53040 "EHLO
+	mail-in-06.arcor-online.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753380Ab3EJTz4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 15:55:56 -0400
+Received: from mail-in-19-z2.arcor-online.net (mail-in-19-z2.arcor-online.net [151.189.8.36])
+	by mx.arcor.de (Postfix) with ESMTP id C56F810BCC0
+	for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 21:55:54 +0200 (CEST)
+Received: from mail-in-01.arcor-online.net (mail-in-01.arcor-online.net [151.189.21.41])
+	by mail-in-19-z2.arcor-online.net (Postfix) with ESMTP id C64283F842C
+	for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 21:55:54 +0200 (CEST)
+Received: from laptop64.home (f053205062.adsl.alicedsl.de [78.53.205.62])
+	(Authenticated sender: a.radke@arcor.de)
+	by mail-in-01.arcor-online.net (Postfix) with ESMTPSA id 81E335A41C
+	for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 21:55:54 +0200 (CEST)
+Date: Fri, 10 May 2013 21:55:53 +0200
+From: Andreas Radke <a.radke@arcor.de>
+To: linux-nfs@vger.kernel.org
+Subject: NFSv4 ACL issues since 3.0.72 leading to corrupt files (xfs)
+Message-ID: <20130510215553.0a1130be@laptop64.home>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 6 May 2013 14:58:31 -0700
-Linus Torvalds <torvalds@linux-foundation.org> wrote:
+I'm running a server with a NFSv4 share drive that also hosts a Mail
+directory I provide with dovecot IMAP server. Dovecot has ACL plugin
+disabled.
 
-> On Mon, May 6, 2013 at 2:54 PM, Colin Cross <ccross@android.com> wrote:
-> >>
-> >> There are many other possibilities for other codepaths that end up in
-> >> wait_for_response(). Once we get a solution in place for NFS, we'll
-> >> need to do something very similar for CIFS.
-> >
-> > Makes sense, I will add CIFS to the patch.  Would you prefer it in the
-> > same or separate patches.
-> 
-> Quite frankly, is it worth resurrecting these patches at all?
-> 
-> The only things it actually complained about are not worth the pain
-> fixing and are getting explicitly not warned about - is there any
-> reason to believe the patches are worth maintaining and the extra
-> complexity is worth it?
-> 
->            Linus
+Since the 4 NFSv4 ACL related commits in kernel 3.0.72 (and all other
+stable kernels) all kernels until the recent stable releases give such
+errors when changing :
 
-Well, these problems are worth the pain of fixing, I think. It's just
-going to take us a while to get there since it involves some
-significant surgery.
+imap(andyrtr):
+Error:maildir_file_do(/mnt/share/andyrtr/Mail/.Mailinglisten.Linux-stable/cur/msg.MFVZBC:2,):
+Filename keeps changing
 
-As to whether the warnings themselves are worthwhile now that we're
-excluding the most egregious offenders from them, I don't much care
-either way.
+These are file system errors. I need to run xfs_repair on the drive
+and then need to stay with an outdated kernel.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+I think this is a serious regression. Can somebody confirm it and 
+tell me if this should be reported somewhere to a bug tracker 
+against nfs/xfs/... and how to solve this?
+
+-Andy
+ArchLinux
