@@ -1,50 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:33304
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752388Ab3EFI5h (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 04:57:37 -0400
-Date: Mon, 6 May 2013 10:55:47 +0200
-From: Peter Zijlstra <a.p.zijlstra@chello.nl>
-To: Ingo Molnar <mingo@kernel.org>
-Cc: Pavel Machek <pavel@ucw.cz>, Colin Cross <ccross@android.com>,
-        Andrew Morton <akpm@osdl.org>, lkml <linux-kernel@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Len Brown <len.brown@intel.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Ingo Molnar <mingo@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
-        Linux PM list <linux-pm@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, Ben Chan <benchan@chromium.org>
-Subject: Re: [PATCH 2/2] lockdep: check that no locks held at freeze time
-Message-ID: <20130506085547.GC13861@dyad.programming.kicks-ass.net>
-References: <1367615050-3894-1-git-send-email-ccross@android.com>
- <1367615050-3894-2-git-send-email-ccross@android.com>
- <20130504130440.GC13770@amd.pavel.ucw.cz>
- <CAMbhsRScr+3Zk5Bi6390bGRbtE4oh2H-mHrGHS0wew5hdkivUg@mail.gmail.com>
- <20130504225715.GB24276@amd.pavel.ucw.cz>
- <CAMbhsRS_cF7kF-QZ9BMBUS3ytU0ukRCbC3D549HW_XOsQbEZhg@mail.gmail.com>
- <20130505000528.GA25454@amd.pavel.ucw.cz>
- <20130505091844.GC22239@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130505091844.GC22239@gmail.com>
+Received: from mail-we0-f176.google.com ([74.125.82.176]:38452 "EHLO
+	mail-we0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757141Ab3EKCoR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:44:17 -0400
+Received: by mail-we0-f176.google.com with SMTP id p60so4442087wes.21
+        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:44:16 -0700 (PDT)
+Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
+        by mx.google.com with ESMTPSA id ff10sm1323075wib.10.2013.05.10.19.44.15
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=RC4-SHA bits=128/128);
+        Fri, 10 May 2013 19:44:15 -0700 (PDT)
+From: Benny Halevy <bhalevy@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 27/38] pnfsd: layout state: introduce ls_file backpointer
+Date: Sat, 11 May 2013 05:44:11 +0300
+Message-Id: <1368240251-698-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <518B6377.3000207@tonian.com>
+References: <518B6377.3000207@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, May 05, 2013 at 11:18:44AM +0200, Ingo Molnar wrote:
-> That's the old 32-bit x86 trick to compute 'current' from the kernel stack 
-> pointer.
-> 
-> It can be done better - for example on platforms with optimized percpu 
-> variables (x86-64) it looks like this:
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfsd/nfs4pnfsd.c | 3 +++
+ fs/nfsd/pnfsd.h     | 1 +
+ 2 files changed, 4 insertions(+)
 
-Doesn't i386 have all the funny per-cpu stuff too? So the only reason it still
-does the fugly stack based thing is because nobody could be arsed to do the
-work of converting it.
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index 6e0e9d1..b147427 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -132,6 +132,8 @@ struct sbid_tracker {
+ 	kref_init(&new->ls_ref);
+ 	nfsd4_init_stid(&new->ls_stid, clp, NFS4_LAYOUT_STID);
+ 	INIT_LIST_HEAD(&new->ls_perfile);
++	get_nfs4_file(fp);	/* released on destroy_layout_state */
++	new->ls_file = fp;
+ 	new->ls_roc = false;
+ 	spin_lock(&layout_lock);
+ 	list_add(&new->ls_perfile, &fp->fi_lo_states);
+@@ -157,6 +159,7 @@ struct sbid_tracker {
+ 		list_del(&ls->ls_perfile);
+ 		spin_unlock(&layout_lock);
+ 	}
++	put_nfs4_file(ls->ls_file);
+ 	kmem_cache_free(layout_state_slab, ls);
+ }
+ 
+diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
+index 2507d31..6301c51 100644
+--- a/fs/nfsd/pnfsd.h
++++ b/fs/nfsd/pnfsd.h
+@@ -45,6 +45,7 @@ struct nfs4_layout_state {
+ 	struct nfs4_stid	ls_stid; /* must be first field */
+ 	struct kref		ls_ref;
+ 	struct list_head	ls_perfile;
++	struct nfs4_file	*ls_file;
+ 	bool			ls_roc;
+ };
+ 
+-- 
+1.7.11.7
+
