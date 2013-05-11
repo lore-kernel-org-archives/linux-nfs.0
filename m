@@ -1,73 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:24875 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759707Ab3EWWPi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 May 2013 18:15:38 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Scott Mayhew <smayhew@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH RFC 1/1] NFS: Allow nfs_updatepage to extend a write to
- cover a full page when we have a lock that covers the entire file
-Date: Thu, 23 May 2013 22:15:34 +0000
-Message-ID: <1369347328.8861.6.camel@leira.trondhjem.org>
-References: <1369346021-20041-1-git-send-email-smayhew@redhat.com>
-	 <1369346021-20041-2-git-send-email-smayhew@redhat.com>
-In-Reply-To: <1369346021-20041-2-git-send-email-smayhew@redhat.com>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+Received: from mail-wg0-f52.google.com ([74.125.82.52]:50094 "EHLO
+	mail-wg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755838Ab3EKCo6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:44:58 -0400
+Received: by mail-wg0-f52.google.com with SMTP id k13so4504891wgh.31
+        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:44:57 -0700 (PDT)
+Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
+        by mx.google.com with ESMTPSA id cw8sm1191619wib.7.2013.05.10.19.44.55
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=RC4-SHA bits=128/128);
+        Fri, 10 May 2013 19:44:55 -0700 (PDT)
+From: Benny Halevy <bhalevy@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 38/38] pnfsd: remove clientid member from struct nfsd4_layout_seg
+Date: Sat, 11 May 2013 05:44:51 +0300
+Message-Id: <1368240291-1204-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <518B6377.3000207@tonian.com>
+References: <518B6377.3000207@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Scott,
+Use layout stateid for identification instead.
 
-On Thu, 2013-05-23 at 17:53 -0400, Scott Mayhew wrote:
-> Currently nfs_updatepage allows a write to be extended to cover a full
-> page only if we don't have a byte range lock on the file... but if we've
-> got the whole file locked, then we should be allowed to extend the
-> write.
-> 
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> ---
->  fs/nfs/write.c | 7 +++++--
->  1 file changed, 5 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index a2c7c28..f35fb4f 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -908,13 +908,16 @@ int nfs_updatepage(struct file *file, struct page *page,
->  		file->f_path.dentry->d_name.name, count,
->  		(long long)(page_file_offset(page) + offset));
->  
-> -	/* If we're not using byte range locks, and we know the page
-> +	/* If we're not using byte range locks (or if the range of the
-> +	 * lock covers the entire file), and we know the page
->  	 * is up to date, it may be more efficient to extend the write
->  	 * to cover the entire page in order to avoid fragmentation
->  	 * inefficiencies.
->  	 */
->  	if (nfs_write_pageuptodate(page, inode) &&
-> -			inode->i_flock == NULL &&
-> +			(inode->i_flock == NULL ||
-> +			(inode->i_flock->fl_start == 0 &&
-> +			inode->i_flock->fl_end == OFFSET_MAX)) &&
->  			!(file->f_flags & O_DSYNC)) {
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfsd/nfs4proc.c              | 2 --
+ include/linux/nfsd/nfsd4_pnfs.h | 1 -
+ 2 files changed, 3 deletions(-)
 
-Can we put this condition into a helper function? I started with the
-"nfs_write_pageuptodate()" thingy, but now we're starting to add in
-extra complications...
-
-Thanks!
-  Trond
-
->  		count = max(count + offset, nfs_page_length(page));
->  		offset = 0;
-
-
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index cd52393..5bbd1a3 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1243,8 +1243,6 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
+ 		__func__, lcp->args.lc_newoffset, lcp->args.lc_last_wr + 1,
+ 		ino->i_size);
+ 
+-	/* Set clientid from sessionid */
+-	copy_clientid((clientid_t *)&lcp->args.lc_seg.clientid, cstate->session);
+ 	lcp->res.lc_size_chg = 0;
+ 	if (sb->s_pnfs_op->layout_commit) {
+ 		status = sb->s_pnfs_op->layout_commit(ino, &lcp->args, &lcp->res);
+diff --git a/include/linux/nfsd/nfsd4_pnfs.h b/include/linux/nfsd/nfsd4_pnfs.h
+index 2e09065..fd7bad9 100644
+--- a/include/linux/nfsd/nfsd4_pnfs.h
++++ b/include/linux/nfsd/nfsd4_pnfs.h
+@@ -59,7 +59,6 @@ struct nfsd4_pnfs_dev_iter_res {
+ };
+ 
+ struct nfsd4_layout_seg {
+-	u64	clientid;
+ 	u32	layout_type;
+ 	u32	iomode;
+ 	u64	offset;
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.7.11.7
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
