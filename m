@@ -1,72 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:55839 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758792Ab3EWOVr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 May 2013 10:21:47 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jim Rees <rees@umich.edu>
-CC: "Yong, Fan" <fan.yong@intel.com>, Peng Tao <bergwolf@gmail.com>,
-        "Dilger, Andreas" <andreas.dilger@intel.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Steve Dickson <steved@redhat.com>
-Subject: RE: [PATCH] nfs: support 64-bit root inode number in NFS FSID
-Date: Thu, 23 May 2013 14:21:45 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA928793571@SACEXCMBX04-PRD.hq.netapp.com>
-References: <CDC2ABAC.3341C%andreas.dilger@intel.com>
- <CA+a=Yy4CQ7zG48dGOVjh8YBv0e+X1Gk4RxpDzdR4vM8JmqossQ@mail.gmail.com>
- <1369313382.3764.2.camel@leira.trondhjem.org>
- <7FB055E0B36B6F4EB93E637E0640A56F5B4AA961@FMSMSX114.amr.corp.intel.com>
- <1369316375.3764.7.camel@leira.trondhjem.org>
- <20130523142010.GA3634@umich.edu>
-In-Reply-To: <20130523142010.GA3634@umich.edu>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+Received: from mail-in-01.arcor-online.net ([151.189.21.41]:40978 "EHLO
+	mail-in-01.arcor-online.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753955Ab3EKJ4j (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 11 May 2013 05:56:39 -0400
+Date: Sat, 11 May 2013 11:56:35 +0200
+From: Andreas Radke <a.radke@arcor.de>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 ACL issues since 3.0.72 leading to corrupt files (xfs)
+Message-ID: <20130511115635.75a48294@workstation64.home>
+In-Reply-To: <1368240992.2998.6.camel@leira.trondhjem.org>
+References: <20130510215553.0a1130be@laptop64.home>
+	<1368240992.2998.6.camel@leira.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Jim Rees [mailto:rees@umich.edu]
-> Sent: Thursday, May 23, 2013 10:20 AM
-> To: Myklebust, Trond
-> Cc: Yong, Fan; Peng Tao; Dilger, Andreas; J. Bruce Fields; linux-
-> nfs@vger.kernel.org; Steve Dickson
-> Subject: Re: [PATCH] nfs: support 64-bit root inode number in NFS FSID
-> 
-> Myklebust, Trond wrote:
-> 
->   On Thu, 2013-05-23 at 12:59 +0000, Yong, Fan wrote:
->   > Just make it match the "inode64" in nfs-utils parse_fsid(), which is defined
-> as "unsigned long long", and the parsed_fsid:: inode is copied from "inode64"
-> as following:
->   >
->   > static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
->   >                 struct parsed_fsid *parsed)
->   > {
->   >         unsigned int dev;
->   >         unsigned long long inode64;
->   > ...
->   >         case FSID_UUID16_INUM: /* 8 byte inode number and 16 byte uuid
-> */
->   >                 if (fsidlen != 24)
->   >                         return -1;
->   >                 memcpy(&inode64, fsid, 8);
->   >                 parsed->inode = inode64;
->   >                 parsed->uuidlen = 16;
->   >                 parsed->fhuuid = fsid+8;
->   >                 break;
->   >         }
->   >
->   > --
->   > Cheers,
->   > Nasf
-> 
->   Eeeeeeeewww! This is _exactly_ why we should be using properly
->   dimensioned types. Feel free to tell me how the value of 'inode64' is
->   well defined on systems where sizeof(unsigned long long) != 8...
-> 
-> Is there any reason not to use ino_t?
+Am Sat, 11 May 2013 02:56:33 +0000
+schrieb "Myklebust, Trond" <Trond.Myklebust@netapp.com>:
 
-Yes. It's not guaranteed to be 64-bit either.
+> On Fri, 2013-05-10 at 21:55 +0200, Andreas Radke wrote:
+> > I'm running a server with a NFSv4 share drive that also hosts a Mail
+> > directory I provide with dovecot IMAP server. Dovecot has ACL plugin
+> > disabled.
+> > 
+> > Since the 4 NFSv4 ACL related commits in kernel 3.0.72 (and all
+> > other stable kernels) all kernels until the recent stable releases
+> > give such errors when changing :
+> 
+> Which 4 NFSv4 acl related commits?
 
-Trond
+It should be one of these commits:
+
+https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/commit/?h=linux-3.0.y&id=7e36f505caf7882b6cc89ecedcd7f26749ef917a
+https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/commit/?h=linux-3.0.y&id=2c34b4ae8f8228e1ec083be0333426eca4a31357
+https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/commit/?h=linux-3.0.y&id=01b140abad66f022ff6dff7cc1307b07281035fa
+https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/commit/?h=linux-3.0.y&id=c938c22b48302eeb9a6f3cc83f223f37d98ba6f7
+ 
+> Have you bisected in order to figure out which one is the culprit? If
+> not, how do you know that this is related to NFSv4 acl changes?
+
+The problem had started with kernel 3.0.72 and all other stable kernels
+that included these commits (my distro only ships 3.0.x and 3.8.x tree
+at that time). All other commits from 3.0.71 to 3.0.72 look unrelated to
+my server setup. Local clients can run up to date kernels without any problems.
+Other people have reported also issues with ACL on servers since that
+update.
+
+I can reproduce the issue instantly when marking lots of mails as
+read/unread that leads instantly to corrupt files on the server drive.
+
+Because it hosts serious data I can't play too much with that machine.
+It would be nice if you could point me the the related commit. It will
+cost me lots of time to build a kernel with the patches reverted one by
+one and I'm afraid of loosing more data.
+
+-Andy
