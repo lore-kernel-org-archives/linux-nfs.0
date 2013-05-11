@@ -1,36 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.194]:56979 "EHLO mout.perfora.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751743Ab3ERO6q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 18 May 2013 10:58:46 -0400
-Date: Sat, 18 May 2013 10:58:08 -0400
-From: Jim Rees <rees@umich.edu>
-To: Bernd Petrovitsch <bernd@petrovitsch.priv.at>
-Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] nfsd: avoid undefined signed overflow
-Message-ID: <20130518145808.GA3670@umich.edu>
-References: <1368826380-9864-1-git-send-email-rees@umich.edu>
- <1368875049.11003.31.camel@thorin>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1368875049.11003.31.camel@thorin>
+Received: from mail-wg0-f48.google.com ([74.125.82.48]:50570 "EHLO
+	mail-wg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756434Ab3EKCoC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:44:02 -0400
+Received: by mail-wg0-f48.google.com with SMTP id f11so4505674wgh.15
+        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:44:01 -0700 (PDT)
+Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
+        by mx.google.com with ESMTPSA id je7sm1168426wic.9.2013.05.10.19.44.00
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=RC4-SHA bits=128/128);
+        Fri, 10 May 2013 19:44:00 -0700 (PDT)
+From: Benny Halevy <bhalevy@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 23/38] DEBUG: pnfsd: ASSERT_LAYOUT_LOCKED
+Date: Sat, 11 May 2013 05:43:56 +0300
+Message-Id: <1368240236-381-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <518B6377.3000207@tonian.com>
+References: <518B6377.3000207@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bernd Petrovitsch wrote:
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfsd/nfs4pnfsd.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-  Hmm, what is actually wrong with plain-old
-  ----  snip  ----
-  static bool stateid_generation_after(stateid_t *a, stateid_t *b)
-  {
-  	return a->si_generation > b->si_generation;
-  }
-  ----  snip  ----
-  ?
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index 7c454d2..d9bf099 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -28,6 +28,8 @@
+ 
+ static DEFINE_SPINLOCK(layout_lock);
+ 
++#define ASSERT_LAYOUT_LOCKED()	assert_spin_locked(&layout_lock);
++
+ /*
+  * Layout state - NFSv4.1 pNFS
+  */
+-- 
+1.7.11.7
 
-It doesn't account for wraparound. Try this:
-
-    unsigned int a = 0xffff0000, b = 0x7fff0000;
-    printf("%d %d\n", a > b, (int)(a - b) > 0);
-
-I just realized that I said this needed a comment, then didn't provide one.
