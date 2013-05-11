@@ -1,89 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:50717 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757719Ab3ETS3L convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 May 2013 14:29:11 -0400
-Received: from vmwexceht01-prd.hq.netapp.com (exchsmtp.hq.netapp.com [10.106.76.239])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id r4KITAW0027799
-	for <linux-nfs@vger.kernel.org>; Mon, 20 May 2013 11:29:10 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] NFSv4.1 Fix a pNFS session draining deadlock
-Date: Mon, 20 May 2013 18:29:09 +0000
-Message-ID: <1369074542.6115.8.camel@leira.trondhjem.org>
-References: <1369073630-7193-1-git-send-email-andros@netapp.com>
-In-Reply-To: <1369073630-7193-1-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+Received: from mail-wi0-f173.google.com ([209.85.212.173]:40353 "EHLO
+	mail-wi0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755902Ab3EKCoV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:44:21 -0400
+Received: by mail-wi0-f173.google.com with SMTP id ey16so1203012wid.12
+        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:44:20 -0700 (PDT)
+Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
+        by mx.google.com with ESMTPSA id x13sm1398510wib.3.2013.05.10.19.44.18
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=RC4-SHA bits=128/128);
+        Fri, 10 May 2013 19:44:19 -0700 (PDT)
+From: Benny Halevy <bhalevy@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 28/38] pnfsd: layout state: introduce ls_client backpointer
+Date: Sat, 11 May 2013 05:44:15 +0300
+Message-Id: <1368240255-737-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <518B6377.3000207@tonian.com>
+References: <518B6377.3000207@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-05-20 at 14:13 -0400, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> On a CB_RECALL the callback service thread flushes the inode using
-> filemap_flush prior to scheduling the state manager thread to return the
-> delegation. When pNFS is used and I/O has not yet gone to the data server
-> servicing the inode, a LAYOUTGET can preceed the I/O. Unlike the async
-> filemap_flush call, the LAYOUTGET must proceed to completion.
-> 
-> If the state manager starts to recover data while the inode flush is sending
-> the LAYOUTGET, a deadlock occurs as the callback service thread holds the
-> single callback session slot until the flushing is done which blocks the state
-> manager thread, and the state manager thread has set the session draining bit
-> which puts the inode flush LAYOUTGET RPC to sleep on the forechannel slot
-> table waitq.
-> 
-> Separate the draining of the back channel from the draining of the fore channel
-> by moving the NFS4_SESSION_DRAINING bit from session scope into the fore
-> and back slot tables.  Drain the back channel first allowing the LAYOUTGET
-> call to proceed (and fail) so the callback service thread frees the callback
-> slot. Then proceed with draining the forechannel.
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfs/callback_proc.c |  2 +-
->  fs/nfs/callback_xdr.c  |  2 +-
->  fs/nfs/nfs4proc.c      |  2 +-
->  fs/nfs/nfs4session.c   |  6 ++++--
->  fs/nfs/nfs4session.h   | 13 ++++++++-----
->  fs/nfs/nfs4state.c     | 15 +++++++--------
->  6 files changed, 22 insertions(+), 18 deletions(-)
-> 
+And enlist the layout state on the client cl_lo_states list.
 
-> @@ -395,12 +395,14 @@ int nfs4_setup_session_slot_tables(struct nfs4_session *ses)
->  	/* Fore channel */
->  	tbl = &ses->fc_slot_table;
->  	tbl->session = ses;
-> +	tbl->slot_tbl_state = 0;
->  	status = nfs4_realloc_slot_table(tbl, ses->fc_attrs.max_reqs, 1);
->  	if (status) /* -ENOMEM */
->  		return status;
->  	/* Back channel */
->  	tbl = &ses->bc_slot_table;
->  	tbl->session = ses;
-> +	tbl->slot_tbl_state = 0;
->  	status = nfs4_realloc_slot_table(tbl, ses->bc_attrs.max_reqs, 0);
->  	if (status && tbl->slots == NULL)
->  		/* Fore and back channel share a connection so get
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfsd/nfs4pnfsd.c | 16 +++++++++++++++-
+ fs/nfsd/nfs4state.c |  1 +
+ fs/nfsd/pnfsd.h     |  2 ++
+ fs/nfsd/state.h     |  1 +
+ 4 files changed, 19 insertions(+), 1 deletion(-)
 
-Hi Andy,
-
-The above hunk is buggy. nfs4_setup_session_slot_tables() is called from
-nfs4_proc_create_session(), so it must not reset the
-NFS4_SLOT_TBL_DRAINING flag.
-
-I'm therefore removing the above 2 lines. I've applied the rest of the
-patch.
-
-Thanks!
-  Trond
-
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index b147427..50b5208 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -131,11 +131,14 @@ struct sbid_tracker {
+ 		return new;
+ 	kref_init(&new->ls_ref);
+ 	nfsd4_init_stid(&new->ls_stid, clp, NFS4_LAYOUT_STID);
++	INIT_LIST_HEAD(&new->ls_perclnt);
+ 	INIT_LIST_HEAD(&new->ls_perfile);
++	new->ls_client = clp;
+ 	get_nfs4_file(fp);	/* released on destroy_layout_state */
+ 	new->ls_file = fp;
+ 	new->ls_roc = false;
+ 	spin_lock(&layout_lock);
++	list_add(&new->ls_perclnt, &clp->cl_lo_states);
+ 	list_add(&new->ls_perfile, &fp->fi_lo_states);
+ 	spin_unlock(&layout_lock);
+ 	return new;
+@@ -147,6 +150,17 @@ struct sbid_tracker {
+ 	kref_get(&ls->ls_ref);
+ }
+ 
++/*
++ * Note: always called under the layout_lock
++ */
++static void
++unhash_layout_state(struct nfs4_layout_state *ls)
++{
++	ASSERT_LAYOUT_LOCKED();
++	list_del_init(&ls->ls_perclnt);
++	list_del_init(&ls->ls_perfile);
++}
++
+ static void
+ destroy_layout_state(struct kref *kref)
+ {
+@@ -156,7 +170,7 @@ struct sbid_tracker {
+ 	nfsd4_unhash_stid(&ls->ls_stid);
+ 	if (!list_empty(&ls->ls_perfile)) {
+ 		spin_lock(&layout_lock);
+-		list_del(&ls->ls_perfile);
++		unhash_layout_state(ls);
+ 		spin_unlock(&layout_lock);
+ 	}
+ 	put_nfs4_file(ls->ls_file);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 12eed1d..4f40327 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1322,6 +1322,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 	INIT_LIST_HEAD(&clp->cl_delegations);
+ #if defined(CONFIG_PNFSD)
+ 	INIT_LIST_HEAD(&clp->cl_layouts);
++	INIT_LIST_HEAD(&clp->cl_lo_states);
+ 	INIT_LIST_HEAD(&clp->cl_layoutrecalls);
+ #endif /* CONFIG_PNFSD */
+ 	INIT_LIST_HEAD(&clp->cl_lru);
+diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
+index 6301c51..454ef23 100644
+--- a/fs/nfsd/pnfsd.h
++++ b/fs/nfsd/pnfsd.h
+@@ -44,6 +44,8 @@
+ struct nfs4_layout_state {
+ 	struct nfs4_stid	ls_stid; /* must be first field */
+ 	struct kref		ls_ref;
++	struct list_head	ls_perclnt;
++	struct nfs4_client	*ls_client;
+ 	struct list_head	ls_perfile;
+ 	struct nfs4_file	*ls_file;
+ 	bool			ls_roc;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index c185025..e026e0d 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -283,6 +283,7 @@ struct nfs4_client {
+ 	struct net		*net;
+ #if defined(CONFIG_PNFSD)
+ 	struct list_head	cl_layouts;	/* outstanding layouts */
++	struct list_head	cl_lo_states;	/* outstanding layout states */
+ 	struct list_head	cl_layoutrecalls; /* outstanding layoutrecall
+ 						     callbacks */
+ #endif /* CONFIG_PNFSD */
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.7.11.7
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
