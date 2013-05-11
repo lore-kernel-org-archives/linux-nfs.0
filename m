@@ -1,73 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from youngberry.canonical.com ([91.189.89.112]:56584 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753023Ab3EIFtf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 May 2013 01:49:35 -0400
-Date: Thu, 9 May 2013 00:49:26 -0500
-From: Serge Hallyn <serge.hallyn@ubuntu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Serge Hallyn <serge.hallyn@canonical.com>,
-        linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] security: cap_inode_getsecctx returning garbage
-Message-ID: <20130509054926.GA31134@tp>
-References: <20130509014329.GH23747@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130509014329.GH23747@fieldses.org>
+Received: from mail-wi0-f181.google.com ([209.85.212.181]:48228 "EHLO
+	mail-wi0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756823Ab3EKCnY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:43:24 -0400
+Received: by mail-wi0-f181.google.com with SMTP id ey16so1208820wid.2
+        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:43:23 -0700 (PDT)
+Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
+        by mx.google.com with ESMTPSA id je7sm1166950wic.9.2013.05.10.19.43.22
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=RC4-SHA bits=128/128);
+        Fri, 10 May 2013 19:43:22 -0700 (PDT)
+From: Benny Halevy <bhalevy@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 13/38] Revert "pnfsd: set_device_notify"
+Date: Sat, 11 May 2013 05:43:18 +0300
+Message-Id: <1368240198-32225-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <518B6377.3000207@tonian.com>
+References: <518B6377.3000207@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Quoting J. Bruce Fields (bfields@fieldses.org):
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> We shouldn't be returning success from this function without also
-> filling in the return values ctx and ctxlen.
-> 
-> Note currently this doesn't appear to cause bugs since the only
-> inode_getsecctx caller I can find is fs/sysfs/inode.c, which only calls
-> this if security_inode_setsecurity succeeds.  Assuming
-> security_inode_setsecurity is set to cap_inode_setsecurity whenever
-> inode_getsecctx is set to cap_inode_getsecctx, this function can never
-> actually called.
-> 
-> So I noticed this only because the server labeled NFS patches add a real
-> caller.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+This reverts commit e31921a7fa0a13119e359b8ec200fb4047c0527f.
+---
+ fs/nfsd/nfs4xdr.c               | 37 +++++++++++++------------------------
+ include/linux/nfsd/nfsd4_pnfs.h | 10 ----------
+ 2 files changed, 13 insertions(+), 34 deletions(-)
 
-Thanks, the comment in include/linux/security.h doesn't mention the
-return value at all, but based on the other implementations this looks
-right.
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 596a2a5..b157eae 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3766,8 +3766,15 @@ static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp,
+ 
+ 	nfserr = sb->s_pnfs_op->get_device_info(sb, &xdr, gdev->gd_layout_type,
+ 						&gdev->gd_devid);
+-	if (nfserr)
+-		goto err;
++	if (nfserr) {
++		/* Rewind to the beginning */
++		p = p_in;
++		ADJUST_ARGS();
++		if (nfserr == -ETOOSMALL)
++			goto toosmall;
++		printk(KERN_ERR "%s: export ERROR %d\n", __func__, nfserr);
++		goto out;
++	}
+ 
+ 	/* The file system should never write 0 bytes without
+ 	 * returning an error
+@@ -3782,21 +3789,11 @@ static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp,
+ 	ADJUST_ARGS();
+ 
+ handle_notifications:
+-	/* Encode supported device notifications */
++	/* Encode supported device notifications.
++	 * Note: Currently none are supported.
++	 */
+ 	RESERVE_SPACE(4);
+-	if (sb->s_pnfs_op->set_device_notify) {
+-		struct pnfs_devnotify_arg dn_args;
+-
+-		dn_args.dn_layout_type = gdev->gd_layout_type;
+-		dn_args.dn_devid = gdev->gd_devid;
+-		dn_args.dn_notify_types = gdev->gd_notify_types;
+-		nfserr = sb->s_pnfs_op->set_device_notify(sb, &dn_args);
+-		if (nfserr)
+-			goto err;
+-		WRITE32(dn_args.dn_notify_types);
+-	} else {
+-		WRITE32(0);
+-	}
++	WRITE32(0);
+ 	ADJUST_ARGS();
+ 
+ out:
+@@ -3807,14 +3804,6 @@ static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp,
+ 	WRITE32((p_save ? (xdr.p - p_save) * 4 : 0) + type_notify_len);
+ 	ADJUST_ARGS();
+ 	goto out;
+-err:
+-	/* Rewind to the beginning */
+-	p = p_in;
+-	ADJUST_ARGS();
+-	if (nfserr == -ETOOSMALL)
+-		goto toosmall;
+-	printk(KERN_ERR "%s: export ERROR %d\n", __func__, nfserr);
+-	goto out;
+ }
+ 
+ static __be32
+diff --git a/include/linux/nfsd/nfsd4_pnfs.h b/include/linux/nfsd/nfsd4_pnfs.h
+index d86e1b7..a49d5f6 100644
+--- a/include/linux/nfsd/nfsd4_pnfs.h
++++ b/include/linux/nfsd/nfsd4_pnfs.h
+@@ -58,13 +58,6 @@ struct nfsd4_pnfs_dev_iter_res {
+ 	u32		gd_eof;		/* response */
+ };
+ 
+-/* Arguments for set_device_notify */
+-struct pnfs_devnotify_arg {
+-	struct nfsd4_pnfs_deviceid dn_devid;	/* request */
+-	u32 dn_layout_type;			/* request */
+-	u32 dn_notify_types;			/* request/response */
+-};
+-
+ struct nfsd4_layout_seg {
+ 	u64	clientid;
+ 	u32	layout_type;
+@@ -160,9 +153,6 @@ struct pnfs_export_operations {
+ 				u32 layout_type,
+ 				struct nfsd4_pnfs_dev_iter_res *);
+ 
+-	int (*set_device_notify) (struct super_block *,
+-				  struct pnfs_devnotify_arg *);
+-
+ 	/* Retrieve and encode a layout for inode onto the xdr stream.
+ 	 * arg->minlength is the minimum number of accessible bytes required
+ 	 *   by the client.
+-- 
+1.7.11.7
 
-Acked-by: Serge E. Hallyn <serge.hallyn@ubuntu.com>
-
-
-> ---
->  security/capability.c |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> Also, assuming this is correct, would you be willing to apply it for
-> 3.10?
-> 
-> If you'd prefer it wait till the next merge window: could you ACK it,
-> and let me merge it through the nfsd tree?  (It's a prerequisite for
-> the labeled NFS patches that I hope to merge for 3.11.)
-> 
-> diff --git a/security/capability.c b/security/capability.c
-> index d32e16e..32b5157 100644
-> --- a/security/capability.c
-> +++ b/security/capability.c
-> @@ -858,7 +858,7 @@ static int cap_inode_setsecctx(struct dentry *dentry, void *ctx, u32 ctxlen)
->  
->  static int cap_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen)
->  {
-> -	return 0;
-> +	return -EOPNOTSUPP;
->  }
->  #ifdef CONFIG_KEYS
->  static int cap_key_alloc(struct key *key, const struct cred *cred,
-> -- 
-> 1.7.9.5
-> 
