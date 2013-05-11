@@ -1,68 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f201.google.com ([209.85.161.201]:38013 "EHLO
-	mail-gg0-f201.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757771Ab3EFX5j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 19:57:39 -0400
-Received: by mail-gg0-f201.google.com with SMTP id k25so425605ggl.0
-        for <linux-nfs@vger.kernel.org>; Mon, 06 May 2013 16:57:38 -0700 (PDT)
-From: Colin Cross <ccross@android.com>
-To: linux-kernel@vger.kernel.org
-Cc: Pavel Machek <pavel@ucw.cz>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Colin Cross <ccross@android.com>, Oleg Nesterov <oleg@redhat.com>,
-        linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org,
-        netdev@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org
-Subject: [PATCH v3 11/16] epoll: use freezable blocking call
-Date: Mon,  6 May 2013 16:50:16 -0700
-Message-Id: <1367884221-20462-12-git-send-email-ccross@android.com>
-In-Reply-To: <1367884221-20462-1-git-send-email-ccross@android.com>
-References: <1367884221-20462-1-git-send-email-ccross@android.com>
+Received: from mx12.netapp.com ([216.240.18.77]:41000 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756416Ab3EKC4e convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:56:34 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Andreas Radke <a.radke@arcor.de>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 ACL issues since 3.0.72 leading to corrupt files (xfs)
+Date: Sat, 11 May 2013 02:56:33 +0000
+Message-ID: <1368240992.2998.6.camel@leira.trondhjem.org>
+References: <20130510215553.0a1130be@laptop64.home>
+In-Reply-To: <20130510215553.0a1130be@laptop64.home>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Avoid waking up every thread sleeping in an epoll_wait call during
-suspend and resume by calling a freezable blocking call.  Previous
-patches modified the freezer to avoid sending wakeups to threads
-that are blocked in freezable blocking calls.
+On Fri, 2013-05-10 at 21:55 +0200, Andreas Radke wrote:
+> I'm running a server with a NFSv4 share drive that also hosts a Mail
+> directory I provide with dovecot IMAP server. Dovecot has ACL plugin
+> disabled.
+> 
+> Since the 4 NFSv4 ACL related commits in kernel 3.0.72 (and all other
+> stable kernels) all kernels until the recent stable releases give such
+> errors when changing :
 
-This call was selected to be converted to a freezable call because
-it doesn't hold any locks or release any resources when interrupted
-that might be needed by another freezing task or a kernel driver
-during suspend, and is a common site where idle userspace tasks are
-blocked.
+Which 4 NFSv4 acl related commits?
 
-Acked-by: Tejun Heo <tj@kernel.org>
-Signed-off-by: Colin Cross <ccross@android.com>
----
- fs/eventpoll.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+Have you bisected in order to figure out which one is the culprit? If
+not, how do you know that this is related to NFSv4 acl changes?
 
-diff --git a/fs/eventpoll.c b/fs/eventpoll.c
-index 9fec183..65245e7 100644
---- a/fs/eventpoll.c
-+++ b/fs/eventpoll.c
-@@ -34,6 +34,7 @@
- #include <linux/mutex.h>
- #include <linux/anon_inodes.h>
- #include <linux/device.h>
-+#include <linux/freezer.h>
- #include <asm/uaccess.h>
- #include <asm/io.h>
- #include <asm/mman.h>
-@@ -1543,7 +1544,8 @@ fetch_events:
- 			}
- 
- 			spin_unlock_irqrestore(&ep->lock, flags);
--			if (!schedule_hrtimeout_range(to, slack, HRTIMER_MODE_ABS))
-+			if (!freezable_schedule_hrtimeout_range(to, slack,
-+								HRTIMER_MODE_ABS))
- 				timed_out = 1;
- 
- 			spin_lock_irqsave(&ep->lock, flags);
+> imap(andyrtr):
+> Error:maildir_file_do(/mnt/share/andyrtr/Mail/.Mailinglisten.Linux-stable/cur/msg.MFVZBC:2,):
+> Filename keeps changing
+>
+> These are file system errors. I need to run xfs_repair on the drive
+> and then need to stay with an outdated kernel.
+>
+> I think this is a serious regression. Can somebody confirm it and 
+> tell me if this should be reported somewhere to a bug tracker 
+> against nfs/xfs/... and how to solve this?
 -- 
-1.8.2.1
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
