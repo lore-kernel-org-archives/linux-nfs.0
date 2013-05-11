@@ -1,84 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:13156 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760373Ab3EBRTY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 May 2013 13:19:24 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 08/17] NFSv4: Add label recommended attribute and NFSv4 flags
-Date: Thu,  2 May 2013 13:19:02 -0400
-Message-Id: <1367515151-31015-9-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
-References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
+Received: from mail-we0-f176.google.com ([74.125.82.176]:55703 "EHLO
+	mail-we0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754337Ab3EKCms (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:42:48 -0400
+Received: by mail-we0-f176.google.com with SMTP id p60so4656008wes.35
+        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:42:47 -0700 (PDT)
+Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
+        by mx.google.com with ESMTPSA id dj7sm1198432wib.6.2013.05.10.19.42.46
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=RC4-SHA bits=128/128);
+        Fri, 10 May 2013 19:42:47 -0700 (PDT)
+From: Benny Halevy <bhalevy@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 04/38] pnfsd-lexp: remove get_state
+Date: Sat, 11 May 2013 05:42:42 +0300
+Message-Id: <1368240162-31872-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <518B6377.3000207@tonian.com>
+References: <518B6377.3000207@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
-
-This patch adds several new flags to allow the NFS client and server to
-determine if this attribute is supported and if it is being sent over the wire.
-
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 ---
- include/linux/nfs4.h      | 1 +
- include/linux/nfs_fs_sb.h | 1 +
- include/linux/nfs_xdr.h   | 4 +++-
- 3 files changed, 5 insertions(+), 1 deletion(-)
+ fs/nfsd/pnfsd_lexp.c | 7 -------
+ 1 file changed, 7 deletions(-)
 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 7e18a66..6f44cc1 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -385,6 +385,7 @@ enum lock_type4 {
- #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
- #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
- #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
-+#define FATTR4_WORD2_SECURITY_LABEL     (1UL << 17)
- #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
+diff --git a/fs/nfsd/pnfsd_lexp.c b/fs/nfsd/pnfsd_lexp.c
+index bcdb80f..5d448c2 100644
+--- a/fs/nfsd/pnfsd_lexp.c
++++ b/fs/nfsd/pnfsd_lexp.c
+@@ -223,12 +223,6 @@ static int get_stripe_unit(int blocksize)
+ 	return 0;
+ }
  
- /* MDS threshold bitmap bits */
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 6c6ed15..d507357 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -197,5 +197,6 @@ struct nfs_server {
- #define NFS_CAP_MTIME		(1U << 13)
- #define NFS_CAP_POSIX_LOCK	(1U << 14)
- #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
-+#define NFS_CAP_SECURITY_LABEL	(1U << 16)
+-static int pnfsd_lexp_get_state(struct inode *inode, struct knfsd_fh *fh,
+-				struct pnfs_get_state *p)
+-{
+-	return 0;	/* just use the current stateid */
+-}
+-
+ static struct pnfs_export_operations pnfsd_lexp_ops = {
+ 	.layout_type = pnfsd_lexp_layout_type,
+ 	.get_device_info = pnfsd_lexp_get_device_info,
+@@ -236,7 +230,6 @@ static int pnfsd_lexp_get_state(struct inode *inode, struct knfsd_fh *fh,
+ 	.layout_get = pnfsd_lexp_layout_get,
+ 	.layout_commit = pnfsd_lexp_layout_commit,
+ 	.layout_return = pnfsd_lexp_layout_return,
+-	.get_state = pnfsd_lexp_get_state,
+ };
  
- #endif
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 4b993d3..9f2dba3 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -104,6 +104,7 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
- #define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
- #define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
-+#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 25)
- 
- #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
- 		| NFS_ATTR_FATTR_MODE \
-@@ -123,7 +124,8 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
- 		| NFS_ATTR_FATTR_SPACE_USED)
- #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
--		| NFS_ATTR_FATTR_SPACE_USED)
-+		| NFS_ATTR_FATTR_SPACE_USED \
-+		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
- 
- /*
-  * Info on the file system
+ void
 -- 
-1.8.1.4
+1.7.11.7
 
