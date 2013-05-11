@@ -1,118 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f173.google.com ([209.85.212.173]:40353 "EHLO
-	mail-wi0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755902Ab3EKCoV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:44:21 -0400
-Received: by mail-wi0-f173.google.com with SMTP id ey16so1203012wid.12
-        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:44:20 -0700 (PDT)
-Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
-        by mx.google.com with ESMTPSA id x13sm1398510wib.3.2013.05.10.19.44.18
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 10 May 2013 19:44:19 -0700 (PDT)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 28/38] pnfsd: layout state: introduce ls_client backpointer
-Date: Sat, 11 May 2013 05:44:15 +0300
-Message-Id: <1368240255-737-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <518B6377.3000207@tonian.com>
-References: <518B6377.3000207@tonian.com>
+Received: from fieldses.org ([174.143.236.118]:39885 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754570Ab3EKW6N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 11 May 2013 18:58:13 -0400
+Date: Sat, 11 May 2013 18:57:55 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 16/17] NFSD: Server implementation of MAC Labeling
+Message-ID: <20130511225755.GD22382@fieldses.org>
+References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
+ <1367515151-31015-17-git-send-email-SteveD@redhat.com>
+ <20130509015033.GI23747@fieldses.org>
+ <518EBBD4.7010306@RedHat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <518EBBD4.7010306@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-And enlist the layout state on the client cl_lo_states list.
+On Sat, May 11, 2013 at 05:44:52PM -0400, Steve Dickson wrote:
+> tatus: RO
+> Content-Length: 2809
+> Lines: 82
+> 
+> 
+> 
+> On 08/05/13 21:50, J. Bruce Fields wrote:
+> > This also doesn't handle the unsupported case correctly.
+> > 
+> > Applying the following fix to my tree.
+> With in the following commit
+> 
+> commit ad8684190a6eb3913a54eda7838f31ead8a73168
+> Author: David Quigley <dpquigl@davequigley.com>
+> Date:   Thu May 2 13:19:10 2013 -0400
+> 
+>     NFSD: Server implementation of MAC Labeling
+> 
+> The following chunk of code was committed:
+> 
+>  @@ -380,6 +386,33 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bm
+>                         goto xdr_error;
+>                 }
+>         }
+> +
+> +       label->len = 0;
+> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> +       if (bmval[2] & FATTR4_WORD2_SECURITY_LABEL) {
+> +               READ_BUF(4);
+> +               len += 4;
+> +               READ32(dummy32); /* lfs: we don't use it */
+> +               READ_BUF(4);
+> +               len += 4;
+> +               READ32(dummy32); /* pi: we don't use it either */
+> +               READ_BUF(4);
+> +               len += 4;
+> +               READ32(dummy32);
+> +               READ_BUF(dummy32);
+> +               if (dummy32 > NFSD4_MAX_SEC_LABEL_LEN)
+> +                       return nfserr_badlabel;
+> +               len += (XDR_QUADLEN(dummy32) << 2);
+> +               READMEM(buf, dummy32);
+> +               label->data = kzalloc(dummy32 + 1, GFP_KERNEL);
+> +               if (!label->data)
+> +                       return nfserr_jukebox;
+> +               defer_free(argp, kfree, label->data);
+> +               memcpy(label->data, buf, dummy32);
+> +               label->data[len] = '\0';
+> +       }
+> +#endif
+> +
+> which is not quite right.... 
+> 
+> You really don't need to NULL out label->data since kzalloc(dummy32 + 1) was 
+> used and especially with 'len' since only 'dummy32' amount of space was allocated 
+> which is significantly less than the 'len' value. But you do want to set 
+> label->len to dummy32 otherwise nfsd4_setattr() will never call nfsd4_set_nfs4_label() 
+> to process the label. 
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/nfs4pnfsd.c | 16 +++++++++++++++-
- fs/nfsd/nfs4state.c |  1 +
- fs/nfsd/pnfsd.h     |  2 ++
- fs/nfsd/state.h     |  1 +
- 4 files changed, 19 insertions(+), 1 deletion(-)
+Ah-hah, thanks!
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index b147427..50b5208 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -131,11 +131,14 @@ struct sbid_tracker {
- 		return new;
- 	kref_init(&new->ls_ref);
- 	nfsd4_init_stid(&new->ls_stid, clp, NFS4_LAYOUT_STID);
-+	INIT_LIST_HEAD(&new->ls_perclnt);
- 	INIT_LIST_HEAD(&new->ls_perfile);
-+	new->ls_client = clp;
- 	get_nfs4_file(fp);	/* released on destroy_layout_state */
- 	new->ls_file = fp;
- 	new->ls_roc = false;
- 	spin_lock(&layout_lock);
-+	list_add(&new->ls_perclnt, &clp->cl_lo_states);
- 	list_add(&new->ls_perfile, &fp->fi_lo_states);
- 	spin_unlock(&layout_lock);
- 	return new;
-@@ -147,6 +150,17 @@ struct sbid_tracker {
- 	kref_get(&ls->ls_ref);
- }
- 
-+/*
-+ * Note: always called under the layout_lock
-+ */
-+static void
-+unhash_layout_state(struct nfs4_layout_state *ls)
-+{
-+	ASSERT_LAYOUT_LOCKED();
-+	list_del_init(&ls->ls_perclnt);
-+	list_del_init(&ls->ls_perfile);
-+}
-+
- static void
- destroy_layout_state(struct kref *kref)
- {
-@@ -156,7 +170,7 @@ struct sbid_tracker {
- 	nfsd4_unhash_stid(&ls->ls_stid);
- 	if (!list_empty(&ls->ls_perfile)) {
- 		spin_lock(&layout_lock);
--		list_del(&ls->ls_perfile);
-+		unhash_layout_state(ls);
- 		spin_unlock(&layout_lock);
- 	}
- 	put_nfs4_file(ls->ls_file);
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 12eed1d..4f40327 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1322,6 +1322,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
- 	INIT_LIST_HEAD(&clp->cl_delegations);
- #if defined(CONFIG_PNFSD)
- 	INIT_LIST_HEAD(&clp->cl_layouts);
-+	INIT_LIST_HEAD(&clp->cl_lo_states);
- 	INIT_LIST_HEAD(&clp->cl_layoutrecalls);
- #endif /* CONFIG_PNFSD */
- 	INIT_LIST_HEAD(&clp->cl_lru);
-diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
-index 6301c51..454ef23 100644
---- a/fs/nfsd/pnfsd.h
-+++ b/fs/nfsd/pnfsd.h
-@@ -44,6 +44,8 @@
- struct nfs4_layout_state {
- 	struct nfs4_stid	ls_stid; /* must be first field */
- 	struct kref		ls_ref;
-+	struct list_head	ls_perclnt;
-+	struct nfs4_client	*ls_client;
- 	struct list_head	ls_perfile;
- 	struct nfs4_file	*ls_file;
- 	bool			ls_roc;
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index c185025..e026e0d 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -283,6 +283,7 @@ struct nfs4_client {
- 	struct net		*net;
- #if defined(CONFIG_PNFSD)
- 	struct list_head	cl_layouts;	/* outstanding layouts */
-+	struct list_head	cl_lo_states;	/* outstanding layout states */
- 	struct list_head	cl_layoutrecalls; /* outstanding layoutrecall
- 						     callbacks */
- #endif /* CONFIG_PNFSD */
--- 
-1.7.11.7
+> 
+> commit 965ac99ed149eba2f7d2e37abe07919decf8afa5
+> Author: Steve Dickson <steved@redhat.com>
+> Date:   Sat May 11 17:36:21 2013 -0400
+> 
+>     nfsd: Fixed memory corruption in the decoding of labels
+>     
+>     Commit ad86841 caused a memory corruption in
+>     how labels are allocated in nfsd4_decode_fattr()
+>     by using 'len' to set the NULL in label->data.
+>     
+>     Also label->len was not being set which cause
+>     labels not to be process in nfsd4_setattr()
+>     
+>     Signed-off-by: Steve Dickson <steved@redhat.com>
+> 
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 96f07cb..a1a3669 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -409,7 +409,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+>  			return nfserr_jukebox;
+>  		defer_free(argp, kfree, label->data);
+>  		memcpy(label->data, buf, dummy32);
+> -		label->data[len] = '
 
+Applied to my tree.
+
+--b.
