@@ -1,189 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f52.google.com ([209.85.215.52]:55604 "EHLO
-	mail-la0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756924Ab3ETVQn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 May 2013 17:16:43 -0400
-Received: by mail-la0-f52.google.com with SMTP id fo13so6843657lab.39
-        for <linux-nfs@vger.kernel.org>; Mon, 20 May 2013 14:16:42 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1368719808-14584-5-git-send-email-SteveD@redhat.com>
-References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
-	<1368719808-14584-5-git-send-email-SteveD@redhat.com>
-Date: Mon, 20 May 2013 17:16:41 -0400
-Message-ID: <CACLa4pv=pccLD9QkJL=pVWH3wRQ9zD8JRD1B4G5fRNsfzhaz+A@mail.gmail.com>
-Subject: Re: [PATCH 04/13] SELinux: Add new labeling type native labels
-From: Eric Paris <eparis@parisplace.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-wi0-f181.google.com ([209.85.212.181]:35262 "EHLO
+	mail-wi0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754337Ab3EKCox (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:44:53 -0400
+Received: by mail-wi0-f181.google.com with SMTP id ey16so1205922wid.14
+        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:44:52 -0700 (PDT)
+Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
+        by mx.google.com with ESMTPSA id je7sm1170147wic.9.2013.05.10.19.44.51
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=RC4-SHA bits=128/128);
+        Fri, 10 May 2013 19:44:52 -0700 (PDT)
+From: Benny Halevy <bhalevy@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 37/38] pnfsd: don't use clientid in merge_layout
+Date: Sat, 11 May 2013 05:44:48 +0300
+Message-Id: <1368240288-1165-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <518B6377.3000207@tonian.com>
+References: <518B6377.3000207@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 16, 2013 at 11:56 AM, Steve Dickson <SteveD@redhat.com> wrote:
-> From: David Quigley <dpquigl@davequigley.com>
->
-> There currently doesn't exist a labeling type that is adequate for use with
-> labeled NFS. Since NFS doesn't really support xattrs we can't use the use xattr
-> labeling behavior. For this we developed a new labeling type. The native
-> labeling type is used solely by NFS to ensure NFS inodes are labeled at runtime
-> by the NFS code instead of relying on the SELinux security server on the client
-> end.
->
-> Acked-by: James Morris <james.l.morris@oracle.com>
-> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+The layout state is already associated with the clientid
+so there is no need to recheck
 
-Acked-by: Eric Paris <eparis@redhat.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfsd/nfs4pnfsd.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-> ---
->  include/linux/security.h            |  3 +++
->  security/selinux/hooks.c            | 35 ++++++++++++++++++++++++++---------
->  security/selinux/include/security.h |  2 ++
->  security/selinux/ss/policydb.c      |  5 ++++-
->  4 files changed, 35 insertions(+), 10 deletions(-)
->
-> diff --git a/include/linux/security.h b/include/linux/security.h
-> index aa656fb..a585a90 100644
-> --- a/include/linux/security.h
-> +++ b/include/linux/security.h
-> @@ -61,6 +61,9 @@ struct mm_struct;
->  #define SECURITY_CAP_NOAUDIT 0
->  #define SECURITY_CAP_AUDIT 1
->
-> +/* LSM Agnostic defines for sb_set_mnt_opts */
-> +#define SECURITY_LSM_NATIVE_LABELS     1
-> +
->  struct ctl_table;
->  struct audit_krule;
->  struct user_namespace;
-> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-> index f3b5446..6149633 100644
-> --- a/security/selinux/hooks.c
-> +++ b/security/selinux/hooks.c
-> @@ -81,6 +81,7 @@
->  #include <linux/syslog.h>
->  #include <linux/user_namespace.h>
->  #include <linux/export.h>
-> +#include <linux/security.h>
->  #include <linux/msg.h>
->  #include <linux/shm.h>
->
-> @@ -284,13 +285,14 @@ static void superblock_free_security(struct super_block *sb)
->
->  /* The file system's label must be initialized prior to use. */
->
-> -static const char *labeling_behaviors[6] = {
-> +static const char *labeling_behaviors[7] = {
->         "uses xattr",
->         "uses transition SIDs",
->         "uses task SIDs",
->         "uses genfs_contexts",
->         "not configured for labeling",
->         "uses mountpoint labeling",
-> +       "uses native labeling",
->  };
->
->  static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dentry);
-> @@ -678,14 +680,21 @@ static int selinux_set_mnt_opts(struct super_block *sb,
->         if (strcmp(sb->s_type->name, "proc") == 0)
->                 sbsec->flags |= SE_SBPROC;
->
-> -       /* Determine the labeling behavior to use for this filesystem type. */
-> -       rc = security_fs_use((sbsec->flags & SE_SBPROC) ? "proc" : sb->s_type->name, &sbsec->behavior, &sbsec->sid);
-> -       if (rc) {
-> -               printk(KERN_WARNING "%s: security_fs_use(%s) returned %d\n",
-> -                      __func__, sb->s_type->name, rc);
-> -               goto out;
-> +       if (!sbsec->behavior) {
-> +               /*
-> +                * Determine the labeling behavior to use for this
-> +                * filesystem type.
-> +                */
-> +               rc = security_fs_use((sbsec->flags & SE_SBPROC) ?
-> +                                       "proc" : sb->s_type->name,
-> +                                       &sbsec->behavior, &sbsec->sid);
-> +               if (rc) {
-> +                       printk(KERN_WARNING
-> +                               "%s: security_fs_use(%s) returned %d\n",
-> +                                       __func__, sb->s_type->name, rc);
-> +                       goto out;
-> +               }
->         }
-> -
->         /* sets the context of the superblock for the fs being mounted. */
->         if (fscontext_sid) {
->                 rc = may_context_mount_sb_relabel(fscontext_sid, sbsec, cred);
-> @@ -700,6 +709,11 @@ static int selinux_set_mnt_opts(struct super_block *sb,
->          * sets the label used on all file below the mountpoint, and will set
->          * the superblock context if not already set.
->          */
-> +       if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !context_sid) {
-> +               sbsec->behavior = SECURITY_FS_USE_NATIVE;
-> +               *set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
-> +       }
-> +
->         if (context_sid) {
->                 if (!fscontext_sid) {
->                         rc = may_context_mount_sb_relabel(context_sid, sbsec,
-> @@ -731,7 +745,8 @@ static int selinux_set_mnt_opts(struct super_block *sb,
->         }
->
->         if (defcontext_sid) {
-> -               if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
-> +               if (sbsec->behavior != SECURITY_FS_USE_XATTR &&
-> +                       sbsec->behavior != SECURITY_FS_USE_NATIVE) {
->                         rc = -EINVAL;
->                         printk(KERN_WARNING "SELinux: defcontext option is "
->                                "invalid for this filesystem type\n");
-> @@ -1230,6 +1245,8 @@ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dent
->         }
->
->         switch (sbsec->behavior) {
-> +       case SECURITY_FS_USE_NATIVE:
-> +               break;
->         case SECURITY_FS_USE_XATTR:
->                 if (!inode->i_op->getxattr) {
->                         isec->sid = sbsec->def_sid;
-> diff --git a/security/selinux/include/security.h b/security/selinux/include/security.h
-> index 6d38851..8fd8e18 100644
-> --- a/security/selinux/include/security.h
-> +++ b/security/selinux/include/security.h
-> @@ -169,6 +169,8 @@ int security_get_allow_unknown(void);
->  #define SECURITY_FS_USE_GENFS          4 /* use the genfs support */
->  #define SECURITY_FS_USE_NONE           5 /* no labeling support */
->  #define SECURITY_FS_USE_MNTPOINT       6 /* use mountpoint labeling */
-> +#define SECURITY_FS_USE_NATIVE         7 /* use native label support */
-> +#define SECURITY_FS_USE_MAX            7 /* Highest SECURITY_FS_USE_XXX */
->
->  int security_fs_use(const char *fstype, unsigned int *behavior,
->         u32 *sid);
-> diff --git a/security/selinux/ss/policydb.c b/security/selinux/ss/policydb.c
-> index 9cd9b7c..c8adde3 100644
-> --- a/security/selinux/ss/policydb.c
-> +++ b/security/selinux/ss/policydb.c
-> @@ -2168,7 +2168,10 @@ static int ocontext_read(struct policydb *p, struct policydb_compat_info *info,
->
->                                 rc = -EINVAL;
->                                 c->v.behavior = le32_to_cpu(buf[0]);
-> -                               if (c->v.behavior > SECURITY_FS_USE_NONE)
-> +                               /* Determined at runtime, not in policy DB. */
-> +                               if (c->v.behavior == SECURITY_FS_USE_MNTPOINT)
-> +                                       goto out;
-> +                               if (c->v.behavior > SECURITY_FS_USE_MAX)
->                                         goto out;
->
->                                 rc = -ENOMEM;
-> --
-> 1.8.1.4
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-security-module" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index 45111fe..0c05a22 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -626,7 +626,6 @@ struct super_block *
+ 	spin_lock(&layout_lock);
+ 	list_for_each_entry (lp, &ls->ls_layouts, lo_perstate)
+ 		if (lp->lo_seg.layout_type == seg->layout_type &&
+-		    lp->lo_seg.clientid == seg->clientid &&
+ 		    lp->lo_seg.iomode == seg->iomode &&
+ 		    (ret = lo_seg_mergeable(&lp->lo_seg, seg))) {
+ 			extend_layout(&lp->lo_seg, seg);
+-- 
+1.7.11.7
+
