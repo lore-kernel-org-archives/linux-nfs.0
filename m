@@ -1,47 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f179.google.com ([209.85.223.179]:33990 "EHLO
-	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755238Ab3EPCAN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 22:00:13 -0400
-Received: by mail-ie0-f179.google.com with SMTP id c13so5355601ieb.10
-        for <linux-nfs@vger.kernel.org>; Wed, 15 May 2013 19:00:13 -0700 (PDT)
-Subject: [PATCH] NFS: Fix SETCLIENTID fallback if GSS is not available
-To: trond.myklebust@netapp.com
-From: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 15 May 2013 22:00:10 -0400
-Message-ID: <20130516015848.34251.51432.stgit@seurat.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-we0-f177.google.com ([74.125.82.177]:65246 "EHLO
+	mail-we0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756664Ab3EKCoq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:44:46 -0400
+Received: by mail-we0-f177.google.com with SMTP id q58so4589109wes.22
+        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:44:45 -0700 (PDT)
+Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
+        by mx.google.com with ESMTPSA id bs20sm1270112wib.0.2013.05.10.19.44.44
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=RC4-SHA bits=128/128);
+        Fri, 10 May 2013 19:44:45 -0700 (PDT)
+From: Benny Halevy <bhalevy@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 35/38] pnfsd: use layout stateid for is_layout_recalled
+Date: Sat, 11 May 2013 05:44:40 +0300
+Message-Id: <1368240280-1083-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <518B6377.3000207@tonian.com>
+References: <518B6377.3000207@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 79d852bf "NFS: Retry SETCLIENTID with AUTH_SYS instead of
-AUTH_NONE" did not take into account commit 23631227 "NFSv4: Fix the
-fallback to AUTH_NULL if krb5i is not available".
+rather than clientid
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 ---
+ fs/nfsd/nfs4pnfsd.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-Trond -
-
-If we end up keeping the krb5i -> sys logic, I think this change is
-also needed.  Build-tested only.
-
- fs/nfs/nfs4client.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 947b0c9..4cbad5d 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -203,7 +203,7 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
- 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
- 	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
- 	if (error == -EINVAL)
--		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_NULL);
-+		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX);
- 	if (error < 0)
- 		goto error;
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index 0b256f5..0ef351d 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -548,10 +548,10 @@ struct super_block *
+  */
+ static int
+ is_layout_recalled(struct nfs4_client *clp,
+-		   struct svc_fh *current_fh,
+-		   struct nfsd4_layout_seg *seg)
++		   struct nfsd4_pnfs_layoutget *lgp)
+ {
+ 	struct nfs4_layoutrecall *clr;
++	struct nfsd4_layout_seg *seg = &lgp->lg_seg;
  
+ 	spin_lock(&layout_lock);
+ 	list_for_each_entry (clr, &clp->cl_layoutrecalls, clr_perclnt) {
+@@ -560,13 +560,13 @@ struct super_block *
+ 		if (clr->cb.cbl_recall_type == RETURN_ALL)
+ 			goto found;
+ 		if (clr->cb.cbl_recall_type == RETURN_FSID) {
+-			if (same_fsid(&clr->cb.cbl_fsid, current_fh))
++			if (same_fsid(&clr->cb.cbl_fsid, lgp->lg_fhp))
+ 				goto found;
+ 			else
+ 				continue;
+ 		}
+ 		BUG_ON(clr->cb.cbl_recall_type != RETURN_FILE);
+-		if (clr->cb.cbl_seg.clientid == seg->clientid &&
++		if (same_stid((stateid_t *)&clr->cb.cbl_sid, &lgp->lg_sid) &&
+ 		    lo_seg_overlapping(&clr->cb.cbl_seg, seg))
+ 			goto found;
+ 	}
+@@ -704,7 +704,7 @@ struct super_block *
+ 	if (nfserr)
+ 		goto out_unlock;
+ 
+-	if (is_layout_recalled(clp, lgp->lg_fhp, &lgp->lg_seg)) {
++	if (is_layout_recalled(clp, lgp)) {
+ 		nfserr = nfserr_recallconflict;
+ 		goto out_unlock;
+ 	}
+-- 
+1.7.11.7
 
