@@ -1,40 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:24956 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751677Ab3EUSxV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 May 2013 14:53:21 -0400
-Message-ID: <519BC29E.6080803@RedHat.com>
-Date: Tue, 21 May 2013 14:53:18 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 07/13] NFSv4: Introduce new label structure
-References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>  <1368719808-14584-8-git-send-email-SteveD@redhat.com> <1369077151.6115.22.camel@leira.trondhjem.org>
-In-Reply-To: <1369077151.6115.22.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-wg0-f42.google.com ([74.125.82.42]:48487 "EHLO
+	mail-wg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756416Ab3EKCnv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:43:51 -0400
+Received: by mail-wg0-f42.google.com with SMTP id j13so1246557wgh.5
+        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:43:49 -0700 (PDT)
+Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
+        by mx.google.com with ESMTPSA id q13sm1342120wie.8.2013.05.10.19.43.48
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=RC4-SHA bits=128/128);
+        Fri, 10 May 2013 19:43:49 -0700 (PDT)
+From: Benny Halevy <bhalevy@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 20/38] SQUASHME: pnfsd: merge_layout needs to acquire the layout_lock for traversing fi_layouts
+Date: Sat, 11 May 2013 05:43:45 +0300
+Message-Id: <1368240225-32494-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <518B6377.3000207@tonian.com>
+References: <518B6377.3000207@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfsd/nfs4pnfsd.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index 48104fb..0bde7b7 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -622,6 +622,7 @@ struct super_block *
+ {
+ 	struct nfs4_layout *lp = NULL;
+ 
++	spin_lock(&layout_lock);
+ 	list_for_each_entry (lp, &fp->fi_layouts, lo_perfile)
+ 		if (lp->lo_seg.layout_type == seg->layout_type &&
+ 		    lp->lo_seg.clientid == seg->clientid &&
+@@ -630,6 +631,7 @@ struct super_block *
+ 			extend_layout(&lp->lo_seg, seg);
+ 			break;
+ 		}
++	spin_unlock(&layout_lock);
+ 
+ 	return lp;
+ }
+-- 
+1.7.11.7
 
-On 20/05/13 15:12, Myklebust, Trond wrote:
->> diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
->> > index 788128e..78d25b5 100644
->> > --- a/include/uapi/linux/nfs4.h
->> > +++ b/include/uapi/linux/nfs4.h
->> > @@ -25,7 +25,7 @@
->> >  #define NFS4_MAXNAMLEN		NAME_MAX
->> >  #define NFS4_OPAQUE_LIMIT	1024
->> >  #define NFS4_MAX_SESSIONID_LEN	16
->> > -
->> > +#define NFS4_MAXLABELLEN	2048 
-> Why does this belong in the uapi?
-> 
-Where do you want it?
-
-steved.
