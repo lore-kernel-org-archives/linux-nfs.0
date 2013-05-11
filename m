@@ -1,64 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:51325 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758243Ab3EOQYf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 12:24:35 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/2] [RFC] Maybe avoid gssd upcall timeout
-Date: Wed, 15 May 2013 16:24:33 +0000
-Message-ID: <1368635073.3568.7.camel@leira.trondhjem.org>
-References: <20130513161515.1942.845.stgit@seurat.1015granger.net>
-	 <1368634683.3568.5.camel@leira.trondhjem.org>
-	 <13B2D107-E7C3-4AF8-B205-7BF1304DFF25@oracle.com>
-In-Reply-To: <13B2D107-E7C3-4AF8-B205-7BF1304DFF25@oracle.com>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+Received: from mail-wi0-f180.google.com ([209.85.212.180]:65513 "EHLO
+	mail-wi0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754407Ab3EKCnU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:43:20 -0400
+Received: by mail-wi0-f180.google.com with SMTP id h11so1206034wiv.13
+        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:43:19 -0700 (PDT)
+Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
+        by mx.google.com with ESMTPSA id ge7sm1365141wib.6.2013.05.10.19.43.18
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=RC4-SHA bits=128/128);
+        Fri, 10 May 2013 19:43:18 -0700 (PDT)
+From: Benny Halevy <bhalevy@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 12/38] Revert "pnfsd: decode getdeviceinfo notify types."
+Date: Sat, 11 May 2013 05:43:14 +0300
+Message-Id: <1368240194-32187-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <518B6377.3000207@tonian.com>
+References: <518B6377.3000207@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-05-15 at 12:22 -0400, Chuck Lever wrote:
-> On May 15, 2013, at 12:18 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-> 
-> > On Mon, 2013-05-13 at 12:25 -0400, Chuck Lever wrote:
-> >> Hi-
-> >> 
-> >> Here's a stab at addressing the 15 second wait for some 3.10 sec=sys
-> >> mounts where the client is not running rpc.gssd.
-> >> 
-> >> After reverting the "use krb5i for SETCLIENTID" patch, I've added
-> >> the AUTH_SYS fallback in the EACCES case in
-> >> nfs4_discover_server_trunking().  I'm not sure whether we need to
-> >> supplement what's there now, or replace it.
-> >> 
-> >> "case -ENOKEY:" is added so the kernel will recognize that when gssd
-> >> is changed to return that instead of EACCES in this case.  If the
-> >> second patch is appled to 3.7 stable and following, it might be a way
-> >> to address the same regression in older kernels.
-> >> 
-> >> I've been focused on another bug this week, so this has seen very
-> >> light testing only.  Looking for comments.
-> > 
-> > I'd like to propose a different approach: we can set up rpc_pipefs files
-> > clnt/gssd and clnt/krb5 as "honeypots" that rpc.gssd will connect to,
-> > but that won't do any upcalls. When gssd connects, we set a
-> > per-rpc_net_ns variable that tells us 'gssd' is up and running. That
-> > variable only gets cleared if we see a timeout.
-> 
-> Note my solution is a short term gap filler.  Bruce and Jeff seem to want something that can fix current kernels without requiring user space changes, and I need something that will allow sec=krb5 mounts to work without a client keytab on kernels since 3.7.
-> 
-> I see your proposal as a long term fix, and not something that we can expect to apply without deploying gssd support at the same time.
+This reverts commit 367bfe8e26e0753cad8eb6855f4254f803720c9c.
+---
+ fs/nfsd/nfs4xdr.c | 8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
 
-How does it require gssd modifications?
-
-The whole point is that it requires kernel-only changes, and only minor
-changes at that...
-
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index a552202..596a2a5 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1474,12 +1474,8 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
+ 	READ32(gdev->gd_layout_type);
+ 	READ32(gdev->gd_maxcount);
+ 	READ32(num);
+-	if (num) {
+-		READ_BUF(4);
+-		READ32(gdev->gd_notify_types);
+-	} else {
+-		gdev->gd_notify_types = 0;
+-	}
++	if (num)
++		READ_BUF(4); /* TODO: for now, just skip notify_types */
+ 
+ 	DECODE_TAIL;
+ }
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.7.11.7
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
