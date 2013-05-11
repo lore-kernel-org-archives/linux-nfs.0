@@ -1,115 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:4891 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:37980 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966427Ab3E2UFa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 May 2013 16:05:30 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/5] NFSv4: Refactor _nfs4_open_and_get_state to set ctx->state
-Date: Wed, 29 May 2013 16:05:23 -0400
-Message-Id: <1369857925-42068-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1369857925-42068-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1369857925-42068-1-git-send-email-Trond.Myklebust@netapp.com>
- <1369857925-42068-2-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752467Ab3EKSn5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 11 May 2013 14:43:57 -0400
+Date: Sat, 11 May 2013 14:43:35 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Dan Carpenter <dan.carpenter@oracle.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Simo Sorce <simo@redhat.com>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        Wei Yongjun <yongjun_wei@trendmicro.com.cn>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, kernel-janitors@vger.kernel.org
+Subject: Re: [patch] svcauth_gss: fix error code in use_gss_proxy()
+Message-ID: <20130511184335.GD15765@fieldses.org>
+References: <20130511161349.GA20451@elgon.mountain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130511161349.GA20451@elgon.mountain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of having the callers set ctx->state, do it inside
-_nfs4_open_and_get_state.
+On Sat, May 11, 2013 at 07:13:49PM +0300, Dan Carpenter wrote:
+> This should return zero on success and -EBUSY on error so the type
+> needs to be int instead of bool.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c | 17 +++++++----------
- 1 file changed, 7 insertions(+), 10 deletions(-)
+Oops, you're right--thanks.  Applying.--b.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 9fecb2b..57df6c9 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1960,7 +1960,7 @@ static inline void nfs4_exclusive_attrset(struct nfs4_opendata *opendata, struct
- static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
- 		fmode_t fmode,
- 		int flags,
--		struct nfs4_state **res)
-+		struct nfs_open_context *ctx)
- {
- 	struct nfs4_state_owner *sp = opendata->owner;
- 	struct nfs_server *server = sp->so_server;
-@@ -1985,9 +1985,9 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
- 	if (ret != 0)
- 		goto out;
- 
-+	ctx->state = state;
- 	if (read_seqcount_retry(&sp->so_reclaim_seqcount, seq))
- 		nfs4_schedule_stateid_recovery(server, state);
--	*res = state;
- out:
- 	return ret;
- }
-@@ -1998,8 +1998,7 @@ out:
- static int _nfs4_do_open(struct inode *dir,
- 			struct nfs_open_context *ctx,
- 			int flags,
--			struct iattr *sattr,
--			struct nfs4_state **res)
-+			struct iattr *sattr)
- {
- 	struct nfs4_state_owner  *sp;
- 	struct nfs4_state     *state = NULL;
-@@ -2041,9 +2040,10 @@ static int _nfs4_do_open(struct inode *dir,
- 	if (dentry->d_inode != NULL)
- 		opendata->state = nfs4_get_open_state(dentry->d_inode, sp);
- 
--	status = _nfs4_open_and_get_state(opendata, fmode, flags, &state);
-+	status = _nfs4_open_and_get_state(opendata, fmode, flags, ctx);
- 	if (status != 0)
- 		goto err_opendata_put;
-+	state = ctx->state;
- 
- 	if ((opendata->o_arg.open_flags & O_EXCL) &&
- 	    (opendata->o_arg.createmode != NFS4_CREATE_GUARDED)) {
-@@ -2066,7 +2066,6 @@ static int _nfs4_do_open(struct inode *dir,
- 
- 	nfs4_opendata_put(opendata);
- 	nfs4_put_state_owner(sp);
--	*res = state;
- 	return 0;
- err_opendata_put:
- 	kfree(opendata->f_attr.mdsthreshold);
-@@ -2074,7 +2073,6 @@ err_opendata_put:
- err_put_state_owner:
- 	nfs4_put_state_owner(sp);
- out_err:
--	*res = NULL;
- 	return status;
- }
- 
-@@ -2090,7 +2088,8 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
- 	int status;
- 
- 	do {
--		status = _nfs4_do_open(dir, ctx, flags, sattr, &res);
-+		status = _nfs4_do_open(dir, ctx, flags, sattr);
-+		res = ctx->state;
- 		if (status == 0)
- 			break;
- 		/* NOTE: BAD_SEQID means the server and client disagree about the
-@@ -2445,7 +2444,6 @@ nfs4_atomic_open(struct inode *dir, struct nfs_open_context *ctx, int open_flags
- 	state = nfs4_do_open(dir, ctx, open_flags, attr);
- 	if (IS_ERR(state))
- 		return ERR_CAST(state);
--	ctx->state = state;
- 	return igrab(state->inode);
- }
- 
-@@ -3059,7 +3057,6 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
- 	}
- 	d_add(dentry, igrab(state->inode));
- 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
--	ctx->state = state;
- out:
- 	put_nfs_open_context(ctx);
- 	return status;
--- 
-1.8.1.4
-
+> 
+> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+> 
+> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+> index 871c73c..2c6a1ec 100644
+> --- a/net/sunrpc/auth_gss/svcauth_gss.c
+> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+> @@ -1287,7 +1287,7 @@ static bool use_gss_proxy(struct net *net)
+>  
+>  #ifdef CONFIG_PROC_FS
+>  
+> -static bool set_gss_proxy(struct net *net, int type)
+> +static int set_gss_proxy(struct net *net, int type)
+>  {
+>  	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+>  	int ret = 0;
