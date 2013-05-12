@@ -1,118 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:18978 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:21081 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755063Ab3EMTM4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 May 2013 15:12:56 -0400
+	id S1750855Ab3ELSUX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 12 May 2013 14:20:23 -0400
+Message-ID: <518FDD65.5080800@RedHat.com>
+Date: Sun, 12 May 2013 14:20:21 -0400
 From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 12/13] NFS: Extend NFS xattr handlers to accept the security namespace
-Date: Mon, 13 May 2013 15:11:56 -0400
-Message-Id: <1368472317-5602-13-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1368472317-5602-1-git-send-email-SteveD@redhat.com>
-References: <1368472317-5602-1-git-send-email-SteveD@redhat.com>
+MIME-Version: 1.0
+To: Doug Nazar <nazard.michi@gmail.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Fix gssd ignore machine credentials for root
+References: <518E316A.8050002@gmail.com>
+In-Reply-To: <518E316A.8050002@gmail.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+Hi
 
-The existing NFSv4 xattr handlers do not accept xattr calls to the security
-namespace. This patch extends these handlers to accept xattrs from the security
-namespace in addition to the default NFSv4 ACL namespace.
+On 11/05/13 07:54, Doug Nazar wrote:
+> Commit 1c787f14 [gssd: scan for DIR: ccaches, too] changed the default prefix for the credential cache files. Update the check to ignore the machine credential file when running with -n (root ignores machine credentials).
+Thank you very much for point this bug out but could you please
+resubmit the patch using the proper Signed-off-by format define section 
+12 of https://www.kernel.org/doc/Documentation/SubmittingPatches
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- fs/nfs/nfs4proc.c   | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
- security/security.c |  1 +
- 2 files changed, 51 insertions(+)
+Sections 1, 7, 11, 15 are also some what important.... Thanks! 
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index bb79b05..b67de39 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5658,6 +5658,53 @@ static size_t nfs4_xattr_list_nfs4_acl(struct dentry *dentry, char *list,
- 	return len;
- }
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+static inline int nfs4_server_supports_labels(struct nfs_server *server)
-+{
-+	return server->caps & NFS_CAP_SECURITY_LABEL;
-+}
-+
-+static int nfs4_xattr_set_nfs4_label(struct dentry *dentry, const char *key,
-+				   const void *buf, size_t buflen,
-+				   int flags, int type)
-+{
-+	if (security_ismaclabel(key))
-+		return nfs4_set_security_label(dentry, buf, buflen);
-+
-+	return -EOPNOTSUPP;
-+}
-+
-+static int nfs4_xattr_get_nfs4_label(struct dentry *dentry, const char *key,
-+				   void *buf, size_t buflen, int type)
-+{
-+	if (security_ismaclabel(key))
-+		return nfs4_get_security_label(dentry->d_inode, buf, buflen);
-+	return -EOPNOTSUPP;
-+}
-+
-+static size_t nfs4_xattr_list_nfs4_label(struct dentry *dentry, char *list,
-+				       size_t list_len, const char *name,
-+				       size_t name_len, int type)
-+{
-+	size_t len = 0;
-+
-+	if (nfs_server_capable(dentry->d_inode, NFS_CAP_SECURITY_LABEL)) {
-+		len = security_inode_listsecurity(dentry->d_inode, NULL, 0);
-+		if (list && len <= list_len)
-+			security_inode_listsecurity(dentry->d_inode, list, len);
-+	}
-+	return len;
-+}
-+
-+static const struct xattr_handler nfs4_xattr_nfs4_label_handler = {
-+	.prefix = XATTR_SECURITY_PREFIX,
-+	.list	= nfs4_xattr_list_nfs4_label,
-+	.get	= nfs4_xattr_get_nfs4_label,
-+	.set	= nfs4_xattr_set_nfs4_label,
-+};
-+#endif
-+
-+
- /*
-  * nfs_fhget will use either the mounted_on_fileid or the fileid
-  */
-@@ -7486,6 +7533,9 @@ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
- 
- const struct xattr_handler *nfs4_xattr_handlers[] = {
- 	&nfs4_xattr_nfs4_acl_handler,
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	&nfs4_xattr_nfs4_label_handler,
-+#endif
- 	NULL
- };
- 
-diff --git a/security/security.c b/security/security.c
-index 8d0b9a7..94b35ae 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -660,6 +660,7 @@ int security_inode_listsecurity(struct inode *inode, char *buffer, size_t buffer
- 		return 0;
- 	return security_ops->inode_listsecurity(inode, buffer, buffer_size);
- }
-+EXPORT_SYMBOL(security_inode_listsecurity);
- 
- void security_inode_getsecid(const struct inode *inode, u32 *secid)
- {
--- 
-1.8.1.4
-
+steved.
