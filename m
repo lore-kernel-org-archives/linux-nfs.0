@@ -1,114 +1,174 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:22887 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:8569 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755685Ab3FADIL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 31 May 2013 23:08:11 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
-Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
-        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v1 05/11] locks: encapsulate the fl_link list handling
-Date: Fri, 31 May 2013 23:07:28 -0400
-Message-Id: <1370056054-25449-6-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
-References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
+	id S1754850Ab3EMTMu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 May 2013 15:12:50 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 04/13] SELinux: Add new labeling type native labels
+Date: Mon, 13 May 2013 15:11:48 -0400
+Message-Id: <1368472317-5602-5-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1368472317-5602-1-git-send-email-SteveD@redhat.com>
+References: <1368472317-5602-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move the fl_link list handling routines into a separate set of helpers.
-Also move the global list handling out of locks_insert_block, and into
-the caller that ends up triggering it as that allows us to eliminate the
-IS_POSIX check there.
+From: David Quigley <dpquigl@davequigley.com>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+There currently doesn't exist a labeling type that is adequate for use with
+labeled NFS. Since NFS doesn't really support xattrs we can't use the use xattr
+labeling behavior. For this we developed a new labeling type. The native
+labeling type is used solely by NFS to ensure NFS inodes are labeled at runtime
+by the NFS code instead of relying on the SELinux security server on the client
+end.
+
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 ---
- fs/locks.c |   34 +++++++++++++++++++++++++++++-----
- 1 files changed, 29 insertions(+), 5 deletions(-)
+ include/linux/security.h            |  3 +++
+ security/selinux/hooks.c            | 35 ++++++++++++++++++++++++++---------
+ security/selinux/include/security.h |  2 ++
+ security/selinux/ss/policydb.c      |  5 ++++-
+ 4 files changed, 35 insertions(+), 10 deletions(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index cef0e04..caca466 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -494,13 +494,38 @@ static int posix_same_owner(struct file_lock *fl1, struct file_lock *fl2)
- 	return fl1->fl_owner == fl2->fl_owner;
- }
+diff --git a/include/linux/security.h b/include/linux/security.h
+index aa656fb..a585a90 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -61,6 +61,9 @@ struct mm_struct;
+ #define SECURITY_CAP_NOAUDIT 0
+ #define SECURITY_CAP_AUDIT 1
  
-+/* Remove a blocker or lock from one of the global lists */
-+static inline void
-+locks_insert_global_blocked(struct file_lock *waiter)
-+{
-+	list_add(&waiter->fl_link, &blocked_list);
-+}
++/* LSM Agnostic defines for sb_set_mnt_opts */
++#define SECURITY_LSM_NATIVE_LABELS	1
 +
-+static inline void
-+locks_delete_global_blocked(struct file_lock *waiter)
-+{
-+	list_del_init(&waiter->fl_link);
-+}
+ struct ctl_table;
+ struct audit_krule;
+ struct user_namespace;
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index f3b5446..6149633 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -81,6 +81,7 @@
+ #include <linux/syslog.h>
+ #include <linux/user_namespace.h>
+ #include <linux/export.h>
++#include <linux/security.h>
+ #include <linux/msg.h>
+ #include <linux/shm.h>
+ 
+@@ -284,13 +285,14 @@ static void superblock_free_security(struct super_block *sb)
+ 
+ /* The file system's label must be initialized prior to use. */
+ 
+-static const char *labeling_behaviors[6] = {
++static const char *labeling_behaviors[7] = {
+ 	"uses xattr",
+ 	"uses transition SIDs",
+ 	"uses task SIDs",
+ 	"uses genfs_contexts",
+ 	"not configured for labeling",
+ 	"uses mountpoint labeling",
++	"uses native labeling",
+ };
+ 
+ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dentry);
+@@ -678,14 +680,21 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	if (strcmp(sb->s_type->name, "proc") == 0)
+ 		sbsec->flags |= SE_SBPROC;
+ 
+-	/* Determine the labeling behavior to use for this filesystem type. */
+-	rc = security_fs_use((sbsec->flags & SE_SBPROC) ? "proc" : sb->s_type->name, &sbsec->behavior, &sbsec->sid);
+-	if (rc) {
+-		printk(KERN_WARNING "%s: security_fs_use(%s) returned %d\n",
+-		       __func__, sb->s_type->name, rc);
+-		goto out;
++	if (!sbsec->behavior) {
++		/*
++		 * Determine the labeling behavior to use for this
++		 * filesystem type.
++		 */
++		rc = security_fs_use((sbsec->flags & SE_SBPROC) ?
++					"proc" : sb->s_type->name,
++					&sbsec->behavior, &sbsec->sid);
++		if (rc) {
++			printk(KERN_WARNING
++				"%s: security_fs_use(%s) returned %d\n",
++					__func__, sb->s_type->name, rc);
++			goto out;
++		}
+ 	}
+-
+ 	/* sets the context of the superblock for the fs being mounted. */
+ 	if (fscontext_sid) {
+ 		rc = may_context_mount_sb_relabel(fscontext_sid, sbsec, cred);
+@@ -700,6 +709,11 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	 * sets the label used on all file below the mountpoint, and will set
+ 	 * the superblock context if not already set.
+ 	 */
++	if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !context_sid) {
++		sbsec->behavior = SECURITY_FS_USE_NATIVE;
++		*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
++	}
 +
-+static inline void
-+locks_insert_global_locks(struct file_lock *waiter)
-+{
-+	list_add_tail(&waiter->fl_link, &file_lock_list);
-+}
-+
-+static inline void
-+locks_delete_global_locks(struct file_lock *waiter)
-+{
-+	list_del_init(&waiter->fl_link);
-+}
-+
- /* Remove waiter from blocker's block list.
-  * When blocker ends up pointing to itself then the list is empty.
-  */
- static void __locks_delete_block(struct file_lock *waiter)
- {
- 	list_del_init(&waiter->fl_block);
--	list_del_init(&waiter->fl_link);
-+	locks_delete_global_blocked(waiter);
- 	waiter->fl_next = NULL;
- }
+ 	if (context_sid) {
+ 		if (!fscontext_sid) {
+ 			rc = may_context_mount_sb_relabel(context_sid, sbsec,
+@@ -731,7 +745,8 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	}
  
-@@ -524,8 +549,6 @@ static void locks_insert_block(struct file_lock *blocker,
- 	BUG_ON(!list_empty(&waiter->fl_block));
- 	list_add_tail(&waiter->fl_block, &blocker->fl_block);
- 	waiter->fl_next = blocker;
--	if (IS_POSIX(blocker))
--		list_add(&waiter->fl_link, &blocked_list);
- }
+ 	if (defcontext_sid) {
+-		if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
++		if (sbsec->behavior != SECURITY_FS_USE_XATTR &&
++			sbsec->behavior != SECURITY_FS_USE_NATIVE) {
+ 			rc = -EINVAL;
+ 			printk(KERN_WARNING "SELinux: defcontext option is "
+ 			       "invalid for this filesystem type\n");
+@@ -1230,6 +1245,8 @@ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dent
+ 	}
  
- /* Wake up processes blocked waiting for blocker.
-@@ -552,7 +575,7 @@ static void locks_wake_up_blocks(struct file_lock *blocker)
-  */
- static void locks_insert_lock(struct file_lock **pos, struct file_lock *fl)
- {
--	list_add(&fl->fl_link, &file_lock_list);
-+	locks_insert_global_locks(fl);
+ 	switch (sbsec->behavior) {
++	case SECURITY_FS_USE_NATIVE:
++		break;
+ 	case SECURITY_FS_USE_XATTR:
+ 		if (!inode->i_op->getxattr) {
+ 			isec->sid = sbsec->def_sid;
+diff --git a/security/selinux/include/security.h b/security/selinux/include/security.h
+index 6d38851..8fd8e18 100644
+--- a/security/selinux/include/security.h
++++ b/security/selinux/include/security.h
+@@ -169,6 +169,8 @@ int security_get_allow_unknown(void);
+ #define SECURITY_FS_USE_GENFS		4 /* use the genfs support */
+ #define SECURITY_FS_USE_NONE		5 /* no labeling support */
+ #define SECURITY_FS_USE_MNTPOINT	6 /* use mountpoint labeling */
++#define SECURITY_FS_USE_NATIVE		7 /* use native label support */
++#define SECURITY_FS_USE_MAX		7 /* Highest SECURITY_FS_USE_XXX */
  
- 	fl->fl_nspid = get_pid(task_tgid(current));
+ int security_fs_use(const char *fstype, unsigned int *behavior,
+ 	u32 *sid);
+diff --git a/security/selinux/ss/policydb.c b/security/selinux/ss/policydb.c
+index 9cd9b7c..c8adde3 100644
+--- a/security/selinux/ss/policydb.c
++++ b/security/selinux/ss/policydb.c
+@@ -2168,7 +2168,10 @@ static int ocontext_read(struct policydb *p, struct policydb_compat_info *info,
  
-@@ -573,7 +596,7 @@ static void locks_delete_lock(struct file_lock **thisfl_p)
+ 				rc = -EINVAL;
+ 				c->v.behavior = le32_to_cpu(buf[0]);
+-				if (c->v.behavior > SECURITY_FS_USE_NONE)
++				/* Determined at runtime, not in policy DB. */
++				if (c->v.behavior == SECURITY_FS_USE_MNTPOINT)
++					goto out;
++				if (c->v.behavior > SECURITY_FS_USE_MAX)
+ 					goto out;
  
- 	*thisfl_p = fl->fl_next;
- 	fl->fl_next = NULL;
--	list_del_init(&fl->fl_link);
-+	locks_delete_global_locks(fl);
- 
- 	if (fl->fl_nspid) {
- 		put_pid(fl->fl_nspid);
-@@ -839,6 +862,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 				goto out;
- 			error = FILE_LOCK_DEFERRED;
- 			locks_insert_block(fl, request);
-+			locks_insert_global_blocked(request);
- 			goto out;
-   		}
-   	}
+ 				rc = -ENOMEM;
 -- 
-1.7.1
+1.8.1.4
 
