@@ -1,122 +1,192 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f181.google.com ([209.85.212.181]:48228 "EHLO
-	mail-wi0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756823Ab3EKCnY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:43:24 -0400
-Received: by mail-wi0-f181.google.com with SMTP id ey16so1208820wid.2
-        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:43:23 -0700 (PDT)
-Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
-        by mx.google.com with ESMTPSA id je7sm1166950wic.9.2013.05.10.19.43.22
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 10 May 2013 19:43:22 -0700 (PDT)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 13/38] Revert "pnfsd: set_device_notify"
-Date: Sat, 11 May 2013 05:43:18 +0300
-Message-Id: <1368240198-32225-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <518B6377.3000207@tonian.com>
-References: <518B6377.3000207@tonian.com>
+Received: from mx1.redhat.com ([209.132.183.28]:19516 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755015Ab3EMTMx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 May 2013 15:12:53 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 08/13] NFSv4: Extend fattr bitmaps to support all 3 words
+Date: Mon, 13 May 2013 15:11:52 -0400
+Message-Id: <1368472317-5602-9-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1368472317-5602-1-git-send-email-SteveD@redhat.com>
+References: <1368472317-5602-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This reverts commit e31921a7fa0a13119e359b8ec200fb4047c0527f.
----
- fs/nfsd/nfs4xdr.c               | 37 +++++++++++++------------------------
- include/linux/nfsd/nfsd4_pnfs.h | 10 ----------
- 2 files changed, 13 insertions(+), 34 deletions(-)
+From: David Quigley <dpquigl@davequigley.com>
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 596a2a5..b157eae 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3766,8 +3766,15 @@ static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp,
+The fattr handling bitmap code only uses the first two fattr words sofar. This
+patch adds the 3rd word to being sent but doesn't populate it yet.
+
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ fs/nfs/nfs4_fs.h          |  6 +++---
+ fs/nfs/nfs4proc.c         | 10 +++++-----
+ fs/nfs/nfs4xdr.c          | 20 ++++++++++++--------
+ fs/nfs/super.c            |  1 +
+ include/linux/nfs_fs_sb.h |  2 +-
+ 5 files changed, 22 insertions(+), 17 deletions(-)
+
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index a1dd768..283fd28 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -303,10 +303,10 @@ is_ds_client(struct nfs_client *clp)
+ extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
  
- 	nfserr = sb->s_pnfs_op->get_device_info(sb, &xdr, gdev->gd_layout_type,
- 						&gdev->gd_devid);
--	if (nfserr)
--		goto err;
-+	if (nfserr) {
-+		/* Rewind to the beginning */
-+		p = p_in;
-+		ADJUST_ARGS();
-+		if (nfserr == -ETOOSMALL)
-+			goto toosmall;
-+		printk(KERN_ERR "%s: export ERROR %d\n", __func__, nfserr);
-+		goto out;
-+	}
+ extern const u32 nfs4_fattr_bitmap[3];
+-extern const u32 nfs4_statfs_bitmap[2];
+-extern const u32 nfs4_pathconf_bitmap[2];
++extern const u32 nfs4_statfs_bitmap[3];
++extern const u32 nfs4_pathconf_bitmap[3];
+ extern const u32 nfs4_fsinfo_bitmap[3];
+-extern const u32 nfs4_fs_locations_bitmap[2];
++extern const u32 nfs4_fs_locations_bitmap[3];
  
- 	/* The file system should never write 0 bytes without
- 	 * returning an error
-@@ -3782,21 +3789,11 @@ static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp,
- 	ADJUST_ARGS();
+ void nfs4_free_client(struct nfs_client *);
  
- handle_notifications:
--	/* Encode supported device notifications */
-+	/* Encode supported device notifications.
-+	 * Note: Currently none are supported.
-+	 */
- 	RESERVE_SPACE(4);
--	if (sb->s_pnfs_op->set_device_notify) {
--		struct pnfs_devnotify_arg dn_args;
--
--		dn_args.dn_layout_type = gdev->gd_layout_type;
--		dn_args.dn_devid = gdev->gd_devid;
--		dn_args.dn_notify_types = gdev->gd_notify_types;
--		nfserr = sb->s_pnfs_op->set_device_notify(sb, &dn_args);
--		if (nfserr)
--			goto err;
--		WRITE32(dn_args.dn_notify_types);
--	} else {
--		WRITE32(0);
--	}
-+	WRITE32(0);
- 	ADJUST_ARGS();
- 
- out:
-@@ -3807,14 +3804,6 @@ static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp,
- 	WRITE32((p_save ? (xdr.p - p_save) * 4 : 0) + type_notify_len);
- 	ADJUST_ARGS();
- 	goto out;
--err:
--	/* Rewind to the beginning */
--	p = p_in;
--	ADJUST_ARGS();
--	if (nfserr == -ETOOSMALL)
--		goto toosmall;
--	printk(KERN_ERR "%s: export ERROR %d\n", __func__, nfserr);
--	goto out;
- }
- 
- static __be32
-diff --git a/include/linux/nfsd/nfsd4_pnfs.h b/include/linux/nfsd/nfsd4_pnfs.h
-index d86e1b7..a49d5f6 100644
---- a/include/linux/nfsd/nfsd4_pnfs.h
-+++ b/include/linux/nfsd/nfsd4_pnfs.h
-@@ -58,13 +58,6 @@ struct nfsd4_pnfs_dev_iter_res {
- 	u32		gd_eof;		/* response */
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index abf46f4..bcf60f1 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -161,7 +161,7 @@ static const u32 nfs4_open_noattr_bitmap[3] = {
+ 	| FATTR4_WORD0_FILEID,
  };
  
--/* Arguments for set_device_notify */
--struct pnfs_devnotify_arg {
--	struct nfsd4_pnfs_deviceid dn_devid;	/* request */
--	u32 dn_layout_type;			/* request */
--	u32 dn_notify_types;			/* request/response */
--};
--
- struct nfsd4_layout_seg {
- 	u64	clientid;
- 	u32	layout_type;
-@@ -160,9 +153,6 @@ struct pnfs_export_operations {
- 				u32 layout_type,
- 				struct nfsd4_pnfs_dev_iter_res *);
+-const u32 nfs4_statfs_bitmap[2] = {
++const u32 nfs4_statfs_bitmap[3] = {
+ 	FATTR4_WORD0_FILES_AVAIL
+ 	| FATTR4_WORD0_FILES_FREE
+ 	| FATTR4_WORD0_FILES_TOTAL,
+@@ -170,7 +170,7 @@ const u32 nfs4_statfs_bitmap[2] = {
+ 	| FATTR4_WORD1_SPACE_TOTAL
+ };
  
--	int (*set_device_notify) (struct super_block *,
--				  struct pnfs_devnotify_arg *);
--
- 	/* Retrieve and encode a layout for inode onto the xdr stream.
- 	 * arg->minlength is the minimum number of accessible bytes required
- 	 *   by the client.
+-const u32 nfs4_pathconf_bitmap[2] = {
++const u32 nfs4_pathconf_bitmap[3] = {
+ 	FATTR4_WORD0_MAXLINK
+ 	| FATTR4_WORD0_MAXNAME,
+ 	0
+@@ -185,7 +185,7 @@ const u32 nfs4_fsinfo_bitmap[3] = { FATTR4_WORD0_MAXFILESIZE
+ 			FATTR4_WORD2_LAYOUT_BLKSIZE
+ };
+ 
+-const u32 nfs4_fs_locations_bitmap[2] = {
++const u32 nfs4_fs_locations_bitmap[3] = {
+ 	FATTR4_WORD0_TYPE
+ 	| FATTR4_WORD0_CHANGE
+ 	| FATTR4_WORD0_SIZE
+@@ -201,7 +201,7 @@ const u32 nfs4_fs_locations_bitmap[2] = {
+ 	| FATTR4_WORD1_TIME_ACCESS
+ 	| FATTR4_WORD1_TIME_METADATA
+ 	| FATTR4_WORD1_TIME_MODIFY
+-	| FATTR4_WORD1_MOUNTED_ON_FILEID
++	| FATTR4_WORD1_MOUNTED_ON_FILEID,
+ };
+ 
+ static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dentry,
+@@ -5318,7 +5318,7 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
+ 				   struct page *page)
+ {
+ 	struct nfs_server *server = NFS_SERVER(dir);
+-	u32 bitmask[2] = {
++	u32 bitmask[3] = {
+ 		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS,
+ 	};
+ 	struct nfs4_fs_locations_arg args = {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 4be8d13..727cfe0 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -979,15 +979,16 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 	int len;
+ 	uint32_t bmval0 = 0;
+ 	uint32_t bmval1 = 0;
++	uint32_t bmval2 = 0;
+ 
+ 	/*
+ 	 * We reserve enough space to write the entire attribute buffer at once.
+ 	 * In the worst-case, this would be
+-	 *   12(bitmap) + 4(attrlen) + 8(size) + 4(mode) + 4(atime) + 4(mtime)
+-	 *          = 36 bytes, plus any contribution from variable-length fields
++	 * 16(bitmap) + 4(attrlen) + 8(size) + 4(mode) + 4(atime) + 4(mtime)
++	 * = 40 bytes, plus any contribution from variable-length fields
+ 	 *            such as owner/group.
+ 	 */
+-	len = 16;
++	len = 20;
+ 
+ 	/* Sigh */
+ 	if (iap->ia_valid & ATTR_SIZE)
+@@ -1031,9 +1032,9 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 	 * We write the bitmap length now, but leave the bitmap and the attribute
+ 	 * buffer length to be backfilled at the end of this routine.
+ 	 */
+-	*p++ = cpu_to_be32(2);
++	*p++ = cpu_to_be32(3);
+ 	q = p;
+-	p += 3;
++	p += 4;
+ 
+ 	if (iap->ia_valid & ATTR_SIZE) {
+ 		bmval0 |= FATTR4_WORD0_SIZE;
+@@ -1080,9 +1081,10 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 				len, ((char *)p - (char *)q) + 4);
+ 		BUG();
+ 	}
+-	len = (char *)p - (char *)q - 12;
++	len = (char *)p - (char *)q - 16;
+ 	*q++ = htonl(bmval0);
+ 	*q++ = htonl(bmval1);
++	*q++ = htonl(bmval2);
+ 	*q = htonl(len);
+ 
+ /* out: */
+@@ -1188,8 +1190,10 @@ encode_getattr_three(struct xdr_stream *xdr,
+ 
+ static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
+ {
+-	encode_getattr_two(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
+-			   bitmask[1] & nfs4_fattr_bitmap[1], hdr);
++	encode_getattr_three(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
++			   bitmask[1] & nfs4_fattr_bitmap[1],
++			   bitmask[2] & nfs4_fattr_bitmap[2],
++			   hdr);
+ }
+ 
+ static void encode_getfattr_open(struct xdr_stream *xdr, const u32 *bitmask,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 2e94f21..b30c003 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -833,6 +833,7 @@ int nfs_show_stats(struct seq_file *m, struct dentry *root)
+ 		seq_printf(m, "\n\tnfsv4:\t");
+ 		seq_printf(m, "bm0=0x%x", nfss->attr_bitmask[0]);
+ 		seq_printf(m, ",bm1=0x%x", nfss->attr_bitmask[1]);
++		seq_printf(m, ",bm2=0x%x", nfss->attr_bitmask[2]);
+ 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
+ 		show_sessions(m, nfss);
+ 		show_pnfs(m, nfss);
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 2ddd00a..d4348ab 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -146,7 +146,7 @@ struct nfs_server {
+ 	u32			attr_bitmask[3];/* V4 bitmask representing the set
+ 						   of attributes supported on this
+ 						   filesystem */
+-	u32			cache_consistency_bitmask[2];
++	u32			cache_consistency_bitmask[3];
+ 						/* V4 bitmask representing the subset
+ 						   of change attribute, size, ctime
+ 						   and mtime attributes supported by
 -- 
-1.7.11.7
+1.8.1.4
 
