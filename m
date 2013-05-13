@@ -1,371 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:29153 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755016Ab3EMTMz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 May 2013 15:12:55 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+Received: from slb-mbsout-01.boeing.com ([130.76.64.128]:46252 "EHLO
+	slb-mbsout-01.boeing.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750719Ab3EMNLx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 May 2013 09:11:53 -0400
+From: "Vu, Joseph" <joseph.vu@boeing.com>
+To: David Quigley <dpquigl@davequigley.com>,
+        James Bottomley <james.bottomley@hansenpartnership.com>
+CC: Ric Wheeler <rwheeler@redhat.com>, Steve Dickson <steved@redhat.com>,
+        Trond Myklebust <trond.myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        "Linux NFS list" <linux-nfs@vger.kernel.org>,
         Linux FS devel list <linux-fsdevel@vger.kernel.org>,
         Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 10/13] NFS: Add label lifecycle management
-Date: Mon, 13 May 2013 15:11:54 -0400
-Message-Id: <1368472317-5602-11-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1368472317-5602-1-git-send-email-SteveD@redhat.com>
-References: <1368472317-5602-1-git-send-email-SteveD@redhat.com>
+        SELinux List <selinux@tycho.nsa.gov>, Jack Rieden <jrieden@redhat.com>
+Subject: RE: [PATCH 00/17] lnfs: linux-3.9 release
+Date: Mon, 13 May 2013 13:00:59 +0000
+Message-ID: <756D04455A661C4CA25DC5BA4902A7A72269B0D1@XCH-PHX-204.sw.nos.boeing.com>
+References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
+ <51848BE0.2080901@redhat.com> <1367855617.1868.16.camel@dabdike>
+ <51880B01.5040907@redhat.com> <1367871935.1868.48.camel@dabdike>
+ <cb264c17aefd307cdc6e93b576f695e9@countercultured.net>
+In-Reply-To: <cb264c17aefd307cdc6e93b576f695e9@countercultured.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Steve Dickson <steved@redhat.com>
-
->From David Quigley <dpquigl@davequigley.com>
-
-This patch adds the lifecycle management for the security label structure
-introduced in an earlier patch. The label is not used yet but allocations and
-freeing of the structure is handled.
-
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- fs/nfs/dir.c      | 23 ++++++++++++++++++-
- fs/nfs/inode.c    | 15 +++++++++---
- fs/nfs/nfs4proc.c | 69 +++++++++++++++++++++++++++++++++++++++++++++++++------
- 3 files changed, 96 insertions(+), 11 deletions(-)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 9f9f419..1ada521 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -585,10 +585,16 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
- 	if (entry.fh == NULL || entry.fattr == NULL)
- 		goto out;
- 
-+	entry.label = nfs4_label_alloc(NFS_SERVER(inode), GFP_NOWAIT);
-+	if (IS_ERR(entry.label)) {
-+		status = PTR_ERR(entry.label);
-+		goto out;
-+	}
-+
- 	array = nfs_readdir_get_array(page);
- 	if (IS_ERR(array)) {
- 		status = PTR_ERR(array);
--		goto out;
-+		goto out_label_free;
- 	}
- 	memset(array, 0, sizeof(struct nfs_cache_array));
- 	array->eof_index = -1;
-@@ -614,6 +620,8 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
- 	nfs_readdir_free_large_page(pages_ptr, pages, array_size);
- out_release_array:
- 	nfs_readdir_release_array(page);
-+out_label_free:
-+	nfs4_label_free(entry.label);
- out:
- 	nfs_free_fattr(entry.fattr);
- 	nfs_free_fhandle(entry.fh);
-@@ -1083,6 +1091,10 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 	if (fhandle == NULL || fattr == NULL)
- 		goto out_error;
- 
-+	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_NOWAIT);
-+	if (IS_ERR(label))
-+		goto out_error;
-+
- 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, label);
- 	if (error)
- 		goto out_bad;
-@@ -1093,6 +1105,8 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fhandle);
-+	nfs4_label_free(label);
-+
- out_set_verifier:
- 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
-  out_valid:
-@@ -1109,6 +1123,7 @@ out_zap_parent:
-  out_bad:
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fhandle);
-+	nfs4_label_free(label);
- 	nfs_mark_for_revalidate(dir);
- 	if (inode && S_ISDIR(inode->i_mode)) {
- 		/* Purge readdir caches. */
-@@ -1129,6 +1144,7 @@ out_zap_parent:
- out_error:
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fhandle);
-+	nfs4_label_free(label);
- 	dput(parent);
- 	dfprintk(LOOKUPCACHE, "NFS: %s(%s/%s) lookup returned error %d\n",
- 			__func__, dentry->d_parent->d_name.name,
-@@ -1284,6 +1300,10 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
- 	if (fhandle == NULL || fattr == NULL)
- 		goto out;
- 
-+	label = nfs4_label_alloc(NFS_SERVER(dir), GFP_NOWAIT);
-+	if (IS_ERR(label))
-+		goto out;
-+
- 	parent = dentry->d_parent;
- 	/* Protect against concurrent sillydeletes */
- 	nfs_block_sillyrename(parent);
-@@ -1312,6 +1332,7 @@ no_entry:
- 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
- out_unblock_sillyrename:
- 	nfs_unblock_sillyrename(parent);
-+	nfs4_label_free(label);
- out:
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fhandle);
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index ac18e15..4307e12 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -836,6 +836,13 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
- 		goto out;
- 
- 	nfs_inc_stats(inode, NFSIOS_INODEREVALIDATE);
-+
-+	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_KERNEL);
-+	if (IS_ERR(label)) {
-+		status = PTR_ERR(label);
-+		goto out;
-+	}
-+
- 	status = NFS_PROTO(inode)->getattr(server, NFS_FH(inode), fattr, label);
- 	if (status != 0) {
- 		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) getattr failed, error=%d\n",
-@@ -846,7 +853,7 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
- 			if (!S_ISDIR(inode->i_mode))
- 				set_bit(NFS_INO_STALE, &NFS_I(inode)->flags);
- 		}
--		goto out;
-+		goto err_out;
- 	}
- 
- 	status = nfs_refresh_inode(inode, fattr, label);
-@@ -854,7 +861,7 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
- 		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) refresh failed, error=%d\n",
- 			 inode->i_sb->s_id,
- 			 (long long)NFS_FILEID(inode), status);
--		goto out;
-+		goto err_out;
- 	}
- 
- 	if (nfsi->cache_validity & NFS_INO_INVALID_ACL)
-@@ -864,7 +871,9 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
- 		inode->i_sb->s_id,
- 		(long long)NFS_FILEID(inode));
- 
-- out:
-+err_out:
-+	nfs4_label_free(label);
-+out:
- 	nfs_free_fattr(fattr);
- 	return status;
- }
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 3befc2a..ff545fc 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -833,9 +833,14 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 	p = kzalloc(sizeof(*p), gfp_mask);
- 	if (p == NULL)
- 		goto err;
-+
-+	p->f_label = nfs4_label_alloc(server, gfp_mask);
-+	if (IS_ERR(p->f_label))
-+		goto err_free_p;
-+
- 	p->o_arg.seqid = nfs_alloc_seqid(&sp->so_seqid, gfp_mask);
- 	if (p->o_arg.seqid == NULL)
--		goto err_free;
-+		goto err_free_label;
- 	nfs_sb_active(dentry->d_sb);
- 	p->dentry = dget(dentry);
- 	p->dir = parent;
-@@ -889,7 +894,10 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 	nfs4_init_opendata_res(p);
- 	kref_init(&p->kref);
- 	return p;
--err_free:
-+
-+err_free_label:
-+	nfs4_label_free(p->f_label);
-+err_free_p:
- 	kfree(p);
- err:
- 	dput(parent);
-@@ -906,6 +914,9 @@ static void nfs4_opendata_free(struct kref *kref)
- 	if (p->state != NULL)
- 		nfs4_put_open_state(p->state);
- 	nfs4_put_state_owner(p->owner);
-+
-+	nfs4_label_free(p->f_label);
-+
- 	dput(p->dir);
- 	dput(p->dentry);
- 	nfs_sb_deactive(sb);
-@@ -2020,10 +2031,18 @@ static int _nfs4_do_open(struct inode *dir,
- 	if (opendata == NULL)
- 		goto err_put_state_owner;
- 
-+	if (label) {
-+		olabel = nfs4_label_alloc(server, GFP_KERNEL);
-+		if (IS_ERR(olabel)) {
-+			status = PTR_ERR(olabel);
-+			goto err_opendata_put;
-+		}
-+	}
-+
- 	if (ctx_th && server->attr_bitmask[2] & FATTR4_WORD2_MDSTHRESHOLD) {
- 		opendata->f_attr.mdsthreshold = pnfs_mdsthreshold_alloc();
- 		if (!opendata->f_attr.mdsthreshold)
--			goto err_opendata_put;
-+			goto err_free_label;
- 		opendata->o_arg.open_bitmap = &nfs4_pnfs_open_bitmap[0];
- 	}
- 	if (dentry->d_inode != NULL)
-@@ -2031,7 +2050,7 @@ static int _nfs4_do_open(struct inode *dir,
- 
- 	status = _nfs4_open_and_get_state(opendata, fmode, flags, &state);
- 	if (status != 0)
--		goto err_opendata_put;
-+		goto err_free_label;
- 
- 	if ((opendata->o_arg.open_flags & O_EXCL) &&
- 	    (opendata->o_arg.createmode != NFS4_CREATE_GUARDED)) {
-@@ -2053,10 +2072,14 @@ static int _nfs4_do_open(struct inode *dir,
- 		kfree(opendata->f_attr.mdsthreshold);
- 	opendata->f_attr.mdsthreshold = NULL;
- 
-+	nfs4_label_free(olabel);
-+
- 	nfs4_opendata_put(opendata);
- 	nfs4_put_state_owner(sp);
- 	*res = state;
- 	return 0;
-+err_free_label:
-+	nfs4_label_free(olabel);
- err_opendata_put:
- 	kfree(opendata->f_attr.mdsthreshold);
- 	nfs4_opendata_put(opendata);
-@@ -2670,16 +2693,23 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *mntfh,
- 		return error;
- 	}
- 
-+	label = nfs4_label_alloc(server, GFP_KERNEL);
-+	if (IS_ERR(label))
-+		return PTR_ERR(label);
-+
- 	error = nfs4_proc_getattr(server, mntfh, fattr, label);
- 	if (error < 0) {
- 		dprintk("nfs4_get_root: getattr error = %d\n", -error);
--		return error;
-+		goto err_free_label;
- 	}
- 
- 	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
- 	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
- 		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
- 
-+err_free_label:
-+	nfs4_label_free(label);
-+
- 	return error;
- }
- 
-@@ -2785,6 +2815,7 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 	struct inode *inode = dentry->d_inode;
- 	struct rpc_cred *cred = NULL;
- 	struct nfs4_state *state = NULL;
-+	struct nfs4_label *label = NULL;
- 	int status;
- 
- 	if (pnfs_ld_layoutret_on_setattr(inode))
-@@ -2811,9 +2842,15 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 		}
- 	}
- 
--	status = nfs4_do_setattr(inode, cred, fattr, sattr, state, NULL, NULL);
-+	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_KERNEL);
-+	if (IS_ERR(label))
-+		return PTR_ERR(label);
-+
-+	status = nfs4_do_setattr(inode, cred, fattr, sattr, state, NULL, label);
- 	if (status == 0)
- 		nfs_setattr_update_inode(inode, sattr);
-+
-+	nfs4_label_free(label);
- 	return status;
- }
- 
-@@ -3194,7 +3231,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		.rpc_resp = &res,
- 	};
- 	int status = -ENOMEM;
--	
-+
- 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(old_dir, &res.old_cinfo);
-@@ -3241,11 +3278,21 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
- 	if (res.fattr == NULL)
- 		goto out;
- 
-+	res.label = nfs4_label_alloc(server, GFP_KERNEL);
-+	if (IS_ERR(res.label)) {
-+		status = PTR_ERR(res.label);
-+		goto out;
-+	}
-+
- 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(dir, &res.cinfo);
- 		nfs_post_op_update_inode(inode, res.fattr, res.label);
- 	}
-+
-+
-+	nfs4_label_free(res.label);
-+
- out:
- 	nfs_free_fattr(res.fattr);
- 	return status;
-@@ -3281,6 +3328,10 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
- 	if (data != NULL) {
- 		struct nfs_server *server = NFS_SERVER(dir);
- 
-+		data->label = nfs4_label_alloc(server, GFP_KERNEL);
-+		if (IS_ERR(data->label))
-+			goto out_free;
-+
- 		data->msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CREATE];
- 		data->msg.rpc_argp = &data->arg;
- 		data->msg.rpc_resp = &data->res;
-@@ -3297,6 +3348,9 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
- 		nfs_fattr_init(data->res.fattr);
- 	}
- 	return data;
-+out_free:
-+	kfree(data);
-+	return NULL;
- }
- 
- static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_createdata *data)
-@@ -3312,6 +3366,7 @@ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_
- 
- static void nfs4_free_createdata(struct nfs4_createdata *data)
- {
-+	nfs4_label_free(data->label);
- 	kfree(data);
- }
- 
--- 
-1.8.1.4
-
+RGF2aWQsDQoNClRoYW5rIHlvdSBmb3IgeW91ciBncmVhdCBlZmZvcnQgaW4gbWFraW5nIHRoaXMg
+Y2FwYWJpbGl0eSBhdmFpbGFibGUuDQoNCkpvZQ0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0t
+LQ0KRnJvbTogb3duZXItc2VsaW51eEB0eWNoby5uc2EuZ292IFttYWlsdG86b3duZXItc2VsaW51
+eEB0eWNoby5uc2EuZ292XSBPbiBCZWhhbGYgT2YgRGF2aWQgUXVpZ2xleQ0KU2VudDogU3VuZGF5
+LCBNYXkgMTIsIDIwMTMgNDo1NiBQTQ0KVG86IEphbWVzIEJvdHRvbWxleQ0KQ2M6IFJpYyBXaGVl
+bGVyOyBTdGV2ZSBEaWNrc29uOyBUcm9uZCBNeWtsZWJ1c3Q7IEouIEJydWNlIEZpZWxkczsgRGF2
+aWQgUC4gUXVpZ2xleTsgTGludXggTkZTIGxpc3Q7IExpbnV4IEZTIGRldmVsIGxpc3Q7IExpbnV4
+IFNlY3VyaXR5IExpc3Q7IFNFTGludXggTGlzdDsgSmFjayBSaWVkZW4NClN1YmplY3Q6IFJlOiBb
+UEFUQ0ggMDAvMTddIGxuZnM6IGxpbnV4LTMuOSByZWxlYXNlDQoNCk9uIDA1LzA2LzIwMTMgMTY6
+MjUsIEphbWVzIEJvdHRvbWxleSB3cm90ZToNCj4gT24gTW9uLCAyMDEzLTA1LTA2IGF0IDIyOjU2
+ICswMzAwLCBSaWMgV2hlZWxlciB3cm90ZToNCj4+IE9uIDA1LzA2LzIwMTMgMDY6NTMgUE0sIEph
+bWVzIEJvdHRvbWxleSB3cm90ZToNCj4+ID4gT24gU2F0LCAyMDEzLTA1LTA0IGF0IDA3OjE3ICsw
+MzAwLCBSaWMgV2hlZWxlciB3cm90ZToNCj4+ID4+IE9uIDA1LzAyLzIwMTMgMDg6MTggUE0sIFN0
+ZXZlIERpY2tzb24gd3JvdGU6DQo+PiA+Pj4gRnJvbTogU3RldmUgRGlja3NvbiA8c3RldmVkQHJl
+ZGhhdC5jb20+DQo+PiA+Pj4NCj4+ID4+PiBIZXJlIGlzIGFuIHRoZSBuZXh0IHJsZWFzZSBvZiB0
+aGUgbGFiZWwgTkZTIHBhdGNoZXMgcG9ydGVkIHRvIHRoZSANCj4+ID4+PiBsaW51eC0zLjkgcmVs
+ZWFzZQ0KPj4gPj4+DQo+PiA+Pj4gVGhlIGZvbGxvd2luZyBjaGFuZ2VzIHdlcmUgbWFkZSBmcm9t
+IHRoZSBwcmV2aW91cyByZWxlYXNlLg0KPj4gPj4+IChOb3RlLCBvbmx5IHRoZSBzZXJ2ZXIgcGF0
+Y2ggY2hhbmdlZCBpbiB0aGlzIHJlbGVhc2UpDQo+PiA+Pj4NCj4+ID4+PiAqIFJlbW92ZSB0aGUg
+YnVmZmVyIG92ZXJmbG93IGluIHRoZSBhbGxvY2F0aW9uIG9mIGxhYmVscy4NCj4+ID4+Pg0KPj4g
+Pj4+ICogUmVtb3ZlZCBuZWVkbGVzcyBjaGFyICogY2FzdGluZw0KPj4gPj4+DQo+PiA+Pj4gKiBS
+ZW1vdmVkIHRoZSAtRU1TR1NJWkUgdG8gbmZzNGVycl9iYWRsYWJlbCBlcnJubyBtYXBwaW5nDQo+
+PiA+Pj4gICAgIGJ5IGNoYW5naW5nIHRoZSByZXR1cm4gdmFsdWUgb2YgbmZzZDRfbGFiZWxfYWxs
+b2MoKSB0bw0KPj4gPj4+ICAgICBiZSBhIF9iZTMyIHZhbHVlLg0KPj4gPj4gSXQgd291bGQgYmUg
+Z3JlYXQgdG8gc2VlIHRoaXMgcGF0Y2ggc2VyaWVzIGxhbmQgaW4gdGltZSBmb3IgMy4xMA0KPj4g
+LSBzZWVtcyBsaWtlIGENCj4+ID4+IG1ham9yIGZlYXR1cmUgdGhhdCBoYXMgaGFkIGJlZW4gaGVs
+ZCBpbiBkZXZlbG9wbWVudCBmb3IgeWVhcnMgYW5kDQo+PiBpdCBkb2VzIGhhdmUgYQ0KPj4gPj4g
+dmVyeSBpbnRlcmVzdGVkIHVzZXIgYmFzZSB3YWl0aW5nIGZvciB0aGlzIHRvIGxhbmQuDQo+PiA+
+Pg0KPj4gPj4gQXJlIHRoZXJlIGFueSBleGlzdGluZyByb2FkYmxvY2tzIHRvIGhhdmluZyB0aGlz
+IG1ha2UgaXQgdGhpcw0KPj4gbWVyZ2UNCj4+ID4+IHdpbmRvdz8NCj4+ID4gWW91IG1lYW4gb3Ro
+ZXIgdGhhbiB0aGUgb25lIEJydWNlIGFuZCBUcm9uZCBhbHJlYWR5IG1lbnRpb25lZCBhbmQNCj4+
+IHdoaWNoDQo+PiA+IHlvdSBwcmVzdW1hYmx5IGFscmVhZHkgcmVhZD8gaS5lLiBpdCdzIGEgbGFy
+Z2UgZmVhdHVyZSB3aG9zZSBmaW5hbCANCj4+ID4gaW5jYXJuYXRpb24gbGFuZGVkIHdoZW4gdGhl
+IG1lcmdlIHdpbmRvdyB3YXMgYWxyZWFkeSBvcGVuIHdoaWNoIGJ5IA0KPj4gPiBwcm9jZXNzIHNo
+b3VsZCByZWNlaXZlIGluY3ViYXRpb24gaW4gbGludXgtbmV4dCBiZWZvcmUgYmVpbmcNCj4+IG1l
+cmdlZC4NCj4+ID4NCj4+ID4gSXQgaXMgZW50aXJlbHkgd2l0aGluIHRoZSBnaWZ0IG9mIHRoZSBt
+YWludGFpbmVycyB0byB2YXJ5IHRoZQ0KPj4gaW5jdWJhdGlvbg0KPj4gPiByZXF1aXJlbWVudHMs
+IGJ1dCBpZiB0aGV5IGRvIGFuZCBpdCBjb21lcyBiYWNrIHdpdGggYSB0b24gb2YNCj4+IHByb2Js
+ZW1zDQo+PiA+IGZyb20gdGhlIDAgZGF5IHByb2plY3Qgb3Igc21hdGNoIG9yIGV2ZW4gYSBidWls
+ZCBmYWlsdXJlIHRoYXQNCj4+IHdvdWxkIGhhdmUNCj4+ID4gYmVlbiBwaWNrZWQgdXAgYnkgbGlu
+dXgtbmV4dCwgdGhleSdsbCBiZSBhdCB0aGUgd3JvbmcgZW5kIG9mDQo+PiBMaW51cycNCj4+ID4g
+ZmxhbWUgdGhyb3dlciBub3QgeW91LiAgU28gaXQgaXMgcmF0aGVyIHVuZmFpciB0byBwcmVzc3Vy
+ZSB0aGUgDQo+PiA+IG1haW50YWluZXJzIGxpa2UgdGhpcy4NCj4+ID4NCj4+ID4gS2VybmVsIHBy
+b2Nlc3NlcyBleGlzdCBmb3IgYSByZWFzb24gYW5kIGFsbW9zdCBldmVyeSBtYWludGFpbmVyDQo+
+PiBoYXMgdGhlDQo+PiA+IHNjYXJzIHRoYXQgcmVtaW5kIHRoZW0gb2YgdGhpcy4NCj4+ID4NCj4+
+ID4gSmFtZXMNCj4+ID4NCj4+ID4NCj4+DQo+PiBEb24ndCB3b3JyeSBKYW1lcyAtIHRoaXMgb25l
+IGhhcyBoYWQgYXQgbGVhc3QgYXMgbXVjaCB0ZXN0aW5nIGFzIHRoZSANCj4+IGF2ZXJhZ2UgU0NT
+SSBkcml2ZXIgdXBkYXRlIDopDQo+Pg0KPj4gVGhpcyBpcyB3YXMgbm90IG1lYW50IGFzIHByZXNz
+dXJlLCBKYW1lcyBNb3JyaXMgKG5vdCB5b3UpIGhhZCByZXBsaWVkIA0KPj4gdGhhdCBoaXMgcGF0
+Y2hlcyBhcmUgcmVhZHkgYW5kIGhlIGV4cGVjdGVkIHRoZW0gdG8gYmUgcHVsbGVkIHZpYSB0aGUg
+DQo+PiBORlMgdHJlZXMuDQo+DQo+IFllcywgSSBrbm93IHRoaXMgLi4uIFRyb25kIGFuZCBCcnVj
+ZSBib3RoIHNhaWQgZGVmaW5pdGVseSAzLjExIGFuZCANCj4gcHJvYmFibHkgMy4xMSByZXNwZWN0
+aXZlbHksIHRoYXQncyB3aHkgSSB3YXMgc3VycHJpc2VkIHRvIHNlZSBhIDMuMTAgDQo+IHJlcXVl
+c3QuDQo+DQo+PiBUaGlzIHdhcyBtZWFudCB0byBmYWNpbGl0YXRlIGdldHRpbmcgdGhpcyBtdWx0
+aS10cmVlLCANCj4+IG11bHRpLW1haW50YWluZXIgc2VyaWVzIHJlYWR5IHRvIG1lcmdlIGFuZCBt
+YWtlIHN1cmUgd2UgYXJlbid0IHN0dWNrIA0KPj4gZWFjaCB3YWl0aW5nIGZvciBhIHJlc3BvbnNl
+IGZyb20gdGhlIG5leHQgcGVyc29uIGluIHRoZSBsb29wLg0KPj4NCj4+IE5vdGUgdGhhdCB0aGlz
+IHBhdGNoIHNldCBoYXMgYmVlbiBpbiBkZXZlbG9wbWVudCBmb3IgKnllYXJzKiwgYmVlbiANCj4+
+IHRlc3RlZCBhdCBjb25uZWN0YXRob24sIHRlc3RlZCBieSBpbnRlcmVzdGVkIHBhcnRpZXMgd2hv
+IHByb21vdGVkIHRoZSANCj4+IGVhcmxpZXN0IHZlcnNpb25zIG9mIHRoZSBwYXRjaGVzIGFuZCB0
+ZXN0ZWQgYnkgUkhFTCAob2YgY291cnNlLCB0aGUgDQo+PiBzZXJpZXMgaGFzIGV2b2x2ZWQgb3Zl
+ciB0aW1lKS4NCj4NCj4gVGhhdCdzIGdvb2QsIGJ1dCBub3Qgc3VmZmljaWVudC4gIEEgbGFyZ2Ug
+bnVtYmVyIG9mICJ3ZWxsIHRlc3RlZCIgYmlnIA0KPiBwYXRjaCBzZXRzIGhhdmUgZmFpbGVkIGlu
+dGVncmF0aW9uIG5hc3RpbHkgd2hlbiB0aGV5IHdlcmUgbWVyZ2VkIG92ZXIgDQo+IHRoZSB5ZWFy
+cy4gIFRoYXQgd2Fzbid0IGJlY2F1c2UgdGhleSB3ZXJlbid0IGFjdHVhbGx5IHRlc3RlZCwgYnV0
+IA0KPiBiZWNhdXNlIGFzIHNvb24gYXMgdGhleSBoaXQgdGhlIHRyZWUsIHRoZXkgY2F1c2VkIHNp
+ZGUgZWZmZWN0cywgb3IgDQo+IHBlb3BsZSB0cmllZCBjb25maWd1cmF0aW9ucyB0aGUgc3VibWl0
+dGVycyBoYWRuJ3Qgb3IgYmVjYXVzZSB0aGV5IA0KPiB0cmllZCB0ZXN0cyB0aGUgc3VibWl0dGVy
+cyBoYWRuJ3QgdGhvdWdodCBvZi4gIFRoaXMgaXMgd2h5IHdlIGhhdmUgYW4gDQo+IGludGVncmF0
+aW9uIHByb2Nlc3MgaW52b2x2aW5nIGxpbnV4LW5leHQgLi4uIHRvIHRyeSBhbmQgZmluZCB0aGVz
+ZSANCj4gdHlwZXMgb2YgcHJvYmxlbXMgKmJlZm9yZSogbWVyZ2VyIGFuZCB0aGF0J3Mgd2h5IGxh
+cmdlIGZlYXR1cmVzIHRlbmQgDQo+IHRvIHNwZW5kIGF0IGxlYXN0IGEgd2VlayBpbiBsaW51eC1u
+ZXh0IHRvIHRyeSB0byBmaW5kIHRoZSBpc3N1ZXMuDQo+DQoNClRvIGJlIGZhaXIgSSBkb3VidCB5
+b3UncmUgZ29pbmcgdG8gc2VlIGFueSBuZXcgcHJvYmxlbXMgb24gdG9wIG9mIHdoYXQgDQpCcnVj
+ZSBoYXMgYWxyZWFkeSBjYXVnaHQuIEhlIGhhcyBkb25lIHRoZSB3b3JrIHRvIHR3ZWFrIGFsbCB0
+aGUga25vYnMgdG8gDQptYWtlIHN1cmUgY29uZmlnIHdpc2UgYW55IExORlMgZmVhdHVyZXMgdHVy
+bmVkIG9uIG9yIG9mZiBkb24ndCBicmVhayANCk5GU3Y0IGJvdGggYXQgY29tcGlsZSBhbmQgcnVu
+LXRpbWUuIE9uIHRvcCBvZiB0aGF0IGFsbCB0aGUgc2VjdXJpdHkgDQpwYXRjaGVzIGFyZSBzZWxm
+IGNvbnRhaW5lZCBhcyBMTkZTIGlzIHRoZSBvbmx5IHVzZXIuIEZpbmFsbHkgYmFzZWQgb24gDQpw
+ZW9wbGUncyBrbmVlLWplcmsgcmVhY3Rpb24gdG8gZGlzYWJsZSBTRUxpbnV4IG9uIG1vc3Qgb2Yg
+dGhlaXIgc3lzdGVtcyANCkkgZG91YnQgeW91J3JlIGdvaW5nIHRvIGdldCBtdWNoIG1vcmUgdGVz
+dGluZyBvdXQgb2YgbGludXgtbmV4dCB0aGFuIA0Kd2UndmUgYWxyZWFkeSBkb25lLiBXZSBhbHJl
+YWR5IGhhdmUgYSB3aW5rIGFuZCBhIG5vZCBmcm9tIENhc2V5IHRoYXQgDQpTTUFDSyBoYXMgaXNz
+dWVzIHdpdGggTGFiZWxlZCBORlMgYW5kIHRoYXQgaGUgaGFzIG5vIG9iamVjdGlvbnMgdG8gDQpm
+aXhpbmcgdGhhdCBwcm9ibGVtIGxhdGVyLiBBbGwgdGhhdCBzYWlkIGl0cyBzdGlsbCB0aGUgbWFp
+bnRhaW5lcidzIA0KZGVjaXNpb24gdG8gdGFrZSBpdCBvciBub3QgYW5kIEknZCBpbWFnaW5lIGJh
+Y2twb3J0aW5nIHRoZSBwYXRjaGVzIHRvIA0KMy4xMCBmcm9tIDMuMTEgd291bGRuJ3QgYmUgYSB0
+cmVtZW5kb3VzIGFtb3VudCBvZiB3b3JrIGlmIHNvbWVvbmUgbmVlZGVkIA0KaXQgdG8gZmFsbCBp
+bnRvIHRoYXQgc3BlY2lmaWMgdmVyc2lvbi4gUGVyc29uYWxseSBJIGNhbid0IHdhaXQgZm9yIHRo
+ZSANCnBhdGNoZXMgdG8gZ2V0IG1lcmdlZCBzaW5jZSBJIHN0YXJ0ZWQgdGhpcyBwcm9qZWN0IGFs
+bW9zdCA2IHllYXJzIGFnbyBhdCANCnRoaXMgcG9pbnQuIFN0ZXZlIERpY2tzb24gaGFzIHBpY2tl
+ZCB1cCB0aGUgdG9yY2ggYW5kIGtlcHQgcnVubmluZyB3aXRoIA0KaXQgc2luY2UgbXkgdGltZSBu
+byBsb25nZXIgcGVybWl0dGVkIG1lIHRvIGNoYW1waW9uIHRoZSBwYXRjaCBzZXQgYW5kIEkgDQp0
+aGluayBpdHMgcmVhZHkgZm9yIHVzZSBieSBxdWl0ZSBhIGZldyBjdXN0b21lcnMuDQoNCkRhdmUN
+Cg0KRGF2ZQ0KDQoNCg0KLS0NClRoaXMgbWVzc2FnZSB3YXMgZGlzdHJpYnV0ZWQgdG8gc3Vic2Ny
+aWJlcnMgb2YgdGhlIHNlbGludXggbWFpbGluZyBsaXN0Lg0KSWYgeW91IG5vIGxvbmdlciB3aXNo
+IHRvIHN1YnNjcmliZSwgc2VuZCBtYWlsIHRvIG1ham9yZG9tb0B0eWNoby5uc2EuZ292IHdpdGgN
+CnRoZSB3b3JkcyAidW5zdWJzY3JpYmUgc2VsaW51eCIgd2l0aG91dCBxdW90ZXMgYXMgdGhlIG1l
+c3NhZ2UuDQo=
