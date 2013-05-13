@@ -1,78 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:22588 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757821Ab3EWMtq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 May 2013 08:49:46 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: "Dilger, Andreas" <andreas.dilger@intel.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Yong, Fan" <fan.yong@intel.com>, Steve Dickson <steved@redhat.com>
-Subject: Re: [PATCH] nfs: support 64-bit root inode number in NFS FSID
-Date: Thu, 23 May 2013 12:49:43 +0000
-Message-ID: <1369313382.3764.2.camel@leira.trondhjem.org>
-References: <CDC2ABAC.3341C%andreas.dilger@intel.com>
-	 <CA+a=Yy4CQ7zG48dGOVjh8YBv0e+X1Gk4RxpDzdR4vM8JmqossQ@mail.gmail.com>
-In-Reply-To: <CA+a=Yy4CQ7zG48dGOVjh8YBv0e+X1Gk4RxpDzdR4vM8JmqossQ@mail.gmail.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-oa0-f48.google.com ([209.85.219.48]:33291 "EHLO
+	mail-oa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750763Ab3EMEIq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 May 2013 00:08:46 -0400
+Received: by mail-oa0-f48.google.com with SMTP id i4so6989655oah.21
+        for <linux-nfs@vger.kernel.org>; Sun, 12 May 2013 21:08:45 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <CAKYAXd9dWGA1Eaq5mi-eRbY0RRhkmWDR7CeDoeW18dBcKcGv+Q@mail.gmail.com>
+References: <61eb00$3kapi3@dgate20u.abg.fsc.net>
+	<CAKYAXd9dWGA1Eaq5mi-eRbY0RRhkmWDR7CeDoeW18dBcKcGv+Q@mail.gmail.com>
+Date: Mon, 13 May 2013 13:08:45 +0900
+Message-ID: <CAKYAXd_9a=xukJDpV=ug3npyaoa4mrpW8ijf_6DiKPDjiOYe7g@mail.gmail.com>
+Subject: Re: sunrpc/cache.c: races while updating cache entries
+From: Namjae Jeon <linkinjeon@gmail.com>
+To: Bodo Stroesser <bstroesser@ts.fujitsu.com>
+Cc: bfields@fieldses.org, neilb@suse.de, linux-nfs@vger.kernel.org,
+        Amit Sahrawat <a.sahrawat@samsung.com>,
+        Nam-Jae Jeon <namjae.jeon@samsung.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-05-23 at 16:12 +0800, Peng Tao wrote:
-> [nfs-utils patch needs to be sent to Steve Dickson (CC'ed)]
-> 
-> On Thu, May 23, 2013 at 7:06 AM, Dilger, Andreas
-> <andreas.dilger@intel.com> wrote:
-> > When exporting a filesystem via NFS, it can generate several kinds
-> > of NFS filesystem IDs. For most of cases, it uses a 32-bit inode
-> > number in the NFS FSID, but this does not work on a filesystem
-> > using a 64-bit root inode number.
-> >
-> > In kernel space, NFS can generate/use NFS FSID with a 64-bit inode
-> > number for the "FSID_UUID16_INUM" type. Unfortunately, while the
-> > user space nfs-utils decode the 64-bit inode number from the FSID
-> > correctly, it is truncated when storing it in "struct parsed_fsid".
-> > Expand the "struct parsed_fsid" inode field to store the full 64-bit
-> > root inode number.
-> >
-> > Intel-bug-id: LU-2904
-> > Signed-off-by: Fan Yong <fan.yong@intel.com>
-> > Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
-> > ---
-> >  utils/mountd/cache.c |    2 +-
-> >  1 files changed, 1 insertions(+), 1 deletions(-)
-> >
-> > diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> > index 517aa62..a7212e7 100644
-> > --- a/utils/mountd/cache.c
-> > +++ b/utils/mountd/cache.c
-> > @@ -388,7 +388,7 @@ struct parsed_fsid {
-> >         int fsidtype;
-> >         /* We could use a union for this, but it would be more
-> >          * complicated; why bother? */
-> > -       unsigned int inode;
-> > +       unsigned long long inode; /* We need 64-bits ino# */
-> >         unsigned int minor;
-> >         unsigned int major;
-> >         unsigned int fsidnum;
-> > --1.7.1
-> >
-> > Patch is also attached separately, since it will likely be butchered
-> > by this email client.
-> >
-> >
-> > Cheers, Andreas
-> > --
-> > Andreas Dilger
+Hi.
 
-Why not just specify a uint64_t size then?
+Sorry for interrupt.
+I fixed my issue using this patch(nfsd4: fix hang on fast-booting nfs
+servers). it was different issue with this subject on current mail.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Thanks.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+2013/5/10, Namjae Jeon <linkinjeon@gmail.com>:
+> Hi. Bodo.
+>
+> We are facing issues with respect to the SUNRPC cache.
+> In our case we have two targets connected back-to-back
+> NFS Server: Kernel version, 2.6.35
+>
+> At times, when Client tries to connect to the Server it stucks for
+> very long duration and keeps on trying to mount.
+>
+> When we try to figure out using logs, we checked that client was not
+> getting response of FSINFO request.
+>
+> Further, by debugging we found that the request was getting dropped at
+> the SERVER, so this request was not being served.
+>
+> In the code we reached this point:
+> svcauth_unix_set_client()->
+>   gi = unix_gid_find(cred->cr_uid, rqstp);
+>         switch (PTR_ERR(gi)) {
+>         case -EAGAIN:
+>                 return SVC_DROP;
+>
+> This path is related with the SUNRPC cache management.
+>
+> When we remove this UNIX_GID_FIND path from our code, there is no problem.
+>
+> When we try to figure the possible related problems as per our
+> scneario, We found that you have faced similar issue for RACE in the
+> cache.
+> Can you please suggest what could be the problem  so that we can check
+> further ?
+>
+> Or from the solution if you encounter the similar situation.
+> can you please suggest on the possible patches for 2.6.35 - which we
+> can try in our environment ?
+>
+> We will be highly grateful.
+>
+> Thanks
+>
+>
+> 2013/4/20, Bodo Stroesser <bstroesser@ts.fujitsu.com>:
+>> On 05 Apr 2013 23:09:00 +0100 J. Bruce Fields <bfields@fieldses.org>
+>> wrote:
+>>> On Fri, Apr 05, 2013 at 05:33:49PM +0200, Bodo Stroesser wrote:
+>>> > On 05 Apr 2013 14:40:00 +0100 J. Bruce Fields <bfields@fieldses.org>
+>>> > wrote:
+>>> > > On Thu, Apr 04, 2013 at 07:59:35PM +0200, Bodo Stroesser wrote:
+>>> > > > There is no reason for apologies. The thread meanwhile seems to be
+>>> > > > a
+>>> > > > bit
+>>> > > > confusing :-)
+>>> > > >
+>>> > > > Current state is:
+>>> > > >
+>>> > > > - Neil Brown has created two series of patches. One for SLES11-SP1
+>>> > > > and a
+>>> > > >   second one for -SP2
+>>> > > >
+>>> > > > - AFAICS, the series for -SP2 will match with mainline also.
+>>> > > >
+>>> > > > - Today I found and fixed the (hopefully) last problem in the -SP1
+>>> > > > series.
+>>> > > >   My test using this patchset will run until Monday.
+>>> > > >
+>>> > > > - Provided the test on SP1 succeeds, probably on Tuesday I'll
+>>> > > > start
+>>> > > > to test
+>>> > > >   the patches for SP2 (and mainline). If it runs fine, we'll have
+>>> > > > a
+>>> > > > tested
+>>> > > >   patchset not later than Mon 15th.
+>>> > >
+>>> > > OK, great, as long as it hasn't just been forgotten!
+>>> > >
+>>> > > I'd also be curious to understand why we aren't getting a lot of
+>>> > > complaints about this from elsewhere....  Is there something unique
+>>> > > about your setup?  Do the bugs that remain upstream take a long time
+>>> > > to
+>>> > > reproduce?
+>>> > >
+>>> > > --b.
+>>> > >
+>>> >
+>>> > It's no secret, what we are doing. So let me try to explain:
+>>>
+>>> Thanks for the detailed explanation!  I'll look forward to the patches.
+>>>
+>>> --b.
+>>>
+>>
+>> Let me give an intermediate result:
+>>
+>> The test of the -SP1 patch series succeeded.
+>>
+>> We started the test of the -SP2 (and mainline) series on Tue, 9th, but
+>> had
+>> no
+>> success.
+>> We did _not_ find a problem with the patches, but under -SP2 our test
+>> scenario
+>> has less than 40% of the throughput we saw under -SP1. With that low
+>> performance, we had a 4 day run without any dropped RPC request. But we
+>> don't
+>> know the error rate without the patches under these conditions. So we
+>> can't
+>> give an o.k. for the patches yet.
+>>
+>> Currently we try to find the reason for the different behavior of SP1 and
+>> SP2
+>>
+>> Bodo
+>>
+>
