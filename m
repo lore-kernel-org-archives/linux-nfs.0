@@ -1,102 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:20327 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:38538 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758243Ab3EOPVX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 11:21:23 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: James Vanns <james.vanns@framestore.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Where in the server code is fsinfo rtpref calculated?
-Date: Wed, 15 May 2013 15:20:59 +0000
-Message-ID: <1368631259.3568.1.camel@leira.trondhjem.org>
-References: <20130515141508.GH16811@fieldses.org>
-	 <1995711958.19982333.1368628467473.JavaMail.root@framestore.com>
-	 <20130515144749.GI16811@fieldses.org>
-In-Reply-To: <20130515144749.GI16811@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1753392Ab3EMPjZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 May 2013 11:39:25 -0400
+Date: Mon, 13 May 2013 11:39:22 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "steved@redhat.com" <steved@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        James Morris <jmorris@namei.org>
+Subject: Re: 3.11 patches
+Message-ID: <20130513153922.GC1931@fieldses.org>
+References: <20130513152312.GB1931@fieldses.org>
+ <1368458889.3563.7.camel@leira.trondhjem.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1368458889.3563.7.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-05-15 at 10:47 -0400, J. Bruce Fields wrote:
-> On Wed, May 15, 2013 at 03:34:27PM +0100, James Vanns wrote:
+On Mon, May 13, 2013 at 03:28:09PM +0000, Myklebust, Trond wrote:
+> On Mon, 2013-05-13 at 11:23 -0400, J. Bruce Fields wrote:
+> > I've added a labeled-nfs-common branch at
 > > 
-> > > On Wed, May 15, 2013 at 02:42:42PM +0100, James Vanns wrote:
-> > > > > fs/nfsd/nfssvc.c:nfsd_get_default_maxblksize() is probably a good
-> > > > > starting point.  Its caller, nfsd_create_serv(), calls
-> > > > > svc_create_pooled() with the result that's calculated.
-> > > > 
-> > > > Hmm. If I've read this section of code correctly, it seems to me
-> > > > that on most modern NFS servers (using TCP as the transport) the
-> > > > default
-> > > > and preferred blocksize negotiated with clients will almost always
-> > > > be
-> > > > 1MB - the maximum RPC payload. The nfsd_get_default_maxblksize()
-> > > > function
-> > > > seems obsolete for modern 64-bit servers with at least 4G of RAM as
-> > > > it'll
-> > > > always prefer this upper bound instead of any value calculated
-> > > > according to
-> > > > available RAM.
-> > > 
-> > > Well, "obsolete" is an odd way to put it--the code is still expected
-> > > to work on smaller machines.
+> > 	git://linux-nfs.org/~bfields/linux.git labeled-nfs-common
 > > 
-> > Poor choice of words perhaps. I guess I'm just used to NFS servers being
-> > pretty hefty pieces of kit and 'small' workstations having a couple of GB
-> > of RAM too.
+> > with 3.10-rc1 + the one labeled NFS patch shared by client and server
+> > (with just some protocol constants).
 > > 
-> > > Arguments welcome about the defaults, thoodd ugh I wonder whether it
-> > > would be better to be doing this sort of calculation in user space.
-> > 
-> > See below.
-> > 
-> > > > For what it's worth (not sure if I specified this) I'm running
-> > > > kernel 2.6.32.
-> > > > 
-> > > > Anyway, this file/function appears to set the default *max*
-> > > > blocksize. I haven't
-> > > > read all the related code yet, but does the preferred block size
-> > > > derive
-> > > > from this maximum too?
-> > > 
-> > > See
-> > > > > For finfo see fs/nfsd/nfs3proc.c:nfsd3_proc_fsinfo, which uses
-> > > > > svc_max_payload().
-> > 
-> > I've just returned from nfsd3_proc_fsinfo() and found what I would
-> > consider an odd decision - perhaps nothing better was suggested at
-> > the time. It seems to me that in response to an FSINFO call the reply
-> > stuffs the max_block_size value in  both the maximum *and* preferred
-> > block sizes for both read and write. A 1MB block size for a preferred
-> > default is a little high! If a disk is reading at 33MB/s and we have just
-> > a single server running 64 knfsd and each READ call is requesting 1MB of
-> > data then all of a sudden we have an aggregate read speed of ~512k/s
+> > So we can all work on top of that if we want.
 > 
-> I lost you here.
+> OK. I've pushed out a 'labeled-nfs' branch for the client side that is
+> based upon the above branch.
 > 
-> > and 
-> > that is without network latencies. And of course we will probably have 100s of
-> > requests queued behind each knfsd waiting for these 512k reads to finish. All of a
-> > sudden our user experience is rather poor :(
-> 
-> Note the preferred size is not a minimum--the client isn't forced to do
-> 1MB reads if it really only wants 1 page, for example, if that's what
-> you mean.
-> 
-> (I haven't actually looked at how typical clients used rt/wtpref.)
+> Has James added the security patches to a public branch that we can pull
+> yet?
 
-For our client, the answer is:
+I assumed his ACK meant he was comfortable with us merging them.
 
-rtpref == default rsize
-wtpref == default wsize and default f_bsize
+None of them are needed on the server side as far as I can tell, so
+that'd mean they'd go through your tree.
 
+James, is that OK with you?
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+--b.
