@@ -1,54 +1,371 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from papaya.imsweb.com ([204.132.58.134]:58192 "EHLO
-	papaya.imsweb.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755573Ab3EFTHM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 15:07:12 -0400
-Received: from VARUNA.omni.imsweb.com (varuna.omni.imsweb.com [172.22.64.28])
-	by papaya.imsweb.com (Postfix) with ESMTP id 12B255FF16
-	for <linux-nfs@vger.kernel.org>; Mon,  6 May 2013 15:07:02 -0400 (EDT)
-From: "Ashby, Jason (IMS)" <AshbyJ@imsweb.com>
-To: "'linux-nfs@vger.kernel.org'" <linux-nfs@vger.kernel.org>
-Subject: authrefrsh
-Date: Mon, 6 May 2013 19:06:59 +0000
-Message-ID: <B10E49DFB64A0A4D89A00D7C82B026D811EC51CD@VARUNA.omni.imsweb.com>
-References: <B10E49DFB64A0A4D89A00D7C82B026D811EC5001@VARUNA.omni.imsweb.com>
- <B10E49DFB64A0A4D89A00D7C82B026D811EC51A6@VARUNA.omni.imsweb.com>
-In-Reply-To: <B10E49DFB64A0A4D89A00D7C82B026D811EC51A6@VARUNA.omni.imsweb.com>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:29153 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755016Ab3EMTMz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 May 2013 15:12:55 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 10/13] NFS: Add label lifecycle management
+Date: Mon, 13 May 2013 15:11:54 -0400
+Message-Id: <1368472317-5602-11-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1368472317-5602-1-git-send-email-SteveD@redhat.com>
+References: <1368472317-5602-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi, I'm having a difficult time finding any info on the net about the "authrefrsh" value shown in the output of nfsstat -rc.  I understand it to mean "number of times authentication information had to be refreshed", but does it add to the overhead of nfs requests?  Does an authrefresh mean my nfs client is sending an authentication request to the nfs server?  I'm wondering if there is a correlation between degraded nfs performance and the number of authrefrsh?  I thought an authentication request with NFSv3 was only made when the client first mounts something.
+From: Steve Dickson <steved@redhat.com>
 
-Our Linux clients mount from a NetApp NFS server using NFSv3.  Our older Linux clients (SLES 9 SP4) have show better NFS performance than newer clients (SLES 11 SP2 and CentOS 6.4).  The only difference I see is that the old clients have authrefrsh=0 and the new clients have a very high number of authrefrsh.
+>From David Quigley <dpquigl@davequigley.com>
 
-Mount options used by all clients:  rsize=32768,wsize=32768,hard,nointr,rw,bg,vers=3,tcp,actimeo=0 0 0
+This patch adds the lifecycle management for the security label structure
+introduced in an earlier patch. The label is not used yet but allocations and
+freeing of the structure is handled.
 
-Old clients...SLES 9 SP4 client (nfs-utils-1.0.6-103.28)
-foo:~ # uname -a
-Linux foo 2.6.5-7.308-smp #1 SMP Mon Dec 10 11:36:40 UTC 2007 x86_64 x86_64 x86_64 GNU/Linux
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ fs/nfs/dir.c      | 23 ++++++++++++++++++-
+ fs/nfs/inode.c    | 15 +++++++++---
+ fs/nfs/nfs4proc.c | 69 +++++++++++++++++++++++++++++++++++++++++++++++++------
+ 3 files changed, 96 insertions(+), 11 deletions(-)
 
-$ nfsstat -rc
-Client rpc stats:
-calls      retrans    authrefrsh
-815256992   196        0
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 9f9f419..1ada521 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -585,10 +585,16 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 	if (entry.fh == NULL || entry.fattr == NULL)
+ 		goto out;
+ 
++	entry.label = nfs4_label_alloc(NFS_SERVER(inode), GFP_NOWAIT);
++	if (IS_ERR(entry.label)) {
++		status = PTR_ERR(entry.label);
++		goto out;
++	}
++
+ 	array = nfs_readdir_get_array(page);
+ 	if (IS_ERR(array)) {
+ 		status = PTR_ERR(array);
+-		goto out;
++		goto out_label_free;
+ 	}
+ 	memset(array, 0, sizeof(struct nfs_cache_array));
+ 	array->eof_index = -1;
+@@ -614,6 +620,8 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 	nfs_readdir_free_large_page(pages_ptr, pages, array_size);
+ out_release_array:
+ 	nfs_readdir_release_array(page);
++out_label_free:
++	nfs4_label_free(entry.label);
+ out:
+ 	nfs_free_fattr(entry.fattr);
+ 	nfs_free_fhandle(entry.fh);
+@@ -1083,6 +1091,10 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+ 	if (fhandle == NULL || fattr == NULL)
+ 		goto out_error;
+ 
++	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_NOWAIT);
++	if (IS_ERR(label))
++		goto out_error;
++
+ 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, label);
+ 	if (error)
+ 		goto out_bad;
+@@ -1093,6 +1105,8 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+ 
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
++	nfs4_label_free(label);
++
+ out_set_verifier:
+ 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+  out_valid:
+@@ -1109,6 +1123,7 @@ out_zap_parent:
+  out_bad:
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
++	nfs4_label_free(label);
+ 	nfs_mark_for_revalidate(dir);
+ 	if (inode && S_ISDIR(inode->i_mode)) {
+ 		/* Purge readdir caches. */
+@@ -1129,6 +1144,7 @@ out_zap_parent:
+ out_error:
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
++	nfs4_label_free(label);
+ 	dput(parent);
+ 	dfprintk(LOOKUPCACHE, "NFS: %s(%s/%s) lookup returned error %d\n",
+ 			__func__, dentry->d_parent->d_name.name,
+@@ -1284,6 +1300,10 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
+ 	if (fhandle == NULL || fattr == NULL)
+ 		goto out;
+ 
++	label = nfs4_label_alloc(NFS_SERVER(dir), GFP_NOWAIT);
++	if (IS_ERR(label))
++		goto out;
++
+ 	parent = dentry->d_parent;
+ 	/* Protect against concurrent sillydeletes */
+ 	nfs_block_sillyrename(parent);
+@@ -1312,6 +1332,7 @@ no_entry:
+ 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+ out_unblock_sillyrename:
+ 	nfs_unblock_sillyrename(parent);
++	nfs4_label_free(label);
+ out:
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index ac18e15..4307e12 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -836,6 +836,13 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 		goto out;
+ 
+ 	nfs_inc_stats(inode, NFSIOS_INODEREVALIDATE);
++
++	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_KERNEL);
++	if (IS_ERR(label)) {
++		status = PTR_ERR(label);
++		goto out;
++	}
++
+ 	status = NFS_PROTO(inode)->getattr(server, NFS_FH(inode), fattr, label);
+ 	if (status != 0) {
+ 		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) getattr failed, error=%d\n",
+@@ -846,7 +853,7 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 			if (!S_ISDIR(inode->i_mode))
+ 				set_bit(NFS_INO_STALE, &NFS_I(inode)->flags);
+ 		}
+-		goto out;
++		goto err_out;
+ 	}
+ 
+ 	status = nfs_refresh_inode(inode, fattr, label);
+@@ -854,7 +861,7 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) refresh failed, error=%d\n",
+ 			 inode->i_sb->s_id,
+ 			 (long long)NFS_FILEID(inode), status);
+-		goto out;
++		goto err_out;
+ 	}
+ 
+ 	if (nfsi->cache_validity & NFS_INO_INVALID_ACL)
+@@ -864,7 +871,9 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 		inode->i_sb->s_id,
+ 		(long long)NFS_FILEID(inode));
+ 
+- out:
++err_out:
++	nfs4_label_free(label);
++out:
+ 	nfs_free_fattr(fattr);
+ 	return status;
+ }
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 3befc2a..ff545fc 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -833,9 +833,14 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	p = kzalloc(sizeof(*p), gfp_mask);
+ 	if (p == NULL)
+ 		goto err;
++
++	p->f_label = nfs4_label_alloc(server, gfp_mask);
++	if (IS_ERR(p->f_label))
++		goto err_free_p;
++
+ 	p->o_arg.seqid = nfs_alloc_seqid(&sp->so_seqid, gfp_mask);
+ 	if (p->o_arg.seqid == NULL)
+-		goto err_free;
++		goto err_free_label;
+ 	nfs_sb_active(dentry->d_sb);
+ 	p->dentry = dget(dentry);
+ 	p->dir = parent;
+@@ -889,7 +894,10 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	nfs4_init_opendata_res(p);
+ 	kref_init(&p->kref);
+ 	return p;
+-err_free:
++
++err_free_label:
++	nfs4_label_free(p->f_label);
++err_free_p:
+ 	kfree(p);
+ err:
+ 	dput(parent);
+@@ -906,6 +914,9 @@ static void nfs4_opendata_free(struct kref *kref)
+ 	if (p->state != NULL)
+ 		nfs4_put_open_state(p->state);
+ 	nfs4_put_state_owner(p->owner);
++
++	nfs4_label_free(p->f_label);
++
+ 	dput(p->dir);
+ 	dput(p->dentry);
+ 	nfs_sb_deactive(sb);
+@@ -2020,10 +2031,18 @@ static int _nfs4_do_open(struct inode *dir,
+ 	if (opendata == NULL)
+ 		goto err_put_state_owner;
+ 
++	if (label) {
++		olabel = nfs4_label_alloc(server, GFP_KERNEL);
++		if (IS_ERR(olabel)) {
++			status = PTR_ERR(olabel);
++			goto err_opendata_put;
++		}
++	}
++
+ 	if (ctx_th && server->attr_bitmask[2] & FATTR4_WORD2_MDSTHRESHOLD) {
+ 		opendata->f_attr.mdsthreshold = pnfs_mdsthreshold_alloc();
+ 		if (!opendata->f_attr.mdsthreshold)
+-			goto err_opendata_put;
++			goto err_free_label;
+ 		opendata->o_arg.open_bitmap = &nfs4_pnfs_open_bitmap[0];
+ 	}
+ 	if (dentry->d_inode != NULL)
+@@ -2031,7 +2050,7 @@ static int _nfs4_do_open(struct inode *dir,
+ 
+ 	status = _nfs4_open_and_get_state(opendata, fmode, flags, &state);
+ 	if (status != 0)
+-		goto err_opendata_put;
++		goto err_free_label;
+ 
+ 	if ((opendata->o_arg.open_flags & O_EXCL) &&
+ 	    (opendata->o_arg.createmode != NFS4_CREATE_GUARDED)) {
+@@ -2053,10 +2072,14 @@ static int _nfs4_do_open(struct inode *dir,
+ 		kfree(opendata->f_attr.mdsthreshold);
+ 	opendata->f_attr.mdsthreshold = NULL;
+ 
++	nfs4_label_free(olabel);
++
+ 	nfs4_opendata_put(opendata);
+ 	nfs4_put_state_owner(sp);
+ 	*res = state;
+ 	return 0;
++err_free_label:
++	nfs4_label_free(olabel);
+ err_opendata_put:
+ 	kfree(opendata->f_attr.mdsthreshold);
+ 	nfs4_opendata_put(opendata);
+@@ -2670,16 +2693,23 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *mntfh,
+ 		return error;
+ 	}
+ 
++	label = nfs4_label_alloc(server, GFP_KERNEL);
++	if (IS_ERR(label))
++		return PTR_ERR(label);
++
+ 	error = nfs4_proc_getattr(server, mntfh, fattr, label);
+ 	if (error < 0) {
+ 		dprintk("nfs4_get_root: getattr error = %d\n", -error);
+-		return error;
++		goto err_free_label;
+ 	}
+ 
+ 	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
+ 	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
+ 		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
+ 
++err_free_label:
++	nfs4_label_free(label);
++
+ 	return error;
+ }
+ 
+@@ -2785,6 +2815,7 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 	struct inode *inode = dentry->d_inode;
+ 	struct rpc_cred *cred = NULL;
+ 	struct nfs4_state *state = NULL;
++	struct nfs4_label *label = NULL;
+ 	int status;
+ 
+ 	if (pnfs_ld_layoutret_on_setattr(inode))
+@@ -2811,9 +2842,15 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 		}
+ 	}
+ 
+-	status = nfs4_do_setattr(inode, cred, fattr, sattr, state, NULL, NULL);
++	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_KERNEL);
++	if (IS_ERR(label))
++		return PTR_ERR(label);
++
++	status = nfs4_do_setattr(inode, cred, fattr, sattr, state, NULL, label);
+ 	if (status == 0)
+ 		nfs_setattr_update_inode(inode, sattr);
++
++	nfs4_label_free(label);
+ 	return status;
+ }
+ 
+@@ -3194,7 +3231,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		.rpc_resp = &res,
+ 	};
+ 	int status = -ENOMEM;
+-	
++
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+ 		update_changeattr(old_dir, &res.old_cinfo);
+@@ -3241,11 +3278,21 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
+ 	if (res.fattr == NULL)
+ 		goto out;
+ 
++	res.label = nfs4_label_alloc(server, GFP_KERNEL);
++	if (IS_ERR(res.label)) {
++		status = PTR_ERR(res.label);
++		goto out;
++	}
++
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+ 		update_changeattr(dir, &res.cinfo);
+ 		nfs_post_op_update_inode(inode, res.fattr, res.label);
+ 	}
++
++
++	nfs4_label_free(res.label);
++
+ out:
+ 	nfs_free_fattr(res.fattr);
+ 	return status;
+@@ -3281,6 +3328,10 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
+ 	if (data != NULL) {
+ 		struct nfs_server *server = NFS_SERVER(dir);
+ 
++		data->label = nfs4_label_alloc(server, GFP_KERNEL);
++		if (IS_ERR(data->label))
++			goto out_free;
++
+ 		data->msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CREATE];
+ 		data->msg.rpc_argp = &data->arg;
+ 		data->msg.rpc_resp = &data->res;
+@@ -3297,6 +3348,9 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
+ 		nfs_fattr_init(data->res.fattr);
+ 	}
+ 	return data;
++out_free:
++	kfree(data);
++	return NULL;
+ }
+ 
+ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_createdata *data)
+@@ -3312,6 +3366,7 @@ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_
+ 
+ static void nfs4_free_createdata(struct nfs4_createdata *data)
+ {
++	nfs4_label_free(data->label);
+ 	kfree(data);
+ }
+ 
+-- 
+1.8.1.4
 
-I have 10-15 sles 9 sp4 clients whose stats look like this, i.e. authrefrsh=0.
-
-Newer clients...SLES 11 and CentOS 6 (nfs-utils-1.2.3-36.el6.x86_64)
-$ nfsstat -rc
-Client rpc stats:
-calls      retrans    authrefrsh
-152946408   0          152968735
-
-
-These questions are about all I could find on the matter:
-http://unix.stackexchange.com/questions/13557/slow-nfs-nfsstat-c-what-is-authrefrsh-aka-newcreds-field-about-in-detail
-http://serverfault.com/questions/362442/what-causes-repeated-linux-nfs-client-side-rpc-credential-refreshing
-
-Sorry if this is not the correct mailing list for this type of question, so please point me in the right direction if not.  Thanks for any info.
-
-________________________________
-
-Information in this e-mail may be confidential. It is intended only for the addressee(s) identified above. If you are not the addressee(s), or an employee or agent of the addressee(s), please note that any dissemination, distribution, or copying of this communication is strictly prohibited. If you have received this e-mail in error, please notify the sender of the error.
