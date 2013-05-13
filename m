@@ -1,140 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:38192 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755233Ab3EGV1V convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 May 2013 17:27:21 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
-Subject: Re: long delay when mounting due to SETCLIENTID AUTH_GSS attempts
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130507205321.GE32743@fieldses.org>
-Date: Tue, 7 May 2013 17:27:04 -0400
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <4CC24019-8937-49D3-83A1-FF2E5BCC9FB3@oracle.com>
-References: <20130503132557.2fdf794d@tlielax.poochiereds.net> <AE700845-4032-4BEC-817C-97EB08A831E8@oracle.com> <20130503142421.19fb3ca6@tlielax.poochiereds.net> <1367606034.3556.25.camel@leira.trondhjem.org> <20130503144437.3a47e476@tlielax.poochiereds.net> <A2E5B3F1-A8F1-4731-A66C-548B9C8FD429@oracle.com> <20130503211810.GF5715@fieldses.org> <8F91C5FB-EE7F-48F8-9ED5-6B5D8503E248@oracle.com> <20130507205321.GE32743@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:18978 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755063Ab3EMTM4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 May 2013 15:12:56 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 12/13] NFS: Extend NFS xattr handlers to accept the security namespace
+Date: Mon, 13 May 2013 15:11:56 -0400
+Message-Id: <1368472317-5602-13-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1368472317-5602-1-git-send-email-SteveD@redhat.com>
+References: <1368472317-5602-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: David Quigley <dpquigl@davequigley.com>
 
-On May 7, 2013, at 4:53 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+The existing NFSv4 xattr handlers do not accept xattr calls to the security
+namespace. This patch extends these handlers to accept xattrs from the security
+namespace in addition to the default NFSv4 ACL namespace.
 
-> On Fri, May 03, 2013 at 05:50:49PM -0400, Chuck Lever wrote:
->> 
->> On May 3, 2013, at 5:18 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
->> 
->>> On Fri, May 03, 2013 at 02:48:59PM -0400, Chuck Lever wrote:
->>>> We should always use krb5i if a GSS context can be established with
->>>> our machine cred.  As I said before, SETCLIENTID and
->>>> GETATTR(fs_locations) really should use an integrity-protecting
->>>> security flavor no matter what flavor is in effect on the mount points
->>>> themselves.
->>> 
->>> Can you give an example of a threat that could be avoided by this?
->>> 
->>> My suspicion is that in most cases an attacker with the ability to
->>> subvert auth_sys could *also* DOS gssd, and hence force the fallback to
->>> auth_sys.
->>> 
->>> krb5i plus a fallback to auth_sys on failure to authenticate doesn't
->>> sound to me much more secure than just auth_sys.
->> 
->> Our current situation is that the first mount of a server determines the flavor to use for SETCLIENTID.  So if that mount happens to be "sec=sys" the SETCLIENTID is done with AUTH_SYS no matter what the subsequent mounts request.
->> 
->> That's just about as secure in many cases as falling back.
->> 
->>> If we really want much security benefit from krb5i on state operations,
->>> I think we need to really *require* krb5i.
->>> 
->>> So I'm inclined towards Jeff's solution: don't do this unless userspace
->>> somehow affirmatively states that it requires krb5i on state operations.
->> 
->> This would have to be on a per-server basis.  Where would an admin specify such an option?  I don't believe either a mount option (too fine) or a module parameter (too coarse) is appropriate.
-> 
-> Why do you think a mount option is too fine?  They can use nfsmount.conf
-> to specify per-server or global defaults.
-> 
->>> I agree that we should default to this when we can.  But the way to move
->>> towards that default is then to get distributions to turn on the new
->>> module parm (or whatever it is) by default.  As they do so, they can
->>> also ensure that e.g. gssd is started.
->> 
->> gssd is not all that's required.
-> 
-> Isn't that's all that's required to fix the delay problem?
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ fs/nfs/nfs4proc.c   | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ security/security.c |  1 +
+ 2 files changed, 51 insertions(+)
 
-It's all that is required to work around the delay.  But it does not address the security concern you brought up last week.
-
-> Or do you
-> still get a delay if you run gssd but don't create a keytab?
-> 
-> --b.
-> 
->> A keytab must be provisioned on the client and server for it to work, and that's the main issue I'm trying to address:  We need "sec=krb5" mounts to work when the client has no GSS machine credential.
->> 
->> And I think we already have a problem with gssd not picking up kernel requests quickly, as Trond pointed out.
->> 
->> I don't feel like any of this is new, or that any of this is a strong reason to revert.  But it could be a reason to move forward from here.
->> 
->> Does gssd distinguish between:
->> 
->>  - no local keytab
->> 
->>  - no local support for GSS
->> 
->>  - server doesn't grok GSS
->> 
->>  - some network problem occurred
->> 
->> Can it communicate that distinction to the kernel?  What if we fall back only in the "no keytab" and "client's kernel has no GSS support" cases?  In the "server doesn't grok" case, do not fall back if "sec=krb5*" is specified on the mount point?  "A network problem occurred" is an "always fail" case.
->> 
->> 
->> 
->>> 
->>> --b.
->>> 
->>>>> Instead of using AUTH_GSS for SETCLIENTID by default, would it make
->>>>> sense to add a switch (module parm?) that turns it on so that it can be
->>>>> an opt-in thing rather than doing this by default?
->>>> 
->>>> Why add another tunable when we really should just fix the delay?
->>>> 
->>>> Besides, if gssd is running and no keytab exists, then the fallback to AUTH_SYS should be fast. Is that not an effective workaround until we address the delay problem?
->>>> 
->>>> -- 
->>>> Chuck Lever
->>>> chuck[dot]lever[at]oracle[dot]com
->>>> 
->>>> 
->>>> 
->>>> 
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> -- 
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->> 
->> 
->> 
->> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index bb79b05..b67de39 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5658,6 +5658,53 @@ static size_t nfs4_xattr_list_nfs4_acl(struct dentry *dentry, char *list,
+ 	return len;
+ }
+ 
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++static inline int nfs4_server_supports_labels(struct nfs_server *server)
++{
++	return server->caps & NFS_CAP_SECURITY_LABEL;
++}
++
++static int nfs4_xattr_set_nfs4_label(struct dentry *dentry, const char *key,
++				   const void *buf, size_t buflen,
++				   int flags, int type)
++{
++	if (security_ismaclabel(key))
++		return nfs4_set_security_label(dentry, buf, buflen);
++
++	return -EOPNOTSUPP;
++}
++
++static int nfs4_xattr_get_nfs4_label(struct dentry *dentry, const char *key,
++				   void *buf, size_t buflen, int type)
++{
++	if (security_ismaclabel(key))
++		return nfs4_get_security_label(dentry->d_inode, buf, buflen);
++	return -EOPNOTSUPP;
++}
++
++static size_t nfs4_xattr_list_nfs4_label(struct dentry *dentry, char *list,
++				       size_t list_len, const char *name,
++				       size_t name_len, int type)
++{
++	size_t len = 0;
++
++	if (nfs_server_capable(dentry->d_inode, NFS_CAP_SECURITY_LABEL)) {
++		len = security_inode_listsecurity(dentry->d_inode, NULL, 0);
++		if (list && len <= list_len)
++			security_inode_listsecurity(dentry->d_inode, list, len);
++	}
++	return len;
++}
++
++static const struct xattr_handler nfs4_xattr_nfs4_label_handler = {
++	.prefix = XATTR_SECURITY_PREFIX,
++	.list	= nfs4_xattr_list_nfs4_label,
++	.get	= nfs4_xattr_get_nfs4_label,
++	.set	= nfs4_xattr_set_nfs4_label,
++};
++#endif
++
++
+ /*
+  * nfs_fhget will use either the mounted_on_fileid or the fileid
+  */
+@@ -7486,6 +7533,9 @@ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
+ 
+ const struct xattr_handler *nfs4_xattr_handlers[] = {
+ 	&nfs4_xattr_nfs4_acl_handler,
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	&nfs4_xattr_nfs4_label_handler,
++#endif
+ 	NULL
+ };
+ 
+diff --git a/security/security.c b/security/security.c
+index 8d0b9a7..94b35ae 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -660,6 +660,7 @@ int security_inode_listsecurity(struct inode *inode, char *buffer, size_t buffer
+ 		return 0;
+ 	return security_ops->inode_listsecurity(inode, buffer, buffer_size);
+ }
++EXPORT_SYMBOL(security_inode_listsecurity);
+ 
+ void security_inode_getsecid(const struct inode *inode, u32 *secid)
+ {
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.8.1.4
 
