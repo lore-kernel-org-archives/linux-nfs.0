@@ -1,43 +1,224 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from merlin.infradead.org ([205.233.59.134]:43994 "EHLO
-	merlin.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752267Ab3EFIwL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 04:52:11 -0400
-Date: Mon, 6 May 2013 10:50:25 +0200
-From: Peter Zijlstra <a.p.zijlstra@chello.nl>
-To: Colin Cross <ccross@android.com>
-Cc: linux-kernel@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Len Brown <len.brown@intel.com>, Pavel Machek <pavel@ucw.cz>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>, Ingo Molnar <mingo@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-pm@vger.kernel.org, netdev@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, Ben Chan <benchan@chromium.org>
-Subject: Re: [PATCH 1/2] freezer: add unsafe versions of freezable helpers
-Message-ID: <20130506085025.GB13861@dyad.programming.kicks-ass.net>
-References: <1367615050-3894-1-git-send-email-ccross@android.com>
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:36318 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751391Ab3EMRuY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 May 2013 13:50:24 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1367615050-3894-1-git-send-email-ccross@android.com>
+In-Reply-To: <20130510070959.0af3e35a@tlielax.poochiereds.net>
+References: <1366977861-27678-1-git-send-email-piastry@etersoft.ru>
+	<1366977861-27678-3-git-send-email-piastry@etersoft.ru>
+	<20130510070959.0af3e35a@tlielax.poochiereds.net>
+Date: Mon, 13 May 2013 21:50:23 +0400
+Message-ID: <CAKywueSZhYZo-Xc8s2Vv-k8a1LBNr_FGOH0qSMRFKJ1hJrYOUw@mail.gmail.com>
+Subject: Re: [PATCH v6 2/7] VFS: Add O_DENYDELETE support for VFS
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: linux-kernel@vger.kernel.org, linux-cifs <linux-cifs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        wine-devel@winehq.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 03, 2013 at 02:04:09PM -0700, Colin Cross wrote:
-> NFS calls the freezable helpers with locks held, which is unsafe
-> and caused lockdep warnings when 6aa9707 "lockdep: check that no
-> locks held at freeze time" was applied (reverted in dbf520a).
-> Add new *_unsafe versions of the helpers that will not run the
-> lockdep test when 6aa9707 is reapplied, and call them from NFS.
+2013/5/10 Jeff Layton <jlayton@poochiereds.net>:
+> On Fri, 26 Apr 2013 16:04:16 +0400
+> Pavel Shilovsky <piastry@etersoft.ru> wrote:
+>
+>> Introduce new LOCK_DELETE flock flag that is suggested to be used
+>> internally only to map O_DENYDELETE open flag:
+>>
+>> !O_DENYDELETE -> LOCK_DELETE | LOCK_MAND.
+>>
+>> Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+>> ---
+>>  fs/locks.c                       | 53 +++++++++++++++++++++++++++++++++-------
+>>  fs/namei.c                       |  3 +++
+>>  include/linux/fs.h               |  6 +++++
+>>  include/uapi/asm-generic/fcntl.h |  1 +
+>>  4 files changed, 54 insertions(+), 9 deletions(-)
+>>
+>> diff --git a/fs/locks.c b/fs/locks.c
+>> index dbc5557..1cc68a9 100644
+>> --- a/fs/locks.c
+>> +++ b/fs/locks.c
+>> @@ -269,7 +269,7 @@ EXPORT_SYMBOL(locks_copy_lock);
+>>
+>>  static inline int flock_translate_cmd(int cmd) {
+>>       if (cmd & LOCK_MAND)
+>> -             return cmd & (LOCK_MAND | LOCK_RW);
+>> +             return cmd & (LOCK_MAND | LOCK_RW | LOCK_DELETE);
+>>       switch (cmd) {
+>>       case LOCK_SH:
+>>               return F_RDLCK;
+>> @@ -614,6 +614,8 @@ deny_flags_to_cmd(unsigned int flags)
+>>               cmd |= LOCK_READ;
+>>       if (!(flags & O_DENYWRITE))
+>>               cmd |= LOCK_WRITE;
+>> +     if (!(flags & O_DENYDELETE))
+>> +             cmd |= LOCK_DELETE;
+>>
+>>       return cmd;
+>>  }
+>> @@ -836,6 +838,31 @@ out:
+>>       return error;
+>>  }
+>>
+>> +int
+>> +sharelock_may_delete(struct dentry *dentry)
+>> +{
+>> +     struct file_lock **before;
+>> +     int rc = 0;
+>> +
+>> +     if (!IS_SHARELOCK(dentry->d_inode))
+>> +             return rc;
+>> +
+>> +     lock_flocks();
+>> +     for_each_lock(dentry->d_inode, before) {
+>> +             struct file_lock *fl = *before;
+>> +             if (IS_POSIX(fl))
+>> +                     break;
+>> +             if (IS_LEASE(fl))
+>> +                     continue;
+>> +             if (fl->fl_type & LOCK_DELETE)
+>> +                     continue;
+>> +             rc = 1;
+>> +             break;
+>> +     }
+>> +     unlock_flocks();
+>> +     return rc;
+>> +}
+>> +
+>>  /*
+>>   * Determine if a file is allowed to be opened with specified access and share
+>>   * modes. Lock the file and return 0 if checks passed, otherwise return
+>> @@ -850,10 +877,6 @@ sharelock_lock_file(struct file *filp)
+>>       if (!IS_SHARELOCK(filp->f_path.dentry->d_inode))
+>>               return error;
+>>
+>> -     /* Disable O_DENYDELETE support for now */
+>> -     if (filp->f_flags & O_DENYDELETE)
+>> -             return -EINVAL;
+>> -
+>>       error = flock_make_lock(filp, &lock, deny_flags_to_cmd(filp->f_flags));
+>>       if (error)
+>>               return error;
+>> @@ -1717,6 +1740,12 @@ SYSCALL_DEFINE2(flock, unsigned int, fd, unsigned int, cmd)
+>>       if (!f.file)
+>>               goto out;
+>>
+>> +     /* LOCK_DELETE is defined to be translated from O_DENYDELETE only */
+>> +     if (cmd & LOCK_DELETE) {
+>> +             error = -EINVAL;
+>> +             goto out;
+>> +     }
+>> +
+>>       can_sleep = !(cmd & LOCK_NB);
+>>       cmd &= ~LOCK_NB;
+>>       unlock = (cmd == LOCK_UN);
+>> @@ -2261,10 +2290,16 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
+>>               seq_printf(f, "UNKNOWN UNKNOWN  ");
+>>       }
+>>       if (fl->fl_type & LOCK_MAND) {
+>> -             seq_printf(f, "%s ",
+>> -                            (fl->fl_type & LOCK_READ)
+>> -                            ? (fl->fl_type & LOCK_WRITE) ? "RW   " : "READ "
+>> -                            : (fl->fl_type & LOCK_WRITE) ? "WRITE" : "NONE ");
+>> +             if (fl->fl_type & LOCK_DELETE)
+>> +                     seq_printf(f, "%s ",
+>> +                             (fl->fl_type & LOCK_READ) ?
+>> +                             (fl->fl_type & LOCK_WRITE) ? "RWDEL" : "RDDEL" :
+>> +                             (fl->fl_type & LOCK_WRITE) ? "WRDEL" : "DEL  ");
+>> +             else
+>> +                     seq_printf(f, "%s ",
+>> +                             (fl->fl_type & LOCK_READ) ?
+>> +                             (fl->fl_type & LOCK_WRITE) ? "RW   " : "READ " :
+>> +                             (fl->fl_type & LOCK_WRITE) ? "WRITE" : "NONE ");
+>>       } else {
+>>               seq_printf(f, "%s ",
+>>                              (lease_breaking(fl))
+>> diff --git a/fs/namei.c b/fs/namei.c
+>> index dd236fe..a404f7d 100644
+>> --- a/fs/namei.c
+>> +++ b/fs/namei.c
+>> @@ -2220,6 +2220,7 @@ static inline int check_sticky(struct inode *dir, struct inode *inode)
+>>   *  9. We can't remove a root or mountpoint.
+>>   * 10. We don't allow removal of NFS sillyrenamed files; it's handled by
+>>   *     nfs_async_unlink().
+>> + * 11. We can't do it if victim is locked by O_DENYDELETE sharelock.
+>>   */
+>>  static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
+>>  {
+>> @@ -2250,6 +2251,8 @@ static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
+>>               return -ENOENT;
+>>       if (victim->d_flags & DCACHE_NFSFS_RENAMED)
+>>               return -EBUSY;
+>> +     if (sharelock_may_delete(victim))
+>> +             return -ESHAREDENIED;
+>
+>
+> Is there a potential race here?
+>
+> You're holding the parent's i_mutex when setting a lock on this file,
+> but you're not holding it when you test for it here. So it seems
+> possible you could end up granting a O_DENYDELETE open on a file that
+> is in the process of being deleted from the namespace.
 
-Am I the only one that would like a bit more information about why NFS does
-this and why we need to work around it?
+may_delete function is called from vfs_unlnk, vfs_rename and vfs_rmdir
+and in all those places the caller is holding parent's i_mutex. It
+seems that the locking order is correct: we hold parent's i_mutex when
+we set and test sharelocks.
 
->From replies in this thread I surmise its got something to do with hard NFS
-mounts. And I suppose I could go apply google to lkml and try and find the
-previous discussion, but really this should be in the Changelog.
+>>       return 0;
+>>  }
+>>
+>> diff --git a/include/linux/fs.h b/include/linux/fs.h
+>> index 24066d2..afd56b1 100644
+>> --- a/include/linux/fs.h
+>> +++ b/include/linux/fs.h
+>> @@ -1006,6 +1006,7 @@ extern int lock_may_read(struct inode *, loff_t start, unsigned long count);
+>>  extern int lock_may_write(struct inode *, loff_t start, unsigned long count);
+>>  extern void locks_delete_block(struct file_lock *waiter);
+>>  extern int sharelock_lock_file(struct file *);
+>> +extern int sharelock_may_delete(struct dentry *);
+>>  extern void lock_flocks(void);
+>>  extern void unlock_flocks(void);
+>>  #else /* !CONFIG_FILE_LOCKING */
+>> @@ -1159,6 +1160,11 @@ static inline int sharelock_lock_file(struct file *filp)
+>>       return 0;
+>>  }
+>>
+>> +static inline int sharelock_may_delete(struct dentry *dentry)
+>> +{
+>> +     return 0;
+>> +}
+>> +
+>>  static inline void lock_flocks(void)
+>>  {
+>>  }
+>> diff --git a/include/uapi/asm-generic/fcntl.h b/include/uapi/asm-generic/fcntl.h
+>> index 5ac0d49..a3e6349 100644
+>> --- a/include/uapi/asm-generic/fcntl.h
+>> +++ b/include/uapi/asm-generic/fcntl.h
+>> @@ -167,6 +167,7 @@ struct f_owner_ex {
+>>                                  blocking */
+>>  #define LOCK_UN              8       /* remove lock */
+>>
+>> +#define LOCK_DELETE  16      /* which allows to delete a file */
+>>  #define LOCK_MAND    32      /* This is a mandatory flock ... */
+>>  #define LOCK_READ    64      /* which allows concurrent read operations */
+>>  #define LOCK_WRITE   128     /* which allows concurrent write operations */
+>
+>
+> --
+> Jeff Layton <jlayton@poochiereds.net>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-cifs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+
+--
+Best regards,
+Pavel Shilovsky.
