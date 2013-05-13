@@ -1,175 +1,295 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:10796 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:6308 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933810Ab3ECU1p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 May 2013 16:27:45 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] NFSv4: Convert nfs41_free_stateid to use an asynchronous RPC call
-Date: Fri,  3 May 2013 16:27:40 -0400
-Message-Id: <1367612861-37915-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1754676Ab3EMTMw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 May 2013 15:12:52 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 07/13] NFSv4: Introduce new label structure
+Date: Mon, 13 May 2013 15:11:51 -0400
+Message-Id: <1368472317-5602-8-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1368472317-5602-1-git-send-email-SteveD@redhat.com>
+References: <1368472317-5602-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The main reason for doing this is will be to allow for an asynchronous
-RPC mode that we can use for freeing lock stateids as per section
-8.2.4 of RFC5661.
+From: David Quigley <dpquigl@davequigley.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+In order to mimic the way that NFSv4 ACLs are implemented we have created a
+structure to be used to pass label data up and down the call chain. This patch
+adds the new structure and new members to the required NFSv4 call structures.
+
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 ---
- fs/nfs/nfs4proc.c       | 98 +++++++++++++++++++++++++++++++++++++------------
- fs/nfs/nfs4xdr.c        |  2 +-
- include/linux/nfs_xdr.h |  2 +-
- 3 files changed, 77 insertions(+), 25 deletions(-)
+ fs/nfs/inode.c            | 28 ++++++++++++++++++++++++++++
+ include/linux/nfs4.h      |  7 +++++++
+ include/linux/nfs_fs.h    | 18 ++++++++++++++++++
+ include/linux/nfs_xdr.h   | 21 +++++++++++++++++++++
+ include/uapi/linux/nfs4.h |  2 +-
+ 5 files changed, 75 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 3f4e512..95f73ca 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6783,26 +6783,76 @@ static int nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
- 	return err;
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index c1c7a9d..07fcf0b 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -257,6 +257,34 @@ nfs_init_locked(struct inode *inode, void *opaque)
+ 	return 0;
  }
  
--static int _nfs4_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
--{
--	struct nfs41_free_stateid_args args = {
--		.stateid = stateid,
--	};
-+struct nfs_free_stateid_data {
-+	struct nfs_server *server;
-+	struct nfs41_free_stateid_args args;
- 	struct nfs41_free_stateid_res res;
-+};
-+
-+static void nfs41_free_stateid_prepare(struct rpc_task *task, void *calldata)
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags)
 +{
-+	struct nfs_free_stateid_data *data = calldata;
-+	nfs41_setup_sequence(nfs4_get_session(data->server),
-+			&data->args.seq_args,
-+			&data->res.seq_res,
-+			task);
-+}
++	struct nfs4_label *label = NULL;
++	int minor_version = server->nfs_client->cl_minorversion;
 +
-+static void nfs41_free_stateid_done(struct rpc_task *task, void *calldata)
-+{
-+	struct nfs_free_stateid_data *data = calldata;
++	if (minor_version < 2)
++		return label;
 +
-+	nfs41_sequence_done(task, &data->res.seq_res);
++	if (!(server->caps & NFS_CAP_SECURITY_LABEL))
++		return label;
 +
-+	switch (task->tk_status) {
-+	case -NFS4ERR_DELAY:
-+		if (nfs4_async_handle_error(task, data->server, NULL) == -EAGAIN)
-+			rpc_restart_call_prepare(task);
-+	}
-+}
-+
-+static void nfs41_free_stateid_release(void *calldata)
-+{
-+	kfree(calldata);
-+}
-+
-+const struct rpc_call_ops nfs41_free_stateid_ops = {
-+	.rpc_call_prepare = nfs41_free_stateid_prepare,
-+	.rpc_call_done = nfs41_free_stateid_done,
-+	.rpc_release = nfs41_free_stateid_release,
-+};
-+
-+static struct rpc_task *_nfs41_free_stateid(struct nfs_server *server,
-+		nfs4_stateid *stateid,
-+		bool privileged)
-+{
- 	struct rpc_message msg = {
- 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_FREE_STATEID],
--		.rpc_argp = &args,
--		.rpc_resp = &res,
- 	};
--	int status;
-+	struct rpc_task_setup task_setup = {
-+		.rpc_client = server->client,
-+		.rpc_message = &msg,
-+		.callback_ops = &nfs41_free_stateid_ops,
-+		.flags = RPC_TASK_ASYNC,
-+	};
-+	struct nfs_free_stateid_data *data;
- 
- 	dprintk("NFS call  free_stateid %p\n", stateid);
--	nfs41_init_sequence(&args.seq_args, &res.seq_res, 0);
--	nfs4_set_sequence_privileged(&args.seq_args);
--	status = nfs4_call_sync_sequence(server->client, server, &msg,
--			&args.seq_args, &res.seq_res);
--	dprintk("NFS reply free_stateid: %d\n", status);
--	return status;
-+	data = kmalloc(sizeof(*data), GFP_NOFS);
-+	if (!data)
++	label = kzalloc(sizeof(struct nfs4_label), flags);
++	if (label == NULL)
 +		return ERR_PTR(-ENOMEM);
-+	data->server = server;
-+	nfs4_stateid_copy(&data->args.stateid, stateid);
 +
-+	task_setup.callback_data = data;
++	label->label = kzalloc(NFS4_MAXLABELLEN, flags);
++	if (label->label == NULL) {
++		kfree(label);
++		return ERR_PTR(-ENOMEM);
++	}
++	label->len = NFS4_MAXLABELLEN;
 +
-+	msg.rpc_argp = &data->args;
-+	msg.rpc_resp = &data->res;
-+	nfs41_init_sequence(&data->args.seq_args, &data->res.seq_res, 0);
-+	if (privileged)
-+		nfs4_set_sequence_privileged(&data->args.seq_args);
++	return label;
++}
++EXPORT_SYMBOL_GPL(nfs4_label_alloc);
++#endif
 +
-+	return rpc_run_task(&task_setup);
- }
- 
- /**
-@@ -6816,15 +6866,17 @@ static int _nfs4_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
-  */
- static int nfs41_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
- {
--	struct nfs4_exception exception = { };
--	int err;
--	do {
--		err = _nfs4_free_stateid(server, stateid);
--		if (err != -NFS4ERR_DELAY)
--			break;
--		nfs4_handle_exception(server, err, &exception);
--	} while (exception.retry);
--	return err;
-+	struct rpc_task *task;
-+	int ret;
-+
-+	task = _nfs41_free_stateid(server, stateid, true);
-+	if (IS_ERR(task))
-+		return PTR_ERR(task);
-+	ret = rpc_wait_for_completion_task(task);
-+	if (!ret)
-+		ret = task->tk_status;
-+	rpc_put_task(task);
-+	return ret;
- }
- 
- static bool nfs41_match_stateid(const nfs4_stateid *s1,
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index d40a89b..9be2326e 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -2003,7 +2003,7 @@ static void encode_free_stateid(struct xdr_stream *xdr,
- 				struct compound_hdr *hdr)
- {
- 	encode_op_hdr(xdr, OP_FREE_STATEID, decode_free_stateid_maxsz, hdr);
--	encode_nfs4_stateid(xdr, args->stateid);
-+	encode_nfs4_stateid(xdr, &args->stateid);
- }
- #endif /* CONFIG_NFS_V4_1 */
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 766c5bc..104b62f 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1176,7 +1176,7 @@ struct nfs41_test_stateid_res {
- 
- struct nfs41_free_stateid_args {
- 	struct nfs4_sequence_args	seq_args;
--	nfs4_stateid			*stateid;
-+	nfs4_stateid			stateid;
+ /*
+  * This is our front-end to iget that looks up inodes by file handle
+  * instead of inode number.
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 4204600..e3698cd 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -32,6 +32,13 @@ struct nfs4_acl {
+ 	struct nfs4_ace	aces[0];
  };
  
- struct nfs41_free_stateid_res {
++struct nfs4_label {
++	uint32_t	lfs;
++	uint32_t	pi;
++	u32		len;
++	char	*label;
++};
++
+ typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
+ 
+ struct nfs_stateid4 {
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index fc01d5c..39b2404 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -497,6 +497,24 @@ extern int nfs_mountpoint_expiry_timeout;
+ extern void nfs_release_automount_timer(void);
+ 
+ /*
++ * linux/fs/nfs/nfs4proc.c
++ */
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++extern struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags);
++static inline void nfs4_label_free(struct nfs4_label *label)
++{
++	if (label) {
++		kfree(label->label);
++		kfree(label);
++	}
++	return;
++}
++#else
++static inline struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags) { return NULL; }
++static inline void nfs4_label_free(void *label) {}
++#endif
++
++/*
+  * linux/fs/nfs/unlink.c
+  */
+ extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index bfdf6e0..2c13d43 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -349,6 +349,7 @@ struct nfs_openargs {
+ 	const u32 *		open_bitmap;
+ 	__u32			claim;
+ 	enum createmode4	createmode;
++	const struct nfs4_label *label;
+ };
+ 
+ struct nfs_openres {
+@@ -358,6 +359,7 @@ struct nfs_openres {
+ 	struct nfs4_change_info	cinfo;
+ 	__u32                   rflags;
+ 	struct nfs_fattr *      f_attr;
++	struct nfs4_label	*f_label;
+ 	struct nfs_seqid *	seqid;
+ 	const struct nfs_server *server;
+ 	fmode_t			delegation_type;
+@@ -402,6 +404,7 @@ struct nfs_closeres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	nfs4_stateid            stateid;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ 	struct nfs_seqid *	seqid;
+ 	const struct nfs_server *server;
+ };
+@@ -475,6 +478,7 @@ struct nfs4_delegreturnargs {
+ struct nfs4_delegreturnres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs_fattr * fattr;
++	struct nfs4_label	*label;
+ 	const struct nfs_server *server;
+ };
+ 
+@@ -496,6 +500,7 @@ struct nfs_readargs {
+ struct nfs_readres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ 	__u32			count;
+ 	int                     eof;
+ };
+@@ -565,6 +570,7 @@ struct nfs_removeres {
+ 	struct nfs4_sequence_res 	seq_res;
+ 	const struct nfs_server *server;
+ 	struct nfs_fattr	*dir_attr;
++	struct nfs4_label	*dir_label;
+ 	struct nfs4_change_info	cinfo;
+ };
+ 
+@@ -577,6 +583,8 @@ struct nfs_renameargs {
+ 	const struct nfs_fh		*new_dir;
+ 	const struct qstr		*old_name;
+ 	const struct qstr		*new_name;
++	const struct nfs4_label		*old_label;
++	const struct nfs4_label		*new_label;
+ };
+ 
+ struct nfs_renameres {
+@@ -584,8 +592,10 @@ struct nfs_renameres {
+ 	const struct nfs_server		*server;
+ 	struct nfs4_change_info		old_cinfo;
+ 	struct nfs_fattr		*old_fattr;
++	struct nfs4_label		*old_label;
+ 	struct nfs4_change_info		new_cinfo;
+ 	struct nfs_fattr		*new_fattr;
++	struct nfs4_label		*new_label;
+ };
+ 
+ /*
+@@ -600,6 +610,7 @@ struct nfs_entry {
+ 	int			eof;
+ 	struct nfs_fh *		fh;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label  *label;
+ 	unsigned char		d_type;
+ 	struct nfs_server *	server;
+ };
+@@ -632,6 +643,7 @@ struct nfs_setattrargs {
+ 	struct iattr *                  iap;
+ 	const struct nfs_server *	server; /* Needed for name mapping */
+ 	const u32 *			bitmask;
++	const struct nfs4_label		*label;
+ };
+ 
+ struct nfs_setaclargs {
+@@ -667,6 +679,7 @@ struct nfs_getaclres {
+ struct nfs_setattrres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs_fattr *              fattr;
++	struct nfs4_label		*label;
+ 	const struct nfs_server *	server;
+ };
+ 
+@@ -712,6 +725,7 @@ struct nfs3_setaclargs {
+ struct nfs_diropok {
+ 	struct nfs_fh *		fh;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ };
+ 
+ struct nfs_readlinkargs {
+@@ -842,6 +856,7 @@ struct nfs4_accessres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	u32				supported;
+ 	u32				access;
+ };
+@@ -864,6 +879,7 @@ struct nfs4_create_arg {
+ 	const struct iattr *		attrs;
+ 	const struct nfs_fh *		dir_fh;
+ 	const u32 *			bitmask;
++	const struct nfs4_label		*label;
+ };
+ 
+ struct nfs4_create_res {
+@@ -871,6 +887,7 @@ struct nfs4_create_res {
+ 	const struct nfs_server *	server;
+ 	struct nfs_fh *			fh;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	struct nfs4_change_info		dir_cinfo;
+ };
+ 
+@@ -895,6 +912,7 @@ struct nfs4_getattr_res {
+ 	struct nfs4_sequence_res	seq_res;
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ };
+ 
+ struct nfs4_link_arg {
+@@ -909,8 +927,10 @@ struct nfs4_link_res {
+ 	struct nfs4_sequence_res	seq_res;
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	struct nfs4_change_info		cinfo;
+ 	struct nfs_fattr *		dir_attr;
++	struct nfs4_label		*dir_label;
+ };
+ 
+ 
+@@ -926,6 +946,7 @@ struct nfs4_lookup_res {
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
+ 	struct nfs_fh *			fh;
++	struct nfs4_label		*label;
+ };
+ 
+ struct nfs4_lookup_root_arg {
+diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
+index 788128e..78d25b5 100644
+--- a/include/uapi/linux/nfs4.h
++++ b/include/uapi/linux/nfs4.h
+@@ -25,7 +25,7 @@
+ #define NFS4_MAXNAMLEN		NAME_MAX
+ #define NFS4_OPAQUE_LIMIT	1024
+ #define NFS4_MAX_SESSIONID_LEN	16
+-
++#define NFS4_MAXLABELLEN	2048 
+ #define NFS4_ACCESS_READ        0x0001
+ #define NFS4_ACCESS_LOOKUP      0x0002
+ #define NFS4_ACCESS_MODIFY      0x0004
 -- 
 1.8.1.4
 
