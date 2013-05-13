@@ -1,47 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:62562 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758432Ab3ENWEq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 May 2013 18:04:46 -0400
-Date: Tue, 14 May 2013 15:04:40 -0700
-From: Zach Brown <zab@redhat.com>
-To: Dave Chinner <david@fromorbit.com>
-Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [RFC v0 0/4] sys_copy_range() rough draft
-Message-ID: <20130514220440.GN16385@lenny.home.zabbo.net>
-References: <1368566126-17610-1-git-send-email-zab@redhat.com>
- <20130514214251.GK29466@dastard>
+Received: from mail-ia0-f180.google.com ([209.85.210.180]:60769 "EHLO
+	mail-ia0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753078Ab3EMQZM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 May 2013 12:25:12 -0400
+Received: by mail-ia0-f180.google.com with SMTP id l27so1997853iae.11
+        for <linux-nfs@vger.kernel.org>; Mon, 13 May 2013 09:25:12 -0700 (PDT)
+Received: from seurat.1015granger.net (adsl-99-26-161-222.dsl.sfldmi.sbcglobal.net. [99.26.161.222])
+        by mx.google.com with ESMTPSA id wn10sm18077750igb.2.2013.05.13.09.25.10
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=RC4-SHA bits=128/128);
+        Mon, 13 May 2013 09:25:11 -0700 (PDT)
+Subject: [PATCH 0/2] [RFC] Maybe avoid gssd upcall timeout
+To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Date: Mon, 13 May 2013 12:25:09 -0400
+Message-ID: <20130513161515.1942.845.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130514214251.GK29466@dastard>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 15, 2013 at 07:42:51AM +1000, Dave Chinner wrote:
-> On Tue, May 14, 2013 at 02:15:22PM -0700, Zach Brown wrote:
-> > I'm going to keep hacking away at this.  My next step is to get ext4
-> > supporting .copy_range, probably with a quick hack to copy the
-> > contents of bios.  Hopefully that'll give enough time to also integrate
-> > review feedback.
-> 
-> Wouldn't the easiest "support all filesystems" hack just be to add
-> a destination offset parameter to do_splice_direct() and call that
-> when the filesystem doesn't supply a ->copy_range method? i.e. use
-> the mechanisms we already have for copying from one file to another
-> via the page cache as efficiently as possible?
+Hi-
 
-Probably; and this in-kernel buffered fallback is particularly desirable
-for nfsd when the exported fs doesn't provide .copy_range.  Having nfsd
-service the COPY op is still a significant win over having the client
-move the data backand forth over the wire.
+Here's a stab at addressing the 15 second wait for some 3.10 sec=sys
+mounts where the client is not running rpc.gssd.
 
-But in that quote above I was talking about implementing .copy_range in
-ext4 as though it could use XCOPY today.  I'd like to get a feel for how
-bad it's going to be to juggle the bio XCOPY IO with unwritten extent
-conversion, RMW with overlapping existing blocks, i_size advancing, etc.
-(It's so much like O_DIRECT that I'm already crying a little.)
+After reverting the "use krb5i for SETCLIENTID" patch, I've added
+the AUTH_SYS fallback in the EACCES case in
+nfs4_discover_server_trunking().  I'm not sure whether we need to
+supplement what's there now, or replace it.
 
-- z
+"case -ENOKEY:" is added so the kernel will recognize that when gssd
+is changed to return that instead of EACCES in this case.  If the
+second patch is appled to 3.7 stable and following, it might be a way
+to address the same regression in older kernels.
+
+I've been focused on another bug this week, so this has seen very
+light testing only.  Looking for comments.
+
+---
+
+Chuck Lever (2):
+      NFS: Revert commit 4edaa308 and follow-on fixes
+      NFS: Fall back to AUTH_SYS for SETCLIENTID (take 2)
+
+
+ fs/nfs/nfs4client.c |    4 +--
+ fs/nfs/nfs4state.c  |   65 +++++++++++++++++++++++++++++++++++++++++++++++----
+ 2 files changed, 61 insertions(+), 8 deletions(-)
+
+-- 
+Chuck Lever
