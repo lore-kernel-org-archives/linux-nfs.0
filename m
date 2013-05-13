@@ -1,224 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:36318 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751391Ab3EMRuY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 May 2013 13:50:24 -0400
+Received: from mx12.netapp.com ([216.240.18.77]:54579 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752630Ab3EMRhZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 May 2013 13:37:25 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: 3.11 patches
+Date: Mon, 13 May 2013 17:37:17 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA928778002@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20130513152312.GB1931@fieldses.org>
+ <1368458889.3563.7.camel@leira.trondhjem.org> <51912356.4080100@RedHat.com>
+In-Reply-To: <51912356.4080100@RedHat.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-In-Reply-To: <20130510070959.0af3e35a@tlielax.poochiereds.net>
-References: <1366977861-27678-1-git-send-email-piastry@etersoft.ru>
-	<1366977861-27678-3-git-send-email-piastry@etersoft.ru>
-	<20130510070959.0af3e35a@tlielax.poochiereds.net>
-Date: Mon, 13 May 2013 21:50:23 +0400
-Message-ID: <CAKywueSZhYZo-Xc8s2Vv-k8a1LBNr_FGOH0qSMRFKJ1hJrYOUw@mail.gmail.com>
-Subject: Re: [PATCH v6 2/7] VFS: Add O_DENYDELETE support for VFS
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: linux-kernel@vger.kernel.org, linux-cifs <linux-cifs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        wine-devel@winehq.org
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2013/5/10 Jeff Layton <jlayton@poochiereds.net>:
-> On Fri, 26 Apr 2013 16:04:16 +0400
-> Pavel Shilovsky <piastry@etersoft.ru> wrote:
->
->> Introduce new LOCK_DELETE flock flag that is suggested to be used
->> internally only to map O_DENYDELETE open flag:
->>
->> !O_DENYDELETE -> LOCK_DELETE | LOCK_MAND.
->>
->> Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
->> ---
->>  fs/locks.c                       | 53 +++++++++++++++++++++++++++++++++-------
->>  fs/namei.c                       |  3 +++
->>  include/linux/fs.h               |  6 +++++
->>  include/uapi/asm-generic/fcntl.h |  1 +
->>  4 files changed, 54 insertions(+), 9 deletions(-)
->>
->> diff --git a/fs/locks.c b/fs/locks.c
->> index dbc5557..1cc68a9 100644
->> --- a/fs/locks.c
->> +++ b/fs/locks.c
->> @@ -269,7 +269,7 @@ EXPORT_SYMBOL(locks_copy_lock);
->>
->>  static inline int flock_translate_cmd(int cmd) {
->>       if (cmd & LOCK_MAND)
->> -             return cmd & (LOCK_MAND | LOCK_RW);
->> +             return cmd & (LOCK_MAND | LOCK_RW | LOCK_DELETE);
->>       switch (cmd) {
->>       case LOCK_SH:
->>               return F_RDLCK;
->> @@ -614,6 +614,8 @@ deny_flags_to_cmd(unsigned int flags)
->>               cmd |= LOCK_READ;
->>       if (!(flags & O_DENYWRITE))
->>               cmd |= LOCK_WRITE;
->> +     if (!(flags & O_DENYDELETE))
->> +             cmd |= LOCK_DELETE;
->>
->>       return cmd;
->>  }
->> @@ -836,6 +838,31 @@ out:
->>       return error;
->>  }
->>
->> +int
->> +sharelock_may_delete(struct dentry *dentry)
->> +{
->> +     struct file_lock **before;
->> +     int rc = 0;
->> +
->> +     if (!IS_SHARELOCK(dentry->d_inode))
->> +             return rc;
->> +
->> +     lock_flocks();
->> +     for_each_lock(dentry->d_inode, before) {
->> +             struct file_lock *fl = *before;
->> +             if (IS_POSIX(fl))
->> +                     break;
->> +             if (IS_LEASE(fl))
->> +                     continue;
->> +             if (fl->fl_type & LOCK_DELETE)
->> +                     continue;
->> +             rc = 1;
->> +             break;
->> +     }
->> +     unlock_flocks();
->> +     return rc;
->> +}
->> +
->>  /*
->>   * Determine if a file is allowed to be opened with specified access and share
->>   * modes. Lock the file and return 0 if checks passed, otherwise return
->> @@ -850,10 +877,6 @@ sharelock_lock_file(struct file *filp)
->>       if (!IS_SHARELOCK(filp->f_path.dentry->d_inode))
->>               return error;
->>
->> -     /* Disable O_DENYDELETE support for now */
->> -     if (filp->f_flags & O_DENYDELETE)
->> -             return -EINVAL;
->> -
->>       error = flock_make_lock(filp, &lock, deny_flags_to_cmd(filp->f_flags));
->>       if (error)
->>               return error;
->> @@ -1717,6 +1740,12 @@ SYSCALL_DEFINE2(flock, unsigned int, fd, unsigned int, cmd)
->>       if (!f.file)
->>               goto out;
->>
->> +     /* LOCK_DELETE is defined to be translated from O_DENYDELETE only */
->> +     if (cmd & LOCK_DELETE) {
->> +             error = -EINVAL;
->> +             goto out;
->> +     }
->> +
->>       can_sleep = !(cmd & LOCK_NB);
->>       cmd &= ~LOCK_NB;
->>       unlock = (cmd == LOCK_UN);
->> @@ -2261,10 +2290,16 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
->>               seq_printf(f, "UNKNOWN UNKNOWN  ");
->>       }
->>       if (fl->fl_type & LOCK_MAND) {
->> -             seq_printf(f, "%s ",
->> -                            (fl->fl_type & LOCK_READ)
->> -                            ? (fl->fl_type & LOCK_WRITE) ? "RW   " : "READ "
->> -                            : (fl->fl_type & LOCK_WRITE) ? "WRITE" : "NONE ");
->> +             if (fl->fl_type & LOCK_DELETE)
->> +                     seq_printf(f, "%s ",
->> +                             (fl->fl_type & LOCK_READ) ?
->> +                             (fl->fl_type & LOCK_WRITE) ? "RWDEL" : "RDDEL" :
->> +                             (fl->fl_type & LOCK_WRITE) ? "WRDEL" : "DEL  ");
->> +             else
->> +                     seq_printf(f, "%s ",
->> +                             (fl->fl_type & LOCK_READ) ?
->> +                             (fl->fl_type & LOCK_WRITE) ? "RW   " : "READ " :
->> +                             (fl->fl_type & LOCK_WRITE) ? "WRITE" : "NONE ");
->>       } else {
->>               seq_printf(f, "%s ",
->>                              (lease_breaking(fl))
->> diff --git a/fs/namei.c b/fs/namei.c
->> index dd236fe..a404f7d 100644
->> --- a/fs/namei.c
->> +++ b/fs/namei.c
->> @@ -2220,6 +2220,7 @@ static inline int check_sticky(struct inode *dir, struct inode *inode)
->>   *  9. We can't remove a root or mountpoint.
->>   * 10. We don't allow removal of NFS sillyrenamed files; it's handled by
->>   *     nfs_async_unlink().
->> + * 11. We can't do it if victim is locked by O_DENYDELETE sharelock.
->>   */
->>  static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
->>  {
->> @@ -2250,6 +2251,8 @@ static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
->>               return -ENOENT;
->>       if (victim->d_flags & DCACHE_NFSFS_RENAMED)
->>               return -EBUSY;
->> +     if (sharelock_may_delete(victim))
->> +             return -ESHAREDENIED;
->
->
-> Is there a potential race here?
->
-> You're holding the parent's i_mutex when setting a lock on this file,
-> but you're not holding it when you test for it here. So it seems
-> possible you could end up granting a O_DENYDELETE open on a file that
-> is in the process of being deleted from the namespace.
+> -----Original Message-----
+> From: Steve Dickson [mailto:SteveD@redhat.com]
+> Sent: Monday, May 13, 2013 1:31 PM
+> To: Myklebust, Trond
+> Cc: J. Bruce Fields; linux-nfs@vger.kernel.org
+> Subject: Re: 3.11 patches
+> 
+> 
+> 
+> On 13/05/13 11:28, Myklebust, Trond wrote:
+> > On Mon, 2013-05-13 at 11:23 -0400, J. Bruce Fields wrote:
+> >> I've added a labeled-nfs-common branch at
+> >>
+> >> 	git://linux-nfs.org/~bfields/linux.git labeled-nfs-common
+> >>
+> >> with 3.10-rc1 + the one labeled NFS patch shared by client and server
+> >> (with just some protocol constants).
+> >>
+> >> So we can all work on top of that if we want.
+> >
+> > OK. I've pushed out a 'labeled-nfs' branch for the client side that is
+> > based upon the above branch.
+> Momentary I will be posting the  3.10-rc1 forward port.
+> 
+> >
+> > Has James added the security patches to a public branch that we can
+> > pull yet?
+> >
+> No and he does not plan to... because "It won't be functional without the
+> security subsystem patches, so they should all be in his tree." Meaning your
+> tree...
 
-may_delete function is called from vfs_unlnk, vfs_rename and vfs_rmdir
-and in all those places the caller is holding parent's i_mutex. It
-seems that the locking order is correct: we hold parent's i_mutex when
-we set and test sharelocks.
+As long as James is fine with me pushing those patches, then I'm happy to do so...
 
->>       return 0;
->>  }
->>
->> diff --git a/include/linux/fs.h b/include/linux/fs.h
->> index 24066d2..afd56b1 100644
->> --- a/include/linux/fs.h
->> +++ b/include/linux/fs.h
->> @@ -1006,6 +1006,7 @@ extern int lock_may_read(struct inode *, loff_t start, unsigned long count);
->>  extern int lock_may_write(struct inode *, loff_t start, unsigned long count);
->>  extern void locks_delete_block(struct file_lock *waiter);
->>  extern int sharelock_lock_file(struct file *);
->> +extern int sharelock_may_delete(struct dentry *);
->>  extern void lock_flocks(void);
->>  extern void unlock_flocks(void);
->>  #else /* !CONFIG_FILE_LOCKING */
->> @@ -1159,6 +1160,11 @@ static inline int sharelock_lock_file(struct file *filp)
->>       return 0;
->>  }
->>
->> +static inline int sharelock_may_delete(struct dentry *dentry)
->> +{
->> +     return 0;
->> +}
->> +
->>  static inline void lock_flocks(void)
->>  {
->>  }
->> diff --git a/include/uapi/asm-generic/fcntl.h b/include/uapi/asm-generic/fcntl.h
->> index 5ac0d49..a3e6349 100644
->> --- a/include/uapi/asm-generic/fcntl.h
->> +++ b/include/uapi/asm-generic/fcntl.h
->> @@ -167,6 +167,7 @@ struct f_owner_ex {
->>                                  blocking */
->>  #define LOCK_UN              8       /* remove lock */
->>
->> +#define LOCK_DELETE  16      /* which allows to delete a file */
->>  #define LOCK_MAND    32      /* This is a mandatory flock ... */
->>  #define LOCK_READ    64      /* which allows concurrent read operations */
->>  #define LOCK_WRITE   128     /* which allows concurrent write operations */
->
->
-> --
-> Jeff Layton <jlayton@poochiereds.net>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-cifs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-
---
-Best regards,
-Pavel Shilovsky.
+Cheers
+  Trond
