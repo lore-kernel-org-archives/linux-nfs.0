@@ -1,209 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:34894 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:25445 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762448Ab3ECAdm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 May 2013 20:33:42 -0400
-Subject: [PATCH 5/8] FS-Cache: Wrap checks on object state
-To: linux-cachefs@redhat.com
-From: David Howells <dhowells@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        hjayasur@redhat.com, jlayton@redhat.com, linux-kernel@vger.kernel.org
-Date: Fri, 03 May 2013 01:33:39 +0100
-Message-ID: <20130503003339.14952.33070.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20130503003316.14952.51791.stgit@warthog.procyon.org.uk>
-References: <20130503003316.14952.51791.stgit@warthog.procyon.org.uk>
+	id S1754940Ab3EMXzi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 May 2013 19:55:38 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Possible bug introduced by: NFS: Use server-recommended
+ security flavor by default (NFSv3)?
+Date: Mon, 13 May 2013 23:55:36 +0000
+Message-ID: <1368489335.3563.24.camel@leira.trondhjem.org>
+References: <20130513203556.GA8049@blackbox.djwong.org>
+	 <C98A6B64-9648-4CBD-8E10-8C54B7DA98B6@oracle.com>
+	 <20130513212440.GB8049@blackbox.djwong.org>
+	 <6B5CEA91-77C1-4F2A-8A97-B01B9399EF85@oracle.com>
+	 <497CC2C4-E417-4BB9-B4FD-E737A23479E3@netapp.com>
+	 <20130513233411.GB29406@blackbox.djwong.org>
+	 <1368488912.3563.21.camel@leira.trondhjem.org>
+In-Reply-To: <1368488912.3563.21.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Wrap checks on object state (mostly outside of fs/fscache/object.c) with
-inline functions so that the mechanism can be replaced.
+On Mon, 2013-05-13 at 19:48 -0400, Trond Myklebust wrote:
+> Guys, please fix nfs23_validate_mount_data() and
+> nfs4_validate_mount_data() to do the right thing.
 
-Some of the state checks within object.c are left as-is as they will be
-replaced.
+The right thing, in this case, being to default to AUTH_SYS unless the
+user specifies a security flavour.
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
- fs/cachefiles/namei.c         |    4 ++--
- fs/fscache/cache.c            |    2 +-
- fs/fscache/cookie.c           |    8 ++++----
- fs/fscache/object.c           |    8 ++++----
- fs/fscache/operation.c        |    2 +-
- include/linux/fscache-cache.h |   37 ++++++++++++++++++++++++++++---------
- 6 files changed, 40 insertions(+), 21 deletions(-)
-
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index 07cbd44..01979a3 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -130,7 +130,7 @@ found_dentry:
- 	       fscache_object_states[object->fscache.state],
- 	       dentry);
- 
--	if (object->fscache.state < FSCACHE_OBJECT_DYING) {
-+	if (fscache_object_is_live(&object->fscache)) {
- 		printk(KERN_ERR "\n");
- 		printk(KERN_ERR "CacheFiles: Error:"
- 		       " Can't preemptively bury live object\n");
-@@ -192,7 +192,7 @@ try_again:
- 	/* an old object from a previous incarnation is hogging the slot - we
- 	 * need to wait for it to be destroyed */
- wait_for_old_object:
--	if (xobject->fscache.state < FSCACHE_OBJECT_DYING) {
-+	if (fscache_object_is_live(&object->fscache)) {
- 		printk(KERN_ERR "\n");
- 		printk(KERN_ERR "CacheFiles: Error:"
- 		       " Unexpected object collision\n");
-diff --git a/fs/fscache/cache.c b/fs/fscache/cache.c
-index b52aed1..129ea53 100644
---- a/fs/fscache/cache.c
-+++ b/fs/fscache/cache.c
-@@ -115,7 +115,7 @@ struct fscache_cache *fscache_select_cache_for_object(
- 				     struct fscache_object, cookie_link);
- 
- 		cache = object->cache;
--		if (object->state >= FSCACHE_OBJECT_DYING ||
-+		if (fscache_object_is_dying(object) ||
- 		    test_bit(FSCACHE_IOERROR, &cache->flags))
- 			cache = NULL;
- 
-diff --git a/fs/fscache/cookie.c b/fs/fscache/cookie.c
-index e2cba1f..a5f36c9 100644
---- a/fs/fscache/cookie.c
-+++ b/fs/fscache/cookie.c
-@@ -285,7 +285,7 @@ static int fscache_alloc_object(struct fscache_cache *cache,
- 
- object_already_extant:
- 	ret = -ENOBUFS;
--	if (object->state >= FSCACHE_OBJECT_DYING) {
-+	if (fscache_object_is_dead(object)) {
- 		spin_unlock(&cookie->lock);
- 		goto error;
- 	}
-@@ -321,7 +321,7 @@ static int fscache_attach_object(struct fscache_cookie *cookie,
- 	ret = -EEXIST;
- 	hlist_for_each_entry(p, &cookie->backing_objects, cookie_link) {
- 		if (p->cache == object->cache) {
--			if (p->state >= FSCACHE_OBJECT_DYING)
-+			if (fscache_object_is_dying(p))
- 				ret = -ENOBUFS;
- 			goto cant_attach_object;
- 		}
-@@ -332,7 +332,7 @@ static int fscache_attach_object(struct fscache_cookie *cookie,
- 	hlist_for_each_entry(p, &cookie->parent->backing_objects,
- 			     cookie_link) {
- 		if (p->cache == object->cache) {
--			if (p->state >= FSCACHE_OBJECT_DYING) {
-+			if (fscache_object_is_dying(p)) {
- 				ret = -ENOBUFS;
- 				spin_unlock(&cookie->parent->lock);
- 				goto cant_attach_object;
-@@ -400,7 +400,7 @@ void __fscache_invalidate(struct fscache_cookie *cookie)
- 			object = hlist_entry(cookie->backing_objects.first,
- 					     struct fscache_object,
- 					     cookie_link);
--			if (object->state < FSCACHE_OBJECT_DYING)
-+			if (fscache_object_is_live(object))
- 				fscache_raise_event(
- 					object, FSCACHE_OBJECT_EV_INVALIDATE);
- 		}
-diff --git a/fs/fscache/object.c b/fs/fscache/object.c
-index 0133699..863f687 100644
---- a/fs/fscache/object.c
-+++ b/fs/fscache/object.c
-@@ -457,10 +457,10 @@ static void fscache_initialise_object(struct fscache_object *object)
- 		spin_lock_nested(&parent->lock, 1);
- 		_debug("parent %s", fscache_object_states[parent->state]);
- 
--		if (parent->state >= FSCACHE_OBJECT_DYING) {
-+		if (fscache_object_is_dying(parent)) {
- 			_debug("bad parent");
- 			set_bit(FSCACHE_OBJECT_EV_WITHDRAW, &object->events);
--		} else if (parent->state < FSCACHE_OBJECT_AVAILABLE) {
-+		} else if (!fscache_object_is_available(parent)) {
- 			_debug("wait");
- 
- 			/* we may get woken up in this state by child objects
-@@ -517,9 +517,9 @@ static void fscache_lookup_object(struct fscache_object *object)
- 	ASSERTCMP(parent->n_obj_ops, >, 0);
- 
- 	/* make sure the parent is still available */
--	ASSERTCMP(parent->state, >=, FSCACHE_OBJECT_AVAILABLE);
-+	ASSERT(fscache_object_is_available(parent));
- 
--	if (parent->state >= FSCACHE_OBJECT_DYING ||
-+	if (fscache_object_is_dying(parent) ||
- 	    test_bit(FSCACHE_IOERROR, &object->cache->flags)) {
- 		_debug("unavailable");
- 		set_bit(FSCACHE_OBJECT_EV_WITHDRAW, &object->events);
-diff --git a/fs/fscache/operation.c b/fs/fscache/operation.c
-index 762a9ec..ccf0219 100644
---- a/fs/fscache/operation.c
-+++ b/fs/fscache/operation.c
-@@ -35,7 +35,7 @@ void fscache_enqueue_operation(struct fscache_operation *op)
- 
- 	ASSERT(list_empty(&op->pend_link));
- 	ASSERT(op->processor != NULL);
--	ASSERTCMP(op->object->state, >=, FSCACHE_OBJECT_AVAILABLE);
-+	ASSERT(fscache_object_is_available(op->object));
- 	ASSERTCMP(atomic_read(&op->usage), >, 0);
- 	ASSERTCMP(op->state, ==, FSCACHE_OP_ST_IN_PROGRESS);
- 
-diff --git a/include/linux/fscache-cache.h b/include/linux/fscache-cache.h
-index 9b9c1de..c5f9234 100644
---- a/include/linux/fscache-cache.h
-+++ b/include/linux/fscache-cache.h
-@@ -417,15 +417,6 @@ struct fscache_object {
- 
- extern const char *fscache_object_states[];
- 
--#define fscache_object_is_active(obj)			      \
--	(!test_bit(FSCACHE_IOERROR, &(obj)->cache->flags) &&  \
--	 (obj)->state >= FSCACHE_OBJECT_AVAILABLE &&	      \
--	 (obj)->state < FSCACHE_OBJECT_DYING)
--
--#define fscache_object_is_dead(obj)				\
--	(test_bit(FSCACHE_IOERROR, &(obj)->cache->flags) &&	\
--	 (obj)->state >= FSCACHE_OBJECT_DYING)
--
- extern void fscache_object_init(struct fscache_object *, struct fscache_cookie *,
- 				struct fscache_cache *);
- 
-@@ -438,6 +429,34 @@ extern void fscache_object_destroy(struct fscache_object *object);
- #define fscache_object_destroy(object) do {} while(0)
- #endif
- 
-+static inline bool fscache_object_is_live(struct fscache_object *object)
-+{
-+	return object->state < FSCACHE_OBJECT_DYING;
-+}
-+
-+static inline bool fscache_object_is_dying(struct fscache_object *object)
-+{
-+	return !fscache_object_is_live(object);
-+}
-+
-+static inline bool fscache_object_is_available(struct fscache_object *object)
-+{
-+	return object->state >= FSCACHE_OBJECT_AVAILABLE;
-+}
-+
-+static inline bool fscache_object_is_active(struct fscache_object *object)
-+{
-+	return fscache_object_is_available(object) &&
-+		fscache_object_is_live(object) &&
-+		!test_bit(FSCACHE_IOERROR, &object->cache->flags);
-+}
-+
-+static inline bool fscache_object_is_dead(struct fscache_object *object)
-+{
-+	return fscache_object_is_dying(object) &&
-+		test_bit(FSCACHE_IOERROR, &object->cache->flags);
-+}
-+
- /**
-  * fscache_object_destroyed - Note destruction of an object in a cache
-  * @cache: The cache from which the object came
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
