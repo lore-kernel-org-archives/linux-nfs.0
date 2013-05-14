@@ -1,74 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:49093 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:42214 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751424Ab3EISRk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 May 2013 14:17:40 -0400
-Date: Thu, 9 May 2013 14:16:47 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Vyacheslav Dubeyko <slava@dubeyko.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>,
-        Hin-Tak Leung <htl10@users.sourceforge.net>,
-        Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH v4 0/5] nfsd + hfsplus: introduce generalized version of
- NFSv4 ACLs <-> POSIX ACLs mapping algorithms
-Message-ID: <20130509181647.GA18541@pad.fieldses.org>
-References: <1368117430.5695.30.camel@slavad-ubuntu-12.04>
- <1368118877.3282.104.camel@leira.trondhjem.org>
- <9841F318-DA62-4ACF-AA33-0474DBC2B107@dubeyko.com>
+	id S1757923Ab3ENSVN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 May 2013 14:21:13 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "<darrick.wong@oracle.com>" <darrick.wong@oracle.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: Fix security flavor negotiation with legacy binary
+ mounts
+Date: Tue, 14 May 2013 18:21:11 +0000
+Message-ID: <F15BC033-A9C9-4FC4-87C2-731B584053F3@netapp.com>
+References: <20130514142620.37841.9591.stgit@seurat.1015granger.net>
+In-Reply-To: <20130514142620.37841.9591.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <9841F318-DA62-4ACF-AA33-0474DBC2B107@dubeyko.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 09, 2013 at 09:34:50PM +0400, Vyacheslav Dubeyko wrote:
-> On May 9, 2013, at 9:01 PM, Myklebust, Trond wrote:
+Acked-by: Weston Andros Adamson <dros@netapp.com>
+
+-dros
+
+On May 14, 2013, at 10:26 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+
+> Commit 4580a92d44 "NFS: Use server-recommended security flavor by
+> default (NFSv3)" introduced a behavior regression for NFS mounts
+> done via a legacy binary mount(2) call.
 > 
-> [snip]
-> > 
-> > How does this make sense? There is no lossless mapping of NFSv4 acls
-> > into POSIX acls; the latter doesn't have any equivalent of the DENY
-> > aces so you cannot represent the full set of acls that can be set
-> > using MacOS on the same filesystem.
-> > 
-> > Shouldn't you rather be looking at the richacl patch sets?
-> > 
+> Darrick J. Wong <darrick.wong@oracle.com> reports:
 > 
-> Yes, I understand the nature of such mapping and impossibility of
-> mapping NFSv4 ACLs to POSIX ACLs in some cases. But, as I understand,
-> the richacl patch set is not mainline yet.
-
-Neither are these patches.  You could pick up the richacl patches and
-work on them instead.  That might be more work, I don't know, but the
-result would certainly be more useful, to many more people....
-
-> And even if it will be in mainline then a user can have choice to use
-> POSIX ACLs or richacls.
-
-I actually kinda like the idea of allowing people to use either model
-and translating automatically between them.  But it is complicated, and
-I'm not convinced it's necessary.
-
-> So, we need to map NFSv4 ACLs <-> POSIX ACLs in hfsplus for the case
-> of using POSIX ACLs model. I think that to have such mapping is better
-> than to have nothing.
-
-So, in the "better than nothing" spirit, I'll take a look at these, but
-I would still rather we get the richacl stuff done....
-
---b.
-
-> Moreover, a user can use HFS+ filesystem with
-> using POSIX ACLs only under Linux. Thereby, the generalization of
-> mapping NFSv4 ACLs <-> POSIX ACLs makes sense, from my viewpoint.
+>> I have a kvm-based testing setup that netboots VMs over NFS, the
+>> client end of which seems to have broken somehow in 3.10-rc1.  The
+>> server's exports file looks like this:
+>> 
+>> /storage/mtr/x64	192.168.122.0/24(ro,sync,no_root_squash,no_subtree_check)
+>> 
+>> On the client end (inside the VM), the initrd runs the following
+>> command to try to mount the rootfs over NFS:
+>> 
+>> # mount -o nolock -o ro -o retrans=10 192.168.122.1:/storage/mtr/x64/ /root
+>> 
+>> (Note: This is the busybox mount command.)
+>> 
+>> The mount fails with -EINVAL.
 > 
-> With the best regards, Vyacheslav Dubeyko.
+> Ensure that a default security flavor is specified for legacy binary
+> mounts, since they do not invoke nfs_select_flavor() in the kernel.
 > 
-> > -- Trond Myklebust Linux NFS client maintainer
-> > 
-> > NetApp Trond.Myklebust@netapp.com www.netapp.com
+> Reported-by: Darrick J. Wong <darrick.wong@oracle.com>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> fs/nfs/super.c |    2 ++
+> 1 file changed, 2 insertions(+)
 > 
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index a366107..2d7525f 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -1942,6 +1942,7 @@ static int nfs23_validate_mount_data(void *options,
+> 		args->namlen		= data->namlen;
+> 		args->bsize		= data->bsize;
+> 
+> +		args->auth_flavors[0] = RPC_AUTH_UNIX;
+> 		if (data->flags & NFS_MOUNT_SECFLAVOUR)
+> 			args->auth_flavors[0] = data->pseudoflavor;
+> 		if (!args->nfs_server.hostname)
+> @@ -2637,6 +2638,7 @@ static int nfs4_validate_mount_data(void *options,
+> 			goto out_no_address;
+> 		args->nfs_server.port = ntohs(((struct sockaddr_in *)sap)->sin_port);
+> 
+> +		args->auth_flavors[0] = RPC_AUTH_UNIX;
+> 		if (data->auth_flavourlen) {
+> 			if (data->auth_flavourlen > 1)
+> 				goto out_inval_auth;
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
