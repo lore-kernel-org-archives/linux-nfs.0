@@ -1,72 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:43314 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758844Ab3EOQWl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 12:22:41 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:38148 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751609Ab3ENOc0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 May 2013 10:32:26 -0400
+Received: from acsinet22.oracle.com (acsinet22.oracle.com [141.146.126.238])
+	by userp1040.oracle.com (Sentrion-MTA-4.3.1/Sentrion-MTA-4.3.1) with ESMTP id r4EEWNJo021538
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 14 May 2013 14:32:24 GMT
+Received: from userz7022.oracle.com (userz7022.oracle.com [156.151.31.86])
+	by acsinet22.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id r4EEWOGA011362
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Tue, 14 May 2013 14:32:24 GMT
+Received: from abhmt114.oracle.com (abhmt114.oracle.com [141.146.116.66])
+	by userz7022.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id r4EEWNuv004660
+	for <linux-nfs@vger.kernel.org>; Tue, 14 May 2013 14:32:23 GMT
 Content-Type: text/plain; charset=us-ascii
 Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
-Subject: Re: [PATCH 0/2] [RFC] Maybe avoid gssd upcall timeout
+Subject: Re: [PATCH] NFS: Fix security flavor negotiation with legacy binary mounts
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1368634683.3568.5.camel@leira.trondhjem.org>
-Date: Wed, 15 May 2013 12:22:36 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <13B2D107-E7C3-4AF8-B205-7BF1304DFF25@oracle.com>
-References: <20130513161515.1942.845.stgit@seurat.1015granger.net> <1368634683.3568.5.camel@leira.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+In-Reply-To: <20130514142620.37841.9591.stgit@seurat.1015granger.net>
+Date: Tue, 14 May 2013 10:32:22 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <8D62C412-7CEB-45E9-A9AF-4ECC8B8CD0E7@oracle.com>
+References: <20130514142620.37841.9591.stgit@seurat.1015granger.net>
+To: darrick.wong@oracle.com
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This is build-tested only.  Darrick, can you give it a whirl?
 
-On May 15, 2013, at 12:18 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+--
+Chuck Lever
+chuck.lever@oracle.com
 
-> On Mon, 2013-05-13 at 12:25 -0400, Chuck Lever wrote:
->> Hi-
->> 
->> Here's a stab at addressing the 15 second wait for some 3.10 sec=sys
->> mounts where the client is not running rpc.gssd.
->> 
->> After reverting the "use krb5i for SETCLIENTID" patch, I've added
->> the AUTH_SYS fallback in the EACCES case in
->> nfs4_discover_server_trunking().  I'm not sure whether we need to
->> supplement what's there now, or replace it.
->> 
->> "case -ENOKEY:" is added so the kernel will recognize that when gssd
->> is changed to return that instead of EACCES in this case.  If the
->> second patch is appled to 3.7 stable and following, it might be a way
->> to address the same regression in older kernels.
->> 
->> I've been focused on another bug this week, so this has seen very
->> light testing only.  Looking for comments.
+
+On May 14, 2013, at 10:26 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+
+> Commit 4580a92d44 "NFS: Use server-recommended security flavor by
+> default (NFSv3)" introduced a behavior regression for NFS mounts
+> done via a legacy binary mount(2) call.
 > 
-> I'd like to propose a different approach: we can set up rpc_pipefs files
-> clnt/gssd and clnt/krb5 as "honeypots" that rpc.gssd will connect to,
-> but that won't do any upcalls. When gssd connects, we set a
-> per-rpc_net_ns variable that tells us 'gssd' is up and running. That
-> variable only gets cleared if we see a timeout.
-
-Note my solution is a short term gap filler.  Bruce and Jeff seem to want something that can fix current kernels without requiring user space changes, and I need something that will allow sec=krb5 mounts to work without a client keytab on kernels since 3.7.
-
-I see your proposal as a long term fix, and not something that we can expect to apply without deploying gssd support at the same time.
-
-
+> Darrick J. Wong <darrick.wong@oracle.com> reports:
 > 
+>> I have a kvm-based testing setup that netboots VMs over NFS, the
+>> client end of which seems to have broken somehow in 3.10-rc1.  The
+>> server's exports file looks like this:
+>> 
+>> /storage/mtr/x64	192.168.122.0/24(ro,sync,no_root_squash,no_subtree_check)
+>> 
+>> On the client end (inside the VM), the initrd runs the following
+>> command to try to mount the rootfs over NFS:
+>> 
+>> # mount -o nolock -o ro -o retrans=10 192.168.122.1:/storage/mtr/x64/ /root
+>> 
+>> (Note: This is the busybox mount command.)
+>> 
+>> The mount fails with -EINVAL.
 > 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
+> Ensure that a default security flavor is specified for legacy binary
+> mounts, since they do not invoke nfs_select_flavor() in the kernel.
 > 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
+> Reported-by: Darrick J. Wong <darrick.wong@oracle.com>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> fs/nfs/super.c |    2 ++
+> 1 file changed, 2 insertions(+)
+> 
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index a366107..2d7525f 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -1942,6 +1942,7 @@ static int nfs23_validate_mount_data(void *options,
+> 		args->namlen		= data->namlen;
+> 		args->bsize		= data->bsize;
+> 
+> +		args->auth_flavors[0] = RPC_AUTH_UNIX;
+> 		if (data->flags & NFS_MOUNT_SECFLAVOUR)
+> 			args->auth_flavors[0] = data->pseudoflavor;
+> 		if (!args->nfs_server.hostname)
+> @@ -2637,6 +2638,7 @@ static int nfs4_validate_mount_data(void *options,
+> 			goto out_no_address;
+> 		args->nfs_server.port = ntohs(((struct sockaddr_in *)sap)->sin_port);
+> 
+> +		args->auth_flavors[0] = RPC_AUTH_UNIX;
+> 		if (data->auth_flavourlen) {
+> 			if (data->auth_flavourlen > 1)
+> 				goto out_inval_auth;
+> 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
 
