@@ -1,112 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51521 "EHLO fieldses.org"
+Received: from f140.mail.ru ([94.100.178.196]:58698 "EHLO f140.mail.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752536Ab3EGVCC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 May 2013 17:02:02 -0400
-Date: Tue, 7 May 2013 17:02:00 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: long delay when mounting due to SETCLIENTID AUTH_GSS attempts
-Message-ID: <20130507210200.GF32743@fieldses.org>
-References: <20130503132557.2fdf794d@tlielax.poochiereds.net>
- <AE700845-4032-4BEC-817C-97EB08A831E8@oracle.com>
- <20130503142421.19fb3ca6@tlielax.poochiereds.net>
- <1367606034.3556.25.camel@leira.trondhjem.org>
- <20130503144437.3a47e476@tlielax.poochiereds.net>
- <A2E5B3F1-A8F1-4731-A66C-548B9C8FD429@oracle.com>
- <20130503211810.GF5715@fieldses.org>
- <8F91C5FB-EE7F-48F8-9ED5-6B5D8503E248@oracle.com>
- <7F5CD894-42E9-4C65-A1BC-0885C63E560B@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <7F5CD894-42E9-4C65-A1BC-0885C63E560B@oracle.com>
+	id S1756416Ab3ENJFs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 May 2013 05:05:48 -0400
+Received: from mail by f140.mail.ru with local (envelope-from <halibubaley@mail.ru>)
+	id 1UcBB4-0004Sh-BI
+	for linux-nfs@vger.kernel.org; Tue, 14 May 2013 13:05:46 +0400
+From: =?UTF-8?B?QWxleCBQaWxsb3c=?= <halibubaley@mail.ru>
+To: =?UTF-8?B?bGludXgtbmZz?= <linux-nfs@vger.kernel.org>
+Subject: =?UTF-8?B?SGFuZ3Mgd2hlbiBkbyBscyBvbiBtb3VudCBkaXJlY3Rvcnk=?=
+Mime-Version: 1.0
+Date: Tue, 14 May 2013 13:05:46 +0400
+Reply-To: =?UTF-8?B?QWxleCBQaWxsb3c=?= <halibubaley@mail.ru>
+Message-ID: <1368522346.397819588@f140.mail.ru>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 06, 2013 at 06:33:48PM -0400, Chuck Lever wrote:
-> 
-> On May 3, 2013, at 5:50 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
-> > 
-> > On May 3, 2013, at 5:18 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> >> On Fri, May 03, 2013 at 02:48:59PM -0400, Chuck Lever wrote:
-> >>> We should always use krb5i if a GSS context can be established with
-> >>> our machine cred.  As I said before, SETCLIENTID and
-> >>> GETATTR(fs_locations) really should use an integrity-protecting
-> >>> security flavor no matter what flavor is in effect on the mount points
-> >>> themselves.
-> >> 
-> >> Can you give an example of a threat that could be avoided by this?
-> >> 
-> >> My suspicion is that in most cases an attacker with the ability to
-> >> subvert auth_sys could *also* DOS gssd, and hence force the fallback to
-> >> auth_sys.
-> >> 
-> >> krb5i plus a fallback to auth_sys on failure to authenticate doesn't
-> >> sound to me much more secure than just auth_sys.
-> > 
-> > Our current situation is that the first mount of a server determines the flavor to use for SETCLIENTID.  So if that mount happens to be "sec=sys" the SETCLIENTID is done with AUTH_SYS no matter what the subsequent mounts request.
-> > 
-> > That's just about as secure in many cases as falling back.
-> > 
-> >> If we really want much security benefit from krb5i on state operations,
-> >> I think we need to really *require* krb5i.
-> >> 
-> >> So I'm inclined towards Jeff's solution: don't do this unless userspace
-> >> somehow affirmatively states that it requires krb5i on state operations.
-> > 
-> > This would have to be on a per-server basis.  Where would an admin specify such an option?  I don't believe either a mount option (too fine) or a module parameter (too coarse) is appropriate.
-> > 
-> >> I agree that we should default to this when we can.  But the way to move
-> >> towards that default is then to get distributions to turn on the new
-> >> module parm (or whatever it is) by default.  As they do so, they can
-> >> also ensure that e.g. gssd is started.
-> > 
-> > gssd is not all that's required.  A keytab must be provisioned on the client and server for it to work, and that's the main issue I'm trying to address:  We need "sec=krb5" mounts to work when the client has no GSS machine credential.
-> > 
-> > And I think we already have a problem with gssd not picking up kernel requests quickly, as Trond pointed out.
-> > 
-> > I don't feel like any of this is new, or that any of this is a strong reason to revert.  But it could be a reason to move forward from here.
-> > 
-> > Does gssd distinguish between:
-> > 
-> >  - no local keytab
-> > 
-> >  - no local support for GSS
-> > 
-> >  - server doesn't grok GSS
-> > 
-> >  - some network problem occurred
-> > 
-> > Can it communicate that distinction to the kernel?  What if we fall back only in the "no keytab" and "client's kernel has no GSS support" cases?  In the "server doesn't grok" case, do not fall back if "sec=krb5*" is specified on the mount point?  "A network problem occurred" is an "always fail" case.
-> 
-> After some thought, here's an algorithm for selecting a flavor to use for state management operations:
-> 
->   Start with krb5i.
-> 
->   -  If a GSS flavor is specified on the mount point, and if
->      there is no local keytab, fall back to AUTH_SYS; otherwise
->      if any other issue occurs, fail immediately.  This
->      modification should address your security concern.
-> 
->   -  If a non-GSS flavor is specified on the mount point, or no
->      flavor is specified, and there is any problem with krb5i,
->      fall back to AUTH_SYS.  This is the current 3.10 behavior,
->      and assumes there is a solution to Jeff's 15 second upcall
->      delay issue.
-
-I'm having a hard time thinking of one....
-
-I suppose if gssd is running then it should always hold open the parent
-(rpc_pipefs/nfs) directory.  So if that isn't open it might be safe to
-assume we can fail immediately.
-
-Right now for most people the effect of an upgrade to 3.10 is a new 15
-second delay on mount?  (I'm assuming distributions default to not
-running gssd.)  Seems painful.
-
---b.
+IEhlbGxvIGFsbCEKCkNhbiBzb21lb25lIGhlbHAgbWUgd2l0aCBteSBwcm9ibGVtPwpJIGhhdmUg
+bmZzLXNlcnZlciBvbiBDZW50b3MgNiB3aXRoIGtlcm5lbCAyLjYuMzIgYW5kIG5mcy1jbGllbnQg
+b24gT3BlblNVU0UgMTEuNCB3aXRoIGtlcm5lbCAyLjYuMzcKCi9ldGMvZXhwb3J0cyBvbiBzZXJ2
+ZXI6Ci9kYXRhL2lucHV0wqDCoMKgwqAgMTAuMTAwLjAuNjUvMzIocncsc3luYyxub19yb290X3Nx
+dWFzaCxub19zdWJ0cmVlX2NoZWNrLG5vX3dkZWxheSxub19hY2wpCgovZXRjL2ZzdGFiIG9uIGNs
+aWVudDoKMTAuMTAwLjAuMjE0Oi9kYXRhL2lucHV0wqDCoMKgIC9tbnQvaW5wdXTCoCBuZnPCoMKg
+wqDCoCBydyxzeW5jLGJnLGF1dG8saW50cixoYXJkLHJzaXplPTMyNzY4LHdzaXplPTMyNzY4LHZl
+cnM9NCx0aW1lbz02MDAsdGNwLG5vYXRpbWUsbm9kaXJhdGltZQoKRXZlcnl0aGluZyB3b3JrcyBm
+aW5lLCBidXQgaW4gc29tZSBjYXNlcyBpIGhhdmUgYSBwcm9ibGVtOgpJbiB0aGUgZmlyc3Qgc2Vz
+c2lvbiBvbiBjbGllbnQgaSBzdGFydCB0byBjb3B5IGEgbGFyZ2UgZmlsZSAoMTAtNDBHYiksIGFu
+ZCBpbiBzZWNvbmQgc2Vzc2lvbiBvbiBjbGllbnQgaSB0cnlpbmcgcmVhZCAvbW50L2lucHV0Cgp3
+Oi8gIyB0aW1lIGxzIC1sYSAvbW50L2lucHV0CnRvdGFsIDY4ODE5ODQ4CmRyd3hyd3hyd3ggMiBu
+b2JvZHkgbm9ib2R5wqDCoMKgwqDCoMKgwqDCoMKgIDY4IE1heSAxNCAxMjoxNyAuCmRyd3hyLXhy
+LXggOCByb290wqDCoCByb290wqDCoMKgwqDCoMKgwqDCoMKgIDQwOTYgTWF5wqAgNiAxNDoxOCAu
+Lgotcnctci0tci0tIDEgbm9ib2R5IHVzZXJzwqAgMjA3MjI3MTE1NjggTWF5IDE0IDA0OjIyIDE0
+UFIwMDM1TS5teGYKLXJ3LXItLXItLSAxIHJvb3TCoMKgIHJvb3TCoMKgIDIwNTM2NDM1MjE2IE1h
+eSAxNCAxMjoyMiAxNFBSMDAzNVQubXhmCi1ydy1yLS1yLS0gMSBub2JvZHkgdXNlcnPCoCAxMzI3
+OTU2NzEyOCBNYXkgMTQgMDM6MjMgMTRWTzAxODBNXzEubXhmCgpyZWFswqDCoMKgIDBtMzEuNzk2
+cwp1c2VywqDCoMKgIDBtMC4wMDBzCnN5c8KgwqDCoMKgIDBtMC4wNjZzCgpJbiBvdXRwdXQgb2Yg
+c3RyYWNlIChzdHJhY2UgbHMgLWxhIC9tbnQvaW5wdXQpIGkgc2VlCgpsc3RhdCgiL21udC9pbnB1
+dC8xNFBSMDAzNU0ubXhmIiwge3N0X21vZGU9U19JRlJFR3wwNjQ0LCBzdF9zaXplPTIwNzIyNzEx
+NTY4LCAuLi59KSA9IDAKbGdldHhhdHRyKCIvbW50L2lucHV0LzE0UFIwMDM1TS5teGYiLCAic2Vj
+dXJpdHkuc2VsaW51eCIsIDB4NjI5NWIwLCAyNTUpID0gLTEgRU9QTk9UU1VQUCAoT3BlcmF0aW9u
+IG5vdCBzdXBwb3J0ZWQpCmdldHhhdHRyKCIvbW50L2lucHV0LzE0UFIwMDM1TS5teGYiLCAic3lz
+dGVtLnBvc2l4X2FjbF9hY2Nlc3MiLCAweDAsIDApID0gLTEgRU9QTk9UU1VQUCAoT3BlcmF0aW9u
+IG5vdCBzdXBwb3J0ZWQpCmxzdGF0KCIvbW50L2lucHV0LzE0UFIwMDM1VC5teGYiLAoKQW5kIHRo
+ZXNlIG91dHB1dCBoYW5nIHVwIG9uIDE1LTQwIHNlY29uZHMuCgoxNFBSMDAzNVQubXhmIC0gaXMg
+dGhlIG5hbWUgb2YgdGhlIGZpbGUgd2hpY2ggbm93IGlzIHRyYW5zZmVycmVkIGluIGZpcnN0IHNl
+c3Npb24uIE91dHB1dCBhbHdheXMgaGFuZ3Mgb24gdGhlIGZpbGUgdGhhdCBub3cgaXMgdHJhbnNm
+ZXJyZWQuXAoKbHMgLWxhIC9kYXRhL2lucHV0IG9uIHNlcnZlciB3b3JrcyBmaW5lLiAKCldoYXQg
+Y2FuIGJlIGRvbmUgdG8gc29sdmUgdGhpcyBwcm9ibGVtPw==
