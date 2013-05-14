@@ -1,70 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f177.google.com ([209.85.223.177]:59179 "EHLO
-	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757464Ab3ENO0X (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 May 2013 10:26:23 -0400
-Received: by mail-ie0-f177.google.com with SMTP id 9so1082667iec.8
-        for <linux-nfs@vger.kernel.org>; Tue, 14 May 2013 07:26:23 -0700 (PDT)
-Subject: [PATCH] NFS: Fix security flavor negotiation with legacy binary
- mounts
-To: darrick.wong@oracle.com
-From: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 14 May 2013 10:26:20 -0400
-Message-ID: <20130514142620.37841.9591.stgit@seurat.1015granger.net>
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:31540 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758357Ab3ENVm5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 May 2013 17:42:57 -0400
+Date: Wed, 15 May 2013 07:42:51 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: Zach Brown <zab@redhat.com>
+Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [RFC v0 0/4] sys_copy_range() rough draft
+Message-ID: <20130514214251.GK29466@dastard>
+References: <1368566126-17610-1-git-send-email-zab@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1368566126-17610-1-git-send-email-zab@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 4580a92d44 "NFS: Use server-recommended security flavor by
-default (NFSv3)" introduced a behavior regression for NFS mounts
-done via a legacy binary mount(2) call.
+On Tue, May 14, 2013 at 02:15:22PM -0700, Zach Brown wrote:
+> We've been talking about implementing some form of bulk data copy
+> offloading for a while now.  BTRFS and OCFS2 implement forms of copy
+> offloading with ioctls, NFS 4.2 will include a byte-granular COPY
+> operation, and the SCSI XCOPY command is being implemented now that
+> Windows can issue it.
+> 
+> In the past we've discussed promoting the ocfs2 reflink ioctl into a
+> system call that would create a new file and implicitly copy the
+> source data into the new file:
+> https://lkml.org/lkml/2009/9/14/481
+> 
+> These draft patches take the simpler approach of only copying data
+> between existing files.  The patches 1) make a system call out of the
+> btrfs CLONE_RANGE ioctl, 2) implement the btrfs .copy_range method with
+> the ioctl's guts, 3) implement the nfs .copy_range by sending a COPY
+> op, and 4) serve the COPY op in nfsd by calling the .copy_range method
+> again.
+> 
+> The nfs patch is an untested hack.  I'm happy to beat it in to shape
+> but I'll need some guidance.
+> 
+> I'd like strong review feedback on the interfaces, here are some
+> possible topics:
+> 
+> a) Hopefully being able to specify a portion of the data to copy will
+> avoid *huge* syscall latencies and the motivation for new async
+> semantics.
+> 
+> b) The BTRFS ioctl and nfs COPY let you specify a count of 0 to copy
+> from the start offset to the end of the file.  Does anyone have a
+> strong feeling about this?  I'm leaning towards not bothering with it
+> in the syscall interface.
+> 
+> c) I chose to return partial progess in the ssize_t return code.  This
+> limits the length of the range and the size_t count argument can be too
+> large and return errors, much like other io syscalls.  This seemed
+> less awful than some extra argument with a pointer to a status value.
+> 
+> d) I'm dreading mentioning a vector of ranges to copy in one syscall
+> because I don't want to think about overlaping ranges and file systems
+> that use range locks -- xfs for now, but more if Jan gets his way.
 
-Darrick J. Wong <darrick.wong@oracle.com> reports:
+XFS doesn't use range locks (yet).
 
-> I have a kvm-based testing setup that netboots VMs over NFS, the
-> client end of which seems to have broken somehow in 3.10-rc1.  The
-> server's exports file looks like this:
->
-> /storage/mtr/x64	192.168.122.0/24(ro,sync,no_root_squash,no_subtree_check)
->
-> On the client end (inside the VM), the initrd runs the following
-> command to try to mount the rootfs over NFS:
->
-> # mount -o nolock -o ro -o retrans=10 192.168.122.1:/storage/mtr/x64/ /root
->
-> (Note: This is the busybox mount command.)
->
-> The mount fails with -EINVAL.
+> I'd rather that we get some experience with this simpler syscall before
+> taking on that headache.
+> 
+> I'm sure I'm forgetting some other details.
+> 
+> I'm going to keep hacking away at this.  My next step is to get ext4
+> supporting .copy_range, probably with a quick hack to copy the
+> contents of bios.  Hopefully that'll give enough time to also integrate
+> review feedback.
 
-Ensure that a default security flavor is specified for legacy binary
-mounts, since they do not invoke nfs_select_flavor() in the kernel.
+Wouldn't the easiest "support all filesystems" hack just be to add
+a destination offset parameter to do_splice_direct() and call that
+when the filesystem doesn't supply a ->copy_range method? i.e. use
+the mechanisms we already have for copying from one file to another
+via the page cache as efficiently as possible?
 
-Reported-by: Darrick J. Wong <darrick.wong@oracle.com>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/super.c |    2 ++
- 1 file changed, 2 insertions(+)
+Cheers,
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index a366107..2d7525f 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1942,6 +1942,7 @@ static int nfs23_validate_mount_data(void *options,
- 		args->namlen		= data->namlen;
- 		args->bsize		= data->bsize;
- 
-+		args->auth_flavors[0] = RPC_AUTH_UNIX;
- 		if (data->flags & NFS_MOUNT_SECFLAVOUR)
- 			args->auth_flavors[0] = data->pseudoflavor;
- 		if (!args->nfs_server.hostname)
-@@ -2637,6 +2638,7 @@ static int nfs4_validate_mount_data(void *options,
- 			goto out_no_address;
- 		args->nfs_server.port = ntohs(((struct sockaddr_in *)sap)->sin_port);
- 
-+		args->auth_flavors[0] = RPC_AUTH_UNIX;
- 		if (data->auth_flavourlen) {
- 			if (data->auth_flavourlen > 1)
- 				goto out_inval_auth;
-
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
