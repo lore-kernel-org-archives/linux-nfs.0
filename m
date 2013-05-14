@@ -1,42 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:57815 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:62562 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753078Ab3EMPcS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 May 2013 11:32:18 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "steved@redhat.com" <steved@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: 3.11 patches
-Date: Mon, 13 May 2013 15:28:09 +0000
-Message-ID: <1368458889.3563.7.camel@leira.trondhjem.org>
-References: <20130513152312.GB1931@fieldses.org>
-In-Reply-To: <20130513152312.GB1931@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1758432Ab3ENWEq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 May 2013 18:04:46 -0400
+Date: Tue, 14 May 2013 15:04:40 -0700
+From: Zach Brown <zab@redhat.com>
+To: Dave Chinner <david@fromorbit.com>
+Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [RFC v0 0/4] sys_copy_range() rough draft
+Message-ID: <20130514220440.GN16385@lenny.home.zabbo.net>
+References: <1368566126-17610-1-git-send-email-zab@redhat.com>
+ <20130514214251.GK29466@dastard>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130514214251.GK29466@dastard>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-05-13 at 11:23 -0400, J. Bruce Fields wrote:
-> I've added a labeled-nfs-common branch at
+On Wed, May 15, 2013 at 07:42:51AM +1000, Dave Chinner wrote:
+> On Tue, May 14, 2013 at 02:15:22PM -0700, Zach Brown wrote:
+> > I'm going to keep hacking away at this.  My next step is to get ext4
+> > supporting .copy_range, probably with a quick hack to copy the
+> > contents of bios.  Hopefully that'll give enough time to also integrate
+> > review feedback.
 > 
-> 	git://linux-nfs.org/~bfields/linux.git labeled-nfs-common
-> 
-> with 3.10-rc1 + the one labeled NFS patch shared by client and server
-> (with just some protocol constants).
-> 
-> So we can all work on top of that if we want.
+> Wouldn't the easiest "support all filesystems" hack just be to add
+> a destination offset parameter to do_splice_direct() and call that
+> when the filesystem doesn't supply a ->copy_range method? i.e. use
+> the mechanisms we already have for copying from one file to another
+> via the page cache as efficiently as possible?
 
-OK. I've pushed out a 'labeled-nfs' branch for the client side that is
-based upon the above branch.
+Probably; and this in-kernel buffered fallback is particularly desirable
+for nfsd when the exported fs doesn't provide .copy_range.  Having nfsd
+service the COPY op is still a significant win over having the client
+move the data backand forth over the wire.
 
-Has James added the security patches to a public branch that we can pull
-yet?
+But in that quote above I was talking about implementing .copy_range in
+ext4 as though it could use XCOPY today.  I'd like to get a feel for how
+bad it's going to be to juggle the bio XCOPY IO with unwritten extent
+conversion, RMW with overlapping existing blocks, i_size advancing, etc.
+(It's so much like O_DIRECT that I'm already crying a little.)
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+- z
