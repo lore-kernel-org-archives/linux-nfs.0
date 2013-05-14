@@ -1,221 +1,238 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59838 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:1105 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756689Ab3EVQu5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 May 2013 12:50:57 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 07/13] NFSv4: Introduce new label structure
-Date: Wed, 22 May 2013 12:50:40 -0400
-Message-Id: <1369241446-7680-8-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
-References: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
+	id S1757894Ab3ENVQH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 May 2013 17:16:07 -0400
+From: Zach Brown <zab@redhat.com>
+To: "Martin K. Petersen" <martin.petersen@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: [RFC v0 3/4] btrfs: add .copy_range file operation
+Date: Tue, 14 May 2013 14:15:25 -0700
+Message-Id: <1368566126-17610-4-git-send-email-zab@redhat.com>
+In-Reply-To: <1368566126-17610-1-git-send-email-zab@redhat.com>
+References: <1368566126-17610-1-git-send-email-zab@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Steve Dickson <steved@redhat.com>
+This rearranges the existing COPY_RANGE ioctl implementation so that the
+.copy_range file operation can call the core loop that copies file data
+extent items.
 
-In order to mimic the way that NFSv4 ACLs are implemented we have created a
-structure to be used to pass label data up and down the call chain. This patch
-adds the new structure and new members to the required NFSv4 call structures.
+The extent copying loop is lifted up into its own function.  It retains
+the core btrfs error checks that should be shared between the
+CLONE_RANGE ioctl and copy_range syscall.
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Zach Brown <zab@redhat.com>
 ---
- fs/nfs/inode.c          | 28 ++++++++++++++++++++++++++++
- include/linux/nfs4.h    |  9 +++++++++
- include/linux/nfs_fs.h  | 18 ++++++++++++++++++
- include/linux/nfs_xdr.h | 11 +++++++++++
- 4 files changed, 66 insertions(+)
+ fs/btrfs/ctree.h |   3 ++
+ fs/btrfs/file.c  |   1 +
+ fs/btrfs/ioctl.c | 122 +++++++++++++++++++++++++++++++++----------------------
+ 3 files changed, 77 insertions(+), 49 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index c1c7a9d..07fcf0b 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -257,6 +257,34 @@ nfs_init_locked(struct inode *inode, void *opaque)
- 	return 0;
+diff --git a/fs/btrfs/ctree.h b/fs/btrfs/ctree.h
+index 63c328a..bf9555c 100644
+--- a/fs/btrfs/ctree.h
++++ b/fs/btrfs/ctree.h
+@@ -3612,6 +3612,9 @@ int btrfs_dirty_pages(struct btrfs_root *root, struct inode *inode,
+ 		      struct page **pages, size_t num_pages,
+ 		      loff_t pos, size_t write_bytes,
+ 		      struct extent_state **cached);
++ssize_t btrfs_copy_range(struct file *file_in, loff_t pos_in,
++			 struct file *file_out, loff_t pos_out,
++			 size_t count);
+ 
+ /* tree-defrag.c */
+ int btrfs_defrag_leaves(struct btrfs_trans_handle *trans,
+diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
+index 4205ba7..d75cc07 100644
+--- a/fs/btrfs/file.c
++++ b/fs/btrfs/file.c
+@@ -2460,6 +2460,7 @@ const struct file_operations btrfs_file_operations = {
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= btrfs_ioctl,
+ #endif
++	.copy_range	= btrfs_copy_range,
+ };
+ 
+ void btrfs_auto_defrag_exit(void)
+diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
+index 0de4a2f..ac035d8 100644
+--- a/fs/btrfs/ioctl.c
++++ b/fs/btrfs/ioctl.c
+@@ -2463,13 +2463,10 @@ out:
+ 	return ret;
  }
  
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags)
-+{
-+	struct nfs4_label *label = NULL;
-+	int minor_version = server->nfs_client->cl_minorversion;
-+
-+	if (minor_version < 2)
-+		return label;
-+
-+	if (!(server->caps & NFS_CAP_SECURITY_LABEL))
-+		return label;
-+
-+	label = kzalloc(sizeof(struct nfs4_label), flags);
-+	if (label == NULL)
-+		return ERR_PTR(-ENOMEM);
-+
-+	label->label = kzalloc(NFS4_MAXLABELLEN, flags);
-+	if (label->label == NULL) {
-+		kfree(label);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+	label->len = NFS4_MAXLABELLEN;
-+
-+	return label;
+-static noinline long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
+-				       u64 off, u64 olen, u64 destoff)
++static noinline int btrfs_clone_extents(struct inode *inode, struct inode *src,
++					u64 off, u64 olen, u64 destoff)
+ {
+-	struct inode *inode = file_inode(file);
+ 	struct btrfs_root *root = BTRFS_I(inode)->root;
+-	struct fd src_file;
+-	struct inode *src;
+ 	struct btrfs_trans_handle *trans;
+ 	struct btrfs_path *path;
+ 	struct extent_buffer *leaf;
+@@ -2491,59 +2488,22 @@ static noinline long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
+ 	 *   they don't overlap)?
+ 	 */
+ 
+-	/* the destination must be opened for writing */
+-	if (!(file->f_mode & FMODE_WRITE) || (file->f_flags & O_APPEND))
+-		return -EINVAL;
+-
+ 	if (btrfs_root_readonly(root))
+ 		return -EROFS;
+ 
+-	ret = mnt_want_write_file(file);
+-	if (ret)
+-		return ret;
+-
+-	src_file = fdget(srcfd);
+-	if (!src_file.file) {
+-		ret = -EBADF;
+-		goto out_drop_write;
+-	}
+-
+-	ret = -EXDEV;
+-	if (src_file.file->f_path.mnt != file->f_path.mnt)
+-		goto out_fput;
+-
+-	src = file_inode(src_file.file);
+-
+-	ret = -EINVAL;
+-	if (src == inode)
+-		goto out_fput;
+-
+-	/* the src must be open for reading */
+-	if (!(src_file.file->f_mode & FMODE_READ))
+-		goto out_fput;
+-
+ 	/* don't make the dst file partly checksummed */
+ 	if ((BTRFS_I(src)->flags & BTRFS_INODE_NODATASUM) !=
+ 	    (BTRFS_I(inode)->flags & BTRFS_INODE_NODATASUM))
+-		goto out_fput;
+-
+-	ret = -EISDIR;
+-	if (S_ISDIR(src->i_mode) || S_ISDIR(inode->i_mode))
+-		goto out_fput;
+-
+-	ret = -EXDEV;
+-	if (src->i_sb != inode->i_sb)
+-		goto out_fput;
++		return -EINVAL;
+ 
+-	ret = -ENOMEM;
+ 	buf = vmalloc(btrfs_level_size(root, 0));
+ 	if (!buf)
+-		goto out_fput;
++		return -ENOMEM;
+ 
+ 	path = btrfs_alloc_path();
+ 	if (!path) {
+ 		vfree(buf);
+-		goto out_fput;
++		return -ENOMEM;
+ 	}
+ 	path->reada = 2;
+ 
+@@ -2555,10 +2515,7 @@ static noinline long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
+ 		mutex_lock_nested(&inode->i_mutex, I_MUTEX_CHILD);
+ 	}
+ 
+-	/* determine range to clone */
+-	ret = -EINVAL;
+-	if (off + len > src->i_size || off + len < off)
+-		goto out_unlock;
++	/* CLONE_RANGE can have len == 0, copy_range won't */
+ 	if (len == 0)
+ 		olen = len = src->i_size - off;
+ 	/* if we extend to eof, continue to block boundary */
+@@ -2566,6 +2523,7 @@ static noinline long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
+ 		len = ALIGN(src->i_size, bs) - off;
+ 
+ 	/* verify the end result is block aligned */
++	ret = -EINVAL;
+ 	if (!IS_ALIGNED(off, bs) || !IS_ALIGNED(off + len, bs) ||
+ 	    !IS_ALIGNED(destoff, bs))
+ 		goto out_unlock;
+@@ -2849,6 +2807,72 @@ out_unlock:
+ 	mutex_unlock(&inode->i_mutex);
+ 	vfree(buf);
+ 	btrfs_free_path(path);
++	return ret;
 +}
-+EXPORT_SYMBOL_GPL(nfs4_label_alloc);
-+#endif
 +
- /*
-  * This is our front-end to iget that looks up inodes by file handle
-  * instead of inode number.
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 4204600..e36dee5 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -32,6 +32,15 @@ struct nfs4_acl {
- 	struct nfs4_ace	aces[0];
- };
- 
-+#define NFS4_MAXLABELLEN	2048
-+
-+struct nfs4_label {
-+	uint32_t	lfs;
-+	uint32_t	pi;
-+	u32		len;
-+	char	*label;
-+};
-+
- typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
- 
- struct nfs_stateid4 {
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index fc01d5c..39b2404 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -497,6 +497,24 @@ extern int nfs_mountpoint_expiry_timeout;
- extern void nfs_release_automount_timer(void);
- 
- /*
-+ * linux/fs/nfs/nfs4proc.c
-+ */
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+extern struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags);
-+static inline void nfs4_label_free(struct nfs4_label *label)
++ssize_t btrfs_copy_range(struct file *file_in, loff_t pos_in,
++			 struct file *file_out, loff_t pos_out,
++			 size_t count)
 +{
-+	if (label) {
-+		kfree(label->label);
-+		kfree(label);
-+	}
-+	return;
-+}
-+#else
-+static inline struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags) { return NULL; }
-+static inline void nfs4_label_free(void *label) {}
-+#endif
++	ssize_t ret;
 +
-+/*
-  * linux/fs/nfs/unlink.c
-  */
- extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index bfdf6e0..a454d83 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -349,6 +349,7 @@ struct nfs_openargs {
- 	const u32 *		open_bitmap;
- 	__u32			claim;
- 	enum createmode4	createmode;
-+	const struct nfs4_label *label;
- };
- 
- struct nfs_openres {
-@@ -358,6 +359,7 @@ struct nfs_openres {
- 	struct nfs4_change_info	cinfo;
- 	__u32                   rflags;
- 	struct nfs_fattr *      f_attr;
-+	struct nfs4_label	*f_label;
- 	struct nfs_seqid *	seqid;
- 	const struct nfs_server *server;
- 	fmode_t			delegation_type;
-@@ -600,6 +602,7 @@ struct nfs_entry {
- 	int			eof;
- 	struct nfs_fh *		fh;
- 	struct nfs_fattr *	fattr;
-+	struct nfs4_label  *label;
- 	unsigned char		d_type;
- 	struct nfs_server *	server;
- };
-@@ -632,6 +635,7 @@ struct nfs_setattrargs {
- 	struct iattr *                  iap;
- 	const struct nfs_server *	server; /* Needed for name mapping */
- 	const u32 *			bitmask;
-+	const struct nfs4_label		*label;
- };
- 
- struct nfs_setaclargs {
-@@ -667,6 +671,7 @@ struct nfs_getaclres {
- struct nfs_setattrres {
- 	struct nfs4_sequence_res	seq_res;
- 	struct nfs_fattr *              fattr;
-+	struct nfs4_label		*label;
- 	const struct nfs_server *	server;
- };
- 
-@@ -712,6 +717,7 @@ struct nfs3_setaclargs {
- struct nfs_diropok {
- 	struct nfs_fh *		fh;
- 	struct nfs_fattr *	fattr;
-+	struct nfs4_label	*label;
- };
- 
- struct nfs_readlinkargs {
-@@ -864,6 +870,7 @@ struct nfs4_create_arg {
- 	const struct iattr *		attrs;
- 	const struct nfs_fh *		dir_fh;
- 	const u32 *			bitmask;
-+	const struct nfs4_label		*label;
- };
- 
- struct nfs4_create_res {
-@@ -871,6 +878,7 @@ struct nfs4_create_res {
- 	const struct nfs_server *	server;
- 	struct nfs_fh *			fh;
- 	struct nfs_fattr *		fattr;
-+	struct nfs4_label		*label;
- 	struct nfs4_change_info		dir_cinfo;
- };
- 
-@@ -895,6 +903,7 @@ struct nfs4_getattr_res {
- 	struct nfs4_sequence_res	seq_res;
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
-+	struct nfs4_label		*label;
- };
- 
- struct nfs4_link_arg {
-@@ -909,6 +918,7 @@ struct nfs4_link_res {
- 	struct nfs4_sequence_res	seq_res;
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
-+	struct nfs4_label		*label;
- 	struct nfs4_change_info		cinfo;
- 	struct nfs_fattr *		dir_attr;
- };
-@@ -926,6 +936,7 @@ struct nfs4_lookup_res {
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
- 	struct nfs_fh *			fh;
-+	struct nfs4_label		*label;
- };
- 
- struct nfs4_lookup_root_arg {
++	ret = btrfs_clone_extents(file_inode(file_out), file_inode(file_in),
++				  pos_in, count, pos_out);
++	if (ret == 0)
++		ret = count;
++	return ret;
++}
++
++static noinline long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
++				       u64 off, u64 len, u64 destoff)
++{
++	struct inode *inode = file_inode(file);
++	struct fd src_file;
++	struct inode *src;
++	long ret;
++
++	/* the destination must be opened for writing */
++	if (!(file->f_mode & FMODE_WRITE) || (file->f_flags & O_APPEND))
++		return -EINVAL;
++
++	ret = mnt_want_write_file(file);
++	if (ret)
++		return ret;
++
++	src_file = fdget(srcfd);
++	if (!src_file.file) {
++		ret = -EBADF;
++		goto out_drop_write;
++	}
++
++	ret = -EXDEV;
++	if (src_file.file->f_path.mnt != file->f_path.mnt)
++		goto out_fput;
++
++	src = file_inode(src_file.file);
++
++	ret = -EINVAL;
++	if (src == inode)
++		goto out_fput;
++
++	/* the src must be open for reading */
++	if (!(src_file.file->f_mode & FMODE_READ))
++		goto out_fput;
++
++	ret = -EISDIR;
++	if (S_ISDIR(src->i_mode) || S_ISDIR(inode->i_mode))
++		goto out_fput;
++
++	ret = -EXDEV;
++	if (src->i_sb != inode->i_sb)
++		goto out_fput;
++
++	ret = -EINVAL;
++	if (off + len > src->i_size || off + len < off)
++		goto out_fput;
++
++	ret = btrfs_clone_extents(inode, src, off, len, destoff);
++
+ out_fput:
+ 	fdput(src_file);
+ out_drop_write:
 -- 
-1.8.1.4
+1.7.11.7
 
