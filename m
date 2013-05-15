@@ -1,102 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bedivere.hansenpartnership.com ([66.63.167.143]:44038 "EHLO
-	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756421Ab3EFUZh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 16:25:37 -0400
-Message-ID: <1367871935.1868.48.camel@dabdike>
-Subject: Re: [PATCH 00/17] lnfs: linux-3.9 release
-From: James Bottomley <James.Bottomley@HansenPartnership.com>
-To: Ric Wheeler <rwheeler@redhat.com>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>, Jack Rieden <jrieden@redhat.com>
-Date: Mon, 06 May 2013 13:25:35 -0700
-In-Reply-To: <51880B01.5040907@redhat.com>
-References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
-	  <51848BE0.2080901@redhat.com> <1367855617.1868.16.camel@dabdike>
-	 <51880B01.5040907@redhat.com>
-Content-Type: text/plain; charset="ISO-8859-15"
-Mime-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:17533 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758912Ab3EOQrS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 12:47:18 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
+Subject: Re: [PATCH 0/2] [RFC] Maybe avoid gssd upcall timeout
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1368636039.3568.13.camel@leira.trondhjem.org>
+Date: Wed, 15 May 2013 12:47:13 -0400
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <60ACCEE3-E1EA-49EA-8D14-C1AAB658F7D0@oracle.com>
+References: <20130513161515.1942.845.stgit@seurat.1015granger.net> <1368634683.3568.5.camel@leira.trondhjem.org> <13B2D107-E7C3-4AF8-B205-7BF1304DFF25@oracle.com> <1368635073.3568.7.camel@leira.trondhjem.org> <5E95E534-4C1A-4AF5-B0CD-240EB5592E96@oracle.com> <1368636039.3568.13.camel@leira.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-05-06 at 22:56 +0300, Ric Wheeler wrote:
-> On 05/06/2013 06:53 PM, James Bottomley wrote:
-> > On Sat, 2013-05-04 at 07:17 +0300, Ric Wheeler wrote:
-> >> On 05/02/2013 08:18 PM, Steve Dickson wrote:
-> >>> From: Steve Dickson <steved@redhat.com>
-> >>>
-> >>> Here is an the next rlease of the label NFS patches
-> >>> ported to the linux-3.9 release
-> >>>
-> >>> The following changes were made from the previous release.
-> >>> (Note, only the server patch changed in this release)
-> >>>
-> >>> * Remove the buffer overflow in the allocation of labels.
-> >>>
-> >>> * Removed needless char * casting
-> >>>
-> >>> * Removed the -EMSGSIZE to nfs4err_badlabel errno mapping
-> >>>     by changing the return value of nfsd4_label_alloc() to
-> >>>     be a _be32 value.
-> >> It would be great to see this patch series land in time for 3.10 - seems like a
-> >> major feature that has had been held in development for years and it does have a
-> >> very interested user base waiting for this to land.
-> >>
-> >> Are there any existing roadblocks to having this make it this merge
-> >> window?
-> > You mean other than the one Bruce and Trond already mentioned and which
-> > you presumably already read? i.e. it's a large feature whose final
-> > incarnation landed when the merge window was already open which by
-> > process should receive incubation in linux-next before being merged.
-> >
-> > It is entirely within the gift of the maintainers to vary the incubation
-> > requirements, but if they do and it comes back with a ton of problems
-> > from the 0 day project or smatch or even a build failure that would have
-> > been picked up by linux-next, they'll be at the wrong end of Linus'
-> > flame thrower not you.  So it is rather unfair to pressure the
-> > maintainers like this.
-> >
-> > Kernel processes exist for a reason and almost every maintainer has the
-> > scars that remind them of this.
-> >
-> > James
-> >
-> >
+
+On May 15, 2013, at 12:40 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+
+> On Wed, 2013-05-15 at 12:30 -0400, Chuck Lever wrote:
+>> On May 15, 2013, at 12:24 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+>> 
+>>> On Wed, 2013-05-15 at 12:22 -0400, Chuck Lever wrote:
+>>>> On May 15, 2013, at 12:18 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+>>>> 
+>>>>> On Mon, 2013-05-13 at 12:25 -0400, Chuck Lever wrote:
+>>>>>> Hi-
+>>>>>> 
+>>>>>> Here's a stab at addressing the 15 second wait for some 3.10 sec=sys
+>>>>>> mounts where the client is not running rpc.gssd.
+>>>>>> 
+>>>>>> After reverting the "use krb5i for SETCLIENTID" patch, I've added
+>>>>>> the AUTH_SYS fallback in the EACCES case in
+>>>>>> nfs4_discover_server_trunking().  I'm not sure whether we need to
+>>>>>> supplement what's there now, or replace it.
+>>>>>> 
+>>>>>> "case -ENOKEY:" is added so the kernel will recognize that when gssd
+>>>>>> is changed to return that instead of EACCES in this case.  If the
+>>>>>> second patch is appled to 3.7 stable and following, it might be a way
+>>>>>> to address the same regression in older kernels.
+>>>>>> 
+>>>>>> I've been focused on another bug this week, so this has seen very
+>>>>>> light testing only.  Looking for comments.
+>>>>> 
+>>>>> I'd like to propose a different approach: we can set up rpc_pipefs files
+>>>>> clnt/gssd and clnt/krb5 as "honeypots" that rpc.gssd will connect to,
+>>>>> but that won't do any upcalls. When gssd connects, we set a
+>>>>> per-rpc_net_ns variable that tells us 'gssd' is up and running. That
+>>>>> variable only gets cleared if we see a timeout.
+>>>> 
+>>>> Note my solution is a short term gap filler.  Bruce and Jeff seem to want something that can fix current kernels without requiring user space changes, and I need something that will allow sec=krb5 mounts to work without a client keytab on kernels since 3.7.
+>>>> 
+>>>> I see your proposal as a long term fix, and not something that we can expect to apply without deploying gssd support at the same time.
+>>> 
+>>> How does it require gssd modifications?
+>>> 
+>>> The whole point is that it requires kernel-only changes, and only minor
+>>> changes at that...
+>> 
+>> You'll have to be more specific then.  The impression I was left with last week was that this solution was a non-starter because one of the two end points wipes all the directories at certain times.
+>> 
+> No. The problem was the gssd behaviour when it receives a directory
+> notification due to a client creation/destroy event: it disconnects from
+> all rpc pipes, and then reconnects to them.
 > 
-> Don't worry James - this one has had at least as much testing as the average 
-> SCSI driver update :)
-> 
-> This is was not meant as pressure, James Morris (not you) had replied that his 
-> patches are ready and he expected them to be pulled via the NFS trees.
+> That is solved by using the strategy that the variable is set on the
+> first connection by gssd, and is only cleared if we see a timeout. It
+> means that we can quickly detect whether or not gssd has been started
+> (which is what we need here).
 
-Yes, I know this ... Trond and Bruce both said definitely 3.11 and
-probably 3.11 respectively, that's why I was surprised to see a 3.10
-request.
+It seems to me we want to leave that per-ns flag set.  An upcall timeout can result even when gssd is running, so should we consider a timeout reason to clear the flag?
 
-> This was meant to facilitate getting this multi-tree, multi-maintainer series 
-> ready to merge and make sure we aren't stuck each waiting for a response from 
-> the next person in the loop.
-> 
-> Note that this patch set has been in development for *years*, been tested at 
-> connectathon, tested by interested parties who promoted the earliest versions of 
-> the patches and tested by RHEL (of course, the series has evolved over time).
+Are you trying to detect the case where gssd was started but then is stopped (due to administrative action or daemon crash)?
 
-That's good, but not sufficient.  A large number of "well tested" big
-patch sets have failed integration nastily when they were merged over
-the years.  That wasn't because they weren't actually tested, but
-because as soon as they hit the tree, they caused side effects, or
-people tried configurations the submitters hadn't or because they tried
-tests the submitters hadn't thought of.  This is why we have an
-integration process involving linux-next ... to try and find these types
-of problems *before* merger and that's why large features tend to spend
-at least a week in linux-next to try to find the issues.
 
-James
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
 
