@@ -1,37 +1,135 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:51690 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753988Ab3EPNWj convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 May 2013 09:22:39 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Dan Carpenter <dan.carpenter@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: SUNRPC: Convert auth_gss pipe detection to work in namespaces
-Date: Thu, 16 May 2013 13:22:37 +0000
-Message-ID: <1368710557.6041.0.camel@leira.trondhjem.org>
-References: <20130516123156.GA19760@elgon.mountain>
-In-Reply-To: <20130516123156.GA19760@elgon.mountain>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mx5.framestore.com ([193.203.83.15]:49354 "EHLO
+	mx5.framestore.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751813Ab3EOJ1U (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 05:27:20 -0400
+Date: Wed, 15 May 2013 10:23:17 +0100 (BST)
+From: James Vanns <james.vanns@framestore.com>
+Reply-To: james.vanns@framestore.com
+To: Andreas Dilger <andreas.dilger@intel.com>
+Cc: lustre-devel@lists.lustre.org, linux-nfs@vger.kernel.org
+Message-ID: <2121037782.19846759.1368609797839.JavaMail.root@framestore.com>
+In-Reply-To: <CDB80F65.32491%andreas.dilger@intel.com>
+Subject: Re: [Lustre-devel] Export over NFS sets rsize to 1MB?
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-05-16 at 15:31 +0300, Dan Carpenter wrote:
-> Hello Trond Myklebust,
-> 
-> The patch 11575f2498f5: "SUNRPC: Convert auth_gss pipe detection to
-> work in namespaces" from May 15, 2013, leads to the following Smatch
-> warnings:
-> 
-> net/sunrpc/auth_gss/auth_gss.c:275 get_pipe_version() warn: always true condition '(sn->pipe_version >= 0) => (0-u32max >= 0)'"
-> net/sunrpc/auth_gss/auth_gss.c:732 gss_pipe_open() warn: unsigned 'sn->pipe_version' is never less than zero.
-> net/sunrpc/auth_gss/auth_gss.c:590 gss_create_upcall() warn: unsigned 'sn->pipe_version' is never less than zero.
+Thanks for the help Andreas - I too asked the NFS developers (on the list)
+and they came back with /proc/fs/nfsd/max_block_size and nfsd_get_default_max_blksize()
+in fs/nfsd/nfssvc.c.
 
-Thanks Dan! It's fixed now...
+For what it's worth, this is kernel 2.6.32 and Lustre 1.8.8.
+
+Reckon I've got what I asked for now ;)
+
+Jim
+
+----- Original Message -----
+From: "Andreas Dilger" <andreas.dilger@intel.com>
+To: "james vanns" <james.vanns@framestore.com>
+Cc: lustre-devel@lists.lustre.org, linux-nfs@vger.kernel.org
+Sent: Tuesday, 14 May, 2013 11:06:08 PM
+Subject: Re: [Lustre-devel] Export over NFS sets rsize to 1MB?
+
+On 2013/14/05 9:07 AM, "James Vanns" <james.vanns@framestore.com> wrote:
+>> On 2013/13/05 7:19 AM, "James Vanns" <james.vanns@framestore.com>
+>> wrote:
+>> >Hello dev list. Apologies for a post to perhaps the wrong group but
+>> >I'm having a bit of difficulty locating any document or wiki describing
+>> >how and/or where the preferred read and write block size for NFS
+>> >exports of a Lustre filesystem are set to 1MB?
+>> 
+>> 1MB is the RPC size and "optimal IO size" for Lustre.  This would
+>> normally be exported to applications via the stat(2) "st_blksize" field,
+>> though it is typically 2MB (2x the RPC size in order to allow some
+>>pipelining).  I suspect this is where NFS is getting the value, since
+>>it is not passed up via the statfs(2) call.
+>
+>Hmm. OK. I've confirmed it isn't from any struct stat{} attribute
+>(st_blksize
+>is still just 4k) but yes, our RPC size is 1MB. It isn't coming from
+>statfs()
+>or statvfs() either.
+
+I've CC'd the Linux NFS mailing list, since I don't know enough about the
+NFS client/server code to decide where this is coming from either.
+
+James, what kernel version do you have on the Lustre clients (NFS servers)
+and on the NFS clients?
+
+>> >Basically we have two Lustre filesystems exported over NFSv3. Our
+>> >lustre block size is 4k and the max r/w size is 1MB. Without any
+>> >special rsize/wsize options set for the export the default one
+>> >suggested to clients (MOUNT->FSINFO RPC) as the preferred
+>> >size is set to 1MB. How does Lustre figure this out? Other
+>> >non-Lustre exports are generally much less; 4, 8, 16 or 32 kilobytes.
+>> 
+>> Taking a quick look at the code, it looks like NFS TCP connections
+>> all have a maximum max_payload of 1MB, but this is limited in a number
+>>of places in the code by the actual read size, and other maxima (for
+>> which I can't easily find the source value).
+>
+>Yes it seems that 1MB is the maximum but also the optimal or preferred.
+>
+>> >Any hints would be appreciated. Documentation or code paths welcome
+>> >as are annotated /proc locations.
+>> 
+>> To clarify from your question - is this large blocksize causing a
+>> performance problem?  I recall some applications having problems with
+>> stdio "fread()" and friends reading too much data into their buffers
+>> if they are doing random IO.  Ideally stdio shouldn't be reading more
+>> than it needs when doing random IO.
+>
+>We're experiencing what appears to be (as of yet I have no hard evidence)
+>contention due to connection 'hogging' for these large reads. We have a
+>set
+>of 4 NFS servers in a DNS round-robin all configured to serve up our
+>Lustre
+>filesystem across 64 knfsds (per host). It's possible that we simply don't
+>have enough hosts (or knfsds) for the #clients because many of the clients
+>will be reading large amounts of data (1MB at a time) and therefore
+>preventing
+>other queued clients from getting a look-in. Of course this appears to
+>the user
+>as just a very slow experience.
+>
+>At the moment, I'm just trying to understand where this 1MB is coming
+>from!
+>The RPC transport size (I forgot to confirm - yes, we're serving NFS over
+>TCP) is 1MB for all other 'regular' NFS servers yet their r/wsize are
+>quite different.
+>
+>Thanks for the feedback and sorry I can't be more accurate at the moment
+>:\
+
+It should also be possible to explicitly mount the clients with rsize=65536
+and wsize=65536, but it would be better to understand the cause of this.
+
+>> At one time in the past, we derived the st_blksize from the file
+>> stripe_size, but this caused problems with the NFS "Connectathon" or
+>> similar because the block size would change from when the file was
+>>first opened.  It is currently limited by LL_MAX_BLKSIZE_BITS for all
+>> files, but I wouldn't recommend reducing this directly, since it would
+>> also affect "cp" and others that also depend on st_blksize for the
+>> "optimal IO size".  It would be possible to reintroduce the per-file
+>> tunable in ll_update_inode() I think.
+
+Cheers, Andreas
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+Andreas Dilger
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Lustre Software Architect
+Intel High Performance Data Division
+
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Jim Vanns
+Senior Software Developer
+Framestore
