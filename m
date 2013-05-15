@@ -1,39 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:56410 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:60656 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1763387Ab3ECTjo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 May 2013 15:39:44 -0400
-Date: Fri, 3 May 2013 15:39:41 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: long delay when mounting due to SETCLIENTID AUTH_GSS attempts
-Message-ID: <20130503153941.345d3b9a@tlielax.poochiereds.net>
-In-Reply-To: <EB1CC0C3-1E31-4A3F-90E7-A79098161D1B@oracle.com>
-References: <20130503132557.2fdf794d@tlielax.poochiereds.net>
-	<AE700845-4032-4BEC-817C-97EB08A831E8@oracle.com>
-	<20130503142421.19fb3ca6@tlielax.poochiereds.net>
-	<1367606034.3556.25.camel@leira.trondhjem.org>
-	<20130503144437.3a47e476@tlielax.poochiereds.net>
-	<A2E5B3F1-A8F1-4731-A66C-548B9C8FD429@oracle.com>
-	<20130503151727.09d684f4@tlielax.poochiereds.net>
-	<EB1CC0C3-1E31-4A3F-90E7-A79098161D1B@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1754709Ab3EOTvN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 May 2013 15:51:13 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/3] SUNRPC: Fix a bug in gss_create_upcall
+Date: Wed, 15 May 2013 12:50:39 -0700
+Message-Id: <1368647441-24815-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1368647441-24815-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1368647441-24815-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 3 May 2013 15:26:09 -0400
-Chuck Lever <chuck.lever@oracle.com> wrote:
+If wait_event_interruptible_timeout() is successful, it returns
+the number of seconds remaining until the timeout. In that
+case, we should be retrying the upcall.
 
-> I don't expect this issue to last for release after release.  A moment ago you agreed that this shouldn't be intractable, so I fail to see the need to start wiring up long-term workarounds.
-> 
-> Can't we just agree on a fix, and then get that into 3.10 as a regression fix?
-> 
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ net/sunrpc/auth_gss/auth_gss.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-I'm happy to help...I'm just not sure what you're proposing as the fix
-for the problem. What are you suggesting we do?
-
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 7da6b45..f17f3c5 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -563,11 +563,12 @@ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
+ 	struct rpc_cred *cred = &gss_cred->gc_base;
+ 	struct gss_upcall_msg *gss_msg;
+ 	DEFINE_WAIT(wait);
+-	int err = 0;
++	int err;
+ 
+ 	dprintk("RPC:       %s for uid %u\n",
+ 		__func__, from_kuid(&init_user_ns, cred->cr_uid));
+ retry:
++	err = 0;
+ 	gss_msg = gss_setup_upcall(gss_auth->client, gss_auth, cred);
+ 	if (PTR_ERR(gss_msg) == -EAGAIN) {
+ 		err = wait_event_interruptible_timeout(pipe_version_waitqueue,
+@@ -576,7 +577,7 @@ retry:
+ 			warn_gssd();
+ 			err = -EACCES;
+ 		}
+-		if (err)
++		if (err < 0)
+ 			goto out;
+ 		goto retry;
+ 	}
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.8.1.4
+
