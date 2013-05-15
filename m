@@ -1,36 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx4.framestore.com ([193.203.83.5]:41802 "EHLO
-	mx4.framestore.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753005Ab3ENLu4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 May 2013 07:50:56 -0400
-Received: from vm-zimbra.ldn.framestore.com ([172.16.73.68] helo=zimbra.framestore.com)
-	by mx4.framestore.com with esmtp (Exim 4.72)
-	(envelope-from <james.vanns@framestore.com>)
-	id 1UcDHw-0003F2-8r
-	for linux-nfs@vger.kernel.org; Tue, 14 May 2013 12:21:06 +0100
-Received: from mailbox1.framestore.com (mailbox1.framestore.com [172.16.73.65])
-	by zimbra.framestore.com (Postfix) with ESMTP id 2DA871E51057
-	for <linux-nfs@vger.kernel.org>; Tue, 14 May 2013 12:20:16 +0100 (BST)
-Date: Tue, 14 May 2013 12:17:10 +0100 (BST)
-From: James Vanns <james.vanns@framestore.com>
-Reply-To: james.vanns@framestore.com
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-ID: <433790995.19587230.1368530229981.JavaMail.root@framestore.com>
-Subject: Where in the server code is fsinfo rtpref calculated?
+Received: from mx12.netapp.com ([216.240.18.77]:20327 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758243Ab3EOPVX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 11:21:23 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: James Vanns <james.vanns@framestore.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Where in the server code is fsinfo rtpref calculated?
+Date: Wed, 15 May 2013 15:20:59 +0000
+Message-ID: <1368631259.3568.1.camel@leira.trondhjem.org>
+References: <20130515141508.GH16811@fieldses.org>
+	 <1995711958.19982333.1368628467473.JavaMail.root@framestore.com>
+	 <20130515144749.GI16811@fieldses.org>
+In-Reply-To: <20130515144749.GI16811@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi. I'm struggling to locate the region in the NFSv3 server-side code where it figures out the block sizes for the FSINFO reply. We have servers that do not specify r/wsizes in their exports and so I need to find where this negotiated 
-value between server->client actually comes from. How does the server reach the preferred block size for a given export?
+On Wed, 2013-05-15 at 10:47 -0400, J. Bruce Fields wrote:
+> On Wed, May 15, 2013 at 03:34:27PM +0100, James Vanns wrote:
+> > 
+> > > On Wed, May 15, 2013 at 02:42:42PM +0100, James Vanns wrote:
+> > > > > fs/nfsd/nfssvc.c:nfsd_get_default_maxblksize() is probably a good
+> > > > > starting point.  Its caller, nfsd_create_serv(), calls
+> > > > > svc_create_pooled() with the result that's calculated.
+> > > > 
+> > > > Hmm. If I've read this section of code correctly, it seems to me
+> > > > that on most modern NFS servers (using TCP as the transport) the
+> > > > default
+> > > > and preferred blocksize negotiated with clients will almost always
+> > > > be
+> > > > 1MB - the maximum RPC payload. The nfsd_get_default_maxblksize()
+> > > > function
+> > > > seems obsolete for modern 64-bit servers with at least 4G of RAM as
+> > > > it'll
+> > > > always prefer this upper bound instead of any value calculated
+> > > > according to
+> > > > available RAM.
+> > > 
+> > > Well, "obsolete" is an odd way to put it--the code is still expected
+> > > to work on smaller machines.
+> > 
+> > Poor choice of words perhaps. I guess I'm just used to NFS servers being
+> > pretty hefty pieces of kit and 'small' workstations having a couple of GB
+> > of RAM too.
+> > 
+> > > Arguments welcome about the defaults, thoodd ugh I wonder whether it
+> > > would be better to be doing this sort of calculation in user space.
+> > 
+> > See below.
+> > 
+> > > > For what it's worth (not sure if I specified this) I'm running
+> > > > kernel 2.6.32.
+> > > > 
+> > > > Anyway, this file/function appears to set the default *max*
+> > > > blocksize. I haven't
+> > > > read all the related code yet, but does the preferred block size
+> > > > derive
+> > > > from this maximum too?
+> > > 
+> > > See
+> > > > > For finfo see fs/nfsd/nfs3proc.c:nfsd3_proc_fsinfo, which uses
+> > > > > svc_max_payload().
+> > 
+> > I've just returned from nfsd3_proc_fsinfo() and found what I would
+> > consider an odd decision - perhaps nothing better was suggested at
+> > the time. It seems to me that in response to an FSINFO call the reply
+> > stuffs the max_block_size value in  both the maximum *and* preferred
+> > block sizes for both read and write. A 1MB block size for a preferred
+> > default is a little high! If a disk is reading at 33MB/s and we have just
+> > a single server running 64 knfsd and each READ call is requesting 1MB of
+> > data then all of a sudden we have an aggregate read speed of ~512k/s
+> 
+> I lost you here.
+> 
+> > and 
+> > that is without network latencies. And of course we will probably have 100s of
+> > requests queued behind each knfsd waiting for these 512k reads to finish. All of a
+> > sudden our user experience is rather poor :(
+> 
+> Note the preferred size is not a minimum--the client isn't forced to do
+> 1MB reads if it really only wants 1 page, for example, if that's what
+> you mean.
+> 
+> (I haven't actually looked at how typical clients used rt/wtpref.)
 
-Cheers,
+For our client, the answer is:
 
-Jim
+rtpref == default rsize
+wtpref == default wsize and default f_bsize
+
 
 -- 
-Jim Vanns
-Senior Software Developer
-Framestore
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
