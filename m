@@ -1,25 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:12229 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:52297 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752116Ab3EUVOV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 May 2013 17:14:21 -0400
-Received: from [10.63.225.143] (davros.vpn.netapp.com [10.63.225.143])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id r4LLEJVH006282
-	for <linux-nfs@vger.kernel.org>; Tue, 21 May 2013 14:14:20 -0700 (PDT)
-Message-ID: <519BE3AB.1020104@netapp.com>
-Date: Tue, 21 May 2013 17:14:19 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S1757594Ab3EOTwp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 May 2013 15:52:45 -0400
+Date: Wed, 15 May 2013 15:52:45 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] NFS: Fall back to AUTH_SYS for SETCLIENTID (take 2)
+Message-ID: <20130515195245.GC25994@fieldses.org>
+References: <20130513161515.1942.845.stgit@seurat.1015granger.net>
+ <20130513162528.1942.64673.stgit@seurat.1015granger.net>
+ <20130515160424.GK16811@fieldses.org>
+ <961AC5FB-617E-48FB-A35F-5E1A25213292@oracle.com>
+ <20130515171601.GL16811@fieldses.org>
+ <20130515173916.GM16811@fieldses.org>
+ <D8763141-7185-499B-ADFA-659F9992269C@oracle.com>
+ <20130515174806.GO16811@fieldses.org>
+ <0B08EFEB-D651-4A68-8F1F-2078F62B6A5A@oracle.com>
 MIME-Version: 1.0
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Announcing nfs-ordeal
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <0B08EFEB-D651-4A68-8F1F-2078F62B6A5A@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi everybody!
+On Wed, May 15, 2013 at 03:28:27PM -0400, Chuck Lever wrote:
+> 
+> On May 15, 2013, at 1:48 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> 
+> > On Wed, May 15, 2013 at 01:42:58PM -0400, Chuck Lever wrote:
+> >> 
+> >> On May 15, 2013, at 1:39 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> >> 
+> >>> By the way, have you looked at SP4_MACH_CRED at all yet?  It's a
+> >>> selfish question (I could use something to test against), but I
+> >>> think it's also what you want if you want krb5i-protected 4.1 state.
+> >> 
+> >> I asked about that recently and was told SP4_MACH_CRED was going the
+> >> way of the do do
+> > 
+> > Do you remember who said that?  Is the discussion on line somewhere?
+> 
+> No, I mis-remembered.  I was thinking of SP4_SSV.
+> 
+> > 
+> >> (or did I misunderstand the response from the floor?).
+> >> 
+> >> I'm certainly open to exploring other solutions, but I do want to be
+> >> practical about it.  Will it be supported on other servers besides
+> >> Linux?  Does SP4_MACH_CRED help for NFSv4.0?
+> > 
+> > I haven't tested other servers.  It's a 4.1-only feature.
+> 
+> SP4_MACH_CRED for 4.1 appears useful, but I think we would need to consider:
+> 
+>   o  whether SP4_MACH_CRED is a broadly implemented feature where Linux
+>      clients can rely on it being there in typical environments
 
-I've pushed out my Jenkins work to git://git.linux-nfs.org/projects/bjschuma/nfs-ordeal.git under the new name "nfs-ordeal".  This git repo includes both the Jenkins xml jobs and various helper scripts that they call to do testing (you'll have to download Jenkins and some plugins on your own - see the install.sh script).  If you just want a tarball, you can find one at www.linux-nfs.org/~bjschuma/nfs-ordeal-v1.0.tar.gz.
+I'm assuming it's mandatory for servers to implement.  If there is any
+example of a released server not implementing SP4_MACH_CRED, I'd like to
+know.
 
-Let me know what you think!
+>   o  how to address the "no keytab" issue for NFSv4.0, which does not
+>      have SP4_MACH_CRED (that I am aware of)
+> 
+> Andy is probably more interested in seeing SP4_MACH_CRED implemented in the Linux client, as it is one solution for the "user cred expired while there is still dirty data in the client's page cache" problem, I think.
 
-~ Bryan
+OK.
+
+The ability to perform writes using the machine credential is built on
+top of SP4_MACH_CRED, but is optional for servers to support.
+
+--b.
