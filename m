@@ -1,159 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40489 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762403Ab3ECAdd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 May 2013 20:33:33 -0400
-Subject: [PATCH 3/8] FS-Cache: Don't sleep in page release if __GFP_FS is
- not set
-To: linux-cachefs@redhat.com
-From: David Howells <dhowells@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        hjayasur@redhat.com, jlayton@redhat.com, linux-kernel@vger.kernel.org
-Date: Fri, 03 May 2013 01:33:30 +0100
-Message-ID: <20130503003330.14952.53672.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20130503003316.14952.51791.stgit@warthog.procyon.org.uk>
-References: <20130503003316.14952.51791.stgit@warthog.procyon.org.uk>
+Received: from mx5.framestore.com ([193.203.83.15]:46676 "EHLO
+	mx5.framestore.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755185Ab3EOOiZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 10:38:25 -0400
+Date: Wed, 15 May 2013 15:34:27 +0100 (BST)
+From: James Vanns <james.vanns@framestore.com>
+Reply-To: james.vanns@framestore.com
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-ID: <1995711958.19982333.1368628467473.JavaMail.root@framestore.com>
+In-Reply-To: <20130515141508.GH16811@fieldses.org>
+Subject: Re: Where in the server code is fsinfo rtpref calculated?
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Don't sleep in __fscache_maybe_release_page() if __GFP_FS is not set.  This
-goes some way towards mitigating fscache deadlocking against ext4 by way of
-the allocator, eg:
 
-INFO: task flush-8:0:24427 blocked for more than 120 seconds.
-"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-flush-8:0       D ffff88003e2b9fd8     0 24427      2 0x00000000
- ffff88003e2b9138 0000000000000046 ffff880012e3a040 ffff88003e2b9fd8
- 0000000000011c80 ffff88003e2b9fd8 ffffffff81a10400 ffff880012e3a040
- 0000000000000002 ffff880012e3a040 ffff88003e2b9098 ffffffff8106dcf5
-Call Trace:
- [<ffffffff8106dcf5>] ? __lock_is_held+0x31/0x53
- [<ffffffff81219b61>] ? radix_tree_lookup_element+0xf4/0x12a
- [<ffffffff81454bed>] schedule+0x60/0x62
- [<ffffffffa01d349c>] __fscache_wait_on_page_write+0x8b/0xa5 [fscache]
- [<ffffffff810498a8>] ? __init_waitqueue_head+0x4d/0x4d
- [<ffffffffa01d393a>] __fscache_maybe_release_page+0x30c/0x324 [fscache]
- [<ffffffffa01d369a>] ? __fscache_maybe_release_page+0x6c/0x324 [fscache]
- [<ffffffff81071b53>] ? trace_hardirqs_on_caller+0x114/0x170
- [<ffffffffa01fd7b2>] nfs_fscache_release_page+0x68/0x94 [nfs]
- [<ffffffffa01ef73e>] nfs_release_page+0x7e/0x86 [nfs]
- [<ffffffff810aa553>] try_to_release_page+0x32/0x3b
- [<ffffffff810b6c70>] shrink_page_list+0x535/0x71a
- [<ffffffff81071b53>] ? trace_hardirqs_on_caller+0x114/0x170
- [<ffffffff810b7352>] shrink_inactive_list+0x20a/0x2dd
- [<ffffffff81071a13>] ? mark_held_locks+0xbe/0xea
- [<ffffffff810b7a65>] shrink_lruvec+0x34c/0x3eb
- [<ffffffff810b7bd3>] do_try_to_free_pages+0xcf/0x355
- [<ffffffff810b7fc8>] try_to_free_pages+0x9a/0xa1
- [<ffffffff810b08d2>] __alloc_pages_nodemask+0x494/0x6f7
- [<ffffffff810d9a07>] kmem_getpages+0x58/0x155
- [<ffffffff810dc002>] fallback_alloc+0x120/0x1f3
- [<ffffffff8106db23>] ? trace_hardirqs_off+0xd/0xf
- [<ffffffff810dbed3>] ____cache_alloc_node+0x177/0x186
- [<ffffffff81162a6c>] ? ext4_init_io_end+0x1c/0x37
- [<ffffffff810dc403>] kmem_cache_alloc+0xf1/0x176
- [<ffffffff810b17ac>] ? test_set_page_writeback+0x101/0x113
- [<ffffffff81162a6c>] ext4_init_io_end+0x1c/0x37
- [<ffffffff81162ce4>] ext4_bio_write_page+0x20f/0x3af
- [<ffffffff8115cc02>] mpage_da_submit_io+0x26e/0x2f6
- [<ffffffff811088e5>] ? __find_get_block_slow+0x38/0x133
- [<ffffffff81161348>] mpage_da_map_and_submit+0x3a7/0x3bd
- [<ffffffff81161a60>] ext4_da_writepages+0x30d/0x426
- [<ffffffff810b3359>] do_writepages+0x1c/0x2a
- [<ffffffff81102f4d>] __writeback_single_inode+0x3e/0xe5
- [<ffffffff81103995>] writeback_sb_inodes+0x1bd/0x2f4
- [<ffffffff81103b3b>] __writeback_inodes_wb+0x6f/0xb4
- [<ffffffff81103c81>] wb_writeback+0x101/0x195
- [<ffffffff81071b53>] ? trace_hardirqs_on_caller+0x114/0x170
- [<ffffffff811043aa>] ? wb_do_writeback+0xaa/0x173
- [<ffffffff8110434a>] wb_do_writeback+0x4a/0x173
- [<ffffffff81071bbc>] ? trace_hardirqs_on+0xd/0xf
- [<ffffffff81038554>] ? del_timer+0x4b/0x5b
- [<ffffffff811044e0>] bdi_writeback_thread+0x6d/0x147
- [<ffffffff81104473>] ? wb_do_writeback+0x173/0x173
- [<ffffffff81048fbc>] kthread+0xd0/0xd8
- [<ffffffff81455eb2>] ? _raw_spin_unlock_irq+0x29/0x3e
- [<ffffffff81048eec>] ? __init_kthread_worker+0x55/0x55
- [<ffffffff81456aac>] ret_from_fork+0x7c/0xb0
- [<ffffffff81048eec>] ? __init_kthread_worker+0x55/0x55
-2 locks held by flush-8:0/24427:
- #0:  (&type->s_umount_key#41){.+.+..}, at: [<ffffffff810e3b73>] grab_super_passive+0x4c/0x76
- #1:  (jbd2_handle){+.+...}, at: [<ffffffff81190d81>] start_this_handle+0x475/0x4ea
+> On Wed, May 15, 2013 at 02:42:42PM +0100, James Vanns wrote:
+> > > fs/nfsd/nfssvc.c:nfsd_get_default_maxblksize() is probably a good
+> > > starting point.  Its caller, nfsd_create_serv(), calls
+> > > svc_create_pooled() with the result that's calculated.
+> > 
+> > Hmm. If I've read this section of code correctly, it seems to me
+> > that on most modern NFS servers (using TCP as the transport) the
+> > default
+> > and preferred blocksize negotiated with clients will almost always
+> > be
+> > 1MB - the maximum RPC payload. The nfsd_get_default_maxblksize()
+> > function
+> > seems obsolete for modern 64-bit servers with at least 4G of RAM as
+> > it'll
+> > always prefer this upper bound instead of any value calculated
+> > according to
+> > available RAM.
+> 
+> Well, "obsolete" is an odd way to put it--the code is still expected
+> to work on smaller machines.
 
+Poor choice of words perhaps. I guess I'm just used to NFS servers being
+pretty hefty pieces of kit and 'small' workstations having a couple of GB
+of RAM too.
 
-The problem here is that another thread, which is attempting to write the
-to-be-stored NFS page to the on-ext4 cache file is waiting for the journal
-lock, eg:
+> Arguments welcome about the defaults, thoodd ugh I wonder whether it
+> would be better to be doing this sort of calculation in user space.
 
-INFO: task kworker/u:2:24437 blocked for more than 120 seconds.
-"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-kworker/u:2     D ffff880039589768     0 24437      2 0x00000000
- ffff8800395896d8 0000000000000046 ffff8800283bf040 ffff880039589fd8
- 0000000000011c80 ffff880039589fd8 ffff880039f0b040 ffff8800283bf040
- 0000000000000006 ffff8800283bf6b8 ffff880039589658 ffffffff81071a13
-Call Trace:
- [<ffffffff81071a13>] ? mark_held_locks+0xbe/0xea
- [<ffffffff81455e73>] ? _raw_spin_unlock_irqrestore+0x3a/0x50
- [<ffffffff81071b53>] ? trace_hardirqs_on_caller+0x114/0x170
- [<ffffffff81071bbc>] ? trace_hardirqs_on+0xd/0xf
- [<ffffffff81454bed>] schedule+0x60/0x62
- [<ffffffff81190c23>] start_this_handle+0x317/0x4ea
- [<ffffffff810498a8>] ? __init_waitqueue_head+0x4d/0x4d
- [<ffffffff81190fcc>] jbd2__journal_start+0xb3/0x12e
- [<ffffffff81176606>] __ext4_journal_start_sb+0xb2/0xc6
- [<ffffffff8115f137>] ext4_da_write_begin+0x109/0x233
- [<ffffffff810a964d>] generic_file_buffered_write+0x11a/0x264
- [<ffffffff811032cf>] ? __mark_inode_dirty+0x2d/0x1ee
- [<ffffffff810ab1ab>] __generic_file_aio_write+0x2a5/0x2d5
- [<ffffffff810ab24a>] generic_file_aio_write+0x6f/0xd0
- [<ffffffff81159a2c>] ext4_file_write+0x38c/0x3c4
- [<ffffffff810e0915>] do_sync_write+0x91/0xd1
- [<ffffffffa00a17f0>] cachefiles_write_page+0x26f/0x310 [cachefiles]
- [<ffffffffa01d470b>] fscache_write_op+0x21e/0x37a [fscache]
- [<ffffffff81455eb2>] ? _raw_spin_unlock_irq+0x29/0x3e
- [<ffffffffa01d2479>] fscache_op_work_func+0x78/0xd7 [fscache]
- [<ffffffff8104455a>] process_one_work+0x232/0x3a8
- [<ffffffff810444ff>] ? process_one_work+0x1d7/0x3a8
- [<ffffffff81044ee0>] worker_thread+0x214/0x303
- [<ffffffff81044ccc>] ? manage_workers+0x245/0x245
- [<ffffffff81048fbc>] kthread+0xd0/0xd8
- [<ffffffff81455eb2>] ? _raw_spin_unlock_irq+0x29/0x3e
- [<ffffffff81048eec>] ? __init_kthread_worker+0x55/0x55
- [<ffffffff81456aac>] ret_from_fork+0x7c/0xb0
- [<ffffffff81048eec>] ? __init_kthread_worker+0x55/0x55
-4 locks held by kworker/u:2/24437:
- #0:  (fscache_operation){.+.+.+}, at: [<ffffffff810444ff>] process_one_work+0x1d7/0x3a8
- #1:  ((&op->work)){+.+.+.}, at: [<ffffffff810444ff>] process_one_work+0x1d7/0x3a8
- #2:  (sb_writers#14){.+.+.+}, at: [<ffffffff810ab22c>] generic_file_aio_write+0x51/0xd0
- #3:  (&sb->s_type->i_mutex_key#19){+.+.+.}, at: [<ffffffff810ab236>] generic_file_aio_write+0x5b/0x
+See below.
 
-fscache already tries to cancel pending stores, but it can't cancel a write
-for which I/O is already in progress.
+> > For what it's worth (not sure if I specified this) I'm running
+> > kernel 2.6.32.
+> > 
+> > Anyway, this file/function appears to set the default *max*
+> > blocksize. I haven't
+> > read all the related code yet, but does the preferred block size
+> > derive
+> > from this maximum too?
+> 
+> See
+> > > For finfo see fs/nfsd/nfs3proc.c:nfsd3_proc_fsinfo, which uses
+> > > svc_max_payload().
 
-An alternative would be to accept writing garbage to the cache under extreme
-circumstances and to kill the afflicted cache object if we have to do this.
-However, we really need to know how strapped the allocator is before deciding
-to do that.
+I've just returned from nfsd3_proc_fsinfo() and found what I would
+consider an odd decision - perhaps nothing better was suggested at
+the time. It seems to me that in response to an FSINFO call the reply
+stuffs the max_block_size value in  both the maximum *and* preferred
+block sizes for both read and write. A 1MB block size for a preferred
+default is a little high! If a disk is reading at 33MB/s and we have just
+a single server running 64 knfsd and each READ call is requesting 1MB of
+data then all of a sudden we have an aggregate read speed of ~512k/s and 
+that is without network latencies. And of course we will probably have 100s of
+requests queued behind each knfsd waiting for these 512k reads to finish. All of a
+sudden our user experience is rather poor :(
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+Perhaps a better suggestion would be to at least expose the maximum and preferred
+block sizes (for both read and write) via a sysctl key so an administrator can set
+it to the underlying block sizes of the file system or physical device?
 
- fs/fscache/page.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Perhaps the defaults should at least be a smaller multiple of the page size or somewhere
+between that and the PDU of the network layer the service is bound too.
 
-diff --git a/fs/fscache/page.c b/fs/fscache/page.c
-index 4882c80..42f8f2d 100644
---- a/fs/fscache/page.c
-+++ b/fs/fscache/page.c
-@@ -109,7 +109,7 @@ page_busy:
- 	 * allocator as the work threads writing to the cache may all end up
- 	 * sleeping on memory allocation, so we may need to impose a timeout
- 	 * too. */
--	if (!(gfp & __GFP_WAIT)) {
-+	if (!(gfp & __GFP_WAIT) || !(gfp & __GFP_FS)) {
- 		fscache_stat(&fscache_n_store_vmscan_busy);
- 		return false;
- 	}
+Just my tuppence - and my maths might be flawed ;)
 
+Jim
+
+> I'm not sure what the history is behind that logic, though.
+> 
+> --b.
+> 
+
+-- 
+Jim Vanns
+Senior Software Developer
+Framestore
