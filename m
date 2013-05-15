@@ -1,126 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:28235 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757929Ab3EGQBk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 May 2013 12:01:40 -0400
-Message-ID: <51892562.1050903@RedHat.com>
-Date: Tue, 07 May 2013 12:01:38 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mx4.framestore.com ([193.203.83.5]:59547 "EHLO
+	mx4.framestore.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759168Ab3EOQgP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 12:36:15 -0400
+Date: Wed, 15 May 2013 17:32:15 +0100 (BST)
+From: James Vanns <james.vanns@framestore.com>
+Reply-To: james.vanns@framestore.com
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-ID: <1706515764.20038371.1368635535864.JavaMail.root@framestore.com>
+In-Reply-To: <20130515144749.GI16811@fieldses.org>
+Subject: Re: Where in the server code is fsinfo rtpref calculated?
 MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mountd: Fix is_subdirectory again.
-References: <20130502170511.646e2717@notabene.brown>
-In-Reply-To: <20130502170511.646e2717@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+<snip>
 
+> > I've just returned from nfsd3_proc_fsinfo() and found what I would
+> > consider an odd decision - perhaps nothing better was suggested at
+> > the time. It seems to me that in response to an FSINFO call the
+> > reply
+> > stuffs the max_block_size value in  both the maximum *and*
+> > preferred
+> > block sizes for both read and write. A 1MB block size for a
+> > preferred
+> > default is a little high! If a disk is reading at 33MB/s and we
+> > have just
+> > a single server running 64 knfsd and each READ call is requesting
+> > 1MB of
+> > data then all of a sudden we have an aggregate read speed of
+> > ~512k/s
+> 
+> I lost you here.
 
-On 02/05/13 03:05, NeilBrown wrote:
-> 
-> 
-> Hi Steve,
->  I just noticed
-> 
-> commit ebe2826ca571a3959c3b5c8e29686c621f2775cf
-> Author: Steve Dickson <steved@redhat.com>
-> Date:   Sat Mar 23 10:30:17 2013 -0400
-> 
->     mountd: regression in crossmounts
-> 
-> Sorry I missed the email you presumably sent me to let me know
-> that I had caused a regression.
-Yes I should have... That was my bad... 
-> 
-> Here is the proper fix.
-Yes it does work..  thanks! 
+OK, so what we're seeing is the large majority of our nr. ~700 clients
+(all Linux 2.6.32 based NFS clients) issuing READ requests of 1MB in size.
 
-The new is committed!
+After the initial MOUNT request has been granted an FSINFO call is made. The
+contents of the REPLY from the server (another Linux 2.6.32 server) include
+rtmax, rtpref, wtmax and wtpref all of which are set to 1MB. This 1MB appears
+to come from that code/explanation I described earlier  - all values are basically
+getting set to whatever comes out of nfsd_get_default_max_blksize().
 
-steved.
+> > that is without network latencies. And of course we will probably
+> > have 100s of
+> > requests queued behind each knfsd waiting for these 512k reads to
+> > finish. All of a
+> > sudden our user experience is rather poor :(
 > 
-> Thanks,
-> NeilBrown
+> Note the preferred size is not a minimum--the client isn't forced to
+> do
+> 1MB reads if it really only wants 1 page, for example, if that's what
+> you mean.
+
+If no r/wsize has been specified on the client mount then the negotiated
+values above will be used by the client for any read() by an application
+exceeding that maximum. That maximum (the default 1MB) is still quite
+large I reckon.
+
+I'm not sure at which point the preferred or optimal block size will
+be used by the client - because they're set as the same on the server
+side, I can't tell which is being used ;)
+
+> (I haven't actually looked at how typical clients used rt/wtpref.)
 > 
+> --b.
 > 
-> Subject: [PATCH] mountd: Fix is_subdirectory again.
+> > Perhaps a better suggestion would be to at least expose the maximum
+> > and preferred
+> > block sizes (for both read and write) via a sysctl key so an
+> > administrator can set
+> > it to the underlying block sizes of the file system or physical
+> > device?
+> > 
+> > Perhaps the defaults should at least be a smaller multiple of the
+> > page size or somewhere
+> > between that and the PDU of the network layer the service is bound
+> > too.
+> > 
+> > Just my tuppence - and my maths might be flawed ;)
+> > 
+> > Jim
+> > 
+> > > I'm not sure what the history is behind that logic, though.
+> > > 
+> > > --b.
+> > > 
+> > 
+> > --
+> > Jim Vanns
+> > Senior Software Developer
+> > Framestore
 > 
-> commit ebe2826ca571a (mountd: regression in crossmounts)
-> said it was:
->     Reverting the logic of commit 8e2fb3fc until
->     a better solution can be found for the original
->     problem.
-> 
-> here is the "something better".
-> 
-> The problem was that is_subdirectory() would also succeed if the two
-> directories were the same.  This is needed for path_matches() which
-> needs to see if the child is same-or-descendant.
-> 
-> So this patch rearranges path_matches() to do the "are they the same"
-> test itself and only bother with is_subdirectory() if it they are not
-> the same.
-> 
-> So now is_subdirectory() can be strict, and so can be usable for
-> subexport(), which needs a strong 'in subdirectory - not the same' test.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> 
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index 737927c..517aa62 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -347,20 +347,26 @@ static char *next_mnt(void **v, char *p)
->  
->  static int is_subdirectory(char *child, char *parent)
->  {
-> +	/* Check is child is strictly a subdirectory of
-> +	 * parent or a more distant descendant.
-> +	 */
->  	size_t l = strlen(parent);
->  
-> -	if (strcmp(parent, "/") == 0)
-> +	if (strcmp(parent, "/") == 0 && child[1] != 0)
->  		return 1;
->  
-> -	return strcmp(child, parent) == 0
-> -		|| (strncmp(child, parent, l) == 0 && child[l] == '/');
-> +	return (strncmp(child, parent, l) == 0 && child[l] == '/');
->  }
->  
->  static int path_matches(nfs_export *exp, char *path)
->  {
-> -	if (exp->m_export.e_flags & NFSEXP_CROSSMOUNT)
-> -		return is_subdirectory(path, exp->m_export.e_path);
-> -	return strcmp(path, exp->m_export.e_path) == 0;
-> +	/* Does the path match the export?  I.e. is it an
-> +	 * exact match, or does the export have CROSSMOUNT, and path
-> +	 * is a descendant?
-> +	 */
-> +	return strcmp(path, exp->m_export.e_path) == 0
-> +		|| ((exp->m_export.e_flags & NFSEXP_CROSSMOUNT)
-> +		    && is_subdirectory(path, exp->m_export.e_path));
->  }
->  
->  static int
-> @@ -369,15 +375,13 @@ export_matches(nfs_export *exp, char *dom, char *path, struct addrinfo *ai)
->  	return path_matches(exp, path) && client_matches(exp, dom, ai);
->  }
->  
-> -/* True iff e1 is a child of e2 and e2 has crossmnt set: */
-> +/* True iff e1 is a child of e2 (or descendant) and e2 has crossmnt set: */
->  static bool subexport(struct exportent *e1, struct exportent *e2)
->  {
->  	char *p1 = e1->e_path, *p2 = e2->e_path;
-> -	size_t l2 = strlen(p2);
->  
->  	return e2->e_flags & NFSEXP_CROSSMOUNT
-> -		&& strncmp(p1, p2, l2) == 0
-> -		&& p1[l2] == '/';
-> +		&& is_subdirectory(p1, p2);
->  }
->  
->  struct parsed_fsid {
-> 
+
+-- 
+Jim Vanns
+Senior Software Developer
+Framestore
