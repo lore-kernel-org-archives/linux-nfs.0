@@ -1,166 +1,120 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44690 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:60656 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754980Ab3EHMj6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 May 2013 08:39:58 -0400
-Subject: Re: SUNRPC: Add RPC based upcall mechanism for RPCGSS auth
-From: Simo Sorce <simo@redhat.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Dan Carpenter <dan.carpenter@oracle.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <20130507214950.GD27004@pad.fieldses.org>
-References: <20130506154435.GA14732@elgon.mountain>
-	 <1367855693.2976.205.camel@willson.li.ssimo.org>
-	 <20130507214950.GD27004@pad.fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 07 May 2013 17:57:08 -0400
-Message-ID: <1367963828.20220.63.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+	id S1753865Ab3EOTvN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 May 2013 15:51:13 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/3] SUNRPC: Faster detection if gssd is actually running
+Date: Wed, 15 May 2013 12:50:40 -0700
+Message-Id: <1368647441-24815-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1368647441-24815-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1368647441-24815-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1368647441-24815-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-05-07 at 17:49 -0400, J. Bruce Fields wrote:
-> On Mon, May 06, 2013 at 11:54:53AM -0400, Simo Sorce wrote:
-> > On Mon, 2013-05-06 at 18:44 +0300, Dan Carpenter wrote:
-> > > Hello Simo Sorce,
-> > > 
-> > > The patch 1d658336b05f: "SUNRPC: Add RPC based upcall mechanism for 
-> > > RPCGSS auth" from May 25, 2012, leads to the following warning:
-> > > "net/sunrpc/auth_gss/gss_rpc_xdr.c:30 gssx_check_pointer()
-> > > 	 warn: signedness bug returning '(-28)'"
-> > > 
-> > > net/sunrpc/auth_gss/gss_rpc_xdr.c
-> > >     24  static bool gssx_check_pointer(struct xdr_stream *xdr)
-> > >     25  {
-> > >     26          __be32 *p;
-> > >     27  
-> > >     28          p = xdr_reserve_space(xdr, 4);
-> > >     29          if (unlikely(p == NULL))
-> > >     30                  return -ENOSPC;
-> > >                                ^^^^^^^
-> > > This is casted implicitly to "true".  Functions named "check" are a bad
-> > > idea anyways because it's not clear what the return value will be.  It's
-> > > better to use "gssx_pointer_ok()" or "valid" where obviously true means
-> > > that the pointer is ok.
-> > > 
-> > >     31          return *p?true:false;
-> > > 
-> > > We just reserved "*p" so doesn't this point to uninitialized data?  It
-> > > points to a __be32.  So we're not really checking a pointer we're
-> > > checking that __be32 is non-zero.
-> > > 
-> > >     32  }
-> > > 
-> > > regards,
-> > > dan carpenter
-> > 
-> > Dan,
-> > thanks a lot for pointing this one out.
-> 
-> Yes, thanks!
-> 
-> > Bruce,
-> > we should fix it in 3.10 if we can make it.
-> 
-> Agreed.  Probably the following attempt to decode will fail with an
-> -ENOSPC anyway, but this is ugly at least.
-> 
-> > probably easiest way is to kill lines 29/30 and do:
-> > return (p && *p) ? true : false;
-> > 
-> > It would be also ok to change the name to gssx_pointer_is_valid() I
-> > guess.
-> 
-> It still seems a little yuch to lump a decoding failure with a succesful
-> decode of a particular value....
-> 
-> How about just killing gssx_check_pointer, as follows.  Admittedly it's
-> a bit verbose, but it's straightforward.  Any objections?
+Recent changes to the NFS security flavour negotiation mean that
+we have a stronger dependency on rpc.gssd. If the latter is not
+running, because the user failed to start it, then we time out
+and mark the container as not having an instance. We then
+use that information to time out faster the next time.
 
-none if it works the same.
+If, on the other hand, the rpc.gssd successfully binds to an rpc_pipe,
+then we mark the container as having an rpc.gssd instance.
 
-Simo.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ net/sunrpc/auth_gss/auth_gss.c | 13 ++++++++++++-
+ net/sunrpc/netns.h             |  2 ++
+ net/sunrpc/rpc_pipe.c          |  4 ++++
+ 3 files changed, 18 insertions(+), 1 deletion(-)
 
-> --b.
-> 
-> commit fb43f11c666a4f99f23f0be4fa528dcd288c0da2
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Tue May 7 17:45:20 2013 -0400
-> 
->     SUNRPC: fix decoding of optional gss-proxy xdr fields
->     
->     The current code works, but sort of by accident: it obviously didn't
->     intend the error return to be interpreted as "true".
->     
->     Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-> index a1e1b1a..357f613 100644
-> --- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
-> +++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-> @@ -21,16 +21,6 @@
->  #include <linux/sunrpc/svcauth.h>
->  #include "gss_rpc_xdr.h"
->  
-> -static bool gssx_check_pointer(struct xdr_stream *xdr)
-> -{
-> -	__be32 *p;
-> -
-> -	p = xdr_reserve_space(xdr, 4);
-> -	if (unlikely(p == NULL))
-> -		return -ENOSPC;
-> -	return *p?true:false;
-> -}
-> -
->  static int gssx_enc_bool(struct xdr_stream *xdr, int v)
->  {
->  	__be32 *p;
-> @@ -802,6 +792,7 @@ int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
->  				struct xdr_stream *xdr,
->  				struct gssx_res_accept_sec_context *res)
->  {
-> +	u32 value_follows;
->  	int err;
->  
->  	/* res->status */
-> @@ -810,7 +801,10 @@ int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
->  		return err;
->  
->  	/* res->context_handle */
-> -	if (gssx_check_pointer(xdr)) {
-> +	err = gssx_dec_bool(xdr, &value_follows);
-> +	if (err)
-> +		return err;
-> +	if (value_follows) {
->  		err = gssx_dec_ctx(xdr, res->context_handle);
->  		if (err)
->  			return err;
-> @@ -819,7 +813,10 @@ int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
->  	}
->  
->  	/* res->output_token */
-> -	if (gssx_check_pointer(xdr)) {
-> +	err = gssx_dec_bool(xdr, &value_follows);
-> +	if (err)
-> +		return err;
-> +	if (value_follows) {
->  		err = gssx_dec_buffer(xdr, res->output_token);
->  		if (err)
->  			return err;
-> @@ -828,7 +825,10 @@ int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
->  	}
->  
->  	/* res->delegated_cred_handle */
-> -	if (gssx_check_pointer(xdr)) {
-> +	err = gssx_dec_bool(xdr, &value_follows);
-> +	if (err)
-> +		return err;
-> +	if (value_follows) {
->  		/* we do not support upcall servers sending this data. */
->  		return -EINVAL;
->  	}
-
-
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index f17f3c5..3aff72f 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -52,6 +52,8 @@
+ #include <linux/sunrpc/gss_api.h>
+ #include <asm/uaccess.h>
+ 
++#include "../netns.h"
++
+ static const struct rpc_authops authgss_ops;
+ 
+ static const struct rpc_credops gss_credops;
+@@ -559,9 +561,12 @@ out:
+ static inline int
+ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
+ {
++	struct net *net = rpc_net_ns(gss_auth->client);
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 	struct rpc_pipe *pipe;
+ 	struct rpc_cred *cred = &gss_cred->gc_base;
+ 	struct gss_upcall_msg *gss_msg;
++	unsigned long timeout;
+ 	DEFINE_WAIT(wait);
+ 	int err;
+ 
+@@ -569,11 +574,17 @@ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
+ 		__func__, from_kuid(&init_user_ns, cred->cr_uid));
+ retry:
+ 	err = 0;
++	/* Default timeout is 15s unless we know that gssd is not running */
++	timeout = 15 * HZ;
++	if (!sn->gssd_running)
++		timeout = HZ >> 2;
+ 	gss_msg = gss_setup_upcall(gss_auth->client, gss_auth, cred);
+ 	if (PTR_ERR(gss_msg) == -EAGAIN) {
+ 		err = wait_event_interruptible_timeout(pipe_version_waitqueue,
+-				pipe_version >= 0, 15*HZ);
++				pipe_version >= 0, timeout);
+ 		if (pipe_version < 0) {
++			if (err == 0)
++				sn->gssd_running = 0;
+ 			warn_gssd();
+ 			err = -EACCES;
+ 		}
+diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
+index 7111a4c..0827f64 100644
+--- a/net/sunrpc/netns.h
++++ b/net/sunrpc/netns.h
+@@ -29,6 +29,8 @@ struct sunrpc_net {
+ 	struct rpc_clnt *gssp_clnt;
+ 	int use_gss_proxy;
+ 	struct proc_dir_entry *use_gssp_proc;
++
++	unsigned int gssd_running;
+ };
+ 
+ extern int sunrpc_net_id;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index a9129f8..415b705 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -216,11 +216,14 @@ rpc_destroy_inode(struct inode *inode)
+ static int
+ rpc_pipe_open(struct inode *inode, struct file *filp)
+ {
++	struct net *net = inode->i_sb->s_fs_info;
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 	struct rpc_pipe *pipe;
+ 	int first_open;
+ 	int res = -ENXIO;
+ 
+ 	mutex_lock(&inode->i_mutex);
++	sn->gssd_running = 1;
+ 	pipe = RPC_I(inode)->pipe;
+ 	if (pipe == NULL)
+ 		goto out;
+@@ -1069,6 +1072,7 @@ void rpc_pipefs_init_net(struct net *net)
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 
+ 	mutex_init(&sn->pipefs_sb_lock);
++	sn->gssd_running = -1;
+ }
+ 
+ /*
 -- 
-Simo Sorce * Red Hat, Inc * New York
+1.8.1.4
 
