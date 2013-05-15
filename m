@@ -1,119 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:58367 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753970Ab3EANdW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 May 2013 09:33:22 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: =?iso-8859-1?Q?Toralf_F=F6rster?= <toralf.foerster@gmx.de>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: Pseudoflavor 390004 not found!
-Date: Wed, 1 May 2013 13:33:19 +0000
-Message-ID: <1367415199.4189.6.camel@leira.trondhjem.org>
-References: <5180DBCF.8070303@gmx.de>
-In-Reply-To: <5180DBCF.8070303@gmx.de>
-Content-Type: multipart/mixed;
-	boundary="_002_136741519941896camelleiratrondhjemorg_"
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:43708 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759030Ab3EOQXV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 12:23:21 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
+Subject: Re: [PATCH 2/2] NFS: Fall back to AUTH_SYS for SETCLIENTID (take 2)
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20130515160424.GK16811@fieldses.org>
+Date: Wed, 15 May 2013 12:23:12 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <961AC5FB-617E-48FB-A35F-5E1A25213292@oracle.com>
+References: <20130513161515.1942.845.stgit@seurat.1015granger.net> <20130513162528.1942.64673.stgit@seurat.1015granger.net> <20130515160424.GK16811@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---_002_136741519941896camelleiratrondhjemorg_
-Content-Type: text/plain; charset="iso-8859-1"
-Content-ID: <657EFA96B54A444E9E86024E8E9D5D2C@tahoe.netapp.com>
-Content-Transfer-Encoding: quoted-printable
 
-On Wed, 2013-05-01 at 11:09 +0200, Toralf F=F6rster wrote:
-> With current git kernel 3.9-X (since 1 or 2 days) I'm getting the message=
-s
-> seen below at a user mode linux guest on which I run trinity.
->=20
-> On the guest I mount via NFSv4 (and in parallel via hostfs) an EXT4 fs fr=
-om the host system.
-> The EXT4 resides within a file on a tmpfs which is mounted via loop devic=
-e.
->=20
-> So on the hosts it looks like :
-> $> df -m
-> tmpfs               3072   135      2938   5% /mnt/ramdisk
-> /dev/loop0           241     5       224   3% /mnt/trinity
->=20
-> $ cat /etc/exports
-> # /etc/exports: NFS file systems being exported.  See exports(5).
-> /mnt/trinity    192.168.0.0/16(rw,fsid=3D0,insecure,no_subtree_check,asyn=
-c,no_root_squash)
->=20
-> and the UML mounts the share /mnt/trinity just onto its mount points /mnt=
-/n22 and /mnt/nfs/n22 respectively.
-> And these are the messages I'm curious about :
->=20
-> 2013-05-01T10:22:55.613+02:00 trinity kernel: gss_create: Pseudoflavor 39=
-0004 not found!
-> 2013-05-01T10:22:55.613+02:00 trinity kernel: RPC: Couldn't create auth h=
-andle (flavor 390004)
->=20
+On May 15, 2013, at 12:04 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-It's a harmless message. The latest kernel will try to use krb5i to
-establish the lease (i.e. for the SETCLIENTID call) as per the
-recommendations in the RFC3530bis spec, but on systems such as yours
-where you have not enabled krb5, it will fall back to using sec=3Dsys
-(auth_sys).
+> On Mon, May 13, 2013 at 12:25:28PM -0400, Chuck Lever wrote:
+>> Now that commit 4edaa308 "NFS: Use "krb5i" to establish NFSv4 state
+>> whenever possible" is reverted...
+>> 
+>> NFSv4 server trunking detection was added with commit 05f4c350 "NFS:
+>> Discover NFSv4 server trunking when mounting" in v3.7.  One of the
+>> issues that the reverted commit 4edaa308 tried to address was that
+>> when server trunking detection was added, we broke the ability to
+>> mount krb5 exports when the client has no keytab.
+> 
+> And that happened because we started asking gssd explicitly for a
+> context for a machine principal instead of for uid=0?  Or for some other
+> reason?
 
-We should just disable the above warnings.
+We've asked gssd for a machine credential for SETCLIENTID for a while now, so "some other reason."  I honestly don't know exactly why it stopped working with my change, but someone bisected it to that one.
 
-Note that even if the lease negotiation uses krb5i, the actual mount
-will continue to use whatever flavour you specify in your 'sec=3D' mount
-option (or it will use NFSv4 security negotiation) when doing operations
-on the filesystem.
+But we've always had some issue with the "no keytab" case because we do require a machine credential for SETCLIENTID.  I'm suggesting a fix for the broad class of problems using "sec=krb5?" that arise due to a missing keytab on the client.
 
-The attached patch will turn off those messages for you.
---=20
-Trond Myklebust
-Linux NFS client maintainer
+In this case we need the fix sooner rather than later because it stopped working in 3.7.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> 
+>> We still need to
+>> address that regression.
+>> 
+>> Let's try a narrow approach to re-enabling sec=krb5 mounts without a
+>> local system keytab, and worry about the other issues when we can
+>> plan concomitant user space and kernel changes.
+>> 
+>> When a GSS security flavor is used on a mount, allow the security
+>> flavor for state management to fall back to AUTH_SYS if there is
+>> a problem setting up a GSS context for it.
+> 
+> This brings back the delay in the case gssd isn't running, doesn't it?
 
---_002_136741519941896camelleiratrondhjemorg_
-Content-Type: text/x-patch;
-	name="0001-SUNRPC-Don-t-spam-syslog-with-Pseudoflavor-not-found.patch"
-Content-Description: 0001-SUNRPC-Don-t-spam-syslog-with-Pseudoflavor-not-found.patch
-Content-Disposition: attachment;
-	filename="0001-SUNRPC-Don-t-spam-syslog-with-Pseudoflavor-not-found.patch";
-	size=1690; creation-date="Wed, 01 May 2013 13:33:19 GMT";
-	modification-date="Wed, 01 May 2013 13:33:19 GMT"
-Content-ID: <F679CA468C4666458F999957037008C1@tahoe.netapp.com>
-Content-Transfer-Encoding: base64
+No.  "When a GSS flavor is used" means ONLY when a GSS flavor is used.  We make the minimal assumption that using a GSS flavor for a mount means the administrator either has gssd running or wants to know when it isn't, and can tolerate a delay in that case.
 
-RnJvbSA5YzlhN2YwZDc4MWFlMzRjZGY3NzcwZGNhYTllNjdlYzdjYjA0NzVjIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbT4NCkRhdGU6IFdlZCwgMSBNYXkgMjAxMyAwOToxNzo1MCAtMDQwMA0KU3ViamVjdDog
-W1BBVENIXSBTVU5SUEM6IERvbid0IHNwYW0gc3lzbG9nIHdpdGggIlBzZXVkb2ZsYXZvciBub3Qg
-Zm91bmQiDQogbWVzc2FnZXMNCg0KSnVzdCBjb252ZXJ0IHRob3NlIG1lc3NhZ2VzIHRvIGRwcmlu
-dGsoKXMgc28gdGhhdCB0aGV5IGNhbiBiZSB1c2VkDQp3aGVuIGRlYnVnZ2luZy4NCg0KU2lnbmVk
-LW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCi0t
-LQ0KIG5ldC9zdW5ycGMvYXV0aF9nc3MvYXV0aF9nc3MuYyB8IDMgKy0tDQogbmV0L3N1bnJwYy9j
-bG50LmMgICAgICAgICAgICAgIHwgMiArLQ0KIDIgZmlsZXMgY2hhbmdlZCwgMiBpbnNlcnRpb25z
-KCspLCAzIGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9hdXRoX2dzcy9h
-dXRoX2dzcy5jIGIvbmV0L3N1bnJwYy9hdXRoX2dzcy9hdXRoX2dzcy5jDQppbmRleCA1MTQxNWIw
-Li5iNWRkNjkyIDEwMDY0NA0KLS0tIGEvbmV0L3N1bnJwYy9hdXRoX2dzcy9hdXRoX2dzcy5jDQor
-KysgYi9uZXQvc3VucnBjL2F1dGhfZ3NzL2F1dGhfZ3NzLmMNCkBAIC04NjcsOCArODY3LDcgQEAg
-Z3NzX2NyZWF0ZShzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQsIHJwY19hdXRoZmxhdm9yX3QgZmxhdm9y
-KQ0KIAllcnIgPSAtRUlOVkFMOw0KIAlnc3NfYXV0aC0+bWVjaCA9IGdzc19tZWNoX2dldF9ieV9w
-c2V1ZG9mbGF2b3IoZmxhdm9yKTsNCiAJaWYgKCFnc3NfYXV0aC0+bWVjaCkgew0KLQkJcHJpbnRr
-KEtFUk5fV0FSTklORyAiJXM6IFBzZXVkb2ZsYXZvciAlZCBub3QgZm91bmQhXG4iLA0KLQkJCQlf
-X2Z1bmNfXywgZmxhdm9yKTsNCisJCWRwcmludGsoIlJQQzogICAgICAgUHNldWRvZmxhdm9yICVk
-IG5vdCBmb3VuZCFcbiIsIGZsYXZvcik7DQogCQlnb3RvIGVycl9mcmVlOw0KIAl9DQogCWdzc19h
-dXRoLT5zZXJ2aWNlID0gZ3NzX3BzZXVkb2ZsYXZvcl90b19zZXJ2aWNlKGdzc19hdXRoLT5tZWNo
-LCBmbGF2b3IpOw0KZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMvY2xudC5jIGIvbmV0L3N1bnJwYy9j
-bG50LmMNCmluZGV4IGQyNTlmYTkuLmU5MTQzZWQgMTAwNjQ0DQotLS0gYS9uZXQvc3VucnBjL2Ns
-bnQuYw0KKysrIGIvbmV0L3N1bnJwYy9jbG50LmMNCkBAIC0zNjAsNyArMzYwLDcgQEAgc3RhdGlj
-IHN0cnVjdCBycGNfY2xudCAqIHJwY19uZXdfY2xpZW50KGNvbnN0IHN0cnVjdCBycGNfY3JlYXRl
-X2FyZ3MgKmFyZ3MsIHN0cnUNCiANCiAJYXV0aCA9IHJwY2F1dGhfY3JlYXRlKGFyZ3MtPmF1dGhm
-bGF2b3IsIGNsbnQpOw0KIAlpZiAoSVNfRVJSKGF1dGgpKSB7DQotCQlwcmludGsoS0VSTl9JTkZP
-ICJSUEM6IENvdWxkbid0IGNyZWF0ZSBhdXRoIGhhbmRsZSAoZmxhdm9yICV1KVxuIiwNCisJCWRw
-cmludGsoIlJQQzogICAgICAgQ291bGRuJ3QgY3JlYXRlIGF1dGggaGFuZGxlIChmbGF2b3IgJXUp
-XG4iLA0KIAkJCQlhcmdzLT5hdXRoZmxhdm9yKTsNCiAJCWVyciA9IFBUUl9FUlIoYXV0aCk7DQog
-CQlnb3RvIG91dF9ub19hdXRoOw0KLS0gDQoxLjguMS40DQoNCg==
+When a non-GSS flavor is used, we behave as we did before 3.10, and simply use the same security flavor that the mount point used.  So if sec=sys is specified, then SETCLIENTID will use AUTH_SYS, and a gssd upcall is avoided.
 
---_002_136741519941896camelleiratrondhjemorg_--
+> Or am I missing something?
+> --b.
+> 
+>> The existing situation is that the first NFSv4 mount of a server
+>> determines the state management security flavor.  So, if a sec=sys
+>> mount occurs first, all subsequent mounts will continue to use
+>> AUTH_SYS for state management, even if they specified sec=krb5 or
+>> higher.  The risk is allowing a malicious or broken client to purge
+>> this client's open and lock state on the server; data is not
+>> exposed.
+>> 
+>> Falling back if any error occurs while establishing a GSS context
+>> for state management has its own risks.  A network intermediary can
+>> prevent the establishment of a GSS context for state management,
+>> forcing the client to use AUTH_SYS for this task.
+>> 
+>> However, given that the order of NFS mounts is non-deterministic
+>> anyway, we already fail to provide robust security guarantees for
+>> state management.
+>> 
+>> This will be remedied eventually, but changes co-ordinated with user
+>> space are required for that.  When a gssd upcall fails, it currently
+>> does not distinguish between "I don't have a keytab" and "some other
+>> problem occurred".  To close this security hole, the kernel must
+>> fall back only when there is no local keytab.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> Cc: stable@vger.kernel.org [>=3.7]
+>> ---
+>> fs/nfs/nfs4state.c |   14 +++++++++++++-
+>> 1 file changed, 13 insertions(+), 1 deletion(-)
+>> 
+>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>> index b5137c9..a2482c6 100644
+>> --- a/fs/nfs/nfs4state.c
+>> +++ b/fs/nfs/nfs4state.c
+>> @@ -1911,11 +1911,23 @@ again:
+>> 	switch (status) {
+>> 	case 0:
+>> 		break;
+>> -
+>> +	case -ENOKEY:
+>> 	case -EACCES:
+>> 		if (clp->cl_machine_cred == NULL)
+>> 			break;
+>> 		/* Handle case where the user hasn't set up machine creds */
+>> +		if (clnt->cl_auth->au_flavor > RPC_AUTH_MAXFLAVOR) {
+>> +			clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_UNIX);
+>> +			if (IS_ERR(clnt)) {
+>> +				status = PTR_ERR(clnt);
+>> +				break;
+>> +			}
+>> +			clnt = xchg(&clp->cl_rpcclient, clnt);
+>> +			rpc_shutdown_client(clnt);
+>> +			clnt = clp->cl_rpcclient;
+>> +			dprintk("NFS: retrying trunking detection with AUTH_SYS\n");
+>> +			goto again;
+>> +		}
+>> 		nfs4_clear_machine_cred(clp);
+>> 	case -NFS4ERR_DELAY:
+>> 	case -ETIMEDOUT:
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
