@@ -1,95 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:6172 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964921Ab3E1Rxu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 May 2013 13:53:50 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r4SHroQT015538
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 28 May 2013 13:53:50 -0400
-Received: from smallhat.bos.devel.redhat.com ([10.16.60.65])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id r4SHrn2x008184
-	for <linux-nfs@vger.kernel.org>; Tue, 28 May 2013 13:53:49 -0400
-Message-ID: <51A4EF2D.60105@RedHat.com>
-Date: Tue, 28 May 2013 13:53:49 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsidmap: idmapd.conf.5 man warnings
-References: <20130525021248.GA10636@master.debian.org>
-In-Reply-To: <20130525021248.GA10636@master.debian.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from userp1040.oracle.com ([156.151.31.81]:41305 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932182Ab3EOT2g convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 15:28:36 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
+Subject: Re: [PATCH 2/2] NFS: Fall back to AUTH_SYS for SETCLIENTID (take 2)
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20130515174806.GO16811@fieldses.org>
+Date: Wed, 15 May 2013 15:28:27 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <0B08EFEB-D651-4A68-8F1F-2078F62B6A5A@oracle.com>
+References: <20130513161515.1942.845.stgit@seurat.1015granger.net> <20130513162528.1942.64673.stgit@seurat.1015granger.net> <20130515160424.GK16811@fieldses.org> <961AC5FB-617E-48FB-A35F-5E1A25213292@oracle.com> <20130515171601.GL16811@fieldses.org> <20130515173916.GM16811@fieldses.org> <D8763141-7185-499B-ADFA-659F9992269C@oracle.com> <20130515174806.GO16811@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+On May 15, 2013, at 1:48 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-On 24/05/13 22:12, Aníbal Monsalve Salazar wrote:
-> I'm using the patch in this message to build libnfsidmap in Debian.
+> On Wed, May 15, 2013 at 01:42:58PM -0400, Chuck Lever wrote:
+>> 
+>> On May 15, 2013, at 1:39 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>> 
+>>> By the way, have you looked at SP4_MACH_CRED at all yet?  It's a
+>>> selfish question (I could use something to test against), but I
+>>> think it's also what you want if you want krb5i-protected 4.1 state.
+>> 
+>> I asked about that recently and was told SP4_MACH_CRED was going the
+>> way of the do do
 > 
-> The following command:
-> 
->  MANROFFSEQ='' MANWIDTH=80 man --warnings -l -Z ./idmapd.conf.5 >/dev/null 
-> 
-> shows the following warnings:
-> 
->  <standard input>:237: warning: macro `"' not defined
->  <standard input>:269: warning: macro `fo' not defined
->  <standard input>:278: warning: macro `".SH' not defined
-> 
-> and the patch below fixes them.
-> 
-> --- a/idmapd.conf.5	2011-12-06 07:28:10.000000000 +1100
-> +++ b/idmapd.conf.5	2013-05-25 11:07:37.000000000 +1000
-> @@ -31,7 +31,7 @@
->  .\"
->  .TH idmapd.conf 5 "19 Nov 2008"
->  .SH NAME
-> -idmapd.conf
-> +idmapd.conf \- configuration file for libnfsidmap
->  .SH SYNOPSIS
->  Configuration file for libnfsidmap.  Used by idmapd and svcgssd to map NFSv4 name to and from ids.
->  .SH DESCRIPTION
-> @@ -234,7 +234,6 @@ Number of seconds before timing out an L
->  .\" -------------------------------------------------------------------
->  .\"
->  .SH EXAMPLES
-> -."
->  An example
->  .I /etc/idmapd.conf
->  file:
-> @@ -266,7 +265,6 @@ johndoe@OTHER.DOMAIN.ORG = johnny
->  LDAP_server = ldap.domain.org
->  LDAP_base = dc=org,dc=domain
->  
-> -.fo
->  .\"
->  .\" -------------------------------------------------------------------
->  .\" Additional sections
-> @@ -275,11 +273,11 @@ LDAP_base = dc=org,dc=domain
->  .SH SEE ALSO
->  .BR idmapd (8)
->  .BR svcgssd (8)
-> -.".SH COMPATIBILITY
-> -.".SH STANDARDS
-> -.".SH ACKNOWLEDGEMENTS
-> -.".SH AUTHORS
-> -.".SH HISTORY
-> +.\".SH COMPATIBILITY
-> +.\".SH STANDARDS
-> +.\".SH ACKNOWLEDGEMENTS
-> +.\".SH AUTHORS
-> +.\".SH HISTORY
->  .SH BUGS
->  Report bugs to <nfsv4@linux-nfs.org>
-> -.".SH CAVEATS
-> +.\".SH CAVEATS
-Note... These have been fixed with
+> Do you remember who said that?  Is the discussion on line somewhere?
 
-commit ee3099dbc71c6190cc612e923506c7d634b4b3c9
-Author: Ville Skyttä <ville.skytta@iki.fi>
-Date:   Tue Jun 19 10:10:40 2012 -0400
+No, I mis-remembered.  I was thinking of SP4_SSV.
 
-    idmapd.conf.5: Fixed some syntax typos
+> 
+>> (or did I misunderstand the response from the floor?).
+>> 
+>> I'm certainly open to exploring other solutions, but I do want to be
+>> practical about it.  Will it be supported on other servers besides
+>> Linux?  Does SP4_MACH_CRED help for NFSv4.0?
+> 
+> I haven't tested other servers.  It's a 4.1-only feature.
 
-steved.
+SP4_MACH_CRED for 4.1 appears useful, but I think we would need to consider:
+
+  o  whether SP4_MACH_CRED is a broadly implemented feature where Linux
+     clients can rely on it being there in typical environments
+
+  o  how to address the "no keytab" issue for NFSv4.0, which does not
+     have SP4_MACH_CRED (that I am aware of)
+
+Andy is probably more interested in seeing SP4_MACH_CRED implemented in the Linux client, as it is one solution for the "user cred expired while there is still dirty data in the client's page cache" problem, I think.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
