@@ -1,119 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40991 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760749Ab3EBRTa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 May 2013 13:19:30 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 14/17] NFS: Extend NFS xattr handlers to accept the security namespace
-Date: Thu,  2 May 2013 13:19:08 -0400
-Message-Id: <1367515151-31015-15-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
-References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:51111 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759805Ab3EORnH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 13:43:07 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
+Subject: Re: [PATCH 2/2] NFS: Fall back to AUTH_SYS for SETCLIENTID (take 2)
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20130515173916.GM16811@fieldses.org>
+Date: Wed, 15 May 2013 13:42:58 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <D8763141-7185-499B-ADFA-659F9992269C@oracle.com>
+References: <20130513161515.1942.845.stgit@seurat.1015granger.net> <20130513162528.1942.64673.stgit@seurat.1015granger.net> <20130515160424.GK16811@fieldses.org> <961AC5FB-617E-48FB-A35F-5E1A25213292@oracle.com> <20130515171601.GL16811@fieldses.org> <20130515173916.GM16811@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
 
-The existing NFSv4 xattr handlers do not accept xattr calls to the security
-namespace. This patch extends these handlers to accept xattrs from the security
-namespace in addition to the default NFSv4 ACL namespace.
+On May 15, 2013, at 1:39 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- fs/nfs/nfs4proc.c   | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
- security/security.c |  1 +
- 2 files changed, 51 insertions(+)
+> By the way, have you looked at SP4_MACH_CRED at all yet?  It's a selfish
+> question (I could use something to test against), but I think it's also
+> what you want if you want krb5i-protected 4.1 state.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 0e5b319..7b65c99 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5518,6 +5518,53 @@ static size_t nfs4_xattr_list_nfs4_acl(struct dentry *dentry, char *list,
- 	return len;
- }
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+static inline int nfs4_server_supports_labels(struct nfs_server *server)
-+{
-+	return server->caps & NFS_CAP_SECURITY_LABEL;
-+}
-+
-+static int nfs4_xattr_set_nfs4_label(struct dentry *dentry, const char *key,
-+				   const void *buf, size_t buflen,
-+				   int flags, int type)
-+{
-+	if (security_ismaclabel(key))
-+		return nfs4_set_security_label(dentry, buf, buflen);
-+
-+	return -EOPNOTSUPP;
-+}
-+
-+static int nfs4_xattr_get_nfs4_label(struct dentry *dentry, const char *key,
-+				   void *buf, size_t buflen, int type)
-+{
-+	if (security_ismaclabel(key))
-+		return nfs4_get_security_label(dentry->d_inode, buf, buflen);
-+	return -EOPNOTSUPP;
-+}
-+
-+static size_t nfs4_xattr_list_nfs4_label(struct dentry *dentry, char *list,
-+				       size_t list_len, const char *name,
-+				       size_t name_len, int type)
-+{
-+	size_t len = 0;
-+
-+	if (nfs_server_capable(dentry->d_inode, NFS_CAP_SECURITY_LABEL)) {
-+		len = security_inode_listsecurity(dentry->d_inode, NULL, 0);
-+		if (list && len <= list_len)
-+			security_inode_listsecurity(dentry->d_inode, list, len);
-+	}
-+	return len;
-+}
-+
-+static const struct xattr_handler nfs4_xattr_nfs4_label_handler = {
-+	.prefix = XATTR_SECURITY_PREFIX,
-+	.list	= nfs4_xattr_list_nfs4_label,
-+	.get	= nfs4_xattr_get_nfs4_label,
-+	.set	= nfs4_xattr_set_nfs4_label,
-+};
-+#endif
-+
-+
- /*
-  * nfs_fhget will use either the mounted_on_fileid or the fileid
-  */
-@@ -7270,6 +7317,9 @@ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
- 
- const struct xattr_handler *nfs4_xattr_handlers[] = {
- 	&nfs4_xattr_nfs4_acl_handler,
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	&nfs4_xattr_nfs4_label_handler,
-+#endif
- 	NULL
- };
- 
-diff --git a/security/security.c b/security/security.c
-index df8ade2..758af6b 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -660,6 +660,7 @@ int security_inode_listsecurity(struct inode *inode, char *buffer, size_t buffer
- 		return 0;
- 	return security_ops->inode_listsecurity(inode, buffer, buffer_size);
- }
-+EXPORT_SYMBOL(security_inode_listsecurity);
- 
- void security_inode_getsecid(const struct inode *inode, u32 *secid)
- {
+I asked about that recently and was told SP4_MACH_CRED was going the way of the do do (or did I misunderstand the response from the floor?).
+
+I'm certainly open to exploring other solutions, but I do want to be practical about it.  Will it be supported on other servers besides Linux?  Does SP4_MACH_CRED help for NFSv4.0?
+
 -- 
-1.8.1.4
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
