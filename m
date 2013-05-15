@@ -1,48 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from sentry-two.sandia.gov ([132.175.109.14]:35758 "EHLO
-	sentry-two.sandia.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750811Ab3E3Uvs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 May 2013 16:51:48 -0400
-Message-ID: <51A7BBC8.9050300@sandia.gov>
-Date: Thu, 30 May 2013 14:51:20 -0600
-From: "Jim Schutt" <jaschut@sandia.gov>
-MIME-Version: 1.0
-To: "Chuck Lever" <chuck.lever@oracle.com>
-cc: "Trond Myklebust" <Trond.Myklebust@netapp.com>,
-        "Weston Andros Adamson" <dros@netapp.com>,
-        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>,
-        "LKML Kernel" <linux-kernel@vger.kernel.org>
-Subject: Re: 3.10-rc3 NFSv3 mount issues
-References: <51A7B442.9010108@sandia.gov>
- <D74C8145-AD4D-4CFE-963C-643B8D7DBA10@oracle.com>
-In-Reply-To: <D74C8145-AD4D-4CFE-963C-643B8D7DBA10@oracle.com>
-Content-Type: text/plain;
- charset=utf-8
+Received: from aserp1040.oracle.com ([141.146.126.69]:43314 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758844Ab3EOQWl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 12:22:41 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
+Subject: Re: [PATCH 0/2] [RFC] Maybe avoid gssd upcall timeout
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1368634683.3568.5.camel@leira.trondhjem.org>
+Date: Wed, 15 May 2013 12:22:36 -0400
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <13B2D107-E7C3-4AF8-B205-7BF1304DFF25@oracle.com>
+References: <20130513161515.1942.845.stgit@seurat.1015granger.net> <1368634683.3568.5.camel@leira.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/30/2013 02:26 PM, Chuck Lever wrote:
+
+On May 15, 2013, at 12:18 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+
+> On Mon, 2013-05-13 at 12:25 -0400, Chuck Lever wrote:
+>> Hi-
+>> 
+>> Here's a stab at addressing the 15 second wait for some 3.10 sec=sys
+>> mounts where the client is not running rpc.gssd.
+>> 
+>> After reverting the "use krb5i for SETCLIENTID" patch, I've added
+>> the AUTH_SYS fallback in the EACCES case in
+>> nfs4_discover_server_trunking().  I'm not sure whether we need to
+>> supplement what's there now, or replace it.
+>> 
+>> "case -ENOKEY:" is added so the kernel will recognize that when gssd
+>> is changed to return that instead of EACCES in this case.  If the
+>> second patch is appled to 3.7 stable and following, it might be a way
+>> to address the same regression in older kernels.
+>> 
+>> I've been focused on another bug this week, so this has seen very
+>> light testing only.  Looking for comments.
 > 
-> On May 30, 2013, at 4:19 PM, Jim Schutt <jaschut@sandia.gov> wrote:
-> 
->> Hi,
->>
->> I've been trying to test 3.10-rc3 on some diskless clients, and found
->> that I can no longer mount my root file system via NFSv3.
->>
+> I'd like to propose a different approach: we can set up rpc_pipefs files
+> clnt/gssd and clnt/krb5 as "honeypots" that rpc.gssd will connect to,
+> but that won't do any upcalls. When gssd connects, we set a
+> per-rpc_net_ns variable that tells us 'gssd' is up and running. That
+> variable only gets cleared if we see a timeout.
+
+Note my solution is a short term gap filler.  Bruce and Jeff seem to want something that can fix current kernels without requiring user space changes, and I need something that will allow sec=krb5 mounts to work without a client keytab on kernels since 3.7.
+
+I see your proposal as a long term fix, and not something that we can expect to apply without deploying gssd support at the same time.
+
 
 > 
-> 3.10-rc3 appears to be missing the fix for this.  See:
 > 
->   http://marc.info/?l=linux-nfs&m=136855668104598&w=2
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
 > 
-> Trond, can we get this applied?
-> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-That works for me.
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Thanks!
 
--- Jim
 
 
