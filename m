@@ -1,101 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f170.google.com ([209.85.223.170]:49482 "EHLO
-	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753753Ab3EMQZc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 May 2013 12:25:32 -0400
-Received: by mail-ie0-f170.google.com with SMTP id aq17so12812955iec.15
-        for <linux-nfs@vger.kernel.org>; Mon, 13 May 2013 09:25:32 -0700 (PDT)
-Received: from seurat.1015granger.net (adsl-99-26-161-222.dsl.sfldmi.sbcglobal.net. [99.26.161.222])
-        by mx.google.com with ESMTPSA id qn10sm18004595igc.6.2013.05.13.09.25.28
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Mon, 13 May 2013 09:25:29 -0700 (PDT)
-Subject: [PATCH 2/2] NFS: Fall back to AUTH_SYS for SETCLIENTID (take 2)
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Mon, 13 May 2013 12:25:28 -0400
-Message-ID: <20130513162528.1942.64673.stgit@seurat.1015granger.net>
-In-Reply-To: <20130513161515.1942.845.stgit@seurat.1015granger.net>
+Received: from fieldses.org ([174.143.236.118]:39062 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933011Ab3EOSPx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 May 2013 14:15:53 -0400
+Date: Wed, 15 May 2013 14:15:51 -0400
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/2] [RFC] Maybe avoid gssd upcall timeout
+Message-ID: <20130515181551.GP16811@fieldses.org>
 References: <20130513161515.1942.845.stgit@seurat.1015granger.net>
+ <1368634683.3568.5.camel@leira.trondhjem.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1368634683.3568.5.camel@leira.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that commit 4edaa308 "NFS: Use "krb5i" to establish NFSv4 state
-whenever possible" is reverted...
+On Wed, May 15, 2013 at 04:18:03PM +0000, Myklebust, Trond wrote:
+> On Mon, 2013-05-13 at 12:25 -0400, Chuck Lever wrote:
+> > Hi-
+> > 
+> > Here's a stab at addressing the 15 second wait for some 3.10 sec=sys
+> > mounts where the client is not running rpc.gssd.
+> > 
+> > After reverting the "use krb5i for SETCLIENTID" patch, I've added
+> > the AUTH_SYS fallback in the EACCES case in
+> > nfs4_discover_server_trunking().  I'm not sure whether we need to
+> > supplement what's there now, or replace it.
+> > 
+> > "case -ENOKEY:" is added so the kernel will recognize that when gssd
+> > is changed to return that instead of EACCES in this case.  If the
+> > second patch is appled to 3.7 stable and following, it might be a way
+> > to address the same regression in older kernels.
+> > 
+> > I've been focused on another bug this week, so this has seen very
+> > light testing only.  Looking for comments.
+> 
+> I'd like to propose a different approach: we can set up rpc_pipefs files
+> clnt/gssd and clnt/krb5
 
-NFSv4 server trunking detection was added with commit 05f4c350 "NFS:
-Discover NFSv4 server trunking when mounting" in v3.7.  One of the
-issues that the reverted commit 4edaa308 tried to address was that
-when server trunking detection was added, we broke the ability to
-mount krb5 exports when the client has no keytab.  We still need to
-address that regression.
+I'm not sure what paths you mean exactly?  Is "clnt" a top-level
+rpc-pipefs directory, or a dummy client at the level of other rpc
+clients (like rpc_pipefs/nfs/clnt/gssd).
 
-Let's try a narrow approach to re-enabling sec=krb5 mounts without a
-local system keytab, and worry about the other issues when we can
-plan concomitant user space and kernel changes.
+I'm assuming the latter--seems like it might work.
 
-When a GSS security flavor is used on a mount, allow the security
-flavor for state management to fall back to AUTH_SYS if there is
-a problem setting up a GSS context for it.
+Long-term, it might also be nice to add an interface to allow the kernel
+to determine whether gssd is running, without depending on timeouts.  It
+could be something very trivial.
 
-The existing situation is that the first NFSv4 mount of a server
-determines the state management security flavor.  So, if a sec=sys
-mount occurs first, all subsequent mounts will continue to use
-AUTH_SYS for state management, even if they specified sec=krb5 or
-higher.  The risk is allowing a malicious or broken client to purge
-this client's open and lock state on the server; data is not
-exposed.
+--b.
 
-Falling back if any error occurs while establishing a GSS context
-for state management has its own risks.  A network intermediary can
-prevent the establishment of a GSS context for state management,
-forcing the client to use AUTH_SYS for this task.
-
-However, given that the order of NFS mounts is non-deterministic
-anyway, we already fail to provide robust security guarantees for
-state management.
-
-This will be remedied eventually, but changes co-ordinated with user
-space are required for that.  When a gssd upcall fails, it currently
-does not distinguish between "I don't have a keytab" and "some other
-problem occurred".  To close this security hole, the kernel must
-fall back only when there is no local keytab.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: stable@vger.kernel.org [>=3.7]
----
- fs/nfs/nfs4state.c |   14 +++++++++++++-
- 1 file changed, 13 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index b5137c9..a2482c6 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1911,11 +1911,23 @@ again:
- 	switch (status) {
- 	case 0:
- 		break;
--
-+	case -ENOKEY:
- 	case -EACCES:
- 		if (clp->cl_machine_cred == NULL)
- 			break;
- 		/* Handle case where the user hasn't set up machine creds */
-+		if (clnt->cl_auth->au_flavor > RPC_AUTH_MAXFLAVOR) {
-+			clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_UNIX);
-+			if (IS_ERR(clnt)) {
-+				status = PTR_ERR(clnt);
-+				break;
-+			}
-+			clnt = xchg(&clp->cl_rpcclient, clnt);
-+			rpc_shutdown_client(clnt);
-+			clnt = clp->cl_rpcclient;
-+			dprintk("NFS: retrying trunking detection with AUTH_SYS\n");
-+			goto again;
-+		}
- 		nfs4_clear_machine_cred(clp);
- 	case -NFS4ERR_DELAY:
- 	case -ETIMEDOUT:
-
+> as "honeypots" that rpc.gssd will connect to,
+> but that won't do any upcalls. When gssd connects, we set a
+> per-rpc_net_ns variable that tells us 'gssd' is up and running. That
+> variable only gets cleared if we see a timeout.
+> 
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
