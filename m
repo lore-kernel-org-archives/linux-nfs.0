@@ -1,128 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from slb-mbsout-01.boeing.com ([130.76.64.128]:46252 "EHLO
-	slb-mbsout-01.boeing.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750719Ab3EMNLx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 May 2013 09:11:53 -0400
-From: "Vu, Joseph" <joseph.vu@boeing.com>
-To: David Quigley <dpquigl@davequigley.com>,
-        James Bottomley <james.bottomley@hansenpartnership.com>
-CC: Ric Wheeler <rwheeler@redhat.com>, Steve Dickson <steved@redhat.com>,
-        Trond Myklebust <trond.myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        "Linux NFS list" <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>, Jack Rieden <jrieden@redhat.com>
-Subject: RE: [PATCH 00/17] lnfs: linux-3.9 release
-Date: Mon, 13 May 2013 13:00:59 +0000
-Message-ID: <756D04455A661C4CA25DC5BA4902A7A72269B0D1@XCH-PHX-204.sw.nos.boeing.com>
-References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
- <51848BE0.2080901@redhat.com> <1367855617.1868.16.camel@dabdike>
- <51880B01.5040907@redhat.com> <1367871935.1868.48.camel@dabdike>
- <cb264c17aefd307cdc6e93b576f695e9@countercultured.net>
-In-Reply-To: <cb264c17aefd307cdc6e93b576f695e9@countercultured.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:35468 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759547Ab3EORQE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 May 2013 13:16:04 -0400
+Date: Wed, 15 May 2013 13:16:01 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] NFS: Fall back to AUTH_SYS for SETCLIENTID (take 2)
+Message-ID: <20130515171601.GL16811@fieldses.org>
+References: <20130513161515.1942.845.stgit@seurat.1015granger.net>
+ <20130513162528.1942.64673.stgit@seurat.1015granger.net>
+ <20130515160424.GK16811@fieldses.org>
+ <961AC5FB-617E-48FB-A35F-5E1A25213292@oracle.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <961AC5FB-617E-48FB-A35F-5E1A25213292@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RGF2aWQsDQoNClRoYW5rIHlvdSBmb3IgeW91ciBncmVhdCBlZmZvcnQgaW4gbWFraW5nIHRoaXMg
-Y2FwYWJpbGl0eSBhdmFpbGFibGUuDQoNCkpvZQ0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0t
-LQ0KRnJvbTogb3duZXItc2VsaW51eEB0eWNoby5uc2EuZ292IFttYWlsdG86b3duZXItc2VsaW51
-eEB0eWNoby5uc2EuZ292XSBPbiBCZWhhbGYgT2YgRGF2aWQgUXVpZ2xleQ0KU2VudDogU3VuZGF5
-LCBNYXkgMTIsIDIwMTMgNDo1NiBQTQ0KVG86IEphbWVzIEJvdHRvbWxleQ0KQ2M6IFJpYyBXaGVl
-bGVyOyBTdGV2ZSBEaWNrc29uOyBUcm9uZCBNeWtsZWJ1c3Q7IEouIEJydWNlIEZpZWxkczsgRGF2
-aWQgUC4gUXVpZ2xleTsgTGludXggTkZTIGxpc3Q7IExpbnV4IEZTIGRldmVsIGxpc3Q7IExpbnV4
-IFNlY3VyaXR5IExpc3Q7IFNFTGludXggTGlzdDsgSmFjayBSaWVkZW4NClN1YmplY3Q6IFJlOiBb
-UEFUQ0ggMDAvMTddIGxuZnM6IGxpbnV4LTMuOSByZWxlYXNlDQoNCk9uIDA1LzA2LzIwMTMgMTY6
-MjUsIEphbWVzIEJvdHRvbWxleSB3cm90ZToNCj4gT24gTW9uLCAyMDEzLTA1LTA2IGF0IDIyOjU2
-ICswMzAwLCBSaWMgV2hlZWxlciB3cm90ZToNCj4+IE9uIDA1LzA2LzIwMTMgMDY6NTMgUE0sIEph
-bWVzIEJvdHRvbWxleSB3cm90ZToNCj4+ID4gT24gU2F0LCAyMDEzLTA1LTA0IGF0IDA3OjE3ICsw
-MzAwLCBSaWMgV2hlZWxlciB3cm90ZToNCj4+ID4+IE9uIDA1LzAyLzIwMTMgMDg6MTggUE0sIFN0
-ZXZlIERpY2tzb24gd3JvdGU6DQo+PiA+Pj4gRnJvbTogU3RldmUgRGlja3NvbiA8c3RldmVkQHJl
-ZGhhdC5jb20+DQo+PiA+Pj4NCj4+ID4+PiBIZXJlIGlzIGFuIHRoZSBuZXh0IHJsZWFzZSBvZiB0
-aGUgbGFiZWwgTkZTIHBhdGNoZXMgcG9ydGVkIHRvIHRoZSANCj4+ID4+PiBsaW51eC0zLjkgcmVs
-ZWFzZQ0KPj4gPj4+DQo+PiA+Pj4gVGhlIGZvbGxvd2luZyBjaGFuZ2VzIHdlcmUgbWFkZSBmcm9t
-IHRoZSBwcmV2aW91cyByZWxlYXNlLg0KPj4gPj4+IChOb3RlLCBvbmx5IHRoZSBzZXJ2ZXIgcGF0
-Y2ggY2hhbmdlZCBpbiB0aGlzIHJlbGVhc2UpDQo+PiA+Pj4NCj4+ID4+PiAqIFJlbW92ZSB0aGUg
-YnVmZmVyIG92ZXJmbG93IGluIHRoZSBhbGxvY2F0aW9uIG9mIGxhYmVscy4NCj4+ID4+Pg0KPj4g
-Pj4+ICogUmVtb3ZlZCBuZWVkbGVzcyBjaGFyICogY2FzdGluZw0KPj4gPj4+DQo+PiA+Pj4gKiBS
-ZW1vdmVkIHRoZSAtRU1TR1NJWkUgdG8gbmZzNGVycl9iYWRsYWJlbCBlcnJubyBtYXBwaW5nDQo+
-PiA+Pj4gICAgIGJ5IGNoYW5naW5nIHRoZSByZXR1cm4gdmFsdWUgb2YgbmZzZDRfbGFiZWxfYWxs
-b2MoKSB0bw0KPj4gPj4+ICAgICBiZSBhIF9iZTMyIHZhbHVlLg0KPj4gPj4gSXQgd291bGQgYmUg
-Z3JlYXQgdG8gc2VlIHRoaXMgcGF0Y2ggc2VyaWVzIGxhbmQgaW4gdGltZSBmb3IgMy4xMA0KPj4g
-LSBzZWVtcyBsaWtlIGENCj4+ID4+IG1ham9yIGZlYXR1cmUgdGhhdCBoYXMgaGFkIGJlZW4gaGVs
-ZCBpbiBkZXZlbG9wbWVudCBmb3IgeWVhcnMgYW5kDQo+PiBpdCBkb2VzIGhhdmUgYQ0KPj4gPj4g
-dmVyeSBpbnRlcmVzdGVkIHVzZXIgYmFzZSB3YWl0aW5nIGZvciB0aGlzIHRvIGxhbmQuDQo+PiA+
-Pg0KPj4gPj4gQXJlIHRoZXJlIGFueSBleGlzdGluZyByb2FkYmxvY2tzIHRvIGhhdmluZyB0aGlz
-IG1ha2UgaXQgdGhpcw0KPj4gbWVyZ2UNCj4+ID4+IHdpbmRvdz8NCj4+ID4gWW91IG1lYW4gb3Ro
-ZXIgdGhhbiB0aGUgb25lIEJydWNlIGFuZCBUcm9uZCBhbHJlYWR5IG1lbnRpb25lZCBhbmQNCj4+
-IHdoaWNoDQo+PiA+IHlvdSBwcmVzdW1hYmx5IGFscmVhZHkgcmVhZD8gaS5lLiBpdCdzIGEgbGFy
-Z2UgZmVhdHVyZSB3aG9zZSBmaW5hbCANCj4+ID4gaW5jYXJuYXRpb24gbGFuZGVkIHdoZW4gdGhl
-IG1lcmdlIHdpbmRvdyB3YXMgYWxyZWFkeSBvcGVuIHdoaWNoIGJ5IA0KPj4gPiBwcm9jZXNzIHNo
-b3VsZCByZWNlaXZlIGluY3ViYXRpb24gaW4gbGludXgtbmV4dCBiZWZvcmUgYmVpbmcNCj4+IG1l
-cmdlZC4NCj4+ID4NCj4+ID4gSXQgaXMgZW50aXJlbHkgd2l0aGluIHRoZSBnaWZ0IG9mIHRoZSBt
-YWludGFpbmVycyB0byB2YXJ5IHRoZQ0KPj4gaW5jdWJhdGlvbg0KPj4gPiByZXF1aXJlbWVudHMs
-IGJ1dCBpZiB0aGV5IGRvIGFuZCBpdCBjb21lcyBiYWNrIHdpdGggYSB0b24gb2YNCj4+IHByb2Js
-ZW1zDQo+PiA+IGZyb20gdGhlIDAgZGF5IHByb2plY3Qgb3Igc21hdGNoIG9yIGV2ZW4gYSBidWls
-ZCBmYWlsdXJlIHRoYXQNCj4+IHdvdWxkIGhhdmUNCj4+ID4gYmVlbiBwaWNrZWQgdXAgYnkgbGlu
-dXgtbmV4dCwgdGhleSdsbCBiZSBhdCB0aGUgd3JvbmcgZW5kIG9mDQo+PiBMaW51cycNCj4+ID4g
-ZmxhbWUgdGhyb3dlciBub3QgeW91LiAgU28gaXQgaXMgcmF0aGVyIHVuZmFpciB0byBwcmVzc3Vy
-ZSB0aGUgDQo+PiA+IG1haW50YWluZXJzIGxpa2UgdGhpcy4NCj4+ID4NCj4+ID4gS2VybmVsIHBy
-b2Nlc3NlcyBleGlzdCBmb3IgYSByZWFzb24gYW5kIGFsbW9zdCBldmVyeSBtYWludGFpbmVyDQo+
-PiBoYXMgdGhlDQo+PiA+IHNjYXJzIHRoYXQgcmVtaW5kIHRoZW0gb2YgdGhpcy4NCj4+ID4NCj4+
-ID4gSmFtZXMNCj4+ID4NCj4+ID4NCj4+DQo+PiBEb24ndCB3b3JyeSBKYW1lcyAtIHRoaXMgb25l
-IGhhcyBoYWQgYXQgbGVhc3QgYXMgbXVjaCB0ZXN0aW5nIGFzIHRoZSANCj4+IGF2ZXJhZ2UgU0NT
-SSBkcml2ZXIgdXBkYXRlIDopDQo+Pg0KPj4gVGhpcyBpcyB3YXMgbm90IG1lYW50IGFzIHByZXNz
-dXJlLCBKYW1lcyBNb3JyaXMgKG5vdCB5b3UpIGhhZCByZXBsaWVkIA0KPj4gdGhhdCBoaXMgcGF0
-Y2hlcyBhcmUgcmVhZHkgYW5kIGhlIGV4cGVjdGVkIHRoZW0gdG8gYmUgcHVsbGVkIHZpYSB0aGUg
-DQo+PiBORlMgdHJlZXMuDQo+DQo+IFllcywgSSBrbm93IHRoaXMgLi4uIFRyb25kIGFuZCBCcnVj
-ZSBib3RoIHNhaWQgZGVmaW5pdGVseSAzLjExIGFuZCANCj4gcHJvYmFibHkgMy4xMSByZXNwZWN0
-aXZlbHksIHRoYXQncyB3aHkgSSB3YXMgc3VycHJpc2VkIHRvIHNlZSBhIDMuMTAgDQo+IHJlcXVl
-c3QuDQo+DQo+PiBUaGlzIHdhcyBtZWFudCB0byBmYWNpbGl0YXRlIGdldHRpbmcgdGhpcyBtdWx0
-aS10cmVlLCANCj4+IG11bHRpLW1haW50YWluZXIgc2VyaWVzIHJlYWR5IHRvIG1lcmdlIGFuZCBt
-YWtlIHN1cmUgd2UgYXJlbid0IHN0dWNrIA0KPj4gZWFjaCB3YWl0aW5nIGZvciBhIHJlc3BvbnNl
-IGZyb20gdGhlIG5leHQgcGVyc29uIGluIHRoZSBsb29wLg0KPj4NCj4+IE5vdGUgdGhhdCB0aGlz
-IHBhdGNoIHNldCBoYXMgYmVlbiBpbiBkZXZlbG9wbWVudCBmb3IgKnllYXJzKiwgYmVlbiANCj4+
-IHRlc3RlZCBhdCBjb25uZWN0YXRob24sIHRlc3RlZCBieSBpbnRlcmVzdGVkIHBhcnRpZXMgd2hv
-IHByb21vdGVkIHRoZSANCj4+IGVhcmxpZXN0IHZlcnNpb25zIG9mIHRoZSBwYXRjaGVzIGFuZCB0
-ZXN0ZWQgYnkgUkhFTCAob2YgY291cnNlLCB0aGUgDQo+PiBzZXJpZXMgaGFzIGV2b2x2ZWQgb3Zl
-ciB0aW1lKS4NCj4NCj4gVGhhdCdzIGdvb2QsIGJ1dCBub3Qgc3VmZmljaWVudC4gIEEgbGFyZ2Ug
-bnVtYmVyIG9mICJ3ZWxsIHRlc3RlZCIgYmlnIA0KPiBwYXRjaCBzZXRzIGhhdmUgZmFpbGVkIGlu
-dGVncmF0aW9uIG5hc3RpbHkgd2hlbiB0aGV5IHdlcmUgbWVyZ2VkIG92ZXIgDQo+IHRoZSB5ZWFy
-cy4gIFRoYXQgd2Fzbid0IGJlY2F1c2UgdGhleSB3ZXJlbid0IGFjdHVhbGx5IHRlc3RlZCwgYnV0
-IA0KPiBiZWNhdXNlIGFzIHNvb24gYXMgdGhleSBoaXQgdGhlIHRyZWUsIHRoZXkgY2F1c2VkIHNp
-ZGUgZWZmZWN0cywgb3IgDQo+IHBlb3BsZSB0cmllZCBjb25maWd1cmF0aW9ucyB0aGUgc3VibWl0
-dGVycyBoYWRuJ3Qgb3IgYmVjYXVzZSB0aGV5IA0KPiB0cmllZCB0ZXN0cyB0aGUgc3VibWl0dGVy
-cyBoYWRuJ3QgdGhvdWdodCBvZi4gIFRoaXMgaXMgd2h5IHdlIGhhdmUgYW4gDQo+IGludGVncmF0
-aW9uIHByb2Nlc3MgaW52b2x2aW5nIGxpbnV4LW5leHQgLi4uIHRvIHRyeSBhbmQgZmluZCB0aGVz
-ZSANCj4gdHlwZXMgb2YgcHJvYmxlbXMgKmJlZm9yZSogbWVyZ2VyIGFuZCB0aGF0J3Mgd2h5IGxh
-cmdlIGZlYXR1cmVzIHRlbmQgDQo+IHRvIHNwZW5kIGF0IGxlYXN0IGEgd2VlayBpbiBsaW51eC1u
-ZXh0IHRvIHRyeSB0byBmaW5kIHRoZSBpc3N1ZXMuDQo+DQoNClRvIGJlIGZhaXIgSSBkb3VidCB5
-b3UncmUgZ29pbmcgdG8gc2VlIGFueSBuZXcgcHJvYmxlbXMgb24gdG9wIG9mIHdoYXQgDQpCcnVj
-ZSBoYXMgYWxyZWFkeSBjYXVnaHQuIEhlIGhhcyBkb25lIHRoZSB3b3JrIHRvIHR3ZWFrIGFsbCB0
-aGUga25vYnMgdG8gDQptYWtlIHN1cmUgY29uZmlnIHdpc2UgYW55IExORlMgZmVhdHVyZXMgdHVy
-bmVkIG9uIG9yIG9mZiBkb24ndCBicmVhayANCk5GU3Y0IGJvdGggYXQgY29tcGlsZSBhbmQgcnVu
-LXRpbWUuIE9uIHRvcCBvZiB0aGF0IGFsbCB0aGUgc2VjdXJpdHkgDQpwYXRjaGVzIGFyZSBzZWxm
-IGNvbnRhaW5lZCBhcyBMTkZTIGlzIHRoZSBvbmx5IHVzZXIuIEZpbmFsbHkgYmFzZWQgb24gDQpw
-ZW9wbGUncyBrbmVlLWplcmsgcmVhY3Rpb24gdG8gZGlzYWJsZSBTRUxpbnV4IG9uIG1vc3Qgb2Yg
-dGhlaXIgc3lzdGVtcyANCkkgZG91YnQgeW91J3JlIGdvaW5nIHRvIGdldCBtdWNoIG1vcmUgdGVz
-dGluZyBvdXQgb2YgbGludXgtbmV4dCB0aGFuIA0Kd2UndmUgYWxyZWFkeSBkb25lLiBXZSBhbHJl
-YWR5IGhhdmUgYSB3aW5rIGFuZCBhIG5vZCBmcm9tIENhc2V5IHRoYXQgDQpTTUFDSyBoYXMgaXNz
-dWVzIHdpdGggTGFiZWxlZCBORlMgYW5kIHRoYXQgaGUgaGFzIG5vIG9iamVjdGlvbnMgdG8gDQpm
-aXhpbmcgdGhhdCBwcm9ibGVtIGxhdGVyLiBBbGwgdGhhdCBzYWlkIGl0cyBzdGlsbCB0aGUgbWFp
-bnRhaW5lcidzIA0KZGVjaXNpb24gdG8gdGFrZSBpdCBvciBub3QgYW5kIEknZCBpbWFnaW5lIGJh
-Y2twb3J0aW5nIHRoZSBwYXRjaGVzIHRvIA0KMy4xMCBmcm9tIDMuMTEgd291bGRuJ3QgYmUgYSB0
-cmVtZW5kb3VzIGFtb3VudCBvZiB3b3JrIGlmIHNvbWVvbmUgbmVlZGVkIA0KaXQgdG8gZmFsbCBp
-bnRvIHRoYXQgc3BlY2lmaWMgdmVyc2lvbi4gUGVyc29uYWxseSBJIGNhbid0IHdhaXQgZm9yIHRo
-ZSANCnBhdGNoZXMgdG8gZ2V0IG1lcmdlZCBzaW5jZSBJIHN0YXJ0ZWQgdGhpcyBwcm9qZWN0IGFs
-bW9zdCA2IHllYXJzIGFnbyBhdCANCnRoaXMgcG9pbnQuIFN0ZXZlIERpY2tzb24gaGFzIHBpY2tl
-ZCB1cCB0aGUgdG9yY2ggYW5kIGtlcHQgcnVubmluZyB3aXRoIA0KaXQgc2luY2UgbXkgdGltZSBu
-byBsb25nZXIgcGVybWl0dGVkIG1lIHRvIGNoYW1waW9uIHRoZSBwYXRjaCBzZXQgYW5kIEkgDQp0
-aGluayBpdHMgcmVhZHkgZm9yIHVzZSBieSBxdWl0ZSBhIGZldyBjdXN0b21lcnMuDQoNCkRhdmUN
-Cg0KRGF2ZQ0KDQoNCg0KLS0NClRoaXMgbWVzc2FnZSB3YXMgZGlzdHJpYnV0ZWQgdG8gc3Vic2Ny
-aWJlcnMgb2YgdGhlIHNlbGludXggbWFpbGluZyBsaXN0Lg0KSWYgeW91IG5vIGxvbmdlciB3aXNo
-IHRvIHN1YnNjcmliZSwgc2VuZCBtYWlsIHRvIG1ham9yZG9tb0B0eWNoby5uc2EuZ292IHdpdGgN
-CnRoZSB3b3JkcyAidW5zdWJzY3JpYmUgc2VsaW51eCIgd2l0aG91dCBxdW90ZXMgYXMgdGhlIG1l
-c3NhZ2UuDQo=
+On Wed, May 15, 2013 at 12:23:12PM -0400, Chuck Lever wrote:
+> 
+> On May 15, 2013, at 12:04 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Mon, May 13, 2013 at 12:25:28PM -0400, Chuck Lever wrote:
+> >> Now that commit 4edaa308 "NFS: Use "krb5i" to establish NFSv4 state
+> >> whenever possible" is reverted...
+> >> 
+> >> NFSv4 server trunking detection was added with commit 05f4c350 "NFS:
+> >> Discover NFSv4 server trunking when mounting" in v3.7.  One of the
+> >> issues that the reverted commit 4edaa308 tried to address was that
+> >> when server trunking detection was added, we broke the ability to
+> >> mount krb5 exports when the client has no keytab.
+> > 
+> > And that happened because we started asking gssd explicitly for a
+> > context for a machine principal instead of for uid=0?  Or for some other
+> > reason?
+> 
+> We've asked gssd for a machine credential for SETCLIENTID for a while now, so "some other reason."  I honestly don't know exactly why it stopped working with my change, but someone bisected it to that one.
+> 
+> But we've always had some issue with the "no keytab" case because we do require a machine credential for SETCLIENTID.  I'm suggesting a fix for the broad class of problems using "sec=krb5?" that arise due to a missing keytab on the client.
+> 
+> In this case we need the fix sooner rather than later because it stopped working in 3.7.
+> 
+> > 
+> >> We still need to
+> >> address that regression.
+> >> 
+> >> Let's try a narrow approach to re-enabling sec=krb5 mounts without a
+> >> local system keytab, and worry about the other issues when we can
+> >> plan concomitant user space and kernel changes.
+> >> 
+> >> When a GSS security flavor is used on a mount, allow the security
+> >> flavor for state management to fall back to AUTH_SYS if there is
+> >> a problem setting up a GSS context for it.
+> > 
+> > This brings back the delay in the case gssd isn't running, doesn't it?
+> 
+> No.  "When a GSS flavor is used" means ONLY when a GSS flavor is used.  We make the minimal assumption that using a GSS flavor for a mount means the administrator either has gssd running or wants to know when it isn't, and can tolerate a delay in that case.
+
+Oh, got it, thanks.--b.
