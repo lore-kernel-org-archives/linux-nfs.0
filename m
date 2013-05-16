@@ -1,144 +1,184 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:56810 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:10203 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753754Ab3EBHFV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 May 2013 03:05:21 -0400
-Date: Thu, 2 May 2013 17:05:11 +1000
-From: NeilBrown <neilb@suse.de>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH] mountd: Fix is_subdirectory again.
-Message-ID: <20130502170511.646e2717@notabene.brown>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/rMHGdUe3JJLpMJGTAxBcYPW"; protocol="application/pgp-signature"
+	id S1752878Ab3EPP4z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 May 2013 11:56:55 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 02/13] Security: Add Hook to test if the particular xattr is part of a MAC model.
+Date: Thu, 16 May 2013 11:56:37 -0400
+Message-Id: <1368719808-14584-3-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
+References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/rMHGdUe3JJLpMJGTAxBcYPW
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+From: David Quigley <dpquigl@davequigley.com>
 
+The interface to request security labels from user space is the xattr
+interface. When requesting the security label from an NFS server it is
+important to make sure the requested xattr actually is a MAC label. This allows
+us to make sure that we get the desired semantics from the attribute instead of
+something else such as capabilities or a time based LSM.
 
+Acked-by: James Morris <james.l.morris@oracle.com>
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ include/linux/security.h   | 14 ++++++++++++++
+ security/capability.c      |  6 ++++++
+ security/security.c        |  6 ++++++
+ security/selinux/hooks.c   |  6 ++++++
+ security/smack/smack_lsm.c | 11 +++++++++++
+ 5 files changed, 43 insertions(+)
 
-Hi Steve,
- I just noticed
-
-commit ebe2826ca571a3959c3b5c8e29686c621f2775cf
-Author: Steve Dickson <steved@redhat.com>
-Date:   Sat Mar 23 10:30:17 2013 -0400
-
-    mountd: regression in crossmounts
-
-Sorry I missed the email you presumably sent me to let me know
-that I had caused a regression.
-
-Here is the proper fix.
-
-Thanks,
-NeilBrown
-
-
-Subject: [PATCH] mountd: Fix is_subdirectory again.
-
-commit ebe2826ca571a (mountd: regression in crossmounts)
-said it was:
-    Reverting the logic of commit 8e2fb3fc until
-    a better solution can be found for the original
-    problem.
-
-here is the "something better".
-
-The problem was that is_subdirectory() would also succeed if the two
-directories were the same.  This is needed for path_matches() which
-needs to see if the child is same-or-descendant.
-
-So this patch rearranges path_matches() to do the "are they the same"
-test itself and only bother with is_subdirectory() if it they are not
-the same.
-
-So now is_subdirectory() can be strict, and so can be usable for
-subexport(), which needs a strong 'in subdirectory - not the same' test.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
-
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 737927c..517aa62 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -347,20 +347,26 @@ static char *next_mnt(void **v, char *p)
-=20
- static int is_subdirectory(char *child, char *parent)
+diff --git a/include/linux/security.h b/include/linux/security.h
+index c2af462..cff3e4f 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -1323,6 +1323,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
+  *	@pages contains the number of pages.
+  *	Return 0 if permission is granted.
+  *
++ * @ismaclabel:
++ *	Check if the extended attribute specified by @name
++ *	represents a MAC label. Returns 1 if name is a MAC
++ *	attribute otherwise returns 0.
++ *	@name full extended attribute name to check against
++ *	LSM as a MAC label.
++ *
+  * @secid_to_secctx:
+  *	Convert secid to security context.  If secdata is NULL the length of
+  *	the result will be returned in seclen, but no secdata will be returned.
+@@ -1604,6 +1611,7 @@ struct security_operations {
+ 
+ 	int (*getprocattr) (struct task_struct *p, char *name, char **value);
+ 	int (*setprocattr) (struct task_struct *p, char *name, void *value, size_t size);
++	int (*ismaclabel) (const char *name);
+ 	int (*secid_to_secctx) (u32 secid, char **secdata, u32 *seclen);
+ 	int (*secctx_to_secid) (const char *secdata, u32 seclen, u32 *secid);
+ 	void (*release_secctx) (char *secdata, u32 seclen);
+@@ -1857,6 +1865,7 @@ void security_d_instantiate(struct dentry *dentry, struct inode *inode);
+ int security_getprocattr(struct task_struct *p, char *name, char **value);
+ int security_setprocattr(struct task_struct *p, char *name, void *value, size_t size);
+ int security_netlink_send(struct sock *sk, struct sk_buff *skb);
++int security_ismaclabel(const char *name);
+ int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen);
+ int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
+ void security_release_secctx(char *secdata, u32 seclen);
+@@ -2547,6 +2556,11 @@ static inline int security_netlink_send(struct sock *sk, struct sk_buff *skb)
+ 	return cap_netlink_send(sk, skb);
+ }
+ 
++static inline int security_ismaclabel(const char *name)
++{
++	return 0;
++}
++
+ static inline int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
  {
-+	/* Check is child is strictly a subdirectory of
-+	 * parent or a more distant descendant.
-+	 */
- 	size_t l =3D strlen(parent);
-=20
--	if (strcmp(parent, "/") =3D=3D 0)
-+	if (strcmp(parent, "/") =3D=3D 0 && child[1] !=3D 0)
- 		return 1;
-=20
--	return strcmp(child, parent) =3D=3D 0
--		|| (strncmp(child, parent, l) =3D=3D 0 && child[l] =3D=3D '/');
-+	return (strncmp(child, parent, l) =3D=3D 0 && child[l] =3D=3D '/');
+ 	return -EOPNOTSUPP;
+diff --git a/security/capability.c b/security/capability.c
+index 7aeec66..b3e8b93 100644
+--- a/security/capability.c
++++ b/security/capability.c
+@@ -823,6 +823,11 @@ static int cap_setprocattr(struct task_struct *p, char *name, void *value,
+ 	return -EINVAL;
  }
-=20
- static int path_matches(nfs_export *exp, char *path)
+ 
++static int cap_ismaclabel(const char *name)
++{
++	return 0;
++}
++
+ static int cap_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
  {
--	if (exp->m_export.e_flags & NFSEXP_CROSSMOUNT)
--		return is_subdirectory(path, exp->m_export.e_path);
--	return strcmp(path, exp->m_export.e_path) =3D=3D 0;
-+	/* Does the path match the export?  I.e. is it an
-+	 * exact match, or does the export have CROSSMOUNT, and path
-+	 * is a descendant?
-+	 */
-+	return strcmp(path, exp->m_export.e_path) =3D=3D 0
-+		|| ((exp->m_export.e_flags & NFSEXP_CROSSMOUNT)
-+		    && is_subdirectory(path, exp->m_export.e_path));
+ 	return -EOPNOTSUPP;
+@@ -1042,6 +1047,7 @@ void __init security_fixup_ops(struct security_operations *ops)
+ 	set_to_cap_if_null(ops, d_instantiate);
+ 	set_to_cap_if_null(ops, getprocattr);
+ 	set_to_cap_if_null(ops, setprocattr);
++	set_to_cap_if_null(ops, ismaclabel);
+ 	set_to_cap_if_null(ops, secid_to_secctx);
+ 	set_to_cap_if_null(ops, secctx_to_secid);
+ 	set_to_cap_if_null(ops, release_secctx);
+diff --git a/security/security.c b/security/security.c
+index 0fe2b2e..c3ceb75 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -1057,6 +1057,12 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
+ 	return security_ops->netlink_send(sk, skb);
  }
-=20
- static int
-@@ -369,15 +375,13 @@ export_matches(nfs_export *exp, char *dom, char *path=
-, struct addrinfo *ai)
- 	return path_matches(exp, path) && client_matches(exp, dom, ai);
- }
-=20
--/* True iff e1 is a child of e2 and e2 has crossmnt set: */
-+/* True iff e1 is a child of e2 (or descendant) and e2 has crossmnt set: */
- static bool subexport(struct exportent *e1, struct exportent *e2)
+ 
++int security_ismaclabel(const char *name)
++{
++	return security_ops->ismaclabel(name);
++}
++EXPORT_SYMBOL(security_ismaclabel);
++
+ int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
  {
- 	char *p1 =3D e1->e_path, *p2 =3D e2->e_path;
--	size_t l2 =3D strlen(p2);
-=20
- 	return e2->e_flags & NFSEXP_CROSSMOUNT
--		&& strncmp(p1, p2, l2) =3D=3D 0
--		&& p1[l2] =3D=3D '/';
-+		&& is_subdirectory(p1, p2);
+ 	return security_ops->secid_to_secctx(secid, secdata, seclen);
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index b1f7bd7..bbf219a 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -5454,6 +5454,11 @@ abort_change:
+ 	return error;
  }
-=20
- struct parsed_fsid {
+ 
++static int selinux_ismaclabel(const char *name)
++{
++	return (strcmp(name, XATTR_SELINUX_SUFFIX) == 0);
++}
++
+ static int selinux_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+ {
+ 	return security_sid_to_context(secid, secdata, seclen);
+@@ -5692,6 +5697,7 @@ static struct security_operations selinux_ops = {
+ 	.getprocattr =			selinux_getprocattr,
+ 	.setprocattr =			selinux_setprocattr,
+ 
++	.ismaclabel =			selinux_ismaclabel,
+ 	.secid_to_secctx =		selinux_secid_to_secctx,
+ 	.secctx_to_secid =		selinux_secctx_to_secid,
+ 	.release_secctx =		selinux_release_secctx,
+diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
+index d52c780..a7f485b 100644
+--- a/security/smack/smack_lsm.c
++++ b/security/smack/smack_lsm.c
+@@ -3329,6 +3329,16 @@ static void smack_audit_rule_free(void *vrule)
+ #endif /* CONFIG_AUDIT */
+ 
+ /**
++ * smack_ismaclabel - check if xattr @name references a smack MAC label
++ * @name: Full xattr name to check.
++ */
++static int smack_ismaclabel(const char *name)
++{
++	return (strcmp(name, XATTR_SMACK_SUFFIX) == 0);
++}
++
++
++/**
+  * smack_secid_to_secctx - return the smack label for a secid
+  * @secid: incoming integer
+  * @secdata: destination
+@@ -3524,6 +3534,7 @@ struct security_operations smack_ops = {
+ 	.audit_rule_free =		smack_audit_rule_free,
+ #endif /* CONFIG_AUDIT */
+ 
++	.ismaclabel =			smack_ismaclabel,
+ 	.secid_to_secctx = 		smack_secid_to_secctx,
+ 	.secctx_to_secid = 		smack_secctx_to_secid,
+ 	.release_secctx = 		smack_release_secctx,
+-- 
+1.8.1.4
 
---Sig_/rMHGdUe3JJLpMJGTAxBcYPW
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBUYIQJznsnt1WYoG5AQK1mA//Xq5+eB1PAzM+EYzrrDKhbUPxoT9bDJhx
-/WCPFH7u3BMXm2GYo8iouQKK/+PFy+RfTJoRkOsXBmaFC0dsPauwGc9vAJso86We
-njRxNjwghW05l8XIjdxOGUKyXtq2R4sJgSzNaQPzSw73d03biS6ZrGRHY0nfQd/L
-2u6TjWmLYqsshV3gfBsFFMMUopqAwHcZbo9upQFDEmI64z2eiEomR+TYPTyK24/G
-9fRCOBHz39ZxgYKLegNrB/yuSdFTjdAZvm4P/fn5oW1MaoVWmdifdEHL35rMlxIA
-tZMXVanU1bgn1ci3vERJjSuHU9xnB0lVsnsN/PDc0TW/2tQ1FReCIoS3geuelZ36
-aYbgNJOKh47nSNqIDIUPu0obtyjMdtTw0kgvTul61nscJ6duZbZ+eaGOL7wSzrgl
-KJnf+2Zwofm6qwlCyBI1vSiMyZt9xTwLanlvhfZnZfs01o1SMSxtRZrYLBjU85RN
-f70cdHaEFfnxHknN5x2dT0BkUPaH4AKHnZ6wvLuuCPxo2UzfnQ63jM7TeXG5oBMH
-lzuAUHBIXXextWu0k10JlaOJ7FkXO841zgwebgI0JOOUURf1oxquTeCreECHZ6WN
-u9i7rsB87UYzupfZyFENRh9WP0kc6XF3heO+/4F4zwpvSbt2q6I1cZ79iLjUmcrK
-dcaDSdFN6Qo=
-=ehHy
------END PGP SIGNATURE-----
-
---Sig_/rMHGdUe3JJLpMJGTAxBcYPW--
