@@ -1,509 +1,210 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55497 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:60970 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756269Ab3EFU06 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 May 2013 16:26:58 -0400
-Date: Mon, 6 May 2013 16:26:53 -0400
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 16/17] NFSD: Server implementation of MAC Labeling
-Message-ID: <20130506202653.GA32743@fieldses.org>
-References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
- <1367240239-19326-17-git-send-email-SteveD@redhat.com>
+	id S1750942Ab3EPUVn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 May 2013 16:21:43 -0400
+Date: Thu, 16 May 2013 16:21:42 -0400
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] SUNRPC: Convert auth_gss pipe detection to work in
+ namespaces
+Message-ID: <20130516202142.GB3216@fieldses.org>
+References: <1368647441-24815-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1368647441-24815-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1368647441-24815-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1368647441-24815-4-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1367240239-19326-17-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1368647441-24815-4-git-send-email-Trond.Myklebust@netapp.com>
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 29, 2013 at 08:57:18AM -0400, Steve Dickson wrote:
-> From: David Quigley <dpquigl@davequigley.com>
-> 
-> This patch adds the ability to encode and decode file labels on the server for
-> the purpose of sending them to the client and also to process label change
-> requests from the client.
+On Wed, May 15, 2013 at 12:50:41PM -0700, Trond Myklebust wrote:
+> This seems to have been overlooked when we did the namespace
+> conversion. If a container is running a legacy version of rpc.gssd
+> then it will be disrupted if the global 'pipe_version' is set by a
+> container running the new version of rpc.gssd.
 
-Noticed a couple more problem; I'm fixing these up myself in my tree, but somebody tell me if I'm confused:
-
-> 
-> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-> ---
->  fs/nfsd/nfs4proc.c |  41 +++++++++++++++++
->  fs/nfsd/nfs4xdr.c  | 127 +++++++++++++++++++++++++++++++++++++++++++++++++----
->  fs/nfsd/nfsd.h     |  15 +++++++
->  fs/nfsd/nfsproc.c  |   1 +
->  fs/nfsd/vfs.c      |  28 ++++++++++++
->  fs/nfsd/vfs.h      |   2 +
->  fs/nfsd/xdr4.h     |   3 ++
->  7 files changed, 209 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index ae73175..bb17589 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -42,6 +42,36 @@
->  #include "current_stateid.h"
->  #include "netns.h"
->  
-> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
-> +#include <linux/security.h>
-> +
-> +static inline void
-> +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
-> +{
-> +	struct inode *inode = resfh->fh_dentry->d_inode;
-> +	int status;
-> +
-> +	mutex_lock(&inode->i_mutex);
-> +	status = security_inode_setsecctx(resfh->fh_dentry,
-> +		label->label, label->len);
-> +	mutex_unlock(&inode->i_mutex);
-> +
-> +	if (status)
-> +		/*
-> +		 * We should probably fail the whole open at this point,
-> +		 * but we've already created or opened the file, so it's 
-> +		 * too late; So this seems the least of evils:
-> +		 */
-> +		bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
-> +		
-> +	return;
-> +}
-> +#else 
-> +static inline void 
-> +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
-> +{ }
-> +#endif
-> +
->  #define NFSDDBG_FACILITY		NFSDDBG_PROC
->  
->  static u32 nfsd_attrmask[] = {
-> @@ -230,6 +260,9 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
->  					(u32 *)open->op_verf.data,
->  					&open->op_truncate, &open->op_created);
->  
-> +		if (!status && open->op_label != NULL) 
-> +			nfsd4_security_inode_setsecctx(resfh, open->op_label, open->op_bmval);
-> +
->  		/*
->  		 * Following rfc 3530 14.2.16, use the returned bitmask
->  		 * to indicate which attributes we used to store the
-> @@ -599,6 +632,9 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	if (status)
->  		goto out;
->  
-> +	if (create->cr_label != NULL)
-> +		nfsd4_security_inode_setsecctx(&resfh, create->cr_label, create->cr_bmval);
-> +
->  	if (create->cr_acl != NULL)
->  		do_set_nfs4_acl(rqstp, &resfh, create->cr_acl,
->  				create->cr_bmval);
-> @@ -888,6 +924,11 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  					    setattr->sa_acl);
->  	if (status)
->  		goto out;
-> +	if (setattr->sa_label != NULL)
-> +		status = nfsd4_set_nfs4_label(rqstp, &cstate->current_fh,
-> +				setattr->sa_label);
-> +	if (status)
-> +		goto out;
->  	status = nfsd_setattr(rqstp, &cstate->current_fh, &setattr->sa_iattr,
->  				0, (time_t)0);
->  out:
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index b38de7a..9d7af7a 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -55,6 +55,11 @@
->  #include "cache.h"
->  #include "netns.h"
->  
-> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
-> +#include <linux/security.h>
-> +#endif
-> +
-> +
->  #define NFSDDBG_FACILITY		NFSDDBG_XDR
->  
->  /*
-> @@ -79,6 +84,24 @@ check_filename(char *str, int len)
->  			return nfserr_badname;
->  	return 0;
->  }
-> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
-> +static struct nfs4_label *nfsd4_label_alloc(u32 len)
-> +{
-> +	struct nfs4_label *label = NULL;
-> +
-> +	if (len > NFS4_MAXLABELLEN)
-> +		return ERR_PTR(-EMSGSIZE);
-> +
-> +	label = kzalloc(len + sizeof(struct nfs4_label), GFP_KERNEL);
-> +	if (label == NULL)
-> +		return ERR_PTR(-ENOMEM);
-> +
-> +	label->label = (char *)(label + 1);
-> +	label->len = len;
-> +
-> +	return label;
-> +}
-> +#endif
->  
->  #define DECODE_HEAD				\
->  	__be32 *p;				\
-> @@ -242,7 +265,8 @@ nfsd4_decode_bitmap(struct nfsd4_compoundargs *argp, u32 *bmval)
->  
->  static __be32
->  nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
-> -		   struct iattr *iattr, struct nfs4_acl **acl)
-> +		   struct iattr *iattr, struct nfs4_acl **acl,
-> +		   struct nfs4_label **label)
->  {
->  	int expected_len, len = 0;
->  	u32 dummy32;
-> @@ -386,6 +410,41 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
->  			goto xdr_error;
->  		}
->  	}
-> +
-> +	*label = NULL;
-> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
-> +	if (bmval[2] & FATTR4_WORD2_SECURITY_LABEL) {
-> +		uint32_t pi;
-> +		uint32_t lfs;
-> +
-> +		READ_BUF(4);
-> +		len += 4;
-> +		READ32(lfs);
-> +		READ_BUF(4);
-> +		len += 4;
-> +		READ32(pi);
-> +		READ_BUF(4);
-> +		len += 4;
-> +		READ32(dummy32);
-> +		READ_BUF(dummy32);
-> +		len += (XDR_QUADLEN(dummy32) << 2);
-> +		READMEM(buf, dummy32);
-> +
-> +		*label = nfsd4_label_alloc(dummy32);
-> +		if (IS_ERR(*label)) {
-> +			host_err = PTR_ERR(*label);
-> +			goto out_nfserr;
-> +		}
-> +
-> +		memcpy((*label)->label, buf, (*label)->len);
-> +		((char *)(*label)->label)[(*label)->len] = '\0';
-> +		(*label)->pi = pi;
-> +		(*label)->lfs = lfs;
-> +
-> +		defer_free(argp, kfree, *label);
-> +	}
-> +#endif
-> +
->  	if (bmval[0] & ~NFSD_WRITEABLE_ATTRS_WORD0
->  	    || bmval[1] & ~NFSD_WRITEABLE_ATTRS_WORD1
->  	    || bmval[2] & ~NFSD_WRITEABLE_ATTRS_WORD2)
-> @@ -582,7 +641,7 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
->  		return status;
->  
->  	status = nfsd4_decode_fattr(argp, create->cr_bmval, &create->cr_iattr,
-> -				    &create->cr_acl);
-> +				    &create->cr_acl, &create->cr_label);
->  	if (status)
->  		goto out;
->  
-> @@ -832,7 +891,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
->  		case NFS4_CREATE_UNCHECKED:
->  		case NFS4_CREATE_GUARDED:
->  			status = nfsd4_decode_fattr(argp, open->op_bmval,
-> -				&open->op_iattr, &open->op_acl);
-> +				&open->op_iattr, &open->op_acl, &open->op_label);
->  			if (status)
->  				goto out;
->  			break;
-> @@ -846,7 +905,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
->  			READ_BUF(NFS4_VERIFIER_SIZE);
->  			COPYMEM(open->op_verf.data, NFS4_VERIFIER_SIZE);
->  			status = nfsd4_decode_fattr(argp, open->op_bmval,
-> -				&open->op_iattr, &open->op_acl);
-> +				&open->op_iattr, &open->op_acl, &open->op_label);
->  			if (status)
->  				goto out;
->  			break;
-> @@ -1068,7 +1127,7 @@ nfsd4_decode_setattr(struct nfsd4_compoundargs *argp, struct nfsd4_setattr *seta
->  	if (status)
->  		return status;
->  	return nfsd4_decode_fattr(argp, setattr->sa_bmval, &setattr->sa_iattr,
-> -				  &setattr->sa_acl);
-> +				  &setattr->sa_acl, &setattr->sa_label);
->  }
->  
->  static __be32
-> @@ -1989,6 +2048,50 @@ nfsd4_encode_aclname(struct svc_rqst *rqstp, struct nfs4_ace *ace,
->  			      FATTR4_WORD0_RDATTR_ERROR)
->  #define WORD1_ABSENT_FS_ATTRS FATTR4_WORD1_MOUNTED_ON_FILEID
->  
-> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
-> +static inline __be32
-> +nfsd4_encode_security_label(struct svc_rqst *rqstp, struct dentry *dentry, __be32 **pp, int *buflen)
-> +{
-> +	void *context;
-> +	int err;
-
-Should be __be32.
-
-> +	int len;
-> +	uint32_t pi = 0;
-> +	uint32_t lfs = 0;
-> +	__be32 *p = *pp;
-> +
-> +	err = 0;
-> +	(void)security_inode_getsecctx(dentry->d_inode, &context, &len);
-> +	if (len < 0)
-> +		return nfserrno(len);
-
-That looks strange!
-
-Looking at the selinux implementation of security_inode_getsecctx:
-
-        int len = 0;
-        len = selinux_inode_getsecurity(inode, XATTR_SELINUX_SUFFIX,
-                                                ctx, true);
-        if (len < 0)
-                return len;
-        *ctxlen = len;
-        return 0;
-
-So this caller can't possibly be right.
-
-I'm fixing this up in my tree to do the obvious thing:
-
-	host_err = security_inode_getsecctx(dentry->d_inode, &context, &len);
-	if (host_err)
-		return host_err;
-
-> +
-> +	if (*buflen < ((XDR_QUADLEN(len) << 2) + 4 + 4 + 4)) {
-> +		err = nfserr_resource;
-> +		goto out;
-> +	}
-> +
-> +	/*
-> +	 * For now we use a 0 here to indicate the null translation; in
-> +	 * the future we may place a call to translation code here.
-> +	 */
-> +	if ((*buflen -= 8) < 0)
-> +		return nfserr_resource;
-
-Missing a security_release_secctx here.
+Might be worth deprecating the "legacy" version--add a warning in for
+any users and then remove it if we don't see any evidence anyone's hit
+it recently.
 
 --b.
 
-> +
-> +	WRITE32(lfs);	
-> +	WRITE32(pi);
-> +	p = xdr_encode_opaque(p, context, len);
-> +	*buflen -= (XDR_QUADLEN(len) << 2) + 4;
-> +
-> +	*pp = p;
-> +out:
-> +	security_release_secctx(context, len);
-> +	return err;
-> +}
-> +#else
-> +static inline __be32
-> +nfsd4_encode_security_label(struct svc_rqst *rqstp, struct dentry *dentry, __be32 **pp, int *buflen)
-> +{ return 0; }
-> +#endif
-> +
->  static __be32 fattr_handle_absent_fs(u32 *bmval0, u32 *bmval1, u32 *rdattr_err)
->  {
->  	/* As per referral draft:  */
-> @@ -2439,6 +2542,12 @@ out_acl:
->  			get_parent_attributes(exp, &stat);
->  		WRITE64(stat.ino);
->  	}
-> +	if (bmval2 & FATTR4_WORD2_SECURITY_LABEL) {
-> +		status = nfsd4_encode_security_label(rqstp, dentry,
-> +				&p, &buflen);
-> +		if (status)
-> +			goto out;
-> +	}
->  	if (bmval2 & FATTR4_WORD2_SUPPATTR_EXCLCREAT) {
->  		WRITE32(3);
->  		WRITE32(NFSD_SUPPATTR_EXCLCREAT_WORD0);
-> @@ -3226,16 +3335,18 @@ nfsd4_encode_setattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
->  {
->  	__be32 *p;
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  net/sunrpc/auth_gss/auth_gss.c | 46 +++++++++++++++++++++++++-----------------
+>  net/sunrpc/netns.h             |  2 ++
+>  net/sunrpc/rpc_pipe.c          |  1 +
+>  3 files changed, 30 insertions(+), 19 deletions(-)
+> 
+> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+> index 3aff72f..fc2f78d 100644
+> --- a/net/sunrpc/auth_gss/auth_gss.c
+> +++ b/net/sunrpc/auth_gss/auth_gss.c
+> @@ -87,8 +87,6 @@ struct gss_auth {
+>  };
 >  
-> -	RESERVE_SPACE(12);
-> +	RESERVE_SPACE(16);
->  	if (nfserr) {
-> -		WRITE32(2);
-> +		WRITE32(3);
-> +		WRITE32(0);
->  		WRITE32(0);
->  		WRITE32(0);
->  	}
->  	else {
-> -		WRITE32(2);
-> +		WRITE32(3);
->  		WRITE32(setattr->sa_bmval[0]);
->  		WRITE32(setattr->sa_bmval[1]);
-> +		WRITE32(setattr->sa_bmval[2]);
->  	}
->  	ADJUST_ARGS();
->  	return nfserr;
-> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> index 4c682fd..0a2e30c 100644
-> --- a/fs/nfsd/nfsd.h
-> +++ b/fs/nfsd/nfsd.h
-> @@ -328,6 +328,14 @@ void		nfsd_lockd_shutdown(void);
->  #define NFSD4_1_SUPPORTED_ATTRS_WORD2 \
->  	(NFSD4_SUPPORTED_ATTRS_WORD2 | FATTR4_WORD2_SUPPATTR_EXCLCREAT)
+>  /* pipe_version >= 0 if and only if someone has a pipe open. */
+> -static int pipe_version = -1;
+> -static atomic_t pipe_users = ATOMIC_INIT(0);
+>  static DEFINE_SPINLOCK(pipe_version_lock);
+>  static struct rpc_wait_queue pipe_version_rpc_waitqueue;
+>  static DECLARE_WAIT_QUEUE_HEAD(pipe_version_waitqueue);
+> @@ -268,24 +266,27 @@ struct gss_upcall_msg {
+>  	char databuf[UPCALL_BUF_LEN];
+>  };
 >  
-> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
-> +#define NFSD4_2_SUPPORTED_ATTRS_WORD2 \
-> +	(NFSD4_SUPPORTED_ATTRS_WORD2 | NFSD4_1_SUPPORTED_ATTRS_WORD2 | \
-> +		FATTR4_WORD2_SECURITY_LABEL)
-> +#else
-> +#define NFSD4_2_SUPPORTED_ATTRS_WORD2 0
-> +#endif
-> +
->  static inline u32 nfsd_suppattrs0(u32 minorversion)
+> -static int get_pipe_version(void)
+> +static int get_pipe_version(struct net *net)
 >  {
->  	return minorversion ? NFSD4_1_SUPPORTED_ATTRS_WORD0
-> @@ -342,6 +350,9 @@ static inline u32 nfsd_suppattrs1(u32 minorversion)
+> +	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+>  	int ret;
 >  
->  static inline u32 nfsd_suppattrs2(u32 minorversion)
->  {
-> +	if (minorversion == 2)
-> +		return NFSD4_2_SUPPORTED_ATTRS_WORD2;
-> +
->  	return minorversion ? NFSD4_1_SUPPORTED_ATTRS_WORD2
->  			    : NFSD4_SUPPORTED_ATTRS_WORD2;
+>  	spin_lock(&pipe_version_lock);
+> -	if (pipe_version >= 0) {
+> -		atomic_inc(&pipe_users);
+> -		ret = pipe_version;
+> +	if (sn->pipe_version >= 0) {
+> +		atomic_inc(&sn->pipe_users);
+> +		ret = sn->pipe_version;
+>  	} else
+>  		ret = -EAGAIN;
+>  	spin_unlock(&pipe_version_lock);
+>  	return ret;
 >  }
-> @@ -356,7 +367,11 @@ static inline u32 nfsd_suppattrs2(u32 minorversion)
->  #define NFSD_WRITEABLE_ATTRS_WORD1 \
->  	(FATTR4_WORD1_MODE | FATTR4_WORD1_OWNER | FATTR4_WORD1_OWNER_GROUP \
->  	| FATTR4_WORD1_TIME_ACCESS_SET | FATTR4_WORD1_TIME_MODIFY_SET)
-> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
-> +#define NFSD_WRITEABLE_ATTRS_WORD2 FATTR4_WORD2_SECURITY_LABEL
-> +#else
->  #define NFSD_WRITEABLE_ATTRS_WORD2 0
-> +#endif
 >  
->  #define NFSD_SUPPATTR_EXCLCREAT_WORD0 \
->  	NFSD_WRITEABLE_ATTRS_WORD0
-> diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-> index 54c6b3d..85289a5 100644
-> --- a/fs/nfsd/nfsproc.c
-> +++ b/fs/nfsd/nfsproc.c
-> @@ -743,6 +743,7 @@ nfserrno (int errno)
->  		{ nfserr_notsupp, -EOPNOTSUPP },
->  		{ nfserr_toosmall, -ETOOSMALL },
->  		{ nfserr_serverfault, -ESERVERFAULT },
-> +		{ nfs4err_badlabel, -EMSGSIZE },
->  	};
->  	int	i;
->  
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 2b2e239..96f9a82 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -28,6 +28,7 @@
->  #include <asm/uaccess.h>
->  #include <linux/exportfs.h>
->  #include <linux/writeback.h>
-> +#include <linux/security.h>
->  
->  #ifdef CONFIG_NFSD_V3
->  #include "xdr3.h"
-> @@ -621,6 +622,33 @@ int nfsd4_is_junction(struct dentry *dentry)
->  		return 0;
->  	return 1;
+> -static void put_pipe_version(void)
+> +static void put_pipe_version(struct net *net)
+>  {
+> -	if (atomic_dec_and_lock(&pipe_users, &pipe_version_lock)) {
+> -		pipe_version = -1;
+> +	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+> +
+> +	if (atomic_dec_and_lock(&sn->pipe_users, &pipe_version_lock)) {
+> +		sn->pipe_version = -1;
+>  		spin_unlock(&pipe_version_lock);
+>  	}
 >  }
-> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
-> +__be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
-> +		struct nfs4_label *label)
-> +{
-> +	__be32 error;
-> +	int host_error;
-> +	struct dentry *dentry;
+> @@ -293,9 +294,10 @@ static void put_pipe_version(void)
+>  static void
+>  gss_release_msg(struct gss_upcall_msg *gss_msg)
+>  {
+> +	struct net *net = rpc_net_ns(gss_msg->auth->client);
+>  	if (!atomic_dec_and_test(&gss_msg->count))
+>  		return;
+> -	put_pipe_version();
+> +	put_pipe_version(net);
+>  	BUG_ON(!list_empty(&gss_msg->list));
+>  	if (gss_msg->ctx != NULL)
+>  		gss_put_ctx(gss_msg->ctx);
+> @@ -441,7 +443,10 @@ static void gss_encode_msg(struct gss_upcall_msg *gss_msg,
+>  				struct rpc_clnt *clnt,
+>  				const char *service_name)
+>  {
+> -	if (pipe_version == 0)
+> +	struct net *net = rpc_net_ns(clnt);
+> +	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
 > +
-> +	error = fh_verify(rqstp, fhp, 0 /* S_IFREG */, NFSD_MAY_SATTR);
-> +	if (error)
-> +		return error;
-> +
-> +	dentry = fhp->fh_dentry;
-> +
-> +	mutex_lock(&dentry->d_inode->i_mutex);
-> +	host_error = security_inode_setsecctx(dentry, label->label, label->len);
-> +	mutex_unlock(&dentry->d_inode->i_mutex);
-> +	return nfserrno(host_error);
-> +}
-> +#else
-> +__be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
-> +		struct nfs4_label *label)
-> +{
-> +	return nfserr_notsupp;
-> +}
-> +#endif
-> +
->  #endif /* defined(CONFIG_NFSD_V4) */
+> +	if (sn->pipe_version == 0)
+>  		gss_encode_v0_msg(gss_msg);
+>  	else /* pipe_version == 1 */
+>  		gss_encode_v1_msg(gss_msg, clnt, service_name);
+> @@ -457,7 +462,7 @@ gss_alloc_msg(struct gss_auth *gss_auth, struct rpc_clnt *clnt,
+>  	gss_msg = kzalloc(sizeof(*gss_msg), GFP_NOFS);
+>  	if (gss_msg == NULL)
+>  		return ERR_PTR(-ENOMEM);
+> -	vers = get_pipe_version();
+> +	vers = get_pipe_version(rpc_net_ns(clnt));
+>  	if (vers < 0) {
+>  		kfree(gss_msg);
+>  		return ERR_PTR(vers);
+> @@ -581,8 +586,8 @@ retry:
+>  	gss_msg = gss_setup_upcall(gss_auth->client, gss_auth, cred);
+>  	if (PTR_ERR(gss_msg) == -EAGAIN) {
+>  		err = wait_event_interruptible_timeout(pipe_version_waitqueue,
+> -				pipe_version >= 0, timeout);
+> -		if (pipe_version < 0) {
+> +				sn->pipe_version >= 0, timeout);
+> +		if (sn->pipe_version < 0) {
+>  			if (err == 0)
+>  				sn->gssd_running = 0;
+>  			warn_gssd();
+> @@ -719,20 +724,22 @@ out:
 >  
->  #ifdef CONFIG_NFSD_V3
-> diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-> index 5b58941..a9d6f0f 100644
-> --- a/fs/nfsd/vfs.h
-> +++ b/fs/nfsd/vfs.h
-> @@ -56,6 +56,8 @@ int nfsd_mountpoint(struct dentry *, struct svc_export *);
->  __be32          nfsd4_set_nfs4_acl(struct svc_rqst *, struct svc_fh *,
->                      struct nfs4_acl *);
->  int             nfsd4_get_nfs4_acl(struct svc_rqst *, struct dentry *, struct nfs4_acl **);
-> +__be32          nfsd4_set_nfs4_label(struct svc_rqst *, struct svc_fh *,
-> +		    struct nfs4_label *);
->  #endif /* CONFIG_NFSD_V4 */
->  __be32		nfsd_create(struct svc_rqst *, struct svc_fh *,
->  				char *name, int len, struct iattr *attrs,
-> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> index 546f898..132a671 100644
-> --- a/fs/nfsd/xdr4.h
-> +++ b/fs/nfsd/xdr4.h
-> @@ -118,6 +118,7 @@ struct nfsd4_create {
->  	struct iattr	cr_iattr;           /* request */
->  	struct nfsd4_change_info  cr_cinfo; /* response */
->  	struct nfs4_acl *cr_acl;
-> +	struct nfs4_label *cr_label;
->  };
->  #define cr_linklen	u.link.namelen
->  #define cr_linkname	u.link.name
-> @@ -246,6 +247,7 @@ struct nfsd4_open {
->  	struct nfs4_file *op_file;          /* used during processing */
->  	struct nfs4_ol_stateid *op_stp;	    /* used during processing */
->  	struct nfs4_acl *op_acl;
-> +	struct nfs4_label *op_label;
->  };
->  #define op_iattr	iattr
+>  static int gss_pipe_open(struct inode *inode, int new_version)
+>  {
+> +	struct net *net = inode->i_sb->s_fs_info;
+> +	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+>  	int ret = 0;
 >  
-> @@ -330,6 +332,7 @@ struct nfsd4_setattr {
->  	u32		sa_bmval[3];        /* request */
->  	struct iattr	sa_iattr;           /* request */
->  	struct nfs4_acl *sa_acl;
-> +	struct nfs4_label *sa_label;
->  };
+>  	spin_lock(&pipe_version_lock);
+> -	if (pipe_version < 0) {
+> +	if (sn->pipe_version < 0) {
+>  		/* First open of any gss pipe determines the version: */
+> -		pipe_version = new_version;
+> +		sn->pipe_version = new_version;
+>  		rpc_wake_up(&pipe_version_rpc_waitqueue);
+>  		wake_up(&pipe_version_waitqueue);
+> -	} else if (pipe_version != new_version) {
+> +	} else if (sn->pipe_version != new_version) {
+>  		/* Trying to open a pipe of a different version */
+>  		ret = -EBUSY;
+>  		goto out;
+>  	}
+> -	atomic_inc(&pipe_users);
+> +	atomic_inc(&sn->pipe_users);
+>  out:
+>  	spin_unlock(&pipe_version_lock);
+>  	return ret;
+> @@ -752,6 +759,7 @@ static int gss_pipe_open_v1(struct inode *inode)
+>  static void
+>  gss_pipe_release(struct inode *inode)
+>  {
+> +	struct net *net = inode->i_sb->s_fs_info;
+>  	struct rpc_pipe *pipe = RPC_I(inode)->pipe;
+>  	struct gss_upcall_msg *gss_msg;
 >  
->  struct nfsd4_setclientid {
+> @@ -770,7 +778,7 @@ restart:
+>  	}
+>  	spin_unlock(&pipe->lock);
+>  
+> -	put_pipe_version();
+> +	put_pipe_version(net);
+>  }
+>  
+>  static void
+> diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
+> index 0827f64..f88b018 100644
+> --- a/net/sunrpc/netns.h
+> +++ b/net/sunrpc/netns.h
+> @@ -28,6 +28,8 @@ struct sunrpc_net {
+>  	wait_queue_head_t gssp_wq;
+>  	struct rpc_clnt *gssp_clnt;
+>  	int use_gss_proxy;
+> +	unsigned int pipe_version;
+> +	atomic_t pipe_users;
+>  	struct proc_dir_entry *use_gssp_proc;
+>  
+>  	unsigned int gssd_running;
+> diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+> index 415b705..4f59a3c 100644
+> --- a/net/sunrpc/rpc_pipe.c
+> +++ b/net/sunrpc/rpc_pipe.c
+> @@ -1073,6 +1073,7 @@ void rpc_pipefs_init_net(struct net *net)
+>  
+>  	mutex_init(&sn->pipefs_sb_lock);
+>  	sn->gssd_running = -1;
+> +	sn->pipe_version = -1;
+>  }
+>  
+>  /*
 > -- 
 > 1.8.1.4
 > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
