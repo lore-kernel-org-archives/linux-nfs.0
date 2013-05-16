@@ -1,8 +1,8 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:11784 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:38783 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756659Ab3EVQuy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 May 2013 12:50:54 -0400
+	id S1751844Ab3EPP4x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 May 2013 11:56:53 -0400
 From: Steve Dickson <SteveD@redhat.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>,
         "David P. Quigley" <dpquigl@tycho.nsa.gov>
@@ -10,160 +10,69 @@ Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
         Linux FS devel list <linux-fsdevel@vger.kernel.org>,
         Linux Security List <linux-security-module@vger.kernel.org>,
         SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 03/13] LSM: Add flags field to security_sb_set_mnt_opts for in kernel mount data.
-Date: Wed, 22 May 2013 12:50:36 -0400
-Message-Id: <1369241446-7680-4-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
-References: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
+Subject: Froe e71bf1d708e1294b3bae64d04f03228b3625f2a3 Mon Sep 17 00:00:00 2001
+Date: Thu, 16 May 2013 11:56:35 -0400
+Message-Id: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+This is an updated to the linux-3-10.rc1 release. The minor 
+changes in this release are:
 
-There is no way to differentiate if a text mount option is passed from user
-space or the kernel. A flags field is being added to the
-security_sb_set_mnt_opts hook to allow for in kernel security flags to be sent
-to the LSM for processing in addition to the text options received from mount.
-This patch also updated existing code to fix compilation errors.
+* Added the needed Acked-by:
 
-Acked-by: Eric Paris <eparis@redhat.com>
-Acked-by: James Morris <james.l.morris@oracle.com>
-Signed-off-by: David P. Quigley <dpquigl@tycho.nsa.gov>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- fs/nfs/super.c           |  3 ++-
- include/linux/security.h | 13 ++++++++++---
- security/capability.c    |  5 ++++-
- security/security.c      |  7 +++++--
- security/selinux/hooks.c | 12 ++++++++++--
- 5 files changed, 31 insertions(+), 9 deletions(-)
+* Stop labels leaking into the cache_consistency_bitmask
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index a366107..c1bbb53 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2411,7 +2411,8 @@ static int nfs_bdi_register(struct nfs_server *server)
- int nfs_set_sb_security(struct super_block *s, struct dentry *mntroot,
- 			struct nfs_mount_info *mount_info)
- {
--	return security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts);
-+	return security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts,
-+								0, NULL);
- }
- EXPORT_SYMBOL_GPL(nfs_set_sb_security);
- 
-diff --git a/include/linux/security.h b/include/linux/security.h
-index cff3e4f..aa656fb 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -1456,7 +1456,9 @@ struct security_operations {
- 	int (*sb_pivotroot) (struct path *old_path,
- 			     struct path *new_path);
- 	int (*sb_set_mnt_opts) (struct super_block *sb,
--				struct security_mnt_opts *opts);
-+				struct security_mnt_opts *opts,
-+				unsigned long kern_flags,
-+				unsigned long *set_kern_flags);
- 	int (*sb_clone_mnt_opts) (const struct super_block *oldsb,
- 				   struct super_block *newsb);
- 	int (*sb_parse_opts_str) (char *options, struct security_mnt_opts *opts);
-@@ -1747,7 +1749,10 @@ int security_sb_mount(const char *dev_name, struct path *path,
- 		      const char *type, unsigned long flags, void *data);
- int security_sb_umount(struct vfsmount *mnt, int flags);
- int security_sb_pivotroot(struct path *old_path, struct path *new_path);
--int security_sb_set_mnt_opts(struct super_block *sb, struct security_mnt_opts *opts);
-+int security_sb_set_mnt_opts(struct super_block *sb,
-+				struct security_mnt_opts *opts,
-+				unsigned long kern_flags,
-+				unsigned long *set_kern_flags);
- int security_sb_clone_mnt_opts(const struct super_block *oldsb,
- 				struct super_block *newsb);
- int security_sb_parse_opts_str(char *options, struct security_mnt_opts *opts);
-@@ -2037,7 +2042,9 @@ static inline int security_sb_pivotroot(struct path *old_path,
- }
- 
- static inline int security_sb_set_mnt_opts(struct super_block *sb,
--					   struct security_mnt_opts *opts)
-+					   struct security_mnt_opts *opts,
-+					   unsigned long kern_flags,
-+					   unsigned long *set_kern_flags)
- {
- 	return 0;
- }
-diff --git a/security/capability.c b/security/capability.c
-index b3e8b93..32b5157 100644
---- a/security/capability.c
-+++ b/security/capability.c
-@@ -91,7 +91,10 @@ static int cap_sb_pivotroot(struct path *old_path, struct path *new_path)
- }
- 
- static int cap_sb_set_mnt_opts(struct super_block *sb,
--			       struct security_mnt_opts *opts)
-+			       struct security_mnt_opts *opts,
-+			       unsigned long kern_flags,
-+			       unsigned long *set_kern_flags)
-+
- {
- 	if (unlikely(opts->num_mnt_opts))
- 		return -EOPNOTSUPP;
-diff --git a/security/security.c b/security/security.c
-index c3ceb75..8d0b9a7 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -294,9 +294,12 @@ int security_sb_pivotroot(struct path *old_path, struct path *new_path)
- }
- 
- int security_sb_set_mnt_opts(struct super_block *sb,
--				struct security_mnt_opts *opts)
-+				struct security_mnt_opts *opts,
-+				unsigned long kern_flags,
-+				unsigned long *set_kern_flags)
- {
--	return security_ops->sb_set_mnt_opts(sb, opts);
-+	return security_ops->sb_set_mnt_opts(sb, opts, kern_flags,
-+						set_kern_flags);
- }
- EXPORT_SYMBOL(security_sb_set_mnt_opts);
- 
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index bbf219a..f3b5446 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -552,7 +552,9 @@ static int bad_option(struct superblock_security_struct *sbsec, char flag,
-  * labeling information.
-  */
- static int selinux_set_mnt_opts(struct super_block *sb,
--				struct security_mnt_opts *opts)
-+				struct security_mnt_opts *opts,
-+				unsigned long kern_flags,
-+				unsigned long *set_kern_flags)
- {
- 	const struct cred *cred = current_cred();
- 	int rc = 0, i;
-@@ -580,6 +582,12 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 			"before the security server is initialized\n");
- 		goto out;
- 	}
-+	if (kern_flags && !set_kern_flags) {
-+		/* Specifying internal flags without providing a place to
-+		 * place the results is not allowed */
-+		rc = -EINVAL;
-+		goto out;
-+	}
- 
- 	/*
- 	 * Binary mount data FS will come through this function twice.  Once
-@@ -980,7 +988,7 @@ static int superblock_doinit(struct super_block *sb, void *data)
- 		goto out_err;
- 
- out:
--	rc = selinux_set_mnt_opts(sb, &opts);
-+	rc = selinux_set_mnt_opts(sb, &opts, 0, NULL);
- 
- out_err:
- 	security_free_mnt_opts(&opts);
+David Quigley (7):
+  Security: Add Hook to test if the particular xattr is part of a MAC
+    model.
+  LSM: Add flags field to security_sb_set_mnt_opts for in kernel mount
+    data.
+  SELinux: Add new labeling type native labels
+  NFSv4: Add label recommended attribute and NFSv4 flags
+  NFSv4: Introduce new label structure
+  NFSv4: Extend fattr bitmaps to support all 3 words
+  NFS: Extend NFS xattr handlers to accept the security namespace
+
+Steve Dickson (6):
+  Security: Add hook to calculate context based on a negative dentry.
+  NFSv4.2: Added NFS v4.2 support to the NFS client
+  NFS:Add labels to client function prototypes
+  NFS: Add label lifecycle management
+  NFS: Client implementation of Labeled-NFS
+  Kconfig: Add Kconfig entry for Labeled NFS V4 client
+
+ fs/nfs/Kconfig                      |  28 ++
+ fs/nfs/callback.c                   |   1 +
+ fs/nfs/callback_xdr.c               |   6 +-
+ fs/nfs/client.c                     |   2 +-
+ fs/nfs/dir.c                        |  46 ++-
+ fs/nfs/getroot.c                    |   2 +-
+ fs/nfs/inode.c                      | 133 +++++++--
+ fs/nfs/namespace.c                  |   2 +-
+ fs/nfs/nfs3acl.c                    |   4 +-
+ fs/nfs/nfs3proc.c                   |  41 +--
+ fs/nfs/nfs4_fs.h                    |   8 +-
+ fs/nfs/nfs4client.c                 |   5 +
+ fs/nfs/nfs4namespace.c              |   2 +-
+ fs/nfs/nfs4proc.c                   | 549 ++++++++++++++++++++++++++++++++----
+ fs/nfs/nfs4xdr.c                    | 184 +++++++++---
+ fs/nfs/proc.c                       |  15 +-
+ fs/nfs/super.c                      |  24 +-
+ include/linux/nfs4.h                |  11 +
+ include/linux/nfs_fs.h              |  30 +-
+ include/linux/nfs_fs_sb.h           |   8 +-
+ include/linux/nfs_xdr.h             |  30 +-
+ include/linux/security.h            |  57 +++-
+ include/uapi/linux/nfs4.h           |   2 +-
+ security/capability.c               |  19 +-
+ security/security.c                 |  24 +-
+ security/selinux/hooks.c            |  92 +++++-
+ security/selinux/include/security.h |   2 +
+ security/selinux/ss/policydb.c      |   5 +-
+ security/smack/smack_lsm.c          |  11 +
+ 29 files changed, 1133 insertions(+), 210 deletions(-)
+
 -- 
 1.8.1.4
 
