@@ -1,107 +1,295 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f53.google.com ([74.125.83.53]:39822 "EHLO
-	mail-ee0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934462Ab3E1PaS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 May 2013 11:30:18 -0400
-Received: by mail-ee0-f53.google.com with SMTP id c1so4778359eek.12
-        for <linux-nfs@vger.kernel.org>; Tue, 28 May 2013 08:30:17 -0700 (PDT)
-Message-ID: <51A4CD84.6020700@tonian.com>
-Date: Tue, 28 May 2013 18:30:12 +0300
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: NFS list <linux-nfs@vger.kernel.org>, nfsv4 mailing list <nfsv4@ietf.org>,
-        Idan Keidar <idank@tonian.com>, Lev Solomonov <solo@tonian.com>,
-        Nadav Shemer <nadav@tonian.com>, "Welch, Brent" <welch@panasas.com>,
-        Boaz Harrosh <bharrosh@panasas.com>, Peng Tao <peng_tao@emc.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: Re: Client security considerations for out of band I/O
-References: <51A4A830.5040103@tonian.com> <1369753692.5870.38.camel@leira.trondhjem.org>
-In-Reply-To: <1369753692.5870.38.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:27561 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752163Ab3EPP47 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 May 2013 11:56:59 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 07/13] NFSv4: Introduce new label structure
+Date: Thu, 16 May 2013 11:56:42 -0400
+Message-Id: <1368719808-14584-8-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
+References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-05-28 18:08, Myklebust, Trond wrote:
-> On Tue, 2013-05-28 at 15:50 +0300, Benny Halevy wrote:
->> Trond, with the latest code for issuing LAYOUTGET with the right credentials
->> we still seem to have a problem with the objects and blocks layout where
->> the security enforcement over out-of-band I/O differs from than the one
->> over in-band I/O.
->>
->> Consider the following scenario:
->>
->> file is owned by <uid1, gid1>, mode 660
->> process p1 successfully opens the file for RW with <uid1, gid1> (client sent OPEN)
->> process p2 successfully opens the file for RW with <uid2, gid1> (client sent ACCESS)
->> client gets a layout using LAYOUTGET for IOMODE_RW
->> the file is chmod'ed to 600
->>
->> now, empirically, in-band I/O would succeed for p1 and fail for p2 (as seen on linux
->> and some commercial servers)
->>
->> for out-of-band I/O, an object-based server will fence-off the object and recall the layout
->> to enforce the client to refresh its layout, send a LAYOUTGET, reauthorize, and get
->> a new capability. BUT, that's not enough as the new layout and capability, would allow both
->> p1 and p2 access to the object (as the layout is global to the client), yet we want only p1
->> to have access now.
-> 
-> I don't understand why you think this is related to the LAYOUTGET
-> credential change. The only difference that the credential change brings
-> is to the case where the client doesn't hold a layout segment prior to
-> initiating the read/writeback.
+From: David Quigley <dpquigl@davequigley.com>
 
-Correct, this is not caused by that change, just that testing the change
-raised this issue.
+In order to mimic the way that NFSv4 ACLs are implemented we have created a
+structure to be used to pass label data up and down the call chain. This patch
+adds the new structure and new members to the required NFSv4 call structures.
 
-> 
-> IOW: If p1 had already grabbed a layout segment covering the area being
-> accessed by p2, then under the old code, we would still have forged
-> ahead and performed the read/write on the DS without calling LAYOUTGET
-> at all.
-> 
->> How about sending ACCESS for any principal before using a newly retrieved layout
->> at OPEN time or after the layout was revoked/reacquired to simulate the in-band behavior in
->> a practical manner?
-> 
-> If you want to do that for the objects and blocks layout types, then
-> fine, but I see no reason to do it for files layouts: the files DSes
-> will do access checking using the cred passed with the READ/WRITE
-> regardless of what happened with LAYOUTGET.
-> 
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ fs/nfs/inode.c            | 28 ++++++++++++++++++++++++++++
+ include/linux/nfs4.h      |  7 +++++++
+ include/linux/nfs_fs.h    | 18 ++++++++++++++++++
+ include/linux/nfs_xdr.h   | 21 +++++++++++++++++++++
+ include/uapi/linux/nfs4.h |  2 +-
+ 5 files changed, 75 insertions(+), 1 deletion(-)
 
-True.
-
->> Note that I expect some inaccuracies in behavior even with sending ACCESS as
->> the linux nfs server and other commercial servers bypass permission checking for the file owner
->> at I/O time but not for ACCESS.  I believe this was done to simulate (sort of) Posix behavior
->> that allows I/O to an open file even after changing its security attributes.
->>
->> Also, do we deal correctly with LAYOUTGET failing on NFS4ERR_ACCESS?
->> In the example above, if the open order was reversed, LAYOUTGET would have failed for p2's
->> creds as it doesn't have RW access to the file.  That would result to reverting to the MDS
->> and the I/O would fail on NFS4ERR_ACCESS as well, yet we'll keep trying (and failing)
->> LAYOUTGET.  Optionally, the client could try other creds that opened the file.
->> If the first process to open the file closes it, should we use different creds for LAYOUTGET?
->> With the latest implementation we keep the first opener creds referenced until we return the
->> whole layout, right?
-> 
-> I'm open to the idea of having an NFS4ERR_ACCESS reply to LAYOUTGET fail
-> the entire I/O attempt without an attempt to fail back to MDS.
-> 
-> As for switching creds on close, I believe that is still forbidden under
-> the rules guiding the EXCHGID4_FLAG_BIND_PRINC_STATEID flag (RFC5661,
-> section 18.35.3). Under those rules, a server that sets the
-> EXCHGID4_FLAG_BIND_PRINC_STATEID in the EXCHANGE_ID reply MUST return
-> NFS4ERR_WRONG_CRED in response to the LAYOUTGET call if it tries to
-> authenticate a layout or open stateid that was created by p1, using the
-> principal of p2.
-> 
-> 
-
-Yeah, that's a bummer.
-Even if the client returns the whole layout and tried to retrieve a new layout
-using the open stateid, it still bound to the original open creds.
-
-Benny
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index c1c7a9d..07fcf0b 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -257,6 +257,34 @@ nfs_init_locked(struct inode *inode, void *opaque)
+ 	return 0;
+ }
+ 
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags)
++{
++	struct nfs4_label *label = NULL;
++	int minor_version = server->nfs_client->cl_minorversion;
++
++	if (minor_version < 2)
++		return label;
++
++	if (!(server->caps & NFS_CAP_SECURITY_LABEL))
++		return label;
++
++	label = kzalloc(sizeof(struct nfs4_label), flags);
++	if (label == NULL)
++		return ERR_PTR(-ENOMEM);
++
++	label->label = kzalloc(NFS4_MAXLABELLEN, flags);
++	if (label->label == NULL) {
++		kfree(label);
++		return ERR_PTR(-ENOMEM);
++	}
++	label->len = NFS4_MAXLABELLEN;
++
++	return label;
++}
++EXPORT_SYMBOL_GPL(nfs4_label_alloc);
++#endif
++
+ /*
+  * This is our front-end to iget that looks up inodes by file handle
+  * instead of inode number.
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 4204600..e3698cd 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -32,6 +32,13 @@ struct nfs4_acl {
+ 	struct nfs4_ace	aces[0];
+ };
+ 
++struct nfs4_label {
++	uint32_t	lfs;
++	uint32_t	pi;
++	u32		len;
++	char	*label;
++};
++
+ typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
+ 
+ struct nfs_stateid4 {
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index fc01d5c..39b2404 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -497,6 +497,24 @@ extern int nfs_mountpoint_expiry_timeout;
+ extern void nfs_release_automount_timer(void);
+ 
+ /*
++ * linux/fs/nfs/nfs4proc.c
++ */
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++extern struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags);
++static inline void nfs4_label_free(struct nfs4_label *label)
++{
++	if (label) {
++		kfree(label->label);
++		kfree(label);
++	}
++	return;
++}
++#else
++static inline struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags) { return NULL; }
++static inline void nfs4_label_free(void *label) {}
++#endif
++
++/*
+  * linux/fs/nfs/unlink.c
+  */
+ extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index bfdf6e0..2c13d43 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -349,6 +349,7 @@ struct nfs_openargs {
+ 	const u32 *		open_bitmap;
+ 	__u32			claim;
+ 	enum createmode4	createmode;
++	const struct nfs4_label *label;
+ };
+ 
+ struct nfs_openres {
+@@ -358,6 +359,7 @@ struct nfs_openres {
+ 	struct nfs4_change_info	cinfo;
+ 	__u32                   rflags;
+ 	struct nfs_fattr *      f_attr;
++	struct nfs4_label	*f_label;
+ 	struct nfs_seqid *	seqid;
+ 	const struct nfs_server *server;
+ 	fmode_t			delegation_type;
+@@ -402,6 +404,7 @@ struct nfs_closeres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	nfs4_stateid            stateid;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ 	struct nfs_seqid *	seqid;
+ 	const struct nfs_server *server;
+ };
+@@ -475,6 +478,7 @@ struct nfs4_delegreturnargs {
+ struct nfs4_delegreturnres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs_fattr * fattr;
++	struct nfs4_label	*label;
+ 	const struct nfs_server *server;
+ };
+ 
+@@ -496,6 +500,7 @@ struct nfs_readargs {
+ struct nfs_readres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ 	__u32			count;
+ 	int                     eof;
+ };
+@@ -565,6 +570,7 @@ struct nfs_removeres {
+ 	struct nfs4_sequence_res 	seq_res;
+ 	const struct nfs_server *server;
+ 	struct nfs_fattr	*dir_attr;
++	struct nfs4_label	*dir_label;
+ 	struct nfs4_change_info	cinfo;
+ };
+ 
+@@ -577,6 +583,8 @@ struct nfs_renameargs {
+ 	const struct nfs_fh		*new_dir;
+ 	const struct qstr		*old_name;
+ 	const struct qstr		*new_name;
++	const struct nfs4_label		*old_label;
++	const struct nfs4_label		*new_label;
+ };
+ 
+ struct nfs_renameres {
+@@ -584,8 +592,10 @@ struct nfs_renameres {
+ 	const struct nfs_server		*server;
+ 	struct nfs4_change_info		old_cinfo;
+ 	struct nfs_fattr		*old_fattr;
++	struct nfs4_label		*old_label;
+ 	struct nfs4_change_info		new_cinfo;
+ 	struct nfs_fattr		*new_fattr;
++	struct nfs4_label		*new_label;
+ };
+ 
+ /*
+@@ -600,6 +610,7 @@ struct nfs_entry {
+ 	int			eof;
+ 	struct nfs_fh *		fh;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label  *label;
+ 	unsigned char		d_type;
+ 	struct nfs_server *	server;
+ };
+@@ -632,6 +643,7 @@ struct nfs_setattrargs {
+ 	struct iattr *                  iap;
+ 	const struct nfs_server *	server; /* Needed for name mapping */
+ 	const u32 *			bitmask;
++	const struct nfs4_label		*label;
+ };
+ 
+ struct nfs_setaclargs {
+@@ -667,6 +679,7 @@ struct nfs_getaclres {
+ struct nfs_setattrres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs_fattr *              fattr;
++	struct nfs4_label		*label;
+ 	const struct nfs_server *	server;
+ };
+ 
+@@ -712,6 +725,7 @@ struct nfs3_setaclargs {
+ struct nfs_diropok {
+ 	struct nfs_fh *		fh;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ };
+ 
+ struct nfs_readlinkargs {
+@@ -842,6 +856,7 @@ struct nfs4_accessres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	u32				supported;
+ 	u32				access;
+ };
+@@ -864,6 +879,7 @@ struct nfs4_create_arg {
+ 	const struct iattr *		attrs;
+ 	const struct nfs_fh *		dir_fh;
+ 	const u32 *			bitmask;
++	const struct nfs4_label		*label;
+ };
+ 
+ struct nfs4_create_res {
+@@ -871,6 +887,7 @@ struct nfs4_create_res {
+ 	const struct nfs_server *	server;
+ 	struct nfs_fh *			fh;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	struct nfs4_change_info		dir_cinfo;
+ };
+ 
+@@ -895,6 +912,7 @@ struct nfs4_getattr_res {
+ 	struct nfs4_sequence_res	seq_res;
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ };
+ 
+ struct nfs4_link_arg {
+@@ -909,8 +927,10 @@ struct nfs4_link_res {
+ 	struct nfs4_sequence_res	seq_res;
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	struct nfs4_change_info		cinfo;
+ 	struct nfs_fattr *		dir_attr;
++	struct nfs4_label		*dir_label;
+ };
+ 
+ 
+@@ -926,6 +946,7 @@ struct nfs4_lookup_res {
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
+ 	struct nfs_fh *			fh;
++	struct nfs4_label		*label;
+ };
+ 
+ struct nfs4_lookup_root_arg {
+diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
+index 788128e..78d25b5 100644
+--- a/include/uapi/linux/nfs4.h
++++ b/include/uapi/linux/nfs4.h
+@@ -25,7 +25,7 @@
+ #define NFS4_MAXNAMLEN		NAME_MAX
+ #define NFS4_OPAQUE_LIMIT	1024
+ #define NFS4_MAX_SESSIONID_LEN	16
+-
++#define NFS4_MAXLABELLEN	2048 
+ #define NFS4_ACCESS_READ        0x0001
+ #define NFS4_ACCESS_LOOKUP      0x0002
+ #define NFS4_ACCESS_MODIFY      0x0004
+-- 
+1.8.1.4
 
