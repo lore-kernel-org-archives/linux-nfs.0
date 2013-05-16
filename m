@@ -1,154 +1,192 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58838 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:27653 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752906Ab3EQBDq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 May 2013 21:03:46 -0400
-Date: Thu, 16 May 2013 21:03:44 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/3] SUNRPC: Faster detection if gssd is actually running
-Message-ID: <20130517010344.GA6579@fieldses.org>
-References: <1368647441-24815-1-git-send-email-Trond.Myklebust@netapp.com>
- <1368647441-24815-2-git-send-email-Trond.Myklebust@netapp.com>
- <1368647441-24815-3-git-send-email-Trond.Myklebust@netapp.com>
- <20130516201954.GA3216@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130516201954.GA3216@fieldses.org>
+	id S1753279Ab3EPP5A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 May 2013 11:57:00 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 08/13] NFSv4: Extend fattr bitmaps to support all 3 words
+Date: Thu, 16 May 2013 11:56:43 -0400
+Message-Id: <1368719808-14584-9-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
+References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 16, 2013 at 04:19:54PM -0400, bfields wrote:
-> On Wed, May 15, 2013 at 12:50:40PM -0700, Trond Myklebust wrote:
-> > Recent changes to the NFS security flavour negotiation mean that
-> > we have a stronger dependency on rpc.gssd. If the latter is not
-> > running, because the user failed to start it, then we time out
-> > and mark the container as not having an instance. We then
-> > use that information to time out faster the next time.
-> > 
-> > If, on the other hand, the rpc.gssd successfully binds to an rpc_pipe,
-> > then we mark the container as having an rpc.gssd instance.
-> 
-> So it's still a 15 second delay on the first mount, then 7 on the
-> second, then 3, 1, and no delay thereafter.  Is that right?
-> 
-> Why not be harsher and go straight to 0 after the first failure?
+From: David Quigley <dpquigl@davequigley.com>
 
-Chuck points out I'm confused, it's actually 15s then 1/4s (why 1/4s?).
+The fattr handling bitmap code only uses the first two fattr words sofar. This
+patch adds the 3rd word to being sent but doesn't populate it yet.
 
-(Apologies, somehow I saw a ">> 2" in there and my brain shut down and
-jumped to the "exponential delay" conclusion.)
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ fs/nfs/nfs4_fs.h          |  6 +++---
+ fs/nfs/nfs4proc.c         | 10 +++++-----
+ fs/nfs/nfs4xdr.c          | 20 ++++++++++++--------
+ fs/nfs/super.c            |  1 +
+ include/linux/nfs_fs_sb.h |  2 +-
+ 5 files changed, 22 insertions(+), 17 deletions(-)
 
-Still sort of curious how we're choosing these delays, though.
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index a1dd768..283fd28 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -303,10 +303,10 @@ is_ds_client(struct nfs_client *clp)
+ extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
+ 
+ extern const u32 nfs4_fattr_bitmap[3];
+-extern const u32 nfs4_statfs_bitmap[2];
+-extern const u32 nfs4_pathconf_bitmap[2];
++extern const u32 nfs4_statfs_bitmap[3];
++extern const u32 nfs4_pathconf_bitmap[3];
+ extern const u32 nfs4_fsinfo_bitmap[3];
+-extern const u32 nfs4_fs_locations_bitmap[2];
++extern const u32 nfs4_fs_locations_bitmap[3];
+ 
+ void nfs4_free_client(struct nfs_client *);
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index abf46f4..bcf60f1 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -161,7 +161,7 @@ static const u32 nfs4_open_noattr_bitmap[3] = {
+ 	| FATTR4_WORD0_FILEID,
+ };
+ 
+-const u32 nfs4_statfs_bitmap[2] = {
++const u32 nfs4_statfs_bitmap[3] = {
+ 	FATTR4_WORD0_FILES_AVAIL
+ 	| FATTR4_WORD0_FILES_FREE
+ 	| FATTR4_WORD0_FILES_TOTAL,
+@@ -170,7 +170,7 @@ const u32 nfs4_statfs_bitmap[2] = {
+ 	| FATTR4_WORD1_SPACE_TOTAL
+ };
+ 
+-const u32 nfs4_pathconf_bitmap[2] = {
++const u32 nfs4_pathconf_bitmap[3] = {
+ 	FATTR4_WORD0_MAXLINK
+ 	| FATTR4_WORD0_MAXNAME,
+ 	0
+@@ -185,7 +185,7 @@ const u32 nfs4_fsinfo_bitmap[3] = { FATTR4_WORD0_MAXFILESIZE
+ 			FATTR4_WORD2_LAYOUT_BLKSIZE
+ };
+ 
+-const u32 nfs4_fs_locations_bitmap[2] = {
++const u32 nfs4_fs_locations_bitmap[3] = {
+ 	FATTR4_WORD0_TYPE
+ 	| FATTR4_WORD0_CHANGE
+ 	| FATTR4_WORD0_SIZE
+@@ -201,7 +201,7 @@ const u32 nfs4_fs_locations_bitmap[2] = {
+ 	| FATTR4_WORD1_TIME_ACCESS
+ 	| FATTR4_WORD1_TIME_METADATA
+ 	| FATTR4_WORD1_TIME_MODIFY
+-	| FATTR4_WORD1_MOUNTED_ON_FILEID
++	| FATTR4_WORD1_MOUNTED_ON_FILEID,
+ };
+ 
+ static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dentry,
+@@ -5318,7 +5318,7 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
+ 				   struct page *page)
+ {
+ 	struct nfs_server *server = NFS_SERVER(dir);
+-	u32 bitmask[2] = {
++	u32 bitmask[3] = {
+ 		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS,
+ 	};
+ 	struct nfs4_fs_locations_arg args = {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 4be8d13..727cfe0 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -979,15 +979,16 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 	int len;
+ 	uint32_t bmval0 = 0;
+ 	uint32_t bmval1 = 0;
++	uint32_t bmval2 = 0;
+ 
+ 	/*
+ 	 * We reserve enough space to write the entire attribute buffer at once.
+ 	 * In the worst-case, this would be
+-	 *   12(bitmap) + 4(attrlen) + 8(size) + 4(mode) + 4(atime) + 4(mtime)
+-	 *          = 36 bytes, plus any contribution from variable-length fields
++	 * 16(bitmap) + 4(attrlen) + 8(size) + 4(mode) + 4(atime) + 4(mtime)
++	 * = 40 bytes, plus any contribution from variable-length fields
+ 	 *            such as owner/group.
+ 	 */
+-	len = 16;
++	len = 20;
+ 
+ 	/* Sigh */
+ 	if (iap->ia_valid & ATTR_SIZE)
+@@ -1031,9 +1032,9 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 	 * We write the bitmap length now, but leave the bitmap and the attribute
+ 	 * buffer length to be backfilled at the end of this routine.
+ 	 */
+-	*p++ = cpu_to_be32(2);
++	*p++ = cpu_to_be32(3);
+ 	q = p;
+-	p += 3;
++	p += 4;
+ 
+ 	if (iap->ia_valid & ATTR_SIZE) {
+ 		bmval0 |= FATTR4_WORD0_SIZE;
+@@ -1080,9 +1081,10 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 				len, ((char *)p - (char *)q) + 4);
+ 		BUG();
+ 	}
+-	len = (char *)p - (char *)q - 12;
++	len = (char *)p - (char *)q - 16;
+ 	*q++ = htonl(bmval0);
+ 	*q++ = htonl(bmval1);
++	*q++ = htonl(bmval2);
+ 	*q = htonl(len);
+ 
+ /* out: */
+@@ -1188,8 +1190,10 @@ encode_getattr_three(struct xdr_stream *xdr,
+ 
+ static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
+ {
+-	encode_getattr_two(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
+-			   bitmask[1] & nfs4_fattr_bitmap[1], hdr);
++	encode_getattr_three(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
++			   bitmask[1] & nfs4_fattr_bitmap[1],
++			   bitmask[2] & nfs4_fattr_bitmap[2],
++			   hdr);
+ }
+ 
+ static void encode_getfattr_open(struct xdr_stream *xdr, const u32 *bitmask,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 2e94f21..b30c003 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -833,6 +833,7 @@ int nfs_show_stats(struct seq_file *m, struct dentry *root)
+ 		seq_printf(m, "\n\tnfsv4:\t");
+ 		seq_printf(m, "bm0=0x%x", nfss->attr_bitmask[0]);
+ 		seq_printf(m, ",bm1=0x%x", nfss->attr_bitmask[1]);
++		seq_printf(m, ",bm2=0x%x", nfss->attr_bitmask[2]);
+ 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
+ 		show_sessions(m, nfss);
+ 		show_pnfs(m, nfss);
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 2ddd00a..d4348ab 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -146,7 +146,7 @@ struct nfs_server {
+ 	u32			attr_bitmask[3];/* V4 bitmask representing the set
+ 						   of attributes supported on this
+ 						   filesystem */
+-	u32			cache_consistency_bitmask[2];
++	u32			cache_consistency_bitmask[3];
+ 						/* V4 bitmask representing the subset
+ 						   of change attribute, size, ctime
+ 						   and mtime attributes supported by
+-- 
+1.8.1.4
 
-Hard to imagine people won't still notice the delay on first mount.
-Given there's a workaround (run gssd), maybe that's just good enough for
-now, I don't know.
-
---b.
-
-
-> 
-> --b.
-> 
-> > 
-> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > ---
-> >  net/sunrpc/auth_gss/auth_gss.c | 13 ++++++++++++-
-> >  net/sunrpc/netns.h             |  2 ++
-> >  net/sunrpc/rpc_pipe.c          |  4 ++++
-> >  3 files changed, 18 insertions(+), 1 deletion(-)
-> > 
-> > diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> > index f17f3c5..3aff72f 100644
-> > --- a/net/sunrpc/auth_gss/auth_gss.c
-> > +++ b/net/sunrpc/auth_gss/auth_gss.c
-> > @@ -52,6 +52,8 @@
-> >  #include <linux/sunrpc/gss_api.h>
-> >  #include <asm/uaccess.h>
-> >  
-> > +#include "../netns.h"
-> > +
-> >  static const struct rpc_authops authgss_ops;
-> >  
-> >  static const struct rpc_credops gss_credops;
-> > @@ -559,9 +561,12 @@ out:
-> >  static inline int
-> >  gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
-> >  {
-> > +	struct net *net = rpc_net_ns(gss_auth->client);
-> > +	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-> >  	struct rpc_pipe *pipe;
-> >  	struct rpc_cred *cred = &gss_cred->gc_base;
-> >  	struct gss_upcall_msg *gss_msg;
-> > +	unsigned long timeout;
-> >  	DEFINE_WAIT(wait);
-> >  	int err;
-> >  
-> > @@ -569,11 +574,17 @@ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
-> >  		__func__, from_kuid(&init_user_ns, cred->cr_uid));
-> >  retry:
-> >  	err = 0;
-> > +	/* Default timeout is 15s unless we know that gssd is not running */
-> > +	timeout = 15 * HZ;
-> > +	if (!sn->gssd_running)
-> > +		timeout = HZ >> 2;
-> >  	gss_msg = gss_setup_upcall(gss_auth->client, gss_auth, cred);
-> >  	if (PTR_ERR(gss_msg) == -EAGAIN) {
-> >  		err = wait_event_interruptible_timeout(pipe_version_waitqueue,
-> > -				pipe_version >= 0, 15*HZ);
-> > +				pipe_version >= 0, timeout);
-> >  		if (pipe_version < 0) {
-> > +			if (err == 0)
-> > +				sn->gssd_running = 0;
-> >  			warn_gssd();
-> >  			err = -EACCES;
-> >  		}
-> > diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
-> > index 7111a4c..0827f64 100644
-> > --- a/net/sunrpc/netns.h
-> > +++ b/net/sunrpc/netns.h
-> > @@ -29,6 +29,8 @@ struct sunrpc_net {
-> >  	struct rpc_clnt *gssp_clnt;
-> >  	int use_gss_proxy;
-> >  	struct proc_dir_entry *use_gssp_proc;
-> > +
-> > +	unsigned int gssd_running;
-> >  };
-> >  
-> >  extern int sunrpc_net_id;
-> > diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-> > index a9129f8..415b705 100644
-> > --- a/net/sunrpc/rpc_pipe.c
-> > +++ b/net/sunrpc/rpc_pipe.c
-> > @@ -216,11 +216,14 @@ rpc_destroy_inode(struct inode *inode)
-> >  static int
-> >  rpc_pipe_open(struct inode *inode, struct file *filp)
-> >  {
-> > +	struct net *net = inode->i_sb->s_fs_info;
-> > +	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-> >  	struct rpc_pipe *pipe;
-> >  	int first_open;
-> >  	int res = -ENXIO;
-> >  
-> >  	mutex_lock(&inode->i_mutex);
-> > +	sn->gssd_running = 1;
-> >  	pipe = RPC_I(inode)->pipe;
-> >  	if (pipe == NULL)
-> >  		goto out;
-> > @@ -1069,6 +1072,7 @@ void rpc_pipefs_init_net(struct net *net)
-> >  	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-> >  
-> >  	mutex_init(&sn->pipefs_sb_lock);
-> > +	sn->gssd_running = -1;
-> >  }
-> >  
-> >  /*
-> > -- 
-> > 1.8.1.4
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
