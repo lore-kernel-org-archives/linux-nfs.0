@@ -1,62 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:41305 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932182Ab3EOT2g convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 15:28:36 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
-Subject: Re: [PATCH 2/2] NFS: Fall back to AUTH_SYS for SETCLIENTID (take 2)
+Received: from mail-ie0-f179.google.com ([209.85.223.179]:33990 "EHLO
+	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755238Ab3EPCAN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 22:00:13 -0400
+Received: by mail-ie0-f179.google.com with SMTP id c13so5355601ieb.10
+        for <linux-nfs@vger.kernel.org>; Wed, 15 May 2013 19:00:13 -0700 (PDT)
+Subject: [PATCH] NFS: Fix SETCLIENTID fallback if GSS is not available
+To: trond.myklebust@netapp.com
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130515174806.GO16811@fieldses.org>
-Date: Wed, 15 May 2013 15:28:27 -0400
 Cc: linux-nfs@vger.kernel.org
-Message-Id: <0B08EFEB-D651-4A68-8F1F-2078F62B6A5A@oracle.com>
-References: <20130513161515.1942.845.stgit@seurat.1015granger.net> <20130513162528.1942.64673.stgit@seurat.1015granger.net> <20130515160424.GK16811@fieldses.org> <961AC5FB-617E-48FB-A35F-5E1A25213292@oracle.com> <20130515171601.GL16811@fieldses.org> <20130515173916.GM16811@fieldses.org> <D8763141-7185-499B-ADFA-659F9992269C@oracle.com> <20130515174806.GO16811@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Wed, 15 May 2013 22:00:10 -0400
+Message-ID: <20130516015848.34251.51432.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Commit 79d852bf "NFS: Retry SETCLIENTID with AUTH_SYS instead of
+AUTH_NONE" did not take into account commit 23631227 "NFSv4: Fix the
+fallback to AUTH_NULL if krb5i is not available".
 
-On May 15, 2013, at 1:48 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-> On Wed, May 15, 2013 at 01:42:58PM -0400, Chuck Lever wrote:
->> 
->> On May 15, 2013, at 1:39 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
->> 
->>> By the way, have you looked at SP4_MACH_CRED at all yet?  It's a
->>> selfish question (I could use something to test against), but I
->>> think it's also what you want if you want krb5i-protected 4.1 state.
->> 
->> I asked about that recently and was told SP4_MACH_CRED was going the
->> way of the do do
-> 
-> Do you remember who said that?  Is the discussion on line somewhere?
+Trond -
 
-No, I mis-remembered.  I was thinking of SP4_SSV.
+If we end up keeping the krb5i -> sys logic, I think this change is
+also needed.  Build-tested only.
 
-> 
->> (or did I misunderstand the response from the floor?).
->> 
->> I'm certainly open to exploring other solutions, but I do want to be
->> practical about it.  Will it be supported on other servers besides
->> Linux?  Does SP4_MACH_CRED help for NFSv4.0?
-> 
-> I haven't tested other servers.  It's a 4.1-only feature.
+ fs/nfs/nfs4client.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-SP4_MACH_CRED for 4.1 appears useful, but I think we would need to consider:
-
-  o  whether SP4_MACH_CRED is a broadly implemented feature where Linux
-     clients can rely on it being there in typical environments
-
-  o  how to address the "no keytab" issue for NFSv4.0, which does not
-     have SP4_MACH_CRED (that I am aware of)
-
-Andy is probably more interested in seeing SP4_MACH_CRED implemented in the Linux client, as it is one solution for the "user cred expired while there is still dirty data in the client's page cache" problem, I think.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 947b0c9..4cbad5d 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -203,7 +203,7 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+ 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
+ 	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
+ 	if (error == -EINVAL)
+-		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_NULL);
++		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX);
+ 	if (error < 0)
+ 		goto error;
+ 
 
