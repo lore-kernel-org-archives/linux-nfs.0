@@ -1,62 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:47201 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757931Ab3EGM3J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 May 2013 08:29:09 -0400
-Date: Tue, 7 May 2013 14:29:07 +0200
-From: Pavel Machek <pavel@ucw.cz>
-To: Colin Cross <ccross@android.com>
-Cc: linux-kernel@vger.kernel.org, "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-pm@vger.kernel.org, netdev@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, Ben Chan <benchan@chromium.org>,
-        Len Brown <len.brown@intel.com>
-Subject: Re: [PATCH v3 04/16] lockdep: check that no locks held at freeze time
-Message-ID: <20130507122906.GC2585@elf.ucw.cz>
-References: <1367884221-20462-1-git-send-email-ccross@android.com>
- <1367884221-20462-5-git-send-email-ccross@android.com>
+Received: from fieldses.org ([174.143.236.118]:60974 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750942Ab3EPUWb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 May 2013 16:22:31 -0400
+Date: Thu, 16 May 2013 16:22:29 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Jeff Layton <jlayton@redhat.com>, Steve Dickson <SteveD@redhat.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/3] Speed up detection of whether or not rpc.gssd is
+ running
+Message-ID: <20130516202228.GC3216@fieldses.org>
+References: <1368647441-24815-1-git-send-email-Trond.Myklebust@netapp.com>
+ <14F7EF8E-A5C7-4187-B53A-EA71283AFC3A@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1367884221-20462-5-git-send-email-ccross@android.com>
+In-Reply-To: <14F7EF8E-A5C7-4187-B53A-EA71283AFC3A@oracle.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon 2013-05-06 16:50:09, Colin Cross wrote:
-> From: Mandeep Singh Baines <msb@chromium.org>
+On Thu, May 16, 2013 at 09:55:21AM -0400, Chuck Lever wrote:
 > 
-> We shouldn't try_to_freeze if locks are held.  Holding a lock can cause a
-> deadlock if the lock is later acquired in the suspend or hibernate path
-> (e.g.  by dpm).  Holding a lock can also cause a deadlock in the case of
-> cgroup_freezer if a lock is held inside a frozen cgroup that is later
-> acquired by a process outside that group.
+> On May 15, 2013, at 3:50 PM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
 > 
-> History:
-> This patch was originally applied as 6aa9707099c and reverted in
-> dbf520a9d7d4 because NFS was freezing with locks held.  It was
-> deemed better to keep the bad freeze point in NFS to allow laptops
-> to suspend consistently.  The previous patch in this series converts
-> NFS to call _unsafe versions of the freezable helpers so that
-> lockdep doesn't complain about them until a more correct fix
-> can be applied.
+> > Also fix the auth_gss pipe version detection so that it works
+> > correctly in the presence of namespaces.
 > 
-> [akpm@linux-foundation.org: export debug_check_no_locks_held]
-> Signed-off-by: Mandeep Singh Baines <msb@chromium.org>
-> Cc: Ben Chan <benchan@chromium.org>
-> Cc: Oleg Nesterov <oleg@redhat.com>
-> Cc: Tejun Heo <tj@kernel.org>
-> Cc: Rafael J. Wysocki <rjw@sisk.pl>
-> Cc: Ingo Molnar <mingo@redhat.com>
-> Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-> Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
-> [ccross@android.com: don't warn if try_to_freeze_unsafe is called]
-> Signed-off-by: Colin Cross <ccross@android.com>
+> Obviously my preference is to keep the existing krb5i -> sys logic and
+> to try to address the upcall timeout, so this is a good direction,
+> IMO.
+> 
+> After some review, I'm still a little concerned about initialization
+> races inappropriately preventing upcalls,
 
-Acked-by: Pavel Machek <pavel@ucw.cz>
+I don't understand what you're referring to--could you elaborate?
 
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+--b.
+
+> but time (and testing) will
+> tell.  I'm happy with this solution if you and Bruce are.
+> 
+> Speaking of testing, I can test this series if you think that would be
+> valuable, but I assume that those who originally reported the timeout
+> problem (Jeff and Steve) should be the ones to confirm whether this
+> series addresses their concern.
+> 
+> 
+> > Trond Myklebust (3): SUNRPC: Fix a bug in gss_create_upcall SUNRPC:
+> > Faster detection if gssd is actually running SUNRPC: Convert
+> > auth_gss pipe detection to work in namespaces
+> > 
+> > net/sunrpc/auth_gss/auth_gss.c | 62
+> > ++++++++++++++++++++++++++++-------------- net/sunrpc/netns.h
+> > |  4 +++ net/sunrpc/rpc_pipe.c          |  5 ++++ 3 files changed,
+> > 50 insertions(+), 21 deletions(-)
+> 
+> -- Chuck Lever chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+> 
+> -- To unsubscribe from this list: send the line "unsubscribe
+> linux-nfs" in the body of a message to majordomo@vger.kernel.org More
+> majordomo info at  http://vger.kernel.org/majordomo-info.html
