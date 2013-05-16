@@ -1,46 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f43.google.com ([74.125.82.43]:54500 "EHLO
-	mail-wg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754337Ab3EKCmf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:42:35 -0400
-Received: by mail-wg0-f43.google.com with SMTP id c11so4502669wgh.34
-        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:42:33 -0700 (PDT)
-Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
-        by mx.google.com with ESMTPSA id a4sm1374045wic.5.2013.05.10.19.42.32
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 10 May 2013 19:42:33 -0700 (PDT)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 01/38] Revert "SQUASHME: pnfsd: Fix compiler warning when CONFIG_SUNRPC_DEBUG is not set"
-Date: Sat, 11 May 2013 05:42:26 +0300
-Message-Id: <1368240146-31751-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <518B6377.3000207@tonian.com>
-References: <518B6377.3000207@tonian.com>
+Received: from mx1.redhat.com ([209.132.183.28]:60406 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753111Ab3EPP47 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 May 2013 11:56:59 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 06/13] NFSv4: Add label recommended attribute and NFSv4 flags
+Date: Thu, 16 May 2013 11:56:41 -0400
+Message-Id: <1368719808-14584-7-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
+References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This reverts commit 93275cbb789cd18eda5f9fa91469fb9c28ed8896.
----
- fs/nfsd/nfs4pnfsds.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+From: David Quigley <dpquigl@davequigley.com>
 
-diff --git a/fs/nfsd/nfs4pnfsds.c b/fs/nfsd/nfs4pnfsds.c
-index ab67523..2732f20 100644
---- a/fs/nfsd/nfs4pnfsds.c
-+++ b/fs/nfsd/nfs4pnfsds.c
-@@ -170,9 +170,10 @@ static int stateid_hashval(stateid_t *stidp)
- 	hashval = stateid_hashval(stidp);
- 	list_for_each_entry(local, &ds_stid_hashtbl[hashval], ds_hash)
- 		if (!memcmp(&local->ds_stid.si_opaque, &stidp->si_opaque, sizeof(stidp->si_opaque))) {
-+			stateid_t *sid = &local->ds_stid;
- 			dprintk("NFSD: %s <-- %p ds_flags %lx " STATEID_FMT "\n",
- 				__func__, local, local->ds_flags,
--				STATEID_VAL(&local->ds_stid));
-+				STATEID_VAL(sid));
- 			return local;
- 		}
- 	return NULL;
+This patch adds several new flags to allow the NFS client and server to
+determine if this attribute is supported and if it is being sent over the wire.
+
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ include/linux/nfs_fs_sb.h | 1 +
+ include/linux/nfs_xdr.h   | 4 +++-
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 3b7fa2a..2ddd00a 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -200,5 +200,6 @@ struct nfs_server {
+ #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
+ #define NFS_CAP_STATEID_NFSV41	(1U << 16)
+ #define NFS_CAP_ATOMIC_OPEN_V1	(1U << 17)
++#define NFS_CAP_SECURITY_LABEL	(1U << 18)
+ 
+ #endif
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 104b62f..bfdf6e0 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -101,6 +101,7 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
+ #define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
+ #define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
++#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 25)
+ 
+ #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
+ 		| NFS_ATTR_FATTR_MODE \
+@@ -120,7 +121,8 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
+ 		| NFS_ATTR_FATTR_SPACE_USED)
+ #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
+-		| NFS_ATTR_FATTR_SPACE_USED)
++		| NFS_ATTR_FATTR_SPACE_USED \
++		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
+ 
+ /*
+  * Info on the file system
 -- 
-1.7.11.7
+1.8.1.4
 
