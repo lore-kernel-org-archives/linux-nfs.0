@@ -1,58 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f52.google.com ([74.125.82.52]:50094 "EHLO
-	mail-wg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755838Ab3EKCo6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:44:58 -0400
-Received: by mail-wg0-f52.google.com with SMTP id k13so4504891wgh.31
-        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:44:57 -0700 (PDT)
-Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
-        by mx.google.com with ESMTPSA id cw8sm1191619wib.7.2013.05.10.19.44.55
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 10 May 2013 19:44:55 -0700 (PDT)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 38/38] pnfsd: remove clientid member from struct nfsd4_layout_seg
-Date: Sat, 11 May 2013 05:44:51 +0300
-Message-Id: <1368240291-1204-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <518B6377.3000207@tonian.com>
-References: <518B6377.3000207@tonian.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:37803 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751242Ab3EPNz0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 May 2013 09:55:26 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
+Subject: Re: [PATCH 0/3] Speed up detection of whether or not rpc.gssd is running
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1368647441-24815-1-git-send-email-Trond.Myklebust@netapp.com>
+Date: Thu, 16 May 2013 09:55:21 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <14F7EF8E-A5C7-4187-B53A-EA71283AFC3A@oracle.com>
+References: <1368647441-24815-1-git-send-email-Trond.Myklebust@netapp.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Jeff Layton <jlayton@redhat.com>, Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use layout stateid for identification instead.
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/nfs4proc.c              | 2 --
- include/linux/nfsd/nfsd4_pnfs.h | 1 -
- 2 files changed, 3 deletions(-)
+On May 15, 2013, at 3:50 PM, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index cd52393..5bbd1a3 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1243,8 +1243,6 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
- 		__func__, lcp->args.lc_newoffset, lcp->args.lc_last_wr + 1,
- 		ino->i_size);
- 
--	/* Set clientid from sessionid */
--	copy_clientid((clientid_t *)&lcp->args.lc_seg.clientid, cstate->session);
- 	lcp->res.lc_size_chg = 0;
- 	if (sb->s_pnfs_op->layout_commit) {
- 		status = sb->s_pnfs_op->layout_commit(ino, &lcp->args, &lcp->res);
-diff --git a/include/linux/nfsd/nfsd4_pnfs.h b/include/linux/nfsd/nfsd4_pnfs.h
-index 2e09065..fd7bad9 100644
---- a/include/linux/nfsd/nfsd4_pnfs.h
-+++ b/include/linux/nfsd/nfsd4_pnfs.h
-@@ -59,7 +59,6 @@ struct nfsd4_pnfs_dev_iter_res {
- };
- 
- struct nfsd4_layout_seg {
--	u64	clientid;
- 	u32	layout_type;
- 	u32	iomode;
- 	u64	offset;
+> Also fix the auth_gss pipe version detection so that it works correctly
+> in the presence of namespaces.
+
+Obviously my preference is to keep the existing krb5i -> sys logic and to try to address the upcall timeout, so this is a good direction, IMO.
+
+After some review, I'm still a little concerned about initialization races inappropriately preventing upcalls, but time (and testing) will tell.  I'm happy with this solution if you and Bruce are.
+
+Speaking of testing, I can test this series if you think that would be valuable, but I assume that those who originally reported the timeout problem (Jeff and Steve) should be the ones to confirm whether this series addresses their concern.
+
+
+> Trond Myklebust (3):
+>  SUNRPC: Fix a bug in gss_create_upcall
+>  SUNRPC: Faster detection if gssd is actually running
+>  SUNRPC: Convert auth_gss pipe detection to work in namespaces
+> 
+> net/sunrpc/auth_gss/auth_gss.c | 62 ++++++++++++++++++++++++++++--------------
+> net/sunrpc/netns.h             |  4 +++
+> net/sunrpc/rpc_pipe.c          |  5 ++++
+> 3 files changed, 50 insertions(+), 21 deletions(-)
+
 -- 
-1.7.11.7
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
