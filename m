@@ -1,51 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:9896 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:9096 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755487Ab3ETRRl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 May 2013 13:17:41 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/6] NFSv4.1: Ensure that layoutreturn uses the correct credential
-Date: Mon, 20 May 2013 13:17:03 -0400
-Message-Id: <1369070227-40671-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1369070227-40671-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1369070227-40671-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752902Ab3EPP5E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 May 2013 11:57:04 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 13/13] Kconfig: Add Kconfig entry for Labeled NFS V4 client
+Date: Thu, 16 May 2013 11:56:48 -0400
+Message-Id: <1368719808-14584-14-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
+References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We need to use the same credential as was used for the layoutget
-and/or layoutcommit operations.
+From: Steve Dickson <steved@redhat.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+This patch adds the NFS_V4_SECURITY_LABEL entry which
+enables security label support for the NFSv4 client
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfs/nfs4proc.c | 1 +
- fs/nfs/pnfs.c     | 1 +
- 2 files changed, 2 insertions(+)
+ fs/nfs/Kconfig | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index a05397b..2956973 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6452,6 +6452,7 @@ int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp)
- 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LAYOUTRETURN],
- 		.rpc_argp = &lrp->args,
- 		.rpc_resp = &lrp->res,
-+		.rpc_cred = lrp->cred,
- 	};
- 	struct rpc_task_setup task_setup_data = {
- 		.rpc_client = lrp->clp->cl_rpcclient,
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 2f86115..89ca75f 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -861,6 +861,7 @@ _pnfs_return_layout(struct inode *ino)
- 	lrp->args.inode = ino;
- 	lrp->args.layout = lo;
- 	lrp->clp = NFS_SERVER(ino)->nfs_client;
-+	lrp->cred = lo->plh_lc_cred;
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 79c500e..771831d3 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -107,6 +107,7 @@ config NFS_V4_1
+ config NFS_V4_2
+ 	bool "NFS client support for NFSv4.2"
+ 	depends on NFS_V4_1
++	select NFS_V4_SECURITY_LABEL
+ 	help
+ 	  This option enables support for minor version 1 of the NFSv4 protocol
+ 	  in the kernel's NFS client.
+@@ -140,6 +141,24 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
+ 	  If the NFS client is unchanged from the upstream kernel, this
+ 	  option should be set to the default "kernel.org".
  
- 	status = nfs4_proc_layoutreturn(lrp);
- out:
++config NFS_V4_SECURITY_LABEL
++	bool "Provide Security Label support for NFSv4 client"
++	depends on NFS_V4 && SECURITY
++	help
++
++	Say Y here if you want enable fine-grained security label attribute
++	support for NFS version 4.  Security labels allow security modules like
++	SELinux and Smack to label files to facilitate enforcement of their policies.
++	Without this an NFSv4 mount will have the same label on each file.
++
++	If you do not wish to enable fine-grained security labels SELinux or
++	Smack policies on NFSv4 files, say N.
++
++	WARNING: there is still a chance of backwards-incompatible protocol changes.  
++	For now we recommend "Y" only for developers and testers."
++
++	If unsure, say N.
++
+ config ROOT_NFS
+ 	bool "Root file system on NFS"
+ 	depends on NFS_FS=y && IP_PNP
 -- 
 1.8.1.4
 
