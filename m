@@ -1,54 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from one.firstfloor.org ([193.170.194.197]:37443 "EHLO
-	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S966862Ab3E2VBD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 May 2013 17:01:03 -0400
-Date: Wed, 29 May 2013 23:01:01 +0200
-From: Andi Kleen <andi@firstfloor.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Andi Kleen <andi@firstfloor.org>, Waiman Long <waiman.long@hp.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Jeff Layton <jlayton@redhat.com>, Miklos Szeredi <mszeredi@suse.cz>,
-        Ian Kent <raven@themaw.net>, Sage Weil <sage@inktank.com>,
-        Steve French <sfrench@samba.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Eric Paris <eparis@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, autofs@vger.kernel.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, "Chandramouleeswaran, Aswin" <aswin@hp.com>,
-        "Norton, Scott J" <scott.norton@hp.com>
-Subject: Re: [PATCH 0/3 v3] dcache: make it more scalable on large system
-Message-ID: <20130529210101.GN6123@two.firstfloor.org>
-References: <1369273048-60256-1-git-send-email-Waiman.Long@hp.com>
- <20130523094201.GA24543@dastard>
- <519E8B5F.3080905@hp.com>
- <20130527020903.GR29466@dastard>
- <51A624E2.3000301@hp.com>
- <20130529184640.GA3243@fieldses.org>
- <20130529203700.GM6123@two.firstfloor.org>
- <20130529204323.GC3243@fieldses.org>
+Received: from fieldses.org ([174.143.236.118]:55957 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751083Ab3EPUT5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 May 2013 16:19:57 -0400
+Date: Thu, 16 May 2013 16:19:54 -0400
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/3] SUNRPC: Faster detection if gssd is actually running
+Message-ID: <20130516201954.GA3216@fieldses.org>
+References: <1368647441-24815-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1368647441-24815-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1368647441-24815-3-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130529204323.GC3243@fieldses.org>
+In-Reply-To: <1368647441-24815-3-git-send-email-Trond.Myklebust@netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 29, 2013 at 04:43:23PM -0400, J. Bruce Fields wrote:
-> On Wed, May 29, 2013 at 10:37:00PM +0200, Andi Kleen wrote:
-> > > As Dave said before, is the last path component sufficient?  Or how
-> > > about an inode number?
-> > 
-> > Neither works, the profiler needs to find the file and read it.
-> > 
-> > inode searching would be incredible expensive,
+On Wed, May 15, 2013 at 12:50:40PM -0700, Trond Myklebust wrote:
+> Recent changes to the NFS security flavour negotiation mean that
+> we have a stronger dependency on rpc.gssd. If the latter is not
+> running, because the user failed to start it, then we time out
+> and mark the container as not having an instance. We then
+> use that information to time out faster the next time.
 > 
-> How fast does it need to be?  Actually analyzing the profile is
-> something you only do once after everything's over, right?
+> If, on the other hand, the rpc.gssd successfully binds to an rpc_pipe,
+> then we mark the container as having an rpc.gssd instance.
 
-"perf top" does it live.
+So it's still a 15 second delay on the first mount, then 7 on the
+second, then 3, 1, and no delay thereafter.  Is that right?
 
--Andi
+Why not be harsher and go straight to 0 after the first failure?
 
--- 
-ak@linux.intel.com -- Speaking for myself only.
+--b.
+
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  net/sunrpc/auth_gss/auth_gss.c | 13 ++++++++++++-
+>  net/sunrpc/netns.h             |  2 ++
+>  net/sunrpc/rpc_pipe.c          |  4 ++++
+>  3 files changed, 18 insertions(+), 1 deletion(-)
+> 
+> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+> index f17f3c5..3aff72f 100644
+> --- a/net/sunrpc/auth_gss/auth_gss.c
+> +++ b/net/sunrpc/auth_gss/auth_gss.c
+> @@ -52,6 +52,8 @@
+>  #include <linux/sunrpc/gss_api.h>
+>  #include <asm/uaccess.h>
+>  
+> +#include "../netns.h"
+> +
+>  static const struct rpc_authops authgss_ops;
+>  
+>  static const struct rpc_credops gss_credops;
+> @@ -559,9 +561,12 @@ out:
+>  static inline int
+>  gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
+>  {
+> +	struct net *net = rpc_net_ns(gss_auth->client);
+> +	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+>  	struct rpc_pipe *pipe;
+>  	struct rpc_cred *cred = &gss_cred->gc_base;
+>  	struct gss_upcall_msg *gss_msg;
+> +	unsigned long timeout;
+>  	DEFINE_WAIT(wait);
+>  	int err;
+>  
+> @@ -569,11 +574,17 @@ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
+>  		__func__, from_kuid(&init_user_ns, cred->cr_uid));
+>  retry:
+>  	err = 0;
+> +	/* Default timeout is 15s unless we know that gssd is not running */
+> +	timeout = 15 * HZ;
+> +	if (!sn->gssd_running)
+> +		timeout = HZ >> 2;
+>  	gss_msg = gss_setup_upcall(gss_auth->client, gss_auth, cred);
+>  	if (PTR_ERR(gss_msg) == -EAGAIN) {
+>  		err = wait_event_interruptible_timeout(pipe_version_waitqueue,
+> -				pipe_version >= 0, 15*HZ);
+> +				pipe_version >= 0, timeout);
+>  		if (pipe_version < 0) {
+> +			if (err == 0)
+> +				sn->gssd_running = 0;
+>  			warn_gssd();
+>  			err = -EACCES;
+>  		}
+> diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
+> index 7111a4c..0827f64 100644
+> --- a/net/sunrpc/netns.h
+> +++ b/net/sunrpc/netns.h
+> @@ -29,6 +29,8 @@ struct sunrpc_net {
+>  	struct rpc_clnt *gssp_clnt;
+>  	int use_gss_proxy;
+>  	struct proc_dir_entry *use_gssp_proc;
+> +
+> +	unsigned int gssd_running;
+>  };
+>  
+>  extern int sunrpc_net_id;
+> diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+> index a9129f8..415b705 100644
+> --- a/net/sunrpc/rpc_pipe.c
+> +++ b/net/sunrpc/rpc_pipe.c
+> @@ -216,11 +216,14 @@ rpc_destroy_inode(struct inode *inode)
+>  static int
+>  rpc_pipe_open(struct inode *inode, struct file *filp)
+>  {
+> +	struct net *net = inode->i_sb->s_fs_info;
+> +	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+>  	struct rpc_pipe *pipe;
+>  	int first_open;
+>  	int res = -ENXIO;
+>  
+>  	mutex_lock(&inode->i_mutex);
+> +	sn->gssd_running = 1;
+>  	pipe = RPC_I(inode)->pipe;
+>  	if (pipe == NULL)
+>  		goto out;
+> @@ -1069,6 +1072,7 @@ void rpc_pipefs_init_net(struct net *net)
+>  	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+>  
+>  	mutex_init(&sn->pipefs_sb_lock);
+> +	sn->gssd_running = -1;
+>  }
+>  
+>  /*
+> -- 
+> 1.8.1.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
