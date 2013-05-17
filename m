@@ -1,185 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:31102 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:44062 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756536Ab3EVQux (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 May 2013 12:50:53 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 02/13] Security: Add Hook to test if the particular xattr is part of a MAC model.
-Date: Wed, 22 May 2013 12:50:35 -0400
-Message-Id: <1369241446-7680-3-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
-References: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
+	id S1756164Ab3EQN4v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 May 2013 09:56:51 -0400
+Date: Fri, 17 May 2013 09:56:47 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: James Vanns <james.vanns@framestore.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Where in the server code is fsinfo rtpref calculated?
+Message-ID: <20130517135647.GB6579@fieldses.org>
+References: <20130515174245.GN16811@fieldses.org>
+ <1246706961.20581741.1368790982374.JavaMail.root@framestore.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1246706961.20581741.1368790982374.JavaMail.root@framestore.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Fri, May 17, 2013 at 12:43:02PM +0100, James Vanns wrote:
+> > Knowing nothing about your situation, I'd assume the clients are
+> > doing that because they actually want that 1MB of data.
+> 
+> Possibly. But we have no control over that (the application read size,
+> I mean).
+> 
+> > Would you prefer they each send 1024 1k READs?  I don't understand
+> > why it's the read size you're focused on here.
+> 
+> No. But 32x 32k reads is reasonable (because it gives other RPCs a
+> look-in).
 
-The interface to request security labels from user space is the xattr
-interface. When requesting the security label from an NFS server it is
-important to make sure the requested xattr actually is a MAC label. This allows
-us to make sure that we get the desired semantics from the attribute instead of
-something else such as capabilities or a time based LSM.
+Maybe.  In any case I'd want to see data before changing our defaults.
 
-Acked-by: Eric Paris <eparis@redhat.com>
-Acked-by: James Morris <james.l.morris@oracle.com>
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- include/linux/security.h   | 14 ++++++++++++++
- security/capability.c      |  6 ++++++
- security/security.c        |  6 ++++++
- security/selinux/hooks.c   |  6 ++++++
- security/smack/smack_lsm.c | 11 +++++++++++
- 5 files changed, 43 insertions(+)
+> I'm focused on reads because it makes up the majority of
+> our NFS traffic. I'm concerned because as it stands (out of the box)
+> if the majority of our n knfsd threads are waiting for a 1MB read to
+> return then no other RPC request will be serviced and will just
+> contribute to the backlog. This backlog itself will probably also contain
+> a hefty no. of 1MB read requests too. In short, a lot of other RPC calls
+> that are not reads will just be blocking and this will appear to an end
+> user as poor performance.
 
-diff --git a/include/linux/security.h b/include/linux/security.h
-index c2af462..cff3e4f 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -1323,6 +1323,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
-  *	@pages contains the number of pages.
-  *	Return 0 if permission is granted.
-  *
-+ * @ismaclabel:
-+ *	Check if the extended attribute specified by @name
-+ *	represents a MAC label. Returns 1 if name is a MAC
-+ *	attribute otherwise returns 0.
-+ *	@name full extended attribute name to check against
-+ *	LSM as a MAC label.
-+ *
-  * @secid_to_secctx:
-  *	Convert secid to security context.  If secdata is NULL the length of
-  *	the result will be returned in seclen, but no secdata will be returned.
-@@ -1604,6 +1611,7 @@ struct security_operations {
- 
- 	int (*getprocattr) (struct task_struct *p, char *name, char **value);
- 	int (*setprocattr) (struct task_struct *p, char *name, void *value, size_t size);
-+	int (*ismaclabel) (const char *name);
- 	int (*secid_to_secctx) (u32 secid, char **secdata, u32 *seclen);
- 	int (*secctx_to_secid) (const char *secdata, u32 seclen, u32 *secid);
- 	void (*release_secctx) (char *secdata, u32 seclen);
-@@ -1857,6 +1865,7 @@ void security_d_instantiate(struct dentry *dentry, struct inode *inode);
- int security_getprocattr(struct task_struct *p, char *name, char **value);
- int security_setprocattr(struct task_struct *p, char *name, void *value, size_t size);
- int security_netlink_send(struct sock *sk, struct sk_buff *skb);
-+int security_ismaclabel(const char *name);
- int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen);
- int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
- void security_release_secctx(char *secdata, u32 seclen);
-@@ -2547,6 +2556,11 @@ static inline int security_netlink_send(struct sock *sk, struct sk_buff *skb)
- 	return cap_netlink_send(sk, skb);
- }
- 
-+static inline int security_ismaclabel(const char *name)
-+{
-+	return 0;
-+}
-+
- static inline int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return -EOPNOTSUPP;
-diff --git a/security/capability.c b/security/capability.c
-index 7aeec66..b3e8b93 100644
---- a/security/capability.c
-+++ b/security/capability.c
-@@ -823,6 +823,11 @@ static int cap_setprocattr(struct task_struct *p, char *name, void *value,
- 	return -EINVAL;
- }
- 
-+static int cap_ismaclabel(const char *name)
-+{
-+	return 0;
-+}
-+
- static int cap_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return -EOPNOTSUPP;
-@@ -1042,6 +1047,7 @@ void __init security_fixup_ops(struct security_operations *ops)
- 	set_to_cap_if_null(ops, d_instantiate);
- 	set_to_cap_if_null(ops, getprocattr);
- 	set_to_cap_if_null(ops, setprocattr);
-+	set_to_cap_if_null(ops, ismaclabel);
- 	set_to_cap_if_null(ops, secid_to_secctx);
- 	set_to_cap_if_null(ops, secctx_to_secid);
- 	set_to_cap_if_null(ops, release_secctx);
-diff --git a/security/security.c b/security/security.c
-index 0fe2b2e..c3ceb75 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -1057,6 +1057,12 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
- 	return security_ops->netlink_send(sk, skb);
- }
- 
-+int security_ismaclabel(const char *name)
-+{
-+	return security_ops->ismaclabel(name);
-+}
-+EXPORT_SYMBOL(security_ismaclabel);
-+
- int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return security_ops->secid_to_secctx(secid, secdata, seclen);
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index b1f7bd7..bbf219a 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -5454,6 +5454,11 @@ abort_change:
- 	return error;
- }
- 
-+static int selinux_ismaclabel(const char *name)
-+{
-+	return (strcmp(name, XATTR_SELINUX_SUFFIX) == 0);
-+}
-+
- static int selinux_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return security_sid_to_context(secid, secdata, seclen);
-@@ -5692,6 +5697,7 @@ static struct security_operations selinux_ops = {
- 	.getprocattr =			selinux_getprocattr,
- 	.setprocattr =			selinux_setprocattr,
- 
-+	.ismaclabel =			selinux_ismaclabel,
- 	.secid_to_secctx =		selinux_secid_to_secctx,
- 	.secctx_to_secid =		selinux_secctx_to_secid,
- 	.release_secctx =		selinux_release_secctx,
-diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
-index d52c780..a7f485b 100644
---- a/security/smack/smack_lsm.c
-+++ b/security/smack/smack_lsm.c
-@@ -3329,6 +3329,16 @@ static void smack_audit_rule_free(void *vrule)
- #endif /* CONFIG_AUDIT */
- 
- /**
-+ * smack_ismaclabel - check if xattr @name references a smack MAC label
-+ * @name: Full xattr name to check.
-+ */
-+static int smack_ismaclabel(const char *name)
-+{
-+	return (strcmp(name, XATTR_SMACK_SUFFIX) == 0);
-+}
-+
-+
-+/**
-  * smack_secid_to_secctx - return the smack label for a secid
-  * @secid: incoming integer
-  * @secdata: destination
-@@ -3524,6 +3534,7 @@ struct security_operations smack_ops = {
- 	.audit_rule_free =		smack_audit_rule_free,
- #endif /* CONFIG_AUDIT */
- 
-+	.ismaclabel =			smack_ismaclabel,
- 	.secid_to_secctx = 		smack_secid_to_secctx,
- 	.secctx_to_secid = 		smack_secctx_to_secid,
- 	.release_secctx = 		smack_release_secctx,
--- 
-1.8.1.4
+Do you have a performance problem that you've actually measured, and if
+so could you share the details?
 
+> We deal with a great number of fairly large files - 10s of GBs in
+> size. We just don't want others to suffer because of large request
+> sizes coming in (writes end up being of the same size too but there
+> are less of them). Our use cases are varied but they all have to share
+> the same resource (the array of NFS servers).
+> 
+> We've only really seen this since our upgrade to SL6/kernel 2.6.32. I
+> guess previously that 32k was some sort of default or limit?
+> 
+> Related to this was my query on when/how the (Linux) client may honour
+> the preferred or optimal block size given in the FSINFO reply. Any
+> ideas? Is it if a read of less than that preferred block size is
+> requested then the preferred is used anyway because it comes at the
+> same cost?
+
+I'm not terribly familiar with the client logic, but would expect this
+to vary depending on kernel version, read-ahead policy, application
+behavior and a number of other factors, so I'd recommend testing with
+your workload and finding out.
+
+--b.
