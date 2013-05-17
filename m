@@ -1,56 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:22528 "EHLO mx1.redhat.com"
+Received: from mout.perfora.net ([74.208.4.194]:54441 "EHLO mout.perfora.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758700Ab3EDHsb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 4 May 2013 03:48:31 -0400
-Subject: [PATCH] Give the OID registry file module info to avoid kernel
- tainting
-To: torvalds@linux-foundation.org
-From: David Howells <dhowells@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Dros Adamson <Weston.Adamson@netapp.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Date: Sat, 04 May 2013 08:48:27 +0100
-Message-ID: <20130504074827.21933.61711.stgit@warthog.procyon.org.uk>
+	id S1755785Ab3EQQuq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 May 2013 12:50:46 -0400
+Date: Fri, 17 May 2013 12:50:38 -0400
+From: Jim Rees <rees@umich.edu>
+To: Joakim Tjernlund <joakim.tjernlund@transmode.se>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Is the code stateid_generation_after()in legal C?
+Message-ID: <20130517165038.GA7147@umich.edu>
+References: <OFD54C462E.9A1446D0-ONC1257B6E.004D4190-C1257B6E.00507192@transmode.se>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <OFD54C462E.9A1446D0-ONC1257B6E.004D4190-C1257B6E.00507192@transmode.se>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Give the OID registry file module information so that it doesn't taint the
-kernel when compiled as a module and loaded.
+Joakim Tjernlund wrote:
 
-Reported-by: Dros Adamson <Weston.Adamson@netapp.com>
-Signed-off-by: David Howells <dhowells@redhat.com>
-cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-cc: stable@vger.kernel.org
-cc: linux-nfs@vger.kernel.org
----
+  static bool stateid_generation_after(stateid_t *a, stateid_t *b)
+  {
+          return (s32)a->si_generation - (s32)b->si_generation > 0;
+  }
+  
+  overflow is undefined for signed integers and gcc uses that nowadays.
+  Not sure if that can affect the above code?
 
- lib/oid_registry.c |    5 +++++
- 1 file changed, 5 insertions(+)
+I guess the intent there is to account for stateid wraparound. But it's not
+clear to me this is doing the right thing. I think C specifies overflow
+behavior for unsigned but not signed. So shouldn't it be something more like
+this?
 
-diff --git a/lib/oid_registry.c b/lib/oid_registry.c
-index d8de11f..318f382 100644
---- a/lib/oid_registry.c
-+++ b/lib/oid_registry.c
-@@ -9,6 +9,7 @@
-  * 2 of the Licence, or (at your option) any later version.
-  */
- 
-+#include <linux/module.h>
- #include <linux/export.h>
- #include <linux/oid_registry.h>
- #include <linux/kernel.h>
-@@ -16,6 +17,10 @@
- #include <linux/bug.h>
- #include "oid_registry_data.c"
- 
-+MODULE_DESCRIPTION("OID Registry");
-+MODULE_AUTHOR("Red Hat, Inc.");
-+MODULE_LICENSE("GPL");
-+
- /**
-  * look_up_OID - Find an OID registration for the specified data
-  * @data: Binary representation of the OID
+    (s32)(a->si_generation - b->si_generation) > 0
 
+Either way, this probably deserves a comment.
