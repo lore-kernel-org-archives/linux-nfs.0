@@ -1,77 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f182.google.com ([74.125.82.182]:55247 "EHLO
-	mail-we0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756416Ab3EKCny (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:43:54 -0400
-Received: by mail-we0-f182.google.com with SMTP id t60so4578971wes.41
-        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:43:53 -0700 (PDT)
-Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
-        by mx.google.com with ESMTPSA id o3sm1408120wia.2.2013.05.10.19.43.52
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 10 May 2013 19:43:53 -0700 (PDT)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 21/38] SQUASHME: pnfsd: return bool from merge_layout and fix not found path
-Date: Sat, 11 May 2013 05:43:48 +0300
-Message-Id: <1368240228-32538-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <518B6377.3000207@tonian.com>
-References: <518B6377.3000207@tonian.com>
+Received: from mx12.netapp.com ([216.240.18.77]:22293 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756504Ab3EQR4X convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 May 2013 13:56:23 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/3] SUNRPC: Convert auth_gss pipe detection to work in
+ namespaces
+Date: Fri, 17 May 2013 17:55:28 +0000
+Message-ID: <1368813327.9073.5.camel@leira.trondhjem.org>
+References: <1368647441-24815-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1368647441-24815-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1368647441-24815-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <1368647441-24815-4-git-send-email-Trond.Myklebust@netapp.com>
+	 <20130516202142.GB3216@fieldses.org>
+In-Reply-To: <20130516202142.GB3216@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This also fixes the false return when no layout is found
-(previously a non NULL pointer was returned)
+On Thu, 2013-05-16 at 16:21 -0400, J. Bruce Fields wrote:
+> On Wed, May 15, 2013 at 12:50:41PM -0700, Trond Myklebust wrote:
+> > This seems to have been overlooked when we did the namespace
+> > conversion. If a container is running a legacy version of rpc.gssd
+> > then it will be disrupted if the global 'pipe_version' is set by a
+> > container running the new version of rpc.gssd.
+> 
+> Might be worth deprecating the "legacy" version--add a warning in for
+> any users and then remove it if we don't see any evidence anyone's hit
+> it recently.
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/nfs4pnfsd.c | 11 ++++++-----
- 1 file changed, 6 insertions(+), 5 deletions(-)
+Possibly, however given that we're still seeing distros using the binary
+mount interface that was replaced 6 years ago...
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index 0bde7b7..ff688cb 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -578,7 +578,7 @@ struct super_block *
- /*
-  * are two octet ranges overlapping or adjacent?
-  */
--static int
-+static bool
- lo_seg_mergeable(struct nfsd4_layout_seg *l1, struct nfsd4_layout_seg *l2)
- {
- 	u64 start1 = l1->offset;
-@@ -615,25 +615,26 @@ struct super_block *
- 		      lo_end : lo_end - lo_start;
- }
- 
--static struct nfs4_layout *
-+static bool
- merge_layout(struct nfs4_file *fp,
- 	     struct nfs4_client *clp,
- 	     struct nfsd4_layout_seg *seg)
- {
--	struct nfs4_layout *lp = NULL;
-+	bool ret = false;
-+	struct nfs4_layout *lp;
- 
- 	spin_lock(&layout_lock);
- 	list_for_each_entry (lp, &fp->fi_layouts, lo_perfile)
- 		if (lp->lo_seg.layout_type == seg->layout_type &&
- 		    lp->lo_seg.clientid == seg->clientid &&
- 		    lp->lo_seg.iomode == seg->iomode &&
--		    lo_seg_mergeable(&lp->lo_seg, seg)) {
-+		    (ret = lo_seg_mergeable(&lp->lo_seg, seg))) {
- 			extend_layout(&lp->lo_seg, seg);
- 			break;
- 		}
- 	spin_unlock(&layout_lock);
- 
--	return lp;
-+	return ret;
- }
- 
- __be32
 -- 
-1.7.11.7
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
