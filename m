@@ -1,37 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from dcvr.yhbt.net ([64.71.152.64]:53361 "EHLO dcvr.yhbt.net"
+Received: from gw1.transmode.se ([195.58.98.146]:59566 "EHLO gw1.transmode.se"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753854Ab3EOToH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 May 2013 15:44:07 -0400
-Date: Wed, 15 May 2013 19:44:05 +0000
-From: Eric Wong <normalperson@yhbt.net>
-To: Zach Brown <zab@redhat.com>
-Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [RFC v0 1/4] vfs: add copy_range syscall and vfs entry point
-Message-ID: <20130515194405.GA28720@dcvr.yhbt.net>
-References: <1368566126-17610-1-git-send-email-zab@redhat.com>
- <1368566126-17610-2-git-send-email-zab@redhat.com>
+	id S1753615Ab3ERMKM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 18 May 2013 08:10:12 -0400
+In-Reply-To: <20130517165038.GA7147@umich.edu>
+References: <OFD54C462E.9A1446D0-ONC1257B6E.004D4190-C1257B6E.00507192@transmode.se> <20130517165038.GA7147@umich.edu>
+To: Jim Rees <rees@umich.edu>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1368566126-17610-2-git-send-email-zab@redhat.com>
+Subject: Re: Is the code stateid_generation_after()in legal C?
+From: Joakim Tjernlund <joakim.tjernlund@transmode.se>
+Message-ID: <OF34F194FB.237EF963-ONC1257B6F.0041DA05-C1257B6F.0042D90F@transmode.se>
+Date: Sat, 18 May 2013 14:10:08 +0200
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Zach Brown <zab@redhat.com> wrote:
-> This adds a syscall and vfs entry point for clone_range which offloads
-> data copying between existing files.
+Jim Rees <rees@umich.edu> wrote on 2013/05/17 18:50:38:
 > 
-> The syscall is a thin wrapper around the vfs entry point.  Its arguments
-> are inspired by sys_splice().
+> Joakim Tjernlund wrote:
+> 
+>   static bool stateid_generation_after(stateid_t *a, stateid_t *b)
+>   {
+>           return (s32)a->si_generation - (s32)b->si_generation > 0;
+>   }
+> 
+>   overflow is undefined for signed integers and gcc uses that nowadays.
+>   Not sure if that can affect the above code?
+> 
+> I guess the intent there is to account for stateid wraparound. But it's 
+not
+> clear to me this is doing the right thing. I think C specifies overflow
+> behavior for unsigned but not signed. 
 
-Why introduce a new syscall instead of extending sys_splice?
+Right, the below test prog demonstrates the signed overflow problem in 
+newer gcc's
+#include <assert.h>
 
-Perhaps adding a new SPLICE_F_COPYRANGE flag to avoid compatibility
-problems with userspace which may expect ESPIPE when given two non-pipes
-would be useful.
+int foo(int a) {
+  assert(a+100 > a);
+  printf("%d %d\n",a+100,a);
+  return a;
+}
 
-If the user doesn't need a out offset, then sendfile() should also be
-able to transparently utilize COPY/CLONE_RANGE, too.
+int main() {
+  foo(100);
+  foo(0x7fffffff);
+}
+
+> So shouldn't it be something more like this?
+> 
+>     (s32)(a->si_generation - b->si_generation) > 0
+> 
+> Either way, this probably deserves a comment.
