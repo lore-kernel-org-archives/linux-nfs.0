@@ -1,43 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f50.google.com ([74.125.82.50]:47963 "EHLO
-	mail-wg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756664Ab3EKCo2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:44:28 -0400
-Received: by mail-wg0-f50.google.com with SMTP id m15so4731164wgh.29
-        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:44:27 -0700 (PDT)
-Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
-        by mx.google.com with ESMTPSA id f2sm1147848wiv.11.2013.05.10.19.44.26
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 10 May 2013 19:44:27 -0700 (PDT)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 30/38] pnfsd-lexp: fixup recall_layout
-Date: Sat, 11 May 2013 05:44:23 +0300
-Message-Id: <1368240263-880-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <518B6377.3000207@tonian.com>
-References: <518B6377.3000207@tonian.com>
+Received: from esgaroth.petrovitsch.at ([78.47.184.11]:2161 "EHLO
+	esgaroth.petrovitsch.priv.at" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752987Ab3ERLTP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 May 2013 07:19:15 -0400
+Subject: Re: [PATCH v2] nfsd: avoid undefined signed overflow
+From: Bernd Petrovitsch <bernd@petrovitsch.priv.at>
+To: Jim Rees <rees@umich.edu>
+Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Date: Sat, 18 May 2013 13:04:00 +0200
+In-Reply-To: <1368826380-9864-1-git-send-email-rees@umich.edu>
+References: <1368826380-9864-1-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1368875049.11003.31.camel@thorin>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/pnfsd_lexp.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+On Fre, 2013-05-17 at 17:33 -0400, Jim Rees wrote:
+> In C, signed integer overflow results in undefined behavior, but unsigned
+> overflow wraps around. So do the subtraction first, then cast to signed.
+> 
+> Suggested-by: Joakim Tjernlund <joakim.tjernlund@transmode.se>
+> Signed-off-by: Jim Rees <rees@umich.edu>
+> ---
+>  fs/nfsd/nfs4state.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 316ec84..9850329 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -3427,7 +3427,7 @@ grace_disallows_io(struct net *net, struct inode *inode)
+>  /* Returns true iff a is later than b: */
+>  static bool stateid_generation_after(stateid_t *a, stateid_t *b)
+>  {
+> -	return (s32)a->si_generation - (s32)b->si_generation > 0;
+> +	return (s32)(a->si_generation - b->si_generation) > 0;
+>  }
 
-diff --git a/fs/nfsd/pnfsd_lexp.c b/fs/nfsd/pnfsd_lexp.c
-index 5d448c2..79a4bc1 100644
---- a/fs/nfsd/pnfsd_lexp.c
-+++ b/fs/nfsd/pnfsd_lexp.c
-@@ -253,7 +253,7 @@ static int get_stripe_unit(int blocksize)
- static bool
- has_layout(struct nfs4_file *fp)
- {
--	return !list_empty(&fp->fi_layouts);
-+	return !list_empty(&fp->fi_lo_states);
- }
- 
- /*
+Hmm, what is actually wrong with plain-old
+----  snip  ----
+static bool stateid_generation_after(stateid_t *a, stateid_t *b)
+{
+	return a->si_generation > b->si_generation;
+}
+----  snip  ----
+?
+
+Kind regards,
+	Bernd
 -- 
-1.7.11.7
+Bernd Petrovitsch                  Email : bernd@petrovitsch.priv.at
+                     LUGA : http://www.luga.at
 
