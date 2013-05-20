@@ -1,46 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f172.google.com ([74.125.82.172]:49226 "EHLO
-	mail-we0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757076Ab3EKCnr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:43:47 -0400
-Received: by mail-we0-f172.google.com with SMTP id w60so4517507wes.31
-        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:43:46 -0700 (PDT)
-Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
-        by mx.google.com with ESMTPSA id e8sm1217632wic.5.2013.05.10.19.43.44
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 10 May 2013 19:43:45 -0700 (PDT)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 19/38] SQUASHME: pnfsd: get rid of depdency on nfsd_serv starting 3.8
-Date: Sat, 11 May 2013 05:43:41 +0300
-Message-Id: <1368240221-32455-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <518B6377.3000207@tonian.com>
-References: <518B6377.3000207@tonian.com>
+Received: from mx2.netapp.com ([216.240.18.37]:51236 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754154Ab3ETTGI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 May 2013 15:06:08 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 05/13] NFSv4.2: Added NFS v4.2 support to the NFS client
+Date: Mon, 20 May 2013 19:06:05 +0000
+Message-ID: <1369076762.6115.18.camel@leira.trondhjem.org>
+References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
+	 <1368719808-14584-6-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1368719808-14584-6-git-send-email-SteveD@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/nfs4pnfsd.c | 5 -----
- 1 file changed, 5 deletions(-)
+On Thu, 2013-05-16 at 11:56 -0400, Steve Dickson wrote:
+> From: Steve Dickson <steved@redhat.com>
+> 
+> This enable NFSv4.2 support. To enable this code the
+> CONFIG_NFS_V4_2 Kconfig define needs to be set and
+> the -o v4.2 mount option need to be used.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  fs/nfs/Kconfig        |  9 +++++++++
+>  fs/nfs/callback.c     |  1 +
+>  fs/nfs/callback_xdr.c |  6 +++---
+>  fs/nfs/nfs4client.c   |  5 +++++
+>  fs/nfs/nfs4proc.c     | 15 +++++++++++++++
+>  fs/nfs/super.c        |  7 ++++++-
+>  include/linux/nfs4.h  |  4 ++++
+>  7 files changed, 43 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+> index 13ca196..79c500e 100644
+> --- a/fs/nfs/Kconfig
+> +++ b/fs/nfs/Kconfig
+> @@ -104,6 +104,15 @@ config NFS_V4_1
+>  
+>  	  If unsure, say N.
+>  
+> +config NFS_V4_2
+> +	bool "NFS client support for NFSv4.2"
+> +	depends on NFS_V4_1
+> +	help
+> +	  This option enables support for minor version 1 of the NFSv4 protocol
+> +	  in the kernel's NFS client.
+> +
+> +	  If unsure, say N.
+> +
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index 24c19b3..48104fb 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -1446,11 +1446,6 @@ struct create_recall_list_arg {
- 	       cbl->cbl_seg.iomode != IOMODE_RW &&
- 	       cbl->cbl_seg.iomode != IOMODE_ANY);
- 
--	if (nfsd_serv == NULL) {
--		dprintk("NFSD nfsd_layout_recall_cb: nfsd_serv == NULL\n");
--		return -ENOENT;
--	}
--
- 	if (!with_nfs4_state_lock)
- 		nfs4_lock_state();
- 	status = -ENOENT;
+N
+
+I want to enable support for minor version 2!
+
 -- 
-1.7.11.7
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
