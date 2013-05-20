@@ -1,371 +1,158 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40718 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:13268 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756698Ab3EVQu7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 May 2013 12:50:59 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+	id S1752710Ab3ETTlZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 May 2013 15:41:25 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
         Linux FS devel list <linux-fsdevel@vger.kernel.org>,
         Linux Security List <linux-security-module@vger.kernel.org>,
         SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 10/13] NFS: Add label lifecycle management
-Date: Wed, 22 May 2013 12:50:43 -0400
-Message-Id: <1369241446-7680-11-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
-References: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
+Subject: Re: [PATCH 11/13] NFS: Client implementation of Labeled-NFS
+Date: Mon, 20 May 2013 19:40:55 +0000
+Message-ID: <1369078846.6115.39.camel@leira.trondhjem.org>
+References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
+	 <1368719808-14584-12-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1368719808-14584-12-git-send-email-SteveD@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Thu, 2013-05-16 at 11:56 -0400, Steve Dickson wrote:
+> From: Steve Dickson <steved@redhat.com>
+> 
+> This patch implements the client transport and handling support for labeled
+> NFS. The patch adds two functions to encode and decode the security label
+> recommended attribute which makes use of the LSM hooks added earlier. It also
+> adds code to grab the label from the file attribute structures and encode the
+> label to be sent back to the server.
+> 
+> Acked-by: James Morris <james.l.morris@oracle.com>
+> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
 
->From David Quigley <dpquigl@davequigley.com>
+<snip>
 
-This patch adds the lifecycle management for the security label structure
-introduced in an earlier patch. The label is not used yet but allocations and
-freeing of the structure is handled.
+>  
+> +static int decode_attr_security_label(struct xdr_stream *xdr, uint32_t *bitmap,
+> +					struct nfs4_label *label)
+> +{
+> +	uint32_t pi = 0;
+> +	uint32_t lfs = 0;
+> +	__u32 len;
+> +	__be32 *p;
+> +	int status = 0;
+> +
+> +	if (unlikely(bitmap[2] & (FATTR4_WORD2_SECURITY_LABEL - 1U)))
+> +		return -EIO;
+> +	if (likely(bitmap[2] & FATTR4_WORD2_SECURITY_LABEL)) {
+> +		p = xdr_inline_decode(xdr, 4);
+> +		if (unlikely(!p))
+> +			goto out_overflow;
+> +		lfs = be32_to_cpup(p++);
+> +		p = xdr_inline_decode(xdr, 4);
+> +		if (unlikely(!p))
+> +			goto out_overflow;
+> +		pi = be32_to_cpup(p++);
+> +		p = xdr_inline_decode(xdr, 4);
+> +		if (unlikely(!p))
+> +			goto out_overflow;
+> +		len = be32_to_cpup(p++);
+> +		p = xdr_inline_decode(xdr, len);
+> +		if (unlikely(!p))
+> +			goto out_overflow;
+> +		if (len < NFS4_MAXLABELLEN) {
+> +			if (label) {
+> +				memcpy(label->label, p, len);
+> +				label->len = len;
+> +				label->pi = pi;
+> +				label->lfs = lfs;
+> +				status = NFS_ATTR_FATTR_V4_SECURITY_LABEL;
+> +			}
+> +			bitmap[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
+> +		} else
+> +			printk(KERN_WARNING "%s: label too long (%u)!\n",
+> +					__func__, len);
+> +	}
+> +	if (label && label->label)
+> +		dprintk("%s: label=%s, len=%d, PI=%d, LFS=%d\n", __func__,
+> +			(char *)label->label, label->len, label->pi, label->lfs);
+> +	return status;
+> +
+> +out_overflow:
+> +	print_overflow_msg(__func__, xdr);
+> +	return -EIO;
+> +}
+> +
+>  static int decode_attr_time_modify(struct xdr_stream *xdr, uint32_t *bitmap, struct timespec *time)
+>  {
+>  	int status = 0;
+> @@ -4384,7 +4465,7 @@ out_overflow:
+>  
+>  static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
+>  		struct nfs_fattr *fattr, struct nfs_fh *fh,
+> -		struct nfs4_fs_locations *fs_loc,
+> +		struct nfs4_fs_locations *fs_loc, struct nfs4_label *label,
+>  		const struct nfs_server *server)
+>  {
+>  	int status;
+> @@ -4492,6 +4573,13 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
+>  	if (status < 0)
+>  		goto xdr_error;
+>  
+> +	if (label) {
+> +		status = decode_attr_security_label(xdr, bitmap, label);
+> +		if (status < 0)
+> +			goto xdr_error;
+> +		fattr->valid |= status;
+> +	}
+> +
+>  xdr_error:
+>  	dprintk("%s: xdr returned %d\n", __func__, -status);
+>  	return status;
+> @@ -4499,7 +4587,7 @@ xdr_error:
+>  
+>  static int decode_getfattr_generic(struct xdr_stream *xdr, struct nfs_fattr *fattr,
+>  		struct nfs_fh *fh, struct nfs4_fs_locations *fs_loc,
+> -		const struct nfs_server *server)
+> +		struct nfs4_label *label, const struct nfs_server *server)
+>  {
+>  	unsigned int savep;
+>  	uint32_t attrlen,
+> @@ -4518,7 +4606,8 @@ static int decode_getfattr_generic(struct xdr_stream *xdr, struct nfs_fattr *fat
+>  	if (status < 0)
+>  		goto xdr_error;
+>  
+> -	status = decode_getfattr_attrs(xdr, bitmap, fattr, fh, fs_loc, server);
+> +	status = decode_getfattr_attrs(xdr, bitmap, fattr, fh, fs_loc,
+> +					label, server);
+>  	if (status < 0)
+>  		goto xdr_error;
+>  
+> @@ -4529,9 +4618,9 @@ xdr_error:
+>  }
+>  
+>  static int decode_getfattr(struct xdr_stream *xdr, struct nfs_fattr *fattr,
+> -		const struct nfs_server *server)
+> +		struct nfs4_label *label, const struct nfs_server *server)
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- fs/nfs/dir.c      | 23 ++++++++++++++++++-
- fs/nfs/inode.c    | 15 +++++++++---
- fs/nfs/nfs4proc.c | 69 +++++++++++++++++++++++++++++++++++++++++++++++++------
- 3 files changed, 96 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index e9ab2cd..736b607 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -585,10 +585,16 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
- 	if (entry.fh == NULL || entry.fattr == NULL)
- 		goto out;
- 
-+	entry.label = nfs4_label_alloc(NFS_SERVER(inode), GFP_NOWAIT);
-+	if (IS_ERR(entry.label)) {
-+		status = PTR_ERR(entry.label);
-+		goto out;
-+	}
-+
- 	array = nfs_readdir_get_array(page);
- 	if (IS_ERR(array)) {
- 		status = PTR_ERR(array);
--		goto out;
-+		goto out_label_free;
- 	}
- 	memset(array, 0, sizeof(struct nfs_cache_array));
- 	array->eof_index = -1;
-@@ -614,6 +620,8 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
- 	nfs_readdir_free_large_page(pages_ptr, pages, array_size);
- out_release_array:
- 	nfs_readdir_release_array(page);
-+out_label_free:
-+	nfs4_label_free(entry.label);
- out:
- 	nfs_free_fattr(entry.fattr);
- 	nfs_free_fhandle(entry.fh);
-@@ -1083,6 +1091,10 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 	if (fhandle == NULL || fattr == NULL)
- 		goto out_error;
- 
-+	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_NOWAIT);
-+	if (IS_ERR(label))
-+		goto out_error;
-+
- 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, label);
- 	if (error)
- 		goto out_bad;
-@@ -1093,6 +1105,8 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fhandle);
-+	nfs4_label_free(label);
-+
- out_set_verifier:
- 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
-  out_valid:
-@@ -1109,6 +1123,7 @@ out_zap_parent:
-  out_bad:
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fhandle);
-+	nfs4_label_free(label);
- 	nfs_mark_for_revalidate(dir);
- 	if (inode && S_ISDIR(inode->i_mode)) {
- 		/* Purge readdir caches. */
-@@ -1129,6 +1144,7 @@ out_zap_parent:
- out_error:
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fhandle);
-+	nfs4_label_free(label);
- 	dput(parent);
- 	dfprintk(LOOKUPCACHE, "NFS: %s(%s/%s) lookup returned error %d\n",
- 			__func__, dentry->d_parent->d_name.name,
-@@ -1284,6 +1300,10 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
- 	if (fhandle == NULL || fattr == NULL)
- 		goto out;
- 
-+	label = nfs4_label_alloc(NFS_SERVER(dir), GFP_NOWAIT);
-+	if (IS_ERR(label))
-+		goto out;
-+
- 	parent = dentry->d_parent;
- 	/* Protect against concurrent sillydeletes */
- 	nfs_block_sillyrename(parent);
-@@ -1312,6 +1332,7 @@ no_entry:
- 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
- out_unblock_sillyrename:
- 	nfs_unblock_sillyrename(parent);
-+	nfs4_label_free(label);
- out:
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fhandle);
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 58e7bf8..12e8ad8 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -836,6 +836,13 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
- 		goto out;
- 
- 	nfs_inc_stats(inode, NFSIOS_INODEREVALIDATE);
-+
-+	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_KERNEL);
-+	if (IS_ERR(label)) {
-+		status = PTR_ERR(label);
-+		goto out;
-+	}
-+
- 	status = NFS_PROTO(inode)->getattr(server, NFS_FH(inode), fattr, label);
- 	if (status != 0) {
- 		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) getattr failed, error=%d\n",
-@@ -846,7 +853,7 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
- 			if (!S_ISDIR(inode->i_mode))
- 				set_bit(NFS_INO_STALE, &NFS_I(inode)->flags);
- 		}
--		goto out;
-+		goto err_out;
- 	}
- 
- 	status = nfs_refresh_inode(inode, fattr);
-@@ -854,7 +861,7 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
- 		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) refresh failed, error=%d\n",
- 			 inode->i_sb->s_id,
- 			 (long long)NFS_FILEID(inode), status);
--		goto out;
-+		goto err_out;
- 	}
- 
- 	if (nfsi->cache_validity & NFS_INO_INVALID_ACL)
-@@ -864,7 +871,9 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
- 		inode->i_sb->s_id,
- 		(long long)NFS_FILEID(inode));
- 
-- out:
-+err_out:
-+	nfs4_label_free(label);
-+out:
- 	nfs_free_fattr(fattr);
- 	return status;
- }
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 004de20..e9488f5 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -833,9 +833,14 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 	p = kzalloc(sizeof(*p), gfp_mask);
- 	if (p == NULL)
- 		goto err;
-+
-+	p->f_label = nfs4_label_alloc(server, gfp_mask);
-+	if (IS_ERR(p->f_label))
-+		goto err_free_p;
-+
- 	p->o_arg.seqid = nfs_alloc_seqid(&sp->so_seqid, gfp_mask);
- 	if (p->o_arg.seqid == NULL)
--		goto err_free;
-+		goto err_free_label;
- 	nfs_sb_active(dentry->d_sb);
- 	p->dentry = dget(dentry);
- 	p->dir = parent;
-@@ -889,7 +894,10 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 	nfs4_init_opendata_res(p);
- 	kref_init(&p->kref);
- 	return p;
--err_free:
-+
-+err_free_label:
-+	nfs4_label_free(p->f_label);
-+err_free_p:
- 	kfree(p);
- err:
- 	dput(parent);
-@@ -906,6 +914,9 @@ static void nfs4_opendata_free(struct kref *kref)
- 	if (p->state != NULL)
- 		nfs4_put_open_state(p->state);
- 	nfs4_put_state_owner(p->owner);
-+
-+	nfs4_label_free(p->f_label);
-+
- 	dput(p->dir);
- 	dput(p->dentry);
- 	nfs_sb_deactive(sb);
-@@ -2020,10 +2031,18 @@ static int _nfs4_do_open(struct inode *dir,
- 	if (opendata == NULL)
- 		goto err_put_state_owner;
- 
-+	if (label) {
-+		olabel = nfs4_label_alloc(server, GFP_KERNEL);
-+		if (IS_ERR(olabel)) {
-+			status = PTR_ERR(olabel);
-+			goto err_opendata_put;
-+		}
-+	}
-+
- 	if (ctx_th && server->attr_bitmask[2] & FATTR4_WORD2_MDSTHRESHOLD) {
- 		opendata->f_attr.mdsthreshold = pnfs_mdsthreshold_alloc();
- 		if (!opendata->f_attr.mdsthreshold)
--			goto err_opendata_put;
-+			goto err_free_label;
- 		opendata->o_arg.open_bitmap = &nfs4_pnfs_open_bitmap[0];
- 	}
- 	if (dentry->d_inode != NULL)
-@@ -2031,7 +2050,7 @@ static int _nfs4_do_open(struct inode *dir,
- 
- 	status = _nfs4_open_and_get_state(opendata, fmode, flags, &state);
- 	if (status != 0)
--		goto err_opendata_put;
-+		goto err_free_label;
- 
- 	if ((opendata->o_arg.open_flags & O_EXCL) &&
- 	    (opendata->o_arg.createmode != NFS4_CREATE_GUARDED)) {
-@@ -2053,10 +2072,14 @@ static int _nfs4_do_open(struct inode *dir,
- 		kfree(opendata->f_attr.mdsthreshold);
- 	opendata->f_attr.mdsthreshold = NULL;
- 
-+	nfs4_label_free(olabel);
-+
- 	nfs4_opendata_put(opendata);
- 	nfs4_put_state_owner(sp);
- 	*res = state;
- 	return 0;
-+err_free_label:
-+	nfs4_label_free(olabel);
- err_opendata_put:
- 	kfree(opendata->f_attr.mdsthreshold);
- 	nfs4_opendata_put(opendata);
-@@ -2670,16 +2693,23 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *mntfh,
- 		return error;
- 	}
- 
-+	label = nfs4_label_alloc(server, GFP_KERNEL);
-+	if (IS_ERR(label))
-+		return PTR_ERR(label);
-+
- 	error = nfs4_proc_getattr(server, mntfh, fattr, label);
- 	if (error < 0) {
- 		dprintk("nfs4_get_root: getattr error = %d\n", -error);
--		return error;
-+		goto err_free_label;
- 	}
- 
- 	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
- 	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
- 		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
- 
-+err_free_label:
-+	nfs4_label_free(label);
-+
- 	return error;
- }
- 
-@@ -2785,6 +2815,7 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 	struct inode *inode = dentry->d_inode;
- 	struct rpc_cred *cred = NULL;
- 	struct nfs4_state *state = NULL;
-+	struct nfs4_label *label = NULL;
- 	int status;
- 
- 	if (pnfs_ld_layoutret_on_setattr(inode))
-@@ -2811,9 +2842,15 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 		}
- 	}
- 
--	status = nfs4_do_setattr(inode, cred, fattr, sattr, state, NULL, NULL);
-+	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_KERNEL);
-+	if (IS_ERR(label))
-+		return PTR_ERR(label);
-+
-+	status = nfs4_do_setattr(inode, cred, fattr, sattr, state, NULL, label);
- 	if (status == 0)
- 		nfs_setattr_update_inode(inode, sattr);
-+
-+	nfs4_label_free(label);
- 	return status;
- }
- 
-@@ -3193,7 +3230,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		.rpc_resp = &res,
- 	};
- 	int status = -ENOMEM;
--	
-+
- 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(old_dir, &res.old_cinfo);
-@@ -3240,11 +3277,21 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
- 	if (res.fattr == NULL)
- 		goto out;
- 
-+	res.label = nfs4_label_alloc(server, GFP_KERNEL);
-+	if (IS_ERR(res.label)) {
-+		status = PTR_ERR(res.label);
-+		goto out;
-+	}
-+
- 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(dir, &res.cinfo);
- 		nfs_post_op_update_inode(inode, res.fattr);
- 	}
-+
-+
-+	nfs4_label_free(res.label);
-+
- out:
- 	nfs_free_fattr(res.fattr);
- 	return status;
-@@ -3280,6 +3327,10 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
- 	if (data != NULL) {
- 		struct nfs_server *server = NFS_SERVER(dir);
- 
-+		data->label = nfs4_label_alloc(server, GFP_KERNEL);
-+		if (IS_ERR(data->label))
-+			goto out_free;
-+
- 		data->msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CREATE];
- 		data->msg.rpc_argp = &data->arg;
- 		data->msg.rpc_resp = &data->res;
-@@ -3296,6 +3347,9 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
- 		nfs_fattr_init(data->res.fattr);
- 	}
- 	return data;
-+out_free:
-+	kfree(data);
-+	return NULL;
- }
- 
- static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_createdata *data)
-@@ -3311,6 +3365,7 @@ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_
- 
- static void nfs4_free_createdata(struct nfs4_createdata *data)
- {
-+	nfs4_label_free(data->label);
- 	kfree(data);
- }
- 
+Can we please just add a 'decode_getfattr_labeled()' so that we don't
+have to go through all this extra churn with adding NULL arguments to
+all the decode_getfattr() users?
+
+
 -- 
-1.8.1.4
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
