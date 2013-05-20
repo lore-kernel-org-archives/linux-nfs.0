@@ -1,69 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-o-3.desy.de ([131.169.56.156]:59791 "EHLO smtp-o-3.desy.de"
+Received: from mx12.netapp.com ([216.240.18.77]:36180 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754865Ab3EVKAH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 May 2013 06:00:07 -0400
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id C02E02800D9
-	for <linux-nfs@vger.kernel.org>; Wed, 22 May 2013 12:00:05 +0200 (CEST)
-Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
-	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 712761215
-	for <linux-nfs@vger.kernel.org>; Wed, 22 May 2013 12:00:03 +0200 (MEST)
-Received: from smtp-intra-1.desy.de (lb-40-26.desy.de) by ZITSWEEP2.win.desy.de
- (Clearswift SMTPRS 5.4.1) with ESMTP id <Tabd885058183a961601220@ZITSWEEP2.win.desy.de> for <linux-nfs@vger.kernel.org>;
- Wed, 22 May 2013 12:00:03 +0200
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+	id S1755489Ab3ETRSE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 May 2013 13:18:04 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH] nfs: include invalid uid/gid in the error message
-Date: Wed, 22 May 2013 11:59:54 +0200
-Message-Id: <1369216794-18044-1-git-send-email-tigran.mkrtchyan@desy.de>
+Subject: [PATCH 6/6] NFSv4.1: Enable state protection
+Date: Mon, 20 May 2013 13:17:07 -0400
+Message-Id: <1369070227-40671-6-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1369070227-40671-5-git-send-email-Trond.Myklebust@netapp.com>
+References: <1369070227-40671-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1369070227-40671-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1369070227-40671-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1369070227-40671-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1369070227-40671-5-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-if client receives an invalid uid/gid debug message is generated.
-Unfortunately the actual invalid value is not included.
+Use the EXCHGID4_FLAG_BIND_PRINC_STATEID exchange_id flag to enable
+stateid protection. This means that if we create a stateid using a
+particular principal, then we must use the same principal if we
+want to change that state.
+IOW: if we OPEN a file using a particular credential, then we have
+to use the same credential in subsequent OPEN_DOWNGRADE, CLOSE,
+or DELEGRETURN operations that use that stateid.
 
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs2xdr.c | 4 ++--
- fs/nfs/nfs3xdr.c | 4 ++--
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4proc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 62db136..85c0646 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -319,10 +319,10 @@ static int decode_fattr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
- 
- 	return 0;
- out_uid:
--	dprintk("NFS: returned invalid uid\n");
-+	dprintk("NFS: returned invalid uid %d\n", fattr->uid);
- 	return -EINVAL;
- out_gid:
--	dprintk("NFS: returned invalid gid\n");
-+	dprintk("NFS: returned invalid gid %d\n", fattr->gid);
- 	return -EINVAL;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index fa6d721..cd52069 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -680,10 +680,10 @@ static int decode_fattr3(struct xdr_stream *xdr, struct nfs_fattr *fattr)
- 	fattr->valid |= NFS_ATTR_FATTR_V3;
- 	return 0;
- out_uid:
--	dprintk("NFS: returned invalid uid\n");
-+	dprintk("NFS: returned invalid uid %d\n", fattr->uid);
- 	return -EINVAL;
- out_gid:
--	dprintk("NFS: returned invalid gid\n");
-+	dprintk("NFS: returned invalid gid %d\n", fattr->gid);
- 	return -EINVAL;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7cdc706..3e21d43 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5528,7 +5528,8 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 	struct nfs41_exchange_id_args args = {
+ 		.verifier = &verifier,
+ 		.client = clp,
+-		.flags = EXCHGID4_FLAG_SUPP_MOVED_REFER,
++		.flags = EXCHGID4_FLAG_SUPP_MOVED_REFER |
++			EXCHGID4_FLAG_BIND_PRINC_STATEID,
+ 	};
+ 	struct nfs41_exchange_id_res res = {
+ 		0
 -- 
 1.8.1.4
 
