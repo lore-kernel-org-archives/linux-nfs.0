@@ -1,124 +1,183 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43558 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:16061 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758541Ab3ENVlB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 May 2013 17:41:01 -0400
-Date: Tue, 14 May 2013 17:40:57 -0400
+	id S1756729Ab3ETTdC convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 May 2013 15:33:02 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+CC: "David P. Quigley" <dpquigl@tycho.nsa.gov>,
         Linux NFS list <linux-nfs@vger.kernel.org>,
         Linux FS devel list <linux-fsdevel@vger.kernel.org>,
         Linux Security List <linux-security-module@vger.kernel.org>,
         SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 00/13] lnfs: linux-3.10-rc1 release
-Message-ID: <20130514214057.GB16811@fieldses.org>
-References: <1368472317-5602-1-git-send-email-SteveD@redhat.com>
+Subject: Re: [PATCH 11/13] NFS: Client implementation of Labeled-NFS
+Date: Mon, 20 May 2013 19:33:00 +0000
+Message-ID: <1369078372.6115.34.camel@leira.trondhjem.org>
+References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
+	 <1368719808-14584-12-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1368719808-14584-12-git-send-email-SteveD@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1368472317-5602-1-git-send-email-SteveD@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 13, 2013 at 03:11:44PM -0400, Steve Dickson wrote:
+On Thu, 2013-05-16 at 11:56 -0400, Steve Dickson wrote:
 > From: Steve Dickson <steved@redhat.com>
 > 
-> Here is an the next rlease of the label NFS patches
-> ported to the linux-3-10.rc1 release. 
+> This patch implements the client transport and handling support for labeled
+> NFS. The patch adds two functions to encode and decode the security label
+> recommended attribute which makes use of the LSM hooks added earlier. It also
+> adds code to grab the label from the file attribute structures and encode the
+> label to be sent back to the server.
+> 
+> Acked-by: James Morris <james.l.morris@oracle.com>
+> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  fs/nfs/inode.c            |  57 ++++++++-
+>  fs/nfs/nfs4proc.c         | 304 ++++++++++++++++++++++++++++++++++++++++++++--
+>  fs/nfs/nfs4xdr.c          | 164 +++++++++++++++++++------
+>  fs/nfs/super.c            |  17 ++-
+>  include/linux/nfs_fs.h    |   3 +
+>  include/linux/nfs_fs_sb.h |   5 +
+>  security/selinux/hooks.c  |   4 +
+>  7 files changed, 496 insertions(+), 58 deletions(-)
 
-Steve, note James Morris acked patches 1, 2, 3, 4, 11, and 12.  Could
-you please add the 
+<snip>
+> +static int _nfs4_do_set_security_label(struct inode *inode,
+> +		struct nfs4_label *ilabel,
+> +		struct nfs_fattr *fattr,
+> +		struct nfs4_label *olabel,
+> +		struct nfs4_state *state)
+> +{
+> +
+> +	struct iattr sattr = {0};
+> +	struct nfs_server *server = NFS_SERVER(inode);
+> +	const u32 bitmask[3] = { 0, 0, FATTR4_WORD2_SECURITY_LABEL };
+> +	struct nfs_setattrargs args = {
+> +		.fh             = NFS_FH(inode),
+> +		.iap            = &sattr,
+> +		.server		= server,
+> +		.bitmask	= bitmask,
+> +		.label		= ilabel,
+> +	};
+> +	struct nfs_setattrres res = {
+> +		.fattr		= fattr,
+> +		.label		= olabel,
+> +		.server		= server,
+> +	};
+> +	struct rpc_message msg = {
+> +		.rpc_proc       = &nfs4_procedures[NFSPROC4_CLNT_SETATTR],
+> +		.rpc_argp       = &args,
+> +		.rpc_resp       = &res,
+> +	};
+> +	unsigned long timestamp = jiffies;
+> +	int status;
+> +
+> +	if (state != NULL) {
+> +		struct nfs_lockowner lockowner = {
+> +			.l_owner = current->files,
+> +			.l_pid = current->tgid,
+> +		};
+> +
+> +		msg.rpc_cred = state->owner->so_cred;
+> +		nfs4_select_rw_stateid(&args.stateid, state, FMODE_WRITE,
+> +				&lockowner);
+> +	} else if (nfs4_copy_delegation_stateid(&args.stateid, inode,
+> +				FMODE_WRITE)) {
+> +		/* Use that stateid */
+> +	} else
+> +		nfs4_stateid_copy(&args.stateid, &zero_stateid);
 
-	Acked-by: James Morris <james.l.morris@oracle.com>
+We don't need the open stateid here. Please just use the zero_stateid.
 
-to those before the next resend?
+> +
+> +	status = rpc_call_sync(server->client, &msg, 0);
+> +	if (status == 0 && state != NULL)
+> +		renew_lease(server, timestamp);
+> +	return status;
+> +}
+> +
+> +static int nfs4_do_set_security_label(struct inode *inode,
+> +		struct nfs4_label *ilabel,
+> +		struct nfs_fattr *fattr,
+> +		struct nfs4_label *olabel,
+> +		struct nfs4_state *state)
+> +{
+> +	struct nfs4_exception exception = { };
+> +	int err;
+> +
+> +	do {
+> +		err = nfs4_handle_exception(NFS_SERVER(inode),
+> +				_nfs4_do_set_security_label(inode, ilabel,
+> +				fattr, olabel, state),
+> +				&exception);
+> +	} while (exception.retry);
+> +	return err;
+> +}
+> +
+> +static int
+> +nfs4_set_security_label(struct dentry *dentry, const void *buf, size_t buflen)
+> +{
+> +	struct nfs4_label ilabel, *olabel = NULL;
+> +	struct nfs_fattr fattr;
+> +	struct rpc_cred *cred;
+> +	struct nfs_open_context *ctx;
+> +	struct nfs4_state *state = NULL;
+> +	struct inode *inode = dentry->d_inode;
+> +	int status;
+> +
+> +	if (!nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL))
+> +		return -EOPNOTSUPP;
+> +
+> +	nfs_fattr_init(&fattr);
+> +
+> +	ilabel.pi = 0;
+> +	ilabel.lfs = 0;
+> +	ilabel.label = (char *)buf;
+> +	ilabel.len = buflen;
+> +
+> +	cred = rpc_lookup_cred();
+> +	if (IS_ERR(cred))
+> +		return PTR_ERR(cred);
+> +
+> +	olabel = nfs4_label_alloc(NFS_SERVER(inode), GFP_KERNEL);
+> +	if (IS_ERR(olabel)) {
+> +		status = -PTR_ERR(olabel);
+> +		goto out;
+> +	}
+> +
+> +	/* Search for an existing open(O_WRITE) file */
+> +	ctx = nfs_find_open_context(inode, cred, FMODE_WRITE);
+> +	if (ctx != NULL)
+> +		state = ctx->state;
 
---b.
 
-> 
-> Note, this release only include the security and 
-> NFS client patches since the server patches have 
-> already been merged into Bruce's tree... I did
-> uses those patches to test the release. 
-> 
-> Bruce, thank you very much for all you help! 
-> 
-> There were no functional changes in the security 
-> patches. There were some simple merge conflicts 
-> in a couple header files. 
-> 
-> The following has was changed in the client code
-> 
-> * Labels were taken out of the cache consistency 
->   bitmask. The means the ACCESS and DELEGRETURN 
->   will no longer pass labels. 
-> 
-> * Looking to get the label out of the I/O path, 
->   I found the follow ops allocate labels but never 
->   process them (aka they never send a GETATTR in 
->   the compound) 
->       READ, CLOSE, REMOVE, RENAME. 
-> 
->   So the label code was be removed from those ops.
-> 
-> So that leaves LOOKUP, READDIR, GETATTR, LINK, SETATTR, CREATE and OPEN 
-> that will continue to pass labels... 
-> 
-> David Quigley (8):
->   Security: Add hook to calculate context based on a negative dentry.
->   Security: Add Hook to test if the particular xattr is part of a MAC
->     model.
->   LSM: Add flags field to security_sb_set_mnt_opts for in kernel mount
->     data.
->   SELinux: Add new labeling type native labels
->   NFSv4: Add label recommended attribute and NFSv4 flags
->   NFSv4: Introduce new label structure
->   NFSv4: Extend fattr bitmaps to support all 3 words
->   NFS: Extend NFS xattr handlers to accept the security namespace
-> 
-> Steve Dickson (5):
->   NFSv4.2: Added NFS v4.2 support to the NFS client
->   NFS:Add labels to client function prototypes
->   NFS: Add label lifecycle management
->   NFS: Client implementation of Labeled-NFS
->   Kconfig: Add Kconfig entry for Labeled NFS V4 client
-> 
->  fs/nfs/Kconfig                      |  28 ++
->  fs/nfs/callback.c                   |   1 +
->  fs/nfs/callback_xdr.c               |   6 +-
->  fs/nfs/client.c                     |   2 +-
->  fs/nfs/dir.c                        |  46 ++-
->  fs/nfs/getroot.c                    |   2 +-
->  fs/nfs/inode.c                      | 133 +++++++--
->  fs/nfs/namespace.c                  |   2 +-
->  fs/nfs/nfs3acl.c                    |   4 +-
->  fs/nfs/nfs3proc.c                   |  41 +--
->  fs/nfs/nfs4_fs.h                    |   8 +-
->  fs/nfs/nfs4client.c                 |   5 +
->  fs/nfs/nfs4namespace.c              |   2 +-
->  fs/nfs/nfs4proc.c                   | 548 ++++++++++++++++++++++++++++++++----
->  fs/nfs/nfs4xdr.c                    | 184 +++++++++---
->  fs/nfs/proc.c                       |  15 +-
->  fs/nfs/super.c                      |  24 +-
->  include/linux/nfs4.h                |  11 +
->  include/linux/nfs_fs.h              |  30 +-
->  include/linux/nfs_fs_sb.h           |   8 +-
->  include/linux/nfs_xdr.h             |  30 +-
->  include/linux/security.h            |  57 +++-
->  include/uapi/linux/nfs4.h           |   2 +-
->  security/capability.c               |  19 +-
->  security/security.c                 |  24 +-
->  security/selinux/hooks.c            |  92 +++++-
->  security/selinux/include/security.h |   2 +
->  security/selinux/ss/policydb.c      |   5 +-
->  security/smack/smack_lsm.c          |  11 +
->  29 files changed, 1132 insertions(+), 210 deletions(-)
-> 
-> -- 
-> 1.8.1.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+That also makes this code unnecessary.
+
+> +
+> +	status = nfs4_do_set_security_label(inode, &ilabel, &fattr, olabel,
+> +						state);
+> +	if (status == 0)
+> +		nfs_setsecurity(inode, &fattr, olabel);
+> +	if (ctx != NULL)
+> +		put_nfs_open_context(ctx);
+> +	nfs4_label_free(olabel);
+> +out:
+> +	put_rpccred(cred);
+> +	return status;
+> +}
+> +#endif	/* CONFIG_NFS_V4_SECURITY_LABEL */
+> +
+> +
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
