@@ -1,88 +1,189 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:56865 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758300Ab3ETVOx convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 May 2013 17:14:53 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Eric Paris <eparis@parisplace.org>
-CC: Steve Dickson <SteveD@redhat.com>,
+Received: from mail-la0-f52.google.com ([209.85.215.52]:55604 "EHLO
+	mail-la0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756924Ab3ETVQn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 May 2013 17:16:43 -0400
+Received: by mail-la0-f52.google.com with SMTP id fo13so6843657lab.39
+        for <linux-nfs@vger.kernel.org>; Mon, 20 May 2013 14:16:42 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1368719808-14584-5-git-send-email-SteveD@redhat.com>
+References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
+	<1368719808-14584-5-git-send-email-SteveD@redhat.com>
+Date: Mon, 20 May 2013 17:16:41 -0400
+Message-ID: <CACLa4pv=pccLD9QkJL=pVWH3wRQ9zD8JRD1B4G5fRNsfzhaz+A@mail.gmail.com>
+Subject: Re: [PATCH 04/13] SELinux: Add new labeling type native labels
+From: Eric Paris <eparis@parisplace.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
         "David P. Quigley" <dpquigl@tycho.nsa.gov>,
         Linux NFS list <linux-nfs@vger.kernel.org>,
-        "Linux FS devel list" <linux-fsdevel@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
         Linux Security List <linux-security-module@vger.kernel.org>,
         SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 13/13] Kconfig: Add Kconfig entry for Labeled NFS V4
- client
-Date: Mon, 20 May 2013 21:14:51 +0000
-Message-ID: <1369084490.52168.5.camel@leira.trondhjem.org>
-References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
-	 <1368719808-14584-14-git-send-email-SteveD@redhat.com>
-	 <CACLa4pta+uRLDgU=hriQLVseJvtA-FJDCRK-oYKmzVNiRs299Q@mail.gmail.com>
-	 <1369084374.52168.3.camel@leira.trondhjem.org>
-In-Reply-To: <1369084374.52168.3.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-05-20 at 17:12 -0400, Trond Myklebust wrote:
-> On Mon, 2013-05-20 at 16:57 -0400, Eric Paris wrote:
-> > On Thu, May 16, 2013 at 11:56 AM, Steve Dickson <SteveD@redhat.com> wrote:
-> > > From: Steve Dickson <steved@redhat.com>
-> > >
-> > > This patch adds the NFS_V4_SECURITY_LABEL entry which
-> > > enables security label support for the NFSv4 client
-> > >
-> > > Signed-off-by: Steve Dickson <steved@redhat.com>
-> > > ---
-> > >  fs/nfs/Kconfig | 19 +++++++++++++++++++
-> > >  1 file changed, 19 insertions(+)
-> > >
-> > > diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-> > > index 79c500e..771831d3 100644
-> > > --- a/fs/nfs/Kconfig
-> > > +++ b/fs/nfs/Kconfig
-> > > @@ -107,6 +107,7 @@ config NFS_V4_1
-> > >  config NFS_V4_2
-> > >         bool "NFS client support for NFSv4.2"
-> > >         depends on NFS_V4_1
-> > > +       select NFS_V4_SECURITY_LABEL
-> > 
-> > So this will force it on...
-> > 
-> > >         help
-> > >           This option enables support for minor version 1 of the NFSv4 protocol
-> > >           in the kernel's NFS client.
-> > > @@ -140,6 +141,24 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
-> > >           If the NFS client is unchanged from the upstream kernel, this
-> > >           option should be set to the default "kernel.org".
-> > >
-> > > +config NFS_V4_SECURITY_LABEL
-> > > +       bool "Provide Security Label support for NFSv4 client"
-> > > +       depends on NFS_V4 && SECURITY
-> > 
-> > Even if SECURITY is not set?
-> > 
-> > Why are you forcing this on with a select?  select is dangerous..
-> 
-> Eric is right. In any case, we already agreed that we don't need _both_
-> a NFSv4.2 and a NFSv4 security label switch.
-> 
-> Please just get rid of NFS_V4_SECURITY_LABEL.
-> 
+On Thu, May 16, 2013 at 11:56 AM, Steve Dickson <SteveD@redhat.com> wrote:
+> From: David Quigley <dpquigl@davequigley.com>
+>
+> There currently doesn't exist a labeling type that is adequate for use with
+> labeled NFS. Since NFS doesn't really support xattrs we can't use the use xattr
+> labeling behavior. For this we developed a new labeling type. The native
+> labeling type is used solely by NFS to ensure NFS inodes are labeled at runtime
+> by the NFS code instead of relying on the SELinux security server on the client
+> end.
+>
+> Acked-by: James Morris <james.l.morris@oracle.com>
+> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 
-Sorry. I mean, just replace it with
+Acked-by: Eric Paris <eparis@redhat.com>
 
-config NFS_V4_SECURITY_LABEL
-	bool
-	depend on NFS_V4_2 && SECURITY
-	default Y
-
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> ---
+>  include/linux/security.h            |  3 +++
+>  security/selinux/hooks.c            | 35 ++++++++++++++++++++++++++---------
+>  security/selinux/include/security.h |  2 ++
+>  security/selinux/ss/policydb.c      |  5 ++++-
+>  4 files changed, 35 insertions(+), 10 deletions(-)
+>
+> diff --git a/include/linux/security.h b/include/linux/security.h
+> index aa656fb..a585a90 100644
+> --- a/include/linux/security.h
+> +++ b/include/linux/security.h
+> @@ -61,6 +61,9 @@ struct mm_struct;
+>  #define SECURITY_CAP_NOAUDIT 0
+>  #define SECURITY_CAP_AUDIT 1
+>
+> +/* LSM Agnostic defines for sb_set_mnt_opts */
+> +#define SECURITY_LSM_NATIVE_LABELS     1
+> +
+>  struct ctl_table;
+>  struct audit_krule;
+>  struct user_namespace;
+> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+> index f3b5446..6149633 100644
+> --- a/security/selinux/hooks.c
+> +++ b/security/selinux/hooks.c
+> @@ -81,6 +81,7 @@
+>  #include <linux/syslog.h>
+>  #include <linux/user_namespace.h>
+>  #include <linux/export.h>
+> +#include <linux/security.h>
+>  #include <linux/msg.h>
+>  #include <linux/shm.h>
+>
+> @@ -284,13 +285,14 @@ static void superblock_free_security(struct super_block *sb)
+>
+>  /* The file system's label must be initialized prior to use. */
+>
+> -static const char *labeling_behaviors[6] = {
+> +static const char *labeling_behaviors[7] = {
+>         "uses xattr",
+>         "uses transition SIDs",
+>         "uses task SIDs",
+>         "uses genfs_contexts",
+>         "not configured for labeling",
+>         "uses mountpoint labeling",
+> +       "uses native labeling",
+>  };
+>
+>  static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dentry);
+> @@ -678,14 +680,21 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+>         if (strcmp(sb->s_type->name, "proc") == 0)
+>                 sbsec->flags |= SE_SBPROC;
+>
+> -       /* Determine the labeling behavior to use for this filesystem type. */
+> -       rc = security_fs_use((sbsec->flags & SE_SBPROC) ? "proc" : sb->s_type->name, &sbsec->behavior, &sbsec->sid);
+> -       if (rc) {
+> -               printk(KERN_WARNING "%s: security_fs_use(%s) returned %d\n",
+> -                      __func__, sb->s_type->name, rc);
+> -               goto out;
+> +       if (!sbsec->behavior) {
+> +               /*
+> +                * Determine the labeling behavior to use for this
+> +                * filesystem type.
+> +                */
+> +               rc = security_fs_use((sbsec->flags & SE_SBPROC) ?
+> +                                       "proc" : sb->s_type->name,
+> +                                       &sbsec->behavior, &sbsec->sid);
+> +               if (rc) {
+> +                       printk(KERN_WARNING
+> +                               "%s: security_fs_use(%s) returned %d\n",
+> +                                       __func__, sb->s_type->name, rc);
+> +                       goto out;
+> +               }
+>         }
+> -
+>         /* sets the context of the superblock for the fs being mounted. */
+>         if (fscontext_sid) {
+>                 rc = may_context_mount_sb_relabel(fscontext_sid, sbsec, cred);
+> @@ -700,6 +709,11 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+>          * sets the label used on all file below the mountpoint, and will set
+>          * the superblock context if not already set.
+>          */
+> +       if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !context_sid) {
+> +               sbsec->behavior = SECURITY_FS_USE_NATIVE;
+> +               *set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
+> +       }
+> +
+>         if (context_sid) {
+>                 if (!fscontext_sid) {
+>                         rc = may_context_mount_sb_relabel(context_sid, sbsec,
+> @@ -731,7 +745,8 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+>         }
+>
+>         if (defcontext_sid) {
+> -               if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
+> +               if (sbsec->behavior != SECURITY_FS_USE_XATTR &&
+> +                       sbsec->behavior != SECURITY_FS_USE_NATIVE) {
+>                         rc = -EINVAL;
+>                         printk(KERN_WARNING "SELinux: defcontext option is "
+>                                "invalid for this filesystem type\n");
+> @@ -1230,6 +1245,8 @@ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dent
+>         }
+>
+>         switch (sbsec->behavior) {
+> +       case SECURITY_FS_USE_NATIVE:
+> +               break;
+>         case SECURITY_FS_USE_XATTR:
+>                 if (!inode->i_op->getxattr) {
+>                         isec->sid = sbsec->def_sid;
+> diff --git a/security/selinux/include/security.h b/security/selinux/include/security.h
+> index 6d38851..8fd8e18 100644
+> --- a/security/selinux/include/security.h
+> +++ b/security/selinux/include/security.h
+> @@ -169,6 +169,8 @@ int security_get_allow_unknown(void);
+>  #define SECURITY_FS_USE_GENFS          4 /* use the genfs support */
+>  #define SECURITY_FS_USE_NONE           5 /* no labeling support */
+>  #define SECURITY_FS_USE_MNTPOINT       6 /* use mountpoint labeling */
+> +#define SECURITY_FS_USE_NATIVE         7 /* use native label support */
+> +#define SECURITY_FS_USE_MAX            7 /* Highest SECURITY_FS_USE_XXX */
+>
+>  int security_fs_use(const char *fstype, unsigned int *behavior,
+>         u32 *sid);
+> diff --git a/security/selinux/ss/policydb.c b/security/selinux/ss/policydb.c
+> index 9cd9b7c..c8adde3 100644
+> --- a/security/selinux/ss/policydb.c
+> +++ b/security/selinux/ss/policydb.c
+> @@ -2168,7 +2168,10 @@ static int ocontext_read(struct policydb *p, struct policydb_compat_info *info,
+>
+>                                 rc = -EINVAL;
+>                                 c->v.behavior = le32_to_cpu(buf[0]);
+> -                               if (c->v.behavior > SECURITY_FS_USE_NONE)
+> +                               /* Determined at runtime, not in policy DB. */
+> +                               if (c->v.behavior == SECURITY_FS_USE_MNTPOINT)
+> +                                       goto out;
+> +                               if (c->v.behavior > SECURITY_FS_USE_MAX)
+>                                         goto out;
+>
+>                                 rc = -ENOMEM;
+> --
+> 1.8.1.4
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-security-module" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
