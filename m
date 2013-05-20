@@ -1,51 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:37244 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756477Ab3EJATM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 May 2013 20:19:12 -0400
-References: <518C2104.7060107@RedHat.com>
-In-Reply-To: <518C2104.7060107@RedHat.com>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Message-Id: <7B0E9027-8F04-491D-9320-E74E54D0EF19@oracle.com>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: RPC: AUTH_GSS upcall timed out.
-Date: Thu, 9 May 2013 20:20:09 -0400
-To: Steve Dickson <SteveD@redhat.com>
+Received: from mx12.netapp.com ([216.240.18.77]:13510 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758303Ab3ETVM5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 May 2013 17:12:57 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Eric Paris <eparis@parisplace.org>
+CC: Steve Dickson <SteveD@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        "Linux FS devel list" <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 13/13] Kconfig: Add Kconfig entry for Labeled NFS V4
+ client
+Date: Mon, 20 May 2013 21:12:56 +0000
+Message-ID: <1369084374.52168.3.camel@leira.trondhjem.org>
+References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
+	 <1368719808-14584-14-git-send-email-SteveD@redhat.com>
+	 <CACLa4pta+uRLDgU=hriQLVseJvtA-FJDCRK-oYKmzVNiRs299Q@mail.gmail.com>
+In-Reply-To: <CACLa4pta+uRLDgU=hriQLVseJvtA-FJDCRK-oYKmzVNiRs299Q@mail.gmail.com>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On May 9, 2013, at 6:19 PM, Steve Dickson <SteveD@redhat.com> wrote:
-
-> Hello,
+On Mon, 2013-05-20 at 16:57 -0400, Eric Paris wrote:
+> On Thu, May 16, 2013 at 11:56 AM, Steve Dickson <SteveD@redhat.com> wrote:
+> > From: Steve Dickson <steved@redhat.com>
+> >
+> > This patch adds the NFS_V4_SECURITY_LABEL entry which
+> > enables security label support for the NFSv4 client
+> >
+> > Signed-off-by: Steve Dickson <steved@redhat.com>
+> > ---
+> >  fs/nfs/Kconfig | 19 +++++++++++++++++++
+> >  1 file changed, 19 insertions(+)
+> >
+> > diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+> > index 79c500e..771831d3 100644
+> > --- a/fs/nfs/Kconfig
+> > +++ b/fs/nfs/Kconfig
+> > @@ -107,6 +107,7 @@ config NFS_V4_1
+> >  config NFS_V4_2
+> >         bool "NFS client support for NFSv4.2"
+> >         depends on NFS_V4_1
+> > +       select NFS_V4_SECURITY_LABEL
 > 
-> commit 4edaa308888b4bd629fa025cc6d5b2bf1a2a51db
-> Author: Chuck Lever <chuck.lever@oracle.com>
-> Date:   Sat Mar 16 15:56:20 2013 -0400
+> So this will force it on...
 > 
->    NFS: Use "krb5i" to establish NFSv4 state whenever possible
+> >         help
+> >           This option enables support for minor version 1 of the NFSv4 protocol
+> >           in the kernel's NFS client.
+> > @@ -140,6 +141,24 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
+> >           If the NFS client is unchanged from the upstream kernel, this
+> >           option should be set to the default "kernel.org".
+> >
+> > +config NFS_V4_SECURITY_LABEL
+> > +       bool "Provide Security Label support for NFSv4 client"
+> > +       depends on NFS_V4 && SECURITY
 > 
-> Introduced a hard code call to nfs_create_rpc_client(RPC_AUTH_GSS_KRB5I)
-> in nfs4_init_client() which means if rpc.gssd is not running the mount 
-> hangs for a bit logs the "RPC: AUTH_GSS upcall timed out" and then tries 
-> nfs_create_rpc_client(RPC_AUTH_NULL) allowing the mount to succeed.
+> Even if SECURITY is not set?
 > 
-> Is this a known "feature"? 
+> Why are you forcing this on with a select?  select is dangerous..
 
-Read the archives, we've been working on a fix for the past few days.
+Eric is right. In any case, we already agreed that we don't need _both_
+a NFSv4.2 and a NFSv4 security label switch.
 
-This commit fixes a regression, so it would be just as hard to revert as to fix the upcall.
+Please just get rid of NFS_V4_SECURITY_LABEL.
 
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-
-> 
-> steved.
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
