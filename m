@@ -1,51 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:8803 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:13002 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758573Ab3ENVQG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 May 2013 17:16:06 -0400
-From: Zach Brown <zab@redhat.com>
-To: "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [RFC v0 2/4] x86: add sys_copy_range to syscall tables
-Date: Tue, 14 May 2013 14:15:24 -0700
-Message-Id: <1368566126-17610-3-git-send-email-zab@redhat.com>
-In-Reply-To: <1368566126-17610-1-git-send-email-zab@redhat.com>
-References: <1368566126-17610-1-git-send-email-zab@redhat.com>
+	id S1757164Ab3ETVLE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 May 2013 17:11:04 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 6/6] NFSv4.1: Enable state protection
+Date: Mon, 20 May 2013 21:10:46 +0000
+Message-ID: <1369084243.52168.1.camel@leira.trondhjem.org>
+References: <1369070227-40671-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1369070227-40671-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1369070227-40671-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <1369070227-40671-4-git-send-email-Trond.Myklebust@netapp.com>
+	 <1369070227-40671-5-git-send-email-Trond.Myklebust@netapp.com>
+	 <1369070227-40671-6-git-send-email-Trond.Myklebust@netapp.com>
+	 <20130520204009.GH14677@fieldses.org>
+In-Reply-To: <20130520204009.GH14677@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add sys_copy_range to the x86 syscall tables.  Happily, it doesn't
-require compat helpers.
+On Mon, 2013-05-20 at 16:40 -0400, J. Bruce Fields wrote:
+> On Mon, May 20, 2013 at 01:17:07PM -0400, Trond Myklebust wrote:
+> > Use the EXCHGID4_FLAG_BIND_PRINC_STATEID exchange_id flag to enable
+> > stateid protection. This means that if we create a stateid using a
+> > particular principal, then we must use the same principal if we
+> > want to change that state.
+> 
+> Note that knfsd ignores this--its EXCHANGE_ID will always return with
+> the flag unset regardless of what the client requests.  My understanding
+> is that that's legal ("Whether a bit is set or cleared on the arguments'
+> flags does not force the server to set or clear the same bit on the
+> results' side.")
+> 
+> (Definitely not opposed to implementing it, just haven't gotten around
+> to it.)
 
-Signed-off-by: Zach Brown <zab@redhat.com>
----
- arch/x86/syscalls/syscall_32.tbl | 1 +
- arch/x86/syscalls/syscall_64.tbl | 1 +
- 2 files changed, 2 insertions(+)
+Right, but the point here is that the server is allowed to set
+EXCHGID4_FLAG_BIND_PRINC_STATEID without the client requesting it, so
+the client is supposed to always be ready for that situation.
 
-diff --git a/arch/x86/syscalls/syscall_32.tbl b/arch/x86/syscalls/syscall_32.tbl
-index aabfb83..d75d1b5 100644
---- a/arch/x86/syscalls/syscall_32.tbl
-+++ b/arch/x86/syscalls/syscall_32.tbl
-@@ -357,3 +357,4 @@
- 348	i386	process_vm_writev	sys_process_vm_writev		compat_sys_process_vm_writev
- 349	i386	kcmp			sys_kcmp
- 350	i386	finit_module		sys_finit_module
-+351	i386	copy_range		sys_copy_range
-diff --git a/arch/x86/syscalls/syscall_64.tbl b/arch/x86/syscalls/syscall_64.tbl
-index 38ae65d..dc9d766 100644
---- a/arch/x86/syscalls/syscall_64.tbl
-+++ b/arch/x86/syscalls/syscall_64.tbl
-@@ -320,6 +320,7 @@
- 311	64	process_vm_writev	sys_process_vm_writev
- 312	common	kcmp			sys_kcmp
- 313	common	finit_module		sys_finit_module
-+314	common	copy_range		sys_copy_range
- 
- #
- # x32-specific system call numbers start at 512 to avoid cache impact
+This patch series is therefore more about ensuring that the Linux client
+is spec compliant.
 -- 
-1.7.11.7
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
