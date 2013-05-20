@@ -1,45 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f177.google.com ([209.85.212.177]:37269 "EHLO
-	mail-wi0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756416Ab3EKCn6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:43:58 -0400
-Received: by mail-wi0-f177.google.com with SMTP id hr14so1207898wib.10
-        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:43:57 -0700 (PDT)
-Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
-        by mx.google.com with ESMTPSA id h8sm1332240wiz.9.2013.05.10.19.43.56
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 10 May 2013 19:43:56 -0700 (PDT)
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from mx12.netapp.com ([216.240.18.77]:9896 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755487Ab3ETRRl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 May 2013 13:17:41 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 22/38] SQUASHME: pnfsd: hanging nfs4_layoutrecall on the client's list must be under the layout_lock
-Date: Sat, 11 May 2013 05:43:52 +0300
-Message-Id: <1368240232-32576-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <518B6377.3000207@tonian.com>
-References: <518B6377.3000207@tonian.com>
+Subject: [PATCH 2/6] NFSv4.1: Ensure that layoutreturn uses the correct credential
+Date: Mon, 20 May 2013 13:17:03 -0400
+Message-Id: <1369070227-40671-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1369070227-40671-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1369070227-40671-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/nfs4pnfsd.c | 2 ++
- 1 file changed, 2 insertions(+)
+We need to use the same credential as was used for the layoutget
+and/or layoutcommit operations.
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index ff688cb..7c454d2 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -1416,8 +1416,10 @@ struct create_recall_list_arg {
- 		pending->parent = parent;
- 		get_layoutrecall(pending);
- 		/* Add to list so corresponding layoutreturn can find req */
-+		spin_lock(&layout_lock);
- 		list_add(&pending->clr_perclnt,
- 			 &pending->clr_client->cl_layoutrecalls);
-+		spin_unlock(&layout_lock);
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c | 1 +
+ fs/nfs/pnfs.c     | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index a05397b..2956973 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6452,6 +6452,7 @@ int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp)
+ 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LAYOUTRETURN],
+ 		.rpc_argp = &lrp->args,
+ 		.rpc_resp = &lrp->res,
++		.rpc_cred = lrp->cred,
+ 	};
+ 	struct rpc_task_setup task_setup_data = {
+ 		.rpc_client = lrp->clp->cl_rpcclient,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 2f86115..89ca75f 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -861,6 +861,7 @@ _pnfs_return_layout(struct inode *ino)
+ 	lrp->args.inode = ino;
+ 	lrp->args.layout = lo;
+ 	lrp->clp = NFS_SERVER(ino)->nfs_client;
++	lrp->cred = lo->plh_lc_cred;
  
- 		nfsd4_cb_layout(pending);
- 		--todo_len;
+ 	status = nfs4_proc_layoutreturn(lrp);
+ out:
 -- 
-1.7.11.7
+1.8.1.4
 
