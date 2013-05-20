@@ -1,175 +1,200 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:47626 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752907Ab3EPP44 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 May 2013 11:56:56 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+Received: from mail-lb0-f169.google.com ([209.85.217.169]:54152 "EHLO
+	mail-lb0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756660Ab3ETVP0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 May 2013 17:15:26 -0400
+Received: by mail-lb0-f169.google.com with SMTP id 10so8326lbf.0
+        for <linux-nfs@vger.kernel.org>; Mon, 20 May 2013 14:15:24 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1368719808-14584-3-git-send-email-SteveD@redhat.com>
+References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
+	<1368719808-14584-3-git-send-email-SteveD@redhat.com>
+Date: Mon, 20 May 2013 17:15:24 -0400
+Message-ID: <CACLa4psYCePOArb=oVDs4M1RUY1j=5RPP8A3Lnw97MFLKkqO=Q@mail.gmail.com>
+Subject: Re: [PATCH 02/13] Security: Add Hook to test if the particular xattr
+ is part of a MAC model.
+From: Eric Paris <eparis@parisplace.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
         Linux FS devel list <linux-fsdevel@vger.kernel.org>,
         Linux Security List <linux-security-module@vger.kernel.org>,
         SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 04/13] SELinux: Add new labeling type native labels
-Date: Thu, 16 May 2013 11:56:39 -0400
-Message-Id: <1368719808-14584-5-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
-References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Thu, May 16, 2013 at 11:56 AM, Steve Dickson <SteveD@redhat.com> wrote:
+> From: David Quigley <dpquigl@davequigley.com>
+>
+> The interface to request security labels from user space is the xattr
+> interface. When requesting the security label from an NFS server it is
+> important to make sure the requested xattr actually is a MAC label. This allows
+> us to make sure that we get the desired semantics from the attribute instead of
+> something else such as capabilities or a time based LSM.
+>
+> Acked-by: James Morris <james.l.morris@oracle.com>
+> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 
-There currently doesn't exist a labeling type that is adequate for use with
-labeled NFS. Since NFS doesn't really support xattrs we can't use the use xattr
-labeling behavior. For this we developed a new labeling type. The native
-labeling type is used solely by NFS to ensure NFS inodes are labeled at runtime
-by the NFS code instead of relying on the SELinux security server on the client
-end.
+Acked-by: Eric Paris <eparis@redhat.com>
 
-Acked-by: James Morris <james.l.morris@oracle.com>
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- include/linux/security.h            |  3 +++
- security/selinux/hooks.c            | 35 ++++++++++++++++++++++++++---------
- security/selinux/include/security.h |  2 ++
- security/selinux/ss/policydb.c      |  5 ++++-
- 4 files changed, 35 insertions(+), 10 deletions(-)
 
-diff --git a/include/linux/security.h b/include/linux/security.h
-index aa656fb..a585a90 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -61,6 +61,9 @@ struct mm_struct;
- #define SECURITY_CAP_NOAUDIT 0
- #define SECURITY_CAP_AUDIT 1
- 
-+/* LSM Agnostic defines for sb_set_mnt_opts */
-+#define SECURITY_LSM_NATIVE_LABELS	1
-+
- struct ctl_table;
- struct audit_krule;
- struct user_namespace;
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index f3b5446..6149633 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -81,6 +81,7 @@
- #include <linux/syslog.h>
- #include <linux/user_namespace.h>
- #include <linux/export.h>
-+#include <linux/security.h>
- #include <linux/msg.h>
- #include <linux/shm.h>
- 
-@@ -284,13 +285,14 @@ static void superblock_free_security(struct super_block *sb)
- 
- /* The file system's label must be initialized prior to use. */
- 
--static const char *labeling_behaviors[6] = {
-+static const char *labeling_behaviors[7] = {
- 	"uses xattr",
- 	"uses transition SIDs",
- 	"uses task SIDs",
- 	"uses genfs_contexts",
- 	"not configured for labeling",
- 	"uses mountpoint labeling",
-+	"uses native labeling",
- };
- 
- static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dentry);
-@@ -678,14 +680,21 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 	if (strcmp(sb->s_type->name, "proc") == 0)
- 		sbsec->flags |= SE_SBPROC;
- 
--	/* Determine the labeling behavior to use for this filesystem type. */
--	rc = security_fs_use((sbsec->flags & SE_SBPROC) ? "proc" : sb->s_type->name, &sbsec->behavior, &sbsec->sid);
--	if (rc) {
--		printk(KERN_WARNING "%s: security_fs_use(%s) returned %d\n",
--		       __func__, sb->s_type->name, rc);
--		goto out;
-+	if (!sbsec->behavior) {
-+		/*
-+		 * Determine the labeling behavior to use for this
-+		 * filesystem type.
-+		 */
-+		rc = security_fs_use((sbsec->flags & SE_SBPROC) ?
-+					"proc" : sb->s_type->name,
-+					&sbsec->behavior, &sbsec->sid);
-+		if (rc) {
-+			printk(KERN_WARNING
-+				"%s: security_fs_use(%s) returned %d\n",
-+					__func__, sb->s_type->name, rc);
-+			goto out;
-+		}
- 	}
--
- 	/* sets the context of the superblock for the fs being mounted. */
- 	if (fscontext_sid) {
- 		rc = may_context_mount_sb_relabel(fscontext_sid, sbsec, cred);
-@@ -700,6 +709,11 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 	 * sets the label used on all file below the mountpoint, and will set
- 	 * the superblock context if not already set.
- 	 */
-+	if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !context_sid) {
-+		sbsec->behavior = SECURITY_FS_USE_NATIVE;
-+		*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
-+	}
-+
- 	if (context_sid) {
- 		if (!fscontext_sid) {
- 			rc = may_context_mount_sb_relabel(context_sid, sbsec,
-@@ -731,7 +745,8 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 	}
- 
- 	if (defcontext_sid) {
--		if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
-+		if (sbsec->behavior != SECURITY_FS_USE_XATTR &&
-+			sbsec->behavior != SECURITY_FS_USE_NATIVE) {
- 			rc = -EINVAL;
- 			printk(KERN_WARNING "SELinux: defcontext option is "
- 			       "invalid for this filesystem type\n");
-@@ -1230,6 +1245,8 @@ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dent
- 	}
- 
- 	switch (sbsec->behavior) {
-+	case SECURITY_FS_USE_NATIVE:
-+		break;
- 	case SECURITY_FS_USE_XATTR:
- 		if (!inode->i_op->getxattr) {
- 			isec->sid = sbsec->def_sid;
-diff --git a/security/selinux/include/security.h b/security/selinux/include/security.h
-index 6d38851..8fd8e18 100644
---- a/security/selinux/include/security.h
-+++ b/security/selinux/include/security.h
-@@ -169,6 +169,8 @@ int security_get_allow_unknown(void);
- #define SECURITY_FS_USE_GENFS		4 /* use the genfs support */
- #define SECURITY_FS_USE_NONE		5 /* no labeling support */
- #define SECURITY_FS_USE_MNTPOINT	6 /* use mountpoint labeling */
-+#define SECURITY_FS_USE_NATIVE		7 /* use native label support */
-+#define SECURITY_FS_USE_MAX		7 /* Highest SECURITY_FS_USE_XXX */
- 
- int security_fs_use(const char *fstype, unsigned int *behavior,
- 	u32 *sid);
-diff --git a/security/selinux/ss/policydb.c b/security/selinux/ss/policydb.c
-index 9cd9b7c..c8adde3 100644
---- a/security/selinux/ss/policydb.c
-+++ b/security/selinux/ss/policydb.c
-@@ -2168,7 +2168,10 @@ static int ocontext_read(struct policydb *p, struct policydb_compat_info *info,
- 
- 				rc = -EINVAL;
- 				c->v.behavior = le32_to_cpu(buf[0]);
--				if (c->v.behavior > SECURITY_FS_USE_NONE)
-+				/* Determined at runtime, not in policy DB. */
-+				if (c->v.behavior == SECURITY_FS_USE_MNTPOINT)
-+					goto out;
-+				if (c->v.behavior > SECURITY_FS_USE_MAX)
- 					goto out;
- 
- 				rc = -ENOMEM;
--- 
-1.8.1.4
-
+> ---
+>  include/linux/security.h   | 14 ++++++++++++++
+>  security/capability.c      |  6 ++++++
+>  security/security.c        |  6 ++++++
+>  security/selinux/hooks.c   |  6 ++++++
+>  security/smack/smack_lsm.c | 11 +++++++++++
+>  5 files changed, 43 insertions(+)
+>
+> diff --git a/include/linux/security.h b/include/linux/security.h
+> index c2af462..cff3e4f 100644
+> --- a/include/linux/security.h
+> +++ b/include/linux/security.h
+> @@ -1323,6 +1323,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
+>   *     @pages contains the number of pages.
+>   *     Return 0 if permission is granted.
+>   *
+> + * @ismaclabel:
+> + *     Check if the extended attribute specified by @name
+> + *     represents a MAC label. Returns 1 if name is a MAC
+> + *     attribute otherwise returns 0.
+> + *     @name full extended attribute name to check against
+> + *     LSM as a MAC label.
+> + *
+>   * @secid_to_secctx:
+>   *     Convert secid to security context.  If secdata is NULL the length of
+>   *     the result will be returned in seclen, but no secdata will be returned.
+> @@ -1604,6 +1611,7 @@ struct security_operations {
+>
+>         int (*getprocattr) (struct task_struct *p, char *name, char **value);
+>         int (*setprocattr) (struct task_struct *p, char *name, void *value, size_t size);
+> +       int (*ismaclabel) (const char *name);
+>         int (*secid_to_secctx) (u32 secid, char **secdata, u32 *seclen);
+>         int (*secctx_to_secid) (const char *secdata, u32 seclen, u32 *secid);
+>         void (*release_secctx) (char *secdata, u32 seclen);
+> @@ -1857,6 +1865,7 @@ void security_d_instantiate(struct dentry *dentry, struct inode *inode);
+>  int security_getprocattr(struct task_struct *p, char *name, char **value);
+>  int security_setprocattr(struct task_struct *p, char *name, void *value, size_t size);
+>  int security_netlink_send(struct sock *sk, struct sk_buff *skb);
+> +int security_ismaclabel(const char *name);
+>  int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen);
+>  int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
+>  void security_release_secctx(char *secdata, u32 seclen);
+> @@ -2547,6 +2556,11 @@ static inline int security_netlink_send(struct sock *sk, struct sk_buff *skb)
+>         return cap_netlink_send(sk, skb);
+>  }
+>
+> +static inline int security_ismaclabel(const char *name)
+> +{
+> +       return 0;
+> +}
+> +
+>  static inline int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+>  {
+>         return -EOPNOTSUPP;
+> diff --git a/security/capability.c b/security/capability.c
+> index 7aeec66..b3e8b93 100644
+> --- a/security/capability.c
+> +++ b/security/capability.c
+> @@ -823,6 +823,11 @@ static int cap_setprocattr(struct task_struct *p, char *name, void *value,
+>         return -EINVAL;
+>  }
+>
+> +static int cap_ismaclabel(const char *name)
+> +{
+> +       return 0;
+> +}
+> +
+>  static int cap_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+>  {
+>         return -EOPNOTSUPP;
+> @@ -1042,6 +1047,7 @@ void __init security_fixup_ops(struct security_operations *ops)
+>         set_to_cap_if_null(ops, d_instantiate);
+>         set_to_cap_if_null(ops, getprocattr);
+>         set_to_cap_if_null(ops, setprocattr);
+> +       set_to_cap_if_null(ops, ismaclabel);
+>         set_to_cap_if_null(ops, secid_to_secctx);
+>         set_to_cap_if_null(ops, secctx_to_secid);
+>         set_to_cap_if_null(ops, release_secctx);
+> diff --git a/security/security.c b/security/security.c
+> index 0fe2b2e..c3ceb75 100644
+> --- a/security/security.c
+> +++ b/security/security.c
+> @@ -1057,6 +1057,12 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
+>         return security_ops->netlink_send(sk, skb);
+>  }
+>
+> +int security_ismaclabel(const char *name)
+> +{
+> +       return security_ops->ismaclabel(name);
+> +}
+> +EXPORT_SYMBOL(security_ismaclabel);
+> +
+>  int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+>  {
+>         return security_ops->secid_to_secctx(secid, secdata, seclen);
+> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+> index b1f7bd7..bbf219a 100644
+> --- a/security/selinux/hooks.c
+> +++ b/security/selinux/hooks.c
+> @@ -5454,6 +5454,11 @@ abort_change:
+>         return error;
+>  }
+>
+> +static int selinux_ismaclabel(const char *name)
+> +{
+> +       return (strcmp(name, XATTR_SELINUX_SUFFIX) == 0);
+> +}
+> +
+>  static int selinux_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+>  {
+>         return security_sid_to_context(secid, secdata, seclen);
+> @@ -5692,6 +5697,7 @@ static struct security_operations selinux_ops = {
+>         .getprocattr =                  selinux_getprocattr,
+>         .setprocattr =                  selinux_setprocattr,
+>
+> +       .ismaclabel =                   selinux_ismaclabel,
+>         .secid_to_secctx =              selinux_secid_to_secctx,
+>         .secctx_to_secid =              selinux_secctx_to_secid,
+>         .release_secctx =               selinux_release_secctx,
+> diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
+> index d52c780..a7f485b 100644
+> --- a/security/smack/smack_lsm.c
+> +++ b/security/smack/smack_lsm.c
+> @@ -3329,6 +3329,16 @@ static void smack_audit_rule_free(void *vrule)
+>  #endif /* CONFIG_AUDIT */
+>
+>  /**
+> + * smack_ismaclabel - check if xattr @name references a smack MAC label
+> + * @name: Full xattr name to check.
+> + */
+> +static int smack_ismaclabel(const char *name)
+> +{
+> +       return (strcmp(name, XATTR_SMACK_SUFFIX) == 0);
+> +}
+> +
+> +
+> +/**
+>   * smack_secid_to_secctx - return the smack label for a secid
+>   * @secid: incoming integer
+>   * @secdata: destination
+> @@ -3524,6 +3534,7 @@ struct security_operations smack_ops = {
+>         .audit_rule_free =              smack_audit_rule_free,
+>  #endif /* CONFIG_AUDIT */
+>
+> +       .ismaclabel =                   smack_ismaclabel,
+>         .secid_to_secctx =              smack_secid_to_secctx,
+>         .secctx_to_secid =              smack_secctx_to_secid,
+>         .release_secctx =               smack_release_secctx,
+> --
+> 1.8.1.4
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-security-module" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
