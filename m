@@ -1,68 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:35129
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752718Ab3EFOoh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 May 2013 10:44:37 -0400
-Date: Mon, 6 May 2013 16:42:48 +0200
-From: Peter Zijlstra <a.p.zijlstra@chello.nl>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>, Ingo Molnar <mingo@kernel.org>,
-        Pavel Machek <pavel@ucw.cz>, Colin Cross <ccross@android.com>,
-        Andrew Morton <akpm@osdl.org>, lkml <linux-kernel@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Len Brown <len.brown@intel.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Ingo Molnar <mingo@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Oleg Nesterov <oleg@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux PM list <linux-pm@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>, Tejun Heo <tj@kernel.org>,
-        Ben Chan <benchan@chromium.org>
-Subject: Re: [PATCH 2/2] lockdep: check that no locks held at freeze time
-Message-ID: <20130506144248.GB15446@dyad.programming.kicks-ass.net>
-References: <1367615050-3894-1-git-send-email-ccross@android.com>
- <1367615050-3894-2-git-send-email-ccross@android.com>
- <20130504130440.GC13770@amd.pavel.ucw.cz>
- <CAMbhsRScr+3Zk5Bi6390bGRbtE4oh2H-mHrGHS0wew5hdkivUg@mail.gmail.com>
- <20130504225715.GB24276@amd.pavel.ucw.cz>
- <CAMbhsRS_cF7kF-QZ9BMBUS3ytU0ukRCbC3D549HW_XOsQbEZhg@mail.gmail.com>
- <20130505000528.GA25454@amd.pavel.ucw.cz>
- <20130505091844.GC22239@gmail.com>
- <20130506085547.GC13861@dyad.programming.kicks-ass.net>
- <CA+55aFzVNwCJhvp4f0EcHK3Vk1ZVKY0fAeu-6FdjhCFiafTAPQ@mail.gmail.com>
+Received: from mx12.netapp.com ([216.240.18.77]:56489 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751739Ab3EUSzS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 May 2013 14:55:18 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: RE: [PATCH 07/13] NFSv4: Introduce new label structure
+Date: Tue, 21 May 2013 18:55:05 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA92878A146@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
+  <1368719808-14584-8-git-send-email-SteveD@redhat.com>
+ <1369077151.6115.22.camel@leira.trondhjem.org> <519BC29E.6080803@RedHat.com>
+In-Reply-To: <519BC29E.6080803@RedHat.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CA+55aFzVNwCJhvp4f0EcHK3Vk1ZVKY0fAeu-6FdjhCFiafTAPQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 06, 2013 at 07:33:28AM -0700, Linus Torvalds wrote:
-> On Mon, May 6, 2013 at 1:55 AM, Peter Zijlstra <a.p.zijlstra@chello.nl> wrote:
+> -----Original Message-----
+> From: Steve Dickson [mailto:SteveD@redhat.com]
+> Sent: Tuesday, May 21, 2013 2:53 PM
+> To: Myklebust, Trond
+> Cc: David P. Quigley; Linux NFS list; Linux FS devel list; Linux Security List;
+> SELinux List
+> Subject: Re: [PATCH 07/13] NFSv4: Introduce new label structure
+> 
+> 
+> 
+> On 20/05/13 15:12, Myklebust, Trond wrote:
+> >> diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
+> >> > index 788128e..78d25b5 100644
+> >> > --- a/include/uapi/linux/nfs4.h
+> >> > +++ b/include/uapi/linux/nfs4.h
+> >> > @@ -25,7 +25,7 @@
+> >> >  #define NFS4_MAXNAMLEN		NAME_MAX
+> >> >  #define NFS4_OPAQUE_LIMIT	1024
+> >> >  #define NFS4_MAX_SESSIONID_LEN	16
+> >> > -
+> >> > +#define NFS4_MAXLABELLEN	2048
+> > Why does this belong in the uapi?
 > >
-> > Doesn't i386 have all the funny per-cpu stuff too? So the only reason it still
-> > does the fugly stack based thing is because nobody could be arsed to do the
-> > work of converting it.
-> 
-> Umm. That "fugly stack-based" thing is better than the per-cpu crap.
-> 
-> The percpu stuff implies a memory load. The stack based thing gets
-> thread_info with pure register accesses. Much better.
-> 
-> For "current()" the per-cpu thing may be better, but if you actually
-> need the thread-info (not the case here, but in other places), the
-> stack masking is superior when it works (ie when you don't have
-> multi-stack issues due to irq's etc)
+> Where do you want it?
 
-But you can do both right? Use per-cpu for current and stack frobbery for
-current_thread_info().
+Just put it in the kernel-only include/linux/nfs4.h
 
-That said, ISTR some risky bits where the stack frobbery went awry due to
-irq-stacks which is the source for my feelings towards the stack frobbery.
-
-That and of course that i386 and x86-64 behave differently for no apparent
-reason.
+Thanks
+  Trond
