@@ -1,183 +1,221 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f172.google.com ([209.85.217.172]:61003 "EHLO
-	mail-lb0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758296Ab3ETVPs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 May 2013 17:15:48 -0400
-Received: by mail-lb0-f172.google.com with SMTP id p10so8126lbi.3
-        for <linux-nfs@vger.kernel.org>; Mon, 20 May 2013 14:15:46 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1368719808-14584-4-git-send-email-SteveD@redhat.com>
-References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
-	<1368719808-14584-4-git-send-email-SteveD@redhat.com>
-Date: Mon, 20 May 2013 17:15:46 -0400
-Message-ID: <CACLa4ptjUTDjV6gvd+YE8C615X9Da03YVtXuDNUOxbVRSTwTnA@mail.gmail.com>
-Subject: Re: [PATCH 03/13] LSM: Add flags field to security_sb_set_mnt_opts
- for in kernel mount data.
-From: Eric Paris <eparis@parisplace.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
+Received: from mx1.redhat.com ([209.132.183.28]:59838 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756689Ab3EVQu5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 May 2013 12:50:57 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
         Linux FS devel list <linux-fsdevel@vger.kernel.org>,
         Linux Security List <linux-security-module@vger.kernel.org>,
         SELinux List <selinux@tycho.nsa.gov>
-Content-Type: text/plain; charset=ISO-8859-1
+Subject: [PATCH 07/13] NFSv4: Introduce new label structure
+Date: Wed, 22 May 2013 12:50:40 -0400
+Message-Id: <1369241446-7680-8-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
+References: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 16, 2013 at 11:56 AM, Steve Dickson <SteveD@redhat.com> wrote:
-> From: David Quigley <dpquigl@davequigley.com>
->
-> There is no way to differentiate if a text mount option is passed from user
-> space or the kernel. A flags field is being added to the
-> security_sb_set_mnt_opts hook to allow for in kernel security flags to be sent
-> to the LSM for processing in addition to the text options received from mount.
-> This patch also updated existing code to fix compilation errors.
->
-> Acked-by: James Morris <james.l.morris@oracle.com>
-> Signed-off-by: David P. Quigley <dpquigl@tycho.nsa.gov>
-> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+From: Steve Dickson <steved@redhat.com>
 
-Acked-by: Eric Paris <eparis@redhat.com>
+In order to mimic the way that NFSv4 ACLs are implemented we have created a
+structure to be used to pass label data up and down the call chain. This patch
+adds the new structure and new members to the required NFSv4 call structures.
 
-> ---
->  fs/nfs/super.c           |  3 ++-
->  include/linux/security.h | 13 ++++++++++---
->  security/capability.c    |  5 ++++-
->  security/security.c      |  7 +++++--
->  security/selinux/hooks.c | 12 ++++++++++--
->  5 files changed, 31 insertions(+), 9 deletions(-)
->
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index a366107..c1bbb53 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -2411,7 +2411,8 @@ static int nfs_bdi_register(struct nfs_server *server)
->  int nfs_set_sb_security(struct super_block *s, struct dentry *mntroot,
->                         struct nfs_mount_info *mount_info)
->  {
-> -       return security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts);
-> +       return security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts,
-> +                                                               0, NULL);
->  }
->  EXPORT_SYMBOL_GPL(nfs_set_sb_security);
->
-> diff --git a/include/linux/security.h b/include/linux/security.h
-> index cff3e4f..aa656fb 100644
-> --- a/include/linux/security.h
-> +++ b/include/linux/security.h
-> @@ -1456,7 +1456,9 @@ struct security_operations {
->         int (*sb_pivotroot) (struct path *old_path,
->                              struct path *new_path);
->         int (*sb_set_mnt_opts) (struct super_block *sb,
-> -                               struct security_mnt_opts *opts);
-> +                               struct security_mnt_opts *opts,
-> +                               unsigned long kern_flags,
-> +                               unsigned long *set_kern_flags);
->         int (*sb_clone_mnt_opts) (const struct super_block *oldsb,
->                                    struct super_block *newsb);
->         int (*sb_parse_opts_str) (char *options, struct security_mnt_opts *opts);
-> @@ -1747,7 +1749,10 @@ int security_sb_mount(const char *dev_name, struct path *path,
->                       const char *type, unsigned long flags, void *data);
->  int security_sb_umount(struct vfsmount *mnt, int flags);
->  int security_sb_pivotroot(struct path *old_path, struct path *new_path);
-> -int security_sb_set_mnt_opts(struct super_block *sb, struct security_mnt_opts *opts);
-> +int security_sb_set_mnt_opts(struct super_block *sb,
-> +                               struct security_mnt_opts *opts,
-> +                               unsigned long kern_flags,
-> +                               unsigned long *set_kern_flags);
->  int security_sb_clone_mnt_opts(const struct super_block *oldsb,
->                                 struct super_block *newsb);
->  int security_sb_parse_opts_str(char *options, struct security_mnt_opts *opts);
-> @@ -2037,7 +2042,9 @@ static inline int security_sb_pivotroot(struct path *old_path,
->  }
->
->  static inline int security_sb_set_mnt_opts(struct super_block *sb,
-> -                                          struct security_mnt_opts *opts)
-> +                                          struct security_mnt_opts *opts,
-> +                                          unsigned long kern_flags,
-> +                                          unsigned long *set_kern_flags)
->  {
->         return 0;
->  }
-> diff --git a/security/capability.c b/security/capability.c
-> index b3e8b93..32b5157 100644
-> --- a/security/capability.c
-> +++ b/security/capability.c
-> @@ -91,7 +91,10 @@ static int cap_sb_pivotroot(struct path *old_path, struct path *new_path)
->  }
->
->  static int cap_sb_set_mnt_opts(struct super_block *sb,
-> -                              struct security_mnt_opts *opts)
-> +                              struct security_mnt_opts *opts,
-> +                              unsigned long kern_flags,
-> +                              unsigned long *set_kern_flags)
-> +
->  {
->         if (unlikely(opts->num_mnt_opts))
->                 return -EOPNOTSUPP;
-> diff --git a/security/security.c b/security/security.c
-> index c3ceb75..8d0b9a7 100644
-> --- a/security/security.c
-> +++ b/security/security.c
-> @@ -294,9 +294,12 @@ int security_sb_pivotroot(struct path *old_path, struct path *new_path)
->  }
->
->  int security_sb_set_mnt_opts(struct super_block *sb,
-> -                               struct security_mnt_opts *opts)
-> +                               struct security_mnt_opts *opts,
-> +                               unsigned long kern_flags,
-> +                               unsigned long *set_kern_flags)
->  {
-> -       return security_ops->sb_set_mnt_opts(sb, opts);
-> +       return security_ops->sb_set_mnt_opts(sb, opts, kern_flags,
-> +                                               set_kern_flags);
->  }
->  EXPORT_SYMBOL(security_sb_set_mnt_opts);
->
-> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-> index bbf219a..f3b5446 100644
-> --- a/security/selinux/hooks.c
-> +++ b/security/selinux/hooks.c
-> @@ -552,7 +552,9 @@ static int bad_option(struct superblock_security_struct *sbsec, char flag,
->   * labeling information.
->   */
->  static int selinux_set_mnt_opts(struct super_block *sb,
-> -                               struct security_mnt_opts *opts)
-> +                               struct security_mnt_opts *opts,
-> +                               unsigned long kern_flags,
-> +                               unsigned long *set_kern_flags)
->  {
->         const struct cred *cred = current_cred();
->         int rc = 0, i;
-> @@ -580,6 +582,12 @@ static int selinux_set_mnt_opts(struct super_block *sb,
->                         "before the security server is initialized\n");
->                 goto out;
->         }
-> +       if (kern_flags && !set_kern_flags) {
-> +               /* Specifying internal flags without providing a place to
-> +                * place the results is not allowed */
-> +               rc = -EINVAL;
-> +               goto out;
-> +       }
->
->         /*
->          * Binary mount data FS will come through this function twice.  Once
-> @@ -980,7 +988,7 @@ static int superblock_doinit(struct super_block *sb, void *data)
->                 goto out_err;
->
->  out:
-> -       rc = selinux_set_mnt_opts(sb, &opts);
-> +       rc = selinux_set_mnt_opts(sb, &opts, 0, NULL);
->
->  out_err:
->         security_free_mnt_opts(&opts);
-> --
-> 1.8.1.4
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-security-module" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ fs/nfs/inode.c          | 28 ++++++++++++++++++++++++++++
+ include/linux/nfs4.h    |  9 +++++++++
+ include/linux/nfs_fs.h  | 18 ++++++++++++++++++
+ include/linux/nfs_xdr.h | 11 +++++++++++
+ 4 files changed, 66 insertions(+)
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index c1c7a9d..07fcf0b 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -257,6 +257,34 @@ nfs_init_locked(struct inode *inode, void *opaque)
+ 	return 0;
+ }
+ 
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags)
++{
++	struct nfs4_label *label = NULL;
++	int minor_version = server->nfs_client->cl_minorversion;
++
++	if (minor_version < 2)
++		return label;
++
++	if (!(server->caps & NFS_CAP_SECURITY_LABEL))
++		return label;
++
++	label = kzalloc(sizeof(struct nfs4_label), flags);
++	if (label == NULL)
++		return ERR_PTR(-ENOMEM);
++
++	label->label = kzalloc(NFS4_MAXLABELLEN, flags);
++	if (label->label == NULL) {
++		kfree(label);
++		return ERR_PTR(-ENOMEM);
++	}
++	label->len = NFS4_MAXLABELLEN;
++
++	return label;
++}
++EXPORT_SYMBOL_GPL(nfs4_label_alloc);
++#endif
++
+ /*
+  * This is our front-end to iget that looks up inodes by file handle
+  * instead of inode number.
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 4204600..e36dee5 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -32,6 +32,15 @@ struct nfs4_acl {
+ 	struct nfs4_ace	aces[0];
+ };
+ 
++#define NFS4_MAXLABELLEN	2048
++
++struct nfs4_label {
++	uint32_t	lfs;
++	uint32_t	pi;
++	u32		len;
++	char	*label;
++};
++
+ typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
+ 
+ struct nfs_stateid4 {
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index fc01d5c..39b2404 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -497,6 +497,24 @@ extern int nfs_mountpoint_expiry_timeout;
+ extern void nfs_release_automount_timer(void);
+ 
+ /*
++ * linux/fs/nfs/nfs4proc.c
++ */
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++extern struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags);
++static inline void nfs4_label_free(struct nfs4_label *label)
++{
++	if (label) {
++		kfree(label->label);
++		kfree(label);
++	}
++	return;
++}
++#else
++static inline struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags) { return NULL; }
++static inline void nfs4_label_free(void *label) {}
++#endif
++
++/*
+  * linux/fs/nfs/unlink.c
+  */
+ extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index bfdf6e0..a454d83 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -349,6 +349,7 @@ struct nfs_openargs {
+ 	const u32 *		open_bitmap;
+ 	__u32			claim;
+ 	enum createmode4	createmode;
++	const struct nfs4_label *label;
+ };
+ 
+ struct nfs_openres {
+@@ -358,6 +359,7 @@ struct nfs_openres {
+ 	struct nfs4_change_info	cinfo;
+ 	__u32                   rflags;
+ 	struct nfs_fattr *      f_attr;
++	struct nfs4_label	*f_label;
+ 	struct nfs_seqid *	seqid;
+ 	const struct nfs_server *server;
+ 	fmode_t			delegation_type;
+@@ -600,6 +602,7 @@ struct nfs_entry {
+ 	int			eof;
+ 	struct nfs_fh *		fh;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label  *label;
+ 	unsigned char		d_type;
+ 	struct nfs_server *	server;
+ };
+@@ -632,6 +635,7 @@ struct nfs_setattrargs {
+ 	struct iattr *                  iap;
+ 	const struct nfs_server *	server; /* Needed for name mapping */
+ 	const u32 *			bitmask;
++	const struct nfs4_label		*label;
+ };
+ 
+ struct nfs_setaclargs {
+@@ -667,6 +671,7 @@ struct nfs_getaclres {
+ struct nfs_setattrres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs_fattr *              fattr;
++	struct nfs4_label		*label;
+ 	const struct nfs_server *	server;
+ };
+ 
+@@ -712,6 +717,7 @@ struct nfs3_setaclargs {
+ struct nfs_diropok {
+ 	struct nfs_fh *		fh;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ };
+ 
+ struct nfs_readlinkargs {
+@@ -864,6 +870,7 @@ struct nfs4_create_arg {
+ 	const struct iattr *		attrs;
+ 	const struct nfs_fh *		dir_fh;
+ 	const u32 *			bitmask;
++	const struct nfs4_label		*label;
+ };
+ 
+ struct nfs4_create_res {
+@@ -871,6 +878,7 @@ struct nfs4_create_res {
+ 	const struct nfs_server *	server;
+ 	struct nfs_fh *			fh;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	struct nfs4_change_info		dir_cinfo;
+ };
+ 
+@@ -895,6 +903,7 @@ struct nfs4_getattr_res {
+ 	struct nfs4_sequence_res	seq_res;
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ };
+ 
+ struct nfs4_link_arg {
+@@ -909,6 +918,7 @@ struct nfs4_link_res {
+ 	struct nfs4_sequence_res	seq_res;
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	struct nfs4_change_info		cinfo;
+ 	struct nfs_fattr *		dir_attr;
+ };
+@@ -926,6 +936,7 @@ struct nfs4_lookup_res {
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
+ 	struct nfs_fh *			fh;
++	struct nfs4_label		*label;
+ };
+ 
+ struct nfs4_lookup_root_arg {
+-- 
+1.8.1.4
+
