@@ -1,170 +1,370 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:36180 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:40718 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755489Ab3ETRR7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 May 2013 13:17:59 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 5/6] NFSv4.1: Use layout credentials for get_deviceinfo calls
-Date: Mon, 20 May 2013 13:17:06 -0400
-Message-Id: <1369070227-40671-5-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1369070227-40671-4-git-send-email-Trond.Myklebust@netapp.com>
-References: <1369070227-40671-1-git-send-email-Trond.Myklebust@netapp.com>
- <1369070227-40671-2-git-send-email-Trond.Myklebust@netapp.com>
- <1369070227-40671-3-git-send-email-Trond.Myklebust@netapp.com>
- <1369070227-40671-4-git-send-email-Trond.Myklebust@netapp.com>
+	id S1756698Ab3EVQu7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 May 2013 12:50:59 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 10/13] NFS: Add label lifecycle management
+Date: Wed, 22 May 2013 12:50:43 -0400
+Message-Id: <1369241446-7680-11-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
+References: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is not strictly needed, since get_deviceinfo is not allowed to
-return NFS4ERR_ACCESS or NFS4ERR_WRONG_CRED, but lets do it anyway
-for consistency with other pNFS operations.
+From: David Quigley <dpquigl@davequigley.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+>From David Quigley <dpquigl@davequigley.com>
+
+This patch adds the lifecycle management for the security label structure
+introduced in an earlier patch. The label is not used yet but allocations and
+freeing of the structure is handled.
+
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfs/blocklayout/blocklayout.c |  2 +-
- fs/nfs/nfs4filelayout.c          |  3 ++-
- fs/nfs/nfs4filelayout.h          |  3 ++-
- fs/nfs/nfs4filelayoutdev.c       |  7 +++++--
- fs/nfs/nfs4proc.c                | 11 ++++++++---
- fs/nfs/objlayout/objlayout.c     |  3 ++-
- fs/nfs/pnfs.h                    |  3 ++-
- 7 files changed, 22 insertions(+), 10 deletions(-)
+ fs/nfs/dir.c      | 23 ++++++++++++++++++-
+ fs/nfs/inode.c    | 15 +++++++++---
+ fs/nfs/nfs4proc.c | 69 +++++++++++++++++++++++++++++++++++++++++++++++++------
+ 3 files changed, 96 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 434b93e..1e5fdd3 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -1091,7 +1091,7 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
- 	dev->mincount = 0;
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index e9ab2cd..736b607 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -585,10 +585,16 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 	if (entry.fh == NULL || entry.fattr == NULL)
+ 		goto out;
  
- 	dprintk("%s: dev_id: %s\n", __func__, dev->dev_id.data);
--	rc = nfs4_proc_getdeviceinfo(server, dev);
-+	rc = nfs4_proc_getdeviceinfo(server, dev, NULL);
- 	dprintk("%s getdevice info returns %d\n", __func__, rc);
- 	if (rc) {
- 		rv = ERR_PTR(rc);
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 22d1062..17ed87e 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -643,7 +643,8 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
- 	d = nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode)->pnfs_curr_ld,
- 				   NFS_SERVER(lo->plh_inode)->nfs_client, id);
- 	if (d == NULL) {
--		dsaddr = filelayout_get_device_info(lo->plh_inode, id, gfp_flags);
-+		dsaddr = filelayout_get_device_info(lo->plh_inode, id,
-+				lo->plh_lc_cred, gfp_flags);
- 		if (dsaddr == NULL)
- 			goto out;
- 	} else
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index 235ff95..cebd20e 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -150,6 +150,7 @@ struct nfs4_pnfs_ds *nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg,
- extern void nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
- extern void nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
- struct nfs4_file_layout_dsaddr *
--filelayout_get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_flags);
-+filelayout_get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id,
-+		struct rpc_cred *cred, gfp_t gfp_flags);
++	entry.label = nfs4_label_alloc(NFS_SERVER(inode), GFP_NOWAIT);
++	if (IS_ERR(entry.label)) {
++		status = PTR_ERR(entry.label);
++		goto out;
++	}
++
+ 	array = nfs_readdir_get_array(page);
+ 	if (IS_ERR(array)) {
+ 		status = PTR_ERR(array);
+-		goto out;
++		goto out_label_free;
+ 	}
+ 	memset(array, 0, sizeof(struct nfs_cache_array));
+ 	array->eof_index = -1;
+@@ -614,6 +620,8 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 	nfs_readdir_free_large_page(pages_ptr, pages, array_size);
+ out_release_array:
+ 	nfs_readdir_release_array(page);
++out_label_free:
++	nfs4_label_free(entry.label);
+ out:
+ 	nfs_free_fattr(entry.fattr);
+ 	nfs_free_fhandle(entry.fh);
+@@ -1083,6 +1091,10 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+ 	if (fhandle == NULL || fattr == NULL)
+ 		goto out_error;
  
- #endif /* FS_NFS_NFS4FILELAYOUT_H */
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index 661a0f6..0493dbd 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -668,7 +668,10 @@ decode_and_add_device(struct inode *inode, struct pnfs_device *dev, gfp_t gfp_fl
-  * of available devices, and return it.
-  */
- struct nfs4_file_layout_dsaddr *
--filelayout_get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_flags)
-+filelayout_get_device_info(struct inode *inode,
-+		struct nfs4_deviceid *dev_id,
-+		struct rpc_cred *cred,
-+		gfp_t gfp_flags)
- {
- 	struct pnfs_device *pdev = NULL;
- 	u32 max_resp_sz;
-@@ -709,7 +712,7 @@ filelayout_get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gf
- 	pdev->pglen = max_resp_sz;
- 	pdev->mincount = 0;
++	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_NOWAIT);
++	if (IS_ERR(label))
++		goto out_error;
++
+ 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, label);
+ 	if (error)
+ 		goto out_bad;
+@@ -1093,6 +1105,8 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
  
--	rc = nfs4_proc_getdeviceinfo(server, pdev);
-+	rc = nfs4_proc_getdeviceinfo(server, pdev, cred);
- 	dprintk("%s getdevice info returns %d\n", __func__, rc);
- 	if (rc)
- 		goto out_free;
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
++	nfs4_label_free(label);
++
+ out_set_verifier:
+ 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+  out_valid:
+@@ -1109,6 +1123,7 @@ out_zap_parent:
+  out_bad:
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
++	nfs4_label_free(label);
+ 	nfs_mark_for_revalidate(dir);
+ 	if (inode && S_ISDIR(inode->i_mode)) {
+ 		/* Purge readdir caches. */
+@@ -1129,6 +1144,7 @@ out_zap_parent:
+ out_error:
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
++	nfs4_label_free(label);
+ 	dput(parent);
+ 	dfprintk(LOOKUPCACHE, "NFS: %s(%s/%s) lookup returned error %d\n",
+ 			__func__, dentry->d_parent->d_name.name,
+@@ -1284,6 +1300,10 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
+ 	if (fhandle == NULL || fattr == NULL)
+ 		goto out;
+ 
++	label = nfs4_label_alloc(NFS_SERVER(dir), GFP_NOWAIT);
++	if (IS_ERR(label))
++		goto out;
++
+ 	parent = dentry->d_parent;
+ 	/* Protect against concurrent sillydeletes */
+ 	nfs_block_sillyrename(parent);
+@@ -1312,6 +1332,7 @@ no_entry:
+ 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+ out_unblock_sillyrename:
+ 	nfs_unblock_sillyrename(parent);
++	nfs4_label_free(label);
+ out:
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 58e7bf8..12e8ad8 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -836,6 +836,13 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 		goto out;
+ 
+ 	nfs_inc_stats(inode, NFSIOS_INODEREVALIDATE);
++
++	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_KERNEL);
++	if (IS_ERR(label)) {
++		status = PTR_ERR(label);
++		goto out;
++	}
++
+ 	status = NFS_PROTO(inode)->getattr(server, NFS_FH(inode), fattr, label);
+ 	if (status != 0) {
+ 		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) getattr failed, error=%d\n",
+@@ -846,7 +853,7 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 			if (!S_ISDIR(inode->i_mode))
+ 				set_bit(NFS_INO_STALE, &NFS_I(inode)->flags);
+ 		}
+-		goto out;
++		goto err_out;
+ 	}
+ 
+ 	status = nfs_refresh_inode(inode, fattr);
+@@ -854,7 +861,7 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) refresh failed, error=%d\n",
+ 			 inode->i_sb->s_id,
+ 			 (long long)NFS_FILEID(inode), status);
+-		goto out;
++		goto err_out;
+ 	}
+ 
+ 	if (nfsi->cache_validity & NFS_INO_INVALID_ACL)
+@@ -864,7 +871,9 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 		inode->i_sb->s_id,
+ 		(long long)NFS_FILEID(inode));
+ 
+- out:
++err_out:
++	nfs4_label_free(label);
++out:
+ 	nfs_free_fattr(fattr);
+ 	return status;
+ }
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 4f42f49..7cdc706 100644
+index 004de20..e9488f5 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -6547,7 +6547,9 @@ int nfs4_proc_getdevicelist(struct nfs_server *server,
- EXPORT_SYMBOL_GPL(nfs4_proc_getdevicelist);
+@@ -833,9 +833,14 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	p = kzalloc(sizeof(*p), gfp_mask);
+ 	if (p == NULL)
+ 		goto err;
++
++	p->f_label = nfs4_label_alloc(server, gfp_mask);
++	if (IS_ERR(p->f_label))
++		goto err_free_p;
++
+ 	p->o_arg.seqid = nfs_alloc_seqid(&sp->so_seqid, gfp_mask);
+ 	if (p->o_arg.seqid == NULL)
+-		goto err_free;
++		goto err_free_label;
+ 	nfs_sb_active(dentry->d_sb);
+ 	p->dentry = dget(dentry);
+ 	p->dir = parent;
+@@ -889,7 +894,10 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	nfs4_init_opendata_res(p);
+ 	kref_init(&p->kref);
+ 	return p;
+-err_free:
++
++err_free_label:
++	nfs4_label_free(p->f_label);
++err_free_p:
+ 	kfree(p);
+ err:
+ 	dput(parent);
+@@ -906,6 +914,9 @@ static void nfs4_opendata_free(struct kref *kref)
+ 	if (p->state != NULL)
+ 		nfs4_put_open_state(p->state);
+ 	nfs4_put_state_owner(p->owner);
++
++	nfs4_label_free(p->f_label);
++
+ 	dput(p->dir);
+ 	dput(p->dentry);
+ 	nfs_sb_deactive(sb);
+@@ -2020,10 +2031,18 @@ static int _nfs4_do_open(struct inode *dir,
+ 	if (opendata == NULL)
+ 		goto err_put_state_owner;
  
- static int
--_nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
-+_nfs4_proc_getdeviceinfo(struct nfs_server *server,
-+		struct pnfs_device *pdev,
-+		struct rpc_cred *cred)
- {
- 	struct nfs4_getdeviceinfo_args args = {
- 		.pdev = pdev,
-@@ -6559,6 +6561,7 @@ _nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
- 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_GETDEVICEINFO],
- 		.rpc_argp = &args,
- 		.rpc_resp = &res,
-+		.rpc_cred = cred,
- 	};
++	if (label) {
++		olabel = nfs4_label_alloc(server, GFP_KERNEL);
++		if (IS_ERR(olabel)) {
++			status = PTR_ERR(olabel);
++			goto err_opendata_put;
++		}
++	}
++
+ 	if (ctx_th && server->attr_bitmask[2] & FATTR4_WORD2_MDSTHRESHOLD) {
+ 		opendata->f_attr.mdsthreshold = pnfs_mdsthreshold_alloc();
+ 		if (!opendata->f_attr.mdsthreshold)
+-			goto err_opendata_put;
++			goto err_free_label;
+ 		opendata->o_arg.open_bitmap = &nfs4_pnfs_open_bitmap[0];
+ 	}
+ 	if (dentry->d_inode != NULL)
+@@ -2031,7 +2050,7 @@ static int _nfs4_do_open(struct inode *dir,
+ 
+ 	status = _nfs4_open_and_get_state(opendata, fmode, flags, &state);
+ 	if (status != 0)
+-		goto err_opendata_put;
++		goto err_free_label;
+ 
+ 	if ((opendata->o_arg.open_flags & O_EXCL) &&
+ 	    (opendata->o_arg.createmode != NFS4_CREATE_GUARDED)) {
+@@ -2053,10 +2072,14 @@ static int _nfs4_do_open(struct inode *dir,
+ 		kfree(opendata->f_attr.mdsthreshold);
+ 	opendata->f_attr.mdsthreshold = NULL;
+ 
++	nfs4_label_free(olabel);
++
+ 	nfs4_opendata_put(opendata);
+ 	nfs4_put_state_owner(sp);
+ 	*res = state;
+ 	return 0;
++err_free_label:
++	nfs4_label_free(olabel);
+ err_opendata_put:
+ 	kfree(opendata->f_attr.mdsthreshold);
+ 	nfs4_opendata_put(opendata);
+@@ -2670,16 +2693,23 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *mntfh,
+ 		return error;
+ 	}
+ 
++	label = nfs4_label_alloc(server, GFP_KERNEL);
++	if (IS_ERR(label))
++		return PTR_ERR(label);
++
+ 	error = nfs4_proc_getattr(server, mntfh, fattr, label);
+ 	if (error < 0) {
+ 		dprintk("nfs4_get_root: getattr error = %d\n", -error);
+-		return error;
++		goto err_free_label;
+ 	}
+ 
+ 	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
+ 	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
+ 		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
+ 
++err_free_label:
++	nfs4_label_free(label);
++
+ 	return error;
+ }
+ 
+@@ -2785,6 +2815,7 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 	struct inode *inode = dentry->d_inode;
+ 	struct rpc_cred *cred = NULL;
+ 	struct nfs4_state *state = NULL;
++	struct nfs4_label *label = NULL;
  	int status;
  
-@@ -6569,14 +6572,16 @@ _nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
+ 	if (pnfs_ld_layoutret_on_setattr(inode))
+@@ -2811,9 +2842,15 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 		}
+ 	}
+ 
+-	status = nfs4_do_setattr(inode, cred, fattr, sattr, state, NULL, NULL);
++	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_KERNEL);
++	if (IS_ERR(label))
++		return PTR_ERR(label);
++
++	status = nfs4_do_setattr(inode, cred, fattr, sattr, state, NULL, label);
+ 	if (status == 0)
+ 		nfs_setattr_update_inode(inode, sattr);
++
++	nfs4_label_free(label);
  	return status;
  }
  
--int nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
-+int nfs4_proc_getdeviceinfo(struct nfs_server *server,
-+		struct pnfs_device *pdev,
-+		struct rpc_cred *cred)
+@@ -3193,7 +3230,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		.rpc_resp = &res,
+ 	};
+ 	int status = -ENOMEM;
+-	
++
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+ 		update_changeattr(old_dir, &res.old_cinfo);
+@@ -3240,11 +3277,21 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
+ 	if (res.fattr == NULL)
+ 		goto out;
+ 
++	res.label = nfs4_label_alloc(server, GFP_KERNEL);
++	if (IS_ERR(res.label)) {
++		status = PTR_ERR(res.label);
++		goto out;
++	}
++
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+ 		update_changeattr(dir, &res.cinfo);
+ 		nfs_post_op_update_inode(inode, res.fattr);
+ 	}
++
++
++	nfs4_label_free(res.label);
++
+ out:
+ 	nfs_free_fattr(res.fattr);
+ 	return status;
+@@ -3280,6 +3327,10 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
+ 	if (data != NULL) {
+ 		struct nfs_server *server = NFS_SERVER(dir);
+ 
++		data->label = nfs4_label_alloc(server, GFP_KERNEL);
++		if (IS_ERR(data->label))
++			goto out_free;
++
+ 		data->msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CREATE];
+ 		data->msg.rpc_argp = &data->arg;
+ 		data->msg.rpc_resp = &data->res;
+@@ -3296,6 +3347,9 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
+ 		nfs_fattr_init(data->res.fattr);
+ 	}
+ 	return data;
++out_free:
++	kfree(data);
++	return NULL;
+ }
+ 
+ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_createdata *data)
+@@ -3311,6 +3365,7 @@ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_
+ 
+ static void nfs4_free_createdata(struct nfs4_createdata *data)
  {
- 	struct nfs4_exception exception = { };
- 	int err;
- 
- 	do {
- 		err = nfs4_handle_exception(server,
--					_nfs4_proc_getdeviceinfo(server, pdev),
-+					_nfs4_proc_getdeviceinfo(server, pdev, cred),
- 					&exception);
- 	} while (exception.retry);
- 	return err;
-diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-index a9ebd81..1989908 100644
---- a/fs/nfs/objlayout/objlayout.c
-+++ b/fs/nfs/objlayout/objlayout.c
-@@ -614,7 +614,8 @@ int objlayout_get_deviceinfo(struct pnfs_layout_hdr *pnfslay,
- 	pd.pglen = PAGE_SIZE;
- 	pd.mincount = 0;
- 
--	err = nfs4_proc_getdeviceinfo(NFS_SERVER(pnfslay->plh_inode), &pd);
-+	err = nfs4_proc_getdeviceinfo(NFS_SERVER(pnfslay->plh_inode), &pd,
-+			pnfslay->plh_lc_cred);
- 	dprintk("%s nfs_getdeviceinfo returned %d\n", __func__, err);
- 	if (err)
- 		goto err_out;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index f5f8a47..1441dff 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -170,7 +170,8 @@ extern int nfs4_proc_getdevicelist(struct nfs_server *server,
- 				   const struct nfs_fh *fh,
- 				   struct pnfs_devicelist *devlist);
- extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
--				   struct pnfs_device *dev);
-+				   struct pnfs_device *dev,
-+				   struct rpc_cred *cred);
- extern struct pnfs_layout_segment* nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags);
- extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
++	nfs4_label_free(data->label);
+ 	kfree(data);
+ }
  
 -- 
 1.8.1.4
