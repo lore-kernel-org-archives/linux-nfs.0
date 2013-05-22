@@ -1,60 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:62696 "EHLO mx12.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:41572 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753985Ab3EOUV4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 16:21:56 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Zach Brown <zab@redhat.com>,
-        "Martin K. Petersen" <martin.petersen@oracle.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC v0 4/4] nfs, nfsd: rough sys_copy_range and COPY support
-Date: Wed, 15 May 2013 20:21:54 +0000
-Message-ID: <1368649314.3568.19.camel@leira.trondhjem.org>
-References: <1368566126-17610-1-git-send-email-zab@redhat.com>
-	 <1368566126-17610-5-git-send-email-zab@redhat.com>
-	 <20130515201949.GD25994@fieldses.org>
-In-Reply-To: <20130515201949.GD25994@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+	id S1757002Ab3EVW67 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 May 2013 18:58:59 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] SUNRPC: Remove redundant call to rpc_set_running() in __rpc_execute()
+Date: Wed, 22 May 2013 18:58:28 -0400
+Message-Id: <1369263508-54488-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-05-15 at 16:19 -0400, J. Bruce Fields wrote:
-> On Tue, May 14, 2013 at 02:15:26PM -0700, Zach Brown wrote:
-> > This crude patch illustrates the simplest plumbing involved in
-> > supporting sys_call_range with the NFS COPY operation that's pending in
-> > the 4.2 draft spec.
-> > 
-> > The patch is based on a previous prototype that used the COPY op to
-> > implement sys_copyfileat which created a new file (based on the ocfs2
-> > reflink ioctl).  By contrast, this copies file contents between existing
-> > files.
-> > 
-> > There's still a lot of implementation and testing to do, but this can
-> > get discussion going.
-> 
-> I'm using:
-> 
-> 	git://github.com/loghyr/NFSv4.2
-> 
-> as my reference for the draft protocol.
-> 
-> On a quick skim, one thing this is missing before it complies is a
-> client implementation of CB_OFFLOAD: "If a client desires an
-> intra-server file copy, then it MUST support the COPY and CB_OFFLOAD
-> operations."
+The RPC_TASK_RUNNING flag will always have been set in rpc_make_runnable()
+once we get past the test for out_of_line_wait_on_bit() returning
+ERESTARTSYS.
 
-Note that Bryan is currently working on updating the NFS implementation
-to match the draft protocol.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ net/sunrpc/sched.c | 1 -
+ 1 file changed, 1 deletion(-)
 
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index dcbd69c..b7b32c3 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -790,7 +790,6 @@ static void __rpc_execute(struct rpc_task *task)
+ 			task->tk_flags |= RPC_TASK_KILLED;
+ 			rpc_exit(task, -ERESTARTSYS);
+ 		}
+-		rpc_set_running(task);
+ 		dprintk("RPC: %5u sync task resuming\n", task->tk_pid);
+ 	}
+ 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.8.1.4
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
