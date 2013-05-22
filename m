@@ -1,70 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:64604 "EHLO mx1.redhat.com"
+Received: from smtp-o-1.desy.de ([131.169.56.154]:55653 "EHLO smtp-o-1.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756687Ab3EVQu4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 May 2013 12:50:56 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 06/13] NFSv4: Add label recommended attribute and NFSv4 flags
-Date: Wed, 22 May 2013 12:50:39 -0400
-Message-Id: <1369241446-7680-7-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
-References: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
+	id S1753057Ab3EVJ62 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 May 2013 05:58:28 -0400
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 383BE280015
+	for <linux-nfs@vger.kernel.org>; Wed, 22 May 2013 11:58:27 +0200 (CEST)
+Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 2B06B13E8A
+	for <linux-nfs@vger.kernel.org>; Wed, 22 May 2013 11:58:27 +0200 (MEST)
+Received: from smtp-intra-1.desy.de (lb-40-26.desy.de) by ZITSWEEP1.win.desy.de
+ (Clearswift SMTPRS 5.4.1) with ESMTP id <Tabd8838bb283a9615f2938@ZITSWEEP1.win.desy.de> for <linux-nfs@vger.kernel.org>;
+ Wed, 22 May 2013 11:58:27 +0200
+Received: from zimbratest.desy.de (zimbratest.desy.de [131.169.72.254])
+	by smtp-intra-1.desy.de (DESY-INTRA-1) with ESMTP id D8E093E902
+	for <linux-nfs@vger.kernel.org>; Wed, 22 May 2013 11:58:26 +0200 (MEST)
+Date: Wed, 22 May 2013 11:58:26 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-ID: <2007295634.1529248.1369216706282.JavaMail.root@desy.de>
+In-Reply-To: <1164976622.1510880.1369209469446.JavaMail.root@desy.de>
+Subject: expected unxpected behavior
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
 
-This patch adds several new flags to allow the NFS client and server to
-determine if this attribute is supported and if it is being sent over the wire.
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- include/linux/nfs_fs_sb.h | 1 +
- include/linux/nfs_xdr.h   | 4 +++-
- 2 files changed, 4 insertions(+), 1 deletion(-)
+Hi,
 
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 3b7fa2a..2ddd00a 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -200,5 +200,6 @@ struct nfs_server {
- #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
- #define NFS_CAP_STATEID_NFSV41	(1U << 16)
- #define NFS_CAP_ATOMIC_OPEN_V1	(1U << 17)
-+#define NFS_CAP_SECURITY_LABEL	(1U << 18)
- 
- #endif
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 104b62f..bfdf6e0 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -101,6 +101,7 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
- #define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
- #define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
-+#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 25)
- 
- #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
- 		| NFS_ATTR_FATTR_MODE \
-@@ -120,7 +121,8 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
- 		| NFS_ATTR_FATTR_SPACE_USED)
- #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
--		| NFS_ATTR_FATTR_SPACE_USED)
-+		| NFS_ATTR_FATTR_SPACE_USED \
-+		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
- 
- /*
-  * Info on the file system
--- 
-1.8.1.4
+we hit some strange behavior which is expected from one side, but unexpected at the same time.
+We run our nfs server with v3 and v4. Due to misconfiguration in idmapping, we got some files
+to be owned by uid -1. Which is ok, as with v4 server returns nobody. Nevertheless, this
+prevent to list the directory with v3. This is the result of uid_valid()/gid_valid() calls
+in nfs3xdr.c:decode_fattr3. The uid_valid/gid_valid checks that provided uid/gid are not -1.
+Probably this is ok. My confusion is: a) one file with bad uid/gid prevents listing of a
+directory, b) in nfs v3 spec uid3 (as well as uid_t in linux) is unsigned int 32 and
+value 0xffffffff is absolutely valid.
+
+
+Tigran.
 
