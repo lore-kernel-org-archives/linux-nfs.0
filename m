@@ -1,68 +1,192 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:38219 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53296 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754177Ab3EFPy4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 May 2013 11:54:56 -0400
-Subject: re: SUNRPC: Add RPC based upcall mechanism for RPCGSS auth
-From: Simo Sorce <simo@redhat.com>
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Cc: linux-nfs@vger.kernel.org, Bruce Fields <bfields@redhat.com>
-In-Reply-To: <20130506154435.GA14732@elgon.mountain>
-References: <20130506154435.GA14732@elgon.mountain>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 06 May 2013 11:54:53 -0400
-Message-ID: <1367855693.2976.205.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+	id S1756695Ab3EVQu7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 May 2013 12:50:59 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 08/13] NFSv4: Extend fattr bitmaps to support all 3 words
+Date: Wed, 22 May 2013 12:50:41 -0400
+Message-Id: <1369241446-7680-9-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
+References: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-05-06 at 18:44 +0300, Dan Carpenter wrote:
-> Hello Simo Sorce,
-> 
-> The patch 1d658336b05f: "SUNRPC: Add RPC based upcall mechanism for 
-> RPCGSS auth" from May 25, 2012, leads to the following warning:
-> "net/sunrpc/auth_gss/gss_rpc_xdr.c:30 gssx_check_pointer()
-> 	 warn: signedness bug returning '(-28)'"
-> 
-> net/sunrpc/auth_gss/gss_rpc_xdr.c
->     24  static bool gssx_check_pointer(struct xdr_stream *xdr)
->     25  {
->     26          __be32 *p;
->     27  
->     28          p = xdr_reserve_space(xdr, 4);
->     29          if (unlikely(p == NULL))
->     30                  return -ENOSPC;
->                                ^^^^^^^
-> This is casted implicitly to "true".  Functions named "check" are a bad
-> idea anyways because it's not clear what the return value will be.  It's
-> better to use "gssx_pointer_ok()" or "valid" where obviously true means
-> that the pointer is ok.
-> 
->     31          return *p?true:false;
-> 
-> We just reserved "*p" so doesn't this point to uninitialized data?  It
-> points to a __be32.  So we're not really checking a pointer we're
-> checking that __be32 is non-zero.
-> 
->     32  }
-> 
-> regards,
-> dan carpenter
+From: David Quigley <dpquigl@davequigley.com>
 
-Dan,
-thanks a lot for pointing this one out.
+The fattr handling bitmap code only uses the first two fattr words sofar. This
+patch adds the 3rd word to being sent but doesn't populate it yet.
 
-Bruce,
-we should fix it in 3.10 if we can make it.
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ fs/nfs/nfs4_fs.h          |  6 +++---
+ fs/nfs/nfs4proc.c         | 10 +++++-----
+ fs/nfs/nfs4xdr.c          | 20 ++++++++++++--------
+ fs/nfs/super.c            |  1 +
+ include/linux/nfs_fs_sb.h |  2 +-
+ 5 files changed, 22 insertions(+), 17 deletions(-)
 
-probably easiest way is to kill lines 29/30 and do:
-return (p && *p) ? true : false;
-
-It would be also ok to change the name to gssx_pointer_is_valid() I
-guess.
-
-Simo.
-
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index a1dd768..283fd28 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -303,10 +303,10 @@ is_ds_client(struct nfs_client *clp)
+ extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
+ 
+ extern const u32 nfs4_fattr_bitmap[3];
+-extern const u32 nfs4_statfs_bitmap[2];
+-extern const u32 nfs4_pathconf_bitmap[2];
++extern const u32 nfs4_statfs_bitmap[3];
++extern const u32 nfs4_pathconf_bitmap[3];
+ extern const u32 nfs4_fsinfo_bitmap[3];
+-extern const u32 nfs4_fs_locations_bitmap[2];
++extern const u32 nfs4_fs_locations_bitmap[3];
+ 
+ void nfs4_free_client(struct nfs_client *);
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index abf46f4..bcf60f1 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -161,7 +161,7 @@ static const u32 nfs4_open_noattr_bitmap[3] = {
+ 	| FATTR4_WORD0_FILEID,
+ };
+ 
+-const u32 nfs4_statfs_bitmap[2] = {
++const u32 nfs4_statfs_bitmap[3] = {
+ 	FATTR4_WORD0_FILES_AVAIL
+ 	| FATTR4_WORD0_FILES_FREE
+ 	| FATTR4_WORD0_FILES_TOTAL,
+@@ -170,7 +170,7 @@ const u32 nfs4_statfs_bitmap[2] = {
+ 	| FATTR4_WORD1_SPACE_TOTAL
+ };
+ 
+-const u32 nfs4_pathconf_bitmap[2] = {
++const u32 nfs4_pathconf_bitmap[3] = {
+ 	FATTR4_WORD0_MAXLINK
+ 	| FATTR4_WORD0_MAXNAME,
+ 	0
+@@ -185,7 +185,7 @@ const u32 nfs4_fsinfo_bitmap[3] = { FATTR4_WORD0_MAXFILESIZE
+ 			FATTR4_WORD2_LAYOUT_BLKSIZE
+ };
+ 
+-const u32 nfs4_fs_locations_bitmap[2] = {
++const u32 nfs4_fs_locations_bitmap[3] = {
+ 	FATTR4_WORD0_TYPE
+ 	| FATTR4_WORD0_CHANGE
+ 	| FATTR4_WORD0_SIZE
+@@ -201,7 +201,7 @@ const u32 nfs4_fs_locations_bitmap[2] = {
+ 	| FATTR4_WORD1_TIME_ACCESS
+ 	| FATTR4_WORD1_TIME_METADATA
+ 	| FATTR4_WORD1_TIME_MODIFY
+-	| FATTR4_WORD1_MOUNTED_ON_FILEID
++	| FATTR4_WORD1_MOUNTED_ON_FILEID,
+ };
+ 
+ static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dentry,
+@@ -5318,7 +5318,7 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
+ 				   struct page *page)
+ {
+ 	struct nfs_server *server = NFS_SERVER(dir);
+-	u32 bitmask[2] = {
++	u32 bitmask[3] = {
+ 		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS,
+ 	};
+ 	struct nfs4_fs_locations_arg args = {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 4be8d13..727cfe0 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -979,15 +979,16 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 	int len;
+ 	uint32_t bmval0 = 0;
+ 	uint32_t bmval1 = 0;
++	uint32_t bmval2 = 0;
+ 
+ 	/*
+ 	 * We reserve enough space to write the entire attribute buffer at once.
+ 	 * In the worst-case, this would be
+-	 *   12(bitmap) + 4(attrlen) + 8(size) + 4(mode) + 4(atime) + 4(mtime)
+-	 *          = 36 bytes, plus any contribution from variable-length fields
++	 * 16(bitmap) + 4(attrlen) + 8(size) + 4(mode) + 4(atime) + 4(mtime)
++	 * = 40 bytes, plus any contribution from variable-length fields
+ 	 *            such as owner/group.
+ 	 */
+-	len = 16;
++	len = 20;
+ 
+ 	/* Sigh */
+ 	if (iap->ia_valid & ATTR_SIZE)
+@@ -1031,9 +1032,9 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 	 * We write the bitmap length now, but leave the bitmap and the attribute
+ 	 * buffer length to be backfilled at the end of this routine.
+ 	 */
+-	*p++ = cpu_to_be32(2);
++	*p++ = cpu_to_be32(3);
+ 	q = p;
+-	p += 3;
++	p += 4;
+ 
+ 	if (iap->ia_valid & ATTR_SIZE) {
+ 		bmval0 |= FATTR4_WORD0_SIZE;
+@@ -1080,9 +1081,10 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 				len, ((char *)p - (char *)q) + 4);
+ 		BUG();
+ 	}
+-	len = (char *)p - (char *)q - 12;
++	len = (char *)p - (char *)q - 16;
+ 	*q++ = htonl(bmval0);
+ 	*q++ = htonl(bmval1);
++	*q++ = htonl(bmval2);
+ 	*q = htonl(len);
+ 
+ /* out: */
+@@ -1188,8 +1190,10 @@ encode_getattr_three(struct xdr_stream *xdr,
+ 
+ static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
+ {
+-	encode_getattr_two(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
+-			   bitmask[1] & nfs4_fattr_bitmap[1], hdr);
++	encode_getattr_three(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
++			   bitmask[1] & nfs4_fattr_bitmap[1],
++			   bitmask[2] & nfs4_fattr_bitmap[2],
++			   hdr);
+ }
+ 
+ static void encode_getfattr_open(struct xdr_stream *xdr, const u32 *bitmask,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 2e94f21..b30c003 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -833,6 +833,7 @@ int nfs_show_stats(struct seq_file *m, struct dentry *root)
+ 		seq_printf(m, "\n\tnfsv4:\t");
+ 		seq_printf(m, "bm0=0x%x", nfss->attr_bitmask[0]);
+ 		seq_printf(m, ",bm1=0x%x", nfss->attr_bitmask[1]);
++		seq_printf(m, ",bm2=0x%x", nfss->attr_bitmask[2]);
+ 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
+ 		show_sessions(m, nfss);
+ 		show_pnfs(m, nfss);
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 2ddd00a..d4348ab 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -146,7 +146,7 @@ struct nfs_server {
+ 	u32			attr_bitmask[3];/* V4 bitmask representing the set
+ 						   of attributes supported on this
+ 						   filesystem */
+-	u32			cache_consistency_bitmask[2];
++	u32			cache_consistency_bitmask[3];
+ 						/* V4 bitmask representing the subset
+ 						   of change attribute, size, ctime
+ 						   and mtime attributes supported by
 -- 
-Simo Sorce * Red Hat, Inc * New York
+1.8.1.4
 
