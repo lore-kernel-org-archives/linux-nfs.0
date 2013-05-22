@@ -1,48 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f180.google.com ([74.125.82.180]:64603 "EHLO
-	mail-we0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754407Ab3EKCnJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:43:09 -0400
-Received: by mail-we0-f180.google.com with SMTP id n5so4521948wev.11
-        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:43:07 -0700 (PDT)
-Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
-        by mx.google.com with ESMTPSA id s1sm1246974wiz.2.2013.05.10.19.43.06
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 10 May 2013 19:43:07 -0700 (PDT)
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from smtp-o-3.desy.de ([131.169.56.156]:59791 "EHLO smtp-o-3.desy.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754865Ab3EVKAH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 May 2013 06:00:07 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id C02E02800D9
+	for <linux-nfs@vger.kernel.org>; Wed, 22 May 2013 12:00:05 +0200 (CEST)
+Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 712761215
+	for <linux-nfs@vger.kernel.org>; Wed, 22 May 2013 12:00:03 +0200 (MEST)
+Received: from smtp-intra-1.desy.de (lb-40-26.desy.de) by ZITSWEEP2.win.desy.de
+ (Clearswift SMTPRS 5.4.1) with ESMTP id <Tabd885058183a961601220@ZITSWEEP2.win.desy.de> for <linux-nfs@vger.kernel.org>;
+ Wed, 22 May 2013 12:00:03 +0200
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 09/38] Revert "pnfsd: filelayout: file layout specific callbacks"
-Date: Sat, 11 May 2013 05:43:02 +0300
-Message-Id: <1368240182-32073-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <518B6377.3000207@tonian.com>
-References: <518B6377.3000207@tonian.com>
+Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH] nfs: include invalid uid/gid in the error message
+Date: Wed, 22 May 2013 11:59:54 +0200
+Message-Id: <1369216794-18044-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This reverts commit c89fe09b70d3e5391db3b645f91ee10d75a31350.
----
- include/linux/nfsd/nfsd4_pnfs.h | 7 -------
- 1 file changed, 7 deletions(-)
+if client receives an invalid uid/gid debug message is generated.
+Unfortunately the actual invalid value is not included.
 
-diff --git a/include/linux/nfsd/nfsd4_pnfs.h b/include/linux/nfsd/nfsd4_pnfs.h
-index 95b8b6e..1e6ef66 100644
---- a/include/linux/nfsd/nfsd4_pnfs.h
-+++ b/include/linux/nfsd/nfsd4_pnfs.h
-@@ -260,13 +260,6 @@ struct pnfsd_cb_operations {
- 	/* Generic callbacks */
- 	int (*cb_layout_recall) (struct super_block *, struct inode *,
- 				 struct nfsd4_pnfs_cb_layout *);
--
--	/* pNFS Files layout specific callbacks */
--
--	/* Callback from fs on MDS only */
--	int (*cb_get_state) (struct super_block *, struct pnfs_get_state *);
--	/* Callback from fs on DS only */
--	int (*cb_change_state) (struct pnfs_get_state *);
- };
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+---
+ fs/nfs/nfs2xdr.c | 4 ++--
+ fs/nfs/nfs3xdr.c | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 62db136..85c0646 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -319,10 +319,10 @@ static int decode_fattr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
  
- #endif /* _LINUX_NFSD_NFSD4_PNFS_H */
+ 	return 0;
+ out_uid:
+-	dprintk("NFS: returned invalid uid\n");
++	dprintk("NFS: returned invalid uid %d\n", fattr->uid);
+ 	return -EINVAL;
+ out_gid:
+-	dprintk("NFS: returned invalid gid\n");
++	dprintk("NFS: returned invalid gid %d\n", fattr->gid);
+ 	return -EINVAL;
+ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index fa6d721..cd52069 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -680,10 +680,10 @@ static int decode_fattr3(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+ 	fattr->valid |= NFS_ATTR_FATTR_V3;
+ 	return 0;
+ out_uid:
+-	dprintk("NFS: returned invalid uid\n");
++	dprintk("NFS: returned invalid uid %d\n", fattr->uid);
+ 	return -EINVAL;
+ out_gid:
+-	dprintk("NFS: returned invalid gid\n");
++	dprintk("NFS: returned invalid gid %d\n", fattr->gid);
+ 	return -EINVAL;
+ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
 -- 
-1.7.11.7
+1.8.1.4
 
