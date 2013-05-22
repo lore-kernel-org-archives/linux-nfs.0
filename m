@@ -1,54 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from longford.logfs.org ([213.229.74.203]:59327 "EHLO
-	longford.logfs.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756451Ab3E2Wsj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 May 2013 18:48:39 -0400
-Date: Wed, 29 May 2013 17:19:17 -0400
-From: =?utf-8?B?SsO2cm4=?= Engel <joern@logfs.org>
-To: Andi Kleen <andi@firstfloor.org>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, Waiman Long <waiman.long@hp.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Jeff Layton <jlayton@redhat.com>, Miklos Szeredi <mszeredi@suse.cz>,
-        Ian Kent <raven@themaw.net>, Sage Weil <sage@inktank.com>,
-        Steve French <sfrench@samba.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Eric Paris <eparis@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, autofs@vger.kernel.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, "Chandramouleeswaran, Aswin" <aswin@hp.com>,
-        "Norton, Scott J" <scott.norton@hp.com>
-Subject: Re: [PATCH 0/3 v3] dcache: make it more scalable on large system
-Message-ID: <20130529211917.GB6658@logfs.org>
-References: <1369273048-60256-1-git-send-email-Waiman.Long@hp.com>
- <20130523094201.GA24543@dastard>
- <519E8B5F.3080905@hp.com>
- <20130527020903.GR29466@dastard>
- <51A624E2.3000301@hp.com>
- <20130529184640.GA3243@fieldses.org>
- <20130529203700.GM6123@two.firstfloor.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20130529203700.GM6123@two.firstfloor.org>
+Received: from mx2.netapp.com ([216.240.18.37]:20564 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752843Ab3EVRu3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 May 2013 13:50:29 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] SUNRPC: Prevent an rpc_task wakeup race
+Date: Wed, 22 May 2013 13:49:50 -0400
+Message-Id: <1369244990-40551-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 29 May 2013 22:37:00 +0200, Andi Kleen wrote:
-> 
-> > As Dave said before, is the last path component sufficient?  Or how
-> > about an inode number?
-> 
-> Neither works, the profiler needs to find the file and read it.
+The lockless RPC_IS_QUEUED() test in __rpc_execute means that we need to
+be careful about ordering the calls to rpc_test_and_set_running(task) and
+rpc_clear_queued(task). If we get the order wrong, then we may end up
+testing the RPC_TASK_RUNNING flag after __rpc_execute() has looped
+and changed the state of the rpc_task.
 
-Ignoring all the complexity this would cause downstream, you could do
-the path lookup just once, attach some cookie to it and return the
-cookie ever-after.  Maybe some combination of i_sb and i_ino would be
-good enough as a cookie.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: stable@vger.kernel.org
+---
+ net/sunrpc/sched.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-Jörn
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 52d3802..dcbd69c 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -324,11 +324,17 @@ EXPORT_SYMBOL_GPL(__rpc_wait_for_completion_task);
+  * Note: If the task is ASYNC, and is being made runnable after sitting on an
+  * rpc_wait_queue, this must be called with the queue spinlock held to protect
+  * the wait queue operation.
++ * Note the ordering of rpc_test_and_set_running() and rpc_clear_queued(),
++ * which is needed to ensure that __rpc_execute() doesn't loop (due to the
++ * lockless RPC_IS_QUEUED() test) before we've had a chance to test
++ * the RPC_TASK_RUNNING flag.
+  */
+ static void rpc_make_runnable(struct rpc_task *task)
+ {
++	bool need_wakeup = !rpc_test_and_set_running(task);
++
+ 	rpc_clear_queued(task);
+-	if (rpc_test_and_set_running(task))
++	if (!need_wakeup)
+ 		return;
+ 	if (RPC_IS_ASYNC(task)) {
+ 		INIT_WORK(&task->u.tk_work, rpc_async_schedule);
+-- 
+1.8.1.4
 
---
-Data dominates. If you've chosen the right data structures and organized
-things well, the algorithms will almost always be self-evident. Data
-structures, not algorithms, are central to programming.
--- Rob Pike
