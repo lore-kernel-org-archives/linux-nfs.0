@@ -1,159 +1,185 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:46687 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:31102 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753380Ab3EJTdf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 May 2013 15:33:35 -0400
-Subject: [PATCH 4/8] FS-Cache: Don't sleep in page release if __GFP_FS is
- not set [ver #2]
-To: Trond.Myklebust@netapp.com, torvalds@linux-foundation.org
-From: David Howells <dhowells@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cachefs@redhat.com, linux-kernel@vger.kernel.org
-Date: Fri, 10 May 2013 20:33:31 +0100
-Message-ID: <20130510193331.3045.83490.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20130510193257.3045.77981.stgit@warthog.procyon.org.uk>
-References: <20130510193257.3045.77981.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1756536Ab3EVQux (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 May 2013 12:50:53 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 02/13] Security: Add Hook to test if the particular xattr is part of a MAC model.
+Date: Wed, 22 May 2013 12:50:35 -0400
+Message-Id: <1369241446-7680-3-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
+References: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Don't sleep in __fscache_maybe_release_page() if __GFP_FS is not set.  This
-goes some way towards mitigating fscache deadlocking against ext4 by way of
-the allocator, eg:
+From: David Quigley <dpquigl@davequigley.com>
 
-INFO: task flush-8:0:24427 blocked for more than 120 seconds.
-"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-flush-8:0       D ffff88003e2b9fd8     0 24427      2 0x00000000
- ffff88003e2b9138 0000000000000046 ffff880012e3a040 ffff88003e2b9fd8
- 0000000000011c80 ffff88003e2b9fd8 ffffffff81a10400 ffff880012e3a040
- 0000000000000002 ffff880012e3a040 ffff88003e2b9098 ffffffff8106dcf5
-Call Trace:
- [<ffffffff8106dcf5>] ? __lock_is_held+0x31/0x53
- [<ffffffff81219b61>] ? radix_tree_lookup_element+0xf4/0x12a
- [<ffffffff81454bed>] schedule+0x60/0x62
- [<ffffffffa01d349c>] __fscache_wait_on_page_write+0x8b/0xa5 [fscache]
- [<ffffffff810498a8>] ? __init_waitqueue_head+0x4d/0x4d
- [<ffffffffa01d393a>] __fscache_maybe_release_page+0x30c/0x324 [fscache]
- [<ffffffffa01d369a>] ? __fscache_maybe_release_page+0x6c/0x324 [fscache]
- [<ffffffff81071b53>] ? trace_hardirqs_on_caller+0x114/0x170
- [<ffffffffa01fd7b2>] nfs_fscache_release_page+0x68/0x94 [nfs]
- [<ffffffffa01ef73e>] nfs_release_page+0x7e/0x86 [nfs]
- [<ffffffff810aa553>] try_to_release_page+0x32/0x3b
- [<ffffffff810b6c70>] shrink_page_list+0x535/0x71a
- [<ffffffff81071b53>] ? trace_hardirqs_on_caller+0x114/0x170
- [<ffffffff810b7352>] shrink_inactive_list+0x20a/0x2dd
- [<ffffffff81071a13>] ? mark_held_locks+0xbe/0xea
- [<ffffffff810b7a65>] shrink_lruvec+0x34c/0x3eb
- [<ffffffff810b7bd3>] do_try_to_free_pages+0xcf/0x355
- [<ffffffff810b7fc8>] try_to_free_pages+0x9a/0xa1
- [<ffffffff810b08d2>] __alloc_pages_nodemask+0x494/0x6f7
- [<ffffffff810d9a07>] kmem_getpages+0x58/0x155
- [<ffffffff810dc002>] fallback_alloc+0x120/0x1f3
- [<ffffffff8106db23>] ? trace_hardirqs_off+0xd/0xf
- [<ffffffff810dbed3>] ____cache_alloc_node+0x177/0x186
- [<ffffffff81162a6c>] ? ext4_init_io_end+0x1c/0x37
- [<ffffffff810dc403>] kmem_cache_alloc+0xf1/0x176
- [<ffffffff810b17ac>] ? test_set_page_writeback+0x101/0x113
- [<ffffffff81162a6c>] ext4_init_io_end+0x1c/0x37
- [<ffffffff81162ce4>] ext4_bio_write_page+0x20f/0x3af
- [<ffffffff8115cc02>] mpage_da_submit_io+0x26e/0x2f6
- [<ffffffff811088e5>] ? __find_get_block_slow+0x38/0x133
- [<ffffffff81161348>] mpage_da_map_and_submit+0x3a7/0x3bd
- [<ffffffff81161a60>] ext4_da_writepages+0x30d/0x426
- [<ffffffff810b3359>] do_writepages+0x1c/0x2a
- [<ffffffff81102f4d>] __writeback_single_inode+0x3e/0xe5
- [<ffffffff81103995>] writeback_sb_inodes+0x1bd/0x2f4
- [<ffffffff81103b3b>] __writeback_inodes_wb+0x6f/0xb4
- [<ffffffff81103c81>] wb_writeback+0x101/0x195
- [<ffffffff81071b53>] ? trace_hardirqs_on_caller+0x114/0x170
- [<ffffffff811043aa>] ? wb_do_writeback+0xaa/0x173
- [<ffffffff8110434a>] wb_do_writeback+0x4a/0x173
- [<ffffffff81071bbc>] ? trace_hardirqs_on+0xd/0xf
- [<ffffffff81038554>] ? del_timer+0x4b/0x5b
- [<ffffffff811044e0>] bdi_writeback_thread+0x6d/0x147
- [<ffffffff81104473>] ? wb_do_writeback+0x173/0x173
- [<ffffffff81048fbc>] kthread+0xd0/0xd8
- [<ffffffff81455eb2>] ? _raw_spin_unlock_irq+0x29/0x3e
- [<ffffffff81048eec>] ? __init_kthread_worker+0x55/0x55
- [<ffffffff81456aac>] ret_from_fork+0x7c/0xb0
- [<ffffffff81048eec>] ? __init_kthread_worker+0x55/0x55
-2 locks held by flush-8:0/24427:
- #0:  (&type->s_umount_key#41){.+.+..}, at: [<ffffffff810e3b73>] grab_super_passive+0x4c/0x76
- #1:  (jbd2_handle){+.+...}, at: [<ffffffff81190d81>] start_this_handle+0x475/0x4ea
+The interface to request security labels from user space is the xattr
+interface. When requesting the security label from an NFS server it is
+important to make sure the requested xattr actually is a MAC label. This allows
+us to make sure that we get the desired semantics from the attribute instead of
+something else such as capabilities or a time based LSM.
 
-
-The problem here is that another thread, which is attempting to write the
-to-be-stored NFS page to the on-ext4 cache file is waiting for the journal
-lock, eg:
-
-INFO: task kworker/u:2:24437 blocked for more than 120 seconds.
-"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-kworker/u:2     D ffff880039589768     0 24437      2 0x00000000
- ffff8800395896d8 0000000000000046 ffff8800283bf040 ffff880039589fd8
- 0000000000011c80 ffff880039589fd8 ffff880039f0b040 ffff8800283bf040
- 0000000000000006 ffff8800283bf6b8 ffff880039589658 ffffffff81071a13
-Call Trace:
- [<ffffffff81071a13>] ? mark_held_locks+0xbe/0xea
- [<ffffffff81455e73>] ? _raw_spin_unlock_irqrestore+0x3a/0x50
- [<ffffffff81071b53>] ? trace_hardirqs_on_caller+0x114/0x170
- [<ffffffff81071bbc>] ? trace_hardirqs_on+0xd/0xf
- [<ffffffff81454bed>] schedule+0x60/0x62
- [<ffffffff81190c23>] start_this_handle+0x317/0x4ea
- [<ffffffff810498a8>] ? __init_waitqueue_head+0x4d/0x4d
- [<ffffffff81190fcc>] jbd2__journal_start+0xb3/0x12e
- [<ffffffff81176606>] __ext4_journal_start_sb+0xb2/0xc6
- [<ffffffff8115f137>] ext4_da_write_begin+0x109/0x233
- [<ffffffff810a964d>] generic_file_buffered_write+0x11a/0x264
- [<ffffffff811032cf>] ? __mark_inode_dirty+0x2d/0x1ee
- [<ffffffff810ab1ab>] __generic_file_aio_write+0x2a5/0x2d5
- [<ffffffff810ab24a>] generic_file_aio_write+0x6f/0xd0
- [<ffffffff81159a2c>] ext4_file_write+0x38c/0x3c4
- [<ffffffff810e0915>] do_sync_write+0x91/0xd1
- [<ffffffffa00a17f0>] cachefiles_write_page+0x26f/0x310 [cachefiles]
- [<ffffffffa01d470b>] fscache_write_op+0x21e/0x37a [fscache]
- [<ffffffff81455eb2>] ? _raw_spin_unlock_irq+0x29/0x3e
- [<ffffffffa01d2479>] fscache_op_work_func+0x78/0xd7 [fscache]
- [<ffffffff8104455a>] process_one_work+0x232/0x3a8
- [<ffffffff810444ff>] ? process_one_work+0x1d7/0x3a8
- [<ffffffff81044ee0>] worker_thread+0x214/0x303
- [<ffffffff81044ccc>] ? manage_workers+0x245/0x245
- [<ffffffff81048fbc>] kthread+0xd0/0xd8
- [<ffffffff81455eb2>] ? _raw_spin_unlock_irq+0x29/0x3e
- [<ffffffff81048eec>] ? __init_kthread_worker+0x55/0x55
- [<ffffffff81456aac>] ret_from_fork+0x7c/0xb0
- [<ffffffff81048eec>] ? __init_kthread_worker+0x55/0x55
-4 locks held by kworker/u:2/24437:
- #0:  (fscache_operation){.+.+.+}, at: [<ffffffff810444ff>] process_one_work+0x1d7/0x3a8
- #1:  ((&op->work)){+.+.+.}, at: [<ffffffff810444ff>] process_one_work+0x1d7/0x3a8
- #2:  (sb_writers#14){.+.+.+}, at: [<ffffffff810ab22c>] generic_file_aio_write+0x51/0xd0
- #3:  (&sb->s_type->i_mutex_key#19){+.+.+.}, at: [<ffffffff810ab236>] generic_file_aio_write+0x5b/0x
-
-fscache already tries to cancel pending stores, but it can't cancel a write
-for which I/O is already in progress.
-
-An alternative would be to accept writing garbage to the cache under extreme
-circumstances and to kill the afflicted cache object if we have to do this.
-However, we really need to know how strapped the allocator is before deciding
-to do that.
-
-Signed-off-by: David Howells <dhowells@redhat.com>
+Acked-by: Eric Paris <eparis@redhat.com>
+Acked-by: James Morris <james.l.morris@oracle.com>
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 ---
+ include/linux/security.h   | 14 ++++++++++++++
+ security/capability.c      |  6 ++++++
+ security/security.c        |  6 ++++++
+ security/selinux/hooks.c   |  6 ++++++
+ security/smack/smack_lsm.c | 11 +++++++++++
+ 5 files changed, 43 insertions(+)
 
- fs/fscache/page.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/fscache/page.c b/fs/fscache/page.c
-index 4882c80..42f8f2d 100644
---- a/fs/fscache/page.c
-+++ b/fs/fscache/page.c
-@@ -109,7 +109,7 @@ page_busy:
- 	 * allocator as the work threads writing to the cache may all end up
- 	 * sleeping on memory allocation, so we may need to impose a timeout
- 	 * too. */
--	if (!(gfp & __GFP_WAIT)) {
-+	if (!(gfp & __GFP_WAIT) || !(gfp & __GFP_FS)) {
- 		fscache_stat(&fscache_n_store_vmscan_busy);
- 		return false;
- 	}
+diff --git a/include/linux/security.h b/include/linux/security.h
+index c2af462..cff3e4f 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -1323,6 +1323,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
+  *	@pages contains the number of pages.
+  *	Return 0 if permission is granted.
+  *
++ * @ismaclabel:
++ *	Check if the extended attribute specified by @name
++ *	represents a MAC label. Returns 1 if name is a MAC
++ *	attribute otherwise returns 0.
++ *	@name full extended attribute name to check against
++ *	LSM as a MAC label.
++ *
+  * @secid_to_secctx:
+  *	Convert secid to security context.  If secdata is NULL the length of
+  *	the result will be returned in seclen, but no secdata will be returned.
+@@ -1604,6 +1611,7 @@ struct security_operations {
+ 
+ 	int (*getprocattr) (struct task_struct *p, char *name, char **value);
+ 	int (*setprocattr) (struct task_struct *p, char *name, void *value, size_t size);
++	int (*ismaclabel) (const char *name);
+ 	int (*secid_to_secctx) (u32 secid, char **secdata, u32 *seclen);
+ 	int (*secctx_to_secid) (const char *secdata, u32 seclen, u32 *secid);
+ 	void (*release_secctx) (char *secdata, u32 seclen);
+@@ -1857,6 +1865,7 @@ void security_d_instantiate(struct dentry *dentry, struct inode *inode);
+ int security_getprocattr(struct task_struct *p, char *name, char **value);
+ int security_setprocattr(struct task_struct *p, char *name, void *value, size_t size);
+ int security_netlink_send(struct sock *sk, struct sk_buff *skb);
++int security_ismaclabel(const char *name);
+ int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen);
+ int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
+ void security_release_secctx(char *secdata, u32 seclen);
+@@ -2547,6 +2556,11 @@ static inline int security_netlink_send(struct sock *sk, struct sk_buff *skb)
+ 	return cap_netlink_send(sk, skb);
+ }
+ 
++static inline int security_ismaclabel(const char *name)
++{
++	return 0;
++}
++
+ static inline int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+ {
+ 	return -EOPNOTSUPP;
+diff --git a/security/capability.c b/security/capability.c
+index 7aeec66..b3e8b93 100644
+--- a/security/capability.c
++++ b/security/capability.c
+@@ -823,6 +823,11 @@ static int cap_setprocattr(struct task_struct *p, char *name, void *value,
+ 	return -EINVAL;
+ }
+ 
++static int cap_ismaclabel(const char *name)
++{
++	return 0;
++}
++
+ static int cap_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+ {
+ 	return -EOPNOTSUPP;
+@@ -1042,6 +1047,7 @@ void __init security_fixup_ops(struct security_operations *ops)
+ 	set_to_cap_if_null(ops, d_instantiate);
+ 	set_to_cap_if_null(ops, getprocattr);
+ 	set_to_cap_if_null(ops, setprocattr);
++	set_to_cap_if_null(ops, ismaclabel);
+ 	set_to_cap_if_null(ops, secid_to_secctx);
+ 	set_to_cap_if_null(ops, secctx_to_secid);
+ 	set_to_cap_if_null(ops, release_secctx);
+diff --git a/security/security.c b/security/security.c
+index 0fe2b2e..c3ceb75 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -1057,6 +1057,12 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
+ 	return security_ops->netlink_send(sk, skb);
+ }
+ 
++int security_ismaclabel(const char *name)
++{
++	return security_ops->ismaclabel(name);
++}
++EXPORT_SYMBOL(security_ismaclabel);
++
+ int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+ {
+ 	return security_ops->secid_to_secctx(secid, secdata, seclen);
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index b1f7bd7..bbf219a 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -5454,6 +5454,11 @@ abort_change:
+ 	return error;
+ }
+ 
++static int selinux_ismaclabel(const char *name)
++{
++	return (strcmp(name, XATTR_SELINUX_SUFFIX) == 0);
++}
++
+ static int selinux_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+ {
+ 	return security_sid_to_context(secid, secdata, seclen);
+@@ -5692,6 +5697,7 @@ static struct security_operations selinux_ops = {
+ 	.getprocattr =			selinux_getprocattr,
+ 	.setprocattr =			selinux_setprocattr,
+ 
++	.ismaclabel =			selinux_ismaclabel,
+ 	.secid_to_secctx =		selinux_secid_to_secctx,
+ 	.secctx_to_secid =		selinux_secctx_to_secid,
+ 	.release_secctx =		selinux_release_secctx,
+diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
+index d52c780..a7f485b 100644
+--- a/security/smack/smack_lsm.c
++++ b/security/smack/smack_lsm.c
+@@ -3329,6 +3329,16 @@ static void smack_audit_rule_free(void *vrule)
+ #endif /* CONFIG_AUDIT */
+ 
+ /**
++ * smack_ismaclabel - check if xattr @name references a smack MAC label
++ * @name: Full xattr name to check.
++ */
++static int smack_ismaclabel(const char *name)
++{
++	return (strcmp(name, XATTR_SMACK_SUFFIX) == 0);
++}
++
++
++/**
+  * smack_secid_to_secctx - return the smack label for a secid
+  * @secid: incoming integer
+  * @secdata: destination
+@@ -3524,6 +3534,7 @@ struct security_operations smack_ops = {
+ 	.audit_rule_free =		smack_audit_rule_free,
+ #endif /* CONFIG_AUDIT */
+ 
++	.ismaclabel =			smack_ismaclabel,
+ 	.secid_to_secctx = 		smack_secid_to_secctx,
+ 	.secctx_to_secid = 		smack_secctx_to_secid,
+ 	.release_secctx = 		smack_release_secctx,
+-- 
+1.8.1.4
 
