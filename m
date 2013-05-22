@@ -1,71 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:20798 "EHLO mx1.netapp.com"
+Received: from mout.perfora.net ([74.208.4.194]:61367 "EHLO mout.perfora.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750811Ab3E3Uv7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 May 2013 16:51:59 -0400
-Message-ID: <51A7BBEB.60005@netapp.com>
-Date: Thu, 30 May 2013 16:51:55 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S1754345Ab3EVLvh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 May 2013 07:51:37 -0400
+Date: Wed, 22 May 2013 07:51:33 -0400
+From: Jim Rees <rees@umich.edu>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: include invalid uid/gid in the error message
+Message-ID: <20130522115133.GA6274@umich.edu>
+References: <1369216794-18044-1-git-send-email-tigran.mkrtchyan@desy.de>
 MIME-Version: 1.0
-To: Steve Dickson <SteveD@redhat.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 05/13] NFSv4.2: Added NFS v4.2 support to the NFS client
-References: <1368719808-14584-1-git-send-email-SteveD@redhat.com> <1368719808-14584-6-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1368719808-14584-6-git-send-email-SteveD@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1369216794-18044-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/16/2013 11:56 AM, Steve Dickson wrote:
-> From: Steve Dickson <steved@redhat.com>
-> 
-> This enable NFSv4.2 support. To enable this code the
-> CONFIG_NFS_V4_2 Kconfig define needs to be set and
-> the -o v4.2 mount option need to be used.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  fs/nfs/Kconfig        |  9 +++++++++
->  fs/nfs/callback.c     |  1 +
->  fs/nfs/callback_xdr.c |  6 +++---
->  fs/nfs/nfs4client.c   |  5 +++++
->  fs/nfs/nfs4proc.c     | 15 +++++++++++++++
->  fs/nfs/super.c        |  7 ++++++-
->  include/linux/nfs4.h  |  4 ++++
->  7 files changed, 43 insertions(+), 4 deletions(-)
-> 
+Tigran Mkrtchyan wrote:
 
-8< snip >8
+  if client receives an invalid uid/gid debug message is generated.
+  Unfortunately the actual invalid value is not included.
+  
+  Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+  ---
+   fs/nfs/nfs2xdr.c | 4 ++--
+   fs/nfs/nfs3xdr.c | 4 ++--
+   2 files changed, 4 insertions(+), 4 deletions(-)
+  
+  diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+  index 62db136..85c0646 100644
+  --- a/fs/nfs/nfs2xdr.c
+  +++ b/fs/nfs/nfs2xdr.c
+  @@ -319,10 +319,10 @@ static int decode_fattr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+   
+   	return 0;
+   out_uid:
+  -	dprintk("NFS: returned invalid uid\n");
+  +	dprintk("NFS: returned invalid uid %d\n", fattr->uid);
+   	return -EINVAL;
+   out_gid:
+  -	dprintk("NFS: returned invalid gid\n");
+  +	dprintk("NFS: returned invalid gid %d\n", fattr->gid);
+   	return -EINVAL;
+   out_overflow:
+   	print_overflow_msg(__func__, xdr);
+  diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+  index fa6d721..cd52069 100644
+  --- a/fs/nfs/nfs3xdr.c
+  +++ b/fs/nfs/nfs3xdr.c
+  @@ -680,10 +680,10 @@ static int decode_fattr3(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+   	fattr->valid |= NFS_ATTR_FATTR_V3;
+   	return 0;
+   out_uid:
+  -	dprintk("NFS: returned invalid uid\n");
+  +	dprintk("NFS: returned invalid uid %d\n", fattr->uid);
+   	return -EINVAL;
+   out_gid:
+  -	dprintk("NFS: returned invalid gid\n");
+  +	dprintk("NFS: returned invalid gid %d\n", fattr->gid);
+   	return -EINVAL;
+   out_overflow:
+   	print_overflow_msg(__func__, xdr);
+  -- 
+  1.8.1.4
+  
+  --
+  To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+  the body of a message to majordomo@vger.kernel.org
+  More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> index 7764aca..4204600 100644
-> --- a/include/linux/nfs4.h
-> +++ b/include/linux/nfs4.h
-> @@ -399,11 +399,15 @@ enum lock_type4 {
->  #define NFS4_VERSION 4
->  #define NFS4_MINOR_VERSION 0
->  
-> +#if defined(CONFIG_NFS_V4_2)
-> +#define NFS4_MAX_MINOR_VERSION 2
-> +#else
->  #if defined(CONFIG_NFS_V4_1)
->  #define NFS4_MAX_MINOR_VERSION 1
->  #else
->  #define NFS4_MAX_MINOR_VERSION 0
->  #endif /* CONFIG_NFS_V4_1 */
-> +#endif /* CONFIG_NFS_V4_2 */
-
-Could this be done with a #elif so we don't need the nested endif-s?
-
-~ Bryan
-
->  
->  #define NFS4_DEBUG 1
->  
-> 
-
+I can't tell what the type of fattr->uid is through the maze of include
+files, but would it be a good idea to cast this to unsigned long for
+printing?
