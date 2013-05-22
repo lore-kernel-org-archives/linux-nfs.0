@@ -1,73 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:36104 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758228Ab3EDNAf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 4 May 2013 09:00:35 -0400
-Date: Sat, 4 May 2013 15:00:33 +0200
-From: Pavel Machek <pavel@ucw.cz>
-To: Colin Cross <ccross@android.com>
-Cc: linux-kernel@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Len Brown <len.brown@intel.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Paul Walmsley <paul@pwsan.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-pm@vger.kernel.org, netdev@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, Ben Chan <benchan@chromium.org>
-Subject: Re: [PATCH 1/2] freezer: add unsafe versions of freezable helpers
-Message-ID: <20130504130033.GB13770@amd.pavel.ucw.cz>
-References: <1367615050-3894-1-git-send-email-ccross@android.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1367615050-3894-1-git-send-email-ccross@android.com>
+Received: from mx1.redhat.com ([209.132.183.28]:31392 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756700Ab3EVQvB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 May 2013 12:51:01 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 12/13] NFS: Extend NFS xattr handlers to accept the security namespace
+Date: Wed, 22 May 2013 12:50:45 -0400
+Message-Id: <1369241446-7680-13-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
+References: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi!
+From: David Quigley <dpquigl@davequigley.com>
 
-> NFS calls the freezable helpers with locks held, which is unsafe
-> and caused lockdep warnings when 6aa9707 "lockdep: check that no
-> locks held at freeze time" was applied (reverted in dbf520a).
-> Add new *_unsafe versions of the helpers that will not run the
-> lockdep test when 6aa9707 is reapplied, and call them from NFS.
-> 
-> Signed-off-by: Colin Cross <ccross@android.com>
+The existing NFSv4 xattr handlers do not accept xattr calls to the security
+namespace. This patch extends these handlers to accept xattrs from the security
+namespace in addition to the default NFSv4 ACL namespace.
 
-Looks mostly good.
+Acked-by: James Morris <james.l.morris@oracle.com>
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ fs/nfs/nfs4proc.c   | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ security/security.c |  1 +
+ 2 files changed, 51 insertions(+)
 
-> @@ -152,6 +169,14 @@ static inline bool freezer_should_skip(struct task_struct *p)
->  	freezer_count();						\
->  })
->  
-> +/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
-> +#define freezable_schedule_unsafe()					\
-> +({									\
-> +	freezer_do_not_count();						\
-> +	schedule();							\
-> +	freezer_count_unsafe();						\
-> +})
-> +
-
-Make it inline function? :-). Add short explanation why it is good
-idea?
-
-> +/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
-> +#define freezable_schedule_timeout_killable_unsafe(timeout)		\
-> +({									\
-> +	long __retval;							\
-> +	freezer_do_not_count();						\
-> +	__retval = schedule_timeout_killable(timeout);			\
-> +	freezer_count_unsafe();						\
-> +	__retval;							\
-> +})
-
-Function too?
-									Pavel
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 3cd1911..f04ab95 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5640,6 +5640,53 @@ static size_t nfs4_xattr_list_nfs4_acl(struct dentry *dentry, char *list,
+ 	return len;
+ }
+ 
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++static inline int nfs4_server_supports_labels(struct nfs_server *server)
++{
++	return server->caps & NFS_CAP_SECURITY_LABEL;
++}
++
++static int nfs4_xattr_set_nfs4_label(struct dentry *dentry, const char *key,
++				   const void *buf, size_t buflen,
++				   int flags, int type)
++{
++	if (security_ismaclabel(key))
++		return nfs4_set_security_label(dentry, buf, buflen);
++
++	return -EOPNOTSUPP;
++}
++
++static int nfs4_xattr_get_nfs4_label(struct dentry *dentry, const char *key,
++				   void *buf, size_t buflen, int type)
++{
++	if (security_ismaclabel(key))
++		return nfs4_get_security_label(dentry->d_inode, buf, buflen);
++	return -EOPNOTSUPP;
++}
++
++static size_t nfs4_xattr_list_nfs4_label(struct dentry *dentry, char *list,
++				       size_t list_len, const char *name,
++				       size_t name_len, int type)
++{
++	size_t len = 0;
++
++	if (nfs_server_capable(dentry->d_inode, NFS_CAP_SECURITY_LABEL)) {
++		len = security_inode_listsecurity(dentry->d_inode, NULL, 0);
++		if (list && len <= list_len)
++			security_inode_listsecurity(dentry->d_inode, list, len);
++	}
++	return len;
++}
++
++static const struct xattr_handler nfs4_xattr_nfs4_label_handler = {
++	.prefix = XATTR_SECURITY_PREFIX,
++	.list	= nfs4_xattr_list_nfs4_label,
++	.get	= nfs4_xattr_get_nfs4_label,
++	.set	= nfs4_xattr_set_nfs4_label,
++};
++#endif
++
++
+ /*
+  * nfs_fhget will use either the mounted_on_fileid or the fileid
+  */
+@@ -7468,6 +7515,9 @@ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
+ 
+ const struct xattr_handler *nfs4_xattr_handlers[] = {
+ 	&nfs4_xattr_nfs4_acl_handler,
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	&nfs4_xattr_nfs4_label_handler,
++#endif
+ 	NULL
+ };
+ 
+diff --git a/security/security.c b/security/security.c
+index 8d0b9a7..94b35ae 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -660,6 +660,7 @@ int security_inode_listsecurity(struct inode *inode, char *buffer, size_t buffer
+ 		return 0;
+ 	return security_ops->inode_listsecurity(inode, buffer, buffer_size);
+ }
++EXPORT_SYMBOL(security_inode_listsecurity);
+ 
+ void security_inode_getsecid(const struct inode *inode, u32 *secid)
+ {
 -- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+1.8.1.4
+
