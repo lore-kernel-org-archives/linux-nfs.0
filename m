@@ -1,84 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:17587 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:24875 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755573Ab3EFT5E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 May 2013 15:57:04 -0400
-Message-ID: <51880B01.5040907@redhat.com>
-Date: Mon, 06 May 2013 22:56:49 +0300
-From: Ric Wheeler <rwheeler@redhat.com>
+	id S1759707Ab3EWWPi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 May 2013 18:15:38 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Scott Mayhew <smayhew@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH RFC 1/1] NFS: Allow nfs_updatepage to extend a write to
+ cover a full page when we have a lock that covers the entire file
+Date: Thu, 23 May 2013 22:15:34 +0000
+Message-ID: <1369347328.8861.6.camel@leira.trondhjem.org>
+References: <1369346021-20041-1-git-send-email-smayhew@redhat.com>
+	 <1369346021-20041-2-git-send-email-smayhew@redhat.com>
+In-Reply-To: <1369346021-20041-2-git-send-email-smayhew@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-To: James Bottomley <James.Bottomley@HansenPartnership.com>
-CC: Steve Dickson <SteveD@redhat.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>, Jack Rieden <jrieden@redhat.com>
-Subject: Re: [PATCH 00/17] lnfs: linux-3.9 release
-References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>  <51848BE0.2080901@redhat.com> <1367855617.1868.16.camel@dabdike>
-In-Reply-To: <1367855617.1868.16.camel@dabdike>
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/06/2013 06:53 PM, James Bottomley wrote:
-> On Sat, 2013-05-04 at 07:17 +0300, Ric Wheeler wrote:
->> On 05/02/2013 08:18 PM, Steve Dickson wrote:
->>> From: Steve Dickson <steved@redhat.com>
->>>
->>> Here is an the next rlease of the label NFS patches
->>> ported to the linux-3.9 release
->>>
->>> The following changes were made from the previous release.
->>> (Note, only the server patch changed in this release)
->>>
->>> * Remove the buffer overflow in the allocation of labels.
->>>
->>> * Removed needless char * casting
->>>
->>> * Removed the -EMSGSIZE to nfs4err_badlabel errno mapping
->>>     by changing the return value of nfsd4_label_alloc() to
->>>     be a _be32 value.
->> It would be great to see this patch series land in time for 3.10 - seems like a
->> major feature that has had been held in development for years and it does have a
->> very interested user base waiting for this to land.
->>
->> Are there any existing roadblocks to having this make it this merge
->> window?
-> You mean other than the one Bruce and Trond already mentioned and which
-> you presumably already read? i.e. it's a large feature whose final
-> incarnation landed when the merge window was already open which by
-> process should receive incubation in linux-next before being merged.
->
-> It is entirely within the gift of the maintainers to vary the incubation
-> requirements, but if they do and it comes back with a ton of problems
-> from the 0 day project or smatch or even a build failure that would have
-> been picked up by linux-next, they'll be at the wrong end of Linus'
-> flame thrower not you.  So it is rather unfair to pressure the
-> maintainers like this.
->
-> Kernel processes exist for a reason and almost every maintainer has the
-> scars that remind them of this.
->
-> James
->
->
+Hi Scott,
 
-Don't worry James - this one has had at least as much testing as the average 
-SCSI driver update :)
+On Thu, 2013-05-23 at 17:53 -0400, Scott Mayhew wrote:
+> Currently nfs_updatepage allows a write to be extended to cover a full
+> page only if we don't have a byte range lock on the file... but if we've
+> got the whole file locked, then we should be allowed to extend the
+> write.
+> 
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> ---
+>  fs/nfs/write.c | 7 +++++--
+>  1 file changed, 5 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index a2c7c28..f35fb4f 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -908,13 +908,16 @@ int nfs_updatepage(struct file *file, struct page *page,
+>  		file->f_path.dentry->d_name.name, count,
+>  		(long long)(page_file_offset(page) + offset));
+>  
+> -	/* If we're not using byte range locks, and we know the page
+> +	/* If we're not using byte range locks (or if the range of the
+> +	 * lock covers the entire file), and we know the page
+>  	 * is up to date, it may be more efficient to extend the write
+>  	 * to cover the entire page in order to avoid fragmentation
+>  	 * inefficiencies.
+>  	 */
+>  	if (nfs_write_pageuptodate(page, inode) &&
+> -			inode->i_flock == NULL &&
+> +			(inode->i_flock == NULL ||
+> +			(inode->i_flock->fl_start == 0 &&
+> +			inode->i_flock->fl_end == OFFSET_MAX)) &&
+>  			!(file->f_flags & O_DSYNC)) {
 
-This is was not meant as pressure, James Morris (not you) had replied that his 
-patches are ready and he expected them to be pulled via the NFS trees.
+Can we put this condition into a helper function? I started with the
+"nfs_write_pageuptodate()" thingy, but now we're starting to add in
+extra complications...
 
-This was meant to facilitate getting this multi-tree, multi-maintainer series 
-ready to merge and make sure we aren't stuck each waiting for a response from 
-the next person in the loop.
+Thanks!
+  Trond
 
-Note that this patch set has been in development for *years*, been tested at 
-connectathon, tested by interested parties who promoted the earliest versions of 
-the patches and tested by RHEL (of course, the series has evolved over time).
+>  		count = max(count + offset, nfs_page_length(page));
+>  		offset = 0;
 
-Ric
 
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
