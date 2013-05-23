@@ -1,70 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:9096 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:20686 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752902Ab3EPP5E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 May 2013 11:57:04 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 13/13] Kconfig: Add Kconfig entry for Labeled NFS V4 client
-Date: Thu, 16 May 2013 11:56:48 -0400
-Message-Id: <1368719808-14584-14-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
-References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
+	id S1759458Ab3EWVxm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 May 2013 17:53:42 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r4NLrgZV009218
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 23 May 2013 17:53:42 -0400
+Received: from tonberry.usersys.redhat.com (dhcp145-64.rdu.redhat.com [10.13.145.64])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r4NLrfSQ006709
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Thu, 23 May 2013 17:53:42 -0400
+Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
+	by tonberry.usersys.redhat.com (8.14.5/8.14.5) with ESMTP id r4NLrfU0020072
+	for <linux-nfs@vger.kernel.org>; Thu, 23 May 2013 17:53:41 -0400
+Received: (from smayhew@localhost)
+	by tonberry.usersys.redhat.com (8.14.5/8.14.5/Submit) id r4NLrfZS020071
+	for linux-nfs@vger.kernel.org; Thu, 23 May 2013 17:53:41 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC 0/1] Allow nfs_updatepage to extend a write to cover a full page when we have a lock that covers the entire file 
+Date: Thu, 23 May 2013 17:53:40 -0400
+Message-Id: <1369346021-20041-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Steve Dickson <steved@redhat.com>
+We had a customer experience some performance issues after migrating their
+MQseries servers from AIX to Linux.  Their performance benchmark basically puts
+50000 messages in a message queue, and a tcpdump captured during these tests
+would show a ton of very small writes that were sequential but not contiguous.
+After doing some investigation with systemtap we determined that when we called
+nfs_updatepage() we were not being allowed to extend the write because the
+inode->i_flock was not NULL.  So then later when we'd arrive at
+nfs_try_to_update_request() we would always wind up calling nfs_wb_page().
 
-This patch adds the NFS_V4_SECURITY_LABEL entry which
-enables security label support for the NFSv4 client
+I gave the customer a test kernel using a patch similar to the one that follows
+and the test results were favorable, with far fewer writes, the majority of
+which were utilizing the full wsize.  For example, the top ten write sizes and
+number of occurrences from a tcpdump captured while running the benchmark with
+an unpatched kernel:
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- fs/nfs/Kconfig | 19 +++++++++++++++++++
- 1 file changed, 19 insertions(+)
+$ tshark -r before.pcap.gz -R "nfs.opcode==write && nfs.stateid4.hash==0xf09c"
+-T fields -e nfs.write.data_length | sort | uniq -c | sort -nr | head
+   5852 512
+   5575 1024
+   2262 1035
+   2160 1121
+   1661 1023
+   1460 1074
+   1413 1073
+   1394 1152
+   1244 1055
+    933 1804
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 79c500e..771831d3 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -107,6 +107,7 @@ config NFS_V4_1
- config NFS_V4_2
- 	bool "NFS client support for NFSv4.2"
- 	depends on NFS_V4_1
-+	select NFS_V4_SECURITY_LABEL
- 	help
- 	  This option enables support for minor version 1 of the NFSv4 protocol
- 	  in the kernel's NFS client.
-@@ -140,6 +141,24 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
- 	  If the NFS client is unchanged from the upstream kernel, this
- 	  option should be set to the default "kernel.org".
- 
-+config NFS_V4_SECURITY_LABEL
-+	bool "Provide Security Label support for NFSv4 client"
-+	depends on NFS_V4 && SECURITY
-+	help
-+
-+	Say Y here if you want enable fine-grained security label attribute
-+	support for NFS version 4.  Security labels allow security modules like
-+	SELinux and Smack to label files to facilitate enforcement of their policies.
-+	Without this an NFSv4 mount will have the same label on each file.
-+
-+	If you do not wish to enable fine-grained security labels SELinux or
-+	Smack policies on NFSv4 files, say N.
-+
-+	WARNING: there is still a chance of backwards-incompatible protocol changes.  
-+	For now we recommend "Y" only for developers and testers."
-+
-+	If unsure, say N.
-+
- config ROOT_NFS
- 	bool "Root file system on NFS"
- 	depends on NFS_FS=y && IP_PNP
+contrasted with a tcpdump captured while running the benchmark with the test
+kernel:
+
+$ tshark -r after.pcap.gz -R "nfs.opcode==write && nfs.stateid4.hash==0x9f87"
+-T fields -e nfs.write.data_length | sort | uniq -c | sort -nr | head
+    917 65536
+     76 36864
+     69 20480
+     55 53248
+     32 18432
+     31 49152
+     31 4096
+     31 32768
+     30 16384
+     25 65536,4096
+
+Scott Mayhew (1):
+  NFS: Allow nfs_updatepage to extend a write to cover a full page when
+    we     have a lock that covers the entire file
+
+ fs/nfs/write.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
 -- 
-1.8.1.4
+1.7.11.7
 
