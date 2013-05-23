@@ -1,173 +1,157 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:25735 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755504Ab3EFTlO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 May 2013 15:41:14 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
-        Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] NFSv3: match sec= flavor against server list
-Date: Mon,  6 May 2013 15:41:08 -0400
-Message-Id: <1367869268-3741-1-git-send-email-dros@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from g6t0187.atlanta.hp.com ([15.193.32.64]:38588 "EHLO
+	g6t0187.atlanta.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757314Ab3EWBr2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 May 2013 21:47:28 -0400
+From: Waiman Long <Waiman.Long@hp.com>
+Cc: Waiman Long <Waiman.Long@hp.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, autofs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-nfs@vger.kernel.org,
+        "Chandramouleeswaran, Aswin" <aswin@hp.com>,
+        "Norton, Scott J" <scott.norton@hp.com>,
+        Andi Kleen <andi@firstfloor.org>, Dave Chinner <david@fromorbit.com>
+Subject: [PATCH 0/3 v3] dcache: make it more scalable on large system
+Date: Wed, 22 May 2013 21:37:25 -0400
+Message-Id: <1369273048-60256-1-git-send-email-Waiman.Long@hp.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>, Jeff Layton <jlayton@redhat.com>,
+        Miklos Szeredi <mszeredi@suse.cz>, Ian Kent <raven@themaw.net>,
+        Sage Weil <sage@inktank.com>, Steve French <sfrench@samba.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Eric Paris <eparis@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Older linux clients match the 'sec=' mount option flavor against the server's
-flavor list (if available) and return EPERM if the specified flavor or AUTH_NULL
-(which "matches" any flavor) is not found.
+Change log:
 
-Recent changes skip this step and allow the vfs mount even though no operations
-will succeed, creating a 'dud' mount.
+v2->v3
+ - Fix the RCU lock problem found by Al Viro.
+ - Rebase the code to the latest v3.10-rc1 linux mainline.
+ - Remove patch 4 which may be problematic if the dentry is deleted.
+ - Rerun performance measurement using 3.10-rc1 kernel.
 
-This patch reverts back to the old behavior of matching specified flavors
-against the server list and also returns EPERM when no sec= is specified and
-none of the flavors returned by the server are supported by the client.
+v1->v2
+ - Include performance improvement in the AIM7 benchmark results because
+   of this patch.
+ - Modify dget_parent() to avoid taking the lock, if possible, to further
+   improve AIM7 benchmark results.
 
-Example of behavior change:
+During some perf-record sessions of the kernel running the high_systime
+workload of the AIM7 benchmark, it was found that quite a large portion
+of the spinlock contention was due to the perf_event_mmap_event()
+function itself. This perf kernel function calls d_path() which,
+in turn, call path_get() and dput() indirectly. These 3 functions
+were the hottest functions shown in the perf-report output of
+the _raw_spin_lock() function in an 8-socket system with 80 cores
+(hyperthreading off) with a 3.10-rc1 kernel:
 
-the server's /etc/exports:
+-  13.91%           reaim  [kernel.kallsyms]     [k] _raw_spin_lock
+   - _raw_spin_lock
+      + 35.54% path_get
+      + 34.85% dput
+      + 19.49% d_path
 
-/export/krb5      *(sec=krb5,rw,no_root_squash)
+In fact, the output of the "perf record -s -a" (without call-graph)
+showed:
 
-old client behavior:
+ 13.37%           reaim  [kernel.kallsyms]     [k] _raw_spin_lock
+  7.61%              ls  [kernel.kallsyms]     [k] _raw_spin_lock
+  3.54%            true  [kernel.kallsyms]     [k] _raw_spin_lock
 
-$ uname -a
-Linux one.apikia.fake 3.8.8-202.fc18.x86_64 #1 SMP Wed Apr 17 23:25:17 UTC 2013 x86_64 x86_64 x86_64 GNU/Linux
-$ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
-mount.nfs: timeout set for Sun May  5 17:32:04 2013
-mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
-mount.nfs: prog 100003, trying vers=3, prot=6
-mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
-mount.nfs: prog 100005, trying vers=3, prot=17
-mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
-mount.nfs: mount(2): Permission denied
-mount.nfs: access denied by server while mounting zero:/export/krb5
+Without using the perf monitoring tool, the actual execution profile
+will be quite different. In fact, with this patch set applied, the
+output of the same "perf record -s -a" command became:
 
-recently changed behavior:
+  2.82%           reaim  [kernel.kallsyms]     [k] _raw_spin_lock
+  1.11%              ls  [kernel.kallsyms]     [k] _raw_spin_lock
+  0.26%            true  [kernel.kallsyms]     [k] _raw_spin_lock
 
-$ uname -a
-Linux one.apikia.fake 3.9.0-testing+ #2 SMP Fri May 3 20:29:32 EDT 2013 x86_64 x86_64 x86_64 GNU/Linux
-$ sudo mount -v -o sec=sys,vers=3 zero:/export/krb5 /mnt
-mount.nfs: timeout set for Sun May  5 17:37:17 2013
-mount.nfs: trying text-based options 'sec=sys,vers=3,addr=192.168.100.10'
-mount.nfs: prog 100003, trying vers=3, prot=6
-mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
-mount.nfs: prog 100005, trying vers=3, prot=17
-mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
-$ ls /mnt
-ls: cannot open directory /mnt: Permission denied
-$ sudo ls /mnt
-ls: cannot open directory /mnt: Permission denied
-$ sudo df /mnt
-df: ‘/mnt’: Permission denied
-df: no file systems processed
-$ sudo umount /mnt
-$
+So the time spent on _raw_spin_lock() function went down from 24.52%
+to 4.19%. It can be seen that the performance data collected by the
+perf-record command can be heavily skewed in some cases on a system
+with a large number of CPUs. This set of patches enables the perf
+command to give a more accurate and reliable picture of what is really
+happening in the system. At the same time, they can also improve the
+general performance of systems especially those with a large number
+of CPUs.
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
+The d_path() function takes the following two locks:
 
-Version 2:
- - now just uses specified flavor when:
-   - AUTH_NULL is in the server list
-   - flavor is in the server list
+1. dentry->d_lock [spinlock] from dget()/dget_parent()/dput()
+2. rename_lock    [seqlock]  from d_path()
 
- - now returns EPERM when no sec= specified and no client supported flavors are
-   in the server list
+This set of patches were designed to minimize the locking overhead
+of these code paths.
 
- - includes example in the changelog
+The current kernel takes the dentry->d_lock lock whenever it wants to
+increment or decrement the d_count reference count. However, nothing
+big will really happen until the reference count goes all the way to 1
+or 0.  Actually, we don't need to take the lock when reference count
+is bigger than 1. Instead, atomic cmpxchg() function can be used to
+increment or decrement the count in these situations. For safety,
+other reference count update operations have to be changed to use
+atomic instruction as well.
 
- fs/nfs/super.c | 37 ++++++++++++++++++++++++++++++-------
- 1 file changed, 30 insertions(+), 7 deletions(-)
+The rename_lock is a sequence lock. The d_path() function takes the
+writer lock because it needs to traverse different dentries through
+pointers to get the full path name. Hence it can't tolerate changes
+in those pointers. But taking the writer lock also prevent multiple
+d_path() calls to proceed concurrently.
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index eb494f6..0e36807 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1611,14 +1611,12 @@ out_security_failure:
-  * Select a security flavor for this mount.  The selected flavor
-  * is planted in args->auth_flavors[0].
-  */
--static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
-+static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
- 			      struct nfs_mount_request *request)
- {
- 	unsigned int i, count = *(request->auth_flav_len);
- 	rpc_authflavor_t flavor;
--
--	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR)
--		goto out;
-+	bool auth_null_seen = false;
- 
- 	/*
- 	 * The NFSv2 MNT operation does not return a flavor list.
-@@ -1634,6 +1632,21 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
- 		goto out_default;
- 
- 	/*
-+	 * If the sec= mount option is used, the specified flavor or AUTH_NULL
-+	 * must be in the list returned by the server.
-+	 */
-+	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR) {
-+		for (i = 0; i < count; i++) {
-+			if (args->auth_flavors[0] == request->auth_flavs[i] ||
-+			    request->auth_flavs[i] == RPC_AUTH_NULL)
-+				goto out;
-+		}
-+		dfprintk(MOUNT, "NFS: auth flavor %d not supported server\n",
-+			args->auth_flavors[0]);
-+		goto out_err;
-+	}
-+
-+	/*
- 	 * RFC 2623, section 2.7 suggests we SHOULD prefer the
- 	 * flavor listed first.  However, some servers list
- 	 * AUTH_NULL first.  Avoid ever choosing AUTH_NULL.
-@@ -1646,6 +1659,7 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
- 		case RPC_AUTH_UNIX:
- 			goto out_set;
- 		case RPC_AUTH_NULL:
-+			auth_null_seen = true;
- 			continue;
- 		default:
- 			if (rpcauth_get_gssinfo(flavor, &info) == 0)
-@@ -1653,12 +1667,22 @@ static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
- 		}
- 	}
- 
-+	if (!auth_null_seen) {
-+		dfprintk(MOUNT, "NFS: no auth flavors in common with server\n");
-+		goto out_err;
-+	}
-+
- out_default:
--	flavor = RPC_AUTH_UNIX;
-+	/* use default if flavor not already set */
-+	flavor = (args->auth_flavors[0] == RPC_AUTH_MAXFLAVOR) ?
-+		RPC_AUTH_UNIX : args->auth_flavors[0];
- out_set:
- 	args->auth_flavors[0] = flavor;
- out:
- 	dfprintk(MOUNT, "NFS: using auth flavor %d\n", args->auth_flavors[0]);
-+	return 0;
-+out_err:
-+	return -EPERM;
- }
- 
- /*
-@@ -1721,8 +1745,7 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
- 		return status;
- 	}
- 
--	nfs_select_flavor(args, &request);
--	return 0;
-+	return nfs_select_flavor(args, &request);
- }
- 
- struct dentry *nfs_try_mount(int flags, const char *dev_name,
--- 
-1.7.12.4 (Apple Git-37)
+A solution is to introduce a new lock type where there will be a
+second type of reader which can block the writers - the sequence
+read/write lock (seqrwlock). The d_path() and related functions will
+then be changed to take the reader lock instead of the writer lock.
+This will allow multiple d_path() operations to proceed concurrently.
+
+Additional performance testing was conducted using the AIM7
+benchmark.  It is mainly the first patch that has impact on the AIM7
+benchmark. Please see the patch description of the first patch on
+more information about the benchmark results.
+
+Incidentally, these patches also have a favorable impact on Oracle
+database performance when measured by the Oracle SLOB benchmark.
+
+The following tests with multiple threads were also run on kernels
+with and without the patch on an 8-socket 80-core system and a PC
+with 4-core i5 processor:
+
+1. find $HOME -size 0b
+2. cat /proc/*/maps /proc/*/numa_maps
+3. git diff
+
+For both the find-size and cat-maps tests, the performance difference
+with hot cache was within a few percentage points and hence within
+the margin of error. Single-thread performance was slightly worse,
+but multithread performance was generally a bit better. Apparently,
+reference count update isn't a significant factor in those tests. Their
+perf traces indicates that there was less spinlock content in
+functions like dput(), but the function itself ran a little bit longer
+on average.
+
+The git-diff test showed no difference in performance. There is a
+slight increase in system time compensated by a slight decrease in
+user time.
+
+Of the 3 patches, patch 3 is dependent on patch 2. The first patch
+is independent can be applied individually.
+
+Signed-off-by: Waiman Long <Waiman.Long@hp.com>
+
+Waiman Long (3):
+  dcache: Don't take unnecessary lock in d_count update
+  dcache: introduce a new sequence read/write lock type
+  dcache: change rename_lock to a sequence read/write lock
+
+ fs/autofs4/waitq.c        |    6 +-
+ fs/ceph/mds_client.c      |    4 +-
+ fs/cifs/dir.c             |    4 +-
+ fs/dcache.c               |  120 ++++++++++++++++++++--------------------
+ fs/namei.c                |    2 +-
+ fs/nfs/namespace.c        |    6 +-
+ include/linux/dcache.h    |  105 +++++++++++++++++++++++++++++++++--
+ include/linux/seqrwlock.h |  137 +++++++++++++++++++++++++++++++++++++++++++++
+ kernel/auditsc.c          |    4 +-
+ 9 files changed, 310 insertions(+), 78 deletions(-)
+ create mode 100644 include/linux/seqrwlock.h
 
