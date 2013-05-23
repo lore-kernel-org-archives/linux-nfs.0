@@ -1,181 +1,209 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f177.google.com ([209.85.223.177]:48460 "EHLO
-	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753753Ab3EMQZX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 May 2013 12:25:23 -0400
-Received: by mail-ie0-f177.google.com with SMTP id 9so12054889iec.8
-        for <linux-nfs@vger.kernel.org>; Mon, 13 May 2013 09:25:22 -0700 (PDT)
-Received: from seurat.1015granger.net (adsl-99-26-161-222.dsl.sfldmi.sbcglobal.net. [99.26.161.222])
-        by mx.google.com with ESMTPSA id qn10sm18003325igc.6.2013.05.13.09.25.20
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Mon, 13 May 2013 09:25:20 -0700 (PDT)
-Subject: [PATCH 1/2] NFS: Revert commit 4edaa308 and follow-on fixes
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Mon, 13 May 2013 12:25:19 -0400
-Message-ID: <20130513162519.1942.35619.stgit@seurat.1015granger.net>
-In-Reply-To: <20130513161515.1942.845.stgit@seurat.1015granger.net>
-References: <20130513161515.1942.845.stgit@seurat.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from g5t0008.atlanta.hp.com ([15.192.0.45]:27640 "EHLO
+	g5t0008.atlanta.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757177Ab3EWBik (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 May 2013 21:38:40 -0400
+From: Waiman Long <Waiman.Long@hp.com>
+Cc: Waiman Long <Waiman.Long@hp.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, autofs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-nfs@vger.kernel.org,
+        "Chandramouleeswaran, Aswin" <aswin@hp.com>,
+        "Norton, Scott J" <scott.norton@hp.com>,
+        Andi Kleen <andi@firstfloor.org>, Dave Chinner <david@fromorbit.com>
+Subject: [PATCH 2/3 v3] dcache: introduce a new sequence read/write lock type
+Date: Wed, 22 May 2013 21:37:27 -0400
+Message-Id: <1369273048-60256-3-git-send-email-Waiman.Long@hp.com>
+In-Reply-To: <1369273048-60256-1-git-send-email-Waiman.Long@hp.com>
+References: <1369273048-60256-1-git-send-email-Waiman.Long@hp.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>, Jeff Layton <jlayton@redhat.com>,
+        Miklos Szeredi <mszeredi@suse.cz>, Ian Kent <raven@themaw.net>,
+        Sage Weil <sage@inktank.com>, Steve French <sfrench@samba.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Eric Paris <eparis@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-After applying commit 4edaa308 "NFS: Use "krb5i" to establish
-NFSv4 state whenever possible", some report a 15 second delay when
-attempting to mount the first NFS export on a server, if their
-client does not run rpc.gssd.  This could be onerous for
-automounting or following referrals.
+The current sequence lock supports 2 types of lock users:
 
-The immediate work around is to insist that such clients be
-configured to start rpc.gssd.  Some feel that requiring this kind
-of change after a kernel upgrade without warning should be
-considered a regression.
+1. A reader who wants a consistent set of information and is willing
+   to retry if the information changes. The information that the
+   reader needs cannot contain pointers, because any writer could
+   invalidate a pointer that a reader was following. This reader
+   will never block but they may have to retry if a writer is in
+   progress.
+2. A writer who may need to modify content of a data structure. Writer
+   blocks only if another writer is in progress.
 
-The desired fix is to avoid the 15 second gssd upcall timeout when
-rpc.gssd is not running.  Despite everyone's initial opinion, it
-appears that it is impossible to eliminate this timeout securely and
-reliably without co-operation from user space.  Either rpc.gssd
-changes, or changes to system start up, or both, are required.
+This type of lock is suitable for cases where there are a large number
+of readers and much less writers. However, it has a limitation that
+reader who may want to follow pointer or cannot tolerate unexpected
+changes in the protected data structure must take the writer lock
+even if it doesn't need to make any changes.
 
-To restore previous behavior, revert:
+To more efficiently support this type of readers, a new lock type is
+introduced by this patch: sequence read/write lock. Two types of readers
+are supported by this new lock:
 
-   * commit 79d852bf  NFS: Retry SETCLIENTID with AUTH_SYS instead
-                      of AUTH_NONE
-   * commit 845cbceb  NFSv4: Don't clear the machine cred when
-                      client establish returns EACCES
-   * commit 23631227  NFSv4: Fix the fallback to AUTH_NULL if krb5i
-                      is not available
-   * commit 4edaa308  NFS: Use "krb5i" to establish NFSv4 state
-                      whenever possible
+1. Reader who has the same behavior as a sequence lock reader.
+2. Reader who may need to follow pointers. This reader will block if
+   a writer is in progress. In turn, it blocks a writer if it is in
+   progress. Multiple readers of this type can proceed concurrently.
+   Taking this reader lock won't update the sequence number.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+This new lock type is a combination of the sequence lock and read/write
+lock. Hence it will have the same limitation of a read/write lock that
+writers may be starved if there is a lot of contention.
+
+Signed-off-by: Waiman Long <Waiman.Long@hp.com>
 ---
- fs/nfs/nfs4client.c |    4 +---
- fs/nfs/nfs4state.c  |   53 ++++++++++++++++++++++++++++++++++++++++++++++-----
- 2 files changed, 49 insertions(+), 8 deletions(-)
+ include/linux/seqrwlock.h |  137 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 137 insertions(+), 0 deletions(-)
+ create mode 100644 include/linux/seqrwlock.h
 
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 947b0c9..fdf519c 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -201,9 +201,7 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
- 	if (clp->cl_minorversion != 0)
- 		__set_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags);
- 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
--	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
--	if (error == -EINVAL)
--		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_NULL);
-+	error = nfs_create_rpc_client(clp, timeparms, authflavour);
- 	if (error < 0)
- 		goto error;
- 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 300d17d..b5137c9 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -154,6 +154,18 @@ struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp)
- 	return cred;
- }
- 
-+static void nfs4_clear_machine_cred(struct nfs_client *clp)
-+{
-+	struct rpc_cred *cred;
+diff --git a/include/linux/seqrwlock.h b/include/linux/seqrwlock.h
+new file mode 100644
+index 0000000..c6145ff
+--- /dev/null
++++ b/include/linux/seqrwlock.h
+@@ -0,0 +1,137 @@
++#ifndef __LINUX_SEQRWLOCK_H
++#define __LINUX_SEQRWLOCK_H
++/*
++ * Sequence Read/Write Lock
++ * ------------------------
++ * This new lock type is a combination of the sequence lock and read/write
++ * lock. Three types of lock users are supported:
++ * 1. Reader who wants a consistent set of information and is willing to
++ *    retry if the information changes. The information that the reader
++ *    need cannot contain pointers, because any writer could invalidate
++ *    a pointer that a reader was following. This reader never block but
++ *    they may have to retry if a writer is in progress.
++ * 2. Reader who may need to follow pointers. This reader will block if
++ *    a writer is in progress.
++ * 3. Writer who may need to modify content of a data structure. Writer
++ *    blocks if another writer or the 2nd type of reader is in progress.
++ *
++ * The current implementation layered on top of the regular read/write
++ * lock. There is a chance that the writers may be starved by the readers.
++ * So be careful when you decided to use this lock.
++ *
++ * Expected 1st type reader usage:
++ * 	do {
++ *	    seq = read_seqrwbegin(&foo);
++ * 	...
++ *      } while (read_seqrwretry(&foo, seq));
++ *
++ * Expected 2nd type reader usage:
++ * 	read_seqrwlock(&foo)
++ * 	...
++ * 	read_seqrwunlock(&foo)
++ *
++ * Expected writer usage:
++ * 	write_seqrwlock(&foo)
++ * 	...
++ * 	write_seqrwunlock(&foo)
++ *
++ * Based on the seqlock.h file
++ * by Waiman Long
++ */
 +
-+	spin_lock(&clp->cl_lock);
-+	cred = clp->cl_machine_cred;
-+	clp->cl_machine_cred = NULL;
-+	spin_unlock(&clp->cl_lock);
-+	if (cred != NULL)
-+		put_rpccred(cred);
++#include <linux/rwlock.h>
++#include <linux/preempt.h>
++#include <asm/processor.h>
++
++typedef struct {
++	unsigned sequence;
++	rwlock_t lock;
++} seqrwlock_t;
++
++#define __SEQRWLOCK_UNLOCKED(lockname) \
++		 { 0, __RW_LOCK_UNLOCKED(lockname) }
++
++#define seqrwlock_init(x)				\
++	do {						\
++		(x)->sequence = 0;			\
++		rwlock_init(&(x)->lock);		\
++	} while (0)
++
++#define DEFINE_SEQRWLOCK(x) \
++		seqrwlock_t x = __SEQRWLOCK_UNLOCKED(x)
++
++/* For writer:
++ * Lock out other writers and 2nd type of readers and update the sequence
++ * number. Don't need preempt_disable() because that is in the read_lock and
++ * write_lock already.
++ */
++static inline void write_seqrwlock(seqrwlock_t *sl)
++{
++	write_lock(&sl->lock);
++	++sl->sequence;
++	smp_wmb();
 +}
 +
- static struct rpc_cred *
- nfs4_get_renew_cred_server_locked(struct nfs_server *server)
- {
-@@ -1767,6 +1779,10 @@ static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
- 		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
- 		return -EPERM;
- 	case -EACCES:
-+		if (clp->cl_machine_cred == NULL)
-+			return -EACCES;
-+		/* Handle case where the user hasn't set up machine creds */
-+		nfs4_clear_machine_cred(clp);
- 	case -NFS4ERR_DELAY:
- 	case -ETIMEDOUT:
- 	case -EAGAIN:
-@@ -1861,13 +1877,26 @@ int nfs4_discover_server_trunking(struct nfs_client *clp,
- {
- 	const struct nfs4_state_recovery_ops *ops =
- 				clp->cl_mvops->reboot_recovery_ops;
-+	rpc_authflavor_t *flavors, flav, save;
- 	struct rpc_clnt *clnt;
- 	struct rpc_cred *cred;
--	int i, status;
-+	int i, len, status;
- 
- 	dprintk("NFS: %s: testing '%s'\n", __func__, clp->cl_hostname);
- 
-+	len = NFS_MAX_SECFLAVORS;
-+	flavors = kcalloc(len, sizeof(*flavors), GFP_KERNEL);
-+	if (flavors == NULL) {
-+		status = -ENOMEM;
-+		goto out;
++static inline void write_seqrwunlock(seqrwlock_t *sl)
++{
++	smp_wmb();
++	sl->sequence++;
++	write_unlock(&sl->lock);
++}
++
++static inline int write_tryseqrwlock(seqrwlock_t *sl)
++{
++	int ret = write_trylock(&sl->lock);
++
++	if (ret) {
++		++sl->sequence;
++		smp_wmb();
 +	}
-+	len = rpcauth_list_flavors(flavors, len);
-+	if (len < 0) {
-+		status = len;
-+		goto out_free;
++	return ret;
++}
++
++/* For 2nd type of reader:
++ * Lock out other writers, but don't update the sequence number
++ */
++static inline void read_seqrwlock(seqrwlock_t *sl)
++{
++	read_lock(&sl->lock);
++}
++
++static inline void read_seqrwunlock(seqrwlock_t *sl)
++{
++	read_unlock(&sl->lock);
++}
++
++static inline int read_tryseqrwlock(seqrwlock_t *sl)
++{
++	return read_trylock(&sl->lock);
++}
++
++/* Start of read calculation -- fetch last complete writer token */
++static __always_inline unsigned read_seqrwbegin(const seqrwlock_t *sl)
++{
++	unsigned ret;
++
++repeat:
++	ret = ACCESS_ONCE(sl->sequence);
++	if (unlikely(ret & 1)) {
++		cpu_relax();
++		goto repeat;
 +	}
- 	clnt = clp->cl_rpcclient;
-+	save = clnt->cl_auth->au_flavor;
- 	i = 0;
- 
- 	mutex_lock(&nfs_clid_init_mutex);
-@@ -1882,6 +1911,12 @@ again:
- 	switch (status) {
- 	case 0:
- 		break;
++	smp_rmb();
++	return ret;
++}
 +
-+	case -EACCES:
-+		if (clp->cl_machine_cred == NULL)
-+			break;
-+		/* Handle case where the user hasn't set up machine creds */
-+		nfs4_clear_machine_cred(clp);
- 	case -NFS4ERR_DELAY:
- 	case -ETIMEDOUT:
- 	case -EAGAIN:
-@@ -1890,12 +1925,17 @@ again:
- 		dprintk("NFS: %s after status %d, retrying\n",
- 			__func__, status);
- 		goto again;
--	case -EACCES:
--		if (i++)
--			break;
++/*
++ * Test if reader processed invalid data.
++ *
++ * If sequence value changed then writer changed data while in section.
++ */
++static __always_inline int read_seqrwretry(const seqrwlock_t *sl, unsigned start)
++{
++	smp_rmb();
++	return unlikely(sl->sequence != start);
++}
 +
- 	case -NFS4ERR_CLID_INUSE:
- 	case -NFS4ERR_WRONGSEC:
--		clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_UNIX);
-+		status = -EPERM;
-+		if (i >= len)
-+			break;
-+
-+		flav = flavors[i++];
-+		if (flav == save)
-+			flav = flavors[i++];
-+		clnt = rpc_clone_client_set_auth(clnt, flav);
- 		if (IS_ERR(clnt)) {
- 			status = PTR_ERR(clnt);
- 			break;
-@@ -1926,6 +1966,9 @@ again:
- 
- out_unlock:
- 	mutex_unlock(&nfs_clid_init_mutex);
-+out_free:
-+	kfree(flavors);
-+out:
- 	dprintk("NFS: %s: status = %d\n", __func__, status);
- 	return status;
- }
++#endif /* __LINUX_SEQLOCK_H */
+-- 
+1.7.1
 
