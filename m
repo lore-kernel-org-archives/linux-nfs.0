@@ -1,78 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:35761 "EHLO mx1.redhat.com"
+Received: from mout.perfora.net ([74.208.4.195]:55626 "EHLO mout.perfora.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753238Ab3ECAdT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 May 2013 20:33:19 -0400
-Subject: [PATCH 0/8] Fix assorted FS-Cache issues
-To: linux-cachefs@redhat.com
-From: David Howells <dhowells@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        hjayasur@redhat.com, jlayton@redhat.com, linux-kernel@vger.kernel.org
-Date: Fri, 03 May 2013 01:33:16 +0100
-Message-ID: <20130503003316.14952.51791.stgit@warthog.procyon.org.uk>
+	id S1754876Ab3EWOUV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 May 2013 10:20:21 -0400
+Date: Thu, 23 May 2013 10:20:10 -0400
+From: Jim Rees <rees@umich.edu>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Yong, Fan" <fan.yong@intel.com>, Peng Tao <bergwolf@gmail.com>,
+        "Dilger, Andreas" <andreas.dilger@intel.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Steve Dickson <steved@redhat.com>
+Subject: Re: [PATCH] nfs: support 64-bit root inode number in NFS FSID
+Message-ID: <20130523142010.GA3634@umich.edu>
+References: <CDC2ABAC.3341C%andreas.dilger@intel.com>
+ <CA+a=Yy4CQ7zG48dGOVjh8YBv0e+X1Gk4RxpDzdR4vM8JmqossQ@mail.gmail.com>
+ <1369313382.3764.2.camel@leira.trondhjem.org>
+ <7FB055E0B36B6F4EB93E637E0640A56F5B4AA961@FMSMSX114.amr.corp.intel.com>
+ <1369316375.3764.7.camel@leira.trondhjem.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1369316375.3764.7.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Myklebust, Trond wrote:
 
+  On Thu, 2013-05-23 at 12:59 +0000, Yong, Fan wrote:
+  > Just make it match the "inode64" in nfs-utils parse_fsid(), which is defined as "unsigned long long", and the parsed_fsid:: inode is copied from "inode64" as following:
+  > 
+  > static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
+  >                 struct parsed_fsid *parsed)
+  > {
+  >         unsigned int dev;
+  >         unsigned long long inode64;
+  > ...
+  >         case FSID_UUID16_INUM: /* 8 byte inode number and 16 byte uuid */
+  >                 if (fsidlen != 24)
+  >                         return -1;
+  >                 memcpy(&inode64, fsid, 8);
+  >                 parsed->inode = inode64;
+  >                 parsed->uuidlen = 16;
+  >                 parsed->fhuuid = fsid+8;
+  >                 break;
+  >         }
+  > 
+  > --
+  > Cheers,
+  > Nasf
+  
+  Eeeeeeeewww! This is _exactly_ why we should be using properly
+  dimensioned types. Feel free to tell me how the value of 'inode64' is
+  well defined on systems where sizeof(unsigned long long) != 8...
 
-Following this mail is a series of patches to fix a number of FS-Cache issues,
-including a number of oopses.  The patches can also be found at:
-
-	http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/log/?h=fscache
-
-The patches are as follows:
-
- (1) Don't put spin_lock() in a while-condition as spin_lock() may be wrapped
-     with do {} while(0) (cleanup).
-
- (2) Name i_mutex lock classes rather than using numbers in CacheFiles (cleanup).
-
- (3) Don't sleep in page release if __GFP_FS is not set (deadlock vs ext4).
-
- (4) Uninline fscache_object_init() (cleanup).
-
- (5) Wrap checks on object state (cleanup).
-
- (6) Provide a system wait_on_atomic_t() and wake_up_atomic_t() (enhancement).
-
- (7) Simplify the object state machine (need #4 and #5).
-
- (8) Simplify cookie retention by objects (oops fix, need #6 and #7).
-
-David
----
-David Howells (6):
-      FS-Cache: Don't sleep in page release if __GFP_FS is not set
-      FS-Cache: Uninline fscache_object_init()
-      FS-Cache: Wrap checks on object state
-      Add wait_on_atomic_t() and wake_up_atomic_t()
-      FS-Cache: Fix object state machine to have separate work and wait states
-      FS-Cache: Simplify cookie retention for fscache_objects, fixing access problems
-
-J. Bruce Fields (1):
-      CacheFiles: name i_mutex lock class explicitly
-
-Sebastian Andrzej Siewior (1):
-      fs/fscache: remove spin_lock() from the condition in while()
-
-
- fs/cachefiles/interface.c     |   11 
- fs/cachefiles/namei.c         |   10 
- fs/cachefiles/xattr.c         |    6 
- fs/fscache/cache.c            |   34 +
- fs/fscache/cookie.c           |   93 +---
- fs/fscache/fsdef.c            |    1 
- fs/fscache/internal.h         |   11 
- fs/fscache/main.c             |   11 
- fs/fscache/netfs.c            |    1 
- fs/fscache/object-list.c      |  103 ++--
- fs/fscache/object.c           | 1077 +++++++++++++++++++++--------------------
- fs/fscache/operation.c        |   36 +
- fs/fscache/page.c             |   55 +-
- include/linux/fscache-cache.h |  170 +++---
- include/linux/wait.h          |   29 +
- kernel/wait.c                 |   85 +++
- 16 files changed, 922 insertions(+), 811 deletions(-)
-
+Is there any reason not to use ino_t?
