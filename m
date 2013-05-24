@@ -1,53 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:56489 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:53277 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751739Ab3EUSzS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 May 2013 14:55:18 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: RE: [PATCH 07/13] NFSv4: Introduce new label structure
-Date: Tue, 21 May 2013 18:55:05 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA92878A146@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1368719808-14584-1-git-send-email-SteveD@redhat.com>
-  <1368719808-14584-8-git-send-email-SteveD@redhat.com>
- <1369077151.6115.22.camel@leira.trondhjem.org> <519BC29E.6080803@RedHat.com>
-In-Reply-To: <519BC29E.6080803@RedHat.com>
-Content-Type: text/plain; charset="Windows-1252"
+	id S1751633Ab3EXWFu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 May 2013 18:05:50 -0400
+Date: Fri, 24 May 2013 18:05:49 -0400
+To: linux-nfs@vger.kernel.org
+Cc: "Eric W. Biederman" <ebiederm@xmission.com>,
+        Julian Sikorski <belegdol@gmail.com>
+Subject: [PATCH] svcrpc: fix failures to handle -1 uid's and gid's
+Message-ID: <20130524220549.GA28309@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Steve Dickson [mailto:SteveD@redhat.com]
-> Sent: Tuesday, May 21, 2013 2:53 PM
-> To: Myklebust, Trond
-> Cc: David P. Quigley; Linux NFS list; Linux FS devel list; Linux Security List;
-> SELinux List
-> Subject: Re: [PATCH 07/13] NFSv4: Introduce new label structure
-> 
-> 
-> 
-> On 20/05/13 15:12, Myklebust, Trond wrote:
-> >> diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
-> >> > index 788128e..78d25b5 100644
-> >> > --- a/include/uapi/linux/nfs4.h
-> >> > +++ b/include/uapi/linux/nfs4.h
-> >> > @@ -25,7 +25,7 @@
-> >> >  #define NFS4_MAXNAMLEN		NAME_MAX
-> >> >  #define NFS4_OPAQUE_LIMIT	1024
-> >> >  #define NFS4_MAX_SESSIONID_LEN	16
-> >> > -
-> >> > +#define NFS4_MAXLABELLEN	2048
-> > Why does this belong in the uapi?
-> >
-> Where do you want it?
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Just put it in the kernel-only include/linux/nfs4.h
+As of f025adf191924e3a75ce80e130afcd2485b53bb8 "sunrpc: Properly decode
+kuids and kgids in RPC_AUTH_UNIX credentials" any rpc containing a -1
+(0xffff) uid or gid would fail with a badcred error.
 
-Thanks
-  Trond
+Reported symptoms were xmbc clients failing on upgrade of the NFS
+server; examination of the network trace showed them sending -1 as the
+gid.
+
+Reported-by: Julian Sikorski <belegdol@gmail.com>
+Cc: "Eric W. Biederman" <ebiederm@xmission.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/svcauth_unix.c |   12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index c3f9e1e..06bdf5a 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -810,11 +810,15 @@ svcauth_unix_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 		goto badcred;
+ 	argv->iov_base = (void*)((__be32*)argv->iov_base + slen);	/* skip machname */
+ 	argv->iov_len -= slen*4;
+-
++	/*
++	 * Note: we skip uid_valid()/gid_valid() checks here for
++	 * backwards compatibility with clients that use -1 id's.
++	 * Instead, -1 uid or gid is later mapped to the
++	 * (export-specific) anonymous id by nfsd_setuser.
++	 * Supplementary gid's will be left alone.
++	 */
+ 	cred->cr_uid = make_kuid(&init_user_ns, svc_getnl(argv)); /* uid */
+ 	cred->cr_gid = make_kgid(&init_user_ns, svc_getnl(argv)); /* gid */
+-	if (!uid_valid(cred->cr_uid) || !gid_valid(cred->cr_gid))
+-		goto badcred;
+ 	slen = svc_getnl(argv);			/* gids length */
+ 	if (slen > 16 || (len -= (slen + 2)*4) < 0)
+ 		goto badcred;
+@@ -823,8 +827,6 @@ svcauth_unix_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 		return SVC_CLOSE;
+ 	for (i = 0; i < slen; i++) {
+ 		kgid_t kgid = make_kgid(&init_user_ns, svc_getnl(argv));
+-		if (!gid_valid(kgid))
+-			goto badcred;
+ 		GROUP_AT(cred->cr_group_info, i) = kgid;
+ 	}
+ 	if (svc_getu32(argv) != htonl(RPC_AUTH_NULL) || svc_getu32(argv) != 0) {
+-- 
+1.7.9.5
+
