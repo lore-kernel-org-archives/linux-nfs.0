@@ -1,91 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:22798 "EHLO mx12.netapp.com"
+Received: from mx1.netapp.com ([216.240.18.38]:2755 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760854Ab3EBSjb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 May 2013 14:39:31 -0400
+	id S1758618Ab3EXBtb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 May 2013 21:49:31 -0400
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        "Linux FS devel list" <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 09/17] NFSv4: Introduce new label structure
-Date: Thu, 2 May 2013 18:39:28 +0000
-Message-ID: <1367519968.3775.7.camel@leira.trondhjem.org>
-References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>
-	  <1367240239-19326-10-git-send-email-SteveD@redhat.com>
-	 <1367434764.4189.33.camel@leira.trondhjem.org>
-	 <5182B100.2080900@RedHat.com>
-In-Reply-To: <5182B100.2080900@RedHat.com>
-Content-Type: text/plain; charset=US-ASCII
+To: "Yong, Fan" <fan.yong@intel.com>, Jim Rees <rees@umich.edu>
+CC: Peng Tao <bergwolf@gmail.com>,
+        "Dilger, Andreas" <andreas.dilger@intel.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Steve Dickson <steved@redhat.com>
+Subject: RE: [PATCH] nfs: support 64-bit root inode number in NFS FSID
+Date: Fri, 24 May 2013 01:49:12 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA928795442@SACEXCMBX04-PRD.hq.netapp.com>
+References: <CDC2ABAC.3341C%andreas.dilger@intel.com>
+ <CA+a=Yy4CQ7zG48dGOVjh8YBv0e+X1Gk4RxpDzdR4vM8JmqossQ@mail.gmail.com>
+ <1369313382.3764.2.camel@leira.trondhjem.org>
+ <7FB055E0B36B6F4EB93E637E0640A56F5B4AA961@FMSMSX114.amr.corp.intel.com>
+ <1369316375.3764.7.camel@leira.trondhjem.org>
+ <20130523142010.GA3634@umich.edu>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA928793571@SACEXCMBX04-PRD.hq.netapp.com>
+ <7FB055E0B36B6F4EB93E637E0640A56F5B4AAA67@FMSMSX114.amr.corp.intel.com>
+In-Reply-To: <7FB055E0B36B6F4EB93E637E0640A56F5B4AAA67@FMSMSX114.amr.corp.intel.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-05-02 at 14:31 -0400, Steve Dickson wrote:
-> On 01/05/13 14:59, Myklebust, Trond wrote:
-> >> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> >> > index 9f2dba3..4d2fdf6 100644
-> >> > --- a/include/linux/nfs_xdr.h
-> >> > +++ b/include/linux/nfs_xdr.h
-> >> > @@ -351,6 +351,7 @@ struct nfs_openargs {
-> >> >  	const u32 *		bitmask;
-> >> >  	const u32 *		open_bitmap;
-> >> >  	__u32			claim;
-> >> > +	const struct nfs4_label *label;
-> >> >  };
-> >> >  
-> >> >  struct nfs_openres {
-> >> > @@ -360,6 +361,7 @@ struct nfs_openres {
-> >> >  	struct nfs4_change_info	cinfo;
-> >> >  	__u32                   rflags;
-> >> >  	struct nfs_fattr *      f_attr;
-> >> > +	struct nfs4_label	*f_label;
-> >> >  	struct nfs_seqid *	seqid;
-> >> >  	const struct nfs_server *server;
-> >> >  	fmode_t			delegation_type;
-> >> > @@ -404,6 +406,7 @@ struct nfs_closeres {
-> >> >  	struct nfs4_sequence_res	seq_res;
-> >> >  	nfs4_stateid            stateid;
-> >> >  	struct nfs_fattr *	fattr;
-> >> > +	struct nfs4_label	*label;
-> >> >  	struct nfs_seqid *	seqid;
-> >> >  	const struct nfs_server *server;
-> >> >  };
-> >> > @@ -477,6 +480,7 @@ struct nfs4_delegreturnargs {
-> >> >  struct nfs4_delegreturnres {
-> >> >  	struct nfs4_sequence_res	seq_res;
-> >> >  	struct nfs_fattr * fattr;
-> >> > +	struct nfs4_label	*label;
-> >> >  	const struct nfs_server *server;
-> >> >  };
-> >> >  
-> >> > @@ -497,6 +501,7 @@ struct nfs_readargs {
-> >> >  struct nfs_readres {
-> >> >  	struct nfs4_sequence_res	seq_res;
-> >> >  	struct nfs_fattr *	fattr;
-> >> > +	struct nfs4_label	*label;
-> > Why do we need to check labels on close, delegreturn, read, remove,
-> > rename, etc? Do any of those operations cause our cached labels to
-> > change?
-> I was not around then this decision was made... Maybe some of the 
-> security people can address that.... 
+> -----Original Message-----
+> From: Yong, Fan [mailto:fan.yong@intel.com]
+> Sent: Thursday, May 23, 2013 9:30 PM
+> To: Myklebust, Trond; Jim Rees
+> Cc: Peng Tao; Dilger, Andreas; J. Bruce Fields; linux-nfs@vger.kernel.org;
+> Steve Dickson
+> Subject: RE: [PATCH] nfs: support 64-bit root inode number in NFS FSID
 > 
-> What operation do you think they are needed for?
+> For the rare unfortunate cases of "sizeof(unsigned long) < 4" or
+> "sizeof(unsigned long long) < 8", current nfs-utils will cross-boundary
+> memory copy. So need more work to make it stably runnable on kinds of
+> platform...
 
-I would assume that they are only needed for the operations covered by
-nfs_atomic_open(), nfs_lookup(), nfs_revalidate_inode() and, of course,
-for nfs4_set_security_label().
+unsigned long long is guaranteed by C99 to be >= 64 bits. IOW: it could be 128 bits depending on the compiler.
 
-All other cases are just opportunistic refreshes of the cache, which we
-have seen previously can have a nasty impact on NFSv4 performance.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> --
+> Cheers,
+> Nasf
+> 
+> -----Original Message-----
+> From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com]
+> Sent: Thursday, May 23, 2013 10:22 PM
+> To: Jim Rees
+> Cc: Yong, Fan; Peng Tao; Dilger, Andreas; J. Bruce Fields; linux-
+> nfs@vger.kernel.org; Steve Dickson
+> Subject: RE: [PATCH] nfs: support 64-bit root inode number in NFS FSID
+> 
+> > -----Original Message-----
+> > From: Jim Rees [mailto:rees@umich.edu]
+> > Sent: Thursday, May 23, 2013 10:20 AM
+> > To: Myklebust, Trond
+> > Cc: Yong, Fan; Peng Tao; Dilger, Andreas; J. Bruce Fields; linux-
+> > nfs@vger.kernel.org; Steve Dickson
+> > Subject: Re: [PATCH] nfs: support 64-bit root inode number in NFS FSID
+> >
+> > Myklebust, Trond wrote:
+> >
+> >   On Thu, 2013-05-23 at 12:59 +0000, Yong, Fan wrote:
+> >   > Just make it match the "inode64" in nfs-utils parse_fsid(), which
+> > is defined as "unsigned long long", and the parsed_fsid:: inode is copied
+> from "inode64"
+> > as following:
+> >   >
+> >   > static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
+> >   >                 struct parsed_fsid *parsed)
+> >   > {
+> >   >         unsigned int dev;
+> >   >         unsigned long long inode64;
+> >   > ...
+> >   >         case FSID_UUID16_INUM: /* 8 byte inode number and 16 byte uuid
+> > */
+> >   >                 if (fsidlen != 24)
+> >   >                         return -1;
+> >   >                 memcpy(&inode64, fsid, 8);
+> >   >                 parsed->inode = inode64;
+> >   >                 parsed->uuidlen = 16;
+> >   >                 parsed->fhuuid = fsid+8;
+> >   >                 break;
+> >   >         }
+> >   >
+> >   > --
+> >   > Cheers,
+> >   > Nasf
+> >
+> >   Eeeeeeeewww! This is _exactly_ why we should be using properly
+> >   dimensioned types. Feel free to tell me how the value of 'inode64' is
+> >   well defined on systems where sizeof(unsigned long long) != 8...
+> >
+> > Is there any reason not to use ino_t?
+> 
+> Yes. It's not guaranteed to be 64-bit either.
+> 
+> Trond
