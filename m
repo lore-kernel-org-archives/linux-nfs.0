@@ -1,109 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:65109 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:37808 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1763192Ab3ECSok (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 May 2013 14:44:40 -0400
-Date: Fri, 3 May 2013 14:44:37 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: long delay when mounting due to SETCLIENTID AUTH_GSS attempts
-Message-ID: <20130503144437.3a47e476@tlielax.poochiereds.net>
-In-Reply-To: <1367606034.3556.25.camel@leira.trondhjem.org>
-References: <20130503132557.2fdf794d@tlielax.poochiereds.net>
-	<AE700845-4032-4BEC-817C-97EB08A831E8@oracle.com>
-	<20130503142421.19fb3ca6@tlielax.poochiereds.net>
-	<1367606034.3556.25.camel@leira.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1756048Ab3EXWMe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 May 2013 18:12:34 -0400
+Date: Fri, 24 May 2013 18:12:28 -0400
+To: linux-nfs@vger.kernel.org
+Cc: Jan Stancek <jstancek@redhat.com>, simo@redhat.com
+Subject: [PATCH] svcrpc: implement O_NONBLOCK behavior for use-gss-proxy
+Message-ID: <20130524221228.GB28309@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 3 May 2013 18:33:54 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-> On Fri, 2013-05-03 at 14:24 -0400, Jeff Layton wrote:
-> > On Fri, 3 May 2013 13:56:13 -0400
-> > Chuck Lever <chuck.lever@oracle.com> wrote:
-> > 
-> > > 
-> > > On May 3, 2013, at 1:25 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> > > 
-> > > > I've noticed that when running a 3.10-pre kernel that if I try to mount
-> > > > up a NFSv4 filesystem that it now takes ~15s for the mount to complete.
-> > > > 
-> > > > Here's a little rpcdebug output:
-> > > > 
-> > > > [ 3056.385078] svc: server ffff8800368fc000 waiting for data (to = 9223372036854775807)
-> > > > [ 3056.392056] RPC:       new task initialized, procpid 2471
-> > > > [ 3056.392758] RPC:       allocated task ffff88010cd90100
-> > > > [ 3056.393303] RPC:    42 __rpc_execute flags=0x1280
-> > > > [ 3056.393630] RPC:    42 call_start nfs4 proc SETCLIENTID (sync)
-> > > > [ 3056.394056] RPC:    42 call_reserve (status 0)
-> > > > [ 3056.394368] RPC:    42 reserved req ffff8801019f9600 xid 21ad6c40
-> > > > [ 3056.394783] RPC:       wake_up_first(ffff88010a989990 "xprt_sending")
-> > > > [ 3056.395252] RPC:    42 call_reserveresult (status 0)
-> > > > [ 3056.395595] RPC:    42 call_refresh (status 0)
-> > > > [ 3056.395901] RPC:       gss_create_cred for uid 0, flavor 390004
-> > > > [ 3056.396361] RPC:       gss_create_upcall for uid 0
-> > > > [ 3071.396134] RPC: AUTH_GSS upcall timed out.
-> > > > Please check user daemon is running.
-> > > > [ 3071.397374] RPC:       gss_create_upcall for uid 0 result -13
-> > > > [ 3071.398192] RPC:    42 call_refreshresult (status -13)
-> > > > [ 3071.398873] RPC:    42 call_refreshresult: refresh creds failed with error -13
-> > > > [ 3071.399881] RPC:    42 return 0, status -13
-> > > > 
-> > > > The problem is that we're now trying to upcall for GSS creds to do the
-> > > > SETCLIENTID call, but this host isn't running rpc.gssd. Not running
-> > > > rpc.gssd is pretty common for people not using kerberized NFS. I think
-> > > > we'll see a lot of complaints about this.
-> > > > 
-> > > > Is this expected?
-> > > 
-> > > Yes.
-> > > 
-> > > There are operations like SETCLIENTID and GETATTR(fs_locations) which should always use an integrity-checking security flavor, even if particular mount points use sec=sys.
-> > > 
-> > > There are cases where GSS is not available, and we fall back to using AUTH_SYS.  That should happen as quickly as possible, I agree.
-> > > 
-> > > > If so, what's the proposed remedy?
-> > > > Simply have everyone run rpc.gssd even if they're not using kerberized NFS?
-> > > 
-> > > 
-> > > That's one possibility.  Or we could shorten the upcall timeout.  Or, add a mechanism by which rpc.gssd can provide a positive indication to the kernel that it is running.
-> > > 
-> > > It doesn't seem like an intractable problem.
-> > > 
-> > 
-> > Nope, it's not intractable at all...
-> > 
-> > Currently, the gssd upcall uses the RPC_PIPE_WAIT_FOR_OPEN flag to
-> > allow you to queue upcalls to be processed when the daemon isn't up
-> > yet. When the daemon starts, it processes that queue. The caller gives
-> > up after 15s (which is what's happening here), and the upcall
-> > eventually gets scraped out of the queue after 30s.
-> > 
-> > We could stop using that flag on this rpc_pipe and simply require that
-> > the daemon be up and running before attempting any sort of AUTH_GSS
-> > rpc. That might be a little less friendly in the face of boot-time
-> > ordering problems, but it should presumably make this problem go away.
-> 
-> You probably don't want to do that... The main reason for the
-> RPC_PIPE_WAIT_FOR_OPEN is that even if the gssd daemon is running, it
-> takes it a moment or two to notice that a new client directory has been
-> created, and that there is a new 'krb' pipe to attach to.
-> 
+Somebody noticed LTP was complaining about O_NONBLOCK opens of
+/proc/net/rpc/use-gss-proxy succeeding and then a following read
+hanging.
 
-Ok yeah, good point...
+I'm not convinced LTP really has any business opening random proc files
+and expecting them to behave a certain way.  And I don't really know if
+this is really a bug.
 
-Shortening the timeout will also suck -- that'll just reduce the pain
-somewhat but will still be a performance regression. It looks like even
-specifying '-o sec=sys' doesn't disable this behavior. Should it?
+But in any case perhaps the O_NONBLOCK behavior could be useful for
+someone that wants to test whether gss-proxy is up without waiting.
 
-Instead of using AUTH_GSS for SETCLIENTID by default, would it make
-sense to add a switch (module parm?) that turns it on so that it can be
-an opt-in thing rather than doing this by default?
+Reported-by: Jan Stancek <jstancek@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/auth_gss/svcauth_gss.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
+Considering for 3.10.
+
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 9f0f017..618ccf5 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1313,10 +1313,12 @@ static inline bool gssp_ready(struct sunrpc_net *sn)
+ 	return false;
+ }
+ 
+-static int wait_for_gss_proxy(struct net *net)
++static int wait_for_gss_proxy(struct net *net, struct file *file)
+ {
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 
++	if (file->f_flags & O_NONBLOCK && !gssp_ready(sn))
++		return -EAGAIN;
+ 	return wait_event_interruptible(sn->gssp_wq, gssp_ready(sn));
+ }
+ 
+@@ -1358,7 +1360,7 @@ static ssize_t read_gssp(struct file *file, char __user *buf,
+ 	size_t len;
+ 	int ret;
+ 
+-	ret = wait_for_gss_proxy(net);
++	ret = wait_for_gss_proxy(net, file);
+ 	if (ret)
+ 		return ret;
+ 
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.9.5
+
