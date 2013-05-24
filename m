@@ -1,87 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.rfc2324.org ([31.172.8.67]:38560 "EHLO mail.rfc2324.org"
+Received: from mx1.redhat.com ([209.132.183.28]:10186 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751406Ab3EXNtE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 May 2013 09:49:04 -0400
-Date: Fri, 24 May 2013 15:48:58 +0200
-From: Maximilian Wilhelm <max@rfc2324.org>
-To: linux-nfs@vger.kernel.org
-Cc: Frederik Moellers <frederik.moellers@upb.de>
-Message-ID: <20130524134858.GS20475@principal.rfc2324.org>
-References: <20130524125424.GQ20475@principal.rfc2324.org>
-MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="NtwzykIc2mflq5ck"
-In-Reply-To: <20130524125424.GQ20475@principal.rfc2324.org>
-Subject: Re: [PATCH] Fix handling of preferred_realm command line option
+	id S1752520Ab3EXLYG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 May 2013 07:24:06 -0400
+Date: Fri, 24 May 2013 07:24:03 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Scott Mayhew <smayhew@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH RFC 1/1] NFS: Allow nfs_updatepage to extend a write to
+ cover a full page when we have a lock that covers the entire file
+Message-ID: <20130524072403.6b814585@corrin.poochiereds.net>
+In-Reply-To: <1369348209.8861.12.camel@leira.trondhjem.org>
+References: <1369346021-20041-1-git-send-email-smayhew@redhat.com>
+	<1369346021-20041-2-git-send-email-smayhew@redhat.com>
+	<20130523182450.18adbcd8@tlielax.poochiereds.net>
+	<1369348209.8861.12.camel@leira.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 23 May 2013 22:30:10 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
---NtwzykIc2mflq5ck
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
+> On Thu, 2013-05-23 at 18:24 -0400, Jeff Layton wrote:
+> > On Thu, 23 May 2013 17:53:41 -0400
+> > Scott Mayhew <smayhew@redhat.com> wrote:
+> > 
+> > > Currently nfs_updatepage allows a write to be extended to cover a full
+> > > page only if we don't have a byte range lock on the file... but if we've
+> > > got the whole file locked, then we should be allowed to extend the
+> > > write.
+> > > 
+> > > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> > > ---
+> > >  fs/nfs/write.c | 7 +++++--
+> > >  1 file changed, 5 insertions(+), 2 deletions(-)
+> > > 
+> > > diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> > > index a2c7c28..f35fb4f 100644
+> > > --- a/fs/nfs/write.c
+> > > +++ b/fs/nfs/write.c
+> > > @@ -908,13 +908,16 @@ int nfs_updatepage(struct file *file, struct page *page,
+> > >  		file->f_path.dentry->d_name.name, count,
+> > >  		(long long)(page_file_offset(page) + offset));
+> > >  
+> > > -	/* If we're not using byte range locks, and we know the page
+> > > +	/* If we're not using byte range locks (or if the range of the
+> > > +	 * lock covers the entire file), and we know the page
+> > >  	 * is up to date, it may be more efficient to extend the write
+> > >  	 * to cover the entire page in order to avoid fragmentation
+> > >  	 * inefficiencies.
+> > >  	 */
+> > >  	if (nfs_write_pageuptodate(page, inode) &&
+> > > -			inode->i_flock == NULL &&
+> > > +			(inode->i_flock == NULL ||
+> > > +			(inode->i_flock->fl_start == 0 &&
+> > > +			inode->i_flock->fl_end == OFFSET_MAX)) &&
+> > >  			!(file->f_flags & O_DSYNC)) {
+> > >  		count = max(count + offset, nfs_page_length(page));
+> > >  		offset = 0;
+> > 
+> > Sounds like a reasonable proposition, but I think you might need to do
+> > more vetting of the locks...
+> > 
+> > For instance, does it make sense to do this if it's a F_RDLCK? Also,
+> > you're only looking at the first lock in the i_flock list. Might it
+> > make more sense to walk the list and see whether the page might be
+> > entirely covered by a lock that doesn't extend over the whole file?
+> > 
+> 
+> I'm guessing that the answer is to both these questions are "no":
+> - Anybody who is writing while holding a F_RDLCK is likely doing
+> something wrong.
 
-Anno domini 2013 Maximilian Wilhelm scripsit:
+Right, so I think we ought to be conservative here and not extend the
+write if this is an F_RDLCK.
 
-Me again,
+> - Walking the lock list on every write can quickly get painful if we
+> have lots of small locks.
+> 
 
-> (Please CC me in replies, I'm not on the list.)
+True, but it's probably still preferable to do that than to do a bunch
+of small I/Os to the server. But, that's an optimization that can be
+done later. Hardly anyone does real byte-range locking so I'm fine with
+this approach for now.
 
-> we found a problem in the gssd daemon when using the -R opton to
-> specify a different preferred realm than the one used on the system.
-> It seems the preferred_realm variable set in the gssd.c file is not
-> used at all when searching for keytab entries / principal.
+> However it may make a lot of sense to look at whether or not we hold a
+> NFSv4 write delegation.
+> 
 
-> The simple patch attached fixes this problem.
+Yes, that would be a good thing too. Having a helper function like you
+suggested should make it easier to encapsulate that logic sanely.
 
-I felt the urge to update the comment, too :)
-
-Best regards
-Max
 -- 
-Friends are relatives you make for yourself.
-
---NtwzykIc2mflq5ck
-Content-Type: text/x-diff; charset=utf-8
-Content-Disposition: attachment; filename="gssd_fix_preferred_realm.patch"
-
-commit 722bd62d1e6a9d38db57e919d914a371e67d804d
-Author: Maximilian Wilhelm <max@rfc2324.org>
-Date:   Fri May 24 14:46:41 2013 +0200
-
-    Fix handling of preferred realm command line option.
-    
-      The current implementation ignores any preferred realm specified on the
-      command line. Fix this behaviour and make sure the preferred realm is
-      used as first realm when trying to acquire a keytab entry.
-    
-    Signed-off-by: Maximilian Wilhelm <max@rfc2324.org>
-    Signed-off-by: Frederik Moellers <frederik.moellers@upb.de>
-
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index 6275dd8..fb706a8 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -852,11 +852,18 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *tgtname,
- 	}
- 
- 	/*
--	 * Try the "appropriate" realm first, and if nothing found for that
--	 * realm, try the default realm (if it hasn't already been tried).
-+	 * Make sure the preferred_realm (which may have been explicitly set
-+	 * on the command line, is tried first. If nothing is found go on with
-+	 * the host and local default realm (if that hasn't already been tried).
- 	 */
- 	i = 0;
- 	realm = realmnames[i];
-+
-+	if (strcmp (realm, preferred_realm) != 0) {
-+		realm = preferred_realm;
-+		i = -1;
-+	}
-+
- 	while (1) {
- 		if (realm == NULL) {
- 			tried_all = 1;
-
---NtwzykIc2mflq5ck--
+Jeff Layton <jlayton@redhat.com>
