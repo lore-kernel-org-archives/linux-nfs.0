@@ -1,109 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54612 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:54692 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755417Ab3EVQUO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 May 2013 12:20:14 -0400
-Date: Wed, 22 May 2013 12:20:12 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <steved@redhat.com>
-Cc: Bruce Fields <bfields@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSD: Don't give out read delegations on exclusive
- creates
-Message-ID: <20130522162012.GI13725@fieldses.org>
-References: <1368643909-8059-1-git-send-email-steved@redhat.com>
- <20130521192338.GC12114@fieldses.org>
- <20130521202541.GA13725@fieldses.org>
+	id S934463Ab3E1PIV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 May 2013 11:08:21 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@tonian.com>
+CC: NFS list <linux-nfs@vger.kernel.org>, nfsv4 mailing list <nfsv4@ietf.org>,
+        Idan Keidar <idank@tonian.com>, Lev Solomonov <solo@tonian.com>,
+        Nadav Shemer <nadav@tonian.com>, "Welch, Brent" <welch@panasas.com>,
+        Boaz Harrosh <bharrosh@panasas.com>, Peng Tao <peng_tao@emc.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: Re: Client security considerations for out of band I/O
+Date: Tue, 28 May 2013 15:08:18 +0000
+Message-ID: <1369753692.5870.38.camel@leira.trondhjem.org>
+References: <51A4A830.5040103@tonian.com>
+In-Reply-To: <51A4A830.5040103@tonian.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130521202541.GA13725@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 21, 2013 at 04:25:41PM -0400, J. Bruce Fields wrote:
-> On Tue, May 21, 2013 at 03:23:38PM -0400, bfields wrote:
-> > On Wed, May 15, 2013 at 02:51:49PM -0400, Steve Dickson wrote:
-> > > When an exclusive create is done with the mode bits
-> > > set (aka open(testfile, O_CREAT | O_EXCL, 0777)) this
-> > 
-> > so implicitly O_RDONLY.  Is that common?  Maybe so, OK.
-> > 
-> > > causes a OPEN op followed by a SETATTR op. When a
-> > > read delegation is given in the OPEN, it causes
-> > > the SETATTR to delay with EAGAIN until the
-> > > delegation is recalled.
-> > > 
-> > > This patch caused exclusive creates to give out
-> > > a write delegation (which turn into no delegation)
-> > > which allows the SETATTR seamlessly succeed.
-> > 
-> > OK.  May as well make it apply to all creates, though, I think?
-> > Any create flag seems like a sign the file's likely to be modified soon,
-> > hence isn't a good candidate for a read delegation.
+On Tue, 2013-05-28 at 15:50 +0300, Benny Halevy wrote:
+> Trond, with the latest code for issuing LAYOUTGET with the right credentials
+> we still seem to have a problem with the objects and blocks layout where
+> the security enforcement over out-of-band I/O differs from than the one
+> over in-band I/O.
 > 
-> That would look like the following.
-
-Note some 4.1 pynfs delegation tests depend on read-only create opens to
-get delegations.
-
-I've pushed out a pynfs change to
-
-	git://linux-nfs.org/~bfields/linux.git
-
-to make pynfs reopen if it doesn't get a delegation on the create.  Of
-course there's no way pynfs can force the server to give the client a
-delegation, so we just make our best effort.
-
-For knfsd arguably the better solution would be to teach it not to break
-a client's own read delegations.  But I haven't looked into how to do
-that.  (And I'd need to review what the spec says in this case.  And it
-might not work for 4.0 if that SETATTR isn't being done with a stateid.)
-
---b.
-
+> Consider the following scenario:
 > 
-> --b.
+> file is owned by <uid1, gid1>, mode 660
+> process p1 successfully opens the file for RW with <uid1, gid1> (client sent OPEN)
+> process p2 successfully opens the file for RW with <uid2, gid1> (client sent ACCESS)
+> client gets a layout using LAYOUTGET for IOMODE_RW
+> the file is chmod'ed to 600
 > 
-> commit 3f47b6220ca6b08a7ab86baaaab87389707a3308
-> Author: Steve Dickson <steved@redhat.com>
-> Date:   Wed May 15 14:51:49 2013 -0400
+> now, empirically, in-band I/O would succeed for p1 and fail for p2 (as seen on linux
+> and some commercial servers)
 > 
->     NFSD: Don't give out read delegations on exclusive creates
->     
->     When an exclusive create is done with the mode bits
->     set (aka open(testfile, O_CREAT | O_EXCL, 0777)) this
->     causes a OPEN op followed by a SETATTR op. When a
->     read delegation is given in the OPEN, it causes
->     the SETATTR to delay with EAGAIN until the
->     delegation is recalled.
->     
->     This patch caused exclusive creates to give out
->     a write delegation (which turn into no delegation)
->     which allows the SETATTR seamlessly succeed.
->     
->     Signed-off-by: Steve Dickson <steved@redhat.com>
->     [bfields: do this for any CREATE, not just exclusive; comment]
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index c4f6339..44dcea9 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -3113,8 +3113,17 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
->  				goto out;
->  			if (!cb_up || !(oo->oo_flags & NFS4_OO_CONFIRMED))
->  				goto out;
-> +			/*
-> +			 * Also, if the file was opened for write or
-> +			 * create, there's a good chance the client's
-> +			 * about to write to it, resulting in an
-> +			 * immediate recall (since we don't support
-> +			 * write delegations):
-> +			 */
->  			if (open->op_share_access & NFS4_SHARE_ACCESS_WRITE)
->  				flag = NFS4_OPEN_DELEGATE_WRITE;
-> +			else if (open->op_create == NFS4_OPEN_CREATE)
-> +				flag = NFS4_OPEN_DELEGATE_WRITE;
->  			else
->  				flag = NFS4_OPEN_DELEGATE_READ;
->  			break;
+> for out-of-band I/O, an object-based server will fence-off the object and recall the layout
+> to enforce the client to refresh its layout, send a LAYOUTGET, reauthorize, and get
+> a new capability. BUT, that's not enough as the new layout and capability, would allow both
+> p1 and p2 access to the object (as the layout is global to the client), yet we want only p1
+> to have access now.
+
+I don't understand why you think this is related to the LAYOUTGET
+credential change. The only difference that the credential change brings
+is to the case where the client doesn't hold a layout segment prior to
+initiating the read/writeback.
+
+IOW: If p1 had already grabbed a layout segment covering the area being
+accessed by p2, then under the old code, we would still have forged
+ahead and performed the read/write on the DS without calling LAYOUTGET
+at all.
+
+> How about sending ACCESS for any principal before using a newly retrieved layout
+> at OPEN time or after the layout was revoked/reacquired to simulate the in-band behavior in
+> a practical manner?
+
+If you want to do that for the objects and blocks layout types, then
+fine, but I see no reason to do it for files layouts: the files DSes
+will do access checking using the cred passed with the READ/WRITE
+regardless of what happened with LAYOUTGET.
+
+> Note that I expect some inaccuracies in behavior even with sending ACCESS as
+> the linux nfs server and other commercial servers bypass permission checking for the file owner
+> at I/O time but not for ACCESS.  I believe this was done to simulate (sort of) Posix behavior
+> that allows I/O to an open file even after changing its security attributes.
+>
+> Also, do we deal correctly with LAYOUTGET failing on NFS4ERR_ACCESS?
+> In the example above, if the open order was reversed, LAYOUTGET would have failed for p2's
+> creds as it doesn't have RW access to the file.  That would result to reverting to the MDS
+> and the I/O would fail on NFS4ERR_ACCESS as well, yet we'll keep trying (and failing)
+> LAYOUTGET.  Optionally, the client could try other creds that opened the file.
+> If the first process to open the file closes it, should we use different creds for LAYOUTGET?
+> With the latest implementation we keep the first opener creds referenced until we return the
+> whole layout, right?
+
+I'm open to the idea of having an NFS4ERR_ACCESS reply to LAYOUTGET fail
+the entire I/O attempt without an attempt to fail back to MDS.
+
+As for switching creds on close, I believe that is still forbidden under
+the rules guiding the EXCHGID4_FLAG_BIND_PRINC_STATEID flag (RFC5661,
+section 18.35.3). Under those rules, a server that sets the
+EXCHGID4_FLAG_BIND_PRINC_STATEID in the EXCHANGE_ID reply MUST return
+NFS4ERR_WRONG_CRED in response to the LAYOUTGET call if it tries to
+authenticate a layout or open stateid that was created by p1, using the
+principal of p2.
+
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
