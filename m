@@ -1,75 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:42248 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760819Ab3EBSbc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 May 2013 14:31:32 -0400
-Message-ID: <5182B100.2080900@RedHat.com>
-Date: Thu, 02 May 2013 14:31:28 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-vb0-f44.google.com ([209.85.212.44]:51546 "EHLO
+	mail-vb0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933827Ab3E1Mbp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 May 2013 08:31:45 -0400
+Received: by mail-vb0-f44.google.com with SMTP id i3so3523982vbh.17
+        for <linux-nfs@vger.kernel.org>; Tue, 28 May 2013 05:31:44 -0700 (PDT)
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 09/17] NFSv4: Introduce new label structure
-References: <1367240239-19326-1-git-send-email-SteveD@redhat.com>  <1367240239-19326-10-git-send-email-SteveD@redhat.com> <1367434764.4189.33.camel@leira.trondhjem.org>
-In-Reply-To: <1367434764.4189.33.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1
+In-Reply-To: <DC99B54B-3C48-49A6-B8C4-1410CA707734@oracle.com>
+References: <452C72A5-F773-4E16-88F4-B1100C505C41@oracle.com>
+ <60201423.761959.1365722152352.JavaMail.root@erie.cs.uoguelph.ca>
+ <CACQjR_Arj61HJ-QrKfccg=r38555U-43uwhqtwzrN3nd1uUO-Q@mail.gmail.com>
+ <CACQjR_CcKwHU8sMrmQ5YfgV5dbuiMLRRqBkDRQEVq2yjGEuzmg@mail.gmail.com> <DC99B54B-3C48-49A6-B8C4-1410CA707734@oracle.com>
+From: Bram Vandoren <brambi@gmail.com>
+Date: Tue, 28 May 2013 14:31:24 +0200
+Message-ID: <CACQjR_D3rFy9dfb4LvywrDi24D0hucvsifXavivJ7UpkEgTLjA@mail.gmail.com>
+Subject: Re: NFS client hangs after server reboot
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Rick Macklem <rmacklem@uoguelph.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/05/13 14:59, Myklebust, Trond wrote:
->> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
->> > index 9f2dba3..4d2fdf6 100644
->> > --- a/include/linux/nfs_xdr.h
->> > +++ b/include/linux/nfs_xdr.h
->> > @@ -351,6 +351,7 @@ struct nfs_openargs {
->> >  	const u32 *		bitmask;
->> >  	const u32 *		open_bitmap;
->> >  	__u32			claim;
->> > +	const struct nfs4_label *label;
->> >  };
->> >  
->> >  struct nfs_openres {
->> > @@ -360,6 +361,7 @@ struct nfs_openres {
->> >  	struct nfs4_change_info	cinfo;
->> >  	__u32                   rflags;
->> >  	struct nfs_fattr *      f_attr;
->> > +	struct nfs4_label	*f_label;
->> >  	struct nfs_seqid *	seqid;
->> >  	const struct nfs_server *server;
->> >  	fmode_t			delegation_type;
->> > @@ -404,6 +406,7 @@ struct nfs_closeres {
->> >  	struct nfs4_sequence_res	seq_res;
->> >  	nfs4_stateid            stateid;
->> >  	struct nfs_fattr *	fattr;
->> > +	struct nfs4_label	*label;
->> >  	struct nfs_seqid *	seqid;
->> >  	const struct nfs_server *server;
->> >  };
->> > @@ -477,6 +480,7 @@ struct nfs4_delegreturnargs {
->> >  struct nfs4_delegreturnres {
->> >  	struct nfs4_sequence_res	seq_res;
->> >  	struct nfs_fattr * fattr;
->> > +	struct nfs4_label	*label;
->> >  	const struct nfs_server *server;
->> >  };
->> >  
->> > @@ -497,6 +501,7 @@ struct nfs_readargs {
->> >  struct nfs_readres {
->> >  	struct nfs4_sequence_res	seq_res;
->> >  	struct nfs_fattr *	fattr;
->> > +	struct nfs4_label	*label;
-> Why do we need to check labels on close, delegreturn, read, remove,
-> rename, etc? Do any of those operations cause our cached labels to
-> change?
-I was not around then this decision was made... Maybe some of the 
-security people can address that.... 
+>> Hi Rick, Chuck, Bruce,
+>> in attachment is a small pcap when a client is in the locked.
+>> Hopefully I can reproduce the problem so I can send you a capture
+>> during a reboot cycle.
+>
+> The pcap file confirms that the state IDs and client ID do not appear to match, and do appear on the same TCP connection (in different operations).  I think the presence of the RENEW operations here suggest that the client believes it has not been able to renew its lease using stateful operations like READ.  IMO this is evidence in favor of the theory that the client neglected to recover these state IDs for some reason.
+>
+> We'll need to see the actual reboot recovery traffic to analyze further, and that occurs just after the server reboots.  Even better would be to see the initial OPEN of the file where the READ operations are failing.  I recognize this is a non-determinstic problem that will be a challenge to capture properly.
+>
+> Rather than capturing the trace on the server, you should be able to capture it on your clients in order to capture traffic before, during, and after the server reboot.  To avoid capturing an enormous amount of data, both tcpdump and tshark provide options to save the captured network data into a small ring of files (see their man pages).  Once a client mount point has locked, you can stop the capture, and hopefully the ring will have everything we need.
 
-What operation do you think they are needed for?
+Hi All,
+I managed to capture the packets after a reboot. I send the pcap file
+to the people in cc (privacy issue, contact me if someone on the list
+wants a copy). This is a summary of what happens after a reboot
+(perhaps a missed some relevant information):
 
-steved.
- 
+38:
+- client -> server: client executes 3 writes with a stale clientid (A)
+- client -> server: RENEW
+44:
+- server -> client: NFS4ERR_STALE_STATEID  (in reponse to A)
+45:
+- server -> client: NFS4ERR_STALE_CLIENTID
+65:
+- client -> server: RENEW
+66
+- server -> client: NFS4ERR_STALE_CLIENTID
+67,85,87,93:
+SETCLIENTID/SETCLIENTID_CONFIRM sequence (ok)
+78,79:
+NFS4STALE_STATEID (reponse to the other 2 writes in A)
+
+98: OPEN with CLAIM_PREVIOUS
+107: response to open: NFS4ERR_NO_GRACE (strange?)
+after that the client re-opens the files without CLAIM_PREVIOUS option
+and they are all succesful.
+
+The client starts using the new stateids except for the files in A.
+The server returns a NFS4_STALE_STATEID, the client executes a RENEW
+(IMO this should be an OPEN request) and retries the WRITE, the server
+returns a NFS4_STALE_STATEID
+
+Server: FreeBSD 9.1 with new NFS server implementation
+Client:  Fedora 17, 3.8.11-100.fc17.x86_64
+
+Any clues?
+
+Thanks,
+Bram
