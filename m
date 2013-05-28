@@ -1,80 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:7069 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54705 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932197Ab3EOQkp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 12:40:45 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/2] [RFC] Maybe avoid gssd upcall timeout
-Date: Wed, 15 May 2013 16:40:40 +0000
-Message-ID: <1368636039.3568.13.camel@leira.trondhjem.org>
-References: <20130513161515.1942.845.stgit@seurat.1015granger.net>
-	 <1368634683.3568.5.camel@leira.trondhjem.org>
-	 <13B2D107-E7C3-4AF8-B205-7BF1304DFF25@oracle.com>
-	 <1368635073.3568.7.camel@leira.trondhjem.org>
-	 <5E95E534-4C1A-4AF5-B0CD-240EB5592E96@oracle.com>
-In-Reply-To: <5E95E534-4C1A-4AF5-B0CD-240EB5592E96@oracle.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1752548Ab3E1SlB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 May 2013 14:41:01 -0400
+Message-ID: <51A4FA3A.1080805@RedHat.com>
+Date: Tue, 28 May 2013 14:40:58 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: NeilBrown <neilb@suse.de>
+CC: Simo Sorce <simo@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Avoid DNS reverse resolution for server names (take 3)
+References: <1366380998-2581-1-git-send-email-steved@redhat.com> <20130502131332.5c0ce2b0@notabene.brown>
+In-Reply-To: <20130502131332.5c0ce2b0@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-05-15 at 12:30 -0400, Chuck Lever wrote:
-> On May 15, 2013, at 12:24 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-> 
-> > On Wed, 2013-05-15 at 12:22 -0400, Chuck Lever wrote:
-> >> On May 15, 2013, at 12:18 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-> >> 
-> >>> On Mon, 2013-05-13 at 12:25 -0400, Chuck Lever wrote:
-> >>>> Hi-
-> >>>> 
-> >>>> Here's a stab at addressing the 15 second wait for some 3.10 sec=sys
-> >>>> mounts where the client is not running rpc.gssd.
-> >>>> 
-> >>>> After reverting the "use krb5i for SETCLIENTID" patch, I've added
-> >>>> the AUTH_SYS fallback in the EACCES case in
-> >>>> nfs4_discover_server_trunking().  I'm not sure whether we need to
-> >>>> supplement what's there now, or replace it.
-> >>>> 
-> >>>> "case -ENOKEY:" is added so the kernel will recognize that when gssd
-> >>>> is changed to return that instead of EACCES in this case.  If the
-> >>>> second patch is appled to 3.7 stable and following, it might be a way
-> >>>> to address the same regression in older kernels.
-> >>>> 
-> >>>> I've been focused on another bug this week, so this has seen very
-> >>>> light testing only.  Looking for comments.
-> >>> 
-> >>> I'd like to propose a different approach: we can set up rpc_pipefs files
-> >>> clnt/gssd and clnt/krb5 as "honeypots" that rpc.gssd will connect to,
-> >>> but that won't do any upcalls. When gssd connects, we set a
-> >>> per-rpc_net_ns variable that tells us 'gssd' is up and running. That
-> >>> variable only gets cleared if we see a timeout.
-> >> 
-> >> Note my solution is a short term gap filler.  Bruce and Jeff seem to want something that can fix current kernels without requiring user space changes, and I need something that will allow sec=krb5 mounts to work without a client keytab on kernels since 3.7.
-> >> 
-> >> I see your proposal as a long term fix, and not something that we can expect to apply without deploying gssd support at the same time.
-> > 
-> > How does it require gssd modifications?
-> > 
-> > The whole point is that it requires kernel-only changes, and only minor
-> > changes at that...
-> 
-> You'll have to be more specific then.  The impression I was left with last week was that this solution was a non-starter because one of the two end points wipes all the directories at certain times.
-> 
-No. The problem was the gssd behaviour when it receives a directory
-notification due to a client creation/destroy event: it disconnects from
-all rpc pipes, and then reconnects to them.
 
-That is solved by using the strategy that the variable is set on the
-first connection by gssd, and is only cleared if we see a timeout. It
-means that we can quickly detect whether or not gssd has been started
-(which is what we need here).
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+On 01/05/13 23:13, NeilBrown wrote:
+> Subject: Fix recent fix to Avoid DNS reverse resolution in gssd.
+> 
+> The final version for this fix that was committed inverted the test
+> so makes no change in the important cases.
+> The documentation didn't really help a naive user know when the new -D flag
+> should be used.
+> And the code (once fixed) avoided DNS resolution on non-qualified names too,
+> which probably isn't a good idea.
+> 
+> This patch fixes all three issues.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+Committed....
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+steved.
+
+> 
+> 
+> diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
+> index 1df75c5..ac13fd4 100644
+> --- a/utils/gssd/gssd.man
+> +++ b/utils/gssd/gssd.man
+> @@ -195,11 +195,28 @@ option when starting
+>  .BR rpc.gssd .
+>  .SH OPTIONS
+>  .TP
+> -.B -D
+> -DNS Reverse lookups are not used for determining the
+> -server names pass to GSSAPI. This option will reverses that and forces 
+> -the use of DNS Reverse resolution of the server's IP address to 
+> -retrieve the server name to use in GSAPI authentication.
+> +.B \-D
+> +The server name passed to GSSAPI for authentication is normally the
+> +name exactly as requested.  e.g. for NFS
+> +it is the server name in the "servername:/path" mount request.  Only if this
+> +servername appears to be an IP address (IPv4 or IPv6) or an
+> +unqualified name (no dots) will a reverse DNS lookup
+> +will be performed to get the canoncial server name.
+> +
+> +If
+> +.B \-D
+> +is present, a reverse DNS lookup will
+> +.I always
+> +be used, even if the server name looks like a canonical name.  So it
+> +is needed if partially qualified, or non canonical names are regularly
+> +used.
+> +
+> +Using
+> +.B \-D
+> +can introduce a security vulnerability, so it is recommended that
+> +.B \-D
+> +not be used, and that canonical names always be used when requesting
+> +services.
+>  .TP
+>  .B -f
+>  Runs
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index af1844c..d381664 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -176,7 +176,6 @@ get_servername(const char *name, const struct sockaddr *sa, const char *addr)
+>  	char			*hostname;
+>  	char			hbuf[NI_MAXHOST];
+>  	unsigned char		buf[sizeof(struct in6_addr)];
+> -	int			servername = 0;
+>  
+>  	if (avoid_dns) {
+>  		/*
+> @@ -184,15 +183,18 @@ get_servername(const char *name, const struct sockaddr *sa, const char *addr)
+>  		 * If it is an IP address, do the DNS lookup otherwise
+>  		 * skip the DNS lookup.
+>  		 */
+> -		servername = 0;
+> -		if (strchr(name, '.') && inet_pton(AF_INET, name, buf) == 1)
+> -			servername = 1; /* IPv4 */
+> -		else if (strchr(name, ':') && inet_pton(AF_INET6, name, buf) == 1)
+> -			servername = 1; /* or IPv6 */
+> -
+> -		if (servername) {
+> +		int is_fqdn = 1;
+> +		if (strchr(name, '.') == NULL)
+> +			is_fqdn = 0; /* local name */
+> +		else if (inet_pton(AF_INET, name, buf) == 1)
+> +			is_fqdn = 0; /* IPv4 address */
+> +		else if (inet_pton(AF_INET6, name, buf) == 1)
+> +			is_fqdn = 0; /* IPv6 addrss */
+> +
+> +		if (is_fqdn) {
+>  			return strdup(name);
+>  		}
+> +		/* Sorry, cannot avoid dns after all */
+>  	}
+>  
+>  	switch (sa->sa_family) {
