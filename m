@@ -1,136 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:39124 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757104Ab3FADIL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 31 May 2013 23:08:11 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
-Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
-        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v1 00/11] locks: scalability improvements for file locking
-Date: Fri, 31 May 2013 23:07:23 -0400
-Message-Id: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
+Received: from one.firstfloor.org ([193.170.194.197]:36660 "EHLO
+	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755365Ab3E2Q4F (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 May 2013 12:56:05 -0400
+Date: Wed, 29 May 2013 18:56:03 +0200
+From: Andi Kleen <andi@firstfloor.org>
+To: Simo Sorce <simo@redhat.com>
+Cc: Waiman Long <waiman.long@hp.com>, Dave Chinner <david@fromorbit.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Jeff Layton <jlayton@redhat.com>, Miklos Szeredi <mszeredi@suse.cz>,
+        Ian Kent <raven@themaw.net>, Sage Weil <sage@inktank.com>,
+        Steve French <sfrench@samba.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Eric Paris <eparis@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, autofs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, "Chandramouleeswaran, Aswin" <aswin@hp.com>,
+        "Norton, Scott J" <scott.norton@hp.com>,
+        Andi Kleen <andi@firstfloor.org>
+Subject: Re: [PATCH 0/3 v3] dcache: make it more scalable on large system
+Message-ID: <20130529165603.GL6123@two.firstfloor.org>
+References: <1369273048-60256-1-git-send-email-Waiman.Long@hp.com>
+ <20130523094201.GA24543@dastard>
+ <519E8B5F.3080905@hp.com>
+ <20130527020903.GR29466@dastard>
+ <51A624E2.3000301@hp.com>
+ <1369844289.2769.146.camel@willson.li.ssimo.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1369844289.2769.146.camel@willson.li.ssimo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Executive summary (tl;dr version): This patchset represents an overhaul
-of the file locking code with an aim toward improving its scalability
-and making the code a bit easier to understand.
+On Wed, May 29, 2013 at 12:18:09PM -0400, Simo Sorce wrote:
+> On Wed, 2013-05-29 at 11:55 -0400, Waiman Long wrote:
+> 
+> > My patch set consists of 2 different changes. The first one is to avoid 
+> > taking the d_lock lock when updating the reference count in the 
+> > dentries. This particular change also benefit some other workloads that 
+> > are filesystem intensive. One particular example is the short workload 
+> > in the AIM7 benchmark. One of the job type in the short workload is 
+> > "misc_rtns_1" which calls security functions like getpwnam(), 
+> > getpwuid(), getgrgid() a couple of times. These functions open the 
+> > /etc/passwd or /etc/group files, read their content and close the files. 
+> > It is the intensive open/read/close sequence from multiple threads that 
+> > is causing 80%+ contention in the d_lock on a system with large number 
+> > of cores.
+> 
+> To be honest a workload base on /etc/passwd or /etc/group is completely
+> artificial, in actual usage, if you really have  such access you use
+> nscd or sssd with their shared memory caches to completely remove most
+> of the file access.
 
-Longer version:
+I don't fully agree at this point. A lot of things can be tuned away,
+but in practice we want things to perform well out of the box without
+needing all kinds of magic tuning that only 
 
-When the BKL was finally ripped out of the kernel in 2010, the strategy
-taken for the file locking code was to simply turn it into a new
-file_lock_locks spinlock. It was an expedient way to deal with the file
-locking code at the time, but having a giant spinlock around all of this
-code is clearly not great for scalability. Red Hat has bug reports that
-go back into the 2.6.18 era that point to BKL scalability problems in
-the file locking code and the file_lock_lock suffers from the same
-issues.
+Also this is just normal file access, nothing special about it.
+It simply has to scale. For all kinds of workloads.
 
-This patchset is my first attempt to make this code less dependent on
-global locking. The main change is to switch most of the file locking
-code to be protected by the inode->i_lock instead of the file_lock_lock.
+And it does, just d_path messes it up.
 
-While that works for most things, there are a couple of global data
-structures (lists in the current code) that need a global lock to
-protect them. So we still need a global lock in order to deal with
-those. The remaining patches are intended to make that global locking
-less painful. The big gain is made by turning the blocked_list into a
-hashtable, which greatly speeds up the deadlock detection code.
+> I have no beef on the rest but repeated access to Nsswitch information
+> is not something you need to optimize at the file system layer and
+> should not be brought up as a point in favor.
 
-I rolled a couple of small programs in order to test this code. The
-first one just forks off 128 children and has them lock and unlock the
-same file 10k times. Running this under "time" against a file on tmpfs
-gives typical values like this:
+This is about repeated access to arbitrary files.
 
-Unpatched (3.10-rc3-ish):
-real	0m5.283s
-user	0m0.380s
-sys	0m20.469s
-
-Patched (same base kernel):
-real	0m5.099s
-user	0m0.478s
-sys	0m19.662s
-
-...so there seems to be some modest performance gain in this test. I
-think that's almost entirely due to the change to a hashtable and to
-optimize removing and readding blocked locks to the global lists. Note
-that with this code we have to take two spinlocks instead of just one,
-and that has some performance impact too. So the real peformance gain
-from that hashtable conversion is eaten up to some degree by this.
-
-The next test just forks off a bunch of children that each create their
-own file and then lock and unlock it 20k times. Obviously, the locks in
-this case are uncontended. Running that under "time" typically gives
-these rough numbers.
-
-Unpatched (3.10-rc3-ish):
-real	0m8.836s
-user	0m1.018s
-sys	0m34.094s
-
-Patched (same base kernel):
-real	0m4.965s
-user	0m1.043s
-sys	0m18.651s
-
-In this test, we see the real benefit of moving to the i_lock for most
-of this code. The run time is almost cut in half in this test. With
-these changes locking different inodes needs very little serialization.
-
-If people know of other file locking performance tests, then I'd be
-happy to try them out too. It's possible that this might make some
-workloads slower, and it would be helpful to know what they are (and
-address them) if so.
-
-This is not the first attempt at doing this. The conversion to the
-i_lock was originally attempted by Bruce Fields a few years ago. His
-approach was NAK'ed since it involved ripping out the deadlock
-detection. People also really seem to like /proc/locks for debugging, so
-keeping that in is probably worthwhile.
-
-There's more work to be done in this area and this patchset is just a
-start. There's a horrible thundering herd problem when a blocking lock
-is released, for instance. There was also interest in solving the goofy
-"unlock on any close" POSIX lock semantics at this year's LSF. I think
-this patchset will help lay the groundwork for those changes as well.
-
-Comments and suggestions welcome.
-
-Jeff Layton (11):
-  cifs: use posix_unblock_lock instead of locks_delete_block
-  locks: make generic_add_lease and generic_delete_lease static
-  locks: comment cleanups and clarifications
-  locks: make "added" in __posix_lock_file a bool
-  locks: encapsulate the fl_link list handling
-  locks: convert to i_lock to protect i_flock list
-  locks: only pull entries off of blocked_list when they are really
-    unblocked
-  locks: convert fl_link to a hlist_node
-  locks: turn the blocked_list into a hashtable
-  locks: add a new "lm_owner_key" lock operation
-  locks: give the blocked_hash its own spinlock
-
- Documentation/filesystems/Locking |   27 +++-
- fs/afs/flock.c                    |    5 +-
- fs/ceph/locks.c                   |    2 +-
- fs/ceph/mds_client.c              |    8 +-
- fs/cifs/cifsfs.c                  |    2 +-
- fs/cifs/file.c                    |   15 +-
- fs/gfs2/file.c                    |    2 +-
- fs/lockd/svclock.c                |   12 ++
- fs/lockd/svcsubs.c                |   12 +-
- fs/locks.c                        |  254 +++++++++++++++++++++++++------------
- fs/nfs/delegation.c               |   11 +-
- fs/nfs/nfs4state.c                |    8 +-
- fs/nfsd/nfs4state.c               |    8 +-
- include/linux/fs.h                |   25 +---
- 14 files changed, 249 insertions(+), 142 deletions(-)
-
+-Andi
