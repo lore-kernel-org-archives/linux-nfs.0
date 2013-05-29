@@ -1,109 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52141 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:30310 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758395Ab3ENVqM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 May 2013 17:46:12 -0400
-Date: Tue, 14 May 2013 17:46:09 -0400
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] nfsd4: implement minimal SP4_MACH_CRED
-Message-ID: <20130514214609.GC16811@fieldses.org>
-References: <1368565973-16739-1-git-send-email-bfields@redhat.com>
- <1368565973-16739-4-git-send-email-bfields@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1368565973-16739-4-git-send-email-bfields@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1755417Ab3E2RDh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 May 2013 13:03:37 -0400
+Subject: Re: [PATCH 0/3 v3] dcache: make it more scalable on large system
+From: Simo Sorce <simo@redhat.com>
+To: Andi Kleen <andi@firstfloor.org>
+Cc: Waiman Long <waiman.long@hp.com>, Dave Chinner <david@fromorbit.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Jeff Layton <jlayton@redhat.com>, Miklos Szeredi <mszeredi@suse.cz>,
+        Ian Kent <raven@themaw.net>, Sage Weil <sage@inktank.com>,
+        Steve French <sfrench@samba.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Eric Paris <eparis@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, autofs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, "Chandramouleeswaran, Aswin" <aswin@hp.com>,
+        "Norton, Scott J" <scott.norton@hp.com>
+In-Reply-To: <20130529165603.GL6123@two.firstfloor.org>
+References: <1369273048-60256-1-git-send-email-Waiman.Long@hp.com>
+	 <20130523094201.GA24543@dastard> <519E8B5F.3080905@hp.com>
+	 <20130527020903.GR29466@dastard> <51A624E2.3000301@hp.com>
+	 <1369844289.2769.146.camel@willson.li.ssimo.org>
+	 <20130529165603.GL6123@two.firstfloor.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 29 May 2013 13:03:12 -0400
+Message-ID: <1369846992.2769.149.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 14, 2013 at 05:12:53PM -0400, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, 2013-05-29 at 18:56 +0200, Andi Kleen wrote:
+> On Wed, May 29, 2013 at 12:18:09PM -0400, Simo Sorce wrote:
+> > On Wed, 2013-05-29 at 11:55 -0400, Waiman Long wrote:
+> > 
+> > > My patch set consists of 2 different changes. The first one is to avoid 
+> > > taking the d_lock lock when updating the reference count in the 
+> > > dentries. This particular change also benefit some other workloads that 
+> > > are filesystem intensive. One particular example is the short workload 
+> > > in the AIM7 benchmark. One of the job type in the short workload is 
+> > > "misc_rtns_1" which calls security functions like getpwnam(), 
+> > > getpwuid(), getgrgid() a couple of times. These functions open the 
+> > > /etc/passwd or /etc/group files, read their content and close the files. 
+> > > It is the intensive open/read/close sequence from multiple threads that 
+> > > is causing 80%+ contention in the d_lock on a system with large number 
+> > > of cores.
+> > 
+> > To be honest a workload base on /etc/passwd or /etc/group is completely
+> > artificial, in actual usage, if you really have  such access you use
+> > nscd or sssd with their shared memory caches to completely remove most
+> > of the file access.
 > 
-> Do a minimal SP4_MACH_CRED implementation suggested by Trond, ignoring
-> the client-provided spo_must_* arrays and just enforcing credential
-> checks for the minimum required operations.
+> I don't fully agree at this point. A lot of things can be tuned away,
+> but in practice we want things to perform well out of the box without
+> needing all kinds of magic tuning that only 
 
-Reviewing myself:
+Phrase seem cut mid-sentence ?
 
+> Also this is just normal file access, nothing special about it.
+> It simply has to scale. For all kinds of workloads.
 > 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/nfsd/nfs4state.c |   66 +++++++++++++++++++++++++++++++++++++++++----------
->  fs/nfsd/nfs4xdr.c   |   22 +++++++++++++++++
->  fs/nfsd/state.h     |    1 +
->  3 files changed, 77 insertions(+), 12 deletions(-)
+> And it does, just d_path messes it up.
+
+Well there are reasonable workloads and artificial ones, I am just
+warning not to use 'that' specific test as a good indicator, if you have
+other reasonable workloads that show a similar flow feel free to bring
+it up.
+
+> > I have no beef on the rest but repeated access to Nsswitch information
+> > is not something you need to optimize at the file system layer and
+> > should not be brought up as a point in favor.
 > 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 52f9e92..4e50a2d 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1265,6 +1265,23 @@ same_creds(struct svc_cred *cr1, struct svc_cred *cr2)
->  	return 0 == strcmp(cr1->cr_principal, cr2->cr_principal);
->  }
->  
-> +static bool mach_creds_match(struct nfs4_client *cl, struct svc_rqst *rqstp)
-> +{
-> +	struct svc_cred *cr = &rqstp->rq_cred;
-> +	u32 service;
-> +
-> +	if (!cl->cl_mach_cred)
-> +		return true;
-> +	if (cl->cl_cred.cr_gss_mech != cr->cr_gss_mech)
-> +		return false;
-> +	service = gss_pseudoflavor_to_service(cr->cr_gss_mech, cr->cr_flavor);
-> +	if (service != RPC_AUTH_GSS_KRB5I && service != RPC_AUTH_GSS_KRB5P)
+> This is about repeated access to arbitrary files.
 
-Whoops, those constants are pseudoflavors, not service types.
+Ok. I do not want to start a discussion on this, I just pointed out the
+specific point was not really a good example hopefully there are others
+that justify the patchset.
 
-Also, I'm assuming here that if cl_mach_cred is true then the client's
-gss_mechanism and principal are non-null.  But that's not necessarily
-true since I forgot to enforce the requirement that the exchange_id also
-be sent with integrity or privacy in the SP4_MACH_CRED case.
+Simo.
 
-So, I need the following.
+-- 
+Simo Sorce * Red Hat, Inc * New York
 
---b.
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4e50a2d..293ffbe 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1265,17 +1265,25 @@ same_creds(struct svc_cred *cr1, struct svc_cred *cr2)
- 	return 0 == strcmp(cr1->cr_principal, cr2->cr_principal);
- }
- 
--static bool mach_creds_match(struct nfs4_client *cl, struct svc_rqst *rqstp)
-+static bool svc_rqst_integrity_protected(struct svc_rqst *rqstp)
- {
- 	struct svc_cred *cr = &rqstp->rq_cred;
- 	u32 service;
- 
-+	service = gss_pseudoflavor_to_service(cr->cr_gss_mech, cr->cr_flavor);
-+	return service == RPC_GSS_SVC_INTEGRITY ||
-+	       service == RPC_GSS_SVC_PRIVACY;
-+}
-+
-+static bool mach_creds_match(struct nfs4_client *cl, struct svc_rqst *rqstp)
-+{
-+	struct svc_cred *cr = &rqstp->rq_cred;
-+
- 	if (!cl->cl_mach_cred)
- 		return true;
- 	if (cl->cl_cred.cr_gss_mech != cr->cr_gss_mech)
- 		return false;
--	service = gss_pseudoflavor_to_service(cr->cr_gss_mech, cr->cr_flavor);
--	if (service != RPC_AUTH_GSS_KRB5I && service != RPC_AUTH_GSS_KRB5P)
-+	if (!svc_rqst_integrity_protected(rqstp))
- 		return false;
- 	if (!cr->cr_principal)
- 		return false;
-@@ -1661,6 +1669,8 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 
- 	switch (exid->spa_how) {
- 	case SP4_MACH_CRED:
-+		if (!svc_rqst_integrity_protected(rqstp))
-+			return nfserr_inval;
- 	case SP4_NONE:
- 		break;
- 	default:				/* checked by xdr code */
