@@ -1,37 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f41.google.com ([74.125.82.41]:52514 "EHLO
-	mail-wg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030539Ab3E3LE2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 May 2013 07:04:28 -0400
-Received: by mail-wg0-f41.google.com with SMTP id k13so4964120wgh.4
-        for <linux-nfs@vger.kernel.org>; Thu, 30 May 2013 04:04:27 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <E626E85E-BC60-4FBA-BF02-536508991C65@oracle.com>
-References: <1480713067.24683.1369783846612.JavaMail.root@erie.cs.uoguelph.ca> <E626E85E-BC60-4FBA-BF02-536508991C65@oracle.com>
-From: Bram Vandoren <brambi@gmail.com>
-Date: Thu, 30 May 2013 13:04:06 +0200
-Message-ID: <CACQjR_DV_2QFd0O1e6R6M34_R87+Bn+zvn3w_BkhS9YESNVUzg@mail.gmail.com>
-Subject: Re: NFS client hangs after server reboot
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Rick Macklem <rmacklem@uoguelph.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx12.netapp.com ([216.240.18.77]:4877 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933570Ab3E2UFX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 May 2013 16:05:23 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4: Fix a thinko in nfs4_try_open_cached
+Date: Wed, 29 May 2013 16:05:13 -0400
+Message-Id: <1369857913-42009-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> It's not typical for a client with an active workload to wait 4400 seconds to send a fresh SYN.  Bram, can you shed any light on this?
+We need to pass the full open mode flags to nfs_may_open() when doing
+a delegated open.
 
-The server was down for ~4400 seconds (I started the capture before
-the maintanance period). I captured the packets using a switch mirror
-port (it's possible some packets are lost during capture). After a
-while an arp timeout occurs and we don't capture the SYNs from the
-client any more (I doubt the client sends the SYN because it doesn't
-know where to send it).
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: stable@vger.kernel.org
+---
+ fs/nfs/nfs4proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-If it helps, I can filter extra information from the big pcap file
-(~20G) (eg capture from other clients or from the same client just
-before the server reboot).
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 4e2fe71..d7ba561 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1078,7 +1078,7 @@ static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
+ 	struct nfs4_state *state = opendata->state;
+ 	struct nfs_inode *nfsi = NFS_I(state->inode);
+ 	struct nfs_delegation *delegation;
+-	int open_mode = opendata->o_arg.open_flags & (O_EXCL|O_TRUNC);
++	int open_mode = opendata->o_arg.open_flags;
+ 	fmode_t fmode = opendata->o_arg.fmode;
+ 	nfs4_stateid stateid;
+ 	int ret = -EAGAIN;
+-- 
+1.8.1.4
 
-Thanks,
-Bram.
