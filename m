@@ -1,50 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from f140.mail.ru ([94.100.178.196]:58698 "EHLO f140.mail.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756416Ab3ENJFs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 May 2013 05:05:48 -0400
-Received: from mail by f140.mail.ru with local (envelope-from <halibubaley@mail.ru>)
-	id 1UcBB4-0004Sh-BI
-	for linux-nfs@vger.kernel.org; Tue, 14 May 2013 13:05:46 +0400
-From: =?UTF-8?B?QWxleCBQaWxsb3c=?= <halibubaley@mail.ru>
-To: =?UTF-8?B?bGludXgtbmZz?= <linux-nfs@vger.kernel.org>
-Subject: =?UTF-8?B?SGFuZ3Mgd2hlbiBkbyBscyBvbiBtb3VudCBkaXJlY3Rvcnk=?=
-Mime-Version: 1.0
-Date: Tue, 14 May 2013 13:05:46 +0400
-Reply-To: =?UTF-8?B?QWxleCBQaWxsb3c=?= <halibubaley@mail.ru>
-Message-ID: <1368522346.397819588@f140.mail.ru>
-Content-Type: text/plain; charset=utf-8
+Received: from g4t0017.houston.hp.com ([15.201.24.20]:5298 "EHLO
+	g4t0017.houston.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755116Ab3E2Pza (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 May 2013 11:55:30 -0400
+Message-ID: <51A624E2.3000301@hp.com>
+Date: Wed, 29 May 2013 11:55:14 -0400
+From: Waiman Long <waiman.long@hp.com>
+MIME-Version: 1.0
+To: Dave Chinner <david@fromorbit.com>
+CC: Alexander Viro <viro@zeniv.linux.org.uk>, Jeff Layton <jlayton@redhat.com>,
+        Miklos Szeredi <mszeredi@suse.cz>, Ian Kent <raven@themaw.net>,
+        Sage Weil <sage@inktank.com>, Steve French <sfrench@samba.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Eric Paris <eparis@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, autofs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, "Chandramouleeswaran, Aswin" <aswin@hp.com>,
+        "Norton, Scott J" <scott.norton@hp.com>,
+        Andi Kleen <andi@firstfloor.org>
+Subject: Re: [PATCH 0/3 v3] dcache: make it more scalable on large system
+References: <1369273048-60256-1-git-send-email-Waiman.Long@hp.com> <20130523094201.GA24543@dastard> <519E8B5F.3080905@hp.com> <20130527020903.GR29466@dastard>
+In-Reply-To: <20130527020903.GR29466@dastard>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-IEhlbGxvIGFsbCEKCkNhbiBzb21lb25lIGhlbHAgbWUgd2l0aCBteSBwcm9ibGVtPwpJIGhhdmUg
-bmZzLXNlcnZlciBvbiBDZW50b3MgNiB3aXRoIGtlcm5lbCAyLjYuMzIgYW5kIG5mcy1jbGllbnQg
-b24gT3BlblNVU0UgMTEuNCB3aXRoIGtlcm5lbCAyLjYuMzcKCi9ldGMvZXhwb3J0cyBvbiBzZXJ2
-ZXI6Ci9kYXRhL2lucHV0wqDCoMKgwqAgMTAuMTAwLjAuNjUvMzIocncsc3luYyxub19yb290X3Nx
-dWFzaCxub19zdWJ0cmVlX2NoZWNrLG5vX3dkZWxheSxub19hY2wpCgovZXRjL2ZzdGFiIG9uIGNs
-aWVudDoKMTAuMTAwLjAuMjE0Oi9kYXRhL2lucHV0wqDCoMKgIC9tbnQvaW5wdXTCoCBuZnPCoMKg
-wqDCoCBydyxzeW5jLGJnLGF1dG8saW50cixoYXJkLHJzaXplPTMyNzY4LHdzaXplPTMyNzY4LHZl
-cnM9NCx0aW1lbz02MDAsdGNwLG5vYXRpbWUsbm9kaXJhdGltZQoKRXZlcnl0aGluZyB3b3JrcyBm
-aW5lLCBidXQgaW4gc29tZSBjYXNlcyBpIGhhdmUgYSBwcm9ibGVtOgpJbiB0aGUgZmlyc3Qgc2Vz
-c2lvbiBvbiBjbGllbnQgaSBzdGFydCB0byBjb3B5IGEgbGFyZ2UgZmlsZSAoMTAtNDBHYiksIGFu
-ZCBpbiBzZWNvbmQgc2Vzc2lvbiBvbiBjbGllbnQgaSB0cnlpbmcgcmVhZCAvbW50L2lucHV0Cgp3
-Oi8gIyB0aW1lIGxzIC1sYSAvbW50L2lucHV0CnRvdGFsIDY4ODE5ODQ4CmRyd3hyd3hyd3ggMiBu
-b2JvZHkgbm9ib2R5wqDCoMKgwqDCoMKgwqDCoMKgIDY4IE1heSAxNCAxMjoxNyAuCmRyd3hyLXhy
-LXggOCByb290wqDCoCByb290wqDCoMKgwqDCoMKgwqDCoMKgIDQwOTYgTWF5wqAgNiAxNDoxOCAu
-Lgotcnctci0tci0tIDEgbm9ib2R5IHVzZXJzwqAgMjA3MjI3MTE1NjggTWF5IDE0IDA0OjIyIDE0
-UFIwMDM1TS5teGYKLXJ3LXItLXItLSAxIHJvb3TCoMKgIHJvb3TCoMKgIDIwNTM2NDM1MjE2IE1h
-eSAxNCAxMjoyMiAxNFBSMDAzNVQubXhmCi1ydy1yLS1yLS0gMSBub2JvZHkgdXNlcnPCoCAxMzI3
-OTU2NzEyOCBNYXkgMTQgMDM6MjMgMTRWTzAxODBNXzEubXhmCgpyZWFswqDCoMKgIDBtMzEuNzk2
-cwp1c2VywqDCoMKgIDBtMC4wMDBzCnN5c8KgwqDCoMKgIDBtMC4wNjZzCgpJbiBvdXRwdXQgb2Yg
-c3RyYWNlIChzdHJhY2UgbHMgLWxhIC9tbnQvaW5wdXQpIGkgc2VlCgpsc3RhdCgiL21udC9pbnB1
-dC8xNFBSMDAzNU0ubXhmIiwge3N0X21vZGU9U19JRlJFR3wwNjQ0LCBzdF9zaXplPTIwNzIyNzEx
-NTY4LCAuLi59KSA9IDAKbGdldHhhdHRyKCIvbW50L2lucHV0LzE0UFIwMDM1TS5teGYiLCAic2Vj
-dXJpdHkuc2VsaW51eCIsIDB4NjI5NWIwLCAyNTUpID0gLTEgRU9QTk9UU1VQUCAoT3BlcmF0aW9u
-IG5vdCBzdXBwb3J0ZWQpCmdldHhhdHRyKCIvbW50L2lucHV0LzE0UFIwMDM1TS5teGYiLCAic3lz
-dGVtLnBvc2l4X2FjbF9hY2Nlc3MiLCAweDAsIDApID0gLTEgRU9QTk9UU1VQUCAoT3BlcmF0aW9u
-IG5vdCBzdXBwb3J0ZWQpCmxzdGF0KCIvbW50L2lucHV0LzE0UFIwMDM1VC5teGYiLAoKQW5kIHRo
-ZXNlIG91dHB1dCBoYW5nIHVwIG9uIDE1LTQwIHNlY29uZHMuCgoxNFBSMDAzNVQubXhmIC0gaXMg
-dGhlIG5hbWUgb2YgdGhlIGZpbGUgd2hpY2ggbm93IGlzIHRyYW5zZmVycmVkIGluIGZpcnN0IHNl
-c3Npb24uIE91dHB1dCBhbHdheXMgaGFuZ3Mgb24gdGhlIGZpbGUgdGhhdCBub3cgaXMgdHJhbnNm
-ZXJyZWQuXAoKbHMgLWxhIC9kYXRhL2lucHV0IG9uIHNlcnZlciB3b3JrcyBmaW5lLiAKCldoYXQg
-Y2FuIGJlIGRvbmUgdG8gc29sdmUgdGhpcyBwcm9ibGVtPw==
+On 05/26/2013 10:09 PM, Dave Chinner wrote:
+> On Thu, May 23, 2013 at 05:34:23PM -0400, Waiman Long wrote:
+>> On 05/23/2013 05:42 AM, Dave Chinner wrote:
+>>>
+>>> What was it I said about this patchset when you posted it to speed
+>>> up an Oracle benchmark back in february? I'll repeat:
+>>>
+>>> "Nobody should be doing reverse dentry-to-name lookups in a quantity
+>>> sufficient for it to become a performance limiting factor."
+>> Thank for the comment, but my point is that it is the d_lock
+>> contention is skewing the data about how much spin lock contention
+>> had actually happened in the workload and it makes it harder to
+>> pinpoint problem areas to look at. This is not about performance, it
+>> is about accurate representation of performance data. Ideally, we
+>> want the overhead of turning on perf instrumentation to be as low as
+>> possible.
+> Right. But d_path will never be "low overhead", and as such it
+> shouldn't be used by perf.
+
+The d_path() is called by perf_event_mmap_event() which translates VMA 
+to its file path for memory segments backed by files. As perf is not 
+just for sampling data within the kernel, it can also be used for 
+checking access pattern in the user space. As a result, it needs to map 
+VMAs back to the backing files to access their symbols information. If 
+d_path() is not the right function to call for this purpose, what other 
+alternatives do we have?
+
+There may be ways to reduce calls to d_path() by doing some kind of 
+caching, but that will certainly increase the complexity of the perf code.
+
+>>> And that makes whatever that tracepoint is doing utterly stupid.
+>>> Dumping out full paths in a tracepoint is hardly "low overhead", and
+>>> that tracepoint should be stomped on from a great height. Sure,
+>>> print the filename straight out of the dentry into a tracepoint,
+>>> but repeated calculating the full path (probably for the same set of
+>>> dentries) is just a dumb thing to do.
+>>>
+>>> Anyway, your numbers show that a single AIM7 microbenchmark goes
+>>> better under tracing the specific mmap event that uses d_path(), but
+>>> the others are on average a little bit slower. That doesn't convince
+>>> me that this is worth doing. Indeed, what happens to performance
+>>> when you aren't tracing?
+>>>
+>>> Indeed, have you analysed what makes that
+>>> microbenchmark contend so much on the dentry lock while reverse
+>>> lookups are occuring? Dentry lock contention does not necessarily
+>>> indicate a problem with the dentry locks, and without knowing why
+>>> there is contention occuring (esp. compared to the other benchmarks)
+>>> we can't really determine if this is a good solution or not...
+>> What made it contend so much was the large number of CPUs available
+>> in my test system which is a 8-socket Westmere EX machines with 80
+>> cores. As perf was collecting data from every core, the threads will
+>> unavoidably bump into each other to translate dentries back to the
+>> full paths. The current code only allows one CPU in the d_path()
+>> critical path. My patch will allow all of them to be in the critical
+>> path concurrently.
+> Yes, I know *how* contention occurs and what your patch does. I'm
+> asking you to explain *why* we need to fix this specific workload,
+> and why the tracepoint that calls d_path() actually needs to do
+> that.
+
+My patch set consists of 2 different changes. The first one is to avoid 
+taking the d_lock lock when updating the reference count in the 
+dentries. This particular change also benefit some other workloads that 
+are filesystem intensive. One particular example is the short workload 
+in the AIM7 benchmark. One of the job type in the short workload is 
+"misc_rtns_1" which calls security functions like getpwnam(), 
+getpwuid(), getgrgid() a couple of times. These functions open the 
+/etc/passwd or /etc/group files, read their content and close the files. 
+It is the intensive open/read/close sequence from multiple threads that 
+is causing 80%+ contention in the d_lock on a system with large number 
+of cores. The MIT's MOSBench paper also outlined dentry reference 
+counting as a scalability roadblock for its Apache and Exim tests. So 
+that change will certainly help workloads that are dcache reference 
+counting intensive.
+
+The second rename_lock change is mainly for reducing the d_path lock 
+contention for perf and some other applications that may need to access 
+/proc system files like maps or numa_maps frequently. If you think the 
+rename_lock change is not worth the effort to just benefit perf, I would 
+still like to see the first one go in as it can certainly benefit other 
+workload.
+
+> Your numbers indicate that your patchset decreases peformance in the
+> common, non-d_path intensive workloads, so why should we add all
+> this complexity to optimise a slow path at the expense of
+> significant complexity and lower performance in the fast
+> path?
+
+My numbers didn't actually indicate a performance regression in other 
+common workloads. They just indicate that there wasn't a significant 
+changes in performance as + or - a few percentages here and there are 
+within the margin of errors for the tests that I used.
+
+>> The upcoming Ivy-Bridge EX can have up to 15 cores per socket. So
+>> even a 4-socket machine will have up to 60 cores or 120 virtual CPUs
+>> if hyperthreading is turned on.
+> I don't see why that matters. I've been dealing with systems much
+> larger than that since early 2002, adn the process for delaing with
+> lock contention hasn't changed much in the last 10 years. First we
+> need to determine what you are doing is something that is sane,
+> determining whether there's a simpler fix than changing locking, and
+> whether it's actually any faster in the common case we care
+> about....
+
+I certainly agree with that. My testing indicated no change in 
+performance for the common case, but significant speed-up in some 
+scenarios with large number of CPUs.
+
+Regards,
+Longman
