@@ -1,106 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:36303 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754436Ab3EKVqI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 11 May 2013 17:46:08 -0400
-Message-ID: <518EBBD4.7010306@RedHat.com>
-Date: Sat, 11 May 2013 17:44:52 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from one.firstfloor.org ([193.170.194.197]:36562 "EHLO
+	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753745Ab3E2QOG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 May 2013 12:14:06 -0400
+Date: Wed, 29 May 2013 18:13:58 +0200
+From: Andi Kleen <andi@firstfloor.org>
+To: Waiman Long <waiman.long@hp.com>
+Cc: Dave Chinner <david@fromorbit.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Jeff Layton <jlayton@redhat.com>, Miklos Szeredi <mszeredi@suse.cz>,
+        Ian Kent <raven@themaw.net>, Sage Weil <sage@inktank.com>,
+        Steve French <sfrench@samba.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Eric Paris <eparis@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, autofs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, "Chandramouleeswaran, Aswin" <aswin@hp.com>,
+        "Norton, Scott J" <scott.norton@hp.com>,
+        Andi Kleen <andi@firstfloor.org>
+Subject: Re: [PATCH 0/3 v3] dcache: make it more scalable on large system
+Message-ID: <20130529161358.GJ6123@two.firstfloor.org>
+References: <1369273048-60256-1-git-send-email-Waiman.Long@hp.com>
+ <20130523094201.GA24543@dastard>
+ <519E8B5F.3080905@hp.com>
+ <20130527020903.GR29466@dastard>
+ <51A624E2.3000301@hp.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 16/17] NFSD: Server implementation of MAC Labeling
-References: <1367515151-31015-1-git-send-email-SteveD@redhat.com> <1367515151-31015-17-git-send-email-SteveD@redhat.com> <20130509015033.GI23747@fieldses.org>
-In-Reply-To: <20130509015033.GI23747@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <51A624E2.3000301@hp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+> The d_path() is called by perf_event_mmap_event() which translates
+> VMA to its file path for memory segments backed by files. As perf is
+> not just for sampling data within the kernel, it can also be used
+> for checking access pattern in the user space. As a result, it needs
+> to map VMAs back to the backing files to access their symbols
+> information. If d_path() is not the right function to call for this
+> purpose, what other alternatives do we have?
 
+In principle it should be only called for new file mappings
+getting maped.  Do you really have that many new file mappings all
+the time? Or is this related to program startup?
 
-On 08/05/13 21:50, J. Bruce Fields wrote:
-> This also doesn't handle the unsupported case correctly.
 > 
-> Applying the following fix to my tree.
-With in the following commit
+> My patch set consists of 2 different changes. The first one is to
+> avoid taking the d_lock lock when updating the reference count in
+> the dentries. This particular change also benefit some other
+> workloads that are filesystem intensive. One particular example is
+> the short workload in the AIM7 benchmark. One of the job type in the
+> short workload is "misc_rtns_1" which calls security functions like
+> getpwnam(), getpwuid(), getgrgid() a couple of times. These
+> functions open the /etc/passwd or /etc/group files, read their
+> content and close the files. It is the intensive open/read/close
+> sequence from multiple threads that is causing 80%+ contention in
+> the d_lock on a system with large number of cores. The MIT's
+> MOSBench paper also outlined dentry reference counting as a
 
-commit ad8684190a6eb3913a54eda7838f31ead8a73168
-Author: David Quigley <dpquigl@davequigley.com>
-Date:   Thu May 2 13:19:10 2013 -0400
+The paper was before Nick Piggin's RCU (and our) work on this.
+Modern kernels do not have dcache problems with mosbench, unless
+you run weird security modules like SMACK that effectively 
+disable dcache RCU.
 
-    NFSD: Server implementation of MAC Labeling
+BTW lock elision may fix these problems anyways, in a much
+simpler way.
 
-The following chunk of code was committed:
+-Andi
 
- @@ -380,6 +386,33 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bm
-                        goto xdr_error;
-                }
-        }
-+
-+       label->len = 0;
-+#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
-+       if (bmval[2] & FATTR4_WORD2_SECURITY_LABEL) {
-+               READ_BUF(4);
-+               len += 4;
-+               READ32(dummy32); /* lfs: we don't use it */
-+               READ_BUF(4);
-+               len += 4;
-+               READ32(dummy32); /* pi: we don't use it either */
-+               READ_BUF(4);
-+               len += 4;
-+               READ32(dummy32);
-+               READ_BUF(dummy32);
-+               if (dummy32 > NFSD4_MAX_SEC_LABEL_LEN)
-+                       return nfserr_badlabel;
-+               len += (XDR_QUADLEN(dummy32) << 2);
-+               READMEM(buf, dummy32);
-+               label->data = kzalloc(dummy32 + 1, GFP_KERNEL);
-+               if (!label->data)
-+                       return nfserr_jukebox;
-+               defer_free(argp, kfree, label->data);
-+               memcpy(label->data, buf, dummy32);
-+               label->data[len] = '\0';
-+       }
-+#endif
-+
-which is not quite right.... 
-
-You really don't need to NULL out label->data since kzalloc(dummy32 + 1) was 
-used and especially with 'len' since only 'dummy32' amount of space was allocated 
-which is significantly less than the 'len' value. But you do want to set 
-label->len to dummy32 otherwise nfsd4_setattr() will never call nfsd4_set_nfs4_label() 
-to process the label. 
-
-commit 965ac99ed149eba2f7d2e37abe07919decf8afa5
-Author: Steve Dickson <steved@redhat.com>
-Date:   Sat May 11 17:36:21 2013 -0400
-
-    nfsd: Fixed memory corruption in the decoding of labels
-    
-    Commit ad86841 caused a memory corruption in
-    how labels are allocated in nfsd4_decode_fattr()
-    by using 'len' to set the NULL in label->data.
-    
-    Also label->len was not being set which cause
-    labels not to be process in nfsd4_setattr()
-    
-    Signed-off-by: Steve Dickson <steved@redhat.com>
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 96f07cb..a1a3669 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -409,7 +409,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 			return nfserr_jukebox;
- 		defer_free(argp, kfree, label->data);
- 		memcpy(label->data, buf, dummy32);
--		label->data[len] = '\0';
-+		label->len = dummy32;
- 	}
- #endif
+ak@linux.intel.com -- Speaking for myself only.
