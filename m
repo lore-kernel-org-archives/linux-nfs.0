@@ -1,101 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:21103 "EHLO mx12.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:4891 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755821Ab3EHUOr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 May 2013 16:14:47 -0400
-From: andros@netapp.com
-To: trondmyklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/1] NFS4.1 Fix data server connection race
-Date: Wed,  8 May 2013 16:13:50 -0400
-Message-Id: <1368044030-2401-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1368044030-2401-1-git-send-email-andros@netapp.com>
-References: <1368044030-2401-1-git-send-email-andros@netapp.com>
+	id S966427Ab3E2UFc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 May 2013 16:05:32 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 5/5] NFSv4: Close another NFSv4 recovery race
+Date: Wed, 29 May 2013 16:05:25 -0400
+Message-Id: <1369857925-42068-5-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1369857925-42068-4-git-send-email-Trond.Myklebust@netapp.com>
+References: <1369857925-42068-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1369857925-42068-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1369857925-42068-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1369857925-42068-4-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+State recovery currently relies on being able to find a valid
+nfs_open_context in the inode->open_files list.
+We therefore need to put the nfs_open_context on the list while
+we're still protected by the sp->so_reclaim_seqcount in order
+to avoid reboot races.
 
-Unlike meta data server mounts which support multiple mount points to
-the same server via struct nfs_server, data servers support a single connection.
-
-Concurrent calls to setup the data server connection can race where the first
-call allocates the nfs_client struct, and before the cache struct nfs_client
-pointer can be set, a second call also tries to setup the connection, finds the
-already allocated nfs_client, bumps the reference count, re-initializes the
-session,etc. This results in a hanging data server session after umount.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4filelayout.h    |  2 ++
- fs/nfs/nfs4filelayoutdev.c | 26 ++++++++++++++++++++++++--
- 2 files changed, 26 insertions(+), 2 deletions(-)
+ fs/nfs/inode.c         | 16 ++++++++++++----
+ fs/nfs/nfs4proc.c      |  7 +++++--
+ include/linux/nfs_fs.h |  1 +
+ 3 files changed, 18 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index b8da955..235ff95 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -70,6 +70,8 @@ struct nfs4_pnfs_ds {
- 	struct list_head	ds_addrs;
- 	struct nfs_client	*ds_clp;
- 	atomic_t		ds_count;
-+	unsigned long		ds_state;
-+#define NFS4DS_CONNECTING	0	/* ds is establishing connection */
- };
- 
- struct nfs4_file_layout_dsaddr {
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index 1fe284f..661a0f6 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -775,6 +775,22 @@ nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j)
- 	return flseg->fh_array[i];
- }
- 
-+static void nfs4_wait_ds_connect(struct nfs4_pnfs_ds *ds)
-+{
-+	might_sleep();
-+	wait_on_bit(&ds->ds_state, NFS4DS_CONNECTING,
-+			nfs_wait_bit_killable, TASK_KILLABLE);
-+}
-+
-+static void nfs4_clear_ds_conn_bit(struct nfs4_pnfs_ds *ds)
-+{
-+	smp_mb__before_clear_bit();
-+	clear_bit(NFS4DS_CONNECTING, &ds->ds_state);
-+	smp_mb__after_clear_bit();
-+	wake_up_bit(&ds->ds_state, NFS4DS_CONNECTING);
-+}
-+
-+
- struct nfs4_pnfs_ds *
- nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index c1c7a9d..c121982 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -713,16 +713,23 @@ EXPORT_SYMBOL_GPL(put_nfs_open_context);
+  * Ensure that mmap has a recent RPC credential for use when writing out
+  * shared pages
+  */
+-void nfs_file_set_open_context(struct file *filp, struct nfs_open_context *ctx)
++void nfs_inode_attach_open_context(struct nfs_open_context *ctx)
  {
-@@ -791,16 +807,22 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
- 		filelayout_mark_devid_invalid(devid);
- 		return NULL;
- 	}
-+	if (ds->ds_clp)
-+		return ds;
+-	struct inode *inode = file_inode(filp);
++	struct inode *inode = ctx->dentry->d_inode;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
  
--	if (!ds->ds_clp) {
-+	if (test_and_set_bit(NFS4DS_CONNECTING, &ds->ds_state) == 0) {
- 		struct nfs_server *s = NFS_SERVER(lseg->pls_layout->plh_inode);
- 		int err;
- 
- 		err = nfs4_ds_connect(s, ds);
- 		if (err) {
- 			nfs4_mark_deviceid_unavailable(devid);
--			return NULL;
-+			ds = NULL;
- 		}
-+		nfs4_clear_ds_conn_bit(ds);
-+	} else {
-+		/* Either ds is connected, or ds is NULL */
-+		nfs4_wait_ds_connect(ds);
- 	}
- 	return ds;
+-	filp->private_data = get_nfs_open_context(ctx);
+ 	spin_lock(&inode->i_lock);
+ 	list_add(&ctx->list, &nfsi->open_files);
+ 	spin_unlock(&inode->i_lock);
  }
++EXPORT_SYMBOL_GPL(nfs_inode_attach_open_context);
++
++void nfs_file_set_open_context(struct file *filp, struct nfs_open_context *ctx)
++{
++	filp->private_data = get_nfs_open_context(ctx);
++	if (list_empty(&ctx->list))
++		nfs_inode_attach_open_context(ctx);
++}
+ EXPORT_SYMBOL_GPL(nfs_file_set_open_context);
+ 
+ /*
+@@ -748,10 +755,11 @@ struct nfs_open_context *nfs_find_open_context(struct inode *inode, struct rpc_c
+ 
+ static void nfs_file_clear_open_context(struct file *filp)
+ {
+-	struct inode *inode = file_inode(filp);
+ 	struct nfs_open_context *ctx = nfs_file_open_context(filp);
+ 
+ 	if (ctx) {
++		struct inode *inode = ctx->dentry->d_inode;
++
+ 		filp->private_data = NULL;
+ 		spin_lock(&inode->i_lock);
+ 		list_move_tail(&ctx->list, &NFS_I(inode)->open_files);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 3225149..a2bf0e8 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2000,8 +2000,11 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
+ 		goto out;
+ 
+ 	ctx->state = state;
+-	if (read_seqcount_retry(&sp->so_reclaim_seqcount, seq))
+-		nfs4_schedule_stateid_recovery(server, state);
++	if (dentry->d_inode == state->inode) {
++		nfs_inode_attach_open_context(ctx);
++		if (read_seqcount_retry(&sp->so_reclaim_seqcount, seq))
++			nfs4_schedule_stateid_recovery(server, state);
++	}
+ out:
+ 	return ret;
+ }
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index fc01d5c..1384ed9 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -356,6 +356,7 @@ extern struct nfs_open_context *get_nfs_open_context(struct nfs_open_context *ct
+ extern void put_nfs_open_context(struct nfs_open_context *ctx);
+ extern struct nfs_open_context *nfs_find_open_context(struct inode *inode, struct rpc_cred *cred, fmode_t mode);
+ extern struct nfs_open_context *alloc_nfs_open_context(struct dentry *dentry, fmode_t f_mode);
++extern void nfs_inode_attach_open_context(struct nfs_open_context *ctx);
+ extern void nfs_file_set_open_context(struct file *filp, struct nfs_open_context *ctx);
+ extern struct nfs_lock_context *nfs_get_lock_context(struct nfs_open_context *ctx);
+ extern void nfs_put_lock_context(struct nfs_lock_context *l_ctx);
 -- 
-1.7.11.7
+1.8.1.4
 
