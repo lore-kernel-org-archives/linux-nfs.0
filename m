@@ -1,105 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:22926 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:18101 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933938Ab3ECVvC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 May 2013 17:51:02 -0400
+	with ESMTP id S933208Ab3E2BEp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 May 2013 21:04:45 -0400
 Content-Type: text/plain; charset=us-ascii
 Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
-Subject: Re: long delay when mounting due to SETCLIENTID AUTH_GSS attempts
+Subject: Re: NFS client hangs after server reboot
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130503211810.GF5715@fieldses.org>
-Date: Fri, 3 May 2013 17:50:49 -0400
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <8F91C5FB-EE7F-48F8-9ED5-6B5D8503E248@oracle.com>
-References: <20130503132557.2fdf794d@tlielax.poochiereds.net> <AE700845-4032-4BEC-817C-97EB08A831E8@oracle.com> <20130503142421.19fb3ca6@tlielax.poochiereds.net> <1367606034.3556.25.camel@leira.trondhjem.org> <20130503144437.3a47e476@tlielax.poochiereds.net> <A2E5B3F1-A8F1-4731-A66C-548B9C8FD429@oracle.com> <20130503211810.GF5715@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <1480713067.24683.1369783846612.JavaMail.root@erie.cs.uoguelph.ca>
+Date: Tue, 28 May 2013 21:04:32 -0400
+Cc: Bram Vandoren <brambi@gmail.com>, "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <E626E85E-BC60-4FBA-BF02-536508991C65@oracle.com>
+References: <1480713067.24683.1369783846612.JavaMail.root@erie.cs.uoguelph.ca>
+To: Rick Macklem <rmacklem@uoguelph.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On May 3, 2013, at 5:18 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+On May 28, 2013, at 7:30 PM, Rick Macklem <rmacklem@uoguelph.ca> wrote:
 
-> On Fri, May 03, 2013 at 02:48:59PM -0400, Chuck Lever wrote:
->> We should always use krb5i if a GSS context can be established with
->> our machine cred.  As I said before, SETCLIENTID and
->> GETATTR(fs_locations) really should use an integrity-protecting
->> security flavor no matter what flavor is in effect on the mount points
->> themselves.
+> Bram Vandoren wrote:
+>>>> Hi Rick, Chuck, Bruce,
+>>>> in attachment is a small pcap when a client is in the locked.
+>>>> Hopefully I can reproduce the problem so I can send you a capture
+>>>> during a reboot cycle.
+>>> 
+>>> The pcap file confirms that the state IDs and client ID do not
+>>> appear to match, and do appear on the same TCP connection (in
+>>> different operations). I think the presence of the RENEW operations
+>>> here suggest that the client believes it has not been able to renew
+>>> its lease using stateful operations like READ. IMO this is evidence
+>>> in favor of the theory that the client neglected to recover these
+>>> state IDs for some reason.
+>>> 
+>>> We'll need to see the actual reboot recovery traffic to analyze
+>>> further, and that occurs just after the server reboots. Even better
+>>> would be to see the initial OPEN of the file where the READ
+>>> operations are failing. I recognize this is a non-determinstic
+>>> problem that will be a challenge to capture properly.
+>>> 
+>>> Rather than capturing the trace on the server, you should be able to
+>>> capture it on your clients in order to capture traffic before,
+>>> during, and after the server reboot. To avoid capturing an enormous
+>>> amount of data, both tcpdump and tshark provide options to save the
+>>> captured network data into a small ring of files (see their man
+>>> pages). Once a client mount point has locked, you can stop the
+>>> capture, and hopefully the ring will have everything we need.
+>> 
+>> Hi All,
+>> I managed to capture the packets after a reboot. I send the pcap file
+>> to the people in cc (privacy issue, contact me if someone on the list
+>> wants a copy). This is a summary of what happens after a reboot
+>> (perhaps a missed some relevant information):
+>> 
+>> 38:
+>> - client -> server: client executes 3 writes with a stale clientid (A)
+>> - client -> server: RENEW
+>> 44:
+>> - server -> client: NFS4ERR_STALE_STATEID (in reponse to A)
+>> 45:
+>> - server -> client: NFS4ERR_STALE_CLIENTID
+>> 65:
+>> - client -> server: RENEW
+>> 66
+>> - server -> client: NFS4ERR_STALE_CLIENTID
+>> 67,85,87,93:
+>> SETCLIENTID/SETCLIENTID_CONFIRM sequence (ok)
+>> 78,79:
+>> NFS4STALE_STATEID (reponse to the other 2 writes in A)
+>> 
+>> 98: OPEN with CLAIM_PREVIOUS
+>> 107: response to open: NFS4ERR_NO_GRACE (strange?)
+>> after that the client re-opens the files without CLAIM_PREVIOUS option
+>> and they are all succesful.
+>> 
+>> The client starts using the new stateids except for the files in A.
+>> The server returns a NFS4_STALE_STATEID, the client executes a RENEW
+>> (IMO this should be an OPEN request) and retries the WRITE, the server
+>> returns a NFS4_STALE_STATEID
+>> 
+>> Server: FreeBSD 9.1 with new NFS server implementation
+>> Client: Fedora 17, 3.8.11-100.fc17.x86_64
+>> 
+>> Any clues?
+>> 
+>> Thanks,
+>> Bram
+> I just took a look at the packet capture (I hadn't realized you had
+> posted one when I did the last reply).
 > 
-> Can you give an example of a threat that could be avoided by this?
+> I think the problem is a TCP layer one, from looking at the first 8
+> packets captured amd their timestamps. However, my TCP is old and
+> tired, so I'm not sure. From the first 8 packets:
+> Time(sec)
+> 0  - client sends a SYN
+> 0  - server replies [RST, ACK]
+>     Since Reset is in the reply, is this when the server rebooted?
+> 6  - client sends a SYN with same port#s. Wireshark thinks this is
+>     a new connection using same port#s.
+> 6  - FreeBSD replies with [RST, ACK] again, thinking it is a resend
+>     of the first packet and still considers it the old Reset connection.
+> 15 - Repeat of what happened at 6sec.
+> 30,31 - client sends SYN twice, still from the same port#s
+>   - no reply from FreeBSD
+> 4393 - client sends SYN again with same port#s
+> 4393 - server replies with [SYN, ACK] establishing the new TCP
+>     connection on the same port#s, but over an hour later.
+
+To be clear, this is very early in the capture, just frame 9 and 10.  The Linux client attempts to re-use the previous connection's source port to preserve the server's duplicate reply cache.
+
+But it's not clear why the client is not retrying SYN during the period between frame 8 and frame 9.  The client should retry SYN after just another minute or two, and by that time the server's TCP connection state should allow a connection on that port.
+
+It's not typical for a client with an active workload to wait 4400 seconds to send a fresh SYN.  Bram, can you shed any light on this?
+
+> Since this is now over an hour after packet 0, it isn't
+> surprising that Grace is over.
+
+Fair enough.  However, it does not explain why the client fails to recover the open state for one file.
+
+> I'd guess that the problem occurs because the client reconnect
+> uses the same client side port# even though the server did a
+> Reset for that port#, but I'm not enough of a TCP guy to know
+> what should be correct TCP behaviour.
 > 
-> My suspicion is that in most cases an attacker with the ability to
-> subvert auth_sys could *also* DOS gssd, and hence force the fallback to
-> auth_sys.
-> 
-> krb5i plus a fallback to auth_sys on failure to authenticate doesn't
-> sound to me much more secure than just auth_sys.
+> If you don't mind the first part of this packet capture being
+> posted (email me to say if it ok to post it), I can post it to
+> freebsd-net@freebsd.org, since there are a bunch of TCP savy
+> types that might be able to help. (If you give the ok for this,
+> please also email me what version of FreeBSD the server is
+> running.)
 
-Our current situation is that the first mount of a server determines the flavor to use for SETCLIENTID.  So if that mount happens to be "sec=sys" the SETCLIENTID is done with AUTH_SYS no matter what the subsequent mounts request.
-
-That's just about as secure in many cases as falling back.
-
-> If we really want much security benefit from krb5i on state operations,
-> I think we need to really *require* krb5i.
-> 
-> So I'm inclined towards Jeff's solution: don't do this unless userspace
-> somehow affirmatively states that it requires krb5i on state operations.
-
-This would have to be on a per-server basis.  Where would an admin specify such an option?  I don't believe either a mount option (too fine) or a module parameter (too coarse) is appropriate.
-
-> I agree that we should default to this when we can.  But the way to move
-> towards that default is then to get distributions to turn on the new
-> module parm (or whatever it is) by default.  As they do so, they can
-> also ensure that e.g. gssd is started.
-
-gssd is not all that's required.  A keytab must be provisioned on the client and server for it to work, and that's the main issue I'm trying to address:  We need "sec=krb5" mounts to work when the client has no GSS machine credential.
-
-And I think we already have a problem with gssd not picking up kernel requests quickly, as Trond pointed out.
-
-I don't feel like any of this is new, or that any of this is a strong reason to revert.  But it could be a reason to move forward from here.
-
-Does gssd distinguish between:
-
-  - no local keytab
-
-  - no local support for GSS
-
-  - server doesn't grok GSS
-
-  - some network problem occurred
-
-Can it communicate that distinction to the kernel?  What if we fall back only in the "no keytab" and "client's kernel has no GSS support" cases?  In the "server doesn't grok" case, do not fall back if "sec=krb5*" is specified on the mount point?  "A network problem occurred" is an "always fail" case.
-
-
-
-> 
-> --b.
-> 
->>> Instead of using AUTH_GSS for SETCLIENTID by default, would it make
->>> sense to add a switch (module parm?) that turns it on so that it can be
->>> an opt-in thing rather than doing this by default?
->> 
->> Why add another tunable when we really should just fix the delay?
->> 
->> Besides, if gssd is running and no keytab exists, then the fallback to AUTH_SYS should be fast. Is that not an effective workaround until we address the delay problem?
->> 
->> -- 
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->> 
->> 
->> 
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thanks for the extra set of eyes.
 
 -- 
 Chuck Lever
