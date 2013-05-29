@@ -1,64 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:53607 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:4891 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759193Ab3E1SB4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 May 2013 14:01:56 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r4SI1u4k019339
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 28 May 2013 14:01:56 -0400
-Received: from smallhat.bos.devel.redhat.com ([10.16.60.65])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r4SI1t1f000792
-	for <linux-nfs@vger.kernel.org>; Tue, 28 May 2013 14:01:56 -0400
-Message-ID: <51A4F113.4050605@RedHat.com>
-Date: Tue, 28 May 2013 14:01:55 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
+	id S933570Ab3E2UF2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 May 2013 16:05:28 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsidmap: Don't check ENABLE_LDAP twice
-References: <20130525220217.GA4330@master.debian.org>
-In-Reply-To: <20130525220217.GA4330@master.debian.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Subject: [PATCH 1/5] NFSv4: Remove redundant check for FMODE_EXEC in nfs_finish_open
+Date: Wed, 29 May 2013 16:05:21 -0400
+Message-Id: <1369857925-42068-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+We already check the EXEC access mode in the lower layers.
 
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/dir.c | 7 -------
+ 1 file changed, 7 deletions(-)
 
-On 25/05/13 18:02, Aníbal Monsalve Salazar wrote:
-> To build the Debian libnfsidmap package, I've used the patch in this
-> mail for more than a year.
-> 
-> Debian-BTS: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=661215
-> Author: Steve Langasek <steve.langasek@ubuntu.com>
-> Description: Don't check ENABLE_LDAP twice
->  This source is already being conditionally compiled based on ENABLE_LDAP
->  being set in the Makefile.  All this extra check does is cause umich_ldap.so
->  to always be compiled as an *EMPTY* object because nothing sets ENABLE_LDAP
->  before the #ifdef!
-> Bug-Ubuntu: https://bugs.launchpad.net/bugs/939232
-Committed...
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index e093e73..bf4e5f4 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1362,13 +1362,6 @@ static int nfs_finish_open(struct nfs_open_context *ctx,
+ 		ctx->dentry = dget(dentry);
+ 	}
+ 
+-	/* If the open_intent is for execute, we have an extra check to make */
+-	if (ctx->mode & FMODE_EXEC) {
+-		err = nfs_may_open(dentry->d_inode, ctx->cred, open_flags);
+-		if (err < 0)
+-			goto out;
+-	}
+-
+ 	err = finish_open(file, dentry, do_open, opened);
+ 	if (err)
+ 		goto out;
+-- 
+1.8.1.4
 
-steved.
-> 
-> diff -up a/umich_ldap.c b/umich_ldap.c
-> --- a/umich_ldap.c	2011-12-06 07:28:10.000000000 +1100
-> +++ b/umich_ldap.c	2012-02-27 13:21:34.000000000 +1100
-> @@ -32,8 +32,6 @@
->   * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
->   */
->  
-> -#ifdef ENABLE_LDAP
-> -
->  #include <sys/types.h>
->  #include <sys/socket.h>
->  #include <netdb.h>
-> @@ -1302,4 +1300,3 @@ struct trans_func *libnfsidmap_plugin_in
->  {
->  	return (&umichldap_trans);
->  }
-> -#endif
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
