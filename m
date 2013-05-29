@@ -1,51 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:14575 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:53957 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759242Ab3ECR0A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 May 2013 13:26:00 -0400
-Date: Fri, 3 May 2013 13:25:57 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: chuck.lever@oracle.com
-Subject: long delay when mounting due to SETCLIENTID AUTH_GSS attempts
-Message-ID: <20130503132557.2fdf794d@tlielax.poochiereds.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S965413Ab3E2SrD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 May 2013 14:47:03 -0400
+Date: Wed, 29 May 2013 14:46:40 -0400
+To: Waiman Long <waiman.long@hp.com>
+Cc: Dave Chinner <david@fromorbit.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Jeff Layton <jlayton@redhat.com>, Miklos Szeredi <mszeredi@suse.cz>,
+        Ian Kent <raven@themaw.net>, Sage Weil <sage@inktank.com>,
+        Steve French <sfrench@samba.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Eric Paris <eparis@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, autofs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, "Chandramouleeswaran, Aswin" <aswin@hp.com>,
+        "Norton, Scott J" <scott.norton@hp.com>,
+        Andi Kleen <andi@firstfloor.org>
+Subject: Re: [PATCH 0/3 v3] dcache: make it more scalable on large system
+Message-ID: <20130529184640.GA3243@fieldses.org>
+References: <1369273048-60256-1-git-send-email-Waiman.Long@hp.com>
+ <20130523094201.GA24543@dastard>
+ <519E8B5F.3080905@hp.com>
+ <20130527020903.GR29466@dastard>
+ <51A624E2.3000301@hp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <51A624E2.3000301@hp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I've noticed that when running a 3.10-pre kernel that if I try to mount
-up a NFSv4 filesystem that it now takes ~15s for the mount to complete.
+On Wed, May 29, 2013 at 11:55:14AM -0400, Waiman Long wrote:
+> On 05/26/2013 10:09 PM, Dave Chinner wrote:
+> >On Thu, May 23, 2013 at 05:34:23PM -0400, Waiman Long wrote:
+> >>On 05/23/2013 05:42 AM, Dave Chinner wrote:
+> >>>
+> >>>What was it I said about this patchset when you posted it to speed
+> >>>up an Oracle benchmark back in february? I'll repeat:
+> >>>
+> >>>"Nobody should be doing reverse dentry-to-name lookups in a quantity
+> >>>sufficient for it to become a performance limiting factor."
+> >>Thank for the comment, but my point is that it is the d_lock
+> >>contention is skewing the data about how much spin lock contention
+> >>had actually happened in the workload and it makes it harder to
+> >>pinpoint problem areas to look at. This is not about performance, it
+> >>is about accurate representation of performance data. Ideally, we
+> >>want the overhead of turning on perf instrumentation to be as low as
+> >>possible.
+> >Right. But d_path will never be "low overhead", and as such it
+> >shouldn't be used by perf.
+> 
+> The d_path() is called by perf_event_mmap_event() which translates
+> VMA to its file path for memory segments backed by files. As perf is
+> not just for sampling data within the kernel, it can also be used
+> for checking access pattern in the user space. As a result, it needs
+> to map VMAs back to the backing files to access their symbols
+> information. If d_path() is not the right function to call for this
+> purpose, what other alternatives do we have?
 
-Here's a little rpcdebug output:
+As Dave said before, is the last path component sufficient?  Or how
+about an inode number?
 
-[ 3056.385078] svc: server ffff8800368fc000 waiting for data (to = 9223372036854775807)
-[ 3056.392056] RPC:       new task initialized, procpid 2471
-[ 3056.392758] RPC:       allocated task ffff88010cd90100
-[ 3056.393303] RPC:    42 __rpc_execute flags=0x1280
-[ 3056.393630] RPC:    42 call_start nfs4 proc SETCLIENTID (sync)
-[ 3056.394056] RPC:    42 call_reserve (status 0)
-[ 3056.394368] RPC:    42 reserved req ffff8801019f9600 xid 21ad6c40
-[ 3056.394783] RPC:       wake_up_first(ffff88010a989990 "xprt_sending")
-[ 3056.395252] RPC:    42 call_reserveresult (status 0)
-[ 3056.395595] RPC:    42 call_refresh (status 0)
-[ 3056.395901] RPC:       gss_create_cred for uid 0, flavor 390004
-[ 3056.396361] RPC:       gss_create_upcall for uid 0
-[ 3071.396134] RPC: AUTH_GSS upcall timed out.
-Please check user daemon is running.
-[ 3071.397374] RPC:       gss_create_upcall for uid 0 result -13
-[ 3071.398192] RPC:    42 call_refreshresult (status -13)
-[ 3071.398873] RPC:    42 call_refreshresult: refresh creds failed with error -13
-[ 3071.399881] RPC:    42 return 0, status -13
-
-The problem is that we're now trying to upcall for GSS creds to do the
-SETCLIENTID call, but this host isn't running rpc.gssd. Not running
-rpc.gssd is pretty common for people not using kerberized NFS. I think
-we'll see a lot of complaints about this.
-
-Is this expected? If so, what's the proposed remedy? Simply have
-everyone run rpc.gssd even if they're not using kerberized NFS?
-
-
--- 
-Jeff Layton <jlayton@redhat.com>
+--b.
