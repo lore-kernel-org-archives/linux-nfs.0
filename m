@@ -1,72 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39062 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:28373 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933011Ab3EOSPx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 May 2013 14:15:53 -0400
-Date: Wed, 15 May 2013 14:15:51 -0400
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/2] [RFC] Maybe avoid gssd upcall timeout
-Message-ID: <20130515181551.GP16811@fieldses.org>
-References: <20130513161515.1942.845.stgit@seurat.1015granger.net>
- <1368634683.3568.5.camel@leira.trondhjem.org>
+	id S1750811Ab3E3UlA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 May 2013 16:41:00 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Jim Schutt <jaschut@sandia.gov>,
+        "Adamson, Dros" <Weston.Adamson@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        LKML Kernel <linux-kernel@vger.kernel.org>
+Subject: Re: 3.10-rc3 NFSv3 mount issues
+Date: Thu, 30 May 2013 20:40:58 +0000
+Message-ID: <1369946457.3111.17.camel@leira.trondhjem.org>
+References: <51A7B442.9010108@sandia.gov>
+	 <D74C8145-AD4D-4CFE-963C-643B8D7DBA10@oracle.com>
+In-Reply-To: <D74C8145-AD4D-4CFE-963C-643B8D7DBA10@oracle.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1368634683.3568.5.camel@leira.trondhjem.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 15, 2013 at 04:18:03PM +0000, Myklebust, Trond wrote:
-> On Mon, 2013-05-13 at 12:25 -0400, Chuck Lever wrote:
-> > Hi-
-> > 
-> > Here's a stab at addressing the 15 second wait for some 3.10 sec=sys
-> > mounts where the client is not running rpc.gssd.
-> > 
-> > After reverting the "use krb5i for SETCLIENTID" patch, I've added
-> > the AUTH_SYS fallback in the EACCES case in
-> > nfs4_discover_server_trunking().  I'm not sure whether we need to
-> > supplement what's there now, or replace it.
-> > 
-> > "case -ENOKEY:" is added so the kernel will recognize that when gssd
-> > is changed to return that instead of EACCES in this case.  If the
-> > second patch is appled to 3.7 stable and following, it might be a way
-> > to address the same regression in older kernels.
-> > 
-> > I've been focused on another bug this week, so this has seen very
-> > light testing only.  Looking for comments.
+On Thu, 2013-05-30 at 16:26 -0400, Chuck Lever wrote:
+> On May 30, 2013, at 4:19 PM, Jim Schutt <jaschut@sandia.gov> wrote:
 > 
-> I'd like to propose a different approach: we can set up rpc_pipefs files
-> clnt/gssd and clnt/krb5
-
-I'm not sure what paths you mean exactly?  Is "clnt" a top-level
-rpc-pipefs directory, or a dummy client at the level of other rpc
-clients (like rpc_pipefs/nfs/clnt/gssd).
-
-I'm assuming the latter--seems like it might work.
-
-Long-term, it might also be nice to add an interface to allow the kernel
-to determine whether gssd is running, without depending on timeouts.  It
-could be something very trivial.
-
---b.
-
-> as "honeypots" that rpc.gssd will connect to,
-> but that won't do any upcalls. When gssd connects, we set a
-> per-rpc_net_ns variable that tells us 'gssd' is up and running. That
-> variable only gets cleared if we see a timeout.
+> > Hi,
+> > 
+> > I've been trying to test 3.10-rc3 on some diskless clients, and found
+> > that I can no longer mount my root file system via NFSv3.
+> > 
+> > I poked around looking at NFS changes for 3.10, and found these two
+> > commits:
+> > 
+> > d497ab9751 "NFSv3: match sec= flavor against server list"
+> > 4580a92d44 "NFS: Use server-recommended security flavor by default (NFSv3)"
+> > 
+> > If I revert both of these commits from 3.10-rc3, then my diskless
+> > client can mount its root file system.
+> > 
+> > The busybox mount command fails like this, when using 3.10-rc3:
+> > 
+> > / # mount  -t nfs -o ro,nolock,vers=3,proto=tcp 172.17.0.122:/gmi/images/jaschut/ceph.toss-2x /mnt
+> > mount: mounting 172.17.0.122:/gmi/images/jaschut/ceph.toss-2x on /mnt failed: Invalid argument
+> > 
+> > The commit messages for both these commits seem to say that mounting
+> > with the "sys=sec" option should work, but unfortunately, my busybox doesn't
+> > seem to understand the "sec=" mount option:
+> > 
+> > / # mount  -t nfs -o ro,nolock,vers=3,proto=tcp,sec=sys 172.17.0.122:/gmi/images/jaschut/ceph.toss-2x /mnt
+> > mount: invalid number 'sys'
+> > 
+> > My NFS server is based on RHEL6, and is not using any "sec=" option
+> > in its export for this file system.  I did try exporting with "sec=sys",
+> > but it didn't seem to make any difference either.
+> > 
+> > So far, this seems like a regression to me ....
+> > Any ideas what I might be doing wrong?  How can I
+> > help make this work again?
 > 
+> 3.10-rc3 appears to be missing the fix for this.  See:
 > 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
+>   http://marc.info/?l=linux-nfs&m=136855668104598&w=2
 > 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Trond, can we get this applied?
+> 
+
+For some reason it got lost in the mail heap. I've applied it now to the
+'bugfixes' branch. Will push upstream in the next few days...
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
