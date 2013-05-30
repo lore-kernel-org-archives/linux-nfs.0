@@ -1,64 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f176.google.com ([74.125.82.176]:38452 "EHLO
-	mail-we0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757141Ab3EKCoR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 22:44:17 -0400
-Received: by mail-we0-f176.google.com with SMTP id p60so4442087wes.21
-        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 19:44:16 -0700 (PDT)
-Received: from bhalevy-lt.il.tonian.com (bzq-79-180-144-28.red.bezeqint.net. [79.180.144.28])
-        by mx.google.com with ESMTPSA id ff10sm1323075wib.10.2013.05.10.19.44.15
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 10 May 2013 19:44:15 -0700 (PDT)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 27/38] pnfsd: layout state: introduce ls_file backpointer
-Date: Sat, 11 May 2013 05:44:11 +0300
-Message-Id: <1368240251-698-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <518B6377.3000207@tonian.com>
-References: <518B6377.3000207@tonian.com>
+Received: from esa-annu.mail.uoguelph.ca ([131.104.91.36]:52980 "EHLO
+	esa-annu.net.uoguelph.ca" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751765Ab3E3LzV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 May 2013 07:55:21 -0400
+Date: Thu, 30 May 2013 07:55:19 -0400 (EDT)
+From: Rick Macklem <rmacklem@uoguelph.ca>
+To: Bram Vandoren <brambi@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+Message-ID: <1562611687.61201.1369914919633.JavaMail.root@erie.cs.uoguelph.ca>
+In-Reply-To: <CACQjR_DV_2QFd0O1e6R6M34_R87+Bn+zvn3w_BkhS9YESNVUzg@mail.gmail.com>
+Subject: Re: NFS client hangs after server reboot
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/nfs4pnfsd.c | 3 +++
- fs/nfsd/pnfsd.h     | 1 +
- 2 files changed, 4 insertions(+)
+Bram Vandoren wrote:
+> > It's not typical for a client with an active workload to wait 4400
+> > seconds to send a fresh SYN. Bram, can you shed any light on this?
+> 
+> The server was down for ~4400 seconds (I started the capture before
+> the maintanance period). I captured the packets using a switch mirror
+> port (it's possible some packets are lost during capture). After a
+> while an arp timeout occurs and we don't capture the SYNs from the
+> client any more (I doubt the client sends the SYN because it doesn't
+> know where to send it).
+> 
+> If it helps, I can filter extra information from the big pcap file
+> (~20G) (eg capture from other clients or from the same client just
+> before the server reboot).
+> 
+> Thanks,
+> Bram.
+Did both the client and server have the same IP addresses before the
+reboot?
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index 6e0e9d1..b147427 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -132,6 +132,8 @@ struct sbid_tracker {
- 	kref_init(&new->ls_ref);
- 	nfsd4_init_stid(&new->ls_stid, clp, NFS4_LAYOUT_STID);
- 	INIT_LIST_HEAD(&new->ls_perfile);
-+	get_nfs4_file(fp);	/* released on destroy_layout_state */
-+	new->ls_file = fp;
- 	new->ls_roc = false;
- 	spin_lock(&layout_lock);
- 	list_add(&new->ls_perfile, &fp->fi_lo_states);
-@@ -157,6 +159,7 @@ struct sbid_tracker {
- 		list_del(&ls->ls_perfile);
- 		spin_unlock(&layout_lock);
- 	}
-+	put_nfs4_file(ls->ls_file);
- 	kmem_cache_free(layout_state_slab, ls);
- }
- 
-diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
-index 2507d31..6301c51 100644
---- a/fs/nfsd/pnfsd.h
-+++ b/fs/nfsd/pnfsd.h
-@@ -45,6 +45,7 @@ struct nfs4_layout_state {
- 	struct nfs4_stid	ls_stid; /* must be first field */
- 	struct kref		ls_ref;
- 	struct list_head	ls_perfile;
-+	struct nfs4_file	*ls_file;
- 	bool			ls_roc;
- };
- 
--- 
-1.7.11.7
+If not, the Linux client's nfs_client_id4.id SetClientID argument
+will be different (it has the client/side IP# in it). nfs_client_id4.id
+isn't supposed to change for a given client when it is rebooted.
+That will make the FreeBSD NFSv4 server see "new client" (which is not in the
+stablerestart file used to avoid certain reboot edge conditions) and
+will not give it a grace period. 
+This is the only explanation I can think of for the NFS4ERR_NO_GRACE
+reply shortly after the reboot.
 
+I'd guess the RSTs are because the nfsd has terminated (nothing on
+port# 2049) just before the system was shut down, so I suspect the
+RSTs are not an issue? (I have assumed the packet trace started after
+the server rebooted.)
+
+rick
