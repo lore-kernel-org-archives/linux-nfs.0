@@ -1,204 +1,206 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from tundra.namei.org ([65.99.196.166]:39909 "EHLO tundra.namei.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752643Ab3EBXdN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 May 2013 19:33:13 -0400
-Date: Fri, 3 May 2013 09:36:44 +1000 (EST)
-From: James Morris <jmorris@namei.org>
-To: Steve Dickson <SteveD@redhat.com>
-cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 05/17] Security: Add Hook to test if the particular xattr
- is part of a MAC model.
-In-Reply-To: <1367515151-31015-6-git-send-email-SteveD@redhat.com>
-Message-ID: <alpine.LRH.2.02.1305030936360.1113@tundra.namei.org>
-References: <1367515151-31015-1-git-send-email-SteveD@redhat.com> <1367515151-31015-6-git-send-email-SteveD@redhat.com>
+Received: from esa-jnhn.mail.uoguelph.ca ([131.104.91.44]:27483 "EHLO
+	esa-jnhn.mail.uoguelph.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965596Ab3E3AYk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 May 2013 20:24:40 -0400
+Date: Wed, 29 May 2013 20:24:38 -0400 (EDT)
+From: Rick Macklem <rmacklem@uoguelph.ca>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Bram Vandoren <brambi@gmail.com>, "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-ID: <874181392.56120.1369873478318.JavaMail.root@erie.cs.uoguelph.ca>
+In-Reply-To: <BC47EE42-5F58-4555-A49C-4175B75943D8@oracle.com>
+Subject: Re: NFS client hangs after server reboot
 MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2 May 2013, Steve Dickson wrote:
-
-> From: David Quigley <dpquigl@davequigley.com>
+Chuck Lever wrote:
+> On May 28, 2013, at 9:04 PM, Chuck Lever <chuck.lever@oracle.com>
+> wrote:
 > 
-> The interface to request security labels from user space is the xattr
-> interface. When requesting the security label from an NFS server it is
-> important to make sure the requested xattr actually is a MAC label. This allows
-> us to make sure that we get the desired semantics from the attribute instead of
-> something else such as capabilities or a time based LSM.
+> >
+> > On May 28, 2013, at 7:30 PM, Rick Macklem <rmacklem@uoguelph.ca>
+> > wrote:
+> >
+> >> Bram Vandoren wrote:
+> >>>>> Hi Rick, Chuck, Bruce,
+> >>>>> in attachment is a small pcap when a client is in the locked.
+> >>>>> Hopefully I can reproduce the problem so I can send you a
+> >>>>> capture
+> >>>>> during a reboot cycle.
+> >>>>
+> >>>> The pcap file confirms that the state IDs and client ID do not
+> >>>> appear to match, and do appear on the same TCP connection (in
+> >>>> different operations). I think the presence of the RENEW
+> >>>> operations
+> >>>> here suggest that the client believes it has not been able to
+> >>>> renew
+> >>>> its lease using stateful operations like READ. IMO this is
+> >>>> evidence
+> >>>> in favor of the theory that the client neglected to recover these
+> >>>> state IDs for some reason.
+> >>>>
+> >>>> We'll need to see the actual reboot recovery traffic to analyze
+> >>>> further, and that occurs just after the server reboots. Even
+> >>>> better
+> >>>> would be to see the initial OPEN of the file where the READ
+> >>>> operations are failing. I recognize this is a non-determinstic
+> >>>> problem that will be a challenge to capture properly.
+> >>>>
+> >>>> Rather than capturing the trace on the server, you should be able
+> >>>> to
+> >>>> capture it on your clients in order to capture traffic before,
+> >>>> during, and after the server reboot. To avoid capturing an
+> >>>> enormous
+> >>>> amount of data, both tcpdump and tshark provide options to save
+> >>>> the
+> >>>> captured network data into a small ring of files (see their man
+> >>>> pages). Once a client mount point has locked, you can stop the
+> >>>> capture, and hopefully the ring will have everything we need.
+> >>>
+> >>> Hi All,
+> >>> I managed to capture the packets after a reboot. I send the pcap
+> >>> file
+> >>> to the people in cc (privacy issue, contact me if someone on the
+> >>> list
+> >>> wants a copy). This is a summary of what happens after a reboot
+> >>> (perhaps a missed some relevant information):
+> >>>
+> >>> 38:
+> >>> - client -> server: client executes 3 writes with a stale clientid
+> >>> (A)
+> >>> - client -> server: RENEW
+> >>> 44:
+> >>> - server -> client: NFS4ERR_STALE_STATEID (in reponse to A)
+> >>> 45:
+> >>> - server -> client: NFS4ERR_STALE_CLIENTID
+> >>> 65:
+> >>> - client -> server: RENEW
+> >>> 66
+> >>> - server -> client: NFS4ERR_STALE_CLIENTID
+> >>> 67,85,87,93:
+> >>> SETCLIENTID/SETCLIENTID_CONFIRM sequence (ok)
+> >>> 78,79:
+> >>> NFS4STALE_STATEID (reponse to the other 2 writes in A)
+> >>>
+> >>> 98: OPEN with CLAIM_PREVIOUS
+> >>> 107: response to open: NFS4ERR_NO_GRACE (strange?)
+> >>> after that the client re-opens the files without CLAIM_PREVIOUS
+> >>> option
+> >>> and they are all succesful.
+> >>>
+> >>> The client starts using the new stateids except for the files in
+> >>> A.
+> >>> The server returns a NFS4_STALE_STATEID, the client executes a
+> >>> RENEW
+> >>> (IMO this should be an OPEN request) and retries the WRITE, the
+> >>> server
+> >>> returns a NFS4_STALE_STATEID
+> >>>
+> >>> Server: FreeBSD 9.1 with new NFS server implementation
+> >>> Client: Fedora 17, 3.8.11-100.fc17.x86_64
+> >>>
+> >>> Any clues?
+> >>>
+> >>> Thanks,
+> >>> Bram
+> >> I just took a look at the packet capture (I hadn't realized you had
+> >> posted one when I did the last reply).
+> >>
+> >> I think the problem is a TCP layer one, from looking at the first 8
+> >> packets captured amd their timestamps. However, my TCP is old and
+> >> tired, so I'm not sure. From the first 8 packets:
+> >> Time(sec)
+> >> 0 - client sends a SYN
+> >> 0 - server replies [RST, ACK]
+> >>    Since Reset is in the reply, is this when the server rebooted?
+> >> 6 - client sends a SYN with same port#s. Wireshark thinks this is
+> >>    a new connection using same port#s.
+> >> 6 - FreeBSD replies with [RST, ACK] again, thinking it is a resend
+> >>    of the first packet and still considers it the old Reset
+> >>    connection.
+> >> 15 - Repeat of what happened at 6sec.
+> >> 30,31 - client sends SYN twice, still from the same port#s
+> >>  - no reply from FreeBSD
+> >> 4393 - client sends SYN again with same port#s
+> >> 4393 - server replies with [SYN, ACK] establishing the new TCP
+> >>    connection on the same port#s, but over an hour later.
+> >
+> > To be clear, this is very early in the capture, just frame 9 and 10.
+> > The Linux client attempts to re-use the previous connection's source
+> > port to preserve the server's duplicate reply cache.
 > 
-> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+Btw, I have seen a case a few years ago where the network fabric between
+client and server injected RSTs in the packet stream, causing havok for
+NFS TCP (re)connects. (I was never able to isolate exactly what did the
+injection, but I caught it by doing packet captures at both the client
+and server ends and found them identical, except for the RSTs which were
+not sent by the server end but came out of the network port on the client
+end.)
 
+I believe some network firewalls/switches will do the RST injection if
+they think a SYN flood DOS is being attempted.
 
-Acked-by: James Morris <james.l.morris@oracle.com>
+I wasn't able to get much information on the network fabric, but it was
+mainly made up of 3 Cisco switches (although Cisco doesn't claim to do RST
+injection, as far as I know).
 
+Here's the thread, in case you want to read it:
+  http://lists.freebsd.org/pipermail/freebsd-current/2009-November/013154.html
 
-> ---
->  include/linux/security.h   | 14 ++++++++++++++
->  security/capability.c      |  6 ++++++
->  security/security.c        |  6 ++++++
->  security/selinux/hooks.c   |  6 ++++++
->  security/smack/smack_lsm.c | 11 +++++++++++
->  5 files changed, 43 insertions(+)
+So, this just might be the source of your problem. If you can capture packets
+at both client and server ends and then compare them to see if all RSTs are
+in both captures, it  might be worth the effort.
+
+Good luck with it, rick
+
+> And by the way, if the server actually did reboot, it shouldn't have
+> noticed the client's port re-use. TCP connection state should have
+> been wiped by the system restart.
 > 
-> diff --git a/include/linux/security.h b/include/linux/security.h
-> index f3d7956..934f96f 100644
-> --- a/include/linux/security.h
-> +++ b/include/linux/security.h
-> @@ -1323,6 +1323,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
->   *	@pages contains the number of pages.
->   *	Return 0 if permission is granted.
->   *
-> + * @ismaclabel:
-> + *	Check if the extended attribute specified by @name
-> + *	represents a MAC label. Returns 1 if name is a MAC
-> + *	attribute otherwise returns 0.
-> + *	@name full extended attribute name to check against
-> + *	LSM as a MAC label.
-> + *
->   * @secid_to_secctx:
->   *	Convert secid to security context.  If secdata is NULL the length of
->   *	the result will be returned in seclen, but no secdata will be returned.
-> @@ -1604,6 +1611,7 @@ struct security_operations {
->  
->  	int (*getprocattr) (struct task_struct *p, char *name, char **value);
->  	int (*setprocattr) (struct task_struct *p, char *name, void *value, size_t size);
-> +	int (*ismaclabel) (const char *name);
->  	int (*secid_to_secctx) (u32 secid, char **secdata, u32 *seclen);
->  	int (*secctx_to_secid) (const char *secdata, u32 seclen, u32 *secid);
->  	void (*release_secctx) (char *secdata, u32 seclen);
-> @@ -1857,6 +1865,7 @@ void security_d_instantiate(struct dentry *dentry, struct inode *inode);
->  int security_getprocattr(struct task_struct *p, char *name, char **value);
->  int security_setprocattr(struct task_struct *p, char *name, void *value, size_t size);
->  int security_netlink_send(struct sock *sk, struct sk_buff *skb);
-> +int security_ismaclabel(const char *name);
->  int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen);
->  int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
->  void security_release_secctx(char *secdata, u32 seclen);
-> @@ -2545,6 +2554,11 @@ static inline int security_netlink_send(struct sock *sk, struct sk_buff *skb)
->  	return cap_netlink_send(sk, skb);
->  }
->  
-> +static inline int security_ismaclabel(const char *name)
-> +{
-> +	return 0;
-> +}
-> +
->  static inline int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
->  {
->  	return -EOPNOTSUPP;
-> diff --git a/security/capability.c b/security/capability.c
-> index 782045e..71e5052 100644
-> --- a/security/capability.c
-> +++ b/security/capability.c
-> @@ -822,6 +822,11 @@ static int cap_setprocattr(struct task_struct *p, char *name, void *value,
->  	return -EINVAL;
->  }
->  
-> +static int cap_ismaclabel(const char *name)
-> +{
-> +	return 0;
-> +}
-> +
->  static int cap_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
->  {
->  	return -EOPNOTSUPP;
-> @@ -1041,6 +1046,7 @@ void __init security_fixup_ops(struct security_operations *ops)
->  	set_to_cap_if_null(ops, d_instantiate);
->  	set_to_cap_if_null(ops, getprocattr);
->  	set_to_cap_if_null(ops, setprocattr);
-> +	set_to_cap_if_null(ops, ismaclabel);
->  	set_to_cap_if_null(ops, secid_to_secctx);
->  	set_to_cap_if_null(ops, secctx_to_secid);
->  	set_to_cap_if_null(ops, release_secctx);
-> diff --git a/security/security.c b/security/security.c
-> index 7c18e3c..07391f3 100644
-> --- a/security/security.c
-> +++ b/security/security.c
-> @@ -1057,6 +1057,12 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
->  	return security_ops->netlink_send(sk, skb);
->  }
->  
-> +int security_ismaclabel(const char *name)
-> +{
-> +	return security_ops->ismaclabel(name);
-> +}
-> +EXPORT_SYMBOL(security_ismaclabel);
-> +
->  int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
->  {
->  	return security_ops->secid_to_secctx(secid, secdata, seclen);
-> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-> index 622b205..273e28b 100644
-> --- a/security/selinux/hooks.c
-> +++ b/security/selinux/hooks.c
-> @@ -5423,6 +5423,11 @@ abort_change:
->  	return error;
->  }
->  
-> +static int selinux_ismaclabel(const char *name)
-> +{
-> +	return (strcmp(name, XATTR_SELINUX_SUFFIX) == 0);
-> +}
-> +
->  static int selinux_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
->  {
->  	return security_sid_to_context(secid, secdata, seclen);
-> @@ -5661,6 +5666,7 @@ static struct security_operations selinux_ops = {
->  	.getprocattr =			selinux_getprocattr,
->  	.setprocattr =			selinux_setprocattr,
->  
-> +	.ismaclabel =			selinux_ismaclabel,
->  	.secid_to_secctx =		selinux_secid_to_secctx,
->  	.secctx_to_secid =		selinux_secctx_to_secid,
->  	.release_secctx =		selinux_release_secctx,
-> diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
-> index fa64740..ca01d71 100644
-> --- a/security/smack/smack_lsm.c
-> +++ b/security/smack/smack_lsm.c
-> @@ -3329,6 +3329,16 @@ static void smack_audit_rule_free(void *vrule)
->  #endif /* CONFIG_AUDIT */
->  
->  /**
-> + * smack_ismaclabel - check if xattr @name references a smack MAC label
-> + * @name: Full xattr name to check.
-> + */
-> +static int smack_ismaclabel(const char *name)
-> +{
-> +	return (strcmp(name, XATTR_SMACK_SUFFIX) == 0);
-> +}
-> +
-> +
-> +/**
->   * smack_secid_to_secctx - return the smack label for a secid
->   * @secid: incoming integer
->   * @secdata: destination
-> @@ -3524,6 +3534,7 @@ struct security_operations smack_ops = {
->  	.audit_rule_free =		smack_audit_rule_free,
->  #endif /* CONFIG_AUDIT */
->  
-> +	.ismaclabel =			smack_ismaclabel,
->  	.secid_to_secctx = 		smack_secid_to_secctx,
->  	.secctx_to_secid = 		smack_secctx_to_secid,
->  	.release_secctx = 		smack_release_secctx,
-> -- 
-> 1.8.1.4
+> > But it's not clear why the client is not retrying SYN during the
+> > period between frame 8 and frame 9. The client should retry SYN
+> > after just another minute or two, and by that time the server's TCP
+> > connection state should allow a connection on that port.
+> >
+> > It's not typical for a client with an active workload to wait 4400
+> > seconds to send a fresh SYN. Bram, can you shed any light on this?
+> >
+> >> Since this is now over an hour after packet 0, it isn't
+> >> surprising that Grace is over.
+> >
+> > Fair enough. However, it does not explain why the client fails to
+> > recover the open state for one file.
+> >
+> >> I'd guess that the problem occurs because the client reconnect
+> >> uses the same client side port# even though the server did a
+> >> Reset for that port#, but I'm not enough of a TCP guy to know
+> >> what should be correct TCP behaviour.
+> >>
+> >> If you don't mind the first part of this packet capture being
+> >> posted (email me to say if it ok to post it), I can post it to
+> >> freebsd-net@freebsd.org, since there are a bunch of TCP savy
+> >> types that might be able to help. (If you give the ok for this,
+> >> please also email me what version of FreeBSD the server is
+> >> running.)
+> >
+> > Thanks for the extra set of eyes.
+> >
+> > --
+> > Chuck Lever
+> > chuck[dot]lever[at]oracle[dot]com
+> >
+> >
+> >
+> >
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+> > in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at http://vger.kernel.org/majordomo-info.html
 > 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
--- 
-James Morris
-<jmorris@namei.org>
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
