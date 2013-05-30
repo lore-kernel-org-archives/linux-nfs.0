@@ -1,90 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:13152 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755098Ab3FAAuz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 31 May 2013 20:50:55 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-        Linux linux-kernel <linux-kernel@vger.kernel.org>
-Subject: [GIT PULL] Please pull 2 NFS client bugfixes
-Date: Sat, 1 Jun 2013 00:50:53 +0000
-Message-ID: <1370047853.21304.3.camel@leira.trondhjem.org>
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="=-KHKRvsopKdTsupmT/0x+"
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:31268 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750811Ab3E3U0S convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 May 2013 16:26:18 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
+Subject: Re: 3.10-rc3 NFSv3 mount issues
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <51A7B442.9010108@sandia.gov>
+Date: Thu, 30 May 2013 16:26:12 -0400
+Cc: Weston Andros Adamson <dros@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        LKML Kernel <linux-kernel@vger.kernel.org>
+Message-Id: <D74C8145-AD4D-4CFE-963C-643B8D7DBA10@oracle.com>
+References: <51A7B442.9010108@sandia.gov>
+To: Jim Schutt <jaschut@sandia.gov>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-KHKRvsopKdTsupmT/0x+
-Content-Type: text/plain; charset="ISO-8859-1"
-Content-Transfer-Encoding: quoted-printable
 
-Hi Linus,
+On May 30, 2013, at 4:19 PM, Jim Schutt <jaschut@sandia.gov> wrote:
 
-The following changes since commit 83c168bf8017212a9d502536f9dcd0b54d24e330=
-:
+> Hi,
+> 
+> I've been trying to test 3.10-rc3 on some diskless clients, and found
+> that I can no longer mount my root file system via NFSv3.
+> 
+> I poked around looking at NFS changes for 3.10, and found these two
+> commits:
+> 
+> d497ab9751 "NFSv3: match sec= flavor against server list"
+> 4580a92d44 "NFS: Use server-recommended security flavor by default (NFSv3)"
+> 
+> If I revert both of these commits from 3.10-rc3, then my diskless
+> client can mount its root file system.
+> 
+> The busybox mount command fails like this, when using 3.10-rc3:
+> 
+> / # mount  -t nfs -o ro,nolock,vers=3,proto=tcp 172.17.0.122:/gmi/images/jaschut/ceph.toss-2x /mnt
+> mount: mounting 172.17.0.122:/gmi/images/jaschut/ceph.toss-2x on /mnt failed: Invalid argument
+> 
+> The commit messages for both these commits seem to say that mounting
+> with the "sys=sec" option should work, but unfortunately, my busybox doesn't
+> seem to understand the "sec=" mount option:
+> 
+> / # mount  -t nfs -o ro,nolock,vers=3,proto=tcp,sec=sys 172.17.0.122:/gmi/images/jaschut/ceph.toss-2x /mnt
+> mount: invalid number 'sys'
+> 
+> My NFS server is based on RHEL6, and is not using any "sec=" option
+> in its export for this file system.  I did try exporting with "sec=sys",
+> but it didn't seem to make any difference either.
+> 
+> So far, this seems like a regression to me ....
+> Any ideas what I might be doing wrong?  How can I
+> help make this work again?
 
-  NFS: Fix SETCLIENTID fallback if GSS is not available (2013-05-23 18:50:4=
-0 -0400)
+3.10-rc3 appears to be missing the fix for this.  See:
 
-are available in the git repository at:
+  http://marc.info/?l=linux-nfs&m=136855668104598&w=2
 
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.10-=
-4
+Trond, can we get this applied?
 
-for you to fetch changes up to eb54d43707c69340581940e1fcaecb4d7d17b814:
-
-  NFS: Fix security flavor negotiation with legacy binary mounts (2013-05-3=
-0 16:31:34 -0400)
-
-----------------------------------------------------------------
-NFS client fixes:
-
-- Fix a regression that broke NFS mounting using klibc and busybox
-- Stable fix to check access modes correctly on NFSv4 delegated open()
-
-----------------------------------------------------------------
-Chuck Lever (1):
-      NFS: Fix security flavor negotiation with legacy binary mounts
-
-Trond Myklebust (1):
-      NFSv4: Fix a thinko in nfs4_try_open_cached
-
- fs/nfs/nfs4proc.c | 2 +-
- fs/nfs/super.c    | 2 ++
- 2 files changed, 3 insertions(+), 1 deletion(-)
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
---=20
-Trond Myklebust
-Linux NFS client maintainer
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
 
---=-KHKRvsopKdTsupmT/0x+
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-Content-Transfer-Encoding: 7bit
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.13 (GNU/Linux)
-
-iQIcBAABAgAGBQJRqUVtAAoJEGcL54qWCgDy9FIP/0WVGX2idVpyh8Pe5YdocAii
-pByiMsVSSDVLgIiRdugkNdHUTZ+gsvRr9lcM3lD5+A4W7RUlM3zuXoyUyXtUdfJW
-sMTz9pXTCHY0TDQw412USAUKfr4K3dT2gbMkb63Ca3TnsLolI67TXS1FmEqVTPn5
-XWDGuxdQveF3wDXGhRhXFiIbQaXQYY4qpn1XlwcdUuVYpvqiZObG/iFrbsRg+pFx
-uGxcYEYiNby6pcfgrU/NYsMQOQ/t7LzxEDBhO8+JWzQM1H8/4tVtOjptwxYOLgKX
-sFJ2h7xyJx0sb1du7i8zh9x39v6VfPyBHI4qoDRl6bPOQSIOk1o3+PX3NEHNx9y4
-LfqLiO9VdkGR1TndRuLiU5gXGwqllGbjiOuo95/hwMoGTNHK3hSd/ZWFbbGH0Fb1
-oxUynI3HOFwza5scSOv9q91bLgj60XcDlXzcgU/S41yplN4MEFcyBBQIomaDzfZZ
-tgMGHhosGrLD1DWXtx2oUqh6AlhADTDvPMwQIuZ08UlnbF6ll+zprnjt40S7W1yD
-IG78jDbGhvuBEKEgUicfAabJcKq6N2LmSDRl0RG4+jH5oXyvl2NLldmNQrMUSrrd
-DlU3VSYCuy57s+RU8MBFe1JXsjEsZ8UWf1Flv7oCPktUE575r8gYWa4ycpxTJd82
-ye1ysDHMtdgySWVmyxeY
-=lQIH
------END PGP SIGNATURE-----
-
---=-KHKRvsopKdTsupmT/0x+--
