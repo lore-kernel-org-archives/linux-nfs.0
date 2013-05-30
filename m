@@ -1,99 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:38667 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759070Ab3ECSdz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 May 2013 14:33:55 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: long delay when mounting due to SETCLIENTID AUTH_GSS attempts
-Date: Fri, 3 May 2013 18:33:54 +0000
-Message-ID: <1367606034.3556.25.camel@leira.trondhjem.org>
-References: <20130503132557.2fdf794d@tlielax.poochiereds.net>
-	 <AE700845-4032-4BEC-817C-97EB08A831E8@oracle.com>
-	 <20130503142421.19fb3ca6@tlielax.poochiereds.net>
-In-Reply-To: <20130503142421.19fb3ca6@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=US-ASCII
+Received: from g5t0006.atlanta.hp.com ([15.192.0.43]:24884 "EHLO
+	g5t0006.atlanta.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756144Ab3E3PtH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 May 2013 11:49:07 -0400
+Message-ID: <51A774E2.9050307@hp.com>
+Date: Thu, 30 May 2013 11:48:50 -0400
+From: Waiman Long <waiman.long@hp.com>
 MIME-Version: 1.0
+To: =?UTF-8?B?SsO2cm4gRW5nZWw=?= <joern@logfs.org>
+CC: Andi Kleen <andi@firstfloor.org>, "J. Bruce Fields" <bfields@fieldses.org>,
+        Dave Chinner <david@fromorbit.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Jeff Layton <jlayton@redhat.com>, Miklos Szeredi <mszeredi@suse.cz>,
+        Ian Kent <raven@themaw.net>, Sage Weil <sage@inktank.com>,
+        Steve French <sfrench@samba.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Eric Paris <eparis@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, autofs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, "Chandramouleeswaran, Aswin" <aswin@hp.com>,
+        "Norton, Scott J" <scott.norton@hp.com>
+Subject: Re: [PATCH 0/3 v3] dcache: make it more scalable on large system
+References: <1369273048-60256-1-git-send-email-Waiman.Long@hp.com> <20130523094201.GA24543@dastard> <519E8B5F.3080905@hp.com> <20130527020903.GR29466@dastard> <51A624E2.3000301@hp.com> <20130529184640.GA3243@fieldses.org> <20130529203700.GM6123@two.firstfloor.org> <20130529211917.GB6658@logfs.org>
+In-Reply-To: <20130529211917.GB6658@logfs.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2013-05-03 at 14:24 -0400, Jeff Layton wrote:
-> On Fri, 3 May 2013 13:56:13 -0400
-> Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
-> > 
-> > On May 3, 2013, at 1:25 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> > 
-> > > I've noticed that when running a 3.10-pre kernel that if I try to mount
-> > > up a NFSv4 filesystem that it now takes ~15s for the mount to complete.
-> > > 
-> > > Here's a little rpcdebug output:
-> > > 
-> > > [ 3056.385078] svc: server ffff8800368fc000 waiting for data (to = 9223372036854775807)
-> > > [ 3056.392056] RPC:       new task initialized, procpid 2471
-> > > [ 3056.392758] RPC:       allocated task ffff88010cd90100
-> > > [ 3056.393303] RPC:    42 __rpc_execute flags=0x1280
-> > > [ 3056.393630] RPC:    42 call_start nfs4 proc SETCLIENTID (sync)
-> > > [ 3056.394056] RPC:    42 call_reserve (status 0)
-> > > [ 3056.394368] RPC:    42 reserved req ffff8801019f9600 xid 21ad6c40
-> > > [ 3056.394783] RPC:       wake_up_first(ffff88010a989990 "xprt_sending")
-> > > [ 3056.395252] RPC:    42 call_reserveresult (status 0)
-> > > [ 3056.395595] RPC:    42 call_refresh (status 0)
-> > > [ 3056.395901] RPC:       gss_create_cred for uid 0, flavor 390004
-> > > [ 3056.396361] RPC:       gss_create_upcall for uid 0
-> > > [ 3071.396134] RPC: AUTH_GSS upcall timed out.
-> > > Please check user daemon is running.
-> > > [ 3071.397374] RPC:       gss_create_upcall for uid 0 result -13
-> > > [ 3071.398192] RPC:    42 call_refreshresult (status -13)
-> > > [ 3071.398873] RPC:    42 call_refreshresult: refresh creds failed with error -13
-> > > [ 3071.399881] RPC:    42 return 0, status -13
-> > > 
-> > > The problem is that we're now trying to upcall for GSS creds to do the
-> > > SETCLIENTID call, but this host isn't running rpc.gssd. Not running
-> > > rpc.gssd is pretty common for people not using kerberized NFS. I think
-> > > we'll see a lot of complaints about this.
-> > > 
-> > > Is this expected?
-> > 
-> > Yes.
-> > 
-> > There are operations like SETCLIENTID and GETATTR(fs_locations) which should always use an integrity-checking security flavor, even if particular mount points use sec=sys.
-> > 
-> > There are cases where GSS is not available, and we fall back to using AUTH_SYS.  That should happen as quickly as possible, I agree.
-> > 
-> > > If so, what's the proposed remedy?
-> > > Simply have everyone run rpc.gssd even if they're not using kerberized NFS?
-> > 
-> > 
-> > That's one possibility.  Or we could shorten the upcall timeout.  Or, add a mechanism by which rpc.gssd can provide a positive indication to the kernel that it is running.
-> > 
-> > It doesn't seem like an intractable problem.
-> > 
-> 
-> Nope, it's not intractable at all...
-> 
-> Currently, the gssd upcall uses the RPC_PIPE_WAIT_FOR_OPEN flag to
-> allow you to queue upcalls to be processed when the daemon isn't up
-> yet. When the daemon starts, it processes that queue. The caller gives
-> up after 15s (which is what's happening here), and the upcall
-> eventually gets scraped out of the queue after 30s.
-> 
-> We could stop using that flag on this rpc_pipe and simply require that
-> the daemon be up and running before attempting any sort of AUTH_GSS
-> rpc. That might be a little less friendly in the face of boot-time
-> ordering problems, but it should presumably make this problem go away.
+On 05/29/2013 05:19 PM, Jörn Engel wrote:
+> On Wed, 29 May 2013 22:37:00 +0200, Andi Kleen wrote:
+>>> As Dave said before, is the last path component sufficient?  Or how
+>>> about an inode number?
+>> Neither works, the profiler needs to find the file and read it.
+> Ignoring all the complexity this would cause downstream, you could do
+> the path lookup just once, attach some cookie to it and return the
+> cookie ever-after.  Maybe some combination of i_sb and i_ino would be
+> good enough as a cookie.
 
-You probably don't want to do that... The main reason for the
-RPC_PIPE_WAIT_FOR_OPEN is that even if the gssd daemon is running, it
-takes it a moment or two to notice that a new client directory has been
-created, and that there is a new 'krb' pipe to attach to.
+Still, it is just shifting the complexity from the d_path code to the 
+perf kernel subsystem as it needs to keep track of what paths have been 
+sent up before. It also have complications in case the tracked files are 
+being deleted or moved around in the filesystem. Some kind of 
+notification mechanism has to be implemented in the dentry layer to 
+notify the perf subsystem.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Regards,
+Longman
