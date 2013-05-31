@@ -1,57 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx4.framestore.com ([193.203.83.5]:54053 "EHLO
-	mx4.framestore.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751813Ab3EOJZD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 May 2013 05:25:03 -0400
-Date: Wed, 15 May 2013 10:21:06 +0100 (BST)
-From: James Vanns <james.vanns@framestore.com>
-Reply-To: james.vanns@framestore.com
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-ID: <689306088.19845834.1368609666236.JavaMail.root@framestore.com>
-In-Reply-To: <20130514220122.GE16811@fieldses.org>
-Subject: Re: Where in the server code is fsinfo rtpref calculated?
+Received: from mx1.redhat.com ([209.132.183.28]:9427 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754217Ab3EaVLy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 May 2013 17:11:54 -0400
+Message-ID: <51A91212.7010901@RedHat.com>
+Date: Fri, 31 May 2013 17:11:46 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 00/13] lnfs: 3.10-rc2 release
+References: <1369241446-7680-1-git-send-email-SteveD@redhat.com> <1369943609.3111.4.camel@leira.trondhjem.org>
+In-Reply-To: <1369943609.3111.4.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> There's no way to specify that as an export option.  You can
-> configure
-> it server-wide using /proc/fs/nfsd/max_block_size.
 
-Ah ha! Bingo. There it is. I can see it on our SL6 (2.6.32)
-servers but not on older RHEL5 (2.6.18) servers so I guess
-at some point this was hardcoded to 32k?
 
-> > and so I need to
-> > find where this negotiated value between server->client actually
-> > comes
-> > from. How does the server reach the preferred block size for a
-> > given
-> > export?
+On 30/05/13 15:53, Myklebust, Trond wrote:
+> Bryan found a problem with the NFSv4.2 enabling patch above: the
+> callback channel needs to recognise minor version 2 CB_COMPOUND. There
+> are several places in the current callback code where people have hacked
+> the hard coded value '1' for the minor version field... :-(
 > 
-> fs/nfsd/nfssvc.c:nfsd_get_default_maxblksize() is probably a good
-> starting point.  Its caller, nfsd_create_serv(), calls
-> svc_create_pooled() with the result that's calculated.
+> Bryan is working on a fix for us that I will just apply on top of the
+> existing labeled NFS branch.
+Thank you!
 
-Thanks. I shall look there.
-
-Jim
-
-> For fsinfo see fs/nfsd/nfs3proc.c:nfsd3_proc_fsinfo, which uses
-> svc_max_payload().
-> 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
--- 
-Jim Vanns
-Senior Software Developer
-Framestore
-
+steved.
