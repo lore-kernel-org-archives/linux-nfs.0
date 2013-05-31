@@ -1,124 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:4912 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757526Ab3FADIN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 31 May 2013 23:08:13 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
-Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
-        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v1 09/11] locks: turn the blocked_list into a hashtable
-Date: Fri, 31 May 2013 23:07:32 -0400
-Message-Id: <1370056054-25449-10-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
-References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
+Received: from mail-ve0-f173.google.com ([209.85.128.173]:48648 "EHLO
+	mail-ve0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753041Ab3EaQfl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 May 2013 12:35:41 -0400
+Received: by mail-ve0-f173.google.com with SMTP id jw11so1299774veb.4
+        for <linux-nfs@vger.kernel.org>; Fri, 31 May 2013 09:35:40 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1562611687.61201.1369914919633.JavaMail.root@erie.cs.uoguelph.ca>
+References: <CACQjR_DV_2QFd0O1e6R6M34_R87+Bn+zvn3w_BkhS9YESNVUzg@mail.gmail.com>
+ <1562611687.61201.1369914919633.JavaMail.root@erie.cs.uoguelph.ca>
+From: Bram Vandoren <brambi@gmail.com>
+Date: Fri, 31 May 2013 18:35:20 +0200
+Message-ID: <CACQjR_CsRY4O+S1Zx-QabXYBUtRMKHa8o7ymCmLqSHa9UdgNFQ@mail.gmail.com>
+Subject: Re: NFS client hangs after server reboot
+To: Rick Macklem <rmacklem@uoguelph.ca>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Break up the blocked_list into a hashtable, using the fl_owner as a key.
-This speeds up searching the hash chains, which is especially significant
-for deadlock detection.
+> Did both the client and server have the same IP addresses before the
+> reboot?
 
-Note that the initial implementation assumes that hashing on fl_owner is
-sufficient. In most cases it should be, with the notable exception being
-server-side lockd, which compares ownership using a tuple of the
-nlm_host and the pid sent in the lock request. So, this may degrade to a
-single hash bucket when you only have a single NFS client. That will be
-addressed in a later patch.
+Yes.
 
-The careful observer may note that this patch leaves the file_lock_list
-alone. There's much less of a case for turning the file_lock_list into a
-hashtable. The only user of that list is the code that generates
-/proc/locks, and it always walks the entire list.
+> If not, the Linux client's nfs_client_id4.id SetClientID argument
+> will be different (it has the client/side IP# in it). nfs_client_id4.id
+> isn't supposed to change for a given client when it is rebooted.
+> That will make the FreeBSD NFSv4 server see "new client" (which is not in the
+> stablerestart file used to avoid certain reboot edge conditions) and
+> will not give it a grace period.
+> This is the only explanation I can think of for the NFS4ERR_NO_GRACE
+> reply shortly after the reboot.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/locks.c |   24 ++++++++++++++++++------
- 1 files changed, 18 insertions(+), 6 deletions(-)
+I checked some other clients and they all receive the
+NFS4ERR_NO_GRACE response from the server. It's not unique for the
+clients that hang. I was unable to reproduce this is a minimal test
+configuration. Perhaps the nfs-stablerestart file is corrupt on the
+server?
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 5ed056b..0d030ce 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -126,6 +126,7 @@
- #include <linux/time.h>
- #include <linux/rcupdate.h>
- #include <linux/pid_namespace.h>
-+#include <linux/hashtable.h>
- 
- #include <asm/uaccess.h>
- 
-@@ -163,10 +164,19 @@ int lease_break_time = 45;
- #define for_each_lock(inode, lockp) \
- 	for (lockp = &inode->i_flock; *lockp != NULL; lockp = &(*lockp)->fl_next)
- 
-+/*
-+ * By breaking up the blocked locks list into a hashtable, we speed up the
-+ * deadlock detection.
-+ *
-+ * FIXME: make this value scale via some heuristic?
-+ */
-+#define BLOCKED_HASH_BITS	7
-+
-+static DEFINE_HASHTABLE(blocked_hash, BLOCKED_HASH_BITS);
-+
- static HLIST_HEAD(file_lock_list);
--static HLIST_HEAD(blocked_list);
- 
--/* Protects the two list heads above */
-+/* Protects the file_lock_list and the blocked_hash */
- static DEFINE_SPINLOCK(file_lock_lock);
- 
- static struct kmem_cache *filelock_cache __read_mostly;
-@@ -486,7 +496,8 @@ static inline void
- locks_insert_global_blocked(struct file_lock *waiter)
- {
- 	spin_lock(&file_lock_lock);
--	hlist_add_head(&waiter->fl_link, &blocked_list);
-+	hash_add(blocked_hash, &waiter->fl_link,
-+				(unsigned long)waiter->fl_owner);
- 	spin_unlock(&file_lock_lock);
- }
- 
-@@ -494,7 +505,7 @@ static inline void
- locks_delete_global_blocked(struct file_lock *waiter)
- {
- 	spin_lock(&file_lock_lock);
--	hlist_del_init(&waiter->fl_link);
-+	hash_del(&waiter->fl_link);
- 	spin_unlock(&file_lock_lock);
- }
- 
-@@ -705,7 +716,7 @@ static struct file_lock *what_owner_is_waiting_for(struct file_lock *block_fl)
- {
- 	struct file_lock *fl, *ret = NULL;
- 
--	hlist_for_each_entry(fl, &blocked_list, fl_link) {
-+	hash_for_each_possible(blocked_hash, fl, fl_link, (unsigned long)block_fl->fl_owner) {
- 		if (posix_same_owner(fl, block_fl)) {
- 			ret = fl->fl_next;
- 			if (likely(ret))
-@@ -2275,13 +2286,14 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
- 
- static int locks_show(struct seq_file *f, void *v)
- {
-+	int bkt;
- 	struct file_lock *fl, *bfl;
- 
- 	fl = hlist_entry(v, struct file_lock, fl_link);
- 
- 	lock_get_status(f, fl, *((loff_t *)f->private), "");
- 
--	hlist_for_each_entry(bfl, &blocked_list, fl_link) {
-+	hash_for_each(blocked_hash, bkt, bfl, fl_link) {
- 		if (bfl->fl_next == fl)
- 			lock_get_status(f, bfl, *((loff_t *)f->private), " ->");
- 	}
--- 
-1.7.1
+I checked
+ strings nfs-stablerestart
+and I see a lot of duplicate entries. In total there are ~10000 lines
+but we only have ~50 clients.
+Most clients have 3 types of entries:
+Linux NFSv4.0 a.b.c.d/e.f.g.h tcp
+Linux NFSv4.0 a.b.c.d/e.f.g.h tcp*
+Linux NFSv4.0 a.b.c.d/e.f.g.h tcp+
 
+Again, thanks a lot for looking into this.
+
+Bram.
