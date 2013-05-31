@@ -1,119 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:31392 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756700Ab3EVQvB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 May 2013 12:51:01 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 12/13] NFS: Extend NFS xattr handlers to accept the security namespace
-Date: Wed, 22 May 2013 12:50:45 -0400
-Message-Id: <1369241446-7680-13-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
-References: <1369241446-7680-1-git-send-email-SteveD@redhat.com>
+Received: from esa-jnhn.mail.uoguelph.ca ([131.104.91.44]:4475 "EHLO
+	esa-jnhn.mail.uoguelph.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757517Ab3EaXYF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 May 2013 19:24:05 -0400
+Date: Fri, 31 May 2013 19:24:03 -0400 (EDT)
+From: Rick Macklem <rmacklem@uoguelph.ca>
+To: Bram Vandoren <brambi@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+Message-ID: <785211889.113142.1370042643416.JavaMail.root@erie.cs.uoguelph.ca>
+In-Reply-To: <CACQjR_CsRY4O+S1Zx-QabXYBUtRMKHa8o7ymCmLqSHa9UdgNFQ@mail.gmail.com>
+Subject: Re: NFS client hangs after server reboot
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+Bram Vandoren wrote:
+> > Did both the client and server have the same IP addresses before the
+> > reboot?
+> 
+> Yes.
+> 
+> > If not, the Linux client's nfs_client_id4.id SetClientID argument
+> > will be different (it has the client/side IP# in it).
+> > nfs_client_id4.id
+> > isn't supposed to change for a given client when it is rebooted.
+> > That will make the FreeBSD NFSv4 server see "new client" (which is
+> > not in the
+> > stablerestart file used to avoid certain reboot edge conditions) and
+> > will not give it a grace period.
+> > This is the only explanation I can think of for the NFS4ERR_NO_GRACE
+> > reply shortly after the reboot.
+> 
+> I checked some other clients and they all receive the
+> NFS4ERR_NO_GRACE response from the server. It's not unique for the
+> clients that hang. I was unable to reproduce this is a minimal test
+> configuration. Perhaps the nfs-stablerestart file is corrupt on the
+> server?
+> 
+> I checked
+> strings nfs-stablerestart
+> and I see a lot of duplicate entries. In total there are ~10000 lines
+> but we only have ~50 clients.
+> Most clients have 3 types of entries:
+> Linux NFSv4.0 a.b.c.d/e.f.g.h tcp
+> Linux NFSv4.0 a.b.c.d/e.f.g.h tcp*
+> Linux NFSv4.0 a.b.c.d/e.f.g.h tcp+
+> 
+I'll take a look. I wrote that code about 10 years ago, so I don't remember
+all the details w.r.t. the records in the stable restart file. If you truncate
+the file, there won't be any recovery on the next reboot, so you need to
+unmount all the NFSv4 mounts on it before rebooting for that case.
 
-The existing NFSv4 xattr handlers do not accept xattr calls to the security
-namespace. This patch extends these handlers to accept xattrs from the security
-namespace in addition to the default NFSv4 ACL namespace.
+What you packet trace didn't indicate was when the server was rebooted vs
+when the client sent it a SYN that started a new connection. During the
+approx. 4400 sec the server was down there should have been repeated attempts
+to connect to it (basically a TCP packet with SYN in it) at least once every
+30sec. Basically, after the server reboots, the client must establish a TCP
+connection and attempt recovery within 2 minutes or it just isn't going to
+work.
 
-Acked-by: James Morris <james.l.morris@oracle.com>
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- fs/nfs/nfs4proc.c   | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
- security/security.c |  1 +
- 2 files changed, 51 insertions(+)
+Btw, server reboot recovery doesn't get a lot of testing. Some of that is
+logistics (no one pays for FreeBSD NFS development, etc) and the rest is that
+most assume a server will remain up for months/years at a time. If the FreeBSD
+server is crashing, you need to try and resolve that. If the approx. 4400 sec
+downtime was a scheduled maintenance type of thing, you should consider unmounting
+the volumes before the server is shut down and doing fresh mounts after it
+is rebooted.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 3cd1911..f04ab95 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5640,6 +5640,53 @@ static size_t nfs4_xattr_list_nfs4_acl(struct dentry *dentry, char *list,
- 	return len;
- }
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+static inline int nfs4_server_supports_labels(struct nfs_server *server)
-+{
-+	return server->caps & NFS_CAP_SECURITY_LABEL;
-+}
-+
-+static int nfs4_xattr_set_nfs4_label(struct dentry *dentry, const char *key,
-+				   const void *buf, size_t buflen,
-+				   int flags, int type)
-+{
-+	if (security_ismaclabel(key))
-+		return nfs4_set_security_label(dentry, buf, buflen);
-+
-+	return -EOPNOTSUPP;
-+}
-+
-+static int nfs4_xattr_get_nfs4_label(struct dentry *dentry, const char *key,
-+				   void *buf, size_t buflen, int type)
-+{
-+	if (security_ismaclabel(key))
-+		return nfs4_get_security_label(dentry->d_inode, buf, buflen);
-+	return -EOPNOTSUPP;
-+}
-+
-+static size_t nfs4_xattr_list_nfs4_label(struct dentry *dentry, char *list,
-+				       size_t list_len, const char *name,
-+				       size_t name_len, int type)
-+{
-+	size_t len = 0;
-+
-+	if (nfs_server_capable(dentry->d_inode, NFS_CAP_SECURITY_LABEL)) {
-+		len = security_inode_listsecurity(dentry->d_inode, NULL, 0);
-+		if (list && len <= list_len)
-+			security_inode_listsecurity(dentry->d_inode, list, len);
-+	}
-+	return len;
-+}
-+
-+static const struct xattr_handler nfs4_xattr_nfs4_label_handler = {
-+	.prefix = XATTR_SECURITY_PREFIX,
-+	.list	= nfs4_xattr_list_nfs4_label,
-+	.get	= nfs4_xattr_get_nfs4_label,
-+	.set	= nfs4_xattr_set_nfs4_label,
-+};
-+#endif
-+
-+
- /*
-  * nfs_fhget will use either the mounted_on_fileid or the fileid
-  */
-@@ -7468,6 +7515,9 @@ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
- 
- const struct xattr_handler *nfs4_xattr_handlers[] = {
- 	&nfs4_xattr_nfs4_acl_handler,
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	&nfs4_xattr_nfs4_label_handler,
-+#endif
- 	NULL
- };
- 
-diff --git a/security/security.c b/security/security.c
-index 8d0b9a7..94b35ae 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -660,6 +660,7 @@ int security_inode_listsecurity(struct inode *inode, char *buffer, size_t buffer
- 		return 0;
- 	return security_ops->inode_listsecurity(inode, buffer, buffer_size);
- }
-+EXPORT_SYMBOL(security_inode_listsecurity);
- 
- void security_inode_getsecid(const struct inode *inode, u32 *secid)
- {
--- 
-1.8.1.4
+rick
 
+> Again, thanks a lot for looking into this.
+> 
+> Bram.
