@@ -1,146 +1,827 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:34353 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752259Ab3ELV4W (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 May 2013 17:56:22 -0400
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Sun, 12 May 2013 17:56:17 -0400
-From: David Quigley <dpquigl@davequigley.com>
-To: James Bottomley <james.bottomley@hansenpartnership.com>
-Cc: Ric Wheeler <rwheeler@redhat.com>, Steve Dickson <steved@redhat.com>,
-        Trond Myklebust <trond.myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>, Jack Rieden <jrieden@redhat.com>
-Subject: Re: [PATCH 00/17] lnfs: linux-3.9 release
-In-Reply-To: <1367871935.1868.48.camel@dabdike>
-References: <1367515151-31015-1-git-send-email-SteveD@redhat.com>
- <51848BE0.2080901@redhat.com> <1367855617.1868.16.camel@dabdike>
- <51880B01.5040907@redhat.com> <1367871935.1868.48.camel@dabdike>
-Message-ID: <cb264c17aefd307cdc6e93b576f695e9@countercultured.net>
+Received: from mx1.redhat.com ([209.132.183.28]:47945 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757952Ab3FADIP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 May 2013 23:08:15 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
+Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
+        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
+Subject: [PATCH v1 06/11] locks: convert to i_lock to protect i_flock list
+Date: Fri, 31 May 2013 23:07:29 -0400
+Message-Id: <1370056054-25449-7-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
+References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/06/2013 16:25, James Bottomley wrote:
-> On Mon, 2013-05-06 at 22:56 +0300, Ric Wheeler wrote:
->> On 05/06/2013 06:53 PM, James Bottomley wrote:
->> > On Sat, 2013-05-04 at 07:17 +0300, Ric Wheeler wrote:
->> >> On 05/02/2013 08:18 PM, Steve Dickson wrote:
->> >>> From: Steve Dickson <steved@redhat.com>
->> >>>
->> >>> Here is an the next rlease of the label NFS patches
->> >>> ported to the linux-3.9 release
->> >>>
->> >>> The following changes were made from the previous release.
->> >>> (Note, only the server patch changed in this release)
->> >>>
->> >>> * Remove the buffer overflow in the allocation of labels.
->> >>>
->> >>> * Removed needless char * casting
->> >>>
->> >>> * Removed the -EMSGSIZE to nfs4err_badlabel errno mapping
->> >>>     by changing the return value of nfsd4_label_alloc() to
->> >>>     be a _be32 value.
->> >> It would be great to see this patch series land in time for 3.10 
->> - seems like a
->> >> major feature that has had been held in development for years and 
->> it does have a
->> >> very interested user base waiting for this to land.
->> >>
->> >> Are there any existing roadblocks to having this make it this 
->> merge
->> >> window?
->> > You mean other than the one Bruce and Trond already mentioned and 
->> which
->> > you presumably already read? i.e. it's a large feature whose final
->> > incarnation landed when the merge window was already open which by
->> > process should receive incubation in linux-next before being 
->> merged.
->> >
->> > It is entirely within the gift of the maintainers to vary the 
->> incubation
->> > requirements, but if they do and it comes back with a ton of 
->> problems
->> > from the 0 day project or smatch or even a build failure that 
->> would have
->> > been picked up by linux-next, they'll be at the wrong end of 
->> Linus'
->> > flame thrower not you.  So it is rather unfair to pressure the
->> > maintainers like this.
->> >
->> > Kernel processes exist for a reason and almost every maintainer 
->> has the
->> > scars that remind them of this.
->> >
->> > James
->> >
->> >
->>
->> Don't worry James - this one has had at least as much testing as the 
->> average
->> SCSI driver update :)
->>
->> This is was not meant as pressure, James Morris (not you) had 
->> replied that his
->> patches are ready and he expected them to be pulled via the NFS 
->> trees.
->
-> Yes, I know this ... Trond and Bruce both said definitely 3.11 and
-> probably 3.11 respectively, that's why I was surprised to see a 3.10
-> request.
->
->> This was meant to facilitate getting this multi-tree, 
->> multi-maintainer series
->> ready to merge and make sure we aren't stuck each waiting for a 
->> response from
->> the next person in the loop.
->>
->> Note that this patch set has been in development for *years*, been 
->> tested at
->> connectathon, tested by interested parties who promoted the earliest 
->> versions of
->> the patches and tested by RHEL (of course, the series has evolved 
->> over time).
->
-> That's good, but not sufficient.  A large number of "well tested" big
-> patch sets have failed integration nastily when they were merged over
-> the years.  That wasn't because they weren't actually tested, but
-> because as soon as they hit the tree, they caused side effects, or
-> people tried configurations the submitters hadn't or because they 
-> tried
-> tests the submitters hadn't thought of.  This is why we have an
-> integration process involving linux-next ... to try and find these 
-> types
-> of problems *before* merger and that's why large features tend to 
-> spend
-> at least a week in linux-next to try to find the issues.
->
+Having a global lock that protects all of this code is a clear
+scalability problem. Instead of doing that, move most of the code to be
+protected by the i_lock instead.
 
-To be fair I doubt you're going to see any new problems on top of what 
-Bruce has already caught. He has done the work to tweak all the knobs to 
-make sure config wise any LNFS features turned on or off don't break 
-NFSv4 both at compile and run-time. On top of that all the security 
-patches are self contained as LNFS is the only user. Finally based on 
-people's knee-jerk reaction to disable SELinux on most of their systems 
-I doubt you're going to get much more testing out of linux-next than 
-we've already done. We already have a wink and a nod from Casey that 
-SMACK has issues with Labeled NFS and that he has no objections to 
-fixing that problem later. All that said its still the maintainer's 
-decision to take it or not and I'd imagine backporting the patches to 
-3.10 from 3.11 wouldn't be a tremendous amount of work if someone needed 
-it to fall into that specific version. Personally I can't wait for the 
-patches to get merged since I started this project almost 6 years ago at 
-this point. Steve Dickson has picked up the torch and kept running with 
-it since my time no longer permitted me to champion the patch set and I 
-think its ready for use by quite a few customers.
+The exceptions are the global lists that file_lock->fl_link sits on.
+Those still need a global lock of some sort, so wrap just those accesses
+in the file_lock_lock().
 
-Dave
+Note that this requires a small change to the /proc/locks code. Instead
+of walking the fl_block list to look for locks blocked on the current
+lock, we must instead walk the global blocker list and skip any that
+aren't blocked on the current lock. Otherwise, we'd need to take the
+i_lock on each inode as we go and that would create a lock inversion
+problem.
 
-Dave
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ Documentation/filesystems/Locking |   23 +++++--
+ fs/afs/flock.c                    |    5 +-
+ fs/ceph/locks.c                   |    2 +-
+ fs/ceph/mds_client.c              |    8 +-
+ fs/cifs/cifsfs.c                  |    2 +-
+ fs/cifs/file.c                    |   13 ++--
+ fs/gfs2/file.c                    |    2 +-
+ fs/lockd/svcsubs.c                |   12 ++--
+ fs/locks.c                        |  121 ++++++++++++++++++++-----------------
+ fs/nfs/delegation.c               |   11 ++--
+ fs/nfs/nfs4state.c                |    8 +-
+ fs/nfsd/nfs4state.c               |    8 +-
+ include/linux/fs.h                |   11 ----
+ 13 files changed, 119 insertions(+), 107 deletions(-)
 
+diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
+index 0706d32..13f91ab 100644
+--- a/Documentation/filesystems/Locking
++++ b/Documentation/filesystems/Locking
+@@ -344,7 +344,7 @@ prototypes:
+ 
+ 
+ locking rules:
+-			file_lock_lock	may block
++			inode->i_lock	may block
+ fl_copy_lock:		yes		no
+ fl_release_private:	maybe		no
+ 
+@@ -357,12 +357,21 @@ prototypes:
+ 	int (*lm_change)(struct file_lock **, int);
+ 
+ locking rules:
+-			file_lock_lock	may block
+-lm_compare_owner:	yes		no
+-lm_notify:		yes		no
+-lm_grant:		no		no
+-lm_break:		yes		no
+-lm_change		yes		no
++
++			inode->i_lock	file_lock_lock	may block
++lm_compare_owner:	yes		maybe		no
++lm_notify:		yes		no		no
++lm_grant:		no		no		no
++lm_break:		yes		no		no
++lm_change		yes		no		no
++
++	->lm_compare_owner is generally called with *an* inode->i_lock
++held. It may not be the i_lock of the inode for either file_lock being
++compared! This is the case with deadlock detection, since the code has
++to chase down the owners of locks that may be entirely unrelated to the
++one on which the lock is being acquired. For deadlock detection however,
++the file_lock_lock is also held. The locks primarily ensure that neither
++file_lock disappear out from under you while doing the comparison.
+ 
+ --------------------------- buffer_head -----------------------------------
+ prototypes:
+diff --git a/fs/afs/flock.c b/fs/afs/flock.c
+index 2497bf3..03fc0d1 100644
+--- a/fs/afs/flock.c
++++ b/fs/afs/flock.c
+@@ -252,6 +252,7 @@ static void afs_defer_unlock(struct afs_vnode *vnode, struct key *key)
+  */
+ static int afs_do_setlk(struct file *file, struct file_lock *fl)
+ {
++	struct inode = file_inode(file);
+ 	struct afs_vnode *vnode = AFS_FS_I(file->f_mapping->host);
+ 	afs_lock_type_t type;
+ 	struct key *key = file->private_data;
+@@ -273,7 +274,7 @@ static int afs_do_setlk(struct file *file, struct file_lock *fl)
+ 
+ 	type = (fl->fl_type == F_RDLCK) ? AFS_LOCK_READ : AFS_LOCK_WRITE;
+ 
+-	lock_flocks();
++	spin_lock(&inode->i_lock);
+ 
+ 	/* make sure we've got a callback on this file and that our view of the
+ 	 * data version is up to date */
+@@ -420,7 +421,7 @@ given_lock:
+ 	afs_vnode_fetch_status(vnode, NULL, key);
+ 
+ error:
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ 	_leave(" = %d", ret);
+ 	return ret;
+ 
+diff --git a/fs/ceph/locks.c b/fs/ceph/locks.c
+index 202dd3d..cd0a664 100644
+--- a/fs/ceph/locks.c
++++ b/fs/ceph/locks.c
+@@ -194,7 +194,7 @@ void ceph_count_locks(struct inode *inode, int *fcntl_count, int *flock_count)
+  * Encode the flock and fcntl locks for the given inode into the pagelist.
+  * Format is: #fcntl locks, sequential fcntl locks, #flock locks,
+  * sequential flock locks.
+- * Must be called with lock_flocks() already held.
++ * Must be called with inode->i_lock already held.
+  * If we encounter more of a specific lock type than expected,
+  * we return the value 1.
+  */
+diff --git a/fs/ceph/mds_client.c b/fs/ceph/mds_client.c
+index 4f22671..ae621b5 100644
+--- a/fs/ceph/mds_client.c
++++ b/fs/ceph/mds_client.c
+@@ -2482,13 +2482,13 @@ static int encode_caps_cb(struct inode *inode, struct ceph_cap *cap,
+ 
+ 		ceph_pagelist_set_cursor(pagelist, &trunc_point);
+ 		do {
+-			lock_flocks();
++			spin_lock(&inode->i_lock);
+ 			ceph_count_locks(inode, &num_fcntl_locks,
+ 					 &num_flock_locks);
+ 			rec.v2.flock_len = (2*sizeof(u32) +
+ 					    (num_fcntl_locks+num_flock_locks) *
+ 					    sizeof(struct ceph_filelock));
+-			unlock_flocks();
++			spin_unlock(&inode->i_lock);
+ 
+ 			/* pre-alloc pagelist */
+ 			ceph_pagelist_truncate(pagelist, &trunc_point);
+@@ -2499,12 +2499,12 @@ static int encode_caps_cb(struct inode *inode, struct ceph_cap *cap,
+ 
+ 			/* encode locks */
+ 			if (!err) {
+-				lock_flocks();
++				spin_lock(&inode->i_lock);
+ 				err = ceph_encode_locks(inode,
+ 							pagelist,
+ 							num_fcntl_locks,
+ 							num_flock_locks);
+-				unlock_flocks();
++				spin_unlock(&inode->i_lock);
+ 			}
+ 		} while (err == -ENOSPC);
+ 	} else {
+diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
+index 72e4efe..29952d5 100644
+--- a/fs/cifs/cifsfs.c
++++ b/fs/cifs/cifsfs.c
+@@ -768,7 +768,7 @@ static loff_t cifs_llseek(struct file *file, loff_t offset, int whence)
+ 
+ static int cifs_setlease(struct file *file, long arg, struct file_lock **lease)
+ {
+-	/* note that this is called by vfs setlease with lock_flocks held
++	/* note that this is called by vfs setlease with i_lock held
+ 	   to protect *lease from going away */
+ 	struct inode *inode = file_inode(file);
+ 	struct cifsFileInfo *cfile = file->private_data;
+diff --git a/fs/cifs/file.c b/fs/cifs/file.c
+index 44a4f18..0dd10cd 100644
+--- a/fs/cifs/file.c
++++ b/fs/cifs/file.c
+@@ -1092,6 +1092,7 @@ struct lock_to_push {
+ static int
+ cifs_push_posix_locks(struct cifsFileInfo *cfile)
+ {
++	struct inode *inode = cfile->dentry->d_inode;
+ 	struct cifs_tcon *tcon = tlink_tcon(cfile->tlink);
+ 	struct file_lock *flock, **before;
+ 	unsigned int count = 0, i = 0;
+@@ -1102,12 +1103,12 @@ cifs_push_posix_locks(struct cifsFileInfo *cfile)
+ 
+ 	xid = get_xid();
+ 
+-	lock_flocks();
+-	cifs_for_each_lock(cfile->dentry->d_inode, before) {
++	spin_lock(&inode->i_lock);
++	cifs_for_each_lock(inode, before) {
+ 		if ((*before)->fl_flags & FL_POSIX)
+ 			count++;
+ 	}
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ 
+ 	INIT_LIST_HEAD(&locks_to_send);
+ 
+@@ -1126,8 +1127,8 @@ cifs_push_posix_locks(struct cifsFileInfo *cfile)
+ 	}
+ 
+ 	el = locks_to_send.next;
+-	lock_flocks();
+-	cifs_for_each_lock(cfile->dentry->d_inode, before) {
++	spin_lock(&inode->i_lock);
++	cifs_for_each_lock(inode, before) {
+ 		flock = *before;
+ 		if ((flock->fl_flags & FL_POSIX) == 0)
+ 			continue;
+@@ -1152,7 +1153,7 @@ cifs_push_posix_locks(struct cifsFileInfo *cfile)
+ 		lck->offset = flock->fl_start;
+ 		el = el->next;
+ 	}
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ 
+ 	list_for_each_entry_safe(lck, tmp, &locks_to_send, llist) {
+ 		int stored_rc;
+diff --git a/fs/gfs2/file.c b/fs/gfs2/file.c
+index acd1676..9e634e0 100644
+--- a/fs/gfs2/file.c
++++ b/fs/gfs2/file.c
+@@ -889,7 +889,7 @@ out_uninit:
+  * cluster; until we do, disable leases (by just returning -EINVAL),
+  * unless the administrator has requested purely local locking.
+  *
+- * Locking: called under lock_flocks
++ * Locking: called under i_lock
+  *
+  * Returns: errno
+  */
+diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
+index 97e8741..dc5c759 100644
+--- a/fs/lockd/svcsubs.c
++++ b/fs/lockd/svcsubs.c
+@@ -169,7 +169,7 @@ nlm_traverse_locks(struct nlm_host *host, struct nlm_file *file,
+ 
+ again:
+ 	file->f_locks = 0;
+-	lock_flocks(); /* protects i_flock list */
++	spin_lock(&inode->i_lock);
+ 	for (fl = inode->i_flock; fl; fl = fl->fl_next) {
+ 		if (fl->fl_lmops != &nlmsvc_lock_operations)
+ 			continue;
+@@ -181,7 +181,7 @@ again:
+ 		if (match(lockhost, host)) {
+ 			struct file_lock lock = *fl;
+ 
+-			unlock_flocks();
++			spin_unlock(&inode->i_lock);
+ 			lock.fl_type  = F_UNLCK;
+ 			lock.fl_start = 0;
+ 			lock.fl_end   = OFFSET_MAX;
+@@ -193,7 +193,7 @@ again:
+ 			goto again;
+ 		}
+ 	}
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ 
+ 	return 0;
+ }
+@@ -228,14 +228,14 @@ nlm_file_inuse(struct nlm_file *file)
+ 	if (file->f_count || !list_empty(&file->f_blocks) || file->f_shares)
+ 		return 1;
+ 
+-	lock_flocks();
++	spin_lock(&inode->i_lock);
+ 	for (fl = inode->i_flock; fl; fl = fl->fl_next) {
+ 		if (fl->fl_lmops == &nlmsvc_lock_operations) {
+-			unlock_flocks();
++			spin_unlock(&inode->i_lock);
+ 			return 1;
+ 		}
+ 	}
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ 	file->f_locks = 0;
+ 	return 0;
+ }
+diff --git a/fs/locks.c b/fs/locks.c
+index caca466..055c06c 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -165,22 +165,9 @@ int lease_break_time = 45;
+ 
+ static LIST_HEAD(file_lock_list);
+ static LIST_HEAD(blocked_list);
+-static DEFINE_SPINLOCK(file_lock_lock);
+-
+-/*
+- * Protects the two list heads above, plus the inode->i_flock list
+- */
+-void lock_flocks(void)
+-{
+-	spin_lock(&file_lock_lock);
+-}
+-EXPORT_SYMBOL_GPL(lock_flocks);
+ 
+-void unlock_flocks(void)
+-{
+-	spin_unlock(&file_lock_lock);
+-}
+-EXPORT_SYMBOL_GPL(unlock_flocks);
++/* Protects the two list heads above */
++static DEFINE_SPINLOCK(file_lock_lock);
+ 
+ static struct kmem_cache *filelock_cache __read_mostly;
+ 
+@@ -498,25 +485,33 @@ static int posix_same_owner(struct file_lock *fl1, struct file_lock *fl2)
+ static inline void
+ locks_insert_global_blocked(struct file_lock *waiter)
+ {
++	spin_lock(&file_lock_lock);
+ 	list_add(&waiter->fl_link, &blocked_list);
++	spin_unlock(&file_lock_lock);
+ }
+ 
+ static inline void
+ locks_delete_global_blocked(struct file_lock *waiter)
+ {
++	spin_lock(&file_lock_lock);
+ 	list_del_init(&waiter->fl_link);
++	spin_unlock(&file_lock_lock);
+ }
+ 
+ static inline void
+ locks_insert_global_locks(struct file_lock *waiter)
+ {
++	spin_lock(&file_lock_lock);
+ 	list_add_tail(&waiter->fl_link, &file_lock_list);
++	spin_unlock(&file_lock_lock);
+ }
+ 
+ static inline void
+ locks_delete_global_locks(struct file_lock *waiter)
+ {
++	spin_lock(&file_lock_lock);
+ 	list_del_init(&waiter->fl_link);
++	spin_unlock(&file_lock_lock);
+ }
+ 
+ /* Remove waiter from blocker's block list.
+@@ -533,9 +528,11 @@ static void __locks_delete_block(struct file_lock *waiter)
+  */
+ static void locks_delete_block(struct file_lock *waiter)
+ {
+-	lock_flocks();
++	struct inode *inode = file_inode(waiter->fl_file);
++
++	spin_lock(&inode->i_lock);
+ 	__locks_delete_block(waiter);
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ }
+ 
+ /* Insert waiter into blocker's block list.
+@@ -657,8 +654,9 @@ void
+ posix_test_lock(struct file *filp, struct file_lock *fl)
+ {
+ 	struct file_lock *cfl;
++	struct inode *inode = file_inode(filp);
+ 
+-	lock_flocks();
++	spin_lock(&inode->i_lock);
+ 	for (cfl = file_inode(filp)->i_flock; cfl; cfl = cfl->fl_next) {
+ 		if (!IS_POSIX(cfl))
+ 			continue;
+@@ -671,7 +669,7 @@ posix_test_lock(struct file *filp, struct file_lock *fl)
+ 			fl->fl_pid = pid_vnr(cfl->fl_nspid);
+ 	} else
+ 		fl->fl_type = F_UNLCK;
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ 	return;
+ }
+ EXPORT_SYMBOL(posix_test_lock);
+@@ -719,14 +717,19 @@ static int posix_locks_deadlock(struct file_lock *caller_fl,
+ 				struct file_lock *block_fl)
+ {
+ 	int i = 0;
++	int ret = 0;
+ 
++	spin_lock(&file_lock_lock);
+ 	while ((block_fl = what_owner_is_waiting_for(block_fl))) {
+ 		if (i++ > MAX_DEADLK_ITERATIONS)
+-			return 0;
+-		if (posix_same_owner(caller_fl, block_fl))
+-			return 1;
++			break;
++		if (posix_same_owner(caller_fl, block_fl)) {
++			++ret;
++			break;
++		}
+ 	}
+-	return 0;
++	spin_unlock(&file_lock_lock);
++	return ret;
+ }
+ 
+ /* Try to create a FLOCK lock on filp. We always insert new FLOCK locks
+@@ -750,7 +753,7 @@ static int flock_lock_file(struct file *filp, struct file_lock *request)
+ 			return -ENOMEM;
+ 	}
+ 
+-	lock_flocks();
++	spin_lock(&inode->i_lock);
+ 	if (request->fl_flags & FL_ACCESS)
+ 		goto find_conflict;
+ 
+@@ -780,9 +783,9 @@ static int flock_lock_file(struct file *filp, struct file_lock *request)
+ 	 * give it the opportunity to lock the file.
+ 	 */
+ 	if (found) {
+-		unlock_flocks();
++		spin_unlock(&inode->i_lock);
+ 		cond_resched();
+-		lock_flocks();
++		spin_lock(&inode->i_lock);
+ 	}
+ 
+ find_conflict:
+@@ -809,7 +812,7 @@ find_conflict:
+ 	error = 0;
+ 
+ out:
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ 	if (new_fl)
+ 		locks_free_lock(new_fl);
+ 	return error;
+@@ -839,7 +842,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 		new_fl2 = locks_alloc_lock();
+ 	}
+ 
+-	lock_flocks();
++	spin_lock(&inode->i_lock);
+ 	/*
+ 	 * New lock request. Walk all POSIX locks and look for conflicts. If
+ 	 * there are any, either return -EAGAIN or put the request on the
+@@ -1012,7 +1015,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 		locks_wake_up_blocks(left);
+ 	}
+  out:
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ 	/*
+ 	 * Free any unused locks.
+ 	 */
+@@ -1087,14 +1090,14 @@ int locks_mandatory_locked(struct inode *inode)
+ 	/*
+ 	 * Search the lock list for this inode for any POSIX locks.
+ 	 */
+-	lock_flocks();
++	spin_lock(&inode->i_lock);
+ 	for (fl = inode->i_flock; fl != NULL; fl = fl->fl_next) {
+ 		if (!IS_POSIX(fl))
+ 			continue;
+ 		if (fl->fl_owner != owner)
+ 			break;
+ 	}
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ 	return fl ? -EAGAIN : 0;
+ }
+ 
+@@ -1237,7 +1240,7 @@ int __break_lease(struct inode *inode, unsigned int mode)
+ 	if (IS_ERR(new_fl))
+ 		return PTR_ERR(new_fl);
+ 
+-	lock_flocks();
++	spin_lock(&inode->i_lock);
+ 
+ 	time_out_leases(inode);
+ 
+@@ -1287,10 +1290,10 @@ restart:
+ 			break_time++;
+ 	}
+ 	locks_insert_block(flock, new_fl);
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ 	error = wait_event_interruptible_timeout(new_fl->fl_wait,
+ 						!new_fl->fl_next, break_time);
+-	lock_flocks();
++	spin_lock(&inode->i_lock);
+ 	__locks_delete_block(new_fl);
+ 	if (error >= 0) {
+ 		if (error == 0)
+@@ -1308,7 +1311,7 @@ restart:
+ 	}
+ 
+ out:
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ 	locks_free_lock(new_fl);
+ 	return error;
+ }
+@@ -1361,9 +1364,10 @@ EXPORT_SYMBOL(lease_get_mtime);
+ int fcntl_getlease(struct file *filp)
+ {
+ 	struct file_lock *fl;
++	struct inode *inode = file_inode(filp);
+ 	int type = F_UNLCK;
+ 
+-	lock_flocks();
++	spin_lock(&inode->i_lock);
+ 	time_out_leases(file_inode(filp));
+ 	for (fl = file_inode(filp)->i_flock; fl && IS_LEASE(fl);
+ 			fl = fl->fl_next) {
+@@ -1372,7 +1376,7 @@ int fcntl_getlease(struct file *filp)
+ 			break;
+ 		}
+ 	}
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ 	return type;
+ }
+ 
+@@ -1466,7 +1470,7 @@ static int generic_delete_lease(struct file *filp, struct file_lock **flp)
+  *	The (input) flp->fl_lmops->lm_break function is required
+  *	by break_lease().
+  *
+- *	Called with file_lock_lock held.
++ *	Called with inode->i_lock held.
+  */
+ int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
+ {
+@@ -1535,11 +1539,12 @@ static int __vfs_setlease(struct file *filp, long arg, struct file_lock **lease)
+ 
+ int vfs_setlease(struct file *filp, long arg, struct file_lock **lease)
+ {
++	struct inode *inode = file_inode(filp);
+ 	int error;
+ 
+-	lock_flocks();
++	spin_lock(&inode->i_lock);
+ 	error = __vfs_setlease(filp, arg, lease);
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ 
+ 	return error;
+ }
+@@ -1557,6 +1562,7 @@ static int do_fcntl_delete_lease(struct file *filp)
+ static int do_fcntl_add_lease(unsigned int fd, struct file *filp, long arg)
+ {
+ 	struct file_lock *fl, *ret;
++	struct inode *inode = file_inode(filp);
+ 	struct fasync_struct *new;
+ 	int error;
+ 
+@@ -1570,10 +1576,10 @@ static int do_fcntl_add_lease(unsigned int fd, struct file *filp, long arg)
+ 		return -ENOMEM;
+ 	}
+ 	ret = fl;
+-	lock_flocks();
++	spin_lock(&inode->i_lock);
+ 	error = __vfs_setlease(filp, arg, &ret);
+ 	if (error) {
+-		unlock_flocks();
++		spin_unlock(&inode->i_lock);
+ 		locks_free_lock(fl);
+ 		goto out_free_fasync;
+ 	}
+@@ -1590,7 +1596,7 @@ static int do_fcntl_add_lease(unsigned int fd, struct file *filp, long arg)
+ 		new = NULL;
+ 
+ 	error = __f_setown(filp, task_pid(current), PIDTYPE_PID, 0);
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ 
+ out_free_fasync:
+ 	if (new)
+@@ -2114,7 +2120,7 @@ void locks_remove_flock(struct file *filp)
+ 			fl.fl_ops->fl_release_private(&fl);
+ 	}
+ 
+-	lock_flocks();
++	spin_lock(&inode->i_lock);
+ 	before = &inode->i_flock;
+ 
+ 	while ((fl = *before) != NULL) {
+@@ -2132,7 +2138,7 @@ void locks_remove_flock(struct file *filp)
+  		}
+ 		before = &fl->fl_next;
+ 	}
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ }
+ 
+ /**
+@@ -2145,14 +2151,15 @@ void locks_remove_flock(struct file *filp)
+ int
+ posix_unblock_lock(struct file *filp, struct file_lock *waiter)
+ {
++	struct inode *inode = file_inode(filp);
+ 	int status = 0;
+ 
+-	lock_flocks();
++	spin_lock(&inode->i_lock);
+ 	if (waiter->fl_next)
+ 		__locks_delete_block(waiter);
+ 	else
+ 		status = -ENOENT;
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ 	return status;
+ }
+ 
+@@ -2257,8 +2264,10 @@ static int locks_show(struct seq_file *f, void *v)
+ 
+ 	lock_get_status(f, fl, *((loff_t *)f->private), "");
+ 
+-	list_for_each_entry(bfl, &fl->fl_block, fl_block)
+-		lock_get_status(f, bfl, *((loff_t *)f->private), " ->");
++	list_for_each_entry(bfl, &blocked_list, fl_link) {
++		if (bfl->fl_next == fl)
++			lock_get_status(f, bfl, *((loff_t *)f->private), " ->");
++	}
+ 
+ 	return 0;
+ }
+@@ -2267,7 +2276,7 @@ static void *locks_start(struct seq_file *f, loff_t *pos)
+ {
+ 	loff_t *p = f->private;
+ 
+-	lock_flocks();
++	spin_lock(&file_lock_lock);
+ 	*p = (*pos + 1);
+ 	return seq_list_start(&file_lock_list, *pos);
+ }
+@@ -2281,7 +2290,7 @@ static void *locks_next(struct seq_file *f, void *v, loff_t *pos)
+ 
+ static void locks_stop(struct seq_file *f, void *v)
+ {
+-	unlock_flocks();
++	spin_unlock(&file_lock_lock);
+ }
+ 
+ static const struct seq_operations locks_seq_operations = {
+@@ -2328,7 +2337,8 @@ int lock_may_read(struct inode *inode, loff_t start, unsigned long len)
+ {
+ 	struct file_lock *fl;
+ 	int result = 1;
+-	lock_flocks();
++
++	spin_lock(&inode->i_lock);
+ 	for (fl = inode->i_flock; fl != NULL; fl = fl->fl_next) {
+ 		if (IS_POSIX(fl)) {
+ 			if (fl->fl_type == F_RDLCK)
+@@ -2345,7 +2355,7 @@ int lock_may_read(struct inode *inode, loff_t start, unsigned long len)
+ 		result = 0;
+ 		break;
+ 	}
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ 	return result;
+ }
+ 
+@@ -2368,7 +2378,8 @@ int lock_may_write(struct inode *inode, loff_t start, unsigned long len)
+ {
+ 	struct file_lock *fl;
+ 	int result = 1;
+-	lock_flocks();
++
++	spin_lock(&inode->i_lock);
+ 	for (fl = inode->i_flock; fl != NULL; fl = fl->fl_next) {
+ 		if (IS_POSIX(fl)) {
+ 			if ((fl->fl_end < start) || (fl->fl_start > (start + len)))
+@@ -2383,7 +2394,7 @@ int lock_may_write(struct inode *inode, loff_t start, unsigned long len)
+ 		result = 0;
+ 		break;
+ 	}
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ 	return result;
+ }
+ 
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 57db324..43ee7f9 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -73,20 +73,21 @@ static int nfs_delegation_claim_locks(struct nfs_open_context *ctx, struct nfs4_
+ 	if (inode->i_flock == NULL)
+ 		goto out;
+ 
+-	/* Protect inode->i_flock using the file locks lock */
+-	lock_flocks();
++	/* Protect inode->i_flock using the i_lock */
++	spin_lock(&inode->i_lock);
+ 	for (fl = inode->i_flock; fl != NULL; fl = fl->fl_next) {
+ 		if (!(fl->fl_flags & (FL_POSIX|FL_FLOCK)))
+ 			continue;
+ 		if (nfs_file_open_context(fl->fl_file) != ctx)
+ 			continue;
+-		unlock_flocks();
++		/* FIXME: safe to drop lock here while walking list? */
++		spin_unlock(&inode->i_lock);
+ 		status = nfs4_lock_delegation_recall(fl, state, stateid);
+ 		if (status < 0)
+ 			goto out;
+-		lock_flocks();
++		spin_lock(&inode->i_lock);
+ 	}
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ out:
+ 	return status;
+ }
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 1fab140..ff10b4a 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1373,13 +1373,13 @@ static int nfs4_reclaim_locks(struct nfs4_state *state, const struct nfs4_state_
+ 	/* Guard against delegation returns and new lock/unlock calls */
+ 	down_write(&nfsi->rwsem);
+ 	/* Protect inode->i_flock using the BKL */
+-	lock_flocks();
++	spin_lock(&inode->i_lock);
+ 	for (fl = inode->i_flock; fl != NULL; fl = fl->fl_next) {
+ 		if (!(fl->fl_flags & (FL_POSIX|FL_FLOCK)))
+ 			continue;
+ 		if (nfs_file_open_context(fl->fl_file)->state != state)
+ 			continue;
+-		unlock_flocks();
++		spin_unlock(&inode->i_lock);
+ 		status = ops->recover_lock(state, fl);
+ 		switch (status) {
+ 			case 0:
+@@ -1406,9 +1406,9 @@ static int nfs4_reclaim_locks(struct nfs4_state *state, const struct nfs4_state_
+ 				/* kill_proc(fl->fl_pid, SIGLOST, 1); */
+ 				status = 0;
+ 		}
+-		lock_flocks();
++		spin_lock(&inode->i_lock);
+ 	}
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ out:
+ 	up_write(&nfsi->rwsem);
+ 	return status;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 316ec84..f170518 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2645,13 +2645,13 @@ static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
+ 
+ 	list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
+ 
+-	/* only place dl_time is set. protected by lock_flocks*/
++	/* Only place dl_time is set; protected by i_lock: */
+ 	dp->dl_time = get_seconds();
+ 
+ 	nfsd4_cb_recall(dp);
+ }
+ 
+-/* Called from break_lease() with lock_flocks() held. */
++/* Called from break_lease() with i_lock held. */
+ static void nfsd_break_deleg_cb(struct file_lock *fl)
+ {
+ 	struct nfs4_file *fp = (struct nfs4_file *)fl->fl_owner;
+@@ -4520,7 +4520,7 @@ check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner)
+ 	struct inode *inode = filp->fi_inode;
+ 	int status = 0;
+ 
+-	lock_flocks();
++	spin_lock(&inode->i_lock);
+ 	for (flpp = &inode->i_flock; *flpp != NULL; flpp = &(*flpp)->fl_next) {
+ 		if ((*flpp)->fl_owner == (fl_owner_t)lowner) {
+ 			status = 1;
+@@ -4528,7 +4528,7 @@ check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner)
+ 		}
+ 	}
+ out:
+-	unlock_flocks();
++	spin_unlock(&inode->i_lock);
+ 	return status;
+ }
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index ae377e9..ccb44ea 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1012,8 +1012,6 @@ extern int vfs_setlease(struct file *, long, struct file_lock **);
+ extern int lease_modify(struct file_lock **, int);
+ extern int lock_may_read(struct inode *, loff_t start, unsigned long count);
+ extern int lock_may_write(struct inode *, loff_t start, unsigned long count);
+-extern void lock_flocks(void);
+-extern void unlock_flocks(void);
+ #else /* !CONFIG_FILE_LOCKING */
+ static inline int fcntl_getlk(struct file *file, struct flock __user *user)
+ {
+@@ -1155,15 +1153,6 @@ static inline int lock_may_write(struct inode *inode, loff_t start,
+ {
+ 	return 1;
+ }
+-
+-static inline void lock_flocks(void)
+-{
+-}
+-
+-static inline void unlock_flocks(void)
+-{
+-}
+-
+ #endif /* !CONFIG_FILE_LOCKING */
+ 
+ 
+-- 
+1.7.1
 
