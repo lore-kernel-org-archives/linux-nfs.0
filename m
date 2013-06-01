@@ -1,137 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:11782 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60736 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753380Ab3EJTdn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 May 2013 15:33:43 -0400
-Subject: [PATCH 5/8] FS-Cache: Uninline fscache_object_init() [ver #2]
-To: Trond.Myklebust@netapp.com, torvalds@linux-foundation.org
-From: David Howells <dhowells@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cachefs@redhat.com, linux-kernel@vger.kernel.org
-Date: Fri, 10 May 2013 20:33:39 +0100
-Message-ID: <20130510193339.3045.29012.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20130510193257.3045.77981.stgit@warthog.procyon.org.uk>
-References: <20130510193257.3045.77981.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1755323Ab3FADIL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 May 2013 23:08:11 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
+Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
+        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
+Subject: [PATCH v1 02/11] locks: make generic_add_lease and generic_delete_lease static
+Date: Fri, 31 May 2013 23:07:25 -0400
+Message-Id: <1370056054-25449-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
+References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Uninline fscache_object_init() so as not to expose some of the FS-Cache
-internals to the cache backend.
-
-Signed-off-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
+ fs/locks.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
- fs/fscache/object.c           |   40 ++++++++++++++++++++++++++++++++++++++--
- include/linux/fscache-cache.h |   38 ++------------------------------------
- 2 files changed, 40 insertions(+), 38 deletions(-)
-
-diff --git a/fs/fscache/object.c b/fs/fscache/object.c
-index 50d41c1..0133699 100644
---- a/fs/fscache/object.c
-+++ b/fs/fscache/object.c
-@@ -363,7 +363,7 @@ unsupported_event:
- /*
-  * execute an object
-  */
--void fscache_object_work_func(struct work_struct *work)
-+static void fscache_object_work_func(struct work_struct *work)
- {
- 	struct fscache_object *object =
- 		container_of(work, struct fscache_object, work);
-@@ -379,7 +379,43 @@ void fscache_object_work_func(struct work_struct *work)
- 	clear_bit(FSCACHE_OBJECT_EV_REQUEUE, &object->events);
- 	fscache_put_object(object);
+diff --git a/fs/locks.c b/fs/locks.c
+index 7a02064..e3140b8 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1337,7 +1337,7 @@ int fcntl_getlease(struct file *filp)
+ 	return type;
  }
--EXPORT_SYMBOL(fscache_object_work_func);
-+
-+/**
-+ * fscache_object_init - Initialise a cache object description
-+ * @object: Object description
-+ * @cookie: Cookie object will be attached to
-+ * @cache: Cache in which backing object will be found
-+ *
-+ * Initialise a cache object description to its basic values.
-+ *
-+ * See Documentation/filesystems/caching/backend-api.txt for a complete
-+ * description.
-+ */
-+void fscache_object_init(struct fscache_object *object,
-+			 struct fscache_cookie *cookie,
-+			 struct fscache_cache *cache)
-+{
-+	atomic_inc(&cache->object_count);
-+
-+	object->state = FSCACHE_OBJECT_INIT;
-+	spin_lock_init(&object->lock);
-+	INIT_LIST_HEAD(&object->cache_link);
-+	INIT_HLIST_NODE(&object->cookie_link);
-+	INIT_WORK(&object->work, fscache_object_work_func);
-+	INIT_LIST_HEAD(&object->dependents);
-+	INIT_LIST_HEAD(&object->dep_link);
-+	INIT_LIST_HEAD(&object->pending_ops);
-+	object->n_children = 0;
-+	object->n_ops = object->n_in_progress = object->n_exclusive = 0;
-+	object->events = object->event_mask = 0;
-+	object->flags = 0;
-+	object->store_limit = 0;
-+	object->store_limit_l = 0;
-+	object->cache = cache;
-+	object->cookie = cookie;
-+	object->parent = NULL;
-+}
-+EXPORT_SYMBOL(fscache_object_init);
  
- /*
-  * initialise an object
-diff --git a/include/linux/fscache-cache.h b/include/linux/fscache-cache.h
-index 5dfa0aa..9b9c1de 100644
---- a/include/linux/fscache-cache.h
-+++ b/include/linux/fscache-cache.h
-@@ -426,42 +426,8 @@ extern const char *fscache_object_states[];
- 	(test_bit(FSCACHE_IOERROR, &(obj)->cache->flags) &&	\
- 	 (obj)->state >= FSCACHE_OBJECT_DYING)
+-int generic_add_lease(struct file *filp, long arg, struct file_lock **flp)
++static int generic_add_lease(struct file *filp, long arg, struct file_lock **flp)
+ {
+ 	struct file_lock *fl, **before, **my_before = NULL, *lease;
+ 	struct dentry *dentry = filp->f_path.dentry;
+@@ -1402,7 +1402,7 @@ out:
+ 	return error;
+ }
  
--extern void fscache_object_work_func(struct work_struct *work);
--
--/**
-- * fscache_object_init - Initialise a cache object description
-- * @object: Object description
-- *
-- * Initialise a cache object description to its basic values.
-- *
-- * See Documentation/filesystems/caching/backend-api.txt for a complete
-- * description.
-- */
--static inline
--void fscache_object_init(struct fscache_object *object,
--			 struct fscache_cookie *cookie,
--			 struct fscache_cache *cache)
--{
--	atomic_inc(&cache->object_count);
--
--	object->state = FSCACHE_OBJECT_INIT;
--	spin_lock_init(&object->lock);
--	INIT_LIST_HEAD(&object->cache_link);
--	INIT_HLIST_NODE(&object->cookie_link);
--	INIT_WORK(&object->work, fscache_object_work_func);
--	INIT_LIST_HEAD(&object->dependents);
--	INIT_LIST_HEAD(&object->dep_link);
--	INIT_LIST_HEAD(&object->pending_ops);
--	object->n_children = 0;
--	object->n_ops = object->n_in_progress = object->n_exclusive = 0;
--	object->events = object->event_mask = 0;
--	object->flags = 0;
--	object->store_limit = 0;
--	object->store_limit_l = 0;
--	object->cache = cache;
--	object->cookie = cookie;
--	object->parent = NULL;
--}
-+extern void fscache_object_init(struct fscache_object *, struct fscache_cookie *,
-+				struct fscache_cache *);
- 
- extern void fscache_object_lookup_negative(struct fscache_object *object);
- extern void fscache_obtained_object(struct fscache_object *object);
+-int generic_delete_lease(struct file *filp, struct file_lock **flp)
++static int generic_delete_lease(struct file *filp, struct file_lock **flp)
+ {
+ 	struct file_lock *fl, **before;
+ 	struct dentry *dentry = filp->f_path.dentry;
+-- 
+1.7.1
 
