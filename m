@@ -1,73 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41362 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:59789 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753269Ab3ECVSO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 May 2013 17:18:14 -0400
-Date: Fri, 3 May 2013 17:18:10 -0400
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: long delay when mounting due to SETCLIENTID AUTH_GSS attempts
-Message-ID: <20130503211810.GF5715@fieldses.org>
-References: <20130503132557.2fdf794d@tlielax.poochiereds.net>
- <AE700845-4032-4BEC-817C-97EB08A831E8@oracle.com>
- <20130503142421.19fb3ca6@tlielax.poochiereds.net>
- <1367606034.3556.25.camel@leira.trondhjem.org>
- <20130503144437.3a47e476@tlielax.poochiereds.net>
- <A2E5B3F1-A8F1-4731-A66C-548B9C8FD429@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <A2E5B3F1-A8F1-4731-A66C-548B9C8FD429@oracle.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1755695Ab3FADIL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 May 2013 23:08:11 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
+Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
+        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
+Subject: [PATCH v1 01/11] cifs: use posix_unblock_lock instead of locks_delete_block
+Date: Fri, 31 May 2013 23:07:24 -0400
+Message-Id: <1370056054-25449-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
+References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 03, 2013 at 02:48:59PM -0400, Chuck Lever wrote:
-> We should always use krb5i if a GSS context can be established with
-> our machine cred.  As I said before, SETCLIENTID and
-> GETATTR(fs_locations) really should use an integrity-protecting
-> security flavor no matter what flavor is in effect on the mount points
-> themselves.
+commit 66189be74 (CIFS: Fix VFS lock usage for oplocked files) exported
+the locks_delete_block symbol. There's already an exported helper
+function that provides this capability however, so make cifs use that
+instead and turn locks_delete_block back into a static function.
 
-Can you give an example of a threat that could be avoided by this?
+Note that if fl->fl_next == NULL then this lock has already been through
+locks_delete_block(), so we should be OK to ignore an ENOENT error here
+and simply not retry the lock.
 
-My suspicion is that in most cases an attacker with the ability to
-subvert auth_sys could *also* DOS gssd, and hence force the fallback to
-auth_sys.
+Cc: Pavel Shilovsky <piastryyy@gmail.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/cifs/file.c     |    2 +-
+ fs/locks.c         |    3 +--
+ include/linux/fs.h |    5 -----
+ 3 files changed, 2 insertions(+), 8 deletions(-)
 
-krb5i plus a fallback to auth_sys on failure to authenticate doesn't
-sound to me much more secure than just auth_sys.
+diff --git a/fs/cifs/file.c b/fs/cifs/file.c
+index 48b29d2..44a4f18 100644
+--- a/fs/cifs/file.c
++++ b/fs/cifs/file.c
+@@ -999,7 +999,7 @@ try_again:
+ 		rc = wait_event_interruptible(flock->fl_wait, !flock->fl_next);
+ 		if (!rc)
+ 			goto try_again;
+-		locks_delete_block(flock);
++		posix_unblock_lock(file, flock);
+ 	}
+ 	return rc;
+ }
+diff --git a/fs/locks.c b/fs/locks.c
+index cb424a4..7a02064 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -496,13 +496,12 @@ static void __locks_delete_block(struct file_lock *waiter)
+ 
+ /*
+  */
+-void locks_delete_block(struct file_lock *waiter)
++static void locks_delete_block(struct file_lock *waiter)
+ {
+ 	lock_flocks();
+ 	__locks_delete_block(waiter);
+ 	unlock_flocks();
+ }
+-EXPORT_SYMBOL(locks_delete_block);
+ 
+ /* Insert waiter into blocker's block list.
+  * We use a circular list so that processes can be easily woken up in
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 43db02e..b9d7816 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1006,7 +1006,6 @@ extern int vfs_setlease(struct file *, long, struct file_lock **);
+ extern int lease_modify(struct file_lock **, int);
+ extern int lock_may_read(struct inode *, loff_t start, unsigned long count);
+ extern int lock_may_write(struct inode *, loff_t start, unsigned long count);
+-extern void locks_delete_block(struct file_lock *waiter);
+ extern void lock_flocks(void);
+ extern void unlock_flocks(void);
+ #else /* !CONFIG_FILE_LOCKING */
+@@ -1151,10 +1150,6 @@ static inline int lock_may_write(struct inode *inode, loff_t start,
+ 	return 1;
+ }
+ 
+-static inline void locks_delete_block(struct file_lock *waiter)
+-{
+-}
+-
+ static inline void lock_flocks(void)
+ {
+ }
+-- 
+1.7.1
 
-If we really want much security benefit from krb5i on state operations,
-I think we need to really *require* krb5i.
-
-So I'm inclined towards Jeff's solution: don't do this unless userspace
-somehow affirmatively states that it requires krb5i on state operations.
-
-I agree that we should default to this when we can.  But the way to move
-towards that default is then to get distributions to turn on the new
-module parm (or whatever it is) by default.  As they do so, they can
-also ensure that e.g. gssd is started.
-
---b.
-
-> > Instead of using AUTH_GSS for SETCLIENTID by default, would it make
-> > sense to add a switch (module parm?) that turns it on so that it can be
-> > an opt-in thing rather than doing this by default?
-> 
-> Why add another tunable when we really should just fix the delay?
-> 
-> Besides, if gssd is running and no keytab exists, then the fallback to AUTH_SYS should be fast. Is that not an effective workaround until we address the delay problem?
-> 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
