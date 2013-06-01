@@ -1,103 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f201.google.com ([209.85.161.201]:57372 "EHLO
-	mail-gg0-f201.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753154Ab3EGR50 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 May 2013 13:57:26 -0400
-Received: by mail-gg0-f201.google.com with SMTP id k25so87143ggl.2
-        for <linux-nfs@vger.kernel.org>; Tue, 07 May 2013 10:57:25 -0700 (PDT)
-From: Colin Cross <ccross@android.com>
-To: linux-kernel@vger.kernel.org
-Cc: Pavel Machek <pavel@ucw.cz>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Colin Cross <ccross@android.com>, Oleg Nesterov <oleg@redhat.com>,
-        linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org,
-        netdev@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, Steve French <sfrench@samba.org>,
-        Len Brown <len.brown@intel.com>, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org
-Subject: Re: [PATCH v4 02/16] freezer: add unsafe versions of freezable helpers for CIFS
-Date: Tue,  7 May 2013 10:52:05 -0700
-Message-Id: <1367949125-21809-1-git-send-email-ccross@android.com>
-In-Reply-To: <CAMbhsRQ1i_dFctwjkqjg3=GJdEc8ReEDk=NnEFEXj8u3MaEqDA@mail.gmail.com>
-References: <CAMbhsRQ1i_dFctwjkqjg3=GJdEc8ReEDk=NnEFEXj8u3MaEqDA@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:44485 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754752Ab3FADIL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 May 2013 23:08:11 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
+Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
+        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
+Subject: [PATCH v1 03/11] locks: comment cleanups and clarifications
+Date: Fri, 31 May 2013 23:07:26 -0400
+Message-Id: <1370056054-25449-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
+References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-CIFS calls wait_event_freezekillable_unsafe with a VFS lock held,
-which is unsafe and will cause lockdep warnings when 6aa9707
-"lockdep: check that no locks held at freeze time" is reapplied
-(it was reverted in dbf520a).  CIFS shouldn't be doing this, but
-it has long-running syscalls that must hold a lock but also
-shouldn't block suspend.  Until CIFS freeze handling is rewritten
-to use a signal to exit out of the critical section, add a new
-wait_event_freezekillable_unsafe helper that will not run the
-lockdep test when 6aa9707 is reapplied, and call it from CIFS.
-
-In practice the likley result of holding the lock while freezing
-is that a second task blocked on the lock will never freeze,
-aborting suspend, but it is possible to manufacture a case using
-the cgroup freezer, the lock, and the suspend freezer to create
-a deadlock.  Silencing the lockdep warning here will allow
-problems to be found in other drivers that may have a more
-serious deadlock risk, and prevent new problems from being added.
-
-Acked-by: Pavel Machek <pavel@ucw.cz>
-Signed-off-by: Colin Cross <ccross@android.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
-v4:
-  Corrected to include CIFS wait_for_response hunk.
-  The rest of this series is still at v3.
+ fs/locks.c         |   24 +++++++++++++++++++-----
+ include/linux/fs.h |    6 ++++++
+ 2 files changed, 25 insertions(+), 5 deletions(-)
 
- fs/cifs/transport.c     |  2 +-
- include/linux/freezer.h | 13 +++++++++++++
- 2 files changed, 14 insertions(+), 1 deletion(-)
-
-diff --git a/fs/cifs/transport.c b/fs/cifs/transport.c
-index 1a52868..e7f22f8 100644
---- a/fs/cifs/transport.c
-+++ b/fs/cifs/transport.c
-@@ -452,7 +452,7 @@ wait_for_response(struct TCP_Server_Info *server, struct mid_q_entry *midQ)
- {
- 	int error;
+diff --git a/fs/locks.c b/fs/locks.c
+index e3140b8..a7d2253 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -150,6 +150,16 @@ static int target_leasetype(struct file_lock *fl)
+ int leases_enable = 1;
+ int lease_break_time = 45;
  
--	error = wait_event_freezekillable(server->response_q,
-+	error = wait_event_freezekillable_unsafe(server->response_q,
- 				    midQ->mid_state != MID_REQUEST_SUBMITTED);
- 	if (error < 0)
- 		return -ERESTARTSYS;
-diff --git a/include/linux/freezer.h b/include/linux/freezer.h
-index 5b31e21c..d3c038e 100644
---- a/include/linux/freezer.h
-+++ b/include/linux/freezer.h
-@@ -212,6 +212,16 @@ static inline bool freezer_should_skip(struct task_struct *p)
- 	__retval;							\
- })
++/*
++ * The i_flock list is ordered by:
++ *
++ * 1) lock type -- FL_LEASEs first, then FL_FLOCK, and finally FL_POSIX
++ * 2) lock owner
++ * 3) lock range start
++ * 4) lock range end
++ *
++ * Obviously, the last two criteria only matter for POSIX locks.
++ */
+ #define for_each_lock(inode, lockp) \
+ 	for (lockp = &inode->i_flock; *lockp != NULL; lockp = &(*lockp)->fl_next)
  
-+/* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
-+#define wait_event_freezekillable_unsafe(wq, condition)			\
-+({									\
-+	int __retval;							\
-+	freezer_do_not_count();						\
-+	__retval = wait_event_killable(wq, (condition));		\
-+	freezer_count_unsafe();						\
-+	__retval;							\
-+})
-+
- #define wait_event_freezable(wq, condition)				\
- ({									\
- 	int __retval;							\
-@@ -277,6 +287,9 @@ static inline void set_freezable(void) {}
- #define wait_event_freezekillable(wq, condition)		\
- 		wait_event_killable(wq, condition)
+@@ -806,6 +816,11 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 	}
  
-+#define wait_event_freezekillable_unsafe(wq, condition)			\
-+		wait_event_killable(wq, condition)
-+
- #endif /* !CONFIG_FREEZER */
+ 	lock_flocks();
++	/*
++	 * New lock request. Walk all POSIX locks and look for conflicts. If
++	 * there are any, either return -EAGAIN or put the request on the
++	 * blocker's list of waiters.
++	 */
+ 	if (request->fl_type != F_UNLCK) {
+ 		for_each_lock(inode, before) {
+ 			fl = *before;
+@@ -844,7 +859,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 		before = &fl->fl_next;
+ 	}
  
- #endif	/* FREEZER_H_INCLUDED */
+-	/* Process locks with this owner.  */
++	/* Process locks with this owner. */
+ 	while ((fl = *before) && posix_same_owner(request, fl)) {
+ 		/* Detect adjacent or overlapping regions (if same lock type)
+ 		 */
+@@ -930,10 +945,9 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 	}
+ 
+ 	/*
+-	 * The above code only modifies existing locks in case of
+-	 * merging or replacing.  If new lock(s) need to be inserted
+-	 * all modifications are done bellow this, so it's safe yet to
+-	 * bail out.
++	 * The above code only modifies existing locks in case of merging or
++	 * replacing. If new lock(s) need to be inserted all modifications are
++	 * done below this, so it's safe yet to bail out.
+ 	 */
+ 	error = -ENOLCK; /* "no luck" */
+ 	if (right && left == right && !new_fl2)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index b9d7816..ae377e9 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -926,6 +926,12 @@ int locks_in_grace(struct net *);
+ /* that will die - we need it for nfs_lock_info */
+ #include <linux/nfs_fs_i.h>
+ 
++/*
++ * struct file_lock represents a generic "file lock". It's used to represent
++ * POSIX byte range locks, BSD (flock) locks, and leases. It's important to
++ * note that the same struct is used to represent both a request for a lock and
++ * the lock itself, but the same object is never used for both.
++ */
+ struct file_lock {
+ 	struct file_lock *fl_next;	/* singly linked list for this inode  */
+ 	struct list_head fl_link;	/* doubly linked list of all locks */
 -- 
-1.8.2.1
+1.7.1
 
