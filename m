@@ -1,208 +1,181 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f170.google.com ([209.85.160.170]:61041 "EHLO
-	mail-gh0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752669Ab3EJLKJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 May 2013 07:10:09 -0400
-Received: by mail-gh0-f170.google.com with SMTP id z10so873165ghb.15
-        for <linux-nfs@vger.kernel.org>; Fri, 10 May 2013 04:10:08 -0700 (PDT)
-Date: Fri, 10 May 2013 07:09:59 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Pavel Shilovsky <piastry@etersoft.ru>
-Cc: linux-kernel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        wine-devel@winehq.org
-Subject: Re: [PATCH v6 2/7] VFS: Add O_DENYDELETE support for VFS
-Message-ID: <20130510070959.0af3e35a@tlielax.poochiereds.net>
-In-Reply-To: <1366977861-27678-3-git-send-email-piastry@etersoft.ru>
-References: <1366977861-27678-1-git-send-email-piastry@etersoft.ru>
-	<1366977861-27678-3-git-send-email-piastry@etersoft.ru>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mx1.redhat.com ([209.132.183.28]:41798 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757818Ab3FADIN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 May 2013 23:08:13 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
+Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
+        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
+Subject: [PATCH v1 08/11] locks: convert fl_link to a hlist_node
+Date: Fri, 31 May 2013 23:07:31 -0400
+Message-Id: <1370056054-25449-9-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
+References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 26 Apr 2013 16:04:16 +0400
-Pavel Shilovsky <piastry@etersoft.ru> wrote:
+Testing has shown that iterating over the blocked_list for deadlock
+detection turns out to be a bottleneck. In order to alleviate that,
+begin the process of turning it into a hashtable. We start by turning
+the fl_link into a hlist_node and the global lists into hlists. A later
+patch will do the conversion of the blocked_list to a hashtable.
 
-> Introduce new LOCK_DELETE flock flag that is suggested to be used
-> internally only to map O_DENYDELETE open flag:
-> 
-> !O_DENYDELETE -> LOCK_DELETE | LOCK_MAND.
-> 
-> Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
-> ---
->  fs/locks.c                       | 53 +++++++++++++++++++++++++++++++++-------
->  fs/namei.c                       |  3 +++
->  include/linux/fs.h               |  6 +++++
->  include/uapi/asm-generic/fcntl.h |  1 +
->  4 files changed, 54 insertions(+), 9 deletions(-)
-> 
-> diff --git a/fs/locks.c b/fs/locks.c
-> index dbc5557..1cc68a9 100644
-> --- a/fs/locks.c
-> +++ b/fs/locks.c
-> @@ -269,7 +269,7 @@ EXPORT_SYMBOL(locks_copy_lock);
->  
->  static inline int flock_translate_cmd(int cmd) {
->  	if (cmd & LOCK_MAND)
-> -		return cmd & (LOCK_MAND | LOCK_RW);
-> +		return cmd & (LOCK_MAND | LOCK_RW | LOCK_DELETE);
->  	switch (cmd) {
->  	case LOCK_SH:
->  		return F_RDLCK;
-> @@ -614,6 +614,8 @@ deny_flags_to_cmd(unsigned int flags)
->  		cmd |= LOCK_READ;
->  	if (!(flags & O_DENYWRITE))
->  		cmd |= LOCK_WRITE;
-> +	if (!(flags & O_DENYDELETE))
-> +		cmd |= LOCK_DELETE;
->  
->  	return cmd;
->  }
-> @@ -836,6 +838,31 @@ out:
->  	return error;
->  }
->  
-> +int
-> +sharelock_may_delete(struct dentry *dentry)
-> +{
-> +	struct file_lock **before;
-> +	int rc = 0;
-> +
-> +	if (!IS_SHARELOCK(dentry->d_inode))
-> +		return rc;
-> +
-> +	lock_flocks();
-> +	for_each_lock(dentry->d_inode, before) {
-> +		struct file_lock *fl = *before;
-> +		if (IS_POSIX(fl))
-> +			break;
-> +		if (IS_LEASE(fl))
-> +			continue;
-> +		if (fl->fl_type & LOCK_DELETE)
-> +			continue;
-> +		rc = 1;
-> +		break;
-> +	}
-> +	unlock_flocks();
-> +	return rc;
-> +}
-> +
->  /*
->   * Determine if a file is allowed to be opened with specified access and share
->   * modes. Lock the file and return 0 if checks passed, otherwise return
-> @@ -850,10 +877,6 @@ sharelock_lock_file(struct file *filp)
->  	if (!IS_SHARELOCK(filp->f_path.dentry->d_inode))
->  		return error;
->  
-> -	/* Disable O_DENYDELETE support for now */
-> -	if (filp->f_flags & O_DENYDELETE)
-> -		return -EINVAL;
-> -
->  	error = flock_make_lock(filp, &lock, deny_flags_to_cmd(filp->f_flags));
->  	if (error)
->  		return error;
-> @@ -1717,6 +1740,12 @@ SYSCALL_DEFINE2(flock, unsigned int, fd, unsigned int, cmd)
->  	if (!f.file)
->  		goto out;
->  
-> +	/* LOCK_DELETE is defined to be translated from O_DENYDELETE only */
-> +	if (cmd & LOCK_DELETE) {
-> +		error = -EINVAL;
-> +		goto out;
-> +	}
-> +
->  	can_sleep = !(cmd & LOCK_NB);
->  	cmd &= ~LOCK_NB;
->  	unlock = (cmd == LOCK_UN);
-> @@ -2261,10 +2290,16 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
->  		seq_printf(f, "UNKNOWN UNKNOWN  ");
->  	}
->  	if (fl->fl_type & LOCK_MAND) {
-> -		seq_printf(f, "%s ",
-> -			       (fl->fl_type & LOCK_READ)
-> -			       ? (fl->fl_type & LOCK_WRITE) ? "RW   " : "READ "
-> -			       : (fl->fl_type & LOCK_WRITE) ? "WRITE" : "NONE ");
-> +		if (fl->fl_type & LOCK_DELETE)
-> +			seq_printf(f, "%s ",
-> +				(fl->fl_type & LOCK_READ) ?
-> +				(fl->fl_type & LOCK_WRITE) ? "RWDEL" : "RDDEL" :
-> +				(fl->fl_type & LOCK_WRITE) ? "WRDEL" : "DEL  ");
-> +		else
-> +			seq_printf(f, "%s ",
-> +				(fl->fl_type & LOCK_READ) ?
-> +				(fl->fl_type & LOCK_WRITE) ? "RW   " : "READ " :
-> +				(fl->fl_type & LOCK_WRITE) ? "WRITE" : "NONE ");
->  	} else {
->  		seq_printf(f, "%s ",
->  			       (lease_breaking(fl))
-> diff --git a/fs/namei.c b/fs/namei.c
-> index dd236fe..a404f7d 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -2220,6 +2220,7 @@ static inline int check_sticky(struct inode *dir, struct inode *inode)
->   *  9. We can't remove a root or mountpoint.
->   * 10. We don't allow removal of NFS sillyrenamed files; it's handled by
->   *     nfs_async_unlink().
-> + * 11. We can't do it if victim is locked by O_DENYDELETE sharelock.
->   */
->  static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
->  {
-> @@ -2250,6 +2251,8 @@ static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
->  		return -ENOENT;
->  	if (victim->d_flags & DCACHE_NFSFS_RENAMED)
->  		return -EBUSY;
-> +	if (sharelock_may_delete(victim))
-> +		return -ESHAREDENIED;
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/locks.c         |   32 ++++++++++++++++----------------
+ include/linux/fs.h |    2 +-
+ 2 files changed, 17 insertions(+), 17 deletions(-)
 
-
-Is there a potential race here?
-
-You're holding the parent's i_mutex when setting a lock on this file,
-but you're not holding it when you test for it here. So it seems
-possible you could end up granting a O_DENYDELETE open on a file that
-is in the process of being deleted from the namespace.
-
->  	return 0;
->  }
->  
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 24066d2..afd56b1 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -1006,6 +1006,7 @@ extern int lock_may_read(struct inode *, loff_t start, unsigned long count);
->  extern int lock_may_write(struct inode *, loff_t start, unsigned long count);
->  extern void locks_delete_block(struct file_lock *waiter);
->  extern int sharelock_lock_file(struct file *);
-> +extern int sharelock_may_delete(struct dentry *);
->  extern void lock_flocks(void);
->  extern void unlock_flocks(void);
->  #else /* !CONFIG_FILE_LOCKING */
-> @@ -1159,6 +1160,11 @@ static inline int sharelock_lock_file(struct file *filp)
->  	return 0;
->  }
->  
-> +static inline int sharelock_may_delete(struct dentry *dentry)
-> +{
-> +	return 0;
-> +}
-> +
->  static inline void lock_flocks(void)
->  {
->  }
-> diff --git a/include/uapi/asm-generic/fcntl.h b/include/uapi/asm-generic/fcntl.h
-> index 5ac0d49..a3e6349 100644
-> --- a/include/uapi/asm-generic/fcntl.h
-> +++ b/include/uapi/asm-generic/fcntl.h
-> @@ -167,6 +167,7 @@ struct f_owner_ex {
->  				   blocking */
->  #define LOCK_UN		8	/* remove lock */
->  
-> +#define LOCK_DELETE	16	/* which allows to delete a file */
->  #define LOCK_MAND	32	/* This is a mandatory flock ... */
->  #define LOCK_READ	64	/* which allows concurrent read operations */
->  #define LOCK_WRITE	128	/* which allows concurrent write operations */
-
-
+diff --git a/fs/locks.c b/fs/locks.c
+index fc35b9e..5ed056b 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -163,8 +163,8 @@ int lease_break_time = 45;
+ #define for_each_lock(inode, lockp) \
+ 	for (lockp = &inode->i_flock; *lockp != NULL; lockp = &(*lockp)->fl_next)
+ 
+-static LIST_HEAD(file_lock_list);
+-static LIST_HEAD(blocked_list);
++static HLIST_HEAD(file_lock_list);
++static HLIST_HEAD(blocked_list);
+ 
+ /* Protects the two list heads above */
+ static DEFINE_SPINLOCK(file_lock_lock);
+@@ -173,7 +173,7 @@ static struct kmem_cache *filelock_cache __read_mostly;
+ 
+ static void locks_init_lock_heads(struct file_lock *fl)
+ {
+-	INIT_LIST_HEAD(&fl->fl_link);
++	INIT_HLIST_NODE(&fl->fl_link);
+ 	INIT_LIST_HEAD(&fl->fl_block);
+ 	init_waitqueue_head(&fl->fl_wait);
+ }
+@@ -207,7 +207,7 @@ void locks_free_lock(struct file_lock *fl)
+ {
+ 	BUG_ON(waitqueue_active(&fl->fl_wait));
+ 	BUG_ON(!list_empty(&fl->fl_block));
+-	BUG_ON(!list_empty(&fl->fl_link));
++	BUG_ON(!hlist_unhashed(&fl->fl_link));
+ 
+ 	locks_release_private(fl);
+ 	kmem_cache_free(filelock_cache, fl);
+@@ -486,7 +486,7 @@ static inline void
+ locks_insert_global_blocked(struct file_lock *waiter)
+ {
+ 	spin_lock(&file_lock_lock);
+-	list_add(&waiter->fl_link, &blocked_list);
++	hlist_add_head(&waiter->fl_link, &blocked_list);
+ 	spin_unlock(&file_lock_lock);
+ }
+ 
+@@ -494,7 +494,7 @@ static inline void
+ locks_delete_global_blocked(struct file_lock *waiter)
+ {
+ 	spin_lock(&file_lock_lock);
+-	list_del_init(&waiter->fl_link);
++	hlist_del_init(&waiter->fl_link);
+ 	spin_unlock(&file_lock_lock);
+ }
+ 
+@@ -502,7 +502,7 @@ static inline void
+ locks_insert_global_locks(struct file_lock *waiter)
+ {
+ 	spin_lock(&file_lock_lock);
+-	list_add_tail(&waiter->fl_link, &file_lock_list);
++	hlist_add_head(&waiter->fl_link, &file_lock_list);
+ 	spin_unlock(&file_lock_lock);
+ }
+ 
+@@ -510,7 +510,7 @@ static inline void
+ locks_delete_global_locks(struct file_lock *waiter)
+ {
+ 	spin_lock(&file_lock_lock);
+-	list_del_init(&waiter->fl_link);
++	hlist_del_init(&waiter->fl_link);
+ 	spin_unlock(&file_lock_lock);
+ }
+ 
+@@ -705,7 +705,7 @@ static struct file_lock *what_owner_is_waiting_for(struct file_lock *block_fl)
+ {
+ 	struct file_lock *fl, *ret = NULL;
+ 
+-	list_for_each_entry(fl, &blocked_list, fl_link) {
++	hlist_for_each_entry(fl, &blocked_list, fl_link) {
+ 		if (posix_same_owner(fl, block_fl)) {
+ 			ret = fl->fl_next;
+ 			if (likely(ret))
+@@ -867,7 +867,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 				goto out;
+ 			error = FILE_LOCK_DEFERRED;
+ 			locks_insert_block(fl, request);
+-			if (list_empty(&request->fl_link))
++			if (hlist_unhashed(&request->fl_link))
+ 				locks_insert_global_blocked(request);
+ 			goto out;
+   		}
+@@ -882,10 +882,10 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 	 * Now that we know the request is no longer blocked, we can take it
+ 	 * off the global list. Some callers send down partially initialized
+ 	 * requests, so we only do this if FL_SLEEP is set. Also, avoid taking
+-	 * the lock if the list is empty, as that indicates a request that
++	 * the lock if the hlist is unhashed, as that indicates a request that
+ 	 * never blocked.
+ 	 */
+-	if ((request->fl_flags & FL_SLEEP) && !list_empty(&request->fl_link))
++	if ((request->fl_flags & FL_SLEEP) && !hlist_unhashed(&request->fl_link))
+ 		locks_delete_global_blocked(request);
+ 
+ 	/*
+@@ -2277,11 +2277,11 @@ static int locks_show(struct seq_file *f, void *v)
+ {
+ 	struct file_lock *fl, *bfl;
+ 
+-	fl = list_entry(v, struct file_lock, fl_link);
++	fl = hlist_entry(v, struct file_lock, fl_link);
+ 
+ 	lock_get_status(f, fl, *((loff_t *)f->private), "");
+ 
+-	list_for_each_entry(bfl, &blocked_list, fl_link) {
++	hlist_for_each_entry(bfl, &blocked_list, fl_link) {
+ 		if (bfl->fl_next == fl)
+ 			lock_get_status(f, bfl, *((loff_t *)f->private), " ->");
+ 	}
+@@ -2295,14 +2295,14 @@ static void *locks_start(struct seq_file *f, loff_t *pos)
+ 
+ 	spin_lock(&file_lock_lock);
+ 	*p = (*pos + 1);
+-	return seq_list_start(&file_lock_list, *pos);
++	return seq_hlist_start(&file_lock_list, *pos);
+ }
+ 
+ static void *locks_next(struct seq_file *f, void *v, loff_t *pos)
+ {
+ 	loff_t *p = f->private;
+ 	++*p;
+-	return seq_list_next(v, &file_lock_list, pos);
++	return seq_hlist_next(v, &file_lock_list, pos);
+ }
+ 
+ static void locks_stop(struct seq_file *f, void *v)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index ccb44ea..07a009e 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -934,7 +934,7 @@ int locks_in_grace(struct net *);
+  */
+ struct file_lock {
+ 	struct file_lock *fl_next;	/* singly linked list for this inode  */
+-	struct list_head fl_link;	/* doubly linked list of all locks */
++	struct hlist_node fl_link;	/* node in global lists */
+ 	struct list_head fl_block;	/* circular list of blocked processes */
+ 	fl_owner_t fl_owner;
+ 	unsigned int fl_flags;
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+1.7.1
+
