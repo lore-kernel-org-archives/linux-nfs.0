@@ -1,64 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35988 "EHLO fieldses.org"
+Received: from mga11.intel.com ([192.55.52.93]:59141 "EHLO mga11.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752362Ab3FMPVM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Jun 2013 11:21:12 -0400
-Date: Thu, 13 Jun 2013 11:20:36 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, dhowells@redhat.com,
-        sage@inktank.com, smfrench@gmail.com, swhiteho@redhat.com,
-        Trond.Myklebust@netapp.com, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        piastryyy@gmail.com
-Subject: Re: [PATCH v2 12/14] locks: give the blocked_hash its own spinlock
-Message-ID: <20130613152036.GC20666@fieldses.org>
-References: <1370948948-31784-1-git-send-email-jlayton@redhat.com>
- <1370948948-31784-13-git-send-email-jlayton@redhat.com>
- <20130613150247.GB20666@fieldses.org>
- <20130613111844.59421622@corrin.poochiereds.net>
+	id S1756631Ab3FCB7f convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 2 Jun 2013 21:59:35 -0400
+From: "Yong, Fan" <fan.yong@intel.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: "Dilger, Andreas" <andreas.dilger@intel.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Steve Dickson <steved@redhat.com>,
+        "Peng Tao (bergwolf@gmail.com)" <bergwolf@gmail.com>
+Subject: RE: [PATCH] nfs: support 64-bit root inode number in NFS FSID
+Date: Mon, 3 Jun 2013 01:59:34 +0000
+Message-ID: <7FB055E0B36B6F4EB93E637E0640A56F5FBF18D4@FMSMSX114.amr.corp.intel.com>
+References: <CDC2ABAC.3341C%andreas.dilger@intel.com>
+	 <CA+a=Yy4CQ7zG48dGOVjh8YBv0e+X1Gk4RxpDzdR4vM8JmqossQ@mail.gmail.com>
+ <1369313382.3764.2.camel@leira.trondhjem.org>
+In-Reply-To: <1369313382.3764.2.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130613111844.59421622@corrin.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 13, 2013 at 11:18:44AM -0400, Jeff Layton wrote:
-> On Thu, 13 Jun 2013 11:02:47 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Tue, Jun 11, 2013 at 07:09:06AM -0400, Jeff Layton wrote:
-> > > There's no reason we have to protect the blocked_hash and file_lock_list
-> > > with the same spinlock. With the tests I have, breaking it in two gives
-> > > a barely measurable performance benefit, but it seems reasonable to make
-> > > this locking as granular as possible.
-> > 
-> > Out of curiosity...  In the typical case when adding/removing a lock,
-> > aren't both lists being modified in rapid succession?
-> > 
-> > I wonder if it would be better to instead stick with one lock and take
-> > care to acquire it only once to cover both manipulations.
-> > 
-> > --b.
-> > 
-> 
-> That's not really the case...
-> 
-> Typically, when doing a call into __posix_lock_file with FL_SLEEP set,
-> we either end up blocking on the lock or acquiring it. In either case,
-> we'll only end up taking one of the global spinlocks. The reason for
-> this is that blocker is what dequeues a waiter from the blocked_hash
-> before waking it up (in locks_wake_up_posix_blocks).
-> 
-> Also, while this patch description doesn't spell it out, we require a
-> truly global lock for deadlock detection. In a later patch though, I
-> convert the file_lock_lock to a per-cpu spinlock. So we really do need
-> to separate the locks here in order to make the per-cpu file_lock_list
-> worthwhile.
+Update the patch as suggested.
 
-Oh, right, got it!
+--
+Cheers,
+Nasf
 
---b.
+
+
+-----Original Message-----
+From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com] 
+Sent: Thursday, May 23, 2013 8:50 PM
+To: Peng Tao
+Cc: Dilger, Andreas; J. Bruce Fields; linux-nfs@vger.kernel.org; Yong, Fan; Steve Dickson
+Subject: Re: [PATCH] nfs: support 64-bit root inode number in NFS FSID
+
+On Thu, 2013-05-23 at 16:12 +0800, Peng Tao wrote:
+> [nfs-utils patch needs to be sent to Steve Dickson (CC'ed)]
+> 
+> On Thu, May 23, 2013 at 7:06 AM, Dilger, Andreas 
+> <andreas.dilger@intel.com> wrote:
+> > When exporting a filesystem via NFS, it can generate several kinds 
+> > of NFS filesystem IDs. For most of cases, it uses a 32-bit inode 
+> > number in the NFS FSID, but this does not work on a filesystem using 
+> > a 64-bit root inode number.
+> >
+> > In kernel space, NFS can generate/use NFS FSID with a 64-bit inode 
+> > number for the "FSID_UUID16_INUM" type. Unfortunately, while the 
+> > user space nfs-utils decode the 64-bit inode number from the FSID 
+> > correctly, it is truncated when storing it in "struct parsed_fsid".
+> > Expand the "struct parsed_fsid" inode field to store the full 64-bit 
+> > root inode number.
+> >
+> > Intel-bug-id: LU-2904
+> > Signed-off-by: Fan Yong <fan.yong@intel.com>
+> > Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
+> > ---
+> >  utils/mountd/cache.c |    2 +-
+> >  1 files changed, 1 insertions(+), 1 deletions(-)
+> >
+> > diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c index 
+> > 517aa62..a7212e7 100644
+> > --- a/utils/mountd/cache.c
+> > +++ b/utils/mountd/cache.c
+> > @@ -388,7 +388,7 @@ struct parsed_fsid {
+> >         int fsidtype;
+> >         /* We could use a union for this, but it would be more
+> >          * complicated; why bother? */
+> > -       unsigned int inode;
+> > +       unsigned long long inode; /* We need 64-bits ino# */
+> >         unsigned int minor;
+> >         unsigned int major;
+> >         unsigned int fsidnum;
+> > --1.7.1
+> >
+> > Patch is also attached separately, since it will likely be butchered 
+> > by this email client.
+> >
+> >
+> > Cheers, Andreas
+> > --
+> > Andreas Dilger
+
+Why not just specify a uint64_t size then?
+
+--
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
