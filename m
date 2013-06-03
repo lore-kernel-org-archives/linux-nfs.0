@@ -1,84 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f173.google.com ([209.85.214.173]:57362 "EHLO
-	mail-ob0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752309Ab3FZOgJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jun 2013 10:36:09 -0400
-Received: by mail-ob0-f173.google.com with SMTP id wc20so13578796obb.18
-        for <linux-nfs@vger.kernel.org>; Wed, 26 Jun 2013 07:36:09 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] nfs: make nfs_select_flavor take a list of authflavors and a length
-Date: Wed, 26 Jun 2013 10:36:02 -0400
-Message-Id: <1372257363-28148-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1372257363-28148-1-git-send-email-jlayton@redhat.com>
-References: <1372257363-28148-1-git-send-email-jlayton@redhat.com>
+Received: from cantor2.suse.de ([195.135.220.15]:37554 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756893Ab3FCCXa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 2 Jun 2013 22:23:30 -0400
+Date: Mon, 3 Jun 2013 12:23:19 +1000
+From: NeilBrown <neilb@suse.de>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/3] Various gssd fixes including machine-credential
+ issue.
+Message-ID: <20130603122319.47f4e0dd@notabene.brown>
+In-Reply-To: <A2E2CEA9-4F2B-4A3F-8661-36D1E6288B0F@oracle.com>
+References: <20130603005219.20080.1927.stgit@notabene.brown>
+	<A2E2CEA9-4F2B-4A3F-8661-36D1E6288B0F@oracle.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/iccD9rKnO9FLhyNFzgb9sta"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We don't actually need a nfs_mount_request structure here, and by
-doing this we can call this function outside of nfs_request_mount().
+--Sig_/iccD9rKnO9FLhyNFzgb9sta
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Cc: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/super.c | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+On Sun, 2 Jun 2013 22:01:50 -0400 Chuck Lever <chuck.lever@oracle.com> wrot=
+e:
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 2d7525f..5538bcc 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1614,9 +1614,9 @@ out_security_failure:
-  * Returns 0 on success, -EACCES on failure.
-  */
- static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
--			      struct nfs_mount_request *request)
-+			unsigned int count, rpc_authflavor_t *server_authlist)
- {
--	unsigned int i, count = *(request->auth_flav_len);
-+	unsigned int i;
- 	rpc_authflavor_t flavor;
- 
- 	/*
-@@ -1642,8 +1642,8 @@ static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
- 	 */
- 	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR) {
- 		for (i = 0; i < count; i++) {
--			if (args->auth_flavors[0] == request->auth_flavs[i] ||
--			    request->auth_flavs[i] == RPC_AUTH_NULL)
-+			if (args->auth_flavors[0] == server_authlist[i] ||
-+			    server_authlist[i] == RPC_AUTH_NULL)
- 				goto out;
- 		}
- 		dfprintk(MOUNT, "NFS: auth flavor %d not supported by server\n",
-@@ -1659,7 +1659,7 @@ static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
- 	for (i = 0; i < count; i++) {
- 		struct rpcsec_gss_info info;
- 
--		flavor = request->auth_flavs[i];
-+		flavor = server_authlist[i];
- 		switch (flavor) {
- 		case RPC_AUTH_UNIX:
- 			goto out_set;
-@@ -1676,7 +1676,7 @@ static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
- 	 * if it does, use the default flavor.
- 	 */
- 	for (i = 0; i < count; i++) {
--		if (request->auth_flavs[i] == RPC_AUTH_NULL)
-+		if (server_authlist[i] == RPC_AUTH_NULL)
- 			goto out_default;
- 	}
- 
-@@ -1756,7 +1756,7 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
- 		return status;
- 	}
- 
--	return nfs_select_flavor(args, &request);
-+	return nfs_select_flavor(args, server_authlist_len, server_authlist);
- }
- 
- struct dentry *nfs_try_mount(int flags, const char *dev_name,
--- 
-1.8.1.4
+>=20
+> On Jun 2, 2013, at 9:00 PM, Neil Brown <neilb@suse.de> wrote:
+>=20
+> > As you probably know, since 3.7 (I think) Linux NFS has explicitly
+> > asked for machine credentials for certain requests rather than asking
+> > for root credentials as is previously did.
+> > This causes a regression for people who don't have any machine
+> > credentials configured and use "gssd -n".
+> >=20
+> > I gather this was discussed on the mailing list earlier this year but
+> > not resolved.
+>=20
+> It's resolved in 3.10-rc.
+>=20
+> The kernel will attempt to use krb5i for lease management operations.  If=
+ that fails because there is no keytab available, it falls back to using AU=
+TH_SYS.
 
+And if the server refuses to accept AUTH_SYS?
+
+I guess this is commit 79d852bf5e7691dc7 ??  It seems to say that the server
+should always accept AUTH_SYS ... is that right?
+
+That commit isn't tagged for -stable.
+So do we still need to make it work for 3.7,3.8,3.9 users?
+
+Thanks,
+NeilBrown
+
+>=20
+>=20
+> > I would like to re-awaken the issue and offer a resolution (which has
+> > been tested and found effective by a customer).
+> >=20
+> > Hence these three patches.  The first two are minor issues that I
+> > stumbled over while trying to understand the problem and are not
+> > critical but probably should be fixed.
+> >=20
+> > The third addresses the above mentioned issue.  It introduces a
+> > variable "machine_uses_root_credentials" which is similar to the
+> > current "root_uses_machine_credentials".  It also adds a "-N" flag to
+> > set this variable.
+> >=20
+> > I'm not certain what the defaults should be.  For backward
+> > compatibility it would be best if '-n' set the this new variable as
+> > well as clearing the old one, but then I'm not sure what exactly -N
+> > should do.
+> >=20
+> > Comments welcome.
+> >=20
+> > Thanks,
+> > NeilBrown
+> >=20
+> >=20
+> >=20
+> > ---
+> >=20
+> > Neil Brown (3):
+> >      krb5_utils: remove redundant array size.
+> >      krb5_util: don't give up on machine credential if hostname not ava=
+ilable.
+> >      gssd: add -N option to use root credentials as machine credentials.
+> >=20
+> >=20
+> > utils/gssd/gssd.c      |    9 ++++++---
+> > utils/gssd/gssd.h      |    1 +
+> > utils/gssd/gssd.man    |   13 ++++++++++++-
+> > utils/gssd/gssd_proc.c |   12 +++++++-----
+> > utils/gssd/krb5_util.c |   10 +++++++---
+> > 5 files changed, 33 insertions(+), 12 deletions(-)
+> >=20
+> > --=20
+> > Signature
+> >=20
+>=20
+
+
+--Sig_/iccD9rKnO9FLhyNFzgb9sta
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUav+Fznsnt1WYoG5AQKbcQ/+Mpwd0vDOQyI/tRQUL2q1YPlqzWD1v30k
+t1dlY5wlrL9QB3TaKjUjCvKK3Cm6QqHYKlu7ILElTxKEXDAXeT9k3ue0R35kxUzQ
+UyDJsiMkPZS1Jd92GLwRgHZXi/w55YrFqCQ1iDMfqQM9FHUwXciNhcmrJFEttgjr
+74W3COeDUt54gENTs23v7Y4lARPqBQbJV6fTlaRHwYXVr5EUtghJkLWUaciPnW+0
+og6eqCsUhdcUinyrhG+74V0Afe29NouiZASncVs6ao2rDfzZyGZkN37PVOGfxrjv
+lBhvMvZcPbu/Q3wrBSSbCdBZO4wl28iBwCSxaZvjes0rFkpDPgvsaPqCloASBMOT
+0Jby0VK3GKwR5OebN/XKzlBa9oZkHVOMJFsyCWYLQuBceThuZNm4EEg26tXBhbck
+xLLWPLkbn/AXxPOo+3q3y58gUcGIGQldFHEz5sItTgkSPV14uv8+uhawaGIxREAE
+cqv75DEHdcaJxPv4dYbYHIzB/yb5JY1gHG9UpOHf4ARhdQOennptOPAo58zMrhkC
+UdBTzKc6YJZaOP/cXAI6Gs3rqwGpQLVkPJZNW0g0yvP9e1Q2lkzdPe3TDpQnIABT
+ulSWEB0CiGR7BK5GkVjWrrenu3tuLZQL7Fy3EOcDw2ThPMpdswOfAhhsJvMRmkko
+5b6YMxzYLgM=
+=PnUA
+-----END PGP SIGNATURE-----
+
+--Sig_/iccD9rKnO9FLhyNFzgb9sta--
