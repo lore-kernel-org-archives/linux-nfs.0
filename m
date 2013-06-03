@@ -1,83 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40276 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:38726 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753206Ab3FNTWW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Jun 2013 15:22:22 -0400
-Date: Fri, 14 Jun 2013 15:22:15 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Sandeep Joshi <sanjos100@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: why does nfsd write not use splice
-Message-ID: <20130614152215.1f369a4c@tlielax.poochiereds.net>
-In-Reply-To: <CAEfL3Km7knMAW1Jx_jHZ0OYBMBpUkvbzk2riBE2C=NA9OMvUQw@mail.gmail.com>
-References: <CAEfL3KnfRWof4-6UAWTwXcH7XWSQuUR5ry_pg4qdyhBB6dt+5g@mail.gmail.com>
-	<20130611195140.GA29634@fieldses.org>
-	<51B7DE9C.6080703@talpey.com>
-	<20130612153936.GB32569@fieldses.org>
-	<CAEfL3KkdjB7bzvnfiDh024kHjCH0e64iH6GK6y+A+bpH3kUgJg@mail.gmail.com>
-	<20130612164637.GA6868@fieldses.org>
-	<CAEfL3Km7knMAW1Jx_jHZ0OYBMBpUkvbzk2riBE2C=NA9OMvUQw@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1752412Ab3FCWAv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Jun 2013 18:00:51 -0400
+Date: Mon, 3 Jun 2013 18:00:24 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, dhowells@redhat.com,
+        sage@inktank.com, smfrench@gmail.com, swhiteho@redhat.com,
+        Trond.Myklebust@netapp.com, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        piastryyy@gmail.com
+Subject: Re: [PATCH v1 03/11] locks: comment cleanups and clarifications
+Message-ID: <20130603220024.GF2109@fieldses.org>
+References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
+ <1370056054-25449-4-git-send-email-jlayton@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1370056054-25449-4-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 14 Jun 2013 17:39:12 +0530
-Sandeep Joshi <sanjos100@gmail.com> wrote:
-
-> On Wed, Jun 12, 2013 at 10:16 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >
-> > On Wed, Jun 12, 2013 at 09:51:09PM +0530, Sandeep Joshi wrote:
-> > > Splice can be implemented independent of RDMA.  It is supposed to
-> > > transfer
-> > > pages between two file descriptors.  I found some postings on lkml from
-> > > 2006 where Linus says it is quite possible to splice from a socket to a
-> > > file.
-> > >
-> > > See the paragraph:
-> > > " For filesystems, splice support tends to be really easy (both read and
-> > > write). For other things, it depends a bit. But unlike sendfile(), it
-> > > really is quite possible to splice _from_ a socket too, not just _to_ a
-> > > socket. But no, that case hasn't been written yet."
-> > >  http://yarchive.net/comp/linux/splice.html
-> > >
-> > > Larry McVoy's 1997 proposal for adding splice support to the  kernel can
-> > > be
-> > > read at
-> > > ftp.tux.org/pub/sites/ftp.bitmover.com/pub/*splice*.*ps*.gz<http://ftp.tux.org/pub/sites/ftp.bitmover.com/pub/splice.ps.gz>
-> > >
-> > > Perhaps I should have opened this thread on lkml to determine if splice
-> > > from socket to file is still feasible..
-> >
-> > Right, the thing is, nfsd reads the rpc request from the socket into its
-> > own buffers before it parses it.  If you want to move the data directly
-> > out of the network buffers into the page cache, then you have to know at
-> > what point the write data starts in the request--which I believe will
-> > mean doing the xdr parsing (and gss decryption if necessary) as the
-> > request comes in off the wire.
-> >
-> > That sounds like a lot of work and even if you have someone willing to
-> > do the work they'd also need to justify that it's worth it.
-> >
-> > RDMA may have some protocol support that simplifies this, I don't know.
-> >
-> > --b.
+On Fri, May 31, 2013 at 11:07:26PM -0400, Jeff Layton wrote:
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/locks.c         |   24 +++++++++++++++++++-----
+>  include/linux/fs.h |    6 ++++++
+>  2 files changed, 25 insertions(+), 5 deletions(-)
 > 
-> Hi Bruce,
-> 
-> > nfsd reads the rpc request from the socket into its own buffers before it parses it.
-> 
-> I am not intimate with the gss code but do you think the
-> svc_rqst->rq_pages[] can be spliced ?
-> 
+> diff --git a/fs/locks.c b/fs/locks.c
+> index e3140b8..a7d2253 100644
+> --- a/fs/locks.c
+> +++ b/fs/locks.c
+> @@ -150,6 +150,16 @@ static int target_leasetype(struct file_lock *fl)
+>  int leases_enable = 1;
+>  int lease_break_time = 45;
+>  
+> +/*
+> + * The i_flock list is ordered by:
+> + *
+> + * 1) lock type -- FL_LEASEs first, then FL_FLOCK, and finally FL_POSIX
+> + * 2) lock owner
+> + * 3) lock range start
+> + * 4) lock range end
+> + *
+> + * Obviously, the last two criteria only matter for POSIX locks.
+> + */
 
-Probably not in its current form. The problem is one of alignment. You
-need to know where the write data actually starts before doing the
-receive off the socket, so you can make sure that it ends up in the
-correct spot in the pages you're going to splice in.
+Thanks, yes, that needs documenting!  Though I wonder if this is the
+place people will look for it.
 
-There's also the problem of what to do about WRITE requests that
-contain data that isn't page aligned or that's shorter than a page...
+>  #define for_each_lock(inode, lockp) \
+>  	for (lockp = &inode->i_flock; *lockp != NULL; lockp = &(*lockp)->fl_next)
+>  
+> @@ -806,6 +816,11 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+>  	}
+>  
+>  	lock_flocks();
+> +	/*
+> +	 * New lock request. Walk all POSIX locks and look for conflicts. If
+> +	 * there are any, either return -EAGAIN or put the request on the
+> +	 * blocker's list of waiters.
+> +	 */
 
--- 
-Jeff Layton <jlayton@redhat.com>
+This though, seems a) not 100% accurate (it could also return EDEADLCK,
+for example), b) mostly redundant with respect to the following code.
+
+>  	if (request->fl_type != F_UNLCK) {
+>  		for_each_lock(inode, before) {
+>  			fl = *before;
+> @@ -844,7 +859,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+>  		before = &fl->fl_next;
+>  	}
+>  
+> -	/* Process locks with this owner.  */
+> +	/* Process locks with this owner. */
+>  	while ((fl = *before) && posix_same_owner(request, fl)) {
+>  		/* Detect adjacent or overlapping regions (if same lock type)
+>  		 */
+> @@ -930,10 +945,9 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+>  	}
+>  
+>  	/*
+> -	 * The above code only modifies existing locks in case of
+> -	 * merging or replacing.  If new lock(s) need to be inserted
+> -	 * all modifications are done bellow this, so it's safe yet to
+> -	 * bail out.
+> +	 * The above code only modifies existing locks in case of merging or
+> +	 * replacing. If new lock(s) need to be inserted all modifications are
+> +	 * done below this, so it's safe yet to bail out.
+>  	 */
+>  	error = -ENOLCK; /* "no luck" */
+>  	if (right && left == right && !new_fl2)
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index b9d7816..ae377e9 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -926,6 +926,12 @@ int locks_in_grace(struct net *);
+>  /* that will die - we need it for nfs_lock_info */
+>  #include <linux/nfs_fs_i.h>
+>  
+> +/*
+> + * struct file_lock represents a generic "file lock". It's used to represent
+> + * POSIX byte range locks, BSD (flock) locks, and leases. It's important to
+> + * note that the same struct is used to represent both a request for a lock and
+> + * the lock itself, but the same object is never used for both.
+
+Yes, and I do find that confusing.  I wonder if there's a sensible way
+to use separate structs for the different uses.
+
+--b.
+
+> + */
+>  struct file_lock {
+>  	struct file_lock *fl_next;	/* singly linked list for this inode  */
+>  	struct list_head fl_link;	/* doubly linked list of all locks */
+> -- 
+> 1.7.1
+> 
