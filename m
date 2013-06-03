@@ -1,87 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:40704 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753288Ab3F0TrV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jun 2013 15:47:21 -0400
+Received: from dgate10.ts.fujitsu.com ([80.70.172.49]:37266 "EHLO
+	dgate10.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758040Ab3FCO1I (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Jun 2013 10:27:08 -0400
+Message-Id: <d6437a$4dpkbm@dgate10u.abg.fsc.net>
+Date: 03 Jun 2013 16:27:06 +0200
+From: Bodo Stroesser <bstroesser@ts.fujitsu.com>
+To: bfields@fieldses.org, neilb@suse.de
+Cc: linux-nfs@vger.kernel.org, bstroesser@ts.fujitsu.com
+Subject: Re: sunrpc/cache.c: races while updating cache entries
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
-Subject: Re: NFSv4.1 session
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1372358524.3365.6.camel@leira.trondhjem.org>
-Date: Thu, 27 Jun 2013 15:46:30 -0400
-Cc: "Adam C. Emerson" <aemerson@linuxbox.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "Matt W. Benjamin" <matt@linuxbox.com>
-Message-Id: <91A474BD-BBB8-42E5-9D09-3536EF02FB9C@oracle.com>
-References: <OF8A324DEB.5C9C96EC-ON88257B97.0061DA51-88257B97.0062ED43@us.ibm.com> <1372356342.3365.1.camel@leira.trondhjem.org> <OF72D7519C.7F46B89C-ON88257B97.0063EB30-88257B97.006422E1@us.ibm.com> <1372358524.3365.6.camel@leira.trondhjem.org>
-To: Marc Eshel <eshel@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Marc-
-
-On Jun 27, 2013, at 2:42 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-
-> On Thu, 2013-06-27 at 11:13 -0700, Marc Eshel wrote:
->> 
->> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote on 06/27/2013
->> 11:05:44 AM:
->> 
->>> From: "Myklebust, Trond" <Trond.Myklebust@netapp.com> 
->>> To: Marc Eshel/Almaden/IBM@IBMUS, 
->>> Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>, "J. 
->>> Bruce Fields" <bfields@redhat.com>, "Adam C. Emerson" 
->>> <aemerson@linuxbox.com>, "Matt W. Benjamin" <matt@linuxbox.com> 
->>> Date: 06/27/2013 11:09 AM 
->>> Subject: Re: NFSv4.1 session 
->>> 
->>> On Thu, 2013-06-27 at 11:00 -0700, Marc Eshel wrote:
->>>> Hi Trond, 
->>>> 
->>>> I am not able to mount from Linux NFS client to the same Ganesha
->> NFS
->>>> server using multiple IP address. The client was providing the
->> same
->>>> client-id so the server was using the same session. I tried to
->> return
->>>> NFS4ERR_CLID_INUSE on the second mount if the target IP is
->> different
->>>> but the client still did not provide a different client-id like it
->>>> should. I am not trying to use trunking I what to have different
->>>> server instance for each IP address so I can move that IP between
->>>> nodes in the cluster. Any ideas how to accomplish it. 
->>>> 
->>>> Thanks, Marc.
->>> 
->>> I don't understand. The client is performing exactly as per design:
->> it
->>> detects the fact that you are talking to the same server, and so it
->>> reuses the same client and session. This is the only sane semantic
->> for a
->>> NFS client... 
->> 
->> How is the client detecting that it is the same server? I use a
-> 
-> See section 2.10.5.1 of RFC5661.
-> 
->> different IP address on the mount command. Why is the client not
->> handling NFS4ERR_CLID_INUSE? 
-
-Is there a section of the spec that prescribes how the client should recover from NFS4ERR_CLID_INUSE?
-
-I believe this is not an error that can be recovered from.  The cases where a clientid is being spoofed are not easily distinguished from cases where it might be safe for a client to try a different client ID string.
-
-However, note that NFSv4.1 takes a Uniform Client String approach: an NFSv4.1 client unconditionally uses the same nfs_client_id4.id string and boot verifier for all servers.  An important reason for this is that if Transparent State Migration occurs, a destination server must be able to recognize the client when it connects expecting its state to be available.
-
-> We only recently changed the client to always use krb5i (or fallback to
-> AUTH_SYS if krb5i is not available) for EXCHANGE_ID.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+T24gRnJpLCBBcHIgMTksIDIwMTMgYXQgMDY6NTY6MDBQTSArMDIwMCwgQm9kbyBTdHJvZXNz
+ZXIgd3JvdGU6Cj4gCj4gV2Ugc3RhcnRlZCB0aGUgdGVzdCBvZiB0aGUgLVNQMiAoYW5kIG1h
+aW5saW5lKSBzZXJpZXMgb24gVHVlLCA5dGgsIGJ1dCBoYWQgbm8KPiBzdWNjZXNzLgo+IFdl
+IGRpZCBfbm90XyBmaW5kIGEgcHJvYmxlbSB3aXRoIHRoZSBwYXRjaGVzLCBidXQgdW5kZXIg
+LVNQMiBvdXIgdGVzdCBzY2VuYXJpbwo+IGhhcyBsZXNzIHRoYW4gNDAlIG9mIHRoZSB0aHJv
+dWdocHV0IHdlIHNhdyB1bmRlciAtU1AxLiBXaXRoIHRoYXQgbG93Cj4gcGVyZm9ybWFuY2Us
+IHdlIGhhZCBhIDQgZGF5IHJ1biB3aXRob3V0IGFueSBkcm9wcGVkIFJQQyByZXF1ZXN0LiBC
+dXQgd2UgZG9uJ3QKPiBrbm93IHRoZSBlcnJvciByYXRlIHdpdGhvdXQgdGhlIHBhdGNoZXMg
+dW5kZXIgdGhlc2UgY29uZGl0aW9ucy4gU28gd2UgY2FuJ3QKPiBnaXZlIGFuIG8uay4gZm9y
+IHRoZSBwYXRjaGVzIHlldC4KPiAKPiBDdXJyZW50bHkgd2UgdHJ5IHRvIGZpbmQgdGhlIHJl
+YXNvbiBmb3IgdGhlIGRpZmZlcmVudCBiZWhhdmlvciBvZiBTUDEgYW5kIFNQMgo+IAoKSGks
+Cgpzb3JyeSBmb3IgdGhlIGRlbGF5LiBNZWFud2hpbGUgd2UgZm91bmQgdGhlIHJlYXNvbiBm
+b3IgdGhlIHNtYWxsIHRocm91Z2hwdXQKd2l0aCAtU1AyLiBUaGUgcHJvYmxlbSByZXN1bHRl
+ZCBmcm9tIGEgY2hhbmdlIGluIG91ciBvd24gc29mdHdhcmUuCgpUaHVzIEkgY291bGQgZml4
+IHRoaXMgYW5kIHN0YXJ0ZWQgYSB0ZXN0IG9uIGxhc3QgVHVlc2RheS4gSSBzdG9wcGVkIHRo
+ZSB0ZXN0CnRvZGF5IGFmdGVyIDYgZGF5cyB3aXRob3V0IGFueSBsb3N0IFJQQy4gV2l0aG91
+dCB0aGUgcGF0Y2hlcyBJIHNhdyB0aGUgZmlyc3QKZHJvcHBlZCBSUEMgYWZ0ZXIgMyBob3Vy
+cy4gVGh1cywgSSB0aGluayB0aGUgcGF0Y2hlcyBmb3IgLVNQMiBhcmUgZmluZS4gCgpATmVp
+bDogd291bGQgcGF0Y2ggMDAwNiBvZiB0aGUgLVNQMSBwYXRjaHNldCBiZSBhIGdvb2QgYWRk
+aXRpb25hbCBjaGFuZ2UgZm9yCm1haW5saW5lPwoKQm9kbwo=
 
 
