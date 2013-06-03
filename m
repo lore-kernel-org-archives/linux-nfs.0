@@ -1,48 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:13508 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753080Ab3F0AvC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jun 2013 20:51:02 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Christopher T Vogan <cvogan@us.ibm.com>, Jeff Layton <jlayton@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Steve Dickson <SteveD@redhat.com>
-Subject: Re: NFSERR_STALE on umount  with 3.10.0.RC5 kernel
-Date: Thu, 27 Jun 2013 00:51:01 +0000
-Message-ID: <1372294255.3192.4.camel@leira.trondhjem.org>
-References: <OF659496E7.43E03D23-ON87257B8E.004B852B-86257B8E.004BC3F6@us.ibm.com>
-		 <1371568176.3868.5.camel@leira.trondhjem.org>
-	 <OF0A202F9C.685475CA-ON87257B8E.005E218B-86257B8E.006D757C@us.ibm.com>
-		 <4FA345DA4F4AE44899BD2B03EEEC2FA93F422610@SACEXCMBX04-PRD.hq.netapp.com>
-	 <51CB3F08.9050005@RedHat.com>
-	 <1372274707.36780.2.camel@leira.trondhjem.org>
-	 <OFFA688044.F059006D-ON87257B96.0074D508-86257B96.0075968C@us.ibm.com>
-In-Reply-To: <OFFA688044.F059006D-ON87257B96.0074D508-86257B96.0075968C@us.ibm.com>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:20142 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755323Ab3FCCB7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 2 Jun 2013 22:01:59 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
+Subject: Re: [PATCH 0/3] Various gssd fixes including machine-credential issue.
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20130603005219.20080.1927.stgit@notabene.brown>
+Date: Sun, 2 Jun 2013 22:01:50 -0400
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+Message-Id: <A2E2CEA9-4F2B-4A3F-8661-36D1E6288B0F@oracle.com>
+References: <20130603005219.20080.1927.stgit@notabene.brown>
+To: Neil Brown <neilb@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-06-26 at 15:24 -0600, Christopher T Vogan wrote:
-> This is a complete network trace between the client and server.
+
+On Jun 2, 2013, at 9:00 PM, Neil Brown <neilb@suse.de> wrote:
+
+> As you probably know, since 3.7 (I think) Linux NFS has explicitly
+> asked for machine credentials for certain requests rather than asking
+> for root credentials as is previously did.
+> This causes a regression for people who don't have any machine
+> credentials configured and use "gssd -n".
+> 
+> I gather this was discussed on the mailing list earlier this year but
+> not resolved.
+
+It's resolved in 3.10-rc.
+
+The kernel will attempt to use krb5i for lease management operations.  If that fails because there is no keytab available, it falls back to using AUTH_SYS.
+
+
+> I would like to re-awaken the issue and offer a resolution (which has
+> been tested and found effective by a customer).
+> 
+> Hence these three patches.  The first two are minor issues that I
+> stumbled over while trying to understand the problem and are not
+> critical but probably should be fixed.
+> 
+> The third addresses the above mentioned issue.  It introduces a
+> variable "machine_uses_root_credentials" which is similar to the
+> current "root_uses_machine_credentials".  It also adds a "-N" flag to
+> set this variable.
+> 
+> I'm not certain what the defaults should be.  For backward
+> compatibility it would be best if '-n' set the this new variable as
+> well as clearing the old one, but then I'm not sure what exactly -N
+> should do.
+> 
+> Comments welcome.
+> 
+> Thanks,
+> NeilBrown
 > 
 > 
-> So this issue only happens on Kernels 3.9.6 and newer.
-> I did not have this problem with Kernel 3.8.13
-> nfs-utils-1.2.3-36 (from Redhat) was used w/ all kernel versions.
-
-Ah. I don't recall seeing that information before. In that case, I'm
-guessing that the change in behaviour is likely to be commit
-ecf3d1f1aa74da0d632b651a2e05a911f60e92c0 (vfs: kill FS_REVAL_DOT by
-adding a d_weak_revalidate dentry op).
-
-Jeff, any comment on what behaviour you expect on umount()
-post-ecf3d1f1aa?
+> 
+> ---
+> 
+> Neil Brown (3):
+>      krb5_utils: remove redundant array size.
+>      krb5_util: don't give up on machine credential if hostname not available.
+>      gssd: add -N option to use root credentials as machine credentials.
+> 
+> 
+> utils/gssd/gssd.c      |    9 ++++++---
+> utils/gssd/gssd.h      |    1 +
+> utils/gssd/gssd.man    |   13 ++++++++++++-
+> utils/gssd/gssd_proc.c |   12 +++++++-----
+> utils/gssd/krb5_util.c |   10 +++++++---
+> 5 files changed, 33 insertions(+), 12 deletions(-)
+> 
+> -- 
+> Signature
+> 
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+
+
+
