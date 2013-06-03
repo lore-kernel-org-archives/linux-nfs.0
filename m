@@ -1,157 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21523 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752042Ab3FQPOd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Jun 2013 11:14:33 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
-Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
-        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v3 08/13] locks: convert fl_link to a hlist_node
-Date: Mon, 17 Jun 2013 11:13:51 -0400
-Message-Id: <1371482036-15958-9-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
-References: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:28814 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755538Ab3FCCpQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 2 Jun 2013 22:45:16 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
+Subject: Re: [PATCH 0/3] Various gssd fixes including machine-credential issue.
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20130603122319.47f4e0dd@notabene.brown>
+Date: Sun, 2 Jun 2013 22:45:16 -0400
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+Message-Id: <0016A272-E433-4020-91FE-45A5EE494296@oracle.com>
+References: <20130603005219.20080.1927.stgit@notabene.brown> <A2E2CEA9-4F2B-4A3F-8661-36D1E6288B0F@oracle.com> <20130603122319.47f4e0dd@notabene.brown>
+To: NeilBrown <neilb@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Testing has shown that iterating over the blocked_list for deadlock
-detection turns out to be a bottleneck. In order to alleviate that,
-begin the process of turning it into a hashtable. We start by turning
-the fl_link into a hlist_node and the global lists into hlists. A later
-patch will do the conversion of the blocked_list to a hashtable.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Acked-by: J. Bruce Fields <bfields@fieldses.org>
----
- fs/locks.c         |   24 ++++++++++++------------
- include/linux/fs.h |    2 +-
- 2 files changed, 13 insertions(+), 13 deletions(-)
+On Jun 2, 2013, at 10:23 PM, NeilBrown <neilb@suse.de> wrote:
 
-diff --git a/fs/locks.c b/fs/locks.c
-index a8f3b33..32826ed 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -157,13 +157,13 @@ int lease_break_time = 45;
-  * The global file_lock_list is only used for displaying /proc/locks. Protected
-  * by the file_lock_lock.
-  */
--static LIST_HEAD(file_lock_list);
-+static HLIST_HEAD(file_lock_list);
- 
- /*
-  * The blocked_list is used to find POSIX lock loops for deadlock detection.
-  * Protected by file_lock_lock.
-  */
--static LIST_HEAD(blocked_list);
-+static HLIST_HEAD(blocked_list);
- 
- /* Protects the two list heads above, and fl->fl_block list. */
- static DEFINE_SPINLOCK(file_lock_lock);
-@@ -172,7 +172,7 @@ static struct kmem_cache *filelock_cache __read_mostly;
- 
- static void locks_init_lock_heads(struct file_lock *fl)
- {
--	INIT_LIST_HEAD(&fl->fl_link);
-+	INIT_HLIST_NODE(&fl->fl_link);
- 	INIT_LIST_HEAD(&fl->fl_block);
- 	init_waitqueue_head(&fl->fl_wait);
- }
-@@ -206,7 +206,7 @@ void locks_free_lock(struct file_lock *fl)
- {
- 	BUG_ON(waitqueue_active(&fl->fl_wait));
- 	BUG_ON(!list_empty(&fl->fl_block));
--	BUG_ON(!list_empty(&fl->fl_link));
-+	BUG_ON(!hlist_unhashed(&fl->fl_link));
- 
- 	locks_release_private(fl);
- 	kmem_cache_free(filelock_cache, fl);
-@@ -484,7 +484,7 @@ static inline void
- locks_insert_global_locks(struct file_lock *waiter)
- {
- 	spin_lock(&file_lock_lock);
--	list_add_tail(&waiter->fl_link, &file_lock_list);
-+	hlist_add_head(&waiter->fl_link, &file_lock_list);
- 	spin_unlock(&file_lock_lock);
- }
- 
-@@ -492,20 +492,20 @@ static inline void
- locks_delete_global_locks(struct file_lock *waiter)
- {
- 	spin_lock(&file_lock_lock);
--	list_del_init(&waiter->fl_link);
-+	hlist_del_init(&waiter->fl_link);
- 	spin_unlock(&file_lock_lock);
- }
- 
- static inline void
- locks_insert_global_blocked(struct file_lock *waiter)
- {
--	list_add(&waiter->fl_link, &blocked_list);
-+	hlist_add_head(&waiter->fl_link, &blocked_list);
- }
- 
- static inline void
- locks_delete_global_blocked(struct file_lock *waiter)
- {
--	list_del_init(&waiter->fl_link);
-+	hlist_del_init(&waiter->fl_link);
- }
- 
- /* Remove waiter from blocker's block list.
-@@ -730,7 +730,7 @@ static struct file_lock *what_owner_is_waiting_for(struct file_lock *block_fl)
- {
- 	struct file_lock *fl;
- 
--	list_for_each_entry(fl, &blocked_list, fl_link) {
-+	hlist_for_each_entry(fl, &blocked_list, fl_link) {
- 		if (posix_same_owner(fl, block_fl))
- 			return fl->fl_next;
- 	}
-@@ -2285,7 +2285,7 @@ static int locks_show(struct seq_file *f, void *v)
- {
- 	struct file_lock *fl, *bfl;
- 
--	fl = list_entry(v, struct file_lock, fl_link);
-+	fl = hlist_entry(v, struct file_lock, fl_link);
- 
- 	lock_get_status(f, fl, *((loff_t *)f->private), "");
- 
-@@ -2301,14 +2301,14 @@ static void *locks_start(struct seq_file *f, loff_t *pos)
- 
- 	spin_lock(&file_lock_lock);
- 	*p = (*pos + 1);
--	return seq_list_start(&file_lock_list, *pos);
-+	return seq_hlist_start(&file_lock_list, *pos);
- }
- 
- static void *locks_next(struct seq_file *f, void *v, loff_t *pos)
- {
- 	loff_t *p = f->private;
- 	++*p;
--	return seq_list_next(v, &file_lock_list, pos);
-+	return seq_hlist_next(v, &file_lock_list, pos);
- }
- 
- static void locks_stop(struct seq_file *f, void *v)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index e2f896d..3b340f7 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -946,7 +946,7 @@ int locks_in_grace(struct net *);
-  */
- struct file_lock {
- 	struct file_lock *fl_next;	/* singly linked list for this inode  */
--	struct list_head fl_link;	/* doubly linked list of all locks */
-+	struct hlist_node fl_link;	/* node in global lists */
- 	struct list_head fl_block;	/* circular list of blocked processes */
- 	fl_owner_t fl_owner;
- 	unsigned int fl_flags;
--- 
-1.7.1
+> On Sun, 2 Jun 2013 22:01:50 -0400 Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+>> 
+>> On Jun 2, 2013, at 9:00 PM, Neil Brown <neilb@suse.de> wrote:
+>> 
+>>> As you probably know, since 3.7 (I think) Linux NFS has explicitly
+>>> asked for machine credentials for certain requests rather than asking
+>>> for root credentials as is previously did.
+>>> This causes a regression for people who don't have any machine
+>>> credentials configured and use "gssd -n".
+>>> 
+>>> I gather this was discussed on the mailing list earlier this year but
+>>> not resolved.
+>> 
+>> It's resolved in 3.10-rc.
+>> 
+>> The kernel will attempt to use krb5i for lease management operations.  If that fails because there is no keytab available, it falls back to using AUTH_SYS.
+> 
+> And if the server refuses to accept AUTH_SYS?
+> 
+> I guess this is commit 79d852bf5e7691dc7 ??
+
+That's one of the subsequent bug fixes.  The initial change is commit 4edaa308.
+
+> It seems to say that the server should always accept AUTH_SYS ... is that right?
+
+If we ever find a server implementation that does not support either Kerberos or AUTH_SYS, we can add another step to the negotiation.
+
+So far, despite RFC 3530 not requiring AUTH_SYS support on NFSv4 servers, I haven't found an implementation that does not support AUTH_SYS.  We have found one (FreeBSD) that does not support AUTH_NONE.  We do know that some servers allow administrators to control what security flavors are allowed for lease management.
+
+> That commit isn't tagged for -stable.
+> So do we still need to make it work for 3.7,3.8,3.9 users?
+
+There are several commits that would need to be back-ported, starting with commit 4edaa308.  I am not certain they would apply cleanly to 3.[789], but a backport should not be difficult.
+
+This change also requires that now gssd must be running on the client.  Otherwise without gssd a sec=sys mount hangs for a bit waiting for the upcall to time out (since the client will attempt to use krb5i for lease management operations).  Trond and Bruce have been discussing a change to address that.
+
+> Thanks,
+> NeilBrown
+> 
+>> 
+>> 
+>>> I would like to re-awaken the issue and offer a resolution (which has
+>>> been tested and found effective by a customer).
+>>> 
+>>> Hence these three patches.  The first two are minor issues that I
+>>> stumbled over while trying to understand the problem and are not
+>>> critical but probably should be fixed.
+>>> 
+>>> The third addresses the above mentioned issue.  It introduces a
+>>> variable "machine_uses_root_credentials" which is similar to the
+>>> current "root_uses_machine_credentials".  It also adds a "-N" flag to
+>>> set this variable.
+>>> 
+>>> I'm not certain what the defaults should be.  For backward
+>>> compatibility it would be best if '-n' set the this new variable as
+>>> well as clearing the old one, but then I'm not sure what exactly -N
+>>> should do.
+>>> 
+>>> Comments welcome.
+>>> 
+>>> Thanks,
+>>> NeilBrown
+>>> 
+>>> 
+>>> 
+>>> ---
+>>> 
+>>> Neil Brown (3):
+>>>     krb5_utils: remove redundant array size.
+>>>     krb5_util: don't give up on machine credential if hostname not available.
+>>>     gssd: add -N option to use root credentials as machine credentials.
+>>> 
+>>> 
+>>> utils/gssd/gssd.c      |    9 ++++++---
+>>> utils/gssd/gssd.h      |    1 +
+>>> utils/gssd/gssd.man    |   13 ++++++++++++-
+>>> utils/gssd/gssd_proc.c |   12 +++++++-----
+>>> utils/gssd/krb5_util.c |   10 +++++++---
+>>> 5 files changed, 33 insertions(+), 12 deletions(-)
+>>> 
+>>> -- 
+>>> Signature
+>>> 
+>> 
+> 
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
