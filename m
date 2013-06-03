@@ -1,67 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:24256 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:38370 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965899Ab3FUM65 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Jun 2013 08:58:57 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
-Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
-        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v4 08/14] locks: avoid taking global lock if possible when waking up blocked waiters
-Date: Fri, 21 Jun 2013 08:58:16 -0400
-Message-Id: <1371819502-26363-9-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
-References: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
+	id S1750775Ab3FCDBN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 2 Jun 2013 23:01:13 -0400
+Date: Mon, 3 Jun 2013 13:01:01 +1000
+From: NeilBrown <neilb@suse.de>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/3] Various gssd fixes including machine-credential
+ issue.
+Message-ID: <20130603130101.4acfe706@notabene.brown>
+In-Reply-To: <0016A272-E433-4020-91FE-45A5EE494296@oracle.com>
+References: <20130603005219.20080.1927.stgit@notabene.brown>
+	<A2E2CEA9-4F2B-4A3F-8661-36D1E6288B0F@oracle.com>
+	<20130603122319.47f4e0dd@notabene.brown>
+	<0016A272-E433-4020-91FE-45A5EE494296@oracle.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/1/eYRaDFj7=tuf7aP5bGVhl"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since we always hold the i_lock when inserting a new waiter onto the
-fl_block list, we can avoid taking the global lock at all if we find
-that it's empty when we go to wake up blocked waiters.
+--Sig_/1/eYRaDFj7=tuf7aP5bGVhl
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/locks.c |   15 ++++++++++++++-
- 1 files changed, 14 insertions(+), 1 deletions(-)
+On Sun, 2 Jun 2013 22:45:16 -0400 Chuck Lever <chuck.lever@oracle.com> wrot=
+e:
 
-diff --git a/fs/locks.c b/fs/locks.c
-index ce302d4..84e269f 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -548,7 +548,10 @@ static void locks_delete_block(struct file_lock *waiter)
-  * the order they blocked. The documentation doesn't require this but
-  * it seems like the reasonable thing to do.
-  *
-- * Must be called with file_lock_lock held!
-+ * Must be called with both the i_lock and file_lock_lock held. The fl_block
-+ * list itself is protected by the file_lock_list, but by ensuring that the
-+ * i_lock is also held on insertions we can avoid taking the file_lock_lock
-+ * in some cases when we see that the fl_block list is empty.
-  */
- static void __locks_insert_block(struct file_lock *blocker,
- 					struct file_lock *waiter)
-@@ -576,6 +579,16 @@ static void locks_insert_block(struct file_lock *blocker,
-  */
- static void locks_wake_up_blocks(struct file_lock *blocker)
- {
-+	/*
-+	 * Avoid taking global lock if list is empty. This is safe since new
-+	 * blocked requests are only added to the list under the i_lock, and
-+	 * the i_lock is always held here. Note that removal from the fl_block
-+	 * list does not require the i_lock, so we must recheck list_empty()
-+	 * after acquiring the file_lock_lock.
-+	 */
-+	if (list_empty(&blocker->fl_block))
-+		return;
-+
- 	spin_lock(&file_lock_lock);
- 	while (!list_empty(&blocker->fl_block)) {
- 		struct file_lock *waiter;
--- 
-1.7.1
+>=20
+> On Jun 2, 2013, at 10:23 PM, NeilBrown <neilb@suse.de> wrote:
+>=20
+> > On Sun, 2 Jun 2013 22:01:50 -0400 Chuck Lever <chuck.lever@oracle.com> =
+wrote:
+> >=20
+> >>=20
+> >> On Jun 2, 2013, at 9:00 PM, Neil Brown <neilb@suse.de> wrote:
+> >>=20
+> >>> As you probably know, since 3.7 (I think) Linux NFS has explicitly
+> >>> asked for machine credentials for certain requests rather than asking
+> >>> for root credentials as is previously did.
+> >>> This causes a regression for people who don't have any machine
+> >>> credentials configured and use "gssd -n".
+> >>>=20
+> >>> I gather this was discussed on the mailing list earlier this year but
+> >>> not resolved.
+> >>=20
+> >> It's resolved in 3.10-rc.
+> >>=20
+> >> The kernel will attempt to use krb5i for lease management operations. =
+ If that fails because there is no keytab available, it falls back to using=
+ AUTH_SYS.
+> >=20
+> > And if the server refuses to accept AUTH_SYS?
+> >=20
+> > I guess this is commit 79d852bf5e7691dc7 ??
+>=20
+> That's one of the subsequent bug fixes.  The initial change is commit 4ed=
+aa308.
+>=20
+> > It seems to say that the server should always accept AUTH_SYS ... is th=
+at right?
+>=20
+> If we ever find a server implementation that does not support either Kerb=
+eros or AUTH_SYS, we can add another step to the negotiation.
+>=20
+> So far, despite RFC 3530 not requiring AUTH_SYS support on NFSv4 servers,=
+ I haven't found an implementation that does not support AUTH_SYS.  We have=
+ found one (FreeBSD) that does not support AUTH_NONE.  We do know that some=
+ servers allow administrators to control what security flavors are allowed =
+for lease management.
+>=20
+> > That commit isn't tagged for -stable.
+> > So do we still need to make it work for 3.7,3.8,3.9 users?
+>=20
+> There are several commits that would need to be back-ported, starting wit=
+h commit 4edaa308.  I am not certain they would apply cleanly to 3.[789], b=
+ut a backport should not be difficult.
+>=20
+> This change also requires that now gssd must be running on the client.  O=
+therwise without gssd a sec=3Dsys mount hangs for a bit waiting for the upc=
+all to time out (since the client will attempt to use krb5i for lease manag=
+ement operations).  Trond and Bruce have been discussing a change to addres=
+s that.
 
+Thanks for the explanation.  That all looks rather painful to back-port
+though, especially as some of it isn't even written yet :-)
+I think I'll stick with my "-N" option for openSUSE for now.
+
+Do you think that supporting -N (or similar) so that the admin can ask for
+root credentials to be used for SETCLIENTID requests is reasonable? i.e. wh=
+at
+do you think of my patch going in to nfs-utils anyway?
+
+Thanks,
+NeilBrown
+
+--Sig_/1/eYRaDFj7=tuf7aP5bGVhl
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUawG7Tnsnt1WYoG5AQJm4w//YOLJXUQIdsoa4yBwaHoqkk0FSaiYwFzY
+ScTedtvVvqZpbdNTNrbadSzeRC3Misvq0dBZ4FQp+HXT3omljoewdF3Ln8ixazgK
+Qq0npw9/9p3SRpSI164es+IspMmf7yMgrHtt4suFWJlxibTq1jCSPtzbZBvXILJ+
+Ec/rWyCSMLcU5fPrYy6NcrfG4QpeJum05gD6v6tRRqBLJLZUHjlpZT6JbSZz8vtF
+TVud+mu6+izTdyqaCzlR9ybevg95i1t3n+Ja0TFsQXL/RDNF6+kvZxVsmLxtMYtn
+/Cy6YWfanU962uoHhXXyiHLSVMmihJwiDOHHF3354jhG/J+YvuKIOepS59uQ4XgH
+im2AbEziDEfnMxOpHyi5YvCpY0rtqJt9deXDSo/og/0PRP45+m64fmVfeo5uPT1D
+iS4vf5Gi4X7DsiMtGb+dYaMDVvficdY6oO822uyyEsosNMdDnqorW8Emap+ccf0T
+Xa1nhucut61JPYGPvwsY6xJ7+hxBljHGRM8VF/iIzi0VapgcjBp+KBW4McfaM9gQ
+gITnzyMn45cn5aZ6J3DnZoYP7XzNZpriY8W26PtImOomYjjlalKwjz38K/3IqfpT
+1Y0VrEHbtV3sPiwA4Tc5zvu8Ib2YM1Hs6QH3bALmeFK2EzpUbWYFTSDSr+zwkGYW
+MOSXxAbrLQw=
+=aSbB
+-----END PGP SIGNATURE-----
+
+--Sig_/1/eYRaDFj7=tuf7aP5bGVhl--
