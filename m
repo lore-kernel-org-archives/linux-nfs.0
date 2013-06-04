@@ -1,11 +1,11 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:46608 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:57940 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753529Ab3FOLGP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 15 Jun 2013 07:06:15 -0400
-Date: Sat, 15 Jun 2013 07:05:35 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Simo <idra@samba.org>
+	id S1751678Ab3FDWAR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jun 2013 18:00:17 -0400
+Date: Tue, 4 Jun 2013 17:59:50 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
 Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, dhowells@redhat.com,
         sage@inktank.com, smfrench@gmail.com, swhiteho@redhat.com,
         Trond.Myklebust@netapp.com, akpm@linux-foundation.org,
@@ -14,53 +14,181 @@ Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, dhowells@redhat.com,
         samba-technical@lists.samba.org, cluster-devel@redhat.com,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         piastryyy@gmail.com
-Subject: Re: [PATCH v2 06/14] locks: don't walk inode->i_flock list in
- locks_show
-Message-ID: <20130615070535.6367eed9@tlielax.poochiereds.net>
-In-Reply-To: <51BB040C.3050101@samba.org>
-References: <1370948948-31784-1-git-send-email-jlayton@redhat.com>
-	<1370948948-31784-7-git-send-email-jlayton@redhat.com>
-	<20130613194545.GC19218@fieldses.org>
-	<20130613162648.176979bc@tlielax.poochiereds.net>
-	<51BB040C.3050101@samba.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Subject: Re: [PATCH v1 08/11] locks: convert fl_link to a hlist_node
+Message-ID: <20130604215950.GE15594@fieldses.org>
+References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
+ <1370056054-25449-9-git-send-email-jlayton@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1370056054-25449-9-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 14 Jun 2013 07:52:44 -0400
-Simo <idra@samba.org> wrote:
+On Fri, May 31, 2013 at 11:07:31PM -0400, Jeff Layton wrote:
+> Testing has shown that iterating over the blocked_list for deadlock
+> detection turns out to be a bottleneck. In order to alleviate that,
+> begin the process of turning it into a hashtable. We start by turning
+> the fl_link into a hlist_node and the global lists into hlists. A later
+> patch will do the conversion of the blocked_list to a hashtable.
 
-> On 06/13/2013 04:26 PM, Jeff Layton wrote:
-> > The only real solution I can think of is to put flock locks into the
-> > blocked_list/blocked_hash too, or maybe giving them a simple hlist to
-> > sit on.
-> >
-> > I'll fix that up in the next iteration. It'll probably make flock()
-> > tests run slower, but such is the cost of preserving this procfile...
+Even simpler would be if we could add a pointer to the (well, a) lock
+that a lockowner is blocking on, and then we'd just have to follow a
+pointer.  I haven't thought that through, though, perhaps that's hard ot
+make work....
+
+--b.
+
 > 
-> How hard would it be to make the procfile stuff optional ?
-> So that those that need performance can decide to not use it ?
-> Maybe even something that can be disabled at run time ? Not just compile 
-> time.
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/locks.c         |   32 ++++++++++++++++----------------
+>  include/linux/fs.h |    2 +-
+>  2 files changed, 17 insertions(+), 17 deletions(-)
 > 
-
-(re-adding back the cc lists...)
-
-It'd be tricky, especially if you want to do it at runtime. The
-procfile itself is not a problem per-se. The real problem is the
-tracking you have to do in order to eventually present the procfile. So
-a boot-time or compile-time switch might be reasonable, but a runtime
-switch will probably never really be.
-
-I have a new patchset that I'm testing now though that should address
-Bruce's concerns about iterating over that global list. So far, it
-seems to be at least as fast as the latest patchset I posted.
-
-It makes the (spin)locking a bit more complex, but hopefully I can
-document this well enough that it's not a great concern.
-
-Stay tuned...
-
--- 
-Jeff Layton <jlayton@redhat.com>
+> diff --git a/fs/locks.c b/fs/locks.c
+> index fc35b9e..5ed056b 100644
+> --- a/fs/locks.c
+> +++ b/fs/locks.c
+> @@ -163,8 +163,8 @@ int lease_break_time = 45;
+>  #define for_each_lock(inode, lockp) \
+>  	for (lockp = &inode->i_flock; *lockp != NULL; lockp = &(*lockp)->fl_next)
+>  
+> -static LIST_HEAD(file_lock_list);
+> -static LIST_HEAD(blocked_list);
+> +static HLIST_HEAD(file_lock_list);
+> +static HLIST_HEAD(blocked_list);
+>  
+>  /* Protects the two list heads above */
+>  static DEFINE_SPINLOCK(file_lock_lock);
+> @@ -173,7 +173,7 @@ static struct kmem_cache *filelock_cache __read_mostly;
+>  
+>  static void locks_init_lock_heads(struct file_lock *fl)
+>  {
+> -	INIT_LIST_HEAD(&fl->fl_link);
+> +	INIT_HLIST_NODE(&fl->fl_link);
+>  	INIT_LIST_HEAD(&fl->fl_block);
+>  	init_waitqueue_head(&fl->fl_wait);
+>  }
+> @@ -207,7 +207,7 @@ void locks_free_lock(struct file_lock *fl)
+>  {
+>  	BUG_ON(waitqueue_active(&fl->fl_wait));
+>  	BUG_ON(!list_empty(&fl->fl_block));
+> -	BUG_ON(!list_empty(&fl->fl_link));
+> +	BUG_ON(!hlist_unhashed(&fl->fl_link));
+>  
+>  	locks_release_private(fl);
+>  	kmem_cache_free(filelock_cache, fl);
+> @@ -486,7 +486,7 @@ static inline void
+>  locks_insert_global_blocked(struct file_lock *waiter)
+>  {
+>  	spin_lock(&file_lock_lock);
+> -	list_add(&waiter->fl_link, &blocked_list);
+> +	hlist_add_head(&waiter->fl_link, &blocked_list);
+>  	spin_unlock(&file_lock_lock);
+>  }
+>  
+> @@ -494,7 +494,7 @@ static inline void
+>  locks_delete_global_blocked(struct file_lock *waiter)
+>  {
+>  	spin_lock(&file_lock_lock);
+> -	list_del_init(&waiter->fl_link);
+> +	hlist_del_init(&waiter->fl_link);
+>  	spin_unlock(&file_lock_lock);
+>  }
+>  
+> @@ -502,7 +502,7 @@ static inline void
+>  locks_insert_global_locks(struct file_lock *waiter)
+>  {
+>  	spin_lock(&file_lock_lock);
+> -	list_add_tail(&waiter->fl_link, &file_lock_list);
+> +	hlist_add_head(&waiter->fl_link, &file_lock_list);
+>  	spin_unlock(&file_lock_lock);
+>  }
+>  
+> @@ -510,7 +510,7 @@ static inline void
+>  locks_delete_global_locks(struct file_lock *waiter)
+>  {
+>  	spin_lock(&file_lock_lock);
+> -	list_del_init(&waiter->fl_link);
+> +	hlist_del_init(&waiter->fl_link);
+>  	spin_unlock(&file_lock_lock);
+>  }
+>  
+> @@ -705,7 +705,7 @@ static struct file_lock *what_owner_is_waiting_for(struct file_lock *block_fl)
+>  {
+>  	struct file_lock *fl, *ret = NULL;
+>  
+> -	list_for_each_entry(fl, &blocked_list, fl_link) {
+> +	hlist_for_each_entry(fl, &blocked_list, fl_link) {
+>  		if (posix_same_owner(fl, block_fl)) {
+>  			ret = fl->fl_next;
+>  			if (likely(ret))
+> @@ -867,7 +867,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+>  				goto out;
+>  			error = FILE_LOCK_DEFERRED;
+>  			locks_insert_block(fl, request);
+> -			if (list_empty(&request->fl_link))
+> +			if (hlist_unhashed(&request->fl_link))
+>  				locks_insert_global_blocked(request);
+>  			goto out;
+>    		}
+> @@ -882,10 +882,10 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+>  	 * Now that we know the request is no longer blocked, we can take it
+>  	 * off the global list. Some callers send down partially initialized
+>  	 * requests, so we only do this if FL_SLEEP is set. Also, avoid taking
+> -	 * the lock if the list is empty, as that indicates a request that
+> +	 * the lock if the hlist is unhashed, as that indicates a request that
+>  	 * never blocked.
+>  	 */
+> -	if ((request->fl_flags & FL_SLEEP) && !list_empty(&request->fl_link))
+> +	if ((request->fl_flags & FL_SLEEP) && !hlist_unhashed(&request->fl_link))
+>  		locks_delete_global_blocked(request);
+>  
+>  	/*
+> @@ -2277,11 +2277,11 @@ static int locks_show(struct seq_file *f, void *v)
+>  {
+>  	struct file_lock *fl, *bfl;
+>  
+> -	fl = list_entry(v, struct file_lock, fl_link);
+> +	fl = hlist_entry(v, struct file_lock, fl_link);
+>  
+>  	lock_get_status(f, fl, *((loff_t *)f->private), "");
+>  
+> -	list_for_each_entry(bfl, &blocked_list, fl_link) {
+> +	hlist_for_each_entry(bfl, &blocked_list, fl_link) {
+>  		if (bfl->fl_next == fl)
+>  			lock_get_status(f, bfl, *((loff_t *)f->private), " ->");
+>  	}
+> @@ -2295,14 +2295,14 @@ static void *locks_start(struct seq_file *f, loff_t *pos)
+>  
+>  	spin_lock(&file_lock_lock);
+>  	*p = (*pos + 1);
+> -	return seq_list_start(&file_lock_list, *pos);
+> +	return seq_hlist_start(&file_lock_list, *pos);
+>  }
+>  
+>  static void *locks_next(struct seq_file *f, void *v, loff_t *pos)
+>  {
+>  	loff_t *p = f->private;
+>  	++*p;
+> -	return seq_list_next(v, &file_lock_list, pos);
+> +	return seq_hlist_next(v, &file_lock_list, pos);
+>  }
+>  
+>  static void locks_stop(struct seq_file *f, void *v)
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index ccb44ea..07a009e 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -934,7 +934,7 @@ int locks_in_grace(struct net *);
+>   */
+>  struct file_lock {
+>  	struct file_lock *fl_next;	/* singly linked list for this inode  */
+> -	struct list_head fl_link;	/* doubly linked list of all locks */
+> +	struct hlist_node fl_link;	/* node in global lists */
+>  	struct list_head fl_block;	/* circular list of blocked processes */
+>  	fl_owner_t fl_owner;
+>  	unsigned int fl_flags;
+> -- 
+> 1.7.1
+> 
