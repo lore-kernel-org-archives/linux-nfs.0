@@ -1,54 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:31555 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752168Ab3FKQ2W convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Jun 2013 12:28:22 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=windows-1252
-Subject: Announcing the release of fedfs-utils 0.9.1
-Date: Tue, 11 Jun 2013 12:27:47 -0400
-Message-Id: <B76EF9B8-D776-43BE-AD94-94EAAA2B2EB2@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "autofs@vger.kernel.org" <autofs@vger.kernel.org>,
-        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>
-To: fedfs-utils-announce@oss.oracle.com
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Received: from mx1.redhat.com ([209.132.183.28]:4522 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752908Ab3FDO5z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jun 2013 10:57:55 -0400
+Date: Tue, 4 Jun 2013 10:56:56 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: "Stefan (metze) Metzmacher" <metze@samba.org>, viro@zeniv.linux.org.uk,
+        matthew@wil.cx, bfields@fieldses.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, cluster-devel@redhat.com, sage@inktank.com,
+        samba-technical@lists.samba.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
+        dhowells@redhat.com, smfrench@gmail.com, linux-fsdevel@vger.kernel.org,
+        ceph-devel@vger.kernel.org, akpm@linux-foundation.org,
+        swhiteho@redhat.com
+Subject: Re: [PATCH v1 11/11] locks: give the blocked_hash its own spinlock
+Message-ID: <20130604105656.18663efa@corrin.poochiereds.net>
+In-Reply-To: <20130604144640.GA7730@infradead.org>
+References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
+	<1370056054-25449-12-git-send-email-jlayton@redhat.com>
+	<51ADF789.70906@samba.org>
+	<20130604144640.GA7730@infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This package contains an implementation of the Federated Filesystem (FedFS) Proposed Standard for Linux.  For an introduction to FedFS, see RFC 5716.
+On Tue, 4 Jun 2013 07:46:40 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
 
-This is an ALPHA quality release.  The code in this release is not guaranteed to work.  Programming, administrative, and user interfaces may change significantly before the next release.  This release is for technology preview only.
+> Having RCU for modification mostly workloads never is a good idea, so
+> I don't think it makes sense to mention it here.
+> 
+> If you care about the overhead it's worth trying to use per-cpu lists,
+> though.
+> 
 
-Changes since 0.9.0:
-	• Address build issues with recent automake and libtools
-	• Replace nl_langinfo(CODESET) check in command line tools
+Yeah, I looked at those too in an earlier set and it did help some.
+Moving to a hashtable for the blocked_list really seemed to help the
+most there, but percpu lists with lglocks or something might help a lot
+on the file_lock_list.
 
-New with fedfs-utils 0.9.0:
-	• NSDB schema complies with latest draft standard
-	• DNS SRV support complies with RFC 6641
-	• NSDB clients support the FEDFS_SEC_TLS security type
-	• NSDB clients can follow LDAP referrals returned by NSDB nodes
-	• New tools for configuration of NSDBs
-	• New "display-junction" debugging command
-
-Project web site
-http://wiki.linux-nfs.org/wiki/index.php/FedFsUtilsProject
-
-Installation guide:
-http://wiki.linux-nfs.org/wiki/index.php/FedFsInstallationGuide0.9
-
-Tarball releases available at
-http://git.linux-nfs.org/?p=cel/fedfs-releases.git;a=summary
-
-Git repository available at
-http://git.linux-nfs.org/?p=cel/fedfs-utils.git;a=shortlog;h=refs/heads/0.9-stable
-
-Patchwork available at
-http://patchwork.ozlabs.org/project/fedfs-utils/list/
-
---
-Chuck Lever
-chuck.lever@oracle.com
-
-
+-- 
+Jeff Layton <jlayton@redhat.com>
