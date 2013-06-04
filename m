@@ -1,84 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e38.co.us.ibm.com ([32.97.110.159]:59605 "EHLO
-	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753195Ab3F0T0F (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jun 2013 15:26:05 -0400
-Received: from /spool/local
-	by e38.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <cvogan@us.ibm.com>;
-	Thu, 27 Jun 2013 13:26:04 -0600
-Received: from d03relay05.boulder.ibm.com (d03relay05.boulder.ibm.com [9.17.195.107])
-	by d03dlp01.boulder.ibm.com (Postfix) with ESMTP id 19BD41FF0027
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Jun 2013 13:20:44 -0600 (MDT)
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r5RJPeXE131136
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Jun 2013 13:25:41 -0600
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r5RJPcSt015920
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Jun 2013 13:25:40 -0600
-In-Reply-To: <1372294255.3192.4.camel@leira.trondhjem.org>
-References: <OF659496E7.43E03D23-ON87257B8E.004B852B-86257B8E.004BC3F6@us.ibm.com>		 <1371568176.3868.5.camel@leira.trondhjem.org>
-	 <OF0A202F9C.685475CA-ON87257B8E.005E218B-86257B8E.006D757C@us.ibm.com>
-		 <4FA345DA4F4AE44899BD2B03EEEC2FA93F422610@SACEXCMBX04-PRD.hq.netapp.com>
-	 <51CB3F08.9050005@RedHat.com>	 <1372274707.36780.2.camel@leira.trondhjem.org>
-	 <OFFA688044.F059006D-ON87257B96.0074D508-86257B96.0075968C@us.ibm.com> <1372294255.3192.4.camel@leira.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Steve Dickson <SteveD@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:47230 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752718Ab3FDOyP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jun 2013 10:54:15 -0400
+Date: Tue, 4 Jun 2013 10:53:22 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: "Stefan (metze) Metzmacher" <metze@samba.org>,
+        Jeff Layton <jlayton@redhat.com>, viro@zeniv.linux.org.uk,
+        matthew@wil.cx, linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        cluster-devel@redhat.com, sage@inktank.com,
+        samba-technical@lists.samba.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
+        dhowells@redhat.com, smfrench@gmail.com, linux-fsdevel@vger.kernel.org,
+        ceph-devel@vger.kernel.org, akpm@linux-foundation.org,
+        swhiteho@redhat.com
+Subject: Re: [PATCH v1 11/11] locks: give the blocked_hash its own spinlock
+Message-ID: <20130604145322.GH2109@fieldses.org>
+References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
+ <1370056054-25449-12-git-send-email-jlayton@redhat.com>
+ <51ADF789.70906@samba.org>
+ <20130604144640.GA7730@infradead.org>
 MIME-Version: 1.0
-Subject: Re: NFSERR_STALE on umount  with 3.10.0.RC5 kernel
-Message-ID: <OFD61D3EF8.918A1095-ON87257B97.0069766B-86257B97.006AB5A7@us.ibm.com>
-From: Christopher T Vogan <cvogan@us.ibm.com>
-Date: Thu, 27 Jun 2013 14:25:38 -0500
-Content-Type: text/plain; charset="US-ASCII"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130604144640.GA7730@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This last update on the problem was new information gathered after our 
-last exchange on 6/18/2013.
-We also suspected the issue to be related to "cto", but adding mount 
-options "nocto" did not resolve the problem.
-
-
-Christopher Vogan
-Dept. W98 NFS Development & Test
-
-
-
-From:   "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To:     Christopher T Vogan/San Jose/IBM@IBMUS, Jeff Layton 
-<jlayton@redhat.com>, 
-Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>, Steve 
-Dickson <SteveD@redhat.com>
-Date:   06/26/2013 07:51 PM
-Subject:        Re: NFSERR_STALE on umount  with 3.10.0.RC5 kernel
-
-
-
-On Wed, 2013-06-26 at 15:24 -0600, Christopher T Vogan wrote:
-> This is a complete network trace between the client and server.
+On Tue, Jun 04, 2013 at 07:46:40AM -0700, Christoph Hellwig wrote:
+> Having RCU for modification mostly workloads never is a good idea, so
+> I don't think it makes sense to mention it here.
 > 
-> 
-> So this issue only happens on Kernels 3.9.6 and newer.
-> I did not have this problem with Kernel 3.8.13
-> nfs-utils-1.2.3-36 (from Redhat) was used w/ all kernel versions.
+> If you care about the overhead it's worth trying to use per-cpu lists,
+> though.
 
-Ah. I don't recall seeing that information before. In that case, I'm
-guessing that the change in behaviour is likely to be commit
-ecf3d1f1aa74da0d632b651a2e05a911f60e92c0 (vfs: kill FS_REVAL_DOT by
-adding a d_weak_revalidate dentry op).
+Yes.  The lock and unlock could happen on different CPU's--but I think
+you can make the rule that the lock stays associated with the list it
+was first put on, and then it's correct in general and hopefully quick
+in the common case.
 
-Jeff, any comment on what behaviour you expect on umount()
-post-ecf3d1f1aa?
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
-
-
+--b.
