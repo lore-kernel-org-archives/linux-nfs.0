@@ -1,102 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:32654 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36091 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752211Ab3FEMjf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jun 2013 08:39:35 -0400
-Date: Wed, 5 Jun 2013 08:38:59 -0400
+	id S1751314Ab3FDMP4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jun 2013 08:15:56 -0400
+Date: Tue, 4 Jun 2013 08:15:17 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, dhowells@redhat.com,
-        sage@inktank.com, smfrench@gmail.com, swhiteho@redhat.com,
-        Trond.Myklebust@netapp.com, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        piastryyy@gmail.com
-Subject: Re: [PATCH v1 07/11] locks: only pull entries off of blocked_list
- when they are really unblocked
-Message-ID: <20130605083859.72c855cd@corrin.poochiereds.net>
-In-Reply-To: <20130605122432.GA24193@fieldses.org>
+To: Jim Rees <rees@umich.edu>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, viro@zeniv.linux.org.uk,
+        matthew@wil.cx, dhowells@redhat.com, sage@inktank.com,
+        smfrench@gmail.com, swhiteho@redhat.com, Trond.Myklebust@netapp.com,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
+Subject: Re: [PATCH v1 00/11] locks: scalability improvements for file
+ locking
+Message-ID: <20130604081517.0ad9f983@corrin.poochiereds.net>
+In-Reply-To: <20130604115644.GA4180@umich.edu>
 References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
-	<1370056054-25449-8-git-send-email-jlayton@redhat.com>
-	<20130604215839.GD15594@fieldses.org>
-	<20130605073822.4d67c57c@corrin.poochiereds.net>
-	<20130605122432.GA24193@fieldses.org>
+	<20130603213101.GC2109@fieldses.org>
+	<20130604065417.46080a57@tlielax.poochiereds.net>
+	<20130604115644.GA4180@umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 5 Jun 2013 08:24:32 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Tue, 4 Jun 2013 07:56:44 -0400
+Jim Rees <rees@umich.edu> wrote:
 
-> On Wed, Jun 05, 2013 at 07:38:22AM -0400, Jeff Layton wrote:
-> > On Tue, 4 Jun 2013 17:58:39 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Fri, May 31, 2013 at 11:07:30PM -0400, Jeff Layton wrote:
-> > > > Currently, when there is a lot of lock contention the kernel spends an
-> > > > inordinate amount of time taking blocked locks off of the global
-> > > > blocked_list and then putting them right back on again. When all of this
-> > > > code was protected by a single lock, then it didn't matter much, but now
-> > > > it means a lot of file_lock_lock thrashing.
-> > > > 
-> > > > Optimize this a bit by deferring the removal from the blocked_list until
-> > > > we're either applying or cancelling the lock. By doing this, and using a
-> > > > lockless list_empty check, we can avoid taking the file_lock_lock in
-> > > > many cases.
-> > > > 
-> > > > Because the fl_link check is lockless, we must ensure that only the task
-> > > > that "owns" the request manipulates the fl_link. Also, with this change,
-> > > > it's possible that we'll see an entry on the blocked_list that has a
-> > > > NULL fl_next pointer. In that event, just ignore it and continue walking
-> > > > the list.
-> > > 
-> > > OK, that sounds safe as in it shouldn't crash, but does the deadlock
-> > > detection still work, or can it miss loops?
-> > > 
-> > > Those locks that are temporarily NULL would previously not have been on
-> > > the list at all, OK, but...  I'm having trouble reasoning about how this
-> > > works now.
-> > > 
-> > > Previously a single lock was held interrupted across
-> > > posix_locks_deadlock and locks_insert_block() which guaranteed we
-> > > shouldn't be adding a loop, is that still true?
-> > > 
-> > > --b.
-> > > 
-> > 
-> > I had thought it was when I originally looked at this, but now that I
-> > consider it again I think you may be correct and that there are possible
-> > races here. Since we might end up reblocking behind a different lock
-> > without taking the global spinlock we could flip to blocking behind a
-> > different lock such that a loop is created if you had a complex (>2)
-> > chain of locks.
-> > 
-> > I think I'm going to have to drop this approach and instead make it so
-> > that the deadlock detection and insertion into the global blocker
-> > list/hash are atomic.
+> Jeff Layton wrote:
 > 
-> Right.  Once you drop the lock you can no longer be sure that what you
-> learned about the file-lock graph stays true.
+>   > Might be nice to look at some profiles to confirm all of that.  I'd also
+>   > be curious how much variation there was in the results above, as they're
+>   > pretty close.
+>   > 
+>   
+>   The above is just a random representative sample. The results are
+>   pretty close when running this test, but I can average up several runs
+>   and present the numbers. I plan to get a bare-metal test box on which
+>   to run some more detailed testing and maybe some profiling this week.
 > 
-> > Ditto for locks_wake_up_blocks on posix locks and
-> > taking the entries off the list/hash.
-> 
-> Here I'm not sure what you mean.
-> 
+> Just contributing more runs into the mean doesn't tell us anything about the
+> variance. With numbers that close you need the variance to tell whether it's
+> a significant change.
 
-Basically, I mean that rather than setting the fl_next pointer to NULL
-while holding only the inode lock and then ignoring those locks in the
-deadlock detection code, we should additionally take the global lock in
-locks_wake_up_blocks too and take the blocked locks off the global list
-and the i_flock list at the same time.
+Thanks. I'll see if I can get some standard deviation numbers here, and
+I'll do it on some bare metal to ensure that virtualization doesn't
+skew any results.
 
-That actually might not be completely necessary, but it'll make the
-logic clearer and easier to understand and probably won't hurt
-performance too much. Again, I'll need to do some perf testing to be
-sure.
+FWIW, they were all consistently very close to one another when I ran
+these tests, and the times were all consistently shorter than the
+unpatched kernel.
+
+That said, this test is pretty rough. Doing this with "time" measures
+other things that aren't related to locking. So I'll also see if I
+can come up with a way to measure the actual locking performance more
+accurately too.
 
 -- 
 Jeff Layton <jlayton@redhat.com>
