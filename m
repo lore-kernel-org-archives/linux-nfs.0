@@ -1,97 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:18172 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753913Ab3FEPYp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jun 2013 11:24:45 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
-Subject: Re: [PATCH 0/3] Various gssd fixes including machine-credential issue.
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1370445799.21544.37.camel@leira.trondhjem.org>
-Date: Wed, 5 Jun 2013 11:24:40 -0400
-Cc: "E.G. Keizer" <E.G.Keizer@vu.nl>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <B1945274-DB53-4901-9795-2F8B4522A067@oracle.com>
-References: <51AF459A.1040609@vu.nl> <1370442331.21544.16.camel@leira.trondhjem.org> <51AF4FCB.9000503@vu.nl> <5BC37A4B-83A9-462F-B625-0CCA10BD38EA@oracle.com> <1370445799.21544.37.camel@leira.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:39607 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751712Ab3FDOkQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jun 2013 10:40:16 -0400
+Date: Tue, 4 Jun 2013 10:39:35 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Stefan (metze) Metzmacher" <metze@samba.org>
+Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        cluster-devel@redhat.com, sage@inktank.com,
+        samba-technical@lists.samba.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
+        dhowells@redhat.com, smfrench@gmail.com, linux-fsdevel@vger.kernel.org,
+        ceph-devel@vger.kernel.org, akpm@linux-foundation.org,
+        swhiteho@redhat.com
+Subject: Re: [PATCH v1 11/11] locks: give the blocked_hash its own spinlock
+Message-ID: <20130604103935.2a6afb29@corrin.poochiereds.net>
+In-Reply-To: <51ADF789.70906@samba.org>
+References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
+	<1370056054-25449-12-git-send-email-jlayton@redhat.com>
+	<51ADF789.70906@samba.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/e2QNgN_ZjCXlXB6Bdx9hIy+"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--Sig_/e2QNgN_ZjCXlXB6Bdx9hIy+
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-On Jun 5, 2013, at 11:23 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+On Tue, 04 Jun 2013 16:19:53 +0200
+"Stefan (metze) Metzmacher" <metze@samba.org> wrote:
 
-> On Wed, 2013-06-05 at 08:19 -0700, Chuck Lever wrote:
->> On Jun 5, 2013, at 10:48 AM, "E.G. Keizer" <E.G.Keizer@vu.nl> wrote:
->> 
->>> 
->>> 
->>> On 05/06/2013 16:25, Myklebust, Trond wrote:
->>>> On Wed, 2013-06-05 at 16:05 +0200, E.G. Keizer wrote:
->>>>> First I would like to wholeheartedly support Neil Brown's comment. We at the
->>>>> Vrije Universiteit in Amsterdam (NL) also have the situation where the Kerberos
->>>>> administrator does not hand out machine credentials. A lot of Linux users from
->>>>> the Faculty of Sciences depend on the functionality that lets them access
->>>>> the NFS file servers with only their user credentials.
->>>> 
->>>> They should still be able to do that, but in that case, the state
->>>> management will have to default to AUTH_SYS to set up the lease, which
->>>> means that someone else can spoof requests to cancel the lease or change
->>>> the callback channel parameters.
->>> We would probably accept that. But can you enlighten me as to why AUTH_SYS is better
->>> then krb5 (no i, no p)?
->> 
->> It isn't "better."  But if no GSS credential is available on the client, then AUTH_SYS is about the only choice for a client to use.
->> 
->>> 
->>>> 
->>>>> Secondly I would like to make a remark on basing client id's on the system's kerberos principal's name.
->>>>> That same faculty, in the times it had its own IT department, used an identical keytab for
->>>>> all Linux workstations, using the principal names "[nfs|root|host]/workstation@FEW.VU.NL".
->>>>> I understand this would lead to severe problems when the client id (co_ownerid) is based
->>>>> solely in the systems root principal name.
->>>> 
->>>> How so? The only problem should be that any one of those machines can go
->>>> and cancel or change the lease of any other. That's a compromise that
->>>> you decided upon when you decided to use one keytab for all of them.
->>> Mmm, not at the time we made the decision. But I just mentioned that as an example
->>> of the problems one can meet when deciding on the implementation of client id.
->>> The same problem, but on a smaller scale, occurs when the client id is based
->>> on the system principal and two or more systems use the same user principal as system
->>> principal.
->>>> 
->>>>> It seems to me that the issues about the client id look like a bag of worms. I've seen that the
->>>>> newest standard `requires' integrity protection for client id exchanges. I doubt
->>>>> that that will help when the source code of the NFS client is known and
->>>>> the client id is guessable.
->>>> 
->>>> What is the attack and how would it compromise security on the clients
->>>> that you care about?
->>> I am personally not that worried about this issue on our environment. But others seem to
->>> be in their environment. Otherwise the integrity requirement would not have ended up in
->>> the NFSv4 RFC. As fas as I understand the danger with a man-in-the-middle attack is that the attacker
->>> can see my client id and thus cancel my lease. When the man-in-the-middle can guess my
->>> client id he can still invalidate my lease even when i'am using krb5i.
->> 
->> No, SETCLIENTID would have to be authenticated with a Kerberos principal.  That's what protects the lease.
->> 
->>>> 
->>>>> The wisest thing might be to offer different options
->>>>> and let the administrators pick the one they like best?
->>>> 
->>>> We have two options available to you: auth_sys or RPCSEC_GSS w/krb5i.
->>> I meant different options for choosing the client id.
->> 
->> Have you seen the nfs4_unique_id boot parameter?  (cf. Documentation/filesystems/nfs.txt)  Pick a different UUID for each of your clients, and specify that UUID via the kernel command line.
-> 
-> Yes, sorry. I misremembered the code... If you specify 'migration' then
-> the uuid is used. Otherwise we use the ip address.
-
-Nope, you were right the first time: the client's hostname is used if "nfs4_unique_id" is not specified.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+> Hi Jeff,
+>=20
+> > There's no reason we have to protect the blocked_hash and file_lock_list
+> > with the same spinlock. With the tests I have, breaking it in two gives
+> > a barely measurable performance benefit, but it seems reasonable to make
+> > this locking as granular as possible.
+>=20
+> as file_lock_{list,lock} is only used for debugging (/proc/locks) after t=
+his
+> change, I guess it would be possible to use RCU instead of a spinlock.
+>=20
+> @others: this was the related discussion on IRC
+> (http://irclog.samba.org/) about this:
+>=20
+> 16:02 < metze> jlayton: do you have time to discuss your file_lock_lock
+> changes?
+> 16:02 < jlayton> metze: sure, what's up?
+> 16:03 < jlayton> metze: note that it won't help vl's thundering herd
+> problems...
+> 16:03 < metze> is it correct that after your last patch file_lock_lock
+> is only used for /proc/locks?
+> 16:03 < jlayton> well, it's only used to protect the list that is used
+> for /proc/locks
+> 16:04 < jlayton> it still gets taken whenever a lock is acquired or
+> released in order to manipulate that list
+> 16:04 < metze> would it be a good idea to use rcu instead of a spin lock?
+> 16:04 < jlayton> I tried using RCU, but it turned out to slow everything
+> down
+> 16:04 < jlayton> this is not a read-mostly workload unfortunately
+> 16:04 < jlayton> so doing it with mutual exclusion turns out to be faster
+> 16:04 < metze> ok
+> 16:05 < jlayton> I might play around with it again sometime, but I don't
+> think it really helps. What we need to ensure is
+>                  that we optimize the code that manipulates that list,
+> and RCU list manipulations have larger overhead
+> 16:06 < jlayton> metze: that's a good question though so if you want to
+> ask it on the list, please do
+> 16:06 < jlayton> others will probably be wondering the same thing
+> 16:08 < metze> maybe it's worth a comment in commit message and the code
 
 
+I'm not sure it's worth commenting about RCU in the code. In the future
+it may be possible to do this -- who knows. It does seem to have been
+consistently slower in my testing here though.
 
+> 16:08 < metze> btw, why don't you remove the ' /* Protects the
+> file_lock_list and the blocked_hash */' comment?
+>=20
 
+Removed in my git tree -- thanks for pointing that out.
+
+--=20
+Jeff Layton <jlayton@redhat.com>
+
+--Sig_/e2QNgN_ZjCXlXB6Bdx9hIy+
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIcBAEBAgAGBQJRrfwuAAoJEAAOaEEZVoIVYlsP/0suyZxDnd28BxQxkQHllqG5
+bxXk07dLel27h/VoWr9UUXVuGmWRx/+Ue0omtVewfMiSeBrpkUXBkYKI7dHMpoD8
+SH7qQNvUDP+A1Y1Eup/+UQlXVX8ykSFzMzn283wvPaqXtUrhCVflGQQZjXW062RG
+C7aodjNQspdcBh5+5J8XQO2s7jQA6xy/mxEvvBrlV1Rjq1/3iW8xQr59dOjGiLID
+mlMqitLPpz8Os9kX5ONp+hyffVLK+OuaA8hLaInHMiYbDH3NV08WerfhHzy7wySt
+G/hlzs7P2zub9rT77PNTXYa5Aj9UOzAYihYUFcKH9RzWqfdD2XKPsIj7JGr5KCLA
+pmEemZdmBVFqn5nKzggGrZBssju2c97mKumII51oJr62wV/M8ISS89rsPtFxdlTW
+Qs+gSi1fH+PuzUTsFJw/hC9QM0bsAo1AmB2mmT4ijbynxqmgjB7bDAe1soGp6CNI
+m/diYluiPh5gBa6WxoFpjMyJPWRrTvIv8XsUUS3NaSDiCdKWrXiN7/fYdy0q8Tkm
+Ve6w/vPuN7/2rmsqh3sJkV8S7kQHQwD2/lxcFKkD/CqGy+AyC4YCwIqxYLLwh127
+vxKCdU9Ng97qhTQUIiq4s1EZAgTC7Jpe3hdwbAxfoA1r0xgl2kfdEYKmdZ3HsYCX
+0jwGrRwaGKkUpR/ILxVq
+=qRHI
+-----END PGP SIGNATURE-----
+
+--Sig_/e2QNgN_ZjCXlXB6Bdx9hIy+--
