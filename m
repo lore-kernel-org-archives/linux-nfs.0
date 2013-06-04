@@ -1,80 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vb0-f44.google.com ([209.85.212.44]:63945 "EHLO
-	mail-vb0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750961Ab3F1Lvo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Jun 2013 07:51:44 -0400
+Received: from bombadil.infradead.org ([198.137.202.9]:34606 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751317Ab3FDPvc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Jun 2013 11:51:32 -0400
+Date: Tue, 4 Jun 2013 07:46:40 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: "Stefan (metze) Metzmacher" <metze@samba.org>
+Cc: Jeff Layton <jlayton@redhat.com>, viro@zeniv.linux.org.uk, matthew@wil.cx,
+        bfields@fieldses.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, cluster-devel@redhat.com, sage@inktank.com,
+        samba-technical@lists.samba.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
+        dhowells@redhat.com, smfrench@gmail.com, linux-fsdevel@vger.kernel.org,
+        ceph-devel@vger.kernel.org, akpm@linux-foundation.org,
+        swhiteho@redhat.com
+Subject: Re: [PATCH v1 11/11] locks: give the blocked_hash its own spinlock
+Message-ID: <20130604144640.GA7730@infradead.org>
+References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
+ <1370056054-25449-12-git-send-email-jlayton@redhat.com>
+ <51ADF789.70906@samba.org>
 MIME-Version: 1.0
-In-Reply-To: <20130626061448.32202.192.stgit@localhost.localdomain>
-References: <20130624075245.17104.6279.stgit@localhost.localdomain> <20130626061448.32202.192.stgit@localhost.localdomain>
-From: William Dauchy <wdauchy@gmail.com>
-Date: Fri, 28 Jun 2013 13:51:23 +0200
-Message-ID: <CAJ75kXaRTfkCvT+=PdmHaRAXGKuMYW7aRRpGQJrQkfi6nDO9DQ@mail.gmail.com>
-Subject: Re: [PATCH v4] SUNRPC: fix races on PipeFS UMOUNT notifications
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>, devel@openvz.org,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        jlayton@redhat.com
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <51ADF789.70906@samba.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 26, 2013 at 8:15 AM, Stanislav Kinsbursky
-<skinsbursky@parallels.com> wrote:
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index b827a4b..41f180c 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -236,8 +236,6 @@ static struct rpc_clnt *rpc_get_client_for_event(struct net *net, int event)
->                         continue;
->                 if (rpc_clnt_skip_event(clnt, event))
->                         continue;
-> -               if (atomic_inc_not_zero(&clnt->cl_count) == 0)
-> -                       continue;
->                 spin_unlock(&sn->rpc_client_lock);
->                 return clnt;
->         }
-> @@ -254,7 +252,6 @@ static int rpc_pipefs_event(struct notifier_block *nb, unsigned long event,
->
->         while ((clnt = rpc_get_client_for_event(sb->s_fs_info, event))) {
->                 error = __rpc_pipefs_event(clnt, event, sb);
-> -               rpc_release_client(clnt);
->                 if (error)
->                         break;
->         }
-> @@ -641,8 +638,8 @@ rpc_free_client(struct rpc_clnt *clnt)
->                         rcu_dereference(clnt->cl_xprt)->servername);
->         if (clnt->cl_parent != clnt)
->                 rpc_release_client(clnt->cl_parent);
-> -       rpc_unregister_client(clnt);
->         rpc_clnt_remove_pipedir(clnt);
-> +       rpc_unregister_client(clnt);
->         rpc_free_iostats(clnt->cl_metrics);
->         kfree(clnt->cl_principal);
->         clnt->cl_metrics = NULL;
-> diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-> index c512448..9b4ec5b 100644
-> --- a/net/sunrpc/rpc_pipe.c
-> +++ b/net/sunrpc/rpc_pipe.c
-> @@ -1165,12 +1165,12 @@ static void rpc_kill_sb(struct super_block *sb)
->                 goto out;
->         }
->         sn->pipefs_sb = NULL;
-> -       mutex_unlock(&sn->pipefs_sb_lock);
->         dprintk("RPC:       sending pipefs UMOUNT notification for net %p%s\n",
->                 net, NET_NAME(net));
->         blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
->                                            RPC_PIPEFS_UMOUNT,
->                                            sb);
-> +       mutex_unlock(&sn->pipefs_sb_lock);
->         put_net(net);
->  out:
->         kill_litter_super(sb);
+Having RCU for modification mostly workloads never is a good idea, so
+I don't think it makes sense to mention it here.
 
-are these patches validated?
-any chance to see them in tree soon? I wasn't able to find them on
-http://git.linux-nfs.org/?p=trondmy/linux-nfs.git
+If you care about the overhead it's worth trying to use per-cpu lists,
+though.
 
-Thanks,
---
-William
