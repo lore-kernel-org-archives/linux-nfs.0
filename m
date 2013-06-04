@@ -1,9 +1,9 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:18626 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:39542 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752147Ab3FELi6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jun 2013 07:38:58 -0400
-Date: Wed, 5 Jun 2013 07:38:22 -0400
+	id S1752064Ab3FDLJn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jun 2013 07:09:43 -0400
+Date: Tue, 4 Jun 2013 07:09:02 -0400
 From: Jeff Layton <jlayton@redhat.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, dhowells@redhat.com,
@@ -14,167 +14,142 @@ Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, dhowells@redhat.com,
         samba-technical@lists.samba.org, cluster-devel@redhat.com,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         piastryyy@gmail.com
-Subject: Re: [PATCH v1 07/11] locks: only pull entries off of blocked_list
- when they are really unblocked
-Message-ID: <20130605073822.4d67c57c@corrin.poochiereds.net>
-In-Reply-To: <20130604215839.GD15594@fieldses.org>
+Subject: Re: [PATCH v1 03/11] locks: comment cleanups and clarifications
+Message-ID: <20130604070902.07f0caee@tlielax.poochiereds.net>
+In-Reply-To: <20130603220024.GF2109@fieldses.org>
 References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
-	<1370056054-25449-8-git-send-email-jlayton@redhat.com>
-	<20130604215839.GD15594@fieldses.org>
+	<1370056054-25449-4-git-send-email-jlayton@redhat.com>
+	<20130603220024.GF2109@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 4 Jun 2013 17:58:39 -0400
+On Mon, 3 Jun 2013 18:00:24 -0400
 "J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Fri, May 31, 2013 at 11:07:30PM -0400, Jeff Layton wrote:
-> > Currently, when there is a lot of lock contention the kernel spends an
-> > inordinate amount of time taking blocked locks off of the global
-> > blocked_list and then putting them right back on again. When all of this
-> > code was protected by a single lock, then it didn't matter much, but now
-> > it means a lot of file_lock_lock thrashing.
+> On Fri, May 31, 2013 at 11:07:26PM -0400, Jeff Layton wrote:
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  fs/locks.c         |   24 +++++++++++++++++++-----
+> >  include/linux/fs.h |    6 ++++++
+> >  2 files changed, 25 insertions(+), 5 deletions(-)
 > > 
-> > Optimize this a bit by deferring the removal from the blocked_list until
-> > we're either applying or cancelling the lock. By doing this, and using a
-> > lockless list_empty check, we can avoid taking the file_lock_lock in
-> > many cases.
-> > 
-> > Because the fl_link check is lockless, we must ensure that only the task
-> > that "owns" the request manipulates the fl_link. Also, with this change,
-> > it's possible that we'll see an entry on the blocked_list that has a
-> > NULL fl_next pointer. In that event, just ignore it and continue walking
-> > the list.
+> > diff --git a/fs/locks.c b/fs/locks.c
+> > index e3140b8..a7d2253 100644
+> > --- a/fs/locks.c
+> > +++ b/fs/locks.c
+> > @@ -150,6 +150,16 @@ static int target_leasetype(struct file_lock *fl)
+> >  int leases_enable = 1;
+> >  int lease_break_time = 45;
+> >  
+> > +/*
+> > + * The i_flock list is ordered by:
+> > + *
+> > + * 1) lock type -- FL_LEASEs first, then FL_FLOCK, and finally FL_POSIX
+> > + * 2) lock owner
+> > + * 3) lock range start
+> > + * 4) lock range end
+> > + *
+> > + * Obviously, the last two criteria only matter for POSIX locks.
+> > + */
 > 
-> OK, that sounds safe as in it shouldn't crash, but does the deadlock
-> detection still work, or can it miss loops?
+> Thanks, yes, that needs documenting!  Though I wonder if this is the
+> place people will look for it.
 > 
-> Those locks that are temporarily NULL would previously not have been on
-> the list at all, OK, but...  I'm having trouble reasoning about how this
-> works now.
+
+Agreed. If you can think of a better spot to put this, I'd be happy to
+move it in the next iteration of this series.
+
+> >  #define for_each_lock(inode, lockp) \
+> >  	for (lockp = &inode->i_flock; *lockp != NULL; lockp = &(*lockp)->fl_next)
+> >  
+> > @@ -806,6 +816,11 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+> >  	}
+> >  
+> >  	lock_flocks();
+> > +	/*
+> > +	 * New lock request. Walk all POSIX locks and look for conflicts. If
+> > +	 * there are any, either return -EAGAIN or put the request on the
+> > +	 * blocker's list of waiters.
+> > +	 */
 > 
-> Previously a single lock was held interrupted across
-> posix_locks_deadlock and locks_insert_block() which guaranteed we
-> shouldn't be adding a loop, is that still true?
+> This though, seems a) not 100% accurate (it could also return EDEADLCK,
+> for example), b) mostly redundant with respect to the following code.
+> 
+
+Good point -- I'll fix that up. That one was mostly for my own benefit
+while trying to figure out how this code works. It's still probably worth
+some more verbose comments here since this certainly wasn't 100%
+obvious to me when I first dove into this code.
+
+> >  	if (request->fl_type != F_UNLCK) {
+> >  		for_each_lock(inode, before) {
+> >  			fl = *before;
+> > @@ -844,7 +859,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+> >  		before = &fl->fl_next;
+> >  	}
+> >  
+> > -	/* Process locks with this owner.  */
+> > +	/* Process locks with this owner. */
+> >  	while ((fl = *before) && posix_same_owner(request, fl)) {
+> >  		/* Detect adjacent or overlapping regions (if same lock type)
+> >  		 */
+> > @@ -930,10 +945,9 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+> >  	}
+> >  
+> >  	/*
+> > -	 * The above code only modifies existing locks in case of
+> > -	 * merging or replacing.  If new lock(s) need to be inserted
+> > -	 * all modifications are done bellow this, so it's safe yet to
+> > -	 * bail out.
+> > +	 * The above code only modifies existing locks in case of merging or
+> > +	 * replacing. If new lock(s) need to be inserted all modifications are
+> > +	 * done below this, so it's safe yet to bail out.
+> >  	 */
+> >  	error = -ENOLCK; /* "no luck" */
+> >  	if (right && left == right && !new_fl2)
+> > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > index b9d7816..ae377e9 100644
+> > --- a/include/linux/fs.h
+> > +++ b/include/linux/fs.h
+> > @@ -926,6 +926,12 @@ int locks_in_grace(struct net *);
+> >  /* that will die - we need it for nfs_lock_info */
+> >  #include <linux/nfs_fs_i.h>
+> >  
+> > +/*
+> > + * struct file_lock represents a generic "file lock". It's used to represent
+> > + * POSIX byte range locks, BSD (flock) locks, and leases. It's important to
+> > + * note that the same struct is used to represent both a request for a lock and
+> > + * the lock itself, but the same object is never used for both.
+> 
+> Yes, and I do find that confusing.  I wonder if there's a sensible way
+> to use separate structs for the different uses.
 > 
 > --b.
 > 
 
-I had thought it was when I originally looked at this, but now that I
-consider it again I think you may be correct and that there are possible
-races here. Since we might end up reblocking behind a different lock
-without taking the global spinlock we could flip to blocking behind a
-different lock such that a loop is created if you had a complex (>2)
-chain of locks.
+Yeah. I think that latter point accounts for a lot of the difficulty for
+the uninitiated to understand this code.
 
-I think I'm going to have to drop this approach and instead make it so
-that the deadlock detection and insertion into the global blocker
-list/hash are atomic. Ditto for locks_wake_up_blocks on posix locks and
-taking the entries off the list/hash.
+I considered creating a "struct lock_request" too. If I were designing
+this code from scratch I certainly would do so, but it's harder to
+justify such a change to the existing code.
 
-Now that I look, I think that approach may actually improve performance
-too since we'll be taking the global spinlock less than we would have,
-but I'll need to test it out to know for sure.
+It would mean a lot of churn in fs-specific lock routines, and we'd
+have to completely revamp things like locks_copy_lock. I just don't see
+that giving us a lot of benefit in the near term and I really want this
+set to focus on concrete benefits.
 
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  fs/locks.c |   29 +++++++++++++++++++++++------
-> >  1 files changed, 23 insertions(+), 6 deletions(-)
-> > 
-> > diff --git a/fs/locks.c b/fs/locks.c
-> > index 055c06c..fc35b9e 100644
-> > --- a/fs/locks.c
-> > +++ b/fs/locks.c
-> > @@ -520,7 +520,6 @@ locks_delete_global_locks(struct file_lock *waiter)
-> >  static void __locks_delete_block(struct file_lock *waiter)
-> >  {
-> >  	list_del_init(&waiter->fl_block);
-> > -	locks_delete_global_blocked(waiter);
-> >  	waiter->fl_next = NULL;
-> >  }
-> >  
-> > @@ -704,13 +703,16 @@ EXPORT_SYMBOL(posix_test_lock);
-> >  /* Find a lock that the owner of the given block_fl is blocking on. */
-> >  static struct file_lock *what_owner_is_waiting_for(struct file_lock *block_fl)
-> >  {
-> > -	struct file_lock *fl;
-> > +	struct file_lock *fl, *ret = NULL;
-> >  
-> >  	list_for_each_entry(fl, &blocked_list, fl_link) {
-> > -		if (posix_same_owner(fl, block_fl))
-> > -			return fl->fl_next;
-> > +		if (posix_same_owner(fl, block_fl)) {
-> > +			ret = fl->fl_next;
-> > +			if (likely(ret))
-> > +				break;
-> > +		}
-> >  	}
-> > -	return NULL;
-> > +	return ret;
-> >  }
-> >  
-> >  static int posix_locks_deadlock(struct file_lock *caller_fl,
-> > @@ -865,7 +867,8 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
-> >  				goto out;
-> >  			error = FILE_LOCK_DEFERRED;
-> >  			locks_insert_block(fl, request);
-> > -			locks_insert_global_blocked(request);
-> > +			if (list_empty(&request->fl_link))
-> > +				locks_insert_global_blocked(request);
-> >  			goto out;
-> >    		}
-> >    	}
-> > @@ -876,6 +879,16 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
-> >  		goto out;
-> >  
-> >  	/*
-> > +	 * Now that we know the request is no longer blocked, we can take it
-> > +	 * off the global list. Some callers send down partially initialized
-> > +	 * requests, so we only do this if FL_SLEEP is set. Also, avoid taking
-> > +	 * the lock if the list is empty, as that indicates a request that
-> > +	 * never blocked.
-> > +	 */
-> > +	if ((request->fl_flags & FL_SLEEP) && !list_empty(&request->fl_link))
-> > +		locks_delete_global_blocked(request);
-> > +
-> > +	/*
-> >  	 * Find the first old lock with the same owner as the new lock.
-> >  	 */
-> >  	
-> > @@ -1069,6 +1082,7 @@ int posix_lock_file_wait(struct file *filp, struct file_lock *fl)
-> >  			continue;
-> >  
-> >  		locks_delete_block(fl);
-> > +		locks_delete_global_blocked(fl);
-> >  		break;
-> >  	}
-> >  	return error;
-> > @@ -1147,6 +1161,7 @@ int locks_mandatory_area(int read_write, struct inode *inode,
-> >  		}
-> >  
-> >  		locks_delete_block(&fl);
-> > +		locks_delete_global_blocked(&fl);
-> >  		break;
-> >  	}
-> >  
-> > @@ -1859,6 +1874,7 @@ static int do_lock_file_wait(struct file *filp, unsigned int cmd,
-> >  			continue;
-> >  
-> >  		locks_delete_block(fl);
-> > +		locks_delete_global_blocked(fl);
-> >  		break;
-> >  	}
-> >  
-> > @@ -2160,6 +2176,7 @@ posix_unblock_lock(struct file *filp, struct file_lock *waiter)
-> >  	else
-> >  		status = -ENOENT;
-> >  	spin_unlock(&inode->i_lock);
-> > +	locks_delete_global_blocked(waiter);
-> >  	return status;
-> >  }
-> >  
+We might consider it in the future though. I'll add a FIXME comment
+here so we can record the idea for posterity.
+
+Thanks for the comments!
+
+> > + */
+> >  struct file_lock {
+> >  	struct file_lock *fl_next;	/* singly linked list for this inode  */
+> >  	struct list_head fl_link;	/* doubly linked list of all locks */
 > > -- 
 > > 1.7.1
 > > 
