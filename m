@@ -1,66 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zak.futurequest.net ([69.5.6.152]:38586 "HELO
-	zak.futurequest.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S934979Ab3FSWDs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jun 2013 18:03:48 -0400
-Date: Wed, 19 Jun 2013 15:57:04 -0600
-From: Bruce Guenter <bruce@untroubled.org>
-To: linux-nfs@vger.kernel.org
-Subject: Re: Looping NFSv4 traffic
-Message-ID: <20130619215704.GA32209@untroubled.org>
-References: <20130513202220.GA16969@untroubled.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:51158 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755992Ab3FEPUp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jun 2013 11:20:45 -0400
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="T4sUOijqQbZv57TR"
-In-Reply-To: <20130513202220.GA16969@untroubled.org>
+Message-ID: <5BC37A4B-83A9-462F-B625-0CCA10BD38EA@oracle.com>
+Date: Wed, 5 Jun 2013 08:19:03 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+To: "E.G. Keizer" <E.G.Keizer@vu.nl>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/3] Various gssd fixes including machine-credential
+ issue.
+References: <51AF459A.1040609@vu.nl>
+ <1370442331.21544.16.camel@leira.trondhjem.org> <51AF4FCB.9000503@vu.nl>
+In-Reply-To: <51AF4FCB.9000503@vu.nl>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
---T4sUOijqQbZv57TR
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+On Jun 5, 2013, at 10:48 AM, "E.G. Keizer" <E.G.Keizer@vu.nl> wrote:
 
-On Mon, May 13, 2013 at 02:22:20PM -0600, Bruce Guenter wrote:
-> I'm seeing repeated duplicated queries going on between a NFSv4 client
-> and server. Both client and server are running linux v3.9.2, but I have
-> observed this with other versions on both.
->=20
-> Wireshark decodes it as (copied by hand):
->=20
-> V4 Call (Reply In 3) WRITE StateID:0x1c7c Offset:0 Len:8192
-> V4 Reply (Call In 2) WRITE Status: NFS4ERR_OLD_STATEID
+> 
+> 
+> On 05/06/2013 16:25, Myklebust, Trond wrote:
+>> On Wed, 2013-06-05 at 16:05 +0200, E.G. Keizer wrote:
+>>> First I would like to wholeheartedly support Neil Brown's comment. We at the
+>>> Vrije Universiteit in Amsterdam (NL) also have the situation where the Kerberos
+>>> administrator does not hand out machine credentials. A lot of Linux users from
+>>> the Faculty of Sciences depend on the functionality that lets them access
+>>> the NFS file servers with only their user credentials.
+>> 
+>> They should still be able to do that, but in that case, the state
+>> management will have to default to AUTH_SYS to set up the lease, which
+>> means that someone else can spoof requests to cancel the lease or change
+>> the callback channel parameters.
+> We would probably accept that. But can you enlighten me as to why AUTH_SYS is better
+> then krb5 (no i, no p)?
 
-I am still seeing this behavior with the client running v3.10-rc6 and
-server on v3.9.3. The last two times I've seen it, gvfsd-metadata has
-been blocked in D state.
+It isn't "better."  But if no GSS credential is available on the client, then AUTH_SYS is about the only choice for a client to use.
 
-Does anybody have any idea what's going on here?
+> 
+>> 
+>>> Secondly I would like to make a remark on basing client id's on the system's kerberos principal's name.
+>>> That same faculty, in the times it had its own IT department, used an identical keytab for
+>>> all Linux workstations, using the principal names "[nfs|root|host]/workstation@FEW.VU.NL".
+>>> I understand this would lead to severe problems when the client id (co_ownerid) is based
+>>> solely in the systems root principal name.
+>> 
+>> How so? The only problem should be that any one of those machines can go
+>> and cancel or change the lease of any other. That's a compromise that
+>> you decided upon when you decided to use one keytab for all of them.
+> Mmm, not at the time we made the decision. But I just mentioned that as an example
+> of the problems one can meet when deciding on the implementation of client id.
+> The same problem, but on a smaller scale, occurs when the client id is based
+> on the system principal and two or more systems use the same user principal as system
+> principal.
+>> 
+>>> It seems to me that the issues about the client id look like a bag of worms. I've seen that the
+>>> newest standard `requires' integrity protection for client id exchanges. I doubt
+>>> that that will help when the source code of the NFS client is known and
+>>> the client id is guessable.
+>> 
+>> What is the attack and how would it compromise security on the clients
+>> that you care about?
+> I am personally not that worried about this issue on our environment. But others seem to
+> be in their environment. Otherwise the integrity requirement would not have ended up in
+> the NFSv4 RFC. As fas as I understand the danger with a man-in-the-middle attack is that the attacker
+> can see my client id and thus cancel my lease. When the man-in-the-middle can guess my
+> client id he can still invalidate my lease even when i'am using krb5i.
 
---=20
-Bruce Guenter <bruce@untroubled.org>                http://untroubled.org/
+No, SETCLIENTID would have to be authenticated with a Kerberos principal.  That's what protects the lease.
 
---T4sUOijqQbZv57TR
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
+>> 
+>>> The wisest thing might be to offer different options
+>>> and let the administrators pick the one they like best?
+>> 
+>> We have two options available to you: auth_sys or RPCSEC_GSS w/krb5i.
+> I meant different options for choosing the client id.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.20 (GNU/Linux)
+Have you seen the nfs4_unique_id boot parameter?  (cf. Documentation/filesystems/nfs.txt)  Pick a different UUID for each of your clients, and specify that UUID via the kernel command line.
 
-iQIcBAEBAgAGBQJRwikwAAoJEFFRvcnBTTxnF0QP/iCk2IBUB34Fgy9K17gCtPwr
-agAumzHJ99fYGoBRiGH7lNXWaKg7ia4gzzkvNhTU3n4pp90NCPIKallHNXTGFxY2
-/1JCRiS8e1+6a7U+42GyAYk/07QglqQ/hSViKZeJDB0p6Fx5xNJbfNfmzk0x3SUn
-tq25v1s+hXzYuzQ7NtYyIIPVEGxvcEg80hjo+jAKFfo2CNmxk/6aaQC86yWuM7wD
-Bzzoe8+jwavmUG5lMIEXDaSYBd6+v0F4wwR8LJacvKD92DNMoWt+Bvjgf3gNyaZR
-O/oG0Hpig0S0sKqlIFLcSSuQSs2F2WuRvEp7kTZ/Ffw/Hhg153WvHoVq4FLDxjub
-5i3xyMYALRv/NQCLtWr45YR8xlcHMOL85lJOC4IoyicRXketR6n18DZdKnXyQjQf
-+kRbZsCIZr+a5mB8ln3KeCAoM+/lhLeuGlHBh0cshbU0rDFj7W5Ke6QveP84kU0y
-koz9Q3wkte4AFBwpsyV/Toeo9M+SKEiDMmxLVJSVq7xr/w+iVcjs8udrDLyayQhm
-+VF45tc8WPQzj2RsAOsSNbib/TxquJD3C79juzRYbiYuuVeEsIL3xEX5N7gqXn6Q
-rqGeFfGOPmFgNx9Jh/RGQK763eiA7CvPHrgkHudle1t3XF3i1Zf2p8ANSn441Xue
-kMQX6aQ0tABCqBs2oOuY
-=iDpN
------END PGP SIGNATURE-----
+You probably need to use the "migration" mount option as well.
 
---T4sUOijqQbZv57TR--
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
