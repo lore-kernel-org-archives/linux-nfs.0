@@ -1,78 +1,158 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:15703 "EHLO mx2.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:58332 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751267Ab3FYWKy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jun 2013 18:10:54 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 5/5] NFS: Save FSID's root FH in nfs_server
-Date: Tue, 25 Jun 2013 22:10:53 +0000
-Message-ID: <1372198247.17600.17.camel@leira.trondhjem.org>
-References: <20130625162233.36416.34947.stgit@seurat.1015granger.net>
-	 <20130625162405.36416.83658.stgit@seurat.1015granger.net>
-	 <1372178216.5968.30.camel@leira.trondhjem.org>
-	 <3B05A214-E7E5-474B-8F51-12E64A608B8A@oracle.com>
-	 <1372194900.17600.6.camel@leira.trondhjem.org>
-	 <2EFD4576-C5AA-4295-9DB2-A5E6BAD5061B@oracle.com>
-In-Reply-To: <2EFD4576-C5AA-4295-9DB2-A5E6BAD5061B@oracle.com>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+	id S1755311Ab3FEPZI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jun 2013 11:25:08 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] NFS: Make callbacks minor version generic
+Date: Wed,  5 Jun 2013 11:15:01 -0400
+Message-Id: <1370445302-1261-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1370445302-1261-1-git-send-email-bjschuma@netapp.com>
+References: <1370445302-1261-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-06-25 at 17:51 -0400, Chuck Lever wrote:
-> On Jun 25, 2013, at 5:15 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-> 
-> > On Tue, 2013-06-25 at 13:22 -0700, Chuck Lever wrote:
-> >> On Jun 25, 2013, at 12:37 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-> >> 
-> >>> On Tue, 2013-06-25 at 12:24 -0400, Chuck Lever wrote:
-> >>>> Save each FSID's root file handle in the FSID's nfs_server structure
-> >>>> on the client.  This is needed for NFSv4 migration recovery.
-> >>> 
-> >>> Please just use sb->s_root.
-> >> 
-> >> The migration recovery procedures do not take an inode or dentry argument.  All we have is an nfs_server.  I see
-> >> 
-> >>  struct nfs_server *server = NFS_SB(sb);
-> >> 
-> >> but what is the preferred method for going the other way?  A naive approach would be to plant a super_block back-pointer in each nfs_server.
-> > 
-> > Why do you not have an inode or dentry?
-> 
-> That's the way the APIs happen to be architected.  I wasn't certain that exception->inode in nfs4_handle_exception(), and state->inode in nfs4_async_handle_error(), would always be non-NULL when I needed an inode pointer.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-That should be fixable.
+I found a few places that hardcode the minor version number rather than
+making it dependent on the protocol the callback came in over.  This
+patch makes it easier to add new minor versions in the future.
 
-> > Surely the migration must have
-> > been triggered either by an operation involving a filehandle, in which
-> > case you have an inode, or by a LEASE_MOVED, in which case there is open
-> > state on the target filesystem.
-> 
-> It's quite convenient to always use the FSID's root FH, but I agree, it's not required by the protocol.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/callback.h      |  1 +
+ fs/nfs/callback_proc.c |  3 ++-
+ fs/nfs/callback_xdr.c  | 16 ++++++++--------
+ fs/nfs/internal.h      |  2 +-
+ fs/nfs/nfs4client.c    |  6 +++---
+ 5 files changed, 15 insertions(+), 13 deletions(-)
 
-The problem is that there is no single root FH in NFSv4. The existence
-of the pseudofs means that you can have several points of entry to the
-same filesystem. Then there are Linux bind mounts...
-
-> Re: LEASE_MOVED, I'm not confident the client stops sending RENEW operations when it has no more open state.
-
-That shouldn't matter. The server isn't allowed to reply with
-LEASE_MOVED in that situation.
-
-> > I'm not opposed to putting a backpointer to the super_block in the
-> > nfs_server, but I do want to understand why it is needed.
-> 
-> 
-> Alternately, we could save a pointer to the FSID's root dentry or inode.
-> 
-
-
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index efd54f0a..41cf893 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -39,6 +39,7 @@ struct cb_process_state {
+ 	__be32			drc_status;
+ 	struct nfs_client	*clp;
+ 	u32			slotid;
++	u32			minorversion;
+ 	struct net		*net;
+ };
+ 
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index a13d26e..3d2af31 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -406,7 +406,8 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
+ 	int i;
+ 	__be32 status = htonl(NFS4ERR_BADSESSION);
+ 
+-	clp = nfs4_find_client_sessionid(cps->net, args->csa_addr, &args->csa_sessionid);
++	clp = nfs4_find_client_sessionid(cps->net, args->csa_addr,
++					 &args->csa_sessionid, cps->minorversion);
+ 	if (clp == NULL)
+ 		goto out;
+ 
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index e7ee629..77c0b88 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -166,8 +166,8 @@ static __be32 decode_compound_hdr_arg(struct xdr_stream *xdr, struct cb_compound
+ 	if (unlikely(p == NULL))
+ 		return htonl(NFS4ERR_RESOURCE);
+ 	hdr->minorversion = ntohl(*p++);
+-	/* Check minor version is zero or one or two. */
+-	if (hdr->minorversion <= 2) {
++	/* Check for minor version support */
++	if (hdr->minorversion <= NFS4_MAX_MINOR_VERSION) {
+ 		hdr->cb_ident = ntohl(*p++); /* ignored by v4.1 and v4.2 */
+ 	} else {
+ 		pr_warn_ratelimited("NFS: %s: NFSv4 server callback with "
+@@ -801,8 +801,7 @@ preprocess_nfs4_op(unsigned int op_nr, struct callback_op **op)
+ 	return htonl(NFS_OK);
+ }
+ 
+-static __be32 process_op(uint32_t minorversion, int nop,
+-		struct svc_rqst *rqstp,
++static __be32 process_op(int nop, struct svc_rqst *rqstp,
+ 		struct xdr_stream *xdr_in, void *argp,
+ 		struct xdr_stream *xdr_out, void *resp,
+ 		struct cb_process_state *cps)
+@@ -819,9 +818,9 @@ static __be32 process_op(uint32_t minorversion, int nop,
+ 		return status;
+ 
+ 	dprintk("%s: minorversion=%d nop=%d op_nr=%u\n",
+-		__func__, minorversion, nop, op_nr);
++		__func__, cps->minorversion, nop, op_nr);
+ 
+-	status = minorversion ? preprocess_nfs41_op(nop, op_nr, &op) :
++	status = cps->minorversion ? preprocess_nfs41_op(nop, op_nr, &op) :
+ 				preprocess_nfs4_op(op_nr, &op);
+ 	if (status == htonl(NFS4ERR_OP_ILLEGAL))
+ 		op_nr = OP_CB_ILLEGAL;
+@@ -885,14 +884,15 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
+ 			return rpc_drop_reply;
+ 	}
+ 
++	cps.minorversion = hdr_arg.minorversion;
+ 	hdr_res.taglen = hdr_arg.taglen;
+ 	hdr_res.tag = hdr_arg.tag;
+ 	if (encode_compound_hdr_res(&xdr_out, &hdr_res) != 0)
+ 		return rpc_system_err;
+ 
+ 	while (status == 0 && nops != hdr_arg.nops) {
+-		status = process_op(hdr_arg.minorversion, nops, rqstp,
+-				    &xdr_in, argp, &xdr_out, resp, &cps);
++		status = process_op(nops, rqstp, &xdr_in,
++				    argp, &xdr_out, resp, &cps);
+ 		nops++;
+ 	}
+ 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 91e59a3..97ec2ef 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -165,7 +165,7 @@ extern void nfs_free_client(struct nfs_client *);
+ extern struct nfs_client *nfs4_find_client_ident(struct net *, int);
+ extern struct nfs_client *
+ nfs4_find_client_sessionid(struct net *, const struct sockaddr *,
+-				struct nfs4_sessionid *);
++				struct nfs4_sessionid *, u32);
+ extern struct nfs_server *nfs_create_server(struct nfs_mount_info *,
+ 					struct nfs_subversion *);
+ extern struct nfs_server *nfs4_create_server(
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 2a297ee..1819191 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -567,14 +567,14 @@ static bool nfs4_cb_match_client(const struct sockaddr *addr,
+  */
+ struct nfs_client *
+ nfs4_find_client_sessionid(struct net *net, const struct sockaddr *addr,
+-			   struct nfs4_sessionid *sid)
++			   struct nfs4_sessionid *sid, u32 minorversion)
+ {
+ 	struct nfs_client *clp;
+ 	struct nfs_net *nn = net_generic(net, nfs_net_id);
+ 
+ 	spin_lock(&nn->nfs_client_lock);
+ 	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
+-		if (nfs4_cb_match_client(addr, clp, 1) == false)
++		if (nfs4_cb_match_client(addr, clp, minorversion) == false)
+ 			continue;
+ 
+ 		if (!nfs4_has_session(clp))
+@@ -597,7 +597,7 @@ nfs4_find_client_sessionid(struct net *net, const struct sockaddr *addr,
+ 
+ struct nfs_client *
+ nfs4_find_client_sessionid(struct net *net, const struct sockaddr *addr,
+-			   struct nfs4_sessionid *sid)
++			   struct nfs4_sessionid *sid, u32 minorversion)
+ {
+ 	return NULL;
+ }
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.8.3
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
