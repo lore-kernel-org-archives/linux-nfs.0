@@ -1,128 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38304 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:42601 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754893Ab3FTOwL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Jun 2013 10:52:11 -0400
-Date: Thu, 20 Jun 2013 10:52:09 -0400
+	id S1754551Ab3FEMZQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jun 2013 08:25:16 -0400
+Date: Wed, 5 Jun 2013 08:24:32 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Sven Geggus <lists@fuchsschwanzdomain.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Kerberized NFS-Server Problem still present in 3.10.0-rc2
-Message-ID: <20130620145209.GC11728@fieldses.org>
-References: <kpscp8$fo3$1@ultimate100.geggus.net>
- <20130619213412.GA2547@fieldses.org>
- <20130620080354.GA5591@geggus.net>
- <20130620144955.GB11728@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, dhowells@redhat.com,
+        sage@inktank.com, smfrench@gmail.com, swhiteho@redhat.com,
+        Trond.Myklebust@netapp.com, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        piastryyy@gmail.com
+Subject: Re: [PATCH v1 07/11] locks: only pull entries off of blocked_list
+ when they are really unblocked
+Message-ID: <20130605122432.GA24193@fieldses.org>
+References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
+ <1370056054-25449-8-git-send-email-jlayton@redhat.com>
+ <20130604215839.GD15594@fieldses.org>
+ <20130605073822.4d67c57c@corrin.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130620144955.GB11728@fieldses.org>
+In-Reply-To: <20130605073822.4d67c57c@corrin.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 20, 2013 at 10:49:55AM -0400, J. Bruce Fields wrote:
-> On Thu, Jun 20, 2013 at 10:03:55AM +0200, Sven Geggus wrote:
-> > J. Bruce Fields schrieb am Mittwoch, den 19. Juni um 23:34 Uhr:
-> > 
-> > > Apologies, I don't remember the previous discussion, so, could you
-> > > summarize for me?
-> > 
-> > Shure!
-> > My original bug-report ist here:
-> > http://www.spinics.net/lists/linux-nfs/msg37454.html
-> > 
-> > > - you're able to reproduce/not reproduce the problem by changing
-> > >   *only* the kernel on the nfs server between 3.8.x and
-> > >   3.10.0-rc2 ?
-> > 
-> > Exactly. See also the Postings of Richard van den Toorn on the list.
-> > 
-> > Summary: Mount is locking when upgrading from 3.8.x to 3.9.x
-> > 
-> > Unfortunately I was unable to do a git bisect because somewhere on the way
-> > the behaviour changed from locking to "permission denied".
-> > 
-> > If you give me a hint if this behaviour should be marked as good or bad I
-> > can continue bisecting!
-> > 
-> > > - have you figured out exactly where the failure happens?:
-> > 
-> > No because I have not been able to do git bisect to the end.
-> > 
-> > > - which version of NFS are you using?
-> > 
-> > NFS4 with Kerberos authentication.
+On Wed, Jun 05, 2013 at 07:38:22AM -0400, Jeff Layton wrote:
+> On Tue, 4 Jun 2013 17:58:39 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > 
-> What happens with NFSv3?
-> 
-> > > Also if you haven't already it would be useful to know at exactly which
-> > > step of the process it's failing.  As a first step running wireshark on
-> > > the traffic between client and server and looking for a NULL
-> > > init_sec_context rpc call and seeing whether it succeeds or not, would
-> > > be useful.
+> > On Fri, May 31, 2013 at 11:07:30PM -0400, Jeff Layton wrote:
+> > > Currently, when there is a lot of lock contention the kernel spends an
+> > > inordinate amount of time taking blocked locks off of the global
+> > > blocked_list and then putting them right back on again. When all of this
+> > > code was protected by a single lock, then it didn't matter much, but now
+> > > it means a lot of file_lock_lock thrashing.
+> > > 
+> > > Optimize this a bit by deferring the removal from the blocked_list until
+> > > we're either applying or cancelling the lock. By doing this, and using a
+> > > lockless list_empty check, we can avoid taking the file_lock_lock in
+> > > many cases.
+> > > 
+> > > Because the fl_link check is lockless, we must ensure that only the task
+> > > that "owns" the request manipulates the fl_link. Also, with this change,
+> > > it's possible that we'll see an entry on the blocked_list that has a
+> > > NULL fl_next pointer. In that event, just ignore it and continue walking
+> > > the list.
 > > 
-> > I already posted a wireshark dump:
-> > http://www.spinics.net/lists/linux-nfs/msg37472.html
+> > OK, that sounds safe as in it shouldn't crash, but does the deadlock
+> > detection still work, or can it miss loops?
+> > 
+> > Those locks that are temporarily NULL would previously not have been on
+> > the list at all, OK, but...  I'm having trouble reasoning about how this
+> > works now.
+> > 
+> > Previously a single lock was held interrupted across
+> > posix_locks_deadlock and locks_insert_block() which guaranteed we
+> > shouldn't be adding a loop, is that still true?
+> > 
+> > --b.
+> > 
 > 
-> So it looks it did a null init_sec_context establishment and then the
-> server didn't reply to the first rpc call using the new context.  But
-> it's hard to be sure without more details--could I get the binary dump?
+> I had thought it was when I originally looked at this, but now that I
+> consider it again I think you may be correct and that there are possible
+> races here. Since we might end up reblocking behind a different lock
+> without taking the global spinlock we could flip to blocking behind a
+> different lock such that a loop is created if you had a complex (>2)
+> chain of locks.
 > 
-> That might be explained by the problem fixed by
-> 3c34ae11fac3b30629581d0bfaf80f58e82cfbfb "nfsd: fix krb5 handling of
-> anonymous principals", but that was already in v3.9.
+> I think I'm going to have to drop this approach and instead make it so
+> that the deadlock detection and insertion into the global blocker
+> list/hash are atomic.
 
-Hm, or I wonder if 8b5309d41751b8a086d8e7a43abe37d9ff24559d "svcrpc: fix
-failures to handle -1 uid's and gid's" (appended) would help.
+Right.  Once you drop the lock you can no longer be sure that what you
+learned about the file-lock graph stays true.
+
+> Ditto for locks_wake_up_blocks on posix locks and
+> taking the entries off the list/hash.
+
+Here I'm not sure what you mean.
 
 --b.
-
-commit 8b5309d41751b8a086d8e7a43abe37d9ff24559d
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Fri May 24 17:24:34 2013 -0400
-
-    svcrpc: fix failures to handle -1 uid's and gid's
-    
-    As of f025adf191924e3a75ce80e130afcd2485b53bb8 "sunrpc: Properly decode
-    kuids and kgids in RPC_AUTH_UNIX credentials" any rpc containing a -1
-    (0xffff) uid or gid would fail with a badcred error.
-    
-    Reported symptoms were xmbc clients failing on upgrade of the NFS
-    server; examination of the network trace showed them sending -1 as the
-    gid.
-    
-    Reported-by: Julian Sikorski <belegdol@gmail.com>
-    Cc: "Eric W. Biederman" <ebiederm@xmission.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index c3f9e1e..06bdf5a 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -810,11 +810,15 @@ svcauth_unix_accept(struct svc_rqst *rqstp, __be32 *authp)
- 		goto badcred;
- 	argv->iov_base = (void*)((__be32*)argv->iov_base + slen);	/* skip machname */
- 	argv->iov_len -= slen*4;
--
-+	/*
-+	 * Note: we skip uid_valid()/gid_valid() checks here for
-+	 * backwards compatibility with clients that use -1 id's.
-+	 * Instead, -1 uid or gid is later mapped to the
-+	 * (export-specific) anonymous id by nfsd_setuser.
-+	 * Supplementary gid's will be left alone.
-+	 */
- 	cred->cr_uid = make_kuid(&init_user_ns, svc_getnl(argv)); /* uid */
- 	cred->cr_gid = make_kgid(&init_user_ns, svc_getnl(argv)); /* gid */
--	if (!uid_valid(cred->cr_uid) || !gid_valid(cred->cr_gid))
--		goto badcred;
- 	slen = svc_getnl(argv);			/* gids length */
- 	if (slen > 16 || (len -= (slen + 2)*4) < 0)
- 		goto badcred;
-@@ -823,8 +827,6 @@ svcauth_unix_accept(struct svc_rqst *rqstp, __be32 *authp)
- 		return SVC_CLOSE;
- 	for (i = 0; i < slen; i++) {
- 		kgid_t kgid = make_kgid(&init_user_ns, svc_getnl(argv));
--		if (!gid_valid(kgid))
--			goto badcred;
- 		GROUP_AT(cred->cr_group_info, i) = kgid;
- 	}
- 	if (svc_getu32(argv) != htonl(RPC_AUTH_NULL) || svc_getu32(argv) != 0) {
