@@ -1,118 +1,184 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44463 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:18626 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752010Ab3F1MGl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Jun 2013 08:06:41 -0400
-Date: Fri, 28 Jun 2013 08:06:43 -0400
+	id S1752147Ab3FELi6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jun 2013 07:38:58 -0400
+Date: Wed, 5 Jun 2013 07:38:22 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Christopher T Vogan <cvogan@us.ibm.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Steve Dickson <SteveD@redhat.com>, Al Viro <viro@ZenIV.linux.org.uk>,
-        NeilBrown <neilb@suse.de>
-Subject: Re: NFSERR_STALE on umount  with 3.10.0.RC5 kernel
-Message-ID: <20130628080643.037bc080@corrin.poochiereds.net>
-In-Reply-To: <20130627004159.7852c43c@tlielax.poochiereds.net>
-References: <OF659496E7.43E03D23-ON87257B8E.004B852B-86257B8E.004BC3F6@us.ibm.com>
-	<1371568176.3868.5.camel@leira.trondhjem.org>
-	<OF0A202F9C.685475CA-ON87257B8E.005E218B-86257B8E.006D757C@us.ibm.com>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA93F422610@SACEXCMBX04-PRD.hq.netapp.com>
-	<51CB3F08.9050005@RedHat.com>
-	<1372274707.36780.2.camel@leira.trondhjem.org>
-	<OFFA688044.F059006D-ON87257B96.0074D508-86257B96.0075968C@us.ibm.com>
-	<1372294255.3192.4.camel@leira.trondhjem.org>
-	<20130627004159.7852c43c@tlielax.poochiereds.net>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, dhowells@redhat.com,
+        sage@inktank.com, smfrench@gmail.com, swhiteho@redhat.com,
+        Trond.Myklebust@netapp.com, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        piastryyy@gmail.com
+Subject: Re: [PATCH v1 07/11] locks: only pull entries off of blocked_list
+ when they are really unblocked
+Message-ID: <20130605073822.4d67c57c@corrin.poochiereds.net>
+In-Reply-To: <20130604215839.GD15594@fieldses.org>
+References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
+	<1370056054-25449-8-git-send-email-jlayton@redhat.com>
+	<20130604215839.GD15594@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 27 Jun 2013 00:41:59 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
+On Tue, 4 Jun 2013 17:58:39 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Thu, 27 Jun 2013 00:51:01 +0000
-> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-> 
-> > On Wed, 2013-06-26 at 15:24 -0600, Christopher T Vogan wrote:
-> > > This is a complete network trace between the client and server.
-> > > 
-> > > 
-> > > So this issue only happens on Kernels 3.9.6 and newer.
-> > > I did not have this problem with Kernel 3.8.13
-> > > nfs-utils-1.2.3-36 (from Redhat) was used w/ all kernel versions.
+> On Fri, May 31, 2013 at 11:07:30PM -0400, Jeff Layton wrote:
+> > Currently, when there is a lot of lock contention the kernel spends an
+> > inordinate amount of time taking blocked locks off of the global
+> > blocked_list and then putting them right back on again. When all of this
+> > code was protected by a single lock, then it didn't matter much, but now
+> > it means a lot of file_lock_lock thrashing.
 > > 
-> > Ah. I don't recall seeing that information before. In that case, I'm
-> > guessing that the change in behaviour is likely to be commit
-> > ecf3d1f1aa74da0d632b651a2e05a911f60e92c0 (vfs: kill FS_REVAL_DOT by
-> > adding a d_weak_revalidate dentry op).
+> > Optimize this a bit by deferring the removal from the blocked_list until
+> > we're either applying or cancelling the lock. By doing this, and using a
+> > lockless list_empty check, we can avoid taking the file_lock_lock in
+> > many cases.
 > > 
-> > Jeff, any comment on what behaviour you expect on umount()
-> > post-ecf3d1f1aa?
+> > Because the fl_link check is lockless, we must ensure that only the task
+> > that "owns" the request manipulates the fl_link. Also, with this change,
+> > it's possible that we'll see an entry on the blocked_list that has a
+> > NULL fl_next pointer. In that event, just ignore it and continue walking
+> > the list.
+> 
+> OK, that sounds safe as in it shouldn't crash, but does the deadlock
+> detection still work, or can it miss loops?
+> 
+> Those locks that are temporarily NULL would previously not have been on
+> the list at all, OK, but...  I'm having trouble reasoning about how this
+> works now.
+> 
+> Previously a single lock was held interrupted across
+> posix_locks_deadlock and locks_insert_block() which guaranteed we
+> shouldn't be adding a loop, is that still true?
+> 
+> --b.
+> 
+
+I had thought it was when I originally looked at this, but now that I
+consider it again I think you may be correct and that there are possible
+races here. Since we might end up reblocking behind a different lock
+without taking the global spinlock we could flip to blocking behind a
+different lock such that a loop is created if you had a complex (>2)
+chain of locks.
+
+I think I'm going to have to drop this approach and instead make it so
+that the deadlock detection and insertion into the global blocker
+list/hash are atomic. Ditto for locks_wake_up_blocks on posix locks and
+taking the entries off the list/hash.
+
+Now that I look, I think that approach may actually improve performance
+too since we'll be taking the global spinlock less than we would have,
+but I'll need to test it out to know for sure.
+
 > > 
-> 
-> (cc'ing Al and Neil in case they have thoughts on this too...)
-> 
-> Well...not that :)
-> 
-> It seems like we have a bit of a perfect storm here -- noac + this
-> strange server behavior wrt to UMNT calls. I can reproduce the client
-> behavior (UMNT before a GETATTR), but of course my servers don't start
-> rejecting calls when you send them a UMNT request.
-> 
-> First, I think I understand why you do *not* see this on earlier
-> kernels. Those used d_revalidate to revalidate those dentries:
-> 
-> -------------[snip]-------------
->         if (!nfs_is_exclusive_create(dir, flags) && nfs_check_verifier(dir, dentry)) {
->                 if (nfs_lookup_verify_inode(inode, flags))
->                         goto out_zap_parent;
->                 goto out_valid;
->         }
-> -------------[snip]-------------
-> 
-> So in this case, we're not doing an exclusive create and the verifier
-> check returns true because IS_ROOT(dentry) is true.
-> nfs_lookup_verify_inode returns false (none of the checks there pass),
-> so we then treat this dentry as valid w/o doing any revalidation.
-> 
-> The new nfs_weak_revalidate function doesn't treat IS_ROOT() dentries in
-> any special way. I did a quick test patch that makes
-> nfs_weak_revalidate return 1 if IS_ROOT(dentry) is true. That seems to
-> fix the problem. I'm not sure if it makes sense to always skip
-> revalidating IS_ROOT dentries like that though. It seems a bit
-> heavy-handed...
-> 
-> Like NeilB pointed out recently, umount() is a bit of a special case.
-> We're not really interested in anything but the dentry here so not
-> trying to revalidate the inode makes a lot of sense.
-> 
-> I wonder if it might make more sense to declare a new LOOKUP_NOREVAL
-> flag or something and have umount() syscalls set it in the lookup? Then
-> we could look for that and simply return 1 if it's set. Or maybe have
-> the VFS skip calling d_weak_revalidate (and maybe d_revalidate)
-> altogether if it's set.
-> 
-> On a related note, I think we ought to consider ripping out the UMNT
-> code from the userland helper or maybe just retiring umount.nfs
-> altogether. It's simply not possible for userland to handle that
-> properly. The UMNT (if any) needs to be sent when we tear down the
-> superblock, and only the kernel knows when that has happened.
-> 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  fs/locks.c |   29 +++++++++++++++++++++++------
+> >  1 files changed, 23 insertions(+), 6 deletions(-)
+> > 
+> > diff --git a/fs/locks.c b/fs/locks.c
+> > index 055c06c..fc35b9e 100644
+> > --- a/fs/locks.c
+> > +++ b/fs/locks.c
+> > @@ -520,7 +520,6 @@ locks_delete_global_locks(struct file_lock *waiter)
+> >  static void __locks_delete_block(struct file_lock *waiter)
+> >  {
+> >  	list_del_init(&waiter->fl_block);
+> > -	locks_delete_global_blocked(waiter);
+> >  	waiter->fl_next = NULL;
+> >  }
+> >  
+> > @@ -704,13 +703,16 @@ EXPORT_SYMBOL(posix_test_lock);
+> >  /* Find a lock that the owner of the given block_fl is blocking on. */
+> >  static struct file_lock *what_owner_is_waiting_for(struct file_lock *block_fl)
+> >  {
+> > -	struct file_lock *fl;
+> > +	struct file_lock *fl, *ret = NULL;
+> >  
+> >  	list_for_each_entry(fl, &blocked_list, fl_link) {
+> > -		if (posix_same_owner(fl, block_fl))
+> > -			return fl->fl_next;
+> > +		if (posix_same_owner(fl, block_fl)) {
+> > +			ret = fl->fl_next;
+> > +			if (likely(ret))
+> > +				break;
+> > +		}
+> >  	}
+> > -	return NULL;
+> > +	return ret;
+> >  }
+> >  
+> >  static int posix_locks_deadlock(struct file_lock *caller_fl,
+> > @@ -865,7 +867,8 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+> >  				goto out;
+> >  			error = FILE_LOCK_DEFERRED;
+> >  			locks_insert_block(fl, request);
+> > -			locks_insert_global_blocked(request);
+> > +			if (list_empty(&request->fl_link))
+> > +				locks_insert_global_blocked(request);
+> >  			goto out;
+> >    		}
+> >    	}
+> > @@ -876,6 +879,16 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+> >  		goto out;
+> >  
+> >  	/*
+> > +	 * Now that we know the request is no longer blocked, we can take it
+> > +	 * off the global list. Some callers send down partially initialized
+> > +	 * requests, so we only do this if FL_SLEEP is set. Also, avoid taking
+> > +	 * the lock if the list is empty, as that indicates a request that
+> > +	 * never blocked.
+> > +	 */
+> > +	if ((request->fl_flags & FL_SLEEP) && !list_empty(&request->fl_link))
+> > +		locks_delete_global_blocked(request);
+> > +
+> > +	/*
+> >  	 * Find the first old lock with the same owner as the new lock.
+> >  	 */
+> >  	
+> > @@ -1069,6 +1082,7 @@ int posix_lock_file_wait(struct file *filp, struct file_lock *fl)
+> >  			continue;
+> >  
+> >  		locks_delete_block(fl);
+> > +		locks_delete_global_blocked(fl);
+> >  		break;
+> >  	}
+> >  	return error;
+> > @@ -1147,6 +1161,7 @@ int locks_mandatory_area(int read_write, struct inode *inode,
+> >  		}
+> >  
+> >  		locks_delete_block(&fl);
+> > +		locks_delete_global_blocked(&fl);
+> >  		break;
+> >  	}
+> >  
+> > @@ -1859,6 +1874,7 @@ static int do_lock_file_wait(struct file *filp, unsigned int cmd,
+> >  			continue;
+> >  
+> >  		locks_delete_block(fl);
+> > +		locks_delete_global_blocked(fl);
+> >  		break;
+> >  	}
+> >  
+> > @@ -2160,6 +2176,7 @@ posix_unblock_lock(struct file *filp, struct file_lock *waiter)
+> >  	else
+> >  		status = -ENOENT;
+> >  	spin_unlock(&inode->i_lock);
+> > +	locks_delete_global_blocked(waiter);
+> >  	return status;
+> >  }
+> >  
+> > -- 
+> > 1.7.1
+> > 
 
-So, looking again at this. I think the right long-term solution is to
-do what Neil suggested in this thread from a few months ago:
 
-     "More fun with unmounting ESTALE directories."
-
-Basically we ought to fix umount() to do its lookup without
-revalidating the last step. We might also be able to get away without
-revaliding any path components in the umount lookup, but that might be
-more iffy if there are symlinks in the path...
-
-In the near term, Christopher should be able to work around this
-problem by simply getting rid of /sbin/umount.nfs. It'll mean that the
-client doesn't send UMNT calls, but AIUI those are intended to be
-advisory anyway.
 -- 
 Jeff Layton <jlayton@redhat.com>
