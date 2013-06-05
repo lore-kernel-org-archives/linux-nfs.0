@@ -1,95 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:2752 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:6701 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753985Ab3FOFKC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 15 Jun 2013 01:10:02 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>, Sandeep Joshi <sanjos100@gmail.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: why does nfsd write not use splice
-Date: Sat, 15 Jun 2013 05:09:55 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93F403977@durexcmbx02-prd.hq.netapp.com>
-References: <CAEfL3KnfRWof4-6UAWTwXcH7XWSQuUR5ry_pg4qdyhBB6dt+5g@mail.gmail.com>
-	<20130611195140.GA29634@fieldses.org>	<51B7DE9C.6080703@talpey.com>
-	<20130612153936.GB32569@fieldses.org>
-	<CAEfL3KkdjB7bzvnfiDh024kHjCH0e64iH6GK6y+A+bpH3kUgJg@mail.gmail.com>
-	<20130612164637.GA6868@fieldses.org>
-	<CAEfL3Km7knMAW1Jx_jHZ0OYBMBpUkvbzk2riBE2C=NA9OMvUQw@mail.gmail.com>
- <20130614152215.1f369a4c@tlielax.poochiereds.net>
-In-Reply-To: <20130614152215.1f369a4c@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="Windows-1252"
+	id S1757778Ab3FEW0H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jun 2013 18:26:07 -0400
+Date: Wed, 5 Jun 2013 18:26:02 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "jlayton@redhat.com" <jlayton@redhat.com>
+Subject: Re: [PATCH RFC 0/2] NFS: Improve readdir performance
+Message-ID: <20130605222602.GM55330@tonberry.usersys.redhat.com>
+References: <1370440321-56488-1-git-send-email-smayhew@redhat.com>
+ <1370441563.21544.6.camel@leira.trondhjem.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1370441563.21544.6.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> owner@vger.kernel.org] On Behalf Of Jeff Layton
-> Sent: Friday, June 14, 2013 3:22 PM
-> To: Sandeep Joshi
-> Cc: J. Bruce Fields; linux-nfs@vger.kernel.org
-> Subject: Re: why does nfsd write not use splice
-> 
-> On Fri, 14 Jun 2013 17:39:12 +0530
-> Sandeep Joshi <sanjos100@gmail.com> wrote:
-> 
-> > On Wed, Jun 12, 2013 at 10:16 PM, J. Bruce Fields <bfields@fieldses.org>
-> wrote:
-> > >
-> > > On Wed, Jun 12, 2013 at 09:51:09PM +0530, Sandeep Joshi wrote:
-> > > > Splice can be implemented independent of RDMA.  It is supposed to
-> > > > transfer pages between two file descriptors.  I found some
-> > > > postings on lkml from
-> > > > 2006 where Linus says it is quite possible to splice from a socket
-> > > > to a file.
-> > > >
-> > > > See the paragraph:
-> > > > " For filesystems, splice support tends to be really easy (both
-> > > > read and write). For other things, it depends a bit. But unlike
-> > > > sendfile(), it really is quite possible to splice _from_ a socket
-> > > > too, not just _to_ a socket. But no, that case hasn't been written yet."
-> > > >  http://yarchive.net/comp/linux/splice.html
-> > > >
-> > > > Larry McVoy's 1997 proposal for adding splice support to the
-> > > > kernel can be read at
-> > > > ftp.tux.org/pub/sites/ftp.bitmover.com/pub/*splice*.*ps*.gz<http:/
-> > > > /ftp.tux.org/pub/sites/ftp.bitmover.com/pub/splice.ps.gz>
-> > > >
-> > > > Perhaps I should have opened this thread on lkml to determine if
-> > > > splice from socket to file is still feasible..
-> > >
-> > > Right, the thing is, nfsd reads the rpc request from the socket into
-> > > its own buffers before it parses it.  If you want to move the data
-> > > directly out of the network buffers into the page cache, then you
-> > > have to know at what point the write data starts in the
-> > > request--which I believe will mean doing the xdr parsing (and gss
-> > > decryption if necessary) as the request comes in off the wire.
-> > >
-> > > That sounds like a lot of work and even if you have someone willing
-> > > to do the work they'd also need to justify that it's worth it.
-> > >
-> > > RDMA may have some protocol support that simplifies this, I don't know.
-> > >
-> > > --b.
-> >
-> > Hi Bruce,
-> >
-> > > nfsd reads the rpc request from the socket into its own buffers before it
-> parses it.
-> >
-> > I am not intimate with the gss code but do you think the
-> > svc_rqst->rq_pages[] can be spliced ?
-> >
-> 
-> Probably not in its current form. The problem is one of alignment. You need
-> to know where the write data actually starts before doing the receive off the
-> socket, so you can make sure that it ends up in the correct spot in the pages
-> you're going to splice in.
-> 
-> There's also the problem of what to do about WRITE requests that contain
-> data that isn't page aligned or that's shorter than a page...
+On Wed, 05 Jun 2013, Myklebust, Trond wrote:
 
-Finally, there is the minor problem that the data that is actually received by the socket may be encrypted, or may need to be checksummed (krb5i) _before_ you can apply it to the file. That is not a particularly good fit for splice().
+> On Wed, 2013-06-05 at 09:51 -0400, Scott Mayhew wrote:
+> > I was investigating some performance concerns from a customer and came across
+> > something interesting.  Whenever the directory that we're reading is changed on
+> > the server, we start re-reading the directory from the beginning.  On a LAN
+> > connection or in a directory with a small number of entries, the impact isn't
+> > too noticeable... but reading a directory with a large number of entries over a
+> > WAN connection gets pretty bad.
+> > 
+> > For NFS v3, what happens is that after each on-the-wire READDIR we call
+> > nfs_refresh_inode() and from there we get to nfs_update_inode(), where we wind
+> > up setting NFS_INO_INVALID_DATA in the directory's cache_validity flags.  Then
+> > on a subsequent call to nfs_readdir() we call nfs_revalidate_mapping(), and
+> > seeing that NFS_INO_INVALIDATE_DATA is set we call nfs_invalidate_mapping(),
+> > flushing all our cached data for the directory.  
+> > 
+> > So for each nfs_readdir() call, we wind up redoing all of the on-the-wire
+> > readdir operations just to get back where we were, and then we're able to get
+> > just one more operation's worth of entries on top of that.  If the directory on
+> > the NFS server is constantly being modified then this winds up being a lot of
+> > extra READDIR ops.  I had an idea that maybe we could call nfs_refresh_inode()
+> > only when we've reached the end of the directory.  I talked to Jeff about it and
+> > he suggested that maybe we could only revalidate if we're at the beginning of
+> > the directory or if nfs_attribute_cache_expired() for the dir.  The attached
+> > patches take that approach.
+> > 
+> > For example, on a test environment of two VMs, I have a directory of 100,000
+> > entries that takes 981 READDIR operations to read if no modifications being made
+> > to the directory at the same time.  If I add a 35ms delay between the client and
+> > the server and start a script on the server that repeatedly creates and removes
+> > a file in the directory being listed I get the following results:
+> > 
+> > [root@localhost ~]# mount -t nfs -o nfsvers=3,nordirplus server:/export /mnt
+> > [root@localhost ~]# time /bin/ls /mnt/bigdir >/dev/null
+> > 
+> > real	29m52.594s
+> > user	0m0.376s
+> > sys	0m2.191s
+> > [root@localhost ~]# mountstats --rpc /mnt | grep -A3 READDIR
+> > READDIR:
+> > 	49729 ops (99%) 	0 retrans (0%) 	0 major timeouts
+> > 	avg bytes sent per op: 144	avg bytes received per op: 4196
+> > 	backlog wait: 0.003620 	RTT: 35.889501 	total execute time: 35.925858 (milliseconds)
+> > [root@localhost ~]# 
+> > 
+> > 
+> > With the patched kernel, that same test yields these results:
+> > 
+> > [root@localhost ~]# time /bin/ls /mnt/bigdir >/dev/null
+> > 
+> > real	0m35.952s
+> > user	0m0.460s
+> > sys	0m0.100s
+> > [root@localhost ~]# mountstats --rpc /mnt | grep -A3 READDIR
+> > READDIR:
+> > 	981 ops (98%) 	0 retrans (0%) 	0 major timeouts
+> > 	avg bytes sent per op: 144	avg bytes received per op: 4194
+> > 	backlog wait: 0.004077 	RTT: 35.887870 	total execute time: 35.926606 (milliseconds)
+> > [root@localhost ~]# 
+> > 
+> > 
+> > For NFS v4, the situation is slightly different.  We don't get post-op
+> > attributes from each READDIR, so we're not calling
+> > nfs_refresh_inode()/nfs_update_inode() after every operation and therefore not
+> > updating read_cache_jiffies.  If we don't manage to read through the whole
+> > directory before the directory attributes from the initial GETATTR expire, then
+> > we're going to wind up calling __nfs_revalidate_inode() from
+> > nfs_revalidate_mapping(), and the attributes that we get from that GETATTR are
+> > going ultimately to lead us into nfs_invalidate_mapping() anyway.  If the
+> > attached patches make sense then maybe it would be worthwhile to add a GETATTR
+> > operation to the compound that gets sent for a READDIR so that
+> > read_cache_jiffies stays updated.
+> > 
+> > Finally there's the question of the dentry cache.  Any time we find that the
+> > parent directory changes we're still going to wind up doing an on-the-wire
+> > LOOKUP.  I don't think there's anything that can be done about that, but at
+> > least these patches prevent us doing the same LOOKUPs multiple times in the
+> > course of reading through the directory.
+> 
+> Do these patches pass the 'rm -rf' torture test (i.e. creating lots of
+> subdirectories containing random files, then calling 'rm -rf')?
 
-Trond
+Is there already a test that does this?  If not, what would be a good
+test (maybe a kernel git tree)?
+
+> 
+> I'd also like to see if the above test (and others you may be using)
+> play out well with different filesystems on the server side. The main
+> interest is to see how the change is affected by different readdir
+> cookie schemes...
+> 
+I actually hadn't done much testing aside from the ones I mentioned
+above, and the server filesystem was ext4.  I was mainly trying to gauge
+whether this was road already traveled before.  I'd be happy to do more
+testing with different backend filesystems.
+
+-Scott
