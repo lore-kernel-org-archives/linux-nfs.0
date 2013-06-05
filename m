@@ -1,89 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57268 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751988Ab3FXTbx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Jun 2013 15:31:53 -0400
-Date: Mon, 24 Jun 2013 15:31:53 -0400
-To: Nadav Shemer <nadav@tonian.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: LAYOUTGET and NFS4ERR_DELAY: a few questions
-Message-ID: <20130624193153.GC23596@fieldses.org>
-References: <CADnca3voFCr1xbwNcHEq-YCip2ghBrH3Ni2XARfcW6pdLw1K-A@mail.gmail.com>
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:18172 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753913Ab3FEPYp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jun 2013 11:24:45 -0400
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CADnca3voFCr1xbwNcHEq-YCip2ghBrH3Ni2XARfcW6pdLw1K-A@mail.gmail.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
+Subject: Re: [PATCH 0/3] Various gssd fixes including machine-credential issue.
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1370445799.21544.37.camel@leira.trondhjem.org>
+Date: Wed, 5 Jun 2013 11:24:40 -0400
+Cc: "E.G. Keizer" <E.G.Keizer@vu.nl>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <B1945274-DB53-4901-9795-2F8B4522A067@oracle.com>
+References: <51AF459A.1040609@vu.nl> <1370442331.21544.16.camel@leira.trondhjem.org> <51AF4FCB.9000503@vu.nl> <5BC37A4B-83A9-462F-B625-0CCA10BD38EA@oracle.com> <1370445799.21544.37.camel@leira.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Jun 23, 2013 at 04:27:52PM +0300, Nadav Shemer wrote:
-> Background: I'm working on a pnfs-exported filesystem implementation
-> (using objects-based storage)
-> In my ->layout_get() implementation, I use mutex_trylock() and return
-> NFS4ERR_DELAY in the contended case
-> In a real-world test, I discovered the client always waits 15 seconds
-> when receiving this error for LAYOUTGET.
-> This occurs in nfs4_async_handle_error, which always wait for
-> NFS4_POLL_RETRY_MAX when getting DELAY, GRACE or EKEYEXPIRED
+
+On Jun 5, 2013, at 11:23 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+
+> On Wed, 2013-06-05 at 08:19 -0700, Chuck Lever wrote:
+>> On Jun 5, 2013, at 10:48 AM, "E.G. Keizer" <E.G.Keizer@vu.nl> wrote:
+>> 
+>>> 
+>>> 
+>>> On 05/06/2013 16:25, Myklebust, Trond wrote:
+>>>> On Wed, 2013-06-05 at 16:05 +0200, E.G. Keizer wrote:
+>>>>> First I would like to wholeheartedly support Neil Brown's comment. We at the
+>>>>> Vrije Universiteit in Amsterdam (NL) also have the situation where the Kerberos
+>>>>> administrator does not hand out machine credentials. A lot of Linux users from
+>>>>> the Faculty of Sciences depend on the functionality that lets them access
+>>>>> the NFS file servers with only their user credentials.
+>>>> 
+>>>> They should still be able to do that, but in that case, the state
+>>>> management will have to default to AUTH_SYS to set up the lease, which
+>>>> means that someone else can spoof requests to cancel the lease or change
+>>>> the callback channel parameters.
+>>> We would probably accept that. But can you enlighten me as to why AUTH_SYS is better
+>>> then krb5 (no i, no p)?
+>> 
+>> It isn't "better."  But if no GSS credential is available on the client, then AUTH_SYS is about the only choice for a client to use.
+>> 
+>>> 
+>>>> 
+>>>>> Secondly I would like to make a remark on basing client id's on the system's kerberos principal's name.
+>>>>> That same faculty, in the times it had its own IT department, used an identical keytab for
+>>>>> all Linux workstations, using the principal names "[nfs|root|host]/workstation@FEW.VU.NL".
+>>>>> I understand this would lead to severe problems when the client id (co_ownerid) is based
+>>>>> solely in the systems root principal name.
+>>>> 
+>>>> How so? The only problem should be that any one of those machines can go
+>>>> and cancel or change the lease of any other. That's a compromise that
+>>>> you decided upon when you decided to use one keytab for all of them.
+>>> Mmm, not at the time we made the decision. But I just mentioned that as an example
+>>> of the problems one can meet when deciding on the implementation of client id.
+>>> The same problem, but on a smaller scale, occurs when the client id is based
+>>> on the system principal and two or more systems use the same user principal as system
+>>> principal.
+>>>> 
+>>>>> It seems to me that the issues about the client id look like a bag of worms. I've seen that the
+>>>>> newest standard `requires' integrity protection for client id exchanges. I doubt
+>>>>> that that will help when the source code of the NFS client is known and
+>>>>> the client id is guessable.
+>>>> 
+>>>> What is the attack and how would it compromise security on the clients
+>>>> that you care about?
+>>> I am personally not that worried about this issue on our environment. But others seem to
+>>> be in their environment. Otherwise the integrity requirement would not have ended up in
+>>> the NFSv4 RFC. As fas as I understand the danger with a man-in-the-middle attack is that the attacker
+>>> can see my client id and thus cancel my lease. When the man-in-the-middle can guess my
+>>> client id he can still invalidate my lease even when i'am using krb5i.
+>> 
+>> No, SETCLIENTID would have to be authenticated with a Kerberos principal.  That's what protects the lease.
+>> 
+>>>> 
+>>>>> The wisest thing might be to offer different options
+>>>>> and let the administrators pick the one they like best?
+>>>> 
+>>>> We have two options available to you: auth_sys or RPCSEC_GSS w/krb5i.
+>>> I meant different options for choosing the client id.
+>> 
+>> Have you seen the nfs4_unique_id boot parameter?  (cf. Documentation/filesystems/nfs.txt)  Pick a different UUID for each of your clients, and specify that UUID via the kernel command line.
 > 
-> This is in contrast to nfs4_handle_exception, which calls nfs4_delay.
-> In this path, the wait begins at NFS4_POLL_RETRY_MIN (0.1 seconds) and
-> increases two-fold each time up to RETRY_MAX.
-> It is used by many nfs4_proc operations - the caller creates an
-> nfs4_exception structure, and retries the operation until success (or
-> permanent error).
-> 
-> when nfs4_async_handle_error is used, OTOH, the RPC task is restarted
-> in the ->rpc_call_done callback and the sleeping is done with
-> rpc_delay
-> 
-> nfs4_async_handle_error is used in:
-> CLOSE, UNLINK, RENAME, READ, WRITE, COMMIT, DELEGRETURN, LOCKU,
-> LAYOUTGET, LAYOUTRETURN and LAYOUTCOMMIT.
-> A similar behavior (waiting RETRY_MAX) is also used in
-> nfs4*_sequence_* functions (in which case it refers to the status of
-> the SEQUENCE operation itself) and by RECLAIM_COMPLETE
-> GET_LEASE_TIME also has such a code structure, but it always waits
-> RETRY_MIN, not MAX
-> 
-> 
-> The first question, raised in the beginning of this mail:
-> Is it better to wait for the mutex in the NFSd thread (with the risk
-> of blocking that nfsd thread)
+> Yes, sorry. I misremembered the code... If you specify 'migration' then
+> the uuid is used. Otherwise we use the ip address.
 
-nfsd threads block on mutexes all the time, and it's not necessarily a
-problem--depends on exactly what it's blocking on.  You wouldn't want to
-block waiting for the client to do something, as that might lead to
-deadlock if the client can't make progress until the server responds to
-some rpc.  If you're blocking waiting for a disk or some internal
-cluster communication--it may be fine?
+Nope, you were right the first time: the client's hostname is used if "nfs4_unique_id" is not specified.
 
-> or to return DELAY(with its 15s delay
-> and risk of repeatedly landing on a contended mutex even if it is not
-> kept locked the whole time)?
-> Is there some other solution?
-> 
-> 
-> The second question(s):
-> Why are there several different implementations of the same
-> restart/retry behaviors? why do some operations use one mechanism and
-> others use another?
-> Why isn't the exponential back-off mechanism used in these operations?
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Here's a previous thread on the subject:
 
-	http://comments.gmane.org/gmane.linux.nfs/56193
 
-Attempting a summary: the constant delay is traditional behavior going
-back to NFSv3, and the exponential backoff was added to handle DELAY
-returns on OPEN due to delegation conflicts.
 
-And it would likely be tough to justify another client change here
-without a similar case where the spec clearly has the server returning
-DELAY to something that needs to be retried quickly.
-
-Not understanding your case, it doesn't sound like the result of any
-real requirement but rather an implementation detail that you probably
-want to fix in the server.
-
---b.
