@@ -1,253 +1,149 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:32145 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752523Ab3F0Go0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Jun 2013 02:44:26 -0400
-From: Cong Wang <amwang@redhat.com>
-To: netdev@vger.kernel.org
-Cc: Daniel Borkmann <dborkman@redhat.com>,
-        "David S. Miller" <davem@davemloft.net>, Cong Wang <amwang@redhat.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [RFC Patch net-next 4/5] sunrpc: use generic union inet_addr
-Date: Thu, 27 Jun 2013 14:43:17 +0800
-Message-Id: <1372315398-19683-5-git-send-email-amwang@redhat.com>
-In-Reply-To: <1372315398-19683-1-git-send-email-amwang@redhat.com>
-References: <1372315398-19683-1-git-send-email-amwang@redhat.com>
+Received: from mail-gg0-f181.google.com ([209.85.161.181]:33111 "EHLO
+	mail-gg0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751307Ab3FEA4e (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Jun 2013 20:56:34 -0400
+Received: by mail-gg0-f181.google.com with SMTP id r4so18718ggn.26
+        for <linux-nfs@vger.kernel.org>; Tue, 04 Jun 2013 17:56:34 -0700 (PDT)
+Subject: [PATCH] NFS: Fix keytabless mounts
+To: neilb@suse.de
+From: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 04 Jun 2013 20:56:31 -0400
+Message-ID: <20130605004523.14256.24793.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Cong Wang <amwang@redhat.com>
----
- include/linux/sunrpc/addr.h |  119 +++----------------------------------------
- include/net/inet_addr.h     |   56 ++++++++++++++++++++
- 2 files changed, 64 insertions(+), 111 deletions(-)
+Commit 05f4c350 "NFS: Discover NFSv4 server trunking when mounting"
+Fri Sep 14 17:24:32 2012 introduced Uniform Client String support,
+which forces our NFS client to establish a client ID immediately
+during a mount operation rather than waiting until a user wants to
+open a file.
 
-diff --git a/include/linux/sunrpc/addr.h b/include/linux/sunrpc/addr.h
-index 07d8e53..4c3602e 100644
---- a/include/linux/sunrpc/addr.h
-+++ b/include/linux/sunrpc/addr.h
-@@ -11,6 +11,7 @@
- #include <linux/in.h>
- #include <linux/in6.h>
- #include <net/ipv6.h>
-+#include <net/inet_addr.h>
- 
- size_t		rpc_ntop(const struct sockaddr *, char *, const size_t);
- size_t		rpc_pton(struct net *, const char *, const size_t,
-@@ -21,137 +22,33 @@ size_t		rpc_uaddr2sockaddr(struct net *, const char *, const size_t,
- 
- static inline unsigned short rpc_get_port(const struct sockaddr *sap)
- {
--	switch (sap->sa_family) {
--	case AF_INET:
--		return ntohs(((struct sockaddr_in *)sap)->sin_port);
--	case AF_INET6:
--		return ntohs(((struct sockaddr_in6 *)sap)->sin6_port);
--	}
--	return 0;
-+	return inet_addr_get_port((const union inet_addr *)sap);
+Normally machine credentials (eg. from a keytab) are used to perform
+a mount operation that is protected by Kerberos.  Before 05f4c350,
+SETCLIENTID uses a machine credential, or falls back to a regular
+user's credential if no keytab is available.
+
+05f4c350 seems to have broken the ability to mount with sec=krb5 on
+clients that don't have a keytab.  Performing SETCLIENTID early
+means there may be no user credential to fall back on, since during
+system initialization no regular user has kinit'd yet.
+
+Typically, root is required to kinit in this situation anyway to
+make a sec=krb5 mount work.  So, the kernel should try to use root's
+credential for lease management if there's no keytab.
+
+The new logic should cause the root credential to be tried only
+after both the machine cred and a user cred are found to be
+unavailable.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+Hi Neil-
+
+Here's a wacky idea to continue our conversation.  Tested just
+enough to confirm it may do something useful.  Applies to 3.7.
+Something similar might work for 3.8 and 3.9.
+
+ fs/nfs/nfs4proc.c  |   15 ++++++++++-----
+ fs/nfs/nfs4state.c |   12 ++++--------
+ 2 files changed, 14 insertions(+), 13 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 50bf31d..7e4934e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4215,7 +4215,8 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 	dprintk("NFS call  setclientid auth=%s, '%.*s'\n",
+ 		clp->cl_rpcclient->cl_auth->au_ops->au_name,
+ 		setclientid.sc_name_len, setclientid.sc_name);
+-	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
++	status = rpc_call_sync(clp->cl_rpcclient, &msg,
++					RPC_TASK_TIMEOUT|RPC_TASK_ROOTCREDS);
+ 	dprintk("NFS reply setclientid: %d\n", status);
+ 	return status;
  }
+@@ -4246,7 +4247,8 @@ int nfs4_proc_setclientid_confirm(struct nfs_client *clp,
+ 		clp->cl_rpcclient->cl_auth->au_ops->au_name,
+ 		clp->cl_clientid);
+ 	now = jiffies;
+-	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
++	status = rpc_call_sync(clp->cl_rpcclient, &msg,
++					RPC_TASK_TIMEOUT|RPC_TASK_ROOTCREDS);
+ 	if (status == 0) {
+ 		spin_lock(&clp->cl_lock);
+ 		clp->cl_lease_time = fsinfo.lease_time * HZ;
+@@ -5458,7 +5460,8 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 		goto out_server_scope;
+ 	}
  
- static inline void rpc_set_port(struct sockaddr *sap,
- 				const unsigned short port)
- {
--	switch (sap->sa_family) {
--	case AF_INET:
--		((struct sockaddr_in *)sap)->sin_port = htons(port);
--		break;
--	case AF_INET6:
--		((struct sockaddr_in6 *)sap)->sin6_port = htons(port);
--		break;
--	}
-+	inet_addr_set_port((union inet_addr *)sap, port);
- }
+-	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
++	status = rpc_call_sync(clp->cl_rpcclient, &msg,
++					RPC_TASK_TIMEOUT|RPC_TASK_ROOTCREDS);
+ 	if (status == 0)
+ 		status = nfs4_check_cl_exchange_flags(res.flags);
  
- #define IPV6_SCOPE_DELIMITER		'%'
- #define IPV6_SCOPE_ID_LEN		sizeof("%nnnnnnnnnn")
+@@ -5518,7 +5521,8 @@ static int _nfs4_proc_destroy_clientid(struct nfs_client *clp,
+ 	};
+ 	int status;
  
--static inline bool __rpc_cmp_addr4(const struct sockaddr *sap1,
--				   const struct sockaddr *sap2)
--{
--	const struct sockaddr_in *sin1 = (const struct sockaddr_in *)sap1;
--	const struct sockaddr_in *sin2 = (const struct sockaddr_in *)sap2;
--
--	return sin1->sin_addr.s_addr == sin2->sin_addr.s_addr;
--}
--
--static inline bool __rpc_copy_addr4(struct sockaddr *dst,
--				    const struct sockaddr *src)
--{
--	const struct sockaddr_in *ssin = (struct sockaddr_in *) src;
--	struct sockaddr_in *dsin = (struct sockaddr_in *) dst;
--
--	dsin->sin_family = ssin->sin_family;
--	dsin->sin_addr.s_addr = ssin->sin_addr.s_addr;
--	return true;
--}
--
--#if IS_ENABLED(CONFIG_IPV6)
--static inline bool __rpc_cmp_addr6(const struct sockaddr *sap1,
--				   const struct sockaddr *sap2)
--{
--	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sap1;
--	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sap2;
--
--	if (!ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr))
--		return false;
--	else if (ipv6_addr_type(&sin1->sin6_addr) & IPV6_ADDR_LINKLOCAL)
--		return sin1->sin6_scope_id == sin2->sin6_scope_id;
--
--	return true;
--}
--
--static inline bool __rpc_copy_addr6(struct sockaddr *dst,
--				    const struct sockaddr *src)
--{
--	const struct sockaddr_in6 *ssin6 = (const struct sockaddr_in6 *) src;
--	struct sockaddr_in6 *dsin6 = (struct sockaddr_in6 *) dst;
--
--	dsin6->sin6_family = ssin6->sin6_family;
--	dsin6->sin6_addr = ssin6->sin6_addr;
--	dsin6->sin6_scope_id = ssin6->sin6_scope_id;
--	return true;
--}
--#else	/* !(IS_ENABLED(CONFIG_IPV6) */
--static inline bool __rpc_cmp_addr6(const struct sockaddr *sap1,
--				   const struct sockaddr *sap2)
--{
--	return false;
--}
--
--static inline bool __rpc_copy_addr6(struct sockaddr *dst,
--				    const struct sockaddr *src)
--{
--	return false;
--}
--#endif	/* !(IS_ENABLED(CONFIG_IPV6) */
--
--/**
-- * rpc_cmp_addr - compare the address portion of two sockaddrs.
-- * @sap1: first sockaddr
-- * @sap2: second sockaddr
-- *
-- * Just compares the family and address portion. Ignores port, but
-- * compares the scope if it's a link-local address.
-- *
-- * Returns true if the addrs are equal, false if they aren't.
-- */
- static inline bool rpc_cmp_addr(const struct sockaddr *sap1,
- 				const struct sockaddr *sap2)
- {
--	if (sap1->sa_family == sap2->sa_family) {
--		switch (sap1->sa_family) {
--		case AF_INET:
--			return __rpc_cmp_addr4(sap1, sap2);
--		case AF_INET6:
--			return __rpc_cmp_addr6(sap1, sap2);
--		}
--	}
--	return false;
-+	return inet_addr_equal((const union inet_addr *)sap1,
-+			       (const union inet_addr *)sap2);
- }
+-	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
++	status = rpc_call_sync(clp->cl_rpcclient, &msg,
++					RPC_TASK_TIMEOUT|RPC_TASK_ROOTCREDS);
+ 	if (status)
+ 		dprintk("NFS: Got error %d from the server %s on "
+ 			"DESTROY_CLIENTID.", status, clp->cl_hostname);
+@@ -5926,7 +5930,8 @@ static int _nfs4_proc_create_session(struct nfs_client *clp,
+ 	nfs4_init_channel_attrs(&args);
+ 	args.flags = (SESSION4_PERSIST | SESSION4_BACK_CHAN);
  
--/**
-- * rpc_copy_addr - copy the address portion of one sockaddr to another
-- * @dst: destination sockaddr
-- * @src: source sockaddr
-- *
-- * Just copies the address portion and family. Ignores port, scope, etc.
-- * Caller is responsible for making certain that dst is large enough to hold
-- * the address in src. Returns true if address family is supported. Returns
-- * false otherwise.
-- */
- static inline bool rpc_copy_addr(struct sockaddr *dst,
- 				 const struct sockaddr *src)
- {
--	switch (src->sa_family) {
--	case AF_INET:
--		return __rpc_copy_addr4(dst, src);
--	case AF_INET6:
--		return __rpc_copy_addr6(dst, src);
--	}
--	return false;
-+	return inet_addr_copy((union inet_addr *)dst,
-+			      (const union inet_addr *)src);
- }
+-	status = rpc_call_sync(session->clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
++	status = rpc_call_sync(session->clp->cl_rpcclient, &msg,
++					RPC_TASK_TIMEOUT|RPC_TASK_ROOTCREDS);
  
-+
- /**
-  * rpc_get_scope_id - return scopeid for a given sockaddr
-  * @sa: sockaddr to get scopeid from
-diff --git a/include/net/inet_addr.h b/include/net/inet_addr.h
-index 1379287..683e904 100644
---- a/include/net/inet_addr.h
-+++ b/include/net/inet_addr.h
-@@ -60,6 +60,62 @@ static inline bool inet_addr_multicast(const union inet_addr *ipa)
- }
- #endif
+ 	if (!status)
+ 		/* Verify the session's negotiated channel_attrs values */
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index b1c96e7..2a9bed3 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1740,10 +1740,9 @@ static int nfs4_establish_lease(struct nfs_client *clp)
+ 	int status;
  
-+/**
-+ * inet_addr_copy - copy the address portion of one sockaddr to another
-+ * @dst: destination sockaddr
-+ * @src: source sockaddr
-+ *
-+ * Just copies the address portion and family. Ignores port, scope, etc.
-+ * Caller is responsible for making certain that dst is large enough to hold
-+ * the address in src. Returns true if address family is supported. Returns
-+ * false otherwise.
-+ */
-+static inline bool inet_addr_copy(union inet_addr *dst,
-+				  const union inet_addr *src)
-+{
-+	dst->sa.sa_family = src->sa.sa_family;
-+
-+	switch (src->sa.sa_family) {
-+	case AF_INET:
-+		dst->sin.sin_addr.s_addr = src->sin.sin_addr.s_addr;
-+		return true;
-+#if IS_ENABLED(CONFIG_IPV6)
-+	case AF_INET6:
-+		dst->sin6.sin6_addr = src->sin6.sin6_addr;
-+		dst->sin6.sin6_scope_id = src->sin6.sin6_scope_id;
-+		return true;
-+#endif
-+	}
-+
-+	return false;
-+}
-+
-+static inline
-+unsigned short inet_addr_get_port(const union inet_addr *sap)
-+{
-+	switch (sap->sa.sa_family) {
-+	case AF_INET:
-+		return ntohs(sap->sin.sin_port);
-+	case AF_INET6:
-+		return ntohs(sap->sin6.sin6_port);
-+	}
-+	return 0;
-+}
-+
-+static inline
-+void inet_addr_set_port(union inet_addr *sap,
-+			const unsigned short port)
-+{
-+	switch (sap->sa.sa_family) {
-+	case AF_INET:
-+		sap->sin.sin_port = htons(port);
-+		break;
-+	case AF_INET6:
-+		sap->sin6.sin6_port = htons(port);
-+		break;
-+	}
-+}
-+
- static inline int inet_pton(const char *str, union inet_addr *addr)
- {
- 	const char *end;
--- 
-1.7.7.6
+ 	cred = ops->get_clid_cred(clp);
+-	if (cred == NULL)
+-		return -ENOENT;
+ 	status = ops->establish_clid(clp, cred);
+-	put_rpccred(cred);
++	if (cred)
++		put_rpccred(cred);
+ 	if (status != 0)
+ 		return status;
+ 	pnfs_destroy_all_layouts(clp);
+@@ -1827,11 +1826,9 @@ int nfs4_discover_server_trunking(struct nfs_client *clp,
+ 	status  = -ENOENT;
+ again:
+ 	cred = ops->get_clid_cred(clp);
+-	if (cred == NULL)
+-		goto out_unlock;
+-
+ 	status = ops->detect_trunking(clp, result, cred);
+-	put_rpccred(cred);
++	if (cred)
++		put_rpccred(cred);
+ 	switch (status) {
+ 	case 0:
+ 		break;
+@@ -1878,7 +1875,6 @@ again:
+ 		status = -EKEYEXPIRED;
+ 	}
+ 
+-out_unlock:
+ 	mutex_unlock(&nfs_clid_init_mutex);
+ out_free:
+ 	kfree(flavors);
 
