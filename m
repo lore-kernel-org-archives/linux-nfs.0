@@ -1,73 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from webmail.solarflare.com ([12.187.104.25]:43869 "EHLO
-	webmail.solarflare.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752648Ab3F0PiC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jun 2013 11:38:02 -0400
-Message-ID: <1372347477.2436.7.camel@bwh-desktop.uk.level5networks.com>
-Subject: Re: [RFC Patch net-next 4/5] sunrpc: use generic union inet_addr
-From: Ben Hutchings <bhutchings@solarflare.com>
-To: Cong Wang <amwang@redhat.com>
-CC: <netdev@vger.kernel.org>, Daniel Borkmann <dborkman@redhat.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>
-Date: Thu, 27 Jun 2013 16:37:57 +0100
-In-Reply-To: <1372315398-19683-5-git-send-email-amwang@redhat.com>
-References: <1372315398-19683-1-git-send-email-amwang@redhat.com>
-	 <1372315398-19683-5-git-send-email-amwang@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-MIME-Version: 1.0
+Received: from mail.gnuher.de ([78.47.12.54]:39105 "EHLO mail.gnuher.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755325Ab3FGPlY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Jun 2013 11:41:24 -0400
+Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
+	by mail.gnuher.de (envelope-from
+	<news@geggus.net>)
+	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.72)
+	id 1Ukyn5-0000SB-AH
+	for linux-nfs@vger.kernel.org; Fri, 07 Jun 2013 17:41:23 +0200
+Received: from news  by ultimate100.geggus.net (envelope-from
+	<news@geggus.net>)
+	with local (Exim 4.72)
+	id 1Ukyn3-0004Tb-7D
+	for linux-nfs@vger.kernel.org; Fri, 07 Jun 2013 17:41:21 +0200
+To: linux-nfs@vger.kernel.org
+From: Sven Geggus <lists@fuchsschwanzdomain.de>
+Subject: Re: NFS4+KRB5 trouble in Kernel >3.8
+Date: Fri, 7 Jun 2013 15:41:21 +0000 (UTC)
+Message-ID: <kosuv1$gjp$1@ultimate100.geggus.net>
+References: <koq2ie$gtu$1@ultimate100.geggus.net> <DBA14DEF-59CE-4068-B2B8-7F208F2EBA22@oracle.com> <kosc4c$9ar$1@ultimate100.geggus.net> <CEF420B2-F649-40F6-B0D7-2187996A5493@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-06-27 at 14:43 +0800, Cong Wang wrote:
-[...]
-> --- a/include/net/inet_addr.h
-> +++ b/include/net/inet_addr.h
-> @@ -60,6 +60,62 @@ static inline bool inet_addr_multicast(const union inet_addr *ipa)
->  }
->  #endif
->  
-> +/**
-> + * inet_addr_copy - copy the address portion of one sockaddr to another
-> + * @dst: destination sockaddr
-> + * @src: source sockaddr
-> + *
-> + * Just copies the address portion and family. Ignores port, scope, etc.
-> + * Caller is responsible for making certain that dst is large enough to hold
-> + * the address in src. Returns true if address family is supported. Returns
-> + * false otherwise.
-> + */
-> +static inline bool inet_addr_copy(union inet_addr *dst,
-> +				  const union inet_addr *src)
-> +{
-> +	dst->sa.sa_family = src->sa.sa_family;
-> +
-> +	switch (src->sa.sa_family) {
-> +	case AF_INET:
-> +		dst->sin.sin_addr.s_addr = src->sin.sin_addr.s_addr;
-> +		return true;
-> +#if IS_ENABLED(CONFIG_IPV6)
-> +	case AF_INET6:
-> +		dst->sin6.sin6_addr = src->sin6.sin6_addr;
-> +		dst->sin6.sin6_scope_id = src->sin6.sin6_scope_id;
-> +		return true;
-> +#endif
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-Most of the other functions work on IPv6 addresses without CONFIG_IPV6;
-why should this be different?
+> Your complaint was about mount problems, so I assumed client side,
+> and did not visit the link you provided.
 
-Ben.
+My Problem is almost certainly a server Problem. I will see what I
+can find with tcpdump/wireshark on monday.
 
-> +	}
-> +
-> +	return false;
-> +}
-[...]
+Sven
 
 -- 
-Ben Hutchings, Staff Engineer, Solarflare
-Not speaking for my employer; that's the marketing department's job.
-They asked us to note that Solarflare product names are trademarked.
+"Dynamische IP-Nummern sind Security-Homöopathie."
+						(Kristian Köhntopp)
 
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
