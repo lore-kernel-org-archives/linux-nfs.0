@@ -1,148 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:29146 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:35829 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932172Ab3FRMR5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Jun 2013 08:17:57 -0400
-Date: Tue, 18 Jun 2013 08:17:52 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Sandeep Joshi <sanjos100@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: why does nfsd write not use splice
-Message-ID: <20130618081752.40fd2569@tlielax.poochiereds.net>
-In-Reply-To: <58D5D77A-B341-4632-A61D-A13462CD40E7@netapp.com>
-References: <CAEfL3KnfRWof4-6UAWTwXcH7XWSQuUR5ry_pg4qdyhBB6dt+5g@mail.gmail.com>
- <20130611195140.GA29634@fieldses.org>
- <51B7DE9C.6080703@talpey.com>
- <20130612153936.GB32569@fieldses.org>
- <CAEfL3KkdjB7bzvnfiDh024kHjCH0e64iH6GK6y+A+bpH3kUgJg@mail.gmail.com>
- <20130612164637.GA6868@fieldses.org>
- <CAEfL3Km7knMAW1Jx_jHZ0OYBMBpUkvbzk2riBE2C=NA9OMvUQw@mail.gmail.com>
- <20130614152215.1f369a4c@tlielax.poochiereds.net>
- <4FA345DA4F4AE44899BD2B03EEEC2FA93F403977@durexcmbx02-prd.hq.netapp.com>
- <20130617070115.34b2fabb@corrin.poochiereds.net>
- <58D5D77A-B341-4632-A61D-A13462CD40E7@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1753634Ab3FJOkV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Jun 2013 10:40:21 -0400
+Subject: [PATCH 1/3] SUNRPC: fix races on PipeFS UMOUNT notifications
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, devel@openvz.org, linux-kernel@vger.kernel.org,
+        jlayton@redhat.com
+Date: Mon, 10 Jun 2013 18:40:01 +0400
+Message-ID: <20130610144001.7498.41629.stgit@localhost.localdomain>
+In-Reply-To: <20130610143725.7498.72391.stgit@localhost.localdomain>
+References: <20130610143725.7498.72391.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 17 Jun 2013 11:48:18 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+Below are races, when RPC client can be created without PiepFS dentries
 
-> 
-> On Jun 17, 2013, at 7:01 AM, Jeff Layton <jlayton@redhat.com>
->  wrote:
-> 
-> > On Sat, 15 Jun 2013 05:09:55 +0000
-> > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-> > 
-> >>> -----Original Message-----
-> >>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> >>> owner@vger.kernel.org] On Behalf Of Jeff Layton
-> >>> Sent: Friday, June 14, 2013 3:22 PM
-> >>> To: Sandeep Joshi
-> >>> Cc: J. Bruce Fields; linux-nfs@vger.kernel.org
-> >>> Subject: Re: why does nfsd write not use splice
-> >>> 
-> >>> On Fri, 14 Jun 2013 17:39:12 +0530
-> >>> Sandeep Joshi <sanjos100@gmail.com> wrote:
-> >>> 
-> >>>> On Wed, Jun 12, 2013 at 10:16 PM, J. Bruce Fields <bfields@fieldses.org>
-> >>> wrote:
-> >>>>> 
-> >>>>> On Wed, Jun 12, 2013 at 09:51:09PM +0530, Sandeep Joshi wrote:
-> >>>>>> Splice can be implemented independent of RDMA.  It is supposed to
-> >>>>>> transfer pages between two file descriptors.  I found some
-> >>>>>> postings on lkml from
-> >>>>>> 2006 where Linus says it is quite possible to splice from a socket
-> >>>>>> to a file.
-> >>>>>> 
-> >>>>>> See the paragraph:
-> >>>>>> " For filesystems, splice support tends to be really easy (both
-> >>>>>> read and write). For other things, it depends a bit. But unlike
-> >>>>>> sendfile(), it really is quite possible to splice _from_ a socket
-> >>>>>> too, not just _to_ a socket. But no, that case hasn't been written yet."
-> >>>>>> http://yarchive.net/comp/linux/splice.html
-> >>>>>> 
-> >>>>>> Larry McVoy's 1997 proposal for adding splice support to the
-> >>>>>> kernel can be read at
-> >>>>>> ftp.tux.org/pub/sites/ftp.bitmover.com/pub/*splice*.*ps*.gz<http:/
-> >>>>>> /ftp.tux.org/pub/sites/ftp.bitmover.com/pub/splice.ps.gz>
-> >>>>>> 
-> >>>>>> Perhaps I should have opened this thread on lkml to determine if
-> >>>>>> splice from socket to file is still feasible..
-> >>>>> 
-> >>>>> Right, the thing is, nfsd reads the rpc request from the socket into
-> >>>>> its own buffers before it parses it.  If you want to move the data
-> >>>>> directly out of the network buffers into the page cache, then you
-> >>>>> have to know at what point the write data starts in the
-> >>>>> request--which I believe will mean doing the xdr parsing (and gss
-> >>>>> decryption if necessary) as the request comes in off the wire.
-> >>>>> 
-> >>>>> That sounds like a lot of work and even if you have someone willing
-> >>>>> to do the work they'd also need to justify that it's worth it.
-> >>>>> 
-> >>>>> RDMA may have some protocol support that simplifies this, I don't know.
-> >>>>> 
-> >>>>> --b.
-> >>>> 
-> >>>> Hi Bruce,
-> >>>> 
-> >>>>> nfsd reads the rpc request from the socket into its own buffers before it
-> >>> parses it.
-> >>>> 
-> >>>> I am not intimate with the gss code but do you think the
-> >>>> svc_rqst->rq_pages[] can be spliced ?
-> >>>> 
-> >>> 
-> >>> Probably not in its current form. The problem is one of alignment. You need
-> >>> to know where the write data actually starts before doing the receive off the
-> >>> socket, so you can make sure that it ends up in the correct spot in the pages
-> >>> you're going to splice in.
-> >>> 
-> >>> There's also the problem of what to do about WRITE requests that contain
-> >>> data that isn't page aligned or that's shorter than a page...
-> >> 
-> >> Finally, there is the minor problem that the data that is actually received by the socket may be encrypted, or may need to be checksummed (krb5i) _before_ you can apply it to the file. That is not a particularly good fit for splice().
-> >> 
-> > 
-> > Encryption certainly can be a problem, but integrity isn't necessarily
-> > one.
-> > 
-> > Basically the idea would be to receive the data off the socket into a
-> > set of pages and then splice those into the correct spot in the local
-> > file. In both the privacy and integrity cases, you just have an extra
-> > step in between. Privacy *may* mean an extra copy too (though some of
-> > the crypto routines can decrypt data in place), but handling integrity
-> > shouldn't.
-> > 
-> > The tricky parts (I think) are determining how to lay out the received
-> > data into the pages you eventually want to splice into the file before
-> > you receive that data in, and how to deal with it when the WRITE
-> > doesn't cover an entire page.
-> 
-> Once you've copied the data one time, most of the advantage of splice() is gone, since a copy will then exist in processor cache memory and can be duplicated quickly.
-> 
+CPU#0					CPU#1
+-----------------------------		-----------------------------
+rpc_new_client				rpc_fill_super
+rpc_setup_pipedir
+mutex_lock(&sn->pipefs_sb_lock)
+rpc_get_sb_net == NULL
+(no per-net PipeFS superblock)
+					sn->pipefs_sb = sb;
+					notifier_call_chain(MOUNT)
+					(client is not in the list)
+rpc_register_client
+(client without pipes dentries)
 
-Good point. I'm not sure there's much you can do to avoid at least one
-copy. When the data is received into the skbuff, the networking layer
-won't have it aligned for an efficient splice.
+To fix this patch:
+1) makes PipeFS mount notification call with pipefs_sb_lock being held.
+2) releases pipefs_sb_lock on new SUNRPC client creation only after
+registration.
 
-ISTR that some Intel NICs actually have segmentation hardware that
-purports to understand NFS read and write headers and can split the
-header and data into different sets of pages.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: stable@vger.kernel.org
+---
+ net/sunrpc/clnt.c     |    7 ++++++-
+ net/sunrpc/rpc_pipe.c |    3 +++
+ 2 files changed, 9 insertions(+), 1 deletions(-)
 
-In principle, you could try to use that capability to ensure that the
-writedata got DMA'ed into a page aligned buffer that you could then
-splice in. It wouldn't handle all cases so you'd probably still have to
-copy sometimes, but it might help when you had page-aligned writes that
-covered an entire page.
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 5a750b9..cf5b226 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -170,7 +170,10 @@ rpc_setup_pipedir(struct rpc_clnt *clnt, const char *dir_name)
+ 	if (!pipefs_sb)
+ 		return 0;
+ 	dentry = rpc_setup_pipedir_sb(pipefs_sb, clnt, dir_name);
+-	rpc_put_sb_net(net);
++	/*
++	 * PipeFS superblock will be put after client registration to prevent
++	 * races with PipeFS mount call.
++	 */
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+ 	clnt->cl_dentry = dentry;
+@@ -369,11 +372,13 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 	/* save the nodename */
+ 	rpc_clnt_set_nodename(clnt, utsname()->nodename);
+ 	rpc_register_client(clnt);
++	rpc_put_sb_net(xprt->xprt_net);
+ 	return clnt;
+ 
+ out_no_auth:
+ 	rpc_clnt_remove_pipedir(clnt);
+ out_no_path:
++	rpc_put_sb_net(xprt->xprt_net);
+ 	kfree(clnt->cl_principal);
+ out_no_principal:
+ 	rpc_free_iostats(clnt->cl_metrics);
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index e7ce4b3..c512448 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -1126,6 +1126,7 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 		return -ENOMEM;
+ 	dprintk("RPC:       sending pipefs MOUNT notification for net %p%s\n",
+ 		net, NET_NAME(net));
++	mutex_lock(&sn->pipefs_sb_lock);
+ 	sn->pipefs_sb = sb;
+ 	err = blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
+ 					   RPC_PIPEFS_MOUNT,
+@@ -1133,6 +1134,7 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (err)
+ 		goto err_depopulate;
+ 	sb->s_fs_info = get_net(net);
++	mutex_unlock(&sn->pipefs_sb_lock);
+ 	return 0;
+ 
+ err_depopulate:
+@@ -1141,6 +1143,7 @@ err_depopulate:
+ 					   sb);
+ 	sn->pipefs_sb = NULL;
+ 	__rpc_depopulate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF);
++	mutex_unlock(&sn->pipefs_sb_lock);
+ 	return err;
+ }
+ 
 
-As you point out though, all of this is deep voodoo, and you'd have to
-do a bunch of reengineering before you even had an inkling of how
-worthwhile it is.
-
--- 
-Jeff Layton <jlayton@redhat.com>
