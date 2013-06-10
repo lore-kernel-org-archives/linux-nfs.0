@@ -1,104 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from icebox.esperi.org.uk ([81.187.191.129]:52752 "EHLO
-	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752448Ab3FLMZD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Jun 2013 08:25:03 -0400
-From: Nix <nix@esperi.org.uk>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: linux-kernel@vger.kernel.org, NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: NFS/lazy-umount/path-lookup-related panics at shutdown (at kill of processes on lazy-umounted filesystems) with 3.9.2 and 3.9.5
-References: <871u89vp46.fsf@spindle.srvr.nix>
-	<20130612012304.GF4165@ZenIV.linux.org.uk>
-Date: Wed, 12 Jun 2013 13:08:26 +0100
-In-Reply-To: <20130612012304.GF4165@ZenIV.linux.org.uk> (Al Viro's message of
-	"Wed, 12 Jun 2013 02:23:04 +0100")
-Message-ID: <87k3lzpm4l.fsf@spindle.srvr.nix>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail.gnuher.de ([78.47.12.54]:60574 "EHLO mail.gnuher.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751388Ab3FJJQ5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Jun 2013 05:16:57 -0400
+Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
+	by mail.gnuher.de (envelope-from
+	<news@geggus.net>)
+	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.72)
+	id 1UlyDf-0007Pu-W0
+	for linux-nfs@vger.kernel.org; Mon, 10 Jun 2013 11:16:56 +0200
+Received: from news  by ultimate100.geggus.net (envelope-from
+	<news@geggus.net>)
+	with local (Exim 4.72)
+	id 1UlyDe-0001CK-6A
+	for linux-nfs@vger.kernel.org; Mon, 10 Jun 2013 11:16:54 +0200
+To: linux-nfs@vger.kernel.org
+From: Sven Geggus <lists@fuchsschwanzdomain.de>
+Subject: Re: Kerberized NFS failure with 3.9.0-rc1 (and later)
+Date: Mon, 10 Jun 2013 09:16:54 +0000 (UTC)
+Message-ID: <kp45i6$3st$1@ultimate100.geggus.net>
+References: <3e068504c6a4b683359bad7610d84bc5.squirrel@vdtoorn.nl> <18bf175abb39f6b946156dc44fc9d111.squirrel@vdtoorn.nl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12 Jun 2013, Al Viro told this:
+richard@vdtoorn.nl wrote:
 
-> On Mon, Jun 10, 2013 at 06:42:49PM +0100, Nix wrote:
->> Yes, my shutdown scripts are panicking the kernel again! They're not
->> causing filesystem corruption this time, but it's still fs-related.
->> 
->> Here's the 3.9.5 panic, seen on an x86-32 NFS client using NFSv3: NFSv4
->> was compiled in but not used. This happened when processes whose
->> current directory was on one of those NFS-mounted filesystems were being
->> killed, after it had been lazy-umounted (so by this point its cwd was in
->> a disconnected mount point).
->> 
->> [  251.246800] BUG: unable to handle kernel NULL pointer dereference at 00000004
->> [  251.256556] IP: [<c01739f6>] path_init+0xc7/0x27f
->> [  251.256556] *pde = 00000000
->> [  251.256556] Oops: 0000 [#1]
->> [  251.256556] Pid: 748, comm: su Not tainted 3.9.5+ #1
->> [  251.256556] EIP: 0060:[<c01739f6>] EFLAGS: 00010246 CPU: 0
->> [  251.256556] EIP is at path_init+0xc7/0x27f
->
-> Apparently that's set_root_rcu() with current->fs being NULL.  Which comes from
-> AF_UNIX connect done by some twisted call chain in context of hell knows what.
+> Replying to myself, this looks to be the same problem as was reported by
+> Sven earlier this week:
 
-It's all NFS's fault!
+Jepp, I think so. Unfortunately I'm a bit stuck in debugging this, as
+git-bisect just led me to another variant of broken behaviour (permission
+denied instead of infinite hang during mount).
 
->> [  251.256556]  [<c02ef8da>] ? unix_stream_connect+0xe1/0x2f7
->> [  251.256556]  [<c026a14d>] ? kernel_connect+0x10/0x14
->> [  251.256556]  [<c031ecb1>] ? xs_local_connect+0x108/0x181
->> [  251.256556]  [<c031c83b>] ? xprt_connect+0xcd/0xd1
+Wireshark output of Kernel 3.9.4 does not look all that interesting either
+(10.1.7.30=client, 10.1.7.111=server):
 
-At this point, we have a sibcall to call_connect() I think. The RPC task
-of discourse happens to be local, and as the relevant comment says
+No. Time        Source       Destination           Protocol Length Info
+  1 0.000000    10.1.7.30    10.1.7.111            TCP      74     997 > nfs [SYN] Seq=0 Win=14600 Len=0 MSS=1460 SACK_PERM=1 TSval=1518792 TSecr=0 WS=128
+  2 0.000224    10.1.7.111   10.1.7.30             TCP      74     nfs > 997 [SYN, ACK] Seq=0 Ack=1 Win=14480 Len=0 MSS=1460 SACK_PERM=1 TSval=18228 TSecr=1518792 WS=64
+  3 0.000250    10.1.7.30    10.1.7.111            TCP      66     997 > nfs [ACK] Seq=1 Ack=1 Win=14720 Len=0 TSval=1518793 TSecr=18228
+  4 0.000273    10.1.7.30    10.1.7.111            NFS      110    V4 NULL Call (Reply In 6)
+  5 0.000389    10.1.7.111   10.1.7.30             TCP      66     nfs > 997 [ACK] Seq=1 Ack=45 Win=14528 Len=0 TSval=18228 TSecr=1518793
+  6 0.000554    10.1.7.111   10.1.7.30             NFS      94     V4 NULL Reply (Call In 4)
+  7 0.000564    10.1.7.30    10.1.7.111            TCP      66     997 > nfs [ACK] Seq=45 Ack=29 Win=14720 Len=0 TSval=1518793 TSecr=18228
+  8 0.005250    10.1.7.30    10.1.7.111            TCP      74     60072 > nfs [SYN] Seq=0 Win=14600 Len=0 MSS=1460 SACK_PERM=1 TSval=1518794 TSecr=0 WS=128
+  9 0.005393    10.1.7.111   10.1.7.30             TCP      74     nfs > 60072 [SYN, ACK] Seq=0 Ack=1 Win=14480 Len=0 MSS=1460 SACK_PERM=1 TSval=18229 TSecr=1518794 WS=64
+ 10 0.005409    10.1.7.30    10.1.7.111            TCP      66     60072 > nfs [ACK] Seq=1 Ack=1 Win=14720 Len=0 TSval=1518794 TSecr=18229
+ 11 0.006228    10.1.7.30    10.1.7.111            NFS      1450   V4 NULL Call (Reply In 13)
+ 12 0.006393    10.1.7.111   10.1.7.30             TCP      66     nfs > 60072 [ACK] Seq=1 Ack=1385 Win=17408 Len=0 TSval=18230 TSecr=1518794
+ 13 0.016922    10.1.7.111   10.1.7.30             NFS      298    V4 NULL Reply (Call In 11)
+ 14 0.016938    10.1.7.30    10.1.7.111            TCP      66     60072 > nfs [ACK] Seq=1385 Ack=233 Win=15744 Len=0 TSval=1518797 TSecr=18232
+ 15 0.017931    10.1.7.30    10.1.7.111            NFS      126    V4 NULL Call
+ 16 0.017950    10.1.7.30    10.1.7.111            NFS      270    V4 Call SETCLIENTID
+ 17 0.017956    10.1.7.30    10.1.7.111            TCP      66     60072 > nfs [FIN, ACK] Seq=1445 Ack=233 Win=15744 Len=0 TSval=1518797 TSecr=18232
+ 18 0.018916    10.1.7.111   10.1.7.30             TCP      66     nfs > 60072 [FIN, ACK] Seq=233 Ack=1446 Win=17408 Len=0 TSval=18233 TSecr=1518797
+ 19 0.018935    10.1.7.30    10.1.7.111            TCP      66     60072 > nfs [ACK] Seq=1446 Ack=234 Win=15744 Len=0 TSval=1518797 TSecr=18233
+ 20 0.056246    10.1.7.111   10.1.7.30             TCP      66     nfs > 997 [ACK] Seq=29 Ack=249 Win=15552 Len=0 TSval=18242 TSecr=1518797
+Communication stalls here..
 
-		 * We want the AF_LOCAL connect to be resolved in the
-		 * filesystem namespace of the process making the rpc
-		 * call.  Thus we connect synchronously.
+Sven
 
-Probably this should be doing this only if said namespace isn't
-disconnected and going away...
+-- 
+"Those who do not understand Unix are condemned to reinvent it, poorly"
+(Henry Spencer)
 
->> [  251.256556]  [<c031fd1b>] ? __rpc_execute+0x5b/0x156
->> [  251.256556]  [<c0128ac2>] ? wake_up_bit+0xb/0x19
->> [  251.256556]  [<c031b83d>] ? rpc_run_task+0x55/0x5a
->> [  251.256556]  [<c031b8bc>] ? rpc_call_sync+0x7a/0x8d
->> [  251.256556]  [<c0325127>] ? rpcb_register_call+0x11/0x20
->> [  251.256556]  [<c032548a>] ? rpcb_v4_register+0x87/0xf6
-
-This is happening because of this code in net/sunrpc/svc.c (and, indeed,
-I am running rpcbind, like everyone should be these days):
-
-/*
- * If user space is running rpcbind, it should take the v4 UNSET
- * and clear everything for this [program, version].  If user space
- * is running portmap, it will reject the v4 UNSET, but won't have
- * any "inet6" entries anyway.  So a PMAP_UNSET should be sufficient
- * in this case to clear all existing entries for [program, version].
- */
-static void __svc_unregister(struct net *net, const u32 program, const u32 version,
-			     const char *progname)
-{
-	int error;
-
-	error = rpcb_v4_register(net, program, version, NULL, "");
-
-	/*
-	 * User space didn't support rpcbind v4, so retry this
-	 * request with the legacy rpcbind v2 protocol.
-	 */
-	if (error == -EPROTONOSUPPORT)
-		error = rpcb_register(net, program, version, 0, 0);
-
-
-Ah yes, because what unregister should do is *register* something.
-That's clear as mud :)
-
-> Why is it done in essentially random process context, anyway?  There's such thing
-> as chroot, after all, which would screw that sucker as hard as NULL ->fs, but in
-> a less visible way...
-
-I don't think it is a random process context. It's all intentionally
-done in the context of the process which is the last to close that
-filesystem, as part of the process of tearing it down -- but it looks
-like the NFS svcrpc connection code isn't expecting to be called in that
-situation.
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
