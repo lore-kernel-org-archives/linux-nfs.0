@@ -1,37 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from dgate10.ts.fujitsu.com ([80.70.172.49]:37266 "EHLO
-	dgate10.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758040Ab3FCO1I (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Jun 2013 10:27:08 -0400
-Message-Id: <d6437a$4dpkbm@dgate10u.abg.fsc.net>
-Date: 03 Jun 2013 16:27:06 +0200
-From: Bodo Stroesser <bstroesser@ts.fujitsu.com>
-To: bfields@fieldses.org, neilb@suse.de
-Cc: linux-nfs@vger.kernel.org, bstroesser@ts.fujitsu.com
-Subject: Re: sunrpc/cache.c: races while updating cache entries
-Content-Type: text/plain; charset=us-ascii
+Received: from mailhub.sw.ru ([195.214.232.25]:39220 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752050Ab3FKOjY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Jun 2013 10:39:24 -0400
+Subject: [PATCH v2 1/4] SUNRPC: split client creation routine into setup and
+	registration
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, devel@openvz.org, linux-kernel@vger.kernel.org,
+        jlayton@redhat.com
+Date: Tue, 11 Jun 2013 18:39:10 +0400
+Message-ID: <20130611143910.16046.83919.stgit@localhost.localdomain>
+In-Reply-To: <20130611143725.16046.17279.stgit@localhost.localdomain>
+References: <20130611143725.16046.17279.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCBBcHIgMTksIDIwMTMgYXQgMDY6NTY6MDBQTSArMDIwMCwgQm9kbyBTdHJvZXNz
-ZXIgd3JvdGU6Cj4gCj4gV2Ugc3RhcnRlZCB0aGUgdGVzdCBvZiB0aGUgLVNQMiAoYW5kIG1h
-aW5saW5lKSBzZXJpZXMgb24gVHVlLCA5dGgsIGJ1dCBoYWQgbm8KPiBzdWNjZXNzLgo+IFdl
-IGRpZCBfbm90XyBmaW5kIGEgcHJvYmxlbSB3aXRoIHRoZSBwYXRjaGVzLCBidXQgdW5kZXIg
-LVNQMiBvdXIgdGVzdCBzY2VuYXJpbwo+IGhhcyBsZXNzIHRoYW4gNDAlIG9mIHRoZSB0aHJv
-dWdocHV0IHdlIHNhdyB1bmRlciAtU1AxLiBXaXRoIHRoYXQgbG93Cj4gcGVyZm9ybWFuY2Us
-IHdlIGhhZCBhIDQgZGF5IHJ1biB3aXRob3V0IGFueSBkcm9wcGVkIFJQQyByZXF1ZXN0LiBC
-dXQgd2UgZG9uJ3QKPiBrbm93IHRoZSBlcnJvciByYXRlIHdpdGhvdXQgdGhlIHBhdGNoZXMg
-dW5kZXIgdGhlc2UgY29uZGl0aW9ucy4gU28gd2UgY2FuJ3QKPiBnaXZlIGFuIG8uay4gZm9y
-IHRoZSBwYXRjaGVzIHlldC4KPiAKPiBDdXJyZW50bHkgd2UgdHJ5IHRvIGZpbmQgdGhlIHJl
-YXNvbiBmb3IgdGhlIGRpZmZlcmVudCBiZWhhdmlvciBvZiBTUDEgYW5kIFNQMgo+IAoKSGks
-Cgpzb3JyeSBmb3IgdGhlIGRlbGF5LiBNZWFud2hpbGUgd2UgZm91bmQgdGhlIHJlYXNvbiBm
-b3IgdGhlIHNtYWxsIHRocm91Z2hwdXQKd2l0aCAtU1AyLiBUaGUgcHJvYmxlbSByZXN1bHRl
-ZCBmcm9tIGEgY2hhbmdlIGluIG91ciBvd24gc29mdHdhcmUuCgpUaHVzIEkgY291bGQgZml4
-IHRoaXMgYW5kIHN0YXJ0ZWQgYSB0ZXN0IG9uIGxhc3QgVHVlc2RheS4gSSBzdG9wcGVkIHRo
-ZSB0ZXN0CnRvZGF5IGFmdGVyIDYgZGF5cyB3aXRob3V0IGFueSBsb3N0IFJQQy4gV2l0aG91
-dCB0aGUgcGF0Y2hlcyBJIHNhdyB0aGUgZmlyc3QKZHJvcHBlZCBSUEMgYWZ0ZXIgMyBob3Vy
-cy4gVGh1cywgSSB0aGluayB0aGUgcGF0Y2hlcyBmb3IgLVNQMiBhcmUgZmluZS4gCgpATmVp
-bDogd291bGQgcGF0Y2ggMDAwNiBvZiB0aGUgLVNQMSBwYXRjaHNldCBiZSBhIGdvb2QgYWRk
-aXRpb25hbCBjaGFuZ2UgZm9yCm1haW5saW5lPwoKQm9kbwo=
+This helper moves all "registration" code to the new rpc_client_register()
+helper.
+This helper will be used later in the series to synchronize against PipeFS
+MOUNT/UMOUNT events.
 
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ net/sunrpc/clnt.c |   48 ++++++++++++++++++++++++++++++++----------------
+ 1 files changed, 32 insertions(+), 16 deletions(-)
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 5a750b9..4bf2409 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -289,12 +289,39 @@ static void rpc_clnt_set_nodename(struct rpc_clnt *clnt, const char *nodename)
+ 	memcpy(clnt->cl_nodename, nodename, clnt->cl_nodelen);
+ }
+ 
++static int rpc_client_register(const struct rpc_create_args *args,
++			       struct rpc_clnt *clnt)
++{
++	const struct rpc_program *program = args->program;
++	struct rpc_auth *auth;
++	int err = 0;
++
++	err = rpc_setup_pipedir(clnt, program->pipe_dir_name);
++	if (err < 0)
++		goto out;
++
++	auth = rpcauth_create(args->authflavor, clnt);
++	if (IS_ERR(auth)) {
++		dprintk("RPC:       Couldn't create auth handle (flavor %u)\n",
++				args->authflavor);
++		err = PTR_ERR(auth);
++		goto err_auth;
++	}
++
++	rpc_register_client(clnt);
++out:
++	return err;
++
++err_auth:
++	rpc_clnt_remove_pipedir(clnt);
++	goto out;
++}
++
+ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, struct rpc_xprt *xprt)
+ {
+ 	const struct rpc_program *program = args->program;
+ 	const struct rpc_version *version;
+ 	struct rpc_clnt		*clnt = NULL;
+-	struct rpc_auth		*auth;
+ 	int err;
+ 
+ 	/* sanity check the name before trying to print it */
+@@ -354,25 +381,14 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 
+ 	atomic_set(&clnt->cl_count, 1);
+ 
+-	err = rpc_setup_pipedir(clnt, program->pipe_dir_name);
+-	if (err < 0)
+-		goto out_no_path;
+-
+-	auth = rpcauth_create(args->authflavor, clnt);
+-	if (IS_ERR(auth)) {
+-		dprintk("RPC:       Couldn't create auth handle (flavor %u)\n",
+-				args->authflavor);
+-		err = PTR_ERR(auth);
+-		goto out_no_auth;
+-	}
+-
+ 	/* save the nodename */
+ 	rpc_clnt_set_nodename(clnt, utsname()->nodename);
+-	rpc_register_client(clnt);
++
++	err = rpc_client_register(args, clnt);
++	if (err)
++		goto out_no_path;
+ 	return clnt;
+ 
+-out_no_auth:
+-	rpc_clnt_remove_pipedir(clnt);
+ out_no_path:
+ 	kfree(clnt->cl_principal);
+ out_no_principal:
 
