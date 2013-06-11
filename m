@@ -1,39 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35119 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751633Ab3FZTVa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 26 Jun 2013 15:21:30 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 0/7] miscellaneous nfsd bugfixes
-Date: Wed, 26 Jun 2013 15:21:20 -0400
-Message-Id: <1372274488-4752-1-git-send-email-bfields@redhat.com>
+Received: from elasmtp-dupuy.atl.sa.earthlink.net ([209.86.89.62]:50416 "EHLO
+	elasmtp-dupuy.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755141Ab3FKVBF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Jun 2013 17:01:05 -0400
+Message-ID: <51B7900D.7090704@mindspring.com>
+Date: Tue, 11 Jun 2013 14:01:01 -0700
+From: Frank Filz <ffilz-lists@mindspring.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Frank Filz <ffilz-lists@mindspring.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@redhat.com>, ffilz@us.ibm.com
+Subject: Re: Some pynfs updates
+References: <51B75979.5070300@mindspring.com> <20130611200610.GB29634@fieldses.org> <51B78716.30703@mindspring.com> <20130611202803.GC29634@fieldses.org>
+In-Reply-To: <20130611202803.GC29634@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On 06/11/2013 01:28 PM, J. Bruce Fields wrote:
+> On Tue, Jun 11, 2013 at 01:22:46PM -0700, Frank Filz wrote:
+>> On 06/11/2013 01:06 PM, J. Bruce Fields wrote:
+>>> On Tue, Jun 11, 2013 at 10:08:09AM -0700, Frank Filz wrote:
+>>>> Please pull this branch from github:
+>>>> https://github.com/ffilz/pynfs/commits/master
+>>>
+>>> Thanks, applied (actually from git://github.com/ffilz/pynfs.git master).
+>>>
+>>>> commit a6548ab80a68787dc3fcb5c8531d4d189d77c3a9
+>>>> Author: Frank S. Filz <ffilz@us.ibm.com>
+>>>> Date:   Wed May 1 16:06:56 2013 -0700
+>>>>
+>>>> Make mode 000 tests expect NFS4_OK when run as root
+>>>>
+>>>> They will warn if NFS4ERR_ACCESS is returned.
+>>>
+>>> ... though I'm not sure about this one.  root-squashing is completely
+>>> normal, I'm not convinced it merits a warning.
+>>
+>> Oh, didn't think about that, good point. Would you like me to submit
+>> a patch to make it an acceptable return?
+>
+> In the uid=0 case, yes, I think that's best.
 
-These are fixes for some miscellaneous bugs found at the bakeathon, to
-be queued for 3.11.
+If you want to pull again, I just added a new patch to do so.
 
---b.
+Tested the mode000 tests with root, squashed and not, and with a 
+non-root user. Pass in all cases against Ganesha.
 
-J. Bruce Fields (7):
-  nfsd4: fix decoding across page boundaries
-  nfsd4: minor read_buf cleanup
-  svcrpc: fix handling of too-short rpc's
-  svcrpc: don't error out on small tcp fragment
-  nfsd4: delegation-based open reclaims should bypass permissions
-  nfsd4: do not throw away 4.1 lock state on last unlock
-  nfsd4: return delegation immediately if lease fails
+Frank
 
- fs/nfsd/nfs4proc.c   |  3 ++-
- fs/nfsd/nfs4state.c  | 13 ++++---------
- fs/nfsd/nfs4xdr.c    | 24 ++++++++++++++----------
- net/sunrpc/svcsock.c |  9 +++++++--
- 4 files changed, 27 insertions(+), 22 deletions(-)
-
--- 
-1.8.1.4
 
