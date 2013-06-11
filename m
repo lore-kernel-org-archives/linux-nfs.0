@@ -1,43 +1,32 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:6425 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:52774 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751542Ab3FYT2p convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jun 2013 15:28:45 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/3] NFSv4.1 Fix gdia_maxcount calculation to fit in
- ca_maxresponsesize
-Date: Tue, 25 Jun 2013 19:28:44 +0000
-Message-ID: <1372188518.5968.48.camel@leira.trondhjem.org>
-References: <1372185454-1888-1-git-send-email-andros@netapp.com>
-	 <1372185454-1888-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1372185454-1888-3-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1754587Ab3FKTvl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Jun 2013 15:51:41 -0400
+Date: Tue, 11 Jun 2013 15:51:41 -0400
+To: Sandeep Joshi <sanjos100@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: why does nfsd write not use splice
+Message-ID: <20130611195140.GA29634@fieldses.org>
+References: <CAEfL3KnfRWof4-6UAWTwXcH7XWSQuUR5ry_pg4qdyhBB6dt+5g@mail.gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAEfL3KnfRWof4-6UAWTwXcH7XWSQuUR5ry_pg4qdyhBB6dt+5g@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-06-25 at 14:37 -0400, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
+On Sun, Jun 09, 2013 at 01:05:16PM +0530, Sandeep Joshi wrote:
+> Is there a reason as to why the nfsd server does not use splice in the
+> write calls - nfsd_vfs_write() ?  Is there some structural limitation
+> or is it just something nobody got around to implementing ?
 > 
-> The GETDEVICEINFO gdia_maxcount represents all of the data being returned
-> within the GETDEVICEINFO4resok structure and includes the XDR overhead.
-> 
-> The CREATE_SESSION ca_maxresponsesize is the maximum reply and includes the RPC
-> headers (including security flavor credentials and verifiers).
+> I have looked at the source back to the 2.6.x kernels and it seems
+> only nfsd_vfs_read() has ever used splice/sendfile.
+> http://lxr.linux.no/linux+v3.9.5/fs/nfsd/vfs.c
 
-This still looks wrong.
+I don't actually know how splice_write works.... I assume to avoid a
+copy we'd have to place the incoming write data into pages already
+correctly aligned.  That would be an interesting trick.
 
-The problem is that pdev->pglen is used both as the total buffer length,
-as a function argument and as the reply message length (through the call
-to xdr_init_decode_pages). We really should split out those 3 different
-roles...
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+--b.
