@@ -1,36 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:35347 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:41958 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752807Ab3FYSw4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jun 2013 14:52:56 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/3] NFSv4.1 Do not overwrite negotiated session sizes
-Date: Tue, 25 Jun 2013 18:52:53 +0000
-Message-ID: <1372186349.5968.45.camel@leira.trondhjem.org>
-References: <1372185454-1888-1-git-send-email-andros@netapp.com>
-	 <1372185454-1888-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1372185454-1888-2-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1756835Ab3FKUGL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Jun 2013 16:06:11 -0400
+Date: Tue, 11 Jun 2013 16:06:10 -0400
+To: Frank Filz <ffilz-lists@mindspring.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@redhat.com>, ffilz@us.ibm.com
+Subject: Re: Some pynfs updates
+Message-ID: <20130611200610.GB29634@fieldses.org>
+References: <51B75979.5070300@mindspring.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <51B75979.5070300@mindspring.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-06-25 at 14:37 -0400, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
+On Tue, Jun 11, 2013 at 10:08:09AM -0700, Frank Filz wrote:
+> Please pull this branch from github:
+> https://github.com/ffilz/pynfs/commits/master
+
+Thanks, applied (actually from git://github.com/ffilz/pynfs.git master).
+
+> commit a6548ab80a68787dc3fcb5c8531d4d189d77c3a9
+> Author: Frank S. Filz <ffilz@us.ibm.com>
+> Date:   Wed May 1 16:06:56 2013 -0700
 > 
-> nfs4_init_session is called after CREATE_SESSION has set the ca_maxrequestsize
-> and ca_maxresponsesize values obtained from the server.
+> Make mode 000 tests expect NFS4_OK when run as root
+> 
+> They will warn if NFS4ERR_ACCESS is returned.
 
-It had better not be, otherwise the values of
-session->fc_target_max_rqst_sz and session->fc_target_max_resp_sz in
-nfs4_init_channel_attrs() make no sense.
+... though I'm not sure about this one.  root-squashing is completely
+normal, I'm not convinced it merits a warning.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+--b.
