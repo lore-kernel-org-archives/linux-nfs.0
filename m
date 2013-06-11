@@ -1,157 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:52566 "EHLO mx1.redhat.com"
+Received: from mail.rfc2324.org ([31.172.8.67]:33719 "EHLO mail.rfc2324.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1161357Ab3FUM7G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Jun 2013 08:59:06 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
-Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
-        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v4 09/14] locks: convert fl_link to a hlist_node
-Date: Fri, 21 Jun 2013 08:58:17 -0400
-Message-Id: <1371819502-26363-10-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
-References: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
+	id S1752447Ab3FKJeN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Jun 2013 05:34:13 -0400
+Received: from rfc2324.org ([31.172.8.84] helo=principal.rfc2324.org)
+	by mail.rfc2324.org with esmtp rfc2324.org Mailserver
+	id 1UmKxo-0005Jg-IW
+	for <linux-nfs@vger.kernel.org>; Tue, 11 Jun 2013 11:34:08 +0200
+Date: Tue, 11 Jun 2013 11:34:03 +0200
+From: Maximilian Wilhelm <max@rfc2324.org>
+To: linux-nfs@vger.kernel.org
+Message-ID: <20130611093403.GB27345@principal.rfc2324.org>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="y0ulUmNC+osPPQO6"
+Subject: [PATCH]: gssd: Fix preferred_realm option handling
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Testing has shown that iterating over the blocked_list for deadlock
-detection turns out to be a bottleneck. In order to alleviate that,
-begin the process of turning it into a hashtable. We start by turning
-the fl_link into a hlist_node and the global lists into hlists. A later
-patch will do the conversion of the blocked_list to a hashtable.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Acked-by: J. Bruce Fields <bfields@fieldses.org>
----
- fs/locks.c         |   24 ++++++++++++------------
- include/linux/fs.h |    2 +-
- 2 files changed, 13 insertions(+), 13 deletions(-)
+--y0ulUmNC+osPPQO6
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 84e269f..941b714 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -157,13 +157,13 @@ int lease_break_time = 45;
-  * The global file_lock_list is only used for displaying /proc/locks. Protected
-  * by the file_lock_lock.
-  */
--static LIST_HEAD(file_lock_list);
-+static HLIST_HEAD(file_lock_list);
- 
- /*
-  * The blocked_list is used to find POSIX lock loops for deadlock detection.
-  * Protected by file_lock_lock.
-  */
--static LIST_HEAD(blocked_list);
-+static HLIST_HEAD(blocked_list);
- 
- /*
-  * This lock protects the blocked_list, and the file_lock_list. Generally, if
-@@ -188,7 +188,7 @@ static struct kmem_cache *filelock_cache __read_mostly;
- 
- static void locks_init_lock_heads(struct file_lock *fl)
- {
--	INIT_LIST_HEAD(&fl->fl_link);
-+	INIT_HLIST_NODE(&fl->fl_link);
- 	INIT_LIST_HEAD(&fl->fl_block);
- 	init_waitqueue_head(&fl->fl_wait);
- }
-@@ -222,7 +222,7 @@ void locks_free_lock(struct file_lock *fl)
- {
- 	BUG_ON(waitqueue_active(&fl->fl_wait));
- 	BUG_ON(!list_empty(&fl->fl_block));
--	BUG_ON(!list_empty(&fl->fl_link));
-+	BUG_ON(!hlist_unhashed(&fl->fl_link));
- 
- 	locks_release_private(fl);
- 	kmem_cache_free(filelock_cache, fl);
-@@ -500,7 +500,7 @@ static inline void
- locks_insert_global_locks(struct file_lock *fl)
- {
- 	spin_lock(&file_lock_lock);
--	list_add_tail(&fl->fl_link, &file_lock_list);
-+	hlist_add_head(&fl->fl_link, &file_lock_list);
- 	spin_unlock(&file_lock_lock);
- }
- 
-@@ -508,20 +508,20 @@ static inline void
- locks_delete_global_locks(struct file_lock *fl)
- {
- 	spin_lock(&file_lock_lock);
--	list_del_init(&fl->fl_link);
-+	hlist_del_init(&fl->fl_link);
- 	spin_unlock(&file_lock_lock);
- }
- 
- static inline void
- locks_insert_global_blocked(struct file_lock *waiter)
- {
--	list_add(&waiter->fl_link, &blocked_list);
-+	hlist_add_head(&waiter->fl_link, &blocked_list);
- }
- 
- static inline void
- locks_delete_global_blocked(struct file_lock *waiter)
- {
--	list_del_init(&waiter->fl_link);
-+	hlist_del_init(&waiter->fl_link);
- }
- 
- /* Remove waiter from blocker's block list.
-@@ -748,7 +748,7 @@ static struct file_lock *what_owner_is_waiting_for(struct file_lock *block_fl)
- {
- 	struct file_lock *fl;
- 
--	list_for_each_entry(fl, &blocked_list, fl_link) {
-+	hlist_for_each_entry(fl, &blocked_list, fl_link) {
- 		if (posix_same_owner(fl, block_fl))
- 			return fl->fl_next;
+Hi,
+
+the gssd currently ignores any preferred realm given via the -R
+command line option.
+
+The attached patch fixes that behaviour and makes sure the
+preferrred_realm is used first when searching for a valid principal
+for mount authentication.
+
+I would be happy if you would apply this. This would close bug #235 in
+bugzilla.
+
+Thanks
+Max
+
+--y0ulUmNC+osPPQO6
+Content-Type: text/x-diff; charset=utf-8
+Content-Disposition: attachment; filename="gssd_fix_preferred_realm.patch"
+
+commit 722bd62d1e6a9d38db57e919d914a371e67d804d
+Author: Maximilian Wilhelm <max@rfc2324.org>
+Date:   Fri May 24 14:46:41 2013 +0200
+
+    Fix handling of preferred realm command line option.
+    
+      The current implementation ignores any preferred realm specified on the
+      command line. Fix this behaviour and make sure the preferred realm is
+      used as first realm when trying to acquire a keytab entry.
+    
+    Signed-off-by: Maximilian Wilhelm <max@rfc2324.org>
+    Signed-off-by: Frederik Moellers <frederik.moellers@upb.de>
+
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index 6275dd8..fb706a8 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -852,11 +852,18 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *tgtname,
  	}
-@@ -2300,7 +2300,7 @@ static int locks_show(struct seq_file *f, void *v)
- {
- 	struct file_lock *fl, *bfl;
  
--	fl = list_entry(v, struct file_lock, fl_link);
-+	fl = hlist_entry(v, struct file_lock, fl_link);
- 
- 	lock_get_status(f, fl, *((loff_t *)f->private), "");
- 
-@@ -2316,14 +2316,14 @@ static void *locks_start(struct seq_file *f, loff_t *pos)
- 
- 	spin_lock(&file_lock_lock);
- 	*p = (*pos + 1);
--	return seq_list_start(&file_lock_list, *pos);
-+	return seq_hlist_start(&file_lock_list, *pos);
- }
- 
- static void *locks_next(struct seq_file *f, void *v, loff_t *pos)
- {
- 	loff_t *p = f->private;
- 	++*p;
--	return seq_list_next(v, &file_lock_list, pos);
-+	return seq_hlist_next(v, &file_lock_list, pos);
- }
- 
- static void locks_stop(struct seq_file *f, void *v)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 805320b..85ef56a 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -946,7 +946,7 @@ int locks_in_grace(struct net *);
-  */
- struct file_lock {
- 	struct file_lock *fl_next;	/* singly linked list for this inode  */
--	struct list_head fl_link;	/* doubly linked list of all locks */
-+	struct hlist_node fl_link;	/* node in global lists */
- 	struct list_head fl_block;	/* circular list of blocked processes */
- 	fl_owner_t fl_owner;
- 	unsigned int fl_flags;
--- 
-1.7.1
+ 	/*
+-	 * Try the "appropriate" realm first, and if nothing found for that
+-	 * realm, try the default realm (if it hasn't already been tried).
++	 * Make sure the preferred_realm (which may have been explicitly set
++	 * on the command line, is tried first. If nothing is found go on with
++	 * the host and local default realm (if that hasn't already been tried).
+ 	 */
+ 	i = 0;
+ 	realm = realmnames[i];
++
++	if (strcmp (realm, preferred_realm) != 0) {
++		realm = preferred_realm;
++		i = -1;
++	}
++
+ 	while (1) {
+ 		if (realm == NULL) {
+ 			tried_all = 1;
 
+--y0ulUmNC+osPPQO6--
