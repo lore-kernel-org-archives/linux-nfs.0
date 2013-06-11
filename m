@@ -1,175 +1,218 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:36005 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:21423 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755253Ab3FCBBM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 2 Jun 2013 21:01:12 -0400
-From: Neil Brown <neilb@suse.de>
-To: Steve Dickson <SteveD@redhat.com>
-Date: Mon, 03 Jun 2013 11:00:22 +1000
-Subject: [PATCH 3/3] gssd: add -N option to use root credentials as machine
- credentials.
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-Message-ID: <20130603010022.20080.88360.stgit@notabene.brown>
-In-Reply-To: <20130603005219.20080.1927.stgit@notabene.brown>
-References: <20130603005219.20080.1927.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1754743Ab3FKLJx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Jun 2013 07:09:53 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
+Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
+        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
+Subject: [PATCH v2 08/14] locks: ensure that deadlock detection is atomic with respect to blocked_list modification
+Date: Tue, 11 Jun 2013 07:09:02 -0400
+Message-Id: <1370948948-31784-9-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1370948948-31784-1-git-send-email-jlayton@redhat.com>
+References: <1370948948-31784-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since linux-3.7, the kernel asks explicitly for machine credentials
-rather than root credentials to authenticate state management requests.
+Sound deadlock detection requires that we hold the file-lock state
+steady while checking for them, and also ensure that updates to that
+state are atomic with respect to those checks.
 
-This causes a regression for people who do not have machine
-credentials configured and were using "gssd -n" to instruct gssd to
-disable the default mapping of using machine credentials to authorise
-accesses by 'root'.
+For the checking and insertion side, push the acquisition of the
+global lock into __posix_lock_file and ensure that checking and update
+of the global lists are done without dropping the lock in between.
 
-This patch adds '-N' flag which instruct gssd explicitly to use 'root'
-credentials whenever 'machine' credentials are requested.  Thus
-  gssd -n -N
-provides the same service that
-  gssd -n
-used to.
+On the removal side, when waking up blocked POSIX lock waiters, take
+the global lock before walking the blocked list and dequeue the waiters
+from the global list prior to removal from the i_flock list.
 
-In summary:
+With this, deadlock detection should be race free while we minimize
+excessive file_lock_lock thrashing.
 
-Credentials used for different request types and different gssd flags:
-
-   Request type: |     "gssd"      "gssd -n"   "gssd -N"    "gssd -nN"
-                 |
-     machine     |     machine      machine     root         root
-                 |
-     root        |     machine      root        machine      root
-
-Signed-off-by: NeilBrown <neilb@suse.de>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- utils/gssd/gssd.c      |    9 ++++++---
- utils/gssd/gssd.h      |    1 +
- utils/gssd/gssd.man    |   13 ++++++++++++-
- utils/gssd/gssd_proc.c |   12 +++++++-----
- 4 files changed, 26 insertions(+), 9 deletions(-)
+ fs/locks.c |   71 +++++++++++++++++++++++++++++++++++++++++++----------------
+ 1 files changed, 52 insertions(+), 19 deletions(-)
 
-diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index 8ee478b..7a405b6 100644
---- a/utils/gssd/gssd.c
-+++ b/utils/gssd/gssd.c
-@@ -61,6 +61,7 @@ char ccachedir[PATH_MAX] = GSSD_DEFAULT_CRED_DIR ":" GSSD_USER_CRED_DIR;
- char *ccachesearch[GSSD_MAX_CCACHE_SEARCH + 1];
- int  use_memcache = 0;
- int  root_uses_machine_creds = 1;
-+int  machine_uses_root_creds = 0;
- unsigned int  context_timeout = 0;
- char *preferred_realm = NULL;
- 
-@@ -68,8 +69,7 @@ void
- sig_die(int signal)
+diff --git a/fs/locks.c b/fs/locks.c
+index d7342a3..b8cd1b1 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -475,16 +475,20 @@ static int posix_same_owner(struct file_lock *fl1, struct file_lock *fl2)
+ static inline void
+ locks_insert_global_blocked(struct file_lock *waiter)
  {
- 	/* destroy krb5 machine creds */
--	if (root_uses_machine_creds)
--		gssd_destroy_krb5_machine_creds();
-+	gssd_destroy_krb5_machine_creds();
- 	printerr(1, "exiting on signal %d\n", signal);
- 	exit(0);
+-	spin_lock(&file_lock_lock);
+ 	list_add(&waiter->fl_link, &blocked_list);
+-	spin_unlock(&file_lock_lock);
++}
++
++static inline void
++__locks_delete_global_blocked(struct file_lock *waiter)
++{
++	list_del_init(&waiter->fl_link);
  }
-@@ -102,7 +102,7 @@ main(int argc, char *argv[])
- 	char *progname;
  
- 	memset(ccachesearch, 0, sizeof(ccachesearch));
--	while ((opt = getopt(argc, argv, "DfvrlmnMp:k:d:t:R:")) != -1) {
-+	while ((opt = getopt(argc, argv, "DfvrlmNnMp:k:d:t:R:")) != -1) {
- 		switch (opt) {
- 			case 'f':
- 				fg = 1;
-@@ -116,6 +116,9 @@ main(int argc, char *argv[])
- 			case 'n':
- 				root_uses_machine_creds = 0;
- 				break;
-+			case 'N':
-+				machine_uses_root_creds = 1;
-+				break;
- 			case 'v':
- 				verbosity++;
- 				break;
-diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
-index 86472a1..5057440 100644
---- a/utils/gssd/gssd.h
-+++ b/utils/gssd/gssd.h
-@@ -65,6 +65,7 @@ extern char			keytabfile[PATH_MAX];
- extern char			*ccachesearch[];
- extern int			use_memcache;
- extern int			root_uses_machine_creds;
-+extern int			machine_uses_root_creds;
- extern unsigned int 		context_timeout;
- extern char			*preferred_realm;
+ static inline void
+ locks_delete_global_blocked(struct file_lock *waiter)
+ {
+ 	spin_lock(&file_lock_lock);
+-	list_del_init(&waiter->fl_link);
++	__locks_delete_global_blocked(waiter);
+ 	spin_unlock(&file_lock_lock);
+ }
  
-diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
-index ac13fd4..0a06e8c 100644
---- a/utils/gssd/gssd.man
-+++ b/utils/gssd/gssd.man
-@@ -8,7 +8,7 @@
- rpc.gssd \- RPCSEC_GSS daemon
- .SH SYNOPSIS
- .B rpc.gssd
--.RB [ \-DfMnlvr ]
-+.RB [ \-DfMnNlvr ]
- .RB [ \-k
- .IR keytab ]
- .RB [ \-p
-@@ -227,6 +227,17 @@ in the foreground and sends output to stderr (as opposed to syslogd)
- When specified, UID 0 is forced to obtain user credentials
- which are used instead of the local system's machine credentials.
- .TP
-+.B -N
-+With NFSv4, some requests to the server need to authenticated
-+as coming from "the machine" rather than from any particular user.
-+These requests will normally be authenticated using the "machine
-+credentials" even if
-+.B -n
-+is set.  Adding
-+.B -N
-+causes these requests to use the credentials of UID 0 in place of the
-+machine credentials.
-+.TP
- .BI "-k " keytab
- Tells
- .B rpc.gssd
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index b7e2bbb..f9d6f51 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -988,7 +988,8 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
- 	/*
- 	 * If "service" is specified, then the kernel is indicating that
- 	 * we must use machine credentials for this request.  (Regardless
--	 * of the uid value or the setting of root_uses_machine_creds.)
-+	 * of the uid value or the setting of root_uses_machine_creds,
-+	 * though setting machine_uses_root_creds can override this)
- 	 * If the service value is "*", then any service name can be used.
- 	 * Otherwise, it specifies the service name that should be used.
- 	 * (For now, the values of service will only be "*" or "nfs".)
-@@ -1008,8 +1009,9 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
- 	 */
- 	printerr(2, "%s: service is '%s'\n", __func__,
- 		 service ? service : "<null>");
--	if (uid != 0 || (uid == 0 && root_uses_machine_creds == 0 &&
--				service == NULL)) {
-+	if (uid != 0 ||
-+	    (!root_uses_machine_creds && !service) ||
-+	    ( machine_uses_root_creds &&  service)) {
- 		/* Tell krb5 gss which credentials cache to use */
- 		/* Try first to acquire credentials directly via GSSAPI */
- 		err = gssd_acquire_user_cred(uid, &gss_cred);
-@@ -1028,8 +1030,8 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
- 		}
+@@ -509,7 +513,6 @@ locks_delete_global_locks(struct file_lock *waiter)
+  */
+ static void __locks_delete_block(struct file_lock *waiter)
+ {
+-	locks_delete_global_blocked(waiter);
+ 	list_del_init(&waiter->fl_block);
+ 	waiter->fl_next = NULL;
+ }
+@@ -558,6 +561,30 @@ static void locks_wake_up_blocks(struct file_lock *blocker)
  	}
- 	if (create_resp != 0) {
--		if (uid == 0 && (root_uses_machine_creds == 1 ||
--				service != NULL)) {
-+		if ((uid == 0 && root_uses_machine_creds) ||
-+		    (service != NULL && !machine_uses_root_creds)) {
- 			int nocache = 0;
- 			int success = 0;
- 			do {
-
+ }
+ 
++/*
++ * Wake up processes blocked waiting for blocker. In the FL_POSIX case, we must
++ * also take the global file_lock_lock and dequeue it from the global blocked
++ * list as we wake the processes.
++ *
++ * Must be called with the inode->i_lock of the blocker held!
++ */
++static void locks_wake_up_posix_blocks(struct file_lock *blocker)
++{
++	spin_lock(&file_lock_lock);
++	while (!list_empty(&blocker->fl_block)) {
++		struct file_lock *waiter;
++
++		waiter = list_first_entry(&blocker->fl_block,
++				struct file_lock, fl_block);
++		__locks_delete_global_blocked(waiter);
++		__locks_delete_block(waiter);
++		if (waiter->fl_lmops && waiter->fl_lmops->lm_notify)
++			waiter->fl_lmops->lm_notify(waiter);
++		else
++			wake_up(&waiter->fl_wait);
++	}
++	spin_unlock(&file_lock_lock);
++}
+ /* Insert file lock fl into an inode's lock list at the position indicated
+  * by pos. At the same time add the lock to the global file lock list.
+  */
+@@ -592,7 +619,11 @@ static void locks_delete_lock(struct file_lock **thisfl_p)
+ 		fl->fl_nspid = NULL;
+ 	}
+ 
+-	locks_wake_up_blocks(fl);
++	if (IS_POSIX(fl))
++		locks_wake_up_posix_blocks(fl);
++	else
++		locks_wake_up_blocks(fl);
++
+ 	locks_free_lock(fl);
+ }
+ 
+@@ -705,6 +736,7 @@ static struct file_lock *what_owner_is_waiting_for(struct file_lock *block_fl)
+ 	return NULL;
+ }
+ 
++/* Must be called with the file_lock_lock held! */
+ static int posix_locks_deadlock(struct file_lock *caller_fl,
+ 				struct file_lock *block_fl)
+ {
+@@ -848,17 +880,13 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 			if (!(request->fl_flags & FL_SLEEP))
+ 				goto out;
+ 			error = -EDEADLK;
+-			/*
+-			 * XXX: potential race here. We should be adding the
+-			 * file_lock to the global list before releasing lock.
+-			 */
+ 			spin_lock(&file_lock_lock);
+-			if (posix_locks_deadlock(request, fl))
+-				goto out;
++			if (likely(!posix_locks_deadlock(request, fl))) {
++				error = FILE_LOCK_DEFERRED;
++				locks_insert_block(fl, request);
++				locks_insert_global_blocked(request);
++			}
+ 			spin_unlock(&file_lock_lock);
+-			error = FILE_LOCK_DEFERRED;
+-			locks_insert_block(fl, request);
+-			locks_insert_global_blocked(request);
+ 			goto out;
+   		}
+   	}
+@@ -949,7 +977,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 				 * as the change in lock type might satisfy
+ 				 * their needs.
+ 				 */
+-				locks_wake_up_blocks(fl);
++				locks_wake_up_posix_blocks(fl);
+ 				fl->fl_start = request->fl_start;
+ 				fl->fl_end = request->fl_end;
+ 				fl->fl_type = request->fl_type;
+@@ -1001,11 +1029,11 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 			locks_insert_lock(before, left);
+ 		}
+ 		right->fl_start = request->fl_end + 1;
+-		locks_wake_up_blocks(right);
++		locks_wake_up_posix_blocks(right);
+ 	}
+ 	if (left) {
+ 		left->fl_end = request->fl_start - 1;
+-		locks_wake_up_blocks(left);
++		locks_wake_up_posix_blocks(left);
+ 	}
+  out:
+ 	spin_unlock(&inode->i_lock);
+@@ -1061,6 +1089,7 @@ int posix_lock_file_wait(struct file *filp, struct file_lock *fl)
+ 		if (!error)
+ 			continue;
+ 
++		locks_delete_global_blocked(fl);
+ 		locks_delete_block(fl);
+ 		break;
+ 	}
+@@ -1139,6 +1168,7 @@ int locks_mandatory_area(int read_write, struct inode *inode,
+ 				continue;
+ 		}
+ 
++		locks_delete_global_blocked(&fl);
+ 		locks_delete_block(&fl);
+ 		break;
+ 	}
+@@ -1851,6 +1881,7 @@ static int do_lock_file_wait(struct file *filp, unsigned int cmd,
+ 		if (!error)
+ 			continue;
+ 
++		locks_delete_global_blocked(fl);
+ 		locks_delete_block(fl);
+ 		break;
+ 	}
+@@ -2148,10 +2179,12 @@ posix_unblock_lock(struct file *filp, struct file_lock *waiter)
+ 	int status = 0;
+ 
+ 	spin_lock(&inode->i_lock);
+-	if (waiter->fl_next)
++	if (waiter->fl_next) {
++		locks_delete_global_blocked(waiter);
+ 		__locks_delete_block(waiter);
+-	else
++	} else {
+ 		status = -ENOENT;
++	}
+ 	spin_unlock(&inode->i_lock);
+ 	return status;
+ }
+-- 
+1.7.1
 
