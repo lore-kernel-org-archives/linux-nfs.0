@@ -1,56 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f52.google.com ([209.85.219.52]:34811 "EHLO
-	mail-oa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752746Ab3FGVgz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Jun 2013 17:36:55 -0400
-Received: by mail-oa0-f52.google.com with SMTP id o13so3752186oag.39
-        for <linux-nfs@vger.kernel.org>; Fri, 07 Jun 2013 14:36:55 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe93:815b])
-        by mx.google.com with ESMTPSA id z5sm791120obw.4.2013.06.07.14.36.54
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 07 Jun 2013 14:36:54 -0700 (PDT)
-Subject: [PATCH 2 1/2] NFS: Never use user credentials for lease renewal
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 07 Jun 2013 17:36:53 -0400
-Message-ID: <20130607213653.1127.85022.stgit@seurat.1015granger.net>
-In-Reply-To: <20130607213518.1127.72500.stgit@seurat.1015granger.net>
-References: <20130607213518.1127.72500.stgit@seurat.1015granger.net>
+Received: from mailhub.sw.ru ([195.214.232.25]:6400 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754355Ab3FKOjg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Jun 2013 10:39:36 -0400
+Subject: [PATCH v2 3/4] SUNRPC: fix races on PipeFS UMOUNT notifications
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, devel@openvz.org, linux-kernel@vger.kernel.org,
+        jlayton@redhat.com
+Date: Tue, 11 Jun 2013 18:39:25 +0400
+Message-ID: <20130611143925.16046.54282.stgit@localhost.localdomain>
+In-Reply-To: <20130611143725.16046.17279.stgit@localhost.localdomain>
+References: <20130611143725.16046.17279.stgit@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Don't try to use a non-UID-0 user credential for lease management,
-as that credential can change out from under us.  The server will
-block NFSv4 lease recovery with NFS4ERR_CLID_INUSE.
+CPU#0                                   CPU#1
+-----------------------------           -----------------------------
+rpc_kill_sb
+sn->pipefs_sb = NULL                    rpc_release_client
+(UMOUNT_EVENT)                          rpc_free_auth
+rpc_pipefs_event
+rpc_get_client_for_event
+!atomic_inc_not_zero(cl_count)
+<skip the client>
+                                        atomic_inc(cl_count)
+                                        rpc_free_client
+                                        rpc_clnt_remove_pipedir
+                                        <skip client dir removing>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+To fix this, this patch does the following:
+
+1) Calls RPC_PIPEFS_UMOUNT notification with sn->pipefs_sb_lock being held.
+2) Removes SUNRPC client from the list AFTER pipes destroying.
+3) Doesn't hold RPC client on notification: if client in the list, then it
+can't be destroyed while sn->pipefs_sb_lock in hold by notification caller.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: stable@vger.kernel.org
 ---
- fs/nfs/nfs4proc.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ net/sunrpc/clnt.c     |    5 +----
+ net/sunrpc/rpc_pipe.c |    2 +-
+ 2 files changed, 2 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index d7ba561..5ba38b3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6919,7 +6919,7 @@ static const struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
- 	.recover_open	= nfs4_open_reclaim,
- 	.recover_lock	= nfs4_lock_reclaim,
- 	.establish_clid = nfs4_init_clientid,
--	.get_clid_cred	= nfs4_get_setclientid_cred,
-+	.get_clid_cred	= nfs4_get_exchange_id_cred,
- 	.detect_trunking = nfs40_discover_server_trunking,
- };
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 48888ee..b4f1711 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -236,8 +236,6 @@ static struct rpc_clnt *rpc_get_client_for_event(struct net *net, int event)
+ 			continue;
+ 		if (rpc_clnt_skip_event(clnt, event))
+ 			continue;
+-		if (atomic_inc_not_zero(&clnt->cl_count) == 0)
+-			continue;
+ 		spin_unlock(&sn->rpc_client_lock);
+ 		return clnt;
+ 	}
+@@ -254,7 +252,6 @@ static int rpc_pipefs_event(struct notifier_block *nb, unsigned long event,
  
-@@ -6942,7 +6942,7 @@ static const struct nfs4_state_recovery_ops nfs40_nograce_recovery_ops = {
- 	.recover_open	= nfs4_open_expired,
- 	.recover_lock	= nfs4_lock_expired,
- 	.establish_clid = nfs4_init_clientid,
--	.get_clid_cred	= nfs4_get_setclientid_cred,
-+	.get_clid_cred	= nfs4_get_exchange_id_cred,
- };
+ 	while ((clnt = rpc_get_client_for_event(sb->s_fs_info, event))) {
+ 		error = __rpc_pipefs_event(clnt, event, sb);
+-		rpc_release_client(clnt);
+ 		if (error)
+ 			break;
+ 	}
+@@ -655,8 +652,8 @@ rpc_free_client(struct rpc_clnt *clnt)
+ 			rcu_dereference(clnt->cl_xprt)->servername);
+ 	if (clnt->cl_parent != clnt)
+ 		rpc_release_client(clnt->cl_parent);
+-	rpc_unregister_client(clnt);
+ 	rpc_clnt_remove_pipedir(clnt);
++	rpc_unregister_client(clnt);
+ 	rpc_free_iostats(clnt->cl_metrics);
+ 	kfree(clnt->cl_principal);
+ 	clnt->cl_metrics = NULL;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index c512448..efca2f7 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -1165,7 +1165,6 @@ static void rpc_kill_sb(struct super_block *sb)
+ 		goto out;
+ 	}
+ 	sn->pipefs_sb = NULL;
+-	mutex_unlock(&sn->pipefs_sb_lock);
+ 	dprintk("RPC:       sending pipefs UMOUNT notification for net %p%s\n",
+ 		net, NET_NAME(net));
+ 	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
+@@ -1173,6 +1172,7 @@ static void rpc_kill_sb(struct super_block *sb)
+ 					   sb);
+ 	put_net(net);
+ out:
++	mutex_unlock(&sn->pipefs_sb_lock);
+ 	kill_litter_super(sb);
+ }
  
- #if defined(CONFIG_NFS_V4_1)
 
