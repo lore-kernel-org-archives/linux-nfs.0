@@ -1,97 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:52915 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752950Ab3FKMSB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Jun 2013 08:18:01 -0400
+Received: from elasmtp-scoter.atl.sa.earthlink.net ([209.86.89.67]:39709 "EHLO
+	elasmtp-scoter.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753238Ab3FKRjp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Jun 2013 13:39:45 -0400
+Message-ID: <51B75979.5070300@mindspring.com>
+Date: Tue, 11 Jun 2013 10:08:09 -0700
+From: Frank Filz <ffilz-lists@mindspring.com>
 MIME-Version: 1.0
-In-Reply-To: <20130611080906.5a9d0384@corrin.poochiereds.net>
-References: <1366977861-27678-1-git-send-email-piastry@etersoft.ru>
-	<1366977861-27678-3-git-send-email-piastry@etersoft.ru>
-	<20130611080906.5a9d0384@corrin.poochiereds.net>
-Date: Tue, 11 Jun 2013 16:18:00 +0400
-Message-ID: <CAKywueRn58fouJba8rUwAf78FmNn9kdRDrx+GC36BXdfC-jHLg@mail.gmail.com>
-Subject: Re: [PATCH v6 2/7] VFS: Add O_DENYDELETE support for VFS
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-cifs <linux-cifs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        wine-devel@winehq.org
-Content-Type: text/plain; charset=ISO-8859-1
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+CC: ffilz-lists@mindspring.com, ffilz@us.ibm.com
+Subject: Some pynfs updates
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2013/6/11 Jeff Layton <jlayton@poochiereds.net>:
-> On Fri, 26 Apr 2013 16:04:16 +0400
-> Pavel Shilovsky <piastry@etersoft.ru> wrote:
->
->> Introduce new LOCK_DELETE flock flag that is suggested to be used
->> internally only to map O_DENYDELETE open flag:
->>
->> !O_DENYDELETE -> LOCK_DELETE | LOCK_MAND.
->>
->> Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
->> ---
->>  fs/locks.c                       | 53 +++++++++++++++++++++++++++++++++-------
->>  fs/namei.c                       |  3 +++
->>  include/linux/fs.h               |  6 +++++
->>  include/uapi/asm-generic/fcntl.h |  1 +
->>  4 files changed, 54 insertions(+), 9 deletions(-)
->>
->> diff --git a/fs/locks.c b/fs/locks.c
->> index dbc5557..1cc68a9 100644
->> --- a/fs/locks.c
->> +++ b/fs/locks.c
->> @@ -269,7 +269,7 @@ EXPORT_SYMBOL(locks_copy_lock);
->>
->>  static inline int flock_translate_cmd(int cmd) {
->>       if (cmd & LOCK_MAND)
->> -             return cmd & (LOCK_MAND | LOCK_RW);
->> +             return cmd & (LOCK_MAND | LOCK_RW | LOCK_DELETE);
->>       switch (cmd) {
->>       case LOCK_SH:
->>               return F_RDLCK;
->> @@ -614,6 +614,8 @@ deny_flags_to_cmd(unsigned int flags)
->>               cmd |= LOCK_READ;
->>       if (!(flags & O_DENYWRITE))
->>               cmd |= LOCK_WRITE;
->> +     if (!(flags & O_DENYDELETE))
->> +             cmd |= LOCK_DELETE;
->>
->>       return cmd;
->>  }
->> @@ -836,6 +838,31 @@ out:
->>       return error;
->>  }
->>
->> +int
->> +sharelock_may_delete(struct dentry *dentry)
->> +{
->> +     struct file_lock **before;
->> +     int rc = 0;
->> +
->> +     if (!IS_SHARELOCK(dentry->d_inode))
->> +             return rc;
->> +
->> +     lock_flocks();
->> +     for_each_lock(dentry->d_inode, before) {
->> +             struct file_lock *fl = *before;
->> +             if (IS_POSIX(fl))
->> +                     break;
->> +             if (IS_LEASE(fl))
->> +                     continue;
->> +             if (fl->fl_type & LOCK_DELETE)
->> +                     continue;
->
-> Are you sure this logic is right? What if I have a normal non-LOCK_MAND
-> lock on this file. Won't that prevent me from deleting it with this
-> patch?
->
+Bruce,
 
-It is a bug, thank you for pointing it out. We need to skip all
-non-LOCK_MAND locks here.
+Please pull this branch from github: 
+https://github.com/ffilz/pynfs/commits/master
 
---
-Best regards,
-Pavel Shilovsky.
+The git log is below.
+
+Thanks
+
+Frank
+
+commit 2ddd13347e2769801e1c72c8e8d32cef1bcb3fe0
+Author: Frank S. Filz <ffilz@us.ibm.com>
+Date:   Wed May 22 17:11:02 2013 -0700
+
+Make LOOK10 accept MSG_ACCEPTED: GARBAGE_ARGS as well as NFS4ERR_BADXDR
+
+The Ganesha server does XDR for the whole request before starting to
+process COMPOUND. As a result, LOOK10 causes an XDR failure that Ganesha
+responds at RPC layer and never gets to NFS layer to return NFS4ERR_BADXDR.
+
+Signed-off-by: Frank S. Filz <ffilz@us.ibm.com>
+
+commit 1eda552a5183e71351fc84c53b9561b8a9cab4f1
+Author: Frank S. Filz <ffilz@us.ibm.com>
+Date:   Wed May 1 16:14:41 2013 -0700
+
+Make some tests runable by request
+
+Ganesha can pass several tests that were made inoperable.
+The original FLAGS: for these were commented out and FLAGS:
+is left blank so these tests only run if requested for.
+
+Plus a few tests had duplicate names.
+
+Signed-off-by: Frank S. Filz <ffilz@us.ibm.com>
+
+commit a6548ab80a68787dc3fcb5c8531d4d189d77c3a9
+Author: Frank S. Filz <ffilz@us.ibm.com>
+Date:   Wed May 1 16:06:56 2013 -0700
+
+Make mode 000 tests expect NFS4_OK when run as root
+
+They will warn if NFS4ERR_ACCESS is returned.
+
+Signed-off-by: Frank S. Filz <ffilz@us.ibm.com>
