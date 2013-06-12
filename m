@@ -1,80 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37851 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752993Ab3FEMqt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jun 2013 08:46:49 -0400
-Date: Wed, 5 Jun 2013 08:46:11 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, dhowells@redhat.com,
-        sage@inktank.com, smfrench@gmail.com, swhiteho@redhat.com,
-        Trond.Myklebust@netapp.com, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        piastryyy@gmail.com
-Subject: Re: [PATCH v1 08/11] locks: convert fl_link to a hlist_node
-Message-ID: <20130605124611.GB24193@fieldses.org>
-References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
- <1370056054-25449-9-git-send-email-jlayton@redhat.com>
- <20130604215950.GE15594@fieldses.org>
- <20130605074309.051ff75f@corrin.poochiereds.net>
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:26011 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752985Ab3FLQBg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Jun 2013 12:01:36 -0400
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130605074309.051ff75f@corrin.poochiereds.net>
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: [PATCH 0/3] Various gssd fixes including machine-credential issue.
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20130612161240.59b219b7@notabene.brown>
+Date: Wed, 12 Jun 2013 12:01:28 -0400
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+Message-Id: <617282A2-6881-47B7-BE8F-752728195AF1@oracle.com>
+References: <20130603005219.20080.1927.stgit@notabene.brown> <A2E2CEA9-4F2B-4A3F-8661-36D1E6288B0F@oracle.com> <20130603122319.47f4e0dd@notabene.brown> <0016A272-E433-4020-91FE-45A5EE494296@oracle.com> <20130603130101.4acfe706@notabene.brown> <C4A2C0D1-8900-45AC-90F6-9629E3F71730@oracle.com> <20130604093025.5e467eeb@notabene.brown> <9F47F7D4-9D96-424E-BAD9-21AE1C06A877@oracle.com> <2195C785-9764-48CC-A994-A80B7A8EDC62@oracle.com> <20130605112635.188f628e@notabene.brown> <1ECE6C65-EE15-46C1-97D1-636B15A775F7@oracle.com> <20130606094336.4faf099d@notabene.brown> <20130612161240.59b219b7@notabene.brown>
+To: NeilBrown <neilb@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 05, 2013 at 07:43:09AM -0400, Jeff Layton wrote:
-> On Tue, 4 Jun 2013 17:59:50 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+On Jun 12, 2013, at 2:12 AM, NeilBrown <neilb@suse.de> wrote:
+
+> On Thu, 6 Jun 2013 09:43:36 +1000 NeilBrown <neilb@suse.de> wrote:
 > 
-> > On Fri, May 31, 2013 at 11:07:31PM -0400, Jeff Layton wrote:
-> > > Testing has shown that iterating over the blocked_list for deadlock
-> > > detection turns out to be a bottleneck. In order to alleviate that,
-> > > begin the process of turning it into a hashtable. We start by turning
-> > > the fl_link into a hlist_node and the global lists into hlists. A later
-> > > patch will do the conversion of the blocked_list to a hashtable.
-> > 
-> > Even simpler would be if we could add a pointer to the (well, a) lock
-> > that a lockowner is blocking on, and then we'd just have to follow a
-> > pointer.  I haven't thought that through, though, perhaps that's hard ot
-> > make work....
-> > 
-> > --b.
-> > 
+>> I've provided a patched kernel to customer.  Hopefully will hear back soon.
 > 
-> I considered that as well and it makes sense for the simple local
-> filesystem case where you just track ownership based on fl_owner_t.
-> 
-> But...what about lockd? It considers ownership to be a tuple of the
-> nlm_host and the pid sent in a lock request. I can't seem to wrap my
-> brain around how to make such an approach work there.
+> Hi Chuck,
+> the patch appears to work exactly as advertised and completely resolves the
+> issue - thanks.
 
-I wonder if we could do something vaguely like
+Thanks to you and your customer for confirming the approach.
 
-	struct lock_owner_common {
-		struct file_lock *blocker;
-	};
+Unfortunately Trond NAK'd a for-3.10 patch that uses RPC_TASK_ROOTCREDS.  I posted a patch Friday that takes a different approach to acquiring the root user's credentials that should behave like the old patch in every way, and be easier to back-port.
 
-	struct nlmsvc_lock_owner {
-		struct lock_owner_common owner;
-		unsigned int client_pid;
-	};
+> Getting back to the idea of making this sort of thing work seamlessly,
+> another possibility to consider is to use the *real* uid  of the process
+> which performs the mount do authenticate SETCLIENTID - either as the primary
+> authentication or as a fall-back.
+> Then the a mountpoint with "users" listed as an option in /etc/fstab can be
+> mounted by anyone with appropriate credentials and no credential should be
+> needed for root, and not machine credential should be needed either.
 
-and make fl_owner a (struct lock_owner_common *) and have lockd create
-nlmsvc_lock_owners as necessary on the fly.  The lm_compare_owner
-callback could then be replaced by a pointer comparison.  I'm not sure
-what kind of locking or refcounting might be needed.  But...
+Perhaps a more common use case with NFSv4 is secure automounter mounts.  In that case, the server can be configured to allow sec=sys access to it's pseudo-fs, then require Kerberos for its real file systems.
 
-> I'll confess though that I haven't tried *too* hard yet
+In operation, the client mounts the server's pseudo-fs without needing any GSS context.  When it transitions into a protected file system, the server returns NFS4ERR_WRONGSEC and the client should be able to negotiate up to AUTH_GSS using the user's credential.  (Mind you I haven't tried this, I'm simply hand-waving based on reasonable assumptions).
 
-... me neither, so...
+The key feature of this use case is that the client is not configured for anything but /net.  Mount options like "sec=krb5" or "users" are simply not in the picture.
 
-> though since I had bigger problems to sort through at the time. Maybe
-> we can consider that for a later set?
+The question is still whether, if the client doesn't have a keytab, lease management should use the user's credential or AUTH_SYS.  I maintain that AUTH_SYS is a better choice.  The kernel cannot possibly know a priori, without configuration, that this is a single-user client and that it is OK to use a user's Kerberos credential for lease management.
 
-sounds fine.
+I'll stress that the reason we prefer a machine credential (either AUTH_GSS or AUTH_SYS) is because a client must present a consistent principal and flavor to the server for lease management.
 
---b.
+A server can refuse to recognize a SETCLIENTID (for example, after a sudden client reboot) if there is already a lease on the server for using the presented nfs_client_id4.id string that was established using a different security flavor or principal.  Otherwise there would be no point in securing lease management.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
