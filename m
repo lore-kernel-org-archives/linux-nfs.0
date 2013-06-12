@@ -1,199 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21525 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754741Ab3FKLJx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Jun 2013 07:09:53 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
-Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
-        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v2 14/14] locks: move file_lock_list to a set of percpu hlist_heads and convert file_lock_lock to an lglock
-Date: Tue, 11 Jun 2013 07:09:08 -0400
-Message-Id: <1370948948-31784-15-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1370948948-31784-1-git-send-email-jlayton@redhat.com>
-References: <1370948948-31784-1-git-send-email-jlayton@redhat.com>
+Received: from mail-vb0-f42.google.com ([209.85.212.42]:51567 "EHLO
+	mail-vb0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757198Ab3FLQWI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Jun 2013 12:22:08 -0400
+Received: by mail-vb0-f42.google.com with SMTP id i3so6009930vbh.29
+        for <linux-nfs@vger.kernel.org>; Wed, 12 Jun 2013 09:22:07 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20130612153936.GB32569@fieldses.org>
+References: <CAEfL3KnfRWof4-6UAWTwXcH7XWSQuUR5ry_pg4qdyhBB6dt+5g@mail.gmail.com>
+	<20130611195140.GA29634@fieldses.org>
+	<51B7DE9C.6080703@talpey.com>
+	<20130612153936.GB32569@fieldses.org>
+Date: Wed, 12 Jun 2013 21:52:07 +0530
+Message-ID: <CAEfL3Kk=L5JNN_2FNaF0BbVBpo-zvXMQr5QX7pHd0i_Kf=5E_g@mail.gmail.com>
+Subject: Re: why does nfsd write not use splice
+From: Sandeep Joshi <sanjos100@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The file_lock_list is only used for /proc/locks. The vastly common case
-is for locks to be put onto the list and come off again, without ever
-being traversed.
+Bruce,
 
-Help optimize for this use-case by moving to percpu hlist_head-s. At the
-same time, we can make the locking less contentious by moving to an
-lglock. When iterating over the lists for /proc/locks, we must take the
-global lock and then iterate over each CPU's list in turn.
+Splice can be implemented independent of RDMA.  It is supposed to
+transfer pages between two file descriptors.  I found some postings on
+lkml from 2006 where Linus says it is quite possible to splice from a
+socket to a file.
 
-This change necessitates a new fl_link_cpu field to keep track of which
-CPU the entry is on. On x86_64 at least, this field is placed within an
-existing hole in the struct to avoid growing its real size.
+See the paragraph:
+" For filesystems, splice support tends to be really easy (both read
+and write). For other things, it depends a bit. But unlike sendfile(),
+it really is quite possible to splice _from_ a socket too, not just
+_to_ a socket. But no, that case hasn't been written yet."
+ http://yarchive.net/comp/linux/splice.html
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/locks.c         |   57 +++++++++++++++++++++++++++++++++++----------------
- include/linux/fs.h |    1 +
- 2 files changed, 40 insertions(+), 18 deletions(-)
+Larry McVoy's 1997 proposal for adding splice support to the  kernel
+can be read at ftp.tux.org/pub/sites/ftp.bitmover.com/pub/splice.ps.gz
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 8124fc1..094eb4d 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -127,6 +127,8 @@
- #include <linux/rcupdate.h>
- #include <linux/pid_namespace.h>
- #include <linux/hashtable.h>
-+#include <linux/percpu.h>
-+#include <linux/lglock.h>
- 
- #include <asm/uaccess.h>
- 
-@@ -165,8 +167,8 @@ int lease_break_time = 45;
- static DEFINE_SPINLOCK(blocked_hash_lock);
- static DEFINE_HASHTABLE(blocked_hash, BLOCKED_HASH_BITS);
- 
--static DEFINE_SPINLOCK(file_lock_lock);
--static HLIST_HEAD(file_lock_list);
-+DEFINE_STATIC_LGLOCK(file_lock_lglock);
-+static DEFINE_PER_CPU(struct hlist_head, file_lock_list);
- 
- static struct kmem_cache *filelock_cache __read_mostly;
- 
-@@ -512,17 +514,21 @@ locks_delete_global_blocked(struct file_lock *waiter)
- static inline void
- locks_insert_global_locks(struct file_lock *waiter)
- {
--	spin_lock(&file_lock_lock);
--	hlist_add_head(&waiter->fl_link, &file_lock_list);
--	spin_unlock(&file_lock_lock);
-+	lg_local_lock(&file_lock_lglock);
-+	waiter->fl_link_cpu = smp_processor_id();
-+	hlist_add_head(&waiter->fl_link, this_cpu_ptr(&file_lock_list));
-+	lg_local_unlock(&file_lock_lglock);
- }
- 
- static inline void
- locks_delete_global_locks(struct file_lock *waiter)
- {
--	spin_lock(&file_lock_lock);
-+	/* avoid taking lock if already unhashed */
-+	if (hlist_unhashed(&waiter->fl_link))
-+		return;
-+	lg_local_lock_cpu(&file_lock_lglock, waiter->fl_link_cpu);
- 	hlist_del_init(&waiter->fl_link);
--	spin_unlock(&file_lock_lock);
-+	lg_local_unlock_cpu(&file_lock_lglock, waiter->fl_link_cpu);
- }
- 
- /* Remove waiter from blocker's block list.
-@@ -2228,6 +2234,11 @@ EXPORT_SYMBOL_GPL(vfs_cancel_lock);
- #include <linux/proc_fs.h>
- #include <linux/seq_file.h>
- 
-+struct locks_iterator {
-+	int	li_cpu;
-+	loff_t	li_pos;
-+};
-+
- static void lock_get_status(struct seq_file *f, struct file_lock *fl,
- 			    loff_t id, char *pfx)
- {
-@@ -2302,16 +2313,17 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
- static int locks_show(struct seq_file *f, void *v)
- {
- 	int bkt;
-+	struct locks_iterator *iter = f->private;
- 	struct file_lock *fl, *bfl;
- 
- 	fl = hlist_entry(v, struct file_lock, fl_link);
- 
--	lock_get_status(f, fl, *((loff_t *)f->private), "");
-+	lock_get_status(f, fl, iter->li_pos, "");
- 
- 	spin_lock(&blocked_hash_lock);
- 	hash_for_each(blocked_hash, bkt, bfl, fl_link) {
- 		if (bfl->fl_next == fl)
--			lock_get_status(f, bfl, *((loff_t *)f->private), " ->");
-+			lock_get_status(f, bfl, iter->li_pos, " ->");
- 	}
- 	spin_unlock(&blocked_hash_lock);
- 
-@@ -2320,23 +2332,24 @@ static int locks_show(struct seq_file *f, void *v)
- 
- static void *locks_start(struct seq_file *f, loff_t *pos)
- {
--	loff_t *p = f->private;
-+	struct locks_iterator *iter = f->private;
- 
--	spin_lock(&file_lock_lock);
--	*p = (*pos + 1);
--	return seq_hlist_start(&file_lock_list, *pos);
-+	iter->li_pos = *pos + 1;
-+	lg_global_lock(&file_lock_lglock);
-+	return seq_hlist_start_percpu(&file_lock_list, &iter->li_cpu, *pos);
- }
- 
- static void *locks_next(struct seq_file *f, void *v, loff_t *pos)
- {
--	loff_t *p = f->private;
--	++*p;
--	return seq_hlist_next(v, &file_lock_list, pos);
-+	struct locks_iterator *iter = f->private;
-+
-+	++iter->li_pos;
-+	return seq_hlist_next_percpu(v, &file_lock_list, &iter->li_cpu, pos);
- }
- 
- static void locks_stop(struct seq_file *f, void *v)
- {
--	spin_unlock(&file_lock_lock);
-+	lg_global_unlock(&file_lock_lglock);
- }
- 
- static const struct seq_operations locks_seq_operations = {
-@@ -2348,7 +2361,8 @@ static const struct seq_operations locks_seq_operations = {
- 
- static int locks_open(struct inode *inode, struct file *filp)
- {
--	return seq_open_private(filp, &locks_seq_operations, sizeof(loff_t));
-+	return seq_open_private(filp, &locks_seq_operations,
-+					sizeof(struct locks_iterator));
- }
- 
- static const struct file_operations proc_locks_operations = {
-@@ -2448,9 +2462,16 @@ EXPORT_SYMBOL(lock_may_write);
- 
- static int __init filelock_init(void)
- {
-+	int i;
-+
- 	filelock_cache = kmem_cache_create("file_lock_cache",
- 			sizeof(struct file_lock), 0, SLAB_PANIC, NULL);
- 
-+	lg_lock_init(&file_lock_lglock, "file_lock_lglock");
-+
-+	for_each_possible_cpu(i)
-+		INIT_HLIST_HEAD(per_cpu_ptr(&file_lock_list, i));
-+
- 	return 0;
- }
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 232a345..18e59b8 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -953,6 +953,7 @@ struct file_lock {
- 	unsigned int fl_flags;
- 	unsigned char fl_type;
- 	unsigned int fl_pid;
-+	int fl_link_cpu;		/* what cpu's list is this on? */
- 	struct pid *fl_nspid;
- 	wait_queue_head_t fl_wait;
- 	struct file *fl_file;
--- 
-1.7.1
+Perhaps I should have opened this thread on lkml to determine if
+splice from socket to file is still feasible..
 
+-Sandeep
+
+On Wed, Jun 12, 2013 at 9:09 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> On Tue, Jun 11, 2013 at 10:36:12PM -0400, Tom Talpey wrote:
+> > On 6/11/2013 3:51 PM, J. Bruce Fields wrote:
+> > >On Sun, Jun 09, 2013 at 01:05:16PM +0530, Sandeep Joshi wrote:
+> > >>Is there a reason as to why the nfsd server does not use splice in the
+> > >>write calls - nfsd_vfs_write() ?  Is there some structural limitation
+> > >>or is it just something nobody got around to implementing ?
+> > >>
+> > >>I have looked at the source back to the 2.6.x kernels and it seems
+> > >>only nfsd_vfs_read() has ever used splice/sendfile.
+> > >>http://lxr.linux.no/linux+v3.9.5/fs/nfsd/vfs.c
+> > >
+> > >I don't actually know how splice_write works.... I assume to avoid a
+> > >copy we'd have to place the incoming write data into pages already
+> > >correctly aligned.  That would be an interesting trick.
+> >
+> > NFS-RDMA does that, by design. ;-)
+>
+> So teaching nfsd to take advantage of splice in the rdma case could be
+> a doable project for someone?
+>
+> I was thinking about NFSv4/tcp, in which case I guess we'd need to start
+> parsing the xdr in the tcp receive code.
+>
+> --b.
