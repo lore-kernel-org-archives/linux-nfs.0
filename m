@@ -1,113 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:15484 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:52740 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751785Ab3FQPO3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Jun 2013 11:14:29 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
-Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
-        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v3 03/13] locks: comment cleanups and clarifications
-Date: Mon, 17 Jun 2013 11:13:46 -0400
-Message-Id: <1371482036-15958-4-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
-References: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
+	id S1752530Ab3FLPjl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Jun 2013 11:39:41 -0400
+Date: Wed, 12 Jun 2013 11:39:36 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Tom Talpey <tom@talpey.com>
+Cc: Sandeep Joshi <sanjos100@gmail.com>, linux-nfs@vger.kernel.org
+Subject: Re: why does nfsd write not use splice
+Message-ID: <20130612153936.GB32569@fieldses.org>
+References: <CAEfL3KnfRWof4-6UAWTwXcH7XWSQuUR5ry_pg4qdyhBB6dt+5g@mail.gmail.com>
+ <20130611195140.GA29634@fieldses.org>
+ <51B7DE9C.6080703@talpey.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <51B7DE9C.6080703@talpey.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/locks.c         |   21 +++++++++++++--------
- include/linux/fs.h |   18 ++++++++++++++++++
- 2 files changed, 31 insertions(+), 8 deletions(-)
+On Tue, Jun 11, 2013 at 10:36:12PM -0400, Tom Talpey wrote:
+> On 6/11/2013 3:51 PM, J. Bruce Fields wrote:
+> >On Sun, Jun 09, 2013 at 01:05:16PM +0530, Sandeep Joshi wrote:
+> >>Is there a reason as to why the nfsd server does not use splice in the
+> >>write calls - nfsd_vfs_write() ?  Is there some structural limitation
+> >>or is it just something nobody got around to implementing ?
+> >>
+> >>I have looked at the source back to the 2.6.x kernels and it seems
+> >>only nfsd_vfs_read() has ever used splice/sendfile.
+> >>http://lxr.linux.no/linux+v3.9.5/fs/nfsd/vfs.c
+> >
+> >I don't actually know how splice_write works.... I assume to avoid a
+> >copy we'd have to place the incoming write data into pages already
+> >correctly aligned.  That would be an interesting trick.
+> 
+> NFS-RDMA does that, by design. ;-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index e3140b8..1e6301b 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -518,9 +518,10 @@ static void locks_insert_block(struct file_lock *blocker,
- 		list_add(&waiter->fl_link, &blocked_list);
- }
- 
--/* Wake up processes blocked waiting for blocker.
-- * If told to wait then schedule the processes until the block list
-- * is empty, otherwise empty the block list ourselves.
-+/*
-+ * Wake up processes blocked waiting for blocker.
-+ *
-+ * Must be called with the file_lock_lock held!
-  */
- static void locks_wake_up_blocks(struct file_lock *blocker)
- {
-@@ -806,6 +807,11 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 	}
- 
- 	lock_flocks();
-+	/*
-+	 * New lock request. Walk all POSIX locks and look for conflicts. If
-+	 * there are any, either return error or put the request on the
-+	 * blocker's list of waiters and the global blocked_list.
-+	 */
- 	if (request->fl_type != F_UNLCK) {
- 		for_each_lock(inode, before) {
- 			fl = *before;
-@@ -844,7 +850,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 		before = &fl->fl_next;
- 	}
- 
--	/* Process locks with this owner.  */
-+	/* Process locks with this owner. */
- 	while ((fl = *before) && posix_same_owner(request, fl)) {
- 		/* Detect adjacent or overlapping regions (if same lock type)
- 		 */
-@@ -930,10 +936,9 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 	}
- 
- 	/*
--	 * The above code only modifies existing locks in case of
--	 * merging or replacing.  If new lock(s) need to be inserted
--	 * all modifications are done bellow this, so it's safe yet to
--	 * bail out.
-+	 * The above code only modifies existing locks in case of merging or
-+	 * replacing. If new lock(s) need to be inserted all modifications are
-+	 * done below this, so it's safe yet to bail out.
- 	 */
- 	error = -ENOLCK; /* "no luck" */
- 	if (right && left == right && !new_fl2)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index b9d7816..94105d2 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -926,6 +926,24 @@ int locks_in_grace(struct net *);
- /* that will die - we need it for nfs_lock_info */
- #include <linux/nfs_fs_i.h>
- 
-+/*
-+ * struct file_lock represents a generic "file lock". It's used to represent
-+ * POSIX byte range locks, BSD (flock) locks, and leases. It's important to
-+ * note that the same struct is used to represent both a request for a lock and
-+ * the lock itself, but the same object is never used for both.
-+ *
-+ * FIXME: should we create a separate "struct lock_request" to help distinguish
-+ * these two uses?
-+ *
-+ * The i_flock list is ordered by:
-+ *
-+ * 1) lock type -- FL_LEASEs first, then FL_FLOCK, and finally FL_POSIX
-+ * 2) lock owner
-+ * 3) lock range start
-+ * 4) lock range end
-+ *
-+ * Obviously, the last two criteria only matter for POSIX locks.
-+ */
- struct file_lock {
- 	struct file_lock *fl_next;	/* singly linked list for this inode  */
- 	struct list_head fl_link;	/* doubly linked list of all locks */
--- 
-1.7.1
+So teaching nfsd to take advantage of splice in the rdma case could be
+a doable project for someone?
 
+I was thinking about NFSv4/tcp, in which case I guess we'd need to start
+parsing the xdr in the tcp receive code.
+
+--b.
