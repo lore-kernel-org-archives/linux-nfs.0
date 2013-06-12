@@ -1,110 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49847 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:48663 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753257Ab3FEM7q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jun 2013 08:59:46 -0400
-Date: Wed, 5 Jun 2013 08:59:06 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, dhowells@redhat.com,
-        sage@inktank.com, smfrench@gmail.com, swhiteho@redhat.com,
-        Trond.Myklebust@netapp.com, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        piastryyy@gmail.com
-Subject: Re: [PATCH v1 07/11] locks: only pull entries off of blocked_list
- when they are really unblocked
-Message-ID: <20130605125906.GC24193@fieldses.org>
-References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
- <1370056054-25449-8-git-send-email-jlayton@redhat.com>
- <20130604215839.GD15594@fieldses.org>
- <20130605073822.4d67c57c@corrin.poochiereds.net>
- <20130605122432.GA24193@fieldses.org>
- <20130605083859.72c855cd@corrin.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130605083859.72c855cd@corrin.poochiereds.net>
+	id S1754875Ab3FLGMw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Jun 2013 02:12:52 -0400
+Date: Wed, 12 Jun 2013 16:12:40 +1000
+From: NeilBrown <neilb@suse.de>
+To: NeilBrown <neilb@suse.de>
+Cc: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <SteveD@redhat.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/3] Various gssd fixes including machine-credential
+ issue.
+Message-ID: <20130612161240.59b219b7@notabene.brown>
+In-Reply-To: <20130606094336.4faf099d@notabene.brown>
+References: <20130603005219.20080.1927.stgit@notabene.brown>
+	<A2E2CEA9-4F2B-4A3F-8661-36D1E6288B0F@oracle.com>
+	<20130603122319.47f4e0dd@notabene.brown>
+	<0016A272-E433-4020-91FE-45A5EE494296@oracle.com>
+	<20130603130101.4acfe706@notabene.brown>
+	<C4A2C0D1-8900-45AC-90F6-9629E3F71730@oracle.com>
+	<20130604093025.5e467eeb@notabene.brown>
+	<9F47F7D4-9D96-424E-BAD9-21AE1C06A877@oracle.com>
+	<2195C785-9764-48CC-A994-A80B7A8EDC62@oracle.com>
+	<20130605112635.188f628e@notabene.brown>
+	<1ECE6C65-EE15-46C1-97D1-636B15A775F7@oracle.com>
+	<20130606094336.4faf099d@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/lvva/LID3E960hfdpk6It/U"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 05, 2013 at 08:38:59AM -0400, Jeff Layton wrote:
-> On Wed, 5 Jun 2013 08:24:32 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Wed, Jun 05, 2013 at 07:38:22AM -0400, Jeff Layton wrote:
-> > > On Tue, 4 Jun 2013 17:58:39 -0400
-> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > 
-> > > > On Fri, May 31, 2013 at 11:07:30PM -0400, Jeff Layton wrote:
-> > > > > Currently, when there is a lot of lock contention the kernel spends an
-> > > > > inordinate amount of time taking blocked locks off of the global
-> > > > > blocked_list and then putting them right back on again. When all of this
-> > > > > code was protected by a single lock, then it didn't matter much, but now
-> > > > > it means a lot of file_lock_lock thrashing.
-> > > > > 
-> > > > > Optimize this a bit by deferring the removal from the blocked_list until
-> > > > > we're either applying or cancelling the lock. By doing this, and using a
-> > > > > lockless list_empty check, we can avoid taking the file_lock_lock in
-> > > > > many cases.
-> > > > > 
-> > > > > Because the fl_link check is lockless, we must ensure that only the task
-> > > > > that "owns" the request manipulates the fl_link. Also, with this change,
-> > > > > it's possible that we'll see an entry on the blocked_list that has a
-> > > > > NULL fl_next pointer. In that event, just ignore it and continue walking
-> > > > > the list.
-> > > > 
-> > > > OK, that sounds safe as in it shouldn't crash, but does the deadlock
-> > > > detection still work, or can it miss loops?
-> > > > 
-> > > > Those locks that are temporarily NULL would previously not have been on
-> > > > the list at all, OK, but...  I'm having trouble reasoning about how this
-> > > > works now.
-> > > > 
-> > > > Previously a single lock was held interrupted across
-> > > > posix_locks_deadlock and locks_insert_block() which guaranteed we
-> > > > shouldn't be adding a loop, is that still true?
-> > > > 
-> > > > --b.
-> > > > 
-> > > 
-> > > I had thought it was when I originally looked at this, but now that I
-> > > consider it again I think you may be correct and that there are possible
-> > > races here. Since we might end up reblocking behind a different lock
-> > > without taking the global spinlock we could flip to blocking behind a
-> > > different lock such that a loop is created if you had a complex (>2)
-> > > chain of locks.
-> > > 
-> > > I think I'm going to have to drop this approach and instead make it so
-> > > that the deadlock detection and insertion into the global blocker
-> > > list/hash are atomic.
-> > 
-> > Right.  Once you drop the lock you can no longer be sure that what you
-> > learned about the file-lock graph stays true.
-> > 
-> > > Ditto for locks_wake_up_blocks on posix locks and
-> > > taking the entries off the list/hash.
-> > 
-> > Here I'm not sure what you mean.
-> > 
-> 
-> Basically, I mean that rather than setting the fl_next pointer to NULL
-> while holding only the inode lock and then ignoring those locks in the
-> deadlock detection code, we should additionally take the global lock in
-> locks_wake_up_blocks too and take the blocked locks off the global list
-> and the i_flock list at the same time.
+--Sig_/lvva/LID3E960hfdpk6It/U
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-OK, thanks, got it.  I have a hard time thinking about that.... But yes
-it bothers me that the deadlock detection code could see an out-of-date
-value of fl_next, and I can't convince myself that this wouldn't result
-in false positives or false negatives.
+On Thu, 6 Jun 2013 09:43:36 +1000 NeilBrown <neilb@suse.de> wrote:
 
-> That actually might not be completely necessary, but it'll make the
-> logic clearer and easier to understand and probably won't hurt
-> performance too much. Again, I'll need to do some perf testing to be
-> sure.
+> I've provided a patched kernel to customer.  Hopefully will hear back soo=
+n.
 
-OK!
+Hi Chuck,
+ the patch appears to work exactly as advertised and completely resolves the
+ issue - thanks.
 
---b.
+Getting back to the idea of making this sort of thing work seamlessly,
+another possibility to consider is to use the *real* uid  of the process
+which performs the mount do authenticate SETCLIENTID - either as the primary
+authentication or as a fall-back.
+Then the a mountpoint with "users" listed as an option in /etc/fstab can be
+mounted by anyone with appropriate credentials and no credential should be
+needed for root, and not machine credential should be needed either.
+
+NeilBrown
+
+--Sig_/lvva/LID3E960hfdpk6It/U
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUbgRWDnsnt1WYoG5AQKuWg/+JCNt2CjdGrvts9maK0372ux2wjq5/XwS
+eMEkOlDtNoP1DrEaWdXmHO6B6az78mjwh1zy9o+re1xdhJVgKnfCcyGSqNAF6y7B
+ciqUpuYmG/ENpgNTBzCBp3oBm4cSDrrYMlcpRMXZjhoAJo09zSvxzVcxK/Er6wj0
+WM3p7MOgTaAQWLG0ujOjAqaMqsQSzNcggR2Cy+dWSj+/h8+ghAH8Fsn5UuwksbfN
+roq5crs7cH7gyZCFn9UbOrY21IBEpG/ycdLuGiOYXcyWNjBdNXWoEkjSKE6vQUuH
+7ZkAPBCWunntJmcZWtbHIZA7/eEcUKh0mfY3BJ6K7kLe9siot8qseI8TFQFiVrEB
++uYlcY/L3EFFSd3qOfD4hhTVJwE/1TWs7yVOYh3OGyvsWNS4f0PsBl/rzmGea+5U
+gp+6xGLLvVmbW30LWdAFECLvQdW4TtKc/x6tgZy5/QJB2l7Oe3ckxMPVg3WoZxrb
+uKkLszyUkWWEQeqxkM4aEb4VMKxJBcnVomkeaflTUpKVk4GG/JQHkNbl/e+Hv07b
+27kmRQPDuzQypB+drOFZr+604dTLsVUHdxPIjsT8dePbbGuN7Vx90V2uk/S/qWIo
+/jog3tNpKpruTAfUzYgiYiX7chHL8GXz+AEmeTp2fVslf7X+vYX0/ry06pXi2ytE
+Z/GSPrTw0uc=
+=bB2R
+-----END PGP SIGNATURE-----
+
+--Sig_/lvva/LID3E960hfdpk6It/U--
