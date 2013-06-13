@@ -1,102 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:62288 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753312Ab3FRNKc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Jun 2013 09:10:32 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] rpc_pipefs: only set rpc_dentry_ops if d_op isn't already set
-Date: Tue, 18 Jun 2013 09:10:29 -0400
-Message-Id: <1371561029-12366-1-git-send-email-jlayton@redhat.com>
+Received: from mail-lb0-f180.google.com ([209.85.217.180]:41146 "EHLO
+	mail-lb0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754616Ab3FMHro (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Jun 2013 03:47:44 -0400
+Received: by mail-lb0-f180.google.com with SMTP id o10so7055267lbi.11
+        for <linux-nfs@vger.kernel.org>; Thu, 13 Jun 2013 00:47:43 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <CAJO99TmfCTYgyrwgUWUmFNGjhQhtHzA7+YDby_MNH2Bjt5tk2g@mail.gmail.com>
+References: <CAJO99TmfCTYgyrwgUWUmFNGjhQhtHzA7+YDby_MNH2Bjt5tk2g@mail.gmail.com>
+Date: Thu, 13 Jun 2013 09:47:43 +0200
+Message-ID: <CAJO99T=ugw6bk_jvv8dEbBiRLCccRXQ+TjFVnZTPhOc8p=KuGw@mail.gmail.com>
+Subject: Re: caching issue with nocto
+From: =?ISO-8859-1?Q?Bj=F8rnar_Ness?= <bjornar.ness@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We had a report of a reproducible WARNING:
+I have not yet received any feedback on this issue. Can someone please take
+a look into this?
 
-[ 1360.039358] ------------[ cut here ]------------
-[ 1360.043978] WARNING: at fs/dcache.c:1355 d_set_d_op+0x8d/0xc0()
-[ 1360.049880] Hardware name: HP Z200 Workstation
-[ 1360.054308] Modules linked in: nfsv4 nfs dns_resolver fscache nfsd
-auth_rpcgss nfs_acl lockd sunrpc sg acpi_cpufreq mperf coretemp kvm_intel kvm
-snd_hda_codec_realtek snd_hda_intel snd_hda_codec hp_wmi crc32c_intel
-snd_hwdep e1000e snd_seq snd_seq_device snd_pcm snd_page_alloc snd_timer snd
-sparse_keymap rfkill soundcore serio_raw ptp iTCO_wdt pps_core pcspkr
-iTCO_vendor_support mei microcode lpc_ich mfd_core wmi xfs libcrc32c sr_mod
-sd_mod cdrom crc_t10dif radeon i2c_algo_bit drm_kms_helper ttm ahci libahci
-drm i2c_core libata dm_mirror dm_region_hash dm_log dm_mod [last unloaded:
-auth_rpcgss]
-[ 1360.107406] Pid: 8814, comm: mount.nfs4 Tainted: G         I --------------   3.9.0-0.55.el7.x86_64 #1
-[ 1360.116771] Call Trace:
-[ 1360.119219]  [<ffffffff810610c0>] warn_slowpath_common+0x70/0xa0
-[ 1360.125208]  [<ffffffff810611aa>] warn_slowpath_null+0x1a/0x20
-[ 1360.131025]  [<ffffffff811af46d>] d_set_d_op+0x8d/0xc0
-[ 1360.136159]  [<ffffffffa05a7d6f>] __rpc_lookup_create_exclusive+0x4f/0x80 [sunrpc]
-[ 1360.143710]  [<ffffffffa05a8cc6>] rpc_mkpipe_dentry+0x86/0x170 [sunrpc]
-[ 1360.150311]  [<ffffffffa062a7b6>] nfs_idmap_new+0x96/0x130 [nfsv4]
-[ 1360.156475]  [<ffffffffa062e7cd>] nfs4_init_client+0xad/0x2d0 [nfsv4]
-[ 1360.162902]  [<ffffffff812f02df>] ? idr_get_empty_slot+0x16f/0x3c0
-[ 1360.169062]  [<ffffffff812f0582>] ? idr_mark_full+0x52/0x60
-[ 1360.174615]  [<ffffffff812f0699>] ? idr_alloc+0x79/0xe0
-[ 1360.179826]  [<ffffffffa0598081>] ? __rpc_init_priority_wait_queue+0x81/0xc0 [sunrpc]
-[ 1360.187635]  [<ffffffffa05980f3>] ? rpc_init_wait_queue+0x13/0x20 [sunrpc]
-[ 1360.194493]  [<ffffffffa05d05da>] nfs_get_client+0x27a/0x350 [nfs]
-[ 1360.200666]  [<ffffffffa062e438>] nfs4_set_client.isra.8+0x78/0x100 [nfsv4]
-[ 1360.207624]  [<ffffffffa062f2f3>] nfs4_create_server+0xf3/0x3a0 [nfsv4]
-[ 1360.214222]  [<ffffffffa06284be>] nfs4_remote_mount+0x2e/0x60 [nfsv4]
-[ 1360.220644]  [<ffffffff8119ea79>] mount_fs+0x39/0x1b0
-[ 1360.225691]  [<ffffffff81153880>] ? __alloc_percpu+0x10/0x20
-[ 1360.231348]  [<ffffffff811b7ccf>] vfs_kern_mount+0x5f/0xf0
-[ 1360.236822]  [<ffffffffa0628396>] nfs_do_root_mount+0x86/0xc0 [nfsv4]
-[ 1360.243246]  [<ffffffffa06287b4>] nfs4_try_mount+0x44/0xc0 [nfsv4]
-[ 1360.249410]  [<ffffffffa05d1457>] ? get_nfs_version+0x27/0x80 [nfs]
-[ 1360.255659]  [<ffffffffa05db985>] nfs_fs_mount+0x5c5/0xd10 [nfs]
-[ 1360.261650]  [<ffffffffa05dc550>] ? nfs_clone_super+0x140/0x140 [nfs]
-[ 1360.268074]  [<ffffffffa05da8e0>] ? param_set_portnr+0x60/0x60 [nfs]
-[ 1360.274406]  [<ffffffff8119ea79>] mount_fs+0x39/0x1b0
-[ 1360.279443]  [<ffffffff81153880>] ? __alloc_percpu+0x10/0x20
-[ 1360.285088]  [<ffffffff811b7ccf>] vfs_kern_mount+0x5f/0xf0
-[ 1360.290556]  [<ffffffff811b9f5d>] do_mount+0x1fd/0xa00
-[ 1360.295677]  [<ffffffff81137dee>] ? __get_free_pages+0xe/0x50
-[ 1360.301405]  [<ffffffff811b9be6>] ? copy_mount_options+0x36/0x170
-[ 1360.307479]  [<ffffffff811ba7e3>] sys_mount+0x83/0xc0
-[ 1360.312515]  [<ffffffff8160ad59>] system_call_fastpath+0x16/0x1b
-[ 1360.318503] ---[ end trace 8fa1f4cbc36094a7 ]---
+Seems like updating mtime on the folder from different client is causes nocto to
+stop working on a mount (or a subfolder of the mount)
 
-The problem is that we're ending up in __rpc_lookup_create_exclusive
-with a negative dentry that already has d_op set. A little debugging
-has shown that when we hit this, the d_ops are already set to
-simple_dentry_operations.
+client1:
 
-I believe that what's happening is that during a mount, idmapd is racing
-in and doing a lookup of /var/lib/nfs/rpc_pipefs/nfs/clnt???/idmap.
-Before that dentry reference is released, the kernel races in to create
-that file and finds the new negative dentry, which already has the
-d_op set.
+mount -t nfs -o
+vers=3,noatime,nodiratime,noacl,ac,sharecache,lookupcache=all,nocto
+10.30.0.11/foo /mnt
+while true; do time cat /mnt/linux-headers/*.h >/dev/null ; done
 
-This patch just avoids setting the d_op if it's already set.
-simple_dentry_operations and rpc_dentry_operations are functionally
-equivalent so it shouldn't matter which one it's set to.
+real 0m1.037s
+user 0m0.008s
+sys 0m0.088s
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- net/sunrpc/rpc_pipe.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+real 0m0.021s
+user 0m0.008s
+sys 0m0.008s
 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index e7ce4b3..a816b3a 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -667,7 +667,8 @@ static struct dentry *__rpc_lookup_create_exclusive(struct dentry *parent,
- 			return ERR_PTR(-ENOMEM);
- 	}
- 	if (dentry->d_inode == NULL) {
--		d_set_d_op(dentry, &rpc_dentry_operations);
-+		if (!dentry->d_op)
-+			d_set_d_op(dentry, &rpc_dentry_operations);
- 		return dentry;
- 	}
- 	dput(dentry);
--- 
-1.7.1
+[...]
 
+client2:
+
+same mount,
+
+touch /mnt/linux-headers
+
+
+What happends (after few secs) is client1 times goes to over a sec and
+stays there for infinity.
+
+a -o remount (run a few times) solves problem (until client2 touches a
+folder again..)
+
+--
+Bj(/)rnar
