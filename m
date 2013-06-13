@@ -1,102 +1,138 @@
-From: Jiri Slaby <jslaby@suse.cz>
-Subject: [PATCH 09/15] Make selection of 'readdir-plus' adapt to usage patterns.
-Date: Tue,  7 May 2013 16:18:17 +0200
-Message-ID: <1367936303-13386-9-git-send-email-jslaby@suse.cz>
-References: <1367936303-13386-1-git-send-email-jslaby@suse.cz>
-Cc: linux-kernel@vger.kernel.org, NeilBrown <neilb@suse.de>,
-	Jiri Slaby <jslaby@suse.cz>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	linux-nfs@vger.kernel.org
-To: jirislaby@gmail.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1367936303-13386-1-git-send-email-jslaby@suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from fieldses.org ([174.143.236.118]:52677 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756395Ab3FMOui (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Jun 2013 10:50:38 -0400
+Date: Thu, 13 Jun 2013 10:50:09 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, dhowells@redhat.com,
+        sage@inktank.com, smfrench@gmail.com, swhiteho@redhat.com,
+        Trond.Myklebust@netapp.com, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        piastryyy@gmail.com
+Subject: Re: [PATCH v2 10/14] locks: turn the blocked_list into a hashtable
+Message-ID: <20130613145009.GB20235@fieldses.org>
+References: <1370948948-31784-1-git-send-email-jlayton@redhat.com>
+ <1370948948-31784-11-git-send-email-jlayton@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1370948948-31784-11-git-send-email-jlayton@redhat.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: NeilBrown <neilb@suse.de>
+On Tue, Jun 11, 2013 at 07:09:04AM -0400, Jeff Layton wrote:
+> Break up the blocked_list into a hashtable, using the fl_owner as a key.
+> This speeds up searching the hash chains, which is especially significant
+> for deadlock detection.
+> 
+> Note that the initial implementation assumes that hashing on fl_owner is
+> sufficient. In most cases it should be, with the notable exception being
+> server-side lockd, which compares ownership using a tuple of the
+> nlm_host and the pid sent in the lock request. So, this may degrade to a
+> single hash bucket when you only have a single NFS client. That will be
+> addressed in a later patch.
+> 
+> The careful observer may note that this patch leaves the file_lock_list
+> alone. There's much less of a case for turning the file_lock_list into a
+> hashtable. The only user of that list is the code that generates
+> /proc/locks, and it always walks the entire list.
 
-While the use of READDIRPLUS is significantly more efficient than
-READDIR followed by many GETATTR calls, it is still less efficient
-than just READDIR if the attributes are not required.
+Makes sense to me, ACK to this and the previous patch.--b.
 
-We can get a hint as to whether the application requires attr information
-by looking at whether any ->getattr calls are made between
-->readdir calls.
-If there are any, then getting the attributes seems to be worth while.
-
-This patch tracks whether there have been recent getattr calls on
-children of a directory and uses that information to selectively
-disable READDIRPLUS on that directory.
-
-The first 'readdir' call is always served using READDIRPLUS.
-Subsequent calls only use READDIRPLUS if there was a getattr on a child
-in the mean time.
-
-The locking of ->d_parent access needs to be reviewed.
-As the bit is simply a hint, it isn't critical that it is set
-on the "correct" parent if a rename is happening, but it is
-critical that the 'set' doesn't set a bit in something that
-isn't even an inode any more.
-
-Acked-by: NeilBrown <neilb@suse.de>
-Signed-off-by: Neil Brown <neilb@suse.de>
-Signed-off-by: Jiri Slaby <jslaby@suse.cz>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
----
- fs/nfs/dir.c           | 3 +++
- fs/nfs/inode.c         | 9 +++++++++
- include/linux/nfs_fs.h | 4 ++++
- 3 files changed, 16 insertions(+)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index e093e73..f5b367c 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -826,6 +826,9 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
- 	desc->dir_cookie = &dir_ctx->dir_cookie;
- 	desc->decode = NFS_PROTO(inode)->decode_dirent;
- 	desc->plus = nfs_use_readdirplus(inode, filp) ? 1 : 0;
-+	if (filp->f_pos > 0 && !test_bit(NFS_INO_SEEN_GETATTR, &NFS_I(inode)->flags))
-+		desc->plus = 0;
-+	clear_bit(NFS_INO_SEEN_GETATTR, &NFS_I(inode)->flags);
- 
- 	nfs_block_sillyrename(dentry);
- 	res = nfs_revalidate_mapping(inode, filp->f_mapping);
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index c1c7a9d..c15071d 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -520,6 +520,15 @@ int nfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
- 	struct inode *inode = dentry->d_inode;
- 	int need_atime = NFS_I(inode)->cache_validity & NFS_INO_INVALID_ATIME;
- 	int err;
-+	struct dentry *p;
-+	struct inode *pi;
-+
-+	rcu_read_lock();
-+	p = dentry->d_parent;
-+	pi = rcu_dereference(p)->d_inode;
-+	if (pi && !test_bit(NFS_INO_SEEN_GETATTR, &NFS_I(pi)->flags))
-+		set_bit(NFS_INO_SEEN_GETATTR, &NFS_I(pi)->flags);
-+	rcu_read_unlock();
- 
- 	/* Flush out writes to the server in order to update c/mtime.  */
- 	if (S_ISREG(inode->i_mode)) {
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index fc01d5c..633e2a9 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -220,6 +220,10 @@ struct nfs_inode {
- #define NFS_INO_COMMIT		(7)		/* inode is committing unstable writes */
- #define NFS_INO_LAYOUTCOMMIT	(9)		/* layoutcommit required */
- #define NFS_INO_LAYOUTCOMMITTING (10)		/* layoutcommit inflight */
-+#define NFS_INO_SEEN_GETATTR	(11)		/* flag to track if app is calling
-+						 * getattr in a directory during
-+						 * readdir
-+						 */
- 
- static inline struct nfs_inode *NFS_I(const struct inode *inode)
- {
--- 
-1.8.2.1
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/locks.c |   25 ++++++++++++++++++-------
+>  1 files changed, 18 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/locks.c b/fs/locks.c
+> index 28959bc..76fb7af 100644
+> --- a/fs/locks.c
+> +++ b/fs/locks.c
+> @@ -126,6 +126,7 @@
+>  #include <linux/time.h>
+>  #include <linux/rcupdate.h>
+>  #include <linux/pid_namespace.h>
+> +#include <linux/hashtable.h>
+>  
+>  #include <asm/uaccess.h>
+>  
+> @@ -153,10 +154,19 @@ int lease_break_time = 45;
+>  #define for_each_lock(inode, lockp) \
+>  	for (lockp = &inode->i_flock; *lockp != NULL; lockp = &(*lockp)->fl_next)
+>  
+> +/*
+> + * By breaking up the blocked locks list into a hashtable, we speed up the
+> + * deadlock detection.
+> + *
+> + * FIXME: make this value scale via some heuristic?
+> + */
+> +#define BLOCKED_HASH_BITS	7
+> +
+> +static DEFINE_HASHTABLE(blocked_hash, BLOCKED_HASH_BITS);
+> +
+>  static HLIST_HEAD(file_lock_list);
+> -static HLIST_HEAD(blocked_list);
+>  
+> -/* Protects the two list heads above */
+> +/* Protects the file_lock_list and the blocked_hash */
+>  static DEFINE_SPINLOCK(file_lock_lock);
+>  
+>  static struct kmem_cache *filelock_cache __read_mostly;
+> @@ -475,13 +485,13 @@ static int posix_same_owner(struct file_lock *fl1, struct file_lock *fl2)
+>  static inline void
+>  locks_insert_global_blocked(struct file_lock *waiter)
+>  {
+> -	hlist_add_head(&waiter->fl_link, &blocked_list);
+> +	hash_add(blocked_hash, &waiter->fl_link, (unsigned long)waiter->fl_owner);
+>  }
+>  
+>  static inline void
+>  __locks_delete_global_blocked(struct file_lock *waiter)
+>  {
+> -	hlist_del_init(&waiter->fl_link);
+> +	hash_del(&waiter->fl_link);
+>  }
+>  
+>  static inline void
+> @@ -729,7 +739,7 @@ static struct file_lock *what_owner_is_waiting_for(struct file_lock *block_fl)
+>  {
+>  	struct file_lock *fl;
+>  
+> -	hlist_for_each_entry(fl, &blocked_list, fl_link) {
+> +	hash_for_each_possible(blocked_hash, fl, fl_link, (unsigned long)block_fl->fl_owner) {
+>  		if (posix_same_owner(fl, block_fl))
+>  			return fl->fl_next;
+>  	}
+> @@ -865,7 +875,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+>  	/*
+>  	 * New lock request. Walk all POSIX locks and look for conflicts. If
+>  	 * there are any, either return error or put the request on the
+> -	 * blocker's list of waiters and the global blocked_list.
+> +	 * blocker's list of waiters and the global blocked_hash.
+>  	 */
+>  	if (request->fl_type != F_UNLCK) {
+>  		for_each_lock(inode, before) {
+> @@ -2284,13 +2294,14 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
+>  
+>  static int locks_show(struct seq_file *f, void *v)
+>  {
+> +	int bkt;
+>  	struct file_lock *fl, *bfl;
+>  
+>  	fl = hlist_entry(v, struct file_lock, fl_link);
+>  
+>  	lock_get_status(f, fl, *((loff_t *)f->private), "");
+>  
+> -	hlist_for_each_entry(bfl, &blocked_list, fl_link) {
+> +	hash_for_each(blocked_hash, bkt, bfl, fl_link) {
+>  		if (bfl->fl_next == fl)
+>  			lock_get_status(f, bfl, *((loff_t *)f->private), " ->");
+>  	}
+> -- 
+> 1.7.1
+> 
