@@ -1,85 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f176.google.com ([209.85.214.176]:34169 "EHLO
-	mail-ob0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754240Ab3FOPYw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 15 Jun 2013 11:24:52 -0400
-Received: by mail-ob0-f176.google.com with SMTP id v19so1710568obq.35
-        for <linux-nfs@vger.kernel.org>; Sat, 15 Jun 2013 08:24:51 -0700 (PDT)
-Received: from ?IPv6:2001:470:d:51c::8924:fefd? ([2001:470:d:51c::8924:fefd])
-        by mx.google.com with ESMTPSA id o4sm7598167obl.7.2013.06.15.08.24.49
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=ECDHE-RSA-RC4-SHA bits=128/128);
-        Sat, 15 Jun 2013 08:24:50 -0700 (PDT)
-Message-ID: <51BC8740.8010000@gmail.com>
-Date: Sat, 15 Jun 2013 09:24:48 -0600
-From: John Haiducek <jhaiduce@gmail.com>
+Received: from mail-ve0-f174.google.com ([209.85.128.174]:57371 "EHLO
+	mail-ve0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752461Ab3FNMJN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jun 2013 08:09:13 -0400
+Received: by mail-ve0-f174.google.com with SMTP id oz10so396153veb.33
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Jun 2013 05:09:12 -0700 (PDT)
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Re: Can't mount NFSv4 with kerberos on Debian Wheezy
-References: <51BAAFFC.6060208@gmail.com> <51BAB0BC.1010303@gmail.com> <5A1575CF-0400-48CE-B18B-5B26C92D152A@oracle.com> <CAFYD6QXVKpLDS_cWiA2uasu+KXazcRuk-+BX39MdehSwiu35gw@mail.gmail.com> <871BEFF7-33F4-4B34-9887-D5388951987E@oracle.com>
-In-Reply-To: <871BEFF7-33F4-4B34-9887-D5388951987E@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+In-Reply-To: <20130612164637.GA6868@fieldses.org>
+References: <CAEfL3KnfRWof4-6UAWTwXcH7XWSQuUR5ry_pg4qdyhBB6dt+5g@mail.gmail.com>
+	<20130611195140.GA29634@fieldses.org>
+	<51B7DE9C.6080703@talpey.com>
+	<20130612153936.GB32569@fieldses.org>
+	<CAEfL3KkdjB7bzvnfiDh024kHjCH0e64iH6GK6y+A+bpH3kUgJg@mail.gmail.com>
+	<20130612164637.GA6868@fieldses.org>
+Date: Fri, 14 Jun 2013 17:39:12 +0530
+Message-ID: <CAEfL3Km7knMAW1Jx_jHZ0OYBMBpUkvbzk2riBE2C=NA9OMvUQw@mail.gmail.com>
+Subject: Re: why does nfsd write not use splice
+From: Sandeep Joshi <sanjos100@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/14/2013 02:13 PM, Chuck Lever wrote:
+On Wed, Jun 12, 2013 at 10:16 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
 >
-> On Jun 14, 2013, at 3:49 PM, John Haiducek <jhaiduce@gmail.com 
-> <mailto:jhaiduce@gmail.com>> wrote:
+> On Wed, Jun 12, 2013 at 09:51:09PM +0530, Sandeep Joshi wrote:
+> > Splice can be implemented independent of RDMA.  It is supposed to
+> > transfer
+> > pages between two file descriptors.  I found some postings on lkml from
+> > 2006 where Linus says it is quite possible to splice from a socket to a
+> > file.
+> >
+> > See the paragraph:
+> > " For filesystems, splice support tends to be really easy (both read and
+> > write). For other things, it depends a bit. But unlike sendfile(), it
+> > really is quite possible to splice _from_ a socket too, not just _to_ a
+> > socket. But no, that case hasn't been written yet."
+> >  http://yarchive.net/comp/linux/splice.html
+> >
+> > Larry McVoy's 1997 proposal for adding splice support to the  kernel can
+> > be
+> > read at
+> > ftp.tux.org/pub/sites/ftp.bitmover.com/pub/*splice*.*ps*.gz<http://ftp.tux.org/pub/sites/ftp.bitmover.com/pub/splice.ps.gz>
+> >
+> > Perhaps I should have opened this thread on lkml to determine if splice
+> > from socket to file is still feasible..
 >
->>
->> On Jun 14, 2013 11:05 AM, "Chuck Lever" <chuck.lever@oracle.com 
->> <mailto:chuck.lever@oracle.com>> wrote:
->> >
->> >
->> > On Jun 14, 2013, at 1:57 AM, John Haiducek <jhaiduce@gmail.com 
->> <mailto:jhaiduce@gmail.com>> wrote:
->> >
->> > > Jun 11 20:28:23 tbm rpc.gssd[8959]: Name or service not known 
->> while getting full hostname for 'tbm.enterprise.local'
->> >
->> > gssd thinks your client's hostname is "tbm.enterprise.local," which 
->> has no DNS entry.
->>
->> That is the correct client hostname, and according to the 'host' 
->> command it is in dns. What would cause the host command to find it 
->> when gssd can't?
->>
+> Right, the thing is, nfsd reads the rpc request from the socket into its
+> own buffers before it parses it.  If you want to move the data directly
+> out of the network buffers into the page cache, then you have to know at
+> what point the write data starts in the request--which I believe will
+> mean doing the xdr parsing (and gss decryption if necessary) as the
+> request comes in off the wire.
 >
-> The error message is from utils/gssd/krb5_util.c:get_full_hostname(). 
->  If get_full_hostname() fails, then gssd can't search your client's 
-> keytab.
+> That sounds like a lot of work and even if you have someone willing to
+> do the work they'd also need to justify that it's worth it.
 >
-> Figure out why that getaddrinfo(3) call is failing to find a canonical 
-> name for "tbm.enterprise.local" -- that could be a client system 
-> configuration problem as much as a DNS misconfiguration.
+> RDMA may have some protocol support that simplifies this, I don't know.
+>
+> --b.
 
-Ok, I think I fixed the DNS problem. I was running avahi, and apparently 
-you can't use avahi and also have a DNS server with a domain ending in 
-.local. Shutting down avahi fixed it, although if I wanted to keep avahi 
-working I could probably fix this by changing my domain to end in 
-something other than .local.
+Hi Bruce,
 
-But now the mount command hangs and never returns. I get this in 
-/var/log/syslog:
+> nfsd reads the rpc request from the socket into its own buffers before it parses it.
 
-Jun 15 09:19:36 tbm rpc.idmapd[16253]: New client: 24
-Jun 15 09:19:36 tbm rpc.gssd[16258]: dir_notify_handler: sig 37 si 
-0x7fffb0fb3330 data 0x7fffb0fb3200
-Jun 15 09:19:37 tbm rpc.gssd[16258]: dir_notify_handler: sig 37 si 
-0x7fffb0fb3330 data 0x7fffb0fb3200
-Jun 15 09:19:37 tbm rpc.gssd[16258]: dir_notify_handler: sig 37 si 
-0x7fffb0fb3330 data 0x7fffb0fb3200
-Jun 15 09:19:37 tbm rpc.gssd[16258]: destroying client 
-/var/lib/nfs/rpc_pipefs/nfs/clnt24
-Jun 15 09:19:37 tbm rpc.idmapd[16253]: Stale client: 24
-Jun 15 09:19:37 tbm rpc.idmapd[16253]: #011-> closed 
-/var/lib/nfs/rpc_pipefs/nfs/clnt24/idmap
-Jun 15 09:19:53 tbm rpc.gssd[16258]: dir_notify_handler: sig 37 si 
-0x7fffb0fb3330 data 0x7fffb0fb3200
-Jun 15 09:19:53 tbm rpc.idmapd[16253]: New client: 25
+I am not intimate with the gss code but do you think the
+svc_rqst->rq_pages[] can be spliced ?
 
-I might be missing something, but none of these entries look like 
-errors. Where else should I look?
-
-John Haiducek
+-Sandeep
