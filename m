@@ -1,83 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zeniv.linux.org.uk ([195.92.253.2]:60630 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750791Ab3FEDlR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Jun 2013 23:41:17 -0400
-Date: Wed, 5 Jun 2013 04:41:15 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: NeilBrown <neilb@suse.de>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [patch/rfc] allow exported (and *not* exported) filesystems to
- be unmounted.
-Message-ID: <20130605034115.GD13110@ZenIV.linux.org.uk>
-References: <20130605130541.5968d5c2@notabene.brown>
+Received: from mail-oa0-f43.google.com ([209.85.219.43]:41981 "EHLO
+	mail-oa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750857Ab3FNF5U (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jun 2013 01:57:20 -0400
+Received: by mail-oa0-f43.google.com with SMTP id i7so253540oag.16
+        for <linux-nfs@vger.kernel.org>; Thu, 13 Jun 2013 22:57:20 -0700 (PDT)
+Received: from ?IPv6:2001:470:d:51c::8924:fefd? ([2001:470:d:51c::8924:fefd])
+        by mx.google.com with ESMTPSA id eq4sm1081370obb.5.2013.06.13.22.57.18
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=ECDHE-RSA-RC4-SHA bits=128/128);
+        Thu, 13 Jun 2013 22:57:19 -0700 (PDT)
+Message-ID: <51BAB0BC.1010303@gmail.com>
+Date: Thu, 13 Jun 2013 23:57:16 -0600
+From: John Haiducek <jhaiduce@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130605130541.5968d5c2@notabene.brown>
+To: linux-nfs@vger.kernel.org
+Subject: Re: Can't mount NFSv4 with kerberos on Debian Wheezy
+References: <51BAAFFC.6060208@gmail.com>
+In-Reply-To: <51BAAFFC.6060208@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 05, 2013 at 01:05:41PM +1000, NeilBrown wrote:
-> 
-> Hi Bruce,
->  this is a little issue that seems to keep coming up so I thought it might be
->  time to fix it.
-> 
->  As you know, a filesystem that is exported cannot be unmounted as the export
->  cache holds a reference to it.  Though if it hasn't been accessed for a
->  while then it can.
-> 
->  As I hadn't realised before sometimes *non* exported filesystems can be
->  pinned to.  A negative entry in the cache can pin a filesystem just as
->  easily as a positive entry.
->  An amusing, if somewhat contrived, example is that if you export '/' with
->  crossmnt and:
-> 
->     mount localhost:/ /mnt
->     ls -l /
->     umount /mnt
-> 
->  the umount might fail.  This is because the "ls -l" tried to export every
->  filesystem found mounted in '/'.  The export of "/mnt" failed of course
->  because you cannot re-export an NFS filesystem.  But it is still in the
->  cache.
->  An 'exportfs -f' fixes this, but shouldn't be necessary.
-> 
->  So this RFC patch makes it possible  to register a notifier which gets
->  called on unmount, and links the export table in to the notifier chain.
-> 
->  The "atomic" flavour is used so that notifiers can be registered under a
->  spin_lock.  This is needed for "expkey_update" as ->update is called under a
->  lock.
-> 
->  As notifier callees cannot unregister themselves, the unregister needs to
->  happen in a workqueue item, and the unmount will wait for that.
-> 
->  It seems to work for me (once I figured out all the locking issues and found
->  a way to make it work without deadlocking).
-> 
->  If you are OK with in in general I'll make it into a proper patch series and
->  include Al Viro for the VFS bits.
+I'm able to use NFSv4 just fine using AUTH_SYS, but when I turn on 
+sec=krb5 I can't mount at all. I'm using Debian Wheezy.
 
-> @@ -1201,6 +1234,11 @@ static int do_umount(struct mount *mnt, int flags)
->  		sb->s_op->umount_begin(sb);
->  	}
->  
-> +	/* Some in-kernel users (nfsd) might need to be asked to release
-> +	 * the filesystem
-> +	 */
-> +	umount_notifier_call(mnt);
+I'm able to use Kerberos just fine for other things (like ssh), and 
+forward and reverse DNS appears to be working correctly per the host 
+command. However, the NFS mount command fails differently when I add my 
+host's IP address to /etc/hosts (the same host is both client and 
+server). Specifically, when the address is in /etc/hosts the NFS server 
+fails immediately with a "permission denied" error, while if the address 
+is not present in /etc/hosts the mount command hangs forever and never 
+returns. This makes it seem like mount.nfs or rpc.gssd can't find the 
+host in DNS even though other programs can. How can this be?
 
-NAK.  I'm sorry, but it's a fundamentally wrong approach - there are _tons_
-of places where vfsmount could get evicted (consider shared-subtree umount
-propagation, for starters), not to mention that notifiers tend to be
-the wrong answer to just about any question.
+In /var/log/syslog I see this:
 
-I'd suggest looking at what kernel/acct.c is doing; I'm absolutely serious
-about notifiers being unacceptable BS.  If you want something generic,
-consider turning ->mnt_pinned into a list of callbacks, with mntput_no_expire
-calling them one by one; calling acct_auto_close_mnt() would be replaced with
-callbacks, each doing single acct_file_reopen(acct, NULL, NULL).
+|Jun 11 20:28:12 tbm rpc.gssd[8959]: dir_notify_handler: sig 37 si 0x7fffbc4e9570 data 0x7fffbc4e9440
+Jun 11 20:28:12 tbm rpc.gssd[8959]: dir_notify_handler: sig 37 si 0x7fffbc4e9570 data 0x7fffbc4e9440
+Jun 11 20:28:12 tbm rpc.gssd[8959]: destroying client /var/lib/nfs/rpc_pipefs/nfs/clntd
+Jun 11 20:28:12 tbm rpc.idmapd[8954]: Stale client: d
+Jun 11 20:28:12 tbm rpc.idmapd[8954]: #011->  closed /var/lib/nfs/rpc_pipefs/nfs/clntd/idmap
+Jun 11 20:28:12 tbm rpc.gssd[8959]: dir_notify_handler: sig 37 si 0x7fffbc4e9570 data 0x7fffbc4e9440
+Jun 11 20:28:12 tbm rpc.gssd[8959]: dir_notify_handler: sig 37 si 0x7fffbc4e9570 data 0x7fffbc4e9440
+Jun 11 20:28:12 tbm rpc.gssd[8959]: dir_notify_handler: sig 37 si 0x7fffbc4e9570 data 0x7fffbc4e9440
+Jun 11 20:28:12 tbm rpc.gssd[8959]: dir_notify_handler: sig 37 si 0x7fffbc4e9570 data 0x7fffbc4e9440
+Jun 11 20:28:12 tbm rpc.gssd[8959]: dir_notify_handler: sig 37 si 0x7fffbc4e9570 data 0x7fffbc4e9440
+Jun 11 20:28:12 tbm rpc.gssd[8959]: destroying client /var/lib/nfs/rpc_pipefs/nfs/clntc
+Jun 11 20:28:12 tbm rpc.idmapd[8954]: Stale client: c
+Jun 11 20:28:12 tbm rpc.idmapd[8954]: #011->  closed /var/lib/nfs/rpc_pipefs/nfs/clntc/idmap
+Jun 11 20:28:13 tbm rpc.gssd[8959]: dir_notify_handler: sig 37 si 0x7fffbc4e9570 data 0x7fffbc4e9440
+Jun 11 20:28:13 tbm rpc.idmapd[8954]: New client: e
+Jun 11 20:28:13 tbm rpc.gssd[8959]: dir_notify_handler: sig 37 si 0x7fffbc4e9570 data 0x7fffbc4e9440
+Jun 11 20:28:13 tbm rpc.gssd[8959]: dir_notify_handler: sig 37 si 0x7fffbc4e4570 data 0x7fffbc4e4440
+Jun 11 20:28:13 tbm rpc.idmapd[8954]: Opened /var/lib/nfs/rpc_pipefs/nfs/clnte/idmap
+Jun 11 20:28:13 tbm rpc.gssd[8959]: dir_notify_handler: sig 37 si 0x7fffbc4e4570 data 0x7fffbc4e4440
+Jun 11 20:28:13 tbm rpc.gssd[8959]: dir_notify_handler: sig 37 si 0x7fffbc4e9570 data 0x7fffbc4e9440
+Jun 11 20:28:13 tbm rpc.idmapd[8954]: New client: f
+Jun 11 20:28:13 tbm rpc.gssd[8959]: handling gssd upcall (/var/lib/nfs/rpc_pipefs/nfs/clnte)
+Jun 11 20:28:13 tbm rpc.gssd[8959]: handle_gssd_upcall: 'mech=krb5 uid=0 enctypes=18,17,16,23,3,1,2 '
+Jun 11 20:28:13 tbm rpc.gssd[8959]: handling krb5 upcall (/var/lib/nfs/rpc_pipefs/nfs/clnte)
+Jun 11 20:28:13 tbm rpc.gssd[8959]: process_krb5_upcall: service is '<null>'
+Jun 11 20:28:23 tbm rpc.gssd[8959]: Name or service not known while getting full hostname for 'tbm.enterprise.local'
+Jun
+  11 20:28:23 tbm rpc.gssd[8959]: ERROR:
+gssd_refresh_krb5_machine_credential: no usable keytab entry found in
+keytab /etc/krb5.keytab for connection with host tbm.enterprise.local
+Jun 11 20:28:23 tbm rpc.gssd[8959]: ERROR: No credentials found for connection to server tbm.enterprise.local
+Jun 11 20:28:23 tbm rpc.gssd[8959]: doing error downcall
+Jun 11 20:28:23 tbm rpc.gssd[8959]: dir_notify_handler: sig 37 si 0x7fffbc4e9570 data 0x7fffbc4e9440
+Jun 11 20:28:23 tbm rpc.gssd[8959]: dir_notify_handler: sig 37 si 0x7fffbc4e9570 data 0x7fffbc4e9440
+Jun 11 20:28:23 tbm rpc.idmapd[8954]: Stale client: f
+Jun 11 20:28:23 tbm rpc.idmapd[8954]: #011->  closed /var/lib/nfs/rpc_pipefs/nfs/clntf/idmap
+Jun 11 20:28:23 tbm rpc.gssd[8959]: destroying client /var/lib/nfs/rpc_pipefs/nfs/clntf
+Jun 11 20:28:23 tbm rpc.idmapd[8954]: Stale client: e
+Jun 11 20:28:23 tbm rpc.idmapd[8954]: #011->  closed /var/lib/nfs/rpc_pipefs/nfs/clnte/idmap
+Jun 11 20:28:23 tbm rpc.gssd[8959]: dir_notify_handler: sig 37 si 0x7fffbc4e9570 data 0x7fffbc4e9440
+Jun 11 20:28:23 tbm rpc.gssd[8959]: dir_notify_handler: sig 37 si 0x7fffbc4e9570 data 0x7fffbc4e9440
+Jun 11 20:28:23 tbm rpc.gssd[8959]: dir_notify_handler: sig 37 si 0x7fffbc4e9570 data 0x7fffbc4e9440
+Jun 11 20:28:23 tbm rpc.gssd[8959]: dir_notify_handler: sig 37 si 0x7fffbc4e9570 data 0x7fffbc4e9440
+Jun 11 20:28:23 tbm rpc.gssd[8959]: dir_notify_handler: sig 37 si 0x7fffbc4e9570 data 0x7fffbc4e9440
+Jun 11 20:28:23 tbm rpc.gssd[8959]: destroying client /var/lib/nfs/rpc_pipefs/nfs/clnte|
 
-I'm about to fall asleep right now, so any further details will have to wait
-until tomorrow; sorry...
+Can anyone point me in the right direction for getting this working?
+
+
+John Haiducek
