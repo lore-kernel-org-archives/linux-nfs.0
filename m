@@ -1,64 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:16665 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752483Ab3FQOXR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Jun 2013 10:23:17 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:46608 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753529Ab3FOLGP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 15 Jun 2013 07:06:15 -0400
+Date: Sat, 15 Jun 2013 07:05:35 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Simo <idra@samba.org>
+Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, dhowells@redhat.com,
+        sage@inktank.com, smfrench@gmail.com, swhiteho@redhat.com,
+        Trond.Myklebust@netapp.com, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        piastryyy@gmail.com
+Subject: Re: [PATCH v2 06/14] locks: don't walk inode->i_flock list in
+ locks_show
+Message-ID: <20130615070535.6367eed9@tlielax.poochiereds.net>
+In-Reply-To: <51BB040C.3050101@samba.org>
+References: <1370948948-31784-1-git-send-email-jlayton@redhat.com>
+	<1370948948-31784-7-git-send-email-jlayton@redhat.com>
+	<20130613194545.GC19218@fieldses.org>
+	<20130613162648.176979bc@tlielax.poochiereds.net>
+	<51BB040C.3050101@samba.org>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
-Subject: Re: Can't mount NFSv4 with kerberos on Debian Wheezy
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <51BC9892.6050509@gmail.com>
-Date: Mon, 17 Jun 2013 10:23:10 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <2BEA0A42-284D-4C5C-95DF-B9C43C98A3AD@oracle.com>
-References: <51BAAFFC.6060208@gmail.com> <51BAB0BC.1010303@gmail.com> <5A1575CF-0400-48CE-B18B-5B26C92D152A@oracle.com> <CAFYD6QXVKpLDS_cWiA2uasu+KXazcRuk-+BX39MdehSwiu35gw@mail.gmail.com> <871BEFF7-33F4-4B34-9887-D5388951987E@oracle.com> <51BC8740.8010000@gmail.com> <FD6F6C61-BF8B-4C9C-BCB5-E240203D3ACB@oracle.com> <51BC9624.80507@gmail.com> <36188287-B17A-468C-B8CE-CA55D3B99816@oracle.com> <51BC9892.6050509@gmail.com>
-To: John Haiducek <jhaiduce@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, 14 Jun 2013 07:52:44 -0400
+Simo <idra@samba.org> wrote:
 
-On Jun 15, 2013, at 12:38 PM, John Haiducek <jhaiduce@gmail.com> wrote:
-
-> On 06/15/2013 10:31 AM, Chuck Lever wrote:
->> On the client, "sudo rpcdebug -m nfs -s all" And try the mount. Look in /var/log/messages for output. Did you tell us what kernel release you are running on client and server? "uname -a" 
+> On 06/13/2013 04:26 PM, Jeff Layton wrote:
+> > The only real solution I can think of is to put flock locks into the
+> > blocked_list/blocked_hash too, or maybe giving them a simple hlist to
+> > sit on.
+> >
+> > I'll fix that up in the next iteration. It'll probably make flock()
+> > tests run slower, but such is the cost of preserving this procfile...
 > 
-> Ok, now in /var/log messages I have this:
+> How hard would it be to make the procfile stuff optional ?
+> So that those that need performance can decide to not use it ?
+> Maybe even something that can be disabled at run time ? Not just compile 
+> time.
 > 
-> Jun 15 09:13:21 tbm kernel: [307264.414216] NFSD: starting 90-second grace period
-> Jun 15 09:23:34 tbm kernel: [307877.856060] nfs: server tbm.enterprise.local not responding, still trying
-> Jun 15 09:29:35 tbm kernel: [308238.304057] nfs: server tbm.enterprise.local not responding, still trying
-> Jun 15 10:33:27 tbm kernel: [312070.654766] NFS: nfs mount opts='addr=192.168.1.7,clientaddr=192.168.1.7'
-> Jun 15 10:33:27 tbm kernel: [312070.654780] NFS:   parsing nfs mount option 'addr=192.168.1.7'
-> Jun 15 10:33:27 tbm kernel: [312070.654795] NFS:   parsing nfs mount option 'clientaddr=192.168.1.7'
-> Jun 15 10:33:27 tbm kernel: [312070.654807] NFS: MNTPATH: '/export/nfstest'
-> Jun 15 10:33:27 tbm kernel: [312070.654810] --> nfs4_try_mount()
-> Jun 15 10:33:27 tbm kernel: [312070.654822] --> nfs4_create_server()
-> Jun 15 10:33:27 tbm kernel: [312070.654854] --> nfs4_init_server()
-> Jun 15 10:33:27 tbm kernel: [312070.654857] --> nfs4_set_client()
-> Jun 15 10:33:27 tbm kernel: [312070.654862] --> nfs_get_client(tbm,v4)
-> Jun 15 10:33:27 tbm kernel: [312070.654867] --> nfs_get_client() = ffff88021bcd3c00 [share]
-> Jun 15 10:33:27 tbm kernel: [312070.654872] <-- nfs4_set_client() = 0 [new ffff88021bcd3c00]
-> Jun 15 10:33:27 tbm kernel: [312070.655071] <-- nfs4_init_server() = 0
-> Jun 15 10:33:27 tbm kernel: [312070.655241] --> nfs4_get_rootfh()
-> Jun 15 10:33:27 tbm kernel: [312070.655279] encode_compound: tag=
-> Jun 15 10:33:44 tbm kernel: [312087.264052] encode_compound: tag=
-> Jun 15 10:34:27 tbm kernel: [312130.784203] encode_compound: tag=
-> Jun 15 10:34:27 tbm kernel: [312130.784290] encode_compound: tag=
-> Jun 15 10:34:27 tbm kernel: [312130.784541] encode_compound: tag=
-> Jun 15 10:34:27 tbm kernel: [312130.784587] encode_compound: tag=
-> 
-> 
-> The first 3 lines are from a previous mount attempt before I ran the rpcdebug command.
-> 
-> Client and server are the same machine. uname -a prints this:
-> 
-> Linux tbm 3.2.0-4-amd64 #1 SMP Debian 3.2.41-2 x86_64 GNU/Linux
 
-Is rpc.svcgssd running?
+(re-adding back the cc lists...)
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+It'd be tricky, especially if you want to do it at runtime. The
+procfile itself is not a problem per-se. The real problem is the
+tracking you have to do in order to eventually present the procfile. So
+a boot-time or compile-time switch might be reasonable, but a runtime
+switch will probably never really be.
 
+I have a new patchset that I'm testing now though that should address
+Bruce's concerns about iterating over that global list. So far, it
+seems to be at least as fast as the latest patchset I posted.
 
+It makes the (spin)locking a bit more complex, but hopefully I can
+document this well enough that it's not a great concern.
 
+Stay tuned...
+
+-- 
+Jeff Layton <jlayton@redhat.com>
