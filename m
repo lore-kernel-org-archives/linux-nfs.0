@@ -1,115 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:37456 "EHLO mx12.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:2752 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755308Ab3FEPOK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jun 2013 11:14:10 -0400
+	id S1753985Ab3FOFKC convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 15 Jun 2013 01:10:02 -0400
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "E.G. Keizer" <E.G.Keizer@vu.nl>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/3] Various gssd fixes including machine-credential
- issue.
-Date: Wed, 5 Jun 2013 15:14:04 +0000
-Message-ID: <1370445238.21544.35.camel@leira.trondhjem.org>
-References: <51AF459A.1040609@vu.nl>
-	 <1370442331.21544.16.camel@leira.trondhjem.org> <51AF4FCB.9000503@vu.nl>
-In-Reply-To: <51AF4FCB.9000503@vu.nl>
-Content-Type: text/plain; charset=US-ASCII
+To: Jeff Layton <jlayton@redhat.com>, Sandeep Joshi <sanjos100@gmail.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: why does nfsd write not use splice
+Date: Sat, 15 Jun 2013 05:09:55 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93F403977@durexcmbx02-prd.hq.netapp.com>
+References: <CAEfL3KnfRWof4-6UAWTwXcH7XWSQuUR5ry_pg4qdyhBB6dt+5g@mail.gmail.com>
+	<20130611195140.GA29634@fieldses.org>	<51B7DE9C.6080703@talpey.com>
+	<20130612153936.GB32569@fieldses.org>
+	<CAEfL3KkdjB7bzvnfiDh024kHjCH0e64iH6GK6y+A+bpH3kUgJg@mail.gmail.com>
+	<20130612164637.GA6868@fieldses.org>
+	<CAEfL3Km7knMAW1Jx_jHZ0OYBMBpUkvbzk2riBE2C=NA9OMvUQw@mail.gmail.com>
+ <20130614152215.1f369a4c@tlielax.poochiereds.net>
+In-Reply-To: <20130614152215.1f369a4c@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-06-05 at 16:48 +0200, E.G. Keizer wrote:
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org] On Behalf Of Jeff Layton
+> Sent: Friday, June 14, 2013 3:22 PM
+> To: Sandeep Joshi
+> Cc: J. Bruce Fields; linux-nfs@vger.kernel.org
+> Subject: Re: why does nfsd write not use splice
 > 
-> On 05/06/2013 16:25, Myklebust, Trond wrote:
-> > On Wed, 2013-06-05 at 16:05 +0200, E.G. Keizer wrote:
-> >> First I would like to wholeheartedly support Neil Brown's comment. We at the
-> >> Vrije Universiteit in Amsterdam (NL) also have the situation where the Kerberos
-> >> administrator does not hand out machine credentials. A lot of Linux users from
-> >> the Faculty of Sciences depend on the functionality that lets them access
-> >> the NFS file servers with only their user credentials.
-> > 
-> > They should still be able to do that, but in that case, the state
-> > management will have to default to AUTH_SYS to set up the lease, which
-> > means that someone else can spoof requests to cancel the lease or change
-> > the callback channel parameters.
-> We would probably accept that. But can you enlighten me as to why AUTH_SYS is better
-> then krb5 (no i, no p)?
-
-I don't understand. If you are not handing out machine creds, then how
-can RPCSEC_GSS/krb work where RPCSEC_GSS/krb5i did not?
-
-> >> Secondly I would like to make a remark on basing client id's on the system's kerberos principal's name.
-> >> That same faculty, in the times it had its own IT department, used an identical keytab for
-> >> all Linux workstations, using the principal names "[nfs|root|host]/workstation@FEW.VU.NL".
-> >> I understand this would lead to severe problems when the client id (co_ownerid) is based
-> >> solely in the systems root principal name.
-> > 
-> > How so? The only problem should be that any one of those machines can go
-> > and cancel or change the lease of any other. That's a compromise that
-> > you decided upon when you decided to use one keytab for all of them.
-> Mmm, not at the time we made the decision. But I just mentioned that as an example
-> of the problems one can meet when deciding on the implementation of client id.
-> The same problem, but on a smaller scale, occurs when the client id is based
-> on the system principal and two or more systems use the same user principal as system
-> principal.
-
-The only thing that has changed is that if you use the 'migration' mount
-option, then the clientid uses the hostname as part of the long form
-client id. Otherwise, it uses the ip-address as it did before.
-
-The long form client id is not, and has never been 'based' on a system
-principal. It is _authenticated_ by a system principal. All that has
-changed is that we've divorced the authentication mechanism from the
-mountpoint authentication. We did so in order to avoid the problems that
-otherwise arise when mounting several volumes with different
-authentication mechanisms from the same server.
-
-> >> It seems to me that the issues about the client id look like a bag of worms. I've seen that the
-> >> newest standard `requires' integrity protection for client id exchanges. I doubt
-> >> that that will help when the source code of the NFS client is known and
-> >> the client id is guessable.
-> > 
-> > What is the attack and how would it compromise security on the clients
-> > that you care about?
-> I am personally not that worried about this issue on our environment. But others seem to
-> be in their environment. Otherwise the integrity requirement would not have ended up in
-> the NFSv4 RFC. As fas as I understand the danger with a man-in-the-middle attack is that the attacker
-> can see my client id and thus cancel my lease. When the man-in-the-middle can guess my
-> client id he can still invalidate my lease even when i'am using krb5i.
-
-According to the NFSv4 spec, your lease will be authenticated by the
-principal + security mechanism. The attacker cannot cancel or modify
-that lease without authenticating using the same principal and same
-krb5i security mechanism.
-
-I agree that adding krb5p as an option might be a good idea in order to
-protect the results of the SETCLIENTID operation; particularly so when
-all the other NFS related operations to the server are using krb5p.
-The problem is that I know of several servers that currently support
-krb5i but not krb5p, and so we'd have to do this too with care until
-those servers are spec-compliant.
-
-> >>  The wisest thing might be to offer different options
-> >> and let the administrators pick the one they like best?
-> > 
-> > We have two options available to you: auth_sys or RPCSEC_GSS w/krb5i.
-> I meant different options for choosing the client id.
+> On Fri, 14 Jun 2013 17:39:12 +0530
+> Sandeep Joshi <sanjos100@gmail.com> wrote:
 > 
+> > On Wed, Jun 12, 2013 at 10:16 PM, J. Bruce Fields <bfields@fieldses.org>
+> wrote:
+> > >
+> > > On Wed, Jun 12, 2013 at 09:51:09PM +0530, Sandeep Joshi wrote:
+> > > > Splice can be implemented independent of RDMA.  It is supposed to
+> > > > transfer pages between two file descriptors.  I found some
+> > > > postings on lkml from
+> > > > 2006 where Linus says it is quite possible to splice from a socket
+> > > > to a file.
+> > > >
+> > > > See the paragraph:
+> > > > " For filesystems, splice support tends to be really easy (both
+> > > > read and write). For other things, it depends a bit. But unlike
+> > > > sendfile(), it really is quite possible to splice _from_ a socket
+> > > > too, not just _to_ a socket. But no, that case hasn't been written yet."
+> > > >  http://yarchive.net/comp/linux/splice.html
+> > > >
+> > > > Larry McVoy's 1997 proposal for adding splice support to the
+> > > > kernel can be read at
+> > > > ftp.tux.org/pub/sites/ftp.bitmover.com/pub/*splice*.*ps*.gz<http:/
+> > > > /ftp.tux.org/pub/sites/ftp.bitmover.com/pub/splice.ps.gz>
+> > > >
+> > > > Perhaps I should have opened this thread on lkml to determine if
+> > > > splice from socket to file is still feasible..
+> > >
+> > > Right, the thing is, nfsd reads the rpc request from the socket into
+> > > its own buffers before it parses it.  If you want to move the data
+> > > directly out of the network buffers into the page cache, then you
+> > > have to know at what point the write data starts in the
+> > > request--which I believe will mean doing the xdr parsing (and gss
+> > > decryption if necessary) as the request comes in off the wire.
+> > >
+> > > That sounds like a lot of work and even if you have someone willing
+> > > to do the work they'd also need to justify that it's worth it.
+> > >
+> > > RDMA may have some protocol support that simplifies this, I don't know.
+> > >
+> > > --b.
+> >
+> > Hi Bruce,
+> >
+> > > nfsd reads the rpc request from the socket into its own buffers before it
+> parses it.
+> >
+> > I am not intimate with the gss code but do you think the
+> > svc_rqst->rq_pages[] can be spliced ?
+> >
 > 
-> Regards,
+> Probably not in its current form. The problem is one of alignment. You need
+> to know where the write data actually starts before doing the receive off the
+> socket, so you can make sure that it ends up in the correct spot in the pages
+> you're going to splice in.
 > 
-> Ed Keizer
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> There's also the problem of what to do about WRITE requests that contain
+> data that isn't page aligned or that's shorter than a page...
 
+Finally, there is the minor problem that the data that is actually received by the socket may be encrypted, or may need to be checksummed (krb5i) _before_ you can apply it to the file. That is not a particularly good fit for splice().
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Trond
