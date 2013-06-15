@@ -1,66 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:39611 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751535Ab3FVSmb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 22 Jun 2013 14:42:31 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: James <purpleidea@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFS clientaddr, kerberos
-Date: Sat, 22 Jun 2013 18:42:29 +0000
-Message-ID: <1371926549.9337.7.camel@leira.trondhjem.org>
-References: <1371913167.28295.8.camel@freed.purpleidea.com>
-	 <E910FB58-8E56-4E96-A197-B25084B135BD@oracle.com>
-In-Reply-To: <E910FB58-8E56-4E96-A197-B25084B135BD@oracle.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ob0-f175.google.com ([209.85.214.175]:54661 "EHLO
+	mail-ob0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754446Ab3FOQ2Y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 15 Jun 2013 12:28:24 -0400
+Received: by mail-ob0-f175.google.com with SMTP id xn12so1733074obc.20
+        for <linux-nfs@vger.kernel.org>; Sat, 15 Jun 2013 09:28:23 -0700 (PDT)
+Message-ID: <51BC9624.80507@gmail.com>
+Date: Sat, 15 Jun 2013 10:28:20 -0600
+From: John Haiducek <jhaiduce@gmail.com>
 MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Can't mount NFSv4 with kerberos on Debian Wheezy
+References: <51BAAFFC.6060208@gmail.com> <51BAB0BC.1010303@gmail.com> <5A1575CF-0400-48CE-B18B-5B26C92D152A@oracle.com> <CAFYD6QXVKpLDS_cWiA2uasu+KXazcRuk-+BX39MdehSwiu35gw@mail.gmail.com> <871BEFF7-33F4-4B34-9887-D5388951987E@oracle.com> <51BC8740.8010000@gmail.com> <FD6F6C61-BF8B-4C9C-BCB5-E240203D3ACB@oracle.com>
+In-Reply-To: <FD6F6C61-BF8B-4C9C-BCB5-E240203D3ACB@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2013-06-22 at 11:22 -0400, Chuck Lever wrote:
-> On Jun 22, 2013, at 10:59 AM, James <purpleidea@gmail.com> wrote:
-> 
-> > Dear NFS experts, I have a few questions:
-> > 
-> > 1) Concerning the NFSv4 clientaddr option, I'm curious about the
-> > technical details of why the server needs a callback address, and what
-> > to do if the client isn't directly routable? (eg: behind NAT) I am
-> > thinking of the situation with *many* clients.
-> 
-> If a callback path is not available, the server will not grant delegations to the client.  Delegation is simply a performance optimization.  Normal operation can proceed.
-> 
-> > Also, what ports need to be open on the client? Does it need to respond
-> > to "NEW" traffic, or only "ESTABLISHED" or ?
-> 
-> Typically the client will choose a port at random.  The client's callback address and port are provided to the server by the NFSv4 SETCLIENTID operation.
-> 
-> The server tests the provided callback arguments with a CB_NULL request (and a new TCP connection) either at mount time or when a client application first opens a file on that server.  If the arguments do not result in a successful CB_NULL, the server simply disables delegation for that client.
-> 
-> You can fix the port the client uses, if you have a firewall in place and want to leave an open port.  A kernel command-line parameter is used on the client:
-> 
->         nfs.callback_tcpport=
->                         [NFS] set the TCP port on which the NFSv4 callback
->                         channel should listen.
-> 
-> Although, these days, it may be a per-namespace thing.  A quick browse of the documentation wasn't revealing.
+On 06/15/2013 10:27 AM, Chuck Lever wrote:
+> On Jun 15, 2013, at 11:24 AM, John Haiducek<jhaiduce@gmail.com>  wrote:
+>
+>> On 06/14/2013 02:13 PM, Chuck Lever wrote:
+>>> On Jun 14, 2013, at 3:49 PM, John Haiducek<jhaiduce@gmail.com<mailto:jhaiduce@gmail.com>>  wrote:
+>>>
+>>>> On Jun 14, 2013 11:05 AM, "Chuck Lever"<chuck.lever@oracle.com<mailto:chuck.lever@oracle.com>>  wrote:
+>>>>>
+>>>>> On Jun 14, 2013, at 1:57 AM, John Haiducek<jhaiduce@gmail.com<mailto:jhaiduce@gmail.com>>  wrote:
+>>>>>
+>>>>>> Jun 11 20:28:23 tbm rpc.gssd[8959]: Name or service not known while getting full hostname for 'tbm.enterprise.local'
+>>>>> gssd thinks your client's hostname is "tbm.enterprise.local," which has no DNS entry.
+>>>> That is the correct client hostname, and according to the 'host' command it is in dns. What would cause the host command to find it when gssd can't?
+>>>>
+>>> The error message is from utils/gssd/krb5_util.c:get_full_hostname().  If get_full_hostname() fails, then gssd can't search your client's keytab.
+>>>
+>>> Figure out why that getaddrinfo(3) call is failing to find a canonical name for "tbm.enterprise.local" -- that could be a client system configuration problem as much as a DNS misconfiguration.
+>> Ok, I think I fixed the DNS problem. I was running avahi, and apparently you can't use avahi and also have a DNS server with a domain ending in .local. Shutting down avahi fixed it, although if I wanted to keep avahi working I could probably fix this by changing my domain to end in something other than .local.
+>>
+>> But now the mount command hangs and never returns. I get this in /var/log/syslog:
+>>
+>> Jun 15 09:19:36 tbm rpc.idmapd[16253]: New client: 24
+>> Jun 15 09:19:36 tbm rpc.gssd[16258]: dir_notify_handler: sig 37 si 0x7fffb0fb3330 data 0x7fffb0fb3200
+>> Jun 15 09:19:37 tbm rpc.gssd[16258]: dir_notify_handler: sig 37 si 0x7fffb0fb3330 data 0x7fffb0fb3200
+>> Jun 15 09:19:37 tbm rpc.gssd[16258]: dir_notify_handler: sig 37 si 0x7fffb0fb3330 data 0x7fffb0fb3200
+>> Jun 15 09:19:37 tbm rpc.gssd[16258]: destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt24
+>> Jun 15 09:19:37 tbm rpc.idmapd[16253]: Stale client: 24
+>> Jun 15 09:19:37 tbm rpc.idmapd[16253]: #011->  closed /var/lib/nfs/rpc_pipefs/nfs/clnt24/idmap
+>> Jun 15 09:19:53 tbm rpc.gssd[16258]: dir_notify_handler: sig 37 si 0x7fffb0fb3330 data 0x7fffb0fb3200
+>> Jun 15 09:19:53 tbm rpc.idmapd[16253]: New client: 25
+>>
+>> I might be missing something, but none of these entries look like errors. Where else should I look?
+> You can boost the verbosity of the debugging messages from gssd.  Start it with "-vv" or "-vvv".
+>
 
-Kernel parameters cannot be per-namespace; containers don't boot a
-separate kernel.
-
-Note that if you have compiled nfs as a module, you will want to do
-something along the lines of:
-
-	echo "options nfs callback_tcpport=<port>" >>/etc/modprobe.d/options-local.conf
-
-Also note that this requirement is for NFSv4 only. NFSv4.1 callbacks use
-the same connection as the outgoing RPC calls, and so support callbacks
-through NAT without requiring you to open for incoming connections.
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Already have it gssd running with -vvv.
