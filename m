@@ -1,63 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35125 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:30609 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752504Ab3FZTVb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 26 Jun 2013 15:21:31 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>, stable@kernel.org
-Subject: [PATCH 3/7] svcrpc: fix handling of too-short rpc's
-Date: Wed, 26 Jun 2013 15:21:23 -0400
-Message-Id: <1372274488-4752-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1372274488-4752-1-git-send-email-bfields@redhat.com>
-References: <1372274488-4752-1-git-send-email-bfields@redhat.com>
+	id S1751804Ab3FQPO3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Jun 2013 11:14:29 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
+Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
+        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
+Subject: [PATCH v3 04/13] locks: make "added" in __posix_lock_file a bool
+Date: Mon, 17 Jun 2013 11:13:47 -0400
+Message-Id: <1371482036-15958-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
+References: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+...save 3 bytes of stack space.
 
-If we detect that an rpc is too short, we abort and close the
-connection.  Except, there's a bug here: we're leaving sk_datalen
-nonzero without leaving any pages in the sk_pages array.  The most
-likely result of the inconsistency is a subsequent crash in
-svc_tcp_clear_pages.
-
-Also demote the BUG_ON in svc_tcp_clear_pages to a WARN.
-
-Cc: stable@kernel.org
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Acked-by: J. Bruce Fields <bfields@fieldses.org>
 ---
- net/sunrpc/svcsock.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+ fs/locks.c |    9 +++++----
+ 1 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 0f679df..df74919 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -917,7 +917,10 @@ static void svc_tcp_clear_pages(struct svc_sock *svsk)
- 	len = svsk->sk_datalen;
- 	npages = (len + PAGE_SIZE - 1) >> PAGE_SHIFT;
- 	for (i = 0; i < npages; i++) {
--		BUG_ON(svsk->sk_pages[i] == NULL);
-+		if (svsk->sk_pages[i] == NULL) {
-+			WARN_ON_ONCE(1);
-+			continue;
-+		}
- 		put_page(svsk->sk_pages[i]);
- 		svsk->sk_pages[i] = NULL;
- 	}
-@@ -1092,8 +1095,10 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 		goto err_noclose;
- 	}
+diff --git a/fs/locks.c b/fs/locks.c
+index 1e6301b..c186649 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -791,7 +791,8 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 	struct file_lock *left = NULL;
+ 	struct file_lock *right = NULL;
+ 	struct file_lock **before;
+-	int error, added = 0;
++	int error;
++	bool added = false;
  
--	if (svc_sock_reclen(svsk) < 8)
-+	if (svc_sock_reclen(svsk) < 8) {
-+		svsk->sk_datalen = 0;
- 		goto err_delete; /* client is nuts. */
-+	}
- 
- 	rqstp->rq_arg.len = svsk->sk_datalen;
- 	rqstp->rq_arg.page_base = 0;
+ 	/*
+ 	 * We may need two file_lock structures for this operation,
+@@ -885,7 +886,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 				continue;
+ 			}
+ 			request = fl;
+-			added = 1;
++			added = true;
+ 		}
+ 		else {
+ 			/* Processing for different lock types is a bit
+@@ -896,7 +897,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 			if (fl->fl_start > request->fl_end)
+ 				break;
+ 			if (request->fl_type == F_UNLCK)
+-				added = 1;
++				added = true;
+ 			if (fl->fl_start < request->fl_start)
+ 				left = fl;
+ 			/* If the next lock in the list has a higher end
+@@ -926,7 +927,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 				locks_release_private(fl);
+ 				locks_copy_private(fl, request);
+ 				request = fl;
+-				added = 1;
++				added = true;
+ 			}
+ 		}
+ 		/* Go on to next lock.
 -- 
-1.8.1.4
+1.7.1
 
