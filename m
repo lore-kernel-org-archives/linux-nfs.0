@@ -1,8 +1,8 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:16719 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:15484 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752533Ab3FQPOp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Jun 2013 11:14:45 -0400
+	id S1751785Ab3FQPO3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Jun 2013 11:14:29 -0400
 From: Jeff Layton <jlayton@redhat.com>
 To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
 Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
@@ -12,203 +12,102 @@ Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
         linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
         cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v3 13/13] locks: move file_lock_list to a set of percpu hlist_heads and convert file_lock_lock to an lglock
-Date: Mon, 17 Jun 2013 11:13:56 -0400
-Message-Id: <1371482036-15958-14-git-send-email-jlayton@redhat.com>
+Subject: [PATCH v3 03/13] locks: comment cleanups and clarifications
+Date: Mon, 17 Jun 2013 11:13:46 -0400
+Message-Id: <1371482036-15958-4-git-send-email-jlayton@redhat.com>
 In-Reply-To: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
 References: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The file_lock_list is only used for /proc/locks. The vastly common case
-is for locks to be put onto the list and come off again, without ever
-being traversed.
-
-Help optimize for this use-case by moving to percpu hlist_head-s. At the
-same time, we can make the locking less contentious by moving to an
-lglock. When iterating over the lists for /proc/locks, we must take the
-global lock and then iterate over each CPU's list in turn.
-
-This change necessitates a new fl_link_cpu field to keep track of which
-CPU the entry is on. On x86_64 at least, this field is placed within an
-existing hole in the struct to avoid growing the size.
-
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Acked-by: J. Bruce Fields <bfields@fieldses.org>
 ---
- fs/locks.c         |   68 ++++++++++++++++++++++++++++++++++++---------------
- include/linux/fs.h |    1 +
- 2 files changed, 49 insertions(+), 20 deletions(-)
+ fs/locks.c         |   21 +++++++++++++--------
+ include/linux/fs.h |   18 ++++++++++++++++++
+ 2 files changed, 31 insertions(+), 8 deletions(-)
 
 diff --git a/fs/locks.c b/fs/locks.c
-index 5db80c7..be9ca57 100644
+index e3140b8..1e6301b 100644
 --- a/fs/locks.c
 +++ b/fs/locks.c
-@@ -127,6 +127,8 @@
- #include <linux/rcupdate.h>
- #include <linux/pid_namespace.h>
- #include <linux/hashtable.h>
-+#include <linux/percpu.h>
-+#include <linux/lglock.h>
+@@ -518,9 +518,10 @@ static void locks_insert_block(struct file_lock *blocker,
+ 		list_add(&waiter->fl_link, &blocked_list);
+ }
  
- #include <asm/uaccess.h>
- 
-@@ -155,11 +157,12 @@ int lease_break_time = 45;
- 	for (lockp = &inode->i_flock; *lockp != NULL; lockp = &(*lockp)->fl_next)
- 
- /*
-- * The global file_lock_list is only used for displaying /proc/locks. Protected
-- * by the file_lock_lock.
-+ * The global file_lock_list is only used for displaying /proc/locks, so we
-+ * keep a list on each CPU, with each list protected by its own spinlock via
-+ * the file_lock_lglock.
+-/* Wake up processes blocked waiting for blocker.
+- * If told to wait then schedule the processes until the block list
+- * is empty, otherwise empty the block list ourselves.
++/*
++ * Wake up processes blocked waiting for blocker.
++ *
++ * Must be called with the file_lock_lock held!
   */
--static HLIST_HEAD(file_lock_list);
--static DEFINE_SPINLOCK(file_lock_lock);
-+DEFINE_STATIC_LGLOCK(file_lock_lglock);
-+static DEFINE_PER_CPU(struct hlist_head, file_lock_list);
- 
- /*
-  * The blocked_hash is used to find POSIX lock loops for deadlock detection.
-@@ -490,20 +493,30 @@ static int posix_same_owner(struct file_lock *fl1, struct file_lock *fl2)
- 	return fl1->fl_owner == fl2->fl_owner;
- }
- 
-+/* Must be called with the i_lock held! */
- static inline void
- locks_insert_global_locks(struct file_lock *waiter)
+ static void locks_wake_up_blocks(struct file_lock *blocker)
  {
--	spin_lock(&file_lock_lock);
--	hlist_add_head(&waiter->fl_link, &file_lock_list);
--	spin_unlock(&file_lock_lock);
-+	lg_local_lock(&file_lock_lglock);
-+	waiter->fl_link_cpu = smp_processor_id();
-+	hlist_add_head(&waiter->fl_link, this_cpu_ptr(&file_lock_list));
-+	lg_local_unlock(&file_lock_lglock);
- }
+@@ -806,6 +807,11 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 	}
  
-+/* Must be called with the i_lock held! */
- static inline void
- locks_delete_global_locks(struct file_lock *waiter)
- {
--	spin_lock(&file_lock_lock);
+ 	lock_flocks();
 +	/*
-+	 * Avoid taking lock if already unhashed. This is safe since this check
-+	 * is done while holding the i_lock, and new insertions into the list
-+	 * also require that it be held.
++	 * New lock request. Walk all POSIX locks and look for conflicts. If
++	 * there are any, either return error or put the request on the
++	 * blocker's list of waiters and the global blocked_list.
 +	 */
-+	if (hlist_unhashed(&waiter->fl_link))
-+		return;
-+	lg_local_lock_cpu(&file_lock_lglock, waiter->fl_link_cpu);
- 	hlist_del_init(&waiter->fl_link);
--	spin_unlock(&file_lock_lock);
-+	lg_local_unlock_cpu(&file_lock_lglock, waiter->fl_link_cpu);
- }
+ 	if (request->fl_type != F_UNLCK) {
+ 		for_each_lock(inode, before) {
+ 			fl = *before;
+@@ -844,7 +850,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 		before = &fl->fl_next;
+ 	}
  
- static unsigned long
-@@ -2228,6 +2241,11 @@ EXPORT_SYMBOL_GPL(vfs_cancel_lock);
- #include <linux/proc_fs.h>
- #include <linux/seq_file.h>
+-	/* Process locks with this owner.  */
++	/* Process locks with this owner. */
+ 	while ((fl = *before) && posix_same_owner(request, fl)) {
+ 		/* Detect adjacent or overlapping regions (if same lock type)
+ 		 */
+@@ -930,10 +936,9 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 	}
  
-+struct locks_iterator {
-+	int	li_cpu;
-+	loff_t	li_pos;
-+};
-+
- static void lock_get_status(struct seq_file *f, struct file_lock *fl,
- 			    loff_t id, char *pfx)
- {
-@@ -2301,39 +2319,41 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
- 
- static int locks_show(struct seq_file *f, void *v)
- {
-+	struct locks_iterator *iter = f->private;
- 	struct file_lock *fl, *bfl;
- 
- 	fl = hlist_entry(v, struct file_lock, fl_link);
- 
--	lock_get_status(f, fl, *((loff_t *)f->private), "");
-+	lock_get_status(f, fl, iter->li_pos, "");
- 
- 	list_for_each_entry(bfl, &fl->fl_block, fl_block)
--		lock_get_status(f, bfl, *((loff_t *)f->private), " ->");
-+		lock_get_status(f, bfl, iter->li_pos, " ->");
- 
- 	return 0;
- }
- 
- static void *locks_start(struct seq_file *f, loff_t *pos)
- {
--	loff_t *p = f->private;
-+	struct locks_iterator *iter = f->private;
- 
--	spin_lock(&file_lock_lock);
-+	iter->li_pos = *pos + 1;
-+	lg_global_lock(&file_lock_lglock);
- 	spin_lock(&blocked_lock_lock);
--	*p = (*pos + 1);
--	return seq_hlist_start(&file_lock_list, *pos);
-+	return seq_hlist_start_percpu(&file_lock_list, &iter->li_cpu, *pos);
- }
- 
- static void *locks_next(struct seq_file *f, void *v, loff_t *pos)
- {
--	loff_t *p = f->private;
--	++*p;
--	return seq_hlist_next(v, &file_lock_list, pos);
-+	struct locks_iterator *iter = f->private;
-+
-+	++iter->li_pos;
-+	return seq_hlist_next_percpu(v, &file_lock_list, &iter->li_cpu, pos);
- }
- 
- static void locks_stop(struct seq_file *f, void *v)
- {
- 	spin_unlock(&blocked_lock_lock);
--	spin_unlock(&file_lock_lock);
-+	lg_global_unlock(&file_lock_lglock);
- }
- 
- static const struct seq_operations locks_seq_operations = {
-@@ -2345,7 +2365,8 @@ static const struct seq_operations locks_seq_operations = {
- 
- static int locks_open(struct inode *inode, struct file *filp)
- {
--	return seq_open_private(filp, &locks_seq_operations, sizeof(loff_t));
-+	return seq_open_private(filp, &locks_seq_operations,
-+					sizeof(struct locks_iterator));
- }
- 
- static const struct file_operations proc_locks_operations = {
-@@ -2445,9 +2466,16 @@ EXPORT_SYMBOL(lock_may_write);
- 
- static int __init filelock_init(void)
- {
-+	int i;
-+
- 	filelock_cache = kmem_cache_create("file_lock_cache",
- 			sizeof(struct file_lock), 0, SLAB_PANIC, NULL);
- 
-+	lg_lock_init(&file_lock_lglock, "file_lock_lglock");
-+
-+	for_each_possible_cpu(i)
-+		INIT_HLIST_HEAD(per_cpu_ptr(&file_lock_list, i));
-+
- 	return 0;
- }
- 
+ 	/*
+-	 * The above code only modifies existing locks in case of
+-	 * merging or replacing.  If new lock(s) need to be inserted
+-	 * all modifications are done bellow this, so it's safe yet to
+-	 * bail out.
++	 * The above code only modifies existing locks in case of merging or
++	 * replacing. If new lock(s) need to be inserted all modifications are
++	 * done below this, so it's safe yet to bail out.
+ 	 */
+ 	error = -ENOLCK; /* "no luck" */
+ 	if (right && left == right && !new_fl2)
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 232a345..18e59b8 100644
+index b9d7816..94105d2 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -953,6 +953,7 @@ struct file_lock {
- 	unsigned int fl_flags;
- 	unsigned char fl_type;
- 	unsigned int fl_pid;
-+	int fl_link_cpu;		/* what cpu's list is this on? */
- 	struct pid *fl_nspid;
- 	wait_queue_head_t fl_wait;
- 	struct file *fl_file;
+@@ -926,6 +926,24 @@ int locks_in_grace(struct net *);
+ /* that will die - we need it for nfs_lock_info */
+ #include <linux/nfs_fs_i.h>
+ 
++/*
++ * struct file_lock represents a generic "file lock". It's used to represent
++ * POSIX byte range locks, BSD (flock) locks, and leases. It's important to
++ * note that the same struct is used to represent both a request for a lock and
++ * the lock itself, but the same object is never used for both.
++ *
++ * FIXME: should we create a separate "struct lock_request" to help distinguish
++ * these two uses?
++ *
++ * The i_flock list is ordered by:
++ *
++ * 1) lock type -- FL_LEASEs first, then FL_FLOCK, and finally FL_POSIX
++ * 2) lock owner
++ * 3) lock range start
++ * 4) lock range end
++ *
++ * Obviously, the last two criteria only matter for POSIX locks.
++ */
+ struct file_lock {
+ 	struct file_lock *fl_next;	/* singly linked list for this inode  */
+ 	struct list_head fl_link;	/* doubly linked list of all locks */
 -- 
 1.7.1
 
