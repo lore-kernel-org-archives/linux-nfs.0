@@ -1,78 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:48663 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:11928 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754875Ab3FLGMw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Jun 2013 02:12:52 -0400
-Date: Wed, 12 Jun 2013 16:12:40 +1000
-From: NeilBrown <neilb@suse.de>
-To: NeilBrown <neilb@suse.de>
-Cc: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <SteveD@redhat.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/3] Various gssd fixes including machine-credential
- issue.
-Message-ID: <20130612161240.59b219b7@notabene.brown>
-In-Reply-To: <20130606094336.4faf099d@notabene.brown>
-References: <20130603005219.20080.1927.stgit@notabene.brown>
-	<A2E2CEA9-4F2B-4A3F-8661-36D1E6288B0F@oracle.com>
-	<20130603122319.47f4e0dd@notabene.brown>
-	<0016A272-E433-4020-91FE-45A5EE494296@oracle.com>
-	<20130603130101.4acfe706@notabene.brown>
-	<C4A2C0D1-8900-45AC-90F6-9629E3F71730@oracle.com>
-	<20130604093025.5e467eeb@notabene.brown>
-	<9F47F7D4-9D96-424E-BAD9-21AE1C06A877@oracle.com>
-	<2195C785-9764-48CC-A994-A80B7A8EDC62@oracle.com>
-	<20130605112635.188f628e@notabene.brown>
-	<1ECE6C65-EE15-46C1-97D1-636B15A775F7@oracle.com>
-	<20130606094336.4faf099d@notabene.brown>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/lvva/LID3E960hfdpk6It/U"; protocol="application/pgp-signature"
+	id S1751982Ab3FQPOc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Jun 2013 11:14:32 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
+Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
+        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
+Subject: [PATCH v3 05/13] locks: encapsulate the fl_link list handling
+Date: Mon, 17 Jun 2013 11:13:48 -0400
+Message-Id: <1371482036-15958-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
+References: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/lvva/LID3E960hfdpk6It/U
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Move the fl_link list handling routines into a separate set of helpers.
+Also ensure that locks and requests are always put on global lists
+last (after fully initializing them) and are taken off before unintializing
+them.
 
-On Thu, 6 Jun 2013 09:43:36 +1000 NeilBrown <neilb@suse.de> wrote:
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/locks.c |   45 ++++++++++++++++++++++++++++++++++++---------
+ 1 files changed, 36 insertions(+), 9 deletions(-)
 
-> I've provided a patched kernel to customer.  Hopefully will hear back soo=
-n.
+diff --git a/fs/locks.c b/fs/locks.c
+index c186649..c0e613f 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -153,13 +153,15 @@ int lease_break_time = 45;
+ #define for_each_lock(inode, lockp) \
+ 	for (lockp = &inode->i_flock; *lockp != NULL; lockp = &(*lockp)->fl_next)
+ 
++/* The global file_lock_list is only used for displaying /proc/locks. */
+ static LIST_HEAD(file_lock_list);
++
++/* The blocked_list is used to find POSIX lock loops for deadlock detection. */
+ static LIST_HEAD(blocked_list);
++
++/* Protects the two list heads above, plus the inode->i_flock list */
+ static DEFINE_SPINLOCK(file_lock_lock);
+ 
+-/*
+- * Protects the two list heads above, plus the inode->i_flock list
+- */
+ void lock_flocks(void)
+ {
+ 	spin_lock(&file_lock_lock);
+@@ -484,13 +486,37 @@ static int posix_same_owner(struct file_lock *fl1, struct file_lock *fl2)
+ 	return fl1->fl_owner == fl2->fl_owner;
+ }
+ 
++static inline void
++locks_insert_global_locks(struct file_lock *waiter)
++{
++	list_add_tail(&waiter->fl_link, &file_lock_list);
++}
++
++static inline void
++locks_delete_global_locks(struct file_lock *waiter)
++{
++	list_del_init(&waiter->fl_link);
++}
++
++static inline void
++locks_insert_global_blocked(struct file_lock *waiter)
++{
++	list_add(&waiter->fl_link, &blocked_list);
++}
++
++static inline void
++locks_delete_global_blocked(struct file_lock *waiter)
++{
++	list_del_init(&waiter->fl_link);
++}
++
+ /* Remove waiter from blocker's block list.
+  * When blocker ends up pointing to itself then the list is empty.
+  */
+ static void __locks_delete_block(struct file_lock *waiter)
+ {
++	locks_delete_global_blocked(waiter);
+ 	list_del_init(&waiter->fl_block);
+-	list_del_init(&waiter->fl_link);
+ 	waiter->fl_next = NULL;
+ }
+ 
+@@ -512,10 +538,10 @@ static void locks_insert_block(struct file_lock *blocker,
+ 			       struct file_lock *waiter)
+ {
+ 	BUG_ON(!list_empty(&waiter->fl_block));
+-	list_add_tail(&waiter->fl_block, &blocker->fl_block);
+ 	waiter->fl_next = blocker;
++	list_add_tail(&waiter->fl_block, &blocker->fl_block);
+ 	if (IS_POSIX(blocker))
+-		list_add(&waiter->fl_link, &blocked_list);
++		locks_insert_global_blocked(request);
+ }
+ 
+ /*
+@@ -543,13 +569,13 @@ static void locks_wake_up_blocks(struct file_lock *blocker)
+  */
+ static void locks_insert_lock(struct file_lock **pos, struct file_lock *fl)
+ {
+-	list_add(&fl->fl_link, &file_lock_list);
+-
+ 	fl->fl_nspid = get_pid(task_tgid(current));
+ 
+ 	/* insert into file's list */
+ 	fl->fl_next = *pos;
+ 	*pos = fl;
++
++	locks_insert_global_locks(fl);
+ }
+ 
+ /*
+@@ -562,9 +588,10 @@ static void locks_delete_lock(struct file_lock **thisfl_p)
+ {
+ 	struct file_lock *fl = *thisfl_p;
+ 
++	locks_delete_global_locks(fl);
++
+ 	*thisfl_p = fl->fl_next;
+ 	fl->fl_next = NULL;
+-	list_del_init(&fl->fl_link);
+ 
+ 	if (fl->fl_nspid) {
+ 		put_pid(fl->fl_nspid);
+-- 
+1.7.1
 
-Hi Chuck,
- the patch appears to work exactly as advertised and completely resolves the
- issue - thanks.
-
-Getting back to the idea of making this sort of thing work seamlessly,
-another possibility to consider is to use the *real* uid  of the process
-which performs the mount do authenticate SETCLIENTID - either as the primary
-authentication or as a fall-back.
-Then the a mountpoint with "users" listed as an option in /etc/fstab can be
-mounted by anyone with appropriate credentials and no credential should be
-needed for root, and not machine credential should be needed either.
-
-NeilBrown
-
---Sig_/lvva/LID3E960hfdpk6It/U
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBUbgRWDnsnt1WYoG5AQKuWg/+JCNt2CjdGrvts9maK0372ux2wjq5/XwS
-eMEkOlDtNoP1DrEaWdXmHO6B6az78mjwh1zy9o+re1xdhJVgKnfCcyGSqNAF6y7B
-ciqUpuYmG/ENpgNTBzCBp3oBm4cSDrrYMlcpRMXZjhoAJo09zSvxzVcxK/Er6wj0
-WM3p7MOgTaAQWLG0ujOjAqaMqsQSzNcggR2Cy+dWSj+/h8+ghAH8Fsn5UuwksbfN
-roq5crs7cH7gyZCFn9UbOrY21IBEpG/ycdLuGiOYXcyWNjBdNXWoEkjSKE6vQUuH
-7ZkAPBCWunntJmcZWtbHIZA7/eEcUKh0mfY3BJ6K7kLe9siot8qseI8TFQFiVrEB
-+uYlcY/L3EFFSd3qOfD4hhTVJwE/1TWs7yVOYh3OGyvsWNS4f0PsBl/rzmGea+5U
-gp+6xGLLvVmbW30LWdAFECLvQdW4TtKc/x6tgZy5/QJB2l7Oe3ckxMPVg3WoZxrb
-uKkLszyUkWWEQeqxkM4aEb4VMKxJBcnVomkeaflTUpKVk4GG/JQHkNbl/e+Hv07b
-27kmRQPDuzQypB+drOFZr+604dTLsVUHdxPIjsT8dePbbGuN7Vx90V2uk/S/qWIo
-/jog3tNpKpruTAfUzYgiYiX7chHL8GXz+AEmeTp2fVslf7X+vYX0/ry06pXi2ytE
-Z/GSPrTw0uc=
-=bB2R
------END PGP SIGNATURE-----
-
---Sig_/lvva/LID3E960hfdpk6It/U--
