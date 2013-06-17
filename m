@@ -1,65 +1,157 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f49.google.com ([209.85.219.49]:56215 "EHLO
-	mail-oa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752068Ab3FQO6K (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Jun 2013 10:58:10 -0400
-Received: by mail-oa0-f49.google.com with SMTP id n9so3484086oag.22
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Jun 2013 07:58:10 -0700 (PDT)
-Received: from ?IPv6:2001:470:d:51c::8924:fefd? ([2001:470:d:51c::8924:fefd])
-        by mx.google.com with ESMTPSA id m3sm12995922oex.7.2013.06.17.07.58.08
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=ECDHE-RSA-RC4-SHA bits=128/128);
-        Mon, 17 Jun 2013 07:58:09 -0700 (PDT)
-Message-ID: <51BF23FE.4070106@gmail.com>
-Date: Mon, 17 Jun 2013 08:58:06 -0600
-From: John Haiducek <jhaiduce@gmail.com>
-MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Re: Can't mount NFSv4 with kerberos on Debian Wheezy
-References: <51BF21E0.8060805@gmail.com>
-In-Reply-To: <51BF21E0.8060805@gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:21523 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752042Ab3FQPOd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Jun 2013 11:14:33 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
+Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
+        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
+Subject: [PATCH v3 08/13] locks: convert fl_link to a hlist_node
+Date: Mon, 17 Jun 2013 11:13:51 -0400
+Message-Id: <1371482036-15958-9-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
+References: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Testing has shown that iterating over the blocked_list for deadlock
+detection turns out to be a bottleneck. In order to alleviate that,
+begin the process of turning it into a hashtable. We start by turning
+the fl_link into a hlist_node and the global lists into hlists. A later
+patch will do the conversion of the blocked_list to a hashtable.
 
-On 06/14/2013 02:13 PM, Chuck Lever wrote:
->
-> On Jun 14, 2013, at 3:49 PM, John Haiducek <jhaiduce@gmail.com 
-> <mailto:jhaiduce@gmail.com>> wrote:
->
->>
->> On Jun 14, 2013 11:05 AM, "Chuck Lever" <chuck.lever@oracle.com 
->> <mailto:chuck.lever@oracle.com>> wrote:
->> >
->> >
->> > On Jun 14, 2013, at 1:57 AM, John Haiducek <jhaiduce@gmail.com 
->> <mailto:jhaiduce@gmail.com>> wrote:
->> >
->> > > Jun 11 20:28:23 tbm rpc.gssd[8959]: Name or service not known 
->> while getting full hostname for 'tbm.enterprise.local'
->> >
->> > gssd thinks your client's hostname is "tbm.enterprise.local," which 
->> has no DNS entry.
->>
->> That is the correct client hostname, and according to the 'host' 
->> command it is in dns. What would cause the host command to find it 
->> when gssd can't?
->>
->
-> The error message is from utils/gssd/krb5_util.c:get_full_hostname(). 
->  If get_full_hostname() fails, then gssd can't search your client's 
-> keytab.
->
-> Figure out why that getaddrinfo(3) call is failing to find a canonical 
-> name for "tbm.enterprise.local" -- that could be a client system 
-> configuration problem as much as a DNS misconfiguration.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Acked-by: J. Bruce Fields <bfields@fieldses.org>
+---
+ fs/locks.c         |   24 ++++++++++++------------
+ include/linux/fs.h |    2 +-
+ 2 files changed, 13 insertions(+), 13 deletions(-)
 
-Incidentally, I have a dual-stack network (ipv4 and ipv6). My best guess 
-is that ipv6 is not part of the problem; the client and server had 
-missing AAAA records in DNS; when I added those the NFS mount switched 
-automatically to using ipv6 for the connection but it hangs the same as 
-before.
-
-John
+diff --git a/fs/locks.c b/fs/locks.c
+index a8f3b33..32826ed 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -157,13 +157,13 @@ int lease_break_time = 45;
+  * The global file_lock_list is only used for displaying /proc/locks. Protected
+  * by the file_lock_lock.
+  */
+-static LIST_HEAD(file_lock_list);
++static HLIST_HEAD(file_lock_list);
+ 
+ /*
+  * The blocked_list is used to find POSIX lock loops for deadlock detection.
+  * Protected by file_lock_lock.
+  */
+-static LIST_HEAD(blocked_list);
++static HLIST_HEAD(blocked_list);
+ 
+ /* Protects the two list heads above, and fl->fl_block list. */
+ static DEFINE_SPINLOCK(file_lock_lock);
+@@ -172,7 +172,7 @@ static struct kmem_cache *filelock_cache __read_mostly;
+ 
+ static void locks_init_lock_heads(struct file_lock *fl)
+ {
+-	INIT_LIST_HEAD(&fl->fl_link);
++	INIT_HLIST_NODE(&fl->fl_link);
+ 	INIT_LIST_HEAD(&fl->fl_block);
+ 	init_waitqueue_head(&fl->fl_wait);
+ }
+@@ -206,7 +206,7 @@ void locks_free_lock(struct file_lock *fl)
+ {
+ 	BUG_ON(waitqueue_active(&fl->fl_wait));
+ 	BUG_ON(!list_empty(&fl->fl_block));
+-	BUG_ON(!list_empty(&fl->fl_link));
++	BUG_ON(!hlist_unhashed(&fl->fl_link));
+ 
+ 	locks_release_private(fl);
+ 	kmem_cache_free(filelock_cache, fl);
+@@ -484,7 +484,7 @@ static inline void
+ locks_insert_global_locks(struct file_lock *waiter)
+ {
+ 	spin_lock(&file_lock_lock);
+-	list_add_tail(&waiter->fl_link, &file_lock_list);
++	hlist_add_head(&waiter->fl_link, &file_lock_list);
+ 	spin_unlock(&file_lock_lock);
+ }
+ 
+@@ -492,20 +492,20 @@ static inline void
+ locks_delete_global_locks(struct file_lock *waiter)
+ {
+ 	spin_lock(&file_lock_lock);
+-	list_del_init(&waiter->fl_link);
++	hlist_del_init(&waiter->fl_link);
+ 	spin_unlock(&file_lock_lock);
+ }
+ 
+ static inline void
+ locks_insert_global_blocked(struct file_lock *waiter)
+ {
+-	list_add(&waiter->fl_link, &blocked_list);
++	hlist_add_head(&waiter->fl_link, &blocked_list);
+ }
+ 
+ static inline void
+ locks_delete_global_blocked(struct file_lock *waiter)
+ {
+-	list_del_init(&waiter->fl_link);
++	hlist_del_init(&waiter->fl_link);
+ }
+ 
+ /* Remove waiter from blocker's block list.
+@@ -730,7 +730,7 @@ static struct file_lock *what_owner_is_waiting_for(struct file_lock *block_fl)
+ {
+ 	struct file_lock *fl;
+ 
+-	list_for_each_entry(fl, &blocked_list, fl_link) {
++	hlist_for_each_entry(fl, &blocked_list, fl_link) {
+ 		if (posix_same_owner(fl, block_fl))
+ 			return fl->fl_next;
+ 	}
+@@ -2285,7 +2285,7 @@ static int locks_show(struct seq_file *f, void *v)
+ {
+ 	struct file_lock *fl, *bfl;
+ 
+-	fl = list_entry(v, struct file_lock, fl_link);
++	fl = hlist_entry(v, struct file_lock, fl_link);
+ 
+ 	lock_get_status(f, fl, *((loff_t *)f->private), "");
+ 
+@@ -2301,14 +2301,14 @@ static void *locks_start(struct seq_file *f, loff_t *pos)
+ 
+ 	spin_lock(&file_lock_lock);
+ 	*p = (*pos + 1);
+-	return seq_list_start(&file_lock_list, *pos);
++	return seq_hlist_start(&file_lock_list, *pos);
+ }
+ 
+ static void *locks_next(struct seq_file *f, void *v, loff_t *pos)
+ {
+ 	loff_t *p = f->private;
+ 	++*p;
+-	return seq_list_next(v, &file_lock_list, pos);
++	return seq_hlist_next(v, &file_lock_list, pos);
+ }
+ 
+ static void locks_stop(struct seq_file *f, void *v)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index e2f896d..3b340f7 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -946,7 +946,7 @@ int locks_in_grace(struct net *);
+  */
+ struct file_lock {
+ 	struct file_lock *fl_next;	/* singly linked list for this inode  */
+-	struct list_head fl_link;	/* doubly linked list of all locks */
++	struct hlist_node fl_link;	/* node in global lists */
+ 	struct list_head fl_block;	/* circular list of blocked processes */
+ 	fl_owner_t fl_owner;
+ 	unsigned int fl_flags;
+-- 
+1.7.1
 
