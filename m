@@ -1,98 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:23873 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:8885 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965822Ab3FUM6y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Jun 2013 08:58:54 -0400
+	id S1751486Ab3FQPzh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Jun 2013 11:55:37 -0400
+Date: Mon, 17 Jun 2013 11:55:08 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
-Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
+To: Jeff Layton <jlayton@redhat.com>
+Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org,
+        dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
         swhiteho@redhat.com, Trond.Myklebust@netapp.com,
         akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
         linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
         linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
         cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v4 02/14] cifs: use posix_unblock_lock instead of locks_delete_block
-Date: Fri, 21 Jun 2013 08:58:10 -0400
-Message-Id: <1371819502-26363-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
-References: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
+Subject: Re: [PATCH v3 07/13] locks: avoid taking global lock if possible
+ when waking up blocked waiters
+Message-ID: <20130617115508.4db5e5f9@tlielax.poochiereds.net>
+In-Reply-To: <1371482036-15958-8-git-send-email-jlayton@redhat.com>
+References: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
+	<1371482036-15958-8-git-send-email-jlayton@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-commit 66189be74 (CIFS: Fix VFS lock usage for oplocked files) exported
-the locks_delete_block symbol. There's already an exported helper
-function that provides this capability however, so make cifs use that
-instead and turn locks_delete_block back into a static function.
+On Mon, 17 Jun 2013 11:13:50 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
 
-Note that if fl->fl_next == NULL then this lock has already been through
-locks_delete_block(), so we should be OK to ignore an ENOENT error here
-and simply not retry the lock.
+> Since we always hold the i_lock when inserting a new waiter onto the
+> fl_block list, we can avoid taking the global lock at all if we find
+> that it's empty when we go to wake up blocked waiters.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/locks.c |   17 ++++++++++++++---
+>  1 files changed, 14 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/locks.c b/fs/locks.c
+> index 8f56651..a8f3b33 100644
+> --- a/fs/locks.c
+> +++ b/fs/locks.c
+> @@ -532,7 +532,10 @@ static void locks_delete_block(struct file_lock *waiter)
+>   * the order they blocked. The documentation doesn't require this but
+>   * it seems like the reasonable thing to do.
+>   *
+> - * Must be called with file_lock_lock held!
+> + * Must be called with both the i_lock and file_lock_lock held. The fl_block
+> + * list itself is protected by the file_lock_list, but by ensuring that the
+> + * i_lock is also held on insertions we can avoid taking the file_lock_lock
+> + * in some cases when we see that the fl_block list is empty.
+>   */
+>  static void __locks_insert_block(struct file_lock *blocker,
+>  					struct file_lock *waiter)
+> @@ -560,8 +563,16 @@ static void locks_insert_block(struct file_lock *blocker,
+>   */
+>  static void locks_wake_up_blocks(struct file_lock *blocker)
+>  {
+> +	/*
+> +	 * Avoid taking global lock if list is empty. This is safe since new
+> +	 * blocked requests are only added to the list under the i_lock, and
+> +	 * the i_lock is always held here.
+> +	 */
+> +	if (list_empty(&blocker->fl_block))
+> +		return;
+> +
 
-Cc: Pavel Shilovsky <piastryyy@gmail.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Acked-by: J. Bruce Fields <bfields@fieldses.org>
----
- fs/cifs/file.c     |    2 +-
- fs/locks.c         |    3 +--
- include/linux/fs.h |    5 -----
- 3 files changed, 2 insertions(+), 8 deletions(-)
 
-diff --git a/fs/cifs/file.c b/fs/cifs/file.c
-index 48b29d2..1686e40 100644
---- a/fs/cifs/file.c
-+++ b/fs/cifs/file.c
-@@ -999,7 +999,7 @@ try_again:
- 		rc = wait_event_interruptible(flock->fl_wait, !flock->fl_next);
- 		if (!rc)
- 			goto try_again;
--		locks_delete_block(flock);
-+		posix_unblock_lock(flock);
- 	}
- 	return rc;
- }
-diff --git a/fs/locks.c b/fs/locks.c
-index 72fb2b7..d732e22 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -496,13 +496,12 @@ static void __locks_delete_block(struct file_lock *waiter)
- 
- /*
-  */
--void locks_delete_block(struct file_lock *waiter)
-+static void locks_delete_block(struct file_lock *waiter)
- {
- 	lock_flocks();
- 	__locks_delete_block(waiter);
- 	unlock_flocks();
- }
--EXPORT_SYMBOL(locks_delete_block);
- 
- /* Insert waiter into blocker's block list.
-  * We use a circular list so that processes can be easily woken up in
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 9f160c6..cabc08a 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1006,7 +1006,6 @@ extern int vfs_setlease(struct file *, long, struct file_lock **);
- extern int lease_modify(struct file_lock **, int);
- extern int lock_may_read(struct inode *, loff_t start, unsigned long count);
- extern int lock_may_write(struct inode *, loff_t start, unsigned long count);
--extern void locks_delete_block(struct file_lock *waiter);
- extern void lock_flocks(void);
- extern void unlock_flocks(void);
- #else /* !CONFIG_FILE_LOCKING */
-@@ -1150,10 +1149,6 @@ static inline int lock_may_write(struct inode *inode, loff_t start,
- 	return 1;
- }
- 
--static inline void locks_delete_block(struct file_lock *waiter)
--{
--}
--
- static inline void lock_flocks(void)
- {
- }
+Ok, potential race here. We hold the i_lock when we check list_empty()
+above, but it's possible for the fl_block list to become empty between
+that check and when we take the spinlock below. locks_delete_block does
+not require that you hold the i_lock, and some callers don't hold it.
+
+This is trivially fixable by just keeping this as a while() loop. We'll
+do the list_empty() check twice in that case, but that shouldn't change
+the performance here much.
+
+I'll fix that in my tree and it'll be in the next resend. Sorry for the
+noise...
+
+>  	spin_lock(&file_lock_lock);
+> -	while (!list_empty(&blocker->fl_block)) {
+> +	do {
+
+>  		struct file_lock *waiter;
+>  
+>  		waiter = list_first_entry(&blocker->fl_block,
+> @@ -571,7 +582,7 @@ static void locks_wake_up_blocks(struct file_lock *blocker)
+>  			waiter->fl_lmops->lm_notify(waiter);
+>  		else
+>  			wake_up(&waiter->fl_wait);
+> -	}
+> +	} while (!list_empty(&blocker->fl_block));
+>  	spin_unlock(&file_lock_lock);
+>  }
+>  
+
+
 -- 
-1.7.1
-
+Jeff Layton <jlayton@redhat.com>
