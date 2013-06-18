@@ -1,144 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:41890 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751531Ab3F1OsG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Jun 2013 10:48:06 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
-Subject: Re: NFSv4.1 session
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <OF786412D5.F9D839FF-ON88257B97.0077EB71-88257B97.0078C3A8@us.ibm.com>
-Date: Fri, 28 Jun 2013 10:47:54 -0400
-Cc: "Adam C. Emerson" <aemerson@linuxbox.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "Matt W. Benjamin" <matt@linuxbox.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Message-Id: <18A823DF-68E9-41E4-84D6-F33A0749FC37@oracle.com>
-References: <OF8A324DEB.5C9C96EC-ON88257B97.0061DA51-88257B97.0062ED43@us.ibm.com> <1372356342.3365.1.camel@leira.trondhjem.org> <OF72D7519C.7F46B89C-ON88257B97.0063EB30-88257B97.006422E1@us.ibm.com> <1372358524.3365.6.camel@leira.trondhjem.org> <91A474BD-BBB8-42E5-9D09-3536EF02FB9C@oracle.com> <OF786412D5.F9D839FF-ON88257B97.0077EB71-88257B97.0078C3A8@us.ibm.com>
-To: Marc Eshel <eshel@us.ibm.com>
+Received: from tuna.sandelman.ca ([209.87.252.184]:49254 "EHLO
+	tuna.sandelman.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932701Ab3FRN6B (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jun 2013 09:58:01 -0400
+Received: from sandelman.ca (desk.marajade.sandelman.ca [209.87.252.247])
+	by tuna.sandelman.ca (Postfix) with ESMTP id A451A20188
+	for <linux-nfs@vger.kernel.org>; Tue, 18 Jun 2013 10:53:11 -0400 (EDT)
+Received: from sandelman.ca (localhost [127.0.0.1])
+	by sandelman.ca (Postfix) with ESMTP id 498A063A7C
+	for <linux-nfs@vger.kernel.org>; Tue, 18 Jun 2013 09:48:31 -0400 (EDT)
+To: "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: big send queues on NFS server
+MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha1; protocol="application/pgp-signature"
+Date: Tue, 18 Jun 2013 09:48:31 -0400
+Message-ID: <9160.1371563311@sandelman.ca>
+From: mcr@sandelman.ca
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Without the HTML this time.
-
-On Jun 27, 2013, at 5:59 PM, Marc Eshel <eshel@us.ibm.com> wrote:
-
-> 
-> Chuck Lever <chuck.lever@oracle.com> wrote on 06/27/2013 12:46:30 PM:
-> 
-> > From: Chuck Lever <chuck.lever@oracle.com> 
-> > To: Marc Eshel/Almaden/IBM@IBMUS, 
-> > Cc: "Adam C. Emerson" <aemerson@linuxbox.com>, Trond Myklebust 
-> > <Trond.Myklebust@netapp.com>, "J. Bruce Fields" 
-> > <bfields@redhat.com>, Linux NFS Mailing List <linux-
-> > nfs@vger.kernel.org>, "Matt W. Benjamin" <matt@linuxbox.com> 
-> > Date: 06/27/2013 12:47 PM 
-> > Subject: Re: NFSv4.1 session 
-> > 
-> > Hi Marc-
-> > 
-> > On Jun 27, 2013, at 2:42 PM, "Myklebust, Trond" 
-> > <Trond.Myklebust@netapp.com> wrote:
-> > 
-> > > On Thu, 2013-06-27 at 11:13 -0700, Marc Eshel wrote:
-> > >> 
-> > >> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote on 06/27/2013
-> > >> 11:05:44 AM:
-> > >> 
-> > >>> From: "Myklebust, Trond" <Trond.Myklebust@netapp.com> 
-> > >>> To: Marc Eshel/Almaden/IBM@IBMUS, 
-> > >>> Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>, "J. 
-> > >>> Bruce Fields" <bfields@redhat.com>, "Adam C. Emerson" 
-> > >>> <aemerson@linuxbox.com>, "Matt W. Benjamin" <matt@linuxbox.com> 
-> > >>> Date: 06/27/2013 11:09 AM 
-> > >>> Subject: Re: NFSv4.1 session 
-> > >>> 
-> > >>> On Thu, 2013-06-27 at 11:00 -0700, Marc Eshel wrote:
-> > >>>> Hi Trond, 
-> > >>>> 
-> > >>>> I am not able to mount from Linux NFS client to the same Ganesha
-> > >> NFS
-> > >>>> server using multiple IP address. The client was providing the
-> > >> same
-> > >>>> client-id so the server was using the same session. I tried to
-> > >> return
-> > >>>> NFS4ERR_CLID_INUSE on the second mount if the target IP is
-> > >> different
-> > >>>> but the client still did not provide a different client-id like it
-> > >>>> should. I am not trying to use trunking I what to have different
-> > >>>> server instance for each IP address so I can move that IP between
-> > >>>> nodes in the cluster. Any ideas how to accomplish it. 
-> > >>>> 
-> > >>>> Thanks, Marc.
-> > >>> 
-> > >>> I don't understand. The client is performing exactly as per design:
-> > >> it
-> > >>> detects the fact that you are talking to the same server, and so it
-> > >>> reuses the same client and session. This is the only sane semantic
-> > >> for a
-> > >>> NFS client... 
-> > >> 
-> > >> How is the client detecting that it is the same server? I use a
-> > > 
-> > > See section 2.10.5.1 of RFC5661.
-> > > 
-> > >> different IP address on the mount command. Why is the client not
-> > >> handling NFS4ERR_CLID_INUSE? 
-> > 
-> > Is there a section of the spec that prescribes how the client should
-> > recover from NFS4ERR_CLID_INUSE? 
-> 
-> 
-> 15.1.13.2.  NFS4ERR_CLID_INUSE (Error Code 10017) 
-> 
-> 
->   While processing an EXCHANGE_ID operation, the server was presented
->   with a co_ownerid field that matches an existing client with valid
->   leased state, but the principal sending the EXCHANGE_ID operation
->   differs from the principal that established the existing client.
->   This indicates a collision (most likely due to chance) between
->   clients.  The client should recover by changing the co_ownerid and
->   re-sending EXCHANGE_ID (but not with the same slot ID and sequence
->   ID; one or both MUST be different on the re-send).
-> 
-> When I tried to give it this error it went into an infinite loop trying exchange id again and again. Maybe there is no good why to support it but infinite loop is not good either.
-
-That language looks unimplementable IMO.  I'm looking into it.  I agree that an infinite loop is not correct behavior, and I'll see if that can be addressed.
+--=-=-=
+Content-Transfer-Encoding: quoted-printable
 
 
-> I am not trying to make the client support it, I am trying to have a client mount the same fs from two different IP on the same server, and not for the purpose of trunking. I will try to do it by changing server id as described in 2.10.5.1. 
-> 
-> Thanks, Marc.   
-> 
-> > 
-> > I believe this is not an error that can be recovered from.  The 
-> > cases where a clientid is being spoofed are not easily distinguished
-> > from cases where it might be safe for a client to try a different 
-> > client ID string.
-> > 
-> > However, note that NFSv4.1 takes a Uniform Client String approach: 
-> > an NFSv4.1 client unconditionally uses the same nfs_client_id4.id 
-> > string and boot verifier for all servers.  An important reason for 
-> > this is that if Transparent State Migration occurs, a destination 
-> > server must be able to recognize the client when it connects 
-> > expecting its state to be available.
-> > 
-> > > We only recently changed the client to always use krb5i (or fallback to
-> > > AUTH_SYS if krb5i is not available) for EXCHANGE_ID.
-> > 
-> > -- 
-> > Chuck Lever
-> > chuck[dot]lever[at]oracle[dot]com
-> > 
-> > 
-> > 
-> > 
+Hi, I have been an NFS user and enthusiast for 20+ years.
+My home systems still have the numerical uid that doe.carleton.ca
+assigned me back in 1989... cause of NFS...  Recently, I turned off
+a NetBSD 5 machine that was my NFS server, and everything is on a
+Linux/Ubuntu server, LVM+raid setup.=20=20
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+I have a slightly interesting setup at my home.  A VM with a public IP
+(cassidy) address runs a custom web server on port 81 to stream mp3/ogg to
+whatever device needs it.  My music skips/pauses.  Some of this was traced
+down to bufferbloat issues when I was listening from work.  But, it's
+happening at my home desk, connected by Gb/E.  An issue with an IPv6 RA
+server was ruled out.=20
+
+To be clear:
+   desktop(obiwan)---IPv4:81---->server(cassidy)---NFSv4-IPv6-->herring
+
+I am running a tmux ("screen") on NFS server, with one pane being:
+  watch 'ss -tan | grep 2049'
+
+And in the other, initially, I was running:
+  sudo tcpdump -i eth0 -n -p ether host ETHERNETOFCASSIDY
+
+as that was very busy, I ran instead:
+sudo tcpdump -i eth0 -n -p ether host 00:16:3e:11:22:e4 and \=20=20=20
+     '(tcp[13] & 2!=3D0     or ip6[53]&2 !=3D0)'
+
+and each time the music stops I see huge xmit queues on the NFS server,
+
+ESTAB      0      789156   2607:dead:f:2::231:2049 2607:dead:f:2:216:3eff:f=
+e11:22e4:868
+
+*usually* that then results in a TCP restart:
+
+09:40:12.701402 IP6 2607:dead:f:2:216:3eff:fe11:22e4.868 >
+2607:dead:f:2::231.2049: Flags [S], seq 2570499549, win 5712, options [mss
+1440,sackOK,TS val 2994659072 ecr 1552097470,nop,wscale 2], length 0
+
+09:40:12.701456 IP6 2607:dead:f:2::231.2049 >
+2607:dead:f:2:216:3eff:fe11:22e4.868: Flags [S.], seq 707413120, ack
+2570499550, win 14280, options [mss 1440,sackOK,TS val 1552097470 ecr
+2994659072,nop,wscale 7], length 0
+
+I notice that it always seem to use the same source port number.
+I didn't think that this was allowed until after 2*RTT.
+
+What seems to be occuring to me is some kind of head of queue problem in the
+TCP stream.  I would be happy to install experimental kernels, instrument
+stuff, whatever..., particularly on the NFS client, as it's not a critical
+machine.  If I need to do something on the NFS server, it will possible.=20
+I will shortly update the kernel the debian backports on the client.
+
+I watch and I regularly see large (+1M) send queues on the server:
+
+ESTAB      0      1434080   2607:dead:f:2::231:2049 2607:dead:f:2:216:3eff:=
+fe11:22e4:868
+
+If they decline in time, there is no interruption, otherwise, the web server
+gets an underrun, and the music stops.=20=20=20=20
+
+I could also capture the entire NFS stream, or just do TCP window analysis =
+on
+this stream, but I would suspect that it's a problem on the client.
+
+NFS server:
+herring-[~] mcr 1001 %uname -a
+Linux herring 3.2.0-39-generic #62-Ubuntu SMP Thu Feb 28 00:28:53 UTC 2013
+x86_64 x86_64 x86_64 GNU/Linux
+
+NFS client:
+cassidy-[~] mcr 1010 %uname -a
+Linux cassidy.sandelman.ca 2.6.32-5-xen-686 #1 SMP Wed May 18 09:43:15 UTC
+2011 i686 GNU/Linux
 
 
 
 
+=20=20
+
+--=-=-=
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+
+iQCVAwUBUcBlK4qHRg3pndX9AQKMJQQA1xaP0HZAeLlcl+ooZtq5SZlRZqTZnkHO
+Vsdcqj/emSlbRHvdgfIRT5ZwNscvA99LJAtr0KIJpOhbiqwPg4saZ6xY0zrrszB/
+q5FtiQtFNql9VuoupRbY4lxXwebidfurP77tPoIX+Lus8XXGN+nfJlZCj3FGUYNb
+p+Du7okmd4M=
+=AffD
+-----END PGP SIGNATURE-----
+--=-=-=--
