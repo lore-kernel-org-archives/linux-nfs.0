@@ -1,63 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:38000 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752440Ab3FRGmE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jun 2013 02:42:04 -0400
-Message-ID: <51C00116.2080301@parallels.com>
-Date: Tue, 18 Jun 2013 10:41:26 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "jlayton@redhat.com" <jlayton@redhat.com>
-Subject: Re: [PATCH v2 2/4] SUNRPC: fix races on PipeFS MOUNT notifications
-References: <20130611143725.16046.17279.stgit@localhost.localdomain>  <20130611143917.16046.15791.stgit@localhost.localdomain> <1371493226.9595.5.camel@leira.trondhjem.org>
-In-Reply-To: <1371493226.9595.5.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:21193 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932631Ab3FRRoT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Jun 2013 13:44:19 -0400
+Date: Tue, 18 Jun 2013 13:43:46 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org,
+        dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
+        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
+Subject: Re: [PATCH v3 06/13] locks: protect most of the file_lock handling
+ with i_lock
+Message-ID: <20130618134346.79edf0a7@tlielax.poochiereds.net>
+In-Reply-To: <20130617114938.447a8d81@tlielax.poochiereds.net>
+References: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
+	<1371482036-15958-7-git-send-email-jlayton@redhat.com>
+	<20130617114609.708a336b@tlielax.poochiereds.net>
+	<20130617114938.447a8d81@tlielax.poochiereds.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-17.06.2013 22:20, Myklebust, Trond пишет:
-> On Tue, 2013-06-11 at 18:39 +0400, Stanislav Kinsbursky wrote:
->> Below are races, when RPC client can be created without PiepFS dentries
->>
->> CPU#0					CPU#1
->> -----------------------------		-----------------------------
->> rpc_new_client				rpc_fill_super
->> rpc_setup_pipedir
->> mutex_lock(&sn->pipefs_sb_lock)
->> rpc_get_sb_net == NULL
->> (no per-net PipeFS superblock)
->> 					sn->pipefs_sb = sb;
->> 					notifier_call_chain(MOUNT)
->> 					(client is not in the list)
->> rpc_register_client
->> (client without pipes dentries)
->>
->> To fix this patch:
->> 1) makes PipeFS mount notification call with pipefs_sb_lock being held.
->> 2) releases pipefs_sb_lock on new SUNRPC client creation only after
->> registration.
->>
->> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
->> Cc: stable@vger.kernel.org
->
-> Hi Stanislav,
->
-> This isn't going to apply to the stable kernels without the cleanup
-> patch. Could you please reorganise this patch series so that the cleanup
-> comes last.
->
-> Thanks,
->    Trond
->
->
+On Mon, 17 Jun 2013 11:49:38 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
 
-Hello, Trond.
-Sure, will do.
+> On Mon, 17 Jun 2013 11:46:09 -0400
+> Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> > On Mon, 17 Jun 2013 11:13:49 -0400
+> > Jeff Layton <jlayton@redhat.com> wrote:
+> > 
+> > > Having a global lock that protects all of this code is a clear
+> > > scalability problem. Instead of doing that, move most of the code to be
+> > > protected by the i_lock instead. The exceptions are the global lists
+> > > that the ->fl_link sits on, and the ->fl_block list.
+> > > 
+> > > ->fl_link is what connects these structures to the
+> > > global lists, so we must ensure that we hold those locks when iterating
+> > > over or updating these lists.
+> > > 
+> > > Furthermore, sound deadlock detection requires that we hold the
+> > > blocked_list state steady while checking for loops. We also must ensure
+> > > that the search and update to the list are atomic.
+> > > 
+> > > For the checking and insertion side of the blocked_list, push the
+> > > acquisition of the global lock into __posix_lock_file and ensure that
+> > > checking and update of the  blocked_list is done without dropping the
+> > > lock in between.
+> > > 
+> > > On the removal side, when waking up blocked lock waiters, take the
+> > > global lock before walking the blocked list and dequeue the waiters from
+> > > the global list prior to removal from the fl_block list.
+> > > 
+> > > With this, deadlock detection should be race free while we minimize
+> > > excessive file_lock_lock thrashing.
+> > > 
+> > > Finally, in order to avoid a lock inversion problem when handling
+> > > /proc/locks output we must ensure that manipulations of the fl_block
+> > > list are also protected by the file_lock_lock.
+> > > 
+> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > > ---
+> > >  Documentation/filesystems/Locking |   21 ++++--
+> > >  fs/afs/flock.c                    |    5 +-
+> > >  fs/ceph/locks.c                   |    2 +-
+> > >  fs/ceph/mds_client.c              |    8 +-
+> > >  fs/cifs/cifsfs.c                  |    2 +-
+> > >  fs/cifs/file.c                    |   13 ++--
+> > >  fs/gfs2/file.c                    |    2 +-
+> > >  fs/lockd/svcsubs.c                |   12 ++--
+> > >  fs/locks.c                        |  151 ++++++++++++++++++++++---------------
+> > >  fs/nfs/delegation.c               |   10 +-
+> > >  fs/nfs/nfs4state.c                |    8 +-
+> > >  fs/nfsd/nfs4state.c               |    8 +-
+> > >  include/linux/fs.h                |   11 ---
+> > >  13 files changed, 140 insertions(+), 113 deletions(-)
+> > > 
+> > 
+> > [...]
+> > 
+> > > @@ -1231,7 +1254,7 @@ int __break_lease(struct inode *inode, unsigned int mode)
+> > >  	if (IS_ERR(new_fl))
+> > >  		return PTR_ERR(new_fl);
+> > >  
+> > > -	lock_flocks();
+> > > +	spin_lock(&inode->i_lock);
+> > >  
+> > >  	time_out_leases(inode);
+> > >  
+> > > @@ -1281,11 +1304,11 @@ restart:
+> > >  			break_time++;
+> > >  	}
+> > >  	locks_insert_block(flock, new_fl);
+> > > -	unlock_flocks();
+> > > +	spin_unlock(&inode->i_lock);
+> > >  	error = wait_event_interruptible_timeout(new_fl->fl_wait,
+> > >  						!new_fl->fl_next, break_time);
+> > > -	lock_flocks();
+> > > -	__locks_delete_block(new_fl);
+> > > +	spin_lock(&inode->i_lock);
+> > > +	locks_delete_block(new_fl);
+> > 
+> > Doh -- bug here. This should not have been changed to
+> > locks_delete_block(). My apologies.
+> > 
+> > >  	if (error >= 0) {
+> > >  		if (error == 0)
+> > >  			time_out_leases(inode);
+> > 
+> > [...]
+> > 
+> > >  posix_unblock_lock(struct file *filp, struct file_lock *waiter)
+> > >  {
+> > > +	struct inode *inode = file_inode(filp);
+> > >  	int status = 0;
+> > >  
+> > > -	lock_flocks();
+> > > +	spin_lock(&inode->i_lock);
+> > >  	if (waiter->fl_next)
+> > > -		__locks_delete_block(waiter);
+> > > +		locks_delete_block(waiter);
+> > 
+> > 
+> > Ditto here...
+> > 
+> > >  	else
+> > >  		status = -ENOENT;
+> > > -	unlock_flocks();
+> > > +	spin_unlock(&inode->i_lock);
+> > >  	return status;
+> > >  }
+> > >  
+> > 
+> 
+> Bah, scratch that -- this patch is actually fine. We hold the i_lock
+> here and locks_delete_block takes the file_lock_lock, which is correct.
+> There is a potential race in patch 7 though. I'll reply to that patch
+> to point it out in a minute.
+> 
+
+...and scratch that again...
+
+There is a bug in the posix_unblock_lock delta above. We don't need to
+hold the i_lock there, but we should probably be taking the
+file_lock_lock before checking fl_next.
+
+In truth, I have a hard time seeing how that race would manifest itself
+in practice, but that's how the existing code works so it's probably
+best to preserve that as closely as possible.
+
+Fixed in my git repo and the next spin of this set will have it.
+
+Sorry again for the noise... ;)
 
 -- 
-Best regards,
-Stanislav Kinsbursky
+Jeff Layton <jlayton@redhat.com>
