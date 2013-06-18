@@ -1,194 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57940 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751678Ab3FDWAR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jun 2013 18:00:17 -0400
-Date: Tue, 4 Jun 2013 17:59:50 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, dhowells@redhat.com,
-        sage@inktank.com, smfrench@gmail.com, swhiteho@redhat.com,
-        Trond.Myklebust@netapp.com, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        piastryyy@gmail.com
-Subject: Re: [PATCH v1 08/11] locks: convert fl_link to a hlist_node
-Message-ID: <20130604215950.GE15594@fieldses.org>
-References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
- <1370056054-25449-9-git-send-email-jlayton@redhat.com>
+Received: from static-71-162-243-5.phlapa.fios.verizon.net ([71.162.243.5]:52355
+	"EHLO snark.thyrsus.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750788Ab3FRFVY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jun 2013 01:21:24 -0400
+Received: from [127.0.1.1] (localhost [127.0.0.1])
+	by snark.thyrsus.com (Postfix) with ESMTP id 9610441791
+	for <linux-nfs@vger.kernel.org>; Tue, 18 Jun 2013 01:13:56 -0400 (EDT)
+Content-Type: multipart/mixed; boundary="===============7478725473209331778=="
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1370056054-25449-9-git-send-email-jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: Problems in idmapd.conf.5
+Message-Id: <20130618051356.9610441791@snark.thyrsus.com>
+Date: Tue, 18 Jun 2013 01:13:56 -0400 (EDT)
+From: esr@thyrsus.com
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 31, 2013 at 11:07:31PM -0400, Jeff Layton wrote:
-> Testing has shown that iterating over the blocked_list for deadlock
-> detection turns out to be a bottleneck. In order to alleviate that,
-> begin the process of turning it into a hashtable. We start by turning
-> the fl_link into a hlist_node and the global lists into hlists. A later
-> patch will do the conversion of the blocked_list to a hashtable.
+--===============7478725473209331778==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
 
-Even simpler would be if we could add a pointer to the (well, a) lock
-that a lockowner is blocking on, and then we'd just have to follow a
-pointer.  I haven't thought that through, though, perhaps that's hard ot
-make work....
+This is automatically generated email about markup problems in a man
+page for which you appear to be responsible.  If you are not the right
+person or list, please tell me so I can correct my database.
 
---b.
+See http://catb.org/~esr/doclifter/bugs.html for details on how and
+why these patches were generated.  Feel free to email me with any
+questions.  Note: These patches do not change the modification date of
+any manual page.  You may wish to do that by hand.
 
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/locks.c         |   32 ++++++++++++++++----------------
->  include/linux/fs.h |    2 +-
->  2 files changed, 17 insertions(+), 17 deletions(-)
-> 
-> diff --git a/fs/locks.c b/fs/locks.c
-> index fc35b9e..5ed056b 100644
-> --- a/fs/locks.c
-> +++ b/fs/locks.c
-> @@ -163,8 +163,8 @@ int lease_break_time = 45;
->  #define for_each_lock(inode, lockp) \
->  	for (lockp = &inode->i_flock; *lockp != NULL; lockp = &(*lockp)->fl_next)
->  
-> -static LIST_HEAD(file_lock_list);
-> -static LIST_HEAD(blocked_list);
-> +static HLIST_HEAD(file_lock_list);
-> +static HLIST_HEAD(blocked_list);
->  
->  /* Protects the two list heads above */
->  static DEFINE_SPINLOCK(file_lock_lock);
-> @@ -173,7 +173,7 @@ static struct kmem_cache *filelock_cache __read_mostly;
->  
->  static void locks_init_lock_heads(struct file_lock *fl)
->  {
-> -	INIT_LIST_HEAD(&fl->fl_link);
-> +	INIT_HLIST_NODE(&fl->fl_link);
->  	INIT_LIST_HEAD(&fl->fl_block);
->  	init_waitqueue_head(&fl->fl_wait);
->  }
-> @@ -207,7 +207,7 @@ void locks_free_lock(struct file_lock *fl)
->  {
->  	BUG_ON(waitqueue_active(&fl->fl_wait));
->  	BUG_ON(!list_empty(&fl->fl_block));
-> -	BUG_ON(!list_empty(&fl->fl_link));
-> +	BUG_ON(!hlist_unhashed(&fl->fl_link));
->  
->  	locks_release_private(fl);
->  	kmem_cache_free(filelock_cache, fl);
-> @@ -486,7 +486,7 @@ static inline void
->  locks_insert_global_blocked(struct file_lock *waiter)
->  {
->  	spin_lock(&file_lock_lock);
-> -	list_add(&waiter->fl_link, &blocked_list);
-> +	hlist_add_head(&waiter->fl_link, &blocked_list);
->  	spin_unlock(&file_lock_lock);
->  }
->  
-> @@ -494,7 +494,7 @@ static inline void
->  locks_delete_global_blocked(struct file_lock *waiter)
->  {
->  	spin_lock(&file_lock_lock);
-> -	list_del_init(&waiter->fl_link);
-> +	hlist_del_init(&waiter->fl_link);
->  	spin_unlock(&file_lock_lock);
->  }
->  
-> @@ -502,7 +502,7 @@ static inline void
->  locks_insert_global_locks(struct file_lock *waiter)
->  {
->  	spin_lock(&file_lock_lock);
-> -	list_add_tail(&waiter->fl_link, &file_lock_list);
-> +	hlist_add_head(&waiter->fl_link, &file_lock_list);
->  	spin_unlock(&file_lock_lock);
->  }
->  
-> @@ -510,7 +510,7 @@ static inline void
->  locks_delete_global_locks(struct file_lock *waiter)
->  {
->  	spin_lock(&file_lock_lock);
-> -	list_del_init(&waiter->fl_link);
-> +	hlist_del_init(&waiter->fl_link);
->  	spin_unlock(&file_lock_lock);
->  }
->  
-> @@ -705,7 +705,7 @@ static struct file_lock *what_owner_is_waiting_for(struct file_lock *block_fl)
->  {
->  	struct file_lock *fl, *ret = NULL;
->  
-> -	list_for_each_entry(fl, &blocked_list, fl_link) {
-> +	hlist_for_each_entry(fl, &blocked_list, fl_link) {
->  		if (posix_same_owner(fl, block_fl)) {
->  			ret = fl->fl_next;
->  			if (likely(ret))
-> @@ -867,7 +867,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
->  				goto out;
->  			error = FILE_LOCK_DEFERRED;
->  			locks_insert_block(fl, request);
-> -			if (list_empty(&request->fl_link))
-> +			if (hlist_unhashed(&request->fl_link))
->  				locks_insert_global_blocked(request);
->  			goto out;
->    		}
-> @@ -882,10 +882,10 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
->  	 * Now that we know the request is no longer blocked, we can take it
->  	 * off the global list. Some callers send down partially initialized
->  	 * requests, so we only do this if FL_SLEEP is set. Also, avoid taking
-> -	 * the lock if the list is empty, as that indicates a request that
-> +	 * the lock if the hlist is unhashed, as that indicates a request that
->  	 * never blocked.
->  	 */
-> -	if ((request->fl_flags & FL_SLEEP) && !list_empty(&request->fl_link))
-> +	if ((request->fl_flags & FL_SLEEP) && !hlist_unhashed(&request->fl_link))
->  		locks_delete_global_blocked(request);
->  
->  	/*
-> @@ -2277,11 +2277,11 @@ static int locks_show(struct seq_file *f, void *v)
->  {
->  	struct file_lock *fl, *bfl;
->  
-> -	fl = list_entry(v, struct file_lock, fl_link);
-> +	fl = hlist_entry(v, struct file_lock, fl_link);
->  
->  	lock_get_status(f, fl, *((loff_t *)f->private), "");
->  
-> -	list_for_each_entry(bfl, &blocked_list, fl_link) {
-> +	hlist_for_each_entry(bfl, &blocked_list, fl_link) {
->  		if (bfl->fl_next == fl)
->  			lock_get_status(f, bfl, *((loff_t *)f->private), " ->");
->  	}
-> @@ -2295,14 +2295,14 @@ static void *locks_start(struct seq_file *f, loff_t *pos)
->  
->  	spin_lock(&file_lock_lock);
->  	*p = (*pos + 1);
-> -	return seq_list_start(&file_lock_list, *pos);
-> +	return seq_hlist_start(&file_lock_list, *pos);
->  }
->  
->  static void *locks_next(struct seq_file *f, void *v, loff_t *pos)
->  {
->  	loff_t *p = f->private;
->  	++*p;
-> -	return seq_list_next(v, &file_lock_list, pos);
-> +	return seq_hlist_next(v, &file_lock_list, pos);
->  }
->  
->  static void locks_stop(struct seq_file *f, void *v)
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index ccb44ea..07a009e 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -934,7 +934,7 @@ int locks_in_grace(struct net *);
->   */
->  struct file_lock {
->  	struct file_lock *fl_next;	/* singly linked list for this inode  */
-> -	struct list_head fl_link;	/* doubly linked list of all locks */
-> +	struct hlist_node fl_link;	/* node in global lists */
->  	struct list_head fl_block;	/* circular list of blocked processes */
->  	fl_owner_t fl_owner;
->  	unsigned int fl_flags;
-> -- 
-> 1.7.1
-> 
+I apologize if this message seems spammy or impersonal. The volume of
+markup bugs I am tracking is over five hundred - there is no real
+alternative to generating bugmail from a database and template.
+
+--
+                             Eric S. Raymond
+
+--===============7478725473209331778==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+
+Problems with idmapd.conf.5:
+
+Unknown or invalid macro.  That is, one that does not fit in the
+macro set that the man page seems to be using.  This is a serious
+error; it often means part of your text is being lost or rendered
+incorrectly.
+
+Missing or garbled name section.  The most common form of garbling
+is a missing - or extra -. Or your manual page may have been generated
+by a tool that doesn't emit a NAME section as it should.  Or your page
+may add running text such as a version or authorship banner.  These
+problems make it impossible to lift the page to DocBook.  They
+can also confuse third-party manpage browsers and some implementations
+of man -k.
+
+--- idmapd.conf.5-unpatched	2012-07-04 16:51:32.093541654 -0400
++++ idmapd.conf.5	2012-07-04 16:52:14.865540854 -0400
+@@ -31,7 +31,7 @@
+ .\"
+ .TH idmapd.conf 5 "19 Nov 2008"
+ .SH NAME
+-idmapd.conf
++idmapd.conf \- configuration file for libnfsidmap
+ .SH SYNOPSIS
+ Configuration file for libnfsidmap.  Used by idmapd and svcgssd to map NFSv4 name to and from ids.
+ .SH DESCRIPTION
+@@ -266,7 +266,7 @@
+ LDAP_server = ldap.domain.org
+ LDAP_base = dc=org,dc=domain
+ 
+-.fo
++.fi
+ .\"
+ .\" -------------------------------------------------------------------
+ .\" Additional sections
+
+--===============7478725473209331778==--
