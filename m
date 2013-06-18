@@ -1,65 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.gnuher.de ([78.47.12.54]:58040 "EHLO mail.gnuher.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965182Ab3FTMJL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Jun 2013 08:09:11 -0400
-Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
-	by mail.gnuher.de (envelope-from
-	<news@geggus.net>)
-	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.72)
-	id 1Updfp-0007p5-H5
-	for linux-nfs@vger.kernel.org; Thu, 20 Jun 2013 14:09:09 +0200
-Received: from news  by ultimate100.geggus.net (envelope-from
-	<news@geggus.net>)
-	with local (Exim 4.72)
-	id 1Updfn-0002sJ-Lg
-	for linux-nfs@vger.kernel.org; Thu, 20 Jun 2013 14:09:07 +0200
-To: linux-nfs@vger.kernel.org
-From: Sven Geggus <lists@fuchsschwanzdomain.de>
-Subject: Re: Kerberized NFS-Server Problem still present in 3.10.0-rc2
-Date: Thu, 20 Jun 2013 12:09:07 +0000 (UTC)
-Message-ID: <kpurd3$akk$1@ultimate100.geggus.net>
-References: <kpscp8$fo3$1@ultimate100.geggus.net> <20130619213412.GA2547@fieldses.org> <20130620080354.GA5591@geggus.net>
+Received: from tuna.sandelman.ca ([209.87.252.184]:50648 "EHLO
+	tuna.sandelman.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751301Ab3FRTdL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jun 2013 15:33:11 -0400
+To: "J. Bruce Fields" <bfields@fieldses.org>
+cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: big send queues on NFS server
+In-Reply-To: <20130618172530.GB9915@fieldses.org>
+References: <9160.1371563311@sandelman.ca> <20130618172530.GB9915@fieldses.org>
+Date: Tue, 18 Jun 2013 15:32:04 -0400
+Message-ID: <15556.1371583924@sandelman.ca>
+From: mcr@sandelman.ca
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sven Geggus <lists@fuchsschwanzdomain.de> wrote:
 
-> Unfortunately I was unable to do a git bisect because somewhere on the way
-> the behaviour changed from locking to "permission denied".
+On Tue, Jun 18, 2013 at 09:48:31AM -0400, mcr@sandelman.ca wrote:
+    >> Hi, I have been an NFS user and enthusiast for 20+ years.  My home
+    >> systems still have the numerical uid that doe.carleton.ca assigned me
+    >> back in 1989... cause of NFS...  Recently, I turned off a NetBSD 5
 
-I now just decided, that broken behaviour has to be treated as broken,
-regardles of the kind of behaviour thus my git bisect now ended here:
+...
 
-683428fae8c73d7d7da0fa2e0b6beb4d8df4e808 is the first bad commit
-commit 683428fae8c73d7d7da0fa2e0b6beb4d8df4e808
-Author: Eric W. Biederman <ebiederm@xmission.com>
-Date:   Sat Feb 2 01:40:53 2013 -0800
+    >> If they decline in time, there is no interruption, otherwise, the web
+    >> server gets an underrun, and the music stops.
+    >> 
+    >> I could also capture the entire NFS stream, or just do TCP window
+    >> analysis on this stream, but I would suspect that it's a problem on
+    >> the client.
 
-    sunrpc: Update svcgss xdr handle to rpsec_contect cache
-    
-    For each received uid call make_kuid and validate the result.
-    For each received gid call make_kgid and validate the result.
-    
-    Cc: "J. Bruce Fields" <bfields@fieldses.org>
-    Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-    Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
+J. Bruce Fields <bfields@fieldses.org> wrote:
+    jb> Could be, though it sounds like all you changed here was replacing
+    jb> the NetBSD server by a Linux server?
 
-:040000 040000 15a764b57c7d75a102296c1d151a244e6ec074c964a3a6f19b5a2a4aaf15002b476664d19e68e205 M	net
+well, I mentioned NetBSD to indicate the length of time I have used various
+NFS systems, not because I felt that it was a specific interop issue.
 
-Note, that this is the one which caused permission denied errors rather than
-infinite hangs:
-mount.nfs4: access denied by server while mounting vnfsrv:/storage
+    jb> Of course, that's a rather complicated change in itself (default NFS
+    jb> version, transport (tcp vs udp), etc. may have changed as well.
 
-I suspect that it has been "fixed" in a way which is also broken.
+    jb> Might be worth fooling with those parameters using mount options.
+    jb> The defaults should be best, but it might help narrow down the
+    jb> problem.
 
-Regards
+I am using mostly  default options: nosuid, nodev, hard.
+Generally, I have solved problems in the past by going back to NFSv3 on UDP
+mounts, and then doing the classic nfsd worker tuning dance, and the
+rsize=/wsize= game.   
 
-Sven
+I am posting to understand if someone says, "oh, yes, you found issue 34534,
+and it's a client side problem, and it's fixed in 3.7.2..."
+or: "thats is weird.  What does /proc/nfs/magic_client_side_tunnable say?"
+or: "I have that too"
+or: "can you send a pcap?"
+
+I would love: "that's a client problem" vs "that's a server problem",
+and I'd go investigate deeper there :-)
 
 -- 
-"C Is Quirky, Flawed, And An Enormous Success."
-(Dennis M. Ritchie)
-
-/me is giggls@ircnet, http://sven.gegg.us/ on the Web
+]               Never tell me the odds!                 | ipv6 mesh networks [ 
+]   Michael Richardson, Sandelman Software Works        | network architect  [ 
+]     mcr@sandelman.ca  http://www.sandelman.ca/        |   ruby on rails    [ 
+	
