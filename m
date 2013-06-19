@@ -1,44 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52740 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752530Ab3FLPjl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Jun 2013 11:39:41 -0400
-Date: Wed, 12 Jun 2013 11:39:36 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tom Talpey <tom@talpey.com>
-Cc: Sandeep Joshi <sanjos100@gmail.com>, linux-nfs@vger.kernel.org
-Subject: Re: why does nfsd write not use splice
-Message-ID: <20130612153936.GB32569@fieldses.org>
-References: <CAEfL3KnfRWof4-6UAWTwXcH7XWSQuUR5ry_pg4qdyhBB6dt+5g@mail.gmail.com>
- <20130611195140.GA29634@fieldses.org>
- <51B7DE9C.6080703@talpey.com>
+Received: from zak.futurequest.net ([69.5.6.152]:38586 "HELO
+	zak.futurequest.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S934979Ab3FSWDs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jun 2013 18:03:48 -0400
+Date: Wed, 19 Jun 2013 15:57:04 -0600
+From: Bruce Guenter <bruce@untroubled.org>
+To: linux-nfs@vger.kernel.org
+Subject: Re: Looping NFSv4 traffic
+Message-ID: <20130619215704.GA32209@untroubled.org>
+References: <20130513202220.GA16969@untroubled.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <51B7DE9C.6080703@talpey.com>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="T4sUOijqQbZv57TR"
+In-Reply-To: <20130513202220.GA16969@untroubled.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 11, 2013 at 10:36:12PM -0400, Tom Talpey wrote:
-> On 6/11/2013 3:51 PM, J. Bruce Fields wrote:
-> >On Sun, Jun 09, 2013 at 01:05:16PM +0530, Sandeep Joshi wrote:
-> >>Is there a reason as to why the nfsd server does not use splice in the
-> >>write calls - nfsd_vfs_write() ?  Is there some structural limitation
-> >>or is it just something nobody got around to implementing ?
-> >>
-> >>I have looked at the source back to the 2.6.x kernels and it seems
-> >>only nfsd_vfs_read() has ever used splice/sendfile.
-> >>http://lxr.linux.no/linux+v3.9.5/fs/nfsd/vfs.c
-> >
-> >I don't actually know how splice_write works.... I assume to avoid a
-> >copy we'd have to place the incoming write data into pages already
-> >correctly aligned.  That would be an interesting trick.
-> 
-> NFS-RDMA does that, by design. ;-)
 
-So teaching nfsd to take advantage of splice in the rdma case could be
-a doable project for someone?
+--T4sUOijqQbZv57TR
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-I was thinking about NFSv4/tcp, in which case I guess we'd need to start
-parsing the xdr in the tcp receive code.
+On Mon, May 13, 2013 at 02:22:20PM -0600, Bruce Guenter wrote:
+> I'm seeing repeated duplicated queries going on between a NFSv4 client
+> and server. Both client and server are running linux v3.9.2, but I have
+> observed this with other versions on both.
+>=20
+> Wireshark decodes it as (copied by hand):
+>=20
+> V4 Call (Reply In 3) WRITE StateID:0x1c7c Offset:0 Len:8192
+> V4 Reply (Call In 2) WRITE Status: NFS4ERR_OLD_STATEID
 
---b.
+I am still seeing this behavior with the client running v3.10-rc6 and
+server on v3.9.3. The last two times I've seen it, gvfsd-metadata has
+been blocked in D state.
+
+Does anybody have any idea what's going on here?
+
+--=20
+Bruce Guenter <bruce@untroubled.org>                http://untroubled.org/
+
+--T4sUOijqQbZv57TR
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.20 (GNU/Linux)
+
+iQIcBAEBAgAGBQJRwikwAAoJEFFRvcnBTTxnF0QP/iCk2IBUB34Fgy9K17gCtPwr
+agAumzHJ99fYGoBRiGH7lNXWaKg7ia4gzzkvNhTU3n4pp90NCPIKallHNXTGFxY2
+/1JCRiS8e1+6a7U+42GyAYk/07QglqQ/hSViKZeJDB0p6Fx5xNJbfNfmzk0x3SUn
+tq25v1s+hXzYuzQ7NtYyIIPVEGxvcEg80hjo+jAKFfo2CNmxk/6aaQC86yWuM7wD
+Bzzoe8+jwavmUG5lMIEXDaSYBd6+v0F4wwR8LJacvKD92DNMoWt+Bvjgf3gNyaZR
+O/oG0Hpig0S0sKqlIFLcSSuQSs2F2WuRvEp7kTZ/Ffw/Hhg153WvHoVq4FLDxjub
+5i3xyMYALRv/NQCLtWr45YR8xlcHMOL85lJOC4IoyicRXketR6n18DZdKnXyQjQf
++kRbZsCIZr+a5mB8ln3KeCAoM+/lhLeuGlHBh0cshbU0rDFj7W5Ke6QveP84kU0y
+koz9Q3wkte4AFBwpsyV/Toeo9M+SKEiDMmxLVJSVq7xr/w+iVcjs8udrDLyayQhm
++VF45tc8WPQzj2RsAOsSNbib/TxquJD3C79juzRYbiYuuVeEsIL3xEX5N7gqXn6Q
+rqGeFfGOPmFgNx9Jh/RGQK763eiA7CvPHrgkHudle1t3XF3i1Zf2p8ANSn441Xue
+kMQX6aQ0tABCqBs2oOuY
+=iDpN
+-----END PGP SIGNATURE-----
+
+--T4sUOijqQbZv57TR--
