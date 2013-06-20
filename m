@@ -1,48 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:35697 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753958Ab3FGOvl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Jun 2013 10:51:41 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
-Subject: Re: NFS4+KRB5 trouble in Kernel >3.8
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <kosc4c$9ar$1@ultimate100.geggus.net>
-Date: Fri, 7 Jun 2013 10:51:29 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <CEF420B2-F649-40F6-B0D7-2187996A5493@oracle.com>
-References: <koq2ie$gtu$1@ultimate100.geggus.net> <DBA14DEF-59CE-4068-B2B8-7F208F2EBA22@oracle.com> <kosc4c$9ar$1@ultimate100.geggus.net>
+Received: from fieldses.org ([174.143.236.118]:38304 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754893Ab3FTOwL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Jun 2013 10:52:11 -0400
+Date: Thu, 20 Jun 2013 10:52:09 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Sven Geggus <lists@fuchsschwanzdomain.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Kerberized NFS-Server Problem still present in 3.10.0-rc2
+Message-ID: <20130620145209.GC11728@fieldses.org>
+References: <kpscp8$fo3$1@ultimate100.geggus.net>
+ <20130619213412.GA2547@fieldses.org>
+ <20130620080354.GA5591@geggus.net>
+ <20130620144955.GB11728@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130620144955.GB11728@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jun 7, 2013, at 6:19 AM, Sven Geggus <lists@fuchsschwanzdomain.de> wrote:
-
-> Chuck Lever <chuck.lever@oracle.com> wrote:
+On Thu, Jun 20, 2013 at 10:49:55AM -0400, J. Bruce Fields wrote:
+> On Thu, Jun 20, 2013 at 10:03:55AM +0200, Sven Geggus wrote:
+> > J. Bruce Fields schrieb am Mittwoch, den 19. Juni um 23:34 Uhr:
+> > 
+> > > Apologies, I don't remember the previous discussion, so, could you
+> > > summarize for me?
+> > 
+> > Shure!
+> > My original bug-report ist here:
+> > http://www.spinics.net/lists/linux-nfs/msg37454.html
+> > 
+> > > - you're able to reproduce/not reproduce the problem by changing
+> > >   *only* the kernel on the nfs server between 3.8.x and
+> > >   3.10.0-rc2 ?
+> > 
+> > Exactly. See also the Postings of Richard van den Toorn on the list.
+> > 
+> > Summary: Mount is locking when upgrading from 3.8.x to 3.9.x
+> > 
+> > Unfortunately I was unable to do a git bisect because somewhere on the way
+> > the behaviour changed from locking to "permission denied".
+> > 
+> > If you give me a hint if this behaviour should be marked as good or bad I
+> > can continue bisecting!
+> > 
+> > > - have you figured out exactly where the failure happens?:
+> > 
+> > No because I have not been able to do git bisect to the end.
+> > 
+> > > - which version of NFS are you using?
+> > 
+> > NFS4 with Kerberos authentication.
 > 
->> Perhaps you could try enabling debugging first to see where the hang occurs.
->> 
->> $ sudo rpcdebug -m nfs -s all
->> 
->> then add "-vvv" on the rpc.gssd command line.  Try your mount again, and look in /var/log/messages.
+> What happens with NFSv3?
 > 
-> Client or server side or both?
+> > > Also if you haven't already it would be useful to know at exactly which
+> > > step of the process it's failing.  As a first step running wireshark on
+> > > the traffic between client and server and looking for a NULL
+> > > init_sec_context rpc call and seeing whether it succeeds or not, would
+> > > be useful.
+> > 
+> > I already posted a wireshark dump:
+> > http://www.spinics.net/lists/linux-nfs/msg37472.html
 > 
-> As you have been talking about rpc.gssd I assume client side, right?
+> So it looks it did a null init_sec_context establishment and then the
+> server didn't reply to the first rpc call using the new context.  But
+> it's hard to be sure without more details--could I get the binary dump?
+> 
+> That might be explained by the problem fixed by
+> 3c34ae11fac3b30629581d0bfaf80f58e82cfbfb "nfsd: fix krb5 handling of
+> anonymous principals", but that was already in v3.9.
 
-Your complaint was about mount problems, so I assumed client side, and did not visit the link you provided.
+Hm, or I wonder if 8b5309d41751b8a086d8e7a43abe37d9ff24559d "svcrpc: fix
+failures to handle -1 uid's and gid's" (appended) would help.
 
->From memory, the server equivalent is "-vv" or "-vvv" on the rpc.svcgssd command line, and
+--b.
 
-  $ sudo rpcdebug -m nfsd -s all
+commit 8b5309d41751b8a086d8e7a43abe37d9ff24559d
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Fri May 24 17:24:34 2013 -0400
 
-You might also enable debugging on mountd, see rpc.mountd(8).
+    svcrpc: fix failures to handle -1 uid's and gid's
+    
+    As of f025adf191924e3a75ce80e130afcd2485b53bb8 "sunrpc: Properly decode
+    kuids and kgids in RPC_AUTH_UNIX credentials" any rpc containing a -1
+    (0xffff) uid or gid would fail with a badcred error.
+    
+    Reported symptoms were xmbc clients failing on upgrade of the NFS
+    server; examination of the network trace showed them sending -1 as the
+    gid.
+    
+    Reported-by: Julian Sikorski <belegdol@gmail.com>
+    Cc: "Eric W. Biederman" <ebiederm@xmission.com>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index c3f9e1e..06bdf5a 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -810,11 +810,15 @@ svcauth_unix_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 		goto badcred;
+ 	argv->iov_base = (void*)((__be32*)argv->iov_base + slen);	/* skip machname */
+ 	argv->iov_len -= slen*4;
+-
++	/*
++	 * Note: we skip uid_valid()/gid_valid() checks here for
++	 * backwards compatibility with clients that use -1 id's.
++	 * Instead, -1 uid or gid is later mapped to the
++	 * (export-specific) anonymous id by nfsd_setuser.
++	 * Supplementary gid's will be left alone.
++	 */
+ 	cred->cr_uid = make_kuid(&init_user_ns, svc_getnl(argv)); /* uid */
+ 	cred->cr_gid = make_kgid(&init_user_ns, svc_getnl(argv)); /* gid */
+-	if (!uid_valid(cred->cr_uid) || !gid_valid(cred->cr_gid))
+-		goto badcred;
+ 	slen = svc_getnl(argv);			/* gids length */
+ 	if (slen > 16 || (len -= (slen + 2)*4) < 0)
+ 		goto badcred;
+@@ -823,8 +827,6 @@ svcauth_unix_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 		return SVC_CLOSE;
+ 	for (i = 0; i < slen; i++) {
+ 		kgid_t kgid = make_kgid(&init_user_ns, svc_getnl(argv));
+-		if (!gid_valid(kgid))
+-			goto badcred;
+ 		GROUP_AT(cred->cr_group_info, i) = kgid;
+ 	}
+ 	if (svc_getu32(argv) != htonl(RPC_AUTH_NULL) || svc_getu32(argv) != 0) {
