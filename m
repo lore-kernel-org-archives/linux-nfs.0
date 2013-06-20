@@ -1,39 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f179.google.com ([209.85.217.179]:46039 "EHLO
-	mail-lb0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751971Ab3FJIh6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Jun 2013 04:37:58 -0400
-Received: by mail-lb0-f179.google.com with SMTP id w20so5928480lbh.24
-        for <linux-nfs@vger.kernel.org>; Mon, 10 Jun 2013 01:37:57 -0700 (PDT)
-MIME-Version: 1.0
-Date: Mon, 10 Jun 2013 10:37:56 +0200
-Message-ID: <CAJO99TmfCTYgyrwgUWUmFNGjhQhtHzA7+YDby_MNH2Bjt5tk2g@mail.gmail.com>
-Subject: caching issue with nocto
-From: =?ISO-8859-1?Q?Bj=F8rnar_Ness?= <bjornar.ness@gmail.com>
+Received: from mail.gnuher.de ([78.47.12.54]:58040 "EHLO mail.gnuher.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S965182Ab3FTMJL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Jun 2013 08:09:11 -0400
+Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
+	by mail.gnuher.de (envelope-from
+	<news@geggus.net>)
+	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.72)
+	id 1Updfp-0007p5-H5
+	for linux-nfs@vger.kernel.org; Thu, 20 Jun 2013 14:09:09 +0200
+Received: from news  by ultimate100.geggus.net (envelope-from
+	<news@geggus.net>)
+	with local (Exim 4.72)
+	id 1Updfn-0002sJ-Lg
+	for linux-nfs@vger.kernel.org; Thu, 20 Jun 2013 14:09:07 +0200
 To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+From: Sven Geggus <lists@fuchsschwanzdomain.de>
+Subject: Re: Kerberized NFS-Server Problem still present in 3.10.0-rc2
+Date: Thu, 20 Jun 2013 12:09:07 +0000 (UTC)
+Message-ID: <kpurd3$akk$1@ultimate100.geggus.net>
+References: <kpscp8$fo3$1@ultimate100.geggus.net> <20130619213412.GA2547@fieldses.org> <20130620080354.GA5591@geggus.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Mounting with nocto option drasticly improves performance, but doing
-some tests, it seems that if a file is modified, either from the
-client doing the mount or other client, the file is never cached
-again.
+Sven Geggus <lists@fuchsschwanzdomain.de> wrote:
 
-Can this be seen as a bug?
+> Unfortunately I was unable to do a git bisect because somewhere on the way
+> the behaviour changed from locking to "permission denied".
 
-Test:
+I now just decided, that broken behaviour has to be treated as broken,
+regardles of the kind of behaviour thus my git bisect now ended here:
 
-while true;do time cat /usr/src/linux-3.9.5(include/linux/*.h >/dev/null;done
+683428fae8c73d7d7da0fa2e0b6beb4d8df4e808 is the first bad commit
+commit 683428fae8c73d7d7da0fa2e0b6beb4d8df4e808
+Author: Eric W. Biederman <ebiederm@xmission.com>
+Date:   Sat Feb 2 01:40:53 2013 -0800
 
-Stabilizes on ~10ms here with nocto
+    sunrpc: Update svcgss xdr handle to rpsec_contect cache
+    
+    For each received uid call make_kuid and validate the result.
+    For each received gid call make_kgid and validate the result.
+    
+    Cc: "J. Bruce Fields" <bfields@fieldses.org>
+    Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+    Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 
-But then, if touching a file from either same client or other, time
-skyrockets, and never gets back to anything near 10ms! Only solution
-is to unmount and mount again..
+:040000 040000 15a764b57c7d75a102296c1d151a244e6ec074c964a3a6f19b5a2a4aaf15002b476664d19e68e205 M	net
 
+Note, that this is the one which caused permission denied errors rather than
+infinite hangs:
+mount.nfs4: access denied by server while mounting vnfsrv:/storage
 
-Is this expected behaviour?
+I suspect that it has been "fixed" in a way which is also broken.
 
---
-Bj(/)rnar
+Regards
+
+Sven
+
+-- 
+"C Is Quirky, Flawed, And An Enormous Success."
+(Dennis M. Ritchie)
+
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
