@@ -1,144 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:18399 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752883Ab3FXHwv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Jun 2013 03:52:51 -0400
-Subject: [PATCH v3 1/4] SUNRPC: fix races on PipeFS MOUNT notifications
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, devel@openvz.org, linux-kernel@vger.kernel.org,
-        jlayton@redhat.com
-Date: Mon, 24 Jun 2013 11:52:38 +0400
-Message-ID: <20130624075238.17104.52944.stgit@localhost.localdomain>
-In-Reply-To: <20130624075131.17104.55399.stgit@localhost.localdomain>
-References: <20130624075131.17104.55399.stgit@localhost.localdomain>
+Received: from eu1sys200aog118.obsmtp.com ([207.126.144.145]:40232 "EHLO
+	eu1sys200aog118.obsmtp.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757829Ab3FTO4m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jun 2013 10:56:42 -0400
+Message-ID: <51C3181F.5010607@mellanox.com>
+Date: Thu, 20 Jun 2013 17:56:31 +0300
+From: Or Gerlitz <ogerlitz@mellanox.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Wendy Cheng <s.wendy.cheng@gmail.com>
+CC: Devesh Sharma <devesh28@gmail.com>, Tom Tucker <tom@opengridcomputing.com>,
+        Yan Burman <yanb@mellanox.com>, Tom Talpey <tom@talpey.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "Atchley, Scott" <atchleyes@ornl.gov>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFS over RDMA benchmark
+References: <0EE9A1CDC8D6434DB00095CD7DB873462CF96C65@MTLDAG01.mtl.com> <CABgxfbF7c9ktSoMSPV21JU76V5J4iwbJQ257S91Y3z36WJbJVA@mail.gmail.com> <62745258-4F3B-4C05-BFFD-03EA604576E4@ornl.gov> <CABgxfbGxhnKj2n0Z-w87rZ6fwCssO31G009gwej957gv1p8PQQ@mail.gmail.com> <0EE9A1CDC8D6434DB00095CD7DB873462CF9715B@MTLDAG01.mtl.com> <20130423210607.GJ3676@fieldses.org> <0EE9A1CDC8D6434DB00095CD7DB873462CF988C9@MTLDAG01.mtl.com> <20130424150540.GB20275@fieldses.org> <20130424152631.GC20275@fieldses.org> <0EE9A1CDC8D6434DB00095CD7DB873462CF9A820@MTLDAG01.mtl.com> <20130428144248.GA2037@fieldses.org> <0EE9A1CDC8D6434DB00095CD7DB873462CF9C90C@MTLDAG01.mtl.com> <517FD327.3060901@talpey.com> <0EE9A1CDC8D6434DB00095CD7DB873462CF9CBD0@MTLDAG01.mtl.com> <5180145A.5030305@opengridcomputing.com> <CALsNU1MsjH5=p4Wtj2aJ5+odC7y7-5oTGhrzOL-=15pXaYYUZw@mail.gmail.com> <CABgxfbFhZTBO81WC5BcRRfQB_YBjE4N=sfS+G9eAzaFHYC_dWw@mail.gmail.com>
+In-Reply-To: <CABgxfbFhZTBO81WC5BcRRfQB_YBjE4N=sfS+G9eAzaFHYC_dWw@mail.gmail.com>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Below are races, when RPC client can be created without PiepFS dentries
+On 19/06/2013 18:47, Wendy Cheng wrote:
+> what kind of HW I would need to run it ?
 
-CPU#0					CPU#1
------------------------------		-----------------------------
-rpc_new_client				rpc_fill_super
-rpc_setup_pipedir
-mutex_lock(&sn->pipefs_sb_lock)
-rpc_get_sb_net == NULL
-(no per-net PipeFS superblock)
-					sn->pipefs_sb = sb;
-					notifier_call_chain(MOUNT)
-					(client is not in the list)
-rpc_register_client
-(client without pipes dentries)
+The mlx4 driver supports memory windows as of kernel 3.9
 
-To fix this patch:
-1) makes PipeFS mount notification call with pipefs_sb_lock being held.
-2) releases pipefs_sb_lock on new SUNRPC client creation only after
-registration.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: stable@vger.kernel.org
----
- net/sunrpc/clnt.c     |   26 +++++++++++++++-----------
- net/sunrpc/rpc_pipe.c |    3 +++
- 2 files changed, 18 insertions(+), 11 deletions(-)
-
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 5a750b9..b827a4b 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -157,20 +157,15 @@ static struct dentry *rpc_setup_pipedir_sb(struct super_block *sb,
- }
- 
- static int
--rpc_setup_pipedir(struct rpc_clnt *clnt, const char *dir_name)
-+rpc_setup_pipedir(struct rpc_clnt *clnt, const char *dir_name,
-+		  struct super_block *pipefs_sb)
- {
--	struct net *net = rpc_net_ns(clnt);
--	struct super_block *pipefs_sb;
- 	struct dentry *dentry;
- 
- 	clnt->cl_dentry = NULL;
- 	if (dir_name == NULL)
- 		return 0;
--	pipefs_sb = rpc_get_sb_net(net);
--	if (!pipefs_sb)
--		return 0;
- 	dentry = rpc_setup_pipedir_sb(pipefs_sb, clnt, dir_name);
--	rpc_put_sb_net(net);
- 	if (IS_ERR(dentry))
- 		return PTR_ERR(dentry);
- 	clnt->cl_dentry = dentry;
-@@ -296,6 +291,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
- 	struct rpc_clnt		*clnt = NULL;
- 	struct rpc_auth		*auth;
- 	int err;
-+	struct super_block *pipefs_sb;
- 
- 	/* sanity check the name before trying to print it */
- 	dprintk("RPC:       creating %s client for %s (xprt %p)\n",
-@@ -354,9 +350,12 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
- 
- 	atomic_set(&clnt->cl_count, 1);
- 
--	err = rpc_setup_pipedir(clnt, program->pipe_dir_name);
--	if (err < 0)
--		goto out_no_path;
-+	pipefs_sb = rpc_get_sb_net(rpc_net_ns(clnt));
-+	if (pipefs_sb) {
-+		err = rpc_setup_pipedir(clnt, program->pipe_dir_name, pipefs_sb);
-+		if (err)
-+			goto out_no_path;
-+	}
- 
- 	auth = rpcauth_create(args->authflavor, clnt);
- 	if (IS_ERR(auth)) {
-@@ -369,11 +368,16 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
- 	/* save the nodename */
- 	rpc_clnt_set_nodename(clnt, utsname()->nodename);
- 	rpc_register_client(clnt);
-+	if (pipefs_sb)
-+		rpc_put_sb_net(rpc_net_ns(clnt));
- 	return clnt;
- 
- out_no_auth:
--	rpc_clnt_remove_pipedir(clnt);
-+	if (pipefs_sb)
-+		__rpc_clnt_remove_pipedir(clnt);
- out_no_path:
-+	if (pipefs_sb)
-+		rpc_put_sb_net(rpc_net_ns(clnt));
- 	kfree(clnt->cl_principal);
- out_no_principal:
- 	rpc_free_iostats(clnt->cl_metrics);
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index e7ce4b3..c512448 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -1126,6 +1126,7 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
- 		return -ENOMEM;
- 	dprintk("RPC:       sending pipefs MOUNT notification for net %p%s\n",
- 		net, NET_NAME(net));
-+	mutex_lock(&sn->pipefs_sb_lock);
- 	sn->pipefs_sb = sb;
- 	err = blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
- 					   RPC_PIPEFS_MOUNT,
-@@ -1133,6 +1134,7 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
- 	if (err)
- 		goto err_depopulate;
- 	sb->s_fs_info = get_net(net);
-+	mutex_unlock(&sn->pipefs_sb_lock);
- 	return 0;
- 
- err_depopulate:
-@@ -1141,6 +1143,7 @@ err_depopulate:
- 					   sb);
- 	sn->pipefs_sb = NULL;
- 	__rpc_depopulate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF);
-+	mutex_unlock(&sn->pipefs_sb_lock);
- 	return err;
- }
- 
-
+Or.
