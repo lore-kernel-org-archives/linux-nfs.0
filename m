@@ -1,109 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f67.google.com ([209.85.219.67]:39469 "EHLO
-	mail-oa0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750936Ab3FXRNx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jun 2013 13:13:53 -0400
-Received: by mail-oa0-f67.google.com with SMTP id l10so5026109oag.10
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Jun 2013 10:13:53 -0700 (PDT)
+Received: from mail.gnuher.de ([78.47.12.54]:54551 "EHLO mail.gnuher.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1423228Ab3FUIc0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Jun 2013 04:32:26 -0400
+Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
+	by mail.gnuher.de (envelope-from
+	<lists@fuchsschwanzdomain.de>)
+	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.72)
+	id 1Upwld-000487-5n
+	for linux-nfs@vger.kernel.org; Fri, 21 Jun 2013 10:32:25 +0200
+Date: Fri, 21 Jun 2013 10:32:22 +0200
+From: Sven Geggus <lists@fuchsschwanzdomain.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Kerberized NFS-Server Problem still present in 3.10.0-rc2
+Message-ID: <20130621083221.GA4103@geggus.net>
+References: <kpscp8$fo3$1@ultimate100.geggus.net>
+ <20130619213412.GA2547@fieldses.org>
+ <20130620080354.GA5591@geggus.net>
+ <20130620144955.GB11728@fieldses.org>
+ <20130620145209.GC11728@fieldses.org>
 MIME-Version: 1.0
-Date: Mon, 24 Jun 2013 22:43:53 +0530
-Message-ID: <CA+uAZNMXLXcV6VNqOqVJEbOoKwj-fdmBp4mLz25W7nRxaB9A9w@mail.gmail.com>
-Subject: NFSD server is constantly returning nfserr_bad_stateid on 3.2 kernel
-From: Shyam Kaushik <shyamnfs1@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: multipart/mixed; boundary="bg08WKrSYDhXBjb5"
+In-Reply-To: <20130620145209.GC11728@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Folks,
 
-Need help regarding a strange NFS server issue on 3.2 kernel.
+--bg08WKrSYDhXBjb5
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
 
-We are running a NFS server on Ubuntu precise with 3.2.0-25-generic
-#40-Ubuntu kernel.
+J. Bruce Fields schrieb am Donnerstag, den 20. Juni um 16:52 Uhr:
 
-We have several NFS exports out of this server & multiple clients
-running different versions of linux kernel consume these exports. We
-use ext4 with sync mount as the filesystem.
+> What happens with NFSv3?
 
-We periodically see that all NFS activity comes to a standstill on all
-NFS exports. Enabling NFS debug shows that there are numerous
-nfserr_bad_stateid on almost all operations. This makes all of the
-NFSD threads to consume all of CPU on the server.
+I have no Idea. I have a NFS4-only Server Setup and would need to enable v3
+explicitly.
 
-Jun 24 01:50:42 srv007 kernel: [5753609.342457] nfsd_dispatch: vers 4 proc 1
-Jun 24 01:50:42 srv007 kernel: [5753609.342457] nfsv4 compound op
-#1/7: 22 (OP_PUTFH)
-Jun 24 01:50:42 srv007 kernel: [5753609.342467] nfsv4 compound op
-ffff880095744078 opcnt 3 #1: 22: status 0
-Jun 24 01:50:42 srv007 kernel: [5753609.342472] nfsv4 compound op
-#2/3: 38 (OP_WRITE)
-Jun 24 01:50:42 srv007 kernel: [5753609.342472] nfsd: fh_verify(36:
-01070001 00d40001 00000000 ac63c188 0a4859a1 feb41e83)
-Jun 24 01:50:42 srv007 kernel: [5753609.342484] renewing client
-(clientid 51ab76cb/00005fc9)
-Jun 24 01:50:42 srv007 kernel: [5753609.342486] NFSD: nfsd4_write:
-couldn't process stateid!
-Jun 24 01:50:42 srv007 kernel: [5753609.342529] nfsv4 compound op
-ffff880095744078 opcnt 3 #2: 38: status 10025
-Jun 24 01:50:42 srv007 kernel: [5753609.342544] nfsv4 compound returned 10025
+> So it looks it did a null init_sec_context establishment and then the
+> server didn't reply to the first rpc call using the new context.  But
+> it's hard to be sure without more details--could I get the binary dump?
 
-Jun 24 01:50:42 srv007 kernel: [5753609.444116] nfsd_dispatch: vers 4 proc 1
-Jun 24 01:50:42 srv007 kernel: [5753609.444122] nfsv4 compound op
-#1/3: 22 (OP_PUTFH)
-Jun 24 01:50:42 srv007 kernel: [5753609.444125] nfsd: fh_verify(36:
-01070001 00020001 00000000 eb3726ca c8497c28 911b4a8d)
-Jun 24 01:50:42 srv007 kernel: [5753609.444134] nfsv4 compound op
-ffff880093436078 opcnt 3 #1: 22: status 0
-Jun 24 01:50:42 srv007 kernel: [5753609.444136] nfsv4 compound op
-#2/3: 38 (OP_WRITE)
-Jun 24 01:50:42 srv007 kernel: [5753609.446920] nfsd4_process_open2:
-stateid=(51ab76cb/0000000b/40259544/00000001)
-Jun 24 01:50:42 srv007 kernel: [5753609.446925] nfsv4 compound op
-ffff880095027078 opcnt 7 #3: 18: status 0
-Jun 24 01:50:42 srv007 kernel: [5753609.446929] renewing client
-(clientid 51ab76cb/00000022)
-Jun 24 01:50:42 srv007 kernel: [5753609.446929] NFSD: nfsd4_write:
-couldn't process stateid!
-Jun 24 01:50:42 srv007 kernel: [5753609.446929] nfsv4 compound op
-ffff880093436078 opcnt 3 #2: 38: status 10025
-Jun 24 01:50:42 srv007 kernel: [5753609.446929] nfsv4 compound returned 10025
+Attached (Server kernel was 3.10.0-rc2 with patch below).
 
-Jun 24 01:50:42 srv007 kernel: [5753609.447162] nfsd_dispatch: vers 4 proc 1
-Jun 24 01:50:42 srv007 kernel: [5753609.447163] nfsd: fh_verify(36:
-01070001 00240001 00000000 a80fc170 1947ae6c 4fbf37b1)
-Jun 24 01:50:42 srv007 kernel: [5753609.447163] NFSD:
-nfs4_preprocess_seqid_op: seqid=1 stateid =
-(51ab76cb/00004b96/40259528/00000001)
-Jun 24 01:50:42 srv007 kernel: [5753609.447181] nfsv4 compound op
-#1/7: 22 (OP_PUTFH)
-Jun 24 01:50:42 srv007 kernel: [5753609.447185] nfsd: fh_verify(28:
-00070001 00020001 00000000 53c0b8df a948fcb9 475e2cba)
-Jun 24 01:50:42 srv007 kernel: [5753609.447185] renewing client
-(clientid 51ab76cb/00004b96)
-Jun 24 01:50:42 srv007 kernel: [5753609.447187] nfsv4 compound op
-ffff88000813f078 opcnt 2 #2: 20: status 10025
-Jun 24 01:50:42 srv007 kernel: [5753609.447189] nfsv4 compound returned 10025
+> Hm, or I wonder if 8b5309d41751b8a086d8e7a43abe37d9ff24559d "svcrpc: fix
+> failures to handle -1 uid's and gid's" (appended) would help.
 
-NFSD stacks are like:
-[<ffffffffa022e765>] nfs4_lock_state+0x15/0x40 [nfsd]
-[<ffffffffa02234f4>] nfsd4_open+0xb4/0x440 [nfsd]
-[<ffffffffa0221bc8>] nfsd4_proc_compound+0x518/0x6d0 [nfsd]
-[<ffffffffa020fa0b>] nfsd_dispatch+0xeb/0x230 [nfsd]
-[<ffffffffa0131d95>] svc_process_common+0x345/0x690 [sunrpc]
-[<ffffffffa01321e2>] svc_process+0x102/0x150 [sunrpc]
-[<ffffffffa020f0bd>] nfsd+0xbd/0x160 [nfsd]
-[<ffffffff8108a59c>] kthread+0x8c/0xa0
-[<ffffffff81667db4>] kernel_thread_helper+0x4/0x10
-[<ffffffffffffffff>] 0xffffffffffffffff
+No! I just patched this into a vanilla 3.10.0-rc2. Same Problem. The NFS-mount
+just hangs.
 
-I couldnt exactly capture the running thread, but it appears that one
-thread of the NFSD thread pool runs & detects a bad-state-id & returns
-back.
 
-Is this a known issue or any help on how to dig in further is greatly
-appreciated.
+Sven
 
-Thanks.
+-- 
+"Thinking of using NT for your critical apps?
+                                  Isn't there enough suffering in the world?"
+                   (Advertisement of Sun Microsystems in Wall Street Journal)
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
 
---Shyam
+--bg08WKrSYDhXBjb5
+Content-Type: application/cap
+Content-Disposition: attachment; filename="3.10.0-rc2-nfs-server.pcap"
+Content-Transfer-Encoding: base64
+
+1MOyoQIABAAAAAAAAAAAAP//AAABAAAAMQ/EUXiABgBKAAAASgAAAAgAJ7PDNAAZmWpHiggA
+RQAAPLpPQABABl3eCgEHHgoBB28DsggB9eNMRgAAAACgAjkIIr0AAAIEBbQEAggKAAz2CQAA
+AAABAwMHMQ/EUU6BBgBKAAAASgAAAAAZmWpHiggAJ7PDNAgARQAAPAAAQABABhguCgEHbwoB
+Bx4IAQOy0XrulPXjTEegEjiQoecAAAIEBbQEAggKAAZG4QAM9gkBAwMGMQ/EUWCBBgBCAAAA
+QgAAAAgAJ7PDNAAZmWpHiggARQAANLpQQABABl3lCgEHHgoBB28DsggB9eNMR9F67pWAEABz
+IrUAAAEBCAoADPYJAAZG4TEPxFF8gQYAbgAAAG4AAAAIACezwzQAGZlqR4oIAEUAAGC6UUAA
+QAZduAoBBx4KAQdvA7IIAfXjTEfReu6VgBgAcyLhAAABAQgKAAz2CQAGRuGAAAAo2MKrXgAA
+AAAAAAACAAGGowAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAADEPxFHxgQYAQgAAAEIAAAAAGZlq
+R4oIACezwzQIAEUAADSodEAAQAZvwQoBB28KAQceCAEDstF67pX140xzgBAA4wg0AAABAQgK
+AAZG4QAM9gkxD8RRLoMGAF4AAABeAAAAABmZakeKCAAns8M0CABFAABQqHVAAEAGb6QKAQdv
+CgEHHggBA7LReu6V9eNMc4AYAOMD1QAAAQEICgAGRuEADPYJgAAAGNjCq14AAAABAAAAAAAA
+AAAAAAAAAAAAADEPxFFCgwYAQgAAAEIAAAAIACezwzQAGZlqR4oIAEUAADS6UkAAQAZd4woB
+Bx4KAQdvA7IIAfXjTHPReu6xgBAAcyK1AAABAQgKAAz2CQAGRuExD8RRtpcGAEoAAABKAAAA
+CAAns8M0ABmZakeKCABFAAA8o8ZAAEAGdGcKAQceCgEHb6HQCAHhm1XNAAAAAKACOQgivQAA
+AgQFtAQCCAoADPYLAAAAAAEDAwcxD8RRV5gGAEoAAABKAAAAABmZakeKCAAns8M0CABFAAA8
+AABAAEAGGC4KAQdvCgEHHggBodCuMN8S4ZtVzqASOJBBUgAAAgQFtAQCCAoABkbjAAz2CwED
+AwYxD8RRaZgGAEIAAABCAAAACAAns8M0ABmZakeKCABFAAA0o8dAAEAGdG4KAQceCgEHb6HQ
+CAHhm1XOrjDfE4AQAHMitQAAAQEICgAM9gsABkbjMQ/EUT6bBgCqBQAAqgUAAAgAJ7PDNAAZ
+mWpHiggARQAFnKPIQABABm8FCgEHHgoBB2+h0AgB4ZtVzq4w3xOAGABzKB0AAAEBCAoADPYL
+AAZG44AABWTfcN1RAAAAAAAAAAIAAYajAAAABAAAAAAAAAAGAAAAFAAAAAEAAAABAAAAAAAA
+AAEAAAAAAAAAAAAAAAAAAAUiYIIFHgYJKoZIhvcSAQICAQBuggUNMIIFCaADAgEFoQMCAQ6i
+BwMFACAAAACjggQHYYIEAzCCA/+gAwIBBaEQGw5QQy5JSVRCLkZIRy5ERaInMCWgAwIBA6Ee
+MBwbA25mcxsVdm5mc3J2LnBjLmlpdGIuZmhnLmRlo4IDuzCCA7egAwIBF6EDAgECooIDqQSC
+A6Wu3tWphGkaMOwtVcMI9uv+sT98troWTSoBfNSKDtNrCdmXKyzSFW8DgyukHfsXW7+QxGvN
+GPEYfZBvOLA3QinlNEztSSzZS4R2fiC3ADhBXMP4+xouic3DjJTdIW67mD3Q0YAKLdhhy5gp
+QVc0qJUnjOonMCjT5Ra/RApHNRmWLZ6lhvDHYMkyzAXvZB9ci77Rn9wn4SZ+wgL6YJkHbWqV
+YxyQMiU4Oe0XQQ/QTdhLBBZhIfdoPaklBSNkW6Mby28ER6LElhqD/94is63gcwddfEgdX0FE
+VpYEzVRZ1FCIDZCo1+2ZgrSOcVi9G8c1dgol0p95p4H0qbXM6qkAASpTC44fE+nYBJlFnQt2
+EmAREh1rRWWEywxp4WUfbo6FvoI0hL/rLQWrTfLgKAKQhxkk1uXUbOkcNjWe5YGsw4nfJNR/
+jMXSUxmgbqaH1HKrqkooI2AN/6SeqPwJxeVkZq+alaZxXhBXWSONiGak1EFmkSnMYAUbzIPf
+BLpybC/YiTVaqbupPQJDtlOCnsUUL2bAPfgZWuHt66uEYp8FK/0wcXI2UWJv0xrd3znx97LB
+ejAADDrQRBx4m4SQbxk0AamUel+IphWoaYluyzqUl9yqGrlrXKdmgAxI/cYBzpVUTQ9Ysr4t
+DeBkABlg6xLEYykMZjJHkgikJJsipq1KuQ0v3RFdyBXtW0S/GJ6EnVJYwm/2rglQn320BdsN
+WhK6FLOj9S6B5dVuAjtwZ0+LbRG0Us2EqCBFaDAOuoBLLs9DXaSj5/+O7at/ma0yg+/cfXY6
+dXBr7jBiSoUyDjOaor17u22t0zKpty7mU8v+Mygw09lP//xdEaZMdTrCLqPSVPGv7dOjxbK+
+F5ElhKzz7RPyJGCbcvFwTSDz7DcdigTV01IqJxs5f1k8OrRrwXnWqX8kXwSTlAsj52WM4ziW
+/FL//UNZ29zJ08Ya+eh6590Zz0y3c7iKvG/c8kCE7cZG3U+cxbV+NM+YFH7xF1nZ/G2HE4Ic
+gzeTa4s7ytAu3JpqU2q48zZPcH2FYwSZePLGsgg713FuBUwgRYWP/Q8OpSPOxhmUpe2FB3av
+RXnj1vj9xZZBcrEd/yIUp+HworHspQCZ99YoQXysHxO9Q/m/90Tu0EFi5/yEjC9ZhoI3Cfpk
+po6uT/BVMbiHtFN/uxIXW/cS23QR+Hvu9wSzESVGBZVZWdeV8m1sJdzeNQfyevP+3ak08b9h
+lYxD+DJpv11yGqq6MMqWT1qkgegwgeWgAwIBF6KB3QSB2nM+UDz/xlyLy4fv4uZ8LNpVs13z
+/L8Qbu7bss6ZjYr/R4nI4glgMflIiiSvhVGvSW0Wro0PQwq0QFBunFOMuQCIaMrlFWgMW/1L
+QaQA7T3EeMGdchC/fVOzRc8EYBNkO7vVgo17ei9oUz2EzQ7wwhBjLTp7AsBYlr3E1MCRFMnr
+TMR1gbCop9z77UY7w4WAkeI+VVyeKzIMeqRItwMZOabQj6P22SGVe3b+63BQqvB3ohkYvIUN
+cdRU2CqZoZlmxKV0c9Pot++amKA05jXDRP8A4BM9HwSIUfDaAAAxD8RR15sGAEIAAABCAAAA
+ABmZakeKCAAns8M0CABFAAA0mfBAAEAGfkUKAQdvCgEHHggBodCuMN8T4ZtbNoAQARCiNQAA
+AQEICgAGRuMADPYLMQ/EUTzJBgAqAQAAKgEAAAAZmWpHiggAJ7PDNAgARQABHJnxQABABn1c
+CgEHbwoBBx4IAaHQrjDfE+GbWzaAGAEQP+AAAAEBCAoABkbmAAz2C4AAAOTfcN1RAAAAAQAA
+AAAAAAAGAAAAHAQEBf//////AAAAAAIdHbnnN9nAsJysHWH9wi4AAAAAAAAABAUAAAAAAAAA
+AAAAAAAAAIAAAACYYIGVBgkqhkiG9xIBAgICAG+BhTCBgqADAgEFoQMCAQ+idjB0oAMCARei
+bQRrYtaCdWWmSvfwQRkZpM5AgXUheaUQ6aOJTGDflc4hd5cbffJtYsamaKaepiTpa+wWzDIJ
+JQap0Nf+0sYly9HFZKFwi6saGAW034686eU6b6ZawgBT54Zy3dlVKxEanaiuX4FfkDkxxsZ/
+qn0xD8RRSskGAEIAAABCAAAACAAns8M0ABmZakeKCABFAAA0o8lAAEAGdGwKAQceCgEHb6HQ
+CAHhm1s2rjDf+4AQAHsitQAAAQEICgAM9g4ABkbmMQ/EUdHMBgB+AAAAfgAAAAgAJ7PDNAAZ
+mWpHiggARQAAcKPKQABABnQvCgEHHgoBB2+h0AgB4ZtbNq4w3/uAGAB7IvEAAAEBCAoADPYO
+AAZG5oAAADjecN1RAAAAAAAAAAIAAYajAAAABAAAAAAAAAAGAAAAGAAAAAEAAAADAAAAAQAA
+AAEAAAAEBQAAADEPxFHpzAYAQgAAAEIAAAAIACezwzQAGZlqR4oIAEUAADSjy0AAQAZ0agoB
+Bx4KAQdvodAIAeGbW3KuMN/7gBEAeyK1AAABAQgKAAz2DgAGRuYxD8RR98wGAA4BAAAOAQAA
+CAAns8M0ABmZakeKCABFAAEAulNAAEAGXRYKAQceCgEHbwOyCAH140xz0XrusYAYAHMjgQAA
+AQEICgAM9g4ABkbhgAAAyNnCq14AAAAAAAAAAgABhqMAAAAEAAAAAQAAAAYAAAAYAAAAAQAA
+AAAAAAABAAAAAQAAAAQFAAAAAAAABgAAABwEBAT//////wAAAAAAToNb03V3JWF4K6xhgiC9
+AAAAAAAAAAAAAAABAAAAIzQBxFFj3aIMAAAAJkxpbnV4IE5GU3Y0LjAgMTAuMS43LjMwLzEw
+LjEuNy4xMTEgdGNwAABAAAAAAAAAA3RjcAAAAAARMTAuMS43LjMwLjE2Ny4yNTEAAAAAAAAB
+MQ/EUdPNBgBCAAAAQgAAAAAZmWpHiggAJ7PDNAgARQAANJnyQABABn5DCgEHbwoBBx4IAaHQ
+rjDf++GbW3OAEQEQoQkAAAEBCAoABkbmAAz2DjEPxFHkzQYAQgAAAEIAAAAIACezwzQAGZlq
+R4oIAEUAADSjzEAAQAZ0aQoBBx4KAQdvodAIAeGbW3OuMN/8gBAAeyK1AAABAQgKAAz2DgAG
+RuYxD8RR0mEHAEIAAABCAAAAABmZakeKCAAns8M0CABFAAA0qHZAAEAGb78KAQdvCgEHHggB
+A7LReu6x9eNNP4AQAPMHKAAAAQEICgAGRvAADPYO
+
+--bg08WKrSYDhXBjb5--
