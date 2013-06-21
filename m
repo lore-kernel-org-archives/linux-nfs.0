@@ -1,8 +1,8 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:31507 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:24256 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754737Ab3FKLJw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Jun 2013 07:09:52 -0400
+	id S965899Ab3FUM65 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Jun 2013 08:58:57 -0400
 From: Jeff Layton <jlayton@redhat.com>
 To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
 Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
@@ -12,101 +12,56 @@ Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
         linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
         cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v2 13/14] seq_file: add seq_list_*_percpu helpers
-Date: Tue, 11 Jun 2013 07:09:07 -0400
-Message-Id: <1370948948-31784-14-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1370948948-31784-1-git-send-email-jlayton@redhat.com>
-References: <1370948948-31784-1-git-send-email-jlayton@redhat.com>
+Subject: [PATCH v4 08/14] locks: avoid taking global lock if possible when waking up blocked waiters
+Date: Fri, 21 Jun 2013 08:58:16 -0400
+Message-Id: <1371819502-26363-9-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
+References: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When we convert the file_lock_list to a set of percpu lists, we'll need
-a way to iterate over them in order to output /proc/locks info. Add
-some seq_list_*_percpu helpers to handle that.
+Since we always hold the i_lock when inserting a new waiter onto the
+fl_block list, we can avoid taking the global lock at all if we find
+that it's empty when we go to wake up blocked waiters.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/seq_file.c            |   54 ++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/seq_file.h |    6 +++++
- 2 files changed, 60 insertions(+), 0 deletions(-)
+ fs/locks.c |   15 ++++++++++++++-
+ 1 files changed, 14 insertions(+), 1 deletions(-)
 
-diff --git a/fs/seq_file.c b/fs/seq_file.c
-index 774c1eb..ce9f97a 100644
---- a/fs/seq_file.c
-+++ b/fs/seq_file.c
-@@ -921,3 +921,57 @@ struct hlist_node *seq_hlist_next_rcu(void *v,
- 		return rcu_dereference(node->next);
- }
- EXPORT_SYMBOL(seq_hlist_next_rcu);
+diff --git a/fs/locks.c b/fs/locks.c
+index ce302d4..84e269f 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -548,7 +548,10 @@ static void locks_delete_block(struct file_lock *waiter)
+  * the order they blocked. The documentation doesn't require this but
+  * it seems like the reasonable thing to do.
+  *
+- * Must be called with file_lock_lock held!
++ * Must be called with both the i_lock and file_lock_lock held. The fl_block
++ * list itself is protected by the file_lock_list, but by ensuring that the
++ * i_lock is also held on insertions we can avoid taking the file_lock_lock
++ * in some cases when we see that the fl_block list is empty.
+  */
+ static void __locks_insert_block(struct file_lock *blocker,
+ 					struct file_lock *waiter)
+@@ -576,6 +579,16 @@ static void locks_insert_block(struct file_lock *blocker,
+  */
+ static void locks_wake_up_blocks(struct file_lock *blocker)
+ {
++	/*
++	 * Avoid taking global lock if list is empty. This is safe since new
++	 * blocked requests are only added to the list under the i_lock, and
++	 * the i_lock is always held here. Note that removal from the fl_block
++	 * list does not require the i_lock, so we must recheck list_empty()
++	 * after acquiring the file_lock_lock.
++	 */
++	if (list_empty(&blocker->fl_block))
++		return;
 +
-+/**
-+ * seq_hlist_start_precpu - start an iteration of a hlist
-+ * @head: pointer to percpu array of struct hlist_heads
-+ * @cpu:  pointer to cpu "cursor"
-+ * @pos:  start position of sequence
-+ *
-+ * Called at seq_file->op->start().
-+ */
-+struct hlist_node *
-+seq_hlist_start_percpu(struct hlist_head __percpu *head, int *cpu, loff_t pos)
-+{
-+	struct hlist_node *node;
-+
-+	for_each_possible_cpu(*cpu) {
-+		hlist_for_each(node, per_cpu_ptr(head, *cpu)) {
-+			if (pos-- == 0)
-+				return node;
-+		}
-+	}
-+	return NULL;
-+}
-+EXPORT_SYMBOL(seq_hlist_start_percpu);
-+
-+/**
-+ * seq_hlist_next_percpu - move to the next position of the hlist
-+ * @v:    pointer to current hlist_node
-+ * @head: pointer to percpu array of struct hlist_heads
-+ * @cpu:  pointer to cpu "cursor"
-+ * @pos:  start position of sequence
-+ *
-+ * Called at seq_file->op->next().
-+ */
-+struct hlist_node *
-+seq_hlist_next_percpu(void *v, struct hlist_head __percpu *head,
-+			int *cpu, loff_t *pos)
-+{
-+	struct hlist_node *node = v;
-+
-+	++*pos;
-+
-+	if (node->next)
-+		return node->next;
-+
-+	for (*cpu = cpumask_next(*cpu, cpu_possible_mask); *cpu < nr_cpu_ids;
-+	     *cpu = cpumask_next(*cpu, cpu_possible_mask)) {
-+		struct hlist_head *bucket = per_cpu_ptr(head, *cpu);
-+
-+		if (!hlist_empty(bucket))
-+			return bucket->first;
-+	}
-+	return NULL;
-+}
-+EXPORT_SYMBOL(seq_hlist_next_percpu);
-diff --git a/include/linux/seq_file.h b/include/linux/seq_file.h
-index 2da29ac..4e32edc 100644
---- a/include/linux/seq_file.h
-+++ b/include/linux/seq_file.h
-@@ -173,4 +173,10 @@ extern struct hlist_node *seq_hlist_start_head_rcu(struct hlist_head *head,
- extern struct hlist_node *seq_hlist_next_rcu(void *v,
- 						   struct hlist_head *head,
- 						   loff_t *ppos);
-+
-+/* Helpers for iterating over per-cpu hlist_head-s in seq_files */
-+extern struct hlist_node *seq_hlist_start_percpu(struct hlist_head __percpu *head, int *cpu, loff_t pos);
-+
-+extern struct hlist_node *seq_hlist_next_percpu(void *v, struct hlist_head __percpu *head, int *cpu, loff_t *pos);
-+
- #endif
+ 	spin_lock(&file_lock_lock);
+ 	while (!list_empty(&blocker->fl_block)) {
+ 		struct file_lock *waiter;
 -- 
 1.7.1
 
