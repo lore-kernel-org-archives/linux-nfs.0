@@ -1,49 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58507 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:15284 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934858Ab3FSVeQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Jun 2013 17:34:16 -0400
-Date: Wed, 19 Jun 2013 17:34:12 -0400
-To: Sven Geggus <lists@fuchsschwanzdomain.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Kerberized NFS-Server Problem still present in 3.10.0-rc2
-Message-ID: <20130619213412.GA2547@fieldses.org>
-References: <kpscp8$fo3$1@ultimate100.geggus.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <kpscp8$fo3$1@ultimate100.geggus.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S965833Ab3FUM6z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Jun 2013 08:58:55 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
+Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
+        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
+Subject: [PATCH v4 05/14] locks: make "added" in __posix_lock_file a bool
+Date: Fri, 21 Jun 2013 08:58:13 -0400
+Message-Id: <1371819502-26363-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
+References: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 19, 2013 at 01:47:20PM +0000, Sven Geggus wrote:
-> Hello,
-> 
-> I just tried using Kernel 3.10.0-rc2 an my NFS-server test VM and I'm still
-> unable to run a working kerberized NFS-Server with this kernel.
-> 
-> To make it work I would have to go back to Kernel 3.8.x (which i can't
-> because I want to use drbd 8.4).
-> 
-> Any hints on how to furter debug this?
-> 
-> As I already said, I failed in "git bisecting" the Problem because the
-> behaviour changed from broken behaviour (infinite hang) to another broken
-> behaviour (permission denied) while doing so.
+...save 3 bytes of stack space.
 
-Apologies, I don't remember the previous discussion, so, could you
-summarize for me?:
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Acked-by: J. Bruce Fields <bfields@fieldses.org>
+---
+ fs/locks.c |    9 +++++----
+ 1 files changed, 5 insertions(+), 4 deletions(-)
 
-	- you're able to reproduce/not reproduce the problem by changing
-	  *only* the kernel on the nfs server between 3.8.x and
-	  3.10.0-rc2 ?
-	- have you figured out exactly where the failure happens?:
-	- which version of NFS are you using?
+diff --git a/fs/locks.c b/fs/locks.c
+index ddeab49..1d6cb28 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -791,7 +791,8 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 	struct file_lock *left = NULL;
+ 	struct file_lock *right = NULL;
+ 	struct file_lock **before;
+-	int error, added = 0;
++	int error;
++	bool added = false;
+ 
+ 	/*
+ 	 * We may need two file_lock structures for this operation,
+@@ -885,7 +886,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 				continue;
+ 			}
+ 			request = fl;
+-			added = 1;
++			added = true;
+ 		}
+ 		else {
+ 			/* Processing for different lock types is a bit
+@@ -896,7 +897,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 			if (fl->fl_start > request->fl_end)
+ 				break;
+ 			if (request->fl_type == F_UNLCK)
+-				added = 1;
++				added = true;
+ 			if (fl->fl_start < request->fl_start)
+ 				left = fl;
+ 			/* If the next lock in the list has a higher end
+@@ -926,7 +927,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 				locks_release_private(fl);
+ 				locks_copy_private(fl, request);
+ 				request = fl;
+-				added = 1;
++				added = true;
+ 			}
+ 		}
+ 		/* Go on to next lock.
+-- 
+1.7.1
 
-Also if you haven't already it would be useful to know at exactly which
-step of the process it's failing.  As a first step running wireshark on
-the traffic between client and server and looking for a NULL
-init_sec_context rpc call and seeing whether it succeeds or not, would
-be useful.
-
---b.
