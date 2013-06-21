@@ -1,77 +1,157 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:9876 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52566 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932908Ab3FRT7t convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jun 2013 15:59:49 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Christopher T Vogan <cvogan@us.ibm.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: NFSERR_STALE on umount  with 3.10.0.RC5 kernel
-Date: Tue, 18 Jun 2013 19:59:47 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93F422610@SACEXCMBX04-PRD.hq.netapp.com>
-References: <OF659496E7.43E03D23-ON87257B8E.004B852B-86257B8E.004BC3F6@us.ibm.com>
- <1371568176.3868.5.camel@leira.trondhjem.org>
- <OF0A202F9C.685475CA-ON87257B8E.005E218B-86257B8E.006D757C@us.ibm.com>
-In-Reply-To: <OF0A202F9C.685475CA-ON87257B8E.005E218B-86257B8E.006D757C@us.ibm.com>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+	id S1161357Ab3FUM7G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Jun 2013 08:59:06 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
+Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
+        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
+Subject: [PATCH v4 09/14] locks: convert fl_link to a hlist_node
+Date: Fri, 21 Jun 2013 08:58:17 -0400
+Message-Id: <1371819502-26363-10-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
+References: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Christopher T Vogan [mailto:cvogan@us.ibm.com]
-> Sent: Tuesday, June 18, 2013 3:56 PM
-> To: Myklebust, Trond
-> Cc: linux-nfs@vger.kernel.org
-> Subject: Re: NFSERR_STALE on umount with 3.10.0.RC5 kernel
-> 
-> The NFS server uses UMNT as a signal to remove the client from its mount
-> table. Also at this time the Server cleans up other information about the now
-> disconnected client.  Why would the client attempt to access the NFS server
-> once it has stated its going to unmount?  I do not see the point of the
-> GETATTR request after UMNT call.
+Testing has shown that iterating over the blocked_list for deadlock
+detection turns out to be a bottleneck. In order to alleviate that,
+begin the process of turning it into a hashtable. We start by turning
+the fl_link into a hlist_node and the global lists into hlists. A later
+patch will do the conversion of the blocked_list to a hashtable.
 
-As I said, the umount.nfs utility is doing the umount system call after UMNT, so the client does a lookup of the umount path at that time.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Acked-by: J. Bruce Fields <bfields@fieldses.org>
+---
+ fs/locks.c         |   24 ++++++++++++------------
+ include/linux/fs.h |    2 +-
+ 2 files changed, 13 insertions(+), 13 deletions(-)
 
-IOW: This has nothing to do with the kernel. If you feel it is a bug, then please ask SteveD to file a fix against nfs-utils.
-
-Cheers
-  Trond
-
+diff --git a/fs/locks.c b/fs/locks.c
+index 84e269f..941b714 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -157,13 +157,13 @@ int lease_break_time = 45;
+  * The global file_lock_list is only used for displaying /proc/locks. Protected
+  * by the file_lock_lock.
+  */
+-static LIST_HEAD(file_lock_list);
++static HLIST_HEAD(file_lock_list);
  
-> Christopher Vogan
-> Dept. W98 NFS Development & Test
-> 
-> 
-> 
-> From:   "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-> To:     Christopher T Vogan/San Jose/IBM@IBMUS,
-> Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-> Date:   06/18/2013 10:19 AM
-> Subject:        Re: NFSERR_STALE on umount  with 3.10.0.RC5 kernel
-> 
-> 
-> 
-> On Tue, 2013-06-18 at 07:47 -0600, Christopher T Vogan wrote:
-> > The new linux 3.10.0-rc5 kernel gets NFSERR_STALE on un-mount.
-> > The reason is the Linux client is sending a GETATTR after the umnt
-> > call/reply.
-> > This is a network trace of the umnt call/reply and the gettattr
-> > afterwords.
-> 
-> This happens because the 'umount.nfs' utility calls the umnt RPC before the
-> actual umount system call.
-> 
-> Why would this trigger an NFSERR_STALE? Is the server using UMNT for
-> something other than just providing client usage stats? If so, what and why?
-> 
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
-> 
+ /*
+  * The blocked_list is used to find POSIX lock loops for deadlock detection.
+  * Protected by file_lock_lock.
+  */
+-static LIST_HEAD(blocked_list);
++static HLIST_HEAD(blocked_list);
+ 
+ /*
+  * This lock protects the blocked_list, and the file_lock_list. Generally, if
+@@ -188,7 +188,7 @@ static struct kmem_cache *filelock_cache __read_mostly;
+ 
+ static void locks_init_lock_heads(struct file_lock *fl)
+ {
+-	INIT_LIST_HEAD(&fl->fl_link);
++	INIT_HLIST_NODE(&fl->fl_link);
+ 	INIT_LIST_HEAD(&fl->fl_block);
+ 	init_waitqueue_head(&fl->fl_wait);
+ }
+@@ -222,7 +222,7 @@ void locks_free_lock(struct file_lock *fl)
+ {
+ 	BUG_ON(waitqueue_active(&fl->fl_wait));
+ 	BUG_ON(!list_empty(&fl->fl_block));
+-	BUG_ON(!list_empty(&fl->fl_link));
++	BUG_ON(!hlist_unhashed(&fl->fl_link));
+ 
+ 	locks_release_private(fl);
+ 	kmem_cache_free(filelock_cache, fl);
+@@ -500,7 +500,7 @@ static inline void
+ locks_insert_global_locks(struct file_lock *fl)
+ {
+ 	spin_lock(&file_lock_lock);
+-	list_add_tail(&fl->fl_link, &file_lock_list);
++	hlist_add_head(&fl->fl_link, &file_lock_list);
+ 	spin_unlock(&file_lock_lock);
+ }
+ 
+@@ -508,20 +508,20 @@ static inline void
+ locks_delete_global_locks(struct file_lock *fl)
+ {
+ 	spin_lock(&file_lock_lock);
+-	list_del_init(&fl->fl_link);
++	hlist_del_init(&fl->fl_link);
+ 	spin_unlock(&file_lock_lock);
+ }
+ 
+ static inline void
+ locks_insert_global_blocked(struct file_lock *waiter)
+ {
+-	list_add(&waiter->fl_link, &blocked_list);
++	hlist_add_head(&waiter->fl_link, &blocked_list);
+ }
+ 
+ static inline void
+ locks_delete_global_blocked(struct file_lock *waiter)
+ {
+-	list_del_init(&waiter->fl_link);
++	hlist_del_init(&waiter->fl_link);
+ }
+ 
+ /* Remove waiter from blocker's block list.
+@@ -748,7 +748,7 @@ static struct file_lock *what_owner_is_waiting_for(struct file_lock *block_fl)
+ {
+ 	struct file_lock *fl;
+ 
+-	list_for_each_entry(fl, &blocked_list, fl_link) {
++	hlist_for_each_entry(fl, &blocked_list, fl_link) {
+ 		if (posix_same_owner(fl, block_fl))
+ 			return fl->fl_next;
+ 	}
+@@ -2300,7 +2300,7 @@ static int locks_show(struct seq_file *f, void *v)
+ {
+ 	struct file_lock *fl, *bfl;
+ 
+-	fl = list_entry(v, struct file_lock, fl_link);
++	fl = hlist_entry(v, struct file_lock, fl_link);
+ 
+ 	lock_get_status(f, fl, *((loff_t *)f->private), "");
+ 
+@@ -2316,14 +2316,14 @@ static void *locks_start(struct seq_file *f, loff_t *pos)
+ 
+ 	spin_lock(&file_lock_lock);
+ 	*p = (*pos + 1);
+-	return seq_list_start(&file_lock_list, *pos);
++	return seq_hlist_start(&file_lock_list, *pos);
+ }
+ 
+ static void *locks_next(struct seq_file *f, void *v, loff_t *pos)
+ {
+ 	loff_t *p = f->private;
+ 	++*p;
+-	return seq_list_next(v, &file_lock_list, pos);
++	return seq_hlist_next(v, &file_lock_list, pos);
+ }
+ 
+ static void locks_stop(struct seq_file *f, void *v)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 805320b..85ef56a 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -946,7 +946,7 @@ int locks_in_grace(struct net *);
+  */
+ struct file_lock {
+ 	struct file_lock *fl_next;	/* singly linked list for this inode  */
+-	struct list_head fl_link;	/* doubly linked list of all locks */
++	struct hlist_node fl_link;	/* node in global lists */
+ 	struct list_head fl_block;	/* circular list of blocked processes */
+ 	fl_owner_t fl_owner;
+ 	unsigned int fl_flags;
+-- 
+1.7.1
 
