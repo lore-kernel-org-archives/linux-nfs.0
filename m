@@ -1,119 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:21277 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:17223 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753695Ab3F1ULT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Jun 2013 16:11:19 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/5] NFS: Use root's credential for lease management
- when keytab is missing
-Date: Fri, 28 Jun 2013 20:11:17 +0000
-Message-ID: <1372450273.20188.7.camel@leira.trondhjem.org>
-References: <20130625162233.36416.34947.stgit@seurat.1015granger.net>
-	 <20130625162336.36416.51324.stgit@seurat.1015granger.net>
-In-Reply-To: <20130625162336.36416.51324.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+	id S965835Ab3FUM6z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Jun 2013 08:58:55 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
+Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
+        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
+Subject: [PATCH v4 06/14] locks: encapsulate the fl_link list handling
+Date: Fri, 21 Jun 2013 08:58:14 -0400
+Message-Id: <1371819502-26363-7-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
+References: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-06-25 at 12:23 -0400, Chuck Lever wrote:
-> Commit 05f4c350 "NFS: Discover NFSv4 server trunking when mounting"
-> Fri Sep 14 17:24:32 2012 introduced Uniform Client String support,
-> which forces our NFS client to establish a client ID immediately
-> during a mount operation rather than waiting until a user wants to
-> open a file.
-> 
-> Normally machine credentials (eg. from a keytab) are used to perform
-> a mount operation that is protected by Kerberos.  Before 05fc350,
-> SETCLIENTID used a machine credential, or fell back to a regular
-> user's credential if no keytab is available.
-> 
-> On clients that don't have a keytab, performing SETCLIENTID early
-> means there's no user credential to fall back on, since no regular
-> user has kinit'd yet.  05f4c350 seems to have broken the ability
-> to mount with sec=krb5 on clients that don't have a keytab in
-> kernels 3.7 - 3.10.
-> 
-> To address this regression, commit 4edaa308 (NFS: Use "krb5i" to
-> establish NFSv4 state whenever possible), Sat Mar 16 15:56:20 2013,
-> was merged in 3.10.  This commit forces the NFS client to fall back
-> to AUTH_SYS for lease management operations if no keytab is
-> available.
-> 
-> Neil Brown noticed that, since root is required to kinit to do a
-> sec=krb5 mount when a client doesn't have a keytab, we can try to
-> use root's Kerberos credential before AUTH_SYS.
-> 
-> Now, when determining a principal and flavor to use for lease
-> management, the NFS client tries in this order:
-> 
->   1.  Flavor: AUTH_GSS, krb5i
->       Principal: service principal (via keytab)
-> 
->   2.  Flavor: AUTH_GSS, krb5i
->       Principal: user principal established for UID 0 (via kinit)
-> 
->   3.  Flavor: AUTH_SYS
->       Principal: UID 0 / GID 0
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  fs/nfs/nfs4state.c |   20 +++++++++++++++++++-
->  1 file changed, 19 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index 1fab140..6ceece7 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -154,6 +154,19 @@ struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp)
->  	return cred;
->  }
->  
-> +static void nfs4_root_machine_cred(struct nfs_client *clp)
-> +{
-> +	struct rpc_cred *cred, *new;
-> +
-> +	new = rpc_lookup_machine_cred(NULL);
-> +	spin_lock(&clp->cl_lock);
-> +	cred = clp->cl_machine_cred;
-> +	clp->cl_machine_cred = new;
-> +	spin_unlock(&clp->cl_lock);
-> +	if (cred != NULL)
-> +		put_rpccred(cred);
-> +}
-> +
->  static struct rpc_cred *
->  nfs4_get_renew_cred_server_locked(struct nfs_server *server)
->  {
-> @@ -1888,9 +1901,14 @@ again:
->  	case -NFS4ERR_STALE_CLIENTID:
->  		dprintk("NFS: %s after status %d, retrying\n",
->  			__func__, status);
-> +		i = 0;
+Move the fl_link list handling routines into a separate set of helpers.
+Also ensure that locks and requests are always put on global lists
+last (after fully initializing them) and are taken off before unintializing
+them.
 
-This clearly isn't resetting clp->cl_machine_cred, so how is it intended
-to work?
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/locks.c |   45 ++++++++++++++++++++++++++++++++++++---------
+ 1 files changed, 36 insertions(+), 9 deletions(-)
 
->  		goto again;
->  	case -EACCES:
-> -		if (i++)
-> +		if (i++ == 0) {
-> +			nfs4_root_machine_cred(clp);
-> +			goto again;
-> +		}
-> +		if (i > 2)
->  			break;
->  	case -NFS4ERR_CLID_INUSE:
->  	case -NFS4ERR_WRONGSEC:
-> 
-
-
+diff --git a/fs/locks.c b/fs/locks.c
+index 1d6cb28..89d898b 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -153,13 +153,15 @@ int lease_break_time = 45;
+ #define for_each_lock(inode, lockp) \
+ 	for (lockp = &inode->i_flock; *lockp != NULL; lockp = &(*lockp)->fl_next)
+ 
++/* The global file_lock_list is only used for displaying /proc/locks. */
+ static LIST_HEAD(file_lock_list);
++
++/* The blocked_list is used to find POSIX lock loops for deadlock detection. */
+ static LIST_HEAD(blocked_list);
++
++/* Protects the two list heads above, plus the inode->i_flock list */
+ static DEFINE_SPINLOCK(file_lock_lock);
+ 
+-/*
+- * Protects the two list heads above, plus the inode->i_flock list
+- */
+ void lock_flocks(void)
+ {
+ 	spin_lock(&file_lock_lock);
+@@ -484,13 +486,37 @@ static int posix_same_owner(struct file_lock *fl1, struct file_lock *fl2)
+ 	return fl1->fl_owner == fl2->fl_owner;
+ }
+ 
++static inline void
++locks_insert_global_locks(struct file_lock *fl)
++{
++	list_add_tail(&fl->fl_link, &file_lock_list);
++}
++
++static inline void
++locks_delete_global_locks(struct file_lock *fl)
++{
++	list_del_init(&fl->fl_link);
++}
++
++static inline void
++locks_insert_global_blocked(struct file_lock *waiter)
++{
++	list_add(&waiter->fl_link, &blocked_list);
++}
++
++static inline void
++locks_delete_global_blocked(struct file_lock *waiter)
++{
++	list_del_init(&waiter->fl_link);
++}
++
+ /* Remove waiter from blocker's block list.
+  * When blocker ends up pointing to itself then the list is empty.
+  */
+ static void __locks_delete_block(struct file_lock *waiter)
+ {
++	locks_delete_global_blocked(waiter);
+ 	list_del_init(&waiter->fl_block);
+-	list_del_init(&waiter->fl_link);
+ 	waiter->fl_next = NULL;
+ }
+ 
+@@ -512,10 +538,10 @@ static void locks_insert_block(struct file_lock *blocker,
+ 			       struct file_lock *waiter)
+ {
+ 	BUG_ON(!list_empty(&waiter->fl_block));
+-	list_add_tail(&waiter->fl_block, &blocker->fl_block);
+ 	waiter->fl_next = blocker;
++	list_add_tail(&waiter->fl_block, &blocker->fl_block);
+ 	if (IS_POSIX(blocker))
+-		list_add(&waiter->fl_link, &blocked_list);
++		locks_insert_global_blocked(request);
+ }
+ 
+ /*
+@@ -543,13 +569,13 @@ static void locks_wake_up_blocks(struct file_lock *blocker)
+  */
+ static void locks_insert_lock(struct file_lock **pos, struct file_lock *fl)
+ {
+-	list_add(&fl->fl_link, &file_lock_list);
+-
+ 	fl->fl_nspid = get_pid(task_tgid(current));
+ 
+ 	/* insert into file's list */
+ 	fl->fl_next = *pos;
+ 	*pos = fl;
++
++	locks_insert_global_locks(fl);
+ }
+ 
+ /*
+@@ -562,9 +588,10 @@ static void locks_delete_lock(struct file_lock **thisfl_p)
+ {
+ 	struct file_lock *fl = *thisfl_p;
+ 
++	locks_delete_global_locks(fl);
++
+ 	*thisfl_p = fl->fl_next;
+ 	fl->fl_next = NULL;
+-	list_del_init(&fl->fl_link);
+ 
+ 	if (fl->fl_nspid) {
+ 		put_pid(fl->fl_nspid);
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.7.1
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
