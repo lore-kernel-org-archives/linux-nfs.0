@@ -1,79 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from haggis.pcug.org.au ([203.10.76.10]:46519 "EHLO
-	members.tip.net.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751071Ab3FYBhS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jun 2013 21:37:18 -0400
-Date: Tue, 25 Jun 2013 11:37:04 +1000
-From: Stephen Rothwell <sfr@canb.auug.org.au>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org,
-        dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
+Received: from mx1.redhat.com ([209.132.183.28]:34896 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S965939Ab3FUM67 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Jun 2013 08:58:59 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
+Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
         swhiteho@redhat.com, Trond.Myklebust@netapp.com,
         akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
         linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
         linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
         cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: Re: [PATCH v4 06/14] locks: encapsulate the fl_link list handling
-Message-Id: <20130625113704.89a686a55dcec684e5e99434@canb.auug.org.au>
-In-Reply-To: <1371819502-26363-7-git-send-email-jlayton@redhat.com>
+Subject: [PATCH v4 04/14] locks: comment cleanups and clarifications
+Date: Fri, 21 Jun 2013 08:58:12 -0400
+Message-Id: <1371819502-26363-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
 References: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
-	<1371819502-26363-7-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; protocol="application/pgp-signature";
- micalg="PGP-SHA256";
- boundary="Signature=_Tue__25_Jun_2013_11_37_04_+1000_dzYhDLAz_=0wCCci"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Signature=_Tue__25_Jun_2013_11_37_04_+1000_dzYhDLAz_=0wCCci
-Content-Type: text/plain; charset=US-ASCII
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/locks.c         |   21 +++++++++++++--------
+ include/linux/fs.h |   18 ++++++++++++++++++
+ 2 files changed, 31 insertions(+), 8 deletions(-)
 
-Hi Jeff,
+diff --git a/fs/locks.c b/fs/locks.c
+index 804bb9e..ddeab49 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -518,9 +518,10 @@ static void locks_insert_block(struct file_lock *blocker,
+ 		list_add(&waiter->fl_link, &blocked_list);
+ }
+ 
+-/* Wake up processes blocked waiting for blocker.
+- * If told to wait then schedule the processes until the block list
+- * is empty, otherwise empty the block list ourselves.
++/*
++ * Wake up processes blocked waiting for blocker.
++ *
++ * Must be called with the file_lock_lock held!
+  */
+ static void locks_wake_up_blocks(struct file_lock *blocker)
+ {
+@@ -806,6 +807,11 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 	}
+ 
+ 	lock_flocks();
++	/*
++	 * New lock request. Walk all POSIX locks and look for conflicts. If
++	 * there are any, either return error or put the request on the
++	 * blocker's list of waiters and the global blocked_list.
++	 */
+ 	if (request->fl_type != F_UNLCK) {
+ 		for_each_lock(inode, before) {
+ 			fl = *before;
+@@ -844,7 +850,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 		before = &fl->fl_next;
+ 	}
+ 
+-	/* Process locks with this owner.  */
++	/* Process locks with this owner. */
+ 	while ((fl = *before) && posix_same_owner(request, fl)) {
+ 		/* Detect adjacent or overlapping regions (if same lock type)
+ 		 */
+@@ -930,10 +936,9 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 	}
+ 
+ 	/*
+-	 * The above code only modifies existing locks in case of
+-	 * merging or replacing.  If new lock(s) need to be inserted
+-	 * all modifications are done bellow this, so it's safe yet to
+-	 * bail out.
++	 * The above code only modifies existing locks in case of merging or
++	 * replacing. If new lock(s) need to be inserted all modifications are
++	 * done below this, so it's safe yet to bail out.
+ 	 */
+ 	error = -ENOLCK; /* "no luck" */
+ 	if (right && left == right && !new_fl2)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index cabc08a..cba0fb5 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -926,6 +926,24 @@ int locks_in_grace(struct net *);
+ /* that will die - we need it for nfs_lock_info */
+ #include <linux/nfs_fs_i.h>
+ 
++/*
++ * struct file_lock represents a generic "file lock". It's used to represent
++ * POSIX byte range locks, BSD (flock) locks, and leases. It's important to
++ * note that the same struct is used to represent both a request for a lock and
++ * the lock itself, but the same object is never used for both.
++ *
++ * FIXME: should we create a separate "struct lock_request" to help distinguish
++ * these two uses?
++ *
++ * The i_flock list is ordered by:
++ *
++ * 1) lock type -- FL_LEASEs first, then FL_FLOCK, and finally FL_POSIX
++ * 2) lock owner
++ * 3) lock range start
++ * 4) lock range end
++ *
++ * Obviously, the last two criteria only matter for POSIX locks.
++ */
+ struct file_lock {
+ 	struct file_lock *fl_next;	/* singly linked list for this inode  */
+ 	struct list_head fl_link;	/* doubly linked list of all locks */
+-- 
+1.7.1
 
-Thanks for doing all this work!
-
-Trivial comments below.
-
-On Fri, 21 Jun 2013 08:58:14 -0400 Jeff Layton <jlayton@redhat.com> wrote:
->
-> +static inline void
-> +locks_insert_global_locks(struct file_lock *fl)
-> +{
-> +	list_add_tail(&fl->fl_link, &file_lock_list);
-> +}
-
-We generally do not use "inline" in C files any more and leave it to the
-compiler to do that.  Also, without the "inline" these function headers
-should all be able to fit on single lines like the others here i.e.
-
-static void locks_insert_global_locks(struct file_lock *fl)
-
---=20
-Cheers,
-Stephen Rothwell                    sfr@canb.auug.org.au
-
---Signature=_Tue__25_Jun_2013_11_37_04_+1000_dzYhDLAz_=0wCCci
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.20 (GNU/Linux)
-
-iQIcBAEBCAAGBQJRyPREAAoJEECxmPOUX5FEfWIP/1Fcte7TTx0cYdMFqxD6iYFF
-I5QuoxOCEek37xGFhXwztvoI+llIdSH4xYaZXtVyC01jxfejNfGOW6JOuxRWrMCW
-4o0doZNE7fX1CaPJv+O8HS0qGVGVL4En0ZJJrPtjImbrUP1rg+bKAI4GwTZTcxfH
-eDr8Oey4xzzSFR/am+e7IyEjAW4gA7EIOpG4PjcMP+LEbTKOaybUDZBs+IwRBiPL
-ERyuwyW1mdAh5Cd5rssT72osOSq36WvK7f0w7hdzenmJFj5SUY4mmWdQz25J79ZC
-5LOfPxcgZWAv48F4VmmKh0v555f7hVGdtf1eE4cwckzWDQAvvPY27xSFNaYWwvd9
-jpDVPR0CcJeJkRR4qpGE6OO9dRGCoq8aNAmln0ix4ehb7+rGt4KMO0vOplFmfb1y
-oiL/Uzc2WuoFJDQCU1f7Z3EmcBKZBxS+Hs67xuvulBAubLY4r0uYMcA6RLgsbHB7
-k/eyUk9Rsce39jdPNPkFM1AB92F5AvdmaqROH2NKRh9lNOmZDNxxQ3v/9XU9oY6t
-1uNs9dL7H9f2MaMeG4Yx9ircj+NdB7vwbauYlAv/9D1fxRhqoKO1M292CbWhv/l0
-OwcF9Nz9e6aHHZc8HnZzlKjzRaoqJ83eFekWk4RZbmNhEmlLDzHUXfqrke6fn8pn
-Y1vM5HPDCfSDb/sVAmbd
-=q+vx
------END PGP SIGNATURE-----
-
---Signature=_Tue__25_Jun_2013_11_37_04_+1000_dzYhDLAz_=0wCCci--
