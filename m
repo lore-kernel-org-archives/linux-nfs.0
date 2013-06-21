@@ -1,33 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from p3plsmtpa08-02.prod.phx3.secureserver.net ([173.201.193.103]:43450
-	"EHLO p3plsmtpa08-02.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751462Ab3FLCmU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Jun 2013 22:42:20 -0400
-Message-ID: <51B7DE9C.6080703@talpey.com>
-Date: Tue, 11 Jun 2013 22:36:12 -0400
-From: Tom Talpey <tom@talpey.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Sandeep Joshi <sanjos100@gmail.com>, linux-nfs@vger.kernel.org
-Subject: Re: why does nfsd write not use splice
-References: <CAEfL3KnfRWof4-6UAWTwXcH7XWSQuUR5ry_pg4qdyhBB6dt+5g@mail.gmail.com> <20130611195140.GA29634@fieldses.org>
-In-Reply-To: <20130611195140.GA29634@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail.gnuher.de ([78.47.12.54]:38490 "EHLO mail.gnuher.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1423415Ab3FUUvj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Jun 2013 16:51:39 -0400
+Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
+	by mail.gnuher.de (envelope-from
+	<news@geggus.net>)
+	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.72)
+	id 1Uq8J0-00025w-Hi
+	for linux-nfs@vger.kernel.org; Fri, 21 Jun 2013 22:51:38 +0200
+Received: from news  by ultimate100.geggus.net (envelope-from
+	<news@geggus.net>)
+	with local (Exim 4.72)
+	id 1Uq8Iy-0006SK-PD
+	for linux-nfs@vger.kernel.org; Fri, 21 Jun 2013 22:51:36 +0200
+To: linux-nfs@vger.kernel.org
+From: Sven Geggus <lists@fuchsschwanzdomain.de>
+Subject: Re: NFS4 + KERB + AD 2008 Troubles
+Date: Fri, 21 Jun 2013 20:51:36 +0000 (UTC)
+Message-ID: <kq2eco$o1t$1@ultimate100.geggus.net>
+References: <2182E21644AEEF4BAC775CC0609AE30C1E2AF5D1@GLORFINDEL.noveltis.loc>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 6/11/2013 3:51 PM, J. Bruce Fields wrote:
-> On Sun, Jun 09, 2013 at 01:05:16PM +0530, Sandeep Joshi wrote:
->> Is there a reason as to why the nfsd server does not use splice in the
->> write calls - nfsd_vfs_write() ?  Is there some structural limitation
->> or is it just something nobody got around to implementing ?
->>
->> I have looked at the source back to the 2.6.x kernels and it seems
->> only nfsd_vfs_read() has ever used splice/sendfile.
->> http://lxr.linux.no/linux+v3.9.5/fs/nfsd/vfs.c
->
-> I don't actually know how splice_write works.... I assume to avoid a
-> copy we'd have to place the incoming write data into pages already
-> correctly aligned.  That would be an interesting trick.
+Thierry Lamoureux <thierry.lamoureux@noveltis.fr> wrote:
 
-NFS-RDMA does that, by design. ;-)
+> Package installation
+> - nfs-common
+> - winbind
+
+What I actually miss in your list ist some kind of nss module.
+
+Bevore thinking about getting NFS4 to work at all you have to be able
+to "resolv" you users on both, nfs client _and_ server via nfs.
+
+I would sugest libnss-ldapd or sssd rather than windbind.
+libnss-winbind might work as well, but I+m not using this.
+
+Anyway, does "getent passwd <some-userid>" work fine on you client
+and server?
+
+Regards
+
+Sven
+
+-- 
+                       This APT has Super Cow Powers.
+					(apt-get --help on debian woody)
+
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
