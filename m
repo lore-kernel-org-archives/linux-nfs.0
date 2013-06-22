@@ -1,122 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46209 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750907Ab3FDUSZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jun 2013 16:18:25 -0400
-Date: Tue, 4 Jun 2013 16:17:59 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, dhowells@redhat.com,
-        sage@inktank.com, smfrench@gmail.com, swhiteho@redhat.com,
-        Trond.Myklebust@netapp.com, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        piastryyy@gmail.com
-Subject: Re: [PATCH v1 05/11] locks: encapsulate the fl_link list handling
-Message-ID: <20130604201759.GB15594@fieldses.org>
-References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
- <1370056054-25449-6-git-send-email-jlayton@redhat.com>
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:49611 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751597Ab3FVPW5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 22 Jun 2013 11:22:57 -0400
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1370056054-25449-6-git-send-email-jlayton@redhat.com>
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: NFS clientaddr, kerberos
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1371913167.28295.8.camel@freed.purpleidea.com>
+Date: Sat, 22 Jun 2013 11:22:52 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <E910FB58-8E56-4E96-A197-B25084B135BD@oracle.com>
+References: <1371913167.28295.8.camel@freed.purpleidea.com>
+To: James <purpleidea@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 31, 2013 at 11:07:28PM -0400, Jeff Layton wrote:
-> Move the fl_link list handling routines into a separate set of helpers.
-> Also move the global list handling out of locks_insert_block, and into
-> the caller that ends up triggering it as that allows us to eliminate the
-> IS_POSIX check there.
 
-ACK.--b.
+On Jun 22, 2013, at 10:59 AM, James <purpleidea@gmail.com> wrote:
 
+> Dear NFS experts, I have a few questions:
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/locks.c |   34 +++++++++++++++++++++++++++++-----
->  1 files changed, 29 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/locks.c b/fs/locks.c
-> index cef0e04..caca466 100644
-> --- a/fs/locks.c
-> +++ b/fs/locks.c
-> @@ -494,13 +494,38 @@ static int posix_same_owner(struct file_lock *fl1, struct file_lock *fl2)
->  	return fl1->fl_owner == fl2->fl_owner;
->  }
->  
-> +/* Remove a blocker or lock from one of the global lists */
-> +static inline void
-> +locks_insert_global_blocked(struct file_lock *waiter)
-> +{
-> +	list_add(&waiter->fl_link, &blocked_list);
-> +}
-> +
-> +static inline void
-> +locks_delete_global_blocked(struct file_lock *waiter)
-> +{
-> +	list_del_init(&waiter->fl_link);
-> +}
-> +
-> +static inline void
-> +locks_insert_global_locks(struct file_lock *waiter)
-> +{
-> +	list_add_tail(&waiter->fl_link, &file_lock_list);
-> +}
-> +
-> +static inline void
-> +locks_delete_global_locks(struct file_lock *waiter)
-> +{
-> +	list_del_init(&waiter->fl_link);
-> +}
-> +
->  /* Remove waiter from blocker's block list.
->   * When blocker ends up pointing to itself then the list is empty.
->   */
->  static void __locks_delete_block(struct file_lock *waiter)
->  {
->  	list_del_init(&waiter->fl_block);
-> -	list_del_init(&waiter->fl_link);
-> +	locks_delete_global_blocked(waiter);
->  	waiter->fl_next = NULL;
->  }
->  
-> @@ -524,8 +549,6 @@ static void locks_insert_block(struct file_lock *blocker,
->  	BUG_ON(!list_empty(&waiter->fl_block));
->  	list_add_tail(&waiter->fl_block, &blocker->fl_block);
->  	waiter->fl_next = blocker;
-> -	if (IS_POSIX(blocker))
-> -		list_add(&waiter->fl_link, &blocked_list);
->  }
->  
->  /* Wake up processes blocked waiting for blocker.
-> @@ -552,7 +575,7 @@ static void locks_wake_up_blocks(struct file_lock *blocker)
->   */
->  static void locks_insert_lock(struct file_lock **pos, struct file_lock *fl)
->  {
-> -	list_add(&fl->fl_link, &file_lock_list);
-> +	locks_insert_global_locks(fl);
->  
->  	fl->fl_nspid = get_pid(task_tgid(current));
->  
-> @@ -573,7 +596,7 @@ static void locks_delete_lock(struct file_lock **thisfl_p)
->  
->  	*thisfl_p = fl->fl_next;
->  	fl->fl_next = NULL;
-> -	list_del_init(&fl->fl_link);
-> +	locks_delete_global_locks(fl);
->  
->  	if (fl->fl_nspid) {
->  		put_pid(fl->fl_nspid);
-> @@ -839,6 +862,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
->  				goto out;
->  			error = FILE_LOCK_DEFERRED;
->  			locks_insert_block(fl, request);
-> +			locks_insert_global_blocked(request);
->  			goto out;
->    		}
->    	}
-> -- 
-> 1.7.1
-> 
+> 1) Concerning the NFSv4 clientaddr option, I'm curious about the
+> technical details of why the server needs a callback address, and what
+> to do if the client isn't directly routable? (eg: behind NAT) I am
+> thinking of the situation with *many* clients.
+
+If a callback path is not available, the server will not grant delegations to the client.  Delegation is simply a performance optimization.  Normal operation can proceed.
+
+> Also, what ports need to be open on the client? Does it need to respond
+> to "NEW" traffic, or only "ESTABLISHED" or ?
+
+Typically the client will choose a port at random.  The client's callback address and port are provided to the server by the NFSv4 SETCLIENTID operation.
+
+The server tests the provided callback arguments with a CB_NULL request (and a new TCP connection) either at mount time or when a client application first opens a file on that server.  If the arguments do not result in a successful CB_NULL, the server simply disables delegation for that client.
+
+You can fix the port the client uses, if you have a firewall in place and want to leave an open port.  A kernel command-line parameter is used on the client:
+
+        nfs.callback_tcpport=
+                        [NFS] set the TCP port on which the NFSv4 callback
+                        channel should listen.
+
+Although, these days, it may be a per-namespace thing.  A quick browse of the documentation wasn't revealing.
+
+> 2) In /etc/exports, for an NFSv4 export, you often see docs suggesting:
+> sec=sys,krb5,krb5i,krb5p OR the same but without the 'sys' part. If you
+> instead do 'sec=krb5p' will this *force* clients to use full encryption
+> and authentication, and deny those who try to mount without sec=krb5p ?
+> In particular, if a client tries to mount with sec=krb5i, what should
+> happen? For some reason I haven't seen anyone just use 'sec=krb5p' and I
+> wanted to know what was up.
+
+If you specify "sec=krb5p" for an export, clients can mount that export only using sec=krb5p.  Thus a mount command that specifies sec=krb5i should fail with EACCES.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
