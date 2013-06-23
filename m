@@ -1,58 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natfw.luminex.com ([50.58.139.18]:41855 "EHLO luminex.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1755384Ab3FDDCB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Jun 2013 23:02:01 -0400
-Received: from [192.9.200.221] (emach020.luminex.com [192.9.200.221])
-	by luminex.com (8.12.9/8.12.9) with ESMTP id r542fSPj025734
-	for <linux-nfs@vger.kernel.org>; Mon, 3 Jun 2013 19:41:28 -0700 (PDT)
-Message-ID: <51AD53CF.3080604@luminex.com>
-Date: Mon, 03 Jun 2013 19:41:19 -0700
-From: Brian Hawley <bhawley@luminex.com>
+Received: from mout.perfora.net ([74.208.4.194]:50510 "EHLO mout.perfora.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750879Ab3FWTnE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 23 Jun 2013 15:43:04 -0400
+Date: Sun, 23 Jun 2013 15:42:50 -0400
+From: Jim Rees <rees@umich.edu>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: James <purpleidea@gmail.com>, Chuck Lever <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFS clientaddr, kerberos
+Message-ID: <20130623194250.GA11422@umich.edu>
+References: <1371913167.28295.8.camel@freed.purpleidea.com>
+ <E910FB58-8E56-4E96-A197-B25084B135BD@oracle.com>
+ <1371926549.9337.7.camel@leira.trondhjem.org>
+ <1372001734.28295.15.camel@freed.purpleidea.com>
+ <1372002787.3799.2.camel@leira.trondhjem.org>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: i/o still hangs when nfs server unavailable even with soft mount
- option
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1372002787.3799.2.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Myklebust, Trond wrote:
 
-I've noticed that even with 'soft' mount specified as an option, i/o 
-will continue to cache (after a server has gone away - or the clients 
-links to it), at which point it hangs, instead of returning an i/o error 
-as I would expect based on the man pages.
+  > > 	echo "options nfs callback_tcpport=<port>" >>/etc/modprobe.d/options-local.conf
+  > This is very useful to know.
+  > Is there any way to specify this as a mount option?
+  
+  No. The NFSv4 callback channel port number is a global property. It does
+  not want to be a per-mount thing.
 
-For our environment, speed is more important than reliability as when we 
-lose access to one of the nfs mounts, we cease writing new data to it 
-and journal it on the remaining available mounts.
-
-Based on the descriptions in the various manuals, I would have thought 
-'soft' mount would have given us an i/o error on any write (or read) 
-which failed.
-
-This however, isn't the case, unless 'sync' is also set.
-
-I believe the reason for this has to do with somewhere in the cache 
-handling.   Even when the mount is set to 'soft', without 'sync' the 
-writes go to the cache, until the cache is full and the client wants to 
-perform the actual write to the server.   It is at this time, that it 
-stays stuck and never returns, irregardless of the timeo and retrans 
-options, until the server (or links to it) have been restored.
-
-If 'sync' is on, the i/o error occurs as expected.    However, 'sync' 
-has a significant performance penalty, even if the server exports the 
-filesystem as 'async'.
-
-I wasn't able to find anything in the archives about this, but did find 
-one other reference in 2010 to this same issue, but without any reply or 
-comment about a solution.
-
-Does anyone know how I might get this working, or could point me to the 
-correct location in the kernel fs sources to effect my own change to the 
-kernel handling?
-
-Thanks,
-
--- Brian
-
+Would it make sense as a sysctl? I can sort of imagine cases where this
+might be useful. Not that I'm volunteering to implement it.
