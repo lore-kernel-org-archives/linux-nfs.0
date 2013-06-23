@@ -1,54 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:56785 "EHLO e9.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752122Ab3FYTKT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Jun 2013 15:10:19 -0400
-Received: from /spool/local
-	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Tue, 25 Jun 2013 15:10:18 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id EF198C9005C
-	for <linux-nfs@vger.kernel.org>; Tue, 25 Jun 2013 15:10:14 -0400 (EDT)
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r5PJAD5f313484
-	for <linux-nfs@vger.kernel.org>; Tue, 25 Jun 2013 15:10:14 -0400
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r5PJA9L2008832
-	for <linux-nfs@vger.kernel.org>; Tue, 25 Jun 2013 13:10:09 -0600
-Date: Tue, 25 Jun 2013 14:10:08 -0500
-From: Malahal Naineni <malahal@us.ibm.com>
-To: linux-nfs@vger.kernel.org
-Cc: bfields@fieldses.org
-Subject: nfsd dropping requests after lazy umount
-Message-ID: <20130625191008.GA20277@us.ibm.com>
+Received: from mail-la0-f46.google.com ([209.85.215.46]:63754 "EHLO
+	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750944Ab3FWN1x (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Jun 2013 09:27:53 -0400
+Received: by mail-la0-f46.google.com with SMTP id eg20so9261253lab.19
+        for <linux-nfs@vger.kernel.org>; Sun, 23 Jun 2013 06:27:52 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Date: Sun, 23 Jun 2013 16:27:52 +0300
+Message-ID: <CADnca3voFCr1xbwNcHEq-YCip2ghBrH3Ni2XARfcW6pdLw1K-A@mail.gmail.com>
+Subject: LAYOUTGET and NFS4ERR_DELAY: a few questions
+From: Nadav Shemer <nadav@tonian.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi All,
+Background: I'm working on a pnfs-exported filesystem implementation
+(using objects-based storage)
+In my ->layout_get() implementation, I use mutex_trylock() and return
+NFS4ERR_DELAY in the contended case
+In a real-world test, I discovered the client always waits 15 seconds
+when receiving this error for LAYOUTGET.
+This occurs in nfs4_async_handle_error, which always wait for
+NFS4_POLL_RETRY_MAX when getting DELAY, GRACE or EKEYEXPIRED
 
-I have found an issue with lazy/forced unmounts with nfsd. Let us say
-/nfs is a mount point, and we are exporting /nfs/exp directory.
+This is in contrast to nfs4_handle_exception, which calls nfs4_delay.
+In this path, the wait begins at NFS4_POLL_RETRY_MIN (0.1 seconds) and
+increases two-fold each time up to RETRY_MAX.
+It is used by many nfs4_proc operations - the caller creates an
+nfs4_exception structure, and retries the operation until success (or
+permanent error).
 
-After mounting from a client, this export will have a cache entry
-"svc_export" in the kernel. The exports pathname
-d_path(svc_export->ex_path) correctly resolves to "/nfs/exp"
+when nfs4_async_handle_error is used, OTOH, the RPC task is restarted
+in the ->rpc_call_done callback and the sleeping is done with
+rpc_delay
 
-After the /nfs is lazy unmounted, the d_path(svc_export->ex_path)
-resolves to "/exp" only.
+nfs4_async_handle_error is used in:
+CLOSE, UNLINK, RENAME, READ, WRITE, COMMIT, DELEGRETURN, LOCKU,
+LAYOUTGET, LAYOUTRETURN and LAYOUTCOMMIT.
+A similar behavior (waiting RETRY_MAX) is also used in
+nfs4*_sequence_* functions (in which case it refers to the status of
+the SEQUENCE operation itself) and by RECLAIM_COMPLETE
+GET_LEASE_TIME also has such a code structure, but it always waits
+RETRY_MIN, not MAX
 
-Now, if the cache entry needs revalidation, you will see "/exp" in the
-nfsd.export/channel file that never gets cleared as that cache entry
-will be in a forever CACHE_PENDING state. We will also see
-svc_export_parse() failing with -2 err as such a pathname doesn't exist
-in the system any more.
 
-I noticed that svc_export has two fields: ex_path and ex_pathname.  Is
-it possible to make a string comparison of d_path(ex_path) and
-ex_pathname? If so, we should be able to fail the upcall without making
-the upcall if those two don't match.
+The first question, raised in the beginning of this mail:
+Is it better to wait for the mutex in the NFSd thread (with the risk
+of blocking that nfsd thread) or to return DELAY(with its 15s delay
+and risk of repeatedly landing on a contended mutex even if it is not
+kept locked the whole time)?
+Is there some other solution?
 
-Regards, Malahal.
 
+The second question(s):
+Why are there several different implementations of the same
+restart/retry behaviors? why do some operations use one mechanism and
+others use another?
+Why isn't the exponential back-off mechanism used in these operations?
