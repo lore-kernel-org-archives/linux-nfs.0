@@ -1,98 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:36848 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:12165 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753579Ab3FKLJn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Jun 2013 07:09:43 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
-Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
-        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v2 01/14] cifs: use posix_unblock_lock instead of locks_delete_block
-Date: Tue, 11 Jun 2013 07:08:55 -0400
-Message-Id: <1370948948-31784-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1370948948-31784-1-git-send-email-jlayton@redhat.com>
-References: <1370948948-31784-1-git-send-email-jlayton@redhat.com>
+	id S1753096Ab3FXHw4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Jun 2013 03:52:56 -0400
+Subject: [PATCH v3 2/4] SUNRPC: fix races on PipeFS UMOUNT notifications
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, devel@openvz.org, linux-kernel@vger.kernel.org,
+        jlayton@redhat.com
+Date: Mon, 24 Jun 2013 11:52:45 +0400
+Message-ID: <20130624075245.17104.6279.stgit@localhost.localdomain>
+In-Reply-To: <20130624075131.17104.55399.stgit@localhost.localdomain>
+References: <20130624075131.17104.55399.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-commit 66189be74 (CIFS: Fix VFS lock usage for oplocked files) exported
-the locks_delete_block symbol. There's already an exported helper
-function that provides this capability however, so make cifs use that
-instead and turn locks_delete_block back into a static function.
+CPU#0                                   CPU#1
+-----------------------------           -----------------------------
+rpc_kill_sb
+sn->pipefs_sb = NULL                    rpc_release_client
+(UMOUNT_EVENT)                          rpc_free_auth
+rpc_pipefs_event
+rpc_get_client_for_event
+!atomic_inc_not_zero(cl_count)
+<skip the client>
+                                        atomic_inc(cl_count)
+                                        rpc_free_client
+                                        rpc_clnt_remove_pipedir
+                                        <skip client dir removing>
 
-Note that if fl->fl_next == NULL then this lock has already been through
-locks_delete_block(), so we should be OK to ignore an ENOENT error here
-and simply not retry the lock.
+To fix this, this patch does the following:
 
-Cc: Pavel Shilovsky <piastryyy@gmail.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Acked-by: J. Bruce Fields <bfields@fieldses.org>
+1) Calls RPC_PIPEFS_UMOUNT notification with sn->pipefs_sb_lock being held.
+2) Removes SUNRPC client from the list AFTER pipes destroying.
+3) Doesn't hold RPC client on notification: if client in the list, then it
+can't be destroyed while sn->pipefs_sb_lock in hold by notification caller.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: stable@vger.kernel.org
 ---
- fs/cifs/file.c     |    2 +-
- fs/locks.c         |    3 +--
- include/linux/fs.h |    5 -----
- 3 files changed, 2 insertions(+), 8 deletions(-)
+ net/sunrpc/clnt.c     |    5 +----
+ net/sunrpc/rpc_pipe.c |    2 +-
+ 2 files changed, 2 insertions(+), 5 deletions(-)
 
-diff --git a/fs/cifs/file.c b/fs/cifs/file.c
-index 48b29d2..44a4f18 100644
---- a/fs/cifs/file.c
-+++ b/fs/cifs/file.c
-@@ -999,7 +999,7 @@ try_again:
- 		rc = wait_event_interruptible(flock->fl_wait, !flock->fl_next);
- 		if (!rc)
- 			goto try_again;
--		locks_delete_block(flock);
-+		posix_unblock_lock(file, flock);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index b827a4b..41f180c 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -236,8 +236,6 @@ static struct rpc_clnt *rpc_get_client_for_event(struct net *net, int event)
+ 			continue;
+ 		if (rpc_clnt_skip_event(clnt, event))
+ 			continue;
+-		if (atomic_inc_not_zero(&clnt->cl_count) == 0)
+-			continue;
+ 		spin_unlock(&sn->rpc_client_lock);
+ 		return clnt;
  	}
- 	return rc;
- }
-diff --git a/fs/locks.c b/fs/locks.c
-index cb424a4..7a02064 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -496,13 +496,12 @@ static void __locks_delete_block(struct file_lock *waiter)
+@@ -254,7 +252,6 @@ static int rpc_pipefs_event(struct notifier_block *nb, unsigned long event,
  
- /*
-  */
--void locks_delete_block(struct file_lock *waiter)
-+static void locks_delete_block(struct file_lock *waiter)
- {
- 	lock_flocks();
- 	__locks_delete_block(waiter);
- 	unlock_flocks();
+ 	while ((clnt = rpc_get_client_for_event(sb->s_fs_info, event))) {
+ 		error = __rpc_pipefs_event(clnt, event, sb);
+-		rpc_release_client(clnt);
+ 		if (error)
+ 			break;
+ 	}
+@@ -641,8 +638,8 @@ rpc_free_client(struct rpc_clnt *clnt)
+ 			rcu_dereference(clnt->cl_xprt)->servername);
+ 	if (clnt->cl_parent != clnt)
+ 		rpc_release_client(clnt->cl_parent);
+-	rpc_unregister_client(clnt);
+ 	rpc_clnt_remove_pipedir(clnt);
++	rpc_unregister_client(clnt);
+ 	rpc_free_iostats(clnt->cl_metrics);
+ 	kfree(clnt->cl_principal);
+ 	clnt->cl_metrics = NULL;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index c512448..efca2f7 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -1165,7 +1165,6 @@ static void rpc_kill_sb(struct super_block *sb)
+ 		goto out;
+ 	}
+ 	sn->pipefs_sb = NULL;
+-	mutex_unlock(&sn->pipefs_sb_lock);
+ 	dprintk("RPC:       sending pipefs UMOUNT notification for net %p%s\n",
+ 		net, NET_NAME(net));
+ 	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
+@@ -1173,6 +1172,7 @@ static void rpc_kill_sb(struct super_block *sb)
+ 					   sb);
+ 	put_net(net);
+ out:
++	mutex_unlock(&sn->pipefs_sb_lock);
+ 	kill_litter_super(sb);
  }
--EXPORT_SYMBOL(locks_delete_block);
  
- /* Insert waiter into blocker's block list.
-  * We use a circular list so that processes can be easily woken up in
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 43db02e..b9d7816 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1006,7 +1006,6 @@ extern int vfs_setlease(struct file *, long, struct file_lock **);
- extern int lease_modify(struct file_lock **, int);
- extern int lock_may_read(struct inode *, loff_t start, unsigned long count);
- extern int lock_may_write(struct inode *, loff_t start, unsigned long count);
--extern void locks_delete_block(struct file_lock *waiter);
- extern void lock_flocks(void);
- extern void unlock_flocks(void);
- #else /* !CONFIG_FILE_LOCKING */
-@@ -1151,10 +1150,6 @@ static inline int lock_may_write(struct inode *inode, loff_t start,
- 	return 1;
- }
- 
--static inline void locks_delete_block(struct file_lock *waiter)
--{
--}
--
- static inline void lock_flocks(void)
- {
- }
--- 
-1.7.1
 
