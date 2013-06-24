@@ -1,123 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38726 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752412Ab3FCWAv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Jun 2013 18:00:51 -0400
-Date: Mon, 3 Jun 2013 18:00:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, dhowells@redhat.com,
-        sage@inktank.com, smfrench@gmail.com, swhiteho@redhat.com,
-        Trond.Myklebust@netapp.com, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        piastryyy@gmail.com
-Subject: Re: [PATCH v1 03/11] locks: comment cleanups and clarifications
-Message-ID: <20130603220024.GF2109@fieldses.org>
-References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
- <1370056054-25449-4-git-send-email-jlayton@redhat.com>
+Received: from mail-oa0-f67.google.com ([209.85.219.67]:39469 "EHLO
+	mail-oa0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750936Ab3FXRNx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jun 2013 13:13:53 -0400
+Received: by mail-oa0-f67.google.com with SMTP id l10so5026109oag.10
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Jun 2013 10:13:53 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1370056054-25449-4-git-send-email-jlayton@redhat.com>
+Date: Mon, 24 Jun 2013 22:43:53 +0530
+Message-ID: <CA+uAZNMXLXcV6VNqOqVJEbOoKwj-fdmBp4mLz25W7nRxaB9A9w@mail.gmail.com>
+Subject: NFSD server is constantly returning nfserr_bad_stateid on 3.2 kernel
+From: Shyam Kaushik <shyamnfs1@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 31, 2013 at 11:07:26PM -0400, Jeff Layton wrote:
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/locks.c         |   24 +++++++++++++++++++-----
->  include/linux/fs.h |    6 ++++++
->  2 files changed, 25 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/locks.c b/fs/locks.c
-> index e3140b8..a7d2253 100644
-> --- a/fs/locks.c
-> +++ b/fs/locks.c
-> @@ -150,6 +150,16 @@ static int target_leasetype(struct file_lock *fl)
->  int leases_enable = 1;
->  int lease_break_time = 45;
->  
-> +/*
-> + * The i_flock list is ordered by:
-> + *
-> + * 1) lock type -- FL_LEASEs first, then FL_FLOCK, and finally FL_POSIX
-> + * 2) lock owner
-> + * 3) lock range start
-> + * 4) lock range end
-> + *
-> + * Obviously, the last two criteria only matter for POSIX locks.
-> + */
+Hi Folks,
 
-Thanks, yes, that needs documenting!  Though I wonder if this is the
-place people will look for it.
+Need help regarding a strange NFS server issue on 3.2 kernel.
 
->  #define for_each_lock(inode, lockp) \
->  	for (lockp = &inode->i_flock; *lockp != NULL; lockp = &(*lockp)->fl_next)
->  
-> @@ -806,6 +816,11 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
->  	}
->  
->  	lock_flocks();
-> +	/*
-> +	 * New lock request. Walk all POSIX locks and look for conflicts. If
-> +	 * there are any, either return -EAGAIN or put the request on the
-> +	 * blocker's list of waiters.
-> +	 */
+We are running a NFS server on Ubuntu precise with 3.2.0-25-generic
+#40-Ubuntu kernel.
 
-This though, seems a) not 100% accurate (it could also return EDEADLCK,
-for example), b) mostly redundant with respect to the following code.
+We have several NFS exports out of this server & multiple clients
+running different versions of linux kernel consume these exports. We
+use ext4 with sync mount as the filesystem.
 
->  	if (request->fl_type != F_UNLCK) {
->  		for_each_lock(inode, before) {
->  			fl = *before;
-> @@ -844,7 +859,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
->  		before = &fl->fl_next;
->  	}
->  
-> -	/* Process locks with this owner.  */
-> +	/* Process locks with this owner. */
->  	while ((fl = *before) && posix_same_owner(request, fl)) {
->  		/* Detect adjacent or overlapping regions (if same lock type)
->  		 */
-> @@ -930,10 +945,9 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
->  	}
->  
->  	/*
-> -	 * The above code only modifies existing locks in case of
-> -	 * merging or replacing.  If new lock(s) need to be inserted
-> -	 * all modifications are done bellow this, so it's safe yet to
-> -	 * bail out.
-> +	 * The above code only modifies existing locks in case of merging or
-> +	 * replacing. If new lock(s) need to be inserted all modifications are
-> +	 * done below this, so it's safe yet to bail out.
->  	 */
->  	error = -ENOLCK; /* "no luck" */
->  	if (right && left == right && !new_fl2)
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index b9d7816..ae377e9 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -926,6 +926,12 @@ int locks_in_grace(struct net *);
->  /* that will die - we need it for nfs_lock_info */
->  #include <linux/nfs_fs_i.h>
->  
-> +/*
-> + * struct file_lock represents a generic "file lock". It's used to represent
-> + * POSIX byte range locks, BSD (flock) locks, and leases. It's important to
-> + * note that the same struct is used to represent both a request for a lock and
-> + * the lock itself, but the same object is never used for both.
+We periodically see that all NFS activity comes to a standstill on all
+NFS exports. Enabling NFS debug shows that there are numerous
+nfserr_bad_stateid on almost all operations. This makes all of the
+NFSD threads to consume all of CPU on the server.
 
-Yes, and I do find that confusing.  I wonder if there's a sensible way
-to use separate structs for the different uses.
+Jun 24 01:50:42 srv007 kernel: [5753609.342457] nfsd_dispatch: vers 4 proc 1
+Jun 24 01:50:42 srv007 kernel: [5753609.342457] nfsv4 compound op
+#1/7: 22 (OP_PUTFH)
+Jun 24 01:50:42 srv007 kernel: [5753609.342467] nfsv4 compound op
+ffff880095744078 opcnt 3 #1: 22: status 0
+Jun 24 01:50:42 srv007 kernel: [5753609.342472] nfsv4 compound op
+#2/3: 38 (OP_WRITE)
+Jun 24 01:50:42 srv007 kernel: [5753609.342472] nfsd: fh_verify(36:
+01070001 00d40001 00000000 ac63c188 0a4859a1 feb41e83)
+Jun 24 01:50:42 srv007 kernel: [5753609.342484] renewing client
+(clientid 51ab76cb/00005fc9)
+Jun 24 01:50:42 srv007 kernel: [5753609.342486] NFSD: nfsd4_write:
+couldn't process stateid!
+Jun 24 01:50:42 srv007 kernel: [5753609.342529] nfsv4 compound op
+ffff880095744078 opcnt 3 #2: 38: status 10025
+Jun 24 01:50:42 srv007 kernel: [5753609.342544] nfsv4 compound returned 10025
 
---b.
+Jun 24 01:50:42 srv007 kernel: [5753609.444116] nfsd_dispatch: vers 4 proc 1
+Jun 24 01:50:42 srv007 kernel: [5753609.444122] nfsv4 compound op
+#1/3: 22 (OP_PUTFH)
+Jun 24 01:50:42 srv007 kernel: [5753609.444125] nfsd: fh_verify(36:
+01070001 00020001 00000000 eb3726ca c8497c28 911b4a8d)
+Jun 24 01:50:42 srv007 kernel: [5753609.444134] nfsv4 compound op
+ffff880093436078 opcnt 3 #1: 22: status 0
+Jun 24 01:50:42 srv007 kernel: [5753609.444136] nfsv4 compound op
+#2/3: 38 (OP_WRITE)
+Jun 24 01:50:42 srv007 kernel: [5753609.446920] nfsd4_process_open2:
+stateid=(51ab76cb/0000000b/40259544/00000001)
+Jun 24 01:50:42 srv007 kernel: [5753609.446925] nfsv4 compound op
+ffff880095027078 opcnt 7 #3: 18: status 0
+Jun 24 01:50:42 srv007 kernel: [5753609.446929] renewing client
+(clientid 51ab76cb/00000022)
+Jun 24 01:50:42 srv007 kernel: [5753609.446929] NFSD: nfsd4_write:
+couldn't process stateid!
+Jun 24 01:50:42 srv007 kernel: [5753609.446929] nfsv4 compound op
+ffff880093436078 opcnt 3 #2: 38: status 10025
+Jun 24 01:50:42 srv007 kernel: [5753609.446929] nfsv4 compound returned 10025
 
-> + */
->  struct file_lock {
->  	struct file_lock *fl_next;	/* singly linked list for this inode  */
->  	struct list_head fl_link;	/* doubly linked list of all locks */
-> -- 
-> 1.7.1
-> 
+Jun 24 01:50:42 srv007 kernel: [5753609.447162] nfsd_dispatch: vers 4 proc 1
+Jun 24 01:50:42 srv007 kernel: [5753609.447163] nfsd: fh_verify(36:
+01070001 00240001 00000000 a80fc170 1947ae6c 4fbf37b1)
+Jun 24 01:50:42 srv007 kernel: [5753609.447163] NFSD:
+nfs4_preprocess_seqid_op: seqid=1 stateid =
+(51ab76cb/00004b96/40259528/00000001)
+Jun 24 01:50:42 srv007 kernel: [5753609.447181] nfsv4 compound op
+#1/7: 22 (OP_PUTFH)
+Jun 24 01:50:42 srv007 kernel: [5753609.447185] nfsd: fh_verify(28:
+00070001 00020001 00000000 53c0b8df a948fcb9 475e2cba)
+Jun 24 01:50:42 srv007 kernel: [5753609.447185] renewing client
+(clientid 51ab76cb/00004b96)
+Jun 24 01:50:42 srv007 kernel: [5753609.447187] nfsv4 compound op
+ffff88000813f078 opcnt 2 #2: 20: status 10025
+Jun 24 01:50:42 srv007 kernel: [5753609.447189] nfsv4 compound returned 10025
+
+NFSD stacks are like:
+[<ffffffffa022e765>] nfs4_lock_state+0x15/0x40 [nfsd]
+[<ffffffffa02234f4>] nfsd4_open+0xb4/0x440 [nfsd]
+[<ffffffffa0221bc8>] nfsd4_proc_compound+0x518/0x6d0 [nfsd]
+[<ffffffffa020fa0b>] nfsd_dispatch+0xeb/0x230 [nfsd]
+[<ffffffffa0131d95>] svc_process_common+0x345/0x690 [sunrpc]
+[<ffffffffa01321e2>] svc_process+0x102/0x150 [sunrpc]
+[<ffffffffa020f0bd>] nfsd+0xbd/0x160 [nfsd]
+[<ffffffff8108a59c>] kthread+0x8c/0xa0
+[<ffffffff81667db4>] kernel_thread_helper+0x4/0x10
+[<ffffffffffffffff>] 0xffffffffffffffff
+
+I couldnt exactly capture the running thread, but it appears that one
+thread of the NFSD thread pool runs & detects a bad-state-id & returns
+back.
+
+Is this a known issue or any help on how to dig in further is greatly
+appreciated.
+
+Thanks.
+
+--Shyam
