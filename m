@@ -1,44 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from elasmtp-kukur.atl.sa.earthlink.net ([209.86.89.65]:56229 "EHLO
-	elasmtp-kukur.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756438Ab3FKUWt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Jun 2013 16:22:49 -0400
-Message-ID: <51B78716.30703@mindspring.com>
-Date: Tue, 11 Jun 2013 13:22:46 -0700
-From: Frank Filz <ffilz-lists@mindspring.com>
+Received: from mx1.redhat.com ([209.132.183.28]:18655 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751412Ab3FXRAu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Jun 2013 13:00:50 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r5OH0nC6029410
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 24 Jun 2013 13:00:50 -0400
+Received: from smallhat.bos.devel.redhat.com (vpn-53-220.rdu2.redhat.com [10.10.53.220])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id r5OH0nPt006819
+	for <linux-nfs@vger.kernel.org>; Mon, 24 Jun 2013 13:00:49 -0400
+Message-ID: <51C87B40.1080203@RedHat.com>
+Date: Mon, 24 Jun 2013 13:00:48 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Frank Filz <ffilz-lists@mindspring.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>, ffilz@us.ibm.com
-Subject: Re: Some pynfs updates
-References: <51B75979.5070300@mindspring.com> <20130611200610.GB29634@fieldses.org>
-In-Reply-To: <20130611200610.GB29634@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH]: gssd: Fix preferred_realm option handling
+References: <20130611093403.GB27345@principal.rfc2324.org> <20130611114114.GB16756@umich.edu> <20130617170247.GA16125@principal.rfc2324.org>
+In-Reply-To: <20130617170247.GA16125@principal.rfc2324.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/11/2013 01:06 PM, J. Bruce Fields wrote:
-> On Tue, Jun 11, 2013 at 10:08:09AM -0700, Frank Filz wrote:
->> Please pull this branch from github:
->> https://github.com/ffilz/pynfs/commits/master
->
-> Thanks, applied (actually from git://github.com/ffilz/pynfs.git master).
->
->> commit a6548ab80a68787dc3fcb5c8531d4d189d77c3a9
->> Author: Frank S. Filz <ffilz@us.ibm.com>
->> Date:   Wed May 1 16:06:56 2013 -0700
->>
->> Make mode 000 tests expect NFS4_OK when run as root
->>
->> They will warn if NFS4ERR_ACCESS is returned.
->
-> ... though I'm not sure about this one.  root-squashing is completely
-> normal, I'm not convinced it merits a warning.
-
-Oh, didn't think about that, good point. Would you like me to submit a 
-patch to make it an acceptable return?
-
-Frank
 
 
+On 17/06/13 13:02, Maximilian Wilhelm wrote:
+> Anno domini 2013 Jim Rees scripsit:
+> 
+>> Maximilian Wilhelm wrote:
+> 
+>>   +	 * Make sure the preferred_realm (which may have been explicitly set
+>>   +	 * on the command line, is tried first. If nothing is found go on with
+>>   +	 * the host and local default realm (if that hasn't already been tried).
+> 
+>> You're missing a close paren there somewhere.
+> 
+> Indeed. The first '(' should have been a ','.
+> 
+> Anyone willing to apply this?
+Its on my TODO list... and I'll fix the comment up...
+
+steved.
+
+> 
+> Thanks
+> Max
+> 
