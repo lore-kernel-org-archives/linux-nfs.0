@@ -1,113 +1,144 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:49311 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:18399 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1422660Ab3FUM7F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Jun 2013 08:59:05 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
-Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
-        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v4 13/14] seq_file: add seq_list_*_percpu helpers
-Date: Fri, 21 Jun 2013 08:58:21 -0400
-Message-Id: <1371819502-26363-14-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
-References: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
+	id S1752883Ab3FXHwv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Jun 2013 03:52:51 -0400
+Subject: [PATCH v3 1/4] SUNRPC: fix races on PipeFS MOUNT notifications
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, devel@openvz.org, linux-kernel@vger.kernel.org,
+        jlayton@redhat.com
+Date: Mon, 24 Jun 2013 11:52:38 +0400
+Message-ID: <20130624075238.17104.52944.stgit@localhost.localdomain>
+In-Reply-To: <20130624075131.17104.55399.stgit@localhost.localdomain>
+References: <20130624075131.17104.55399.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When we convert the file_lock_list to a set of percpu lists, we'll need
-a way to iterate over them in order to output /proc/locks info. Add
-some seq_list_*_percpu helpers to handle that.
+Below are races, when RPC client can be created without PiepFS dentries
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Acked-by: J. Bruce Fields <bfields@fieldses.org>
+CPU#0					CPU#1
+-----------------------------		-----------------------------
+rpc_new_client				rpc_fill_super
+rpc_setup_pipedir
+mutex_lock(&sn->pipefs_sb_lock)
+rpc_get_sb_net == NULL
+(no per-net PipeFS superblock)
+					sn->pipefs_sb = sb;
+					notifier_call_chain(MOUNT)
+					(client is not in the list)
+rpc_register_client
+(client without pipes dentries)
+
+To fix this patch:
+1) makes PipeFS mount notification call with pipefs_sb_lock being held.
+2) releases pipefs_sb_lock on new SUNRPC client creation only after
+registration.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: stable@vger.kernel.org
 ---
- fs/seq_file.c            |   54 ++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/seq_file.h |    6 +++++
- 2 files changed, 60 insertions(+), 0 deletions(-)
+ net/sunrpc/clnt.c     |   26 +++++++++++++++-----------
+ net/sunrpc/rpc_pipe.c |    3 +++
+ 2 files changed, 18 insertions(+), 11 deletions(-)
 
-diff --git a/fs/seq_file.c b/fs/seq_file.c
-index 774c1eb..3135c25 100644
---- a/fs/seq_file.c
-+++ b/fs/seq_file.c
-@@ -921,3 +921,57 @@ struct hlist_node *seq_hlist_next_rcu(void *v,
- 		return rcu_dereference(node->next);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 5a750b9..b827a4b 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -157,20 +157,15 @@ static struct dentry *rpc_setup_pipedir_sb(struct super_block *sb,
  }
- EXPORT_SYMBOL(seq_hlist_next_rcu);
-+
-+/**
-+ * seq_hlist_start_precpu - start an iteration of a percpu hlist array
-+ * @head: pointer to percpu array of struct hlist_heads
-+ * @cpu:  pointer to cpu "cursor"
-+ * @pos:  start position of sequence
-+ *
-+ * Called at seq_file->op->start().
-+ */
-+struct hlist_node *
-+seq_hlist_start_percpu(struct hlist_head __percpu *head, int *cpu, loff_t pos)
-+{
-+	struct hlist_node *node;
-+
-+	for_each_possible_cpu(*cpu) {
-+		hlist_for_each(node, per_cpu_ptr(head, *cpu)) {
-+			if (pos-- == 0)
-+				return node;
-+		}
+ 
+ static int
+-rpc_setup_pipedir(struct rpc_clnt *clnt, const char *dir_name)
++rpc_setup_pipedir(struct rpc_clnt *clnt, const char *dir_name,
++		  struct super_block *pipefs_sb)
+ {
+-	struct net *net = rpc_net_ns(clnt);
+-	struct super_block *pipefs_sb;
+ 	struct dentry *dentry;
+ 
+ 	clnt->cl_dentry = NULL;
+ 	if (dir_name == NULL)
+ 		return 0;
+-	pipefs_sb = rpc_get_sb_net(net);
+-	if (!pipefs_sb)
+-		return 0;
+ 	dentry = rpc_setup_pipedir_sb(pipefs_sb, clnt, dir_name);
+-	rpc_put_sb_net(net);
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+ 	clnt->cl_dentry = dentry;
+@@ -296,6 +291,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 	struct rpc_clnt		*clnt = NULL;
+ 	struct rpc_auth		*auth;
+ 	int err;
++	struct super_block *pipefs_sb;
+ 
+ 	/* sanity check the name before trying to print it */
+ 	dprintk("RPC:       creating %s client for %s (xprt %p)\n",
+@@ -354,9 +350,12 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 
+ 	atomic_set(&clnt->cl_count, 1);
+ 
+-	err = rpc_setup_pipedir(clnt, program->pipe_dir_name);
+-	if (err < 0)
+-		goto out_no_path;
++	pipefs_sb = rpc_get_sb_net(rpc_net_ns(clnt));
++	if (pipefs_sb) {
++		err = rpc_setup_pipedir(clnt, program->pipe_dir_name, pipefs_sb);
++		if (err)
++			goto out_no_path;
 +	}
-+	return NULL;
-+}
-+EXPORT_SYMBOL(seq_hlist_start_percpu);
-+
-+/**
-+ * seq_hlist_next_percpu - move to the next position of the percpu hlist array
-+ * @v:    pointer to current hlist_node
-+ * @head: pointer to percpu array of struct hlist_heads
-+ * @cpu:  pointer to cpu "cursor"
-+ * @pos:  start position of sequence
-+ *
-+ * Called at seq_file->op->next().
-+ */
-+struct hlist_node *
-+seq_hlist_next_percpu(void *v, struct hlist_head __percpu *head,
-+			int *cpu, loff_t *pos)
-+{
-+	struct hlist_node *node = v;
-+
-+	++*pos;
-+
-+	if (node->next)
-+		return node->next;
-+
-+	for (*cpu = cpumask_next(*cpu, cpu_possible_mask); *cpu < nr_cpu_ids;
-+	     *cpu = cpumask_next(*cpu, cpu_possible_mask)) {
-+		struct hlist_head *bucket = per_cpu_ptr(head, *cpu);
-+
-+		if (!hlist_empty(bucket))
-+			return bucket->first;
-+	}
-+	return NULL;
-+}
-+EXPORT_SYMBOL(seq_hlist_next_percpu);
-diff --git a/include/linux/seq_file.h b/include/linux/seq_file.h
-index 2da29ac..4e32edc 100644
---- a/include/linux/seq_file.h
-+++ b/include/linux/seq_file.h
-@@ -173,4 +173,10 @@ extern struct hlist_node *seq_hlist_start_head_rcu(struct hlist_head *head,
- extern struct hlist_node *seq_hlist_next_rcu(void *v,
- 						   struct hlist_head *head,
- 						   loff_t *ppos);
-+
-+/* Helpers for iterating over per-cpu hlist_head-s in seq_files */
-+extern struct hlist_node *seq_hlist_start_percpu(struct hlist_head __percpu *head, int *cpu, loff_t pos);
-+
-+extern struct hlist_node *seq_hlist_next_percpu(void *v, struct hlist_head __percpu *head, int *cpu, loff_t *pos);
-+
- #endif
--- 
-1.7.1
+ 
+ 	auth = rpcauth_create(args->authflavor, clnt);
+ 	if (IS_ERR(auth)) {
+@@ -369,11 +368,16 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 	/* save the nodename */
+ 	rpc_clnt_set_nodename(clnt, utsname()->nodename);
+ 	rpc_register_client(clnt);
++	if (pipefs_sb)
++		rpc_put_sb_net(rpc_net_ns(clnt));
+ 	return clnt;
+ 
+ out_no_auth:
+-	rpc_clnt_remove_pipedir(clnt);
++	if (pipefs_sb)
++		__rpc_clnt_remove_pipedir(clnt);
+ out_no_path:
++	if (pipefs_sb)
++		rpc_put_sb_net(rpc_net_ns(clnt));
+ 	kfree(clnt->cl_principal);
+ out_no_principal:
+ 	rpc_free_iostats(clnt->cl_metrics);
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index e7ce4b3..c512448 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -1126,6 +1126,7 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 		return -ENOMEM;
+ 	dprintk("RPC:       sending pipefs MOUNT notification for net %p%s\n",
+ 		net, NET_NAME(net));
++	mutex_lock(&sn->pipefs_sb_lock);
+ 	sn->pipefs_sb = sb;
+ 	err = blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
+ 					   RPC_PIPEFS_MOUNT,
+@@ -1133,6 +1134,7 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (err)
+ 		goto err_depopulate;
+ 	sb->s_fs_info = get_net(net);
++	mutex_unlock(&sn->pipefs_sb_lock);
+ 	return 0;
+ 
+ err_depopulate:
+@@ -1141,6 +1143,7 @@ err_depopulate:
+ 					   sb);
+ 	sn->pipefs_sb = NULL;
+ 	__rpc_depopulate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF);
++	mutex_unlock(&sn->pipefs_sb_lock);
+ 	return err;
+ }
+ 
 
