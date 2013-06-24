@@ -1,137 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.gnuher.de ([78.47.12.54]:54551 "EHLO mail.gnuher.de"
+Received: from fieldses.org ([174.143.236.118]:56161 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1423228Ab3FUIc0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Jun 2013 04:32:26 -0400
-Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
-	by mail.gnuher.de (envelope-from
-	<lists@fuchsschwanzdomain.de>)
-	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.72)
-	id 1Upwld-000487-5n
-	for linux-nfs@vger.kernel.org; Fri, 21 Jun 2013 10:32:25 +0200
-Date: Fri, 21 Jun 2013 10:32:22 +0200
-From: Sven Geggus <lists@fuchsschwanzdomain.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1750830Ab3FXVyK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Jun 2013 17:54:10 -0400
+Date: Mon, 24 Jun 2013 17:54:08 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Sven Geggus <lists@fuchsschwanzdomain.de>
 Cc: linux-nfs@vger.kernel.org
 Subject: Re: Kerberized NFS-Server Problem still present in 3.10.0-rc2
-Message-ID: <20130621083221.GA4103@geggus.net>
+Message-ID: <20130624215408.GD23596@fieldses.org>
 References: <kpscp8$fo3$1@ultimate100.geggus.net>
  <20130619213412.GA2547@fieldses.org>
  <20130620080354.GA5591@geggus.net>
  <20130620144955.GB11728@fieldses.org>
  <20130620145209.GC11728@fieldses.org>
+ <20130621083221.GA4103@geggus.net>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="bg08WKrSYDhXBjb5"
-In-Reply-To: <20130620145209.GC11728@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130621083221.GA4103@geggus.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Jun 21, 2013 at 10:32:22AM +0200, Sven Geggus wrote:
+> J. Bruce Fields schrieb am Donnerstag, den 20. Juni um 16:52 Uhr:
+> 
+> > What happens with NFSv3?
+> 
+> I have no Idea. I have a NFS4-only Server Setup and would need to enable v3
+> explicitly.
+> 
+> > So it looks it did a null init_sec_context establishment and then the
+> > server didn't reply to the first rpc call using the new context.  But
+> > it's hard to be sure without more details--could I get the binary dump?
+> 
+> Attached (Server kernel was 3.10.0-rc2 with patch below).
 
---bg08WKrSYDhXBjb5
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
+OK, yes, thanks, the init_sec_context exchange does look acceptable but
+the server never responds to the first real rpc (a SETCLIENTID) using
+the new context.
 
-J. Bruce Fields schrieb am Donnerstag, den 20. Juni um 16:52 Uhr:
+Could you run
 
-> What happens with NFSv3?
+	strace -p $(pidof rpc.svcgssd) -s4096 -e trace=open,close,read,write
 
-I have no Idea. I have a NFS4-only Server Setup and would need to enable v3
-explicitly.
+on the server while trying this?  That should capture the contents of
+the relevant upcalls.  I wonder if there's something odd about the
+context svcgssd is passing down.
 
-> So it looks it did a null init_sec_context establishment and then the
-> server didn't reply to the first rpc call using the new context.  But
-> it's hard to be sure without more details--could I get the binary dump?
+> > Hm, or I wonder if 8b5309d41751b8a086d8e7a43abe37d9ff24559d "svcrpc: fix
+> > failures to handle -1 uid's and gid's" (appended) would help.
+> 
+> No! I just patched this into a vanilla 3.10.0-rc2. Same Problem. The NFS-mount
+> just hangs.
 
-Attached (Server kernel was 3.10.0-rc2 with patch below).
+OK, thanks for checking.
 
-> Hm, or I wonder if 8b5309d41751b8a086d8e7a43abe37d9ff24559d "svcrpc: fix
-> failures to handle -1 uid's and gid's" (appended) would help.
-
-No! I just patched this into a vanilla 3.10.0-rc2. Same Problem. The NFS-mount
-just hangs.
-
-
-Sven
-
--- 
-"Thinking of using NT for your critical apps?
-                                  Isn't there enough suffering in the world?"
-                   (Advertisement of Sun Microsystems in Wall Street Journal)
-/me is giggls@ircnet, http://sven.gegg.us/ on the Web
-
---bg08WKrSYDhXBjb5
-Content-Type: application/cap
-Content-Disposition: attachment; filename="3.10.0-rc2-nfs-server.pcap"
-Content-Transfer-Encoding: base64
-
-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
-
---bg08WKrSYDhXBjb5--
+--b.
