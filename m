@@ -1,56 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f175.google.com ([209.85.214.175]:54661 "EHLO
-	mail-ob0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754446Ab3FOQ2Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 15 Jun 2013 12:28:24 -0400
-Received: by mail-ob0-f175.google.com with SMTP id xn12so1733074obc.20
-        for <linux-nfs@vger.kernel.org>; Sat, 15 Jun 2013 09:28:23 -0700 (PDT)
-Message-ID: <51BC9624.80507@gmail.com>
-Date: Sat, 15 Jun 2013 10:28:20 -0600
-From: John Haiducek <jhaiduce@gmail.com>
+Received: from mail-yh0-f54.google.com ([209.85.213.54]:33357 "EHLO
+	mail-yh0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752322Ab3FYQX6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jun 2013 12:23:58 -0400
+Received: by mail-yh0-f54.google.com with SMTP id f73so5824039yha.41
+        for <linux-nfs@vger.kernel.org>; Tue, 25 Jun 2013 09:23:57 -0700 (PDT)
+Subject: [PATCH 4/5] NFS: Export _nfs_display_fhandle()
+To: trond.myklebust@netapp.com
+From: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 25 Jun 2013 12:23:55 -0400
+Message-ID: <20130625162355.36416.28299.stgit@seurat.1015granger.net>
+In-Reply-To: <20130625162233.36416.34947.stgit@seurat.1015granger.net>
+References: <20130625162233.36416.34947.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: Can't mount NFSv4 with kerberos on Debian Wheezy
-References: <51BAAFFC.6060208@gmail.com> <51BAB0BC.1010303@gmail.com> <5A1575CF-0400-48CE-B18B-5B26C92D152A@oracle.com> <CAFYD6QXVKpLDS_cWiA2uasu+KXazcRuk-+BX39MdehSwiu35gw@mail.gmail.com> <871BEFF7-33F4-4B34-9887-D5388951987E@oracle.com> <51BC8740.8010000@gmail.com> <FD6F6C61-BF8B-4C9C-BCB5-E240203D3ACB@oracle.com>
-In-Reply-To: <FD6F6C61-BF8B-4C9C-BCB5-E240203D3ACB@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/15/2013 10:27 AM, Chuck Lever wrote:
-> On Jun 15, 2013, at 11:24 AM, John Haiducek<jhaiduce@gmail.com>  wrote:
->
->> On 06/14/2013 02:13 PM, Chuck Lever wrote:
->>> On Jun 14, 2013, at 3:49 PM, John Haiducek<jhaiduce@gmail.com<mailto:jhaiduce@gmail.com>>  wrote:
->>>
->>>> On Jun 14, 2013 11:05 AM, "Chuck Lever"<chuck.lever@oracle.com<mailto:chuck.lever@oracle.com>>  wrote:
->>>>>
->>>>> On Jun 14, 2013, at 1:57 AM, John Haiducek<jhaiduce@gmail.com<mailto:jhaiduce@gmail.com>>  wrote:
->>>>>
->>>>>> Jun 11 20:28:23 tbm rpc.gssd[8959]: Name or service not known while getting full hostname for 'tbm.enterprise.local'
->>>>> gssd thinks your client's hostname is "tbm.enterprise.local," which has no DNS entry.
->>>> That is the correct client hostname, and according to the 'host' command it is in dns. What would cause the host command to find it when gssd can't?
->>>>
->>> The error message is from utils/gssd/krb5_util.c:get_full_hostname().  If get_full_hostname() fails, then gssd can't search your client's keytab.
->>>
->>> Figure out why that getaddrinfo(3) call is failing to find a canonical name for "tbm.enterprise.local" -- that could be a client system configuration problem as much as a DNS misconfiguration.
->> Ok, I think I fixed the DNS problem. I was running avahi, and apparently you can't use avahi and also have a DNS server with a domain ending in .local. Shutting down avahi fixed it, although if I wanted to keep avahi working I could probably fix this by changing my domain to end in something other than .local.
->>
->> But now the mount command hangs and never returns. I get this in /var/log/syslog:
->>
->> Jun 15 09:19:36 tbm rpc.idmapd[16253]: New client: 24
->> Jun 15 09:19:36 tbm rpc.gssd[16258]: dir_notify_handler: sig 37 si 0x7fffb0fb3330 data 0x7fffb0fb3200
->> Jun 15 09:19:37 tbm rpc.gssd[16258]: dir_notify_handler: sig 37 si 0x7fffb0fb3330 data 0x7fffb0fb3200
->> Jun 15 09:19:37 tbm rpc.gssd[16258]: dir_notify_handler: sig 37 si 0x7fffb0fb3330 data 0x7fffb0fb3200
->> Jun 15 09:19:37 tbm rpc.gssd[16258]: destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt24
->> Jun 15 09:19:37 tbm rpc.idmapd[16253]: Stale client: 24
->> Jun 15 09:19:37 tbm rpc.idmapd[16253]: #011->  closed /var/lib/nfs/rpc_pipefs/nfs/clnt24/idmap
->> Jun 15 09:19:53 tbm rpc.gssd[16258]: dir_notify_handler: sig 37 si 0x7fffb0fb3330 data 0x7fffb0fb3200
->> Jun 15 09:19:53 tbm rpc.idmapd[16253]: New client: 25
->>
->> I might be missing something, but none of these entries look like errors. Where else should I look?
-> You can boost the verbosity of the debugging messages from gssd.  Start it with "-vv" or "-vvv".
->
+Allow code in nfsv4.ko to use _nfs_display_fhandle().  Useful for
+debugging NFSv4 migration.
 
-Already have it gssd running with -vvv.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfs/inode.c      |    2 ++
+ fs/nfs/nfs4client.c |    2 +-
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index c1c7a9d..319203d 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1102,6 +1102,7 @@ u32 _nfs_display_fhandle_hash(const struct nfs_fh *fh)
+ 	 * not on the result */
+ 	return ~crc32(0xFFFFFFFF, &fh->data[0], fh->size);
+ }
++EXPORT_SYMBOL_GPL(_nfs_display_fhandle_hash);
+ 
+ /*
+  * _nfs_display_fhandle - display an NFS file handle on the console
+@@ -1146,6 +1147,7 @@ void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption)
+ 		}
+ 	}
+ }
++EXPORT_SYMBOL_GPL(_nfs_display_fhandle);
+ #endif
+ 
+ /**
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index b7a9f76..3aec2de 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -757,7 +757,7 @@ static int nfs4_server_common_setup(struct nfs_server *server,
+ 	dprintk("Server FSID: %llx:%llx\n",
+ 			(unsigned long long) server->fsid.major,
+ 			(unsigned long long) server->fsid.minor);
+-	dprintk("Mount FH: %d\n", mntfh->size);
++	nfs_display_fhandle(mntfh, "Mount FH");
+ 
+ 	nfs4_session_set_rwsize(server);
+ 
+
