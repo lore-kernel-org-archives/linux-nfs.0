@@ -1,67 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:35994 "EHLO mx2.suse.de"
+Received: from mx12.netapp.com ([216.240.18.77]:15583 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755253Ab3FCBAt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 2 Jun 2013 21:00:49 -0400
-From: Neil Brown <neilb@suse.de>
-To: Steve Dickson <SteveD@redhat.com>
-Date: Mon, 03 Jun 2013 11:00:21 +1000
-Subject: [PATCH 0/3] Various gssd fixes including machine-credential issue.
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-Message-ID: <20130603005219.20080.1927.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1751670Ab3FYXDO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Jun 2013 19:03:14 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 2 1/3] NFSv4.1 Fix gdia_maxcount calculation to fit in ca_maxresponsesize
+Date: Tue, 25 Jun 2013 19:02:53 -0400
+Message-Id: <1372201375-6686-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1372201375-6686-1-git-send-email-andros@netapp.com>
+References: <1372201375-6686-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As you probably know, since 3.7 (I think) Linux NFS has explicitly
-asked for machine credentials for certain requests rather than asking
-for root credentials as is previously did.
-This causes a regression for people who don't have any machine
-credentials configured and use "gssd -n".
+From: Andy Adamson <andros@netapp.com>
 
-I gather this was discussed on the mailing list earlier this year but
-not resolved.
+The GETDEVICEINFO gdia_maxcount represents all of the data being returned
+within the GETDEVICEINFO4resok structure and includes the XDR overhead.
 
-I would like to re-awaken the issue and offer a resolution (which has
-been tested and found effective by a customer).
+The CREATE_SESSION ca_maxresponsesize is the maximum reply and includes the RPC
+headers (including security flavor credentials and verifiers).
 
-Hence these three patches.  The first two are minor issues that I
-stumbled over while trying to understand the problem and are not
-critical but probably should be fixed.
+Split out the struct pnfs_device field maxcount which is the gdia_maxcount
+from the pglen field which is the reply (the total) buffer length.
 
-The third addresses the above mentioned issue.  It introduces a
-variable "machine_uses_root_credentials" which is similar to the
-current "root_uses_machine_credentials".  It also adds a "-N" flag to
-set this variable.
-
-I'm not certain what the defaults should be.  For backward
-compatibility it would be best if '-n' set the this new variable as
-well as clearing the old one, but then I'm not sure what exactly -N
-should do.
-
-Comments welcome.
-
-Thanks,
-NeilBrown
-
-
-
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
+ fs/nfs/internal.h          | 1 +
+ fs/nfs/nfs4filelayoutdev.c | 1 +
+ fs/nfs/nfs4xdr.c           | 8 +++++++-
+ fs/nfs/pnfs.h              | 3 ++-
+ 4 files changed, 11 insertions(+), 2 deletions(-)
 
-Neil Brown (3):
-      krb5_utils: remove redundant array size.
-      krb5_util: don't give up on machine credential if hostname not available.
-      gssd: add -N option to use root credentials as machine credentials.
-
-
- utils/gssd/gssd.c      |    9 ++++++---
- utils/gssd/gssd.h      |    1 +
- utils/gssd/gssd.man    |   13 ++++++++++++-
- utils/gssd/gssd_proc.c |   12 +++++++-----
- utils/gssd/krb5_util.c |   10 +++++++---
- 5 files changed, 33 insertions(+), 12 deletions(-)
-
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 97ec2ef..3c8373f 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -255,6 +255,7 @@ extern int nfs4_decode_dirent(struct xdr_stream *,
+ #ifdef CONFIG_NFS_V4_1
+ extern const u32 nfs41_maxread_overhead;
+ extern const u32 nfs41_maxwrite_overhead;
++extern const u32 nfs41_maxgetdevinfo_overhead;
+ #endif
+ 
+ /* nfs4proc.c */
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 0493dbd..95604f6 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -711,6 +711,7 @@ filelayout_get_device_info(struct inode *inode,
+ 	pdev->pgbase = 0;
+ 	pdev->pglen = max_resp_sz;
+ 	pdev->mincount = 0;
++	pdev->maxcount = max_resp_sz - nfs41_maxgetdevinfo_overhead;
+ 
+ 	rc = nfs4_proc_getdeviceinfo(server, pdev, cred);
+ 	dprintk("%s getdevice info returns %d\n", __func__, rc);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 2a3f77e1..0abfb846 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -867,6 +867,12 @@ const u32 nfs41_maxread_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
+ 				     decode_sequence_maxsz +
+ 				     decode_putfh_maxsz) *
+ 				    XDR_UNIT);
++
++const u32 nfs41_maxgetdevinfo_overhead = ((RPC_MAX_REPHEADER_WITH_AUTH +
++					   compound_decode_hdr_maxsz +
++					   decode_sequence_maxsz) *
++					  XDR_UNIT);
++EXPORT_SYMBOL_GPL(nfs41_maxgetdevinfo_overhead);
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ static const umode_t nfs_type2fmt[] = {
+@@ -1924,7 +1930,7 @@ encode_getdeviceinfo(struct xdr_stream *xdr,
+ 	p = xdr_encode_opaque_fixed(p, args->pdev->dev_id.data,
+ 				    NFS4_DEVICEID4_SIZE);
+ 	*p++ = cpu_to_be32(args->pdev->layout_type);
+-	*p++ = cpu_to_be32(args->pdev->pglen);		/* gdia_maxcount */
++	*p++ = cpu_to_be32(args->pdev->maxcount);	/* gdia_maxcount */
+ 	*p++ = cpu_to_be32(0);				/* bitmap length 0 */
+ }
+ 
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 1441dff..a4f4181 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -149,9 +149,10 @@ struct pnfs_device {
+ 	struct nfs4_deviceid dev_id;
+ 	unsigned int  layout_type;
+ 	unsigned int  mincount;
++	unsigned int  maxcount;	/* gdia_maxcount */
+ 	struct page **pages;
+ 	unsigned int  pgbase;
+-	unsigned int  pglen;
++	unsigned int  pglen;	/* reply buffer length */
+ };
+ 
+ #define NFS4_PNFS_GETDEVLIST_MAXNUM 16
 -- 
-Signature
+1.7.11.7
 
