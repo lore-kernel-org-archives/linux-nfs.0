@@ -1,59 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from perches-mx.perches.com ([206.117.179.246]:35101 "EHLO
-	labridge.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1759888Ab3FNClD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Jun 2013 22:41:03 -0400
-From: Joe Perches <joe@perches.com>
-To: Jiri Kosina <trivial@kernel.org>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [Trivial PATCH 19/33] lockd: Convert use of typedef ctl_table to struct ctl_table
-Date: Thu, 13 Jun 2013 19:37:44 -0700
-Message-Id: <faae8e9ce146510493e5d4e807e4b2a8266edecc.1371177118.git.joe@perches.com>
-In-Reply-To: <cover.1371177118.git.joe@perches.com>
-References: <cover.1371177118.git.joe@perches.com>
+Received: from mx11.netapp.com ([216.240.18.76]:13806 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751691Ab3FYTiB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jun 2013 15:38:01 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/3] NFSv4.1 Do not overwrite negotiated session sizes
+Date: Tue, 25 Jun 2013 19:37:59 +0000
+Message-ID: <1372189073.5968.51.camel@leira.trondhjem.org>
+References: <1372185454-1888-1-git-send-email-andros@netapp.com>
+	 <1372185454-1888-2-git-send-email-andros@netapp.com>
+	 <1372186349.5968.45.camel@leira.trondhjem.org>
+	 <4DF3A886-7DBA-4D8A-8111-29C1240C9487@netapp.com>
+In-Reply-To: <4DF3A886-7DBA-4D8A-8111-29C1240C9487@netapp.com>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This typedef is unnecessary and should just be removed.
+On Tue, 2013-06-25 at 19:05 +0000, Adamson, Andy wrote:
+> On Jun 25, 2013, at 2:52 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+>  wrote:
+> 
+> > On Tue, 2013-06-25 at 14:37 -0400, andros@netapp.com wrote:
+> >> From: Andy Adamson <andros@netapp.com>
+> >> 
+> >> nfs4_init_session is called after CREATE_SESSION has set the ca_maxrequestsize
+> >> and ca_maxresponsesize values obtained from the server.
+> > 
+> > It had better not be, otherwise the values of
+> > session->fc_target_max_rqst_sz and session->fc_target_max_resp_sz in
+> > nfs4_init_channel_attrs() make no sense.
+> 
+> Well, it does. Shall I move the nfs4_init_session call to before nfs4_init_channel_attrs?
+> 
 
-Signed-off-by: Joe Perches <joe@perches.com>
----
- fs/lockd/svc.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+Either that, or change nfs4_init_channel_attrs() to always use
+NFS_MAX_FILE_IO_SIZE. Right now, the code is just confused (and very
+confusing).
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index a2aa97d..7df25d7 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -435,7 +435,7 @@ EXPORT_SYMBOL_GPL(lockd_down);
-  * Sysctl parameters (same as module parameters, different interface).
-  */
- 
--static ctl_table nlm_sysctls[] = {
-+static struct ctl_table nlm_sysctls[] = {
- 	{
- 		.procname	= "nlm_grace_period",
- 		.data		= &nlm_grace_period,
-@@ -489,7 +489,7 @@ static ctl_table nlm_sysctls[] = {
- 	{ }
- };
- 
--static ctl_table nlm_sysctl_dir[] = {
-+static struct ctl_table nlm_sysctl_dir[] = {
- 	{
- 		.procname	= "nfs",
- 		.mode		= 0555,
-@@ -498,7 +498,7 @@ static ctl_table nlm_sysctl_dir[] = {
- 	{ }
- };
- 
--static ctl_table nlm_sysctl_root[] = {
-+static struct ctl_table nlm_sysctl_root[] = {
- 	{
- 		.procname	= "fs",
- 		.mode		= 0555,
+
 -- 
-1.8.1.2.459.gbcd45b4.dirty
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
