@@ -1,47 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:27723 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752198Ab3F0SFp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jun 2013 14:05:45 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Marc Eshel <eshel@us.ibm.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "Adam C. Emerson" <aemerson@linuxbox.com>,
-        "Matt W. Benjamin" <matt@linuxbox.com>
-Subject: Re: NFSv4.1 session
-Date: Thu, 27 Jun 2013 18:05:44 +0000
-Message-ID: <1372356342.3365.1.camel@leira.trondhjem.org>
-References: <OF8A324DEB.5C9C96EC-ON88257B97.0061DA51-88257B97.0062ED43@us.ibm.com>
-In-Reply-To: <OF8A324DEB.5C9C96EC-ON88257B97.0061DA51-88257B97.0062ED43@us.ibm.com>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+Received: from mail-yh0-f54.google.com ([209.85.213.54]:41471 "EHLO
+	mail-yh0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752356Ab3FYBFu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jun 2013 21:05:50 -0400
+Received: by mail-yh0-f54.google.com with SMTP id f73so5298342yha.13
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Jun 2013 18:05:49 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH 2/2] rpc_pipe: set dentry operations at d_alloc time
+Date: Mon, 24 Jun 2013 21:05:40 -0400
+Message-Id: <1372122340-28982-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1372122340-28982-1-git-send-email-jlayton@redhat.com>
+References: <1372122340-28982-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-06-27 at 11:00 -0700, Marc Eshel wrote:
-> Hi Trond, 
-> 
-> I am not able to mount from Linux NFS client to the same Ganesha NFS
-> server using multiple IP address. The client was providing the same
-> client-id so the server was using the same session. I tried to return
-> NFS4ERR_CLID_INUSE on the second mount if the target IP is different
-> but the client still did not provide a different client-id like it
-> should. I am not trying to use trunking I what to have different
-> server instance for each IP address so I can move that IP between
-> nodes in the cluster. Any ideas how to accomplish it. 
-> 
-> Thanks, Marc.
+Currently the way these get set is a little convoluted. If the dentry is
+allocated via lookup from userland, then it gets set by simple_lookup.
+If it gets allocated when the kernel is populating the directory, then
+it gets set via __rpc_lookup_create_exclusive, which has to check
+whether they might already be set. Between both of these, this ensures
+that all dentries have their d_op pointer set.
 
-I don't understand. The client is performing exactly as per design: it
-detects the fact that you are talking to the same server, and so it
-reuses the same client and session. This is the only sane semantic for a
-NFS client...
+Instead of doing that, just have them set at d_alloc time by pointing
+sb->s_d_op at them. With that change, we no longer want the lookup op
+to set them, so we must move to using our own lookup routine.
 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ net/sunrpc/rpc_pipe.c | 25 ++++++++++++++++++++-----
+ 1 file changed, 20 insertions(+), 5 deletions(-)
+
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 99cd7db..7b471a2 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -471,6 +471,23 @@ struct rpc_filelist {
+ 	umode_t mode;
+ };
+ 
++/*
++ * Lookup the data. This is trivial - if the dentry didn't already
++ * exist, we know it is negative.
++ */
++static struct dentry *
++rpc_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
++{
++	if (dentry->d_name.len > NAME_MAX)
++		return ERR_PTR(-ENAMETOOLONG);
++	d_add(dentry, NULL);
++	return NULL;
++}
++
++const struct inode_operations rpc_dir_inode_operations = {
++	.lookup		= rpc_lookup,
++};
++
+ static struct inode *
+ rpc_get_inode(struct super_block *sb, umode_t mode)
+ {
+@@ -483,7 +500,7 @@ rpc_get_inode(struct super_block *sb, umode_t mode)
+ 	switch (mode & S_IFMT) {
+ 	case S_IFDIR:
+ 		inode->i_fop = &simple_dir_operations;
+-		inode->i_op = &simple_dir_inode_operations;
++		inode->i_op = &rpc_dir_inode_operations;
+ 		inc_nlink(inode);
+ 	default:
+ 		break;
+@@ -657,11 +674,8 @@ static struct dentry *__rpc_lookup_create_exclusive(struct dentry *parent,
+ 		if (!dentry)
+ 			return ERR_PTR(-ENOMEM);
+ 	}
+-	if (dentry->d_inode == NULL) {
+-		if (!dentry->d_op)
+-			d_set_d_op(dentry, &simple_dentry_operations);
++	if (dentry->d_inode == NULL)
+ 		return dentry;
+-	}
+ 	dput(dentry);
+ 	return ERR_PTR(-EEXIST);
+ }
+@@ -1108,6 +1122,7 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 	sb->s_blocksize_bits = PAGE_CACHE_SHIFT;
+ 	sb->s_magic = RPCAUTH_GSSMAGIC;
+ 	sb->s_op = &s_ops;
++	sb->s_d_op = &simple_dentry_operations;
+ 	sb->s_time_gran = 1;
+ 
+ 	inode = rpc_get_inode(sb, S_IFDIR | S_IRUGO | S_IXUGO);
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.8.1.4
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
