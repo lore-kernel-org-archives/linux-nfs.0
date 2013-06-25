@@ -1,81 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from static-71-162-243-5.phlapa.fios.verizon.net ([71.162.243.5]:52355
-	"EHLO snark.thyrsus.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750788Ab3FRFVY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jun 2013 01:21:24 -0400
-Received: from [127.0.1.1] (localhost [127.0.0.1])
-	by snark.thyrsus.com (Postfix) with ESMTP id 9610441791
-	for <linux-nfs@vger.kernel.org>; Tue, 18 Jun 2013 01:13:56 -0400 (EDT)
-Content-Type: multipart/mixed; boundary="===============7478725473209331778=="
-MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Problems in idmapd.conf.5
-Message-Id: <20130618051356.9610441791@snark.thyrsus.com>
-Date: Tue, 18 Jun 2013 01:13:56 -0400 (EDT)
-From: esr@thyrsus.com
+Received: from userp1040.oracle.com ([156.151.31.81]:30575 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751528Ab3FYVv2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jun 2013 17:51:28 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: [PATCH 5/5] NFS: Save FSID's root FH in nfs_server
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1372194900.17600.6.camel@leira.trondhjem.org>
+Date: Tue, 25 Jun 2013 17:51:21 -0400
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <2EFD4576-C5AA-4295-9DB2-A5E6BAD5061B@oracle.com>
+References: <20130625162233.36416.34947.stgit@seurat.1015granger.net> <20130625162405.36416.83658.stgit@seurat.1015granger.net> <1372178216.5968.30.camel@leira.trondhjem.org> <3B05A214-E7E5-474B-8F51-12E64A608B8A@oracle.com> <1372194900.17600.6.camel@leira.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---===============7478725473209331778==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
 
-This is automatically generated email about markup problems in a man
-page for which you appear to be responsible.  If you are not the right
-person or list, please tell me so I can correct my database.
+On Jun 25, 2013, at 5:15 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-See http://catb.org/~esr/doclifter/bugs.html for details on how and
-why these patches were generated.  Feel free to email me with any
-questions.  Note: These patches do not change the modification date of
-any manual page.  You may wish to do that by hand.
+> On Tue, 2013-06-25 at 13:22 -0700, Chuck Lever wrote:
+>> On Jun 25, 2013, at 12:37 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+>> 
+>>> On Tue, 2013-06-25 at 12:24 -0400, Chuck Lever wrote:
+>>>> Save each FSID's root file handle in the FSID's nfs_server structure
+>>>> on the client.  This is needed for NFSv4 migration recovery.
+>>> 
+>>> Please just use sb->s_root.
+>> 
+>> The migration recovery procedures do not take an inode or dentry argument.  All we have is an nfs_server.  I see
+>> 
+>>  struct nfs_server *server = NFS_SB(sb);
+>> 
+>> but what is the preferred method for going the other way?  A naive approach would be to plant a super_block back-pointer in each nfs_server.
+> 
+> Why do you not have an inode or dentry?
 
-I apologize if this message seems spammy or impersonal. The volume of
-markup bugs I am tracking is over five hundred - there is no real
-alternative to generating bugmail from a database and template.
+That's the way the APIs happen to be architected.  I wasn't certain that exception->inode in nfs4_handle_exception(), and state->inode in nfs4_async_handle_error(), would always be non-NULL when I needed an inode pointer.
 
---
-                             Eric S. Raymond
+> Surely the migration must have
+> been triggered either by an operation involving a filehandle, in which
+> case you have an inode, or by a LEASE_MOVED, in which case there is open
+> state on the target filesystem.
 
---===============7478725473209331778==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+It's quite convenient to always use the FSID's root FH, but I agree, it's not required by the protocol.
 
-Problems with idmapd.conf.5:
+Re: LEASE_MOVED, I'm not confident the client stops sending RENEW operations when it has no more open state.
 
-Unknown or invalid macro.  That is, one that does not fit in the
-macro set that the man page seems to be using.  This is a serious
-error; it often means part of your text is being lost or rendered
-incorrectly.
+> I'm not opposed to putting a backpointer to the super_block in the
+> nfs_server, but I do want to understand why it is needed.
 
-Missing or garbled name section.  The most common form of garbling
-is a missing - or extra -. Or your manual page may have been generated
-by a tool that doesn't emit a NAME section as it should.  Or your page
-may add running text such as a version or authorship banner.  These
-problems make it impossible to lift the page to DocBook.  They
-can also confuse third-party manpage browsers and some implementations
-of man -k.
 
---- idmapd.conf.5-unpatched	2012-07-04 16:51:32.093541654 -0400
-+++ idmapd.conf.5	2012-07-04 16:52:14.865540854 -0400
-@@ -31,7 +31,7 @@
- .\"
- .TH idmapd.conf 5 "19 Nov 2008"
- .SH NAME
--idmapd.conf
-+idmapd.conf \- configuration file for libnfsidmap
- .SH SYNOPSIS
- Configuration file for libnfsidmap.  Used by idmapd and svcgssd to map NFSv4 name to and from ids.
- .SH DESCRIPTION
-@@ -266,7 +266,7 @@
- LDAP_server = ldap.domain.org
- LDAP_base = dc=org,dc=domain
- 
--.fo
-+.fi
- .\"
- .\" -------------------------------------------------------------------
- .\" Additional sections
+Alternately, we could save a pointer to the FSID's root dentry or inode.
 
---===============7478725473209331778==--
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
