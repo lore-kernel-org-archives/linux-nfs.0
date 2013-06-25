@@ -1,77 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:58048 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752292Ab3FQPOg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Jun 2013 11:14:36 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
-Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
-        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v3 07/13] locks: avoid taking global lock if possible when waking up blocked waiters
-Date: Mon, 17 Jun 2013 11:13:50 -0400
-Message-Id: <1371482036-15958-8-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
-References: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:42717 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752053Ab3FYUWr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jun 2013 16:22:47 -0400
+MIME-Version: 1.0
+Message-ID: <3B05A214-E7E5-474B-8F51-12E64A608B8A@oracle.com>
+Date: Tue, 25 Jun 2013 13:22:21 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 5/5] NFS: Save FSID's root FH in nfs_server
+References: <20130625162233.36416.34947.stgit@seurat.1015granger.net>
+ <20130625162405.36416.83658.stgit@seurat.1015granger.net>
+ <1372178216.5968.30.camel@leira.trondhjem.org>
+In-Reply-To: <1372178216.5968.30.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since we always hold the i_lock when inserting a new waiter onto the
-fl_block list, we can avoid taking the global lock at all if we find
-that it's empty when we go to wake up blocked waiters.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/locks.c |   17 ++++++++++++++---
- 1 files changed, 14 insertions(+), 3 deletions(-)
+On Jun 25, 2013, at 12:37 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 8f56651..a8f3b33 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -532,7 +532,10 @@ static void locks_delete_block(struct file_lock *waiter)
-  * the order they blocked. The documentation doesn't require this but
-  * it seems like the reasonable thing to do.
-  *
-- * Must be called with file_lock_lock held!
-+ * Must be called with both the i_lock and file_lock_lock held. The fl_block
-+ * list itself is protected by the file_lock_list, but by ensuring that the
-+ * i_lock is also held on insertions we can avoid taking the file_lock_lock
-+ * in some cases when we see that the fl_block list is empty.
-  */
- static void __locks_insert_block(struct file_lock *blocker,
- 					struct file_lock *waiter)
-@@ -560,8 +563,16 @@ static void locks_insert_block(struct file_lock *blocker,
-  */
- static void locks_wake_up_blocks(struct file_lock *blocker)
- {
-+	/*
-+	 * Avoid taking global lock if list is empty. This is safe since new
-+	 * blocked requests are only added to the list under the i_lock, and
-+	 * the i_lock is always held here.
-+	 */
-+	if (list_empty(&blocker->fl_block))
-+		return;
-+
- 	spin_lock(&file_lock_lock);
--	while (!list_empty(&blocker->fl_block)) {
-+	do {
- 		struct file_lock *waiter;
- 
- 		waiter = list_first_entry(&blocker->fl_block,
-@@ -571,7 +582,7 @@ static void locks_wake_up_blocks(struct file_lock *blocker)
- 			waiter->fl_lmops->lm_notify(waiter);
- 		else
- 			wake_up(&waiter->fl_wait);
--	}
-+	} while (!list_empty(&blocker->fl_block));
- 	spin_unlock(&file_lock_lock);
- }
- 
+> On Tue, 2013-06-25 at 12:24 -0400, Chuck Lever wrote:
+>> Save each FSID's root file handle in the FSID's nfs_server structure
+>> on the client.  This is needed for NFSv4 migration recovery.
+> 
+> Please just use sb->s_root.
+
+The migration recovery procedures do not take an inode or dentry argument.  All we have is an nfs_server.  I see
+
+  struct nfs_server *server = NFS_SB(sb);
+
+but what is the preferred method for going the other way?  A naive approach would be to plant a super_block back-pointer in each nfs_server.
+
 -- 
-1.7.1
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
