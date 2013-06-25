@@ -1,45 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:39274 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:8558 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753638Ab3FJOkb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Jun 2013 10:40:31 -0400
-Subject: [PATCH 3/3] SUNRPC: PipeFS MOUNT notification optimization for dying
-	clients
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, devel@openvz.org, linux-kernel@vger.kernel.org,
-        jlayton@redhat.com
-Date: Mon, 10 Jun 2013 18:40:15 +0400
-Message-ID: <20130610144015.7498.92979.stgit@localhost.localdomain>
-In-Reply-To: <20130610143725.7498.72391.stgit@localhost.localdomain>
-References: <20130610143725.7498.72391.stgit@localhost.localdomain>
+	id S1751041Ab3FYQhF convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jun 2013 12:37:05 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 5/5] NFS: Save FSID's root FH in nfs_server
+Date: Tue, 25 Jun 2013 16:37:02 +0000
+Message-ID: <1372178216.5968.30.camel@leira.trondhjem.org>
+References: <20130625162233.36416.34947.stgit@seurat.1015granger.net>
+	 <20130625162405.36416.83658.stgit@seurat.1015granger.net>
+In-Reply-To: <20130625162405.36416.83658.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Not need to create pipes for dying client. So just skip them.
+On Tue, 2013-06-25 at 12:24 -0400, Chuck Lever wrote:
+> Save each FSID's root file handle in the FSID's nfs_server structure
+> on the client.  This is needed for NFSv4 migration recovery.
 
-Note: we can safely dereference the client structure, because notification
-caller is holding sn->pipefs_sb_lock.
+Please just use sb->s_root.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: stable@vger.kernel.org
----
- net/sunrpc/clnt.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 3c133f2..fc4f4d1 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -185,6 +185,8 @@ static inline int rpc_clnt_skip_event(struct rpc_clnt *clnt, unsigned long event
- 	if (((event == RPC_PIPEFS_MOUNT) && clnt->cl_dentry) ||
- 	    ((event == RPC_PIPEFS_UMOUNT) && !clnt->cl_dentry))
- 		return 1;
-+	if ((event == RPC_PIPEFS_MOUNT) && atomic_read(&clnt->cl_count) == 0)
-+		return 1;
- 	return 0;
- }
- 
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
