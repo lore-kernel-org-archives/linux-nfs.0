@@ -1,81 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.rfc2324.org ([31.172.8.67]:50102 "EHLO mail.rfc2324.org"
+Received: from mx11.netapp.com ([216.240.18.76]:35581 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1161110Ab3FTT4J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Jun 2013 15:56:09 -0400
-Date: Thu, 20 Jun 2013 21:56:03 +0200
-From: Maximilian Wilhelm <max@rfc2324.org>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <20130620195603.GE16125@principal.rfc2324.org>
+	id S1751756Ab3FYVPI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jun 2013 17:15:08 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 5/5] NFS: Save FSID's root FH in nfs_server
+Date: Tue, 25 Jun 2013 21:15:06 +0000
+Message-ID: <1372194900.17600.6.camel@leira.trondhjem.org>
+References: <20130625162233.36416.34947.stgit@seurat.1015granger.net>
+	 <20130625162405.36416.83658.stgit@seurat.1015granger.net>
+	 <1372178216.5968.30.camel@leira.trondhjem.org>
+	 <3B05A214-E7E5-474B-8F51-12E64A608B8A@oracle.com>
+In-Reply-To: <3B05A214-E7E5-474B-8F51-12E64A608B8A@oracle.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="A6N2fC+uXW/VQSAv"
-Subject: [PATCH]: gssd: Fix preferred_realm option handling
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, 2013-06-25 at 13:22 -0700, Chuck Lever wrote:
+> On Jun 25, 2013, at 12:37 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+> 
+> > On Tue, 2013-06-25 at 12:24 -0400, Chuck Lever wrote:
+> >> Save each FSID's root file handle in the FSID's nfs_server structure
+> >> on the client.  This is needed for NFSv4 migration recovery.
+> > 
+> > Please just use sb->s_root.
+> 
+> The migration recovery procedures do not take an inode or dentry argument.  All we have is an nfs_server.  I see
+> 
+>   struct nfs_server *server = NFS_SB(sb);
+> 
+> but what is the preferred method for going the other way?  A naive approach would be to plant a super_block back-pointer in each nfs_server.
 
---A6N2fC+uXW/VQSAv
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
+Why do you not have an inode or dentry? Surely the migration must have
+been triggered either by an operation involving a filehandle, in which
+case you have an inode, or by a LEASE_MOVED, in which case there is open
+state on the target filesystem.
 
+I'm not opposed to putting a backpointer to the super_block in the
+nfs_server, but I do want to understand why it is needed.
 
-Hi,
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-the gssd currently ignores any preferred realm given via the -R
-command line option.
-
-The attached patch fixes that behaviour and makes sure the
-preferrred_realm is used first when searching for a valid principal
-for mount authentication.
-
-I would be happy if you would apply this. This would close bug #235 in
-bugzilla.
-
-Thanks
-Max
-
---A6N2fC+uXW/VQSAv
-Content-Type: text/x-diff; charset=utf-8
-Content-Disposition: attachment; filename="gssd_fix_preferred_realm.patch"
-
-commit 36784e52650fb08d9012a243365693f2a0eb1f93
-Author: Maximilian Wilhelm <max@rfc2324.org>
-Date:   Thu Jun 20 21:30:17 2013 +0200
-
-    Fix handling of preferred realm command line option.
-
-      The current implementation ignores any preferred realm specified on the
-      command line. Fix this behaviour and make sure the preferred realm is
-      used as first realm when trying to acquire a keytab entry.
-
-    Signed-off-by: Maximilian Wilhelm <max@rfc2324.org>
-    Signed-off-by: Frederik Moellers <frederik.moellers@upb.de>
-
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index 6275dd8..d6bf8cc 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -852,11 +852,18 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *tgtname,
- 	}
- 
- 	/*
--	 * Try the "appropriate" realm first, and if nothing found for that
--	 * realm, try the default realm (if it hasn't already been tried).
-+	 * Make sure the preferred_realm, which may have been explicitly set
-+	 * on the command line, is tried first. If nothing is found go on with
-+	 * the host and local default realm (if that hasn't already been tried).
- 	 */
- 	i = 0;
- 	realm = realmnames[i];
-+
-+	if (strcmp (realm, preferred_realm) != 0) {
-+		realm = preferred_realm;
-+		i = -1;
-+	}
-+
- 	while (1) {
- 		if (realm == NULL) {
- 			tried_all = 1;
-
---A6N2fC+uXW/VQSAv--
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
