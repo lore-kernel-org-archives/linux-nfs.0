@@ -1,137 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e39.co.us.ibm.com ([32.97.110.160]:50070 "EHLO
-	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753249Ab3F0WcX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jun 2013 18:32:23 -0400
-Received: from /spool/local
-	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
-	Thu, 27 Jun 2013 16:32:23 -0600
-Received: from d01relay07.pok.ibm.com (d01relay07.pok.ibm.com [9.56.227.147])
-	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id 78557C90042
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Jun 2013 18:32:20 -0400 (EDT)
-Received: from d01av05.pok.ibm.com (d01av05.pok.ibm.com [9.56.224.195])
-	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r5RMWKnh51052670
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Jun 2013 18:32:20 -0400
-Received: from d01av05.pok.ibm.com (loopback [127.0.0.1])
-	by d01av05.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r5RMWJgB001587
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Jun 2013 18:32:20 -0400
-In-Reply-To: <606311159.195.1372362069589.JavaMail.root@thunderbeast.private.linuxbox.com>
-References: <1444224014.193.1372361256986.JavaMail.root@thunderbeast.private.linuxbox.com> <606311159.195.1372362069589.JavaMail.root@thunderbeast.private.linuxbox.com>
-To: "Matt W. Benjamin" <matt@linuxbox.com>
-Cc: "Adam C. Emerson" <aemerson@linuxbox.com>,
-        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-MIME-Version: 1.0
-Subject: Re: NFSv4.1 session
-Message-ID: <OF23EDFA89.935AA03E-ON88257B97.007B822F-88257B97.007BCF70@us.ibm.com>
-From: Marc Eshel <eshel@us.ibm.com>
-Date: Thu, 27 Jun 2013 15:32:16 -0700
-Content-Type: text/plain; charset="US-ASCII"
+Received: from mx1.redhat.com ([209.132.183.28]:56779 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751515Ab3FYLAw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Jun 2013 07:00:52 -0400
+Date: Tue, 25 Jun 2013 07:00:56 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 2/2] rpc_pipe: set dentry operations at d_alloc time
+Message-ID: <20130625070056.6a507da0@corrin.poochiereds.net>
+In-Reply-To: <1372122340-28982-3-git-send-email-jlayton@redhat.com>
+References: <1372122340-28982-1-git-send-email-jlayton@redhat.com>
+	<1372122340-28982-3-git-send-email-jlayton@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-"Matt W. Benjamin" <matt@linuxbox.com> wrote on 06/27/2013 12:41:09 PM:
+On Mon, 24 Jun 2013 21:05:40 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
 
-> From: "Matt W. Benjamin" <matt@linuxbox.com>
-> To: Marc Eshel/Almaden/IBM@IBMUS, 
-> Cc: "Adam C. Emerson" <aemerson@linuxbox.com>, "J. Bruce Fields" 
-> <bfields@redhat.com>, linux-nfs@vger.kernel.org, Trond Myklebust 
-> <Trond.Myklebust@netapp.com>
-> Date: 06/27/2013 12:41 PM
-> Subject: Re: NFSv4.1 session
+> Currently the way these get set is a little convoluted. If the dentry is
+> allocated via lookup from userland, then it gets set by simple_lookup.
+> If it gets allocated when the kernel is populating the directory, then
+> it gets set via __rpc_lookup_create_exclusive, which has to check
+> whether they might already be set. Between both of these, this ensures
+> that all dentries have their d_op pointer set.
 > 
-> Hi,
+> Instead of doing that, just have them set at d_alloc time by pointing
+> sb->s_d_op at them. With that change, we no longer want the lookup op
+> to set them, so we must move to using our own lookup routine.
 > 
-> Keeping this simple, the controlling section of RFC 5661 is 2.10.5 
-(trunking).
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  net/sunrpc/rpc_pipe.c | 25 ++++++++++++++++++++-----
+>  1 file changed, 20 insertions(+), 5 deletions(-)
 > 
-> If CLIENT presents the same eia_clientowner in two EXCHANGE_ID 
-invocations
-> to "the same NFSv4.1 server" over two connections of differing network
-> address, 2.10.5 actually states that the server MUST return the same
-> value for eir_serverowner.  By our choice of the same server owner, we 
-are
-> consenting to clientid trunking.
-> 
-> It doesn't seem like anything stops one instance of Ganesha from 
-> presenting itself
-> as two or more completely distinct NFSv4.1 servers in response to 
-> connections of
-> differing address.  They could share the same server scope (e.g., 
-> filehandle namespaces),
+> diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+> index 99cd7db..7b471a2 100644
+> --- a/net/sunrpc/rpc_pipe.c
+> +++ b/net/sunrpc/rpc_pipe.c
+> @@ -471,6 +471,23 @@ struct rpc_filelist {
+>  	umode_t mode;
+>  };
+>  
+> +/*
+> + * Lookup the data. This is trivial - if the dentry didn't already
+> + * exist, we know it is negative.
+> + */
+> +static struct dentry *
+> +rpc_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
+> +{
+> +	if (dentry->d_name.len > NAME_MAX)
+> +		return ERR_PTR(-ENAMETOOLONG);
+> +	d_add(dentry, NULL);
+> +	return NULL;
+> +}
+> +
+> +const struct inode_operations rpc_dir_inode_operations = {
+> +	.lookup		= rpc_lookup,
+> +};
+> +
 
-Maybe we can do that but Ganesha will have to change from identifying 
-clients only based on the client-id to combination of client-id and server 
-instance.
+Nit: the above should probably be static. Let me know if you want me to respin...
 
-Marc. 
+>  static struct inode *
+>  rpc_get_inode(struct super_block *sb, umode_t mode)
+>  {
+> @@ -483,7 +500,7 @@ rpc_get_inode(struct super_block *sb, umode_t mode)
+>  	switch (mode & S_IFMT) {
+>  	case S_IFDIR:
+>  		inode->i_fop = &simple_dir_operations;
+> -		inode->i_op = &simple_dir_inode_operations;
+> +		inode->i_op = &rpc_dir_inode_operations;
+>  		inc_nlink(inode);
+>  	default:
+>  		break;
+> @@ -657,11 +674,8 @@ static struct dentry *__rpc_lookup_create_exclusive(struct dentry *parent,
+>  		if (!dentry)
+>  			return ERR_PTR(-ENOMEM);
+>  	}
+> -	if (dentry->d_inode == NULL) {
+> -		if (!dentry->d_op)
+> -			d_set_d_op(dentry, &simple_dentry_operations);
+> +	if (dentry->d_inode == NULL)
+>  		return dentry;
+> -	}
+>  	dput(dentry);
+>  	return ERR_PTR(-EEXIST);
+>  }
+> @@ -1108,6 +1122,7 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+>  	sb->s_blocksize_bits = PAGE_CACHE_SHIFT;
+>  	sb->s_magic = RPCAUTH_GSSMAGIC;
+>  	sb->s_op = &s_ops;
+> +	sb->s_d_op = &simple_dentry_operations;
+>  	sb->s_time_gran = 1;
+>  
+>  	inode = rpc_get_inode(sb, S_IFDIR | S_IRUGO | S_IXUGO);
 
-> but they CANNOT share the same server owner, and consequently, they 
-> can't share
-> any state.  (So we think it would confuse the client if we return 
-CLID_INUSE
-> on the second EXCHANGE_ID.)
-> 
-> Matt and Adam
-> 
-> ----- "Marc Eshel" <eshel@us.ibm.com> wrote:
-> 
-> > If it was not clear I am talking about the exchange id operation.
-> > Marc.
-> > 
-> > 
-> > 
-> > From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-> > To: Marc Eshel/Almaden/IBM@IBMUS,
-> > Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>, "J. Bruce
-> > Fields" <bfields@redhat.com>, "Adam C. Emerson"
-> > <aemerson@linuxbox.com>, "Matt W. Benjamin" <matt@linuxbox.com>
-> > Date: 06/27/2013 11:09 AM
-> > Subject: Re: NFSv4.1 session
-> > 
-> > 
-> > 
-> > 
-> > On Thu, 2013-06-27 at 11:00 -0700, Marc Eshel wrote:
-> > > Hi Trond,
-> > >
-> > > I am not able to mount from Linux NFS client to the same Ganesha NFS
-> > > server using multiple IP address. The client was providing the same
-> > > client-id so the server was using the same session. I tried to
-> > return
-> > > NFS4ERR_CLID_INUSE on the second mount if the target IP is different
-> > > but the client still did not provide a different client-id like it
-> > > should. I am not trying to use trunking I what to have different
-> > > server instance for each IP address so I can move that IP between
-> > > nodes in the cluster. Any ideas how to accomplish it.
-> > >
-> > > Thanks, Marc.
-> > 
-> > I don't understand. The client is performing exactly as per design: it
-> > detects the fact that you are talking to the same server, and so it
-> > reuses the same client and session. This is the only sane semantic for
-> > a
-> > NFS client...
-> > 
-> > --
-> > Trond Myklebust
-> > Linux NFS client maintainer
-> > 
-> > NetApp
-> > Trond.Myklebust@netapp.com
-> > www.netapp.com
-> 
-> -- 
-> Matt Benjamin
-> The Linux Box
-> 206 South Fifth Ave. Suite 150
-> Ann Arbor, MI  48104
-> 
-> http://linuxbox.com
-> 
-> tel.  734-761-4689 
-> fax.  734-769-8938 
-> cel.  734-216-5309 
-> 
 
+-- 
+Jeff Layton <jlayton@redhat.com>
