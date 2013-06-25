@@ -1,46 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ye0-f174.google.com ([209.85.213.174]:33086 "EHLO
-	mail-ye0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754902Ab3FGTop (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Jun 2013 15:44:45 -0400
-Received: by mail-ye0-f174.google.com with SMTP id m10so996555yen.33
-        for <linux-nfs@vger.kernel.org>; Fri, 07 Jun 2013 12:44:44 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe93:815b])
-        by mx.google.com with ESMTPSA id d91sm333019yhq.16.2013.06.07.12.44.43
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 07 Jun 2013 12:44:43 -0700 (PDT)
-Subject: [PATCH 0/3] Use root user credential for lease management
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 07 Jun 2013 15:44:42 -0400
-Message-ID: <20130607194140.1296.54746.stgit@seurat.1015granger.net>
+Received: from mx11.netapp.com ([216.240.18.76]:60296 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751788Ab3FYToH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jun 2013 15:44:07 -0400
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/3] NFSv4.1 Fix gdia_maxcount calculation to fit in
+ ca_maxresponsesize
+Date: Tue, 25 Jun 2013 19:44:06 +0000
+Message-ID: <1B20F39A-B139-4A53-8B1F-2C0491FF0943@netapp.com>
+References: <1372185454-1888-1-git-send-email-andros@netapp.com>
+ <1372185454-1888-3-git-send-email-andros@netapp.com>
+ <1372188518.5968.48.camel@leira.trondhjem.org>
+In-Reply-To: <1372188518.5968.48.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi-
 
-This series applies to post 3.10-rc4 kernels.  The idea is to make
-newer kernels behave like 3.6 and previous when it comes to mounting
-sec=krb5 when the client has no keytab available.
+On Jun 25, 2013, at 3:28 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+ wrote:
 
-The third patch is similar to the 3.7 patch I posted a few days ago,
-but is adjusted slightly to apply after the "Use krb5i for lease
-management" patch that appears in 3.10-rc.
+> On Tue, 2013-06-25 at 14:37 -0400, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>> 
+>> The GETDEVICEINFO gdia_maxcount represents all of the data being returned
+>> within the GETDEVICEINFO4resok structure and includes the XDR overhead.
+>> 
+>> The CREATE_SESSION ca_maxresponsesize is the maximum reply and includes the RPC
+>> headers (including security flavor credentials and verifiers).
+> 
+> This still looks wrong.
+> 
+> The problem is that pdev->pglen is used both as the total buffer length,
+> as a function argument and as the reply message length (through the call
+> to xdr_init_decode_pages). We really should split out those 3 different
+> roles…
 
----
+Ah. OK, I'll split them out...
 
-Chuck Lever (3):
-      NFS: Never use user credentials for lease renewal
-      NFS: Partially revert commit 845cbceb
-      NFS: Use root's credential for lease management when keytab is missing
+-->Andy
 
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
 
- fs/nfs/nfs4proc.c  |   25 ++++++++++++++++---------
- fs/nfs/nfs4state.c |   28 ++++++++++++++++++++--------
- 2 files changed, 36 insertions(+), 17 deletions(-)
-
--- 
-Chuck Lever
