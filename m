@@ -1,96 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f54.google.com ([209.85.213.54]:41471 "EHLO
-	mail-yh0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752356Ab3FYBFu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jun 2013 21:05:50 -0400
-Received: by mail-yh0-f54.google.com with SMTP id f73so5298342yha.13
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Jun 2013 18:05:49 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH 2/2] rpc_pipe: set dentry operations at d_alloc time
-Date: Mon, 24 Jun 2013 21:05:40 -0400
-Message-Id: <1372122340-28982-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1372122340-28982-1-git-send-email-jlayton@redhat.com>
-References: <1372122340-28982-1-git-send-email-jlayton@redhat.com>
+Received: from haggis.pcug.org.au ([203.10.76.10]:46519 "EHLO
+	members.tip.net.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751071Ab3FYBhS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jun 2013 21:37:18 -0400
+Date: Tue, 25 Jun 2013 11:37:04 +1000
+From: Stephen Rothwell <sfr@canb.auug.org.au>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org,
+        dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
+        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
+Subject: Re: [PATCH v4 06/14] locks: encapsulate the fl_link list handling
+Message-Id: <20130625113704.89a686a55dcec684e5e99434@canb.auug.org.au>
+In-Reply-To: <1371819502-26363-7-git-send-email-jlayton@redhat.com>
+References: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
+	<1371819502-26363-7-git-send-email-jlayton@redhat.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; protocol="application/pgp-signature";
+ micalg="PGP-SHA256";
+ boundary="Signature=_Tue__25_Jun_2013_11_37_04_+1000_dzYhDLAz_=0wCCci"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently the way these get set is a little convoluted. If the dentry is
-allocated via lookup from userland, then it gets set by simple_lookup.
-If it gets allocated when the kernel is populating the directory, then
-it gets set via __rpc_lookup_create_exclusive, which has to check
-whether they might already be set. Between both of these, this ensures
-that all dentries have their d_op pointer set.
+--Signature=_Tue__25_Jun_2013_11_37_04_+1000_dzYhDLAz_=0wCCci
+Content-Type: text/plain; charset=US-ASCII
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Instead of doing that, just have them set at d_alloc time by pointing
-sb->s_d_op at them. With that change, we no longer want the lookup op
-to set them, so we must move to using our own lookup routine.
+Hi Jeff,
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- net/sunrpc/rpc_pipe.c | 25 ++++++++++++++++++++-----
- 1 file changed, 20 insertions(+), 5 deletions(-)
+Thanks for doing all this work!
 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 99cd7db..7b471a2 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -471,6 +471,23 @@ struct rpc_filelist {
- 	umode_t mode;
- };
- 
-+/*
-+ * Lookup the data. This is trivial - if the dentry didn't already
-+ * exist, we know it is negative.
-+ */
-+static struct dentry *
-+rpc_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
-+{
-+	if (dentry->d_name.len > NAME_MAX)
-+		return ERR_PTR(-ENAMETOOLONG);
-+	d_add(dentry, NULL);
-+	return NULL;
-+}
-+
-+const struct inode_operations rpc_dir_inode_operations = {
-+	.lookup		= rpc_lookup,
-+};
-+
- static struct inode *
- rpc_get_inode(struct super_block *sb, umode_t mode)
- {
-@@ -483,7 +500,7 @@ rpc_get_inode(struct super_block *sb, umode_t mode)
- 	switch (mode & S_IFMT) {
- 	case S_IFDIR:
- 		inode->i_fop = &simple_dir_operations;
--		inode->i_op = &simple_dir_inode_operations;
-+		inode->i_op = &rpc_dir_inode_operations;
- 		inc_nlink(inode);
- 	default:
- 		break;
-@@ -657,11 +674,8 @@ static struct dentry *__rpc_lookup_create_exclusive(struct dentry *parent,
- 		if (!dentry)
- 			return ERR_PTR(-ENOMEM);
- 	}
--	if (dentry->d_inode == NULL) {
--		if (!dentry->d_op)
--			d_set_d_op(dentry, &simple_dentry_operations);
-+	if (dentry->d_inode == NULL)
- 		return dentry;
--	}
- 	dput(dentry);
- 	return ERR_PTR(-EEXIST);
- }
-@@ -1108,6 +1122,7 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
- 	sb->s_blocksize_bits = PAGE_CACHE_SHIFT;
- 	sb->s_magic = RPCAUTH_GSSMAGIC;
- 	sb->s_op = &s_ops;
-+	sb->s_d_op = &simple_dentry_operations;
- 	sb->s_time_gran = 1;
- 
- 	inode = rpc_get_inode(sb, S_IFDIR | S_IRUGO | S_IXUGO);
--- 
-1.8.1.4
+Trivial comments below.
 
+On Fri, 21 Jun 2013 08:58:14 -0400 Jeff Layton <jlayton@redhat.com> wrote:
+>
+> +static inline void
+> +locks_insert_global_locks(struct file_lock *fl)
+> +{
+> +	list_add_tail(&fl->fl_link, &file_lock_list);
+> +}
+
+We generally do not use "inline" in C files any more and leave it to the
+compiler to do that.  Also, without the "inline" these function headers
+should all be able to fit on single lines like the others here i.e.
+
+static void locks_insert_global_locks(struct file_lock *fl)
+
+--=20
+Cheers,
+Stephen Rothwell                    sfr@canb.auug.org.au
+
+--Signature=_Tue__25_Jun_2013_11_37_04_+1000_dzYhDLAz_=0wCCci
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.20 (GNU/Linux)
+
+iQIcBAEBCAAGBQJRyPREAAoJEECxmPOUX5FEfWIP/1Fcte7TTx0cYdMFqxD6iYFF
+I5QuoxOCEek37xGFhXwztvoI+llIdSH4xYaZXtVyC01jxfejNfGOW6JOuxRWrMCW
+4o0doZNE7fX1CaPJv+O8HS0qGVGVL4En0ZJJrPtjImbrUP1rg+bKAI4GwTZTcxfH
+eDr8Oey4xzzSFR/am+e7IyEjAW4gA7EIOpG4PjcMP+LEbTKOaybUDZBs+IwRBiPL
+ERyuwyW1mdAh5Cd5rssT72osOSq36WvK7f0w7hdzenmJFj5SUY4mmWdQz25J79ZC
+5LOfPxcgZWAv48F4VmmKh0v555f7hVGdtf1eE4cwckzWDQAvvPY27xSFNaYWwvd9
+jpDVPR0CcJeJkRR4qpGE6OO9dRGCoq8aNAmln0ix4ehb7+rGt4KMO0vOplFmfb1y
+oiL/Uzc2WuoFJDQCU1f7Z3EmcBKZBxS+Hs67xuvulBAubLY4r0uYMcA6RLgsbHB7
+k/eyUk9Rsce39jdPNPkFM1AB92F5AvdmaqROH2NKRh9lNOmZDNxxQ3v/9XU9oY6t
+1uNs9dL7H9f2MaMeG4Yx9ircj+NdB7vwbauYlAv/9D1fxRhqoKO1M292CbWhv/l0
+OwcF9Nz9e6aHHZc8HnZzlKjzRaoqJ83eFekWk4RZbmNhEmlLDzHUXfqrke6fn8pn
+Y1vM5HPDCfSDb/sVAmbd
+=q+vx
+-----END PGP SIGNATURE-----
+
+--Signature=_Tue__25_Jun_2013_11_37_04_+1000_dzYhDLAz_=0wCCci--
