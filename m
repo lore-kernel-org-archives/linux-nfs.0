@@ -1,158 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:58332 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:40130 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755311Ab3FEPZI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jun 2013 11:25:08 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] NFS: Make callbacks minor version generic
-Date: Wed,  5 Jun 2013 11:15:01 -0400
-Message-Id: <1370445302-1261-2-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1370445302-1261-1-git-send-email-bjschuma@netapp.com>
-References: <1370445302-1261-1-git-send-email-bjschuma@netapp.com>
+	id S1750784Ab3FYKc7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Jun 2013 06:32:59 -0400
+Date: Tue, 25 Jun 2013 06:32:13 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Stephen Rothwell <sfr@canb.auug.org.au>
+Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org,
+        dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
+        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
+Subject: Re: [PATCH v4 06/14] locks: encapsulate the fl_link list handling
+Message-ID: <20130625063213.615d8a83@corrin.poochiereds.net>
+In-Reply-To: <20130625113704.89a686a55dcec684e5e99434@canb.auug.org.au>
+References: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
+	<1371819502-26363-7-git-send-email-jlayton@redhat.com>
+	<20130625113704.89a686a55dcec684e5e99434@canb.auug.org.au>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/ShwMJupcxbTnBXyanQNalBy"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+--Sig_/ShwMJupcxbTnBXyanQNalBy
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-I found a few places that hardcode the minor version number rather than
-making it dependent on the protocol the callback came in over.  This
-patch makes it easier to add new minor versions in the future.
+On Tue, 25 Jun 2013 11:37:04 +1000
+Stephen Rothwell <sfr@canb.auug.org.au> wrote:
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/callback.h      |  1 +
- fs/nfs/callback_proc.c |  3 ++-
- fs/nfs/callback_xdr.c  | 16 ++++++++--------
- fs/nfs/internal.h      |  2 +-
- fs/nfs/nfs4client.c    |  6 +++---
- 5 files changed, 15 insertions(+), 13 deletions(-)
+> Hi Jeff,
+>=20
+> Thanks for doing all this work!
+>=20
+> Trivial comments below.
+>=20
+> On Fri, 21 Jun 2013 08:58:14 -0400 Jeff Layton <jlayton@redhat.com> wrote:
+> >
+> > +static inline void
+> > +locks_insert_global_locks(struct file_lock *fl)
+> > +{
+> > +	list_add_tail(&fl->fl_link, &file_lock_list);
+> > +}
+>=20
+> We generally do not use "inline" in C files any more and leave it to the
+> compiler to do that.  Also, without the "inline" these function headers
+> should all be able to fit on single lines like the others here i.e.
+>=20
+> static void locks_insert_global_locks(struct file_lock *fl)
+>=20
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index efd54f0a..41cf893 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -39,6 +39,7 @@ struct cb_process_state {
- 	__be32			drc_status;
- 	struct nfs_client	*clp;
- 	u32			slotid;
-+	u32			minorversion;
- 	struct net		*net;
- };
- 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index a13d26e..3d2af31 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -406,7 +406,8 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 	int i;
- 	__be32 status = htonl(NFS4ERR_BADSESSION);
- 
--	clp = nfs4_find_client_sessionid(cps->net, args->csa_addr, &args->csa_sessionid);
-+	clp = nfs4_find_client_sessionid(cps->net, args->csa_addr,
-+					 &args->csa_sessionid, cps->minorversion);
- 	if (clp == NULL)
- 		goto out;
- 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index e7ee629..77c0b88 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -166,8 +166,8 @@ static __be32 decode_compound_hdr_arg(struct xdr_stream *xdr, struct cb_compound
- 	if (unlikely(p == NULL))
- 		return htonl(NFS4ERR_RESOURCE);
- 	hdr->minorversion = ntohl(*p++);
--	/* Check minor version is zero or one or two. */
--	if (hdr->minorversion <= 2) {
-+	/* Check for minor version support */
-+	if (hdr->minorversion <= NFS4_MAX_MINOR_VERSION) {
- 		hdr->cb_ident = ntohl(*p++); /* ignored by v4.1 and v4.2 */
- 	} else {
- 		pr_warn_ratelimited("NFS: %s: NFSv4 server callback with "
-@@ -801,8 +801,7 @@ preprocess_nfs4_op(unsigned int op_nr, struct callback_op **op)
- 	return htonl(NFS_OK);
- }
- 
--static __be32 process_op(uint32_t minorversion, int nop,
--		struct svc_rqst *rqstp,
-+static __be32 process_op(int nop, struct svc_rqst *rqstp,
- 		struct xdr_stream *xdr_in, void *argp,
- 		struct xdr_stream *xdr_out, void *resp,
- 		struct cb_process_state *cps)
-@@ -819,9 +818,9 @@ static __be32 process_op(uint32_t minorversion, int nop,
- 		return status;
- 
- 	dprintk("%s: minorversion=%d nop=%d op_nr=%u\n",
--		__func__, minorversion, nop, op_nr);
-+		__func__, cps->minorversion, nop, op_nr);
- 
--	status = minorversion ? preprocess_nfs41_op(nop, op_nr, &op) :
-+	status = cps->minorversion ? preprocess_nfs41_op(nop, op_nr, &op) :
- 				preprocess_nfs4_op(op_nr, &op);
- 	if (status == htonl(NFS4ERR_OP_ILLEGAL))
- 		op_nr = OP_CB_ILLEGAL;
-@@ -885,14 +884,15 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 			return rpc_drop_reply;
- 	}
- 
-+	cps.minorversion = hdr_arg.minorversion;
- 	hdr_res.taglen = hdr_arg.taglen;
- 	hdr_res.tag = hdr_arg.tag;
- 	if (encode_compound_hdr_res(&xdr_out, &hdr_res) != 0)
- 		return rpc_system_err;
- 
- 	while (status == 0 && nops != hdr_arg.nops) {
--		status = process_op(hdr_arg.minorversion, nops, rqstp,
--				    &xdr_in, argp, &xdr_out, resp, &cps);
-+		status = process_op(nops, rqstp, &xdr_in,
-+				    argp, &xdr_out, resp, &cps);
- 		nops++;
- 	}
- 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 91e59a3..97ec2ef 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -165,7 +165,7 @@ extern void nfs_free_client(struct nfs_client *);
- extern struct nfs_client *nfs4_find_client_ident(struct net *, int);
- extern struct nfs_client *
- nfs4_find_client_sessionid(struct net *, const struct sockaddr *,
--				struct nfs4_sessionid *);
-+				struct nfs4_sessionid *, u32);
- extern struct nfs_server *nfs_create_server(struct nfs_mount_info *,
- 					struct nfs_subversion *);
- extern struct nfs_server *nfs4_create_server(
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 2a297ee..1819191 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -567,14 +567,14 @@ static bool nfs4_cb_match_client(const struct sockaddr *addr,
-  */
- struct nfs_client *
- nfs4_find_client_sessionid(struct net *net, const struct sockaddr *addr,
--			   struct nfs4_sessionid *sid)
-+			   struct nfs4_sessionid *sid, u32 minorversion)
- {
- 	struct nfs_client *clp;
- 	struct nfs_net *nn = net_generic(net, nfs_net_id);
- 
- 	spin_lock(&nn->nfs_client_lock);
- 	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
--		if (nfs4_cb_match_client(addr, clp, 1) == false)
-+		if (nfs4_cb_match_client(addr, clp, minorversion) == false)
- 			continue;
- 
- 		if (!nfs4_has_session(clp))
-@@ -597,7 +597,7 @@ nfs4_find_client_sessionid(struct net *net, const struct sockaddr *addr,
- 
- struct nfs_client *
- nfs4_find_client_sessionid(struct net *net, const struct sockaddr *addr,
--			   struct nfs4_sessionid *sid)
-+			   struct nfs4_sessionid *sid, u32 minorversion)
- {
- 	return NULL;
- }
--- 
-1.8.3
+Thanks for helping review.
 
+Usually that makes sense, but doesn't the compiler generally determine
+that by counting the number of call sites? In this case, we'll have
+several call sites and it probably wouldn't inline the function. That
+makes this a little less efficient since we'll have to jump to this
+routine, do the list_add_tail and then jump back.
+
+That said, I'm not opposed to doing that since these routines grow a
+bit in size later and we'll only do this when a lock is acquired or
+dropped. I think Al has already merged most of this set into his
+for-next branch though. Perhaps I can do a patch on top of that set
+that removes the inline keywords from those functions?
+
+--=20
+Jeff Layton <jlayton@redhat.com>
+
+--Sig_/ShwMJupcxbTnBXyanQNalBy
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIcBAEBAgAGBQJRyXG1AAoJEAAOaEEZVoIV188QALcuRamXPJN7nN/0F1U8vBST
+dnkD9sbdZ9z69wiZxs+mlsNQrB9i/y5z8TdPII4EanP34WF/4J49/6A3sKbfF/76
+d5QbvbNwovDd2W9jOdlJ6GJ9vy7BvMaDz9bVmykmGT+65BYyb/Pt1w2dC1TLf7CT
+u2XfbmejGEYA7YUuW3nJhjDMDZCQiOGX2DPXX/+Fzp7keWoipMLaMR5UedoYe7Oh
+mtG8YrxHOKrqLofY9QTzXaZ6J2URsfkpG75nF7RmKEwkJzpO5OAKrcJJrmzb1MjP
+AdSPXgVziKoB0Xw/fxL8UH30Ery9JmhiWDqqJoX2XurCQx71O/+liFquNvdilUTI
+gtwx5mlJAsmTGCMVz7EFq7Lv4nSLp6VI+f9fdP4UlA17i6JTBvug/29tvEVKC6FP
+BsiHilT/59onUY8lVgfDp5XxgA/s7RdCPolbRChH4zvMdxmGOJ4P33kUFqWLRjn9
+DfKsPFrozVBNmUjQc9mUnwzLjGgEIyX1PJSoyJihJZhKoOcyXRvMC+/hi1eYJuZA
+H8u6vqXIyZE+PnLnS4Ki+J4tLXZcRMybZLCv9YrmUctJYdnujzRf7Don+pBAZ9we
+rkwZH4sw3fFRz0NR8rjHuVXzsPhZtIsIfEjFbO3Xcon7JUFYKBFxGvqoZDLwAAUz
+jqMvz+6wt0Lz2IFiMU56
+=cqOu
+-----END PGP SIGNATURE-----
+
+--Sig_/ShwMJupcxbTnBXyanQNalBy--
