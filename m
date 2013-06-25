@@ -1,51 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:4450 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752934Ab3FBU4G convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 2 Jun 2013 16:56:06 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: William Dauchy <wdauchy@gmail.com>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: nfsv4 mount with noexec
-Date: Sun, 2 Jun 2013 20:56:04 +0000
-Message-ID: <1370206557.46256.12.camel@leira.trondhjem.org>
-References: <CAJ75kXa858MgWZ5A5dt+EswJyR4rJx1ke5Siv8hxds5FPJz_ww@mail.gmail.com>
-In-Reply-To: <CAJ75kXa858MgWZ5A5dt+EswJyR4rJx1ke5Siv8hxds5FPJz_ww@mail.gmail.com>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+Received: from mail-yh0-f46.google.com ([209.85.213.46]:36909 "EHLO
+	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752356Ab3FYBFs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jun 2013 21:05:48 -0400
+Received: by mail-yh0-f46.google.com with SMTP id i57so5340801yha.19
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Jun 2013 18:05:47 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH 0/2] rpc_pipe: clean up how dentry operations get set in rpc_pipefs
+Date: Mon, 24 Jun 2013 21:05:38 -0400
+Message-Id: <1372122340-28982-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2013-06-01 at 13:33 +0200, William Dauchy wrote:
-> Hello,
-> 
-> I've been testing a nfsv4 client based on a 3.8.13 kernel with the
-> following additional patches:
-> a3c3cac SUNRPC: Prevent an rpc_task wakeup race
-> f448bad NFSv4: Fix a thinko in nfs4_try_open_cached
-> eb54d43 NFS: Fix security flavor negotiation with legacy binary mounts
-> 
-> the mount options are:
-> type nfs4
-> rw,nosuid,nodev,noexec,noatime,nodiratime,vers=4.0,rsize=32768,wsize=32768,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,local_lock=none
-> 
-> Even with the noexec option, I'm still able to execute local binaries
-> on the mounted file system.
-> Am I wrong on something? I didn't had the issue on a 3.4.x
+Recently, I proposed a patch on the linux-nfs list to silence a WARNING:
 
-The mount level flags such as 'nosuid', 'nodev' and 'noexec' are
-supposed to be enforced by the VFS, and not by the NFS code. The check
-is supposedly done in fs/exec.c:open_exec() after the file has been
-opened by the filesystem.
+    [PATCH] rpc_pipefs: only set rpc_dentry_ops if d_op isn't already set
 
-Does 'cat /proc/mounts' actually show the noexec option being applied to
-the mountpoint by the kernel?
+When reviewing that, Bruce (properly) pointed out that that patch sucked
+since it just hacked around the warning and did nothing to improve the
+code. This patchset is an attempt to correct that by making rpc_pipefs
+use a consistent set of dentry_operations, and ensuring that they're set
+on every dentry at d_alloc time.
+
+Since Trond has already merged the earlier patch I sent into his
+nfs-for-next branch, this is based on top of that.
+
+Jeff Layton (2):
+  rpc_pipe: export simple_dentry_operations and have rpc_pipefs use it
+  rpc_pipe: set dentry operations at d_alloc time
+
+ fs/libfs.c            |  9 +++++----
+ include/linux/fs.h    |  1 +
+ net/sunrpc/rpc_pipe.c | 24 +++++++++++++++---------
+ 3 files changed, 21 insertions(+), 13 deletions(-)
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.8.1.4
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
