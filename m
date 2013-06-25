@@ -1,113 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:34896 "EHLO mx1.redhat.com"
+Received: from e9.ny.us.ibm.com ([32.97.182.139]:56785 "EHLO e9.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965939Ab3FUM67 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Jun 2013 08:58:59 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
-Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
-        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v4 04/14] locks: comment cleanups and clarifications
-Date: Fri, 21 Jun 2013 08:58:12 -0400
-Message-Id: <1371819502-26363-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
-References: <1371819502-26363-1-git-send-email-jlayton@redhat.com>
+	id S1752122Ab3FYTKT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Jun 2013 15:10:19 -0400
+Received: from /spool/local
+	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Tue, 25 Jun 2013 15:10:18 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id EF198C9005C
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Jun 2013 15:10:14 -0400 (EDT)
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r5PJAD5f313484
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Jun 2013 15:10:14 -0400
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r5PJA9L2008832
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Jun 2013 13:10:09 -0600
+Date: Tue, 25 Jun 2013 14:10:08 -0500
+From: Malahal Naineni <malahal@us.ibm.com>
+To: linux-nfs@vger.kernel.org
+Cc: bfields@fieldses.org
+Subject: nfsd dropping requests after lazy umount
+Message-ID: <20130625191008.GA20277@us.ibm.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/locks.c         |   21 +++++++++++++--------
- include/linux/fs.h |   18 ++++++++++++++++++
- 2 files changed, 31 insertions(+), 8 deletions(-)
+Hi All,
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 804bb9e..ddeab49 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -518,9 +518,10 @@ static void locks_insert_block(struct file_lock *blocker,
- 		list_add(&waiter->fl_link, &blocked_list);
- }
- 
--/* Wake up processes blocked waiting for blocker.
-- * If told to wait then schedule the processes until the block list
-- * is empty, otherwise empty the block list ourselves.
-+/*
-+ * Wake up processes blocked waiting for blocker.
-+ *
-+ * Must be called with the file_lock_lock held!
-  */
- static void locks_wake_up_blocks(struct file_lock *blocker)
- {
-@@ -806,6 +807,11 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 	}
- 
- 	lock_flocks();
-+	/*
-+	 * New lock request. Walk all POSIX locks and look for conflicts. If
-+	 * there are any, either return error or put the request on the
-+	 * blocker's list of waiters and the global blocked_list.
-+	 */
- 	if (request->fl_type != F_UNLCK) {
- 		for_each_lock(inode, before) {
- 			fl = *before;
-@@ -844,7 +850,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 		before = &fl->fl_next;
- 	}
- 
--	/* Process locks with this owner.  */
-+	/* Process locks with this owner. */
- 	while ((fl = *before) && posix_same_owner(request, fl)) {
- 		/* Detect adjacent or overlapping regions (if same lock type)
- 		 */
-@@ -930,10 +936,9 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 	}
- 
- 	/*
--	 * The above code only modifies existing locks in case of
--	 * merging or replacing.  If new lock(s) need to be inserted
--	 * all modifications are done bellow this, so it's safe yet to
--	 * bail out.
-+	 * The above code only modifies existing locks in case of merging or
-+	 * replacing. If new lock(s) need to be inserted all modifications are
-+	 * done below this, so it's safe yet to bail out.
- 	 */
- 	error = -ENOLCK; /* "no luck" */
- 	if (right && left == right && !new_fl2)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index cabc08a..cba0fb5 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -926,6 +926,24 @@ int locks_in_grace(struct net *);
- /* that will die - we need it for nfs_lock_info */
- #include <linux/nfs_fs_i.h>
- 
-+/*
-+ * struct file_lock represents a generic "file lock". It's used to represent
-+ * POSIX byte range locks, BSD (flock) locks, and leases. It's important to
-+ * note that the same struct is used to represent both a request for a lock and
-+ * the lock itself, but the same object is never used for both.
-+ *
-+ * FIXME: should we create a separate "struct lock_request" to help distinguish
-+ * these two uses?
-+ *
-+ * The i_flock list is ordered by:
-+ *
-+ * 1) lock type -- FL_LEASEs first, then FL_FLOCK, and finally FL_POSIX
-+ * 2) lock owner
-+ * 3) lock range start
-+ * 4) lock range end
-+ *
-+ * Obviously, the last two criteria only matter for POSIX locks.
-+ */
- struct file_lock {
- 	struct file_lock *fl_next;	/* singly linked list for this inode  */
- 	struct list_head fl_link;	/* doubly linked list of all locks */
--- 
-1.7.1
+I have found an issue with lazy/forced unmounts with nfsd. Let us say
+/nfs is a mount point, and we are exporting /nfs/exp directory.
+
+After mounting from a client, this export will have a cache entry
+"svc_export" in the kernel. The exports pathname
+d_path(svc_export->ex_path) correctly resolves to "/nfs/exp"
+
+After the /nfs is lazy unmounted, the d_path(svc_export->ex_path)
+resolves to "/exp" only.
+
+Now, if the cache entry needs revalidation, you will see "/exp" in the
+nfsd.export/channel file that never gets cleared as that cache entry
+will be in a forever CACHE_PENDING state. We will also see
+svc_export_parse() failing with -2 err as such a pathname doesn't exist
+in the system any more.
+
+I noticed that svc_export has two fields: ex_path and ex_pathname.  Is
+it possible to make a string comparison of d_path(ex_path) and
+ex_pathname? If so, we should be able to fail the upcall without making
+the upcall if those two don't match.
+
+Regards, Malahal.
 
