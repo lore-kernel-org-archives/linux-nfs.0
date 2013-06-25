@@ -1,95 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga11.intel.com ([192.55.52.93]:59141 "EHLO mga11.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756631Ab3FCB7f convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 2 Jun 2013 21:59:35 -0400
-From: "Yong, Fan" <fan.yong@intel.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: "Dilger, Andreas" <andreas.dilger@intel.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Steve Dickson <steved@redhat.com>,
-        "Peng Tao (bergwolf@gmail.com)" <bergwolf@gmail.com>
-Subject: RE: [PATCH] nfs: support 64-bit root inode number in NFS FSID
-Date: Mon, 3 Jun 2013 01:59:34 +0000
-Message-ID: <7FB055E0B36B6F4EB93E637E0640A56F5FBF18D4@FMSMSX114.amr.corp.intel.com>
-References: <CDC2ABAC.3341C%andreas.dilger@intel.com>
-	 <CA+a=Yy4CQ7zG48dGOVjh8YBv0e+X1Gk4RxpDzdR4vM8JmqossQ@mail.gmail.com>
- <1369313382.3764.2.camel@leira.trondhjem.org>
-In-Reply-To: <1369313382.3764.2.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mail-gh0-f178.google.com ([209.85.160.178]:57590 "EHLO
+	mail-gh0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751274Ab3FYQXa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jun 2013 12:23:30 -0400
+Received: by mail-gh0-f178.google.com with SMTP id g15so4102215ghb.9
+        for <linux-nfs@vger.kernel.org>; Tue, 25 Jun 2013 09:23:29 -0700 (PDT)
+Subject: [PATCH 1/5] NFS: Set NFS_CS_MIGRATION for NFSv4 mounts
+To: trond.myklebust@netapp.com
+From: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 25 Jun 2013 12:23:27 -0400
+Message-ID: <20130625162327.36416.68503.stgit@seurat.1015granger.net>
+In-Reply-To: <20130625162233.36416.34947.stgit@seurat.1015granger.net>
+References: <20130625162233.36416.34947.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Update the patch as suggested.
+NFS_CS_MIGRATION makes sense only for NFSv4 mounts.  Introduced by
+commit 89652617 (NFS: Introduce "migration" mount option) Fri Sep 14
+17:24:11 2012.
 
---
-Cheers,
-Nasf
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfs/client.c     |    2 --
+ fs/nfs/nfs4client.c |    2 ++
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index c513b0c..dbb65fb 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -753,8 +753,6 @@ static int nfs_init_server(struct nfs_server *server,
+ 			data->timeo, data->retrans);
+ 	if (data->flags & NFS_MOUNT_NORESVPORT)
+ 		set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
+-	if (server->options & NFS_OPTION_MIGRATION)
+-		set_bit(NFS_CS_MIGRATION, &cl_init.init_flags);
+ 
+ 	/* Allocate or find a client reference we can use */
+ 	clp = nfs_get_client(&cl_init, &timeparms, NULL, RPC_AUTH_UNIX);
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 4cbad5d..b7a9f76 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -626,6 +626,8 @@ static int nfs4_set_client(struct nfs_server *server,
+ 
+ 	if (server->flags & NFS_MOUNT_NORESVPORT)
+ 		set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
++	if (server->options & NFS_OPTION_MIGRATION)
++		set_bit(NFS_CS_MIGRATION, &cl_init.init_flags);
+ 
+ 	/* Allocate or find a client reference we can use */
+ 	clp = nfs_get_client(&cl_init, timeparms, ip_addr, authflavour);
 
-
------Original Message-----
-From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com] 
-Sent: Thursday, May 23, 2013 8:50 PM
-To: Peng Tao
-Cc: Dilger, Andreas; J. Bruce Fields; linux-nfs@vger.kernel.org; Yong, Fan; Steve Dickson
-Subject: Re: [PATCH] nfs: support 64-bit root inode number in NFS FSID
-
-On Thu, 2013-05-23 at 16:12 +0800, Peng Tao wrote:
-> [nfs-utils patch needs to be sent to Steve Dickson (CC'ed)]
-> 
-> On Thu, May 23, 2013 at 7:06 AM, Dilger, Andreas 
-> <andreas.dilger@intel.com> wrote:
-> > When exporting a filesystem via NFS, it can generate several kinds 
-> > of NFS filesystem IDs. For most of cases, it uses a 32-bit inode 
-> > number in the NFS FSID, but this does not work on a filesystem using 
-> > a 64-bit root inode number.
-> >
-> > In kernel space, NFS can generate/use NFS FSID with a 64-bit inode 
-> > number for the "FSID_UUID16_INUM" type. Unfortunately, while the 
-> > user space nfs-utils decode the 64-bit inode number from the FSID 
-> > correctly, it is truncated when storing it in "struct parsed_fsid".
-> > Expand the "struct parsed_fsid" inode field to store the full 64-bit 
-> > root inode number.
-> >
-> > Intel-bug-id: LU-2904
-> > Signed-off-by: Fan Yong <fan.yong@intel.com>
-> > Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
-> > ---
-> >  utils/mountd/cache.c |    2 +-
-> >  1 files changed, 1 insertions(+), 1 deletions(-)
-> >
-> > diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c index 
-> > 517aa62..a7212e7 100644
-> > --- a/utils/mountd/cache.c
-> > +++ b/utils/mountd/cache.c
-> > @@ -388,7 +388,7 @@ struct parsed_fsid {
-> >         int fsidtype;
-> >         /* We could use a union for this, but it would be more
-> >          * complicated; why bother? */
-> > -       unsigned int inode;
-> > +       unsigned long long inode; /* We need 64-bits ino# */
-> >         unsigned int minor;
-> >         unsigned int major;
-> >         unsigned int fsidnum;
-> > --1.7.1
-> >
-> > Patch is also attached separately, since it will likely be butchered 
-> > by this email client.
-> >
-> >
-> > Cheers, Andreas
-> > --
-> > Andreas Dilger
-
-Why not just specify a uint64_t size then?
-
---
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
