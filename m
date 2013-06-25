@@ -1,134 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:55388 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:51809 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751259Ab3FQPql (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Jun 2013 11:46:41 -0400
-Date: Mon, 17 Jun 2013 11:46:09 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org,
-        dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
-        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: Re: [PATCH v3 06/13] locks: protect most of the file_lock handling
- with i_lock
-Message-ID: <20130617114609.708a336b@tlielax.poochiereds.net>
-In-Reply-To: <1371482036-15958-7-git-send-email-jlayton@redhat.com>
-References: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
-	<1371482036-15958-7-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1752981Ab3FYShn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Jun 2013 14:37:43 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 3/3] NFSv4.1 Fix gdia_maxcount calculation to fit in ca_maxresponsesize
+Date: Tue, 25 Jun 2013 14:37:34 -0400
+Message-Id: <1372185454-1888-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1372185454-1888-1-git-send-email-andros@netapp.com>
+References: <1372185454-1888-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 17 Jun 2013 11:13:49 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
+From: Andy Adamson <andros@netapp.com>
 
-> Having a global lock that protects all of this code is a clear
-> scalability problem. Instead of doing that, move most of the code to be
-> protected by the i_lock instead. The exceptions are the global lists
-> that the ->fl_link sits on, and the ->fl_block list.
-> 
-> ->fl_link is what connects these structures to the
-> global lists, so we must ensure that we hold those locks when iterating
-> over or updating these lists.
-> 
-> Furthermore, sound deadlock detection requires that we hold the
-> blocked_list state steady while checking for loops. We also must ensure
-> that the search and update to the list are atomic.
-> 
-> For the checking and insertion side of the blocked_list, push the
-> acquisition of the global lock into __posix_lock_file and ensure that
-> checking and update of the  blocked_list is done without dropping the
-> lock in between.
-> 
-> On the removal side, when waking up blocked lock waiters, take the
-> global lock before walking the blocked list and dequeue the waiters from
-> the global list prior to removal from the fl_block list.
-> 
-> With this, deadlock detection should be race free while we minimize
-> excessive file_lock_lock thrashing.
-> 
-> Finally, in order to avoid a lock inversion problem when handling
-> /proc/locks output we must ensure that manipulations of the fl_block
-> list are also protected by the file_lock_lock.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  Documentation/filesystems/Locking |   21 ++++--
->  fs/afs/flock.c                    |    5 +-
->  fs/ceph/locks.c                   |    2 +-
->  fs/ceph/mds_client.c              |    8 +-
->  fs/cifs/cifsfs.c                  |    2 +-
->  fs/cifs/file.c                    |   13 ++--
->  fs/gfs2/file.c                    |    2 +-
->  fs/lockd/svcsubs.c                |   12 ++--
->  fs/locks.c                        |  151 ++++++++++++++++++++++---------------
->  fs/nfs/delegation.c               |   10 +-
->  fs/nfs/nfs4state.c                |    8 +-
->  fs/nfsd/nfs4state.c               |    8 +-
->  include/linux/fs.h                |   11 ---
->  13 files changed, 140 insertions(+), 113 deletions(-)
-> 
+The GETDEVICEINFO gdia_maxcount represents all of the data being returned
+within the GETDEVICEINFO4resok structure and includes the XDR overhead.
 
-[...]
+The CREATE_SESSION ca_maxresponsesize is the maximum reply and includes the RPC
+headers (including security flavor credentials and verifiers).
 
-> @@ -1231,7 +1254,7 @@ int __break_lease(struct inode *inode, unsigned int mode)
->  	if (IS_ERR(new_fl))
->  		return PTR_ERR(new_fl);
->  
-> -	lock_flocks();
-> +	spin_lock(&inode->i_lock);
->  
->  	time_out_leases(inode);
->  
-> @@ -1281,11 +1304,11 @@ restart:
->  			break_time++;
->  	}
->  	locks_insert_block(flock, new_fl);
-> -	unlock_flocks();
-> +	spin_unlock(&inode->i_lock);
->  	error = wait_event_interruptible_timeout(new_fl->fl_wait,
->  						!new_fl->fl_next, break_time);
-> -	lock_flocks();
-> -	__locks_delete_block(new_fl);
-> +	spin_lock(&inode->i_lock);
-> +	locks_delete_block(new_fl);
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/internal.h          | 1 +
+ fs/nfs/nfs4filelayoutdev.c | 2 +-
+ fs/nfs/nfs4xdr.c           | 6 ++++++
+ 3 files changed, 8 insertions(+), 1 deletion(-)
 
-Doh -- bug here. This should not have been changed to
-locks_delete_block(). My apologies.
-
->  	if (error >= 0) {
->  		if (error == 0)
->  			time_out_leases(inode);
-
-[...]
-
->  posix_unblock_lock(struct file *filp, struct file_lock *waiter)
->  {
-> +	struct inode *inode = file_inode(filp);
->  	int status = 0;
->  
-> -	lock_flocks();
-> +	spin_lock(&inode->i_lock);
->  	if (waiter->fl_next)
-> -		__locks_delete_block(waiter);
-> +		locks_delete_block(waiter);
-
-
-Ditto here...
-
->  	else
->  		status = -ENOENT;
-> -	unlock_flocks();
-> +	spin_unlock(&inode->i_lock);
->  	return status;
->  }
->  
-
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 97ec2ef..3c8373f 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -255,6 +255,7 @@ extern int nfs4_decode_dirent(struct xdr_stream *,
+ #ifdef CONFIG_NFS_V4_1
+ extern const u32 nfs41_maxread_overhead;
+ extern const u32 nfs41_maxwrite_overhead;
++extern const u32 nfs41_maxgetdevinfo_overhead;
+ #endif
+ 
+ /* nfs4proc.c */
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 0493dbd..749ca61 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -709,7 +709,7 @@ filelayout_get_device_info(struct inode *inode,
+ 	pdev->layout_type = LAYOUT_NFSV4_1_FILES;
+ 	pdev->pages = pages;
+ 	pdev->pgbase = 0;
+-	pdev->pglen = max_resp_sz;
++	pdev->pglen = max_resp_sz - nfs41_maxgetdevinfo_overhead;
+ 	pdev->mincount = 0;
+ 
+ 	rc = nfs4_proc_getdeviceinfo(server, pdev, cred);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 2a3f77e1..dde8e17 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -867,6 +867,12 @@ const u32 nfs41_maxread_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
+ 				     decode_sequence_maxsz +
+ 				     decode_putfh_maxsz) *
+ 				    XDR_UNIT);
++
++const u32 nfs41_maxgetdevinfo_overhead = ((RPC_MAX_REPHEADER_WITH_AUTH +
++					   compound_decode_hdr_maxsz +
++					   decode_sequence_maxsz) *
++					  XDR_UNIT);
++EXPORT_SYMBOL_GPL(nfs41_maxgetdevinfo_overhead);
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ static const umode_t nfs_type2fmt[] = {
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.11.7
+
