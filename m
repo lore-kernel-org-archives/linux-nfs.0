@@ -1,61 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from webmail.solarflare.com ([12.187.104.25]:43832 "EHLO
-	webmail.solarflare.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753258Ab3F0Pg6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jun 2013 11:36:58 -0400
-Message-ID: <1372347413.2436.6.camel@bwh-desktop.uk.level5networks.com>
-Subject: Re: [RFC Patch net-next 4/5] sunrpc: use generic union inet_addr
-From: Ben Hutchings <bhutchings@solarflare.com>
-To: Cong Wang <amwang@redhat.com>
-CC: <netdev@vger.kernel.org>, Daniel Borkmann <dborkman@redhat.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>
-Date: Thu, 27 Jun 2013 16:36:53 +0100
-In-Reply-To: <1372315398-19683-5-git-send-email-amwang@redhat.com>
-References: <1372315398-19683-1-git-send-email-amwang@redhat.com>
-	 <1372315398-19683-5-git-send-email-amwang@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-MIME-Version: 1.0
+Received: from mail-ob0-f178.google.com ([209.85.214.178]:36547 "EHLO
+	mail-ob0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752492Ab3FZTpn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jun 2013 15:45:43 -0400
+Received: by mail-ob0-f178.google.com with SMTP id fb19so13575244obc.23
+        for <linux-nfs@vger.kernel.org>; Wed, 26 Jun 2013 12:45:43 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
+Subject: [PATCH v2 2/3] nfs: move server_authlist into nfs_try_mount_request
+Date: Wed, 26 Jun 2013 15:45:35 -0400
+Message-Id: <1372275936-5360-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1372275936-5360-1-git-send-email-jlayton@redhat.com>
+References: <1372275936-5360-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-06-27 at 14:43 +0800, Cong Wang wrote:
-[...]
-> -/**
-> - * rpc_cmp_addr - compare the address portion of two sockaddrs.
-> - * @sap1: first sockaddr
-> - * @sap2: second sockaddr
-> - *
-> - * Just compares the family and address portion. Ignores port, but
-> - * compares the scope if it's a link-local address.
+In a later patch we're going to want to cycle over this list and attempt
+to call ->create_server for each different flavor until one succeeds.
+Move the list allocation to the stack of nfs_try_mount_request() and
+pass a pointer to it and its length to nfs_request_mount().
 
-You're removing the scope comparison.
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/super.c | 14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
 
-Ben.
-
-> - * Returns true if the addrs are equal, false if they aren't.
-> - */
->  static inline bool rpc_cmp_addr(const struct sockaddr *sap1,
->  				const struct sockaddr *sap2)
->  {
-> -	if (sap1->sa_family == sap2->sa_family) {
-> -		switch (sap1->sa_family) {
-> -		case AF_INET:
-> -			return __rpc_cmp_addr4(sap1, sap2);
-> -		case AF_INET6:
-> -			return __rpc_cmp_addr6(sap1, sap2);
-> -		}
-> -	}
-> -	return false;
-> +	return inet_addr_equal((const union inet_addr *)sap1,
-> +			       (const union inet_addr *)sap2);
->  }
-[...]
-
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index afeee81..a0949f5 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1701,10 +1701,10 @@ out_err:
+  * corresponding to the provided path.
+  */
+ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+-			     struct nfs_fh *root_fh)
++			     struct nfs_fh *root_fh,
++			     rpc_authflavor_t *server_authlist,
++			     unsigned int *server_authlist_len)
+ {
+-	rpc_authflavor_t server_authlist[NFS_MAX_SECFLAVORS];
+-	unsigned int server_authlist_len = ARRAY_SIZE(server_authlist);
+ 	struct nfs_mount_request request = {
+ 		.sap		= (struct sockaddr *)
+ 						&args->mount_server.address,
+@@ -1712,7 +1712,7 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+ 		.protocol	= args->mount_server.protocol,
+ 		.fh		= root_fh,
+ 		.noresvport	= args->flags & NFS_MOUNT_NORESVPORT,
+-		.auth_flav_len	= &server_authlist_len,
++		.auth_flav_len	= server_authlist_len,
+ 		.auth_flavs	= server_authlist,
+ 		.net		= args->net,
+ 	};
+@@ -1763,8 +1763,12 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
+ 					struct nfs_subversion *nfs_mod)
+ {
+ 	int status;
++	struct nfs_parsed_mount_data *args = mount_info->parsed;
++	rpc_authflavor_t authlist[NFS_MAX_SECFLAVORS];
++	unsigned int authlist_len = ARRAY_SIZE(authlist);
+ 
+-	status = nfs_request_mount(mount_info->parsed, mount_info->mntfh);
++	status = nfs_request_mount(args, mount_info->mntfh, authlist,
++					&authlist_len);
+ 	if (status)
+ 		return ERR_PTR(status);
+ 
 -- 
-Ben Hutchings, Staff Engineer, Solarflare
-Not speaking for my employer; that's the marketing department's job.
-They asked us to note that Solarflare product names are trademarked.
+1.8.1.4
 
