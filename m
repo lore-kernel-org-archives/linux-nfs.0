@@ -1,78 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:14927 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:35125 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753796Ab3F0SmL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jun 2013 14:42:11 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Marc Eshel <eshel@us.ibm.com>
-CC: "Adam C. Emerson" <aemerson@linuxbox.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Matt W. Benjamin" <matt@linuxbox.com>
-Subject: Re: NFSv4.1 session
-Date: Thu, 27 Jun 2013 18:42:10 +0000
-Message-ID: <1372358524.3365.6.camel@leira.trondhjem.org>
-References: <OF8A324DEB.5C9C96EC-ON88257B97.0061DA51-88257B97.0062ED43@us.ibm.com>
-	 <1372356342.3365.1.camel@leira.trondhjem.org>
-	 <OF72D7519C.7F46B89C-ON88257B97.0063EB30-88257B97.006422E1@us.ibm.com>
-In-Reply-To: <OF72D7519C.7F46B89C-ON88257B97.0063EB30-88257B97.006422E1@us.ibm.com>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+	id S1752504Ab3FZTVb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Jun 2013 15:21:31 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>, stable@kernel.org
+Subject: [PATCH 3/7] svcrpc: fix handling of too-short rpc's
+Date: Wed, 26 Jun 2013 15:21:23 -0400
+Message-Id: <1372274488-4752-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1372274488-4752-1-git-send-email-bfields@redhat.com>
+References: <1372274488-4752-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-06-27 at 11:13 -0700, Marc Eshel wrote:
-> 
-> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote on 06/27/2013
-> 11:05:44 AM:
-> 
-> > From: "Myklebust, Trond" <Trond.Myklebust@netapp.com> 
-> > To: Marc Eshel/Almaden/IBM@IBMUS, 
-> > Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>, "J. 
-> > Bruce Fields" <bfields@redhat.com>, "Adam C. Emerson" 
-> > <aemerson@linuxbox.com>, "Matt W. Benjamin" <matt@linuxbox.com> 
-> > Date: 06/27/2013 11:09 AM 
-> > Subject: Re: NFSv4.1 session 
-> > 
-> > On Thu, 2013-06-27 at 11:00 -0700, Marc Eshel wrote:
-> > > Hi Trond, 
-> > > 
-> > > I am not able to mount from Linux NFS client to the same Ganesha
-> NFS
-> > > server using multiple IP address. The client was providing the
-> same
-> > > client-id so the server was using the same session. I tried to
-> return
-> > > NFS4ERR_CLID_INUSE on the second mount if the target IP is
-> different
-> > > but the client still did not provide a different client-id like it
-> > > should. I am not trying to use trunking I what to have different
-> > > server instance for each IP address so I can move that IP between
-> > > nodes in the cluster. Any ideas how to accomplish it. 
-> > > 
-> > > Thanks, Marc.
-> > 
-> > I don't understand. The client is performing exactly as per design:
-> it
-> > detects the fact that you are talking to the same server, and so it
-> > reuses the same client and session. This is the only sane semantic
-> for a
-> > NFS client... 
-> 
-> How is the client detecting that it is the same server? I use a
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-See section 2.10.5.1 of RFC5661.
+If we detect that an rpc is too short, we abort and close the
+connection.  Except, there's a bug here: we're leaving sk_datalen
+nonzero without leaving any pages in the sk_pages array.  The most
+likely result of the inconsistency is a subsequent crash in
+svc_tcp_clear_pages.
 
->  different IP address on the mount command. Why is the client not
-> handling NFS4ERR_CLID_INUSE? 
+Also demote the BUG_ON in svc_tcp_clear_pages to a WARN.
 
-We only recently changed the client to always use krb5i (or fallback to
-AUTH_SYS if krb5i is not available) for EXCHANGE_ID.
+Cc: stable@kernel.org
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/svcsock.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 0f679df..df74919 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -917,7 +917,10 @@ static void svc_tcp_clear_pages(struct svc_sock *svsk)
+ 	len = svsk->sk_datalen;
+ 	npages = (len + PAGE_SIZE - 1) >> PAGE_SHIFT;
+ 	for (i = 0; i < npages; i++) {
+-		BUG_ON(svsk->sk_pages[i] == NULL);
++		if (svsk->sk_pages[i] == NULL) {
++			WARN_ON_ONCE(1);
++			continue;
++		}
+ 		put_page(svsk->sk_pages[i]);
+ 		svsk->sk_pages[i] = NULL;
+ 	}
+@@ -1092,8 +1095,10 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 		goto err_noclose;
+ 	}
+ 
+-	if (svc_sock_reclen(svsk) < 8)
++	if (svc_sock_reclen(svsk) < 8) {
++		svsk->sk_datalen = 0;
+ 		goto err_delete; /* client is nuts. */
++	}
+ 
+ 	rqstp->rq_arg.len = svsk->sk_datalen;
+ 	rqstp->rq_arg.page_base = 0;
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.8.1.4
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
