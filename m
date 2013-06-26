@@ -1,123 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:30748 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751845Ab3F1PGO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Jun 2013 11:06:14 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
-Subject: Re: [PATCH v4 3/4] nfs: have nfs_mount fake up a auth_flavs list when the server didn't provide it
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1372362881-32282-4-git-send-email-jlayton@redhat.com>
-Date: Fri, 28 Jun 2013 11:06:08 -0400
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org,
-        Weston.Adamson@netapp.com
-Message-Id: <077289D0-868D-4358-A29A-8BC31C6FB2F0@oracle.com>
-References: <1372362881-32282-1-git-send-email-jlayton@redhat.com> <1372362881-32282-4-git-send-email-jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:42987 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751269Ab3FZP3K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Jun 2013 11:29:10 -0400
+Date: Wed, 26 Jun 2013 11:29:07 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] nfs: allow NFSv3 to fall back to using AUTH_UNIX
+ automatically if available
+Message-ID: <20130626112907.73138046@tlielax.poochiereds.net>
+In-Reply-To: <1EEAEFAF-F8B9-41AE-8CC9-459F9ADDCD12@oracle.com>
+References: <1372257363-28148-1-git-send-email-jlayton@redhat.com>
+	<1372257363-28148-3-git-send-email-jlayton@redhat.com>
+	<1EEAEFAF-F8B9-41AE-8CC9-459F9ADDCD12@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, 26 Jun 2013 11:15:08 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-On Jun 27, 2013, at 3:54 PM, Jeff Layton <jlayton@redhat.com> wrote:
-
-> Instead of handling this as a special case in the auth-selection code,
-> we can simply fake up an auth_flavs list when the server doesn't
-> provide it.
-
-The series looks like a reasonable approach.  One nit picked below.
-
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> fs/nfs/mount_clnt.c | 18 +++++++++++++++++-
-> fs/nfs/super.c      | 13 -------------
-> 2 files changed, 17 insertions(+), 14 deletions(-)
 > 
-> diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-> index 91a6faf..0f925f3 100644
-> --- a/fs/nfs/mount_clnt.c
-> +++ b/fs/nfs/mount_clnt.c
-> @@ -139,7 +139,10 @@ struct mnt_fhstatus {
->  * nfs_mount - Obtain an NFS file handle for the given host and path
->  * @info: pointer to mount request arguments
->  *
-> - * Uses default timeout parameters specified by underlying transport.
-> + * Uses default timeout parameters specified by underlying transport. On
-> + * successful return, the auth_flavs list and auth_flav_len will be populated
-> + * with the list from the server or a faked-up list if the server didn't
-> + * provide one.
->  */
-> int nfs_mount(struct nfs_mount_request *info)
-> {
-> @@ -195,6 +198,19 @@ int nfs_mount(struct nfs_mount_request *info)
-> 	dprintk("NFS: MNT request succeeded\n");
-> 	status = 0;
+> On Jun 26, 2013, at 10:36 AM, Jeff Layton <jlayton@redhat.com> wrote:
 > 
-> +	/*
-> +	 * The NFSv2 MNT operation does not return a flavor list. Also, some
-> +	 * NFSv3 servers (older Linux servers in particular) return an empty
-> +	 * list.
-> +	 *
-> +	 * In that event fake up a list that just has RPC_AUTH_NULL in it since
-> +	 * we have no way to know what the server actually supports.
-> +	 */
-
-I see the checks are folded together again.  I'm not going to win that battle, am I? ;-)
-
-The comment repeats most of what the code already says.  How about:
-
-	/*
-	 * If the server didn't provide a flavor list, allow the
-	 * client to try any flavor.
-	 */
-
-Blue is my favorite color, by the way.
-
-> +	if (info->version != NFS_MNT3_VERSION || *info->auth_flav_len == 0) {
-> +		dprintk("NFS: Faking up auth_flavs list\n");
-> +		info->auth_flavs[0] = RPC_AUTH_NULL;
-> +		*info->auth_flav_len = 1;
-> +	}
-> out:
-> 	return status;
+> > Currently, when using NFSv3 the mount will fail if the server happens to
+> > have AUTH_GSS flavors in the returned authlist before AUTH_UNIX. This
+> > seems to have been a deliberate change in commit 4580a92 (NFS: Use
+> > server-recommended security flavor by default (NFSv3)).
 > 
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index a0949f5..ceb60c7 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -1620,19 +1620,6 @@ static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
-> 	rpc_authflavor_t flavor;
+> As an aside, this (from the patch description for 4580a92):
 > 
-> 	/*
-> -	 * The NFSv2 MNT operation does not return a flavor list.
-> -	 */
-> -	if (args->mount_server.version != NFS_MNT3_VERSION)
-> -		goto out_default;
-> -
-> -	/*
-> -	 * Certain releases of Linux's mountd return an empty
-> -	 * flavor list in some cases.
-> -	 */
-> -	if (count == 0)
-> -		goto out_default;
-> -
-> -	/*
-> 	 * If the sec= mount option is used, the specified flavor or AUTH_NULL
-> 	 * must be in the list returned by the server.
-> 	 *
-> -- 
-> 1.8.1.4
+> >     If a server lists Kerberos pseudoflavors before "sys" in its export
+> >     options, our client now chooses Kerberos over AUTH_UNIX for mount
+> >     points, when no security flavor is specified by the mount command.
+> >     This could be surprising to some administrators or users, who would
+> >     then need to have Kerberos credentials to access the export.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> is a description of side-effects of the changes in 4580a92.  This text is intended as a warning that behavior could change after 4580a92, not as a statement of purpose.  It describes a known limitation of the approach introduced in 4580a92.
+> 
+> > While the workarounds are fine, I think we can do better here and allow
+> > this to keep "just working". Allow the client to fall back to
+> > automatically trying AUTH_UNIX under if the following are all true:
+> > 
+> >    - the server return -EACCES from ->create_server call
+> >    - the client had to do a MNT request (i.e. no binary options)
+> >    - we didn't just try to use AUTH_UNIX
+> >    - the admin did not explcitly specify a sec= option
+> > 
+> > At that point, try to use AUTH_UNIX, if the server listed it.
+> 
+> During these checks, how do you know the server specified AUTH_SYS in its list?  It seems to me you want to retry with the next flavor in server_authlist until you've exhausted the list.
+> 
+
+Oh and to answer your question, we don't know that at this point, but
+it won't matter.
+
+This patch sets args->auth_flavors[0] = RPC_AUTH_UNIX and then has it
+call nfs_select_flavor() again. If the server didn't have AUTH_UNIX in
+its list, then that function will fail at that point and we can just
+return the error.
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Jeff Layton <jlayton@redhat.com>
