@@ -1,121 +1,199 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:38370 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750775Ab3FCDBN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 2 Jun 2013 23:01:13 -0400
-Date: Mon, 3 Jun 2013 13:01:01 +1000
-From: NeilBrown <neilb@suse.de>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/3] Various gssd fixes including machine-credential
- issue.
-Message-ID: <20130603130101.4acfe706@notabene.brown>
-In-Reply-To: <0016A272-E433-4020-91FE-45A5EE494296@oracle.com>
-References: <20130603005219.20080.1927.stgit@notabene.brown>
-	<A2E2CEA9-4F2B-4A3F-8661-36D1E6288B0F@oracle.com>
-	<20130603122319.47f4e0dd@notabene.brown>
-	<0016A272-E433-4020-91FE-45A5EE494296@oracle.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/1/eYRaDFj7=tuf7aP5bGVhl"; protocol="application/pgp-signature"
+Received: from aserp1040.oracle.com ([141.146.126.69]:38059 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752109Ab3FZPh3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jun 2013 11:37:29 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: [PATCH 2/2] nfs: allow NFSv3 to fall back to using AUTH_UNIX automatically if available
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20130626112421.39b990a8@tlielax.poochiereds.net>
+Date: Wed, 26 Jun 2013 11:37:19 -0400
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Message-Id: <5C23AD38-2F90-40F8-BCD6-6D28AC67B2CC@oracle.com>
+References: <1372257363-28148-1-git-send-email-jlayton@redhat.com> <1372257363-28148-3-git-send-email-jlayton@redhat.com> <1EEAEFAF-F8B9-41AE-8CC9-459F9ADDCD12@oracle.com> <20130626112421.39b990a8@tlielax.poochiereds.net>
+To: Jeff Layton <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/1/eYRaDFj7=tuf7aP5bGVhl
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
 
-On Sun, 2 Jun 2013 22:45:16 -0400 Chuck Lever <chuck.lever@oracle.com> wrot=
-e:
+On Jun 26, 2013, at 11:24 AM, Jeff Layton <jlayton@redhat.com> wrote:
 
->=20
-> On Jun 2, 2013, at 10:23 PM, NeilBrown <neilb@suse.de> wrote:
->=20
-> > On Sun, 2 Jun 2013 22:01:50 -0400 Chuck Lever <chuck.lever@oracle.com> =
-wrote:
-> >=20
-> >>=20
-> >> On Jun 2, 2013, at 9:00 PM, Neil Brown <neilb@suse.de> wrote:
-> >>=20
-> >>> As you probably know, since 3.7 (I think) Linux NFS has explicitly
-> >>> asked for machine credentials for certain requests rather than asking
-> >>> for root credentials as is previously did.
-> >>> This causes a regression for people who don't have any machine
-> >>> credentials configured and use "gssd -n".
-> >>>=20
-> >>> I gather this was discussed on the mailing list earlier this year but
-> >>> not resolved.
-> >>=20
-> >> It's resolved in 3.10-rc.
-> >>=20
-> >> The kernel will attempt to use krb5i for lease management operations. =
- If that fails because there is no keytab available, it falls back to using=
- AUTH_SYS.
-> >=20
-> > And if the server refuses to accept AUTH_SYS?
-> >=20
-> > I guess this is commit 79d852bf5e7691dc7 ??
->=20
-> That's one of the subsequent bug fixes.  The initial change is commit 4ed=
-aa308.
->=20
-> > It seems to say that the server should always accept AUTH_SYS ... is th=
-at right?
->=20
-> If we ever find a server implementation that does not support either Kerb=
-eros or AUTH_SYS, we can add another step to the negotiation.
->=20
-> So far, despite RFC 3530 not requiring AUTH_SYS support on NFSv4 servers,=
- I haven't found an implementation that does not support AUTH_SYS.  We have=
- found one (FreeBSD) that does not support AUTH_NONE.  We do know that some=
- servers allow administrators to control what security flavors are allowed =
-for lease management.
->=20
-> > That commit isn't tagged for -stable.
-> > So do we still need to make it work for 3.7,3.8,3.9 users?
->=20
-> There are several commits that would need to be back-ported, starting wit=
-h commit 4edaa308.  I am not certain they would apply cleanly to 3.[789], b=
-ut a backport should not be difficult.
->=20
-> This change also requires that now gssd must be running on the client.  O=
-therwise without gssd a sec=3Dsys mount hangs for a bit waiting for the upc=
-all to time out (since the client will attempt to use krb5i for lease manag=
-ement operations).  Trond and Bruce have been discussing a change to addres=
-s that.
+> On Wed, 26 Jun 2013 11:15:08 -0400
+> Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+>> 
+>> On Jun 26, 2013, at 10:36 AM, Jeff Layton <jlayton@redhat.com> wrote:
+>> 
+>>> Currently, when using NFSv3 the mount will fail if the server happens to
+>>> have AUTH_GSS flavors in the returned authlist before AUTH_UNIX. This
+>>> seems to have been a deliberate change in commit 4580a92 (NFS: Use
+>>> server-recommended security flavor by default (NFSv3)).
+>> 
+>> As an aside, this (from the patch description for 4580a92):
+>> 
+>>>    If a server lists Kerberos pseudoflavors before "sys" in its export
+>>>    options, our client now chooses Kerberos over AUTH_UNIX for mount
+>>>    points, when no security flavor is specified by the mount command.
+>>>    This could be surprising to some administrators or users, who would
+>>>    then need to have Kerberos credentials to access the export.
+>> 
+>> 
+>> is a description of side-effects of the changes in 4580a92.  This text is intended as a warning that behavior could change after 4580a92, not as a statement of purpose.  It describes a known limitation of the approach introduced in 4580a92.
+>> 
+> 
+> Ok, good to know...
+> 
+>>> While the workarounds are fine, I think we can do better here and allow
+>>> this to keep "just working". Allow the client to fall back to
+>>> automatically trying AUTH_UNIX under if the following are all true:
+>>> 
+>>>   - the server return -EACCES from ->create_server call
+>>>   - the client had to do a MNT request (i.e. no binary options)
+>>>   - we didn't just try to use AUTH_UNIX
+>>>   - the admin did not explcitly specify a sec= option
+>>> 
+>>> At that point, try to use AUTH_UNIX, if the server listed it.
+>> 
+>> During these checks, how do you know the server specified AUTH_SYS in its list?  It seems to me you want to retry with the next flavor in server_authlist until you've exhausted the list.
+>> 
+>> Thus, IMO, the code you want to emulate is not nfs4_discover_server_trunking(), but rather nfs4_find_root_sec(), substituting the flavor list returned by the server for the static array of flavors.
+>> 
+> 
+> Possibly. Often, we get a list that looks something like this:
+> 
+> [  379.237691] NFS: received 4 auth flavors
+> [  379.257005] NFS:   auth flavor[0]: 390005
+> [  379.278296] NFS:   auth flavor[1]: 390004
+> [  379.298526] NFS:   auth flavor[2]: 390003
+> [  379.318313] NFS:   auth flavor[3]: 1
+> 
+> So we could instead walk down the list and try each in turn, but how
+> likely is it that one of the other AUTH_GSS flavors will work once the
+> first one failed?
 
-Thanks for the explanation.  That all looks rather painful to back-port
-though, especially as some of it isn't even written yet :-)
-I think I'll stick with my "-N" option for openSUSE for now.
+I don't think the client can tell with generality.  -EACCES from ->create_server() may be a result of IP-based access control on the server, for example.
 
-Do you think that supporting -N (or similar) so that the admin can ask for
-root credentials to be used for SETCLIENTID requests is reasonable? i.e. wh=
-at
-do you think of my patch going in to nfs-utils anyway?
+> I'm not sure it's worth adding the extra complexity
+> to do that when it's likely that the only one that will eventually work
+> is the AUTH_SYS one anyway.
 
-Thanks,
-NeilBrown
+Based on the size and complexity of nfs4_find_root_sec(), I don't think trying flavors in a loop will be complex, and the flavor list is already very short.
 
---Sig_/1/eYRaDFj7=tuf7aP5bGVhl
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
+> 
+>>> Cc: Chuck Lever <chuck.lever@oracle.com>
+>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+>>> ---
+>>> fs/nfs/super.c | 39 +++++++++++++++++++++++++++++++--------
+>>> 1 file changed, 31 insertions(+), 8 deletions(-)
+>>> 
+>>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>>> index 5538bcc..6df327e 100644
+>>> --- a/fs/nfs/super.c
+>>> +++ b/fs/nfs/super.c
+>>> @@ -1701,10 +1701,10 @@ out_err:
+>>> * corresponding to the provided path.
+>>> */
+>>> static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+>>> -			     struct nfs_fh *root_fh)
+>>> +			     struct nfs_fh *root_fh,
+>>> +			     unsigned int *server_authlist_len,
+>>> +			     rpc_authflavor_t *server_authlist)
+>>> {
+>>> -	rpc_authflavor_t server_authlist[NFS_MAX_SECFLAVORS];
+>>> -	unsigned int server_authlist_len = ARRAY_SIZE(server_authlist);
+>>> 	struct nfs_mount_request request = {
+>>> 		.sap		= (struct sockaddr *)
+>>> 						&args->mount_server.address,
+>>> @@ -1712,7 +1712,7 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+>>> 		.protocol	= args->mount_server.protocol,
+>>> 		.fh		= root_fh,
+>>> 		.noresvport	= args->flags & NFS_MOUNT_NORESVPORT,
+>>> -		.auth_flav_len	= &server_authlist_len,
+>>> +		.auth_flav_len	= server_authlist_len,
+>>> 		.auth_flavs	= server_authlist,
+>>> 		.net		= args->net,
+>>> 	};
+>>> @@ -1756,7 +1756,7 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+>>> 		return status;
+>>> 	}
+>>> 
+>>> -	return nfs_select_flavor(args, server_authlist_len, server_authlist);
+>>> +	return 0;
+>>> }
+>>> 
+>>> struct dentry *nfs_try_mount(int flags, const char *dev_name,
+>>> @@ -1765,17 +1765,40 @@ struct dentry *nfs_try_mount(int flags, const char *dev_name,
+>>> {
+>>> 	int status;
+>>> 	struct nfs_server *server;
+>>> +	struct nfs_parsed_mount_data *args = mount_info->parsed;
+>>> +	rpc_authflavor_t requested_authflavor = args->auth_flavors[0];
+>>> +	rpc_authflavor_t server_authlist[NFS_MAX_SECFLAVORS];
+>>> +	unsigned int server_authlist_len = ARRAY_SIZE(server_authlist);
+>>> 
+>>> -	if (mount_info->parsed->need_mount) {
+>>> -		status = nfs_request_mount(mount_info->parsed, mount_info->mntfh);
+>>> +	if (args->need_mount) {
+>>> +		status = nfs_request_mount(args, mount_info->mntfh,
+>>> +					&server_authlist_len, server_authlist);
+>>> +		if (status)
+>>> +			return ERR_PTR(status);
+>>> +retry:
+>>> +		status = nfs_select_flavor(args, server_authlist_len,
+>>> +						server_authlist);
+>>> 		if (status)
+>>> 			return ERR_PTR(status);
+>>> 	}
+>>> 
+>>> 	/* Get a volume representation */
+>>> 	server = nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
+>>> -	if (IS_ERR(server))
+>>> +	if (IS_ERR(server)) {
+>>> +		/*
+>>> +		 * If the initial attempt fails with -EACCES, then that likely
+>>> +		 * means that we couldn't get proper credentials to talk to the
+>>> +		 * server. If an authflavor wasn't specified in the options,
+>>> +		 * and we didn't try to use it already, then try AUTH_UNIX.
+>>> +		 */
+>>> +		if (PTR_ERR(server) == -EACCES && args->need_mount &&
+>>> +		    args->auth_flavors[0] != RPC_AUTH_UNIX &&
+>>> +		    requested_authflavor == RPC_AUTH_MAXFLAVOR) {
+>>> +			args->auth_flavors[0] = RPC_AUTH_UNIX;
+>> 
+>> This might be a lot easier to read if you refactored nfs_try_mount() into two subfunctions: one which handles the args->need_mount case, and the other which handles the opposite case.
+>> 
+> 
+> Good point. I'll look into doing that.
+> 
+>>> +			goto retry;
+>>> +		}
+>>> 		return ERR_CAST(server);
+>>> +	}
+>>> 
+>>> 	return nfs_fs_mount_common(server, flags, dev_name, mount_info, nfs_mod);
+>>> }
+>>> -- 
+>>> 1.8.1.4
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+> 
+> Thanks,
+> -- 
+> Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-iQIVAwUBUawG7Tnsnt1WYoG5AQJm4w//YOLJXUQIdsoa4yBwaHoqkk0FSaiYwFzY
-ScTedtvVvqZpbdNTNrbadSzeRC3Misvq0dBZ4FQp+HXT3omljoewdF3Ln8ixazgK
-Qq0npw9/9p3SRpSI164es+IspMmf7yMgrHtt4suFWJlxibTq1jCSPtzbZBvXILJ+
-Ec/rWyCSMLcU5fPrYy6NcrfG4QpeJum05gD6v6tRRqBLJLZUHjlpZT6JbSZz8vtF
-TVud+mu6+izTdyqaCzlR9ybevg95i1t3n+Ja0TFsQXL/RDNF6+kvZxVsmLxtMYtn
-/Cy6YWfanU962uoHhXXyiHLSVMmihJwiDOHHF3354jhG/J+YvuKIOepS59uQ4XgH
-im2AbEziDEfnMxOpHyi5YvCpY0rtqJt9deXDSo/og/0PRP45+m64fmVfeo5uPT1D
-iS4vf5Gi4X7DsiMtGb+dYaMDVvficdY6oO822uyyEsosNMdDnqorW8Emap+ccf0T
-Xa1nhucut61JPYGPvwsY6xJ7+hxBljHGRM8VF/iIzi0VapgcjBp+KBW4McfaM9gQ
-gITnzyMn45cn5aZ6J3DnZoYP7XzNZpriY8W26PtImOomYjjlalKwjz38K/3IqfpT
-1Y0VrEHbtV3sPiwA4Tc5zvu8Ib2YM1Hs6QH3bALmeFK2EzpUbWYFTSDSr+zwkGYW
-MOSXxAbrLQw=
-=aSbB
------END PGP SIGNATURE-----
 
---Sig_/1/eYRaDFj7=tuf7aP5bGVhl--
+
+
