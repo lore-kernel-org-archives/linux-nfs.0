@@ -1,72 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f178.google.com ([209.85.214.178]:36547 "EHLO
-	mail-ob0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752492Ab3FZTpn (ORCPT
+Received: from mail-oa0-f44.google.com ([209.85.219.44]:35090 "EHLO
+	mail-oa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752349Ab3FZTpn (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jun 2013 15:45:43 -0400
-Received: by mail-ob0-f178.google.com with SMTP id fb19so13575244obc.23
-        for <linux-nfs@vger.kernel.org>; Wed, 26 Jun 2013 12:45:43 -0700 (PDT)
+Received: by mail-oa0-f44.google.com with SMTP id l10so15494397oag.3
+        for <linux-nfs@vger.kernel.org>; Wed, 26 Jun 2013 12:45:42 -0700 (PDT)
 From: Jeff Layton <jlayton@redhat.com>
 To: trond.myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
-Subject: [PATCH v2 2/3] nfs: move server_authlist into nfs_try_mount_request
-Date: Wed, 26 Jun 2013 15:45:35 -0400
-Message-Id: <1372275936-5360-3-git-send-email-jlayton@redhat.com>
+Subject: [PATCH v2 1/3] nfs: refactor "need_mount" code out of nfs_try_mount
+Date: Wed, 26 Jun 2013 15:45:34 -0400
+Message-Id: <1372275936-5360-2-git-send-email-jlayton@redhat.com>
 In-Reply-To: <1372275936-5360-1-git-send-email-jlayton@redhat.com>
 References: <1372275936-5360-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In a later patch we're going to want to cycle over this list and attempt
-to call ->create_server for each different flavor until one succeeds.
-Move the list allocation to the stack of nfs_try_mount_request() and
-pass a pointer to it and its length to nfs_request_mount().
+This looks like pointless refactoring for now, but we'll flesh out
+the need_mount case a little more in a later patch.
 
 Cc: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/super.c | 14 +++++++++-----
- 1 file changed, 9 insertions(+), 5 deletions(-)
+ fs/nfs/super.c | 24 ++++++++++++++++--------
+ 1 file changed, 16 insertions(+), 8 deletions(-)
 
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index afeee81..a0949f5 100644
+index 2d7525f..afeee81 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -1701,10 +1701,10 @@ out_err:
-  * corresponding to the provided path.
-  */
- static int nfs_request_mount(struct nfs_parsed_mount_data *args,
--			     struct nfs_fh *root_fh)
-+			     struct nfs_fh *root_fh,
-+			     rpc_authflavor_t *server_authlist,
-+			     unsigned int *server_authlist_len)
- {
--	rpc_authflavor_t server_authlist[NFS_MAX_SECFLAVORS];
--	unsigned int server_authlist_len = ARRAY_SIZE(server_authlist);
- 	struct nfs_mount_request request = {
- 		.sap		= (struct sockaddr *)
- 						&args->mount_server.address,
-@@ -1712,7 +1712,7 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
- 		.protocol	= args->mount_server.protocol,
- 		.fh		= root_fh,
- 		.noresvport	= args->flags & NFS_MOUNT_NORESVPORT,
--		.auth_flav_len	= &server_authlist_len,
-+		.auth_flav_len	= server_authlist_len,
- 		.auth_flavs	= server_authlist,
- 		.net		= args->net,
- 	};
-@@ -1763,8 +1763,12 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
- 					struct nfs_subversion *nfs_mod)
- {
- 	int status;
-+	struct nfs_parsed_mount_data *args = mount_info->parsed;
-+	rpc_authflavor_t authlist[NFS_MAX_SECFLAVORS];
-+	unsigned int authlist_len = ARRAY_SIZE(authlist);
+@@ -1759,21 +1759,29 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+ 	return nfs_select_flavor(args, &request);
+ }
  
--	status = nfs_request_mount(mount_info->parsed, mount_info->mntfh);
-+	status = nfs_request_mount(args, mount_info->mntfh, authlist,
-+					&authlist_len);
- 	if (status)
- 		return ERR_PTR(status);
++static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_info,
++					struct nfs_subversion *nfs_mod)
++{
++	int status;
++
++	status = nfs_request_mount(mount_info->parsed, mount_info->mntfh);
++	if (status)
++		return ERR_PTR(status);
++
++	return nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
++}
++
+ struct dentry *nfs_try_mount(int flags, const char *dev_name,
+ 			     struct nfs_mount_info *mount_info,
+ 			     struct nfs_subversion *nfs_mod)
+ {
+-	int status;
+ 	struct nfs_server *server;
+ 
+-	if (mount_info->parsed->need_mount) {
+-		status = nfs_request_mount(mount_info->parsed, mount_info->mntfh);
+-		if (status)
+-			return ERR_PTR(status);
+-	}
++	if (mount_info->parsed->need_mount)
++		server = nfs_try_mount_request(mount_info, nfs_mod);
++	else
++		server = nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
+ 
+-	/* Get a volume representation */
+-	server = nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
+ 	if (IS_ERR(server))
+ 		return ERR_CAST(server);
  
 -- 
 1.8.1.4
