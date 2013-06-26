@@ -1,68 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fn.samba.org ([216.83.154.106]:33817 "EHLO mail.samba.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:45924 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754178Ab3FOPMz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 15 Jun 2013 11:12:55 -0400
-Message-ID: <51BC826B.5060805@samba.org>
-Date: Sat, 15 Jun 2013 11:04:11 -0400
-From: Simo <idra@samba.org>
+	id S1751309Ab3FZGP3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Jun 2013 02:15:29 -0400
+Subject: [PATCH v4] SUNRPC: fix races on PipeFS UMOUNT notifications
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, devel@openvz.org, linux-kernel@vger.kernel.org,
+        jlayton@redhat.com
+Date: Wed, 26 Jun 2013 10:15:14 +0400
+Message-ID: <20130626061448.32202.192.stgit@localhost.localdomain>
+In-Reply-To: <20130624075245.17104.6279.stgit@localhost.localdomain>
+References: <20130624075245.17104.6279.stgit@localhost.localdomain>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: viro@zeniv.linux.org.uk, matthew@wil.cx, dhowells@redhat.com,
-        sage@inktank.com, smfrench@gmail.com, swhiteho@redhat.com,
-        Trond.Myklebust@netapp.com, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        piastryyy@gmail.com
-Subject: Re: [PATCH v2 06/14] locks: don't walk inode->i_flock list in locks_show
-References: <1370948948-31784-1-git-send-email-jlayton@redhat.com> <1370948948-31784-7-git-send-email-jlayton@redhat.com> <20130613194545.GC19218@fieldses.org> <20130613162648.176979bc@tlielax.poochiereds.net> <51BB040C.3050101@samba.org> <20130615070535.6367eed9@tlielax.poochiereds.net>
-In-Reply-To: <20130615070535.6367eed9@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/15/2013 07:05 AM, Jeff Layton wrote:
-> On Fri, 14 Jun 2013 07:52:44 -0400
-> Simo <idra@samba.org> wrote:
->
->> On 06/13/2013 04:26 PM, Jeff Layton wrote:
->>> The only real solution I can think of is to put flock locks into the
->>> blocked_list/blocked_hash too, or maybe giving them a simple hlist to
->>> sit on.
->>>
->>> I'll fix that up in the next iteration. It'll probably make flock()
->>> tests run slower, but such is the cost of preserving this procfile...
->> How hard would it be to make the procfile stuff optional ?
->> So that those that need performance can decide to not use it ?
->> Maybe even something that can be disabled at run time ? Not just compile
->> time.
->>
-> (re-adding back the cc lists...)
->
-> It'd be tricky, especially if you want to do it at runtime. The
-> procfile itself is not a problem per-se. The real problem is the
-> tracking you have to do in order to eventually present the procfile. So
-> a boot-time or compile-time switch might be reasonable, but a runtime
-> switch will probably never really be.
+CPU#0                                   CPU#1
+-----------------------------           -----------------------------
+rpc_kill_sb
+sn->pipefs_sb = NULL                    rpc_release_client
+(UMOUNT_EVENT)                          rpc_free_auth
+rpc_pipefs_event
+rpc_get_client_for_event
+!atomic_inc_not_zero(cl_count)
+<skip the client>
+                                        atomic_inc(cl_count)
+                                        rpc_free_client
+                                        rpc_clnt_remove_pipedir
+                                        <skip client dir removing>
 
-Just to be clear, I meant for a switch to turn it off at runtime, I 
-understand very well that it would be way too hard to turn on at 
-runtime. But killing the perf problem might be desirable on a system you 
-cannot just reboot.
+To fix this, this patch does the following:
 
-> I have a new patchset that I'm testing now though that should address
-> Bruce's concerns about iterating over that global list. So far, it
-> seems to be at least as fast as the latest patchset I posted.
->
-> It makes the (spin)locking a bit more complex, but hopefully I can
-> document this well enough that it's not a great concern.
->
-> Stay tuned...
+1) Calls RPC_PIPEFS_UMOUNT notification with sn->pipefs_sb_lock being held.
+2) Removes SUNRPC client from the list AFTER pipes destroying.
+3) Doesn't hold RPC client on notification: if client in the list, then it
+can't be destroyed while sn->pipefs_sb_lock in hold by notification caller.
 
-Thanks Jeff,
-this is very valuable work.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: stable@vger.kernel.org
+---
+ net/sunrpc/clnt.c     |    5 +----
+ net/sunrpc/rpc_pipe.c |    2 +-
+ 2 files changed, 2 insertions(+), 5 deletions(-)
 
-Simo.
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index b827a4b..41f180c 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -236,8 +236,6 @@ static struct rpc_clnt *rpc_get_client_for_event(struct net *net, int event)
+ 			continue;
+ 		if (rpc_clnt_skip_event(clnt, event))
+ 			continue;
+-		if (atomic_inc_not_zero(&clnt->cl_count) == 0)
+-			continue;
+ 		spin_unlock(&sn->rpc_client_lock);
+ 		return clnt;
+ 	}
+@@ -254,7 +252,6 @@ static int rpc_pipefs_event(struct notifier_block *nb, unsigned long event,
+ 
+ 	while ((clnt = rpc_get_client_for_event(sb->s_fs_info, event))) {
+ 		error = __rpc_pipefs_event(clnt, event, sb);
+-		rpc_release_client(clnt);
+ 		if (error)
+ 			break;
+ 	}
+@@ -641,8 +638,8 @@ rpc_free_client(struct rpc_clnt *clnt)
+ 			rcu_dereference(clnt->cl_xprt)->servername);
+ 	if (clnt->cl_parent != clnt)
+ 		rpc_release_client(clnt->cl_parent);
+-	rpc_unregister_client(clnt);
+ 	rpc_clnt_remove_pipedir(clnt);
++	rpc_unregister_client(clnt);
+ 	rpc_free_iostats(clnt->cl_metrics);
+ 	kfree(clnt->cl_principal);
+ 	clnt->cl_metrics = NULL;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index c512448..9b4ec5b 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -1165,12 +1165,12 @@ static void rpc_kill_sb(struct super_block *sb)
+ 		goto out;
+ 	}
+ 	sn->pipefs_sb = NULL;
+-	mutex_unlock(&sn->pipefs_sb_lock);
+ 	dprintk("RPC:       sending pipefs UMOUNT notification for net %p%s\n",
+ 		net, NET_NAME(net));
+ 	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
+ 					   RPC_PIPEFS_UMOUNT,
+ 					   sb);
++	mutex_unlock(&sn->pipefs_sb_lock);
+ 	put_net(net);
+ out:
+ 	kill_litter_super(sb);
 
