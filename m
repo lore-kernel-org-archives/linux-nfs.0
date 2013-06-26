@@ -1,157 +1,211 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:39946 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47546 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751784Ab3FQPOh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Jun 2013 11:14:37 -0400
+	id S1751380Ab3FZPlV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Jun 2013 11:41:21 -0400
+Date: Wed, 26 Jun 2013 11:41:17 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
-Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
-        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v3 10/13] locks: add a new "lm_owner_key" lock operation
-Date: Mon, 17 Jun 2013 11:13:53 -0400
-Message-Id: <1371482036-15958-11-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
-References: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] nfs: allow NFSv3 to fall back to using AUTH_UNIX
+ automatically if available
+Message-ID: <20130626114117.281dd309@tlielax.poochiereds.net>
+In-Reply-To: <5C23AD38-2F90-40F8-BCD6-6D28AC67B2CC@oracle.com>
+References: <1372257363-28148-1-git-send-email-jlayton@redhat.com>
+	<1372257363-28148-3-git-send-email-jlayton@redhat.com>
+	<1EEAEFAF-F8B9-41AE-8CC9-459F9ADDCD12@oracle.com>
+	<20130626112421.39b990a8@tlielax.poochiereds.net>
+	<5C23AD38-2F90-40F8-BCD6-6D28AC67B2CC@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, the hashing that the locking code uses to add these values
-to the blocked_hash is simply calculated using fl_owner field. That's
-valid in most cases except for server-side lockd, which validates the
-owner of a lock based on fl_owner and fl_pid.
+On Wed, 26 Jun 2013 11:37:19 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-In the case where you have a small number of NFS clients doing a lot
-of locking between different processes, you could end up with all
-the blocked requests sitting in a very small number of hash buckets.
+> 
+> On Jun 26, 2013, at 11:24 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> > On Wed, 26 Jun 2013 11:15:08 -0400
+> > Chuck Lever <chuck.lever@oracle.com> wrote:
+> > 
+> >> 
+> >> On Jun 26, 2013, at 10:36 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> >> 
+> >>> Currently, when using NFSv3 the mount will fail if the server happens to
+> >>> have AUTH_GSS flavors in the returned authlist before AUTH_UNIX. This
+> >>> seems to have been a deliberate change in commit 4580a92 (NFS: Use
+> >>> server-recommended security flavor by default (NFSv3)).
+> >> 
+> >> As an aside, this (from the patch description for 4580a92):
+> >> 
+> >>>    If a server lists Kerberos pseudoflavors before "sys" in its export
+> >>>    options, our client now chooses Kerberos over AUTH_UNIX for mount
+> >>>    points, when no security flavor is specified by the mount command.
+> >>>    This could be surprising to some administrators or users, who would
+> >>>    then need to have Kerberos credentials to access the export.
+> >> 
+> >> 
+> >> is a description of side-effects of the changes in 4580a92.  This text is intended as a warning that behavior could change after 4580a92, not as a statement of purpose.  It describes a known limitation of the approach introduced in 4580a92.
+> >> 
+> > 
+> > Ok, good to know...
+> > 
+> >>> While the workarounds are fine, I think we can do better here and allow
+> >>> this to keep "just working". Allow the client to fall back to
+> >>> automatically trying AUTH_UNIX under if the following are all true:
+> >>> 
+> >>>   - the server return -EACCES from ->create_server call
+> >>>   - the client had to do a MNT request (i.e. no binary options)
+> >>>   - we didn't just try to use AUTH_UNIX
+> >>>   - the admin did not explcitly specify a sec= option
+> >>> 
+> >>> At that point, try to use AUTH_UNIX, if the server listed it.
+> >> 
+> >> During these checks, how do you know the server specified AUTH_SYS in its list?  It seems to me you want to retry with the next flavor in server_authlist until you've exhausted the list.
+> >> 
+> >> Thus, IMO, the code you want to emulate is not nfs4_discover_server_trunking(), but rather nfs4_find_root_sec(), substituting the flavor list returned by the server for the static array of flavors.
+> >> 
+> > 
+> > Possibly. Often, we get a list that looks something like this:
+> > 
+> > [  379.237691] NFS: received 4 auth flavors
+> > [  379.257005] NFS:   auth flavor[0]: 390005
+> > [  379.278296] NFS:   auth flavor[1]: 390004
+> > [  379.298526] NFS:   auth flavor[2]: 390003
+> > [  379.318313] NFS:   auth flavor[3]: 1
+> > 
+> > So we could instead walk down the list and try each in turn, but how
+> > likely is it that one of the other AUTH_GSS flavors will work once the
+> > first one failed?
+> 
+> I don't think the client can tell with generality.  -EACCES from ->create_server() may be a result of IP-based access control on the server, for example.
+> 
 
-Add a new lm_owner_key operation to the lock_manager_operations that
-will generate an unsigned long to use as the key in the hashtable.
-That function is only implemented for server-side lockd, and simply
-XORs the fl_owner and fl_pid.
+Sure, but if the alternative is failure, then there's little harm in retrying.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Acked-by: J. Bruce Fields <bfields@fieldses.org>
----
- Documentation/filesystems/Locking |   16 +++++++++++-----
- fs/lockd/svclock.c                |   12 ++++++++++++
- fs/locks.c                        |   12 ++++++++++--
- include/linux/fs.h                |    1 +
- 4 files changed, 34 insertions(+), 7 deletions(-)
+> > I'm not sure it's worth adding the extra complexity
+> > to do that when it's likely that the only one that will eventually work
+> > is the AUTH_SYS one anyway.
+> 
+> Based on the size and complexity of nfs4_find_root_sec(), I don't think trying flavors in a loop will be complex, and the flavor list is already very short.
+> 
 
-diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
-index 413685f..dfeb01b 100644
---- a/Documentation/filesystems/Locking
-+++ b/Documentation/filesystems/Locking
-@@ -351,6 +351,7 @@ fl_release_private:	maybe		no
- ----------------------- lock_manager_operations ---------------------------
- prototypes:
- 	int (*lm_compare_owner)(struct file_lock *, struct file_lock *);
-+	unsigned long (*lm_owner_key)(struct file_lock *);
- 	void (*lm_notify)(struct file_lock *);  /* unblock callback */
- 	int (*lm_grant)(struct file_lock *, struct file_lock *, int);
- 	void (*lm_break)(struct file_lock *); /* break_lease callback */
-@@ -360,16 +361,21 @@ locking rules:
- 
- 			inode->i_lock	file_lock_lock	may block
- lm_compare_owner:	yes[1]		maybe		no
-+lm_owner_key		yes[1]		yes		no
- lm_notify:		yes		yes		no
- lm_grant:		no		no		no
- lm_break:		yes		no		no
- lm_change		yes		no		no
- 
--[1]:	->lm_compare_owner is generally called with *an* inode->i_lock held. It
--may not be the i_lock of the inode for either file_lock being compared! This is
--the case with deadlock detection, since the code has to chase down the owners
--of locks that may be entirely unrelated to the one on which the lock is being
--acquired. When doing a search for deadlocks, the file_lock_lock is also held.
-+[1]:	->lm_compare_owner and ->lm_owner_key are generally called with
-+*an* inode->i_lock held. It may not be the i_lock of the inode
-+associated with either file_lock argument! This is the case with deadlock
-+detection, since the code has to chase down the owners of locks that may
-+be entirely unrelated to the one on which the lock is being acquired.
-+For deadlock detection however, the file_lock_lock is also held. The
-+fact that these locks are held ensures that the file_locks do not
-+disappear out from under you while doing the comparison or generating an
-+owner key.
- 
- --------------------------- buffer_head -----------------------------------
- prototypes:
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index e703318..ce2cdab 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -744,8 +744,20 @@ static int nlmsvc_same_owner(struct file_lock *fl1, struct file_lock *fl2)
- 	return fl1->fl_owner == fl2->fl_owner && fl1->fl_pid == fl2->fl_pid;
- }
- 
-+/*
-+ * Since NLM uses two "keys" for tracking locks, we need to hash them down
-+ * to one for the blocked_hash. Here, we're just xor'ing the host address
-+ * with the pid in order to create a key value for picking a hash bucket.
-+ */
-+static unsigned long
-+nlmsvc_owner_key(struct file_lock *fl)
-+{
-+	return (unsigned long)fl->fl_owner ^ (unsigned long)fl->fl_pid;
-+}
-+
- const struct lock_manager_operations nlmsvc_lock_operations = {
- 	.lm_compare_owner = nlmsvc_same_owner,
-+	.lm_owner_key = nlmsvc_owner_key,
- 	.lm_notify = nlmsvc_notify_blocked,
- 	.lm_grant = nlmsvc_grant_deferred,
- };
-diff --git a/fs/locks.c b/fs/locks.c
-index d93b291..55f3af7 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -505,10 +505,18 @@ locks_delete_global_locks(struct file_lock *waiter)
- 	spin_unlock(&file_lock_lock);
- }
- 
-+static unsigned long
-+posix_owner_key(struct file_lock *fl)
-+{
-+	if (fl->fl_lmops && fl->fl_lmops->lm_owner_key)
-+		return fl->fl_lmops->lm_owner_key(fl);
-+	return (unsigned long)fl->fl_owner;
-+}
-+
- static inline void
- locks_insert_global_blocked(struct file_lock *waiter)
- {
--	hash_add(blocked_hash, &waiter->fl_link, (unsigned long)waiter->fl_owner);
-+	hash_add(blocked_hash, &waiter->fl_link, posix_owner_key(waiter));
- }
- 
- static inline void
-@@ -739,7 +747,7 @@ static struct file_lock *what_owner_is_waiting_for(struct file_lock *block_fl)
- {
- 	struct file_lock *fl;
- 
--	hash_for_each_possible(blocked_hash, fl, fl_link, (unsigned long)block_fl->fl_owner) {
-+	hash_for_each_possible(blocked_hash, fl, fl_link, posix_owner_key(block_fl)) {
- 		if (posix_same_owner(fl, block_fl))
- 			return fl->fl_next;
- 	}
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 3b340f7..232a345 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -908,6 +908,7 @@ struct file_lock_operations {
- 
- struct lock_manager_operations {
- 	int (*lm_compare_owner)(struct file_lock *, struct file_lock *);
-+	unsigned long (*lm_owner_key)(struct file_lock *);
- 	void (*lm_notify)(struct file_lock *);	/* unblock callback */
- 	int (*lm_grant)(struct file_lock *, struct file_lock *, int);
- 	void (*lm_break)(struct file_lock *);
+Ok, I'll look at doing that. It'll mean more of an overhaul of this
+code, but the refactoring you mention below should make it cleaner.
+
+> > 
+> >>> Cc: Chuck Lever <chuck.lever@oracle.com>
+> >>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> >>> ---
+> >>> fs/nfs/super.c | 39 +++++++++++++++++++++++++++++++--------
+> >>> 1 file changed, 31 insertions(+), 8 deletions(-)
+> >>> 
+> >>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> >>> index 5538bcc..6df327e 100644
+> >>> --- a/fs/nfs/super.c
+> >>> +++ b/fs/nfs/super.c
+> >>> @@ -1701,10 +1701,10 @@ out_err:
+> >>> * corresponding to the provided path.
+> >>> */
+> >>> static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+> >>> -			     struct nfs_fh *root_fh)
+> >>> +			     struct nfs_fh *root_fh,
+> >>> +			     unsigned int *server_authlist_len,
+> >>> +			     rpc_authflavor_t *server_authlist)
+> >>> {
+> >>> -	rpc_authflavor_t server_authlist[NFS_MAX_SECFLAVORS];
+> >>> -	unsigned int server_authlist_len = ARRAY_SIZE(server_authlist);
+> >>> 	struct nfs_mount_request request = {
+> >>> 		.sap		= (struct sockaddr *)
+> >>> 						&args->mount_server.address,
+> >>> @@ -1712,7 +1712,7 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+> >>> 		.protocol	= args->mount_server.protocol,
+> >>> 		.fh		= root_fh,
+> >>> 		.noresvport	= args->flags & NFS_MOUNT_NORESVPORT,
+> >>> -		.auth_flav_len	= &server_authlist_len,
+> >>> +		.auth_flav_len	= server_authlist_len,
+> >>> 		.auth_flavs	= server_authlist,
+> >>> 		.net		= args->net,
+> >>> 	};
+> >>> @@ -1756,7 +1756,7 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+> >>> 		return status;
+> >>> 	}
+> >>> 
+> >>> -	return nfs_select_flavor(args, server_authlist_len, server_authlist);
+> >>> +	return 0;
+> >>> }
+> >>> 
+> >>> struct dentry *nfs_try_mount(int flags, const char *dev_name,
+> >>> @@ -1765,17 +1765,40 @@ struct dentry *nfs_try_mount(int flags, const char *dev_name,
+> >>> {
+> >>> 	int status;
+> >>> 	struct nfs_server *server;
+> >>> +	struct nfs_parsed_mount_data *args = mount_info->parsed;
+> >>> +	rpc_authflavor_t requested_authflavor = args->auth_flavors[0];
+> >>> +	rpc_authflavor_t server_authlist[NFS_MAX_SECFLAVORS];
+> >>> +	unsigned int server_authlist_len = ARRAY_SIZE(server_authlist);
+> >>> 
+> >>> -	if (mount_info->parsed->need_mount) {
+> >>> -		status = nfs_request_mount(mount_info->parsed, mount_info->mntfh);
+> >>> +	if (args->need_mount) {
+> >>> +		status = nfs_request_mount(args, mount_info->mntfh,
+> >>> +					&server_authlist_len, server_authlist);
+> >>> +		if (status)
+> >>> +			return ERR_PTR(status);
+> >>> +retry:
+> >>> +		status = nfs_select_flavor(args, server_authlist_len,
+> >>> +						server_authlist);
+> >>> 		if (status)
+> >>> 			return ERR_PTR(status);
+> >>> 	}
+> >>> 
+> >>> 	/* Get a volume representation */
+> >>> 	server = nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
+> >>> -	if (IS_ERR(server))
+> >>> +	if (IS_ERR(server)) {
+> >>> +		/*
+> >>> +		 * If the initial attempt fails with -EACCES, then that likely
+> >>> +		 * means that we couldn't get proper credentials to talk to the
+> >>> +		 * server. If an authflavor wasn't specified in the options,
+> >>> +		 * and we didn't try to use it already, then try AUTH_UNIX.
+> >>> +		 */
+> >>> +		if (PTR_ERR(server) == -EACCES && args->need_mount &&
+> >>> +		    args->auth_flavors[0] != RPC_AUTH_UNIX &&
+> >>> +		    requested_authflavor == RPC_AUTH_MAXFLAVOR) {
+> >>> +			args->auth_flavors[0] = RPC_AUTH_UNIX;
+> >> 
+> >> This might be a lot easier to read if you refactored nfs_try_mount() into two subfunctions: one which handles the args->need_mount case, and the other which handles the opposite case.
+> >> 
+> > 
+> > Good point. I'll look into doing that.
+> > 
+> >>> +			goto retry;
+> >>> +		}
+> >>> 		return ERR_CAST(server);
+> >>> +	}
+> >>> 
+> >>> 	return nfs_fs_mount_common(server, flags, dev_name, mount_info, nfs_mod);
+> >>> }
+> >>> -- 
+> >>> 1.8.1.4
+> >>> 
+> >>> --
+> >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>> the body of a message to majordomo@vger.kernel.org
+> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >> 
+> > 
+> > Thanks,
+> > -- 
+> > Jeff Layton <jlayton@redhat.com>
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+
 -- 
-1.7.1
-
+Jeff Layton <jlayton@redhat.com>
