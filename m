@@ -1,48 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:18655 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:35122 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751412Ab3FXRAu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Jun 2013 13:00:50 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r5OH0nC6029410
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 24 Jun 2013 13:00:50 -0400
-Received: from smallhat.bos.devel.redhat.com (vpn-53-220.rdu2.redhat.com [10.10.53.220])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id r5OH0nPt006819
-	for <linux-nfs@vger.kernel.org>; Mon, 24 Jun 2013 13:00:49 -0400
-Message-ID: <51C87B40.1080203@RedHat.com>
-Date: Mon, 24 Jun 2013 13:00:48 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
+	id S1752027Ab3FZTVa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Jun 2013 15:21:30 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH]: gssd: Fix preferred_realm option handling
-References: <20130611093403.GB27345@principal.rfc2324.org> <20130611114114.GB16756@umich.edu> <20130617170247.GA16125@principal.rfc2324.org>
-In-Reply-To: <20130617170247.GA16125@principal.rfc2324.org>
-Content-Type: text/plain; charset=UTF-8
+Cc: "J. Bruce Fields" <bfields@redhat.com>, stable@vger.kernel.org
+Subject: [PATCH 1/7] nfsd4: fix decoding across page boundaries
+Date: Wed, 26 Jun 2013 15:21:21 -0400
+Message-Id: <1372274488-4752-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1372274488-4752-1-git-send-email-bfields@redhat.com>
+References: <1372274488-4752-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
+nfsd4: fix decoding of compounds across page boundaries
 
-On 17/06/13 13:02, Maximilian Wilhelm wrote:
-> Anno domini 2013 Jim Rees scripsit:
-> 
->> Maximilian Wilhelm wrote:
-> 
->>   +	 * Make sure the preferred_realm (which may have been explicitly set
->>   +	 * on the command line, is tried first. If nothing is found go on with
->>   +	 * the host and local default realm (if that hasn't already been tried).
-> 
->> You're missing a close paren there somewhere.
-> 
-> Indeed. The first '(' should have been a ','.
-> 
-> Anyone willing to apply this?
-Its on my TODO list... and I'll fix the comment up...
+A freebsd NFSv4.0 client was getting rare IO errors expanding a tarball.
+A network trace showed the server returning BAD_XDR on the final getattr
+of a getattr+write+getattr compound.  The final getattr started on a
+page boundary.
 
-steved.
+I believe the Linux client ignores errors on the post-write getattr, and
+that that's why we haven't seen this before.
 
-> 
-> Thanks
-> Max
-> 
+Cc: stable@vger.kernel.org
+Reported-by: Rick Macklem <rmacklem@uoguelph.ca>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 171fe5e4..e34f5eb 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -167,8 +167,8 @@ static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
+ 	 */
+ 	memcpy(p, argp->p, avail);
+ 	/* step to next page */
+-	argp->p = page_address(argp->pagelist[0]);
+ 	argp->pagelist++;
++	argp->p = page_address(argp->pagelist[0]);
+ 	if (argp->pagelen < PAGE_SIZE) {
+ 		argp->end = argp->p + (argp->pagelen>>2);
+ 		argp->pagelen = 0;
+-- 
+1.8.1.4
+
