@@ -1,85 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42601 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:35130 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754551Ab3FEMZQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jun 2013 08:25:16 -0400
-Date: Wed, 5 Jun 2013 08:24:32 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, dhowells@redhat.com,
-        sage@inktank.com, smfrench@gmail.com, swhiteho@redhat.com,
-        Trond.Myklebust@netapp.com, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        piastryyy@gmail.com
-Subject: Re: [PATCH v1 07/11] locks: only pull entries off of blocked_list
- when they are really unblocked
-Message-ID: <20130605122432.GA24193@fieldses.org>
-References: <1370056054-25449-1-git-send-email-jlayton@redhat.com>
- <1370056054-25449-8-git-send-email-jlayton@redhat.com>
- <20130604215839.GD15594@fieldses.org>
- <20130605073822.4d67c57c@corrin.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130605073822.4d67c57c@corrin.poochiereds.net>
+	id S1752556Ab3FZTVc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Jun 2013 15:21:32 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 5/7] nfsd4: delegation-based open reclaims should bypass permissions
+Date: Wed, 26 Jun 2013 15:21:25 -0400
+Message-Id: <1372274488-4752-6-git-send-email-bfields@redhat.com>
+In-Reply-To: <1372274488-4752-1-git-send-email-bfields@redhat.com>
+References: <1372274488-4752-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 05, 2013 at 07:38:22AM -0400, Jeff Layton wrote:
-> On Tue, 4 Jun 2013 17:58:39 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Fri, May 31, 2013 at 11:07:30PM -0400, Jeff Layton wrote:
-> > > Currently, when there is a lot of lock contention the kernel spends an
-> > > inordinate amount of time taking blocked locks off of the global
-> > > blocked_list and then putting them right back on again. When all of this
-> > > code was protected by a single lock, then it didn't matter much, but now
-> > > it means a lot of file_lock_lock thrashing.
-> > > 
-> > > Optimize this a bit by deferring the removal from the blocked_list until
-> > > we're either applying or cancelling the lock. By doing this, and using a
-> > > lockless list_empty check, we can avoid taking the file_lock_lock in
-> > > many cases.
-> > > 
-> > > Because the fl_link check is lockless, we must ensure that only the task
-> > > that "owns" the request manipulates the fl_link. Also, with this change,
-> > > it's possible that we'll see an entry on the blocked_list that has a
-> > > NULL fl_next pointer. In that event, just ignore it and continue walking
-> > > the list.
-> > 
-> > OK, that sounds safe as in it shouldn't crash, but does the deadlock
-> > detection still work, or can it miss loops?
-> > 
-> > Those locks that are temporarily NULL would previously not have been on
-> > the list at all, OK, but...  I'm having trouble reasoning about how this
-> > works now.
-> > 
-> > Previously a single lock was held interrupted across
-> > posix_locks_deadlock and locks_insert_block() which guaranteed we
-> > shouldn't be adding a loop, is that still true?
-> > 
-> > --b.
-> > 
-> 
-> I had thought it was when I originally looked at this, but now that I
-> consider it again I think you may be correct and that there are possible
-> races here. Since we might end up reblocking behind a different lock
-> without taking the global spinlock we could flip to blocking behind a
-> different lock such that a loop is created if you had a complex (>2)
-> chain of locks.
-> 
-> I think I'm going to have to drop this approach and instead make it so
-> that the deadlock detection and insertion into the global blocker
-> list/hash are atomic.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Right.  Once you drop the lock you can no longer be sure that what you
-learned about the file-lock graph stays true.
+We saw a v4.0 client's create fail as follows:
 
-> Ditto for locks_wake_up_blocks on posix locks and
-> taking the entries off the list/hash.
+	- open create succeeds and gets a read delegation
+	- client attempts to set mode on new file, gets DELAY while
+	  server recalls delegation.
+	- client attempts a CLAIM_DELEGATE_CUR open using the
+	  delegation, gets error because of new file mode.
 
-Here I'm not sure what you mean.
+This probably can't happen on a recent kernel since we're no longer
+giving out delegations on create opens.  Nevertheless, it's a
+bug--reclaim opens should bypass permission checks.
 
---b.
+Reported-by: Steve Dickson <steved@redhat.com>
+Reported-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 1a1ff24..a7cee86 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -296,7 +296,8 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
+ 
+ 	nfsd4_set_open_owner_reply_cache(cstate, open, resfh);
+ 	accmode = NFSD_MAY_NOP;
+-	if (open->op_created)
++	if (open->op_created ||
++			open->op_claim_type == NFS4_OPEN_CLAIM_DELEGATE_CUR)
+ 		accmode |= NFSD_MAY_OWNER_OVERRIDE;
+ 	status = do_open_permission(rqstp, resfh, open, accmode);
+ 	set_change_info(&open->op_cinfo, current_fh);
+-- 
+1.8.1.4
+
