@@ -1,47 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.gnuher.de ([78.47.12.54]:55085 "EHLO mail.gnuher.de"
+Received: from fieldses.org ([174.143.236.118]:35123 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751269Ab3FZMqV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 26 Jun 2013 08:46:21 -0400
-Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
-	by mail.gnuher.de (envelope-from
-	<news@geggus.net>)
-	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.72)
-	id 1Urp75-0005pw-Il
-	for linux-nfs@vger.kernel.org; Wed, 26 Jun 2013 14:46:19 +0200
-Received: from news  by ultimate100.geggus.net (envelope-from
-	<news@geggus.net>)
-	with local (Exim 4.72)
-	id 1Urp74-0001Hz-V4
-	for linux-nfs@vger.kernel.org; Wed, 26 Jun 2013 14:46:18 +0200
+	id S1752267Ab3FZTVb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Jun 2013 15:21:31 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
-From: Sven Geggus <lists@fuchsschwanzdomain.de>
-Subject: exporting one directory sec=krb5 and another sec=sys?
-Date: Wed, 26 Jun 2013 12:46:18 +0000 (UTC)
-Message-ID: <kqenqq$4f7$1@ultimate100.geggus.net>
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/7] nfsd4: minor read_buf cleanup
+Date: Wed, 26 Jun 2013 15:21:22 -0400
+Message-Id: <1372274488-4752-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1372274488-4752-1-git-send-email-bfields@redhat.com>
+References: <1372274488-4752-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-I'm trying to do the following in /etc/exports:
+The code to step to the next page seems reasonably self-contained.
 
-/storage/home *(rw,sec=krb5:krb5i:krb5p,no_subtree_check)
-/storage/data4hostx hostx(rw,sec=sys,no_subtree_check)
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c | 24 ++++++++++++++----------
+ 1 file changed, 14 insertions(+), 10 deletions(-)
 
-This does however not seem to work, I always seem to get "mount.nfs4:
-Operation not permitted".
-
-If I remove either line everything works fine
-(of course in the spezified case only)
-
-What am I doing wrong here?
-
-Sven
-
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index e34f5eb..c102d25 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -139,6 +139,19 @@ xdr_error:					\
+ 	}					\
+ } while (0)
+ 
++static void next_decode_page(struct nfsd4_compoundargs *argp)
++{
++	argp->pagelist++;
++	argp->p = page_address(argp->pagelist[0]);
++	if (argp->pagelen < PAGE_SIZE) {
++		argp->end = argp->p + (argp->pagelen>>2);
++		argp->pagelen = 0;
++	} else {
++		argp->end = argp->p + (PAGE_SIZE>>2);
++		argp->pagelen -= PAGE_SIZE;
++	}
++}
++
+ static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
+ {
+ 	/* We want more bytes than seem to be available.
+@@ -166,16 +179,7 @@ static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
+ 	 * guarantee p points to at least nbytes bytes.
+ 	 */
+ 	memcpy(p, argp->p, avail);
+-	/* step to next page */
+-	argp->pagelist++;
+-	argp->p = page_address(argp->pagelist[0]);
+-	if (argp->pagelen < PAGE_SIZE) {
+-		argp->end = argp->p + (argp->pagelen>>2);
+-		argp->pagelen = 0;
+-	} else {
+-		argp->end = argp->p + (PAGE_SIZE>>2);
+-		argp->pagelen -= PAGE_SIZE;
+-	}
++	next_decode_page(argp);
+ 	memcpy(((char*)p)+avail, argp->p, (nbytes - avail));
+ 	argp->p += XDR_QUADLEN(nbytes - avail);
+ 	return p;
 -- 
-Those who would give up Essential Liberty to purchase a little Temporary
-Safety, deserve neither Liberty nor Safety (Benjamin Franklin)
+1.8.1.4
 
-/me is giggls@ircnet, http://sven.gegg.us/ on the Web
