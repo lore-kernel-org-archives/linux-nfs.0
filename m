@@ -1,98 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:39955 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:35128 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751824Ab3FQPOb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Jun 2013 11:14:31 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
-Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
-        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v3 01/13] cifs: use posix_unblock_lock instead of locks_delete_block
-Date: Mon, 17 Jun 2013 11:13:44 -0400
-Message-Id: <1371482036-15958-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
-References: <1371482036-15958-1-git-send-email-jlayton@redhat.com>
+	id S1752516Ab3FZTVb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Jun 2013 15:21:31 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>, stable@vger.kernel.org
+Subject: [PATCH 4/7] svcrpc: don't error out on small tcp fragment
+Date: Wed, 26 Jun 2013 15:21:24 -0400
+Message-Id: <1372274488-4752-5-git-send-email-bfields@redhat.com>
+In-Reply-To: <1372274488-4752-1-git-send-email-bfields@redhat.com>
+References: <1372274488-4752-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-commit 66189be74 (CIFS: Fix VFS lock usage for oplocked files) exported
-the locks_delete_block symbol. There's already an exported helper
-function that provides this capability however, so make cifs use that
-instead and turn locks_delete_block back into a static function.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Note that if fl->fl_next == NULL then this lock has already been through
-locks_delete_block(), so we should be OK to ignore an ENOENT error here
-and simply not retry the lock.
+Though clients we care about mostly don't do this, it is possible for
+rpc requests to be sent in multiple fragments.  Here we have a sanity
+check to ensure that the final received rpc isn't too small--except that
+the number we're actually checking is the length of just the final
+fragment, not of the whole rpc.  So a perfectly legal rpc that's
+unluckily fragmented could cause the server to close the connection
+here.
 
-Cc: Pavel Shilovsky <piastryyy@gmail.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Acked-by: J. Bruce Fields <bfields@fieldses.org>
+Cc: stable@vger.kernel.org
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/cifs/file.c     |    2 +-
- fs/locks.c         |    3 +--
- include/linux/fs.h |    5 -----
- 3 files changed, 2 insertions(+), 8 deletions(-)
+ net/sunrpc/svcsock.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/cifs/file.c b/fs/cifs/file.c
-index 48b29d2..44a4f18 100644
---- a/fs/cifs/file.c
-+++ b/fs/cifs/file.c
-@@ -999,7 +999,7 @@ try_again:
- 		rc = wait_event_interruptible(flock->fl_wait, !flock->fl_next);
- 		if (!rc)
- 			goto try_again;
--		locks_delete_block(flock);
-+		posix_unblock_lock(file, flock);
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index df74919..305374d 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1095,7 +1095,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 		goto err_noclose;
  	}
- 	return rc;
- }
-diff --git a/fs/locks.c b/fs/locks.c
-index cb424a4..7a02064 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -496,13 +496,12 @@ static void __locks_delete_block(struct file_lock *waiter)
  
- /*
-  */
--void locks_delete_block(struct file_lock *waiter)
-+static void locks_delete_block(struct file_lock *waiter)
- {
- 	lock_flocks();
- 	__locks_delete_block(waiter);
- 	unlock_flocks();
- }
--EXPORT_SYMBOL(locks_delete_block);
- 
- /* Insert waiter into blocker's block list.
-  * We use a circular list so that processes can be easily woken up in
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 43db02e..b9d7816 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1006,7 +1006,6 @@ extern int vfs_setlease(struct file *, long, struct file_lock **);
- extern int lease_modify(struct file_lock **, int);
- extern int lock_may_read(struct inode *, loff_t start, unsigned long count);
- extern int lock_may_write(struct inode *, loff_t start, unsigned long count);
--extern void locks_delete_block(struct file_lock *waiter);
- extern void lock_flocks(void);
- extern void unlock_flocks(void);
- #else /* !CONFIG_FILE_LOCKING */
-@@ -1151,10 +1150,6 @@ static inline int lock_may_write(struct inode *inode, loff_t start,
- 	return 1;
- }
- 
--static inline void locks_delete_block(struct file_lock *waiter)
--{
--}
--
- static inline void lock_flocks(void)
- {
- }
+-	if (svc_sock_reclen(svsk) < 8) {
++	if (svsk->sk_datalen < 8) {
+ 		svsk->sk_datalen = 0;
+ 		goto err_delete; /* client is nuts. */
+ 	}
 -- 
-1.7.1
+1.8.1.4
 
