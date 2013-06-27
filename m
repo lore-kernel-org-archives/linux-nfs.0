@@ -1,85 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:20142 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755323Ab3FCCB7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 2 Jun 2013 22:01:59 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.3 \(1503\))
-Subject: Re: [PATCH 0/3] Various gssd fixes including machine-credential issue.
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130603005219.20080.1927.stgit@notabene.brown>
-Date: Sun, 2 Jun 2013 22:01:50 -0400
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-Message-Id: <A2E2CEA9-4F2B-4A3F-8661-36D1E6288B0F@oracle.com>
-References: <20130603005219.20080.1927.stgit@notabene.brown>
-To: Neil Brown <neilb@suse.de>
+Received: from mx12.netapp.com ([216.240.18.77]:27723 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752198Ab3F0SFp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jun 2013 14:05:45 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Marc Eshel <eshel@us.ibm.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "Adam C. Emerson" <aemerson@linuxbox.com>,
+        "Matt W. Benjamin" <matt@linuxbox.com>
+Subject: Re: NFSv4.1 session
+Date: Thu, 27 Jun 2013 18:05:44 +0000
+Message-ID: <1372356342.3365.1.camel@leira.trondhjem.org>
+References: <OF8A324DEB.5C9C96EC-ON88257B97.0061DA51-88257B97.0062ED43@us.ibm.com>
+In-Reply-To: <OF8A324DEB.5C9C96EC-ON88257B97.0061DA51-88257B97.0062ED43@us.ibm.com>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 2013-06-27 at 11:00 -0700, Marc Eshel wrote:
+> Hi Trond, 
+> 
+> I am not able to mount from Linux NFS client to the same Ganesha NFS
+> server using multiple IP address. The client was providing the same
+> client-id so the server was using the same session. I tried to return
+> NFS4ERR_CLID_INUSE on the second mount if the target IP is different
+> but the client still did not provide a different client-id like it
+> should. I am not trying to use trunking I what to have different
+> server instance for each IP address so I can move that IP between
+> nodes in the cluster. Any ideas how to accomplish it. 
+> 
+> Thanks, Marc.
 
-On Jun 2, 2013, at 9:00 PM, Neil Brown <neilb@suse.de> wrote:
-
-> As you probably know, since 3.7 (I think) Linux NFS has explicitly
-> asked for machine credentials for certain requests rather than asking
-> for root credentials as is previously did.
-> This causes a regression for people who don't have any machine
-> credentials configured and use "gssd -n".
-> 
-> I gather this was discussed on the mailing list earlier this year but
-> not resolved.
-
-It's resolved in 3.10-rc.
-
-The kernel will attempt to use krb5i for lease management operations.  If that fails because there is no keytab available, it falls back to using AUTH_SYS.
-
-
-> I would like to re-awaken the issue and offer a resolution (which has
-> been tested and found effective by a customer).
-> 
-> Hence these three patches.  The first two are minor issues that I
-> stumbled over while trying to understand the problem and are not
-> critical but probably should be fixed.
-> 
-> The third addresses the above mentioned issue.  It introduces a
-> variable "machine_uses_root_credentials" which is similar to the
-> current "root_uses_machine_credentials".  It also adds a "-N" flag to
-> set this variable.
-> 
-> I'm not certain what the defaults should be.  For backward
-> compatibility it would be best if '-n' set the this new variable as
-> well as clearing the old one, but then I'm not sure what exactly -N
-> should do.
-> 
-> Comments welcome.
-> 
-> Thanks,
-> NeilBrown
-> 
-> 
-> 
-> ---
-> 
-> Neil Brown (3):
->      krb5_utils: remove redundant array size.
->      krb5_util: don't give up on machine credential if hostname not available.
->      gssd: add -N option to use root credentials as machine credentials.
-> 
-> 
-> utils/gssd/gssd.c      |    9 ++++++---
-> utils/gssd/gssd.h      |    1 +
-> utils/gssd/gssd.man    |   13 ++++++++++++-
-> utils/gssd/gssd_proc.c |   12 +++++++-----
-> utils/gssd/krb5_util.c |   10 +++++++---
-> 5 files changed, 33 insertions(+), 12 deletions(-)
-> 
-> -- 
-> Signature
-> 
+I don't understand. The client is performing exactly as per design: it
+detects the fact that you are talking to the same server, and so it
+reuses the same client and session. This is the only sane semantic for a
+NFS client...
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Trond Myklebust
+Linux NFS client maintainer
 
-
-
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
