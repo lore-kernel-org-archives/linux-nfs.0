@@ -1,63 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:56563 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755088Ab3FQSUa convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Jun 2013 14:20:30 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "jlayton@redhat.com" <jlayton@redhat.com>
-Subject: Re: [PATCH v2 2/4] SUNRPC: fix races on PipeFS MOUNT notifications
-Date: Mon, 17 Jun 2013 18:20:28 +0000
-Message-ID: <1371493226.9595.5.camel@leira.trondhjem.org>
-References: <20130611143725.16046.17279.stgit@localhost.localdomain>
-	 <20130611143917.16046.15791.stgit@localhost.localdomain>
-In-Reply-To: <20130611143917.16046.15791.stgit@localhost.localdomain>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+Received: from mail-yh0-f42.google.com ([209.85.213.42]:55476 "EHLO
+	mail-yh0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753139Ab3F0Tyr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jun 2013 15:54:47 -0400
+Received: by mail-yh0-f42.google.com with SMTP id c41so649182yho.15
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Jun 2013 12:54:46 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com,
+        Weston.Adamson@netapp.com
+Subject: [PATCH v4 0/4] nfs: teach NFSv3 mount code to try each authflavor in turn
+Date: Thu, 27 Jun 2013 15:54:37 -0400
+Message-Id: <1372362881-32282-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-06-11 at 18:39 +0400, Stanislav Kinsbursky wrote:
-> Below are races, when RPC client can be created without PiepFS dentries
-> 
-> CPU#0					CPU#1
-> -----------------------------		-----------------------------
-> rpc_new_client				rpc_fill_super
-> rpc_setup_pipedir
-> mutex_lock(&sn->pipefs_sb_lock)
-> rpc_get_sb_net == NULL
-> (no per-net PipeFS superblock)
-> 					sn->pipefs_sb = sb;
-> 					notifier_call_chain(MOUNT)
-> 					(client is not in the list)
-> rpc_register_client
-> (client without pipes dentries)
-> 
-> To fix this patch:
-> 1) makes PipeFS mount notification call with pipefs_sb_lock being held.
-> 2) releases pipefs_sb_lock on new SUNRPC client creation only after
-> registration.
-> 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> Cc: stable@vger.kernel.org
+Changes:
+v4:
+- fake up server list in nfs_mount rather than in nfs_try_mount_request.
+  This simplifies the auth selection code by allowing it to always
+  assume that it has a non-empty authlist from the mount request.
 
-Hi Stanislav,
+v3:
+- fix some signed vs. unsigned type comparisons
+- change how an empty server_authlist is handled. Instead of picking an
+  authflavor to try at that point, just munge the list to contain only
+  RPC_AUTH_NULL. The rest of the logic can take over at that point.
 
-This isn't going to apply to the stable kernels without the cleanup
-patch. Could you please reorganise this patch series so that the cleanup
-comes last.
+I got a report of a regression in recent kernels. Windows 2012 servers
+support v3 and v4.1. They also return a list of authflavors that starts
+with AUTH_GSS flavors and ends with AUTH_SYS.
 
-Thanks,
-  Trond
+Since commit 4580a92 (NFS: Use server-recommended security flavor by
+default (NFSv3)) mounting this server with nfsv3 fails unless you
+specify sec=sys. I can replicate the problem with a Linux NFS server
+by exporing a filesystem with "sec=krb5:sys".
 
+This patchset overhauls the NFSv3 auth code to try each authflavor in
+the list provided by the server in the order that it specified them.
+With this, I'm again able to mount the server without needing any
+special mount options.
+
+Thanks to Chuck Lever for suggestions thus far...
+
+Jeff Layton (4):
+  nfs: refactor "need_mount" code out of nfs_try_mount
+  nfs: move server_authlist into nfs_try_mount_request
+  nfs: have nfs_mount fake up a auth_flavs list when the server didn't
+    provide it
+  nfs: have NFSv3 try server-specified auth flavors in turn
+
+ fs/nfs/mount_clnt.c |  18 +++++-
+ fs/nfs/super.c      | 175 ++++++++++++++++++++++++++++------------------------
+ 2 files changed, 110 insertions(+), 83 deletions(-)
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.8.1.4
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
