@@ -1,47 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:15583 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751005Ab3FYXDN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Jun 2013 19:03:13 -0400
-From: andros@netapp.com
+Received: from mail-gh0-f178.google.com ([209.85.160.178]:44011 "EHLO
+	mail-gh0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753139Ab3F0Tys (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jun 2013 15:54:48 -0400
+Received: by mail-gh0-f178.google.com with SMTP id g15so470712ghb.37
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Jun 2013 12:54:48 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
 To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 0/3] NFSv4.1 Fix gdia_maxcount calculation to fit in ca_maxresponsesize
-Date: Tue, 25 Jun 2013 19:02:52 -0400
-Message-Id: <1372201375-6686-1-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com,
+        Weston.Adamson@netapp.com
+Subject: [PATCH v4 1/4] nfs: refactor "need_mount" code out of nfs_try_mount
+Date: Thu, 27 Jun 2013 15:54:38 -0400
+Message-Id: <1372362881-32282-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1372362881-32282-1-git-send-email-jlayton@redhat.com>
+References: <1372362881-32282-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+This looks like pointless refactoring for now, but we'll flesh out
+the need_mount case a little more in a later patch.
 
->From Trond:
-> The problem is that pdev->pglen is used both as the total buffer length,
-> as a function argument and as the reply message length (through the call
-> to xdr_init_decode_pages). We really should split out those 3 different
-> roles...
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/super.c | 24 ++++++++++++++++--------
+ 1 file changed, 16 insertions(+), 8 deletions(-)
 
-AFAICS there are two roles: the reply or total message length used for
-xdr_init_decode_pages (where it is also a function argument) and the 
-gdia_maxcount. 
-
-Put the block and object layout change in separate patches for ease of
-backporting.
-
--->Andy
-
-Andy Adamson (3):
-  NFSv4.1 Fix gdia_maxcount calculation to fit in ca_maxresponsesize
-  NFSv4.1 use pnfs_device maxcount for the blocklayout gdia_maxcount
-  NFSv4.1 use pnfs_device maxcount for the objectlayout gdia_maxcount
-
- fs/nfs/blocklayout/blocklayout.c | 1 +
- fs/nfs/internal.h                | 1 +
- fs/nfs/nfs4filelayoutdev.c       | 1 +
- fs/nfs/nfs4xdr.c                 | 8 +++++++-
- fs/nfs/objlayout/objlayout.c     | 1 +
- fs/nfs/pnfs.h                    | 3 ++-
- 6 files changed, 13 insertions(+), 2 deletions(-)
-
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 2d7525f..afeee81 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1759,21 +1759,29 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+ 	return nfs_select_flavor(args, &request);
+ }
+ 
++static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_info,
++					struct nfs_subversion *nfs_mod)
++{
++	int status;
++
++	status = nfs_request_mount(mount_info->parsed, mount_info->mntfh);
++	if (status)
++		return ERR_PTR(status);
++
++	return nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
++}
++
+ struct dentry *nfs_try_mount(int flags, const char *dev_name,
+ 			     struct nfs_mount_info *mount_info,
+ 			     struct nfs_subversion *nfs_mod)
+ {
+-	int status;
+ 	struct nfs_server *server;
+ 
+-	if (mount_info->parsed->need_mount) {
+-		status = nfs_request_mount(mount_info->parsed, mount_info->mntfh);
+-		if (status)
+-			return ERR_PTR(status);
+-	}
++	if (mount_info->parsed->need_mount)
++		server = nfs_try_mount_request(mount_info, nfs_mod);
++	else
++		server = nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
+ 
+-	/* Get a volume representation */
+-	server = nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
+ 	if (IS_ERR(server))
+ 		return ERR_CAST(server);
+ 
 -- 
-1.7.11.7
+1.8.1.4
 
