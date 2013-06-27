@@ -1,32 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f182.google.com ([209.85.214.182]:43615 "EHLO
-	mail-ob0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750903Ab3FQOmu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Jun 2013 10:42:50 -0400
-Received: by mail-ob0-f182.google.com with SMTP id va7so3202608obc.41
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Jun 2013 07:42:49 -0700 (PDT)
-Received: from ?IPv6:2001:470:d:51c::8924:fefd? ([2001:470:d:51c::8924:fefd])
-        by mx.google.com with ESMTPSA id ps5sm17098414oeb.8.2013.06.17.07.42.47
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=ECDHE-RSA-RC4-SHA bits=128/128);
-        Mon, 17 Jun 2013 07:42:48 -0700 (PDT)
-Message-ID: <51BF2066.8070102@gmail.com>
-Date: Mon, 17 Jun 2013 08:42:46 -0600
-From: John Haiducek <jhaiduce@gmail.com>
+Received: from webmail.solarflare.com ([12.187.104.25]:43832 "EHLO
+	webmail.solarflare.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753258Ab3F0Pg6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jun 2013 11:36:58 -0400
+Message-ID: <1372347413.2436.6.camel@bwh-desktop.uk.level5networks.com>
+Subject: Re: [RFC Patch net-next 4/5] sunrpc: use generic union inet_addr
+From: Ben Hutchings <bhutchings@solarflare.com>
+To: Cong Wang <amwang@redhat.com>
+CC: <netdev@vger.kernel.org>, Daniel Borkmann <dborkman@redhat.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>
+Date: Thu, 27 Jun 2013 16:36:53 +0100
+In-Reply-To: <1372315398-19683-5-git-send-email-amwang@redhat.com>
+References: <1372315398-19683-1-git-send-email-amwang@redhat.com>
+	 <1372315398-19683-5-git-send-email-amwang@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Re: Can't mount NFSv4 with kerberos on Debian Wheezy
-References: <51BF2014.2050809@gmail.com>
-In-Reply-To: <51BF2014.2050809@gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 2013-06-27 at 14:43 +0800, Cong Wang wrote:
+[...]
+> -/**
+> - * rpc_cmp_addr - compare the address portion of two sockaddrs.
+> - * @sap1: first sockaddr
+> - * @sap2: second sockaddr
+> - *
+> - * Just compares the family and address portion. Ignores port, but
+> - * compares the scope if it's a link-local address.
 
-On 06/17/2013 08:23 AM, Chuck Lever wrote:
->  Is rpc.svcgssd running?
+You're removing the scope comparison.
 
-Yes, and with the same verbosity as rpc.gssd (-vvv).
+Ben.
 
-John
+> - * Returns true if the addrs are equal, false if they aren't.
+> - */
+>  static inline bool rpc_cmp_addr(const struct sockaddr *sap1,
+>  				const struct sockaddr *sap2)
+>  {
+> -	if (sap1->sa_family == sap2->sa_family) {
+> -		switch (sap1->sa_family) {
+> -		case AF_INET:
+> -			return __rpc_cmp_addr4(sap1, sap2);
+> -		case AF_INET6:
+> -			return __rpc_cmp_addr6(sap1, sap2);
+> -		}
+> -	}
+> -	return false;
+> +	return inet_addr_equal((const union inet_addr *)sap1,
+> +			       (const union inet_addr *)sap2);
+>  }
+[...]
+
+-- 
+Ben Hutchings, Staff Engineer, Solarflare
+Not speaking for my employer; that's the marketing department's job.
+They asked us to note that Solarflare product names are trademarked.
 
