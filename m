@@ -1,67 +1,235 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:23225 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754178Ab3FOQ13 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 15 Jun 2013 12:27:29 -0400
-Content-Type: text/plain; charset=US-ASCII
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
-Subject: Re: Can't mount NFSv4 with kerberos on Debian Wheezy
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <51BC8740.8010000@gmail.com>
-Date: Sat, 15 Jun 2013 12:27:23 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <FD6F6C61-BF8B-4C9C-BCB5-E240203D3ACB@oracle.com>
-References: <51BAAFFC.6060208@gmail.com> <51BAB0BC.1010303@gmail.com> <5A1575CF-0400-48CE-B18B-5B26C92D152A@oracle.com> <CAFYD6QXVKpLDS_cWiA2uasu+KXazcRuk-+BX39MdehSwiu35gw@mail.gmail.com> <871BEFF7-33F4-4B34-9887-D5388951987E@oracle.com> <51BC8740.8010000@gmail.com>
-To: John Haiducek <jhaiduce@gmail.com>
+Received: from mail-yh0-f46.google.com ([209.85.213.46]:33601 "EHLO
+	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753258Ab3F0PuS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jun 2013 11:50:18 -0400
+Received: by mail-yh0-f46.google.com with SMTP id i57so486949yha.33
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Jun 2013 08:50:18 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com,
+        Weston.Adamson@netapp.com
+Subject: [PATCH v3 3/3] nfs: have NFSv3 try server-specified auth flavors in turn
+Date: Thu, 27 Jun 2013 11:50:07 -0400
+Message-Id: <1372348207-26388-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1372348207-26388-1-git-send-email-jlayton@redhat.com>
+References: <1372348207-26388-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The current scheme is to try and pick the auth flavor that the server
+prefers. In some cases though, we may find that we're not actually
+able to use that auth flavor later. For instance, the server may
+prefer an AUTH_GSS flavor, but we may not be able to get GSSAPI creds.
 
-On Jun 15, 2013, at 11:24 AM, John Haiducek <jhaiduce@gmail.com> wrote:
+The current code just gives up at that point. Change it instead to
+try the ->create_server call using each of the different authflavors
+in the server's list if one was not specified at mount time. Once
+we have a successful ->create_server call, return the result. Only
+give up and return error if all attempts fail.
 
-> On 06/14/2013 02:13 PM, Chuck Lever wrote:
->> 
->> On Jun 14, 2013, at 3:49 PM, John Haiducek <jhaiduce@gmail.com <mailto:jhaiduce@gmail.com>> wrote:
->> 
->>> 
->>> On Jun 14, 2013 11:05 AM, "Chuck Lever" <chuck.lever@oracle.com <mailto:chuck.lever@oracle.com>> wrote:
->>> >
->>> >
->>> > On Jun 14, 2013, at 1:57 AM, John Haiducek <jhaiduce@gmail.com <mailto:jhaiduce@gmail.com>> wrote:
->>> >
->>> > > Jun 11 20:28:23 tbm rpc.gssd[8959]: Name or service not known while getting full hostname for 'tbm.enterprise.local'
->>> >
->>> > gssd thinks your client's hostname is "tbm.enterprise.local," which has no DNS entry.
->>> 
->>> That is the correct client hostname, and according to the 'host' command it is in dns. What would cause the host command to find it when gssd can't?
->>> 
->> 
->> The error message is from utils/gssd/krb5_util.c:get_full_hostname().  If get_full_hostname() fails, then gssd can't search your client's keytab.
->> 
->> Figure out why that getaddrinfo(3) call is failing to find a canonical name for "tbm.enterprise.local" -- that could be a client system configuration problem as much as a DNS misconfiguration.
-> 
-> Ok, I think I fixed the DNS problem. I was running avahi, and apparently you can't use avahi and also have a DNS server with a domain ending in .local. Shutting down avahi fixed it, although if I wanted to keep avahi working I could probably fix this by changing my domain to end in something other than .local.
-> 
-> But now the mount command hangs and never returns. I get this in /var/log/syslog:
-> 
-> Jun 15 09:19:36 tbm rpc.idmapd[16253]: New client: 24
-> Jun 15 09:19:36 tbm rpc.gssd[16258]: dir_notify_handler: sig 37 si 0x7fffb0fb3330 data 0x7fffb0fb3200
-> Jun 15 09:19:37 tbm rpc.gssd[16258]: dir_notify_handler: sig 37 si 0x7fffb0fb3330 data 0x7fffb0fb3200
-> Jun 15 09:19:37 tbm rpc.gssd[16258]: dir_notify_handler: sig 37 si 0x7fffb0fb3330 data 0x7fffb0fb3200
-> Jun 15 09:19:37 tbm rpc.gssd[16258]: destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt24
-> Jun 15 09:19:37 tbm rpc.idmapd[16253]: Stale client: 24
-> Jun 15 09:19:37 tbm rpc.idmapd[16253]: #011-> closed /var/lib/nfs/rpc_pipefs/nfs/clnt24/idmap
-> Jun 15 09:19:53 tbm rpc.gssd[16258]: dir_notify_handler: sig 37 si 0x7fffb0fb3330 data 0x7fffb0fb3200
-> Jun 15 09:19:53 tbm rpc.idmapd[16253]: New client: 25
-> 
-> I might be missing something, but none of these entries look like errors. Where else should I look?
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/super.c | 150 ++++++++++++++++++++++++++++++---------------------------
+ 1 file changed, 80 insertions(+), 70 deletions(-)
 
-You can boost the verbosity of the debugging messages from gssd.  Start it with "-vv" or "-vvv".
-
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index a0949f5..12ffd7d 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1608,29 +1608,13 @@ out_security_failure:
+ }
+ 
+ /*
+- * Select a security flavor for this mount.  The selected flavor
+- * is planted in args->auth_flavors[0].
+- *
+- * Returns 0 on success, -EACCES on failure.
++ * Ensure that the specified authtype in args->auth_flavors[0] is supported by
++ * the server. Returns 0 if it's ok, and -EACCES if not.
+  */
+-static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
+-			      struct nfs_mount_request *request)
++static int nfs_verify_authflavor(struct nfs_parsed_mount_data *args,
++			rpc_authflavor_t *server_authlist, unsigned int count)
+ {
+-	unsigned int i, count = *(request->auth_flav_len);
+-	rpc_authflavor_t flavor;
+-
+-	/*
+-	 * The NFSv2 MNT operation does not return a flavor list.
+-	 */
+-	if (args->mount_server.version != NFS_MNT3_VERSION)
+-		goto out_default;
+-
+-	/*
+-	 * Certain releases of Linux's mountd return an empty
+-	 * flavor list in some cases.
+-	 */
+-	if (count == 0)
+-		goto out_default;
++	unsigned int i;
+ 
+ 	/*
+ 	 * If the sec= mount option is used, the specified flavor or AUTH_NULL
+@@ -1640,60 +1624,19 @@ static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
+ 	 * means that the server will ignore the rpc creds, so any flavor
+ 	 * can be used.
+ 	 */
+-	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR) {
+-		for (i = 0; i < count; i++) {
+-			if (args->auth_flavors[0] == request->auth_flavs[i] ||
+-			    request->auth_flavs[i] == RPC_AUTH_NULL)
+-				goto out;
+-		}
+-		dfprintk(MOUNT, "NFS: auth flavor %d not supported by server\n",
+-			args->auth_flavors[0]);
+-		goto out_err;
+-	}
+-
+-	/*
+-	 * RFC 2623, section 2.7 suggests we SHOULD prefer the
+-	 * flavor listed first.  However, some servers list
+-	 * AUTH_NULL first.  Avoid ever choosing AUTH_NULL.
+-	 */
+ 	for (i = 0; i < count; i++) {
+-		struct rpcsec_gss_info info;
+-
+-		flavor = request->auth_flavs[i];
+-		switch (flavor) {
+-		case RPC_AUTH_UNIX:
+-			goto out_set;
+-		case RPC_AUTH_NULL:
+-			continue;
+-		default:
+-			if (rpcauth_get_gssinfo(flavor, &info) == 0)
+-				goto out_set;
+-		}
++		if (args->auth_flavors[0] == server_authlist[i] ||
++		    server_authlist[i] == RPC_AUTH_NULL)
++			goto out;
+ 	}
+ 
+-	/*
+-	 * As a last chance, see if the server list contains AUTH_NULL -
+-	 * if it does, use the default flavor.
+-	 */
+-	for (i = 0; i < count; i++) {
+-		if (request->auth_flavs[i] == RPC_AUTH_NULL)
+-			goto out_default;
+-	}
+-
+-	dfprintk(MOUNT, "NFS: no auth flavors in common with server\n");
+-	goto out_err;
++	dfprintk(MOUNT, "NFS: auth flavor %u not supported by server\n",
++		args->auth_flavors[0]);
++	return -EACCES;
+ 
+-out_default:
+-	/* use default if flavor not already set */
+-	flavor = (args->auth_flavors[0] == RPC_AUTH_MAXFLAVOR) ?
+-		RPC_AUTH_UNIX : args->auth_flavors[0];
+-out_set:
+-	args->auth_flavors[0] = flavor;
+ out:
+-	dfprintk(MOUNT, "NFS: using auth flavor %d\n", args->auth_flavors[0]);
++	dfprintk(MOUNT, "NFS: using auth flavor %u\n", args->auth_flavors[0]);
+ 	return 0;
+-out_err:
+-	return -EACCES;
+ }
+ 
+ /*
+@@ -1756,13 +1699,17 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+ 		return status;
+ 	}
+ 
+-	return nfs_select_flavor(args, &request);
++	return 0;
+ }
+ 
+ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_info,
+ 					struct nfs_subversion *nfs_mod)
+ {
+ 	int status;
++	unsigned int i;
++	bool tried_auth_unix = false;
++	bool auth_null_in_list = false;
++	struct nfs_server *server = ERR_PTR(-EACCES);
+ 	struct nfs_parsed_mount_data *args = mount_info->parsed;
+ 	rpc_authflavor_t authlist[NFS_MAX_SECFLAVORS];
+ 	unsigned int authlist_len = ARRAY_SIZE(authlist);
+@@ -1772,6 +1719,69 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
+ 	if (status)
+ 		return ERR_PTR(status);
+ 
++	/*
++	 * The NFSv2 MNT operation does not return a flavor list. Also, some
++	 * NFS servers (older Linux servers in particular) return an empty list.
++	 *
++	 * In that event fake up a list that just has RPC_AUTH_NULL in it since
++	 * we have no way to know what the server actually supports.
++	 */
++	if (args->mount_server.version != NFS_MNT3_VERSION ||
++	    authlist_len == 0) {
++		authlist[0] = RPC_AUTH_NULL;
++		authlist_len = 1;
++	}
++
++	/*
++	 * Was a sec= authflavor specified in the options? First, verify
++	 * whether the server supports it, and then just try to use it if so.
++	 */
++	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR) {
++		status = nfs_verify_authflavor(args, authlist, authlist_len);
++		dfprintk(MOUNT, "NFS: using auth flavor %u\n", args->auth_flavors[0]);
++		if (status)
++			return ERR_PTR(status);
++		return nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
++	}
++
++	/*
++	 * No sec= option was provided. RFC 2623, section 2.7 suggests we
++	 * SHOULD prefer the flavor listed first. However, some servers list
++	 * AUTH_NULL first. Avoid ever choosing AUTH_NULL.
++	 */
++	for (i = 0; i < authlist_len; ++i) {
++		rpc_authflavor_t flavor;
++		struct rpcsec_gss_info info;
++
++		flavor = authlist[i];
++		switch (flavor) {
++		case RPC_AUTH_UNIX:
++			tried_auth_unix = true;
++			break;
++		case RPC_AUTH_NULL:
++			auth_null_in_list = true;
++			continue;
++		default:
++			if (rpcauth_get_gssinfo(flavor, &info) != 0)
++				continue;
++			/* Fallthrough */
++		}
++		dfprintk(MOUNT, "NFS: attempting to use auth flavor %u\n", flavor);
++		args->auth_flavors[0] = flavor;
++		server = nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
++		if (!IS_ERR(server))
++			return server;
++	}
++
++	/*
++	 * Nothing we tried so far worked. As a last ditch effort, try to use
++	 * AUTH_UNIX if we haven't already, and AUTH_NULL was in server's list.
++	 */
++	if (tried_auth_unix || !auth_null_in_list)
++		return server;
++
++	dfprintk(MOUNT, "NFS: attempting to use auth flavor %u\n", RPC_AUTH_UNIX);
++	args->auth_flavors[0] = RPC_AUTH_UNIX;
+ 	return nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
+ }
+ 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.8.1.4
 
