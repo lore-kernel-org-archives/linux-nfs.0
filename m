@@ -1,57 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:16148 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753624Ab3FENwE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jun 2013 09:52:04 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r55Dq3uJ032677
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 5 Jun 2013 09:52:03 -0400
-From: Scott Mayhew <smayhew@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: jlayton@redhat.com
-Subject: [PATCH RFC 1/2] NFS: Make nfs_attribute_cache_expired() non-static
-Date: Wed,  5 Jun 2013 09:52:00 -0400
-Message-Id: <1370440321-56488-2-git-send-email-smayhew@redhat.com>
-In-Reply-To: <1370440321-56488-1-git-send-email-smayhew@redhat.com>
-References: <1370440321-56488-1-git-send-email-smayhew@redhat.com>
+Received: from mail-yh0-f44.google.com ([209.85.213.44]:50715 "EHLO
+	mail-yh0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753139Ab3F0Tyv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jun 2013 15:54:51 -0400
+Received: by mail-yh0-f44.google.com with SMTP id t59so646298yho.31
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Jun 2013 12:54:51 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com,
+        Weston.Adamson@netapp.com
+Subject: [PATCH v4 3/4] nfs: have nfs_mount fake up a auth_flavs list when the server didn't provide it
+Date: Thu, 27 Jun 2013 15:54:40 -0400
+Message-Id: <1372362881-32282-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1372362881-32282-1-git-send-email-jlayton@redhat.com>
+References: <1372362881-32282-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFS: Make nfs_attribute_cache_expired() non-static so we can call it from
-nfs_readdir().
+Instead of handling this as a special case in the auth-selection code,
+we can simply fake up an auth_flavs list when the server doesn't
+provide it.
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/inode.c         | 2 +-
- include/linux/nfs_fs.h | 1 +
- 2 files changed, 2 insertions(+), 1 deletion(-)
+ fs/nfs/mount_clnt.c | 18 +++++++++++++++++-
+ fs/nfs/super.c      | 13 -------------
+ 2 files changed, 17 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 1f94167..e49b16b 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -845,7 +845,7 @@ int nfs_attribute_timeout(struct inode *inode)
- 	return !time_in_range_open(jiffies, nfsi->read_cache_jiffies, nfsi->read_cache_jiffies + nfsi->attrtimeo);
- }
- 
--static int nfs_attribute_cache_expired(struct inode *inode)
-+int nfs_attribute_cache_expired(struct inode *inode)
+diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+index 91a6faf..0f925f3 100644
+--- a/fs/nfs/mount_clnt.c
++++ b/fs/nfs/mount_clnt.c
+@@ -139,7 +139,10 @@ struct mnt_fhstatus {
+  * nfs_mount - Obtain an NFS file handle for the given host and path
+  * @info: pointer to mount request arguments
+  *
+- * Uses default timeout parameters specified by underlying transport.
++ * Uses default timeout parameters specified by underlying transport. On
++ * successful return, the auth_flavs list and auth_flav_len will be populated
++ * with the list from the server or a faked-up list if the server didn't
++ * provide one.
+  */
+ int nfs_mount(struct nfs_mount_request *info)
  {
- 	if (nfs_have_delegated_attributes(inode))
- 		return 0;
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 1cc2568..086927f 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -339,6 +339,7 @@ extern int nfs_permission(struct inode *, int);
- extern int nfs_open(struct inode *, struct file *);
- extern int nfs_release(struct inode *, struct file *);
- extern int nfs_attribute_timeout(struct inode *inode);
-+extern int nfs_attribute_cache_expired(struct inode *inode);
- extern int nfs_revalidate_inode(struct nfs_server *server, struct inode *inode);
- extern int __nfs_revalidate_inode(struct nfs_server *, struct inode *);
- extern int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping);
+@@ -195,6 +198,19 @@ int nfs_mount(struct nfs_mount_request *info)
+ 	dprintk("NFS: MNT request succeeded\n");
+ 	status = 0;
+ 
++	/*
++	 * The NFSv2 MNT operation does not return a flavor list. Also, some
++	 * NFSv3 servers (older Linux servers in particular) return an empty
++	 * list.
++	 *
++	 * In that event fake up a list that just has RPC_AUTH_NULL in it since
++	 * we have no way to know what the server actually supports.
++	 */
++	if (info->version != NFS_MNT3_VERSION || *info->auth_flav_len == 0) {
++		dprintk("NFS: Faking up auth_flavs list\n");
++		info->auth_flavs[0] = RPC_AUTH_NULL;
++		*info->auth_flav_len = 1;
++	}
+ out:
+ 	return status;
+ 
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index a0949f5..ceb60c7 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1620,19 +1620,6 @@ static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
+ 	rpc_authflavor_t flavor;
+ 
+ 	/*
+-	 * The NFSv2 MNT operation does not return a flavor list.
+-	 */
+-	if (args->mount_server.version != NFS_MNT3_VERSION)
+-		goto out_default;
+-
+-	/*
+-	 * Certain releases of Linux's mountd return an empty
+-	 * flavor list in some cases.
+-	 */
+-	if (count == 0)
+-		goto out_default;
+-
+-	/*
+ 	 * If the sec= mount option is used, the specified flavor or AUTH_NULL
+ 	 * must be in the list returned by the server.
+ 	 *
 -- 
-1.7.11.7
+1.8.1.4
 
