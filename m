@@ -1,61 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:30895 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752390Ab3F1UCc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Jun 2013 16:02:32 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/5] NFS: Never use user credentials for lease renewal
-Date: Fri, 28 Jun 2013 20:02:30 +0000
-Message-ID: <1372449749.20188.0.camel@leira.trondhjem.org>
-References: <20130625162233.36416.34947.stgit@seurat.1015granger.net>
-	 <20130625162346.36416.25389.stgit@seurat.1015granger.net>
-In-Reply-To: <20130625162346.36416.25389.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:40704 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753288Ab3F0TrV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jun 2013 15:47:21 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: NFSv4.1 session
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1372358524.3365.6.camel@leira.trondhjem.org>
+Date: Thu, 27 Jun 2013 15:46:30 -0400
+Cc: "Adam C. Emerson" <aemerson@linuxbox.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "Matt W. Benjamin" <matt@linuxbox.com>
+Message-Id: <91A474BD-BBB8-42E5-9D09-3536EF02FB9C@oracle.com>
+References: <OF8A324DEB.5C9C96EC-ON88257B97.0061DA51-88257B97.0062ED43@us.ibm.com> <1372356342.3365.1.camel@leira.trondhjem.org> <OF72D7519C.7F46B89C-ON88257B97.0063EB30-88257B97.006422E1@us.ibm.com> <1372358524.3365.6.camel@leira.trondhjem.org>
+To: Marc Eshel <eshel@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-06-25 at 12:23 -0400, Chuck Lever wrote:
-> Don't try to use a non-UID-0 user credential for lease management,
-> as that credential can change out from under us.  The server will
-> block NFSv4 lease recovery with NFS4ERR_CLID_INUSE.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  fs/nfs/nfs4proc.c |    4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index d7ba561..5ba38b3 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -6919,7 +6919,7 @@ static const struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
->  	.recover_open	= nfs4_open_reclaim,
->  	.recover_lock	= nfs4_lock_reclaim,
->  	.establish_clid = nfs4_init_clientid,
-> -	.get_clid_cred	= nfs4_get_setclientid_cred,
-> +	.get_clid_cred	= nfs4_get_exchange_id_cred,
->  	.detect_trunking = nfs40_discover_server_trunking,
->  };
->  
-> @@ -6942,7 +6942,7 @@ static const struct nfs4_state_recovery_ops nfs40_nograce_recovery_ops = {
->  	.recover_open	= nfs4_open_expired,
->  	.recover_lock	= nfs4_lock_expired,
->  	.establish_clid = nfs4_init_clientid,
-> -	.get_clid_cred	= nfs4_get_setclientid_cred,
-> +	.get_clid_cred	= nfs4_get_exchange_id_cred,
->  };
->  
->  #if defined(CONFIG_NFS_V4_1)
-> 
+Hi Marc-
 
-Clearly not compile tested...
+On Jun 27, 2013, at 2:42 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+
+> On Thu, 2013-06-27 at 11:13 -0700, Marc Eshel wrote:
+>> 
+>> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote on 06/27/2013
+>> 11:05:44 AM:
+>> 
+>>> From: "Myklebust, Trond" <Trond.Myklebust@netapp.com> 
+>>> To: Marc Eshel/Almaden/IBM@IBMUS, 
+>>> Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>, "J. 
+>>> Bruce Fields" <bfields@redhat.com>, "Adam C. Emerson" 
+>>> <aemerson@linuxbox.com>, "Matt W. Benjamin" <matt@linuxbox.com> 
+>>> Date: 06/27/2013 11:09 AM 
+>>> Subject: Re: NFSv4.1 session 
+>>> 
+>>> On Thu, 2013-06-27 at 11:00 -0700, Marc Eshel wrote:
+>>>> Hi Trond, 
+>>>> 
+>>>> I am not able to mount from Linux NFS client to the same Ganesha
+>> NFS
+>>>> server using multiple IP address. The client was providing the
+>> same
+>>>> client-id so the server was using the same session. I tried to
+>> return
+>>>> NFS4ERR_CLID_INUSE on the second mount if the target IP is
+>> different
+>>>> but the client still did not provide a different client-id like it
+>>>> should. I am not trying to use trunking I what to have different
+>>>> server instance for each IP address so I can move that IP between
+>>>> nodes in the cluster. Any ideas how to accomplish it. 
+>>>> 
+>>>> Thanks, Marc.
+>>> 
+>>> I don't understand. The client is performing exactly as per design:
+>> it
+>>> detects the fact that you are talking to the same server, and so it
+>>> reuses the same client and session. This is the only sane semantic
+>> for a
+>>> NFS client... 
+>> 
+>> How is the client detecting that it is the same server? I use a
+> 
+> See section 2.10.5.1 of RFC5661.
+> 
+>> different IP address on the mount command. Why is the client not
+>> handling NFS4ERR_CLID_INUSE? 
+
+Is there a section of the spec that prescribes how the client should recover from NFS4ERR_CLID_INUSE?
+
+I believe this is not an error that can be recovered from.  The cases where a clientid is being spoofed are not easily distinguished from cases where it might be safe for a client to try a different client ID string.
+
+However, note that NFSv4.1 takes a Uniform Client String approach: an NFSv4.1 client unconditionally uses the same nfs_client_id4.id string and boot verifier for all servers.  An important reason for this is that if Transparent State Migration occurs, a destination server must be able to recognize the client when it connects expecting its state to be available.
+
+> We only recently changed the client to always use krb5i (or fallback to
+> AUTH_SYS if krb5i is not available) for EXCHANGE_ID.
+
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+
+
+
