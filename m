@@ -1,86 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:8155 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750708Ab3FYQNG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jun 2013 12:13:06 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "jlayton@redhat.com" <jlayton@redhat.com>
-Subject: Re: [PATCH v3 2/4] SUNRPC: fix races on PipeFS UMOUNT notifications
-Date: Tue, 25 Jun 2013 16:13:05 +0000
-Message-ID: <1372176778.5968.29.camel@leira.trondhjem.org>
-References: <20130624075131.17104.55399.stgit@localhost.localdomain>
-	 <20130624075245.17104.6279.stgit@localhost.localdomain>
-In-Reply-To: <20130624075245.17104.6279.stgit@localhost.localdomain>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ob0-f172.google.com ([209.85.214.172]:36198 "EHLO
+	mail-ob0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752022Ab3F0GcF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jun 2013 02:32:05 -0400
+Received: by mail-ob0-f172.google.com with SMTP id wo10so346075obc.3
+        for <linux-nfs@vger.kernel.org>; Wed, 26 Jun 2013 23:32:04 -0700 (PDT)
+Message-ID: <51CBDC5F.8090109@gmail.com>
+Date: Thu, 27 Jun 2013 00:31:59 -0600
+From: John Haiducek <jhaiduce@gmail.com>
 MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Can't mount NFSv4 with kerberos on Debian Wheezy
+References: <51BF21E0.8060805@gmail.com> <51BF23FE.4070106@gmail.com> <3E91EC3C-EA92-41A6-9EDA-42E108E83024@oracle.com> <51BFBA5A.5050104@gmail.com> <8565C805-9C6C-4C06-83C0-8574EA90DA53@oracle.com> <51C0AB95.9060509@gmail.com> <EB30924A-D9F1-49C5-A727-DF8B4B2AFDAC@oracle.com> <CAFYD6QXKcNkAgmJV5KyMOpx-cXg35GnYzBg9mg+LFdW83NyQZQ@mail.gmail.com> <A2112E2B-FA65-4FF2-BC21-B78BBDC75CB1@oracle.com>
+In-Reply-To: <A2112E2B-FA65-4FF2-BC21-B78BBDC75CB1@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-06-24 at 11:52 +0400, Stanislav Kinsbursky wrote:
-> CPU#0                                   CPU#1
-> -----------------------------           -----------------------------
-> rpc_kill_sb
-> sn->pipefs_sb = NULL                    rpc_release_client
-> (UMOUNT_EVENT)                          rpc_free_auth
-> rpc_pipefs_event
-> rpc_get_client_for_event
-> !atomic_inc_not_zero(cl_count)
-> <skip the client>
->                                         atomic_inc(cl_count)
->                                         rpc_free_client
->                                         rpc_clnt_remove_pipedir
->                                         <skip client dir removing>
-> 
-> To fix this, this patch does the following:
-> 
-> 1) Calls RPC_PIPEFS_UMOUNT notification with sn->pipefs_sb_lock being held.
-> 2) Removes SUNRPC client from the list AFTER pipes destroying.
-> 3) Doesn't hold RPC client on notification: if client in the list, then it
-> can't be destroyed while sn->pipefs_sb_lock in hold by notification caller.
-> 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> Cc: stable@vger.kernel.org
-> ---
->  net/sunrpc/clnt.c     |    5 +----
->  net/sunrpc/rpc_pipe.c |    2 +-
->  2 files changed, 2 insertions(+), 5 deletions(-)
+Chuck,
 
-<snip>
+I upgraded my system to Debian experimental yesterday and that fixed my 
+NFS problem. Downgraded again to Wheezy and NFS still works. (I had put 
+NFS on the back burner; the upgrade and downgrade was part of an attempt 
+to install Skype, which eventually proved successful.) So apparently the 
+problem was a broken installation of one of the NFS packages or a 
+dependency. Presumably I could have fixed it by re-installing the one or 
+two offending packages, but the "reinstall almost everything on the 
+system" approach seems to have worked too. Thank you again for all your 
+help!
 
-> diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-> index c512448..efca2f7 100644
-> --- a/net/sunrpc/rpc_pipe.c
-> +++ b/net/sunrpc/rpc_pipe.c
-> @@ -1165,7 +1165,6 @@ static void rpc_kill_sb(struct super_block *sb)
->  		goto out;
->  	}
->  	sn->pipefs_sb = NULL;
-> -	mutex_unlock(&sn->pipefs_sb_lock);
->  	dprintk("RPC:       sending pipefs UMOUNT notification for net %p%s\n",
->  		net, NET_NAME(net));
->  	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
-> @@ -1173,6 +1172,7 @@ static void rpc_kill_sb(struct super_block *sb)
->  					   sb);
->  	put_net(net);
->  out:
-> +	mutex_unlock(&sn->pipefs_sb_lock);
+John
 
-Is this safe to do after the put_net()?
-
->  	kill_litter_super(sb);
->  }
->  
-> 
-
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
