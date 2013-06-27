@@ -1,74 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:29664 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754611Ab3FKLJp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Jun 2013 07:09:45 -0400
+Received: from mail-yh0-f42.google.com ([209.85.213.42]:36549 "EHLO
+	mail-yh0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753139Ab3F0Tyu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jun 2013 15:54:50 -0400
+Received: by mail-yh0-f42.google.com with SMTP id c41so645308yho.29
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Jun 2013 12:54:49 -0700 (PDT)
 From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
-Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
-        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v2 04/14] locks: make "added" in __posix_lock_file a bool
-Date: Tue, 11 Jun 2013 07:08:58 -0400
-Message-Id: <1370948948-31784-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1370948948-31784-1-git-send-email-jlayton@redhat.com>
-References: <1370948948-31784-1-git-send-email-jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com,
+        Weston.Adamson@netapp.com
+Subject: [PATCH v4 2/4] nfs: move server_authlist into nfs_try_mount_request
+Date: Thu, 27 Jun 2013 15:54:39 -0400
+Message-Id: <1372362881-32282-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1372362881-32282-1-git-send-email-jlayton@redhat.com>
+References: <1372362881-32282-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...save 3 bytes of stack space.
+In a later patch we're going to want to cycle over this list and attempt
+to call ->create_server for each different flavor until one succeeds.
+Move the list allocation to the stack of nfs_try_mount_request() and
+pass a pointer to it and its length to nfs_request_mount().
 
+Cc: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Acked-by: J. Bruce Fields <bfields@fieldses.org>
 ---
- fs/locks.c |    9 +++++----
- 1 files changed, 5 insertions(+), 4 deletions(-)
+ fs/nfs/super.c | 14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 1e6301b..c186649 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -791,7 +791,8 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 	struct file_lock *left = NULL;
- 	struct file_lock *right = NULL;
- 	struct file_lock **before;
--	int error, added = 0;
-+	int error;
-+	bool added = false;
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index afeee81..a0949f5 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1701,10 +1701,10 @@ out_err:
+  * corresponding to the provided path.
+  */
+ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+-			     struct nfs_fh *root_fh)
++			     struct nfs_fh *root_fh,
++			     rpc_authflavor_t *server_authlist,
++			     unsigned int *server_authlist_len)
+ {
+-	rpc_authflavor_t server_authlist[NFS_MAX_SECFLAVORS];
+-	unsigned int server_authlist_len = ARRAY_SIZE(server_authlist);
+ 	struct nfs_mount_request request = {
+ 		.sap		= (struct sockaddr *)
+ 						&args->mount_server.address,
+@@ -1712,7 +1712,7 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+ 		.protocol	= args->mount_server.protocol,
+ 		.fh		= root_fh,
+ 		.noresvport	= args->flags & NFS_MOUNT_NORESVPORT,
+-		.auth_flav_len	= &server_authlist_len,
++		.auth_flav_len	= server_authlist_len,
+ 		.auth_flavs	= server_authlist,
+ 		.net		= args->net,
+ 	};
+@@ -1763,8 +1763,12 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
+ 					struct nfs_subversion *nfs_mod)
+ {
+ 	int status;
++	struct nfs_parsed_mount_data *args = mount_info->parsed;
++	rpc_authflavor_t authlist[NFS_MAX_SECFLAVORS];
++	unsigned int authlist_len = ARRAY_SIZE(authlist);
  
- 	/*
- 	 * We may need two file_lock structures for this operation,
-@@ -885,7 +886,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 				continue;
- 			}
- 			request = fl;
--			added = 1;
-+			added = true;
- 		}
- 		else {
- 			/* Processing for different lock types is a bit
-@@ -896,7 +897,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 			if (fl->fl_start > request->fl_end)
- 				break;
- 			if (request->fl_type == F_UNLCK)
--				added = 1;
-+				added = true;
- 			if (fl->fl_start < request->fl_start)
- 				left = fl;
- 			/* If the next lock in the list has a higher end
-@@ -926,7 +927,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 				locks_release_private(fl);
- 				locks_copy_private(fl, request);
- 				request = fl;
--				added = 1;
-+				added = true;
- 			}
- 		}
- 		/* Go on to next lock.
+-	status = nfs_request_mount(mount_info->parsed, mount_info->mntfh);
++	status = nfs_request_mount(args, mount_info->mntfh, authlist,
++					&authlist_len);
+ 	if (status)
+ 		return ERR_PTR(status);
+ 
 -- 
-1.7.1
+1.8.1.4
 
