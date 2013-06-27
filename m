@@ -1,131 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47304 "EHLO fieldses.org"
+Received: from aa.linuxbox.com ([69.128.83.226]:1267 "EHLO aa.linuxbox.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757337Ab3FMP2G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Jun 2013 11:28:06 -0400
-Date: Thu, 13 Jun 2013 11:27:39 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: viro@zeniv.linux.org.uk, matthew@wil.cx, dhowells@redhat.com,
-        sage@inktank.com, smfrench@gmail.com, swhiteho@redhat.com,
-        Trond.Myklebust@netapp.com, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        piastryyy@gmail.com
-Subject: Re: [PATCH v2 13/14] seq_file: add seq_list_*_percpu helpers
-Message-ID: <20130613152739.GD20666@fieldses.org>
-References: <1370948948-31784-1-git-send-email-jlayton@redhat.com>
- <1370948948-31784-14-git-send-email-jlayton@redhat.com>
+	id S1753652Ab3F0Tro (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Jun 2013 15:47:44 -0400
+Date: Thu, 27 Jun 2013 15:41:09 -0400 (EDT)
+From: "Matt W. Benjamin" <matt@linuxbox.com>
+To: Marc Eshel <eshel@us.ibm.com>
+Cc: "Adam C. Emerson" <aemerson@linuxbox.com>,
+        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Message-ID: <606311159.195.1372362069589.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <1444224014.193.1372361256986.JavaMail.root@thunderbeast.private.linuxbox.com>
+Subject: Re: NFSv4.1 session
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1370948948-31784-14-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 11, 2013 at 07:09:07AM -0400, Jeff Layton wrote:
-> When we convert the file_lock_list to a set of percpu lists, we'll need
-> a way to iterate over them in order to output /proc/locks info. Add
-> some seq_list_*_percpu helpers to handle that.
+Hi,
+
+Keeping this simple, the controlling section of RFC 5661 is 2.10.5 (trunking).
+
+If CLIENT presents the same eia_clientowner in two EXCHANGE_ID invocations
+to "the same NFSv4.1 server" over two connections of differing network
+address, 2.10.5 actually states that the server MUST return the same
+value for eir_serverowner.  By our choice of the same server owner, we are
+consenting to clientid trunking.
+
+It doesn't seem like anything stops one instance of Ganesha from presenting itself
+as two or more completely distinct NFSv4.1 servers in response to connections of
+differing address.  They could share the same server scope (e.g., filehandle namespaces),
+but they CANNOT share the same server owner, and consequently, they can't share
+any state.  (So we think it would confuse the client if we return CLID_INUSE
+on the second EXCHANGE_ID.)
+
+Matt and Adam
+
+----- "Marc Eshel" <eshel@us.ibm.com> wrote:
+
+> If it was not clear I am talking about the exchange id operation.
+> Marc.
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/seq_file.c            |   54 ++++++++++++++++++++++++++++++++++++++++++++++
->  include/linux/seq_file.h |    6 +++++
->  2 files changed, 60 insertions(+), 0 deletions(-)
 > 
-> diff --git a/fs/seq_file.c b/fs/seq_file.c
-> index 774c1eb..ce9f97a 100644
-> --- a/fs/seq_file.c
-> +++ b/fs/seq_file.c
-> @@ -921,3 +921,57 @@ struct hlist_node *seq_hlist_next_rcu(void *v,
->  		return rcu_dereference(node->next);
->  }
->  EXPORT_SYMBOL(seq_hlist_next_rcu);
-> +
-> +/**
-> + * seq_hlist_start_precpu - start an iteration of a hlist
-
-Should be "of a percpu array of hlists"?
-
-> + * @head: pointer to percpu array of struct hlist_heads
-> + * @cpu:  pointer to cpu "cursor"
-> + * @pos:  start position of sequence
-> + *
-> + * Called at seq_file->op->start().
-> + */
-> +struct hlist_node *
-> +seq_hlist_start_percpu(struct hlist_head __percpu *head, int *cpu, loff_t pos)
-> +{
-> +	struct hlist_node *node;
-> +
-> +	for_each_possible_cpu(*cpu) {
-> +		hlist_for_each(node, per_cpu_ptr(head, *cpu)) {
-> +			if (pos-- == 0)
-> +				return node;
-> +		}
-> +	}
-> +	return NULL;
-> +}
-> +EXPORT_SYMBOL(seq_hlist_start_percpu);
-> +
-> +/**
-> + * seq_hlist_next_percpu - move to the next position of the hlist
-
-Ditto?
-
-Just thinking if the doc scripts collected up a bunch of these summaries
-into an index somewhere it'd be confusing for these to have some
-description as seq_hlist_start/next.
-
-Otherwise, ACK.
-
---b.
-
-> + * @v:    pointer to current hlist_node
-> + * @head: pointer to percpu array of struct hlist_heads
-> + * @cpu:  pointer to cpu "cursor"
-> + * @pos:  start position of sequence
-> + *
-> + * Called at seq_file->op->next().
-> + */
-> +struct hlist_node *
-> +seq_hlist_next_percpu(void *v, struct hlist_head __percpu *head,
-> +			int *cpu, loff_t *pos)
-> +{
-> +	struct hlist_node *node = v;
-> +
-> +	++*pos;
-> +
-> +	if (node->next)
-> +		return node->next;
-> +
-> +	for (*cpu = cpumask_next(*cpu, cpu_possible_mask); *cpu < nr_cpu_ids;
-> +	     *cpu = cpumask_next(*cpu, cpu_possible_mask)) {
-> +		struct hlist_head *bucket = per_cpu_ptr(head, *cpu);
-> +
-> +		if (!hlist_empty(bucket))
-> +			return bucket->first;
-> +	}
-> +	return NULL;
-> +}
-> +EXPORT_SYMBOL(seq_hlist_next_percpu);
-> diff --git a/include/linux/seq_file.h b/include/linux/seq_file.h
-> index 2da29ac..4e32edc 100644
-> --- a/include/linux/seq_file.h
-> +++ b/include/linux/seq_file.h
-> @@ -173,4 +173,10 @@ extern struct hlist_node *seq_hlist_start_head_rcu(struct hlist_head *head,
->  extern struct hlist_node *seq_hlist_next_rcu(void *v,
->  						   struct hlist_head *head,
->  						   loff_t *ppos);
-> +
-> +/* Helpers for iterating over per-cpu hlist_head-s in seq_files */
-> +extern struct hlist_node *seq_hlist_start_percpu(struct hlist_head __percpu *head, int *cpu, loff_t pos);
-> +
-> +extern struct hlist_node *seq_hlist_next_percpu(void *v, struct hlist_head __percpu *head, int *cpu, loff_t *pos);
-> +
->  #endif
-> -- 
-> 1.7.1
 > 
+> From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+> To: Marc Eshel/Almaden/IBM@IBMUS,
+> Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>, "J. Bruce
+> Fields" <bfields@redhat.com>, "Adam C. Emerson"
+> <aemerson@linuxbox.com>, "Matt W. Benjamin" <matt@linuxbox.com>
+> Date: 06/27/2013 11:09 AM
+> Subject: Re: NFSv4.1 session
+> 
+> 
+> 
+> 
+> On Thu, 2013-06-27 at 11:00 -0700, Marc Eshel wrote:
+> > Hi Trond,
+> >
+> > I am not able to mount from Linux NFS client to the same Ganesha NFS
+> > server using multiple IP address. The client was providing the same
+> > client-id so the server was using the same session. I tried to
+> return
+> > NFS4ERR_CLID_INUSE on the second mount if the target IP is different
+> > but the client still did not provide a different client-id like it
+> > should. I am not trying to use trunking I what to have different
+> > server instance for each IP address so I can move that IP between
+> > nodes in the cluster. Any ideas how to accomplish it.
+> >
+> > Thanks, Marc.
+> 
+> I don't understand. The client is performing exactly as per design: it
+> detects the fact that you are talking to the same server, and so it
+> reuses the same client and session. This is the only sane semantic for
+> a
+> NFS client...
+> 
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+
+-- 
+Matt Benjamin
+The Linux Box
+206 South Fifth Ave. Suite 150
+Ann Arbor, MI  48104
+
+http://linuxbox.com
+
+tel.  734-761-4689 
+fax.  734-769-8938 
+cel.  734-216-5309 
