@@ -1,66 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from icebox.esperi.org.uk ([81.187.191.129]:39187 "EHLO
-	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751890Ab3FLV1F (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Jun 2013 17:27:05 -0400
-From: Nix <nix@esperi.org.uk>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: linux-kernel@vger.kernel.org, NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: NFS/lazy-umount/path-lookup-related panics at shutdown (at kill of processes on lazy-umounted filesystems) with 3.9.2 and 3.9.5
-References: <871u89vp46.fsf@spindle.srvr.nix>
-	<20130612012304.GF4165@ZenIV.linux.org.uk>
-	<87k3lzpm4l.fsf@spindle.srvr.nix>
-	<20130612155419.GG4165@ZenIV.linux.org.uk>
-Date: Wed, 12 Jun 2013 22:27:01 +0100
-In-Reply-To: <20130612155419.GG4165@ZenIV.linux.org.uk> (Al Viro's message of
-	"Wed, 12 Jun 2013 16:54:19 +0100")
-Message-ID: <877ghzow9m.fsf@spindle.srvr.nix>
+Received: from mx12.netapp.com ([216.240.18.77]:13508 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753080Ab3F0AvC convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jun 2013 20:51:02 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Christopher T Vogan <cvogan@us.ibm.com>, Jeff Layton <jlayton@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Steve Dickson <SteveD@redhat.com>
+Subject: Re: NFSERR_STALE on umount  with 3.10.0.RC5 kernel
+Date: Thu, 27 Jun 2013 00:51:01 +0000
+Message-ID: <1372294255.3192.4.camel@leira.trondhjem.org>
+References: <OF659496E7.43E03D23-ON87257B8E.004B852B-86257B8E.004BC3F6@us.ibm.com>
+		 <1371568176.3868.5.camel@leira.trondhjem.org>
+	 <OF0A202F9C.685475CA-ON87257B8E.005E218B-86257B8E.006D757C@us.ibm.com>
+		 <4FA345DA4F4AE44899BD2B03EEEC2FA93F422610@SACEXCMBX04-PRD.hq.netapp.com>
+	 <51CB3F08.9050005@RedHat.com>
+	 <1372274707.36780.2.camel@leira.trondhjem.org>
+	 <OFFA688044.F059006D-ON87257B96.0074D508-86257B96.0075968C@us.ibm.com>
+In-Reply-To: <OFFA688044.F059006D-ON87257B96.0074D508-86257B96.0075968C@us.ibm.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12 Jun 2013, Al Viro outgrape:
+On Wed, 2013-06-26 at 15:24 -0600, Christopher T Vogan wrote:
+> This is a complete network trace between the client and server.
+> 
+> 
+> So this issue only happens on Kernels 3.9.6 and newer.
+> I did not have this problem with Kernel 3.8.13
+> nfs-utils-1.2.3-36 (from Redhat) was used w/ all kernel versions.
 
-> On Wed, Jun 12, 2013 at 01:08:26PM +0100, Nix wrote:
->
->> At this point, we have a sibcall to call_connect() I think. The RPC task
->> of discourse happens to be local, and as the relevant comment says
->> 
->> 		 * We want the AF_LOCAL connect to be resolved in the
->> 		 * filesystem namespace of the process making the rpc
->> 		 * call.  Thus we connect synchronously.
->> 
->> Probably this should be doing this only if said namespace isn't
->> disconnected and going away...
->
-> Namespace, shnamespace...  In this case the namespace is alive and well,
-> it's just that the process is getting killed and it's already past the
-> point where it has discarded all references to root/cwd.
+Ah. I don't recall seeing that information before. In that case, I'm
+guessing that the change in behaviour is likely to be commit
+ecf3d1f1aa74da0d632b651a2e05a911f60e92c0 (vfs: kill FS_REVAL_DOT by
+adding a d_weak_revalidate dentry op).
 
-Yeah.
-
->> > Why is it done in essentially random process context, anyway?  There's such thing
->> > as chroot, after all, which would screw that sucker as hard as NULL ->fs, but in
->> > a less visible way...
->> 
->> I don't think it is a random process context. It's all intentionally
->> done in the context of the process which is the last to close that
->> filesystem, as part of the process of tearing it down -- but it looks
->> like the NFS svcrpc connection code isn't expecting to be called in that
->> situation.
->
-> _What_?  Suppose we have something mounted on /jail/net/foo/bar; will the
-> effect of process chrooted into /jail doing umount /net/foo/bar be different
-> from that of process outside of the jail doing umount /jail/net/foo/bar?
-
-Correction: that comment suggests that it was intentionally done. I
-didn't write the comment and I make no judgement on whether it makes
-sense or not (it looks like it would *normally* make sense, but I guess
-nobody thought of the case of a connection being done as part of
-disconnection after the cwd is gone).
-
-I'm just the guy getting bitten by the resulting oops :)
+Jeff, any comment on what behaviour you expect on umount()
+post-ecf3d1f1aa?
 
 -- 
-NULL && (void)
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
