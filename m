@@ -1,184 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:40640 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758615Ab3FDBPX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Jun 2013 21:15:23 -0400
+Received: from mx12.netapp.com ([216.240.18.77]:14927 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753796Ab3F0SmL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jun 2013 14:42:11 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Marc Eshel <eshel@us.ibm.com>
+CC: "Adam C. Emerson" <aemerson@linuxbox.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Matt W. Benjamin" <matt@linuxbox.com>
+Subject: Re: NFSv4.1 session
+Date: Thu, 27 Jun 2013 18:42:10 +0000
+Message-ID: <1372358524.3365.6.camel@leira.trondhjem.org>
+References: <OF8A324DEB.5C9C96EC-ON88257B97.0061DA51-88257B97.0062ED43@us.ibm.com>
+	 <1372356342.3365.1.camel@leira.trondhjem.org>
+	 <OF72D7519C.7F46B89C-ON88257B97.0063EB30-88257B97.006422E1@us.ibm.com>
+In-Reply-To: <OF72D7519C.7F46B89C-ON88257B97.0063EB30-88257B97.006422E1@us.ibm.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Message-ID: <9F47F7D4-9D96-424E-BAD9-21AE1C06A877@oracle.com>
-Date: Mon, 3 Jun 2013 18:13:19 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-To: NeilBrown <neilb@suse.de>
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/3] Various gssd fixes including machine-credential
- issue.
-References: <20130603005219.20080.1927.stgit@notabene.brown>
- <A2E2CEA9-4F2B-4A3F-8661-36D1E6288B0F@oracle.com>
- <20130603122319.47f4e0dd@notabene.brown>
- <0016A272-E433-4020-91FE-45A5EE494296@oracle.com>
- <20130603130101.4acfe706@notabene.brown>
- <C4A2C0D1-8900-45AC-90F6-9629E3F71730@oracle.com>
- <20130604093025.5e467eeb@notabene.brown>
-In-Reply-To: <20130604093025.5e467eeb@notabene.brown>
-Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jun 3, 2013, at 7:30 PM, NeilBrown <neilb@suse.de> wrote:
-
-> On Mon, 3 Jun 2013 00:32:54 -0400 Chuck Lever <chuck.lever@oracle.com> wrote:
+On Thu, 2013-06-27 at 11:13 -0700, Marc Eshel wrote:
 > 
->> 
->> On Jun 2, 2013, at 11:01 PM, NeilBrown <neilb@suse.de> wrote:
->> 
->>> On Sun, 2 Jun 2013 22:45:16 -0400 Chuck Lever <chuck.lever@oracle.com> wrote:
->>> 
->>>> 
->>>> On Jun 2, 2013, at 10:23 PM, NeilBrown <neilb@suse.de> wrote:
->>>> 
->>>>> On Sun, 2 Jun 2013 22:01:50 -0400 Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>> 
->>>>>> 
->>>>>> On Jun 2, 2013, at 9:00 PM, Neil Brown <neilb@suse.de> wrote:
->>>>>> 
->>>>>>> As you probably know, since 3.7 (I think) Linux NFS has explicitly
->>>>>>> asked for machine credentials for certain requests rather than asking
->>>>>>> for root credentials as is previously did.
->>>>>>> This causes a regression for people who don't have any machine
->>>>>>> credentials configured and use "gssd -n".
->>>>>>> 
->>>>>>> I gather this was discussed on the mailing list earlier this year but
->>>>>>> not resolved.
->>>>>> 
->>>>>> It's resolved in 3.10-rc.
->>>>>> 
->>>>>> The kernel will attempt to use krb5i for lease management operations.  If that fails because there is no keytab available, it falls back to using AUTH_SYS.
->>>>> 
->>>>> And if the server refuses to accept AUTH_SYS?
->>>>> 
->>>>> I guess this is commit 79d852bf5e7691dc7 ??
->>>> 
->>>> That's one of the subsequent bug fixes.  The initial change is commit 4edaa308.
->>>> 
->>>>> It seems to say that the server should always accept AUTH_SYS ... is that right?
->>>> 
->>>> If we ever find a server implementation that does not support either Kerberos or AUTH_SYS, we can add another step to the negotiation.
->>>> 
->>>> So far, despite RFC 3530 not requiring AUTH_SYS support on NFSv4 servers, I haven't found an implementation that does not support AUTH_SYS.  We have found one (FreeBSD) that does not support AUTH_NONE.  We do know that some servers allow administrators to control what security flavors are allowed for lease management.
->>>> 
->>>>> That commit isn't tagged for -stable.
->>>>> So do we still need to make it work for 3.7,3.8,3.9 users?
->>>> 
->>>> There are several commits that would need to be back-ported, starting with commit 4edaa308.  I am not certain they would apply cleanly to 3.[789], but a backport should not be difficult.
->>>> 
->>>> This change also requires that now gssd must be running on the client.  Otherwise without gssd a sec=sys mount hangs for a bit waiting for the upcall to time out (since the client will attempt to use krb5i for lease management operations).  Trond and Bruce have been discussing a change to address that.
->>> 
->>> Thanks for the explanation.  That all looks rather painful to back-port
->>> though, especially as some of it isn't even written yet :-)
->>> I think I'll stick with my "-N" option for openSUSE for now.
->>> 
->>> Do you think that supporting -N (or similar) so that the admin can ask for
->>> root credentials to be used for SETCLIENTID requests is reasonable? i.e. what
->>> do you think of my patch going in to nfs-utils anyway?
->> 
->> So, let me confirm my understanding of your proposed changes: a user logs in as root, then kinit's with her own user principal.  That establishes a Kerberos credential for root to use, and "-N" makes gssd return this credential when the kernel requests "service=*".
+> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote on 06/27/2013
+> 11:05:44 AM:
 > 
-> Correct.
+> > From: "Myklebust, Trond" <Trond.Myklebust@netapp.com> 
+> > To: Marc Eshel/Almaden/IBM@IBMUS, 
+> > Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>, "J. 
+> > Bruce Fields" <bfields@redhat.com>, "Adam C. Emerson" 
+> > <aemerson@linuxbox.com>, "Matt W. Benjamin" <matt@linuxbox.com> 
+> > Date: 06/27/2013 11:09 AM 
+> > Subject: Re: NFSv4.1 session 
+> > 
+> > On Thu, 2013-06-27 at 11:00 -0700, Marc Eshel wrote:
+> > > Hi Trond, 
+> > > 
+> > > I am not able to mount from Linux NFS client to the same Ganesha
+> NFS
+> > > server using multiple IP address. The client was providing the
+> same
+> > > client-id so the server was using the same session. I tried to
+> return
+> > > NFS4ERR_CLID_INUSE on the second mount if the target IP is
+> different
+> > > but the client still did not provide a different client-id like it
+> > > should. I am not trying to use trunking I what to have different
+> > > server instance for each IP address so I can move that IP between
+> > > nodes in the cluster. Any ideas how to accomplish it. 
+> > > 
+> > > Thanks, Marc.
+> > 
+> > I don't understand. The client is performing exactly as per design:
+> it
+> > detects the fact that you are talking to the same server, and so it
+> > reuses the same client and session. This is the only sane semantic
+> for a
+> > NFS client... 
 > 
->> 
->> Lease management is shared among all NFS users on a client.  In particular, machine credentials give us two important features that cannot be matched by user credentials:
->> 
->>  o  Machine credentials never expire even when users log out.  On a
->>     multi-user client, you don't want credential expiry or a user
->>     logout to cause lease management to stop working for other users. 
-> 
-> ... while on a single-user client, this isn't really an issue.
-> 
-> And I can easily imagine a server admin not wanting to hand out credentials
-> that never expire, but still requiring strong credentials for lease
-> management.
+> How is the client detecting that it is the same server? I use a
 
-Why, exactly, would strong credentials be required for lease management, but an admin would choose not to hand out keytabs?
+See section 2.10.5.1 of RFC5661.
 
-> 
->> 
->>  o  Machine credentials are always the same no matter who is logged
->>     in.  The client has to use the same credential every time for
->>     lease management, or else servers return CLID_INUSE and prevent a
->>     fresh lease from being established (at least until the existing
->>     lease for that clientid expires on the server).
-> 
-> Again, not really an issue for a single-user client.  And single-user
-> machines are certainly a common use-case these days.
-> 
->> 
->> Using root's credentials for lease management makes it likely one of these two bullets will end up in your foot.  Specifically for the use case where one user is always using the same client (say, a student's laptop), "-N" might work fine.  For other use cases, like a shared build machine that doesn't have a keytab, "-N" would not work reliably.
-> 
-> Completely agree.  So -N should certainly not be the default.
-> 
->> 
->> With 3.10, if we can't use a Kerberos host principal for lease management, we'll use a less secure equivalent.  The point of backing off the security flavor for lease management is that AUTH_SYS with UID 0, or even AUTH_NONE, are essentially machine credentials.  They don't expire, and the client will present a consistent credential for lease management, no matter what user logs in or leaves the machine.
->> 
->> So, yes, machine credentials are a pain in the ass, and have been for years.  I'm sorry this took 3 kernel releases to figure out, but I'm hoping that the path we're on with these kernel changes is towards more transparent support for a wider array of use cases.  NFSv4.1 also offers some relief in this area (see SP4_MACH_CRED, which I think we do not support quite yet).
-> 
-> All sounds very good, but doesn't seem to address the issue.
+>  different IP address on the mount command. Why is the client not
+> handling NFS4ERR_CLID_INUSE? 
 
-> For the openSUSE user who raised this, he simply does not have a machine
-> credential. I don't know why, maybe the server admin doesn't want to hand
-> them out.
-
-Handing out keytabs for every NFS client that wants to use Kerberized NFS is onerous for some administrators.
-
-> But this hasn't been a problem because "gssd -n" meant that a
-> machine credential would never be used.
-
-No, it meant that root's user credential was used instead of a service credential for lease  management.  As I explained above, that solution has some compromises for some important use cases.
-
-> But now,  with 3.[789], "gssd -n" still wants the machine credential that
-> doesn't exist.
-
-The change that introduced the requirement for a machine credential is commit 68c97153 "SUNRPC: Clean up the RPCSEC_GSS service ticket requests", Tue Jan 3 13:22:46 2012, which was merged long before 3.7.
-
-The Uniform Client String changes in 3.7 merely made the machine credential requirement more obtrusive.  The new broken "-n" behavior is an unintended side effect.
-
-> It is possible that with 3.10, he might get away with doing lease management
-> with AUTH_SYS, but that seems unlikely.  Given that an integrity protecting
-> security flavour is now recommended for SETCLIENTID, his server admin
-> could easily make a case that AUTH_SYS won't be accepted.  In that case he
-> would still have a problem.
-
-His problem then would be with his server admin, not with us.
-
-If a server admin wants to protect his server by denying the use of AUTH_SYS for lease management, he has every right to do that.  But he must also therefore understand the position that puts his users in.
-
-> Given that "gssd -n" has meant "no machine credential needed" in the past,
-
-It never meant that.  It meant "use root's credential as the machine credential".  I think we should be clear about exactly what "-n" is.
-
-I also believe "-n" (or "-N") is a workaround.  Logging in as root and authenticating is a pain for users, who have already logged in once.
-
-> I think it is important to preserve the possibility of running secure NFS with
-> no machine credential.  I don't see how your changes (valuable though they are)
-> achieve that.
-
-Please explain how allowing lease management to occur using AUTH_SYS is somehow a major new exposure.  A mixture of sec=sys and sec=krb5 mounts today means there's a good chance that a sec=sys mount might occur first, and thus lease management uses AUTH_SYS anyway.
-
-Can you share your attack model?  Why do you believe that using AUTH_SYS for lease management on sec=krb5 mounts will be unacceptable to users?  I suspect that most will not notice or care.
-
-> So I think we either need to change "gssd -n" to mean "never use machine
-> credentials" or add something like "gssd -N", so the two different possible
-> uses of machine credentials can be separately controlled.
-
-I'm not convinced that "-N" is the right way to fix this.  Another knob to turn means more testing for us, more documentation to write and maintain, and so on.  It doesn't get us any farther forward.  The difference between "-n" (which no longer works) and "-N" is subtle and confusing.  Explaining when to use "-N" versus "-n" is not a job I would like to do, and I'm not interested in taking the support calls either.  :-p
-
-If you think "-n" is truly valuable (I have my doubts), I can go back and try to make that work again.  Maybe we should first revisit why UCS caused "gssd -n" to stop working and start again from there.
-
-You should keep in mind that I'm just the code monkey here.  As I said above, the machine credential policy was set long before 3.7.  You'll need to take up with Trond whether we want to conveniently enable the use of user credentials for lease management.  My understanding is we comply with the standard in this regard.
+We only recently changed the client to always use krb5i (or fallback to
+AUTH_SYS if krb5i is not available) for EXCHANGE_ID.
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Trond Myklebust
+Linux NFS client maintainer
 
-
-
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
