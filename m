@@ -1,130 +1,211 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:63376 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754686Ab3FKLJs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Jun 2013 07:09:48 -0400
+Received: from mail-gh0-f178.google.com ([209.85.160.178]:44161 "EHLO
+	mail-gh0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753139Ab3F0Tyx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jun 2013 15:54:53 -0400
+Received: by mail-gh0-f178.google.com with SMTP id g15so473133ghb.9
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Jun 2013 12:54:52 -0700 (PDT)
 From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org
-Cc: dhowells@redhat.com, sage@inktank.com, smfrench@gmail.com,
-        swhiteho@redhat.com, Trond.Myklebust@netapp.com,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, piastryyy@gmail.com
-Subject: [PATCH v2 10/14] locks: turn the blocked_list into a hashtable
-Date: Tue, 11 Jun 2013 07:09:04 -0400
-Message-Id: <1370948948-31784-11-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1370948948-31784-1-git-send-email-jlayton@redhat.com>
-References: <1370948948-31784-1-git-send-email-jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com,
+        Weston.Adamson@netapp.com
+Subject: [PATCH v4 4/4] nfs: have NFSv3 try server-specified auth flavors in turn
+Date: Thu, 27 Jun 2013 15:54:41 -0400
+Message-Id: <1372362881-32282-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1372362881-32282-1-git-send-email-jlayton@redhat.com>
+References: <1372362881-32282-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Break up the blocked_list into a hashtable, using the fl_owner as a key.
-This speeds up searching the hash chains, which is especially significant
-for deadlock detection.
+The current scheme is to try and pick the auth flavor that the server
+prefers. In some cases though, we may find that we're not actually
+able to use that auth flavor later. For instance, the server may
+prefer an AUTH_GSS flavor, but we may not be able to get GSSAPI creds.
 
-Note that the initial implementation assumes that hashing on fl_owner is
-sufficient. In most cases it should be, with the notable exception being
-server-side lockd, which compares ownership using a tuple of the
-nlm_host and the pid sent in the lock request. So, this may degrade to a
-single hash bucket when you only have a single NFS client. That will be
-addressed in a later patch.
+The current code just gives up at that point. Change it instead to
+try the ->create_server call using each of the different authflavors
+in the server's list if one was not specified at mount time. Once
+we have a successful ->create_server call, return the result. Only
+give up and return error if all attempts fail.
 
-The careful observer may note that this patch leaves the file_lock_list
-alone. There's much less of a case for turning the file_lock_list into a
-hashtable. The only user of that list is the code that generates
-/proc/locks, and it always walks the entire list.
-
+Cc: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/locks.c |   25 ++++++++++++++++++-------
- 1 files changed, 18 insertions(+), 7 deletions(-)
+ fs/nfs/super.c | 126 +++++++++++++++++++++++++++++++--------------------------
+ 1 file changed, 69 insertions(+), 57 deletions(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 28959bc..76fb7af 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -126,6 +126,7 @@
- #include <linux/time.h>
- #include <linux/rcupdate.h>
- #include <linux/pid_namespace.h>
-+#include <linux/hashtable.h>
- 
- #include <asm/uaccess.h>
- 
-@@ -153,10 +154,19 @@ int lease_break_time = 45;
- #define for_each_lock(inode, lockp) \
- 	for (lockp = &inode->i_flock; *lockp != NULL; lockp = &(*lockp)->fl_next)
- 
-+/*
-+ * By breaking up the blocked locks list into a hashtable, we speed up the
-+ * deadlock detection.
-+ *
-+ * FIXME: make this value scale via some heuristic?
-+ */
-+#define BLOCKED_HASH_BITS	7
-+
-+static DEFINE_HASHTABLE(blocked_hash, BLOCKED_HASH_BITS);
-+
- static HLIST_HEAD(file_lock_list);
--static HLIST_HEAD(blocked_list);
- 
--/* Protects the two list heads above */
-+/* Protects the file_lock_list and the blocked_hash */
- static DEFINE_SPINLOCK(file_lock_lock);
- 
- static struct kmem_cache *filelock_cache __read_mostly;
-@@ -475,13 +485,13 @@ static int posix_same_owner(struct file_lock *fl1, struct file_lock *fl2)
- static inline void
- locks_insert_global_blocked(struct file_lock *waiter)
- {
--	hlist_add_head(&waiter->fl_link, &blocked_list);
-+	hash_add(blocked_hash, &waiter->fl_link, (unsigned long)waiter->fl_owner);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index ceb60c7..8d51101 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1608,16 +1608,13 @@ out_security_failure:
  }
  
- static inline void
- __locks_delete_global_blocked(struct file_lock *waiter)
+ /*
+- * Select a security flavor for this mount.  The selected flavor
+- * is planted in args->auth_flavors[0].
+- *
+- * Returns 0 on success, -EACCES on failure.
++ * Ensure that the specified authtype in args->auth_flavors[0] is supported by
++ * the server. Returns 0 if it's ok, and -EACCES if not.
+  */
+-static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
+-			      struct nfs_mount_request *request)
++static int nfs_verify_authflavor(struct nfs_parsed_mount_data *args,
++			rpc_authflavor_t *server_authlist, unsigned int count)
  {
--	hlist_del_init(&waiter->fl_link);
-+	hash_del(&waiter->fl_link);
- }
+-	unsigned int i, count = *(request->auth_flav_len);
+-	rpc_authflavor_t flavor;
++	unsigned int i;
  
- static inline void
-@@ -729,7 +739,7 @@ static struct file_lock *what_owner_is_waiting_for(struct file_lock *block_fl)
- {
- 	struct file_lock *fl;
- 
--	hlist_for_each_entry(fl, &blocked_list, fl_link) {
-+	hash_for_each_possible(blocked_hash, fl, fl_link, (unsigned long)block_fl->fl_owner) {
- 		if (posix_same_owner(fl, block_fl))
- 			return fl->fl_next;
- 	}
-@@ -865,7 +875,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
  	/*
- 	 * New lock request. Walk all POSIX locks and look for conflicts. If
- 	 * there are any, either return error or put the request on the
--	 * blocker's list of waiters and the global blocked_list.
-+	 * blocker's list of waiters and the global blocked_hash.
+ 	 * If the sec= mount option is used, the specified flavor or AUTH_NULL
+@@ -1627,60 +1624,19 @@ static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
+ 	 * means that the server will ignore the rpc creds, so any flavor
+ 	 * can be used.
  	 */
- 	if (request->fl_type != F_UNLCK) {
- 		for_each_lock(inode, before) {
-@@ -2284,13 +2294,14 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
- 
- static int locks_show(struct seq_file *f, void *v)
- {
-+	int bkt;
- 	struct file_lock *fl, *bfl;
- 
- 	fl = hlist_entry(v, struct file_lock, fl_link);
- 
- 	lock_get_status(f, fl, *((loff_t *)f->private), "");
- 
--	hlist_for_each_entry(bfl, &blocked_list, fl_link) {
-+	hash_for_each(blocked_hash, bkt, bfl, fl_link) {
- 		if (bfl->fl_next == fl)
- 			lock_get_status(f, bfl, *((loff_t *)f->private), " ->");
+-	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR) {
+-		for (i = 0; i < count; i++) {
+-			if (args->auth_flavors[0] == request->auth_flavs[i] ||
+-			    request->auth_flavs[i] == RPC_AUTH_NULL)
+-				goto out;
+-		}
+-		dfprintk(MOUNT, "NFS: auth flavor %d not supported by server\n",
+-			args->auth_flavors[0]);
+-		goto out_err;
+-	}
+-
+-	/*
+-	 * RFC 2623, section 2.7 suggests we SHOULD prefer the
+-	 * flavor listed first.  However, some servers list
+-	 * AUTH_NULL first.  Avoid ever choosing AUTH_NULL.
+-	 */
+ 	for (i = 0; i < count; i++) {
+-		struct rpcsec_gss_info info;
+-
+-		flavor = request->auth_flavs[i];
+-		switch (flavor) {
+-		case RPC_AUTH_UNIX:
+-			goto out_set;
+-		case RPC_AUTH_NULL:
+-			continue;
+-		default:
+-			if (rpcauth_get_gssinfo(flavor, &info) == 0)
+-				goto out_set;
+-		}
++		if (args->auth_flavors[0] == server_authlist[i] ||
++		    server_authlist[i] == RPC_AUTH_NULL)
++			goto out;
  	}
+ 
+-	/*
+-	 * As a last chance, see if the server list contains AUTH_NULL -
+-	 * if it does, use the default flavor.
+-	 */
+-	for (i = 0; i < count; i++) {
+-		if (request->auth_flavs[i] == RPC_AUTH_NULL)
+-			goto out_default;
+-	}
+-
+-	dfprintk(MOUNT, "NFS: no auth flavors in common with server\n");
+-	goto out_err;
++	dfprintk(MOUNT, "NFS: auth flavor %u not supported by server\n",
++		args->auth_flavors[0]);
++	return -EACCES;
+ 
+-out_default:
+-	/* use default if flavor not already set */
+-	flavor = (args->auth_flavors[0] == RPC_AUTH_MAXFLAVOR) ?
+-		RPC_AUTH_UNIX : args->auth_flavors[0];
+-out_set:
+-	args->auth_flavors[0] = flavor;
+ out:
+-	dfprintk(MOUNT, "NFS: using auth flavor %d\n", args->auth_flavors[0]);
++	dfprintk(MOUNT, "NFS: using auth flavor %u\n", args->auth_flavors[0]);
+ 	return 0;
+-out_err:
+-	return -EACCES;
+ }
+ 
+ /*
+@@ -1743,13 +1699,17 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+ 		return status;
+ 	}
+ 
+-	return nfs_select_flavor(args, &request);
++	return 0;
+ }
+ 
+ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_info,
+ 					struct nfs_subversion *nfs_mod)
+ {
+ 	int status;
++	unsigned int i;
++	bool tried_auth_unix = false;
++	bool auth_null_in_list = false;
++	struct nfs_server *server = ERR_PTR(-EACCES);
+ 	struct nfs_parsed_mount_data *args = mount_info->parsed;
+ 	rpc_authflavor_t authlist[NFS_MAX_SECFLAVORS];
+ 	unsigned int authlist_len = ARRAY_SIZE(authlist);
+@@ -1759,6 +1719,58 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
+ 	if (status)
+ 		return ERR_PTR(status);
+ 
++	/*
++	 * Was a sec= authflavor specified in the options? First, verify
++	 * whether the server supports it, and then just try to use it if so.
++	 */
++	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR) {
++		status = nfs_verify_authflavor(args, authlist, authlist_len);
++		dfprintk(MOUNT, "NFS: using auth flavor %u\n", args->auth_flavors[0]);
++		if (status)
++			return ERR_PTR(status);
++		return nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
++	}
++
++	/*
++	 * No sec= option was provided. RFC 2623, section 2.7 suggests we
++	 * SHOULD prefer the flavor listed first. However, some servers list
++	 * AUTH_NULL first. Avoid ever choosing AUTH_NULL.
++	 */
++	for (i = 0; i < authlist_len; ++i) {
++		rpc_authflavor_t flavor;
++		struct rpcsec_gss_info info;
++
++		flavor = authlist[i];
++		switch (flavor) {
++		case RPC_AUTH_UNIX:
++			tried_auth_unix = true;
++			break;
++		case RPC_AUTH_NULL:
++			auth_null_in_list = true;
++			continue;
++		default:
++			if (rpcauth_get_gssinfo(flavor, &info) != 0)
++				continue;
++			/* Fallthrough */
++		}
++		dfprintk(MOUNT, "NFS: attempting to use auth flavor %u\n", flavor);
++		args->auth_flavors[0] = flavor;
++		server = nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
++		if (!IS_ERR(server))
++			return server;
++	}
++
++	/*
++	 * Nothing we tried so far worked. At this point, give up if we've
++	 * already tried AUTH_UNIX or if the server's list doesn't contain
++	 * AUTH_NULL
++	 */
++	if (tried_auth_unix || !auth_null_in_list)
++		return server;
++
++	/* Last chance! Try AUTH_UNIX */
++	dfprintk(MOUNT, "NFS: attempting to use auth flavor %u\n", RPC_AUTH_UNIX);
++	args->auth_flavors[0] = RPC_AUTH_UNIX;
+ 	return nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
+ }
+ 
 -- 
-1.7.1
+1.8.1.4
 
