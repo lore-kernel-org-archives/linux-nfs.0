@@ -1,161 +1,142 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f68.google.com ([209.85.219.68]:48792 "EHLO
-	mail-oa0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751256Ab3FYQ7B (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jun 2013 12:59:01 -0400
-Received: by mail-oa0-f68.google.com with SMTP id i7so5377156oag.7
-        for <linux-nfs@vger.kernel.org>; Tue, 25 Jun 2013 09:59:00 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CA+uAZNMXLXcV6VNqOqVJEbOoKwj-fdmBp4mLz25W7nRxaB9A9w@mail.gmail.com>
-References: <CA+uAZNMXLXcV6VNqOqVJEbOoKwj-fdmBp4mLz25W7nRxaB9A9w@mail.gmail.com>
-Date: Tue, 25 Jun 2013 22:29:00 +0530
-Message-ID: <CA+uAZNMgUQ7mWQOeD4EGcgWfwhUFeaBrXregUmbNP15gt2-yjw@mail.gmail.com>
-Subject: Re: NFSD server is constantly returning nfserr_bad_stateid on 3.2 kernel
-From: Shyam Kaushik <shyamnfs1@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:1804 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755339Ab3F1PSM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Jun 2013 11:18:12 -0400
+Date: Fri, 28 Jun 2013 11:18:07 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        Weston.Adamson@netapp.com
+Subject: Re: [PATCH v4 3/4] nfs: have nfs_mount fake up a auth_flavs list
+ when the server didn't provide it
+Message-ID: <20130628111807.1e556211@tlielax.poochiereds.net>
+In-Reply-To: <077289D0-868D-4358-A29A-8BC31C6FB2F0@oracle.com>
+References: <1372362881-32282-1-git-send-email-jlayton@redhat.com>
+	<1372362881-32282-4-git-send-email-jlayton@redhat.com>
+	<077289D0-868D-4358-A29A-8BC31C6FB2F0@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Fri, 28 Jun 2013 11:06:08 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-I looked up at this issue further & see the problem is this:
-# Client sends OPEN() of a file & as part of this NFSD server sets up
-a stateid & returns to the client.
-# Client comes back immediately with OPEN_CONFIRM() presenting the
-same stateid & NFSD server replies back that its a bad-stateid.
+> 
+> On Jun 27, 2013, at 3:54 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> > Instead of handling this as a special case in the auth-selection code,
+> > we can simply fake up an auth_flavs list when the server doesn't
+> > provide it.
+> 
+> The series looks like a reasonable approach.  One nit picked below.
+> 
+> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+> 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> > fs/nfs/mount_clnt.c | 18 +++++++++++++++++-
+> > fs/nfs/super.c      | 13 -------------
+> > 2 files changed, 17 insertions(+), 14 deletions(-)
+> > 
+> > diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+> > index 91a6faf..0f925f3 100644
+> > --- a/fs/nfs/mount_clnt.c
+> > +++ b/fs/nfs/mount_clnt.c
+> > @@ -139,7 +139,10 @@ struct mnt_fhstatus {
+> >  * nfs_mount - Obtain an NFS file handle for the given host and path
+> >  * @info: pointer to mount request arguments
+> >  *
+> > - * Uses default timeout parameters specified by underlying transport.
+> > + * Uses default timeout parameters specified by underlying transport. On
+> > + * successful return, the auth_flavs list and auth_flav_len will be populated
+> > + * with the list from the server or a faked-up list if the server didn't
+> > + * provide one.
+> >  */
+> > int nfs_mount(struct nfs_mount_request *info)
+> > {
+> > @@ -195,6 +198,19 @@ int nfs_mount(struct nfs_mount_request *info)
+> > 	dprintk("NFS: MNT request succeeded\n");
+> > 	status = 0;
+> > 
+> > +	/*
+> > +	 * The NFSv2 MNT operation does not return a flavor list. Also, some
+> > +	 * NFSv3 servers (older Linux servers in particular) return an empty
+> > +	 * list.
+> > +	 *
+> > +	 * In that event fake up a list that just has RPC_AUTH_NULL in it since
+> > +	 * we have no way to know what the server actually supports.
+> > +	 */
+> 
+> I see the checks are folded together again.  I'm not going to win that battle, am I? ;-)
+> 
 
-Here are some pieces from tcpdump:
-NFS client comes with an OPEN of a file
-10.189253 10.0.27.163 172.31.240.116 NFS 326 V4 Call (Reply In 8264)
-OPEN DH:0xfe4b0254/index.html
-         share_access: OPEN4_SHARE_ACCESS_READ (1)
-         share_deny: OPEN4_SHARE_DENY_NONE (0)
-         clientid: 0xcb76ab5114000000
-         Claim Type: CLAIM_NULL (0)
+Yeah, sorry...
 
-NFS server reply
-10.457226 172.31.240.116 10.0.27.163 NFS 498 V4 Reply (Call In 8057)
-OPEN StateID:0x50ee
-        Status: NFS4_OK (0)
-        StateID Hash: 0x50ee
-        seqid: 0x00000001
-        Data: cb76ab5114000000c4ca2540
-        1. = OPEN4_RESULT_CONFIRM
-        Delegation Type: OPEN_DELEGATE_NONE (0)
+In the other case it made sense since we just did a "goto".
+
+Here, it's either fold the checks together, repeat the list fakeup code
+twice, do some goto shenanigans, or stick the list fakeup in a separate
+function.
+
+This seemed like the lesser of evils.
+
+> The comment repeats most of what the code already says.  How about:
+> 
+> 	/*
+> 	 * If the server didn't provide a flavor list, allow the
+> 	 * client to try any flavor.
+> 	 */
+> 
+
+Sounds reasonable. I'll fix it up in my repo. I hate to repost it again
+for a comment change, so maybe Trond can fix that up if he finds the
+series otherwise acceptable?
+
+> Blue is my favorite color, by the way.
+> 
+> > +	if (info->version != NFS_MNT3_VERSION || *info->auth_flav_len == 0) {
+> > +		dprintk("NFS: Faking up auth_flavs list\n");
+> > +		info->auth_flavs[0] = RPC_AUTH_NULL;
+> > +		*info->auth_flav_len = 1;
+> > +	}
+> > out:
+> > 	return status;
+> > 
+> > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> > index a0949f5..ceb60c7 100644
+> > --- a/fs/nfs/super.c
+> > +++ b/fs/nfs/super.c
+> > @@ -1620,19 +1620,6 @@ static int nfs_select_flavor(struct nfs_parsed_mount_data *args,
+> > 	rpc_authflavor_t flavor;
+> > 
+> > 	/*
+> > -	 * The NFSv2 MNT operation does not return a flavor list.
+> > -	 */
+> > -	if (args->mount_server.version != NFS_MNT3_VERSION)
+> > -		goto out_default;
+> > -
+> > -	/*
+> > -	 * Certain releases of Linux's mountd return an empty
+> > -	 * flavor list in some cases.
+> > -	 */
+> > -	if (count == 0)
+> > -		goto out_default;
+> > -
+> > -	/*
+> > 	 * If the sec= mount option is used, the specified flavor or AUTH_NULL
+> > 	 * must be in the list returned by the server.
+> > 	 *
+> > -- 
+> > 1.8.1.4
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
 
-Client comes back with OPEN_CONFIRM
-10.459343 10.0.27.163 172.31.240.116 NFS 238 V4 Call (Reply In 8465)
-OPEN_CONFIRM
-        StateID Hash: 0x50ee
-        seqid: 0x00000001
-        Data: cb76ab5114000000c4ca2540
-
-Server replies with bad-stateid
-10.733341 172.31.240.116 10.0.27.163 NFS 122 V4 Reply (Call In 8275)
-OPEN_CONFIRM Status: NFS4ERR_BAD_STATEID
-        Status: NFS4ERR_BAD_STATEID (10025)
-
-
-This keeps happening & nothing really progresses.
-
-Any thoughts/ideas on how to debug this further greatly appreciated.
-
-Thanks.
-
---Shyam
-
-On Mon, Jun 24, 2013 at 10:43 PM, Shyam Kaushik <shyamnfs1@gmail.com> wrote:
-> Hi Folks,
->
-> Need help regarding a strange NFS server issue on 3.2 kernel.
->
-> We are running a NFS server on Ubuntu precise with 3.2.0-25-generic
-> #40-Ubuntu kernel.
->
-> We have several NFS exports out of this server & multiple clients
-> running different versions of linux kernel consume these exports. We
-> use ext4 with sync mount as the filesystem.
->
-> We periodically see that all NFS activity comes to a standstill on all
-> NFS exports. Enabling NFS debug shows that there are numerous
-> nfserr_bad_stateid on almost all operations. This makes all of the
-> NFSD threads to consume all of CPU on the server.
->
-> Jun 24 01:50:42 srv007 kernel: [5753609.342457] nfsd_dispatch: vers 4 proc 1
-> Jun 24 01:50:42 srv007 kernel: [5753609.342457] nfsv4 compound op
-> #1/7: 22 (OP_PUTFH)
-> Jun 24 01:50:42 srv007 kernel: [5753609.342467] nfsv4 compound op
-> ffff880095744078 opcnt 3 #1: 22: status 0
-> Jun 24 01:50:42 srv007 kernel: [5753609.342472] nfsv4 compound op
-> #2/3: 38 (OP_WRITE)
-> Jun 24 01:50:42 srv007 kernel: [5753609.342472] nfsd: fh_verify(36:
-> 01070001 00d40001 00000000 ac63c188 0a4859a1 feb41e83)
-> Jun 24 01:50:42 srv007 kernel: [5753609.342484] renewing client
-> (clientid 51ab76cb/00005fc9)
-> Jun 24 01:50:42 srv007 kernel: [5753609.342486] NFSD: nfsd4_write:
-> couldn't process stateid!
-> Jun 24 01:50:42 srv007 kernel: [5753609.342529] nfsv4 compound op
-> ffff880095744078 opcnt 3 #2: 38: status 10025
-> Jun 24 01:50:42 srv007 kernel: [5753609.342544] nfsv4 compound returned 10025
->
-> Jun 24 01:50:42 srv007 kernel: [5753609.444116] nfsd_dispatch: vers 4 proc 1
-> Jun 24 01:50:42 srv007 kernel: [5753609.444122] nfsv4 compound op
-> #1/3: 22 (OP_PUTFH)
-> Jun 24 01:50:42 srv007 kernel: [5753609.444125] nfsd: fh_verify(36:
-> 01070001 00020001 00000000 eb3726ca c8497c28 911b4a8d)
-> Jun 24 01:50:42 srv007 kernel: [5753609.444134] nfsv4 compound op
-> ffff880093436078 opcnt 3 #1: 22: status 0
-> Jun 24 01:50:42 srv007 kernel: [5753609.444136] nfsv4 compound op
-> #2/3: 38 (OP_WRITE)
-> Jun 24 01:50:42 srv007 kernel: [5753609.446920] nfsd4_process_open2:
-> stateid=(51ab76cb/0000000b/40259544/00000001)
-> Jun 24 01:50:42 srv007 kernel: [5753609.446925] nfsv4 compound op
-> ffff880095027078 opcnt 7 #3: 18: status 0
-> Jun 24 01:50:42 srv007 kernel: [5753609.446929] renewing client
-> (clientid 51ab76cb/00000022)
-> Jun 24 01:50:42 srv007 kernel: [5753609.446929] NFSD: nfsd4_write:
-> couldn't process stateid!
-> Jun 24 01:50:42 srv007 kernel: [5753609.446929] nfsv4 compound op
-> ffff880093436078 opcnt 3 #2: 38: status 10025
-> Jun 24 01:50:42 srv007 kernel: [5753609.446929] nfsv4 compound returned 10025
->
-> Jun 24 01:50:42 srv007 kernel: [5753609.447162] nfsd_dispatch: vers 4 proc 1
-> Jun 24 01:50:42 srv007 kernel: [5753609.447163] nfsd: fh_verify(36:
-> 01070001 00240001 00000000 a80fc170 1947ae6c 4fbf37b1)
-> Jun 24 01:50:42 srv007 kernel: [5753609.447163] NFSD:
-> nfs4_preprocess_seqid_op: seqid=1 stateid =
-> (51ab76cb/00004b96/40259528/00000001)
-> Jun 24 01:50:42 srv007 kernel: [5753609.447181] nfsv4 compound op
-> #1/7: 22 (OP_PUTFH)
-> Jun 24 01:50:42 srv007 kernel: [5753609.447185] nfsd: fh_verify(28:
-> 00070001 00020001 00000000 53c0b8df a948fcb9 475e2cba)
-> Jun 24 01:50:42 srv007 kernel: [5753609.447185] renewing client
-> (clientid 51ab76cb/00004b96)
-> Jun 24 01:50:42 srv007 kernel: [5753609.447187] nfsv4 compound op
-> ffff88000813f078 opcnt 2 #2: 20: status 10025
-> Jun 24 01:50:42 srv007 kernel: [5753609.447189] nfsv4 compound returned 10025
->
-> NFSD stacks are like:
-> [<ffffffffa022e765>] nfs4_lock_state+0x15/0x40 [nfsd]
-> [<ffffffffa02234f4>] nfsd4_open+0xb4/0x440 [nfsd]
-> [<ffffffffa0221bc8>] nfsd4_proc_compound+0x518/0x6d0 [nfsd]
-> [<ffffffffa020fa0b>] nfsd_dispatch+0xeb/0x230 [nfsd]
-> [<ffffffffa0131d95>] svc_process_common+0x345/0x690 [sunrpc]
-> [<ffffffffa01321e2>] svc_process+0x102/0x150 [sunrpc]
-> [<ffffffffa020f0bd>] nfsd+0xbd/0x160 [nfsd]
-> [<ffffffff8108a59c>] kthread+0x8c/0xa0
-> [<ffffffff81667db4>] kernel_thread_helper+0x4/0x10
-> [<ffffffffffffffff>] 0xffffffffffffffff
->
-> I couldnt exactly capture the running thread, but it appears that one
-> thread of the NFSD thread pool runs & detects a bad-state-id & returns
-> back.
->
-> Is this a known issue or any help on how to dig in further is greatly
-> appreciated.
->
-> Thanks.
->
-> --Shyam
+-- 
+Jeff Layton <jlayton@redhat.com>
