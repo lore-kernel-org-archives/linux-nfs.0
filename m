@@ -1,97 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mo-p05-ob.rzone.de ([81.169.146.181]:63085 "EHLO
-	mo-p05-ob.rzone.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755080Ab3FDOVR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Jun 2013 10:21:17 -0400
-Message-ID: <51ADF789.70906@samba.org>
-Date: Tue, 04 Jun 2013 16:19:53 +0200
-From: "Stefan (metze) Metzmacher" <metze@samba.org>
+Received: from mx12.netapp.com ([216.240.18.77]:63300 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753131Ab3F1UGw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Jun 2013 16:06:52 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/5] NFS: Never use user credentials for lease renewal
+Date: Fri, 28 Jun 2013 20:06:37 +0000
+Message-ID: <1372449996.20188.2.camel@leira.trondhjem.org>
+References: <20130625162233.36416.34947.stgit@seurat.1015granger.net>
+	 <20130625162346.36416.25389.stgit@seurat.1015granger.net>
+	 <1372449749.20188.0.camel@leira.trondhjem.org>
+	 <A7FF4EEF-480D-492B-A248-3FF4098F3350@oracle.com>
+In-Reply-To: <A7FF4EEF-480D-492B-A248-3FF4098F3350@oracle.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: viro@zeniv.linux.org.uk, matthew@wil.cx, bfields@fieldses.org,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        cluster-devel@redhat.com, sage@inktank.com,
-        samba-technical@lists.samba.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
-        dhowells@redhat.com, smfrench@gmail.com, linux-fsdevel@vger.kernel.org,
-        ceph-devel@vger.kernel.org, akpm@linux-foundation.org,
-        swhiteho@redhat.com
-Subject: Re: [PATCH v1 11/11] locks: give the blocked_hash its own spinlock
-References: <1370056054-25449-1-git-send-email-jlayton@redhat.com> <1370056054-25449-12-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1370056054-25449-12-git-send-email-jlayton@redhat.com>
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="------------enigDC06D3B97CE85A15870C7A9B"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
---------------enigDC06D3B97CE85A15870C7A9B
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+On Fri, 2013-06-28 at 16:03 -0400, Chuck Lever wrote:
+> On Jun 28, 2013, at 4:02 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+> 
+> > On Tue, 2013-06-25 at 12:23 -0400, Chuck Lever wrote:
+> >> Don't try to use a non-UID-0 user credential for lease management,
+> >> as that credential can change out from under us.  The server will
+> >> block NFSv4 lease recovery with NFS4ERR_CLID_INUSE.
+> >> 
+> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> >> ---
+> >> fs/nfs/nfs4proc.c |    4 ++--
+> >> 1 file changed, 2 insertions(+), 2 deletions(-)
+> >> 
+> >> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> >> index d7ba561..5ba38b3 100644
+> >> --- a/fs/nfs/nfs4proc.c
+> >> +++ b/fs/nfs/nfs4proc.c
+> >> @@ -6919,7 +6919,7 @@ static const struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
+> >> 	.recover_open	= nfs4_open_reclaim,
+> >> 	.recover_lock	= nfs4_lock_reclaim,
+> >> 	.establish_clid = nfs4_init_clientid,
+> >> -	.get_clid_cred	= nfs4_get_setclientid_cred,
+> >> +	.get_clid_cred	= nfs4_get_exchange_id_cred,
+> >> 	.detect_trunking = nfs40_discover_server_trunking,
+> >> };
+> >> 
+> >> @@ -6942,7 +6942,7 @@ static const struct nfs4_state_recovery_ops nfs40_nograce_recovery_ops = {
+> >> 	.recover_open	= nfs4_open_expired,
+> >> 	.recover_lock	= nfs4_lock_expired,
+> >> 	.establish_clid = nfs4_init_clientid,
+> >> -	.get_clid_cred	= nfs4_get_setclientid_cred,
+> >> +	.get_clid_cred	= nfs4_get_exchange_id_cred,
+> >> };
+> >> 
+> >> #if defined(CONFIG_NFS_V4_1)
+> >> 
+> > 
+> > Clearly not compile tested...
+> 
+> Yes, it was, with and without NFSV4 enabled.
+> 
+> Do you have a problem to report?
 
-Hi Jeff,
-
-> There's no reason we have to protect the blocked_hash and file_lock_lis=
-t
-> with the same spinlock. With the tests I have, breaking it in two gives=
-
-> a barely measurable performance benefit, but it seems reasonable to mak=
-e
-> this locking as granular as possible.
-
-as file_lock_{list,lock} is only used for debugging (/proc/locks) after t=
-his
-change, I guess it would be possible to use RCU instead of a spinlock.
-
-@others: this was the related discussion on IRC
-(http://irclog.samba.org/) about this:
-
-16:02 < metze> jlayton: do you have time to discuss your file_lock_lock
-changes?
-16:02 < jlayton> metze: sure, what's up?
-16:03 < jlayton> metze: note that it won't help vl's thundering herd
-problems...
-16:03 < metze> is it correct that after your last patch file_lock_lock
-is only used for /proc/locks?
-16:03 < jlayton> well, it's only used to protect the list that is used
-for /proc/locks
-16:04 < jlayton> it still gets taken whenever a lock is acquired or
-released in order to manipulate that list
-16:04 < metze> would it be a good idea to use rcu instead of a spin lock?=
-
-16:04 < jlayton> I tried using RCU, but it turned out to slow everything
-down
-16:04 < jlayton> this is not a read-mostly workload unfortunately
-16:04 < jlayton> so doing it with mutual exclusion turns out to be faster=
-
-16:04 < metze> ok
-16:05 < jlayton> I might play around with it again sometime, but I don't
-think it really helps. What we need to ensure is
-                 that we optimize the code that manipulates that list,
-and RCU list manipulations have larger overhead
-16:06 < jlayton> metze: that's a good question though so if you want to
-ask it on the list, please do
-16:06 < jlayton> others will probably be wondering the same thing
-16:08 < metze> maybe it's worth a comment in commit message and the code
-16:08 < metze> btw, why don't you remove the ' /* Protects the
-file_lock_list and the blocked_hash */' comment?
-
-metze
+!defined(CONFIG_NFS_V4_1) would be the obvious place to start...
 
 
---------------enigDC06D3B97CE85A15870C7A9B
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-Comment: Using GnuPG with undefined - http://www.enigmail.net/
-
-iEYEARECAAYFAlGt95EACgkQm70gjA5TCD9rgACdFM0jvnKV/2vYwljAJGQjabIq
-YwgAoJeaqln0qY27+IkCDBaB/2+fGAtT
-=T0cN
------END PGP SIGNATURE-----
-
---------------enigDC06D3B97CE85A15870C7A9B--
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
