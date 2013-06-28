@@ -1,61 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:35928 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756080Ab3FEOZe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jun 2013 10:25:34 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "E.G. Keizer" <E.G.Keizer@vu.nl>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/3] Various gssd fixes including machine-credential
- issue.
-Date: Wed, 5 Jun 2013 14:25:32 +0000
-Message-ID: <1370442331.21544.16.camel@leira.trondhjem.org>
-References: <51AF459A.1040609@vu.nl>
-In-Reply-To: <51AF459A.1040609@vu.nl>
+Received: from aserp1040.oracle.com ([141.146.126.69]:30199 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752570Ab3F1UQ5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Jun 2013 16:16:57 -0400
 Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: [PATCH 2/5] NFS: Use root's credential for lease management when keytab is missing
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1372450273.20188.7.camel@leira.trondhjem.org>
+Date: Fri, 28 Jun 2013 16:16:52 -0400
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <EFB58A3D-9B17-486B-9653-3983ADBDB5E2@oracle.com>
+References: <20130625162233.36416.34947.stgit@seurat.1015granger.net> <20130625162336.36416.51324.stgit@seurat.1015granger.net> <1372450273.20188.7.camel@leira.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-06-05 at 16:05 +0200, E.G. Keizer wrote:
-> First I would like to wholeheartedly support Neil Brown's comment. We at the
-> Vrije Universiteit in Amsterdam (NL) also have the situation where the Kerberos
-> administrator does not hand out machine credentials. A lot of Linux users from
-> the Faculty of Sciences depend on the functionality that lets them access
-> the NFS file servers with only their user credentials.
 
-They should still be able to do that, but in that case, the state
-management will have to default to AUTH_SYS to set up the lease, which
-means that someone else can spoof requests to cancel the lease or change
-the callback channel parameters.
+On Jun 28, 2013, at 4:11 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-> Secondly I would like to make a remark on basing client id's on the system's kerberos principal's name.
-> That same faculty, in the times it had its own IT department, used an identical keytab for
-> all Linux workstations, using the principal names "[nfs|root|host]/workstation@FEW.VU.NL".
-> I understand this would lead to severe problems when the client id (co_ownerid) is based
-> solely in the systems root principal name.
+> On Tue, 2013-06-25 at 12:23 -0400, Chuck Lever wrote:
+>> Commit 05f4c350 "NFS: Discover NFSv4 server trunking when mounting"
+>> Fri Sep 14 17:24:32 2012 introduced Uniform Client String support,
+>> which forces our NFS client to establish a client ID immediately
+>> during a mount operation rather than waiting until a user wants to
+>> open a file.
+>> 
+>> Normally machine credentials (eg. from a keytab) are used to perform
+>> a mount operation that is protected by Kerberos.  Before 05fc350,
+>> SETCLIENTID used a machine credential, or fell back to a regular
+>> user's credential if no keytab is available.
+>> 
+>> On clients that don't have a keytab, performing SETCLIENTID early
+>> means there's no user credential to fall back on, since no regular
+>> user has kinit'd yet.  05f4c350 seems to have broken the ability
+>> to mount with sec=krb5 on clients that don't have a keytab in
+>> kernels 3.7 - 3.10.
+>> 
+>> To address this regression, commit 4edaa308 (NFS: Use "krb5i" to
+>> establish NFSv4 state whenever possible), Sat Mar 16 15:56:20 2013,
+>> was merged in 3.10.  This commit forces the NFS client to fall back
+>> to AUTH_SYS for lease management operations if no keytab is
+>> available.
+>> 
+>> Neil Brown noticed that, since root is required to kinit to do a
+>> sec=krb5 mount when a client doesn't have a keytab, we can try to
+>> use root's Kerberos credential before AUTH_SYS.
+>> 
+>> Now, when determining a principal and flavor to use for lease
+>> management, the NFS client tries in this order:
+>> 
+>>  1.  Flavor: AUTH_GSS, krb5i
+>>      Principal: service principal (via keytab)
+>> 
+>>  2.  Flavor: AUTH_GSS, krb5i
+>>      Principal: user principal established for UID 0 (via kinit)
+>> 
+>>  3.  Flavor: AUTH_SYS
+>>      Principal: UID 0 / GID 0
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> fs/nfs/nfs4state.c |   20 +++++++++++++++++++-
+>> 1 file changed, 19 insertions(+), 1 deletion(-)
+>> 
+>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>> index 1fab140..6ceece7 100644
+>> --- a/fs/nfs/nfs4state.c
+>> +++ b/fs/nfs/nfs4state.c
+>> @@ -154,6 +154,19 @@ struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp)
+>> 	return cred;
+>> }
+>> 
+>> +static void nfs4_root_machine_cred(struct nfs_client *clp)
+>> +{
+>> +	struct rpc_cred *cred, *new;
+>> +
+>> +	new = rpc_lookup_machine_cred(NULL);
+>> +	spin_lock(&clp->cl_lock);
+>> +	cred = clp->cl_machine_cred;
+>> +	clp->cl_machine_cred = new;
+>> +	spin_unlock(&clp->cl_lock);
+>> +	if (cred != NULL)
+>> +		put_rpccred(cred);
+>> +}
+>> +
+>> static struct rpc_cred *
+>> nfs4_get_renew_cred_server_locked(struct nfs_server *server)
+>> {
+>> @@ -1888,9 +1901,14 @@ again:
+>> 	case -NFS4ERR_STALE_CLIENTID:
+>> 		dprintk("NFS: %s after status %d, retrying\n",
+>> 			__func__, status);
+>> +		i = 0;
+> 
+> This clearly isn't resetting clp->cl_machine_cred, so how is it intended
+> to work?
 
-How so? The only problem should be that any one of those machines can go
-and cancel or change the lease of any other. That's a compromise that
-you decided upon when you decided to use one keytab for all of them.
+This one line is not needed for the fix, and can be removed.  Or, we can add logic here to reset cl_machine_cred.
 
-> It seems to me that the issues about the client id look like a bag of worms. I've seen that the
-> newest standard `requires' integrity protection for client id exchanges. I doubt
-> that that will help when the source code of the NFS client is known and
-> the client id is guessable.
+You probably want to remove that line, and have a separate patch to make sure the machine cred is reset when the client receives STALE_CLIENTID.
 
-What is the attack and how would it compromise security on the clients
-that you care about?
-
->  The wisest thing might be to offer different options
-> and let the administrators pick the one they like best?
-
-We have two options available to you: auth_sys or RPCSEC_GSS w/krb5i.
+> 
+>> 		goto again;
+>> 	case -EACCES:
+>> -		if (i++)
+>> +		if (i++ == 0) {
+>> +			nfs4_root_machine_cred(clp);
+>> +			goto again;
+>> +		}
+>> +		if (i > 2)
+>> 			break;
+>> 	case -NFS4ERR_CLID_INUSE:
+>> 	case -NFS4ERR_WRONGSEC:
+>> 
+> 
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+
+
+
