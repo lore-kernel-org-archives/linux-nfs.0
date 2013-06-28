@@ -1,190 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47461 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751201Ab3FYVVi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Jun 2013 17:21:38 -0400
-Date: Tue, 25 Jun 2013 17:21:37 -0400
-To: Shyam Kaushik <shyamnfs1@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFSD server is constantly returning nfserr_bad_stateid on 3.2
- kernel
-Message-ID: <20130625212137.GF17511@fieldses.org>
-References: <CA+uAZNMXLXcV6VNqOqVJEbOoKwj-fdmBp4mLz25W7nRxaB9A9w@mail.gmail.com>
- <CA+uAZNMgUQ7mWQOeD4EGcgWfwhUFeaBrXregUmbNP15gt2-yjw@mail.gmail.com>
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:39609 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753312Ab3F1UDt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Jun 2013 16:03:49 -0400
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CA+uAZNMgUQ7mWQOeD4EGcgWfwhUFeaBrXregUmbNP15gt2-yjw@mail.gmail.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: [PATCH 3/5] NFS: Never use user credentials for lease renewal
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1372449749.20188.0.camel@leira.trondhjem.org>
+Date: Fri, 28 Jun 2013 16:03:46 -0400
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <A7FF4EEF-480D-492B-A248-3FF4098F3350@oracle.com>
+References: <20130625162233.36416.34947.stgit@seurat.1015granger.net> <20130625162346.36416.25389.stgit@seurat.1015granger.net> <1372449749.20188.0.camel@leira.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 25, 2013 at 10:29:00PM +0530, Shyam Kaushik wrote:
-> Hi,
-> 
-> I looked up at this issue further & see the problem is this:
-> # Client sends OPEN() of a file & as part of this NFSD server sets up
-> a stateid & returns to the client.
-> # Client comes back immediately with OPEN_CONFIRM() presenting the
-> same stateid & NFSD server replies back that its a bad-stateid.
-> 
-> Here are some pieces from tcpdump:
-> NFS client comes with an OPEN of a file
-> 10.189253 10.0.27.163 172.31.240.116 NFS 326 V4 Call (Reply In 8264)
-> OPEN DH:0xfe4b0254/index.html
->          share_access: OPEN4_SHARE_ACCESS_READ (1)
->          share_deny: OPEN4_SHARE_DENY_NONE (0)
->          clientid: 0xcb76ab5114000000
->          Claim Type: CLAIM_NULL (0)
-> 
-> NFS server reply
-> 10.457226 172.31.240.116 10.0.27.163 NFS 498 V4 Reply (Call In 8057)
-> OPEN StateID:0x50ee
->         Status: NFS4_OK (0)
->         StateID Hash: 0x50ee
->         seqid: 0x00000001
->         Data: cb76ab5114000000c4ca2540
->         1. = OPEN4_RESULT_CONFIRM
->         Delegation Type: OPEN_DELEGATE_NONE (0)
-> 
-> 
-> Client comes back with OPEN_CONFIRM
-> 10.459343 10.0.27.163 172.31.240.116 NFS 238 V4 Call (Reply In 8465)
-> OPEN_CONFIRM
->         StateID Hash: 0x50ee
->         seqid: 0x00000001
->         Data: cb76ab5114000000c4ca2540
-> 
-> Server replies with bad-stateid
-> 10.733341 172.31.240.116 10.0.27.163 NFS 122 V4 Reply (Call In 8275)
-> OPEN_CONFIRM Status: NFS4ERR_BAD_STATEID
->         Status: NFS4ERR_BAD_STATEID (10025)
 
-That does look like a server bug.  But I have trouble seeing how that's
-happening (or why you would be able to reproduce it and not me).
+On Jun 28, 2013, at 4:02 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-On the final OPEN_CONFIRM the server is either failing to find the
-stateid or found it and thinks it's been closed or already confirmed.
-
-This is a different case from the one below where the server returns
-BAD_STATEID on the write.
-
-> This keeps happening & nothing really progresses.
+> On Tue, 2013-06-25 at 12:23 -0400, Chuck Lever wrote:
+>> Don't try to use a non-UID-0 user credential for lease management,
+>> as that credential can change out from under us.  The server will
+>> block NFSv4 lease recovery with NFS4ERR_CLID_INUSE.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> fs/nfs/nfs4proc.c |    4 ++--
+>> 1 file changed, 2 insertions(+), 2 deletions(-)
+>> 
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index d7ba561..5ba38b3 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -6919,7 +6919,7 @@ static const struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
+>> 	.recover_open	= nfs4_open_reclaim,
+>> 	.recover_lock	= nfs4_lock_reclaim,
+>> 	.establish_clid = nfs4_init_clientid,
+>> -	.get_clid_cred	= nfs4_get_setclientid_cred,
+>> +	.get_clid_cred	= nfs4_get_exchange_id_cred,
+>> 	.detect_trunking = nfs40_discover_server_trunking,
+>> };
+>> 
+>> @@ -6942,7 +6942,7 @@ static const struct nfs4_state_recovery_ops nfs40_nograce_recovery_ops = {
+>> 	.recover_open	= nfs4_open_expired,
+>> 	.recover_lock	= nfs4_lock_expired,
+>> 	.establish_clid = nfs4_init_clientid,
+>> -	.get_clid_cred	= nfs4_get_setclientid_cred,
+>> +	.get_clid_cred	= nfs4_get_exchange_id_cred,
+>> };
+>> 
+>> #if defined(CONFIG_NFS_V4_1)
+>> 
 > 
-> Any thoughts/ideas on how to debug this further greatly appreciated.
+> Clearly not compile tested...
 
-Off hand all I can suggest is tracing through the code (worst case,
-sprinkling some printk's around) to figure out exactly where the
-bad_stateid is being returned from originally.
+Yes, it was, with and without NFSV4 enabled.
 
-Or running a git bisect if you have a known-good kernel.
+Do you have a problem to report?
 
-Or if there's anything particular about your workload that you could
-tell us so someone else could attempt to reproduce it.
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Also it's interesting if you can verify whether this is reproduceable on
-newer kernels.
 
---b.
 
-> 
-> Thanks.
-> 
-> --Shyam
-> 
-> On Mon, Jun 24, 2013 at 10:43 PM, Shyam Kaushik <shyamnfs1@gmail.com> wrote:
-> > Hi Folks,
-> >
-> > Need help regarding a strange NFS server issue on 3.2 kernel.
-> >
-> > We are running a NFS server on Ubuntu precise with 3.2.0-25-generic
-> > #40-Ubuntu kernel.
-> >
-> > We have several NFS exports out of this server & multiple clients
-> > running different versions of linux kernel consume these exports. We
-> > use ext4 with sync mount as the filesystem.
-> >
-> > We periodically see that all NFS activity comes to a standstill on all
-> > NFS exports. Enabling NFS debug shows that there are numerous
-> > nfserr_bad_stateid on almost all operations. This makes all of the
-> > NFSD threads to consume all of CPU on the server.
-> >
-> > Jun 24 01:50:42 srv007 kernel: [5753609.342457] nfsd_dispatch: vers 4 proc 1
-> > Jun 24 01:50:42 srv007 kernel: [5753609.342457] nfsv4 compound op
-> > #1/7: 22 (OP_PUTFH)
-> > Jun 24 01:50:42 srv007 kernel: [5753609.342467] nfsv4 compound op
-> > ffff880095744078 opcnt 3 #1: 22: status 0
-> > Jun 24 01:50:42 srv007 kernel: [5753609.342472] nfsv4 compound op
-> > #2/3: 38 (OP_WRITE)
-> > Jun 24 01:50:42 srv007 kernel: [5753609.342472] nfsd: fh_verify(36:
-> > 01070001 00d40001 00000000 ac63c188 0a4859a1 feb41e83)
-> > Jun 24 01:50:42 srv007 kernel: [5753609.342484] renewing client
-> > (clientid 51ab76cb/00005fc9)
-> > Jun 24 01:50:42 srv007 kernel: [5753609.342486] NFSD: nfsd4_write:
-> > couldn't process stateid!
-> > Jun 24 01:50:42 srv007 kernel: [5753609.342529] nfsv4 compound op
-> > ffff880095744078 opcnt 3 #2: 38: status 10025
-> > Jun 24 01:50:42 srv007 kernel: [5753609.342544] nfsv4 compound returned 10025
-> >
-> > Jun 24 01:50:42 srv007 kernel: [5753609.444116] nfsd_dispatch: vers 4 proc 1
-> > Jun 24 01:50:42 srv007 kernel: [5753609.444122] nfsv4 compound op
-> > #1/3: 22 (OP_PUTFH)
-> > Jun 24 01:50:42 srv007 kernel: [5753609.444125] nfsd: fh_verify(36:
-> > 01070001 00020001 00000000 eb3726ca c8497c28 911b4a8d)
-> > Jun 24 01:50:42 srv007 kernel: [5753609.444134] nfsv4 compound op
-> > ffff880093436078 opcnt 3 #1: 22: status 0
-> > Jun 24 01:50:42 srv007 kernel: [5753609.444136] nfsv4 compound op
-> > #2/3: 38 (OP_WRITE)
-> > Jun 24 01:50:42 srv007 kernel: [5753609.446920] nfsd4_process_open2:
-> > stateid=(51ab76cb/0000000b/40259544/00000001)
-> > Jun 24 01:50:42 srv007 kernel: [5753609.446925] nfsv4 compound op
-> > ffff880095027078 opcnt 7 #3: 18: status 0
-> > Jun 24 01:50:42 srv007 kernel: [5753609.446929] renewing client
-> > (clientid 51ab76cb/00000022)
-> > Jun 24 01:50:42 srv007 kernel: [5753609.446929] NFSD: nfsd4_write:
-> > couldn't process stateid!
-> > Jun 24 01:50:42 srv007 kernel: [5753609.446929] nfsv4 compound op
-> > ffff880093436078 opcnt 3 #2: 38: status 10025
-> > Jun 24 01:50:42 srv007 kernel: [5753609.446929] nfsv4 compound returned 10025
-> >
-> > Jun 24 01:50:42 srv007 kernel: [5753609.447162] nfsd_dispatch: vers 4 proc 1
-> > Jun 24 01:50:42 srv007 kernel: [5753609.447163] nfsd: fh_verify(36:
-> > 01070001 00240001 00000000 a80fc170 1947ae6c 4fbf37b1)
-> > Jun 24 01:50:42 srv007 kernel: [5753609.447163] NFSD:
-> > nfs4_preprocess_seqid_op: seqid=1 stateid =
-> > (51ab76cb/00004b96/40259528/00000001)
-> > Jun 24 01:50:42 srv007 kernel: [5753609.447181] nfsv4 compound op
-> > #1/7: 22 (OP_PUTFH)
-> > Jun 24 01:50:42 srv007 kernel: [5753609.447185] nfsd: fh_verify(28:
-> > 00070001 00020001 00000000 53c0b8df a948fcb9 475e2cba)
-> > Jun 24 01:50:42 srv007 kernel: [5753609.447185] renewing client
-> > (clientid 51ab76cb/00004b96)
-> > Jun 24 01:50:42 srv007 kernel: [5753609.447187] nfsv4 compound op
-> > ffff88000813f078 opcnt 2 #2: 20: status 10025
-> > Jun 24 01:50:42 srv007 kernel: [5753609.447189] nfsv4 compound returned 10025
-> >
-> > NFSD stacks are like:
-> > [<ffffffffa022e765>] nfs4_lock_state+0x15/0x40 [nfsd]
-> > [<ffffffffa02234f4>] nfsd4_open+0xb4/0x440 [nfsd]
-> > [<ffffffffa0221bc8>] nfsd4_proc_compound+0x518/0x6d0 [nfsd]
-> > [<ffffffffa020fa0b>] nfsd_dispatch+0xeb/0x230 [nfsd]
-> > [<ffffffffa0131d95>] svc_process_common+0x345/0x690 [sunrpc]
-> > [<ffffffffa01321e2>] svc_process+0x102/0x150 [sunrpc]
-> > [<ffffffffa020f0bd>] nfsd+0xbd/0x160 [nfsd]
-> > [<ffffffff8108a59c>] kthread+0x8c/0xa0
-> > [<ffffffff81667db4>] kernel_thread_helper+0x4/0x10
-> > [<ffffffffffffffff>] 0xffffffffffffffff
-> >
-> > I couldnt exactly capture the running thread, but it appears that one
-> > thread of the NFSD thread pool runs & detects a bad-state-id & returns
-> > back.
-> >
-> > Is this a known issue or any help on how to dig in further is greatly
-> > appreciated.
-> >
-> > Thanks.
-> >
-> > --Shyam
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
