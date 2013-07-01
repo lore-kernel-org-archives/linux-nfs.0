@@ -1,101 +1,191 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:53474 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751040Ab3HAApm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 31 Jul 2013 20:45:42 -0400
-Date: Wed, 31 Jul 2013 20:46:15 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Quentin Barnes <qbarnes@gmail.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: don't allow nfs_find_actor to match inodes of the
- wrong type
-Message-ID: <20130731204615.03a6b37a@corrin.poochiereds.net>
-In-Reply-To: <20130731230051.GB31859@gmail.com>
-References: <20130731230051.GB31859@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-la0-f53.google.com ([209.85.215.53]:43647 "EHLO
+	mail-la0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753353Ab3GAQnA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Jul 2013 12:43:00 -0400
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v7 2/7] VFS: Add O_DENYDELETE support for VFS
+Date: Mon,  1 Jul 2013 20:49:54 +0400
+Message-Id: <1372697399-21361-3-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1372697399-21361-1-git-send-email-piastry@etersoft.ru>
+References: <1372697399-21361-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 31 Jul 2013 18:00:51 -0500
-Quentin Barnes <qbarnes@gmail.com> wrote:
+Introduce new LOCK_DELETE flock flag that is suggested to be used
+internally only to map O_DENYDELETE open flag:
 
-> > Quite frankly, all I care about in a situation like this is that the
-> > client doesn't Oops.
-> 
-> Certainly, and his patch does do that, but it's also pointing out
-> there's another bug running around.  And once you fix that bug, the
-> original patch is no longer needed.
-> 
-> > If a server is really this utterly broken, then there is no way we can
-> > fix it on the client, and we're not even going to try.
-> 
-> Of course.  But you also don't want to unnecessarily leave the
-> client with an invalid inode that's not properly flagged and
-> possibly leave another bug unfixed.
-> 
-> Here is a example patch that I feel better addresses the problem:
-> 
-> 
-> commit 2d6b411eea04ae4398707b584b8d9e552606aaf7
-> Author: Quentin Barnes <qbarnes@yahoo-inc.com>
-> Date:   Wed Jul 31 17:50:35 2013 -0500
-> 
->     Have nfs_refresh_inode_locked() ensure that it doesn't return without
->     flagging invalid inodes (ones that don't match its fattr type).
->     
->     nfs_refresh_inode() already does this, so we need to check the return
->     status from nfs_check_inode_attributes() before returning from
->     nfs_refresh_inode_locked().
->     
->     Once this hole is plugged, there will be no invalid inode references
->     returned by nfs_fhget(), so no need to check in nfs_find_actor().
-> 
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index af6e806..d2263a5 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -244,8 +244,6 @@ nfs_find_actor(struct inode *inode, void *opaque)
->  
->  	if (NFS_FILEID(inode) != fattr->fileid)
->  		return 0;
-> -	if ((S_IFMT & inode->i_mode) != (S_IFMT & fattr->mode))
-> -		return 0;
->  	if (nfs_compare_fh(NFS_FH(inode), fh))
->  		return 0;
->  	if (is_bad_inode(inode) || NFS_STALE(inode))
-> @@ -1269,9 +1267,16 @@ static int nfs_inode_attrs_need_update(const struct inode *inode, const struct n
->  
->  static int nfs_refresh_inode_locked(struct inode *inode, struct nfs_fattr *fattr)
->  {
-> +	int	status;
-> +
->  	if (nfs_inode_attrs_need_update(inode, fattr))
->  		return nfs_update_inode(inode, fattr);
-> -	return nfs_check_inode_attributes(inode, fattr);
-> +
-> +	status = nfs_check_inode_attributes(inode, fattr);
-> +	if (status)
-> +		nfs_invalidate_inode(inode);
-> +
-> +	return status;
->  }
->  
->  /**
+!O_DENYDELETE -> LOCK_DELETE | LOCK_MAND.
 
-I don't think that's going to fix the problem.
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+---
+ fs/locks.c                       | 55 +++++++++++++++++++++++++++++++++-------
+ fs/namei.c                       |  3 +++
+ include/linux/fs.h               |  6 +++++
+ include/uapi/asm-generic/fcntl.h |  1 +
+ 4 files changed, 56 insertions(+), 9 deletions(-)
 
-The issue is that the i_fops are set when the inode is in I_NEW state,
-and are never changed. An inode is only I_NEW when it's first created.
-In this case, we did an atomic open against a filename and got back
-attributes that trick the code into matching the new dentry up with an
-inode that we previously found to be a directory.
-
-The patch above doesn't address that. It just adds an extra cache
-invalidation, which won't help this case. The ops are still set the
-same way and the teardown of the atomic_open will still end up hitting
-the panic.
-
+diff --git a/fs/locks.c b/fs/locks.c
+index dbc5557..c2fa136 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -269,7 +269,7 @@ EXPORT_SYMBOL(locks_copy_lock);
+ 
+ static inline int flock_translate_cmd(int cmd) {
+ 	if (cmd & LOCK_MAND)
+-		return cmd & (LOCK_MAND | LOCK_RW);
++		return cmd & (LOCK_MAND | LOCK_RW | LOCK_DELETE);
+ 	switch (cmd) {
+ 	case LOCK_SH:
+ 		return F_RDLCK;
+@@ -614,6 +614,8 @@ deny_flags_to_cmd(unsigned int flags)
+ 		cmd |= LOCK_READ;
+ 	if (!(flags & O_DENYWRITE))
+ 		cmd |= LOCK_WRITE;
++	if (!(flags & O_DENYDELETE))
++		cmd |= LOCK_DELETE;
+ 
+ 	return cmd;
+ }
+@@ -836,6 +838,33 @@ out:
+ 	return error;
+ }
+ 
++int
++sharelock_may_delete(struct dentry *dentry)
++{
++	struct file_lock **before;
++	int rc = 0;
++
++	if (!IS_SHARELOCK(dentry->d_inode))
++		return rc;
++
++	lock_flocks();
++	for_each_lock(dentry->d_inode, before) {
++		struct file_lock *fl = *before;
++		if (IS_POSIX(fl))
++			break;
++		if (IS_LEASE(fl))
++			continue;
++		if (!(fl->fl_type & LOCK_MAND))
++			continue;
++		if (fl->fl_type & LOCK_DELETE)
++			continue;
++		rc = 1;
++		break;
++	}
++	unlock_flocks();
++	return rc;
++}
++
+ /*
+  * Determine if a file is allowed to be opened with specified access and share
+  * modes. Lock the file and return 0 if checks passed, otherwise return
+@@ -850,10 +879,6 @@ sharelock_lock_file(struct file *filp)
+ 	if (!IS_SHARELOCK(filp->f_path.dentry->d_inode))
+ 		return error;
+ 
+-	/* Disable O_DENYDELETE support for now */
+-	if (filp->f_flags & O_DENYDELETE)
+-		return -EINVAL;
+-
+ 	error = flock_make_lock(filp, &lock, deny_flags_to_cmd(filp->f_flags));
+ 	if (error)
+ 		return error;
+@@ -1717,6 +1742,12 @@ SYSCALL_DEFINE2(flock, unsigned int, fd, unsigned int, cmd)
+ 	if (!f.file)
+ 		goto out;
+ 
++	/* LOCK_DELETE is defined to be translated from O_DENYDELETE only */
++	if (cmd & LOCK_DELETE) {
++		error = -EINVAL;
++		goto out;
++	}
++
+ 	can_sleep = !(cmd & LOCK_NB);
+ 	cmd &= ~LOCK_NB;
+ 	unlock = (cmd == LOCK_UN);
+@@ -2261,10 +2292,16 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
+ 		seq_printf(f, "UNKNOWN UNKNOWN  ");
+ 	}
+ 	if (fl->fl_type & LOCK_MAND) {
+-		seq_printf(f, "%s ",
+-			       (fl->fl_type & LOCK_READ)
+-			       ? (fl->fl_type & LOCK_WRITE) ? "RW   " : "READ "
+-			       : (fl->fl_type & LOCK_WRITE) ? "WRITE" : "NONE ");
++		if (fl->fl_type & LOCK_DELETE)
++			seq_printf(f, "%s ",
++				(fl->fl_type & LOCK_READ) ?
++				(fl->fl_type & LOCK_WRITE) ? "RWDEL" : "RDDEL" :
++				(fl->fl_type & LOCK_WRITE) ? "WRDEL" : "DEL  ");
++		else
++			seq_printf(f, "%s ",
++				(fl->fl_type & LOCK_READ) ?
++				(fl->fl_type & LOCK_WRITE) ? "RW   " : "READ " :
++				(fl->fl_type & LOCK_WRITE) ? "WRITE" : "NONE ");
+ 	} else {
+ 		seq_printf(f, "%s ",
+ 			       (lease_breaking(fl))
+diff --git a/fs/namei.c b/fs/namei.c
+index 7f6edb9..8aaffd4 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2220,6 +2220,7 @@ static inline int check_sticky(struct inode *dir, struct inode *inode)
+  *  9. We can't remove a root or mountpoint.
+  * 10. We don't allow removal of NFS sillyrenamed files; it's handled by
+  *     nfs_async_unlink().
++ * 11. We can't do it if victim is locked by O_DENYDELETE sharelock.
+  */
+ static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
+ {
+@@ -2250,6 +2251,8 @@ static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
+ 		return -ENOENT;
+ 	if (victim->d_flags & DCACHE_NFSFS_RENAMED)
+ 		return -EBUSY;
++	if (sharelock_may_delete(victim))
++		return -ESHAREDENIED;
+ 	return 0;
+ }
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 774be38..3247fb4 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1006,6 +1006,7 @@ extern int lock_may_read(struct inode *, loff_t start, unsigned long count);
+ extern int lock_may_write(struct inode *, loff_t start, unsigned long count);
+ extern void locks_delete_block(struct file_lock *waiter);
+ extern int sharelock_lock_file(struct file *);
++extern int sharelock_may_delete(struct dentry *);
+ extern void lock_flocks(void);
+ extern void unlock_flocks(void);
+ #else /* !CONFIG_FILE_LOCKING */
+@@ -1159,6 +1160,11 @@ static inline int sharelock_lock_file(struct file *filp)
+ 	return 0;
+ }
+ 
++static inline int sharelock_may_delete(struct dentry *dentry)
++{
++	return 0;
++}
++
+ static inline void lock_flocks(void)
+ {
+ }
+diff --git a/include/uapi/asm-generic/fcntl.h b/include/uapi/asm-generic/fcntl.h
+index 5ac0d49..a3e6349 100644
+--- a/include/uapi/asm-generic/fcntl.h
++++ b/include/uapi/asm-generic/fcntl.h
+@@ -167,6 +167,7 @@ struct f_owner_ex {
+ 				   blocking */
+ #define LOCK_UN		8	/* remove lock */
+ 
++#define LOCK_DELETE	16	/* which allows to delete a file */
+ #define LOCK_MAND	32	/* This is a mandatory flock ... */
+ #define LOCK_READ	64	/* which allows concurrent read operations */
+ #define LOCK_WRITE	128	/* which allows concurrent write operations */
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.8.1.5
+
