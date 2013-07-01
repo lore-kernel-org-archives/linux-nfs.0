@@ -1,59 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:37090 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751743Ab3GHOsA convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jul 2013 10:48:00 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
-Subject: Re: [PATCH] Disable NFS version 2
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130705195225.GC8288@fieldses.org>
-Date: Mon, 8 Jul 2013 10:47:44 -0400
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <8A32AE41-D3EC-473A-AEB3-664EDA0A4CAC@oracle.com>
-References: <1372856675-5520-1-git-send-email-steved@redhat.com> <9A7F190A-2938-4A14-9125-330189DA8597@oracle.com> <51D6AE7D.9070805@RedHat.com> <4408EEAB-97F1-404A-BC58-434729D12364@oracle.com> <20130705195225.GC8288@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:7577 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752877Ab3GAQpu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Jul 2013 12:45:50 -0400
+Message-ID: <51D1A8C0.509@RedHat.com>
+Date: Mon, 01 Jul 2013 12:05:20 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Neil Brown <neilb@suse.de>
+CC: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 1/3] krb5_utils: remove redundant array size.
+References: <20130603005219.20080.1927.stgit@notabene.brown> <20130603010021.20080.24416.stgit@notabene.brown>
+In-Reply-To: <20130603010021.20080.24416.stgit@notabene.brown>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Jul 5, 2013, at 3:52 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-> On Fri, Jul 05, 2013 at 10:59:59AM -0400, Chuck Lever wrote:
->> 
->> It feels like we should have a plan for both the server and client.
+On 02/06/13 21:00, Neil Brown wrote:
+> When initialising an array there is no need to specify the size as the
+> size is taken from the initialiser.  Having the size there means that
+> any change to the initialiser needs to change the size to and so is
+> error-prone.
 > 
-> That discussion brought out of the woodwork a couple people still
-> claiming to depend on v2.  They seemed to only care about the server
-> side (because they had some old (non-linux) clients that were still
-> using v2 for some reason).
+> So just remove the size.
+Committed....
+
+steved.
 > 
-> There could be other cases of people depending on an application tied to
-> an obsolete client OS that still expect to be able to upgrade their
-> server.
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> ---
+>  utils/gssd/krb5_util.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
-> I may be wrong, but I'd expect the same situation (needing an obsolete
-> server to be able to access some data) to be rarer.  (One possible
-> exception I noticed is vesta: http://www.vestasys.org/--source-code
-> management system with built-in v2-only server.  Wonder if it's still
-> alive??)
+> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> index 6275dd8..9ef80f0 100644
+> --- a/utils/gssd/krb5_util.c
+> +++ b/utils/gssd/krb5_util.c
+> @@ -1236,7 +1236,7 @@ gssd_refresh_krb5_machine_credential(char *hostname,
+>  	krb5_keytab kt = NULL;;
+>  	int retval = 0;
+>  	char *k5err = NULL;
+> -	const char *svcnames[5] = { "$", "root", "nfs", "host", NULL };
+> +	const char *svcnames[] = { "$", "root", "nfs", "host", NULL };
+>  
+>  	/*
+>  	 * If a specific service name was specified, use it.
 > 
-> Anyway I'm inclined to treat dropping server protocol support by the
-> same standard as we'd treat dropping kernel ABI: as in, it's only OK if
-> we don't expect anyone to notice.
-
-I'm wondering why this requirement does not also apply to the client.  I've heard the opinion expressed recently that we really should not deprecate a feature that still has users.
-
-It might be reasonable to bring this question up on lkml, specifically in the context of NFS version 2.
-
-For the sake of argument, what would induce us to keep NFSv2 in the client?  Finding someone to maintain it?
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+> 
