@@ -1,220 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39220 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933197Ab3GCUMq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Jul 2013 16:12:46 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        David Howells <dhowells@redhat.com>,
-        Tyler Hicks <tyhicks@canonical.com>,
-        Dustin Kirkland <dustin.kirkland@gazzang.com>
-Subject: [PATCH 08/12] locks: break delegations on unlink
-Date: Wed,  3 Jul 2013 16:12:32 -0400
-Message-Id: <1372882356-14168-9-git-send-email-bfields@redhat.com>
-In-Reply-To: <1372882356-14168-1-git-send-email-bfields@redhat.com>
-References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+Received: from mail-lb0-f171.google.com ([209.85.217.171]:55330 "EHLO
+	mail-lb0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754625Ab3GAQnI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Jul 2013 12:43:08 -0400
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v7 6/7] NFSD: Pass share reservations flags to VFS
+Date: Mon,  1 Jul 2013 20:49:58 +0400
+Message-Id: <1372697399-21361-7-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1372697399-21361-1-git-send-email-piastry@etersoft.ru>
+References: <1372697399-21361-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+that maps them into O_DENY* flags and make them visible for
+applications on mounts with sharelock option.
 
-We need to break delegations on any operation that changes the set of
-links pointing to an inode.  Start with unlink.
-
-Such operations also hold the i_mutex on a parent directory.  Breaking a
-delegation may require waiting for a timeout (by default 90 seconds) in
-the case of a unresponsive NFS client.  To avoid blocking all directory
-operations, we therefore drop locks before waiting for the delegation.
-The logic then looks like:
-
-	acquire locks
-	...
-	test for delegation; if found:
-		take reference on inode
-		release locks
-		wait for delegation break
-		drop reference on inode
-		retry
-
-It is possible this could never terminate.  (Even if we take precautions
-to prevent another delegation being acquired on the same inode, we could
-get a different inode on each retry.)  But this seems very unlikely.
-
-The initial test for a delegation happens after the lock on the target
-inode is acquired, but the directory inode may have been acquired
-further up the call stack.  We therefore add a "struct inode **"
-argument to any intervening functions, which we use to pass the inode
-back up to the caller in the case it needs a delegation synchronously
-broken.
-
-Cc: David Howells <dhowells@redhat.com>
-Cc: Tyler Hicks <tyhicks@canonical.com>
-Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
 ---
- drivers/base/devtmpfs.c |    2 +-
- fs/cachefiles/namei.c   |    2 +-
- fs/ecryptfs/inode.c     |    2 +-
- fs/namei.c              |   24 +++++++++++++++++++++---
- fs/nfsd/vfs.c           |    2 +-
- include/linux/fs.h      |    2 +-
- ipc/mqueue.c            |    2 +-
- 7 files changed, 27 insertions(+), 9 deletions(-)
+ fs/locks.c          |  1 +
+ fs/nfsd/nfs4state.c | 46 +++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfsd/nfsproc.c   |  1 +
+ 3 files changed, 47 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
-index 7413d06..1b8490e 100644
---- a/drivers/base/devtmpfs.c
-+++ b/drivers/base/devtmpfs.c
-@@ -324,7 +324,7 @@ static int handle_remove(const char *nodename, struct device *dev)
- 			mutex_lock(&dentry->d_inode->i_mutex);
- 			notify_change(dentry, &newattrs);
- 			mutex_unlock(&dentry->d_inode->i_mutex);
--			err = vfs_unlink(parent.dentry->d_inode, dentry);
-+			err = vfs_unlink(parent.dentry->d_inode, dentry, NULL);
- 			if (!err || err == -ENOENT)
- 				deleted = 1;
- 		}
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index 8c01c5fc..d61d884 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -294,7 +294,7 @@ static int cachefiles_bury_object(struct cachefiles_cache *cache,
- 		if (ret < 0) {
- 			cachefiles_io_error(cache, "Unlink security error");
- 		} else {
--			ret = vfs_unlink(dir->d_inode, rep);
-+			ret = vfs_unlink(dir->d_inode, rep, NULL);
+diff --git a/fs/locks.c b/fs/locks.c
+index 09c1d0e..60f3ce8 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -899,6 +899,7 @@ sharelock_lock_file(struct file *filp)
+ 	locks_free_lock(lock);
+ 	return error;
+ }
++EXPORT_SYMBOL(sharelock_lock_file);
  
- 			if (preemptive)
- 				cachefiles_mark_object_buried(cache, rep);
-diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-index 5eab400..af42d88 100644
---- a/fs/ecryptfs/inode.c
-+++ b/fs/ecryptfs/inode.c
-@@ -153,7 +153,7 @@ static int ecryptfs_do_unlink(struct inode *dir, struct dentry *dentry,
- 
- 	dget(lower_dentry);
- 	lower_dir_dentry = lock_parent(lower_dentry);
--	rc = vfs_unlink(lower_dir_inode, lower_dentry);
-+	rc = vfs_unlink(lower_dir_inode, lower_dentry, NULL);
- 	if (rc) {
- 		printk(KERN_ERR "Error in vfs_unlink; rc = [%d]\n", rc);
- 		goto out_unlock;
-diff --git a/fs/namei.c b/fs/namei.c
-index 7e76fe1..cba3db1 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3384,7 +3384,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
- 	return do_rmdir(AT_FDCWD, pathname);
+ static int __posix_lock_file(struct inode *inode, struct file_lock *request, struct file_lock *conflock)
+ {
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index f9a5e62..b19cb3a 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -457,6 +457,19 @@ test_deny(u32 access, struct nfs4_ol_stateid *stp)
+ 	return test_bit(access, &stp->st_deny_bmap);
  }
  
--int vfs_unlink(struct inode *dir, struct dentry *dentry)
-+int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
- {
- 	struct inode *target = dentry->d_inode;
- 	int error = may_delete(dir, dentry, 0);
-@@ -3401,11 +3401,20 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
- 	else {
- 		error = security_inode_unlink(dir, dentry);
- 		if (!error) {
-+			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
-+			if (error) {
-+				if (error == -EWOULDBLOCK && delegated_inode) {
-+					*delegated_inode = target;
-+					ihold(target);
-+				}
-+				goto out;
-+			}
- 			error = dir->i_op->unlink(dir, dentry);
- 			if (!error)
- 				dont_mount(dentry);
- 		}
- 	}
-+out:
- 	mutex_unlock(&target->i_mutex);
- 
- 	/* We don't d_delete() NFS sillyrenamed files--they still exist. */
-@@ -3430,6 +3439,7 @@ static long do_unlinkat(int dfd, const char __user *pathname)
- 	struct dentry *dentry;
- 	struct nameidata nd;
- 	struct inode *inode = NULL;
-+	struct inode *delegated_inode = NULL;
- 	unsigned int lookup_flags = 0;
- retry:
- 	name = user_path_parent(dfd, pathname, &nd, lookup_flags);
-@@ -3444,7 +3454,7 @@ retry:
- 	error = mnt_want_write(nd.path.mnt);
- 	if (error)
- 		goto exit1;
--
-+retry_deleg:
- 	mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex, I_MUTEX_PARENT);
- 	dentry = lookup_hash(&nd);
- 	error = PTR_ERR(dentry);
-@@ -3459,13 +3469,21 @@ retry:
- 		error = security_path_unlink(&nd.path, dentry);
- 		if (error)
- 			goto exit2;
--		error = vfs_unlink(nd.path.dentry->d_inode, dentry);
-+		error = vfs_unlink(nd.path.dentry->d_inode, dentry, &delegated_inode);
- exit2:
- 		dput(dentry);
- 	}
- 	mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
- 	if (inode)
- 		iput(inode);	/* truncate the inode here */
-+	inode = NULL;
-+	if (delegated_inode) {
-+		error = break_deleg(delegated_inode, O_WRONLY);
-+		iput(delegated_inode);
-+		delegated_inode = NULL;
-+		if (!error)
-+			goto retry_deleg;
++static int nfs4_deny_to_odeny(u32 access)
++{
++	switch (access & NFS4_SHARE_DENY_BOTH) {
++	case NFS4_SHARE_DENY_READ:
++		return O_DENYREAD;
++	case NFS4_SHARE_DENY_WRITE:
++		return O_DENYWRITE;
++	case NFS4_SHARE_DENY_BOTH:
++		return O_DENYREAD | O_DENYWRITE;
 +	}
- 	mnt_drop_write(nd.path.mnt);
- exit1:
- 	path_put(&nd.path);
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 84ce601..6ccaca2 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1882,7 +1882,7 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 	if (host_err)
- 		goto out_put;
- 	if (type != S_IFDIR)
--		host_err = vfs_unlink(dirp, rdentry);
-+		host_err = vfs_unlink(dirp, rdentry, NULL);
- 	else
- 		host_err = vfs_rmdir(dirp, rdentry);
- 	if (!host_err)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index c6cc686..f951588 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1463,7 +1463,7 @@ extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
- extern int vfs_symlink(struct inode *, struct dentry *, const char *);
- extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
- extern int vfs_rmdir(struct inode *, struct dentry *);
--extern int vfs_unlink(struct inode *, struct dentry *);
-+extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
- extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *);
++	return 0;
++}
++
+ static int nfs4_access_to_omode(u32 access)
+ {
+ 	switch (access & NFS4_SHARE_ACCESS_BOTH) {
+@@ -2780,6 +2793,21 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
+ }
  
- /*
-diff --git a/ipc/mqueue.c b/ipc/mqueue.c
-index e4e47f6..384eb35 100644
---- a/ipc/mqueue.c
-+++ b/ipc/mqueue.c
-@@ -884,7 +884,7 @@ SYSCALL_DEFINE1(mq_unlink, const char __user *, u_name)
- 		err = -ENOENT;
- 	} else {
- 		ihold(inode);
--		err = vfs_unlink(dentry->d_parent->d_inode, dentry);
-+		err = vfs_unlink(dentry->d_parent->d_inode, dentry, NULL);
+ static __be32
++nfs4_vfs_set_deny(struct nfs4_file *fp, unsigned long share_access,
++		  unsigned long deny_access)
++{
++	int oflag, rc;
++	__be32 status = nfs_ok;
++
++	oflag = nfs4_access_to_omode(share_access);
++	fp->fi_fds[oflag]->f_flags |= nfs4_deny_to_odeny(deny_access);
++	rc = sharelock_lock_file(fp->fi_fds[oflag]);
++	if (rc)
++		status = nfserrno(rc);
++	return status;
++}
++
++static __be32
+ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp, struct nfsd4_open *open)
+ {
+ 	u32 op_share_access = open->op_share_access;
+@@ -2800,6 +2828,14 @@ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *c
+ 		}
+ 		return status;
  	}
- 	dput(dentry);
++	status = nfs4_vfs_set_deny(fp, op_share_access, open->op_share_deny);
++	if (status) {
++		if (new_access) {
++			int oflag = nfs4_access_to_omode(op_share_access);
++			nfs4_file_put_access(fp, oflag);
++		}
++		return status;
++	}
+ 	/* remember the open */
+ 	set_access(op_share_access, stp);
+ 	set_deny(open->op_share_deny, stp);
+@@ -3033,7 +3069,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 
+ 	/*
+ 	 * OPEN the file, or upgrade an existing OPEN.
+-	 * If truncate fails, the OPEN fails.
++	 * If truncate or set_deny fails, the OPEN fails.
+ 	 */
+ 	if (stp) {
+ 		/* Stateid was found, this is an OPEN upgrade */
+@@ -3047,6 +3083,10 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 		status = nfsd4_truncate(rqstp, current_fh, open);
+ 		if (status)
+ 			goto out;
++		status = nfs4_vfs_set_deny(fp, open->op_share_access,
++					   open->op_share_deny);
++		if (status)
++			goto out;
+ 		stp = open->op_stp;
+ 		open->op_stp = NULL;
+ 		init_open_stateid(stp, fp, open);
+@@ -3745,6 +3785,10 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
+ 	}
+ 	nfs4_stateid_downgrade(stp, od->od_share_access);
+ 
++	status = nfs4_vfs_set_deny(stp->st_file, od->od_share_access,
++				   od->od_share_deny);
++	if (status)
++		goto out;
+ 	reset_union_bmap_deny(od->od_share_deny, stp);
+ 
+ 	update_stateid(&stp->st_stid.sc_stateid);
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index 54c6b3d..ff95544 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -743,6 +743,7 @@ nfserrno (int errno)
+ 		{ nfserr_notsupp, -EOPNOTSUPP },
+ 		{ nfserr_toosmall, -ETOOSMALL },
+ 		{ nfserr_serverfault, -ESERVERFAULT },
++		{ nfserr_share_denied, -ESHAREDENIED },
+ 	};
+ 	int	i;
  
 -- 
-1.7.9.5
+1.8.1.5
 
