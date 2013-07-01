@@ -1,62 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33183 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:15168 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932595Ab3GWQ2O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Jul 2013 12:28:14 -0400
-Date: Tue, 23 Jul 2013 12:28:13 -0400
-From: "J.Bruce Fields" <bfields@citi.umich.edu>
-To: Harshula Jayasuriya <harshula@redhat.com>
-Cc: linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.de>
-Subject: Re: [PATCH] nfsd: nfs4_file_get_access: need to be more careful with
- O_RDWR
-Message-ID: <20130723162813.GC12569@fieldses.org>
-References: <1374552314.5454.89.camel@serendib>
+	id S1752123Ab3GAQEe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Jul 2013 12:04:34 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r61G4XQF026662
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 1 Jul 2013 12:04:33 -0400
+Received: from smallhat.bos.devel.redhat.com (vpn-58-250.rdu2.redhat.com [10.10.58.250])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r61G4Wiw022968
+	for <linux-nfs@vger.kernel.org>; Mon, 1 Jul 2013 12:04:32 -0400
+Message-ID: <51D1A890.1060607@RedHat.com>
+Date: Mon, 01 Jul 2013 12:04:32 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1374552314.5454.89.camel@serendib>
+To: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH]: gssd: Fix preferred_realm option handling
+References: <20130620195603.GE16125@principal.rfc2324.org>
+In-Reply-To: <20130620195603.GE16125@principal.rfc2324.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying for 3.12.--b.
 
-On Tue, Jul 23, 2013 at 02:05:14PM +1000, Harshula Jayasuriya wrote:
-> If fi_fds = {non-NULL, NULL, non-NULL} and oflag = O_WRONLY
-> the WARN_ON_ONCE(!(fp->fi_fds[oflag] || fp->fi_fds[O_RDWR]))
-> doesn't trigger when it should.
+
+On 20/06/13 15:56, Maximilian Wilhelm wrote:
 > 
-> Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
-> ---
->  fs/nfsd/nfs4state.c | 13 ++++---------
->  1 file changed, 4 insertions(+), 9 deletions(-)
+> Hi,
 > 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 280acef..1cb6211 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -282,19 +282,14 @@ static unsigned int file_hashval(struct inode *ino)
->  
->  static struct hlist_head file_hashtbl[FILE_HASH_SIZE];
->  
-> -static void __nfs4_file_get_access(struct nfs4_file *fp, int oflag)
-> -{
-> -	WARN_ON_ONCE(!(fp->fi_fds[oflag] || fp->fi_fds[O_RDWR]));
-> -	atomic_inc(&fp->fi_access[oflag]);
-> -}
-> -
->  static void nfs4_file_get_access(struct nfs4_file *fp, int oflag)
->  {
-> +	WARN_ON_ONCE(!fp->fi_fds[oflag]);
->  	if (oflag == O_RDWR) {
-> -		__nfs4_file_get_access(fp, O_RDONLY);
-> -		__nfs4_file_get_access(fp, O_WRONLY);
-> +		atomic_inc(&fp->fi_access[O_RDONLY]);
-> +		atomic_inc(&fp->fi_access[O_WRONLY]);
->  	} else
-> -		__nfs4_file_get_access(fp, oflag);
-> +		atomic_inc(&fp->fi_access[oflag]);
->  }
->  
->  static void nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
-> -- 
-> 1.8.1.4
+> the gssd currently ignores any preferred realm given via the -R
+> command line option.
+> 
+> The attached patch fixes that behaviour and makes sure the
+> preferrred_realm is used first when searching for a valid principal
+> for mount authentication.
+> 
+> I would be happy if you would apply this. This would close bug #235 in
+> bugzilla.
+Committed! 
+
+steved.
+> 
+> Thanks
+> Max
 > 
