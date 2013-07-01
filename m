@@ -1,165 +1,422 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:49175 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755393Ab3GAWY1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Jul 2013 18:24:27 -0400
-Date: Tue, 2 Jul 2013 08:24:13 +1000
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [patch/rfc] allow exported (and *not* exported) filesystems to
- be unmounted.
-Message-ID: <20130702082413.34dac92e@notabene.brown>
-In-Reply-To: <20130701191238.GD19945@fieldses.org>
-References: <20130605130541.5968d5c2@notabene.brown>
-	<20130605034115.GD13110@ZenIV.linux.org.uk>
-	<20130605161934.59ab6804@notabene.brown>
-	<20130605133658.GE24193@fieldses.org>
-	<20130606100512.1c701a64@notabene.brown>
-	<20130701191238.GD19945@fieldses.org>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/TFe/.00C2MN8U+xNoJUm42s"; protocol="application/pgp-signature"
+Received: from mail-la0-f54.google.com ([209.85.215.54]:52888 "EHLO
+	mail-la0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752886Ab3GAQnA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Jul 2013 12:43:00 -0400
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v7 1/7] VFS: Introduce new O_DENY* open flags
+Date: Mon,  1 Jul 2013 20:49:53 +0400
+Message-Id: <1372697399-21361-2-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1372697399-21361-1-git-send-email-piastry@etersoft.ru>
+References: <1372697399-21361-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/TFe/.00C2MN8U+xNoJUm42s
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+This patch adds 3 flags:
+1) O_DENYREAD that doesn't permit read access,
+2) O_DENYWRITE that doesn't permit write access,
+3) O_DENYDELETE that doesn't permit delete or rename.
 
-On Mon, 1 Jul 2013 15:12:38 -0400 "J. Bruce Fields" <bfields@fieldses.org>
-wrote:
+Network filesystems CIFS, SMB2.0, SMB3.0 and NFSv4 have such flags -
+this change can benefit cifs and nfs modules as well as Samba and
+NFS file servers that export the same directory for Windows clients,
+or Wine applications that access the same files simultaneously.
 
-> On Thu, Jun 06, 2013 at 10:05:12AM +1000, NeilBrown wrote:
-> > On Wed, 5 Jun 2013 09:36:58 -0400 "J. Bruce Fields" <bfields@fieldses.o=
-rg>
-> > wrote:
-> >=20
-> > > On Wed, Jun 05, 2013 at 04:19:34PM +1000, NeilBrown wrote:
-> > > > On Wed, 5 Jun 2013 04:41:15 +0100 Al Viro <viro@ZenIV.linux.org.uk>=
- wrote:
-> > > >=20
-> > > > > On Wed, Jun 05, 2013 at 01:05:41PM +1000, NeilBrown wrote:
-> > > > > >=20
-> > > > > > Hi Bruce,
-> > > > > >  this is a little issue that seems to keep coming up so I thoug=
-ht it might be
-> > > > > >  time to fix it.
-> > > > > >=20
-> > > > > >  As you know, a filesystem that is exported cannot be unmounted=
- as the export
-> > > > > >  cache holds a reference to it.  Though if it hasn't been acces=
-sed for a
-> > > > > >  while then it can.
-> > > > > >=20
-> > > > > >  As I hadn't realised before sometimes *non* exported filesyste=
-ms can be
-> > > > > >  pinned to.  A negative entry in the cache can pin a filesystem=
- just as
-> > > > > >  easily as a positive entry.
-> > > > > >  An amusing, if somewhat contrived, example is that if you expo=
-rt '/' with
-> > > > > >  crossmnt and:
-> > > > > >=20
-> > > > > >     mount localhost:/ /mnt
-> > > > > >     ls -l /
-> > > > > >     umount /mnt
-> > > > > >=20
-> > > > > >  the umount might fail.  This is because the "ls -l" tried to e=
-xport every
-> > > > > >  filesystem found mounted in '/'.  The export of "/mnt" failed =
-of course
-> > > > > >  because you cannot re-export an NFS filesystem.  But it is sti=
-ll in the
-> > > > > >  cache.
-> > > > > >  An 'exportfs -f' fixes this, but shouldn't be necessary.
-> > >=20
-> > > Yeah, ugh.  As a less contrived example, can the default v4 root expo=
-rt
-> > > lead to arbitrary filesystems being pinned just because a client tried
-> > > to mount the wrong path?
-> >=20
-> > I think it can only pin filesystems that are exported, either explicitl=
-y or
-> > via a parent being exported with 'crossmnt'.
->=20
-> But see utils/mountd/v4root.c, and:
->=20
-> 	[root@server ~]# exportfs -v
-> 	/export <world>(rw,...)
-> 	[root@server ~]# mount /mnt
->=20
-> 		[root@pip4 ~]# mount pip4:/ /mnt/
-> 		[root@pip4 ~]# ls -l /mnt/
-> 		total 4
-> 		drwxrwxrwt 3 root root 4096 Jun  7 10:34 export
-> 		[root@pip4 ~]#=20
->=20
-> 	[root@server ~]# umount /mnt/
-> 	umount: /mnt: target is busy.
-> 	...
-> 	[root@server ~]# grep /mnt /proc/net/rpc/nfsd.export/content=20
-> 	# /mnt	*()
+These flags are only take affect for opens on mounts with new sharelock
+option. They are translated to flock's flags:
 
-You make a good point.  I didn't think that would happen, and I think I cou=
-ld
-argue that it is a bug.  I have no idea how easy it would be to "fix" witho=
-ut
-pouring over the code for a while though.  Or whether it is worth "fixing".
+!O_DENYREAD  -> LOCK_READ  | LOCK_MAND
+!O_DENYWRITE -> LOCK_WRITE | LOCK_MAND
 
->=20
-> > > Could the export cache be indexed on a path string instead of a struct
-> > > path?
-> >=20
-> > Yes.  It would mean lots of extra pathname lookups and possibly lots of
-> > "d_path()" calls.
->=20
-> Right.  Ugh.  Still, struct path seems wrong as it's not something gssd
-> knows about, and there's not really a 1-1 mapping between the two (see
-> e.g. the recent complaint about the case where the struct path
-> represents a lazy-unmounted export
-> http://mid.gmane.org/<20130625191008.GA20277@us.ibm.com> ).
+and set through flock_lock_file on a file. If the file can't be locked
+due conflicts with another open with O_DENY* flags, a new -ESHAREDENIED
+error code is returned.
 
-I noticed that but haven't really followed it (though I just checked and
-there isn't much to follow...)
+Create codepath is slightly changed to prevent data races on newly
+created files: when open with O_CREAT can return -ESHAREDENIED error
+for successfully created files due to a sharelock set by another task.
 
-What do we *want* to happen in this case?  I would argue that when the
-filesystem is detached the export should immediately become invalid.
+Temporary disable O_DENYDELETE support - will enable it in further
+patches.
 
-We could possibly put a check in exp_find_key() to see if ek->ek_path
-was still attached (not sure how to do that) and if it is: invalidate the ek
-before calling cache_check().  If the "is path detach" test is cheap, we
-should probably do this.
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+---
+ arch/alpha/include/uapi/asm/errno.h  |  2 +
+ arch/mips/include/uapi/asm/errno.h   |  2 +
+ arch/parisc/include/uapi/asm/errno.h |  2 +
+ arch/sparc/include/uapi/asm/errno.h  |  2 +
+ fs/fcntl.c                           |  5 +-
+ fs/locks.c                           | 97 +++++++++++++++++++++++++++++++++---
+ fs/namei.c                           | 53 +++++++++++++++++++-
+ fs/proc_namespace.c                  |  1 +
+ include/linux/fs.h                   |  7 +++
+ include/uapi/asm-generic/errno.h     |  2 +
+ include/uapi/asm-generic/fcntl.h     | 11 ++++
+ include/uapi/linux/fs.h              |  1 +
+ 12 files changed, 175 insertions(+), 10 deletions(-)
 
-Or - we could flush relevant entries from the cache whenever there is a
-change in the mount table.  That is certainly the preferred option if the "=
-is
-path detached" test is at all expensive.  But it seems it isn't completely
-clear how that flushing should be triggered...
+diff --git a/arch/alpha/include/uapi/asm/errno.h b/arch/alpha/include/uapi/asm/errno.h
+index e5f29ca..f51b81b 100644
+--- a/arch/alpha/include/uapi/asm/errno.h
++++ b/arch/alpha/include/uapi/asm/errno.h
+@@ -124,4 +124,6 @@
+ 
+ #define EHWPOISON	139	/* Memory page has hardware error */
+ 
++#define ESHAREDENIED	140	/* File is locked with a sharelock */
++
+ #endif
+diff --git a/arch/mips/include/uapi/asm/errno.h b/arch/mips/include/uapi/asm/errno.h
+index 31575e2f..dda1c73 100644
+--- a/arch/mips/include/uapi/asm/errno.h
++++ b/arch/mips/include/uapi/asm/errno.h
+@@ -123,6 +123,8 @@
+ 
+ #define EHWPOISON	168	/* Memory page has hardware error */
+ 
++#define ESHAREDENIED	169	/* File is locked with a sharelock */
++
+ #define EDQUOT		1133	/* Quota exceeded */
+ 
+ 
+diff --git a/arch/parisc/include/uapi/asm/errno.h b/arch/parisc/include/uapi/asm/errno.h
+index 135ad60..bda01d5 100644
+--- a/arch/parisc/include/uapi/asm/errno.h
++++ b/arch/parisc/include/uapi/asm/errno.h
+@@ -124,4 +124,6 @@
+ 
+ #define EHWPOISON	257	/* Memory page has hardware error */
+ 
++#define ESHAREDENIED	258	/* File is locked with a sharelock */
++
+ #endif
+diff --git a/arch/sparc/include/uapi/asm/errno.h b/arch/sparc/include/uapi/asm/errno.h
+index c351aba..836eded 100644
+--- a/arch/sparc/include/uapi/asm/errno.h
++++ b/arch/sparc/include/uapi/asm/errno.h
+@@ -114,4 +114,6 @@
+ 
+ #define EHWPOISON	135	/* Memory page has hardware error */
+ 
++#define ESHAREDENIED	136	/* File is locked with a sharelock */
++
+ #endif
+diff --git a/fs/fcntl.c b/fs/fcntl.c
+index 6599222..a1eee47 100644
+--- a/fs/fcntl.c
++++ b/fs/fcntl.c
+@@ -730,14 +730,15 @@ static int __init fcntl_init(void)
+ 	 * Exceptions: O_NONBLOCK is a two bit define on parisc; O_NDELAY
+ 	 * is defined as O_NONBLOCK on some platforms and not on others.
+ 	 */
+-	BUILD_BUG_ON(19 - 1 /* for O_RDONLY being 0 */ != HWEIGHT32(
++	BUILD_BUG_ON(22 - 1 /* for O_RDONLY being 0 */ != HWEIGHT32(
+ 		O_RDONLY	| O_WRONLY	| O_RDWR	|
+ 		O_CREAT		| O_EXCL	| O_NOCTTY	|
+ 		O_TRUNC		| O_APPEND	| /* O_NONBLOCK	| */
+ 		__O_SYNC	| O_DSYNC	| FASYNC	|
+ 		O_DIRECT	| O_LARGEFILE	| O_DIRECTORY	|
+ 		O_NOFOLLOW	| O_NOATIME	| O_CLOEXEC	|
+-		__FMODE_EXEC	| O_PATH
++		__FMODE_EXEC	| O_PATH	| O_DENYREAD	|
++		O_DENYWRITE	| O_DENYDELETE
+ 		));
+ 
+ 	fasync_cache = kmem_cache_create("fasync_cache",
+diff --git a/fs/locks.c b/fs/locks.c
+index cb424a4..dbc5557 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -605,20 +605,73 @@ static int posix_locks_conflict(struct file_lock *caller_fl, struct file_lock *s
+ 	return (locks_conflict(caller_fl, sys_fl));
+ }
+ 
+-/* Determine if lock sys_fl blocks lock caller_fl. FLOCK specific
+- * checking before calling the locks_conflict().
++static unsigned int
++deny_flags_to_cmd(unsigned int flags)
++{
++	unsigned int cmd = LOCK_MAND;
++
++	if (!(flags & O_DENYREAD))
++		cmd |= LOCK_READ;
++	if (!(flags & O_DENYWRITE))
++		cmd |= LOCK_WRITE;
++
++	return cmd;
++}
++
++/*
++ * locks_mand_conflict - Determine if there's a share reservation conflict
++ * @caller_fl: lock we're attempting to acquire
++ * @sys_fl: lock already present on system that we're checking against
++ *
++ * Check to see if there's a share_reservation conflict. LOCK_READ/LOCK_WRITE
++ * tell us whether the reservation allows other readers and writers.
++ */
++static int
++locks_mand_conflict(struct file_lock *caller_fl, struct file_lock *sys_fl)
++{
++	unsigned char caller_type = caller_fl->fl_type;
++	unsigned char sys_type = sys_fl->fl_type;
++	fmode_t caller_fmode = caller_fl->fl_file->f_mode;
++	fmode_t sys_fmode = sys_fl->fl_file->f_mode;
++
++	/* they can only conflict if FS is mounted with MS_SHARELOCK */
++	if (!IS_SHARELOCK(caller_fl->fl_file->f_path.dentry->d_inode))
++		return 0;
++
++	/* they can only conflict if they're both LOCK_MAND */
++	if (!(caller_type & LOCK_MAND) || !(sys_type & LOCK_MAND))
++		return 0;
++
++	if (!(caller_type & LOCK_READ) && (sys_fmode & FMODE_READ))
++		return 1;
++	if (!(caller_type & LOCK_WRITE) && (sys_fmode & FMODE_WRITE))
++		return 1;
++	if (!(sys_type & LOCK_READ) && (caller_fmode & FMODE_READ))
++		return 1;
++	if (!(sys_type & LOCK_WRITE) && (caller_fmode & FMODE_WRITE))
++		return 1;
++
++	return 0;
++}
++
++/*
++ * Determine if lock sys_fl blocks lock caller_fl. FLOCK specific checking
++ * before calling the locks_conflict().
+  */
+ static int flock_locks_conflict(struct file_lock *caller_fl, struct file_lock *sys_fl)
+ {
+-	/* FLOCK locks referring to the same filp do not conflict with
++	if (!IS_FLOCK(sys_fl))
++		return 0;
++	if ((caller_fl->fl_type & LOCK_MAND) || (sys_fl->fl_type & LOCK_MAND))
++		return locks_mand_conflict(caller_fl, sys_fl);
++	/*
++	 * FLOCK locks referring to the same filp do not conflict with
+ 	 * each other.
+ 	 */
+-	if (!IS_FLOCK(sys_fl) || (caller_fl->fl_file == sys_fl->fl_file))
+-		return (0);
+-	if ((caller_fl->fl_type & LOCK_MAND) || (sys_fl->fl_type & LOCK_MAND))
++	if (caller_fl->fl_file == sys_fl->fl_file)
+ 		return 0;
+ 
+-	return (locks_conflict(caller_fl, sys_fl));
++	return locks_conflict(caller_fl, sys_fl);
+ }
+ 
+ void
+@@ -783,6 +836,36 @@ out:
+ 	return error;
+ }
+ 
++/*
++ * Determine if a file is allowed to be opened with specified access and share
++ * modes. Lock the file and return 0 if checks passed, otherwise return
++ * -ESHAREDENIED.
++ */
++int
++sharelock_lock_file(struct file *filp)
++{
++	struct file_lock *lock;
++	int error = 0;
++
++	if (!IS_SHARELOCK(filp->f_path.dentry->d_inode))
++		return error;
++
++	/* Disable O_DENYDELETE support for now */
++	if (filp->f_flags & O_DENYDELETE)
++		return -EINVAL;
++
++	error = flock_make_lock(filp, &lock, deny_flags_to_cmd(filp->f_flags));
++	if (error)
++		return error;
++
++	error = flock_lock_file(filp, lock);
++	if (error == -EAGAIN)
++		error = -ESHAREDENIED;
++
++	locks_free_lock(lock);
++	return error;
++}
++
+ static int __posix_lock_file(struct inode *inode, struct file_lock *request, struct file_lock *conflock)
+ {
+ 	struct file_lock *fl;
+diff --git a/fs/namei.c b/fs/namei.c
+index 85e40d1..7f6edb9 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2548,9 +2548,14 @@ static int atomic_open(struct nameidata *nd, struct dentry *dentry,
+ 	 * here.
+ 	 */
+ 	error = may_open(&file->f_path, acc_mode, open_flag);
+-	if (error)
++	if (error) {
+ 		fput(file);
++		goto out;
++	}
+ 
++	error = sharelock_lock_file(file);
++	if (error)
++		fput(file);
+ out:
+ 	dput(dentry);
+ 	return error;
+@@ -2760,6 +2765,40 @@ retry_lookup:
+ 	}
+ 	mutex_lock(&dir->d_inode->i_mutex);
+ 	error = lookup_open(nd, path, file, op, got_write, opened);
++
++	/*
++	 * For sharelock mounts if a file was created but not opened, we need
++	 * to keep parent i_mutex until we finish the open to prevent races when
++	 * somebody opens newly created by us file and locks it with a sharelock
++	 * before we open it.
++	 */
++	if (IS_SHARELOCK(dir->d_inode) && error > 0 && *opened & FILE_CREATED) {
++		/* Don't check for write permission, don't truncate */
++		open_flag &= ~O_TRUNC;
++		will_truncate = false;
++		acc_mode = MAY_OPEN;
++		path_to_nameidata(path, nd);
++
++		error = may_open(&nd->path, acc_mode, open_flag);
++		if (error) {
++			mutex_unlock(&dir->d_inode->i_mutex);
++			goto out;
++		}
++		file->f_path.mnt = nd->path.mnt;
++		error = finish_open(file, nd->path.dentry, NULL, opened);
++		if (error) {
++			mutex_unlock(&dir->d_inode->i_mutex);
++			if (error == -EOPENSTALE)
++				goto stale_open;
++			goto out;
++		}
++		error = sharelock_lock_file(file);
++		mutex_unlock(&dir->d_inode->i_mutex);
++		if (error)
++			goto exit_fput;
++		goto opened;
++	}
++
+ 	mutex_unlock(&dir->d_inode->i_mutex);
+ 
+ 	if (error <= 0) {
+@@ -2874,6 +2913,18 @@ finish_open_created:
+ 			goto stale_open;
+ 		goto out;
+ 	}
++
++	if (IS_SHARELOCK(dir->d_inode)) {
++		/*
++		 * Lock parent i_mutex to prevent races with sharelocks on
++		 * newly created files.
++		 */
++		mutex_lock(&dir->d_inode->i_mutex);
++		error = sharelock_lock_file(file);
++		mutex_unlock(&dir->d_inode->i_mutex);
++		if (error)
++			goto exit_fput;
++	}
+ opened:
+ 	error = open_check_o_direct(file);
+ 	if (error)
+diff --git a/fs/proc_namespace.c b/fs/proc_namespace.c
+index 2033f74..6edbadc 100644
+--- a/fs/proc_namespace.c
++++ b/fs/proc_namespace.c
+@@ -44,6 +44,7 @@ static int show_sb_opts(struct seq_file *m, struct super_block *sb)
+ 		{ MS_SYNCHRONOUS, ",sync" },
+ 		{ MS_DIRSYNC, ",dirsync" },
+ 		{ MS_MANDLOCK, ",mand" },
++		{ MS_SHARELOCK, ",sharelock" },
+ 		{ 0, NULL }
+ 	};
+ 	const struct proc_fs_info *fs_infop;
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 5c49108..774be38 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1005,6 +1005,7 @@ extern int lease_modify(struct file_lock **, int);
+ extern int lock_may_read(struct inode *, loff_t start, unsigned long count);
+ extern int lock_may_write(struct inode *, loff_t start, unsigned long count);
+ extern void locks_delete_block(struct file_lock *waiter);
++extern int sharelock_lock_file(struct file *);
+ extern void lock_flocks(void);
+ extern void unlock_flocks(void);
+ #else /* !CONFIG_FILE_LOCKING */
+@@ -1153,6 +1154,11 @@ static inline void locks_delete_block(struct file_lock *waiter)
+ {
+ }
+ 
++static inline int sharelock_lock_file(struct file *filp)
++{
++	return 0;
++}
++
+ static inline void lock_flocks(void)
+ {
+ }
+@@ -1668,6 +1674,7 @@ struct super_operations {
+ #define IS_PRIVATE(inode)	((inode)->i_flags & S_PRIVATE)
+ #define IS_IMA(inode)		((inode)->i_flags & S_IMA)
+ #define IS_AUTOMOUNT(inode)	((inode)->i_flags & S_AUTOMOUNT)
++#define IS_SHARELOCK(inode)	__IS_FLG(inode, MS_SHARELOCK)
+ #define IS_NOSEC(inode)		((inode)->i_flags & S_NOSEC)
+ 
+ /*
+diff --git a/include/uapi/asm-generic/errno.h b/include/uapi/asm-generic/errno.h
+index a1331ce..19ab5f4 100644
+--- a/include/uapi/asm-generic/errno.h
++++ b/include/uapi/asm-generic/errno.h
+@@ -110,4 +110,6 @@
+ 
+ #define EHWPOISON	133	/* Memory page has hardware error */
+ 
++#define ESHAREDENIED	134	/* File is locked with a sharelock */
++
+ #endif
+diff --git a/include/uapi/asm-generic/fcntl.h b/include/uapi/asm-generic/fcntl.h
+index a48937d..5ac0d49 100644
+--- a/include/uapi/asm-generic/fcntl.h
++++ b/include/uapi/asm-generic/fcntl.h
+@@ -84,6 +84,17 @@
+ #define O_PATH		010000000
+ #endif
+ 
++#ifndef O_DENYREAD
++#define O_DENYREAD	020000000	/* Do not permit read access */
++#endif
++#ifndef O_DENYWRITE
++#define O_DENYWRITE	040000000	/* Do not permit write access */
++#endif
++/* FMODE_NONOTIFY	0100000000 */
++#ifndef O_DENYDELETE
++#define O_DENYDELETE	0200000000	/* Do not permit delete or rename */
++#endif
++
+ #ifndef O_NDELAY
+ #define O_NDELAY	O_NONBLOCK
+ #endif
+diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+index c7fc1e6..2af7269 100644
+--- a/include/uapi/linux/fs.h
++++ b/include/uapi/linux/fs.h
+@@ -86,6 +86,7 @@ struct inodes_stat_t {
+ #define MS_KERNMOUNT	(1<<22) /* this is a kern_mount call */
+ #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
+ #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
++#define MS_SHARELOCK	(1<<25) /* Allow share locks on an FS */
+ 
+ /* These sb flags are internal to the kernel */
+ #define MS_SNAP_STABLE	(1<<27) /* Snapshot pages during writeback, if needed */
+-- 
+1.8.1.5
 
-NeilBrown
-
-
---Sig_/TFe/.00C2MN8U+xNoJUm42s
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBUdIBjTnsnt1WYoG5AQKcfg//cFSk/ahASB+NNUfuku0TDMZ9RgTyK5iT
-SQHonlupwtoyPNGdb3hNWEZi86cO6ebAAar50tChIzzUsKzU42cum3OuBNFLB97r
-76qfEObG42ycVvxIf03KIafL/rYIwnanvEtL08ggawFqvp6/WhAQL4QocOJthZZ5
-dVKQ+OPXqiDAjubjPxUIr1qwoY7aSkSPSJjiuG7TUQWV1PFfX/6yBnHh6JHVjpti
-bdq9+vnoPzE9Dz47ibilI+iRBvdWixcssxMDL+94hMzV7DhuZ06LnqXjzyPpUc3H
-Z3q90OUfRExwrmt5WKZ8Lg4vjAA5NjizGE6oNBk2cWauJZruVnyO3NFs4M2MKK/j
-vPMPP+qTYicGntTap7sS0DtClPVA7wEb0SwKYCMuSXIqhEP/1GwYxq/r5C1VZ23b
-d+feKL2CBOp2yzFONdk01Dd4oNKMNYTTIRnxpomEl92mrKdKi+jQmQUVAMsw54OY
-hh+wQfvIhJAaOchWRKlj8ChJV0CrAWYbYspuhrz/a2ST4aL2LOsElFAuXSqn15oB
-VHE2RfRyJc7HpUK+62yeLdXWrULQTgxX4VDMEcvWW3tUpb4nK/AltQWYsWhREcgv
-/e9bS6tShlr20g8aYfPPAv2LyhBXskBF2jHys4xZyFfIZHyjhcXRxOeodmzb5Lxv
-Ei1/zPMfQyA=
-=klRU
------END PGP SIGNATURE-----
-
---Sig_/TFe/.00C2MN8U+xNoJUm42s--
