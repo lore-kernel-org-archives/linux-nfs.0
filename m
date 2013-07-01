@@ -1,85 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from g5t0007.atlanta.hp.com ([15.192.0.44]:11483 "EHLO
-	g5t0007.atlanta.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752442Ab3GIBRu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jul 2013 21:17:50 -0400
-From: Waiman Long <Waiman.Long@hp.com>
-Cc: Waiman Long <Waiman.Long@hp.com>, linux-fsdevel@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Peter Zijlstra <peterz@infradead.org>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Benjamin Herrenschmidt <benh@kernel.crashing.org>,
-        Andi Kleen <andi@firstfloor.org>,
-        "Chandramouleeswaran, Aswin" <aswin@hp.com>,
-        "Norton, Scott J" <scott.norton@hp.com>
-Subject: [PATCH v6 10/14] nfs: replace direct access of d_count with the d_count() helper
-Date: Mon,  8 Jul 2013 21:10:00 -0400
-Message-Id: <1373332204-10379-11-git-send-email-Waiman.Long@hp.com>
-In-Reply-To: <1373332204-10379-1-git-send-email-Waiman.Long@hp.com>
-References: <1373332204-10379-1-git-send-email-Waiman.Long@hp.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>, Jeff Layton <jlayton@redhat.com>,
-        Miklos Szeredi <mszeredi@suse.cz>, Ingo Molnar <mingo@redhat.com>,
-        Thomas Gleixner <tglx@linutronix.de>
+Received: from mx1.redhat.com ([209.132.183.28]:18080 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750977Ab3GAQD7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Jul 2013 12:03:59 -0400
+Message-ID: <51D1A86D.7050904@RedHat.com>
+Date: Mon, 01 Jul 2013 12:03:57 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Weston Andros Adamson <dros@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsiostat: restore output format
+References: <1371653913-1697-1-git-send-email-dros@netapp.com>
+In-Reply-To: <1371653913-1697-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All readonly references to d_count outside of the core dcache code
-should be changed to use the new d_count() helper as they shouldn't
-access its value directly.  There is no change in logic and everything
-should just work.
 
-Signed-off-by: Waiman Long <Waiman.Long@hp.com>
----
- fs/nfs/dir.c    |    6 +++---
- fs/nfs/unlink.c |    2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index d7ed697..c933bdf 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1721,7 +1721,7 @@ int nfs_unlink(struct inode *dir, struct dentry *dentry)
- 		dir->i_ino, dentry->d_name.name);
- 
- 	spin_lock(&dentry->d_lock);
--	if (dentry->d_count > 1) {
-+	if (d_count(dentry) > 1) {
- 		spin_unlock(&dentry->d_lock);
- 		/* Start asynchronous writeout of the inode */
- 		write_inode_now(dentry->d_inode, 0);
-@@ -1866,7 +1866,7 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	dfprintk(VFS, "NFS: rename(%s/%s -> %s/%s, ct=%d)\n",
- 		 old_dentry->d_parent->d_name.name, old_dentry->d_name.name,
- 		 new_dentry->d_parent->d_name.name, new_dentry->d_name.name,
--		 new_dentry->d_count);
-+		 d_count(new_dentry));
- 
- 	/*
- 	 * For non-directories, check whether the target is busy and if so,
-@@ -1884,7 +1884,7 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 			rehash = new_dentry;
- 		}
- 
--		if (new_dentry->d_count > 2) {
-+		if (d_count(new_dentry) > 2) {
- 			int err;
- 
- 			/* copy the target dentry's name */
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index 1f1f38f..60395ad 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -479,7 +479,7 @@ nfs_sillyrename(struct inode *dir, struct dentry *dentry)
- 
- 	dfprintk(VFS, "NFS: silly-rename(%s/%s, ct=%d)\n",
- 		dentry->d_parent->d_name.name, dentry->d_name.name,
--		dentry->d_count);
-+		d_count(dentry));
- 	nfs_inc_stats(dir, NFSIOS_SILLYRENAME);
- 
- 	/*
--- 
-1.7.1
+On 19/06/13 10:58, Weston Andros Adamson wrote:
+> recent changes to support python 3 changed the output of nfsiostat from:
+> 
+> read:             ops/s            kB/s           kB/op         retrans         avg RTT (ms)    avg exe (ms)
+>                  48.094         2889.133         60.072        0 (0.0%)         177.160         184.833
+> ...
+> 
+> to:
+> 
+> read:
+>   ops/s		   kB/s		  kB/op		retrans		avg RTT (ms)	avg exe (ms)
+> 		  0.000
+> 	  0.000
+> 	  0.000
+>        0 (0.0%)
+> 	  0.000
+> 	  0.000
+> ...
+> 
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+Committed! 
 
+steved.
+
+> ---
+>  tools/nfs-iostat/nfs-iostat.py | 14 +++++++-------
+>  1 file changed, 7 insertions(+), 7 deletions(-)
+> 
+> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
+> index dfbef87..c035537 100644
+> --- a/tools/nfs-iostat/nfs-iostat.py
+> +++ b/tools/nfs-iostat/nfs-iostat.py
+> @@ -353,14 +353,14 @@ class DeviceData:
+>              exe_per_op = 0.0
+>  
+>          op += ':'
+> -        print('%s' % op.lower().ljust(15))
+> +        print('%s' % op.lower().ljust(15), end='')
+>          print('  ops/s\t\t   kB/s\t\t  kB/op\t\tretrans\t\tavg RTT (ms)\tavg exe (ms)')
+>  
+> -        print('\t\t%7.3f' % (ops / sample_time))
+> -        print('\t%7.3f' % (kilobytes / sample_time))
+> -        print('\t%7.3f' % kb_per_op)
+> -        print(' %7d (%3.1f%%)' % (retrans, retrans_percent))
+> -        print('\t%7.3f' % rtt_per_op)
+> +        print('\t\t%7.3f' % (ops / sample_time), end='')
+> +        print('\t%7.3f' % (kilobytes / sample_time), end='')
+> +        print('\t%7.3f' % kb_per_op, end='')
+> +        print(' %7d (%3.1f%%)' % (retrans, retrans_percent), end='')
+> +        print('\t%7.3f' % rtt_per_op, end='')
+>          print('\t%7.3f' % exe_per_op)
+>  
+>      def ops(self, sample_time):
+> @@ -392,7 +392,7 @@ class DeviceData:
+>          print()
+>  
+>          print('   op/s\t\trpc bklog')
+> -        print('%7.2f' % (sends / sample_time))
+> +        print('%7.2f' % (sends / sample_time), end='')
+>          print('\t%7.2f' % backlog)
+>  
+>          if which == 0:
+> 
