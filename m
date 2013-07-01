@@ -1,274 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:35883 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753382Ab3GJAV1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Jul 2013 20:21:27 -0400
-Date: Tue, 9 Jul 2013 20:21:20 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [PATCH 01/12] vfs: pull ext4's double-i_mutex-locking into
- common code
-Message-ID: <20130710002120.GM32574@pad.fieldses.org>
-References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
- <1372882356-14168-2-git-send-email-bfields@redhat.com>
- <20130709220411.GK3438@dastard>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130709220411.GK3438@dastard>
+Received: from mail-la0-f44.google.com ([209.85.215.44]:39027 "EHLO
+	mail-la0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752735Ab3GAQm6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Jul 2013 12:42:58 -0400
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v7 0/7] Add O_DENY* support for VFS and CIFS/NFS
+Date: Mon,  1 Jul 2013 20:49:52 +0400
+Message-Id: <1372697399-21361-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 10, 2013 at 08:04:11AM +1000, Dave Chinner wrote:
-> On Wed, Jul 03, 2013 at 04:12:25PM -0400, J. Bruce Fields wrote:
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > We want to do this elsewhere as well.
-> > 
-> > Cc: "Theodore Ts'o" <tytso@mit.edu>
-> > Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > ---
-> >  fs/ext4/ext4.h        |    2 --
-> >  fs/ext4/ioctl.c       |    4 ++--
-> >  fs/ext4/move_extent.c |   40 ++--------------------------------------
-> >  fs/inode.c            |   29 +++++++++++++++++++++++++++++
-> >  include/linux/fs.h    |    3 +++
-> >  5 files changed, 36 insertions(+), 42 deletions(-)
-> > 
-> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> > index 5aae3d1..3590abe 100644
+Main changes from v6:
+1) Fix LOCK_DELETE mandatory lock detection for O_DENYDELETE opens.
+2) Add ESHAREDENIED error code definition for alpha, mips, parisc and sparc arches.
+3) Remove code changes in do_last function if sharelocks are disabled.
 
-Thanks for the comment:
+Main changes from v5:
+1) O_DENYDELETE is now supported by VFS.
+2) ESHAREDENIED erro code is introduced to be returned on sharelock conflicts.
+3) forcemand dependancy is removed. CIFS module detects if it should use NTCreateAndX command according to existence of O_DENY flags.
+4) Term 'deny lock' is replaced by 'sharelock' (function names, code comments, patch descriptions).
 
-> Just to throw a spanner in the works - have you considered that
-> other filesystems might have different inode lock ordering rules?
-> 
-> For example, XFS locks multiple inodes in ascending inode number
-> order, not ordered by pointer address. Hence we end up different
-> inode lock ordering at different layers of the stack and I can't see
-> that ending well....
+Main changes from v4:
+1) deny_lock_file uses FS_DOES_SHARELOCK flag from fs_flags to determine whether to use VFS locks or not.
+2) Make nfs code return -EBUSY for share conflicts (was -EACCESS).
 
-What lock(s) is it taking exactly, where?  If there's a possible
-deadlock, can we come up with a compatible ordering?
+Main changes from v3
+1) O_DENYMAND is removed, sharelock mount option is introduced.
+2) Patch fcntl.h and VFS patches are united into one.
+3) flock/LOCK_MAND is disabled for sharelock mounts.
 
-> > diff --git a/fs/inode.c b/fs/inode.c
-> > index 00d5fc3..b8afbc7 100644
-> > --- a/fs/inode.c
-> > +++ b/fs/inode.c
-> > @@ -980,6 +980,35 @@ void unlock_new_inode(struct inode *inode)
-> >  EXPORT_SYMBOL(unlock_new_inode);
-> >  
-> >  /**
-> > + * lock_two_nondirectories - take two i_mutexes on non-directory objects
-> > + * @inode1: first inode to lock
-> > + * @inode2: second inode to lock
-> > + */
-> > +void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
-> > +{
-> > +	if (inode1 < inode2) {
-> > +		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
-> > +		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
-> > +	} else {
-> > +		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
-> > +		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
-> > +	}
-> > +}
-> > +EXPORT_SYMBOL(lock_two_nondirectories);
-> 
-> What makes this specific to non-directories?
+This patchset adds support of O_DENY* flags for Linux fs layer. These flags can be used by any application that needs share reservations to organize a file access. VFS already has some sort of this capability - now it's done through flock/LOCK_MAND mechanism, but that approach is non-atomic. This patchset builds new capabilities on top of the existing one but doesn't bring any changes into the flock call semantic.
 
-See 
+These flags can be used by NFS (built-in-kernel) and CIFS (Samba) servers and Wine applications through VFS (for local filesystems) or CIFS/NFS modules. This will help when e.g. Samba and NFS server share the same directory for Windows and Linux users or Wine applications use Samba/NFS share to access the same data from different clients.
 
-	http://mid.gmane.org/<1372882356-14168-5-git-send-email-bfields@redhat.com>
+According to the previous discussions the most problematic question is how to prevent situations like DoS attacks where e.g /lib/liba.so file can be open with DENYREAD, or smth like this. That's why extra mount option 'sharelock' is added for switching on/off O_DENY* flags processing. It allows us to avoid use of these flags on critical places (like /, /lib) and turn them on if we really want it proccessed that way.
 
-The only caller outside ext4 is vfs_rename_other.
+The patchset introduces 3 new flags:
+O_DENYREAD - to prevent other opens with read access,
+O_DENYWRITE - to prevent other opens with write access,
+O_DENYDELETE - to prevent delete operations (this flag can't be implemented for NFS due to the protocol restrictions).
 
-I think we could make it work for directories two if necessary though
-the ordering would be more complicated.  Currently there's no reason.
+The patchset avoids data races problem on newely created files: open with O_CREAT can return new -ESHAREDENIED error code for a successfully created file if this files was locked with a sharelock by another task. Also, it turns off flock/LOCK_MAND capability for mounts with 'sharelock' option. This lets us not mix one share reservation approach with another.
 
-> If it's not to be used for directory inodes, then there should be
-> WARN_ON_ONCE() guards in the code...
+The #1 and #2 patches add flags to fcntl and implements VFS part. The patches #3 and #4 are related to CIFS-specific changes, #5 and #6 describe NFS and NFSD parts, #7 turns off flock/LOCK_MAND for mounts with 'sharelock' option.
 
-Sure.  So something like the following.
+The preliminary patch for Samba that replaces the existing use of flock/LOCK_MAND mechanism with O_DENY* flags:
+http://git.etersoft.ru/people/piastry/packages/?p=samba.git;a=commitdiff;h=173070262b7f29134ad6b2e49a760017c11aec4a
 
-Hm.  I also overlooked that ext4 had a BUG() for the case they're equal.
-Maybe we should keep that too if it's not overkill.
+The future part of open man page patch:
 
---b.
+-----
+O_DENYREAD, O_DENYWRIYE, O_DENYDELETE - used to inforce a mandatory share reservation scheme of the file access. If these flag is passed, the open fails with -ESHAREDENIED in following cases:
+1) if O_DENYREAD flag is specified and there is another open with READ access to the file;
+2) if O_DENYWRITE flag is specified and there is another open with WRITE access to the file;
+3) if READ access is requested and there is another open with O_DENYREAD flags;
+4) if WRITE access is requested and there is another open with O_DENYWRITE flags.
 
-commit ad9a94b0e91d6057734e9835782e0c2cdc148bdc
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Wed Apr 18 15:16:33 2012 -0400
+If O_DENYDELETE flag is specified and the open succeded, any further unlink operation will fail with -ESHAREDENIED untill this open is closed. Now this flag is processed by VFS and CIFS filesystem.
 
-    vfs: pull ext4's double-i_mutex-locking into common code
-    
-    We want to do this elsewhere as well.
-    
-    Also catch any attempts to use it for directories (where this ordering
-    would conflict with ancestor-first directory ordering in lock_rename).
-    
-    Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-    Cc: Dave Chinner <david@fromorbit.com>
-    Acked-by: Jeff Layton <jlayton@redhat.com>
-    Acked-by: "Theodore Ts'o" <tytso@mit.edu>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+This mechanism is done through flocks. If O_DENY* flags are specified, flock syscall is processed after the open. The share modes are translated into flock according the following rules:
+1) !O_DENYREAD   -> LOCK_READ   | LOCK_MAND
+2) !O_DENYWRITE  -> LOCK_WRITE  | LOCK_MAND
+3) !O_DENYDELETE -> LOCK_DELETE | LOCK_MAND
+---
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 5aae3d1..3590abe 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2642,8 +2642,6 @@ extern void ext4_double_down_write_data_sem(struct inode *first,
- 					    struct inode *second);
- extern void ext4_double_up_write_data_sem(struct inode *orig_inode,
- 					  struct inode *donor_inode);
--void ext4_inode_double_lock(struct inode *inode1, struct inode *inode2);
--void ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2);
- extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 			     __u64 start_orig, __u64 start_donor,
- 			     __u64 len, __u64 *moved_len);
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 9491ac0..12048f7 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -129,7 +129,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 
- 	/* Protect orig inodes against a truncate and make sure,
- 	 * that only 1 swap_inode_boot_loader is running. */
--	ext4_inode_double_lock(inode, inode_bl);
-+	lock_two_nondirectories(inode, inode_bl);
- 
- 	truncate_inode_pages(&inode->i_data, 0);
- 	truncate_inode_pages(&inode_bl->i_data, 0);
-@@ -204,7 +204,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 	ext4_inode_resume_unlocked_dio(inode);
- 	ext4_inode_resume_unlocked_dio(inode_bl);
- 
--	ext4_inode_double_unlock(inode, inode_bl);
-+	unlock_two_nondirectories(inode, inode_bl);
- 
- 	iput(inode_bl);
- 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 3dcbf36..986a838 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -1206,42 +1206,6 @@ mext_check_arguments(struct inode *orig_inode,
- }
- 
- /**
-- * ext4_inode_double_lock - Lock i_mutex on both @inode1 and @inode2
-- *
-- * @inode1:	the inode structure
-- * @inode2:	the inode structure
-- *
-- * Lock two inodes' i_mutex
-- */
--void
--ext4_inode_double_lock(struct inode *inode1, struct inode *inode2)
--{
--	BUG_ON(inode1 == inode2);
--	if (inode1 < inode2) {
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
--	} else {
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
--	}
--}
--
--/**
-- * ext4_inode_double_unlock - Release i_mutex on both @inode1 and @inode2
-- *
-- * @inode1:     the inode that is released first
-- * @inode2:     the inode that is released second
-- *
-- */
--
--void
--ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2)
--{
--	mutex_unlock(&inode1->i_mutex);
--	mutex_unlock(&inode2->i_mutex);
--}
--
--/**
-  * ext4_move_extents - Exchange the specified range of a file
-  *
-  * @o_filp:		file structure of the original file
-@@ -1330,7 +1294,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 		return -EINVAL;
- 	}
- 	/* Protect orig and donor inodes against a truncate */
--	ext4_inode_double_lock(orig_inode, donor_inode);
-+	lock_two_nondirectories(orig_inode, donor_inode);
- 
- 	/* Wait for all existing dio workers */
- 	ext4_inode_block_unlocked_dio(orig_inode);
-@@ -1538,7 +1502,7 @@ out:
- 	ext4_double_up_write_data_sem(orig_inode, donor_inode);
- 	ext4_inode_resume_unlocked_dio(orig_inode);
- 	ext4_inode_resume_unlocked_dio(donor_inode);
--	ext4_inode_double_unlock(orig_inode, donor_inode);
-+	unlock_two_nondirectories(orig_inode, donor_inode);
- 
- 	return ret;
- }
-diff --git a/fs/inode.c b/fs/inode.c
-index 00d5fc3..8f3c6fa 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -980,6 +980,37 @@ void unlock_new_inode(struct inode *inode)
- EXPORT_SYMBOL(unlock_new_inode);
- 
- /**
-+ * lock_two_nondirectories - take two i_mutexes on non-directory objects
-+ * @inode1: first inode to lock
-+ * @inode2: second inode to lock
-+ */
-+void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
-+{
-+	WARN_ON_ONCE(S_ISDIR(inode1->i_mode) || S_ISDIR(inode2->i_mode));
-+	WARN_ON_ONCE(inode1 == inode2);
-+	if (inode1 < inode2) {
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
-+		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
-+	} else {
-+		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
-+	}
-+}
-+EXPORT_SYMBOL(lock_two_nondirectories);
-+
-+/**
-+ * unlock_two_nondirectories - release locks from lock_two_nondirectories()
-+ * @inode1: first inode to unlock
-+ * @inode2: second inode to unlock
-+ */
-+void unlock_two_nondirectories(struct inode *inode1, struct inode *inode2)
-+{
-+	mutex_unlock(&inode1->i_mutex);
-+	mutex_unlock(&inode2->i_mutex);
-+}
-+EXPORT_SYMBOL(unlock_two_nondirectories);
-+
-+/**
-  * iget5_locked - obtain an inode from a mounted file system
-  * @sb:		super block of file system
-  * @hashval:	hash value (usually inode number) to get
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 65c2be2..3258761 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -634,6 +634,9 @@ enum inode_i_mutex_lock_class
- 	I_MUTEX_QUOTA
- };
- 
-+void lock_two_nondirectories(struct inode *, struct inode*);
-+void unlock_two_nondirectories(struct inode *, struct inode*);
-+
- /*
-  * NOTE: in a 32bit arch with a preemptable kernel and
-  * an UP compile the i_size_read/write must be atomic
+Pavel Shilovsky (7):
+  VFS: Introduce new O_DENY* open flags
+  VFS: Add O_DENYDELETE support for VFS
+  CIFS: Add share_access parm to open request
+  CIFS: Add O_DENY* open flags support
+  NFSv4: Add O_DENY* open flags support
+  NFSD: Pass share reservations flags to VFS
+  locks: Disable LOCK_MAND support for MS_SHARELOCK mounts
+
+ arch/alpha/include/uapi/asm/errno.h  |   2 +
+ arch/mips/include/uapi/asm/errno.h   |   2 +
+ arch/parisc/include/uapi/asm/errno.h |   2 +
+ arch/sparc/include/uapi/asm/errno.h  |   2 +
+ fs/cifs/cifsacl.c                    |   8 +-
+ fs/cifs/cifsfs.c                     |   2 +-
+ fs/cifs/cifsglob.h                   |  18 +++-
+ fs/cifs/cifsproto.h                  |   8 +-
+ fs/cifs/cifssmb.c                    |  50 ++++++-----
+ fs/cifs/dir.c                        |  16 ++--
+ fs/cifs/file.c                       |  25 ++++--
+ fs/cifs/inode.c                      |  21 ++---
+ fs/cifs/link.c                       |  25 ++----
+ fs/cifs/netmisc.c                    |   2 +-
+ fs/cifs/readdir.c                    |   5 +-
+ fs/cifs/smb1ops.c                    |  16 ++--
+ fs/cifs/smb2file.c                   |  10 +--
+ fs/cifs/smb2inode.c                  |   4 +-
+ fs/cifs/smb2maperror.c               |   2 +-
+ fs/cifs/smb2ops.c                    |  10 ++-
+ fs/cifs/smb2pdu.c                    |   6 +-
+ fs/cifs/smb2proto.h                  |  14 +--
+ fs/fcntl.c                           |   5 +-
+ fs/locks.c                           | 160 ++++++++++++++++++++++++++++++++---
+ fs/namei.c                           |  56 +++++++++++-
+ fs/nfs/dir.c                         |   4 +
+ fs/nfs/internal.h                    |   3 +-
+ fs/nfs/nfs4file.c                    |   4 +
+ fs/nfs/nfs4proc.c                    |   4 +-
+ fs/nfs/nfs4super.c                   |   9 +-
+ fs/nfs/nfs4xdr.c                     |  21 ++++-
+ fs/nfs/super.c                       |   6 +-
+ fs/nfsd/nfs4state.c                  |  46 +++++++++-
+ fs/nfsd/nfsproc.c                    |   1 +
+ fs/proc_namespace.c                  |   1 +
+ include/linux/fs.h                   |  14 +++
+ include/uapi/asm-generic/errno.h     |   2 +
+ include/uapi/asm-generic/fcntl.h     |  12 +++
+ include/uapi/linux/fs.h              |   1 +
+ 39 files changed, 464 insertions(+), 135 deletions(-)
+
+-- 
+1.8.1.5
+
