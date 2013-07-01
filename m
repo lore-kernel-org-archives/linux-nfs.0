@@ -1,75 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:3441 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:11021 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933190Ab3GKO2t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Jul 2013 10:28:49 -0400
-Date: Thu, 11 Jul 2013 10:28:40 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Malahal Naineni <malahal@us.ibm.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-Subject: Re: corruption due to loss of lock
-Message-ID: <20130711102840.272ce3fa@tlielax.poochiereds.net>
-In-Reply-To: <1373552348.2871.2.camel@leira.trondhjem.org>
-References: <20130613184737.GA25713@us.ibm.com>
-	<20130711071346.03b946bd@corrin.poochiereds.net>
-	<1373552348.2871.2.camel@leira.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1754487Ab3GAPct (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Jul 2013 11:32:49 -0400
+From: Jan Stancek <jstancek@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: bfields@redhat.com, Trond.Myklebust@netapp.com
+Subject: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
+Date: Mon,  1 Jul 2013 17:32:34 +0200
+Message-Id: <682ebd8ecc7309b18396da356a0feb38bfa41674.1372692346.git.jstancek@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 11 Jul 2013 14:19:10 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+Starting with commit:
+  commit f994c43d19a9116727d4c228d3f13db595bff562
+  Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+  Date:   Thu Nov 1 12:14:14 2012 -0400
+      SUNRPC: Clean up rpc_bind_new_program
 
-> On Thu, 2013-07-11 at 07:13 -0400, Jeff Layton wrote:
-> > On Thu, 13 Jun 2013 13:47:37 -0500
-> > Malahal Naineni <malahal@us.ibm.com> wrote:
-> > 
-> > > Hi Trond,
-> > > 
-> > > I saw Bryan's patches here https://patchwork.kernel.org/patch/987402/
-> > > that fix issues after loss of a lock.  What is the status on this patch
-> > > set? Do they need more work? We have an application that uses range
-> > > locks on a file. Two threads from two different clients end up writing
-> > > to the same a file due to this bug after a lease expiry from a client.
-> > > 
-> > > Regards, Malahal.
-> > 
-> > (cc'ing Bryan since he did the original set)
-> > 
-> > Yeah, this set would be a nice thing to have. A couple of comments:
-> > 
-> > - I still think it would be best to make SIGLOST its own signal, but as
-> >   Bryan points out, it would need to be larger than SIGRTMAX. I'm
-> >   not sure that's possible on all arches with the way the RT signals
-> >   were done. It's probably worth investigating that though before
-> >   settling on SIGIO since it would be hard to change that retroactively.
-> > 
-> > - This is not really a v4.1 specific thing. It should also be done for
-> >   v4.0 and v2/3, though the latter two really need to be done within
-> >   lockd.
-> 
-> SIGLOST is not part of any standard. It is a hack that has been adopted
-> by IBM and Solaris.
-> 
-> The POSIXly correct way to do this is to use EBADF to warn the
-> application that the file descriptor is no longer valid (in the sense
-> that the server is no longer honouring the lock) and EIO in order to
-> warn it that data may have been lost.
-> 
+operations on directory mounted with -onfsvers=3,tcp,sec=krb5 fail
+with Input/Output error after ~60 second timeout. This is presumably
+because upcalls for 'nfsacl' are not getting anywhere.
 
-It is a hack...I won't argue there
+This patch enables pipe dir for nfsacl_program and changes its name
+to 'nfs'. This name will be used in upcalls and whole setup should
+work as it did in past - just with nfs/hostname principal.
 
-I'm not sure that returning errors is really the best approach though.
-In some cases, the fd may be fine. It may only be the lock that has
-been lost.
+Signed-off-by: Jan Stancek <jstancek@redhat.com>
+---
+ fs/nfs/nfs3client.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-With a signal, the program has more of a choice as to whether it cares
-about lost locks and is more immediate when the problem occurs. An
-error code seems like it might cause a lot of grief for programs that
-aren't expecting that sort of behavior.
-
+diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
+index b3fc65e..09a7d06 100644
+--- a/fs/nfs/nfs3client.c
++++ b/fs/nfs/nfs3client.c
+@@ -9,11 +9,12 @@ static const struct rpc_version *nfsacl_version[] = {
+ };
+ 
+ const struct rpc_program nfsacl_program = {
+-	.name			= "nfsacl",
++	.name			= "nfs",
+ 	.number			= NFS_ACL_PROGRAM,
+ 	.nrvers			= ARRAY_SIZE(nfsacl_version),
+ 	.version		= nfsacl_version,
+ 	.stats			= &nfsacl_rpcstat,
++	.pipe_dir_name		= NFS_PIPE_DIRNAME,
+ };
+ 
+ /*
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.1
+
