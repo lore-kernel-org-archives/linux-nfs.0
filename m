@@ -1,442 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44067 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:48505 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932502Ab3GVSuE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Jul 2013 14:50:04 -0400
-Date: Mon, 22 Jul 2013 14:50:03 -0400
-To: bjschuma@netapp.com
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [RFC 4/5] NFSD: Defer copying
-Message-ID: <20130722185002.GB10109@fieldses.org>
-References: <1374267830-30154-1-git-send-email-bjschuma@netapp.com>
- <1374267830-30154-5-git-send-email-bjschuma@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1374267830-30154-5-git-send-email-bjschuma@netapp.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1755100Ab3GAV5E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Jul 2013 17:57:04 -0400
+Date: Tue, 2 Jul 2013 07:56:50 +1000
+From: NeilBrown <neilb@suse.de>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 2/3] krb5_util: don't give up on machine credential if
+ hostname not available.
+Message-ID: <20130702075650.63f72ca9@notabene.brown>
+In-Reply-To: <51D1ACBE.7030608@RedHat.com>
+References: <20130603005219.20080.1927.stgit@notabene.brown>
+	<20130603010021.20080.11239.stgit@notabene.brown>
+	<51D1ACBE.7030608@RedHat.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/o569xC8w12KrvfZjOXDPQmV"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 19, 2013 at 05:03:49PM -0400, bjschuma@netapp.com wrote:
-> From: Bryan Schumaker <bjschuma@netapp.com>
-> 
-> Rather than performing the copy right away, schedule it to run later and
-> reply to the client.  Later, send a callback to notify the client that
-> the copy has finished.
+--Sig_/o569xC8w12KrvfZjOXDPQmV
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-I believe you need to implement the referring triple support described
-in http://tools.ietf.org/html/rfc5661#section-2.10.6.3 to fix the race
-described in
-http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-15.1.3
-.
+On Mon, 01 Jul 2013 12:22:22 -0400 Steve Dickson <SteveD@redhat.com> wrote:
 
-I see cb_delay initialized below, but not otherwise used.  Am I missing
-anything?
+> Sorry for getting into so late... I did an extraordinary amount
+> of travailing in June....=20
+>=20
+> On 02/06/13 21:00, Neil Brown wrote:
+> > krb5_util tries various different credential names in order to find
+> > the machine credential, not all of them use the full host name of the
+> > current host.
+> >=20
+> > So if getting the full host name fails, don't give up completely,
+> > still try the other options.
+> >=20
+> > Signed-off-by: NeilBrown <neilb@suse.de>
+> > ---
+> >  utils/gssd/krb5_util.c |    8 ++++++--
+> >  1 file changed, 6 insertions(+), 2 deletions(-)
+> >=20
+> > diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> > index 9ef80f0..5e84481 100644
+> > --- a/utils/gssd/krb5_util.c
+> > +++ b/utils/gssd/krb5_util.c
+> > @@ -825,8 +825,10 @@ find_keytab_entry(krb5_context context, krb5_keyta=
+b kt, const char *tgtname,
+> >  	myhostad[i+1] =3D 0;
+> > =20
+> >  	retval =3D get_full_hostname(myhostname, myhostname, sizeof(myhostnam=
+e));
+> > -	if (retval)
+> > -		goto out;
+> > +	if (retval) {
+> > +		/* Don't use myhostname */
+> > +		myhostname[0] =3D 0;
+> > +	}
+> > =20
+> >  	code =3D krb5_get_default_realm(context, &default_realm);
+> >  	if (code) {
+> > @@ -883,6 +885,8 @@ find_keytab_entry(krb5_context context, krb5_keytab=
+ kt, const char *tgtname,
+> >  								myhostad,
+> >  								NULL);
+> >  			} else {
+> > +				if (!myhostname[0])
+> > +					continue;
+> >  				snprintf(spn, sizeof(spn), "%s/%s@%s",
+> >  					 svcnames[j], myhostname, realm);
+> >  				code =3D krb5_build_principal_ext(context, &princ,
+> >=20
+> >=20
+> At the end of day... This patch allows the machine cred to be used when
+> there is no DNS or /etc/hosts is empty (aka getaddrinfo() fails via=20
+> the get_full_hostname() call).
+>=20
+> I'm thinking this is a good idea, but I'm a gnawing feeling this would
+> be open some type of security hole by using machine creds when they
+> should not be or they were not expected to be used...
+>=20
+> Am I being too paranoid???
 
-What about OFFLOAD_STATUS and OFFLOAD_ABORT?
+Probably, but it is a good default position nonetheless.
 
-In some common cases the reply will be very quick, and we might be
-better off handling it synchronously.  Could we implement a heuristic
-like "copy synchronously if the filesystem has special support or the
-range is less than the maximum iosize, otherwise copy asynchronously"?
+This patch will only allow a machine credential to be used in the absence of
+an easily detected "full hostname" if a wild card machine credential is
+available.  And if such is available, it seems wrong not to use it.
 
---b.
+If wildcard machine credentials were no expected to be used, it we seem
+strange to have them included in the keytab file.
+
+So I cannot see any hole.
+
+Thanks,
+NeilBrown
 
 
-> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> ---
->  fs/nfsd/nfs4callback.c | 136 +++++++++++++++++++++++++++++++++++++++++++++++++
->  fs/nfsd/nfs4proc.c     |  59 +++++++++++++++------
->  fs/nfsd/nfs4state.c    |  11 ++++
->  fs/nfsd/state.h        |  21 ++++++++
->  fs/nfsd/xdr4cb.h       |   9 ++++
->  5 files changed, 221 insertions(+), 15 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index 7f05cd1..8f797e1 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -52,6 +52,9 @@ enum {
->  	NFSPROC4_CLNT_CB_NULL = 0,
->  	NFSPROC4_CLNT_CB_RECALL,
->  	NFSPROC4_CLNT_CB_SEQUENCE,
-> +
-> +	/* NFS v4.2 callback */
-> +	NFSPROC4_CLNT_CB_OFFLOAD,
->  };
->  
->  struct nfs4_cb_compound_hdr {
-> @@ -110,6 +113,7 @@ enum nfs_cb_opnum4 {
->  	OP_CB_WANTS_CANCELLED		= 12,
->  	OP_CB_NOTIFY_LOCK		= 13,
->  	OP_CB_NOTIFY_DEVICEID		= 14,
-> +	OP_CB_OFFLOAD			= 15,
->  	OP_CB_ILLEGAL			= 10044
->  };
->  
-> @@ -469,6 +473,31 @@ out_default:
->  	return nfs_cb_stat_to_errno(nfserr);
->  }
->  
-> +static void encode_cb_offload4args(struct xdr_stream *xdr,
-> +				   const struct nfs4_cb_offload *offload,
-> +				   struct nfs4_cb_compound_hdr *hdr)
-> +{
-> +	__be32 *p;
-> +
-> +	if (hdr->minorversion < 2)
-> +		return;
-> +
-> +	encode_nfs_cb_opnum4(xdr, OP_CB_OFFLOAD);
-> +	encode_nfs_fh4(xdr, &offload->co_dst_fh);
-> +	encode_stateid4(xdr, &offload->co_stid->sc_stateid);
-> +
-> +	p = xdr_reserve_space(xdr, 4);
-> +	*p = cpu_to_be32(1);
-> +	encode_stateid4(xdr, &offload->co_stid->sc_stateid);
-> +
-> +	p = xdr_reserve_space(xdr, 12 + NFS4_VERIFIER_SIZE);
-> +	p = xdr_encode_hyper(p, offload->co_count);
-> +	*p++ = cpu_to_be32(offload->co_stable_how);
-> +	xdr_encode_opaque_fixed(p, offload->co_verifier.data, NFS4_VERIFIER_SIZE);
-> +
-> +	hdr->nops++;
-> +}
-> +
->  /*
->   * NFSv4.0 and NFSv4.1 XDR encode functions
->   *
-> @@ -505,6 +534,23 @@ static void nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, struct xdr_stream *xdr,
->  	encode_cb_nops(&hdr);
->  }
->  
-> +/*
-> + * CB_OFFLOAD
-> + */
-> +static void nfs4_xdr_enc_cb_offload(struct rpc_rqst *req, struct xdr_stream *xdr,
-> +				    const struct nfsd4_callback *cb)
-> +{
-> +	const struct nfs4_cb_offload *args = cb->cb_op;
-> +	struct nfs4_cb_compound_hdr hdr = {
-> +		.ident = cb->cb_clp->cl_cb_ident,
-> +		.minorversion = cb->cb_minorversion,
-> +	};
-> +
-> +	encode_cb_compound4args(xdr, &hdr);
-> +	encode_cb_sequence4args(xdr, cb, &hdr);
-> +	encode_cb_offload4args(xdr, args, &hdr);
-> +	encode_cb_nops(&hdr);
-> +}
->  
->  /*
->   * NFSv4.0 and NFSv4.1 XDR decode functions
-> @@ -552,6 +598,36 @@ out:
->  }
->  
->  /*
-> + * CB_OFFLOAD
-> + */
-> +static int nfs4_xdr_dec_cb_offload(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
-> +				   struct nfsd4_callback *cb)
-> +{
-> +	struct nfs4_cb_compound_hdr hdr;
-> +	enum nfsstat4 nfserr;
-> +	int status;
-> +
-> +	status = decode_cb_compound4res(xdr, &hdr);
-> +	if (unlikely(status))
-> +		goto out;
-> +
-> +	if (cb != NULL) {
-> +		status = decode_cb_sequence4res(xdr, cb);
-> +		if (unlikely(status))
-> +			goto out;
-> +	}
-> +
-> +	status = decode_cb_op_status(xdr, OP_CB_OFFLOAD, &nfserr);
-> +	if (unlikely(status))
-> +		goto out;
-> +	if (unlikely(nfserr != NFS4_OK))
-> +		status = nfs_cb_stat_to_errno(nfserr);
-> +
-> +out:
-> +	return status;
-> +}
-> +
-> +/*
->   * RPC procedure tables
->   */
->  #define PROC(proc, call, argtype, restype)				\
-> @@ -568,6 +644,7 @@ out:
->  static struct rpc_procinfo nfs4_cb_procedures[] = {
->  	PROC(CB_NULL,	NULL,		cb_null,	cb_null),
->  	PROC(CB_RECALL,	COMPOUND,	cb_recall,	cb_recall),
-> +	PROC(CB_OFFLOAD, COMPOUND,	cb_offload,	cb_offload),
->  };
->  
->  static struct rpc_version nfs_cb_version4 = {
-> @@ -1017,6 +1094,11 @@ void nfsd4_init_callback(struct nfsd4_callback *cb)
->  	INIT_WORK(&cb->cb_work, nfsd4_do_callback_rpc);
->  }
->  
-> +void nfsd4_init_delayed_callback(struct nfsd4_callback *cb)
-> +{
-> +	INIT_DELAYED_WORK(&cb->cb_delay, nfsd4_do_callback_rpc);
-> +}
-> +
->  void nfsd4_cb_recall(struct nfs4_delegation *dp)
->  {
->  	struct nfsd4_callback *cb = &dp->dl_recall;
-> @@ -1036,3 +1118,57 @@ void nfsd4_cb_recall(struct nfs4_delegation *dp)
->  
->  	run_nfsd4_cb(&dp->dl_recall);
->  }
-> +
-> +static void nfsd4_cb_offload_done(struct rpc_task *task, void *calldata)
-> +{
-> +	struct nfsd4_callback *cb = calldata;
-> +	struct nfs4_client *clp = cb->cb_clp;
-> +	struct rpc_clnt *current_rpc_client = clp->cl_cb_client;
-> +
-> +	nfsd4_cb_done(task, calldata);
-> +
-> +	if (current_rpc_client != task->tk_client)
-> +		return;
-> +
-> +	if (cb->cb_done)
-> +		return;
-> +
-> +	if (task->tk_status != 0)
-> +		nfsd4_mark_cb_down(clp, task->tk_status);
-> +	cb->cb_done = true;
-> +}
-> +
-> +static void nfsd4_cb_offload_release(void *calldata)
-> +{
-> +	struct nfsd4_callback *cb = calldata;
-> +	struct nfs4_cb_offload *offload = container_of(cb, struct nfs4_cb_offload, co_callback);
-> +
-> +	if (cb->cb_done) {
-> +		nfs4_free_offload_stateid(offload->co_stid);
-> +		kfree(offload);
-> +	}
-> +}
-> +
-> +static const struct rpc_call_ops nfsd4_cb_offload_ops = {
-> +	.rpc_call_prepare = nfsd4_cb_prepare,
-> +	.rpc_call_done    = nfsd4_cb_offload_done,
-> +	.rpc_release      = nfsd4_cb_offload_release,
-> +};
-> +
-> +void nfsd4_cb_offload(struct nfs4_cb_offload *offload)
-> +{
-> +	struct nfsd4_callback *cb = &offload->co_callback;
-> +
-> +	cb->cb_op = offload;
-> +	cb->cb_clp = offload->co_stid->sc_client;
-> +	cb->cb_msg.rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_OFFLOAD];
-> +	cb->cb_msg.rpc_argp = cb;
-> +	cb->cb_msg.rpc_resp = cb;
-> +
-> +	cb->cb_ops = &nfsd4_cb_offload_ops;
-> +
-> +	INIT_LIST_HEAD(&cb->cb_per_client);
-> +	cb->cb_done = true;
-> +
-> +	run_nfsd4_cb(cb);
-> +}
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index d4584ea..66a787f 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -35,6 +35,7 @@
->  #include <linux/file.h>
->  #include <linux/slab.h>
->  
-> +#include "state.h"
->  #include "idmap.h"
->  #include "cache.h"
->  #include "xdr4.h"
-> @@ -1062,29 +1063,57 @@ out:
->  	return status;
->  }
->  
-> +static void
-> +nfsd4_copy_async(struct work_struct *w)
-> +{
-> +	__be32 status;
-> +	struct nfs4_cb_offload *offload;
-> +
-> +	offload = container_of(w, struct nfs4_cb_offload, co_work);
-> +	status  = nfsd_copy_range(offload->co_src_file, offload->co_src_pos,
-> +				  offload->co_dst_file, offload->co_dst_pos,
-> +				  offload->co_count);
-> +
-> +	if (status == nfs_ok) {
-> +		offload->co_stable_how = NFS_FILE_SYNC;
-> +		gen_boot_verifier(&offload->co_verifier, offload->co_net);
-> +		fput(offload->co_src_file);
-> +		fput(offload->co_dst_file);
-> +	}
-> +	nfsd4_cb_offload(offload);
-> +}
-> +
->  static __be32
->  nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  		struct nfsd4_copy *copy)
->  {
-> -	__be32 status;
->  	struct file *src = NULL, *dst = NULL;
-> +	struct nfs4_cb_offload *offload;
->  
-> -	status = nfsd4_verify_copy(rqstp, cstate, copy, &src, &dst);
-> -	if (status)
-> -		return status;
-> -
-> -	status = nfsd_copy_range(src, copy->cp_src_pos,
-> -				 dst, copy->cp_dst_pos,
-> -				 copy->cp_count);
-> +	if (nfsd4_verify_copy(rqstp, cstate, copy, &src, &dst))
-> +		return nfserr_jukebox;
->  
-> -	if (status == nfs_ok) {
-> -		copy->cp_res.wr_stateid = NULL;
-> -		copy->cp_res.wr_bytes_written = copy->cp_count;
-> -		copy->cp_res.wr_stable_how = NFS_FILE_SYNC;
-> -		gen_boot_verifier(&copy->cp_res.wr_verifier, SVC_NET(rqstp));
-> -	}
-> +	offload = kmalloc(sizeof(struct nfs4_cb_offload), GFP_KERNEL);
-> +	if (!offload)
-> +		return nfserr_jukebox;
->  
-> -	return status;
-> +	offload->co_src_file = get_file(src);
-> +	offload->co_dst_file = get_file(dst);
-> +	offload->co_src_pos  = copy->cp_src_pos;
-> +	offload->co_dst_pos  = copy->cp_dst_pos;
-> +	offload->co_count    = copy->cp_count;
-> +	offload->co_stid     = nfs4_alloc_offload_stateid(cstate->session->se_client);
-> +	offload->co_net      = SVC_NET(rqstp);
-> +	INIT_WORK(&offload->co_work, nfsd4_copy_async);
-> +	nfsd4_init_callback(&offload->co_callback);
-> +	memcpy(&offload->co_dst_fh, &cstate->current_fh, sizeof(struct knfsd_fh));
-> +
-> +	copy->cp_res.wr_stateid = &offload->co_stid->sc_stateid;
-> +	copy->cp_res.wr_bytes_written = 0;
-> +	copy->cp_res.wr_stable_how = NFS_UNSTABLE;
-> +
-> +	schedule_work(&offload->co_work);
-> +	return nfs_ok;
->  }
->  
->  /* This routine never returns NFS_OK!  If there are no other errors, it
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index c4e270e..582edb5 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -364,6 +364,11 @@ static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
->  	return openlockstateid(nfs4_alloc_stid(clp, stateid_slab));
->  }
->  
-> +struct nfs4_stid *nfs4_alloc_offload_stateid(struct nfs4_client *clp)
-> +{
-> +	return nfs4_alloc_stid(clp, stateid_slab);
-> +}
-> +
->  static struct nfs4_delegation *
->  alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct svc_fh *current_fh)
->  {
-> @@ -617,6 +622,12 @@ static void free_generic_stateid(struct nfs4_ol_stateid *stp)
->  	kmem_cache_free(stateid_slab, stp);
->  }
->  
-> +void nfs4_free_offload_stateid(struct nfs4_stid *stid)
-> +{
-> +	remove_stid(stid);
-> +	kmem_cache_free(stateid_slab, stid);
-> +}
-> +
->  static void release_lock_stateid(struct nfs4_ol_stateid *stp)
->  {
->  	struct file *file;
-> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> index 2478805..56682fb 100644
-> --- a/fs/nfsd/state.h
-> +++ b/fs/nfsd/state.h
-> @@ -70,6 +70,7 @@ struct nfsd4_callback {
->  	struct rpc_message cb_msg;
->  	const struct rpc_call_ops *cb_ops;
->  	struct work_struct cb_work;
-> +	struct delayed_work cb_delay;
->  	bool cb_done;
->  };
->  
-> @@ -101,6 +102,22 @@ struct nfs4_delegation {
->  	struct nfsd4_callback	dl_recall;
->  };
->  
-> +struct nfs4_cb_offload {
-> +	struct file	*co_src_file;
-> +	struct file	*co_dst_file;
-> +	u64		co_src_pos;
-> +	u64		co_dst_pos;
-> +	u64		co_count;
-> +	u32		co_stable_how;
-> +	struct knfsd_fh	co_dst_fh;
-> +	nfs4_verifier	co_verifier;
-> +	struct net	*co_net;
-> +
-> +	struct nfs4_stid		*co_stid;
-> +	struct work_struct		co_work;
-> +	struct nfsd4_callback		co_callback;
-> +};
-> +
->  /* client delegation callback info */
->  struct nfs4_cb_conn {
->  	/* SETCLIENTID info */
-> @@ -468,10 +485,12 @@ extern void nfs4_free_openowner(struct nfs4_openowner *);
->  extern void nfs4_free_lockowner(struct nfs4_lockowner *);
->  extern int set_callback_cred(void);
->  extern void nfsd4_init_callback(struct nfsd4_callback *);
-> +extern void nfsd4_init_delayed_callback(struct nfsd4_callback *);
->  extern void nfsd4_probe_callback(struct nfs4_client *clp);
->  extern void nfsd4_probe_callback_sync(struct nfs4_client *clp);
->  extern void nfsd4_change_callback(struct nfs4_client *clp, struct nfs4_cb_conn *);
->  extern void nfsd4_cb_recall(struct nfs4_delegation *dp);
-> +extern void nfsd4_cb_offload(struct nfs4_cb_offload *);
->  extern int nfsd4_create_callback_queue(void);
->  extern void nfsd4_destroy_callback_queue(void);
->  extern void nfsd4_shutdown_callback(struct nfs4_client *);
-> @@ -480,6 +499,8 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
->  							struct nfsd_net *nn);
->  extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
->  extern void put_client_renew(struct nfs4_client *clp);
-> +extern struct nfs4_stid *nfs4_alloc_offload_stateid(struct nfs4_client *);
-> +extern void nfs4_free_offload_stateid(struct nfs4_stid *);
->  
->  /* nfs4recover operations */
->  extern int nfsd4_client_tracking_init(struct net *net);
-> diff --git a/fs/nfsd/xdr4cb.h b/fs/nfsd/xdr4cb.h
-> index c5c55df..75b0ef7 100644
-> --- a/fs/nfsd/xdr4cb.h
-> +++ b/fs/nfsd/xdr4cb.h
-> @@ -21,3 +21,12 @@
->  #define NFS4_dec_cb_recall_sz		(cb_compound_dec_hdr_sz  +      \
->  					cb_sequence_dec_sz +            \
->  					op_dec_sz)
-> +
-> +#define NFS4_enc_cb_offload_sz		(cb_compound_enc_hdr_sz +      \
-> +					 cb_sequence_enc_sz +          \
-> +					 1 + enc_stateid_sz + 2 + 1 +  \
-> +					 XDR_QUADLEN(NFS4_VERIFIER_SIZE))
-> +
-> +#define NFS4_dec_cb_offload_sz		(cb_compound_dec_hdr_sz +  \
-> +					 cb_sequence_dec_sz +      \
-> +					 op_dec_sz)
-> -- 
-> 1.8.3.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--Sig_/o569xC8w12KrvfZjOXDPQmV
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUdH7Ijnsnt1WYoG5AQKiQRAAijxrkORy6CCaJfzkk8ATtgnmZoxhT8tA
+lawPun7mSJu10Zvy7JlwGXRfrZMK0UKQqLNVgs2UXvnd35beIbLj017oHyYmxLCp
+C/6RzecZgBYuvb9ih0e3y8IZi7HpES8fbZlJ3EqcMT5t0O6DAQanjeQ2iHJu9OIx
+3BG/re7SgorfG4KZ8AxtpxgknDvE7ZALRztyinHKTJKjI8JIN7/KUKwmDZigWD0v
+i+UJeCTUr7q9mGJ9AoA0MBTA86i1JSA5o66gBb1RtdTXeUCEB/zcmbp2GxO+tNRC
+Noxz1IE9U9v4caFaiEQRHbAXkGjCeJcjNQ2rl1G/6Q0WcZ0TNrpdT7NuF4ZQC73+
+AoN7wZNQrjLyd9c6POudnbaP0WaWKi7GgwKifhRlbSIoFIOTYHfH6b8KruGvXaqo
+whiE3fnPQNjqPVx8etu70YStJqFAXilbmEmoHrsweStU0IklqkWmpgzRUWQfCS9q
+Sh39QEucM26N7sVK0Rd+pn5iNtDE8ebxUsh5Nthr96MgCKkYjyOTvyfxqa9k3WcO
+DiFlEgujKO2UVt/5ETh6RZHxPHnhfdlKVpfkwKL9R1lWRnbEp0o3Nf/RG+dtf9H+
+t5tFrE5UPHO5D0XmRRJxI5NB0xcRobj5FTerGK3rY8a+3abPEiO8UwBeu+uhLgDf
+hWYIZ5ZzhcE=
+=4WHS
+-----END PGP SIGNATURE-----
+
+--Sig_/o569xC8w12KrvfZjOXDPQmV--
