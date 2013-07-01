@@ -1,82 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.gmx.net ([212.227.17.22]:57419 "EHLO mout.gmx.net"
+Received: from fieldses.org ([174.143.236.118]:51534 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754618Ab3GOQyd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Jul 2013 12:54:33 -0400
-Message-ID: <51E42943.8040001@gmx.de>
-Date: Mon, 15 Jul 2013 18:54:27 +0200
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+	id S1752681Ab3GATMm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Jul 2013 15:12:42 -0400
+Date: Mon, 1 Jul 2013 15:12:38 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [patch/rfc] allow exported (and *not* exported) filesystems to
+ be unmounted.
+Message-ID: <20130701191238.GD19945@fieldses.org>
+References: <20130605130541.5968d5c2@notabene.brown>
+ <20130605034115.GD13110@ZenIV.linux.org.uk>
+ <20130605161934.59ab6804@notabene.brown>
+ <20130605133658.GE24193@fieldses.org>
+ <20130606100512.1c701a64@notabene.brown>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Linux Kernel <linux-kernel@vger.kernel.org>,
-        "user-mode-linux-devel@lists.sourceforge.net"
-	<user-mode-linux-devel@lists.sourceforge.net>
-Subject: Re: sunrpc/clnt.c: BUG kmalloc-256 (Not tainted): Poison overwritten
-References: <51E25B20.7030906@gmx.de> <1373857286.3181.1.camel@leira.trondhjem.org>
-In-Reply-To: <1373857286.3181.1.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130606100512.1c701a64@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/15/2013 05:01 AM, Myklebust, Trond wrote:
-> On Sun, 2013-07-14 at 10:02 +0200, Toralf Förster wrote:
->> This bisected commit produces at a 32 bit user mode linux guest the attached BUG :
->>
->> commit eeee245268c951262b861bc1be4e9dc812352499
->> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
->> Date:   Wed Jul 10 15:33:01 2013 -0400
->>
->>     SUNRPC: Fix a deadlock in rpc_client_register()
->>
->>     Commit 384816051ca9125cd54750e59c780c2a2655fa4f (SUNRPC: fix races on
->>     PipeFS MOUNT notifications) introduces a regression when we call
->>     rpc_setup_pipedir() with RPCSEC_GSS as the auth flavour.
->>
->>     By calling rpcauth_create() while holding the sn->pipefs_sb_lock, we
->>     end up deadlocking in gss_pipes_dentries_create_net().
->>     Fix is to register the client and release the mutex before calling
->>     rpcauth_create().
->>
->>     Reported-by: Weston Andros Adamson <dros@netapp.com>
->>     Tested-by: Weston Andros Adamson <dros@netapp.com>
->>     Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
->>     Cc: <stable@vger.kernel.org> # : 3848160: SUNRPC: fix races on PipeFS MOUNT
->>     Cc: <stable@vger.kernel.org> # : e73f4cc: SUNRPC: split client creation
->>     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
->>
->>
->>
->>
->>
->>
->> 2013-07-13T22:09:07.000+02:00 trinity sm-notify[1042]: Version 1.2.6 starting
->> 2013-07-13T22:09:07.000+02:00 trinity sm-notify[1042]: Backgrounding to notify hosts...
->> 2013-07-13T22:09:07.000+02:00 trinity sm-notify[1043]: Running as root.  chown /var/lib/nfs to choose different user
->> 2013-07-13T22:09:10.000+02:00 trinity mount[1047]: mount to NFS server 'n22stab4' failed: No route to host, retrying
->> 2013-07-13T22:09:11.000+02:00 trinity dhcpcd[971]: eth0: sending IPv6 Router Solicitation
->> 2013-07-13T22:09:11.000+02:00 trinity dhcpcd[971]: eth0: no IPv6 Routers available
->> 2013-07-13T22:09:13.000+02:00 trinity mount[1048]: mount to NFS server 'n22stab4' failed: No route to host, retrying
->> 2013-07-13T22:09:13.647+02:00 trinity kernel: =============================================================================
->> 2013-07-13T22:09:13.647+02:00 trinity kernel: BUG kmalloc-256 (Not tainted): Poison overwritten
->> 2013-07-13T22:09:13.647+02:00 trinity kernel: -----------------------------------------------------------------------------
+On Thu, Jun 06, 2013 at 10:05:12AM +1000, NeilBrown wrote:
+> On Wed, 5 Jun 2013 09:36:58 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+> wrote:
+> 
+> > On Wed, Jun 05, 2013 at 04:19:34PM +1000, NeilBrown wrote:
+> > > On Wed, 5 Jun 2013 04:41:15 +0100 Al Viro <viro@ZenIV.linux.org.uk> wrote:
+> > > 
+> > > > On Wed, Jun 05, 2013 at 01:05:41PM +1000, NeilBrown wrote:
+> > > > > 
+> > > > > Hi Bruce,
+> > > > >  this is a little issue that seems to keep coming up so I thought it might be
+> > > > >  time to fix it.
+> > > > > 
+> > > > >  As you know, a filesystem that is exported cannot be unmounted as the export
+> > > > >  cache holds a reference to it.  Though if it hasn't been accessed for a
+> > > > >  while then it can.
+> > > > > 
+> > > > >  As I hadn't realised before sometimes *non* exported filesystems can be
+> > > > >  pinned to.  A negative entry in the cache can pin a filesystem just as
+> > > > >  easily as a positive entry.
+> > > > >  An amusing, if somewhat contrived, example is that if you export '/' with
+> > > > >  crossmnt and:
+> > > > > 
+> > > > >     mount localhost:/ /mnt
+> > > > >     ls -l /
+> > > > >     umount /mnt
+> > > > > 
+> > > > >  the umount might fail.  This is because the "ls -l" tried to export every
+> > > > >  filesystem found mounted in '/'.  The export of "/mnt" failed of course
+> > > > >  because you cannot re-export an NFS filesystem.  But it is still in the
+> > > > >  cache.
+> > > > >  An 'exportfs -f' fixes this, but shouldn't be necessary.
+> > 
+> > Yeah, ugh.  As a less contrived example, can the default v4 root export
+> > lead to arbitrary filesystems being pinned just because a client tried
+> > to mount the wrong path?
+> 
+> I think it can only pin filesystems that are exported, either explicitly or
+> via a parent being exported with 'crossmnt'.
 
-<snip>
+But see utils/mountd/v4root.c, and:
 
->> 2013-07-13T22:09:13.647+02:00 trinity kernel:
+	[root@server ~]# exportfs -v
+	/export <world>(rw,...)
+	[root@server ~]# mount /mnt
 
-> Does the attached patch fix the problem?
+		[root@pip4 ~]# mount pip4:/ /mnt/
+		[root@pip4 ~]# ls -l /mnt/
+		total 4
+		drwxrwxrwt 3 root root 4096 Jun  7 10:34 export
+		[root@pip4 ~]# 
 
-Yes.
+	[root@server ~]# umount /mnt/
+	umount: /mnt: target is busy.
+	...
+	[root@server ~]# grep /mnt /proc/net/rpc/nfsd.export/content 
+	# /mnt	*()
 
-And it solves another related problem too : a soft lookup of CPU0 during
-shutdown of the UML guest
+> > Could the export cache be indexed on a path string instead of a struct
+> > path?
+> 
+> Yes.  It would mean lots of extra pathname lookups and possibly lots of
+> "d_path()" calls.
 
-:-)
+Right.  Ugh.  Still, struct path seems wrong as it's not something gssd
+knows about, and there's not really a 1-1 mapping between the two (see
+e.g. the recent complaint about the case where the struct path
+represents a lazy-unmounted export
+http://mid.gmane.org/<20130625191008.GA20277@us.ibm.com> ).
 
-
-
--- 
-MfG/Sincerely
-Toralf Förster
-pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+--b.
