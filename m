@@ -1,110 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:30434 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:32201 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752055Ab3GBO1n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Jul 2013 10:27:43 -0400
-From: David Howells <dhowells@redhat.com>
-To: torvalds@linux-foundation.org
-cc: dhowells@redhat.com, linux-cachefs@redhat.com, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, milosz@adfin.com
-Subject: [GIT PULL] Fix assorted FS-Cache issues
-Date: Tue, 02 Jul 2013 15:27:36 +0100
-Message-ID: <6302.1372775256@warthog.procyon.org.uk>
+	id S1752942Ab3GAQWI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Jul 2013 12:22:08 -0400
+Date: Mon, 1 Jul 2013 12:22:01 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 1/2] rpc_pipe: export simple_dentry_operations and have
+ rpc_pipefs use it
+Message-ID: <20130701122201.6a8fc966@tlielax.poochiereds.net>
+In-Reply-To: <1372174611.5968.28.camel@leira.trondhjem.org>
+References: <1372122340-28982-1-git-send-email-jlayton@redhat.com>
+	<1372122340-28982-2-git-send-email-jlayton@redhat.com>
+	<1372174611.5968.28.camel@leira.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, 25 Jun 2013 15:36:54 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-Hi Linus,
+> On Mon, 2013-06-24 at 21:05 -0400, Jeff Layton wrote:
+> > ...instead of replicating a copy of them.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  fs/libfs.c            |  9 +++++----
+> >  include/linux/fs.h    |  1 +
+> >  net/sunrpc/rpc_pipe.c | 11 +----------
+> >  3 files changed, 7 insertions(+), 14 deletions(-)
+> > 
+> 
+> Can you please get an ACK from Al on this patch.
+> 
+> Cheers
+>   Trond
+> 
 
-Can you please pull this GIT branch?  It contains a number of fixes for
-various FS-Cache issues plus some cleanups.  The commits are, in order:
-
- (1) Provide a system wait_on_atomic_t() and wake_up_atomic_t() sharing the
-     bit-wait table (enhancement for #8).
-
- (2) Don't put spin_lock() in a while-condition as spin_lock() may have a
-     do {} while(0) wrapper (cleanup).
-
- (3) Symbolically name i_mutex lock classes rather than using numbers in
-     CacheFiles (cleanup).
-
- (4) Don't sleep in page release if __GFP_FS is not set (deadlock vs ext4).
-
- (5) Uninline fscache_object_init() (cleanup for #7).
-
- (6) Wrap checks on object state (cleanup for #7).
-
- (7) Simplify the object state machine by separating work states from wait
-     states.
-
- (8) Simplify cookie retention by objects (NULL pointer deref fix).
-
- (9) Remove unused list_to_page() macro (cleanup).
-
-(10) Make the remaining-pages counter in the retrieval op atomic (assertion
-     failure fix).
-
-(11) Don't use spin_is_locked() in assertions (assertion failure fix).
-
-This is tagged with fscache-20130702.  This is the same as fscache-20130619
-but with added acks.
+Al, could you weigh in on this? The only real change to generic VFS
+code is that I'm exporting simple_dentry_operations here.
 
 Thanks,
-David
----
-The following changes since commit b973425cbb51e08301b34fecdfd476a44507d8cf:
+Jeff
 
-  Merge tag 'ext4_for_linus_stable' of git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4 (2013-05-14 09:30:54 -0700)
+> > diff --git a/fs/libfs.c b/fs/libfs.c
+> > index 916da8c..69793f7 100644
+> > --- a/fs/libfs.c
+> > +++ b/fs/libfs.c
+> > @@ -49,16 +49,16 @@ static int simple_delete_dentry(const struct dentry *dentry)
+> >  	return 1;
+> >  }
+> >  
+> > +const struct dentry_operations simple_dentry_operations = {
+> > +	.d_delete = simple_delete_dentry,
+> > +};
+> > +
+> >  /*
+> >   * Lookup the data. This is trivial - if the dentry didn't already
+> >   * exist, we know it is negative.  Set d_op to delete negative dentries.
+> >   */
+> >  struct dentry *simple_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
+> >  {
+> > -	static const struct dentry_operations simple_dentry_operations = {
+> > -		.d_delete = simple_delete_dentry,
+> > -	};
+> > -
+> >  	if (dentry->d_name.len > NAME_MAX)
+> >  		return ERR_PTR(-ENAMETOOLONG);
+> >  	d_set_d_op(dentry, &simple_dentry_operations);
+> > @@ -987,6 +987,7 @@ EXPORT_SYMBOL(simple_write_begin);
+> >  EXPORT_SYMBOL(simple_write_end);
+> >  EXPORT_SYMBOL(simple_dir_inode_operations);
+> >  EXPORT_SYMBOL(simple_dir_operations);
+> > +EXPORT_SYMBOL(simple_dentry_operations);
+> >  EXPORT_SYMBOL(simple_empty);
+> >  EXPORT_SYMBOL(simple_fill_super);
+> >  EXPORT_SYMBOL(simple_getattr);
+> > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > index 65c2be2..1d21364 100644
+> > --- a/include/linux/fs.h
+> > +++ b/include/linux/fs.h
+> > @@ -2546,6 +2546,7 @@ extern int simple_write_end(struct file *file, struct address_space *mapping,
+> >  extern struct dentry *simple_lookup(struct inode *, struct dentry *, unsigned int flags);
+> >  extern ssize_t generic_read_dir(struct file *, char __user *, size_t, loff_t *);
+> >  extern const struct file_operations simple_dir_operations;
+> > +extern const struct dentry_operations simple_dentry_operations;
+> >  extern const struct inode_operations simple_dir_inode_operations;
+> >  struct tree_descr { char *name; const struct file_operations *ops; int mode; };
+> >  struct dentry *d_alloc_name(struct dentry *, const char *);
+> > diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+> > index a816b3a..99cd7db 100644
+> > --- a/net/sunrpc/rpc_pipe.c
+> > +++ b/net/sunrpc/rpc_pipe.c
+> > @@ -471,15 +471,6 @@ struct rpc_filelist {
+> >  	umode_t mode;
+> >  };
+> >  
+> > -static int rpc_delete_dentry(const struct dentry *dentry)
+> > -{
+> > -	return 1;
+> > -}
+> > -
+> > -static const struct dentry_operations rpc_dentry_operations = {
+> > -	.d_delete = rpc_delete_dentry,
+> > -};
+> > -
+> >  static struct inode *
+> >  rpc_get_inode(struct super_block *sb, umode_t mode)
+> >  {
+> > @@ -668,7 +659,7 @@ static struct dentry *__rpc_lookup_create_exclusive(struct dentry *parent,
+> >  	}
+> >  	if (dentry->d_inode == NULL) {
+> >  		if (!dentry->d_op)
+> > -			d_set_d_op(dentry, &rpc_dentry_operations);
+> > +			d_set_d_op(dentry, &simple_dentry_operations);
+> >  		return dentry;
+> >  	}
+> >  	dput(dentry);
+> 
+> 
 
-are available in the git repository at:
 
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git tags/fscache-20130702
-
-for you to fetch changes up to dcfae32f892f03dee9896b19d1960c1ecd3f0583:
-
-  FS-Cache: Don't use spin_is_locked() in assertions (2013-06-19 14:16:47 +0100)
-
-----------------------------------------------------------------
-(from the branch description for fscache local branch)
-
-clone of "master"
-FS-Cache patches 2013-07-02
-
-----------------------------------------------------------------
-David Howells (8):
-      Add wait_on_atomic_t() and wake_up_atomic_t()
-      FS-Cache: Don't sleep in page release if __GFP_FS is not set
-      FS-Cache: Uninline fscache_object_init()
-      FS-Cache: Wrap checks on object state
-      FS-Cache: Fix object state machine to have separate work and wait states
-      FS-Cache: Simplify cookie retention for fscache_objects, fixing oops
-      FS-Cache: The retrieval remaining-pages counter needs to be atomic_t
-      FS-Cache: Don't use spin_is_locked() in assertions
-
-Haicheng Li (1):
-      cachefiles: remove unused macro list_to_page()
-
-J. Bruce Fields (1):
-      CacheFiles: name i_mutex lock class explicitly
-
-Sebastian Andrzej Siewior (1):
-      fs/fscache: remove spin_lock() from the condition in while()
-
- fs/cachefiles/interface.c     |   13 +-
- fs/cachefiles/namei.c         |   10 +-
- fs/cachefiles/xattr.c         |    6 +-
- fs/fscache/cache.c            |   34 +-
- fs/fscache/cookie.c           |   93 ++--
- fs/fscache/fsdef.c            |    1 +
- fs/fscache/internal.h         |   11 +-
- fs/fscache/main.c             |   11 +-
- fs/fscache/netfs.c            |    1 +
- fs/fscache/object-list.c      |  103 ++--
- fs/fscache/object.c           | 1106 +++++++++++++++++++++--------------------
- fs/fscache/operation.c        |   37 +-
- fs/fscache/page.c             |   65 ++-
- include/linux/fscache-cache.h |  175 +++----
- include/linux/wait.h          |   24 +
- kernel/wait.c                 |   88 ++++
- 16 files changed, 956 insertions(+), 822 deletions(-)
+-- 
+Jeff Layton <jlayton@redhat.com>
