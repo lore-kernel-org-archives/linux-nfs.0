@@ -1,56 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57361 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:32642 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755553Ab3GYMyM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Jul 2013 08:54:12 -0400
-Date: Thu, 25 Jul 2013 08:54:05 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Cong Wang <amwang@redhat.com>
-Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [Patch net-next 4/7] sunrpc: use generic union inet_addr
-Message-ID: <20130725125405.GC5777@fieldses.org>
-References: <1374476713-8838-1-git-send-email-amwang@redhat.com>
- <1374476713-8838-5-git-send-email-amwang@redhat.com>
- <20130723164051.GE12569@fieldses.org>
- <1374755683.29923.7.camel@cr0>
+	id S1752975Ab3GAQW1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Jul 2013 12:22:27 -0400
+Message-ID: <51D1ACBE.7030608@RedHat.com>
+Date: Mon, 01 Jul 2013 12:22:22 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1374755683.29923.7.camel@cr0>
+To: Neil Brown <neilb@suse.de>
+CC: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 2/3] krb5_util: don't give up on machine credential if
+ hostname not available.
+References: <20130603005219.20080.1927.stgit@notabene.brown> <20130603010021.20080.11239.stgit@notabene.brown>
+In-Reply-To: <20130603010021.20080.11239.stgit@notabene.brown>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 25, 2013 at 08:34:43PM +0800, Cong Wang wrote:
-> On Tue, 2013-07-23 at 12:40 -0400, J. Bruce Fields wrote:
-> > On Mon, Jul 22, 2013 at 03:05:10PM +0800, Cong Wang wrote: 
-> > >  static inline unsigned short rpc_get_port(const struct sockaddr *sap)
-> > >  {
-> > > -	switch (sap->sa_family) {
-> > > -	case AF_INET:
-> > > -		return ntohs(((struct sockaddr_in *)sap)->sin_port);
-> > > -	case AF_INET6:
-> > > -		return ntohs(((struct sockaddr_in6 *)sap)->sin6_port);
-> > > -	}
-> > > -	return 0;
-> > > +	return inet_addr_get_port((const union inet_addr *)sap);
-> > >  }
-> > 
-> > Is there any reason to keep the rpc_get_port wrapper at all after this?
-> > Or if its still useful to have the convenience of not having to do the
-> > cast, maybe the wrapper should move to common code to?  (Is there some
-> > reason only the rpc code needs this?)
-> > 
-> 
-> Yeah, the only reason why I keep it is that I don't want to touch all
-> the callers of rpc_get_port().
+Sorry for getting into so late... I did an extraordinary amount
+of travailing in June.... 
 
-Makes sense, thanks.
-
---b.
-
-> I agree that we can make it a generic
-> function.
+On 02/06/13 21:00, Neil Brown wrote:
+> krb5_util tries various different credential names in order to find
+> the machine credential, not all of them use the full host name of the
+> current host.
 > 
-> Thanks.
+> So if getting the full host name fails, don't give up completely,
+> still try the other options.
 > 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> ---
+>  utils/gssd/krb5_util.c |    8 ++++++--
+>  1 file changed, 6 insertions(+), 2 deletions(-)
+> 
+> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> index 9ef80f0..5e84481 100644
+> --- a/utils/gssd/krb5_util.c
+> +++ b/utils/gssd/krb5_util.c
+> @@ -825,8 +825,10 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *tgtname,
+>  	myhostad[i+1] = 0;
+>  
+>  	retval = get_full_hostname(myhostname, myhostname, sizeof(myhostname));
+> -	if (retval)
+> -		goto out;
+> +	if (retval) {
+> +		/* Don't use myhostname */
+> +		myhostname[0] = 0;
+> +	}
+>  
+>  	code = krb5_get_default_realm(context, &default_realm);
+>  	if (code) {
+> @@ -883,6 +885,8 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *tgtname,
+>  								myhostad,
+>  								NULL);
+>  			} else {
+> +				if (!myhostname[0])
+> +					continue;
+>  				snprintf(spn, sizeof(spn), "%s/%s@%s",
+>  					 svcnames[j], myhostname, realm);
+>  				code = krb5_build_principal_ext(context, &princ,
+> 
+> 
+At the end of day... This patch allows the machine cred to be used when
+there is no DNS or /etc/hosts is empty (aka getaddrinfo() fails via 
+the get_full_hostname() call).
+
+I'm thinking this is a good idea, but I'm a gnawing feeling this would
+be open some type of security hole by using machine creds when they
+should not be or they were not expected to be used...
+
+Am I being too paranoid???
+
+steved.
+
+
