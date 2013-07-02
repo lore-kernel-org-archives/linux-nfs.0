@@ -1,56 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:8639 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754218Ab3GCAMU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Jul 2013 20:12:20 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <20130703093815.006437fd5f18210b7729b060@canb.auug.org.au>
-References: <20130703093815.006437fd5f18210b7729b060@canb.auug.org.au> <6302.1372775256@warthog.procyon.org.uk>
-To: Stephen Rothwell <sfr@canb.auug.org.au>
-Cc: dhowells@redhat.com, torvalds@linux-foundation.org,
-        linux-cachefs@redhat.com, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, milosz@adfin.com
+Received: from haggis.pcug.org.au ([203.10.76.10]:49712 "EHLO
+	members.tip.net.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752592Ab3GBXi0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Jul 2013 19:38:26 -0400
+Date: Wed, 3 Jul 2013 09:38:15 +1000
+From: Stephen Rothwell <sfr@canb.auug.org.au>
+To: David Howells <dhowells@redhat.com>
+Cc: torvalds@linux-foundation.org, linux-cachefs@redhat.com,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        milosz@adfin.com
 Subject: Re: [GIT PULL] Fix assorted FS-Cache issues
-Date: Wed, 03 Jul 2013 01:12:13 +0100
-Message-ID: <4578.1372810333@warthog.procyon.org.uk>
+Message-Id: <20130703093815.006437fd5f18210b7729b060@canb.auug.org.au>
+In-Reply-To: <6302.1372775256@warthog.procyon.org.uk>
+References: <6302.1372775256@warthog.procyon.org.uk>
+Mime-Version: 1.0
+Content-Type: multipart/signed; protocol="application/pgp-signature";
+ micalg="PGP-SHA256";
+ boundary="Signature=_Wed__3_Jul_2013_09_38_15_+1000_9NdgPHqZVeTtkxKU"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Stephen Rothwell <sfr@canb.auug.org.au> wrote:
+--Signature=_Wed__3_Jul_2013_09_38_15_+1000_9NdgPHqZVeTtkxKU
+Content-Type: text/plain; charset=US-ASCII
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-> >   git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git tags/fscache-20130702
-> 
-> /me wonders where this has been hiding for the last month and a half ...
+On Tue, 02 Jul 2013 15:27:36 +0100 David Howells <dhowells@redhat.com> wrot=
+e:
+>
+> Hi Linus,
+>=20
+> The following changes since commit b973425cbb51e08301b34fecdfd476a44507d8=
+cf:
+>=20
+>   Merge tag 'ext4_for_linus_stable' of git://git.kernel.org/pub/scm/linux=
+/kernel/git/tytso/ext4 (2013-05-14 09:30:54 -0700)
+>=20
+> are available in the git repository at:
+>=20
+>=20
+>   git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git tag=
+s/fscache-20130702
 
-I asked you to pull my fscache branch on the 23rd May, and you replied on the
-27th May saying you'd done so.
+/me wonders where this has been hiding for the last month and a half ...
 
-Looking in next-20130531 and next-20130527 in linux-next:
+--=20
+Cheers,
+Stephen Rothwell                    sfr@canb.auug.org.au
 
-	+fscache                ccce57fed1ffb98ad4ff7c290276ca266435ad19
+--Signature=_Wed__3_Jul_2013_09_38_15_+1000_9NdgPHqZVeTtkxKU
+Content-Type: application/pgp-signature
 
-Looking in next-20130603 and next-20130701, I see:
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.20 (GNU/Linux)
 
-	+fscache		bbd645c7a7b56f170940e81335ba4549f50aae95
+iQIcBAEBCAAGBQJR02RrAAoJEECxmPOUX5FE77oP/0P9ssO3c4Q1hTXdwzq8+zF2
+tXhN0GaToykhxJAXn0bo0dFhiPlTemC+Ow5qSTS+L7XF4LeOuB2eUNM+Z1/HNZVp
+afHaTPMGyMYtHeqZ3/Qcz98C6E7maCD8r0d9X2ont3rRmVItquvBycJ1N82vSnnm
+QpsRDoszyE2m89lkUjxWTWlqKFOpRM3OqplP0Wucal6JEVJHA7udPukG2DicwTGr
+iq4n7hz5VTXFnQJ1PkhoISXj+vDIXPZQP23OgNOTiSD1UvHyjvWVYqqOudQPtn9y
+sttF8siqsI+xnXu1bd+oL34oe+xzvSRAw6mmzmCd1fyuIw6ZEJbw7T6za5Y6PyQZ
+FYksiAt1NPSq3yFyN7J8ahziREQIRu3LVTu4sG2qldodPTr0VshPWKcpoURwxjQ7
+ZSRkSv7HqoUtuAGaINp7U7d8UOVXwmhqMDBF4UvCLrg4ArTQ9TFi6LzTWAgn87Xh
+SZCXGk3X9Njkd5ucV5EhXsrWNUqrBcks/JOrqQ/4eRHiLQ04ej5HYI5vX6tg/UQW
+Ux+hfuYCeqGpcMlpbUdkdJfU7ekzhERIIQoYqb4dGyILlilU7xLe0eDEDjY6b/Te
+SPkXz1Yg/3wQVWOJKhX7ieKYMQyv91zcC76byNcNqNKymwga4wthbi0JjIVJE0mt
+rB729Pj6LMTmldGD2h8u
+=SEpm
+-----END PGP SIGNATURE-----
 
-in the Next/SHA1s file.  This is the same as the fscache-20130619 tag that I
-emplaced today, though the fscache _branch_ you've been pulling had been at
-that point for over a month (not yet a month and a half, I will admit).  git
-request-pull seems to pick up tags in preference to branch points.
-
-Comparing fscache-20130619 to fscache-20130702 shows:
-
-	warthog>git diff fscache-20130619 fscache-20130702 | wc -l
-	0
-
-The only difference being in the descriptions (additional Acked-by lines).
-
-I picked 19th June for the old tag name because that was the date I added in
-the Acked-by lines, so this pins the point just before that.  In retrospect, I
-should've used the commit date on the last patch.
-
-As for public mailing lists, most of my patches have been presented as a set
-on several such (fsdevel, nfs, cachefs and lkml) a couple of times (3rd May,
-10th May).
-
-David
+--Signature=_Wed__3_Jul_2013_09_38_15_+1000_9NdgPHqZVeTtkxKU--
