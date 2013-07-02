@@ -1,46 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zeniv.linux.org.uk ([195.92.253.2]:47258 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751118Ab3GDEUv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Jul 2013 00:20:51 -0400
-Date: Thu, 4 Jul 2013 05:20:34 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Waiman Long <Waiman.Long@hp.com>
-Cc: Jeff Layton <jlayton@redhat.com>, Miklos Szeredi <mszeredi@suse.cz>,
-        Ingo Molnar <mingo@redhat.com>, Thomas Gleixner <tglx@linutronix.de>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Peter Zijlstra <peterz@infradead.org>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Benjamin Herrenschmidt <benh@kernel.crashing.org>,
-        Andi Kleen <andi@firstfloor.org>,
-        "Chandramouleeswaran, Aswin" <aswin@hp.com>,
-        "Norton, Scott J" <scott.norton@hp.com>
-Subject: Re: [PATCH v3 24/25] sunrpc: Change how dentry's d_lock field is
- accessed
-Message-ID: <20130704042034.GM4165@ZenIV.linux.org.uk>
-References: <1372883132-23410-1-git-send-email-Waiman.Long@hp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:5394 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751641Ab3GBMaB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Jul 2013 08:30:01 -0400
+Message-ID: <51D2C7C5.4090202@RedHat.com>
+Date: Tue, 02 Jul 2013 08:29:57 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1372883132-23410-1-git-send-email-Waiman.Long@hp.com>
+To: NeilBrown <neilb@suse.de>
+CC: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 2/3] krb5_util: don't give up on machine credential if
+ hostname not available.
+References: <20130603005219.20080.1927.stgit@notabene.brown> <20130603010021.20080.11239.stgit@notabene.brown> <51D1ACBE.7030608@RedHat.com> <20130702075650.63f72ca9@notabene.brown>
+In-Reply-To: <20130702075650.63f72ca9@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 03, 2013 at 04:25:32PM -0400, Waiman Long wrote:
-> There is no change in logic and everything should just work.
 
-> -		spin_lock(&file->f_path.dentry->d_lock);
-> +		d_lock(file->f_path.dentry);
->  		if (!d_unhashed(file->f_path.dentry))
->  			clnt = RPC_I(inode)->private;
->  		if (clnt != NULL && atomic_inc_not_zero(&clnt->cl_count)) {
-> -			spin_unlock(&file->f_path.dentry->d_lock);
-> +			d_unlock(file->f_path.dentry);
 
-Could somebody explain WTF is being protected here?  It's not ->private -
-that gets set (and, more importantly, cleared) without ->d_lock in sight.
-Trond, that seems to be your code from about three years ago (introduced
-in "SUNRPC: Fix a race in rpc_info_open").  What's going on there?
+On 01/07/13 17:56, NeilBrown wrote:
+> On Mon, 01 Jul 2013 12:22:22 -0400 Steve Dickson <SteveD@redhat.com> wrote:
+> 
+>> Sorry for getting into so late... I did an extraordinary amount
+>> of travailing in June.... 
+>>
+>> On 02/06/13 21:00, Neil Brown wrote:
+>>> krb5_util tries various different credential names in order to find
+>>> the machine credential, not all of them use the full host name of the
+>>> current host.
+>>>
+>>> So if getting the full host name fails, don't give up completely,
+>>> still try the other options.
+>>>
+>>> Signed-off-by: NeilBrown <neilb@suse.de>
+>>> ---
+>>>  utils/gssd/krb5_util.c |    8 ++++++--
+>>>  1 file changed, 6 insertions(+), 2 deletions(-)
+>>>
+>>> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+>>> index 9ef80f0..5e84481 100644
+>>> --- a/utils/gssd/krb5_util.c
+>>> +++ b/utils/gssd/krb5_util.c
+>>> @@ -825,8 +825,10 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *tgtname,
+>>>  	myhostad[i+1] = 0;
+>>>  
+>>>  	retval = get_full_hostname(myhostname, myhostname, sizeof(myhostname));
+>>> -	if (retval)
+>>> -		goto out;
+>>> +	if (retval) {
+>>> +		/* Don't use myhostname */
+>>> +		myhostname[0] = 0;
+>>> +	}
+>>>  
+>>>  	code = krb5_get_default_realm(context, &default_realm);
+>>>  	if (code) {
+>>> @@ -883,6 +885,8 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *tgtname,
+>>>  								myhostad,
+>>>  								NULL);
+>>>  			} else {
+>>> +				if (!myhostname[0])
+>>> +					continue;
+>>>  				snprintf(spn, sizeof(spn), "%s/%s@%s",
+>>>  					 svcnames[j], myhostname, realm);
+>>>  				code = krb5_build_principal_ext(context, &princ,
+>>>
+>>>
+>> At the end of day... This patch allows the machine cred to be used when
+>> there is no DNS or /etc/hosts is empty (aka getaddrinfo() fails via 
+>> the get_full_hostname() call).
+>>
+>> I'm thinking this is a good idea, but I'm a gnawing feeling this would
+>> be open some type of security hole by using machine creds when they
+>> should not be or they were not expected to be used...
+>>
+>> Am I being too paranoid???
+> 
+> Probably, but it is a good default position nonetheless.
+> 
+> This patch will only allow a machine credential to be used in the absence of
+> an easily detected "full hostname" if a wild card machine credential is
+> available.  And if such is available, it seems wrong not to use it.
+> 
+> If wildcard machine credentials were no expected to be used, it we seem
+> strange to have them included in the keytab file.
+> 
+> So I cannot see any hole.
+Fair enough... Thanks! 
+
+steved.
+
