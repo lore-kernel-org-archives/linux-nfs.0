@@ -1,92 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ye0-f170.google.com ([209.85.213.170]:46457 "EHLO
-	mail-ye0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S964992Ab3GLQbz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jul 2013 12:31:55 -0400
-Received: by mail-ye0-f170.google.com with SMTP id q3so3225031yen.1
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Jul 2013 09:31:55 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe93:815b])
-        by mx.google.com with ESMTPSA id s80sm69030587yhe.27.2013.07.12.09.31.54
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 12 Jul 2013 09:31:54 -0700 (PDT)
-Subject: [PATCH v1 03/19] NFS: Introduce a vector of migration recovery ops
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 12 Jul 2013 12:31:53 -0400
-Message-ID: <20130712163153.1444.48514.stgit@seurat.1015granger.net>
-In-Reply-To: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
-References: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:8639 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754218Ab3GCAMU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Jul 2013 20:12:20 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <20130703093815.006437fd5f18210b7729b060@canb.auug.org.au>
+References: <20130703093815.006437fd5f18210b7729b060@canb.auug.org.au> <6302.1372775256@warthog.procyon.org.uk>
+To: Stephen Rothwell <sfr@canb.auug.org.au>
+Cc: dhowells@redhat.com, torvalds@linux-foundation.org,
+        linux-cachefs@redhat.com, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, milosz@adfin.com
+Subject: Re: [GIT PULL] Fix assorted FS-Cache issues
+Date: Wed, 03 Jul 2013 01:12:13 +0100
+Message-ID: <4578.1372810333@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The differences between minor version 0 and minor version 1
-migration will be abstracted by the addition of a set of migration
-recovery ops.
+Stephen Rothwell <sfr@canb.auug.org.au> wrote:
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/nfs4_fs.h  |    4 ++++
- fs/nfs/nfs4proc.c |   10 ++++++++++
- 2 files changed, 14 insertions(+)
+> >   git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git tags/fscache-20130702
+> 
+> /me wonders where this has been hiding for the last month and a half ...
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 3bc554e..40457e2 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -52,6 +52,7 @@ struct nfs4_minor_version_ops {
- 	const struct nfs4_state_recovery_ops *reboot_recovery_ops;
- 	const struct nfs4_state_recovery_ops *nograce_recovery_ops;
- 	const struct nfs4_state_maintenance_ops *state_renewal_ops;
-+	const struct nfs4_mig_recovery_ops *mig_recovery_ops;
- };
- 
- #define NFS_SEQID_CONFIRMED 1
-@@ -204,6 +205,9 @@ struct nfs4_state_maintenance_ops {
- 	int (*renew_lease)(struct nfs_client *, struct rpc_cred *);
- };
- 
-+struct nfs4_mig_recovery_ops {
-+};
-+
- extern const struct dentry_operations nfs4_dentry_operations;
- 
- /* dir.c */
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index d74a2b5..2f6f3b9 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6966,6 +6966,14 @@ static const struct nfs4_state_maintenance_ops nfs41_state_renewal_ops = {
- };
- #endif
- 
-+static const struct nfs4_mig_recovery_ops nfs40_mig_recovery_ops = {
-+};
-+
-+#if defined(CONFIG_NFS_V4_1)
-+static const struct nfs4_mig_recovery_ops nfs41_mig_recovery_ops = {
-+};
-+#endif	/* CONFIG_NFS_V4_1 */
-+
- static const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
- 	.minor_version = 0,
- 	.init_caps = NFS_CAP_READDIRPLUS
-@@ -6979,6 +6987,7 @@ static const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
- 	.reboot_recovery_ops = &nfs40_reboot_recovery_ops,
- 	.nograce_recovery_ops = &nfs40_nograce_recovery_ops,
- 	.state_renewal_ops = &nfs40_state_renewal_ops,
-+	.mig_recovery_ops = &nfs40_mig_recovery_ops,
- };
- 
- #if defined(CONFIG_NFS_V4_1)
-@@ -6997,6 +7006,7 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
- 	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
- 	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
- 	.state_renewal_ops = &nfs41_state_renewal_ops,
-+	.mig_recovery_ops = &nfs41_mig_recovery_ops,
- };
- #endif
- 
+I asked you to pull my fscache branch on the 23rd May, and you replied on the
+27th May saying you'd done so.
 
+Looking in next-20130531 and next-20130527 in linux-next:
+
+	+fscache                ccce57fed1ffb98ad4ff7c290276ca266435ad19
+
+Looking in next-20130603 and next-20130701, I see:
+
+	+fscache		bbd645c7a7b56f170940e81335ba4549f50aae95
+
+in the Next/SHA1s file.  This is the same as the fscache-20130619 tag that I
+emplaced today, though the fscache _branch_ you've been pulling had been at
+that point for over a month (not yet a month and a half, I will admit).  git
+request-pull seems to pick up tags in preference to branch points.
+
+Comparing fscache-20130619 to fscache-20130702 shows:
+
+	warthog>git diff fscache-20130619 fscache-20130702 | wc -l
+	0
+
+The only difference being in the descriptions (additional Acked-by lines).
+
+I picked 19th June for the old tag name because that was the date I added in
+the Acked-by lines, so this pins the point just before that.  In retrospect, I
+should've used the commit date on the last patch.
+
+As for public mailing lists, most of my patches have been presented as a set
+on several such (fsdevel, nfs, cachefs and lkml) a couple of times (3rd May,
+10th May).
+
+David
