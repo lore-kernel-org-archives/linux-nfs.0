@@ -1,121 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from esa-jnhn.mail.uoguelph.ca ([131.104.91.44]:45411 "EHLO
-	esa-jnhn.mail.uoguelph.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757027Ab3GQWfa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Jul 2013 18:35:30 -0400
-Date: Wed, 17 Jul 2013 18:25:55 -0400 (EDT)
-From: Rick Macklem <rmacklem@uoguelph.ca>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        Andre Heider <a.heider@gmail.com>
-Message-ID: <1951743871.894488.1374099955918.JavaMail.root@uoguelph.ca>
-In-Reply-To: <1374098347-30196-1-git-send-email-Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 1/2] NFSv4: Fix a regression against the FreeBSD server
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from fieldses.org ([174.143.236.118]:39200 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932690Ab3GCUMk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Jul 2013 16:12:40 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 00/12] Implement NFSv4 delegations, take 8
+Date: Wed,  3 Jul 2013 16:12:24 -0400
+Message-Id: <1372882356-14168-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> Technically, the Linux client is allowed by the NFSv4 spec to send
-> 3 word bitmaps as part of an OPEN request. However, this causes the
-> current FreeBSD server to return NFS4ERR_ATTRNOTSUPP errors.
-> 
-Yep. The code in the FreeBSD distros is only NFSv4.0, which only had
-bits up to 56. I suppose it should just ignore high order bitmap
-words. (My current code, which isn't in a distro yet, does handle
-3 word bitmaps as a part of the NFSv4.1 support. Maybe I'll change it
-to allow any number of bitmap words, so long as the high order words
-are 0.)
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Thanks for patching this, since it will be some time before the newer
-FreeBSD server code gets released, rick
+This is just a rebase to 3.10 of the previous posting.  As far as I can
+tell, it's ready to be merged.  Introduction (repeated from before) follows:
 
-> Fix the regression by making the Linux client use a 2 word bitmap
-> unless
-> doing NFSv4.2 with labeled NFS.
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->  fs/nfs/nfs4xdr.c | 21 ++++++++++++++-------
->  1 file changed, 14 insertions(+), 7 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 0abfb846..c74d616 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -999,6 +999,7 @@ static void encode_attrs(struct xdr_stream *xdr,
-> const struct iattr *iap,
->  	__be32 *p;
->  	__be32 *q;
->  	int len;
-> +	uint32_t bmval_len = 2;
->  	uint32_t bmval0 = 0;
->  	uint32_t bmval1 = 0;
->  	uint32_t bmval2 = 0;
-> @@ -1010,7 +1011,7 @@ static void encode_attrs(struct xdr_stream
-> *xdr, const struct iattr *iap,
->  	 * = 40 bytes, plus any contribution from variable-length fields
->  	 *            such as owner/group.
->  	 */
-> -	len = 20;
-> +	len = 8;
->  
->  	/* Sigh */
->  	if (iap->ia_valid & ATTR_SIZE)
-> @@ -1040,8 +1041,6 @@ static void encode_attrs(struct xdr_stream
-> *xdr, const struct iattr *iap,
->  		}
->  		len += 4 + (XDR_QUADLEN(owner_grouplen) << 2);
->  	}
-> -	if (label)
-> -		len += 4 + 4 + 4 + (XDR_QUADLEN(label->len) << 2);
->  	if (iap->ia_valid & ATTR_ATIME_SET)
->  		len += 16;
->  	else if (iap->ia_valid & ATTR_ATIME)
-> @@ -1050,15 +1049,22 @@ static void encode_attrs(struct xdr_stream
-> *xdr, const struct iattr *iap,
->  		len += 16;
->  	else if (iap->ia_valid & ATTR_MTIME)
->  		len += 4;
-> +	if (label) {
-> +		len += 4 + 4 + 4 + (XDR_QUADLEN(label->len) << 2);
-> +		bmval_len = 3;
-> +	}
-> +
-> +	len += bmval_len << 2;
->  	p = reserve_space(xdr, len);
->  
->  	/*
->  	 * We write the bitmap length now, but leave the bitmap and the
->  	 attribute
->  	 * buffer length to be backfilled at the end of this routine.
->  	 */
-> -	*p++ = cpu_to_be32(3);
-> +	*p++ = cpu_to_be32(bmval_len);
->  	q = p;
-> -	p += 4;
-> +	/* Skip bitmap entries + attrlen */
-> +	p += bmval_len + 1;
->  
->  	if (iap->ia_valid & ATTR_SIZE) {
->  		bmval0 |= FATTR4_WORD0_SIZE;
-> @@ -1112,10 +1118,11 @@ static void encode_attrs(struct xdr_stream
-> *xdr, const struct iattr *iap,
->  				len, ((char *)p - (char *)q) + 4);
->  		BUG();
->  	}
-> -	len = (char *)p - (char *)q - 16;
-> +	len = (char *)p - (char *)q - (bmval_len << 2);
->  	*q++ = htonl(bmval0);
->  	*q++ = htonl(bmval1);
-> -	*q++ = htonl(bmval2);
-> +	if (bmval_len == 3)
-> +		*q++ = htonl(bmval2);
->  	*q = htonl(len);
->  
->  /* out: */
-> --
-> 1.8.3.1
-> 
-> 
+
+This patch series implements read delegations, which allow NFSv4 clients
+to perform read opens without contacting the server, by promising to
+call back to clients before modifying the data, metadata, or set of
+links pointing to a file.
+
+The main recent change was in response to review from Linus, who didn't
+want us to hang under directory i_mutex's on timeouts communicating with
+unresponsive clients.
+
+So, this version of the series drops the i_mutex before waiting.  The
+logic ends up looking something like:
+
+        acquire locks
+        look up inode
+        test for delegation; if found:
+                take reference on inode
+                release locks
+                wait for delegation break
+                drop reference on inode
+                retry
+
+
+The initial test for a delegation happens after the lock on the
+delegated inode is acquired, but additional directory mutexes may have
+been acquired further up the call stack.  I therefore add a "struct
+inode **" argument to any intervening functions, which we use to pass
+the inode back up to the caller in the case it needs to wait for the
+delegation to be broken.
+
+I also allow callers to pass in NULL for the "struct inode **" argument
+to indicate they'd rather just fail than wait for a delegation.  For
+example, as long as ecryptfs isn't exportable I assume they'd rather not
+see retry logic there that they won't use.  But I may have misjudged in
+some of these cases.
+
+
+J. Bruce Fields (12):
+  vfs: pull ext4's double-i_mutex-locking into common code
+  vfs: don't use PARENT/CHILD lock classes for non-directories
+  vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
+  vfs: take i_mutex on renamed file
+  locks: introduce new FL_DELEG lock flag
+  locks: implement delegations
+  namei: minor vfs_unlink cleanup
+  locks: break delegations on unlink
+  locks: helper functions for delegation breaking
+  locks: break delegations on rename
+  locks: break delegations on link
+  locks: break delegations on any attribute modification
+
+ Documentation/filesystems/directory-locking |   31 ++++++++---
+ drivers/base/devtmpfs.c                     |    6 +-
+ fs/attr.c                                   |    5 +-
+ fs/cachefiles/interface.c                   |    4 +-
+ fs/cachefiles/namei.c                       |    4 +-
+ fs/ecryptfs/inode.c                         |    6 +-
+ fs/ext4/ext4.h                              |    2 -
+ fs/ext4/ioctl.c                             |    4 +-
+ fs/ext4/move_extent.c                       |   40 +-------------
+ fs/hpfs/namei.c                             |    2 +-
+ fs/inode.c                                  |   35 +++++++++++-
+ fs/locks.c                                  |   51 +++++++++++++----
+ fs/namei.c                                  |   79 +++++++++++++++++++++------
+ fs/nfsd/nfs4state.c                         |    2 +-
+ fs/nfsd/vfs.c                               |   14 +++--
+ fs/open.c                                   |   21 +++++--
+ fs/utimes.c                                 |    9 ++-
+ include/linux/fs.h                          |   72 ++++++++++++++++++++----
+ ipc/mqueue.c                                |    2 +-
+ 19 files changed, 273 insertions(+), 116 deletions(-)
