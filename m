@@ -1,66 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60914 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751108Ab3GAPBI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Jul 2013 11:01:08 -0400
-Date: Mon, 1 Jul 2013 11:01:05 -0400
-To: drankye <drankye@yahoo.com.cn>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: What's the status of SPKM3/LIPKEY for NFS4 on Linux
-Message-ID: <20130701150105.GC19945@fieldses.org>
-References: <1372664858.77543.YahooMailNeo@web15903.mail.cnb.yahoo.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1372664858.77543.YahooMailNeo@web15903.mail.cnb.yahoo.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from haggis.pcug.org.au ([203.10.76.10]:35856 "EHLO
+	members.tip.net.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751889Ab3GCBuG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Jul 2013 21:50:06 -0400
+Date: Wed, 3 Jul 2013 11:49:56 +1000
+From: Stephen Rothwell <sfr@canb.auug.org.au>
+To: David Howells <dhowells@redhat.com>
+Cc: torvalds@linux-foundation.org, linux-cachefs@redhat.com,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        milosz@adfin.com
+Subject: Re: [GIT PULL] Fix assorted FS-Cache issues
+Message-Id: <20130703114956.53b40a7374fe007df84548dd@canb.auug.org.au>
+In-Reply-To: <4578.1372810333@warthog.procyon.org.uk>
+References: <20130703093815.006437fd5f18210b7729b060@canb.auug.org.au>
+	<6302.1372775256@warthog.procyon.org.uk>
+	<4578.1372810333@warthog.procyon.org.uk>
+Mime-Version: 1.0
+Content-Type: multipart/signed; protocol="application/pgp-signature";
+ micalg="PGP-SHA256";
+ boundary="Signature=_Wed__3_Jul_2013_11_49_56_+1000_.e7GQ/cuongKgNPS"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 01, 2013 at 03:47:38PM +0800, drankye wrote:
-> 
-> 
-> Hi all, 
->  
-> About 2 years ago, it was asked “when will we be able to use
-> LIPKEY on NFS4 on Linux?”. Ref. http://permalink.gmane.org/gmane.linux.nfs/35560.
-> There Trond replied as below:
-> “
-> We're likely to drop the requirement that SPKM3/LIPKEY be a
-> mandatory
-> security mechanism for NFSv4 in the revised RFC3530 (a.k.a.
-> RFC3530bis)
-> that is being drafted.
->  
-> The reason is that the SPKM3 mechanism (on which LIPKEY
-> relies) appears
-> to contain inherent security flaws that are difficult to
-> fix. The IETF
-> security group have therefore pretty much killed it as an
-> option.
-> Other alternatives to SPKM3 are being discussed, but I'm not
-> aware of
-> anything that replaces LIPKEY.
-> “
-> I’m wondering today what’s the status of SPKM3/LIPKEY
-> support for NFS4 on Linux. Does anyone know that? Is SPKM3/LIPKEY dropped from
-> NFS4 or available now with the inherent security flaws being fixed?
+--Signature=_Wed__3_Jul_2013_11_49_56_+1000_.e7GQ/cuongKgNPS
+Content-Type: text/plain; charset=US-ASCII
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-It's gone.  (The kernel code was removed by
-1e7af1b8062598a038c04dfaaabd038a0d6e8b6a "J. Bruce Fields
-<bfields@redhat.com>".)
+On Wed, 03 Jul 2013 01:12:13 +0100 David Howells <dhowells@redhat.com> wrot=
+e:
+>
+> Stephen Rothwell <sfr@canb.auug.org.au> wrote:
+>=20
+> > >   git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git=
+ tags/fscache-20130702
+> >=20
+> > /me wonders where this has been hiding for the last month and a half ...
+>=20
+> I asked you to pull my fscache branch on the 23rd May, and you replied on=
+ the
+> 27th May saying you'd done so.
 
-And my understanding is that the flaws were inherent to the
-specification and not fixable in implementation.
+And in linux-next, I keep fetching the same branch every day to get
+updates.  It is polite (in fact necessary) for you to keep that branch up
+to date if you change things.  You did not update that branch until today
+which is what confused me.  The *commits* you sent Linus have never been
+in linux-next even though the *patches* have.
 
---b.
+Not a biggie, just makes it a bit hard to keep track.
 
->  
-> Thank you very much for your update. 
->  
-> Regards,
-> Kai
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--=20
+Cheers,
+Stephen Rothwell                    sfr@canb.auug.org.au
+
+--Signature=_Wed__3_Jul_2013_11_49_56_+1000_.e7GQ/cuongKgNPS
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.20 (GNU/Linux)
+
+iQIcBAEBCAAGBQJR04NJAAoJEECxmPOUX5FERZ0P/2CW2652LfurQvLc+vnNMaEN
+3L7yWQ0yJYQeH5xnPZSARgOu17cPEX7q5rd5fUM9004UBuDzsOdUAkjvZhRoIZVK
+aLmcKPFRpdc1MQAaabOiuZEZ4b4OBCjsYcCWFVILgBMHJeCM3GJ2l2Who/k5S/a1
+liMmY0SRuPbS0dd5d/LXBtjVG81Btl92AA1p3OkxoIngGV8USGlpTd0l/FEhk4AA
++nA0qU/0LqRbVrxlMbvEALRh2c8MtSEvyb5cERP4DUXB07rXdYkhkZKPje5sTtzQ
+OUubQW66jKAnyBTBPLPP3PuhENzrrZ+0MAqpOQYmkbaFwOwDaxiwf/cj3VZT9+5F
+jt8CXEgSCOziNHpqlPzM/7zRY0ytSkxXXhSBWrdJXL2RJU0vjw1VWj4Tubkc7c1C
+0PhCtNwYm2oXZ6ss6bhLRIkRFYPwsGd9f8M++WK8eHYKDLvlMyPdcquutzZfP+kI
+fsIxq2MJxlPQLWVgrRV/Ca5jjWeaResPA5nyklzS4fLkDDmmYTDNVcXlGA1jJATl
+py7iu6rndczt4Ye0tAmx2na1+DWkGUpU8OSvKdrvuVE+uO8raJ8EXLCpfk3pTFXt
+8atOo2Ldo4qZ6DVKJYqxp5cFztBpjZNBuaF5z3kYfb+w6hLN/j+7TJMCBNuxP8DG
+7LY9CeCFOGoP/tmAyOg2
+=qSIv
+-----END PGP SIGNATURE-----
+
+--Signature=_Wed__3_Jul_2013_11_49_56_+1000_.e7GQ/cuongKgNPS--
