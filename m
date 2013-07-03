@@ -1,116 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50331 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:39233 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752522Ab3GXO0M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Jul 2013 10:26:12 -0400
-Date: Wed, 24 Jul 2013 10:26:09 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Andre Heider <a.heider@gmail.com>, Rick Macklem <rmacklem@uoguelph.ca>,
-        linux-nfs@vger.kernel.org
-Subject: Re: Error writing to nfs4 with 3.11-rc1
-Message-ID: <20130724142609.GH23378@fieldses.org>
-References: <CAHsu+b_hhSr2vwcwM8TX3=xF=3HffUXG=YLVLcsEpH1wHn+JoA@mail.gmail.com>
- <A5C56FD6-9E14-43A3-8627-1C8F77EC6926@oracle.com>
- <CAHsu+b9vWUyCGHSs==Na=VntwvYp65=rva7+y9aQDXquxX4t-A@mail.gmail.com>
- <F3EFA483-0662-4226-AAF3-DCF12D48485E@oracle.com>
- <20130719161313.GA20026@fieldses.org>
- <85DF5611-5C53-4B65-AA05-8436C9F00680@oracle.com>
- <20130719175535.GA20841@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130719175535.GA20841@fieldses.org>
+	id S933183Ab3GCUMr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Jul 2013 16:12:47 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Tyler Hicks <tyhicks@canonical.com>,
+        Dustin Kirkland <dustin.kirkland@gazzang.com>
+Subject: [PATCH 11/12] locks: break delegations on link
+Date: Wed,  3 Jul 2013 16:12:35 -0400
+Message-Id: <1372882356-14168-12-git-send-email-bfields@redhat.com>
+In-Reply-To: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 19, 2013 at 01:55:35PM -0400, J. Bruce Fields wrote:
-> On Fri, Jul 19, 2013 at 12:33:11PM -0400, Chuck Lever wrote:
-> > 
-> > On Jul 19, 2013, at 12:13 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Wed, Jul 17, 2013 at 04:54:59PM -0400, Chuck Lever wrote:
-> > >> By the way, the NFSv4 OPEN request parsing in Wireshark 1.10.0 is totally screwed up.  Has anyone reported this to the Wireshark community?  Wireshark 1.8.8 appears to parse OPEN requests correctly, and is able to handle the 3-word bitmask correctly.
-> > > 
-> > > What exactly is screwed up?
-> > 
-> > For example, if you undisclose all of the parsed elements of an OPEN reply, the parsing of the XDR is wrong and the following replies in the compound become unparsable "data".
-> > 
-> > I've reproduced this for every installation of 1.10.0, Linux and Mac OS, that I've done.
-> > 
-> > I'm looking at a trace where the client sends an unchecked create OPEN via this compound:
-> > 
-> > PUTFH, OPEN, GETFH, ACCESS, GETATTR
-> > 
-> > And here is the reply, as parsed by Wireshark.  The replies after the OPEN are rendered as 216 bytes of unparsed "data".  The Delegation Type is 2950154659.  fattr4_mode looks wrong as well, the requested mode was 644.
-> > 
-> > Close examination of the actual bytes in this reply shows that the reply sent by the server was correct XDR and a plausible result, and the client continues normal and correct operation.
-> 
-> Hm, that might be:
-> 
-> 	https://bugs.wireshark.org/bugzilla/show_bug.cgi?id=8920
-> 
-> ?
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Whoops, should have looked more closely: wireshark was right, the
-attribute length was wrong--so probably newer wireshark needs to be
-fixed to at least warn.
+Cc: Tyler Hicks <tyhicks@canonical.com>
+Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/ecryptfs/inode.c |    2 +-
+ fs/namei.c          |   17 +++++++++++++----
+ fs/nfsd/vfs.c       |    2 +-
+ include/linux/fs.h  |    2 +-
+ 4 files changed, 16 insertions(+), 7 deletions(-)
 
---b.
+diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+index af42d88..19e4435 100644
+--- a/fs/ecryptfs/inode.c
++++ b/fs/ecryptfs/inode.c
+@@ -475,7 +475,7 @@ static int ecryptfs_link(struct dentry *old_dentry, struct inode *dir,
+ 	dget(lower_new_dentry);
+ 	lower_dir_dentry = lock_parent(lower_new_dentry);
+ 	rc = vfs_link(lower_old_dentry, lower_dir_dentry->d_inode,
+-		      lower_new_dentry);
++		      lower_new_dentry, NULL);
+ 	if (rc || !lower_new_dentry->d_inode)
+ 		goto out_lock;
+ 	rc = ecryptfs_interpose(lower_new_dentry, new_dentry, dir->i_sb);
+diff --git a/fs/namei.c b/fs/namei.c
+index be00d37..18267e0 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3566,7 +3566,7 @@ SYSCALL_DEFINE2(symlink, const char __user *, oldname, const char __user *, newn
+ 	return sys_symlinkat(oldname, AT_FDCWD, newname);
+ }
+ 
+-int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry)
++int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry, struct inode **delegated_inode)
+ {
+ 	struct inode *inode = old_dentry->d_inode;
+ 	unsigned max_links = dir->i_sb->s_max_links;
+@@ -3602,8 +3602,11 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
+ 		error =  -ENOENT;
+ 	else if (max_links && inode->i_nlink >= max_links)
+ 		error = -EMLINK;
+-	else
+-		error = dir->i_op->link(old_dentry, dir, new_dentry);
++	else {
++		error = try_break_deleg(inode, delegated_inode);
++		if (!error)
++			error = dir->i_op->link(old_dentry, dir, new_dentry);
++	}
+ 	mutex_unlock(&inode->i_mutex);
+ 	if (!error)
+ 		fsnotify_link(dir, inode, new_dentry);
+@@ -3624,6 +3627,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
+ {
+ 	struct dentry *new_dentry;
+ 	struct path old_path, new_path;
++	struct inode *delegated_inode = NULL;
+ 	int how = 0;
+ 	int error;
+ 
+@@ -3662,9 +3666,14 @@ retry:
+ 	error = security_path_link(old_path.dentry, &new_path, new_dentry);
+ 	if (error)
+ 		goto out_dput;
+-	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry);
++	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry, &delegated_inode);
+ out_dput:
+ 	done_path_create(&new_path, new_dentry);
++	if (delegated_inode) {
++		error = break_deleg_wait(&delegated_inode);
++		if (!error)
++			goto retry;
++	}
+ 	if (retry_estale(error, how)) {
+ 		how |= LOOKUP_REVAL;
+ 		goto retry;
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 54ac814..b9740cb 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1708,7 +1708,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
+ 		err = nfserrno(host_err);
+ 		goto out_dput;
+ 	}
+-	host_err = vfs_link(dold, dirp, dnew);
++	host_err = vfs_link(dold, dirp, dnew, NULL);
+ 	if (!host_err) {
+ 		err = nfserrno(commit_metadata(ffhp));
+ 		if (!err)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index a35dadb..936413c 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1461,7 +1461,7 @@ extern int vfs_create(struct inode *, struct dentry *, umode_t, bool);
+ extern int vfs_mkdir(struct inode *, struct dentry *, umode_t);
+ extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
+ extern int vfs_symlink(struct inode *, struct dentry *, const char *);
+-extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
++extern int vfs_link(struct dentry *, struct inode *, struct dentry *, struct inode **);
+ extern int vfs_rmdir(struct inode *, struct dentry *);
+ extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
+ extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **);
+-- 
+1.7.9.5
 
-> 
-> --b.
-> 
-> > 
-> > Network File System, Ops(5): PUTFH OPEN
-> >     [Program Version: 4]
-> >     [V4 Procedure: COMPOUND (1)]
-> >     Status: NFS4_OK (0)
-> >     Tag: <EMPTY>
-> >         length: 0
-> >         contents: <EMPTY>
-> >     Operations (count: 5)
-> >         Opcode: PUTFH (22)
-> >             Status: NFS4_OK (0)
-> >         Opcode: OPEN (18)
-> >             Status: NFS4_OK (0)
-> >             stateid
-> >                 [StateID Hash: 0xaf36]
-> >                 seqid: 0x00000001
-> >                 Data: 01db0fb0ac64000000000000
-> >             change_info
-> >                 Atomic: Yes
-> >                 changeid (before): 5901652787232948527
-> >                 changeid (after): 5901653255478300828
-> >             results_flags: Unknown (0x00000006)
-> >                 .... .... .... .... .... .... .... ...0 = mlock: Unknown (0)
-> >                 .... .... .... .... .... .... .... ..1. = confirm: OPEN4_RESULT_MLOCK (1)
-> >             Attr mask[0]: 0x00000010 (SIZE)
-> >                 reqd_attr: SIZE (4)
-> >                     size: 42949672960
-> >             Attr mask[1]: 0x00000002 (MODE)
-> >                 reco_attr: MODE (33)
-> >                     fattr4_mode: 044
-> >                         .... .... .... .... 000. .... .... .... = Name: Unknown (0)
-> >                         .... .... .... .... .... 0... .... .... = Set user id on exec: No
-> >                         .... .... .... .... .... .0.. .... .... = Set group id on exec: No
-> >                         .... .... .... .... .... ..0. .... .... = Save swapped text even after use: No
-> >                         .... .... .... .... .... ...0 .... .... = Read permission for owner: No
-> >                         .... .... .... .... .... .... 0... .... = Write permission for owner: No
-> >                         .... .... .... .... .... .... .0.. .... = Execute permission for owner: No
-> >                         .... .... .... .... .... .... ..1. .... = Read permission for group: Yes
-> >                         .... .... .... .... .... .... ...0 .... = Write permission for group: No
-> >                         .... .... .... .... .... .... .... 0... = Execute permission for group: No
-> >                         .... .... .... .... .... .... .... .1.. = Read permission for others: Yes
-> >                         .... .... .... .... .... .... .... ..0. = Write permission for others: No
-> >                         .... .... .... .... .... .... .... ...0 = Execute permission for others: No
-> >             Delegation Type: Unknown (2950154659)
-> >     [Main Opcode: OPEN (18)]
-> >     Data (216 bytes)
-> > 
-> > -- 
-> > Chuck Lever
-> > chuck[dot]lever[at]oracle[dot]com
-> > 
-> > 
-> > 
-> > 
