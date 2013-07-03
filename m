@@ -1,58 +1,283 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from [216.240.18.77] ([216.240.18.77]:9861 "EHLO mx12.netapp.com"
-	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1753494Ab3GIMOo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Jul 2013 08:14:44 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Johan GUILBAUD <guilbaud.johan@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Problem with sharing mounted iso
-Date: Tue, 9 Jul 2013 12:14:12 +0000
-Message-ID: <1373372050.3641.2.camel@leira.trondhjem.org>
-References: <CAF38w7Xx0_TqZem6cen+EJKpUrziGT_dAVcjG7oFFwM+ANm5mA@mail.gmail.com>
-	 <CAF38w7Xf87k=GfM38XcO+ag+Na=f=Mg1KDn0jv2Y8Yp6Q_5a=g@mail.gmail.com>
-	 <20130708143957.2ebc75e3@tlielax.poochiereds.net>
-	 <CAF38w7WUy6ENvppTW5CWbQMRwheTnwQj1e1QQabWUBU13iffNA@mail.gmail.com>
-In-Reply-To: <CAF38w7WUy6ENvppTW5CWbQMRwheTnwQj1e1QQabWUBU13iffNA@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from g1t0027.austin.hp.com ([15.216.28.34]:20982 "EHLO
+	g1t0027.austin.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965613Ab3GCUWC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Jul 2013 16:22:02 -0400
+From: Waiman Long <Waiman.Long@hp.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        Waiman Long <Waiman.Long@hp.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Peter Zijlstra <peterz@infradead.org>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Benjamin Herrenschmidt <benh@kernel.crashing.org>,
+        Andi Kleen <andi@firstfloor.org>,
+        "Chandramouleeswaran, Aswin" <aswin@hp.com>,
+        "Norton, Scott J" <scott.norton@hp.com>
+Subject: [PATCH v3 19/25] nfs: Change how dentry's d_lock and d_count fields are accessed
+Date: Wed,  3 Jul 2013 16:21:49 -0400
+Message-Id: <1372882909-23141-1-git-send-email-Waiman.Long@hp.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>, Jeff Layton <jlayton@redhat.com>,
+        Miklos Szeredi <mszeredi@suse.cz>, Ingo Molnar <mingo@redhat.com>,
+        Thomas Gleixner <tglx@linutronix.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEzLTA3LTA5IGF0IDA5OjU5ICswMjAwLCBKb2hhbiBHVUlMQkFVRCB3cm90ZToN
-Cj4gVGhhbmtzIGZvciB0aGlzIGluZm9ybWF0aW9uIEplZmYsIGJ1dCBpJ2xsIGhhdmUgbW9yZSB0
-aGFuIG9uZSBodW5kcmVkDQo+IGlzbyBtb3VudGVkLi4uIHNvIGFkZGluZyBlYWNoIGluIGV4cG9y
-dHMuLi4gXl4NCj4gDQo+IGFmdGVyIHRlc3RzLCBpdCB3b3JrcyB3aXRoIFNvbGFyaXMgOCAoc3Vu
-b3MgNS44KSBidXQgbm90IHdpdGggU29sYXJpcw0KPiAxMCAoc3Vub3MgNS4xMCksIGkgZG9uJ3Qg
-dW5kZXJzdGFuZCB3aHkuLi4gaSB1c2Ugc2FtZSBjb21tYW5kIHRvIG1vdW50DQo+IG15IHNoYXJl
-Li4uDQo+IA0KPiAgbW91bnQgWy1GIG5mc10gbXlpc29zZXJ2ZXI6L3B1Yi8gL2lzb3MNCj4gDQo+
-IGFueSBpZGVhID8NCg0KQUZBSUNSLCB0aGUgU29sYXJpcyAxMCBjbGllbnQgZG9lcyBub3Qgc3Vw
-cG9ydCBjcm9zc2luZyBtb3VudCBwb2ludHMuDQpUaGF0IGZ1bmN0aW9uYWxpdHkgd2FzIGFkZGVk
-IGluIFNvbGFyaXMgMTEsIGFzIHBhcnQgb2YgdGhlICJtaXJyb3INCm1vdW50IiBmZWF0dXJlOg0K
-DQogIGh0dHA6Ly9kb2NzLm9yYWNsZS5jb20vY2QvRTIzODI0XzAxL2h0bWwvODIxLTE0NTQvZ2dj
-dnIuaHRtbA0KDQpDaGVlcnMNCiAgVHJvbmQNCg0KPiAyMDEzLzcvOCBKZWZmIExheXRvbiA8amxh
-eXRvbkByZWRoYXQuY29tPjoNCj4gPiBPbiBNb24sIDggSnVsIDIwMTMgMTQ6NDc6MDAgKzAyMDAN
-Cj4gPiBKb2hhbiBHVUlMQkFVRCA8Z3VpbGJhdWQuam9oYW5AZ21haWwuY29tPiB3cm90ZToNCj4g
-Pg0KPiA+PiBIZWxsbyAhDQo+ID4+DQo+ID4+IEkgaGF2ZSBhIHByb2JsZW0gdG8gYWNjZXNzIGEg
-bW91bnRlZCBJU08gdGhyb3VnaCBORlMgcHJvdG9jb2wNCj4gPj4NCj4gPj4gaSBoYXZlIGEgc2Vy
-dmVyIChSSEVMNikgb24gd2hpY2ggYXJlIG1vdW50ZWQgSVNPcw0KPiA+PiBpIGhhdmUgYSBsb3Qg
-b2YgY2xpZW50IGFjY2Vzc2luZyBmaWxlcyBpbnRvIElTTyB2aWEgdGhlIE5GUyBzaGFyZQ0KPiA+
-Pg0KPiA+PiBNeSBwcm9ibGVtIGlzIGNsaWVudHMgKFJIRUw1ICYgNiwgU29sYXJpcyA4ICYgMTAp
-IGRvbid0IHNlZSBjb250ZW50IG9mDQo+ID4+IElTTyBmb2xkZXINCj4gPj4NCj4gPj4gSW4gZXhh
-bXBsZSA6DQo+ID4+DQo+ID4+IG9uIE5GUyBzZXJ2ZXIgaSBoYXZlIGEgZm9sZGVyIC9wdWIvIHdo
-ZXJlIHRoZSBJU08gYXJlIG1vdW50ZWQgKGllIDoNCj4gPj4gd2l0aCB0aGUgaXNvIG15YmVhdXRp
-ZnVsaXNvLmlzbyBvbiB0aGUgbW91bnQgcG9pbnQNCj4gPj4gIi9wdWIvbXliZWF1dGlmdWxpc28v
-IikgdGhlcmUgYXJlIGFsc28sIGZvciB0ZXN0LCB0ZXh0IGZpbGVzIGluIC9wdWIvDQo+ID4+IE5G
-UyBzaGFyZXMgY29udGVudCBvZiAvcHViDQo+ID4+DQo+ID4+DQo+ID4+IENsaWVudCBzZWUgdGVz
-dHMgdGV4dCBmaWxlcywgYW5kIGZvbGRlciAibXliZWF1dGlmdWxpc28iIGJ1dCB0aGlzIG9uZQ0K
-PiA+PiBpcyBlbXB0eS4uLg0KPiA+Pg0KPiA+Pg0KPiA+PiB0aGFua3MgZm9yIGhlbHANCj4gPj4N
-Cj4gPg0KPiA+IEV4cG9ydHMgZG9uJ3QgY3Jvc3MgbW91bnRwb2ludHMgYnkgZGVmYXVsdCwgc28g
-aWYgeW91IGV4cG9ydGVkICIvcHViIg0KPiA+IG5vIGZpbGVzeXN0ZW0gbW91bnRlZCB1bmRlciBp
-dCB3aWxsIGJlIGF1dG9tYXRpY2FsbHkgZXhwb3J0ZWQuIFRoZSBiZXN0DQo+ID4gc29sdXRpb24g
-aXMgdG8gZXhwbGljaXRseSBleHBvcnQgdGhvc2UgZmlsZXN5c3RlbXMgYXMgd2VsbCAtLSBpLmUu
-IGFkZA0KPiA+IGFuIGV4cG9ydCBvZiAiL3B1Yi9teWJlYXV0aWZ1bGlzbyIuIFRoZW4sIHdoZW4g
-Y2xpZW50cyB3YW5kZXIgaW50bw0KPiA+IHRob3NlIGRpcmVjdG9yaWVzIHRoZXkgc2hvdWxkIHNl
-ZSB0aGUgY29udGVudHMuDQo+ID4NCj4gPiAtLQ0KPiA+IEplZmYgTGF5dG9uIDxqbGF5dG9uQHJl
-ZGhhdC5jb20+DQo+IA0KPiANCj4gDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMg
-Y2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0K
-d3d3Lm5ldGFwcC5jb20NCg==
+Because of the changes made in dcache.h header file, files that use
+the d_lock and d_count fields of the dentry structure need to be
+changed accordingly.  All the d_lock's spin_lock() and spin_unlock()
+calls are replaced by the corresponding d_lock() and d_unlock() calls.
+References to d_count are replaced by the d_ret_count() calls.
+There is no change in logic and everything should just work.
+
+Signed-off-by: Waiman Long <Waiman.Long@hp.com>
+---
+ fs/nfs/dir.c       |   14 +++++++-------
+ fs/nfs/getroot.c   |    8 ++++----
+ fs/nfs/namespace.c |   16 ++++++++--------
+ fs/nfs/unlink.c    |   22 +++++++++++-----------
+ 4 files changed, 30 insertions(+), 30 deletions(-)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index e093e73..7b9710f 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1175,7 +1175,7 @@ static int nfs_weak_revalidate(struct dentry *dentry, unsigned int flags)
+ }
+ 
+ /*
+- * This is called from dput() when d_count is going to 0.
++ * This is called from dput() when d_ret_count() is going to 0.
+  */
+ static int nfs_dentry_delete(const struct dentry *dentry)
+ {
+@@ -1720,9 +1720,9 @@ int nfs_unlink(struct inode *dir, struct dentry *dentry)
+ 	dfprintk(VFS, "NFS: unlink(%s/%ld, %s)\n", dir->i_sb->s_id,
+ 		dir->i_ino, dentry->d_name.name);
+ 
+-	spin_lock(&dentry->d_lock);
+-	if (dentry->d_count > 1) {
+-		spin_unlock(&dentry->d_lock);
++	d_lock(dentry);
++	if (d_ret_count(dentry) > 1) {
++		d_unlock(dentry);
+ 		/* Start asynchronous writeout of the inode */
+ 		write_inode_now(dentry->d_inode, 0);
+ 		error = nfs_sillyrename(dir, dentry);
+@@ -1732,7 +1732,7 @@ int nfs_unlink(struct inode *dir, struct dentry *dentry)
+ 		__d_drop(dentry);
+ 		need_rehash = 1;
+ 	}
+-	spin_unlock(&dentry->d_lock);
++	d_unlock(dentry);
+ 	error = nfs_safe_remove(dentry);
+ 	if (!error || error == -ENOENT) {
+ 		nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+@@ -1870,7 +1870,7 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	dfprintk(VFS, "NFS: rename(%s/%s -> %s/%s, ct=%d)\n",
+ 		 old_dentry->d_parent->d_name.name, old_dentry->d_name.name,
+ 		 new_dentry->d_parent->d_name.name, new_dentry->d_name.name,
+-		 new_dentry->d_count);
++		 d_ret_count(new_dentry));
+ 
+ 	/*
+ 	 * For non-directories, check whether the target is busy and if so,
+@@ -1888,7 +1888,7 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 			rehash = new_dentry;
+ 		}
+ 
+-		if (new_dentry->d_count > 2) {
++		if (d_ret_count(new_dentry) > 2) {
+ 			int err;
+ 
+ 			/* copy the target dentry's name */
+diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
+index 44efaa8..ffb21a7 100644
+--- a/fs/nfs/getroot.c
++++ b/fs/nfs/getroot.c
+@@ -57,9 +57,9 @@ static int nfs_superblock_set_dummy_root(struct super_block *sb, struct inode *i
+ 		 * Oops, since the test for IS_ROOT() will fail.
+ 		 */
+ 		spin_lock(&sb->s_root->d_inode->i_lock);
+-		spin_lock(&sb->s_root->d_lock);
++		d_lock(sb->s_root);
+ 		hlist_del_init(&sb->s_root->d_alias);
+-		spin_unlock(&sb->s_root->d_lock);
++		d_unlock(sb->s_root);
+ 		spin_unlock(&sb->s_root->d_inode->i_lock);
+ 	}
+ 	return 0;
+@@ -119,12 +119,12 @@ struct dentry *nfs_get_root(struct super_block *sb, struct nfs_fh *mntfh,
+ 	}
+ 
+ 	security_d_instantiate(ret, inode);
+-	spin_lock(&ret->d_lock);
++	d_lock(ret);
+ 	if (IS_ROOT(ret) && !(ret->d_flags & DCACHE_NFSFS_RENAMED)) {
+ 		ret->d_fsdata = name;
+ 		name = NULL;
+ 	}
+-	spin_unlock(&ret->d_lock);
++	d_unlock(ret);
+ out:
+ 	kfree(name);
+ 	nfs_free_fattr(fsinfo.fattr);
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index fc8dc20..c930a51 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -63,7 +63,7 @@ rename_retry:
+ 	seq = read_seqbegin(&rename_lock);
+ 	rcu_read_lock();
+ 	while (1) {
+-		spin_lock(&dentry->d_lock);
++		d_lock(dentry);
+ 		if (IS_ROOT(dentry))
+ 			break;
+ 		namelen = dentry->d_name.len;
+@@ -73,17 +73,17 @@ rename_retry:
+ 		end -= namelen;
+ 		memcpy(end, dentry->d_name.name, namelen);
+ 		*--end = '/';
+-		spin_unlock(&dentry->d_lock);
++		d_unlock(dentry);
+ 		dentry = dentry->d_parent;
+ 	}
+ 	if (read_seqretry(&rename_lock, seq)) {
+-		spin_unlock(&dentry->d_lock);
++		d_unlock(dentry);
+ 		rcu_read_unlock();
+ 		goto rename_retry;
+ 	}
+ 	if ((flags & NFS_PATH_CANONICAL) && *end != '/') {
+ 		if (--buflen < 0) {
+-			spin_unlock(&dentry->d_lock);
++			d_unlock(dentry);
+ 			rcu_read_unlock();
+ 			goto Elong;
+ 		}
+@@ -92,7 +92,7 @@ rename_retry:
+ 	*p = end;
+ 	base = dentry->d_fsdata;
+ 	if (!base) {
+-		spin_unlock(&dentry->d_lock);
++		d_unlock(dentry);
+ 		rcu_read_unlock();
+ 		WARN_ON(1);
+ 		return end;
+@@ -105,17 +105,17 @@ rename_retry:
+ 	}
+ 	buflen -= namelen;
+ 	if (buflen < 0) {
+-		spin_unlock(&dentry->d_lock);
++		d_unlock(dentry);
+ 		rcu_read_unlock();
+ 		goto Elong;
+ 	}
+ 	end -= namelen;
+ 	memcpy(end, base, namelen);
+-	spin_unlock(&dentry->d_lock);
++	d_unlock(dentry);
+ 	rcu_read_unlock();
+ 	return end;
+ Elong_unlock:
+-	spin_unlock(&dentry->d_lock);
++	d_unlock(dentry);
+ 	rcu_read_unlock();
+ 	if (read_seqretry(&rename_lock, seq))
+ 		goto rename_retry;
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index 1f1f38f..10643f8 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -138,7 +138,7 @@ static int nfs_do_call_unlink(struct dentry *parent, struct inode *dir, struct n
+ 		 */
+ 		nfs_free_dname(data);
+ 		ret = nfs_copy_dname(alias, data);
+-		spin_lock(&alias->d_lock);
++		d_lock(alias);
+ 		if (ret == 0 && alias->d_inode != NULL &&
+ 		    !(alias->d_flags & DCACHE_NFSFS_RENAMED)) {
+ 			devname_garbage = alias->d_fsdata;
+@@ -147,7 +147,7 @@ static int nfs_do_call_unlink(struct dentry *parent, struct inode *dir, struct n
+ 			ret = 1;
+ 		} else
+ 			ret = 0;
+-		spin_unlock(&alias->d_lock);
++		d_unlock(alias);
+ 		nfs_dec_sillycount(dir);
+ 		dput(alias);
+ 		/*
+@@ -256,13 +256,13 @@ nfs_async_unlink(struct inode *dir, struct dentry *dentry)
+ 	data->res.dir_attr = &data->dir_attr;
+ 
+ 	status = -EBUSY;
+-	spin_lock(&dentry->d_lock);
++	d_lock(dentry);
+ 	if (dentry->d_flags & DCACHE_NFSFS_RENAMED)
+ 		goto out_unlock;
+ 	dentry->d_flags |= DCACHE_NFSFS_RENAMED;
+ 	devname_garbage = dentry->d_fsdata;
+ 	dentry->d_fsdata = data;
+-	spin_unlock(&dentry->d_lock);
++	d_unlock(dentry);
+ 	/*
+ 	 * If we'd displaced old cached devname, free it.  At that
+ 	 * point dentry is definitely not a root, so we won't need
+@@ -271,7 +271,7 @@ nfs_async_unlink(struct inode *dir, struct dentry *dentry)
+ 	kfree(devname_garbage);
+ 	return 0;
+ out_unlock:
+-	spin_unlock(&dentry->d_lock);
++	d_unlock(dentry);
+ 	put_rpccred(data->cred);
+ out_free:
+ 	kfree(data);
+@@ -293,13 +293,13 @@ nfs_complete_unlink(struct dentry *dentry, struct inode *inode)
+ {
+ 	struct nfs_unlinkdata	*data = NULL;
+ 
+-	spin_lock(&dentry->d_lock);
++	d_lock(dentry);
+ 	if (dentry->d_flags & DCACHE_NFSFS_RENAMED) {
+ 		dentry->d_flags &= ~DCACHE_NFSFS_RENAMED;
+ 		data = dentry->d_fsdata;
+ 		dentry->d_fsdata = NULL;
+ 	}
+-	spin_unlock(&dentry->d_lock);
++	d_unlock(dentry);
+ 
+ 	if (data != NULL && (NFS_STALE(inode) || !nfs_call_unlink(dentry, data)))
+ 		nfs_free_unlinkdata(data);
+@@ -309,17 +309,17 @@ nfs_complete_unlink(struct dentry *dentry, struct inode *inode)
+ static void
+ nfs_cancel_async_unlink(struct dentry *dentry)
+ {
+-	spin_lock(&dentry->d_lock);
++	d_lock(dentry);
+ 	if (dentry->d_flags & DCACHE_NFSFS_RENAMED) {
+ 		struct nfs_unlinkdata *data = dentry->d_fsdata;
+ 
+ 		dentry->d_flags &= ~DCACHE_NFSFS_RENAMED;
+ 		dentry->d_fsdata = NULL;
+-		spin_unlock(&dentry->d_lock);
++		d_unlock(dentry);
+ 		nfs_free_unlinkdata(data);
+ 		return;
+ 	}
+-	spin_unlock(&dentry->d_lock);
++	d_unlock(dentry);
+ }
+ 
+ /**
+@@ -479,7 +479,7 @@ nfs_sillyrename(struct inode *dir, struct dentry *dentry)
+ 
+ 	dfprintk(VFS, "NFS: silly-rename(%s/%s, ct=%d)\n",
+ 		dentry->d_parent->d_name.name, dentry->d_name.name,
+-		dentry->d_count);
++		d_ret_count(dentry));
+ 	nfs_inc_stats(dir, NFSIOS_SILLYRENAME);
+ 
+ 	/*
+-- 
+1.7.1
+
