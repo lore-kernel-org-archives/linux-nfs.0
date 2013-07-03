@@ -1,54 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:11021 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754487Ab3GAPct (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Jul 2013 11:32:49 -0400
-From: Jan Stancek <jstancek@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: bfields@redhat.com, Trond.Myklebust@netapp.com
-Subject: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
-Date: Mon,  1 Jul 2013 17:32:34 +0200
-Message-Id: <682ebd8ecc7309b18396da356a0feb38bfa41674.1372692346.git.jstancek@redhat.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:40412 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751837Ab3GCNTr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Jul 2013 09:19:47 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: [PATCH] Disable NFS version 2
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1372856675-5520-1-git-send-email-steved@redhat.com>
+Date: Wed, 3 Jul 2013 09:19:42 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <9A7F190A-2938-4A14-9125-330189DA8597@oracle.com>
+References: <1372856675-5520-1-git-send-email-steved@redhat.com>
+To: Steve Dickson <steved@redhat.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Starting with commit:
-  commit f994c43d19a9116727d4c228d3f13db595bff562
-  Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-  Date:   Thu Nov 1 12:14:14 2012 -0400
-      SUNRPC: Clean up rpc_bind_new_program
+Hi-
 
-operations on directory mounted with -onfsvers=3,tcp,sec=krb5 fail
-with Input/Output error after ~60 second timeout. This is presumably
-because upcalls for 'nfsacl' are not getting anywhere.
+I'm not opposed to this change, but we should have some public discussion about it first.
 
-This patch enables pipe dir for nfsacl_program and changes its name
-to 'nfs'. This name will be used in upcalls and whole setup should
-work as it did in past - just with nfs/hostname principal.
+If we make this proposed upstream change, NFSv2 will be built far less often and will be a magnet for code rot.  It might make more sense to simply leave the "compile this out" choice up to distributions...?  I'd like to reduce the risk of the kernel carrying around code that no-one uses or compiles.  If we truly want this off by default everywhere, shouldn't we just remove it?  (Is that the eventual goal?)
 
-Signed-off-by: Jan Stancek <jstancek@redhat.com>
----
- fs/nfs/nfs3client.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+Should the server also disable NFSv2 support by default?  If not, then why is the client special in this regard?
 
-diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
-index b3fc65e..09a7d06 100644
---- a/fs/nfs/nfs3client.c
-+++ b/fs/nfs/nfs3client.c
-@@ -9,11 +9,12 @@ static const struct rpc_version *nfsacl_version[] = {
- };
- 
- const struct rpc_program nfsacl_program = {
--	.name			= "nfsacl",
-+	.name			= "nfs",
- 	.number			= NFS_ACL_PROGRAM,
- 	.nrvers			= ARRAY_SIZE(nfsacl_version),
- 	.version		= nfsacl_version,
- 	.stats			= &nfsacl_rpcstat,
-+	.pipe_dir_name		= NFS_PIPE_DIRNAME,
- };
- 
- /*
+Finally, if we go with something like this change, does this patch also need to update the default configurations shipped with the kernel?
+
+
+On Jul 3, 2013, at 9:04 AM, Steve Dickson <steved@redhat.com> wrote:
+
+> This patch disables the NFS version 2 module from being compile by default.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+> fs/nfs/Kconfig | 4 ++--
+> 1 file changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+> index 13ca196..6831a01 100644
+> --- a/fs/nfs/Kconfig
+> +++ b/fs/nfs/Kconfig
+> @@ -32,12 +32,12 @@ config NFS_FS
+> config NFS_V2
+> 	tristate "NFS client support for NFS version 2"
+> 	depends on NFS_FS
+> -	default y
+> +	default n
+> 	help
+> 	  This option enables support for version 2 of the NFS protocol
+> 	  (RFC 1094) in the kernel's NFS client.
+> 
+> -	  If unsure, say Y.
+> +	  If unsure, say n.
+> 
+> config NFS_V3
+> 	tristate "NFS client support for NFS version 3"
+> -- 
+> 1.8.1.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-1.7.1
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
