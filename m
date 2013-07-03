@@ -1,58 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from pfw.demon.co.uk ([62.49.22.168]:43818 "EHLO pfw.demon.co.uk"
+Received: from fieldses.org ([174.143.236.118]:39210 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755510Ab3GYNwJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Jul 2013 09:52:09 -0400
-Received: from fs6.al.itld (fs6.al.itld [10.1.1.175])
-	by pfw.demon.co.uk (Postfix) with ESMTP id 9A02CFE6A
-	for <linux-nfs@vger.kernel.org>; Thu, 25 Jul 2013 13:45:18 +0000 (UTC)
-Received: from cs3.al.itld (cs3.al.itld [10.1.1.139])
-	by fs6.al.itld (Postfix) with ESMTP id 9D81E149
-	for <linux-nfs@vger.kernel.org>; Thu, 25 Jul 2013 13:45:18 +0000 (UTC)
-Date: Thu, 25 Jul 2013 13:45:15 +0000
-From: Larry Keegan <lk@pfw.demon.co.uk>
-To: linux-nfs@vger.kernel.org
-Subject: nfs client: Now you see it, now you don't
-Message-ID: <20130725134515.67af44e2@cs3.al.itld>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S933188Ab3GCUMp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Jul 2013 16:12:45 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 07/12] namei: minor vfs_unlink cleanup
+Date: Wed,  3 Jul 2013 16:12:31 -0400
+Message-Id: <1372882356-14168-8-git-send-email-bfields@redhat.com>
+In-Reply-To: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Dear Chaps,
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-I am experiencing some inexplicable NFS behaviour which I would like to
-run past you.
+We'll be using dentry->d_inode in one more place.
 
-I have a linux NFS server running kernel 3.10.2 and some clients
-running the same. The server is actually a pair of identical
-machines serving up a small number of ext4 filesystems atop drbd. They
-don't do much apart from serve home directories and deliver mail
-into them. These have worked just fine for aeons.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/namei.c |    7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-The problem I am seeing is that for the past month or so, on and off,
-one NFS client starts reporting stale NFS file handles on some part of
-the directory tree exported by the NFS server. During the outage the
-other parts of the same export remain unaffected. Then, some ten
-minutes to an hour later they're back to normal. Access to the affected
-sub-directories remains possible from the server (both directly and via
-nfs) and from other clients. There do not appear to be any errors on
-the underlying ext4 filesystems.
+diff --git a/fs/namei.c b/fs/namei.c
+index 61f6076..7e76fe1 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3386,6 +3386,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
+ 
+ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+ {
++	struct inode *target = dentry->d_inode;
+ 	int error = may_delete(dir, dentry, 0);
+ 
+ 	if (error)
+@@ -3394,7 +3395,7 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+ 	if (!dir->i_op->unlink)
+ 		return -EPERM;
+ 
+-	mutex_lock(&dentry->d_inode->i_mutex);
++	mutex_lock(&target->i_mutex);
+ 	if (d_mountpoint(dentry))
+ 		error = -EBUSY;
+ 	else {
+@@ -3405,11 +3406,11 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+ 				dont_mount(dentry);
+ 		}
+ 	}
+-	mutex_unlock(&dentry->d_inode->i_mutex);
++	mutex_unlock(&target->i_mutex);
+ 
+ 	/* We don't d_delete() NFS sillyrenamed files--they still exist. */
+ 	if (!error && !(dentry->d_flags & DCACHE_NFSFS_RENAMED)) {
+-		fsnotify_link_count(dentry->d_inode);
++		fsnotify_link_count(target);
+ 		d_delete(dentry);
+ 	}
+ 
+-- 
+1.7.9.5
 
-Each NFS client seems to get the heebie-jeebies over some directory or
-other pretty much independently. The problem affects all of the
-filesystems exported by the NFS server, but clearly I notice it first
-in home directories, and in particular in my dot subdirectories for
-things like my mail client and browser. I'd say something's up the
-spout about 20% of the time.
-
-The server and clients are using nfs4, although for a while I tried
-nfs3 without any appreciable difference. I do not have CONFIG_FSCACHE
-set.
-
-I wonder if anyone could tell me if they have ever come across this
-before, or what debugging settings might help me diagnose the problem?
-
-Yours,
-
-Larry
