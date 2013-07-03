@@ -1,875 +1,168 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:57037 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51592 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756112Ab3GQUoK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 16:44:10 -0400
-Subject: [PATCH 06/10] KEYS: Introduce a search context structure
-To: keyrings@linux-nfs.org
-From: David Howells <dhowells@redhat.com>
-Cc: linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Wed, 17 Jul 2013 21:44:06 +0100
-Message-ID: <20130717204406.8591.76630.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
-References: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1754528Ab3GCMVO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Jul 2013 08:21:14 -0400
+Message-ID: <1372854068.3070.16.camel@tlielax.poochiereds.net>
+Subject: Re: [PATCH v1] vfs: allow umount to handle mountpoints without
+ revalidating them
+From: Jeff Layton <jlayton@redhat.com>
+To: NeilBrown <neilb@suse.de>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Christopher T Vogan <cvogan@us.ibm.com>
+Date: Wed, 03 Jul 2013 08:21:08 -0400
+In-Reply-To: <20130703104733.0dd1937d@notabene.brown>
+References: <1372684830-13272-1-git-send-email-jlayton@redhat.com>
+	 <20130702114234.41cc66dc@notabene.brown>
+	 <1372761278.2620.13.camel@tlielax.poochiereds.net>
+	 <20130703104733.0dd1937d@notabene.brown>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Search functions pass around a bunch of arguments, each of which gets copied
-with each call.  Introduce a search context structure to hold these.
+On Wed, 2013-07-03 at 10:47 +1000, NeilBrown wrote:
+> On Tue, 02 Jul 2013 06:34:38 -0400 Jeffrey Layton <jlayton@redhat.com> wrote:
+> 
+> > On Tue, 2013-07-02 at 11:42 +1000, NeilBrown wrote:
+> > > On Mon,  1 Jul 2013 09:20:30 -0400 Jeff Layton <jlayton@redhat.com> wrote:
+> > > 
+> > > > Christopher reported a regression where he was unable to unmount a NFS
+> > > > filesystem where the root had gone stale. The problem is that
+> > > > d_revalidate handles the root of the filesystem differently from other
+> > > > dentries, but d_weak_revalidate does not. We could simply fix this by
+> > > > making d_weak_revalidate return success on IS_ROOT dentries, but there
+> > > > are cases where we do want to revalidate the root of the fs.
+> > > > 
+> > > > A umount is really a special case. We generally aren't interested in
+> > > > anything but the dentry and vfsmount that's attached at that point. If
+> > > > the inode turns out to be stale we just don't care since the intent is
+> > > > to stop using it anyway.
+> > > > 
+> > > > Try to handle this situation better by treating umount as a special
+> > > > case in the lookup code. Have it resolve the parent using normal
+> > > > means, and then do a lookup of the final dentry without revalidating
+> > > > it. In most cases, the final lookup will come out of the dcache, but
+> > > > the case where there's a trailing symlink or !LAST_NORM entry on the
+> > > > end complicates things a bit.
+> > > > 
+> > > > Reported-by: Christopher T Vogan <cvogan@us.ibm.com>
+> > > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > > 
+> > > Thanks for this Jeff.  It certainly looks credible to me.
+> > > 
+> > > There is a lot of code copied from the "user_path_at" path which is a shame,
+> > > but probably better that putting in lots of "is this an unmount" tests which
+> > > would slow done the common case.
+> > > 
+> > > On balance, I like it.
+> > > 
+> > > Thanks,
+> > > NeilBrown
+> > > 
+> > 
+> > (cc'ing Christopher as I mistakenly left him off the original mail. I'll
+> > make sure to cc him on any respins...)
+> > 
+> > Thanks for looking. Yeah it is a lot of code to handle one case. So,
+> > while this does seem to work, I'm still not 100% sold on this
+> > approach...
+> > 
+> > I had assumed that we would sometimes want to revalidate IS_ROOT
+> > dentries in other codepaths. Now that I think about it though, I'm
+> > having a hard time coming up with any situations where that's
+> > necessary. We'll never want to invalidate such a dentry, so does that
+> > ever make sense?
+> 
+> What does "revalidate" mean exactly here?  I think this is d_revalidate, so
+> it is validating the entry in the dcache, so it is "validating that the name
+> still leads to the inode".  Is that correct?
+> 
+> In that case as IS_ROOT has no name it is hard to imagine that it needs to be
+> revalidated.
 
-Whilst we're at it, create a search flag that indicates whether the search
-should be directly to the description or whether it should iterate through all
-keys looking for a non-description match.
+> However I don't think a mount point is always IS_ROOT.
+> With NFSv4 (an possibly the other NFS versions as well), if I
+>    mount server:/some/path /mnt
+> then the NFS client will internally "mount" server:/, walk down to find
+> "/some/path", and then bind that to /mnt.
+> 
+> In that case I would argue that it is really the inode found at "/some/path",
+> rather than the textual name "/some/path" which is being bound.
+> So when stepping from one filesystem, to the next over a mount point, it is
+> pointless to try to revalidate the dentry because it is really the inode that
+> we want.
+>
+> However it could be that "revalidate" means "check that this inode still
+> exists, and is still the same sort of object (directory or file)".   If that
+> is what we mean by "revalidate", then "umount" really is a special case as
+> everything else would want to know that the object is still then, but umount
+> wouldn't.
+> 
+> Thinking a bit more: I see "umount" as a bit like "lstat".  With "lstat", if
+> the last component is a symlink we don't follow it, we just return it.
+> With "umount" if the last component is a mountpoint we really don't want to
+> follow it but rather return the underlying dentry.
+> 
+> Once "umount" does the lookup and gets the dentry that something was mounted
+> on to, it can carefully attach whatever is mounted there without ever
+> "touching" it.  (of couse if there are a stack of things mounted it need to
+> only detach the last).
+> 
+> 
+> 
+> Do those thoughts help at all?  Or just add confusion?
+> 
+> NeilBrown
+> 
+> 
 
-This will be useful when keyrings use a generic data struct with generic
-routines to manage their content as the search terms can just be passed
-through to the iterator callback function.
+Thanks for helping me sort this out in my head. It's a very confusing
+topic... ;)
 
-Also, for future use, the data to be supplied to the match function is
-separated from the description pointer in the search context.  This makes it
-clear which is being supplied.
+This is somewhat related to the discussion when we added the
+d_weak_revalidate op. When LOOKUP_JUMPED is set, then we know that we
+arrived at this dentry via some other means than a lookup in the parent
+dir. Thus, the dentry name isn't relevant, but the inode is and we only
+want to revalidate the inode, not the dentry.
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+The commit message on the patch that originally added FS_REVAL_DOT says:
+    
+   For most filesystems this is OK, but it the case of the stateless
+   NFS, this means that it circumvents path staleness detection, and the
+   attribute+data cache revalidation code on such common commands as
+   opendir(".").
 
- include/linux/key-type.h         |    5 ++
- security/keys/internal.h         |   40 ++++++++-----
- security/keys/keyring.c          |   70 +++++++++++------------
- security/keys/proc.c             |   17 ++++--
- security/keys/process_keys.c     |  117 +++++++++++++++++++-------------------
- security/keys/request_key.c      |   56 +++++++++---------
- security/keys/request_key_auth.c |   14 +++--
- security/keys/user_defined.c     |   18 +++---
- 8 files changed, 179 insertions(+), 158 deletions(-)
+So I think the real question is: Should we treat the root of a vfsmount
+differently when revalidating its inode via d_weak_revalidate.
 
-diff --git a/include/linux/key-type.h b/include/linux/key-type.h
-index 518a53a..f58737b 100644
---- a/include/linux/key-type.h
-+++ b/include/linux/key-type.h
-@@ -63,6 +63,11 @@ struct key_type {
- 	 */
- 	size_t def_datalen;
- 
-+	/* Default key search algorithm. */
-+	unsigned def_lookup_type;
-+#define KEYRING_SEARCH_LOOKUP_DIRECT	0x0000	/* Direct lookup by description. */
-+#define KEYRING_SEARCH_LOOKUP_ITERATE	0x0001	/* Iterative search. */
-+
- 	/* vet a description */
- 	int (*vet_description)(const char *description);
- 
-diff --git a/security/keys/internal.h b/security/keys/internal.h
-index 77441dd..f4bf938 100644
---- a/security/keys/internal.h
-+++ b/security/keys/internal.h
-@@ -107,23 +107,31 @@ extern struct key *keyring_search_instkey(struct key *keyring,
- 
- typedef int (*key_match_func_t)(const struct key *, const void *);
- 
-+struct keyring_search_context {
-+	struct keyring_index_key index_key;
-+	const struct cred	*cred;
-+	key_match_func_t	match;
-+	const void		*match_data;
-+	unsigned		flags;
-+#define KEYRING_SEARCH_LOOKUP_TYPE	0x0001	/* [as type->def_lookup_type] */
-+#define KEYRING_SEARCH_NO_STATE_CHECK	0x0002	/* Skip state checks */
-+#define KEYRING_SEARCH_DO_STATE_CHECK	0x0004	/* Override NO_STATE_CHECK */
-+#define KEYRING_SEARCH_NO_UPDATE_TIME	0x0008	/* Don't update times */
-+#define KEYRING_SEARCH_NO_CHECK_PERM	0x0010	/* Don't check permissions */
-+#define KEYRING_SEARCH_DETECT_TOO_DEEP	0x0020	/* Give an error on excessive depth */
-+
-+	/* Internal stuff */
-+	int			skipped_ret;
-+	bool			possessed;
-+	key_ref_t		result;
-+	struct timespec		now;
-+};
-+
- extern key_ref_t keyring_search_aux(key_ref_t keyring_ref,
--				    const struct cred *cred,
--				    struct key_type *type,
--				    const void *description,
--				    key_match_func_t match,
--				    bool no_state_check);
--
--extern key_ref_t search_my_process_keyrings(struct key_type *type,
--					    const void *description,
--					    key_match_func_t match,
--					    bool no_state_check,
--					    const struct cred *cred);
--extern key_ref_t search_process_keyrings(struct key_type *type,
--					 const void *description,
--					 key_match_func_t match,
--					 bool no_state_check,
--					 const struct cred *cred);
-+				    struct keyring_search_context *ctx);
-+
-+extern key_ref_t search_my_process_keyrings(struct keyring_search_context *ctx);
-+extern key_ref_t search_process_keyrings(struct keyring_search_context *ctx);
- 
- extern struct key *find_keyring_by_name(const char *name, bool skip_perm_check);
- 
-diff --git a/security/keys/keyring.c b/security/keys/keyring.c
-index c7f59f9..7d5b676 100644
---- a/security/keys/keyring.c
-+++ b/security/keys/keyring.c
-@@ -280,11 +280,7 @@ EXPORT_SYMBOL(keyring_alloc);
- /**
-  * keyring_search_aux - Search a keyring tree for a key matching some criteria
-  * @keyring_ref: A pointer to the keyring with possession indicator.
-- * @cred: The credentials to use for permissions checks.
-- * @type: The type of key to search for.
-- * @description: Parameter for @match.
-- * @match: Function to rule on whether or not a key is the one required.
-- * @no_state_check: Don't check if a matching key is bad
-+ * @ctx: The keyring search context.
-  *
-  * Search the supplied keyring tree for a key that matches the criteria given.
-  * The root keyring and any linked keyrings must grant Search permission to the
-@@ -314,11 +310,7 @@ EXPORT_SYMBOL(keyring_alloc);
-  * @keyring_ref is propagated to the returned key reference.
-  */
- key_ref_t keyring_search_aux(key_ref_t keyring_ref,
--			     const struct cred *cred,
--			     struct key_type *type,
--			     const void *description,
--			     key_match_func_t match,
--			     bool no_state_check)
-+			     struct keyring_search_context *ctx)
- {
- 	struct {
- 		/* Need a separate keylist pointer for RCU purposes */
-@@ -328,20 +320,18 @@ key_ref_t keyring_search_aux(key_ref_t keyring_ref,
- 	} stack[KEYRING_SEARCH_MAX_DEPTH];
- 
- 	struct keyring_list *keylist;
--	struct timespec now;
- 	unsigned long kflags;
- 	struct key *keyring, *key;
- 	key_ref_t key_ref;
--	bool possessed;
- 	long err;
- 	int sp, nkeys, kix;
- 
- 	keyring = key_ref_to_ptr(keyring_ref);
--	possessed = is_key_possessed(keyring_ref);
-+	ctx->possessed = is_key_possessed(keyring_ref);
- 	key_check(keyring);
- 
- 	/* top keyring must have search permission to begin the search */
--	err = key_task_permission(keyring_ref, cred, KEY_SEARCH);
-+	err = key_task_permission(keyring_ref, ctx->cred, KEY_SEARCH);
- 	if (err < 0) {
- 		key_ref = ERR_PTR(err);
- 		goto error;
-@@ -353,7 +343,7 @@ key_ref_t keyring_search_aux(key_ref_t keyring_ref,
- 
- 	rcu_read_lock();
- 
--	now = current_kernel_time();
-+	ctx->now = current_kernel_time();
- 	err = -EAGAIN;
- 	sp = 0;
- 
-@@ -361,16 +351,17 @@ key_ref_t keyring_search_aux(key_ref_t keyring_ref,
- 	 * are looking for */
- 	key_ref = ERR_PTR(-EAGAIN);
- 	kflags = keyring->flags;
--	if (keyring->type == type && match(keyring, description)) {
-+	if (keyring->type == ctx->index_key.type &&
-+	    ctx->match(keyring, ctx->match_data)) {
- 		key = keyring;
--		if (no_state_check)
-+		if (ctx->flags & KEYRING_SEARCH_NO_STATE_CHECK)
- 			goto found;
- 
- 		/* check it isn't negative and hasn't expired or been
- 		 * revoked */
- 		if (kflags & (1 << KEY_FLAG_REVOKED))
- 			goto error_2;
--		if (key->expiry && now.tv_sec >= key->expiry)
-+		if (key->expiry && ctx->now.tv_sec >= key->expiry)
- 			goto error_2;
- 		key_ref = ERR_PTR(key->type_data.reject_error);
- 		if (kflags & (1 << KEY_FLAG_NEGATIVE))
-@@ -384,7 +375,7 @@ key_ref_t keyring_search_aux(key_ref_t keyring_ref,
- 	if (kflags & ((1 << KEY_FLAG_INVALIDATED) |
- 		      (1 << KEY_FLAG_REVOKED) |
- 		      (1 << KEY_FLAG_NEGATIVE)) ||
--	    (keyring->expiry && now.tv_sec >= keyring->expiry))
-+	    (keyring->expiry && ctx->now.tv_sec >= keyring->expiry))
- 		goto error_2;
- 
- 	/* start processing a new keyring */
-@@ -406,29 +397,29 @@ descend:
- 		kflags = key->flags;
- 
- 		/* ignore keys not of this type */
--		if (key->type != type)
-+		if (key->type != ctx->index_key.type)
- 			continue;
- 
- 		/* skip invalidated, revoked and expired keys */
--		if (!no_state_check) {
-+		if (!(ctx->flags & KEYRING_SEARCH_NO_STATE_CHECK)) {
- 			if (kflags & ((1 << KEY_FLAG_INVALIDATED) |
- 				      (1 << KEY_FLAG_REVOKED)))
- 				continue;
- 
--			if (key->expiry && now.tv_sec >= key->expiry)
-+			if (key->expiry && ctx->now.tv_sec >= key->expiry)
- 				continue;
- 		}
- 
- 		/* keys that don't match */
--		if (!match(key, description))
-+		if (!ctx->match(key, ctx->match_data))
- 			continue;
- 
- 		/* key must have search permissions */
--		if (key_task_permission(make_key_ref(key, possessed),
--					cred, KEY_SEARCH) < 0)
-+		if (key_task_permission(make_key_ref(key, ctx->possessed),
-+					ctx->cred, KEY_SEARCH) < 0)
- 			continue;
- 
--		if (no_state_check)
-+		if (ctx->flags & KEYRING_SEARCH_NO_STATE_CHECK)
- 			goto found;
- 
- 		/* we set a different error code if we pass a negative key */
-@@ -456,8 +447,8 @@ ascend:
- 		if (sp >= KEYRING_SEARCH_MAX_DEPTH)
- 			continue;
- 
--		if (key_task_permission(make_key_ref(key, possessed),
--					cred, KEY_SEARCH) < 0)
-+		if (key_task_permission(make_key_ref(key, ctx->possessed),
-+					ctx->cred, KEY_SEARCH) < 0)
- 			continue;
- 
- 		/* stack the current position */
-@@ -489,12 +480,12 @@ not_this_keyring:
- 	/* we found a viable match */
- found:
- 	atomic_inc(&key->usage);
--	key->last_used_at = now.tv_sec;
--	keyring->last_used_at = now.tv_sec;
-+	key->last_used_at = ctx->now.tv_sec;
-+	keyring->last_used_at = ctx->now.tv_sec;
- 	while (sp > 0)
--		stack[--sp].keyring->last_used_at = now.tv_sec;
-+		stack[--sp].keyring->last_used_at = ctx->now.tv_sec;
- 	key_check(key);
--	key_ref = make_key_ref(key, possessed);
-+	key_ref = make_key_ref(key, ctx->possessed);
- error_2:
- 	rcu_read_unlock();
- error:
-@@ -514,11 +505,20 @@ key_ref_t keyring_search(key_ref_t keyring,
- 			 struct key_type *type,
- 			 const char *description)
- {
--	if (!type->match)
-+	struct keyring_search_context ctx = {
-+		.index_key.type		= type,
-+		.index_key.description	= description,
-+		.cred			= current->cred,
-+		.match			= type->match,
-+		.match_data		= description,
-+		.flags			= (type->def_lookup_type |
-+					   KEYRING_SEARCH_DO_STATE_CHECK),
-+	};
-+
-+	if (!ctx.match)
- 		return ERR_PTR(-ENOKEY);
- 
--	return keyring_search_aux(keyring, current->cred,
--				  type, description, type->match, false);
-+	return keyring_search_aux(keyring, &ctx);
- }
- EXPORT_SYMBOL(keyring_search);
- 
-diff --git a/security/keys/proc.c b/security/keys/proc.c
-index 217b685..88e9a46 100644
---- a/security/keys/proc.c
-+++ b/security/keys/proc.c
-@@ -182,7 +182,6 @@ static void proc_keys_stop(struct seq_file *p, void *v)
- 
- static int proc_keys_show(struct seq_file *m, void *v)
- {
--	const struct cred *cred = current_cred();
- 	struct rb_node *_p = v;
- 	struct key *key = rb_entry(_p, struct key, serial_node);
- 	struct timespec now;
-@@ -191,15 +190,23 @@ static int proc_keys_show(struct seq_file *m, void *v)
- 	char xbuf[12];
- 	int rc;
- 
-+	struct keyring_search_context ctx = {
-+		.index_key.type		= key->type,
-+		.index_key.description	= key->description,
-+		.cred			= current_cred(),
-+		.match			= lookup_user_key_possessed,
-+		.match_data		= key,
-+		.flags			= (KEYRING_SEARCH_NO_STATE_CHECK |
-+					   KEYRING_SEARCH_LOOKUP_DIRECT),
-+	};
-+
- 	key_ref = make_key_ref(key, 0);
- 
- 	/* determine if the key is possessed by this process (a test we can
- 	 * skip if the key does not indicate the possessor can view it
- 	 */
- 	if (key->perm & KEY_POS_VIEW) {
--		skey_ref = search_my_process_keyrings(key->type, key,
--						      lookup_user_key_possessed,
--						      true, cred);
-+		skey_ref = search_my_process_keyrings(&ctx);
- 		if (!IS_ERR(skey_ref)) {
- 			key_ref_put(skey_ref);
- 			key_ref = make_key_ref(key, 1);
-@@ -211,7 +218,7 @@ static int proc_keys_show(struct seq_file *m, void *v)
- 	 * - the caller holds a spinlock, and thus the RCU read lock, making our
- 	 *   access to __current_cred() safe
- 	 */
--	rc = key_task_permission(key_ref, cred, KEY_VIEW);
-+	rc = key_task_permission(key_ref, ctx.cred, KEY_VIEW);
- 	if (rc < 0)
- 		return 0;
- 
-diff --git a/security/keys/process_keys.c b/security/keys/process_keys.c
-index a3410d6..e68a3e0 100644
---- a/security/keys/process_keys.c
-+++ b/security/keys/process_keys.c
-@@ -319,11 +319,7 @@ void key_fsgid_changed(struct task_struct *tsk)
-  * In the case of a successful return, the possession attribute is set on the
-  * returned key reference.
-  */
--key_ref_t search_my_process_keyrings(struct key_type *type,
--				     const void *description,
--				     key_match_func_t match,
--				     bool no_state_check,
--				     const struct cred *cred)
-+key_ref_t search_my_process_keyrings(struct keyring_search_context *ctx)
- {
- 	key_ref_t key_ref, ret, err;
- 
-@@ -339,10 +335,9 @@ key_ref_t search_my_process_keyrings(struct key_type *type,
- 	err = ERR_PTR(-EAGAIN);
- 
- 	/* search the thread keyring first */
--	if (cred->thread_keyring) {
-+	if (ctx->cred->thread_keyring) {
- 		key_ref = keyring_search_aux(
--			make_key_ref(cred->thread_keyring, 1),
--			cred, type, description, match, no_state_check);
-+			make_key_ref(ctx->cred->thread_keyring, 1), ctx);
- 		if (!IS_ERR(key_ref))
- 			goto found;
- 
-@@ -358,10 +353,9 @@ key_ref_t search_my_process_keyrings(struct key_type *type,
- 	}
- 
- 	/* search the process keyring second */
--	if (cred->process_keyring) {
-+	if (ctx->cred->process_keyring) {
- 		key_ref = keyring_search_aux(
--			make_key_ref(cred->process_keyring, 1),
--			cred, type, description, match, no_state_check);
-+			make_key_ref(ctx->cred->process_keyring, 1), ctx);
- 		if (!IS_ERR(key_ref))
- 			goto found;
- 
-@@ -379,11 +373,11 @@ key_ref_t search_my_process_keyrings(struct key_type *type,
- 	}
- 
- 	/* search the session keyring */
--	if (cred->session_keyring) {
-+	if (ctx->cred->session_keyring) {
- 		rcu_read_lock();
- 		key_ref = keyring_search_aux(
--			make_key_ref(rcu_dereference(cred->session_keyring), 1),
--			cred, type, description, match, no_state_check);
-+			make_key_ref(rcu_dereference(ctx->cred->session_keyring), 1),
-+			ctx);
- 		rcu_read_unlock();
- 
- 		if (!IS_ERR(key_ref))
-@@ -402,10 +396,10 @@ key_ref_t search_my_process_keyrings(struct key_type *type,
- 		}
- 	}
- 	/* or search the user-session keyring */
--	else if (cred->user->session_keyring) {
-+	else if (ctx->cred->user->session_keyring) {
- 		key_ref = keyring_search_aux(
--			make_key_ref(cred->user->session_keyring, 1),
--			cred, type, description, match, no_state_check);
-+			make_key_ref(ctx->cred->user->session_keyring, 1),
-+			ctx);
- 		if (!IS_ERR(key_ref))
- 			goto found;
- 
-@@ -437,19 +431,14 @@ found:
-  *
-  * Return same as search_my_process_keyrings().
-  */
--key_ref_t search_process_keyrings(struct key_type *type,
--				  const void *description,
--				  key_match_func_t match,
--				  bool no_state_check,
--				  const struct cred *cred)
-+key_ref_t search_process_keyrings(struct keyring_search_context *ctx)
- {
- 	struct request_key_auth *rka;
- 	key_ref_t key_ref, ret = ERR_PTR(-EACCES), err;
- 
- 	might_sleep();
- 
--	key_ref = search_my_process_keyrings(type, description, match,
--					     no_state_check, cred);
-+	key_ref = search_my_process_keyrings(ctx);
- 	if (!IS_ERR(key_ref))
- 		goto found;
- 	err = key_ref;
-@@ -458,19 +447,21 @@ key_ref_t search_process_keyrings(struct key_type *type,
- 	 * search the keyrings of the process mentioned there
- 	 * - we don't permit access to request_key auth keys via this method
- 	 */
--	if (cred->request_key_auth &&
--	    cred == current_cred() &&
--	    type != &key_type_request_key_auth
-+	if (ctx->cred->request_key_auth &&
-+	    ctx->cred == current_cred() &&
-+	    ctx->index_key.type != &key_type_request_key_auth
- 	    ) {
-+		const struct cred *cred = ctx->cred;
-+
- 		/* defend against the auth key being revoked */
- 		down_read(&cred->request_key_auth->sem);
- 
--		if (key_validate(cred->request_key_auth) == 0) {
--			rka = cred->request_key_auth->payload.data;
-+		if (key_validate(ctx->cred->request_key_auth) == 0) {
-+			rka = ctx->cred->request_key_auth->payload.data;
- 
--			key_ref = search_process_keyrings(type, description,
--							  match, no_state_check,
--							  rka->cred);
-+			ctx->cred = rka->cred;
-+			key_ref = search_process_keyrings(ctx);
-+			ctx->cred = cred;
- 
- 			up_read(&cred->request_key_auth->sem);
- 
-@@ -524,19 +515,23 @@ int lookup_user_key_possessed(const struct key *key, const void *target)
- key_ref_t lookup_user_key(key_serial_t id, unsigned long lflags,
- 			  key_perm_t perm)
- {
-+	struct keyring_search_context ctx = {
-+		.match	= lookup_user_key_possessed,
-+		.flags	= (KEYRING_SEARCH_NO_STATE_CHECK |
-+			   KEYRING_SEARCH_LOOKUP_DIRECT),
-+	};
- 	struct request_key_auth *rka;
--	const struct cred *cred;
- 	struct key *key;
- 	key_ref_t key_ref, skey_ref;
- 	int ret;
- 
- try_again:
--	cred = get_current_cred();
-+	ctx.cred = get_current_cred();
- 	key_ref = ERR_PTR(-ENOKEY);
- 
- 	switch (id) {
- 	case KEY_SPEC_THREAD_KEYRING:
--		if (!cred->thread_keyring) {
-+		if (!ctx.cred->thread_keyring) {
- 			if (!(lflags & KEY_LOOKUP_CREATE))
- 				goto error;
- 
-@@ -548,13 +543,13 @@ try_again:
- 			goto reget_creds;
- 		}
- 
--		key = cred->thread_keyring;
-+		key = ctx.cred->thread_keyring;
- 		atomic_inc(&key->usage);
- 		key_ref = make_key_ref(key, 1);
- 		break;
- 
- 	case KEY_SPEC_PROCESS_KEYRING:
--		if (!cred->process_keyring) {
-+		if (!ctx.cred->process_keyring) {
- 			if (!(lflags & KEY_LOOKUP_CREATE))
- 				goto error;
- 
-@@ -566,13 +561,13 @@ try_again:
- 			goto reget_creds;
- 		}
- 
--		key = cred->process_keyring;
-+		key = ctx.cred->process_keyring;
- 		atomic_inc(&key->usage);
- 		key_ref = make_key_ref(key, 1);
- 		break;
- 
- 	case KEY_SPEC_SESSION_KEYRING:
--		if (!cred->session_keyring) {
-+		if (!ctx.cred->session_keyring) {
- 			/* always install a session keyring upon access if one
- 			 * doesn't exist yet */
- 			ret = install_user_keyrings();
-@@ -582,13 +577,13 @@ try_again:
- 				ret = join_session_keyring(NULL);
- 			else
- 				ret = install_session_keyring(
--					cred->user->session_keyring);
-+					ctx.cred->user->session_keyring);
- 
- 			if (ret < 0)
- 				goto error;
- 			goto reget_creds;
--		} else if (cred->session_keyring ==
--			   cred->user->session_keyring &&
-+		} else if (ctx.cred->session_keyring ==
-+			   ctx.cred->user->session_keyring &&
- 			   lflags & KEY_LOOKUP_CREATE) {
- 			ret = join_session_keyring(NULL);
- 			if (ret < 0)
-@@ -597,32 +592,32 @@ try_again:
- 		}
- 
- 		rcu_read_lock();
--		key = rcu_dereference(cred->session_keyring);
-+		key = rcu_dereference(ctx.cred->session_keyring);
- 		atomic_inc(&key->usage);
- 		rcu_read_unlock();
- 		key_ref = make_key_ref(key, 1);
- 		break;
- 
- 	case KEY_SPEC_USER_KEYRING:
--		if (!cred->user->uid_keyring) {
-+		if (!ctx.cred->user->uid_keyring) {
- 			ret = install_user_keyrings();
- 			if (ret < 0)
- 				goto error;
- 		}
- 
--		key = cred->user->uid_keyring;
-+		key = ctx.cred->user->uid_keyring;
- 		atomic_inc(&key->usage);
- 		key_ref = make_key_ref(key, 1);
- 		break;
- 
- 	case KEY_SPEC_USER_SESSION_KEYRING:
--		if (!cred->user->session_keyring) {
-+		if (!ctx.cred->user->session_keyring) {
- 			ret = install_user_keyrings();
- 			if (ret < 0)
- 				goto error;
- 		}
- 
--		key = cred->user->session_keyring;
-+		key = ctx.cred->user->session_keyring;
- 		atomic_inc(&key->usage);
- 		key_ref = make_key_ref(key, 1);
- 		break;
-@@ -633,7 +628,7 @@ try_again:
- 		goto error;
- 
- 	case KEY_SPEC_REQKEY_AUTH_KEY:
--		key = cred->request_key_auth;
-+		key = ctx.cred->request_key_auth;
- 		if (!key)
- 			goto error;
- 
-@@ -642,20 +637,20 @@ try_again:
- 		break;
- 
- 	case KEY_SPEC_REQUESTOR_KEYRING:
--		if (!cred->request_key_auth)
-+		if (!ctx.cred->request_key_auth)
- 			goto error;
- 
--		down_read(&cred->request_key_auth->sem);
-+		down_read(&ctx.cred->request_key_auth->sem);
- 		if (test_bit(KEY_FLAG_REVOKED,
--			     &cred->request_key_auth->flags)) {
-+			     &ctx.cred->request_key_auth->flags)) {
- 			key_ref = ERR_PTR(-EKEYREVOKED);
- 			key = NULL;
- 		} else {
--			rka = cred->request_key_auth->payload.data;
-+			rka = ctx.cred->request_key_auth->payload.data;
- 			key = rka->dest_keyring;
- 			atomic_inc(&key->usage);
- 		}
--		up_read(&cred->request_key_auth->sem);
-+		up_read(&ctx.cred->request_key_auth->sem);
- 		if (!key)
- 			goto error;
- 		key_ref = make_key_ref(key, 1);
-@@ -675,9 +670,13 @@ try_again:
- 		key_ref = make_key_ref(key, 0);
- 
- 		/* check to see if we possess the key */
--		skey_ref = search_process_keyrings(key->type, key,
--						   lookup_user_key_possessed,
--						   true, cred);
-+		ctx.index_key.type		= key->type;
-+		ctx.index_key.description	= key->description;
-+		ctx.index_key.desc_len		= strlen(key->description);
-+		ctx.match_data			= key;
-+		kdebug("check possessed");
-+		skey_ref = search_process_keyrings(&ctx);
-+		kdebug("possessed=%p", skey_ref);
- 
- 		if (!IS_ERR(skey_ref)) {
- 			key_put(key);
-@@ -717,14 +716,14 @@ try_again:
- 		goto invalid_key;
- 
- 	/* check the permissions */
--	ret = key_task_permission(key_ref, cred, perm);
-+	ret = key_task_permission(key_ref, ctx.cred, perm);
- 	if (ret < 0)
- 		goto invalid_key;
- 
- 	key->last_used_at = current_kernel_time().tv_sec;
- 
- error:
--	put_cred(cred);
-+	put_cred(ctx.cred);
- 	return key_ref;
- 
- invalid_key:
-@@ -735,7 +734,7 @@ invalid_key:
- 	/* if we attempted to install a keyring, then it may have caused new
- 	 * creds to be installed */
- reget_creds:
--	put_cred(cred);
-+	put_cred(ctx.cred);
- 	goto try_again;
- }
- 
-diff --git a/security/keys/request_key.c b/security/keys/request_key.c
-index 586cb79..ab75df4 100644
---- a/security/keys/request_key.c
-+++ b/security/keys/request_key.c
-@@ -345,38 +345,34 @@ static void construct_get_dest_keyring(struct key **_dest_keyring)
-  * May return a key that's already under construction instead if there was a
-  * race between two thread calling request_key().
-  */
--static int construct_alloc_key(struct key_type *type,
--			       const char *description,
-+static int construct_alloc_key(struct keyring_search_context *ctx,
- 			       struct key *dest_keyring,
- 			       unsigned long flags,
- 			       struct key_user *user,
- 			       struct key **_key)
- {
--	const struct keyring_index_key index_key = {
--		.type		= type,
--		.description	= description,
--		.desc_len	= strlen(description),
--	};
--	const struct cred *cred = current_cred();
- 	unsigned long prealloc;
- 	struct key *key;
- 	key_perm_t perm;
- 	key_ref_t key_ref;
- 	int ret;
- 
--	kenter("%s,%s,,,", type->name, description);
-+	kenter("%s,%s,,,",
-+	       ctx->index_key.type->name, ctx->index_key.description);
- 
- 	*_key = NULL;
- 	mutex_lock(&user->cons_lock);
- 
- 	perm = KEY_POS_VIEW | KEY_POS_SEARCH | KEY_POS_LINK | KEY_POS_SETATTR;
- 	perm |= KEY_USR_VIEW;
--	if (type->read)
-+	if (ctx->index_key.type->read)
- 		perm |= KEY_POS_READ;
--	if (type == &key_type_keyring || type->update)
-+	if (ctx->index_key.type == &key_type_keyring ||
-+	    ctx->index_key.type->update)
- 		perm |= KEY_POS_WRITE;
- 
--	key = key_alloc(type, description, cred->fsuid, cred->fsgid, cred,
-+	key = key_alloc(ctx->index_key.type, ctx->index_key.description,
-+			ctx->cred->fsuid, ctx->cred->fsgid, ctx->cred,
- 			perm, flags);
- 	if (IS_ERR(key))
- 		goto alloc_failed;
-@@ -384,7 +380,7 @@ static int construct_alloc_key(struct key_type *type,
- 	set_bit(KEY_FLAG_USER_CONSTRUCT, &key->flags);
- 
- 	if (dest_keyring) {
--		ret = __key_link_begin(dest_keyring, &index_key, &prealloc);
-+		ret = __key_link_begin(dest_keyring, &ctx->index_key, &prealloc);
- 		if (ret < 0)
- 			goto link_prealloc_failed;
- 	}
-@@ -394,8 +390,7 @@ static int construct_alloc_key(struct key_type *type,
- 	 * waited for locks */
- 	mutex_lock(&key_construction_mutex);
- 
--	key_ref = search_process_keyrings(type, description, type->match,
--					  false, cred);
-+	key_ref = search_process_keyrings(ctx);
- 	if (!IS_ERR(key_ref))
- 		goto key_already_present;
- 
-@@ -404,7 +399,7 @@ static int construct_alloc_key(struct key_type *type,
- 
- 	mutex_unlock(&key_construction_mutex);
- 	if (dest_keyring)
--		__key_link_end(dest_keyring, &index_key, prealloc);
-+		__key_link_end(dest_keyring, &ctx->index_key, prealloc);
- 	mutex_unlock(&user->cons_lock);
- 	*_key = key;
- 	kleave(" = 0 [%d]", key_serial(key));
-@@ -420,7 +415,7 @@ key_already_present:
- 		ret = __key_link_check_live_key(dest_keyring, key);
- 		if (ret == 0)
- 			__key_link(dest_keyring, key, &prealloc);
--		__key_link_end(dest_keyring, &index_key, prealloc);
-+		__key_link_end(dest_keyring, &ctx->index_key, prealloc);
- 		if (ret < 0)
- 			goto link_check_failed;
- 	}
-@@ -449,8 +444,7 @@ alloc_failed:
- /*
-  * Commence key construction.
-  */
--static struct key *construct_key_and_link(struct key_type *type,
--					  const char *description,
-+static struct key *construct_key_and_link(struct keyring_search_context *ctx,
- 					  const char *callout_info,
- 					  size_t callout_len,
- 					  void *aux,
-@@ -469,8 +463,7 @@ static struct key *construct_key_and_link(struct key_type *type,
- 
- 	construct_get_dest_keyring(&dest_keyring);
- 
--	ret = construct_alloc_key(type, description, dest_keyring, flags, user,
--				  &key);
-+	ret = construct_alloc_key(ctx, dest_keyring, flags, user, &key);
- 	key_user_put(user);
- 
- 	if (ret == 0) {
-@@ -534,18 +527,24 @@ struct key *request_key_and_link(struct key_type *type,
- 				 struct key *dest_keyring,
- 				 unsigned long flags)
- {
--	const struct cred *cred = current_cred();
-+	struct keyring_search_context ctx = {
-+		.index_key.type		= type,
-+		.index_key.description	= description,
-+		.cred			= current_cred(),
-+		.match			= type->match,
-+		.match_data		= description,
-+		.flags			= KEYRING_SEARCH_LOOKUP_DIRECT,
-+	};
- 	struct key *key;
- 	key_ref_t key_ref;
- 	int ret;
- 
- 	kenter("%s,%s,%p,%zu,%p,%p,%lx",
--	       type->name, description, callout_info, callout_len, aux,
--	       dest_keyring, flags);
-+	       ctx.index_key.type->name, ctx.index_key.description,
-+	       callout_info, callout_len, aux, dest_keyring, flags);
- 
- 	/* search all the process keyrings for a key */
--	key_ref = search_process_keyrings(type, description, type->match,
--					  false, cred);
-+	key_ref = search_process_keyrings(&ctx);
- 
- 	if (!IS_ERR(key_ref)) {
- 		key = key_ref_to_ptr(key_ref);
-@@ -568,9 +567,8 @@ struct key *request_key_and_link(struct key_type *type,
- 		if (!callout_info)
- 			goto error;
- 
--		key = construct_key_and_link(type, description, callout_info,
--					     callout_len, aux, dest_keyring,
--					     flags);
-+		key = construct_key_and_link(&ctx, callout_info, callout_len,
-+					     aux, dest_keyring, flags);
- 	}
- 
- error:
-diff --git a/security/keys/request_key_auth.c b/security/keys/request_key_auth.c
-index 92077de..8d09852 100644
---- a/security/keys/request_key_auth.c
-+++ b/security/keys/request_key_auth.c
-@@ -239,15 +239,17 @@ static int key_get_instantiation_authkey_match(const struct key *key,
-  */
- struct key *key_get_instantiation_authkey(key_serial_t target_id)
- {
--	const struct cred *cred = current_cred();
-+	struct keyring_search_context ctx = {
-+		.index_key.type		= &key_type_request_key_auth,
-+		.cred			= current_cred(),
-+		.match			= key_get_instantiation_authkey_match,
-+		.match_data		= (void *)(unsigned long)target_id,
-+		.flags			= KEYRING_SEARCH_LOOKUP_DIRECT,
-+	};
- 	struct key *authkey;
- 	key_ref_t authkey_ref;
- 
--	authkey_ref = search_process_keyrings(
--		&key_type_request_key_auth,
--		(void *) (unsigned long) target_id,
--		key_get_instantiation_authkey_match,
--		false, cred);
-+	authkey_ref = search_process_keyrings(&ctx);
- 
- 	if (IS_ERR(authkey_ref)) {
- 		authkey = ERR_CAST(authkey_ref);
-diff --git a/security/keys/user_defined.c b/security/keys/user_defined.c
-index 55dc889..faa2cae 100644
---- a/security/keys/user_defined.c
-+++ b/security/keys/user_defined.c
-@@ -25,14 +25,15 @@ static int logon_vet_description(const char *desc);
-  * arbitrary blob of data as the payload
-  */
- struct key_type key_type_user = {
--	.name		= "user",
--	.instantiate	= user_instantiate,
--	.update		= user_update,
--	.match		= user_match,
--	.revoke		= user_revoke,
--	.destroy	= user_destroy,
--	.describe	= user_describe,
--	.read		= user_read,
-+	.name			= "user",
-+	.def_lookup_type	= KEYRING_SEARCH_LOOKUP_DIRECT,
-+	.instantiate		= user_instantiate,
-+	.update			= user_update,
-+	.match			= user_match,
-+	.revoke			= user_revoke,
-+	.destroy		= user_destroy,
-+	.describe		= user_describe,
-+	.read			= user_read,
- };
- 
- EXPORT_SYMBOL_GPL(key_type_user);
-@@ -45,6 +46,7 @@ EXPORT_SYMBOL_GPL(key_type_user);
-  */
- struct key_type key_type_logon = {
- 	.name			= "logon",
-+	.def_lookup_type	= KEYRING_SEARCH_LOOKUP_DIRECT,
- 	.instantiate		= user_instantiate,
- 	.update			= user_update,
- 	.match			= user_match,
+Since it's possible for such an inode to go stale, I think that we do
+want to indicate that when someone does opendir() on it, even if it's
+the root of the fs. So, umount really does need to be a special case,
+and we ought not rely on d_weak_revalidate ops to try and get that
+right.
+
+So yeah, I guess this patch (or something like it) is what's needed. 
+
+> > 
+> > If it doesn't, we could just replace this patch with a test for
+> > IS_ROOT(dentry) in nfs_weak_revalidate, and call it a day. I tested a
+> > patch like that earlier and it also worked around the problem.
+> > 
+> > Also, it bothers me a little that this patch stops revalidating anything
+> > once it hits the last component, even if it's a symlink and we know
+> > we'll have to chase it down. It may make sense to check for d_mountpoint
+> > in some cases and revalidate the dentry if it's true.
+> >
+
+On the above question, I think I'm inclined to not worry about it too
+much until/unless someone complains. Symlink chasing on the last
+component of a umount doesn't seem like it's common practice,
+particularly since util-linux's /bin/umount does a realpath() on the
+argument before calling umount() anyway.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
 
