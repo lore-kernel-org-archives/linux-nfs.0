@@ -1,43 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:61988 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47313 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757131Ab3GQUnv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 16:43:51 -0400
-Subject: [PATCH 04/10] KEYS: key_is_dead() should take a const key pointer
- argument
-To: keyrings@linux-nfs.org
-From: David Howells <dhowells@redhat.com>
-Cc: linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Wed, 17 Jul 2013 21:43:47 +0100
-Message-ID: <20130717204347.8591.38268.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
-References: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1755922Ab3GCNEj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Jul 2013 09:04:39 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] Disable NFS version 2
+Date: Wed,  3 Jul 2013 09:04:35 -0400
+Message-Id: <1372856675-5520-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-key_is_dead() should take a const key pointer argument as it doesn't modify
-what it points to.
+This patch disables the NFS version 2 module from being compile by default.
 
-Signed-off-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
+ fs/nfs/Kconfig | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
- security/keys/internal.h |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/security/keys/internal.h b/security/keys/internal.h
-index df971fe..490aef5 100644
---- a/security/keys/internal.h
-+++ b/security/keys/internal.h
-@@ -203,7 +203,7 @@ extern struct key *key_get_instantiation_authkey(key_serial_t target_id);
- /*
-  * Determine whether a key is dead.
-  */
--static inline bool key_is_dead(struct key *key, time_t limit)
-+static inline bool key_is_dead(const struct key *key, time_t limit)
- {
- 	return
- 		key->flags & ((1 << KEY_FLAG_DEAD) |
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 13ca196..6831a01 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -32,12 +32,12 @@ config NFS_FS
+ config NFS_V2
+ 	tristate "NFS client support for NFS version 2"
+ 	depends on NFS_FS
+-	default y
++	default n
+ 	help
+ 	  This option enables support for version 2 of the NFS protocol
+ 	  (RFC 1094) in the kernel's NFS client.
+ 
+-	  If unsure, say Y.
++	  If unsure, say n.
+ 
+ config NFS_V3
+ 	tristate "NFS client support for NFS version 3"
+-- 
+1.8.1.4
 
