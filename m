@@ -1,362 +1,165 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ye0-f170.google.com ([209.85.213.170]:45618 "EHLO
-	mail-ye0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S964817Ab3GLQdb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jul 2013 12:33:31 -0400
-Received: by mail-ye0-f170.google.com with SMTP id q3so3236582yen.15
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Jul 2013 09:33:31 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe93:815b])
-        by mx.google.com with ESMTPSA id v68sm68997989yhn.22.2013.07.12.09.33.30
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 12 Jul 2013 09:33:30 -0700 (PDT)
-Subject: [PATCH v1 14/19] NFS: Add method to retrieve fs_locations during
- migration recovery
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 12 Jul 2013 12:33:29 -0400
-Message-ID: <20130712163329.1444.71304.stgit@seurat.1015granger.net>
-In-Reply-To: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
-References: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:39211 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933183Ab3GCUMp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Jul 2013 16:12:45 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 04/12] vfs: take i_mutex on renamed file
+Date: Wed,  3 Jul 2013 16:12:28 -0400
+Message-Id: <1372882356-14168-5-git-send-email-bfields@redhat.com>
+In-Reply-To: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The nfs4_proc_fs_locations() function is invoked during referral
-processing to perform a GETATTR(fs_locations) on an object's parent
-directory in order to discover the target of the referral.  It
-performs a LOOKUP in the compound, so the client needs to know the
-parent's file handle a priori.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Unfortunately this function is not adequate for handling migration
-recovery.  We need to probe fs_locations information on an FSID's
-root directory, but the "parent" of a root directory is not
-available for a LOOKUP operation.  Fortunately we already know the
-FSID's root FH, as it is now saved at mount time.
+A read delegation is used by NFSv4 as a guarantee that a client can
+perform local read opens without informing the server.
 
-Another subtlety: recovering from NFS4ERR_LEASE_MOVED is a process
-of walking over a list of known FSIDs that reside on the server, and
-probing whether they have migrated.  Once the server has detected
-that the client has probed all migrated file systems, it stops
-returning NFS4ERR_LEASE_MOVED.
+The open operation takes the last component of the pathname as an
+argument, thus is also a lookup operation, and giving the client the
+above guarantee means informing the client before we allow anything that
+would change the set of names pointing to the inode.
 
-A minor version zero server needs to know what client ID is
-requesting fs_locations information so it can clear the flag that
-forces it to continue returning NFS4ERR_LEASE_MOVED.  This flag is
-set per client ID and per FSID.  However, the client ID is not an
-argument of either the PUTFH or GETATTR operations.  Later minor
-versions have client ID information embedded in the compound's
-SEQUENCE operation.
+Therefore, we need to break delegations on rename, link, and unlink.
 
-Therefore, by convention, minor version zero clients send a RENEW
-operation in the same compound as the GETATTR(fs_locations), since
-RENEW's one argument is a clientid4.  This allows a minor version
-zero server to identify correctly the client that is probing for a
-migration.
+We also need to prevent new delegations from being acquired while one of
+these operations is in progress.
 
-(Needing to send a RENEW in the mv0 case by itself might not be a
-strong justification for separate get_locations methods for mv0 and
-mv1.  But eventually, fs_locations_info support can be plumbed into
-the mv1 method without disturbing the mv0 method).
+We could add some completely new locking for that purpose, but it's
+simpler to use the i_mutex, since that's already taken by all the
+operations we care about.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+The single exception is rename.  So, modify rename to take the i_mutex
+on the file that is being renamed.
+
+Also fix up lockdep and Documentation/filesystems/directory-locking to
+reflect the change.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/nfs4_fs.h        |    2 +
- fs/nfs/nfs4proc.c       |  147 +++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4xdr.c        |   46 +++++++++++----
- include/linux/nfs_xdr.h |    4 +
- 4 files changed, 188 insertions(+), 11 deletions(-)
+ Documentation/filesystems/directory-locking |   31 +++++++++++++++++++--------
+ fs/namei.c                                  |   12 ++++++++---
+ 2 files changed, 31 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 4b83ffc..66c34c4 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -203,6 +203,7 @@ struct nfs4_state_maintenance_ops {
- };
+diff --git a/Documentation/filesystems/directory-locking b/Documentation/filesystems/directory-locking
+index ff7b611..09bbf9a 100644
+--- a/Documentation/filesystems/directory-locking
++++ b/Documentation/filesystems/directory-locking
+@@ -2,6 +2,10 @@
+ kinds of locks - per-inode (->i_mutex) and per-filesystem
+ (->s_vfs_rename_mutex).
  
- struct nfs4_mig_recovery_ops {
-+	int (*get_locations)(struct inode *, struct nfs4_fs_locations *, struct page *);
- };
++	When taking the i_mutex on multiple non-directory objects, we
++always acquire the locks in order by increasing address.  We'll call
++that "inode pointer" order in the following.
++
+ 	For our purposes all operations fall in 5 classes:
  
- extern const struct dentry_operations nfs4_dentry_operations;
-@@ -235,6 +236,7 @@ extern int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait);
- extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
- extern int nfs4_proc_fs_locations(struct rpc_clnt *, struct inode *, const struct qstr *,
- 				  struct nfs4_fs_locations *, struct page *);
-+extern int nfs4_proc_get_locations(struct inode *, struct nfs4_fs_locations *, struct page *page);
- extern struct rpc_clnt *nfs4_proc_lookup_mountpoint(struct inode *, struct qstr *,
- 			    struct nfs_fh *, struct nfs_fattr *);
- extern int nfs4_proc_secinfo(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index bb5100a..c849721 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5445,6 +5445,151 @@ int nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
- 	return err;
- }
+ 1) read access.  Locking rules: caller locks directory we are accessing.
+@@ -12,8 +16,9 @@ kinds of locks - per-inode (->i_mutex) and per-filesystem
+ locks victim and calls the method.
  
-+/*
-+ * This operation also signals the server that this client is
-+ * performing migration recovery.  The server can stop returning
-+ * NFS4ERR_LEASE_MOVED to this client.  A RENEW operation is
-+ * appended to this compound to identify the client ID which is
-+ * performing recovery.
-+ */
-+static int _nfs40_proc_get_locations(struct inode *inode,
-+				     struct nfs4_fs_locations *locations,
-+				     struct page *page)
-+{
-+	struct nfs_server *server = NFS_SERVER(inode);
-+	struct rpc_clnt *clnt = server->nfs_client->cl_rpcclient;
-+	u32 bitmask[2] = {
-+		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS,
-+	};
-+	struct nfs4_fs_locations_arg args = {
-+		.clientid	= server->nfs_client->cl_clientid,
-+		.fh		= NFS_FH(inode),
-+		.page		= page,
-+		.bitmask	= bitmask,
-+		.migration	= 1,
-+		.renew		= 1,
-+	};
-+	struct nfs4_fs_locations_res res = {
-+		.fs_locations	= locations,
-+		.migration	= 1,
-+		.renew		= 1,
-+	};
-+	struct rpc_message msg = {
-+		.rpc_proc	= &nfs4_procedures[NFSPROC4_CLNT_FS_LOCATIONS],
-+		.rpc_argp	= &args,
-+		.rpc_resp	= &res,
-+	};
-+	unsigned long now = jiffies;
-+	int status;
+ 4) rename() that is _not_ cross-directory.  Locking rules: caller locks
+-the parent, finds source and target, if target already exists - locks it
+-and then calls the method.
++the parent and finds source and target.  If target already exists, lock
++it.  If source is a non-directory, lock it.  If that means we need to
++lock both, lock them in inode pointer order.
+ 
+ 5) link creation.  Locking rules:
+ 	* lock parent
+@@ -30,7 +35,9 @@ rules:
+ 		fail with -ENOTEMPTY
+ 	* if new parent is equal to or is a descendent of source
+ 		fail with -ELOOP
+-	* if target exists - lock it.
++	* If target exists, lock it.  If source is a non-directory, lock
++	  it.  In case that means we need to lock both source and target,
++	  do so in inode pointer order.
+ 	* call the method.
+ 
+ 
+@@ -56,9 +63,11 @@ objects - A < B iff A is an ancestor of B.
+     renames will be blocked on filesystem lock and we don't start changing
+     the order until we had acquired all locks).
+ 
+-(3) any operation holds at most one lock on non-directory object and
+-    that lock is acquired after all other locks.  (Proof: see descriptions
+-    of operations).
++(3) locks on non-directory objects are acquired only after locks on
++    directory objects, and are acquired in inode pointer order.
++    (Proof: all operations but renames take lock on at most one
++    non-directory object, except renames, which take locks on source and
++    target in inode pointer order in the case they are not directories.)
+ 
+ 	Now consider the minimal deadlock.  Each process is blocked on
+ attempt to acquire some lock and already holds at least one lock.  Let's
+@@ -66,9 +75,13 @@ consider the set of contended locks.  First of all, filesystem lock is
+ not contended, since any process blocked on it is not holding any locks.
+ Thus all processes are blocked on ->i_mutex.
+ 
+-	Non-directory objects are not contended due to (3).  Thus link
+-creation can't be a part of deadlock - it can't be blocked on source
+-and it means that it doesn't hold any locks.
++	By (3), any process holding a non-directory lock can only be
++waiting on another non-directory lock with a larger address.  Therefore
++the process holding the "largest" such lock can always make progress, and
++non-directory objects are not included in the set of contended locks.
 +
-+	nfs_fattr_init(&locations->fattr);
-+	locations->server = server;
-+	locations->nlocations = 0;
-+
-+	status = rpc_call_sync(clnt, &msg, 0);
-+	if (status)
-+		return status;
-+
-+	renew_lease(server, now);
-+	return 0;
-+}
-+
-+#ifdef CONFIG_NFS_V4_1
-+/*
-+ * This operation also signals the server that this client is
-+ * performing migration recovery.  The server can stop asserting
-+ * SEQ4_STATUS_LEASE_MOVED for this client.  The client ID
-+ * performing this operation is identified in the SEQUENCE
-+ * operation in this compound.
-+ *
-+ * When the client supports GETATTR(fs_locations_info), it can
-+ * be plumbed in here.
-+ */
-+static int _nfs41_proc_get_locations(struct inode *inode,
-+				     struct nfs4_fs_locations *locations,
-+				     struct page *page)
-+{
-+	struct nfs_server *server = NFS_SERVER(inode);
-+	struct rpc_clnt *clnt = server->nfs_client->cl_rpcclient;
-+	u32 bitmask[2] = {
-+		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS,
-+	};
-+	struct nfs4_fs_locations_arg args = {
-+		.fh		= NFS_FH(inode),
-+		.page		= page,
-+		.bitmask	= bitmask,
-+		.migration	= 1,
-+	};
-+	struct nfs4_fs_locations_res res = {
-+		.fs_locations	= locations,
-+		.migration	= 1,
-+	};
-+	struct rpc_message msg = {
-+		.rpc_proc	= &nfs4_procedures[NFSPROC4_CLNT_FS_LOCATIONS],
-+		.rpc_argp	= &args,
-+		.rpc_resp	= &res,
-+	};
-+	int status;
-+
-+	nfs_fattr_init(&locations->fattr);
-+	locations->server = server;
-+	locations->nlocations = 0;
-+
-+	nfs41_init_sequence(&args.seq_args, &res.seq_res, 0);
-+	nfs4_set_sequence_privileged(&args.seq_args);
-+	status = nfs4_call_sync_sequence(clnt, server, &msg,
-+					&args.seq_args, &res.seq_res);
-+	if (status == NFS4_OK &&
-+	    res.seq_res.sr_status_flags & SEQ4_STATUS_LEASE_MOVED)
-+		status = -NFS4ERR_LEASE_MOVED;
-+	return status;
-+}
-+#endif	/* CONFIG_NFS_V4_1 */
-+
-+/**
-+ * nfs4_proc_get_locations - discover locations for a migrated FSID
-+ * @inode: inode on FSID that is migrating
-+ * @locations: result of query
-+ * @page: buffer
-+ *
-+ * Returns NFS4_OK on success, a negative NFS4ERR status code if the
-+ * operation failed, or a negative errno if a local error occurred.
-+ *
-+ * On success, "locations" is filled in, but if the server has
-+ * no locations information, NFS_ATTR_FATTR_V4_LOCATIONS is not
-+ * asserted.
-+ *
-+ * -NFS4ERR_LEASE_MOVED is returned if the server still has leases
-+ * from this client that require migration recovery.
-+ */
-+int nfs4_proc_get_locations(struct inode *inode,
-+			    struct nfs4_fs_locations *locations,
-+			    struct page *page)
-+{
-+	struct nfs_server *server = NFS_SERVER(inode);
-+	struct nfs_client *clp = server->nfs_client;
-+	const struct nfs4_mig_recovery_ops *ops =
-+					clp->cl_mvops->mig_recovery_ops;
-+	struct nfs4_exception exception = { };
-+	int status;
-+
-+	dprintk("--> %s: FSID %llx:%llx on \"%s\"\n", __func__,
-+		(unsigned long long)server->fsid.major,
-+		(unsigned long long)server->fsid.minor,
-+		clp->cl_hostname);
-+	nfs_display_fhandle(NFS_FH(inode), __func__);
-+
-+	do {
-+		status = ops->get_locations(inode, locations, page);
-+		if (status != -NFS4ERR_DELAY)
-+			break;
-+		nfs4_handle_exception(server, status, &exception);
-+	} while (exception.retry);
-+
-+	dprintk("<-- %s status=%d\n", __func__, status);
-+	return status;
-+}
-+
- static int _nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct nfs4_secinfo_flavors *flavors)
++	Thus link creation can't be a part of deadlock - it can't be
++blocked on source and it means that it doesn't hold any locks.
+ 
+ 	Any contended object is either held by cross-directory rename or
+ has a child that is also contended.  Indeed, suppose that it is held by
+diff --git a/fs/namei.c b/fs/namei.c
+index 9ed9361..61f6076 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3677,7 +3677,8 @@ SYSCALL_DEFINE2(link, const char __user *, oldname, const char __user *, newname
+  *	   That's where 4.4 screws up. Current fix: serialization on
+  *	   sb->s_vfs_rename_mutex. We might be more accurate, but that's another
+  *	   story.
+- *	c) we have to lock _three_ objects - parents and victim (if it exists).
++ *	c) we have to lock _four_ objects - parents and victim (if it exists),
++ *	   and source (if it is not a directory).
+  *	   And that - after we got ->i_mutex on parents (until then we don't know
+  *	   whether the target exists).  Solution: try to be smart with locking
+  *	   order for inodes.  We rely on the fact that tree topology may change
+@@ -3753,6 +3754,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+ 			    struct inode *new_dir, struct dentry *new_dentry)
  {
- 	int status;
-@@ -7043,10 +7188,12 @@ static const struct nfs4_state_maintenance_ops nfs41_state_renewal_ops = {
- #endif
+ 	struct inode *target = new_dentry->d_inode;
++	struct inode *source = old_dentry->d_inode;
+ 	int error;
  
- static const struct nfs4_mig_recovery_ops nfs40_mig_recovery_ops = {
-+	.get_locations = _nfs40_proc_get_locations,
- };
+ 	error = security_inode_rename(old_dir, old_dentry, new_dir, new_dentry);
+@@ -3761,7 +3763,9 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
  
- #if defined(CONFIG_NFS_V4_1)
- static const struct nfs4_mig_recovery_ops nfs41_mig_recovery_ops = {
-+	.get_locations = _nfs41_proc_get_locations,
- };
- #endif	/* CONFIG_NFS_V4_1 */
+ 	dget(new_dentry);
+ 	if (target)
+-		mutex_lock(&target->i_mutex);
++		lock_two_nondirectories(source, target);
++	else
++		mutex_lock(&source->i_mutex);
  
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 4be8d13..c63f4b7 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -718,13 +718,15 @@ static int nfs4_stat_to_errno(int);
- 				 encode_sequence_maxsz + \
- 				 encode_putfh_maxsz + \
- 				 encode_lookup_maxsz + \
--				 encode_fs_locations_maxsz)
-+				 encode_fs_locations_maxsz + \
-+				 encode_renew_maxsz)
- #define NFS4_dec_fs_locations_sz \
- 				(compound_decode_hdr_maxsz + \
- 				 decode_sequence_maxsz + \
- 				 decode_putfh_maxsz + \
- 				 decode_lookup_maxsz + \
--				 decode_fs_locations_maxsz)
-+				 decode_fs_locations_maxsz + \
-+				 decode_renew_maxsz)
- #define NFS4_enc_secinfo_sz 	(compound_encode_hdr_maxsz + \
- 				encode_sequence_maxsz + \
- 				encode_putfh_maxsz + \
-@@ -2636,11 +2638,20 @@ static void nfs4_xdr_enc_fs_locations(struct rpc_rqst *req,
- 
- 	encode_compound_hdr(xdr, req, &hdr);
- 	encode_sequence(xdr, &args->seq_args, &hdr);
--	encode_putfh(xdr, args->dir_fh, &hdr);
--	encode_lookup(xdr, args->name, &hdr);
--	replen = hdr.replen;	/* get the attribute into args->page */
--	encode_fs_locations(xdr, args->bitmask, &hdr);
-+	if (args->migration) {
-+		encode_putfh(xdr, args->fh, &hdr);
-+		replen = hdr.replen;
-+		encode_fs_locations(xdr, args->bitmask, &hdr);
-+		if (args->renew)
-+			encode_renew(xdr, args->clientid, &hdr);
-+	} else {
-+		encode_putfh(xdr, args->dir_fh, &hdr);
-+		encode_lookup(xdr, args->name, &hdr);
-+		replen = hdr.replen;
-+		encode_fs_locations(xdr, args->bitmask, &hdr);
-+	}
- 
-+	/* Set up reply kvec to capture returned fs_locations array. */
- 	xdr_inline_pages(&req->rq_rcv_buf, replen << 2, &args->page,
- 			0, PAGE_SIZE);
- 	encode_nops(&hdr);
-@@ -6690,13 +6701,26 @@ static int nfs4_xdr_dec_fs_locations(struct rpc_rqst *req,
- 	status = decode_putfh(xdr);
- 	if (status)
- 		goto out;
--	status = decode_lookup(xdr);
--	if (status)
--		goto out;
--	xdr_enter_page(xdr, PAGE_SIZE);
--	status = decode_getfattr_generic(xdr, &res->fs_locations->fattr,
-+	if (res->migration) {
-+		xdr_enter_page(xdr, PAGE_SIZE);
-+		status = decode_getfattr_generic(xdr,
-+					&res->fs_locations->fattr,
- 					 NULL, res->fs_locations,
- 					 res->fs_locations->server);
-+		if (status)
-+			goto out;
-+		if (res->renew)
-+			status = decode_renew(xdr);
-+	} else {
-+		status = decode_lookup(xdr);
-+		if (status)
-+			goto out;
-+		xdr_enter_page(xdr, PAGE_SIZE);
-+		status = decode_getfattr_generic(xdr,
-+					&res->fs_locations->fattr,
-+					 NULL, res->fs_locations,
-+					 res->fs_locations->server);
-+	}
+ 	error = -EBUSY;
+ 	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
+@@ -3777,7 +3781,9 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+ 		d_move(old_dentry, new_dentry);
  out:
- 	return status;
+ 	if (target)
+-		mutex_unlock(&target->i_mutex);
++		unlock_two_nondirectories(source, target);
++	else
++		mutex_unlock(&source->i_mutex);
+ 	dput(new_dentry);
+ 	return error;
  }
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 104b62f..db5a1bc 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1040,14 +1040,18 @@ struct nfs4_fs_locations {
- struct nfs4_fs_locations_arg {
- 	struct nfs4_sequence_args	seq_args;
- 	const struct nfs_fh *dir_fh;
-+	const struct nfs_fh *fh;
- 	const struct qstr *name;
- 	struct page *page;
- 	const u32 *bitmask;
-+	clientid4 clientid;
-+	unsigned char migration:1, renew:1;
- };
- 
- struct nfs4_fs_locations_res {
- 	struct nfs4_sequence_res	seq_res;
- 	struct nfs4_fs_locations       *fs_locations;
-+	unsigned char			migration:1, renew:1;
- };
- 
- struct nfs4_secinfo4 {
+-- 
+1.7.9.5
 
