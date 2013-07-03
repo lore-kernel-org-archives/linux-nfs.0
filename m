@@ -1,214 +1,204 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:22380 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:39213 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759129Ab3GRUsu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Jul 2013 16:48:50 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: SP4_MACH_CRED: v4 proc -> opcodes mapping
-Date: Thu, 18 Jul 2013 20:48:46 +0000
-Message-ID: <1374180525.3788.84.camel@leira.trondhjem.org>
-References: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
-	 <1374159436.3788.3.camel@leira.trondhjem.org>
-	 <DFCAA8D0-B3BD-49C2-BAC4-9C26668AACB9@netapp.com>
-	 <1374160910.3788.14.camel@leira.trondhjem.org>
-	 <1D61D5F4-40DA-47D1-A15A-745EA05813BA@netapp.com>
-	 <1374167339.3788.52.camel@leira.trondhjem.org>
-	 <DD04268F-B364-48D0-ADEB-E4770D618B38@netapp.com>
-	 <9AC7EBEB-E407-4CCB-A6E6-05C24CD821DA@netapp.com>
-	 <1374177242.3788.59.camel@leira.trondhjem.org>
-	 <FB5772A6-D433-4C9C-B67E-B43126961A68@netapp.com>
-	 <1374177978.3788.68.camel@leira.trondhjem.org>
-	 <959CC18F-0C16-4D11-A4AA-87928D5C23CC@netapp.com>
-	 <372F77DD-8325-427B-AD09-8366DDED0A32@netapp.com>
-In-Reply-To: <372F77DD-8325-427B-AD09-8366DDED0A32@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S933191Ab3GCUMp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Jul 2013 16:12:45 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 06/12] locks: implement delegations
+Date: Wed,  3 Jul 2013 16:12:30 -0400
+Message-Id: <1372882356-14168-7-git-send-email-bfields@redhat.com>
+In-Reply-To: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEzLTA3LTE4IGF0IDIwOjQxICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
-PiBPaywgd2hhdCBhYm91dCBTRVFVRU5DRT8gU2FtZSBzaXR1YXRpb24sIGV4Y2VwdCB0aGlzIHRp
-bWUgaXQncyBhY3R1YWxseSBhIHY0LjEgb3AuDQoNClNFUVVFTkNFIGlzIHNwZWNpYWwuIEkgY2Fu
-J3Qgc2VlIGhvdyBpdCBpcyBwb3NzaWJsZSB0byBwdXQgaXQgaW4gdGhlDQpzcG9fbXVzdF9lbmZv
-cmNlIGNhdGVnb3J5LCBzaW5jZSBpdCBuZWVkcyB0byBwcmVmaXggYWxsIG90aGVyDQpvcGVyYXRp
-b25zLg0KSU9XOiB0aGF0IHdvdWxkIGF1dG9tYXRpY2FsbHkgaW1wbHkgdGhhdCB5b3UgY2FuIG9u
-bHkgdXNlIHRoZSBtYWNoaW5lDQpjcmVkZW50aWFsIGZvciB0aGF0IE5GUyBzZXJ2ZXIuDQoNCj4g
-LWRyb3MNCj4gDQo+IE9uIEp1bCAxOCwgMjAxMywgYXQgNDoxNiBQTSwgIkFkYW1zb24sIERyb3Mi
-IDxXZXN0b24uQWRhbXNvbkBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gSGVoLCBnb29kIHBv
-aW50IDspDQo+ID4gDQo+ID4gLWRyb3MNCj4gPiANCj4gPiBPbiBKdWwgMTgsIDIwMTMsIGF0IDQ6
-MDYgUE0sICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQo+
-ID4gd3JvdGU6DQo+ID4gDQo+ID4+IE9uIFRodSwgMjAxMy0wNy0xOCBhdCAyMDowNCArMDAwMCwg
-QWRhbXNvbiwgRHJvcyB3cm90ZToNCj4gPj4+IEFub3RoZXIgaXNzdWU6IElzIGl0IG91dCBvZiBz
-cGVjIHRvIGRvIHdoYXQgd2UgcGxhbiBhbmQgImp1c3QgdXNlIiB0aGUgbmZzX2NsaWVudCdzIHJw
-Y19jbGllbnQgZm9yIGFsbCBzdGF0ZSBtYW5hZ2VyIG9wZXJhdGlvbnMgd2l0aG91dCBjaGVja2lu
-ZyBpZiB0aGUgc2VydmVyIHN1cHBvcnRzIGl0IGZyb20gdGhlIFNQNF9NQUNIX0NSRUQgRVhDSEFO
-R0VfSUQgbmVnb3RpYXRpb24/DQo+ID4+PiANCj4gPj4+IFJFTkVXIGZvciBleGFtcGxlIGlzIG5v
-dCBleHBsaWNpdGx5IG1lbnRpb25lZCBpbiB0aGUgU1A0X01BQ0hfQ1JFRCBzZWN0aW9uIGFuZCBJ
-J20gbG9va2luZyBhdCBhIHNlcnZlciB0aGF0IGRvZXNuJ3QgY2xhaW0gc3RhdGVfcHJvdGVjdGlv
-biBzdXBwb3J0IGZvciBSRU5FVy4NCj4gPj4gDQo+ID4+IFJFTkVXIGlzIGEgIm1hbmRhdG9yeSB0
-byBub3QgaW1wbGVtZW50IiBvcGVyYXRpb24gaW4gTkZTdjQuMS4NCj4gPj4gDQo+ID4+IENoZWVy
-cw0KPiA+PiBUcm9uZA0KPiA+PiANCj4gPj4+IC1kcm9zDQo+ID4+PiANCj4gPj4+IE9uIEp1bCAx
-OCwgMjAxMywgYXQgMzo1NCBQTSwgIk15a2xlYnVzdCwgVHJvbmQiIDxUcm9uZC5NeWtsZWJ1c3RA
-bmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4+PiANCj4gPj4+PiBPbiBUaHUsIDIwMTMtMDctMTggYXQg
-MTk6NDkgKzAwMDAsIEFkYW1zb24sIERyb3Mgd3JvdGU6DQo+ID4+Pj4+IE9ubHkgc3VwcG9ydGlu
-ZyBvcGVyYXRpb25zIHRoYXQgaGF2ZSB0aGUgZXJyb3IgY29kZSBORlM0RVJSX1dST05HX0NSRUQg
-c2VlbXMgdG8gYmUgd3JvbmcuICBPcGVyYXRpb25zIGxpa2UgQklORF9DT05OX1RPX1NFU1NJT04g
-ZG9uJ3Qgc3VwcG9ydCBkb24ndCBzdXBwb3J0IHRoaXMgZXJyb3IgY29kZSwgYnV0IGFyZSBleHBs
-aWNpdGx5IG1lbnRpb25lZCBpbiBTUDRfTUFDSF9DUkVEIHNlY3Rpb25zIG9mIHRoZSBzcGVjLg0K
-PiA+Pj4+IA0KPiA+Pj4+IExvb2tpbmcgYXQgdGhlIGFsbG93ZWQgZXJyb3IgcmV0dXJuIHZhbHVl
-cyBmb3IgQklORF9DT05OX1RPX1NFU1NJT04sIEknbQ0KPiA+Pj4+IGF0IGEgbG9zcyB0byBmaWd1
-cmUgb3V0IGV4YWN0bHkgd2hhdCBpdCBzaG91bGQgcmV0dXJuIGluIHRoaXMgY2FzZS4gSQ0KPiA+
-Pj4+IHN1c3BlY3QgdGhhdCB0aGUgbGFjayBvZiBhbiBORlM0RVJSX1dST05HX0NSRUQgaXMgYWN0
-dWFsbHkgYSBwcm90b2NvbA0KPiA+Pj4+IGJ1Zy4NCj4gPj4+PiANCj4gPj4+PiBUaW1lIHRvIGdv
-IGJhY2sgdG8gdGhlIGlldGYgbWFpbGluZyBsaXN0Li4uDQo+ID4+Pj4gDQo+ID4+Pj4+IEknbGwg
-Y29udGludWUgbXkgd29yayBkZXNjcmliZWQgYmVsb3cgbW9kdWxvIGxpbWl0aW5nIHRvIE5GUzRF
-UlJfV1JPTkdfQ1JFRCBlbmFibGVkIE9QcyBhbmQgc2VlIGhvdyB0aGF0IGxvb2tzLi4uDQo+ID4+
-Pj4+IA0KPiA+Pj4+PiAtZHJvcw0KPiA+Pj4+PiANCj4gPj4+Pj4gT24gSnVsIDE4LCAyMDEzLCBh
-dCAyOjEzIFBNLCAiQWRhbXNvbiwgRHJvcyIgPFdlc3Rvbi5BZGFtc29uQG5ldGFwcC5jb20+IHdy
-b3RlOg0KPiA+Pj4+PiANCj4gPj4+Pj4+IE9rLCBJJ2xsIGhhdmUgdGhlIGNsaWVudCBvbmx5IGFz
-ayBmb3Igc3RhdGUgcHJvdGVjdGlvbiBvbiBvcGVyYXRpb25zIHRoYXQgc3VwcG9ydCBORlM0RVJS
-X1dST05HX0NSRUQgLSBhbmQgSSdsbCBkbyB0aGUgU1A0X01BQ0hfQ1JFRCBjaGVja3Mgb25seSBv
-biB0aGVzZSBvcGVyYXRpb25zIGFuZCBvbmx5IGlmIHRoZXkgYXJlbid0IGFscmVhZHkgdXNpbmcg
-dGhlIG1hY2hpbmUgY3JlZCBhbHJlYWR5LiBUaGlzIHNpbXBsaWZpZXMgbXkgb3JpZ2luYWwgcHJv
-YmxlbSAtIG5vdyBJIGNhbiBqdXN0IHVzZSB0aGUgIm1haW4iIG9wY29kZS4NCj4gPj4+Pj4+IA0K
-PiA+Pj4+Pj4gSSdsbCBhbHNvIGFkZCBlcnJvciBoYW5kbGVycyBmb3IgTkZTNEVSUl9XUk9OR19D
-UkVELg0KPiA+Pj4+Pj4gDQo+ID4+Pj4+PiBUaGFua3MhDQo+ID4+Pj4+PiANCj4gPj4+Pj4+IC1k
-cm9zDQo+ID4+Pj4+PiANCj4gPj4+Pj4+IE9uIEp1bCAxOCwgMjAxMywgYXQgMTowOCBQTSwgIk15
-a2xlYnVzdCwgVHJvbmQiIDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4+
-Pj4+PiANCj4gPj4+Pj4+PiBPbiBUaHUsIDIwMTMtMDctMTggYXQgMTU6NTAgKzAwMDAsIEFkYW1z
-b24sIERyb3Mgd3JvdGU6DQo+ID4+Pj4+Pj4+IE9uIEp1bCAxOCwgMjAxMywgYXQgMTE6MjEgQU0s
-ICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ID4+Pj4+
-Pj4+IHdyb3RlOg0KPiA+Pj4+Pj4+PiANCj4gPj4+Pj4+Pj4+IE9uIFRodSwgMjAxMy0wNy0xOCBh
-dCAxNToxMCArMDAwMCwgQWRhbXNvbiwgRHJvcyB3cm90ZToNCj4gPj4+Pj4+Pj4+PiBPbiBKdWwg
-MTgsIDIwMTMsIGF0IDEwOjU3IEFNLCAiTXlrbGVidXN0LCBUcm9uZCIgPFRyb25kLk15a2xlYnVz
-dEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPj4+Pj4+Pj4+PiANCj4gPj4+Pj4+Pj4+Pj4gT24gVGh1
-LCAyMDEzLTA3LTE4IGF0IDE0OjQ2ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0KPiA+Pj4+
-Pj4+Pj4+Pj4gSGV5LA0KPiA+Pj4+Pj4+Pj4+Pj4gDQo+ID4+Pj4+Pj4+Pj4+PiBJIGhhdmUgYSBt
-b3N0bHkgZnVuY3Rpb25hbCBjbGllbnQtc2lkZSBpbXBsZW1lbnRhdGlvbiBvZiBTUDRfTUFDSF9D
-UkVEISBJdCBzdGlsbCBuZWVkcyBhIGxvdCBvZiBjbGVhbnVwIGFuZCB0ZXN0aW5nLg0KPiA+Pj4+
-Pj4+Pj4+Pj4gDQo+ID4+Pj4+Pj4+Pj4+PiBJIGhhdmUgb25lIHN0eWxlIGlzc3VlIHRoYXQgSSB3
-YW50IHRvIHJ1biBieSB0aGUgbGlzdCBiZWZvcmUgSSBwb3N0IGEgcGF0Y2hzZXQ6DQo+ID4+Pj4+
-Pj4+Pj4+PiANCj4gPj4+Pj4+Pj4+Pj4+IFNvLCBTUDRfTUFDSF9DUkVEIG5lZ290aWF0ZXMgdHdv
-IGJpdG1hcHMgaW4gdGhlIEVYQ0hBTkdFX0lEIChvbmUgImVuZm9yY2UiLCBvbmUgImFsbG93Iikg
-Zm9yIHN0YXRlIHByb3RlY3Rpb24uIFRoZXNlIGJpdG1hcHMgYXJlIGluZGV4ZWQgYnkgdGhlIE5G
-U3Y0IG9wZXJhdGlvbiBudW1iZXIuICBUaGUgc3RhdGUgcHJvdGVjdCBjaGVjayBtdXN0IGhhcHBl
-biBpbiB0aGUgbmZzNHByb2MuYyBsYXllciAob3IgYmVmb3JlKSwgcmlnaHQgYmVmb3JlIHdlIGNh
-bGwgcnBjX2NhbGxfc3luYyBvciBlcXVpdmFsZW50LCBzbyB0aGF0IGl0IGNhbiBzZWxlY3QgdGhl
-IHJpZ2h0IGNyZWQgYW5kIHJwY19jbGllbnQuDQo+ID4+Pj4+Pj4+Pj4+PiANCj4gPj4+Pj4+Pj4+
-Pj4+IEhlcmUncyB0aGUgcHJvYmxlbTogd2UgZG9uJ3Qga25vdyB3aGF0IG9wZXJhdGlvbnMgKG9w
-Y29kZXMpIGFyZSBhY3R1YWxseSBpbiBhIGNvbXBvdW5kIHVudGlsIHRoZSBYRFIgZW5jb2RlIGNh
-bGxiYWNrIGlzIGNhbGxlZC4gIFRoZSBycGNfcHJvY2luZm8gYXJyYXkgZG9lc24ndCBoYXZlIHRo
-aXMgbWFwcGluZyAtIGluIGZhY3QsIGl0IG9ubHkgbGl2ZXMgaW4gdGhlIHhkciBlbmNvZGUgbGF5
-ZXIuDQo+ID4+Pj4+Pj4+Pj4+PiANCj4gPj4+Pj4+Pj4+Pj4+IE9uZSBhcHByb2FjaCBpcyB0byBp
-bW1lZGlhdGVseSB0cmFuc2xhdGUgdGhlIG9wY29kZSBiaXRtYXBzIHRvICJuZnM0IHByb2NlZHVy
-ZSBpbmRleCIgYml0bWFwcywgaW5kZXhpbmcgaW50byB0aGUgcnBjX3Byb2NpbmZvIGFycmF5LiAg
-VGhpcyB3b3VsZCBtZWFuIHRoZXJlIGlzIGEgc2Vjb25kIG1hcHBpbmcgb2YgTkZTdjQgcHJvY2Vk
-dXJlIC0+IG9wY29kZXMgdGhhdCBtdXN0IGJlIHVwZGF0ZWQgd2hlbiBhbiBYRFIgZW5jb2RlIGNh
-bGxiYWNrIGlzIGNoYW5nZWQuDQo+ID4+Pj4+Pj4+Pj4+PiANCj4gPj4+Pj4+Pj4+Pj4+IEFub3Ro
-ZXIgYXBwcm9hY2ggd291bGQgYmUgdG8gYWRkIGEgY2FsbGJhY2sgdG8gdGhlIFhEUiBhcGkgc28g
-d2UgY291bGQgImFzayIgaXQgaWYgYW4gTkZTdjQgcHJvY2VkdXJlIGNvbnRhaW5zIGFueSBvZiB0
-aGUgb3Bjb2RlcyBpbiBhIGJpdG1hcC4gVGhlIG5pY2UgdGhpbmcgYWJvdXQgdGhpcyBhcHByb2Fj
-aCBpcyB0aGF0IHRoZSBtYXBwaW5nIG9mIHByb2NlZHVyZSB0byBvcGNvZGVzIHdpdGhpbiB3aWxs
-IGxpdmUgcmlnaHQgbmV4dCB0byB0aGUgWERSIGVuY29kZSBjYWxsYmFjayBhbmQgbWFrZSBpdCBv
-YnZpb3VzIHRoYXQgYm90aCBuZWVkIHRvIGJlIGNoYW5nZWQgdG9nZXRoZXIuDQo+ID4+Pj4+Pj4+
-Pj4+PiANCj4gPj4+Pj4+Pj4+Pj4+IEkgc3VwcG9zZSBJJ20gbGVhbmluZyB0b3dhcmQgYSBjb21i
-aW5hdGlvbiBvZiBib3RoIG9mIHRoZXNlIGFwcHJvYWNoZXMgLSBrZWVwIHRoZSBtYXBwaW5nIGlu
-IFhEUi1sYW5kIGFuZCB0cmFuc2xhdGUgdGhlIGJpdG1hcHMgaW1tZWRpYXRlbHkgb24gbmVnYXRp
-b24gZm9yIGZhc3QgbG9va3VwcyBkdXJpbmcgbm9ybWFsIG9wZXJhdGlvbi4NCj4gPj4+Pj4+Pj4+
-Pj4+IA0KPiA+Pj4+Pj4+Pj4+Pj4gQ29tbWVudHM/IEFtIEkgbWlzc2luZyBzb21ldGhpbmc/DQo+
-ID4+Pj4+Pj4+Pj4+IA0KPiA+Pj4+Pj4+Pj4+PiBJJ20gbm90IHN1cmUgdGhhdCBJIHVuZGVyc3Rh
-bmQuIFdlIGRvbid0IGRvIGR5bmFtaWMgY3JlYXRpb24gb2YNCj4gPj4+Pj4+Pj4+Pj4gY29tcG91
-bmRzOiB3ZSBwcmV0dHkgbXVjaCBrbm93IGluIHRoZSBuZnM0X3Byb2NfKiByb3V0aW5lIHdoYXQg
-dGhlIG1haW4NCj4gPj4+Pj4+Pj4+Pj4gb3BlcmF0aW9uIGlzICh0aGUgb25lIGV4Y2VwdGlvbiBi
-ZWluZyBDTE9TRS9PUEVOX0RPV05HUkFERSkuIFNvIHdoeQ0KPiA+Pj4+Pj4+Pj4+PiBjYW4ndCB3
-ZSB3b3JrIG91dCB0aGUgcHJvdGVjdGlvbiBzdGF0dXMgYXQgdGhhdCB0aW1lPyBJcyB0aGUgd29y
-cnkgdGhhdA0KPiA+Pj4+Pj4+Pj4+PiB0aGUgc2VydmVyIG1pZ2h0IHJlYm9vdCBhbmQgY29tZSBi
-YWNrIHdpdGggZGlmZmVyZW50IE1BQ0hfQ1JFRA0KPiA+Pj4+Pj4+Pj4+PiBwcm90ZWN0aW9ucz8N
-Cj4gPj4+Pj4+Pj4+PiANCj4gPj4+Pj4+Pj4+PiBTdXJlLCB3ZSBrbm93IHdoYXQgdGhlIG1haW4g
-b3BlcmF0aW9uIGlzIGFuZCB3ZSBrbm93IHdoYXQgb3BlcmF0aW9ucyB3aWxsIGVuZCB1cCBpbiBh
-IGNvbXBvdW5kIC0gd2UgY2FuIGp1c3QgbG9vayBhdCB0aGUgeGRyIGVuY29kZXIuICBNeSBxdWVz
-dGlvbiBpcyBzaW1wbHkgb25lIG9mIHN0eWxlLiBEbyB3ZSB3YW50IHRvIGhhdmUgZWFjaCBuZnM0
-cHJvYyBwcm9jZWR1cmUgdG8gaGF2ZSBhIGxpc3Qgb2Ygb3BlcmF0aW9ucyB0aGF0IG11c3QgYmUg
-dXBkYXRlZCBpZiBhbiB4ZHIgZW5jb2RlciBpcyB1cGRhdGVkPyBJJ20gZmluZSB3aXRoIGRvaW5n
-IGl0IHRoaXMgd2F5LCBpdCBqdXN0IHNlZW1lZCB3cm9uZyB0byBoYXZlIHRoZSBzYW1lIG1hcHBp
-bmcgaW4gdHdvIGRpZmZlcmVudCBwbGFjZXMuIFRoaXMgaXMgd2h5IEknbSBhc2tpbmcgOykNCj4g
-Pj4+Pj4+Pj4+PiANCj4gPj4+Pj4+Pj4+PiBBbHNvLCB3ZSBjYW4ndCBqdXN0IHVzZSB0aGUgIm1h
-aW4iIG9wZXJhdGlvbiwgd2UgbXVzdCBjaGVjayBldmVyeSBvcGVyYXRpb24gd2l0aGluIHRoZSBj
-b21wb3VuZCBhbmQgaWYgYW55IGFyZSByZXF1aXJlZCB0byB1c2UgU1A0LCB0aGVuIHRoZSB3aG9s
-ZSBjb21wb3VuZCBkb2VzLiBJIGRvbid0IG5lY2Vzc2FyaWx5IGtub3cgd2h5IGEgc2VydmVyIHdv
-dWxkIGRvIHRoaXMsIGJ1dCBpZiB3ZSBmb2xsb3cgdGhlIHNwZWMgYW5kIGEgc2VydmVyIGluZm9y
-bXMgdGhlIGNsaWVudCB0aGF0IFNFVEFUVFIgbXVzdCB1c2Ugc3RhdGUgcHJvdGVjdGlvbiwgdGhl
-biBhIFdSSVRFIHdpdGggcG9zdC1vcCBTRVRBVFRSIG11c3QgdXNlIHRoZSBzdGF0ZSBwcm90ZWN0
-aW9uIGV2ZW4gdGhvdWdoIFdSSVRFIGRvZXNuJ3QgbmVlZCBpdC4NCj4gPj4+Pj4+Pj4+IA0KPiA+
-Pj4+Pj4+Pj4gV2Ugb25seSBuZWVkIHRvIGNoZWNrIGV2ZXJ5IF9zdGF0ZWZ1bF8gb3BlcmF0aW9u
-LCByaWdodD8gSSBjYW4ndCB0aGluaw0KPiA+Pj4+Pj4+Pj4gb2YgYW55IGNvbXBvdW5kcyB3aXRo
-IG1vcmUgdGhhbiAxIHN0YXRlZnVsIG9wZXJhdGlvbi4gV2UndmUgZGVsaWJlcmF0ZWx5DQo+ID4+
-Pj4+Pj4+PiBhdm9pZGVkIHRob3NlIGR1ZSB0byB0aGUgcHJvYmxlbXMgdGhhdCBhcmlzZSB3aGVu
-IHlvdSBnZXQgYQ0KPiA+Pj4+Pj4+Pj4gTkZTNEVSUl9ERUxBWSBvciBzb21ldGhpbmcgZXF1aXZh
-bGVudCBhdCB0aGUgd3JvbmcgbW9tZW50Lg0KPiA+Pj4+Pj4+PiANCj4gPj4+Pj4+Pj4gVGhhdCBt
-YXkgYmUgdGhlIGludGVudGlvbiwgYnV0IEkgc2VlIG5vIHN1Y2ggbGltaXRhdGlvbiBpbiB0aGUg
-c3BlYy4gSXQncyBteSB1bmRlcnN0YW5kaW5nIHRoYXQgdGhlIHNlcnZlciBjb3VsZCBzcGVjaWZ5
-IGFueSBvcGVyYXRpb24gYXMgTVVTVCBvciBNQVkgdXNlIHN0YXRlIHByb3RlY3Rpb24uDQo+ID4+
-Pj4+Pj4gDQo+ID4+Pj4+Pj4gUmlnaHQsIGJ1dCB3aGF0IHdvdWxkIHN0YXRlIHByb3RlY3Rpb24g
-bWVhbiBmb3IgYSBzdGF0ZWxlc3Mgb3BlcmF0aW9uDQo+ID4+Pj4+Pj4gc3VjaCBhcyBHRVRBVFRS
-PyBUaGF0IG9wZXJhdGlvbiBpc24ndCBldmVuIGFsbG93ZWQgdG8gcmV0dXJuDQo+ID4+Pj4+Pj4g
-TkZTNEVSUl9XUk9OR19DUkVELCBzbyBJIGRvbid0IHNlZSBob3cgaXQgd291bGQgYXBwbHkuDQo+
-ID4+Pj4+Pj4gDQo+ID4+Pj4+Pj4+Pj4gSSdtIG5vdCBmb2xsb3dpbmcgdGhlIHJlYm9vdCBxdWVz
-dGlvbiAtIHRoYXQgY2FzZSBzaG91bGQgYmUgaGFuZGxlZCBqdXN0IGZpbmUuIE9uY2UgdGhlIEVY
-Q0hBTkdFX0lEIGhhcHBlbnMsIHRoZSBjbHAgaGFzIHR3byBiaXRtYXBzIChlbmZvcmNlIGFuZCBh
-bGxvdykgdGhhdCByZWZsZWN0IHRoZSBjdXJyZW50IG1vZGUgb2YgU1A0X01BQ0hfQ1JFRC4NCj4g
-Pj4+Pj4+Pj4+IA0KPiA+Pj4+Pj4+Pj4gSSdtIHRoaW5raW5nIHNvbWV0aGluZyBhbG9uZyB0aGUg
-Zm9sbG93aW5nIHNjZW5hcmlvOg0KPiA+Pj4+Pj4+Pj4gDQo+ID4+Pj4+Pj4+PiBBIHByb2Nlc3Mg
-cXVldWVzIHVwIGFuIE9QRU4uIFRoZSBzZXJ2ZXIgcmVwbGllcyBORlM0RVJSX0JBRF9TRVNTSU9O
-IGFuZA0KPiA+Pj4+Pj4+Pj4gbGF0ZXIgcmVwbGllcyB3aXRoIE5GUzRFUlJfU1RBTEVfQ0xJRU5U
-SUQuIFNvIHdlIHN0YXJ0IHJlYm9vdCByZWNvdmVyeSwNCj4gPj4+Pj4+Pj4+IGFuZCB0aGUgT1BF
-TiBnZXRzIHF1ZXVlZCB3YWl0aW5nIGZvciBhIHNsb3QuDQo+ID4+Pj4+Pj4+PiBXZSB0aGVuIHNl
-bmQgYSBuZXcgRVhDSEFOR0VfSUQsIGFuZCB0aGUgc2VydmVyIHJlcGxpZXMgd2l0aCBhDQo+ID4+
-Pj4+Pj4+PiBfZGlmZmVyZW50XyBNQUNIX0NSRUQgcHJvdGVjdGlvbiBmb3IgT1BFTi4NCj4gPj4+
-Pj4+Pj4+IA0KPiA+Pj4+Pj4+Pj4gVGhlIHByb2JsZW0gYWJvdmUgaXMgdGhhdCB0aGUgT1BFTiBo
-YXMgYWxyZWFkeSBiZWVuIHN0YXJ0ZWQsIGFuZCB3ZSd2ZQ0KPiA+Pj4+Pj4+Pj4gYWxyZWFkeSBh
-c3NpZ25lZCBpdCBhIGNyZWRlbnRpYWwuIEhvdyBkbyB3ZSBoYW5kbGUgdGhhdD8NCj4gPj4+Pj4+
-Pj4+IERpdHRvIHF1ZXN0aW9uIGZvciBSRUFELCBXUklURSwgTE9DSywgTEFZT1VUR0VULC4uLg0K
-PiA+Pj4+Pj4+Pj4gDQo+ID4+Pj4+Pj4+PiBEbyB3ZSBoYXZlIGEgcHJvYmxlbSBmb3IgTE9DS1Us
-IENMT1NFIGFuZCBPUEVOX0RPV05HUkFERT8gSSB0aGluayB3ZSBlbmQNCj4gPj4+Pj4+Pj4+IHVw
-IGp1c3Qgc2tpcHBpbmcgcmVjb3ZlcnkgaW4gdGhvc2UgY2FzZXPigKYNCj4gPj4+Pj4+Pj4gDQo+
-ID4+Pj4+Pj4+IFRoZXNlIGFyZSBnb29kIHBvaW50cy4gSSdtIG5vdCBzdXJlICp3aHkqIHRoZSBz
-cDRfbWFjaF9jcmVkIGNvbmZpZyB3b3VsZCBjaGFuZ2UsIGJ1dCBJIHN1cHBvc2UgaXQgY291bGQs
-IGFuZCB5ZXMsIGluIG15IGN1cnJlbnQgaW1wbGVtZW50YXRpb24gdGhlcmUgaXMgbm8gd2F5IHRv
-IGJhY2sgb3V0IG9uY2UgYSBycGMgdGFzayBpcyBpbnZva2VkLiAgQW55IHRob3VnaHRzIG9uIHRo
-aXM/ICBJIGNhbiBzZWUgdHdvIHdheXMgb2YgaGFuZGxpbmcgdGhpczoNCj4gPj4+Pj4+Pj4gLSBy
-ZXN0YXJ0aW5nIGFsbCB0YXNrcyAod2l0aCBycGNfY2xudCBhbmQgcnBjX2NyZWQgYXBwcm9wcmlh
-dGVseSBjaGFuZ2VkKSB3aGVuIGEgY2hhbmdlIGluIHNwNF9tYWNoX2NyZWQgY29uZmlnIGlzIGRl
-dGVjdGVkLg0KPiA+Pj4+Pj4+PiAtIHNvbWVob3cgaGF2aW5nIHRoZSBSUEMgbGF5ZXIgY2FsbCBv
-dXQgdG8gY2hlY2sgU1A0IHN0YXR1cyBiZWZvcmUgc2VuZGluZyBlYWNoIFJQQy4NCj4gPj4+Pj4+
-PiANCj4gPj4+Pj4+PiBGb3Igbm93LCBJIHRoaW5rIHdlIHNob3VsZCBtYWtlIHN1cmUgdGhhdCB3
-ZSBoYW5kbGUgTkZTNEVSUl9XUk9OR19DUkVEDQo+ID4+Pj4+Pj4gY29ycmVjdGx5IGluIHRoZXNl
-IGNhc2VzLiBJIGRvbid0IHRoaW5rIHdlIGV2ZXIgd2FudCB0byBoYW5kbGUgdGhhdCBpbg0KPiA+
-Pj4+Pj4+IG5mczRfYXN5bmNfaGFuZGxlX2Vycm9yLCBidXQgd2Ugc2hvdWxkIGRlZmluaXRlbHkg
-aGFuZGxlIGl0IGluDQo+ID4+Pj4+Pj4gbmZzNF9oYW5kbGVfZXhjZXB0aW9uKCksIHNpbmNlIHRo
-YXQgY2FuIGRyaXZlIGEgZnVsbCByZXRyeSBvZiB0aGUgUlBDDQo+ID4+Pj4+Pj4gY2FsbC4NCj4g
-Pj4+Pj4+PiANCj4gPj4+Pj4+PiAtLSANCj4gPj4+Pj4+PiBUcm9uZCBNeWtsZWJ1c3QNCj4gPj4+
-Pj4+PiBMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCj4gPj4+Pj4+PiANCj4gPj4+Pj4+PiBO
-ZXRBcHANCj4gPj4+Pj4+PiBUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0KPiA+Pj4+Pj4+IHd3
-dy5uZXRhcHAuY29tDQo+ID4+Pj4+PiANCj4gPj4+Pj4+IC0tDQo+ID4+Pj4+PiBUbyB1bnN1YnNj
-cmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZz
-IiBpbg0KPiA+Pj4+Pj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtl
-cm5lbC5vcmcNCj4gPj4+Pj4+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtl
-cm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KPiA+Pj4+PiANCj4gPj4+PiANCj4gPj4+PiAt
-LSANCj4gPj4+PiBUcm9uZCBNeWtsZWJ1c3QNCj4gPj4+PiBMaW51eCBORlMgY2xpZW50IG1haW50
-YWluZXINCj4gPj4+PiANCj4gPj4+PiBOZXRBcHANCj4gPj4+PiBUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbQ0KPiA+Pj4+IHd3dy5uZXRhcHAuY29tDQo+ID4+PiANCj4gPj4gDQo+ID4+IC0tIA0K
-PiA+PiBUcm9uZCBNeWtsZWJ1c3QNCj4gPj4gTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQo+
-ID4+IA0KPiA+PiBOZXRBcHANCj4gPj4gVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCj4gPj4g
-d3d3Lm5ldGFwcC5jb20NCj4gPiANCj4gPiAtLQ0KPiA+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhp
-cyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQo+ID4gdGhl
-IGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiBNb3Jl
-IG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZv
-Lmh0bWwNCj4gDQo+IC0tDQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRo
-ZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2Fn
-ZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQg
-IGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQotLSANClRyb25k
-IE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQu
-TXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+Implement NFSv4 delegations at the vfs level using the new FL_DELEG lock
+type.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/locks.c         |   49 +++++++++++++++++++++++++++++++++++++++----------
+ include/linux/fs.h |   18 +++++++++++++++---
+ 2 files changed, 54 insertions(+), 13 deletions(-)
+
+diff --git a/fs/locks.c b/fs/locks.c
+index deec4de..2b56954 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1176,28 +1176,40 @@ static void time_out_leases(struct inode *inode)
+ 	}
+ }
+ 
++static bool leases_conflict(struct file_lock *lease, struct file_lock *breaker)
++{
++	if ((breaker->fl_flags & FL_DELEG) && (lease->fl_flags & FL_LEASE))
++		return false;
++	return locks_conflict(breaker, lease);
++}
++
+ /**
+  *	__break_lease	-	revoke all outstanding leases on file
+  *	@inode: the inode of the file to return
+- *	@mode: the open mode (read or write)
++ *	@mode: O_RDONLY: break only write leases; O_WRONLY or O_RDWR:
++ *	    break all leases
++ *	@type: FL_LEASE: break leases and delegations; FL_DELEG: break
++ *	    only delegations
+  *
+  *	break_lease (inlined for speed) has checked there already is at least
+  *	some kind of lock (maybe a lease) on this file.  Leases are broken on
+  *	a call to open() or truncate().  This function can sleep unless you
+  *	specified %O_NONBLOCK to your open().
+  */
+-int __break_lease(struct inode *inode, unsigned int mode)
++int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
+ {
+ 	int error = 0;
+ 	struct file_lock *new_fl, *flock;
+ 	struct file_lock *fl;
+ 	unsigned long break_time;
+ 	int i_have_this_lease = 0;
++	bool lease_conflict = false;
+ 	int want_write = (mode & O_ACCMODE) != O_RDONLY;
+ 
+ 	new_fl = lease_alloc(NULL, want_write ? F_WRLCK : F_RDLCK);
+ 	if (IS_ERR(new_fl))
+ 		return PTR_ERR(new_fl);
++	new_fl->fl_flags = type;
+ 
+ 	lock_flocks();
+ 
+@@ -1207,13 +1219,16 @@ int __break_lease(struct inode *inode, unsigned int mode)
+ 	if ((flock == NULL) || !IS_LEASE(flock))
+ 		goto out;
+ 
+-	if (!locks_conflict(flock, new_fl))
++	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
++		if (leases_conflict(fl, new_fl)) {
++			lease_conflict = true;
++			if (fl->fl_owner == current->files)
++				i_have_this_lease = 1;
++		}
++	}
++	if (!lease_conflict)
+ 		goto out;
+ 
+-	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next)
+-		if (fl->fl_owner == current->files)
+-			i_have_this_lease = 1;
+-
+ 	break_time = 0;
+ 	if (lease_break_time > 0) {
+ 		break_time = jiffies + lease_break_time * HZ;
+@@ -1222,6 +1237,8 @@ int __break_lease(struct inode *inode, unsigned int mode)
+ 	}
+ 
+ 	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
++		if (!leases_conflict(fl, new_fl))
++			continue;
+ 		if (want_write) {
+ 			if (fl->fl_flags & FL_UNLOCK_PENDING)
+ 				continue;
+@@ -1263,7 +1280,7 @@ restart:
+ 		 */
+ 		for (flock = inode->i_flock; flock && IS_LEASE(flock);
+ 				flock = flock->fl_next) {
+-			if (locks_conflict(new_fl, flock))
++			if (leases_conflict(new_fl, flock))
+ 				goto restart;
+ 		}
+ 		error = 0;
+@@ -1343,9 +1360,20 @@ int generic_add_lease(struct file *filp, long arg, struct file_lock **flp)
+ 	struct file_lock *fl, **before, **my_before = NULL, *lease;
+ 	struct dentry *dentry = filp->f_path.dentry;
+ 	struct inode *inode = dentry->d_inode;
++	bool is_deleg = (*flp)->fl_flags & FL_DELEG;
+ 	int error;
+ 
+ 	lease = *flp;
++	/*
++	 * In the delegation case we need mutual exclusion with
++	 * a number of operations that take the i_mutex.  We trylock
++	 * because delegations are an optional optimization, and if
++	 * there's some chance of a conflict--we'd rather not
++	 * bother, maybe that's a sign this just isn't a good file to
++	 * hand out a delegation on.
++	 */
++	if (is_deleg && !mutex_trylock(&inode->i_mutex))
++		return -EAGAIN;
+ 
+ 	error = -EAGAIN;
+ 	if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
+@@ -1397,9 +1425,10 @@ int generic_add_lease(struct file *filp, long arg, struct file_lock **flp)
+ 		goto out;
+ 
+ 	locks_insert_lock(before, lease);
+-	return 0;
+-
++	error = 0;
+ out:
++	if (is_deleg)
++		mutex_unlock(&inode->i_mutex);
+ 	return error;
+ }
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 116b3e9..c6cc686 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1006,7 +1006,7 @@ extern int vfs_test_lock(struct file *, struct file_lock *);
+ extern int vfs_lock_file(struct file *, unsigned int, struct file_lock *, struct file_lock *);
+ extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
+ extern int flock_lock_file_wait(struct file *filp, struct file_lock *fl);
+-extern int __break_lease(struct inode *inode, unsigned int flags);
++extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
+ extern void lease_get_mtime(struct inode *, struct timespec *time);
+ extern int generic_setlease(struct file *, long, struct file_lock **);
+ extern int vfs_setlease(struct file *, long, struct file_lock **);
+@@ -1119,7 +1119,7 @@ static inline int flock_lock_file_wait(struct file *filp,
+ 	return -ENOLCK;
+ }
+ 
+-static inline int __break_lease(struct inode *inode, unsigned int mode)
++static inline int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
+ {
+ 	return 0;
+ }
+@@ -1951,9 +1951,17 @@ static inline int locks_verify_truncate(struct inode *inode,
+ static inline int break_lease(struct inode *inode, unsigned int mode)
+ {
+ 	if (inode->i_flock)
+-		return __break_lease(inode, mode);
++		return __break_lease(inode, mode, FL_LEASE);
+ 	return 0;
+ }
++
++static inline int break_deleg(struct inode *inode, unsigned int mode)
++{
++	if (inode->i_flock)
++		return __break_lease(inode, mode, FL_DELEG);
++	return 0;
++}
++
+ #else /* !CONFIG_FILE_LOCKING */
+ static inline int locks_mandatory_locked(struct inode *inode)
+ {
+@@ -1993,6 +2001,10 @@ static inline int break_lease(struct inode *inode, unsigned int mode)
+ 	return 0;
+ }
+ 
++static inline int break_deleg(struct inode *inode, unsigned int mode)
++{
++	return 0;
++}
+ #endif /* CONFIG_FILE_LOCKING */
+ 
+ /* fs/open.c */
+-- 
+1.7.9.5
+
