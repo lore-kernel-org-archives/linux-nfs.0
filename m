@@ -1,108 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:48595 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753245Ab3GaUc1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 31 Jul 2013 16:32:27 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Quentin Barnes <qbarnes@gmail.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: don't allow nfs_find_actor to match inodes of the
- wrong type
-Date: Wed, 31 Jul 2013 20:32:24 +0000
-Message-ID: <1375302743.12465.2.camel@leira.trondhjem.org>
-References: <1362013834-29600-1-git-send-email-jlayton@redhat.com>
-	 <CAKjHkpAi_-jucPnFXg=3vMZg+pWSha3xR7KhjMPqN56K12SbCQ@mail.gmail.com>
-	 <20130731144657.7b94482b@tlielax.poochiereds.net>
-	 <CAKjHkpBGeQxy98osnJ4Q=NpqOjqC5uk32aYh+-bZ72ZBP3zmJQ@mail.gmail.com>
-In-Reply-To: <CAKjHkpBGeQxy98osnJ4Q=NpqOjqC5uk32aYh+-bZ72ZBP3zmJQ@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-ve0-f176.google.com ([209.85.128.176]:56897 "EHLO
+	mail-ve0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752598Ab3GDKf3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Jul 2013 06:35:29 -0400
+Received: by mail-ve0-f176.google.com with SMTP id c13so909162vea.35
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Jul 2013 03:35:29 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, smayhew@redhat.com
+Subject: [PATCH] nfs: set verifier on existing dentries in nfs_prime_dcache
+Date: Thu,  4 Jul 2013 06:35:23 -0400
+Message-Id: <1372934123-2574-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEzLTA3LTMxIGF0IDE1OjI2IC0wNTAwLCBRdWVudGluIEJhcm5lcyB3cm90ZToN
-Cj4gT24gV2VkLCBKdWwgMzEsIDIwMTMgYXQgMTo0NiBQTSwgSmVmZiBMYXl0b24gPGpsYXl0b25A
-cmVkaGF0LmNvbT4gd3JvdGU6DQo+ID4gT24gV2VkLCAzMSBKdWwgMjAxMyAxMzozNjoyMSAtMDUw
-MA0KPiA+IFF1ZW50aW4gQmFybmVzIDxxYmFybmVzQGdtYWlsLmNvbT4gd3JvdGU6DQo+ID4NCj4g
-Pj4gSSB3YXMgcmV2aWV3aW5nIHBhdGNoZXMgSSB3YXMgaW50ZWdyYXRpbmcgaW50byBteSBORlMg
-c291cmNlIGJhc2UNCj4gPj4gYW5kIHRoaXMgb25lIHBvcHBlZCB1cCAoY29tbWl0IGY2NDg4Yzli
-KS4gIEluIHJldmlld2luZyBpdCwgaXQgd291bGQNCj4gPj4gZml4IHRoZSBwcm9ibGVtLCBob3dl
-dmVyLCBJIHRoaW5rIGl0J3Mgbm90IHRoZSBiZXN0IGZpeCBmb3IgaXQuDQo+ID4+IENhdGNoaW5n
-IGl0IGluIG5mc19maW5kX2FjdG9yKCkgaXMgYWZ0ZXIgdGhlIGhvcnNlIGhhcyBsZWZ0IHRoZQ0K
-PiA+PiBiYXJuIHNvIHRvIHNwZWFrLg0KPiA+Pg0KPiA+PiBJIHRoaW5rIHRoZSBwcm9ibGVtIGlz
-IGluIG5mc19maGdldCgpIHdoZW4gY29uc3RydWN0aW5nIHRoZSBuZXcNCj4gPj4gaW5vZGUgKGlu
-c2lkZSB0aGUgaWYgKGlub2RlLT5pX3N0YXRlICYgSV9ORVcpIHsuLi59KSBhbmQgc2hvdWxkIGJl
-DQo+ID4+IGFkZHJlc3NlZCB0aGVyZS4NCj4gPj4NCj4gPj4gVGhlIG5mcyBtb2R1bGUgYWxyZWFk
-eSBoYXMgY2hlY2tzIHRvIGVuc3VyZSB0aGF0IHRoZSBleHByZXNzaW9uDQo+ID4+ICIoKFNfSUZN
-VCAmIGlub2RlLT5pX21vZGUpID09IChTX0lGTVQgJiBmYXR0ci0+bW9kZSkpIiBpcyB0cnVlDQo+
-ID4+IGluIG5mc191cGRhdGVfaW5vZGUoKSBhbmQgbmZzX2NoZWNrX2lub2RlX2F0dHJpYnV0ZXMo
-KS4gIEkgdGhpbmsNCj4gPj4gcHJvYmxlbSBCZW5ueSBoaXQgd2FzIHRoYXQgdGhlIGVxdWl2YWxl
-bnQgY2hlY2sgaXMgbWlzc2luZyBpbg0KPiA+PiBuZnNfZmhnZXQoKSB3aGVuIGNvbnN0cnVjdGlu
-ZyBhIG5ldyBpbm9kZS4gIFRoZSBzYW1lIGNoZWNrIHRoYXQncw0KPiA+PiBpbiB0aG9zZSBvdGhl
-ciB0d28gZnVuY3Rpb25zIG5lZWRzIHRvIGJlIGFkZGVkIHRvIG5mc19maGdldCgpJ3MgImlmDQo+
-ID4+IChpbm9kZS0+aV9zdGF0ZSAmIElfTkVXKSB7Li4ufSIgY29uZGl0aW9uYWwgYmxvY2sgdG8g
-cHJldmVudCB0aGUNCj4gPj4gcHJvYmxlbSBvZiBhbiBpbmNvbnNpc3RlbnQgZmF0dHIvaW5vZGUg
-c3RhdGUgZnJvbSBvY2N1cnJpbmcgaW4gdGhlDQo+ID4+IGZpcnN0IHBsYWNlLg0KPiA+Pg0KPiA+
-PiBJIGNhbiBjb21lIHVwIHdpdGggYSBwYXRjaCBpZiB5b3UnZCBsaWtlLCBidXQgSSB3YW50ZWQg
-dG8gbWFrZQ0KPiA+PiBzdXJlIG15IGFzc2VydGlvbnMgd2VyZSB2YWxpZCBmaXJzdC4gIElzIHJl
-bW92aW5nIGEgY2hlY2sgZnJvbQ0KPiA+PiBuZnNfZmluZF9hY3RvcigpIGFuZCBhZGRpbmcgdGhl
-IGNoZWNrIHRvIG5mc19maGdldCgpIHRvIHByZXZlbnQgdGhlDQo+ID4+IGluY29uc2lzdGVuY3kg
-aW4gdGhlIGZpcnN0IHBsYWNlIGEgYmV0dGVyIGFwcHJvYWNoPw0KPiA+Pg0KPiA+PiBRdWVudGlu
-DQo+ID4NCj4gPiBJIGRvbid0IHRoaW5rIEkgYWdyZWUuIFRoZSB3aG9sZSBwcm9ibGVtIHdhcyB0
-aGF0IHdlIHdlcmUgYWxsb3dpbmcNCj4gPiBpZ2V0NV9sb2NrZWQgdG8gbWF0Y2ggYW4gZXhpc3Rp
-bmcgaW5vZGUgZXZlbiB0aG91Z2ggKFNfSUZNVCAmIG1vZGUpIHdhcw0KPiA+IGRpZmZlcmVudC4N
-Cj4gDQo+IEkgYXNzZXJ0IHRoYXQgd2hlbiBhbiBpbmNvbnNpc3RlbnQgc3RhdGUgaGFwcGVucyB5
-b3UgZG9uJ3Qgd2FudA0KPiBuZnNfZmluZF9hY3RvcigpIHRvIGJlIHRoZSBvbmUgcmVzcG9uc2li
-bGUgZm9yIG5vdGljaW5nIGl0DQo+IChhY3R1YWxseSwgaWdub3JpbmcgdGhlIHByb2JsZW0pLiAg
-WW91IHdhbnQgdGhlIGV4aXN0aW5nIGNvbnNpc3RlbmN5DQo+IGFuZCBlcnJvciByZWNvdmVyeSBw
-YXRocyB0byBoYW5kbGUgaXQgaW5zdGVhZC4NCj4gDQo+IFNvIG9uZSBvciB0d28gdGhpbmdzIGFy
-ZSBnb2luZyBvbi4gIFRoZSBleGlzdGluZyBlcnJvciByZWNvdmVyeQ0KPiBwYXRocyBhcmUgaW5h
-ZGVxdWF0ZSBvciB0aGF0IHRoZXJlJ3MgYSBob2xlIGluIHRoZSBmYXR0ci9pbm9kZQ0KPiBjb25z
-aXN0ZW5jeSBjaGVja2luZyAob3IgcG9zc2libHkgYm90aCkuICBZb3VyIHBhdGNoIGNvdmVycyBv
-dmVyDQo+IHRoaXMgdW5kZXJseWluZyBidWcgcmF0aGVyIHRoYW4gYWRkcmVzc2luZyBpdCBhbmQg
-d2hpY2ggYWxzbyBsZXRzDQo+IHRoZSBvbGQgaW5vZGUgbm90IGdldCBmbGFnZ2VkIGFzIGludmFs
-aWQuICBJIHdvdWxkIHJhdGhlciBzZWUgdGhlDQo+IHJlYWwgcHJvYmxlbSBmaXhlZCBhbmQgdGhl
-IG9sZCBpbm9kZSBnZXQgZmxhZ2dlZCByYXRoZXIgdGhhbiBqdXN0DQo+IGlnbm9yaW5nIGl0IGFu
-ZCBjcmVhdGluZyBhbm90aGVyIG5ldyBpbm9kZS4NCj4gDQo+IEJlZm9yZSB5b3VyIHBhdGNoLCBp
-ZiBiZWNhdXNlIG9mIGEgc2VydmVyIGJ1ZyByZXVzaW5nIGEgZmlsZQ0KPiBoYW5kbGUsIG5mc19m
-aW5kX2FjdG9yKCksIHdvdWxkIG1hdGNoIGFuZCBpZ2V0NV9sb2NrZWQoKSB3b3VsZA0KPiByZXR1
-cm4gYW4gaW5vZGUgdGhhdCBtYXRjaGVkIG9uIGl0cyBmaWxlIGhhbmRsZSBidXQgdGhhdCBkaWRu
-J3QNCj4gbmVjZXNzYXJpbHkgbWF0Y2ggdGhlIGZhdHRyIGluZm8uDQo+IA0KPiBJZiB0aGF0IGlu
-b2RlIHJldHVybmVkIGJ5IGlnZXQ1X2xvY2tlZCgpIHdhcyBub3QgSV9ORVcgKHRoZSBlbHNlDQo+
-IGNhc2UpLCBuZnNfZmhnZXQoKSB3b3VsZCBpbnZva2UgbmZzX3JlZnJlc2hfaW5vZGUoKSwgd2hp
-Y2ggd291bGQNCj4gY2FsbCBuZnNfcmVmcmVzaF9pbm9kZV9sb2NrZWQoKS4gIEl0IGNhbGxzIGVp
-dGhlciBuZnNfdXBkYXRlX2lub2RlKCkNCj4gb3IgbmZzX2NoZWNrX2lub2RlX2F0dHJpYnV0ZXMo
-KS4gIEJvdGggb2YgdGhvc2UgZnVuY3Rpb25zIGFscmVhZHkNCj4gY2hlY2sgZm9yIGZhdHRyL2lu
-b2RlIFNfSUZNVCBjb25zaXN0ZW5jeSBjYXRjaGluZyBiYWQgc3RhdGVzLg0KPiANCj4gPiBXaHkg
-d291bGQgaXQgYmUgcHJlZmVyYWJsZSB0byB1c2UgdGhlIHNhbWUgc3RydWN0IGlub2RlIGV2ZW4g
-dGhvdWdoDQo+ID4gaXQncyBjbGVhcmx5IGEgZGlmZmVyZW50IG9uZSBvbiB0aGUgc2VydmVyPyBp
-bm9kZXMgZ2VuZXJhbGx5IGRvbid0DQo+ID4gY2hhbmdlIHRoZWlyIHR5cGUgYWZ0ZXIgdGhleSd2
-ZSBiZWVuIGNyZWF0ZWQuDQo+IA0KPiBJdCdzIG5vdCBwcmVmZXJhYmxlIHRvIGhhdmUgdGhlIHNh
-bWUgaW5vZGUgaW4gYSBkaWZmZXJlbnQgc3RhdGUuDQo+IFdoYXQgeW91IGRvbid0IHdhbnQgaXMg
-bmZzX2ZpbmRfYWN0b3IoKSBhcyBhIHNpZGUtZWZmZWN0IHRvIGxldCB0aGUNCj4gcHJvYmxlbSBn
-byB1bm5vdGljZWQuICBZb3Ugd2FudCBsZXQgdGhlIG5vcm1hbCwgZXhpc3RpbmcgZXJyb3INCj4g
-aGFuZGxpbmcgcGF0aHMgZGVhbCB3aXRoIGl0LCBvciBpZiB0aGV5J3JlIG5vdCBmdWxseSBkZWFs
-aW5nIHdpdGgNCj4gaXQsIGZpeCB0aGVtLg0KPiANCj4gU2luY2UgdGhlIElfTkVXIGNvbmRpdGlv
-bmFsIGZhbHNlIHBhdGggKHRoZSBlbHNlIGNhc2UpIGluIG5mc19maGdldCgpDQo+IHNob3VsZCBj
-YXRjaCB0aGUgcHJvYmxlbSwgSSBoYWQgdGhvdWdodCB0aGF0IHRoZSBwcm9ibGVtIG11c3QgbGF5
-DQo+IHdpdGggdGhlIElfTkVXIGNvbmRpdGlvbmFsIHRydWUgcGF0aC4gIE5vdyBJIGRvbid0IHRo
-aW5rIHNvLg0KPiANCj4gSSBzZWUgbm93IHRoYXQgbmZzX2NoZWNrX2lub2RlX2F0dHJpYnV0ZXMo
-KSBpcyBqdXN0IHJldHVybmluZyBhbg0KPiBlcnJvciB3aGVuIHRoZSBmYXR0ciBhbmQgaW5vZGUg
-c3RhdGVzIGFyZSBmb3VuZCB0byBiZSBpbmNvbnNpc3RlbnQsDQo+IGJ1dCBpcyB0YWtpbmcgbm8g
-YWN0aW9uIG9uIHRoZSBiYWQgaW5vZGUncyBzdGF0ZSAoaS5lLiBmbGFnZ2luZyBpdA0KPiBhcyBp
-bnZhbGlkKS4gIEFuZCB1cG9uIHJldHVybiwgbmZzX2ZoZ2V0KCkgaXMgbm90IGRvaW5nIGFueXRo
-aW5nIHdpdGgNCj4gdGhlIGJhZCByZXR1cm4gc3RhdGUgcGFzc2VkIHVwIHRvIG5mc19yZWZyZXNo
-X2lub2RlKCkuICBOb3cgSSdtDQo+IHRoaW5raW5nIHRoYXQgdGhpcyBpcyBwcm9ibGVtYXRpYyBo
-b2xlIGJlY2F1c2UgaXQgaXMgaWdub3JpbmcgdGhlDQo+IGVycm9yIHN0YXRlIGFuZCB0aGF0IGxl
-dCBCZW5ueSdzIHBhbmljIGhhcHBlbi4NCj4gDQo+IEl0IGRvZXNuJ3Qgc2VlbSB0byBtZSB0aGF0
-IGl0IHNob3VsZCBiZSBuZnNfY2hlY2tfaW5vZGVfYXR0cmlidXRlcygpDQo+IGpvYiB0byBmbGFn
-IHRoZSBpbm9kZSBhcyBpbnZhbGlkLiAgVGhhdCBzZWVtcyBvdXRzaWRlIGl0cyByb2xlLiAgSQ0K
-PiB3b3VsZCB0aGluayBpdCBzaG91bGQgYmUgbmZzX3JlZnJlc2hfaW5vZGVfbG9ja2VkKCkncyBq
-b2IsIGJ1dCBJJ20NCj4gc3RpbGwgcmV2aWV3aW5nIHRoZSBjb2RlLg0KPiANCj4gVGhvdWdodHM/
-DQoNClF1aXRlIGZyYW5rbHksIGFsbCBJIGNhcmUgYWJvdXQgaW4gYSBzaXR1YXRpb24gbGlrZSB0
-aGlzIGlzIHRoYXQgdGhlDQpjbGllbnQgZG9lc24ndCBPb3BzLg0KDQpJZiBhIHNlcnZlciBpcyBy
-ZWFsbHkgdGhpcyB1dHRlcmx5IGJyb2tlbiwgdGhlbiB0aGVyZSBpcyBubyB3YXkgd2UgY2FuDQpm
-aXggaXQgb24gdGhlIGNsaWVudCwgYW5kIHdlJ3JlIG5vdCBldmVuIGdvaW5nIHRvIHRyeS4NCg0K
-LS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRB
-cHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+nfs_prime_dcache currently only sets the verifier when it doesn't
+initially a matching dentry in the dcache. Set the verifier in the case
+where we do find a dentry in the dcache. This ensures that we don't
+have to look up the dentry again if we want to use it after a readdir.
+
+Cc: Scott Mayhew <smayhew@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/dir.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index e093e73..b4043e5 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -448,6 +448,7 @@ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry)
+ 	if (dentry != NULL) {
+ 		if (nfs_same_file(dentry, entry)) {
+ 			nfs_refresh_inode(dentry->d_inode, entry->fattr);
++			nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+ 			goto out;
+ 		} else {
+ 			if (d_invalidate(dentry) != 0)
+-- 
+1.8.1.4
+
