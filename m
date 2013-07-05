@@ -1,58 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:27722 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:2288 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755340Ab3GQV7r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 17:59:47 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Andre Heider <a.heider@gmail.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Error writing to nfs4 with 3.11-rc1
-Date: Wed, 17 Jul 2013 21:59:46 +0000
-Message-ID: <1374098384.17005.10.camel@leira.trondhjem.org>
-References: <CAHsu+b_hhSr2vwcwM8TX3=xF=3HffUXG=YLVLcsEpH1wHn+JoA@mail.gmail.com>
-	 <A5C56FD6-9E14-43A3-8627-1C8F77EC6926@oracle.com>
-	 <CAHsu+b9vWUyCGHSs==Na=VntwvYp65=rva7+y9aQDXquxX4t-A@mail.gmail.com>
-In-Reply-To: <CAHsu+b9vWUyCGHSs==Na=VntwvYp65=rva7+y9aQDXquxX4t-A@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1752274Ab3GEVdV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Jul 2013 17:33:21 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r65LXLej015278
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 5 Jul 2013 17:33:21 -0400
+Received: from tonberry.usersys.redhat.com (dhcp145-64.rdu.redhat.com [10.13.145.64])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id r65LXKTR015022
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Fri, 5 Jul 2013 17:33:20 -0400
+Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
+	by tonberry.usersys.redhat.com (8.14.5/8.14.5) with ESMTP id r65LXKMX010159
+	for <linux-nfs@vger.kernel.org>; Fri, 5 Jul 2013 17:33:20 -0400
+Received: (from smayhew@localhost)
+	by tonberry.usersys.redhat.com (8.14.5/8.14.5/Submit) id r65LXKcR010157
+	for linux-nfs@vger.kernel.org; Fri, 5 Jul 2013 17:33:20 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFS: Allow nfs_updatepage to extend a write under additional circumstances
+Date: Fri,  5 Jul 2013 17:33:19 -0400
+Message-Id: <1373059999-10127-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEzLTA3LTE3IGF0IDIxOjM1ICswMjAwLCBBbmRyZSBIZWlkZXIgd3JvdGU6DQo+
-IE9uIFdlZCwgSnVsIDE3LCAyMDEzIGF0IDk6MTAgUE0sIENodWNrIExldmVyIDxjaHVjay5sZXZl
-ckBvcmFjbGUuY29tPiB3cm90ZToNCj4gPg0KPiA+IE9uIEp1bCAxNywgMjAxMywgYXQgMjo1NSBQ
-TSwgQW5kcmUgSGVpZGVyIDxhLmhlaWRlckBnbWFpbC5jb20+IHdyb3RlOg0KPiA+DQo+ID4+IEhp
-LA0KPiA+Pg0KPiA+PiBJJ20gaGF2aW5nIHByb2JsZW1zIHVzaW5nIDMuMTEtcmMxIGFzIG5mczQg
-Y2xpZW50ICh3aXRoIGEgRnJlZUJTRCA5LjENCj4gPj4gc2VydmVyKSB1c2luZyBzZWM9c3lzLg0K
-PiA+Pg0KPiA+PiBXaXRoIHRoZSBzYW1lIHNlcnZlcitjbGllbnQgc2V0dXAsIGp1c3QgYm9vdGlu
-ZyBkaWZmZXJlbnQga2VybmVsczoNCj4gPj4gMy45LjEwIHdvcmtzIHdpdGhvdXQgaXNzdWVzDQo+
-ID4+IDMuMTAuMSB3b3JrcyB0b28sIGJ1dCBpbnRyb2R1Y2VkICJSUEM6IEFVVEhfR1NTIHVwY2Fs
-bCB0aW1lZCBvdXQuIiBpbg0KPiA+PiBkbWVzZyAoaWlyYyBJIGRvbid0IG5lZWQgZ3NzIHdpdGgg
-c2VjPXN5cykNCj4gPg0KPiA+IE5vdCBhIHJlcXVpcmVtZW50LCBidXQgcnVubmluZyBnc3NkIHNo
-b3VsZCBtYWtlIHRoYXQgbWVzc2FnZSBnbyBhd2F5LiAgVGhlIGNsaWVudCBpcyBhdHRlbXB0aW5n
-IHRvIHVzZSBrcmI1aSB0byBtYW5hZ2UgaXRzIGxlYXNlIG9uIHRoZSBzZXJ2ZXIsIGFuZCBmYWxs
-aW5nIGJhY2sgdG8gQVVUSF9VTklYIHdoZW4gaXQgc2VlcyBnc3NkIGlzIG5vdCBydW5uaW5nLg0K
-PiA+DQo+ID4+IDMuMTEtcmMxIHJlYWRpbmcgZnJvbSB0aGUgc2VydmVyIHN0aWxsIHdvcmtzLCB3
-cml0aW5nIGZhaWxzDQo+ID4+DQo+ID4+IEV2ZW4gYSBzaW1wbGUgdG91Y2ggb24gdGhlIHNoYXJl
-IGZhaWxzIHdpdGg6DQo+ID4+IHRvdWNoOiBjYW5ub3QgdG91Y2gg4oCYL21udC9hbmRyZS90ZXN0
-4oCZOiBJbnB1dC9vdXRwdXQgZXJyb3INCj4gPg0KPiA+IEEgbmV0d29yayBjYXB0dXJlIGlzIGEg
-cmVhc29uYWJsZSBwbGFjZSB0byBzdGFydC4NCj4gPg0KPiA+ICAgIyB0Y3BkdW1wIC1zMCAtdyAv
-dG1wL3Jhdw0KPiA+DQo+ID4gVGhlbiB0cnkgeW91ciB0b3VjaCB0ZXN0IGFnYWluLiAgU3RvcCB0
-aGUgdGNwZHVtcC4gIFlvdSBjYW4gcG9zdCBhIGNvbXByZXNzZWQgdmVyc2lvbiBvZiB0aGUgcmF3
-IGR1bXAgaGVyZSBpZiBpdCdzIHNob3J0Lg0KPiANCj4gQXR0YWNoZWQgdHdvIGR1bXBzLCBvbmUg
-ZnJvbSAzLjEwICh3b3JrcykgYW5kIG9uZSBmcm9tIDMuMTEgKGRvZXNuJ3Qgd29yaykuDQoNClRo
-ZSBGcmVlQlNEIHNlcnZlciBpcyByZXR1cm5pbmcgTkZTNEVSUl9BVFRSTk9UU1VQUCB0byB0aGUg
-T1BFTiwgZGVzcGl0ZQ0KdGhlIGZhY3QgdGhhdCB3ZSdyZSByZXF1ZXN0aW5nIHRoZSBzYW1lIGF0
-dHJpYnV0ZXMgaW4gYm90aCBjYXNlcy4gSSdsbA0KYmV0IGl0IGlzIHRoZSBmYWN0IHRoYXQgd2Ug
-c2VuZCBhIGJpdG1hcCBvZiAzIHdvcmRzIGluc3RlYWQgb2YgMi4NCg0KVGhpcyBpcyBhIHByb2Js
-ZW06IHRoZSBMaW51eCBjbGllbnQgY2xlYXJseSBoYXMgdGhlIHNwZWMgb24gaXRzIHNpZGUsDQph
-bmQgdGhlIEZyZWVCU0Qgc2VydmVyIGlzIHdyb25nIHRvIHJlamVjdCBhIDMgd29yZCBiaXRtYXAs
-IGFzIGxvbmcgYXMNCndlJ3JlIG5vdCByZXF1ZXN0aW5nIGFueSBhY3R1YWwgYXR0cmlidXRlcyB0
-aGF0IGl0IGRvZXNuJ3Qgc3VwcG9ydC4NCkFjY29yZGluZyB0byB0aGUgc3BlYywgd2UgY291bGQg
-c2VuZCBhIGJpdG1hcCBvZiBhbnkgbGVuZ3RoIHdlIGxpa2UuDQoNCk9uIHRoZSBvdGhlciBoYW5k
-LCB3ZSBoYXZlIGEgc2l0dWF0aW9uIHdoZXJlIHNvbWV0aGluZyB1c2VkIHRvIHdvcmssIGFuZA0K
-bm93IGRvZXNuJ3QuIFBsZWFzZSBjaGVjayBvdXQgdGhlIDIgcGF0Y2hlcyBJIGp1c3Qgc2VudCBv
-dXQsIGFuZCBzZWUgaWYNCnRoZXkgaGVscC4NCg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGlu
-dXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFw
-cC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+Currently nfs_updatepage allows a write to be extended to cover a full
+page only if we don't have a byte range lock lock on the file... but if
+we have a write delegation on the file or if we have the whole file
+locked for writing then we should be allowed to extend the write as
+well.
+
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ fs/nfs/write.c | 31 +++++++++++++++++++++++--------
+ 1 file changed, 23 insertions(+), 8 deletions(-)
+
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index a2c7c28..c8a1bcc 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -888,6 +888,28 @@ out:
+ 	return PageUptodate(page) != 0;
+ }
+ 
++/* If we know the page is up to date, and we're not using byte range locks (or
++ * if we have the whole file locked for writing), it may be more efficient to
++ * extend the write to cover the entire page in order to avoid fragmentation
++ * inefficiencies.
++ *
++ * If the file is opened for synchronous writes or if we have a write delegation
++ * from the server then we can just skip the rest of the checks.
++ */
++static int nfs_can_extend_write(struct file *file, struct page *page, struct inode *inode)
++{
++	if (file->f_flags & O_DSYNC)
++		return 0;
++	if (nfs_have_delegation(inode, FMODE_WRITE))
++		return 1;
++	if (nfs_write_pageuptodate(page, inode) && (inode->i_flock == NULL ||
++			(inode->i_flock->fl_start == 0 &&
++			inode->i_flock->fl_end == OFFSET_MAX &&
++			inode->i_flock->fl_type != F_RDLCK)))
++		return 1;
++	return 0;
++}
++
+ /*
+  * Update and possibly write a cached page of an NFS file.
+  *
+@@ -908,14 +930,7 @@ int nfs_updatepage(struct file *file, struct page *page,
+ 		file->f_path.dentry->d_name.name, count,
+ 		(long long)(page_file_offset(page) + offset));
+ 
+-	/* If we're not using byte range locks, and we know the page
+-	 * is up to date, it may be more efficient to extend the write
+-	 * to cover the entire page in order to avoid fragmentation
+-	 * inefficiencies.
+-	 */
+-	if (nfs_write_pageuptodate(page, inode) &&
+-			inode->i_flock == NULL &&
+-			!(file->f_flags & O_DSYNC)) {
++	if (nfs_can_extend_write(file, page, inode)) {
+ 		count = max(count + offset, nfs_page_length(page));
+ 		offset = 0;
+ 	}
+-- 
+1.7.11.7
+
