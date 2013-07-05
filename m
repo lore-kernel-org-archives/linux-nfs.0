@@ -1,125 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59624 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:35051 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754967Ab3GQVKA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 17:10:00 -0400
-Date: Wed, 17 Jul 2013 17:09:59 -0400
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, jlayton@redhat.com,
-        Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 00/16] Implement NFSv4 delegations, take 9
-Message-ID: <20130717210959.GB31771@fieldses.org>
-References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+	id S1757083Ab3GELbP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Jul 2013 07:31:15 -0400
+Message-ID: <51D6AE7D.9070805@RedHat.com>
+Date: Fri, 05 Jul 2013 07:31:09 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1374094217-31493-1-git-send-email-bfields@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Disable NFS version 2
+References: <1372856675-5520-1-git-send-email-steved@redhat.com> <9A7F190A-2938-4A14-9125-330189DA8597@oracle.com>
+In-Reply-To: <9A7F190A-2938-4A14-9125-330189DA8597@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 17, 2013 at 04:50:00PM -0400, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> Changes since version 8, thanks to dchinner and jlayton for review:
-> 
-> 	- additional warnings in lock_two_nondirectories
-> 	- lock_two_nondirectories handles NULL second argument,
-> 	  simplifying vfs_rename_other
-> 	- kerneldoc comments on notify_change, vfs_link, vfs_rename,
-> 	  vfs_unlink, to explain delegated_inode argument.
-> 	- make clear non-support of write delegations in
-> 	  generic_add_lease
-> 	- rebase to 3.11-rc1
+Hey,
 
-(Not addressed: Dave's concerns about possible incompatibility with
-ordering of filesystem-specific locks, in xfs and possibly also in other
-filesystems.)
+On 03/07/13 09:19, Chuck Lever wrote:
+> Hi-
+> 
+> I'm not opposed to this change, but we should have some public discussion about it first.
+> 
+> If we make this proposed upstream change, NFSv2 will be built far less often and will be 
+> a magnet for code rot.  It might make more sense to simply leave the "compile this out" 
+> choice up to distributions...?
+Code rot is a possibility for any code where default is 'n' so that means we should
+never use it? If that is the case, we should have swap over NFS and Label NFS 
+on be default on by default so those bits don't rote... My point being, I don't
+think code rot should be a reason for us to maintain code people should not
+be using in the first place... 
+  
+> I'd like to reduce the risk of the kernel carrying  around code that no-one uses or 
+> compiles.  If we truly want this off by default  everywhere, shouldn't we just 
+> remove it?  (Is that the eventual goal?)
+I would think so. Turn it off and see who screams.. Then get the clue-bat out for
+for those people that do scream... ;-)  They can always turn it back on... 
 
---b.
+> 
+> Should the server also disable NFSv2 support by default?  If not, then why is the 
+> client special in this regard?
+We have to start somewhere... It was just easier to start with the client. If 
+Bruce is interested in dropping v2 support on the server, I will be more than
+willing to looking into that... Actually it might just be a nfs-utils only thing...
 
 > 
-> Introduction copied from previous posting:
+> Finally, if we go with something like this change, does this patch also need to 
+> update the default configurations shipped with the kernel?
+What "default configurations shipped with the kernel"? Isn't fs/nfs/Kconfig the
+only place I need to turn it off?
+
+Thanks for the cycles!
+
+steved.
+
 > 
-> This patch series implements read delegations, which allow NFSv4 clients
-> to perform read opens without contacting the server, by promising to
-> call back to clients before modifying the data, metadata, or set of
-> links pointing to a file.
 > 
-> The main recent change was in response to review from Linus, who didn't
-> want us to hang under directory i_mutex's on timeouts communicating with
-> unresponsive clients.
+> On Jul 3, 2013, at 9:04 AM, Steve Dickson <steved@redhat.com> wrote:
 > 
-> So, this version of the series drops the i_mutex before waiting.  The
-> logic ends up looking something like:
+>> This patch disables the NFS version 2 module from being compile by default.
+>>
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> ---
+>> fs/nfs/Kconfig | 4 ++--
+>> 1 file changed, 2 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+>> index 13ca196..6831a01 100644
+>> --- a/fs/nfs/Kconfig
+>> +++ b/fs/nfs/Kconfig
+>> @@ -32,12 +32,12 @@ config NFS_FS
+>> config NFS_V2
+>> 	tristate "NFS client support for NFS version 2"
+>> 	depends on NFS_FS
+>> -	default y
+>> +	default n
+>> 	help
+>> 	  This option enables support for version 2 of the NFS protocol
+>> 	  (RFC 1094) in the kernel's NFS client.
+>>
+>> -	  If unsure, say Y.
+>> +	  If unsure, say n.
+>>
+>> config NFS_V3
+>> 	tristate "NFS client support for NFS version 3"
+>> -- 
+>> 1.8.1.4
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
->         acquire locks
->         look up inode
->         test for delegation; if found:
->                 take reference on inode
->                 release locks
->                 wait for delegation break
->                 drop reference on inode
->                 retry
-> 
-> The initial test for a delegation happens after the lock on the
-> delegated inode is acquired, but additional directory mutexes may have
-> been acquired further up the call stack.  I therefore add a "struct
-> inode **" argument to any intervening functions, which we use to pass
-> the inode back up to the caller in the case it needs to wait for the
-> delegation to be broken.
-> 
-> I also allow callers to pass in NULL for the "struct inode **" argument
-> to indicate they'd rather just fail than wait for a delegation.  For
-> example, as long as ecryptfs isn't exportable I assume they'd rather not
-> see retry logic there that they won't use.  But I may have misjudged in
-> some of these cases.
-> 
-> J. Bruce Fields (16):
->   vfs: pull ext4's double-i_mutex-locking into common code
->   vfs: don't use PARENT/CHILD lock classes for non-directories
->   vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
->   vfs: take i_mutex on renamed file
->   locks: introduce new FL_DELEG lock flag
->   locks: implement delegations
->   namei: minor vfs_unlink cleanup
->   locks: break delegations on unlink
->   locks: helper functions for delegation breaking
->   locks: break delegations on rename
->   locks: break delegations on link
->   locks: break delegations on any attribute modification
->   nfsd4: minor nfs4_setlease cleanup
->   nfsd4: delay setting current_fh in open
->   nfsd4: close open-deleg/unlink/rename race
->   nfsd4: break only delegations when appropriate
-> 
->  Documentation/filesystems/directory-locking |   31 ++++--
->  drivers/base/devtmpfs.c                     |    6 +-
->  fs/attr.c                                   |   25 ++++-
->  fs/cachefiles/interface.c                   |    4 +-
->  fs/cachefiles/namei.c                       |    4 +-
->  fs/ecryptfs/inode.c                         |    6 +-
->  fs/ext4/ext4.h                              |    2 -
->  fs/ext4/ioctl.c                             |    4 +-
->  fs/ext4/move_extent.c                       |   40 +-------
->  fs/hpfs/namei.c                             |    2 +-
->  fs/inode.c                                  |   42 ++++++++-
->  fs/locks.c                                  |   57 ++++++++---
->  fs/namei.c                                  |  135 +++++++++++++++++++++++----
->  fs/nfsd/nfs4proc.c                          |   36 +++----
->  fs/nfsd/nfs4state.c                         |   66 ++++++++++---
->  fs/nfsd/vfs.c                               |   41 ++------
->  fs/nfsd/xdr4.h                              |    3 +-
->  fs/open.c                                   |   22 ++++-
->  fs/utimes.c                                 |    9 +-
->  include/linux/fs.h                          |   72 +++++++++++---
->  ipc/mqueue.c                                |    2 +-
->  21 files changed, 433 insertions(+), 176 deletions(-)
-> 
-> -- 
-> 1.7.9.5
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
