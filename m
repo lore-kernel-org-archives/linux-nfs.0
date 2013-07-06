@@ -1,76 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e39.co.us.ibm.com ([32.97.110.160]:41589 "EHLO
-	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755025Ab3GKOMZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Jul 2013 10:12:25 -0400
-Received: from /spool/local
-	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Thu, 11 Jul 2013 08:12:22 -0600
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id CA5AE6E8047
-	for <linux-nfs@vger.kernel.org>; Thu, 11 Jul 2013 10:12:15 -0400 (EDT)
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r6BECJkE211644
-	for <linux-nfs@vger.kernel.org>; Thu, 11 Jul 2013 10:12:19 -0400
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r6BECAu8005061
-	for <linux-nfs@vger.kernel.org>; Thu, 11 Jul 2013 08:12:15 -0600
-Date: Thu, 11 Jul 2013 09:12:06 -0500
-From: Malahal Naineni <malahal@us.ibm.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        Bryan Schumaker <bjschuma@netapp.com>
-Subject: Re: corruption due to loss of lock
-Message-ID: <20130711141206.GA14374@us.ibm.com>
-References: <20130613184737.GA25713@us.ibm.com>
- <20130711071346.03b946bd@corrin.poochiereds.net>
+Received: from mailsrv.ikr.uni-stuttgart.de ([129.69.170.2]:45625 "EHLO
+	mailsrv.ikr.uni-stuttgart.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751442Ab3GFPNL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Jul 2013 11:13:11 -0400
+From: Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Linux 3.7 + Sun solaris 10: Problems when reading dir from application
+Date: Sat, 6 Jul 2013 17:00:38 +0200
+Cc: Harald Dunkel <harald.dunkel@aixigo.de>, linux-nfs@vger.kernel.org
+References: <201302041112.03587.ulrich.gemkow@ikr.uni-stuttgart.de> <20130705082740.3df4245a@dpcl082.ac.aixigo.de> <20130705192749.GB8288@fieldses.org>
+In-Reply-To: <20130705192749.GB8288@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130711071346.03b946bd@corrin.poochiereds.net>
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Message-Id: <201307061700.40451.ulrich.gemkow@ikr.uni-stuttgart.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jeff Layton [jlayton@redhat.com] wrote:
-> On Thu, 13 Jun 2013 13:47:37 -0500
-> Malahal Naineni <malahal@us.ibm.com> wrote:
-> 
-> > Hi Trond,
+Hello,
+
+answering as the original poster of the problem:
+
+On Friday 05 July 2013 21:27:49 J. Bruce Fields wrote:
+> On Fri, Jul 05, 2013 at 08:27:40AM +0200, Harald Dunkel wrote:
+> > Hi Ulrich,
 > > 
-> > I saw Bryan's patches here https://patchwork.kernel.org/patch/987402/
-> > that fix issues after loss of a lock.  What is the status on this patch
-> > set? Do they need more work? We have an application that uses range
-> > locks on a file. Two threads from two different clients end up writing
-> > to the same a file due to this bug after a lease expiry from a client.
+> > On Mon, 4 Feb 2013 21:24:08 +0100
+> > Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de> wrote:
 > > 
-> > Regards, Malahal.
+> > > Hello,
+> > > 
+> > > please allow a followup of my own on this:
+> > > 
+> > > On Monday 04 February 2013 11:12:03 Ulrich Gemkow wrote:
+> > > > Hello,
+> > > > 
+> > > > we upgraded our fileserver from Linux 3.2 to linux 3.7.6 and now have
+> > > > problems when accessing our nfs-mounted user homes from some sun-
+> > > > applications (i.e. Adobe Framemaker):
+> > > > 
+> > > > In the applications file open box, no files are displayed. When entering
+> > > > the filename by path, the file can be opened. So it seems some kind of
+> > > > dir enumeration which is used by the sun applications is broken.
+> > > > 
+> > > > Other programs on the sun like ls work as before and show all files.
+> > > > 
+> > > > We are using NFSv3 (and cannot switch to v4). Our sun is a very old
+> > > > machine running Sun Solaris 10.
+> > > 
+> > > When mounting with vers=2 on the sun (using NFSv2) the files
+> > > "reappear", so this is a clear regression in NFSv3 between
+> > > Linux 3.2 and Linux 3.7.
 > 
-> (cc'ing Bryan since he did the original set)
+> And the *only* thing you change is the kernel version, not nfs-utils or
+> anything else in userspace?
+
+Yes, only the kernel changed.
+
+In the time since my original post in February I found the reason
+for the problem:
+
+The problem is caused by the patch "nfsd: vfs_llseek() with 32
+or 64 bit offsets (hashes)". A discussion of regressions caused
+by this patch can be found in the thread http://comments.gmane.org/gmane.comp.file-systems.ext4/37022
+(started by you :-).
+
+I solved the problem by disabling the 64-bit hash-extension.
+I have not checked whether a better solution was found since
+then.
+
+> > Have you considered upgrading your Solaris version? I had tons 
+> > of problems with NFS on Solaris10u6 and 10u8, including unresponsive
+> > mount points, problems with delegations (esp. in the users' .ssh
+> > directories and .Xauthority files) and strange "permission 
+> > denied" error messages for some ACL feature I never configured on 
+> > the server. 
+> > 
+> > NFS in Solaris 10u10 works much better together with Linux. I
+> > haven't tried Solaris 11.
+> > 
+> > My servers run Squeeze and the Linux kernel from the squeeze-
+> > backports repository (3.2.0-0.bpo.4-amd64).
+> > 
+> > > Maybe this can be fixed. I will be happy to give more info
+> > > if someone is interested.
 > 
-> Yeah, this set would be a nice thing to have. A couple of comments:
+> Most interesting would probably be packet captures in both the "good"
+> and "bad" cases; so, something like:
 > 
-> - I still think it would be best to make SIGLOST its own signal, but as
->   Bryan points out, it would need to be larger than SIGRTMAX. I'm
->   not sure that's possible on all arches with the way the RT signals
->   were done. It's probably worth investigating that though before
->   settling on SIGIO since it would be hard to change that retroactively.
-
-Our application doesn't handle SIGIO, so it was terminating due to
-SIGIO. We tested without SIGIO/SIGLOST part of the patch, it stopped
-sending writes to NFS server as expected but the application didn't
-receive EIO because the original patch set some task fields and didn't
-call rpc_exit(). I just had to modify nfs_write_prepare() to call
-rpc_exit(task) rather than modifying task status and action fields
-directly.
-
-I will post my patch after some more testing.
-
+> 	tcpdump -s0 -wtmp.pcap
 > 
-> - This is not really a v4.1 specific thing. It should also be done for
->   v4.0 and v2/3, though the latter two really need to be done within
->   lockd.
+> then reproduce the problem, then kill tcpdump and send tmp.pcap.
+> 
+> (And/or take a look at it yourself with "wireshark tmp.pcap", and there
+> may be something obvious that jumps out even to a non-expert.)
+> 
+> --b.
 
-Correct.
+I think this makes the proposed dump obsolete?
 
-Regards, Malahal.
+Thank you and best regards
 
+-Ulrich
+
+
+-- 
+|-----------------------------------------------------------------------
+| Ulrich Gemkow
+| University of Stuttgart
+| Institute of Communication Networks and Computer Engineering (IKR)
+|-----------------------------------------------------------------------
