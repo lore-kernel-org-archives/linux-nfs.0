@@ -1,56 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:10208 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757135Ab3GVUWg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Jul 2013 16:22:36 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v1 07/19] NFS: Fix compiler warning in
- nfs_setup_sequence()
-Date: Mon, 22 Jul 2013 20:22:35 +0000
-Message-ID: <1374524553.7972.46.camel@leira.trondhjem.org>
-References: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
-	 <20130712163228.1444.26489.stgit@seurat.1015granger.net>
-	 <1374519800.7972.20.camel@leira.trondhjem.org>
-	 <3AAAEE1D-36BA-43FA-A37F-6CFD57314ADF@oracle.com>
-In-Reply-To: <3AAAEE1D-36BA-43FA-A37F-6CFD57314ADF@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mailsrv.ikr.uni-stuttgart.de ([129.69.170.2]:45626 "EHLO
+	mailsrv.ikr.uni-stuttgart.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751312Ab3GFPNL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Jul 2013 11:13:11 -0400
+From: Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de>
+To: Harald Dunkel <harald.dunkel@aixigo.de>
+Subject: Re: Linux 3.7 + Sun solaris 10: Problems when reading dir from application
+Date: Sat, 6 Jul 2013 16:57:03 +0200
+Cc: linux-nfs@vger.kernel.org
+References: <201302041112.03587.ulrich.gemkow@ikr.uni-stuttgart.de> <201302042124.10739.ulrich.gemkow@ikr.uni-stuttgart.de> <20130705082740.3df4245a@dpcl082.ac.aixigo.de>
+In-Reply-To: <20130705082740.3df4245a@dpcl082.ac.aixigo.de>
 MIME-Version: 1.0
+Message-Id: <201307061657.04988.ulrich.gemkow@ikr.uni-stuttgart.de>
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEzLTA3LTIyIGF0IDE2OjE2IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gSnVsIDIyLCAyMDEzLCBhdCAzOjAzIFBNLCAiTXlrbGVidXN0LCBUcm9uZCIgPFRyb25kLk15
-a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gRnJpLCAyMDEzLTA3LTEyIGF0
-IDEyOjMyIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPj4gQ2xlYW4gdXAuICBTcXVlbGNo
-IGNvbXBpbGVyIHdhcm5pbmc6DQo+ID4+IA0KPiA+PiBsaW51eC9mcy9uZnMvbmZzNHByb2MuYzog
-SW4gZnVuY3Rpb24g4oCYbmZzNF9zZXR1cF9zZXF1ZW5jZeKAmToNCj4gPj4gbGludXgvZnMvbmZz
-L25mczRwcm9jLmM6NzAzOjI6IHdhcm5pbmc6IHNpZ25lZCBhbmQgdW5zaWduZWQgdHlwZSBpbg0K
-PiA+PiAJY29uZGl0aW9uYWwgZXhwcmVzc2lvbiBbLVdzaWduLWNvbXBhcmVdDQo+ID4+IA0KPiA+
-PiBTaWduZWQtb2ZmLWJ5OiBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4NCj4g
-Pj4gLS0tDQo+ID4+IGZzL25mcy9uZnM0cHJvYy5jIHwgICAgMiArLQ0KPiA+PiAxIGZpbGUgY2hh
-bmdlZCwgMSBpbnNlcnRpb24oKyksIDEgZGVsZXRpb24oLSkNCj4gPj4gDQo+ID4+IGRpZmYgLS1n
-aXQgYS9mcy9uZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4+IGluZGV4IDdi
-MmUwMDguLjU5MTNlMWQgMTAwNjQ0DQo+ID4+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4+
-ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4+IEBAIC02NTUsNyArNjU1LDcgQEAgc3RhdGlj
-IGludCBuZnM0X3NldHVwX3NlcXVlbmNlKGNvbnN0IHN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIs
-DQo+ID4+IA0KPiA+PiAJZHByaW50aygiLS0+ICVzIGNscCAlcCBzZXNzaW9uICVwIHNyX3Nsb3Qg
-JWRcbiIsDQo+ID4+IAkJX19mdW5jX18sIHNlc3Npb24tPmNscCwgc2Vzc2lvbiwgcmVzLT5zcl9z
-bG90ID8NCj4gPj4gLQkJCXJlcy0+c3Jfc2xvdC0+c2xvdF9uciA6IC0xKTsNCj4gPj4gKwkJCShp
-bnQpcmVzLT5zcl9zbG90LT5zbG90X25yIDogLTEpOw0KPiA+PiANCj4gPiANCj4gPiBQbGVhc2Ug
-Y29udmVydCB0byBtYWtlIGl0IHVuc2lnbmVkLCBhbmQgdG8gdXNlIE5GUzRfTk9fU0xPVCBpbnN0
-ZWFkIG9mDQo+ID4gJy0xJy4NCj4gDQo+IE5GUzRfTk9fU0xPVCBtYWtlcyBzZW5zZSwgYnV0IEkn
-bSBub3QgY2xlYXIgb24gIm1ha2UgaXQgdW5zaWduZWQiLg0KPiANCj4gTGVhdmluZyB0aGUgZm9y
-bWF0IGFzICIlZCIgYWxsb3dzIE5GUzRfTk9fU0xPVCB0byBiZSBkaXNwbGF5ZWQgYXMgIi0xIi4g
-IFNvLCBzb21ldGhpbmcgbGlrZSB0aGUgZm9sbG93aW5nIG9uZS1saW5lciB3aWxsIGFkZHJlc3Mg
-dGhlIGNvbXBpbGVyIHdhcm5pbmcsIGFuZCBsZWF2ZSBiZWhhdmlvciB1bmNoYW5nZWQ6DQo+IA0K
-PiAtCQkJcmVzLT5zcl9zbG90LT5zbG90X25yIDogLTEpOw0KPiArCQkJcmVzLT5zcl9zbG90LT5z
-bG90X25yIDogTkZTNF9OT19TTE9UKTsNCj4gDQo+IFRoYXQgaXMsIHVubGVzcyB5b3UgcHJlZmVy
-IE5GUzRfTk9fU0xPVCBkaXNwbGF5ZWQgaW4gc29tZSBvdGhlciB3YXk/DQoNCkJvdGggdGhlIHNs
-b3QgaWQgYW5kIE5GUzRfTk9fU0xPVCBhcmUgZGVmaW5lZCBhcyBiZWluZyBvZiB0eXBlIHUzMiwg
-c28NCml0IG1ha2VzIG5vIHNlbnNlIHRvIGRpc3BsYXkgYSAiLTEiLiBKdXN0IGRpc3BsYXlpbmcg
-aXQgYXMgMl4zMiBzaG91bGQNCmJlIGdvb2QgZW5vdWdoIHNpbmNlIHRoaXMgaXMgYW4gb2J2aW91
-cyAiZGV2ZWxvcGVyIG9ubHkiIGRwcmludGsuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51
-eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBw
-LmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+Hello Harald,
+
+On Friday 05 July 2013 08:27:40 Harald Dunkel wrote:
+> Hi Ulrich,
+> 
+> On Mon, 4 Feb 2013 21:24:08 +0100
+> Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de> wrote:
+> 
+> > Hello,
+> > 
+> > please allow a followup of my own on this:
+> > 
+> > On Monday 04 February 2013 11:12:03 Ulrich Gemkow wrote:
+> > > Hello,
+> > > 
+> > > we upgraded our fileserver from Linux 3.2 to linux 3.7.6 and now have
+> > > problems when accessing our nfs-mounted user homes from some sun-
+> > > applications (i.e. Adobe Framemaker):
+> > > 
+> > > In the applications file open box, no files are displayed. When entering
+> > > the filename by path, the file can be opened. So it seems some kind of
+> > > dir enumeration which is used by the sun applications is broken.
+> > > 
+> > > Other programs on the sun like ls work as before and show all files.
+> > > 
+> > > We are using NFSv3 (and cannot switch to v4). Our sun is a very old
+> > > machine running Sun Solaris 10.
+> > 
+> > When mounting with vers=2 on the sun (using NFSv2) the files
+> > "reappear", so this is a clear regression in NFSv3 between
+> > Linux 3.2 and Linux 3.7.
+> > 
+> 
+> Have you considered upgrading your Solaris version? I had tons 
+> of problems with NFS on Solaris10u6 and 10u8, including unresponsive
+> mount points, problems with delegations (esp. in the users' .ssh
+> directories and .Xauthority files) and strange "permission 
+> denied" error messages for some ACL feature I never configured on 
+> the server. 
+> 
+> NFS in Solaris 10u10 works much better together with Linux. I
+> haven't tried Solaris 11.
+
+Thank you for your answer and your tip. For different reasond it
+is difficult for us to update this machine.
+
+In the time since my original post I found the reason for the
+problem and a solution. I will explain this in a second mail
+responding to Bruce which answered your mail yesterday.
+
+Thanks again and best regards
+
+Ulrich
+
+> 
+> My servers run Squeeze and the Linux kernel from the squeeze-
+> backports repository (3.2.0-0.bpo.4-amd64).
+> 
+> > Maybe this can be fixed. I will be happy to give more info
+> > if someone is interested.
+> > 
+> 
+> That would be nice.
+> 
+> Good luck
+> Harri
+> 
+
+-- 
+|-----------------------------------------------------------------------
+| Ulrich Gemkow
+| University of Stuttgart
+| Institute of Communication Networks and Computer Engineering (IKR)
+|-----------------------------------------------------------------------
