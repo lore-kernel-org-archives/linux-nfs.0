@@ -1,108 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:50474 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759317Ab3GRTfj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Jul 2013 15:35:39 -0400
-From: <andros@netapp.com>
-To: <trond.myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 4 0/5] Avoid expired credential keys for buffered writes
-Date: Thu, 18 Jul 2013 15:35:25 -0400
-Message-ID: <1374176130-11657-1-git-send-email-andros@netapp.com>
+Received: from [216.240.18.76] ([216.240.18.76]:47091 "EHLO mx11.netapp.com"
+	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752182Ab3GHSw3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jul 2013 14:52:29 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: NeilBrown <neilb@suse.de>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH - RFC]  new "nosharetransport" option for NFS mounts.
+Date: Mon, 8 Jul 2013 18:51:40 +0000
+Message-ID: <1373309499.2231.46.camel@leira.trondhjem.org>
+References: <20130708095812.355d7cfc@notabene.brown>
+In-Reply-To: <20130708095812.355d7cfc@notabene.brown>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
-
-This code has been refactored since version 3, and the first two patches
-are new.
-
-Related code to destroy the gss context upon kdestoy that also uses some of the
-underlying SUNRPC functionality will come in a separate patch set. 
-
------------
-Version 3, responded to comments:
-
-1) Changed "SUNRPC Fix rpc_verify_header error returns" into
-"SUNRPC refactor rpcauth_checkverf error returns" which only returns -EACCES on
-rpcauth_checkverf error in gss_validate if -EKEYEXPIRED is returned.
-
-Rebased on 3.7-rc7 Trond's testing branch.
--------------
-Version 2, responded to comments:
-1) Just use high water mark
-2) Move expiration testing into nfs_file_write
-3) Added a patch to clean up rpc_verify_header error processing
-
-Edited explanation from version 3:
-
-We must avoid buffering a WRITE that is using a credential key (e.g. a GSS
-context key) that is about to expire.  We currently will paint ourselves into
-a corner by returning success to the applciation for such a buffered WRITE,
-only to discover that we do not have permission when we attempt to flush the
-WRITE (and potentially associated COMMIT) to disk.  This results in the
-the application thinking it has written more to disk than it actually has.
-
-Pages for buffered WRITEs are allocated in nfs_write_begin where we have an
-nfs_open_context and associated rpc_cred. This is a generic rpc_cred, NOT
-the gss_cred used in the actual WRITE RPC. Each WRITE RPC call takes the generic
-rpc_cred (or uses the 'current_cred') uid and uses it to lookup the associated
-gss_cred and gss_context in the call_refresh RPC state. So, there is a
-one-to-one association between the nfs_open_context generic_cred and a
-gss_cred with a matching uid and a valid non expired gss context.
-
-We need to check the nfs_open_context generic cred 'underlying' gss_cred
-gss_context gc_expiry in nfs_write_begin to determine if there is enough
-time left in the gss_context lifetime to complete the buffered WRITEs.
-
-I've added a credential key expiry watermark, RPC_KEY_EXPIRE_TIMEO set to 240
-seconds as a default and can be set via a module parameter as we need to
-ensure there is time for any dirty data to be flushed.
-
-If a WRITE is using a credential with a key that will expire within
-watermark seconds, we flush the inode in nfs_write_end and send only
-NFS_FILE_SYNC WRITEs.
-
-TESTING:
-
-We've begun testing upstream kernels mounting Kerberos shares, and will test
-these changes for regressions.
-
-I've tested the kernel without these changes, and then with these changes using
-a modified Connectathon Special test5 that holds the file open and rewrites to
-ensure that buffered writing is occuring as the GSS context expires.
-
-I've verified that without this patch set, the bytes written that the test
-application sees is more than the bytes written to the file system (ls -l0
-
-I've verified that with a long enough watermark, the bytes written that the
-test application calculates is equal to the bytes written to the file
-system (ls -l).
-
--->Andy
-
-Andy Adamson (5):
-  SUNRPC: don't map EKEYEXPIRED to EACCES in call_refreshresult
-  NFS: Warn when attempting a buffered write or commit with an expired
-    credential
-  SUNRPC new rpc_credops to test credential expiry
-  NFS avoid expired credential keys for buffered writes
-  SUNRPC refactor rpcauth_checkverf error returns
-
- fs/nfs/file.c                  | 19 +++++++++-
- fs/nfs/internal.h              |  2 ++
- fs/nfs/write.c                 | 37 +++++++++++++++++++
- include/linux/sunrpc/auth.h    | 16 +++++++++
- net/sunrpc/auth.c              | 21 +++++++++++
- net/sunrpc/auth_generic.c      | 82 ++++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/auth_gss/auth_gss.c | 61 ++++++++++++++++++++++++++++---
- net/sunrpc/auth_null.c         |  5 +--
- net/sunrpc/auth_unix.c         |  5 +--
- net/sunrpc/clnt.c              | 19 +++++-----
- 10 files changed, 250 insertions(+), 17 deletions(-)
-
--- 
-1.8.3.1
-
+T24gTW9uLCAyMDEzLTA3LTA4IGF0IDA5OjU4ICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IA0K
+PiBUaGlzIHBhdGNoIGFkZHMgYSAibm9zaGFyZXRyYW5zcG9ydCIgb3B0aW9uIHRvIGFsbG93IHR3
+byBkaWZmZXJlbnQNCj4gbW91bnRzIGZyb20gdGhlIHNhbWUgc2VydmVyIHRvIHVzZSBkaWZmZXJl
+bnQgdHJhbnNwb3J0cy4NCj4gSWYgdGhlIG1vdW50cyB1c2UgTkZTdjQsIG9yIGFyZSBvZiB0aGUg
+c2FtZSBmaWxlc3lzdGVtLCB0aGVuDQo+ICJub3NoYXJlY2FjaGUiIG11c3QgYmUgdXNlZCBhcyB3
+ZWxsLg0KDQpXb24ndCB0aGlzIGludGVyZmVyZSB3aXRoIHRoZSByZWNlbnRseSBhZGRlZCBORlN2
+NCB0cnVua2luZyBkZXRlY3Rpb24/DQoNCkFsc28sIGhvdyB3aWxsIGl0IHdvcmsgd2l0aCBORlN2
+NC4xIHNlc3Npb25zPyBUaGUgc2VydmVyIHdpbGwgdXN1YWxseQ0KcmVxdWlyZSBhIEJJTkRfQ09O
+Tl9UT19TRVNTSU9OIHdoZW4gbmV3IFRDUCBjb25uZWN0aW9ucyBhdHRlbXB0IHRvDQphdHRhY2gg
+dG8gYW4gZXhpc3Rpbmcgc2Vzc2lvbi4NCg0KPiBUaGVyZSBhcmUgYXQgbGVhc3QgdHdvIGNpcmN1
+bXN0YW5jZXMgd2hlcmUgaXQgbWlnaHQgYmUgZGVzaXJhYmxlDQo+IHRvIHVzZSBzZXBhcmF0ZSB0
+cmFuc3BvcnRzOg0KPiANCj4gMS8gSWYgdGhlIE5GUyBzZXJ2ZXIgY2FuIGdldCBpbnRvIGEgc3Rh
+dGUgd2hlcmUgaXQgd2lsbCBpZ25vcmUNCj4gICByZXF1ZXN0cyBmb3Igb25lIGZpbGVzeXN0ZW0g
+d2hpbGUgc2VydmljaW5nIHJlcXVlc3QgZm9yIGFub3RoZXIsDQo+ICAgdGhlbiB1c2luZyBzZXBh
+cmF0ZSBjb25uZWN0aW9ucyBmb3IgdGhlIHNlcGFyYXRlIGZpbGVzeXN0ZW1zIGNhbg0KPiAgIHN0
+b3AgcHJvYmxlbXMgd2l0aCBvbmUgYWZmZWN0aW5nIGFjY2VzcyB0byB0aGUgb3RoZXIuDQo+IA0K
+PiAgIFRoaXMgaXMgcGFydGljdWxhcmx5IHJlbGV2YW50IGZvciBOZXRBcHAgZmlsZXJzIHdoZXJl
+IG9uZSBmaWxlc3lzdGVtDQo+ICAgaGFzIGJlZW4gInN1c3BlbmRlZCIuICBSZXF1ZXN0cyB0byB0
+aGF0IGZpbGVzeXN0ZW0gd2lsbCBiZSBkcm9wcGVkDQo+ICAgKHJhdGhlciB0aGFuIHRoZSBtb3Jl
+IGNvcnJlY3QgTkZTM0VSUl9KVUtFQk9YKS4gIFRoaXMgY3VycmVudGx5DQo+ICAgaW50ZXJmZXJl
+cyB3aXRoIG90aGVyIGZpbGVzeXN0ZW1zLg0KDQpUaGlzIGlzIGEga25vd24gaXNzdWUgdGhhdCBy
+ZWFsbHkgbmVlZHMgdG8gYmUgZml4ZWQgb24gdGhlIHNlcnZlciwgbm90DQpvbiB0aGUgY2xpZW50
+LiBBcyBmYXIgYXMgSSBrbm93LCB3b3JrIGlzIGFscmVhZHkgdW5kZXJ3YXkgdG8gZml4IHRoaXMu
+DQoNCj4gMi8gSWYgYSB2ZXJ5IGZhc3QgbmV0d29yayBpcyB1c2VkIHdpdGggYSBtYW55LXByb2Nl
+c3NvciBjbGllbnQsIGENCj4gICBzaW5nbGUgVENQIGNvbm5lY3Rpb24gY2FuIHByZXNlbnQgYSBi
+b3R0bGUgbmVjayB3aGljaCByZWR1Y2VzIHRvdGFsDQo+ICAgdGhyb3VnaHB1dC4gIFVzaW5nIG11
+bHRpcGxlIFRDUCBjb25uZWN0aW9ucyAob25lIHBlciBtb3VudCkgcmVtb3Zlcw0KPiAgIHRoZSBi
+b3R0bGVuZWNrLg0KPiAgIEFuIGFsdGVybmF0ZSB3b3JrYXJvdW5kIGlzIHRvIGNvbmZpZ3VyZSBt
+dWx0aXBsZSB2aXJ0dWFsIElQDQo+ICAgYWRkcmVzc2VzIG9uIHRoZSBzZXJ2ZXIgYW5kIG1vdW50
+IGVhY2ggZmlsZXN5c3RlbSBmcm9tIGEgZGlmZmVyZW50DQo+ICAgSVAuICBUaGlzIGlzIGVmZmVj
+dGl2ZSAodGhyb3VnaHB1dCBnb2VzIHVwKSBidXQgYW4gdW5uZWNlc3NhcnkNCj4gICBhZG1pbmlz
+dHJhdGl2ZSBidXJkZW4uDQoNCkFzIEkgdW5kZXJzdGFuZCBpdCwgdXNpbmcgbXVsdGlwbGUgc2lt
+dWx0YW5lb3VzIFRDUCBjb25uZWN0aW9ucyBiZXR3ZWVuDQp0aGUgc2FtZSBlbmRwb2ludHMgYWxz
+byBhZGRzIGEgcmlzayB0aGF0IHRoZSBjb25nZXN0aW9uIHdpbmRvd3Mgd2lsbA0KaW50ZXJmZXJl
+LiBEbyB5b3UgaGF2ZSBudW1iZXJzIHRvIGJhY2sgdXAgdGhlIGNsYWltIG9mIGEgcGVyZm9ybWFu
+Y2UNCmltcHJvdmVtZW50Pw0KDQpUaGUgb3RoZXIgaXNzdWUgSSBjYW4gdGhpbmsgb2YgaXMgdGhh
+dCBmb3IgTkZTIHZlcnNpb25zIDwgNC4xLCB0aGlzIG1heQ0KY2F1c2UgdGhlIHNlcnZlciB0byBh
+bGxvY2F0ZSBtb3JlIHJlc291cmNlcyBwZXIgY2xpZW50IGluIHRoZSBmb3JtIG9mDQpyZXBsYXkg
+Y2FjaGVzIGV0Yy4NCg0KPiBTaWduZWQtb2ZmLWJ5OiBOZWlsQnJvd24gPG5laWxiQHN1c2UuZGU+
+DQo+IA0KPiAtLS0NCj4gSXMgdGhpcyBhIGdvb2QgaWRlYT8gIEJhZCBpZGVhPyAgSGF2ZSBJIG1p
+c3NlZCBzb21ldGhpbmcgaW1wb3J0YW50Pw0KPiANCj4gTmVpbEJyb3duDQo+IA0KPiANCj4gZGlm
+ZiAtLWdpdCBhL2ZzL25mcy9jbGllbnQuYyBiL2ZzL25mcy9jbGllbnQuYw0KPiBpbmRleCBjNTEz
+YjBjLi42NGUzZjM5IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvY2xpZW50LmMNCj4gKysrIGIvZnMv
+bmZzL2NsaWVudC5jDQo+IEBAIC00MDMsOCArNDAzLDEzIEBAIHN0YXRpYyBzdHJ1Y3QgbmZzX2Ns
+aWVudCAqbmZzX21hdGNoX2NsaWVudChjb25zdCBzdHJ1Y3QgbmZzX2NsaWVudF9pbml0ZGF0YSAq
+ZGF0DQo+ICAJY29uc3Qgc3RydWN0IHNvY2thZGRyICpzYXAgPSBkYXRhLT5hZGRyOw0KPiAgCXN0
+cnVjdCBuZnNfbmV0ICpubiA9IG5ldF9nZW5lcmljKGRhdGEtPm5ldCwgbmZzX25ldF9pZCk7DQo+
+ICANCj4gKwlpZiAodGVzdF9iaXQoTkZTX0NTX05PX1NIQVJFLCAmZGF0YS0+aW5pdF9mbGFncykp
+DQo+ICsJCXJldHVybiBOVUxMOw0KPiArDQo+ICAJbGlzdF9mb3JfZWFjaF9lbnRyeShjbHAsICZu
+bi0+bmZzX2NsaWVudF9saXN0LCBjbF9zaGFyZV9saW5rKSB7DQo+ICAJICAgICAgICBjb25zdCBz
+dHJ1Y3Qgc29ja2FkZHIgKmNsYXAgPSAoc3RydWN0IHNvY2thZGRyICopJmNscC0+Y2xfYWRkcjsN
+Cj4gKwkJaWYgKHRlc3RfYml0KE5GU19DU19OT19TSEFSRSwmY2xwLT5jbF9mbGFncykpDQo+ICsJ
+CQljb250aW51ZTsNCj4gIAkJLyogRG9uJ3QgbWF0Y2ggY2xpZW50cyB0aGF0IGZhaWxlZCB0byBp
+bml0aWFsaXNlIHByb3Blcmx5ICovDQo+ICAJCWlmIChjbHAtPmNsX2NvbnNfc3RhdGUgPCAwKQ0K
+PiAgCQkJY29udGludWU7DQo+IEBAIC03NTMsNiArNzU4LDggQEAgc3RhdGljIGludCBuZnNfaW5p
+dF9zZXJ2ZXIoc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwNCj4gIAkJCWRhdGEtPnRpbWVvLCBk
+YXRhLT5yZXRyYW5zKTsNCj4gIAlpZiAoZGF0YS0+ZmxhZ3MgJiBORlNfTU9VTlRfTk9SRVNWUE9S
+VCkNCj4gIAkJc2V0X2JpdChORlNfQ1NfTk9SRVNWUE9SVCwgJmNsX2luaXQuaW5pdF9mbGFncyk7
+DQo+ICsJaWYgKGRhdGEtPmZsYWdzICYgTkZTX01PVU5UX05PU0hBUkVfWFBSVCkNCj4gKwkJc2V0
+X2JpdChORlNfQ1NfTk9fU0hBUkUsICZjbF9pbml0LmluaXRfZmxhZ3MpOw0KPiAgCWlmIChzZXJ2
+ZXItPm9wdGlvbnMgJiBORlNfT1BUSU9OX01JR1JBVElPTikNCj4gIAkJc2V0X2JpdChORlNfQ1Nf
+TUlHUkFUSU9OLCAmY2xfaW5pdC5pbml0X2ZsYWdzKTsNCj4gIA0KPiBkaWZmIC0tZ2l0IGEvZnMv
+bmZzL3N1cGVyLmMgYi9mcy9uZnMvc3VwZXIuYw0KPiBpbmRleCAyZDc1MjVmLi5kOTE0MWQ4IDEw
+MDY0NA0KPiAtLS0gYS9mcy9uZnMvc3VwZXIuYw0KPiArKysgYi9mcy9uZnMvc3VwZXIuYw0KPiBA
+QCAtODgsNiArODgsNyBAQCBlbnVtIHsNCj4gIAlPcHRfYWNsLCBPcHRfbm9hY2wsDQo+ICAJT3B0
+X3JkaXJwbHVzLCBPcHRfbm9yZGlycGx1cywNCj4gIAlPcHRfc2hhcmVjYWNoZSwgT3B0X25vc2hh
+cmVjYWNoZSwNCj4gKwlPcHRfc2hhcmV0cmFuc3BvcnQsIE9wdF9ub3NoYXJldHJhbnNwb3J0LA0K
+PiAgCU9wdF9yZXN2cG9ydCwgT3B0X25vcmVzdnBvcnQsDQo+ICAJT3B0X2ZzY2FjaGUsIE9wdF9u
+b2ZzY2FjaGUsDQo+ICAJT3B0X21pZ3JhdGlvbiwgT3B0X25vbWlncmF0aW9uLA0KPiBAQCAtMTQ2
+LDYgKzE0Nyw4IEBAIHN0YXRpYyBjb25zdCBtYXRjaF90YWJsZV90IG5mc19tb3VudF9vcHRpb25f
+dG9rZW5zID0gew0KPiAgCXsgT3B0X25vcmRpcnBsdXMsICJub3JkaXJwbHVzIiB9LA0KPiAgCXsg
+T3B0X3NoYXJlY2FjaGUsICJzaGFyZWNhY2hlIiB9LA0KPiAgCXsgT3B0X25vc2hhcmVjYWNoZSwg
+Im5vc2hhcmVjYWNoZSIgfSwNCj4gKwl7IE9wdF9zaGFyZXRyYW5zcG9ydCwgInNoYXJldHJhbnNw
+b3J0In0sDQo+ICsJeyBPcHRfbm9zaGFyZXRyYW5zcG9ydCwgIm5vc2hhcmV0cmFuc3BvcnQifSwN
+Cj4gIAl7IE9wdF9yZXN2cG9ydCwgInJlc3Zwb3J0IiB9LA0KPiAgCXsgT3B0X25vcmVzdnBvcnQs
+ICJub3Jlc3Zwb3J0IiB9LA0KPiAgCXsgT3B0X2ZzY2FjaGUsICJmc2MiIH0sDQo+IEBAIC02MzQs
+NiArNjM3LDcgQEAgc3RhdGljIHZvaWQgbmZzX3Nob3dfbW91bnRfb3B0aW9ucyhzdHJ1Y3Qgc2Vx
+X2ZpbGUgKm0sIHN0cnVjdCBuZnNfc2VydmVyICpuZnNzLA0KPiAgCQl7IE5GU19NT1VOVF9OT0FD
+TCwgIixub2FjbCIsICIiIH0sDQo+ICAJCXsgTkZTX01PVU5UX05PUkRJUlBMVVMsICIsbm9yZGly
+cGx1cyIsICIiIH0sDQo+ICAJCXsgTkZTX01PVU5UX1VOU0hBUkVELCAiLG5vc2hhcmVjYWNoZSIs
+ICIiIH0sDQo+ICsJCXsgTkZTX01PVU5UX05PU0hBUkVfWFBSVCwgIixub3NoYXJldHJhbnNwb3J0
+IiwgIiJ9LA0KPiAgCQl7IE5GU19NT1VOVF9OT1JFU1ZQT1JULCAiLG5vcmVzdnBvcnQiLCAiIiB9
+LA0KPiAgCQl7IDAsIE5VTEwsIE5VTEwgfQ0KPiAgCX07DQo+IEBAIC0xMjM5LDYgKzEyNDMsMTIg
+QEAgc3RhdGljIGludCBuZnNfcGFyc2VfbW91bnRfb3B0aW9ucyhjaGFyICpyYXcsDQo+ICAJCWNh
+c2UgT3B0X25vc2hhcmVjYWNoZToNCj4gIAkJCW1udC0+ZmxhZ3MgfD0gTkZTX01PVU5UX1VOU0hB
+UkVEOw0KPiAgCQkJYnJlYWs7DQo+ICsJCWNhc2UgT3B0X3NoYXJldHJhbnNwb3J0Og0KPiArCQkJ
+bW50LT5mbGFncyAmPSB+TkZTX01PVU5UX05PU0hBUkVfWFBSVDsNCj4gKwkJCWJyZWFrOw0KPiAr
+CQljYXNlIE9wdF9ub3NoYXJldHJhbnNwb3J0Og0KPiArCQkJbW50LT5mbGFncyB8PSBORlNfTU9V
+TlRfTk9TSEFSRV9YUFJUOw0KPiArCQkJYnJlYWs7DQo+ICAJCWNhc2UgT3B0X3Jlc3Zwb3J0Og0K
+PiAgCQkJbW50LT5mbGFncyAmPSB+TkZTX01PVU5UX05PUkVTVlBPUlQ7DQo+ICAJCQlicmVhazsN
+Cj4gZGlmZiAtLWdpdCBhL2luY2x1ZGUvbGludXgvbmZzX2ZzX3NiLmggYi9pbmNsdWRlL2xpbnV4
+L25mc19mc19zYi5oDQo+IGluZGV4IDNiN2ZhMmEuLjllOWQ3ZDMgMTAwNjQ0DQo+IC0tLSBhL2lu
+Y2x1ZGUvbGludXgvbmZzX2ZzX3NiLmgNCj4gKysrIGIvaW5jbHVkZS9saW51eC9uZnNfZnNfc2Iu
+aA0KPiBAQCAtNDEsNiArNDEsNyBAQCBzdHJ1Y3QgbmZzX2NsaWVudCB7DQo+ICAjZGVmaW5lIE5G
+U19DU19ESVNDUlRSWQkJMQkJLyogLSBkaXNjb25uZWN0IG9uIFJQQyByZXRyeSAqLw0KPiAgI2Rl
+ZmluZSBORlNfQ1NfTUlHUkFUSU9OCTIJCS8qIC0gdHJhbnNwYXJlbnQgc3RhdGUgbWlnciAqLw0K
+PiAgI2RlZmluZSBORlNfQ1NfSU5GSU5JVEVfU0xPVFMJMwkJLyogLSBkb24ndCBsaW1pdCBUQ1Ag
+c2xvdHMgKi8NCj4gKyNkZWZpbmUgTkZTX0NTX05PX1NIQVJFCQk0CQkvKiAtIGRvbid0IHNoYXJl
+IGFjcm9zcyBtb3VudHMgKi8NCj4gIAlzdHJ1Y3Qgc29ja2FkZHJfc3RvcmFnZQljbF9hZGRyOwkv
+KiBzZXJ2ZXIgaWRlbnRpZmllciAqLw0KPiAgCXNpemVfdAkJCWNsX2FkZHJsZW47DQo+ICAJY2hh
+ciAqCQkJY2xfaG9zdG5hbWU7CS8qIGhvc3RuYW1lIG9mIHNlcnZlciAqLw0KPiBkaWZmIC0tZ2l0
+IGEvaW5jbHVkZS91YXBpL2xpbnV4L25mc19tb3VudC5oIGIvaW5jbHVkZS91YXBpL2xpbnV4L25m
+c19tb3VudC5oDQo+IGluZGV4IDU3NmJkZGQuLjgxYzQ5ZmYgMTAwNjQ0DQo+IC0tLSBhL2luY2x1
+ZGUvdWFwaS9saW51eC9uZnNfbW91bnQuaA0KPiArKysgYi9pbmNsdWRlL3VhcGkvbGludXgvbmZz
+X21vdW50LmgNCj4gQEAgLTczLDUgKzczLDYgQEAgc3RydWN0IG5mc19tb3VudF9kYXRhIHsNCj4g
+IA0KPiAgI2RlZmluZSBORlNfTU9VTlRfTE9DQUxfRkxPQ0sJMHgxMDAwMDANCj4gICNkZWZpbmUg
+TkZTX01PVU5UX0xPQ0FMX0ZDTlRMCTB4MjAwMDAwDQo+ICsjZGVmaW5lIE5GU19NT1VOVF9OT1NI
+QVJFX1hQUlQJMHg0MDAwMDANCj4gIA0KPiAgI2VuZGlmDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
+DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RA
+bmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
