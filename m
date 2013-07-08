@@ -1,136 +1,182 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:54527 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:56012 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751672Ab3GIDXG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jul 2013 23:23:06 -0400
-Date: Tue, 9 Jul 2013 13:22:53 +1000
-From: NeilBrown <neilb@suse.de>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH - RFC]  new "nosharetransport" option for NFS mounts.
-Message-ID: <20130709132253.3dd4f90a@notabene.brown>
-In-Reply-To: <1373309499.2231.46.camel@leira.trondhjem.org>
-References: <20130708095812.355d7cfc@notabene.brown>
-	<1373309499.2231.46.camel@leira.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/Ju2+KmI9WxrIVjB9fnqbGWk"; protocol="application/pgp-signature"
+	id S1752477Ab3GHUEP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jul 2013 16:04:15 -0400
+Date: Mon, 8 Jul 2013 16:04:11 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [patch/rfc] allow exported (and *not* exported) filesystems to
+ be unmounted.
+Message-ID: <20130708200411.GH29071@fieldses.org>
+References: <20130605130541.5968d5c2@notabene.brown>
+ <20130605034115.GD13110@ZenIV.linux.org.uk>
+ <20130605161934.59ab6804@notabene.brown>
+ <20130605133658.GE24193@fieldses.org>
+ <20130606100512.1c701a64@notabene.brown>
+ <20130701191238.GD19945@fieldses.org>
+ <20130702082413.34dac92e@notabene.brown>
+ <20130702155059.GD31697@fieldses.org>
+ <20130708173003.131cd901@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130708173003.131cd901@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/Ju2+KmI9WxrIVjB9fnqbGWk
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Mon, Jul 08, 2013 at 05:30:03PM +1000, NeilBrown wrote:
+> On Tue, 2 Jul 2013 11:50:59 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+> wrote:
+> 
+> > On Tue, Jul 02, 2013 at 08:24:13AM +1000, NeilBrown wrote:
+> > > On Mon, 1 Jul 2013 15:12:38 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+> > > wrote:
+> > > 
+> > > > On Thu, Jun 06, 2013 at 10:05:12AM +1000, NeilBrown wrote:
+> > > > > On Wed, 5 Jun 2013 09:36:58 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+> > > > > wrote:
+> > > > > 
+> > > > > > On Wed, Jun 05, 2013 at 04:19:34PM +1000, NeilBrown wrote:
+> > > > > > > On Wed, 5 Jun 2013 04:41:15 +0100 Al Viro <viro@ZenIV.linux.org.uk> wrote:
+> > > > > > > 
+> > > > > > > > On Wed, Jun 05, 2013 at 01:05:41PM +1000, NeilBrown wrote:
+> > > > > > > > > 
+> > > > > > > > > Hi Bruce,
+> > > > > > > > >  this is a little issue that seems to keep coming up so I thought it might be
+> > > > > > > > >  time to fix it.
+> > > > > > > > > 
+> > > > > > > > >  As you know, a filesystem that is exported cannot be unmounted as the export
+> > > > > > > > >  cache holds a reference to it.  Though if it hasn't been accessed for a
+> > > > > > > > >  while then it can.
+> > > > > > > > > 
+> > > > > > > > >  As I hadn't realised before sometimes *non* exported filesystems can be
+> > > > > > > > >  pinned to.  A negative entry in the cache can pin a filesystem just as
+> > > > > > > > >  easily as a positive entry.
+> > > > > > > > >  An amusing, if somewhat contrived, example is that if you export '/' with
+> > > > > > > > >  crossmnt and:
+> > > > > > > > > 
+> > > > > > > > >     mount localhost:/ /mnt
+> > > > > > > > >     ls -l /
+> > > > > > > > >     umount /mnt
+> > > > > > > > > 
+> > > > > > > > >  the umount might fail.  This is because the "ls -l" tried to export every
+> > > > > > > > >  filesystem found mounted in '/'.  The export of "/mnt" failed of course
+> > > > > > > > >  because you cannot re-export an NFS filesystem.  But it is still in the
+> > > > > > > > >  cache.
+> > > > > > > > >  An 'exportfs -f' fixes this, but shouldn't be necessary.
+> > > > > > 
+> > > > > > Yeah, ugh.  As a less contrived example, can the default v4 root export
+> > > > > > lead to arbitrary filesystems being pinned just because a client tried
+> > > > > > to mount the wrong path?
+> > > > > 
+> > > > > I think it can only pin filesystems that are exported, either explicitly or
+> > > > > via a parent being exported with 'crossmnt'.
+> > > > 
+> > > > But see utils/mountd/v4root.c, and:
+> > > > 
+> > > > 	[root@server ~]# exportfs -v
+> > > > 	/export <world>(rw,...)
+> > > > 	[root@server ~]# mount /mnt
+> > > > 
+> > > > 		[root@pip4 ~]# mount pip4:/ /mnt/
+> > > > 		[root@pip4 ~]# ls -l /mnt/
+> > > > 		total 4
+> > > > 		drwxrwxrwt 3 root root 4096 Jun  7 10:34 export
+> > > > 		[root@pip4 ~]# 
+> > > > 
+> > > > 	[root@server ~]# umount /mnt/
+> > > > 	umount: /mnt: target is busy.
+> > > > 	...
+> > > > 	[root@server ~]# grep /mnt /proc/net/rpc/nfsd.export/content 
+> > > > 	# /mnt	*()
+> > > 
+> > > You make a good point.  I didn't think that would happen, and I think I could
+> > > argue that it is a bug.
+> > 
+> > Definitely looks like a bug to me.
+> > 
+> > > I have no idea how easy it would be to "fix" without
+> > > pouring over the code for a while though.  Or whether it is worth "fixing".
+> > 
+> > As long as clients are mostly just LOOKUPing down to the export they
+> > care about people may not hit this too much, but no doubt somebody will
+> > hit this eventually.
+> > 
+> > > > > > Could the export cache be indexed on a path string instead of a struct
+> > > > > > path?
+> > > > > 
+> > > > > Yes.  It would mean lots of extra pathname lookups and possibly lots of
+> > > > > "d_path()" calls.
+> > > > 
+> > > > Right.  Ugh.  Still, struct path seems wrong as it's not something gssd
+> > > > knows about, and there's not really a 1-1 mapping between the two (see
+> > > > e.g. the recent complaint about the case where the struct path
+> > > > represents a lazy-unmounted export
+> > > > http://mid.gmane.org/<20130625191008.GA20277@us.ibm.com> ).
+> > > 
+> > > I noticed that but haven't really followed it (though I just checked and
+> > > there isn't much to follow...)
+> > > 
+> > > What do we *want* to happen in this case?  I would argue that when the
+> > > filesystem is detached the export should immediately become invalid.
+> > > 
+> > > We could possibly put a check in exp_find_key() to see if ek->ek_path
+> > > was still attached (not sure how to do that) and if it is: invalidate the ek
+> > > before calling cache_check().  If the "is path detach" test is cheap, we
+> > > should probably do this.
+> > > 
+> > > Or - we could flush relevant entries from the cache whenever there is a
+> > > change in the mount table.  That is certainly the preferred option if the "is
+> > > path detached" test is at all expensive.  But it seems it isn't completely
+> > > clear how that flushing should be triggered...
+> > 
+> > There are probably other ways to get this kind of hang too: mounting
+> > over an export? mount --move?
+> 
+> I could argue that "mount --move" should  trigger a flush just like umount
+> does.  Mounting over an export (or mounting over a parent of an export) is
+> not so easy.
+> 
+> The core problem which causes the hang is that the path requested by
+> svc_export_request cannot be used to refer to the exp->ex_path.
+> This is something that svc_export_request could check.
+> e.g. after "d_path", it could "kern_path(pth, 0, &old_path);" and if that
+> fails or old_path doesn't match ex_path, then somehow invalidate the cache
+> entry....  though that is a bit awkward. We really want to catch the problem
+> at exp_find_key time.  Doing it there would be more of a performance burden.
+> 
+> Can d_path tell us that the path isn't reachable?
+> I think __d_path can, but that isn't exported (yet).  Using that could avoid
+> the "kern_path()" call.
+> 
+> So I'm thinking:
+> 
+>  - in svc_export_request() use __d_path (which needs to be exported)
+>  - if that fails, set a new CACHE_STALE flag on the cache_head
+>  - cache_read notices CACHE_STALE and calls cache_fresh_unlocked() (I think)
+>    to remove it from the queue.
 
-On Mon, 8 Jul 2013 18:51:40 +0000 "Myklebust, Trond"
-<Trond.Myklebust@netapp.com> wrote:
+There's still a race if the problem is detected after mountd reads the
+upcall but before it replies, right?
 
-> On Mon, 2013-07-08 at 09:58 +1000, NeilBrown wrote:
-> >=20
-> > This patch adds a "nosharetransport" option to allow two different
-> > mounts from the same server to use different transports.
-> > If the mounts use NFSv4, or are of the same filesystem, then
-> > "nosharecache" must be used as well.
->=20
-> Won't this interfere with the recently added NFSv4 trunking detection?
+>  - cache_is_valid treats CACHE_STALE like CACHE_NEGATIVE only -ESTALE is
+>    returned
+>  - if exp_find() gets -ESTALE from exp_get_by_name, it sets CACHE_STALE on
+>    'ek'.
+> 
+> It gets a bit complicated doesn't it?
+> 
+> An alternative is that if rpc.mountd gets a request for a path that doesn't
+> exist, or that when it responds to a request, the request remains in the
+> channel, then it simply flushes everything.
+> 
+> This is a bit heavy handed, but it is a rare occurrence so maybe that doesn't
+> matter.
 
-Will it?  I googled around a bit but couldn't find anything that tells me
-what trunking really was in this context.  Then I found commit 05f4c350ee02=
-=20
-which makes it quite clear (thanks Chuck!).
+That sounds to me like possibly a good enough solution.
 
-Probably the code I wrote could interfere.
+--b.
 
->=20
-> Also, how will it work with NFSv4.1 sessions? The server will usually
-> require a BIND_CONN_TO_SESSION when new TCP connections attempt to
-> attach to an existing session.
-
-Why would it attempt to attach to an existing session?  I would hope there
-the two different mounts with separate TCP connections would look completely
-separate - different transport, different cache, different session.
-??
-
->=20
-> > There are at least two circumstances where it might be desirable
-> > to use separate transports:
-> >=20
-> > 1/ If the NFS server can get into a state where it will ignore
-> >   requests for one filesystem while servicing request for another,
-> >   then using separate connections for the separate filesystems can
-> >   stop problems with one affecting access to the other.
-> >=20
-> >   This is particularly relevant for NetApp filers where one filesystem
-> >   has been "suspended".  Requests to that filesystem will be dropped
-> >   (rather than the more correct NFS3ERR_JUKEBOX).  This currently
-> >   interferes with other filesystems.
->=20
-> This is a known issue that really needs to be fixed on the server, not
-> on the client. As far as I know, work is already underway to fix this.
-
-I wasn't aware of this, nor were our support people.  I've passed it on so
-maybe they can bug Netapp....
-
->=20
-> > 2/ If a very fast network is used with a many-processor client, a
-> >   single TCP connection can present a bottle neck which reduces total
-> >   throughput.  Using multiple TCP connections (one per mount) removes
-> >   the bottleneck.
-> >   An alternate workaround is to configure multiple virtual IP
-> >   addresses on the server and mount each filesystem from a different
-> >   IP.  This is effective (throughput goes up) but an unnecessary
-> >   administrative burden.
->=20
-> As I understand it, using multiple simultaneous TCP connections between
-> the same endpoints also adds a risk that the congestion windows will
-> interfere. Do you have numbers to back up the claim of a performance
-> improvement?
-
-A customer upgraded from SLES10 (2.6.16 based) to SLES11 (3.0 based) and saw
-a slowdown on some large DB jobs of between 1.5 and 2 times (i.e. total time
-150% to 200% of what is was before).
-After some analysis they created multiple virtual IPs on the server and
-mounted the several filesystem each from different IPs and got the
-performance back (they see this as a work-around rather than a genuine
-solution).
-Numbers are like "500MB/s on a single connection, 850MB/sec peaking to
-1000MB/sec on multiple connections".
-
-If I can get something more concrete I'll let you know.
-
-As this worked well in 2.6.16 (which doesn't try to share connections) this
-is seen as a regression.
-
-On links that are easy to saturate, congestion windows are important and
-having a single connection is probably a good idea - so the current default
-is certainly correct.
-On a 10G ethernet or infiniband connection (where the issue has been
-measured) congestion just doesn't seem to be an issue.
-
-Thanks,
-NeilBrown
-
-
---Sig_/Ju2+KmI9WxrIVjB9fnqbGWk
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBUduCDTnsnt1WYoG5AQLZHA//X2FstciOm4aYpc3ossKH1AeSkU2uOsdZ
-RKTC3X59Go36EGHsDdaY7o7ufg5p22NWPvWBQaUEm+thDbWidrSGACDDF7jW6knV
-f2W9fch8E8KB3q2i6XO/5go+fyrQ/C/l0TzdK7Vs/yjAcmbzqhn3vJCPaKK5J0Jp
-qjI/2/qxNsUKHKpHeqa3XPTNka0js7ggvmUUUSDn2GStSWu8ps8x5lHfjtH38opW
-dyfQ63oBI/syfJGFG5lLRhmwiukPsAtWwLdcivCK6b8OQ7zk/rVf4XtoIF9/ChHK
-R9iivO/9uml31vGM3mZKKlB9GkIkkNPtXVnW4/o4PGTiJO77NouuQc6h2/6Jsoe0
-kejobwtBJSLUbO06sbBismliWx1cphtJC+M0BA0VL8FbdqNvud6NhWIbZsFSzxDT
-JpeLHQudBiRRR2jPJjv0ZL8SKDeYDKQ5fIzP9KY0Og/fXtPpnmkWBEDMVf9CGUmx
-RAXkgXmTdqUoLnzI3NTMMorpfHAILLn8AEXUBOuwuoCNyQlUdDugpXgW/WwlP+Cj
-25BMaB7Vmb1AcgDXDjON7IXVk/zhKWRIz1I0ELthrDhbD7Unj2FGoUYOTJKnI4OH
-bNQ0VHDjB7Af+3B1VISQVOApCZvCqsfc0jrGetcy1sK5RsC5qvSv94CxXSVwTWme
-ItA9HdAzha8=
-=7v6S
------END PGP SIGNATURE-----
-
---Sig_/Ju2+KmI9WxrIVjB9fnqbGWk--
+> It doesn't solve my desire for umount of exported filesystems to "just work"
+> though.
