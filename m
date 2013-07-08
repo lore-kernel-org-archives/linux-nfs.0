@@ -1,47 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from tuna.sandelman.ca ([209.87.252.184]:60051 "EHLO
-	tuna.sandelman.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754342Ab3GJUAj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Jul 2013 16:00:39 -0400
-From: Michael Richardson <mcr@sandelman.ca>
-To: Dean <seattleplus@gmail.com>
-cc: "J.Bruce Fields" <bfields@citi.umich.edu>, NeilBrown <neilb@suse.de>,
-        Olga Kornievskaia <aglo@citi.umich.edu>,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: Re: Is tcp autotuning really what NFS wants?
-In-Reply-To: <51DD9AD5.1030508@gmail.com>
-References: <20130710092255.0240a36d@notabene.brown> <20130710022735.GI8281@fieldses.org> <51DD9AD5.1030508@gmail.com>
-Date: Wed, 10 Jul 2013 15:59:25 -0400
-Message-ID: <21294.1373486365@sandelman.ca>
+Received: from fieldses.org ([174.143.236.118]:59128 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751464Ab3GHOSU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jul 2013 10:18:20 -0400
+Date: Mon, 8 Jul 2013 10:18:14 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de>
+Cc: Harald Dunkel <harald.dunkel@aixigo.de>, linux-nfs@vger.kernel.org
+Subject: Re: Linux 3.7 + Sun solaris 10: Problems when reading dir from
+ application
+Message-ID: <20130708141814.GD29071@fieldses.org>
+References: <201302041112.03587.ulrich.gemkow@ikr.uni-stuttgart.de>
+ <20130705082740.3df4245a@dpcl082.ac.aixigo.de>
+ <20130705192749.GB8288@fieldses.org>
+ <201307061700.40451.ulrich.gemkow@ikr.uni-stuttgart.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <201307061700.40451.ulrich.gemkow@ikr.uni-stuttgart.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Sat, Jul 06, 2013 at 05:00:38PM +0200, Ulrich Gemkow wrote:
+> Hello,
+> 
+> answering as the original poster of the problem:
+> 
+> On Friday 05 July 2013 21:27:49 J. Bruce Fields wrote:
+> > On Fri, Jul 05, 2013 at 08:27:40AM +0200, Harald Dunkel wrote:
+> > > Hi Ulrich,
+> > > 
+> > > On Mon, 4 Feb 2013 21:24:08 +0100
+> > > Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de> wrote:
+> > > 
+> > > > Hello,
+> > > > 
+> > > > please allow a followup of my own on this:
+> > > > 
+> > > > On Monday 04 February 2013 11:12:03 Ulrich Gemkow wrote:
+> > > > > Hello,
+> > > > > 
+> > > > > we upgraded our fileserver from Linux 3.2 to linux 3.7.6 and now have
+> > > > > problems when accessing our nfs-mounted user homes from some sun-
+> > > > > applications (i.e. Adobe Framemaker):
+> > > > > 
+> > > > > In the applications file open box, no files are displayed. When entering
+> > > > > the filename by path, the file can be opened. So it seems some kind of
+> > > > > dir enumeration which is used by the sun applications is broken.
+> > > > > 
+> > > > > Other programs on the sun like ls work as before and show all files.
+> > > > > 
+> > > > > We are using NFSv3 (and cannot switch to v4). Our sun is a very old
+> > > > > machine running Sun Solaris 10.
+> > > > 
+> > > > When mounting with vers=2 on the sun (using NFSv2) the files
+> > > > "reappear", so this is a clear regression in NFSv3 between
+> > > > Linux 3.2 and Linux 3.7.
+> > 
+> > And the *only* thing you change is the kernel version, not nfs-utils or
+> > anything else in userspace?
+> 
+> Yes, only the kernel changed.
+> 
+> In the time since my original post in February I found the reason
+> for the problem:
+> 
+> The problem is caused by the patch "nfsd: vfs_llseek() with 32
+> or 64 bit offsets (hashes)". A discussion of regressions caused
+> by this patch can be found in the thread http://comments.gmane.org/gmane.comp.file-systems.ext4/37022
+> (started by you :-).
+> 
+> I solved the problem by disabling the 64-bit hash-extension.
+> I have not checked whether a better solution was found since
+> then.
 
-Dean <seattleplus@gmail.com> wrote:
-    >> This could significantly limit the amount of parallelism that can be
-    > achieved for a single TCP connection (and given that the
-    >> Linux client strongly prefers a single connection now, this could
-    > become more of an issue).
+Ah, OK.
 
-    > I understand the simplicity in using a single tcp connection, but
-    > performance-wise it is definitely not the way to go on WAN links. When
-    > even a miniscule amount of packet loss is added to the link (<0.001%
-    > packet loss), the tcp buffer collapses and performance drops
+> > > Have you considered upgrading your Solaris version? I had tons 
+> > > of problems with NFS on Solaris10u6 and 10u8, including unresponsive
+> > > mount points, problems with delegations (esp. in the users' .ssh
+> > > directories and .Xauthority files) and strange "permission 
+> > > denied" error messages for some ACL feature I never configured on 
+> > > the server. 
+> > > 
+> > > NFS in Solaris 10u10 works much better together with Linux. I
+> > > haven't tried Solaris 11.
+> > > 
+> > > My servers run Squeeze and the Linux kernel from the squeeze-
+> > > backports repository (3.2.0-0.bpo.4-amd64).
+> > > 
+> > > > Maybe this can be fixed. I will be happy to give more info
+> > > > if someone is interested.
+> > 
+> > Most interesting would probably be packet captures in both the "good"
+> > and "bad" cases; so, something like:
+> > 
+> > 	tcpdump -s0 -wtmp.pcap
+> > 
+> > then reproduce the problem, then kill tcpdump and send tmp.pcap.
+> > 
+> > (And/or take a look at it yourself with "wireshark tmp.pcap", and there
+> > may be something obvious that jumps out even to a non-expert.)
+> > 
+> > --b.
+> 
+> I think this makes the proposed dump obsolete?
 
-And just remember bufferbloat.
+Yep.
 
-    > Using multiple tcp connections allows better saturation of the link,
-    > since when packet loss occurs on a stream, the other streams can fill
-    > the void.  Today, the only solution is to scale up the number of
-    > physical clients, which has high coordination overhead, or use a wan
-    > accelerator such as Bitspeed or Riverbed (which comes with its own
-    > issues such as extra hardware, cost, etc).
-
-This is true on high speed links with few bottlenecks, but not so much when
-there is a DSL-type bottleneck and excessive buffers.
-
---
-]               Never tell me the odds!                 | ipv6 mesh networks [
-]   Michael Richardson, Sandelman Software Works        | network architect  [
-]     mcr@sandelman.ca  http://www.sandelman.ca/        |   ruby on rails    [
-
+--b.
