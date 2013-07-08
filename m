@@ -1,66 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53633 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756311Ab3GQUuV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 16:50:21 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 07/16] namei: minor vfs_unlink cleanup
-Date: Wed, 17 Jul 2013 16:50:08 -0400
-Message-Id: <1374094217-31493-9-git-send-email-bfields@redhat.com>
-In-Reply-To: <1374094217-31493-1-git-send-email-bfields@redhat.com>
-References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:37090 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751743Ab3GHOsA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jul 2013 10:48:00 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: [PATCH] Disable NFS version 2
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20130705195225.GC8288@fieldses.org>
+Date: Mon, 8 Jul 2013 10:47:44 -0400
+Cc: Steve Dickson <SteveD@redhat.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <8A32AE41-D3EC-473A-AEB3-664EDA0A4CAC@oracle.com>
+References: <1372856675-5520-1-git-send-email-steved@redhat.com> <9A7F190A-2938-4A14-9125-330189DA8597@oracle.com> <51D6AE7D.9070805@RedHat.com> <4408EEAB-97F1-404A-BC58-434729D12364@oracle.com> <20130705195225.GC8288@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-We'll be using dentry->d_inode in one more place.
+On Jul 5, 2013, at 3:52 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/namei.c |    7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+> On Fri, Jul 05, 2013 at 10:59:59AM -0400, Chuck Lever wrote:
+>> 
+>> It feels like we should have a plan for both the server and client.
+> 
+> That discussion brought out of the woodwork a couple people still
+> claiming to depend on v2.  They seemed to only care about the server
+> side (because they had some old (non-linux) clients that were still
+> using v2 for some reason).
+> 
+> There could be other cases of people depending on an application tied to
+> an obsolete client OS that still expect to be able to upgrade their
+> server.
+> 
+> I may be wrong, but I'd expect the same situation (needing an obsolete
+> server to be able to access some data) to be rarer.  (One possible
+> exception I noticed is vesta: http://www.vestasys.org/--source-code
+> management system with built-in v2-only server.  Wonder if it's still
+> alive??)
+> 
+> Anyway I'm inclined to treat dropping server protocol support by the
+> same standard as we'd treat dropping kernel ABI: as in, it's only OK if
+> we don't expect anyone to notice.
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 6c91448..2b44960 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3433,6 +3433,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
- 
- int vfs_unlink(struct inode *dir, struct dentry *dentry)
- {
-+	struct inode *target = dentry->d_inode;
- 	int error = may_delete(dir, dentry, 0);
- 
- 	if (error)
-@@ -3441,7 +3442,7 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
- 	if (!dir->i_op->unlink)
- 		return -EPERM;
- 
--	mutex_lock(&dentry->d_inode->i_mutex);
-+	mutex_lock(&target->i_mutex);
- 	if (d_mountpoint(dentry))
- 		error = -EBUSY;
- 	else {
-@@ -3452,11 +3453,11 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
- 				dont_mount(dentry);
- 		}
- 	}
--	mutex_unlock(&dentry->d_inode->i_mutex);
-+	mutex_unlock(&target->i_mutex);
- 
- 	/* We don't d_delete() NFS sillyrenamed files--they still exist. */
- 	if (!error && !(dentry->d_flags & DCACHE_NFSFS_RENAMED)) {
--		fsnotify_link_count(dentry->d_inode);
-+		fsnotify_link_count(target);
- 		d_delete(dentry);
- 	}
- 
+I'm wondering why this requirement does not also apply to the client.  I've heard the opinion expressed recently that we really should not deprecate a feature that still has users.
+
+It might be reasonable to bring this question up on lkml, specifically in the context of NFS version 2.
+
+For the sake of argument, what would induce us to keep NFSv2 in the client?  Finding someone to maintain it?
+
 -- 
-1.7.9.5
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
