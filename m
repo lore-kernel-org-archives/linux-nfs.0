@@ -1,57 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:40843 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932074Ab3GRO5T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Jul 2013 10:57:19 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: SP4_MACH_CRED: v4 proc -> opcodes mapping
-Date: Thu, 18 Jul 2013 14:57:17 +0000
-Message-ID: <1374159436.3788.3.camel@leira.trondhjem.org>
-References: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
-In-Reply-To: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:65456 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751000Ab3GHMrC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jul 2013 08:47:02 -0400
+Received: by mail-wi0-f178.google.com with SMTP id k10so3902258wiv.11
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Jul 2013 05:47:01 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <CAF38w7Xx0_TqZem6cen+EJKpUrziGT_dAVcjG7oFFwM+ANm5mA@mail.gmail.com>
+References: <CAF38w7Xx0_TqZem6cen+EJKpUrziGT_dAVcjG7oFFwM+ANm5mA@mail.gmail.com>
+Date: Mon, 8 Jul 2013 14:47:00 +0200
+Message-ID: <CAF38w7Xf87k=GfM38XcO+ag+Na=f=Mg1KDn0jv2Y8Yp6Q_5a=g@mail.gmail.com>
+Subject: Fwd: Problem with sharing mounted iso
+From: Johan GUILBAUD <guilbaud.johan@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEzLTA3LTE4IGF0IDE0OjQ2ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
-PiBIZXksDQo+IA0KPiBJIGhhdmUgYSBtb3N0bHkgZnVuY3Rpb25hbCBjbGllbnQtc2lkZSBpbXBs
-ZW1lbnRhdGlvbiBvZiBTUDRfTUFDSF9DUkVEISBJdCBzdGlsbCBuZWVkcyBhIGxvdCBvZiBjbGVh
-bnVwIGFuZCB0ZXN0aW5nLg0KPiANCj4gSSBoYXZlIG9uZSBzdHlsZSBpc3N1ZSB0aGF0IEkgd2Fu
-dCB0byBydW4gYnkgdGhlIGxpc3QgYmVmb3JlIEkgcG9zdCBhIHBhdGNoc2V0Og0KPiANCj4gU28s
-IFNQNF9NQUNIX0NSRUQgbmVnb3RpYXRlcyB0d28gYml0bWFwcyBpbiB0aGUgRVhDSEFOR0VfSUQg
-KG9uZSAiZW5mb3JjZSIsIG9uZSAiYWxsb3ciKSBmb3Igc3RhdGUgcHJvdGVjdGlvbi4gVGhlc2Ug
-Yml0bWFwcyBhcmUgaW5kZXhlZCBieSB0aGUgTkZTdjQgb3BlcmF0aW9uIG51bWJlci4gIFRoZSBz
-dGF0ZSBwcm90ZWN0IGNoZWNrIG11c3QgaGFwcGVuIGluIHRoZSBuZnM0cHJvYy5jIGxheWVyIChv
-ciBiZWZvcmUpLCByaWdodCBiZWZvcmUgd2UgY2FsbCBycGNfY2FsbF9zeW5jIG9yIGVxdWl2YWxl
-bnQsIHNvIHRoYXQgaXQgY2FuIHNlbGVjdCB0aGUgcmlnaHQgY3JlZCBhbmQgcnBjX2NsaWVudC4N
-Cj4gDQo+IEhlcmUncyB0aGUgcHJvYmxlbTogd2UgZG9uJ3Qga25vdyB3aGF0IG9wZXJhdGlvbnMg
-KG9wY29kZXMpIGFyZSBhY3R1YWxseSBpbiBhIGNvbXBvdW5kIHVudGlsIHRoZSBYRFIgZW5jb2Rl
-IGNhbGxiYWNrIGlzIGNhbGxlZC4gIFRoZSBycGNfcHJvY2luZm8gYXJyYXkgZG9lc24ndCBoYXZl
-IHRoaXMgbWFwcGluZyAtIGluIGZhY3QsIGl0IG9ubHkgbGl2ZXMgaW4gdGhlIHhkciBlbmNvZGUg
-bGF5ZXIuDQo+IA0KPiBPbmUgYXBwcm9hY2ggaXMgdG8gaW1tZWRpYXRlbHkgdHJhbnNsYXRlIHRo
-ZSBvcGNvZGUgYml0bWFwcyB0byAibmZzNCBwcm9jZWR1cmUgaW5kZXgiIGJpdG1hcHMsIGluZGV4
-aW5nIGludG8gdGhlIHJwY19wcm9jaW5mbyBhcnJheS4gIFRoaXMgd291bGQgbWVhbiB0aGVyZSBp
-cyBhIHNlY29uZCBtYXBwaW5nIG9mIE5GU3Y0IHByb2NlZHVyZSAtPiBvcGNvZGVzIHRoYXQgbXVz
-dCBiZSB1cGRhdGVkIHdoZW4gYW4gWERSIGVuY29kZSBjYWxsYmFjayBpcyBjaGFuZ2VkLg0KPiAN
-Cj4gQW5vdGhlciBhcHByb2FjaCB3b3VsZCBiZSB0byBhZGQgYSBjYWxsYmFjayB0byB0aGUgWERS
-IGFwaSBzbyB3ZSBjb3VsZCAiYXNrIiBpdCBpZiBhbiBORlN2NCBwcm9jZWR1cmUgY29udGFpbnMg
-YW55IG9mIHRoZSBvcGNvZGVzIGluIGEgYml0bWFwLiBUaGUgbmljZSB0aGluZyBhYm91dCB0aGlz
-IGFwcHJvYWNoIGlzIHRoYXQgdGhlIG1hcHBpbmcgb2YgcHJvY2VkdXJlIHRvIG9wY29kZXMgd2l0
-aGluIHdpbGwgbGl2ZSByaWdodCBuZXh0IHRvIHRoZSBYRFIgZW5jb2RlIGNhbGxiYWNrIGFuZCBt
-YWtlIGl0IG9idmlvdXMgdGhhdCBib3RoIG5lZWQgdG8gYmUgY2hhbmdlZCB0b2dldGhlci4NCj4g
-DQo+IEkgc3VwcG9zZSBJJ20gbGVhbmluZyB0b3dhcmQgYSBjb21iaW5hdGlvbiBvZiBib3RoIG9m
-IHRoZXNlIGFwcHJvYWNoZXMgLSBrZWVwIHRoZSBtYXBwaW5nIGluIFhEUi1sYW5kIGFuZCB0cmFu
-c2xhdGUgdGhlIGJpdG1hcHMgaW1tZWRpYXRlbHkgb24gbmVnYXRpb24gZm9yIGZhc3QgbG9va3Vw
-cyBkdXJpbmcgbm9ybWFsIG9wZXJhdGlvbi4NCj4gDQo+IENvbW1lbnRzPyBBbSBJIG1pc3Npbmcg
-c29tZXRoaW5nPw0KDQpJJ20gbm90IHN1cmUgdGhhdCBJIHVuZGVyc3RhbmQuIFdlIGRvbid0IGRv
-IGR5bmFtaWMgY3JlYXRpb24gb2YNCmNvbXBvdW5kczogd2UgcHJldHR5IG11Y2gga25vdyBpbiB0
-aGUgbmZzNF9wcm9jXyogcm91dGluZSB3aGF0IHRoZSBtYWluDQpvcGVyYXRpb24gaXMgKHRoZSBv
-bmUgZXhjZXB0aW9uIGJlaW5nIENMT1NFL09QRU5fRE9XTkdSQURFKS4gU28gd2h5DQpjYW4ndCB3
-ZSB3b3JrIG91dCB0aGUgcHJvdGVjdGlvbiBzdGF0dXMgYXQgdGhhdCB0aW1lPyBJcyB0aGUgd29y
-cnkgdGhhdA0KdGhlIHNlcnZlciBtaWdodCByZWJvb3QgYW5kIGNvbWUgYmFjayB3aXRoIGRpZmZl
-cmVudCBNQUNIX0NSRUQNCnByb3RlY3Rpb25zPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGlu
-dXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFw
-cC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+Hello !
+
+I have a problem to access a mounted ISO through NFS protocol
+
+i have a server (RHEL6) on which are mounted ISOs
+i have a lot of client accessing files into ISO via the NFS share
+
+My problem is clients (RHEL5 & 6, Solaris 8 & 10) don't see content of
+ISO folder
+
+In example :
+
+on NFS server i have a folder /pub/ where the ISO are mounted (ie :
+with the iso mybeautifuliso.iso on the mount point
+"/pub/mybeautifuliso/") there are also, for test, text files in /pub/
+NFS shares content of /pub
+
+
+Client see tests text files, and folder "mybeautifuliso" but this one
+is empty...
+
+
+thanks for help
+
+--
+GUILBAUD Johan
