@@ -1,75 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:31607 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757883Ab3GVROg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Jul 2013 13:14:36 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/4] NFSv4.1 Use clientid management rpc_clnt for secinfo
-Date: Mon, 22 Jul 2013 17:14:35 +0000
-Message-ID: <D7467F6B-6C29-475F-B7CF-785C0E3B533C@netapp.com>
-References: <1374511328-49579-1-git-send-email-andros@netapp.com>
- <1374511328-49579-3-git-send-email-andros@netapp.com>
- <1374512315.7972.6.camel@leira.trondhjem.org>
-In-Reply-To: <1374512315.7972.6.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mail-ea0-f176.google.com ([209.85.215.176]:49552 "EHLO
+	mail-ea0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751871Ab3GHNzV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jul 2013 09:55:21 -0400
+Received: by mail-ea0-f176.google.com with SMTP id z15so2955930ead.35
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Jul 2013 06:55:20 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <CAF38w7Xf87k=GfM38XcO+ag+Na=f=Mg1KDn0jv2Y8Yp6Q_5a=g@mail.gmail.com>
+References: <CAF38w7Xx0_TqZem6cen+EJKpUrziGT_dAVcjG7oFFwM+ANm5mA@mail.gmail.com>
+ <CAF38w7Xf87k=GfM38XcO+ag+Na=f=Mg1KDn0jv2Y8Yp6Q_5a=g@mail.gmail.com>
+From: "bjschuma@gmail.com" <bjschuma@gmail.com>
+Date: Mon, 8 Jul 2013 09:55:00 -0400
+Message-ID: <CAMFXNOw7a-uuW8ze+Lz0DeBvLChjgNLmKjPAqiH586NqqirF4g@mail.gmail.com>
+Subject: Re: Problem with sharing mounted iso
+To: Johan GUILBAUD <guilbaud.johan@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+(This should have made it to Johan, but I forgot to enable plain text
+mode so vger rejected it)
 
-On Jul 22, 2013, at 12:58 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
- wrote:
+Hi Johan,
 
-> On Mon, 2013-07-22 at 12:42 -0400, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->> 
->> As per RFC 3530 and RFC 5661 Security Considerations
-> 
-> RFC3530-bis, not RFC3530...
-> 
->> Commit 4edaa308 "NFS: Use "krb5i" to establish NFSv4 state whenever possible"
->> uses the nfs_client cl_rpcclient for all clientid management operations.
->> 
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->> fs/nfs/nfs4proc.c | 3 ++-
->> 1 file changed, 2 insertions(+), 1 deletion(-)
->> 
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 7761802..6a30a72 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -5806,9 +5806,10 @@ static int _nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct
->> 		.rpc_argp = &args,
->> 		.rpc_resp = &res,
->> 	};
->> +	struct rpc_clnt *clnt = NFS_SERVER(dir)->nfs_client->cl_rpcclient;
->> 
->> 	dprintk("NFS call  secinfo %s\n", name->name);
->> -	status = nfs4_call_sync(NFS_SERVER(dir)->client, NFS_SERVER(dir), &msg, &args.seq_args, &res.seq_res, 0);
->> +	status = nfs4_call_sync(clnt, NFS_SERVER(dir), &msg, &args.seq_args, &res.seq_res, 0);
->> 	dprintk("NFS reply  secinfo: %d\n", status);
->> 	return status;
->> }
-> 
-> Has this been tested against a variety of server implementations? I know
-> what the spec says, but the behaviour we're relying on here is subtly
-> changed from what was originally documented in RFC3530.
+Does the server include "crossmnt" in its /etc/exports options for
+/pub?  By default, clients aren't able to cross mountpoints in the
+export directory.  Including this option should help!
 
+- Bryan
 
-Not yet. I'll set up some tests.
-
--->Andy
-
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-
+On Mon, Jul 8, 2013 at 8:47 AM, Johan GUILBAUD <guilbaud.johan@gmail.com> wrote:
+> Hello !
+>
+> I have a problem to access a mounted ISO through NFS protocol
+>
+> i have a server (RHEL6) on which are mounted ISOs
+> i have a lot of client accessing files into ISO via the NFS share
+>
+> My problem is clients (RHEL5 & 6, Solaris 8 & 10) don't see content of
+> ISO folder
+>
+> In example :
+>
+> on NFS server i have a folder /pub/ where the ISO are mounted (ie :
+> with the iso mybeautifuliso.iso on the mount point
+> "/pub/mybeautifuliso/") there are also, for test, text files in /pub/
+> NFS shares content of /pub
+>
+>
+> Client see tests text files, and folder "mybeautifuliso" but this one
+> is empty...
+>
+>
+> thanks for help
+>
+> --
+> GUILBAUD Johan
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
