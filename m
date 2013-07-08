@@ -1,98 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:54615 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:59953 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758970Ab3GRPut convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jul 2013 11:50:49 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: SP4_MACH_CRED: v4 proc -> opcodes mapping
-Date: Thu, 18 Jul 2013 15:50:48 +0000
-Message-ID: <1D61D5F4-40DA-47D1-A15A-745EA05813BA@netapp.com>
-References: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
- <1374159436.3788.3.camel@leira.trondhjem.org>
- <DFCAA8D0-B3BD-49C2-BAC4-9C26668AACB9@netapp.com>
- <1374160910.3788.14.camel@leira.trondhjem.org>
-In-Reply-To: <1374160910.3788.14.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="Windows-1252"
+	id S1752975Ab3GHUQq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jul 2013 16:16:46 -0400
+Date: Mon, 8 Jul 2013 16:16:43 -0400
+To: Jan Stancek <jstancek@redhat.com>
+Cc: linux-nfs@vger.kernel.org, bfields@redhat.com, Trond.Myklebust@netapp.com
+Subject: Re: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
+Message-ID: <20130708201643.GI29071@fieldses.org>
+References: <682ebd8ecc7309b18396da356a0feb38bfa41674.1372692346.git.jstancek@redhat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <682ebd8ecc7309b18396da356a0feb38bfa41674.1372692346.git.jstancek@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jul 18, 2013, at 11:21 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
- wrote:
-
-> On Thu, 2013-07-18 at 15:10 +0000, Adamson, Dros wrote:
->> On Jul 18, 2013, at 10:57 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
->> 
->>> On Thu, 2013-07-18 at 14:46 +0000, Adamson, Dros wrote:
->>>> Hey,
->>>> 
->>>> I have a mostly functional client-side implementation of SP4_MACH_CRED! It still needs a lot of cleanup and testing.
->>>> 
->>>> I have one style issue that I want to run by the list before I post a patchset:
->>>> 
->>>> So, SP4_MACH_CRED negotiates two bitmaps in the EXCHANGE_ID (one "enforce", one "allow") for state protection. These bitmaps are indexed by the NFSv4 operation number.  The state protect check must happen in the nfs4proc.c layer (or before), right before we call rpc_call_sync or equivalent, so that it can select the right cred and rpc_client.
->>>> 
->>>> Here's the problem: we don't know what operations (opcodes) are actually in a compound until the XDR encode callback is called.  The rpc_procinfo array doesn't have this mapping - in fact, it only lives in the xdr encode layer.
->>>> 
->>>> One approach is to immediately translate the opcode bitmaps to "nfs4 procedure index" bitmaps, indexing into the rpc_procinfo array.  This would mean there is a second mapping of NFSv4 procedure -> opcodes that must be updated when an XDR encode callback is changed.
->>>> 
->>>> Another approach would be to add a callback to the XDR api so we could "ask" it if an NFSv4 procedure contains any of the opcodes in a bitmap. The nice thing about this approach is that the mapping of procedure to opcodes within will live right next to the XDR encode callback and make it obvious that both need to be changed together.
->>>> 
->>>> I suppose I'm leaning toward a combination of both of these approaches - keep the mapping in XDR-land and translate the bitmaps immediately on negation for fast lookups during normal operation.
->>>> 
->>>> Comments? Am I missing something?
->>> 
->>> I'm not sure that I understand. We don't do dynamic creation of
->>> compounds: we pretty much know in the nfs4_proc_* routine what the main
->>> operation is (the one exception being CLOSE/OPEN_DOWNGRADE). So why
->>> can't we work out the protection status at that time? Is the worry that
->>> the server might reboot and come back with different MACH_CRED
->>> protections?
->> 
->> Sure, we know what the main operation is and we know what operations will end up in a compound - we can just look at the xdr encoder.  My question is simply one of style. Do we want to have each nfs4proc procedure to have a list of operations that must be updated if an xdr encoder is updated? I'm fine with doing it this way, it just seemed wrong to have the same mapping in two different places. This is why I'm asking ;)
->> 
->> Also, we can't just use the "main" operation, we must check every operation within the compound and if any are required to use SP4, then the whole compound does. I don't necessarily know why a server would do this, but if we follow the spec and a server informs the client that SETATTR must use state protection, then a WRITE with post-op SETATTR must use the state protection even though WRITE doesn't need it.
+On Mon, Jul 01, 2013 at 05:32:34PM +0200, Jan Stancek wrote:
+> Starting with commit:
+>   commit f994c43d19a9116727d4c228d3f13db595bff562
+>   Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+>   Date:   Thu Nov 1 12:14:14 2012 -0400
+>       SUNRPC: Clean up rpc_bind_new_program
 > 
-> We only need to check every _stateful_ operation, right? I can't think
-> of any compounds with more than 1 stateful operation. We've deliberately
-> avoided those due to the problems that arise when you get a
-> NFS4ERR_DELAY or something equivalent at the wrong moment.
+> operations on directory mounted with -onfsvers=3,tcp,sec=krb5 fail
+> with Input/Output error after ~60 second timeout. This is presumably
+> because upcalls for 'nfsacl' are not getting anywhere.
+> 
+> This patch enables pipe dir for nfsacl_program and changes its name
+> to 'nfs'. This name will be used in upcalls and whole setup should
+> work as it did in past - just with nfs/hostname principal.
 
-That may be the intention, but I see no such limitation in the spec. It's my understanding that the server could specify any operation as MUST or MAY use state protection.
+I think this was the problem that nfs-utils commits
+
+	a1f8afc560 gssd: Remove insane sanity checks of the service name
+	a56989b665 gssd: Handle the target name correctly
+
+were supposed to fix?
+
+But perhaps the kernel needs a fix too to fix a regression with old
+userspace.
+
+--b.
 
 > 
->> I'm not following the reboot question - that case should be handled just fine. Once the EXCHANGE_ID happens, the clp has two bitmaps (enforce and allow) that reflect the current mode of SP4_MACH_CRED.
+> Signed-off-by: Jan Stancek <jstancek@redhat.com>
+> ---
+>  fs/nfs/nfs3client.c |    3 ++-
+>  1 files changed, 2 insertions(+), 1 deletions(-)
 > 
-> I'm thinking something along the following scenario:
-> 
-> A process queues up an OPEN. The server replies NFS4ERR_BAD_SESSION and
-> later replies with NFS4ERR_STALE_CLIENTID. So we start reboot recovery,
-> and the OPEN gets queued waiting for a slot.
-> We then send a new EXCHANGE_ID, and the server replies with a
-> _different_ MACH_CRED protection for OPEN.
-> 
-> The problem above is that the OPEN has already been started, and we've
-> already assigned it a credential. How do we handle that?
-> Ditto question for READ, WRITE, LOCK, LAYOUTGET,...
-> 
-> Do we have a problem for LOCKU, CLOSE and OPEN_DOWNGRADE? I think we end
-> up just skipping recovery in those cases…
-
-These are good points. I'm not sure *why* the sp4_mach_cred config would change, but I suppose it could, and yes, in my current implementation there is no way to back out once a rpc task is invoked.  Any thoughts on this?  I can see two ways of handling this:
- - restarting all tasks (with rpc_clnt and rpc_cred appropriately changed) when a change in sp4_mach_cred config is detected.
- - somehow having the RPC layer call out to check SP4 status before sending each RPC.
-
--dros
-
-> 
+> diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
+> index b3fc65e..09a7d06 100644
+> --- a/fs/nfs/nfs3client.c
+> +++ b/fs/nfs/nfs3client.c
+> @@ -9,11 +9,12 @@ static const struct rpc_version *nfsacl_version[] = {
+>  };
+>  
+>  const struct rpc_program nfsacl_program = {
+> -	.name			= "nfsacl",
+> +	.name			= "nfs",
+>  	.number			= NFS_ACL_PROGRAM,
+>  	.nrvers			= ARRAY_SIZE(nfsacl_version),
+>  	.version		= nfsacl_version,
+>  	.stats			= &nfsacl_rpcstat,
+> +	.pipe_dir_name		= NFS_PIPE_DIRNAME,
+>  };
+>  
+>  /*
 > -- 
-> Trond Myklebust
-> Linux NFS client maintainer
+> 1.7.1
 > 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
