@@ -1,98 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:35415 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752005Ab3GQUn0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 16:43:26 -0400
-Subject: [RFC][PATCH 00/10] Associative array & Massive expansion of keyring
- capacity
-To: keyrings@linux-nfs.org
-From: David Howells <dhowells@redhat.com>
-Cc: linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Wed, 17 Jul 2013 21:43:14 +0100
-Message-ID: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
+Received: from [216.240.18.77] ([216.240.18.77]:57300 "EHLO mx12.netapp.com"
+	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751305Ab3GHQaQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jul 2013 12:30:16 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Disable NFS version 2
+Date: Mon, 8 Jul 2013 16:29:43 +0000
+Message-ID: <1373300984.2231.1.camel@leira.trondhjem.org>
+References: <1372856675-5520-1-git-send-email-steved@redhat.com>
+	 <9A7F190A-2938-4A14-9125-330189DA8597@oracle.com>
+	 <51D6AE7D.9070805@RedHat.com>
+	 <4408EEAB-97F1-404A-BC58-434729D12364@oracle.com>
+	 <20130705195225.GC8288@fieldses.org>
+	 <8A32AE41-D3EC-473A-AEB3-664EDA0A4CAC@oracle.com>
+In-Reply-To: <8A32AE41-D3EC-473A-AEB3-664EDA0A4CAC@oracle.com>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-Here's a set of patches that do two main things:
-
- (1) Provide a general purpose associative array implementation.
-
- (2) Use the associative array implementation to provide key pointer storage
-     for keyrings thereby massively increasing capacity.
-
-There are numerous smaller patches also that are split out of (2) to make the
-patch in (2) smaller, plus a fix patch that didn't get taken into the last
-merge window.
-
-The patches can also be found at:
-
-	http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/log/?h=keys-devel
-
-
-The impetus for these is that the NFS ID mapper uses keyrings to store name to
-ID mappings, but is running up against the limitation imposed by the flat
-array currently used by the keyring.
-
-The associative array implementation does all the work.  To quickly summarise
-its capabilities: no capacity limit; objects don't need to be modified to go
-in it (no list_head/rb_node equivalent needed); objects need a unique index
-key of arbitrary length; objects can be anything; modifications are generally
-RCU-safe; the contents can be iterated over and it can directly walk to an
-object in O(log(N)-ish) time given the key; and lastly, there are several
-features to reduce the memory footprint (node sharing and shortcuts).
-Documentation is included in the patch.
-
-Note that the associative array implementation was developed in userspace and
-has been thoroughly valground and tested inserting new objects whilst
-iterating over 2,000,000 objects amongst other things.
-
-The keyutils testsuite has been run successfully against a kernel with these
-patches applied, though the testsuite did need some tweaks: (a) previously
-keys added to a keyring with no removals appeared to be ordered and (b) some
-of the errors have changed.
-
-David
----
-David Howells (10):
-      KEYS: Skip key state checks when checking for possession
-      Add a generic associative array implementation.
-      KEYS: Use bool in make_key_ref() and is_key_possessed()
-      KEYS: key_is_dead() should take a const key pointer argument
-      KEYS: Consolidate the concept of an 'index key' for key access
-      KEYS: Introduce a search context structure
-      KEYS: Search for auth-key by name rather than targt key ID
-      KEYS: Define a __key_get() wrapper to use rather than atomic_inc()
-      KEYS: Drop the permissions argument from __keyring_search_one()
-      KEYS: Expand the capacity of a keyring
-
-
- Documentation/assoc_array.txt    |  583 +++++++++++++
- Documentation/security/keys.txt  |   20 
- include/keys/keyring-type.h      |   17 
- include/linux/assoc_array.h      |   94 ++
- include/linux/assoc_array_priv.h |  159 +++
- include/linux/key-type.h         |    5 
- include/linux/key.h              |   48 +
- lib/Kconfig                      |   14 
- lib/Makefile                     |    1 
- lib/assoc_array.c                | 1734 ++++++++++++++++++++++++++++++++++++++
- security/keys/Kconfig            |    1 
- security/keys/gc.c               |   30 -
- security/keys/internal.h         |   65 +
- security/keys/key.c              |   91 +-
- security/keys/keyring.c          | 1447 ++++++++++++++++----------------
- security/keys/proc.c             |   17 
- security/keys/process_keys.c     |  131 +--
- security/keys/request_key.c      |   56 +
- security/keys/request_key_auth.c |   31 -
- security/keys/user_defined.c     |   18 
- 20 files changed, 3596 insertions(+), 966 deletions(-)
- create mode 100644 Documentation/assoc_array.txt
- create mode 100644 include/linux/assoc_array.h
- create mode 100644 include/linux/assoc_array_priv.h
- create mode 100644 lib/assoc_array.c
-
+T24gTW9uLCAyMDEzLTA3LTA4IGF0IDEwOjQ3IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gSnVsIDUsIDIwMTMsIGF0IDM6NTIgUE0sIEouIEJydWNlIEZpZWxkcyA8YmZpZWxkc0BmaWVs
+ZHNlcy5vcmc+IHdyb3RlOg0KPiANCj4gPiBPbiBGcmksIEp1bCAwNSwgMjAxMyBhdCAxMDo1OTo1
+OUFNIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPj4gDQo+ID4+IEl0IGZlZWxzIGxpa2Ug
+d2Ugc2hvdWxkIGhhdmUgYSBwbGFuIGZvciBib3RoIHRoZSBzZXJ2ZXIgYW5kIGNsaWVudC4NCj4g
+PiANCj4gPiBUaGF0IGRpc2N1c3Npb24gYnJvdWdodCBvdXQgb2YgdGhlIHdvb2R3b3JrIGEgY291
+cGxlIHBlb3BsZSBzdGlsbA0KPiA+IGNsYWltaW5nIHRvIGRlcGVuZCBvbiB2Mi4gIFRoZXkgc2Vl
+bWVkIHRvIG9ubHkgY2FyZSBhYm91dCB0aGUgc2VydmVyDQo+ID4gc2lkZSAoYmVjYXVzZSB0aGV5
+IGhhZCBzb21lIG9sZCAobm9uLWxpbnV4KSBjbGllbnRzIHRoYXQgd2VyZSBzdGlsbA0KPiA+IHVz
+aW5nIHYyIGZvciBzb21lIHJlYXNvbikuDQo+ID4gDQo+ID4gVGhlcmUgY291bGQgYmUgb3RoZXIg
+Y2FzZXMgb2YgcGVvcGxlIGRlcGVuZGluZyBvbiBhbiBhcHBsaWNhdGlvbiB0aWVkIHRvDQo+ID4g
+YW4gb2Jzb2xldGUgY2xpZW50IE9TIHRoYXQgc3RpbGwgZXhwZWN0IHRvIGJlIGFibGUgdG8gdXBn
+cmFkZSB0aGVpcg0KPiA+IHNlcnZlci4NCj4gPiANCj4gPiBJIG1heSBiZSB3cm9uZywgYnV0IEkn
+ZCBleHBlY3QgdGhlIHNhbWUgc2l0dWF0aW9uIChuZWVkaW5nIGFuIG9ic29sZXRlDQo+ID4gc2Vy
+dmVyIHRvIGJlIGFibGUgdG8gYWNjZXNzIHNvbWUgZGF0YSkgdG8gYmUgcmFyZXIuICAoT25lIHBv
+c3NpYmxlDQo+ID4gZXhjZXB0aW9uIEkgbm90aWNlZCBpcyB2ZXN0YTogaHR0cDovL3d3dy52ZXN0
+YXN5cy5vcmcvLS1zb3VyY2UtY29kZQ0KPiA+IG1hbmFnZW1lbnQgc3lzdGVtIHdpdGggYnVpbHQt
+aW4gdjItb25seSBzZXJ2ZXIuICBXb25kZXIgaWYgaXQncyBzdGlsbA0KPiA+IGFsaXZlPz8pDQo+
+ID4gDQo+ID4gQW55d2F5IEknbSBpbmNsaW5lZCB0byB0cmVhdCBkcm9wcGluZyBzZXJ2ZXIgcHJv
+dG9jb2wgc3VwcG9ydCBieSB0aGUNCj4gPiBzYW1lIHN0YW5kYXJkIGFzIHdlJ2QgdHJlYXQgZHJv
+cHBpbmcga2VybmVsIEFCSTogYXMgaW4sIGl0J3Mgb25seSBPSyBpZg0KPiA+IHdlIGRvbid0IGV4
+cGVjdCBhbnlvbmUgdG8gbm90aWNlLg0KPiANCj4gSSdtIHdvbmRlcmluZyB3aHkgdGhpcyByZXF1
+aXJlbWVudCBkb2VzIG5vdCBhbHNvIGFwcGx5IHRvIHRoZSBjbGllbnQuICBJJ3ZlIGhlYXJkIHRo
+ZSBvcGluaW9uIGV4cHJlc3NlZCByZWNlbnRseSB0aGF0IHdlIHJlYWxseSBzaG91bGQgbm90IGRl
+cHJlY2F0ZSBhIGZlYXR1cmUgdGhhdCBzdGlsbCBoYXMgdXNlcnMuDQo+IA0KPiBJdCBtaWdodCBi
+ZSByZWFzb25hYmxlIHRvIGJyaW5nIHRoaXMgcXVlc3Rpb24gdXAgb24gbGttbCwgc3BlY2lmaWNh
+bGx5IGluIHRoZSBjb250ZXh0IG9mIE5GUyB2ZXJzaW9uIDIuDQo+IA0KPiBGb3IgdGhlIHNha2Ug
+b2YgYXJndW1lbnQsIHdoYXQgd291bGQgaW5kdWNlIHVzIHRvIGtlZXAgTkZTdjIgaW4gdGhlIGNs
+aWVudD8gIEZpbmRpbmcgc29tZW9uZSB0byBtYWludGFpbiBpdD8NCj4gDQoNCkZpbmRpbmcgdXNl
+cnMuLi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
+cg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
