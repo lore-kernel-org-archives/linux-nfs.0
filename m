@@ -1,162 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:44491 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752715Ab3G2GcH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jul 2013 02:32:07 -0400
-Date: Mon, 29 Jul 2013 10:29:06 +0400
-From: Andrew Vagin <avagin@parallels.com>
-To: Oleg Nesterov <oleg@redhat.com>
-CC: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>,
-        Andrey Vagin <avagin@openvz.org>, "Serge E. Hallyn" <serue@us.ibm.com>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: fuzz tested user mode linux core dumps in fs/lockd/clntproc.c:131
-Message-ID: <20130729062905.GA28282@paralelels.com>
-References: <51F39AE8.3090401@gmx.de>
- <20130727170051.GA31447@redhat.com>
- <51F5381D.1080904@gmx.de>
- <20130728175828.GA15020@redhat.com>
-MIME-Version: 1.0
+Received: from [216.240.18.77] ([216.240.18.77]:9861 "EHLO mx12.netapp.com"
+	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753494Ab3GIMOo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 08:14:44 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Johan GUILBAUD <guilbaud.johan@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Problem with sharing mounted iso
+Date: Tue, 9 Jul 2013 12:14:12 +0000
+Message-ID: <1373372050.3641.2.camel@leira.trondhjem.org>
+References: <CAF38w7Xx0_TqZem6cen+EJKpUrziGT_dAVcjG7oFFwM+ANm5mA@mail.gmail.com>
+	 <CAF38w7Xf87k=GfM38XcO+ag+Na=f=Mg1KDn0jv2Y8Yp6Q_5a=g@mail.gmail.com>
+	 <20130708143957.2ebc75e3@tlielax.poochiereds.net>
+	 <CAF38w7WUy6ENvppTW5CWbQMRwheTnwQj1e1QQabWUBU13iffNA@mail.gmail.com>
+In-Reply-To: <CAF38w7WUy6ENvppTW5CWbQMRwheTnwQj1e1QQabWUBU13iffNA@mail.gmail.com>
 Content-Type: text/plain; charset="utf-8"
-In-Reply-To: <20130728175828.GA15020@redhat.com>
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Jul 28, 2013 at 07:58:28PM +0200, Oleg Nesterov wrote:
-> On 07/28, Toralf Förster wrote:
-> >
-> > The attached patch works - applied on top of current git -
-> > at least the issue cannot be reproduced then.
-> 
-> Thanks Toralf.
-> 
-> I'll write the changelog and send the patch tomorrow.
-> 
-> Andrey, any chance you can check that with this patch free_ipc_ns()
-> doesn't have any problem with ->shm_file ?
-
-kmemleak doesn't detect any leak, but I think this patch is incorrect.
-
-According to my previous investigations exit_task_work should be called
-after exit task namespaces
-(http://comments.gmane.org/gmane.linux.kernel/1475123)
-
-I applied the following patch:
-
-@@ -11,8 +11,11 @@ task_work_add(struct task_struct *task, struct
-callback_head *work, bool notify)
- 
-        do {
-                head = ACCESS_ONCE(task->task_works);
--               if (unlikely(head == &work_exited))
-+               if (unlikely(head == &work_exited)) {
-+                       printk("%s:%d\n", __func__, __LINE__);
-+                       dump_stack();
-                        return -ESRCH;
-+               }
-                work->next = head;
-        } while (cmpxchg(&task->task_works, head, work) != head);
- 
-
-and I got a few backtraces in a kernel log
-
-[  151.513725] task_work_add:15
-[  151.514860] CPU: 1 PID: 15303 Comm: ipc Not tainted 3.11.0-rc2+ #75
-[  151.516743] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-[  151.518558]  ffff880067bf0000 ffff88006922fba0 ffffffff81630dd5 ffff88006d9b2280
-[  151.521767]  ffff88006922fbb0 ffffffff8107b478 ffff88006922fbd0 ffffffff8119ad43
-[  151.524587]  ffff880079e81740 ffff88007a9035c8 ffff88006922fbe8 ffffffff81281ebd
-[  151.527785] Call Trace:
-[  151.528811]  [<ffffffff81630dd5>] dump_stack+0x45/0x56
-[  151.530378]  [<ffffffff8107b478>] task_work_add+0x78/0x80
-[  151.533219]  [<ffffffff8119ad43>] fput+0x63/0xa0
-[  151.534884]  [<ffffffff81281ebd>] shm_destroy+0x7d/0xb0
-[  151.536813]  [<ffffffff81281f05>] do_shm_rmid+0x15/0x50
-[  151.539523]  [<ffffffff81286572>] free_ipcs+0xa2/0xf0
-[  151.541595]  [<ffffffff81286534>] ? free_ipcs+0x64/0xf0
-[  151.544188]  [<ffffffff81281ef0>] ? shm_destroy+0xb0/0xb0
-[  151.546393]  [<ffffffff81282990>] shm_exit_ns+0x20/0x30
-[  151.548675]  [<ffffffff81286619>] put_ipc_ns+0x59/0x80
-[  151.552764]  [<ffffffff81083afd>] free_nsproxy+0x3d/0x90
-[  151.560241]  [<ffffffff81083d45>] switch_task_namespaces+0x45/0x50
-[  151.564211]  [<ffffffff81083d60>] exit_task_namespaces+0x10/0x20
-[  151.566097]  [<ffffffff8105d3fd>] do_exit+0x2ad/0xa20
-[  151.567744]  [<ffffffff81307ec1>] ? do_raw_spin_lock+0x41/0x110
-[  151.570734]  [<ffffffff8163965c>] ? _raw_spin_unlock_irq+0x2c/0x40
-[  151.573967]  [<ffffffff8105dbf9>] do_group_exit+0x49/0xc0
-[  151.576773]  [<ffffffff8106d593>] get_signal_to_deliver+0x293/0x640
-[  151.580575]  [<ffffffff81002458>] do_signal+0x48/0x5a0
-[  151.582401]  [<ffffffff811b83f6>] ? mntput_no_expire+0xd6/0x120
-[  151.584418]  [<ffffffff8163a41e>] ? paranoid_userspace+0x39/0x5a
-[  151.588639]  [<ffffffff810bc42d>] ? trace_hardirqs_on_caller+0xfd/0x1c0
-[  151.590809]  [<ffffffff81002a18>] do_notify_resume+0x68/0x90
-[  151.604976]  [<ffffffff8163a430>] paranoid_userspace+0x4b/0x5a
-
-
-Thanks,
-Andrey
-
-> 
-> e7b2c406 should be enough to fix that leak, but it would be nice if
-> you can confirm.
-> 
-> > On 07/27/2013 07:00 PM, Oleg Nesterov wrote:
-> > > On 07/27, Toralf Förster wrote:
-> > >>
-> > >> I do have a user mode linux image (stable 32 bit Gentoo Linux ) which erratically crashes
-> > >> while fuzz tested with trinity if the victim files are located on a NFS share.
-> > >>
-> > >> The back trace of the core dumps always looks like the attached.
-> > >>
-> > >> To bisect it is hard. However after few attempts in the last weeks the following
-> > >> commit is either the first bad commit or at least the upper limit (less likely).
-> > >>
-> > >>
-> > >> commit 8aac62706adaaf0fab02c4327761561c8bda9448
-> > >> Author: Oleg Nesterov <oleg@redhat.com>
-> > >> Date:   Fri Jun 14 21:09:49 2013 +0200
-> > >>
-> > >>     move exit_task_namespaces() outside of exit_notify()
-> > >>
-> > >> #15 nlmclnt_setlockargs (req=0x48e18860, fl=0x48f27c8c) at fs/lockd/clntproc.c:131
-> > > 
-> > > Thanks.
-> > > 
-> > > So nlmclnt_setlockargs()->utsname() crashes and we probably need
-> > > the patch below.
-> > > 
-> > > But is it correct? I know _absolutely_ nothing about nfs/sunrpc/etc and
-> > > I never looked into this code before, most probably I am wrong.
-> > > 
-> > > But it seems that __nlm_async_call() relies on workqueues.
-> > > nlmclnt_async_call() does rpc_wait_for_completion_task(), but what if
-> > > the caller is killed?
-> > > 
-> > > nlm_rqst can't go away, ->a_count was incremented. But can't the caller
-> > > exit before call->name is used? In this case the memory it points to
-> > > can be already freed.
-> > > 
-> > > Oleg.
-> > > 
-> > > --- x/kernel/exit.c
-> > > +++ x/kernel/exit.c
-> > > @@ -783,8 +783,8 @@ void do_exit(long code)
-> > >  	exit_shm(tsk);
-> > >  	exit_files(tsk);
-> > >  	exit_fs(tsk);
-> > > -	exit_task_namespaces(tsk);
-> > >  	exit_task_work(tsk);
-> > > +	exit_task_namespaces(tsk);
-> > >  	check_stack_usage();
-> > >  	exit_thread();
-> > >  
-> > > 
-> > > 
-> > 
-> > 
-> > -- 
-> > MfG/Sincerely
-> > Toralf Förster
-> > pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
-> 
+T24gVHVlLCAyMDEzLTA3LTA5IGF0IDA5OjU5ICswMjAwLCBKb2hhbiBHVUlMQkFVRCB3cm90ZToN
+Cj4gVGhhbmtzIGZvciB0aGlzIGluZm9ybWF0aW9uIEplZmYsIGJ1dCBpJ2xsIGhhdmUgbW9yZSB0
+aGFuIG9uZSBodW5kcmVkDQo+IGlzbyBtb3VudGVkLi4uIHNvIGFkZGluZyBlYWNoIGluIGV4cG9y
+dHMuLi4gXl4NCj4gDQo+IGFmdGVyIHRlc3RzLCBpdCB3b3JrcyB3aXRoIFNvbGFyaXMgOCAoc3Vu
+b3MgNS44KSBidXQgbm90IHdpdGggU29sYXJpcw0KPiAxMCAoc3Vub3MgNS4xMCksIGkgZG9uJ3Qg
+dW5kZXJzdGFuZCB3aHkuLi4gaSB1c2Ugc2FtZSBjb21tYW5kIHRvIG1vdW50DQo+IG15IHNoYXJl
+Li4uDQo+IA0KPiAgbW91bnQgWy1GIG5mc10gbXlpc29zZXJ2ZXI6L3B1Yi8gL2lzb3MNCj4gDQo+
+IGFueSBpZGVhID8NCg0KQUZBSUNSLCB0aGUgU29sYXJpcyAxMCBjbGllbnQgZG9lcyBub3Qgc3Vw
+cG9ydCBjcm9zc2luZyBtb3VudCBwb2ludHMuDQpUaGF0IGZ1bmN0aW9uYWxpdHkgd2FzIGFkZGVk
+IGluIFNvbGFyaXMgMTEsIGFzIHBhcnQgb2YgdGhlICJtaXJyb3INCm1vdW50IiBmZWF0dXJlOg0K
+DQogIGh0dHA6Ly9kb2NzLm9yYWNsZS5jb20vY2QvRTIzODI0XzAxL2h0bWwvODIxLTE0NTQvZ2dj
+dnIuaHRtbA0KDQpDaGVlcnMNCiAgVHJvbmQNCg0KPiAyMDEzLzcvOCBKZWZmIExheXRvbiA8amxh
+eXRvbkByZWRoYXQuY29tPjoNCj4gPiBPbiBNb24sIDggSnVsIDIwMTMgMTQ6NDc6MDAgKzAyMDAN
+Cj4gPiBKb2hhbiBHVUlMQkFVRCA8Z3VpbGJhdWQuam9oYW5AZ21haWwuY29tPiB3cm90ZToNCj4g
+Pg0KPiA+PiBIZWxsbyAhDQo+ID4+DQo+ID4+IEkgaGF2ZSBhIHByb2JsZW0gdG8gYWNjZXNzIGEg
+bW91bnRlZCBJU08gdGhyb3VnaCBORlMgcHJvdG9jb2wNCj4gPj4NCj4gPj4gaSBoYXZlIGEgc2Vy
+dmVyIChSSEVMNikgb24gd2hpY2ggYXJlIG1vdW50ZWQgSVNPcw0KPiA+PiBpIGhhdmUgYSBsb3Qg
+b2YgY2xpZW50IGFjY2Vzc2luZyBmaWxlcyBpbnRvIElTTyB2aWEgdGhlIE5GUyBzaGFyZQ0KPiA+
+Pg0KPiA+PiBNeSBwcm9ibGVtIGlzIGNsaWVudHMgKFJIRUw1ICYgNiwgU29sYXJpcyA4ICYgMTAp
+IGRvbid0IHNlZSBjb250ZW50IG9mDQo+ID4+IElTTyBmb2xkZXINCj4gPj4NCj4gPj4gSW4gZXhh
+bXBsZSA6DQo+ID4+DQo+ID4+IG9uIE5GUyBzZXJ2ZXIgaSBoYXZlIGEgZm9sZGVyIC9wdWIvIHdo
+ZXJlIHRoZSBJU08gYXJlIG1vdW50ZWQgKGllIDoNCj4gPj4gd2l0aCB0aGUgaXNvIG15YmVhdXRp
+ZnVsaXNvLmlzbyBvbiB0aGUgbW91bnQgcG9pbnQNCj4gPj4gIi9wdWIvbXliZWF1dGlmdWxpc28v
+IikgdGhlcmUgYXJlIGFsc28sIGZvciB0ZXN0LCB0ZXh0IGZpbGVzIGluIC9wdWIvDQo+ID4+IE5G
+UyBzaGFyZXMgY29udGVudCBvZiAvcHViDQo+ID4+DQo+ID4+DQo+ID4+IENsaWVudCBzZWUgdGVz
+dHMgdGV4dCBmaWxlcywgYW5kIGZvbGRlciAibXliZWF1dGlmdWxpc28iIGJ1dCB0aGlzIG9uZQ0K
+PiA+PiBpcyBlbXB0eS4uLg0KPiA+Pg0KPiA+Pg0KPiA+PiB0aGFua3MgZm9yIGhlbHANCj4gPj4N
+Cj4gPg0KPiA+IEV4cG9ydHMgZG9uJ3QgY3Jvc3MgbW91bnRwb2ludHMgYnkgZGVmYXVsdCwgc28g
+aWYgeW91IGV4cG9ydGVkICIvcHViIg0KPiA+IG5vIGZpbGVzeXN0ZW0gbW91bnRlZCB1bmRlciBp
+dCB3aWxsIGJlIGF1dG9tYXRpY2FsbHkgZXhwb3J0ZWQuIFRoZSBiZXN0DQo+ID4gc29sdXRpb24g
+aXMgdG8gZXhwbGljaXRseSBleHBvcnQgdGhvc2UgZmlsZXN5c3RlbXMgYXMgd2VsbCAtLSBpLmUu
+IGFkZA0KPiA+IGFuIGV4cG9ydCBvZiAiL3B1Yi9teWJlYXV0aWZ1bGlzbyIuIFRoZW4sIHdoZW4g
+Y2xpZW50cyB3YW5kZXIgaW50bw0KPiA+IHRob3NlIGRpcmVjdG9yaWVzIHRoZXkgc2hvdWxkIHNl
+ZSB0aGUgY29udGVudHMuDQo+ID4NCj4gPiAtLQ0KPiA+IEplZmYgTGF5dG9uIDxqbGF5dG9uQHJl
+ZGhhdC5jb20+DQo+IA0KPiANCj4gDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMg
+Y2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0K
+d3d3Lm5ldGFwcC5jb20NCg==
