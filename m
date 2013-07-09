@@ -1,46 +1,140 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:4042 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:53880 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756461Ab3GVQ6h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Jul 2013 12:58:37 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/4] NFSv4.1 Use clientid management rpc_clnt for secinfo
-Date: Mon, 22 Jul 2013 16:58:37 +0000
-Message-ID: <1374512315.7972.6.camel@leira.trondhjem.org>
-References: <1374511328-49579-1-git-send-email-andros@netapp.com>
-	 <1374511328-49579-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1374511328-49579-3-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1751564Ab3GIDSW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jul 2013 23:18:22 -0400
+Received: from bfields by fieldses.org with local (Exim 4.76)
+	(envelope-from <bfields@fieldses.org>)
+	id 1UwORZ-0000zh-IK
+	for linux-nfs@vger.kernel.org; Mon, 08 Jul 2013 23:18:21 -0400
+Date: Mon, 8 Jul 2013 23:18:21 -0400
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd4: allow destroy_session over destroyed session
+Message-ID: <20130709031821.GM29071@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEzLTA3LTIyIGF0IDEyOjQyIC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IEFzIHBl
-ciBSRkMgMzUzMCBhbmQgUkZDIDU2NjEgU2VjdXJpdHkgQ29uc2lkZXJhdGlvbnMNCg0KUkZDMzUz
-MC1iaXMsIG5vdCBSRkMzNTMwLi4uDQoNCj4gQ29tbWl0IDRlZGFhMzA4ICJORlM6IFVzZSAia3Ji
-NWkiIHRvIGVzdGFibGlzaCBORlN2NCBzdGF0ZSB3aGVuZXZlciBwb3NzaWJsZSINCj4gdXNlcyB0
-aGUgbmZzX2NsaWVudCBjbF9ycGNjbGllbnQgZm9yIGFsbCBjbGllbnRpZCBtYW5hZ2VtZW50IG9w
-ZXJhdGlvbnMuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBBbmR5IEFkYW1zb24gPGFuZHJvc0BuZXRh
-cHAuY29tPg0KPiAtLS0NCj4gIGZzL25mcy9uZnM0cHJvYy5jIHwgMyArKy0NCj4gIDEgZmlsZSBj
-aGFuZ2VkLCAyIGluc2VydGlvbnMoKyksIDEgZGVsZXRpb24oLSkNCj4gDQo+IGRpZmYgLS1naXQg
-YS9mcy9uZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+IGluZGV4IDc3NjE4MDIu
-LjZhMzBhNzIgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+ICsrKyBiL2ZzL25m
-cy9uZnM0cHJvYy5jDQo+IEBAIC01ODA2LDkgKzU4MDYsMTAgQEAgc3RhdGljIGludCBfbmZzNF9w
-cm9jX3NlY2luZm8oc3RydWN0IGlub2RlICpkaXIsIGNvbnN0IHN0cnVjdCBxc3RyICpuYW1lLCBz
-dHJ1Y3QNCj4gIAkJLnJwY19hcmdwID0gJmFyZ3MsDQo+ICAJCS5ycGNfcmVzcCA9ICZyZXMsDQo+
-ICAJfTsNCj4gKwlzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQgPSBORlNfU0VSVkVSKGRpciktPm5mc19j
-bGllbnQtPmNsX3JwY2NsaWVudDsNCj4gIA0KPiAgCWRwcmludGsoIk5GUyBjYWxsICBzZWNpbmZv
-ICVzXG4iLCBuYW1lLT5uYW1lKTsNCj4gLQlzdGF0dXMgPSBuZnM0X2NhbGxfc3luYyhORlNfU0VS
-VkVSKGRpciktPmNsaWVudCwgTkZTX1NFUlZFUihkaXIpLCAmbXNnLCAmYXJncy5zZXFfYXJncywg
-JnJlcy5zZXFfcmVzLCAwKTsNCj4gKwlzdGF0dXMgPSBuZnM0X2NhbGxfc3luYyhjbG50LCBORlNf
-U0VSVkVSKGRpciksICZtc2csICZhcmdzLnNlcV9hcmdzLCAmcmVzLnNlcV9yZXMsIDApOw0KPiAg
-CWRwcmludGsoIk5GUyByZXBseSAgc2VjaW5mbzogJWRcbiIsIHN0YXR1cyk7DQo+ICAJcmV0dXJu
-IHN0YXR1czsNCj4gIH0NCg0KSGFzIHRoaXMgYmVlbiB0ZXN0ZWQgYWdhaW5zdCBhIHZhcmlldHkg
-b2Ygc2VydmVyIGltcGxlbWVudGF0aW9ucz8gSSBrbm93DQp3aGF0IHRoZSBzcGVjIHNheXMsIGJ1
-dCB0aGUgYmVoYXZpb3VyIHdlJ3JlIHJlbHlpbmcgb24gaGVyZSBpcyBzdWJ0bHkNCmNoYW5nZWQg
-ZnJvbSB3aGF0IHdhcyBvcmlnaW5hbGx5IGRvY3VtZW50ZWQgaW4gUkZDMzUzMC4NCg0KLS0gDQpU
-cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+RFC 5661 allows a client to destroy a session using a compound
+associated with the destroyed session, as long as the DESTROY_SESSION op
+is the last op of the compound.
+
+We attempt to allow this, but testing against a Solaris client (which
+does destroy sessions in this way) showed that we were failing the
+DESTROY_SESSION with NFS4ERR_DELAY, because we assumed the reference
+count on the session (held by us) represented another rpc in progress
+over this session.
+
+Fix this by noting that in this case the expected reference count is 1,
+not 0.
+
+Also, note as long as the session holds a reference to the compound
+we're destroying, we can't free it here--instead, delay the free till
+the final put in nfs4svc_encode_compoundres.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   23 ++++++++++++++---------
+ fs/nfsd/nfs4xdr.c   |    6 +++++-
+ 2 files changed, 19 insertions(+), 10 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index d44a4bf..25ae6ce 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -97,19 +97,20 @@ nfs4_lock_state(void)
+ 
+ static void free_session(struct nfsd4_session *);
+ 
+-void nfsd4_put_session(struct nfsd4_session *ses)
++static bool is_session_dead(struct nfsd4_session *ses)
+ {
+-	atomic_dec(&ses->se_ref);
++	return ses->se_flags & NFS4_SESSION_DEAD;
+ }
+ 
+-static bool is_session_dead(struct nfsd4_session *ses)
++void nfsd4_put_session(struct nfsd4_session *ses)
+ {
+-	return ses->se_flags & NFS4_SESSION_DEAD;
++	if (atomic_dec_and_test(&ses->se_ref) && is_session_dead(ses))
++		free_session(ses);
+ }
+ 
+-static __be32 mark_session_dead_locked(struct nfsd4_session *ses)
++static __be32 mark_session_dead_locked(struct nfsd4_session *ses, int ref_held_by_me)
+ {
+-	if (atomic_read(&ses->se_ref))
++	if (atomic_read(&ses->se_ref) > ref_held_by_me)
+ 		return nfserr_jukebox;
+ 	ses->se_flags |= NFS4_SESSION_DEAD;
+ 	return nfs_ok;
+@@ -2074,6 +2075,7 @@ nfsd4_destroy_session(struct svc_rqst *r,
+ {
+ 	struct nfsd4_session *ses;
+ 	__be32 status;
++	int ref_held_by_me = 0;
+ 	struct nfsd_net *nn = net_generic(SVC_NET(r), nfsd_net_id);
+ 
+ 	nfs4_lock_state();
+@@ -2081,6 +2083,7 @@ nfsd4_destroy_session(struct svc_rqst *r,
+ 	if (nfsd4_compound_in_session(cstate->session, &sessionid->sessionid)) {
+ 		if (!nfsd4_last_compound_op(r))
+ 			goto out;
++		ref_held_by_me++;
+ 	}
+ 	dump_sessionid(__func__, &sessionid->sessionid);
+ 	spin_lock(&nn->client_lock);
+@@ -2091,17 +2094,19 @@ nfsd4_destroy_session(struct svc_rqst *r,
+ 	status = nfserr_wrong_cred;
+ 	if (!mach_creds_match(ses->se_client, r))
+ 		goto out_client_lock;
+-	status = mark_session_dead_locked(ses);
++	nfsd4_get_session_locked(ses);
++	status = mark_session_dead_locked(ses, 1 + ref_held_by_me);
+ 	if (status)
+-		goto out_client_lock;
++		goto out_put_session;
+ 	unhash_session(ses);
+ 	spin_unlock(&nn->client_lock);
+ 
+ 	nfsd4_probe_callback_sync(ses->se_client);
+ 
+ 	spin_lock(&nn->client_lock);
+-	free_session(ses);
+ 	status = nfs_ok;
++out_put_session:
++	nfsd4_put_session(ses);
+ out_client_lock:
+ 	spin_unlock(&nn->client_lock);
+ out:
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index c102d25..0c0f3ea9 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3760,13 +3760,17 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+ 	iov->iov_len = ((char*)resp->p) - (char*)iov->iov_base;
+ 	BUG_ON(iov->iov_len > PAGE_SIZE);
+ 	if (nfsd4_has_session(cs)) {
++		struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
++		struct nfs4_client *clp = cs->session->se_client;
+ 		if (cs->status != nfserr_replay_cache) {
+ 			nfsd4_store_cache_entry(resp);
+ 			cs->slot->sl_flags &= ~NFSD4_SLOT_INUSE;
+ 		}
+ 		/* Renew the clientid on success and on replay */
+-		put_client_renew(cs->session->se_client);
++		spin_lock(&nn->client_lock);
+ 		nfsd4_put_session(cs->session);
++		spin_unlock(&nn->client_lock);
++		put_client_renew(clp);
+ 	}
+ 	return 1;
+ }
+-- 
+1.7.9.5
+
