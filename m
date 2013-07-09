@@ -1,104 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:6587 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:38370 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932820Ab3GVTiu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Jul 2013 15:38:50 -0400
-Message-ID: <51ED8A47.7040506@netapp.com>
-Date: Mon, 22 Jul 2013 15:38:47 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC 0/5] NFS Server Side Copy
-References: <1374267830-30154-1-git-send-email-bjschuma@netapp.com> <20130722185336.GC10109@fieldses.org>
-In-Reply-To: <20130722185336.GC10109@fieldses.org>
-Content-Type: text/plain; charset="ISO-8859-1"
+	id S1751834Ab3GILAi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 07:00:38 -0400
+Date: Tue, 9 Jul 2013 07:00:19 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 05/12] locks: introduce new FL_DELEG lock flag
+Message-ID: <20130709070019.1ca22086@tlielax.poochiereds.net>
+In-Reply-To: <1372882356-14168-6-git-send-email-bfields@redhat.com>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+	<1372882356-14168-6-git-send-email-bfields@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/22/2013 02:53 PM, J. Bruce Fields wrote:
-> On Fri, Jul 19, 2013 at 05:03:45PM -0400, bjschuma@netapp.com wrote:
->> From: Bryan Schumaker <bjschuma@netapp.com>
->>
->> These patches build on Zach Brown's copyfile patches to add server side
->> copy to both the NFS client and the NFS server.
->>
->> The first patch improves on the copyfile syscall to make it usable on my
->> machine and also includes notes on other potential problems that I've
->> found.  The remaining patches first implement a sync copy, then expand to
->> async.
->>
->> My testing was done on a server exporting an ext4 filesystem exporting an
->> ext4 filesystem.  I compared copying using the cp command to copying with
->> the copyfile system call.
+On Wed,  3 Jul 2013 16:12:29 -0400
+"J. Bruce Fields" <bfields@redhat.com> wrote:
+
+> From: "J. Bruce Fields" <bfields@redhat.com>
 > 
-> Were these tests using the full series of patches?  (So, using the
-> asynchronous mechanism?)
-
-Yes.  Want me to re-run them without it?
-
-- Bryan
-
+> For now FL_DELEG is just a synonym for FL_LEASE.  So this patch doesn't
+> change behavior.
 > 
-> --b.
+> Next we'll modify break_lease to treat FL_DELEG leases differently, to
+> account for the fact that NFSv4 delegations should be broken in more
+> situations than Windows oplocks.
 > 
->>
->>
->> File size:  512 MB
->> cp: 4.244 seconds
->> copyfile: 0.961 seconds
->>
->> File size: 1024 MB
->> cp: 9.091 seconds
->> copyfile: 1.919 seconds
->>
->> File size: 1536 MB
->> cp: 15.291 seconds
->> copyfile: 6.016 seconds
->>
->>
->> Repeating these tests on a btrfs exported filesystem supporting the copyfile
->> system call drops the time for copyfile to about 0.01 seconds.
->>
->> Feel free to send me any questions, comments or other thoughts!
->>
->> - Bryan
->>
->> Bryan Schumaker (5):
->>   Improve on the copyfile systemcall
->>   NFSD: Implement the COPY call
->>   NFS: Add COPY nfs operation
->>   NFSD: Defer copying
->>   NFS: Change copy to support async servers
->>
->>  fs/copy_range.c          |  10 +++-
->>  fs/nfs/callback.h        |  13 ++++
->>  fs/nfs/callback_proc.c   |   9 +++
->>  fs/nfs/callback_xdr.c    |  54 ++++++++++++++++-
->>  fs/nfs/inode.c           |   2 +
->>  fs/nfs/nfs4_fs.h         |   7 +++
->>  fs/nfs/nfs4file.c        | 101 +++++++++++++++++++++++++++++++
->>  fs/nfs/nfs4proc.c        |  16 +++++
->>  fs/nfs/nfs4xdr.c         | 150 +++++++++++++++++++++++++++++++++++++++++++++++
->>  fs/nfsd/nfs4callback.c   | 136 ++++++++++++++++++++++++++++++++++++++++++
->>  fs/nfsd/nfs4proc.c       | 104 ++++++++++++++++++++++++++++++--
->>  fs/nfsd/nfs4state.c      |  15 ++++-
->>  fs/nfsd/nfs4xdr.c        | 121 +++++++++++++++++++++++++++++++++++++-
->>  fs/nfsd/state.h          |  23 +++++++-
->>  fs/nfsd/vfs.c            |   9 +++
->>  fs/nfsd/vfs.h            |   1 +
->>  fs/nfsd/xdr4.h           |  24 ++++++++
->>  fs/nfsd/xdr4cb.h         |   9 +++
->>  include/linux/nfs4.h     |  14 ++++-
->>  include/linux/nfs_xdr.h  |  33 +++++++++++
->>  include/linux/syscalls.h |   1 +
->>  21 files changed, 836 insertions(+), 16 deletions(-)
->>
->> -- 
->> 1.8.3.3
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/locks.c          |    2 +-
+>  fs/nfsd/nfs4state.c |    2 +-
+>  include/linux/fs.h  |    1 +
+>  3 files changed, 3 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/locks.c b/fs/locks.c
+> index cb424a4..deec4de 100644
+> --- a/fs/locks.c
+> +++ b/fs/locks.c
+> @@ -131,7 +131,7 @@
+>  
+>  #define IS_POSIX(fl)	(fl->fl_flags & FL_POSIX)
+>  #define IS_FLOCK(fl)	(fl->fl_flags & FL_FLOCK)
+> -#define IS_LEASE(fl)	(fl->fl_flags & FL_LEASE)
+> +#define IS_LEASE(fl)	(fl->fl_flags & (FL_LEASE|FL_DELEG))
+>  
+>  static bool lease_breaking(struct file_lock *fl)
+>  {
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 316ec84..616ff83 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -2932,7 +2932,7 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_delegation *dp, int f
+>  		return NULL;
+>  	locks_init_lock(fl);
+>  	fl->fl_lmops = &nfsd_lease_mng_ops;
+> -	fl->fl_flags = FL_LEASE;
+> +	fl->fl_flags = FL_DELEG;
+>  	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
+>  	fl->fl_end = OFFSET_MAX;
+>  	fl->fl_owner = (fl_owner_t)(dp->dl_file);
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index ec88235..116b3e9 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -884,6 +884,7 @@ static inline int file_check_writeable(struct file *filp)
+>  
+>  #define FL_POSIX	1
+>  #define FL_FLOCK	2
+> +#define FL_DELEG	4	/* NFSv4 delegation */
+>  #define FL_ACCESS	8	/* not trying to lock, just looking */
+>  #define FL_EXISTS	16	/* when unlocking, test for existence */
+>  #define FL_LEASE	32	/* lease held on this file */
 
+Acked-by: Jeff Layton <jlayton@redhat.com>
