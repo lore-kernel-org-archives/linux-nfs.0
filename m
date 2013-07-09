@@ -1,64 +1,144 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:27260 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932481Ab3GWQGi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jul 2013 12:06:38 -0400
-Date: Tue, 23 Jul 2013 19:06:27 +0300
-From: Dan Carpenter <dan.carpenter@oracle.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: re: NFSv4: Fix a regression against the FreeBSD server
-Message-ID: <20130723160627.GA2370@elgon.mountain>
+Received: from mx1.redhat.com ([209.132.183.28]:40930 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752396Ab3GITb0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 15:31:26 -0400
+Date: Tue, 9 Jul 2013 15:31:25 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 09/12] locks: helper functions for delegation breaking
+Message-ID: <20130709193124.GH32574@pad.fieldses.org>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+ <1372882356-14168-10-git-send-email-bfields@redhat.com>
+ <20130709090952.0afe9503@tlielax.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130709090952.0afe9503@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello Trond Myklebust,
+On Tue, Jul 09, 2013 at 09:09:52AM -0400, Jeff Layton wrote:
+> On Wed,  3 Jul 2013 16:12:33 -0400
+> "J. Bruce Fields" <bfields@redhat.com> wrote:
+> 
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > We'll need the same logic for rename and link.
+> > 
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  fs/namei.c         |   13 +++----------
+> >  include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
+> >  2 files changed, 34 insertions(+), 12 deletions(-)
+> > 
+> > diff --git a/fs/namei.c b/fs/namei.c
+> > index cba3db1..a9d4031 100644
+> > --- a/fs/namei.c
+> > +++ b/fs/namei.c
+> > @@ -3401,14 +3401,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
+> >  	else {
+> >  		error = security_inode_unlink(dir, dentry);
+> >  		if (!error) {
+> > -			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
+> > -			if (error) {
+> > -				if (error == -EWOULDBLOCK && delegated_inode) {
+> > -					*delegated_inode = target;
+> > -					ihold(target);
+> > -				}
+> > +			error = try_break_deleg(target, delegated_inode);
+> > +			if (error)
+> >  				goto out;
+> > -			}
+> >  			error = dir->i_op->unlink(dir, dentry);
+> >  			if (!error)
+> >  				dont_mount(dentry);
+> > @@ -3478,9 +3473,7 @@ exit2:
+> >  		iput(inode);	/* truncate the inode here */
+> >  	inode = NULL;
+> >  	if (delegated_inode) {
+> > -		error = break_deleg(delegated_inode, O_WRONLY);
+> > -		iput(delegated_inode);
+> > -		delegated_inode = NULL;
+> > +		error = break_deleg_wait(&delegated_inode);
+> >  		if (!error)
+> >  			goto retry_deleg;
+> >  	}
+> > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > index f951588..c37e463 100644
+> > --- a/include/linux/fs.h
+> > +++ b/include/linux/fs.h
+> > @@ -1894,6 +1894,9 @@ extern bool our_mnt(struct vfsmount *mnt);
+> >  
+> >  extern int current_umask(void);
+> >  
+> > +extern void ihold(struct inode * inode);
+> > +extern void iput(struct inode *);
+> > +
+> >  /* /sys/fs */
+> >  extern struct kobject *fs_kobj;
+> >  
+> > @@ -1962,6 +1965,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+> >  	return 0;
+> >  }
+> >  
+> > +static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
+> > +{
+> > +	int ret;
+> > +
+> > +	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
+> > +	if (ret == -EWOULDBLOCK && delegated_inode) {
+> > +		*delegated_inode = inode;
+> > +		ihold(inode);
+> > +	}
+> > +	return ret;
+> > +}
+> > +
+> > +static inline int break_deleg_wait(struct inode **delegated_inode)
+> > +{
+> > +	int ret;
+> > +
+> > +	ret = break_deleg(*delegated_inode, O_WRONLY);
+> > +	iput(*delegated_inode);
+> > +	*delegated_inode = NULL;
+> > +	return ret;
+> > +}
+> > +
+> >  #else /* !CONFIG_FILE_LOCKING */
+> >  static inline int locks_mandatory_locked(struct inode *inode)
+> >  {
+> > @@ -2005,6 +2030,12 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+> >  {
+> >  	return 0;
+> >  }
+> > +
+> > +static inline int try_break_deleg(struct inode *inode, struct delegated_inode **inode)
+> > +{
+> > +	return 0;
+> > +}
+> > +
+> >  #endif /* CONFIG_FILE_LOCKING */
+> >  
+> >  /* fs/open.c */
+> > @@ -2335,8 +2366,6 @@ extern loff_t vfs_llseek(struct file *file, loff_t offset, int whence);
+> >  extern int inode_init_always(struct super_block *, struct inode *);
+> >  extern void inode_init_once(struct inode *);
+> >  extern void address_space_init_once(struct address_space *mapping);
+> > -extern void ihold(struct inode * inode);
+> > -extern void iput(struct inode *);
+> >  extern struct inode * igrab(struct inode *);
+> >  extern ino_t iunique(struct super_block *, ino_t);
+> >  extern int inode_needs_sync(struct inode *inode);
+> 
+> Nice cleanup. Might be reasonable to reorder or merge this patch with
+> the previous one to reduce "churn" in vfs_unlink.
 
-This is a semi-automatic email about new static checker warnings.
+That's how I first did it then I thought "eh, there's a way I could make
+this patch a little smaller...".   Seemed like it might be a tad easier
+to review this way.  Up to you.
 
-The patch b4a2cf76ab7c: "NFSv4: Fix a regression against the FreeBSD 
-server" from Jul 17, 2013, leads to the following Smatch complaint:
+--b.
 
-fs/nfs/nfs4xdr.c:1103 encode_attrs()
-	 error: we previously assumed 'label' could be null (see line 1059)
-
-fs/nfs/nfs4xdr.c
-  1058		}
-  1059		if (label) {
-                    ^^^^^
-New check.
-
-  1060			len += 4 + 4 + 4 + (XDR_QUADLEN(label->len) << 2);
-  1061			bmval[2] |= FATTR4_WORD2_SECURITY_LABEL;
-  1062		}
-  1063	
-  1064		if (bmval[2] != 0)
-  1065			bmval_len = 3;
-  1066		else if (bmval[1] != 0)
-  1067			bmval_len = 2;
-  1068		else
-  1069			bmval_len = 1;
-  1070	
-
-[snip]
-
-  1094		if (bmval[1] & FATTR4_WORD1_TIME_MODIFY_SET) {
-  1095			if (iap->ia_valid & ATTR_MTIME_SET) {
-  1096				*p++ = cpu_to_be32(NFS4_SET_TO_CLIENT_TIME);
-  1097				p = xdr_encode_hyper(p, (s64)iap->ia_mtime.tv_sec);
-  1098				*p++ = cpu_to_be32(iap->ia_mtime.tv_nsec);
-  1099			} else
-  1100				*p++ = cpu_to_be32(NFS4_SET_TO_SERVER_TIME);
-  1101		}
-  1102		if (bmval[2] & FATTR4_WORD2_SECURITY_LABEL) {
-  1103			*p++ = cpu_to_be32(label->lfs);
-                                           ^^^^^^^^^^
-Old dereference.
-
-  1104			*p++ = cpu_to_be32(label->pi);
-  1105			*p++ = cpu_to_be32(label->len);
-
-regards,
-dan carpenter
+> 
+> Acked-by: Jeff Layton <jlayton@redhat.com>
