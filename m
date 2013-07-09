@@ -1,64 +1,215 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from science.horizon.com ([71.41.210.146]:39101 "HELO
-	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S934054Ab3GRVb2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jul 2013 17:31:28 -0400
-Date: 18 Jul 2013 17:31:26 -0400
-Message-ID: <20130718213126.12710.qmail@science.horizon.com>
-From: "George Spelvin" <linux@horizon.com>
-To: dhowells@redhat.com, joe@perches.com, linux@horizon.com
-Subject: Re: [PATCH] Assoc_array: Drop leaf-type concept
-Cc: keyrings@linux-nfs.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org
-In-Reply-To: <21160.1374153504@warthog.procyon.org.uk>
+Received: from mx1.redhat.com ([209.132.183.28]:42826 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753609Ab3GIMWn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 08:22:43 -0400
+Date: Tue, 9 Jul 2013 08:23:00 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 06/12] locks: implement delegations
+Message-ID: <20130709082300.206bf176@corrin.poochiereds.net>
+In-Reply-To: <1372882356-14168-7-git-send-email-bfields@redhat.com>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+	<1372882356-14168-7-git-send-email-bfields@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Looks cleaner.
+On Wed,  3 Jul 2013 16:12:30 -0400
+"J. Bruce Fields" <bfields@redhat.com> wrote:
 
-The larger issues that bother me:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> Implement NFSv4 delegations at the vfs level using the new FL_DELEG lock
+> type.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/locks.c         |   49 +++++++++++++++++++++++++++++++++++++++----------
+>  include/linux/fs.h |   18 +++++++++++++++---
+>  2 files changed, 54 insertions(+), 13 deletions(-)
+> 
+> diff --git a/fs/locks.c b/fs/locks.c
+> index deec4de..2b56954 100644
+> --- a/fs/locks.c
+> +++ b/fs/locks.c
+> @@ -1176,28 +1176,40 @@ static void time_out_leases(struct inode *inode)
+>  	}
+>  }
+>  
+> +static bool leases_conflict(struct file_lock *lease, struct file_lock *breaker)
+> +{
+> +	if ((breaker->fl_flags & FL_DELEG) && (lease->fl_flags & FL_LEASE))
+> +		return false;
+> +	return locks_conflict(breaker, lease);
+> +}
+> +
+>  /**
+>   *	__break_lease	-	revoke all outstanding leases on file
+>   *	@inode: the inode of the file to return
+> - *	@mode: the open mode (read or write)
+> + *	@mode: O_RDONLY: break only write leases; O_WRONLY or O_RDWR:
+> + *	    break all leases
+> + *	@type: FL_LEASE: break leases and delegations; FL_DELEG: break
+> + *	    only delegations
+>   *
+>   *	break_lease (inlined for speed) has checked there already is at least
+>   *	some kind of lock (maybe a lease) on this file.  Leases are broken on
+>   *	a call to open() or truncate().  This function can sleep unless you
+>   *	specified %O_NONBLOCK to your open().
+>   */
+> -int __break_lease(struct inode *inode, unsigned int mode)
+> +int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
+>  {
+>  	int error = 0;
+>  	struct file_lock *new_fl, *flock;
+>  	struct file_lock *fl;
+>  	unsigned long break_time;
+>  	int i_have_this_lease = 0;
+> +	bool lease_conflict = false;
+>  	int want_write = (mode & O_ACCMODE) != O_RDONLY;
+>  
+>  	new_fl = lease_alloc(NULL, want_write ? F_WRLCK : F_RDLCK);
+>  	if (IS_ERR(new_fl))
+>  		return PTR_ERR(new_fl);
+> +	new_fl->fl_flags = type;
+>  
+>  	lock_flocks();
+>  
+> @@ -1207,13 +1219,16 @@ int __break_lease(struct inode *inode, unsigned int mode)
+>  	if ((flock == NULL) || !IS_LEASE(flock))
+>  		goto out;
+>  
+> -	if (!locks_conflict(flock, new_fl))
+> +	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
+> +		if (leases_conflict(fl, new_fl)) {
+> +			lease_conflict = true;
+> +			if (fl->fl_owner == current->files)
+> +				i_have_this_lease = 1;
+> +		}
+> +	}
+> +	if (!lease_conflict)
+>  		goto out;
+>  
+> -	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next)
+> -		if (fl->fl_owner == current->files)
+> -			i_have_this_lease = 1;
+> -
+>  	break_time = 0;
+>  	if (lease_break_time > 0) {
+>  		break_time = jiffies + lease_break_time * HZ;
+> @@ -1222,6 +1237,8 @@ int __break_lease(struct inode *inode, unsigned int mode)
+>  	}
+>  
+>  	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
+> +		if (!leases_conflict(fl, new_fl))
+> +			continue;
+>  		if (want_write) {
+>  			if (fl->fl_flags & FL_UNLOCK_PENDING)
+>  				continue;
+> @@ -1263,7 +1280,7 @@ restart:
+>  		 */
+>  		for (flock = inode->i_flock; flock && IS_LEASE(flock);
+>  				flock = flock->fl_next) {
+> -			if (locks_conflict(new_fl, flock))
+> +			if (leases_conflict(new_fl, flock))
+>  				goto restart;
+>  		}
+>  		error = 0;
+> @@ -1343,9 +1360,20 @@ int generic_add_lease(struct file *filp, long arg, struct file_lock **flp)
+>  	struct file_lock *fl, **before, **my_before = NULL, *lease;
+>  	struct dentry *dentry = filp->f_path.dentry;
+>  	struct inode *inode = dentry->d_inode;
+> +	bool is_deleg = (*flp)->fl_flags & FL_DELEG;
+>  	int error;
+>  
+>  	lease = *flp;
+> +	/*
+> +	 * In the delegation case we need mutual exclusion with
+> +	 * a number of operations that take the i_mutex.  We trylock
+> +	 * because delegations are an optional optimization, and if
+> +	 * there's some chance of a conflict--we'd rather not
+> +	 * bother, maybe that's a sign this just isn't a good file to
+> +	 * hand out a delegation on.
+> +	 */
+> +	if (is_deleg && !mutex_trylock(&inode->i_mutex))
+> +		return -EAGAIN;
+>  
+>  	error = -EAGAIN;
+>  	if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
+> @@ -1397,9 +1425,10 @@ int generic_add_lease(struct file *filp, long arg, struct file_lock **flp)
+>  		goto out;
+>  
+>  	locks_insert_lock(before, lease);
+> -	return 0;
+> -
+> +	error = 0;
+>  out:
+> +	if (is_deleg)
+> +		mutex_unlock(&inode->i_mutex);
+>  	return error;
+>  }
+>  
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 116b3e9..c6cc686 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1006,7 +1006,7 @@ extern int vfs_test_lock(struct file *, struct file_lock *);
+>  extern int vfs_lock_file(struct file *, unsigned int, struct file_lock *, struct file_lock *);
+>  extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
+>  extern int flock_lock_file_wait(struct file *filp, struct file_lock *fl);
+> -extern int __break_lease(struct inode *inode, unsigned int flags);
+> +extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
+>  extern void lease_get_mtime(struct inode *, struct timespec *time);
+>  extern int generic_setlease(struct file *, long, struct file_lock **);
+>  extern int vfs_setlease(struct file *, long, struct file_lock **);
+> @@ -1119,7 +1119,7 @@ static inline int flock_lock_file_wait(struct file *filp,
+>  	return -ENOLCK;
+>  }
+>  
+> -static inline int __break_lease(struct inode *inode, unsigned int mode)
+> +static inline int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
+>  {
+>  	return 0;
+>  }
+> @@ -1951,9 +1951,17 @@ static inline int locks_verify_truncate(struct inode *inode,
+>  static inline int break_lease(struct inode *inode, unsigned int mode)
+>  {
+>  	if (inode->i_flock)
+> -		return __break_lease(inode, mode);
+> +		return __break_lease(inode, mode, FL_LEASE);
+>  	return 0;
+>  }
+> +
+> +static inline int break_deleg(struct inode *inode, unsigned int mode)
+> +{
+> +	if (inode->i_flock)
+> +		return __break_lease(inode, mode, FL_DELEG);
+> +	return 0;
+> +}
+> +
+>  #else /* !CONFIG_FILE_LOCKING */
+>  static inline int locks_mandatory_locked(struct inode *inode)
+>  {
+> @@ -1993,6 +2001,10 @@ static inline int break_lease(struct inode *inode, unsigned int mode)
+>  	return 0;
+>  }
+>  
+> +static inline int break_deleg(struct inode *inode, unsigned int mode)
+> +{
+> +	return 0;
+> +}
+>  #endif /* CONFIG_FILE_LOCKING */
+>  
+>  /* fs/open.c */
 
-1) The fact that the abstract daya type "index key" provides access to
-   a byte string "index key" is a bit confusing.  I'd describe it as
-   follows:  (Based on my current understanding.)
+Looks reasonable...
 
+This (of course) has the same potential race that Al ID'ed a few days
+ago. We'll probably need to reconcile this patch with whatever fix we
+come up with there, but it shouldn't be too difficult.
 
-   Each object has an associated "index key" that is used for lookup.
-   The index key is a string of bits which is stored "inside" the object,
-   however all access to it is done through method functions, so it is
-   not necessary to explicitly store it anywhere.
-
-   For example, it is possible to have the leading portion of the
-   index_key be a hash of the remainder.
-
-   Index keys may be variable-length, but must be self-delimiting.
-   Specifically, two different index keys must differ at some bit position
-   before the end of the shorter of the two.
-
-   Some index key methods take an isolated "const void *index_key"
-   argument, while others take an object pointer.
-
-2) The code does not look 32-bit safe.  In particular, keyring_get_key_chunk
-   assumes the hash is BITS_PER_LONG long, but keyring_diff_objects 
-   assumes it's 8*8 bits...
-
-3) I presume you looked at wider tries like Judy arrays and found that
-   a fan-out of 16 was better?
-
-4) There are 3/7 unused bytes in an assoc_array_node, after parent_slot.
-   Would it be worth storing 16/48 bits of index key and 3/4 bits of
-   number of levels to skip per assoc_array_node?
-   Since parent_slot is actually only 4 bits, you could store 4 bits
-   of nubmer of levels and 56 bits (up to 14 levels, plus the one
-   from the famout) of index key.
-
-   With 32-way fanout, you could fit 5 bits of parent index, 25/55 bits of
-   index key, and encode the number of levels to skip (0-5/11) more carefully.
-
-5) The big question: Why not use a hash table?  That's what people
-   usually expect when you say "associative array".  It would be simpler
-   and faster.
-
-   RCU-safe resizeable hash tables are tricky, but a solved problem,
-   There are universal hashing techniques for preventing hash collision
-   attacks.  
+Acked-by: Jeff Layton <jlayton@redhat.com>
