@@ -1,58 +1,160 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:59832 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53093 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755552Ab3GYOlS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Jul 2013 10:41:18 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Larry Keegan <lk@pfw.demon.co.uk>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs client: Now you see it, now you don't (aka spurious ESTALE
- errors)
-Date: Thu, 25 Jul 2013 14:41:16 +0000
-Message-ID: <1374763275.3868.11.camel@leira.trondhjem.org>
-References: <20130725134515.67af44e2@cs3.al.itld>
-	 <20130725101143.6a22cb81@corrin.poochiereds.net>
-	 <1374762269.3868.6.camel@leira.trondhjem.org>
-	 <20130725103359.7a0c44f8@corrin.poochiereds.net>
-In-Reply-To: <20130725103359.7a0c44f8@corrin.poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1752846Ab3GINOk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 09:14:40 -0400
+Date: Tue, 9 Jul 2013 09:14:38 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, David Howells <dhowells@redhat.com>
+Subject: Re: [PATCH 10/12] locks: break delegations on rename
+Message-ID: <20130709091438.1be8d3af@tlielax.poochiereds.net>
+In-Reply-To: <1372882356-14168-11-git-send-email-bfields@redhat.com>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+	<1372882356-14168-11-git-send-email-bfields@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEzLTA3LTI1IGF0IDEwOjMzIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gVGh1LCAyNSBKdWwgMjAxMyAxNDoyNDozMCArMDAwMA0KPiAiTXlrbGVidXN0LCBUcm9uZCIg
-PFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gVGh1LCAyMDEz
-LTA3LTI1IGF0IDEwOjExIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4gPiANCj4gPiA+IFdo
-YXQgbWlnaHQgYmUgaGVscGZ1bCBpcyB0byBkbyBzb21lIG5ldHdvcmsgY2FwdHVyZXMgd2hlbiB0
-aGUgcHJvYmxlbQ0KPiA+ID4gb2NjdXJzLiBXaGF0IHdlIHdhbnQgdG8ga25vdyBpcyB3aGV0aGVy
-IHRoZSBFU1RBTEUgZXJyb3JzIGFyZSBjb21pbmcNCj4gPiA+IGZyb20gdGhlIHNlcnZlciwgb3Ig
-aWYgdGhlIGNsaWVudCBpcyBnZW5lcmF0aW5nIHRoZW0uIFRoYXQnbGwgbmFycm93DQo+ID4gPiBk
-b3duIHdoZXJlIHdlIG5lZWQgdG8gbG9vayBmb3IgcHJvYmxlbXMuDQo+ID4gDQo+ID4gSG1tLi4u
-IFNob3VsZG4ndCBFU1RBTEUgYWx3YXlzIGJlIHJlcGFja2FnZWQgYXMgRU5PRU5UIGJ5IHRoZSBW
-RlMsIG5vdw0KPiA+IHRoYXQgeW91ciBwYXRjaHNldCBoYXMgZ29uZSB1cHN0cmVhbSwgSmVmZj8N
-Cj4gPiANCj4gDQo+IEkgZG9uJ3QgdGhpbmsgc28uLi4NCj4gDQo+IE9uIHNvbWV0aGluZyBwYXRo
-LWJhc2VkIHRoZW4gdGhhdCBtaWdodCBtYWtlIHNlbnNlIChvciBtYXliZSB3ZSBzaG91bGQNCj4g
-ZGVjbGFyZSBhIG5ldyBFUkFDRSBlcnJvciBsaWtlIEFsIG9uY2Ugc3VnZ2VzdGVkIGFuZCByZXR1
-cm4gdGhhdCkuIElmDQo+IHlvdSdyZSBkb2luZyBhIHdyaXRlKCkgb24gYSBmZCB0aGF0IHlvdSBw
-cmV2aW91c2x5IG9wZW5lZCBidXQgdGhlIGlub2RlDQo+IGhhcyBkaXNhcHBlYXJlZCBvbiB0aGUg
-c2VydmVyLCB0aGVuIC1FU1RBTEUgY2xlYXJseSBzZWVtcyB2YWxpZC4NCg0KRUJBREYgd291bGQg
-YmUgYSB2YWxpZCBQT1NJWCBhbHRlcm5hdGl2ZS4gWW91ciBmaWxlIGRlc2NyaXB0b3IgaXMNCmNs
-ZWFybHkgaW52YWxpZCBpZiB0aGVyZSBpcyBubyBmaWxlLi4NCg0KPiBUaGVyZSBhcmUgb3RoZXIg
-cHJvYmxlbWF0aWMgY2FzZXMgdG9vLi4uDQo+IA0KPiBTdXBwb3NlIEkgZG8gc3RhdCgiLiIsIC4u
-Lik7ID8gRG9lcyBhbiAtRU5PRU5UIGVycm9yIG1ha2Ugc2Vuc2UgYXQgdGhhdCBwb2ludD8NCj4g
-DQoNCg0KT24gYW4gWEZTIHBhcnRpdGlvbjoNCiAgICAgICAgW3Ryb25kbXlAbGVpcmEgdG1wXSQg
-bWtkaXIgZ251cnINCiAgICAgICAgW3Ryb25kbXlAbGVpcmEgdG1wXSQgY2QgZ251cnINCiAgICAg
-ICAgW3Ryb25kbXlAbGVpcmEgZ251cnJdJCBybWRpciAuLi9nbnVycg0KICAgICAgICBbdHJvbmRt
-eUBsZWlyYSBnbnVycl0kIHB3ZCAtUA0KICAgICAgICBwd2Q6IGVycm9yIHJldHJpZXZpbmcgY3Vy
-cmVudCBkaXJlY3Rvcnk6IGdldGN3ZDogY2Fubm90IGFjY2VzcyBwYXJlbnQgZGlyZWN0b3JpZXM6
-IE5vIHN1Y2ggZmlsZSBvciBkaXJlY3RvcnkNCiAgICAgICAgDQpTbyB5ZXMsIGl0J3MgYWN0dWFs
-bHkgdGhlIHByZWZlcnJlZCBlcnJvciBmb3IgbW9zdCBmaWxlc3lzdGVtcy4NCg0KPiBBbHNvLCBz
-aW5jZSB3ZSBvbmx5IHJldHJ5IG9uY2Ugb24gYW4gRVNUQUxFIGVycm9yLCByZXR1cm5pbmcgdGhh
-dCBpcyBhDQo+IHByZXR0eSBjbGVhciBpbmRpY2F0b3IgdGhhdCB5b3UgcmFjZWQgd2l0aCBzb21l
-IG90aGVyIG1ldGFkYXRhDQo+IG9wZXJhdGlvbnMuIEVOT0VOVCBpcyBub3QgYXMgaW5mb3JtYXRp
-dmUuLi4NCj4gDQoNCkFncmVlZCwgYnV0IEVTVEFMRSBpcyBub3QgYSB2YWxpZCBQT1NJWCBlcnJv
-ciwgc28gaXQgaXMgdGhlb3JldGljYWxseQ0Kbm9uLXBvcnRhYmxlLg0KDQotLSANClRyb25kIE15
-a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlr
-bGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+On Wed,  3 Jul 2013 16:12:34 -0400
+"J. Bruce Fields" <bfields@redhat.com> wrote:
+
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> Cc: David Howells <dhowells@redhat.com>
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/cachefiles/namei.c |    2 +-
+>  fs/namei.c            |   26 ++++++++++++++++++++++----
+>  fs/nfsd/vfs.c         |    2 +-
+>  include/linux/fs.h    |    2 +-
+>  4 files changed, 25 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
+> index d61d884..678a8af 100644
+> --- a/fs/cachefiles/namei.c
+> +++ b/fs/cachefiles/namei.c
+> @@ -396,7 +396,7 @@ try_again:
+>  		cachefiles_io_error(cache, "Rename security error %d", ret);
+>  	} else {
+>  		ret = vfs_rename(dir->d_inode, rep,
+> -				 cache->graveyard->d_inode, grave);
+> +				 cache->graveyard->d_inode, grave, NULL);
+>  		if (ret != 0 && ret != -ENOMEM)
+>  			cachefiles_io_error(cache,
+>  					    "Rename failed with error %d", ret);
+> diff --git a/fs/namei.c b/fs/namei.c
+> index a9d4031..be00d37 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -3763,7 +3763,8 @@ out:
+>  }
+>  
+>  static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+> -			    struct inode *new_dir, struct dentry *new_dentry)
+> +			    struct inode *new_dir, struct dentry *new_dentry,
+> +			    struct inode **delegated_inode)
+>  {
+>  	struct inode *target = new_dentry->d_inode;
+>  	struct inode *source = old_dentry->d_inode;
+> @@ -3783,6 +3784,14 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+>  	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
+>  		goto out;
+>  
+> +	error = try_break_deleg(source, delegated_inode);
+> +	if (error)
+> +		goto out;
+> +	if (target) {
+> +		error = try_break_deleg(target, delegated_inode);
+> +		if (error)
+> +			goto out;
+> +	}
+>  	error = old_dir->i_op->rename(old_dir, old_dentry, new_dir, new_dentry);
+>  	if (error)
+>  		goto out;
+> @@ -3801,7 +3810,8 @@ out:
+>  }
+>  
+>  int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+> -	       struct inode *new_dir, struct dentry *new_dentry)
+> +	       struct inode *new_dir, struct dentry *new_dentry,
+> +	       struct inode **delegated_inode)
+>  {
+>  	int error;
+>  	int is_dir = S_ISDIR(old_dentry->d_inode->i_mode);
+> @@ -3829,7 +3839,7 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+>  	if (is_dir)
+>  		error = vfs_rename_dir(old_dir,old_dentry,new_dir,new_dentry);
+>  	else
+> -		error = vfs_rename_other(old_dir,old_dentry,new_dir,new_dentry);
+> +		error = vfs_rename_other(old_dir,old_dentry,new_dir,new_dentry,delegated_inode);
+>  	if (!error)
+>  		fsnotify_move(old_dir, new_dir, old_name, is_dir,
+>  			      new_dentry->d_inode, old_dentry);
+> @@ -3845,6 +3855,7 @@ SYSCALL_DEFINE4(renameat, int, olddfd, const char __user *, oldname,
+>  	struct dentry *old_dentry, *new_dentry;
+>  	struct dentry *trap;
+>  	struct nameidata oldnd, newnd;
+> +	struct inode *delegated_inode = NULL;
+>  	struct filename *from;
+>  	struct filename *to;
+>  	unsigned int lookup_flags = 0;
+> @@ -3884,6 +3895,7 @@ retry:
+>  	newnd.flags &= ~LOOKUP_PARENT;
+>  	newnd.flags |= LOOKUP_RENAME_TARGET;
+>  
+> +retry_deleg:
+>  	trap = lock_rename(new_dir, old_dir);
+>  
+>  	old_dentry = lookup_hash(&oldnd);
+> @@ -3920,13 +3932,19 @@ retry:
+>  	if (error)
+>  		goto exit5;
+>  	error = vfs_rename(old_dir->d_inode, old_dentry,
+> -				   new_dir->d_inode, new_dentry);
+> +				   new_dir->d_inode, new_dentry,
+> +				   &delegated_inode);
+>  exit5:
+>  	dput(new_dentry);
+>  exit4:
+>  	dput(old_dentry);
+>  exit3:
+>  	unlock_rename(new_dir, old_dir);
+> +	if (delegated_inode) {
+> +		error = break_deleg_wait(&delegated_inode);
+> +		if (!error)
+> +			goto retry_deleg;
+> +	}
+>  	mnt_drop_write(oldnd.path.mnt);
+>  exit2:
+>  	if (retry_estale(error, lookup_flags))
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 6ccaca2..54ac814 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -1809,7 +1809,7 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+>  		if (host_err)
+>  			goto out_dput_new;
+>  	}
+> -	host_err = vfs_rename(fdir, odentry, tdir, ndentry);
+> +	host_err = vfs_rename(fdir, odentry, tdir, ndentry, NULL);
+>  	if (!host_err) {
+>  		host_err = commit_metadata(tfhp);
+>  		if (!host_err)
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index c37e463..a35dadb 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1464,7 +1464,7 @@ extern int vfs_symlink(struct inode *, struct dentry *, const char *);
+>  extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
+>  extern int vfs_rmdir(struct inode *, struct dentry *);
+>  extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
+> -extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *);
+> +extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **);
+>  
+>  /*
+>   * VFS dentry helper functions.
+
+Acked-by: Jeff Layton <jlayton@redhat.com>
