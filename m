@@ -1,55 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:5496 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:62279 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754625Ab3GRPKB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jul 2013 11:10:01 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: SP4_MACH_CRED: v4 proc -> opcodes mapping
-Date: Thu, 18 Jul 2013 15:10:00 +0000
-Message-ID: <DFCAA8D0-B3BD-49C2-BAC4-9C26668AACB9@netapp.com>
-References: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
- <1374159436.3788.3.camel@leira.trondhjem.org>
-In-Reply-To: <1374159436.3788.3.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+	id S1752847Ab3GIU2d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 16:28:33 -0400
+Date: Tue, 9 Jul 2013 16:28:31 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 09/12] locks: helper functions for delegation breaking
+Message-ID: <20130709162831.43c57abe@tlielax.poochiereds.net>
+In-Reply-To: <20130709193836.GI32574@pad.fieldses.org>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+	<1372882356-14168-10-git-send-email-bfields@redhat.com>
+	<20130709092310.476b6ca7@tlielax.poochiereds.net>
+	<20130709193836.GI32574@pad.fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, 9 Jul 2013 15:38:36 -0400
+"J. Bruce Fields" <bfields@redhat.com> wrote:
 
-On Jul 18, 2013, at 10:57 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-
-> On Thu, 2013-07-18 at 14:46 +0000, Adamson, Dros wrote:
->> Hey,
->> 
->> I have a mostly functional client-side implementation of SP4_MACH_CRED! It still needs a lot of cleanup and testing.
->> 
->> I have one style issue that I want to run by the list before I post a patchset:
->> 
->> So, SP4_MACH_CRED negotiates two bitmaps in the EXCHANGE_ID (one "enforce", one "allow") for state protection. These bitmaps are indexed by the NFSv4 operation number.  The state protect check must happen in the nfs4proc.c layer (or before), right before we call rpc_call_sync or equivalent, so that it can select the right cred and rpc_client.
->> 
->> Here's the problem: we don't know what operations (opcodes) are actually in a compound until the XDR encode callback is called.  The rpc_procinfo array doesn't have this mapping - in fact, it only lives in the xdr encode layer.
->> 
->> One approach is to immediately translate the opcode bitmaps to "nfs4 procedure index" bitmaps, indexing into the rpc_procinfo array.  This would mean there is a second mapping of NFSv4 procedure -> opcodes that must be updated when an XDR encode callback is changed.
->> 
->> Another approach would be to add a callback to the XDR api so we could "ask" it if an NFSv4 procedure contains any of the opcodes in a bitmap. The nice thing about this approach is that the mapping of procedure to opcodes within will live right next to the XDR encode callback and make it obvious that both need to be changed together.
->> 
->> I suppose I'm leaning toward a combination of both of these approaches - keep the mapping in XDR-land and translate the bitmaps immediately on negation for fast lookups during normal operation.
->> 
->> Comments? Am I missing something?
+> On Tue, Jul 09, 2013 at 09:23:10AM -0400, Jeff Layton wrote:
+> > On Wed,  3 Jul 2013 16:12:33 -0400
+> > "J. Bruce Fields" <bfields@redhat.com> wrote:
+> > 
+> > > From: "J. Bruce Fields" <bfields@redhat.com>
+> > > 
+> > > We'll need the same logic for rename and link.
+> > > 
+> > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > > ---
+> > >  fs/namei.c         |   13 +++----------
+> > >  include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
+> > >  2 files changed, 34 insertions(+), 12 deletions(-)
+> > > 
+> > > diff --git a/fs/namei.c b/fs/namei.c
+> > > index cba3db1..a9d4031 100644
+> > > --- a/fs/namei.c
+> > > +++ b/fs/namei.c
+> > > @@ -3401,14 +3401,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
+> > >  	else {
+> > >  		error = security_inode_unlink(dir, dentry);
+> > >  		if (!error) {
+> > > -			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
+> > > -			if (error) {
+> > > -				if (error == -EWOULDBLOCK && delegated_inode) {
+> > > -					*delegated_inode = target;
+> > > -					ihold(target);
+> > > -				}
+> > > +			error = try_break_deleg(target, delegated_inode);
+> > > +			if (error)
+> > >  				goto out;
+> > > -			}
+> > >  			error = dir->i_op->unlink(dir, dentry);
+> > >  			if (!error)
+> > >  				dont_mount(dentry);
+> > > @@ -3478,9 +3473,7 @@ exit2:
+> > >  		iput(inode);	/* truncate the inode here */
+> > >  	inode = NULL;
+> > >  	if (delegated_inode) {
+> > > -		error = break_deleg(delegated_inode, O_WRONLY);
+> > > -		iput(delegated_inode);
+> > > -		delegated_inode = NULL;
+> > > +		error = break_deleg_wait(&delegated_inode);
+> > >  		if (!error)
+> > >  			goto retry_deleg;
+> > >  	}
+> > > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > > index f951588..c37e463 100644
+> > > --- a/include/linux/fs.h
+> > > +++ b/include/linux/fs.h
+> > > @@ -1894,6 +1894,9 @@ extern bool our_mnt(struct vfsmount *mnt);
+> > >  
+> > >  extern int current_umask(void);
+> > >  
+> > > +extern void ihold(struct inode * inode);
+> > > +extern void iput(struct inode *);
+> > > +
+> > >  /* /sys/fs */
+> > >  extern struct kobject *fs_kobj;
+> > >  
+> > > @@ -1962,6 +1965,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+> > >  	return 0;
+> > >  }
+> > >  
+> > > +static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
+> > > +{
+> > > +	int ret;
+> > > +
+> > > +	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
+> > > +	if (ret == -EWOULDBLOCK && delegated_inode) {
+> > > +		*delegated_inode = inode;
+> > > +		ihold(inode);
+> > > +	}
+> > > +	return ret;
+> > > +}
+> > > +
+> > 
+> > Actually, now that I look...
+> > 
+> > Suppose a vfs_unlink caller passes in a NULL delegated_inode pointer.
+> > He'll get back a -EWOULDBLOCK here if there's a delegation on it.
+> > Presumably he'll just treat that as a hard error and the delegation
+> > would never get broken. Is that expected?
 > 
-> I'm not sure that I understand. We don't do dynamic creation of
-> compounds: we pretty much know in the nfs4_proc_* routine what the main
-> operation is (the one exception being CLOSE/OPEN_DOWNGRADE). So why
-> can't we work out the protection status at that time? Is the worry that
-> the server might reboot and come back with different MACH_CRED
-> protections?
+> Yes.
+> 
+> The callers that pass in NULL are callers who should really never
+> encounter a write delegation.  E.g. it might happen if you exported a
+> filesystem that you're also stacking ecryptfs on top of (assuming that's
+> possible).  Maybe I'm missing something, but that looks pointless.
+> Erroring out seems a safe way to handle it.
+> 
+> It wouldn't be a problem to convert more of those callers to do the same
+> retry loop, it just seems better to avoid the extra spaghetti to support
+> what looks like a nutty use case.
+> 
+> --b.
 
-Sure, we know what the main operation is and we know what operations will end up in a compound - we can just look at the xdr encoder.  My question is simply one of style. Do we want to have each nfs4proc procedure to have a list of operations that must be updated if an xdr encoder is updated? I'm fine with doing it this way, it just seemed wrong to have the same mapping in two different places. This is why I'm asking ;)
+Ok, thanks for clarifying that. I agree that those others are nutty
+use-cases, at least for now. If someone were to ever allow setting of
+FL_DELEGs from userland though they'll probably need to contend with
+them.
 
-Also, we can't just use the "main" operation, we must check every operation within the compound and if any are required to use SP4, then the whole compound does. I don't necessarily know why a server would do this, but if we follow the spec and a server informs the client that SETATTR must use state protection, then a WRITE with post-op SETATTR must use the state protection even though WRITE doesn't need it.
-
-I'm not following the reboot question - that case should be handled just fine. Once the EXCHANGE_ID happens, the clp has two bitmaps (enforce and allow) that reflect the current mode of SP4_MACH_CRED.
-
--dros
+-- 
+Jeff Layton <jlayton@redhat.com>
