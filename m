@@ -1,105 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:45034 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753952Ab3GJB0V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Jul 2013 21:26:21 -0400
-Date: Tue, 9 Jul 2013 21:26:25 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org,
-        Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
-        David Howells <dhowells@redhat.com>,
-        Tyler Hicks <tyhicks@canonical.com>,
-        Dustin Kirkland <dustin.kirkland@gazzang.com>
-Subject: Re: [PATCH 12/12] locks: break delegations on any attribute
- modification
-Message-ID: <20130709212625.7fdfc6e1@corrin.poochiereds.net>
-In-Reply-To: <20130709211911.GL32574@pad.fieldses.org>
-References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
-	<1372882356-14168-13-git-send-email-bfields@redhat.com>
-	<20130709093047.0096f061@tlielax.poochiereds.net>
-	<20130709205101.GK32574@pad.fieldses.org>
-	<20130709211911.GL32574@pad.fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-we0-f181.google.com ([74.125.82.181]:61261 "EHLO
+	mail-we0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752386Ab3GIQQt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jul 2013 12:16:49 -0400
+Received: by mail-we0-f181.google.com with SMTP id p58so4849726wes.40
+        for <linux-nfs@vger.kernel.org>; Tue, 09 Jul 2013 09:16:47 -0700 (PDT)
+From: Nadav Shemer <nadav@tonian.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4: fix open(O_RDONLY|O_TRUNC) returning EBADF
+Date: Tue,  9 Jul 2013 19:16:45 +0300
+Message-Id: <1373386605-18684-1-git-send-email-nadav@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 9 Jul 2013 17:19:12 -0400
-"J. Bruce Fields" <bfields@redhat.com> wrote:
+Move ATTR_OPEN handling from nfs4_proc_setattr into nfs4_do_setattr
 
-> On Tue, Jul 09, 2013 at 04:51:01PM -0400, J. Bruce Fields wrote:
-> > On Tue, Jul 09, 2013 at 09:30:47AM -0400, Jeff Layton wrote:
-> > > On Wed,  3 Jul 2013 16:12:36 -0400
-> > > "J. Bruce Fields" <bfields@redhat.com> wrote:
-> > > 
-> > > > From: "J. Bruce Fields" <bfields@redhat.com>
-> > > > 
-> > > > NFSv4 uses leases to guarantee that clients can cache metadata as well
-> > > > as data.
-> > > > 
-> ...
-> > > Isn't it possible we'll need to break a delegation on truncate()?
-> > 
-> > In the truncate case, the caller called break_lease, and in the
-> > ftruncate case it's called with a write open, and the open already broke
-> > any leases or delegations.
-> > 
-> > Might need a comment--could I get away with just this?:
-> > 
-> >  	mutex_lock(&dentry->d_inode->i_mutex);
-> > +	/* NULL is safe: any delegations have already been broken: */
-> >  	ret = notify_change(dentry, &newattrs, NULL);
-> >  	mutex_unlock(&dentry->d_inode->i_mutex);
-> >  	return ret;
-> > 
-> > I also added something to the notify_change kerneldoc: "passing NULL is
-> > fine for callers holding the file open for write, as there can be no
-> > conflicting delegation in that case."
-> 
-> Another question is whether it's really worth dropping locks and
-> retrying in this case.
-> 
-> We could instead do the following.
-> 
-> --b.
-> 
-> commit 40a4fd613034cd3f242ec11e5ecd44f9a83ab39d
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Tue Sep 20 17:19:26 2011 -0400
-> 
->     locks: break delegations on any attribute modification
->     
->     NFSv4 uses leases to guarantee that clients can cache metadata as well
->     as data.
->     
->     Note unlike link, unlink, and rename, we don't bother dropping locks and
->     retrying.  In the other cases we're holding a directory mutex, hence
->     blocking operations (even lookups) on the same directory.  In this case
->     we're holding only the i_mutex on this file, so the impact of an
->     unresponsive client is limited to this file.
->     
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/fs/attr.c b/fs/attr.c
-> index 1449adb..a2c1d04 100644
-> --- a/fs/attr.c
-> +++ b/fs/attr.c
-> @@ -243,6 +243,9 @@ int notify_change(struct dentry * dentry, struct iattr * attr)
->  	error = security_inode_setattr(dentry, attr);
->  	if (error)
->  		return error;
-> +	error = break_deleg_wait(inode);
-> +	if (error)
-> +		return error;
->  
->  	if (inode->i_op->setattr)
->  		error = inode->i_op->setattr(dentry, attr);
+Signed-off-by: Nadav Shemer <nadav@tonian.com>
+---
+Hello.
 
+I've come across an oddity while testing filesystem coverage
+My test creates a non-empty file without write permissions and tries to open it with O_RDONLY|O_TRUNC
+It expects EACCES (and gets that for local filesystems and NFSv3) but gets EBADF on NFSv4 (and v4.1)
 
-I guess the question is whether there are operations that require the
-i_mutex but that don't require the delegation recall to have finished.
+I found some history on this: In a previous kernel it would just hang due to mishandling the NFS4ERR_OPENMODE exception
+http://www.spinics.net/lists/linux-nfs/msg28881.html
 
+A fix for this was introduced (it specifically tests for NFS4ERR_OPENMODE and returns EACCES for the open() case, EBADF otherwise)
+http://www.spinics.net/linux/fedora/fedora-kernel/msg03736.html
+but another patch was also introduced in the same set which seems to break it (it optimizes away the time modification and removes ATTR_OPEN in nfs4_proc_setattr)
+http://www.spinics.net/linux/fedora/fedora-kernel/msg03732.html
+
+By moving the 'Deal with open(O_TRUNC)' bit inside (into nfs4_do_setattr), I got it working again (with no other functional change, as far as I can see)
+
+ fs/nfs/nfs4proc.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8fbc100..17b9f32 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2180,6 +2180,10 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 		.inode = inode,
+ 	};
+ 	int err;
++	int is_o_trunc = sattr->ia_valid & ATTR_OPEN;
++	/* Deal with open(O_TRUNC) */
++	if (sattr->ia_valid & ATTR_OPEN)
++		sattr->ia_valid &= ~(ATTR_MTIME|ATTR_CTIME|ATTR_OPEN);
+ 	do {
+ 		err = _nfs4_do_setattr(inode, cred, fattr, sattr, state);
+ 		switch (err) {
+@@ -2193,7 +2197,7 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 			}
+ 			if (state && !(state->state & FMODE_WRITE)) {
+ 				err = -EBADF;
+-				if (sattr->ia_valid & ATTR_OPEN)
++				if (is_o_trunc)
+ 					err = -EACCES;
+ 				goto out;
+ 			}
+@@ -2774,10 +2778,6 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 
+ 	nfs_fattr_init(fattr);
+ 	
+-	/* Deal with open(O_TRUNC) */
+-	if (sattr->ia_valid & ATTR_OPEN)
+-		sattr->ia_valid &= ~(ATTR_MTIME|ATTR_CTIME|ATTR_OPEN);
+-
+ 	/* Optimization: if the end result is no change, don't RPC */
+ 	if ((sattr->ia_valid & ~(ATTR_FILE)) == 0)
+ 		return 0;
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.11.7
+
