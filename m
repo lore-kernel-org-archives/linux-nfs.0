@@ -1,359 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:24442 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751397Ab3GXS2c convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jul 2013 14:28:32 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 2 2/2] NFSv4.1 Use the MDS nfs_server authflavor
- for pNFS data server connections
-Date: Wed, 24 Jul 2013 18:28:30 +0000
-Message-ID: <1A8B4FA2-5F62-4187-9BC7-126FC165A794@netapp.com>
-References: <1374681590-2134-1-git-send-email-andros@netapp.com>
- <1374681590-2134-2-git-send-email-andros@netapp.com>
- <7777F878-8380-4221-BA15-D24795D1FBB0@netapp.com>
- <DC05EB4C-DC77-484D-BA78-56E44C4C781A@netapp.com>
- <41D9534A-15F0-4718-A02B-5F7B7A6DDB13@netapp.com>
-In-Reply-To: <41D9534A-15F0-4718-A02B-5F7B7A6DDB13@netapp.com>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+Received: from g5t0007.atlanta.hp.com ([15.192.0.44]:11483 "EHLO
+	g5t0007.atlanta.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752442Ab3GIBRu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jul 2013 21:17:50 -0400
+From: Waiman Long <Waiman.Long@hp.com>
+Cc: Waiman Long <Waiman.Long@hp.com>, linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Peter Zijlstra <peterz@infradead.org>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Benjamin Herrenschmidt <benh@kernel.crashing.org>,
+        Andi Kleen <andi@firstfloor.org>,
+        "Chandramouleeswaran, Aswin" <aswin@hp.com>,
+        "Norton, Scott J" <scott.norton@hp.com>
+Subject: [PATCH v6 10/14] nfs: replace direct access of d_count with the d_count() helper
+Date: Mon,  8 Jul 2013 21:10:00 -0400
+Message-Id: <1373332204-10379-11-git-send-email-Waiman.Long@hp.com>
+In-Reply-To: <1373332204-10379-1-git-send-email-Waiman.Long@hp.com>
+References: <1373332204-10379-1-git-send-email-Waiman.Long@hp.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>, Jeff Layton <jlayton@redhat.com>,
+        Miklos Szeredi <mszeredi@suse.cz>, Ingo Molnar <mingo@redhat.com>,
+        Thomas Gleixner <tglx@linutronix.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+All readonly references to d_count outside of the core dcache code
+should be changed to use the new d_count() helper as they shouldn't
+access its value directly.  There is no change in logic and everything
+should just work.
 
-On Jul 24, 2013, at 2:17 PM, "Adamson, Dros" <Weston.Adamson@netapp.com>
- wrote:
+Signed-off-by: Waiman Long <Waiman.Long@hp.com>
+---
+ fs/nfs/dir.c    |    6 +++---
+ fs/nfs/unlink.c |    2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-> There's another case - what happens when a DS op uses an authflavor already in use by an nfs_server that is not the nfs_client::cl_rpcclient?
-> 
-> Do we want to make this cache general enough that it would share the rpc_clnt between the DS op and the nfs_server? This would also share the rpc_clnt between nfs_servers associated with the same nfs_client that have the same auth flavor.
-> 
-> Maybe this is overkill - allocating a new nfs_server is infrequent so incurring the cost of creating a new rpc_clnt isn't so bad, while getting the right rpc_clnt for DS communication is very frequent and we obviously don't want to allocate a new rpc_clnt each time.
-
-
-Right. Looking at rpc_clone_client - it does _not_ share the auth cache which would be really good in the case of MDS = DS. I'll look at it.
-
--->Andy
-
-> 
-> Thoughts?
-> 
-> -dros
-> 
-> On Jul 24, 2013, at 1:53 PM, "Adamson, Andy" <William.Adamson@netapp.com> wrote:
-> 
->> 
->> On Jul 24, 2013, at 1:23 PM, "Adamson, Dros" <Weston.Adamson@netapp.com>
->> wrote:
->> 
->>> Is there a reason that this is ds specific?
->> 
->> Yes - the normal mount/sub-mount creates nfs_server structs with appropriate rpc_clnts and do not need this feature.
->> 
->>> Why can't we just do this for cl_rpcclient and get rid of cl_ds_rpcclient?
->>> 
->>> That way, if there is already an rpcclient with that authflavor associated with an nfs_client we'd reuse it.
->> 
->> This patch can indeed have us end up with 2 rpc_clnts to the same server with the same auth. E.g. krb5i used for clientid management so the cl_rpcclient uses krb5i,  and a DS that exports with krb5i which would be cl_ds_clnt[2].  Good suggestion - I can fix that.
->> 
->>> 
->>> -dros
->>> 
->>> On Jul 24, 2013, at 11:59 AM, andros@netapp.com wrote:
->>> 
->>>> From: Andy Adamson <andros@netapp.com>
->>>> 
->>>> pNFS data servers are not mounted in the normal sense as there is no associated
->>>> nfs_server structure.
->>>> 
->>>> Commit 4edaa308 "NFS: Use "krb5i" to establish NFSv4 state whenever possible"
->>>> uses the nfs_client cl_rpcclient for all state management operations, and
->>>> will use krb5i or auth_sys with no regard to the mount command authflavor
->>>> choice.  For normal mounted servers, the nfs_server client authflavor is used
->>>> for all non-state management operations
->>>> 
->>>> Data servers use the same authflavor as the MDS mount for non-state management
->>>> operations. Note that the MDS has performed any sub-mounts and created an
->>>> nfs_server rpc client. Add an array of struct rpc_clnt to struct
->>>> nfs_client, one for each possible auth flavor for data server RPC connections.
->>>> 
->>>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>>> ---
->>>> fs/nfs/client.c            | 14 +++++++++-
->>>> fs/nfs/nfs4filelayout.c    | 65 ++++++++++++++++++++++++++++++++++++++--------
->>>> fs/nfs/nfs4filelayout.h    | 17 ++++++++++++
->>>> fs/nfs/nfs4filelayoutdev.c |  3 ++-
->>>> include/linux/nfs_fs_sb.h  |  5 ++++
->>>> 5 files changed, 91 insertions(+), 13 deletions(-)
->>>> 
->>>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
->>>> index 2dceee4..fc63967 100644
->>>> --- a/fs/nfs/client.c
->>>> +++ b/fs/nfs/client.c
->>>> @@ -152,7 +152,7 @@ struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_init)
->>>> {
->>>> 	struct nfs_client *clp;
->>>> 	struct rpc_cred *cred;
->>>> -	int err = -ENOMEM;
->>>> +	int err = -ENOMEM, i;
->>>> 
->>>> 	if ((clp = kzalloc(sizeof(*clp), GFP_KERNEL)) == NULL)
->>>> 		goto error_0;
->>>> @@ -177,6 +177,8 @@ struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_init)
->>>> 
->>>> 	INIT_LIST_HEAD(&clp->cl_superblocks);
->>>> 	clp->cl_rpcclient = ERR_PTR(-EINVAL);
->>>> +	for (i = 0; i < NFS_NUM_DS_RPC_CLNT; i++)
->>>> +		clp->cl_ds_clnt[i] = ERR_PTR(-EINVAL);
->>>> 
->>>> 	clp->cl_proto = cl_init->proto;
->>>> 	clp->cl_net = get_net(cl_init->net);
->>>> @@ -238,6 +240,8 @@ static void pnfs_init_server(struct nfs_server *server)
->>>> */
->>>> void nfs_free_client(struct nfs_client *clp)
->>>> {
->>>> +	int i;
->>>> +
->>>> 	dprintk("--> nfs_free_client(%u)\n", clp->rpc_ops->version);
->>>> 
->>>> 	nfs_fscache_release_client_cookie(clp);
->>>> @@ -246,6 +250,14 @@ void nfs_free_client(struct nfs_client *clp)
->>>> 	if (!IS_ERR(clp->cl_rpcclient))
->>>> 		rpc_shutdown_client(clp->cl_rpcclient);
->>>> 
->>>> +	for (i = 0; i < NFS_NUM_DS_RPC_CLNT; i++) {
->>>> +		if (!IS_ERR(clp->cl_ds_clnt[i])) {
->>>> +			dprintk("%s shutdown data server client %p index %d\n",
->>>> +				__func__, clp->cl_ds_clnt[i], i);
->>>> +			rpc_shutdown_client(clp->cl_ds_clnt[i]);
->>>> +		}
->>>> +	}
->>>> +
->>>> 	if (clp->cl_machine_cred != NULL)
->>>> 		put_rpccred(clp->cl_machine_cred);
->>>> 
->>>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->>>> index 17ed87e..eb33592 100644
->>>> --- a/fs/nfs/nfs4filelayout.c
->>>> +++ b/fs/nfs/nfs4filelayout.c
->>>> @@ -83,6 +83,31 @@ filelayout_get_dserver_offset(struct pnfs_layout_segment *lseg, loff_t offset)
->>>> 	BUG();
->>>> }
->>>> 
->>>> +/* Use the au_flavor of the MDS nfs_server RPC client to find or clone the
->>>> + * correct data server RPC client.
->>>> + *
->>>> + * Note that the MDS has already performed any sub-mounts and negotiated
->>>> + * a security flavor.
->>>> + */
->>>> +static struct rpc_clnt *
->>>> +filelayout_rpc_clnt(struct inode *inode, struct nfs_client *clp)
->>>> +{
->>>> +	rpc_authflavor_t flavor = NFS_SERVER(inode)->client->cl_auth->au_flavor;
->>>> +	int index = filelayout_rpc_clnt_index(flavor);
->>>> +
->>>> +	if (index < 0)
->>>> +		return ERR_PTR(index);
->>>> +
->>>> +	if (IS_ERR(clp->cl_ds_clnt[index])) {
->>>> +		clp->cl_ds_clnt[index] =
->>>> +			rpc_clone_client_set_auth(clp->cl_rpcclient, flavor);
->>>> +
->>>> +		dprintk("%s clone data server client %p flavor %d index %d \n",
->>>> +			__func__, clp->cl_ds_clnt[index], flavor, index);
->>>> +	}
->>>> +	return clp->cl_ds_clnt[index];
->>>> +}
->>>> +
->>>> static void filelayout_reset_write(struct nfs_write_data *data)
->>>> {
->>>> 	struct nfs_pgio_header *hdr = data->header;
->>>> @@ -524,6 +549,7 @@ filelayout_read_pagelist(struct nfs_read_data *data)
->>>> 	struct nfs_pgio_header *hdr = data->header;
->>>> 	struct pnfs_layout_segment *lseg = hdr->lseg;
->>>> 	struct nfs4_pnfs_ds *ds;
->>>> +	struct rpc_clnt *ds_clnt;
->>>> 	loff_t offset = data->args.offset;
->>>> 	u32 j, idx;
->>>> 	struct nfs_fh *fh;
->>>> @@ -538,6 +564,11 @@ filelayout_read_pagelist(struct nfs_read_data *data)
->>>> 	ds = nfs4_fl_prepare_ds(lseg, idx);
->>>> 	if (!ds)
->>>> 		return PNFS_NOT_ATTEMPTED;
->>>> +
->>>> +	ds_clnt = filelayout_rpc_clnt(hdr->inode, ds->ds_clp);
->>>> +	if (IS_ERR(ds_clnt))
->>>> +		return PNFS_NOT_ATTEMPTED;
->>>> +
->>>> 	dprintk("%s USE DS: %s cl_count %d\n", __func__,
->>>> 		ds->ds_remotestr, atomic_read(&ds->ds_clp->cl_count));
->>>> 
->>>> @@ -552,8 +583,8 @@ filelayout_read_pagelist(struct nfs_read_data *data)
->>>> 	data->mds_offset = offset;
->>>> 
->>>> 	/* Perform an asynchronous read to ds */
->>>> -	nfs_initiate_read(ds->ds_clp->cl_rpcclient, data,
->>>> -				  &filelayout_read_call_ops, RPC_TASK_SOFTCONN);
->>>> +	nfs_initiate_read(ds_clnt, data, &filelayout_read_call_ops,
->>>> +			RPC_TASK_SOFTCONN);
->>>> 	return PNFS_ATTEMPTED;
->>>> }
->>>> 
->>>> @@ -564,6 +595,7 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
->>>> 	struct nfs_pgio_header *hdr = data->header;
->>>> 	struct pnfs_layout_segment *lseg = hdr->lseg;
->>>> 	struct nfs4_pnfs_ds *ds;
->>>> +	struct rpc_clnt *ds_clnt;
->>>> 	loff_t offset = data->args.offset;
->>>> 	u32 j, idx;
->>>> 	struct nfs_fh *fh;
->>>> @@ -574,6 +606,11 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
->>>> 	ds = nfs4_fl_prepare_ds(lseg, idx);
->>>> 	if (!ds)
->>>> 		return PNFS_NOT_ATTEMPTED;
->>>> +
->>>> +	ds_clnt = filelayout_rpc_clnt(hdr->inode, ds->ds_clp);
->>>> +	if (IS_ERR(ds_clnt))
->>>> +		return PNFS_NOT_ATTEMPTED;
->>>> +
->>>> 	dprintk("%s ino %lu sync %d req %Zu@%llu DS: %s cl_count %d\n",
->>>> 		__func__, hdr->inode->i_ino, sync, (size_t) data->args.count,
->>>> 		offset, ds->ds_remotestr, atomic_read(&ds->ds_clp->cl_count));
->>>> @@ -591,9 +628,8 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
->>>> 	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
->>>> 
->>>> 	/* Perform an asynchronous write */
->>>> -	nfs_initiate_write(ds->ds_clp->cl_rpcclient, data,
->>>> -				    &filelayout_write_call_ops, sync,
->>>> -				    RPC_TASK_SOFTCONN);
->>>> +	nfs_initiate_write(ds_clnt, data, &filelayout_write_call_ops, sync,
->>>> +				RPC_TASK_SOFTCONN);
->>>> 	return PNFS_ATTEMPTED;
->>>> }
->>>> 
->>>> @@ -1101,16 +1137,19 @@ static int filelayout_initiate_commit(struct nfs_commit_data *data, int how)
->>>> {
->>>> 	struct pnfs_layout_segment *lseg = data->lseg;
->>>> 	struct nfs4_pnfs_ds *ds;
->>>> +	struct rpc_clnt *ds_clnt;
->>>> 	u32 idx;
->>>> 	struct nfs_fh *fh;
->>>> 
->>>> 	idx = calc_ds_index_from_commit(lseg, data->ds_commit_index);
->>>> 	ds = nfs4_fl_prepare_ds(lseg, idx);
->>>> -	if (!ds) {
->>>> -		prepare_to_resend_writes(data);
->>>> -		filelayout_commit_release(data);
->>>> -		return -EAGAIN;
->>>> -	}
->>>> +	if (!ds) 
->>>> +		goto out_err;
->>>> +
->>>> +	ds_clnt = filelayout_rpc_clnt(data->inode, ds->ds_clp);
->>>> +	if (IS_ERR(ds_clnt))
->>>> +		goto out_err;
->>>> +
->>>> 	dprintk("%s ino %lu, how %d cl_count %d\n", __func__,
->>>> 		data->inode->i_ino, how, atomic_read(&ds->ds_clp->cl_count));
->>>> 	data->commit_done_cb = filelayout_commit_done_cb;
->>>> @@ -1119,9 +1158,13 @@ static int filelayout_initiate_commit(struct nfs_commit_data *data, int how)
->>>> 	fh = select_ds_fh_from_commit(lseg, data->ds_commit_index);
->>>> 	if (fh)
->>>> 		data->args.fh = fh;
->>>> -	return nfs_initiate_commit(ds->ds_clp->cl_rpcclient, data,
->>>> +	return nfs_initiate_commit(ds_clnt, data,
->>>> 				   &filelayout_commit_call_ops, how,
->>>> 				   RPC_TASK_SOFTCONN);
->>>> +out_err:
->>>> +	prepare_to_resend_writes(data);
->>>> +	filelayout_commit_release(data);
->>>> +	return -EAGAIN;
->>>> }
->>>> 
->>>> static int
->>>> diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
->>>> index cebd20e..9bb39ec 100644
->>>> --- a/fs/nfs/nfs4filelayout.h
->>>> +++ b/fs/nfs/nfs4filelayout.h
->>>> @@ -136,6 +136,23 @@ filelayout_test_devid_invalid(struct nfs4_deviceid_node *node)
->>>> 	return test_bit(NFS_DEVICEID_INVALID, &node->flags);
->>>> }
->>>> 
->>>> +static inline int
->>>> +filelayout_rpc_clnt_index(rpc_authflavor_t flavor)
->>>> +{
->>>> +	switch (flavor) {
->>>> +		case RPC_AUTH_UNIX:
->>>> +			return 0;
->>>> +		case RPC_AUTH_GSS_KRB5:
->>>> +			return 1;
->>>> +		case RPC_AUTH_GSS_KRB5I:
->>>> +			return 2;
->>>> +		case RPC_AUTH_GSS_KRB5P:
->>>> +			return 3;
->>>> +		default:
->>>> +			return -EINVAL;
->>>> +	}
->>>> +}
->>>> +
->>>> extern bool
->>>> filelayout_test_devid_unavailable(struct nfs4_deviceid_node *node);
->>>> 
->>>> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
->>>> index 95604f6..fea056d 100644
->>>> --- a/fs/nfs/nfs4filelayoutdev.c
->>>> +++ b/fs/nfs/nfs4filelayoutdev.c
->>>> @@ -162,7 +162,7 @@ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
->>>> 	int status = 0;
->>>> 
->>>> 	dprintk("--> %s DS %s au_flavor %d\n", __func__, ds->ds_remotestr,
->>>> -		mds_srv->nfs_client->cl_rpcclient->cl_auth->au_flavor);
->>>> +		mds_srv->client->cl_auth->au_flavor);
->>>> 
->>>> 	list_for_each_entry(da, &ds->ds_addrs, da_node) {
->>>> 		dprintk("%s: DS %s: trying address %s\n",
->>>> @@ -186,6 +186,7 @@ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
->>>> 		goto out_put;
->>>> 
->>>> 	ds->ds_clp = clp;
->>>> +
->>>> 	dprintk("%s [new] addr: %s\n", __func__, ds->ds_remotestr);
->>>> out:
->>>> 	return status;
->>>> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
->>>> index d221243..bd86a1b 100644
->>>> --- a/include/linux/nfs_fs_sb.h
->>>> +++ b/include/linux/nfs_fs_sb.h
->>>> @@ -20,6 +20,10 @@ struct nfs4_minor_version_ops;
->>>> struct nfs41_server_scope;
->>>> struct nfs41_impl_id;
->>>> 
->>>> +
->>>> +/* One rpc clnt for each authentiction flavor */
->>>> +#define NFS_NUM_DS_RPC_CLNT 4
->>>> +
->>>> /*
->>>> * The nfs_client identifies our client state to the server.
->>>> */
->>>> @@ -56,6 +60,7 @@ struct nfs_client {
->>>> 	struct rpc_cred		*cl_machine_cred;
->>>> 
->>>> #if IS_ENABLED(CONFIG_NFS_V4)
->>>> +	struct rpc_clnt *	cl_ds_clnt[NFS_NUM_DS_RPC_CLNT];
->>>> 	u64			cl_clientid;	/* constant */
->>>> 	nfs4_verifier		cl_confirm;	/* Clientid verifier */
->>>> 	unsigned long		cl_state;
->>>> -- 
->>>> 1.8.3.1
->>>> 
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>> 
->> 
-> 
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index d7ed697..c933bdf 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1721,7 +1721,7 @@ int nfs_unlink(struct inode *dir, struct dentry *dentry)
+ 		dir->i_ino, dentry->d_name.name);
+ 
+ 	spin_lock(&dentry->d_lock);
+-	if (dentry->d_count > 1) {
++	if (d_count(dentry) > 1) {
+ 		spin_unlock(&dentry->d_lock);
+ 		/* Start asynchronous writeout of the inode */
+ 		write_inode_now(dentry->d_inode, 0);
+@@ -1866,7 +1866,7 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	dfprintk(VFS, "NFS: rename(%s/%s -> %s/%s, ct=%d)\n",
+ 		 old_dentry->d_parent->d_name.name, old_dentry->d_name.name,
+ 		 new_dentry->d_parent->d_name.name, new_dentry->d_name.name,
+-		 new_dentry->d_count);
++		 d_count(new_dentry));
+ 
+ 	/*
+ 	 * For non-directories, check whether the target is busy and if so,
+@@ -1884,7 +1884,7 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 			rehash = new_dentry;
+ 		}
+ 
+-		if (new_dentry->d_count > 2) {
++		if (d_count(new_dentry) > 2) {
+ 			int err;
+ 
+ 			/* copy the target dentry's name */
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index 1f1f38f..60395ad 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -479,7 +479,7 @@ nfs_sillyrename(struct inode *dir, struct dentry *dentry)
+ 
+ 	dfprintk(VFS, "NFS: silly-rename(%s/%s, ct=%d)\n",
+ 		dentry->d_parent->d_name.name, dentry->d_name.name,
+-		dentry->d_count);
++		d_count(dentry));
+ 	nfs_inc_stats(dir, NFSIOS_SILLYRENAME);
+ 
+ 	/*
+-- 
+1.7.1
 
