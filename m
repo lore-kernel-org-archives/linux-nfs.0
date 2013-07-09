@@ -1,41 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f52.google.com ([209.85.220.52]:64211 "EHLO
-	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932627Ab3GWP7m (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jul 2013 11:59:42 -0400
-Received: by mail-pa0-f52.google.com with SMTP id kq13so3008973pab.25
-        for <linux-nfs@vger.kernel.org>; Tue, 23 Jul 2013 08:59:41 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1374098347-30196-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1374098347-30196-1-git-send-email-Trond.Myklebust@netapp.com>
-	<1374098347-30196-2-git-send-email-Trond.Myklebust@netapp.com>
-Date: Tue, 23 Jul 2013 17:59:41 +0200
-Message-ID: <CAHsu+b-b=-pQ4f8AfHHDaPpAK3YvHomS3X-QuEJkzbAsuJBYfg@mail.gmail.com>
-Subject: Re: [PATCH 2/2] NFSv4: encode_attrs should not backfill the bitmap
- and attribute length
-From: Andre Heider <a.heider@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        Rick Macklem <rmacklem@uoguelph.ca>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:13165 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753667Ab3GIMuW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 08:50:22 -0400
+Date: Tue, 9 Jul 2013 08:50:11 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 07/12] namei: minor vfs_unlink cleanup
+Message-ID: <20130709085011.59cf1fad@tlielax.poochiereds.net>
+In-Reply-To: <1372882356-14168-8-git-send-email-bfields@redhat.com>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+	<1372882356-14168-8-git-send-email-bfields@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond,
+On Wed,  3 Jul 2013 16:12:31 -0400
+"J. Bruce Fields" <bfields@redhat.com> wrote:
 
-On Wed, Jul 17, 2013 at 11:59 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> The attribute length is already calculated in advance. There is no
-> reason why we cannot calculate the bitmap in advance too so that
-> we don't have to play pointer games.
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> We'll be using dentry->d_inode in one more place.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/namei.c |    7 ++++---
+>  1 file changed, 4 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/namei.c b/fs/namei.c
+> index 61f6076..7e76fe1 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -3386,6 +3386,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
+>  
+>  int vfs_unlink(struct inode *dir, struct dentry *dentry)
+>  {
+> +	struct inode *target = dentry->d_inode;
+>  	int error = may_delete(dir, dentry, 0);
+>  
+>  	if (error)
+> @@ -3394,7 +3395,7 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+>  	if (!dir->i_op->unlink)
+>  		return -EPERM;
+>  
+> -	mutex_lock(&dentry->d_inode->i_mutex);
+> +	mutex_lock(&target->i_mutex);
+>  	if (d_mountpoint(dentry))
+>  		error = -EBUSY;
+>  	else {
+> @@ -3405,11 +3406,11 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+>  				dont_mount(dentry);
+>  		}
+>  	}
+> -	mutex_unlock(&dentry->d_inode->i_mutex);
+> +	mutex_unlock(&target->i_mutex);
+>  
+>  	/* We don't d_delete() NFS sillyrenamed files--they still exist. */
+>  	if (!error && !(dentry->d_flags & DCACHE_NFSFS_RENAMED)) {
+> -		fsnotify_link_count(dentry->d_inode);
+> +		fsnotify_link_count(target);
+>  		d_delete(dentry);
+>  	}
+>  
 
-I'm sorry to report that this patch seems to be more than just a cleanup.
-
-I just tested 3.11-rc2 against my FreeBSD server, and with just patch
-1/2 (as in -rc2) I still get the failure upon `touch`. It fails with
-or without Rick's server patch.
-
-Applying this one on top of -rc2 fixes it.
-
-Regards,
-Andre
+Acked-by: Jeff Layton <jlayton@redhat.com>
