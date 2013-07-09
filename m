@@ -1,52 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:18334 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:62030 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756880Ab3GVUMB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Jul 2013 16:12:01 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] NFSv4.1 Increase NFS4_DEF_SLOT_TABLE_SIZE
-Date: Mon, 22 Jul 2013 20:12:00 +0000
-Message-ID: <1374523919.7972.42.camel@leira.trondhjem.org>
-References: <1374268191-4469-1-git-send-email-andros@netapp.com>
-	 <1374518181.7972.14.camel@leira.trondhjem.org>
-	 <B0405D50-D8BE-496D-8B72-0E09B13B7D77@netapp.com>
-	 <1374520655.7972.27.camel@leira.trondhjem.org>
-	 <B640AD15-44D5-4BB2-A378-2CB8DEFB49A8@netapp.com>
-In-Reply-To: <B640AD15-44D5-4BB2-A378-2CB8DEFB49A8@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1752949Ab3GIP47 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 11:56:59 -0400
+Message-ID: <51DC32C8.6080504@RedHat.com>
+Date: Tue, 09 Jul 2013 11:56:56 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd4: support minorversion 1 by default
+References: <20130709031928.GN29071@fieldses.org> <20130709150657.GB8281@fieldses.org>
+In-Reply-To: <20130709150657.GB8281@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEzLTA3LTIyIGF0IDE5OjUyICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
-PiBPbiBKdWwgMjIsIDIwMTMsIGF0IDM6MTcgUE0sICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJvbmQu
-TXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ICB3cm90ZToNCj4gPiBUaGUgcHJvYmxlbSBpcyB0aGF0
-IG9uY2UgeW91IGltcGxlbWVudCBkeW5hbWljIHNsb3QgdGFibGVzLCB0aGUNCj4gPiBuZWdvdGlh
-dGVkIHNlc3Npb24gc2xvdCB0YWJsZSBzaXplIGJlY29tZXMgdGhlIF9taW5pbXVtXyBudW1iZXIg
-b2YNCj4gPiBzbG90cy4NCj4gDQo+IENvdWxkIHlvdSBleHBsYWluIHRoaXMgYSBiaXQgbW9yZT8g
-SSdkIGxpa2UgdG8gdW5kZXJzdGFuZCB5b3VyIHJlYXNvbmluZy4gIEkgY2FuIHNlZSB0aGF0IHRo
-ZSBkeW5hbWljIHNlc3Npb24gZ29hbCBpcyB0byBlbmQgdXAgd2l0aCB0aGUgaGlnaGVzdF9zbG90
-aWQgdmFsdWUgdG8gYmUganVzdCBoaWdoIGVub3VnaCB0byBtZWV0IHRoZSBhY3R1YWwgbG9hZCwg
-YnV0IG5vdCB3YXN0ZSBzZXJ2ZXIgc2xvdCByZXNvdXJjZXMuIEJ1dCBJIGRvbid0IHVuZGVyc3Rh
-bmQgd2h5IHRoZSBjbGllbnQgdmFsdWUgb2YgY2FfbWF4cmVxdWVzdHMgbWFrZXMgYSBkaWZmZXJl
-bmNlIGluIHRoZSBkeW5hbWljIHNlc3Npb25zIGNhc2UgYmVjYXVzZSB3aGV0aGVyIHRoZSBjbGll
-bnQgc3RhcnRzIGhpZ2ggb3IgbG93LCB0aGUgc2VydmVyIHdpbGwgYWRqdXN0IHRoZSB2YWx1ZSB0
-byBvbmUgdGhhdCBmaXRzIHRoZSBsb2FkLg0KDQpJZiBhbGwgY2xpZW50cyBzdXBwb3J0ZWQgZHlu
-YW1pYyBzbG90IHRhYmxlcywgdGhlbiB0aGVyZSB3b3VsZCBiZSBubw0KcHJvYmxlbXMgd2l0aCB0
-aGUgc2VydmVyIGxvd2VyaW5nIHRoZSBudW1iZXIgb2Ygc2xvdHMgYmV5b25kIHRoZSB2YWx1ZQ0K
-bmVnb3RpYXRlZCBhdCBzZXNzaW9uIGNyZWF0aW9uIHRpbWUuDQpUaGUgcHJvYmxlbXMgb2NjdXIg
-aWYgdGhlcmUgYXJlIGNsaWVudHMgb3V0IHRoZXJlIHRoYXQgZG9uJ3Qgc3VwcG9ydA0KZHluYW1p
-YyBzbG90cywgYW5kIHRoYXQgZmFpbCB0byBpbnNwZWN0IHRoZSBzcl90YXJnZXRfaGlnaGVzdF9z
-bG90aWQgYW5kDQpzcl9oaWdoZXN0X3Nsb3RpZCBmb3IgY2hhbmdlcyAodGhlIExpbnV4IGNsaWVu
-dCB1c2VkIHRvIGJlaGF2ZSB0aGlzDQp3YXkpLiBJZiB0aGUgc2VydmVyIHRoZW4gbG93ZXJzIHNy
-X2hpZ2hlc3Rfc2xvdGlkIHRvIGJlIGxlc3MgdGhhbiB0aGUNCmluaXRpYWwgdmFsdWUsIHRoZW4g
-dGhlIGNsaWVudCB3b24ndCByZWFsaXNlIGl0IGhhcyBmZXdlciBzbG90cywgYW5kDQp3aWxsIGVu
-ZCB1cCByZWNlaXZpbmcgTkZTNEVSUl9CQURTTE9UIGVycm9ycyB0aGF0IGl0IGRvZXNuJ3Qga25v
-dyBob3cgdG8NCmhhbmRsZS4NCg0KSU9XOiB0aGUgb25seSBzYWZlIGJlaGF2aW91ciBmb3IgYSBz
-ZXJ2ZXIgaW4gdGhhdCBjYXNlIGlzIHRvIHRyZWF0IHRoZQ0KaW5pdGlhbCB2YWx1ZSBhcyB0aGUg
-bWluaW11bSB2YWx1ZSBmb3Igc3JfaGlnaGVzdF9zbG90aWQgYW5kDQpzcl90YXJnZXRfaGlnaGVz
-dF9zbG90aWQuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
-YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5j
-b20NCg==
+
+
+On 09/07/13 11:06, J. Bruce Fields wrote:
+> On Mon, Jul 08, 2013 at 11:19:28PM -0400, J. Bruce Fields wrote:
+>> > From: "J. Bruce Fields" <bfields@redhat.com>
+>> > 
+>> > We now have minimal minorversion 1 support; turn it on by default.
+>> > 
+>> > This can still be turned off with "echo -4.1 >/proc/fs/nfsd/versions".
+> I intend this for 3.11, since as far as I can tell we're up to spec and
+> the 4.1-specific bugs I know about have been fixed.
+Ok... Its on my TODO list but I'll wait a bit until 3.11 hits
+the street... 
+
+steved.
