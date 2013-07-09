@@ -1,46 +1,41 @@
-From: Alexandre Rebert <alexandre-D+Gtc/HYRWM@public.gmane.org>
-Subject: Bug report on nfs-common: nfsidmap crashes with exit status 139
-Date: Wed, 26 Jun 2013 13:46:44 -0400
-Message-ID: <201306261746.r5QHkicl015206__23755.480166483$1372288675$gmane$org@smtp.andrew.cmu.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Ben Hutchings <ben@decadent.org.uk>,
-	Debian kernel team <debian-kernel@lists.debian.org>,
-	Luk Claes <luk@debian.org>
-To: Anibal Monsalve Salazar <anibal@debian.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from master.debian.org ([82.195.75.110]:50765 "EHLO
-	master.debian.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752940Ab3FZXRq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jun 2013 19:17:46 -0400
-Received: from anibal by master.debian.org with local (Exim 4.80)
-	(envelope-from <anibal-q3oZDYqQg6zyUObV3Cmqeti2O/JbrIOy@public.gmane.org>)
-	id 1Uryy9-0002Nc-43
-	for linux-nfs@vger.kernel.org; Wed, 26 Jun 2013 23:17:45 +0000
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mx1.redhat.com ([209.132.183.28]:18474 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751942Ab3GIRFL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 13:05:11 -0400
+Message-ID: <51DC42C2.2000408@RedHat.com>
+Date: Tue, 09 Jul 2013 13:05:06 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd4: support minorversion 1 by default
+References: <20130709031928.GN29071@fieldses.org> <20130709150657.GB8281@fieldses.org> <51DC32C8.6080504@RedHat.com> <20130709165827.GE8281@fieldses.org>
+In-Reply-To: <20130709165827.GE8281@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
 
-We found a crash in nfsidmap contained in the nfs-common package. You are being
-contacted because your are listed as one of the maintainer of nfs-common.
 
-We are planning to submit the bug to the Debian bug tracking system in two
-weeks. We wanted to give you a heads-up, so that you some time to assess the
-seriousness of the bug before it is publicly disclosed.
+On 09/07/13 12:58, J. Bruce Fields wrote:
+> On Tue, Jul 09, 2013 at 11:56:56AM -0400, Steve Dickson wrote:
+>>
+>>
+>> On 09/07/13 11:06, J. Bruce Fields wrote:
+>>> On Mon, Jul 08, 2013 at 11:19:28PM -0400, J. Bruce Fields wrote:
+>>>>> From: "J. Bruce Fields" <bfields@redhat.com>
+>>>>>
+>>>>> We now have minimal minorversion 1 support; turn it on by default.
+>>>>>
+>>>>> This can still be turned off with "echo -4.1 >/proc/fs/nfsd/versions".
+>>> I intend this for 3.11, since as far as I can tell we're up to spec and
+>>> the 4.1-specific bugs I know about have been fixed.
+>> Ok... Its on my TODO list but I'll wait a bit until 3.11 hits
+>> the street... 
+> 
+> I don't think there's anything for you to do here.
+Ah... my bad... I thought I had to do something for rpc.nfsd but
+after talking a look the code is already there... 
 
-The bug report that will be submitted to the bug tracker is available at the
-following url:
-
-  http://www.forallsecure.com/bug-reports/557e857e10afad31f118e3534f57d3cf7645d9fd/
-
-This email is part of a mass bug reporting campain comprising 1,182 bugs. You
-might have received multiple emails from us concerning different programs. More
-information about the mass bug reporting is available on the debian-devel
-mailing list:
-
-  http://lists.debian.org/debian-devel/2013/06/msg00720.html
-
-Regards,
-The Mayhem Team
-Cylab, Carnegie Mellon University
+steved.
