@@ -1,144 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f180.google.com ([209.85.160.180]:47037 "EHLO
-	mail-gh0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753666Ab3GIN3J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jul 2013 09:29:09 -0400
-Received: by mail-gh0-f180.google.com with SMTP id f18so2005668ghb.39
-        for <linux-nfs@vger.kernel.org>; Tue, 09 Jul 2013 06:29:09 -0700 (PDT)
-Date: Tue, 9 Jul 2013 09:23:10 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
+Received: from mx1.redhat.com ([209.132.183.28]:28815 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753277Ab3GIOby (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 10:31:54 -0400
+Date: Tue, 9 Jul 2013 10:31:53 -0400
+From: Jeff Layton <jlayton@redhat.com>
 To: "J. Bruce Fields" <bfields@redhat.com>
 Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 09/12] locks: helper functions for delegation breaking
-Message-ID: <20130709092310.476b6ca7@tlielax.poochiereds.net>
-In-Reply-To: <1372882356-14168-10-git-send-email-bfields@redhat.com>
+Subject: Re: [PATCH 03/12] vfs: rename I_MUTEX_QUOTA now that it's not used
+ for quotas
+Message-ID: <20130709103153.06e5e502@tlielax.poochiereds.net>
+In-Reply-To: <20130709142652.GA32574@pad.fieldses.org>
 References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
-	<1372882356-14168-10-git-send-email-bfields@redhat.com>
+	<1372882356-14168-4-git-send-email-bfields@redhat.com>
+	<20130709065400.5a55a655@tlielax.poochiereds.net>
+	<20130709142652.GA32574@pad.fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed,  3 Jul 2013 16:12:33 -0400
+On Tue, 9 Jul 2013 10:26:52 -0400
 "J. Bruce Fields" <bfields@redhat.com> wrote:
 
-> From: "J. Bruce Fields" <bfields@redhat.com>
+> On Tue, Jul 09, 2013 at 06:54:00AM -0400, Jeff Layton wrote:
+> > On Wed,  3 Jul 2013 16:12:27 -0400
+> > "J. Bruce Fields" <bfields@redhat.com> wrote:
+> > 
+> > > From: "J. Bruce Fields" <bfields@redhat.com>
+> > > 
+> > > I_MUTEX_QUOTA is now just being used whenever we want to lock two
+> > > non-directories.  So the name isn't right.  I_MUTEX_NONDIR2 isn't
+> > > especially elegant but it's the best I could think of.
+> > > 
+> > > Also fix some outdated documentation.
+> > > 
+> > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > > ---
+> > >  fs/inode.c         |    4 ++--
+> > >  include/linux/fs.h |    9 ++++++---
+> > >  2 files changed, 8 insertions(+), 5 deletions(-)
+> > > 
+> > > diff --git a/fs/inode.c b/fs/inode.c
+> > > index 942451b..304db4c 100644
+> > > --- a/fs/inode.c
+> > > +++ b/fs/inode.c
+> > > @@ -988,10 +988,10 @@ void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
+> > >  {
+> > >  	if (inode1 < inode2) {
+> > >  		mutex_lock(&inode1->i_mutex);
+> > > -		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_QUOTA);
+> > > +		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_NONDIR2);
+> > >  	} else {
+> > >  		mutex_lock(&inode2->i_mutex);
+> > > -		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_QUOTA);
+> > > +		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_NONDIR2);
+> > >  	}
+> > >  }
+> > >  EXPORT_SYMBOL(lock_two_nondirectories);
+> > > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > > index 3258761..ec88235 100644
+> > > --- a/include/linux/fs.h
+> > > +++ b/include/linux/fs.h
+> > > @@ -620,10 +620,13 @@ static inline int inode_unhashed(struct inode *inode)
+> > >   * 0: the object of the current VFS operation
+> > >   * 1: parent
+> > >   * 2: child/target
+> > > - * 3: quota file
+> > > + * 3: xattr
+> > > + * 4: second non-directory
+> > > + * The last is for certain operations (such as rename) which lock two
+> > > + * non-directories at once.
+> > >   *
+> > >   * The locking order between these classes is
+> > > - * parent -> child -> normal -> xattr -> quota
+> > > + * parent -> child -> normal -> xattr -> second non-directory
+> > >   */
+> > >  enum inode_i_mutex_lock_class
+> > >  {
+> > > @@ -631,7 +634,7 @@ enum inode_i_mutex_lock_class
+> > >  	I_MUTEX_PARENT,
+> > >  	I_MUTEX_CHILD,
+> > >  	I_MUTEX_XATTR,
+> > > -	I_MUTEX_QUOTA
+> > > +	I_MUTEX_NONDIR2
+> > >  };
+> > >  
+> > >  void lock_two_nondirectories(struct inode *, struct inode*);
+> > 
+> > Ugly name, but I'm not sure what to call it either. Wonder if it would
+> > make sense to do some sort of SOURCE/TARGET lock class and rearrange
+> > the code to take that into account?
 > 
-> We'll need the same logic for rename and link.
+> You need to order the locks globally somehow (e.g. by ancestor order in
+> the case of the parent directories)--you can't always take them in the
+> order source and target, for example, because a rename from A/ into B/
+> could then deadlock with a simultaneous rename from B/ into A/.  So I
+> don't think SOURCE and TARGET would work for names.  The current names
+> have a certain logic, but there's probably something more elegant.
 > 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/namei.c         |   13 +++----------
->  include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
->  2 files changed, 34 insertions(+), 12 deletions(-)
+> Currently: after these patches a rename of regular a regular file onto
+> another regular file will take locks on the source and target parents,
+> and source and target (victim) files.  The first two will take PARENT
+> and CHILD, the second NORMAL and NONDIR2.
 > 
-> diff --git a/fs/namei.c b/fs/namei.c
-> index cba3db1..a9d4031 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -3401,14 +3401,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
->  	else {
->  		error = security_inode_unlink(dir, dentry);
->  		if (!error) {
-> -			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
-> -			if (error) {
-> -				if (error == -EWOULDBLOCK && delegated_inode) {
-> -					*delegated_inode = target;
-> -					ihold(target);
-> -				}
-> +			error = try_break_deleg(target, delegated_inode);
-> +			if (error)
->  				goto out;
-> -			}
->  			error = dir->i_op->unlink(dir, dentry);
->  			if (!error)
->  				dont_mount(dentry);
-> @@ -3478,9 +3473,7 @@ exit2:
->  		iput(inode);	/* truncate the inode here */
->  	inode = NULL;
->  	if (delegated_inode) {
-> -		error = break_deleg(delegated_inode, O_WRONLY);
-> -		iput(delegated_inode);
-> -		delegated_inode = NULL;
-> +		error = break_deleg_wait(&delegated_inode);
->  		if (!error)
->  			goto retry_deleg;
->  	}
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index f951588..c37e463 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -1894,6 +1894,9 @@ extern bool our_mnt(struct vfsmount *mnt);
->  
->  extern int current_umask(void);
->  
-> +extern void ihold(struct inode * inode);
-> +extern void iput(struct inode *);
-> +
->  /* /sys/fs */
->  extern struct kobject *fs_kobj;
->  
-> @@ -1962,6 +1965,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
->  	return 0;
->  }
->  
-> +static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
-> +{
-> +	int ret;
-> +
-> +	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
-> +	if (ret == -EWOULDBLOCK && delegated_inode) {
-> +		*delegated_inode = inode;
-> +		ihold(inode);
-> +	}
-> +	return ret;
-> +}
-> +
 
-Actually, now that I look...
+Fair enough -- makes sense...
 
-Suppose a vfs_unlink caller passes in a NULL delegated_inode pointer.
-He'll get back a -EWOULDBLOCK here if there's a delegation on it.
-Presumably he'll just treat that as a hard error and the delegation
-would never get broken. Is that expected?
-
-> +static inline int break_deleg_wait(struct inode **delegated_inode)
-> +{
-> +	int ret;
-> +
-> +	ret = break_deleg(*delegated_inode, O_WRONLY);
-> +	iput(*delegated_inode);
-> +	*delegated_inode = NULL;
-> +	return ret;
-> +}
-> +
->  #else /* !CONFIG_FILE_LOCKING */
->  static inline int locks_mandatory_locked(struct inode *inode)
->  {
-> @@ -2005,6 +2030,12 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
->  {
->  	return 0;
->  }
-> +
-> +static inline int try_break_deleg(struct inode *inode, struct delegated_inode **inode)
-> +{
-> +	return 0;
-> +}
-> +
->  #endif /* CONFIG_FILE_LOCKING */
->  
->  /* fs/open.c */
-> @@ -2335,8 +2366,6 @@ extern loff_t vfs_llseek(struct file *file, loff_t offset, int whence);
->  extern int inode_init_always(struct super_block *, struct inode *);
->  extern void inode_init_once(struct inode *);
->  extern void address_space_init_once(struct address_space *mapping);
-> -extern void ihold(struct inode * inode);
-> -extern void iput(struct inode *);
->  extern struct inode * igrab(struct inode *);
->  extern ino_t iunique(struct super_block *, ino_t);
->  extern int inode_needs_sync(struct inode *inode);
+> > But, that's just bikeshedding, so...
+> > 
+> > Acked-by: Jeff Layton <jlayton@redhat.com>
 
 
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+Jeff Layton <jlayton@redhat.com>
