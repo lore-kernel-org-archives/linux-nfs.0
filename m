@@ -1,126 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:39437 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:12328 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751745Ab3G1Sgm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 28 Jul 2013 14:36:42 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r6SIafec024443
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Sun, 28 Jul 2013 14:36:42 -0400
-Received: from smallhat.bos.devel.redhat.com (vpn-60-122.rdu2.redhat.com [10.10.60.122])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r6SIaeKg022771
-	for <linux-nfs@vger.kernel.org>; Sun, 28 Jul 2013 14:36:41 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2] rpc.nfsd: Allow v4.2 server support with the -V option
-Date: Sun, 28 Jul 2013 14:36:38 -0400
-Message-Id: <1375036598-31090-2-git-send-email-steved@redhat.com>
-In-Reply-To: <1375036598-31090-1-git-send-email-steved@redhat.com>
-References: <1375036598-31090-1-git-send-email-steved@redhat.com>
+	id S1753918Ab3GINQW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 09:16:22 -0400
+Date: Tue, 9 Jul 2013 09:16:17 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Tyler Hicks <tyhicks@canonical.com>,
+        Dustin Kirkland <dustin.kirkland@gazzang.com>
+Subject: Re: [PATCH 11/12] locks: break delegations on link
+Message-ID: <20130709091617.1c175da4@tlielax.poochiereds.net>
+In-Reply-To: <1372882356-14168-12-git-send-email-bfields@redhat.com>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+	<1372882356-14168-12-git-send-email-bfields@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- support/include/nfs/nfs.h |  4 ++++
- utils/nfsd/nfsd.c         | 12 ++++++------
- utils/nfsd/nfssvc.c       | 11 +++++++----
- 3 files changed, 17 insertions(+), 10 deletions(-)
+On Wed,  3 Jul 2013 16:12:35 -0400
+"J. Bruce Fields" <bfields@redhat.com> wrote:
 
-diff --git a/support/include/nfs/nfs.h b/support/include/nfs/nfs.h
-index 5fd86f6..38db5b5 100644
---- a/support/include/nfs/nfs.h
-+++ b/support/include/nfs/nfs.h
-@@ -15,6 +15,10 @@
- #define NFSD_MINVERS 2
- #define NFSD_MAXVERS 4
- 
-+#define NFS4_MINMINOR 1
-+#define NFS4_MAXMINOR 2
-+#define NFS4_VERDEFAULT  0x1  /* minor verion 1 */
-+
- struct nfs_fh_len {
- 	int		fh_size;
- 	u_int8_t	fh_handle[NFS3_FHSIZE];
-diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-index df48392..6db92f0 100644
---- a/utils/nfsd/nfsd.c
-+++ b/utils/nfsd/nfsd.c
-@@ -99,7 +99,7 @@ main(int argc, char **argv)
- 	char *p, *progname, *port;
- 	char *haddr = NULL;
- 	int	socket_up = 0;
--	int minorvers41 = 0;	/* nfsv4 minor version */
-+	int minorvers = NFS4_VERDEFAULT;	/* nfsv4 minor version */
- 	unsigned int versbits = NFSCTL_VERDEFAULT;
- 	unsigned int protobits = NFSCTL_ALLBITS;
- 	unsigned int proto4 = 0;
-@@ -160,11 +160,11 @@ main(int argc, char **argv)
- 			case 4:
- 				if (*p == '.') {
- 					int i = atoi(p+1);
--					if (i != 1) {
-+					if (i > 2) {
- 						fprintf(stderr, "%s: unsupported minor version\n", optarg);
- 						exit(1);
- 					}
--					minorvers41 = -1;
-+					NFSCTL_VERUNSET(minorvers, i);
- 					break;
- 				}
- 			case 3:
-@@ -181,11 +181,11 @@ main(int argc, char **argv)
- 			case 4:
- 				if (*p == '.') {
- 					int i = atoi(p+1);
--					if (i != 1) {
-+					if (i > 2) {
- 						fprintf(stderr, "%s: unsupported minor version\n", optarg);
- 						exit(1);
- 					}
--					minorvers41 = 1;
-+					NFSCTL_VERSET(minorvers, i);
- 					break;
- 				}
- 			case 3:
-@@ -282,7 +282,7 @@ main(int argc, char **argv)
- 	 * registered with rpcbind. Note that on older kernels w/o the right
- 	 * interfaces, these are a no-op.
- 	 */
--	nfssvc_setvers(versbits, minorvers41);
-+	nfssvc_setvers(versbits, minorvers);
-  
- 	error = nfssvc_set_sockets(AF_INET, proto4, haddr, port);
- 	if (!error)
-diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-index 683008e..8b85846 100644
---- a/utils/nfsd/nfssvc.c
-+++ b/utils/nfsd/nfssvc.c
-@@ -269,7 +269,7 @@ nfssvc_set_sockets(const int family, const unsigned int protobits,
- }
- 
- void
--nfssvc_setvers(unsigned int ctlbits, int minorvers41)
-+nfssvc_setvers(unsigned int ctlbits, int minorvers)
- {
- 	int fd, n, off;
- 	char *ptr;
-@@ -280,9 +280,12 @@ nfssvc_setvers(unsigned int ctlbits, int minorvers41)
- 	if (fd < 0)
- 		return;
- 
--	if (minorvers41)
--		off += snprintf(ptr+off, sizeof(buf) - off, "%c4.1",
--				minorvers41 > 0 ? '+' : '-');
-+	for (n = NFS4_MINMINOR; n <= NFS4_MAXMINOR; n++) {
-+		if (NFSCTL_VERISSET(minorvers, n)) 
-+			off += snprintf(ptr+off, sizeof(buf) - off, "+4.%d ", n);
-+		else			
-+			off += snprintf(ptr+off, sizeof(buf) - off, "-4.%d ", n);
-+	}
- 	for (n = NFSD_MINVERS; n <= NFSD_MAXVERS; n++) {
- 		if (NFSCTL_VERISSET(ctlbits, n))
- 		    off += snprintf(ptr+off, sizeof(buf) - off, "+%d ", n);
--- 
-1.8.1.4
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> Cc: Tyler Hicks <tyhicks@canonical.com>
+> Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/ecryptfs/inode.c |    2 +-
+>  fs/namei.c          |   17 +++++++++++++----
+>  fs/nfsd/vfs.c       |    2 +-
+>  include/linux/fs.h  |    2 +-
+>  4 files changed, 16 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+> index af42d88..19e4435 100644
+> --- a/fs/ecryptfs/inode.c
+> +++ b/fs/ecryptfs/inode.c
+> @@ -475,7 +475,7 @@ static int ecryptfs_link(struct dentry *old_dentry, struct inode *dir,
+>  	dget(lower_new_dentry);
+>  	lower_dir_dentry = lock_parent(lower_new_dentry);
+>  	rc = vfs_link(lower_old_dentry, lower_dir_dentry->d_inode,
+> -		      lower_new_dentry);
+> +		      lower_new_dentry, NULL);
+>  	if (rc || !lower_new_dentry->d_inode)
+>  		goto out_lock;
+>  	rc = ecryptfs_interpose(lower_new_dentry, new_dentry, dir->i_sb);
+> diff --git a/fs/namei.c b/fs/namei.c
+> index be00d37..18267e0 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -3566,7 +3566,7 @@ SYSCALL_DEFINE2(symlink, const char __user *, oldname, const char __user *, newn
+>  	return sys_symlinkat(oldname, AT_FDCWD, newname);
+>  }
+>  
+> -int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry)
+> +int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry, struct inode **delegated_inode)
 
+A kerneldoc comment would be nice here. Ditto for vfs_rename* in the
+previous patch...
+
+>  {
+>  	struct inode *inode = old_dentry->d_inode;
+>  	unsigned max_links = dir->i_sb->s_max_links;
+> @@ -3602,8 +3602,11 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
+>  		error =  -ENOENT;
+>  	else if (max_links && inode->i_nlink >= max_links)
+>  		error = -EMLINK;
+> -	else
+> -		error = dir->i_op->link(old_dentry, dir, new_dentry);
+> +	else {
+> +		error = try_break_deleg(inode, delegated_inode);
+> +		if (!error)
+> +			error = dir->i_op->link(old_dentry, dir, new_dentry);
+> +	}
+>  	mutex_unlock(&inode->i_mutex);
+>  	if (!error)
+>  		fsnotify_link(dir, inode, new_dentry);
+> @@ -3624,6 +3627,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
+>  {
+>  	struct dentry *new_dentry;
+>  	struct path old_path, new_path;
+> +	struct inode *delegated_inode = NULL;
+>  	int how = 0;
+>  	int error;
+>  
+> @@ -3662,9 +3666,14 @@ retry:
+>  	error = security_path_link(old_path.dentry, &new_path, new_dentry);
+>  	if (error)
+>  		goto out_dput;
+> -	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry);
+> +	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry, &delegated_inode);
+>  out_dput:
+>  	done_path_create(&new_path, new_dentry);
+> +	if (delegated_inode) {
+> +		error = break_deleg_wait(&delegated_inode);
+> +		if (!error)
+> +			goto retry;
+> +	}
+>  	if (retry_estale(error, how)) {
+>  		how |= LOOKUP_REVAL;
+>  		goto retry;
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 54ac814..b9740cb 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -1708,7 +1708,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
+>  		err = nfserrno(host_err);
+>  		goto out_dput;
+>  	}
+> -	host_err = vfs_link(dold, dirp, dnew);
+> +	host_err = vfs_link(dold, dirp, dnew, NULL);
+>  	if (!host_err) {
+>  		err = nfserrno(commit_metadata(ffhp));
+>  		if (!err)
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index a35dadb..936413c 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1461,7 +1461,7 @@ extern int vfs_create(struct inode *, struct dentry *, umode_t, bool);
+>  extern int vfs_mkdir(struct inode *, struct dentry *, umode_t);
+>  extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
+>  extern int vfs_symlink(struct inode *, struct dentry *, const char *);
+> -extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
+> +extern int vfs_link(struct dentry *, struct inode *, struct dentry *, struct inode **);
+>  extern int vfs_rmdir(struct inode *, struct dentry *);
+>  extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
+>  extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **);
+
+Acked-by: Jeff Layton <jlayton@redhat.com>
