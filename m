@@ -1,56 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:41089 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:51268 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759348Ab3GRTfn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Jul 2013 15:35:43 -0400
-From: <andros@netapp.com>
-To: <trond.myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 4 2/5] NFS: Warn when attempting a buffered write or commit with an expired credential
-Date: Thu, 18 Jul 2013 15:35:27 -0400
-Message-ID: <1374176130-11657-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1374176130-11657-1-git-send-email-andros@netapp.com>
-References: <1374176130-11657-1-git-send-email-andros@netapp.com>
+	id S1753630Ab3GIPEg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 11:04:36 -0400
+Date: Tue, 9 Jul 2013 11:04:28 -0400
+To: NeilBrown <neilb@suse.de>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH - RFC]  new "nosharetransport" option for NFS mounts.
+Message-ID: <20130709150428.GA8281@fieldses.org>
+References: <20130708095812.355d7cfc@notabene.brown>
+ <1373309499.2231.46.camel@leira.trondhjem.org>
+ <20130709132253.3dd4f90a@notabene.brown>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130709132253.3dd4f90a@notabene.brown>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Tue, Jul 09, 2013 at 01:22:53PM +1000, NeilBrown wrote:
+> On Mon, 8 Jul 2013 18:51:40 +0000 "Myklebust, Trond"
+> <Trond.Myklebust@netapp.com> wrote:
+> 
+> > On Mon, 2013-07-08 at 09:58 +1000, NeilBrown wrote:
+> > > 
+> > > This patch adds a "nosharetransport" option to allow two different
+> > > mounts from the same server to use different transports.
+> > > If the mounts use NFSv4, or are of the same filesystem, then
+> > > "nosharecache" must be used as well.
+> > 
+> > Won't this interfere with the recently added NFSv4 trunking detection?
+> 
+> Will it?  I googled around a bit but couldn't find anything that tells me
+> what trunking really was in this context.  Then I found commit 05f4c350ee02 
+> which makes it quite clear (thanks Chuck!).
+> 
+> Probably the code I wrote could interfere.
+> 
+> > 
+> > Also, how will it work with NFSv4.1 sessions? The server will usually
+> > require a BIND_CONN_TO_SESSION when new TCP connections attempt to
+> > attach to an existing session.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/write.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+Since the current client only requests SP4_NONE state protection, the
+BIND_CONN_TO_SESSION is implicit:
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index f1bdb72..724c845 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1330,6 +1330,14 @@ void nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
- 	dprintk("NFS: %5u nfs_writeback_done (status %d)\n",
- 		task->tk_pid, task->tk_status);
- 
-+	if (task->tk_status == -EKEYEXPIRED)
-+		pr_warn("NFS:	write attempt with expired credential "
-+			"req %s/%lld, %u bytes @ offset %llu\n",
-+			inode->i_sb->s_id,
-+			(long long)NFS_FILEID(inode),
-+			data->args.count,
-+			(unsigned long long)data->args.offset);
-+
- 	/*
- 	 * ->write_done will attempt to use post-op attributes to detect
- 	 * conflicting writes by other clients.  A strict interpretation
-@@ -1556,6 +1564,8 @@ static void nfs_commit_done(struct rpc_task *task, void *calldata)
- 
-         dprintk("NFS: %5u nfs_commit_done (status %d)\n",
-                                 task->tk_pid, task->tk_status);
-+	if (task->tk_status == -EKEYEXPIRED)
-+		pr_warn("NFS: commit attempt with expired credential\n");
- 
- 	/* Call the NFS version-specific code */
- 	NFS_PROTO(data->inode)->commit_done(task, data);
--- 
-1.8.3.1
+	If, when the client ID was created, the client opted for
+	SP4_NONE state protection, the client is not required to use
+	BIND_CONN_TO_SESSION to associate the connection with the
+	session, unless the client wishes to associate the connection
+	with the backchannel.  When SP4_NONE protection is used, simply
+	sending a COMPOUND request with a SEQUENCE operation is
+	sufficient to associate the connection with the session
+	specified in SEQUENCE.
 
+But Neil would need to make sure he's using all the state associated
+with the existing client.
+
+> Why would it attempt to attach to an existing session?  I would hope there
+> the two different mounts with separate TCP connections would look completely
+> separate - different transport, different cache, different session.
+> ??
+
+Sounds to me sharing these things shouldn't be a problem in your case,
+but I don't know.
+
+--b.
