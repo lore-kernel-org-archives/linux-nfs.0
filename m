@@ -1,96 +1,153 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx3-phx2.redhat.com ([209.132.183.24]:59099 "EHLO
-	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752571Ab3GIG77 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jul 2013 02:59:59 -0400
-Date: Tue, 9 Jul 2013 02:59:54 -0400 (EDT)
-From: Jan Stancek <jstancek@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, bfields@redhat.com,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Message-ID: <1157529877.873319.1373353194344.JavaMail.root@redhat.com>
-In-Reply-To: <20130708201643.GI29071@fieldses.org>
-References: <682ebd8ecc7309b18396da356a0feb38bfa41674.1372692346.git.jstancek@redhat.com> <20130708201643.GI29071@fieldses.org>
-Subject: Re: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from mx1.redhat.com ([209.132.183.28]:18904 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752493Ab3GIThG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 15:37:06 -0400
+Date: Tue, 9 Jul 2013 15:37:04 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 09/12] locks: helper functions for delegation breaking
+Message-ID: <20130709153704.25c8fd47@tlielax.poochiereds.net>
+In-Reply-To: <20130709193124.GH32574@pad.fieldses.org>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+	<1372882356-14168-10-git-send-email-bfields@redhat.com>
+	<20130709090952.0afe9503@tlielax.poochiereds.net>
+	<20130709193124.GH32574@pad.fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, 9 Jul 2013 15:31:25 -0400
+"J. Bruce Fields" <bfields@redhat.com> wrote:
 
-
-
-
------ Original Message -----
-> From: "J. Bruce Fields" <bfields@fieldses.org>
-> To: "Jan Stancek" <jstancek@redhat.com>
-> Cc: linux-nfs@vger.kernel.org, bfields@redhat.com, "Trond Myklebust" <Trond.Myklebust@netapp.com>
-> Sent: Monday, 8 July, 2013 10:16:43 PM
-> Subject: Re: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
-> 
-> On Mon, Jul 01, 2013 at 05:32:34PM +0200, Jan Stancek wrote:
-> > Starting with commit:
-> >   commit f994c43d19a9116727d4c228d3f13db595bff562
-> >   Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-> >   Date:   Thu Nov 1 12:14:14 2012 -0400
-> >       SUNRPC: Clean up rpc_bind_new_program
+> On Tue, Jul 09, 2013 at 09:09:52AM -0400, Jeff Layton wrote:
+> > On Wed,  3 Jul 2013 16:12:33 -0400
+> > "J. Bruce Fields" <bfields@redhat.com> wrote:
 > > 
-> > operations on directory mounted with -onfsvers=3,tcp,sec=krb5 fail
-> > with Input/Output error after ~60 second timeout. This is presumably
-> > because upcalls for 'nfsacl' are not getting anywhere.
+> > > From: "J. Bruce Fields" <bfields@redhat.com>
+> > > 
+> > > We'll need the same logic for rename and link.
+> > > 
+> > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > > ---
+> > >  fs/namei.c         |   13 +++----------
+> > >  include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
+> > >  2 files changed, 34 insertions(+), 12 deletions(-)
+> > > 
+> > > diff --git a/fs/namei.c b/fs/namei.c
+> > > index cba3db1..a9d4031 100644
+> > > --- a/fs/namei.c
+> > > +++ b/fs/namei.c
+> > > @@ -3401,14 +3401,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
+> > >  	else {
+> > >  		error = security_inode_unlink(dir, dentry);
+> > >  		if (!error) {
+> > > -			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
+> > > -			if (error) {
+> > > -				if (error == -EWOULDBLOCK && delegated_inode) {
+> > > -					*delegated_inode = target;
+> > > -					ihold(target);
+> > > -				}
+> > > +			error = try_break_deleg(target, delegated_inode);
+> > > +			if (error)
+> > >  				goto out;
+> > > -			}
+> > >  			error = dir->i_op->unlink(dir, dentry);
+> > >  			if (!error)
+> > >  				dont_mount(dentry);
+> > > @@ -3478,9 +3473,7 @@ exit2:
+> > >  		iput(inode);	/* truncate the inode here */
+> > >  	inode = NULL;
+> > >  	if (delegated_inode) {
+> > > -		error = break_deleg(delegated_inode, O_WRONLY);
+> > > -		iput(delegated_inode);
+> > > -		delegated_inode = NULL;
+> > > +		error = break_deleg_wait(&delegated_inode);
+> > >  		if (!error)
+> > >  			goto retry_deleg;
+> > >  	}
+> > > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > > index f951588..c37e463 100644
+> > > --- a/include/linux/fs.h
+> > > +++ b/include/linux/fs.h
+> > > @@ -1894,6 +1894,9 @@ extern bool our_mnt(struct vfsmount *mnt);
+> > >  
+> > >  extern int current_umask(void);
+> > >  
+> > > +extern void ihold(struct inode * inode);
+> > > +extern void iput(struct inode *);
+> > > +
+> > >  /* /sys/fs */
+> > >  extern struct kobject *fs_kobj;
+> > >  
+> > > @@ -1962,6 +1965,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+> > >  	return 0;
+> > >  }
+> > >  
+> > > +static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
+> > > +{
+> > > +	int ret;
+> > > +
+> > > +	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
+> > > +	if (ret == -EWOULDBLOCK && delegated_inode) {
+> > > +		*delegated_inode = inode;
+> > > +		ihold(inode);
+> > > +	}
+> > > +	return ret;
+> > > +}
+> > > +
+> > > +static inline int break_deleg_wait(struct inode **delegated_inode)
+> > > +{
+> > > +	int ret;
+> > > +
+> > > +	ret = break_deleg(*delegated_inode, O_WRONLY);
+> > > +	iput(*delegated_inode);
+> > > +	*delegated_inode = NULL;
+> > > +	return ret;
+> > > +}
+> > > +
+> > >  #else /* !CONFIG_FILE_LOCKING */
+> > >  static inline int locks_mandatory_locked(struct inode *inode)
+> > >  {
+> > > @@ -2005,6 +2030,12 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+> > >  {
+> > >  	return 0;
+> > >  }
+> > > +
+> > > +static inline int try_break_deleg(struct inode *inode, struct delegated_inode **inode)
+> > > +{
+> > > +	return 0;
+> > > +}
+> > > +
+> > >  #endif /* CONFIG_FILE_LOCKING */
+> > >  
+> > >  /* fs/open.c */
+> > > @@ -2335,8 +2366,6 @@ extern loff_t vfs_llseek(struct file *file, loff_t offset, int whence);
+> > >  extern int inode_init_always(struct super_block *, struct inode *);
+> > >  extern void inode_init_once(struct inode *);
+> > >  extern void address_space_init_once(struct address_space *mapping);
+> > > -extern void ihold(struct inode * inode);
+> > > -extern void iput(struct inode *);
+> > >  extern struct inode * igrab(struct inode *);
+> > >  extern ino_t iunique(struct super_block *, ino_t);
+> > >  extern int inode_needs_sync(struct inode *inode);
 > > 
-> > This patch enables pipe dir for nfsacl_program and changes its name
-> > to 'nfs'. This name will be used in upcalls and whole setup should
-> > work as it did in past - just with nfs/hostname principal.
+> > Nice cleanup. Might be reasonable to reorder or merge this patch with
+> > the previous one to reduce "churn" in vfs_unlink.
 > 
-> I think this was the problem that nfs-utils commits
+> That's how I first did it then I thought "eh, there's a way I could make
+> this patch a little smaller...".   Seemed like it might be a tad easier
+> to review this way.  Up to you.
 > 
-> 	a1f8afc560 gssd: Remove insane sanity checks of the service name
-> 	a56989b665 gssd: Handle the target name correctly
-> 
-> were supposed to fix?
-> 
-> But perhaps the kernel needs a fix too to fix a regression with old
-> userspace.
 
-I saw this error with nfs-utils.1.2.9-rc1, which should already contain
-those 2 commits.
+Reordering it would still keep it granular. Maybe introduce the helpers
+first and then add patches that make the callers use them?
 
-Regards,
-Jan
+But that's just me being picky -- the patches look reasonable either
+way...
 
-> 
-> --b.
-> 
-> > 
-> > Signed-off-by: Jan Stancek <jstancek@redhat.com>
-> > ---
-> >  fs/nfs/nfs3client.c |    3 ++-
-> >  1 files changed, 2 insertions(+), 1 deletions(-)
-> > 
-> > diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
-> > index b3fc65e..09a7d06 100644
-> > --- a/fs/nfs/nfs3client.c
-> > +++ b/fs/nfs/nfs3client.c
-> > @@ -9,11 +9,12 @@ static const struct rpc_version *nfsacl_version[] = {
-> >  };
-> >  
-> >  const struct rpc_program nfsacl_program = {
-> > -	.name			= "nfsacl",
-> > +	.name			= "nfs",
-> >  	.number			= NFS_ACL_PROGRAM,
-> >  	.nrvers			= ARRAY_SIZE(nfsacl_version),
-> >  	.version		= nfsacl_version,
-> >  	.stats			= &nfsacl_rpcstat,
-> > +	.pipe_dir_name		= NFS_PIPE_DIRNAME,
-> >  };
-> >  
-> >  /*
-> > --
-> > 1.7.1
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+-- 
+Jeff Layton <jlayton@redhat.com>
