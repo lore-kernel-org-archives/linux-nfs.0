@@ -1,55 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:55617 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752159Ab3GHSkT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jul 2013 14:40:19 -0400
-Date: Mon, 8 Jul 2013 14:39:57 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Johan GUILBAUD <guilbaud.johan@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Problem with sharing mounted iso
-Message-ID: <20130708143957.2ebc75e3@tlielax.poochiereds.net>
-In-Reply-To: <CAF38w7Xf87k=GfM38XcO+ag+Na=f=Mg1KDn0jv2Y8Yp6Q_5a=g@mail.gmail.com>
-References: <CAF38w7Xx0_TqZem6cen+EJKpUrziGT_dAVcjG7oFFwM+ANm5mA@mail.gmail.com>
-	<CAF38w7Xf87k=GfM38XcO+ag+Na=f=Mg1KDn0jv2Y8Yp6Q_5a=g@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from [216.240.18.38] ([216.240.18.38]:37308 "EHLO mx1.netapp.com"
+	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753512Ab3GIOqd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 10:46:33 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: NeilBrown <neilb@suse.de>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH - RFC]  new "nosharetransport" option for NFS mounts.
+Date: Tue, 9 Jul 2013 14:46:00 +0000
+Message-ID: <1373381159.6246.11.camel@leira.trondhjem.org>
+References: <20130708095812.355d7cfc@notabene.brown>
+	 <1373309499.2231.46.camel@leira.trondhjem.org>
+	 <20130709132253.3dd4f90a@notabene.brown>
+In-Reply-To: <20130709132253.3dd4f90a@notabene.brown>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 8 Jul 2013 14:47:00 +0200
-Johan GUILBAUD <guilbaud.johan@gmail.com> wrote:
-
-> Hello !
-> 
-> I have a problem to access a mounted ISO through NFS protocol
-> 
-> i have a server (RHEL6) on which are mounted ISOs
-> i have a lot of client accessing files into ISO via the NFS share
-> 
-> My problem is clients (RHEL5 & 6, Solaris 8 & 10) don't see content of
-> ISO folder
-> 
-> In example :
-> 
-> on NFS server i have a folder /pub/ where the ISO are mounted (ie :
-> with the iso mybeautifuliso.iso on the mount point
-> "/pub/mybeautifuliso/") there are also, for test, text files in /pub/
-> NFS shares content of /pub
-> 
-> 
-> Client see tests text files, and folder "mybeautifuliso" but this one
-> is empty...
-> 
-> 
-> thanks for help
-> 
-
-Exports don't cross mountpoints by default, so if you exported "/pub"
-no filesystem mounted under it will be automatically exported. The best
-solution is to explicitly export those filesystems as well -- i.e. add
-an export of "/pub/mybeautifuliso". Then, when clients wander into
-those directories they should see the contents.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+T24gVHVlLCAyMDEzLTA3LTA5IGF0IDEzOjIyICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IE9u
+IE1vbiwgOCBKdWwgMjAxMyAxODo1MTo0MCArMDAwMCAiTXlrbGVidXN0LCBUcm9uZCINCj4gPFRy
+b25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gTW9uLCAyMDEzLTA3
+LTA4IGF0IDA5OjU4ICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+ID4gPiANCj4gPiA+IFRoaXMg
+cGF0Y2ggYWRkcyBhICJub3NoYXJldHJhbnNwb3J0IiBvcHRpb24gdG8gYWxsb3cgdHdvIGRpZmZl
+cmVudA0KPiA+ID4gbW91bnRzIGZyb20gdGhlIHNhbWUgc2VydmVyIHRvIHVzZSBkaWZmZXJlbnQg
+dHJhbnNwb3J0cy4NCj4gPiA+IElmIHRoZSBtb3VudHMgdXNlIE5GU3Y0LCBvciBhcmUgb2YgdGhl
+IHNhbWUgZmlsZXN5c3RlbSwgdGhlbg0KPiA+ID4gIm5vc2hhcmVjYWNoZSIgbXVzdCBiZSB1c2Vk
+IGFzIHdlbGwuDQo+ID4gDQo+ID4gV29uJ3QgdGhpcyBpbnRlcmZlcmUgd2l0aCB0aGUgcmVjZW50
+bHkgYWRkZWQgTkZTdjQgdHJ1bmtpbmcgZGV0ZWN0aW9uPw0KPiANCj4gV2lsbCBpdD8gIEkgZ29v
+Z2xlZCBhcm91bmQgYSBiaXQgYnV0IGNvdWxkbid0IGZpbmQgYW55dGhpbmcgdGhhdCB0ZWxscyBt
+ZQ0KPiB3aGF0IHRydW5raW5nIHJlYWxseSB3YXMgaW4gdGhpcyBjb250ZXh0LiAgVGhlbiBJIGZv
+dW5kIGNvbW1pdCAwNWY0YzM1MGVlMDIgDQo+IHdoaWNoIG1ha2VzIGl0IHF1aXRlIGNsZWFyICh0
+aGFua3MgQ2h1Y2shKS4NCj4gDQo+IFByb2JhYmx5IHRoZSBjb2RlIEkgd3JvdGUgY291bGQgaW50
+ZXJmZXJlLg0KPiANCj4gPiANCj4gPiBBbHNvLCBob3cgd2lsbCBpdCB3b3JrIHdpdGggTkZTdjQu
+MSBzZXNzaW9ucz8gVGhlIHNlcnZlciB3aWxsIHVzdWFsbHkNCj4gPiByZXF1aXJlIGEgQklORF9D
+T05OX1RPX1NFU1NJT04gd2hlbiBuZXcgVENQIGNvbm5lY3Rpb25zIGF0dGVtcHQgdG8NCj4gPiBh
+dHRhY2ggdG8gYW4gZXhpc3Rpbmcgc2Vzc2lvbi4NCj4gDQo+IFdoeSB3b3VsZCBpdCBhdHRlbXB0
+IHRvIGF0dGFjaCB0byBhbiBleGlzdGluZyBzZXNzaW9uPyAgSSB3b3VsZCBob3BlIHRoZXJlDQo+
+IHRoZSB0d28gZGlmZmVyZW50IG1vdW50cyB3aXRoIHNlcGFyYXRlIFRDUCBjb25uZWN0aW9ucyB3
+b3VsZCBsb29rIGNvbXBsZXRlbHkNCj4gc2VwYXJhdGUgLSBkaWZmZXJlbnQgdHJhbnNwb3J0LCBk
+aWZmZXJlbnQgY2FjaGUsIGRpZmZlcmVudCBzZXNzaW9uLg0KPiA/Pw0KDQpDdXJyZW50bHkgd2Ug
+bWFwIHNlc3Npb25zIGFuZCBsZWFzZXMgMS0xLiBZb3UnZCBoYXZlIHF1aXRlIHNvbWUgd29yayB0
+bw0KZG8gdG8gY2hhbmdlIHRoYXQsIGFuZCBpdCBpcyB2ZXJ5IHVuY2xlYXIgdG8gbWUgdGhhdCB0
+aGVyZSBpcyBhbnkNCmJlbmVmaXQgdG8gZG9pbmcgc28uDQoNCj4gPiANCj4gPiA+IDIvIElmIGEg
+dmVyeSBmYXN0IG5ldHdvcmsgaXMgdXNlZCB3aXRoIGEgbWFueS1wcm9jZXNzb3IgY2xpZW50LCBh
+DQo+ID4gPiAgIHNpbmdsZSBUQ1AgY29ubmVjdGlvbiBjYW4gcHJlc2VudCBhIGJvdHRsZSBuZWNr
+IHdoaWNoIHJlZHVjZXMgdG90YWwNCj4gPiA+ICAgdGhyb3VnaHB1dC4gIFVzaW5nIG11bHRpcGxl
+IFRDUCBjb25uZWN0aW9ucyAob25lIHBlciBtb3VudCkgcmVtb3Zlcw0KPiA+ID4gICB0aGUgYm90
+dGxlbmVjay4NCj4gPiA+ICAgQW4gYWx0ZXJuYXRlIHdvcmthcm91bmQgaXMgdG8gY29uZmlndXJl
+IG11bHRpcGxlIHZpcnR1YWwgSVANCj4gPiA+ICAgYWRkcmVzc2VzIG9uIHRoZSBzZXJ2ZXIgYW5k
+IG1vdW50IGVhY2ggZmlsZXN5c3RlbSBmcm9tIGEgZGlmZmVyZW50DQo+ID4gPiAgIElQLiAgVGhp
+cyBpcyBlZmZlY3RpdmUgKHRocm91Z2hwdXQgZ29lcyB1cCkgYnV0IGFuIHVubmVjZXNzYXJ5DQo+
+ID4gPiAgIGFkbWluaXN0cmF0aXZlIGJ1cmRlbi4NCj4gPiANCj4gPiBBcyBJIHVuZGVyc3RhbmQg
+aXQsIHVzaW5nIG11bHRpcGxlIHNpbXVsdGFuZW91cyBUQ1AgY29ubmVjdGlvbnMgYmV0d2Vlbg0K
+PiA+IHRoZSBzYW1lIGVuZHBvaW50cyBhbHNvIGFkZHMgYSByaXNrIHRoYXQgdGhlIGNvbmdlc3Rp
+b24gd2luZG93cyB3aWxsDQo+ID4gaW50ZXJmZXJlLiBEbyB5b3UgaGF2ZSBudW1iZXJzIHRvIGJh
+Y2sgdXAgdGhlIGNsYWltIG9mIGEgcGVyZm9ybWFuY2UNCj4gPiBpbXByb3ZlbWVudD8NCj4gDQo+
+IEEgY3VzdG9tZXIgdXBncmFkZWQgZnJvbSBTTEVTMTAgKDIuNi4xNiBiYXNlZCkgdG8gU0xFUzEx
+ICgzLjAgYmFzZWQpIGFuZCBzYXcNCj4gYSBzbG93ZG93biBvbiBzb21lIGxhcmdlIERCIGpvYnMg
+b2YgYmV0d2VlbiAxLjUgYW5kIDIgdGltZXMgKGkuZS4gdG90YWwgdGltZQ0KPiAxNTAlIHRvIDIw
+MCUgb2Ygd2hhdCBpcyB3YXMgYmVmb3JlKS4NCj4gQWZ0ZXIgc29tZSBhbmFseXNpcyB0aGV5IGNy
+ZWF0ZWQgbXVsdGlwbGUgdmlydHVhbCBJUHMgb24gdGhlIHNlcnZlciBhbmQNCj4gbW91bnRlZCB0
+aGUgc2V2ZXJhbCBmaWxlc3lzdGVtIGVhY2ggZnJvbSBkaWZmZXJlbnQgSVBzIGFuZCBnb3QgdGhl
+DQo+IHBlcmZvcm1hbmNlIGJhY2sgKHRoZXkgc2VlIHRoaXMgYXMgYSB3b3JrLWFyb3VuZCByYXRo
+ZXIgdGhhbiBhIGdlbnVpbmUNCj4gc29sdXRpb24pLg0KPiBOdW1iZXJzIGFyZSBsaWtlICI1MDBN
+Qi9zIG9uIGEgc2luZ2xlIGNvbm5lY3Rpb24sIDg1ME1CL3NlYyBwZWFraW5nIHRvDQo+IDEwMDBN
+Qi9zZWMgb24gbXVsdGlwbGUgY29ubmVjdGlvbnMiLg0KPiANCj4gSWYgSSBjYW4gZ2V0IHNvbWV0
+aGluZyBtb3JlIGNvbmNyZXRlIEknbGwgbGV0IHlvdSBrbm93Lg0KPiANCj4gQXMgdGhpcyB3b3Jr
+ZWQgd2VsbCBpbiAyLjYuMTYgKHdoaWNoIGRvZXNuJ3QgdHJ5IHRvIHNoYXJlIGNvbm5lY3Rpb25z
+KSB0aGlzDQo+IGlzIHNlZW4gYXMgYSByZWdyZXNzaW9uLg0KPiANCj4gT24gbGlua3MgdGhhdCBh
+cmUgZWFzeSB0byBzYXR1cmF0ZSwgY29uZ2VzdGlvbiB3aW5kb3dzIGFyZSBpbXBvcnRhbnQgYW5k
+DQo+IGhhdmluZyBhIHNpbmdsZSBjb25uZWN0aW9uIGlzIHByb2JhYmx5IGEgZ29vZCBpZGVhIC0g
+c28gdGhlIGN1cnJlbnQgZGVmYXVsdA0KPiBpcyBjZXJ0YWlubHkgY29ycmVjdC4NCj4gT24gYSAx
+MEcgZXRoZXJuZXQgb3IgaW5maW5pYmFuZCBjb25uZWN0aW9uICh3aGVyZSB0aGUgaXNzdWUgaGFz
+IGJlZW4NCj4gbWVhc3VyZWQpIGNvbmdlc3Rpb24ganVzdCBkb2Vzbid0IHNlZW0gdG8gYmUgYW4g
+aXNzdWUuDQoNCkl0IHdvdWxkIGhlbHAgaWYgd2UgY2FuIHVuZGVyc3RhbmQgd2hlcmUgdGhlIGFj
+dHVhbCBib3R0bGVuZWNrIGlzLiBJZg0KdGhpcyByZWFsbHkgaXMgYWJvdXQgbG9jayBjb250ZW50
+aW9uLCB0aGVuIHNvbHZpbmcgdGhhdCBwcm9ibGVtIG1pZ2h0DQpoZWxwIHRoZSBzaW5nbGUgbW91
+bnQgY2FzZSB0b28uLi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
+bWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0
+YXBwLmNvbQ0K
