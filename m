@@ -1,104 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from pfw.demon.co.uk ([62.49.22.168]:45616 "EHLO pfw.demon.co.uk"
+Received: from mx1.redhat.com ([209.132.183.28]:55590 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757956Ab3GZWZR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Jul 2013 18:25:17 -0400
-Date: Fri, 26 Jul 2013 22:25:10 +0000
-From: Larry Keegan <lk@pfw.demon.co.uk>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jlayton@redhat.com>, Larry Keegan <lk@pfw.demon.co.uk>,
-        <linux-nfs@vger.kernel.org>
-Subject: Re: nfs client: Now you see it, now you don't (aka spurious ESTALE
- errors)
-Message-ID: <20130726222510.793c1627@cs3.al.itld>
-In-Reply-To: <20130726150222.GC30651@fieldses.org>
-References: <20130725134515.67af44e2@cs3.al.itld>
- <20130725101143.6a22cb81@corrin.poochiereds.net>
- <20130725170526.6e54c7db@cs3.al.itld>
- <20130725141828.1862a1e1@tlielax.poochiereds.net>
- <20130726124101.058df8dc@cs3.al.itld>
- <20130726091225.5f299ff6@corrin.poochiereds.net>
- <20130726150222.GC30651@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1753803Ab3GIO0x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 10:26:53 -0400
+Date: Tue, 9 Jul 2013 10:26:52 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 03/12] vfs: rename I_MUTEX_QUOTA now that it's not used
+ for quotas
+Message-ID: <20130709142652.GA32574@pad.fieldses.org>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+ <1372882356-14168-4-git-send-email-bfields@redhat.com>
+ <20130709065400.5a55a655@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130709065400.5a55a655@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 26 Jul 2013 11:02:22 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Fri, Jul 26, 2013 at 09:12:25AM -0400, Jeff Layton wrote:
-> > On Fri, 26 Jul 2013 12:41:01 +0000
-> > Larry Keegan <lk@pfw.demon.co.uk> wrote:
-> > > I now have a good and a bad packet capture. I can run them through
-> > > tshark -V but if I do this, they're really long, so I'm wondering
-> > > how best to post them. I've posted the summaries below.
-> > > 
-> > > The set-up is as follows: I'm running a few xterms on my desktop
-> > > (the affected client) as well as claws-mail using the mailmbox
-> > > plugin. Claws keeps a cache of the mailbox
-> > > in .clawsmail/tagsdb/<foldername>. From time to time I blast a
-> > > load of mail into these mail boxes using procmail. This seems to
-> > > demonstrate the problem most of the time. After a few minutes
-> > > everything gets back to normal.
-> > > 
-> > > The actual mail is being delivered on my file server pair directly
-> > > into /home/larry/Mail/<foldername>. Both file servers use
-> > > automount to mount the same filesystem
+On Tue, Jul 09, 2013 at 06:54:00AM -0400, Jeff Layton wrote:
+> On Wed,  3 Jul 2013 16:12:27 -0400
+> "J. Bruce Fields" <bfields@redhat.com> wrote:
 > 
-> Wait, I'm confused: that sounds like you're mounting the same ext4
-> filesystem from two different machines?
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > I_MUTEX_QUOTA is now just being used whenever we want to lock two
+> > non-directories.  So the name isn't right.  I_MUTEX_NONDIR2 isn't
+> > especially elegant but it's the best I could think of.
+> > 
+> > Also fix some outdated documentation.
+> > 
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  fs/inode.c         |    4 ++--
+> >  include/linux/fs.h |    9 ++++++---
+> >  2 files changed, 8 insertions(+), 5 deletions(-)
+> > 
+> > diff --git a/fs/inode.c b/fs/inode.c
+> > index 942451b..304db4c 100644
+> > --- a/fs/inode.c
+> > +++ b/fs/inode.c
+> > @@ -988,10 +988,10 @@ void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
+> >  {
+> >  	if (inode1 < inode2) {
+> >  		mutex_lock(&inode1->i_mutex);
+> > -		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_QUOTA);
+> > +		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_NONDIR2);
+> >  	} else {
+> >  		mutex_lock(&inode2->i_mutex);
+> > -		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_QUOTA);
+> > +		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_NONDIR2);
+> >  	}
+> >  }
+> >  EXPORT_SYMBOL(lock_two_nondirectories);
+> > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > index 3258761..ec88235 100644
+> > --- a/include/linux/fs.h
+> > +++ b/include/linux/fs.h
+> > @@ -620,10 +620,13 @@ static inline int inode_unhashed(struct inode *inode)
+> >   * 0: the object of the current VFS operation
+> >   * 1: parent
+> >   * 2: child/target
+> > - * 3: quota file
+> > + * 3: xattr
+> > + * 4: second non-directory
+> > + * The last is for certain operations (such as rename) which lock two
+> > + * non-directories at once.
+> >   *
+> >   * The locking order between these classes is
+> > - * parent -> child -> normal -> xattr -> quota
+> > + * parent -> child -> normal -> xattr -> second non-directory
+> >   */
+> >  enum inode_i_mutex_lock_class
+> >  {
+> > @@ -631,7 +634,7 @@ enum inode_i_mutex_lock_class
+> >  	I_MUTEX_PARENT,
+> >  	I_MUTEX_CHILD,
+> >  	I_MUTEX_XATTR,
+> > -	I_MUTEX_QUOTA
+> > +	I_MUTEX_NONDIR2
+> >  };
+> >  
+> >  void lock_two_nondirectories(struct inode *, struct inode*);
 > 
-> --b.
+> Ugly name, but I'm not sure what to call it either. Wonder if it would
+> make sense to do some sort of SOURCE/TARGET lock class and rearrange
+> the code to take that into account?
+
+You need to order the locks globally somehow (e.g. by ancestor order in
+the case of the parent directories)--you can't always take them in the
+order source and target, for example, because a rename from A/ into B/
+could then deadlock with a simultaneous rename from B/ into A/.  So I
+don't think SOURCE and TARGET would work for names.  The current names
+have a certain logic, but there's probably something more elegant.
+
+Currently: after these patches a rename of regular a regular file onto
+another regular file will take locks on the source and target parents,
+and source and target (victim) files.  The first two will take PARENT
+and CHILD, the second NORMAL and NONDIR2.
+
+--b.
+
+> But, that's just bikeshedding, so...
 > 
-
-Dear Bruce,
-
-I'm sorry, I didn't express myself clearly enough. I described my
-server-side NFS arrangements a few hours ago in a note to Jeff Layton.
-(I'm afraid I didn't catch your email until just now - NFS problems,
-you know). In summary, whereas I do have two NFS servers, only one has
-the filesystems mounted and exported at a time. The other just sees the
-underlying drbd device in secondary mode. It merely keeps the data on
-the block device up-to-date for when I cut over to it. I pretty much
-never do this unless I wish to reboot the active NFS server. To all
-intents and purposes, I only have one NFS server. I purposefully didn't
-use primary-primary drbd replication with OCFS or GFS2 because it
-was all too new when I set this up.
-
-As far as NFS client arrangements are concerned, both of the NFS server
-machines also function as NFS clients, so /home/larry works on them in
-the same way as it does on any other NFS client on the network. It is
-just that the NFS servers also run my postfix MTAs. In turn, postfix
-delivers mail to my (multiple) inboxes under /home/larry/Mail/whatever.
-
-Mail comes in from my perimeter mail boxes is in round-robin fashion to
-both the NFS server/client/postfix MTA machines, so inevitably yes, both
-of these machines automount /home/larry most of the time, but this is no
-different from, say my desktop computer which is also
-mounting /home/larry.
-
-The point about email delivery is that in this arrangement both my NFS
-server computers, with purely their NFS client hats on, contend to
-deliver messages into the same mail files on the same filesystem served
-by just one NFS server. For instance, the linux-nfs mailing list traffic
-all goes into one file. This often causes a lot of thumb-twiddling
-whilst the procmails try to get the lock on the mail file. It's all
-happens too fast for me to notice, but I'm sure procmail would rather
-be sunning itself on the beach or something.
-
-The reason why email delivery seems to be a pretty consistent trigger
-for this problem is: a) there's bugger all else going on with all these
-NFS problems, b) the fact that the two NFS server/client/postfix boxes
-and claws-mail on my desktop box are all investigating and modifying
-the same files all the time, and c) I'm deliberately holding back
-inbound mail and releasing it in large batches to try to exercise this
-problem.
-
-The odd thing is that I haven't (yet) had any problems with the
-mailboxes themselves, only the state-files and caches that claws mail
-keeps under /home/whatever/.clawsmail. These are only ever accessed
-from my desktop machine.
-
-Yours,
-
-larry
+> Acked-by: Jeff Layton <jlayton@redhat.com>
