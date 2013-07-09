@@ -1,88 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37572 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:54527 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754603Ab3GJC1n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Jul 2013 22:27:43 -0400
-Date: Tue, 9 Jul 2013 22:27:35 -0400
-From: "J.Bruce Fields" <bfields@citi.umich.edu>
-To: NeilBrown <neilb@suse.de>
-Cc: Olga Kornievskaia <aglo@citi.umich.edu>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: Is tcp autotuning really what NFS wants?
-Message-ID: <20130710022735.GI8281@fieldses.org>
-References: <20130710092255.0240a36d@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130710092255.0240a36d@notabene.brown>
+	id S1751672Ab3GIDXG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jul 2013 23:23:06 -0400
+Date: Tue, 9 Jul 2013 13:22:53 +1000
+From: NeilBrown <neilb@suse.de>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH - RFC]  new "nosharetransport" option for NFS mounts.
+Message-ID: <20130709132253.3dd4f90a@notabene.brown>
+In-Reply-To: <1373309499.2231.46.camel@leira.trondhjem.org>
+References: <20130708095812.355d7cfc@notabene.brown>
+	<1373309499.2231.46.camel@leira.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/Ju2+KmI9WxrIVjB9fnqbGWk"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 10, 2013 at 09:22:55AM +1000, NeilBrown wrote:
-> 
-> Hi,
->  I just noticed this commit:
-> 
-> commit 9660439861aa8dbd5e2b8087f33e20760c2c9afc
-> Author: Olga Kornievskaia <aglo@citi.umich.edu>
-> Date:   Tue Oct 21 14:13:47 2008 -0400
-> 
->     svcrpc: take advantage of tcp autotuning
-> 
-> 
-> which I must confess surprised me.  I wonder if the full implications of
-> removing that functionality were understood.
-> 
-> Previously nfsd would set the transmit buffer space for a connection to
-> ensure there is plenty to hold all replies.  Now it doesn't.
-> 
-> nfsd refuses to accept a request if there isn't enough space in the transmit
-> buffer to send a reply.  This is important to ensure that each reply gets
-> sent atomically without blocking and there is no risk of replies getting
-> interleaved.
-> 
-> The server starts out with a large estimate of the reply space (1M) and for
-> NFSv3 and v2 it quickly adjusts this down to something realistic.  For NFSv4
-> it is much harder to estimate the space needed so it just assumes every
-> reply will require 1M of space.
-> 
-> This means that with NFSv4, as soon as you have enough concurrent requests
-> such that 1M each reserves all of whatever window size was auto-tuned, new
-> requests on that connection will be ignored.
->
-> This could significantly limit the amount of parallelism that can be achieved
-> for a single TCP connection (and given that the Linux client strongly prefers
-> a single connection now, this could become more of an issue).
+--Sig_/Ju2+KmI9WxrIVjB9fnqbGWk
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Worse, I believe it can deadlock completely if the transmit buffer
-shrinks too far, and people really have run into this:
+On Mon, 8 Jul 2013 18:51:40 +0000 "Myklebust, Trond"
+<Trond.Myklebust@netapp.com> wrote:
 
-	http://mid.gmane.org/<20130125185748.GC29596@fieldses.org>
+> On Mon, 2013-07-08 at 09:58 +1000, NeilBrown wrote:
+> >=20
+> > This patch adds a "nosharetransport" option to allow two different
+> > mounts from the same server to use different transports.
+> > If the mounts use NFSv4, or are of the same filesystem, then
+> > "nosharecache" must be used as well.
+>=20
+> Won't this interfere with the recently added NFSv4 trunking detection?
 
-Trond's suggestion looked at the time like it might work and be doable:
+Will it?  I googled around a bit but couldn't find anything that tells me
+what trunking really was in this context.  Then I found commit 05f4c350ee02=
+=20
+which makes it quite clear (thanks Chuck!).
 
-	http://mid.gmane.org/<4FA345DA4F4AE44899BD2B03EEEC2FA91833C1D8@sacexcmbx05-prd.hq.netapp.com>
+Probably the code I wrote could interfere.
 
-but I dropped it.
+>=20
+> Also, how will it work with NFSv4.1 sessions? The server will usually
+> require a BIND_CONN_TO_SESSION when new TCP connections attempt to
+> attach to an existing session.
 
-The v4-specific situation might not be hard to improve: the v4
-processing decodes the whole compound at the start, so it knows the
-sequence of ops before it does anything else and could compute a tighter
-bound on the reply size at that point.
+Why would it attempt to attach to an existing session?  I would hope there
+the two different mounts with separate TCP connections would look completely
+separate - different transport, different cache, different session.
+??
 
-> I don't know if this is a real issue that needs addressing - I hit in the
-> context of a server filesystem which was misbehaving and so caused this issue
-> to become obvious.  But in this case it is certainly the filesystem, not the
-> NFS server, which is causing the problem.
+>=20
+> > There are at least two circumstances where it might be desirable
+> > to use separate transports:
+> >=20
+> > 1/ If the NFS server can get into a state where it will ignore
+> >   requests for one filesystem while servicing request for another,
+> >   then using separate connections for the separate filesystems can
+> >   stop problems with one affecting access to the other.
+> >=20
+> >   This is particularly relevant for NetApp filers where one filesystem
+> >   has been "suspended".  Requests to that filesystem will be dropped
+> >   (rather than the more correct NFS3ERR_JUKEBOX).  This currently
+> >   interferes with other filesystems.
+>=20
+> This is a known issue that really needs to be fixed on the server, not
+> on the client. As far as I know, work is already underway to fix this.
 
-Yeah it looks a real problem.
+I wasn't aware of this, nor were our support people.  I've passed it on so
+maybe they can bug Netapp....
 
-Some good test cases would be useful if we could find some.
+>=20
+> > 2/ If a very fast network is used with a many-processor client, a
+> >   single TCP connection can present a bottle neck which reduces total
+> >   throughput.  Using multiple TCP connections (one per mount) removes
+> >   the bottleneck.
+> >   An alternate workaround is to configure multiple virtual IP
+> >   addresses on the server and mount each filesystem from a different
+> >   IP.  This is effective (throughput goes up) but an unnecessary
+> >   administrative burden.
+>=20
+> As I understand it, using multiple simultaneous TCP connections between
+> the same endpoints also adds a risk that the congestion windows will
+> interfere. Do you have numbers to back up the claim of a performance
+> improvement?
 
-And, yes, my screwup for merging 966043986 without solving those other
-problems first.  I was confused.
+A customer upgraded from SLES10 (2.6.16 based) to SLES11 (3.0 based) and saw
+a slowdown on some large DB jobs of between 1.5 and 2 times (i.e. total time
+150% to 200% of what is was before).
+After some analysis they created multiple virtual IPs on the server and
+mounted the several filesystem each from different IPs and got the
+performance back (they see this as a work-around rather than a genuine
+solution).
+Numbers are like "500MB/s on a single connection, 850MB/sec peaking to
+1000MB/sec on multiple connections".
 
-It does make a difference on high bandwidth-product networks (something
-people have also hit).  I'd rather not regress there and also would
-rather not require manual tuning for something we should be able to get
-right automatically.
+If I can get something more concrete I'll let you know.
 
---b.
+As this worked well in 2.6.16 (which doesn't try to share connections) this
+is seen as a regression.
+
+On links that are easy to saturate, congestion windows are important and
+having a single connection is probably a good idea - so the current default
+is certainly correct.
+On a 10G ethernet or infiniband connection (where the issue has been
+measured) congestion just doesn't seem to be an issue.
+
+Thanks,
+NeilBrown
+
+
+--Sig_/Ju2+KmI9WxrIVjB9fnqbGWk
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUduCDTnsnt1WYoG5AQLZHA//X2FstciOm4aYpc3ossKH1AeSkU2uOsdZ
+RKTC3X59Go36EGHsDdaY7o7ufg5p22NWPvWBQaUEm+thDbWidrSGACDDF7jW6knV
+f2W9fch8E8KB3q2i6XO/5go+fyrQ/C/l0TzdK7Vs/yjAcmbzqhn3vJCPaKK5J0Jp
+qjI/2/qxNsUKHKpHeqa3XPTNka0js7ggvmUUUSDn2GStSWu8ps8x5lHfjtH38opW
+dyfQ63oBI/syfJGFG5lLRhmwiukPsAtWwLdcivCK6b8OQ7zk/rVf4XtoIF9/ChHK
+R9iivO/9uml31vGM3mZKKlB9GkIkkNPtXVnW4/o4PGTiJO77NouuQc6h2/6Jsoe0
+kejobwtBJSLUbO06sbBismliWx1cphtJC+M0BA0VL8FbdqNvud6NhWIbZsFSzxDT
+JpeLHQudBiRRR2jPJjv0ZL8SKDeYDKQ5fIzP9KY0Og/fXtPpnmkWBEDMVf9CGUmx
+RAXkgXmTdqUoLnzI3NTMMorpfHAILLn8AEXUBOuwuoCNyQlUdDugpXgW/WwlP+Cj
+25BMaB7Vmb1AcgDXDjON7IXVk/zhKWRIz1I0ELthrDhbD7Unj2FGoUYOTJKnI4OH
+bNQ0VHDjB7Af+3B1VISQVOApCZvCqsfc0jrGetcy1sK5RsC5qvSv94CxXSVwTWme
+ItA9HdAzha8=
+=7v6S
+-----END PGP SIGNATURE-----
+
+--Sig_/Ju2+KmI9WxrIVjB9fnqbGWk--
