@@ -1,72 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.gnuher.de ([78.47.12.54]:60442 "EHLO mail.gnuher.de"
+Received: from fieldses.org ([174.143.236.118]:33385 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751026Ab3GIQEF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Jul 2013 12:04:05 -0400
-Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
-	by mail.gnuher.de (envelope-from
-	<sven@gegg.us>)
-	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.72)
-	id 1UwaOZ-0000S8-7e
-	for linux-nfs@vger.kernel.org; Tue, 09 Jul 2013 18:04:03 +0200
-Received: from sven  by ultimate100.geggus.net (envelope-from
-	<sven@gegg.us>)
-	with local (Exim 4.72)
-	id 1UwaOY-000147-JK
-	for linux-nfs@vger.kernel.org; Tue, 09 Jul 2013 18:04:02 +0200
-Date: Tue, 9 Jul 2013 18:03:15 +0200
-From: Sven Geggus <lists@fuchsschwanzdomain.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Kerberized NFS-Server Problem still present in 3.10.0-rc2
-Message-ID: <20130709160315.GA4024@geggus.net>
-References: <20130624215408.GD23596@fieldses.org>
- <20130625094612.GA2186@geggus.net>
- <20130701205234.GF19945@fieldses.org>
- <20130702080530.GA17953@geggus.net>
- <20130705181859.GA8288@fieldses.org>
- <20130705203435.GE8288@fieldses.org>
- <20130708080803.GB29990@geggus.net>
- <20130708133537.GA29071@fieldses.org>
- <20130708155406.GA7808@geggus.net>
- <20130708194144.GG29071@fieldses.org>
+	id S1754128Ab3GIPG6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 11:06:58 -0400
+Received: from bfields by fieldses.org with local (Exim 4.76)
+	(envelope-from <bfields@fieldses.org>)
+	id 1UwZVJ-0002de-Op
+	for linux-nfs@vger.kernel.org; Tue, 09 Jul 2013 11:06:57 -0400
+Date: Tue, 9 Jul 2013 11:06:57 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd4: support minorversion 1 by default
+Message-ID: <20130709150657.GB8281@fieldses.org>
+References: <20130709031928.GN29071@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20130708194144.GG29071@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130709031928.GN29071@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields schrieb am Montag, den 08. Juli um 21:41 Uhr:
+On Mon, Jul 08, 2013 at 11:19:28PM -0400, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> We now have minimal minorversion 1 support; turn it on by default.
+> 
+> This can still be turned off with "echo -4.1 >/proc/fs/nfsd/versions".
 
-> I'm not even sure whether it makes sense to be doing this upcall to ask
-> for supplemental groups in the -1 case.  Going with the minimal fix for
-> now.
+I intend this for 3.11, since as far as I can tell we're up to spec and
+the 4.1-specific bugs I know about have been fixed.
 
-Confirmed to work fine here, but strange messages from userland rpc.svcgssd persist:
+--b.
 
-Jul  9 17:59:27 vnfsrv rpc.svcgssd[2919]: ERROR: GSS-API: error in gss_free_lucid_sec_context(): GSS_S_NO_CONTEXT (No context has been established) - Unknown error
-Jul  9 17:59:27 vnfsrv rpc.svcgssd[2919]: WARN: failed to free lucid sec context
-Jul  9 17:59:27 vnfsrv rpc.svcgssd[2919]: ERROR: GSS-API: error in gss_free_lucid_sec_context(): GSS_S_NO_CONTEXT (No context has been established) - Unknown error
-Jul  9 17:59:27 vnfsrv rpc.svcgssd[2919]: WARN: failed to free lucid sec context
-Jul  9 17:59:27 vnfsrv rpc.svcgssd[2919]: ERROR: GSS-API: error in gss_free_lucid_sec_context(): GSS_S_NO_CONTEXT (No context has been established) - Unknown error
-Jul  9 17:59:27 vnfsrv rpc.svcgssd[2919]: WARN: failed to free lucid sec context
-Jul  9 17:59:27 vnfsrv rpc.svcgssd[2919]: ERROR: GSS-API: error in gss_free_lucid_sec_context(): GSS_S_NO_CONTEXT (No context has been established) - Unknown error
-Jul  9 17:59:27 vnfsrv rpc.svcgssd[2919]: WARN: failed to free lucid sec context
-Jul  9 17:59:27 vnfsrv rpc.svcgssd[2919]: ERROR: GSS-API: error in gss_free_lucid_sec_context(): GSS_S_NO_CONTEXT (No context has been established) - Unknown error
-Jul  9 17:59:27 vnfsrv rpc.svcgssd[2919]: WARN: failed to free lucid sec context
-Jul  9 17:59:27 vnfsrv rpc.svcgssd[2919]: ERROR: GSS-API: error in gss_free_lucid_sec_context(): GSS_S_NO_CONTEXT (No context has been established) - Unknown error
-Jul  9 17:59:27 vnfsrv rpc.svcgssd[2919]: WARN: failed to free lucid sec context
-
-
-> commit 8efb88340e29293e05f6b498b60596884c05a8a8
-
-OK, is this supposed to get into 3.9.x and 3.10.x respectively?
-
-Regards
-
-Sven
-
-Microsoft ist offenbar die einzige Firma, die in der Lage ist, ein mit
-Office nicht kompatibles Bürosoftwarepaket einzuführen.
-                            (Florian Weimer in de.alt.sysadmin.recovery)
-/me is giggls@ircnet, http://sven.gegg.us/ on the Web
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/nfsd/nfssvc.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> index 262df5c..6b9f48c 100644
+> --- a/fs/nfsd/nfssvc.c
+> +++ b/fs/nfsd/nfssvc.c
+> @@ -116,7 +116,7 @@ struct svc_program		nfsd_program = {
+>  
+>  };
+>  
+> -u32 nfsd_supported_minorversion;
+> +u32 nfsd_supported_minorversion = 1;
+>  
+>  int nfsd_vers(int vers, enum vers_op change)
+>  {
+> -- 
+> 1.7.9.5
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
