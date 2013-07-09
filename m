@@ -1,177 +1,237 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:54887 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:5150 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757889Ab3GZNLx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Jul 2013 09:11:53 -0400
-Date: Fri, 26 Jul 2013 09:12:25 -0400
+	id S1753542Ab3GINFN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 09:05:13 -0400
+Date: Tue, 9 Jul 2013 09:05:06 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: Larry Keegan <lk@pfw.demon.co.uk>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: Re: nfs client: Now you see it, now you don't (aka spurious ESTALE
- errors)
-Message-ID: <20130726091225.5f299ff6@corrin.poochiereds.net>
-In-Reply-To: <20130726124101.058df8dc@cs3.al.itld>
-References: <20130725134515.67af44e2@cs3.al.itld>
-	<20130725101143.6a22cb81@corrin.poochiereds.net>
-	<20130725170526.6e54c7db@cs3.al.itld>
-	<20130725141828.1862a1e1@tlielax.poochiereds.net>
-	<20130726124101.058df8dc@cs3.al.itld>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, David Howells <dhowells@redhat.com>,
+        Tyler Hicks <tyhicks@canonical.com>,
+        Dustin Kirkland <dustin.kirkland@gazzang.com>
+Subject: Re: [PATCH 08/12] locks: break delegations on unlink
+Message-ID: <20130709090506.71c96841@tlielax.poochiereds.net>
+In-Reply-To: <1372882356-14168-9-git-send-email-bfields@redhat.com>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+	<1372882356-14168-9-git-send-email-bfields@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 26 Jul 2013 12:41:01 +0000
-Larry Keegan <lk@pfw.demon.co.uk> wrote:
+On Wed,  3 Jul 2013 16:12:32 -0400
+"J. Bruce Fields" <bfields@redhat.com> wrote:
 
-> On Thu, 25 Jul 2013 14:18:28 -0400
-> Jeff Layton <jlayton@redhat.com> wrote:
-> > On Thu, 25 Jul 2013 17:05:26 +0000
-> > Larry Keegan <lk@pfw.demon.co.uk> wrote:
-> > 
-> > > On Thu, 25 Jul 2013 10:11:43 -0400
-> > > Jeff Layton <jlayton@redhat.com> wrote:
-> > > > On Thu, 25 Jul 2013 13:45:15 +0000
-> > > > Larry Keegan <lk@pfw.demon.co.uk> wrote:
-> > > > 
-> > > > > Dear Chaps,
-> > > > > 
-> > > > > I am experiencing some inexplicable NFS behaviour which I would
-> > > > > like to run past you.
-> > > > 
-> > > > Were these machines running older kernels before this started
-> > > > happening? What kernel did you upgrade from if so?
-> > > > 
-> > > [snip out my long rambling reply]
-> > > > What might be helpful is to do some network captures when the
-> > > > problem occurs. What we want to know is whether the ESTALE errors
-> > > > are coming from the server, or if the client is generating them.
-> > > > That'll narrow down where we need to look for problems.
-> > > 
-> > > As it was giving me gyp during typing I tried to capture some NFS
-> > > traffic. Unfortunately claws-mail started a mail box check in the
-> > > middle of this and the problem disappeared! Normally it's claws
-> > > which starts this. It'll come along again soon enough and I'll send
-> > > a trace.
-> > > 
-> > Ok, we had a number of changes to how ESTALE errors are handled over
-> > the last few releases. When you mentioned 3.10, I had assumed that you
-> > might be hitting a regression in one of those, but those went in well
-> > after the 3.4 series.
-> > 
-> > Captures are probably your best bet. My suspicion is that the server
-> > is returning these ESTALE errors occasionally, but it would be best to
-> > have you confirm that. They may also help make sense of why it's
-> > occurring...
-> > 
+> From: "J. Bruce Fields" <bfields@redhat.com>
 > 
-> Dear Jeff,
+> We need to break delegations on any operation that changes the set of
+> links pointing to an inode.  Start with unlink.
 > 
-> I now have a good and a bad packet capture. I can run them through
-> tshark -V but if I do this, they're really long, so I'm wondering how
-> best to post them. I've posted the summaries below.
+> Such operations also hold the i_mutex on a parent directory.  Breaking a
+> delegation may require waiting for a timeout (by default 90 seconds) in
+> the case of a unresponsive NFS client.  To avoid blocking all directory
+> operations, we therefore drop locks before waiting for the delegation.
+> The logic then looks like:
 > 
-> The set-up is as follows: I'm running a few xterms on my desktop (the
-> affected client) as well as claws-mail using the mailmbox plugin.
-> Claws keeps a cache of the mailbox in .clawsmail/tagsdb/<foldername>.
-> From time to time I blast a load of mail into these mail boxes using
-> procmail. This seems to demonstrate the problem most of the time. After
-> a few minutes everything gets back to normal.
+> 	acquire locks
+> 	...
+> 	test for delegation; if found:
+> 		take reference on inode
+> 		release locks
+> 		wait for delegation break
+> 		drop reference on inode
+> 		retry
 > 
-> The actual mail is being delivered on my file server pair directly
-> into /home/larry/Mail/<foldername>. Both file servers use automount to
-> mount the same filesystem and attempt to deliver mail into the boxes
-> simultaneously. Clearly the .lock files stop them stomping on each
-> other. This works well.
+> It is possible this could never terminate.  (Even if we take precautions
+> to prevent another delegation being acquired on the same inode, we could
+> get a different inode on each retry.)  But this seems very unlikely.
 > 
-> When it's in the mood to work, the test session on my desktop looks
-> like this:
+> The initial test for a delegation happens after the lock on the target
+> inode is acquired, but the directory inode may have been acquired
+> further up the call stack.  We therefore add a "struct inode **"
+> argument to any intervening functions, which we use to pass the inode
+> back up to the caller in the case it needs a delegation synchronously
+> broken.
 > 
-> # ls .claws-mail/tagsdb
-> #mailmbox  #mh
-> # _
+> Cc: David Howells <dhowells@redhat.com>
+> Cc: Tyler Hicks <tyhicks@canonical.com>
+> Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  drivers/base/devtmpfs.c |    2 +-
+>  fs/cachefiles/namei.c   |    2 +-
+>  fs/ecryptfs/inode.c     |    2 +-
+>  fs/namei.c              |   24 +++++++++++++++++++++---
+>  fs/nfsd/vfs.c           |    2 +-
+>  include/linux/fs.h      |    2 +-
+>  ipc/mqueue.c            |    2 +-
+>  7 files changed, 27 insertions(+), 9 deletions(-)
 > 
-> When it doesn't it looks like this:
-> 
-> # ls .claws-mail/tagsdb
-> ls: cannot open directory .claws-mail/tagsdb: Stale NFS file handle
-> # _
-> 
-> I captured the packets on the network desktop. All else was quiet on
-> the network, at least as far as TCP traffic was concerned. Here are the
-> summaries:
-> 
-> # tshark -r good tcp
->  10 1.304139000   10.1.1.139 -> 10.1.1.173   NFS 238 V4 Call ACCESS FH:0x4e5465ab, [Check: RD LU MD XT DL]
->  11 1.304653000   10.1.1.173 -> 10.1.1.139   NFS 194 V4 Reply (Call In 10) ACCESS, [Allowed: RD LU MD XT DL]
->  12 1.304694000   10.1.1.139 -> 10.1.1.173   TCP 66 gdoi > nfs [ACK] Seq=173 Ack=129 Win=3507 Len=0 TSval=119293240 TSecr=440910222
->  13 1.304740000   10.1.1.139 -> 10.1.1.173   NFS 250 V4 Call LOOKUP DH:0x4e5465ab/tagsdb
->  14 1.305225000   10.1.1.173 -> 10.1.1.139   NFS 310 V4 Reply (Call In 13) LOOKUP
->  15 1.305283000   10.1.1.139 -> 10.1.1.173   NFS 238 V4 Call ACCESS FH:0x4e5465ab, [Check: RD LU MD XT DL]
->  16 1.305798000   10.1.1.173 -> 10.1.1.139   NFS 194 V4 Reply (Call In 15) ACCESS, [Allowed: RD LU MD XT DL]
->  17 1.305835000   10.1.1.139 -> 10.1.1.173   NFS 250 V4 Call LOOKUP DH:0x4e5465ab/tagsdb
->  18 1.306330000   10.1.1.173 -> 10.1.1.139   NFS 310 V4 Reply (Call In 17) LOOKUP
->  19 1.306373000   10.1.1.139 -> 10.1.1.173   NFS 230 V4 Call GETATTR FH:0x445c531a
->  20 1.306864000   10.1.1.173 -> 10.1.1.139   NFS 262 V4 Reply (Call In 19) GETATTR
->  21 1.346003000   10.1.1.139 -> 10.1.1.173   TCP 66 gdoi > nfs [ACK]  Seq=877 Ack=941 Win=3507 Len=0 TSval=119293282 TSecr=440910225
-> # tshark -r bad tcp
->  14 2.078769000   10.1.1.139 -> 10.1.1.173   NFS 238 V4 Call ACCESS FH:0x76aee435, [Check: RD LU MD XT DL]
->  15 2.079266000   10.1.1.173 -> 10.1.1.139   NFS 194 V4 Reply (Call In 14) ACCESS, [Allowed: RD LU MD XT DL]
->  16 2.079296000   10.1.1.139 -> 10.1.1.173   TCP 66 gdoi > nfs [ACK] Seq=173 Ack=129 Win=3507 Len=0 TSval=180576023 TSecr=502193004
->  17 2.079338000   10.1.1.139 -> 10.1.1.173   NFS 238 V4 Call ACCESS FH:0x4e5465ab, [Check: RD LU MD XT DL]
->  18 2.079797000   10.1.1.173 -> 10.1.1.139   NFS 194 V4 Reply (Call In 17) ACCESS, [Allowed: RD LU MD XT DL]
->  19 2.079834000   10.1.1.139 -> 10.1.1.173   NFS 230 V4 Call GETATTR FH:0xb12cdc45
->  20 2.080331000   10.1.1.173 -> 10.1.1.139   NFS 262 V4 Reply (Call In 19) GETATTR
->  21 2.080410000   10.1.1.139 -> 10.1.1.173   NFS 250 V4 Call LOOKUP DH:0x4e5465ab/tagsdb
->  22 2.080903000   10.1.1.173 -> 10.1.1.139   NFS 310 V4 Reply (Call In 21) LOOKUP
->  23 2.080982000   10.1.1.139 -> 10.1.1.173   NFS 226 V4 Call GETATTR FH:0xb12cdc45
->  24 2.081477000   10.1.1.173 -> 10.1.1.139   NFS 162 V4 Reply (Call In 23) GETATTR
->  25 2.081509000   10.1.1.139 -> 10.1.1.173   NFS 230 V4 Call GETATTR FH:0xb12cdc45
->  26 2.082010000   10.1.1.173 -> 10.1.1.139   NFS 178 V4 Reply (Call In 25) GETATTR
->  27 2.082040000   10.1.1.139 -> 10.1.1.173   NFS 226 V4 Call GETATTR FH:0xb12cdc45
->  28 2.082542000   10.1.1.173 -> 10.1.1.139   NFS 142 V4 Reply (Call In 27) GETATTR
->  29 2.089525000   10.1.1.139 -> 10.1.1.173   NFS 226 V4 Call GETATTR FH:0xb12cdc45
->  30 2.089996000   10.1.1.173 -> 10.1.1.139   NFS 162 V4 Reply (Call In 29) GETATTR
->  31 2.090028000   10.1.1.139 -> 10.1.1.173   NFS 230 V4 Call GETATTR FH:0xb12cdc45
->  32 2.090529000   10.1.1.173 -> 10.1.1.139   NFS 262 V4 Reply (Call In 31) GETATTR
->  33 2.090577000   10.1.1.139 -> 10.1.1.173   NFS 230 V4 Call GETATTR FH:0x4e5465ab
->  34 2.091061000   10.1.1.173 -> 10.1.1.139   NFS 262 V4 Reply (Call In 33) GETATTR
->  35 2.091110000   10.1.1.139 -> 10.1.1.173   NFS 250 V4 Call LOOKUP DH:0x4e5465ab/tagsdb
->  36 2.091593000   10.1.1.173 -> 10.1.1.139   NFS 310 V4 Reply (Call In 35) LOOKUP
->  37 2.091657000   10.1.1.139 -> 10.1.1.173   NFS 226 V4 Call GETATTR FH:0xb12cdc45
->  38 2.092126000   10.1.1.173 -> 10.1.1.139   NFS 162 V4 Reply (Call In 37) GETATTR
->  39 2.092157000   10.1.1.139 -> 10.1.1.173   NFS 230 V4 Call GETATTR FH:0xb12cdc45
->  40 2.092658000   10.1.1.173 -> 10.1.1.139   NFS 178 V4 Reply (Call In 39) GETATTR
->  41 2.092684000   10.1.1.139 -> 10.1.1.173   NFS 226 V4 Call GETATTR FH:0xb12cdc45
->  42 2.093150000   10.1.1.173 -> 10.1.1.139   NFS 142 V4 Reply (Call In 41) GETATTR
->  43 2.100520000   10.1.1.139 -> 10.1.1.173   NFS 226 V4 Call GETATTR FH:0xb12cdc45
->  44 2.101014000   10.1.1.173 -> 10.1.1.139   NFS 162 V4 Reply (Call In 43) GETATTR
->  45 2.101040000   10.1.1.139 -> 10.1.1.173   NFS 230 V4 Call GETATTR FH:0xb12cdc45
->  46 2.101547000   10.1.1.173 -> 10.1.1.139   NFS 262 V4 Reply (Call In 45) GETATTR
->  47 2.141500000   10.1.1.139 -> 10.1.1.173   TCP 66 gdoi > nfs [ACK] Seq=2657 Ack=2289 Win=3507 Len=0 TSval=180576086 TSecr=502193026
-> # _
-> 
-> The first thing that strikes me is the bad trace is much longer. This
-> strikes me as reasonable because as well as the ESTALE problem I've
-> noticed that the whole system seems sluggish. claws-mail is
-> particularly so because it keeps saving my typing into a drafts
-> mailbox, and because claws doesn't really understand traditional
-> mboxes, it spends an inordinate amount of time locking and unlocking
-> the boxes for each message in them. Claws also spews tracebacks
-> frequently and it crashes from time to time, something it never did
-> before the ESTALE problem occurred.
-> 
-> Yours,
-> 
-> Larry
+> diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
+> index 7413d06..1b8490e 100644
+> --- a/drivers/base/devtmpfs.c
+> +++ b/drivers/base/devtmpfs.c
+> @@ -324,7 +324,7 @@ static int handle_remove(const char *nodename, struct device *dev)
+>  			mutex_lock(&dentry->d_inode->i_mutex);
+>  			notify_change(dentry, &newattrs);
+>  			mutex_unlock(&dentry->d_inode->i_mutex);
+> -			err = vfs_unlink(parent.dentry->d_inode, dentry);
+> +			err = vfs_unlink(parent.dentry->d_inode, dentry, NULL);
+>  			if (!err || err == -ENOENT)
+>  				deleted = 1;
+>  		}
+> diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
+> index 8c01c5fc..d61d884 100644
+> --- a/fs/cachefiles/namei.c
+> +++ b/fs/cachefiles/namei.c
+> @@ -294,7 +294,7 @@ static int cachefiles_bury_object(struct cachefiles_cache *cache,
+>  		if (ret < 0) {
+>  			cachefiles_io_error(cache, "Unlink security error");
+>  		} else {
+> -			ret = vfs_unlink(dir->d_inode, rep);
+> +			ret = vfs_unlink(dir->d_inode, rep, NULL);
+>  
+>  			if (preemptive)
+>  				cachefiles_mark_object_buried(cache, rep);
+> diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+> index 5eab400..af42d88 100644
+> --- a/fs/ecryptfs/inode.c
+> +++ b/fs/ecryptfs/inode.c
+> @@ -153,7 +153,7 @@ static int ecryptfs_do_unlink(struct inode *dir, struct dentry *dentry,
+>  
+>  	dget(lower_dentry);
+>  	lower_dir_dentry = lock_parent(lower_dentry);
+> -	rc = vfs_unlink(lower_dir_inode, lower_dentry);
+> +	rc = vfs_unlink(lower_dir_inode, lower_dentry, NULL);
+>  	if (rc) {
+>  		printk(KERN_ERR "Error in vfs_unlink; rc = [%d]\n", rc);
+>  		goto out_unlock;
+> diff --git a/fs/namei.c b/fs/namei.c
+> index 7e76fe1..cba3db1 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -3384,7 +3384,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
+>  	return do_rmdir(AT_FDCWD, pathname);
+>  }
+>  
+> -int vfs_unlink(struct inode *dir, struct dentry *dentry)
+> +int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
 
-I'm afraid I can't tell much from the above output. I don't see any
-ESTALE errors there, but you can get similar issues if (for instance)
-certain attributes of a file change. You mentioned that this is a DRBD
-cluster, are you "floating" IP addresses between cluster nodes here? If
-so, do your problems occur around the times that that's happening?
+nit: this might be a good time to add a kerneldoc header on this
+function. The delegated_inode thing might not be clear to the
+uninitiated.
 
-Also, what sort of filesystem is being exported here?
+>  {
+>  	struct inode *target = dentry->d_inode;
+>  	int error = may_delete(dir, dentry, 0);
+> @@ -3401,11 +3401,20 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+>  	else {
+>  		error = security_inode_unlink(dir, dentry);
+>  		if (!error) {
+> +			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
+> +			if (error) {
+> +				if (error == -EWOULDBLOCK && delegated_inode) {
+> +					*delegated_inode = target;
+> +					ihold(target);
+> +				}
+> +				goto out;
+> +			}
+>  			error = dir->i_op->unlink(dir, dentry);
+>  			if (!error)
+>  				dont_mount(dentry);
+>  		}
+>  	}
+> +out:
+>  	mutex_unlock(&target->i_mutex);
+>  
+>  	/* We don't d_delete() NFS sillyrenamed files--they still exist. */
+> @@ -3430,6 +3439,7 @@ static long do_unlinkat(int dfd, const char __user *pathname)
+>  	struct dentry *dentry;
+>  	struct nameidata nd;
+>  	struct inode *inode = NULL;
+> +	struct inode *delegated_inode = NULL;
+>  	unsigned int lookup_flags = 0;
+>  retry:
+>  	name = user_path_parent(dfd, pathname, &nd, lookup_flags);
+> @@ -3444,7 +3454,7 @@ retry:
+>  	error = mnt_want_write(nd.path.mnt);
+>  	if (error)
+>  		goto exit1;
+> -
+> +retry_deleg:
+>  	mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex, I_MUTEX_PARENT);
+>  	dentry = lookup_hash(&nd);
+>  	error = PTR_ERR(dentry);
+> @@ -3459,13 +3469,21 @@ retry:
+>  		error = security_path_unlink(&nd.path, dentry);
+>  		if (error)
+>  			goto exit2;
+> -		error = vfs_unlink(nd.path.dentry->d_inode, dentry);
+> +		error = vfs_unlink(nd.path.dentry->d_inode, dentry, &delegated_inode);
+>  exit2:
+>  		dput(dentry);
+>  	}
+>  	mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
+>  	if (inode)
+>  		iput(inode);	/* truncate the inode here */
+> +	inode = NULL;
+> +	if (delegated_inode) {
+> +		error = break_deleg(delegated_inode, O_WRONLY);
+> +		iput(delegated_inode);
+> +		delegated_inode = NULL;
+> +		if (!error)
+> +			goto retry_deleg;
+> +	}
+>  	mnt_drop_write(nd.path.mnt);
+>  exit1:
+>  	path_put(&nd.path);
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 84ce601..6ccaca2 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -1882,7 +1882,7 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+>  	if (host_err)
+>  		goto out_put;
+>  	if (type != S_IFDIR)
+> -		host_err = vfs_unlink(dirp, rdentry);
+> +		host_err = vfs_unlink(dirp, rdentry, NULL);
+>  	else
+>  		host_err = vfs_rmdir(dirp, rdentry);
+>  	if (!host_err)
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index c6cc686..f951588 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1463,7 +1463,7 @@ extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
+>  extern int vfs_symlink(struct inode *, struct dentry *, const char *);
+>  extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
+>  extern int vfs_rmdir(struct inode *, struct dentry *);
+> -extern int vfs_unlink(struct inode *, struct dentry *);
+> +extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
+>  extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *);
+>  
+>  /*
+> diff --git a/ipc/mqueue.c b/ipc/mqueue.c
+> index e4e47f6..384eb35 100644
+> --- a/ipc/mqueue.c
+> +++ b/ipc/mqueue.c
+> @@ -884,7 +884,7 @@ SYSCALL_DEFINE1(mq_unlink, const char __user *, u_name)
+>  		err = -ENOENT;
+>  	} else {
+>  		ihold(inode);
+> -		err = vfs_unlink(dentry->d_parent->d_inode, dentry);
+> +		err = vfs_unlink(dentry->d_parent->d_inode, dentry, NULL);
+>  	}
+>  	dput(dentry);
+>  
+
+We probably also ought to eyeball some of these other cases where you
+passing in NULL as the deleg_inode too. It's probably reasonable in
+most cases -- exporting a filesystem that you also mount using ecryptfs
+seems silly, but you never know...
+Looks reasonable otherwise, if a little convoluted.
+
 
 -- 
 Jeff Layton <jlayton@redhat.com>
