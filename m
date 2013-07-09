@@ -1,113 +1,135 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:27952 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57221 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756723Ab3GZLYC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Jul 2013 07:24:02 -0400
-Date: Fri, 26 Jul 2013 07:24:35 -0400
+	id S1752846Ab3GINJy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 09:09:54 -0400
+Date: Tue, 9 Jul 2013 09:09:52 -0400
 From: Jeff Layton <jlayton@redhat.com>
 To: "J. Bruce Fields" <bfields@redhat.com>
 Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 16/16] nfsd4: break only delegations when appropriate
-Message-ID: <20130726072435.275a3b76@corrin.poochiereds.net>
-In-Reply-To: <1374094217-31493-18-git-send-email-bfields@redhat.com>
-References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
-	<1374094217-31493-18-git-send-email-bfields@redhat.com>
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 09/12] locks: helper functions for delegation breaking
+Message-ID: <20130709090952.0afe9503@tlielax.poochiereds.net>
+In-Reply-To: <1372882356-14168-10-git-send-email-bfields@redhat.com>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+	<1372882356-14168-10-git-send-email-bfields@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 17 Jul 2013 16:50:17 -0400
+On Wed,  3 Jul 2013 16:12:33 -0400
 "J. Bruce Fields" <bfields@redhat.com> wrote:
 
 > From: "J. Bruce Fields" <bfields@redhat.com>
 > 
-> As a temporary fix, nfsd was breaking all leases on unlink, link,
-> rename, and setattr.
-> 
-> Now that we can distinguish between leases and delegations, we can be
-> nicer and break only the delegations, and not bother lease-holders with
-> operations they don't care about.
-> 
-> And we get to delete some code while we're at it.
+> We'll need the same logic for rename and link.
 > 
 > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 > ---
->  fs/nfsd/vfs.c |   27 ---------------------------
->  1 file changed, 27 deletions(-)
+>  fs/namei.c         |   13 +++----------
+>  include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
+>  2 files changed, 34 insertions(+), 12 deletions(-)
 > 
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 2586f6d..51a5ede 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -273,13 +273,6 @@ out:
->  	return err;
+> diff --git a/fs/namei.c b/fs/namei.c
+> index cba3db1..a9d4031 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -3401,14 +3401,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
+>  	else {
+>  		error = security_inode_unlink(dir, dentry);
+>  		if (!error) {
+> -			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
+> -			if (error) {
+> -				if (error == -EWOULDBLOCK && delegated_inode) {
+> -					*delegated_inode = target;
+> -					ihold(target);
+> -				}
+> +			error = try_break_deleg(target, delegated_inode);
+> +			if (error)
+>  				goto out;
+> -			}
+>  			error = dir->i_op->unlink(dir, dentry);
+>  			if (!error)
+>  				dont_mount(dentry);
+> @@ -3478,9 +3473,7 @@ exit2:
+>  		iput(inode);	/* truncate the inode here */
+>  	inode = NULL;
+>  	if (delegated_inode) {
+> -		error = break_deleg(delegated_inode, O_WRONLY);
+> -		iput(delegated_inode);
+> -		delegated_inode = NULL;
+> +		error = break_deleg_wait(&delegated_inode);
+>  		if (!error)
+>  			goto retry_deleg;
+>  	}
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index f951588..c37e463 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1894,6 +1894,9 @@ extern bool our_mnt(struct vfsmount *mnt);
+>  
+>  extern int current_umask(void);
+>  
+> +extern void ihold(struct inode * inode);
+> +extern void iput(struct inode *);
+> +
+>  /* /sys/fs */
+>  extern struct kobject *fs_kobj;
+>  
+> @@ -1962,6 +1965,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+>  	return 0;
 >  }
 >  
-> -static int nfsd_break_lease(struct inode *inode)
-> -{
-> -	if (!S_ISREG(inode->i_mode))
-> -		return 0;
-> -	return break_lease(inode, O_WRONLY | O_NONBLOCK);
-> -}
-> -
->  /*
->   * Commit metadata changes to stable storage.
->   */
-> @@ -422,9 +415,6 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+> +static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
+> +{
+> +	int ret;
+> +
+> +	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
+> +	if (ret == -EWOULDBLOCK && delegated_inode) {
+> +		*delegated_inode = inode;
+> +		ihold(inode);
+> +	}
+> +	return ret;
+> +}
+> +
+> +static inline int break_deleg_wait(struct inode **delegated_inode)
+> +{
+> +	int ret;
+> +
+> +	ret = break_deleg(*delegated_inode, O_WRONLY);
+> +	iput(*delegated_inode);
+> +	*delegated_inode = NULL;
+> +	return ret;
+> +}
+> +
+>  #else /* !CONFIG_FILE_LOCKING */
+>  static inline int locks_mandatory_locked(struct inode *inode)
+>  {
+> @@ -2005,6 +2030,12 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+>  {
+>  	return 0;
+>  }
+> +
+> +static inline int try_break_deleg(struct inode *inode, struct delegated_inode **inode)
+> +{
+> +	return 0;
+> +}
+> +
+>  #endif /* CONFIG_FILE_LOCKING */
 >  
->  	err = nfserr_notsync;
->  	if (!check_guard || guardtime == inode->i_ctime.tv_sec) {
-> -		host_err = nfsd_break_lease(inode);
-> -		if (host_err)
-> -			goto out_nfserr;
->  		fh_lock(fhp);
->  
->  		host_err = notify_change(dentry, iap, NULL);
-> @@ -1735,11 +1725,6 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
->  	err = nfserr_noent;
->  	if (!dold->d_inode)
->  		goto out_dput;
-> -	host_err = nfsd_break_lease(dold->d_inode);
-> -	if (host_err) {
-> -		err = nfserrno(host_err);
-> -		goto out_dput;
-> -	}
->  	host_err = vfs_link(dold, dirp, dnew, NULL);
->  	if (!host_err) {
->  		err = nfserrno(commit_metadata(ffhp));
-> @@ -1833,14 +1818,6 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
->  	if (ffhp->fh_export->ex_path.dentry != tfhp->fh_export->ex_path.dentry)
->  		goto out_dput_new;
->  
-> -	host_err = nfsd_break_lease(odentry->d_inode);
-> -	if (host_err)
-> -		goto out_dput_new;
-> -	if (ndentry->d_inode) {
-> -		host_err = nfsd_break_lease(ndentry->d_inode);
-> -		if (host_err)
-> -			goto out_dput_new;
-> -	}
->  	host_err = vfs_rename(fdir, odentry, tdir, ndentry, NULL);
->  	if (!host_err) {
->  		host_err = commit_metadata(tfhp);
-> @@ -1910,16 +1887,12 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
->  	if (!type)
->  		type = rdentry->d_inode->i_mode & S_IFMT;
->  
-> -	host_err = nfsd_break_lease(rdentry->d_inode);
-> -	if (host_err)
-> -		goto out_put;
->  	if (type != S_IFDIR)
->  		host_err = vfs_unlink(dirp, rdentry, NULL);
->  	else
->  		host_err = vfs_rmdir(dirp, rdentry);
->  	if (!host_err)
->  		host_err = commit_metadata(fhp);
-> -out_put:
->  	dput(rdentry);
->  
->  out_nfserr:
+>  /* fs/open.c */
+> @@ -2335,8 +2366,6 @@ extern loff_t vfs_llseek(struct file *file, loff_t offset, int whence);
+>  extern int inode_init_always(struct super_block *, struct inode *);
+>  extern void inode_init_once(struct inode *);
+>  extern void address_space_init_once(struct address_space *mapping);
+> -extern void ihold(struct inode * inode);
+> -extern void iput(struct inode *);
+>  extern struct inode * igrab(struct inode *);
+>  extern ino_t iunique(struct super_block *, ino_t);
+>  extern int inode_needs_sync(struct inode *inode);
+
+Nice cleanup. Might be reasonable to reorder or merge this patch with
+the previous one to reduce "churn" in vfs_unlink.
 
 Acked-by: Jeff Layton <jlayton@redhat.com>
