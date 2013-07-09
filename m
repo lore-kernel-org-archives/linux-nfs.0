@@ -1,44 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:50466 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:45960 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759356Ab3GRUhA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Jul 2013 16:37:00 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: SP4_MACH_CRED: v4 proc -> opcodes mapping
-Date: Thu, 18 Jul 2013 20:36:58 +0000
-Message-ID: <1374179816.3788.81.camel@leira.trondhjem.org>
-References: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
-	 <1374159436.3788.3.camel@leira.trondhjem.org>
-	 <DFCAA8D0-B3BD-49C2-BAC4-9C26668AACB9@netapp.com>
-	 <1374160910.3788.14.camel@leira.trondhjem.org>
-	 <1D61D5F4-40DA-47D1-A15A-745EA05813BA@netapp.com>
-	 <1374167339.3788.52.camel@leira.trondhjem.org>
-	 <DD04268F-B364-48D0-ADEB-E4770D618B38@netapp.com>
-	 <9AC7EBEB-E407-4CCB-A6E6-05C24CD821DA@netapp.com>
-	 <1374177242.3788.59.camel@leira.trondhjem.org>
-	 <FB5772A6-D433-4C9C-B67E-B43126961A68@netapp.com>
-In-Reply-To: <FB5772A6-D433-4C9C-B67E-B43126961A68@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1751999Ab3GIP6p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 11:58:45 -0400
+Date: Tue, 9 Jul 2013 11:58:43 -0400
+To: Jeff Layton <jlayton@redhat.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        David Howells <dhowells@redhat.com>,
+        Tyler Hicks <tyhicks@canonical.com>,
+        Dustin Kirkland <dustin.kirkland@gazzang.com>
+Subject: Re: [PATCH 08/12] locks: break delegations on unlink
+Message-ID: <20130709155842.GC8281@fieldses.org>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+ <1372882356-14168-9-git-send-email-bfields@redhat.com>
+ <20130709090506.71c96841@tlielax.poochiereds.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130709090506.71c96841@tlielax.poochiereds.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEzLTA3LTE4IGF0IDIwOjA0ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
-PiBBbm90aGVyIGlzc3VlOiBJcyBpdCBvdXQgb2Ygc3BlYyB0byBkbyB3aGF0IHdlIHBsYW4gYW5k
-ICJqdXN0IHVzZSIgdGhlIG5mc19jbGllbnQncyBycGNfY2xpZW50IGZvciBhbGwgc3RhdGUgbWFu
-YWdlciBvcGVyYXRpb25zIHdpdGhvdXQgY2hlY2tpbmcgaWYgdGhlIHNlcnZlciBzdXBwb3J0cyBp
-dCBmcm9tIHRoZSBTUDRfTUFDSF9DUkVEIEVYQ0hBTkdFX0lEIG5lZ290aWF0aW9uPw0KDQpJdCBz
-aG91bGQgYWx3YXlzIGJlIE9LIHRvIHVzZSB0aGUgbWFjaGluZSBjcmVkZW50aWFsIChpLmUuIHRo
-ZQ0KY3JlZGVudGlhbCB3ZSB1c2VkIGZvciBFWENIQU5HRV9JRCkgZm9yIG90aGVyIGdsb2JhbCBz
-dGF0ZSBvcGVyYXRpb25zDQpzdWNoIGFzIERFU1RST1lfQ0xJRU5USUQsIENSRUFURV9TRVNTSU9O
-LCBERVNUUk9ZX1NFU1NJT04sDQpCSU5EX0NPTk5fVE9fU0VTU0lPTiwgQkFDS0NIQU5ORUxfQ1RM
-LCBTRVFVRU5DRSwgZXRjLg0KVGhlIHBvaW50IGlzIHRoYXQgaWYgd2UgZG9uJ3QgdXNlIHN0YXRl
-IHByb3RlY3Rpb24sIHRoZW4gc29tZW9uZSBlbHNlIGlzDQphbGxvd2VkIHRvIGNvbWUgaW4gdXNp
-bmcgYSBkaWZmZXJlbnQgY3JlZGVudGlhbCwgYW5kIGNhbGwgYW55IG9uZSBvZiB0aGUNCmFib3Zl
-IG9wZXJhdGlvbnMuDQoNClNvIG91ciBjdXJyZW50IGltcGxlbWVudGF0aW9uIGlzIHF1aXRlIE9L
-LiBJdCdzIGp1c3QgdGhhdCB3aXRob3V0IHN0YXRlDQpwcm90ZWN0aW9uLCB3ZSBjYW4ndCBzdG9w
-IG90aGVycyBmcm9tIGRlc3Ryb3lpbmcgb3VyIHNlc3Npb24sIHNheS4NCg0KLS0gDQpUcm9uZCBN
-eWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15
-a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+On Tue, Jul 09, 2013 at 09:05:06AM -0400, Jeff Layton wrote:
+> On Wed,  3 Jul 2013 16:12:32 -0400
+> "J. Bruce Fields" <bfields@redhat.com> wrote:
+> 
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > We need to break delegations on any operation that changes the set of
+> > links pointing to an inode.  Start with unlink.
+> > 
+> > Such operations also hold the i_mutex on a parent directory.  Breaking a
+> > delegation may require waiting for a timeout (by default 90 seconds) in
+> > the case of a unresponsive NFS client.  To avoid blocking all directory
+> > operations, we therefore drop locks before waiting for the delegation.
+> > The logic then looks like:
+> > 
+> > 	acquire locks
+> > 	...
+> > 	test for delegation; if found:
+> > 		take reference on inode
+> > 		release locks
+> > 		wait for delegation break
+> > 		drop reference on inode
+> > 		retry
+> > 
+> > It is possible this could never terminate.  (Even if we take precautions
+> > to prevent another delegation being acquired on the same inode, we could
+> > get a different inode on each retry.)  But this seems very unlikely.
+> > 
+> > The initial test for a delegation happens after the lock on the target
+> > inode is acquired, but the directory inode may have been acquired
+> > further up the call stack.  We therefore add a "struct inode **"
+> > argument to any intervening functions, which we use to pass the inode
+> > back up to the caller in the case it needs a delegation synchronously
+> > broken.
+...
+> > -int vfs_unlink(struct inode *dir, struct dentry *dentry)
+> > +int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
+> 
+> nit: this might be a good time to add a kerneldoc header on this
+> function. The delegated_inode thing might not be clear to the
+> uninitiated.
+
+Something like this?
+
+--b.
+
+diff --git a/fs/namei.c b/fs/namei.c
+index cba3db1..7c6e244 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3384,6 +3384,24 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
+ 	return do_rmdir(AT_FDCWD, pathname);
+ }
+ 
++/**
++ * vfs_unlink - unlink a filesystem object
++ * @dir:	parent directory
++ * @dentry:	victim
++ * @delegated_inode: returns victim inode, if the inode is delegated.
++ *
++ * The caller must hold dir->i_mutex.
++ *
++ * If vfs_unlink discovers a delegation, it will return -EWOULDBLOCK and
++ * return a reference to the inode in delegated_inode.  The caller
++ * should then break the delegation on that inode and retry.  Because
++ * breaking a delegation may take a long time, the caller should drop
++ * dir->i_mutex before doing so.
++ *
++ * Alternatively, a caller may pass NULL for delegated_inode.  This may
++ * be appropriate for callers that expect the underlying filesystem not
++ * to be NFS exported.
++ */
+ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
+ {
+ 	struct inode *target = dentry->d_inode;
