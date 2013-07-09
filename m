@@ -1,131 +1,172 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54339 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:48766 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752648Ab3GBPvE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Jul 2013 11:51:04 -0400
-Date: Tue, 2 Jul 2013 11:50:59 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [patch/rfc] allow exported (and *not* exported) filesystems to
- be unmounted.
-Message-ID: <20130702155059.GD31697@fieldses.org>
-References: <20130605130541.5968d5c2@notabene.brown>
- <20130605034115.GD13110@ZenIV.linux.org.uk>
- <20130605161934.59ab6804@notabene.brown>
- <20130605133658.GE24193@fieldses.org>
- <20130606100512.1c701a64@notabene.brown>
- <20130701191238.GD19945@fieldses.org>
- <20130702082413.34dac92e@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130702082413.34dac92e@notabene.brown>
+	id S1751277Ab3GIK71 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 06:59:27 -0400
+Date: Tue, 9 Jul 2013 06:59:25 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 04/12] vfs: take i_mutex on renamed file
+Message-ID: <20130709065925.2d636c5d@tlielax.poochiereds.net>
+In-Reply-To: <1372882356-14168-5-git-send-email-bfields@redhat.com>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+	<1372882356-14168-5-git-send-email-bfields@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 02, 2013 at 08:24:13AM +1000, NeilBrown wrote:
-> On Mon, 1 Jul 2013 15:12:38 -0400 "J. Bruce Fields" <bfields@fieldses.org>
-> wrote:
-> 
-> > On Thu, Jun 06, 2013 at 10:05:12AM +1000, NeilBrown wrote:
-> > > On Wed, 5 Jun 2013 09:36:58 -0400 "J. Bruce Fields" <bfields@fieldses.org>
-> > > wrote:
-> > > 
-> > > > On Wed, Jun 05, 2013 at 04:19:34PM +1000, NeilBrown wrote:
-> > > > > On Wed, 5 Jun 2013 04:41:15 +0100 Al Viro <viro@ZenIV.linux.org.uk> wrote:
-> > > > > 
-> > > > > > On Wed, Jun 05, 2013 at 01:05:41PM +1000, NeilBrown wrote:
-> > > > > > > 
-> > > > > > > Hi Bruce,
-> > > > > > >  this is a little issue that seems to keep coming up so I thought it might be
-> > > > > > >  time to fix it.
-> > > > > > > 
-> > > > > > >  As you know, a filesystem that is exported cannot be unmounted as the export
-> > > > > > >  cache holds a reference to it.  Though if it hasn't been accessed for a
-> > > > > > >  while then it can.
-> > > > > > > 
-> > > > > > >  As I hadn't realised before sometimes *non* exported filesystems can be
-> > > > > > >  pinned to.  A negative entry in the cache can pin a filesystem just as
-> > > > > > >  easily as a positive entry.
-> > > > > > >  An amusing, if somewhat contrived, example is that if you export '/' with
-> > > > > > >  crossmnt and:
-> > > > > > > 
-> > > > > > >     mount localhost:/ /mnt
-> > > > > > >     ls -l /
-> > > > > > >     umount /mnt
-> > > > > > > 
-> > > > > > >  the umount might fail.  This is because the "ls -l" tried to export every
-> > > > > > >  filesystem found mounted in '/'.  The export of "/mnt" failed of course
-> > > > > > >  because you cannot re-export an NFS filesystem.  But it is still in the
-> > > > > > >  cache.
-> > > > > > >  An 'exportfs -f' fixes this, but shouldn't be necessary.
-> > > > 
-> > > > Yeah, ugh.  As a less contrived example, can the default v4 root export
-> > > > lead to arbitrary filesystems being pinned just because a client tried
-> > > > to mount the wrong path?
-> > > 
-> > > I think it can only pin filesystems that are exported, either explicitly or
-> > > via a parent being exported with 'crossmnt'.
-> > 
-> > But see utils/mountd/v4root.c, and:
-> > 
-> > 	[root@server ~]# exportfs -v
-> > 	/export <world>(rw,...)
-> > 	[root@server ~]# mount /mnt
-> > 
-> > 		[root@pip4 ~]# mount pip4:/ /mnt/
-> > 		[root@pip4 ~]# ls -l /mnt/
-> > 		total 4
-> > 		drwxrwxrwt 3 root root 4096 Jun  7 10:34 export
-> > 		[root@pip4 ~]# 
-> > 
-> > 	[root@server ~]# umount /mnt/
-> > 	umount: /mnt: target is busy.
-> > 	...
-> > 	[root@server ~]# grep /mnt /proc/net/rpc/nfsd.export/content 
-> > 	# /mnt	*()
-> 
-> You make a good point.  I didn't think that would happen, and I think I could
-> argue that it is a bug.
+On Wed,  3 Jul 2013 16:12:28 -0400
+"J. Bruce Fields" <bfields@redhat.com> wrote:
 
-Definitely looks like a bug to me.
-
-> I have no idea how easy it would be to "fix" without
-> pouring over the code for a while though.  Or whether it is worth "fixing".
-
-As long as clients are mostly just LOOKUPing down to the export they
-care about people may not hit this too much, but no doubt somebody will
-hit this eventually.
-
-> > > > Could the export cache be indexed on a path string instead of a struct
-> > > > path?
-> > > 
-> > > Yes.  It would mean lots of extra pathname lookups and possibly lots of
-> > > "d_path()" calls.
-> > 
-> > Right.  Ugh.  Still, struct path seems wrong as it's not something gssd
-> > knows about, and there's not really a 1-1 mapping between the two (see
-> > e.g. the recent complaint about the case where the struct path
-> > represents a lazy-unmounted export
-> > http://mid.gmane.org/<20130625191008.GA20277@us.ibm.com> ).
+> From: "J. Bruce Fields" <bfields@redhat.com>
 > 
-> I noticed that but haven't really followed it (though I just checked and
-> there isn't much to follow...)
+> A read delegation is used by NFSv4 as a guarantee that a client can
+> perform local read opens without informing the server.
 > 
-> What do we *want* to happen in this case?  I would argue that when the
-> filesystem is detached the export should immediately become invalid.
+> The open operation takes the last component of the pathname as an
+> argument, thus is also a lookup operation, and giving the client the
+> above guarantee means informing the client before we allow anything that
+> would change the set of names pointing to the inode.
 > 
-> We could possibly put a check in exp_find_key() to see if ek->ek_path
-> was still attached (not sure how to do that) and if it is: invalidate the ek
-> before calling cache_check().  If the "is path detach" test is cheap, we
-> should probably do this.
+> Therefore, we need to break delegations on rename, link, and unlink.
 > 
-> Or - we could flush relevant entries from the cache whenever there is a
-> change in the mount table.  That is certainly the preferred option if the "is
-> path detached" test is at all expensive.  But it seems it isn't completely
-> clear how that flushing should be triggered...
+> We also need to prevent new delegations from being acquired while one of
+> these operations is in progress.
+> 
+> We could add some completely new locking for that purpose, but it's
+> simpler to use the i_mutex, since that's already taken by all the
+> operations we care about.
+> 
+> The single exception is rename.  So, modify rename to take the i_mutex
+> on the file that is being renamed.
+> 
+> Also fix up lockdep and Documentation/filesystems/directory-locking to
+> reflect the change.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  Documentation/filesystems/directory-locking |   31 +++++++++++++++++++--------
+>  fs/namei.c                                  |   12 ++++++++---
+>  2 files changed, 31 insertions(+), 12 deletions(-)
+> 
+> diff --git a/Documentation/filesystems/directory-locking b/Documentation/filesystems/directory-locking
+> index ff7b611..09bbf9a 100644
+> --- a/Documentation/filesystems/directory-locking
+> +++ b/Documentation/filesystems/directory-locking
+> @@ -2,6 +2,10 @@
+>  kinds of locks - per-inode (->i_mutex) and per-filesystem
+>  (->s_vfs_rename_mutex).
+>  
+> +	When taking the i_mutex on multiple non-directory objects, we
+> +always acquire the locks in order by increasing address.  We'll call
+> +that "inode pointer" order in the following.
+> +
+>  	For our purposes all operations fall in 5 classes:
+>  
+>  1) read access.  Locking rules: caller locks directory we are accessing.
+> @@ -12,8 +16,9 @@ kinds of locks - per-inode (->i_mutex) and per-filesystem
+>  locks victim and calls the method.
+>  
+>  4) rename() that is _not_ cross-directory.  Locking rules: caller locks
+> -the parent, finds source and target, if target already exists - locks it
+> -and then calls the method.
+> +the parent and finds source and target.  If target already exists, lock
+> +it.  If source is a non-directory, lock it.  If that means we need to
+> +lock both, lock them in inode pointer order.
+>  
+>  5) link creation.  Locking rules:
+>  	* lock parent
+> @@ -30,7 +35,9 @@ rules:
+>  		fail with -ENOTEMPTY
+>  	* if new parent is equal to or is a descendent of source
+>  		fail with -ELOOP
+> -	* if target exists - lock it.
+> +	* If target exists, lock it.  If source is a non-directory, lock
+> +	  it.  In case that means we need to lock both source and target,
+> +	  do so in inode pointer order.
+>  	* call the method.
+>  
+>  
+> @@ -56,9 +63,11 @@ objects - A < B iff A is an ancestor of B.
+>      renames will be blocked on filesystem lock and we don't start changing
+>      the order until we had acquired all locks).
+>  
+> -(3) any operation holds at most one lock on non-directory object and
+> -    that lock is acquired after all other locks.  (Proof: see descriptions
+> -    of operations).
+> +(3) locks on non-directory objects are acquired only after locks on
+> +    directory objects, and are acquired in inode pointer order.
+> +    (Proof: all operations but renames take lock on at most one
+> +    non-directory object, except renames, which take locks on source and
+> +    target in inode pointer order in the case they are not directories.)
+>  
+>  	Now consider the minimal deadlock.  Each process is blocked on
+>  attempt to acquire some lock and already holds at least one lock.  Let's
+> @@ -66,9 +75,13 @@ consider the set of contended locks.  First of all, filesystem lock is
+>  not contended, since any process blocked on it is not holding any locks.
+>  Thus all processes are blocked on ->i_mutex.
+>  
+> -	Non-directory objects are not contended due to (3).  Thus link
+> -creation can't be a part of deadlock - it can't be blocked on source
+> -and it means that it doesn't hold any locks.
+> +	By (3), any process holding a non-directory lock can only be
+> +waiting on another non-directory lock with a larger address.  Therefore
+> +the process holding the "largest" such lock can always make progress, and
+> +non-directory objects are not included in the set of contended locks.
+> +
+> +	Thus link creation can't be a part of deadlock - it can't be
+> +blocked on source and it means that it doesn't hold any locks.
+>  
+>  	Any contended object is either held by cross-directory rename or
+>  has a child that is also contended.  Indeed, suppose that it is held by
+> diff --git a/fs/namei.c b/fs/namei.c
+> index 9ed9361..61f6076 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -3677,7 +3677,8 @@ SYSCALL_DEFINE2(link, const char __user *, oldname, const char __user *, newname
+>   *	   That's where 4.4 screws up. Current fix: serialization on
+>   *	   sb->s_vfs_rename_mutex. We might be more accurate, but that's another
+>   *	   story.
+> - *	c) we have to lock _three_ objects - parents and victim (if it exists).
+> + *	c) we have to lock _four_ objects - parents and victim (if it exists),
+> + *	   and source (if it is not a directory).
+>   *	   And that - after we got ->i_mutex on parents (until then we don't know
+>   *	   whether the target exists).  Solution: try to be smart with locking
+>   *	   order for inodes.  We rely on the fact that tree topology may change
+> @@ -3753,6 +3754,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+>  			    struct inode *new_dir, struct dentry *new_dentry)
+>  {
+>  	struct inode *target = new_dentry->d_inode;
+> +	struct inode *source = old_dentry->d_inode;
+>  	int error;
+>  
+>  	error = security_inode_rename(old_dir, old_dentry, new_dir, new_dentry);
+> @@ -3761,7 +3763,9 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+>  
+>  	dget(new_dentry);
+>  	if (target)
+> -		mutex_lock(&target->i_mutex);
+> +		lock_two_nondirectories(source, target);
+> +	else
+> +		mutex_lock(&source->i_mutex);
+>  
+>  	error = -EBUSY;
+>  	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
+> @@ -3777,7 +3781,9 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+>  		d_move(old_dentry, new_dentry);
+>  out:
+>  	if (target)
+> -		mutex_unlock(&target->i_mutex);
+> +		unlock_two_nondirectories(source, target);
+> +	else
+> +		mutex_unlock(&source->i_mutex);
+>  	dput(new_dentry);
+>  	return error;
+>  }
 
-There are probably other ways to get this kind of hang too: mounting
-over an export? mount --move?
+Seems sane...
 
---b.
+Acked-by: Jeff Layton <jlayton@redhat.com>
