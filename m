@@ -1,129 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:51407 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757309Ab3GaUic (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 31 Jul 2013 16:38:32 -0400
-Date: Wed, 31 Jul 2013 16:38:27 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Quentin Barnes <qbarnes@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: don't allow nfs_find_actor to match inodes of the
- wrong type
-Message-ID: <20130731163827.553a3b25@tlielax.poochiereds.net>
-In-Reply-To: <1375302743.12465.2.camel@leira.trondhjem.org>
-References: <1362013834-29600-1-git-send-email-jlayton@redhat.com>
-	<CAKjHkpAi_-jucPnFXg=3vMZg+pWSha3xR7KhjMPqN56K12SbCQ@mail.gmail.com>
-	<20130731144657.7b94482b@tlielax.poochiereds.net>
-	<CAKjHkpBGeQxy98osnJ4Q=NpqOjqC5uk32aYh+-bZ72ZBP3zmJQ@mail.gmail.com>
-	<1375302743.12465.2.camel@leira.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-we0-f175.google.com ([74.125.82.175]:59943 "EHLO
+	mail-we0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752768Ab3GIH7N (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jul 2013 03:59:13 -0400
+Received: by mail-we0-f175.google.com with SMTP id t59so4494691wes.34
+        for <linux-nfs@vger.kernel.org>; Tue, 09 Jul 2013 00:59:12 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20130708143957.2ebc75e3@tlielax.poochiereds.net>
+References: <CAF38w7Xx0_TqZem6cen+EJKpUrziGT_dAVcjG7oFFwM+ANm5mA@mail.gmail.com>
+	<CAF38w7Xf87k=GfM38XcO+ag+Na=f=Mg1KDn0jv2Y8Yp6Q_5a=g@mail.gmail.com>
+	<20130708143957.2ebc75e3@tlielax.poochiereds.net>
+Date: Tue, 9 Jul 2013 09:59:12 +0200
+Message-ID: <CAF38w7WUy6ENvppTW5CWbQMRwheTnwQj1e1QQabWUBU13iffNA@mail.gmail.com>
+Subject: Re: Problem with sharing mounted iso
+From: Johan GUILBAUD <guilbaud.johan@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 31 Jul 2013 20:32:24 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+Thanks for this information Jeff, but i'll have more than one hundred
+iso mounted... so adding each in exports... ^^
 
-> On Wed, 2013-07-31 at 15:26 -0500, Quentin Barnes wrote:
-> > On Wed, Jul 31, 2013 at 1:46 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> > > On Wed, 31 Jul 2013 13:36:21 -0500
-> > > Quentin Barnes <qbarnes@gmail.com> wrote:
-> > >
-> > >> I was reviewing patches I was integrating into my NFS source base
-> > >> and this one popped up (commit f6488c9b).  In reviewing it, it would
-> > >> fix the problem, however, I think it's not the best fix for it.
-> > >> Catching it in nfs_find_actor() is after the horse has left the
-> > >> barn so to speak.
-> > >>
-> > >> I think the problem is in nfs_fhget() when constructing the new
-> > >> inode (inside the if (inode->i_state & I_NEW) {...}) and should be
-> > >> addressed there.
-> > >>
-> > >> The nfs module already has checks to ensure that the expression
-> > >> "((S_IFMT & inode->i_mode) == (S_IFMT & fattr->mode))" is true
-> > >> in nfs_update_inode() and nfs_check_inode_attributes().  I think
-> > >> problem Benny hit was that the equivalent check is missing in
-> > >> nfs_fhget() when constructing a new inode.  The same check that's
-> > >> in those other two functions needs to be added to nfs_fhget()'s "if
-> > >> (inode->i_state & I_NEW) {...}" conditional block to prevent the
-> > >> problem of an inconsistent fattr/inode state from occurring in the
-> > >> first place.
-> > >>
-> > >> I can come up with a patch if you'd like, but I wanted to make
-> > >> sure my assertions were valid first.  Is removing a check from
-> > >> nfs_find_actor() and adding the check to nfs_fhget() to prevent the
-> > >> inconsistency in the first place a better approach?
-> > >>
-> > >> Quentin
-> > >
-> > > I don't think I agree. The whole problem was that we were allowing
-> > > iget5_locked to match an existing inode even though (S_IFMT & mode) was
-> > > different.
-> > 
-> > I assert that when an inconsistent state happens you don't want
-> > nfs_find_actor() to be the one responsible for noticing it
-> > (actually, ignoring the problem).  You want the existing consistency
-> > and error recovery paths to handle it instead.
-> > 
-> > So one or two things are going on.  The existing error recovery
-> > paths are inadequate or that there's a hole in the fattr/inode
-> > consistency checking (or possibly both).  Your patch covers over
-> > this underlying bug rather than addressing it and which also lets
-> > the old inode not get flagged as invalid.  I would rather see the
-> > real problem fixed and the old inode get flagged rather than just
-> > ignoring it and creating another new inode.
-> > 
-> > Before your patch, if because of a server bug reusing a file
-> > handle, nfs_find_actor(), would match and iget5_locked() would
-> > return an inode that matched on its file handle but that didn't
-> > necessarily match the fattr info.
-> > 
-> > If that inode returned by iget5_locked() was not I_NEW (the else
-> > case), nfs_fhget() would invoke nfs_refresh_inode(), which would
-> > call nfs_refresh_inode_locked().  It calls either nfs_update_inode()
-> > or nfs_check_inode_attributes().  Both of those functions already
-> > check for fattr/inode S_IFMT consistency catching bad states.
-> > 
-> > > Why would it be preferable to use the same struct inode even though
-> > > it's clearly a different one on the server? inodes generally don't
-> > > change their type after they've been created.
-> > 
-> > It's not preferable to have the same inode in a different state.
-> > What you don't want is nfs_find_actor() as a side-effect to let the
-> > problem go unnoticed.  You want let the normal, existing error
-> > handling paths deal with it, or if they're not fully dealing with
-> > it, fix them.
-> > 
-> > Since the I_NEW conditional false path (the else case) in nfs_fhget()
-> > should catch the problem, I had thought that the problem must lay
-> > with the I_NEW conditional true path.  Now I don't think so.
-> > 
-> > I see now that nfs_check_inode_attributes() is just returning an
-> > error when the fattr and inode states are found to be inconsistent,
-> > but is taking no action on the bad inode's state (i.e. flagging it
-> > as invalid).  And upon return, nfs_fhget() is not doing anything with
-> > the bad return state passed up to nfs_refresh_inode().  Now I'm
-> > thinking that this is problematic hole because it is ignoring the
-> > error state and that let Benny's panic happen.
-> > 
-> > It doesn't seem to me that it should be nfs_check_inode_attributes()
-> > job to flag the inode as invalid.  That seems outside its role.  I
-> > would think it should be nfs_refresh_inode_locked()'s job, but I'm
-> > still reviewing the code.
-> > 
-> > Thoughts?
-> 
-> Quite frankly, all I care about in a situation like this is that the
-> client doesn't Oops.
-> 
-> If a server is really this utterly broken, then there is no way we can
-> fix it on the client, and we're not even going to try.
-> 
+after tests, it works with Solaris 8 (sunos 5.8) but not with Solaris
+10 (sunos 5.10), i don't understand why... i use same command to mount
+my share...
 
-Agreed. For the record, this problem came about due to a bug in the
-server against which Benny was testing. It's not a situation that
-should ever occur under normal conditions.
+ mount [-F nfs] myisoserver:/pub/ /isos
+
+any idea ?
+
+2013/7/8 Jeff Layton <jlayton@redhat.com>:
+> On Mon, 8 Jul 2013 14:47:00 +0200
+> Johan GUILBAUD <guilbaud.johan@gmail.com> wrote:
+>
+>> Hello !
+>>
+>> I have a problem to access a mounted ISO through NFS protocol
+>>
+>> i have a server (RHEL6) on which are mounted ISOs
+>> i have a lot of client accessing files into ISO via the NFS share
+>>
+>> My problem is clients (RHEL5 & 6, Solaris 8 & 10) don't see content of
+>> ISO folder
+>>
+>> In example :
+>>
+>> on NFS server i have a folder /pub/ where the ISO are mounted (ie :
+>> with the iso mybeautifuliso.iso on the mount point
+>> "/pub/mybeautifuliso/") there are also, for test, text files in /pub/
+>> NFS shares content of /pub
+>>
+>>
+>> Client see tests text files, and folder "mybeautifuliso" but this one
+>> is empty...
+>>
+>>
+>> thanks for help
+>>
+>
+> Exports don't cross mountpoints by default, so if you exported "/pub"
+> no filesystem mounted under it will be automatically exported. The best
+> solution is to explicitly export those filesystems as well -- i.e. add
+> an export of "/pub/mybeautifuliso". Then, when clients wander into
+> those directories they should see the contents.
+>
+> --
+> Jeff Layton <jlayton@redhat.com>
+
+
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+GUILBAUD Johan
