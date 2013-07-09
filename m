@@ -1,62 +1,144 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:50756 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932903Ab3GVSxz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Jul 2013 14:53:55 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: [PATCH v1 01/19] NFS: Never use user credentials for lease
- renewal
-Date: Mon, 22 Jul 2013 18:53:54 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93F4B2750@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
- <20130712163135.1444.68565.stgit@seurat.1015granger.net>
- <1374518026.7972.12.camel@leira.trondhjem.org>
- <82846EE9-8390-45FF-80DF-E3C04538618B@oracle.com>
-In-Reply-To: <82846EE9-8390-45FF-80DF-E3C04538618B@oracle.com>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+Received: from mail-gh0-f180.google.com ([209.85.160.180]:47037 "EHLO
+	mail-gh0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753666Ab3GIN3J (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jul 2013 09:29:09 -0400
+Received: by mail-gh0-f180.google.com with SMTP id f18so2005668ghb.39
+        for <linux-nfs@vger.kernel.org>; Tue, 09 Jul 2013 06:29:09 -0700 (PDT)
+Date: Tue, 9 Jul 2013 09:23:10 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 09/12] locks: helper functions for delegation breaking
+Message-ID: <20130709092310.476b6ca7@tlielax.poochiereds.net>
+In-Reply-To: <1372882356-14168-10-git-send-email-bfields@redhat.com>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+	<1372882356-14168-10-git-send-email-bfields@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Chuck Lever [mailto:chuck.lever@oracle.com]
-> Sent: Monday, July 22, 2013 2:52 PM
-> To: Myklebust, Trond
-> Cc: linux-nfs@vger.kernel.org
-> Subject: Re: [PATCH v1 01/19] NFS: Never use user credentials for lease
-> renewal
-> 
-> 
-> On Jul 22, 2013, at 2:33 PM, "Myklebust, Trond"
-> <Trond.Myklebust@netapp.com> wrote:
-> 
-> > On Fri, 2013-07-12 at 12:31 -0400, Chuck Lever wrote:
-> >> Don't try to use a non-UID-0 user credential for lease management, as
-> >> that credential can change out from under us.  The server will block
-> >> NFSv4 lease recovery with NFS4ERR_CLID_INUSE.
-> >>
-> >> Replace minor version-specific callouts with a single function.
-> >>
-> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> >> ---
-> >> fs/nfs/nfs4_fs.h     |    4 +---
-> >> fs/nfs/nfs4proc.c    |    6 +----
-> >> fs/nfs/nfs4session.c |    2 +-
-> >> fs/nfs/nfs4state.c   |   55 ++++++--------------------------------------------
-> >> 4 files changed, 10 insertions(+), 57 deletions(-)
-> >
-> > This won't apply to upstream kernels.
-> 
-> Thanks for having a look... As the cover letter stated, this series applies to
-> 3.10.
-> 
-> Now that 3.11-rc2 is available, I'm porting the series to the latest upstream,
-> with appropriate adjustments for NFSv4.2 support.  I hope to post the new
-> series tomorrow or Wednesday.
-> 
-OK. Please note that I've already applied 02/19 as that seems to be unrelated to anything else.
+On Wed,  3 Jul 2013 16:12:33 -0400
+"J. Bruce Fields" <bfields@redhat.com> wrote:
 
-Thanks
-  Trond
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> We'll need the same logic for rename and link.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/namei.c         |   13 +++----------
+>  include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
+>  2 files changed, 34 insertions(+), 12 deletions(-)
+> 
+> diff --git a/fs/namei.c b/fs/namei.c
+> index cba3db1..a9d4031 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -3401,14 +3401,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
+>  	else {
+>  		error = security_inode_unlink(dir, dentry);
+>  		if (!error) {
+> -			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
+> -			if (error) {
+> -				if (error == -EWOULDBLOCK && delegated_inode) {
+> -					*delegated_inode = target;
+> -					ihold(target);
+> -				}
+> +			error = try_break_deleg(target, delegated_inode);
+> +			if (error)
+>  				goto out;
+> -			}
+>  			error = dir->i_op->unlink(dir, dentry);
+>  			if (!error)
+>  				dont_mount(dentry);
+> @@ -3478,9 +3473,7 @@ exit2:
+>  		iput(inode);	/* truncate the inode here */
+>  	inode = NULL;
+>  	if (delegated_inode) {
+> -		error = break_deleg(delegated_inode, O_WRONLY);
+> -		iput(delegated_inode);
+> -		delegated_inode = NULL;
+> +		error = break_deleg_wait(&delegated_inode);
+>  		if (!error)
+>  			goto retry_deleg;
+>  	}
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index f951588..c37e463 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1894,6 +1894,9 @@ extern bool our_mnt(struct vfsmount *mnt);
+>  
+>  extern int current_umask(void);
+>  
+> +extern void ihold(struct inode * inode);
+> +extern void iput(struct inode *);
+> +
+>  /* /sys/fs */
+>  extern struct kobject *fs_kobj;
+>  
+> @@ -1962,6 +1965,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+>  	return 0;
+>  }
+>  
+> +static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
+> +{
+> +	int ret;
+> +
+> +	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
+> +	if (ret == -EWOULDBLOCK && delegated_inode) {
+> +		*delegated_inode = inode;
+> +		ihold(inode);
+> +	}
+> +	return ret;
+> +}
+> +
+
+Actually, now that I look...
+
+Suppose a vfs_unlink caller passes in a NULL delegated_inode pointer.
+He'll get back a -EWOULDBLOCK here if there's a delegation on it.
+Presumably he'll just treat that as a hard error and the delegation
+would never get broken. Is that expected?
+
+> +static inline int break_deleg_wait(struct inode **delegated_inode)
+> +{
+> +	int ret;
+> +
+> +	ret = break_deleg(*delegated_inode, O_WRONLY);
+> +	iput(*delegated_inode);
+> +	*delegated_inode = NULL;
+> +	return ret;
+> +}
+> +
+>  #else /* !CONFIG_FILE_LOCKING */
+>  static inline int locks_mandatory_locked(struct inode *inode)
+>  {
+> @@ -2005,6 +2030,12 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+>  {
+>  	return 0;
+>  }
+> +
+> +static inline int try_break_deleg(struct inode *inode, struct delegated_inode **inode)
+> +{
+> +	return 0;
+> +}
+> +
+>  #endif /* CONFIG_FILE_LOCKING */
+>  
+>  /* fs/open.c */
+> @@ -2335,8 +2366,6 @@ extern loff_t vfs_llseek(struct file *file, loff_t offset, int whence);
+>  extern int inode_init_always(struct super_block *, struct inode *);
+>  extern void inode_init_once(struct inode *);
+>  extern void address_space_init_once(struct address_space *mapping);
+> -extern void ihold(struct inode * inode);
+> -extern void iput(struct inode *);
+>  extern struct inode * igrab(struct inode *);
+>  extern ino_t iunique(struct super_block *, ino_t);
+>  extern int inode_needs_sync(struct inode *inode);
+
+
+-- 
+Jeff Layton <jlayton@poochiereds.net>
