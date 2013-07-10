@@ -1,57 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36070 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:7834 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755100Ab3GAU0z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Jul 2013 16:26:55 -0400
-Received: from bfields by fieldses.org with local (Exim 4.76)
-	(envelope-from <bfields@fieldses.org>)
-	id 1UtkgX-0006F1-BF
-	for linux-nfs@vger.kernel.org; Mon, 01 Jul 2013 16:26:53 -0400
-Date: Mon, 1 Jul 2013 16:26:49 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: linux-nfs@vger.kernel.org
-Subject: Re: nfsd dropping requests after lazy umount
-Message-ID: <20130701202649.GE19945@fieldses.org>
-References: <20130625191008.GA20277@us.ibm.com>
+	id S1754600Ab3GJTdj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Jul 2013 15:33:39 -0400
+Date: Wed, 10 Jul 2013 15:33:30 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org,
+        Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
+        David Howells <dhowells@redhat.com>,
+        Tyler Hicks <tyhicks@canonical.com>,
+        Dustin Kirkland <dustin.kirkland@gazzang.com>
+Subject: Re: [PATCH 12/12] locks: break delegations on any attribute
+ modification
+Message-ID: <20130710193330.GA24548@pad.fieldses.org>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+ <1372882356-14168-13-git-send-email-bfields@redhat.com>
+ <20130709093047.0096f061@tlielax.poochiereds.net>
+ <20130709205101.GK32574@pad.fieldses.org>
+ <20130709211911.GL32574@pad.fieldses.org>
+ <20130709212625.7fdfc6e1@corrin.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130625191008.GA20277@us.ibm.com>
+In-Reply-To: <20130709212625.7fdfc6e1@corrin.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 25, 2013 at 02:10:08PM -0500, Malahal Naineni wrote:
-> Hi All,
+On Tue, Jul 09, 2013 at 09:26:25PM -0400, Jeff Layton wrote:
+> On Tue, 9 Jul 2013 17:19:12 -0400
+> "J. Bruce Fields" <bfields@redhat.com> wrote:
 > 
-> I have found an issue with lazy/forced unmounts with nfsd. Let us say
-> /nfs is a mount point, and we are exporting /nfs/exp directory.
+> > On Tue, Jul 09, 2013 at 04:51:01PM -0400, J. Bruce Fields wrote:
+> > > On Tue, Jul 09, 2013 at 09:30:47AM -0400, Jeff Layton wrote:
+> > > > On Wed,  3 Jul 2013 16:12:36 -0400
+> > > > "J. Bruce Fields" <bfields@redhat.com> wrote:
+> > > > 
+> > > > > From: "J. Bruce Fields" <bfields@redhat.com>
+> > > > > 
+> > > > > NFSv4 uses leases to guarantee that clients can cache metadata as well
+> > > > > as data.
+> > > > > 
+> > ...
+> > > > Isn't it possible we'll need to break a delegation on truncate()?
+> > > 
+> > > In the truncate case, the caller called break_lease, and in the
+> > > ftruncate case it's called with a write open, and the open already broke
+> > > any leases or delegations.
+> > > 
+> > > Might need a comment--could I get away with just this?:
+> > > 
+> > >  	mutex_lock(&dentry->d_inode->i_mutex);
+> > > +	/* NULL is safe: any delegations have already been broken: */
+> > >  	ret = notify_change(dentry, &newattrs, NULL);
+> > >  	mutex_unlock(&dentry->d_inode->i_mutex);
+> > >  	return ret;
+> > > 
+> > > I also added something to the notify_change kerneldoc: "passing NULL is
+> > > fine for callers holding the file open for write, as there can be no
+> > > conflicting delegation in that case."
+> > 
+> > Another question is whether it's really worth dropping locks and
+> > retrying in this case.
+> > 
+> > We could instead do the following.
+> > 
+> > --b.
+> > 
+> > commit 40a4fd613034cd3f242ec11e5ecd44f9a83ab39d
+> > Author: J. Bruce Fields <bfields@redhat.com>
+> > Date:   Tue Sep 20 17:19:26 2011 -0400
+> > 
+> >     locks: break delegations on any attribute modification
+> >     
+> >     NFSv4 uses leases to guarantee that clients can cache metadata as well
+> >     as data.
+> >     
+> >     Note unlike link, unlink, and rename, we don't bother dropping locks and
+> >     retrying.  In the other cases we're holding a directory mutex, hence
+> >     blocking operations (even lookups) on the same directory.  In this case
+> >     we're holding only the i_mutex on this file, so the impact of an
+> >     unresponsive client is limited to this file.
+> >     
+> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > 
+> > diff --git a/fs/attr.c b/fs/attr.c
+> > index 1449adb..a2c1d04 100644
+> > --- a/fs/attr.c
+> > +++ b/fs/attr.c
+> > @@ -243,6 +243,9 @@ int notify_change(struct dentry * dentry, struct iattr * attr)
+> >  	error = security_inode_setattr(dentry, attr);
+> >  	if (error)
+> >  		return error;
+> > +	error = break_deleg_wait(inode);
+> > +	if (error)
+> > +		return error;
+> >  
+> >  	if (inode->i_op->setattr)
+> >  		error = inode->i_op->setattr(dentry, attr);
 > 
-> After mounting from a client, this export will have a cache entry
-> "svc_export" in the kernel. The exports pathname
-> d_path(svc_export->ex_path) correctly resolves to "/nfs/exp"
 > 
-> After the /nfs is lazy unmounted, the d_path(svc_export->ex_path)
-> resolves to "/exp" only.
-> 
-> Now, if the cache entry needs revalidation, you will see "/exp" in the
-> nfsd.export/channel file that never gets cleared as that cache entry
-> will be in a forever CACHE_PENDING state. We will also see
-> svc_export_parse() failing with -2 err as such a pathname doesn't exist
-> in the system any more.
+> I guess the question is whether there are operations that require the
+> i_mutex but that don't require the delegation recall to have finished.
 
-So, mountd is trying to do a downcall for "/exp" but it's failing
-because the kern_path("/exp",.,.) fails?
+Also if there's any risk that something on the delegation-return path
+might take the i_mutex then we'd risk blocking the client's attempt to
+return until the delegation timed out and got revoked.
 
-> I noticed that svc_export has two fields: ex_path and ex_pathname.
-
-Not any more--see 2f1ddda1749a223d1a05e16dc6ea28632b9ec570 "NFSD: Remove
-the ex_pathname field from struct svc_export".
+In fact a CLAIM_DELEG_CUR open needs a lookup so probably runs into
+exactly that problem.  OK, back to the more complicated solution.
 
 --b.
-
-> Is
-> it possible to make a string comparison of d_path(ex_path) and
-> ex_pathname? If so, we should be able to fail the upcall without making
-> the upcall if those two don't match.
-> 
-> Regards, Malahal.
-> 
