@@ -1,99 +1,274 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:53147 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:35883 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752932Ab3GKQ3A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Jul 2013 12:29:00 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Malahal Naineni <malahal@us.ibm.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-Subject: Re: corruption due to loss of lock
-Date: Thu, 11 Jul 2013 16:28:57 +0000
-Message-ID: <1373560136.9207.14.camel@leira.trondhjem.org>
-References: <20130613184737.GA25713@us.ibm.com>
-	 <20130711071346.03b946bd@corrin.poochiereds.net>
-	 <1373552348.2871.2.camel@leira.trondhjem.org>
-	 <20130711102840.272ce3fa@tlielax.poochiereds.net>
-	 <1373553181.9207.2.camel@leira.trondhjem.org>
-	 <20130711112036.03ffe1cc@tlielax.poochiereds.net>
-In-Reply-To: <20130711112036.03ffe1cc@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
+	id S1753382Ab3GJAV1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 20:21:27 -0400
+Date: Tue, 9 Jul 2013 20:21:20 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Dave Chinner <david@fromorbit.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: Re: [PATCH 01/12] vfs: pull ext4's double-i_mutex-locking into
+ common code
+Message-ID: <20130710002120.GM32574@pad.fieldses.org>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+ <1372882356-14168-2-git-send-email-bfields@redhat.com>
+ <20130709220411.GK3438@dastard>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130709220411.GK3438@dastard>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEzLTA3LTExIGF0IDExOjIwIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gVGh1LCAxMSBKdWwgMjAxMyAxNDozMzowMiArMDAwMA0KPiAiTXlrbGVidXN0LCBUcm9uZCIg
-PFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gVGh1LCAyMDEz
-LTA3LTExIGF0IDEwOjI4IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4gPiA+IE9uIFRodSwg
-MTEgSnVsIDIwMTMgMTQ6MTk6MTAgKzAwMDANCj4gPiA+ICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJv
-bmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+ID4gDQo+ID4gPiA+IE9uIFRodSwg
-MjAxMy0wNy0xMSBhdCAwNzoxMyAtMDQwMCwgSmVmZiBMYXl0b24gd3JvdGU6DQo+ID4gPiA+ID4g
-T24gVGh1LCAxMyBKdW4gMjAxMyAxMzo0NzozNyAtMDUwMA0KPiA+ID4gPiA+IE1hbGFoYWwgTmFp
-bmVuaSA8bWFsYWhhbEB1cy5pYm0uY29tPiB3cm90ZToNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiA+
-IEhpIFRyb25kLA0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBJIHNhdyBCcnlhbidzIHBhdGNo
-ZXMgaGVyZSBodHRwczovL3BhdGNod29yay5rZXJuZWwub3JnL3BhdGNoLzk4NzQwMi8NCj4gPiA+
-ID4gPiA+IHRoYXQgZml4IGlzc3VlcyBhZnRlciBsb3NzIG9mIGEgbG9jay4gIFdoYXQgaXMgdGhl
-IHN0YXR1cyBvbiB0aGlzIHBhdGNoDQo+ID4gPiA+ID4gPiBzZXQ/IERvIHRoZXkgbmVlZCBtb3Jl
-IHdvcms/IFdlIGhhdmUgYW4gYXBwbGljYXRpb24gdGhhdCB1c2VzIHJhbmdlDQo+ID4gPiA+ID4g
-PiBsb2NrcyBvbiBhIGZpbGUuIFR3byB0aHJlYWRzIGZyb20gdHdvIGRpZmZlcmVudCBjbGllbnRz
-IGVuZCB1cCB3cml0aW5nDQo+ID4gPiA+ID4gPiB0byB0aGUgc2FtZSBhIGZpbGUgZHVlIHRvIHRo
-aXMgYnVnIGFmdGVyIGEgbGVhc2UgZXhwaXJ5IGZyb20gYSBjbGllbnQuDQo+ID4gPiA+ID4gPiAN
-Cj4gPiA+ID4gPiA+IFJlZ2FyZHMsIE1hbGFoYWwuDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gKGNj
-J2luZyBCcnlhbiBzaW5jZSBoZSBkaWQgdGhlIG9yaWdpbmFsIHNldCkNCj4gPiA+ID4gPiANCj4g
-PiA+ID4gPiBZZWFoLCB0aGlzIHNldCB3b3VsZCBiZSBhIG5pY2UgdGhpbmcgdG8gaGF2ZS4gQSBj
-b3VwbGUgb2YgY29tbWVudHM6DQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gLSBJIHN0aWxsIHRoaW5r
-IGl0IHdvdWxkIGJlIGJlc3QgdG8gbWFrZSBTSUdMT1NUIGl0cyBvd24gc2lnbmFsLCBidXQgYXMN
-Cj4gPiA+ID4gPiAgIEJyeWFuIHBvaW50cyBvdXQsIGl0IHdvdWxkIG5lZWQgdG8gYmUgbGFyZ2Vy
-IHRoYW4gU0lHUlRNQVguIEknbQ0KPiA+ID4gPiA+ICAgbm90IHN1cmUgdGhhdCdzIHBvc3NpYmxl
-IG9uIGFsbCBhcmNoZXMgd2l0aCB0aGUgd2F5IHRoZSBSVCBzaWduYWxzDQo+ID4gPiA+ID4gICB3
-ZXJlIGRvbmUuIEl0J3MgcHJvYmFibHkgd29ydGggaW52ZXN0aWdhdGluZyB0aGF0IHRob3VnaCBi
-ZWZvcmUNCj4gPiA+ID4gPiAgIHNldHRsaW5nIG9uIFNJR0lPIHNpbmNlIGl0IHdvdWxkIGJlIGhh
-cmQgdG8gY2hhbmdlIHRoYXQgcmV0cm9hY3RpdmVseS4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiAt
-IFRoaXMgaXMgbm90IHJlYWxseSBhIHY0LjEgc3BlY2lmaWMgdGhpbmcuIEl0IHNob3VsZCBhbHNv
-IGJlIGRvbmUgZm9yDQo+ID4gPiA+ID4gICB2NC4wIGFuZCB2Mi8zLCB0aG91Z2ggdGhlIGxhdHRl
-ciB0d28gcmVhbGx5IG5lZWQgdG8gYmUgZG9uZSB3aXRoaW4NCj4gPiA+ID4gPiAgIGxvY2tkLg0K
-PiA+ID4gPiANCj4gPiA+ID4gU0lHTE9TVCBpcyBub3QgcGFydCBvZiBhbnkgc3RhbmRhcmQuIEl0
-IGlzIGEgaGFjayB0aGF0IGhhcyBiZWVuIGFkb3B0ZWQNCj4gPiA+ID4gYnkgSUJNIGFuZCBTb2xh
-cmlzLg0KPiA+ID4gPiANCj4gPiA+ID4gVGhlIFBPU0lYbHkgY29ycmVjdCB3YXkgdG8gZG8gdGhp
-cyBpcyB0byB1c2UgRUJBREYgdG8gd2FybiB0aGUNCj4gPiA+ID4gYXBwbGljYXRpb24gdGhhdCB0
-aGUgZmlsZSBkZXNjcmlwdG9yIGlzIG5vIGxvbmdlciB2YWxpZCAoaW4gdGhlIHNlbnNlDQo+ID4g
-PiA+IHRoYXQgdGhlIHNlcnZlciBpcyBubyBsb25nZXIgaG9ub3VyaW5nIHRoZSBsb2NrKSBhbmQg
-RUlPIGluIG9yZGVyIHRvDQo+ID4gPiA+IHdhcm4gaXQgdGhhdCBkYXRhIG1heSBoYXZlIGJlZW4g
-bG9zdC4NCj4gPiA+ID4gDQo+ID4gPiANCj4gPiA+IEl0IGlzIGEgaGFjay4uLkkgd29uJ3QgYXJn
-dWUgdGhlcmUNCj4gPiA+IA0KPiA+ID4gSSdtIG5vdCBzdXJlIHRoYXQgcmV0dXJuaW5nIGVycm9y
-cyBpcyByZWFsbHkgdGhlIGJlc3QgYXBwcm9hY2ggdGhvdWdoLg0KPiA+ID4gSW4gc29tZSBjYXNl
-cywgdGhlIGZkIG1heSBiZSBmaW5lLiBJdCBtYXkgb25seSBiZSB0aGUgbG9jayB0aGF0IGhhcw0K
-PiA+ID4gYmVlbiBsb3N0Lg0KPiA+ID4gDQo+ID4gPiBXaXRoIGEgc2lnbmFsLCB0aGUgcHJvZ3Jh
-bSBoYXMgbW9yZSBvZiBhIGNob2ljZSBhcyB0byB3aGV0aGVyIGl0IGNhcmVzDQo+ID4gPiBhYm91
-dCBsb3N0IGxvY2tzIGFuZCBpcyBtb3JlIGltbWVkaWF0ZSB3aGVuIHRoZSBwcm9ibGVtIG9jY3Vy
-cy4gQW4NCj4gPiA+IGVycm9yIGNvZGUgc2VlbXMgbGlrZSBpdCBtaWdodCBjYXVzZSBhIGxvdCBv
-ZiBncmllZiBmb3IgcHJvZ3JhbXMgdGhhdA0KPiA+ID4gYXJlbid0IGV4cGVjdGluZyB0aGF0IHNv
-cnQgb2YgYmVoYXZpb3IuDQo+ID4gDQo+ID4gRUJBREYgaXMgYSBlcnJvciB0aGF0IGhhcyBhbiBv
-YnZpb3VzIG1lYW5pbmcgaW4gUE9TSVg6IHlvdSBuZWVkIHRvDQo+ID4gcmVvcGVuIHRoZSBmaWxl
-IGFuZCByZS1lc3RhYmxpc2ggYW55IGxvY2tzLg0KPiANCj4gV2VsbCwgRUJBREYgbWVhbnMgIkJh
-ZCBmaWxlIGRlc2NyaXB0b3IiLiBDb25zaWRlciB0aGUgdjIvMyBjYXNlIC0tIHRoZQ0KPiBmZCBt
-aWdodCBzdGlsbCBiZSB1c2FibGUsIGl0J3Mgb25seSBteSBsb2NrIHRoYXQgaGFzIGJlZW4gbG9z
-dC4gT25lDQo+IG1pZ2h0IGNvbnNpZGVyIHRoYXQgdG8gbWVhbiB0aGF0IHdlIHNob3VsZG4ndCB1
-c2UgdGhhdCBmZCBhbnltb3JlLCBidXQNCj4gdGhhdCdzIGEgYmVoYXZpb3JhbCBjaGFuZ2UgYW55
-IHdheSB5b3Ugc2xpY2UgaXQuLi4NCg0KSSBmYWlsIHRvIHNlZSBob3cgd2UgY2FuIGF2b2lkIGJl
-aGF2aW91cmFsIGNoYW5nZXMgaGVyZS4gVGhlIGN1cnJlbnQNCmJlaGF2aW91ciBpcyB0byBpZ25v
-cmUgdGhlIGNvbmRpdGlvbiBjb21wbGV0ZWx5LiBTSUdMT1NUIGlzIGENCmJlaGF2aW91cmFsIGNo
-YW5nZSAoYSBwcmV0dHkgbWFqb3Igb25lLCB0aGF0IHJlcXVpcmVzIDEwMCUgbm9uLXBvcnRhYmxl
-DQphcHBsaWNhdGlvbiBjaGFuZ2VzKS4NCg0KPiA+IEhvdyBpcyB0aGF0IG5vdCBiZXR0ZXIgdGhh
-bg0KPiA+IHJlY2VpdmluZyBhIHNpZ25hbCB0aGV5IHdvbid0IGJlIGV4cGVjdGluZz8gQ29uc2lk
-ZXIgdGhhdCB3ZSdkIGhhdmUgdG8NCj4gPiBvdmVybG9hZCBTSUdJTywgd2hpY2ggaGFzIGEgY29t
-cGxldGVseSBkaWZmZXJlbnQgbWVhbmluZyBpbiBQT1NJWC4uLg0KPiA+IA0KPiANCj4gVGhhdCdz
-IHRoZSBtYWluIHJlYXNvbiB0aGF0IEkgdGhpbmsgd2Ugd2FudCBhIG5ldyBzaWduYWwgZm9yIHRo
-aXMuIFRoZQ0KPiBkZWZhdWx0IG9uIFNJR0xPU1Qgc2hvdWxkIGJlIHRvIGlnbm9yZSBpdCwgYW5k
-IHRoZW4gdGhhdCB3b3VsZCBhbGxvdw0KPiBwcm9jZXNzZXMgdG8gb3B0LWluIHRvIHBheWluZyBh
-dHRlbnRpb24gdG8gaXQuDQoNCkFjY29yZGluZyB0byAnbWFuIDcgc2lnbmFsJywgdGhlIG9ubHkg
-ZGVmaW5lZCBiZWhhdmlvdXIgZm9yIFNJR0xPU1QgaXMNCidUZXJtJy4gVGhhdCdzIGFsc28gdGhl
-IGRlZmF1bHQgb24gb3RoZXIgZXhpc3RpbmcgTkZTIGltcGxlbWVudGF0aW9ucy4NCg0KV2UgY291
-bGQsIGhvd2V2ZXIgdXNlIGtpbGxfZmFzeW5jKCkgdG8gbGV0IHRoZSBsb2NrIG93bmVycyBrbm93
-IHRoYXQNCnNvbWV0aGluZyBoYXMgaGFwcGVuZWQgYW5kIHRlbGwgdGhlbSB0byBwb2xsIHRoZSBm
-aWxlIGRlc2NyaXB0b3IuIFRoYXQncw0KYWxzbyBub24tcG9ydGFibGUsIGJ1dCBhdCBsZWFzdCBp
-dCBoYXMgdGhlIGFkdmFudGFnZSB0aGF0IGl0IGlzIGJhc2VkIG9uDQphIHN1YnNjcmlwdGlvbiBt
-b2RlbC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
-cg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+On Wed, Jul 10, 2013 at 08:04:11AM +1000, Dave Chinner wrote:
+> On Wed, Jul 03, 2013 at 04:12:25PM -0400, J. Bruce Fields wrote:
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > We want to do this elsewhere as well.
+> > 
+> > Cc: "Theodore Ts'o" <tytso@mit.edu>
+> > Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  fs/ext4/ext4.h        |    2 --
+> >  fs/ext4/ioctl.c       |    4 ++--
+> >  fs/ext4/move_extent.c |   40 ++--------------------------------------
+> >  fs/inode.c            |   29 +++++++++++++++++++++++++++++
+> >  include/linux/fs.h    |    3 +++
+> >  5 files changed, 36 insertions(+), 42 deletions(-)
+> > 
+> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > index 5aae3d1..3590abe 100644
+
+Thanks for the comment:
+
+> Just to throw a spanner in the works - have you considered that
+> other filesystems might have different inode lock ordering rules?
+> 
+> For example, XFS locks multiple inodes in ascending inode number
+> order, not ordered by pointer address. Hence we end up different
+> inode lock ordering at different layers of the stack and I can't see
+> that ending well....
+
+What lock(s) is it taking exactly, where?  If there's a possible
+deadlock, can we come up with a compatible ordering?
+
+> > diff --git a/fs/inode.c b/fs/inode.c
+> > index 00d5fc3..b8afbc7 100644
+> > --- a/fs/inode.c
+> > +++ b/fs/inode.c
+> > @@ -980,6 +980,35 @@ void unlock_new_inode(struct inode *inode)
+> >  EXPORT_SYMBOL(unlock_new_inode);
+> >  
+> >  /**
+> > + * lock_two_nondirectories - take two i_mutexes on non-directory objects
+> > + * @inode1: first inode to lock
+> > + * @inode2: second inode to lock
+> > + */
+> > +void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
+> > +{
+> > +	if (inode1 < inode2) {
+> > +		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
+> > +		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
+> > +	} else {
+> > +		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
+> > +		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
+> > +	}
+> > +}
+> > +EXPORT_SYMBOL(lock_two_nondirectories);
+> 
+> What makes this specific to non-directories?
+
+See 
+
+	http://mid.gmane.org/<1372882356-14168-5-git-send-email-bfields@redhat.com>
+
+The only caller outside ext4 is vfs_rename_other.
+
+I think we could make it work for directories two if necessary though
+the ordering would be more complicated.  Currently there's no reason.
+
+> If it's not to be used for directory inodes, then there should be
+> WARN_ON_ONCE() guards in the code...
+
+Sure.  So something like the following.
+
+Hm.  I also overlooked that ext4 had a BUG() for the case they're equal.
+Maybe we should keep that too if it's not overkill.
+
+--b.
+
+commit ad9a94b0e91d6057734e9835782e0c2cdc148bdc
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Wed Apr 18 15:16:33 2012 -0400
+
+    vfs: pull ext4's double-i_mutex-locking into common code
+    
+    We want to do this elsewhere as well.
+    
+    Also catch any attempts to use it for directories (where this ordering
+    would conflict with ancestor-first directory ordering in lock_rename).
+    
+    Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+    Cc: Dave Chinner <david@fromorbit.com>
+    Acked-by: Jeff Layton <jlayton@redhat.com>
+    Acked-by: "Theodore Ts'o" <tytso@mit.edu>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 5aae3d1..3590abe 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2642,8 +2642,6 @@ extern void ext4_double_down_write_data_sem(struct inode *first,
+ 					    struct inode *second);
+ extern void ext4_double_up_write_data_sem(struct inode *orig_inode,
+ 					  struct inode *donor_inode);
+-void ext4_inode_double_lock(struct inode *inode1, struct inode *inode2);
+-void ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2);
+ extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 			     __u64 start_orig, __u64 start_donor,
+ 			     __u64 len, __u64 *moved_len);
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 9491ac0..12048f7 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -129,7 +129,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
+ 
+ 	/* Protect orig inodes against a truncate and make sure,
+ 	 * that only 1 swap_inode_boot_loader is running. */
+-	ext4_inode_double_lock(inode, inode_bl);
++	lock_two_nondirectories(inode, inode_bl);
+ 
+ 	truncate_inode_pages(&inode->i_data, 0);
+ 	truncate_inode_pages(&inode_bl->i_data, 0);
+@@ -204,7 +204,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
+ 	ext4_inode_resume_unlocked_dio(inode);
+ 	ext4_inode_resume_unlocked_dio(inode_bl);
+ 
+-	ext4_inode_double_unlock(inode, inode_bl);
++	unlock_two_nondirectories(inode, inode_bl);
+ 
+ 	iput(inode_bl);
+ 
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 3dcbf36..986a838 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -1206,42 +1206,6 @@ mext_check_arguments(struct inode *orig_inode,
+ }
+ 
+ /**
+- * ext4_inode_double_lock - Lock i_mutex on both @inode1 and @inode2
+- *
+- * @inode1:	the inode structure
+- * @inode2:	the inode structure
+- *
+- * Lock two inodes' i_mutex
+- */
+-void
+-ext4_inode_double_lock(struct inode *inode1, struct inode *inode2)
+-{
+-	BUG_ON(inode1 == inode2);
+-	if (inode1 < inode2) {
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
+-	} else {
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
+-	}
+-}
+-
+-/**
+- * ext4_inode_double_unlock - Release i_mutex on both @inode1 and @inode2
+- *
+- * @inode1:     the inode that is released first
+- * @inode2:     the inode that is released second
+- *
+- */
+-
+-void
+-ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2)
+-{
+-	mutex_unlock(&inode1->i_mutex);
+-	mutex_unlock(&inode2->i_mutex);
+-}
+-
+-/**
+  * ext4_move_extents - Exchange the specified range of a file
+  *
+  * @o_filp:		file structure of the original file
+@@ -1330,7 +1294,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 		return -EINVAL;
+ 	}
+ 	/* Protect orig and donor inodes against a truncate */
+-	ext4_inode_double_lock(orig_inode, donor_inode);
++	lock_two_nondirectories(orig_inode, donor_inode);
+ 
+ 	/* Wait for all existing dio workers */
+ 	ext4_inode_block_unlocked_dio(orig_inode);
+@@ -1538,7 +1502,7 @@ out:
+ 	ext4_double_up_write_data_sem(orig_inode, donor_inode);
+ 	ext4_inode_resume_unlocked_dio(orig_inode);
+ 	ext4_inode_resume_unlocked_dio(donor_inode);
+-	ext4_inode_double_unlock(orig_inode, donor_inode);
++	unlock_two_nondirectories(orig_inode, donor_inode);
+ 
+ 	return ret;
+ }
+diff --git a/fs/inode.c b/fs/inode.c
+index 00d5fc3..8f3c6fa 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -980,6 +980,37 @@ void unlock_new_inode(struct inode *inode)
+ EXPORT_SYMBOL(unlock_new_inode);
+ 
+ /**
++ * lock_two_nondirectories - take two i_mutexes on non-directory objects
++ * @inode1: first inode to lock
++ * @inode2: second inode to lock
++ */
++void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
++{
++	WARN_ON_ONCE(S_ISDIR(inode1->i_mode) || S_ISDIR(inode2->i_mode));
++	WARN_ON_ONCE(inode1 == inode2);
++	if (inode1 < inode2) {
++		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
++		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
++	} else {
++		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
++		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
++	}
++}
++EXPORT_SYMBOL(lock_two_nondirectories);
++
++/**
++ * unlock_two_nondirectories - release locks from lock_two_nondirectories()
++ * @inode1: first inode to unlock
++ * @inode2: second inode to unlock
++ */
++void unlock_two_nondirectories(struct inode *inode1, struct inode *inode2)
++{
++	mutex_unlock(&inode1->i_mutex);
++	mutex_unlock(&inode2->i_mutex);
++}
++EXPORT_SYMBOL(unlock_two_nondirectories);
++
++/**
+  * iget5_locked - obtain an inode from a mounted file system
+  * @sb:		super block of file system
+  * @hashval:	hash value (usually inode number) to get
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 65c2be2..3258761 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -634,6 +634,9 @@ enum inode_i_mutex_lock_class
+ 	I_MUTEX_QUOTA
+ };
+ 
++void lock_two_nondirectories(struct inode *, struct inode*);
++void unlock_two_nondirectories(struct inode *, struct inode*);
++
+ /*
+  * NOTE: in a 32bit arch with a preemptable kernel and
+  * an UP compile the i_size_read/write must be atomic
