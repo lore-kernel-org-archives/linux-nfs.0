@@ -1,144 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40930 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:10216 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752396Ab3GITb0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Jul 2013 15:31:26 -0400
-Date: Tue, 9 Jul 2013 15:31:25 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 09/12] locks: helper functions for delegation breaking
-Message-ID: <20130709193124.GH32574@pad.fieldses.org>
-References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
- <1372882356-14168-10-git-send-email-bfields@redhat.com>
- <20130709090952.0afe9503@tlielax.poochiereds.net>
+	id S1754712Ab3GJRVS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Jul 2013 13:21:18 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r6AHLHeO013878
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 10 Jul 2013 13:21:18 -0400
+Received: from fury.redhat.com (vpn-230-234.phx2.redhat.com [10.3.230.234])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r6AHLFcs020864
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Wed, 10 Jul 2013 13:21:16 -0400
+Date: Wed, 10 Jul 2013 13:19:50 -0400
+From: David Jeffery <djeffery@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] lockd: protect nlm_blocked access in nlmsvc_retry_blocked
+Message-ID: <20130710171903.GA30834@fury.redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130709090952.0afe9503@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 09, 2013 at 09:09:52AM -0400, Jeff Layton wrote:
-> On Wed,  3 Jul 2013 16:12:33 -0400
-> "J. Bruce Fields" <bfields@redhat.com> wrote:
-> 
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > We'll need the same logic for rename and link.
-> > 
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > ---
-> >  fs/namei.c         |   13 +++----------
-> >  include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
-> >  2 files changed, 34 insertions(+), 12 deletions(-)
-> > 
-> > diff --git a/fs/namei.c b/fs/namei.c
-> > index cba3db1..a9d4031 100644
-> > --- a/fs/namei.c
-> > +++ b/fs/namei.c
-> > @@ -3401,14 +3401,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
-> >  	else {
-> >  		error = security_inode_unlink(dir, dentry);
-> >  		if (!error) {
-> > -			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
-> > -			if (error) {
-> > -				if (error == -EWOULDBLOCK && delegated_inode) {
-> > -					*delegated_inode = target;
-> > -					ihold(target);
-> > -				}
-> > +			error = try_break_deleg(target, delegated_inode);
-> > +			if (error)
-> >  				goto out;
-> > -			}
-> >  			error = dir->i_op->unlink(dir, dentry);
-> >  			if (!error)
-> >  				dont_mount(dentry);
-> > @@ -3478,9 +3473,7 @@ exit2:
-> >  		iput(inode);	/* truncate the inode here */
-> >  	inode = NULL;
-> >  	if (delegated_inode) {
-> > -		error = break_deleg(delegated_inode, O_WRONLY);
-> > -		iput(delegated_inode);
-> > -		delegated_inode = NULL;
-> > +		error = break_deleg_wait(&delegated_inode);
-> >  		if (!error)
-> >  			goto retry_deleg;
-> >  	}
-> > diff --git a/include/linux/fs.h b/include/linux/fs.h
-> > index f951588..c37e463 100644
-> > --- a/include/linux/fs.h
-> > +++ b/include/linux/fs.h
-> > @@ -1894,6 +1894,9 @@ extern bool our_mnt(struct vfsmount *mnt);
-> >  
-> >  extern int current_umask(void);
-> >  
-> > +extern void ihold(struct inode * inode);
-> > +extern void iput(struct inode *);
-> > +
-> >  /* /sys/fs */
-> >  extern struct kobject *fs_kobj;
-> >  
-> > @@ -1962,6 +1965,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
-> >  	return 0;
-> >  }
-> >  
-> > +static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
-> > +{
-> > +	int ret;
-> > +
-> > +	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
-> > +	if (ret == -EWOULDBLOCK && delegated_inode) {
-> > +		*delegated_inode = inode;
-> > +		ihold(inode);
-> > +	}
-> > +	return ret;
-> > +}
-> > +
-> > +static inline int break_deleg_wait(struct inode **delegated_inode)
-> > +{
-> > +	int ret;
-> > +
-> > +	ret = break_deleg(*delegated_inode, O_WRONLY);
-> > +	iput(*delegated_inode);
-> > +	*delegated_inode = NULL;
-> > +	return ret;
-> > +}
-> > +
-> >  #else /* !CONFIG_FILE_LOCKING */
-> >  static inline int locks_mandatory_locked(struct inode *inode)
-> >  {
-> > @@ -2005,6 +2030,12 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
-> >  {
-> >  	return 0;
-> >  }
-> > +
-> > +static inline int try_break_deleg(struct inode *inode, struct delegated_inode **inode)
-> > +{
-> > +	return 0;
-> > +}
-> > +
-> >  #endif /* CONFIG_FILE_LOCKING */
-> >  
-> >  /* fs/open.c */
-> > @@ -2335,8 +2366,6 @@ extern loff_t vfs_llseek(struct file *file, loff_t offset, int whence);
-> >  extern int inode_init_always(struct super_block *, struct inode *);
-> >  extern void inode_init_once(struct inode *);
-> >  extern void address_space_init_once(struct address_space *mapping);
-> > -extern void ihold(struct inode * inode);
-> > -extern void iput(struct inode *);
-> >  extern struct inode * igrab(struct inode *);
-> >  extern ino_t iunique(struct super_block *, ino_t);
-> >  extern int inode_needs_sync(struct inode *inode);
-> 
-> Nice cleanup. Might be reasonable to reorder or merge this patch with
-> the previous one to reduce "churn" in vfs_unlink.
+In nlmsvc_retry_blocked, the check that the list is non-empty and acquiring
+the pointer of the first entry is unprotected by any lock.  This allows a rare
+race condition when there is only one entry on the list.  A function such as
+nlmsvc_grant_callback() can be called, which will temporarily remove the entry
+from the list.  Between the list_empty() and list_entry(),the list may become
+empty, causing an invalid pointer to be used as an nlm_block, leading to a
+possible crash.
 
-That's how I first did it then I thought "eh, there's a way I could make
-this patch a little smaller...".   Seemed like it might be a tad easier
-to review this way.  Up to you.
+This patch adds the nlm_block_lock around these calls to prevent concurrent
+use of the nlm_blocked list.
 
---b.
+Signed-off-by: David Jeffery <djeffery@redhat.com>
 
-> 
-> Acked-by: Jeff Layton <jlayton@redhat.com>
+
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -951,6 +951,7 @@ nlmsvc_retry_blocked(void)
+ 	unsigned long	timeout = MAX_SCHEDULE_TIMEOUT;
+ 	struct nlm_block *block;
+ 
++	spin_lock(&nlm_blocked_lock);
+ 	while (!list_empty(&nlm_blocked) && !kthread_should_stop()) {
+ 		block = list_entry(nlm_blocked.next, struct nlm_block, b_list);
+ 
+@@ -960,6 +961,7 @@ nlmsvc_retry_blocked(void)
+ 			timeout = block->b_when - jiffies;
+ 			break;
+ 		}
++		spin_unlock(&nlm_blocked_lock);
+ 
+ 		dprintk("nlmsvc_retry_blocked(%p, when=%ld)\n",
+ 			block, block->b_when);
+@@ -969,7 +971,9 @@ nlmsvc_retry_blocked(void)
+ 			retry_deferred_block(block);
+ 		} else
+ 			nlmsvc_grant_blocked(block);
++		spin_lock(&nlm_blocked_lock);
+ 	}
++	spin_unlock(&nlm_blocked_lock);
+ 
+ 	return timeout;
+ }
