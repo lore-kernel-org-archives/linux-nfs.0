@@ -1,77 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f181.google.com ([74.125.82.181]:61261 "EHLO
-	mail-we0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752386Ab3GIQQt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jul 2013 12:16:49 -0400
-Received: by mail-we0-f181.google.com with SMTP id p58so4849726wes.40
-        for <linux-nfs@vger.kernel.org>; Tue, 09 Jul 2013 09:16:47 -0700 (PDT)
-From: Nadav Shemer <nadav@tonian.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4: fix open(O_RDONLY|O_TRUNC) returning EBADF
-Date: Tue,  9 Jul 2013 19:16:45 +0300
-Message-Id: <1373386605-18684-1-git-send-email-nadav@tonian.com>
+Received: from fieldses.org ([174.143.236.118]:37572 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754603Ab3GJC1n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jul 2013 22:27:43 -0400
+Date: Tue, 9 Jul 2013 22:27:35 -0400
+From: "J.Bruce Fields" <bfields@citi.umich.edu>
+To: NeilBrown <neilb@suse.de>
+Cc: Olga Kornievskaia <aglo@citi.umich.edu>, NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Is tcp autotuning really what NFS wants?
+Message-ID: <20130710022735.GI8281@fieldses.org>
+References: <20130710092255.0240a36d@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130710092255.0240a36d@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move ATTR_OPEN handling from nfs4_proc_setattr into nfs4_do_setattr
+On Wed, Jul 10, 2013 at 09:22:55AM +1000, NeilBrown wrote:
+> 
+> Hi,
+>  I just noticed this commit:
+> 
+> commit 9660439861aa8dbd5e2b8087f33e20760c2c9afc
+> Author: Olga Kornievskaia <aglo@citi.umich.edu>
+> Date:   Tue Oct 21 14:13:47 2008 -0400
+> 
+>     svcrpc: take advantage of tcp autotuning
+> 
+> 
+> which I must confess surprised me.  I wonder if the full implications of
+> removing that functionality were understood.
+> 
+> Previously nfsd would set the transmit buffer space for a connection to
+> ensure there is plenty to hold all replies.  Now it doesn't.
+> 
+> nfsd refuses to accept a request if there isn't enough space in the transmit
+> buffer to send a reply.  This is important to ensure that each reply gets
+> sent atomically without blocking and there is no risk of replies getting
+> interleaved.
+> 
+> The server starts out with a large estimate of the reply space (1M) and for
+> NFSv3 and v2 it quickly adjusts this down to something realistic.  For NFSv4
+> it is much harder to estimate the space needed so it just assumes every
+> reply will require 1M of space.
+> 
+> This means that with NFSv4, as soon as you have enough concurrent requests
+> such that 1M each reserves all of whatever window size was auto-tuned, new
+> requests on that connection will be ignored.
+>
+> This could significantly limit the amount of parallelism that can be achieved
+> for a single TCP connection (and given that the Linux client strongly prefers
+> a single connection now, this could become more of an issue).
 
-Signed-off-by: Nadav Shemer <nadav@tonian.com>
----
-Hello.
+Worse, I believe it can deadlock completely if the transmit buffer
+shrinks too far, and people really have run into this:
 
-I've come across an oddity while testing filesystem coverage
-My test creates a non-empty file without write permissions and tries to open it with O_RDONLY|O_TRUNC
-It expects EACCES (and gets that for local filesystems and NFSv3) but gets EBADF on NFSv4 (and v4.1)
+	http://mid.gmane.org/<20130125185748.GC29596@fieldses.org>
 
-I found some history on this: In a previous kernel it would just hang due to mishandling the NFS4ERR_OPENMODE exception
-http://www.spinics.net/lists/linux-nfs/msg28881.html
+Trond's suggestion looked at the time like it might work and be doable:
 
-A fix for this was introduced (it specifically tests for NFS4ERR_OPENMODE and returns EACCES for the open() case, EBADF otherwise)
-http://www.spinics.net/linux/fedora/fedora-kernel/msg03736.html
-but another patch was also introduced in the same set which seems to break it (it optimizes away the time modification and removes ATTR_OPEN in nfs4_proc_setattr)
-http://www.spinics.net/linux/fedora/fedora-kernel/msg03732.html
+	http://mid.gmane.org/<4FA345DA4F4AE44899BD2B03EEEC2FA91833C1D8@sacexcmbx05-prd.hq.netapp.com>
 
-By moving the 'Deal with open(O_TRUNC)' bit inside (into nfs4_do_setattr), I got it working again (with no other functional change, as far as I can see)
+but I dropped it.
 
- fs/nfs/nfs4proc.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+The v4-specific situation might not be hard to improve: the v4
+processing decodes the whole compound at the start, so it knows the
+sequence of ops before it does anything else and could compute a tighter
+bound on the reply size at that point.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8fbc100..17b9f32 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2180,6 +2180,10 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 		.inode = inode,
- 	};
- 	int err;
-+	int is_o_trunc = sattr->ia_valid & ATTR_OPEN;
-+	/* Deal with open(O_TRUNC) */
-+	if (sattr->ia_valid & ATTR_OPEN)
-+		sattr->ia_valid &= ~(ATTR_MTIME|ATTR_CTIME|ATTR_OPEN);
- 	do {
- 		err = _nfs4_do_setattr(inode, cred, fattr, sattr, state);
- 		switch (err) {
-@@ -2193,7 +2197,7 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 			}
- 			if (state && !(state->state & FMODE_WRITE)) {
- 				err = -EBADF;
--				if (sattr->ia_valid & ATTR_OPEN)
-+				if (is_o_trunc)
- 					err = -EACCES;
- 				goto out;
- 			}
-@@ -2774,10 +2778,6 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 
- 	nfs_fattr_init(fattr);
- 	
--	/* Deal with open(O_TRUNC) */
--	if (sattr->ia_valid & ATTR_OPEN)
--		sattr->ia_valid &= ~(ATTR_MTIME|ATTR_CTIME|ATTR_OPEN);
--
- 	/* Optimization: if the end result is no change, don't RPC */
- 	if ((sattr->ia_valid & ~(ATTR_FILE)) == 0)
- 		return 0;
--- 
-1.7.11.7
+> I don't know if this is a real issue that needs addressing - I hit in the
+> context of a server filesystem which was misbehaving and so caused this issue
+> to become obvious.  But in this case it is certainly the filesystem, not the
+> NFS server, which is causing the problem.
 
+Yeah it looks a real problem.
+
+Some good test cases would be useful if we could find some.
+
+And, yes, my screwup for merging 966043986 without solving those other
+problems first.  I was confused.
+
+It does make a difference on high bandwidth-product networks (something
+people have also hit).  I'd rather not regress there and also would
+rather not require manual tuning for something we should be able to get
+right automatically.
+
+--b.
