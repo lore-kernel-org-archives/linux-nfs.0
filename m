@@ -1,86 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:22093 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752140Ab3GBKes (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Jul 2013 06:34:48 -0400
-Message-ID: <1372761278.2620.13.camel@tlielax.poochiereds.net>
-Subject: Re: [PATCH v1] vfs: allow umount to handle mountpoints without
- revalidating them
-From: Jeffrey Layton <jlayton@redhat.com>
-To: NeilBrown <neilb@suse.de>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Christopher T Vogan <cvogan@us.ibm.com>
-Date: Tue, 02 Jul 2013 06:34:38 -0400
-In-Reply-To: <20130702114234.41cc66dc@notabene.brown>
-References: <1372684830-13272-1-git-send-email-jlayton@redhat.com>
-	 <20130702114234.41cc66dc@notabene.brown>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from e33.co.us.ibm.com ([32.97.110.151]:46919 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756196Ab3GKPkG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Jul 2013 11:40:06 -0400
+Received: from /spool/local
+	by e33.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Thu, 11 Jul 2013 15:40:05 -0000
+Received: from d03relay01.boulder.ibm.com (d03relay01.boulder.ibm.com [9.17.195.226])
+	by d03dlp01.boulder.ibm.com (Postfix) with ESMTP id 7FEF61FF002B
+	for <linux-nfs@vger.kernel.org>; Thu, 11 Jul 2013 09:34:44 -0600 (MDT)
+Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
+	by d03relay01.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r6BFe24W107940
+	for <linux-nfs@vger.kernel.org>; Thu, 11 Jul 2013 09:40:02 -0600
+Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r6BFe2sA008338
+	for <linux-nfs@vger.kernel.org>; Thu, 11 Jul 2013 09:40:02 -0600
+Date: Thu, 11 Jul 2013 10:39:59 -0500
+From: Malahal Naineni <malahal@us.ibm.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+Subject: Re: corruption due to loss of lock
+Message-ID: <20130711153959.GA15010@us.ibm.com>
+References: <20130613184737.GA25713@us.ibm.com>
+ <20130711071346.03b946bd@corrin.poochiereds.net>
+ <1373552348.2871.2.camel@leira.trondhjem.org>
+ <20130711102840.272ce3fa@tlielax.poochiereds.net>
+ <1373553181.9207.2.camel@leira.trondhjem.org>
+ <20130711112036.03ffe1cc@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130711112036.03ffe1cc@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-07-02 at 11:42 +1000, NeilBrown wrote:
-> On Mon,  1 Jul 2013 09:20:30 -0400 Jeff Layton <jlayton@redhat.com> wrote:
+Jeff Layton [jlayton@redhat.com] wrote:
+> On Thu, 11 Jul 2013 14:33:02 +0000
+> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 > 
-> > Christopher reported a regression where he was unable to unmount a NFS
-> > filesystem where the root had gone stale. The problem is that
-> > d_revalidate handles the root of the filesystem differently from other
-> > dentries, but d_weak_revalidate does not. We could simply fix this by
-> > making d_weak_revalidate return success on IS_ROOT dentries, but there
-> > are cases where we do want to revalidate the root of the fs.
+> > On Thu, 2013-07-11 at 10:28 -0400, Jeff Layton wrote:
+> > > On Thu, 11 Jul 2013 14:19:10 +0000
+> > > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+> > > 
+> > > > On Thu, 2013-07-11 at 07:13 -0400, Jeff Layton wrote:
+> > > > > On Thu, 13 Jun 2013 13:47:37 -0500
+> > > > > Malahal Naineni <malahal@us.ibm.com> wrote:
+> > > > > 
+> > > > > > Hi Trond,
+> > > > > > 
+> > > > > > I saw Bryan's patches here https://patchwork.kernel.org/patch/987402/
+> > > > > > that fix issues after loss of a lock.  What is the status on this patch
+> > > > > > set? Do they need more work? We have an application that uses range
+> > > > > > locks on a file. Two threads from two different clients end up writing
+> > > > > > to the same a file due to this bug after a lease expiry from a client.
+> > > > > > 
+> > > > > > Regards, Malahal.
+> > > > > 
+> > > > > (cc'ing Bryan since he did the original set)
+> > > > > 
+> > > > > Yeah, this set would be a nice thing to have. A couple of comments:
+> > > > > 
+> > > > > - I still think it would be best to make SIGLOST its own signal, but as
+> > > > >   Bryan points out, it would need to be larger than SIGRTMAX. I'm
+> > > > >   not sure that's possible on all arches with the way the RT signals
+> > > > >   were done. It's probably worth investigating that though before
+> > > > >   settling on SIGIO since it would be hard to change that retroactively.
+> > > > > 
+> > > > > - This is not really a v4.1 specific thing. It should also be done for
+> > > > >   v4.0 and v2/3, though the latter two really need to be done within
+> > > > >   lockd.
+> > > > 
+> > > > SIGLOST is not part of any standard. It is a hack that has been adopted
+> > > > by IBM and Solaris.
+> > > > 
+> > > > The POSIXly correct way to do this is to use EBADF to warn the
+> > > > application that the file descriptor is no longer valid (in the sense
+> > > > that the server is no longer honouring the lock) and EIO in order to
+> > > > warn it that data may have been lost.
+> > > > 
+> > > 
+> > > It is a hack...I won't argue there
+> > > 
+> > > I'm not sure that returning errors is really the best approach though.
+> > > In some cases, the fd may be fine. It may only be the lock that has
+> > > been lost.
+> > > 
+> > > With a signal, the program has more of a choice as to whether it cares
+> > > about lost locks and is more immediate when the problem occurs. An
+> > > error code seems like it might cause a lot of grief for programs that
+> > > aren't expecting that sort of behavior.
 > > 
-> > A umount is really a special case. We generally aren't interested in
-> > anything but the dentry and vfsmount that's attached at that point. If
-> > the inode turns out to be stale we just don't care since the intent is
-> > to stop using it anyway.
+> > EBADF is a error that has an obvious meaning in POSIX: you need to
+> > reopen the file and re-establish any locks.
+> 
+> Well, EBADF means "Bad file descriptor". Consider the v2/3 case -- the
+> fd might still be usable, it's only my lock that has been lost. One
+> might consider that to mean that we shouldn't use that fd anymore, but
+> that's a behavioral change any way you slice it...
+> 
+> > How is that not better than
+> > receiving a signal they won't be expecting? Consider that we'd have to
+> > overload SIGIO, which has a completely different meaning in POSIX...
 > > 
-> > Try to handle this situation better by treating umount as a special
-> > case in the lookup code. Have it resolve the parent using normal
-> > means, and then do a lookup of the final dentry without revalidating
-> > it. In most cases, the final lookup will come out of the dcache, but
-> > the case where there's a trailing symlink or !LAST_NORM entry on the
-> > end complicates things a bit.
-> > 
-> > Reported-by: Christopher T Vogan <cvogan@us.ibm.com>
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
 > 
-> Thanks for this Jeff.  It certainly looks credible to me.
-> 
-> There is a lot of code copied from the "user_path_at" path which is a shame,
-> but probably better that putting in lots of "is this an unmount" tests which
-> would slow done the common case.
-> 
-> On balance, I like it.
-> 
-> Thanks,
-> NeilBrown
-> 
+> That's the main reason that I think we want a new signal for this. The
+> default on SIGLOST should be to ignore it, and then that would allow
+> processes to opt-in to paying attention to it.
 
-(cc'ing Christopher as I mistakenly left him off the original mail. I'll
-make sure to cc him on any respins...)
+We should split that patchset into two.
 
-Thanks for looking. Yeah it is a lot of code to handle one case. So,
-while this does seem to work, I'm still not 100% sold on this
-approach...
+1. we should return EBADF/EIO (debatable which one) for operations that
+   require lock after loss of lock.
+2. sending a signal (SIGIO/SIGLOST).
 
-I had assumed that we would sometimes want to revalidate IS_ROOT
-dentries in other codepaths. Now that I think about it though, I'm
-having a hard time coming up with any situations where that's
-necessary. We'll never want to invalidate such a dentry, so does that
-ever make sense?
+The first one is critical to avoid corruption, and second one is needed
+for graceful recovery.
 
-If it doesn't, we could just replace this patch with a test for
-IS_ROOT(dentry) in nfs_weak_revalidate, and call it a day. I tested a
-patch like that earlier and it also worked around the problem.
-
-Also, it bothers me a little that this patch stops revalidating anything
-once it hits the last component, even if it's a symlink and we know
-we'll have to chase it down. It may make sense to check for d_mountpoint
-in some cases and revalidate the dentry if it's true.
-
-Thoughts?
--- 
-Jeffrey Layton <jlayton@redhat.com>
+Regards, Malahal.
 
