@@ -1,111 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46247 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:23741 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757778Ab3GZWJ0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Jul 2013 18:09:26 -0400
-Date: Fri, 26 Jul 2013 18:09:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jan Stancek <jstancek@redhat.com>
-Cc: linux-nfs@vger.kernel.org, bfields@redhat.com,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
-Message-ID: <20130726220924.GG30651@fieldses.org>
-References: <682ebd8ecc7309b18396da356a0feb38bfa41674.1372692346.git.jstancek@redhat.com>
- <20130708201643.GI29071@fieldses.org>
- <1157529877.873319.1373353194344.JavaMail.root@redhat.com>
+	id S1756358Ab3GKSST (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Jul 2013 14:18:19 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Linux linux-kernel <linux-kernel@vger.kernel.org>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: [GIT PULL] Please pull NFS client updates
+Date: Thu, 11 Jul 2013 18:18:17 +0000
+Message-ID: <1373566697.12823.30.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1157529877.873319.1373353194344.JavaMail.root@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 09, 2013 at 02:59:54AM -0400, Jan Stancek wrote:
-> 
-> 
-> 
-> 
-> ----- Original Message -----
-> > From: "J. Bruce Fields" <bfields@fieldses.org>
-> > To: "Jan Stancek" <jstancek@redhat.com>
-> > Cc: linux-nfs@vger.kernel.org, bfields@redhat.com, "Trond Myklebust" <Trond.Myklebust@netapp.com>
-> > Sent: Monday, 8 July, 2013 10:16:43 PM
-> > Subject: Re: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
-> > 
-> > On Mon, Jul 01, 2013 at 05:32:34PM +0200, Jan Stancek wrote:
-> > > Starting with commit:
-> > >   commit f994c43d19a9116727d4c228d3f13db595bff562
-> > >   Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > >   Date:   Thu Nov 1 12:14:14 2012 -0400
-> > >       SUNRPC: Clean up rpc_bind_new_program
-> > > 
-> > > operations on directory mounted with -onfsvers=3,tcp,sec=krb5 fail
-> > > with Input/Output error after ~60 second timeout. This is presumably
-> > > because upcalls for 'nfsacl' are not getting anywhere.
-> > > 
-> > > This patch enables pipe dir for nfsacl_program and changes its name
-> > > to 'nfs'. This name will be used in upcalls and whole setup should
-> > > work as it did in past - just with nfs/hostname principal.
-> > 
-> > I think this was the problem that nfs-utils commits
-> > 
-> > 	a1f8afc560 gssd: Remove insane sanity checks of the service name
-> > 	a56989b665 gssd: Handle the target name correctly
-> > 
-> > were supposed to fix?
-> > 
-> > But perhaps the kernel needs a fix too to fix a regression with old
-> > userspace.
-> 
-> I saw this error with nfs-utils.1.2.9-rc1, which should already contain
-> those 2 commits.
-
-Actually, I think your patch is just a subset of Trond's
-http://mid.gmane.org/<4FA345DA4F4AE44899BD2B03EEEC2FA9092EC392@SACEXCMBX04-PRD.hq.netapp.com>
-
-Trond, is there a reason that never got applied?
-
---b.
-
-> 
-> Regards,
-> Jan
-> 
-> > 
-> > --b.
-> > 
-> > > 
-> > > Signed-off-by: Jan Stancek <jstancek@redhat.com>
-> > > ---
-> > >  fs/nfs/nfs3client.c |    3 ++-
-> > >  1 files changed, 2 insertions(+), 1 deletions(-)
-> > > 
-> > > diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
-> > > index b3fc65e..09a7d06 100644
-> > > --- a/fs/nfs/nfs3client.c
-> > > +++ b/fs/nfs/nfs3client.c
-> > > @@ -9,11 +9,12 @@ static const struct rpc_version *nfsacl_version[] = {
-> > >  };
-> > >  
-> > >  const struct rpc_program nfsacl_program = {
-> > > -	.name			= "nfsacl",
-> > > +	.name			= "nfs",
-> > >  	.number			= NFS_ACL_PROGRAM,
-> > >  	.nrvers			= ARRAY_SIZE(nfsacl_version),
-> > >  	.version		= nfsacl_version,
-> > >  	.stats			= &nfsacl_rpcstat,
-> > > +	.pipe_dir_name		= NFS_PIPE_DIRNAME,
-> > >  };
-> > >  
-> > >  /*
-> > > --
-> > > 1.7.1
-> > > 
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgcHVsbCByZXF1ZXN0IG1haW5seSBjb250YWlucyBz
+b21lIHNtYWxsIHJlYWRkaXINCm9wdGltaXNhdGlvbnMgdGhhdCBoYWQgZGVwZW5kZW5jaWVzIG9u
+IEFsIFZpcm8ncyByZWFkZGlyIHJld3JpdGUuIFRoZXJlDQppcyBhbHNvIGEgZml4IGZvciBhIG5h
+c3R5IGRlYWRsb2NrIHdoaWNoIHN1cmZhY2VkIGVhcmxpZXIgaW4gdGhpcyBtZXJnZQ0Kd2luZG93
+Lg0KDQpUaGUgZm9sbG93aW5nIGNoYW5nZXMgc2luY2UgY29tbWl0IGE4MmE3MjlmMDQyMzJjY2Qw
+YjU5NDA2NTc0YmE0Y2YyMDAyN2E0OWQ6DQoNCiAgTWVyZ2UgYnJhbmNoICdha3BtJyAodXBkYXRl
+cyBmcm9tIEFuZHJldyBNb3J0b24pICgyMDEzLTA3LTA5IDEzOjMzOjM2IC0wNzAwKQ0KDQphcmUg
+YXZhaWxhYmxlIGluIHRoZSBnaXQgcmVwb3NpdG9yeSBhdDoNCg0KDQogIGdpdDovL2dpdC5saW51
+eC1uZnMub3JnL3Byb2plY3RzL3Ryb25kbXkvbGludXgtbmZzLmdpdCB0YWdzL25mcy1mb3ItMy4x
+MS0yDQoNCmZvciB5b3UgdG8gZmV0Y2ggY2hhbmdlcyB1cCB0byBlZWVlMjQ1MjY4Yzk1MTI2MmI4
+NjFiYzFiZTRlOWRjODEyMzUyNDk5Og0KDQogIFNVTlJQQzogRml4IGEgZGVhZGxvY2sgaW4gcnBj
+X2NsaWVudF9yZWdpc3RlcigpICgyMDEzLTA3LTEwIDE1OjU4OjU1IC0wNDAwKQ0KDQotLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+DQpORlMgY2xpZW50IHVwZGF0ZXMgZm9yIExpbnV4IDMuMTEgKHBhcnQgMikNCg0KSGlnaGxpZ2h0
+cyBpbmNsdWRlOg0KLSBGaXggYW5fcnBjIHBpcGVmcyByZWdyZXNzaW9uIHRoYXQgY2F1c2VzIGEg
+ZGVhZGxvY2sgb24gbW91bnQNCi0gUmVhZGRpciBvcHRpbWlzYXRpb25zIGJ5IFNjb3R0IE1heWhl
+dyBhbmQgSmVmZiBMYXl0b24NCi0gY2xlYW4gdXAgdGhlIHJwY19waXBlZnMgZGVudHJ5IG9wZXJh
+dGlvbiBzZXR1cA0KDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpGZW5nZ3VhbmcgV3UgKDEpOg0KICAgICAgcnBjX3BpcGU6
+IHJwY19kaXJfaW5vZGVfb3BlcmF0aW9ucyBjYW4gYmUgc3RhdGljDQoNCkplZmYgTGF5dG9uICgy
+KToNCiAgICAgIG5mczogc2V0IHZlcmlmaWVyIG9uIGV4aXN0aW5nIGRlbnRyaWVzIGluIG5mc19w
+cmltZV9kY2FjaGUNCiAgICAgIHJwY19waXBlOiBzZXQgZGVudHJ5IG9wZXJhdGlvbnMgYXQgZF9h
+bGxvYyB0aW1lDQoNClNjb3R0IE1heWhldyAoMyk6DQogICAgICBORlM6IE1ha2UgbmZzX2F0dHJp
+YnV0ZV9jYWNoZV9leHBpcmVkKCkgbm9uLXN0YXRpYw0KICAgICAgTkZTOiBNYWtlIG5mc19yZWFk
+ZGlyIHJldmFsaWRhdGUgbGVzcyBvZnRlbg0KICAgICAgTkZTOiBBbGxvdyBuZnNfdXBkYXRlcGFn
+ZSB0byBleHRlbmQgYSB3cml0ZSB1bmRlciBhZGRpdGlvbmFsIGNpcmN1bXN0YW5jZXMNCg0KVHJv
+bmQgTXlrbGVidXN0ICgxKToNCiAgICAgIFNVTlJQQzogRml4IGEgZGVhZGxvY2sgaW4gcnBjX2Ns
+aWVudF9yZWdpc3RlcigpDQoNCiBmcy9uZnMvZGlyLmMgICAgICAgICAgIHwgIDYgKysrKy0tDQog
+ZnMvbmZzL2lub2RlLmMgICAgICAgICB8ICAyICstDQogZnMvbmZzL3dyaXRlLmMgICAgICAgICB8
+IDMxICsrKysrKysrKysrKysrKysrKysrKysrLS0tLS0tLS0NCiBpbmNsdWRlL2xpbnV4L25mc19m
+cy5oIHwgIDEgKw0KIG5ldC9zdW5ycGMvY2xudC5jICAgICAgfCAxNiArKysrKysrKystLS0tLS0t
+DQogbmV0L3N1bnJwYy9ycGNfcGlwZS5jICB8IDI1ICsrKysrKysrKysrKysrKysrKysrLS0tLS0N
+CiA2IGZpbGVzIGNoYW5nZWQsIDU4IGluc2VydGlvbnMoKyksIDIzIGRlbGV0aW9ucygtKQ0KDQot
+LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFw
+cA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
