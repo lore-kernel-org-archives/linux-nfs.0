@@ -1,184 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail4.gandi.net ([217.70.183.210]:52385 "EHLO mail4.gandi.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752550Ab3GBRIx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Jul 2013 13:08:53 -0400
-Date: Tue, 2 Jul 2013 19:02:16 +0200
-From: William Dauchy <william@gandi.net>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: pascal@gandi.net, linux-nfs@vger.kernel.org
-Subject: Strange NFS/async write issue
-Message-ID: <20130702170216.GH30876@gandi.net>
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="WR+jf/RUebEcofwt"
+Received: from mail-ye0-f174.google.com ([209.85.213.174]:36198 "EHLO
+	mail-ye0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756153Ab3GKOEK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Jul 2013 10:04:10 -0400
+Received: by mail-ye0-f174.google.com with SMTP id m9so2775537yen.19
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Jul 2013 07:04:09 -0700 (PDT)
+Date: Thu, 11 Jul 2013 10:04:06 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Dave Chinner <david@fromorbit.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: Re: [PATCH 01/12] vfs: pull ext4's double-i_mutex-locking into
+ common code
+Message-ID: <20130711100406.21b08420@tlielax.poochiereds.net>
+In-Reply-To: <20130710212620.GB24548@pad.fieldses.org>
+References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+	<1372882356-14168-2-git-send-email-bfields@redhat.com>
+	<20130709220411.GK3438@dastard>
+	<20130710002120.GM32574@pad.fieldses.org>
+	<20130710020921.GN3438@dastard>
+	<20130710024059.GN32574@pad.fieldses.org>
+	<20130710033853.GP3438@dastard>
+	<20130710212620.GB24548@pad.fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, 10 Jul 2013 17:26:21 -0400
+"J. Bruce Fields" <bfields@redhat.com> wrote:
 
---WR+jf/RUebEcofwt
-Content-Type: multipart/mixed; boundary="r5lq+205vWdkqwtk"
-Content-Disposition: inline
+> On Wed, Jul 10, 2013 at 01:38:53PM +1000, Dave Chinner wrote:
+> > On Tue, Jul 09, 2013 at 10:40:59PM -0400, J. Bruce Fields wrote:
+> > > On Wed, Jul 10, 2013 at 12:09:21PM +1000, Dave Chinner wrote:
+> > > > Sure. I'd prefer ordering by inode number, because then ordering is
+> > > > deterministic rather than being dependent on memory allocation
+> > > > results.  It makes forensic analysis of deadlocks and corruptions
+> > > > easier because you can look at on-disk structures and accurately
+> > > > predict locking behaviour and therefore determine the order of
+> > > > operations that should occur. With lock ordering determined by
+> > > > memory addresses, you can't easily predict the lock ordering two
+> > > > particular inodes might take from one operation to another.
+> > > 
+> > > Hm, OK, not having done this I don't have a good feeling for how
+> > > important that is, but I can take your word for it.
+> > > 
+> > > But the ext4 code actually originally used i_ino order and was changed
+> > > by 03bd8b9b896c8e "ext4: move_extent code cleanup", possibly on Linus's
+> > > suggestion?:
+> > > 
+> > > 	http://mid.gmane.org/<CA+55aFwdh_QWG-R2FQ71kDXiNYZ04qPANBsY_PssVUwEBH4uSw@mail.gmail.com>
+> > > 
+> > > 	"And the only sane order is comparing inode pointers, not inode
+> > > 	numbers like ext4 apparently does."
+> > 
+> > Interesting. What has worked for the last 20 years must be wrong if
+> > Linus says so ;)
+> > 
+> > > 
+> > > (Uh, I thought I also remembered some rationale but can't dig up the
+> > > email now.)
+> > 
+> > Probably duplicate inode numbers on inodes in different filesystems.
+> > But rename doesn't allow that, and I don't we ever want to allow
+> > arbitrary nested inode locking across superblocks. Hence I can't
+> > think of a reason why it's a problem...
+> 
+> I have some vague memory the argument was rather that inode numbers
+> could fail to be unique within a fs due to bugs, but I may be making
+> that up.  I've got no strong opinion here.
+> 
+
+There are also legitimate cases where inode numbers can collide,
+particularly on network filesystems. That's one of the main reasons we
+have iget5_locked().
+
+One possibility might be to order by i_ino first, and then fall back to
+using the inode pointer value if they are equal.
+
+> > FWIW - gfs2 does multiple glock locking similar to XFS inode locking
+> > - it sorts the locks in lock number order and the locks them all one
+> > at a time...
+> ... 
+> > A quick grep shows lock_2_inodes() in fs/ubifs/dir.c. I don't see
+> > any other obvious ones.
+> 
+> OK.  I'll put off reposting till I've had a chance to look at those
+> cases more carefully....  Thanks for the review!
+> 
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
---r5lq+205vWdkqwtk
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-
-Hello Trond,
-
-We wrote the attached tester to reproduce an issue we have with mysql on
-a 3.9.8 kernel using a nfsv4 mount.=20
-
-mount options are "classic":
-
-rw,nosuid,nodev,noexec,relatime,vers=3D4.0,rsize=3D1048576,wsize=3D1048576,=
-namlen=3D255,hard,proto=3Dtcp,timeo=3D600,retrans=3D2,sec=3Dsys,local_lock=
-=3Dnone
-
-When handling a temporary file, mysql open(), then writes a bunch (say ~16M=
-B) of data
-to that file, lseeks to the start and re-reads file contents.
-
-With the code as attached, we see a lot of small NFS writes (1400 bytes) and
-a lot of getattrs [1] and the test takes a little more than 2 seconds.
-
-It seems the lseek/read are serialized to the last write actually sent to t=
-he filer -=20
-and nothing aggregates the big writes.
-
-If we uncomment the fsync() call, or simply close() and reopen the file, th=
-e test
-completes in a few milliseconds. Same if we call sync() from any process wh=
-ile this
-test is running. Dump shows lots of big tcp pushes, few NFS commands/answer=
-s - no
-getattr in between writes.
-
-Is this an issue worth a dig or a known behaviour?
-Can we debug this a bit further for you?
-
-Thanks for your time,
-
-[1]
-(extract from the dump:
-15:56:43.681766 IP 10.0.46.65.813 > 10.0.41.39.2049: Flags [P.], seq 143999=
-80:14401384, ack 1038253, win 24576, options [nop,nop,TS val 928349822 ecr =
-259987202], length 1404
-15:56:43.685189 IP 10.0.41.39.2049 > 10.0.46.65.813: Flags [.], ack 1439998=
-0, win 32715, options [nop,nop,TS val 259987203 ecr 928349822], length 0
-15:56:43.689131 IP 10.0.41.39.2049 > 10.0.46.65.263281194: reply ok 132 get=
-attr NON 3 ids 0/38 sz 0
-15:56:43.689292 IP 10.0.46.65.280058410 > 10.0.41.39.2049: 2892 getattr fh =
-0,0/22
-15:56:43.689330 IP 10.0.46.65.813 > 10.0.41.39.2049: Flags [P.], seq 144042=
-80:14405684, ack 1038389, win 24576, options [nop,nop,TS val 928349824 ecr =
-259987203], length 1404
-15:56:43.690127 IP 10.0.41.39.2049 > 10.0.46.65.813: Flags [.], ack 1440428=
-0, win 32715, options [nop,nop,TS val 259987203 ecr 928349824], length 0
-15:56:43.690651 IP 10.0.41.39.2049 > 10.0.46.65.280058410: reply ok 132 get=
-attr NON 3 ids 0/38 sz 0
-15:56:43.690769 IP 10.0.46.65.296835626 > 10.0.41.39.2049: 2892 getattr fh =
-0,0/22
-15:56:43.690782 IP 10.0.46.65.813 > 10.0.41.39.2049: Flags [P.], seq 144085=
-80:14409984, ack 1038525, win 24576, options [nop,nop,TS val 928349824 ecr =
-259987203], length 1404
-15:56:43.691496 IP 10.0.41.39.2049 > 10.0.46.65.813: Flags [.], ack 1440858=
-0, win 32715, options [nop,nop,TS val 259987203 ecr 928349824], length 0
-15:56:43.692970 IP 10.0.41.39.2049 > 10.0.46.65.296835626: reply ok 132 get=
-attr NON 3 ids 0/38 sz 0
-15:56:43.693194 IP 10.0.46.65.313612842 > 10.0.41.39.2049: 2892 getattr fh =
-0,0/22
-15:56:43.693249 IP 10.0.46.65.813 > 10.0.41.39.2049: Flags [P.], seq 144128=
-80:14414284, ack 1038661, win 24576, options [nop,nop,TS val 928349825 ecr =
-259987204], length 1404
-15:56:43.693395 IP 10.0.41.39.2049 > 10.0.46.65.813: Flags [.], ack 1441288=
-0, win 32715, options [nop,nop,TS val 259987204 ecr 928349825], length 0
-15:56:43.693644 IP 10.0.41.39.2049 > 10.0.46.65.313612842: reply ok 132 get=
-attr NON 3 ids 0/38 sz 0
-)
-
---=20
-William
-
---r5lq+205vWdkqwtk
-Content-Type: text/x-csrc; charset=us-ascii
-Content-Disposition: attachment; filename="nfssync.c"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-
-int main(int argc, char **argv)
-{
-    int i, fd;
-    time_t ts;
-    char *fakebuf;
-
-    if (argc < 2)
-        exit(1);
-
-    fd = open(argv[1], O_RDWR|O_CREAT|O_EXCL|O_TRUNC|O_NOFOLLOW, 0755);
-    if (fd < 0) {
-        perror("open");
-        exit(1);
-    }
-
-    fakebuf = malloc(256*1024);
-    if (fakebuf == NULL) {
-        perror("malloc");
-        exit(1);
-    }
-
-    ts = time(NULL);
-    printf("writing..");
-    memset(fakebuf, 'A', 256*1024);
-    for (i = 0; i < 68; i++)
-        write(fd, fakebuf, 256*1024);
-    printf("done in %lu secs\n", time(NULL) - ts);
-
-    ts = time(NULL);
-    printf("not syncing..");
-    // fsync(fd);
-    printf("synced in %lu secs\n", time(NULL) - ts);
-
-    printf("reading..");
-
-    ts = time(NULL);
-    if (fd < 0) {
-        perror("open");
-        exit(1);
-    }
-
-    // just mimic mysql stuff
-    lseek(fd, 0, SEEK_CUR);
-    lseek(fd, 0, SEEK_END);
-    lseek(fd, 0, SEEK_SET);
-    for (i = 0; i < 68; i++)
-        read(fd, fakebuf, 256*1024);
-    printf("done in %lu secs\n", time(NULL) - ts);
-
-    return 0;
-}
-
---r5lq+205vWdkqwtk--
-
---WR+jf/RUebEcofwt
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iEYEARECAAYFAlHTB5gACgkQ1I6eqOUidQGkcgCeOm3FgsPL+I7Nm6we5N/7XSkT
-VKIAnA487VlkZ/g3TfcoasL3a3EQWC5k
-=GjKF
------END PGP SIGNATURE-----
-
---WR+jf/RUebEcofwt--
+-- 
+Jeff Layton <jlayton@poochiereds.net>
