@@ -1,79 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34642 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:47363 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752209Ab3GaUfu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 31 Jul 2013 16:35:50 -0400
-Date: Wed, 31 Jul 2013 16:35:37 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Larry Keegan <lk@pfw.demon.co.uk>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: nfs client: Now you see it, now you don't (aka spurious ESTALE
- errors)
-Message-ID: <20130731203537.GA2668@fieldses.org>
-References: <20130725134515.67af44e2@cs3.al.itld>
- <20130725101143.6a22cb81@corrin.poochiereds.net>
- <20130725170526.6e54c7db@cs3.al.itld>
- <20130725141828.1862a1e1@tlielax.poochiereds.net>
- <20130726124101.058df8dc@cs3.al.itld>
- <20130726091225.5f299ff6@corrin.poochiereds.net>
- <20130726150222.GC30651@fieldses.org>
- <20130726222510.793c1627@cs3.al.itld>
- <20130731140328.GA28266@fieldses.org>
- <20130731195017.334bb05c@cs3.al.itld>
+	id S1755318Ab3GKOTN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Jul 2013 10:19:13 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: Malahal Naineni <malahal@us.ibm.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+Subject: Re: corruption due to loss of lock
+Date: Thu, 11 Jul 2013 14:19:10 +0000
+Message-ID: <1373552348.2871.2.camel@leira.trondhjem.org>
+References: <20130613184737.GA25713@us.ibm.com>
+	 <20130711071346.03b946bd@corrin.poochiereds.net>
+In-Reply-To: <20130711071346.03b946bd@corrin.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130731195017.334bb05c@cs3.al.itld>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 31, 2013 at 07:50:17PM +0000, Larry Keegan wrote:
-> On Wed, 31 Jul 2013 10:03:28 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > On Fri, Jul 26, 2013 at 10:25:10PM +0000, Larry Keegan wrote:
-> > > As far as NFS client arrangements are concerned, both of the NFS
-> > > server machines also function as NFS clients, so /home/larry works
-> > > on them in the same way as it does on any other NFS client on the
-> > > network. It is just that the NFS servers also run my postfix MTAs.
-> > 
-> > It's unrelated to your ESTALE problem, but note that a setup like this
-> > may be prone to deadlock.  (The client may need to write to the server
-> > to free up memory.  The server may need memory to service the write.
-> > If the server and client are on the same machine, this can deadlock.)
-> > 
-> > --b.
-> > 
-> 
-> Dear Bruce,
-> 
-> Perhaps you can clear something up for me. If I understand you
-> correctly, the following commands might lead to deadlock:
-> 
-> nfsserver# mount localhost:/filesystem /mnt
-> nfsserver# memory-eater &
-> [1] 1234
-> nfsserver# echo tip it over the edge > /mnt/file
-> 
-> but that it won't deadlock if there is memory to spare. The reason I
-> ask is I'd always assumed that any 'spare' memory in an active Linux
-> system would end up being consumed by the disc cache, and that the
-> cached pages are discarded or copied to disc when other parts of the
-
-Note if the pages are backed by NFS files then "copying to disk" may
-mean writing to the NFS server.
-
-> system want memory (or sooner), assuming there is memory available to do
-> that.
-> 
-> What I'm asking is whether this deadlock scenario is 'prone' to occur
-> whenever there are insufficient reclaimable pages free or whether this
-> can occur before that point? Can this deadlock occur even if the cache
-> is large enough to ensure that most of what it contains has been
-> written to disc already? IOW, ignoring the other parts of the O/S, if a
-> programme writes 100MB/sec maximum to an NFS mounted directory on the
-> same machine, and the NFS server commits its data to disc within 10
-> seconds say, would 4GB of RAM provide enough headroom to make this
-> deadlock unlikely?
-
-Sorry, I don't know.
-
---b.
+T24gVGh1LCAyMDEzLTA3LTExIGF0IDA3OjEzIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+T24gVGh1LCAxMyBKdW4gMjAxMyAxMzo0NzozNyAtMDUwMA0KPiBNYWxhaGFsIE5haW5lbmkgPG1h
+bGFoYWxAdXMuaWJtLmNvbT4gd3JvdGU6DQo+IA0KPiA+IEhpIFRyb25kLA0KPiA+IA0KPiA+IEkg
+c2F3IEJyeWFuJ3MgcGF0Y2hlcyBoZXJlIGh0dHBzOi8vcGF0Y2h3b3JrLmtlcm5lbC5vcmcvcGF0
+Y2gvOTg3NDAyLw0KPiA+IHRoYXQgZml4IGlzc3VlcyBhZnRlciBsb3NzIG9mIGEgbG9jay4gIFdo
+YXQgaXMgdGhlIHN0YXR1cyBvbiB0aGlzIHBhdGNoDQo+ID4gc2V0PyBEbyB0aGV5IG5lZWQgbW9y
+ZSB3b3JrPyBXZSBoYXZlIGFuIGFwcGxpY2F0aW9uIHRoYXQgdXNlcyByYW5nZQ0KPiA+IGxvY2tz
+IG9uIGEgZmlsZS4gVHdvIHRocmVhZHMgZnJvbSB0d28gZGlmZmVyZW50IGNsaWVudHMgZW5kIHVw
+IHdyaXRpbmcNCj4gPiB0byB0aGUgc2FtZSBhIGZpbGUgZHVlIHRvIHRoaXMgYnVnIGFmdGVyIGEg
+bGVhc2UgZXhwaXJ5IGZyb20gYSBjbGllbnQuDQo+ID4gDQo+ID4gUmVnYXJkcywgTWFsYWhhbC4N
+Cj4gDQo+IChjYydpbmcgQnJ5YW4gc2luY2UgaGUgZGlkIHRoZSBvcmlnaW5hbCBzZXQpDQo+IA0K
+PiBZZWFoLCB0aGlzIHNldCB3b3VsZCBiZSBhIG5pY2UgdGhpbmcgdG8gaGF2ZS4gQSBjb3VwbGUg
+b2YgY29tbWVudHM6DQo+IA0KPiAtIEkgc3RpbGwgdGhpbmsgaXQgd291bGQgYmUgYmVzdCB0byBt
+YWtlIFNJR0xPU1QgaXRzIG93biBzaWduYWwsIGJ1dCBhcw0KPiAgIEJyeWFuIHBvaW50cyBvdXQs
+IGl0IHdvdWxkIG5lZWQgdG8gYmUgbGFyZ2VyIHRoYW4gU0lHUlRNQVguIEknbQ0KPiAgIG5vdCBz
+dXJlIHRoYXQncyBwb3NzaWJsZSBvbiBhbGwgYXJjaGVzIHdpdGggdGhlIHdheSB0aGUgUlQgc2ln
+bmFscw0KPiAgIHdlcmUgZG9uZS4gSXQncyBwcm9iYWJseSB3b3J0aCBpbnZlc3RpZ2F0aW5nIHRo
+YXQgdGhvdWdoIGJlZm9yZQ0KPiAgIHNldHRsaW5nIG9uIFNJR0lPIHNpbmNlIGl0IHdvdWxkIGJl
+IGhhcmQgdG8gY2hhbmdlIHRoYXQgcmV0cm9hY3RpdmVseS4NCj4gDQo+IC0gVGhpcyBpcyBub3Qg
+cmVhbGx5IGEgdjQuMSBzcGVjaWZpYyB0aGluZy4gSXQgc2hvdWxkIGFsc28gYmUgZG9uZSBmb3IN
+Cj4gICB2NC4wIGFuZCB2Mi8zLCB0aG91Z2ggdGhlIGxhdHRlciB0d28gcmVhbGx5IG5lZWQgdG8g
+YmUgZG9uZSB3aXRoaW4NCj4gICBsb2NrZC4NCg0KU0lHTE9TVCBpcyBub3QgcGFydCBvZiBhbnkg
+c3RhbmRhcmQuIEl0IGlzIGEgaGFjayB0aGF0IGhhcyBiZWVuIGFkb3B0ZWQNCmJ5IElCTSBhbmQg
+U29sYXJpcy4NCg0KVGhlIFBPU0lYbHkgY29ycmVjdCB3YXkgdG8gZG8gdGhpcyBpcyB0byB1c2Ug
+RUJBREYgdG8gd2FybiB0aGUNCmFwcGxpY2F0aW9uIHRoYXQgdGhlIGZpbGUgZGVzY3JpcHRvciBp
+cyBubyBsb25nZXIgdmFsaWQgKGluIHRoZSBzZW5zZQ0KdGhhdCB0aGUgc2VydmVyIGlzIG5vIGxv
+bmdlciBob25vdXJpbmcgdGhlIGxvY2spIGFuZCBFSU8gaW4gb3JkZXIgdG8NCndhcm4gaXQgdGhh
+dCBkYXRhIG1heSBoYXZlIGJlZW4gbG9zdC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
+IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAu
+Y29tDQp3d3cubmV0YXBwLmNvbQ0K
