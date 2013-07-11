@@ -1,128 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53643 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:60435 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756373Ab3GQUuX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 16:50:23 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 09/16] locks: helper functions for delegation breaking
-Date: Wed, 17 Jul 2013 16:50:10 -0400
-Message-Id: <1374094217-31493-11-git-send-email-bfields@redhat.com>
-In-Reply-To: <1374094217-31493-1-git-send-email-bfields@redhat.com>
-References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+	id S933055Ab3GKOdE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Jul 2013 10:33:04 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: Malahal Naineni <malahal@us.ibm.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+Subject: Re: corruption due to loss of lock
+Date: Thu, 11 Jul 2013 14:33:02 +0000
+Message-ID: <1373553181.9207.2.camel@leira.trondhjem.org>
+References: <20130613184737.GA25713@us.ibm.com>
+	 <20130711071346.03b946bd@corrin.poochiereds.net>
+	 <1373552348.2871.2.camel@leira.trondhjem.org>
+	 <20130711102840.272ce3fa@tlielax.poochiereds.net>
+In-Reply-To: <20130711102840.272ce3fa@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-We'll need the same logic for rename and link.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/namei.c         |   13 +++----------
- include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
- 2 files changed, 34 insertions(+), 12 deletions(-)
-
-diff --git a/fs/namei.c b/fs/namei.c
-index 2826bbd..d3b6a35 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3466,14 +3466,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
- 	else {
- 		error = security_inode_unlink(dir, dentry);
- 		if (!error) {
--			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
--			if (error) {
--				if (error == -EWOULDBLOCK && delegated_inode) {
--					*delegated_inode = target;
--					ihold(target);
--				}
-+			error = try_break_deleg(target, delegated_inode);
-+			if (error)
- 				goto out;
--			}
- 			error = dir->i_op->unlink(dir, dentry);
- 			if (!error)
- 				dont_mount(dentry);
-@@ -3543,9 +3538,7 @@ exit2:
- 		iput(inode);	/* truncate the inode here */
- 	inode = NULL;
- 	if (delegated_inode) {
--		error = break_deleg(delegated_inode, O_WRONLY);
--		iput(delegated_inode);
--		delegated_inode = NULL;
-+		error = break_deleg_wait(&delegated_inode);
- 		if (!error)
- 			goto retry_deleg;
- 	}
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index ba29b37..43a3506 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1907,6 +1907,9 @@ extern bool our_mnt(struct vfsmount *mnt);
- 
- extern int current_umask(void);
- 
-+extern void ihold(struct inode * inode);
-+extern void iput(struct inode *);
-+
- /* /sys/fs */
- extern struct kobject *fs_kobj;
- 
-@@ -1974,6 +1977,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
- 	return 0;
- }
- 
-+static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
-+{
-+	int ret;
-+
-+	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
-+	if (ret == -EWOULDBLOCK && delegated_inode) {
-+		*delegated_inode = inode;
-+		ihold(inode);
-+	}
-+	return ret;
-+}
-+
-+static inline int break_deleg_wait(struct inode **delegated_inode)
-+{
-+	int ret;
-+
-+	ret = break_deleg(*delegated_inode, O_WRONLY);
-+	iput(*delegated_inode);
-+	*delegated_inode = NULL;
-+	return ret;
-+}
-+
- #else /* !CONFIG_FILE_LOCKING */
- static inline int locks_mandatory_locked(struct inode *inode)
- {
-@@ -2017,6 +2042,12 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
- {
- 	return 0;
- }
-+
-+static inline int try_break_deleg(struct inode *inode, struct delegated_inode **inode)
-+{
-+	return 0;
-+}
-+
- #endif /* CONFIG_FILE_LOCKING */
- 
- /* fs/open.c */
-@@ -2346,8 +2377,6 @@ extern loff_t vfs_llseek(struct file *file, loff_t offset, int whence);
- extern int inode_init_always(struct super_block *, struct inode *);
- extern void inode_init_once(struct inode *);
- extern void address_space_init_once(struct address_space *mapping);
--extern void ihold(struct inode * inode);
--extern void iput(struct inode *);
- extern struct inode * igrab(struct inode *);
- extern ino_t iunique(struct super_block *, ino_t);
- extern int inode_needs_sync(struct inode *inode);
--- 
-1.7.9.5
-
+T24gVGh1LCAyMDEzLTA3LTExIGF0IDEwOjI4IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+T24gVGh1LCAxMSBKdWwgMjAxMyAxNDoxOToxMCArMDAwMA0KPiAiTXlrbGVidXN0LCBUcm9uZCIg
+PFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gVGh1LCAyMDEz
+LTA3LTExIGF0IDA3OjEzIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4gPiA+IE9uIFRodSwg
+MTMgSnVuIDIwMTMgMTM6NDc6MzcgLTA1MDANCj4gPiA+IE1hbGFoYWwgTmFpbmVuaSA8bWFsYWhh
+bEB1cy5pYm0uY29tPiB3cm90ZToNCj4gPiA+IA0KPiA+ID4gPiBIaSBUcm9uZCwNCj4gPiA+ID4g
+DQo+ID4gPiA+IEkgc2F3IEJyeWFuJ3MgcGF0Y2hlcyBoZXJlIGh0dHBzOi8vcGF0Y2h3b3JrLmtl
+cm5lbC5vcmcvcGF0Y2gvOTg3NDAyLw0KPiA+ID4gPiB0aGF0IGZpeCBpc3N1ZXMgYWZ0ZXIgbG9z
+cyBvZiBhIGxvY2suICBXaGF0IGlzIHRoZSBzdGF0dXMgb24gdGhpcyBwYXRjaA0KPiA+ID4gPiBz
+ZXQ/IERvIHRoZXkgbmVlZCBtb3JlIHdvcms/IFdlIGhhdmUgYW4gYXBwbGljYXRpb24gdGhhdCB1
+c2VzIHJhbmdlDQo+ID4gPiA+IGxvY2tzIG9uIGEgZmlsZS4gVHdvIHRocmVhZHMgZnJvbSB0d28g
+ZGlmZmVyZW50IGNsaWVudHMgZW5kIHVwIHdyaXRpbmcNCj4gPiA+ID4gdG8gdGhlIHNhbWUgYSBm
+aWxlIGR1ZSB0byB0aGlzIGJ1ZyBhZnRlciBhIGxlYXNlIGV4cGlyeSBmcm9tIGEgY2xpZW50Lg0K
+PiA+ID4gPiANCj4gPiA+ID4gUmVnYXJkcywgTWFsYWhhbC4NCj4gPiA+IA0KPiA+ID4gKGNjJ2lu
+ZyBCcnlhbiBzaW5jZSBoZSBkaWQgdGhlIG9yaWdpbmFsIHNldCkNCj4gPiA+IA0KPiA+ID4gWWVh
+aCwgdGhpcyBzZXQgd291bGQgYmUgYSBuaWNlIHRoaW5nIHRvIGhhdmUuIEEgY291cGxlIG9mIGNv
+bW1lbnRzOg0KPiA+ID4gDQo+ID4gPiAtIEkgc3RpbGwgdGhpbmsgaXQgd291bGQgYmUgYmVzdCB0
+byBtYWtlIFNJR0xPU1QgaXRzIG93biBzaWduYWwsIGJ1dCBhcw0KPiA+ID4gICBCcnlhbiBwb2lu
+dHMgb3V0LCBpdCB3b3VsZCBuZWVkIHRvIGJlIGxhcmdlciB0aGFuIFNJR1JUTUFYLiBJJ20NCj4g
+PiA+ICAgbm90IHN1cmUgdGhhdCdzIHBvc3NpYmxlIG9uIGFsbCBhcmNoZXMgd2l0aCB0aGUgd2F5
+IHRoZSBSVCBzaWduYWxzDQo+ID4gPiAgIHdlcmUgZG9uZS4gSXQncyBwcm9iYWJseSB3b3J0aCBp
+bnZlc3RpZ2F0aW5nIHRoYXQgdGhvdWdoIGJlZm9yZQ0KPiA+ID4gICBzZXR0bGluZyBvbiBTSUdJ
+TyBzaW5jZSBpdCB3b3VsZCBiZSBoYXJkIHRvIGNoYW5nZSB0aGF0IHJldHJvYWN0aXZlbHkuDQo+
+ID4gPiANCj4gPiA+IC0gVGhpcyBpcyBub3QgcmVhbGx5IGEgdjQuMSBzcGVjaWZpYyB0aGluZy4g
+SXQgc2hvdWxkIGFsc28gYmUgZG9uZSBmb3INCj4gPiA+ICAgdjQuMCBhbmQgdjIvMywgdGhvdWdo
+IHRoZSBsYXR0ZXIgdHdvIHJlYWxseSBuZWVkIHRvIGJlIGRvbmUgd2l0aGluDQo+ID4gPiAgIGxv
+Y2tkLg0KPiA+IA0KPiA+IFNJR0xPU1QgaXMgbm90IHBhcnQgb2YgYW55IHN0YW5kYXJkLiBJdCBp
+cyBhIGhhY2sgdGhhdCBoYXMgYmVlbiBhZG9wdGVkDQo+ID4gYnkgSUJNIGFuZCBTb2xhcmlzLg0K
+PiA+IA0KPiA+IFRoZSBQT1NJWGx5IGNvcnJlY3Qgd2F5IHRvIGRvIHRoaXMgaXMgdG8gdXNlIEVC
+QURGIHRvIHdhcm4gdGhlDQo+ID4gYXBwbGljYXRpb24gdGhhdCB0aGUgZmlsZSBkZXNjcmlwdG9y
+IGlzIG5vIGxvbmdlciB2YWxpZCAoaW4gdGhlIHNlbnNlDQo+ID4gdGhhdCB0aGUgc2VydmVyIGlz
+IG5vIGxvbmdlciBob25vdXJpbmcgdGhlIGxvY2spIGFuZCBFSU8gaW4gb3JkZXIgdG8NCj4gPiB3
+YXJuIGl0IHRoYXQgZGF0YSBtYXkgaGF2ZSBiZWVuIGxvc3QuDQo+ID4gDQo+IA0KPiBJdCBpcyBh
+IGhhY2suLi5JIHdvbid0IGFyZ3VlIHRoZXJlDQo+IA0KPiBJJ20gbm90IHN1cmUgdGhhdCByZXR1
+cm5pbmcgZXJyb3JzIGlzIHJlYWxseSB0aGUgYmVzdCBhcHByb2FjaCB0aG91Z2guDQo+IEluIHNv
+bWUgY2FzZXMsIHRoZSBmZCBtYXkgYmUgZmluZS4gSXQgbWF5IG9ubHkgYmUgdGhlIGxvY2sgdGhh
+dCBoYXMNCj4gYmVlbiBsb3N0Lg0KPiANCj4gV2l0aCBhIHNpZ25hbCwgdGhlIHByb2dyYW0gaGFz
+IG1vcmUgb2YgYSBjaG9pY2UgYXMgdG8gd2hldGhlciBpdCBjYXJlcw0KPiBhYm91dCBsb3N0IGxv
+Y2tzIGFuZCBpcyBtb3JlIGltbWVkaWF0ZSB3aGVuIHRoZSBwcm9ibGVtIG9jY3Vycy4gQW4NCj4g
+ZXJyb3IgY29kZSBzZWVtcyBsaWtlIGl0IG1pZ2h0IGNhdXNlIGEgbG90IG9mIGdyaWVmIGZvciBw
+cm9ncmFtcyB0aGF0DQo+IGFyZW4ndCBleHBlY3RpbmcgdGhhdCBzb3J0IG9mIGJlaGF2aW9yLg0K
+DQpFQkFERiBpcyBhIGVycm9yIHRoYXQgaGFzIGFuIG9idmlvdXMgbWVhbmluZyBpbiBQT1NJWDog
+eW91IG5lZWQgdG8NCnJlb3BlbiB0aGUgZmlsZSBhbmQgcmUtZXN0YWJsaXNoIGFueSBsb2Nrcy4g
+SG93IGlzIHRoYXQgbm90IGJldHRlciB0aGFuDQpyZWNlaXZpbmcgYSBzaWduYWwgdGhleSB3b24n
+dCBiZSBleHBlY3Rpbmc/IENvbnNpZGVyIHRoYXQgd2UnZCBoYXZlIHRvDQpvdmVybG9hZCBTSUdJ
+Tywgd2hpY2ggaGFzIGEgY29tcGxldGVseSBkaWZmZXJlbnQgbWVhbmluZyBpbiBQT1NJWC4uLg0K
+DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5l
+dEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
