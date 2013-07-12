@@ -1,60 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f41.google.com ([209.85.160.41]:38724 "EHLO
-	mail-pb0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754712Ab3GJRdN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Jul 2013 13:33:13 -0400
-Received: by mail-pb0-f41.google.com with SMTP id rp16so6959911pbb.0
-        for <linux-nfs@vger.kernel.org>; Wed, 10 Jul 2013 10:33:13 -0700 (PDT)
-Message-ID: <51DD9AD5.1030508@gmail.com>
-Date: Wed, 10 Jul 2013 10:33:09 -0700
-From: Dean <seattleplus@gmail.com>
+Received: from mail-ye0-f180.google.com ([209.85.213.180]:41291 "EHLO
+	mail-ye0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964992Ab3GLQcN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jul 2013 12:32:13 -0400
+Received: by mail-ye0-f180.google.com with SMTP id r11so3212001yen.11
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Jul 2013 09:32:12 -0700 (PDT)
+Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe93:815b])
+        by mx.google.com with ESMTPSA id i4sm31727849yhg.16.2013.07.12.09.32.11
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=RC4-SHA bits=128/128);
+        Fri, 12 Jul 2013 09:32:11 -0700 (PDT)
+Subject: [PATCH v1 05/19] NFS: Rename nfs41_call_sync_data as a common data
+ structure
+To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Date: Fri, 12 Jul 2013 12:32:10 -0400
+Message-ID: <20130712163210.1444.28032.stgit@seurat.1015granger.net>
+In-Reply-To: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
+References: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-To: "J.Bruce Fields" <bfields@citi.umich.edu>
-CC: NeilBrown <neilb@suse.de>, Olga Kornievskaia <aglo@citi.umich.edu>,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: Re: Is tcp autotuning really what NFS wants?
-References: <20130710092255.0240a36d@notabene.brown> <20130710022735.GI8281@fieldses.org>
-In-Reply-To: <20130710022735.GI8281@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
- > This could significantly limit the amount of parallelism that can be 
-achieved for a single TCP connection (and given that the
- > Linux client strongly prefers a single connection now, this could 
-become more of an issue).
+Clean up: rename nfs41_call_sync_data for use as a data structure
+common to all NFSv4 minor versions.
 
-I understand the simplicity in using a single tcp connection, but 
-performance-wise it is definitely not the way to go on WAN links. When 
-even a miniscule amount of packet loss is added to the link (<0.001% 
-packet loss), the tcp buffer collapses and performance drops 
-significantly (especially on 10GigE WAN links).  I think new TCP 
-algorithms could help the problem somewhat, but nothing available today 
-makes much of a difference vs. cubic.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfs/nfs4proc.c |   18 +++++++++---------
+ 1 file changed, 9 insertions(+), 9 deletions(-)
 
-Using multiple tcp connections allows better saturation of the link, 
-since when packet loss occurs on a stream, the other streams can fill 
-the void.  Today, the only solution is to scale up the number of 
-physical clients, which has high coordination overhead, or use a wan 
-accelerator such as Bitspeed or Riverbed (which comes with its own 
-issues such as extra hardware, cost, etc).
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index e52d2b3..d7b2c85 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -391,6 +391,12 @@ static void renew_lease(const struct nfs_server *server, unsigned long timestamp
+ 	do_renew_lease(server->nfs_client, timestamp);
+ }
+ 
++struct nfs4_call_sync_data {
++	const struct nfs_server *seq_server;
++	struct nfs4_sequence_args *seq_args;
++	struct nfs4_sequence_res *seq_res;
++};
++
+ #if defined(CONFIG_NFS_V4_1)
+ 
+ static int nfs4_run_rpc_task(struct rpc_clnt *clnt,
+@@ -657,15 +663,9 @@ out:
+ 	return ret;
+ }
+ 
+-struct nfs41_call_sync_data {
+-	const struct nfs_server *seq_server;
+-	struct nfs4_sequence_args *seq_args;
+-	struct nfs4_sequence_res *seq_res;
+-};
+-
+ static void nfs41_call_sync_prepare(struct rpc_task *task, void *calldata)
+ {
+-	struct nfs41_call_sync_data *data = calldata;
++	struct nfs4_call_sync_data *data = calldata;
+ 	struct nfs4_session *session = nfs4_get_session(data->seq_server);
+ 
+ 	dprintk("--> %s data->seq_server %p\n", __func__, data->seq_server);
+@@ -675,7 +675,7 @@ static void nfs41_call_sync_prepare(struct rpc_task *task, void *calldata)
+ 
+ static void nfs41_call_sync_done(struct rpc_task *task, void *calldata)
+ {
+-	struct nfs41_call_sync_data *data = calldata;
++	struct nfs4_call_sync_data *data = calldata;
+ 
+ 	nfs41_sequence_done(task, data->seq_res);
+ }
+@@ -691,7 +691,7 @@ static int nfs4_call_sync_sequence(struct rpc_clnt *clnt,
+ 				   struct nfs4_sequence_args *args,
+ 				   struct nfs4_sequence_res *res)
+ {
+-	struct nfs41_call_sync_data data = {
++	struct nfs4_call_sync_data data = {
+ 		.seq_server = server,
+ 		.seq_args = args,
+ 		.seq_res = res,
 
-
-> It does make a difference on high bandwidth-product networks (something
-> people have also hit).  I'd rather not regress there and also would
-> rather not require manual tuning for something we should be able to get
-> right automatically.'
-
-Previous to this patch, the tcp buffer was fixed to such a small size 
-(especially for writes) that the idea of parallelism was moot anyways.  
-Whatever the tcp buffer negotiates to now is definitely bigger than was 
-what there before hand, which I think is brought out by the fact that no 
-performance regression was found.
-
-Regressing back to the old way is a death nail to any system with a 
-delay of >1ms or a bandwidth of >1GigE, so I definitely hope we never go 
-there.  Of course, now that autoscaling allows the tcp buffer to grow to 
-reasonable values to achieve good performance for 10+GigE and WAN links, 
-if we can improve the parallelism/stability even further, that would be 
-great.
-Dean
