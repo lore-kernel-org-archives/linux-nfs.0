@@ -1,109 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53619 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756112Ab3GQUuU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 16:50:20 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 00/16] Implement NFSv4 delegations, take 9
-Date: Wed, 17 Jul 2013 16:50:00 -0400
-Message-Id: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+Received: from mail-ye0-f171.google.com ([209.85.213.171]:55799 "EHLO
+	mail-ye0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964936Ab3GLQjB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jul 2013 12:39:01 -0400
+Received: by mail-ye0-f171.google.com with SMTP id q14so3253727yen.30
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Jul 2013 09:39:00 -0700 (PDT)
+Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe93:815b])
+        by mx.google.com with ESMTPSA id y70sm68995072yhe.15.2013.07.12.09.32.02
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=RC4-SHA bits=128/128);
+        Fri, 12 Jul 2013 09:32:03 -0700 (PDT)
+Subject: [PATCH v1 04/19] NFS: Refactor nfs4_call_data_sequence()
+To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Date: Fri, 12 Jul 2013 12:32:02 -0400
+Message-ID: <20130712163202.1444.45080.stgit@seurat.1015granger.net>
+In-Reply-To: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
+References: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Pull main logic out of nfs4_call_data_sequence() so it can
+eventually be shared with the NFSv4.0 call_sync path.  The new
+helper function is left behind the NFSv4.1 CONFIG switch for now to
+keep compiler warning noise at a minimum.
 
-Changes since version 8, thanks to dchinner and jlayton for review:
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfs/nfs4proc.c |   28 ++++++++++++++++++----------
+ 1 file changed, 18 insertions(+), 10 deletions(-)
 
-	- additional warnings in lock_two_nondirectories
-	- lock_two_nondirectories handles NULL second argument,
-	  simplifying vfs_rename_other
-	- kerneldoc comments on notify_change, vfs_link, vfs_rename,
-	  vfs_unlink, to explain delegated_inode argument.
-	- make clear non-support of write delegations in
-	  generic_add_lease
-	- rebase to 3.11-rc1
-
-Introduction copied from previous posting:
-
-This patch series implements read delegations, which allow NFSv4 clients
-to perform read opens without contacting the server, by promising to
-call back to clients before modifying the data, metadata, or set of
-links pointing to a file.
-
-The main recent change was in response to review from Linus, who didn't
-want us to hang under directory i_mutex's on timeouts communicating with
-unresponsive clients.
-
-So, this version of the series drops the i_mutex before waiting.  The
-logic ends up looking something like:
-
-        acquire locks
-        look up inode
-        test for delegation; if found:
-                take reference on inode
-                release locks
-                wait for delegation break
-                drop reference on inode
-                retry
-
-The initial test for a delegation happens after the lock on the
-delegated inode is acquired, but additional directory mutexes may have
-been acquired further up the call stack.  I therefore add a "struct
-inode **" argument to any intervening functions, which we use to pass
-the inode back up to the caller in the case it needs to wait for the
-delegation to be broken.
-
-I also allow callers to pass in NULL for the "struct inode **" argument
-to indicate they'd rather just fail than wait for a delegation.  For
-example, as long as ecryptfs isn't exportable I assume they'd rather not
-see retry logic there that they won't use.  But I may have misjudged in
-some of these cases.
-
-J. Bruce Fields (16):
-  vfs: pull ext4's double-i_mutex-locking into common code
-  vfs: don't use PARENT/CHILD lock classes for non-directories
-  vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
-  vfs: take i_mutex on renamed file
-  locks: introduce new FL_DELEG lock flag
-  locks: implement delegations
-  namei: minor vfs_unlink cleanup
-  locks: break delegations on unlink
-  locks: helper functions for delegation breaking
-  locks: break delegations on rename
-  locks: break delegations on link
-  locks: break delegations on any attribute modification
-  nfsd4: minor nfs4_setlease cleanup
-  nfsd4: delay setting current_fh in open
-  nfsd4: close open-deleg/unlink/rename race
-  nfsd4: break only delegations when appropriate
-
- Documentation/filesystems/directory-locking |   31 ++++--
- drivers/base/devtmpfs.c                     |    6 +-
- fs/attr.c                                   |   25 ++++-
- fs/cachefiles/interface.c                   |    4 +-
- fs/cachefiles/namei.c                       |    4 +-
- fs/ecryptfs/inode.c                         |    6 +-
- fs/ext4/ext4.h                              |    2 -
- fs/ext4/ioctl.c                             |    4 +-
- fs/ext4/move_extent.c                       |   40 +-------
- fs/hpfs/namei.c                             |    2 +-
- fs/inode.c                                  |   42 ++++++++-
- fs/locks.c                                  |   57 ++++++++---
- fs/namei.c                                  |  135 +++++++++++++++++++++++----
- fs/nfsd/nfs4proc.c                          |   36 +++----
- fs/nfsd/nfs4state.c                         |   66 ++++++++++---
- fs/nfsd/vfs.c                               |   41 ++------
- fs/nfsd/xdr4.h                              |    3 +-
- fs/open.c                                   |   22 ++++-
- fs/utimes.c                                 |    9 +-
- include/linux/fs.h                          |   72 +++++++++++---
- ipc/mqueue.c                                |    2 +-
- 21 files changed, 433 insertions(+), 176 deletions(-)
-
--- 
-1.7.9.5
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 2f6f3b9..e52d2b3 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -393,6 +393,23 @@ static void renew_lease(const struct nfs_server *server, unsigned long timestamp
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ 
++static int nfs4_run_rpc_task(struct rpc_clnt *clnt,
++			     struct rpc_message *msg,
++			     struct rpc_task_setup *task_setup)
++{
++	struct rpc_task *task;
++	int ret;
++
++	task = rpc_run_task(task_setup);
++	if (IS_ERR(task))
++		ret = PTR_ERR(task);
++	else {
++		ret = task->tk_status;
++		rpc_put_task(task);
++	}
++	return ret;
++}
++
+ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
+ {
+ 	struct nfs4_session *session;
+@@ -674,8 +691,6 @@ static int nfs4_call_sync_sequence(struct rpc_clnt *clnt,
+ 				   struct nfs4_sequence_args *args,
+ 				   struct nfs4_sequence_res *res)
+ {
+-	int ret;
+-	struct rpc_task *task;
+ 	struct nfs41_call_sync_data data = {
+ 		.seq_server = server,
+ 		.seq_args = args,
+@@ -688,14 +703,7 @@ static int nfs4_call_sync_sequence(struct rpc_clnt *clnt,
+ 		.callback_data = &data
+ 	};
+ 
+-	task = rpc_run_task(&task_setup);
+-	if (IS_ERR(task))
+-		ret = PTR_ERR(task);
+-	else {
+-		ret = task->tk_status;
+-		rpc_put_task(task);
+-	}
+-	return ret;
++	return nfs4_run_rpc_task(clnt, msg, &task_setup);
+ }
+ 
+ #else
 
