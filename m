@@ -1,39 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:48967 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:36978 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932521Ab3GVTDV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Jul 2013 15:03:21 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v1 07/19] NFS: Fix compiler warning in
- nfs_setup_sequence()
-Date: Mon, 22 Jul 2013 19:03:20 +0000
-Message-ID: <1374519800.7972.20.camel@leira.trondhjem.org>
-References: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
-	 <20130712163228.1444.26489.stgit@seurat.1015granger.net>
-In-Reply-To: <20130712163228.1444.26489.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+	id S932919Ab3GLVkX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Jul 2013 17:40:23 -0400
+Received: from bfields by fieldses.org with local (Exim 4.76)
+	(envelope-from <bfields@fieldses.org>)
+	id 1Uxl4g-00031C-T7
+	for linux-nfs@vger.kernel.org; Fri, 12 Jul 2013 17:40:23 -0400
+Date: Fri, 12 Jul 2013 17:40:22 -0400
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd4: fix minorversion support interface
+Message-ID: <20130712214022.GC10562@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEzLTA3LTEyIGF0IDEyOjMyIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-Q2xlYW4gdXAuICBTcXVlbGNoIGNvbXBpbGVyIHdhcm5pbmc6DQo+IA0KPiBsaW51eC9mcy9uZnMv
-bmZzNHByb2MuYzogSW4gZnVuY3Rpb24g4oCYbmZzNF9zZXR1cF9zZXF1ZW5jZeKAmToNCj4gbGlu
-dXgvZnMvbmZzL25mczRwcm9jLmM6NzAzOjI6IHdhcm5pbmc6IHNpZ25lZCBhbmQgdW5zaWduZWQg
-dHlwZSBpbg0KPiAJY29uZGl0aW9uYWwgZXhwcmVzc2lvbiBbLVdzaWduLWNvbXBhcmVdDQo+IA0K
-PiBTaWduZWQtb2ZmLWJ5OiBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4NCj4g
-LS0tDQo+ICBmcy9uZnMvbmZzNHByb2MuYyB8ICAgIDIgKy0NCj4gIDEgZmlsZSBjaGFuZ2VkLCAx
-IGluc2VydGlvbigrKSwgMSBkZWxldGlvbigtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9u
-ZnM0cHJvYy5jIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gaW5kZXggN2IyZTAwOC4uNTkxM2UxZCAx
-MDA2NDQNCj4gLS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCj4gKysrIGIvZnMvbmZzL25mczRwcm9j
-LmMNCj4gQEAgLTY1NSw3ICs2NTUsNyBAQCBzdGF0aWMgaW50IG5mczRfc2V0dXBfc2VxdWVuY2Uo
-Y29uc3Qgc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwNCj4gIA0KPiAgCWRwcmludGsoIi0tPiAl
-cyBjbHAgJXAgc2Vzc2lvbiAlcCBzcl9zbG90ICVkXG4iLA0KPiAgCQlfX2Z1bmNfXywgc2Vzc2lv
-bi0+Y2xwLCBzZXNzaW9uLCByZXMtPnNyX3Nsb3QgPw0KPiAtCQkJcmVzLT5zcl9zbG90LT5zbG90
-X25yIDogLTEpOw0KPiArCQkJKGludClyZXMtPnNyX3Nsb3QtPnNsb3RfbnIgOiAtMSk7DQo+ICAN
-Cg0KUGxlYXNlIGNvbnZlcnQgdG8gbWFrZSBpdCB1bnNpZ25lZCwgYW5kIHRvIHVzZSBORlM0X05P
-X1NMT1QgaW5zdGVhZCBvZg0KJy0xJy4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5G
-UyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29t
-DQp3d3cubmV0YXBwLmNvbQ0K
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+You can turn on or off support for minorversions using e.g.
+
+	echo "-4.2" >/proc/fs/nfsd/versions
+
+However, the current implementation is a little wonky.  For example, the
+above will turn off 4.2 support, but it will also turn *on* 4.1 support.
+
+This didn't matter as long as we only had 2 minorversions, which was
+true till very recently.
+
+And do a little cleanup here.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c |    2 +-
+ fs/nfsd/nfsd.h     |    1 -
+ fs/nfsd/nfssvc.c   |   13 +++++++------
+ 3 files changed, 8 insertions(+), 8 deletions(-)
+
+For 3.11.
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index a7cee86..0d4c410 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1293,7 +1293,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 	 * According to RFC3010, this takes precedence over all other errors.
+ 	 */
+ 	status = nfserr_minor_vers_mismatch;
+-	if (args->minorversion > nfsd_supported_minorversion)
++	if (nfsd_minorversion(args->minorversion, NFSD_TEST) <= 0)
+ 		goto out;
+ 
+ 	status = nfs41_check_op_ordering(args);
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 2bbd94e..30f34ab 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -53,7 +53,6 @@ struct readdir_cd {
+ extern struct svc_program	nfsd_program;
+ extern struct svc_version	nfsd_version2, nfsd_version3,
+ 				nfsd_version4;
+-extern u32			nfsd_supported_minorversion;
+ extern struct mutex		nfsd_mutex;
+ extern spinlock_t		nfsd_drc_lock;
+ extern unsigned long		nfsd_drc_max_mem;
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 6b9f48c..760c85a 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -116,7 +116,10 @@ struct svc_program		nfsd_program = {
+ 
+ };
+ 
+-u32 nfsd_supported_minorversion = 1;
++static bool nfsd_supported_minorversions[NFSD_SUPPORTED_MINOR_VERSION + 1] = {
++	[0] = 1,
++	[1] = 1,
++};
+ 
+ int nfsd_vers(int vers, enum vers_op change)
+ {
+@@ -151,15 +154,13 @@ int nfsd_minorversion(u32 minorversion, enum vers_op change)
+ 		return -1;
+ 	switch(change) {
+ 	case NFSD_SET:
+-		nfsd_supported_minorversion = minorversion;
++		nfsd_supported_minorversions[minorversion] = true;
+ 		break;
+ 	case NFSD_CLEAR:
+-		if (minorversion == 0)
+-			return -1;
+-		nfsd_supported_minorversion = minorversion - 1;
++		nfsd_supported_minorversions[minorversion] = false;
+ 		break;
+ 	case NFSD_TEST:
+-		return minorversion <= nfsd_supported_minorversion;
++		return nfsd_supported_minorversions[minorversion];
+ 	case NFSD_AVAIL:
+ 		return minorversion <= NFSD_SUPPORTED_MINOR_VERSION;
+ 	}
+-- 
+1.7.9.5
+
