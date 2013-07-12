@@ -1,172 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:48766 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751277Ab3GIK71 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Jul 2013 06:59:27 -0400
-Date: Tue, 9 Jul 2013 06:59:25 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 04/12] vfs: take i_mutex on renamed file
-Message-ID: <20130709065925.2d636c5d@tlielax.poochiereds.net>
-In-Reply-To: <1372882356-14168-5-git-send-email-bfields@redhat.com>
-References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
-	<1372882356-14168-5-git-send-email-bfields@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from hop-nat-141.emc.com ([168.159.213.141]:36384 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S964778Ab3GLRmw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jul 2013 13:42:52 -0400
+From: "faibish, sorin" <faibish_sorin@emc.com>
+To: Ric Wheeler <ricwheeler@gmail.com>,
+        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-btrfs <linux-btrfs@vger.kernel.org>, xfs-oss <xfs@oss.sgi.com>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        device-mapper development <dm-devel@redhat.com>,
+        IDE/ATA development list <linux-ide@vger.kernel.org>,
+        "anaconda-devel-list@redhat.com" <anaconda-devel-list@redhat.com>
+Date: Fri, 12 Jul 2013 13:42:21 -0400
+Subject: RE: Linux Plumbers IO & File System Micro-conference
+Message-ID: <F0897B83F4BC10458936F08DADF233160F65F99416@MX02A.corp.emc.com>
+References: <51E03AFB.1000000@gmail.com>
+In-Reply-To: <51E03AFB.1000000@gmail.com>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed,  3 Jul 2013 16:12:28 -0400
-"J. Bruce Fields" <bfields@redhat.com> wrote:
+Can we have a discussion on Lustre client in the kernel? Thanks
 
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> A read delegation is used by NFSv4 as a guarantee that a client can
-> perform local read opens without informing the server.
-> 
-> The open operation takes the last component of the pathname as an
-> argument, thus is also a lookup operation, and giving the client the
-> above guarantee means informing the client before we allow anything that
-> would change the set of names pointing to the inode.
-> 
-> Therefore, we need to break delegations on rename, link, and unlink.
-> 
-> We also need to prevent new delegations from being acquired while one of
-> these operations is in progress.
-> 
-> We could add some completely new locking for that purpose, but it's
-> simpler to use the i_mutex, since that's already taken by all the
-> operations we care about.
-> 
-> The single exception is rename.  So, modify rename to take the i_mutex
-> on the file that is being renamed.
-> 
-> Also fix up lockdep and Documentation/filesystems/directory-locking to
-> reflect the change.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  Documentation/filesystems/directory-locking |   31 +++++++++++++++++++--------
->  fs/namei.c                                  |   12 ++++++++---
->  2 files changed, 31 insertions(+), 12 deletions(-)
-> 
-> diff --git a/Documentation/filesystems/directory-locking b/Documentation/filesystems/directory-locking
-> index ff7b611..09bbf9a 100644
-> --- a/Documentation/filesystems/directory-locking
-> +++ b/Documentation/filesystems/directory-locking
-> @@ -2,6 +2,10 @@
->  kinds of locks - per-inode (->i_mutex) and per-filesystem
->  (->s_vfs_rename_mutex).
->  
-> +	When taking the i_mutex on multiple non-directory objects, we
-> +always acquire the locks in order by increasing address.  We'll call
-> +that "inode pointer" order in the following.
-> +
->  	For our purposes all operations fall in 5 classes:
->  
->  1) read access.  Locking rules: caller locks directory we are accessing.
-> @@ -12,8 +16,9 @@ kinds of locks - per-inode (->i_mutex) and per-filesystem
->  locks victim and calls the method.
->  
->  4) rename() that is _not_ cross-directory.  Locking rules: caller locks
-> -the parent, finds source and target, if target already exists - locks it
-> -and then calls the method.
-> +the parent and finds source and target.  If target already exists, lock
-> +it.  If source is a non-directory, lock it.  If that means we need to
-> +lock both, lock them in inode pointer order.
->  
->  5) link creation.  Locking rules:
->  	* lock parent
-> @@ -30,7 +35,9 @@ rules:
->  		fail with -ENOTEMPTY
->  	* if new parent is equal to or is a descendent of source
->  		fail with -ELOOP
-> -	* if target exists - lock it.
-> +	* If target exists, lock it.  If source is a non-directory, lock
-> +	  it.  In case that means we need to lock both source and target,
-> +	  do so in inode pointer order.
->  	* call the method.
->  
->  
-> @@ -56,9 +63,11 @@ objects - A < B iff A is an ancestor of B.
->      renames will be blocked on filesystem lock and we don't start changing
->      the order until we had acquired all locks).
->  
-> -(3) any operation holds at most one lock on non-directory object and
-> -    that lock is acquired after all other locks.  (Proof: see descriptions
-> -    of operations).
-> +(3) locks on non-directory objects are acquired only after locks on
-> +    directory objects, and are acquired in inode pointer order.
-> +    (Proof: all operations but renames take lock on at most one
-> +    non-directory object, except renames, which take locks on source and
-> +    target in inode pointer order in the case they are not directories.)
->  
->  	Now consider the minimal deadlock.  Each process is blocked on
->  attempt to acquire some lock and already holds at least one lock.  Let's
-> @@ -66,9 +75,13 @@ consider the set of contended locks.  First of all, filesystem lock is
->  not contended, since any process blocked on it is not holding any locks.
->  Thus all processes are blocked on ->i_mutex.
->  
-> -	Non-directory objects are not contended due to (3).  Thus link
-> -creation can't be a part of deadlock - it can't be blocked on source
-> -and it means that it doesn't hold any locks.
-> +	By (3), any process holding a non-directory lock can only be
-> +waiting on another non-directory lock with a larger address.  Therefore
-> +the process holding the "largest" such lock can always make progress, and
-> +non-directory objects are not included in the set of contended locks.
-> +
-> +	Thus link creation can't be a part of deadlock - it can't be
-> +blocked on source and it means that it doesn't hold any locks.
->  
->  	Any contended object is either held by cross-directory rename or
->  has a child that is also contended.  Indeed, suppose that it is held by
-> diff --git a/fs/namei.c b/fs/namei.c
-> index 9ed9361..61f6076 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -3677,7 +3677,8 @@ SYSCALL_DEFINE2(link, const char __user *, oldname, const char __user *, newname
->   *	   That's where 4.4 screws up. Current fix: serialization on
->   *	   sb->s_vfs_rename_mutex. We might be more accurate, but that's another
->   *	   story.
-> - *	c) we have to lock _three_ objects - parents and victim (if it exists).
-> + *	c) we have to lock _four_ objects - parents and victim (if it exists),
-> + *	   and source (if it is not a directory).
->   *	   And that - after we got ->i_mutex on parents (until then we don't know
->   *	   whether the target exists).  Solution: try to be smart with locking
->   *	   order for inodes.  We rely on the fact that tree topology may change
-> @@ -3753,6 +3754,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
->  			    struct inode *new_dir, struct dentry *new_dentry)
->  {
->  	struct inode *target = new_dentry->d_inode;
-> +	struct inode *source = old_dentry->d_inode;
->  	int error;
->  
->  	error = security_inode_rename(old_dir, old_dentry, new_dir, new_dentry);
-> @@ -3761,7 +3763,9 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
->  
->  	dget(new_dentry);
->  	if (target)
-> -		mutex_lock(&target->i_mutex);
-> +		lock_two_nondirectories(source, target);
-> +	else
-> +		mutex_lock(&source->i_mutex);
->  
->  	error = -EBUSY;
->  	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
-> @@ -3777,7 +3781,9 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
->  		d_move(old_dentry, new_dentry);
->  out:
->  	if (target)
-> -		mutex_unlock(&target->i_mutex);
-> +		unlock_two_nondirectories(source, target);
-> +	else
-> +		mutex_unlock(&source->i_mutex);
->  	dput(new_dentry);
->  	return error;
->  }
+./Sorin
 
-Seems sane...
+-----Original Message-----
+From: linux-fsdevel-owner@vger.kernel.org [mailto:linux-fsdevel-owner@vger.kernel.org] On Behalf Of Ric Wheeler
+Sent: Friday, July 12, 2013 1:21 PM
+To: linux-scsi@vger.kernel.org; Linux FS Devel; linux-nfs@vger.kernel.org; linux-btrfs; xfs-oss; linux-ext4@vger.kernel.org; device-mapper development; IDE/ATA development list; anaconda-devel-list@redhat.com
+Subject: Linux Plumbers IO & File System Micro-conference
 
-Acked-by: Jeff Layton <jlayton@redhat.com>
+
+Linux Plumbers has approved a file and storage microconference. The overview page is here:
+
+http://wiki.linuxplumbersconf.org/2013:file_and_storage_systems
+
+I would like to started gathering in ideas for topics. I have been approached already with a request to cover the copy_range work Zach Brown kicked off at LSF which I think is a great topic since it has impact throughout the stack, all the way up to applications programmers.
+
+A similar request was made to give some time to non-volatile memory devices and the proposed "persistent memory" backed block device and persistent memory file system from Intel. That also seems to fall in nicely with the plumbers mission statement since it clearly will impact everything from the application on down through the kernel.
+
+Last year, we had a good discussion on management of storage (anaconda, yast, libstoragemgt, etc) - that also might be worth giving updates on.
+
+The instructions for submitting ideas will be updated later today at:
+
+http://www.linuxplumbersconf.org/2013/submitting-topic/
+
+If you have topics that you would like to add, wait until the instructions get posted at the link above. If you are impatient, feel free to email me directly (but probably best to drop the broad mailing lists from the reply).
+
+Thanks!
+
+Ric
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
