@@ -1,247 +1,304 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f179.google.com ([209.85.214.179]:52090 "EHLO
-	mail-ob0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753679Ab3GXQ2j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jul 2013 12:28:39 -0400
-Received: by mail-ob0-f179.google.com with SMTP id xk17so13231431obc.24
-        for <linux-nfs@vger.kernel.org>; Wed, 24 Jul 2013 09:28:38 -0700 (PDT)
-Subject: [PATCH 2/2] NFS: Never use user credentials for lease renewal
-To: trond.myklebust@netapp.com
+Received: from mail-gh0-f178.google.com ([209.85.160.178]:39922 "EHLO
+	mail-gh0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964817Ab3GLQdk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jul 2013 12:33:40 -0400
+Received: by mail-gh0-f178.google.com with SMTP id g15so3257913ghb.9
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Jul 2013 09:33:40 -0700 (PDT)
+Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe93:815b])
+        by mx.google.com with ESMTPSA id j63sm68999257yhh.17.2013.07.12.09.33.39
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=RC4-SHA bits=128/128);
+        Fri, 12 Jul 2013 09:33:39 -0700 (PDT)
+Subject: [PATCH v1 15/19] NFS: Add basic migration support to state manager
+ thread
+To: linux-nfs@vger.kernel.org
 From: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 24 Jul 2013 12:28:37 -0400
-Message-ID: <20130724162837.53792.14498.stgit@seurat.1015granger.net>
-In-Reply-To: <20130724162632.53792.30516.stgit@seurat.1015granger.net>
-References: <20130724162632.53792.30516.stgit@seurat.1015granger.net>
+Date: Fri, 12 Jul 2013 12:33:38 -0400
+Message-ID: <20130712163338.1444.23823.stgit@seurat.1015granger.net>
+In-Reply-To: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
+References: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Never try to use a non-UID 0 user credential for lease management,
-as that credential can change out from under us.  The server will
-block NFSv4 lease recovery with NFS4ERR_CLID_INUSE.
-
-Since the mechanism to acquire a credential for lease management
-is now the same for all minor versions, replace the minor version-
-specific callout with a single function.
+Migration recovery and state recovery must be serialized, so handle
+both in the state manager thread.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/nfs4_fs.h     |    4 +---
- fs/nfs/nfs4proc.c    |    6 +----
- fs/nfs/nfs4session.c |    2 +-
- fs/nfs/nfs4state.c   |   57 +++++++-------------------------------------------
- 4 files changed, 11 insertions(+), 58 deletions(-)
+ fs/nfs/nfs4_fs.h          |    2 
+ fs/nfs/nfs4client.c       |    1 
+ fs/nfs/nfs4state.c        |  186 +++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs_fs_sb.h |    6 +
+ 4 files changed, 195 insertions(+)
 
 diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index ee81e35..d7bb59d 100644
+index 66c34c4..6391b94 100644
 --- a/fs/nfs/nfs4_fs.h
 +++ b/fs/nfs/nfs4_fs.h
-@@ -193,7 +193,6 @@ struct nfs4_state_recovery_ops {
- 	int (*recover_open)(struct nfs4_state_owner *, struct nfs4_state *);
- 	int (*recover_lock)(struct nfs4_state *, struct file_lock *);
- 	int (*establish_clid)(struct nfs_client *, struct rpc_cred *);
--	struct rpc_cred * (*get_clid_cred)(struct nfs_client *);
- 	int (*reclaim_complete)(struct nfs_client *, struct rpc_cred *);
- 	int (*detect_trunking)(struct nfs_client *, struct nfs_client **,
- 		struct rpc_cred *);
-@@ -319,7 +318,7 @@ extern void nfs4_kill_renewd(struct nfs_client *);
- extern void nfs4_renew_state(struct work_struct *);
- 
- /* nfs4state.c */
--struct rpc_cred *nfs4_get_setclientid_cred(struct nfs_client *clp);
-+struct rpc_cred *nfs4_get_clid_cred(struct nfs_client *clp);
- struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp);
- struct rpc_cred *nfs4_get_renew_cred_locked(struct nfs_client *clp);
- int nfs4_discover_server_trunking(struct nfs_client *clp,
-@@ -327,7 +326,6 @@ int nfs4_discover_server_trunking(struct nfs_client *clp,
- int nfs40_discover_server_trunking(struct nfs_client *clp,
- 			struct nfs_client **, struct rpc_cred *);
- #if defined(CONFIG_NFS_V4_1)
--struct rpc_cred *nfs4_get_exchange_id_cred(struct nfs_client *clp);
- int nfs41_discover_server_trunking(struct nfs_client *clp,
- 			struct nfs_client **, struct rpc_cred *);
- extern void nfs4_schedule_session_recovery(struct nfs4_session *, int);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index bd18847..6d23695 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6065,7 +6065,7 @@ int nfs4_destroy_clientid(struct nfs_client *clp)
- 		goto out;
- 	if (clp->cl_preserve_clid)
- 		goto out;
--	cred = nfs4_get_exchange_id_cred(clp);
-+	cred = nfs4_get_clid_cred(clp);
- 	ret = nfs4_proc_destroy_clientid(clp, cred);
- 	if (cred)
- 		put_rpccred(cred);
-@@ -7359,7 +7359,6 @@ static const struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
- 	.recover_open	= nfs4_open_reclaim,
- 	.recover_lock	= nfs4_lock_reclaim,
- 	.establish_clid = nfs4_init_clientid,
--	.get_clid_cred	= nfs4_get_setclientid_cred,
- 	.detect_trunking = nfs40_discover_server_trunking,
+@@ -30,6 +30,7 @@ enum nfs4_client_state {
+ 	NFS4CLNT_PURGE_STATE,
+ 	NFS4CLNT_BIND_CONN_TO_SESSION,
+ 	NFS4CLNT_BLOCK_XPRT,
++	NFS4CLNT_MOVED,
  };
  
-@@ -7370,7 +7369,6 @@ static const struct nfs4_state_recovery_ops nfs41_reboot_recovery_ops = {
- 	.recover_open	= nfs4_open_reclaim,
- 	.recover_lock	= nfs4_lock_reclaim,
- 	.establish_clid = nfs41_init_clientid,
--	.get_clid_cred	= nfs4_get_exchange_id_cred,
- 	.reclaim_complete = nfs41_proc_reclaim_complete,
- 	.detect_trunking = nfs41_discover_server_trunking,
- };
-@@ -7382,7 +7380,6 @@ static const struct nfs4_state_recovery_ops nfs40_nograce_recovery_ops = {
- 	.recover_open	= nfs4_open_expired,
- 	.recover_lock	= nfs4_lock_expired,
- 	.establish_clid = nfs4_init_clientid,
--	.get_clid_cred	= nfs4_get_setclientid_cred,
- };
+ #define NFS4_RENEW_TIMEOUT		0x01
+@@ -348,6 +349,7 @@ extern int nfs4_client_recover_expired_lease(struct nfs_client *clp);
+ extern void nfs4_schedule_state_manager(struct nfs_client *);
+ extern void nfs4_schedule_path_down_recovery(struct nfs_client *clp);
+ extern int nfs4_schedule_stateid_recovery(const struct nfs_server *, struct nfs4_state *);
++extern int nfs4_schedule_migration_recovery(struct inode *);
+ extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags);
+ extern void nfs41_handle_server_scope(struct nfs_client *,
+ 				      struct nfs41_server_scope **);
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index dadd118..5050349 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -76,6 +76,7 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
+ 		init_completion(&clp->cl_xpcomplete);
+ 		rpc_init_wait_queue(&clp->cl_xpwaitq, "NFSv4.0 xprt");
+ 	}
++	clp->cl_mig_gen = 1;
+ 	return clp;
  
- #if defined(CONFIG_NFS_V4_1)
-@@ -7392,7 +7389,6 @@ static const struct nfs4_state_recovery_ops nfs41_nograce_recovery_ops = {
- 	.recover_open	= nfs41_open_expired,
- 	.recover_lock	= nfs41_lock_expired,
- 	.establish_clid = nfs41_init_clientid,
--	.get_clid_cred	= nfs4_get_exchange_id_cred,
- };
- #endif /* CONFIG_NFS_V4_1 */
- 
-diff --git a/fs/nfs/nfs4session.c b/fs/nfs/nfs4session.c
-index 01d3150..91cef18 100644
---- a/fs/nfs/nfs4session.c
-+++ b/fs/nfs/nfs4session.c
-@@ -441,7 +441,7 @@ void nfs4_destroy_session(struct nfs4_session *session)
- 	struct rpc_xprt *xprt;
- 	struct rpc_cred *cred;
- 
--	cred = nfs4_get_exchange_id_cred(session->clp);
-+	cred = nfs4_get_clid_cred(session->clp);
- 	nfs4_proc_destroy_session(session, cred);
- 	if (cred)
- 		put_rpccred(cred);
+ error:
 diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index f27760b..6818964 100644
+index ae482b2..4757188 100644
 --- a/fs/nfs/nfs4state.c
 +++ b/fs/nfs/nfs4state.c
-@@ -352,62 +352,21 @@ int nfs41_discover_server_trunking(struct nfs_client *clp,
- 	return nfs41_walk_client_list(clp, result, cred);
+@@ -1210,6 +1210,54 @@ void nfs4_schedule_lease_recovery(struct nfs_client *clp)
  }
+ EXPORT_SYMBOL_GPL(nfs4_schedule_lease_recovery);
  
--struct rpc_cred *nfs4_get_exchange_id_cred(struct nfs_client *clp)
--{
--	struct rpc_cred *cred;
--
--	spin_lock(&clp->cl_lock);
--	cred = nfs4_get_machine_cred_locked(clp);
--	spin_unlock(&clp->cl_lock);
--	return cred;
--}
--
- #endif /* CONFIG_NFS_V4_1 */
- 
--static struct rpc_cred *
--nfs4_get_setclientid_cred_server(struct nfs_server *server)
--{
--	struct nfs_client *clp = server->nfs_client;
--	struct rpc_cred *cred = NULL;
--	struct nfs4_state_owner *sp;
--	struct rb_node *pos;
--
--	spin_lock(&clp->cl_lock);
--	pos = rb_first(&server->state_owners);
--	if (pos != NULL) {
--		sp = rb_entry(pos, struct nfs4_state_owner, so_server_node);
--		cred = get_rpccred(sp->so_cred);
--	}
--	spin_unlock(&clp->cl_lock);
--	return cred;
--}
--
- /**
-- * nfs4_get_setclientid_cred - Acquire credential for a setclientid operation
-+ * nfs4_get_clid_cred - Acquire credential for a setclientid operation
-  * @clp: client state handle
-  *
-  * Returns an rpc_cred with reference count bumped, or NULL.
-  */
--struct rpc_cred *nfs4_get_setclientid_cred(struct nfs_client *clp)
-+struct rpc_cred *nfs4_get_clid_cred(struct nfs_client *clp)
++/**
++ * nfs4_schedule_migration_recovery - trigger migration recovery
++ *
++ * @inode: file residing on FSID that is migrating
++ *
++ * Returns zero if recovery has started, otherwise a negative NFS4ERR
++ * value is returned.
++ */
++int nfs4_schedule_migration_recovery(struct inode *inode)
++{
++	struct nfs_server *server;
++	struct nfs_client *clp;
++
++	if (inode == NULL) {
++		pr_err("%s: no inode for migration recovery\n",
++			__func__);
++		WARN_ON(1);
++		return -NFS4ERR_IO;
++	}
++ 	server = NFS_SERVER(inode);
++	clp = server->nfs_client;
++
++	if (test_bit(NFS_CS_MIGRATION, &clp->cl_flags) == 0) {
++		pr_err("NFS: migration not supported (server %s)\n",
++				clp->cl_hostname);
++		return -NFS4ERR_IO;
++	}
++
++	if (server->fh_expire_type != NFS4_FH_PERSISTENT) {
++		pr_err("NFS: volatile file handles not supported (server %s)\n",
++				clp->cl_hostname);
++		return -NFS4ERR_IO;
++	}
++
++	dprintk("%s: scheduling migration recovery for (%llx:%llx) on %s\n",
++			__func__,
++			(unsigned long long)server->fsid.major,
++			(unsigned long long)server->fsid.minor,
++			clp->cl_hostname);
++
++	set_bit(NFS_MIG_IN_TRANSITION, &server->mig_status);
++	set_bit(NFS4CLNT_MOVED, &clp->cl_state);
++
++	nfs4_schedule_state_manager(clp);
++	return 0;
++}
++EXPORT_SYMBOL_GPL(nfs4_schedule_migration_recovery);
++
+ int nfs4_wait_clnt_recover(struct nfs_client *clp)
  {
--	struct nfs_server *server;
- 	struct rpc_cred *cred;
- 
- 	spin_lock(&clp->cl_lock);
- 	cred = nfs4_get_machine_cred_locked(clp);
- 	spin_unlock(&clp->cl_lock);
--	if (cred != NULL)
--		goto out;
--
--	rcu_read_lock();
--	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
--		cred = nfs4_get_setclientid_cred_server(server);
--		if (cred != NULL)
--			break;
--	}
--	rcu_read_unlock();
--
--out:
- 	return cred;
+ 	int res;
+@@ -1833,6 +1881,137 @@ static int nfs4_purge_lease(struct nfs_client *clp)
+ 	return 0;
  }
  
-@@ -1631,7 +1590,7 @@ static void nfs4_state_end_reclaim_reboot(struct nfs_client *clp)
- 	if (!nfs4_state_clear_reclaim_reboot(clp))
- 		return;
- 	ops = clp->cl_mvops->reboot_recovery_ops;
--	cred = ops->get_clid_cred(clp);
-+	cred = nfs4_get_clid_cred(clp);
- 	nfs4_reclaim_complete(clp, ops, cred);
- 	put_rpccred(cred);
- }
-@@ -1745,7 +1704,7 @@ static int nfs4_check_lease(struct nfs_client *clp)
- 	cred = ops->get_state_renewal_cred_locked(clp);
- 	spin_unlock(&clp->cl_lock);
- 	if (cred == NULL) {
--		cred = nfs4_get_setclientid_cred(clp);
-+		cred = nfs4_get_clid_cred(clp);
- 		status = -ENOKEY;
- 		if (cred == NULL)
- 			goto out;
-@@ -1817,7 +1776,7 @@ static int nfs4_establish_lease(struct nfs_client *clp)
- 		clp->cl_mvops->reboot_recovery_ops;
- 	int status;
++#ifdef CONFIG_NFS_V4_1
++static int nfs4_begin_drain(struct nfs_client *clp)
++{
++	if (clp->cl_session == NULL)
++		return nfs4_begin_drain_xprt(clp);
++	return nfs4_begin_drain_session(clp);
++}
++
++static void nfs4_end_drain(struct nfs_client *clp)
++{
++	if (clp->cl_session == NULL)
++		nfs4_end_drain_xprt(clp);
++	else
++		nfs4_end_drain_session(clp);
++}
++#else	/* CONFIG_NFS_V4_1 */
++static int nfs4_begin_drain(struct nfs_client *clp)
++{
++	return nfs4_begin_drain_xprt(clp);
++}
++
++static void nfs4_end_drain(struct nfs_client *clp)
++{
++	nfs4_end_drain_xprt(clp);
++}
++#endif	/* CONFIG_NFS_V4_1 */
++
++/*
++ * Try remote migration of one FSID from a source server to a
++ * destination server.  The source server provides a list of
++ * potential destinations.
++ *
++ * Returns zero or a negative NFS4ERR status code.
++ */
++static int nfs4_try_migration(struct nfs_server *server)
++{
++	struct nfs_client *clp = server->nfs_client;
++	struct nfs4_fs_locations *locations = NULL;
++	struct inode *inode;
++	struct page *page;
++	int status, result;
++
++	dprintk("--> %s: FSID %llx:%llx on \"%s\"\n", __func__,
++			(unsigned long long)server->fsid.major,
++			(unsigned long long)server->fsid.minor,
++			clp->cl_hostname);
++
++	result = 0;
++	page = alloc_page(GFP_KERNEL);
++	locations = kmalloc(sizeof(struct nfs4_fs_locations), GFP_KERNEL);
++	if (page == NULL || locations == NULL) {
++		dprintk("<-- %s: no memory\n", __func__);
++		goto out_err;
++	}
++
++	inode = server->super->s_root->d_inode;
++	result = nfs4_proc_get_locations(inode, locations, page);
++	if (result != NFS4_OK) {
++		dprintk("<-- %s: failed to retrieve fs_locations: %d\n",
++			__func__, result);
++		goto out_err;
++	}
++	if (!(locations->fattr.valid & NFS_ATTR_FATTR_V4_LOCATIONS)) {
++		dprintk("<-- %s: No fs_locations data available, "
++			"migration skipped\n", __func__);
++		goto out_err;
++	}
++
++	status = nfs4_begin_drain(clp);
++	if (status != 0) {
++		dprintk("<-- %s: failed to drain transport: %d\n",
++			__func__, status);
++		nfs4_end_drain(clp);
++		goto out_err;
++	}
++
++	status = nfs4_replace_transport(server, locations);
++	nfs4_end_drain(clp);
++	if (status != 0) {
++		dprintk("<-- %s: failed to replace transport: %d\n",
++			__func__, status);
++		goto out_err;
++	}
++
++	dprintk("<-- %s: migration succeeded\n", __func__);
++
++out_err:
++	if (page != NULL)
++		__free_page(page);
++	kfree(locations);
++	return result;
++}
++
++/*
++ * Returns zero or a negative NFS4ERR status code.
++ */
++static int nfs4_handle_migration(struct nfs_client *clp)
++{
++	struct nfs_server *server;
++
++	dprintk("--> %s: migration reported on \"%s\"\n", __func__,
++			clp->cl_hostname);
++
++	clp->cl_mig_gen++;
++restart:
++	rcu_read_lock();
++	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
++		int status;
++
++		if (server->mig_gen == clp->cl_mig_gen)
++			continue;
++		server->mig_gen = clp->cl_mig_gen;
++
++		if (!test_and_clear_bit(NFS_MIG_IN_TRANSITION,
++						&server->mig_status))
++			continue;
++
++		rcu_read_unlock();
++		status = nfs4_try_migration(server);
++		if (status < 0) {
++			dprintk("<-- %s: %d\n", __func__, status);
++			return status;
++		}
++		goto restart;
++	}
++	rcu_read_unlock();
++
++	dprintk("<-- %s\n", __func__);
++	return 0;
++}
++
+ /**
+  * nfs4_discover_server_trunking - Detect server IP address trunking
+  *
+@@ -2163,6 +2342,13 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 			status = nfs4_check_lease(clp);
+ 			if (status < 0)
+ 				goto out_error;
++		}
++
++		if (test_and_clear_bit(NFS4CLNT_MOVED, &clp->cl_state)) {
++			section = "migration";
++			status = nfs4_handle_migration(clp);
++			if (status < 0)
++				goto out_error;
+ 			continue;
+ 		}
  
--	cred = ops->get_clid_cred(clp);
-+	cred = nfs4_get_clid_cred(clp);
- 	if (cred == NULL)
- 		return -ENOENT;
- 	status = ops->establish_clid(clp, cred);
-@@ -1891,7 +1850,7 @@ int nfs4_discover_server_trunking(struct nfs_client *clp,
- 	mutex_lock(&nfs_clid_init_mutex);
- again:
- 	status  = -ENOENT;
--	cred = ops->get_clid_cred(clp);
-+	cred = nfs4_get_clid_cred(clp);
- 	if (cred == NULL)
- 		goto out_unlock;
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 84d8f0c..4cfc58a 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -77,6 +77,7 @@ struct nfs_client {
+ 	char			cl_ipaddr[48];
+ 	u32			cl_cb_ident;	/* v4.0 callback identifier */
+ 	const struct nfs4_minor_version_ops *cl_mvops;
++	unsigned long		cl_mig_gen;
  
-@@ -2069,7 +2028,7 @@ static int nfs4_reset_session(struct nfs_client *clp)
- 	if (!nfs4_has_session(clp))
- 		return 0;
- 	nfs4_begin_drain_session(clp);
--	cred = nfs4_get_exchange_id_cred(clp);
-+	cred = nfs4_get_clid_cred(clp);
- 	status = nfs4_proc_destroy_session(clp->cl_session, cred);
- 	switch (status) {
- 	case 0:
-@@ -2112,7 +2071,7 @@ static int nfs4_bind_conn_to_session(struct nfs_client *clp)
- 	if (!nfs4_has_session(clp))
- 		return 0;
- 	nfs4_begin_drain_session(clp);
--	cred = nfs4_get_exchange_id_cred(clp);
-+	cred = nfs4_get_clid_cred(clp);
- 	ret = nfs4_proc_bind_conn_to_session(clp, cred);
- 	if (cred)
- 		put_rpccred(cred);
+ 	atomic_t		cl_xppending;
+ 	struct completion	cl_xpcomplete;
+@@ -174,6 +175,11 @@ struct nfs_server {
+ 	struct list_head	state_owners_lru;
+ 	struct list_head	layouts;
+ 	struct list_head	delegations;
++
++	unsigned long		mig_gen;
++	unsigned long		mig_status;
++#define NFS_MIG_IN_TRANSITION		(1)
++
+ 	void (*destroy)(struct nfs_server *);
+ 
+ 	atomic_t active; /* Keep trace of any activity to this server */
 
