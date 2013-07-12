@@ -1,119 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:29821 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751330Ab3GSSD7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Jul 2013 14:03:59 -0400
+Received: from fieldses.org ([174.143.236.118]:42375 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S965283Ab3GLU00 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Jul 2013 16:26:26 -0400
+Date: Fri, 12 Jul 2013 16:26:20 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: walter harms <wharms@bfs.de>
+Cc: Dan Carpenter <dan.carpenter@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, kernel-janitors@vger.kernel.org
+Subject: Re: [patch -stable] svcrdma: underflow issue in decode_write_list()
+Message-ID: <20130712202620.GA10562@fieldses.org>
+References: <20130712063903.GB29320@longonot.mountain>
+ <51DFBD49.7000205@bfs.de>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
-Subject: Re: Error writing to nfs4 with 3.11-rc1
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130719175535.GA20841@fieldses.org>
-Date: Fri, 19 Jul 2013 14:03:42 -0400
-Cc: Andre Heider <a.heider@gmail.com>, Rick Macklem <rmacklem@uoguelph.ca>,
-        linux-nfs@vger.kernel.org
-Message-Id: <EAC92035-5215-40A8-9403-FD236A3D045D@oracle.com>
-References: <CAHsu+b_hhSr2vwcwM8TX3=xF=3HffUXG=YLVLcsEpH1wHn+JoA@mail.gmail.com> <A5C56FD6-9E14-43A3-8627-1C8F77EC6926@oracle.com> <CAHsu+b9vWUyCGHSs==Na=VntwvYp65=rva7+y9aQDXquxX4t-A@mail.gmail.com> <F3EFA483-0662-4226-AAF3-DCF12D48485E@oracle.com> <20130719161313.GA20026@fieldses.org> <85DF5611-5C53-4B65-AA05-8436C9F00680@oracle.com> <20130719175535.GA20841@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <51DFBD49.7000205@bfs.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jul 19, 2013, at 1:55 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Fri, Jul 19, 2013 at 12:33:11PM -0400, Chuck Lever wrote:
->> 
->> On Jul 19, 2013, at 12:13 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
->> 
->>> On Wed, Jul 17, 2013 at 04:54:59PM -0400, Chuck Lever wrote:
->>>> By the way, the NFSv4 OPEN request parsing in Wireshark 1.10.0 is totally screwed up.  Has anyone reported this to the Wireshark community?  Wireshark 1.8.8 appears to parse OPEN requests correctly, and is able to handle the 3-word bitmask correctly.
->>> 
->>> What exactly is screwed up?
->> 
->> For example, if you undisclose all of the parsed elements of an OPEN reply, the parsing of the XDR is wrong and the following replies in the compound become unparsable "data".
->> 
->> I've reproduced this for every installation of 1.10.0, Linux and Mac OS, that I've done.
->> 
->> I'm looking at a trace where the client sends an unchecked create OPEN via this compound:
->> 
->> PUTFH, OPEN, GETFH, ACCESS, GETATTR
->> 
->> And here is the reply, as parsed by Wireshark.  The replies after the OPEN are rendered as 216 bytes of unparsed "data".  The Delegation Type is 2950154659.  fattr4_mode looks wrong as well, the requested mode was 644.
->> 
->> Close examination of the actual bytes in this reply shows that the reply sent by the server was correct XDR and a plausible result, and the client continues normal and correct operation.
+On Fri, Jul 12, 2013 at 10:24:41AM +0200, walter harms wrote:
 > 
-> Hm, that might be:
 > 
-> 	https://bugs.wireshark.org/bugzilla/show_bug.cgi?id=8920
+> Am 12.07.2013 08:39, schrieb Dan Carpenter:
+> > My static checker marks everything from ntohl() as untrusted and it
+> > complains we could have an underflow problem doing:
+> > 
+> > 	return (u32 *)&ary->wc_array[nchunks];
+> > 
+> > Also on 32 bit systems the upper bound check could overflow.
+> > 
+> > Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+> > 
+> > diff --git a/net/sunrpc/xprtrdma/svc_rdma_marshal.c b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
+> > index 8d2eddd..65b1462 100644
+> > --- a/net/sunrpc/xprtrdma/svc_rdma_marshal.c
+> > +++ b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
+> > @@ -98,6 +98,7 @@ void svc_rdma_rcl_chunk_counts(struct rpcrdma_read_chunk *ch,
+> >   */
+> >  static u32 *decode_write_list(u32 *va, u32 *vaend)
+> >  {
+> > +	unsigned long start, end;
+> >  	int nchunks;
+> >  
+> >  	struct rpcrdma_write_array *ary =
+> > @@ -113,9 +114,12 @@ static u32 *decode_write_list(u32 *va, u32 *vaend)
+> >  		return NULL;
+> >  	}
+> >  	nchunks = ntohl(ary->wc_nchunks);
+> > -	if (((unsigned long)&ary->wc_array[0] +
+> > -	     (sizeof(struct rpcrdma_write_chunk) * nchunks)) >
+> > -	    (unsigned long)vaend) {
+> > +
+> > +	start = (unsigned long)&ary->wc_array[0];
+> > +	end = (unsigned long)vaend;
+> > +	if (nchunks < 0 ||
+> > +	    nchunks > (SIZE_MAX - start) / sizeof(struct rpcrdma_write_chunk) ||
+> > +	    (start + (sizeof(struct rpcrdma_write_chunk) * nchunks)) > end) {
+> >  		dprintk("svcrdma: ary=%p, wc_nchunks=%d, vaend=%p\n",
+> >  			ary, nchunks, vaend);
 > 
-> ?
-
-Wow, that's darn recent.  Could be.
-
-> --b.
 > 
->> 
->> Network File System, Ops(5): PUTFH OPEN
->>    [Program Version: 4]
->>    [V4 Procedure: COMPOUND (1)]
->>    Status: NFS4_OK (0)
->>    Tag: <EMPTY>
->>        length: 0
->>        contents: <EMPTY>
->>    Operations (count: 5)
->>        Opcode: PUTFH (22)
->>            Status: NFS4_OK (0)
->>        Opcode: OPEN (18)
->>            Status: NFS4_OK (0)
->>            stateid
->>                [StateID Hash: 0xaf36]
->>                seqid: 0x00000001
->>                Data: 01db0fb0ac64000000000000
->>            change_info
->>                Atomic: Yes
->>                changeid (before): 5901652787232948527
->>                changeid (after): 5901653255478300828
->>            results_flags: Unknown (0x00000006)
->>                .... .... .... .... .... .... .... ...0 = mlock: Unknown (0)
->>                .... .... .... .... .... .... .... ..1. = confirm: OPEN4_RESULT_MLOCK (1)
->>            Attr mask[0]: 0x00000010 (SIZE)
->>                reqd_attr: SIZE (4)
->>                    size: 42949672960
->>            Attr mask[1]: 0x00000002 (MODE)
->>                reco_attr: MODE (33)
->>                    fattr4_mode: 044
->>                        .... .... .... .... 000. .... .... .... = Name: Unknown (0)
->>                        .... .... .... .... .... 0... .... .... = Set user id on exec: No
->>                        .... .... .... .... .... .0.. .... .... = Set group id on exec: No
->>                        .... .... .... .... .... ..0. .... .... = Save swapped text even after use: No
->>                        .... .... .... .... .... ...0 .... .... = Read permission for owner: No
->>                        .... .... .... .... .... .... 0... .... = Write permission for owner: No
->>                        .... .... .... .... .... .... .0.. .... = Execute permission for owner: No
->>                        .... .... .... .... .... .... ..1. .... = Read permission for group: Yes
->>                        .... .... .... .... .... .... ...0 .... = Write permission for group: No
->>                        .... .... .... .... .... .... .... 0... = Execute permission for group: No
->>                        .... .... .... .... .... .... .... .1.. = Read permission for others: Yes
->>                        .... .... .... .... .... .... .... ..0. = Write permission for others: No
->>                        .... .... .... .... .... .... .... ...0 = Execute permission for others: No
->>            Delegation Type: Unknown (2950154659)
->>    [Main Opcode: OPEN (18)]
->>    Data (216 bytes)
->> 
->> -- 
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->> 
->> 
->> 
->> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> i am struggling to understand what is actually checked here.
+> Perhaps this improves the readability a bit
+>  if ( nchunks < 0 ||
+>        sizeof(struct rpcrdma_write_chunk) * nchunks > (SIZE_MAX - start) ||
+>        sizeof(struct rpcrdma_write_chunk) * nchunks > (end - start) )
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+If the product on the left-hand size overflows, the product could pass
+all these tests while nchunks is still too large.  That's the same
+problem the original code had.
 
+Committing Dan's version unless someone has something better.
 
+--b.
 
-
+> 
+>  with that rewrite i would say that (SIZE_MAX - start) is strange.
+> 
+> just my 2 cents,
+>  wh
+> 
+> >  		return NULL;
+> > @@ -129,6 +133,7 @@ static u32 *decode_write_list(u32 *va, u32 *vaend)
+> >  
+> >  static u32 *decode_reply_array(u32 *va, u32 *vaend)
+> >  {
+> > +	unsigned long start, end;
+> >  	int nchunks;
+> >  	struct rpcrdma_write_array *ary =
+> >  		(struct rpcrdma_write_array *)va;
+> > @@ -143,9 +148,12 @@ static u32 *decode_reply_array(u32 *va, u32 *vaend)
+> >  		return NULL;
+> >  	}
+> >  	nchunks = ntohl(ary->wc_nchunks);
+> > -	if (((unsigned long)&ary->wc_array[0] +
+> > -	     (sizeof(struct rpcrdma_write_chunk) * nchunks)) >
+> > -	    (unsigned long)vaend) {
+> > +
+> > +	start = (unsigned long)&ary->wc_array[0];
+> > +	end = (unsigned long)vaend;
+> > +	if (nchunks < 0 ||
+> > +	    nchunks > (SIZE_MAX - start) / sizeof(struct rpcrdma_write_chunk) ||
+> > +	    (start + (sizeof(struct rpcrdma_write_chunk) * nchunks)) > end) {
+> >  		dprintk("svcrdma: ary=%p, wc_nchunks=%d, vaend=%p\n",
+> >  			ary, nchunks, vaend);
+> >  		return NULL;
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe kernel-janitors" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
