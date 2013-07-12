@@ -1,73 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:13165 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752406Ab3G0RGI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 27 Jul 2013 13:06:08 -0400
-Date: Sat, 27 Jul 2013 19:00:51 +0200
-From: Oleg Nesterov <oleg@redhat.com>
-To: Toralf =?iso-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>,
-        "Serge E. Hallyn" <serue@us.ibm.com>
-Cc: Andrey Vagin <avagin@openvz.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: fuzz tested user mode linux core dumps in
-	fs/lockd/clntproc.c:131
-Message-ID: <20130727170051.GA31447@redhat.com>
-References: <51F39AE8.3090401@gmx.de>
+Received: from mail-gg0-f173.google.com ([209.85.161.173]:49901 "EHLO
+	mail-gg0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965059Ab3GLQdO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jul 2013 12:33:14 -0400
+Received: by mail-gg0-f173.google.com with SMTP id k3so3194802ggn.18
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Jul 2013 09:33:13 -0700 (PDT)
+Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe93:815b])
+        by mx.google.com with ESMTPSA id s29sm69031135yhf.6.2013.07.12.09.33.12
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=RC4-SHA bits=128/128);
+        Fri, 12 Jul 2013 09:33:13 -0700 (PDT)
+Subject: [PATCH v1 12/19] NFS: Add a super_block backpointer to the
+ nfs_server struct
+To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Date: Fri, 12 Jul 2013 12:33:12 -0400
+Message-ID: <20130712163312.1444.95790.stgit@seurat.1015granger.net>
+In-Reply-To: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
+References: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <51F39AE8.3090401@gmx.de>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/27, Toralf Förster wrote:
->
-> I do have a user mode linux image (stable 32 bit Gentoo Linux ) which erratically crashes
-> while fuzz tested with trinity if the victim files are located on a NFS share.
->
-> The back trace of the core dumps always looks like the attached.
->
-> To bisect it is hard. However after few attempts in the last weeks the following
-> commit is either the first bad commit or at least the upper limit (less likely).
->
->
-> commit 8aac62706adaaf0fab02c4327761561c8bda9448
-> Author: Oleg Nesterov <oleg@redhat.com>
-> Date:   Fri Jun 14 21:09:49 2013 +0200
->
->     move exit_task_namespaces() outside of exit_notify()
->
-> #15 nlmclnt_setlockargs (req=0x48e18860, fl=0x48f27c8c) at fs/lockd/clntproc.c:131
+NFS_SB() gives the pointer to an nfs_server struct, given a pointer
+to a super_block.  But we have no way to go back the other way.
 
-Thanks.
+Add a super_block backpointer pointer so that, given an nfs_server
+struct, it is easy to get to the root dentry, or access the list of
+inodes, associated with an nfs_server.
 
-So nlmclnt_setlockargs()->utsname() crashes and we probably need
-the patch below.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfs/super.c            |    1 +
+ include/linux/nfs_fs_sb.h |    1 +
+ 2 files changed, 2 insertions(+)
 
-But is it correct? I know _absolutely_ nothing about nfs/sunrpc/etc and
-I never looked into this code before, most probably I am wrong.
-
-But it seems that __nlm_async_call() relies on workqueues.
-nlmclnt_async_call() does rpc_wait_for_completion_task(), but what if
-the caller is killed?
-
-nlm_rqst can't go away, ->a_count was incremented. But can't the caller
-exit before call->name is used? In this case the memory it points to
-can be already freed.
-
-Oleg.
-
---- x/kernel/exit.c
-+++ x/kernel/exit.c
-@@ -783,8 +783,8 @@ void do_exit(long code)
- 	exit_shm(tsk);
- 	exit_files(tsk);
- 	exit_fs(tsk);
--	exit_task_namespaces(tsk);
- 	exit_task_work(tsk);
-+	exit_task_namespaces(tsk);
- 	check_stack_usage();
- 	exit_thread();
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 2d7525f..455d56a 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2463,6 +2463,7 @@ struct dentry *nfs_fs_mount_common(struct nfs_server *server,
+ 			mntroot = ERR_PTR(error);
+ 			goto error_splat_bdi;
+ 		}
++		server->super = s;
+ 	}
  
+ 	if (!s->s_root) {
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index ad47c90..84d8f0c 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -138,6 +138,7 @@ struct nfs_server {
+ 	__u64			maxfilesize;	/* maximum file size */
+ 	struct timespec		time_delta;	/* smallest time granularity */
+ 	unsigned long		mount_time;	/* when this fs was mounted */
++	struct super_block	*super;		/* VFS super block */
+ 	dev_t			s_dev;		/* superblock dev numbers */
+ 
+ #ifdef CONFIG_NFS_FSCACHE
 
