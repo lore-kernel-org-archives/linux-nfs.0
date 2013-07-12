@@ -1,467 +1,362 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:63101 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756112Ab3GQUoC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 16:44:02 -0400
-Subject: [PATCH 05/10] KEYS: Consolidate the concept of an 'index key' for
- key access
-To: keyrings@linux-nfs.org
-From: David Howells <dhowells@redhat.com>
-Cc: linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Wed, 17 Jul 2013 21:43:56 +0100
-Message-ID: <20130717204356.8591.46470.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
-References: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
+Received: from mail-ye0-f170.google.com ([209.85.213.170]:45618 "EHLO
+	mail-ye0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964817Ab3GLQdb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jul 2013 12:33:31 -0400
+Received: by mail-ye0-f170.google.com with SMTP id q3so3236582yen.15
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Jul 2013 09:33:31 -0700 (PDT)
+Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe93:815b])
+        by mx.google.com with ESMTPSA id v68sm68997989yhn.22.2013.07.12.09.33.30
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=RC4-SHA bits=128/128);
+        Fri, 12 Jul 2013 09:33:30 -0700 (PDT)
+Subject: [PATCH v1 14/19] NFS: Add method to retrieve fs_locations during
+ migration recovery
+To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Date: Fri, 12 Jul 2013 12:33:29 -0400
+Message-ID: <20130712163329.1444.71304.stgit@seurat.1015granger.net>
+In-Reply-To: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
+References: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Consolidate the concept of an 'index key' for accessing keys.  The index key
-is the search term needed to find a key directly - basically the key type and
-the key description.  We can add to that the description length.
+The nfs4_proc_fs_locations() function is invoked during referral
+processing to perform a GETATTR(fs_locations) on an object's parent
+directory in order to discover the target of the referral.  It
+performs a LOOKUP in the compound, so the client needs to know the
+parent's file handle a priori.
 
-This will be useful when turning a keyring into an associative array rather
-than just a pointer block.
+Unfortunately this function is not adequate for handling migration
+recovery.  We need to probe fs_locations information on an FSID's
+root directory, but the "parent" of a root directory is not
+available for a LOOKUP operation.  Fortunately we already know the
+FSID's root FH, as it is now saved at mount time.
 
-Signed-off-by: David Howells <dhowells@redhat.com>
+Another subtlety: recovering from NFS4ERR_LEASE_MOVED is a process
+of walking over a list of known FSIDs that reside on the server, and
+probing whether they have migrated.  Once the server has detected
+that the client has probed all migrated file systems, it stops
+returning NFS4ERR_LEASE_MOVED.
+
+A minor version zero server needs to know what client ID is
+requesting fs_locations information so it can clear the flag that
+forces it to continue returning NFS4ERR_LEASE_MOVED.  This flag is
+set per client ID and per FSID.  However, the client ID is not an
+argument of either the PUTFH or GETATTR operations.  Later minor
+versions have client ID information embedded in the compound's
+SEQUENCE operation.
+
+Therefore, by convention, minor version zero clients send a RENEW
+operation in the same compound as the GETATTR(fs_locations), since
+RENEW's one argument is a clientid4.  This allows a minor version
+zero server to identify correctly the client that is probing for a
+migration.
+
+(Needing to send a RENEW in the mv0 case by itself might not be a
+strong justification for separate get_locations methods for mv0 and
+mv1.  But eventually, fs_locations_info support can be plumbed into
+the mv1 method without disturbing the mv0 method).
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ fs/nfs/nfs4_fs.h        |    2 +
+ fs/nfs/nfs4proc.c       |  147 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4xdr.c        |   46 +++++++++++----
+ include/linux/nfs_xdr.h |    4 +
+ 4 files changed, 188 insertions(+), 11 deletions(-)
 
- include/linux/key.h         |   21 ++++++++++---
- security/keys/internal.h    |    8 ++---
- security/keys/key.c         |   72 ++++++++++++++++++++++---------------------
- security/keys/keyring.c     |   37 +++++++++++-----------
- security/keys/request_key.c |   12 +++++--
- 5 files changed, 83 insertions(+), 67 deletions(-)
-
-diff --git a/include/linux/key.h b/include/linux/key.h
-index 51bce29..d573e82 100644
---- a/include/linux/key.h
-+++ b/include/linux/key.h
-@@ -82,6 +82,12 @@ struct key_owner;
- struct keyring_list;
- struct keyring_name;
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 4b83ffc..66c34c4 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -203,6 +203,7 @@ struct nfs4_state_maintenance_ops {
+ };
  
-+struct keyring_index_key {
-+	struct key_type		*type;
-+	const char		*description;
-+	size_t			desc_len;
-+};
+ struct nfs4_mig_recovery_ops {
++	int (*get_locations)(struct inode *, struct nfs4_fs_locations *, struct page *);
+ };
+ 
+ extern const struct dentry_operations nfs4_dentry_operations;
+@@ -235,6 +236,7 @@ extern int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait);
+ extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
+ extern int nfs4_proc_fs_locations(struct rpc_clnt *, struct inode *, const struct qstr *,
+ 				  struct nfs4_fs_locations *, struct page *);
++extern int nfs4_proc_get_locations(struct inode *, struct nfs4_fs_locations *, struct page *page);
+ extern struct rpc_clnt *nfs4_proc_lookup_mountpoint(struct inode *, struct qstr *,
+ 			    struct nfs_fh *, struct nfs_fattr *);
+ extern int nfs4_proc_secinfo(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index bb5100a..c849721 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5445,6 +5445,151 @@ int nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
+ 	return err;
+ }
+ 
++/*
++ * This operation also signals the server that this client is
++ * performing migration recovery.  The server can stop returning
++ * NFS4ERR_LEASE_MOVED to this client.  A RENEW operation is
++ * appended to this compound to identify the client ID which is
++ * performing recovery.
++ */
++static int _nfs40_proc_get_locations(struct inode *inode,
++				     struct nfs4_fs_locations *locations,
++				     struct page *page)
++{
++	struct nfs_server *server = NFS_SERVER(inode);
++	struct rpc_clnt *clnt = server->nfs_client->cl_rpcclient;
++	u32 bitmask[2] = {
++		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS,
++	};
++	struct nfs4_fs_locations_arg args = {
++		.clientid	= server->nfs_client->cl_clientid,
++		.fh		= NFS_FH(inode),
++		.page		= page,
++		.bitmask	= bitmask,
++		.migration	= 1,
++		.renew		= 1,
++	};
++	struct nfs4_fs_locations_res res = {
++		.fs_locations	= locations,
++		.migration	= 1,
++		.renew		= 1,
++	};
++	struct rpc_message msg = {
++		.rpc_proc	= &nfs4_procedures[NFSPROC4_CLNT_FS_LOCATIONS],
++		.rpc_argp	= &args,
++		.rpc_resp	= &res,
++	};
++	unsigned long now = jiffies;
++	int status;
 +
- /*****************************************************************************/
- /*
-  * key reference with possession attribute handling
-@@ -129,7 +135,6 @@ struct key {
- 		struct list_head graveyard_link;
- 		struct rb_node	serial_node;
- 	};
--	struct key_type		*type;		/* type of key */
- 	struct rw_semaphore	sem;		/* change vs change sem */
- 	struct key_user		*user;		/* owner of this key */
- 	void			*security;	/* security data for this key */
-@@ -163,12 +168,18 @@ struct key {
- #define KEY_FLAG_ROOT_CAN_CLEAR	6	/* set if key can be cleared by root without permission */
- #define KEY_FLAG_INVALIDATED	7	/* set if key has been invalidated */
- 
--	/* the description string
--	 * - this is used to match a key against search criteria
--	 * - this should be a printable string
-+	/* the key type and key description string
-+	 * - the desc is used to match a key against search criteria
-+	 * - it should be a printable string
- 	 * - eg: for krb5 AFS, this might be "afs@REDHAT.COM"
- 	 */
--	char			*description;
-+	union {
-+		struct keyring_index_key index_key;
-+		struct {
-+			struct key_type	*type;		/* type of key */
-+			char		*description;
-+		};
++	nfs_fattr_init(&locations->fattr);
++	locations->server = server;
++	locations->nlocations = 0;
++
++	status = rpc_call_sync(clnt, &msg, 0);
++	if (status)
++		return status;
++
++	renew_lease(server, now);
++	return 0;
++}
++
++#ifdef CONFIG_NFS_V4_1
++/*
++ * This operation also signals the server that this client is
++ * performing migration recovery.  The server can stop asserting
++ * SEQ4_STATUS_LEASE_MOVED for this client.  The client ID
++ * performing this operation is identified in the SEQUENCE
++ * operation in this compound.
++ *
++ * When the client supports GETATTR(fs_locations_info), it can
++ * be plumbed in here.
++ */
++static int _nfs41_proc_get_locations(struct inode *inode,
++				     struct nfs4_fs_locations *locations,
++				     struct page *page)
++{
++	struct nfs_server *server = NFS_SERVER(inode);
++	struct rpc_clnt *clnt = server->nfs_client->cl_rpcclient;
++	u32 bitmask[2] = {
++		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS,
 +	};
- 
- 	/* type specific data
- 	 * - this is used by the keyring type to index the name
-diff --git a/security/keys/internal.h b/security/keys/internal.h
-index 490aef5..77441dd 100644
---- a/security/keys/internal.h
-+++ b/security/keys/internal.h
-@@ -89,19 +89,17 @@ extern struct key_type *key_type_lookup(const char *type);
- extern void key_type_put(struct key_type *ktype);
- 
- extern int __key_link_begin(struct key *keyring,
--			    const struct key_type *type,
--			    const char *description,
-+			    const struct keyring_index_key *index_key,
- 			    unsigned long *_prealloc);
- extern int __key_link_check_live_key(struct key *keyring, struct key *key);
- extern void __key_link(struct key *keyring, struct key *key,
- 		       unsigned long *_prealloc);
- extern void __key_link_end(struct key *keyring,
--			   struct key_type *type,
-+			   const struct keyring_index_key *index_key,
- 			   unsigned long prealloc);
- 
- extern key_ref_t __keyring_search_one(key_ref_t keyring_ref,
--				      const struct key_type *type,
--				      const char *description,
-+				      const struct keyring_index_key *index_key,
- 				      key_perm_t perm);
- 
- extern struct key *keyring_search_instkey(struct key *keyring,
-diff --git a/security/keys/key.c b/security/keys/key.c
-index 8fb7c7b..7e6bc39 100644
---- a/security/keys/key.c
-+++ b/security/keys/key.c
-@@ -242,8 +242,8 @@ struct key *key_alloc(struct key_type *type, const char *desc,
- 		}
- 	}
- 
--	desclen = strlen(desc) + 1;
--	quotalen = desclen + type->def_datalen;
-+	desclen = strlen(desc);
-+	quotalen = desclen + 1 + type->def_datalen;
- 
- 	/* get hold of the key tracking for this user */
- 	user = key_user_lookup(uid);
-@@ -277,7 +277,8 @@ struct key *key_alloc(struct key_type *type, const char *desc,
- 		goto no_memory_2;
- 
- 	if (desc) {
--		key->description = kmemdup(desc, desclen, GFP_KERNEL);
-+		key->index_key.desc_len = desclen;
-+		key->index_key.description = kmemdup(desc, desclen + 1, GFP_KERNEL);
- 		if (!key->description)
- 			goto no_memory_3;
- 	}
-@@ -285,7 +286,7 @@ struct key *key_alloc(struct key_type *type, const char *desc,
- 	atomic_set(&key->usage, 1);
- 	init_rwsem(&key->sem);
- 	lockdep_set_class(&key->sem, &type->lock_class);
--	key->type = type;
-+	key->index_key.type = type;
- 	key->user = user;
- 	key->quotalen = quotalen;
- 	key->datalen = type->def_datalen;
-@@ -489,8 +490,7 @@ int key_instantiate_and_link(struct key *key,
- 	}
- 
- 	if (keyring) {
--		ret = __key_link_begin(keyring, key->type, key->description,
--				       &prealloc);
-+		ret = __key_link_begin(keyring, &key->index_key, &prealloc);
- 		if (ret < 0)
- 			goto error_free_preparse;
- 	}
-@@ -499,7 +499,7 @@ int key_instantiate_and_link(struct key *key,
- 					 &prealloc);
- 
- 	if (keyring)
--		__key_link_end(keyring, key->type, prealloc);
-+		__key_link_end(keyring, &key->index_key, prealloc);
- 
- error_free_preparse:
- 	if (key->type->preparse)
-@@ -548,8 +548,7 @@ int key_reject_and_link(struct key *key,
- 	ret = -EBUSY;
- 
- 	if (keyring)
--		link_ret = __key_link_begin(keyring, key->type,
--					    key->description, &prealloc);
-+		link_ret = __key_link_begin(keyring, &key->index_key, &prealloc);
- 
- 	mutex_lock(&key_construction_mutex);
- 
-@@ -581,7 +580,7 @@ int key_reject_and_link(struct key *key,
- 	mutex_unlock(&key_construction_mutex);
- 
- 	if (keyring)
--		__key_link_end(keyring, key->type, prealloc);
-+		__key_link_end(keyring, &key->index_key, prealloc);
- 
- 	/* wake up anyone waiting for a key to be constructed */
- 	if (awaken)
-@@ -780,25 +779,27 @@ key_ref_t key_create_or_update(key_ref_t keyring_ref,
- 			       key_perm_t perm,
- 			       unsigned long flags)
- {
--	unsigned long prealloc;
-+	struct keyring_index_key index_key = {
-+		.description	= description,
++	struct nfs4_fs_locations_arg args = {
++		.fh		= NFS_FH(inode),
++		.page		= page,
++		.bitmask	= bitmask,
++		.migration	= 1,
 +	};
- 	struct key_preparsed_payload prep;
- 	const struct cred *cred = current_cred();
--	struct key_type *ktype;
-+	unsigned long prealloc;
- 	struct key *keyring, *key = NULL;
- 	key_ref_t key_ref;
- 	int ret;
- 
- 	/* look up the key type to see if it's one of the registered kernel
- 	 * types */
--	ktype = key_type_lookup(type);
--	if (IS_ERR(ktype)) {
-+	index_key.type = key_type_lookup(type);
-+	if (IS_ERR(index_key.type)) {
- 		key_ref = ERR_PTR(-ENODEV);
- 		goto error;
- 	}
- 
- 	key_ref = ERR_PTR(-EINVAL);
--	if (!ktype->match || !ktype->instantiate ||
--	    (!description && !ktype->preparse))
-+	if (!index_key.type->match || !index_key.type->instantiate ||
-+	    (!index_key.description && !index_key.type->preparse))
- 		goto error_put_type;
- 
- 	keyring = key_ref_to_ptr(keyring_ref);
-@@ -812,21 +813,22 @@ key_ref_t key_create_or_update(key_ref_t keyring_ref,
- 	memset(&prep, 0, sizeof(prep));
- 	prep.data = payload;
- 	prep.datalen = plen;
--	prep.quotalen = ktype->def_datalen;
--	if (ktype->preparse) {
--		ret = ktype->preparse(&prep);
-+	prep.quotalen = index_key.type->def_datalen;
-+	if (index_key.type->preparse) {
-+		ret = index_key.type->preparse(&prep);
- 		if (ret < 0) {
- 			key_ref = ERR_PTR(ret);
- 			goto error_put_type;
- 		}
--		if (!description)
--			description = prep.description;
-+		if (!index_key.description)
-+			index_key.description = prep.description;
- 		key_ref = ERR_PTR(-EINVAL);
--		if (!description)
-+		if (!index_key.description)
- 			goto error_free_prep;
- 	}
-+	index_key.desc_len = strlen(index_key.description);
- 
--	ret = __key_link_begin(keyring, ktype, description, &prealloc);
-+	ret = __key_link_begin(keyring, &index_key, &prealloc);
- 	if (ret < 0) {
- 		key_ref = ERR_PTR(ret);
- 		goto error_free_prep;
-@@ -844,9 +846,8 @@ key_ref_t key_create_or_update(key_ref_t keyring_ref,
- 	 * key of the same type and description in the destination keyring and
- 	 * update that instead if possible
- 	 */
--	if (ktype->update) {
--		key_ref = __keyring_search_one(keyring_ref, ktype, description,
--					       0);
-+	if (index_key.type->update) {
-+		key_ref = __keyring_search_one(keyring_ref, &index_key, 0);
- 		if (!IS_ERR(key_ref))
- 			goto found_matching_key;
- 	}
-@@ -856,16 +857,17 @@ key_ref_t key_create_or_update(key_ref_t keyring_ref,
- 		perm = KEY_POS_VIEW | KEY_POS_SEARCH | KEY_POS_LINK | KEY_POS_SETATTR;
- 		perm |= KEY_USR_VIEW;
- 
--		if (ktype->read)
-+		if (index_key.type->read)
- 			perm |= KEY_POS_READ;
- 
--		if (ktype == &key_type_keyring || ktype->update)
-+		if (index_key.type == &key_type_keyring ||
-+		    index_key.type->update)
- 			perm |= KEY_POS_WRITE;
- 	}
- 
- 	/* allocate a new key */
--	key = key_alloc(ktype, description, cred->fsuid, cred->fsgid, cred,
--			perm, flags);
-+	key = key_alloc(index_key.type, index_key.description,
-+			cred->fsuid, cred->fsgid, cred, perm, flags);
- 	if (IS_ERR(key)) {
- 		key_ref = ERR_CAST(key);
- 		goto error_link_end;
-@@ -882,12 +884,12 @@ key_ref_t key_create_or_update(key_ref_t keyring_ref,
- 	key_ref = make_key_ref(key, is_key_possessed(keyring_ref));
- 
- error_link_end:
--	__key_link_end(keyring, ktype, prealloc);
-+	__key_link_end(keyring, &index_key, prealloc);
- error_free_prep:
--	if (ktype->preparse)
--		ktype->free_preparse(&prep);
-+	if (index_key.type->preparse)
-+		index_key.type->free_preparse(&prep);
- error_put_type:
--	key_type_put(ktype);
-+	key_type_put(index_key.type);
- error:
- 	return key_ref;
- 
-@@ -895,7 +897,7 @@ error:
- 	/* we found a matching key, so we're going to try to update it
- 	 * - we can drop the locks first as we have the key pinned
- 	 */
--	__key_link_end(keyring, ktype, prealloc);
-+	__key_link_end(keyring, &index_key, prealloc);
- 
- 	key_ref = __key_update(key_ref, &prep);
- 	goto error_free_prep;
-diff --git a/security/keys/keyring.c b/security/keys/keyring.c
-index f784063..c7f59f9 100644
---- a/security/keys/keyring.c
-+++ b/security/keys/keyring.c
-@@ -538,8 +538,7 @@ EXPORT_SYMBOL(keyring_search);
-  * to the returned key reference.
-  */
- key_ref_t __keyring_search_one(key_ref_t keyring_ref,
--			       const struct key_type *ktype,
--			       const char *description,
-+			       const struct keyring_index_key *index_key,
- 			       key_perm_t perm)
- {
- 	struct keyring_list *klist;
-@@ -558,9 +557,9 @@ key_ref_t __keyring_search_one(key_ref_t keyring_ref,
- 		smp_rmb();
- 		for (loop = 0; loop < nkeys ; loop++) {
- 			key = rcu_dereference(klist->keys[loop]);
--			if (key->type == ktype &&
-+			if (key->type == index_key->type &&
- 			    (!key->type->match ||
--			     key->type->match(key, description)) &&
-+			     key->type->match(key, index_key->description)) &&
- 			    key_permission(make_key_ref(key, possessed),
- 					   perm) == 0 &&
- 			    !(key->flags & ((1 << KEY_FLAG_INVALIDATED) |
-@@ -747,8 +746,8 @@ static void keyring_unlink_rcu_disposal(struct rcu_head *rcu)
- /*
-  * Preallocate memory so that a key can be linked into to a keyring.
-  */
--int __key_link_begin(struct key *keyring, const struct key_type *type,
--		     const char *description, unsigned long *_prealloc)
-+int __key_link_begin(struct key *keyring, const struct keyring_index_key *index_key,
-+		     unsigned long *_prealloc)
- 	__acquires(&keyring->sem)
- 	__acquires(&keyring_serialise_link_sem)
- {
-@@ -759,7 +758,8 @@ int __key_link_begin(struct key *keyring, const struct key_type *type,
- 	size_t size;
- 	int loop, lru, ret;
- 
--	kenter("%d,%s,%s,", key_serial(keyring), type->name, description);
-+	kenter("%d,%s,%s,",
-+	       key_serial(keyring), index_key->type->name, index_key->description);
- 
- 	if (keyring->type != &key_type_keyring)
- 		return -ENOTDIR;
-@@ -772,7 +772,7 @@ int __key_link_begin(struct key *keyring, const struct key_type *type,
- 
- 	/* serialise link/link calls to prevent parallel calls causing a cycle
- 	 * when linking two keyring in opposite orders */
--	if (type == &key_type_keyring)
-+	if (index_key->type == &key_type_keyring)
- 		down_write(&keyring_serialise_link_sem);
- 
- 	klist = rcu_dereference_locked_keyring(keyring);
-@@ -784,8 +784,8 @@ int __key_link_begin(struct key *keyring, const struct key_type *type,
- 		for (loop = klist->nkeys - 1; loop >= 0; loop--) {
- 			struct key *key = rcu_deref_link_locked(klist, loop,
- 								keyring);
--			if (key->type == type &&
--			    strcmp(key->description, description) == 0) {
-+			if (key->type == index_key->type &&
-+			    strcmp(key->description, index_key->description) == 0) {
- 				/* Found a match - we'll replace the link with
- 				 * one to the new key.  We record the slot
- 				 * position.
-@@ -865,7 +865,7 @@ error_quota:
- 	key_payload_reserve(keyring,
- 			    keyring->datalen - KEYQUOTA_LINK_BYTES);
- error_sem:
--	if (type == &key_type_keyring)
-+	if (index_key->type == &key_type_keyring)
- 		up_write(&keyring_serialise_link_sem);
- error_krsem:
- 	up_write(&keyring->sem);
-@@ -957,16 +957,17 @@ void __key_link(struct key *keyring, struct key *key,
-  *
-  * Must be called with __key_link_begin() having being called.
-  */
--void __key_link_end(struct key *keyring, struct key_type *type,
-+void __key_link_end(struct key *keyring,
-+		    const struct keyring_index_key *index_key,
- 		    unsigned long prealloc)
- 	__releases(&keyring->sem)
- 	__releases(&keyring_serialise_link_sem)
- {
--	BUG_ON(type == NULL);
--	BUG_ON(type->name == NULL);
--	kenter("%d,%s,%lx", keyring->serial, type->name, prealloc);
-+	BUG_ON(index_key->type == NULL);
-+	BUG_ON(index_key->type->name == NULL);
-+	kenter("%d,%s,%lx", keyring->serial, index_key->type->name, prealloc);
- 
--	if (type == &key_type_keyring)
-+	if (index_key->type == &key_type_keyring)
- 		up_write(&keyring_serialise_link_sem);
- 
- 	if (prealloc) {
-@@ -1007,12 +1008,12 @@ int key_link(struct key *keyring, struct key *key)
- 	key_check(keyring);
- 	key_check(key);
- 
--	ret = __key_link_begin(keyring, key->type, key->description, &prealloc);
-+	ret = __key_link_begin(keyring, &key->index_key, &prealloc);
- 	if (ret == 0) {
- 		ret = __key_link_check_live_key(keyring, key);
- 		if (ret == 0)
- 			__key_link(keyring, key, &prealloc);
--		__key_link_end(keyring, key->type, prealloc);
-+		__key_link_end(keyring, &key->index_key, prealloc);
- 	}
- 
- 	return ret;
-diff --git a/security/keys/request_key.c b/security/keys/request_key.c
-index 172115b..586cb79 100644
---- a/security/keys/request_key.c
-+++ b/security/keys/request_key.c
-@@ -352,6 +352,11 @@ static int construct_alloc_key(struct key_type *type,
- 			       struct key_user *user,
- 			       struct key **_key)
- {
-+	const struct keyring_index_key index_key = {
-+		.type		= type,
-+		.description	= description,
-+		.desc_len	= strlen(description),
++	struct nfs4_fs_locations_res res = {
++		.fs_locations	= locations,
++		.migration	= 1,
 +	};
- 	const struct cred *cred = current_cred();
- 	unsigned long prealloc;
- 	struct key *key;
-@@ -379,8 +384,7 @@ static int construct_alloc_key(struct key_type *type,
- 	set_bit(KEY_FLAG_USER_CONSTRUCT, &key->flags);
++	struct rpc_message msg = {
++		.rpc_proc	= &nfs4_procedures[NFSPROC4_CLNT_FS_LOCATIONS],
++		.rpc_argp	= &args,
++		.rpc_resp	= &res,
++	};
++	int status;
++
++	nfs_fattr_init(&locations->fattr);
++	locations->server = server;
++	locations->nlocations = 0;
++
++	nfs41_init_sequence(&args.seq_args, &res.seq_res, 0);
++	nfs4_set_sequence_privileged(&args.seq_args);
++	status = nfs4_call_sync_sequence(clnt, server, &msg,
++					&args.seq_args, &res.seq_res);
++	if (status == NFS4_OK &&
++	    res.seq_res.sr_status_flags & SEQ4_STATUS_LEASE_MOVED)
++		status = -NFS4ERR_LEASE_MOVED;
++	return status;
++}
++#endif	/* CONFIG_NFS_V4_1 */
++
++/**
++ * nfs4_proc_get_locations - discover locations for a migrated FSID
++ * @inode: inode on FSID that is migrating
++ * @locations: result of query
++ * @page: buffer
++ *
++ * Returns NFS4_OK on success, a negative NFS4ERR status code if the
++ * operation failed, or a negative errno if a local error occurred.
++ *
++ * On success, "locations" is filled in, but if the server has
++ * no locations information, NFS_ATTR_FATTR_V4_LOCATIONS is not
++ * asserted.
++ *
++ * -NFS4ERR_LEASE_MOVED is returned if the server still has leases
++ * from this client that require migration recovery.
++ */
++int nfs4_proc_get_locations(struct inode *inode,
++			    struct nfs4_fs_locations *locations,
++			    struct page *page)
++{
++	struct nfs_server *server = NFS_SERVER(inode);
++	struct nfs_client *clp = server->nfs_client;
++	const struct nfs4_mig_recovery_ops *ops =
++					clp->cl_mvops->mig_recovery_ops;
++	struct nfs4_exception exception = { };
++	int status;
++
++	dprintk("--> %s: FSID %llx:%llx on \"%s\"\n", __func__,
++		(unsigned long long)server->fsid.major,
++		(unsigned long long)server->fsid.minor,
++		clp->cl_hostname);
++	nfs_display_fhandle(NFS_FH(inode), __func__);
++
++	do {
++		status = ops->get_locations(inode, locations, page);
++		if (status != -NFS4ERR_DELAY)
++			break;
++		nfs4_handle_exception(server, status, &exception);
++	} while (exception.retry);
++
++	dprintk("<-- %s status=%d\n", __func__, status);
++	return status;
++}
++
+ static int _nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct nfs4_secinfo_flavors *flavors)
+ {
+ 	int status;
+@@ -7043,10 +7188,12 @@ static const struct nfs4_state_maintenance_ops nfs41_state_renewal_ops = {
+ #endif
  
- 	if (dest_keyring) {
--		ret = __key_link_begin(dest_keyring, type, description,
--				       &prealloc);
-+		ret = __key_link_begin(dest_keyring, &index_key, &prealloc);
- 		if (ret < 0)
- 			goto link_prealloc_failed;
- 	}
-@@ -400,7 +404,7 @@ static int construct_alloc_key(struct key_type *type,
+ static const struct nfs4_mig_recovery_ops nfs40_mig_recovery_ops = {
++	.get_locations = _nfs40_proc_get_locations,
+ };
  
- 	mutex_unlock(&key_construction_mutex);
- 	if (dest_keyring)
--		__key_link_end(dest_keyring, type, prealloc);
-+		__key_link_end(dest_keyring, &index_key, prealloc);
- 	mutex_unlock(&user->cons_lock);
- 	*_key = key;
- 	kleave(" = 0 [%d]", key_serial(key));
-@@ -416,7 +420,7 @@ key_already_present:
- 		ret = __key_link_check_live_key(dest_keyring, key);
- 		if (ret == 0)
- 			__key_link(dest_keyring, key, &prealloc);
--		__key_link_end(dest_keyring, type, prealloc);
-+		__key_link_end(dest_keyring, &index_key, prealloc);
- 		if (ret < 0)
- 			goto link_check_failed;
- 	}
+ #if defined(CONFIG_NFS_V4_1)
+ static const struct nfs4_mig_recovery_ops nfs41_mig_recovery_ops = {
++	.get_locations = _nfs41_proc_get_locations,
+ };
+ #endif	/* CONFIG_NFS_V4_1 */
+ 
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 4be8d13..c63f4b7 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -718,13 +718,15 @@ static int nfs4_stat_to_errno(int);
+ 				 encode_sequence_maxsz + \
+ 				 encode_putfh_maxsz + \
+ 				 encode_lookup_maxsz + \
+-				 encode_fs_locations_maxsz)
++				 encode_fs_locations_maxsz + \
++				 encode_renew_maxsz)
+ #define NFS4_dec_fs_locations_sz \
+ 				(compound_decode_hdr_maxsz + \
+ 				 decode_sequence_maxsz + \
+ 				 decode_putfh_maxsz + \
+ 				 decode_lookup_maxsz + \
+-				 decode_fs_locations_maxsz)
++				 decode_fs_locations_maxsz + \
++				 decode_renew_maxsz)
+ #define NFS4_enc_secinfo_sz 	(compound_encode_hdr_maxsz + \
+ 				encode_sequence_maxsz + \
+ 				encode_putfh_maxsz + \
+@@ -2636,11 +2638,20 @@ static void nfs4_xdr_enc_fs_locations(struct rpc_rqst *req,
+ 
+ 	encode_compound_hdr(xdr, req, &hdr);
+ 	encode_sequence(xdr, &args->seq_args, &hdr);
+-	encode_putfh(xdr, args->dir_fh, &hdr);
+-	encode_lookup(xdr, args->name, &hdr);
+-	replen = hdr.replen;	/* get the attribute into args->page */
+-	encode_fs_locations(xdr, args->bitmask, &hdr);
++	if (args->migration) {
++		encode_putfh(xdr, args->fh, &hdr);
++		replen = hdr.replen;
++		encode_fs_locations(xdr, args->bitmask, &hdr);
++		if (args->renew)
++			encode_renew(xdr, args->clientid, &hdr);
++	} else {
++		encode_putfh(xdr, args->dir_fh, &hdr);
++		encode_lookup(xdr, args->name, &hdr);
++		replen = hdr.replen;
++		encode_fs_locations(xdr, args->bitmask, &hdr);
++	}
+ 
++	/* Set up reply kvec to capture returned fs_locations array. */
+ 	xdr_inline_pages(&req->rq_rcv_buf, replen << 2, &args->page,
+ 			0, PAGE_SIZE);
+ 	encode_nops(&hdr);
+@@ -6690,13 +6701,26 @@ static int nfs4_xdr_dec_fs_locations(struct rpc_rqst *req,
+ 	status = decode_putfh(xdr);
+ 	if (status)
+ 		goto out;
+-	status = decode_lookup(xdr);
+-	if (status)
+-		goto out;
+-	xdr_enter_page(xdr, PAGE_SIZE);
+-	status = decode_getfattr_generic(xdr, &res->fs_locations->fattr,
++	if (res->migration) {
++		xdr_enter_page(xdr, PAGE_SIZE);
++		status = decode_getfattr_generic(xdr,
++					&res->fs_locations->fattr,
+ 					 NULL, res->fs_locations,
+ 					 res->fs_locations->server);
++		if (status)
++			goto out;
++		if (res->renew)
++			status = decode_renew(xdr);
++	} else {
++		status = decode_lookup(xdr);
++		if (status)
++			goto out;
++		xdr_enter_page(xdr, PAGE_SIZE);
++		status = decode_getfattr_generic(xdr,
++					&res->fs_locations->fattr,
++					 NULL, res->fs_locations,
++					 res->fs_locations->server);
++	}
+ out:
+ 	return status;
+ }
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 104b62f..db5a1bc 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1040,14 +1040,18 @@ struct nfs4_fs_locations {
+ struct nfs4_fs_locations_arg {
+ 	struct nfs4_sequence_args	seq_args;
+ 	const struct nfs_fh *dir_fh;
++	const struct nfs_fh *fh;
+ 	const struct qstr *name;
+ 	struct page *page;
+ 	const u32 *bitmask;
++	clientid4 clientid;
++	unsigned char migration:1, renew:1;
+ };
+ 
+ struct nfs4_fs_locations_res {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs4_fs_locations       *fs_locations;
++	unsigned char			migration:1, renew:1;
+ };
+ 
+ struct nfs4_secinfo4 {
 
