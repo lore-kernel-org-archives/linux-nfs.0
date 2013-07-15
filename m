@@ -1,93 +1,228 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38400 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:50587 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756379Ab3GZPlL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Jul 2013 11:41:11 -0400
-Date: Fri, 26 Jul 2013 11:41:10 -0400
-To: Spelic <spelic@shiftmail.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Nfs4 idmapping: new kernel sends numeric
-Message-ID: <20130726154110.GD30651@fieldses.org>
-References: <51F1B0FF.4010602@shiftmail.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <51F1B0FF.4010602@shiftmail.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1751566Ab3GOEcQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Jul 2013 00:32:16 -0400
+Date: Mon, 15 Jul 2013 14:32:03 +1000
+From: NeilBrown <neilb@suse.de>
+To: "J.Bruce Fields" <bfields@citi.umich.edu>
+Cc: Olga Kornievskaia <aglo@citi.umich.edu>, NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Is tcp autotuning really what NFS wants?
+Message-ID: <20130715143203.51bc583b@notabene.brown>
+In-Reply-To: <20130710190727.GA22305@fieldses.org>
+References: <20130710092255.0240a36d@notabene.brown>
+	<20130710022735.GI8281@fieldses.org>
+	<20130710143233.77e35721@notabene.brown>
+	<20130710190727.GA22305@fieldses.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/0MaPkKT83s7tkRIGQDfwsDU"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 26, 2013 at 01:13:03AM +0200, Spelic wrote:
-> Hi all
-> we have an ubuntu 10.04 NFS4 client and an ubuntu 13.04 NFS4 server. LDAP.
-> The serverside filesystem sees perfect UID/GIDs for files, but sends
-> numeric ones to client side. Client side then maps to
-> nobody/nogroup. Or this is what it seems
+--Sig_/0MaPkKT83s7tkRIGQDfwsDU
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-The client *should* be able to map those id's.  I think this might be a
-bug in older idmapd?
+On Wed, 10 Jul 2013 15:07:28 -0400 "J.Bruce Fields" <bfields@citi.umich.edu>
+wrote:
 
-You can work around this by turning off the new server behavior by
-setting the nfsd.nfs4_disable_idmapping module parameter to 0.
+> On Wed, Jul 10, 2013 at 02:32:33PM +1000, NeilBrown wrote:
+> > On Tue, 9 Jul 2013 22:27:35 -0400 "J.Bruce Fields" <bfields@citi.umich.=
+edu>
+> > wrote:
+> >=20
+> > > On Wed, Jul 10, 2013 at 09:22:55AM +1000, NeilBrown wrote:
+> > > >=20
+> > > > Hi,
+> > > >  I just noticed this commit:
+> > > >=20
+> > > > commit 9660439861aa8dbd5e2b8087f33e20760c2c9afc
+> > > > Author: Olga Kornievskaia <aglo@citi.umich.edu>
+> > > > Date:   Tue Oct 21 14:13:47 2008 -0400
+> > > >=20
+> > > >     svcrpc: take advantage of tcp autotuning
+> > > >=20
+> > > >=20
+> > > > which I must confess surprised me.  I wonder if the full implicatio=
+ns of
+> > > > removing that functionality were understood.
+> > > >=20
+> > > > Previously nfsd would set the transmit buffer space for a connectio=
+n to
+> > > > ensure there is plenty to hold all replies.  Now it doesn't.
+> > > >=20
+> > > > nfsd refuses to accept a request if there isn't enough space in the=
+ transmit
+> > > > buffer to send a reply.  This is important to ensure that each repl=
+y gets
+> > > > sent atomically without blocking and there is no risk of replies ge=
+tting
+> > > > interleaved.
+>=20
+> By the way, it's xpt_mutex that really guarantees non-interleaving,
+> isn't it?
 
---b.
+Yes.  I had the two different things confused.  The issue is only about
+blocking on writes and consequently tying up nfsd threads.
 
-> 
-> This is a packet from server to client due to an "ls -l"
-> 
-> 0000  00 25 64 fc 69 c6 52 54  00 15 36 aa 08 00 45 00   .%d.i.RT ..6...E.
-> 0010  00 f4 68 22 40 00 40 06  42 39 c0 a8 07 30 c0 a8   ..h"@.@. B9...0..
-> 0020  07 28 08 01 03 58 8c 62  27 4e 16 ac d1 51 80 18   .(...X.b 'N...Q..
-> 0030  00 bd 90 8f 00 00 01 01  08 0a 1c c8 49 28 05 6c   ........ ....I(.l
-> 0040  11 d3 80 00 00 bc 62 a6  2a c7 00 00 00 01 00 00   ......b. *.......
-> 0050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00   ........ ........
-> 0060  00 00 00 00 00 00 00 00  00 02 00 00 00 16 00 00   ........ ........
-> 0070  00 00 00 00 00 09 00 00  00 00 00 00 00 02 00 10   ........ ........
-> 0080  01 1a 00 30 a2 3a 00 00  00 78 00 00 00 01 51 ee   ...0.:.. .x....Q.
-> 0090  5a 4f 27 aa 8d 2b 00 00  00 00 49 3e 00 00 45 91   ZO'..+.. ..I>..E.
-> 00a0  00 63 f4 8c 43 f5 b7 45  af ac 40 80 06 ce 00 00   .c..C..E ..@.....
-> 00b0  00 00 01 c0 00 02 00 00  01 a4 00 00 00 01 00 00   ........ ........
-> 00c0  00 04 31 30 33 37 00 00  00 02 32 30 00 00 00 00   ..1037.. ..20....
-> 00d0  00 00 00 00 00 00 00 00  00 00 49 3e 10 00 00 00   ........ ..I>....
-> 00e0  00 00 51 ee 5a 3d 11 04  0b e0 00 00 00 00 51 ee   ..Q.Z=.. ......Q.
-> 00f0  5a 4f 27 aa 8d 2b 00 00  00 00 51 ee 5a 4f 27 aa   ZO'..+.. ..Q.ZO'.
-> 0100  8d 2b .+
-> 
-> 
-> The 1037 and 20 you see are the numeric uid and gid being sent to
-> client side for one file, but I suspect client side wants usernames
-> and groupnames as strings, not as numbers. So remaps to nobody.
-> 
-> Curiously when clientside creates a file I don't see numeric uid or
-> string usernames passing at all, but the filesystem at serverside
-> has correct uid/gid for the file being created so somehow they are
-> passed. I don't really know how to read the NFS4 packets...
-> 
-> Is it an /etc/request-key.conf  problem? I just installed keyutils
-> but doesn't appear to help.
-> 
-> This is idmapd.conf on both sides
-> ============================
-> [General]
-> 
-> Verbosity = 10
-> Pipefs-Directory = /run/rpc_pipefs
-> # set your own domain here, if id differs from FQDN minus hostname
-> Domain = localdomain
-> 
-> [Mapping]
-> 
-> Nobody-User = nobody
-> Nobody-Group = nogroup
-> 
-> [Translation]
-> 
-> Method = nsswitch
-> ============================
-> 
-> Thanks for any help
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>=20
+> I think of the svc_tcp_has_wspace checks as solving a problem of
+> fairness between clients.  If we only had one client, everything would
+> work without them.  But when we have multiple clients we don't want a
+> single slow client to be able to tie block every thread waiting for that
+> client to receive read data.  Is that accurate?
+
+It agrees with my understanding - yes.
+
+
+>=20
+> > > > The server starts out with a large estimate of the reply space (1M)=
+ and for
+> > > > NFSv3 and v2 it quickly adjusts this down to something realistic.  =
+For NFSv4
+> > > > it is much harder to estimate the space needed so it just assumes e=
+very
+> > > > reply will require 1M of space.
+> > > >=20
+> > > > This means that with NFSv4, as soon as you have enough concurrent r=
+equests
+> > > > such that 1M each reserves all of whatever window size was auto-tun=
+ed, new
+> > > > requests on that connection will be ignored.
+> > > >
+> > > > This could significantly limit the amount of parallelism that can b=
+e achieved
+> > > > for a single TCP connection (and given that the Linux client strong=
+ly prefers
+> > > > a single connection now, this could become more of an issue).
+> > >=20
+> > > Worse, I believe it can deadlock completely if the transmit buffer
+> > > shrinks too far, and people really have run into this:
+> > >=20
+> > > 	http://mid.gmane.org/<20130125185748.GC29596@fieldses.org>
+> > >=20
+> > > Trond's suggestion looked at the time like it might work and be doabl=
+e:
+> > >=20
+> > > 	http://mid.gmane.org/<4FA345DA4F4AE44899BD2B03EEEC2FA91833C1D8@sacex=
+cmbx05-prd.hq.netapp.com>
+> > >=20
+> > > but I dropped it.
+> >=20
+> > I would probably generalise Trond's suggestion and allow "N" extra requ=
+ests
+> > through that exceed the reservation, when N is related to the number of=
+ idle
+> > threads.  squareroot might be nice, but half is probably easiest.
+> >=20
+> > If any send takes more than 30 seconds the sk_sndtimeo will kick in and=
+ close
+> > the connection so a really bad connection won't block threads indefinit=
+ely.
+> >=20
+> >=20
+> > And yes - a nice test case would be good.
+> >=20
+> > What do you think of the following (totally untested - just for comment=
+)?
+>=20
+> In cases where the disk is the bottleneck, there aren't actually going
+> to be idle threads, are there?  In which case I don't think this helps
+> save a stuck client.
+
+Do we care about the disk being a bottleneck?  We don't currently try to
+handle that situation at all - if the disk is slow, everything slows down.
+Unless you have to separate clients using two separate devices, then I think
+that is the right think to do.  Limiting each filesystem to some number of
+threads might be interesting but I don't think there would be much call for
+it.
+
+The present issue is when a client or network is slow and could thereby
+interfere with the response to other clients.
+
+Certainly the deadlock that can happen if write buffer space drops below 1M=
+eg
+would be an issue when very few clients are active.
+
+
+>=20
+> Trond's suggestion doesn't have the same limitation, if I understand it
+> correctly.
+
+I think I missed the "hand off to a workqueue" bit the first time.
+
+I guess something like changing the "mutex_lock" in svc_send to
+"mutex_try_lock" and if that fails, punt to a work-queue. We would need to
+split the buffer space off the rqstp and attach it to the work struct.
+Each rqstp could have a small array of work_structs and that sets the limit
+on the number of requests that can be accepted when there is no wspace.
+
+We probably don't even need a workqueue.  After completing a send, svc_send
+can check if another reply has been queued and if so, it starts sending it -
+if there is enough wspace.  If no wspace just do nothing.  The wspace
+callback can queue the socket, and svc_xprt_enqueue can queue up an nfsd
+thread if there is write work to do.  svc_handle_xprt() can do the actual
+send.
+
+This would require modifying all the xpo_sendto routines and the routines
+they call to take an index into the list of send buffers per socket.  Or
+maybe a pointer to a "delayed reply" structure.
+
+
+For each delayed reply we would need:
+ - struct xdr_buf  - to hold the reply
+ - struct page *[RPCSVC_MAXPAGES]  - to hold the pages so we can free them
+                                     when done
+ - struct sockaddr_storage         - to hold source address for UDP reply
+ - struct sockaddr_storage         - to hold the dest address for UDP
+ - maybe something else for RDMA?  - svc_rdma_sendto uses rqstp->rq_arg - n=
+ot
+                                     sure why.
+
+We could possible allocate these as needed.  If the kmalloc fails, just use
+"mutex_lock" instead of "mutex_trylock" and block for a while.
+
+Note that while this structure would be smaller than "struct svc_rqst", it =
+is
+not completely trivial.  It might be just as easy to allocate a new "svc_rq=
+st"
+structure.  Or fork new nfsd threads.
+
+
+I think the key issue is really to allow some nfsd threads to block on
+writing the reply, but to firmly limit the number which do.  This is what my
+patch tried to do.
+Punting to a work queue might allow a little less memory to be allocated
+to end up with the same number of spare threads, but would require a lot mo=
+re
+code churn.
+
+I wonder if it is time to revisit dynamic sizing of the nfsd thread pool.
+
+NeilBrown
+
+
+--Sig_/0MaPkKT83s7tkRIGQDfwsDU
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUeN7Qznsnt1WYoG5AQLfJw/+O99Mpj98xj3DjilRNT3+A1riZj1efXht
+I9+6n5SALbfHu/+n3jsigzOUh8cw4qQ/KH45uG9RNIFKjbXwRPPLBqeKnwVO7JBd
+b8N8hty5AGd1vmEIAV40KefVNeJpPoEZovTHG8W093QG52rIfW56uvztB3edhSOU
+qMJ1frWtj4fXWJ8LqwuSARBhP0p0YSrvVqD6YX60ozHemvzPodxJEhlya/32EBQN
+HaLpAbELra6cjzw+T+6fPAxOKZC1HrqOj50quQogUIcVFJRB5SbG4ZL3PK0NdKgG
+I5I18voFo11Iy5gd0KqTqRcnGstEJvyhAb2SUAgAFjEbB3eYHrqbx7ADR/14lYJn
+VwLLbYA7Gx+UyBPOxIktkD0QoP8IS0j8Q3Q/GT67Qqoy8Nsw/oPOFAvbVkS87NJm
+S5ocBwHK47MYIMhssI6tsFnkFl1TSpndeZuK0S4dLpGlTj93BSMHT+Kk7IUGYoRn
+7mDL+AHdQvOShmismbEyE9L8Q8wq9UzI/k8Xgh/uWP2uGgEcmgwcmbNSEaD4zzhr
+lROkEgEHKu3XsKBzydYcyNzaEvb3JknmscQUJOxMBUXT7HME7A1txnJyTAN8Ahhk
+BFz4aBRAIXSEtOglhFTh7KlITjT5wlYn+q5BnwwM6bCNDlEDsPT6lGCF0Q4ICKTV
+uItMxD5GOJE=
+=7jUe
+-----END PGP SIGNATURE-----
+
+--Sig_/0MaPkKT83s7tkRIGQDfwsDU--
