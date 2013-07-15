@@ -1,49 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:3831 "EHLO mx12.netapp.com"
+Received: from mout.perfora.net ([74.208.4.194]:56178 "EHLO mout.perfora.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934780Ab3GRXsP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Jul 2013 19:48:15 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Rick Macklem <rmacklem@uoguelph.ca>
-CC: Andre Heider <a.heider@gmail.com>, Chuck Lever <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFSv4: Fix a regression against the FreeBSD server
-Date: Thu, 18 Jul 2013 23:48:13 +0000
-Message-ID: <1374191292.27573.14.camel@leira.trondhjem.org>
-References: <1774242197.1390191.1374190255822.JavaMail.root@uoguelph.ca>
-In-Reply-To: <1774242197.1390191.1374190255822.JavaMail.root@uoguelph.ca>
-Content-Type: text/plain; charset="utf-8"
+	id S1753733Ab3GOB0a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 14 Jul 2013 21:26:30 -0400
+Date: Sun, 14 Jul 2013 21:26:20 -0400
+From: Jim Rees <rees@umich.edu>
+To: "J.Bruce Fields" <bfields@citi.umich.edu>
+Cc: NeilBrown <neilb@suse.de>, Olga Kornievskaia <aglo@citi.umich.edu>,
+        NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Is tcp autotuning really what NFS wants?
+Message-ID: <20130715012620.GC7429@umich.edu>
+References: <20130710092255.0240a36d@notabene.brown>
+ <20130710022735.GI8281@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130710022735.GI8281@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEzLTA3LTE4IGF0IDE5OjMwIC0wNDAwLCBSaWNrIE1hY2tsZW0gd3JvdGU6DQo+
-IEFuZHJlIEhlaWRlciB3cm90ZToNCj4gPiBPbiBXZWQsIEp1bCAxNywgMjAxMyBhdCAxMTo1OSBQ
-TSwgVHJvbmQgTXlrbGVidXN0DQo+ID4gPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90
-ZToNCj4gPiA+IFRlY2huaWNhbGx5LCB0aGUgTGludXggY2xpZW50IGlzIGFsbG93ZWQgYnkgdGhl
-IE5GU3Y0IHNwZWMgdG8gc2VuZA0KPiA+ID4gMyB3b3JkIGJpdG1hcHMgYXMgcGFydCBvZiBhbiBP
-UEVOIHJlcXVlc3QuIEhvd2V2ZXIsIHRoaXMgY2F1c2VzIHRoZQ0KPiA+ID4gY3VycmVudCBGcmVl
-QlNEIHNlcnZlciB0byByZXR1cm4gTkZTNEVSUl9BVFRSTk9UU1VQUCBlcnJvcnMuDQo+ID4gPg0K
-PiA+ID4gRml4IHRoZSByZWdyZXNzaW9uIGJ5IG1ha2luZyB0aGUgTGludXggY2xpZW50IHVzZSBh
-IDIgd29yZCBiaXRtYXANCj4gPiA+IHVubGVzcw0KPiA+ID4gZG9pbmcgTkZTdjQuMiB3aXRoIGxh
-YmVsZWQgTkZTLg0KPiA+ID4NCj4gPiA+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8
-VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ID4gDQo+ID4gVGVzdGVkLWJ5OiBBbmRyZSBI
-ZWlkZXIgPGEuaGVpZGVyQGdtYWlsLmNvbT4NCj4gPiANCj4gSSd2ZSBhdHRhY2hlZCB0aGUgcGF0
-Y2ggSSBwbGFuIHRvIGNvbW1pdCB0byBGcmVlQlNEJ3MgaGVhZCBzb29uLCB3aGljaA0KPiBmaXhl
-cyB0aGUgc2VydmVyIHNvIHRoYXQgaXQgY2hlY2tzIGZvciB0aGUgaGlnaCBvcmRlciBiaXRtYXBz
-IHdvcmRzDQo+IGJlaW5nIG5vbi16ZXJvIGJlZm9yZSByZXBseWluZyB3aXRoIE5GUzRfRVJSX0FU
-VFJOT1RTVVBQLg0KPiANCj4gVGhlIHBhdGNoIGlzIHByZXR0eSBzdHJhaWdodGZvcndhcmQsIGJ1
-dCBpZiB5b3UgY2FuIGFwcGx5IGl0IHRvIHlvdXINCj4gc2VydmVyIGFuZCB0ZXN0IGl0IGFnYWlu
-c3QgdGhlIHVucGF0Y2hlZCBMaW51eCBjbGllbnQsIHRoYXQgd291bGQgYmUNCj4gYXBwcmVjaWF0
-ZWQuDQo+IA0KPiBJdCB3aWxsIHRha2UgYSB3aGlsZSBmb3IgdGhlIHBhdGNoIHRvIGZpbmQgaXRz
-IHdheSB0byBhIEZyZWVCU0QgcmVsZWFzZSwNCj4gc28gaGF2aW5nIHRoZSB3b3JrYXJvdW5kIGlu
-IHRoZSBMaW51eCBjbGllbnQgd2lsbCBiZSB2ZXJ5IGhlbHBmdWwuDQoNClJpZ2h0LiBTbywgbXkg
-cGxhbiBpcyB0byBzZW5kIHBhdGNoIDEvMiBhcyBhIGJ1Z2ZpeCB3aXRoaW4gdGhlIG5leHQgZmV3
-DQpkYXlzLCB0byBlbnN1cmUgdGhhdCB3ZSBlbmQgdXAgd2l0aCBubyBnYXAgaW4gTkZTdjQgY2xp
-ZW50IGZ1bmN0aW9uYWxpdHkNCmJldHdlZW4gdGhlIHJlbGVhc2UgdmVyc2lvbnMgb2YgTGludXgg
-My4xMCBhbmQgMy4xMS4NCg0KU2luY2UgMi8yIGlzIG1vcmUgb2YgYSBjbGVhbnVwLCBhbmQgYWN0
-dWFsbHkgY2hhbmdlcyB0aGUgZnVuY3Rpb25hbGl0eQ0KdG8gc2VuZCBvbmx5IGEgMS13b3JkIGJp
-dG1hcCBmb3IgdHJ1bmNhdGUoKSBjYWxscywgSSdsbCB3YWl0IGZvciB0aGUNCjMuMTIgbWVyZ2Ug
-d2luZG93IGJlZm9yZSBjb21taXR0aW5nIHRoYXQuDQoNCkNoZWVycw0KICBUcm9uZA0KDQotLSAN
-ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
-VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+J.Bruce Fields wrote:
+
+  On Wed, Jul 10, 2013 at 09:22:55AM +1000, NeilBrown wrote:
+  > 
+  > Hi,
+  >  I just noticed this commit:
+  > 
+  > commit 9660439861aa8dbd5e2b8087f33e20760c2c9afc
+  > Author: Olga Kornievskaia <aglo@citi.umich.edu>
+  > Date:   Tue Oct 21 14:13:47 2008 -0400
+  > 
+  >     svcrpc: take advantage of tcp autotuning
+  > 
+  > 
+  > which I must confess surprised me.  I wonder if the full implications of
+  > removing that functionality were understood.
+  > 
+  > Previously nfsd would set the transmit buffer space for a connection to
+  > ensure there is plenty to hold all replies.  Now it doesn't.
+  > 
+  > nfsd refuses to accept a request if there isn't enough space in the transmit
+  > buffer to send a reply.  This is important to ensure that each reply gets
+  > sent atomically without blocking and there is no risk of replies getting
+  > interleaved.
+  > 
+  > The server starts out with a large estimate of the reply space (1M) and for
+  > NFSv3 and v2 it quickly adjusts this down to something realistic.  For NFSv4
+  > it is much harder to estimate the space needed so it just assumes every
+  > reply will require 1M of space.
+  > 
+  > This means that with NFSv4, as soon as you have enough concurrent requests
+  > such that 1M each reserves all of whatever window size was auto-tuned, new
+  > requests on that connection will be ignored.
+  >
+  > This could significantly limit the amount of parallelism that can be achieved
+  > for a single TCP connection (and given that the Linux client strongly prefers
+  > a single connection now, this could become more of an issue).
+  
+  Worse, I believe it can deadlock completely if the transmit buffer
+  shrinks too far, and people really have run into this:
+
+It's been a few years since I looked at this, but are you sure autotuning
+reduces the buffer space available on the sending socket? That doesn't sound
+like correct behavior to me. I know we thought about this at the time.
+
+It does seem like a bug that we don't multiply the needed send buffer space
+by the number of threads. I think that's because we don't know how many
+threads there are going to be in svc_setup_socket()?
