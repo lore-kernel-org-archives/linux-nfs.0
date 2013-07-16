@@ -1,87 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41533 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932820Ab3GVTz6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Jul 2013 15:55:58 -0400
-Date: Mon, 22 Jul 2013 15:55:56 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [RFC 4/5] NFSD: Defer copying
-Message-ID: <20130722195556.GG10109@fieldses.org>
-References: <1374267830-30154-1-git-send-email-bjschuma@netapp.com>
- <1374267830-30154-5-git-send-email-bjschuma@netapp.com>
- <20130722185002.GB10109@fieldses.org>
- <51ED8549.3040308@netapp.com>
- <20130722193000.GD10109@fieldses.org>
- <51ED89DC.7050406@netapp.com>
- <20130722194331.GF10109@fieldses.org>
- <51ED8DD8.1060703@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <51ED8DD8.1060703@netapp.com>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:55296 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754271Ab3GPNQx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Jul 2013 09:16:53 -0400
+Received: by mail-gg0-f174.google.com with SMTP id y3so167986ggc.33
+        for <linux-nfs@vger.kernel.org>; Tue, 16 Jul 2013 06:16:52 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Al Viro <viro@ZenIV.linux.org.uk>
+Subject: [PATCH] rpc_pipe: convert back to simple_dir_inode_operations
+Date: Tue, 16 Jul 2013 09:16:45 -0400
+Message-Id: <1373980605-31852-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 22, 2013 at 03:54:00PM -0400, Bryan Schumaker wrote:
-> On 07/22/2013 03:43 PM, J. Bruce Fields wrote:
-> > On Mon, Jul 22, 2013 at 03:37:00PM -0400, Bryan Schumaker wrote:
-> >> On 07/22/2013 03:30 PM, J. Bruce Fields wrote:
-> >>> On Mon, Jul 22, 2013 at 03:17:29PM -0400, Bryan Schumaker wrote:
-> >>>> On 07/22/2013 02:50 PM, J. Bruce Fields wrote:
-> >>>>> On Fri, Jul 19, 2013 at 05:03:49PM -0400, bjschuma@netapp.com wrote:
-> >>>>>> From: Bryan Schumaker <bjschuma@netapp.com>
-> >>>>>>
-> >>>>>> Rather than performing the copy right away, schedule it to run later and
-> >>>>>> reply to the client.  Later, send a callback to notify the client that
-> >>>>>> the copy has finished.
-> >>>>>
-> >>>>> I believe you need to implement the referring triple support described
-> >>>>> in http://tools.ietf.org/html/rfc5661#section-2.10.6.3 to fix the race
-> >>>>> described in
-> >>>>> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-15.1.3
-> >>>>> .
-> >>>>
-> >>>> I'll re-read and re-write.
-> >>>>
-> >>>>>
-> >>>>> I see cb_delay initialized below, but not otherwise used.  Am I missing
-> >>>>> anything?
-> >>>>
-> >>>> Whoops!  I was using that earlier to try to fake up a callback, but I eventually decided it's easier to just do the copy asynchronously.  I must have forgotten to take it out :(
-> >>>>
-> >>>>>
-> >>>>> What about OFFLOAD_STATUS and OFFLOAD_ABORT?
-> >>>>
-> >>>> I haven't thought out those too much... I haven't thought about a use for them on the client yet.
-> >>>
-> >>> If it might be a long-running copy, I assume the client needs the
-> >>> ability to abort if the caller is killed.
-> >>>
-> >>> (Dumb question: what happens on the network partition?  Does the server
-> >>> abort the copy when it expires the client state?)
-> >>>
-> >>> In any case,
-> >>> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-15.1.3
-> >>> says "If a server's COPY operation returns a stateid, then the server
-> >>> MUST also support these operations: CB_OFFLOAD, OFFLOAD_ABORT, and
-> >>> OFFLOAD_STATUS."
-> >>>
-> >>> So even if we've no use for them on the client then we still need to
-> >>> implement them (and probably just write a basic pynfs test).  Either
-> >>> that or update the spec.
-> >>
-> >> Fair enough.  I'll think it out and do something!  Easy solution: save this patch for later and only support the sync version of copy for the final version of this patch series.
-> > 
-> > I can't remember--does the spec give the server a clear way to bail out
-> > and tell the client to fall back on a normal copy in cases where the
-> > server knows the copy could take an unreasonable amount of time?
-> > 
-> > --b.
-> 
-> I don't think so.  Is there ever a case where copying over the network would be slower than copying on the server?
+Now that Al has fixed simple_lookup to account for the case where
+sb->s_d_op is set, there's no need to keep our own special lookup op.
 
-Mybe not, but if the copy will take a minute, then we don't want to tie
-up an rpc slot for a minute.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ net/sunrpc/rpc_pipe.c | 19 +------------------
+ 1 file changed, 1 insertion(+), 18 deletions(-)
 
---b.
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 406859c..017aedc 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -480,23 +480,6 @@ static const struct dentry_operations rpc_dentry_operations = {
+ 	.d_delete = rpc_delete_dentry,
+ };
+ 
+-/*
+- * Lookup the data. This is trivial - if the dentry didn't already
+- * exist, we know it is negative.
+- */
+-static struct dentry *
+-rpc_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
+-{
+-	if (dentry->d_name.len > NAME_MAX)
+-		return ERR_PTR(-ENAMETOOLONG);
+-	d_add(dentry, NULL);
+-	return NULL;
+-}
+-
+-static const struct inode_operations rpc_dir_inode_operations = {
+-	.lookup		= rpc_lookup,
+-};
+-
+ static struct inode *
+ rpc_get_inode(struct super_block *sb, umode_t mode)
+ {
+@@ -509,7 +492,7 @@ rpc_get_inode(struct super_block *sb, umode_t mode)
+ 	switch (mode & S_IFMT) {
+ 	case S_IFDIR:
+ 		inode->i_fop = &simple_dir_operations;
+-		inode->i_op = &rpc_dir_inode_operations;
++		inode->i_op = &simple_dir_inode_operations;
+ 		inc_nlink(inode);
+ 	default:
+ 		break;
+-- 
+1.8.3.1
+
