@@ -1,303 +1,139 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:62897 "EHLO mx12.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:41908 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751323Ab3GXP75 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Jul 2013 11:59:57 -0400
-From: <andros@netapp.com>
-To: <trond.myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 2/2] NFSv4.1 Use the MDS nfs_server authflavor for pNFS data server connections
-Date: Wed, 24 Jul 2013 11:59:50 -0400
-Message-ID: <1374681590-2134-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1374681590-2134-1-git-send-email-andros@netapp.com>
-References: <1374681590-2134-1-git-send-email-andros@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1750935Ab3GPErE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Jul 2013 00:47:04 -0400
+Date: Tue, 16 Jul 2013 14:46:51 +1000
+From: NeilBrown <neilb@suse.de>
+To: Ben Greear <greearb@candelatech.com>
+Cc: Dean <seattleplus@gmail.com>, "J.Bruce Fields" <bfields@citi.umich.edu>,
+        Olga Kornievskaia <aglo@citi.umich.edu>,
+        NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Is tcp autotuning really what NFS wants?
+Message-ID: <20130716144651.3d93940d@notabene.brown>
+In-Reply-To: <51E48670.9070901@candelatech.com>
+References: <20130710092255.0240a36d@notabene.brown>
+	<20130710022735.GI8281@fieldses.org>
+	<51DD9AD5.1030508@gmail.com>
+	<51DD9C5A.3000505@candelatech.com>
+	<20130715143527.4eca7283@notabene.brown>
+	<51E48670.9070901@candelatech.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/2nYGp4wP/C7uPCCGFpO9ax3"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+--Sig_/2nYGp4wP/C7uPCCGFpO9ax3
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-pNFS data servers are not mounted in the normal sense as there is no associated
-nfs_server structure.
+On Mon, 15 Jul 2013 16:32:00 -0700 Ben Greear <greearb@candelatech.com> wro=
+te:
 
-Commit 4edaa308 "NFS: Use "krb5i" to establish NFSv4 state whenever possible"
-uses the nfs_client cl_rpcclient for all state management operations, and
-will use krb5i or auth_sys with no regard to the mount command authflavor
-choice.  For normal mounted servers, the nfs_server client authflavor is used
-for all non-state management operations
+> On 07/14/2013 09:35 PM, NeilBrown wrote:
+> > On Wed, 10 Jul 2013 10:39:38 -0700 Ben Greear <greearb@candelatech.com>=
+ wrote:
+> >
+> >> On 07/10/2013 10:33 AM, Dean wrote:
+> >>>   > This could significantly limit the amount of parallelism that can=
+ be achieved for a single TCP connection (and given that the
+> >>>   > Linux client strongly prefers a single connection now, this could=
+ become more of an issue).
+> >>>
+> >>> I understand the simplicity in using a single tcp connection, but per=
+formance-wise it is definitely not the way to go on WAN links. When even a =
+miniscule amount
+> >>> of packet loss is added to the link (<0.001% packet loss), the tcp bu=
+ffer collapses and performance drops significantly (especially on 10GigE WA=
+N links).  I
+> >>> think new TCP algorithms could help the problem somewhat, but nothing=
+ available today makes much of a difference vs. cubic.
+> >>>
+> >>> Using multiple tcp connections allows better saturation of the link, =
+since when packet loss occurs on a stream, the other streams can fill the v=
+oid.  Today, the
+> >>> only solution is to scale up the number of physical clients, which ha=
+s high coordination overhead, or use a wan accelerator such as Bitspeed or =
+Riverbed (which
+> >>> comes with its own issues such as extra hardware, cost, etc).
+> >>
+> >> I have a set of patches that allows one to do multiple unique mounts t=
+o the same server from a single
+> >> client, but the patches are for the client side, so it would not help
+> >> non-Linux clients.  And, the patches were rejected for upstream as not=
+ being
+> >> useful.  But, if you are interested in such, please let me know and I =
+can point
+> >> you to them...
+> >
+> > Yes please!
+>=20
+>=20
+> I haven't ported these forward to 3.10 yet, but you can find my 3.9 tree
+> here:
+>=20
+> http://dmz2.candelatech.com/git/gitweb.cgi?p=3Dlinux-3.9.dev.y/.git;a=3Ds=
+ummary
+>=20
+> There's a bunch of other patches, but the nfs related ones are all in a r=
+ow
+> and the patches are rebased, so you can probably pull them out w/out
+> too much difficulty.  The patches introduce a bug where it fails to compi=
+le
+> w/out NFS 4.1 defined..I haven't bothered to fix it yet but it's probably
+> simple..or just compile with NFS 4.1 as I do.
+>=20
+> Older trees found here, but we don't bother back-porting many patches,
+> so I'd use the latest if you can.
+>=20
+> http://dmz2.candelatech.com/git/gitweb.cgi
+>=20
+> And, you'll need a patched mount.nfs:
+>=20
+> https://github.com/greearb/nfs-utils-ct
+>=20
+> I hope to get started on porting these to 3.10 later this week..  If
+> there is any interest in this patch series or something like it going
+> upstream (there wasn't in the past, I've no good reason to think that
+> has changed), let me know and I will clean them up and post them to
+> the mailing list again...
+>=20
+> If you search for greearb@candelatech.com and 'bind to local' you
+> can find previous threads in the mailing list archives...
 
-Data servers use the same authflavor as the MDS mount for non-state management
-operations. Note that the MDS has performed any sub-mounts and created an
-nfs_server rpc client. Add an array of struct rpc_clnt to struct
-nfs_client, one for each possible auth flavor for data server RPC connections.
+Thanks.
+You are supporting multiple independent mounts by using different client-si=
+de
+IP addresses.  That has clear benefits for controlling routing, but also
+admin costs if you don't care about routing.  The latter case applies to me.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/client.c            | 14 +++++++++-
- fs/nfs/nfs4filelayout.c    | 65 ++++++++++++++++++++++++++++++++++++++--------
- fs/nfs/nfs4filelayout.h    | 17 ++++++++++++
- fs/nfs/nfs4filelayoutdev.c |  3 ++-
- include/linux/nfs_fs_sb.h  |  5 ++++
- 5 files changed, 91 insertions(+), 13 deletions(-)
+So I'll bookmark this, but it isn't what I need just now.
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 2dceee4..fc63967 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -152,7 +152,7 @@ struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_init)
- {
- 	struct nfs_client *clp;
- 	struct rpc_cred *cred;
--	int err = -ENOMEM;
-+	int err = -ENOMEM, i;
- 
- 	if ((clp = kzalloc(sizeof(*clp), GFP_KERNEL)) == NULL)
- 		goto error_0;
-@@ -177,6 +177,8 @@ struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_init)
- 
- 	INIT_LIST_HEAD(&clp->cl_superblocks);
- 	clp->cl_rpcclient = ERR_PTR(-EINVAL);
-+	for (i = 0; i < NFS_NUM_DS_RPC_CLNT; i++)
-+		clp->cl_ds_clnt[i] = ERR_PTR(-EINVAL);
- 
- 	clp->cl_proto = cl_init->proto;
- 	clp->cl_net = get_net(cl_init->net);
-@@ -238,6 +240,8 @@ static void pnfs_init_server(struct nfs_server *server)
-  */
- void nfs_free_client(struct nfs_client *clp)
- {
-+	int i;
-+
- 	dprintk("--> nfs_free_client(%u)\n", clp->rpc_ops->version);
- 
- 	nfs_fscache_release_client_cookie(clp);
-@@ -246,6 +250,14 @@ void nfs_free_client(struct nfs_client *clp)
- 	if (!IS_ERR(clp->cl_rpcclient))
- 		rpc_shutdown_client(clp->cl_rpcclient);
- 
-+	for (i = 0; i < NFS_NUM_DS_RPC_CLNT; i++) {
-+		if (!IS_ERR(clp->cl_ds_clnt[i])) {
-+			dprintk("%s shutdown data server client %p index %d\n",
-+				__func__, clp->cl_ds_clnt[i], i);
-+			rpc_shutdown_client(clp->cl_ds_clnt[i]);
-+		}
-+	}
-+
- 	if (clp->cl_machine_cred != NULL)
- 		put_rpccred(clp->cl_machine_cred);
- 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 17ed87e..eb33592 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -83,6 +83,31 @@ filelayout_get_dserver_offset(struct pnfs_layout_segment *lseg, loff_t offset)
- 	BUG();
- }
- 
-+/* Use the au_flavor of the MDS nfs_server RPC client to find or clone the
-+ * correct data server RPC client.
-+ *
-+ * Note that the MDS has already performed any sub-mounts and negotiated
-+ * a security flavor.
-+ */
-+static struct rpc_clnt *
-+filelayout_rpc_clnt(struct inode *inode, struct nfs_client *clp)
-+{
-+	rpc_authflavor_t flavor = NFS_SERVER(inode)->client->cl_auth->au_flavor;
-+	int index = filelayout_rpc_clnt_index(flavor);
-+
-+	if (index < 0)
-+		return ERR_PTR(index);
-+
-+	if (IS_ERR(clp->cl_ds_clnt[index])) {
-+		clp->cl_ds_clnt[index] =
-+			rpc_clone_client_set_auth(clp->cl_rpcclient, flavor);
-+
-+		dprintk("%s clone data server client %p flavor %d index %d \n",
-+			__func__, clp->cl_ds_clnt[index], flavor, index);
-+	}
-+	return clp->cl_ds_clnt[index];
-+}
-+
- static void filelayout_reset_write(struct nfs_write_data *data)
- {
- 	struct nfs_pgio_header *hdr = data->header;
-@@ -524,6 +549,7 @@ filelayout_read_pagelist(struct nfs_read_data *data)
- 	struct nfs_pgio_header *hdr = data->header;
- 	struct pnfs_layout_segment *lseg = hdr->lseg;
- 	struct nfs4_pnfs_ds *ds;
-+	struct rpc_clnt *ds_clnt;
- 	loff_t offset = data->args.offset;
- 	u32 j, idx;
- 	struct nfs_fh *fh;
-@@ -538,6 +564,11 @@ filelayout_read_pagelist(struct nfs_read_data *data)
- 	ds = nfs4_fl_prepare_ds(lseg, idx);
- 	if (!ds)
- 		return PNFS_NOT_ATTEMPTED;
-+
-+	ds_clnt = filelayout_rpc_clnt(hdr->inode, ds->ds_clp);
-+	if (IS_ERR(ds_clnt))
-+		return PNFS_NOT_ATTEMPTED;
-+
- 	dprintk("%s USE DS: %s cl_count %d\n", __func__,
- 		ds->ds_remotestr, atomic_read(&ds->ds_clp->cl_count));
- 
-@@ -552,8 +583,8 @@ filelayout_read_pagelist(struct nfs_read_data *data)
- 	data->mds_offset = offset;
- 
- 	/* Perform an asynchronous read to ds */
--	nfs_initiate_read(ds->ds_clp->cl_rpcclient, data,
--				  &filelayout_read_call_ops, RPC_TASK_SOFTCONN);
-+	nfs_initiate_read(ds_clnt, data, &filelayout_read_call_ops,
-+			RPC_TASK_SOFTCONN);
- 	return PNFS_ATTEMPTED;
- }
- 
-@@ -564,6 +595,7 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
- 	struct nfs_pgio_header *hdr = data->header;
- 	struct pnfs_layout_segment *lseg = hdr->lseg;
- 	struct nfs4_pnfs_ds *ds;
-+	struct rpc_clnt *ds_clnt;
- 	loff_t offset = data->args.offset;
- 	u32 j, idx;
- 	struct nfs_fh *fh;
-@@ -574,6 +606,11 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
- 	ds = nfs4_fl_prepare_ds(lseg, idx);
- 	if (!ds)
- 		return PNFS_NOT_ATTEMPTED;
-+
-+	ds_clnt = filelayout_rpc_clnt(hdr->inode, ds->ds_clp);
-+	if (IS_ERR(ds_clnt))
-+		return PNFS_NOT_ATTEMPTED;
-+
- 	dprintk("%s ino %lu sync %d req %Zu@%llu DS: %s cl_count %d\n",
- 		__func__, hdr->inode->i_ino, sync, (size_t) data->args.count,
- 		offset, ds->ds_remotestr, atomic_read(&ds->ds_clp->cl_count));
-@@ -591,9 +628,8 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
- 	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
- 
- 	/* Perform an asynchronous write */
--	nfs_initiate_write(ds->ds_clp->cl_rpcclient, data,
--				    &filelayout_write_call_ops, sync,
--				    RPC_TASK_SOFTCONN);
-+	nfs_initiate_write(ds_clnt, data, &filelayout_write_call_ops, sync,
-+				RPC_TASK_SOFTCONN);
- 	return PNFS_ATTEMPTED;
- }
- 
-@@ -1101,16 +1137,19 @@ static int filelayout_initiate_commit(struct nfs_commit_data *data, int how)
- {
- 	struct pnfs_layout_segment *lseg = data->lseg;
- 	struct nfs4_pnfs_ds *ds;
-+	struct rpc_clnt *ds_clnt;
- 	u32 idx;
- 	struct nfs_fh *fh;
- 
- 	idx = calc_ds_index_from_commit(lseg, data->ds_commit_index);
- 	ds = nfs4_fl_prepare_ds(lseg, idx);
--	if (!ds) {
--		prepare_to_resend_writes(data);
--		filelayout_commit_release(data);
--		return -EAGAIN;
--	}
-+	if (!ds) 
-+		goto out_err;
-+
-+	ds_clnt = filelayout_rpc_clnt(data->inode, ds->ds_clp);
-+	if (IS_ERR(ds_clnt))
-+		goto out_err;
-+
- 	dprintk("%s ino %lu, how %d cl_count %d\n", __func__,
- 		data->inode->i_ino, how, atomic_read(&ds->ds_clp->cl_count));
- 	data->commit_done_cb = filelayout_commit_done_cb;
-@@ -1119,9 +1158,13 @@ static int filelayout_initiate_commit(struct nfs_commit_data *data, int how)
- 	fh = select_ds_fh_from_commit(lseg, data->ds_commit_index);
- 	if (fh)
- 		data->args.fh = fh;
--	return nfs_initiate_commit(ds->ds_clp->cl_rpcclient, data,
-+	return nfs_initiate_commit(ds_clnt, data,
- 				   &filelayout_commit_call_ops, how,
- 				   RPC_TASK_SOFTCONN);
-+out_err:
-+	prepare_to_resend_writes(data);
-+	filelayout_commit_release(data);
-+	return -EAGAIN;
- }
- 
- static int
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index cebd20e..9bb39ec 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -136,6 +136,23 @@ filelayout_test_devid_invalid(struct nfs4_deviceid_node *node)
- 	return test_bit(NFS_DEVICEID_INVALID, &node->flags);
- }
- 
-+static inline int
-+filelayout_rpc_clnt_index(rpc_authflavor_t flavor)
-+{
-+	switch (flavor) {
-+		case RPC_AUTH_UNIX:
-+			return 0;
-+		case RPC_AUTH_GSS_KRB5:
-+			return 1;
-+		case RPC_AUTH_GSS_KRB5I:
-+			return 2;
-+		case RPC_AUTH_GSS_KRB5P:
-+			return 3;
-+		default:
-+			return -EINVAL;
-+	}
-+}
-+
- extern bool
- filelayout_test_devid_unavailable(struct nfs4_deviceid_node *node);
- 
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index 95604f6..fea056d 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -162,7 +162,7 @@ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
- 	int status = 0;
- 
- 	dprintk("--> %s DS %s au_flavor %d\n", __func__, ds->ds_remotestr,
--		mds_srv->nfs_client->cl_rpcclient->cl_auth->au_flavor);
-+		mds_srv->client->cl_auth->au_flavor);
- 
- 	list_for_each_entry(da, &ds->ds_addrs, da_node) {
- 		dprintk("%s: DS %s: trying address %s\n",
-@@ -186,6 +186,7 @@ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
- 		goto out_put;
- 
- 	ds->ds_clp = clp;
-+
- 	dprintk("%s [new] addr: %s\n", __func__, ds->ds_remotestr);
- out:
- 	return status;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index d221243..bd86a1b 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -20,6 +20,10 @@ struct nfs4_minor_version_ops;
- struct nfs41_server_scope;
- struct nfs41_impl_id;
- 
-+
-+/* One rpc clnt for each authentiction flavor */
-+#define NFS_NUM_DS_RPC_CLNT 4
-+
- /*
-  * The nfs_client identifies our client state to the server.
-  */
-@@ -56,6 +60,7 @@ struct nfs_client {
- 	struct rpc_cred		*cl_machine_cred;
- 
- #if IS_ENABLED(CONFIG_NFS_V4)
-+	struct rpc_clnt *	cl_ds_clnt[NFS_NUM_DS_RPC_CLNT];
- 	u64			cl_clientid;	/* constant */
- 	nfs4_verifier		cl_confirm;	/* Clientid verifier */
- 	unsigned long		cl_state;
--- 
-1.8.3.1
+Thanks,
+NeilBrown
 
+
+--Sig_/2nYGp4wP/C7uPCCGFpO9ax3
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUeTQOznsnt1WYoG5AQImUQ/+Iz0Hd5y3yugRiC14Ss17QJCyLzl4ZmgX
+DRtKOIO36HFoeff0Q9UEalb2+8RGY/3fOX46xNSaOTsAiHk72OuZGQg3CLc7akPt
+oCP5qcaf/oAbyrTYnJvQm9yk5oWLKE2iHOLUHJ+Cc6p033mnl9gVIIpevfEwBi8t
+XN04QhICZYOlkSqY42wYplLWzC60k/UQNnWM8Ncklq3c/9gDuLzovBWwe19XZI9y
+iY7A+WM8COibirivBEifDIxr7PmRR9x56OMTjp1O3FROibtDPzKsc+cS/vs+IxhE
+r3zHjPUR/8lKyfk+Xp1oRpq3jzcVT7Rmg4yUvDl1ZJ7hufkegNFtS5Azd/FAoOGw
+MB06jlzpalqolG8bQKJj4TX/VDNsJOcJoP0jNgoyVA9+aca/Vv5AgBMq5YKq2kcJ
+bIHM/SN6W/4mVQ/dmLLmLmQgt3AroijG60NTDm8/BGClgEYrzn/o1VaLG+ocXZrr
+ZfaUFnSjPf2hqx2Jb3Ist0V0gAY7ZqXKHz+tr0VmrVaCw6rpCNb1M3MGsPWN2u1M
+9yDab0A+CqIOXCq8kqQ6nRAlbRxYKNnA+OGekhGzJDtl/51vbNRIxgUarTHm/3Db
+68UcCeapEhaDSsJ/kFdTmAfb+NlVt1h5ReW1d0JCYy0ArxE+69BhFrOsGNBZhidD
+lvblB7Cq/jc=
+=7uBV
+-----END PGP SIGNATURE-----
+
+--Sig_/2nYGp4wP/C7uPCCGFpO9ax3--
