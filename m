@@ -1,140 +1,180 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:61261 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753627Ab3GJCJ2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jul 2013 22:09:28 -0400
-Date: Wed, 10 Jul 2013 12:09:21 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [PATCH 01/12] vfs: pull ext4's double-i_mutex-locking into
- common code
-Message-ID: <20130710020921.GN3438@dastard>
-References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
- <1372882356-14168-2-git-send-email-bfields@redhat.com>
- <20130709220411.GK3438@dastard>
- <20130710002120.GM32574@pad.fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130710002120.GM32574@pad.fieldses.org>
+Received: from fieldses.org ([174.143.236.118]:53645 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756375Ab3GQUuX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Jul 2013 16:50:23 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        David Howells <dhowells@redhat.com>
+Subject: [PATCH 10/16] locks: break delegations on rename
+Date: Wed, 17 Jul 2013 16:50:11 -0400
+Message-Id: <1374094217-31493-12-git-send-email-bfields@redhat.com>
+In-Reply-To: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 09, 2013 at 08:21:20PM -0400, J. Bruce Fields wrote:
-> On Wed, Jul 10, 2013 at 08:04:11AM +1000, Dave Chinner wrote:
-> > On Wed, Jul 03, 2013 at 04:12:25PM -0400, J. Bruce Fields wrote:
-> > > From: "J. Bruce Fields" <bfields@redhat.com>
-> > > 
-> > > We want to do this elsewhere as well.
-> > > 
-> > > Cc: "Theodore Ts'o" <tytso@mit.edu>
-> > > Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > > ---
-> > >  fs/ext4/ext4.h        |    2 --
-> > >  fs/ext4/ioctl.c       |    4 ++--
-> > >  fs/ext4/move_extent.c |   40 ++--------------------------------------
-> > >  fs/inode.c            |   29 +++++++++++++++++++++++++++++
-> > >  include/linux/fs.h    |    3 +++
-> > >  5 files changed, 36 insertions(+), 42 deletions(-)
-> > > 
-> > > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> > > index 5aae3d1..3590abe 100644
-> 
-> Thanks for the comment:
-> 
-> > Just to throw a spanner in the works - have you considered that
-> > other filesystems might have different inode lock ordering rules?
-> > 
-> > For example, XFS locks multiple inodes in ascending inode number
-> > order, not ordered by pointer address. Hence we end up different
-> > inode lock ordering at different layers of the stack and I can't see
-> > that ending well....
-> 
-> What lock(s) is it taking exactly, where?
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-xfs_lock_two_inodes() locks two XFS inodes and doesn't require
-i_mutex on the inodes to be held first.
+Cc: David Howells <dhowells@redhat.com>
+Acked-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/cachefiles/namei.c |    2 +-
+ fs/namei.c            |   47 +++++++++++++++++++++++++++++++++++++++++++----
+ fs/nfsd/vfs.c         |    2 +-
+ include/linux/fs.h    |    2 +-
+ 4 files changed, 46 insertions(+), 7 deletions(-)
 
-Then there's xfs_lock_inodes() which can lock an arbitrary number of
-inodes and has some special casing to avoid transaction subsystem
-deadlocks. That's used by rename so typically is used for 4 inodes
-maximum, and the ordering is set up via xfs_sort_for_rename(). The
-VFS typically already holds the i_mutex on these inodes first, so
-I'm not so concerned about this case.
-
-I'm not sure that there is actually deadlock, but given that XFS can
-lock multiple inodes independently of the VFS (e.g. through ioctl
-interfaces) I'm extremely wary of differences in lock ordering on
-the same structure....
-
-> If there's a possible
-> deadlock, can we come up with a compatible ordering?
-
-Sure. I'd prefer ordering by inode number, because then ordering is
-deterministic rather than being dependent on memory allocation
-results. It makes forensic analysis of deadlocks and corruptions
-easier because you can look at on-disk structures and accurately
-predict locking behaviour and therefore determine the order of
-operations that should occur. With lock ordering determined by
-memory addresses, you can't easily predict the lock ordering two
-particular inodes might take from one operation to another.
-
-> > > +EXPORT_SYMBOL(lock_two_nondirectories);
-> > 
-> > What makes this specific to non-directories?
-> 
-> See 
-> 
-> 	http://mid.gmane.org/<1372882356-14168-5-git-send-email-bfields@redhat.com>
-> 
-> The only caller outside ext4 is vfs_rename_other.
-
-Ah, so we now mix two different lock ordering models for directories
-vs non-directories.  i.e. lock_rename() enforces parent/child
-relationships on the two directories being locked, but if there is
-no ancestry, it doesn't order the inode locking at all.
-
-So it seems that we can make up whatever ordering we want here,
-as long as we use it everywhere for locking multiple inodes. What
-other code locks multiple inodes?
-
-> I think we could make it work for directories two if necessary though
-> the ordering would be more complicated.  Currently there's no reason.
-
-lock_rename() already does it ;)
-
-> > If it's not to be used for directory inodes, then there should be
-> > WARN_ON_ONCE() guards in the code...
-> 
-> Sure.  So something like the following.
-> 
-> Hm.  I also overlooked that ext4 had a BUG() for the case they're equal.
-> Maybe we should keep that too if it's not overkill.
-
-Just do like lock_rename() does - detect it an only lock the single
-inode. That way you can also pass in a null inode2 and have it
-behave appropriately - it will get rid of the if (target) ... else
-code out of vfs_rename_other....
-
->  /**
-> + * lock_two_nondirectories - take two i_mutexes on non-directory objects
-> + * @inode1: first inode to lock
-> + * @inode2: second inode to lock
-> + */
-> +void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
-> +{
-> +	WARN_ON_ONCE(S_ISDIR(inode1->i_mode) || S_ISDIR(inode2->i_mode));
-> +	WARN_ON_ONCE(inode1 == inode2);
-
-Sure, but I'd split the first warn on - that way we know which inode
-is triggering the warning....
-
-Cheers,
-
-Dave.
+diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
+index 6846fcef..1363eae 100644
+--- a/fs/cachefiles/namei.c
++++ b/fs/cachefiles/namei.c
+@@ -396,7 +396,7 @@ try_again:
+ 		cachefiles_io_error(cache, "Rename security error %d", ret);
+ 	} else {
+ 		ret = vfs_rename(dir->d_inode, rep,
+-				 cache->graveyard->d_inode, grave);
++				 cache->graveyard->d_inode, grave, NULL);
+ 		if (ret != 0 && ret != -ENOMEM)
+ 			cachefiles_io_error(cache,
+ 					    "Rename failed with error %d", ret);
+diff --git a/fs/namei.c b/fs/namei.c
+index d3b6a35..0554c9a 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3834,7 +3834,8 @@ out:
+ }
+ 
+ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+-			    struct inode *new_dir, struct dentry *new_dentry)
++			    struct inode *new_dir, struct dentry *new_dentry,
++			    struct inode **delegated_inode)
+ {
+ 	struct inode *target = new_dentry->d_inode;
+ 	struct inode *source = old_dentry->d_inode;
+@@ -3851,6 +3852,14 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+ 	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
+ 		goto out;
+ 
++	error = try_break_deleg(source, delegated_inode);
++	if (error)
++		goto out;
++	if (target) {
++		error = try_break_deleg(target, delegated_inode);
++		if (error)
++			goto out;
++	}
+ 	error = old_dir->i_op->rename(old_dir, old_dentry, new_dir, new_dentry);
+ 	if (error)
+ 		goto out;
+@@ -3865,8 +3874,30 @@ out:
+ 	return error;
+ }
+ 
++/**
++ * vfs_rename - rename a filesystem object
++ * @old_dir:	parent of source
++ * @old_dentry:	source
++ * @new_dir:	parent of destination
++ * @new_dentry:	destination
++ * @delegated_inode: returns an inode needing a delegation break
++ *
++ * The caller must hold multiple mutexes--see lock_rename()).
++ *
++ * If vfs_rename discovers a delegation in need of breaking at either
++ * the source or destination, it will return -EWOULDBLOCK and return a
++ * reference to the inode in delegated_inode.  The caller should then
++ * break the delegation and retry.  Because breaking a delegation may
++ * take a long time, the caller should drop all locks before doing
++ * so.
++ *
++ * Alternatively, a caller may pass NULL for delegated_inode.  This may
++ * be appropriate for callers that expect the underlying filesystem not
++ * to be NFS exported.
++ */
+ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+-	       struct inode *new_dir, struct dentry *new_dentry)
++	       struct inode *new_dir, struct dentry *new_dentry,
++	       struct inode **delegated_inode)
+ {
+ 	int error;
+ 	int is_dir = S_ISDIR(old_dentry->d_inode->i_mode);
+@@ -3894,7 +3925,7 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	if (is_dir)
+ 		error = vfs_rename_dir(old_dir,old_dentry,new_dir,new_dentry);
+ 	else
+-		error = vfs_rename_other(old_dir,old_dentry,new_dir,new_dentry);
++		error = vfs_rename_other(old_dir,old_dentry,new_dir,new_dentry,delegated_inode);
+ 	if (!error)
+ 		fsnotify_move(old_dir, new_dir, old_name, is_dir,
+ 			      new_dentry->d_inode, old_dentry);
+@@ -3910,6 +3941,7 @@ SYSCALL_DEFINE4(renameat, int, olddfd, const char __user *, oldname,
+ 	struct dentry *old_dentry, *new_dentry;
+ 	struct dentry *trap;
+ 	struct nameidata oldnd, newnd;
++	struct inode *delegated_inode = NULL;
+ 	struct filename *from;
+ 	struct filename *to;
+ 	unsigned int lookup_flags = 0;
+@@ -3949,6 +3981,7 @@ retry:
+ 	newnd.flags &= ~LOOKUP_PARENT;
+ 	newnd.flags |= LOOKUP_RENAME_TARGET;
+ 
++retry_deleg:
+ 	trap = lock_rename(new_dir, old_dir);
+ 
+ 	old_dentry = lookup_hash(&oldnd);
+@@ -3985,13 +4018,19 @@ retry:
+ 	if (error)
+ 		goto exit5;
+ 	error = vfs_rename(old_dir->d_inode, old_dentry,
+-				   new_dir->d_inode, new_dentry);
++				   new_dir->d_inode, new_dentry,
++				   &delegated_inode);
+ exit5:
+ 	dput(new_dentry);
+ exit4:
+ 	dput(old_dentry);
+ exit3:
+ 	unlock_rename(new_dir, old_dir);
++	if (delegated_inode) {
++		error = break_deleg_wait(&delegated_inode);
++		if (!error)
++			goto retry_deleg;
++	}
+ 	mnt_drop_write(oldnd.path.mnt);
+ exit2:
+ 	if (retry_estale(error, lookup_flags))
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index ff1fc44..fbf22d2 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1837,7 +1837,7 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+ 		if (host_err)
+ 			goto out_dput_new;
+ 	}
+-	host_err = vfs_rename(fdir, odentry, tdir, ndentry);
++	host_err = vfs_rename(fdir, odentry, tdir, ndentry, NULL);
+ 	if (!host_err) {
+ 		host_err = commit_metadata(tfhp);
+ 		if (!host_err)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 43a3506..74aa0c7 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1470,7 +1470,7 @@ extern int vfs_symlink(struct inode *, struct dentry *, const char *);
+ extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
+ extern int vfs_rmdir(struct inode *, struct dentry *);
+ extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
+-extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *);
++extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **);
+ 
+ /*
+  * VFS dentry helper functions.
 -- 
-Dave Chinner
-david@fromorbit.com
+1.7.9.5
+
