@@ -1,27 +1,467 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:13684 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:63101 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751945Ab3GBMsG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Jul 2013 08:48:06 -0400
-Message-ID: <51D2CC03.9070303@RedHat.com>
-Date: Tue, 02 Jul 2013 08:48:03 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1756112Ab3GQUoC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Jul 2013 16:44:02 -0400
+Subject: [PATCH 05/10] KEYS: Consolidate the concept of an 'index key' for
+ key access
+To: keyrings@linux-nfs.org
+From: David Howells <dhowells@redhat.com>
+Cc: linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Date: Wed, 17 Jul 2013 21:43:56 +0100
+Message-ID: <20130717204356.8591.46470.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
+References: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
-To: Doug Nazar <nazard.michi@gmail.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: Fix gssd ignore machine credentials for root
-References: <518E316A.8050002@gmail.com>
-In-Reply-To: <518E316A.8050002@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Consolidate the concept of an 'index key' for accessing keys.  The index key
+is the search term needed to find a key directly - basically the key type and
+the key description.  We can add to that the description length.
 
+This will be useful when turning a keyring into an associative array rather
+than just a pointer block.
 
-On 11/05/13 07:54, Doug Nazar wrote:
-> Commit 1c787f14 [gssd: scan for DIR: ccaches, too] changed the default prefix for the credential cache files. Update the check to ignore the machine credential file when running with -n (root ignores machine credentials).
-Committed...
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
 
-In the future please send patches in line and with the work "[PATCH]" in the subject. 
+ include/linux/key.h         |   21 ++++++++++---
+ security/keys/internal.h    |    8 ++---
+ security/keys/key.c         |   72 ++++++++++++++++++++++---------------------
+ security/keys/keyring.c     |   37 +++++++++++-----------
+ security/keys/request_key.c |   12 +++++--
+ 5 files changed, 83 insertions(+), 67 deletions(-)
 
-steved.
+diff --git a/include/linux/key.h b/include/linux/key.h
+index 51bce29..d573e82 100644
+--- a/include/linux/key.h
++++ b/include/linux/key.h
+@@ -82,6 +82,12 @@ struct key_owner;
+ struct keyring_list;
+ struct keyring_name;
+ 
++struct keyring_index_key {
++	struct key_type		*type;
++	const char		*description;
++	size_t			desc_len;
++};
++
+ /*****************************************************************************/
+ /*
+  * key reference with possession attribute handling
+@@ -129,7 +135,6 @@ struct key {
+ 		struct list_head graveyard_link;
+ 		struct rb_node	serial_node;
+ 	};
+-	struct key_type		*type;		/* type of key */
+ 	struct rw_semaphore	sem;		/* change vs change sem */
+ 	struct key_user		*user;		/* owner of this key */
+ 	void			*security;	/* security data for this key */
+@@ -163,12 +168,18 @@ struct key {
+ #define KEY_FLAG_ROOT_CAN_CLEAR	6	/* set if key can be cleared by root without permission */
+ #define KEY_FLAG_INVALIDATED	7	/* set if key has been invalidated */
+ 
+-	/* the description string
+-	 * - this is used to match a key against search criteria
+-	 * - this should be a printable string
++	/* the key type and key description string
++	 * - the desc is used to match a key against search criteria
++	 * - it should be a printable string
+ 	 * - eg: for krb5 AFS, this might be "afs@REDHAT.COM"
+ 	 */
+-	char			*description;
++	union {
++		struct keyring_index_key index_key;
++		struct {
++			struct key_type	*type;		/* type of key */
++			char		*description;
++		};
++	};
+ 
+ 	/* type specific data
+ 	 * - this is used by the keyring type to index the name
+diff --git a/security/keys/internal.h b/security/keys/internal.h
+index 490aef5..77441dd 100644
+--- a/security/keys/internal.h
++++ b/security/keys/internal.h
+@@ -89,19 +89,17 @@ extern struct key_type *key_type_lookup(const char *type);
+ extern void key_type_put(struct key_type *ktype);
+ 
+ extern int __key_link_begin(struct key *keyring,
+-			    const struct key_type *type,
+-			    const char *description,
++			    const struct keyring_index_key *index_key,
+ 			    unsigned long *_prealloc);
+ extern int __key_link_check_live_key(struct key *keyring, struct key *key);
+ extern void __key_link(struct key *keyring, struct key *key,
+ 		       unsigned long *_prealloc);
+ extern void __key_link_end(struct key *keyring,
+-			   struct key_type *type,
++			   const struct keyring_index_key *index_key,
+ 			   unsigned long prealloc);
+ 
+ extern key_ref_t __keyring_search_one(key_ref_t keyring_ref,
+-				      const struct key_type *type,
+-				      const char *description,
++				      const struct keyring_index_key *index_key,
+ 				      key_perm_t perm);
+ 
+ extern struct key *keyring_search_instkey(struct key *keyring,
+diff --git a/security/keys/key.c b/security/keys/key.c
+index 8fb7c7b..7e6bc39 100644
+--- a/security/keys/key.c
++++ b/security/keys/key.c
+@@ -242,8 +242,8 @@ struct key *key_alloc(struct key_type *type, const char *desc,
+ 		}
+ 	}
+ 
+-	desclen = strlen(desc) + 1;
+-	quotalen = desclen + type->def_datalen;
++	desclen = strlen(desc);
++	quotalen = desclen + 1 + type->def_datalen;
+ 
+ 	/* get hold of the key tracking for this user */
+ 	user = key_user_lookup(uid);
+@@ -277,7 +277,8 @@ struct key *key_alloc(struct key_type *type, const char *desc,
+ 		goto no_memory_2;
+ 
+ 	if (desc) {
+-		key->description = kmemdup(desc, desclen, GFP_KERNEL);
++		key->index_key.desc_len = desclen;
++		key->index_key.description = kmemdup(desc, desclen + 1, GFP_KERNEL);
+ 		if (!key->description)
+ 			goto no_memory_3;
+ 	}
+@@ -285,7 +286,7 @@ struct key *key_alloc(struct key_type *type, const char *desc,
+ 	atomic_set(&key->usage, 1);
+ 	init_rwsem(&key->sem);
+ 	lockdep_set_class(&key->sem, &type->lock_class);
+-	key->type = type;
++	key->index_key.type = type;
+ 	key->user = user;
+ 	key->quotalen = quotalen;
+ 	key->datalen = type->def_datalen;
+@@ -489,8 +490,7 @@ int key_instantiate_and_link(struct key *key,
+ 	}
+ 
+ 	if (keyring) {
+-		ret = __key_link_begin(keyring, key->type, key->description,
+-				       &prealloc);
++		ret = __key_link_begin(keyring, &key->index_key, &prealloc);
+ 		if (ret < 0)
+ 			goto error_free_preparse;
+ 	}
+@@ -499,7 +499,7 @@ int key_instantiate_and_link(struct key *key,
+ 					 &prealloc);
+ 
+ 	if (keyring)
+-		__key_link_end(keyring, key->type, prealloc);
++		__key_link_end(keyring, &key->index_key, prealloc);
+ 
+ error_free_preparse:
+ 	if (key->type->preparse)
+@@ -548,8 +548,7 @@ int key_reject_and_link(struct key *key,
+ 	ret = -EBUSY;
+ 
+ 	if (keyring)
+-		link_ret = __key_link_begin(keyring, key->type,
+-					    key->description, &prealloc);
++		link_ret = __key_link_begin(keyring, &key->index_key, &prealloc);
+ 
+ 	mutex_lock(&key_construction_mutex);
+ 
+@@ -581,7 +580,7 @@ int key_reject_and_link(struct key *key,
+ 	mutex_unlock(&key_construction_mutex);
+ 
+ 	if (keyring)
+-		__key_link_end(keyring, key->type, prealloc);
++		__key_link_end(keyring, &key->index_key, prealloc);
+ 
+ 	/* wake up anyone waiting for a key to be constructed */
+ 	if (awaken)
+@@ -780,25 +779,27 @@ key_ref_t key_create_or_update(key_ref_t keyring_ref,
+ 			       key_perm_t perm,
+ 			       unsigned long flags)
+ {
+-	unsigned long prealloc;
++	struct keyring_index_key index_key = {
++		.description	= description,
++	};
+ 	struct key_preparsed_payload prep;
+ 	const struct cred *cred = current_cred();
+-	struct key_type *ktype;
++	unsigned long prealloc;
+ 	struct key *keyring, *key = NULL;
+ 	key_ref_t key_ref;
+ 	int ret;
+ 
+ 	/* look up the key type to see if it's one of the registered kernel
+ 	 * types */
+-	ktype = key_type_lookup(type);
+-	if (IS_ERR(ktype)) {
++	index_key.type = key_type_lookup(type);
++	if (IS_ERR(index_key.type)) {
+ 		key_ref = ERR_PTR(-ENODEV);
+ 		goto error;
+ 	}
+ 
+ 	key_ref = ERR_PTR(-EINVAL);
+-	if (!ktype->match || !ktype->instantiate ||
+-	    (!description && !ktype->preparse))
++	if (!index_key.type->match || !index_key.type->instantiate ||
++	    (!index_key.description && !index_key.type->preparse))
+ 		goto error_put_type;
+ 
+ 	keyring = key_ref_to_ptr(keyring_ref);
+@@ -812,21 +813,22 @@ key_ref_t key_create_or_update(key_ref_t keyring_ref,
+ 	memset(&prep, 0, sizeof(prep));
+ 	prep.data = payload;
+ 	prep.datalen = plen;
+-	prep.quotalen = ktype->def_datalen;
+-	if (ktype->preparse) {
+-		ret = ktype->preparse(&prep);
++	prep.quotalen = index_key.type->def_datalen;
++	if (index_key.type->preparse) {
++		ret = index_key.type->preparse(&prep);
+ 		if (ret < 0) {
+ 			key_ref = ERR_PTR(ret);
+ 			goto error_put_type;
+ 		}
+-		if (!description)
+-			description = prep.description;
++		if (!index_key.description)
++			index_key.description = prep.description;
+ 		key_ref = ERR_PTR(-EINVAL);
+-		if (!description)
++		if (!index_key.description)
+ 			goto error_free_prep;
+ 	}
++	index_key.desc_len = strlen(index_key.description);
+ 
+-	ret = __key_link_begin(keyring, ktype, description, &prealloc);
++	ret = __key_link_begin(keyring, &index_key, &prealloc);
+ 	if (ret < 0) {
+ 		key_ref = ERR_PTR(ret);
+ 		goto error_free_prep;
+@@ -844,9 +846,8 @@ key_ref_t key_create_or_update(key_ref_t keyring_ref,
+ 	 * key of the same type and description in the destination keyring and
+ 	 * update that instead if possible
+ 	 */
+-	if (ktype->update) {
+-		key_ref = __keyring_search_one(keyring_ref, ktype, description,
+-					       0);
++	if (index_key.type->update) {
++		key_ref = __keyring_search_one(keyring_ref, &index_key, 0);
+ 		if (!IS_ERR(key_ref))
+ 			goto found_matching_key;
+ 	}
+@@ -856,16 +857,17 @@ key_ref_t key_create_or_update(key_ref_t keyring_ref,
+ 		perm = KEY_POS_VIEW | KEY_POS_SEARCH | KEY_POS_LINK | KEY_POS_SETATTR;
+ 		perm |= KEY_USR_VIEW;
+ 
+-		if (ktype->read)
++		if (index_key.type->read)
+ 			perm |= KEY_POS_READ;
+ 
+-		if (ktype == &key_type_keyring || ktype->update)
++		if (index_key.type == &key_type_keyring ||
++		    index_key.type->update)
+ 			perm |= KEY_POS_WRITE;
+ 	}
+ 
+ 	/* allocate a new key */
+-	key = key_alloc(ktype, description, cred->fsuid, cred->fsgid, cred,
+-			perm, flags);
++	key = key_alloc(index_key.type, index_key.description,
++			cred->fsuid, cred->fsgid, cred, perm, flags);
+ 	if (IS_ERR(key)) {
+ 		key_ref = ERR_CAST(key);
+ 		goto error_link_end;
+@@ -882,12 +884,12 @@ key_ref_t key_create_or_update(key_ref_t keyring_ref,
+ 	key_ref = make_key_ref(key, is_key_possessed(keyring_ref));
+ 
+ error_link_end:
+-	__key_link_end(keyring, ktype, prealloc);
++	__key_link_end(keyring, &index_key, prealloc);
+ error_free_prep:
+-	if (ktype->preparse)
+-		ktype->free_preparse(&prep);
++	if (index_key.type->preparse)
++		index_key.type->free_preparse(&prep);
+ error_put_type:
+-	key_type_put(ktype);
++	key_type_put(index_key.type);
+ error:
+ 	return key_ref;
+ 
+@@ -895,7 +897,7 @@ error:
+ 	/* we found a matching key, so we're going to try to update it
+ 	 * - we can drop the locks first as we have the key pinned
+ 	 */
+-	__key_link_end(keyring, ktype, prealloc);
++	__key_link_end(keyring, &index_key, prealloc);
+ 
+ 	key_ref = __key_update(key_ref, &prep);
+ 	goto error_free_prep;
+diff --git a/security/keys/keyring.c b/security/keys/keyring.c
+index f784063..c7f59f9 100644
+--- a/security/keys/keyring.c
++++ b/security/keys/keyring.c
+@@ -538,8 +538,7 @@ EXPORT_SYMBOL(keyring_search);
+  * to the returned key reference.
+  */
+ key_ref_t __keyring_search_one(key_ref_t keyring_ref,
+-			       const struct key_type *ktype,
+-			       const char *description,
++			       const struct keyring_index_key *index_key,
+ 			       key_perm_t perm)
+ {
+ 	struct keyring_list *klist;
+@@ -558,9 +557,9 @@ key_ref_t __keyring_search_one(key_ref_t keyring_ref,
+ 		smp_rmb();
+ 		for (loop = 0; loop < nkeys ; loop++) {
+ 			key = rcu_dereference(klist->keys[loop]);
+-			if (key->type == ktype &&
++			if (key->type == index_key->type &&
+ 			    (!key->type->match ||
+-			     key->type->match(key, description)) &&
++			     key->type->match(key, index_key->description)) &&
+ 			    key_permission(make_key_ref(key, possessed),
+ 					   perm) == 0 &&
+ 			    !(key->flags & ((1 << KEY_FLAG_INVALIDATED) |
+@@ -747,8 +746,8 @@ static void keyring_unlink_rcu_disposal(struct rcu_head *rcu)
+ /*
+  * Preallocate memory so that a key can be linked into to a keyring.
+  */
+-int __key_link_begin(struct key *keyring, const struct key_type *type,
+-		     const char *description, unsigned long *_prealloc)
++int __key_link_begin(struct key *keyring, const struct keyring_index_key *index_key,
++		     unsigned long *_prealloc)
+ 	__acquires(&keyring->sem)
+ 	__acquires(&keyring_serialise_link_sem)
+ {
+@@ -759,7 +758,8 @@ int __key_link_begin(struct key *keyring, const struct key_type *type,
+ 	size_t size;
+ 	int loop, lru, ret;
+ 
+-	kenter("%d,%s,%s,", key_serial(keyring), type->name, description);
++	kenter("%d,%s,%s,",
++	       key_serial(keyring), index_key->type->name, index_key->description);
+ 
+ 	if (keyring->type != &key_type_keyring)
+ 		return -ENOTDIR;
+@@ -772,7 +772,7 @@ int __key_link_begin(struct key *keyring, const struct key_type *type,
+ 
+ 	/* serialise link/link calls to prevent parallel calls causing a cycle
+ 	 * when linking two keyring in opposite orders */
+-	if (type == &key_type_keyring)
++	if (index_key->type == &key_type_keyring)
+ 		down_write(&keyring_serialise_link_sem);
+ 
+ 	klist = rcu_dereference_locked_keyring(keyring);
+@@ -784,8 +784,8 @@ int __key_link_begin(struct key *keyring, const struct key_type *type,
+ 		for (loop = klist->nkeys - 1; loop >= 0; loop--) {
+ 			struct key *key = rcu_deref_link_locked(klist, loop,
+ 								keyring);
+-			if (key->type == type &&
+-			    strcmp(key->description, description) == 0) {
++			if (key->type == index_key->type &&
++			    strcmp(key->description, index_key->description) == 0) {
+ 				/* Found a match - we'll replace the link with
+ 				 * one to the new key.  We record the slot
+ 				 * position.
+@@ -865,7 +865,7 @@ error_quota:
+ 	key_payload_reserve(keyring,
+ 			    keyring->datalen - KEYQUOTA_LINK_BYTES);
+ error_sem:
+-	if (type == &key_type_keyring)
++	if (index_key->type == &key_type_keyring)
+ 		up_write(&keyring_serialise_link_sem);
+ error_krsem:
+ 	up_write(&keyring->sem);
+@@ -957,16 +957,17 @@ void __key_link(struct key *keyring, struct key *key,
+  *
+  * Must be called with __key_link_begin() having being called.
+  */
+-void __key_link_end(struct key *keyring, struct key_type *type,
++void __key_link_end(struct key *keyring,
++		    const struct keyring_index_key *index_key,
+ 		    unsigned long prealloc)
+ 	__releases(&keyring->sem)
+ 	__releases(&keyring_serialise_link_sem)
+ {
+-	BUG_ON(type == NULL);
+-	BUG_ON(type->name == NULL);
+-	kenter("%d,%s,%lx", keyring->serial, type->name, prealloc);
++	BUG_ON(index_key->type == NULL);
++	BUG_ON(index_key->type->name == NULL);
++	kenter("%d,%s,%lx", keyring->serial, index_key->type->name, prealloc);
+ 
+-	if (type == &key_type_keyring)
++	if (index_key->type == &key_type_keyring)
+ 		up_write(&keyring_serialise_link_sem);
+ 
+ 	if (prealloc) {
+@@ -1007,12 +1008,12 @@ int key_link(struct key *keyring, struct key *key)
+ 	key_check(keyring);
+ 	key_check(key);
+ 
+-	ret = __key_link_begin(keyring, key->type, key->description, &prealloc);
++	ret = __key_link_begin(keyring, &key->index_key, &prealloc);
+ 	if (ret == 0) {
+ 		ret = __key_link_check_live_key(keyring, key);
+ 		if (ret == 0)
+ 			__key_link(keyring, key, &prealloc);
+-		__key_link_end(keyring, key->type, prealloc);
++		__key_link_end(keyring, &key->index_key, prealloc);
+ 	}
+ 
+ 	return ret;
+diff --git a/security/keys/request_key.c b/security/keys/request_key.c
+index 172115b..586cb79 100644
+--- a/security/keys/request_key.c
++++ b/security/keys/request_key.c
+@@ -352,6 +352,11 @@ static int construct_alloc_key(struct key_type *type,
+ 			       struct key_user *user,
+ 			       struct key **_key)
+ {
++	const struct keyring_index_key index_key = {
++		.type		= type,
++		.description	= description,
++		.desc_len	= strlen(description),
++	};
+ 	const struct cred *cred = current_cred();
+ 	unsigned long prealloc;
+ 	struct key *key;
+@@ -379,8 +384,7 @@ static int construct_alloc_key(struct key_type *type,
+ 	set_bit(KEY_FLAG_USER_CONSTRUCT, &key->flags);
+ 
+ 	if (dest_keyring) {
+-		ret = __key_link_begin(dest_keyring, type, description,
+-				       &prealloc);
++		ret = __key_link_begin(dest_keyring, &index_key, &prealloc);
+ 		if (ret < 0)
+ 			goto link_prealloc_failed;
+ 	}
+@@ -400,7 +404,7 @@ static int construct_alloc_key(struct key_type *type,
+ 
+ 	mutex_unlock(&key_construction_mutex);
+ 	if (dest_keyring)
+-		__key_link_end(dest_keyring, type, prealloc);
++		__key_link_end(dest_keyring, &index_key, prealloc);
+ 	mutex_unlock(&user->cons_lock);
+ 	*_key = key;
+ 	kleave(" = 0 [%d]", key_serial(key));
+@@ -416,7 +420,7 @@ key_already_present:
+ 		ret = __key_link_check_live_key(dest_keyring, key);
+ 		if (ret == 0)
+ 			__key_link(dest_keyring, key, &prealloc);
+-		__key_link_end(dest_keyring, type, prealloc);
++		__key_link_end(dest_keyring, &index_key, prealloc);
+ 		if (ret < 0)
+ 			goto link_check_failed;
+ 	}
+
