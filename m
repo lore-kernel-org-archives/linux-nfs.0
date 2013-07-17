@@ -1,102 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53618 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752403Ab3GQUuU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 16:50:20 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH] nfsd4: fix minorversion support interface
-Date: Wed, 17 Jul 2013 16:50:01 -0400
-Message-Id: <1374094217-31493-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1374094217-31493-1-git-send-email-bfields@redhat.com>
-References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+Received: from esa-jnhn.mail.uoguelph.ca ([131.104.91.44]:45411 "EHLO
+	esa-jnhn.mail.uoguelph.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757027Ab3GQWfa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Jul 2013 18:35:30 -0400
+Date: Wed, 17 Jul 2013 18:25:55 -0400 (EDT)
+From: Rick Macklem <rmacklem@uoguelph.ca>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        Andre Heider <a.heider@gmail.com>
+Message-ID: <1951743871.894488.1374099955918.JavaMail.root@uoguelph.ca>
+In-Reply-To: <1374098347-30196-1-git-send-email-Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 1/2] NFSv4: Fix a regression against the FreeBSD server
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Trond Myklebust wrote:
+> Technically, the Linux client is allowed by the NFSv4 spec to send
+> 3 word bitmaps as part of an OPEN request. However, this causes the
+> current FreeBSD server to return NFS4ERR_ATTRNOTSUPP errors.
+> 
+Yep. The code in the FreeBSD distros is only NFSv4.0, which only had
+bits up to 56. I suppose it should just ignore high order bitmap
+words. (My current code, which isn't in a distro yet, does handle
+3 word bitmaps as a part of the NFSv4.1 support. Maybe I'll change it
+to allow any number of bitmap words, so long as the high order words
+are 0.)
 
-You can turn on or off support for minorversions using e.g.
+Thanks for patching this, since it will be some time before the newer
+FreeBSD server code gets released, rick
 
-	echo "-4.2" >/proc/fs/nfsd/versions
-
-However, the current implementation is a little wonky.  For example, the
-above will turn off 4.2 support, but it will also turn *on* 4.1 support.
-
-This didn't matter as long as we only had 2 minorversions, which was
-true till very recently.
-
-And do a little cleanup here.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4proc.c |    2 +-
- fs/nfsd/nfsd.h     |    1 -
- fs/nfsd/nfssvc.c   |   13 +++++++------
- 3 files changed, 8 insertions(+), 8 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index a7cee86..0d4c410 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1293,7 +1293,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 	 * According to RFC3010, this takes precedence over all other errors.
- 	 */
- 	status = nfserr_minor_vers_mismatch;
--	if (args->minorversion > nfsd_supported_minorversion)
-+	if (nfsd_minorversion(args->minorversion, NFSD_TEST) <= 0)
- 		goto out;
- 
- 	status = nfs41_check_op_ordering(args);
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 2bbd94e..30f34ab 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -53,7 +53,6 @@ struct readdir_cd {
- extern struct svc_program	nfsd_program;
- extern struct svc_version	nfsd_version2, nfsd_version3,
- 				nfsd_version4;
--extern u32			nfsd_supported_minorversion;
- extern struct mutex		nfsd_mutex;
- extern spinlock_t		nfsd_drc_lock;
- extern unsigned long		nfsd_drc_max_mem;
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 6b9f48c..760c85a 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -116,7 +116,10 @@ struct svc_program		nfsd_program = {
- 
- };
- 
--u32 nfsd_supported_minorversion = 1;
-+static bool nfsd_supported_minorversions[NFSD_SUPPORTED_MINOR_VERSION + 1] = {
-+	[0] = 1,
-+	[1] = 1,
-+};
- 
- int nfsd_vers(int vers, enum vers_op change)
- {
-@@ -151,15 +154,13 @@ int nfsd_minorversion(u32 minorversion, enum vers_op change)
- 		return -1;
- 	switch(change) {
- 	case NFSD_SET:
--		nfsd_supported_minorversion = minorversion;
-+		nfsd_supported_minorversions[minorversion] = true;
- 		break;
- 	case NFSD_CLEAR:
--		if (minorversion == 0)
--			return -1;
--		nfsd_supported_minorversion = minorversion - 1;
-+		nfsd_supported_minorversions[minorversion] = false;
- 		break;
- 	case NFSD_TEST:
--		return minorversion <= nfsd_supported_minorversion;
-+		return nfsd_supported_minorversions[minorversion];
- 	case NFSD_AVAIL:
- 		return minorversion <= NFSD_SUPPORTED_MINOR_VERSION;
- 	}
--- 
-1.7.9.5
-
+> Fix the regression by making the Linux client use a 2 word bitmap
+> unless
+> doing NFSv4.2 with labeled NFS.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  fs/nfs/nfs4xdr.c | 21 ++++++++++++++-------
+>  1 file changed, 14 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index 0abfb846..c74d616 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -999,6 +999,7 @@ static void encode_attrs(struct xdr_stream *xdr,
+> const struct iattr *iap,
+>  	__be32 *p;
+>  	__be32 *q;
+>  	int len;
+> +	uint32_t bmval_len = 2;
+>  	uint32_t bmval0 = 0;
+>  	uint32_t bmval1 = 0;
+>  	uint32_t bmval2 = 0;
+> @@ -1010,7 +1011,7 @@ static void encode_attrs(struct xdr_stream
+> *xdr, const struct iattr *iap,
+>  	 * = 40 bytes, plus any contribution from variable-length fields
+>  	 *            such as owner/group.
+>  	 */
+> -	len = 20;
+> +	len = 8;
+>  
+>  	/* Sigh */
+>  	if (iap->ia_valid & ATTR_SIZE)
+> @@ -1040,8 +1041,6 @@ static void encode_attrs(struct xdr_stream
+> *xdr, const struct iattr *iap,
+>  		}
+>  		len += 4 + (XDR_QUADLEN(owner_grouplen) << 2);
+>  	}
+> -	if (label)
+> -		len += 4 + 4 + 4 + (XDR_QUADLEN(label->len) << 2);
+>  	if (iap->ia_valid & ATTR_ATIME_SET)
+>  		len += 16;
+>  	else if (iap->ia_valid & ATTR_ATIME)
+> @@ -1050,15 +1049,22 @@ static void encode_attrs(struct xdr_stream
+> *xdr, const struct iattr *iap,
+>  		len += 16;
+>  	else if (iap->ia_valid & ATTR_MTIME)
+>  		len += 4;
+> +	if (label) {
+> +		len += 4 + 4 + 4 + (XDR_QUADLEN(label->len) << 2);
+> +		bmval_len = 3;
+> +	}
+> +
+> +	len += bmval_len << 2;
+>  	p = reserve_space(xdr, len);
+>  
+>  	/*
+>  	 * We write the bitmap length now, but leave the bitmap and the
+>  	 attribute
+>  	 * buffer length to be backfilled at the end of this routine.
+>  	 */
+> -	*p++ = cpu_to_be32(3);
+> +	*p++ = cpu_to_be32(bmval_len);
+>  	q = p;
+> -	p += 4;
+> +	/* Skip bitmap entries + attrlen */
+> +	p += bmval_len + 1;
+>  
+>  	if (iap->ia_valid & ATTR_SIZE) {
+>  		bmval0 |= FATTR4_WORD0_SIZE;
+> @@ -1112,10 +1118,11 @@ static void encode_attrs(struct xdr_stream
+> *xdr, const struct iattr *iap,
+>  				len, ((char *)p - (char *)q) + 4);
+>  		BUG();
+>  	}
+> -	len = (char *)p - (char *)q - 16;
+> +	len = (char *)p - (char *)q - (bmval_len << 2);
+>  	*q++ = htonl(bmval0);
+>  	*q++ = htonl(bmval1);
+> -	*q++ = htonl(bmval2);
+> +	if (bmval_len == 3)
+> +		*q++ = htonl(bmval2);
+>  	*q = htonl(len);
+>  
+>  /* out: */
+> --
+> 1.8.3.1
+> 
+> 
