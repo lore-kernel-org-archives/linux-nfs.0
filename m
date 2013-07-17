@@ -1,107 +1,215 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38860 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:57208 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752704Ab3GSRzh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Jul 2013 13:55:37 -0400
-Date: Fri, 19 Jul 2013 13:55:36 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Andre Heider <a.heider@gmail.com>, Rick Macklem <rmacklem@uoguelph.ca>,
-        linux-nfs@vger.kernel.org
-Subject: Re: Error writing to nfs4 with 3.11-rc1
-Message-ID: <20130719175535.GA20841@fieldses.org>
-References: <CAHsu+b_hhSr2vwcwM8TX3=xF=3HffUXG=YLVLcsEpH1wHn+JoA@mail.gmail.com>
- <A5C56FD6-9E14-43A3-8627-1C8F77EC6926@oracle.com>
- <CAHsu+b9vWUyCGHSs==Na=VntwvYp65=rva7+y9aQDXquxX4t-A@mail.gmail.com>
- <F3EFA483-0662-4226-AAF3-DCF12D48485E@oracle.com>
- <20130719161313.GA20026@fieldses.org>
- <85DF5611-5C53-4B65-AA05-8436C9F00680@oracle.com>
+	id S1754126Ab3GQV7M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Jul 2013 17:59:12 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Andre Heider <a.heider@gmail.com>
+CC: Chuck Lever <chuck.lever@oracle.com>, <linux-nfs@vger.kernel.org>,
+        Rick Macklem <rmacklem@uoguelph.ca>
+Subject: [PATCH 2/2] NFSv4: encode_attrs should not backfill the bitmap and attribute length
+Date: Wed, 17 Jul 2013 17:59:07 -0400
+Message-ID: <1374098347-30196-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1374098347-30196-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1374098347-30196-1-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <85DF5611-5C53-4B65-AA05-8436C9F00680@oracle.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 19, 2013 at 12:33:11PM -0400, Chuck Lever wrote:
-> 
-> On Jul 19, 2013, at 12:13 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Wed, Jul 17, 2013 at 04:54:59PM -0400, Chuck Lever wrote:
-> >> By the way, the NFSv4 OPEN request parsing in Wireshark 1.10.0 is totally screwed up.  Has anyone reported this to the Wireshark community?  Wireshark 1.8.8 appears to parse OPEN requests correctly, and is able to handle the 3-word bitmask correctly.
-> > 
-> > What exactly is screwed up?
-> 
-> For example, if you undisclose all of the parsed elements of an OPEN reply, the parsing of the XDR is wrong and the following replies in the compound become unparsable "data".
-> 
-> I've reproduced this for every installation of 1.10.0, Linux and Mac OS, that I've done.
-> 
-> I'm looking at a trace where the client sends an unchecked create OPEN via this compound:
-> 
-> PUTFH, OPEN, GETFH, ACCESS, GETATTR
-> 
-> And here is the reply, as parsed by Wireshark.  The replies after the OPEN are rendered as 216 bytes of unparsed "data".  The Delegation Type is 2950154659.  fattr4_mode looks wrong as well, the requested mode was 644.
-> 
-> Close examination of the actual bytes in this reply shows that the reply sent by the server was correct XDR and a plausible result, and the client continues normal and correct operation.
+The attribute length is already calculated in advance. There is no
+reason why we cannot calculate the bitmap in advance too so that
+we don't have to play pointer games.
 
-Hm, that might be:
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4xdr.c | 121 ++++++++++++++++++++++++-------------------------------
+ 1 file changed, 53 insertions(+), 68 deletions(-)
 
-	https://bugs.wireshark.org/bugzilla/show_bug.cgi?id=8920
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index c74d616..98f937b 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -997,12 +997,10 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
+ 	int owner_namelen = 0;
+ 	int owner_grouplen = 0;
+ 	__be32 *p;
+-	__be32 *q;
+-	int len;
+-	uint32_t bmval_len = 2;
+-	uint32_t bmval0 = 0;
+-	uint32_t bmval1 = 0;
+-	uint32_t bmval2 = 0;
++	unsigned i;
++	uint32_t len = 0;
++	uint32_t bmval_len;
++	uint32_t bmval[3] = { 0 };
+ 
+ 	/*
+ 	 * We reserve enough space to write the entire attribute buffer at once.
+@@ -1011,13 +1009,14 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
+ 	 * = 40 bytes, plus any contribution from variable-length fields
+ 	 *            such as owner/group.
+ 	 */
+-	len = 8;
+-
+-	/* Sigh */
+-	if (iap->ia_valid & ATTR_SIZE)
++	if (iap->ia_valid & ATTR_SIZE) {
++		bmval[0] |= FATTR4_WORD0_SIZE;
+ 		len += 8;
+-	if (iap->ia_valid & ATTR_MODE)
++	}
++	if (iap->ia_valid & ATTR_MODE) {
++		bmval[1] |= FATTR4_WORD1_MODE;
+ 		len += 4;
++	}
+ 	if (iap->ia_valid & ATTR_UID) {
+ 		owner_namelen = nfs_map_uid_to_name(server, iap->ia_uid, owner_name, IDMAP_NAMESZ);
+ 		if (owner_namelen < 0) {
+@@ -1028,6 +1027,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
+ 			owner_namelen = sizeof("nobody") - 1;
+ 			/* goto out; */
+ 		}
++		bmval[1] |= FATTR4_WORD1_OWNER;
+ 		len += 4 + (XDR_QUADLEN(owner_namelen) << 2);
+ 	}
+ 	if (iap->ia_valid & ATTR_GID) {
+@@ -1039,92 +1039,77 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
+ 			owner_grouplen = sizeof("nobody") - 1;
+ 			/* goto out; */
+ 		}
++		bmval[1] |= FATTR4_WORD1_OWNER_GROUP;
+ 		len += 4 + (XDR_QUADLEN(owner_grouplen) << 2);
+ 	}
+-	if (iap->ia_valid & ATTR_ATIME_SET)
++	if (iap->ia_valid & ATTR_ATIME_SET) {
++		bmval[1] |= FATTR4_WORD1_TIME_ACCESS_SET;
+ 		len += 16;
+-	else if (iap->ia_valid & ATTR_ATIME)
++	} else if (iap->ia_valid & ATTR_ATIME) {
++		bmval[1] |= FATTR4_WORD1_TIME_ACCESS_SET;
+ 		len += 4;
+-	if (iap->ia_valid & ATTR_MTIME_SET)
++	}
++	if (iap->ia_valid & ATTR_MTIME_SET) {
++		bmval[1] |= FATTR4_WORD1_TIME_MODIFY_SET;
+ 		len += 16;
+-	else if (iap->ia_valid & ATTR_MTIME)
++	} else if (iap->ia_valid & ATTR_MTIME) {
++		bmval[1] |= FATTR4_WORD1_TIME_MODIFY_SET;
+ 		len += 4;
++	}
+ 	if (label) {
+ 		len += 4 + 4 + 4 + (XDR_QUADLEN(label->len) << 2);
+-		bmval_len = 3;
++		bmval[2] |= FATTR4_WORD2_SECURITY_LABEL;
+ 	}
+ 
+-	len += bmval_len << 2;
+-	p = reserve_space(xdr, len);
++	if (bmval[2] != 0)
++		bmval_len = 3;
++	else if (bmval[1] != 0)
++		bmval_len = 2;
++	else
++		bmval_len = 1;
++
++	p = reserve_space(xdr, 4 + (bmval_len << 2) + 4 + len);
+ 
+ 	/*
+ 	 * We write the bitmap length now, but leave the bitmap and the attribute
+ 	 * buffer length to be backfilled at the end of this routine.
+ 	 */
+ 	*p++ = cpu_to_be32(bmval_len);
+-	q = p;
+-	/* Skip bitmap entries + attrlen */
+-	p += bmval_len + 1;
++	for (i = 0; i < bmval_len; i++)
++		*p++ = cpu_to_be32(bmval[i]);
++	*p++ = cpu_to_be32(len);
+ 
+-	if (iap->ia_valid & ATTR_SIZE) {
+-		bmval0 |= FATTR4_WORD0_SIZE;
++	if (bmval[0] & FATTR4_WORD0_SIZE)
+ 		p = xdr_encode_hyper(p, iap->ia_size);
+-	}
+-	if (iap->ia_valid & ATTR_MODE) {
+-		bmval1 |= FATTR4_WORD1_MODE;
++	if (bmval[1] & FATTR4_WORD1_MODE)
+ 		*p++ = cpu_to_be32(iap->ia_mode & S_IALLUGO);
+-	}
+-	if (iap->ia_valid & ATTR_UID) {
+-		bmval1 |= FATTR4_WORD1_OWNER;
++	if (bmval[1] & FATTR4_WORD1_OWNER)
+ 		p = xdr_encode_opaque(p, owner_name, owner_namelen);
+-	}
+-	if (iap->ia_valid & ATTR_GID) {
+-		bmval1 |= FATTR4_WORD1_OWNER_GROUP;
++	if (bmval[1] & FATTR4_WORD1_OWNER_GROUP)
+ 		p = xdr_encode_opaque(p, owner_group, owner_grouplen);
++	if (bmval[1] & FATTR4_WORD1_TIME_ACCESS_SET) {
++		if (iap->ia_valid & ATTR_ATIME_SET) {
++			*p++ = cpu_to_be32(NFS4_SET_TO_CLIENT_TIME);
++			p = xdr_encode_hyper(p, (s64)iap->ia_atime.tv_sec);
++			*p++ = cpu_to_be32(iap->ia_atime.tv_nsec);
++		} else
++			*p++ = cpu_to_be32(NFS4_SET_TO_SERVER_TIME);
+ 	}
+-	if (iap->ia_valid & ATTR_ATIME_SET) {
+-		bmval1 |= FATTR4_WORD1_TIME_ACCESS_SET;
+-		*p++ = cpu_to_be32(NFS4_SET_TO_CLIENT_TIME);
+-		p = xdr_encode_hyper(p, (s64)iap->ia_atime.tv_sec);
+-		*p++ = cpu_to_be32(iap->ia_atime.tv_nsec);
+-	}
+-	else if (iap->ia_valid & ATTR_ATIME) {
+-		bmval1 |= FATTR4_WORD1_TIME_ACCESS_SET;
+-		*p++ = cpu_to_be32(NFS4_SET_TO_SERVER_TIME);
+-	}
+-	if (iap->ia_valid & ATTR_MTIME_SET) {
+-		bmval1 |= FATTR4_WORD1_TIME_MODIFY_SET;
+-		*p++ = cpu_to_be32(NFS4_SET_TO_CLIENT_TIME);
+-		p = xdr_encode_hyper(p, (s64)iap->ia_mtime.tv_sec);
+-		*p++ = cpu_to_be32(iap->ia_mtime.tv_nsec);
+-	}
+-	else if (iap->ia_valid & ATTR_MTIME) {
+-		bmval1 |= FATTR4_WORD1_TIME_MODIFY_SET;
+-		*p++ = cpu_to_be32(NFS4_SET_TO_SERVER_TIME);
++	if (bmval[1] & FATTR4_WORD1_TIME_MODIFY_SET) {
++		if (iap->ia_valid & ATTR_MTIME_SET) {
++			*p++ = cpu_to_be32(NFS4_SET_TO_CLIENT_TIME);
++			p = xdr_encode_hyper(p, (s64)iap->ia_mtime.tv_sec);
++			*p++ = cpu_to_be32(iap->ia_mtime.tv_nsec);
++		} else
++			*p++ = cpu_to_be32(NFS4_SET_TO_SERVER_TIME);
+ 	}
+-	if (label) {
+-		bmval2 |= FATTR4_WORD2_SECURITY_LABEL;
++	if (bmval[2] & FATTR4_WORD2_SECURITY_LABEL) {
+ 		*p++ = cpu_to_be32(label->lfs);
+ 		*p++ = cpu_to_be32(label->pi);
+ 		*p++ = cpu_to_be32(label->len);
+ 		p = xdr_encode_opaque_fixed(p, label->label, label->len);
+ 	}
+ 
+-	/*
+-	 * Now we backfill the bitmap and the attribute buffer length.
+-	 */
+-	if (len != ((char *)p - (char *)q) + 4) {
+-		printk(KERN_ERR "NFS: Attr length error, %u != %Zu\n",
+-				len, ((char *)p - (char *)q) + 4);
+-		BUG();
+-	}
+-	len = (char *)p - (char *)q - (bmval_len << 2);
+-	*q++ = htonl(bmval0);
+-	*q++ = htonl(bmval1);
+-	if (bmval_len == 3)
+-		*q++ = htonl(bmval2);
+-	*q = htonl(len);
+-
+ /* out: */
+ }
+ 
+-- 
+1.8.3.1
 
-?
-
---b.
-
-> 
-> Network File System, Ops(5): PUTFH OPEN
->     [Program Version: 4]
->     [V4 Procedure: COMPOUND (1)]
->     Status: NFS4_OK (0)
->     Tag: <EMPTY>
->         length: 0
->         contents: <EMPTY>
->     Operations (count: 5)
->         Opcode: PUTFH (22)
->             Status: NFS4_OK (0)
->         Opcode: OPEN (18)
->             Status: NFS4_OK (0)
->             stateid
->                 [StateID Hash: 0xaf36]
->                 seqid: 0x00000001
->                 Data: 01db0fb0ac64000000000000
->             change_info
->                 Atomic: Yes
->                 changeid (before): 5901652787232948527
->                 changeid (after): 5901653255478300828
->             results_flags: Unknown (0x00000006)
->                 .... .... .... .... .... .... .... ...0 = mlock: Unknown (0)
->                 .... .... .... .... .... .... .... ..1. = confirm: OPEN4_RESULT_MLOCK (1)
->             Attr mask[0]: 0x00000010 (SIZE)
->                 reqd_attr: SIZE (4)
->                     size: 42949672960
->             Attr mask[1]: 0x00000002 (MODE)
->                 reco_attr: MODE (33)
->                     fattr4_mode: 044
->                         .... .... .... .... 000. .... .... .... = Name: Unknown (0)
->                         .... .... .... .... .... 0... .... .... = Set user id on exec: No
->                         .... .... .... .... .... .0.. .... .... = Set group id on exec: No
->                         .... .... .... .... .... ..0. .... .... = Save swapped text even after use: No
->                         .... .... .... .... .... ...0 .... .... = Read permission for owner: No
->                         .... .... .... .... .... .... 0... .... = Write permission for owner: No
->                         .... .... .... .... .... .... .0.. .... = Execute permission for owner: No
->                         .... .... .... .... .... .... ..1. .... = Read permission for group: Yes
->                         .... .... .... .... .... .... ...0 .... = Write permission for group: No
->                         .... .... .... .... .... .... .... 0... = Execute permission for group: No
->                         .... .... .... .... .... .... .... .1.. = Read permission for others: Yes
->                         .... .... .... .... .... .... .... ..0. = Write permission for others: No
->                         .... .... .... .... .... .... .... ...0 = Execute permission for others: No
->             Delegation Type: Unknown (2950154659)
->     [Main Opcode: OPEN (18)]
->     Data (216 bytes)
-> 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
