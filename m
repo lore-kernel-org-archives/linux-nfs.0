@@ -1,65 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:11575 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:59624 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752899Ab3GBP3o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Jul 2013 11:29:44 -0400
-Message-ID: <1372778981.2302.5.camel@tlielax.poochiereds.net>
-Subject: Re: [PATCH 1/2] rpc_pipe: export simple_dentry_operations and have
- rpc_pipefs use it
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Date: Tue, 02 Jul 2013 11:29:41 -0400
-In-Reply-To: <20130701122201.6a8fc966@tlielax.poochiereds.net>
-References: <1372122340-28982-1-git-send-email-jlayton@redhat.com>
-	 <1372122340-28982-2-git-send-email-jlayton@redhat.com>
-	 <1372174611.5968.28.camel@leira.trondhjem.org>
-	 <20130701122201.6a8fc966@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1754967Ab3GQVKA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Jul 2013 17:10:00 -0400
+Date: Wed, 17 Jul 2013 17:09:59 -0400
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, jlayton@redhat.com,
+        Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 00/16] Implement NFSv4 delegations, take 9
+Message-ID: <20130717210959.GB31771@fieldses.org>
+References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-07-01 at 12:22 -0400, Jeff Layton wrote:
-> On Tue, 25 Jun 2013 15:36:54 +0000
-> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+On Wed, Jul 17, 2013 at 04:50:00PM -0400, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
 > 
-> > On Mon, 2013-06-24 at 21:05 -0400, Jeff Layton wrote:
-> > > ...instead of replicating a copy of them.
-> > > 
-> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > ---
-> > >  fs/libfs.c            |  9 +++++----
-> > >  include/linux/fs.h    |  1 +
-> > >  net/sunrpc/rpc_pipe.c | 11 +----------
-> > >  3 files changed, 7 insertions(+), 14 deletions(-)
-> > > 
-> > 
-> > Can you please get an ACK from Al on this patch.
-> > 
-> > Cheers
-> >   Trond
-> > 
+> Changes since version 8, thanks to dchinner and jlayton for review:
 > 
-> Al, could you weigh in on this? The only real change to generic VFS
-> code is that I'm exporting simple_dentry_operations here.
+> 	- additional warnings in lock_two_nondirectories
+> 	- lock_two_nondirectories handles NULL second argument,
+> 	  simplifying vfs_rename_other
+> 	- kerneldoc comments on notify_change, vfs_link, vfs_rename,
+> 	  vfs_unlink, to explain delegated_inode argument.
+> 	- make clear non-support of write delegations in
+> 	  generic_add_lease
+> 	- rebase to 3.11-rc1
+
+(Not addressed: Dave's concerns about possible incompatibility with
+ordering of filesystem-specific locks, in xfs and possibly also in other
+filesystems.)
+
+--b.
+
 > 
-
-Trond, I've been unable to get in touch with Al to get him to ACK this.
-I'm guessing he's busy getting patches together for the merge window. 
-
-I propose we do this instead:
-
-I'll respin the patch such that sb->s_d_op is set to
-rpc_dentry_operations, and we'll just keep those for now. Then, I can
-propose a patch later to export simple_dentry_operations and convert
-rpc_pipefs to use that afterward (probably for 3.12).
-
-I'll post the respin after I've done a bit of testing...
-
--- 
-Jeff Layton <jlayton@redhat.com>
-
+> Introduction copied from previous posting:
+> 
+> This patch series implements read delegations, which allow NFSv4 clients
+> to perform read opens without contacting the server, by promising to
+> call back to clients before modifying the data, metadata, or set of
+> links pointing to a file.
+> 
+> The main recent change was in response to review from Linus, who didn't
+> want us to hang under directory i_mutex's on timeouts communicating with
+> unresponsive clients.
+> 
+> So, this version of the series drops the i_mutex before waiting.  The
+> logic ends up looking something like:
+> 
+>         acquire locks
+>         look up inode
+>         test for delegation; if found:
+>                 take reference on inode
+>                 release locks
+>                 wait for delegation break
+>                 drop reference on inode
+>                 retry
+> 
+> The initial test for a delegation happens after the lock on the
+> delegated inode is acquired, but additional directory mutexes may have
+> been acquired further up the call stack.  I therefore add a "struct
+> inode **" argument to any intervening functions, which we use to pass
+> the inode back up to the caller in the case it needs to wait for the
+> delegation to be broken.
+> 
+> I also allow callers to pass in NULL for the "struct inode **" argument
+> to indicate they'd rather just fail than wait for a delegation.  For
+> example, as long as ecryptfs isn't exportable I assume they'd rather not
+> see retry logic there that they won't use.  But I may have misjudged in
+> some of these cases.
+> 
+> J. Bruce Fields (16):
+>   vfs: pull ext4's double-i_mutex-locking into common code
+>   vfs: don't use PARENT/CHILD lock classes for non-directories
+>   vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
+>   vfs: take i_mutex on renamed file
+>   locks: introduce new FL_DELEG lock flag
+>   locks: implement delegations
+>   namei: minor vfs_unlink cleanup
+>   locks: break delegations on unlink
+>   locks: helper functions for delegation breaking
+>   locks: break delegations on rename
+>   locks: break delegations on link
+>   locks: break delegations on any attribute modification
+>   nfsd4: minor nfs4_setlease cleanup
+>   nfsd4: delay setting current_fh in open
+>   nfsd4: close open-deleg/unlink/rename race
+>   nfsd4: break only delegations when appropriate
+> 
+>  Documentation/filesystems/directory-locking |   31 ++++--
+>  drivers/base/devtmpfs.c                     |    6 +-
+>  fs/attr.c                                   |   25 ++++-
+>  fs/cachefiles/interface.c                   |    4 +-
+>  fs/cachefiles/namei.c                       |    4 +-
+>  fs/ecryptfs/inode.c                         |    6 +-
+>  fs/ext4/ext4.h                              |    2 -
+>  fs/ext4/ioctl.c                             |    4 +-
+>  fs/ext4/move_extent.c                       |   40 +-------
+>  fs/hpfs/namei.c                             |    2 +-
+>  fs/inode.c                                  |   42 ++++++++-
+>  fs/locks.c                                  |   57 ++++++++---
+>  fs/namei.c                                  |  135 +++++++++++++++++++++++----
+>  fs/nfsd/nfs4proc.c                          |   36 +++----
+>  fs/nfsd/nfs4state.c                         |   66 ++++++++++---
+>  fs/nfsd/vfs.c                               |   41 ++------
+>  fs/nfsd/xdr4.h                              |    3 +-
+>  fs/open.c                                   |   22 ++++-
+>  fs/utimes.c                                 |    9 +-
+>  include/linux/fs.h                          |   72 +++++++++++---
+>  ipc/mqueue.c                                |    2 +-
+>  21 files changed, 433 insertions(+), 176 deletions(-)
+> 
+> -- 
+> 1.7.9.5
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
