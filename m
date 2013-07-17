@@ -1,75 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:12878 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933272Ab3GWRAq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Jul 2013 13:00:46 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Andre Heider <a.heider@gmail.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Rick Macklem <rmacklem@uoguelph.ca>
-Subject: Re: [PATCH 2/2] NFSv4: encode_attrs should not backfill the bitmap
- and attribute length
-Date: Tue, 23 Jul 2013 17:00:46 +0000
-Message-ID: <1374598847.12943.0.camel@leira.trondhjem.org>
-References: <1374098347-30196-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1374098347-30196-2-git-send-email-Trond.Myklebust@netapp.com>
-	 <CAHsu+b-b=-pQ4f8AfHHDaPpAK3YvHomS3X-QuEJkzbAsuJBYfg@mail.gmail.com>
-In-Reply-To: <CAHsu+b-b=-pQ4f8AfHHDaPpAK3YvHomS3X-QuEJkzbAsuJBYfg@mail.gmail.com>
-Content-Type: multipart/mixed;
-	boundary="_002_1374598847129430camelleiratrondhjemorg_"
+Received: from mail-pd0-f170.google.com ([209.85.192.170]:46235 "EHLO
+	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757093Ab3GQTf4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Jul 2013 15:35:56 -0400
+Received: by mail-pd0-f170.google.com with SMTP id x11so2193308pdj.15
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Jul 2013 12:35:55 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <A5C56FD6-9E14-43A3-8627-1C8F77EC6926@oracle.com>
+References: <CAHsu+b_hhSr2vwcwM8TX3=xF=3HffUXG=YLVLcsEpH1wHn+JoA@mail.gmail.com>
+	<A5C56FD6-9E14-43A3-8627-1C8F77EC6926@oracle.com>
+Date: Wed, 17 Jul 2013 21:35:55 +0200
+Message-ID: <CAHsu+b9vWUyCGHSs==Na=VntwvYp65=rva7+y9aQDXquxX4t-A@mail.gmail.com>
+Subject: Re: Error writing to nfs4 with 3.11-rc1
+From: Andre Heider <a.heider@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: multipart/mixed; boundary=047d7b5d9eb3c52b5204e1ba33c9
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---_002_1374598847129430camelleiratrondhjemorg_
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <0684017A53A9F34DA8C9EDA4274D8F0A@hq.netapp.com>
+--047d7b5d9eb3c52b5204e1ba33c9
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+
+On Wed, Jul 17, 2013 at 9:10 PM, Chuck Lever <chuck.lever@oracle.com> wrote=
+:
+>
+> On Jul 17, 2013, at 2:55 PM, Andre Heider <a.heider@gmail.com> wrote:
+>
+>> Hi,
+>>
+>> I'm having problems using 3.11-rc1 as nfs4 client (with a FreeBSD 9.1
+>> server) using sec=3Dsys.
+>>
+>> With the same server+client setup, just booting different kernels:
+>> 3.9.10 works without issues
+>> 3.10.1 works too, but introduced "RPC: AUTH_GSS upcall timed out." in
+>> dmesg (iirc I don't need gss with sec=3Dsys)
+>
+> Not a requirement, but running gssd should make that message go away.  Th=
+e client is attempting to use krb5i to manage its lease on the server, and =
+falling back to AUTH_UNIX when it sees gssd is not running.
+>
+>> 3.11-rc1 reading from the server still works, writing fails
+>>
+>> Even a simple touch on the share fails with:
+>> touch: cannot touch =E2=80=98/mnt/andre/test=E2=80=99: Input/output erro=
+r
+>
+> A network capture is a reasonable place to start.
+>
+>   # tcpdump -s0 -w /tmp/raw
+>
+> Then try your touch test again.  Stop the tcpdump.  You can post a compre=
+ssed version of the raw dump here if it's short.
+
+Attached two dumps, one from 3.10 (works) and one from 3.11 (doesn't work).
+
+Thanks,
+Andre
+
+--047d7b5d9eb3c52b5204e1ba33c9
+Content-Type: application/octet-stream; name="dump.tar.xz"
+Content-Disposition: attachment; filename="dump.tar.xz"
 Content-Transfer-Encoding: base64
+X-Attachment-Id: f_hj8xjszx0
 
-T24gVHVlLCAyMDEzLTA3LTIzIGF0IDE3OjU5ICswMjAwLCBBbmRyZSBIZWlkZXIgd3JvdGU6DQo+
-IFRyb25kLA0KPiANCj4gT24gV2VkLCBKdWwgMTcsIDIwMTMgYXQgMTE6NTkgUE0sIFRyb25kIE15
-a2xlYnVzdA0KPiA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+IFRoZSBh
-dHRyaWJ1dGUgbGVuZ3RoIGlzIGFscmVhZHkgY2FsY3VsYXRlZCBpbiBhZHZhbmNlLiBUaGVyZSBp
-cyBubw0KPiA+IHJlYXNvbiB3aHkgd2UgY2Fubm90IGNhbGN1bGF0ZSB0aGUgYml0bWFwIGluIGFk
-dmFuY2UgdG9vIHNvIHRoYXQNCj4gPiB3ZSBkb24ndCBoYXZlIHRvIHBsYXkgcG9pbnRlciBnYW1l
-cy4NCj4gDQo+IEknbSBzb3JyeSB0byByZXBvcnQgdGhhdCB0aGlzIHBhdGNoIHNlZW1zIHRvIGJl
-IG1vcmUgdGhhbiBqdXN0IGEgY2xlYW51cC4NCj4gDQo+IEkganVzdCB0ZXN0ZWQgMy4xMS1yYzIg
-YWdhaW5zdCBteSBGcmVlQlNEIHNlcnZlciwgYW5kIHdpdGgganVzdCBwYXRjaA0KPiAxLzIgKGFz
-IGluIC1yYzIpIEkgc3RpbGwgZ2V0IHRoZSBmYWlsdXJlIHVwb24gYHRvdWNoYC4gSXQgZmFpbHMg
-d2l0aA0KPiBvciB3aXRob3V0IFJpY2sncyBzZXJ2ZXIgcGF0Y2guDQo+IA0KPiBBcHBseWluZyB0
-aGlzIG9uZSBvbiB0b3Agb2YgLXJjMiBmaXhlcyBpdC4NCg0KSG93IGFib3V0IHRoZSBhdHRhY2hl
-ZCBpbnN0ZWFkIG9mIHRoZSBjbGVhbnVwPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
-TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
-b20NCnd3dy5uZXRhcHAuY29tDQo=
-
---_002_1374598847129430camelleiratrondhjemorg_
-Content-Type: text/x-patch;
-	name="0001-NFSv4-Fix-brainfart-in-attribute-length-calculation.patch"
-Content-Description: 0001-NFSv4-Fix-brainfart-in-attribute-length-calculation.patch
-Content-Disposition: attachment;
-	filename="0001-NFSv4-Fix-brainfart-in-attribute-length-calculation.patch";
-	size=963; creation-date="Tue, 23 Jul 2013 17:00:45 GMT";
-	modification-date="Tue, 23 Jul 2013 17:00:45 GMT"
-Content-ID: <CD78C33E93C20442BC8FF577A0CB0300@hq.netapp.com>
-Content-Transfer-Encoding: base64
-
-RnJvbSBiZDAwYTIzYmJhOTFmNTRhYjQ1ZTg3ODhhODMwNjczM2Q4Y2EzMDYyIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbT4NCkRhdGU6IFR1ZSwgMjMgSnVsIDIwMTMgMTI6NTM6MzkgLTA0MDANClN1YmplY3Q6
-IFtQQVRDSF0gTkZTdjQ6IEZpeCBicmFpbmZhcnQgaW4gYXR0cmlidXRlIGxlbmd0aCBjYWxjdWxh
-dGlvbg0KDQpUaGUgY2FsY3VsYXRpb24gb2YgdGhlIGF0dHJpYnV0ZSBsZW5ndGggd2FzIDQgYnl0
-ZXMgb2ZmLg0KDQpTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVz
-dEBuZXRhcHAuY29tPg0KLS0tDQogZnMvbmZzL25mczR4ZHIuYyB8IDIgKy0NCiAxIGZpbGUgY2hh
-bmdlZCwgMSBpbnNlcnRpb24oKyksIDEgZGVsZXRpb24oLSkNCg0KZGlmZiAtLWdpdCBhL2ZzL25m
-cy9uZnM0eGRyLmMgYi9mcy9uZnMvbmZzNHhkci5jDQppbmRleCBjNzRkNjE2Li4zODUwYjAxIDEw
-MDY0NA0KLS0tIGEvZnMvbmZzL25mczR4ZHIuYw0KKysrIGIvZnMvbmZzL25mczR4ZHIuYw0KQEAg
-LTExMTgsMTEgKzExMTgsMTEgQEAgc3RhdGljIHZvaWQgZW5jb2RlX2F0dHJzKHN0cnVjdCB4ZHJf
-c3RyZWFtICp4ZHIsIGNvbnN0IHN0cnVjdCBpYXR0ciAqaWFwLA0KIAkJCQlsZW4sICgoY2hhciAq
-KXAgLSAoY2hhciAqKXEpICsgNCk7DQogCQlCVUcoKTsNCiAJfQ0KLQlsZW4gPSAoY2hhciAqKXAg
-LSAoY2hhciAqKXEgLSAoYm12YWxfbGVuIDw8IDIpOw0KIAkqcSsrID0gaHRvbmwoYm12YWwwKTsN
-CiAJKnErKyA9IGh0b25sKGJtdmFsMSk7DQogCWlmIChibXZhbF9sZW4gPT0gMykNCiAJCSpxKysg
-PSBodG9ubChibXZhbDIpOw0KKwlsZW4gPSAoY2hhciAqKXAgLSAoY2hhciAqKShxICsgMSk7DQog
-CSpxID0gaHRvbmwobGVuKTsNCiANCiAvKiBvdXQ6ICovDQotLSANCjEuOC4zLjENCg0K
-
---_002_1374598847129430camelleiratrondhjemorg_--
+/Td6WFoAAATm1rRGAgAhARYAAAB0L+Wj4Cf/A7ldABmLgoeLX5/09jcjiFh5N+2vb5aHUGmDuTew
+2+q5DW9l9XcneMCoAio23quhI235aI12BRax1hcGCfhbfDuHcjO7kpASxf+gy+KeHxAjHMjbjTkQ
++DRcLLS4OTk7M8eEFGs4hEHRsO5w6TydSae3xVZvfLfHuiWCZ6Onmoz59KACMHqNBNyFZCKxokdm
+d9BKf3Ymj/oERl55EKcQnZPmcK2t3LpNGsN+jW3q6yJMJZLQ0nQ1h5NvyZbVPOe5+bdnnaxSOW18
+XvN0jPy+qwnJoGS/BREAz7gexpYUvyfJr86J0O7jphWG7M0PqjI4b8rrwJsJKgK4HCgyjyGUZMnR
+JpogNYgcw6P5rAHe3ngEw2zCHCwgdZ8+ICiBD0OVTkDZxMeCd62rksxMVMVJOLytvaCObsWKp//4
+/QlMmGsWAYM2jM2GESCMvm2XmkRzmIyIIPvTd1IXQuToxgGyltHQYP9uuoHqbo397XdsvnNYkIP7
+JXIKMwBemo4mP96p21nU/+t3Wm7HvYNaQ0s5RWskHfbuQJ2wlBnbZR4mr01kZf1JE30EQmrsUcRQ
+eaOR6cBoYTFiP5RUR3d05jdbH6QnivPH+ZM45XhWRlM4ingqWe99gsq/Y/JpqizM1UFtY/sOqh5D
+fvE1nqABhH041EPocoHc5wtFMIWY5AMzu+gehoEYM8IxjQqCVfuNGzu0gvmtmY1m3uSFi90vHMOP
+EtY/G5qV+ZpcyI1Ib5jJOV1QuHe4mGMM/po6HkYj9rPIwSetjJtwrzIT4lj6ZR+2y6QckQEW7oJW
+r5s2wWb8iPK5QKpVicvUZiFNWpKHWh6Rahuez7s8d8FTXSNCYqcE0eENN0NTng2LzF76mjIKrDX5
+p4pU3D115L5CBDcsbR6m+OYDie+SQ4s/a3HzI42hBuV+igkO3bFckt0bsN4PBqlhcOJVZARaqzqa
+KMKCow0QpvTSFD4n+w1TpoOzVetJXCS6w/jNf+rpIw3zajArExpdic9IgGhG87BAYHh3EmO+r4yI
+aTX/RIhI1Ci7b1sTpUzWAxmorijWOZkiNMlVAZr7ZDplm01bdh9E9mm3a6z/51GTyA9MNWNEaBob
+tE6KOl0JFLtzIYl54RtYw2eKG3eLe0XpqpON45AHO9jU6T6APpUijtJJnBGbo0hnnfH5W0RVUckl
+7nByAeAWJE9aghXXKsCWTds7/wqtza3tBbc2NgQk42OOZ6Ep9t1nxov6FP+OuldbbfsUk7Ks0teW
+how75TYFaHF7Y7TLWUcAAAAAAPNwi53AgawCAAHVB4BQAADaHWOyscRn+wIAAAAABFla
+--047d7b5d9eb3c52b5204e1ba33c9--
