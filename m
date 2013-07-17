@@ -1,51 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:7577 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:35415 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752877Ab3GAQpu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Jul 2013 12:45:50 -0400
-Message-ID: <51D1A8C0.509@RedHat.com>
-Date: Mon, 01 Jul 2013 12:05:20 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752005Ab3GQUn0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Jul 2013 16:43:26 -0400
+Subject: [RFC][PATCH 00/10] Associative array & Massive expansion of keyring
+ capacity
+To: keyrings@linux-nfs.org
+From: David Howells <dhowells@redhat.com>
+Cc: linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Date: Wed, 17 Jul 2013 21:43:14 +0100
+Message-ID: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
-To: Neil Brown <neilb@suse.de>
-CC: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 1/3] krb5_utils: remove redundant array size.
-References: <20130603005219.20080.1927.stgit@notabene.brown> <20130603010021.20080.24416.stgit@notabene.brown>
-In-Reply-To: <20130603010021.20080.24416.stgit@notabene.brown>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+Here's a set of patches that do two main things:
 
-On 02/06/13 21:00, Neil Brown wrote:
-> When initialising an array there is no need to specify the size as the
-> size is taken from the initialiser.  Having the size there means that
-> any change to the initialiser needs to change the size to and so is
-> error-prone.
-> 
-> So just remove the size.
-Committed....
+ (1) Provide a general purpose associative array implementation.
 
-steved.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> ---
->  utils/gssd/krb5_util.c |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> index 6275dd8..9ef80f0 100644
-> --- a/utils/gssd/krb5_util.c
-> +++ b/utils/gssd/krb5_util.c
-> @@ -1236,7 +1236,7 @@ gssd_refresh_krb5_machine_credential(char *hostname,
->  	krb5_keytab kt = NULL;;
->  	int retval = 0;
->  	char *k5err = NULL;
-> -	const char *svcnames[5] = { "$", "root", "nfs", "host", NULL };
-> +	const char *svcnames[] = { "$", "root", "nfs", "host", NULL };
->  
->  	/*
->  	 * If a specific service name was specified, use it.
-> 
-> 
+ (2) Use the associative array implementation to provide key pointer storage
+     for keyrings thereby massively increasing capacity.
+
+There are numerous smaller patches also that are split out of (2) to make the
+patch in (2) smaller, plus a fix patch that didn't get taken into the last
+merge window.
+
+The patches can also be found at:
+
+	http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/log/?h=keys-devel
+
+
+The impetus for these is that the NFS ID mapper uses keyrings to store name to
+ID mappings, but is running up against the limitation imposed by the flat
+array currently used by the keyring.
+
+The associative array implementation does all the work.  To quickly summarise
+its capabilities: no capacity limit; objects don't need to be modified to go
+in it (no list_head/rb_node equivalent needed); objects need a unique index
+key of arbitrary length; objects can be anything; modifications are generally
+RCU-safe; the contents can be iterated over and it can directly walk to an
+object in O(log(N)-ish) time given the key; and lastly, there are several
+features to reduce the memory footprint (node sharing and shortcuts).
+Documentation is included in the patch.
+
+Note that the associative array implementation was developed in userspace and
+has been thoroughly valground and tested inserting new objects whilst
+iterating over 2,000,000 objects amongst other things.
+
+The keyutils testsuite has been run successfully against a kernel with these
+patches applied, though the testsuite did need some tweaks: (a) previously
+keys added to a keyring with no removals appeared to be ordered and (b) some
+of the errors have changed.
+
+David
+---
+David Howells (10):
+      KEYS: Skip key state checks when checking for possession
+      Add a generic associative array implementation.
+      KEYS: Use bool in make_key_ref() and is_key_possessed()
+      KEYS: key_is_dead() should take a const key pointer argument
+      KEYS: Consolidate the concept of an 'index key' for key access
+      KEYS: Introduce a search context structure
+      KEYS: Search for auth-key by name rather than targt key ID
+      KEYS: Define a __key_get() wrapper to use rather than atomic_inc()
+      KEYS: Drop the permissions argument from __keyring_search_one()
+      KEYS: Expand the capacity of a keyring
+
+
+ Documentation/assoc_array.txt    |  583 +++++++++++++
+ Documentation/security/keys.txt  |   20 
+ include/keys/keyring-type.h      |   17 
+ include/linux/assoc_array.h      |   94 ++
+ include/linux/assoc_array_priv.h |  159 +++
+ include/linux/key-type.h         |    5 
+ include/linux/key.h              |   48 +
+ lib/Kconfig                      |   14 
+ lib/Makefile                     |    1 
+ lib/assoc_array.c                | 1734 ++++++++++++++++++++++++++++++++++++++
+ security/keys/Kconfig            |    1 
+ security/keys/gc.c               |   30 -
+ security/keys/internal.h         |   65 +
+ security/keys/key.c              |   91 +-
+ security/keys/keyring.c          | 1447 ++++++++++++++++----------------
+ security/keys/proc.c             |   17 
+ security/keys/process_keys.c     |  131 +--
+ security/keys/request_key.c      |   56 +
+ security/keys/request_key_auth.c |   31 -
+ security/keys/user_defined.c     |   18 
+ 20 files changed, 3596 insertions(+), 966 deletions(-)
+ create mode 100644 Documentation/assoc_array.txt
+ create mode 100644 include/linux/assoc_array.h
+ create mode 100644 include/linux/assoc_array_priv.h
+ create mode 100644 lib/assoc_array.c
+
