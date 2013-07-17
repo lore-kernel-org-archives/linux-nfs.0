@@ -1,45 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:65456 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751000Ab3GHMrC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jul 2013 08:47:02 -0400
-Received: by mail-wi0-f178.google.com with SMTP id k10so3902258wiv.11
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Jul 2013 05:47:01 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:45110 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751371Ab3GQUoT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Jul 2013 16:44:19 -0400
+Subject: [PATCH 07/10] KEYS: Search for auth-key by name rather than targt
+ key ID
+To: keyrings@linux-nfs.org
+From: David Howells <dhowells@redhat.com>
+Cc: linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Date: Wed, 17 Jul 2013 21:44:15 +0100
+Message-ID: <20130717204415.8591.41028.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
+References: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
-In-Reply-To: <CAF38w7Xx0_TqZem6cen+EJKpUrziGT_dAVcjG7oFFwM+ANm5mA@mail.gmail.com>
-References: <CAF38w7Xx0_TqZem6cen+EJKpUrziGT_dAVcjG7oFFwM+ANm5mA@mail.gmail.com>
-Date: Mon, 8 Jul 2013 14:47:00 +0200
-Message-ID: <CAF38w7Xf87k=GfM38XcO+ag+Na=f=Mg1KDn0jv2Y8Yp6Q_5a=g@mail.gmail.com>
-Subject: Fwd: Problem with sharing mounted iso
-From: Johan GUILBAUD <guilbaud.johan@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello !
+Search for auth-key by name rather than by target key ID as, in a future
+patch, we'll by searching directly by index key in preference to iteration
+over all keys.
 
-I have a problem to access a mounted ISO through NFS protocol
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
 
-i have a server (RHEL6) on which are mounted ISOs
-i have a lot of client accessing files into ISO via the NFS share
+ security/keys/request_key_auth.c |   21 +++++++--------------
+ 1 file changed, 7 insertions(+), 14 deletions(-)
 
-My problem is clients (RHEL5 & 6, Solaris 8 & 10) don't see content of
-ISO folder
+diff --git a/security/keys/request_key_auth.c b/security/keys/request_key_auth.c
+index 8d09852..7495a93 100644
+--- a/security/keys/request_key_auth.c
++++ b/security/keys/request_key_auth.c
+@@ -18,6 +18,7 @@
+ #include <linux/slab.h>
+ #include <asm/uaccess.h>
+ #include "internal.h"
++#include <keys/user-type.h>
+ 
+ static int request_key_auth_instantiate(struct key *,
+ 					struct key_preparsed_payload *);
+@@ -222,33 +223,25 @@ error_alloc:
+ }
+ 
+ /*
+- * See if an authorisation key is associated with a particular key.
+- */
+-static int key_get_instantiation_authkey_match(const struct key *key,
+-					       const void *_id)
+-{
+-	struct request_key_auth *rka = key->payload.data;
+-	key_serial_t id = (key_serial_t)(unsigned long) _id;
+-
+-	return rka->target_key->serial == id;
+-}
+-
+-/*
+  * Search the current process's keyrings for the authorisation key for
+  * instantiation of a key.
+  */
+ struct key *key_get_instantiation_authkey(key_serial_t target_id)
+ {
++	char description[16];
+ 	struct keyring_search_context ctx = {
+ 		.index_key.type		= &key_type_request_key_auth,
++		.index_key.description	= description,
+ 		.cred			= current_cred(),
+-		.match			= key_get_instantiation_authkey_match,
+-		.match_data		= (void *)(unsigned long)target_id,
++		.match			= user_match,
++		.match_data		= description,
+ 		.flags			= KEYRING_SEARCH_LOOKUP_DIRECT,
+ 	};
+ 	struct key *authkey;
+ 	key_ref_t authkey_ref;
+ 
++	sprintf(description, "%x", target_id);
++
+ 	authkey_ref = search_process_keyrings(&ctx);
+ 
+ 	if (IS_ERR(authkey_ref)) {
 
-In example :
-
-on NFS server i have a folder /pub/ where the ISO are mounted (ie :
-with the iso mybeautifuliso.iso on the mount point
-"/pub/mybeautifuliso/") there are also, for test, text files in /pub/
-NFS shares content of /pub
-
-
-Client see tests text files, and folder "mybeautifuliso" but this one
-is empty...
-
-
-thanks for help
-
---
-GUILBAUD Johan
