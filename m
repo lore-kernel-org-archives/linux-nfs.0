@@ -1,145 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53651 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756541Ab3GQUuY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 16:50:24 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Tyler Hicks <tyhicks@canonical.com>,
-        Dustin Kirkland <dustin.kirkland@gazzang.com>
-Subject: [PATCH 11/16] locks: break delegations on link
-Date: Wed, 17 Jul 2013 16:50:12 -0400
-Message-Id: <1374094217-31493-13-git-send-email-bfields@redhat.com>
-In-Reply-To: <1374094217-31493-1-git-send-email-bfields@redhat.com>
-References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:36895 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756880Ab3GQTKs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Jul 2013 15:10:48 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: Error writing to nfs4 with 3.11-rc1
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAHsu+b_hhSr2vwcwM8TX3=xF=3HffUXG=YLVLcsEpH1wHn+JoA@mail.gmail.com>
+Date: Wed, 17 Jul 2013 15:10:43 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <A5C56FD6-9E14-43A3-8627-1C8F77EC6926@oracle.com>
+References: <CAHsu+b_hhSr2vwcwM8TX3=xF=3HffUXG=YLVLcsEpH1wHn+JoA@mail.gmail.com>
+To: Andre Heider <a.heider@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-Cc: Tyler Hicks <tyhicks@canonical.com>
-Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/ecryptfs/inode.c |    2 +-
- fs/namei.c          |   36 ++++++++++++++++++++++++++++++++----
- fs/nfsd/vfs.c       |    2 +-
- include/linux/fs.h  |    2 +-
- 4 files changed, 35 insertions(+), 7 deletions(-)
+On Jul 17, 2013, at 2:55 PM, Andre Heider <a.heider@gmail.com> wrote:
 
-diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-index 0b8b632..cb3ac33 100644
---- a/fs/ecryptfs/inode.c
-+++ b/fs/ecryptfs/inode.c
-@@ -475,7 +475,7 @@ static int ecryptfs_link(struct dentry *old_dentry, struct inode *dir,
- 	dget(lower_new_dentry);
- 	lower_dir_dentry = lock_parent(lower_new_dentry);
- 	rc = vfs_link(lower_old_dentry, lower_dir_dentry->d_inode,
--		      lower_new_dentry);
-+		      lower_new_dentry, NULL);
- 	if (rc || !lower_new_dentry->d_inode)
- 		goto out_lock;
- 	rc = ecryptfs_interpose(lower_new_dentry, new_dentry, dir->i_sb);
-diff --git a/fs/namei.c b/fs/namei.c
-index 0554c9a..bd1f78e 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3631,7 +3631,26 @@ SYSCALL_DEFINE2(symlink, const char __user *, oldname, const char __user *, newn
- 	return sys_symlinkat(oldname, AT_FDCWD, newname);
- }
- 
--int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry)
-+/**
-+ * vfs_link - create a new link
-+ * @old_dentry:	object to be linked
-+ * @dir:	new parent
-+ * @new_dentry:	where to create the new link
-+ * @delegated_inode: returns inode needing a delegation break
-+ *
-+ * The caller must hold dir->i_mutex
-+ *
-+ * If vfs_link discovers a delegation on the to-be-linked file in need
-+ * of breaking, it will return -EWOULDBLOCK and return a reference to the
-+ * inode in delegated_inode.  The caller should then break the delegation
-+ * and retry.  Because breaking a delegation may take a long time, the
-+ * caller should drop the i_mutex before doing so.
-+ *
-+ * Alternatively, a caller may pass NULL for delegated_inode.  This may
-+ * be appropriate for callers that expect the underlying filesystem not
-+ * to be NFS exported.
-+ */
-+int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry, struct inode **delegated_inode)
- {
- 	struct inode *inode = old_dentry->d_inode;
- 	unsigned max_links = dir->i_sb->s_max_links;
-@@ -3667,8 +3686,11 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
- 		error =  -ENOENT;
- 	else if (max_links && inode->i_nlink >= max_links)
- 		error = -EMLINK;
--	else
--		error = dir->i_op->link(old_dentry, dir, new_dentry);
-+	else {
-+		error = try_break_deleg(inode, delegated_inode);
-+		if (!error)
-+			error = dir->i_op->link(old_dentry, dir, new_dentry);
-+	}
- 
- 	if (!error && (inode->i_state & I_LINKABLE)) {
- 		spin_lock(&inode->i_lock);
-@@ -3695,6 +3717,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
- {
- 	struct dentry *new_dentry;
- 	struct path old_path, new_path;
-+	struct inode *delegated_inode = NULL;
- 	int how = 0;
- 	int error;
- 
-@@ -3733,9 +3756,14 @@ retry:
- 	error = security_path_link(old_path.dentry, &new_path, new_dentry);
- 	if (error)
- 		goto out_dput;
--	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry);
-+	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry, &delegated_inode);
- out_dput:
- 	done_path_create(&new_path, new_dentry);
-+	if (delegated_inode) {
-+		error = break_deleg_wait(&delegated_inode);
-+		if (!error)
-+			goto retry;
-+	}
- 	if (retry_estale(error, how)) {
- 		how |= LOOKUP_REVAL;
- 		goto retry;
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index fbf22d2..5479fff 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1736,7 +1736,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
- 		err = nfserrno(host_err);
- 		goto out_dput;
- 	}
--	host_err = vfs_link(dold, dirp, dnew);
-+	host_err = vfs_link(dold, dirp, dnew, NULL);
- 	if (!host_err) {
- 		err = nfserrno(commit_metadata(ffhp));
- 		if (!err)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 74aa0c7..a2403f9 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1467,7 +1467,7 @@ extern int vfs_create(struct inode *, struct dentry *, umode_t, bool);
- extern int vfs_mkdir(struct inode *, struct dentry *, umode_t);
- extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
- extern int vfs_symlink(struct inode *, struct dentry *, const char *);
--extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
-+extern int vfs_link(struct dentry *, struct inode *, struct dentry *, struct inode **);
- extern int vfs_rmdir(struct inode *, struct dentry *);
- extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
- extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **);
+> Hi,
+> 
+> I'm having problems using 3.11-rc1 as nfs4 client (with a FreeBSD 9.1
+> server) using sec=sys.
+> 
+> With the same server+client setup, just booting different kernels:
+> 3.9.10 works without issues
+> 3.10.1 works too, but introduced "RPC: AUTH_GSS upcall timed out." in
+> dmesg (iirc I don't need gss with sec=sys)
+
+Not a requirement, but running gssd should make that message go away.  The client is attempting to use krb5i to manage its lease on the server, and falling back to AUTH_UNIX when it sees gssd is not running.
+
+> 3.11-rc1 reading from the server still works, writing fails
+> 
+> Even a simple touch on the share fails with:
+> touch: cannot touch ‘/mnt/andre/test’: Input/output error
+
+A network capture is a reasonable place to start.
+
+  # tcpdump -s0 -w /tmp/raw
+
+Then try your touch test again.  Stop the tcpdump.  You can post a compressed version of the raw dump here if it's short.
+
+> mount output of the share in question:
+> 192.168.0.1:/home/andre on /mnt/andre type nfs4
+> (rw,nosuid,relatime,vers=4.0,rsize=65536,wsize=65536,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=192.168.0.40,local_lock=none,addr=192.168.0.1)
+> 
+> The 3.11 .config was cp'ed from 3.10.1 and updated via `make
+> oldconfig`. Toggling the 3.11 nfs4.2 kernel options doesn't seem to
+> make a difference.
+
 -- 
-1.7.9.5
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
