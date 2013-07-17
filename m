@@ -1,82 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from srv2.trombetti.net ([65.254.53.252]:3038 "EHLO
-	srv2.trombetti.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751504Ab3GYXWs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Jul 2013 19:22:48 -0400
-Received: from localhost (localhost [127.0.0.1])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	(Authenticated sender: SASL)
-	by srv2.trombetti.net (Postfix) with ESMTPSA id 4175E31358
-	for <linux-nfs@vger.kernel.org>; Thu, 25 Jul 2013 19:14:48 -0400 (EDT)
-Message-ID: <51F1B0FF.4010602@shiftmail.org>
-Date: Fri, 26 Jul 2013 01:13:03 +0200
-From: Spelic <spelic@shiftmail.org>
-MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Nfs4 idmapping: new kernel sends numeric
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from userp1040.oracle.com ([156.151.31.81]:50035 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752403Ab3GQUzH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Jul 2013 16:55:07 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: Error writing to nfs4 with 3.11-rc1
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAHsu+b9vWUyCGHSs==Na=VntwvYp65=rva7+y9aQDXquxX4t-A@mail.gmail.com>
+Date: Wed, 17 Jul 2013 16:54:59 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <F3EFA483-0662-4226-AAF3-DCF12D48485E@oracle.com>
+References: <CAHsu+b_hhSr2vwcwM8TX3=xF=3HffUXG=YLVLcsEpH1wHn+JoA@mail.gmail.com> <A5C56FD6-9E14-43A3-8627-1C8F77EC6926@oracle.com> <CAHsu+b9vWUyCGHSs==Na=VntwvYp65=rva7+y9aQDXquxX4t-A@mail.gmail.com>
+To: Andre Heider <a.heider@gmail.com>, Rick Macklem <rmacklem@uoguelph.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all
-we have an ubuntu 10.04 NFS4 client and an ubuntu 13.04 NFS4 server. LDAP.
-The serverside filesystem sees perfect UID/GIDs for files, but sends 
-numeric ones to client side. Client side then maps to nobody/nogroup. Or 
-this is what it seems
 
-This is a packet from server to client due to an "ls -l"
+On Jul 17, 2013, at 3:35 PM, Andre Heider <a.heider@gmail.com> wrote:
 
-0000  00 25 64 fc 69 c6 52 54  00 15 36 aa 08 00 45 00   .%d.i.RT ..6...E.
-0010  00 f4 68 22 40 00 40 06  42 39 c0 a8 07 30 c0 a8   ..h"@.@. B9...0..
-0020  07 28 08 01 03 58 8c 62  27 4e 16 ac d1 51 80 18   .(...X.b 'N...Q..
-0030  00 bd 90 8f 00 00 01 01  08 0a 1c c8 49 28 05 6c   ........ ....I(.l
-0040  11 d3 80 00 00 bc 62 a6  2a c7 00 00 00 01 00 00   ......b. *.......
-0050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00   ........ ........
-0060  00 00 00 00 00 00 00 00  00 02 00 00 00 16 00 00   ........ ........
-0070  00 00 00 00 00 09 00 00  00 00 00 00 00 02 00 10   ........ ........
-0080  01 1a 00 30 a2 3a 00 00  00 78 00 00 00 01 51 ee   ...0.:.. .x....Q.
-0090  5a 4f 27 aa 8d 2b 00 00  00 00 49 3e 00 00 45 91   ZO'..+.. ..I>..E.
-00a0  00 63 f4 8c 43 f5 b7 45  af ac 40 80 06 ce 00 00   .c..C..E ..@.....
-00b0  00 00 01 c0 00 02 00 00  01 a4 00 00 00 01 00 00   ........ ........
-00c0  00 04 31 30 33 37 00 00  00 02 32 30 00 00 00 00   ..1037.. ..20....
-00d0  00 00 00 00 00 00 00 00  00 00 49 3e 10 00 00 00   ........ ..I>....
-00e0  00 00 51 ee 5a 3d 11 04  0b e0 00 00 00 00 51 ee   ..Q.Z=.. ......Q.
-00f0  5a 4f 27 aa 8d 2b 00 00  00 00 51 ee 5a 4f 27 aa   ZO'..+.. ..Q.ZO'.
-0100  8d 2b .+
+> On Wed, Jul 17, 2013 at 9:10 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>> On Jul 17, 2013, at 2:55 PM, Andre Heider <a.heider@gmail.com> wrote:
+>> 
+>>> Hi,
+>>> 
+>>> I'm having problems using 3.11-rc1 as nfs4 client (with a FreeBSD 9.1
+>>> server) using sec=sys.
+>>> 
+>>> With the same server+client setup, just booting different kernels:
+>>> 3.9.10 works without issues
+>>> 3.10.1 works too, but introduced "RPC: AUTH_GSS upcall timed out." in
+>>> dmesg (iirc I don't need gss with sec=sys)
+>> 
+>> Not a requirement, but running gssd should make that message go away.  The client is attempting to use krb5i to manage its lease on the server, and falling back to AUTH_UNIX when it sees gssd is not running.
+>> 
+>>> 3.11-rc1 reading from the server still works, writing fails
+>>> 
+>>> Even a simple touch on the share fails with:
+>>> touch: cannot touch ‘/mnt/andre/test’: Input/output error
+>> 
+>> A network capture is a reasonable place to start.
+>> 
+>>  # tcpdump -s0 -w /tmp/raw
+>> 
+>> Then try your touch test again.  Stop the tcpdump.  You can post a compressed version of the raw dump here if it's short.
+> 
+> Attached two dumps, one from 3.10 (works) and one from 3.11 (doesn't work).
+
+Commit a09df2ca "NFSv4: Extend fattr bitmaps to support all 3 words", introduced in 3.11-rc1, changes the Linux OPEN operation to send a 3-word bitmask for the fattr4 data type.  This was done to support NFSv4 minor version 2, which adds bits in the 3rd word.
+
+Apparently FreeBSD servers support only 2-word fattr4 bitmasks...?
+
+RFC 3530 defines the bitmask4 type as a variable length array of uint32_t.  The minor versioning rules in 3530bis Chapter 11 say:
+
+	•  Minor versions may append attributes to the bitmap4 that
+           represents sets of attributes and to the fattr4 that
+           represents sets of attribute values.
+
+I don't see any other limit placed on the size of the fattr4's bitmask array in RFC 3530, other than the number of bits that are defined for fattr4.  But I didn't look carefully.
+
+By the way, the NFSv4 OPEN request parsing in Wireshark 1.10.0 is totally screwed up.  Has anyone reported this to the Wireshark community?  Wireshark 1.8.8 appears to parse OPEN requests correctly, and is able to handle the 3-word bitmask correctly.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
-The 1037 and 20 you see are the numeric uid and gid being sent to client 
-side for one file, but I suspect client side wants usernames and 
-groupnames as strings, not as numbers. So remaps to nobody.
-
-Curiously when clientside creates a file I don't see numeric uid or 
-string usernames passing at all, but the filesystem at serverside has 
-correct uid/gid for the file being created so somehow they are passed. I 
-don't really know how to read the NFS4 packets...
-
-Is it an /etc/request-key.conf  problem? I just installed keyutils but 
-doesn't appear to help.
-
-This is idmapd.conf on both sides
-============================
-[General]
-
-Verbosity = 10
-Pipefs-Directory = /run/rpc_pipefs
-# set your own domain here, if id differs from FQDN minus hostname
-Domain = localdomain
-
-[Mapping]
-
-Nobody-User = nobody
-Nobody-Group = nogroup
-
-[Translation]
-
-Method = nsswitch
-============================
-
-Thanks for any help
 
 
