@@ -1,82 +1,142 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from g1t0028.austin.hp.com ([15.216.28.35]:32224 "EHLO
-	g1t0028.austin.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757410Ab3GEOsh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Jul 2013 10:48:37 -0400
-From: Waiman Long <Waiman.Long@hp.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        Waiman Long <Waiman.Long@hp.com>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Peter Zijlstra <peterz@infradead.org>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Benjamin Herrenschmidt <benh@kernel.crashing.org>,
-        Andi Kleen <andi@firstfloor.org>,
-        "Chandramouleeswaran, Aswin" <aswin@hp.com>,
-        "Norton, Scott J" <scott.norton@hp.com>
-Subject: [PATCH v5 10/12] nfs: replace direct access of d_count with the d_count() helper
-Date: Fri,  5 Jul 2013 10:48:25 -0400
-Message-Id: <1373035705-40843-1-git-send-email-Waiman.Long@hp.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>, Jeff Layton <jlayton@redhat.com>,
-        Miklos Szeredi <mszeredi@suse.cz>, Ingo Molnar <mingo@redhat.com>,
-        Thomas Gleixner <tglx@linutronix.de>
+Received: from fieldses.org ([174.143.236.118]:53662 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757000Ab3GQUuZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Jul 2013 16:50:25 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 14/16] nfsd4: delay setting current_fh in open
+Date: Wed, 17 Jul 2013 16:50:15 -0400
+Message-Id: <1374094217-31493-16-git-send-email-bfields@redhat.com>
+In-Reply-To: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Because of the d_count change made in dcache.h, all readonly references
-to d_count have to be changed to use the new d_count() helper as they
-shouldn't access its value directly.  There is no change in logic
-and everything should just work.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Waiman Long <Waiman.Long@hp.com>
+This is basically a no-op, to simplify a following patch.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/dir.c    |    6 +++---
- fs/nfs/unlink.c |    2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ fs/nfsd/nfs4proc.c |   36 ++++++++++++++++++++----------------
+ 1 file changed, 20 insertions(+), 16 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index e093e73..5dbcbb1 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1721,7 +1721,7 @@ int nfs_unlink(struct inode *dir, struct dentry *dentry)
- 		dir->i_ino, dentry->d_name.name);
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index a7cee86..4c0cbeb 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -230,17 +230,17 @@ static void nfsd4_set_open_owner_reply_cache(struct nfsd4_compound_state *cstate
+ }
  
- 	spin_lock(&dentry->d_lock);
--	if (dentry->d_count > 1) {
-+	if (d_count(dentry) > 1) {
- 		spin_unlock(&dentry->d_lock);
- 		/* Start asynchronous writeout of the inode */
- 		write_inode_now(dentry->d_inode, 0);
-@@ -1870,7 +1870,7 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	dfprintk(VFS, "NFS: rename(%s/%s -> %s/%s, ct=%d)\n",
- 		 old_dentry->d_parent->d_name.name, old_dentry->d_name.name,
- 		 new_dentry->d_parent->d_name.name, new_dentry->d_name.name,
--		 new_dentry->d_count);
-+		 d_count(new_dentry));
+ static __be32
+-do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
++do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state
++*cstate, struct nfsd4_open *open, struct svc_fh **resfh)
+ {
+ 	struct svc_fh *current_fh = &cstate->current_fh;
+-	struct svc_fh *resfh;
+ 	int accmode;
+ 	__be32 status;
  
- 	/*
- 	 * For non-directories, check whether the target is busy and if so,
-@@ -1888,7 +1888,7 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 			rehash = new_dentry;
- 		}
+-	resfh = kmalloc(sizeof(struct svc_fh), GFP_KERNEL);
+-	if (!resfh)
++	*resfh = kmalloc(sizeof(struct svc_fh), GFP_KERNEL);
++	if (!*resfh)
+ 		return nfserr_jukebox;
+-	fh_init(resfh, NFS4_FHSIZE);
++	fh_init(*resfh, NFS4_FHSIZE);
+ 	open->op_truncate = 0;
  
--		if (new_dentry->d_count > 2) {
-+		if (d_count(new_dentry) > 2) {
- 			int err;
+ 	if (open->op_create) {
+@@ -265,7 +265,7 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
+ 		 */
+ 		status = do_nfsd_create(rqstp, current_fh, open->op_fname.data,
+ 					open->op_fname.len, &open->op_iattr,
+-					resfh, open->op_createmode,
++					*resfh, open->op_createmode,
+ 					(u32 *)open->op_verf.data,
+ 					&open->op_truncate, &open->op_created);
  
- 			/* copy the target dentry's name */
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index 1f1f38f..60395ad 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -479,7 +479,7 @@ nfs_sillyrename(struct inode *dir, struct dentry *dentry)
+@@ -282,29 +282,26 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
+ 							FATTR4_WORD1_TIME_MODIFY);
+ 	} else {
+ 		status = nfsd_lookup(rqstp, current_fh,
+-				     open->op_fname.data, open->op_fname.len, resfh);
++				     open->op_fname.data, open->op_fname.len, *resfh);
+ 		fh_unlock(current_fh);
+ 	}
+ 	if (status)
+ 		goto out;
+-	status = nfsd_check_obj_isreg(resfh);
++	status = nfsd_check_obj_isreg(*resfh);
+ 	if (status)
+ 		goto out;
  
- 	dfprintk(VFS, "NFS: silly-rename(%s/%s, ct=%d)\n",
- 		dentry->d_parent->d_name.name, dentry->d_name.name,
--		dentry->d_count);
-+		d_count(dentry));
- 	nfs_inc_stats(dir, NFSIOS_SILLYRENAME);
+ 	if (is_create_with_attrs(open) && open->op_acl != NULL)
+-		do_set_nfs4_acl(rqstp, resfh, open->op_acl, open->op_bmval);
++		do_set_nfs4_acl(rqstp, *resfh, open->op_acl, open->op_bmval);
  
- 	/*
+-	nfsd4_set_open_owner_reply_cache(cstate, open, resfh);
++	nfsd4_set_open_owner_reply_cache(cstate, open, *resfh);
+ 	accmode = NFSD_MAY_NOP;
+ 	if (open->op_created ||
+ 			open->op_claim_type == NFS4_OPEN_CLAIM_DELEGATE_CUR)
+ 		accmode |= NFSD_MAY_OWNER_OVERRIDE;
+-	status = do_open_permission(rqstp, resfh, open, accmode);
++	status = do_open_permission(rqstp, *resfh, open, accmode);
+ 	set_change_info(&open->op_cinfo, current_fh);
+-	fh_dup2(current_fh, resfh);
+ out:
+-	fh_put(resfh);
+-	kfree(resfh);
+ 	return status;
+ }
+ 
+@@ -357,6 +354,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	   struct nfsd4_open *open)
+ {
+ 	__be32 status;
++	struct svc_fh *resfh = NULL;
+ 	struct nfsd4_compoundres *resp;
+ 	struct net *net = SVC_NET(rqstp);
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+@@ -423,7 +421,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	switch (open->op_claim_type) {
+ 		case NFS4_OPEN_CLAIM_DELEGATE_CUR:
+ 		case NFS4_OPEN_CLAIM_NULL:
+-			status = do_open_lookup(rqstp, cstate, open);
++			status = do_open_lookup(rqstp, cstate, open, &resfh);
+ 			if (status)
+ 				goto out;
+ 			break;
+@@ -439,6 +437,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			status = do_open_fhandle(rqstp, cstate, open);
+ 			if (status)
+ 				goto out;
++			resfh = &cstate->current_fh;
+ 			break;
+ 		case NFS4_OPEN_CLAIM_DELEG_PREV_FH:
+              	case NFS4_OPEN_CLAIM_DELEGATE_PREV:
+@@ -458,9 +457,14 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	 * successful, it (1) truncates the file if open->op_truncate was
+ 	 * set, (2) sets open->op_stateid, (3) sets open->op_delegation.
+ 	 */
+-	status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
++	status = nfsd4_process_open2(rqstp, resfh, open);
+ 	WARN_ON(status && open->op_created);
+ out:
++	if (resfh && resfh != &cstate->current_fh) {
++		fh_dup2(&cstate->current_fh, resfh);
++		fh_put(resfh);
++		kfree(resfh);
++	}
+ 	nfsd4_cleanup_open_state(open, status);
+ 	if (open->op_openowner && !nfsd4_has_session(cstate))
+ 		cstate->replay_owner = &open->op_openowner->oo_owner;
 -- 
-1.7.1
+1.7.9.5
 
