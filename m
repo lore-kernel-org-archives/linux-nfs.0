@@ -1,52 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f173.google.com ([209.85.128.173]:52843 "EHLO
-	mail-ve0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753753Ab3GWAcu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Jul 2013 20:32:50 -0400
-MIME-Version: 1.0
-In-Reply-To: <CAMbhsRQv+W897_5qGuNJD47jQ9ozN6KxeCa6UJAvZpqVuBpQ4w@mail.gmail.com>
-References: <1367884221-20462-1-git-send-email-ccross@android.com>
-	<1367884221-20462-14-git-send-email-ccross@android.com>
-	<20130723010250.5a3465ec@xenia.leun.net>
-	<CAMbhsRQv+W897_5qGuNJD47jQ9ozN6KxeCa6UJAvZpqVuBpQ4w@mail.gmail.com>
-Date: Mon, 22 Jul 2013 17:32:48 -0700
-Message-ID: <CA+55aFzUVPJe96z8V0F-znc8ZcpJid7LEeYww80M-Mx=S91tAA@mail.gmail.com>
-Subject: Re: 3.11-rc regression bisected: s2disk does not work (was Re: [PATCH
- v3 13/16] futex: use freezable blocking call)
-From: Linus Torvalds <torvalds@linux-foundation.org>
-To: Colin Cross <ccross@android.com>
-Cc: Michael Leun <lkml20130126@newton.leun.net>,
-        lkml <linux-kernel@vger.kernel.org>, Pavel Machek <pavel@ucw.cz>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>,
-        Linux PM list <linux-pm@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>, Tejun Heo <tj@kernel.org>,
-        Darren Hart <dvhart@linux.intel.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Randy Dunlap <rdunlap@infradead.org>,
-        Al Viro <viro@zeniv.linux.org.uk>
-Content-Type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:53653 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756586Ab3GQUuY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Jul 2013 16:50:24 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 13/16] nfsd4: minor nfs4_setlease cleanup
+Date: Wed, 17 Jul 2013 16:50:14 -0400
+Message-Id: <1374094217-31493-15-git-send-email-bfields@redhat.com>
+In-Reply-To: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 22, 2013 at 4:55 PM, Colin Cross <ccross@android.com> wrote:
->
-> I think the right solution is to add a flag to the freezing task that
-> marks it unfreezable.  I  think PF_NOFREEZE would work, although it is
-> normally used on kernel threads, can you see if the attached patch
-> helps?
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Hmm. That does seem to be the right thing to do, but I wonder about
-the *other* callers of freeze_processes() IOW, kexec and friends.
+As far as I can tell, this list is used only under the state lock, so we
+may as well do this in the simpler order.
 
-So maybe we should do this in {freeze|thaw}_processes() itself, and
-just make the rule be that the caller of freeze_processes() itself is
-obviously not frozen, and has to be the same one that then thaws
-things?
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-Colin? Rafael? Comments?
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 1698816..7c91b6c 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3028,18 +3028,18 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ 	if (!fl)
+ 		return -ENOMEM;
+ 	fl->fl_file = find_readable_file(fp);
+-	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+ 	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
+-	if (status) {
+-		list_del_init(&dp->dl_perclnt);
+-		locks_free_lock(fl);
+-		return -ENOMEM;
+-	}
++	if (status)
++		goto out_free;
++	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+ 	fp->fi_lease = fl;
+ 	fp->fi_deleg_file = get_file(fl->fl_file);
+ 	atomic_set(&fp->fi_delegees, 1);
+ 	list_add(&dp->dl_perfile, &fp->fi_delegations);
+ 	return 0;
++out_free:
++	locks_free_lock(fl);
++	return -ENOMEM;
+ }
+ 
+ static int nfs4_set_delegation(struct nfs4_delegation *dp)
+-- 
+1.7.9.5
 
-                Linus
