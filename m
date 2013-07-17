@@ -1,41 +1,203 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:19661 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:53624 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932502Ab3GVSuz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Jul 2013 14:50:55 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 4 2/2] NFSv4.1 Use the MDS nfs_server authflavor
- for pNFS data server connections
-Date: Mon, 22 Jul 2013 18:50:53 +0000
-Message-ID: <1374519051.7972.18.camel@leira.trondhjem.org>
-References: <1374267997-4305-1-git-send-email-andros@netapp.com>
-	 <1374267997-4305-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1374267997-4305-2-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1756138Ab3GQUuU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Jul 2013 16:50:20 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: [PATCH 01/16] vfs: pull ext4's double-i_mutex-locking into common code
+Date: Wed, 17 Jul 2013 16:50:02 -0400
+Message-Id: <1374094217-31493-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEzLTA3LTE5IGF0IDE3OjA2IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IHBORlMg
-ZGF0YSBzZXJ2ZXJzIGFyZSBub3QgbW91bnRlZCBpbiB0aGUgbm9ybWFsIHNlbnNlIGFzIHRoZXJl
-IGlzIG5vIGFzc29jaWF0ZWQNCj4gbmZzX3NlcnZlciBzdHJ1Y3R1cmUuDQo+IENvbW1pdCA0ZWRh
-YTMwOCAiTkZTOiBVc2UgImtyYjVpIiB0byBlc3RhYmxpc2ggTkZTdjQgc3RhdGUgd2hlbmV2ZXIg
-cG9zc2libGUiDQo+IHVzZXMgdGhlIG5mc19jbGllbnQgY2xfcnBjY2xpZW50IGZvciBhbGwgc3Rh
-dGUgbWFuYWdlbWVudCBvcGVyYXRpb25zLCBhbmQNCj4gd2lsbCB1c2Uga3JiNWkgb3IgYXV0aF9z
-eXMgd2l0aCBubyByZWdhcmQgdG8gdGhlIG1vdW50IGNvbW1hbmQgYXV0aGZsYXZvcg0KPiBjaG9p
-Y2UuICBGb3Igbm9ybWFsIG1vdW50ZWQgc2VydmVycywgdGhlIG5mc19zZXJ2ZXIgY2xpZW50IGF1
-dGhmbGF2b3IgaXMgdXNlZA0KPiBmb3IgYWxsIG5vbi1zdGF0ZSBtYW5hZ2VtZW50IG9wZXJhdGlv
-bnMNCj4gDQo+IERhdGEgc2VydmVycyBhbHNvIG5lZWQgdG8gdXNlIHRoZSBzYW1lIGF1dGhmbGF2
-b3IgYXMgdGhlIE1EUyBtb3VudCBmb3INCj4gbm9uLXN0YXRlIG1hbmFnZW1lbnQgb3BlcmF0aW9u
-cy4gQWRkIGEgc3RydXQgcnBjX2NsbnQgdG8gc3RydWN0IG5mc19jbGllbnQgZm9yDQo+IGRhdGEg
-c2VydmVyIGNvbm5lY3Rpb25zLg0KDQpJcyB0aGF0IHN1ZmZpY2llbnQ/IEFzIGZhciBhcyBJIGNh
-biB0ZWxsLCB0aGVyZSBpcyBub3RoaW5nIHRoYXQgc3RhdGVzDQp0aGF0IHRoZSBkYXRhIHNlcnZl
-cnMgbXVzdCB1c2UgdGhlIHNhbWUgc2VjdXJpdHkgbWVjaGFuaXNtIGZvciBhbGwgdGhlDQpmaWxl
-cz8NCkluIGZhY3QsIHNlY3Rpb24gMTMuMTIgc3BlY2lmaWNhbGx5IG1lbnRpb25zIHRoYXQgdGhl
-IGRhdGEgc2VydmVycyBoYXZlDQp0byBzdXBwb3J0IFNFQ0lORk9fTk9fTkFNRSB0byBhbGxvdyBj
-bGllbnRzIHRvIGZpZ3VyZSBvdXQgd2hhdCB0byB1c2UNCmZvciBhIGdpdmVuIERTIGZpbGVoYW5k
-bGUuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIN
-Cg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+We want to do this elsewhere as well.
+
+Also catch any attempts to use it for directories (where this ordering
+would conflict with ancestor-first directory ordering in lock_rename).
+
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: Dave Chinner <david@fromorbit.com>
+Acked-by: Jeff Layton <jlayton@redhat.com>
+Acked-by: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/ext4/ext4.h        |    2 --
+ fs/ext4/ioctl.c       |    4 ++--
+ fs/ext4/move_extent.c |   40 ++--------------------------------------
+ fs/inode.c            |   36 ++++++++++++++++++++++++++++++++++++
+ include/linux/fs.h    |    3 +++
+ 5 files changed, 43 insertions(+), 42 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index b577e45..c8fcdfd 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2699,8 +2699,6 @@ extern void ext4_double_down_write_data_sem(struct inode *first,
+ 					    struct inode *second);
+ extern void ext4_double_up_write_data_sem(struct inode *orig_inode,
+ 					  struct inode *donor_inode);
+-void ext4_inode_double_lock(struct inode *inode1, struct inode *inode2);
+-void ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2);
+ extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 			     __u64 start_orig, __u64 start_donor,
+ 			     __u64 len, __u64 *moved_len);
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 9491ac0..12048f7 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -129,7 +129,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
+ 
+ 	/* Protect orig inodes against a truncate and make sure,
+ 	 * that only 1 swap_inode_boot_loader is running. */
+-	ext4_inode_double_lock(inode, inode_bl);
++	lock_two_nondirectories(inode, inode_bl);
+ 
+ 	truncate_inode_pages(&inode->i_data, 0);
+ 	truncate_inode_pages(&inode_bl->i_data, 0);
+@@ -204,7 +204,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
+ 	ext4_inode_resume_unlocked_dio(inode);
+ 	ext4_inode_resume_unlocked_dio(inode_bl);
+ 
+-	ext4_inode_double_unlock(inode, inode_bl);
++	unlock_two_nondirectories(inode, inode_bl);
+ 
+ 	iput(inode_bl);
+ 
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index e86dddb..f591a75 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -1203,42 +1203,6 @@ mext_check_arguments(struct inode *orig_inode,
+ }
+ 
+ /**
+- * ext4_inode_double_lock - Lock i_mutex on both @inode1 and @inode2
+- *
+- * @inode1:	the inode structure
+- * @inode2:	the inode structure
+- *
+- * Lock two inodes' i_mutex
+- */
+-void
+-ext4_inode_double_lock(struct inode *inode1, struct inode *inode2)
+-{
+-	BUG_ON(inode1 == inode2);
+-	if (inode1 < inode2) {
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
+-	} else {
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
+-	}
+-}
+-
+-/**
+- * ext4_inode_double_unlock - Release i_mutex on both @inode1 and @inode2
+- *
+- * @inode1:     the inode that is released first
+- * @inode2:     the inode that is released second
+- *
+- */
+-
+-void
+-ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2)
+-{
+-	mutex_unlock(&inode1->i_mutex);
+-	mutex_unlock(&inode2->i_mutex);
+-}
+-
+-/**
+  * ext4_move_extents - Exchange the specified range of a file
+  *
+  * @o_filp:		file structure of the original file
+@@ -1327,7 +1291,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 		return -EINVAL;
+ 	}
+ 	/* Protect orig and donor inodes against a truncate */
+-	ext4_inode_double_lock(orig_inode, donor_inode);
++	lock_two_nondirectories(orig_inode, donor_inode);
+ 
+ 	/* Wait for all existing dio workers */
+ 	ext4_inode_block_unlocked_dio(orig_inode);
+@@ -1535,7 +1499,7 @@ out:
+ 	ext4_double_up_write_data_sem(orig_inode, donor_inode);
+ 	ext4_inode_resume_unlocked_dio(orig_inode);
+ 	ext4_inode_resume_unlocked_dio(donor_inode);
+-	ext4_inode_double_unlock(orig_inode, donor_inode);
++	unlock_two_nondirectories(orig_inode, donor_inode);
+ 
+ 	return ret;
+ }
+diff --git a/fs/inode.c b/fs/inode.c
+index d6dfb09..57d273e 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -982,6 +982,42 @@ void unlock_new_inode(struct inode *inode)
+ EXPORT_SYMBOL(unlock_new_inode);
+ 
+ /**
++ * lock_two_nondirectories - take two i_mutexes on non-directory objects
++ * @inode1: first inode to lock
++ * @inode2: second inode to lock
++ */
++void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
++{
++	WARN_ON_ONCE(S_ISDIR(inode1->i_mode));
++	if (inode1 == inode2 || !inode2) {
++		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
++		return;
++	}
++	WARN_ON_ONCE(S_ISDIR(inode2->i_mode));
++	if (inode1 < inode2) {
++		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
++		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
++	} else {
++		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
++		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
++	}
++}
++EXPORT_SYMBOL(lock_two_nondirectories);
++
++/**
++ * unlock_two_nondirectories - release locks from lock_two_nondirectories()
++ * @inode1: first inode to unlock
++ * @inode2: second inode to unlock
++ */
++void unlock_two_nondirectories(struct inode *inode1, struct inode *inode2)
++{
++	mutex_unlock(&inode1->i_mutex);
++	if (inode2 && inode2 != inode1)
++		mutex_unlock(&inode2->i_mutex);
++}
++EXPORT_SYMBOL(unlock_two_nondirectories);
++
++/**
+  * iget5_locked - obtain an inode from a mounted file system
+  * @sb:		super block of file system
+  * @hashval:	hash value (usually inode number) to get
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 9818747..431427a 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -636,6 +636,9 @@ enum inode_i_mutex_lock_class
+ 	I_MUTEX_QUOTA
+ };
+ 
++void lock_two_nondirectories(struct inode *, struct inode*);
++void unlock_two_nondirectories(struct inode *, struct inode*);
++
+ /*
+  * NOTE: in a 32bit arch with a preemptable kernel and
+  * an UP compile the i_size_read/write must be atomic
+-- 
+1.7.9.5
+
