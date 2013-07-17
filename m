@@ -1,125 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:31101 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:53619 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759010Ab3GRRJB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Jul 2013 13:09:01 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: SP4_MACH_CRED: v4 proc -> opcodes mapping
-Date: Thu, 18 Jul 2013 17:08:59 +0000
-Message-ID: <1374167339.3788.52.camel@leira.trondhjem.org>
-References: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
-	 <1374159436.3788.3.camel@leira.trondhjem.org>
-	 <DFCAA8D0-B3BD-49C2-BAC4-9C26668AACB9@netapp.com>
-	 <1374160910.3788.14.camel@leira.trondhjem.org>
-	 <1D61D5F4-40DA-47D1-A15A-745EA05813BA@netapp.com>
-In-Reply-To: <1D61D5F4-40DA-47D1-A15A-745EA05813BA@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1756112Ab3GQUuU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Jul 2013 16:50:20 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 00/16] Implement NFSv4 delegations, take 9
+Date: Wed, 17 Jul 2013 16:50:00 -0400
+Message-Id: <1374094217-31493-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEzLTA3LTE4IGF0IDE1OjUwICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
-PiBPbiBKdWwgMTgsIDIwMTMsIGF0IDExOjIxIEFNLCAiTXlrbGVidXN0LCBUcm9uZCIgPFRyb25k
-Lk15a2xlYnVzdEBuZXRhcHAuY29tPg0KPiAgd3JvdGU6DQo+IA0KPiA+IE9uIFRodSwgMjAxMy0w
-Ny0xOCBhdCAxNToxMCArMDAwMCwgQWRhbXNvbiwgRHJvcyB3cm90ZToNCj4gPj4gT24gSnVsIDE4
-LCAyMDEzLCBhdCAxMDo1NyBBTSwgIk15a2xlYnVzdCwgVHJvbmQiIDxUcm9uZC5NeWtsZWJ1c3RA
-bmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4+IA0KPiA+Pj4gT24gVGh1LCAyMDEzLTA3LTE4IGF0IDE0
-OjQ2ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0KPiA+Pj4+IEhleSwNCj4gPj4+PiANCj4g
-Pj4+PiBJIGhhdmUgYSBtb3N0bHkgZnVuY3Rpb25hbCBjbGllbnQtc2lkZSBpbXBsZW1lbnRhdGlv
-biBvZiBTUDRfTUFDSF9DUkVEISBJdCBzdGlsbCBuZWVkcyBhIGxvdCBvZiBjbGVhbnVwIGFuZCB0
-ZXN0aW5nLg0KPiA+Pj4+IA0KPiA+Pj4+IEkgaGF2ZSBvbmUgc3R5bGUgaXNzdWUgdGhhdCBJIHdh
-bnQgdG8gcnVuIGJ5IHRoZSBsaXN0IGJlZm9yZSBJIHBvc3QgYSBwYXRjaHNldDoNCj4gPj4+PiAN
-Cj4gPj4+PiBTbywgU1A0X01BQ0hfQ1JFRCBuZWdvdGlhdGVzIHR3byBiaXRtYXBzIGluIHRoZSBF
-WENIQU5HRV9JRCAob25lICJlbmZvcmNlIiwgb25lICJhbGxvdyIpIGZvciBzdGF0ZSBwcm90ZWN0
-aW9uLiBUaGVzZSBiaXRtYXBzIGFyZSBpbmRleGVkIGJ5IHRoZSBORlN2NCBvcGVyYXRpb24gbnVt
-YmVyLiAgVGhlIHN0YXRlIHByb3RlY3QgY2hlY2sgbXVzdCBoYXBwZW4gaW4gdGhlIG5mczRwcm9j
-LmMgbGF5ZXIgKG9yIGJlZm9yZSksIHJpZ2h0IGJlZm9yZSB3ZSBjYWxsIHJwY19jYWxsX3N5bmMg
-b3IgZXF1aXZhbGVudCwgc28gdGhhdCBpdCBjYW4gc2VsZWN0IHRoZSByaWdodCBjcmVkIGFuZCBy
-cGNfY2xpZW50Lg0KPiA+Pj4+IA0KPiA+Pj4+IEhlcmUncyB0aGUgcHJvYmxlbTogd2UgZG9uJ3Qg
-a25vdyB3aGF0IG9wZXJhdGlvbnMgKG9wY29kZXMpIGFyZSBhY3R1YWxseSBpbiBhIGNvbXBvdW5k
-IHVudGlsIHRoZSBYRFIgZW5jb2RlIGNhbGxiYWNrIGlzIGNhbGxlZC4gIFRoZSBycGNfcHJvY2lu
-Zm8gYXJyYXkgZG9lc24ndCBoYXZlIHRoaXMgbWFwcGluZyAtIGluIGZhY3QsIGl0IG9ubHkgbGl2
-ZXMgaW4gdGhlIHhkciBlbmNvZGUgbGF5ZXIuDQo+ID4+Pj4gDQo+ID4+Pj4gT25lIGFwcHJvYWNo
-IGlzIHRvIGltbWVkaWF0ZWx5IHRyYW5zbGF0ZSB0aGUgb3Bjb2RlIGJpdG1hcHMgdG8gIm5mczQg
-cHJvY2VkdXJlIGluZGV4IiBiaXRtYXBzLCBpbmRleGluZyBpbnRvIHRoZSBycGNfcHJvY2luZm8g
-YXJyYXkuICBUaGlzIHdvdWxkIG1lYW4gdGhlcmUgaXMgYSBzZWNvbmQgbWFwcGluZyBvZiBORlN2
-NCBwcm9jZWR1cmUgLT4gb3Bjb2RlcyB0aGF0IG11c3QgYmUgdXBkYXRlZCB3aGVuIGFuIFhEUiBl
-bmNvZGUgY2FsbGJhY2sgaXMgY2hhbmdlZC4NCj4gPj4+PiANCj4gPj4+PiBBbm90aGVyIGFwcHJv
-YWNoIHdvdWxkIGJlIHRvIGFkZCBhIGNhbGxiYWNrIHRvIHRoZSBYRFIgYXBpIHNvIHdlIGNvdWxk
-ICJhc2siIGl0IGlmIGFuIE5GU3Y0IHByb2NlZHVyZSBjb250YWlucyBhbnkgb2YgdGhlIG9wY29k
-ZXMgaW4gYSBiaXRtYXAuIFRoZSBuaWNlIHRoaW5nIGFib3V0IHRoaXMgYXBwcm9hY2ggaXMgdGhh
-dCB0aGUgbWFwcGluZyBvZiBwcm9jZWR1cmUgdG8gb3Bjb2RlcyB3aXRoaW4gd2lsbCBsaXZlIHJp
-Z2h0IG5leHQgdG8gdGhlIFhEUiBlbmNvZGUgY2FsbGJhY2sgYW5kIG1ha2UgaXQgb2J2aW91cyB0
-aGF0IGJvdGggbmVlZCB0byBiZSBjaGFuZ2VkIHRvZ2V0aGVyLg0KPiA+Pj4+IA0KPiA+Pj4+IEkg
-c3VwcG9zZSBJJ20gbGVhbmluZyB0b3dhcmQgYSBjb21iaW5hdGlvbiBvZiBib3RoIG9mIHRoZXNl
-IGFwcHJvYWNoZXMgLSBrZWVwIHRoZSBtYXBwaW5nIGluIFhEUi1sYW5kIGFuZCB0cmFuc2xhdGUg
-dGhlIGJpdG1hcHMgaW1tZWRpYXRlbHkgb24gbmVnYXRpb24gZm9yIGZhc3QgbG9va3VwcyBkdXJp
-bmcgbm9ybWFsIG9wZXJhdGlvbi4NCj4gPj4+PiANCj4gPj4+PiBDb21tZW50cz8gQW0gSSBtaXNz
-aW5nIHNvbWV0aGluZz8NCj4gPj4+IA0KPiA+Pj4gSSdtIG5vdCBzdXJlIHRoYXQgSSB1bmRlcnN0
-YW5kLiBXZSBkb24ndCBkbyBkeW5hbWljIGNyZWF0aW9uIG9mDQo+ID4+PiBjb21wb3VuZHM6IHdl
-IHByZXR0eSBtdWNoIGtub3cgaW4gdGhlIG5mczRfcHJvY18qIHJvdXRpbmUgd2hhdCB0aGUgbWFp
-bg0KPiA+Pj4gb3BlcmF0aW9uIGlzICh0aGUgb25lIGV4Y2VwdGlvbiBiZWluZyBDTE9TRS9PUEVO
-X0RPV05HUkFERSkuIFNvIHdoeQ0KPiA+Pj4gY2FuJ3Qgd2Ugd29yayBvdXQgdGhlIHByb3RlY3Rp
-b24gc3RhdHVzIGF0IHRoYXQgdGltZT8gSXMgdGhlIHdvcnJ5IHRoYXQNCj4gPj4+IHRoZSBzZXJ2
-ZXIgbWlnaHQgcmVib290IGFuZCBjb21lIGJhY2sgd2l0aCBkaWZmZXJlbnQgTUFDSF9DUkVEDQo+
-ID4+PiBwcm90ZWN0aW9ucz8NCj4gPj4gDQo+ID4+IFN1cmUsIHdlIGtub3cgd2hhdCB0aGUgbWFp
-biBvcGVyYXRpb24gaXMgYW5kIHdlIGtub3cgd2hhdCBvcGVyYXRpb25zIHdpbGwgZW5kIHVwIGlu
-IGEgY29tcG91bmQgLSB3ZSBjYW4ganVzdCBsb29rIGF0IHRoZSB4ZHIgZW5jb2Rlci4gIE15IHF1
-ZXN0aW9uIGlzIHNpbXBseSBvbmUgb2Ygc3R5bGUuIERvIHdlIHdhbnQgdG8gaGF2ZSBlYWNoIG5m
-czRwcm9jIHByb2NlZHVyZSB0byBoYXZlIGEgbGlzdCBvZiBvcGVyYXRpb25zIHRoYXQgbXVzdCBi
-ZSB1cGRhdGVkIGlmIGFuIHhkciBlbmNvZGVyIGlzIHVwZGF0ZWQ/IEknbSBmaW5lIHdpdGggZG9p
-bmcgaXQgdGhpcyB3YXksIGl0IGp1c3Qgc2VlbWVkIHdyb25nIHRvIGhhdmUgdGhlIHNhbWUgbWFw
-cGluZyBpbiB0d28gZGlmZmVyZW50IHBsYWNlcy4gVGhpcyBpcyB3aHkgSSdtIGFza2luZyA7KQ0K
-PiA+PiANCj4gPj4gQWxzbywgd2UgY2FuJ3QganVzdCB1c2UgdGhlICJtYWluIiBvcGVyYXRpb24s
-IHdlIG11c3QgY2hlY2sgZXZlcnkgb3BlcmF0aW9uIHdpdGhpbiB0aGUgY29tcG91bmQgYW5kIGlm
-IGFueSBhcmUgcmVxdWlyZWQgdG8gdXNlIFNQNCwgdGhlbiB0aGUgd2hvbGUgY29tcG91bmQgZG9l
-cy4gSSBkb24ndCBuZWNlc3NhcmlseSBrbm93IHdoeSBhIHNlcnZlciB3b3VsZCBkbyB0aGlzLCBi
-dXQgaWYgd2UgZm9sbG93IHRoZSBzcGVjIGFuZCBhIHNlcnZlciBpbmZvcm1zIHRoZSBjbGllbnQg
-dGhhdCBTRVRBVFRSIG11c3QgdXNlIHN0YXRlIHByb3RlY3Rpb24sIHRoZW4gYSBXUklURSB3aXRo
-IHBvc3Qtb3AgU0VUQVRUUiBtdXN0IHVzZSB0aGUgc3RhdGUgcHJvdGVjdGlvbiBldmVuIHRob3Vn
-aCBXUklURSBkb2Vzbid0IG5lZWQgaXQuDQo+ID4gDQo+ID4gV2Ugb25seSBuZWVkIHRvIGNoZWNr
-IGV2ZXJ5IF9zdGF0ZWZ1bF8gb3BlcmF0aW9uLCByaWdodD8gSSBjYW4ndCB0aGluaw0KPiA+IG9m
-IGFueSBjb21wb3VuZHMgd2l0aCBtb3JlIHRoYW4gMSBzdGF0ZWZ1bCBvcGVyYXRpb24uIFdlJ3Zl
-IGRlbGliZXJhdGVseQ0KPiA+IGF2b2lkZWQgdGhvc2UgZHVlIHRvIHRoZSBwcm9ibGVtcyB0aGF0
-IGFyaXNlIHdoZW4geW91IGdldCBhDQo+ID4gTkZTNEVSUl9ERUxBWSBvciBzb21ldGhpbmcgZXF1
-aXZhbGVudCBhdCB0aGUgd3JvbmcgbW9tZW50Lg0KPiANCj4gVGhhdCBtYXkgYmUgdGhlIGludGVu
-dGlvbiwgYnV0IEkgc2VlIG5vIHN1Y2ggbGltaXRhdGlvbiBpbiB0aGUgc3BlYy4gSXQncyBteSB1
-bmRlcnN0YW5kaW5nIHRoYXQgdGhlIHNlcnZlciBjb3VsZCBzcGVjaWZ5IGFueSBvcGVyYXRpb24g
-YXMgTVVTVCBvciBNQVkgdXNlIHN0YXRlIHByb3RlY3Rpb24uDQoNClJpZ2h0LCBidXQgd2hhdCB3
-b3VsZCBzdGF0ZSBwcm90ZWN0aW9uIG1lYW4gZm9yIGEgc3RhdGVsZXNzIG9wZXJhdGlvbg0Kc3Vj
-aCBhcyBHRVRBVFRSPyBUaGF0IG9wZXJhdGlvbiBpc24ndCBldmVuIGFsbG93ZWQgdG8gcmV0dXJu
-DQpORlM0RVJSX1dST05HX0NSRUQsIHNvIEkgZG9uJ3Qgc2VlIGhvdyBpdCB3b3VsZCBhcHBseS4N
-Cg0KPiA+PiBJJ20gbm90IGZvbGxvd2luZyB0aGUgcmVib290IHF1ZXN0aW9uIC0gdGhhdCBjYXNl
-IHNob3VsZCBiZSBoYW5kbGVkIGp1c3QgZmluZS4gT25jZSB0aGUgRVhDSEFOR0VfSUQgaGFwcGVu
-cywgdGhlIGNscCBoYXMgdHdvIGJpdG1hcHMgKGVuZm9yY2UgYW5kIGFsbG93KSB0aGF0IHJlZmxl
-Y3QgdGhlIGN1cnJlbnQgbW9kZSBvZiBTUDRfTUFDSF9DUkVELg0KPiA+IA0KPiA+IEknbSB0aGlu
-a2luZyBzb21ldGhpbmcgYWxvbmcgdGhlIGZvbGxvd2luZyBzY2VuYXJpbzoNCj4gPiANCj4gPiBB
-IHByb2Nlc3MgcXVldWVzIHVwIGFuIE9QRU4uIFRoZSBzZXJ2ZXIgcmVwbGllcyBORlM0RVJSX0JB
-RF9TRVNTSU9OIGFuZA0KPiA+IGxhdGVyIHJlcGxpZXMgd2l0aCBORlM0RVJSX1NUQUxFX0NMSUVO
-VElELiBTbyB3ZSBzdGFydCByZWJvb3QgcmVjb3ZlcnksDQo+ID4gYW5kIHRoZSBPUEVOIGdldHMg
-cXVldWVkIHdhaXRpbmcgZm9yIGEgc2xvdC4NCj4gPiBXZSB0aGVuIHNlbmQgYSBuZXcgRVhDSEFO
-R0VfSUQsIGFuZCB0aGUgc2VydmVyIHJlcGxpZXMgd2l0aCBhDQo+ID4gX2RpZmZlcmVudF8gTUFD
-SF9DUkVEIHByb3RlY3Rpb24gZm9yIE9QRU4uDQo+ID4gDQo+ID4gVGhlIHByb2JsZW0gYWJvdmUg
-aXMgdGhhdCB0aGUgT1BFTiBoYXMgYWxyZWFkeSBiZWVuIHN0YXJ0ZWQsIGFuZCB3ZSd2ZQ0KPiA+
-IGFscmVhZHkgYXNzaWduZWQgaXQgYSBjcmVkZW50aWFsLiBIb3cgZG8gd2UgaGFuZGxlIHRoYXQ/
-DQo+ID4gRGl0dG8gcXVlc3Rpb24gZm9yIFJFQUQsIFdSSVRFLCBMT0NLLCBMQVlPVVRHRVQsLi4u
-DQo+ID4gDQo+ID4gRG8gd2UgaGF2ZSBhIHByb2JsZW0gZm9yIExPQ0tVLCBDTE9TRSBhbmQgT1BF
-Tl9ET1dOR1JBREU/IEkgdGhpbmsgd2UgZW5kDQo+ID4gdXAganVzdCBza2lwcGluZyByZWNvdmVy
-eSBpbiB0aG9zZSBjYXNlc+KApg0KPiANCj4gVGhlc2UgYXJlIGdvb2QgcG9pbnRzLiBJJ20gbm90
-IHN1cmUgKndoeSogdGhlIHNwNF9tYWNoX2NyZWQgY29uZmlnIHdvdWxkIGNoYW5nZSwgYnV0IEkg
-c3VwcG9zZSBpdCBjb3VsZCwgYW5kIHllcywgaW4gbXkgY3VycmVudCBpbXBsZW1lbnRhdGlvbiB0
-aGVyZSBpcyBubyB3YXkgdG8gYmFjayBvdXQgb25jZSBhIHJwYyB0YXNrIGlzIGludm9rZWQuICBB
-bnkgdGhvdWdodHMgb24gdGhpcz8gIEkgY2FuIHNlZSB0d28gd2F5cyBvZiBoYW5kbGluZyB0aGlz
-Og0KPiAgLSByZXN0YXJ0aW5nIGFsbCB0YXNrcyAod2l0aCBycGNfY2xudCBhbmQgcnBjX2NyZWQg
-YXBwcm9wcmlhdGVseSBjaGFuZ2VkKSB3aGVuIGEgY2hhbmdlIGluIHNwNF9tYWNoX2NyZWQgY29u
-ZmlnIGlzIGRldGVjdGVkLg0KPiAgLSBzb21laG93IGhhdmluZyB0aGUgUlBDIGxheWVyIGNhbGwg
-b3V0IHRvIGNoZWNrIFNQNCBzdGF0dXMgYmVmb3JlIHNlbmRpbmcgZWFjaCBSUEMuDQoNCkZvciBu
-b3csIEkgdGhpbmsgd2Ugc2hvdWxkIG1ha2Ugc3VyZSB0aGF0IHdlIGhhbmRsZSBORlM0RVJSX1dS
-T05HX0NSRUQNCmNvcnJlY3RseSBpbiB0aGVzZSBjYXNlcy4gSSBkb24ndCB0aGluayB3ZSBldmVy
-IHdhbnQgdG8gaGFuZGxlIHRoYXQgaW4NCm5mczRfYXN5bmNfaGFuZGxlX2Vycm9yLCBidXQgd2Ug
-c2hvdWxkIGRlZmluaXRlbHkgaGFuZGxlIGl0IGluDQpuZnM0X2hhbmRsZV9leGNlcHRpb24oKSwg
-c2luY2UgdGhhdCBjYW4gZHJpdmUgYSBmdWxsIHJldHJ5IG9mIHRoZSBSUEMNCmNhbGwuDQoNCi0t
-IA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBw
-DQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+Changes since version 8, thanks to dchinner and jlayton for review:
+
+	- additional warnings in lock_two_nondirectories
+	- lock_two_nondirectories handles NULL second argument,
+	  simplifying vfs_rename_other
+	- kerneldoc comments on notify_change, vfs_link, vfs_rename,
+	  vfs_unlink, to explain delegated_inode argument.
+	- make clear non-support of write delegations in
+	  generic_add_lease
+	- rebase to 3.11-rc1
+
+Introduction copied from previous posting:
+
+This patch series implements read delegations, which allow NFSv4 clients
+to perform read opens without contacting the server, by promising to
+call back to clients before modifying the data, metadata, or set of
+links pointing to a file.
+
+The main recent change was in response to review from Linus, who didn't
+want us to hang under directory i_mutex's on timeouts communicating with
+unresponsive clients.
+
+So, this version of the series drops the i_mutex before waiting.  The
+logic ends up looking something like:
+
+        acquire locks
+        look up inode
+        test for delegation; if found:
+                take reference on inode
+                release locks
+                wait for delegation break
+                drop reference on inode
+                retry
+
+The initial test for a delegation happens after the lock on the
+delegated inode is acquired, but additional directory mutexes may have
+been acquired further up the call stack.  I therefore add a "struct
+inode **" argument to any intervening functions, which we use to pass
+the inode back up to the caller in the case it needs to wait for the
+delegation to be broken.
+
+I also allow callers to pass in NULL for the "struct inode **" argument
+to indicate they'd rather just fail than wait for a delegation.  For
+example, as long as ecryptfs isn't exportable I assume they'd rather not
+see retry logic there that they won't use.  But I may have misjudged in
+some of these cases.
+
+J. Bruce Fields (16):
+  vfs: pull ext4's double-i_mutex-locking into common code
+  vfs: don't use PARENT/CHILD lock classes for non-directories
+  vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
+  vfs: take i_mutex on renamed file
+  locks: introduce new FL_DELEG lock flag
+  locks: implement delegations
+  namei: minor vfs_unlink cleanup
+  locks: break delegations on unlink
+  locks: helper functions for delegation breaking
+  locks: break delegations on rename
+  locks: break delegations on link
+  locks: break delegations on any attribute modification
+  nfsd4: minor nfs4_setlease cleanup
+  nfsd4: delay setting current_fh in open
+  nfsd4: close open-deleg/unlink/rename race
+  nfsd4: break only delegations when appropriate
+
+ Documentation/filesystems/directory-locking |   31 ++++--
+ drivers/base/devtmpfs.c                     |    6 +-
+ fs/attr.c                                   |   25 ++++-
+ fs/cachefiles/interface.c                   |    4 +-
+ fs/cachefiles/namei.c                       |    4 +-
+ fs/ecryptfs/inode.c                         |    6 +-
+ fs/ext4/ext4.h                              |    2 -
+ fs/ext4/ioctl.c                             |    4 +-
+ fs/ext4/move_extent.c                       |   40 +-------
+ fs/hpfs/namei.c                             |    2 +-
+ fs/inode.c                                  |   42 ++++++++-
+ fs/locks.c                                  |   57 ++++++++---
+ fs/namei.c                                  |  135 +++++++++++++++++++++++----
+ fs/nfsd/nfs4proc.c                          |   36 +++----
+ fs/nfsd/nfs4state.c                         |   66 ++++++++++---
+ fs/nfsd/vfs.c                               |   41 ++------
+ fs/nfsd/xdr4.h                              |    3 +-
+ fs/open.c                                   |   22 ++++-
+ fs/utimes.c                                 |    9 +-
+ include/linux/fs.h                          |   72 +++++++++++---
+ ipc/mqueue.c                                |    2 +-
+ 21 files changed, 433 insertions(+), 176 deletions(-)
+
+-- 
+1.7.9.5
+
