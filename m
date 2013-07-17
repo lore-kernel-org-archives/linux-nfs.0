@@ -1,38 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:14937 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:53643 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932580Ab3GVSgW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Jul 2013 14:36:22 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] NFSv4.1 Increase NFS4_DEF_SLOT_TABLE_SIZE
-Date: Mon, 22 Jul 2013 18:36:21 +0000
-Message-ID: <1374518181.7972.14.camel@leira.trondhjem.org>
-References: <1374268191-4469-1-git-send-email-andros@netapp.com>
-In-Reply-To: <1374268191-4469-1-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1756373Ab3GQUuX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Jul 2013 16:50:23 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 09/16] locks: helper functions for delegation breaking
+Date: Wed, 17 Jul 2013 16:50:10 -0400
+Message-Id: <1374094217-31493-11-git-send-email-bfields@redhat.com>
+In-Reply-To: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEzLTA3LTE5IGF0IDE3OjA5IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IG1heF9z
-ZXNzaW9uX3Nsb3RzIGlzIGEgdXNob3J0LiBCdW1wIE5GUzRfREVGX1NMT1RfVEFCTEVfU0laRSB0
-byB0aGUgbWF4IHVzaG9ydA0KPiB2YWx1ZTogZS5nLiBhc2sgZm9yIDI1NiBzbG90cyBhbmQgbGV0
-IHRoZSBzZXJ2ZXIgbmVnb3RpYXRlIGRvd24gaWYgbmVlZGVkLg0KPiANCj4gU2lnbmVkLW9mZi1i
-eTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvbmZz
-NHNlc3Npb24uaCB8IDIgKy0NCj4gIDEgZmlsZSBjaGFuZ2VkLCAxIGluc2VydGlvbigrKSwgMSBk
-ZWxldGlvbigtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0c2Vzc2lvbi5oIGIvZnMv
-bmZzL25mczRzZXNzaW9uLmgNCj4gaW5kZXggM2ExNTNkOC4uOGI3ODk5ZiAxMDA2NDQNCj4gLS0t
-IGEvZnMvbmZzL25mczRzZXNzaW9uLmgNCj4gKysrIGIvZnMvbmZzL25mczRzZXNzaW9uLmgNCj4g
-QEAgLTgsNyArOCw3IEBADQo+ICAjZGVmaW5lIF9fTElOVVhfRlNfTkZTX05GUzRTRVNTSU9OX0gN
-Cj4gIA0KPiAgLyogbWF4aW11bSBudW1iZXIgb2Ygc2xvdHMgdG8gdXNlICovDQo+IC0jZGVmaW5l
-IE5GUzRfREVGX1NMT1RfVEFCTEVfU0laRSAoMTZVKQ0KPiArI2RlZmluZSBORlM0X0RFRl9TTE9U
-X1RBQkxFX1NJWkUgKDI1NlUpDQoNCkNvdWxkIHdlIHBsZWFzZSBtYWtlIHRoaXMgc21hbGxlcj8g
-SSBhZ3JlZSB0aGF0IDE2IGlzIHRvbyBzbWFsbCAoYXMgbG9uZw0KYXMgc2VydmVycyBkb24ndCBk
-byBkeW5hbWljIHNsb3QgYWxsb2NhdGlvbiksIGJ1dCAyNTYgaXMgdmVyeSBoaWdoIGZvciBhDQpk
-ZWZhdWx0Lg0KDQpIb3cgYWJvdXQgNjQ/DQoNCj4gICNkZWZpbmUgTkZTNF9NQVhfU0xPVF9UQUJM
-RSAoMTAyNFUpDQo+ICAjZGVmaW5lIE5GUzRfTk9fU0xPVCAoKHUzMiktMSkNCj4gIA0KDQotLSAN
-ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
-VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+We'll need the same logic for rename and link.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/namei.c         |   13 +++----------
+ include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
+ 2 files changed, 34 insertions(+), 12 deletions(-)
+
+diff --git a/fs/namei.c b/fs/namei.c
+index 2826bbd..d3b6a35 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3466,14 +3466,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
+ 	else {
+ 		error = security_inode_unlink(dir, dentry);
+ 		if (!error) {
+-			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
+-			if (error) {
+-				if (error == -EWOULDBLOCK && delegated_inode) {
+-					*delegated_inode = target;
+-					ihold(target);
+-				}
++			error = try_break_deleg(target, delegated_inode);
++			if (error)
+ 				goto out;
+-			}
+ 			error = dir->i_op->unlink(dir, dentry);
+ 			if (!error)
+ 				dont_mount(dentry);
+@@ -3543,9 +3538,7 @@ exit2:
+ 		iput(inode);	/* truncate the inode here */
+ 	inode = NULL;
+ 	if (delegated_inode) {
+-		error = break_deleg(delegated_inode, O_WRONLY);
+-		iput(delegated_inode);
+-		delegated_inode = NULL;
++		error = break_deleg_wait(&delegated_inode);
+ 		if (!error)
+ 			goto retry_deleg;
+ 	}
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index ba29b37..43a3506 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1907,6 +1907,9 @@ extern bool our_mnt(struct vfsmount *mnt);
+ 
+ extern int current_umask(void);
+ 
++extern void ihold(struct inode * inode);
++extern void iput(struct inode *);
++
+ /* /sys/fs */
+ extern struct kobject *fs_kobj;
+ 
+@@ -1974,6 +1977,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+ 	return 0;
+ }
+ 
++static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
++{
++	int ret;
++
++	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
++	if (ret == -EWOULDBLOCK && delegated_inode) {
++		*delegated_inode = inode;
++		ihold(inode);
++	}
++	return ret;
++}
++
++static inline int break_deleg_wait(struct inode **delegated_inode)
++{
++	int ret;
++
++	ret = break_deleg(*delegated_inode, O_WRONLY);
++	iput(*delegated_inode);
++	*delegated_inode = NULL;
++	return ret;
++}
++
+ #else /* !CONFIG_FILE_LOCKING */
+ static inline int locks_mandatory_locked(struct inode *inode)
+ {
+@@ -2017,6 +2042,12 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+ {
+ 	return 0;
+ }
++
++static inline int try_break_deleg(struct inode *inode, struct delegated_inode **inode)
++{
++	return 0;
++}
++
+ #endif /* CONFIG_FILE_LOCKING */
+ 
+ /* fs/open.c */
+@@ -2346,8 +2377,6 @@ extern loff_t vfs_llseek(struct file *file, loff_t offset, int whence);
+ extern int inode_init_always(struct super_block *, struct inode *);
+ extern void inode_init_once(struct inode *);
+ extern void address_space_init_once(struct address_space *mapping);
+-extern void ihold(struct inode * inode);
+-extern void iput(struct inode *);
+ extern struct inode * igrab(struct inode *);
+ extern ino_t iunique(struct super_block *, ino_t);
+ extern int inode_needs_sync(struct inode *inode);
+-- 
+1.7.9.5
+
