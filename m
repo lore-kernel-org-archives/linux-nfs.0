@@ -1,88 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ye0-f171.google.com ([209.85.213.171]:55799 "EHLO
-	mail-ye0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S964936Ab3GLQjB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jul 2013 12:39:01 -0400
-Received: by mail-ye0-f171.google.com with SMTP id q14so3253727yen.30
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Jul 2013 09:39:00 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe93:815b])
-        by mx.google.com with ESMTPSA id y70sm68995072yhe.15.2013.07.12.09.32.02
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 12 Jul 2013 09:32:03 -0700 (PDT)
-Subject: [PATCH v1 04/19] NFS: Refactor nfs4_call_data_sequence()
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 12 Jul 2013 12:32:02 -0400
-Message-ID: <20130712163202.1444.45080.stgit@seurat.1015granger.net>
-In-Reply-To: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
-References: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
+Received: from mx1.redhat.com ([209.132.183.28]:26934 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751371Ab3GQUog (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Jul 2013 16:44:36 -0400
+Subject: [PATCH 09/10] KEYS: Drop the permissions argument from
+ __keyring_search_one()
+To: keyrings@linux-nfs.org
+From: David Howells <dhowells@redhat.com>
+Cc: linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Date: Wed, 17 Jul 2013 21:44:33 +0100
+Message-ID: <20130717204433.8591.42799.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
+References: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Pull main logic out of nfs4_call_data_sequence() so it can
-eventually be shared with the NFSv4.0 call_sync path.  The new
-helper function is left behind the NFSv4.1 CONFIG switch for now to
-keep compiler warning noise at a minimum.
+Drop the permissions argument from __keyring_search_one() as the only caller
+passes 0 here - which causes all checks to be skipped.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
 ---
- fs/nfs/nfs4proc.c |   28 ++++++++++++++++++----------
- 1 file changed, 18 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 2f6f3b9..e52d2b3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -393,6 +393,23 @@ static void renew_lease(const struct nfs_server *server, unsigned long timestamp
+ security/keys/internal.h |    3 +--
+ security/keys/key.c      |    2 +-
+ security/keys/keyring.c  |    9 +++------
+ 3 files changed, 5 insertions(+), 9 deletions(-)
+
+diff --git a/security/keys/internal.h b/security/keys/internal.h
+index f4bf938..73950bf 100644
+--- a/security/keys/internal.h
++++ b/security/keys/internal.h
+@@ -99,8 +99,7 @@ extern void __key_link_end(struct key *keyring,
+ 			   unsigned long prealloc);
  
- #if defined(CONFIG_NFS_V4_1)
+ extern key_ref_t __keyring_search_one(key_ref_t keyring_ref,
+-				      const struct keyring_index_key *index_key,
+-				      key_perm_t perm);
++				      const struct keyring_index_key *index_key);
  
-+static int nfs4_run_rpc_task(struct rpc_clnt *clnt,
-+			     struct rpc_message *msg,
-+			     struct rpc_task_setup *task_setup)
-+{
-+	struct rpc_task *task;
-+	int ret;
-+
-+	task = rpc_run_task(task_setup);
-+	if (IS_ERR(task))
-+		ret = PTR_ERR(task);
-+	else {
-+		ret = task->tk_status;
-+		rpc_put_task(task);
-+	}
-+	return ret;
-+}
-+
- static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
+ extern struct key *keyring_search_instkey(struct key *keyring,
+ 					  key_serial_t target_id);
+diff --git a/security/keys/key.c b/security/keys/key.c
+index 1e23cc2..7d716b8 100644
+--- a/security/keys/key.c
++++ b/security/keys/key.c
+@@ -847,7 +847,7 @@ key_ref_t key_create_or_update(key_ref_t keyring_ref,
+ 	 * update that instead if possible
+ 	 */
+ 	if (index_key.type->update) {
+-		key_ref = __keyring_search_one(keyring_ref, &index_key, 0);
++		key_ref = __keyring_search_one(keyring_ref, &index_key);
+ 		if (!IS_ERR(key_ref))
+ 			goto found_matching_key;
+ 	}
+diff --git a/security/keys/keyring.c b/security/keys/keyring.c
+index 35e21d9..37e0d65 100644
+--- a/security/keys/keyring.c
++++ b/security/keys/keyring.c
+@@ -531,15 +531,14 @@ EXPORT_SYMBOL(keyring_search);
+  * RCU is used to make it unnecessary to lock the keyring key list here.
+  *
+  * Returns a pointer to the found key with usage count incremented if
+- * successful and returns -ENOKEY if not found.  Revoked keys and keys not
+- * providing the requested permission are skipped over.
++ * successful and returns -ENOKEY if not found.  Revoked and invalidated keys
++ * are skipped over.
+  *
+  * If successful, the possession indicator is propagated from the keyring ref
+  * to the returned key reference.
+  */
+ key_ref_t __keyring_search_one(key_ref_t keyring_ref,
+-			       const struct keyring_index_key *index_key,
+-			       key_perm_t perm)
++			       const struct keyring_index_key *index_key)
  {
- 	struct nfs4_session *session;
-@@ -674,8 +691,6 @@ static int nfs4_call_sync_sequence(struct rpc_clnt *clnt,
- 				   struct nfs4_sequence_args *args,
- 				   struct nfs4_sequence_res *res)
- {
--	int ret;
--	struct rpc_task *task;
- 	struct nfs41_call_sync_data data = {
- 		.seq_server = server,
- 		.seq_args = args,
-@@ -688,14 +703,7 @@ static int nfs4_call_sync_sequence(struct rpc_clnt *clnt,
- 		.callback_data = &data
- 	};
- 
--	task = rpc_run_task(&task_setup);
--	if (IS_ERR(task))
--		ret = PTR_ERR(task);
--	else {
--		ret = task->tk_status;
--		rpc_put_task(task);
--	}
--	return ret;
-+	return nfs4_run_rpc_task(clnt, msg, &task_setup);
- }
- 
- #else
+ 	struct keyring_list *klist;
+ 	struct key *keyring, *key;
+@@ -560,8 +559,6 @@ key_ref_t __keyring_search_one(key_ref_t keyring_ref,
+ 			if (key->type == index_key->type &&
+ 			    (!key->type->match ||
+ 			     key->type->match(key, index_key->description)) &&
+-			    key_permission(make_key_ref(key, possessed),
+-					   perm) == 0 &&
+ 			    !(key->flags & ((1 << KEY_FLAG_INVALIDATED) |
+ 					    (1 << KEY_FLAG_REVOKED)))
+ 			    )
 
