@@ -1,42 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:55849 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:59619 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751726Ab3GSVKH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Jul 2013 17:10:07 -0400
-From: <andros@netapp.com>
-To: <trond.myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/1] NFSv4.1 Increase NFS4_DEF_SLOT_TABLE_SIZE
-Date: Fri, 19 Jul 2013 17:09:51 -0400
-Message-ID: <1374268191-4469-1-git-send-email-andros@netapp.com>
+	id S1756293Ab3GQVIJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Jul 2013 17:08:09 -0400
+Date: Wed, 17 Jul 2013 17:08:08 -0400
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, jlayton@redhat.com,
+        Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH] nfsd4: fix minorversion support interface
+Message-ID: <20130717210808.GA31771@fieldses.org>
+References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+ <1374094217-31493-2-git-send-email-bfields@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1374094217-31493-2-git-send-email-bfields@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Wed, Jul 17, 2013 at 04:50:01PM -0400, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> You can turn on or off support for minorversions using e.g.
+> 
+> 	echo "-4.2" >/proc/fs/nfsd/versions
+> 
+> However, the current implementation is a little wonky.  For example, the
+> above will turn off 4.2 support, but it will also turn *on* 4.1 support.
 
-max_session_slots is a ushort. Bump NFS4_DEF_SLOT_TABLE_SIZE to the max ushort
-value: e.g. ask for 256 slots and let the server negotiate down if needed.
+Argh, sorry, I mistakenly fed an unrelated patch on the git-send-email
+commandline: just ignore this one patch.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4session.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+--b.
 
-diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
-index 3a153d8..8b7899f 100644
---- a/fs/nfs/nfs4session.h
-+++ b/fs/nfs/nfs4session.h
-@@ -8,7 +8,7 @@
- #define __LINUX_FS_NFS_NFS4SESSION_H
- 
- /* maximum number of slots to use */
--#define NFS4_DEF_SLOT_TABLE_SIZE (16U)
-+#define NFS4_DEF_SLOT_TABLE_SIZE (256U)
- #define NFS4_MAX_SLOT_TABLE (1024U)
- #define NFS4_NO_SLOT ((u32)-1)
- 
--- 
-1.8.3.1
-
+> 
+> This didn't matter as long as we only had 2 minorversions, which was
+> true till very recently.
+> 
+> And do a little cleanup here.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/nfsd/nfs4proc.c |    2 +-
+>  fs/nfsd/nfsd.h     |    1 -
+>  fs/nfsd/nfssvc.c   |   13 +++++++------
+>  3 files changed, 8 insertions(+), 8 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index a7cee86..0d4c410 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1293,7 +1293,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+>  	 * According to RFC3010, this takes precedence over all other errors.
+>  	 */
+>  	status = nfserr_minor_vers_mismatch;
+> -	if (args->minorversion > nfsd_supported_minorversion)
+> +	if (nfsd_minorversion(args->minorversion, NFSD_TEST) <= 0)
+>  		goto out;
+>  
+>  	status = nfs41_check_op_ordering(args);
+> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> index 2bbd94e..30f34ab 100644
+> --- a/fs/nfsd/nfsd.h
+> +++ b/fs/nfsd/nfsd.h
+> @@ -53,7 +53,6 @@ struct readdir_cd {
+>  extern struct svc_program	nfsd_program;
+>  extern struct svc_version	nfsd_version2, nfsd_version3,
+>  				nfsd_version4;
+> -extern u32			nfsd_supported_minorversion;
+>  extern struct mutex		nfsd_mutex;
+>  extern spinlock_t		nfsd_drc_lock;
+>  extern unsigned long		nfsd_drc_max_mem;
+> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> index 6b9f48c..760c85a 100644
+> --- a/fs/nfsd/nfssvc.c
+> +++ b/fs/nfsd/nfssvc.c
+> @@ -116,7 +116,10 @@ struct svc_program		nfsd_program = {
+>  
+>  };
+>  
+> -u32 nfsd_supported_minorversion = 1;
+> +static bool nfsd_supported_minorversions[NFSD_SUPPORTED_MINOR_VERSION + 1] = {
+> +	[0] = 1,
+> +	[1] = 1,
+> +};
+>  
+>  int nfsd_vers(int vers, enum vers_op change)
+>  {
+> @@ -151,15 +154,13 @@ int nfsd_minorversion(u32 minorversion, enum vers_op change)
+>  		return -1;
+>  	switch(change) {
+>  	case NFSD_SET:
+> -		nfsd_supported_minorversion = minorversion;
+> +		nfsd_supported_minorversions[minorversion] = true;
+>  		break;
+>  	case NFSD_CLEAR:
+> -		if (minorversion == 0)
+> -			return -1;
+> -		nfsd_supported_minorversion = minorversion - 1;
+> +		nfsd_supported_minorversions[minorversion] = false;
+>  		break;
+>  	case NFSD_TEST:
+> -		return minorversion <= nfsd_supported_minorversion;
+> +		return nfsd_supported_minorversions[minorversion];
+>  	case NFSD_AVAIL:
+>  		return minorversion <= NFSD_SUPPORTED_MINOR_VERSION;
+>  	}
+> -- 
+> 1.7.9.5
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
