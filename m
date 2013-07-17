@@ -1,96 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:35051 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:53630 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757083Ab3GELbP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Jul 2013 07:31:15 -0400
-Message-ID: <51D6AE7D.9070805@RedHat.com>
-Date: Fri, 05 Jul 2013 07:31:09 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Disable NFS version 2
-References: <1372856675-5520-1-git-send-email-steved@redhat.com> <9A7F190A-2938-4A14-9125-330189DA8597@oracle.com>
-In-Reply-To: <9A7F190A-2938-4A14-9125-330189DA8597@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1756183Ab3GQUuV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Jul 2013 16:50:21 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 02/16] vfs: don't use PARENT/CHILD lock classes for non-directories
+Date: Wed, 17 Jul 2013 16:50:03 -0400
+Message-Id: <1374094217-31493-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey,
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-On 03/07/13 09:19, Chuck Lever wrote:
-> Hi-
-> 
-> I'm not opposed to this change, but we should have some public discussion about it first.
-> 
-> If we make this proposed upstream change, NFSv2 will be built far less often and will be 
-> a magnet for code rot.  It might make more sense to simply leave the "compile this out" 
-> choice up to distributions...?
-Code rot is a possibility for any code where default is 'n' so that means we should
-never use it? If that is the case, we should have swap over NFS and Label NFS 
-on be default on by default so those bits don't rote... My point being, I don't
-think code rot should be a reason for us to maintain code people should not
-be using in the first place... 
-  
-> I'd like to reduce the risk of the kernel carrying  around code that no-one uses or 
-> compiles.  If we truly want this off by default  everywhere, shouldn't we just 
-> remove it?  (Is that the eventual goal?)
-I would think so. Turn it off and see who screams.. Then get the clue-bat out for
-for those people that do scream... ;-)  They can always turn it back on... 
+Reserve I_MUTEX_PARENT and I_MUTEX_CHILD for locking of actual
+directories.
 
-> 
-> Should the server also disable NFSv2 support by default?  If not, then why is the 
-> client special in this regard?
-We have to start somewhere... It was just easier to start with the client. If 
-Bruce is interested in dropping v2 support on the server, I will be more than
-willing to looking into that... Actually it might just be a nfs-utils only thing...
+(Also I_MUTEX_QUOTA isn't really a meaningful name for this locking
+class any more; fixed in a later patch.)
 
-> 
-> Finally, if we go with something like this change, does this patch also need to 
-> update the default configurations shipped with the kernel?
-What "default configurations shipped with the kernel"? Isn't fs/nfs/Kconfig the
-only place I need to turn it off?
+Acked-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/inode.c |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-Thanks for the cycles!
+diff --git a/fs/inode.c b/fs/inode.c
+index 57d273e..f642102 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -995,11 +995,11 @@ void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
+ 	}
+ 	WARN_ON_ONCE(S_ISDIR(inode2->i_mode));
+ 	if (inode1 < inode2) {
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
++		mutex_lock(&inode1->i_mutex);
++		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_QUOTA);
+ 	} else {
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
++		mutex_lock(&inode2->i_mutex);
++		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_QUOTA);
+ 	}
+ }
+ EXPORT_SYMBOL(lock_two_nondirectories);
+-- 
+1.7.9.5
 
-steved.
-
-> 
-> 
-> On Jul 3, 2013, at 9:04 AM, Steve Dickson <steved@redhat.com> wrote:
-> 
->> This patch disables the NFS version 2 module from being compile by default.
->>
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> ---
->> fs/nfs/Kconfig | 4 ++--
->> 1 file changed, 2 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
->> index 13ca196..6831a01 100644
->> --- a/fs/nfs/Kconfig
->> +++ b/fs/nfs/Kconfig
->> @@ -32,12 +32,12 @@ config NFS_FS
->> config NFS_V2
->> 	tristate "NFS client support for NFS version 2"
->> 	depends on NFS_FS
->> -	default y
->> +	default n
->> 	help
->> 	  This option enables support for version 2 of the NFS protocol
->> 	  (RFC 1094) in the kernel's NFS client.
->>
->> -	  If unsure, say Y.
->> +	  If unsure, say n.
->>
->> config NFS_V3
->> 	tristate "NFS client support for NFS version 3"
->> -- 
->> 1.8.1.4
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
