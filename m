@@ -1,32 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f178.google.com ([209.85.192.178]:64678 "EHLO
-	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932074Ab3GRO4R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jul 2013 10:56:17 -0400
-Received: by mail-pd0-f178.google.com with SMTP id w11so3169110pde.37
-        for <linux-nfs@vger.kernel.org>; Thu, 18 Jul 2013 07:56:17 -0700 (PDT)
+Received: from mx12.netapp.com ([216.240.18.77]:64114 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933459Ab3GRUYo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Jul 2013 16:24:44 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: "nfsv4@ietf.org" <nfsv4@ietf.org>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: Should BIND_CONN_TO_SESSION be allowed to return
+ NFS4ERR_WRONG_CRED
+Date: Thu, 18 Jul 2013 20:24:42 +0000
+Message-ID: <1374179081.3788.76.camel@leira.trondhjem.org>
+References: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
+	 <1374159436.3788.3.camel@leira.trondhjem.org>
+	 <DFCAA8D0-B3BD-49C2-BAC4-9C26668AACB9@netapp.com>
+	 <1374160910.3788.14.camel@leira.trondhjem.org>
+	 <1D61D5F4-40DA-47D1-A15A-745EA05813BA@netapp.com>
+	 <1374167339.3788.52.camel@leira.trondhjem.org>
+	 <DD04268F-B364-48D0-ADEB-E4770D618B38@netapp.com>
+	 <9AC7EBEB-E407-4CCB-A6E6-05C24CD821DA@netapp.com>
+	 <1374177242.3788.59.camel@leira.trondhjem.org>
+	 <1374177896.3788.67.camel@leira.trondhjem.org>
+In-Reply-To: <1374177896.3788.67.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <1374098347-30196-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1374098347-30196-1-git-send-email-Trond.Myklebust@netapp.com>
-	<1374098347-30196-2-git-send-email-Trond.Myklebust@netapp.com>
-Date: Thu, 18 Jul 2013 16:56:17 +0200
-Message-ID: <CAHsu+b-rnxqTSBfg=cn_gCR-Jv83U3ks96b6c0AF-uLzj0UFGQ@mail.gmail.com>
-Subject: Re: [PATCH 2/2] NFSv4: encode_attrs should not backfill the bitmap
- and attribute length
-From: Andre Heider <a.heider@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        Rick Macklem <rmacklem@uoguelph.ca>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 17, 2013 at 11:59 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> The attribute length is already calculated in advance. There is no
-> reason why we cannot calculate the bitmap in advance too so that
-> we don't have to play pointer games.
->
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-Tested-by: Andre Heider <a.heider@gmail.com>
+T24gVGh1LCAyMDEzLTA3LTE4IGF0IDE2OjA0IC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+IE9uIFRodSwgMjAxMy0wNy0xOCBhdCAxNTo1NCAtMDQwMCwgVHJvbmQgTXlrbGVidXN0IHdy
+b3RlOg0KPiA+IE9uIFRodSwgMjAxMy0wNy0xOCBhdCAxOTo0OSArMDAwMCwgQWRhbXNvbiwgRHJv
+cyB3cm90ZToNCj4gPiA+IE9ubHkgc3VwcG9ydGluZyBvcGVyYXRpb25zIHRoYXQgaGF2ZSB0aGUg
+ZXJyb3IgY29kZSBORlM0RVJSX1dST05HX0NSRUQgc2VlbXMgdG8gYmUgd3JvbmcuICBPcGVyYXRp
+b25zIGxpa2UgQklORF9DT05OX1RPX1NFU1NJT04gZG9uJ3Qgc3VwcG9ydCBkb24ndCBzdXBwb3J0
+IHRoaXMgZXJyb3IgY29kZSwgYnV0IGFyZSBleHBsaWNpdGx5IG1lbnRpb25lZCBpbiBTUDRfTUFD
+SF9DUkVEIHNlY3Rpb25zIG9mIHRoZSBzcGVjLg0KPiA+IA0KPiA+IExvb2tpbmcgYXQgdGhlIGFs
+bG93ZWQgZXJyb3IgcmV0dXJuIHZhbHVlcyBmb3IgQklORF9DT05OX1RPX1NFU1NJT04sIEknbQ0K
+PiA+IGF0IGEgbG9zcyB0byBmaWd1cmUgb3V0IGV4YWN0bHkgd2hhdCBpdCBzaG91bGQgcmV0dXJu
+IGluIHRoaXMgY2FzZS4gSQ0KPiA+IHN1c3BlY3QgdGhhdCB0aGUgbGFjayBvZiBhbiBORlM0RVJS
+X1dST05HX0NSRUQgaXMgYWN0dWFsbHkgYSBwcm90b2NvbA0KPiA+IGJ1Zy4NCj4gPiANCj4gPiBU
+aW1lIHRvIGdvIGJhY2sgdG8gdGhlIGlldGYgbWFpbGluZyBsaXN0Li4uDQo+IA0KPiBIaSBhbGws
+DQo+IA0KPiBXaGVuIGF0dGVtcHRpbmcgdG8gaW1wbGVtZW50IHRoZSBTUDRfTUFDSF9DUkVEIHN0
+YXRlIHByb3RlY3Rpb24sIERyb3MNCj4gcmFuIGludG8gYW4gaXNzdWUuIElmIHRoZSBCSU5EX0NP
+Tk5fVE9fU0VTU0lPTiBvcGVyYXRpb24gaXMgbGlzdGVkIGluDQo+IHRoZSAic3BvX211c3RfZW5m
+b3JjZSIgbGlzdCBvZiBvcGVyYXRpb25zLCB3aGF0IHNob3VsZCBpdCBub3QgYmUgYWxsb3dlZA0K
+PiB0byByZXR1cm4gTkZTNEVSUl9XUk9OR19DUkVEIGlmIGNhbGxlZCB3aXRoIGEgY3JlZGVudGlh
+bCB0aGF0IGlzIG5vdCB0aGUNCj4gbWFjaGluZSBvciBTU1YgY3JlZGVudGlhbD8NCg0KRGl0dG8g
+cXVlc3Rpb24gZm9yIEJBQ0tDSEFOTkVMX0NUTCwgTEFZT1VUR0VULCBURVNUX1NUQVRFSUQsIFJF
+QUQgYW5kDQpXUklURS4NCg0KRmluYWxseSwgc2hvdWxkIE9QRU4gYW5kIFdBTlRfREVMRUdBVElP
+TiBiZSBhbGxvd2VkIHRvIHJldHVybg0KTkZTNEVSUl9XUk9OR19DUkVEIGluIHRoZSBjYXNlIHdo
+ZW4gd2UncmUgZG9pbmcgcmVib290IHJlY292ZXJ5Pw0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
+TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5l
+dGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
