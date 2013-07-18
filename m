@@ -1,95 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55761 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:40843 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751488Ab3GHTlq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jul 2013 15:41:46 -0400
-Date: Mon, 8 Jul 2013 15:41:45 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Sven Geggus <lists@fuchsschwanzdomain.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Kerberized NFS-Server Problem still present in 3.10.0-rc2
-Message-ID: <20130708194144.GG29071@fieldses.org>
-References: <20130621083221.GA4103@geggus.net>
- <20130624215408.GD23596@fieldses.org>
- <20130625094612.GA2186@geggus.net>
- <20130701205234.GF19945@fieldses.org>
- <20130702080530.GA17953@geggus.net>
- <20130705181859.GA8288@fieldses.org>
- <20130705203435.GE8288@fieldses.org>
- <20130708080803.GB29990@geggus.net>
- <20130708133537.GA29071@fieldses.org>
- <20130708155406.GA7808@geggus.net>
+	id S932074Ab3GRO5T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Jul 2013 10:57:19 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: SP4_MACH_CRED: v4 proc -> opcodes mapping
+Date: Thu, 18 Jul 2013 14:57:17 +0000
+Message-ID: <1374159436.3788.3.camel@leira.trondhjem.org>
+References: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
+In-Reply-To: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130708155406.GA7808@geggus.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 08, 2013 at 05:54:06PM +0200, Sven Geggus wrote:
-> J. Bruce Fields schrieb am Montag, den 08. Juli um 15:35 Uhr:
-> 
-> > Anyway.  OK, that more or less solves the mystery, though the strace
-> > output might still be interesting.
-> 
-> Not very enlightening, at least for me, but here we go:
-> 
-> read(3, "nfsd 10.1.7.30\n", 2048)       = 15
-> close(13)                               = 0
-> open("/var/lib/nfs/etab", O_RDONLY)     = 13
-> close(13)                               = 0
-> close(13)                               = 0
-> write(3, "nfsd 10.1.7.30 1373300439 * \n", 29) = 29
-> read(4, "4294967295\n", 2048)           = 11
-> close(14)                               = 0
-> close(13)                               = 0
-> read(13, "\2\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\377\377\377\377\377\377\377\377\0\0\0\0\0\0\0\0\0\0\0\0", 36) = 36
-> close(13)                               = 0
-> write(4, "4294967295 1373300439 0 \n", 25) = -1 EINVAL (Invalid argument)
-
-Thanks!  Yep, 4294967295 is (u32)(-1), so it's this uid_valid check in
-unix_gid_parse that we're hitting.
-
-I'm not even sure whether it makes sense to be doing this upcall to ask
-for supplemental groups in the -1 case.  Going with the minimal fix for
-now.
-
-Oh, and oops, it should go to stable to--adding that Cc: to my local
-copy of the patch.
-
---b.
-
-commit 8efb88340e29293e05f6b498b60596884c05a8a8
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Mon Jul 8 13:44:45 2013 -0400
-
-    svcrpc: fix failures to handle -1 uid's
-    
-    As of f025adf191924e3a75ce80e130afcd2485b53bb8 "sunrpc: Properly decode
-    kuids and kgids in RPC_AUTH_UNIX credentials" any rpc containing a -1
-    (0xffff) uid or gid would fail with a badcred error.
-    
-    Commit afe3c3fd5392b2f0066930abc5dbd3f4b14a0f13 "svcrpc: fix failures to
-    handle -1 uid's and gid's" fixed part of the problem, but overlooked the
-    gid upcall--the kernel can request supplementary gid's for the -1 uid,
-    but mountd's attempt write a response will get -EINVAL.
-    
-    Symptoms were nfsd failing to reply to the first attempt to use a newly
-    negotiated krb5 context.
-    
-    Reported-by: Sven Geggus <lists@fuchsschwanzdomain.de>
-    Tested-by: Sven Geggus <lists@fuchsschwanzdomain.de>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index a98853d..621ca7b 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -493,8 +493,6 @@ static int unix_gid_parse(struct cache_detail *cd,
- 	if (rv)
- 		return -EINVAL;
- 	uid = make_kuid(&init_user_ns, id);
--	if (!uid_valid(uid))
--		return -EINVAL;
- 	ug.uid = uid;
- 
- 	expiry = get_expiry(&mesg);
+T24gVGh1LCAyMDEzLTA3LTE4IGF0IDE0OjQ2ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
+PiBIZXksDQo+IA0KPiBJIGhhdmUgYSBtb3N0bHkgZnVuY3Rpb25hbCBjbGllbnQtc2lkZSBpbXBs
+ZW1lbnRhdGlvbiBvZiBTUDRfTUFDSF9DUkVEISBJdCBzdGlsbCBuZWVkcyBhIGxvdCBvZiBjbGVh
+bnVwIGFuZCB0ZXN0aW5nLg0KPiANCj4gSSBoYXZlIG9uZSBzdHlsZSBpc3N1ZSB0aGF0IEkgd2Fu
+dCB0byBydW4gYnkgdGhlIGxpc3QgYmVmb3JlIEkgcG9zdCBhIHBhdGNoc2V0Og0KPiANCj4gU28s
+IFNQNF9NQUNIX0NSRUQgbmVnb3RpYXRlcyB0d28gYml0bWFwcyBpbiB0aGUgRVhDSEFOR0VfSUQg
+KG9uZSAiZW5mb3JjZSIsIG9uZSAiYWxsb3ciKSBmb3Igc3RhdGUgcHJvdGVjdGlvbi4gVGhlc2Ug
+Yml0bWFwcyBhcmUgaW5kZXhlZCBieSB0aGUgTkZTdjQgb3BlcmF0aW9uIG51bWJlci4gIFRoZSBz
+dGF0ZSBwcm90ZWN0IGNoZWNrIG11c3QgaGFwcGVuIGluIHRoZSBuZnM0cHJvYy5jIGxheWVyIChv
+ciBiZWZvcmUpLCByaWdodCBiZWZvcmUgd2UgY2FsbCBycGNfY2FsbF9zeW5jIG9yIGVxdWl2YWxl
+bnQsIHNvIHRoYXQgaXQgY2FuIHNlbGVjdCB0aGUgcmlnaHQgY3JlZCBhbmQgcnBjX2NsaWVudC4N
+Cj4gDQo+IEhlcmUncyB0aGUgcHJvYmxlbTogd2UgZG9uJ3Qga25vdyB3aGF0IG9wZXJhdGlvbnMg
+KG9wY29kZXMpIGFyZSBhY3R1YWxseSBpbiBhIGNvbXBvdW5kIHVudGlsIHRoZSBYRFIgZW5jb2Rl
+IGNhbGxiYWNrIGlzIGNhbGxlZC4gIFRoZSBycGNfcHJvY2luZm8gYXJyYXkgZG9lc24ndCBoYXZl
+IHRoaXMgbWFwcGluZyAtIGluIGZhY3QsIGl0IG9ubHkgbGl2ZXMgaW4gdGhlIHhkciBlbmNvZGUg
+bGF5ZXIuDQo+IA0KPiBPbmUgYXBwcm9hY2ggaXMgdG8gaW1tZWRpYXRlbHkgdHJhbnNsYXRlIHRo
+ZSBvcGNvZGUgYml0bWFwcyB0byAibmZzNCBwcm9jZWR1cmUgaW5kZXgiIGJpdG1hcHMsIGluZGV4
+aW5nIGludG8gdGhlIHJwY19wcm9jaW5mbyBhcnJheS4gIFRoaXMgd291bGQgbWVhbiB0aGVyZSBp
+cyBhIHNlY29uZCBtYXBwaW5nIG9mIE5GU3Y0IHByb2NlZHVyZSAtPiBvcGNvZGVzIHRoYXQgbXVz
+dCBiZSB1cGRhdGVkIHdoZW4gYW4gWERSIGVuY29kZSBjYWxsYmFjayBpcyBjaGFuZ2VkLg0KPiAN
+Cj4gQW5vdGhlciBhcHByb2FjaCB3b3VsZCBiZSB0byBhZGQgYSBjYWxsYmFjayB0byB0aGUgWERS
+IGFwaSBzbyB3ZSBjb3VsZCAiYXNrIiBpdCBpZiBhbiBORlN2NCBwcm9jZWR1cmUgY29udGFpbnMg
+YW55IG9mIHRoZSBvcGNvZGVzIGluIGEgYml0bWFwLiBUaGUgbmljZSB0aGluZyBhYm91dCB0aGlz
+IGFwcHJvYWNoIGlzIHRoYXQgdGhlIG1hcHBpbmcgb2YgcHJvY2VkdXJlIHRvIG9wY29kZXMgd2l0
+aGluIHdpbGwgbGl2ZSByaWdodCBuZXh0IHRvIHRoZSBYRFIgZW5jb2RlIGNhbGxiYWNrIGFuZCBt
+YWtlIGl0IG9idmlvdXMgdGhhdCBib3RoIG5lZWQgdG8gYmUgY2hhbmdlZCB0b2dldGhlci4NCj4g
+DQo+IEkgc3VwcG9zZSBJJ20gbGVhbmluZyB0b3dhcmQgYSBjb21iaW5hdGlvbiBvZiBib3RoIG9m
+IHRoZXNlIGFwcHJvYWNoZXMgLSBrZWVwIHRoZSBtYXBwaW5nIGluIFhEUi1sYW5kIGFuZCB0cmFu
+c2xhdGUgdGhlIGJpdG1hcHMgaW1tZWRpYXRlbHkgb24gbmVnYXRpb24gZm9yIGZhc3QgbG9va3Vw
+cyBkdXJpbmcgbm9ybWFsIG9wZXJhdGlvbi4NCj4gDQo+IENvbW1lbnRzPyBBbSBJIG1pc3Npbmcg
+c29tZXRoaW5nPw0KDQpJJ20gbm90IHN1cmUgdGhhdCBJIHVuZGVyc3RhbmQuIFdlIGRvbid0IGRv
+IGR5bmFtaWMgY3JlYXRpb24gb2YNCmNvbXBvdW5kczogd2UgcHJldHR5IG11Y2gga25vdyBpbiB0
+aGUgbmZzNF9wcm9jXyogcm91dGluZSB3aGF0IHRoZSBtYWluDQpvcGVyYXRpb24gaXMgKHRoZSBv
+bmUgZXhjZXB0aW9uIGJlaW5nIENMT1NFL09QRU5fRE9XTkdSQURFKS4gU28gd2h5DQpjYW4ndCB3
+ZSB3b3JrIG91dCB0aGUgcHJvdGVjdGlvbiBzdGF0dXMgYXQgdGhhdCB0aW1lPyBJcyB0aGUgd29y
+cnkgdGhhdA0KdGhlIHNlcnZlciBtaWdodCByZWJvb3QgYW5kIGNvbWUgYmFjayB3aXRoIGRpZmZl
+cmVudCBNQUNIX0NSRUQNCnByb3RlY3Rpb25zPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGlu
+dXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFw
+cC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
