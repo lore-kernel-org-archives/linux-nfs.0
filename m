@@ -1,102 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f49.google.com ([209.85.219.49]:48012 "EHLO
-	mail-oa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933722Ab3GWS36 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jul 2013 14:29:58 -0400
-Received: by mail-oa0-f49.google.com with SMTP id n12so7310830oag.22
-        for <linux-nfs@vger.kernel.org>; Tue, 23 Jul 2013 11:29:57 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20130723200854.2046296b@xenia.leun.net>
-References: <1367884221-20462-1-git-send-email-ccross@android.com>
-	<1367884221-20462-14-git-send-email-ccross@android.com>
-	<20130723010250.5a3465ec@xenia.leun.net>
-	<CAMbhsRQv+W897_5qGuNJD47jQ9ozN6KxeCa6UJAvZpqVuBpQ4w@mail.gmail.com>
-	<20130723200854.2046296b@xenia.leun.net>
-Date: Tue, 23 Jul 2013 11:29:57 -0700
-Message-ID: <CAMbhsRT6zOKLhG_uh=nA8H_3d7afhG+4jvWjvidY3fEguryP_Q@mail.gmail.com>
-Subject: Re: 3.11-rc regression bisected: s2disk does not work (was Re: [PATCH
- v3 13/16] futex: use freezable blocking call)
-From: Colin Cross <ccross@android.com>
-To: Michael Leun <lkml20130126@newton.leun.net>
-Cc: lkml <linux-kernel@vger.kernel.org>, Pavel Machek <pavel@ucw.cz>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>,
-        Linux PM list <linux-pm@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, Darren Hart <dvhart@linux.intel.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Randy Dunlap <rdunlap@infradead.org>,
-        Al Viro <viro@zeniv.linux.org.uk>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from science.horizon.com ([71.41.210.146]:39101 "HELO
+	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S934054Ab3GRVb2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jul 2013 17:31:28 -0400
+Date: 18 Jul 2013 17:31:26 -0400
+Message-ID: <20130718213126.12710.qmail@science.horizon.com>
+From: "George Spelvin" <linux@horizon.com>
+To: dhowells@redhat.com, joe@perches.com, linux@horizon.com
+Subject: Re: [PATCH] Assoc_array: Drop leaf-type concept
+Cc: keyrings@linux-nfs.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org
+In-Reply-To: <21160.1374153504@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 23, 2013 at 11:08 AM, Michael Leun
-<lkml20130126@newton.leun.net> wrote:
-> On Mon, 22 Jul 2013 16:55:58 -0700
-> Colin Cross <ccross@android.com> wrote:
->
->> On Mon, Jul 22, 2013 at 4:02 PM, Michael Leun
->> <lkml20130126@newton.leun.net> wrote:
->> > On Mon,  6 May 2013 16:50:18 -0700
->> > Colin Cross <ccross@android.com> wrote:
->> >
->> >> Avoid waking up every thread sleeping in a futex_wait call during
->> > [...]
->> >
->> > With 3.11-rc s2disk from suspend-utils stopped working: Frozen at
->> > displaying 0% of saving image to disk.
->> >
->> > echo "1" >/sys/power/state still works.
->> >
->> > Bisecting yielded 88c8004fd3a5fdd2378069de86b90b21110d33a4,
->> > reverting that from 3.11-rc2 makes s2disk working again.
->> >
->>
->> I think the expanded use of the freezable_* helpers is exposing an
->> existing bug in hibernation.  The SNAPSHOT_FREEZE ioctl calls
->> freeze_processes(), which sets the global system_freezing_cnt and
->> pm_freezing.  try_to_freeze_tasks then sends every process except
->> current a signal which causes them all to end up in the refrigerator.
->> The current task then returns back to userspace and continues its work
->> to suspend to disk.  If that task ever hits a call to try_to_freeze()
->> in the kernel, it will see system_freezing_cnt and pm_freezing=true
->> and freeze, and suspend to disk will hang forever.  It could hit
->> try_to_freeze() because of a signal delivered to the task, or from
->> calling any syscall that uses a freezable_* helper like the one I
->> added to sys_futex.
->>
->> I think the right solution is to add a flag to the freezing task that
->> marks it unfreezable.  I  think PF_NOFREEZE would work, although it is
->> normally used on kernel threads, can you see if the attached patch
->> helps?
->
-> That patch helps.
->
-> BTW, the only machine I can reproduce this bug with is an i7-3630QM
-> notebook. Cannot reproduce on an Core Duo U1400 and cannot reproduce on
-> an i7 M 620.
->
-> Are the sysreq backtraces still wanted? If so, any tip, how I could get
-> them saved?
->
->
-> --
-> MfG,
->
-> Michael Leun
->
+Looks cleaner.
 
-Any chance that the failing machine has threads=y in the suspend.conf file?
+The larger issues that bother me:
 
-Rafael, it appears that swsusp's suspend.c spawns new threads after
-calling the SNAPSHOT_FREEZE ioctl.  The PF_NOFREEZE (or the new flag)
-will get copied to those new threads, but nothing will clear the flag.
- Should I just assume that the userspace suspend code will kill those
-threads before continuing with suspend?  Or maybe add a WARN_ON in the
-kernel if any threads besides current have the new flag set when the
-suspend ops that assume all of userspace is frozen are called?
+1) The fact that the abstract daya type "index key" provides access to
+   a byte string "index key" is a bit confusing.  I'd describe it as
+   follows:  (Based on my current understanding.)
+
+
+   Each object has an associated "index key" that is used for lookup.
+   The index key is a string of bits which is stored "inside" the object,
+   however all access to it is done through method functions, so it is
+   not necessary to explicitly store it anywhere.
+
+   For example, it is possible to have the leading portion of the
+   index_key be a hash of the remainder.
+
+   Index keys may be variable-length, but must be self-delimiting.
+   Specifically, two different index keys must differ at some bit position
+   before the end of the shorter of the two.
+
+   Some index key methods take an isolated "const void *index_key"
+   argument, while others take an object pointer.
+
+2) The code does not look 32-bit safe.  In particular, keyring_get_key_chunk
+   assumes the hash is BITS_PER_LONG long, but keyring_diff_objects 
+   assumes it's 8*8 bits...
+
+3) I presume you looked at wider tries like Judy arrays and found that
+   a fan-out of 16 was better?
+
+4) There are 3/7 unused bytes in an assoc_array_node, after parent_slot.
+   Would it be worth storing 16/48 bits of index key and 3/4 bits of
+   number of levels to skip per assoc_array_node?
+   Since parent_slot is actually only 4 bits, you could store 4 bits
+   of nubmer of levels and 56 bits (up to 14 levels, plus the one
+   from the famout) of index key.
+
+   With 32-way fanout, you could fit 5 bits of parent index, 25/55 bits of
+   index key, and encode the number of levels to skip (0-5/11) more carefully.
+
+5) The big question: Why not use a hash table?  That's what people
+   usually expect when you say "associative array".  It would be simpler
+   and faster.
+
+   RCU-safe resizeable hash tables are tricky, but a solved problem,
+   There are universal hashing techniques for preventing hash collision
+   attacks.  
