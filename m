@@ -1,128 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:53534 "EHLO mx2.suse.de"
+Received: from mx11.netapp.com ([216.240.18.76]:31101 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753636Ab3GYBaj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Jul 2013 21:30:39 -0400
-Date: Thu, 25 Jul 2013 11:30:23 +1000
-From: NeilBrown <neilb@suse.de>
-To: "J.Bruce Fields" <bfields@citi.umich.edu>
-Cc: Ben Myers <bpm@sgi.com>, Olga Kornievskaia <aglo@citi.umich.edu>,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH] NFSD/sunrpc: avoid deadlock on TCP connection due to memory
- pressure.
-Message-ID: <20130725113023.7bcbc347@notabene.brown>
-In-Reply-To: <20130724210746.GB5777@fieldses.org>
-References: <20130710092255.0240a36d@notabene.brown>
-	<20130710022735.GI8281@fieldses.org>
-	<20130710143233.77e35721@notabene.brown>
-	<20130710190727.GA22305@fieldses.org>
-	<20130715143203.51bc583b@notabene.brown>
-	<20130716015803.GA5271@fieldses.org>
-	<20130716140021.312b5b07@notabene.brown>
-	<20130716142430.GA11977@fieldses.org>
-	<20130718000319.GL1681@sgi.com>
-	<20130724210746.GB5777@fieldses.org>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/S0KIBL5u3.drvlb_dEBXK2g"; protocol="application/pgp-signature"
+	id S1759010Ab3GRRJB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Jul 2013 13:09:01 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: SP4_MACH_CRED: v4 proc -> opcodes mapping
+Date: Thu, 18 Jul 2013 17:08:59 +0000
+Message-ID: <1374167339.3788.52.camel@leira.trondhjem.org>
+References: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
+	 <1374159436.3788.3.camel@leira.trondhjem.org>
+	 <DFCAA8D0-B3BD-49C2-BAC4-9C26668AACB9@netapp.com>
+	 <1374160910.3788.14.camel@leira.trondhjem.org>
+	 <1D61D5F4-40DA-47D1-A15A-745EA05813BA@netapp.com>
+In-Reply-To: <1D61D5F4-40DA-47D1-A15A-745EA05813BA@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/S0KIBL5u3.drvlb_dEBXK2g
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
-
-
-Since we enabled auto-tuning for sunrpc TCP connections we do not
-guarantee that there is enough write-space on each connection to
-queue a reply.
-
-If memory pressure causes the window to shrink too small, the request
-throttling in sunrpc/svc will not accept any requests so no more requests
-will be handled.  Even when pressure decreases the window will not
-grow again until data is sent on the connection.
-This means we get a deadlock:  no requests will be handled until there
-is more space, and no space will be allocated until a request is
-handled.
-
-This can be simulated by modifying svc_tcp_has_wspace to inflate the
-number of byte required and removing the 'svc_sock_setbufsize' calls
-in svc_setup_socket.
-
-I found that multiplying by 16 was enough to make the requirement
-exceed the default allocation.  With this modification in place:
-   mount -o vers=3D3,proto=3Dtcp 127.0.0.1:/home /mnt
-would block and eventually time out because the nfs server could not
-accept any requests.
-
-This patch relaxes the request throttling to always allow at least one
-request through per connection.  It does this by checking both
-  sk_stream_min_wspace() and xprt->xpt_reserved
-are zero.
-The first is zero when the TCP transmit queue is empty.
-The second is zero when there are no RPC requests being processed.
-When both of these are zero the socket is idle and so one more
-request can safely be allowed through.
-
-Applying this patch allows the above mount command to succeed cleanly.
-Tracing shows that the allocated write buffer space quickly grows and
-after a few requests are handled, the extra tests are no longer needed
-to permit further requests to be processed.
-
-The main purpose of request throttling is to handle the case when one
-client is slow at collecting replies and the send queue gets full of
-replies that the client hasn't acknowledged (at the TCP level) yet.
-As we only change behaviour when the send queue is empty this main
-purpose is still preserved.
-
-Reported-by: Ben Myers <bpm@sgi.com>
-Signed-off-by: NeilBrown <neilb@suse.de>
-
---
-As you can see I've changed the patch.  While writing up the above=20
-description realised there was a weakness and so added the sk_stream_min_ws=
-pace
-test.  That allowed me to write the final paragraph.
-
-NeilBrown
-
-
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 305374d..7762b9f 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1193,7 +1193,9 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
- 	if (test_bit(XPT_LISTENER, &xprt->xpt_flags))
- 		return 1;
- 	required =3D atomic_read(&xprt->xpt_reserved) + serv->sv_max_mesg;
--	if (sk_stream_wspace(svsk->sk_sk) >=3D required)
-+	if (sk_stream_wspace(svsk->sk_sk) >=3D required ||
-+	    (sk_stream_min_wspace(svsk->sk_sk) =3D=3D 0 &&
-+	     atomic_read(&xprt->xpt_reserved) =3D=3D 0))
- 		return 1;
- 	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
- 	return 0;
-
---Sig_/S0KIBL5u3.drvlb_dEBXK2g
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBUfB/sDnsnt1WYoG5AQLxiw//RAzKOhCvDVP2fUq3KEIp41wcVbGPZmeW
-81pTfkd09T5kt8oWRFc//Nk6E8YOjkQI71T3YqclKyo5uhVa0yH73ArilkPUdyld
-YXrzf3z8Gw+itZdxOEoorOjoTxLRVBIGUSqX2SziInpH/JhftizMECbWFHLo6I6C
-OgC6rf6MvZtqyrdSiztr9HfCtOxNCi5XoujLBwB4L9fSxMBKqqD1P7F1sdKq7Alx
-zLWXcTlmvZzGhCNlYNWF/PLHEhXHjRW1/YG1mW37wXjdaI41ts4UlXE4N80boh4N
-sCFUxvG2R2FDpJJ2ypZN2eeylAWkj6SR8jkTC9RlQ8h/TfeMfOuP7RgNIbM/yCwA
-MhG1mvIaV8XeYt5EYunuKx7oBRwflZ64k0lwIBz73Aizi4vKYPmVtDX2VppENf9X
-O5yHUy/tkS8sWApLUtdOyGyRkQZyTWBj/a4XwDsGYeD/2W7+a0uYZwF7JMSGGumx
-VK0krCKhCczfd+vGBsWmCprd2z7m6rOc8moTiEFcPI5HyRMfRuhyFSLVpYJs1f6N
-F0PxT9bCGgdpuhYNjc5cj4jpcdJ17GJciFWerF2Wbn4bgbxhakMrfJm+aJpcJQ8n
-LwxgvP9NhS+gCBIRvF5aN+aLHl8umRik6RDyWBvkGouhmvYOAFbZ96DWOLYgHdOz
-Asp3aYF9EGs=
-=Q6x0
------END PGP SIGNATURE-----
-
---Sig_/S0KIBL5u3.drvlb_dEBXK2g--
+T24gVGh1LCAyMDEzLTA3LTE4IGF0IDE1OjUwICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
+PiBPbiBKdWwgMTgsIDIwMTMsIGF0IDExOjIxIEFNLCAiTXlrbGVidXN0LCBUcm9uZCIgPFRyb25k
+Lk15a2xlYnVzdEBuZXRhcHAuY29tPg0KPiAgd3JvdGU6DQo+IA0KPiA+IE9uIFRodSwgMjAxMy0w
+Ny0xOCBhdCAxNToxMCArMDAwMCwgQWRhbXNvbiwgRHJvcyB3cm90ZToNCj4gPj4gT24gSnVsIDE4
+LCAyMDEzLCBhdCAxMDo1NyBBTSwgIk15a2xlYnVzdCwgVHJvbmQiIDxUcm9uZC5NeWtsZWJ1c3RA
+bmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4+IA0KPiA+Pj4gT24gVGh1LCAyMDEzLTA3LTE4IGF0IDE0
+OjQ2ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0KPiA+Pj4+IEhleSwNCj4gPj4+PiANCj4g
+Pj4+PiBJIGhhdmUgYSBtb3N0bHkgZnVuY3Rpb25hbCBjbGllbnQtc2lkZSBpbXBsZW1lbnRhdGlv
+biBvZiBTUDRfTUFDSF9DUkVEISBJdCBzdGlsbCBuZWVkcyBhIGxvdCBvZiBjbGVhbnVwIGFuZCB0
+ZXN0aW5nLg0KPiA+Pj4+IA0KPiA+Pj4+IEkgaGF2ZSBvbmUgc3R5bGUgaXNzdWUgdGhhdCBJIHdh
+bnQgdG8gcnVuIGJ5IHRoZSBsaXN0IGJlZm9yZSBJIHBvc3QgYSBwYXRjaHNldDoNCj4gPj4+PiAN
+Cj4gPj4+PiBTbywgU1A0X01BQ0hfQ1JFRCBuZWdvdGlhdGVzIHR3byBiaXRtYXBzIGluIHRoZSBF
+WENIQU5HRV9JRCAob25lICJlbmZvcmNlIiwgb25lICJhbGxvdyIpIGZvciBzdGF0ZSBwcm90ZWN0
+aW9uLiBUaGVzZSBiaXRtYXBzIGFyZSBpbmRleGVkIGJ5IHRoZSBORlN2NCBvcGVyYXRpb24gbnVt
+YmVyLiAgVGhlIHN0YXRlIHByb3RlY3QgY2hlY2sgbXVzdCBoYXBwZW4gaW4gdGhlIG5mczRwcm9j
+LmMgbGF5ZXIgKG9yIGJlZm9yZSksIHJpZ2h0IGJlZm9yZSB3ZSBjYWxsIHJwY19jYWxsX3N5bmMg
+b3IgZXF1aXZhbGVudCwgc28gdGhhdCBpdCBjYW4gc2VsZWN0IHRoZSByaWdodCBjcmVkIGFuZCBy
+cGNfY2xpZW50Lg0KPiA+Pj4+IA0KPiA+Pj4+IEhlcmUncyB0aGUgcHJvYmxlbTogd2UgZG9uJ3Qg
+a25vdyB3aGF0IG9wZXJhdGlvbnMgKG9wY29kZXMpIGFyZSBhY3R1YWxseSBpbiBhIGNvbXBvdW5k
+IHVudGlsIHRoZSBYRFIgZW5jb2RlIGNhbGxiYWNrIGlzIGNhbGxlZC4gIFRoZSBycGNfcHJvY2lu
+Zm8gYXJyYXkgZG9lc24ndCBoYXZlIHRoaXMgbWFwcGluZyAtIGluIGZhY3QsIGl0IG9ubHkgbGl2
+ZXMgaW4gdGhlIHhkciBlbmNvZGUgbGF5ZXIuDQo+ID4+Pj4gDQo+ID4+Pj4gT25lIGFwcHJvYWNo
+IGlzIHRvIGltbWVkaWF0ZWx5IHRyYW5zbGF0ZSB0aGUgb3Bjb2RlIGJpdG1hcHMgdG8gIm5mczQg
+cHJvY2VkdXJlIGluZGV4IiBiaXRtYXBzLCBpbmRleGluZyBpbnRvIHRoZSBycGNfcHJvY2luZm8g
+YXJyYXkuICBUaGlzIHdvdWxkIG1lYW4gdGhlcmUgaXMgYSBzZWNvbmQgbWFwcGluZyBvZiBORlN2
+NCBwcm9jZWR1cmUgLT4gb3Bjb2RlcyB0aGF0IG11c3QgYmUgdXBkYXRlZCB3aGVuIGFuIFhEUiBl
+bmNvZGUgY2FsbGJhY2sgaXMgY2hhbmdlZC4NCj4gPj4+PiANCj4gPj4+PiBBbm90aGVyIGFwcHJv
+YWNoIHdvdWxkIGJlIHRvIGFkZCBhIGNhbGxiYWNrIHRvIHRoZSBYRFIgYXBpIHNvIHdlIGNvdWxk
+ICJhc2siIGl0IGlmIGFuIE5GU3Y0IHByb2NlZHVyZSBjb250YWlucyBhbnkgb2YgdGhlIG9wY29k
+ZXMgaW4gYSBiaXRtYXAuIFRoZSBuaWNlIHRoaW5nIGFib3V0IHRoaXMgYXBwcm9hY2ggaXMgdGhh
+dCB0aGUgbWFwcGluZyBvZiBwcm9jZWR1cmUgdG8gb3Bjb2RlcyB3aXRoaW4gd2lsbCBsaXZlIHJp
+Z2h0IG5leHQgdG8gdGhlIFhEUiBlbmNvZGUgY2FsbGJhY2sgYW5kIG1ha2UgaXQgb2J2aW91cyB0
+aGF0IGJvdGggbmVlZCB0byBiZSBjaGFuZ2VkIHRvZ2V0aGVyLg0KPiA+Pj4+IA0KPiA+Pj4+IEkg
+c3VwcG9zZSBJJ20gbGVhbmluZyB0b3dhcmQgYSBjb21iaW5hdGlvbiBvZiBib3RoIG9mIHRoZXNl
+IGFwcHJvYWNoZXMgLSBrZWVwIHRoZSBtYXBwaW5nIGluIFhEUi1sYW5kIGFuZCB0cmFuc2xhdGUg
+dGhlIGJpdG1hcHMgaW1tZWRpYXRlbHkgb24gbmVnYXRpb24gZm9yIGZhc3QgbG9va3VwcyBkdXJp
+bmcgbm9ybWFsIG9wZXJhdGlvbi4NCj4gPj4+PiANCj4gPj4+PiBDb21tZW50cz8gQW0gSSBtaXNz
+aW5nIHNvbWV0aGluZz8NCj4gPj4+IA0KPiA+Pj4gSSdtIG5vdCBzdXJlIHRoYXQgSSB1bmRlcnN0
+YW5kLiBXZSBkb24ndCBkbyBkeW5hbWljIGNyZWF0aW9uIG9mDQo+ID4+PiBjb21wb3VuZHM6IHdl
+IHByZXR0eSBtdWNoIGtub3cgaW4gdGhlIG5mczRfcHJvY18qIHJvdXRpbmUgd2hhdCB0aGUgbWFp
+bg0KPiA+Pj4gb3BlcmF0aW9uIGlzICh0aGUgb25lIGV4Y2VwdGlvbiBiZWluZyBDTE9TRS9PUEVO
+X0RPV05HUkFERSkuIFNvIHdoeQ0KPiA+Pj4gY2FuJ3Qgd2Ugd29yayBvdXQgdGhlIHByb3RlY3Rp
+b24gc3RhdHVzIGF0IHRoYXQgdGltZT8gSXMgdGhlIHdvcnJ5IHRoYXQNCj4gPj4+IHRoZSBzZXJ2
+ZXIgbWlnaHQgcmVib290IGFuZCBjb21lIGJhY2sgd2l0aCBkaWZmZXJlbnQgTUFDSF9DUkVEDQo+
+ID4+PiBwcm90ZWN0aW9ucz8NCj4gPj4gDQo+ID4+IFN1cmUsIHdlIGtub3cgd2hhdCB0aGUgbWFp
+biBvcGVyYXRpb24gaXMgYW5kIHdlIGtub3cgd2hhdCBvcGVyYXRpb25zIHdpbGwgZW5kIHVwIGlu
+IGEgY29tcG91bmQgLSB3ZSBjYW4ganVzdCBsb29rIGF0IHRoZSB4ZHIgZW5jb2Rlci4gIE15IHF1
+ZXN0aW9uIGlzIHNpbXBseSBvbmUgb2Ygc3R5bGUuIERvIHdlIHdhbnQgdG8gaGF2ZSBlYWNoIG5m
+czRwcm9jIHByb2NlZHVyZSB0byBoYXZlIGEgbGlzdCBvZiBvcGVyYXRpb25zIHRoYXQgbXVzdCBi
+ZSB1cGRhdGVkIGlmIGFuIHhkciBlbmNvZGVyIGlzIHVwZGF0ZWQ/IEknbSBmaW5lIHdpdGggZG9p
+bmcgaXQgdGhpcyB3YXksIGl0IGp1c3Qgc2VlbWVkIHdyb25nIHRvIGhhdmUgdGhlIHNhbWUgbWFw
+cGluZyBpbiB0d28gZGlmZmVyZW50IHBsYWNlcy4gVGhpcyBpcyB3aHkgSSdtIGFza2luZyA7KQ0K
+PiA+PiANCj4gPj4gQWxzbywgd2UgY2FuJ3QganVzdCB1c2UgdGhlICJtYWluIiBvcGVyYXRpb24s
+IHdlIG11c3QgY2hlY2sgZXZlcnkgb3BlcmF0aW9uIHdpdGhpbiB0aGUgY29tcG91bmQgYW5kIGlm
+IGFueSBhcmUgcmVxdWlyZWQgdG8gdXNlIFNQNCwgdGhlbiB0aGUgd2hvbGUgY29tcG91bmQgZG9l
+cy4gSSBkb24ndCBuZWNlc3NhcmlseSBrbm93IHdoeSBhIHNlcnZlciB3b3VsZCBkbyB0aGlzLCBi
+dXQgaWYgd2UgZm9sbG93IHRoZSBzcGVjIGFuZCBhIHNlcnZlciBpbmZvcm1zIHRoZSBjbGllbnQg
+dGhhdCBTRVRBVFRSIG11c3QgdXNlIHN0YXRlIHByb3RlY3Rpb24sIHRoZW4gYSBXUklURSB3aXRo
+IHBvc3Qtb3AgU0VUQVRUUiBtdXN0IHVzZSB0aGUgc3RhdGUgcHJvdGVjdGlvbiBldmVuIHRob3Vn
+aCBXUklURSBkb2Vzbid0IG5lZWQgaXQuDQo+ID4gDQo+ID4gV2Ugb25seSBuZWVkIHRvIGNoZWNr
+IGV2ZXJ5IF9zdGF0ZWZ1bF8gb3BlcmF0aW9uLCByaWdodD8gSSBjYW4ndCB0aGluaw0KPiA+IG9m
+IGFueSBjb21wb3VuZHMgd2l0aCBtb3JlIHRoYW4gMSBzdGF0ZWZ1bCBvcGVyYXRpb24uIFdlJ3Zl
+IGRlbGliZXJhdGVseQ0KPiA+IGF2b2lkZWQgdGhvc2UgZHVlIHRvIHRoZSBwcm9ibGVtcyB0aGF0
+IGFyaXNlIHdoZW4geW91IGdldCBhDQo+ID4gTkZTNEVSUl9ERUxBWSBvciBzb21ldGhpbmcgZXF1
+aXZhbGVudCBhdCB0aGUgd3JvbmcgbW9tZW50Lg0KPiANCj4gVGhhdCBtYXkgYmUgdGhlIGludGVu
+dGlvbiwgYnV0IEkgc2VlIG5vIHN1Y2ggbGltaXRhdGlvbiBpbiB0aGUgc3BlYy4gSXQncyBteSB1
+bmRlcnN0YW5kaW5nIHRoYXQgdGhlIHNlcnZlciBjb3VsZCBzcGVjaWZ5IGFueSBvcGVyYXRpb24g
+YXMgTVVTVCBvciBNQVkgdXNlIHN0YXRlIHByb3RlY3Rpb24uDQoNClJpZ2h0LCBidXQgd2hhdCB3
+b3VsZCBzdGF0ZSBwcm90ZWN0aW9uIG1lYW4gZm9yIGEgc3RhdGVsZXNzIG9wZXJhdGlvbg0Kc3Vj
+aCBhcyBHRVRBVFRSPyBUaGF0IG9wZXJhdGlvbiBpc24ndCBldmVuIGFsbG93ZWQgdG8gcmV0dXJu
+DQpORlM0RVJSX1dST05HX0NSRUQsIHNvIEkgZG9uJ3Qgc2VlIGhvdyBpdCB3b3VsZCBhcHBseS4N
+Cg0KPiA+PiBJJ20gbm90IGZvbGxvd2luZyB0aGUgcmVib290IHF1ZXN0aW9uIC0gdGhhdCBjYXNl
+IHNob3VsZCBiZSBoYW5kbGVkIGp1c3QgZmluZS4gT25jZSB0aGUgRVhDSEFOR0VfSUQgaGFwcGVu
+cywgdGhlIGNscCBoYXMgdHdvIGJpdG1hcHMgKGVuZm9yY2UgYW5kIGFsbG93KSB0aGF0IHJlZmxl
+Y3QgdGhlIGN1cnJlbnQgbW9kZSBvZiBTUDRfTUFDSF9DUkVELg0KPiA+IA0KPiA+IEknbSB0aGlu
+a2luZyBzb21ldGhpbmcgYWxvbmcgdGhlIGZvbGxvd2luZyBzY2VuYXJpbzoNCj4gPiANCj4gPiBB
+IHByb2Nlc3MgcXVldWVzIHVwIGFuIE9QRU4uIFRoZSBzZXJ2ZXIgcmVwbGllcyBORlM0RVJSX0JB
+RF9TRVNTSU9OIGFuZA0KPiA+IGxhdGVyIHJlcGxpZXMgd2l0aCBORlM0RVJSX1NUQUxFX0NMSUVO
+VElELiBTbyB3ZSBzdGFydCByZWJvb3QgcmVjb3ZlcnksDQo+ID4gYW5kIHRoZSBPUEVOIGdldHMg
+cXVldWVkIHdhaXRpbmcgZm9yIGEgc2xvdC4NCj4gPiBXZSB0aGVuIHNlbmQgYSBuZXcgRVhDSEFO
+R0VfSUQsIGFuZCB0aGUgc2VydmVyIHJlcGxpZXMgd2l0aCBhDQo+ID4gX2RpZmZlcmVudF8gTUFD
+SF9DUkVEIHByb3RlY3Rpb24gZm9yIE9QRU4uDQo+ID4gDQo+ID4gVGhlIHByb2JsZW0gYWJvdmUg
+aXMgdGhhdCB0aGUgT1BFTiBoYXMgYWxyZWFkeSBiZWVuIHN0YXJ0ZWQsIGFuZCB3ZSd2ZQ0KPiA+
+IGFscmVhZHkgYXNzaWduZWQgaXQgYSBjcmVkZW50aWFsLiBIb3cgZG8gd2UgaGFuZGxlIHRoYXQ/
+DQo+ID4gRGl0dG8gcXVlc3Rpb24gZm9yIFJFQUQsIFdSSVRFLCBMT0NLLCBMQVlPVVRHRVQsLi4u
+DQo+ID4gDQo+ID4gRG8gd2UgaGF2ZSBhIHByb2JsZW0gZm9yIExPQ0tVLCBDTE9TRSBhbmQgT1BF
+Tl9ET1dOR1JBREU/IEkgdGhpbmsgd2UgZW5kDQo+ID4gdXAganVzdCBza2lwcGluZyByZWNvdmVy
+eSBpbiB0aG9zZSBjYXNlc+KApg0KPiANCj4gVGhlc2UgYXJlIGdvb2QgcG9pbnRzLiBJJ20gbm90
+IHN1cmUgKndoeSogdGhlIHNwNF9tYWNoX2NyZWQgY29uZmlnIHdvdWxkIGNoYW5nZSwgYnV0IEkg
+c3VwcG9zZSBpdCBjb3VsZCwgYW5kIHllcywgaW4gbXkgY3VycmVudCBpbXBsZW1lbnRhdGlvbiB0
+aGVyZSBpcyBubyB3YXkgdG8gYmFjayBvdXQgb25jZSBhIHJwYyB0YXNrIGlzIGludm9rZWQuICBB
+bnkgdGhvdWdodHMgb24gdGhpcz8gIEkgY2FuIHNlZSB0d28gd2F5cyBvZiBoYW5kbGluZyB0aGlz
+Og0KPiAgLSByZXN0YXJ0aW5nIGFsbCB0YXNrcyAod2l0aCBycGNfY2xudCBhbmQgcnBjX2NyZWQg
+YXBwcm9wcmlhdGVseSBjaGFuZ2VkKSB3aGVuIGEgY2hhbmdlIGluIHNwNF9tYWNoX2NyZWQgY29u
+ZmlnIGlzIGRldGVjdGVkLg0KPiAgLSBzb21laG93IGhhdmluZyB0aGUgUlBDIGxheWVyIGNhbGwg
+b3V0IHRvIGNoZWNrIFNQNCBzdGF0dXMgYmVmb3JlIHNlbmRpbmcgZWFjaCBSUEMuDQoNCkZvciBu
+b3csIEkgdGhpbmsgd2Ugc2hvdWxkIG1ha2Ugc3VyZSB0aGF0IHdlIGhhbmRsZSBORlM0RVJSX1dS
+T05HX0NSRUQNCmNvcnJlY3RseSBpbiB0aGVzZSBjYXNlcy4gSSBkb24ndCB0aGluayB3ZSBldmVy
+IHdhbnQgdG8gaGFuZGxlIHRoYXQgaW4NCm5mczRfYXN5bmNfaGFuZGxlX2Vycm9yLCBidXQgd2Ug
+c2hvdWxkIGRlZmluaXRlbHkgaGFuZGxlIGl0IGluDQpuZnM0X2hhbmRsZV9leGNlcHRpb24oKSwg
+c2luY2UgdGhhdCBjYW4gZHJpdmUgYSBmdWxsIHJldHJ5IG9mIHRoZSBSUEMNCmNhbGwuDQoNCi0t
+IA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBw
+DQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
