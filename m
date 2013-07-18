@@ -1,49 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:18960 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932903Ab3GVSw0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Jul 2013 14:52:26 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
-Subject: Re: [PATCH v1 01/19] NFS: Never use user credentials for lease renewal
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1374518026.7972.12.camel@leira.trondhjem.org>
-Date: Mon, 22 Jul 2013 14:52:21 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <82846EE9-8390-45FF-80DF-E3C04538618B@oracle.com>
-References: <20130712155303.1444.62697.stgit@seurat.1015granger.net> <20130712163135.1444.68565.stgit@seurat.1015granger.net> <1374518026.7972.12.camel@leira.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mx11.netapp.com ([216.240.18.76]:29486 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932148Ab3GRPVx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Jul 2013 11:21:53 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: SP4_MACH_CRED: v4 proc -> opcodes mapping
+Date: Thu, 18 Jul 2013 15:21:51 +0000
+Message-ID: <1374160910.3788.14.camel@leira.trondhjem.org>
+References: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
+	 <1374159436.3788.3.camel@leira.trondhjem.org>
+	 <DFCAA8D0-B3BD-49C2-BAC4-9C26668AACB9@netapp.com>
+In-Reply-To: <DFCAA8D0-B3BD-49C2-BAC4-9C26668AACB9@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jul 22, 2013, at 2:33 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-
-> On Fri, 2013-07-12 at 12:31 -0400, Chuck Lever wrote:
->> Don't try to use a non-UID-0 user credential for lease management,
->> as that credential can change out from under us.  The server will
->> block NFSv4 lease recovery with NFS4ERR_CLID_INUSE.
->> 
->> Replace minor version-specific callouts with a single function.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> fs/nfs/nfs4_fs.h     |    4 +---
->> fs/nfs/nfs4proc.c    |    6 +----
->> fs/nfs/nfs4session.c |    2 +-
->> fs/nfs/nfs4state.c   |   55 ++++++--------------------------------------------
->> 4 files changed, 10 insertions(+), 57 deletions(-)
-> 
-> This won't apply to upstream kernels.
-
-Thanks for having a look... As the cover letter stated, this series applies to 3.10.
-
-Now that 3.11-rc2 is available, I'm porting the series to the latest upstream, with appropriate adjustments for NFSv4.2 support.  I hope to post the new series tomorrow or Wednesday.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+T24gVGh1LCAyMDEzLTA3LTE4IGF0IDE1OjEwICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
+PiBPbiBKdWwgMTgsIDIwMTMsIGF0IDEwOjU3IEFNLCAiTXlrbGVidXN0LCBUcm9uZCIgPFRyb25k
+Lk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gVGh1LCAyMDEzLTA3LTE4
+IGF0IDE0OjQ2ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0KPiA+PiBIZXksDQo+ID4+IA0K
+PiA+PiBJIGhhdmUgYSBtb3N0bHkgZnVuY3Rpb25hbCBjbGllbnQtc2lkZSBpbXBsZW1lbnRhdGlv
+biBvZiBTUDRfTUFDSF9DUkVEISBJdCBzdGlsbCBuZWVkcyBhIGxvdCBvZiBjbGVhbnVwIGFuZCB0
+ZXN0aW5nLg0KPiA+PiANCj4gPj4gSSBoYXZlIG9uZSBzdHlsZSBpc3N1ZSB0aGF0IEkgd2FudCB0
+byBydW4gYnkgdGhlIGxpc3QgYmVmb3JlIEkgcG9zdCBhIHBhdGNoc2V0Og0KPiA+PiANCj4gPj4g
+U28sIFNQNF9NQUNIX0NSRUQgbmVnb3RpYXRlcyB0d28gYml0bWFwcyBpbiB0aGUgRVhDSEFOR0Vf
+SUQgKG9uZSAiZW5mb3JjZSIsIG9uZSAiYWxsb3ciKSBmb3Igc3RhdGUgcHJvdGVjdGlvbi4gVGhl
+c2UgYml0bWFwcyBhcmUgaW5kZXhlZCBieSB0aGUgTkZTdjQgb3BlcmF0aW9uIG51bWJlci4gIFRo
+ZSBzdGF0ZSBwcm90ZWN0IGNoZWNrIG11c3QgaGFwcGVuIGluIHRoZSBuZnM0cHJvYy5jIGxheWVy
+IChvciBiZWZvcmUpLCByaWdodCBiZWZvcmUgd2UgY2FsbCBycGNfY2FsbF9zeW5jIG9yIGVxdWl2
+YWxlbnQsIHNvIHRoYXQgaXQgY2FuIHNlbGVjdCB0aGUgcmlnaHQgY3JlZCBhbmQgcnBjX2NsaWVu
+dC4NCj4gPj4gDQo+ID4+IEhlcmUncyB0aGUgcHJvYmxlbTogd2UgZG9uJ3Qga25vdyB3aGF0IG9w
+ZXJhdGlvbnMgKG9wY29kZXMpIGFyZSBhY3R1YWxseSBpbiBhIGNvbXBvdW5kIHVudGlsIHRoZSBY
+RFIgZW5jb2RlIGNhbGxiYWNrIGlzIGNhbGxlZC4gIFRoZSBycGNfcHJvY2luZm8gYXJyYXkgZG9l
+c24ndCBoYXZlIHRoaXMgbWFwcGluZyAtIGluIGZhY3QsIGl0IG9ubHkgbGl2ZXMgaW4gdGhlIHhk
+ciBlbmNvZGUgbGF5ZXIuDQo+ID4+IA0KPiA+PiBPbmUgYXBwcm9hY2ggaXMgdG8gaW1tZWRpYXRl
+bHkgdHJhbnNsYXRlIHRoZSBvcGNvZGUgYml0bWFwcyB0byAibmZzNCBwcm9jZWR1cmUgaW5kZXgi
+IGJpdG1hcHMsIGluZGV4aW5nIGludG8gdGhlIHJwY19wcm9jaW5mbyBhcnJheS4gIFRoaXMgd291
+bGQgbWVhbiB0aGVyZSBpcyBhIHNlY29uZCBtYXBwaW5nIG9mIE5GU3Y0IHByb2NlZHVyZSAtPiBv
+cGNvZGVzIHRoYXQgbXVzdCBiZSB1cGRhdGVkIHdoZW4gYW4gWERSIGVuY29kZSBjYWxsYmFjayBp
+cyBjaGFuZ2VkLg0KPiA+PiANCj4gPj4gQW5vdGhlciBhcHByb2FjaCB3b3VsZCBiZSB0byBhZGQg
+YSBjYWxsYmFjayB0byB0aGUgWERSIGFwaSBzbyB3ZSBjb3VsZCAiYXNrIiBpdCBpZiBhbiBORlN2
+NCBwcm9jZWR1cmUgY29udGFpbnMgYW55IG9mIHRoZSBvcGNvZGVzIGluIGEgYml0bWFwLiBUaGUg
+bmljZSB0aGluZyBhYm91dCB0aGlzIGFwcHJvYWNoIGlzIHRoYXQgdGhlIG1hcHBpbmcgb2YgcHJv
+Y2VkdXJlIHRvIG9wY29kZXMgd2l0aGluIHdpbGwgbGl2ZSByaWdodCBuZXh0IHRvIHRoZSBYRFIg
+ZW5jb2RlIGNhbGxiYWNrIGFuZCBtYWtlIGl0IG9idmlvdXMgdGhhdCBib3RoIG5lZWQgdG8gYmUg
+Y2hhbmdlZCB0b2dldGhlci4NCj4gPj4gDQo+ID4+IEkgc3VwcG9zZSBJJ20gbGVhbmluZyB0b3dh
+cmQgYSBjb21iaW5hdGlvbiBvZiBib3RoIG9mIHRoZXNlIGFwcHJvYWNoZXMgLSBrZWVwIHRoZSBt
+YXBwaW5nIGluIFhEUi1sYW5kIGFuZCB0cmFuc2xhdGUgdGhlIGJpdG1hcHMgaW1tZWRpYXRlbHkg
+b24gbmVnYXRpb24gZm9yIGZhc3QgbG9va3VwcyBkdXJpbmcgbm9ybWFsIG9wZXJhdGlvbi4NCj4g
+Pj4gDQo+ID4+IENvbW1lbnRzPyBBbSBJIG1pc3Npbmcgc29tZXRoaW5nPw0KPiA+IA0KPiA+IEkn
+bSBub3Qgc3VyZSB0aGF0IEkgdW5kZXJzdGFuZC4gV2UgZG9uJ3QgZG8gZHluYW1pYyBjcmVhdGlv
+biBvZg0KPiA+IGNvbXBvdW5kczogd2UgcHJldHR5IG11Y2gga25vdyBpbiB0aGUgbmZzNF9wcm9j
+Xyogcm91dGluZSB3aGF0IHRoZSBtYWluDQo+ID4gb3BlcmF0aW9uIGlzICh0aGUgb25lIGV4Y2Vw
+dGlvbiBiZWluZyBDTE9TRS9PUEVOX0RPV05HUkFERSkuIFNvIHdoeQ0KPiA+IGNhbid0IHdlIHdv
+cmsgb3V0IHRoZSBwcm90ZWN0aW9uIHN0YXR1cyBhdCB0aGF0IHRpbWU/IElzIHRoZSB3b3JyeSB0
+aGF0DQo+ID4gdGhlIHNlcnZlciBtaWdodCByZWJvb3QgYW5kIGNvbWUgYmFjayB3aXRoIGRpZmZl
+cmVudCBNQUNIX0NSRUQNCj4gPiBwcm90ZWN0aW9ucz8NCj4gDQo+IFN1cmUsIHdlIGtub3cgd2hh
+dCB0aGUgbWFpbiBvcGVyYXRpb24gaXMgYW5kIHdlIGtub3cgd2hhdCBvcGVyYXRpb25zIHdpbGwg
+ZW5kIHVwIGluIGEgY29tcG91bmQgLSB3ZSBjYW4ganVzdCBsb29rIGF0IHRoZSB4ZHIgZW5jb2Rl
+ci4gIE15IHF1ZXN0aW9uIGlzIHNpbXBseSBvbmUgb2Ygc3R5bGUuIERvIHdlIHdhbnQgdG8gaGF2
+ZSBlYWNoIG5mczRwcm9jIHByb2NlZHVyZSB0byBoYXZlIGEgbGlzdCBvZiBvcGVyYXRpb25zIHRo
+YXQgbXVzdCBiZSB1cGRhdGVkIGlmIGFuIHhkciBlbmNvZGVyIGlzIHVwZGF0ZWQ/IEknbSBmaW5l
+IHdpdGggZG9pbmcgaXQgdGhpcyB3YXksIGl0IGp1c3Qgc2VlbWVkIHdyb25nIHRvIGhhdmUgdGhl
+IHNhbWUgbWFwcGluZyBpbiB0d28gZGlmZmVyZW50IHBsYWNlcy4gVGhpcyBpcyB3aHkgSSdtIGFz
+a2luZyA7KQ0KPiANCj4gQWxzbywgd2UgY2FuJ3QganVzdCB1c2UgdGhlICJtYWluIiBvcGVyYXRp
+b24sIHdlIG11c3QgY2hlY2sgZXZlcnkgb3BlcmF0aW9uIHdpdGhpbiB0aGUgY29tcG91bmQgYW5k
+IGlmIGFueSBhcmUgcmVxdWlyZWQgdG8gdXNlIFNQNCwgdGhlbiB0aGUgd2hvbGUgY29tcG91bmQg
+ZG9lcy4gSSBkb24ndCBuZWNlc3NhcmlseSBrbm93IHdoeSBhIHNlcnZlciB3b3VsZCBkbyB0aGlz
+LCBidXQgaWYgd2UgZm9sbG93IHRoZSBzcGVjIGFuZCBhIHNlcnZlciBpbmZvcm1zIHRoZSBjbGll
+bnQgdGhhdCBTRVRBVFRSIG11c3QgdXNlIHN0YXRlIHByb3RlY3Rpb24sIHRoZW4gYSBXUklURSB3
+aXRoIHBvc3Qtb3AgU0VUQVRUUiBtdXN0IHVzZSB0aGUgc3RhdGUgcHJvdGVjdGlvbiBldmVuIHRo
+b3VnaCBXUklURSBkb2Vzbid0IG5lZWQgaXQuDQoNCldlIG9ubHkgbmVlZCB0byBjaGVjayBldmVy
+eSBfc3RhdGVmdWxfIG9wZXJhdGlvbiwgcmlnaHQ/IEkgY2FuJ3QgdGhpbmsNCm9mIGFueSBjb21w
+b3VuZHMgd2l0aCBtb3JlIHRoYW4gMSBzdGF0ZWZ1bCBvcGVyYXRpb24uIFdlJ3ZlIGRlbGliZXJh
+dGVseQ0KYXZvaWRlZCB0aG9zZSBkdWUgdG8gdGhlIHByb2JsZW1zIHRoYXQgYXJpc2Ugd2hlbiB5
+b3UgZ2V0IGENCk5GUzRFUlJfREVMQVkgb3Igc29tZXRoaW5nIGVxdWl2YWxlbnQgYXQgdGhlIHdy
+b25nIG1vbWVudC4NCg0KPiBJJ20gbm90IGZvbGxvd2luZyB0aGUgcmVib290IHF1ZXN0aW9uIC0g
+dGhhdCBjYXNlIHNob3VsZCBiZSBoYW5kbGVkIGp1c3QgZmluZS4gT25jZSB0aGUgRVhDSEFOR0Vf
+SUQgaGFwcGVucywgdGhlIGNscCBoYXMgdHdvIGJpdG1hcHMgKGVuZm9yY2UgYW5kIGFsbG93KSB0
+aGF0IHJlZmxlY3QgdGhlIGN1cnJlbnQgbW9kZSBvZiBTUDRfTUFDSF9DUkVELg0KDQpJJ20gdGhp
+bmtpbmcgc29tZXRoaW5nIGFsb25nIHRoZSBmb2xsb3dpbmcgc2NlbmFyaW86DQoNCkEgcHJvY2Vz
+cyBxdWV1ZXMgdXAgYW4gT1BFTi4gVGhlIHNlcnZlciByZXBsaWVzIE5GUzRFUlJfQkFEX1NFU1NJ
+T04gYW5kDQpsYXRlciByZXBsaWVzIHdpdGggTkZTNEVSUl9TVEFMRV9DTElFTlRJRC4gU28gd2Ug
+c3RhcnQgcmVib290IHJlY292ZXJ5LA0KYW5kIHRoZSBPUEVOIGdldHMgcXVldWVkIHdhaXRpbmcg
+Zm9yIGEgc2xvdC4NCldlIHRoZW4gc2VuZCBhIG5ldyBFWENIQU5HRV9JRCwgYW5kIHRoZSBzZXJ2
+ZXIgcmVwbGllcyB3aXRoIGENCl9kaWZmZXJlbnRfIE1BQ0hfQ1JFRCBwcm90ZWN0aW9uIGZvciBP
+UEVOLg0KDQpUaGUgcHJvYmxlbSBhYm92ZSBpcyB0aGF0IHRoZSBPUEVOIGhhcyBhbHJlYWR5IGJl
+ZW4gc3RhcnRlZCwgYW5kIHdlJ3ZlDQphbHJlYWR5IGFzc2lnbmVkIGl0IGEgY3JlZGVudGlhbC4g
+SG93IGRvIHdlIGhhbmRsZSB0aGF0Pw0KRGl0dG8gcXVlc3Rpb24gZm9yIFJFQUQsIFdSSVRFLCBM
+T0NLLCBMQVlPVVRHRVQsLi4uDQoNCkRvIHdlIGhhdmUgYSBwcm9ibGVtIGZvciBMT0NLVSwgQ0xP
+U0UgYW5kIE9QRU5fRE9XTkdSQURFPyBJIHRoaW5rIHdlIGVuZA0KdXAganVzdCBza2lwcGluZyBy
+ZWNvdmVyeSBpbiB0aG9zZSBjYXNlcy4uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
+TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
+b20NCnd3dy5uZXRhcHAuY29tDQo=
