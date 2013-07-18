@@ -1,87 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:36984 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:14214 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752511Ab3G0RdP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 27 Jul 2013 13:33:15 -0400
-Date: Sat, 27 Jul 2013 19:27:59 +0200
-From: Oleg Nesterov <oleg@redhat.com>
-To: Toralf =?iso-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>,
-        "Serge E. Hallyn" <serge@hallyn.com>
-Cc: Andrey Vagin <avagin@openvz.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: fuzz tested user mode linux core dumps in
-	fs/lockd/clntproc.c:131
-Message-ID: <20130727172759.GA2633@redhat.com>
-References: <51F39AE8.3090401@gmx.de> <20130727170051.GA31447@redhat.com>
+	id S1758877Ab3GROql convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jul 2013 10:46:41 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: SP4_MACH_CRED: v4 proc -> opcodes mapping
+Date: Thu, 18 Jul 2013 14:46:39 +0000
+Message-ID: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <20130727170051.GA31447@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-(Fix Serge's email)
+Hey,
 
-On 07/27, Oleg Nesterov wrote:
->
-> On 07/27, Toralf Förster wrote:
-> >
-> > I do have a user mode linux image (stable 32 bit Gentoo Linux ) which erratically crashes
-> > while fuzz tested with trinity if the victim files are located on a NFS share.
-> >
-> > The back trace of the core dumps always looks like the attached.
-> >
-> > To bisect it is hard. However after few attempts in the last weeks the following
-> > commit is either the first bad commit or at least the upper limit (less likely).
-> >
-> >
-> > commit 8aac62706adaaf0fab02c4327761561c8bda9448
-> > Author: Oleg Nesterov <oleg@redhat.com>
-> > Date:   Fri Jun 14 21:09:49 2013 +0200
-> >
-> >     move exit_task_namespaces() outside of exit_notify()
-> >
-> > #15 nlmclnt_setlockargs (req=0x48e18860, fl=0x48f27c8c) at fs/lockd/clntproc.c:131
->
-> Thanks.
->
-> So nlmclnt_setlockargs()->utsname() crashes and we probably need
-> the patch below.
->
-> But is it correct? I know _absolutely_ nothing about nfs/sunrpc/etc and
-> I never looked into this code before, most probably I am wrong.
->
-> But it seems that __nlm_async_call() relies on workqueues.
-> nlmclnt_async_call() does rpc_wait_for_completion_task(), but what if
-> the caller is killed?
->
-> nlm_rqst can't go away, ->a_count was incremented. But can't the caller
-> exit before call->name is used?
+I have a mostly functional client-side implementation of SP4_MACH_CRED! It still needs a lot of cleanup and testing.
 
-I meant lock->caller, sorry.
+I have one style issue that I want to run by the list before I post a patchset:
 
-> In this case the memory it points to
-> can be already freed.
+So, SP4_MACH_CRED negotiates two bitmaps in the EXCHANGE_ID (one "enforce", one "allow") for state protection. These bitmaps are indexed by the NFSv4 operation number.  The state protect check must happen in the nfs4proc.c layer (or before), right before we call rpc_call_sync or equivalent, so that it can select the right cred and rpc_client.
 
-And of course I have no idea what lock->caller actually means. But note
-that the final fput() can be called by another process from the different
-namespace. Say, a task from the parent namespace looks at /proc/pid/fd.
+Here's the problem: we don't know what operations (opcodes) are actually in a compound until the XDR encode callback is called.  The rpc_procinfo array doesn't have this mapping - in fact, it only lives in the xdr encode layer.
 
-But again. I do not understand this code at all.
+One approach is to immediately translate the opcode bitmaps to "nfs4 procedure index" bitmaps, indexing into the rpc_procinfo array.  This would mean there is a second mapping of NFSv4 procedure -> opcodes that must be updated when an XDR encode callback is changed.
 
-> Oleg.
-> 
-> --- x/kernel/exit.c
-> +++ x/kernel/exit.c
-> @@ -783,8 +783,8 @@ void do_exit(long code)
->  	exit_shm(tsk);
->  	exit_files(tsk);
->  	exit_fs(tsk);
-> -	exit_task_namespaces(tsk);
->  	exit_task_work(tsk);
-> +	exit_task_namespaces(tsk);
->  	check_stack_usage();
->  	exit_thread();
->  
+Another approach would be to add a callback to the XDR api so we could "ask" it if an NFSv4 procedure contains any of the opcodes in a bitmap. The nice thing about this approach is that the mapping of procedure to opcodes within will live right next to the XDR encode callback and make it obvious that both need to be changed together.
 
+I suppose I'm leaning toward a combination of both of these approaches - keep the mapping in XDR-land and translate the bitmaps immediately on negation for fast lookups during normal operation.
+
+Comments? Am I missing something?
+
+-dros
