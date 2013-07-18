@@ -1,133 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45315 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:3969 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753466Ab3GPB6F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Jul 2013 21:58:05 -0400
-Date: Mon, 15 Jul 2013 21:58:03 -0400
-From: "J.Bruce Fields" <bfields@citi.umich.edu>
-To: NeilBrown <neilb@suse.de>
-Cc: Olga Kornievskaia <aglo@citi.umich.edu>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: Is tcp autotuning really what NFS wants?
-Message-ID: <20130716015803.GA5271@fieldses.org>
-References: <20130710092255.0240a36d@notabene.brown>
- <20130710022735.GI8281@fieldses.org>
- <20130710143233.77e35721@notabene.brown>
- <20130710190727.GA22305@fieldses.org>
- <20130715143203.51bc583b@notabene.brown>
+	id S932682Ab3GRSNi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jul 2013 14:13:38 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: SP4_MACH_CRED: v4 proc -> opcodes mapping
+Date: Thu, 18 Jul 2013 18:13:36 +0000
+Message-ID: <DD04268F-B364-48D0-ADEB-E4770D618B38@netapp.com>
+References: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
+ <1374159436.3788.3.camel@leira.trondhjem.org>
+ <DFCAA8D0-B3BD-49C2-BAC4-9C26668AACB9@netapp.com>
+ <1374160910.3788.14.camel@leira.trondhjem.org>
+ <1D61D5F4-40DA-47D1-A15A-745EA05813BA@netapp.com>
+ <1374167339.3788.52.camel@leira.trondhjem.org>
+In-Reply-To: <1374167339.3788.52.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130715143203.51bc583b@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 15, 2013 at 02:32:03PM +1000, NeilBrown wrote:
-> On Wed, 10 Jul 2013 15:07:28 -0400 "J.Bruce Fields" <bfields@citi.umich.edu>
-> wrote:
-> 
-> > On Wed, Jul 10, 2013 at 02:32:33PM +1000, NeilBrown wrote:
-> > > On Tue, 9 Jul 2013 22:27:35 -0400 "J.Bruce Fields" <bfields@citi.umich.edu>
-> > > wrote:
-> > > 
-> > > > On Wed, Jul 10, 2013 at 09:22:55AM +1000, NeilBrown wrote:
-> > > > > 
-> > > > > Hi,
-> > > > >  I just noticed this commit:
-> > > > > 
-> > > > > commit 9660439861aa8dbd5e2b8087f33e20760c2c9afc
-> > > > > Author: Olga Kornievskaia <aglo@citi.umich.edu>
-> > > > > Date:   Tue Oct 21 14:13:47 2008 -0400
-> > > > > 
-> > > > >     svcrpc: take advantage of tcp autotuning
-> > > > > 
-> > > > > 
-> > > > > which I must confess surprised me.  I wonder if the full implications of
-> > > > > removing that functionality were understood.
-> > > > > 
-> > > > > Previously nfsd would set the transmit buffer space for a connection to
-> > > > > ensure there is plenty to hold all replies.  Now it doesn't.
-> > > > > 
-> > > > > nfsd refuses to accept a request if there isn't enough space in the transmit
-> > > > > buffer to send a reply.  This is important to ensure that each reply gets
-> > > > > sent atomically without blocking and there is no risk of replies getting
-> > > > > interleaved.
-> > 
-> > By the way, it's xpt_mutex that really guarantees non-interleaving,
-> > isn't it?
-> 
-> Yes.  I had the two different things confused.  The issue is only about
-> blocking on writes and consequently tying up nfsd threads.
-> 
-> > 
-> > I think of the svc_tcp_has_wspace checks as solving a problem of
-> > fairness between clients.  If we only had one client, everything would
-> > work without them.  But when we have multiple clients we don't want a
-> > single slow client to be able to tie block every thread waiting for that
-> > client to receive read data.  Is that accurate?
-> 
-> It agrees with my understanding - yes.
-> 
-> 
-> > 
-> > > > > The server starts out with a large estimate of the reply space (1M) and for
-> > > > > NFSv3 and v2 it quickly adjusts this down to something realistic.  For NFSv4
-> > > > > it is much harder to estimate the space needed so it just assumes every
-> > > > > reply will require 1M of space.
-> > > > > 
-> > > > > This means that with NFSv4, as soon as you have enough concurrent requests
-> > > > > such that 1M each reserves all of whatever window size was auto-tuned, new
-> > > > > requests on that connection will be ignored.
-> > > > >
-> > > > > This could significantly limit the amount of parallelism that can be achieved
-> > > > > for a single TCP connection (and given that the Linux client strongly prefers
-> > > > > a single connection now, this could become more of an issue).
-> > > > 
-> > > > Worse, I believe it can deadlock completely if the transmit buffer
-> > > > shrinks too far, and people really have run into this:
-> > > > 
-> > > > 	http://mid.gmane.org/<20130125185748.GC29596@fieldses.org>
-> > > > 
-> > > > Trond's suggestion looked at the time like it might work and be doable:
-> > > > 
-> > > > 	http://mid.gmane.org/<4FA345DA4F4AE44899BD2B03EEEC2FA91833C1D8@sacexcmbx05-prd.hq.netapp.com>
-> > > > 
-> > > > but I dropped it.
-> > > 
-> > > I would probably generalise Trond's suggestion and allow "N" extra requests
-> > > through that exceed the reservation, when N is related to the number of idle
-> > > threads.  squareroot might be nice, but half is probably easiest.
-> > > 
-> > > If any send takes more than 30 seconds the sk_sndtimeo will kick in and close
-> > > the connection so a really bad connection won't block threads indefinitely.
-> > > 
-> > > 
-> > > And yes - a nice test case would be good.
-> > > 
-> > > What do you think of the following (totally untested - just for comment)?
-> > 
-> > In cases where the disk is the bottleneck, there aren't actually going
-> > to be idle threads, are there?  In which case I don't think this helps
-> > save a stuck client.
-> 
-> Do we care about the disk being a bottleneck?  We don't currently try to
-> handle that situation at all - if the disk is slow, everything slows down.
+Ok, I'll have the client only ask for state protection on operations that support NFS4ERR_WRONG_CRED - and I'll do the SP4_MACH_CRED checks only on these operations and only if they aren't already using the machine cred already. This simplifies my original problem - now I can just use the "main" opcode.
 
-Right, that's fine, it's just that:
+I'll also add error handlers for NFS4ERR_WRONG_CRED.
 
-Suppose you have a fast network, several fast clients all continuously
-reading, and one slow disk.
+Thanks!
 
-Then in the steady state all the threads will be waiting on the disk,
-and the receive buffers will all be full of read requests from the
-various clients.  When a thread completes a read it will immediately
-send the response, pick up the next request, and go back to waiting on
-the disk.
+-dros
 
-Suppose the send buffer of one of the clients drops below the minimum
-necessary.
+On Jul 18, 2013, at 1:08 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-Then aftert that point, I don't think that one client will ever have
-another rpc processed, even after your proposed change.
+> On Thu, 2013-07-18 at 15:50 +0000, Adamson, Dros wrote:
+>> On Jul 18, 2013, at 11:21 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+>> wrote:
+>> 
+>>> On Thu, 2013-07-18 at 15:10 +0000, Adamson, Dros wrote:
+>>>> On Jul 18, 2013, at 10:57 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+>>>> 
+>>>>> On Thu, 2013-07-18 at 14:46 +0000, Adamson, Dros wrote:
+>>>>>> Hey,
+>>>>>> 
+>>>>>> I have a mostly functional client-side implementation of SP4_MACH_CRED! It still needs a lot of cleanup and testing.
+>>>>>> 
+>>>>>> I have one style issue that I want to run by the list before I post a patchset:
+>>>>>> 
+>>>>>> So, SP4_MACH_CRED negotiates two bitmaps in the EXCHANGE_ID (one "enforce", one "allow") for state protection. These bitmaps are indexed by the NFSv4 operation number.  The state protect check must happen in the nfs4proc.c layer (or before), right before we call rpc_call_sync or equivalent, so that it can select the right cred and rpc_client.
+>>>>>> 
+>>>>>> Here's the problem: we don't know what operations (opcodes) are actually in a compound until the XDR encode callback is called.  The rpc_procinfo array doesn't have this mapping - in fact, it only lives in the xdr encode layer.
+>>>>>> 
+>>>>>> One approach is to immediately translate the opcode bitmaps to "nfs4 procedure index" bitmaps, indexing into the rpc_procinfo array.  This would mean there is a second mapping of NFSv4 procedure -> opcodes that must be updated when an XDR encode callback is changed.
+>>>>>> 
+>>>>>> Another approach would be to add a callback to the XDR api so we could "ask" it if an NFSv4 procedure contains any of the opcodes in a bitmap. The nice thing about this approach is that the mapping of procedure to opcodes within will live right next to the XDR encode callback and make it obvious that both need to be changed together.
+>>>>>> 
+>>>>>> I suppose I'm leaning toward a combination of both of these approaches - keep the mapping in XDR-land and translate the bitmaps immediately on negation for fast lookups during normal operation.
+>>>>>> 
+>>>>>> Comments? Am I missing something?
+>>>>> 
+>>>>> I'm not sure that I understand. We don't do dynamic creation of
+>>>>> compounds: we pretty much know in the nfs4_proc_* routine what the main
+>>>>> operation is (the one exception being CLOSE/OPEN_DOWNGRADE). So why
+>>>>> can't we work out the protection status at that time? Is the worry that
+>>>>> the server might reboot and come back with different MACH_CRED
+>>>>> protections?
+>>>> 
+>>>> Sure, we know what the main operation is and we know what operations will end up in a compound - we can just look at the xdr encoder.  My question is simply one of style. Do we want to have each nfs4proc procedure to have a list of operations that must be updated if an xdr encoder is updated? I'm fine with doing it this way, it just seemed wrong to have the same mapping in two different places. This is why I'm asking ;)
+>>>> 
+>>>> Also, we can't just use the "main" operation, we must check every operation within the compound and if any are required to use SP4, then the whole compound does. I don't necessarily know why a server would do this, but if we follow the spec and a server informs the client that SETATTR must use state protection, then a WRITE with post-op SETATTR must use the state protection even though WRITE doesn't need it.
+>>> 
+>>> We only need to check every _stateful_ operation, right? I can't think
+>>> of any compounds with more than 1 stateful operation. We've deliberately
+>>> avoided those due to the problems that arise when you get a
+>>> NFS4ERR_DELAY or something equivalent at the wrong moment.
+>> 
+>> That may be the intention, but I see no such limitation in the spec. It's my understanding that the server could specify any operation as MUST or MAY use state protection.
+> 
+> Right, but what would state protection mean for a stateless operation
+> such as GETATTR? That operation isn't even allowed to return
+> NFS4ERR_WRONG_CRED, so I don't see how it would apply.
+> 
+>>>> I'm not following the reboot question - that case should be handled just fine. Once the EXCHANGE_ID happens, the clp has two bitmaps (enforce and allow) that reflect the current mode of SP4_MACH_CRED.
+>>> 
+>>> I'm thinking something along the following scenario:
+>>> 
+>>> A process queues up an OPEN. The server replies NFS4ERR_BAD_SESSION and
+>>> later replies with NFS4ERR_STALE_CLIENTID. So we start reboot recovery,
+>>> and the OPEN gets queued waiting for a slot.
+>>> We then send a new EXCHANGE_ID, and the server replies with a
+>>> _different_ MACH_CRED protection for OPEN.
+>>> 
+>>> The problem above is that the OPEN has already been started, and we've
+>>> already assigned it a credential. How do we handle that?
+>>> Ditto question for READ, WRITE, LOCK, LAYOUTGET,...
+>>> 
+>>> Do we have a problem for LOCKU, CLOSE and OPEN_DOWNGRADE? I think we end
+>>> up just skipping recovery in those cases…
+>> 
+>> These are good points. I'm not sure *why* the sp4_mach_cred config would change, but I suppose it could, and yes, in my current implementation there is no way to back out once a rpc task is invoked.  Any thoughts on this?  I can see two ways of handling this:
+>> - restarting all tasks (with rpc_clnt and rpc_cred appropriately changed) when a change in sp4_mach_cred config is detected.
+>> - somehow having the RPC layer call out to check SP4 status before sending each RPC.
+> 
+> For now, I think we should make sure that we handle NFS4ERR_WRONG_CRED
+> correctly in these cases. I don't think we ever want to handle that in
+> nfs4_async_handle_error, but we should definitely handle it in
+> nfs4_handle_exception(), since that can drive a full retry of the RPC
+> call.
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
 
-Am I missing anything?
-
---b.
