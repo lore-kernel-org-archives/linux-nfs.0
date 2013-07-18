@@ -1,103 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:8951 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756541Ab3GQUnn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 16:43:43 -0400
-Subject: [PATCH 03/10] KEYS: Use bool in make_key_ref() and
- is_key_possessed()
-To: keyrings@linux-nfs.org
-From: David Howells <dhowells@redhat.com>
-Cc: linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Wed, 17 Jul 2013 21:43:39 +0100
-Message-ID: <20130717204339.8591.90548.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
-References: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
+Received: from relay2.sgi.com ([192.48.179.30]:36440 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1757811Ab3GRADU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Jul 2013 20:03:20 -0400
+Date: Wed, 17 Jul 2013 19:03:19 -0500
+From: Ben Myers <bpm@sgi.com>
+To: "J.Bruce Fields" <bfields@citi.umich.edu>
+Cc: NeilBrown <neilb@suse.de>, Olga Kornievskaia <aglo@citi.umich.edu>,
+        NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Is tcp autotuning really what NFS wants?
+Message-ID: <20130718000319.GL1681@sgi.com>
+References: <20130710092255.0240a36d@notabene.brown>
+ <20130710022735.GI8281@fieldses.org>
+ <20130710143233.77e35721@notabene.brown>
+ <20130710190727.GA22305@fieldses.org>
+ <20130715143203.51bc583b@notabene.brown>
+ <20130716015803.GA5271@fieldses.org>
+ <20130716140021.312b5b07@notabene.brown>
+ <20130716142430.GA11977@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130716142430.GA11977@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make make_key_ref() take a bool possession parameter and make
-is_key_possessed() return a bool.
+Hey Bruce,
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+On Tue, Jul 16, 2013 at 10:24:30AM -0400, J.Bruce Fields wrote:
+> Adding Ben Myers to Cc: in case he has any testing help or advice (see
+> below):
+> 
+> On Tue, Jul 16, 2013 at 02:00:21PM +1000, NeilBrown wrote:
+> > That would be because I only allowed extra requests up to half the number of
+> > idle threads, and there would be zero idle threads.
+> > 
+> > So yes - I see your point.
+> > 
+> > I now think that it is sufficient to just allow one request through per
+> > socket.  While there is high memory pressure, that is sufficient.  When the
+> > memory pressure drops, that should be enough to cause sndbuf to grow.
+> > 
+> > We should be able to use xpt_reserved to check if this is the only request
+> > or not: 
+> 
+> A remaining possible bad case is if the number of "bad" sockets is more
+> than the number of threads, and if the problem is something that won't
+> resolve itself by just waiting a little while.
+> 
+> I don't know if that's likely in practice.  Maybe a network failure cuts
+> you off from a large swath (but not all) of your clients?  Or maybe some
+> large proportion of your clients are just slow?
+> 
+> But this is two lines and looks likely to solve the immediate
+> problem:
+> 
+> > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> > index 80a6640..5b832ef 100644
+> > --- a/net/sunrpc/svc_xprt.c
+> > +++ b/net/sunrpc/svc_xprt.c
+> > @@ -331,7 +331,8 @@ static bool svc_xprt_has_something_to_do(struct svc_xprt *xprt)
+> >  	if (xprt->xpt_flags & ((1<<XPT_CONN)|(1<<XPT_CLOSE)))
+> >  		return true;
+> >  	if (xprt->xpt_flags & ((1<<XPT_DATA)|(1<<XPT_DEFERRED)))
+> > -		return xprt->xpt_ops->xpo_has_wspace(xprt);
+> > +		return xprt->xpt_ops->xpo_has_wspace(xprt) ||
+> > +			atomic_read(&xprt->xpt_reserved) == 0;
+> >  	return false;
+> >  }
+> >  
+> > @@ -730,7 +731,8 @@ static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
+> >  		newxpt = xprt->xpt_ops->xpo_accept(xprt);
+> >  		if (newxpt)
+> >  			svc_add_new_temp_xprt(serv, newxpt);
+> > -	} else if (xprt->xpt_ops->xpo_has_wspace(xprt)) {
+> > +	} else if (xprt->xpt_ops->xpo_has_wspace(xprt) ||
+> > +		   atomic_read(&xprt->xpt_reserved) == 0) {
+> >  		/* XPT_DATA|XPT_DEFERRED case: */
+> >  		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
+> >  			rqstp, rqstp->rq_pool->sp_id, xprt,
+> > 
+> > 
+> > Thoughts?
+> > 
+> > I tried testing this, but xpo_has_wspace never fails for me, even if I remove
+> > the calls to svc_sock_setbufsize (which probably aren't wanted for TCP any
+> > more).
+> 
+> Ben, do you still have a setup that can reproduce the problem?  Or did you
+> ever find an easier way to reproduce?
 
- Documentation/security/keys.txt |    7 +++----
- include/linux/key.h             |    4 ++--
- security/keys/keyring.c         |    5 +++--
- 3 files changed, 8 insertions(+), 8 deletions(-)
+Unfortunately I don't still have that test rig handy, and I did not find an
+easier way to reproduce this.  I do agree that it 'is sufficient to just allow
+one request through per socket'... probably that would have solved the problem
+in our case.  Maybe it would help to limit the amount of memory in your system
+to try and induce additional memory pressure?  IIRC it was a 1mb block size
+read workload where we would hit this.
 
-diff --git a/Documentation/security/keys.txt b/Documentation/security/keys.txt
-index 7b4145d..9ede670 100644
---- a/Documentation/security/keys.txt
-+++ b/Documentation/security/keys.txt
-@@ -865,15 +865,14 @@ encountered:
-      calling processes has a searchable link to the key from one of its
-      keyrings. There are three functions for dealing with these:
- 
--	key_ref_t make_key_ref(const struct key *key,
--			       unsigned long possession);
-+	key_ref_t make_key_ref(const struct key *key, bool possession);
- 
- 	struct key *key_ref_to_ptr(const key_ref_t key_ref);
- 
--	unsigned long is_key_possessed(const key_ref_t key_ref);
-+	bool is_key_possessed(const key_ref_t key_ref);
- 
-      The first function constructs a key reference from a key pointer and
--     possession information (which must be 0 or 1 and not any other value).
-+     possession information (which must be true or false).
- 
-      The second function retrieves the key pointer from a reference and the
-      third retrieves the possession flag.
-diff --git a/include/linux/key.h b/include/linux/key.h
-index 4dfde11..51bce29 100644
---- a/include/linux/key.h
-+++ b/include/linux/key.h
-@@ -99,7 +99,7 @@ struct keyring_name;
- typedef struct __key_reference_with_attributes *key_ref_t;
- 
- static inline key_ref_t make_key_ref(const struct key *key,
--				     unsigned long possession)
-+				     bool possession)
- {
- 	return (key_ref_t) ((unsigned long) key | possession);
- }
-@@ -109,7 +109,7 @@ static inline struct key *key_ref_to_ptr(const key_ref_t key_ref)
- 	return (struct key *) ((unsigned long) key_ref & ~1UL);
- }
- 
--static inline unsigned long is_key_possessed(const key_ref_t key_ref)
-+static inline bool is_key_possessed(const key_ref_t key_ref)
- {
- 	return (unsigned long) key_ref & 1UL;
- }
-diff --git a/security/keys/keyring.c b/security/keys/keyring.c
-index 6ece7f2..f784063 100644
---- a/security/keys/keyring.c
-+++ b/security/keys/keyring.c
-@@ -329,9 +329,10 @@ key_ref_t keyring_search_aux(key_ref_t keyring_ref,
- 
- 	struct keyring_list *keylist;
- 	struct timespec now;
--	unsigned long possessed, kflags;
-+	unsigned long kflags;
- 	struct key *keyring, *key;
- 	key_ref_t key_ref;
-+	bool possessed;
- 	long err;
- 	int sp, nkeys, kix;
- 
-@@ -542,8 +543,8 @@ key_ref_t __keyring_search_one(key_ref_t keyring_ref,
- 			       key_perm_t perm)
- {
- 	struct keyring_list *klist;
--	unsigned long possessed;
- 	struct key *keyring, *key;
-+	bool possessed;
- 	int nkeys, loop;
- 
- 	keyring = key_ref_to_ptr(keyring_ref);
-
+Thanks,
+Ben
