@@ -1,132 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:52272 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:3831 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751371Ab3GQUn0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 16:43:26 -0400
-Subject: [PATCH 01/10] KEYS: Skip key state checks when checking for
- possession
-To: keyrings@linux-nfs.org
-From: David Howells <dhowells@redhat.com>
-Cc: linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Wed, 17 Jul 2013 21:43:23 +0100
-Message-ID: <20130717204322.8591.11939.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
-References: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
+	id S934780Ab3GRXsP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Jul 2013 19:48:15 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Rick Macklem <rmacklem@uoguelph.ca>
+CC: Andre Heider <a.heider@gmail.com>, Chuck Lever <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFSv4: Fix a regression against the FreeBSD server
+Date: Thu, 18 Jul 2013 23:48:13 +0000
+Message-ID: <1374191292.27573.14.camel@leira.trondhjem.org>
+References: <1774242197.1390191.1374190255822.JavaMail.root@uoguelph.ca>
+In-Reply-To: <1774242197.1390191.1374190255822.JavaMail.root@uoguelph.ca>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Skip key state checks (invalidation, revocation and expiration) when checking
-for possession.  Without this, keys that have been marked invalid, revoked
-keys and expired keys are not given a possession attribute - which means the
-possessor is not granted any possession permits and cannot do anything with
-them unless they also have one a user, group or other permit.
-
-This causes failures in the keyutils test suite's revocation and expiration
-tests now that commit 96b5c8fea6c0861621051290d705ec2e971963f1 reduced the
-initial permissions granted to a key.
-
-The failures are due to accesses to revoked and expired keys being given
-EACCES instead of EKEYREVOKED or EKEYEXPIRED.
-
-Signed-off-by: David Howells <dhowells@redhat.com>
----
-
- security/keys/internal.h         |    1 +
- security/keys/process_keys.c     |    8 +++++---
- security/keys/request_key.c      |    6 ++++--
- security/keys/request_key_auth.c |    2 +-
- 4 files changed, 11 insertions(+), 6 deletions(-)
-
-diff --git a/security/keys/internal.h b/security/keys/internal.h
-index d4f1468..df971fe 100644
---- a/security/keys/internal.h
-+++ b/security/keys/internal.h
-@@ -124,6 +124,7 @@ extern key_ref_t search_my_process_keyrings(struct key_type *type,
- extern key_ref_t search_process_keyrings(struct key_type *type,
- 					 const void *description,
- 					 key_match_func_t match,
-+					 bool no_state_check,
- 					 const struct cred *cred);
- 
- extern struct key *find_keyring_by_name(const char *name, bool skip_perm_check);
-diff --git a/security/keys/process_keys.c b/security/keys/process_keys.c
-index 42defae..a3410d6 100644
---- a/security/keys/process_keys.c
-+++ b/security/keys/process_keys.c
-@@ -440,6 +440,7 @@ found:
- key_ref_t search_process_keyrings(struct key_type *type,
- 				  const void *description,
- 				  key_match_func_t match,
-+				  bool no_state_check,
- 				  const struct cred *cred)
- {
- 	struct request_key_auth *rka;
-@@ -448,7 +449,7 @@ key_ref_t search_process_keyrings(struct key_type *type,
- 	might_sleep();
- 
- 	key_ref = search_my_process_keyrings(type, description, match,
--					     false, cred);
-+					     no_state_check, cred);
- 	if (!IS_ERR(key_ref))
- 		goto found;
- 	err = key_ref;
-@@ -468,7 +469,8 @@ key_ref_t search_process_keyrings(struct key_type *type,
- 			rka = cred->request_key_auth->payload.data;
- 
- 			key_ref = search_process_keyrings(type, description,
--							  match, rka->cred);
-+							  match, no_state_check,
-+							  rka->cred);
- 
- 			up_read(&cred->request_key_auth->sem);
- 
-@@ -675,7 +677,7 @@ try_again:
- 		/* check to see if we possess the key */
- 		skey_ref = search_process_keyrings(key->type, key,
- 						   lookup_user_key_possessed,
--						   cred);
-+						   true, cred);
- 
- 		if (!IS_ERR(skey_ref)) {
- 			key_put(key);
-diff --git a/security/keys/request_key.c b/security/keys/request_key.c
-index c411f9b..172115b 100644
---- a/security/keys/request_key.c
-+++ b/security/keys/request_key.c
-@@ -390,7 +390,8 @@ static int construct_alloc_key(struct key_type *type,
- 	 * waited for locks */
- 	mutex_lock(&key_construction_mutex);
- 
--	key_ref = search_process_keyrings(type, description, type->match, cred);
-+	key_ref = search_process_keyrings(type, description, type->match,
-+					  false, cred);
- 	if (!IS_ERR(key_ref))
- 		goto key_already_present;
- 
-@@ -539,7 +540,8 @@ struct key *request_key_and_link(struct key_type *type,
- 	       dest_keyring, flags);
- 
- 	/* search all the process keyrings for a key */
--	key_ref = search_process_keyrings(type, description, type->match, cred);
-+	key_ref = search_process_keyrings(type, description, type->match,
-+					  false, cred);
- 
- 	if (!IS_ERR(key_ref)) {
- 		key = key_ref_to_ptr(key_ref);
-diff --git a/security/keys/request_key_auth.c b/security/keys/request_key_auth.c
-index 85730d5..92077de 100644
---- a/security/keys/request_key_auth.c
-+++ b/security/keys/request_key_auth.c
-@@ -247,7 +247,7 @@ struct key *key_get_instantiation_authkey(key_serial_t target_id)
- 		&key_type_request_key_auth,
- 		(void *) (unsigned long) target_id,
- 		key_get_instantiation_authkey_match,
--		cred);
-+		false, cred);
- 
- 	if (IS_ERR(authkey_ref)) {
- 		authkey = ERR_CAST(authkey_ref);
-
+T24gVGh1LCAyMDEzLTA3LTE4IGF0IDE5OjMwIC0wNDAwLCBSaWNrIE1hY2tsZW0gd3JvdGU6DQo+
+IEFuZHJlIEhlaWRlciB3cm90ZToNCj4gPiBPbiBXZWQsIEp1bCAxNywgMjAxMyBhdCAxMTo1OSBQ
+TSwgVHJvbmQgTXlrbGVidXN0DQo+ID4gPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90
+ZToNCj4gPiA+IFRlY2huaWNhbGx5LCB0aGUgTGludXggY2xpZW50IGlzIGFsbG93ZWQgYnkgdGhl
+IE5GU3Y0IHNwZWMgdG8gc2VuZA0KPiA+ID4gMyB3b3JkIGJpdG1hcHMgYXMgcGFydCBvZiBhbiBP
+UEVOIHJlcXVlc3QuIEhvd2V2ZXIsIHRoaXMgY2F1c2VzIHRoZQ0KPiA+ID4gY3VycmVudCBGcmVl
+QlNEIHNlcnZlciB0byByZXR1cm4gTkZTNEVSUl9BVFRSTk9UU1VQUCBlcnJvcnMuDQo+ID4gPg0K
+PiA+ID4gRml4IHRoZSByZWdyZXNzaW9uIGJ5IG1ha2luZyB0aGUgTGludXggY2xpZW50IHVzZSBh
+IDIgd29yZCBiaXRtYXANCj4gPiA+IHVubGVzcw0KPiA+ID4gZG9pbmcgTkZTdjQuMiB3aXRoIGxh
+YmVsZWQgTkZTLg0KPiA+ID4NCj4gPiA+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8
+VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ID4gDQo+ID4gVGVzdGVkLWJ5OiBBbmRyZSBI
+ZWlkZXIgPGEuaGVpZGVyQGdtYWlsLmNvbT4NCj4gPiANCj4gSSd2ZSBhdHRhY2hlZCB0aGUgcGF0
+Y2ggSSBwbGFuIHRvIGNvbW1pdCB0byBGcmVlQlNEJ3MgaGVhZCBzb29uLCB3aGljaA0KPiBmaXhl
+cyB0aGUgc2VydmVyIHNvIHRoYXQgaXQgY2hlY2tzIGZvciB0aGUgaGlnaCBvcmRlciBiaXRtYXBz
+IHdvcmRzDQo+IGJlaW5nIG5vbi16ZXJvIGJlZm9yZSByZXBseWluZyB3aXRoIE5GUzRfRVJSX0FU
+VFJOT1RTVVBQLg0KPiANCj4gVGhlIHBhdGNoIGlzIHByZXR0eSBzdHJhaWdodGZvcndhcmQsIGJ1
+dCBpZiB5b3UgY2FuIGFwcGx5IGl0IHRvIHlvdXINCj4gc2VydmVyIGFuZCB0ZXN0IGl0IGFnYWlu
+c3QgdGhlIHVucGF0Y2hlZCBMaW51eCBjbGllbnQsIHRoYXQgd291bGQgYmUNCj4gYXBwcmVjaWF0
+ZWQuDQo+IA0KPiBJdCB3aWxsIHRha2UgYSB3aGlsZSBmb3IgdGhlIHBhdGNoIHRvIGZpbmQgaXRz
+IHdheSB0byBhIEZyZWVCU0QgcmVsZWFzZSwNCj4gc28gaGF2aW5nIHRoZSB3b3JrYXJvdW5kIGlu
+IHRoZSBMaW51eCBjbGllbnQgd2lsbCBiZSB2ZXJ5IGhlbHBmdWwuDQoNClJpZ2h0LiBTbywgbXkg
+cGxhbiBpcyB0byBzZW5kIHBhdGNoIDEvMiBhcyBhIGJ1Z2ZpeCB3aXRoaW4gdGhlIG5leHQgZmV3
+DQpkYXlzLCB0byBlbnN1cmUgdGhhdCB3ZSBlbmQgdXAgd2l0aCBubyBnYXAgaW4gTkZTdjQgY2xp
+ZW50IGZ1bmN0aW9uYWxpdHkNCmJldHdlZW4gdGhlIHJlbGVhc2UgdmVyc2lvbnMgb2YgTGludXgg
+My4xMCBhbmQgMy4xMS4NCg0KU2luY2UgMi8yIGlzIG1vcmUgb2YgYSBjbGVhbnVwLCBhbmQgYWN0
+dWFsbHkgY2hhbmdlcyB0aGUgZnVuY3Rpb25hbGl0eQ0KdG8gc2VuZCBvbmx5IGEgMS13b3JkIGJp
+dG1hcCBmb3IgdHJ1bmNhdGUoKSBjYWxscywgSSdsbCB3YWl0IGZvciB0aGUNCjMuMTIgbWVyZ2Ug
+d2luZG93IGJlZm9yZSBjb21taXR0aW5nIHRoYXQuDQoNCkNoZWVycw0KICBUcm9uZA0KDQotLSAN
+ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
+VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
