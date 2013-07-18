@@ -1,68 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.194]:56178 "EHLO mout.perfora.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753733Ab3GOB0a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 14 Jul 2013 21:26:30 -0400
-Date: Sun, 14 Jul 2013 21:26:20 -0400
-From: Jim Rees <rees@umich.edu>
-To: "J.Bruce Fields" <bfields@citi.umich.edu>
-Cc: NeilBrown <neilb@suse.de>, Olga Kornievskaia <aglo@citi.umich.edu>,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: Re: Is tcp autotuning really what NFS wants?
-Message-ID: <20130715012620.GC7429@umich.edu>
-References: <20130710092255.0240a36d@notabene.brown>
- <20130710022735.GI8281@fieldses.org>
+Received: from mail-pb0-f42.google.com ([209.85.160.42]:50901 "EHLO
+	mail-pb0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932074Ab3GRO5o convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jul 2013 10:57:44 -0400
+Received: by mail-pb0-f42.google.com with SMTP id un1so3285314pbc.15
+        for <linux-nfs@vger.kernel.org>; Thu, 18 Jul 2013 07:57:43 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130710022735.GI8281@fieldses.org>
+In-Reply-To: <1374098384.17005.10.camel@leira.trondhjem.org>
+References: <CAHsu+b_hhSr2vwcwM8TX3=xF=3HffUXG=YLVLcsEpH1wHn+JoA@mail.gmail.com>
+	<A5C56FD6-9E14-43A3-8627-1C8F77EC6926@oracle.com>
+	<CAHsu+b9vWUyCGHSs==Na=VntwvYp65=rva7+y9aQDXquxX4t-A@mail.gmail.com>
+	<1374098384.17005.10.camel@leira.trondhjem.org>
+Date: Thu, 18 Jul 2013 16:57:43 +0200
+Message-ID: <CAHsu+b_K-KL0gE4YaOYSCjAz3tKvVNeiGxQWsQ6ObY0Udp_Nyw@mail.gmail.com>
+Subject: Re: Error writing to nfs4 with 3.11-rc1
+From: Andre Heider <a.heider@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J.Bruce Fields wrote:
+On Wed, Jul 17, 2013 at 11:59 PM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Wed, 2013-07-17 at 21:35 +0200, Andre Heider wrote:
+>> On Wed, Jul 17, 2013 at 9:10 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> >
+>> > On Jul 17, 2013, at 2:55 PM, Andre Heider <a.heider@gmail.com> wrote:
+>> >
+>> >> Hi,
+>> >>
+>> >> I'm having problems using 3.11-rc1 as nfs4 client (with a FreeBSD 9.1
+>> >> server) using sec=sys.
+>> >>
+>> >> With the same server+client setup, just booting different kernels:
+>> >> 3.9.10 works without issues
+>> >> 3.10.1 works too, but introduced "RPC: AUTH_GSS upcall timed out." in
+>> >> dmesg (iirc I don't need gss with sec=sys)
+>> >
+>> > Not a requirement, but running gssd should make that message go away.  The client is attempting to use krb5i to manage its lease on the server, and falling back to AUTH_UNIX when it sees gssd is not running.
+>> >
+>> >> 3.11-rc1 reading from the server still works, writing fails
+>> >>
+>> >> Even a simple touch on the share fails with:
+>> >> touch: cannot touch ‘/mnt/andre/test’: Input/output error
+>> >
+>> > A network capture is a reasonable place to start.
+>> >
+>> >   # tcpdump -s0 -w /tmp/raw
+>> >
+>> > Then try your touch test again.  Stop the tcpdump.  You can post a compressed version of the raw dump here if it's short.
+>>
+>> Attached two dumps, one from 3.10 (works) and one from 3.11 (doesn't work).
+>
+> The FreeBSD server is returning NFS4ERR_ATTRNOTSUPP to the OPEN, despite
+> the fact that we're requesting the same attributes in both cases. I'll
+> bet it is the fact that we send a bitmap of 3 words instead of 2.
+>
+> This is a problem: the Linux client clearly has the spec on its side,
+> and the FreeBSD server is wrong to reject a 3 word bitmap, as long as
+> we're not requesting any actual attributes that it doesn't support.
+> According to the spec, we could send a bitmap of any length we like.
+>
+> On the other hand, we have a situation where something used to work, and
+> now doesn't. Please check out the 2 patches I just sent out, and see if
+> they help.
 
-  On Wed, Jul 10, 2013 at 09:22:55AM +1000, NeilBrown wrote:
-  > 
-  > Hi,
-  >  I just noticed this commit:
-  > 
-  > commit 9660439861aa8dbd5e2b8087f33e20760c2c9afc
-  > Author: Olga Kornievskaia <aglo@citi.umich.edu>
-  > Date:   Tue Oct 21 14:13:47 2008 -0400
-  > 
-  >     svcrpc: take advantage of tcp autotuning
-  > 
-  > 
-  > which I must confess surprised me.  I wonder if the full implications of
-  > removing that functionality were understood.
-  > 
-  > Previously nfsd would set the transmit buffer space for a connection to
-  > ensure there is plenty to hold all replies.  Now it doesn't.
-  > 
-  > nfsd refuses to accept a request if there isn't enough space in the transmit
-  > buffer to send a reply.  This is important to ensure that each reply gets
-  > sent atomically without blocking and there is no risk of replies getting
-  > interleaved.
-  > 
-  > The server starts out with a large estimate of the reply space (1M) and for
-  > NFSv3 and v2 it quickly adjusts this down to something realistic.  For NFSv4
-  > it is much harder to estimate the space needed so it just assumes every
-  > reply will require 1M of space.
-  > 
-  > This means that with NFSv4, as soon as you have enough concurrent requests
-  > such that 1M each reserves all of whatever window size was auto-tuned, new
-  > requests on that connection will be ignored.
-  >
-  > This could significantly limit the amount of parallelism that can be achieved
-  > for a single TCP connection (and given that the Linux client strongly prefers
-  > a single connection now, this could become more of an issue).
-  
-  Worse, I believe it can deadlock completely if the transmit buffer
-  shrinks too far, and people really have run into this:
+With these 2 patches, nfsv4 connectivity to a FreeBSD server is working again.
 
-It's been a few years since I looked at this, but are you sure autotuning
-reduces the buffer space available on the sending socket? That doesn't sound
-like correct behavior to me. I know we thought about this at the time.
-
-It does seem like a bug that we don't multiply the needed send buffer space
-by the number of threads. I think that's because we don't know how many
-threads there are going to be in svc_setup_socket()?
+Thanks for the quick patches,
+Andre
