@@ -1,56 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:40572 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755339Ab3GAUyo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Jul 2013 16:54:44 -0400
-Received: from acsinet22.oracle.com (acsinet22.oracle.com [141.146.126.238])
-	by aserp1040.oracle.com (Sentrion-MTA-4.3.1/Sentrion-MTA-4.3.1) with ESMTP id r61KshUb015718
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 1 Jul 2013 20:54:43 GMT
-Received: from userz7022.oracle.com (userz7022.oracle.com [156.151.31.86])
-	by acsinet22.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id r61KsgPj007089
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Mon, 1 Jul 2013 20:54:43 GMT
-Received: from abhmt111.oracle.com (abhmt111.oracle.com [141.146.116.63])
-	by userz7022.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id r61Ksgdx017549
-	for <linux-nfs@vger.kernel.org>; Mon, 1 Jul 2013 20:54:42 GMT
-Message-ID: <51D1EC91.9050308@oracle.com>
-Date: Mon, 01 Jul 2013 14:54:41 -0600
-From: Jeff Wright <jeff.wright@oracle.com>
+Received: from mx12.netapp.com ([216.240.18.77]:54615 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758970Ab3GRPut convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jul 2013 11:50:49 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: SP4_MACH_CRED: v4 proc -> opcodes mapping
+Date: Thu, 18 Jul 2013 15:50:48 +0000
+Message-ID: <1D61D5F4-40DA-47D1-A15A-745EA05813BA@netapp.com>
+References: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
+ <1374159436.3788.3.camel@leira.trondhjem.org>
+ <DFCAA8D0-B3BD-49C2-BAC4-9C26668AACB9@netapp.com>
+ <1374160910.3788.14.camel@leira.trondhjem.org>
+In-Reply-To: <1374160910.3788.14.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Question on tuning sunrpc.tcp_slot_table_entries
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Team,
 
-I am supporting Oracle MOS note 1354980.1, which covers tuning clients 
-for RMAN backup to the ZFS Storage Appliance.  One of the tuning 
-recommendations is to change sunrpc.tcp_slot_table_entries from the 
-default (16) to 128 to open up the number of concurrent I/O we can get 
-per client mount point.  This is presumed good for general-purpose 
-kernel NFS application traffic to the ZFS Storage Appliance.  I recently 
-received the following comment regarding the efficacy of the 
-sunrpc.tcp_slot_table_entries tune:
+On Jul 18, 2013, at 11:21 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+ wrote:
 
-"In most cases, the parameter "sunrpc.tcp_slot_table_entries" can not be 
-set even if applying int onto /etc/sysctl.conf although this document 
-says users should do so.
-Because, the parameter is appeared after sunrpc.ko module is loaded(=NFS 
-service is started), and sysctl was executed before starting NFS service."
+> On Thu, 2013-07-18 at 15:10 +0000, Adamson, Dros wrote:
+>> On Jul 18, 2013, at 10:57 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+>> 
+>>> On Thu, 2013-07-18 at 14:46 +0000, Adamson, Dros wrote:
+>>>> Hey,
+>>>> 
+>>>> I have a mostly functional client-side implementation of SP4_MACH_CRED! It still needs a lot of cleanup and testing.
+>>>> 
+>>>> I have one style issue that I want to run by the list before I post a patchset:
+>>>> 
+>>>> So, SP4_MACH_CRED negotiates two bitmaps in the EXCHANGE_ID (one "enforce", one "allow") for state protection. These bitmaps are indexed by the NFSv4 operation number.  The state protect check must happen in the nfs4proc.c layer (or before), right before we call rpc_call_sync or equivalent, so that it can select the right cred and rpc_client.
+>>>> 
+>>>> Here's the problem: we don't know what operations (opcodes) are actually in a compound until the XDR encode callback is called.  The rpc_procinfo array doesn't have this mapping - in fact, it only lives in the xdr encode layer.
+>>>> 
+>>>> One approach is to immediately translate the opcode bitmaps to "nfs4 procedure index" bitmaps, indexing into the rpc_procinfo array.  This would mean there is a second mapping of NFSv4 procedure -> opcodes that must be updated when an XDR encode callback is changed.
+>>>> 
+>>>> Another approach would be to add a callback to the XDR api so we could "ask" it if an NFSv4 procedure contains any of the opcodes in a bitmap. The nice thing about this approach is that the mapping of procedure to opcodes within will live right next to the XDR encode callback and make it obvious that both need to be changed together.
+>>>> 
+>>>> I suppose I'm leaning toward a combination of both of these approaches - keep the mapping in XDR-land and translate the bitmaps immediately on negation for fast lookups during normal operation.
+>>>> 
+>>>> Comments? Am I missing something?
+>>> 
+>>> I'm not sure that I understand. We don't do dynamic creation of
+>>> compounds: we pretty much know in the nfs4_proc_* routine what the main
+>>> operation is (the one exception being CLOSE/OPEN_DOWNGRADE). So why
+>>> can't we work out the protection status at that time? Is the worry that
+>>> the server might reboot and come back with different MACH_CRED
+>>> protections?
+>> 
+>> Sure, we know what the main operation is and we know what operations will end up in a compound - we can just look at the xdr encoder.  My question is simply one of style. Do we want to have each nfs4proc procedure to have a list of operations that must be updated if an xdr encoder is updated? I'm fine with doing it this way, it just seemed wrong to have the same mapping in two different places. This is why I'm asking ;)
+>> 
+>> Also, we can't just use the "main" operation, we must check every operation within the compound and if any are required to use SP4, then the whole compound does. I don't necessarily know why a server would do this, but if we follow the spec and a server informs the client that SETATTR must use state protection, then a WRITE with post-op SETATTR must use the state protection even though WRITE doesn't need it.
+> 
+> We only need to check every _stateful_ operation, right? I can't think
+> of any compounds with more than 1 stateful operation. We've deliberately
+> avoided those due to the problems that arise when you get a
+> NFS4ERR_DELAY or something equivalent at the wrong moment.
 
-I'd like to find out how to tell if the tune is actually in play for the 
-running kernel and if there is a difference in what is reported /proc 
-compared to what is running in core.  Could anyone on the alias suggest 
-how to validate if the aforementioned comment is relevant for the Linux 
-kernel I am running with?  I am familiar with using mdb on Solaris to 
-check what values the Solaris kernel is running with, so if there is a 
-Linux equivalent, or another way to do this sort of thing with Linux, 
-please let me know.
+That may be the intention, but I see no such limitation in the spec. It's my understanding that the server could specify any operation as MUST or MAY use state protection.
 
-Thanks,
+> 
+>> I'm not following the reboot question - that case should be handled just fine. Once the EXCHANGE_ID happens, the clp has two bitmaps (enforce and allow) that reflect the current mode of SP4_MACH_CRED.
+> 
+> I'm thinking something along the following scenario:
+> 
+> A process queues up an OPEN. The server replies NFS4ERR_BAD_SESSION and
+> later replies with NFS4ERR_STALE_CLIENTID. So we start reboot recovery,
+> and the OPEN gets queued waiting for a slot.
+> We then send a new EXCHANGE_ID, and the server replies with a
+> _different_ MACH_CRED protection for OPEN.
+> 
+> The problem above is that the OPEN has already been started, and we've
+> already assigned it a credential. How do we handle that?
+> Ditto question for READ, WRITE, LOCK, LAYOUTGET,...
+> 
+> Do we have a problem for LOCKU, CLOSE and OPEN_DOWNGRADE? I think we end
+> up just skipping recovery in those cases…
 
-Jeff
+These are good points. I'm not sure *why* the sp4_mach_cred config would change, but I suppose it could, and yes, in my current implementation there is no way to back out once a rpc task is invoked.  Any thoughts on this?  I can see two ways of handling this:
+ - restarting all tasks (with rpc_clnt and rpc_cred appropriately changed) when a change in sp4_mach_cred config is detected.
+ - somehow having the RPC layer call out to check SP4 status before sending each RPC.
+
+-dros
+
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
 
