@@ -1,63 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:14060 "EHLO mx12.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:41089 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756516Ab3GWVTW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Jul 2013 17:19:22 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Andre Heider <a.heider@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Rick Macklem <rmacklem@uoguelph.ca>
-Subject: Re: [PATCH 2/2] NFSv4: encode_attrs should not backfill the bitmap
- and attribute length
-Date: Tue, 23 Jul 2013 21:19:21 +0000
-Message-ID: <1374614357.12943.7.camel@leira.trondhjem.org>
-References: <1374098347-30196-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1374098347-30196-2-git-send-email-Trond.Myklebust@netapp.com>
-	 <CAHsu+b-b=-pQ4f8AfHHDaPpAK3YvHomS3X-QuEJkzbAsuJBYfg@mail.gmail.com>
-	 <1374598847.12943.0.camel@leira.trondhjem.org>
-	 <A4648039-314B-4B30-BCDC-7D612DE1EC1F@oracle.com>
-In-Reply-To: <A4648039-314B-4B30-BCDC-7D612DE1EC1F@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1759317Ab3GRTfn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Jul 2013 15:35:43 -0400
+From: <andros@netapp.com>
+To: <trond.myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 4 1/5] SUNRPC: don't map EKEYEXPIRED to EACCES in call_refreshresult
+Date: Thu, 18 Jul 2013 15:35:26 -0400
+Message-ID: <1374176130-11657-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1374176130-11657-1-git-send-email-andros@netapp.com>
+References: <1374176130-11657-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEzLTA3LTIzIGF0IDE2OjE0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gSnVsIDIzLCAyMDEzLCBhdCAxOjAwIFBNLCAiTXlrbGVidXN0LCBUcm9uZCIgPFRyb25kLk15
-a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gVHVlLCAyMDEzLTA3LTIzIGF0
-IDE3OjU5ICswMjAwLCBBbmRyZSBIZWlkZXIgd3JvdGU6DQo+ID4+IFRyb25kLA0KPiA+PiANCj4g
-Pj4gT24gV2VkLCBKdWwgMTcsIDIwMTMgYXQgMTE6NTkgUE0sIFRyb25kIE15a2xlYnVzdA0KPiA+
-PiA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+Pj4gVGhlIGF0dHJpYnV0
-ZSBsZW5ndGggaXMgYWxyZWFkeSBjYWxjdWxhdGVkIGluIGFkdmFuY2UuIFRoZXJlIGlzIG5vDQo+
-ID4+PiByZWFzb24gd2h5IHdlIGNhbm5vdCBjYWxjdWxhdGUgdGhlIGJpdG1hcCBpbiBhZHZhbmNl
-IHRvbyBzbyB0aGF0DQo+ID4+PiB3ZSBkb24ndCBoYXZlIHRvIHBsYXkgcG9pbnRlciBnYW1lcy4N
-Cj4gPj4gDQo+ID4+IEknbSBzb3JyeSB0byByZXBvcnQgdGhhdCB0aGlzIHBhdGNoIHNlZW1zIHRv
-IGJlIG1vcmUgdGhhbiBqdXN0IGEgY2xlYW51cC4NCj4gPj4gDQo+ID4+IEkganVzdCB0ZXN0ZWQg
-My4xMS1yYzIgYWdhaW5zdCBteSBGcmVlQlNEIHNlcnZlciwgYW5kIHdpdGgganVzdCBwYXRjaA0K
-PiA+PiAxLzIgKGFzIGluIC1yYzIpIEkgc3RpbGwgZ2V0IHRoZSBmYWlsdXJlIHVwb24gYHRvdWNo
-YC4gSXQgZmFpbHMgd2l0aA0KPiA+PiBvciB3aXRob3V0IFJpY2sncyBzZXJ2ZXIgcGF0Y2guDQo+
-ID4+IA0KPiA+PiBBcHBseWluZyB0aGlzIG9uZSBvbiB0b3Agb2YgLXJjMiBmaXhlcyBpdC4NCj4g
-PiANCj4gPiBIb3cgYWJvdXQgdGhlIGF0dGFjaGVkIGluc3RlYWQgb2YgdGhlIGNsZWFudXA/DQo+
-IA0KPiBFdmVuIHdpdGggdGhpcyBwYXRjaCBhcHBsaWVkLCBjdGhvbiBiYXNpYyB0ZXN0cyBmYWls
-IGltbWVkaWF0ZWx5IGZvciBtZS4gIFRoZSBta2RpciB0byBjcmVhdGUgdGhlIHRlc3QgZGlyZWN0
-b3J5IGZhaWxzIHdpdGggRUlPLg0KPiANCj4gVGhlIHdpcmUgdHJhY2Ugc2hvd3MgdGhhdCB0aGUg
-Q1JFQVRFIG9wZXJhdGlvbiBpcyBtYWxmb3JtZWQ6IHRoZSBjbGllbnQgc2VuZHMgYSBsZW5ndGgg
-b2YgOCBmb3IgdGhlIDQtb2N0ZXQgbW9kZSBhdHRyaWJ1dGUgdmFsdWUgYXQgdGhlIGVuZCBvZiB0
-aGUgb3BlcmF0aW9uLg0KPiANCj4gVGhpcyBjYXVzZXMgdGhlIHNlcnZlciB0byBza2lwIG92ZXIg
-dGhlIGZvbGxvd2luZyBHRVRGSCBvcGVyYXRpb24gLS0gaXQgdGhpbmtzIHRoZSBjbGllbnQgaGFz
-IHNlbnQgMyBvcGVyYXRpb25zLCB3aGVuIHRoZSBjbGllbnQgdG9sZCBpdCB0byBleHBlY3QgNCBp
-biB0aGlzIGNvbXBvdW5kLg0KPiANCj4gSGVyZToNCj4gDQo+IDEwNjQgICAgICAgICAqcCsrID0g
-Y3B1X3RvX2JlMzIoYm12YWxfbGVuKTsNCj4gMTA2NSAgICAgICAgIHEgPSBwOw0KPiAxMDY2ICAg
-ICAgICAgLyogU2tpcCBiaXRtYXAgZW50cmllcyArIGF0dHJsZW4gKi8NCj4gMTA2NyAgICAgICAg
-IHAgKz0gYm12YWxfbGVuICsgMTsNCj4gDQo+IFlvdSd2ZSBza2lwcGVkIG92ZXIgdGhlIDQtb2N0
-ZXQgYXR0cmxlbiBmaWVsZCwgYnV0IGhlcmU6DQo+IA0KPiAxMTI1ICAgICAgICAgKnErKyA9IGh0
-b25sKGJtdmFsMCk7DQo+IDExMjYgICAgICAgICAqcSsrID0gaHRvbmwoYm12YWwxKTsNCj4gMTEy
-NyAgICAgICAgIGlmIChibXZhbF9sZW4gPT0gMykNCj4gMTEyOCAgICAgICAgICAgICAgICAgKnEr
-KyA9IGh0b25sKGJtdmFsMik7DQo+IDExMjkgICAgICAgICBsZW4gPSAoY2hhciAqKXAgLSAoY2hh
-ciAqKXE7DQoNCkluIHRoZSBwYXRjaCBJIHNlbnQgb3V0LCB0aGUgYWJvdmUgc2hvdWxkIHJlYWQg
-KHErMSkuLi4NCg0KPiAxMTMwICAgICAgICAgKnEgPSBodG9ubChsZW4pOw0KPiANCj4gaGF2ZSB5
-b3UgZmFpbGVkIHRvIHRha2UgdGhlIGF0dHJsZW4gZmllbGQgaW50byBhY2NvdW50IHdoZW4gY29t
-cHV0aW5nIHRoZSBsZW5ndGggb2YgdGhlIGF0dHJpYnV0ZSB2YWx1ZXM/DQo+IA0KDQotLSANClRy
-b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJv
-bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+From: Andy Adamson <andros@netapp.com>
+
+The NFS layer needs to know when a key has expired.
+This change also returns -EKEYEXPIRED to the application, and the informative
+"Key has expired" error message is displayed. The user then knows that
+credential renewal is required.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ net/sunrpc/clnt.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index aa40156..68e8595 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1426,9 +1426,9 @@ call_refreshresult(struct rpc_task *task)
+ 		return;
+ 	case -ETIMEDOUT:
+ 		rpc_delay(task, 3*HZ);
+-	case -EKEYEXPIRED:
+ 	case -EAGAIN:
+ 		status = -EACCES;
++	case -EKEYEXPIRED:
+ 		if (!task->tk_cred_retry)
+ 			break;
+ 		task->tk_cred_retry--;
+-- 
+1.8.3.1
+
