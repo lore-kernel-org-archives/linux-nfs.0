@@ -1,82 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f53.google.com ([209.85.128.53]:48488 "EHLO
-	mail-qe0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752067Ab3GaXAy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Jul 2013 19:00:54 -0400
-Received: by mail-qe0-f53.google.com with SMTP id f6so745050qej.12
-        for <linux-nfs@vger.kernel.org>; Wed, 31 Jul 2013 16:00:53 -0700 (PDT)
-Date: Wed, 31 Jul 2013 18:00:51 -0500
-From: Quentin Barnes <qbarnes@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: don't allow nfs_find_actor to match inodes of the
- wrong type
-Message-ID: <20130731230051.GB31859@gmail.com>
+Received: from mx12.netapp.com ([216.240.18.77]:38005 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759359Ab3GRU4g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Jul 2013 16:56:36 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: SP4_MACH_CRED: v4 proc -> opcodes mapping
+Date: Thu, 18 Jul 2013 20:56:33 +0000
+Message-ID: <1374180993.27573.5.camel@leira.trondhjem.org>
+References: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
+	 <1374159436.3788.3.camel@leira.trondhjem.org>
+	 <DFCAA8D0-B3BD-49C2-BAC4-9C26668AACB9@netapp.com>
+	 <1374160910.3788.14.camel@leira.trondhjem.org>
+	 <1D61D5F4-40DA-47D1-A15A-745EA05813BA@netapp.com>
+	 <1374167339.3788.52.camel@leira.trondhjem.org>
+	 <DD04268F-B364-48D0-ADEB-E4770D618B38@netapp.com>
+	 <9AC7EBEB-E407-4CCB-A6E6-05C24CD821DA@netapp.com>
+	 <1374177242.3788.59.camel@leira.trondhjem.org>
+	 <FB5772A6-D433-4C9C-B67E-B43126961A68@netapp.com>
+	 <1374177978.3788.68.camel@leira.trondhjem.org>
+	 <959CC18F-0C16-4D11-A4AA-87928D5C23CC@netapp.com>
+	 <372F77DD-8325-427B-AD09-8366DDED0A32@netapp.com>
+	 <1374180569.27573.0.camel@leira.trondhjem.org>
+In-Reply-To: <1374180569.27573.0.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> Quite frankly, all I care about in a situation like this is that the
-> client doesn't Oops.
-
-Certainly, and his patch does do that, but it's also pointing out
-there's another bug running around.  And once you fix that bug, the
-original patch is no longer needed.
-
-> If a server is really this utterly broken, then there is no way we can
-> fix it on the client, and we're not even going to try.
-
-Of course.  But you also don't want to unnecessarily leave the
-client with an invalid inode that's not properly flagged and
-possibly leave another bug unfixed.
-
-Here is a example patch that I feel better addresses the problem:
-
-
-commit 2d6b411eea04ae4398707b584b8d9e552606aaf7
-Author: Quentin Barnes <qbarnes@yahoo-inc.com>
-Date:   Wed Jul 31 17:50:35 2013 -0500
-
-    Have nfs_refresh_inode_locked() ensure that it doesn't return without
-    flagging invalid inodes (ones that don't match its fattr type).
-    
-    nfs_refresh_inode() already does this, so we need to check the return
-    status from nfs_check_inode_attributes() before returning from
-    nfs_refresh_inode_locked().
-    
-    Once this hole is plugged, there will be no invalid inode references
-    returned by nfs_fhget(), so no need to check in nfs_find_actor().
-
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index af6e806..d2263a5 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -244,8 +244,6 @@ nfs_find_actor(struct inode *inode, void *opaque)
- 
- 	if (NFS_FILEID(inode) != fattr->fileid)
- 		return 0;
--	if ((S_IFMT & inode->i_mode) != (S_IFMT & fattr->mode))
--		return 0;
- 	if (nfs_compare_fh(NFS_FH(inode), fh))
- 		return 0;
- 	if (is_bad_inode(inode) || NFS_STALE(inode))
-@@ -1269,9 +1267,16 @@ static int nfs_inode_attrs_need_update(const struct inode *inode, const struct n
- 
- static int nfs_refresh_inode_locked(struct inode *inode, struct nfs_fattr *fattr)
- {
-+	int	status;
-+
- 	if (nfs_inode_attrs_need_update(inode, fattr))
- 		return nfs_update_inode(inode, fattr);
--	return nfs_check_inode_attributes(inode, fattr);
-+
-+	status = nfs_check_inode_attributes(inode, fattr);
-+	if (status)
-+		nfs_invalidate_inode(inode);
-+
-+	return status;
- }
- 
- /**
+T24gVGh1LCAyMDEzLTA3LTE4IGF0IDIwOjQ5ICswMDAwLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3Rl
+Og0KPiBPbiBUaHUsIDIwMTMtMDctMTggYXQgMjA6NDEgKzAwMDAsIEFkYW1zb24sIERyb3Mgd3Jv
+dGU6DQo+ID4gT2ssIHdoYXQgYWJvdXQgU0VRVUVOQ0U/IFNhbWUgc2l0dWF0aW9uLCBleGNlcHQg
+dGhpcyB0aW1lIGl0J3MgYWN0dWFsbHkgYSB2NC4xIG9wLg0KPiANCj4gU0VRVUVOQ0UgaXMgc3Bl
+Y2lhbC4gSSBjYW4ndCBzZWUgaG93IGl0IGlzIHBvc3NpYmxlIHRvIHB1dCBpdCBpbiB0aGUNCj4g
+c3BvX211c3RfZW5mb3JjZSBjYXRlZ29yeSwgc2luY2UgaXQgbmVlZHMgdG8gcHJlZml4IGFsbCBv
+dGhlcg0KPiBvcGVyYXRpb25zLg0KPiBJT1c6IHRoYXQgd291bGQgYXV0b21hdGljYWxseSBpbXBs
+eSB0aGF0IHlvdSBjYW4gb25seSB1c2UgdGhlIG1hY2hpbmUNCj4gY3JlZGVudGlhbCBmb3IgdGhh
+dCBORlMgc2VydmVyLg0KDQpBcG9sb2dpZXMgZm9yIHRoZSBkdXBsaWNhdGUsIGJ0dy4gRXZvbHV0
+aW9uIGNyYXNoZWQgcmlnaHQgaW4gdGhlIG1pZGRsZQ0Kb2YgdGhlIHRyYW5zbWlzc2lvbiBvZiB0
+aGUgZmlyc3QgZW1haWwuDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBt
+YWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRh
+cHAuY29tDQo=
