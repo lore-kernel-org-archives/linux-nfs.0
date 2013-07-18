@@ -1,48 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ironport02-1.csupomona.edu ([134.71.187.45]:36617 "EHLO
-	ironport02-1.csupomona.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1759509Ab3GSAmE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jul 2013 20:42:04 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by tweak.unx.csupomona.edu (Postfix) with ESMTP id 37BB4134034
-	for <linux-nfs@vger.kernel.org>; Thu, 18 Jul 2013 17:41:57 -0700 (PDT)
-Received: from tweak.unx.csupomona.edu ([127.0.0.1])
-	by localhost (tweak.unx.csupomona.edu [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id dKpgQN0nQSuL for <linux-nfs@vger.kernel.org>;
-	Thu, 18 Jul 2013 17:41:57 -0700 (PDT)
-Received: from localhost.localdomain (woof.iitsystems.csupomona.edu [134.71.248.29])
-	(using SSLv3 with cipher ECDHE-RSA-AES128-SHA (128/128 bits))
-	(No client certificate requested)
-	(Authenticated sender: bldewolf)
-	by tweak.unx.csupomona.edu (Postfix) with ESMTPSA id 0CA5F134070
-	for <linux-nfs@vger.kernel.org>; Thu, 18 Jul 2013 17:41:57 -0700 (PDT)
-Date: Thu, 18 Jul 2013 17:41:55 -0700
-From: Brian De Wolf <bldewolf@csupomona.edu>
-To: Linux NFS list <linux-nfs@vger.kernel.org>
-Subject: NFS uses wrong domain in SETATTR
-Message-ID: <20130718174155.0f189280@csupomona.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from esa-annu.mail.uoguelph.ca ([131.104.91.36]:2884 "EHLO
+	esa-annu.net.uoguelph.ca" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S934571Ab3GRXa5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jul 2013 19:30:57 -0400
+Date: Thu, 18 Jul 2013 19:30:55 -0400 (EDT)
+From: Rick Macklem <rmacklem@uoguelph.ca>
+To: Andre Heider <a.heider@gmail.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Message-ID: <1774242197.1390191.1374190255822.JavaMail.root@uoguelph.ca>
+In-Reply-To: <CAHsu+b_FuHaa9LG1vRv1d5LwA5Ue_Ss2eoJsKEC5dx-rnuApOg@mail.gmail.com>
+Subject: Re: [PATCH 1/2] NFSv4: Fix a regression against the FreeBSD server
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+	boundary="----=_Part_1390189_1474009002.1374190255820"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+------=_Part_1390189_1474009002.1374190255820
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
 
-Found another problem related to idmapping, I think.  One of our users
-reported chgrp had stopped working (under 3.4.44, coming from 3.2.11).
-I reproduced it under krb5i (I can send the cap if necessary).  The
-SETATTR call is failing because it is not using the domain as set in
-idmapd.conf, but the domain of the host instead.
+Andre Heider wrote:
+> On Wed, Jul 17, 2013 at 11:59 PM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+> > Technically, the Linux client is allowed by the NFSv4 spec to send
+> > 3 word bitmaps as part of an OPEN request. However, this causes the
+> > current FreeBSD server to return NFS4ERR_ATTRNOTSUPP errors.
+> >
+> > Fix the regression by making the Linux client use a 2 word bitmap
+> > unless
+> > doing NFSv4.2 with labeled NFS.
+> >
+> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> 
+> Tested-by: Andre Heider <a.heider@gmail.com>
+> 
+I've attached the patch I plan to commit to FreeBSD's head soon, which
+fixes the server so that it checks for the high order bitmaps words
+being non-zero before replying with NFS4_ERR_ATTRNOTSUPP.
 
-So, for example, our domain is csupomona.edu.  Trying to run "chgrp
-csupomona testfile" should set the group to csupomona@csupomona.edu,
-but the NFS layer is sending csupomona@unx.csupomona.edu (the subdomain
-of the host).
+The patch is pretty straightforward, but if you can apply it to your
+server and test it against the unpatched Linux client, that would be
+appreciated.
 
-The idmapper seems to know what's going on, as the -vvv output produces:
+It will take a while for the patch to find its way to a FreeBSD release,
+so having the workaround in the Linux client will be very helpful.
 
-nfsidmap[3598]: key: 0x3df841e type: group value: 17730 timeout 600
-nfsidmap[3598]: libnfsidmap: using domain: csupomona.edu
-nfsidmap[3598]: libnfsidmap: loaded plugin /usr/lib64/libnfsidmap/nsswitch.so for method nsswitch
+Thanks for reporting this, rick
 
-Am I missing some simple host configuration or is this a deeper issue?
+
+------=_Part_1390189_1474009002.1374190255820
+Content-Type: text/x-patch; name=big-attrbits.patch
+Content-Disposition: attachment; filename=big-attrbits.patch
+Content-Transfer-Encoding: base64
+
+LS0tIHN5cy9mcy9uZnMvbmZzX2NvbW1vbnN1YnMuYy5vcmlnCTIwMTMtMDctMTggMTk6MTU6MjUu
+MDAwMDAwMDAwIC0wNDAwCisrKyBzeXMvZnMvbmZzL25mc19jb21tb25zdWJzLmMJMjAxMy0wNy0x
+OCAxOToxNTo1OC4wMDAwMDAwMDAgLTA0MDAKQEAgLTc2MSwyMSArNzYxLDIxIEBAIG5mc3J2X2dl
+dGF0dHJiaXRzKHN0cnVjdCBuZnNydl9kZXNjcmlwdCAKIAkJZXJyb3IgPSBORlNFUlJfQkFEWERS
+OwogCQlnb3RvIG5mc21vdXQ7CiAJfQotCWlmIChjbnQgPiBORlNBVFRSQklUX01BWFdPUkRTKSB7
+CisJaWYgKGNudCA+IE5GU0FUVFJCSVRfTUFYV09SRFMpCiAJCW91dGNudCA9IE5GU0FUVFJCSVRf
+TUFYV09SRFM7Ci0JCWlmIChyZXRub3RzdXBwKQotCQkJKnJldG5vdHN1cHAgPSBORlNFUlJfQVRU
+Uk5PVFNVUFA7Ci0JfSBlbHNlIHsKKwllbHNlCiAJCW91dGNudCA9IGNudDsKLQl9CiAJTkZTWkVS
+T19BVFRSQklUKGF0dHJiaXRwKTsKIAlpZiAob3V0Y250ID4gMCkgewogCQlORlNNX0RJU1NFQ1Qo
+dGwsIHVfaW50MzJfdCAqLCBvdXRjbnQgKiBORlNYX1VOU0lHTkVEKTsKIAkJZm9yIChpID0gMDsg
+aSA8IG91dGNudDsgaSsrKQogCQkJYXR0cmJpdHAtPmJpdHNbaV0gPSBmeGRyX3Vuc2lnbmVkKHVf
+aW50MzJfdCwgKnRsKyspOwogCX0KLQlpZiAoY250ID4gb3V0Y250KQotCQllcnJvciA9IG5mc21f
+YWR2YW5jZShuZCwgKGNudCAtIG91dGNudCkgKiBORlNYX1VOU0lHTkVELCAtMSk7CisJZm9yIChp
+ID0gMDsgaSA8IChjbnQgLSBvdXRjbnQpOyBpKyspIHsKKwkJTkZTTV9ESVNTRUNUKHRsLCB1X2lu
+dDMyX3QgKiwgTkZTWF9VTlNJR05FRCk7CisJCWlmIChyZXRub3RzdXBwICE9IE5VTEwgJiYgKnRs
+ICE9IDApCisJCQkqcmV0bm90c3VwcCA9IE5GU0VSUl9BVFRSTk9UU1VQUDsKKwl9CiAJaWYgKGNu
+dHApCiAJCSpjbnRwID0gTkZTWF9VTlNJR05FRCArIChjbnQgKiBORlNYX1VOU0lHTkVEKTsKIG5m
+c21vdXQ6Cg==
+------=_Part_1390189_1474009002.1374190255820--
