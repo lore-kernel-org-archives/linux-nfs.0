@@ -1,198 +1,176 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:16740 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:50474 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753487Ab3GILnj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Jul 2013 07:43:39 -0400
-Date: Tue, 9 Jul 2013 06:49:59 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [PATCH 01/12] vfs: pull ext4's double-i_mutex-locking into
- common code
-Message-ID: <20130709064959.10132e1c@tlielax.poochiereds.net>
-In-Reply-To: <1372882356-14168-2-git-send-email-bfields@redhat.com>
-References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
-	<1372882356-14168-2-git-send-email-bfields@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1759317Ab3GRTfo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Jul 2013 15:35:44 -0400
+From: <andros@netapp.com>
+To: <trond.myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 4 5/5] SUNRPC refactor rpcauth_checkverf error returns
+Date: Thu, 18 Jul 2013 15:35:30 -0400
+Message-ID: <1374176130-11657-6-git-send-email-andros@netapp.com>
+In-Reply-To: <1374176130-11657-1-git-send-email-andros@netapp.com>
+References: <1374176130-11657-1-git-send-email-andros@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed,  3 Jul 2013 16:12:25 -0400
-"J. Bruce Fields" <bfields@redhat.com> wrote:
+From: Andy Adamson <andros@netapp.com>
 
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> We want to do this elsewhere as well.
-> 
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/ext4/ext4.h        |    2 --
->  fs/ext4/ioctl.c       |    4 ++--
->  fs/ext4/move_extent.c |   40 ++--------------------------------------
->  fs/inode.c            |   29 +++++++++++++++++++++++++++++
->  include/linux/fs.h    |    3 +++
->  5 files changed, 36 insertions(+), 42 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 5aae3d1..3590abe 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -2642,8 +2642,6 @@ extern void ext4_double_down_write_data_sem(struct inode *first,
->  					    struct inode *second);
->  extern void ext4_double_up_write_data_sem(struct inode *orig_inode,
->  					  struct inode *donor_inode);
-> -void ext4_inode_double_lock(struct inode *inode1, struct inode *inode2);
-> -void ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2);
->  extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
->  			     __u64 start_orig, __u64 start_donor,
->  			     __u64 len, __u64 *moved_len);
-> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> index 9491ac0..12048f7 100644
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -129,7 +129,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
->  
->  	/* Protect orig inodes against a truncate and make sure,
->  	 * that only 1 swap_inode_boot_loader is running. */
-> -	ext4_inode_double_lock(inode, inode_bl);
-> +	lock_two_nondirectories(inode, inode_bl);
->  
->  	truncate_inode_pages(&inode->i_data, 0);
->  	truncate_inode_pages(&inode_bl->i_data, 0);
-> @@ -204,7 +204,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
->  	ext4_inode_resume_unlocked_dio(inode);
->  	ext4_inode_resume_unlocked_dio(inode_bl);
->  
-> -	ext4_inode_double_unlock(inode, inode_bl);
-> +	unlock_two_nondirectories(inode, inode_bl);
->  
->  	iput(inode_bl);
->  
-> diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-> index 3dcbf36..986a838 100644
-> --- a/fs/ext4/move_extent.c
-> +++ b/fs/ext4/move_extent.c
-> @@ -1206,42 +1206,6 @@ mext_check_arguments(struct inode *orig_inode,
->  }
->  
->  /**
-> - * ext4_inode_double_lock - Lock i_mutex on both @inode1 and @inode2
-> - *
-> - * @inode1:	the inode structure
-> - * @inode2:	the inode structure
-> - *
-> - * Lock two inodes' i_mutex
-> - */
-> -void
-> -ext4_inode_double_lock(struct inode *inode1, struct inode *inode2)
-> -{
-> -	BUG_ON(inode1 == inode2);
-> -	if (inode1 < inode2) {
-> -		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
-> -		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
-> -	} else {
-> -		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
-> -		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
-> -	}
-> -}
-> -
-> -/**
-> - * ext4_inode_double_unlock - Release i_mutex on both @inode1 and @inode2
-> - *
-> - * @inode1:     the inode that is released first
-> - * @inode2:     the inode that is released second
-> - *
-> - */
-> -
-> -void
-> -ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2)
-> -{
-> -	mutex_unlock(&inode1->i_mutex);
-> -	mutex_unlock(&inode2->i_mutex);
-> -}
-> -
-> -/**
->   * ext4_move_extents - Exchange the specified range of a file
->   *
->   * @o_filp:		file structure of the original file
-> @@ -1330,7 +1294,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
->  		return -EINVAL;
->  	}
->  	/* Protect orig and donor inodes against a truncate */
-> -	ext4_inode_double_lock(orig_inode, donor_inode);
-> +	lock_two_nondirectories(orig_inode, donor_inode);
->  
->  	/* Wait for all existing dio workers */
->  	ext4_inode_block_unlocked_dio(orig_inode);
-> @@ -1538,7 +1502,7 @@ out:
->  	ext4_double_up_write_data_sem(orig_inode, donor_inode);
->  	ext4_inode_resume_unlocked_dio(orig_inode);
->  	ext4_inode_resume_unlocked_dio(donor_inode);
-> -	ext4_inode_double_unlock(orig_inode, donor_inode);
-> +	unlock_two_nondirectories(orig_inode, donor_inode);
->  
->  	return ret;
->  }
-> diff --git a/fs/inode.c b/fs/inode.c
-> index 00d5fc3..b8afbc7 100644
-> --- a/fs/inode.c
-> +++ b/fs/inode.c
-> @@ -980,6 +980,35 @@ void unlock_new_inode(struct inode *inode)
->  EXPORT_SYMBOL(unlock_new_inode);
->  
->  /**
-> + * lock_two_nondirectories - take two i_mutexes on non-directory objects
-> + * @inode1: first inode to lock
-> + * @inode2: second inode to lock
-> + */
-> +void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
-> +{
-> +	if (inode1 < inode2) {
-> +		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
-> +		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
-> +	} else {
-> +		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
-> +		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
-> +	}
-> +}
-> +EXPORT_SYMBOL(lock_two_nondirectories);
-> +
-> +/**
-> + * unlock_two_nondirectories - release locks from lock_two_nondirectories()
-> + * @inode1: first inode to unlock
-> + * @inode2: second inode to unlock
-> + */
-> +void unlock_two_nondirectories(struct inode *inode1, struct inode *inode2)
-> +{
-> +	mutex_unlock(&inode1->i_mutex);
-> +	mutex_unlock(&inode2->i_mutex);
-> +}
-> +EXPORT_SYMBOL(unlock_two_nondirectories);
-> +
-> +/**
->   * iget5_locked - obtain an inode from a mounted file system
->   * @sb:		super block of file system
->   * @hashval:	hash value (usually inode number) to get
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 65c2be2..3258761 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -634,6 +634,9 @@ enum inode_i_mutex_lock_class
->  	I_MUTEX_QUOTA
->  };
->  
-> +void lock_two_nondirectories(struct inode *, struct inode*);
-> +void unlock_two_nondirectories(struct inode *, struct inode*);
-> +
->  /*
->   * NOTE: in a 32bit arch with a preemptable kernel and
->   * an UP compile the i_size_read/write must be atomic
+Most of the time an error from the credops crvalidate function means the
+server has sent us a garbage verifier. The gss_validate function is the
+exception where there is an -EACCES case if the user GSS_context on the client
+has expired.
 
-Looks straightforward...
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ net/sunrpc/auth_gss/auth_gss.c |  7 +++++--
+ net/sunrpc/auth_null.c         |  5 +++--
+ net/sunrpc/auth_unix.c         |  5 +++--
+ net/sunrpc/clnt.c              | 17 ++++++++++-------
+ 4 files changed, 21 insertions(+), 13 deletions(-)
 
-Acked-by: Jeff Layton <jlayton@redhat.com>
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index e1f4735..d0500bc 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1334,6 +1334,7 @@ gss_validate(struct rpc_task *task, __be32 *p)
+ 	struct xdr_netobj mic;
+ 	u32		flav,len;
+ 	u32		maj_stat;
++	__be32		*ret = ERR_PTR(-EIO);
+ 
+ 	dprintk("RPC: %5u %s\n", task->tk_pid, __func__);
+ 
+@@ -1349,6 +1350,7 @@ gss_validate(struct rpc_task *task, __be32 *p)
+ 	mic.data = (u8 *)p;
+ 	mic.len = len;
+ 
++	ret = ERR_PTR(-EACCES);
+ 	maj_stat = gss_verify_mic(ctx->gc_gss_ctx, &verf_buf, &mic);
+ 	if (maj_stat == GSS_S_CONTEXT_EXPIRED)
+ 		clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
+@@ -1366,8 +1368,9 @@ gss_validate(struct rpc_task *task, __be32 *p)
+ 	return p + XDR_QUADLEN(len);
+ out_bad:
+ 	gss_put_ctx(ctx);
+-	dprintk("RPC: %5u %s failed.\n", task->tk_pid, __func__);
+-	return NULL;
++	dprintk("RPC: %5u %s failed ret %ld.\n", task->tk_pid, __func__,
++		PTR_ERR(ret));
++	return ret;
+ }
+ 
+ static void gss_wrap_req_encode(kxdreproc_t encode, struct rpc_rqst *rqstp,
+diff --git a/net/sunrpc/auth_null.c b/net/sunrpc/auth_null.c
+index a5c36c0..d60a673 100644
+--- a/net/sunrpc/auth_null.c
++++ b/net/sunrpc/auth_null.c
+@@ -84,17 +84,18 @@ nul_validate(struct rpc_task *task, __be32 *p)
+ {
+ 	rpc_authflavor_t	flavor;
+ 	u32			size;
++	__be32			*ret = ERR_PTR(-EIO);
+ 
+ 	flavor = ntohl(*p++);
+ 	if (flavor != RPC_AUTH_NULL) {
+ 		printk("RPC: bad verf flavor: %u\n", flavor);
+-		return NULL;
++		return ret;
+ 	}
+ 
+ 	size = ntohl(*p++);
+ 	if (size != 0) {
+ 		printk("RPC: bad verf size: %u\n", size);
+-		return NULL;
++		return ret;
+ 	}
+ 
+ 	return p;
+diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
+index dc37021..461a444 100644
+--- a/net/sunrpc/auth_unix.c
++++ b/net/sunrpc/auth_unix.c
+@@ -186,19 +186,20 @@ unx_validate(struct rpc_task *task, __be32 *p)
+ {
+ 	rpc_authflavor_t	flavor;
+ 	u32			size;
++	__be32			*ret = ERR_PTR(-EIO);
+ 
+ 	flavor = ntohl(*p++);
+ 	if (flavor != RPC_AUTH_NULL &&
+ 	    flavor != RPC_AUTH_UNIX &&
+ 	    flavor != RPC_AUTH_SHORT) {
+ 		printk("RPC: bad verf flavor: %u\n", flavor);
+-		return NULL;
++		return ret;
+ 	}
+ 
+ 	size = ntohl(*p++);
+ 	if (size > RPC_MAX_AUTH_SIZE) {
+ 		printk("RPC: giant verf size: %u\n", size);
+-		return NULL;
++		return ret;
+ 	}
+ 	task->tk_rqstp->rq_cred->cr_auth->au_rslack = (size >> 2) + 2;
+ 	p += (size >> 2);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 68e8595..5efc89c 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -2090,7 +2090,8 @@ rpc_verify_header(struct rpc_task *task)
+ 		dprintk("RPC: %5u %s: XDR representation not a multiple of"
+ 		       " 4 bytes: 0x%x\n", task->tk_pid, __func__,
+ 		       task->tk_rqstp->rq_rcv_buf.len);
+-		goto out_eio;
++		error = -EIO;
++		goto out_err;
+ 	}
+ 	if ((len -= 3) < 0)
+ 		goto out_overflow;
+@@ -2099,6 +2100,7 @@ rpc_verify_header(struct rpc_task *task)
+ 	if ((n = ntohl(*p++)) != RPC_REPLY) {
+ 		dprintk("RPC: %5u %s: not an RPC reply: %x\n",
+ 			task->tk_pid, __func__, n);
++		error = -EIO;
+ 		goto out_garbage;
+ 	}
+ 
+@@ -2117,7 +2119,8 @@ rpc_verify_header(struct rpc_task *task)
+ 			dprintk("RPC: %5u %s: RPC call rejected, "
+ 				"unknown error: %x\n",
+ 				task->tk_pid, __func__, n);
+-			goto out_eio;
++			error = -EIO;
++			goto out_err;
+ 		}
+ 		if (--len < 0)
+ 			goto out_overflow;
+@@ -2162,9 +2165,11 @@ rpc_verify_header(struct rpc_task *task)
+ 				task->tk_pid, __func__, n);
+ 		goto out_err;
+ 	}
+-	if (!(p = rpcauth_checkverf(task, p))) {
+-		dprintk("RPC: %5u %s: auth check failed\n",
+-				task->tk_pid, __func__);
++	p = rpcauth_checkverf(task, p);
++	if (IS_ERR(p)) {
++		error = PTR_ERR(p);
++		dprintk("RPC: %5u %s: auth check failed with %d\n",
++				task->tk_pid, __func__, error);
+ 		goto out_garbage;		/* bad verifier, retry */
+ 	}
+ 	len = p - (__be32 *)iov->iov_base - 1;
+@@ -2217,8 +2222,6 @@ out_garbage:
+ out_retry:
+ 		return ERR_PTR(-EAGAIN);
+ 	}
+-out_eio:
+-	error = -EIO;
+ out_err:
+ 	rpc_exit(task, error);
+ 	dprintk("RPC: %5u %s: call failed with error %d\n", task->tk_pid,
+-- 
+1.8.3.1
+
