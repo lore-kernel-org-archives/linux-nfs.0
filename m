@@ -1,51 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:47363 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755318Ab3GKOTN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Jul 2013 10:19:13 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Malahal Naineni <malahal@us.ibm.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-Subject: Re: corruption due to loss of lock
-Date: Thu, 11 Jul 2013 14:19:10 +0000
-Message-ID: <1373552348.2871.2.camel@leira.trondhjem.org>
-References: <20130613184737.GA25713@us.ibm.com>
-	 <20130711071346.03b946bd@corrin.poochiereds.net>
-In-Reply-To: <20130711071346.03b946bd@corrin.poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mailout3.samsung.com ([203.254.224.33]:31604 "EHLO
+	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759820Ab3GSH1M (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Jul 2013 03:27:12 -0400
+From: Jingoo Han <jg1.han@samsung.com>
+To: "David S. Miller" <davem@davemloft.net>
+Cc: netdev@vger.kernel.org, "'Trond Myklebust'" <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, Jingoo Han <jg1.han@samsung.com>
+Subject: [PATCH] net: sunrpc: replace strict_strtoul() with kstrtoul()
+Date: Fri, 19 Jul 2013 16:27:11 +0900
+Message-id: <001c01ce8451$6209cd30$261d6790$@samsung.com>
+MIME-version: 1.0
+Content-type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEzLTA3LTExIGF0IDA3OjEzIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gVGh1LCAxMyBKdW4gMjAxMyAxMzo0NzozNyAtMDUwMA0KPiBNYWxhaGFsIE5haW5lbmkgPG1h
-bGFoYWxAdXMuaWJtLmNvbT4gd3JvdGU6DQo+IA0KPiA+IEhpIFRyb25kLA0KPiA+IA0KPiA+IEkg
-c2F3IEJyeWFuJ3MgcGF0Y2hlcyBoZXJlIGh0dHBzOi8vcGF0Y2h3b3JrLmtlcm5lbC5vcmcvcGF0
-Y2gvOTg3NDAyLw0KPiA+IHRoYXQgZml4IGlzc3VlcyBhZnRlciBsb3NzIG9mIGEgbG9jay4gIFdo
-YXQgaXMgdGhlIHN0YXR1cyBvbiB0aGlzIHBhdGNoDQo+ID4gc2V0PyBEbyB0aGV5IG5lZWQgbW9y
-ZSB3b3JrPyBXZSBoYXZlIGFuIGFwcGxpY2F0aW9uIHRoYXQgdXNlcyByYW5nZQ0KPiA+IGxvY2tz
-IG9uIGEgZmlsZS4gVHdvIHRocmVhZHMgZnJvbSB0d28gZGlmZmVyZW50IGNsaWVudHMgZW5kIHVw
-IHdyaXRpbmcNCj4gPiB0byB0aGUgc2FtZSBhIGZpbGUgZHVlIHRvIHRoaXMgYnVnIGFmdGVyIGEg
-bGVhc2UgZXhwaXJ5IGZyb20gYSBjbGllbnQuDQo+ID4gDQo+ID4gUmVnYXJkcywgTWFsYWhhbC4N
-Cj4gDQo+IChjYydpbmcgQnJ5YW4gc2luY2UgaGUgZGlkIHRoZSBvcmlnaW5hbCBzZXQpDQo+IA0K
-PiBZZWFoLCB0aGlzIHNldCB3b3VsZCBiZSBhIG5pY2UgdGhpbmcgdG8gaGF2ZS4gQSBjb3VwbGUg
-b2YgY29tbWVudHM6DQo+IA0KPiAtIEkgc3RpbGwgdGhpbmsgaXQgd291bGQgYmUgYmVzdCB0byBt
-YWtlIFNJR0xPU1QgaXRzIG93biBzaWduYWwsIGJ1dCBhcw0KPiAgIEJyeWFuIHBvaW50cyBvdXQs
-IGl0IHdvdWxkIG5lZWQgdG8gYmUgbGFyZ2VyIHRoYW4gU0lHUlRNQVguIEknbQ0KPiAgIG5vdCBz
-dXJlIHRoYXQncyBwb3NzaWJsZSBvbiBhbGwgYXJjaGVzIHdpdGggdGhlIHdheSB0aGUgUlQgc2ln
-bmFscw0KPiAgIHdlcmUgZG9uZS4gSXQncyBwcm9iYWJseSB3b3J0aCBpbnZlc3RpZ2F0aW5nIHRo
-YXQgdGhvdWdoIGJlZm9yZQ0KPiAgIHNldHRsaW5nIG9uIFNJR0lPIHNpbmNlIGl0IHdvdWxkIGJl
-IGhhcmQgdG8gY2hhbmdlIHRoYXQgcmV0cm9hY3RpdmVseS4NCj4gDQo+IC0gVGhpcyBpcyBub3Qg
-cmVhbGx5IGEgdjQuMSBzcGVjaWZpYyB0aGluZy4gSXQgc2hvdWxkIGFsc28gYmUgZG9uZSBmb3IN
-Cj4gICB2NC4wIGFuZCB2Mi8zLCB0aG91Z2ggdGhlIGxhdHRlciB0d28gcmVhbGx5IG5lZWQgdG8g
-YmUgZG9uZSB3aXRoaW4NCj4gICBsb2NrZC4NCg0KU0lHTE9TVCBpcyBub3QgcGFydCBvZiBhbnkg
-c3RhbmRhcmQuIEl0IGlzIGEgaGFjayB0aGF0IGhhcyBiZWVuIGFkb3B0ZWQNCmJ5IElCTSBhbmQg
-U29sYXJpcy4NCg0KVGhlIFBPU0lYbHkgY29ycmVjdCB3YXkgdG8gZG8gdGhpcyBpcyB0byB1c2Ug
-RUJBREYgdG8gd2FybiB0aGUNCmFwcGxpY2F0aW9uIHRoYXQgdGhlIGZpbGUgZGVzY3JpcHRvciBp
-cyBubyBsb25nZXIgdmFsaWQgKGluIHRoZSBzZW5zZQ0KdGhhdCB0aGUgc2VydmVyIGlzIG5vIGxv
-bmdlciBob25vdXJpbmcgdGhlIGxvY2spIGFuZCBFSU8gaW4gb3JkZXIgdG8NCndhcm4gaXQgdGhh
-dCBkYXRhIG1heSBoYXZlIGJlZW4gbG9zdC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
-IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAu
-Y29tDQp3d3cubmV0YXBwLmNvbQ0K
+The usage of strict_strtoul() is not preferred, because
+strict_strtoul() is obsolete. Thus, kstrtoul() should be
+used.
+
+Signed-off-by: Jingoo Han <jg1.han@samsung.com>
+---
+ net/sunrpc/addr.c     |    8 ++++----
+ net/sunrpc/auth.c     |    2 +-
+ net/sunrpc/xprtsock.c |    2 +-
+ 3 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
+index a622ad6..c0d3243 100644
+--- a/net/sunrpc/addr.c
++++ b/net/sunrpc/addr.c
+@@ -184,7 +184,7 @@ static int rpc_parse_scope_id(struct net *net, const char *buf,
+ 			scope_id = dev->ifindex;
+ 			dev_put(dev);
+ 		} else {
+-			if (strict_strtoul(p, 10, &scope_id) == 0) {
++			if (kstrtoul(p, 10, &scope_id) == 0) {
+ 				kfree(p);
+ 				return 0;
+ 			}
+@@ -304,7 +304,7 @@ char *rpc_sockaddr2uaddr(const struct sockaddr *sap, gfp_t gfp_flags)
+  * @sap: buffer into which to plant socket address
+  * @salen: size of buffer
+  *
+- * @uaddr does not have to be '\0'-terminated, but strict_strtoul() and
++ * @uaddr does not have to be '\0'-terminated, but kstrtoul() and
+  * rpc_pton() require proper string termination to be successful.
+  *
+  * Returns the size of the socket address if successful; otherwise
+@@ -327,7 +327,7 @@ size_t rpc_uaddr2sockaddr(struct net *net, const char *uaddr,
+ 	c = strrchr(buf, '.');
+ 	if (unlikely(c == NULL))
+ 		return 0;
+-	if (unlikely(strict_strtoul(c + 1, 10, &portlo) != 0))
++	if (unlikely(kstrtoul(c + 1, 10, &portlo) != 0))
+ 		return 0;
+ 	if (unlikely(portlo > 255))
+ 		return 0;
+@@ -336,7 +336,7 @@ size_t rpc_uaddr2sockaddr(struct net *net, const char *uaddr,
+ 	c = strrchr(buf, '.');
+ 	if (unlikely(c == NULL))
+ 		return 0;
+-	if (unlikely(strict_strtoul(c + 1, 10, &porthi) != 0))
++	if (unlikely(kstrtoul(c + 1, 10, &porthi) != 0))
+ 		return 0;
+ 	if (unlikely(porthi > 255))
+ 		return 0;
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index 495a224..682d140 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -48,7 +48,7 @@ static int param_set_hashtbl_sz(const char *val, const struct kernel_param *kp)
+ 
+ 	if (!val)
+ 		goto out_inval;
+-	ret = strict_strtoul(val, 0, &num);
++	ret = kstrtoul(val, 0, &num);
+ 	if (ret == -EINVAL)
+ 		goto out_inval;
+ 	nbits = fls(num);
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index ddf0602..176cc69 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -3001,7 +3001,7 @@ static int param_set_uint_minmax(const char *val,
+ 
+ 	if (!val)
+ 		return -EINVAL;
+-	ret = strict_strtoul(val, 0, &num);
++	ret = kstrtoul(val, 0, &num);
+ 	if (ret == -EINVAL || num < min || num > max)
+ 		return -EINVAL;
+ 	*((unsigned int *)kp->arg) = num;
+-- 
+1.7.10.4
+
+
