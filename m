@@ -1,73 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:26857 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933184Ab3GVUYI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Jul 2013 16:24:08 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
-Subject: Re: [PATCH v1 07/19] NFS: Fix compiler warning in nfs_setup_sequence()
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1374524553.7972.46.camel@leira.trondhjem.org>
-Date: Mon, 22 Jul 2013 16:24:02 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <30D48D8B-4F4A-4444-8FAD-2710764D52A1@oracle.com>
-References: <20130712155303.1444.62697.stgit@seurat.1015granger.net> <20130712163228.1444.26489.stgit@seurat.1015granger.net> <1374519800.7972.20.camel@leira.trondhjem.org> <3AAAEE1D-36BA-43FA-A37F-6CFD57314ADF@oracle.com> <1374524553.7972.46.camel@leira.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:37750 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759722Ab3GSHIe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Jul 2013 03:08:34 -0400
+Message-ID: <51E8E5DF.7010405@parallels.com>
+Date: Fri, 19 Jul 2013 11:08:15 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: NFS inode cache zap on lock - please advice
+References: <51A6EC86.9010201@parallels.com> <20130530114216.GA11854@fieldses.org> <51A73FA6.30503@parallels.com> <20130712205242.GB10562@fieldses.org> <51E3A1D7.8090901@parallels.com> <20130715071119.7997d9ce@corrin.poochiereds.net>
+In-Reply-To: <20130715071119.7997d9ce@corrin.poochiereds.net>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+15.07.2013 15:11, Jeff Layton пишет:
+> On Mon, 15 Jul 2013 11:16:39 +0400
+> Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+>
+>> 13.07.2013 00:52, bfields@fieldses.org пишет:
+>>> On Thu, May 30, 2013 at 04:01:42PM +0400, Stanislav Kinsbursky wrote:
+>>>> Thanks, Bruce!
+>>>> I'll have at
+>>>>
+>>>> BTW, do you have any decisions what we will do with UMH tracker?
+>>> Crap, apologies, I completely dropped this.  Have you looked at it
+>>> again lately?
+>> Don't worry, it's all right. And I added Jeff and mailing list to
+>> recipients.
+>>
+>> I was thinking about using kernel_thread() instead of kthread_create().
+>> This might work, because will give us kthread with same root and same
+>> capabilities as mount caller had.
+>>
+>> What you, guys, think about it?
+> Well, it's not the caller of mount that we're concerned with here. It's
+> the caller of rpc.nfsd. That program is going to make the kernel spawn
+> a bunch of nfsd kthreads and then exit. So I guess the basic idea here
+> is to preserve the namespace info, root and creds from that process
+> before it exits. Spawning a kthread would work for that, and might be
+> simplest, but we should weigh this idea carefully before we settle on
+> it.
+>
+> Let's assume for a moment that we want to do all of this in userspace
+> instead (Eric B.'s first suggestion). I assume the kernel would need to
+> pass a fd to the program so it can call setns() with it. Where would it
+> get this fd, considering that we're calling this from a nfsd kthread?
+>
+> What else would it need? Would it need a path to chroot() to? Credential
+> info so it can call setuid/setgid?
+>
+> Other caveats might be that the binary needn't exist in the container
+> to which you're chrooting. That's not really a problem as long as all
+> the libs get linked in before the program does the switcharoo, but it
+> might make troubleshooting problems in this code difficult from a
+> user sitting in that container.
+>
 
-On Jul 22, 2013, at 4:22 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-
-> On Mon, 2013-07-22 at 16:16 -0400, Chuck Lever wrote:
->> On Jul 22, 2013, at 3:03 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
->> 
->>> On Fri, 2013-07-12 at 12:32 -0400, Chuck Lever wrote:
->>>> Clean up.  Squelch compiler warning:
->>>> 
->>>> linux/fs/nfs/nfs4proc.c: In function �nfs4_setup_sequence�:
->>>> linux/fs/nfs/nfs4proc.c:703:2: warning: signed and unsigned type in
->>>> 	conditional expression [-Wsign-compare]
->>>> 
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> ---
->>>> fs/nfs/nfs4proc.c |    2 +-
->>>> 1 file changed, 1 insertion(+), 1 deletion(-)
->>>> 
->>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>>> index 7b2e008..5913e1d 100644
->>>> --- a/fs/nfs/nfs4proc.c
->>>> +++ b/fs/nfs/nfs4proc.c
->>>> @@ -655,7 +655,7 @@ static int nfs4_setup_sequence(const struct nfs_server *server,
->>>> 
->>>> 	dprintk("--> %s clp %p session %p sr_slot %d\n",
->>>> 		__func__, session->clp, session, res->sr_slot ?
->>>> -			res->sr_slot->slot_nr : -1);
->>>> +			(int)res->sr_slot->slot_nr : -1);
->>>> 
->>> 
->>> Please convert to make it unsigned, and to use NFS4_NO_SLOT instead of
->>> '-1'.
->> 
->> NFS4_NO_SLOT makes sense, but I'm not clear on "make it unsigned".
->> 
->> Leaving the format as "%d" allows NFS4_NO_SLOT to be displayed as "-1".  So, something like the following one-liner will address the compiler warning, and leave behavior unchanged:
->> 
->> -			res->sr_slot->slot_nr : -1);
->> +			res->sr_slot->slot_nr : NFS4_NO_SLOT);
->> 
->> That is, unless you prefer NFS4_NO_SLOT displayed in some other way?
-> 
-> Both the slot id and NFS4_NO_SLOT are defined as being of type u32, so
-> it makes no sense to display a "-1". Just displaying it as 2^32 should
-> be good enough since this is an obvious "developer only" dprintk.
-
-OK, clear.  Thanks.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+As far as I understand the user namespaces idea, the all it covers are 
+process credentials.
+And for running the binary we need only mount and path.
+My first approach was to swap root in UMH init callback. This works. But 
+doesn't take user namespaces into account at all.
+If we assume, that a user, which is capable to run rpc.nfsd is also must 
+be capable to run the UMH binary, then we can just forget about a 
+user-namespace isolation and use this UMH init callback. It's cheap to 
+implement. But it's not flawless, because looks like a dirty hack (which 
+it is, actually).
+Another way (with taking of user namespaces into account) is a kernel 
+thread, forked in process context (i.e. kernel_thread() call). This will 
+give us all the same credentials, root and namespaces, as rpc.nfsd 
+caller has, for the UMH binary caller.
+But this solution requires of local implementation of a 
+____call_usermodehelper() function content. And a bunch of it's calls 
+are not exported to modules. So it's a hack again, which looks even 
+worse to me.
+IOW, I don't see any comfortable existent solution for this task. But 
+the first one is just simpler.
+And this is all because kernel thread are working in initial namespaces 
+including file system root.
 
