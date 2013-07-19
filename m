@@ -1,63 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f173.google.com ([209.85.161.173]:49901 "EHLO
-	mail-gg0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965059Ab3GLQdO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jul 2013 12:33:14 -0400
-Received: by mail-gg0-f173.google.com with SMTP id k3so3194802ggn.18
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Jul 2013 09:33:13 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe93:815b])
-        by mx.google.com with ESMTPSA id s29sm69031135yhf.6.2013.07.12.09.33.12
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 12 Jul 2013 09:33:13 -0700 (PDT)
-Subject: [PATCH v1 12/19] NFS: Add a super_block backpointer to the
- nfs_server struct
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 12 Jul 2013 12:33:12 -0400
-Message-ID: <20130712163312.1444.95790.stgit@seurat.1015granger.net>
-In-Reply-To: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
-References: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from ironport02-1.csupomona.edu ([134.71.187.45]:36617 "EHLO
+	ironport02-1.csupomona.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1759509Ab3GSAmE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jul 2013 20:42:04 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by tweak.unx.csupomona.edu (Postfix) with ESMTP id 37BB4134034
+	for <linux-nfs@vger.kernel.org>; Thu, 18 Jul 2013 17:41:57 -0700 (PDT)
+Received: from tweak.unx.csupomona.edu ([127.0.0.1])
+	by localhost (tweak.unx.csupomona.edu [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id dKpgQN0nQSuL for <linux-nfs@vger.kernel.org>;
+	Thu, 18 Jul 2013 17:41:57 -0700 (PDT)
+Received: from localhost.localdomain (woof.iitsystems.csupomona.edu [134.71.248.29])
+	(using SSLv3 with cipher ECDHE-RSA-AES128-SHA (128/128 bits))
+	(No client certificate requested)
+	(Authenticated sender: bldewolf)
+	by tweak.unx.csupomona.edu (Postfix) with ESMTPSA id 0CA5F134070
+	for <linux-nfs@vger.kernel.org>; Thu, 18 Jul 2013 17:41:57 -0700 (PDT)
+Date: Thu, 18 Jul 2013 17:41:55 -0700
+From: Brian De Wolf <bldewolf@csupomona.edu>
+To: Linux NFS list <linux-nfs@vger.kernel.org>
+Subject: NFS uses wrong domain in SETATTR
+Message-ID: <20130718174155.0f189280@csupomona.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFS_SB() gives the pointer to an nfs_server struct, given a pointer
-to a super_block.  But we have no way to go back the other way.
+Hello,
 
-Add a super_block backpointer pointer so that, given an nfs_server
-struct, it is easy to get to the root dentry, or access the list of
-inodes, associated with an nfs_server.
+Found another problem related to idmapping, I think.  One of our users
+reported chgrp had stopped working (under 3.4.44, coming from 3.2.11).
+I reproduced it under krb5i (I can send the cap if necessary).  The
+SETATTR call is failing because it is not using the domain as set in
+idmapd.conf, but the domain of the host instead.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/super.c            |    1 +
- include/linux/nfs_fs_sb.h |    1 +
- 2 files changed, 2 insertions(+)
+So, for example, our domain is csupomona.edu.  Trying to run "chgrp
+csupomona testfile" should set the group to csupomona@csupomona.edu,
+but the NFS layer is sending csupomona@unx.csupomona.edu (the subdomain
+of the host).
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 2d7525f..455d56a 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2463,6 +2463,7 @@ struct dentry *nfs_fs_mount_common(struct nfs_server *server,
- 			mntroot = ERR_PTR(error);
- 			goto error_splat_bdi;
- 		}
-+		server->super = s;
- 	}
- 
- 	if (!s->s_root) {
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index ad47c90..84d8f0c 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -138,6 +138,7 @@ struct nfs_server {
- 	__u64			maxfilesize;	/* maximum file size */
- 	struct timespec		time_delta;	/* smallest time granularity */
- 	unsigned long		mount_time;	/* when this fs was mounted */
-+	struct super_block	*super;		/* VFS super block */
- 	dev_t			s_dev;		/* superblock dev numbers */
- 
- #ifdef CONFIG_NFS_FSCACHE
+The idmapper seems to know what's going on, as the -vvv output produces:
 
+nfsidmap[3598]: key: 0x3df841e type: group value: 17730 timeout 600
+nfsidmap[3598]: libnfsidmap: using domain: csupomona.edu
+nfsidmap[3598]: libnfsidmap: loaded plugin /usr/lib64/libnfsidmap/nsswitch.so for method nsswitch
+
+Am I missing some simple host configuration or is this a deeper issue?
