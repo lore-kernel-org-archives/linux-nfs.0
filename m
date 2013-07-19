@@ -1,116 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59619 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:38860 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756293Ab3GQVIJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 17:08:09 -0400
-Date: Wed, 17 Jul 2013 17:08:08 -0400
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, jlayton@redhat.com,
-        Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] nfsd4: fix minorversion support interface
-Message-ID: <20130717210808.GA31771@fieldses.org>
-References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
- <1374094217-31493-2-git-send-email-bfields@redhat.com>
+	id S1752704Ab3GSRzh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Jul 2013 13:55:37 -0400
+Date: Fri, 19 Jul 2013 13:55:36 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Andre Heider <a.heider@gmail.com>, Rick Macklem <rmacklem@uoguelph.ca>,
+        linux-nfs@vger.kernel.org
+Subject: Re: Error writing to nfs4 with 3.11-rc1
+Message-ID: <20130719175535.GA20841@fieldses.org>
+References: <CAHsu+b_hhSr2vwcwM8TX3=xF=3HffUXG=YLVLcsEpH1wHn+JoA@mail.gmail.com>
+ <A5C56FD6-9E14-43A3-8627-1C8F77EC6926@oracle.com>
+ <CAHsu+b9vWUyCGHSs==Na=VntwvYp65=rva7+y9aQDXquxX4t-A@mail.gmail.com>
+ <F3EFA483-0662-4226-AAF3-DCF12D48485E@oracle.com>
+ <20130719161313.GA20026@fieldses.org>
+ <85DF5611-5C53-4B65-AA05-8436C9F00680@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1374094217-31493-2-git-send-email-bfields@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <85DF5611-5C53-4B65-AA05-8436C9F00680@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 17, 2013 at 04:50:01PM -0400, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
+On Fri, Jul 19, 2013 at 12:33:11PM -0400, Chuck Lever wrote:
 > 
-> You can turn on or off support for minorversions using e.g.
+> On Jul 19, 2013, at 12:13 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > 
-> 	echo "-4.2" >/proc/fs/nfsd/versions
+> > On Wed, Jul 17, 2013 at 04:54:59PM -0400, Chuck Lever wrote:
+> >> By the way, the NFSv4 OPEN request parsing in Wireshark 1.10.0 is totally screwed up.  Has anyone reported this to the Wireshark community?  Wireshark 1.8.8 appears to parse OPEN requests correctly, and is able to handle the 3-word bitmask correctly.
+> > 
+> > What exactly is screwed up?
 > 
-> However, the current implementation is a little wonky.  For example, the
-> above will turn off 4.2 support, but it will also turn *on* 4.1 support.
+> For example, if you undisclose all of the parsed elements of an OPEN reply, the parsing of the XDR is wrong and the following replies in the compound become unparsable "data".
+> 
+> I've reproduced this for every installation of 1.10.0, Linux and Mac OS, that I've done.
+> 
+> I'm looking at a trace where the client sends an unchecked create OPEN via this compound:
+> 
+> PUTFH, OPEN, GETFH, ACCESS, GETATTR
+> 
+> And here is the reply, as parsed by Wireshark.  The replies after the OPEN are rendered as 216 bytes of unparsed "data".  The Delegation Type is 2950154659.  fattr4_mode looks wrong as well, the requested mode was 644.
+> 
+> Close examination of the actual bytes in this reply shows that the reply sent by the server was correct XDR and a plausible result, and the client continues normal and correct operation.
 
-Argh, sorry, I mistakenly fed an unrelated patch on the git-send-email
-commandline: just ignore this one patch.
+Hm, that might be:
+
+	https://bugs.wireshark.org/bugzilla/show_bug.cgi?id=8920
+
+?
 
 --b.
 
 > 
-> This didn't matter as long as we only had 2 minorversions, which was
-> true till very recently.
+> Network File System, Ops(5): PUTFH OPEN
+>     [Program Version: 4]
+>     [V4 Procedure: COMPOUND (1)]
+>     Status: NFS4_OK (0)
+>     Tag: <EMPTY>
+>         length: 0
+>         contents: <EMPTY>
+>     Operations (count: 5)
+>         Opcode: PUTFH (22)
+>             Status: NFS4_OK (0)
+>         Opcode: OPEN (18)
+>             Status: NFS4_OK (0)
+>             stateid
+>                 [StateID Hash: 0xaf36]
+>                 seqid: 0x00000001
+>                 Data: 01db0fb0ac64000000000000
+>             change_info
+>                 Atomic: Yes
+>                 changeid (before): 5901652787232948527
+>                 changeid (after): 5901653255478300828
+>             results_flags: Unknown (0x00000006)
+>                 .... .... .... .... .... .... .... ...0 = mlock: Unknown (0)
+>                 .... .... .... .... .... .... .... ..1. = confirm: OPEN4_RESULT_MLOCK (1)
+>             Attr mask[0]: 0x00000010 (SIZE)
+>                 reqd_attr: SIZE (4)
+>                     size: 42949672960
+>             Attr mask[1]: 0x00000002 (MODE)
+>                 reco_attr: MODE (33)
+>                     fattr4_mode: 044
+>                         .... .... .... .... 000. .... .... .... = Name: Unknown (0)
+>                         .... .... .... .... .... 0... .... .... = Set user id on exec: No
+>                         .... .... .... .... .... .0.. .... .... = Set group id on exec: No
+>                         .... .... .... .... .... ..0. .... .... = Save swapped text even after use: No
+>                         .... .... .... .... .... ...0 .... .... = Read permission for owner: No
+>                         .... .... .... .... .... .... 0... .... = Write permission for owner: No
+>                         .... .... .... .... .... .... .0.. .... = Execute permission for owner: No
+>                         .... .... .... .... .... .... ..1. .... = Read permission for group: Yes
+>                         .... .... .... .... .... .... ...0 .... = Write permission for group: No
+>                         .... .... .... .... .... .... .... 0... = Execute permission for group: No
+>                         .... .... .... .... .... .... .... .1.. = Read permission for others: Yes
+>                         .... .... .... .... .... .... .... ..0. = Write permission for others: No
+>                         .... .... .... .... .... .... .... ...0 = Execute permission for others: No
+>             Delegation Type: Unknown (2950154659)
+>     [Main Opcode: OPEN (18)]
+>     Data (216 bytes)
 > 
-> And do a little cleanup here.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/nfsd/nfs4proc.c |    2 +-
->  fs/nfsd/nfsd.h     |    1 -
->  fs/nfsd/nfssvc.c   |   13 +++++++------
->  3 files changed, 8 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index a7cee86..0d4c410 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -1293,7 +1293,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
->  	 * According to RFC3010, this takes precedence over all other errors.
->  	 */
->  	status = nfserr_minor_vers_mismatch;
-> -	if (args->minorversion > nfsd_supported_minorversion)
-> +	if (nfsd_minorversion(args->minorversion, NFSD_TEST) <= 0)
->  		goto out;
->  
->  	status = nfs41_check_op_ordering(args);
-> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> index 2bbd94e..30f34ab 100644
-> --- a/fs/nfsd/nfsd.h
-> +++ b/fs/nfsd/nfsd.h
-> @@ -53,7 +53,6 @@ struct readdir_cd {
->  extern struct svc_program	nfsd_program;
->  extern struct svc_version	nfsd_version2, nfsd_version3,
->  				nfsd_version4;
-> -extern u32			nfsd_supported_minorversion;
->  extern struct mutex		nfsd_mutex;
->  extern spinlock_t		nfsd_drc_lock;
->  extern unsigned long		nfsd_drc_max_mem;
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index 6b9f48c..760c85a 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -116,7 +116,10 @@ struct svc_program		nfsd_program = {
->  
->  };
->  
-> -u32 nfsd_supported_minorversion = 1;
-> +static bool nfsd_supported_minorversions[NFSD_SUPPORTED_MINOR_VERSION + 1] = {
-> +	[0] = 1,
-> +	[1] = 1,
-> +};
->  
->  int nfsd_vers(int vers, enum vers_op change)
->  {
-> @@ -151,15 +154,13 @@ int nfsd_minorversion(u32 minorversion, enum vers_op change)
->  		return -1;
->  	switch(change) {
->  	case NFSD_SET:
-> -		nfsd_supported_minorversion = minorversion;
-> +		nfsd_supported_minorversions[minorversion] = true;
->  		break;
->  	case NFSD_CLEAR:
-> -		if (minorversion == 0)
-> -			return -1;
-> -		nfsd_supported_minorversion = minorversion - 1;
-> +		nfsd_supported_minorversions[minorversion] = false;
->  		break;
->  	case NFSD_TEST:
-> -		return minorversion <= nfsd_supported_minorversion;
-> +		return nfsd_supported_minorversions[minorversion];
->  	case NFSD_AVAIL:
->  		return minorversion <= NFSD_SUPPORTED_MINOR_VERSION;
->  	}
 > -- 
-> 1.7.9.5
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+> 
