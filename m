@@ -1,94 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga09.intel.com ([134.134.136.24]:54711 "EHLO mga09.intel.com"
+Received: from fieldses.org ([174.143.236.118]:51552 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933204Ab3GWSYu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Jul 2013 14:24:50 -0400
-Message-ID: <1374603875.3436.149.camel@dvhart-mobl1.amr.corp.intel.com>
-Subject: Re: 3.11-rc regression bisected: s2disk does not work (was Re:
- [PATCH v3 13/16] futex: use freezable blocking call)
-From: Darren Hart <dvhart@linux.intel.com>
-To: Michael Leun <lkml20130126@newton.leun.net>
-Cc: Colin Cross <ccross@android.com>, lkml <linux-kernel@vger.kernel.org>,
-        Pavel Machek <pavel@ucw.cz>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>,
-        Linux PM list <linux-pm@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, Thomas Gleixner <tglx@linutronix.de>,
-        Randy Dunlap <rdunlap@infradead.org>,
-        Al Viro <viro@zeniv.linux.org.uk>
-Date: Tue, 23 Jul 2013 11:24:35 -0700
-In-Reply-To: <20130723200854.2046296b@xenia.leun.net>
-References: <1367884221-20462-1-git-send-email-ccross@android.com>
-	 <1367884221-20462-14-git-send-email-ccross@android.com>
-	 <20130723010250.5a3465ec@xenia.leun.net>
-	 <CAMbhsRQv+W897_5qGuNJD47jQ9ozN6KxeCa6UJAvZpqVuBpQ4w@mail.gmail.com>
-	 <20130723200854.2046296b@xenia.leun.net>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1760458Ab3GSPJw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Jul 2013 11:09:52 -0400
+Date: Fri, 19 Jul 2013 11:09:36 -0400
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Adamson, Dros" <Weston.Adamson@netapp.com>,
+        "nfsv4@ietf.org" <nfsv4@ietf.org>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [nfsv4] Should BIND_CONN_TO_SESSION be allowed to return
+ NFS4ERR_WRONG_CRED
+Message-ID: <20130719150936.GA19297@fieldses.org>
+References: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
+ <1374159436.3788.3.camel@leira.trondhjem.org>
+ <DFCAA8D0-B3BD-49C2-BAC4-9C26668AACB9@netapp.com>
+ <1374160910.3788.14.camel@leira.trondhjem.org>
+ <1D61D5F4-40DA-47D1-A15A-745EA05813BA@netapp.com>
+ <1374167339.3788.52.camel@leira.trondhjem.org>
+ <DD04268F-B364-48D0-ADEB-E4770D618B38@netapp.com>
+ <9AC7EBEB-E407-4CCB-A6E6-05C24CD821DA@netapp.com>
+ <1374177242.3788.59.camel@leira.trondhjem.org>
+ <1374177896.3788.67.camel@leira.trondhjem.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1374177896.3788.67.camel@leira.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-07-23 at 20:08 +0200, Michael Leun wrote:
-> On Mon, 22 Jul 2013 16:55:58 -0700
-> Colin Cross <ccross@android.com> wrote:
-> 
-> > On Mon, Jul 22, 2013 at 4:02 PM, Michael Leun
-> > <lkml20130126@newton.leun.net> wrote:
-> > > On Mon,  6 May 2013 16:50:18 -0700
-> > > Colin Cross <ccross@android.com> wrote:
-> > >
-> > >> Avoid waking up every thread sleeping in a futex_wait call during
-> > > [...]
-> > >
-> > > With 3.11-rc s2disk from suspend-utils stopped working: Frozen at
-> > > displaying 0% of saving image to disk.
-> > >
-> > > echo "1" >/sys/power/state still works.
-> > >
-> > > Bisecting yielded 88c8004fd3a5fdd2378069de86b90b21110d33a4,
-> > > reverting that from 3.11-rc2 makes s2disk working again.
-> > >
+On Thu, Jul 18, 2013 at 08:04:58PM +0000, Myklebust, Trond wrote:
+> On Thu, 2013-07-18 at 15:54 -0400, Trond Myklebust wrote:
+> > On Thu, 2013-07-18 at 19:49 +0000, Adamson, Dros wrote:
+> > > Only supporting operations that have the error code NFS4ERR_WRONG_CRED seems to be wrong.  Operations like BIND_CONN_TO_SESSION don't support don't support this error code, but are explicitly mentioned in SP4_MACH_CRED sections of the spec.
 > > 
-> > I think the expanded use of the freezable_* helpers is exposing an
-> > existing bug in hibernation.  The SNAPSHOT_FREEZE ioctl calls
-> > freeze_processes(), which sets the global system_freezing_cnt and
-> > pm_freezing.  try_to_freeze_tasks then sends every process except
-> > current a signal which causes them all to end up in the refrigerator.
-> > The current task then returns back to userspace and continues its work
-> > to suspend to disk.  If that task ever hits a call to try_to_freeze()
-> > in the kernel, it will see system_freezing_cnt and pm_freezing=true
-> > and freeze, and suspend to disk will hang forever.  It could hit
-> > try_to_freeze() because of a signal delivered to the task, or from
-> > calling any syscall that uses a freezable_* helper like the one I
-> > added to sys_futex.
+> > Looking at the allowed error return values for BIND_CONN_TO_SESSION, I'm
+> > at a loss to figure out exactly what it should return in this case. I
+> > suspect that the lack of an NFS4ERR_WRONG_CRED is actually a protocol
+> > bug.
 > > 
-> > I think the right solution is to add a flag to the freezing task that
-> > marks it unfreezable.  I  think PF_NOFREEZE would work, although it is
-> > normally used on kernel threads, can you see if the attached patch
-> > helps?
+> > Time to go back to the ietf mailing list...
 > 
-> That patch helps.
+> Hi all,
 > 
-> BTW, the only machine I can reproduce this bug with is an i7-3630QM
-> notebook. Cannot reproduce on an Core Duo U1400 and cannot reproduce on
-> an i7 M 620.
-> 
-> Are the sysreq backtraces still wanted? If so, any tip, how I could get
-> them saved?
+> When attempting to implement the SP4_MACH_CRED state protection, Dros
+> ran into an issue. If the BIND_CONN_TO_SESSION operation is listed in
+> the "spo_must_enforce" list of operations, what should it not be allowed
+> to return NFS4ERR_WRONG_CRED if called with a credential that is not the
+> machine or SSV credential?
 
-Typically by setting up a serial console or a netconsole and saving the
-log from the attached terminal emulator (such as screen or minicom).
+For what it's worth, the Linux server is returning WRONG_CRED, as you'd
+expect, in this case.  Looks to me like a simple omission from the spec.
 
-Is this what you are asking?
-
-
--- 
-Darren Hart
-Intel Open Source Technology Center
-Yocto Project - Linux Kernel
-
-
+--b.
