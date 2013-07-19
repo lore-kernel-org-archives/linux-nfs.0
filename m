@@ -1,153 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:17601 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:10414 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756160Ab3GYSSc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Jul 2013 14:18:32 -0400
-Date: Thu, 25 Jul 2013 14:18:28 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Larry Keegan <lk@pfw.demon.co.uk>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: Re: nfs client: Now you see it, now you don't (aka spurious ESTALE
- errors)
-Message-ID: <20130725141828.1862a1e1@tlielax.poochiereds.net>
-In-Reply-To: <20130725170526.6e54c7db@cs3.al.itld>
-References: <20130725134515.67af44e2@cs3.al.itld>
-	<20130725101143.6a22cb81@corrin.poochiereds.net>
-	<20130725170526.6e54c7db@cs3.al.itld>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1751224Ab3GSVDx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Jul 2013 17:03:53 -0400
+From: <bjschuma@netapp.com>
+To: <Trond.Myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [RFC 0/5] NFS Server Side Copy
+Date: Fri, 19 Jul 2013 17:03:45 -0400
+Message-ID: <1374267830-30154-1-git-send-email-bjschuma@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 25 Jul 2013 17:05:26 +0000
-Larry Keegan <lk@pfw.demon.co.uk> wrote:
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-> On Thu, 25 Jul 2013 10:11:43 -0400
-> Jeff Layton <jlayton@redhat.com> wrote:
-> > On Thu, 25 Jul 2013 13:45:15 +0000
-> > Larry Keegan <lk@pfw.demon.co.uk> wrote:
-> > 
-> > > Dear Chaps,
-> > > 
-> > > I am experiencing some inexplicable NFS behaviour which I would
-> > > like to run past you.
-> > > 
-> > > I have a linux NFS server running kernel 3.10.2 and some clients
-> > > running the same. The server is actually a pair of identical
-> > > machines serving up a small number of ext4 filesystems atop drbd.
-> > > They don't do much apart from serve home directories and deliver
-> > > mail into them. These have worked just fine for aeons.
-> > > 
-> > > The problem I am seeing is that for the past month or so, on and
-> > > off, one NFS client starts reporting stale NFS file handles on some
-> > > part of the directory tree exported by the NFS server. During the
-> > > outage the other parts of the same export remain unaffected. Then,
-> > > some ten minutes to an hour later they're back to normal. Access to
-> > > the affected sub-directories remains possible from the server (both
-> > > directly and via nfs) and from other clients. There do not appear
-> > > to be any errors on the underlying ext4 filesystems.
-> > > 
-> > > Each NFS client seems to get the heebie-jeebies over some directory
-> > > or other pretty much independently. The problem affects all of the
-> > > filesystems exported by the NFS server, but clearly I notice it
-> > > first in home directories, and in particular in my dot
-> > > subdirectories for things like my mail client and browser. I'd say
-> > > something's up the spout about 20% of the time.
-> > > 
-> > > The server and clients are using nfs4, although for a while I tried
-> > > nfs3 without any appreciable difference. I do not have
-> > > CONFIG_FSCACHE set.
-> > > 
-> > > I wonder if anyone could tell me if they have ever come across this
-> > > before, or what debugging settings might help me diagnose the
-> > > problem?
-> > > 
-> > > Yours,
-> > > 
-> > > Larry
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe
-> > > linux-nfs" in the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> > 
-> > Were these machines running older kernels before this started
-> > happening? What kernel did you upgrade from if so?
-> > 
-> 
-> Dear Jeff,
-> 
-> The full story is this:
-> 
-> I had a pair of boxes running kernel 3.4.3 with the aforementioned drbd
-> pacemaker malarkey and some clients running the same.
-> 
-> Then I upgraded the machines by moving from plain old dos partitions to
-> gpt. This necessitated a complete reload of everything, but there were
-> no software changes. I can be sure that nothing else was changed
-> because I build my entire operating system in one ginormous makefile.
-> 
-> Rapidly afterwards I switched the motherboards for ones with more PCI
-> slots. There were no software changes except those relating to MAC
-> addresses.
-> 
-> Next I moved from 100Mbit to gigabit hubs. Then the problems started.
-> 
-> The symptoms were much as I've described but I didn't see them that
-> way. Instead I assumed the entire filesystem had gone to pot and tried
-> to unmount it from the client. Fatal mistake. umount hung. I was left
-> with an entry in /proc/mounts showing the affected mountpoints as
-> "/home/larry\040(deleted)" for example. It was impossible to get rid of
-> this and I had to reboot the box. Unfortunately the problem
-> snowballed and affected all my NFS clients and the file servers, so
-> they had to be bounced too.
-> 
-> Anyway, to cut a long story short, this problem seemed to me to be a
-> file server problem so I replaced network cards, swapped hubs,
-> checked filesystems, you name it, but I never experienced any actual
-> network connectivity problems, only NFS problems. As I had kernel 3.4.4
-> upgrade scheduled I upgraded all the hosts. No change.
-> 
-> Then I upgraded everything to kernel 3.4.51. No change.
-> 
-> Then I tried mounting using NFS version 3. It could be argued the
-> frequency of gyp reduced, but the substance remained.
-> 
-> Then I bit the bullet and tried kernel 3.10. No change. I noticed that
-> NFS_V4_1 was on so I turned it off and re-tested. No change. Then
-> I tried 3.10.1 and 3.10.2. No change.
-> 
-> I've played with the kernel options to remove FSCACHE, not that I was
-> using it, and that's about it.
-> 
-> Are there any (client or server) kernel options which I should know
-> about?
-> 
-> > What might be helpful is to do some network captures when the problem
-> > occurs. What we want to know is whether the ESTALE errors are coming
-> > from the server, or if the client is generating them. That'll narrow
-> > down where we need to look for problems.
-> 
-> As it was giving me gyp during typing I tried to capture some NFS
-> traffic. Unfortunately claws-mail started a mail box check in the
-> middle of this and the problem disappeared! Normally it's claws which
-> starts this. It'll come along again soon enough and I'll send a trace.
-> 
-> Thank you for your help.
-> 
-> Yours,
-> 
-> Larry.
+These patches build on Zach Brown's copyfile patches to add server side
+copy to both the NFS client and the NFS server.
 
-Ok, we had a number of changes to how ESTALE errors are handled over
-the last few releases. When you mentioned 3.10, I had assumed that you
-might be hitting a regression in one of those, but those went in well
-after the 3.4 series.
+The first patch improves on the copyfile syscall to make it usable on my
+machine and also includes notes on other potential problems that I've
+found.  The remaining patches first implement a sync copy, then expand to
+async.
 
-Captures are probably your best bet. My suspicion is that the server is
-returning these ESTALE errors occasionally, but it would be best to
-have you confirm that. They may also help make sense of why it's
-occurring...
+My testing was done on a server exporting an ext4 filesystem exporting an
+ext4 filesystem.  I compared copying using the cp command to copying with
+the copyfile system call.
+
+
+File size:  512 MB
+cp: 4.244 seconds
+copyfile: 0.961 seconds
+
+File size: 1024 MB
+cp: 9.091 seconds
+copyfile: 1.919 seconds
+
+File size: 1536 MB
+cp: 15.291 seconds
+copyfile: 6.016 seconds
+
+
+Repeating these tests on a btrfs exported filesystem supporting the copyfile
+system call drops the time for copyfile to about 0.01 seconds.
+
+Feel free to send me any questions, comments or other thoughts!
+
+- Bryan
+
+Bryan Schumaker (5):
+  Improve on the copyfile systemcall
+  NFSD: Implement the COPY call
+  NFS: Add COPY nfs operation
+  NFSD: Defer copying
+  NFS: Change copy to support async servers
+
+ fs/copy_range.c          |  10 +++-
+ fs/nfs/callback.h        |  13 ++++
+ fs/nfs/callback_proc.c   |   9 +++
+ fs/nfs/callback_xdr.c    |  54 ++++++++++++++++-
+ fs/nfs/inode.c           |   2 +
+ fs/nfs/nfs4_fs.h         |   7 +++
+ fs/nfs/nfs4file.c        | 101 +++++++++++++++++++++++++++++++
+ fs/nfs/nfs4proc.c        |  16 +++++
+ fs/nfs/nfs4xdr.c         | 150 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfs4callback.c   | 136 ++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfs4proc.c       | 104 ++++++++++++++++++++++++++++++--
+ fs/nfsd/nfs4state.c      |  15 ++++-
+ fs/nfsd/nfs4xdr.c        | 121 +++++++++++++++++++++++++++++++++++++-
+ fs/nfsd/state.h          |  23 +++++++-
+ fs/nfsd/vfs.c            |   9 +++
+ fs/nfsd/vfs.h            |   1 +
+ fs/nfsd/xdr4.h           |  24 ++++++++
+ fs/nfsd/xdr4cb.h         |   9 +++
+ include/linux/nfs4.h     |  14 ++++-
+ include/linux/nfs_xdr.h  |  33 +++++++++++
+ include/linux/syscalls.h |   1 +
+ 21 files changed, 836 insertions(+), 16 deletions(-)
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.8.3.3
+
