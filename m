@@ -1,147 +1,193 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:62047 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751464Ab3GHMyD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jul 2013 08:54:03 -0400
-Message-ID: <51DAB666.10107@RedHat.com>
-Date: Mon, 08 Jul 2013 08:53:58 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-yh0-f48.google.com ([209.85.213.48]:61312 "EHLO
+	mail-yh0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759372Ab3GSSGj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Jul 2013 14:06:39 -0400
+Received: by mail-yh0-f48.google.com with SMTP id z12so1612222yhz.7
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Jul 2013 11:06:38 -0700 (PDT)
+Subject: [PATCH] SUNRPC: Add a helper to switch the transport of an rpc_clnt
+To: trond.myklebust@netapp.com
+From: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 19 Jul 2013 14:00:30 -0400
+Message-ID: <20130719175629.4701.29634.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Disable NFS version 2
-References: <1372856675-5520-1-git-send-email-steved@redhat.com> <9A7F190A-2938-4A14-9125-330189DA8597@oracle.com> <51D6AE7D.9070805@RedHat.com> <4408EEAB-97F1-404A-BC58-434729D12364@oracle.com>
-In-Reply-To: <4408EEAB-97F1-404A-BC58-434729D12364@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+[ cel: forward ported to 3.11 ]
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+I changed this patch slightly to ensure that on an error return,
+rpc_switch_client_transport() hasn't mangled the clnt so that it
+cannot be used again.
+
+I don't want to leave the upper layers with a clnt that can't be
+used for a retry, or that might cause an unexplained hang rather
+than an immediate error exit.
+
+Does this seem reasonable?
 
 
-On 05/07/13 10:59, Chuck Lever wrote:
-> Hi Steve-
-> 
-> On Jul 5, 2013, at 7:31 AM, Steve Dickson <SteveD@redhat.com> wrote:
-> 
->> Hey,
->>
->> On 03/07/13 09:19, Chuck Lever wrote:
->>> Hi-
->>>
->>> I'm not opposed to this change, but we should have some public discussion about it first.
->>>
->>> If we make this proposed upstream change, NFSv2 will be built far less often and will be 
->>> a magnet for code rot.  It might make more sense to simply leave the "compile this out" 
->>> choice up to distributions...?
->> Code rot is a possibility for any code where default is 'n' so that means we should
->> never use it? If that is the case, we should have swap over NFS and Label NFS 
->> on be default on by default so those bits don't rote... My point being, I don't
->> think code rot should be a reason for us to maintain code people should not
->> be using in the first place...
-> 
-> In the case at hand, code rot isn't much of a risk if the point is to remove a feature.  
-> But that point wasn't stated anywhere.
-> 
->>> I'd like to reduce the risk of the kernel carrying  around code that no-one uses or 
->>> compiles.  If we truly want this off by default  everywhere, shouldn't we just 
->>> remove it?  (Is that the eventual goal?)
->> I would think so. Turn it off and see who screams.. Then get the clue-bat out for
->> for those people that do scream... ;-)  They can always turn it back on... 
-> 
-> If deprecation is the long-term goal, we ought to have a stated plan that we all 
-> agree on.  We're talking about removing a feature of Linux NFS that has been a 
-> mainstay for, literally, decades.  Make some noise, let people chime in, and publish 
-> a plan so folks know what to expect.
-That was the purpose of this patch... to start the conversation... 
+ include/linux/sunrpc/clnt.h |    4 ++
+ net/sunrpc/clnt.c           |   87 ++++++++++++++++++++++++++++++++++++++++---
+ 2 files changed, 85 insertions(+), 6 deletions(-)
 
-> 
-> We should also document publicly why we think NFSv2 support should go away.  Is it a 
-< significant maintenance burden?  Is it a security problem?  Who are the stakeholders?
-Its mostly maintenances and limited testing resource. I would rather use cycles
-to fix/test v4... 
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index bfe11be..29bb018 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -134,6 +134,10 @@ void rpc_task_reset_client(struct rpc_task *task, struct rpc_clnt *clnt);
+ struct rpc_clnt *rpc_clone_client(struct rpc_clnt *);
+ struct rpc_clnt *rpc_clone_client_set_auth(struct rpc_clnt *,
+ 				rpc_authflavor_t);
++int		rpc_switch_client_transport(struct rpc_clnt *,
++				struct xprt_create *,
++				const struct rpc_timeout *);
++
+ void		rpc_shutdown_client(struct rpc_clnt *);
+ void		rpc_release_client(struct rpc_clnt *);
+ void		rpc_task_release_client(struct rpc_task *);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 5a750b9..3efd363 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -25,6 +25,7 @@
+ #include <linux/namei.h>
+ #include <linux/mount.h>
+ #include <linux/slab.h>
++#include <linux/rcupdate.h>
+ #include <linux/utsname.h>
+ #include <linux/workqueue.h>
+ #include <linux/in.h>
+@@ -289,12 +290,32 @@ static void rpc_clnt_set_nodename(struct rpc_clnt *clnt, const char *nodename)
+ 	memcpy(clnt->cl_nodename, nodename, clnt->cl_nodelen);
+ }
  
-> 
->>> Should the server also disable NFSv2 support by default?  If not, then why is the 
->>> client special in this regard?
->> We have to start somewhere... It was just easier to start with the client. If 
->> Bruce is interested in dropping v2 support on the server, I will be more than
->> willing to looking into that... Actually it might just be a nfs-utils only thing...
-> 
-> It feels like we should have a plan for both the server and client.
-I'm thinking we could do it separately...
++static struct rpc_xprt *rpc_clnt_set_transport(struct rpc_clnt *clnt,
++		struct rpc_xprt *xprt,
++		const struct rpc_timeout *timeout)
++{
++	struct rpc_xprt *old;
++
++	spin_lock(&clnt->cl_lock);
++	old = rcu_dereference(clnt->cl_xprt);
++
++	if (!xprt_bound(xprt))
++		clnt->cl_autobind = 1;
++
++	clnt->cl_timeout = timeout;
++	rcu_assign_pointer(clnt->cl_xprt, xprt);
++	spin_unlock(&clnt->cl_lock);
++
++	return old;
++}
++
+ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, struct rpc_xprt *xprt)
+ {
+ 	const struct rpc_program *program = args->program;
+ 	const struct rpc_version *version;
+ 	struct rpc_clnt		*clnt = NULL;
+ 	struct rpc_auth		*auth;
++	const struct rpc_timeout *timeout;
+ 	int err;
  
-> 
-> You could remove NFSv2 support in nfs-utils on both sides, I would think.  Didn't you 
-> already remove NFSv2 from the mount.nfs command's version negotiation?
-Yes, the mount command no longer negotiates down to v2. The -o v2 mount
-option still works. 
+ 	/* sanity check the name before trying to print it */
+@@ -318,7 +339,6 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 		goto out_err;
+ 	clnt->cl_parent = clnt;
+ 
+-	rcu_assign_pointer(clnt->cl_xprt, xprt);
+ 	clnt->cl_procinfo = version->procs;
+ 	clnt->cl_maxproc  = version->nrprocs;
+ 	clnt->cl_protname = program->name;
+@@ -333,16 +353,15 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 	INIT_LIST_HEAD(&clnt->cl_tasks);
+ 	spin_lock_init(&clnt->cl_lock);
+ 
+-	if (!xprt_bound(xprt))
+-		clnt->cl_autobind = 1;
+-
+-	clnt->cl_timeout = xprt->timeout;
++	timeout = xprt->timeout;
+ 	if (args->timeout != NULL) {
+ 		memcpy(&clnt->cl_timeout_default, args->timeout,
+ 				sizeof(clnt->cl_timeout_default));
+-		clnt->cl_timeout = &clnt->cl_timeout_default;
++		timeout = &clnt->cl_timeout_default;
+ 	}
+ 
++	rpc_clnt_set_transport(clnt, xprt, timeout);
++
+ 	clnt->cl_rtt = &clnt->cl_rtt_default;
+ 	rpc_init_rtt(&clnt->cl_rtt_default, clnt->cl_timeout->to_initval);
+ 	clnt->cl_principal = NULL;
+@@ -573,6 +592,62 @@ rpc_clone_client_set_auth(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
+ }
+ EXPORT_SYMBOL_GPL(rpc_clone_client_set_auth);
+ 
++/**
++ * rpc_switch_client_transport: switch the RPC transport on the fly
++ * @clnt: pointer to a struct rpc_clnt
++ * @args: pointer to the new transport arguments
++ * @timeout: pointer to the new timeout parameters
++ *
++ * This function allows the caller to switch the RPC transport for the
++ * rpc_clnt structure 'clnt' to allow it to connect to a mirrored NFS
++ * server, for instance.  It assumes that the caller has ensured that
++ * there are no active tasks by using some form of locking.
++ *
++ * Returns zero if "clnt" is now using the new xprt.  Otherwise a
++ * negative errno is returned, and "clnt" continues to use the old
++ * xprt.
++ */
++int rpc_switch_client_transport(struct rpc_clnt *clnt,
++		struct xprt_create *args,
++		const struct rpc_timeout *timeout)
++{
++	const struct rpc_timeout *old_timeo;
++	rpc_authflavor_t pseudoflavor;
++	struct rpc_xprt *xprt, *old;
++	struct rpc_auth *auth;
++
++	xprt = xprt_create_transport(args);
++	if (IS_ERR(xprt)) {
++		dprintk("RPC:      failed to switch xprt for clnt %p\n", clnt);
++		return PTR_ERR(xprt);
++	}
++
++	pseudoflavor = clnt->cl_auth->au_flavor;
++
++	old_timeo = clnt->cl_timeout;
++	old = rpc_clnt_set_transport(clnt, xprt, timeout);
++
++	/*
++	 * Note: we must always create a new rpc_auth cache
++	 * when switching to a different server!  GSS contexts
++	 * in particular are between a single client and
++	 * server.
++	 */
++	auth = rpcauth_create(pseudoflavor, clnt);
++	if (IS_ERR(auth)) {
++		printk(KERN_INFO "RPC: Couldn't create auth handle (flavor %u)\n",
++				pseudoflavor);
++		rpc_clnt_set_transport(clnt, old, old_timeo);
++		xprt_put(xprt);
++		return PTR_ERR(auth);
++	}
++
++	synchronize_rcu();
++	xprt_put(old);
++	return 0;
++}
++EXPORT_SYMBOL_GPL(rpc_switch_client_transport);
++
+ /*
+  * Kill all tasks for the given client.
+  * XXX: kill their descendants as well?
 
-> 
-> Deprecating a kernel feature also has a pathway through the staging tree, IIUC.  
-> Would that be appropriate for NFSv2?  It may even be a requirement these days, but 
-> I'm not sure.
-Really? Anybody know what that pathway is?
-
-> 
->>> Finally, if we go with something like this change, does this patch also need to 
->>> update the default configurations shipped with the kernel?
->> What "default configurations shipped with the kernel"? Isn't fs/nfs/Kconfig the
->> only place I need to turn it off?
-> 
-> arch/*/configs/*_defconfig
-> 
-> These were not updated when the NFS client was modularized, so they currently do not 
-> list an explicit CONFIG_NFS_V2 setting.  IIUC that means changing Kconfig ought to be 
-> enough.
-Cool...
-
-steved.
-> 
->> Thanks for the cycles!
->>
->> steved.
->>
->>>
->>>
->>> On Jul 3, 2013, at 9:04 AM, Steve Dickson <steved@redhat.com> wrote:
->>>
->>>> This patch disables the NFS version 2 module from being compile by default.
->>>>
->>>> Signed-off-by: Steve Dickson <steved@redhat.com>
->>>> ---
->>>> fs/nfs/Kconfig | 4 ++--
->>>> 1 file changed, 2 insertions(+), 2 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
->>>> index 13ca196..6831a01 100644
->>>> --- a/fs/nfs/Kconfig
->>>> +++ b/fs/nfs/Kconfig
->>>> @@ -32,12 +32,12 @@ config NFS_FS
->>>> config NFS_V2
->>>> 	tristate "NFS client support for NFS version 2"
->>>> 	depends on NFS_FS
->>>> -	default y
->>>> +	default n
->>>> 	help
->>>> 	  This option enables support for version 2 of the NFS protocol
->>>> 	  (RFC 1094) in the kernel's NFS client.
->>>>
->>>> -	  If unsure, say Y.
->>>> +	  If unsure, say n.
->>>>
->>>> config NFS_V3
->>>> 	tristate "NFS client support for NFS version 3"
->>>> -- 
->>>> 1.8.1.4
->>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
