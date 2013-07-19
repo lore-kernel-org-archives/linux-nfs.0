@@ -1,154 +1,32 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12308 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:42353 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758257Ab3GZQE6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Jul 2013 12:04:58 -0400
-Date: Fri, 26 Jul 2013 12:04:55 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 14/16] nfsd4: delay setting current_fh in open
-Message-ID: <20130726160455.GB15846@pad.fieldses.org>
-References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
- <1374094217-31493-16-git-send-email-bfields@redhat.com>
- <20130726071153.1fd5a416@corrin.poochiereds.net>
+	id S1751762Ab3GSQNP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Jul 2013 12:13:15 -0400
+Date: Fri, 19 Jul 2013 12:13:13 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Andre Heider <a.heider@gmail.com>, Rick Macklem <rmacklem@uoguelph.ca>,
+        linux-nfs@vger.kernel.org
+Subject: Re: Error writing to nfs4 with 3.11-rc1
+Message-ID: <20130719161313.GA20026@fieldses.org>
+References: <CAHsu+b_hhSr2vwcwM8TX3=xF=3HffUXG=YLVLcsEpH1wHn+JoA@mail.gmail.com>
+ <A5C56FD6-9E14-43A3-8627-1C8F77EC6926@oracle.com>
+ <CAHsu+b9vWUyCGHSs==Na=VntwvYp65=rva7+y9aQDXquxX4t-A@mail.gmail.com>
+ <F3EFA483-0662-4226-AAF3-DCF12D48485E@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130726071153.1fd5a416@corrin.poochiereds.net>
+In-Reply-To: <F3EFA483-0662-4226-AAF3-DCF12D48485E@oracle.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 26, 2013 at 07:11:53AM -0400, Jeff Layton wrote:
-> On Wed, 17 Jul 2013 16:50:15 -0400
-> "J. Bruce Fields" <bfields@redhat.com> wrote:
-> 
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > This is basically a no-op, to simplify a following patch.
-> > 
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > ---
-> >  fs/nfsd/nfs4proc.c |   36 ++++++++++++++++++++----------------
-> >  1 file changed, 20 insertions(+), 16 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> > index a7cee86..4c0cbeb 100644
-> > --- a/fs/nfsd/nfs4proc.c
-> > +++ b/fs/nfsd/nfs4proc.c
-> > @@ -230,17 +230,17 @@ static void nfsd4_set_open_owner_reply_cache(struct nfsd4_compound_state *cstate
-> >  }
-> >  
-> >  static __be32
-> > -do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
-> > +do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state
-> > +*cstate, struct nfsd4_open *open, struct svc_fh **resfh)
-> 	^^^
-> nit: weird indentation here
+On Wed, Jul 17, 2013 at 04:54:59PM -0400, Chuck Lever wrote:
+> By the way, the NFSv4 OPEN request parsing in Wireshark 1.10.0 is totally screwed up.  Has anyone reported this to the Wireshark community?  Wireshark 1.8.8 appears to parse OPEN requests correctly, and is able to handle the 3-word bitmask correctly.
 
-Thanks, fixed.--b.
+What exactly is screwed up?
 
-> 
-> >  {
-> >  	struct svc_fh *current_fh = &cstate->current_fh;
-> > -	struct svc_fh *resfh;
-> >  	int accmode;
-> >  	__be32 status;
-> >  
-> > -	resfh = kmalloc(sizeof(struct svc_fh), GFP_KERNEL);
-> > -	if (!resfh)
-> > +	*resfh = kmalloc(sizeof(struct svc_fh), GFP_KERNEL);
-> > +	if (!*resfh)
-> >  		return nfserr_jukebox;
-> > -	fh_init(resfh, NFS4_FHSIZE);
-> > +	fh_init(*resfh, NFS4_FHSIZE);
-> >  	open->op_truncate = 0;
-> >  
-> >  	if (open->op_create) {
-> > @@ -265,7 +265,7 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
-> >  		 */
-> >  		status = do_nfsd_create(rqstp, current_fh, open->op_fname.data,
-> >  					open->op_fname.len, &open->op_iattr,
-> > -					resfh, open->op_createmode,
-> > +					*resfh, open->op_createmode,
-> >  					(u32 *)open->op_verf.data,
-> >  					&open->op_truncate, &open->op_created);
-> >  
-> > @@ -282,29 +282,26 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
-> >  							FATTR4_WORD1_TIME_MODIFY);
-> >  	} else {
-> >  		status = nfsd_lookup(rqstp, current_fh,
-> > -				     open->op_fname.data, open->op_fname.len, resfh);
-> > +				     open->op_fname.data, open->op_fname.len, *resfh);
-> >  		fh_unlock(current_fh);
-> >  	}
-> >  	if (status)
-> >  		goto out;
-> > -	status = nfsd_check_obj_isreg(resfh);
-> > +	status = nfsd_check_obj_isreg(*resfh);
-> >  	if (status)
-> >  		goto out;
-> >  
-> >  	if (is_create_with_attrs(open) && open->op_acl != NULL)
-> > -		do_set_nfs4_acl(rqstp, resfh, open->op_acl, open->op_bmval);
-> > +		do_set_nfs4_acl(rqstp, *resfh, open->op_acl, open->op_bmval);
-> >  
-> > -	nfsd4_set_open_owner_reply_cache(cstate, open, resfh);
-> > +	nfsd4_set_open_owner_reply_cache(cstate, open, *resfh);
-> >  	accmode = NFSD_MAY_NOP;
-> >  	if (open->op_created ||
-> >  			open->op_claim_type == NFS4_OPEN_CLAIM_DELEGATE_CUR)
-> >  		accmode |= NFSD_MAY_OWNER_OVERRIDE;
-> > -	status = do_open_permission(rqstp, resfh, open, accmode);
-> > +	status = do_open_permission(rqstp, *resfh, open, accmode);
-> >  	set_change_info(&open->op_cinfo, current_fh);
-> > -	fh_dup2(current_fh, resfh);
-> >  out:
-> > -	fh_put(resfh);
-> > -	kfree(resfh);
-> >  	return status;
-> >  }
-> >  
-> > @@ -357,6 +354,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> >  	   struct nfsd4_open *open)
-> >  {
-> >  	__be32 status;
-> > +	struct svc_fh *resfh = NULL;
-> >  	struct nfsd4_compoundres *resp;
-> >  	struct net *net = SVC_NET(rqstp);
-> >  	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-> > @@ -423,7 +421,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> >  	switch (open->op_claim_type) {
-> >  		case NFS4_OPEN_CLAIM_DELEGATE_CUR:
-> >  		case NFS4_OPEN_CLAIM_NULL:
-> > -			status = do_open_lookup(rqstp, cstate, open);
-> > +			status = do_open_lookup(rqstp, cstate, open, &resfh);
-> >  			if (status)
-> >  				goto out;
-> >  			break;
-> > @@ -439,6 +437,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> >  			status = do_open_fhandle(rqstp, cstate, open);
-> >  			if (status)
-> >  				goto out;
-> > +			resfh = &cstate->current_fh;
-> >  			break;
-> >  		case NFS4_OPEN_CLAIM_DELEG_PREV_FH:
-> >               	case NFS4_OPEN_CLAIM_DELEGATE_PREV:
-> > @@ -458,9 +457,14 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> >  	 * successful, it (1) truncates the file if open->op_truncate was
-> >  	 * set, (2) sets open->op_stateid, (3) sets open->op_delegation.
-> >  	 */
-> > -	status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
-> > +	status = nfsd4_process_open2(rqstp, resfh, open);
-> >  	WARN_ON(status && open->op_created);
-> >  out:
-> > +	if (resfh && resfh != &cstate->current_fh) {
-> > +		fh_dup2(&cstate->current_fh, resfh);
-> > +		fh_put(resfh);
-> > +		kfree(resfh);
-> > +	}
-> >  	nfsd4_cleanup_open_state(open, status);
-> >  	if (open->op_openowner && !nfsd4_has_session(cstate))
-> >  		cstate->replay_owner = &open->op_openowner->oo_owner;
-> 
-> Acked-by: Jeff Layton <jlayton@redhat.com>
+For what it's worth, I took a quick look at the 3.11 trace with the
+latest head from http://code.wireshark.org/git/wireshark and nothing
+jumped out at me.
+
+--b.
