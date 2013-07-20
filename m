@@ -1,101 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:57208 "EHLO mx12.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:53412 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752433Ab3GQV7M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 17:59:12 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Andre Heider <a.heider@gmail.com>
-CC: Chuck Lever <chuck.lever@oracle.com>, <linux-nfs@vger.kernel.org>,
-        Rick Macklem <rmacklem@uoguelph.ca>
-Subject: [PATCH 1/2] NFSv4: Fix a regression against the FreeBSD server
-Date: Wed, 17 Jul 2013 17:59:06 -0400
-Message-ID: <1374098347-30196-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1753723Ab3GTNH0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 20 Jul 2013 09:07:26 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>,
+        "Adamson, Andy" <William.Adamson@netapp.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: RE: [PATCH 1/1] NFSv4.1 Increase NFS4_DEF_SLOT_TABLE_SIZE
+Date: Sat, 20 Jul 2013 13:07:24 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93F488FF1@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1374268191-4469-1-git-send-email-andros@netapp.com>
+ <D8BB2DCD-4166-4425-8C08-EF0CCA9B926D@oracle.com>
+In-Reply-To: <D8BB2DCD-4166-4425-8C08-EF0CCA9B926D@oracle.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Technically, the Linux client is allowed by the NFSv4 spec to send
-3 word bitmaps as part of an OPEN request. However, this causes the
-current FreeBSD server to return NFS4ERR_ATTRNOTSUPP errors.
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org] On Behalf Of Chuck Lever
+> Sent: Friday, July 19, 2013 7:57 PM
+> To: Adamson, Andy
+> Cc: Linux NFS Mailing List
+> Subject: Re: [PATCH 1/1] NFSv4.1 Increase NFS4_DEF_SLOT_TABLE_SIZE
+> 
+> Hi Andy-
+> 
+> On Jul 19, 2013, at 5:09 PM, andros@netapp.com wrote:
+> 
+> > From: Andy Adamson <andros@netapp.com>
+> >
+> > max_session_slots is a ushort. Bump NFS4_DEF_SLOT_TABLE_SIZE to the
+> > max ushort
+> > value: e.g. ask for 256 slots and let the server negotiate down if needed.
+> 
+> I don't have an objection to your patch, but the description is confusing.
+> 
+> In fs/nfs/super.c I see
+> 
+>    unsigned short max_session_slots = NFS4_DEF_SLOT_TABLE_SIZE;
+> 
+> but /usr/include/limits.h has
+> 
+>    #define USHRT_MAX 65535
+> 
+> The maximum value you can store in an unsigned octet is 255 (UCHAR_MAX).
+> 
+> Why did you choose 256 and not 65535?
 
-Fix the regression by making the Linux client use a 2 word bitmap unless
-doing NFSv4.2 with labeled NFS.
+This is the _minimum_ number of slots that the client and server will have to allocate, even when they both support dynamic slots, so we don't want to set it unreasonably high.
+I realise that most servers will negotiate this value down, but we don't want to rely on that.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4xdr.c | 21 ++++++++++++++-------
- 1 file changed, 14 insertions(+), 7 deletions(-)
-
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 0abfb846..c74d616 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -999,6 +999,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
- 	__be32 *p;
- 	__be32 *q;
- 	int len;
-+	uint32_t bmval_len = 2;
- 	uint32_t bmval0 = 0;
- 	uint32_t bmval1 = 0;
- 	uint32_t bmval2 = 0;
-@@ -1010,7 +1011,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
- 	 * = 40 bytes, plus any contribution from variable-length fields
- 	 *            such as owner/group.
- 	 */
--	len = 20;
-+	len = 8;
- 
- 	/* Sigh */
- 	if (iap->ia_valid & ATTR_SIZE)
-@@ -1040,8 +1041,6 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
- 		}
- 		len += 4 + (XDR_QUADLEN(owner_grouplen) << 2);
- 	}
--	if (label)
--		len += 4 + 4 + 4 + (XDR_QUADLEN(label->len) << 2);
- 	if (iap->ia_valid & ATTR_ATIME_SET)
- 		len += 16;
- 	else if (iap->ia_valid & ATTR_ATIME)
-@@ -1050,15 +1049,22 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
- 		len += 16;
- 	else if (iap->ia_valid & ATTR_MTIME)
- 		len += 4;
-+	if (label) {
-+		len += 4 + 4 + 4 + (XDR_QUADLEN(label->len) << 2);
-+		bmval_len = 3;
-+	}
-+
-+	len += bmval_len << 2;
- 	p = reserve_space(xdr, len);
- 
- 	/*
- 	 * We write the bitmap length now, but leave the bitmap and the attribute
- 	 * buffer length to be backfilled at the end of this routine.
- 	 */
--	*p++ = cpu_to_be32(3);
-+	*p++ = cpu_to_be32(bmval_len);
- 	q = p;
--	p += 4;
-+	/* Skip bitmap entries + attrlen */
-+	p += bmval_len + 1;
- 
- 	if (iap->ia_valid & ATTR_SIZE) {
- 		bmval0 |= FATTR4_WORD0_SIZE;
-@@ -1112,10 +1118,11 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
- 				len, ((char *)p - (char *)q) + 4);
- 		BUG();
- 	}
--	len = (char *)p - (char *)q - 16;
-+	len = (char *)p - (char *)q - (bmval_len << 2);
- 	*q++ = htonl(bmval0);
- 	*q++ = htonl(bmval1);
--	*q++ = htonl(bmval2);
-+	if (bmval_len == 3)
-+		*q++ = htonl(bmval2);
- 	*q = htonl(len);
- 
- /* out: */
--- 
-1.8.3.1
-
+Cheers
+  Trond
