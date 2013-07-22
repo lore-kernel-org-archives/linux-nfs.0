@@ -1,35 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:14214 "EHLO mx12.netapp.com"
+Received: from mx1.netapp.com ([216.240.18.38]:20427 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758877Ab3GROql convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jul 2013 10:46:41 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: SP4_MACH_CRED: v4 proc -> opcodes mapping
-Date: Thu, 18 Jul 2013 14:46:39 +0000
-Message-ID: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
-Content-Type: text/plain; charset="us-ascii"
+	id S932676Ab3GVTRh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Jul 2013 15:17:37 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFSv4.1 Increase NFS4_DEF_SLOT_TABLE_SIZE
+Date: Mon, 22 Jul 2013 19:17:36 +0000
+Message-ID: <1374520655.7972.27.camel@leira.trondhjem.org>
+References: <1374268191-4469-1-git-send-email-andros@netapp.com>
+	 <1374518181.7972.14.camel@leira.trondhjem.org>
+	 <B0405D50-D8BE-496D-8B72-0E09B13B7D77@netapp.com>
+In-Reply-To: <B0405D50-D8BE-496D-8B72-0E09B13B7D77@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey,
-
-I have a mostly functional client-side implementation of SP4_MACH_CRED! It still needs a lot of cleanup and testing.
-
-I have one style issue that I want to run by the list before I post a patchset:
-
-So, SP4_MACH_CRED negotiates two bitmaps in the EXCHANGE_ID (one "enforce", one "allow") for state protection. These bitmaps are indexed by the NFSv4 operation number.  The state protect check must happen in the nfs4proc.c layer (or before), right before we call rpc_call_sync or equivalent, so that it can select the right cred and rpc_client.
-
-Here's the problem: we don't know what operations (opcodes) are actually in a compound until the XDR encode callback is called.  The rpc_procinfo array doesn't have this mapping - in fact, it only lives in the xdr encode layer.
-
-One approach is to immediately translate the opcode bitmaps to "nfs4 procedure index" bitmaps, indexing into the rpc_procinfo array.  This would mean there is a second mapping of NFSv4 procedure -> opcodes that must be updated when an XDR encode callback is changed.
-
-Another approach would be to add a callback to the XDR api so we could "ask" it if an NFSv4 procedure contains any of the opcodes in a bitmap. The nice thing about this approach is that the mapping of procedure to opcodes within will live right next to the XDR encode callback and make it obvious that both need to be changed together.
-
-I suppose I'm leaning toward a combination of both of these approaches - keep the mapping in XDR-land and translate the bitmaps immediately on negation for fast lookups during normal operation.
-
-Comments? Am I missing something?
-
--dros
+T24gTW9uLCAyMDEzLTA3LTIyIGF0IDE5OjAyICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
+PiBPbiBKdWwgMjIsIDIwMTMsIGF0IDI6MzYgUE0sICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJvbmQu
+TXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ICB3cm90ZToNCj4gDQo+ID4gT24gRnJpLCAyMDEzLTA3
+LTE5IGF0IDE3OjA5IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90ZToNCj4gPj4gRnJvbTog
+QW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gPj4gDQo+ID4+IG1heF9zZXNzaW9u
+X3Nsb3RzIGlzIGEgdXNob3J0LiBCdW1wIE5GUzRfREVGX1NMT1RfVEFCTEVfU0laRSB0byB0aGUg
+bWF4IHVzaG9ydA0KPiA+PiB2YWx1ZTogZS5nLiBhc2sgZm9yIDI1NiBzbG90cyBhbmQgbGV0IHRo
+ZSBzZXJ2ZXIgbmVnb3RpYXRlIGRvd24gaWYgbmVlZGVkLg0KPiA+PiANCj4gPj4gU2lnbmVkLW9m
+Zi1ieTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gPj4gLS0tDQo+ID4+IGZz
+L25mcy9uZnM0c2Vzc2lvbi5oIHwgMiArLQ0KPiA+PiAxIGZpbGUgY2hhbmdlZCwgMSBpbnNlcnRp
+b24oKyksIDEgZGVsZXRpb24oLSkNCj4gPj4gDQo+ID4+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZz
+NHNlc3Npb24uaCBiL2ZzL25mcy9uZnM0c2Vzc2lvbi5oDQo+ID4+IGluZGV4IDNhMTUzZDguLjhi
+Nzg5OWYgMTAwNjQ0DQo+ID4+IC0tLSBhL2ZzL25mcy9uZnM0c2Vzc2lvbi5oDQo+ID4+ICsrKyBi
+L2ZzL25mcy9uZnM0c2Vzc2lvbi5oDQo+ID4+IEBAIC04LDcgKzgsNyBAQA0KPiA+PiAjZGVmaW5l
+IF9fTElOVVhfRlNfTkZTX05GUzRTRVNTSU9OX0gNCj4gPj4gDQo+ID4+IC8qIG1heGltdW0gbnVt
+YmVyIG9mIHNsb3RzIHRvIHVzZSAqLw0KPiA+PiAtI2RlZmluZSBORlM0X0RFRl9TTE9UX1RBQkxF
+X1NJWkUgKDE2VSkNCj4gPj4gKyNkZWZpbmUgTkZTNF9ERUZfU0xPVF9UQUJMRV9TSVpFICgyNTZV
+KQ0KPiA+IA0KPiA+IENvdWxkIHdlIHBsZWFzZSBtYWtlIHRoaXMgc21hbGxlcj8gSSBhZ3JlZSB0
+aGF0IDE2IGlzIHRvbyBzbWFsbCAoYXMgbG9uZw0KPiA+IGFzIHNlcnZlcnMgZG9uJ3QgZG8gZHlu
+YW1pYyBzbG90IGFsbG9jYXRpb24pLCBidXQgMjU2IGlzIHZlcnkgaGlnaCBmb3IgYQ0KPiA+IGRl
+ZmF1bHQuDQo+ID4gDQo+ID4gSG93IGFib3V0IDY0Pw0KPiANCj4gSUlJUkMgdGhlIChub24tZHlu
+YW1pYykgc2Vzc2lvbiBpbXBsZW1lbmF0aW9ucyB0aGF0IEkndmUgc2VlbiB0cmVhdCB0aGUgY2Ff
+bWF4cmVxdWVzdHMgY29taW5nIGZyb20gdGhlIGNsaWVudCBhcyB0aGUgbWF4aW11bSBudW1iZXIg
+b2Ygc2Vzc2lvbiBzbG90cyB0aGF0IHRoZSBjbGllbnQgY2FuIGhhbmRsZSAtIElPVyBJIGRvbid0
+IHNlZSBzZXJ2ZXJzIHJldHVybmluZyBhIGhpZ2hlciBjYV9tYXhyZXF1ZXN0cyB0aGFuIHdhcyBz
+ZW50IGJ5IHRoZSBjbGllbnQuIFRoaXMgaXMgd2h5IEkgY2hvc2UgYSBsYXJnZXIgbnVtYmVyIGZv
+ciB0aGUgZGVmYXVsdC4gSXQgaXMsIGFmdGVyIGFsbCwgYSBzZXJ2ZXIgcmVzb3VyY2UgYW5kIHNo
+b3VsZG4ndCB0aGUgY2xpZW50IGdyYWIgYXMgbWFueSBzZXNzaW9uIHNsb3RzIGFzIGl0IGNhbj8N
+Cg0KVGhlIHByb2JsZW0gaXMgdGhhdCBvbmNlIHlvdSBpbXBsZW1lbnQgZHluYW1pYyBzbG90IHRh
+YmxlcywgdGhlDQpuZWdvdGlhdGVkIHNlc3Npb24gc2xvdCB0YWJsZSBzaXplIGJlY29tZXMgdGhl
+IF9taW5pbXVtXyBudW1iZXIgb2YNCnNsb3RzLiBUaGF0J3Mgd2h5IGEgY2xpZW50IHRoYXQgc3Vw
+cG9ydHMgZHluYW1pYyBzbG90IHRhYmxlcyB3YW50cyB0bw0Ka2VlcCB0aGUgY2FfbWF4cmVxdWVz
+dHMgX3NtYWxsXyBpbiB0aGUgaG9wZSB0aGF0IHRoZSBzZXJ2ZXIgY2FuIHRoZW4NCmR5bmFtaWNh
+bGx5IGFkanVzdCB0aGUgdG90YWwgbnVtYmVyIG9mIHNsb3RzIHVwd2FyZHMgaW4gb3JkZXIgdG8g
+bWVldA0KdGhlIGFjdHVhbCBsb2FkLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
+IGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20N
+Cnd3dy5uZXRhcHAuY29tDQo=
