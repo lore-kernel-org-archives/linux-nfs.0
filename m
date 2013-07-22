@@ -1,231 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:4924 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:47606 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753222Ab3GIX5l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Jul 2013 19:57:41 -0400
-Date: Tue, 9 Jul 2013 19:57:54 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org,
-        Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
-        David Howells <dhowells@redhat.com>,
-        Tyler Hicks <tyhicks@canonical.com>,
-        Dustin Kirkland <dustin.kirkland@gazzang.com>
-Subject: Re: [PATCH 12/12] locks: break delegations on any attribute
- modification
-Message-ID: <20130709195754.4574ee06@corrin.poochiereds.net>
-In-Reply-To: <20130709205101.GK32574@pad.fieldses.org>
-References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
-	<1372882356-14168-13-git-send-email-bfields@redhat.com>
-	<20130709093047.0096f061@tlielax.poochiereds.net>
-	<20130709205101.GK32574@pad.fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S932820Ab3GVThU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Jul 2013 15:37:20 -0400
+Message-ID: <51ED89DC.7050406@netapp.com>
+Date: Mon, 22 Jul 2013 15:37:00 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC 4/5] NFSD: Defer copying
+References: <1374267830-30154-1-git-send-email-bjschuma@netapp.com> <1374267830-30154-5-git-send-email-bjschuma@netapp.com> <20130722185002.GB10109@fieldses.org> <51ED8549.3040308@netapp.com> <20130722193000.GD10109@fieldses.org>
+In-Reply-To: <20130722193000.GD10109@fieldses.org>
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 9 Jul 2013 16:51:01 -0400
-"J. Bruce Fields" <bfields@redhat.com> wrote:
+On 07/22/2013 03:30 PM, J. Bruce Fields wrote:
+> On Mon, Jul 22, 2013 at 03:17:29PM -0400, Bryan Schumaker wrote:
+>> On 07/22/2013 02:50 PM, J. Bruce Fields wrote:
+>>> On Fri, Jul 19, 2013 at 05:03:49PM -0400, bjschuma@netapp.com wrote:
+>>>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>>>
+>>>> Rather than performing the copy right away, schedule it to run later and
+>>>> reply to the client.  Later, send a callback to notify the client that
+>>>> the copy has finished.
+>>>
+>>> I believe you need to implement the referring triple support described
+>>> in http://tools.ietf.org/html/rfc5661#section-2.10.6.3 to fix the race
+>>> described in
+>>> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-15.1.3
+>>> .
+>>
+>> I'll re-read and re-write.
+>>
+>>>
+>>> I see cb_delay initialized below, but not otherwise used.  Am I missing
+>>> anything?
+>>
+>> Whoops!  I was using that earlier to try to fake up a callback, but I eventually decided it's easier to just do the copy asynchronously.  I must have forgotten to take it out :(
+>>
+>>>
+>>> What about OFFLOAD_STATUS and OFFLOAD_ABORT?
+>>
+>> I haven't thought out those too much... I haven't thought about a use for them on the client yet.
+> 
+> If it might be a long-running copy, I assume the client needs the
+> ability to abort if the caller is killed.
+> 
+> (Dumb question: what happens on the network partition?  Does the server
+> abort the copy when it expires the client state?)
+> 
+> In any case,
+> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-15.1.3
+> says "If a server's COPY operation returns a stateid, then the server
+> MUST also support these operations: CB_OFFLOAD, OFFLOAD_ABORT, and
+> OFFLOAD_STATUS."
+> 
+> So even if we've no use for them on the client then we still need to
+> implement them (and probably just write a basic pynfs test).  Either
+> that or update the spec.
 
-> On Tue, Jul 09, 2013 at 09:30:47AM -0400, Jeff Layton wrote:
-> > On Wed,  3 Jul 2013 16:12:36 -0400
-> > "J. Bruce Fields" <bfields@redhat.com> wrote:
-> > 
-> > > From: "J. Bruce Fields" <bfields@redhat.com>
-> > > 
-> > > NFSv4 uses leases to guarantee that clients can cache metadata as well
-> > > as data.
-> > > 
-> > > Cc: Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>
-> > > Cc: David Howells <dhowells@redhat.com>
-> > > Cc: Tyler Hicks <tyhicks@canonical.com>
-> > > Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
-> > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > > ---
-> > >  drivers/base/devtmpfs.c   |    4 ++--
-> > >  fs/attr.c                 |    5 ++++-
-> > >  fs/cachefiles/interface.c |    4 ++--
-> > >  fs/ecryptfs/inode.c       |    2 +-
-> > >  fs/hpfs/namei.c           |    2 +-
-> > >  fs/inode.c                |    6 +++++-
-> > >  fs/nfsd/vfs.c             |    8 ++++++--
-> > >  fs/open.c                 |   21 +++++++++++++++++----
-> > >  fs/utimes.c               |    9 ++++++++-
-> > >  include/linux/fs.h        |    2 +-
-> > >  10 files changed, 47 insertions(+), 16 deletions(-)
-> > > 
-> > > diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
-> > > index 1b8490e..0f38201 100644
-> > > --- a/drivers/base/devtmpfs.c
-> > > +++ b/drivers/base/devtmpfs.c
-> > > @@ -216,7 +216,7 @@ static int handle_create(const char *nodename, umode_t mode, kuid_t uid,
-> > >  		newattrs.ia_gid = gid;
-> > >  		newattrs.ia_valid = ATTR_MODE|ATTR_UID|ATTR_GID;
-> > >  		mutex_lock(&dentry->d_inode->i_mutex);
-> > > -		notify_change(dentry, &newattrs);
-> > > +		notify_change(dentry, &newattrs, NULL);
-> > >  		mutex_unlock(&dentry->d_inode->i_mutex);
-> > >  
-> > >  		/* mark as kernel-created inode */
-> > > @@ -322,7 +322,7 @@ static int handle_remove(const char *nodename, struct device *dev)
-> > >  			newattrs.ia_valid =
-> > >  				ATTR_UID|ATTR_GID|ATTR_MODE;
-> > >  			mutex_lock(&dentry->d_inode->i_mutex);
-> > > -			notify_change(dentry, &newattrs);
-> > > +			notify_change(dentry, &newattrs, NULL);
-> > >  			mutex_unlock(&dentry->d_inode->i_mutex);
-> > >  			err = vfs_unlink(parent.dentry->d_inode, dentry, NULL);
-> > >  			if (!err || err == -ENOENT)
-> > > diff --git a/fs/attr.c b/fs/attr.c
-> > > index 1449adb..261f5c9 100644
-> > > --- a/fs/attr.c
-> > > +++ b/fs/attr.c
-> > > @@ -167,7 +167,7 @@ void setattr_copy(struct inode *inode, const struct iattr *attr)
-> > >  }
-> > >  EXPORT_SYMBOL(setattr_copy);
-> > >  
-> > > -int notify_change(struct dentry * dentry, struct iattr * attr)
-> > > +int notify_change(struct dentry * dentry, struct iattr * attr, struct inode **delegated_inode)
-> > >  {
-> > >  	struct inode *inode = dentry->d_inode;
-> > >  	umode_t mode = inode->i_mode;
-> > > @@ -243,6 +243,9 @@ int notify_change(struct dentry * dentry, struct iattr * attr)
-> > >  	error = security_inode_setattr(dentry, attr);
-> > >  	if (error)
-> > >  		return error;
-> > > +	error = try_break_deleg(inode, delegated_inode);
-> > > +	if (error)
-> > > +		return error;
-> > >  
-> > >  	if (inode->i_op->setattr)
-> > >  		error = inode->i_op->setattr(dentry, attr);
-> > > diff --git a/fs/cachefiles/interface.c b/fs/cachefiles/interface.c
-> > > index 746ce53..40f5917 100644
-> > > --- a/fs/cachefiles/interface.c
-> > > +++ b/fs/cachefiles/interface.c
-> > > @@ -417,14 +417,14 @@ static int cachefiles_attr_changed(struct fscache_object *_object)
-> > >  		_debug("discard tail %llx", oi_size);
-> > >  		newattrs.ia_valid = ATTR_SIZE;
-> > >  		newattrs.ia_size = oi_size & PAGE_MASK;
-> > > -		ret = notify_change(object->backer, &newattrs);
-> > > +		ret = notify_change(object->backer, &newattrs, NULL);
-> > >  		if (ret < 0)
-> > >  			goto truncate_failed;
-> > >  	}
-> > >  
-> > >  	newattrs.ia_valid = ATTR_SIZE;
-> > >  	newattrs.ia_size = ni_size;
-> > > -	ret = notify_change(object->backer, &newattrs);
-> > > +	ret = notify_change(object->backer, &newattrs, NULL);
-> > >  
-> > >  truncate_failed:
-> > >  	mutex_unlock(&object->backer->d_inode->i_mutex);
-> > > diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-> > > index 19e4435..bd54575 100644
-> > > --- a/fs/ecryptfs/inode.c
-> > > +++ b/fs/ecryptfs/inode.c
-> > > @@ -992,7 +992,7 @@ static int ecryptfs_setattr(struct dentry *dentry, struct iattr *ia)
-> > >  		lower_ia.ia_valid &= ~ATTR_MODE;
-> > >  
-> > >  	mutex_lock(&lower_dentry->d_inode->i_mutex);
-> > > -	rc = notify_change(lower_dentry, &lower_ia);
-> > > +	rc = notify_change(lower_dentry, &lower_ia, NULL);
-> > >  	mutex_unlock(&lower_dentry->d_inode->i_mutex);
-> > >  out:
-> > >  	fsstack_copy_attr_all(inode, lower_inode);
-> > > diff --git a/fs/hpfs/namei.c b/fs/hpfs/namei.c
-> > > index 345713d..1b39afd 100644
-> > > --- a/fs/hpfs/namei.c
-> > > +++ b/fs/hpfs/namei.c
-> > > @@ -407,7 +407,7 @@ again:
-> > >  			/*printk("HPFS: truncating file before delete.\n");*/
-> > >  			newattrs.ia_size = 0;
-> > >  			newattrs.ia_valid = ATTR_SIZE | ATTR_CTIME;
-> > > -			err = notify_change(dentry, &newattrs);
-> > > +			err = notify_change(dentry, &newattrs, NULL);
-> > >  			put_write_access(inode);
-> > >  			if (!err)
-> > >  				goto again;
-> > > diff --git a/fs/inode.c b/fs/inode.c
-> > > index 304db4c..664d631 100644
-> > > --- a/fs/inode.c
-> > > +++ b/fs/inode.c
-> > > @@ -1633,7 +1633,11 @@ static int __remove_suid(struct dentry *dentry, int kill)
-> > >  	struct iattr newattrs;
-> > >  
-> > >  	newattrs.ia_valid = ATTR_FORCE | kill;
-> > > -	return notify_change(dentry, &newattrs);
-> > > +	/*
-> > > +	 * Note we call this on write, so notify_change will not
-> > > +	 * encounter any conflicting delegations:
-> > > +	 */
-> > > +	return notify_change(dentry, &newattrs, NULL);
-> > >  }
-> > >  
-> > >  int file_remove_suid(struct file *file)
-> > > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> > > index b9740cb..e781901 100644
-> > > --- a/fs/nfsd/vfs.c
-> > > +++ b/fs/nfsd/vfs.c
-> > > @@ -426,7 +426,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
-> > >  			goto out_nfserr;
-> > >  		fh_lock(fhp);
-> > >  
-> > > -		host_err = notify_change(dentry, iap);
-> > > +		host_err = notify_change(dentry, iap, NULL);
-> > >  		err = nfserrno(host_err);
-> > >  		fh_unlock(fhp);
-> > >  	}
-> > > @@ -959,7 +959,11 @@ static void kill_suid(struct dentry *dentry)
-> > >  	ia.ia_valid = ATTR_KILL_SUID | ATTR_KILL_SGID | ATTR_KILL_PRIV;
-> > >  
-> > >  	mutex_lock(&dentry->d_inode->i_mutex);
-> > > -	notify_change(dentry, &ia);
-> > > +	/*
-> > > +	 * Note we call this on write, so notify_change will not
-> > > +	 * encounter any conflicting delegations:
-> > > +	 */
-> > > +	notify_change(dentry, &ia, NULL);
-> > >  	mutex_unlock(&dentry->d_inode->i_mutex);
-> > >  }
-> > >  
-> > > diff --git a/fs/open.c b/fs/open.c
-> > > index 8c74100..1a39d29 100644
-> > > --- a/fs/open.c
-> > > +++ b/fs/open.c
-> > > @@ -57,7 +57,7 @@ int do_truncate(struct dentry *dentry, loff_t length, unsigned int time_attrs,
-> > >  		newattrs.ia_valid |= ret | ATTR_FORCE;
-> > >  
-> > >  	mutex_lock(&dentry->d_inode->i_mutex);
-> > > -	ret = notify_change(dentry, &newattrs);
-> > > +	ret = notify_change(dentry, &newattrs, NULL);
-> > >  	mutex_unlock(&dentry->d_inode->i_mutex);
-> > >  	return ret;
-> > >  }
-> > 
-> > Isn't it possible we'll need to break a delegation on truncate()?
+Fair enough.  I'll think it out and do something!  Easy solution: save this patch for later and only support the sync version of copy for the final version of this patch series.
+
+- Bryan
+
 > 
-> In the truncate case, the caller called break_lease, and in the
-> ftruncate case it's called with a write open, and the open already broke
-> any leases or delegations.
+>>> In some common cases the reply will be very quick, and we might be
+>>> better off handling it synchronously.  Could we implement a heuristic
+>>> like "copy synchronously if the filesystem has special support or the
+>>> range is less than the maximum iosize, otherwise copy asynchronously"?
+>>
+>> I'm sure that can be done, I'm just not sure how to do it yet...
 > 
-> Might need a comment--could I get away with just this?:
+> OK, thanks.
 > 
->  	mutex_lock(&dentry->d_inode->i_mutex);
-> +	/* NULL is safe: any delegations have already been broken: */
->  	ret = notify_change(dentry, &newattrs, NULL);
->  	mutex_unlock(&dentry->d_inode->i_mutex);
->  	return ret;
-> 
-> I also added something to the notify_change kerneldoc: "passing NULL is
-> fine for callers holding the file open for write, as there can be no
-> conflicting delegation in that case."
+> --b.
 > 
 
-
-Ahh ok, makes sense. Both comments sound like good additions.
-
-Thanks,
--- 
-Jeff Layton <jlayton@redhat.com>
