@@ -1,149 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:36831 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:18521 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757003Ab3GZLLV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Jul 2013 07:11:21 -0400
-Date: Fri, 26 Jul 2013 07:11:53 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 14/16] nfsd4: delay setting current_fh in open
-Message-ID: <20130726071153.1fd5a416@corrin.poochiereds.net>
-In-Reply-To: <1374094217-31493-16-git-send-email-bfields@redhat.com>
-References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
-	<1374094217-31493-16-git-send-email-bfields@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1757135Ab3GVUhk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Jul 2013 16:37:40 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 4 2/2] NFSv4.1 Use the MDS nfs_server authflavor
+ for pNFS data server connections
+Date: Mon, 22 Jul 2013 20:37:38 +0000
+Message-ID: <1374525457.7972.55.camel@leira.trondhjem.org>
+References: <1374267997-4305-1-git-send-email-andros@netapp.com>
+	 <1374267997-4305-2-git-send-email-andros@netapp.com>
+	 <1374519051.7972.18.camel@leira.trondhjem.org>
+	 <5AD98A36-80F4-4B07-8C87-2D0CE4253A19@netapp.com>
+In-Reply-To: <5AD98A36-80F4-4B07-8C87-2D0CE4253A19@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 17 Jul 2013 16:50:15 -0400
-"J. Bruce Fields" <bfields@redhat.com> wrote:
-
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> This is basically a no-op, to simplify a following patch.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/nfsd/nfs4proc.c |   36 ++++++++++++++++++++----------------
->  1 file changed, 20 insertions(+), 16 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index a7cee86..4c0cbeb 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -230,17 +230,17 @@ static void nfsd4_set_open_owner_reply_cache(struct nfsd4_compound_state *cstate
->  }
->  
->  static __be32
-> -do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
-> +do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state
-> +*cstate, struct nfsd4_open *open, struct svc_fh **resfh)
-	^^^
-nit: weird indentation here
-
->  {
->  	struct svc_fh *current_fh = &cstate->current_fh;
-> -	struct svc_fh *resfh;
->  	int accmode;
->  	__be32 status;
->  
-> -	resfh = kmalloc(sizeof(struct svc_fh), GFP_KERNEL);
-> -	if (!resfh)
-> +	*resfh = kmalloc(sizeof(struct svc_fh), GFP_KERNEL);
-> +	if (!*resfh)
->  		return nfserr_jukebox;
-> -	fh_init(resfh, NFS4_FHSIZE);
-> +	fh_init(*resfh, NFS4_FHSIZE);
->  	open->op_truncate = 0;
->  
->  	if (open->op_create) {
-> @@ -265,7 +265,7 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
->  		 */
->  		status = do_nfsd_create(rqstp, current_fh, open->op_fname.data,
->  					open->op_fname.len, &open->op_iattr,
-> -					resfh, open->op_createmode,
-> +					*resfh, open->op_createmode,
->  					(u32 *)open->op_verf.data,
->  					&open->op_truncate, &open->op_created);
->  
-> @@ -282,29 +282,26 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
->  							FATTR4_WORD1_TIME_MODIFY);
->  	} else {
->  		status = nfsd_lookup(rqstp, current_fh,
-> -				     open->op_fname.data, open->op_fname.len, resfh);
-> +				     open->op_fname.data, open->op_fname.len, *resfh);
->  		fh_unlock(current_fh);
->  	}
->  	if (status)
->  		goto out;
-> -	status = nfsd_check_obj_isreg(resfh);
-> +	status = nfsd_check_obj_isreg(*resfh);
->  	if (status)
->  		goto out;
->  
->  	if (is_create_with_attrs(open) && open->op_acl != NULL)
-> -		do_set_nfs4_acl(rqstp, resfh, open->op_acl, open->op_bmval);
-> +		do_set_nfs4_acl(rqstp, *resfh, open->op_acl, open->op_bmval);
->  
-> -	nfsd4_set_open_owner_reply_cache(cstate, open, resfh);
-> +	nfsd4_set_open_owner_reply_cache(cstate, open, *resfh);
->  	accmode = NFSD_MAY_NOP;
->  	if (open->op_created ||
->  			open->op_claim_type == NFS4_OPEN_CLAIM_DELEGATE_CUR)
->  		accmode |= NFSD_MAY_OWNER_OVERRIDE;
-> -	status = do_open_permission(rqstp, resfh, open, accmode);
-> +	status = do_open_permission(rqstp, *resfh, open, accmode);
->  	set_change_info(&open->op_cinfo, current_fh);
-> -	fh_dup2(current_fh, resfh);
->  out:
-> -	fh_put(resfh);
-> -	kfree(resfh);
->  	return status;
->  }
->  
-> @@ -357,6 +354,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	   struct nfsd4_open *open)
->  {
->  	__be32 status;
-> +	struct svc_fh *resfh = NULL;
->  	struct nfsd4_compoundres *resp;
->  	struct net *net = SVC_NET(rqstp);
->  	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-> @@ -423,7 +421,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	switch (open->op_claim_type) {
->  		case NFS4_OPEN_CLAIM_DELEGATE_CUR:
->  		case NFS4_OPEN_CLAIM_NULL:
-> -			status = do_open_lookup(rqstp, cstate, open);
-> +			status = do_open_lookup(rqstp, cstate, open, &resfh);
->  			if (status)
->  				goto out;
->  			break;
-> @@ -439,6 +437,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  			status = do_open_fhandle(rqstp, cstate, open);
->  			if (status)
->  				goto out;
-> +			resfh = &cstate->current_fh;
->  			break;
->  		case NFS4_OPEN_CLAIM_DELEG_PREV_FH:
->               	case NFS4_OPEN_CLAIM_DELEGATE_PREV:
-> @@ -458,9 +457,14 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	 * successful, it (1) truncates the file if open->op_truncate was
->  	 * set, (2) sets open->op_stateid, (3) sets open->op_delegation.
->  	 */
-> -	status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
-> +	status = nfsd4_process_open2(rqstp, resfh, open);
->  	WARN_ON(status && open->op_created);
->  out:
-> +	if (resfh && resfh != &cstate->current_fh) {
-> +		fh_dup2(&cstate->current_fh, resfh);
-> +		fh_put(resfh);
-> +		kfree(resfh);
-> +	}
->  	nfsd4_cleanup_open_state(open, status);
->  	if (open->op_openowner && !nfsd4_has_session(cstate))
->  		cstate->replay_owner = &open->op_openowner->oo_owner;
-
-Acked-by: Jeff Layton <jlayton@redhat.com>
+T24gTW9uLCAyMDEzLTA3LTIyIGF0IDIwOjI0ICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
+PiBPbiBKdWwgMjIsIDIwMTMsIGF0IDI6NTAgUE0sICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJvbmQu
+TXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ICB3cm90ZToNCj4gDQo+ID4gT24gRnJpLCAyMDEzLTA3
+LTE5IGF0IDE3OjA2IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90ZToNCj4gPj4gRnJvbTog
+QW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gPj4gDQo+ID4+IHBORlMgZGF0YSBz
+ZXJ2ZXJzIGFyZSBub3QgbW91bnRlZCBpbiB0aGUgbm9ybWFsIHNlbnNlIGFzIHRoZXJlIGlzIG5v
+IGFzc29jaWF0ZWQNCj4gPj4gbmZzX3NlcnZlciBzdHJ1Y3R1cmUuDQo+ID4+IENvbW1pdCA0ZWRh
+YTMwOCAiTkZTOiBVc2UgImtyYjVpIiB0byBlc3RhYmxpc2ggTkZTdjQgc3RhdGUgd2hlbmV2ZXIg
+cG9zc2libGUiDQo+ID4+IHVzZXMgdGhlIG5mc19jbGllbnQgY2xfcnBjY2xpZW50IGZvciBhbGwg
+c3RhdGUgbWFuYWdlbWVudCBvcGVyYXRpb25zLCBhbmQNCj4gPj4gd2lsbCB1c2Uga3JiNWkgb3Ig
+YXV0aF9zeXMgd2l0aCBubyByZWdhcmQgdG8gdGhlIG1vdW50IGNvbW1hbmQgYXV0aGZsYXZvcg0K
+PiA+PiBjaG9pY2UuICBGb3Igbm9ybWFsIG1vdW50ZWQgc2VydmVycywgdGhlIG5mc19zZXJ2ZXIg
+Y2xpZW50IGF1dGhmbGF2b3IgaXMgdXNlZA0KPiA+PiBmb3IgYWxsIG5vbi1zdGF0ZSBtYW5hZ2Vt
+ZW50IG9wZXJhdGlvbnMNCj4gPj4gDQo+ID4+IERhdGEgc2VydmVycyBhbHNvIG5lZWQgdG8gdXNl
+IHRoZSBzYW1lIGF1dGhmbGF2b3IgYXMgdGhlIE1EUyBtb3VudCBmb3INCj4gPj4gbm9uLXN0YXRl
+IG1hbmFnZW1lbnQgb3BlcmF0aW9ucy4gQWRkIGEgc3RydXQgcnBjX2NsbnQgdG8gc3RydWN0IG5m
+c19jbGllbnQgZm9yDQo+ID4+IGRhdGEgc2VydmVyIGNvbm5lY3Rpb25zLg0KPiA+IA0KPiA+IElz
+IHRoYXQgc3VmZmljaWVudD8gQXMgZmFyIGFzIEkgY2FuIHRlbGwsIHRoZXJlIGlzIG5vdGhpbmcg
+dGhhdCBzdGF0ZXMNCj4gPiB0aGF0IHRoZSBkYXRhIHNlcnZlcnMgbXVzdCB1c2UgdGhlIHNhbWUg
+c2VjdXJpdHkgbWVjaGFuaXNtIGZvciBhbGwgdGhlDQo+ID4gZmlsZXM/DQo+ID4gSW4gZmFjdCwg
+c2VjdGlvbiAxMy4xMiBzcGVjaWZpY2FsbHkgbWVudGlvbnMgdGhhdCB0aGUgZGF0YSBzZXJ2ZXJz
+IGhhdmUNCj4gPiB0byBzdXBwb3J0IFNFQ0lORk9fTk9fTkFNRSB0byBhbGxvdyBjbGllbnRzIHRv
+IGZpZ3VyZSBvdXQgd2hhdCB0byB1c2UNCj4gPiBmb3IgYSBnaXZlbiBEUyBmaWxlaGFuZGxlLg0K
+PiANCj4gR29vZCBwb2ludC4gIFdlIGRvbid0IHN1cHBvcnQgcGVyLWZpbGUgc2VjdXJpdHksIGJ1
+dCB3ZSBkbyBzdXBwb3J0IHBlciBmc2lkIHNlY3VyaXR5IGFuZCB0aGUgRFMgc2hvdWxkIGZvbGxv
+dyBzdWl0Lg0KPiANCj4gQSBub24tcE5GUyBORlN2NC4xIG1vdW50IGNhbiBzd2l0Y2ggYXV0aCBm
+bGF2b3JzIG9uIGZzaWQgYm91bmRhcmllcyAtIHVuZGVyIHRoZSBjb3ZlciBtb3VudCwgY3JlYXRl
+IG5mc19zZXJ2ZXIgd2l0aCBpdCdzIG93biBycGNfY2xudCBhbmQgYSBkaWZmZXJlbnQgc2VjdXJp
+dHkgZmxhdm9yLiBTbyB3aGF0IHRvIGRvIGluIHRoZSBEUyBjYXNlIHdoZXJlIHRoZSBEUyBleHBv
+cnRzIG1vcmUgdGhhbiBvbmUgZnNpZCwgZWFjaCB3aXRoIGEgZGlmZmVyZW50IHNlY3VyaXR5IGZs
+YXZvcj8NCj4gDQo+IEkgZGlzY3Vzc2VkIHRoaXMgd2l0aCBEcm9zIHdobyBpcyBhbHNvIGRvaW5n
+IHNvbWUgd29yayBvbiB0aGUgU0VDSU5GTyBjb2RlLiBBcyBhIGZpcnN0IHBhc3MsIGl0IHdvdWxk
+IG1ha2Ugc2Vuc2UgdG8gdXNlIHRoZSBzZWN1cml0eSBmbGF2b3IgdGhhdCB0aGUgTURTIHNlcnZl
+ci0+Y2xpZW50IHVzZXMgZm9yIERTIGFjY2VzcywgYW5kIHJlcGxhY2UgdGhlIHNpbmdsZSBkYXRh
+IHNlcnZlciBycGNfY2xudCB3aXRoIGFuIGFycmF5IG9mIHJwY19jbG50cyBvbmUgZm9yIGVhY2gg
+Zmxhdm9yIChzeXMsIGtyYjUsIGtyYjVpLCBrcmI1cCkgIHRoYXQgZ2V0IGFsbG9jYXRlZCAoZm9y
+IHRoZSBEUy1vbmx5IGNhc2UpIHdoZW4gZmlyc3QgbmVlZGVkIGFuZCBjYWNoZWQuDQo+IA0KPiBG
+b3IgdGhlIE1EUyArIERTIGNhc2UgdGhpcyBjYWNoZSBjb3VsZCBhbHNvIGJlIHVzZWQgYnkgdGhl
+IE1EUyBuZnNfc2VydmVyLT5jbGllbnRzLg0KDQpZb3UgZG9uJ3Qgd2FudCB0byB1cyB0aG9zZSBy
+cGNfY2xpZW50cyBkaXJlY3RseSBpbiB0aGUNCm5mc19zZXJ2ZXItPmNsaWVudC4gSW5zdGVhZCB5
+b3Ugd2FudCB0byBjbG9uZSB0aGVtLCBzbyB0aGF0IHRoZXkgY2FuIGJlDQpzaHV0IGRvd24gd2l0
+aG91dCBhZmZlY3RpbmcgdGhlIGZ1bmN0aW9uaW5nIG9mIHRoZSBuZnNfY2xpZW50Lg0KDQpUaGF0
+IHNhaWQsIGl0IHdvdWxkIGJlIGdyZWF0IHRvIGJlIGFibGUgdG8gc2hhcmUgdGhlIHNhbWUgYXV0
+aCBjYWNoZQ0Kd2l0aCBhbGwgcnBjX2NsaWVudHMgdGhhdCB0aGF0IHRhbGsgdG8gdGhlIHNhbWUg
+TkZTIHNlcnZlciBhbmQgdXNlIHRoZQ0Kc2FtZSBhdXRoIGZsYXZvdXIuDQoNCi0tIA0KVHJvbmQg
+TXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5N
+eWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
