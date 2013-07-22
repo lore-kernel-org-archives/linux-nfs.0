@@ -1,47 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:55946 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757162Ab3GVQmR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Jul 2013 12:42:17 -0400
-From: <andros@netapp.com>
-To: <trond.myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 4/4] NFSv4.1 Use clientid management rpc_clnt for secinfo_no_name
-Date: Mon, 22 Jul 2013 12:42:08 -0400
-Message-ID: <1374511328-49579-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1374511328-49579-1-git-send-email-andros@netapp.com>
-References: <1374511328-49579-1-git-send-email-andros@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from userp1040.oracle.com ([156.151.31.81]:21185 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932857Ab3GVS4m convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Jul 2013 14:56:42 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: [PATCH v1 01/19] NFS: Never use user credentials for lease renewal
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA93F4B2750@SACEXCMBX04-PRD.hq.netapp.com>
+Date: Mon, 22 Jul 2013 14:56:36 -0400
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <200ADE3E-431B-4808-AAEC-72FC445A1197@oracle.com>
+References: <20130712155303.1444.62697.stgit@seurat.1015granger.net> <20130712163135.1444.68565.stgit@seurat.1015granger.net> <1374518026.7972.12.camel@leira.trondhjem.org> <82846EE9-8390-45FF-80DF-E3C04538618B@oracle.com> <4FA345DA4F4AE44899BD2B03EEEC2FA93F4B2750@SACEXCMBX04-PRD.hq.netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
 
-As per RFC 5661 Security Considerations
+On Jul 22, 2013, at 2:53 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-Commit 4edaa308 "NFS: Use "krb5i" to establish NFSv4 state whenever possible"
-uses the nfs_client cl_rpcclient for all clientid management operations.
+>> -----Original Message-----
+>> From: Chuck Lever [mailto:chuck.lever@oracle.com]
+>> Sent: Monday, July 22, 2013 2:52 PM
+>> To: Myklebust, Trond
+>> Cc: linux-nfs@vger.kernel.org
+>> Subject: Re: [PATCH v1 01/19] NFS: Never use user credentials for lease
+>> renewal
+>> 
+>> 
+>> On Jul 22, 2013, at 2:33 PM, "Myklebust, Trond"
+>> <Trond.Myklebust@netapp.com> wrote:
+>> 
+>>> On Fri, 2013-07-12 at 12:31 -0400, Chuck Lever wrote:
+>>>> Don't try to use a non-UID-0 user credential for lease management, as
+>>>> that credential can change out from under us.  The server will block
+>>>> NFSv4 lease recovery with NFS4ERR_CLID_INUSE.
+>>>> 
+>>>> Replace minor version-specific callouts with a single function.
+>>>> 
+>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>> ---
+>>>> fs/nfs/nfs4_fs.h     |    4 +---
+>>>> fs/nfs/nfs4proc.c    |    6 +----
+>>>> fs/nfs/nfs4session.c |    2 +-
+>>>> fs/nfs/nfs4state.c   |   55 ++++++--------------------------------------------
+>>>> 4 files changed, 10 insertions(+), 57 deletions(-)
+>>> 
+>>> This won't apply to upstream kernels.
+>> 
+>> Thanks for having a look... As the cover letter stated, this series applies to
+>> 3.10.
+>> 
+>> Now that 3.11-rc2 is available, I'm porting the series to the latest upstream,
+>> with appropriate adjustments for NFSv4.2 support.  I hope to post the new
+>> series tomorrow or Wednesday.
+>> 
+> OK. Please note that I've already applied 02/19 as that seems to be unrelated to anything else.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4proc.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+I'll drop 02/19 from my resend.  Thanks.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6a30a72..0452b61 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7098,7 +7098,8 @@ _nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
- 		.rpc_argp = &args,
- 		.rpc_resp = &res,
- 	};
--	return nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
-+	return nfs4_call_sync(server->nfs_client->cl_rpcclient, server, &msg,
-+				&args.seq_args, &res.seq_res, 0);
- }
- 
- static int
 -- 
-1.8.3.1
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
