@@ -1,100 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay2.sgi.com ([192.48.179.30]:36440 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1757811Ab3GRADU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 20:03:20 -0400
-Date: Wed, 17 Jul 2013 19:03:19 -0500
-From: Ben Myers <bpm@sgi.com>
-To: "J.Bruce Fields" <bfields@citi.umich.edu>
-Cc: NeilBrown <neilb@suse.de>, Olga Kornievskaia <aglo@citi.umich.edu>,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: Re: Is tcp autotuning really what NFS wants?
-Message-ID: <20130718000319.GL1681@sgi.com>
-References: <20130710092255.0240a36d@notabene.brown>
- <20130710022735.GI8281@fieldses.org>
- <20130710143233.77e35721@notabene.brown>
- <20130710190727.GA22305@fieldses.org>
- <20130715143203.51bc583b@notabene.brown>
- <20130716015803.GA5271@fieldses.org>
- <20130716140021.312b5b07@notabene.brown>
- <20130716142430.GA11977@fieldses.org>
+Received: from mx11.netapp.com ([216.240.18.76]:54419 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932820Ab3GVTwZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Jul 2013 15:52:25 -0400
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFSv4.1 Increase NFS4_DEF_SLOT_TABLE_SIZE
+Date: Mon, 22 Jul 2013 19:52:23 +0000
+Message-ID: <B640AD15-44D5-4BB2-A378-2CB8DEFB49A8@netapp.com>
+References: <1374268191-4469-1-git-send-email-andros@netapp.com>
+ <1374518181.7972.14.camel@leira.trondhjem.org>
+ <B0405D50-D8BE-496D-8B72-0E09B13B7D77@netapp.com>
+ <1374520655.7972.27.camel@leira.trondhjem.org>
+In-Reply-To: <1374520655.7972.27.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130716142430.GA11977@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Bruce,
 
-On Tue, Jul 16, 2013 at 10:24:30AM -0400, J.Bruce Fields wrote:
-> Adding Ben Myers to Cc: in case he has any testing help or advice (see
-> below):
-> 
-> On Tue, Jul 16, 2013 at 02:00:21PM +1000, NeilBrown wrote:
-> > That would be because I only allowed extra requests up to half the number of
-> > idle threads, and there would be zero idle threads.
-> > 
-> > So yes - I see your point.
-> > 
-> > I now think that it is sufficient to just allow one request through per
-> > socket.  While there is high memory pressure, that is sufficient.  When the
-> > memory pressure drops, that should be enough to cause sndbuf to grow.
-> > 
-> > We should be able to use xpt_reserved to check if this is the only request
-> > or not: 
-> 
-> A remaining possible bad case is if the number of "bad" sockets is more
-> than the number of threads, and if the problem is something that won't
-> resolve itself by just waiting a little while.
-> 
-> I don't know if that's likely in practice.  Maybe a network failure cuts
-> you off from a large swath (but not all) of your clients?  Or maybe some
-> large proportion of your clients are just slow?
-> 
-> But this is two lines and looks likely to solve the immediate
-> problem:
-> 
-> > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> > index 80a6640..5b832ef 100644
-> > --- a/net/sunrpc/svc_xprt.c
-> > +++ b/net/sunrpc/svc_xprt.c
-> > @@ -331,7 +331,8 @@ static bool svc_xprt_has_something_to_do(struct svc_xprt *xprt)
-> >  	if (xprt->xpt_flags & ((1<<XPT_CONN)|(1<<XPT_CLOSE)))
-> >  		return true;
-> >  	if (xprt->xpt_flags & ((1<<XPT_DATA)|(1<<XPT_DEFERRED)))
-> > -		return xprt->xpt_ops->xpo_has_wspace(xprt);
-> > +		return xprt->xpt_ops->xpo_has_wspace(xprt) ||
-> > +			atomic_read(&xprt->xpt_reserved) == 0;
-> >  	return false;
-> >  }
-> >  
-> > @@ -730,7 +731,8 @@ static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
-> >  		newxpt = xprt->xpt_ops->xpo_accept(xprt);
-> >  		if (newxpt)
-> >  			svc_add_new_temp_xprt(serv, newxpt);
-> > -	} else if (xprt->xpt_ops->xpo_has_wspace(xprt)) {
-> > +	} else if (xprt->xpt_ops->xpo_has_wspace(xprt) ||
-> > +		   atomic_read(&xprt->xpt_reserved) == 0) {
-> >  		/* XPT_DATA|XPT_DEFERRED case: */
-> >  		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
-> >  			rqstp, rqstp->rq_pool->sp_id, xprt,
-> > 
-> > 
-> > Thoughts?
-> > 
-> > I tried testing this, but xpo_has_wspace never fails for me, even if I remove
-> > the calls to svc_sock_setbufsize (which probably aren't wanted for TCP any
-> > more).
-> 
-> Ben, do you still have a setup that can reproduce the problem?  Or did you
-> ever find an easier way to reproduce?
+On Jul 22, 2013, at 3:17 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+ wrote:
 
-Unfortunately I don't still have that test rig handy, and I did not find an
-easier way to reproduce this.  I do agree that it 'is sufficient to just allow
-one request through per socket'... probably that would have solved the problem
-in our case.  Maybe it would help to limit the amount of memory in your system
-to try and induce additional memory pressure?  IIRC it was a 1mb block size
-read workload where we would hit this.
+> On Mon, 2013-07-22 at 19:02 +0000, Adamson, Andy wrote:
+>> On Jul 22, 2013, at 2:36 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+>> wrote:
+>> 
+>>> On Fri, 2013-07-19 at 17:09 -0400, andros@netapp.com wrote:
+>>>> From: Andy Adamson <andros@netapp.com>
+>>>> 
+>>>> max_session_slots is a ushort. Bump NFS4_DEF_SLOT_TABLE_SIZE to the max ushort
+>>>> value: e.g. ask for 256 slots and let the server negotiate down if needed.
+>>>> 
+>>>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>>>> ---
+>>>> fs/nfs/nfs4session.h | 2 +-
+>>>> 1 file changed, 1 insertion(+), 1 deletion(-)
+>>>> 
+>>>> diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
+>>>> index 3a153d8..8b7899f 100644
+>>>> --- a/fs/nfs/nfs4session.h
+>>>> +++ b/fs/nfs/nfs4session.h
+>>>> @@ -8,7 +8,7 @@
+>>>> #define __LINUX_FS_NFS_NFS4SESSION_H
+>>>> 
+>>>> /* maximum number of slots to use */
+>>>> -#define NFS4_DEF_SLOT_TABLE_SIZE (16U)
+>>>> +#define NFS4_DEF_SLOT_TABLE_SIZE (256U)
+>>> 
+>>> Could we please make this smaller? I agree that 16 is too small (as long
+>>> as servers don't do dynamic slot allocation), but 256 is very high for a
+>>> default.
+>>> 
+>>> How about 64?
+>> 
+>> IIIRC the (non-dynamic) session implemenations that I've seen treat the ca_maxrequests coming from the client as the maximum number of session slots that the client can handle - IOW I don't see servers returning a higher ca_maxrequests than was sent by the client. This is why I chose a larger number for the default. It is, after all, a server resource and shouldn't the client grab as many session slots as it can?
+> 
 
-Thanks,
-Ben
+64 is OK with me - it's large enough to handle most workloads.  I think no matter what we choose we will have to note this as a performance parameter to adjust until the dynamic session implementations come on line.
+
+> The problem is that once you implement dynamic slot tables, the
+> negotiated session slot table size becomes the _minimum_ number of
+> slots.
+
+Could you explain this a bit more? I'd like to understand your reasoning.  I can see that the dynamic session goal is to end up with the highest_slotid value to be just high enough to meet the actual load, but not waste server slot resources. But I don't understand why the client value of ca_maxrequests makes a difference in the dynamic sessions case because whether the client starts high or low, the server will adjust the value to one that fits the load.
+
+The initial (ca_maxrequests) value is a  guess for both the client and the server, until actual load occurs. So any initial value could be way off.  Even with 16 slots, if the load is mainly metadata, the highest_used_slotid could easily be 4. Or you could start off with 64 slots and need 150.
+
+> That's why a client that supports dynamic slot tables wants to
+> keep the ca_maxrequests _small_ in the hope that the server can then
+> dynamically adjust the total number of slots upwards in order to meet
+> the actual load.
+
+
+I would think the client that supports dynamic sessions would want to keep the ca_maxrequests high so that if the actual load is high right out of the gate, the application doesn't have an initial slow start waiting for the server to dynamically bump up the slots. If the server wants to start the client at a low value, it returns a low ca_maxrequests vaule in CREATE_SESSION.  It is a server resource.
+
+
+
+-->Andy
+
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+
