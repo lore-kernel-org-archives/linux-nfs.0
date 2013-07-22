@@ -1,142 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53662 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:55946 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757000Ab3GQUuZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 16:50:25 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 14/16] nfsd4: delay setting current_fh in open
-Date: Wed, 17 Jul 2013 16:50:15 -0400
-Message-Id: <1374094217-31493-16-git-send-email-bfields@redhat.com>
-In-Reply-To: <1374094217-31493-1-git-send-email-bfields@redhat.com>
-References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+	id S1756461Ab3GVQmQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Jul 2013 12:42:16 -0400
+From: <andros@netapp.com>
+To: <trond.myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 2/4] NFSv4.1 Use clientid management rpc_clnt for fs_locations
+Date: Mon, 22 Jul 2013 12:42:06 -0400
+Message-ID: <1374511328-49579-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1374511328-49579-1-git-send-email-andros@netapp.com>
+References: <1374511328-49579-1-git-send-email-andros@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Andy Adamson <andros@netapp.com>
 
-This is basically a no-op, to simplify a following patch.
+As per RFC 3530 and RFC 5661 Security Considerations.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Commit 4edaa308 "NFS: Use "krb5i" to establish NFSv4 state whenever possible"
+uses the nfs_client cl_rpcclient for all clientid management operations.
+
+Remove un-needed rpc_clnt parameter from nfs4_proc_fs_locations and friends.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4proc.c |   36 ++++++++++++++++++++----------------
- 1 file changed, 20 insertions(+), 16 deletions(-)
+ fs/nfs/nfs4_fs.h       |  2 +-
+ fs/nfs/nfs4namespace.c |  2 +-
+ fs/nfs/nfs4proc.c      | 13 +++++++------
+ 3 files changed, 9 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index a7cee86..4c0cbeb 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -230,17 +230,17 @@ static void nfsd4_set_open_owner_reply_cache(struct nfsd4_compound_state *cstate
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index ee81e35..97feff2 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -231,7 +231,7 @@ extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
+ extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
+ extern int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait);
+ extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
+-extern int nfs4_proc_fs_locations(struct rpc_clnt *, struct inode *, const struct qstr *,
++extern int nfs4_proc_fs_locations(struct inode *, const struct qstr *,
+ 				  struct nfs4_fs_locations *, struct page *);
+ extern struct rpc_clnt *nfs4_proc_lookup_mountpoint(struct inode *, struct qstr *,
+ 			    struct nfs_fh *, struct nfs_fattr *);
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index cdb0b41..dca2f3a 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -350,7 +350,7 @@ static struct vfsmount *nfs_do_refmount(struct rpc_clnt *client, struct dentry *
+ 	dprintk("%s: getting locations for %s/%s\n",
+ 		__func__, parent->d_name.name, dentry->d_name.name);
+ 
+-	err = nfs4_proc_fs_locations(client, parent->d_inode, &dentry->d_name, fs_locations, page);
++	err = nfs4_proc_fs_locations(parent->d_inode, &dentry->d_name, fs_locations, page);
+ 	dput(parent);
+ 	if (err != 0 ||
+ 	    fs_locations->nlocations <= 0 ||
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7a846b6..7761802 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2831,7 +2831,7 @@ err_free_label:
+  * Note that we'll actually follow the referral later when
+  * we detect fsid mismatch in inode revalidation
+  */
+-static int nfs4_get_referral(struct rpc_clnt *client, struct inode *dir,
++static int nfs4_get_referral(struct inode *dir,
+ 			     const struct qstr *name, struct nfs_fattr *fattr,
+ 			     struct nfs_fh *fhandle)
+ {
+@@ -2846,7 +2846,7 @@ static int nfs4_get_referral(struct rpc_clnt *client, struct inode *dir,
+ 	if (locations == NULL)
+ 		goto out;
+ 
+-	status = nfs4_proc_fs_locations(client, dir, name, locations, page);
++	status = nfs4_proc_fs_locations(dir, name, locations, page);
+ 	if (status != 0)
+ 		goto out;
+ 	/* Make sure server returned a different fsid for the referral */
+@@ -3025,7 +3025,7 @@ static int nfs4_proc_lookup_common(struct rpc_clnt **clnt, struct inode *dir,
+ 			err = -ENOENT;
+ 			goto out;
+ 		case -NFS4ERR_MOVED:
+-			err = nfs4_get_referral(client, dir, name, fattr, fhandle);
++			err = nfs4_get_referral(dir, name, fattr, fhandle);
+ 			goto out;
+ 		case -NFS4ERR_WRONGSEC:
+ 			err = -EPERM;
+@@ -5733,7 +5733,7 @@ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
+ 	fattr->nlink = 2;
  }
  
- static __be32
--do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
-+do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state
-+*cstate, struct nfsd4_open *open, struct svc_fh **resfh)
- {
- 	struct svc_fh *current_fh = &cstate->current_fh;
--	struct svc_fh *resfh;
- 	int accmode;
- 	__be32 status;
+-static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
++static int _nfs4_proc_fs_locations(struct inode *dir,
+ 				   const struct qstr *name,
+ 				   struct nfs4_fs_locations *fs_locations,
+ 				   struct page *page)
+@@ -5756,6 +5756,7 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
+ 		.rpc_argp = &args,
+ 		.rpc_resp = &res,
+ 	};
++	struct rpc_clnt *client = NFS_SERVER(dir)->nfs_client->cl_rpcclient;
+ 	int status;
  
--	resfh = kmalloc(sizeof(struct svc_fh), GFP_KERNEL);
--	if (!resfh)
-+	*resfh = kmalloc(sizeof(struct svc_fh), GFP_KERNEL);
-+	if (!*resfh)
- 		return nfserr_jukebox;
--	fh_init(resfh, NFS4_FHSIZE);
-+	fh_init(*resfh, NFS4_FHSIZE);
- 	open->op_truncate = 0;
- 
- 	if (open->op_create) {
-@@ -265,7 +265,7 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
- 		 */
- 		status = do_nfsd_create(rqstp, current_fh, open->op_fname.data,
- 					open->op_fname.len, &open->op_iattr,
--					resfh, open->op_createmode,
-+					*resfh, open->op_createmode,
- 					(u32 *)open->op_verf.data,
- 					&open->op_truncate, &open->op_created);
- 
-@@ -282,29 +282,26 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
- 							FATTR4_WORD1_TIME_MODIFY);
- 	} else {
- 		status = nfsd_lookup(rqstp, current_fh,
--				     open->op_fname.data, open->op_fname.len, resfh);
-+				     open->op_fname.data, open->op_fname.len, *resfh);
- 		fh_unlock(current_fh);
- 	}
- 	if (status)
- 		goto out;
--	status = nfsd_check_obj_isreg(resfh);
-+	status = nfsd_check_obj_isreg(*resfh);
- 	if (status)
- 		goto out;
- 
- 	if (is_create_with_attrs(open) && open->op_acl != NULL)
--		do_set_nfs4_acl(rqstp, resfh, open->op_acl, open->op_bmval);
-+		do_set_nfs4_acl(rqstp, *resfh, open->op_acl, open->op_bmval);
- 
--	nfsd4_set_open_owner_reply_cache(cstate, open, resfh);
-+	nfsd4_set_open_owner_reply_cache(cstate, open, *resfh);
- 	accmode = NFSD_MAY_NOP;
- 	if (open->op_created ||
- 			open->op_claim_type == NFS4_OPEN_CLAIM_DELEGATE_CUR)
- 		accmode |= NFSD_MAY_OWNER_OVERRIDE;
--	status = do_open_permission(rqstp, resfh, open, accmode);
-+	status = do_open_permission(rqstp, *resfh, open, accmode);
- 	set_change_info(&open->op_cinfo, current_fh);
--	fh_dup2(current_fh, resfh);
- out:
--	fh_put(resfh);
--	kfree(resfh);
+ 	dprintk("%s: start\n", __func__);
+@@ -5775,7 +5776,7 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
  	return status;
  }
  
-@@ -357,6 +354,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	   struct nfsd4_open *open)
- {
- 	__be32 status;
-+	struct svc_fh *resfh = NULL;
- 	struct nfsd4_compoundres *resp;
- 	struct net *net = SVC_NET(rqstp);
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-@@ -423,7 +421,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	switch (open->op_claim_type) {
- 		case NFS4_OPEN_CLAIM_DELEGATE_CUR:
- 		case NFS4_OPEN_CLAIM_NULL:
--			status = do_open_lookup(rqstp, cstate, open);
-+			status = do_open_lookup(rqstp, cstate, open, &resfh);
- 			if (status)
- 				goto out;
- 			break;
-@@ -439,6 +437,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 			status = do_open_fhandle(rqstp, cstate, open);
- 			if (status)
- 				goto out;
-+			resfh = &cstate->current_fh;
- 			break;
- 		case NFS4_OPEN_CLAIM_DELEG_PREV_FH:
-              	case NFS4_OPEN_CLAIM_DELEGATE_PREV:
-@@ -458,9 +457,14 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	 * successful, it (1) truncates the file if open->op_truncate was
- 	 * set, (2) sets open->op_stateid, (3) sets open->op_delegation.
- 	 */
--	status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
-+	status = nfsd4_process_open2(rqstp, resfh, open);
- 	WARN_ON(status && open->op_created);
- out:
-+	if (resfh && resfh != &cstate->current_fh) {
-+		fh_dup2(&cstate->current_fh, resfh);
-+		fh_put(resfh);
-+		kfree(resfh);
-+	}
- 	nfsd4_cleanup_open_state(open, status);
- 	if (open->op_openowner && !nfsd4_has_session(cstate))
- 		cstate->replay_owner = &open->op_openowner->oo_owner;
+-int nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
++int nfs4_proc_fs_locations(struct inode *dir,
+ 			   const struct qstr *name,
+ 			   struct nfs4_fs_locations *fs_locations,
+ 			   struct page *page)
+@@ -5784,7 +5785,7 @@ int nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
+ 	int err;
+ 	do {
+ 		err = nfs4_handle_exception(NFS_SERVER(dir),
+-				_nfs4_proc_fs_locations(client, dir, name, fs_locations, page),
++				_nfs4_proc_fs_locations(dir, name, fs_locations, page),
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
 -- 
-1.7.9.5
+1.8.3.1
 
