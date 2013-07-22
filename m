@@ -1,73 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f42.google.com ([209.85.160.42]:50901 "EHLO
-	mail-pb0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932074Ab3GRO5o convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jul 2013 10:57:44 -0400
-Received: by mail-pb0-f42.google.com with SMTP id un1so3285314pbc.15
-        for <linux-nfs@vger.kernel.org>; Thu, 18 Jul 2013 07:57:43 -0700 (PDT)
+Received: from mx12.netapp.com ([216.240.18.77]:44817 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932748Ab3GVTI1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Jul 2013 15:08:27 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v1 04/19] NFS: Refactor nfs4_call_data_sequence()
+Date: Mon, 22 Jul 2013 19:08:26 +0000
+Message-ID: <1374520105.7972.22.camel@leira.trondhjem.org>
+References: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
+	 <20130712163202.1444.45080.stgit@seurat.1015granger.net>
+In-Reply-To: <20130712163202.1444.45080.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <1374098384.17005.10.camel@leira.trondhjem.org>
-References: <CAHsu+b_hhSr2vwcwM8TX3=xF=3HffUXG=YLVLcsEpH1wHn+JoA@mail.gmail.com>
-	<A5C56FD6-9E14-43A3-8627-1C8F77EC6926@oracle.com>
-	<CAHsu+b9vWUyCGHSs==Na=VntwvYp65=rva7+y9aQDXquxX4t-A@mail.gmail.com>
-	<1374098384.17005.10.camel@leira.trondhjem.org>
-Date: Thu, 18 Jul 2013 16:57:43 +0200
-Message-ID: <CAHsu+b_K-KL0gE4YaOYSCjAz3tKvVNeiGxQWsQ6ObY0Udp_Nyw@mail.gmail.com>
-Subject: Re: Error writing to nfs4 with 3.11-rc1
-From: Andre Heider <a.heider@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 17, 2013 at 11:59 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Wed, 2013-07-17 at 21:35 +0200, Andre Heider wrote:
->> On Wed, Jul 17, 2013 at 9:10 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> >
->> > On Jul 17, 2013, at 2:55 PM, Andre Heider <a.heider@gmail.com> wrote:
->> >
->> >> Hi,
->> >>
->> >> I'm having problems using 3.11-rc1 as nfs4 client (with a FreeBSD 9.1
->> >> server) using sec=sys.
->> >>
->> >> With the same server+client setup, just booting different kernels:
->> >> 3.9.10 works without issues
->> >> 3.10.1 works too, but introduced "RPC: AUTH_GSS upcall timed out." in
->> >> dmesg (iirc I don't need gss with sec=sys)
->> >
->> > Not a requirement, but running gssd should make that message go away.  The client is attempting to use krb5i to manage its lease on the server, and falling back to AUTH_UNIX when it sees gssd is not running.
->> >
->> >> 3.11-rc1 reading from the server still works, writing fails
->> >>
->> >> Even a simple touch on the share fails with:
->> >> touch: cannot touch ‘/mnt/andre/test’: Input/output error
->> >
->> > A network capture is a reasonable place to start.
->> >
->> >   # tcpdump -s0 -w /tmp/raw
->> >
->> > Then try your touch test again.  Stop the tcpdump.  You can post a compressed version of the raw dump here if it's short.
->>
->> Attached two dumps, one from 3.10 (works) and one from 3.11 (doesn't work).
->
-> The FreeBSD server is returning NFS4ERR_ATTRNOTSUPP to the OPEN, despite
-> the fact that we're requesting the same attributes in both cases. I'll
-> bet it is the fact that we send a bitmap of 3 words instead of 2.
->
-> This is a problem: the Linux client clearly has the spec on its side,
-> and the FreeBSD server is wrong to reject a 3 word bitmap, as long as
-> we're not requesting any actual attributes that it doesn't support.
-> According to the spec, we could send a bitmap of any length we like.
->
-> On the other hand, we have a situation where something used to work, and
-> now doesn't. Please check out the 2 patches I just sent out, and see if
-> they help.
-
-With these 2 patches, nfsv4 connectivity to a FreeBSD server is working again.
-
-Thanks for the quick patches,
-Andre
+T24gRnJpLCAyMDEzLTA3LTEyIGF0IDEyOjMyIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+UHVsbCBtYWluIGxvZ2ljIG91dCBvZiBuZnM0X2NhbGxfZGF0YV9zZXF1ZW5jZSgpIHNvIGl0IGNh
+bg0KPiBldmVudHVhbGx5IGJlIHNoYXJlZCB3aXRoIHRoZSBORlN2NC4wIGNhbGxfc3luYyBwYXRo
+LiAgVGhlIG5ldw0KPiBoZWxwZXIgZnVuY3Rpb24gaXMgbGVmdCBiZWhpbmQgdGhlIE5GU3Y0LjEg
+Q09ORklHIHN3aXRjaCBmb3Igbm93IHRvDQo+IGtlZXAgY29tcGlsZXIgd2FybmluZyBub2lzZSBh
+dCBhIG1pbmltdW0uDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBDaHVjayBMZXZlciA8Y2h1Y2subGV2
+ZXJAb3JhY2xlLmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvbmZzNHByb2MuYyB8ICAgMjggKysrKysr
+KysrKysrKysrKysrLS0tLS0tLS0tLQ0KPiAgMSBmaWxlIGNoYW5nZWQsIDE4IGluc2VydGlvbnMo
+KyksIDEwIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5j
+IGIvZnMvbmZzL25mczRwcm9jLmMNCj4gaW5kZXggMmY2ZjNiOS4uZTUyZDJiMyAxMDA2NDQNCj4g
+LS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCj4gKysrIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gQEAg
+LTM5Myw2ICszOTMsMjMgQEAgc3RhdGljIHZvaWQgcmVuZXdfbGVhc2UoY29uc3Qgc3RydWN0IG5m
+c19zZXJ2ZXIgKnNlcnZlciwgdW5zaWduZWQgbG9uZyB0aW1lc3RhbXANCj4gIA0KPiAgI2lmIGRl
+ZmluZWQoQ09ORklHX05GU19WNF8xKQ0KPiAgDQo+ICtzdGF0aWMgaW50IG5mczRfcnVuX3JwY190
+YXNrKHN0cnVjdCBycGNfY2xudCAqY2xudCwNCj4gKwkJCSAgICAgc3RydWN0IHJwY19tZXNzYWdl
+ICptc2csDQo+ICsJCQkgICAgIHN0cnVjdCBycGNfdGFza19zZXR1cCAqdGFza19zZXR1cCkNCj4g
+K3sNCj4gKwlzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2s7DQo+ICsJaW50IHJldDsNCj4gKw0KPiArCXRh
+c2sgPSBycGNfcnVuX3Rhc2sodGFza19zZXR1cCk7DQo+ICsJaWYgKElTX0VSUih0YXNrKSkNCj4g
+KwkJcmV0ID0gUFRSX0VSUih0YXNrKTsNCj4gKwllbHNlIHsNCj4gKwkJcmV0ID0gdGFzay0+dGtf
+c3RhdHVzOw0KPiArCQlycGNfcHV0X3Rhc2sodGFzayk7DQo+ICsJfQ0KPiArCXJldHVybiByZXQ7
+DQo+ICt9DQoNClBsZWFzZSBkb24ndCBzcGxpdCB0aGlzIG91dC4gRXZlbnR1YWxseSwgc29tZW9u
+ZSBpcyBnb2luZyB0byBjYWxsIHRoaXMNCndpdGggdGhlIFJQQ19UQVNLX0FTWU5DIGZsYWcgc2V0
+LCBhbmQgYWxsIGhlbGwgd2lsbCBicmVhayBsb29zZS4NCg0KPiArDQo+ICBzdGF0aWMgdm9pZCBu
+ZnM0MV9zZXF1ZW5jZV9mcmVlX3Nsb3Qoc3RydWN0IG5mczRfc2VxdWVuY2VfcmVzICpyZXMpDQo+
+ICB7DQo+ICAJc3RydWN0IG5mczRfc2Vzc2lvbiAqc2Vzc2lvbjsNCj4gQEAgLTY3NCw4ICs2OTEs
+NiBAQCBzdGF0aWMgaW50IG5mczRfY2FsbF9zeW5jX3NlcXVlbmNlKHN0cnVjdCBycGNfY2xudCAq
+Y2xudCwNCj4gIAkJCQkgICBzdHJ1Y3QgbmZzNF9zZXF1ZW5jZV9hcmdzICphcmdzLA0KPiAgCQkJ
+CSAgIHN0cnVjdCBuZnM0X3NlcXVlbmNlX3JlcyAqcmVzKQ0KPiAgew0KPiAtCWludCByZXQ7DQo+
+IC0Jc3RydWN0IHJwY190YXNrICp0YXNrOw0KPiAgCXN0cnVjdCBuZnM0MV9jYWxsX3N5bmNfZGF0
+YSBkYXRhID0gew0KPiAgCQkuc2VxX3NlcnZlciA9IHNlcnZlciwNCj4gIAkJLnNlcV9hcmdzID0g
+YXJncywNCj4gQEAgLTY4OCwxNCArNzAzLDcgQEAgc3RhdGljIGludCBuZnM0X2NhbGxfc3luY19z
+ZXF1ZW5jZShzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQsDQo+ICAJCS5jYWxsYmFja19kYXRhID0gJmRh
+dGENCj4gIAl9Ow0KPiAgDQo+IC0JdGFzayA9IHJwY19ydW5fdGFzaygmdGFza19zZXR1cCk7DQo+
+IC0JaWYgKElTX0VSUih0YXNrKSkNCj4gLQkJcmV0ID0gUFRSX0VSUih0YXNrKTsNCj4gLQllbHNl
+IHsNCj4gLQkJcmV0ID0gdGFzay0+dGtfc3RhdHVzOw0KPiAtCQlycGNfcHV0X3Rhc2sodGFzayk7
+DQo+IC0JfQ0KPiAtCXJldHVybiByZXQ7DQo+ICsJcmV0dXJuIG5mczRfcnVuX3JwY190YXNrKGNs
+bnQsIG1zZywgJnRhc2tfc2V0dXApOw0KPiAgfQ0KPiAgDQo+ICAjZWxzZQ0KPiANCj4gLS0NCj4g
+VG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJl
+IGxpbnV4LW5mcyIgaW4NCj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2Vy
+Lmtlcm5lbC5vcmcNCj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVs
+Lm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
+RlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
+bQ0Kd3d3Lm5ldGFwcC5jb20NCg==
