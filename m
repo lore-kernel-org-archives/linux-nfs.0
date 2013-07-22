@@ -1,68 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59879 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:34367 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754299Ab3GOLLB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jul 2013 07:11:01 -0400
-Date: Mon, 15 Jul 2013 07:11:19 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "bfields@fieldses.org" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: NFS inode cache zap on lock - please advice
-Message-ID: <20130715071119.7997d9ce@corrin.poochiereds.net>
-In-Reply-To: <51E3A1D7.8090901@parallels.com>
-References: <51A6EC86.9010201@parallels.com>
-	<20130530114216.GA11854@fieldses.org>
-	<51A73FA6.30503@parallels.com>
-	<20130712205242.GB10562@fieldses.org>
-	<51E3A1D7.8090901@parallels.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+	id S932676Ab3GVTaD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Jul 2013 15:30:03 -0400
+Date: Mon, 22 Jul 2013 15:30:00 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [RFC 4/5] NFSD: Defer copying
+Message-ID: <20130722193000.GD10109@fieldses.org>
+References: <1374267830-30154-1-git-send-email-bjschuma@netapp.com>
+ <1374267830-30154-5-git-send-email-bjschuma@netapp.com>
+ <20130722185002.GB10109@fieldses.org>
+ <51ED8549.3040308@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <51ED8549.3040308@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 15 Jul 2013 11:16:39 +0400
-Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
-
-> 13.07.2013 00:52, bfields@fieldses.org пишет:
-> > On Thu, May 30, 2013 at 04:01:42PM +0400, Stanislav Kinsbursky wrote:
+On Mon, Jul 22, 2013 at 03:17:29PM -0400, Bryan Schumaker wrote:
+> On 07/22/2013 02:50 PM, J. Bruce Fields wrote:
+> > On Fri, Jul 19, 2013 at 05:03:49PM -0400, bjschuma@netapp.com wrote:
+> >> From: Bryan Schumaker <bjschuma@netapp.com>
 > >>
-> >> Thanks, Bruce!
-> >> I'll have at
-> >>
-> >> BTW, do you have any decisions what we will do with UMH tracker?
-> > Crap, apologies, I completely dropped this.  Have you looked at it
-> > again lately?
+> >> Rather than performing the copy right away, schedule it to run later and
+> >> reply to the client.  Later, send a callback to notify the client that
+> >> the copy has finished.
+> > 
+> > I believe you need to implement the referring triple support described
+> > in http://tools.ietf.org/html/rfc5661#section-2.10.6.3 to fix the race
+> > described in
+> > http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-15.1.3
+> > .
 > 
-> Don't worry, it's all right. And I added Jeff and mailing list to 
-> recipients.
+> I'll re-read and re-write.
 > 
-> I was thinking about using kernel_thread() instead of kthread_create().
-> This might work, because will give us kthread with same root and same 
-> capabilities as mount caller had.
+> > 
+> > I see cb_delay initialized below, but not otherwise used.  Am I missing
+> > anything?
 > 
-> What you, guys, think about it?
+> Whoops!  I was using that earlier to try to fake up a callback, but I eventually decided it's easier to just do the copy asynchronously.  I must have forgotten to take it out :(
+> 
+> > 
+> > What about OFFLOAD_STATUS and OFFLOAD_ABORT?
+> 
+> I haven't thought out those too much... I haven't thought about a use for them on the client yet.
 
-Well, it's not the caller of mount that we're concerned with here. It's
-the caller of rpc.nfsd. That program is going to make the kernel spawn
-a bunch of nfsd kthreads and then exit. So I guess the basic idea here
-is to preserve the namespace info, root and creds from that process
-before it exits. Spawning a kthread would work for that, and might be
-simplest, but we should weigh this idea carefully before we settle on
-it.
+If it might be a long-running copy, I assume the client needs the
+ability to abort if the caller is killed.
 
-Let's assume for a moment that we want to do all of this in userspace
-instead (Eric B.'s first suggestion). I assume the kernel would need to
-pass a fd to the program so it can call setns() with it. Where would it
-get this fd, considering that we're calling this from a nfsd kthread?
+(Dumb question: what happens on the network partition?  Does the server
+abort the copy when it expires the client state?)
 
-What else would it need? Would it need a path to chroot() to? Credential
-info so it can call setuid/setgid?
+In any case,
+http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-15.1.3
+says "If a server's COPY operation returns a stateid, then the server
+MUST also support these operations: CB_OFFLOAD, OFFLOAD_ABORT, and
+OFFLOAD_STATUS."
 
-Other caveats might be that the binary needn't exist in the container
-to which you're chrooting. That's not really a problem as long as all
-the libs get linked in before the program does the switcharoo, but it
-might make troubleshooting problems in this code difficult from a
-user sitting in that container.
+So even if we've no use for them on the client then we still need to
+implement them (and probably just write a basic pynfs test).  Either
+that or update the spec.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+> > In some common cases the reply will be very quick, and we might be
+> > better off handling it synchronously.  Could we implement a heuristic
+> > like "copy synchronously if the filesystem has special support or the
+> > range is less than the maximum iosize, otherwise copy asynchronously"?
+> 
+> I'm sure that can be done, I'm just not sure how to do it yet...
+
+OK, thanks.
+
+--b.
