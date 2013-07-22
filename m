@@ -1,54 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:64114 "EHLO mx12.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:50756 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933459Ab3GRUYo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Jul 2013 16:24:44 -0400
+	id S932903Ab3GVSxz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Jul 2013 14:53:55 -0400
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "nfsv4@ietf.org" <nfsv4@ietf.org>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: Should BIND_CONN_TO_SESSION be allowed to return
- NFS4ERR_WRONG_CRED
-Date: Thu, 18 Jul 2013 20:24:42 +0000
-Message-ID: <1374179081.3788.76.camel@leira.trondhjem.org>
-References: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
-	 <1374159436.3788.3.camel@leira.trondhjem.org>
-	 <DFCAA8D0-B3BD-49C2-BAC4-9C26668AACB9@netapp.com>
-	 <1374160910.3788.14.camel@leira.trondhjem.org>
-	 <1D61D5F4-40DA-47D1-A15A-745EA05813BA@netapp.com>
-	 <1374167339.3788.52.camel@leira.trondhjem.org>
-	 <DD04268F-B364-48D0-ADEB-E4770D618B38@netapp.com>
-	 <9AC7EBEB-E407-4CCB-A6E6-05C24CD821DA@netapp.com>
-	 <1374177242.3788.59.camel@leira.trondhjem.org>
-	 <1374177896.3788.67.camel@leira.trondhjem.org>
-In-Reply-To: <1374177896.3788.67.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: [PATCH v1 01/19] NFS: Never use user credentials for lease
+ renewal
+Date: Mon, 22 Jul 2013 18:53:54 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93F4B2750@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
+ <20130712163135.1444.68565.stgit@seurat.1015granger.net>
+ <1374518026.7972.12.camel@leira.trondhjem.org>
+ <82846EE9-8390-45FF-80DF-E3C04538618B@oracle.com>
+In-Reply-To: <82846EE9-8390-45FF-80DF-E3C04538618B@oracle.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEzLTA3LTE4IGF0IDE2OjA0IC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IE9uIFRodSwgMjAxMy0wNy0xOCBhdCAxNTo1NCAtMDQwMCwgVHJvbmQgTXlrbGVidXN0IHdy
-b3RlOg0KPiA+IE9uIFRodSwgMjAxMy0wNy0xOCBhdCAxOTo0OSArMDAwMCwgQWRhbXNvbiwgRHJv
-cyB3cm90ZToNCj4gPiA+IE9ubHkgc3VwcG9ydGluZyBvcGVyYXRpb25zIHRoYXQgaGF2ZSB0aGUg
-ZXJyb3IgY29kZSBORlM0RVJSX1dST05HX0NSRUQgc2VlbXMgdG8gYmUgd3JvbmcuICBPcGVyYXRp
-b25zIGxpa2UgQklORF9DT05OX1RPX1NFU1NJT04gZG9uJ3Qgc3VwcG9ydCBkb24ndCBzdXBwb3J0
-IHRoaXMgZXJyb3IgY29kZSwgYnV0IGFyZSBleHBsaWNpdGx5IG1lbnRpb25lZCBpbiBTUDRfTUFD
-SF9DUkVEIHNlY3Rpb25zIG9mIHRoZSBzcGVjLg0KPiA+IA0KPiA+IExvb2tpbmcgYXQgdGhlIGFs
-bG93ZWQgZXJyb3IgcmV0dXJuIHZhbHVlcyBmb3IgQklORF9DT05OX1RPX1NFU1NJT04sIEknbQ0K
-PiA+IGF0IGEgbG9zcyB0byBmaWd1cmUgb3V0IGV4YWN0bHkgd2hhdCBpdCBzaG91bGQgcmV0dXJu
-IGluIHRoaXMgY2FzZS4gSQ0KPiA+IHN1c3BlY3QgdGhhdCB0aGUgbGFjayBvZiBhbiBORlM0RVJS
-X1dST05HX0NSRUQgaXMgYWN0dWFsbHkgYSBwcm90b2NvbA0KPiA+IGJ1Zy4NCj4gPiANCj4gPiBU
-aW1lIHRvIGdvIGJhY2sgdG8gdGhlIGlldGYgbWFpbGluZyBsaXN0Li4uDQo+IA0KPiBIaSBhbGws
-DQo+IA0KPiBXaGVuIGF0dGVtcHRpbmcgdG8gaW1wbGVtZW50IHRoZSBTUDRfTUFDSF9DUkVEIHN0
-YXRlIHByb3RlY3Rpb24sIERyb3MNCj4gcmFuIGludG8gYW4gaXNzdWUuIElmIHRoZSBCSU5EX0NP
-Tk5fVE9fU0VTU0lPTiBvcGVyYXRpb24gaXMgbGlzdGVkIGluDQo+IHRoZSAic3BvX211c3RfZW5m
-b3JjZSIgbGlzdCBvZiBvcGVyYXRpb25zLCB3aGF0IHNob3VsZCBpdCBub3QgYmUgYWxsb3dlZA0K
-PiB0byByZXR1cm4gTkZTNEVSUl9XUk9OR19DUkVEIGlmIGNhbGxlZCB3aXRoIGEgY3JlZGVudGlh
-bCB0aGF0IGlzIG5vdCB0aGUNCj4gbWFjaGluZSBvciBTU1YgY3JlZGVudGlhbD8NCg0KRGl0dG8g
-cXVlc3Rpb24gZm9yIEJBQ0tDSEFOTkVMX0NUTCwgTEFZT1VUR0VULCBURVNUX1NUQVRFSUQsIFJF
-QUQgYW5kDQpXUklURS4NCg0KRmluYWxseSwgc2hvdWxkIE9QRU4gYW5kIFdBTlRfREVMRUdBVElP
-TiBiZSBhbGxvd2VkIHRvIHJldHVybg0KTkZTNEVSUl9XUk9OR19DUkVEIGluIHRoZSBjYXNlIHdo
-ZW4gd2UncmUgZG9pbmcgcmVib290IHJlY292ZXJ5Pw0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
-TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5l
-dGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+> -----Original Message-----
+> From: Chuck Lever [mailto:chuck.lever@oracle.com]
+> Sent: Monday, July 22, 2013 2:52 PM
+> To: Myklebust, Trond
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: [PATCH v1 01/19] NFS: Never use user credentials for lease
+> renewal
+> 
+> 
+> On Jul 22, 2013, at 2:33 PM, "Myklebust, Trond"
+> <Trond.Myklebust@netapp.com> wrote:
+> 
+> > On Fri, 2013-07-12 at 12:31 -0400, Chuck Lever wrote:
+> >> Don't try to use a non-UID-0 user credential for lease management, as
+> >> that credential can change out from under us.  The server will block
+> >> NFSv4 lease recovery with NFS4ERR_CLID_INUSE.
+> >>
+> >> Replace minor version-specific callouts with a single function.
+> >>
+> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> >> ---
+> >> fs/nfs/nfs4_fs.h     |    4 +---
+> >> fs/nfs/nfs4proc.c    |    6 +----
+> >> fs/nfs/nfs4session.c |    2 +-
+> >> fs/nfs/nfs4state.c   |   55 ++++++--------------------------------------------
+> >> 4 files changed, 10 insertions(+), 57 deletions(-)
+> >
+> > This won't apply to upstream kernels.
+> 
+> Thanks for having a look... As the cover letter stated, this series applies to
+> 3.10.
+> 
+> Now that 3.11-rc2 is available, I'm porting the series to the latest upstream,
+> with appropriate adjustments for NFSv4.2 support.  I hope to post the new
+> series tomorrow or Wednesday.
+> 
+OK. Please note that I've already applied 02/19 as that seems to be unrelated to anything else.
+
+Thanks
+  Trond
