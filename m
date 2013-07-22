@@ -1,78 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f172.google.com ([209.85.128.172]:41841 "EHLO
-	mail-ve0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757178Ab3GaSgW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Jul 2013 14:36:22 -0400
-Received: by mail-ve0-f172.google.com with SMTP id oz10so1234491veb.3
-        for <linux-nfs@vger.kernel.org>; Wed, 31 Jul 2013 11:36:22 -0700 (PDT)
+Received: from mx12.netapp.com ([216.240.18.77]:6587 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932820Ab3GVTiu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Jul 2013 15:38:50 -0400
+Message-ID: <51ED8A47.7040506@netapp.com>
+Date: Mon, 22 Jul 2013 15:38:47 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <1362013834-29600-1-git-send-email-jlayton@redhat.com>
-References: <1362013834-29600-1-git-send-email-jlayton@redhat.com>
-Date: Wed, 31 Jul 2013 13:36:21 -0500
-Message-ID: <CAKjHkpAi_-jucPnFXg=3vMZg+pWSha3xR7KhjMPqN56K12SbCQ@mail.gmail.com>
-Subject: Re: [PATCH] nfs: don't allow nfs_find_actor to match inodes of the
- wrong type
-From: Quentin Barnes <qbarnes@gmail.com>
-To: Jeff Layton <jlayton@redhat.com>, trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC 0/5] NFS Server Side Copy
+References: <1374267830-30154-1-git-send-email-bjschuma@netapp.com> <20130722185336.GC10109@fieldses.org>
+In-Reply-To: <20130722185336.GC10109@fieldses.org>
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I was reviewing patches I was integrating into my NFS source base
-and this one popped up (commit f6488c9b).  In reviewing it, it would
-fix the problem, however, I think it's not the best fix for it.
-Catching it in nfs_find_actor() is after the horse has left the
-barn so to speak.
+On 07/22/2013 02:53 PM, J. Bruce Fields wrote:
+> On Fri, Jul 19, 2013 at 05:03:45PM -0400, bjschuma@netapp.com wrote:
+>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>
+>> These patches build on Zach Brown's copyfile patches to add server side
+>> copy to both the NFS client and the NFS server.
+>>
+>> The first patch improves on the copyfile syscall to make it usable on my
+>> machine and also includes notes on other potential problems that I've
+>> found.  The remaining patches first implement a sync copy, then expand to
+>> async.
+>>
+>> My testing was done on a server exporting an ext4 filesystem exporting an
+>> ext4 filesystem.  I compared copying using the cp command to copying with
+>> the copyfile system call.
+> 
+> Were these tests using the full series of patches?  (So, using the
+> asynchronous mechanism?)
 
-I think the problem is in nfs_fhget() when constructing the new
-inode (inside the if (inode->i_state & I_NEW) {...}) and should be
-addressed there.
+Yes.  Want me to re-run them without it?
 
-The nfs module already has checks to ensure that the expression
-"((S_IFMT & inode->i_mode) == (S_IFMT & fattr->mode))" is true
-in nfs_update_inode() and nfs_check_inode_attributes().  I think
-problem Benny hit was that the equivalent check is missing in
-nfs_fhget() when constructing a new inode.  The same check that's
-in those other two functions needs to be added to nfs_fhget()'s "if
-(inode->i_state & I_NEW) {...}" conditional block to prevent the
-problem of an inconsistent fattr/inode state from occurring in the
-first place.
+- Bryan
 
-I can come up with a patch if you'd like, but I wanted to make
-sure my assertions were valid first.  Is removing a check from
-nfs_find_actor() and adding the check to nfs_fhget() to prevent the
-inconsistency in the first place a better approach?
+> 
+> --b.
+> 
+>>
+>>
+>> File size:  512 MB
+>> cp: 4.244 seconds
+>> copyfile: 0.961 seconds
+>>
+>> File size: 1024 MB
+>> cp: 9.091 seconds
+>> copyfile: 1.919 seconds
+>>
+>> File size: 1536 MB
+>> cp: 15.291 seconds
+>> copyfile: 6.016 seconds
+>>
+>>
+>> Repeating these tests on a btrfs exported filesystem supporting the copyfile
+>> system call drops the time for copyfile to about 0.01 seconds.
+>>
+>> Feel free to send me any questions, comments or other thoughts!
+>>
+>> - Bryan
+>>
+>> Bryan Schumaker (5):
+>>   Improve on the copyfile systemcall
+>>   NFSD: Implement the COPY call
+>>   NFS: Add COPY nfs operation
+>>   NFSD: Defer copying
+>>   NFS: Change copy to support async servers
+>>
+>>  fs/copy_range.c          |  10 +++-
+>>  fs/nfs/callback.h        |  13 ++++
+>>  fs/nfs/callback_proc.c   |   9 +++
+>>  fs/nfs/callback_xdr.c    |  54 ++++++++++++++++-
+>>  fs/nfs/inode.c           |   2 +
+>>  fs/nfs/nfs4_fs.h         |   7 +++
+>>  fs/nfs/nfs4file.c        | 101 +++++++++++++++++++++++++++++++
+>>  fs/nfs/nfs4proc.c        |  16 +++++
+>>  fs/nfs/nfs4xdr.c         | 150 +++++++++++++++++++++++++++++++++++++++++++++++
+>>  fs/nfsd/nfs4callback.c   | 136 ++++++++++++++++++++++++++++++++++++++++++
+>>  fs/nfsd/nfs4proc.c       | 104 ++++++++++++++++++++++++++++++--
+>>  fs/nfsd/nfs4state.c      |  15 ++++-
+>>  fs/nfsd/nfs4xdr.c        | 121 +++++++++++++++++++++++++++++++++++++-
+>>  fs/nfsd/state.h          |  23 +++++++-
+>>  fs/nfsd/vfs.c            |   9 +++
+>>  fs/nfsd/vfs.h            |   1 +
+>>  fs/nfsd/xdr4.h           |  24 ++++++++
+>>  fs/nfsd/xdr4cb.h         |   9 +++
+>>  include/linux/nfs4.h     |  14 ++++-
+>>  include/linux/nfs_xdr.h  |  33 +++++++++++
+>>  include/linux/syscalls.h |   1 +
+>>  21 files changed, 836 insertions(+), 16 deletions(-)
+>>
+>> -- 
+>> 1.8.3.3
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Quentin
-
-On Wed, Feb 27, 2013 at 7:10 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> Benny Halevy reported the following oops when testing RHEL6:
-[...]
-> This should fix the oops reported here:
->
->     https://bugzilla.redhat.com/show_bug.cgi?id=913660
->
-> Reported-by: Benny Halevy <bhalevy@tonian.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfs/inode.c | 2 ++
->  1 file changed, 2 insertions(+)
->
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index 6acc73c..f52c99f 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -237,6 +237,8 @@ nfs_find_actor(struct inode *inode, void *opaque)
->
->         if (NFS_FILEID(inode) != fattr->fileid)
->                 return 0;
-> +       if ((S_IFMT & inode->i_mode) != (S_IFMT & fattr->mode))
-> +               return 0;
->         if (nfs_compare_fh(NFS_FH(inode), fh))
->                 return 0;
->         if (is_bad_inode(inode) || NFS_STALE(inode))
-> --
-> 1.7.11.7
->
-> --
