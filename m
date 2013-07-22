@@ -1,71 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:50035 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752403Ab3GQUzH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Jul 2013 16:55:07 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
-Subject: Re: Error writing to nfs4 with 3.11-rc1
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CAHsu+b9vWUyCGHSs==Na=VntwvYp65=rva7+y9aQDXquxX4t-A@mail.gmail.com>
-Date: Wed, 17 Jul 2013 16:54:59 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <F3EFA483-0662-4226-AAF3-DCF12D48485E@oracle.com>
-References: <CAHsu+b_hhSr2vwcwM8TX3=xF=3HffUXG=YLVLcsEpH1wHn+JoA@mail.gmail.com> <A5C56FD6-9E14-43A3-8627-1C8F77EC6926@oracle.com> <CAHsu+b9vWUyCGHSs==Na=VntwvYp65=rva7+y9aQDXquxX4t-A@mail.gmail.com>
-To: Andre Heider <a.heider@gmail.com>, Rick Macklem <rmacklem@uoguelph.ca>
+Received: from mx11.netapp.com ([216.240.18.76]:18334 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756880Ab3GVUMB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Jul 2013 16:12:01 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFSv4.1 Increase NFS4_DEF_SLOT_TABLE_SIZE
+Date: Mon, 22 Jul 2013 20:12:00 +0000
+Message-ID: <1374523919.7972.42.camel@leira.trondhjem.org>
+References: <1374268191-4469-1-git-send-email-andros@netapp.com>
+	 <1374518181.7972.14.camel@leira.trondhjem.org>
+	 <B0405D50-D8BE-496D-8B72-0E09B13B7D77@netapp.com>
+	 <1374520655.7972.27.camel@leira.trondhjem.org>
+	 <B640AD15-44D5-4BB2-A378-2CB8DEFB49A8@netapp.com>
+In-Reply-To: <B640AD15-44D5-4BB2-A378-2CB8DEFB49A8@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jul 17, 2013, at 3:35 PM, Andre Heider <a.heider@gmail.com> wrote:
-
-> On Wed, Jul 17, 2013 at 9:10 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->> On Jul 17, 2013, at 2:55 PM, Andre Heider <a.heider@gmail.com> wrote:
->> 
->>> Hi,
->>> 
->>> I'm having problems using 3.11-rc1 as nfs4 client (with a FreeBSD 9.1
->>> server) using sec=sys.
->>> 
->>> With the same server+client setup, just booting different kernels:
->>> 3.9.10 works without issues
->>> 3.10.1 works too, but introduced "RPC: AUTH_GSS upcall timed out." in
->>> dmesg (iirc I don't need gss with sec=sys)
->> 
->> Not a requirement, but running gssd should make that message go away.  The client is attempting to use krb5i to manage its lease on the server, and falling back to AUTH_UNIX when it sees gssd is not running.
->> 
->>> 3.11-rc1 reading from the server still works, writing fails
->>> 
->>> Even a simple touch on the share fails with:
->>> touch: cannot touch ‘/mnt/andre/test’: Input/output error
->> 
->> A network capture is a reasonable place to start.
->> 
->>  # tcpdump -s0 -w /tmp/raw
->> 
->> Then try your touch test again.  Stop the tcpdump.  You can post a compressed version of the raw dump here if it's short.
-> 
-> Attached two dumps, one from 3.10 (works) and one from 3.11 (doesn't work).
-
-Commit a09df2ca "NFSv4: Extend fattr bitmaps to support all 3 words", introduced in 3.11-rc1, changes the Linux OPEN operation to send a 3-word bitmask for the fattr4 data type.  This was done to support NFSv4 minor version 2, which adds bits in the 3rd word.
-
-Apparently FreeBSD servers support only 2-word fattr4 bitmasks...?
-
-RFC 3530 defines the bitmask4 type as a variable length array of uint32_t.  The minor versioning rules in 3530bis Chapter 11 say:
-
-	•  Minor versions may append attributes to the bitmap4 that
-           represents sets of attributes and to the fattr4 that
-           represents sets of attribute values.
-
-I don't see any other limit placed on the size of the fattr4's bitmask array in RFC 3530, other than the number of bits that are defined for fattr4.  But I didn't look carefully.
-
-By the way, the NFSv4 OPEN request parsing in Wireshark 1.10.0 is totally screwed up.  Has anyone reported this to the Wireshark community?  Wireshark 1.8.8 appears to parse OPEN requests correctly, and is able to handle the 3-word bitmask correctly.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+T24gTW9uLCAyMDEzLTA3LTIyIGF0IDE5OjUyICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
+PiBPbiBKdWwgMjIsIDIwMTMsIGF0IDM6MTcgUE0sICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJvbmQu
+TXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ICB3cm90ZToNCj4gPiBUaGUgcHJvYmxlbSBpcyB0aGF0
+IG9uY2UgeW91IGltcGxlbWVudCBkeW5hbWljIHNsb3QgdGFibGVzLCB0aGUNCj4gPiBuZWdvdGlh
+dGVkIHNlc3Npb24gc2xvdCB0YWJsZSBzaXplIGJlY29tZXMgdGhlIF9taW5pbXVtXyBudW1iZXIg
+b2YNCj4gPiBzbG90cy4NCj4gDQo+IENvdWxkIHlvdSBleHBsYWluIHRoaXMgYSBiaXQgbW9yZT8g
+SSdkIGxpa2UgdG8gdW5kZXJzdGFuZCB5b3VyIHJlYXNvbmluZy4gIEkgY2FuIHNlZSB0aGF0IHRo
+ZSBkeW5hbWljIHNlc3Npb24gZ29hbCBpcyB0byBlbmQgdXAgd2l0aCB0aGUgaGlnaGVzdF9zbG90
+aWQgdmFsdWUgdG8gYmUganVzdCBoaWdoIGVub3VnaCB0byBtZWV0IHRoZSBhY3R1YWwgbG9hZCwg
+YnV0IG5vdCB3YXN0ZSBzZXJ2ZXIgc2xvdCByZXNvdXJjZXMuIEJ1dCBJIGRvbid0IHVuZGVyc3Rh
+bmQgd2h5IHRoZSBjbGllbnQgdmFsdWUgb2YgY2FfbWF4cmVxdWVzdHMgbWFrZXMgYSBkaWZmZXJl
+bmNlIGluIHRoZSBkeW5hbWljIHNlc3Npb25zIGNhc2UgYmVjYXVzZSB3aGV0aGVyIHRoZSBjbGll
+bnQgc3RhcnRzIGhpZ2ggb3IgbG93LCB0aGUgc2VydmVyIHdpbGwgYWRqdXN0IHRoZSB2YWx1ZSB0
+byBvbmUgdGhhdCBmaXRzIHRoZSBsb2FkLg0KDQpJZiBhbGwgY2xpZW50cyBzdXBwb3J0ZWQgZHlu
+YW1pYyBzbG90IHRhYmxlcywgdGhlbiB0aGVyZSB3b3VsZCBiZSBubw0KcHJvYmxlbXMgd2l0aCB0
+aGUgc2VydmVyIGxvd2VyaW5nIHRoZSBudW1iZXIgb2Ygc2xvdHMgYmV5b25kIHRoZSB2YWx1ZQ0K
+bmVnb3RpYXRlZCBhdCBzZXNzaW9uIGNyZWF0aW9uIHRpbWUuDQpUaGUgcHJvYmxlbXMgb2NjdXIg
+aWYgdGhlcmUgYXJlIGNsaWVudHMgb3V0IHRoZXJlIHRoYXQgZG9uJ3Qgc3VwcG9ydA0KZHluYW1p
+YyBzbG90cywgYW5kIHRoYXQgZmFpbCB0byBpbnNwZWN0IHRoZSBzcl90YXJnZXRfaGlnaGVzdF9z
+bG90aWQgYW5kDQpzcl9oaWdoZXN0X3Nsb3RpZCBmb3IgY2hhbmdlcyAodGhlIExpbnV4IGNsaWVu
+dCB1c2VkIHRvIGJlaGF2ZSB0aGlzDQp3YXkpLiBJZiB0aGUgc2VydmVyIHRoZW4gbG93ZXJzIHNy
+X2hpZ2hlc3Rfc2xvdGlkIHRvIGJlIGxlc3MgdGhhbiB0aGUNCmluaXRpYWwgdmFsdWUsIHRoZW4g
+dGhlIGNsaWVudCB3b24ndCByZWFsaXNlIGl0IGhhcyBmZXdlciBzbG90cywgYW5kDQp3aWxsIGVu
+ZCB1cCByZWNlaXZpbmcgTkZTNEVSUl9CQURTTE9UIGVycm9ycyB0aGF0IGl0IGRvZXNuJ3Qga25v
+dyBob3cgdG8NCmhhbmRsZS4NCg0KSU9XOiB0aGUgb25seSBzYWZlIGJlaGF2aW91ciBmb3IgYSBz
+ZXJ2ZXIgaW4gdGhhdCBjYXNlIGlzIHRvIHRyZWF0IHRoZQ0KaW5pdGlhbCB2YWx1ZSBhcyB0aGUg
+bWluaW11bSB2YWx1ZSBmb3Igc3JfaGlnaGVzdF9zbG90aWQgYW5kDQpzcl90YXJnZXRfaGlnaGVz
+dF9zbG90aWQuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
+YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5j
+b20NCg==
