@@ -1,33 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f50.google.com ([209.85.220.50]:49812 "EHLO
-	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932074Ab3GROzy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jul 2013 10:55:54 -0400
-Received: by mail-pa0-f50.google.com with SMTP id fb1so3320300pad.37
-        for <linux-nfs@vger.kernel.org>; Thu, 18 Jul 2013 07:55:54 -0700 (PDT)
+Received: from mx12.netapp.com ([216.240.18.77]:14937 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932580Ab3GVSgW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Jul 2013 14:36:22 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFSv4.1 Increase NFS4_DEF_SLOT_TABLE_SIZE
+Date: Mon, 22 Jul 2013 18:36:21 +0000
+Message-ID: <1374518181.7972.14.camel@leira.trondhjem.org>
+References: <1374268191-4469-1-git-send-email-andros@netapp.com>
+In-Reply-To: <1374268191-4469-1-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <1374098347-30196-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1374098347-30196-1-git-send-email-Trond.Myklebust@netapp.com>
-Date: Thu, 18 Jul 2013 16:55:54 +0200
-Message-ID: <CAHsu+b_FuHaa9LG1vRv1d5LwA5Ue_Ss2eoJsKEC5dx-rnuApOg@mail.gmail.com>
-Subject: Re: [PATCH 1/2] NFSv4: Fix a regression against the FreeBSD server
-From: Andre Heider <a.heider@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        Rick Macklem <rmacklem@uoguelph.ca>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 17, 2013 at 11:59 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> Technically, the Linux client is allowed by the NFSv4 spec to send
-> 3 word bitmaps as part of an OPEN request. However, this causes the
-> current FreeBSD server to return NFS4ERR_ATTRNOTSUPP errors.
->
-> Fix the regression by making the Linux client use a 2 word bitmap unless
-> doing NFSv4.2 with labeled NFS.
->
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-Tested-by: Andre Heider <a.heider@gmail.com>
+T24gRnJpLCAyMDEzLTA3LTE5IGF0IDE3OjA5IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IG1heF9z
+ZXNzaW9uX3Nsb3RzIGlzIGEgdXNob3J0LiBCdW1wIE5GUzRfREVGX1NMT1RfVEFCTEVfU0laRSB0
+byB0aGUgbWF4IHVzaG9ydA0KPiB2YWx1ZTogZS5nLiBhc2sgZm9yIDI1NiBzbG90cyBhbmQgbGV0
+IHRoZSBzZXJ2ZXIgbmVnb3RpYXRlIGRvd24gaWYgbmVlZGVkLg0KPiANCj4gU2lnbmVkLW9mZi1i
+eTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvbmZz
+NHNlc3Npb24uaCB8IDIgKy0NCj4gIDEgZmlsZSBjaGFuZ2VkLCAxIGluc2VydGlvbigrKSwgMSBk
+ZWxldGlvbigtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0c2Vzc2lvbi5oIGIvZnMv
+bmZzL25mczRzZXNzaW9uLmgNCj4gaW5kZXggM2ExNTNkOC4uOGI3ODk5ZiAxMDA2NDQNCj4gLS0t
+IGEvZnMvbmZzL25mczRzZXNzaW9uLmgNCj4gKysrIGIvZnMvbmZzL25mczRzZXNzaW9uLmgNCj4g
+QEAgLTgsNyArOCw3IEBADQo+ICAjZGVmaW5lIF9fTElOVVhfRlNfTkZTX05GUzRTRVNTSU9OX0gN
+Cj4gIA0KPiAgLyogbWF4aW11bSBudW1iZXIgb2Ygc2xvdHMgdG8gdXNlICovDQo+IC0jZGVmaW5l
+IE5GUzRfREVGX1NMT1RfVEFCTEVfU0laRSAoMTZVKQ0KPiArI2RlZmluZSBORlM0X0RFRl9TTE9U
+X1RBQkxFX1NJWkUgKDI1NlUpDQoNCkNvdWxkIHdlIHBsZWFzZSBtYWtlIHRoaXMgc21hbGxlcj8g
+SSBhZ3JlZSB0aGF0IDE2IGlzIHRvbyBzbWFsbCAoYXMgbG9uZw0KYXMgc2VydmVycyBkb24ndCBk
+byBkeW5hbWljIHNsb3QgYWxsb2NhdGlvbiksIGJ1dCAyNTYgaXMgdmVyeSBoaWdoIGZvciBhDQpk
+ZWZhdWx0Lg0KDQpIb3cgYWJvdXQgNjQ/DQoNCj4gICNkZWZpbmUgTkZTNF9NQVhfU0xPVF9UQUJM
+RSAoMTAyNFUpDQo+ICAjZGVmaW5lIE5GUzRfTk9fU0xPVCAoKHUzMiktMSkNCj4gIA0KDQotLSAN
+ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
+VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
