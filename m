@@ -1,90 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from g6t0185.atlanta.hp.com ([15.193.32.62]:37558 "EHLO
-	g6t0185.atlanta.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933576Ab3GDDep (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Jul 2013 23:34:45 -0400
-From: Waiman Long <Waiman.Long@hp.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        Waiman Long <Waiman.Long@hp.com>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Peter Zijlstra <peterz@infradead.org>,
-        Steven Rostedt <rostedt@goodmis.org>,
+Received: from stator.leun.net ([85.214.203.199]:38834 "EHLO stator.leun.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751482Ab3GVXfg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Jul 2013 19:35:36 -0400
+Date: Tue, 23 Jul 2013 01:02:50 +0200
+From: Michael Leun <lkml20130126@newton.leun.net>
+To: Colin Cross <ccross@android.com>
+Cc: linux-kernel@vger.kernel.org, Pavel Machek <pavel@ucw.cz>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-pm@vger.kernel.org, netdev@vger.kernel.org,
         Linus Torvalds <torvalds@linux-foundation.org>,
-        Benjamin Herrenschmidt <benh@kernel.crashing.org>,
-        Andi Kleen <andi@firstfloor.org>,
-        "Chandramouleeswaran, Aswin" <aswin@hp.com>,
-        "Norton, Scott J" <scott.norton@hp.com>
-Subject: [PATCH v4 10/12] nfs: rename d_count field of dentry to d_refcount
-Date: Wed,  3 Jul 2013 23:34:29 -0400
-Message-Id: <1372908869-33512-1-git-send-email-Waiman.Long@hp.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>, Jeff Layton <jlayton@redhat.com>,
-        Miklos Szeredi <mszeredi@suse.cz>, Ingo Molnar <mingo@redhat.com>,
-        Thomas Gleixner <tglx@linutronix.de>
+        Tejun Heo <tj@kernel.org>, Darren Hart <dvhart@linux.intel.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Randy Dunlap <rdunlap@infradead.org>,
+        Al Viro <viro@zeniv.linux.org.uk>
+Subject: 3.11-rc regression bisected: s2disk does not work (was Re: [PATCH
+ v3 13/16] futex: use freezable blocking call)
+Message-ID: <20130723010250.5a3465ec@xenia.leun.net>
+In-Reply-To: <1367884221-20462-14-git-send-email-ccross@android.com>
+References: <1367884221-20462-1-git-send-email-ccross@android.com>
+	<1367884221-20462-14-git-send-email-ccross@android.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Because of the d_count name change made in dcache.h, all references
-to d_count have to be changed to d_refcount.  There is no change in
-logic and everything should just work.
+On Mon,  6 May 2013 16:50:18 -0700
+Colin Cross <ccross@android.com> wrote:
 
-Signed-off-by: Waiman Long <Waiman.Long@hp.com>
----
- fs/nfs/dir.c    |    8 ++++----
- fs/nfs/unlink.c |    2 +-
- 2 files changed, 5 insertions(+), 5 deletions(-)
+> Avoid waking up every thread sleeping in a futex_wait call during
+[...]
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index e093e73..9051c18 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1175,7 +1175,7 @@ static int nfs_weak_revalidate(struct dentry *dentry, unsigned int flags)
- }
- 
- /*
-- * This is called from dput() when d_count is going to 0.
-+ * This is called from dput() when d_refcount is going to 0.
-  */
- static int nfs_dentry_delete(const struct dentry *dentry)
- {
-@@ -1721,7 +1721,7 @@ int nfs_unlink(struct inode *dir, struct dentry *dentry)
- 		dir->i_ino, dentry->d_name.name);
- 
- 	spin_lock(&dentry->d_lock);
--	if (dentry->d_count > 1) {
-+	if (dentry->d_refcount > 1) {
- 		spin_unlock(&dentry->d_lock);
- 		/* Start asynchronous writeout of the inode */
- 		write_inode_now(dentry->d_inode, 0);
-@@ -1870,7 +1870,7 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	dfprintk(VFS, "NFS: rename(%s/%s -> %s/%s, ct=%d)\n",
- 		 old_dentry->d_parent->d_name.name, old_dentry->d_name.name,
- 		 new_dentry->d_parent->d_name.name, new_dentry->d_name.name,
--		 new_dentry->d_count);
-+		 new_dentry->d_refcount);
- 
- 	/*
- 	 * For non-directories, check whether the target is busy and if so,
-@@ -1888,7 +1888,7 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 			rehash = new_dentry;
- 		}
- 
--		if (new_dentry->d_count > 2) {
-+		if (new_dentry->d_refcount > 2) {
- 			int err;
- 
- 			/* copy the target dentry's name */
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index 1f1f38f..34e9fc5 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -479,7 +479,7 @@ nfs_sillyrename(struct inode *dir, struct dentry *dentry)
- 
- 	dfprintk(VFS, "NFS: silly-rename(%s/%s, ct=%d)\n",
- 		dentry->d_parent->d_name.name, dentry->d_name.name,
--		dentry->d_count);
-+		dentry->d_refcount);
- 	nfs_inc_stats(dir, NFSIOS_SILLYRENAME);
- 
- 	/*
+With 3.11-rc s2disk from suspend-utils stopped working: Frozen at
+displaying 0% of saving image to disk.
+
+echo "1" >/sys/power/state still works.
+
+Bisecting yielded 88c8004fd3a5fdd2378069de86b90b21110d33a4, reverting
+that from 3.11-rc2 makes s2disk working again.
+
 -- 
-1.7.1
+MfG,
+
+Michael Leun
 
