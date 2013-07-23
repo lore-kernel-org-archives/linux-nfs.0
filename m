@@ -1,90 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:50638 "EHLO mx2.suse.de"
+Received: from mga09.intel.com ([134.134.136.24]:54711 "EHLO mga09.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751424Ab3GOEfi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Jul 2013 00:35:38 -0400
-Date: Mon, 15 Jul 2013 14:35:27 +1000
-From: NeilBrown <neilb@suse.de>
-To: Ben Greear <greearb@candelatech.com>
-Cc: Dean <seattleplus@gmail.com>, "J.Bruce Fields" <bfields@citi.umich.edu>,
-        Olga Kornievskaia <aglo@citi.umich.edu>,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: Re: Is tcp autotuning really what NFS wants?
-Message-ID: <20130715143527.4eca7283@notabene.brown>
-In-Reply-To: <51DD9C5A.3000505@candelatech.com>
-References: <20130710092255.0240a36d@notabene.brown>
-	<20130710022735.GI8281@fieldses.org>
-	<51DD9AD5.1030508@gmail.com>
-	<51DD9C5A.3000505@candelatech.com>
+	id S933204Ab3GWSYu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Jul 2013 14:24:50 -0400
+Message-ID: <1374603875.3436.149.camel@dvhart-mobl1.amr.corp.intel.com>
+Subject: Re: 3.11-rc regression bisected: s2disk does not work (was Re:
+ [PATCH v3 13/16] futex: use freezable blocking call)
+From: Darren Hart <dvhart@linux.intel.com>
+To: Michael Leun <lkml20130126@newton.leun.net>
+Cc: Colin Cross <ccross@android.com>, lkml <linux-kernel@vger.kernel.org>,
+        Pavel Machek <pavel@ucw.cz>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Oleg Nesterov <oleg@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>,
+        Linux PM list <linux-pm@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Tejun Heo <tj@kernel.org>, Thomas Gleixner <tglx@linutronix.de>,
+        Randy Dunlap <rdunlap@infradead.org>,
+        Al Viro <viro@zeniv.linux.org.uk>
+Date: Tue, 23 Jul 2013 11:24:35 -0700
+In-Reply-To: <20130723200854.2046296b@xenia.leun.net>
+References: <1367884221-20462-1-git-send-email-ccross@android.com>
+	 <1367884221-20462-14-git-send-email-ccross@android.com>
+	 <20130723010250.5a3465ec@xenia.leun.net>
+	 <CAMbhsRQv+W897_5qGuNJD47jQ9ozN6KxeCa6UJAvZpqVuBpQ4w@mail.gmail.com>
+	 <20130723200854.2046296b@xenia.leun.net>
+Content-Type: text/plain; charset="UTF-8"
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/g3.94vV3oovgjsBx/2YeQpu"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/g3.94vV3oovgjsBx/2YeQpu
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Tue, 2013-07-23 at 20:08 +0200, Michael Leun wrote:
+> On Mon, 22 Jul 2013 16:55:58 -0700
+> Colin Cross <ccross@android.com> wrote:
+> 
+> > On Mon, Jul 22, 2013 at 4:02 PM, Michael Leun
+> > <lkml20130126@newton.leun.net> wrote:
+> > > On Mon,  6 May 2013 16:50:18 -0700
+> > > Colin Cross <ccross@android.com> wrote:
+> > >
+> > >> Avoid waking up every thread sleeping in a futex_wait call during
+> > > [...]
+> > >
+> > > With 3.11-rc s2disk from suspend-utils stopped working: Frozen at
+> > > displaying 0% of saving image to disk.
+> > >
+> > > echo "1" >/sys/power/state still works.
+> > >
+> > > Bisecting yielded 88c8004fd3a5fdd2378069de86b90b21110d33a4,
+> > > reverting that from 3.11-rc2 makes s2disk working again.
+> > >
+> > 
+> > I think the expanded use of the freezable_* helpers is exposing an
+> > existing bug in hibernation.  The SNAPSHOT_FREEZE ioctl calls
+> > freeze_processes(), which sets the global system_freezing_cnt and
+> > pm_freezing.  try_to_freeze_tasks then sends every process except
+> > current a signal which causes them all to end up in the refrigerator.
+> > The current task then returns back to userspace and continues its work
+> > to suspend to disk.  If that task ever hits a call to try_to_freeze()
+> > in the kernel, it will see system_freezing_cnt and pm_freezing=true
+> > and freeze, and suspend to disk will hang forever.  It could hit
+> > try_to_freeze() because of a signal delivered to the task, or from
+> > calling any syscall that uses a freezable_* helper like the one I
+> > added to sys_futex.
+> > 
+> > I think the right solution is to add a flag to the freezing task that
+> > marks it unfreezable.  I  think PF_NOFREEZE would work, although it is
+> > normally used on kernel threads, can you see if the attached patch
+> > helps?
+> 
+> That patch helps.
+> 
+> BTW, the only machine I can reproduce this bug with is an i7-3630QM
+> notebook. Cannot reproduce on an Core Duo U1400 and cannot reproduce on
+> an i7 M 620.
+> 
+> Are the sysreq backtraces still wanted? If so, any tip, how I could get
+> them saved?
 
-On Wed, 10 Jul 2013 10:39:38 -0700 Ben Greear <greearb@candelatech.com> wro=
-te:
+Typically by setting up a serial console or a netconsole and saving the
+log from the attached terminal emulator (such as screen or minicom).
 
-> On 07/10/2013 10:33 AM, Dean wrote:
-> >  > This could significantly limit the amount of parallelism that can be=
- achieved for a single TCP connection (and given that the
-> >  > Linux client strongly prefers a single connection now, this could be=
-come more of an issue).
-> >
-> > I understand the simplicity in using a single tcp connection, but perfo=
-rmance-wise it is definitely not the way to go on WAN links. When even a mi=
-niscule amount
-> > of packet loss is added to the link (<0.001% packet loss), the tcp buff=
-er collapses and performance drops significantly (especially on 10GigE WAN =
-links).  I
-> > think new TCP algorithms could help the problem somewhat, but nothing a=
-vailable today makes much of a difference vs. cubic.
-> >
-> > Using multiple tcp connections allows better saturation of the link, si=
-nce when packet loss occurs on a stream, the other streams can fill the voi=
-d.  Today, the
-> > only solution is to scale up the number of physical clients, which has =
-high coordination overhead, or use a wan accelerator such as Bitspeed or Ri=
-verbed (which
-> > comes with its own issues such as extra hardware, cost, etc).
->=20
-> I have a set of patches that allows one to do multiple unique mounts to t=
-he same server from a single
-> client, but the patches are for the client side, so it would not help
-> non-Linux clients.  And, the patches were rejected for upstream as not be=
-ing
-> useful.  But, if you are interested in such, please let me know and I can=
- point
-> you to them...
+Is this what you are asking?
 
-Yes please!
 
-NeilBrown
+-- 
+Darren Hart
+Intel Open Source Technology Center
+Yocto Project - Linux Kernel
 
---Sig_/g3.94vV3oovgjsBx/2YeQpu
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBUeN8Dznsnt1WYoG5AQIJnw/+NX2XltL5HwgcZncP9eTGIpPs1hXMxl0L
-HjHwlTk5dvN4J8YtVYLVKYswY5DtAtakbM+oYODLTXrnwjB4zS2rghm9M0azgzAH
-c8b9o8XoGAQnGnPos+357HqcN7v8/EOyyrFLAzj1h6++XXn9QSpGzhVVq8LBURlu
-qc5tjGe5DEf5SnELPZFQ8ZI6hdN0RRfr0X3YzwCzbLiUaC+bIwjYzye3tFLBl5hQ
-Io/PWLraR4Jw7bWsuGdPxVyHPs99gHkbUKUmP1tEUVO6pJU3XbWdu+hXJUEFPqYX
-ZNRhwkgu2kynuOi1U5XTUlXo7V1SPI9Z5zcOjvmkYY+M1QQNN+t0U/vrDauhu73r
-MSu2w/pvHb12ZWV3dhuJxAsJNsWwXh2El1dSpLJGLW1UE287DqPhlTidB+LCdr1y
-bZmiNQNCnabdk2fPSJgfEwC9FcrdL7+OlXyHkrQTLoS/61Kr+tNvUfmaY8egIpai
-YMLnBalMJMIvPQc46QykNAzZPs5w4gy22pT62+xnQ51Hm1W5anKsv3qez7OvNxg4
-CWOcSCMU/dnjm47GUSA7x5UPY24+uVF/gtCrxRSbZxLfpVaAU0FIJuixE9pJKvcn
-Yr6UNfLJDotZr5c51St6qagqgOwBGBdfsKWsJAbTvn26jv4w12zK52I0kcguE/xF
-+fvwYMmVO0M=
-=jyNC
------END PGP SIGNATURE-----
-
---Sig_/g3.94vV3oovgjsBx/2YeQpu--
