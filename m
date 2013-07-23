@@ -1,52 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:46072 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:41117 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752457Ab3GAHMN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Jul 2013 03:12:13 -0400
-Message-ID: <1372662717.2974.23.camel@cr0>
-Subject: Re: [RFC Patch net-next 4/5] sunrpc: use generic union inet_addr
-From: Cong Wang <amwang@redhat.com>
-To: Ben Hutchings <bhutchings@solarflare.com>
-Cc: netdev@vger.kernel.org, Daniel Borkmann <dborkman@redhat.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Mon, 01 Jul 2013 15:11:57 +0800
-In-Reply-To: <1372347413.2436.6.camel@bwh-desktop.uk.level5networks.com>
-References: <1372315398-19683-1-git-send-email-amwang@redhat.com>
-	 <1372315398-19683-5-git-send-email-amwang@redhat.com>
-	 <1372347413.2436.6.camel@bwh-desktop.uk.level5networks.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S933579Ab3GWQM3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Jul 2013 12:12:29 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Dan Carpenter <dan.carpenter@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4: Fix a regression against the FreeBSD server
+Date: Tue, 23 Jul 2013 16:12:28 +0000
+Message-ID: <1374595949.10794.1.camel@leira.trondhjem.org>
+References: <20130723160627.GA2370@elgon.mountain>
+In-Reply-To: <20130723160627.GA2370@elgon.mountain>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-06-27 at 16:36 +0100, Ben Hutchings wrote:
-> On Thu, 2013-06-27 at 14:43 +0800, Cong Wang wrote:
-> [...]
-> > -/**
-> > - * rpc_cmp_addr - compare the address portion of two sockaddrs.
-> > - * @sap1: first sockaddr
-> > - * @sap2: second sockaddr
-> > - *
-> > - * Just compares the family and address portion. Ignores port, but
-> > - * compares the scope if it's a link-local address.
-> 
-> You're removing the scope comparison.
-
-Actually I added the following code in patch 5/5:
-
-+               if (!ipv6_addr_equal(&a->sin6.sin6_addr,
-&b->sin6.sin6_addr))
-+                       return false;
-+               else if
-(__ipv6_addr_needs_scope_id(__ipv6_addr_type(&a->sin6.sin6_addr)))
-+                       return a->sin6.sin6_scope_id ==
-b->sin6.sin6_scope_id;
-
-
-but I should move it to this patch, otherwise it is hard for review.
-
-Thanks!
-
+T24gVHVlLCAyMDEzLTA3LTIzIGF0IDE5OjA2ICswMzAwLCBEYW4gQ2FycGVudGVyIHdyb3RlOg0K
+PiBIZWxsbyBUcm9uZCBNeWtsZWJ1c3QsDQo+IA0KPiBUaGlzIGlzIGEgc2VtaS1hdXRvbWF0aWMg
+ZW1haWwgYWJvdXQgbmV3IHN0YXRpYyBjaGVja2VyIHdhcm5pbmdzLg0KPiANCj4gVGhlIHBhdGNo
+IGI0YTJjZjc2YWI3YzogIk5GU3Y0OiBGaXggYSByZWdyZXNzaW9uIGFnYWluc3QgdGhlIEZyZWVC
+U0QgDQo+IHNlcnZlciIgZnJvbSBKdWwgMTcsIDIwMTMsIGxlYWRzIHRvIHRoZSBmb2xsb3dpbmcg
+U21hdGNoIGNvbXBsYWludDoNCj4gDQo+IGZzL25mcy9uZnM0eGRyLmM6MTEwMyBlbmNvZGVfYXR0
+cnMoKQ0KPiAJIGVycm9yOiB3ZSBwcmV2aW91c2x5IGFzc3VtZWQgJ2xhYmVsJyBjb3VsZCBiZSBu
+dWxsIChzZWUgbGluZSAxMDU5KQ0KPiANCj4gZnMvbmZzL25mczR4ZHIuYw0KPiAgIDEwNTgJCX0N
+Cj4gICAxMDU5CQlpZiAobGFiZWwpIHsNCj4gICAgICAgICAgICAgICAgICAgICBeXl5eXg0KPiBO
+ZXcgY2hlY2suDQo+IA0KPiAgIDEwNjAJCQlsZW4gKz0gNCArIDQgKyA0ICsgKFhEUl9RVUFETEVO
+KGxhYmVsLT5sZW4pIDw8IDIpOw0KPiAgIDEwNjEJCQlibXZhbFsyXSB8PSBGQVRUUjRfV09SRDJf
+U0VDVVJJVFlfTEFCRUw7DQo+ICAgMTA2MgkJfQ0KPiAgIDEwNjMJDQo+ICAgMTA2NAkJaWYgKGJt
+dmFsWzJdICE9IDApDQo+ICAgMTA2NQkJCWJtdmFsX2xlbiA9IDM7DQo+ICAgMTA2NgkJZWxzZSBp
+ZiAoYm12YWxbMV0gIT0gMCkNCj4gICAxMDY3CQkJYm12YWxfbGVuID0gMjsNCj4gICAxMDY4CQll
+bHNlDQo+ICAgMTA2OQkJCWJtdmFsX2xlbiA9IDE7DQo+ICAgMTA3MAkNCj4gDQo+IFtzbmlwXQ0K
+PiANCj4gICAxMDk0CQlpZiAoYm12YWxbMV0gJiBGQVRUUjRfV09SRDFfVElNRV9NT0RJRllfU0VU
+KSB7DQo+ICAgMTA5NQkJCWlmIChpYXAtPmlhX3ZhbGlkICYgQVRUUl9NVElNRV9TRVQpIHsNCj4g
+ICAxMDk2CQkJCSpwKysgPSBjcHVfdG9fYmUzMihORlM0X1NFVF9UT19DTElFTlRfVElNRSk7DQo+
+ICAgMTA5NwkJCQlwID0geGRyX2VuY29kZV9oeXBlcihwLCAoczY0KWlhcC0+aWFfbXRpbWUudHZf
+c2VjKTsNCj4gICAxMDk4CQkJCSpwKysgPSBjcHVfdG9fYmUzMihpYXAtPmlhX210aW1lLnR2X25z
+ZWMpOw0KPiAgIDEwOTkJCQl9IGVsc2UNCj4gICAxMTAwCQkJCSpwKysgPSBjcHVfdG9fYmUzMihO
+RlM0X1NFVF9UT19TRVJWRVJfVElNRSk7DQo+ICAgMTEwMQkJfQ0KPiAgIDExMDIJCWlmIChibXZh
+bFsyXSAmIEZBVFRSNF9XT1JEMl9TRUNVUklUWV9MQUJFTCkgew0KPiAgIDExMDMJCQkqcCsrID0g
+Y3B1X3RvX2JlMzIobGFiZWwtPmxmcyk7DQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICBeXl5eXl5eXl5eDQo+IE9sZCBkZXJlZmVyZW5jZS4NCj4gDQo+ICAgMTEw
+NAkJCSpwKysgPSBjcHVfdG9fYmUzMihsYWJlbC0+cGkpOw0KPiAgIDExMDUJCQkqcCsrID0gY3B1
+X3RvX2JlMzIobGFiZWwtPmxlbik7DQoNCkhpIERhbiwNCg0KTWF5YmUgSSBuZWVkIGFub3RoZXIg
+Y29mZmVlLCBidXQgcmlnaHQgbm93IEkgZG9uJ3Qgc2VlIHdoYXQgdGhlIHByb2JsZW0NCmlzLiBX
+ZSBvbmx5IHNldCBGQVRUUjRfV09SRDJfU0VDVVJJVFlfTEFCRUwgaWYgdGhlIGNoZWNrIHRoYXQg
+bGFiZWwgIT0NCk5VTEwgcGFzc2VzLiBXaGF0IGFtIEkgbWlzc2luZz8NCg0KLS0gDQpUcm9uZCBN
+eWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15
+a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
