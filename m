@@ -1,54 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f171.google.com ([209.85.223.171]:40040 "EHLO
-	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932650Ab3GLRVD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jul 2013 13:21:03 -0400
-Message-ID: <51E03AFB.1000000@gmail.com>
-Date: Fri, 12 Jul 2013 13:20:59 -0400
-From: Ric Wheeler <ricwheeler@gmail.com>
+Received: from mail-oa0-f49.google.com ([209.85.219.49]:48012 "EHLO
+	mail-oa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933722Ab3GWS36 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jul 2013 14:29:58 -0400
+Received: by mail-oa0-f49.google.com with SMTP id n12so7310830oag.22
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Jul 2013 11:29:57 -0700 (PDT)
 MIME-Version: 1.0
-To: "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
-        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>, xfs-oss <xfs@oss.sgi.com>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        device-mapper development <dm-devel@redhat.com>,
-        IDE/ATA development list <linux-ide@vger.kernel.org>,
-        anaconda-devel-list@redhat.com
-Subject: Linux Plumbers IO & File System Micro-conference
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+In-Reply-To: <20130723200854.2046296b@xenia.leun.net>
+References: <1367884221-20462-1-git-send-email-ccross@android.com>
+	<1367884221-20462-14-git-send-email-ccross@android.com>
+	<20130723010250.5a3465ec@xenia.leun.net>
+	<CAMbhsRQv+W897_5qGuNJD47jQ9ozN6KxeCa6UJAvZpqVuBpQ4w@mail.gmail.com>
+	<20130723200854.2046296b@xenia.leun.net>
+Date: Tue, 23 Jul 2013 11:29:57 -0700
+Message-ID: <CAMbhsRT6zOKLhG_uh=nA8H_3d7afhG+4jvWjvidY3fEguryP_Q@mail.gmail.com>
+Subject: Re: 3.11-rc regression bisected: s2disk does not work (was Re: [PATCH
+ v3 13/16] futex: use freezable blocking call)
+From: Colin Cross <ccross@android.com>
+To: Michael Leun <lkml20130126@newton.leun.net>
+Cc: lkml <linux-kernel@vger.kernel.org>, Pavel Machek <pavel@ucw.cz>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Oleg Nesterov <oleg@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>,
+        Linux PM list <linux-pm@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Tejun Heo <tj@kernel.org>, Darren Hart <dvhart@linux.intel.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Randy Dunlap <rdunlap@infradead.org>,
+        Al Viro <viro@zeniv.linux.org.uk>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Jul 23, 2013 at 11:08 AM, Michael Leun
+<lkml20130126@newton.leun.net> wrote:
+> On Mon, 22 Jul 2013 16:55:58 -0700
+> Colin Cross <ccross@android.com> wrote:
+>
+>> On Mon, Jul 22, 2013 at 4:02 PM, Michael Leun
+>> <lkml20130126@newton.leun.net> wrote:
+>> > On Mon,  6 May 2013 16:50:18 -0700
+>> > Colin Cross <ccross@android.com> wrote:
+>> >
+>> >> Avoid waking up every thread sleeping in a futex_wait call during
+>> > [...]
+>> >
+>> > With 3.11-rc s2disk from suspend-utils stopped working: Frozen at
+>> > displaying 0% of saving image to disk.
+>> >
+>> > echo "1" >/sys/power/state still works.
+>> >
+>> > Bisecting yielded 88c8004fd3a5fdd2378069de86b90b21110d33a4,
+>> > reverting that from 3.11-rc2 makes s2disk working again.
+>> >
+>>
+>> I think the expanded use of the freezable_* helpers is exposing an
+>> existing bug in hibernation.  The SNAPSHOT_FREEZE ioctl calls
+>> freeze_processes(), which sets the global system_freezing_cnt and
+>> pm_freezing.  try_to_freeze_tasks then sends every process except
+>> current a signal which causes them all to end up in the refrigerator.
+>> The current task then returns back to userspace and continues its work
+>> to suspend to disk.  If that task ever hits a call to try_to_freeze()
+>> in the kernel, it will see system_freezing_cnt and pm_freezing=true
+>> and freeze, and suspend to disk will hang forever.  It could hit
+>> try_to_freeze() because of a signal delivered to the task, or from
+>> calling any syscall that uses a freezable_* helper like the one I
+>> added to sys_futex.
+>>
+>> I think the right solution is to add a flag to the freezing task that
+>> marks it unfreezable.  I  think PF_NOFREEZE would work, although it is
+>> normally used on kernel threads, can you see if the attached patch
+>> helps?
+>
+> That patch helps.
+>
+> BTW, the only machine I can reproduce this bug with is an i7-3630QM
+> notebook. Cannot reproduce on an Core Duo U1400 and cannot reproduce on
+> an i7 M 620.
+>
+> Are the sysreq backtraces still wanted? If so, any tip, how I could get
+> them saved?
+>
+>
+> --
+> MfG,
+>
+> Michael Leun
+>
 
-Linux Plumbers has approved a file and storage microconference. The overview 
-page is here:
+Any chance that the failing machine has threads=y in the suspend.conf file?
 
-http://wiki.linuxplumbersconf.org/2013:file_and_storage_systems
-
-I would like to started gathering in ideas for topics. I have been approached 
-already with a request to cover the copy_range work Zach Brown kicked off at LSF 
-which I think is a great topic since it has impact throughout the stack, all the 
-way up to applications programmers.
-
-A similar request was made to give some time to non-volatile memory devices and 
-the proposed "persistent memory" backed block device and persistent memory file 
-system from Intel. That also seems to fall in nicely with the plumbers mission 
-statement since it clearly will impact everything from the application on down 
-through the kernel.
-
-Last year, we had a good discussion on management of storage (anaconda, yast, 
-libstoragemgt, etc) - that also might be worth giving updates on.
-
-The instructions for submitting ideas will be updated later today at:
-
-http://www.linuxplumbersconf.org/2013/submitting-topic/
-
-If you have topics that you would like to add, wait until the instructions get 
-posted at the link above. If you are impatient, feel free to email me directly 
-(but probably best to drop the broad mailing lists from the reply).
-
-Thanks!
-
-Ric
-
+Rafael, it appears that swsusp's suspend.c spawns new threads after
+calling the SNAPSHOT_FREEZE ioctl.  The PF_NOFREEZE (or the new flag)
+will get copied to those new threads, but nothing will clear the flag.
+ Should I just assume that the userspace suspend code will kill those
+threads before continuing with suspend?  Or maybe add a WARN_ON in the
+kernel if any threads besides current have the new flag set when the
+suspend ops that assume all of userspace is frozen are called?
