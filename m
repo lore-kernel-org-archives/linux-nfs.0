@@ -1,37 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:5162 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755829Ab3GVQo4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Jul 2013 12:44:56 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/4] NFSv4.1 Use the mount point rpc_clnt for
- layoutreturn
-Date: Mon, 22 Jul 2013 16:44:55 +0000
-Message-ID: <1374511492.7972.0.camel@leira.trondhjem.org>
-References: <1374511328-49579-1-git-send-email-andros@netapp.com>
-In-Reply-To: <1374511328-49579-1-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-pa0-f52.google.com ([209.85.220.52]:64211 "EHLO
+	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932627Ab3GWP7m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jul 2013 11:59:42 -0400
+Received: by mail-pa0-f52.google.com with SMTP id kq13so3008973pab.25
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Jul 2013 08:59:41 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <1374098347-30196-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1374098347-30196-1-git-send-email-Trond.Myklebust@netapp.com>
+	<1374098347-30196-2-git-send-email-Trond.Myklebust@netapp.com>
+Date: Tue, 23 Jul 2013 17:59:41 +0200
+Message-ID: <CAHsu+b-b=-pQ4f8AfHHDaPpAK3YvHomS3X-QuEJkzbAsuJBYfg@mail.gmail.com>
+Subject: Re: [PATCH 2/2] NFSv4: encode_attrs should not backfill the bitmap
+ and attribute length
+From: Andre Heider <a.heider@gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        Rick Macklem <rmacklem@uoguelph.ca>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEzLTA3LTIyIGF0IDEyOjQyIC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFNob3Vs
-ZCBub3QgdXNlIHRoZSBjbGllbnRpZCBtYWludGVuYW5jZSBycGNfY2xudC4NCj4gDQo+IFNpZ25l
-ZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiAgZnMv
-bmZzL25mczRwcm9jLmMgfCAyICstDQo+ICAxIGZpbGUgY2hhbmdlZCwgMSBpbnNlcnRpb24oKyks
-IDEgZGVsZXRpb24oLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHByb2MuYyBiL2Zz
-L25mcy9uZnM0cHJvYy5jDQo+IGluZGV4IGNmMTE3OTkuLjdhODQ2YjYgMTAwNjQ0DQo+IC0tLSBh
-L2ZzL25mcy9uZnM0cHJvYy5jDQo+ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+IEBAIC02ODc2
-LDcgKzY4NzYsNyBAQCBpbnQgbmZzNF9wcm9jX2xheW91dHJldHVybihzdHJ1Y3QgbmZzNF9sYXlv
-dXRyZXR1cm4gKmxycCkNCj4gIAkJLnJwY19jcmVkID0gbHJwLT5jcmVkLA0KPiAgCX07DQo+ICAJ
-c3RydWN0IHJwY190YXNrX3NldHVwIHRhc2tfc2V0dXBfZGF0YSA9IHsNCj4gLQkJLnJwY19jbGll
-bnQgPSBscnAtPmNscC0+Y2xfcnBjY2xpZW50LA0KPiArCQkucnBjX2NsaWVudCA9IE5GU19TRVJW
-RVIobHJwLT5hcmdzLmlub2RlKS0+Y2xpZW50LA0KPiAgCQkucnBjX21lc3NhZ2UgPSAmbXNnLA0K
-PiAgCQkuY2FsbGJhY2tfb3BzID0gJm5mczRfbGF5b3V0cmV0dXJuX2NhbGxfb3BzLA0KPiAgCQku
-Y2FsbGJhY2tfZGF0YSA9IGxycCwNCg0KTkFDSy4gTEFZT1VUUkVUVVJOIG5lZWRzIHRvIHVzZSB0
-aGUgc2FtZSBjcmVkZW50aWFsIGFzIExBWU9VVEdFVC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QN
-CkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBu
-ZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+Trond,
+
+On Wed, Jul 17, 2013 at 11:59 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> The attribute length is already calculated in advance. There is no
+> reason why we cannot calculate the bitmap in advance too so that
+> we don't have to play pointer games.
+
+I'm sorry to report that this patch seems to be more than just a cleanup.
+
+I just tested 3.11-rc2 against my FreeBSD server, and with just patch
+1/2 (as in -rc2) I still get the failure upon `touch`. It fails with
+or without Rick's server patch.
+
+Applying this one on top of -rc2 fixes it.
+
+Regards,
+Andre
