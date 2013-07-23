@@ -1,174 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:27955 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751999Ab3GHOdR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jul 2013 10:33:17 -0400
-Content-Type: text/plain; charset=US-ASCII
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
-Subject: Re: [PATCH] Disable NFS version 2
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <51DAB666.10107@RedHat.com>
-Date: Mon, 8 Jul 2013 10:33:10 -0400
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <5C30AE1B-1708-41C5-9296-098BF761EF2E@oracle.com>
-References: <1372856675-5520-1-git-send-email-steved@redhat.com> <9A7F190A-2938-4A14-9125-330189DA8597@oracle.com> <51D6AE7D.9070805@RedHat.com> <4408EEAB-97F1-404A-BC58-434729D12364@oracle.com> <51DAB666.10107@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>
+Received: from mail-oa0-f50.google.com ([209.85.219.50]:36942 "EHLO
+	mail-oa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751497Ab3GWG2f (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jul 2013 02:28:35 -0400
+Received: by mail-oa0-f50.google.com with SMTP id k7so10422338oag.9
+        for <linux-nfs@vger.kernel.org>; Mon, 22 Jul 2013 23:28:34 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <15305281.aClQ8XUG9t@vostro.rjw.lan>
+References: <1367884221-20462-1-git-send-email-ccross@android.com>
+	<CA+55aFzUVPJe96z8V0F-znc8ZcpJid7LEeYww80M-Mx=S91tAA@mail.gmail.com>
+	<CAMbhsRReF9xB597i9CcCj7D1P5kvB4cc0JmDQYeboqi11Kp99A@mail.gmail.com>
+	<15305281.aClQ8XUG9t@vostro.rjw.lan>
+Date: Mon, 22 Jul 2013 23:28:34 -0700
+Message-ID: <CAMbhsRSsq0pgS6KvCjiFGneDEJd6zSXsYB_2MCV=sh+6F2muog@mail.gmail.com>
+Subject: Re: 3.11-rc regression bisected: s2disk does not work (was Re: [PATCH
+ v3 13/16] futex: use freezable blocking call)
+From: Colin Cross <ccross@android.com>
+To: "Rafael J. Wysocki" <rjw@sisk.pl>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Michael Leun <lkml20130126@newton.leun.net>,
+        lkml <linux-kernel@vger.kernel.org>, Pavel Machek <pavel@ucw.cz>,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Oleg Nesterov <oleg@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>,
+        Linux PM list <linux-pm@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>, Tejun Heo <tj@kernel.org>,
+        Darren Hart <dvhart@linux.intel.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Randy Dunlap <rdunlap@infradead.org>,
+        Al Viro <viro@zeniv.linux.org.uk>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, Jul 22, 2013 at 6:41 PM, Rafael J. Wysocki <rjw@sisk.pl> wrote:
+> On Monday, July 22, 2013 05:42:49 PM Colin Cross wrote:
+>> On Mon, Jul 22, 2013 at 5:32 PM, Linus Torvalds
+>> <torvalds@linux-foundation.org> wrote:
+>> > On Mon, Jul 22, 2013 at 4:55 PM, Colin Cross <ccross@android.com> wrote:
+>> >>
+>> >> I think the right solution is to add a flag to the freezing task that
+>> >> marks it unfreezable.  I  think PF_NOFREEZE would work, although it is
+>> >> normally used on kernel threads, can you see if the attached patch
+>> >> helps?
+>> >
+>> > Hmm. That does seem to be the right thing to do, but I wonder about
+>> > the *other* callers of freeze_processes() IOW, kexec and friends.
+>> >
+>> > So maybe we should do this in {freeze|thaw}_processes() itself, and
+>> > just make the rule be that the caller of freeze_processes() itself is
+>> > obviously not frozen, and has to be the same one that then thaws
+>> > things?
+>> >
+>> > Colin? Rafael? Comments?
+>> >
+>> >                 Linus
+>>
+>> I was worried about clearing the flag in thaw_processes().  If a
+>> kernel thread with PF_NOFREEZE set ever called thaw_processes(), which
+>> autosleep might do, it would clear the flag.  Or if a different thread
+>> called freeze_processes() and thaw_processes().
+>
+> Is that legitimate?
 
-On Jul 8, 2013, at 8:53 AM, Steve Dickson <SteveD@redhat.com> wrote:
+Nothing precludes it today, but I don't see any need for it.  I'll add
+a comment when I add the flag.
 
-> 
-> 
-> On 05/07/13 10:59, Chuck Lever wrote:
->> Hi Steve-
->> 
->> On Jul 5, 2013, at 7:31 AM, Steve Dickson <SteveD@redhat.com> wrote:
->> 
->>> Hey,
->>> 
->>> On 03/07/13 09:19, Chuck Lever wrote:
->>>> Hi-
->>>> 
->>>> I'm not opposed to this change, but we should have some public discussion about it first.
->>>> 
->>>> If we make this proposed upstream change, NFSv2 will be built far less often and will be 
->>>> a magnet for code rot.  It might make more sense to simply leave the "compile this out" 
->>>> choice up to distributions...?
->>> Code rot is a possibility for any code where default is 'n' so that means we should
->>> never use it? If that is the case, we should have swap over NFS and Label NFS 
->>> on be default on by default so those bits don't rote... My point being, I don't
->>> think code rot should be a reason for us to maintain code people should not
->>> be using in the first place...
->> 
->> In the case at hand, code rot isn't much of a risk if the point is to remove a feature.  
->> But that point wasn't stated anywhere.
->> 
->>>> I'd like to reduce the risk of the kernel carrying  around code that no-one uses or 
->>>> compiles.  If we truly want this off by default  everywhere, shouldn't we just 
->>>> remove it?  (Is that the eventual goal?)
->>> I would think so. Turn it off and see who screams.. Then get the clue-bat out for
->>> for those people that do scream... ;-)  They can always turn it back on... 
->> 
->> If deprecation is the long-term goal, we ought to have a stated plan that we all 
->> agree on.  We're talking about removing a feature of Linux NFS that has been a 
->> mainstay for, literally, decades.  Make some noise, let people chime in, and publish 
->> a plan so folks know what to expect.
-> That was the purpose of this patch... to start the conversation... 
+>> All the other callers besides the SNAPSHOT_FREEZE ioctl stay in the kernel
+>> between freeze_processes() and thaw_processes(), which makes the fanout of
+>> places that could call try_to_freeze() much more controllable.
+>>
+>> Using a new flag that operates like PF_NOFREEZE but doesn't conflict
+>> with it, or a nofreeze_depth counter, would also work.
+>
+> Well, that would be robust enough.  At least if the purpose of that new flag
+> is clearly specified, people hopefully won't be tempted to optimize it away in
+> the future.
+>
+> Thanks,
+> Rafael
 
-It's good for Linux to take some leadership here.  Thanks!
-
-> 
->> 
->> We should also document publicly why we think NFSv2 support should go away.  Is it a 
-> < significant maintenance burden?  Is it a security problem?  Who are the stakeholders?
-> Its mostly maintenances and limited testing resource. I would rather use cycles
-> to fix/test v4... 
-> 
->> 
->>>> Should the server also disable NFSv2 support by default?  If not, then why is the 
->>>> client special in this regard?
->>> We have to start somewhere... It was just easier to start with the client. If 
->>> Bruce is interested in dropping v2 support on the server, I will be more than
->>> willing to looking into that... Actually it might just be a nfs-utils only thing...
->> 
->> It feels like we should have a plan for both the server and client.
-> I'm thinking we could do it separately...
-
-I think we need to plan both, at least, whether we execute the plan on the server-side or not.
-
-We may find some dependencies between the server and client, or we may identify other requirements for deprecating support on either side.
-
-> 
->> 
->> You could remove NFSv2 support in nfs-utils on both sides, I would think.  Didn't you 
->> already remove NFSv2 from the mount.nfs command's version negotiation?
-> Yes, the mount command no longer negotiates down to v2. The -o v2 mount
-> option still works.
-> 
->> 
->> Deprecating a kernel feature also has a pathway through the staging tree, IIUC.  
->> Would that be appropriate for NFSv2?  It may even be a requirement these days, but 
->> I'm not sure.
-> Really? Anybody know what that pathway is?
-
-I'm asking now in a private thread.
-
-
-> 
->> 
->>>> Finally, if we go with something like this change, does this patch also need to 
->>>> update the default configurations shipped with the kernel?
->>> What "default configurations shipped with the kernel"? Isn't fs/nfs/Kconfig the
->>> only place I need to turn it off?
->> 
->> arch/*/configs/*_defconfig
->> 
->> These were not updated when the NFS client was modularized, so they currently do not 
->> list an explicit CONFIG_NFS_V2 setting.  IIUC that means changing Kconfig ought to be 
->> enough.
-> Cool...
-> 
-> steved.
->> 
->>> Thanks for the cycles!
->>> 
->>> steved.
->>> 
->>>> 
->>>> 
->>>> On Jul 3, 2013, at 9:04 AM, Steve Dickson <steved@redhat.com> wrote:
->>>> 
->>>>> This patch disables the NFS version 2 module from being compile by default.
->>>>> 
->>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
->>>>> ---
->>>>> fs/nfs/Kconfig | 4 ++--
->>>>> 1 file changed, 2 insertions(+), 2 deletions(-)
->>>>> 
->>>>> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
->>>>> index 13ca196..6831a01 100644
->>>>> --- a/fs/nfs/Kconfig
->>>>> +++ b/fs/nfs/Kconfig
->>>>> @@ -32,12 +32,12 @@ config NFS_FS
->>>>> config NFS_V2
->>>>> 	tristate "NFS client support for NFS version 2"
->>>>> 	depends on NFS_FS
->>>>> -	default y
->>>>> +	default n
->>>>> 	help
->>>>> 	  This option enables support for version 2 of the NFS protocol
->>>>> 	  (RFC 1094) in the kernel's NFS client.
->>>>> 
->>>>> -	  If unsure, say Y.
->>>>> +	  If unsure, say n.
->>>>> 
->>>>> config NFS_V3
->>>>> 	tristate "NFS client support for NFS version 3"
->>>>> -- 
->>>>> 1.8.1.4
->>>>> 
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+OK, I'll add a new flag.
