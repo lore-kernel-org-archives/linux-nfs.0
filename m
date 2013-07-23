@@ -1,295 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39239 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933226Ab3GCUMt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Jul 2013 16:12:49 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
-        David Howells <dhowells@redhat.com>,
-        Tyler Hicks <tyhicks@canonical.com>,
-        Dustin Kirkland <dustin.kirkland@gazzang.com>
-Subject: [PATCH 12/12] locks: break delegations on any attribute modification
-Date: Wed,  3 Jul 2013 16:12:36 -0400
-Message-Id: <1372882356-14168-13-git-send-email-bfields@redhat.com>
-In-Reply-To: <1372882356-14168-1-git-send-email-bfields@redhat.com>
-References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:27260 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932481Ab3GWQGi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jul 2013 12:06:38 -0400
+Date: Tue, 23 Jul 2013 19:06:27 +0300
+From: Dan Carpenter <dan.carpenter@oracle.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: re: NFSv4: Fix a regression against the FreeBSD server
+Message-ID: <20130723160627.GA2370@elgon.mountain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Hello Trond Myklebust,
 
-NFSv4 uses leases to guarantee that clients can cache metadata as well
-as data.
+This is a semi-automatic email about new static checker warnings.
 
-Cc: Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>
-Cc: David Howells <dhowells@redhat.com>
-Cc: Tyler Hicks <tyhicks@canonical.com>
-Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- drivers/base/devtmpfs.c   |    4 ++--
- fs/attr.c                 |    5 ++++-
- fs/cachefiles/interface.c |    4 ++--
- fs/ecryptfs/inode.c       |    2 +-
- fs/hpfs/namei.c           |    2 +-
- fs/inode.c                |    6 +++++-
- fs/nfsd/vfs.c             |    8 ++++++--
- fs/open.c                 |   21 +++++++++++++++++----
- fs/utimes.c               |    9 ++++++++-
- include/linux/fs.h        |    2 +-
- 10 files changed, 47 insertions(+), 16 deletions(-)
+The patch b4a2cf76ab7c: "NFSv4: Fix a regression against the FreeBSD 
+server" from Jul 17, 2013, leads to the following Smatch complaint:
 
-diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
-index 1b8490e..0f38201 100644
---- a/drivers/base/devtmpfs.c
-+++ b/drivers/base/devtmpfs.c
-@@ -216,7 +216,7 @@ static int handle_create(const char *nodename, umode_t mode, kuid_t uid,
- 		newattrs.ia_gid = gid;
- 		newattrs.ia_valid = ATTR_MODE|ATTR_UID|ATTR_GID;
- 		mutex_lock(&dentry->d_inode->i_mutex);
--		notify_change(dentry, &newattrs);
-+		notify_change(dentry, &newattrs, NULL);
- 		mutex_unlock(&dentry->d_inode->i_mutex);
- 
- 		/* mark as kernel-created inode */
-@@ -322,7 +322,7 @@ static int handle_remove(const char *nodename, struct device *dev)
- 			newattrs.ia_valid =
- 				ATTR_UID|ATTR_GID|ATTR_MODE;
- 			mutex_lock(&dentry->d_inode->i_mutex);
--			notify_change(dentry, &newattrs);
-+			notify_change(dentry, &newattrs, NULL);
- 			mutex_unlock(&dentry->d_inode->i_mutex);
- 			err = vfs_unlink(parent.dentry->d_inode, dentry, NULL);
- 			if (!err || err == -ENOENT)
-diff --git a/fs/attr.c b/fs/attr.c
-index 1449adb..261f5c9 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -167,7 +167,7 @@ void setattr_copy(struct inode *inode, const struct iattr *attr)
- }
- EXPORT_SYMBOL(setattr_copy);
- 
--int notify_change(struct dentry * dentry, struct iattr * attr)
-+int notify_change(struct dentry * dentry, struct iattr * attr, struct inode **delegated_inode)
- {
- 	struct inode *inode = dentry->d_inode;
- 	umode_t mode = inode->i_mode;
-@@ -243,6 +243,9 @@ int notify_change(struct dentry * dentry, struct iattr * attr)
- 	error = security_inode_setattr(dentry, attr);
- 	if (error)
- 		return error;
-+	error = try_break_deleg(inode, delegated_inode);
-+	if (error)
-+		return error;
- 
- 	if (inode->i_op->setattr)
- 		error = inode->i_op->setattr(dentry, attr);
-diff --git a/fs/cachefiles/interface.c b/fs/cachefiles/interface.c
-index 746ce53..40f5917 100644
---- a/fs/cachefiles/interface.c
-+++ b/fs/cachefiles/interface.c
-@@ -417,14 +417,14 @@ static int cachefiles_attr_changed(struct fscache_object *_object)
- 		_debug("discard tail %llx", oi_size);
- 		newattrs.ia_valid = ATTR_SIZE;
- 		newattrs.ia_size = oi_size & PAGE_MASK;
--		ret = notify_change(object->backer, &newattrs);
-+		ret = notify_change(object->backer, &newattrs, NULL);
- 		if (ret < 0)
- 			goto truncate_failed;
- 	}
- 
- 	newattrs.ia_valid = ATTR_SIZE;
- 	newattrs.ia_size = ni_size;
--	ret = notify_change(object->backer, &newattrs);
-+	ret = notify_change(object->backer, &newattrs, NULL);
- 
- truncate_failed:
- 	mutex_unlock(&object->backer->d_inode->i_mutex);
-diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-index 19e4435..bd54575 100644
---- a/fs/ecryptfs/inode.c
-+++ b/fs/ecryptfs/inode.c
-@@ -992,7 +992,7 @@ static int ecryptfs_setattr(struct dentry *dentry, struct iattr *ia)
- 		lower_ia.ia_valid &= ~ATTR_MODE;
- 
- 	mutex_lock(&lower_dentry->d_inode->i_mutex);
--	rc = notify_change(lower_dentry, &lower_ia);
-+	rc = notify_change(lower_dentry, &lower_ia, NULL);
- 	mutex_unlock(&lower_dentry->d_inode->i_mutex);
- out:
- 	fsstack_copy_attr_all(inode, lower_inode);
-diff --git a/fs/hpfs/namei.c b/fs/hpfs/namei.c
-index 345713d..1b39afd 100644
---- a/fs/hpfs/namei.c
-+++ b/fs/hpfs/namei.c
-@@ -407,7 +407,7 @@ again:
- 			/*printk("HPFS: truncating file before delete.\n");*/
- 			newattrs.ia_size = 0;
- 			newattrs.ia_valid = ATTR_SIZE | ATTR_CTIME;
--			err = notify_change(dentry, &newattrs);
-+			err = notify_change(dentry, &newattrs, NULL);
- 			put_write_access(inode);
- 			if (!err)
- 				goto again;
-diff --git a/fs/inode.c b/fs/inode.c
-index 304db4c..664d631 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -1633,7 +1633,11 @@ static int __remove_suid(struct dentry *dentry, int kill)
- 	struct iattr newattrs;
- 
- 	newattrs.ia_valid = ATTR_FORCE | kill;
--	return notify_change(dentry, &newattrs);
-+	/*
-+	 * Note we call this on write, so notify_change will not
-+	 * encounter any conflicting delegations:
-+	 */
-+	return notify_change(dentry, &newattrs, NULL);
- }
- 
- int file_remove_suid(struct file *file)
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index b9740cb..e781901 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -426,7 +426,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
- 			goto out_nfserr;
- 		fh_lock(fhp);
- 
--		host_err = notify_change(dentry, iap);
-+		host_err = notify_change(dentry, iap, NULL);
- 		err = nfserrno(host_err);
- 		fh_unlock(fhp);
- 	}
-@@ -959,7 +959,11 @@ static void kill_suid(struct dentry *dentry)
- 	ia.ia_valid = ATTR_KILL_SUID | ATTR_KILL_SGID | ATTR_KILL_PRIV;
- 
- 	mutex_lock(&dentry->d_inode->i_mutex);
--	notify_change(dentry, &ia);
-+	/*
-+	 * Note we call this on write, so notify_change will not
-+	 * encounter any conflicting delegations:
-+	 */
-+	notify_change(dentry, &ia, NULL);
- 	mutex_unlock(&dentry->d_inode->i_mutex);
- }
- 
-diff --git a/fs/open.c b/fs/open.c
-index 8c74100..1a39d29 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -57,7 +57,7 @@ int do_truncate(struct dentry *dentry, loff_t length, unsigned int time_attrs,
- 		newattrs.ia_valid |= ret | ATTR_FORCE;
- 
- 	mutex_lock(&dentry->d_inode->i_mutex);
--	ret = notify_change(dentry, &newattrs);
-+	ret = notify_change(dentry, &newattrs, NULL);
- 	mutex_unlock(&dentry->d_inode->i_mutex);
- 	return ret;
- }
-@@ -464,21 +464,28 @@ out:
- static int chmod_common(struct path *path, umode_t mode)
- {
- 	struct inode *inode = path->dentry->d_inode;
-+	struct inode *delegated_inode = NULL;
- 	struct iattr newattrs;
- 	int error;
- 
- 	error = mnt_want_write(path->mnt);
- 	if (error)
- 		return error;
-+retry_deleg:
- 	mutex_lock(&inode->i_mutex);
- 	error = security_path_chmod(path, mode);
- 	if (error)
- 		goto out_unlock;
- 	newattrs.ia_mode = (mode & S_IALLUGO) | (inode->i_mode & ~S_IALLUGO);
- 	newattrs.ia_valid = ATTR_MODE | ATTR_CTIME;
--	error = notify_change(path->dentry, &newattrs);
-+	error = notify_change(path->dentry, &newattrs, &delegated_inode);
- out_unlock:
- 	mutex_unlock(&inode->i_mutex);
-+	if (delegated_inode) {
-+		error = break_deleg_wait(&delegated_inode);
-+		if (!error)
-+			goto retry_deleg;
-+	}
- 	mnt_drop_write(path->mnt);
- 	return error;
- }
-@@ -523,6 +530,7 @@ SYSCALL_DEFINE2(chmod, const char __user *, filename, umode_t, mode)
- static int chown_common(struct path *path, uid_t user, gid_t group)
- {
- 	struct inode *inode = path->dentry->d_inode;
-+	struct inode *delegated_inode = NULL;
- 	int error;
- 	struct iattr newattrs;
- 	kuid_t uid;
-@@ -547,12 +555,17 @@ static int chown_common(struct path *path, uid_t user, gid_t group)
- 	if (!S_ISDIR(inode->i_mode))
- 		newattrs.ia_valid |=
- 			ATTR_KILL_SUID | ATTR_KILL_SGID | ATTR_KILL_PRIV;
-+retry_deleg:
- 	mutex_lock(&inode->i_mutex);
- 	error = security_path_chown(path, uid, gid);
- 	if (!error)
--		error = notify_change(path->dentry, &newattrs);
-+		error = notify_change(path->dentry, &newattrs, &delegated_inode);
- 	mutex_unlock(&inode->i_mutex);
--
-+	if (delegated_inode) {
-+		error = break_deleg_wait(&delegated_inode);
-+		if (!error)
-+			goto retry_deleg;
-+	}
- 	return error;
- }
- 
-diff --git a/fs/utimes.c b/fs/utimes.c
-index f4fb7ec..aa138d6 100644
---- a/fs/utimes.c
-+++ b/fs/utimes.c
-@@ -53,6 +53,7 @@ static int utimes_common(struct path *path, struct timespec *times)
- 	int error;
- 	struct iattr newattrs;
- 	struct inode *inode = path->dentry->d_inode;
-+	struct inode *delegated_inode = NULL;
- 
- 	error = mnt_want_write(path->mnt);
- 	if (error)
-@@ -101,9 +102,15 @@ static int utimes_common(struct path *path, struct timespec *times)
- 				goto mnt_drop_write_and_out;
- 		}
- 	}
-+retry_deleg:
- 	mutex_lock(&inode->i_mutex);
--	error = notify_change(path->dentry, &newattrs);
-+	error = notify_change(path->dentry, &newattrs, &delegated_inode);
- 	mutex_unlock(&inode->i_mutex);
-+	if (delegated_inode) {
-+		error = break_deleg_wait(&delegated_inode);
-+		if (!error)
-+			goto retry_deleg;
-+	}
- 
- mnt_drop_write_and_out:
- 	mnt_drop_write(path->mnt);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 936413c..0d6d919 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2256,7 +2256,7 @@ extern void emergency_remount(void);
- #ifdef CONFIG_BLOCK
- extern sector_t bmap(struct inode *, sector_t);
- #endif
--extern int notify_change(struct dentry *, struct iattr *);
-+extern int notify_change(struct dentry *, struct iattr *, struct inode **);
- extern int inode_permission(struct inode *, int);
- extern int generic_permission(struct inode *, int);
- 
--- 
-1.7.9.5
+fs/nfs/nfs4xdr.c:1103 encode_attrs()
+	 error: we previously assumed 'label' could be null (see line 1059)
 
+fs/nfs/nfs4xdr.c
+  1058		}
+  1059		if (label) {
+                    ^^^^^
+New check.
+
+  1060			len += 4 + 4 + 4 + (XDR_QUADLEN(label->len) << 2);
+  1061			bmval[2] |= FATTR4_WORD2_SECURITY_LABEL;
+  1062		}
+  1063	
+  1064		if (bmval[2] != 0)
+  1065			bmval_len = 3;
+  1066		else if (bmval[1] != 0)
+  1067			bmval_len = 2;
+  1068		else
+  1069			bmval_len = 1;
+  1070	
+
+[snip]
+
+  1094		if (bmval[1] & FATTR4_WORD1_TIME_MODIFY_SET) {
+  1095			if (iap->ia_valid & ATTR_MTIME_SET) {
+  1096				*p++ = cpu_to_be32(NFS4_SET_TO_CLIENT_TIME);
+  1097				p = xdr_encode_hyper(p, (s64)iap->ia_mtime.tv_sec);
+  1098				*p++ = cpu_to_be32(iap->ia_mtime.tv_nsec);
+  1099			} else
+  1100				*p++ = cpu_to_be32(NFS4_SET_TO_SERVER_TIME);
+  1101		}
+  1102		if (bmval[2] & FATTR4_WORD2_SECURITY_LABEL) {
+  1103			*p++ = cpu_to_be32(label->lfs);
+                                           ^^^^^^^^^^
+Old dereference.
+
+  1104			*p++ = cpu_to_be32(label->pi);
+  1105			*p++ = cpu_to_be32(label->len);
+
+regards,
+dan carpenter
