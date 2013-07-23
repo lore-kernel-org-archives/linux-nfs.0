@@ -1,50 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from stator.leun.net ([85.214.203.199]:38834 "EHLO stator.leun.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751482Ab3GVXfg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Jul 2013 19:35:36 -0400
-Date: Tue, 23 Jul 2013 01:02:50 +0200
-From: Michael Leun <lkml20130126@newton.leun.net>
-To: Colin Cross <ccross@android.com>
-Cc: linux-kernel@vger.kernel.org, Pavel Machek <pavel@ucw.cz>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-pm@vger.kernel.org, netdev@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, Darren Hart <dvhart@linux.intel.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Randy Dunlap <rdunlap@infradead.org>,
-        Al Viro <viro@zeniv.linux.org.uk>
-Subject: 3.11-rc regression bisected: s2disk does not work (was Re: [PATCH
- v3 13/16] futex: use freezable blocking call)
-Message-ID: <20130723010250.5a3465ec@xenia.leun.net>
-In-Reply-To: <1367884221-20462-14-git-send-email-ccross@android.com>
-References: <1367884221-20462-1-git-send-email-ccross@android.com>
-	<1367884221-20462-14-git-send-email-ccross@android.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from userp1040.oracle.com ([156.151.31.81]:47125 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757712Ab3GWUOM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jul 2013 16:14:12 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: [PATCH 2/2] NFSv4: encode_attrs should not backfill the bitmap and attribute length
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1374598847.12943.0.camel@leira.trondhjem.org>
+Date: Tue, 23 Jul 2013 16:14:03 -0400
+Cc: Andre Heider <a.heider@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Rick Macklem <rmacklem@uoguelph.ca>
+Message-Id: <A4648039-314B-4B30-BCDC-7D612DE1EC1F@oracle.com>
+References: <1374098347-30196-1-git-send-email-Trond.Myklebust@netapp.com> <1374098347-30196-2-git-send-email-Trond.Myklebust@netapp.com> <CAHsu+b-b=-pQ4f8AfHHDaPpAK3YvHomS3X-QuEJkzbAsuJBYfg@mail.gmail.com> <1374598847.12943.0.camel@leira.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon,  6 May 2013 16:50:18 -0700
-Colin Cross <ccross@android.com> wrote:
 
-> Avoid waking up every thread sleeping in a futex_wait call during
-[...]
+On Jul 23, 2013, at 1:00 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-With 3.11-rc s2disk from suspend-utils stopped working: Frozen at
-displaying 0% of saving image to disk.
+> On Tue, 2013-07-23 at 17:59 +0200, Andre Heider wrote:
+>> Trond,
+>> 
+>> On Wed, Jul 17, 2013 at 11:59 PM, Trond Myklebust
+>> <Trond.Myklebust@netapp.com> wrote:
+>>> The attribute length is already calculated in advance. There is no
+>>> reason why we cannot calculate the bitmap in advance too so that
+>>> we don't have to play pointer games.
+>> 
+>> I'm sorry to report that this patch seems to be more than just a cleanup.
+>> 
+>> I just tested 3.11-rc2 against my FreeBSD server, and with just patch
+>> 1/2 (as in -rc2) I still get the failure upon `touch`. It fails with
+>> or without Rick's server patch.
+>> 
+>> Applying this one on top of -rc2 fixes it.
+> 
+> How about the attached instead of the cleanup?
 
-echo "1" >/sys/power/state still works.
+Even with this patch applied, cthon basic tests fail immediately for me.  The mkdir to create the test directory fails with EIO.
 
-Bisecting yielded 88c8004fd3a5fdd2378069de86b90b21110d33a4, reverting
-that from 3.11-rc2 makes s2disk working again.
+The wire trace shows that the CREATE operation is malformed: the client sends a length of 8 for the 4-octet mode attribute value at the end of the operation.
+
+This causes the server to skip over the following GETFH operation -- it thinks the client has sent 3 operations, when the client told it to expect 4 in this compound.
+
+Here:
+
+1064         *p++ = cpu_to_be32(bmval_len);
+1065         q = p;
+1066         /* Skip bitmap entries + attrlen */
+1067         p += bmval_len + 1;
+
+You've skipped over the 4-octet attrlen field, but here:
+
+1125         *q++ = htonl(bmval0);
+1126         *q++ = htonl(bmval1);
+1127         if (bmval_len == 3)
+1128                 *q++ = htonl(bmval2);
+1129         len = (char *)p - (char *)q;
+1130         *q = htonl(len);
+
+have you failed to take the attrlen field into account when computing the length of the attribute values?
 
 -- 
-MfG,
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Michael Leun
+
+
 
