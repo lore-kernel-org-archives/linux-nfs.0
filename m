@@ -1,105 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36978 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:33183 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932919Ab3GLVkX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Jul 2013 17:40:23 -0400
-Received: from bfields by fieldses.org with local (Exim 4.76)
-	(envelope-from <bfields@fieldses.org>)
-	id 1Uxl4g-00031C-T7
-	for linux-nfs@vger.kernel.org; Fri, 12 Jul 2013 17:40:23 -0400
-Date: Fri, 12 Jul 2013 17:40:22 -0400
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd4: fix minorversion support interface
-Message-ID: <20130712214022.GC10562@fieldses.org>
+	id S932595Ab3GWQ2O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Jul 2013 12:28:14 -0400
+Date: Tue, 23 Jul 2013 12:28:13 -0400
+From: "J.Bruce Fields" <bfields@citi.umich.edu>
+To: Harshula Jayasuriya <harshula@redhat.com>
+Cc: linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.de>
+Subject: Re: [PATCH] nfsd: nfs4_file_get_access: need to be more careful with
+ O_RDWR
+Message-ID: <20130723162813.GC12569@fieldses.org>
+References: <1374552314.5454.89.camel@serendib>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <1374552314.5454.89.camel@serendib>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Thanks, applying for 3.12.--b.
 
-You can turn on or off support for minorversions using e.g.
-
-	echo "-4.2" >/proc/fs/nfsd/versions
-
-However, the current implementation is a little wonky.  For example, the
-above will turn off 4.2 support, but it will also turn *on* 4.1 support.
-
-This didn't matter as long as we only had 2 minorversions, which was
-true till very recently.
-
-And do a little cleanup here.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4proc.c |    2 +-
- fs/nfsd/nfsd.h     |    1 -
- fs/nfsd/nfssvc.c   |   13 +++++++------
- 3 files changed, 8 insertions(+), 8 deletions(-)
-
-For 3.11.
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index a7cee86..0d4c410 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1293,7 +1293,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 	 * According to RFC3010, this takes precedence over all other errors.
- 	 */
- 	status = nfserr_minor_vers_mismatch;
--	if (args->minorversion > nfsd_supported_minorversion)
-+	if (nfsd_minorversion(args->minorversion, NFSD_TEST) <= 0)
- 		goto out;
- 
- 	status = nfs41_check_op_ordering(args);
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 2bbd94e..30f34ab 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -53,7 +53,6 @@ struct readdir_cd {
- extern struct svc_program	nfsd_program;
- extern struct svc_version	nfsd_version2, nfsd_version3,
- 				nfsd_version4;
--extern u32			nfsd_supported_minorversion;
- extern struct mutex		nfsd_mutex;
- extern spinlock_t		nfsd_drc_lock;
- extern unsigned long		nfsd_drc_max_mem;
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 6b9f48c..760c85a 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -116,7 +116,10 @@ struct svc_program		nfsd_program = {
- 
- };
- 
--u32 nfsd_supported_minorversion = 1;
-+static bool nfsd_supported_minorversions[NFSD_SUPPORTED_MINOR_VERSION + 1] = {
-+	[0] = 1,
-+	[1] = 1,
-+};
- 
- int nfsd_vers(int vers, enum vers_op change)
- {
-@@ -151,15 +154,13 @@ int nfsd_minorversion(u32 minorversion, enum vers_op change)
- 		return -1;
- 	switch(change) {
- 	case NFSD_SET:
--		nfsd_supported_minorversion = minorversion;
-+		nfsd_supported_minorversions[minorversion] = true;
- 		break;
- 	case NFSD_CLEAR:
--		if (minorversion == 0)
--			return -1;
--		nfsd_supported_minorversion = minorversion - 1;
-+		nfsd_supported_minorversions[minorversion] = false;
- 		break;
- 	case NFSD_TEST:
--		return minorversion <= nfsd_supported_minorversion;
-+		return nfsd_supported_minorversions[minorversion];
- 	case NFSD_AVAIL:
- 		return minorversion <= NFSD_SUPPORTED_MINOR_VERSION;
- 	}
--- 
-1.7.9.5
-
+On Tue, Jul 23, 2013 at 02:05:14PM +1000, Harshula Jayasuriya wrote:
+> If fi_fds = {non-NULL, NULL, non-NULL} and oflag = O_WRONLY
+> the WARN_ON_ONCE(!(fp->fi_fds[oflag] || fp->fi_fds[O_RDWR]))
+> doesn't trigger when it should.
+> 
+> Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
+> ---
+>  fs/nfsd/nfs4state.c | 13 ++++---------
+>  1 file changed, 4 insertions(+), 9 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 280acef..1cb6211 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -282,19 +282,14 @@ static unsigned int file_hashval(struct inode *ino)
+>  
+>  static struct hlist_head file_hashtbl[FILE_HASH_SIZE];
+>  
+> -static void __nfs4_file_get_access(struct nfs4_file *fp, int oflag)
+> -{
+> -	WARN_ON_ONCE(!(fp->fi_fds[oflag] || fp->fi_fds[O_RDWR]));
+> -	atomic_inc(&fp->fi_access[oflag]);
+> -}
+> -
+>  static void nfs4_file_get_access(struct nfs4_file *fp, int oflag)
+>  {
+> +	WARN_ON_ONCE(!fp->fi_fds[oflag]);
+>  	if (oflag == O_RDWR) {
+> -		__nfs4_file_get_access(fp, O_RDONLY);
+> -		__nfs4_file_get_access(fp, O_WRONLY);
+> +		atomic_inc(&fp->fi_access[O_RDONLY]);
+> +		atomic_inc(&fp->fi_access[O_WRONLY]);
+>  	} else
+> -		__nfs4_file_get_access(fp, oflag);
+> +		atomic_inc(&fp->fi_access[oflag]);
+>  }
+>  
+>  static void nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
+> -- 
+> 1.8.1.4
+> 
