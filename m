@@ -1,181 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53668 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757052Ab3GQUuZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 16:50:25 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 15/16] nfsd4: close open-deleg/unlink/rename race
-Date: Wed, 17 Jul 2013 16:50:16 -0400
-Message-Id: <1374094217-31493-17-git-send-email-bfields@redhat.com>
-In-Reply-To: <1374094217-31493-1-git-send-email-bfields@redhat.com>
-References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+Received: from mail-pd0-f181.google.com ([209.85.192.181]:55632 "EHLO
+	mail-pd0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933220Ab3GWRaY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jul 2013 13:30:24 -0400
+Received: by mail-pd0-f181.google.com with SMTP id 14so8412854pdj.12
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Jul 2013 10:30:23 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1374598847.12943.0.camel@leira.trondhjem.org>
+References: <1374098347-30196-1-git-send-email-Trond.Myklebust@netapp.com>
+	<1374098347-30196-2-git-send-email-Trond.Myklebust@netapp.com>
+	<CAHsu+b-b=-pQ4f8AfHHDaPpAK3YvHomS3X-QuEJkzbAsuJBYfg@mail.gmail.com>
+	<1374598847.12943.0.camel@leira.trondhjem.org>
+Date: Tue, 23 Jul 2013 19:30:23 +0200
+Message-ID: <CAHsu+b--M3FqF21o=0jz8DoiROy89FVi5oZ0Tbn8zV2CG63oBQ@mail.gmail.com>
+Subject: Re: [PATCH 2/2] NFSv4: encode_attrs should not backfill the bitmap
+ and attribute length
+From: Andre Heider <a.heider@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Rick Macklem <rmacklem@uoguelph.ca>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Tue, Jul 23, 2013 at 7:00 PM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Tue, 2013-07-23 at 17:59 +0200, Andre Heider wrote:
+>> Trond,
+>>
+>> On Wed, Jul 17, 2013 at 11:59 PM, Trond Myklebust
+>> <Trond.Myklebust@netapp.com> wrote:
+>> > The attribute length is already calculated in advance. There is no
+>> > reason why we cannot calculate the bitmap in advance too so that
+>> > we don't have to play pointer games.
+>>
+>> I'm sorry to report that this patch seems to be more than just a cleanup.
+>>
+>> I just tested 3.11-rc2 against my FreeBSD server, and with just patch
+>> 1/2 (as in -rc2) I still get the failure upon `touch`. It fails with
+>> or without Rick's server patch.
+>>
+>> Applying this one on top of -rc2 fixes it.
+>
+> How about the attached instead of the cleanup?
 
-If a file is unlinked or renamed between the time when we do the local
-open and the time when we get the delegation, then we will return to the
-client indicating that it holds a delegation even though the file no
-longer exists under the name it was open under.
+Much better ;) Thanks again for the quick fix!
 
-But a client performing an open-by-name, when it is returned a
-delegation, must be able to assume that the file is still linked at the
-name it was opened under.
-
-So, pass the parent filehandle into the delegation and lease-setting
-code, and use it to re-lookup the file after we get the lease.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4proc.c  |    2 +-
- fs/nfsd/nfs4state.c |   52 +++++++++++++++++++++++++++++++++++++++++++--------
- fs/nfsd/xdr4.h      |    3 ++-
- 3 files changed, 47 insertions(+), 10 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 4c0cbeb..f44b29d 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -457,7 +457,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	 * successful, it (1) truncates the file if open->op_truncate was
- 	 * set, (2) sets open->op_stateid, (3) sets open->op_delegation.
- 	 */
--	status = nfsd4_process_open2(rqstp, resfh, open);
-+	status = nfsd4_process_open2(rqstp, resfh, open, &cstate->current_fh);
- 	WARN_ON(status && open->op_created);
- out:
- 	if (resfh && resfh != &cstate->current_fh) {
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7c91b6c..193f2bb 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3018,7 +3018,28 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_delegation *dp, int f
- 	return fl;
- }
- 
--static int nfs4_setlease(struct nfs4_delegation *dp)
-+static bool nfsd4_name_still_same(struct svc_fh *parent, struct nfsd4_open *open, struct dentry *dentry)
-+{
-+	struct xdr_netobj *name = &open->op_fname;
-+	struct dentry *res;
-+	bool ret;
-+
-+	if (parent->fh_dentry == dentry)
-+		/* This was an open by filehandle, we don't care: */
-+		return true;
-+	if (nfsd_mountpoint(dentry, parent->fh_export))
-+		/* We assume those never change */
-+		return true;
-+	mutex_lock(&parent->fh_dentry->d_inode->i_mutex); /* XXX? */
-+	res = lookup_one_len(name->data, parent->fh_dentry, name->len);
-+	mutex_unlock(&parent->fh_dentry->d_inode->i_mutex);
-+	ret = res == dentry;
-+	if (!IS_ERR(res))
-+		dput(res);
-+	return ret;
-+}
-+
-+static int nfs4_setlease(struct nfs4_delegation *dp, struct nfsd4_open *open, struct svc_fh *parent)
- {
- 	struct nfs4_file *fp = dp->dl_file;
- 	struct file_lock *fl;
-@@ -3031,23 +3052,37 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
- 	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
- 	if (status)
- 		goto out_free;
-+	if (!nfsd4_name_still_same(parent, open, fl->fl_file->f_dentry))
-+		goto out_unlease;
-+	spin_lock(&recall_lock);
-+	if (fp->fi_had_conflict)
-+		/*
-+		 * whoops, already broken, but before we got a chance to
-+		 * install our delegation; never mind:
-+		 */
-+		 goto out_unlock;
-+	list_add(&dp->dl_perfile, &fp->fi_delegations);
-+	spin_unlock(&recall_lock);
- 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
- 	fp->fi_lease = fl;
- 	fp->fi_deleg_file = get_file(fl->fl_file);
- 	atomic_set(&fp->fi_delegees, 1);
--	list_add(&dp->dl_perfile, &fp->fi_delegations);
- 	return 0;
-+out_unlock:
-+	spin_unlock(&recall_lock);
-+out_unlease:
-+	vfs_setlease(fl->fl_file, F_UNLCK, &fl);
- out_free:
- 	locks_free_lock(fl);
- 	return -ENOMEM;
- }
- 
--static int nfs4_set_delegation(struct nfs4_delegation *dp)
-+static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfsd4_open *open, struct svc_fh *parent)
- {
- 	struct nfs4_file *fp = dp->dl_file;
- 
- 	if (!fp->fi_lease)
--		return nfs4_setlease(dp);
-+		return nfs4_setlease(dp, open, parent);
- 	spin_lock(&recall_lock);
- 	if (fp->fi_had_conflict) {
- 		spin_unlock(&recall_lock);
-@@ -3089,7 +3124,8 @@ static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status)
-  */
- static void
- nfs4_open_delegation(struct net *net, struct svc_fh *fh,
--		     struct nfsd4_open *open, struct nfs4_ol_stateid *stp)
-+		     struct nfsd4_open *open, struct nfs4_ol_stateid *stp,
-+		     struct svc_fh *parent)
- {
- 	struct nfs4_delegation *dp;
- 	struct nfs4_openowner *oo = container_of(stp->st_stateowner, struct nfs4_openowner, oo_owner);
-@@ -3132,7 +3168,7 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
- 	dp = alloc_init_deleg(oo->oo_owner.so_client, stp, fh);
- 	if (dp == NULL)
- 		goto out_no_deleg;
--	status = nfs4_set_delegation(dp);
-+	status = nfs4_set_delegation(dp, open, parent);
- 	if (status)
- 		goto out_free;
- 
-@@ -3181,7 +3217,7 @@ static void nfsd4_deleg_xgrade_none_ext(struct nfsd4_open *open,
-  * called with nfs4_lock_state() held.
-  */
- __be32
--nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_open *open)
-+nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_open *open, struct svc_fh *parent)
- {
- 	struct nfsd4_compoundres *resp = rqstp->rq_resp;
- 	struct nfs4_client *cl = open->op_openowner->oo_owner.so_client;
-@@ -3250,7 +3286,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 	* Attempt to hand out a delegation. No error return, because the
- 	* OPEN succeeds even if we fail.
- 	*/
--	nfs4_open_delegation(SVC_NET(rqstp), current_fh, open, stp);
-+	nfs4_open_delegation(SVC_NET(rqstp), current_fh, open, stp, parent);
- nodeleg:
- 	status = nfs_ok;
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index b3ed644..3058885 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -596,7 +596,8 @@ __be32 nfsd4_reclaim_complete(struct svc_rqst *, struct nfsd4_compound_state *,
- extern __be32 nfsd4_process_open1(struct nfsd4_compound_state *,
- 		struct nfsd4_open *open, struct nfsd_net *nn);
- extern __be32 nfsd4_process_open2(struct svc_rqst *rqstp,
--		struct svc_fh *current_fh, struct nfsd4_open *open);
-+		struct svc_fh *current_fh, struct nfsd4_open *open,
-+		struct svc_fh *parent);
- extern void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status);
- extern __be32 nfsd4_open_confirm(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *, struct nfsd4_open_confirm *oc);
--- 
-1.7.9.5
-
+Feel free to add:
+Tested-by: Andre Heider <a.heider@gmail.com>
