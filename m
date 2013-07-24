@@ -1,48 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:41089 "EHLO mx11.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:32852 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759317Ab3GRTfn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Jul 2013 15:35:43 -0400
-From: <andros@netapp.com>
-To: <trond.myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 4 1/5] SUNRPC: don't map EKEYEXPIRED to EACCES in call_refreshresult
-Date: Thu, 18 Jul 2013 15:35:26 -0400
-Message-ID: <1374176130-11657-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1374176130-11657-1-git-send-email-andros@netapp.com>
-References: <1374176130-11657-1-git-send-email-andros@netapp.com>
+	id S1754145Ab3GXOa7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Jul 2013 10:30:59 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: Fix attribute length
+Date: Wed, 24 Jul 2013 14:30:58 +0000
+Message-ID: <1374676257.12943.41.camel@leira.trondhjem.org>
+References: <20130724141453.GG23378@fieldses.org>
+In-Reply-To: <20130724141453.GG23378@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
-
-The NFS layer needs to know when a key has expired.
-This change also returns -EKEYEXPIRED to the application, and the informative
-"Key has expired" error message is displayed. The user then knows that
-credential renewal is required.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- net/sunrpc/clnt.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index aa40156..68e8595 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1426,9 +1426,9 @@ call_refreshresult(struct rpc_task *task)
- 		return;
- 	case -ETIMEDOUT:
- 		rpc_delay(task, 3*HZ);
--	case -EKEYEXPIRED:
- 	case -EAGAIN:
- 		status = -EACCES;
-+	case -EKEYEXPIRED:
- 		if (!task->tk_cred_retry)
- 			break;
- 		task->tk_cred_retry--;
--- 
-1.8.3.1
-
+T24gV2VkLCAyMDEzLTA3LTI0IGF0IDEwOjE0IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IEZyb206ICJKLiBCcnVjZSBGaWVsZHMiIDxiZmllbGRzQHJlZGhhdC5jb20+DQo+IA0KPiBU
+aGUgY2FsY3VsYXRpb24gb2YgYXR0cmlidXRlIGxlbmd0aCBmaWVsZHMgaXMgdG9vIGhpZ2ggYnkg
+Zm91ciBiZWNhdXNlDQo+IGl0IGluY29ycmVjdGx5IGluY2x1ZGVzIHRoZSBsZW5ndGggZmllbGQg
+aXRzZWxmLg0KPiANCj4gVGhpcyByZWdyZXNzaW9uIHdhcyBpbnRyb2R1Y2VkIGJ5DQo+IGI0YTJj
+Zjc2YWI3YzA4NjI4YzYyYjIwNjJkYWNlZmE0OTZiNTlkZmQgIk5GU3Y0OiBGaXggYSByZWdyZXNz
+aW9uDQo+IGFnYWluc3QgdGhlIEZyZWVCU0Qgc2VydmVyIiBhbmQgY2F1c2VzIE9QRU5zIHRvIHRo
+ZSBMaW51eCBORlMgc2VydmVyIHRvDQo+IGZhaWwgd2l0aCBCQURYRFIgZXJyb3JzICh0cmFuc2xh
+dGVkIGJ5IHRoZSBjbGllbnQgaW50byBFSU8pLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogSi4gQnJ1
+Y2UgRmllbGRzIDxiZmllbGRzQHJlZGhhdC5jb20+DQo+IC0tLQ0KPiAgZnMvbmZzL25mczR4ZHIu
+YyB8ICAgIDIgKy0NCj4gIDEgZmlsZSBjaGFuZ2VkLCAxIGluc2VydGlvbigrKSwgMSBkZWxldGlv
+bigtKQ0KPiANCj4gSSB0aG91Z2h0IHlvdSBndXlzIGhhZCBhdXRvbWF0ZWQgdGVzdGluZyBhZ2Fp
+bnN0IHRoZSBMaW51eCBzZXJ2ZXI/ICBIb3cNCj4gZGlkIHRoaXMgc2xpcCB0aHJvdWdoIGludG8g
+dXBzdHJlYW0/DQo+IA0KPiAtLWIuDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczR4ZHIu
+YyBiL2ZzL25mcy9uZnM0eGRyLmMNCj4gaW5kZXggYzc0ZDYxNi4uZDZkNjc1NCAxMDA2NDQNCj4g
+LS0tIGEvZnMvbmZzL25mczR4ZHIuYw0KPiArKysgYi9mcy9uZnMvbmZzNHhkci5jDQo+IEBAIC0x
+MTE4LDcgKzExMTgsNyBAQCBzdGF0aWMgdm9pZCBlbmNvZGVfYXR0cnMoc3RydWN0IHhkcl9zdHJl
+YW0gKnhkciwgY29uc3Qgc3RydWN0IGlhdHRyICppYXAsDQo+ICAJCQkJbGVuLCAoKGNoYXIgKilw
+IC0gKGNoYXIgKilxKSArIDQpOw0KPiAgCQlCVUcoKTsNCj4gIAl9DQo+IC0JbGVuID0gKGNoYXIg
+KilwIC0gKGNoYXIgKilxIC0gKGJtdmFsX2xlbiA8PCAyKTsNCj4gKwlsZW4gPSAoY2hhciAqKXAg
+LSAoY2hhciAqKXEgLSAoYm12YWxfbGVuICsgMSA8PCAyKTsNCj4gIAkqcSsrID0gaHRvbmwoYm12
+YWwwKTsNCj4gIAkqcSsrID0gaHRvbmwoYm12YWwxKTsNCj4gIAlpZiAoYm12YWxfbGVuID09IDMp
+DQoNClBsZWFzZSBzZWUgY29tbWl0IDRmM2NjNDgwOWE5OGExNjVhOTcwOGI3MmI0N2RlNzE2NDM3
+OTdiYmQgKE5GU3Y0OiBGaXgNCmJyYWluZmFydCBpbiBhdHRyaWJ1dGUgbGVuZ3RoIGNhbGN1bGF0
+aW9uKSB1cHN0cmVhbS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
+bWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0
+YXBwLmNvbQ0K
