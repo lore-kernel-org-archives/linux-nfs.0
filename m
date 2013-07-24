@@ -1,107 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hydra.sisk.pl ([212.160.235.94]:36440 "EHLO hydra.sisk.pl"
+Received: from fieldses.org ([174.143.236.118]:40295 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754713Ab3GWVdU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Jul 2013 17:33:20 -0400
-From: "Rafael J. Wysocki" <rjw@sisk.pl>
-To: Colin Cross <ccross@android.com>
-Cc: Michael Leun <lkml20130126@newton.leun.net>,
-        lkml <linux-kernel@vger.kernel.org>, Pavel Machek <pavel@ucw.cz>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>,
-        Linux PM list <linux-pm@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, Darren Hart <dvhart@linux.intel.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Randy Dunlap <rdunlap@infradead.org>,
-        Al Viro <viro@zeniv.linux.org.uk>
-Subject: Re: 3.11-rc regression bisected: s2disk does not work (was Re: [PATCH v3 13/16] futex: use freezable blocking call)
-Date: Tue, 23 Jul 2013 23:43:21 +0200
-Message-ID: <1374626689.YM8vFTr171@vostro.rjw.lan>
-In-Reply-To: <CAMbhsRT6zOKLhG_uh=nA8H_3d7afhG+4jvWjvidY3fEguryP_Q@mail.gmail.com>
-References: <1367884221-20462-1-git-send-email-ccross@android.com> <20130723200854.2046296b@xenia.leun.net> <CAMbhsRT6zOKLhG_uh=nA8H_3d7afhG+4jvWjvidY3fEguryP_Q@mail.gmail.com>
+	id S1751863Ab3GXOiI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Jul 2013 10:38:08 -0400
+Date: Wed, 24 Jul 2013 10:38:07 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: Fix attribute length
+Message-ID: <20130724143807.GI23378@fieldses.org>
+References: <20130724141453.GG23378@fieldses.org>
+ <1374676257.12943.41.camel@leira.trondhjem.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1374676257.12943.41.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tuesday, July 23, 2013 11:29:57 AM Colin Cross wrote:
-> On Tue, Jul 23, 2013 at 11:08 AM, Michael Leun
-> <lkml20130126@newton.leun.net> wrote:
-> > On Mon, 22 Jul 2013 16:55:58 -0700
-> > Colin Cross <ccross@android.com> wrote:
-> >
-> >> On Mon, Jul 22, 2013 at 4:02 PM, Michael Leun
-> >> <lkml20130126@newton.leun.net> wrote:
-> >> > On Mon,  6 May 2013 16:50:18 -0700
-> >> > Colin Cross <ccross@android.com> wrote:
-> >> >
-> >> >> Avoid waking up every thread sleeping in a futex_wait call during
-> >> > [...]
-> >> >
-> >> > With 3.11-rc s2disk from suspend-utils stopped working: Frozen at
-> >> > displaying 0% of saving image to disk.
-> >> >
-> >> > echo "1" >/sys/power/state still works.
-> >> >
-> >> > Bisecting yielded 88c8004fd3a5fdd2378069de86b90b21110d33a4,
-> >> > reverting that from 3.11-rc2 makes s2disk working again.
-> >> >
-> >>
-> >> I think the expanded use of the freezable_* helpers is exposing an
-> >> existing bug in hibernation.  The SNAPSHOT_FREEZE ioctl calls
-> >> freeze_processes(), which sets the global system_freezing_cnt and
-> >> pm_freezing.  try_to_freeze_tasks then sends every process except
-> >> current a signal which causes them all to end up in the refrigerator.
-> >> The current task then returns back to userspace and continues its work
-> >> to suspend to disk.  If that task ever hits a call to try_to_freeze()
-> >> in the kernel, it will see system_freezing_cnt and pm_freezing=true
-> >> and freeze, and suspend to disk will hang forever.  It could hit
-> >> try_to_freeze() because of a signal delivered to the task, or from
-> >> calling any syscall that uses a freezable_* helper like the one I
-> >> added to sys_futex.
-> >>
-> >> I think the right solution is to add a flag to the freezing task that
-> >> marks it unfreezable.  I  think PF_NOFREEZE would work, although it is
-> >> normally used on kernel threads, can you see if the attached patch
-> >> helps?
-> >
-> > That patch helps.
-> >
-> > BTW, the only machine I can reproduce this bug with is an i7-3630QM
-> > notebook. Cannot reproduce on an Core Duo U1400 and cannot reproduce on
-> > an i7 M 620.
-> >
-> > Are the sysreq backtraces still wanted? If so, any tip, how I could get
-> > them saved?
-> >
-> >
-> > --
-> > MfG,
-> >
-> > Michael Leun
-> >
+On Wed, Jul 24, 2013 at 02:30:58PM +0000, Myklebust, Trond wrote:
+> On Wed, 2013-07-24 at 10:14 -0400, J. Bruce Fields wrote:
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > The calculation of attribute length fields is too high by four because
+> > it incorrectly includes the length field itself.
+> > 
+> > This regression was introduced by
+> > b4a2cf76ab7c08628c62b2062dacefa496b59dfd "NFSv4: Fix a regression
+> > against the FreeBSD server" and causes OPENs to the Linux NFS server to
+> > fail with BADXDR errors (translated by the client into EIO).
+> > 
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  fs/nfs/nfs4xdr.c |    2 +-
+> >  1 file changed, 1 insertion(+), 1 deletion(-)
+> > 
+> > I thought you guys had automated testing against the Linux server?  How
+> > did this slip through into upstream?
+> > 
+> > --b.
+> > 
+> > diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> > index c74d616..d6d6754 100644
+> > --- a/fs/nfs/nfs4xdr.c
+> > +++ b/fs/nfs/nfs4xdr.c
+> > @@ -1118,7 +1118,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
+> >  				len, ((char *)p - (char *)q) + 4);
+> >  		BUG();
+> >  	}
+> > -	len = (char *)p - (char *)q - (bmval_len << 2);
+> > +	len = (char *)p - (char *)q - (bmval_len + 1 << 2);
+> >  	*q++ = htonl(bmval0);
+> >  	*q++ = htonl(bmval1);
+> >  	if (bmval_len == 3)
 > 
-> Any chance that the failing machine has threads=y in the suspend.conf file?
-> 
-> Rafael, it appears that swsusp's suspend.c spawns new threads after
-> calling the SNAPSHOT_FREEZE ioctl.  The PF_NOFREEZE (or the new flag)
-> will get copied to those new threads, but nothing will clear the flag.
->  Should I just assume that the userspace suspend code will kill those
-> threads before continuing with suspend?  Or maybe add a WARN_ON in the
-> kernel if any threads besides current have the new flag set when the
-> suspend ops that assume all of userspace is frozen are called?
+> Please see commit 4f3cc4809a98a165a9708b72b47de71643797bbd (NFSv4: Fix
+> brainfart in attribute length calculation) upstream.
 
-Those threads should be killed by user space.  They are only spawned for
-image saving/compression/encryption and should be waited for after that.
+Oh, good, thanks!
 
-Thanks,
-Rafael
+But I still don't understand how this made it into upstream in the first
+place.
 
+Any NFSv4 testing at all against the Linux server would catch this, and
+I thought you had automated testing set up that you could run before
+submission.
 
--- 
-I speak only for myself.
-Rafael J. Wysocki, Intel Open Source Technology Center.
+--b.
