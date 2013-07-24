@@ -1,132 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:50301 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:13907 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751983Ab3GZKuM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Jul 2013 06:50:12 -0400
-Date: Fri, 26 Jul 2013 06:50:35 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 09/16] locks: helper functions for delegation breaking
-Message-ID: <20130726065035.3551f2d6@corrin.poochiereds.net>
-In-Reply-To: <1374094217-31493-11-git-send-email-bfields@redhat.com>
-References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
-	<1374094217-31493-11-git-send-email-bfields@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1751005Ab3GXOl4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Jul 2013 10:41:56 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: Fix attribute length
+Date: Wed, 24 Jul 2013 14:41:54 +0000
+Message-ID: <1374676912.12943.43.camel@leira.trondhjem.org>
+References: <20130724141453.GG23378@fieldses.org>
+	 <1374676257.12943.41.camel@leira.trondhjem.org>
+	 <20130724143807.GI23378@fieldses.org>
+In-Reply-To: <20130724143807.GI23378@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 17 Jul 2013 16:50:10 -0400
-"J. Bruce Fields" <bfields@redhat.com> wrote:
-
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> We'll need the same logic for rename and link.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/namei.c         |   13 +++----------
->  include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
->  2 files changed, 34 insertions(+), 12 deletions(-)
-> 
-> diff --git a/fs/namei.c b/fs/namei.c
-> index 2826bbd..d3b6a35 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -3466,14 +3466,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
->  	else {
->  		error = security_inode_unlink(dir, dentry);
->  		if (!error) {
-> -			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
-> -			if (error) {
-> -				if (error == -EWOULDBLOCK && delegated_inode) {
-> -					*delegated_inode = target;
-> -					ihold(target);
-> -				}
-> +			error = try_break_deleg(target, delegated_inode);
-> +			if (error)
->  				goto out;
-> -			}
->  			error = dir->i_op->unlink(dir, dentry);
->  			if (!error)
->  				dont_mount(dentry);
-> @@ -3543,9 +3538,7 @@ exit2:
->  		iput(inode);	/* truncate the inode here */
->  	inode = NULL;
->  	if (delegated_inode) {
-> -		error = break_deleg(delegated_inode, O_WRONLY);
-> -		iput(delegated_inode);
-> -		delegated_inode = NULL;
-> +		error = break_deleg_wait(&delegated_inode);
->  		if (!error)
->  			goto retry_deleg;
->  	}
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index ba29b37..43a3506 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -1907,6 +1907,9 @@ extern bool our_mnt(struct vfsmount *mnt);
->  
->  extern int current_umask(void);
->  
-> +extern void ihold(struct inode * inode);
-> +extern void iput(struct inode *);
-> +
->  /* /sys/fs */
->  extern struct kobject *fs_kobj;
->  
-> @@ -1974,6 +1977,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
->  	return 0;
->  }
->  
-> +static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
-> +{
-> +	int ret;
-> +
-> +	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
-> +	if (ret == -EWOULDBLOCK && delegated_inode) {
-> +		*delegated_inode = inode;
-> +		ihold(inode);
-> +	}
-> +	return ret;
-> +}
-> +
-> +static inline int break_deleg_wait(struct inode **delegated_inode)
-> +{
-> +	int ret;
-> +
-> +	ret = break_deleg(*delegated_inode, O_WRONLY);
-> +	iput(*delegated_inode);
-> +	*delegated_inode = NULL;
-> +	return ret;
-> +}
-> +
->  #else /* !CONFIG_FILE_LOCKING */
->  static inline int locks_mandatory_locked(struct inode *inode)
->  {
-> @@ -2017,6 +2042,12 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
->  {
->  	return 0;
->  }
-> +
-> +static inline int try_break_deleg(struct inode *inode, struct delegated_inode **inode)
-> +{
-> +	return 0;
-> +}
-> +
->  #endif /* CONFIG_FILE_LOCKING */
->  
->  /* fs/open.c */
-> @@ -2346,8 +2377,6 @@ extern loff_t vfs_llseek(struct file *file, loff_t offset, int whence);
->  extern int inode_init_always(struct super_block *, struct inode *);
->  extern void inode_init_once(struct inode *);
->  extern void address_space_init_once(struct address_space *mapping);
-> -extern void ihold(struct inode * inode);
-> -extern void iput(struct inode *);
->  extern struct inode * igrab(struct inode *);
->  extern ino_t iunique(struct super_block *, ino_t);
->  extern int inode_needs_sync(struct inode *inode);
-
-Acked-by: Jeff Layton <jlayton@redhat.com>
+T24gV2VkLCAyMDEzLTA3LTI0IGF0IDEwOjM4IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFdlZCwgSnVsIDI0LCAyMDEzIGF0IDAyOjMwOjU4UE0gKzAwMDAsIE15a2xlYnVzdCwg
+VHJvbmQgd3JvdGU6DQo+ID4gT24gV2VkLCAyMDEzLTA3LTI0IGF0IDEwOjE0IC0wNDAwLCBKLiBC
+cnVjZSBGaWVsZHMgd3JvdGU6DQo+ID4gPiBGcm9tOiAiSi4gQnJ1Y2UgRmllbGRzIiA8YmZpZWxk
+c0ByZWRoYXQuY29tPg0KPiA+ID4gDQo+ID4gPiBUaGUgY2FsY3VsYXRpb24gb2YgYXR0cmlidXRl
+IGxlbmd0aCBmaWVsZHMgaXMgdG9vIGhpZ2ggYnkgZm91ciBiZWNhdXNlDQo+ID4gPiBpdCBpbmNv
+cnJlY3RseSBpbmNsdWRlcyB0aGUgbGVuZ3RoIGZpZWxkIGl0c2VsZi4NCj4gPiA+IA0KPiA+ID4g
+VGhpcyByZWdyZXNzaW9uIHdhcyBpbnRyb2R1Y2VkIGJ5DQo+ID4gPiBiNGEyY2Y3NmFiN2MwODYy
+OGM2MmIyMDYyZGFjZWZhNDk2YjU5ZGZkICJORlN2NDogRml4IGEgcmVncmVzc2lvbg0KPiA+ID4g
+YWdhaW5zdCB0aGUgRnJlZUJTRCBzZXJ2ZXIiIGFuZCBjYXVzZXMgT1BFTnMgdG8gdGhlIExpbnV4
+IE5GUyBzZXJ2ZXIgdG8NCj4gPiA+IGZhaWwgd2l0aCBCQURYRFIgZXJyb3JzICh0cmFuc2xhdGVk
+IGJ5IHRoZSBjbGllbnQgaW50byBFSU8pLg0KPiA+ID4gDQo+ID4gPiBTaWduZWQtb2ZmLWJ5OiBK
+LiBCcnVjZSBGaWVsZHMgPGJmaWVsZHNAcmVkaGF0LmNvbT4NCj4gPiA+IC0tLQ0KPiA+ID4gIGZz
+L25mcy9uZnM0eGRyLmMgfCAgICAyICstDQo+ID4gPiAgMSBmaWxlIGNoYW5nZWQsIDEgaW5zZXJ0
+aW9uKCspLCAxIGRlbGV0aW9uKC0pDQo+ID4gPiANCj4gPiA+IEkgdGhvdWdodCB5b3UgZ3V5cyBo
+YWQgYXV0b21hdGVkIHRlc3RpbmcgYWdhaW5zdCB0aGUgTGludXggc2VydmVyPyAgSG93DQo+ID4g
+PiBkaWQgdGhpcyBzbGlwIHRocm91Z2ggaW50byB1cHN0cmVhbT8NCj4gPiA+IA0KPiA+ID4gLS1i
+Lg0KPiA+ID4gDQo+ID4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczR4ZHIuYyBiL2ZzL25mcy9u
+ZnM0eGRyLmMNCj4gPiA+IGluZGV4IGM3NGQ2MTYuLmQ2ZDY3NTQgMTAwNjQ0DQo+ID4gPiAtLS0g
+YS9mcy9uZnMvbmZzNHhkci5jDQo+ID4gPiArKysgYi9mcy9uZnMvbmZzNHhkci5jDQo+ID4gPiBA
+QCAtMTExOCw3ICsxMTE4LDcgQEAgc3RhdGljIHZvaWQgZW5jb2RlX2F0dHJzKHN0cnVjdCB4ZHJf
+c3RyZWFtICp4ZHIsIGNvbnN0IHN0cnVjdCBpYXR0ciAqaWFwLA0KPiA+ID4gIAkJCQlsZW4sICgo
+Y2hhciAqKXAgLSAoY2hhciAqKXEpICsgNCk7DQo+ID4gPiAgCQlCVUcoKTsNCj4gPiA+ICAJfQ0K
+PiA+ID4gLQlsZW4gPSAoY2hhciAqKXAgLSAoY2hhciAqKXEgLSAoYm12YWxfbGVuIDw8IDIpOw0K
+PiA+ID4gKwlsZW4gPSAoY2hhciAqKXAgLSAoY2hhciAqKXEgLSAoYm12YWxfbGVuICsgMSA8PCAy
+KTsNCj4gPiA+ICAJKnErKyA9IGh0b25sKGJtdmFsMCk7DQo+ID4gPiAgCSpxKysgPSBodG9ubChi
+bXZhbDEpOw0KPiA+ID4gIAlpZiAoYm12YWxfbGVuID09IDMpDQo+ID4gDQo+ID4gUGxlYXNlIHNl
+ZSBjb21taXQgNGYzY2M0ODA5YTk4YTE2NWE5NzA4YjcyYjQ3ZGU3MTY0Mzc5N2JiZCAoTkZTdjQ6
+IEZpeA0KPiA+IGJyYWluZmFydCBpbiBhdHRyaWJ1dGUgbGVuZ3RoIGNhbGN1bGF0aW9uKSB1cHN0
+cmVhbS4NCj4gDQo+IE9oLCBnb29kLCB0aGFua3MhDQo+IA0KPiBCdXQgSSBzdGlsbCBkb24ndCB1
+bmRlcnN0YW5kIGhvdyB0aGlzIG1hZGUgaXQgaW50byB1cHN0cmVhbSBpbiB0aGUgZmlyc3QNCj4g
+cGxhY2UuDQo+IA0KPiBBbnkgTkZTdjQgdGVzdGluZyBhdCBhbGwgYWdhaW5zdCB0aGUgTGludXgg
+c2VydmVyIHdvdWxkIGNhdGNoIHRoaXMsIGFuZA0KPiBJIHRob3VnaHQgeW91IGhhZCBhdXRvbWF0
+ZWQgdGVzdGluZyBzZXQgdXAgdGhhdCB5b3UgY291bGQgcnVuIGJlZm9yZQ0KPiBzdWJtaXNzaW9u
+Lg0KDQpZZXMsIGhvd2V2ZXIgaXQgd2FzIHRydWx5IGEgYnJhaW5mYXJ0OiB0aGUgcGF0Y2ggd2Fz
+IG5ldmVyIHRlc3RlZA0KaW5kZXBlbmRlbnRseSBvZiB0aGUgY2xlYW51cCB3aGljaCByZW1vdmVz
+IHRoZSBiYWNrZmlsbGluZyBhbHRvZ2V0aGVyLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGlu
+dXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFw
+cC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
