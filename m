@@ -1,182 +1,303 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:1534 "EHLO mx12.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:62897 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965119Ab3GRUGU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Jul 2013 16:06:20 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: SP4_MACH_CRED: v4 proc -> opcodes mapping
-Date: Thu, 18 Jul 2013 20:06:18 +0000
-Message-ID: <1374177978.3788.68.camel@leira.trondhjem.org>
-References: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
-	 <1374159436.3788.3.camel@leira.trondhjem.org>
-	 <DFCAA8D0-B3BD-49C2-BAC4-9C26668AACB9@netapp.com>
-	 <1374160910.3788.14.camel@leira.trondhjem.org>
-	 <1D61D5F4-40DA-47D1-A15A-745EA05813BA@netapp.com>
-	 <1374167339.3788.52.camel@leira.trondhjem.org>
-	 <DD04268F-B364-48D0-ADEB-E4770D618B38@netapp.com>
-	 <9AC7EBEB-E407-4CCB-A6E6-05C24CD821DA@netapp.com>
-	 <1374177242.3788.59.camel@leira.trondhjem.org>
-	 <FB5772A6-D433-4C9C-B67E-B43126961A68@netapp.com>
-In-Reply-To: <FB5772A6-D433-4C9C-B67E-B43126961A68@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1751323Ab3GXP75 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Jul 2013 11:59:57 -0400
+From: <andros@netapp.com>
+To: <trond.myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 2 2/2] NFSv4.1 Use the MDS nfs_server authflavor for pNFS data server connections
+Date: Wed, 24 Jul 2013 11:59:50 -0400
+Message-ID: <1374681590-2134-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1374681590-2134-1-git-send-email-andros@netapp.com>
+References: <1374681590-2134-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEzLTA3LTE4IGF0IDIwOjA0ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
-PiBBbm90aGVyIGlzc3VlOiBJcyBpdCBvdXQgb2Ygc3BlYyB0byBkbyB3aGF0IHdlIHBsYW4gYW5k
-ICJqdXN0IHVzZSIgdGhlIG5mc19jbGllbnQncyBycGNfY2xpZW50IGZvciBhbGwgc3RhdGUgbWFu
-YWdlciBvcGVyYXRpb25zIHdpdGhvdXQgY2hlY2tpbmcgaWYgdGhlIHNlcnZlciBzdXBwb3J0cyBp
-dCBmcm9tIHRoZSBTUDRfTUFDSF9DUkVEIEVYQ0hBTkdFX0lEIG5lZ290aWF0aW9uPw0KPiANCj4g
-UkVORVcgZm9yIGV4YW1wbGUgaXMgbm90IGV4cGxpY2l0bHkgbWVudGlvbmVkIGluIHRoZSBTUDRf
-TUFDSF9DUkVEIHNlY3Rpb24gYW5kIEknbSBsb29raW5nIGF0IGEgc2VydmVyIHRoYXQgZG9lc24n
-dCBjbGFpbSBzdGF0ZV9wcm90ZWN0aW9uIHN1cHBvcnQgZm9yIFJFTkVXLg0KDQpSRU5FVyBpcyBh
-ICJtYW5kYXRvcnkgdG8gbm90IGltcGxlbWVudCIgb3BlcmF0aW9uIGluIE5GU3Y0LjEuDQoNCkNo
-ZWVycw0KICBUcm9uZA0KDQo+IC1kcm9zDQo+IA0KPiBPbiBKdWwgMTgsIDIwMTMsIGF0IDM6NTQg
-UE0sICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3Rl
-Og0KPiANCj4gPiBPbiBUaHUsIDIwMTMtMDctMTggYXQgMTk6NDkgKzAwMDAsIEFkYW1zb24sIERy
-b3Mgd3JvdGU6DQo+ID4+IE9ubHkgc3VwcG9ydGluZyBvcGVyYXRpb25zIHRoYXQgaGF2ZSB0aGUg
-ZXJyb3IgY29kZSBORlM0RVJSX1dST05HX0NSRUQgc2VlbXMgdG8gYmUgd3JvbmcuICBPcGVyYXRp
-b25zIGxpa2UgQklORF9DT05OX1RPX1NFU1NJT04gZG9uJ3Qgc3VwcG9ydCBkb24ndCBzdXBwb3J0
-IHRoaXMgZXJyb3IgY29kZSwgYnV0IGFyZSBleHBsaWNpdGx5IG1lbnRpb25lZCBpbiBTUDRfTUFD
-SF9DUkVEIHNlY3Rpb25zIG9mIHRoZSBzcGVjLg0KPiA+IA0KPiA+IExvb2tpbmcgYXQgdGhlIGFs
-bG93ZWQgZXJyb3IgcmV0dXJuIHZhbHVlcyBmb3IgQklORF9DT05OX1RPX1NFU1NJT04sIEknbQ0K
-PiA+IGF0IGEgbG9zcyB0byBmaWd1cmUgb3V0IGV4YWN0bHkgd2hhdCBpdCBzaG91bGQgcmV0dXJu
-IGluIHRoaXMgY2FzZS4gSQ0KPiA+IHN1c3BlY3QgdGhhdCB0aGUgbGFjayBvZiBhbiBORlM0RVJS
-X1dST05HX0NSRUQgaXMgYWN0dWFsbHkgYSBwcm90b2NvbA0KPiA+IGJ1Zy4NCj4gPiANCj4gPiBU
-aW1lIHRvIGdvIGJhY2sgdG8gdGhlIGlldGYgbWFpbGluZyBsaXN0Li4uDQo+ID4gDQo+ID4+IEkn
-bGwgY29udGludWUgbXkgd29yayBkZXNjcmliZWQgYmVsb3cgbW9kdWxvIGxpbWl0aW5nIHRvIE5G
-UzRFUlJfV1JPTkdfQ1JFRCBlbmFibGVkIE9QcyBhbmQgc2VlIGhvdyB0aGF0IGxvb2tzLi4uDQo+
-ID4+IA0KPiA+PiAtZHJvcw0KPiA+PiANCj4gPj4gT24gSnVsIDE4LCAyMDEzLCBhdCAyOjEzIFBN
-LCAiQWRhbXNvbiwgRHJvcyIgPFdlc3Rvbi5BZGFtc29uQG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+
-PiANCj4gPj4+IE9rLCBJJ2xsIGhhdmUgdGhlIGNsaWVudCBvbmx5IGFzayBmb3Igc3RhdGUgcHJv
-dGVjdGlvbiBvbiBvcGVyYXRpb25zIHRoYXQgc3VwcG9ydCBORlM0RVJSX1dST05HX0NSRUQgLSBh
-bmQgSSdsbCBkbyB0aGUgU1A0X01BQ0hfQ1JFRCBjaGVja3Mgb25seSBvbiB0aGVzZSBvcGVyYXRp
-b25zIGFuZCBvbmx5IGlmIHRoZXkgYXJlbid0IGFscmVhZHkgdXNpbmcgdGhlIG1hY2hpbmUgY3Jl
-ZCBhbHJlYWR5LiBUaGlzIHNpbXBsaWZpZXMgbXkgb3JpZ2luYWwgcHJvYmxlbSAtIG5vdyBJIGNh
-biBqdXN0IHVzZSB0aGUgIm1haW4iIG9wY29kZS4NCj4gPj4+IA0KPiA+Pj4gSSdsbCBhbHNvIGFk
-ZCBlcnJvciBoYW5kbGVycyBmb3IgTkZTNEVSUl9XUk9OR19DUkVELg0KPiA+Pj4gDQo+ID4+PiBU
-aGFua3MhDQo+ID4+PiANCj4gPj4+IC1kcm9zDQo+ID4+PiANCj4gPj4+IE9uIEp1bCAxOCwgMjAx
-MywgYXQgMTowOCBQTSwgIk15a2xlYnVzdCwgVHJvbmQiIDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBw
-LmNvbT4gd3JvdGU6DQo+ID4+PiANCj4gPj4+PiBPbiBUaHUsIDIwMTMtMDctMTggYXQgMTU6NTAg
-KzAwMDAsIEFkYW1zb24sIERyb3Mgd3JvdGU6DQo+ID4+Pj4+IE9uIEp1bCAxOCwgMjAxMywgYXQg
-MTE6MjEgQU0sICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+
-DQo+ID4+Pj4+IHdyb3RlOg0KPiA+Pj4+PiANCj4gPj4+Pj4+IE9uIFRodSwgMjAxMy0wNy0xOCBh
-dCAxNToxMCArMDAwMCwgQWRhbXNvbiwgRHJvcyB3cm90ZToNCj4gPj4+Pj4+PiBPbiBKdWwgMTgs
-IDIwMTMsIGF0IDEwOjU3IEFNLCAiTXlrbGVidXN0LCBUcm9uZCIgPFRyb25kLk15a2xlYnVzdEBu
-ZXRhcHAuY29tPiB3cm90ZToNCj4gPj4+Pj4+PiANCj4gPj4+Pj4+Pj4gT24gVGh1LCAyMDEzLTA3
-LTE4IGF0IDE0OjQ2ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0KPiA+Pj4+Pj4+Pj4gSGV5
-LA0KPiA+Pj4+Pj4+Pj4gDQo+ID4+Pj4+Pj4+PiBJIGhhdmUgYSBtb3N0bHkgZnVuY3Rpb25hbCBj
-bGllbnQtc2lkZSBpbXBsZW1lbnRhdGlvbiBvZiBTUDRfTUFDSF9DUkVEISBJdCBzdGlsbCBuZWVk
-cyBhIGxvdCBvZiBjbGVhbnVwIGFuZCB0ZXN0aW5nLg0KPiA+Pj4+Pj4+Pj4gDQo+ID4+Pj4+Pj4+
-PiBJIGhhdmUgb25lIHN0eWxlIGlzc3VlIHRoYXQgSSB3YW50IHRvIHJ1biBieSB0aGUgbGlzdCBi
-ZWZvcmUgSSBwb3N0IGEgcGF0Y2hzZXQ6DQo+ID4+Pj4+Pj4+PiANCj4gPj4+Pj4+Pj4+IFNvLCBT
-UDRfTUFDSF9DUkVEIG5lZ290aWF0ZXMgdHdvIGJpdG1hcHMgaW4gdGhlIEVYQ0hBTkdFX0lEIChv
-bmUgImVuZm9yY2UiLCBvbmUgImFsbG93IikgZm9yIHN0YXRlIHByb3RlY3Rpb24uIFRoZXNlIGJp
-dG1hcHMgYXJlIGluZGV4ZWQgYnkgdGhlIE5GU3Y0IG9wZXJhdGlvbiBudW1iZXIuICBUaGUgc3Rh
-dGUgcHJvdGVjdCBjaGVjayBtdXN0IGhhcHBlbiBpbiB0aGUgbmZzNHByb2MuYyBsYXllciAob3Ig
-YmVmb3JlKSwgcmlnaHQgYmVmb3JlIHdlIGNhbGwgcnBjX2NhbGxfc3luYyBvciBlcXVpdmFsZW50
-LCBzbyB0aGF0IGl0IGNhbiBzZWxlY3QgdGhlIHJpZ2h0IGNyZWQgYW5kIHJwY19jbGllbnQuDQo+
-ID4+Pj4+Pj4+PiANCj4gPj4+Pj4+Pj4+IEhlcmUncyB0aGUgcHJvYmxlbTogd2UgZG9uJ3Qga25v
-dyB3aGF0IG9wZXJhdGlvbnMgKG9wY29kZXMpIGFyZSBhY3R1YWxseSBpbiBhIGNvbXBvdW5kIHVu
-dGlsIHRoZSBYRFIgZW5jb2RlIGNhbGxiYWNrIGlzIGNhbGxlZC4gIFRoZSBycGNfcHJvY2luZm8g
-YXJyYXkgZG9lc24ndCBoYXZlIHRoaXMgbWFwcGluZyAtIGluIGZhY3QsIGl0IG9ubHkgbGl2ZXMg
-aW4gdGhlIHhkciBlbmNvZGUgbGF5ZXIuDQo+ID4+Pj4+Pj4+PiANCj4gPj4+Pj4+Pj4+IE9uZSBh
-cHByb2FjaCBpcyB0byBpbW1lZGlhdGVseSB0cmFuc2xhdGUgdGhlIG9wY29kZSBiaXRtYXBzIHRv
-ICJuZnM0IHByb2NlZHVyZSBpbmRleCIgYml0bWFwcywgaW5kZXhpbmcgaW50byB0aGUgcnBjX3By
-b2NpbmZvIGFycmF5LiAgVGhpcyB3b3VsZCBtZWFuIHRoZXJlIGlzIGEgc2Vjb25kIG1hcHBpbmcg
-b2YgTkZTdjQgcHJvY2VkdXJlIC0+IG9wY29kZXMgdGhhdCBtdXN0IGJlIHVwZGF0ZWQgd2hlbiBh
-biBYRFIgZW5jb2RlIGNhbGxiYWNrIGlzIGNoYW5nZWQuDQo+ID4+Pj4+Pj4+PiANCj4gPj4+Pj4+
-Pj4+IEFub3RoZXIgYXBwcm9hY2ggd291bGQgYmUgdG8gYWRkIGEgY2FsbGJhY2sgdG8gdGhlIFhE
-UiBhcGkgc28gd2UgY291bGQgImFzayIgaXQgaWYgYW4gTkZTdjQgcHJvY2VkdXJlIGNvbnRhaW5z
-IGFueSBvZiB0aGUgb3Bjb2RlcyBpbiBhIGJpdG1hcC4gVGhlIG5pY2UgdGhpbmcgYWJvdXQgdGhp
-cyBhcHByb2FjaCBpcyB0aGF0IHRoZSBtYXBwaW5nIG9mIHByb2NlZHVyZSB0byBvcGNvZGVzIHdp
-dGhpbiB3aWxsIGxpdmUgcmlnaHQgbmV4dCB0byB0aGUgWERSIGVuY29kZSBjYWxsYmFjayBhbmQg
-bWFrZSBpdCBvYnZpb3VzIHRoYXQgYm90aCBuZWVkIHRvIGJlIGNoYW5nZWQgdG9nZXRoZXIuDQo+
-ID4+Pj4+Pj4+PiANCj4gPj4+Pj4+Pj4+IEkgc3VwcG9zZSBJJ20gbGVhbmluZyB0b3dhcmQgYSBj
-b21iaW5hdGlvbiBvZiBib3RoIG9mIHRoZXNlIGFwcHJvYWNoZXMgLSBrZWVwIHRoZSBtYXBwaW5n
-IGluIFhEUi1sYW5kIGFuZCB0cmFuc2xhdGUgdGhlIGJpdG1hcHMgaW1tZWRpYXRlbHkgb24gbmVn
-YXRpb24gZm9yIGZhc3QgbG9va3VwcyBkdXJpbmcgbm9ybWFsIG9wZXJhdGlvbi4NCj4gPj4+Pj4+
-Pj4+IA0KPiA+Pj4+Pj4+Pj4gQ29tbWVudHM/IEFtIEkgbWlzc2luZyBzb21ldGhpbmc/DQo+ID4+
-Pj4+Pj4+IA0KPiA+Pj4+Pj4+PiBJJ20gbm90IHN1cmUgdGhhdCBJIHVuZGVyc3RhbmQuIFdlIGRv
-bid0IGRvIGR5bmFtaWMgY3JlYXRpb24gb2YNCj4gPj4+Pj4+Pj4gY29tcG91bmRzOiB3ZSBwcmV0
-dHkgbXVjaCBrbm93IGluIHRoZSBuZnM0X3Byb2NfKiByb3V0aW5lIHdoYXQgdGhlIG1haW4NCj4g
-Pj4+Pj4+Pj4gb3BlcmF0aW9uIGlzICh0aGUgb25lIGV4Y2VwdGlvbiBiZWluZyBDTE9TRS9PUEVO
-X0RPV05HUkFERSkuIFNvIHdoeQ0KPiA+Pj4+Pj4+PiBjYW4ndCB3ZSB3b3JrIG91dCB0aGUgcHJv
-dGVjdGlvbiBzdGF0dXMgYXQgdGhhdCB0aW1lPyBJcyB0aGUgd29ycnkgdGhhdA0KPiA+Pj4+Pj4+
-PiB0aGUgc2VydmVyIG1pZ2h0IHJlYm9vdCBhbmQgY29tZSBiYWNrIHdpdGggZGlmZmVyZW50IE1B
-Q0hfQ1JFRA0KPiA+Pj4+Pj4+PiBwcm90ZWN0aW9ucz8NCj4gPj4+Pj4+PiANCj4gPj4+Pj4+PiBT
-dXJlLCB3ZSBrbm93IHdoYXQgdGhlIG1haW4gb3BlcmF0aW9uIGlzIGFuZCB3ZSBrbm93IHdoYXQg
-b3BlcmF0aW9ucyB3aWxsIGVuZCB1cCBpbiBhIGNvbXBvdW5kIC0gd2UgY2FuIGp1c3QgbG9vayBh
-dCB0aGUgeGRyIGVuY29kZXIuICBNeSBxdWVzdGlvbiBpcyBzaW1wbHkgb25lIG9mIHN0eWxlLiBE
-byB3ZSB3YW50IHRvIGhhdmUgZWFjaCBuZnM0cHJvYyBwcm9jZWR1cmUgdG8gaGF2ZSBhIGxpc3Qg
-b2Ygb3BlcmF0aW9ucyB0aGF0IG11c3QgYmUgdXBkYXRlZCBpZiBhbiB4ZHIgZW5jb2RlciBpcyB1
-cGRhdGVkPyBJJ20gZmluZSB3aXRoIGRvaW5nIGl0IHRoaXMgd2F5LCBpdCBqdXN0IHNlZW1lZCB3
-cm9uZyB0byBoYXZlIHRoZSBzYW1lIG1hcHBpbmcgaW4gdHdvIGRpZmZlcmVudCBwbGFjZXMuIFRo
-aXMgaXMgd2h5IEknbSBhc2tpbmcgOykNCj4gPj4+Pj4+PiANCj4gPj4+Pj4+PiBBbHNvLCB3ZSBj
-YW4ndCBqdXN0IHVzZSB0aGUgIm1haW4iIG9wZXJhdGlvbiwgd2UgbXVzdCBjaGVjayBldmVyeSBv
-cGVyYXRpb24gd2l0aGluIHRoZSBjb21wb3VuZCBhbmQgaWYgYW55IGFyZSByZXF1aXJlZCB0byB1
-c2UgU1A0LCB0aGVuIHRoZSB3aG9sZSBjb21wb3VuZCBkb2VzLiBJIGRvbid0IG5lY2Vzc2FyaWx5
-IGtub3cgd2h5IGEgc2VydmVyIHdvdWxkIGRvIHRoaXMsIGJ1dCBpZiB3ZSBmb2xsb3cgdGhlIHNw
-ZWMgYW5kIGEgc2VydmVyIGluZm9ybXMgdGhlIGNsaWVudCB0aGF0IFNFVEFUVFIgbXVzdCB1c2Ug
-c3RhdGUgcHJvdGVjdGlvbiwgdGhlbiBhIFdSSVRFIHdpdGggcG9zdC1vcCBTRVRBVFRSIG11c3Qg
-dXNlIHRoZSBzdGF0ZSBwcm90ZWN0aW9uIGV2ZW4gdGhvdWdoIFdSSVRFIGRvZXNuJ3QgbmVlZCBp
-dC4NCj4gPj4+Pj4+IA0KPiA+Pj4+Pj4gV2Ugb25seSBuZWVkIHRvIGNoZWNrIGV2ZXJ5IF9zdGF0
-ZWZ1bF8gb3BlcmF0aW9uLCByaWdodD8gSSBjYW4ndCB0aGluaw0KPiA+Pj4+Pj4gb2YgYW55IGNv
-bXBvdW5kcyB3aXRoIG1vcmUgdGhhbiAxIHN0YXRlZnVsIG9wZXJhdGlvbi4gV2UndmUgZGVsaWJl
-cmF0ZWx5DQo+ID4+Pj4+PiBhdm9pZGVkIHRob3NlIGR1ZSB0byB0aGUgcHJvYmxlbXMgdGhhdCBh
-cmlzZSB3aGVuIHlvdSBnZXQgYQ0KPiA+Pj4+Pj4gTkZTNEVSUl9ERUxBWSBvciBzb21ldGhpbmcg
-ZXF1aXZhbGVudCBhdCB0aGUgd3JvbmcgbW9tZW50Lg0KPiA+Pj4+PiANCj4gPj4+Pj4gVGhhdCBt
-YXkgYmUgdGhlIGludGVudGlvbiwgYnV0IEkgc2VlIG5vIHN1Y2ggbGltaXRhdGlvbiBpbiB0aGUg
-c3BlYy4gSXQncyBteSB1bmRlcnN0YW5kaW5nIHRoYXQgdGhlIHNlcnZlciBjb3VsZCBzcGVjaWZ5
-IGFueSBvcGVyYXRpb24gYXMgTVVTVCBvciBNQVkgdXNlIHN0YXRlIHByb3RlY3Rpb24uDQo+ID4+
-Pj4gDQo+ID4+Pj4gUmlnaHQsIGJ1dCB3aGF0IHdvdWxkIHN0YXRlIHByb3RlY3Rpb24gbWVhbiBm
-b3IgYSBzdGF0ZWxlc3Mgb3BlcmF0aW9uDQo+ID4+Pj4gc3VjaCBhcyBHRVRBVFRSPyBUaGF0IG9w
-ZXJhdGlvbiBpc24ndCBldmVuIGFsbG93ZWQgdG8gcmV0dXJuDQo+ID4+Pj4gTkZTNEVSUl9XUk9O
-R19DUkVELCBzbyBJIGRvbid0IHNlZSBob3cgaXQgd291bGQgYXBwbHkuDQo+ID4+Pj4gDQo+ID4+
-Pj4+Pj4gSSdtIG5vdCBmb2xsb3dpbmcgdGhlIHJlYm9vdCBxdWVzdGlvbiAtIHRoYXQgY2FzZSBz
-aG91bGQgYmUgaGFuZGxlZCBqdXN0IGZpbmUuIE9uY2UgdGhlIEVYQ0hBTkdFX0lEIGhhcHBlbnMs
-IHRoZSBjbHAgaGFzIHR3byBiaXRtYXBzIChlbmZvcmNlIGFuZCBhbGxvdykgdGhhdCByZWZsZWN0
-IHRoZSBjdXJyZW50IG1vZGUgb2YgU1A0X01BQ0hfQ1JFRC4NCj4gPj4+Pj4+IA0KPiA+Pj4+Pj4g
-SSdtIHRoaW5raW5nIHNvbWV0aGluZyBhbG9uZyB0aGUgZm9sbG93aW5nIHNjZW5hcmlvOg0KPiA+
-Pj4+Pj4gDQo+ID4+Pj4+PiBBIHByb2Nlc3MgcXVldWVzIHVwIGFuIE9QRU4uIFRoZSBzZXJ2ZXIg
-cmVwbGllcyBORlM0RVJSX0JBRF9TRVNTSU9OIGFuZA0KPiA+Pj4+Pj4gbGF0ZXIgcmVwbGllcyB3
-aXRoIE5GUzRFUlJfU1RBTEVfQ0xJRU5USUQuIFNvIHdlIHN0YXJ0IHJlYm9vdCByZWNvdmVyeSwN
-Cj4gPj4+Pj4+IGFuZCB0aGUgT1BFTiBnZXRzIHF1ZXVlZCB3YWl0aW5nIGZvciBhIHNsb3QuDQo+
-ID4+Pj4+PiBXZSB0aGVuIHNlbmQgYSBuZXcgRVhDSEFOR0VfSUQsIGFuZCB0aGUgc2VydmVyIHJl
-cGxpZXMgd2l0aCBhDQo+ID4+Pj4+PiBfZGlmZmVyZW50XyBNQUNIX0NSRUQgcHJvdGVjdGlvbiBm
-b3IgT1BFTi4NCj4gPj4+Pj4+IA0KPiA+Pj4+Pj4gVGhlIHByb2JsZW0gYWJvdmUgaXMgdGhhdCB0
-aGUgT1BFTiBoYXMgYWxyZWFkeSBiZWVuIHN0YXJ0ZWQsIGFuZCB3ZSd2ZQ0KPiA+Pj4+Pj4gYWxy
-ZWFkeSBhc3NpZ25lZCBpdCBhIGNyZWRlbnRpYWwuIEhvdyBkbyB3ZSBoYW5kbGUgdGhhdD8NCj4g
-Pj4+Pj4+IERpdHRvIHF1ZXN0aW9uIGZvciBSRUFELCBXUklURSwgTE9DSywgTEFZT1VUR0VULC4u
-Lg0KPiA+Pj4+Pj4gDQo+ID4+Pj4+PiBEbyB3ZSBoYXZlIGEgcHJvYmxlbSBmb3IgTE9DS1UsIENM
-T1NFIGFuZCBPUEVOX0RPV05HUkFERT8gSSB0aGluayB3ZSBlbmQNCj4gPj4+Pj4+IHVwIGp1c3Qg
-c2tpcHBpbmcgcmVjb3ZlcnkgaW4gdGhvc2UgY2FzZXPigKYNCj4gPj4+Pj4gDQo+ID4+Pj4+IFRo
-ZXNlIGFyZSBnb29kIHBvaW50cy4gSSdtIG5vdCBzdXJlICp3aHkqIHRoZSBzcDRfbWFjaF9jcmVk
-IGNvbmZpZyB3b3VsZCBjaGFuZ2UsIGJ1dCBJIHN1cHBvc2UgaXQgY291bGQsIGFuZCB5ZXMsIGlu
-IG15IGN1cnJlbnQgaW1wbGVtZW50YXRpb24gdGhlcmUgaXMgbm8gd2F5IHRvIGJhY2sgb3V0IG9u
-Y2UgYSBycGMgdGFzayBpcyBpbnZva2VkLiAgQW55IHRob3VnaHRzIG9uIHRoaXM/ICBJIGNhbiBz
-ZWUgdHdvIHdheXMgb2YgaGFuZGxpbmcgdGhpczoNCj4gPj4+Pj4gLSByZXN0YXJ0aW5nIGFsbCB0
-YXNrcyAod2l0aCBycGNfY2xudCBhbmQgcnBjX2NyZWQgYXBwcm9wcmlhdGVseSBjaGFuZ2VkKSB3
-aGVuIGEgY2hhbmdlIGluIHNwNF9tYWNoX2NyZWQgY29uZmlnIGlzIGRldGVjdGVkLg0KPiA+Pj4+
-PiAtIHNvbWVob3cgaGF2aW5nIHRoZSBSUEMgbGF5ZXIgY2FsbCBvdXQgdG8gY2hlY2sgU1A0IHN0
-YXR1cyBiZWZvcmUgc2VuZGluZyBlYWNoIFJQQy4NCj4gPj4+PiANCj4gPj4+PiBGb3Igbm93LCBJ
-IHRoaW5rIHdlIHNob3VsZCBtYWtlIHN1cmUgdGhhdCB3ZSBoYW5kbGUgTkZTNEVSUl9XUk9OR19D
-UkVEDQo+ID4+Pj4gY29ycmVjdGx5IGluIHRoZXNlIGNhc2VzLiBJIGRvbid0IHRoaW5rIHdlIGV2
-ZXIgd2FudCB0byBoYW5kbGUgdGhhdCBpbg0KPiA+Pj4+IG5mczRfYXN5bmNfaGFuZGxlX2Vycm9y
-LCBidXQgd2Ugc2hvdWxkIGRlZmluaXRlbHkgaGFuZGxlIGl0IGluDQo+ID4+Pj4gbmZzNF9oYW5k
-bGVfZXhjZXB0aW9uKCksIHNpbmNlIHRoYXQgY2FuIGRyaXZlIGEgZnVsbCByZXRyeSBvZiB0aGUg
-UlBDDQo+ID4+Pj4gY2FsbC4NCj4gPj4+PiANCj4gPj4+PiAtLSANCj4gPj4+PiBUcm9uZCBNeWts
-ZWJ1c3QNCj4gPj4+PiBMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCj4gPj4+PiANCj4gPj4+
-PiBOZXRBcHANCj4gPj4+PiBUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0KPiA+Pj4+IHd3dy5u
-ZXRhcHAuY29tDQo+ID4+PiANCj4gPj4+IC0tDQo+ID4+PiBUbyB1bnN1YnNjcmliZSBmcm9tIHRo
-aXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KPiA+Pj4g
-dGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gPj4+
-IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21v
-LWluZm8uaHRtbA0KPiA+PiANCj4gPiANCj4gPiAtLSANCj4gPiBUcm9uZCBNeWtsZWJ1c3QNCj4g
-PiBMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCj4gPiANCj4gPiBOZXRBcHANCj4gPiBUcm9u
-ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0KPiA+IHd3dy5uZXRhcHAuY29tDQo+IA0KDQotLSANClRy
-b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJv
-bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+From: Andy Adamson <andros@netapp.com>
+
+pNFS data servers are not mounted in the normal sense as there is no associated
+nfs_server structure.
+
+Commit 4edaa308 "NFS: Use "krb5i" to establish NFSv4 state whenever possible"
+uses the nfs_client cl_rpcclient for all state management operations, and
+will use krb5i or auth_sys with no regard to the mount command authflavor
+choice.  For normal mounted servers, the nfs_server client authflavor is used
+for all non-state management operations
+
+Data servers use the same authflavor as the MDS mount for non-state management
+operations. Note that the MDS has performed any sub-mounts and created an
+nfs_server rpc client. Add an array of struct rpc_clnt to struct
+nfs_client, one for each possible auth flavor for data server RPC connections.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c            | 14 +++++++++-
+ fs/nfs/nfs4filelayout.c    | 65 ++++++++++++++++++++++++++++++++++++++--------
+ fs/nfs/nfs4filelayout.h    | 17 ++++++++++++
+ fs/nfs/nfs4filelayoutdev.c |  3 ++-
+ include/linux/nfs_fs_sb.h  |  5 ++++
+ 5 files changed, 91 insertions(+), 13 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 2dceee4..fc63967 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -152,7 +152,7 @@ struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_init)
+ {
+ 	struct nfs_client *clp;
+ 	struct rpc_cred *cred;
+-	int err = -ENOMEM;
++	int err = -ENOMEM, i;
+ 
+ 	if ((clp = kzalloc(sizeof(*clp), GFP_KERNEL)) == NULL)
+ 		goto error_0;
+@@ -177,6 +177,8 @@ struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_init)
+ 
+ 	INIT_LIST_HEAD(&clp->cl_superblocks);
+ 	clp->cl_rpcclient = ERR_PTR(-EINVAL);
++	for (i = 0; i < NFS_NUM_DS_RPC_CLNT; i++)
++		clp->cl_ds_clnt[i] = ERR_PTR(-EINVAL);
+ 
+ 	clp->cl_proto = cl_init->proto;
+ 	clp->cl_net = get_net(cl_init->net);
+@@ -238,6 +240,8 @@ static void pnfs_init_server(struct nfs_server *server)
+  */
+ void nfs_free_client(struct nfs_client *clp)
+ {
++	int i;
++
+ 	dprintk("--> nfs_free_client(%u)\n", clp->rpc_ops->version);
+ 
+ 	nfs_fscache_release_client_cookie(clp);
+@@ -246,6 +250,14 @@ void nfs_free_client(struct nfs_client *clp)
+ 	if (!IS_ERR(clp->cl_rpcclient))
+ 		rpc_shutdown_client(clp->cl_rpcclient);
+ 
++	for (i = 0; i < NFS_NUM_DS_RPC_CLNT; i++) {
++		if (!IS_ERR(clp->cl_ds_clnt[i])) {
++			dprintk("%s shutdown data server client %p index %d\n",
++				__func__, clp->cl_ds_clnt[i], i);
++			rpc_shutdown_client(clp->cl_ds_clnt[i]);
++		}
++	}
++
+ 	if (clp->cl_machine_cred != NULL)
+ 		put_rpccred(clp->cl_machine_cred);
+ 
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 17ed87e..eb33592 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -83,6 +83,31 @@ filelayout_get_dserver_offset(struct pnfs_layout_segment *lseg, loff_t offset)
+ 	BUG();
+ }
+ 
++/* Use the au_flavor of the MDS nfs_server RPC client to find or clone the
++ * correct data server RPC client.
++ *
++ * Note that the MDS has already performed any sub-mounts and negotiated
++ * a security flavor.
++ */
++static struct rpc_clnt *
++filelayout_rpc_clnt(struct inode *inode, struct nfs_client *clp)
++{
++	rpc_authflavor_t flavor = NFS_SERVER(inode)->client->cl_auth->au_flavor;
++	int index = filelayout_rpc_clnt_index(flavor);
++
++	if (index < 0)
++		return ERR_PTR(index);
++
++	if (IS_ERR(clp->cl_ds_clnt[index])) {
++		clp->cl_ds_clnt[index] =
++			rpc_clone_client_set_auth(clp->cl_rpcclient, flavor);
++
++		dprintk("%s clone data server client %p flavor %d index %d \n",
++			__func__, clp->cl_ds_clnt[index], flavor, index);
++	}
++	return clp->cl_ds_clnt[index];
++}
++
+ static void filelayout_reset_write(struct nfs_write_data *data)
+ {
+ 	struct nfs_pgio_header *hdr = data->header;
+@@ -524,6 +549,7 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 	struct nfs_pgio_header *hdr = data->header;
+ 	struct pnfs_layout_segment *lseg = hdr->lseg;
+ 	struct nfs4_pnfs_ds *ds;
++	struct rpc_clnt *ds_clnt;
+ 	loff_t offset = data->args.offset;
+ 	u32 j, idx;
+ 	struct nfs_fh *fh;
+@@ -538,6 +564,11 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+ 	if (!ds)
+ 		return PNFS_NOT_ATTEMPTED;
++
++	ds_clnt = filelayout_rpc_clnt(hdr->inode, ds->ds_clp);
++	if (IS_ERR(ds_clnt))
++		return PNFS_NOT_ATTEMPTED;
++
+ 	dprintk("%s USE DS: %s cl_count %d\n", __func__,
+ 		ds->ds_remotestr, atomic_read(&ds->ds_clp->cl_count));
+ 
+@@ -552,8 +583,8 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 	data->mds_offset = offset;
+ 
+ 	/* Perform an asynchronous read to ds */
+-	nfs_initiate_read(ds->ds_clp->cl_rpcclient, data,
+-				  &filelayout_read_call_ops, RPC_TASK_SOFTCONN);
++	nfs_initiate_read(ds_clnt, data, &filelayout_read_call_ops,
++			RPC_TASK_SOFTCONN);
+ 	return PNFS_ATTEMPTED;
+ }
+ 
+@@ -564,6 +595,7 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
+ 	struct nfs_pgio_header *hdr = data->header;
+ 	struct pnfs_layout_segment *lseg = hdr->lseg;
+ 	struct nfs4_pnfs_ds *ds;
++	struct rpc_clnt *ds_clnt;
+ 	loff_t offset = data->args.offset;
+ 	u32 j, idx;
+ 	struct nfs_fh *fh;
+@@ -574,6 +606,11 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+ 	if (!ds)
+ 		return PNFS_NOT_ATTEMPTED;
++
++	ds_clnt = filelayout_rpc_clnt(hdr->inode, ds->ds_clp);
++	if (IS_ERR(ds_clnt))
++		return PNFS_NOT_ATTEMPTED;
++
+ 	dprintk("%s ino %lu sync %d req %Zu@%llu DS: %s cl_count %d\n",
+ 		__func__, hdr->inode->i_ino, sync, (size_t) data->args.count,
+ 		offset, ds->ds_remotestr, atomic_read(&ds->ds_clp->cl_count));
+@@ -591,9 +628,8 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
+ 	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
+ 
+ 	/* Perform an asynchronous write */
+-	nfs_initiate_write(ds->ds_clp->cl_rpcclient, data,
+-				    &filelayout_write_call_ops, sync,
+-				    RPC_TASK_SOFTCONN);
++	nfs_initiate_write(ds_clnt, data, &filelayout_write_call_ops, sync,
++				RPC_TASK_SOFTCONN);
+ 	return PNFS_ATTEMPTED;
+ }
+ 
+@@ -1101,16 +1137,19 @@ static int filelayout_initiate_commit(struct nfs_commit_data *data, int how)
+ {
+ 	struct pnfs_layout_segment *lseg = data->lseg;
+ 	struct nfs4_pnfs_ds *ds;
++	struct rpc_clnt *ds_clnt;
+ 	u32 idx;
+ 	struct nfs_fh *fh;
+ 
+ 	idx = calc_ds_index_from_commit(lseg, data->ds_commit_index);
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+-	if (!ds) {
+-		prepare_to_resend_writes(data);
+-		filelayout_commit_release(data);
+-		return -EAGAIN;
+-	}
++	if (!ds) 
++		goto out_err;
++
++	ds_clnt = filelayout_rpc_clnt(data->inode, ds->ds_clp);
++	if (IS_ERR(ds_clnt))
++		goto out_err;
++
+ 	dprintk("%s ino %lu, how %d cl_count %d\n", __func__,
+ 		data->inode->i_ino, how, atomic_read(&ds->ds_clp->cl_count));
+ 	data->commit_done_cb = filelayout_commit_done_cb;
+@@ -1119,9 +1158,13 @@ static int filelayout_initiate_commit(struct nfs_commit_data *data, int how)
+ 	fh = select_ds_fh_from_commit(lseg, data->ds_commit_index);
+ 	if (fh)
+ 		data->args.fh = fh;
+-	return nfs_initiate_commit(ds->ds_clp->cl_rpcclient, data,
++	return nfs_initiate_commit(ds_clnt, data,
+ 				   &filelayout_commit_call_ops, how,
+ 				   RPC_TASK_SOFTCONN);
++out_err:
++	prepare_to_resend_writes(data);
++	filelayout_commit_release(data);
++	return -EAGAIN;
+ }
+ 
+ static int
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index cebd20e..9bb39ec 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -136,6 +136,23 @@ filelayout_test_devid_invalid(struct nfs4_deviceid_node *node)
+ 	return test_bit(NFS_DEVICEID_INVALID, &node->flags);
+ }
+ 
++static inline int
++filelayout_rpc_clnt_index(rpc_authflavor_t flavor)
++{
++	switch (flavor) {
++		case RPC_AUTH_UNIX:
++			return 0;
++		case RPC_AUTH_GSS_KRB5:
++			return 1;
++		case RPC_AUTH_GSS_KRB5I:
++			return 2;
++		case RPC_AUTH_GSS_KRB5P:
++			return 3;
++		default:
++			return -EINVAL;
++	}
++}
++
+ extern bool
+ filelayout_test_devid_unavailable(struct nfs4_deviceid_node *node);
+ 
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 95604f6..fea056d 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -162,7 +162,7 @@ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+ 	int status = 0;
+ 
+ 	dprintk("--> %s DS %s au_flavor %d\n", __func__, ds->ds_remotestr,
+-		mds_srv->nfs_client->cl_rpcclient->cl_auth->au_flavor);
++		mds_srv->client->cl_auth->au_flavor);
+ 
+ 	list_for_each_entry(da, &ds->ds_addrs, da_node) {
+ 		dprintk("%s: DS %s: trying address %s\n",
+@@ -186,6 +186,7 @@ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+ 		goto out_put;
+ 
+ 	ds->ds_clp = clp;
++
+ 	dprintk("%s [new] addr: %s\n", __func__, ds->ds_remotestr);
+ out:
+ 	return status;
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index d221243..bd86a1b 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -20,6 +20,10 @@ struct nfs4_minor_version_ops;
+ struct nfs41_server_scope;
+ struct nfs41_impl_id;
+ 
++
++/* One rpc clnt for each authentiction flavor */
++#define NFS_NUM_DS_RPC_CLNT 4
++
+ /*
+  * The nfs_client identifies our client state to the server.
+  */
+@@ -56,6 +60,7 @@ struct nfs_client {
+ 	struct rpc_cred		*cl_machine_cred;
+ 
+ #if IS_ENABLED(CONFIG_NFS_V4)
++	struct rpc_clnt *	cl_ds_clnt[NFS_NUM_DS_RPC_CLNT];
+ 	u64			cl_clientid;	/* constant */
+ 	nfs4_verifier		cl_confirm;	/* Clientid verifier */
+ 	unsigned long		cl_state;
+-- 
+1.8.3.1
+
