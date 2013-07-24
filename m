@@ -1,57 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:20427 "EHLO mx1.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:38352 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932676Ab3GVTRh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Jul 2013 15:17:37 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] NFSv4.1 Increase NFS4_DEF_SLOT_TABLE_SIZE
-Date: Mon, 22 Jul 2013 19:17:36 +0000
-Message-ID: <1374520655.7972.27.camel@leira.trondhjem.org>
-References: <1374268191-4469-1-git-send-email-andros@netapp.com>
-	 <1374518181.7972.14.camel@leira.trondhjem.org>
-	 <B0405D50-D8BE-496D-8B72-0E09B13B7D77@netapp.com>
-In-Reply-To: <B0405D50-D8BE-496D-8B72-0E09B13B7D77@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1750991Ab3GXP74 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Jul 2013 11:59:56 -0400
+From: <andros@netapp.com>
+To: <trond.myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 2 1/2] NFS Remove unused authflavour parameter from init_client
+Date: Wed, 24 Jul 2013 11:59:49 -0400
+Message-ID: <1374681590-2134-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEzLTA3LTIyIGF0IDE5OjAyICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
-PiBPbiBKdWwgMjIsIDIwMTMsIGF0IDI6MzYgUE0sICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJvbmQu
-TXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ICB3cm90ZToNCj4gDQo+ID4gT24gRnJpLCAyMDEzLTA3
-LTE5IGF0IDE3OjA5IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90ZToNCj4gPj4gRnJvbTog
-QW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gPj4gDQo+ID4+IG1heF9zZXNzaW9u
-X3Nsb3RzIGlzIGEgdXNob3J0LiBCdW1wIE5GUzRfREVGX1NMT1RfVEFCTEVfU0laRSB0byB0aGUg
-bWF4IHVzaG9ydA0KPiA+PiB2YWx1ZTogZS5nLiBhc2sgZm9yIDI1NiBzbG90cyBhbmQgbGV0IHRo
-ZSBzZXJ2ZXIgbmVnb3RpYXRlIGRvd24gaWYgbmVlZGVkLg0KPiA+PiANCj4gPj4gU2lnbmVkLW9m
-Zi1ieTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gPj4gLS0tDQo+ID4+IGZz
-L25mcy9uZnM0c2Vzc2lvbi5oIHwgMiArLQ0KPiA+PiAxIGZpbGUgY2hhbmdlZCwgMSBpbnNlcnRp
-b24oKyksIDEgZGVsZXRpb24oLSkNCj4gPj4gDQo+ID4+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZz
-NHNlc3Npb24uaCBiL2ZzL25mcy9uZnM0c2Vzc2lvbi5oDQo+ID4+IGluZGV4IDNhMTUzZDguLjhi
-Nzg5OWYgMTAwNjQ0DQo+ID4+IC0tLSBhL2ZzL25mcy9uZnM0c2Vzc2lvbi5oDQo+ID4+ICsrKyBi
-L2ZzL25mcy9uZnM0c2Vzc2lvbi5oDQo+ID4+IEBAIC04LDcgKzgsNyBAQA0KPiA+PiAjZGVmaW5l
-IF9fTElOVVhfRlNfTkZTX05GUzRTRVNTSU9OX0gNCj4gPj4gDQo+ID4+IC8qIG1heGltdW0gbnVt
-YmVyIG9mIHNsb3RzIHRvIHVzZSAqLw0KPiA+PiAtI2RlZmluZSBORlM0X0RFRl9TTE9UX1RBQkxF
-X1NJWkUgKDE2VSkNCj4gPj4gKyNkZWZpbmUgTkZTNF9ERUZfU0xPVF9UQUJMRV9TSVpFICgyNTZV
-KQ0KPiA+IA0KPiA+IENvdWxkIHdlIHBsZWFzZSBtYWtlIHRoaXMgc21hbGxlcj8gSSBhZ3JlZSB0
-aGF0IDE2IGlzIHRvbyBzbWFsbCAoYXMgbG9uZw0KPiA+IGFzIHNlcnZlcnMgZG9uJ3QgZG8gZHlu
-YW1pYyBzbG90IGFsbG9jYXRpb24pLCBidXQgMjU2IGlzIHZlcnkgaGlnaCBmb3IgYQ0KPiA+IGRl
-ZmF1bHQuDQo+ID4gDQo+ID4gSG93IGFib3V0IDY0Pw0KPiANCj4gSUlJUkMgdGhlIChub24tZHlu
-YW1pYykgc2Vzc2lvbiBpbXBsZW1lbmF0aW9ucyB0aGF0IEkndmUgc2VlbiB0cmVhdCB0aGUgY2Ff
-bWF4cmVxdWVzdHMgY29taW5nIGZyb20gdGhlIGNsaWVudCBhcyB0aGUgbWF4aW11bSBudW1iZXIg
-b2Ygc2Vzc2lvbiBzbG90cyB0aGF0IHRoZSBjbGllbnQgY2FuIGhhbmRsZSAtIElPVyBJIGRvbid0
-IHNlZSBzZXJ2ZXJzIHJldHVybmluZyBhIGhpZ2hlciBjYV9tYXhyZXF1ZXN0cyB0aGFuIHdhcyBz
-ZW50IGJ5IHRoZSBjbGllbnQuIFRoaXMgaXMgd2h5IEkgY2hvc2UgYSBsYXJnZXIgbnVtYmVyIGZv
-ciB0aGUgZGVmYXVsdC4gSXQgaXMsIGFmdGVyIGFsbCwgYSBzZXJ2ZXIgcmVzb3VyY2UgYW5kIHNo
-b3VsZG4ndCB0aGUgY2xpZW50IGdyYWIgYXMgbWFueSBzZXNzaW9uIHNsb3RzIGFzIGl0IGNhbj8N
-Cg0KVGhlIHByb2JsZW0gaXMgdGhhdCBvbmNlIHlvdSBpbXBsZW1lbnQgZHluYW1pYyBzbG90IHRh
-YmxlcywgdGhlDQpuZWdvdGlhdGVkIHNlc3Npb24gc2xvdCB0YWJsZSBzaXplIGJlY29tZXMgdGhl
-IF9taW5pbXVtXyBudW1iZXIgb2YNCnNsb3RzLiBUaGF0J3Mgd2h5IGEgY2xpZW50IHRoYXQgc3Vw
-cG9ydHMgZHluYW1pYyBzbG90IHRhYmxlcyB3YW50cyB0bw0Ka2VlcCB0aGUgY2FfbWF4cmVxdWVz
-dHMgX3NtYWxsXyBpbiB0aGUgaG9wZSB0aGF0IHRoZSBzZXJ2ZXIgY2FuIHRoZW4NCmR5bmFtaWNh
-bGx5IGFkanVzdCB0aGUgdG90YWwgbnVtYmVyIG9mIHNsb3RzIHVwd2FyZHMgaW4gb3JkZXIgdG8g
-bWVldA0KdGhlIGFjdHVhbCBsb2FkLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
-IGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20N
-Cnd3dy5uZXRhcHAuY29tDQo=
+From: Andy Adamson <andros@netapp.com>
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c         | 6 ++----
+ fs/nfs/internal.h       | 5 ++---
+ fs/nfs/nfs4client.c     | 3 +--
+ include/linux/nfs_xdr.h | 2 +-
+ 4 files changed, 6 insertions(+), 10 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 340b1ef..2dceee4 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -501,8 +501,7 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
+ 					&nn->nfs_client_list);
+ 			spin_unlock(&nn->nfs_client_lock);
+ 			new->cl_flags = cl_init->init_flags;
+-			return rpc_ops->init_client(new, timeparms, ip_addr,
+-						    authflavour);
++			return rpc_ops->init_client(new, timeparms, ip_addr);
+ 		}
+ 
+ 		spin_unlock(&nn->nfs_client_lock);
+@@ -694,13 +693,12 @@ EXPORT_SYMBOL_GPL(nfs_init_server_rpcclient);
+  * @clp: nfs_client to initialise
+  * @timeparms: timeout parameters for underlying RPC transport
+  * @ip_addr: IP presentation address (not used)
+- * @authflavor: authentication flavor for underlying RPC transport
+  *
+  * Returns pointer to an NFS client, or an ERR_PTR value.
+  */
+ struct nfs_client *nfs_init_client(struct nfs_client *clp,
+ 		    const struct rpc_timeout *timeparms,
+-		    const char *ip_addr, rpc_authflavor_t authflavour)
++		    const char *ip_addr)
+ {
+ 	int error;
+ 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 3c8373f..9b694f1 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -267,7 +267,7 @@ extern struct rpc_procinfo nfs4_procedures[];
+ void nfs_close_context(struct nfs_open_context *ctx, int is_sync);
+ extern struct nfs_client *nfs_init_client(struct nfs_client *clp,
+ 			   const struct rpc_timeout *timeparms,
+-			   const char *ip_addr, rpc_authflavor_t authflavour);
++			   const char *ip_addr);
+ 
+ /* dir.c */
+ extern int nfs_access_cache_shrinker(struct shrinker *shrink,
+@@ -451,8 +451,7 @@ extern ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq);
+ extern void __nfs4_read_done_cb(struct nfs_read_data *);
+ extern struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+ 			    const struct rpc_timeout *timeparms,
+-			    const char *ip_addr,
+-			    rpc_authflavor_t authflavour);
++			    const char *ip_addr);
+ extern int nfs40_walk_client_list(struct nfs_client *clp,
+ 				struct nfs_client **result,
+ 				struct rpc_cred *cred);
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 90dce91..767a5e3 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -187,8 +187,7 @@ static int nfs4_init_client_minor_version(struct nfs_client *clp)
+  */
+ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+ 				    const struct rpc_timeout *timeparms,
+-				    const char *ip_addr,
+-				    rpc_authflavor_t authflavour)
++				    const char *ip_addr)
+ {
+ 	char buf[INET6_ADDRSTRLEN + 1];
+ 	struct nfs_client *old;
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 8651574..ddc3e32 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1442,7 +1442,7 @@ struct nfs_rpc_ops {
+ 	struct nfs_client *(*alloc_client) (const struct nfs_client_initdata *);
+ 	struct nfs_client *
+ 		(*init_client) (struct nfs_client *, const struct rpc_timeout *,
+-				const char *, rpc_authflavor_t);
++				const char *);
+ 	void	(*free_client) (struct nfs_client *);
+ 	struct nfs_server *(*create_server)(struct nfs_mount_info *, struct nfs_subversion *);
+ 	struct nfs_server *(*clone_server)(struct nfs_server *, struct nfs_fh *,
+-- 
+1.8.3.1
+
