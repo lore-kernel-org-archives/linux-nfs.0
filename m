@@ -1,42 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f180.google.com ([209.85.217.180]:56148 "EHLO
-	mail-lb0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753087Ab3GNTkj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Jul 2013 15:40:39 -0400
+Received: from fieldses.org ([174.143.236.118]:38951 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751255Ab3GXUCh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Jul 2013 16:02:37 -0400
+Date: Wed, 24 Jul 2013 16:02:34 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: NFS inode cache zap on lock - please advice
+Message-ID: <20130724200234.GA5777@fieldses.org>
+References: <51A6EC86.9010201@parallels.com>
+ <20130530114216.GA11854@fieldses.org>
+ <51A73FA6.30503@parallels.com>
+ <20130712205242.GB10562@fieldses.org>
+ <51E3A1D7.8090901@parallels.com>
+ <20130715071119.7997d9ce@corrin.poochiereds.net>
+ <51E8E5DF.7010405@parallels.com>
 MIME-Version: 1.0
-In-Reply-To: <51DFBD49.7000205@bfs.de>
-References: <20130712063903.GB29320@longonot.mountain>
-	<51DFBD49.7000205@bfs.de>
-Date: Sun, 14 Jul 2013 22:40:37 +0300
-Message-ID: <CA+_b7D+2O2E0S4vQY37SZcK3VTPUdd1cP8y9NuZM-HWwP3HNGw@mail.gmail.com>
-Subject: Re: [patch -stable] svcrdma: underflow issue in decode_write_list()
-From: Dan Carpenter <error27@gmail.com>
-To: wharms@bfs.de
-Cc: Dan Carpenter <dan.carpenter@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, kernel-janitors@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <51E8E5DF.7010405@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 7/12/13, walter harms <wharms@bfs.de> wrote:
+On Fri, Jul 19, 2013 at 11:08:15AM +0400, Stanislav Kinsbursky wrote:
+> 15.07.2013 15:11, Jeff Layton пишет:
+> >On Mon, 15 Jul 2013 11:16:39 +0400
+> >Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+> >
+> >>13.07.2013 00:52, bfields@fieldses.org пишет:
+> >>>On Thu, May 30, 2013 at 04:01:42PM +0400, Stanislav Kinsbursky wrote:
+> >>>>Thanks, Bruce!
+> >>>>I'll have at
+> >>>>
+> >>>>BTW, do you have any decisions what we will do with UMH tracker?
+> >>>Crap, apologies, I completely dropped this.  Have you looked at it
+> >>>again lately?
+> >>Don't worry, it's all right. And I added Jeff and mailing list to
+> >>recipients.
+> >>
+> >>I was thinking about using kernel_thread() instead of kthread_create().
+> >>This might work, because will give us kthread with same root and same
+> >>capabilities as mount caller had.
+> >>
+> >>What you, guys, think about it?
+> >Well, it's not the caller of mount that we're concerned with here. It's
+> >the caller of rpc.nfsd. That program is going to make the kernel spawn
+> >a bunch of nfsd kthreads and then exit. So I guess the basic idea here
+> >is to preserve the namespace info, root and creds from that process
+> >before it exits. Spawning a kthread would work for that, and might be
+> >simplest, but we should weigh this idea carefully before we settle on
+> >it.
+> >
+> >Let's assume for a moment that we want to do all of this in userspace
+> >instead (Eric B.'s first suggestion). I assume the kernel would need to
+> >pass a fd to the program so it can call setns() with it. Where would it
+> >get this fd, considering that we're calling this from a nfsd kthread?
+> >
+> >What else would it need? Would it need a path to chroot() to? Credential
+> >info so it can call setuid/setgid?
+> >
+> >Other caveats might be that the binary needn't exist in the container
+> >to which you're chrooting. That's not really a problem as long as all
+> >the libs get linked in before the program does the switcharoo, but it
+> >might make troubleshooting problems in this code difficult from a
+> >user sitting in that container.
 
-> i am struggling to understand what is actually checked here.
-> Perhaps this improves the readability a bit
->  if ( nchunks < 0 ||
->        sizeof(struct rpcrdma_write_chunk) * nchunks > (SIZE_MAX - start) ||
+If possible I'd really be happier if the userspace code didn't have to
+understand containers.
 
-That doesn't work.
+(And on the client side we need to do that if we want to support
+existing nfsidmap binaries, right?)
 
-This is one of the few times I get to use algebra in real life.  Yay!
-The problem is you have to
-have the nchunks by itself and the trusted bits on the other side.  So
-the multiply becomes a
-divide.
+If the kernel could the fd and any other relevant information to
+userspace I don't see why it couldn't just set up the environment right
+itself.
 
-There are lots of these checks in the kernel.  It's idiomatic.
+> As far as I understand the user namespaces idea, the all it covers
+> are process credentials.
+> And for running the binary we need only mount and path.
+> My first approach was to swap root in UMH init callback. This works.
+> But doesn't take user namespaces into account at all.
+> If we assume, that a user, which is capable to run rpc.nfsd is also
+> must be capable to run the UMH binary, then we can just forget about
+> a user-namespace isolation and use this UMH init callback. It's
+> cheap to implement. But it's not flawless, because looks like a
+> dirty hack (which it is, actually).
+> Another way (with taking of user namespaces into account) is a
+> kernel thread, forked in process context (i.e. kernel_thread()
+> call). This will give us all the same credentials, root and
+> namespaces, as rpc.nfsd caller has, for the UMH binary caller.
 
-regards,
-dan carpenter
+This is essentially Eric's option #1 from
+
+	http://article.gmane.org/gmane.linux.kernel/1496016 ?
+
+That sounds best to me.
+
+> But this solution requires of local implementation of a
+> ____call_usermodehelper() function content. And a bunch of it's
+> calls are not exported to modules. So it's a hack again, which looks
+> even worse to me.
+
+Why can't we implement whatever call_usermodehelper() variant we need
+and then export that?
+
+--b.
+
+> IOW, I don't see any comfortable existent solution for this task.
+> But the first one is just simpler.
+> And this is all because kernel thread are working in initial
+> namespaces including file system root.
+> 
