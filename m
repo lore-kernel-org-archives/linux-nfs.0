@@ -1,65 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:10216 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:45747 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754712Ab3GJRVS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 10 Jul 2013 13:21:18 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r6AHLHeO013878
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 10 Jul 2013 13:21:18 -0400
-Received: from fury.redhat.com (vpn-230-234.phx2.redhat.com [10.3.230.234])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r6AHLFcs020864
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Wed, 10 Jul 2013 13:21:16 -0400
-Date: Wed, 10 Jul 2013 13:19:50 -0400
-From: David Jeffery <djeffery@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] lockd: protect nlm_blocked access in nlmsvc_retry_blocked
-Message-ID: <20130710171903.GA30834@fury.redhat.com>
+	id S1757504Ab3GYUSI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Jul 2013 16:18:08 -0400
+Date: Thu, 25 Jul 2013 16:18:05 -0400
+From: "J.Bruce Fields" <bfields@citi.umich.edu>
+To: NeilBrown <neilb@suse.de>
+Cc: Ben Myers <bpm@sgi.com>, Olga Kornievskaia <aglo@citi.umich.edu>,
+        NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSD/sunrpc: avoid deadlock on TCP connection due to
+ memory pressure.
+Message-ID: <20130725201805.GB17962@fieldses.org>
+References: <20130710022735.GI8281@fieldses.org>
+ <20130710143233.77e35721@notabene.brown>
+ <20130710190727.GA22305@fieldses.org>
+ <20130715143203.51bc583b@notabene.brown>
+ <20130716015803.GA5271@fieldses.org>
+ <20130716140021.312b5b07@notabene.brown>
+ <20130716142430.GA11977@fieldses.org>
+ <20130718000319.GL1681@sgi.com>
+ <20130724210746.GB5777@fieldses.org>
+ <20130725113023.7bcbc347@notabene.brown>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130725113023.7bcbc347@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In nlmsvc_retry_blocked, the check that the list is non-empty and acquiring
-the pointer of the first entry is unprotected by any lock.  This allows a rare
-race condition when there is only one entry on the list.  A function such as
-nlmsvc_grant_callback() can be called, which will temporarily remove the entry
-from the list.  Between the list_empty() and list_entry(),the list may become
-empty, causing an invalid pointer to be used as an nlm_block, leading to a
-possible crash.
+On Thu, Jul 25, 2013 at 11:30:23AM +1000, NeilBrown wrote:
+> 
+> Since we enabled auto-tuning for sunrpc TCP connections we do not
+> guarantee that there is enough write-space on each connection to
+> queue a reply.
+> 
+> If memory pressure causes the window to shrink too small, the request
+> throttling in sunrpc/svc will not accept any requests so no more requests
+> will be handled.  Even when pressure decreases the window will not
+> grow again until data is sent on the connection.
+> This means we get a deadlock:  no requests will be handled until there
+> is more space, and no space will be allocated until a request is
+> handled.
+> 
+> This can be simulated by modifying svc_tcp_has_wspace to inflate the
+> number of byte required and removing the 'svc_sock_setbufsize' calls
+> in svc_setup_socket.
 
-This patch adds the nlm_block_lock around these calls to prevent concurrent
-use of the nlm_blocked list.
+Ah-hah!
 
-Signed-off-by: David Jeffery <djeffery@redhat.com>
+> I found that multiplying by 16 was enough to make the requirement
+> exceed the default allocation.  With this modification in place:
+>    mount -o vers=3,proto=tcp 127.0.0.1:/home /mnt
+> would block and eventually time out because the nfs server could not
+> accept any requests.
+
+So, this?:
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 305374d..36de50d 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1193,6 +1193,7 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
+ 	if (test_bit(XPT_LISTENER, &xprt->xpt_flags))
+ 		return 1;
+ 	required = atomic_read(&xprt->xpt_reserved) + serv->sv_max_mesg;
++	required *= 16;
+ 	if (sk_stream_wspace(svsk->sk_sk) >= required)
+ 		return 1;
+ 	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+@@ -1378,14 +1379,8 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+ 	/* Initialize the socket */
+ 	if (sock->type == SOCK_DGRAM)
+ 		svc_udp_init(svsk, serv);
+-	else {
+-		/* initialise setting must have enough space to
+-		 * receive and respond to one request.
+-		 */
+-		svc_sock_setbufsize(svsk->sk_sock, 4 * serv->sv_max_mesg,
+-					4 * serv->sv_max_mesg);
++	else
+ 		svc_tcp_init(svsk, serv);
+-	}
+ 
+ 	dprintk("svc: svc_setup_socket created %p (inet %p)\n",
+ 				svsk, svsk->sk_sk);
+
+> This patch relaxes the request throttling to always allow at least one
+> request through per connection.  It does this by checking both
+>   sk_stream_min_wspace() and xprt->xpt_reserved
+> are zero.
+> The first is zero when the TCP transmit queue is empty.
+> The second is zero when there are no RPC requests being processed.
+> When both of these are zero the socket is idle and so one more
+> request can safely be allowed through.
+> 
+> Applying this patch allows the above mount command to succeed cleanly.
+> Tracing shows that the allocated write buffer space quickly grows and
+> after a few requests are handled, the extra tests are no longer needed
+> to permit further requests to be processed.
+> 
+> The main purpose of request throttling is to handle the case when one
+> client is slow at collecting replies and the send queue gets full of
+> replies that the client hasn't acknowledged (at the TCP level) yet.
+> As we only change behaviour when the send queue is empty this main
+> purpose is still preserved.
+> 
+> Reported-by: Ben Myers <bpm@sgi.com>
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> 
+> --
+> As you can see I've changed the patch.  While writing up the above 
+> description realised there was a weakness and so added the sk_stream_min_wspace
+> test.  That allowed me to write the final paragraph.
+
+This is great, thanks!
+
+Inclined to queue it up for 3.11 and stable....
+
+--b.
+
+> 
+> NeilBrown
+> 
+> 
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 305374d..7762b9f 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -1193,7 +1193,9 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
+>  	if (test_bit(XPT_LISTENER, &xprt->xpt_flags))
+>  		return 1;
+>  	required = atomic_read(&xprt->xpt_reserved) + serv->sv_max_mesg;
+> -	if (sk_stream_wspace(svsk->sk_sk) >= required)
+> +	if (sk_stream_wspace(svsk->sk_sk) >= required ||
+> +	    (sk_stream_min_wspace(svsk->sk_sk) == 0 &&
+> +	     atomic_read(&xprt->xpt_reserved) == 0))
+>  		return 1;
+>  	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+>  	return 0;
 
 
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -951,6 +951,7 @@ nlmsvc_retry_blocked(void)
- 	unsigned long	timeout = MAX_SCHEDULE_TIMEOUT;
- 	struct nlm_block *block;
- 
-+	spin_lock(&nlm_blocked_lock);
- 	while (!list_empty(&nlm_blocked) && !kthread_should_stop()) {
- 		block = list_entry(nlm_blocked.next, struct nlm_block, b_list);
- 
-@@ -960,6 +961,7 @@ nlmsvc_retry_blocked(void)
- 			timeout = block->b_when - jiffies;
- 			break;
- 		}
-+		spin_unlock(&nlm_blocked_lock);
- 
- 		dprintk("nlmsvc_retry_blocked(%p, when=%ld)\n",
- 			block, block->b_when);
-@@ -969,7 +971,9 @@ nlmsvc_retry_blocked(void)
- 			retry_deferred_block(block);
- 		} else
- 			nlmsvc_grant_blocked(block);
-+		spin_lock(&nlm_blocked_lock);
- 	}
-+	spin_unlock(&nlm_blocked_lock);
- 
- 	return timeout;
- }
