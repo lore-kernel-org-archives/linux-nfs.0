@@ -1,53 +1,28 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f195.google.com ([209.85.217.195]:62978 "EHLO
-	mail-lb0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756380Ab3GaMMk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Jul 2013 08:12:40 -0400
-Received: by mail-lb0-f195.google.com with SMTP id v1so194401lbd.10
-        for <linux-nfs@vger.kernel.org>; Wed, 31 Jul 2013 05:12:37 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:36450 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756515Ab3GYTo0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Jul 2013 15:44:26 -0400
+Date: Thu, 25 Jul 2013 15:44:25 -0400
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: nfsd fixes for 3.11
+Message-ID: <20130725194425.GA17962@fieldses.org>
 MIME-Version: 1.0
-From: Abhijeet Rastogi <abhijeet.1989@gmail.com>
-Date: Wed, 31 Jul 2013 17:41:57 +0530
-Message-ID: <CACXxYfy6ySZOLTRGWfZjnozHP5irHa9N=DS=3AUH8RWgUtY35Q@mail.gmail.com>
-Subject: Bug: nfsiostat fails to parse file /proc/self/mountstats in some cases
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all,
+Please pull one more nfsd bugfix for 3.11:
 
-So, this is what I'm observing.
+  git://linux-nfs.org/~bfields/linux.git for-3.11
 
-$ sudo nfsiostat
-Traceback (most recent call last):
-  File " in="" line="" module="" nfsiostat="" sbin="" usr="">
-iostat_command(prog)
-  File "/usr/sbin/nfsiostat", line 587, in iostat_command
-    devices = list_nfs_mounts(origdevices, mountstats)
-  File "/usr/sbin/nfsiostat", line 490, in list_nfs_mounts
-    stats.parse_stats(descr)
-  File "/usr/sbin/nfsiostat", line 179, in parse_stats
-    self.__parse_rpc_line(words)
-  File "/usr/sbin/nfsiostat", line 163, in __parse_rpc_line
-    self.__rpc_data[op] = [long(word) for word in words[1:]]
-ValueError: invalid literal for long() with base 10: 'device'
+--b.
 
-This happens because it's unexpected for nfsiostat to find line "no
-device mounted on /sys/kernel/debug with fstype debugfs" in
-/proc/self/mountstats. http://pb.abhijeetr.com/UREA
+----------------------------------------------------------------
+Harshula Jayasuriya (1):
+      nfsd: nfsd_open: when dentry_open returns an error do not propagate as struct file
 
-For now, I added
-
-        if line.startswith("no device mounted"):
-            continue
-
-to fix the issue in parse_stats_file function. http://pb.abhijeetr.com/HUXO
-
-Please ask if any more info is required. What's the best way to handle
-it so that it can be added to upstream code?
-
---
-Regards,
-Abhijeet Rastogi (shadyabhi)
-http://blog.abhijeetr.com
+ fs/nfsd/vfs.c |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
