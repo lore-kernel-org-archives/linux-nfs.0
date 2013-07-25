@@ -1,2152 +1,403 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:48395 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751371Ab3GQUor (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 16:44:47 -0400
-Subject: [PATCH 10/10] KEYS: Expand the capacity of a keyring
-To: keyrings@linux-nfs.org
-From: David Howells <dhowells@redhat.com>
-Cc: linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Wed, 17 Jul 2013 21:44:41 +0100
-Message-ID: <20130717204441.8591.79795.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
-References: <20130717204314.8591.52892.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from aserp1040.oracle.com ([141.146.126.69]:43500 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757037Ab3GYRwH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Jul 2013 13:52:07 -0400
+From: Dave Kleikamp <dave.kleikamp@oracle.com>
+To: linux-kernel@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+        "Maxim V. Patlasov" <mpatlasov@parallels.com>,
+        Zach Brown <zab@zabbo.net>, Dave Kleikamp <dave.kleikamp@oracle.com>,
+        Mel Gorman <mgorman@suse.de>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH V8 24/33] nfs: simplify swap
+Date: Thu, 25 Jul 2013 12:50:50 -0500
+Message-Id: <1374774659-13121-25-git-send-email-dave.kleikamp@oracle.com>
+In-Reply-To: <1374774659-13121-1-git-send-email-dave.kleikamp@oracle.com>
+References: <1374774659-13121-1-git-send-email-dave.kleikamp@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Expand the capacity of a keyring to be able to hold a lot more keys by using
-the previously added associative array implementation.  Currently the maximum
-capacity is:
+swap_writepage can now call nfs's write_iter f_op, eliminating the need to
+implement for the special-case direct_IO a_op. There is no longer a need to
+pass the uio flag through the direct write path.
 
-	(PAGE_SIZE - sizeof(header)) / sizeof(struct key *)
-
-which, on a 64-bit system, is a little more 500.  However, since this is being
-used for the NFS uid mapper, we need more than that.  The new implementation
-gives us effectively unlimited capacity.
-
-With some alterations, the keyutils testsuite runs successfully to completion
-after this patch is applied.  The alterations are because (a) keyrings that
-are simply added to no longer appear ordered and (b) some of the errors have
-changed a bit.
-
-Signed-off-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Dave Kleikamp <dave.kleikamp@oracle.com>
+Acked-by: Rik van Riel <riel@redhat.com>
+Cc: Mel Gorman <mgorman@suse.de>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
 ---
+ fs/nfs/direct.c           | 94 ++++++++++++++++-------------------------------
+ fs/nfs/file.c             |  4 +-
+ include/linux/blk_types.h |  2 -
+ include/linux/fs.h        |  2 -
+ include/linux/nfs_fs.h    |  4 +-
+ mm/page_io.c              | 13 +++----
+ 6 files changed, 42 insertions(+), 77 deletions(-)
 
- include/keys/keyring-type.h |   17 -
- include/linux/key.h         |   13 
- security/keys/Kconfig       |    1 
- security/keys/gc.c          |   30 -
- security/keys/internal.h    |   17 -
- security/keys/key.c         |   35 +
- security/keys/keyring.c     | 1402 ++++++++++++++++++++++---------------------
- security/keys/request_key.c |   12 
- 8 files changed, 767 insertions(+), 760 deletions(-)
-
-diff --git a/include/keys/keyring-type.h b/include/keys/keyring-type.h
-index cf49159..fca5c62 100644
---- a/include/keys/keyring-type.h
-+++ b/include/keys/keyring-type.h
-@@ -1,6 +1,6 @@
- /* Keyring key type
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 2b0ebcb..239c2fe 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -118,29 +118,18 @@ static inline int put_dreq(struct nfs_direct_req *dreq)
+  * @nr_segs: size of iovec array
   *
-- * Copyright (C) 2008 Red Hat, Inc. All Rights Reserved.
-+ * Copyright (C) 2008, 2013 Red Hat, Inc. All Rights Reserved.
-  * Written by David Howells (dhowells@redhat.com)
-  *
-  * This program is free software; you can redistribute it and/or
-@@ -13,19 +13,6 @@
- #define _KEYS_KEYRING_TYPE_H
+  * The presence of this routine in the address space ops vector means
+- * the NFS client supports direct I/O. However, for most direct IO, we
+- * shunt off direct read and write requests before the VFS gets them,
+- * so this method is only ever called for swap.
++ * the NFS client supports direct I/O. However, we shunt off direct
++ * read and write requests before the VFS gets them, so this method
++ * should never be called.
+  */
+ ssize_t nfs_direct_IO(int rw, struct kiocb *iocb, struct iov_iter *iter,
+ 		      loff_t pos)
+ {
+-#ifndef CONFIG_NFS_SWAP
+ 	dprintk("NFS: nfs_direct_IO (%s) off/no(%Ld/%lu) EINVAL\n",
+ 			iocb->ki_filp->f_path.dentry->d_name.name,
+ 			(long long) pos, iter->nr_segs);
  
- #include <linux/key.h>
--#include <linux/rcupdate.h>
+ 	return -EINVAL;
+-#else
+-	VM_BUG_ON(iocb->ki_left != PAGE_SIZE);
+-	VM_BUG_ON(iocb->ki_nbytes != PAGE_SIZE);
 -
--/*
-- * the keyring payload contains a list of the keys to which the keyring is
-- * subscribed
-- */
--struct keyring_list {
--	struct rcu_head	rcu;		/* RCU deletion hook */
--	unsigned short	maxkeys;	/* max keys this list can hold */
--	unsigned short	nkeys;		/* number of keys currently held */
--	unsigned short	delkey;		/* key to be unlinked by RCU */
--	struct key __rcu *keys[0];
--};
--
-+#include <linux/assoc_array.h>
- 
- #endif /* _KEYS_KEYRING_TYPE_H */
-diff --git a/include/linux/key.h b/include/linux/key.h
-index ef596c7..2417f78 100644
---- a/include/linux/key.h
-+++ b/include/linux/key.h
-@@ -22,6 +22,7 @@
- #include <linux/sysctl.h>
- #include <linux/rwsem.h>
- #include <linux/atomic.h>
-+#include <linux/assoc_array.h>
- 
- #ifdef __KERNEL__
- #include <linux/uidgid.h>
-@@ -196,11 +197,13 @@ struct key {
- 	 *   whatever
- 	 */
- 	union {
--		unsigned long		value;
--		void __rcu		*rcudata;
--		void			*data;
--		struct keyring_list __rcu *subscriptions;
--	} payload;
-+		union {
-+			unsigned long		value;
-+			void __rcu		*rcudata;
-+			void			*data;
-+		} payload;
-+		struct assoc_array keys;
-+	};
- };
- 
- extern struct key *key_alloc(struct key_type *type,
-diff --git a/security/keys/Kconfig b/security/keys/Kconfig
-index a90d6d3..15e0dfe 100644
---- a/security/keys/Kconfig
-+++ b/security/keys/Kconfig
-@@ -4,6 +4,7 @@
- 
- config KEYS
- 	bool "Enable access key retention support"
-+	select ASSOCIATIVE_ARRAY
- 	help
- 	  This option provides support for retaining authentication tokens and
- 	  access keys in the kernel.
-diff --git a/security/keys/gc.c b/security/keys/gc.c
-index d67c97b..5af99b8 100644
---- a/security/keys/gc.c
-+++ b/security/keys/gc.c
-@@ -130,6 +130,13 @@ void key_gc_keytype(struct key_type *ktype)
- 	kleave("");
+-	if (rw == READ || rw == KERNEL_READ)
+-		return nfs_file_direct_read(iocb, iter, pos,
+-				rw == READ ? true : false);
+-	return nfs_file_direct_write(iocb, iter, pos,
+-				rw == WRITE ? true : false);
+-#endif /* CONFIG_NFS_SWAP */
  }
  
-+static int key_gc_keyring_func(const void *object, bool type, void *iterator_data)
-+{
-+	const struct key *key = object;
-+	time_t *limit = iterator_data;
-+	return key_is_dead(key, *limit);
-+}
-+
- /*
-  * Garbage collect pointers from a keyring.
-  *
-@@ -138,8 +145,7 @@ void key_gc_keytype(struct key_type *ktype)
+ static void nfs_direct_release_pages(struct page **pages, unsigned int npages)
+@@ -312,7 +301,7 @@ static const struct nfs_pgio_completion_ops nfs_direct_read_completion_ops = {
   */
- static void key_gc_keyring(struct key *keyring, time_t limit)
+ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *desc,
+ 						const struct iovec *iov,
+-						loff_t pos, bool uio)
++						loff_t pos)
  {
--	struct keyring_list *klist;
--	int loop;
-+	int result;
- 
- 	kenter("%x", key_serial(keyring));
- 
-@@ -149,27 +155,17 @@ static void key_gc_keyring(struct key *keyring, time_t limit)
- 
- 	/* scan the keyring looking for dead keys */
- 	rcu_read_lock();
--	klist = rcu_dereference(keyring->payload.subscriptions);
--	if (!klist)
--		goto unlock_dont_gc;
--
--	loop = klist->nkeys;
--	smp_rmb();
--	for (loop--; loop >= 0; loop--) {
--		struct key *key = rcu_dereference(klist->keys[loop]);
--		if (key_is_dead(key, limit))
--			goto do_gc;
--	}
--
--unlock_dont_gc:
-+	result = assoc_array_iterate(&keyring->keys,
-+				     key_gc_keyring_func, &limit);
- 	rcu_read_unlock();
-+	if (result == 0)
-+		goto do_gc;
-+
- dont_gc:
- 	kleave(" [no gc]");
- 	return;
- 
- do_gc:
--	rcu_read_unlock();
--
- 	keyring_gc(keyring, limit);
- 	kleave(" [gc]");
- }
-diff --git a/security/keys/internal.h b/security/keys/internal.h
-index 73950bf..2a8d624 100644
---- a/security/keys/internal.h
-+++ b/security/keys/internal.h
-@@ -90,20 +90,23 @@ extern void key_type_put(struct key_type *ktype);
- 
- extern int __key_link_begin(struct key *keyring,
- 			    const struct keyring_index_key *index_key,
--			    unsigned long *_prealloc);
-+			    struct assoc_array_edit **_edit);
- extern int __key_link_check_live_key(struct key *keyring, struct key *key);
--extern void __key_link(struct key *keyring, struct key *key,
--		       unsigned long *_prealloc);
-+extern void __key_link(struct key *key, struct assoc_array_edit **_edit);
- extern void __key_link_end(struct key *keyring,
- 			   const struct keyring_index_key *index_key,
--			   unsigned long prealloc);
-+			   struct assoc_array_edit *edit);
- 
--extern key_ref_t __keyring_search_one(key_ref_t keyring_ref,
--				      const struct keyring_index_key *index_key);
-+extern key_ref_t find_key_to_update(key_ref_t keyring_ref,
-+				    const struct keyring_index_key *index_key);
- 
- extern struct key *keyring_search_instkey(struct key *keyring,
- 					  key_serial_t target_id);
- 
-+extern int iterate_over_keyring(const struct key *keyring,
-+				int (*func)(const struct key *key, void *data),
-+				void *data);
-+
- typedef int (*key_match_func_t)(const struct key *, const void *);
- 
- struct keyring_search_context {
-@@ -119,6 +122,8 @@ struct keyring_search_context {
- #define KEYRING_SEARCH_NO_CHECK_PERM	0x0010	/* Don't check permissions */
- #define KEYRING_SEARCH_DETECT_TOO_DEEP	0x0020	/* Give an error on excessive depth */
- 
-+	int (*iterator)(const void *object, bool type, void *iterator_data);
-+
- 	/* Internal stuff */
- 	int			skipped_ret;
- 	bool			possessed;
-diff --git a/security/keys/key.c b/security/keys/key.c
-index 7d716b8..1ad0b41 100644
---- a/security/keys/key.c
-+++ b/security/keys/key.c
-@@ -409,7 +409,7 @@ static int __key_instantiate_and_link(struct key *key,
- 				      struct key_preparsed_payload *prep,
- 				      struct key *keyring,
- 				      struct key *authkey,
--				      unsigned long *_prealloc)
-+				      struct index_tree_edit **_edit)
- {
- 	int ret, awaken;
- 
-@@ -436,7 +436,7 @@ static int __key_instantiate_and_link(struct key *key,
- 
- 			/* and link it into the destination keyring */
- 			if (keyring)
--				__key_link(keyring, key, _prealloc);
-+				__key_link(key, _edit);
- 
- 			/* disable the authorisation key */
- 			if (authkey)
-@@ -476,7 +476,7 @@ int key_instantiate_and_link(struct key *key,
- 			     struct key *authkey)
- {
- 	struct key_preparsed_payload prep;
--	unsigned long prealloc;
-+	struct index_tree_edit *edit;
- 	int ret;
- 
- 	memset(&prep, 0, sizeof(prep));
-@@ -490,16 +490,15 @@ int key_instantiate_and_link(struct key *key,
- 	}
- 
- 	if (keyring) {
--		ret = __key_link_begin(keyring, &key->index_key, &prealloc);
-+		ret = __key_link_begin(keyring, &key->index_key, &edit);
- 		if (ret < 0)
- 			goto error_free_preparse;
- 	}
- 
--	ret = __key_instantiate_and_link(key, &prep, keyring, authkey,
--					 &prealloc);
-+	ret = __key_instantiate_and_link(key, &prep, keyring, authkey, &edit);
- 
- 	if (keyring)
--		__key_link_end(keyring, &key->index_key, prealloc);
-+		__key_link_end(keyring, &key->index_key, edit);
- 
- error_free_preparse:
- 	if (key->type->preparse)
-@@ -537,7 +536,7 @@ int key_reject_and_link(struct key *key,
- 			struct key *keyring,
- 			struct key *authkey)
- {
--	unsigned long prealloc;
-+	struct index_tree_edit *edit;
- 	struct timespec now;
- 	int ret, awaken, link_ret = 0;
- 
-@@ -548,7 +547,7 @@ int key_reject_and_link(struct key *key,
- 	ret = -EBUSY;
- 
- 	if (keyring)
--		link_ret = __key_link_begin(keyring, &key->index_key, &prealloc);
-+		link_ret = __key_link_begin(keyring, &key->index_key, &edit);
- 
- 	mutex_lock(&key_construction_mutex);
- 
-@@ -570,7 +569,7 @@ int key_reject_and_link(struct key *key,
- 
- 		/* and link it into the destination keyring */
- 		if (keyring && link_ret == 0)
--			__key_link(keyring, key, &prealloc);
-+			__key_link(key, &edit);
- 
- 		/* disable the authorisation key */
- 		if (authkey)
-@@ -580,7 +579,7 @@ int key_reject_and_link(struct key *key,
- 	mutex_unlock(&key_construction_mutex);
- 
- 	if (keyring)
--		__key_link_end(keyring, &key->index_key, prealloc);
-+		__key_link_end(keyring, &key->index_key, edit);
- 
- 	/* wake up anyone waiting for a key to be constructed */
- 	if (awaken)
-@@ -783,8 +782,8 @@ key_ref_t key_create_or_update(key_ref_t keyring_ref,
- 		.description	= description,
- 	};
- 	struct key_preparsed_payload prep;
-+	struct index_tree_edit *edit;
- 	const struct cred *cred = current_cred();
--	unsigned long prealloc;
- 	struct key *keyring, *key = NULL;
- 	key_ref_t key_ref;
- 	int ret;
-@@ -828,7 +827,7 @@ key_ref_t key_create_or_update(key_ref_t keyring_ref,
- 	}
- 	index_key.desc_len = strlen(index_key.description);
- 
--	ret = __key_link_begin(keyring, &index_key, &prealloc);
-+	ret = __key_link_begin(keyring, &index_key, &edit);
- 	if (ret < 0) {
- 		key_ref = ERR_PTR(ret);
- 		goto error_free_prep;
-@@ -847,8 +846,8 @@ key_ref_t key_create_or_update(key_ref_t keyring_ref,
- 	 * update that instead if possible
- 	 */
- 	if (index_key.type->update) {
--		key_ref = __keyring_search_one(keyring_ref, &index_key);
--		if (!IS_ERR(key_ref))
-+		key_ref = find_key_to_update(keyring_ref, &index_key);
-+		if (key_ref)
- 			goto found_matching_key;
- 	}
- 
-@@ -874,7 +873,7 @@ key_ref_t key_create_or_update(key_ref_t keyring_ref,
- 	}
- 
- 	/* instantiate it and link it into the target keyring */
--	ret = __key_instantiate_and_link(key, &prep, keyring, NULL, &prealloc);
-+	ret = __key_instantiate_and_link(key, &prep, keyring, NULL, &edit);
- 	if (ret < 0) {
- 		key_put(key);
- 		key_ref = ERR_PTR(ret);
-@@ -884,7 +883,7 @@ key_ref_t key_create_or_update(key_ref_t keyring_ref,
- 	key_ref = make_key_ref(key, is_key_possessed(keyring_ref));
- 
- error_link_end:
--	__key_link_end(keyring, &index_key, prealloc);
-+	__key_link_end(keyring, &index_key, edit);
- error_free_prep:
- 	if (index_key.type->preparse)
- 		index_key.type->free_preparse(&prep);
-@@ -897,7 +896,7 @@ error:
- 	/* we found a matching key, so we're going to try to update it
- 	 * - we can drop the locks first as we have the key pinned
- 	 */
--	__key_link_end(keyring, &index_key, prealloc);
-+	__key_link_end(keyring, &index_key, edit);
- 
- 	key_ref = __key_update(key_ref, &prep);
- 	goto error_free_prep;
-diff --git a/security/keys/keyring.c b/security/keys/keyring.c
-index 37e0d65..8b7ec48 100644
---- a/security/keys/keyring.c
-+++ b/security/keys/keyring.c
-@@ -1,6 +1,6 @@
- /* Keyring handling
-  *
-- * Copyright (C) 2004-2005, 2008 Red Hat, Inc. All Rights Reserved.
-+ * Copyright (C) 2004-2005, 2008, 2013 Red Hat, Inc. All Rights Reserved.
-  * Written by David Howells (dhowells@redhat.com)
-  *
-  * This program is free software; you can redistribute it and/or
-@@ -17,25 +17,11 @@
- #include <linux/seq_file.h>
- #include <linux/err.h>
- #include <keys/keyring-type.h>
-+#include <keys/user-type.h>
-+#include <linux/assoc_array_priv.h>
- #include <linux/uaccess.h>
- #include "internal.h"
- 
--#define rcu_dereference_locked_keyring(keyring)				\
--	(rcu_dereference_protected(					\
--		(keyring)->payload.subscriptions,			\
--		rwsem_is_locked((struct rw_semaphore *)&(keyring)->sem)))
--
--#define rcu_deref_link_locked(klist, index, keyring)			\
--	(rcu_dereference_protected(					\
--		(klist)->keys[index],					\
--		rwsem_is_locked((struct rw_semaphore *)&(keyring)->sem)))
--
--#define MAX_KEYRING_LINKS						\
--	min_t(size_t, USHRT_MAX - 1,					\
--	      ((PAGE_SIZE - sizeof(struct keyring_list)) / sizeof(struct key *)))
--
--#define KEY_LINK_FIXQUOTA 1UL
--
- /*
-  * When plumbing the depths of the key tree, this sets a hard limit
-  * set on how deep we're willing to go.
-@@ -47,6 +33,9 @@
-  */
- #define KEYRING_NAME_HASH_SIZE	(1 << 5)
- 
-+#define assoc_array_ptr_is_key(X)	(assoc_array_ptr_is_leaf0(X))
-+#define assoc_array_ptr_is_keyring(X)	(assoc_array_ptr_is_leaf1(X))
-+
- static struct list_head	keyring_name_hash[KEYRING_NAME_HASH_SIZE];
- static DEFINE_RWLOCK(keyring_name_lock);
- 
-@@ -67,7 +56,6 @@ static inline unsigned keyring_hash(const char *desc)
-  */
- static int keyring_instantiate(struct key *keyring,
- 			       struct key_preparsed_payload *prep);
--static int keyring_match(const struct key *keyring, const void *criterion);
- static void keyring_revoke(struct key *keyring);
- static void keyring_destroy(struct key *keyring);
- static void keyring_describe(const struct key *keyring, struct seq_file *m);
-@@ -76,9 +64,9 @@ static long keyring_read(const struct key *keyring,
- 
- struct key_type key_type_keyring = {
- 	.name		= "keyring",
--	.def_datalen	= sizeof(struct keyring_list),
-+	.def_datalen	= 0,
- 	.instantiate	= keyring_instantiate,
--	.match		= keyring_match,
-+	.match		= user_match,
- 	.revoke		= keyring_revoke,
- 	.destroy	= keyring_destroy,
- 	.describe	= keyring_describe,
-@@ -127,6 +115,7 @@ static int keyring_instantiate(struct key *keyring,
- 
- 	ret = -EINVAL;
- 	if (prep->datalen == 0) {
-+		assoc_array_init(&keyring->keys);
- 		/* make the keyring available by name if it has one */
- 		keyring_publish_name(keyring);
- 		ret = 0;
-@@ -136,15 +125,211 @@ static int keyring_instantiate(struct key *keyring,
- }
- 
- /*
-- * Match keyrings on their name
-+ * Multiply 64-bits by 32-bits to 96-bits and fold back to 64-bit.  Ideally we'd
-+ * fold the carry back too, but that requires inline asm.
-+ */
-+static u64 mult_64x32_and_fold(u64 x, u32 y)
-+{
-+	u64 hi = (u64)(u32)(x >> 32) * y;
-+	u64 lo = (u64)(u32)(x) * y;
-+	return lo + ((u64)(u32)hi << 32) + (u32)(hi >> 32);
-+}
-+
-+/*
-+ * Hash a key type and description.
-+ */
-+static unsigned long hash_key_type_and_desc(const struct keyring_index_key *index_key)
-+{
-+	const unsigned level_shift = ASSOC_ARRAY_LEVEL_STEP;
-+	const unsigned long level_mask = ASSOC_ARRAY_LEVEL_STEP_MASK;
-+	const char *description = index_key->description;
-+	unsigned long hash, type;
-+	u32 piece;
-+	u64 acc;
-+	int n, desc_len = index_key->desc_len;
-+
-+	type = (unsigned long)index_key->type;
-+
-+	acc = mult_64x32_and_fold(type, desc_len + 13);
-+	acc = mult_64x32_and_fold(acc, 9207);
-+	for (;;) {
-+		n = desc_len;
-+		if (n <= 0)
-+			break;
-+		if (n > 4)
-+			n = 4;
-+		piece = 0;
-+		memcpy(&piece, description, n);
-+		description += n;
-+		desc_len -= n;
-+		acc = mult_64x32_and_fold(acc, piece);
-+		acc = mult_64x32_and_fold(acc, 9207);
-+	}
-+
-+	/* Fold the hash down to 32 bits if need be. */
-+	hash = acc;
-+	if (BITS_PER_LONG == 32)
-+		hash ^= acc >> 32;
-+
-+	/* Squidge all the keyrings into a separate part of the tree to
-+	 * ordinary keys by making sure the lowest level segment in the hash is
-+	 * zero for keyrings and non-zero otherwise.
-+	 */
-+	if (index_key->type != &key_type_keyring && (hash & level_mask) == 0)
-+		return hash | (hash >> (BITS_PER_LONG - level_shift)) | 1;
-+	if (index_key->type == &key_type_keyring && (hash & level_mask) != 0)
-+		return (hash + (hash << level_shift)) & ~level_mask;
-+	return hash;
-+}
-+
-+/*
-+ * Build the next index key chunk.
-+ *
-+ * On 32-bit systems the index key is laid out as:
-+ *
-+ *	0	4	5	9...
-+ *	hash	desclen	typeptr	desc[]
-+ *
-+ * On 64-bit systems:
-+ *
-+ *	0	8	9	17...
-+ *	hash	desclen	typeptr	desc[]
-+ *
-+ * We return it one word-sized chunk at a time.
-+ */
-+static unsigned long keyring_get_key_chunk(const void *data, int level)
-+{
-+	const struct keyring_index_key *index_key = data;
-+	unsigned long chunk = 0;
-+	long offset = 0;
-+	int desc_len = index_key->desc_len, n = sizeof(chunk);
-+
-+	level /= BITS_PER_LONG;
-+	switch (level) {
-+	case 0:
-+		return hash_key_type_and_desc(index_key);
-+	case 1:
-+		return ((unsigned long)index_key->type << 8) | desc_len;
-+	case 2:
-+		if (desc_len == 0)
-+			return (u8)((unsigned long)index_key->type >> (BITS_PER_LONG - 8));
-+		n--;
-+		offset = 1;
-+	default:
-+		offset += sizeof(chunk) - 1;
-+		offset += (level - 3) * sizeof(chunk);
-+		if (offset >= desc_len)
-+			return 0;
-+		desc_len -= offset;
-+		if (desc_len > n)
-+			desc_len = n;
-+		offset += desc_len;
-+		do {
-+			chunk <<= 8;
-+			chunk |= ((u8*)index_key->description)[--offset];
-+		} while (--desc_len > 0);
-+
-+		if (level == 2) {
-+			chunk <<= 8;
-+			chunk |= (u8)((unsigned long)index_key->type >> (BITS_PER_LONG - 8));
-+		}
-+		return chunk;
-+	}
-+}
-+
-+static unsigned long keyring_get_object_key_chunk(const void *object, int level)
-+{
-+	const struct key *key = object;
-+	return keyring_get_key_chunk(&key->index_key, level);
-+}
-+
-+static bool keyring_compare_object(const void *object, const void *data)
-+{
-+	const struct keyring_index_key *index_key = data;
-+	const struct key *key = object;
-+
-+	return key->index_key.type == index_key->type &&
-+		key->index_key.desc_len == index_key->desc_len &&
-+		memcmp(key->index_key.description, index_key->description,
-+		       index_key->desc_len) == 0;
-+}
-+
-+/*
-+ * Compare the index keys of a pair of objects and determine the bit position
-+ * at which they differ - if they differ.
-  */
--static int keyring_match(const struct key *keyring, const void *description)
-+static int keyring_diff_objects(const void *_a, const void *_b)
- {
--	return keyring->description &&
--		strcmp(keyring->description, description) == 0;
-+	const struct key *key_a = _a, *key_b = _b;
-+	const struct keyring_index_key *a = &key_a->index_key;
-+	const struct keyring_index_key *b = &key_b->index_key;
-+	unsigned long seg_a, seg_b;
-+	int level, i;
-+
-+	level = 0;
-+	seg_a = hash_key_type_and_desc(a);
-+	seg_b = hash_key_type_and_desc(b);
-+	if ((seg_a ^ seg_b) != 0)
-+		goto differ;
-+
-+	level = 8;
-+	seg_a = a->desc_len;
-+	seg_b = b->desc_len;
-+	if ((seg_a ^ seg_b) != 0)
-+		goto differ;
-+
-+	/* The next bit may not work on big endian */
-+	level = 9;
-+	seg_a = (unsigned long)a->type;
-+	seg_b = (unsigned long)b->type;
-+	if ((seg_a ^ seg_b) != 0)
-+		goto differ;
-+
-+	level += sizeof(unsigned long);
-+	if (a->desc_len == 0)
-+		goto same;
-+
-+	i = 0;
-+	if (((unsigned long)a->description | (unsigned long)b->description) &
-+	    (sizeof(unsigned long) - 1)) {
-+		do {
-+			seg_a = *(unsigned long *)(a->description + i);
-+			seg_b = *(unsigned long *)(b->description + i);
-+			if ((seg_a ^ seg_b) != 0)
-+				goto differ_plus_i;
-+			i += sizeof(unsigned long);
-+		} while (i < (a->desc_len & (sizeof(unsigned long) - 1)));
-+	}
-+
-+	for (; i < a->desc_len; i++) {
-+		seg_a = *(unsigned char *)(a->description + i);
-+		seg_b = *(unsigned char *)(b->description + i);
-+		if ((seg_a ^ seg_b) != 0)
-+			goto differ_plus_i;
-+	}
-+
-+same:
-+	return -1;
-+
-+differ_plus_i:
-+	level += i;
-+differ:
-+	i = level * 8 + __ffs(seg_a ^ seg_b);
-+	return i;
- }
- 
- /*
-+ * Operations for keyring management by the index-tree routines.
-+ */
-+static const struct assoc_array_ops keyring_assoc_array_ops = {
-+	.get_key_chunk		= keyring_get_key_chunk,
-+	.get_object_key_chunk	= keyring_get_object_key_chunk,
-+	.compare_object		= keyring_compare_object,
-+	.diff_objects		= keyring_diff_objects,
-+	.free_object		= (void (*)(void *))key_put,
-+};
-+
-+/*
-  * Clean up a keyring when it is destroyed.  Unpublish its name if it had one
-  * and dispose of its data.
-  *
-@@ -155,9 +340,6 @@ static int keyring_match(const struct key *keyring, const void *description)
-  */
- static void keyring_destroy(struct key *keyring)
- {
--	struct keyring_list *klist;
--	int loop;
--
- 	if (keyring->description) {
- 		write_lock(&keyring_name_lock);
- 
-@@ -168,12 +350,7 @@ static void keyring_destroy(struct key *keyring)
- 		write_unlock(&keyring_name_lock);
- 	}
- 
--	klist = rcu_access_pointer(keyring->payload.subscriptions);
--	if (klist) {
--		for (loop = klist->nkeys - 1; loop >= 0; loop--)
--			key_put(rcu_access_pointer(klist->keys[loop]));
--		kfree(klist);
--	}
-+	assoc_array_destroy(&keyring->keys, &keyring_assoc_array_ops);
- }
- 
- /*
-@@ -181,76 +358,88 @@ static void keyring_destroy(struct key *keyring)
-  */
- static void keyring_describe(const struct key *keyring, struct seq_file *m)
- {
--	struct keyring_list *klist;
--
- 	if (keyring->description)
- 		seq_puts(m, keyring->description);
- 	else
- 		seq_puts(m, "[anon]");
- 
- 	if (key_is_instantiated(keyring)) {
--		rcu_read_lock();
--		klist = rcu_dereference(keyring->payload.subscriptions);
--		if (klist)
--			seq_printf(m, ": %u/%u", klist->nkeys, klist->maxkeys);
-+		if (keyring->keys.nr_leaves_on_tree != 0)
-+			seq_printf(m, ": %lu", keyring->keys.nr_leaves_on_tree);
- 		else
- 			seq_puts(m, ": empty");
--		rcu_read_unlock();
- 	}
- }
- 
-+struct keyring_read_iterator_context {
-+	size_t			qty;
-+	size_t			count;
-+	key_serial_t __user	*buffer;
-+};
-+
-+static int keyring_read_iterator(const void *object, bool type, void *data)
-+{
-+	struct keyring_read_iterator_context *ctx = data;
-+	const struct key *key = object;
-+	int ret;
-+
-+	kenter("{%s,%d},,{%zu/%zu}",
-+	       key->type->name, key->serial, ctx->count, ctx->qty);
-+
-+	if (ctx->count >= ctx->qty)
-+		return 1;
-+
-+	ret = put_user(key->serial, ctx->buffer);
-+	if (ret < 0)
-+		return ret;
-+	ctx->buffer++;
-+	ctx->count += sizeof(key->serial);
-+	return 0;
-+}
-+
- /*
-  * Read a list of key IDs from the keyring's contents in binary form
-  *
-- * The keyring's semaphore is read-locked by the caller.
-+ * The keyring's semaphore is read-locked by the caller.  This prevents someone
-+ * from modifying it under us - which could cause us to read key IDs multiple
-+ * times.
-  */
- static long keyring_read(const struct key *keyring,
- 			 char __user *buffer, size_t buflen)
- {
--	struct keyring_list *klist;
--	struct key *key;
--	size_t qty, tmp;
--	int loop, ret;
-+	struct keyring_read_iterator_context ctx;
-+	unsigned long nr_keys;
-+	int ret;
- 
--	ret = 0;
--	klist = rcu_dereference_locked_keyring(keyring);
--	if (klist) {
--		/* calculate how much data we could return */
--		qty = klist->nkeys * sizeof(key_serial_t);
--
--		if (buffer && buflen > 0) {
--			if (buflen > qty)
--				buflen = qty;
--
--			/* copy the IDs of the subscribed keys into the
--			 * buffer */
--			ret = -EFAULT;
--
--			for (loop = 0; loop < klist->nkeys; loop++) {
--				key = rcu_deref_link_locked(klist, loop,
--							    keyring);
--
--				tmp = sizeof(key_serial_t);
--				if (tmp > buflen)
--					tmp = buflen;
--
--				if (copy_to_user(buffer,
--						 &key->serial,
--						 tmp) != 0)
--					goto error;
--
--				buflen -= tmp;
--				if (buflen == 0)
--					break;
--				buffer += tmp;
--			}
--		}
-+	kenter("{%d},,%zu", key_serial(keyring), buflen);
-+
-+	if (buflen & (sizeof(key_serial_t) - 1))
-+		return -EINVAL;
-+
-+	nr_keys = keyring->keys.nr_leaves_on_tree;
-+	if (nr_keys == 0)
-+		return 0;
-+
-+	/* Calculate how much data we could return */
-+	ctx.qty = nr_keys * sizeof(key_serial_t);
- 
--		ret = qty;
-+	if (!buffer || !buflen)
-+		return ctx.qty;
-+
-+	if (buflen > ctx.qty)
-+		ctx.qty = buflen;
-+
-+	/* Copy the IDs of the subscribed keys into the buffer */
-+	ctx.buffer = (key_serial_t __user *)buffer;
-+	ctx.count = 0;
-+	ret = assoc_array_iterate(&keyring->keys, keyring_read_iterator, &ctx);
-+	if (ret < 0) {
-+		kleave(" = %d [iterate]", ret);
-+		return ret;
- 	}
- 
--error:
--	return ret;
-+	kleave(" = %zu [ok]", ctx.count);
-+	return ctx.count;
- }
- 
- /*
-@@ -277,219 +466,362 @@ struct key *keyring_alloc(const char *description, kuid_t uid, kgid_t gid,
- }
- EXPORT_SYMBOL(keyring_alloc);
- 
--/**
-- * keyring_search_aux - Search a keyring tree for a key matching some criteria
-- * @keyring_ref: A pointer to the keyring with possession indicator.
-- * @ctx: The keyring search context.
-- *
-- * Search the supplied keyring tree for a key that matches the criteria given.
-- * The root keyring and any linked keyrings must grant Search permission to the
-- * caller to be searchable and keys can only be found if they too grant Search
-- * to the caller. The possession flag on the root keyring pointer controls use
-- * of the possessor bits in permissions checking of the entire tree.  In
-- * addition, the LSM gets to forbid keyring searches and key matches.
-- *
-- * The search is performed as a breadth-then-depth search up to the prescribed
-- * limit (KEYRING_SEARCH_MAX_DEPTH).
-- *
-- * Keys are matched to the type provided and are then filtered by the match
-- * function, which is given the description to use in any way it sees fit.  The
-- * match function may use any attributes of a key that it wishes to to
-- * determine the match.  Normally the match function from the key type would be
-- * used.
-- *
-- * RCU is used to prevent the keyring key lists from disappearing without the
-- * need to take lots of locks.
-- *
-- * Returns a pointer to the found key and increments the key usage count if
-- * successful; -EAGAIN if no matching keys were found, or if expired or revoked
-- * keys were found; -ENOKEY if only negative keys were found; -ENOTDIR if the
-- * specified keyring wasn't a keyring.
-- *
-- * In the case of a successful return, the possession attribute from
-- * @keyring_ref is propagated to the returned key reference.
-+/*
-+ * Iteration function to consider each key found.
-  */
--key_ref_t keyring_search_aux(key_ref_t keyring_ref,
--			     struct keyring_search_context *ctx)
-+static int keyring_search_iterator(const void *object, bool type,
-+				   void *iterator_data)
- {
--	struct {
--		/* Need a separate keylist pointer for RCU purposes */
--		struct key *keyring;
--		struct keyring_list *keylist;
--		int kix;
--	} stack[KEYRING_SEARCH_MAX_DEPTH];
-+	struct keyring_search_context *ctx = iterator_data;
-+	const struct key *key = object;
-+	unsigned long kflags = key->flags;
- 
--	struct keyring_list *keylist;
--	unsigned long kflags;
--	struct key *keyring, *key;
--	key_ref_t key_ref;
--	long err;
--	int sp, nkeys, kix;
--
--	keyring = key_ref_to_ptr(keyring_ref);
--	ctx->possessed = is_key_possessed(keyring_ref);
--	key_check(keyring);
-+	kenter("{%d}", key->serial);
- 
--	/* top keyring must have search permission to begin the search */
--	err = key_task_permission(keyring_ref, ctx->cred, KEY_SEARCH);
--	if (err < 0) {
--		key_ref = ERR_PTR(err);
--		goto error;
-+	/* ignore keys not of this type */
-+	if (key->type != ctx->index_key.type) {
-+		kleave(" = 0 [!type]");
-+		return 0;
- 	}
- 
--	key_ref = ERR_PTR(-ENOTDIR);
--	if (keyring->type != &key_type_keyring)
--		goto error;
-+	/* skip invalidated, revoked and expired keys */
-+	if (ctx->flags & KEYRING_SEARCH_DO_STATE_CHECK) {
-+		if (kflags & ((1 << KEY_FLAG_INVALIDATED) |
-+			      (1 << KEY_FLAG_REVOKED))) {
-+			ctx->result = ERR_PTR(-EKEYREVOKED);
-+			kleave(" = %d [invrev]", ctx->skipped_ret);
-+			goto skipped;
-+		}
- 
--	rcu_read_lock();
-+		if (key->expiry && ctx->now.tv_sec >= key->expiry) {
-+			ctx->result = ERR_PTR(-EKEYEXPIRED);
-+			kleave(" = %d [expire]", ctx->skipped_ret);
-+			goto skipped;
-+		}
-+	}
- 
--	ctx->now = current_kernel_time();
--	err = -EAGAIN;
--	sp = 0;
--
--	/* firstly we should check to see if this top-level keyring is what we
--	 * are looking for */
--	key_ref = ERR_PTR(-EAGAIN);
--	kflags = keyring->flags;
--	if (keyring->type == ctx->index_key.type &&
--	    ctx->match(keyring, ctx->match_data)) {
--		key = keyring;
--		if (ctx->flags & KEYRING_SEARCH_NO_STATE_CHECK)
--			goto found;
-+	/* keys that don't match */
-+	if (!ctx->match(key, ctx->match_data)) {
-+		kleave(" = 0 [!match]");
-+		return 0;
-+	}
- 
--		/* check it isn't negative and hasn't expired or been
--		 * revoked */
--		if (kflags & (1 << KEY_FLAG_REVOKED))
--			goto error_2;
--		if (key->expiry && ctx->now.tv_sec >= key->expiry)
--			goto error_2;
--		key_ref = ERR_PTR(key->type_data.reject_error);
--		if (kflags & (1 << KEY_FLAG_NEGATIVE))
--			goto error_2;
--		goto found;
-+	/* key must have search permissions */
-+	if (!(ctx->flags & KEYRING_SEARCH_NO_CHECK_PERM) &&
-+	    key_task_permission(make_key_ref(key, ctx->possessed),
-+				ctx->cred, KEY_SEARCH) < 0) {
-+		ctx->result = ERR_PTR(-EACCES);
-+		kleave(" = %d [!perm]", ctx->skipped_ret);
-+		goto skipped;
- 	}
- 
--	/* otherwise, the top keyring must not be revoked, expired, or
--	 * negatively instantiated if we are to search it */
--	key_ref = ERR_PTR(-EAGAIN);
--	if (kflags & ((1 << KEY_FLAG_INVALIDATED) |
--		      (1 << KEY_FLAG_REVOKED) |
--		      (1 << KEY_FLAG_NEGATIVE)) ||
--	    (keyring->expiry && ctx->now.tv_sec >= keyring->expiry))
--		goto error_2;
--
--	/* start processing a new keyring */
--descend:
--	kflags = keyring->flags;
--	if (kflags & ((1 << KEY_FLAG_INVALIDATED) |
--		      (1 << KEY_FLAG_REVOKED)))
--		goto not_this_keyring;
-+	if (ctx->flags & KEYRING_SEARCH_DO_STATE_CHECK) {
-+		/* we set a different error code if we pass a negative key */
-+		if (kflags & (1 << KEY_FLAG_NEGATIVE)) {
-+			ctx->result = ERR_PTR(key->type_data.reject_error);
-+			kleave(" = %d [neg]", ctx->skipped_ret);
-+			goto skipped;
-+		}
-+	}
- 
--	keylist = rcu_dereference(keyring->payload.subscriptions);
--	if (!keylist)
--		goto not_this_keyring;
-+	/* Found */
-+	ctx->result = make_key_ref(key, ctx->possessed);
-+	kleave(" = 1 [found]");
-+	return 1;
- 
--	/* iterate through the keys in this keyring first */
--	nkeys = keylist->nkeys;
--	smp_rmb();
--	for (kix = 0; kix < nkeys; kix++) {
--		key = rcu_dereference(keylist->keys[kix]);
--		kflags = key->flags;
-+skipped:
-+	return ctx->skipped_ret;
-+}
- 
--		/* ignore keys not of this type */
--		if (key->type != ctx->index_key.type)
--			continue;
-+/*
-+ * Search inside a keyring for a key.  We can search by walking to it
-+ * directly based on its index-key or we can iterate over the entire
-+ * tree looking for it, based on the match function.
-+ */
-+static int search_keyring(struct key *keyring, struct keyring_search_context *ctx)
-+{
-+	if ((ctx->flags & KEYRING_SEARCH_LOOKUP_TYPE) ==
-+	    KEYRING_SEARCH_LOOKUP_DIRECT) {
-+		struct key *key;
-+		bool type;
-+
-+		key = assoc_array_find(&keyring->keys,
-+				       &keyring_assoc_array_ops,
-+				       &ctx->index_key, &type);
-+		return key ? ctx->iterator(key, type, ctx) : 0;
-+	}
-+	return assoc_array_iterate(&keyring->keys, ctx->iterator, ctx);
-+}
- 
--		/* skip invalidated, revoked and expired keys */
--		if (!(ctx->flags & KEYRING_SEARCH_NO_STATE_CHECK)) {
--			if (kflags & ((1 << KEY_FLAG_INVALIDATED) |
--				      (1 << KEY_FLAG_REVOKED)))
--				continue;
-+/*
-+ * Search a tree of keyrings that point to other keyrings up to the maximum
-+ * depth.
-+ */
-+static bool search_nested_keyrings(struct key *keyring,
-+				   struct keyring_search_context *ctx)
-+{
-+	struct {
-+		struct key *keyring;
-+		struct assoc_array_node *node;
-+		int slot;
-+	} stack[KEYRING_SEARCH_MAX_DEPTH];
- 
--			if (key->expiry && ctx->now.tv_sec >= key->expiry)
--				continue;
--		}
-+	struct assoc_array_shortcut *shortcut;
-+	struct assoc_array_node *node;
-+	struct assoc_array_ptr *ptr;
-+	struct key *key;
-+	int sp = 0, slot;
- 
--		/* keys that don't match */
--		if (!ctx->match(key, ctx->match_data))
--			continue;
-+	kenter("{%d},{%s,%s}",
-+	       keyring->serial,
-+	       ctx->index_key.type->name,
-+	       ctx->index_key.description);
- 
--		/* key must have search permissions */
--		if (key_task_permission(make_key_ref(key, ctx->possessed),
--					ctx->cred, KEY_SEARCH) < 0)
--			continue;
-+	if (ctx->index_key.description)
-+		ctx->index_key.desc_len = strlen(ctx->index_key.description);
- 
--		if (ctx->flags & KEYRING_SEARCH_NO_STATE_CHECK)
-+	/* Check to see if this top-level keyring is what we are looking for
-+	 * and whether it is valid or not.
-+	 */
-+	if (ctx->flags & KEYRING_SEARCH_LOOKUP_ITERATE ||
-+	    keyring_compare_object(keyring, &ctx->index_key)) {
-+		ctx->skipped_ret = 2;
-+		ctx->flags |= KEYRING_SEARCH_DO_STATE_CHECK;
-+		switch (ctx->iterator(keyring, true, ctx)) {
-+		case 1:
- 			goto found;
--
--		/* we set a different error code if we pass a negative key */
--		if (kflags & (1 << KEY_FLAG_NEGATIVE)) {
--			err = key->type_data.reject_error;
--			continue;
-+		case 2:
-+			return false;
-+		default:
-+			break;
- 		}
-+	}
-+
-+	ctx->skipped_ret = 0;
-+	if (ctx->flags & KEYRING_SEARCH_NO_STATE_CHECK)
-+		ctx->flags &= ~KEYRING_SEARCH_DO_STATE_CHECK;
-+
-+	/* Start processing a new keyring */
-+descend_to_keyring:
-+	kdebug("descend to %d", keyring->serial);
-+	if (keyring->flags & ((1 << KEY_FLAG_INVALIDATED) |
-+			      (1 << KEY_FLAG_REVOKED)))
-+		goto not_this_keyring;
- 
-+	/* Search through the keys in this keyring before its searching its
-+	 * subtrees.
-+	 */
-+	if (search_keyring(keyring, ctx))
- 		goto found;
--	}
- 
--	/* search through the keyrings nested in this one */
--	kix = 0;
--ascend:
--	nkeys = keylist->nkeys;
--	smp_rmb();
--	for (; kix < nkeys; kix++) {
--		key = rcu_dereference(keylist->keys[kix]);
--		if (key->type != &key_type_keyring)
--			continue;
-+	/* Then manually iterate through the keyrings nested in this one.
-+	 *
-+	 * Start from the root node of the index tree.  Because of the way the
-+	 * hash function has been set up, keyrings cluster on the leftmost
-+	 * branch of the root node (root slot 0) or in the root node itself.
-+	 * Non-keyrings avoid the leftmost branch of the root entirely (root
-+	 * slots 1-15).
-+	 */
-+	ptr = ACCESS_ONCE(keyring->keys.root);
-+	if (!ptr)
-+		goto not_this_keyring;
- 
--		/* recursively search nested keyrings
--		 * - only search keyrings for which we have search permission
-+	if (assoc_array_ptr_is_shortcut(ptr)) {
-+		/* If the root is a shortcut, either the keyring only contains
-+		 * keyring pointers (everything clusters behind root slot 0) or
-+		 * doesn't contain any keyring pointers.
- 		 */
--		if (sp >= KEYRING_SEARCH_MAX_DEPTH)
-+		shortcut = assoc_array_ptr_to_shortcut(ptr);
-+		smp_read_barrier_depends();
-+		if ((shortcut->index_key[0] & ASSOC_ARRAY_FAN_MASK) != 0)
-+			goto not_this_keyring;
-+
-+		ptr = ACCESS_ONCE(shortcut->next_node);
-+		node = assoc_array_ptr_to_node(ptr);
-+		goto begin_node;
-+	}
-+
-+	node = assoc_array_ptr_to_node(ptr);
-+	smp_read_barrier_depends();
-+
-+	ptr = node->slots[0];
-+	if (!assoc_array_ptr_is_meta(ptr))
-+		goto begin_node;
-+
-+descend_to_node:
-+	/* Descend to a more distal node in this keyring's content tree and go
-+	 * through that.
-+	 */
-+	kdebug("descend");
-+	if (assoc_array_ptr_is_shortcut(ptr)) {
-+		shortcut = assoc_array_ptr_to_shortcut(ptr);
-+		smp_read_barrier_depends();
-+		ptr = ACCESS_ONCE(shortcut->next_node);
-+		BUG_ON(!assoc_array_ptr_is_node(ptr));
-+		node = assoc_array_ptr_to_node(ptr);
-+	}
-+
-+begin_node:
-+	kdebug("begin_node");
-+	smp_read_barrier_depends();
-+	slot = 0;
-+ascend_to_node:
-+	/* Go through the slots in a node */
-+	for (; slot < ASSOC_ARRAY_FAN_OUT; slot++) {
-+		ptr = ACCESS_ONCE(node->slots[slot]);
-+
-+		if (assoc_array_ptr_is_meta(ptr) && node->back_pointer)
-+			goto descend_to_node;
-+
-+		if (!assoc_array_ptr_is_keyring(ptr))
- 			continue;
- 
--		if (key_task_permission(make_key_ref(key, ctx->possessed),
-+		key = assoc_array_ptr_to_leaf(ptr);
-+
-+		if (sp >= KEYRING_SEARCH_MAX_DEPTH) {
-+			if (ctx->flags & KEYRING_SEARCH_DETECT_TOO_DEEP) {
-+				ctx->result = ERR_PTR(-ELOOP);
-+				return false;
-+			}
-+			goto not_this_keyring;
-+		}
-+
-+		/* Search a nested keyring */
-+		if (!(ctx->flags & KEYRING_SEARCH_NO_CHECK_PERM) &&
-+		    key_task_permission(make_key_ref(key, ctx->possessed),
- 					ctx->cred, KEY_SEARCH) < 0)
- 			continue;
- 
- 		/* stack the current position */
- 		stack[sp].keyring = keyring;
--		stack[sp].keylist = keylist;
--		stack[sp].kix = kix;
-+		stack[sp].node = node;
-+		stack[sp].slot = slot;
- 		sp++;
- 
- 		/* begin again with the new keyring */
- 		keyring = key;
--		goto descend;
-+		goto descend_to_keyring;
-+	}
-+
-+	/* We've dealt with all the slots in the current node, so now we need
-+	 * to ascend to the parent and continue processing there.
-+	 */
-+	ptr = ACCESS_ONCE(node->back_pointer);
-+	slot = node->parent_slot;
-+
-+	if (assoc_array_ptr_is_shortcut(ptr)) {
-+		shortcut = assoc_array_ptr_to_shortcut(ptr);
-+		smp_read_barrier_depends();
-+		ptr = ACCESS_ONCE(shortcut->back_pointer);
-+		slot = shortcut->parent_slot;
-+	}
-+	if (!ptr)
-+		goto not_this_keyring;
-+	node = assoc_array_ptr_to_node(ptr);
-+	smp_read_barrier_depends();
-+	slot++;
-+
-+	/* If we've ascended to the root (zero backpointer), we must have just
-+	 * finished processing the leftmost branch rather than the root slots -
-+	 * so there can't be any more keyrings for us to find.
-+	 */
-+	if (node->back_pointer) {
-+		kdebug("ascend %d", slot);
-+		goto ascend_to_node;
- 	}
- 
--	/* the keyring we're looking at was disqualified or didn't contain a
--	 * matching key */
-+	/* The keyring we're looking at was disqualified or didn't contain a
-+	 * matching key.
-+	 */
- not_this_keyring:
--	if (sp > 0) {
--		/* resume the processing of a keyring higher up in the tree */
--		sp--;
--		keyring = stack[sp].keyring;
--		keylist = stack[sp].keylist;
--		kix = stack[sp].kix + 1;
--		goto ascend;
-+	kdebug("not_this_keyring %d", sp);
-+	if (sp <= 0) {
-+		kleave(" = false");
-+		return false;
- 	}
- 
--	key_ref = ERR_PTR(err);
--	goto error_2;
-+	/* Resume the processing of a keyring higher up in the tree */
-+	sp--;
-+	keyring = stack[sp].keyring;
-+	node = stack[sp].node;
-+	slot = stack[sp].slot + 1;
-+	kdebug("ascend to %d [%d]", keyring->serial, slot);
-+	goto ascend_to_node;
- 
--	/* we found a viable match */
-+	/* We found a viable match */
- found:
--	__key_get(key);
--	key->last_used_at = ctx->now.tv_sec;
--	keyring->last_used_at = ctx->now.tv_sec;
--	while (sp > 0)
--		stack[--sp].keyring->last_used_at = ctx->now.tv_sec;
-+	key = key_ref_to_ptr(ctx->result);
- 	key_check(key);
--	key_ref = make_key_ref(key, ctx->possessed);
--error_2:
-+	if (!(ctx->flags & KEYRING_SEARCH_NO_UPDATE_TIME)) {
-+		key->last_used_at = ctx->now.tv_sec;
-+		keyring->last_used_at = ctx->now.tv_sec;
-+		while (sp > 0)
-+			stack[--sp].keyring->last_used_at = ctx->now.tv_sec;
-+	}
-+	kleave(" = true");
-+	return true;
-+}
-+
-+/**
-+ * keyring_search_aux - Search a keyring tree for a key matching some criteria
-+ * @keyring_ref: A pointer to the keyring with possession indicator.
-+ * @ctx: The keyring search context.
-+ *
-+ * Search the supplied keyring tree for a key that matches the criteria given.
-+ * The root keyring and any linked keyrings must grant Search permission to the
-+ * caller to be searchable and keys can only be found if they too grant Search
-+ * to the caller. The possession flag on the root keyring pointer controls use
-+ * of the possessor bits in permissions checking of the entire tree.  In
-+ * addition, the LSM gets to forbid keyring searches and key matches.
-+ *
-+ * The search is performed as a breadth-then-depth search up to the prescribed
-+ * limit (KEYRING_SEARCH_MAX_DEPTH).
-+ *
-+ * Keys are matched to the type provided and are then filtered by the match
-+ * function, which is given the description to use in any way it sees fit.  The
-+ * match function may use any attributes of a key that it wishes to to
-+ * determine the match.  Normally the match function from the key type would be
-+ * used.
-+ *
-+ * RCU can be used to prevent the keyring key lists from disappearing without
-+ * the need to take lots of locks.
-+ *
-+ * Returns a pointer to the found key and increments the key usage count if
-+ * successful; -EAGAIN if no matching keys were found, or if expired or revoked
-+ * keys were found; -ENOKEY if only negative keys were found; -ENOTDIR if the
-+ * specified keyring wasn't a keyring.
-+ *
-+ * In the case of a successful return, the possession attribute from
-+ * @keyring_ref is propagated to the returned key reference.
-+ */
-+key_ref_t keyring_search_aux(key_ref_t keyring_ref,
-+			     struct keyring_search_context *ctx)
-+{
-+	struct key *keyring;
-+	long err;
-+
-+	ctx->iterator = keyring_search_iterator;
-+	ctx->possessed = is_key_possessed(keyring_ref);
-+	ctx->result = ERR_PTR(-EAGAIN);
-+
-+	keyring = key_ref_to_ptr(keyring_ref);
-+	key_check(keyring);
-+
-+	if (keyring->type != &key_type_keyring)
-+		return ERR_PTR(-ENOTDIR);
-+
-+	if (!(ctx->flags & KEYRING_SEARCH_NO_CHECK_PERM)) {
-+		err = key_task_permission(keyring_ref, ctx->cred, KEY_SEARCH);
-+		if (err < 0)
-+			return ERR_PTR(err);
-+	}
-+
-+	rcu_read_lock();
-+	ctx->now = current_kernel_time();
-+	if (search_nested_keyrings(keyring, ctx))
-+		__key_get(key_ref_to_ptr(ctx->result));
- 	rcu_read_unlock();
--error:
--	return key_ref;
-+	return ctx->result;
- }
- 
- /**
-@@ -499,7 +831,7 @@ error:
-  * @description: The name of the keyring we want to find.
-  *
-  * As keyring_search_aux() above, but using the current task's credentials and
-- * type's default matching function.
-+ * type's default matching function and preferred search method.
-  */
- key_ref_t keyring_search(key_ref_t keyring,
- 			 struct key_type *type,
-@@ -523,58 +855,48 @@ key_ref_t keyring_search(key_ref_t keyring,
- EXPORT_SYMBOL(keyring_search);
- 
- /*
-- * Search the given keyring only (no recursion).
-+ * Search the given keyring for a key that might be updated.
-  *
-  * The caller must guarantee that the keyring is a keyring and that the
-- * permission is granted to search the keyring as no check is made here.
-- *
-- * RCU is used to make it unnecessary to lock the keyring key list here.
-+ * permission is granted to modify the keyring as no check is made here.  The
-+ * caller must also hold a lock on the keyring semaphore.
-  *
-  * Returns a pointer to the found key with usage count incremented if
-- * successful and returns -ENOKEY if not found.  Revoked and invalidated keys
-- * are skipped over.
-+ * successful and returns NULL if not found.  Revoked and invalidated keys are
-+ * skipped over.
-  *
-  * If successful, the possession indicator is propagated from the keyring ref
-  * to the returned key reference.
-  */
--key_ref_t __keyring_search_one(key_ref_t keyring_ref,
--			       const struct keyring_index_key *index_key)
-+key_ref_t find_key_to_update(key_ref_t keyring_ref,
-+			     const struct keyring_index_key *index_key)
- {
--	struct keyring_list *klist;
- 	struct key *keyring, *key;
--	bool possessed;
--	int nkeys, loop;
-+	bool type;
- 
- 	keyring = key_ref_to_ptr(keyring_ref);
--	possessed = is_key_possessed(keyring_ref);
- 
--	rcu_read_lock();
-+	kenter("{%d},{%s,%s}",
-+	       keyring->serial, index_key->type->name, index_key->description);
- 
--	klist = rcu_dereference(keyring->payload.subscriptions);
--	if (klist) {
--		nkeys = klist->nkeys;
--		smp_rmb();
--		for (loop = 0; loop < nkeys ; loop++) {
--			key = rcu_dereference(klist->keys[loop]);
--			if (key->type == index_key->type &&
--			    (!key->type->match ||
--			     key->type->match(key, index_key->description)) &&
--			    !(key->flags & ((1 << KEY_FLAG_INVALIDATED) |
--					    (1 << KEY_FLAG_REVOKED)))
--			    )
--				goto found;
--		}
--	}
-+	key = assoc_array_find(&keyring->keys, &keyring_assoc_array_ops,
-+			       index_key, &type);
- 
--	rcu_read_unlock();
--	return ERR_PTR(-ENOKEY);
-+	if (key)
-+		goto found;
-+
-+	kleave(" = NULL");
-+	return NULL;
- 
- found:
-+	if (key->flags & ((1 << KEY_FLAG_INVALIDATED) |
-+			  (1 << KEY_FLAG_REVOKED))) {
-+		kleave(" = NULL [x]");
-+		return NULL;
-+	}
- 	__key_get(key);
--	keyring->last_used_at = key->last_used_at =
--		current_kernel_time().tv_sec;
--	rcu_read_unlock();
--	return make_key_ref(key, possessed);
-+	kleave(" = {%d}", key->serial);
-+	return make_key_ref(key, is_key_possessed(keyring_ref));
- }
- 
- /*
-@@ -637,6 +959,19 @@ out:
- 	return keyring;
- }
- 
-+static int keyring_detect_cycle_iterator(const void *object, bool type,
-+					 void *iterator_data)
-+{
-+	struct keyring_search_context *ctx = iterator_data;
-+	const struct key *key = object;
-+
-+	kenter("{%d}", key->serial);
-+
-+	BUG_ON(key != ctx->match_data);
-+	ctx->result = ERR_PTR(-EDEADLK);
-+	return 1;
-+}
-+
- /*
-  * See if a cycle will will be created by inserting acyclic tree B in acyclic
-  * tree A at the topmost level (ie: as a direct child of A).
-@@ -646,117 +981,39 @@ out:
-  */
- static int keyring_detect_cycle(struct key *A, struct key *B)
- {
--	struct {
--		struct keyring_list *keylist;
--		int kix;
--	} stack[KEYRING_SEARCH_MAX_DEPTH];
--
--	struct keyring_list *keylist;
--	struct key *subtree, *key;
--	int sp, nkeys, kix, ret;
-+	struct keyring_search_context ctx = {
-+		.index_key	= A->index_key,
-+		.match_data	= A,
-+		.iterator	= keyring_detect_cycle_iterator,
-+		.flags		= (KEYRING_SEARCH_LOOKUP_DIRECT |
-+				   KEYRING_SEARCH_NO_STATE_CHECK |
-+				   KEYRING_SEARCH_NO_UPDATE_TIME |
-+				   KEYRING_SEARCH_NO_CHECK_PERM |
-+				   KEYRING_SEARCH_DETECT_TOO_DEEP),
-+	};
- 
- 	rcu_read_lock();
--
--	ret = -EDEADLK;
--	if (A == B)
--		goto cycle_detected;
--
--	subtree = B;
--	sp = 0;
--
--	/* start processing a new keyring */
--descend:
--	if (test_bit(KEY_FLAG_REVOKED, &subtree->flags))
--		goto not_this_keyring;
--
--	keylist = rcu_dereference(subtree->payload.subscriptions);
--	if (!keylist)
--		goto not_this_keyring;
--	kix = 0;
--
--ascend:
--	/* iterate through the remaining keys in this keyring */
--	nkeys = keylist->nkeys;
--	smp_rmb();
--	for (; kix < nkeys; kix++) {
--		key = rcu_dereference(keylist->keys[kix]);
--
--		if (key == A)
--			goto cycle_detected;
--
--		/* recursively check nested keyrings */
--		if (key->type == &key_type_keyring) {
--			if (sp >= KEYRING_SEARCH_MAX_DEPTH)
--				goto too_deep;
--
--			/* stack the current position */
--			stack[sp].keylist = keylist;
--			stack[sp].kix = kix;
--			sp++;
--
--			/* begin again with the new keyring */
--			subtree = key;
--			goto descend;
--		}
--	}
--
--	/* the keyring we're looking at was disqualified or didn't contain a
--	 * matching key */
--not_this_keyring:
--	if (sp > 0) {
--		/* resume the checking of a keyring higher up in the tree */
--		sp--;
--		keylist = stack[sp].keylist;
--		kix = stack[sp].kix + 1;
--		goto ascend;
--	}
--
--	ret = 0; /* no cycles detected */
--
--error:
-+	search_nested_keyrings(B, &ctx);
- 	rcu_read_unlock();
--	return ret;
--
--too_deep:
--	ret = -ELOOP;
--	goto error;
--
--cycle_detected:
--	ret = -EDEADLK;
--	goto error;
--}
--
--/*
-- * Dispose of a keyring list after the RCU grace period, freeing the unlinked
-- * key
-- */
--static void keyring_unlink_rcu_disposal(struct rcu_head *rcu)
--{
--	struct keyring_list *klist =
--		container_of(rcu, struct keyring_list, rcu);
--
--	if (klist->delkey != USHRT_MAX)
--		key_put(rcu_access_pointer(klist->keys[klist->delkey]));
--	kfree(klist);
-+	return PTR_ERR(ctx.result) == -EAGAIN ? 0 : PTR_ERR(ctx.result);
- }
- 
- /*
-  * Preallocate memory so that a key can be linked into to a keyring.
-  */
--int __key_link_begin(struct key *keyring, const struct keyring_index_key *index_key,
--		     unsigned long *_prealloc)
-+int __key_link_begin(struct key *keyring,
-+		     const struct keyring_index_key *index_key,
-+		     struct assoc_array_edit **_edit)
- 	__acquires(&keyring->sem)
- 	__acquires(&keyring_serialise_link_sem)
- {
--	struct keyring_list *klist, *nklist;
--	unsigned long prealloc;
--	unsigned max;
--	time_t lowest_lru;
--	size_t size;
--	int loop, lru, ret;
-+	struct assoc_array_edit *edit;
-+	int ret;
- 
- 	kenter("%d,%s,%s,",
--	       key_serial(keyring), index_key->type->name, index_key->description);
-+	       keyring->serial, index_key->type->name, index_key->description);
-+
-+	BUG_ON(index_key->desc_len == 0);
- 
- 	if (keyring->type != &key_type_keyring)
- 		return -ENOTDIR;
-@@ -772,88 +1029,24 @@ int __key_link_begin(struct key *keyring, const struct keyring_index_key *index_
- 	if (index_key->type == &key_type_keyring)
- 		down_write(&keyring_serialise_link_sem);
- 
--	klist = rcu_dereference_locked_keyring(keyring);
--
--	/* see if there's a matching key we can displace */
--	lru = -1;
--	if (klist && klist->nkeys > 0) {
--		lowest_lru = TIME_T_MAX;
--		for (loop = klist->nkeys - 1; loop >= 0; loop--) {
--			struct key *key = rcu_deref_link_locked(klist, loop,
--								keyring);
--			if (key->type == index_key->type &&
--			    strcmp(key->description, index_key->description) == 0) {
--				/* Found a match - we'll replace the link with
--				 * one to the new key.  We record the slot
--				 * position.
--				 */
--				klist->delkey = loop;
--				prealloc = 0;
--				goto done;
--			}
--			if (key->last_used_at < lowest_lru) {
--				lowest_lru = key->last_used_at;
--				lru = loop;
--			}
--		}
--	}
--
--	/* If the keyring is full then do an LRU discard */
--	if (klist &&
--	    klist->nkeys == klist->maxkeys &&
--	    klist->maxkeys >= MAX_KEYRING_LINKS) {
--		kdebug("LRU discard %d\n", lru);
--		klist->delkey = lru;
--		prealloc = 0;
--		goto done;
--	}
--
- 	/* check that we aren't going to overrun the user's quota */
- 	ret = key_payload_reserve(keyring,
- 				  keyring->datalen + KEYQUOTA_LINK_BYTES);
- 	if (ret < 0)
- 		goto error_sem;
- 
--	if (klist && klist->nkeys < klist->maxkeys) {
--		/* there's sufficient slack space to append directly */
--		klist->delkey = klist->nkeys;
--		prealloc = KEY_LINK_FIXQUOTA;
--	} else {
--		/* grow the key list */
--		max = 4;
--		if (klist) {
--			max += klist->maxkeys;
--			if (max > MAX_KEYRING_LINKS)
--				max = MAX_KEYRING_LINKS;
--			BUG_ON(max <= klist->maxkeys);
--		}
--
--		size = sizeof(*klist) + sizeof(struct key *) * max;
--
--		ret = -ENOMEM;
--		nklist = kmalloc(size, GFP_KERNEL);
--		if (!nklist)
--			goto error_quota;
--
--		nklist->maxkeys = max;
--		if (klist) {
--			memcpy(nklist->keys, klist->keys,
--			       sizeof(struct key *) * klist->nkeys);
--			nklist->delkey = klist->nkeys;
--			nklist->nkeys = klist->nkeys + 1;
--			klist->delkey = USHRT_MAX;
+ 	struct nfs_direct_req *dreq = desc->pg_dreq;
+ 	struct nfs_open_context *ctx = dreq->ctx;
+@@ -340,20 +329,12 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
+ 					  GFP_KERNEL);
+ 		if (!pagevec)
+ 			break;
+-		if (uio) {
+-			down_read(&current->mm->mmap_sem);
+-			result = get_user_pages(current, current->mm, user_addr,
++		down_read(&current->mm->mmap_sem);
++		result = get_user_pages(current, current->mm, user_addr,
+ 					npages, 1, 0, pagevec, NULL);
+-			up_read(&current->mm->mmap_sem);
+-			if (result < 0)
+-				break;
 -		} else {
--			nklist->nkeys = 1;
--			nklist->delkey = 0;
+-			WARN_ON(npages != 1);
+-			result = get_kernel_page(user_addr, 1, pagevec);
+-			if (WARN_ON(result != 1))
+-				break;
 -		}
 -
--		/* add the key into the new space */
--		RCU_INIT_POINTER(nklist->keys[nklist->delkey], NULL);
--		prealloc = (unsigned long)nklist | KEY_LINK_FIXQUOTA;
-+	/* Create an edit script that will insert/replace the key in the
-+	 * keyring tree.
-+	 */
-+	edit = assoc_array_insert(&keyring->keys, &keyring_assoc_array_ops,
-+				  index_key,
-+				  NULL, index_key->type == &key_type_keyring);
-+	if (IS_ERR(edit)) {
-+		ret = PTR_ERR(edit);
-+		goto error_quota;
- 	}
++		up_read(&current->mm->mmap_sem);
++		if (result < 0)
++			break;
+ 		if ((unsigned)result < npages) {
+ 			bytes = result * PAGE_SIZE;
+ 			if (bytes <= pgbase) {
+@@ -403,7 +384,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
  
--done:
--	*_prealloc = prealloc;
-+	*_edit = edit;
- 	kleave(" = 0");
- 	return 0;
- 
-@@ -893,60 +1086,12 @@ int __key_link_check_live_key(struct key *keyring, struct key *key)
-  * holds at most one link to any given key of a particular type+description
-  * combination.
-  */
--void __key_link(struct key *keyring, struct key *key,
--		unsigned long *_prealloc)
-+void __key_link(struct key *key, struct assoc_array_edit **_edit)
+ static ssize_t nfs_direct_do_schedule_read_iovec(
+ 		struct nfs_pageio_descriptor *desc, const struct iovec *iov,
+-		unsigned long nr_segs, loff_t pos, bool uio)
++		unsigned long nr_segs, loff_t pos)
  {
--	struct keyring_list *klist, *nklist;
--	struct key *discard;
--
--	nklist = (struct keyring_list *)(*_prealloc & ~KEY_LINK_FIXQUOTA);
--	*_prealloc = 0;
--
--	kenter("%d,%d,%p", keyring->serial, key->serial, nklist);
--
--	klist = rcu_dereference_locked_keyring(keyring);
--
- 	__key_get(key);
--	keyring->last_used_at = key->last_used_at =
--		current_kernel_time().tv_sec;
--
--	/* there's a matching key we can displace or an empty slot in a newly
--	 * allocated list we can fill */
--	if (nklist) {
--		kdebug("reissue %hu/%hu/%hu",
--		       nklist->delkey, nklist->nkeys, nklist->maxkeys);
--
--		RCU_INIT_POINTER(nklist->keys[nklist->delkey], key);
--
--		rcu_assign_pointer(keyring->payload.subscriptions, nklist);
--
--		/* dispose of the old keyring list and, if there was one, the
--		 * displaced key */
--		if (klist) {
--			kdebug("dispose %hu/%hu/%hu",
--			       klist->delkey, klist->nkeys, klist->maxkeys);
--			call_rcu(&klist->rcu, keyring_unlink_rcu_disposal);
--		}
--	} else if (klist->delkey < klist->nkeys) {
--		kdebug("replace %hu/%hu/%hu",
--		       klist->delkey, klist->nkeys, klist->maxkeys);
--
--		discard = rcu_dereference_protected(
--			klist->keys[klist->delkey],
--			rwsem_is_locked(&keyring->sem));
--		rcu_assign_pointer(klist->keys[klist->delkey], key);
--		/* The garbage collector will take care of RCU
--		 * synchronisation */
--		key_put(discard);
--	} else {
--		/* there's sufficient slack space to append directly */
--		kdebug("append %hu/%hu/%hu",
--		       klist->delkey, klist->nkeys, klist->maxkeys);
--
--		RCU_INIT_POINTER(klist->keys[klist->delkey], key);
--		smp_wmb();
--		klist->nkeys++;
--	}
-+	assoc_array_insert_set_object(*_edit, key);
-+	assoc_array_apply_edit(*_edit);
-+	*_edit = NULL;
+ 	ssize_t result = -EINVAL;
+ 	size_t requested_bytes = 0;
+@@ -411,7 +392,7 @@ static ssize_t nfs_direct_do_schedule_read_iovec(
+ 
+ 	for (seg = 0; seg < nr_segs; seg++) {
+ 		const struct iovec *vec = &iov[seg];
+-		result = nfs_direct_read_schedule_segment(desc, vec, pos, uio);
++		result = nfs_direct_read_schedule_segment(desc, vec, pos);
+ 		if (result < 0)
+ 			break;
+ 		requested_bytes += result;
+@@ -468,8 +449,7 @@ static ssize_t nfs_direct_do_schedule_read_bvec(
+ #endif /* CONFIG_BLOCK */
+ 
+ static ssize_t nfs_direct_read_schedule(struct nfs_direct_req *dreq,
+-					struct iov_iter *iter, loff_t pos,
+-					bool uio)
++					struct iov_iter *iter, loff_t pos)
+ {
+ 	struct nfs_pageio_descriptor desc;
+ 	ssize_t result;
+@@ -480,10 +460,8 @@ static ssize_t nfs_direct_read_schedule(struct nfs_direct_req *dreq,
+ 	desc.pg_dreq = dreq;
+ 
+ 	if (iov_iter_has_iovec(iter)) {
+-		if (uio)
+-			dreq->flags = NFS_ODIRECT_MARK_DIRTY;
+ 		result = nfs_direct_do_schedule_read_iovec(&desc,
+-				iov_iter_iovec(iter), iter->nr_segs, pos, uio);
++				iov_iter_iovec(iter), iter->nr_segs, pos);
+ #ifdef CONFIG_BLOCK
+ 	} else if (iov_iter_has_bvec(iter)) {
+ 		result = nfs_direct_do_schedule_read_bvec(&desc,
+@@ -509,7 +487,7 @@ static ssize_t nfs_direct_read_schedule(struct nfs_direct_req *dreq,
  }
+ 
+ static ssize_t nfs_direct_read(struct kiocb *iocb, struct iov_iter *iter,
+-			       loff_t pos, bool uio)
++			       loff_t pos)
+ {
+ 	ssize_t result = -ENOMEM;
+ 	struct inode *inode = iocb->ki_filp->f_mapping->host;
+@@ -533,7 +511,7 @@ static ssize_t nfs_direct_read(struct kiocb *iocb, struct iov_iter *iter,
+ 		dreq->iocb = iocb;
+ 
+ 	NFS_I(inode)->read_io += iov_iter_count(iter);
+-	result = nfs_direct_read_schedule(dreq, iter, pos, uio);
++	result = nfs_direct_read_schedule(dreq, iter, pos);
+ 	if (!result)
+ 		result = nfs_direct_wait(dreq);
+ out_release:
+@@ -698,7 +676,7 @@ static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode
+  */
+ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *desc,
+ 						 const struct iovec *iov,
+-						 loff_t pos, bool uio)
++						 loff_t pos)
+ {
+ 	struct nfs_direct_req *dreq = desc->pg_dreq;
+ 	struct nfs_open_context *ctx = dreq->ctx;
+@@ -726,19 +704,12 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
+ 		if (!pagevec)
+ 			break;
+ 
+-		if (uio) {
+-			down_read(&current->mm->mmap_sem);
+-			result = get_user_pages(current, current->mm, user_addr,
+-						npages, 0, 0, pagevec, NULL);
+-			up_read(&current->mm->mmap_sem);
+-			if (result < 0)
+-				break;
+-		} else {
+-			WARN_ON(npages != 1);
+-			result = get_kernel_page(user_addr, 0, pagevec);
+-			if (WARN_ON(result != 1))
+-				break;
+-		}
++		down_read(&current->mm->mmap_sem);
++		result = get_user_pages(current, current->mm, user_addr,
++					npages, 0, 0, pagevec, NULL);
++		up_read(&current->mm->mmap_sem);
++		if (result < 0)
++			break;
+ 
+ 		if ((unsigned)result < npages) {
+ 			bytes = result * PAGE_SIZE;
+@@ -869,7 +840,7 @@ static const struct nfs_pgio_completion_ops nfs_direct_write_completion_ops = {
+ 
+ static ssize_t nfs_direct_do_schedule_write_iovec(
+ 		struct nfs_pageio_descriptor *desc, const struct iovec *iov,
+-		unsigned long nr_segs, loff_t pos, bool uio)
++		unsigned long nr_segs, loff_t pos)
+ {
+ 	ssize_t result = -EINVAL;
+ 	size_t requested_bytes = 0;
+@@ -878,7 +849,7 @@ static ssize_t nfs_direct_do_schedule_write_iovec(
+ 	for (seg = 0; seg < nr_segs; seg++) {
+ 		const struct iovec *vec = &iov[seg];
+ 		result = nfs_direct_write_schedule_segment(desc, vec,
+-							   pos, uio);
++							   pos);
+ 		if (result < 0)
+ 			break;
+ 		requested_bytes += result;
+@@ -936,8 +907,7 @@ static ssize_t nfs_direct_do_schedule_write_bvec(
+ #endif /* CONFIG_BLOCK */
+ 
+ static ssize_t nfs_direct_write_schedule(struct nfs_direct_req *dreq,
+-					 struct iov_iter *iter, loff_t pos,
+-					 bool uio)
++					 struct iov_iter *iter, loff_t pos)
+ {
+ 	struct nfs_pageio_descriptor desc;
+ 	struct inode *inode = dreq->inode;
+@@ -953,7 +923,7 @@ static ssize_t nfs_direct_write_schedule(struct nfs_direct_req *dreq,
+ 
+ 	if (iov_iter_has_iovec(iter)) {
+ 		result = nfs_direct_do_schedule_write_iovec(&desc,
+-				iov_iter_iovec(iter), iter->nr_segs, pos, uio);
++				iov_iter_iovec(iter), iter->nr_segs, pos);
+ #ifdef CONFIG_BLOCK
+ 	} else if (iov_iter_has_bvec(iter)) {
+ 		result = nfs_direct_do_schedule_write_bvec(&desc,
+@@ -980,7 +950,7 @@ static ssize_t nfs_direct_write_schedule(struct nfs_direct_req *dreq,
+ }
+ 
+ static ssize_t nfs_direct_write(struct kiocb *iocb, struct iov_iter *iter,
+-				loff_t pos, bool uio)
++				loff_t pos)
+ {
+ 	ssize_t result = -ENOMEM;
+ 	struct inode *inode = iocb->ki_filp->f_mapping->host;
+@@ -1003,7 +973,7 @@ static ssize_t nfs_direct_write(struct kiocb *iocb, struct iov_iter *iter,
+ 	if (!is_sync_kiocb(iocb))
+ 		dreq->iocb = iocb;
+ 
+-	result = nfs_direct_write_schedule(dreq, iter, pos, uio);
++	result = nfs_direct_write_schedule(dreq, iter, pos);
+ 	if (!result)
+ 		result = nfs_direct_wait(dreq);
+ out_release:
+@@ -1033,7 +1003,7 @@ out:
+  * cache.
+  */
+ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter,
+-			     loff_t pos, bool uio)
++			     loff_t pos)
+ {
+ 	ssize_t retval = -EINVAL;
+ 	struct file *file = iocb->ki_filp;
+@@ -1058,7 +1028,7 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter,
+ 
+ 	task_io_account_read(count);
+ 
+-	retval = nfs_direct_read(iocb, iter, pos, uio);
++	retval = nfs_direct_read(iocb, iter, pos);
+ 	if (retval > 0)
+ 		iocb->ki_pos = pos + retval;
+ 
+@@ -1088,7 +1058,7 @@ out:
+  * is no atomic O_APPEND write facility in the NFS protocol.
+  */
+ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter,
+-			      loff_t pos, bool uio)
++			      loff_t pos)
+ {
+ 	ssize_t retval = -EINVAL;
+ 	struct file *file = iocb->ki_filp;
+@@ -1120,7 +1090,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter,
+ 
+ 	task_io_account_write(count);
+ 
+-	retval = nfs_direct_write(iocb, iter, pos, uio);
++	retval = nfs_direct_write(iocb, iter, pos);
+ 	if (retval > 0) {
+ 		struct inode *inode = mapping->host;
+ 
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index bbff2f9..3e210ca 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -179,7 +179,7 @@ nfs_file_read_iter(struct kiocb *iocb, struct iov_iter *iter, loff_t pos)
+ 	ssize_t result;
+ 
+ 	if (iocb->ki_filp->f_flags & O_DIRECT)
+-		return nfs_file_direct_read(iocb, iter, pos, true);
++		return nfs_file_direct_read(iocb, iter, pos);
+ 
+ 	dprintk("NFS: read_iter(%s/%s, %lu@%lu)\n",
+ 		dentry->d_parent->d_name.name, dentry->d_name.name,
+@@ -651,7 +651,7 @@ ssize_t nfs_file_write_iter(struct kiocb *iocb, struct iov_iter *iter,
+ 	size_t count = iov_iter_count(iter);
+ 
+ 	if (iocb->ki_filp->f_flags & O_DIRECT)
+-		return nfs_file_direct_write(iocb, iter, pos, true);
++		return nfs_file_direct_write(iocb, iter, pos);
+ 
+ 	dprintk("NFS: write_iter(%s/%s, %lu@%lld)\n",
+ 		dentry->d_parent->d_name.name, dentry->d_name.name,
+diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
+index fa1abeb..1bea25f 100644
+--- a/include/linux/blk_types.h
++++ b/include/linux/blk_types.h
+@@ -176,7 +176,6 @@ enum rq_flag_bits {
+ 	__REQ_FLUSH_SEQ,	/* request for flush sequence */
+ 	__REQ_IO_STAT,		/* account I/O stat */
+ 	__REQ_MIXED_MERGE,	/* merge of different types, fail separately */
+-	__REQ_KERNEL, 		/* direct IO to kernel pages */
+ 	__REQ_PM,		/* runtime pm request */
+ 	__REQ_NR_BITS,		/* stops here */
+ };
+@@ -227,7 +226,6 @@ enum rq_flag_bits {
+ #define REQ_IO_STAT		(1 << __REQ_IO_STAT)
+ #define REQ_MIXED_MERGE		(1 << __REQ_MIXED_MERGE)
+ #define REQ_SECURE		(1 << __REQ_SECURE)
+-#define REQ_KERNEL		(1 << __REQ_KERNEL)
+ #define REQ_PM			(1 << __REQ_PM)
+ 
+ #endif /* __LINUX_BLK_TYPES_H */
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 26d9d8d4..06f2290 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -181,8 +181,6 @@ typedef void (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
+ #define READ			0
+ #define WRITE			RW_MASK
+ #define READA			RWA_MASK
+-#define KERNEL_READ		(READ|REQ_KERNEL)
+-#define KERNEL_WRITE		(WRITE|REQ_KERNEL)
+ 
+ #define READ_SYNC		(READ | REQ_SYNC)
+ #define WRITE_SYNC		(WRITE | REQ_SYNC | REQ_NOIDLE)
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index b2324be..1f6a332 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -459,9 +459,9 @@ extern int nfs3_removexattr (struct dentry *, const char *name);
+  */
+ extern ssize_t nfs_direct_IO(int, struct kiocb *, struct iov_iter *, loff_t);
+ extern ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter,
+-			loff_t pos, bool uio);
++			loff_t pos);
+ extern ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter,
+-			loff_t pos, bool uio);
++			loff_t pos);
  
  /*
-@@ -956,23 +1101,20 @@ void __key_link(struct key *keyring, struct key *key,
-  */
- void __key_link_end(struct key *keyring,
- 		    const struct keyring_index_key *index_key,
--		    unsigned long prealloc)
-+		    struct assoc_array_edit *edit)
- 	__releases(&keyring->sem)
- 	__releases(&keyring_serialise_link_sem)
- {
- 	BUG_ON(index_key->type == NULL);
--	BUG_ON(index_key->type->name == NULL);
--	kenter("%d,%s,%lx", keyring->serial, index_key->type->name, prealloc);
-+	kenter("%d,%s,", keyring->serial, index_key->type->name);
+  * linux/fs/nfs/dir.c
+diff --git a/mm/page_io.c b/mm/page_io.c
+index 0c1db1a..21023df 100644
+--- a/mm/page_io.c
++++ b/mm/page_io.c
+@@ -258,14 +258,14 @@ int __swap_writepage(struct page *page, struct writeback_control *wbc,
+ 	if (sis->flags & SWP_FILE) {
+ 		struct kiocb kiocb;
+ 		struct file *swap_file = sis->swap_file;
+-		struct address_space *mapping = swap_file->f_mapping;
+-		struct iovec iov = {
+-			.iov_base = kmap(page),
+-			.iov_len  = PAGE_SIZE,
++		struct bio_vec bvec = {
++			.bv_page = kmap(page),
++			.bv_len = PAGE_SIZE,
++			.bv_offset = 0,
+ 		};
+ 		struct iov_iter iter;
  
- 	if (index_key->type == &key_type_keyring)
- 		up_write(&keyring_serialise_link_sem);
+-		iov_iter_init(&iter, &iov, 1, PAGE_SIZE, 0);
++		iov_iter_init_bvec(&iter, &bvec, 1, PAGE_SIZE, 0);
  
--	if (prealloc) {
--		if (prealloc & KEY_LINK_FIXQUOTA)
--			key_payload_reserve(keyring,
--					    keyring->datalen -
--					    KEYQUOTA_LINK_BYTES);
--		kfree((struct keyring_list *)(prealloc & ~KEY_LINK_FIXQUOTA));
-+	if (edit) {
-+		key_payload_reserve(keyring,
-+				    keyring->datalen - KEYQUOTA_LINK_BYTES);
-+		assoc_array_cancel_edit(edit);
- 	}
- 	up_write(&keyring->sem);
- }
-@@ -999,20 +1141,24 @@ void __key_link_end(struct key *keyring,
-  */
- int key_link(struct key *keyring, struct key *key)
- {
--	unsigned long prealloc;
-+	struct assoc_array_edit *edit;
- 	int ret;
+ 		init_sync_kiocb(&kiocb, swap_file);
+ 		kiocb.ki_pos = page_file_offset(page);
+@@ -274,8 +274,7 @@ int __swap_writepage(struct page *page, struct writeback_control *wbc,
  
-+	kenter("{%d,%d}", keyring->serial, atomic_read(&keyring->usage));
-+
- 	key_check(keyring);
- 	key_check(key);
- 
--	ret = __key_link_begin(keyring, &key->index_key, &prealloc);
-+	ret = __key_link_begin(keyring, &key->index_key, &edit);
- 	if (ret == 0) {
-+		kdebug("begun {%d,%d}", keyring->serial, atomic_read(&keyring->usage));
- 		ret = __key_link_check_live_key(keyring, key);
- 		if (ret == 0)
--			__key_link(keyring, key, &prealloc);
--		__key_link_end(keyring, &key->index_key, prealloc);
-+			__key_link(key, &edit);
-+		__key_link_end(keyring, &key->index_key, edit);
- 	}
- 
-+	kleave(" = %d {%d,%d}", ret, keyring->serial, atomic_read(&keyring->usage));
- 	return ret;
- }
- EXPORT_SYMBOL(key_link);
-@@ -1036,90 +1182,36 @@ EXPORT_SYMBOL(key_link);
-  */
- int key_unlink(struct key *keyring, struct key *key)
- {
--	struct keyring_list *klist, *nklist;
--	int loop, ret;
-+	struct assoc_array_edit *edit;
-+	int ret;
- 
- 	key_check(keyring);
- 	key_check(key);
- 
--	ret = -ENOTDIR;
- 	if (keyring->type != &key_type_keyring)
--		goto error;
-+		return -ENOTDIR;
- 
- 	down_write(&keyring->sem);
- 
--	klist = rcu_dereference_locked_keyring(keyring);
--	if (klist) {
--		/* search the keyring for the key */
--		for (loop = 0; loop < klist->nkeys; loop++)
--			if (rcu_access_pointer(klist->keys[loop]) == key)
--				goto key_is_present;
-+	edit = assoc_array_delete(&keyring->keys, &keyring_assoc_array_ops,
-+				  &key->index_key);
-+	if (IS_ERR(edit)) {
-+		ret = PTR_ERR(edit);
-+		goto error;
- 	}
--
--	up_write(&keyring->sem);
- 	ret = -ENOENT;
--	goto error;
--
--key_is_present:
--	/* we need to copy the key list for RCU purposes */
--	nklist = kmalloc(sizeof(*klist) +
--			 sizeof(struct key *) * klist->maxkeys,
--			 GFP_KERNEL);
--	if (!nklist)
--		goto nomem;
--	nklist->maxkeys = klist->maxkeys;
--	nklist->nkeys = klist->nkeys - 1;
--
--	if (loop > 0)
--		memcpy(&nklist->keys[0],
--		       &klist->keys[0],
--		       loop * sizeof(struct key *));
--
--	if (loop < nklist->nkeys)
--		memcpy(&nklist->keys[loop],
--		       &klist->keys[loop + 1],
--		       (nklist->nkeys - loop) * sizeof(struct key *));
--
--	/* adjust the user's quota */
--	key_payload_reserve(keyring,
--			    keyring->datalen - KEYQUOTA_LINK_BYTES);
--
--	rcu_assign_pointer(keyring->payload.subscriptions, nklist);
--
--	up_write(&keyring->sem);
--
--	/* schedule for later cleanup */
--	klist->delkey = loop;
--	call_rcu(&klist->rcu, keyring_unlink_rcu_disposal);
-+	if (edit == NULL)
-+		goto error;
- 
-+	assoc_array_apply_edit(edit);
- 	ret = 0;
- 
- error:
--	return ret;
--nomem:
--	ret = -ENOMEM;
- 	up_write(&keyring->sem);
--	goto error;
-+	return ret;
- }
- EXPORT_SYMBOL(key_unlink);
- 
--/*
-- * Dispose of a keyring list after the RCU grace period, releasing the keys it
-- * links to.
-- */
--static void keyring_clear_rcu_disposal(struct rcu_head *rcu)
--{
--	struct keyring_list *klist;
--	int loop;
--
--	klist = container_of(rcu, struct keyring_list, rcu);
--
--	for (loop = klist->nkeys - 1; loop >= 0; loop--)
--		key_put(rcu_access_pointer(klist->keys[loop]));
--
--	kfree(klist);
--}
--
- /**
-  * keyring_clear - Clear a keyring
-  * @keyring: The keyring to clear.
-@@ -1130,33 +1222,25 @@ static void keyring_clear_rcu_disposal(struct rcu_head *rcu)
-  */
- int keyring_clear(struct key *keyring)
- {
--	struct keyring_list *klist;
-+	struct assoc_array_edit *edit;
- 	int ret;
- 
--	ret = -ENOTDIR;
--	if (keyring->type == &key_type_keyring) {
--		/* detach the pointer block with the locks held */
--		down_write(&keyring->sem);
--
--		klist = rcu_dereference_locked_keyring(keyring);
--		if (klist) {
--			/* adjust the quota */
--			key_payload_reserve(keyring,
--					    sizeof(struct keyring_list));
--
--			rcu_assign_pointer(keyring->payload.subscriptions,
--					   NULL);
--		}
--
--		up_write(&keyring->sem);
-+	if (keyring->type != &key_type_keyring)
-+		return -ENOTDIR;
- 
--		/* free the keys after the locks have been dropped */
--		if (klist)
--			call_rcu(&klist->rcu, keyring_clear_rcu_disposal);
-+	down_write(&keyring->sem);
- 
-+	edit = assoc_array_clear(&keyring->keys, &keyring_assoc_array_ops);
-+	if (IS_ERR(edit)) {
-+		ret = PTR_ERR(edit);
-+	} else {
-+		if (edit)
-+			assoc_array_apply_edit(edit);
-+		key_payload_reserve(keyring, 0);
- 		ret = 0;
- 	}
- 
-+	up_write(&keyring->sem);
- 	return ret;
- }
- EXPORT_SYMBOL(keyring_clear);
-@@ -1168,17 +1252,25 @@ EXPORT_SYMBOL(keyring_clear);
-  */
- static void keyring_revoke(struct key *keyring)
- {
--	struct keyring_list *klist;
-+	struct assoc_array_edit *edit;
- 
--	klist = rcu_dereference_locked_keyring(keyring);
-+	edit = assoc_array_clear(&keyring->keys, &keyring_assoc_array_ops);
-+	if (!IS_ERR(edit)) {
-+		if (edit)
-+			assoc_array_apply_edit(edit);
-+		key_payload_reserve(keyring, 0);
-+	}
-+}
- 
--	/* adjust the quota */
--	key_payload_reserve(keyring, 0);
-+static bool gc_iterator(void *object, bool type, void *iterator_data)
-+{
-+	struct key *key = object;
-+	time_t *limit = iterator_data;
- 
--	if (klist) {
--		rcu_assign_pointer(keyring->payload.subscriptions, NULL);
--		call_rcu(&klist->rcu, keyring_clear_rcu_disposal);
--	}
-+	if (key_is_dead(key, *limit))
-+		return false;
-+	key_get(key);
-+	return true;
- }
- 
- /*
-@@ -1191,88 +1283,12 @@ static void keyring_revoke(struct key *keyring)
-  */
- void keyring_gc(struct key *keyring, time_t limit)
- {
--	struct keyring_list *klist, *new;
--	struct key *key;
--	int loop, keep, max;
--
- 	kenter("{%x,%s}", key_serial(keyring), keyring->description);
- 
- 	down_write(&keyring->sem);
--
--	klist = rcu_dereference_locked_keyring(keyring);
--	if (!klist)
--		goto no_klist;
--
--	/* work out how many subscriptions we're keeping */
--	keep = 0;
--	for (loop = klist->nkeys - 1; loop >= 0; loop--)
--		if (!key_is_dead(rcu_deref_link_locked(klist, loop, keyring),
--				 limit))
--			keep++;
--
--	if (keep == klist->nkeys)
--		goto just_return;
--
--	/* allocate a new keyring payload */
--	max = roundup(keep, 4);
--	new = kmalloc(sizeof(struct keyring_list) + max * sizeof(struct key *),
--		      GFP_KERNEL);
--	if (!new)
--		goto nomem;
--	new->maxkeys = max;
--	new->nkeys = 0;
--	new->delkey = 0;
--
--	/* install the live keys
--	 * - must take care as expired keys may be updated back to life
--	 */
--	keep = 0;
--	for (loop = klist->nkeys - 1; loop >= 0; loop--) {
--		key = rcu_deref_link_locked(klist, loop, keyring);
--		if (!key_is_dead(key, limit)) {
--			if (keep >= max)
--				goto discard_new;
--			RCU_INIT_POINTER(new->keys[keep++], key_get(key));
--		}
--	}
--	new->nkeys = keep;
--
--	/* adjust the quota */
--	key_payload_reserve(keyring,
--			    sizeof(struct keyring_list) +
--			    KEYQUOTA_LINK_BYTES * keep);
--
--	if (keep == 0) {
--		rcu_assign_pointer(keyring->payload.subscriptions, NULL);
--		kfree(new);
--	} else {
--		rcu_assign_pointer(keyring->payload.subscriptions, new);
--	}
--
--	up_write(&keyring->sem);
--
--	call_rcu(&klist->rcu, keyring_clear_rcu_disposal);
--	kleave(" [yes]");
--	return;
--
--discard_new:
--	new->nkeys = keep;
--	keyring_clear_rcu_disposal(&new->rcu);
-+	assoc_array_gc(&keyring->keys, &keyring_assoc_array_ops,
-+		       gc_iterator, &limit);
- 	up_write(&keyring->sem);
--	kleave(" [discard]");
--	return;
- 
--just_return:
--	up_write(&keyring->sem);
--	kleave(" [no dead]");
--	return;
--
--no_klist:
--	up_write(&keyring->sem);
--	kleave(" [no_klist]");
--	return;
--
--nomem:
--	up_write(&keyring->sem);
--	kleave(" [oom]");
-+	kleave("");
- }
-diff --git a/security/keys/request_key.c b/security/keys/request_key.c
-index ab75df4..6b10f3f 100644
---- a/security/keys/request_key.c
-+++ b/security/keys/request_key.c
-@@ -351,7 +351,7 @@ static int construct_alloc_key(struct keyring_search_context *ctx,
- 			       struct key_user *user,
- 			       struct key **_key)
- {
--	unsigned long prealloc;
-+	struct index_tree_edit *edit;
- 	struct key *key;
- 	key_perm_t perm;
- 	key_ref_t key_ref;
-@@ -380,7 +380,7 @@ static int construct_alloc_key(struct keyring_search_context *ctx,
- 	set_bit(KEY_FLAG_USER_CONSTRUCT, &key->flags);
- 
- 	if (dest_keyring) {
--		ret = __key_link_begin(dest_keyring, &ctx->index_key, &prealloc);
-+		ret = __key_link_begin(dest_keyring, &ctx->index_key, &edit);
- 		if (ret < 0)
- 			goto link_prealloc_failed;
- 	}
-@@ -395,11 +395,11 @@ static int construct_alloc_key(struct keyring_search_context *ctx,
- 		goto key_already_present;
- 
- 	if (dest_keyring)
--		__key_link(dest_keyring, key, &prealloc);
-+		__key_link(key, &edit);
- 
- 	mutex_unlock(&key_construction_mutex);
- 	if (dest_keyring)
--		__key_link_end(dest_keyring, &ctx->index_key, prealloc);
-+		__key_link_end(dest_keyring, &ctx->index_key, edit);
- 	mutex_unlock(&user->cons_lock);
- 	*_key = key;
- 	kleave(" = 0 [%d]", key_serial(key));
-@@ -414,8 +414,8 @@ key_already_present:
- 	if (dest_keyring) {
- 		ret = __key_link_check_live_key(dest_keyring, key);
- 		if (ret == 0)
--			__key_link(dest_keyring, key, &prealloc);
--		__key_link_end(dest_keyring, &ctx->index_key, prealloc);
-+			__key_link(key, &edit);
-+		__key_link_end(dest_keyring, &ctx->index_key, edit);
- 		if (ret < 0)
- 			goto link_check_failed;
- 	}
+ 		set_page_writeback(page);
+ 		unlock_page(page);
+-		ret = mapping->a_ops->direct_IO(KERNEL_WRITE, &kiocb, &iter,
+-						kiocb.ki_pos);
++		ret = swap_file->f_op->write_iter(&kiocb, &iter, kiocb.ki_pos);
+ 		kunmap(page);
+ 		if (ret == PAGE_SIZE) {
+ 			count_vm_event(PSWPOUT);
+-- 
+1.8.3.4
 
