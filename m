@@ -1,71 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:60435 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:16812 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933055Ab3GKOdE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Jul 2013 10:33:04 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Malahal Naineni <malahal@us.ibm.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-Subject: Re: corruption due to loss of lock
-Date: Thu, 11 Jul 2013 14:33:02 +0000
-Message-ID: <1373553181.9207.2.camel@leira.trondhjem.org>
-References: <20130613184737.GA25713@us.ibm.com>
-	 <20130711071346.03b946bd@corrin.poochiereds.net>
-	 <1373552348.2871.2.camel@leira.trondhjem.org>
-	 <20130711102840.272ce3fa@tlielax.poochiereds.net>
-In-Reply-To: <20130711102840.272ce3fa@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1755882Ab3GYOda (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Jul 2013 10:33:30 -0400
+Date: Thu, 25 Jul 2013 10:33:59 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Larry Keegan <lk@pfw.demon.co.uk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfs client: Now you see it, now you don't (aka spurious ESTALE
+ errors)
+Message-ID: <20130725103359.7a0c44f8@corrin.poochiereds.net>
+In-Reply-To: <1374762269.3868.6.camel@leira.trondhjem.org>
+References: <20130725134515.67af44e2@cs3.al.itld>
+	<20130725101143.6a22cb81@corrin.poochiereds.net>
+	<1374762269.3868.6.camel@leira.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEzLTA3LTExIGF0IDEwOjI4IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gVGh1LCAxMSBKdWwgMjAxMyAxNDoxOToxMCArMDAwMA0KPiAiTXlrbGVidXN0LCBUcm9uZCIg
-PFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gVGh1LCAyMDEz
-LTA3LTExIGF0IDA3OjEzIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4gPiA+IE9uIFRodSwg
-MTMgSnVuIDIwMTMgMTM6NDc6MzcgLTA1MDANCj4gPiA+IE1hbGFoYWwgTmFpbmVuaSA8bWFsYWhh
-bEB1cy5pYm0uY29tPiB3cm90ZToNCj4gPiA+IA0KPiA+ID4gPiBIaSBUcm9uZCwNCj4gPiA+ID4g
-DQo+ID4gPiA+IEkgc2F3IEJyeWFuJ3MgcGF0Y2hlcyBoZXJlIGh0dHBzOi8vcGF0Y2h3b3JrLmtl
-cm5lbC5vcmcvcGF0Y2gvOTg3NDAyLw0KPiA+ID4gPiB0aGF0IGZpeCBpc3N1ZXMgYWZ0ZXIgbG9z
-cyBvZiBhIGxvY2suICBXaGF0IGlzIHRoZSBzdGF0dXMgb24gdGhpcyBwYXRjaA0KPiA+ID4gPiBz
-ZXQ/IERvIHRoZXkgbmVlZCBtb3JlIHdvcms/IFdlIGhhdmUgYW4gYXBwbGljYXRpb24gdGhhdCB1
-c2VzIHJhbmdlDQo+ID4gPiA+IGxvY2tzIG9uIGEgZmlsZS4gVHdvIHRocmVhZHMgZnJvbSB0d28g
-ZGlmZmVyZW50IGNsaWVudHMgZW5kIHVwIHdyaXRpbmcNCj4gPiA+ID4gdG8gdGhlIHNhbWUgYSBm
-aWxlIGR1ZSB0byB0aGlzIGJ1ZyBhZnRlciBhIGxlYXNlIGV4cGlyeSBmcm9tIGEgY2xpZW50Lg0K
-PiA+ID4gPiANCj4gPiA+ID4gUmVnYXJkcywgTWFsYWhhbC4NCj4gPiA+IA0KPiA+ID4gKGNjJ2lu
-ZyBCcnlhbiBzaW5jZSBoZSBkaWQgdGhlIG9yaWdpbmFsIHNldCkNCj4gPiA+IA0KPiA+ID4gWWVh
-aCwgdGhpcyBzZXQgd291bGQgYmUgYSBuaWNlIHRoaW5nIHRvIGhhdmUuIEEgY291cGxlIG9mIGNv
-bW1lbnRzOg0KPiA+ID4gDQo+ID4gPiAtIEkgc3RpbGwgdGhpbmsgaXQgd291bGQgYmUgYmVzdCB0
-byBtYWtlIFNJR0xPU1QgaXRzIG93biBzaWduYWwsIGJ1dCBhcw0KPiA+ID4gICBCcnlhbiBwb2lu
-dHMgb3V0LCBpdCB3b3VsZCBuZWVkIHRvIGJlIGxhcmdlciB0aGFuIFNJR1JUTUFYLiBJJ20NCj4g
-PiA+ICAgbm90IHN1cmUgdGhhdCdzIHBvc3NpYmxlIG9uIGFsbCBhcmNoZXMgd2l0aCB0aGUgd2F5
-IHRoZSBSVCBzaWduYWxzDQo+ID4gPiAgIHdlcmUgZG9uZS4gSXQncyBwcm9iYWJseSB3b3J0aCBp
-bnZlc3RpZ2F0aW5nIHRoYXQgdGhvdWdoIGJlZm9yZQ0KPiA+ID4gICBzZXR0bGluZyBvbiBTSUdJ
-TyBzaW5jZSBpdCB3b3VsZCBiZSBoYXJkIHRvIGNoYW5nZSB0aGF0IHJldHJvYWN0aXZlbHkuDQo+
-ID4gPiANCj4gPiA+IC0gVGhpcyBpcyBub3QgcmVhbGx5IGEgdjQuMSBzcGVjaWZpYyB0aGluZy4g
-SXQgc2hvdWxkIGFsc28gYmUgZG9uZSBmb3INCj4gPiA+ICAgdjQuMCBhbmQgdjIvMywgdGhvdWdo
-IHRoZSBsYXR0ZXIgdHdvIHJlYWxseSBuZWVkIHRvIGJlIGRvbmUgd2l0aGluDQo+ID4gPiAgIGxv
-Y2tkLg0KPiA+IA0KPiA+IFNJR0xPU1QgaXMgbm90IHBhcnQgb2YgYW55IHN0YW5kYXJkLiBJdCBp
-cyBhIGhhY2sgdGhhdCBoYXMgYmVlbiBhZG9wdGVkDQo+ID4gYnkgSUJNIGFuZCBTb2xhcmlzLg0K
-PiA+IA0KPiA+IFRoZSBQT1NJWGx5IGNvcnJlY3Qgd2F5IHRvIGRvIHRoaXMgaXMgdG8gdXNlIEVC
-QURGIHRvIHdhcm4gdGhlDQo+ID4gYXBwbGljYXRpb24gdGhhdCB0aGUgZmlsZSBkZXNjcmlwdG9y
-IGlzIG5vIGxvbmdlciB2YWxpZCAoaW4gdGhlIHNlbnNlDQo+ID4gdGhhdCB0aGUgc2VydmVyIGlz
-IG5vIGxvbmdlciBob25vdXJpbmcgdGhlIGxvY2spIGFuZCBFSU8gaW4gb3JkZXIgdG8NCj4gPiB3
-YXJuIGl0IHRoYXQgZGF0YSBtYXkgaGF2ZSBiZWVuIGxvc3QuDQo+ID4gDQo+IA0KPiBJdCBpcyBh
-IGhhY2suLi5JIHdvbid0IGFyZ3VlIHRoZXJlDQo+IA0KPiBJJ20gbm90IHN1cmUgdGhhdCByZXR1
-cm5pbmcgZXJyb3JzIGlzIHJlYWxseSB0aGUgYmVzdCBhcHByb2FjaCB0aG91Z2guDQo+IEluIHNv
-bWUgY2FzZXMsIHRoZSBmZCBtYXkgYmUgZmluZS4gSXQgbWF5IG9ubHkgYmUgdGhlIGxvY2sgdGhh
-dCBoYXMNCj4gYmVlbiBsb3N0Lg0KPiANCj4gV2l0aCBhIHNpZ25hbCwgdGhlIHByb2dyYW0gaGFz
-IG1vcmUgb2YgYSBjaG9pY2UgYXMgdG8gd2hldGhlciBpdCBjYXJlcw0KPiBhYm91dCBsb3N0IGxv
-Y2tzIGFuZCBpcyBtb3JlIGltbWVkaWF0ZSB3aGVuIHRoZSBwcm9ibGVtIG9jY3Vycy4gQW4NCj4g
-ZXJyb3IgY29kZSBzZWVtcyBsaWtlIGl0IG1pZ2h0IGNhdXNlIGEgbG90IG9mIGdyaWVmIGZvciBw
-cm9ncmFtcyB0aGF0DQo+IGFyZW4ndCBleHBlY3RpbmcgdGhhdCBzb3J0IG9mIGJlaGF2aW9yLg0K
-DQpFQkFERiBpcyBhIGVycm9yIHRoYXQgaGFzIGFuIG9idmlvdXMgbWVhbmluZyBpbiBQT1NJWDog
-eW91IG5lZWQgdG8NCnJlb3BlbiB0aGUgZmlsZSBhbmQgcmUtZXN0YWJsaXNoIGFueSBsb2Nrcy4g
-SG93IGlzIHRoYXQgbm90IGJldHRlciB0aGFuDQpyZWNlaXZpbmcgYSBzaWduYWwgdGhleSB3b24n
-dCBiZSBleHBlY3Rpbmc/IENvbnNpZGVyIHRoYXQgd2UnZCBoYXZlIHRvDQpvdmVybG9hZCBTSUdJ
-Tywgd2hpY2ggaGFzIGEgY29tcGxldGVseSBkaWZmZXJlbnQgbWVhbmluZyBpbiBQT1NJWC4uLg0K
-DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5l
-dEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+On Thu, 25 Jul 2013 14:24:30 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+
+> On Thu, 2013-07-25 at 10:11 -0400, Jeff Layton wrote:
+> 
+> > What might be helpful is to do some network captures when the problem
+> > occurs. What we want to know is whether the ESTALE errors are coming
+> > from the server, or if the client is generating them. That'll narrow
+> > down where we need to look for problems.
+> 
+> Hmm... Shouldn't ESTALE always be repackaged as ENOENT by the VFS, now
+> that your patchset has gone upstream, Jeff?
+> 
+
+I don't think so...
+
+On something path-based then that might make sense (or maybe we should
+declare a new ERACE error like Al once suggested and return that). If
+you're doing a write() on a fd that you previously opened but the inode
+has disappeared on the server, then -ESTALE clearly seems valid.
+
+There are other problematic cases too...
+
+Suppose I do stat(".", ...); ? Does an -ENOENT error make sense at that point?
+
+Also, since we only retry once on an ESTALE error, returning that is a
+pretty clear indicator that you raced with some other metadata
+operations. ENOENT is not as informative...
+
+-- 
+Jeff Layton <jlayton@redhat.com>
