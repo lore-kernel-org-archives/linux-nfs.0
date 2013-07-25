@@ -1,132 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12328 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:49210 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753918Ab3GINQW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Jul 2013 09:16:22 -0400
-Date: Tue, 9 Jul 2013 09:16:17 -0400
+	id S1755942Ab3GYOLL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Jul 2013 10:11:11 -0400
+Date: Thu, 25 Jul 2013 10:11:43 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Tyler Hicks <tyhicks@canonical.com>,
-        Dustin Kirkland <dustin.kirkland@gazzang.com>
-Subject: Re: [PATCH 11/12] locks: break delegations on link
-Message-ID: <20130709091617.1c175da4@tlielax.poochiereds.net>
-In-Reply-To: <1372882356-14168-12-git-send-email-bfields@redhat.com>
-References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
-	<1372882356-14168-12-git-send-email-bfields@redhat.com>
+To: Larry Keegan <lk@pfw.demon.co.uk>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: nfs client: Now you see it, now you don't (aka spurious ESTALE
+ errors)
+Message-ID: <20130725101143.6a22cb81@corrin.poochiereds.net>
+In-Reply-To: <20130725134515.67af44e2@cs3.al.itld>
+References: <20130725134515.67af44e2@cs3.al.itld>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed,  3 Jul 2013 16:12:35 -0400
-"J. Bruce Fields" <bfields@redhat.com> wrote:
+On Thu, 25 Jul 2013 13:45:15 +0000
+Larry Keegan <lk@pfw.demon.co.uk> wrote:
 
-> From: "J. Bruce Fields" <bfields@redhat.com>
+> Dear Chaps,
 > 
-> Cc: Tyler Hicks <tyhicks@canonical.com>
-> Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/ecryptfs/inode.c |    2 +-
->  fs/namei.c          |   17 +++++++++++++----
->  fs/nfsd/vfs.c       |    2 +-
->  include/linux/fs.h  |    2 +-
->  4 files changed, 16 insertions(+), 7 deletions(-)
+> I am experiencing some inexplicable NFS behaviour which I would like to
+> run past you.
 > 
-> diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-> index af42d88..19e4435 100644
-> --- a/fs/ecryptfs/inode.c
-> +++ b/fs/ecryptfs/inode.c
-> @@ -475,7 +475,7 @@ static int ecryptfs_link(struct dentry *old_dentry, struct inode *dir,
->  	dget(lower_new_dentry);
->  	lower_dir_dentry = lock_parent(lower_new_dentry);
->  	rc = vfs_link(lower_old_dentry, lower_dir_dentry->d_inode,
-> -		      lower_new_dentry);
-> +		      lower_new_dentry, NULL);
->  	if (rc || !lower_new_dentry->d_inode)
->  		goto out_lock;
->  	rc = ecryptfs_interpose(lower_new_dentry, new_dentry, dir->i_sb);
-> diff --git a/fs/namei.c b/fs/namei.c
-> index be00d37..18267e0 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -3566,7 +3566,7 @@ SYSCALL_DEFINE2(symlink, const char __user *, oldname, const char __user *, newn
->  	return sys_symlinkat(oldname, AT_FDCWD, newname);
->  }
->  
-> -int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry)
-> +int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry, struct inode **delegated_inode)
+> I have a linux NFS server running kernel 3.10.2 and some clients
+> running the same. The server is actually a pair of identical
+> machines serving up a small number of ext4 filesystems atop drbd. They
+> don't do much apart from serve home directories and deliver mail
+> into them. These have worked just fine for aeons.
+> 
+> The problem I am seeing is that for the past month or so, on and off,
+> one NFS client starts reporting stale NFS file handles on some part of
+> the directory tree exported by the NFS server. During the outage the
+> other parts of the same export remain unaffected. Then, some ten
+> minutes to an hour later they're back to normal. Access to the affected
+> sub-directories remains possible from the server (both directly and via
+> nfs) and from other clients. There do not appear to be any errors on
+> the underlying ext4 filesystems.
+> 
+> Each NFS client seems to get the heebie-jeebies over some directory or
+> other pretty much independently. The problem affects all of the
+> filesystems exported by the NFS server, but clearly I notice it first
+> in home directories, and in particular in my dot subdirectories for
+> things like my mail client and browser. I'd say something's up the
+> spout about 20% of the time.
+> 
+> The server and clients are using nfs4, although for a while I tried
+> nfs3 without any appreciable difference. I do not have CONFIG_FSCACHE
+> set.
+> 
+> I wonder if anyone could tell me if they have ever come across this
+> before, or what debugging settings might help me diagnose the problem?
+> 
+> Yours,
+> 
+> Larry
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-A kerneldoc comment would be nice here. Ditto for vfs_rename* in the
-previous patch...
 
->  {
->  	struct inode *inode = old_dentry->d_inode;
->  	unsigned max_links = dir->i_sb->s_max_links;
-> @@ -3602,8 +3602,11 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
->  		error =  -ENOENT;
->  	else if (max_links && inode->i_nlink >= max_links)
->  		error = -EMLINK;
-> -	else
-> -		error = dir->i_op->link(old_dentry, dir, new_dentry);
-> +	else {
-> +		error = try_break_deleg(inode, delegated_inode);
-> +		if (!error)
-> +			error = dir->i_op->link(old_dentry, dir, new_dentry);
-> +	}
->  	mutex_unlock(&inode->i_mutex);
->  	if (!error)
->  		fsnotify_link(dir, inode, new_dentry);
-> @@ -3624,6 +3627,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
->  {
->  	struct dentry *new_dentry;
->  	struct path old_path, new_path;
-> +	struct inode *delegated_inode = NULL;
->  	int how = 0;
->  	int error;
->  
-> @@ -3662,9 +3666,14 @@ retry:
->  	error = security_path_link(old_path.dentry, &new_path, new_dentry);
->  	if (error)
->  		goto out_dput;
-> -	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry);
-> +	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry, &delegated_inode);
->  out_dput:
->  	done_path_create(&new_path, new_dentry);
-> +	if (delegated_inode) {
-> +		error = break_deleg_wait(&delegated_inode);
-> +		if (!error)
-> +			goto retry;
-> +	}
->  	if (retry_estale(error, how)) {
->  		how |= LOOKUP_REVAL;
->  		goto retry;
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 54ac814..b9740cb 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -1708,7 +1708,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
->  		err = nfserrno(host_err);
->  		goto out_dput;
->  	}
-> -	host_err = vfs_link(dold, dirp, dnew);
-> +	host_err = vfs_link(dold, dirp, dnew, NULL);
->  	if (!host_err) {
->  		err = nfserrno(commit_metadata(ffhp));
->  		if (!err)
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index a35dadb..936413c 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -1461,7 +1461,7 @@ extern int vfs_create(struct inode *, struct dentry *, umode_t, bool);
->  extern int vfs_mkdir(struct inode *, struct dentry *, umode_t);
->  extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
->  extern int vfs_symlink(struct inode *, struct dentry *, const char *);
-> -extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
-> +extern int vfs_link(struct dentry *, struct inode *, struct dentry *, struct inode **);
->  extern int vfs_rmdir(struct inode *, struct dentry *);
->  extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
->  extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **);
+Were these machines running older kernels before this started
+happening? What kernel did you upgrade from if so?
 
-Acked-by: Jeff Layton <jlayton@redhat.com>
+What might be helpful is to do some network captures when the problem
+occurs. What we want to know is whether the ESTALE errors are coming
+from the server, or if the client is generating them. That'll narrow
+down where we need to look for problems.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
