@@ -1,80 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:47606 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932820Ab3GVThU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Jul 2013 15:37:20 -0400
-Message-ID: <51ED89DC.7050406@netapp.com>
-Date: Mon, 22 Jul 2013 15:37:00 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+Received: from srv2.trombetti.net ([65.254.53.252]:3038 "EHLO
+	srv2.trombetti.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751504Ab3GYXWs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Jul 2013 19:22:48 -0400
+Received: from localhost (localhost [127.0.0.1])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	(Authenticated sender: SASL)
+	by srv2.trombetti.net (Postfix) with ESMTPSA id 4175E31358
+	for <linux-nfs@vger.kernel.org>; Thu, 25 Jul 2013 19:14:48 -0400 (EDT)
+Message-ID: <51F1B0FF.4010602@shiftmail.org>
+Date: Fri, 26 Jul 2013 01:13:03 +0200
+From: Spelic <spelic@shiftmail.org>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC 4/5] NFSD: Defer copying
-References: <1374267830-30154-1-git-send-email-bjschuma@netapp.com> <1374267830-30154-5-git-send-email-bjschuma@netapp.com> <20130722185002.GB10109@fieldses.org> <51ED8549.3040308@netapp.com> <20130722193000.GD10109@fieldses.org>
-In-Reply-To: <20130722193000.GD10109@fieldses.org>
-Content-Type: text/plain; charset="ISO-8859-1"
+To: linux-nfs@vger.kernel.org
+Subject: Nfs4 idmapping: new kernel sends numeric
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/22/2013 03:30 PM, J. Bruce Fields wrote:
-> On Mon, Jul 22, 2013 at 03:17:29PM -0400, Bryan Schumaker wrote:
->> On 07/22/2013 02:50 PM, J. Bruce Fields wrote:
->>> On Fri, Jul 19, 2013 at 05:03:49PM -0400, bjschuma@netapp.com wrote:
->>>> From: Bryan Schumaker <bjschuma@netapp.com>
->>>>
->>>> Rather than performing the copy right away, schedule it to run later and
->>>> reply to the client.  Later, send a callback to notify the client that
->>>> the copy has finished.
->>>
->>> I believe you need to implement the referring triple support described
->>> in http://tools.ietf.org/html/rfc5661#section-2.10.6.3 to fix the race
->>> described in
->>> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-15.1.3
->>> .
->>
->> I'll re-read and re-write.
->>
->>>
->>> I see cb_delay initialized below, but not otherwise used.  Am I missing
->>> anything?
->>
->> Whoops!  I was using that earlier to try to fake up a callback, but I eventually decided it's easier to just do the copy asynchronously.  I must have forgotten to take it out :(
->>
->>>
->>> What about OFFLOAD_STATUS and OFFLOAD_ABORT?
->>
->> I haven't thought out those too much... I haven't thought about a use for them on the client yet.
-> 
-> If it might be a long-running copy, I assume the client needs the
-> ability to abort if the caller is killed.
-> 
-> (Dumb question: what happens on the network partition?  Does the server
-> abort the copy when it expires the client state?)
-> 
-> In any case,
-> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-15.1.3
-> says "If a server's COPY operation returns a stateid, then the server
-> MUST also support these operations: CB_OFFLOAD, OFFLOAD_ABORT, and
-> OFFLOAD_STATUS."
-> 
-> So even if we've no use for them on the client then we still need to
-> implement them (and probably just write a basic pynfs test).  Either
-> that or update the spec.
+Hi all
+we have an ubuntu 10.04 NFS4 client and an ubuntu 13.04 NFS4 server. LDAP.
+The serverside filesystem sees perfect UID/GIDs for files, but sends 
+numeric ones to client side. Client side then maps to nobody/nogroup. Or 
+this is what it seems
 
-Fair enough.  I'll think it out and do something!  Easy solution: save this patch for later and only support the sync version of copy for the final version of this patch series.
+This is a packet from server to client due to an "ls -l"
 
-- Bryan
+0000  00 25 64 fc 69 c6 52 54  00 15 36 aa 08 00 45 00   .%d.i.RT ..6...E.
+0010  00 f4 68 22 40 00 40 06  42 39 c0 a8 07 30 c0 a8   ..h"@.@. B9...0..
+0020  07 28 08 01 03 58 8c 62  27 4e 16 ac d1 51 80 18   .(...X.b 'N...Q..
+0030  00 bd 90 8f 00 00 01 01  08 0a 1c c8 49 28 05 6c   ........ ....I(.l
+0040  11 d3 80 00 00 bc 62 a6  2a c7 00 00 00 01 00 00   ......b. *.......
+0050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00   ........ ........
+0060  00 00 00 00 00 00 00 00  00 02 00 00 00 16 00 00   ........ ........
+0070  00 00 00 00 00 09 00 00  00 00 00 00 00 02 00 10   ........ ........
+0080  01 1a 00 30 a2 3a 00 00  00 78 00 00 00 01 51 ee   ...0.:.. .x....Q.
+0090  5a 4f 27 aa 8d 2b 00 00  00 00 49 3e 00 00 45 91   ZO'..+.. ..I>..E.
+00a0  00 63 f4 8c 43 f5 b7 45  af ac 40 80 06 ce 00 00   .c..C..E ..@.....
+00b0  00 00 01 c0 00 02 00 00  01 a4 00 00 00 01 00 00   ........ ........
+00c0  00 04 31 30 33 37 00 00  00 02 32 30 00 00 00 00   ..1037.. ..20....
+00d0  00 00 00 00 00 00 00 00  00 00 49 3e 10 00 00 00   ........ ..I>....
+00e0  00 00 51 ee 5a 3d 11 04  0b e0 00 00 00 00 51 ee   ..Q.Z=.. ......Q.
+00f0  5a 4f 27 aa 8d 2b 00 00  00 00 51 ee 5a 4f 27 aa   ZO'..+.. ..Q.ZO'.
+0100  8d 2b .+
 
-> 
->>> In some common cases the reply will be very quick, and we might be
->>> better off handling it synchronously.  Could we implement a heuristic
->>> like "copy synchronously if the filesystem has special support or the
->>> range is less than the maximum iosize, otherwise copy asynchronously"?
->>
->> I'm sure that can be done, I'm just not sure how to do it yet...
-> 
-> OK, thanks.
-> 
-> --b.
-> 
+
+The 1037 and 20 you see are the numeric uid and gid being sent to client 
+side for one file, but I suspect client side wants usernames and 
+groupnames as strings, not as numbers. So remaps to nobody.
+
+Curiously when clientside creates a file I don't see numeric uid or 
+string usernames passing at all, but the filesystem at serverside has 
+correct uid/gid for the file being created so somehow they are passed. I 
+don't really know how to read the NFS4 packets...
+
+Is it an /etc/request-key.conf  problem? I just installed keyutils but 
+doesn't appear to help.
+
+This is idmapd.conf on both sides
+============================
+[General]
+
+Verbosity = 10
+Pipefs-Directory = /run/rpc_pipefs
+# set your own domain here, if id differs from FQDN minus hostname
+Domain = localdomain
+
+[Mapping]
+
+Nobody-User = nobody
+Nobody-Group = nogroup
+
+[Translation]
+
+Method = nsswitch
+============================
+
+Thanks for any help
+
 
