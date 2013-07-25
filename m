@@ -1,181 +1,153 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:14044 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:17601 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964817Ab3GRUQI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jul 2013 16:16:08 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: SP4_MACH_CRED: v4 proc -> opcodes mapping
-Date: Thu, 18 Jul 2013 20:16:06 +0000
-Message-ID: <959CC18F-0C16-4D11-A4AA-87928D5C23CC@netapp.com>
-References: <7EC48508-29F6-42DF-9BBA-F90A5CA1A47C@netapp.com>
- <1374159436.3788.3.camel@leira.trondhjem.org>
- <DFCAA8D0-B3BD-49C2-BAC4-9C26668AACB9@netapp.com>
- <1374160910.3788.14.camel@leira.trondhjem.org>
- <1D61D5F4-40DA-47D1-A15A-745EA05813BA@netapp.com>
- <1374167339.3788.52.camel@leira.trondhjem.org>
- <DD04268F-B364-48D0-ADEB-E4770D618B38@netapp.com>
- <9AC7EBEB-E407-4CCB-A6E6-05C24CD821DA@netapp.com>
- <1374177242.3788.59.camel@leira.trondhjem.org>
- <FB5772A6-D433-4C9C-B67E-B43126961A68@netapp.com>
- <1374177978.3788.68.camel@leira.trondhjem.org>
-In-Reply-To: <1374177978.3788.68.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+	id S1756160Ab3GYSSc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Jul 2013 14:18:32 -0400
+Date: Thu, 25 Jul 2013 14:18:28 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Larry Keegan <lk@pfw.demon.co.uk>
+Cc: <linux-nfs@vger.kernel.org>
+Subject: Re: nfs client: Now you see it, now you don't (aka spurious ESTALE
+ errors)
+Message-ID: <20130725141828.1862a1e1@tlielax.poochiereds.net>
+In-Reply-To: <20130725170526.6e54c7db@cs3.al.itld>
+References: <20130725134515.67af44e2@cs3.al.itld>
+	<20130725101143.6a22cb81@corrin.poochiereds.net>
+	<20130725170526.6e54c7db@cs3.al.itld>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Heh, good point ;)
+On Thu, 25 Jul 2013 17:05:26 +0000
+Larry Keegan <lk@pfw.demon.co.uk> wrote:
 
--dros
+> On Thu, 25 Jul 2013 10:11:43 -0400
+> Jeff Layton <jlayton@redhat.com> wrote:
+> > On Thu, 25 Jul 2013 13:45:15 +0000
+> > Larry Keegan <lk@pfw.demon.co.uk> wrote:
+> > 
+> > > Dear Chaps,
+> > > 
+> > > I am experiencing some inexplicable NFS behaviour which I would
+> > > like to run past you.
+> > > 
+> > > I have a linux NFS server running kernel 3.10.2 and some clients
+> > > running the same. The server is actually a pair of identical
+> > > machines serving up a small number of ext4 filesystems atop drbd.
+> > > They don't do much apart from serve home directories and deliver
+> > > mail into them. These have worked just fine for aeons.
+> > > 
+> > > The problem I am seeing is that for the past month or so, on and
+> > > off, one NFS client starts reporting stale NFS file handles on some
+> > > part of the directory tree exported by the NFS server. During the
+> > > outage the other parts of the same export remain unaffected. Then,
+> > > some ten minutes to an hour later they're back to normal. Access to
+> > > the affected sub-directories remains possible from the server (both
+> > > directly and via nfs) and from other clients. There do not appear
+> > > to be any errors on the underlying ext4 filesystems.
+> > > 
+> > > Each NFS client seems to get the heebie-jeebies over some directory
+> > > or other pretty much independently. The problem affects all of the
+> > > filesystems exported by the NFS server, but clearly I notice it
+> > > first in home directories, and in particular in my dot
+> > > subdirectories for things like my mail client and browser. I'd say
+> > > something's up the spout about 20% of the time.
+> > > 
+> > > The server and clients are using nfs4, although for a while I tried
+> > > nfs3 without any appreciable difference. I do not have
+> > > CONFIG_FSCACHE set.
+> > > 
+> > > I wonder if anyone could tell me if they have ever come across this
+> > > before, or what debugging settings might help me diagnose the
+> > > problem?
+> > > 
+> > > Yours,
+> > > 
+> > > Larry
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe
+> > > linux-nfs" in the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> > 
+> > Were these machines running older kernels before this started
+> > happening? What kernel did you upgrade from if so?
+> > 
+> 
+> Dear Jeff,
+> 
+> The full story is this:
+> 
+> I had a pair of boxes running kernel 3.4.3 with the aforementioned drbd
+> pacemaker malarkey and some clients running the same.
+> 
+> Then I upgraded the machines by moving from plain old dos partitions to
+> gpt. This necessitated a complete reload of everything, but there were
+> no software changes. I can be sure that nothing else was changed
+> because I build my entire operating system in one ginormous makefile.
+> 
+> Rapidly afterwards I switched the motherboards for ones with more PCI
+> slots. There were no software changes except those relating to MAC
+> addresses.
+> 
+> Next I moved from 100Mbit to gigabit hubs. Then the problems started.
+> 
+> The symptoms were much as I've described but I didn't see them that
+> way. Instead I assumed the entire filesystem had gone to pot and tried
+> to unmount it from the client. Fatal mistake. umount hung. I was left
+> with an entry in /proc/mounts showing the affected mountpoints as
+> "/home/larry\040(deleted)" for example. It was impossible to get rid of
+> this and I had to reboot the box. Unfortunately the problem
+> snowballed and affected all my NFS clients and the file servers, so
+> they had to be bounced too.
+> 
+> Anyway, to cut a long story short, this problem seemed to me to be a
+> file server problem so I replaced network cards, swapped hubs,
+> checked filesystems, you name it, but I never experienced any actual
+> network connectivity problems, only NFS problems. As I had kernel 3.4.4
+> upgrade scheduled I upgraded all the hosts. No change.
+> 
+> Then I upgraded everything to kernel 3.4.51. No change.
+> 
+> Then I tried mounting using NFS version 3. It could be argued the
+> frequency of gyp reduced, but the substance remained.
+> 
+> Then I bit the bullet and tried kernel 3.10. No change. I noticed that
+> NFS_V4_1 was on so I turned it off and re-tested. No change. Then
+> I tried 3.10.1 and 3.10.2. No change.
+> 
+> I've played with the kernel options to remove FSCACHE, not that I was
+> using it, and that's about it.
+> 
+> Are there any (client or server) kernel options which I should know
+> about?
+> 
+> > What might be helpful is to do some network captures when the problem
+> > occurs. What we want to know is whether the ESTALE errors are coming
+> > from the server, or if the client is generating them. That'll narrow
+> > down where we need to look for problems.
+> 
+> As it was giving me gyp during typing I tried to capture some NFS
+> traffic. Unfortunately claws-mail started a mail box check in the
+> middle of this and the problem disappeared! Normally it's claws which
+> starts this. It'll come along again soon enough and I'll send a trace.
+> 
+> Thank you for your help.
+> 
+> Yours,
+> 
+> Larry.
 
-On Jul 18, 2013, at 4:06 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
- wrote:
+Ok, we had a number of changes to how ESTALE errors are handled over
+the last few releases. When you mentioned 3.10, I had assumed that you
+might be hitting a regression in one of those, but those went in well
+after the 3.4 series.
 
-> On Thu, 2013-07-18 at 20:04 +0000, Adamson, Dros wrote:
->> Another issue: Is it out of spec to do what we plan and "just use" the nfs_client's rpc_client for all state manager operations without checking if the server supports it from the SP4_MACH_CRED EXCHANGE_ID negotiation?
->> 
->> RENEW for example is not explicitly mentioned in the SP4_MACH_CRED section and I'm looking at a server that doesn't claim state_protection support for RENEW.
-> 
-> RENEW is a "mandatory to not implement" operation in NFSv4.1.
-> 
-> Cheers
->  Trond
-> 
->> -dros
->> 
->> On Jul 18, 2013, at 3:54 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
->> 
->>> On Thu, 2013-07-18 at 19:49 +0000, Adamson, Dros wrote:
->>>> Only supporting operations that have the error code NFS4ERR_WRONG_CRED seems to be wrong.  Operations like BIND_CONN_TO_SESSION don't support don't support this error code, but are explicitly mentioned in SP4_MACH_CRED sections of the spec.
->>> 
->>> Looking at the allowed error return values for BIND_CONN_TO_SESSION, I'm
->>> at a loss to figure out exactly what it should return in this case. I
->>> suspect that the lack of an NFS4ERR_WRONG_CRED is actually a protocol
->>> bug.
->>> 
->>> Time to go back to the ietf mailing list...
->>> 
->>>> I'll continue my work described below modulo limiting to NFS4ERR_WRONG_CRED enabled OPs and see how that looks...
->>>> 
->>>> -dros
->>>> 
->>>> On Jul 18, 2013, at 2:13 PM, "Adamson, Dros" <Weston.Adamson@netapp.com> wrote:
->>>> 
->>>>> Ok, I'll have the client only ask for state protection on operations that support NFS4ERR_WRONG_CRED - and I'll do the SP4_MACH_CRED checks only on these operations and only if they aren't already using the machine cred already. This simplifies my original problem - now I can just use the "main" opcode.
->>>>> 
->>>>> I'll also add error handlers for NFS4ERR_WRONG_CRED.
->>>>> 
->>>>> Thanks!
->>>>> 
->>>>> -dros
->>>>> 
->>>>> On Jul 18, 2013, at 1:08 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
->>>>> 
->>>>>> On Thu, 2013-07-18 at 15:50 +0000, Adamson, Dros wrote:
->>>>>>> On Jul 18, 2013, at 11:21 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
->>>>>>> wrote:
->>>>>>> 
->>>>>>>> On Thu, 2013-07-18 at 15:10 +0000, Adamson, Dros wrote:
->>>>>>>>> On Jul 18, 2013, at 10:57 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
->>>>>>>>> 
->>>>>>>>>> On Thu, 2013-07-18 at 14:46 +0000, Adamson, Dros wrote:
->>>>>>>>>>> Hey,
->>>>>>>>>>> 
->>>>>>>>>>> I have a mostly functional client-side implementation of SP4_MACH_CRED! It still needs a lot of cleanup and testing.
->>>>>>>>>>> 
->>>>>>>>>>> I have one style issue that I want to run by the list before I post a patchset:
->>>>>>>>>>> 
->>>>>>>>>>> So, SP4_MACH_CRED negotiates two bitmaps in the EXCHANGE_ID (one "enforce", one "allow") for state protection. These bitmaps are indexed by the NFSv4 operation number.  The state protect check must happen in the nfs4proc.c layer (or before), right before we call rpc_call_sync or equivalent, so that it can select the right cred and rpc_client.
->>>>>>>>>>> 
->>>>>>>>>>> Here's the problem: we don't know what operations (opcodes) are actually in a compound until the XDR encode callback is called.  The rpc_procinfo array doesn't have this mapping - in fact, it only lives in the xdr encode layer.
->>>>>>>>>>> 
->>>>>>>>>>> One approach is to immediately translate the opcode bitmaps to "nfs4 procedure index" bitmaps, indexing into the rpc_procinfo array.  This would mean there is a second mapping of NFSv4 procedure -> opcodes that must be updated when an XDR encode callback is changed.
->>>>>>>>>>> 
->>>>>>>>>>> Another approach would be to add a callback to the XDR api so we could "ask" it if an NFSv4 procedure contains any of the opcodes in a bitmap. The nice thing about this approach is that the mapping of procedure to opcodes within will live right next to the XDR encode callback and make it obvious that both need to be changed together.
->>>>>>>>>>> 
->>>>>>>>>>> I suppose I'm leaning toward a combination of both of these approaches - keep the mapping in XDR-land and translate the bitmaps immediately on negation for fast lookups during normal operation.
->>>>>>>>>>> 
->>>>>>>>>>> Comments? Am I missing something?
->>>>>>>>>> 
->>>>>>>>>> I'm not sure that I understand. We don't do dynamic creation of
->>>>>>>>>> compounds: we pretty much know in the nfs4_proc_* routine what the main
->>>>>>>>>> operation is (the one exception being CLOSE/OPEN_DOWNGRADE). So why
->>>>>>>>>> can't we work out the protection status at that time? Is the worry that
->>>>>>>>>> the server might reboot and come back with different MACH_CRED
->>>>>>>>>> protections?
->>>>>>>>> 
->>>>>>>>> Sure, we know what the main operation is and we know what operations will end up in a compound - we can just look at the xdr encoder.  My question is simply one of style. Do we want to have each nfs4proc procedure to have a list of operations that must be updated if an xdr encoder is updated? I'm fine with doing it this way, it just seemed wrong to have the same mapping in two different places. This is why I'm asking ;)
->>>>>>>>> 
->>>>>>>>> Also, we can't just use the "main" operation, we must check every operation within the compound and if any are required to use SP4, then the whole compound does. I don't necessarily know why a server would do this, but if we follow the spec and a server informs the client that SETATTR must use state protection, then a WRITE with post-op SETATTR must use the state protection even though WRITE doesn't need it.
->>>>>>>> 
->>>>>>>> We only need to check every _stateful_ operation, right? I can't think
->>>>>>>> of any compounds with more than 1 stateful operation. We've deliberately
->>>>>>>> avoided those due to the problems that arise when you get a
->>>>>>>> NFS4ERR_DELAY or something equivalent at the wrong moment.
->>>>>>> 
->>>>>>> That may be the intention, but I see no such limitation in the spec. It's my understanding that the server could specify any operation as MUST or MAY use state protection.
->>>>>> 
->>>>>> Right, but what would state protection mean for a stateless operation
->>>>>> such as GETATTR? That operation isn't even allowed to return
->>>>>> NFS4ERR_WRONG_CRED, so I don't see how it would apply.
->>>>>> 
->>>>>>>>> I'm not following the reboot question - that case should be handled just fine. Once the EXCHANGE_ID happens, the clp has two bitmaps (enforce and allow) that reflect the current mode of SP4_MACH_CRED.
->>>>>>>> 
->>>>>>>> I'm thinking something along the following scenario:
->>>>>>>> 
->>>>>>>> A process queues up an OPEN. The server replies NFS4ERR_BAD_SESSION and
->>>>>>>> later replies with NFS4ERR_STALE_CLIENTID. So we start reboot recovery,
->>>>>>>> and the OPEN gets queued waiting for a slot.
->>>>>>>> We then send a new EXCHANGE_ID, and the server replies with a
->>>>>>>> _different_ MACH_CRED protection for OPEN.
->>>>>>>> 
->>>>>>>> The problem above is that the OPEN has already been started, and we've
->>>>>>>> already assigned it a credential. How do we handle that?
->>>>>>>> Ditto question for READ, WRITE, LOCK, LAYOUTGET,...
->>>>>>>> 
->>>>>>>> Do we have a problem for LOCKU, CLOSE and OPEN_DOWNGRADE? I think we end
->>>>>>>> up just skipping recovery in those cases…
->>>>>>> 
->>>>>>> These are good points. I'm not sure *why* the sp4_mach_cred config would change, but I suppose it could, and yes, in my current implementation there is no way to back out once a rpc task is invoked.  Any thoughts on this?  I can see two ways of handling this:
->>>>>>> - restarting all tasks (with rpc_clnt and rpc_cred appropriately changed) when a change in sp4_mach_cred config is detected.
->>>>>>> - somehow having the RPC layer call out to check SP4 status before sending each RPC.
->>>>>> 
->>>>>> For now, I think we should make sure that we handle NFS4ERR_WRONG_CRED
->>>>>> correctly in these cases. I don't think we ever want to handle that in
->>>>>> nfs4_async_handle_error, but we should definitely handle it in
->>>>>> nfs4_handle_exception(), since that can drive a full retry of the RPC
->>>>>> call.
->>>>>> 
->>>>>> -- 
->>>>>> Trond Myklebust
->>>>>> Linux NFS client maintainer
->>>>>> 
->>>>>> NetApp
->>>>>> Trond.Myklebust@netapp.com
->>>>>> www.netapp.com
->>>>> 
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>> 
->>> 
->>> -- 
->>> Trond Myklebust
->>> Linux NFS client maintainer
->>> 
->>> NetApp
->>> Trond.Myklebust@netapp.com
->>> www.netapp.com
->> 
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
+Captures are probably your best bet. My suspicion is that the server is
+returning these ESTALE errors occasionally, but it would be best to
+have you confirm that. They may also help make sense of why it's
+occurring...
 
+-- 
+Jeff Layton <jlayton@redhat.com>
