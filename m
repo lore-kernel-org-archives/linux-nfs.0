@@ -1,180 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f43.google.com ([209.85.219.43]:34039 "EHLO
-	mail-oa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933709Ab3GWUbu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jul 2013 16:31:50 -0400
-Received: by mail-oa0-f43.google.com with SMTP id i7so12522893oag.30
-        for <linux-nfs@vger.kernel.org>; Tue, 23 Jul 2013 13:31:50 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CAMbhsRSsq0pgS6KvCjiFGneDEJd6zSXsYB_2MCV=sh+6F2muog@mail.gmail.com>
-References: <1367884221-20462-1-git-send-email-ccross@android.com>
-	<CA+55aFzUVPJe96z8V0F-znc8ZcpJid7LEeYww80M-Mx=S91tAA@mail.gmail.com>
-	<CAMbhsRReF9xB597i9CcCj7D1P5kvB4cc0JmDQYeboqi11Kp99A@mail.gmail.com>
-	<15305281.aClQ8XUG9t@vostro.rjw.lan>
-	<CAMbhsRSsq0pgS6KvCjiFGneDEJd6zSXsYB_2MCV=sh+6F2muog@mail.gmail.com>
-Date: Tue, 23 Jul 2013 13:31:49 -0700
-Message-ID: <CAMbhsRSRcQ-CgCTkRGJJSVSArPqmGRjgxeRBUY0zE94Osxa-nA@mail.gmail.com>
-Subject: Re: 3.11-rc regression bisected: s2disk does not work (was Re: [PATCH
- v3 13/16] futex: use freezable blocking call)
-From: Colin Cross <ccross@android.com>
-To: "Rafael J. Wysocki" <rjw@sisk.pl>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        Michael Leun <lkml20130126@newton.leun.net>,
-        lkml <linux-kernel@vger.kernel.org>, Pavel Machek <pavel@ucw.cz>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>,
-        Linux PM list <linux-pm@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>, Tejun Heo <tj@kernel.org>,
-        Darren Hart <dvhart@linux.intel.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Randy Dunlap <rdunlap@infradead.org>,
-        Al Viro <viro@zeniv.linux.org.uk>
-Content-Type: multipart/mixed; boundary=047d7b5d4f2ec4c20204e233aeae
+Received: from pfw.demon.co.uk ([62.49.22.168]:49978 "EHLO pfw.demon.co.uk"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757043Ab3GZQKw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Jul 2013 12:10:52 -0400
+Date: Fri, 26 Jul 2013 16:10:46 +0000
+From: Larry Keegan <lk@pfw.demon.co.uk>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: <linux-nfs@vger.kernel.org>
+Subject: Re: nfs client: Now you see it, now you don't (aka spurious ESTALE
+ errors)
+Message-ID: <20130726161046.00c19730@cs3.al.itld>
+In-Reply-To: <20130726091225.5f299ff6@corrin.poochiereds.net>
+References: <20130725134515.67af44e2@cs3.al.itld>
+ <20130725101143.6a22cb81@corrin.poochiereds.net>
+ <20130725170526.6e54c7db@cs3.al.itld>
+ <20130725141828.1862a1e1@tlielax.poochiereds.net>
+ <20130726124101.058df8dc@cs3.al.itld>
+ <20130726091225.5f299ff6@corrin.poochiereds.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---047d7b5d4f2ec4c20204e233aeae
-Content-Type: text/plain; charset=ISO-8859-1
+On Fri, 26 Jul 2013 09:12:25 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
+> On Fri, 26 Jul 2013 12:41:01 +0000
+> Larry Keegan <lk@pfw.demon.co.uk> wrote:
+> 
+> > On Thu, 25 Jul 2013 14:18:28 -0400
+> > Jeff Layton <jlayton@redhat.com> wrote:
+> > > On Thu, 25 Jul 2013 17:05:26 +0000
+> > > Larry Keegan <lk@pfw.demon.co.uk> wrote:
+> > > 
+> > > > On Thu, 25 Jul 2013 10:11:43 -0400
+> > > > Jeff Layton <jlayton@redhat.com> wrote:
+> > > > > On Thu, 25 Jul 2013 13:45:15 +0000
+> > > > > Larry Keegan <lk@pfw.demon.co.uk> wrote:
+> > > > > 
+> > > > > > Dear Chaps,
+> > > > > > 
+> > > > > > I am experiencing some inexplicable NFS behaviour which I
+> > > > > > would like to run past you.
+> > > > > What might be helpful is to do some network captures when the
+> > > > > problem occurs. What we want to know is whether the ESTALE
+> > > > > errors are coming from the server, or if the client is
+> > > > > generating them. That'll narrow down where we need to look
+> > > > > for problems.
+> > > Ok, we had a number of changes to how ESTALE errors are handled
+> > > over the last few releases. When you mentioned 3.10, I had
+> > > assumed that you might be hitting a regression in one of those,
+> > > but those went in well after the 3.4 series.
+> > > 
+> > > Captures are probably your best bet. My suspicion is that the
+> > > server is returning these ESTALE errors occasionally, but it
+> > > would be best to have you confirm that. They may also help make
+> > > sense of why it's occurring...
+> > I now have a good and a bad packet capture. I can run them through
+> > tshark -V but if I do this, they're really long, so I'm wondering
+> > how best to post them. I've posted the summaries below.
+> > 
+> > The first thing that strikes me is the bad trace is much longer.
+> > This strikes me as reasonable because as well as the ESTALE problem
+> > I've noticed that the whole system seems sluggish. claws-mail is
+> > particularly so because it keeps saving my typing into a drafts
+> > mailbox, and because claws doesn't really understand traditional
+> > mboxes, it spends an inordinate amount of time locking and unlocking
+> > the boxes for each message in them. Claws also spews tracebacks
+> > frequently and it crashes from time to time, something it never did
+> > before the ESTALE problem occurred.
+> I'm afraid I can't tell much from the above output. I don't see any
+> ESTALE errors there, but you can get similar issues if (for instance)
+> certain attributes of a file change.
 
-On Mon, Jul 22, 2013 at 11:28 PM, Colin Cross <ccross@android.com> wrote:
-> On Mon, Jul 22, 2013 at 6:41 PM, Rafael J. Wysocki <rjw@sisk.pl> wrote:
->> On Monday, July 22, 2013 05:42:49 PM Colin Cross wrote:
->>> On Mon, Jul 22, 2013 at 5:32 PM, Linus Torvalds
->>> <torvalds@linux-foundation.org> wrote:
->>> > On Mon, Jul 22, 2013 at 4:55 PM, Colin Cross <ccross@android.com> wrote:
->>> >>
->>> >> I think the right solution is to add a flag to the freezing task that
->>> >> marks it unfreezable.  I  think PF_NOFREEZE would work, although it is
->>> >> normally used on kernel threads, can you see if the attached patch
->>> >> helps?
->>> >
->>> > Hmm. That does seem to be the right thing to do, but I wonder about
->>> > the *other* callers of freeze_processes() IOW, kexec and friends.
->>> >
->>> > So maybe we should do this in {freeze|thaw}_processes() itself, and
->>> > just make the rule be that the caller of freeze_processes() itself is
->>> > obviously not frozen, and has to be the same one that then thaws
->>> > things?
->>> >
->>> > Colin? Rafael? Comments?
->>> >
->>> >                 Linus
->>>
->>> I was worried about clearing the flag in thaw_processes().  If a
->>> kernel thread with PF_NOFREEZE set ever called thaw_processes(), which
->>> autosleep might do, it would clear the flag.  Or if a different thread
->>> called freeze_processes() and thaw_processes().
->>
->> Is that legitimate?
->
-> Nothing precludes it today, but I don't see any need for it.  I'll add
-> a comment when I add the flag.
->
->>> All the other callers besides the SNAPSHOT_FREEZE ioctl stay in the kernel
->>> between freeze_processes() and thaw_processes(), which makes the fanout of
->>> places that could call try_to_freeze() much more controllable.
->>>
->>> Using a new flag that operates like PF_NOFREEZE but doesn't conflict
->>> with it, or a nofreeze_depth counter, would also work.
->>
->> Well, that would be robust enough.  At least if the purpose of that new flag
->> is clearly specified, people hopefully won't be tempted to optimize it away in
->> the future.
->>
->> Thanks,
->> Rafael
->
-> OK, I'll add a new flag.
+Such as might occur due to mail delivery?
 
+> You mentioned that this is a DRBD
+> cluster, are you "floating" IP addresses between cluster nodes here?
+> If so, do your problems occur around the times that that's happening?
+> 
+> Also, what sort of filesystem is being exported here?
+> 
+The way my NFS servers are configured is as follows:
 
-Michael, can you see if this patch works and doesn't throw any
-warnings during suspend or resume?
+I have two identical boxes. They run lvm. There are two lvs on each
+box called outer-nfs0 and outer-nfs1. These are kept in sync with drbd.
+The content of these volumes are encrypted with dmcrypt. The plaintext
+of each volume is a pv. I have two inner volume groups, named nfs0 and
+nfs1. These each contain one of those pvs. They are sliced into a dozen
+or so lvs. The lvs each contain ext4 filesystems. Each filesystem
+contains one or more home directories. Although each filesystem is
+exported in its entirety, autofs only mounts subdirectories (for
+example /home/larry on fs-nfs0:/export/nfs0/home00/larry). Exports are
+arranged by editing the exports file and running 'exportfs -r' so
+userspace is always in sync with the kernel.
 
-If the extra process flag is considered too precious for this
-(there are only 2 left after this patch) I could get the
-same functionality by having freeze_processes() reject calls
-from a PF_KTHREAD|PF_NOFREEZE thread, and use PF_KTHREAD to
-determine if PF_NOFREEZE should be cleared in thaw_processes().
+Each nfs volume group is associated with its own IP address which is
+switched along with the volume group. So, when one of my boxes can see
+volume group nfs0 it will mount the volumes inside it and export all the
+filesystems on that volume group via its own ip address. Thus, one
+fileserver can export nothing, a dozen filesystems or two dozen
+filesystems. The automounter map only ever refers to the switchable ip
+addresses.
 
---047d7b5d4f2ec4c20204e233aeae
-Content-Type: application/octet-stream;
-	name="0001-power-set-PF_SUSPEND_TASK-flag-on-tasks-that-call-fr.patch"
-Content-Disposition: attachment;
-	filename="0001-power-set-PF_SUSPEND_TASK-flag-on-tasks-that-call-fr.patch"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_hjhk6qi40
+This arrangement keeps the complexity of the dmcrypt stuff low and is
+moderately nippy. As for the switchover, I've merely arranged pacemaker
+to 'ip addr del' and 'ip addr add' the switchable IP addresses, blast
+out a few ARPs and Bob's you're uncle. Occasionally I get a machine
+which hangs for a couple of minutes, but mostly it's just a few
+seconds. Until recently I haven't seen ESTALE errors.
 
-RnJvbSAxODhmNTg3MTFhZDE5MzE1YTFhYmFhMDUwMDBkYjlkMzEyYWFhOTNmIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBDb2xpbiBDcm9zcyA8Y2Nyb3NzQGFuZHJvaWQuY29tPgpEYXRl
-OiBNb24sIDIyIEp1bCAyMDEzIDE2OjUzOjE1IC0wNzAwClN1YmplY3Q6IFtQQVRDSF0gcG93ZXI6
-IHNldCBQRl9TVVNQRU5EX1RBU0sgZmxhZyBvbiB0YXNrcyB0aGF0IGNhbGwKIGZyZWV6ZV9wcm9j
-ZXNzZXMKCkNhbGxpbmcgZnJlZXplX3Byb2Nlc3NlcyBzZXRzIGEgZ2xvYmFsIGZsYWcgdGhhdCB3
-aWxsIGNhdXNlIGFueQpwcm9jZXNzIHRoYXQgY2FsbHMgdHJ5X3RvX2ZyZWV6ZSB0byBlbnRlciB0
-aGUgcmVmcmlnZXJhdG9yLiAgSXQKc2tpcHMgc2VuZGluZyBhIHNpZ25hbCB0byB0aGUgY3VycmVu
-dCB0YXNrLCBidXQgaWYgdGhlIGN1cnJlbnQKdGFzayBldmVyIGhpdHMgdHJ5X3RvX2ZyZWV6ZSBh
-bGwgdGhyZWFkcyB3aWxsIGJlIGZyb3plbiBhbmQgdGhlCnN5c3RlbSB3aWxsIGRlYWRsb2NrLgoK
-U2V0IGEgbmV3IGZsYWcsIFBGX1NVU1BFTkRfVEFTSywgb24gdGhlIHRhc2sgdGhhdCBjYWxscwpm
-cmVlemVfcHJvY2Vzc2VzLiAgVGhlIGZsYWcgbm90aWZpZXMgdGhlIGZyZWV6ZXIgdGhhdCB0aGUg
-dGhyZWFkCmlzIGludm9sdmVkIGluIHN1c3BlbmQgYW5kIHNob3VsZCBub3QgYmUgZnJvemVuLiAg
-QWxzbyBhZGQgYQpXQVJOX09OIGluIHRoYXdfcHJvY2Vzc2VzIGlmIHRoZSBjYWxsZXIgZG9lcyBu
-b3QgaGF2ZSB0aGUKUEZfU1VTUEVORF9UQVNLIGZsYWcgc2V0IHRvIGNhdGNoIGlmIGEgZGlmZmVy
-ZW50IHRhc2sgY2FsbHMKdGhhd19wcm9jZXNzZXMgdGhhbiB0aGUgb25lIHRoYXQgY2FsbGVkIGZy
-ZWV6ZV9wcm9jZXNzZXMsIGxlYXZpbmcKYSB0YXNrIHdpdGggUEZfU1VTUEVORF9UQVNLIHBlcm1h
-bmVudGx5IHNldCBvbiBpdC4KClRocmVhZHMgdGhhdCBzcGF3biBvZmYgYSB0YXNrIHdpdGggUEZf
-U1VTUEVORF9UQVNLIHNldCAod2hpY2gKc3dzdXNwIGRvZXMpIHdpbGwgYWxzbyBoYXZlIFBGX1NV
-U1BFTkRfVEFTSyBzZXQsIHByZXZlbnRpbmcgdGhlbQpmcm9tIGZyZWV6aW5nIHdoaWxlIHRoZXkg
-YXJlIGhlbHBpbmcgd2l0aCBzdXNwZW5kLCBidXQgdGhleSBuZWVkCnRvIGJlIGRlYWQgYnkgdGhl
-IHRpbWUgc3VzcGVuZCBpcyB0cmlnZ2VyZWQsIG90aGVyd2lzZSB0aGV5IG1heQpydW4gd2hlbiB1
-c2Vyc3BhY2UgaXMgZXhwZWN0ZWQgdG8gYmUgZnJvemVuLiAgQWRkIGEgV0FSTl9PTiBpbgp0aGF3
-X3Byb2Nlc3NlcyBpZiBtb3JlIHRoYW4gb25lIHRocmVhZCBoYXMgdGhlIFBGX1NVU1BFTkRfVEFT
-SwpmbGFnIHNldC4KClJlcG9ydGVkLWJ5OiBNaWNoYWVsIExldW4gPGxrbWwyMDEzMDEyNkBuZXd0
-b24ubGV1bi5uZXQ+ClNpZ25lZC1vZmYtYnk6IENvbGluIENyb3NzIDxjY3Jvc3NAYW5kcm9pZC5j
-b20+Ci0tLQogaW5jbHVkZS9saW51eC9zY2hlZC5oICB8ICAxICsKIGtlcm5lbC9mcmVlemVyLmMg
-ICAgICAgfCAgMiArLQoga2VybmVsL3Bvd2VyL3Byb2Nlc3MuYyB8IDExICsrKysrKysrKysrCiAz
-IGZpbGVzIGNoYW5nZWQsIDEzIGluc2VydGlvbnMoKyksIDEgZGVsZXRpb24oLSkKCmRpZmYgLS1n
-aXQgYS9pbmNsdWRlL2xpbnV4L3NjaGVkLmggYi9pbmNsdWRlL2xpbnV4L3NjaGVkLmgKaW5kZXgg
-NTBkMDRiOS4uZDcyMjQ5MCAxMDA2NDQKLS0tIGEvaW5jbHVkZS9saW51eC9zY2hlZC5oCisrKyBi
-L2luY2x1ZGUvbGludXgvc2NoZWQuaApAQCAtMTYyOCw2ICsxNjI4LDcgQEAgZXh0ZXJuIHZvaWQg
-dGhyZWFkX2dyb3VwX2NwdXRpbWVfYWRqdXN0ZWQoc3RydWN0IHRhc2tfc3RydWN0ICpwLCBjcHV0
-aW1lX3QgKnV0LAogI2RlZmluZSBQRl9NRU1QT0xJQ1kJMHgxMDAwMDAwMAkvKiBOb24tZGVmYXVs
-dCBOVU1BIG1lbXBvbGljeSAqLwogI2RlZmluZSBQRl9NVVRFWF9URVNURVIJMHgyMDAwMDAwMAkv
-KiBUaHJlYWQgYmVsb25ncyB0byB0aGUgcnQgbXV0ZXggdGVzdGVyICovCiAjZGVmaW5lIFBGX0ZS
-RUVaRVJfU0tJUAkweDQwMDAwMDAwCS8qIEZyZWV6ZXIgc2hvdWxkIG5vdCBjb3VudCBpdCBhcyBm
-cmVlemFibGUgKi8KKyNkZWZpbmUgUEZfU1VTUEVORF9UQVNLIDB4ODAwMDAwMDAgICAgICAvKiB0
-aGlzIHRocmVhZCBjYWxsZWQgZnJlZXplX3Byb2Nlc3NlcyBhbmQgc2hvdWxkIG5vdCBiZSBmcm96
-ZW4gKi8KIAogLyoKICAqIE9ubHkgdGhlIF9jdXJyZW50XyB0YXNrIGNhbiByZWFkL3dyaXRlIHRv
-IHRzay0+ZmxhZ3MsIGJ1dCBvdGhlcgpkaWZmIC0tZ2l0IGEva2VybmVsL2ZyZWV6ZXIuYyBiL2tl
-cm5lbC9mcmVlemVyLmMKaW5kZXggOGIyYWZjMS4uYjQ2MmZhMSAxMDA2NDQKLS0tIGEva2VybmVs
-L2ZyZWV6ZXIuYworKysgYi9rZXJuZWwvZnJlZXplci5jCkBAIC0zMyw3ICszMyw3IEBAIHN0YXRp
-YyBERUZJTkVfU1BJTkxPQ0soZnJlZXplcl9sb2NrKTsKICAqLwogYm9vbCBmcmVlemluZ19zbG93
-X3BhdGgoc3RydWN0IHRhc2tfc3RydWN0ICpwKQogewotCWlmIChwLT5mbGFncyAmIFBGX05PRlJF
-RVpFKQorCWlmIChwLT5mbGFncyAmIChQRl9OT0ZSRUVaRSB8IFBGX1NVU1BFTkRfVEFTSykpCiAJ
-CXJldHVybiBmYWxzZTsKIAogCWlmIChwbV9ub3NpZ19mcmVlemluZyB8fCBjZ3JvdXBfZnJlZXpp
-bmcocCkpCmRpZmYgLS1naXQgYS9rZXJuZWwvcG93ZXIvcHJvY2Vzcy5jIGIva2VybmVsL3Bvd2Vy
-L3Byb2Nlc3MuYwppbmRleCBmYzBkZjg0Li4wNmVjODg2IDEwMDY0NAotLS0gYS9rZXJuZWwvcG93
-ZXIvcHJvY2Vzcy5jCisrKyBiL2tlcm5lbC9wb3dlci9wcm9jZXNzLmMKQEAgLTEwOSw2ICsxMDks
-OCBAQCBzdGF0aWMgaW50IHRyeV90b19mcmVlemVfdGFza3MoYm9vbCB1c2VyX29ubHkpCiAKIC8q
-KgogICogZnJlZXplX3Byb2Nlc3NlcyAtIFNpZ25hbCB1c2VyIHNwYWNlIHByb2Nlc3NlcyB0byBl
-bnRlciB0aGUgcmVmcmlnZXJhdG9yLgorICogVGhlIGN1cnJlbnQgdGhyZWFkIHdpbGwgbm90IGJl
-IGZyb3plbi4gIFRoZSBzYW1lIHByb2Nlc3MgdGhhdCBjYWxscworICogZnJlZXplX3Byb2Nlc3Nl
-cyBtdXN0IGxhdGVyIGNhbGwgdGhhd19wcm9jZXNzZXMuCiAgKgogICogT24gc3VjY2VzcywgcmV0
-dXJucyAwLiAgT24gZmFpbHVyZSwgLWVycm5vIGFuZCBzeXN0ZW0gaXMgZnVsbHkgdGhhd2VkLgog
-ICovCkBAIC0xMjAsNiArMTIyLDkgQEAgaW50IGZyZWV6ZV9wcm9jZXNzZXModm9pZCkKIAlpZiAo
-ZXJyb3IpCiAJCXJldHVybiBlcnJvcjsKIAorCS8qIE1ha2Ugc3VyZSB0aGlzIHRhc2sgZG9lc24n
-dCBnZXQgZnJvemVuICovCisJY3VycmVudC0+ZmxhZ3MgfD0gUEZfU1VTUEVORF9UQVNLOworCiAJ
-aWYgKCFwbV9mcmVlemluZykKIAkJYXRvbWljX2luYygmc3lzdGVtX2ZyZWV6aW5nX2NudCk7CiAK
-QEAgLTE2OCw2ICsxNzMsNyBAQCBpbnQgZnJlZXplX2tlcm5lbF90aHJlYWRzKHZvaWQpCiB2b2lk
-IHRoYXdfcHJvY2Vzc2VzKHZvaWQpCiB7CiAJc3RydWN0IHRhc2tfc3RydWN0ICpnLCAqcDsKKwlz
-dHJ1Y3QgdGFza19zdHJ1Y3QgKmN1cnIgPSBjdXJyZW50OwogCiAJaWYgKHBtX2ZyZWV6aW5nKQog
-CQlhdG9taWNfZGVjKCZzeXN0ZW1fZnJlZXppbmdfY250KTsKQEAgLTE4MiwxMCArMTg4LDE1IEBA
-IHZvaWQgdGhhd19wcm9jZXNzZXModm9pZCkKIAogCXJlYWRfbG9jaygmdGFza2xpc3RfbG9jayk7
-CiAJZG9fZWFjaF90aHJlYWQoZywgcCkgeworCQkvKiBObyBvdGhlciB0aHJlYWRzIHNob3VsZCBo
-YXZlIFBGX1NVU1BFTkRfVEFTSyBzZXQgKi8KKwkJV0FSTl9PTigocCAhPSBjdXJyKSAmJiAocC0+
-ZmxhZ3MgJiBQRl9TVVNQRU5EX1RBU0spKTsKIAkJX190aGF3X3Rhc2socCk7CiAJfSB3aGlsZV9l
-YWNoX3RocmVhZChnLCBwKTsKIAlyZWFkX3VubG9jaygmdGFza2xpc3RfbG9jayk7CiAKKwlXQVJO
-X09OKCEoY3Vyci0+ZmxhZ3MgJiBQRl9TVVNQRU5EX1RBU0spKTsKKwljdXJyLT5mbGFncyAmPSB+
-UEZfU1VTUEVORF9UQVNLOworCiAJdXNlcm1vZGVoZWxwZXJfZW5hYmxlKCk7CiAKIAlzY2hlZHVs
-ZSgpOwotLSAKMS44LjMKCg==
---047d7b5d4f2ec4c20204e233aeae--
+The way I see it, as far as our discussion goes, it looks like I have a
+single NFS server with three IP addresses, and the server happens to
+copy its data to another server just in case. I haven't switched over
+since I last upgraded.
+
+Having said that, I can see where you're coming from. My particular
+configuration is unnecessarily complicated for testing this problem.
+I shall configure some other boxes more straightforwardly and hammer
+them. Are there any good nfs stress-tests you can suggest?
+
+Yours,
+
+Larry.
