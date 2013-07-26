@@ -1,162 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from pfw.demon.co.uk ([62.49.22.168]:45155 "EHLO pfw.demon.co.uk"
+Received: from mx1.redhat.com ([209.132.183.28]:12308 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757321Ab3GZMlI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Jul 2013 08:41:08 -0400
-Date: Fri, 26 Jul 2013 12:41:01 +0000
-From: Larry Keegan <lk@pfw.demon.co.uk>
+	id S1758257Ab3GZQE6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Jul 2013 12:04:58 -0400
+Date: Fri, 26 Jul 2013 12:04:55 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
 To: Jeff Layton <jlayton@redhat.com>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: Re: nfs client: Now you see it, now you don't (aka spurious ESTALE
- errors)
-Message-ID: <20130726124101.058df8dc@cs3.al.itld>
-In-Reply-To: <20130725141828.1862a1e1@tlielax.poochiereds.net>
-References: <20130725134515.67af44e2@cs3.al.itld>
- <20130725101143.6a22cb81@corrin.poochiereds.net>
- <20130725170526.6e54c7db@cs3.al.itld>
- <20130725141828.1862a1e1@tlielax.poochiereds.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 14/16] nfsd4: delay setting current_fh in open
+Message-ID: <20130726160455.GB15846@pad.fieldses.org>
+References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+ <1374094217-31493-16-git-send-email-bfields@redhat.com>
+ <20130726071153.1fd5a416@corrin.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130726071153.1fd5a416@corrin.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 25 Jul 2013 14:18:28 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
-> On Thu, 25 Jul 2013 17:05:26 +0000
-> Larry Keegan <lk@pfw.demon.co.uk> wrote:
+On Fri, Jul 26, 2013 at 07:11:53AM -0400, Jeff Layton wrote:
+> On Wed, 17 Jul 2013 16:50:15 -0400
+> "J. Bruce Fields" <bfields@redhat.com> wrote:
 > 
-> > On Thu, 25 Jul 2013 10:11:43 -0400
-> > Jeff Layton <jlayton@redhat.com> wrote:
-> > > On Thu, 25 Jul 2013 13:45:15 +0000
-> > > Larry Keegan <lk@pfw.demon.co.uk> wrote:
-> > > 
-> > > > Dear Chaps,
-> > > > 
-> > > > I am experiencing some inexplicable NFS behaviour which I would
-> > > > like to run past you.
-> > > 
-> > > Were these machines running older kernels before this started
-> > > happening? What kernel did you upgrade from if so?
-> > > 
-> > [snip out my long rambling reply]
-> > > What might be helpful is to do some network captures when the
-> > > problem occurs. What we want to know is whether the ESTALE errors
-> > > are coming from the server, or if the client is generating them.
-> > > That'll narrow down where we need to look for problems.
+> > From: "J. Bruce Fields" <bfields@redhat.com>
 > > 
-> > As it was giving me gyp during typing I tried to capture some NFS
-> > traffic. Unfortunately claws-mail started a mail box check in the
-> > middle of this and the problem disappeared! Normally it's claws
-> > which starts this. It'll come along again soon enough and I'll send
-> > a trace.
+> > This is basically a no-op, to simplify a following patch.
 > > 
-> Ok, we had a number of changes to how ESTALE errors are handled over
-> the last few releases. When you mentioned 3.10, I had assumed that you
-> might be hitting a regression in one of those, but those went in well
-> after the 3.4 series.
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  fs/nfsd/nfs4proc.c |   36 ++++++++++++++++++++----------------
+> >  1 file changed, 20 insertions(+), 16 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> > index a7cee86..4c0cbeb 100644
+> > --- a/fs/nfsd/nfs4proc.c
+> > +++ b/fs/nfsd/nfs4proc.c
+> > @@ -230,17 +230,17 @@ static void nfsd4_set_open_owner_reply_cache(struct nfsd4_compound_state *cstate
+> >  }
+> >  
+> >  static __be32
+> > -do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
+> > +do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state
+> > +*cstate, struct nfsd4_open *open, struct svc_fh **resfh)
+> 	^^^
+> nit: weird indentation here
+
+Thanks, fixed.--b.
+
 > 
-> Captures are probably your best bet. My suspicion is that the server
-> is returning these ESTALE errors occasionally, but it would be best to
-> have you confirm that. They may also help make sense of why it's
-> occurring...
+> >  {
+> >  	struct svc_fh *current_fh = &cstate->current_fh;
+> > -	struct svc_fh *resfh;
+> >  	int accmode;
+> >  	__be32 status;
+> >  
+> > -	resfh = kmalloc(sizeof(struct svc_fh), GFP_KERNEL);
+> > -	if (!resfh)
+> > +	*resfh = kmalloc(sizeof(struct svc_fh), GFP_KERNEL);
+> > +	if (!*resfh)
+> >  		return nfserr_jukebox;
+> > -	fh_init(resfh, NFS4_FHSIZE);
+> > +	fh_init(*resfh, NFS4_FHSIZE);
+> >  	open->op_truncate = 0;
+> >  
+> >  	if (open->op_create) {
+> > @@ -265,7 +265,7 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
+> >  		 */
+> >  		status = do_nfsd_create(rqstp, current_fh, open->op_fname.data,
+> >  					open->op_fname.len, &open->op_iattr,
+> > -					resfh, open->op_createmode,
+> > +					*resfh, open->op_createmode,
+> >  					(u32 *)open->op_verf.data,
+> >  					&open->op_truncate, &open->op_created);
+> >  
+> > @@ -282,29 +282,26 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
+> >  							FATTR4_WORD1_TIME_MODIFY);
+> >  	} else {
+> >  		status = nfsd_lookup(rqstp, current_fh,
+> > -				     open->op_fname.data, open->op_fname.len, resfh);
+> > +				     open->op_fname.data, open->op_fname.len, *resfh);
+> >  		fh_unlock(current_fh);
+> >  	}
+> >  	if (status)
+> >  		goto out;
+> > -	status = nfsd_check_obj_isreg(resfh);
+> > +	status = nfsd_check_obj_isreg(*resfh);
+> >  	if (status)
+> >  		goto out;
+> >  
+> >  	if (is_create_with_attrs(open) && open->op_acl != NULL)
+> > -		do_set_nfs4_acl(rqstp, resfh, open->op_acl, open->op_bmval);
+> > +		do_set_nfs4_acl(rqstp, *resfh, open->op_acl, open->op_bmval);
+> >  
+> > -	nfsd4_set_open_owner_reply_cache(cstate, open, resfh);
+> > +	nfsd4_set_open_owner_reply_cache(cstate, open, *resfh);
+> >  	accmode = NFSD_MAY_NOP;
+> >  	if (open->op_created ||
+> >  			open->op_claim_type == NFS4_OPEN_CLAIM_DELEGATE_CUR)
+> >  		accmode |= NFSD_MAY_OWNER_OVERRIDE;
+> > -	status = do_open_permission(rqstp, resfh, open, accmode);
+> > +	status = do_open_permission(rqstp, *resfh, open, accmode);
+> >  	set_change_info(&open->op_cinfo, current_fh);
+> > -	fh_dup2(current_fh, resfh);
+> >  out:
+> > -	fh_put(resfh);
+> > -	kfree(resfh);
+> >  	return status;
+> >  }
+> >  
+> > @@ -357,6 +354,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  	   struct nfsd4_open *open)
+> >  {
+> >  	__be32 status;
+> > +	struct svc_fh *resfh = NULL;
+> >  	struct nfsd4_compoundres *resp;
+> >  	struct net *net = SVC_NET(rqstp);
+> >  	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+> > @@ -423,7 +421,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  	switch (open->op_claim_type) {
+> >  		case NFS4_OPEN_CLAIM_DELEGATE_CUR:
+> >  		case NFS4_OPEN_CLAIM_NULL:
+> > -			status = do_open_lookup(rqstp, cstate, open);
+> > +			status = do_open_lookup(rqstp, cstate, open, &resfh);
+> >  			if (status)
+> >  				goto out;
+> >  			break;
+> > @@ -439,6 +437,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  			status = do_open_fhandle(rqstp, cstate, open);
+> >  			if (status)
+> >  				goto out;
+> > +			resfh = &cstate->current_fh;
+> >  			break;
+> >  		case NFS4_OPEN_CLAIM_DELEG_PREV_FH:
+> >               	case NFS4_OPEN_CLAIM_DELEGATE_PREV:
+> > @@ -458,9 +457,14 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  	 * successful, it (1) truncates the file if open->op_truncate was
+> >  	 * set, (2) sets open->op_stateid, (3) sets open->op_delegation.
+> >  	 */
+> > -	status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
+> > +	status = nfsd4_process_open2(rqstp, resfh, open);
+> >  	WARN_ON(status && open->op_created);
+> >  out:
+> > +	if (resfh && resfh != &cstate->current_fh) {
+> > +		fh_dup2(&cstate->current_fh, resfh);
+> > +		fh_put(resfh);
+> > +		kfree(resfh);
+> > +	}
+> >  	nfsd4_cleanup_open_state(open, status);
+> >  	if (open->op_openowner && !nfsd4_has_session(cstate))
+> >  		cstate->replay_owner = &open->op_openowner->oo_owner;
 > 
-
-Dear Jeff,
-
-I now have a good and a bad packet capture. I can run them through
-tshark -V but if I do this, they're really long, so I'm wondering how
-best to post them. I've posted the summaries below.
-
-The set-up is as follows: I'm running a few xterms on my desktop (the
-affected client) as well as claws-mail using the mailmbox plugin.
-Claws keeps a cache of the mailbox in .clawsmail/tagsdb/<foldername>.
->From time to time I blast a load of mail into these mail boxes using
-procmail. This seems to demonstrate the problem most of the time. After
-a few minutes everything gets back to normal.
-
-The actual mail is being delivered on my file server pair directly
-into /home/larry/Mail/<foldername>. Both file servers use automount to
-mount the same filesystem and attempt to deliver mail into the boxes
-simultaneously. Clearly the .lock files stop them stomping on each
-other. This works well.
-
-When it's in the mood to work, the test session on my desktop looks
-like this:
-
-# ls .claws-mail/tagsdb
-#mailmbox  #mh
-# _
-
-When it doesn't it looks like this:
-
-# ls .claws-mail/tagsdb
-ls: cannot open directory .claws-mail/tagsdb: Stale NFS file handle
-# _
-
-I captured the packets on the network desktop. All else was quiet on
-the network, at least as far as TCP traffic was concerned. Here are the
-summaries:
-
-# tshark -r good tcp
- 10 1.304139000   10.1.1.139 -> 10.1.1.173   NFS 238 V4 Call ACCESS FH:0x4e5465ab, [Check: RD LU MD XT DL]
- 11 1.304653000   10.1.1.173 -> 10.1.1.139   NFS 194 V4 Reply (Call In 10) ACCESS, [Allowed: RD LU MD XT DL]
- 12 1.304694000   10.1.1.139 -> 10.1.1.173   TCP 66 gdoi > nfs [ACK] Seq=173 Ack=129 Win=3507 Len=0 TSval=119293240 TSecr=440910222
- 13 1.304740000   10.1.1.139 -> 10.1.1.173   NFS 250 V4 Call LOOKUP DH:0x4e5465ab/tagsdb
- 14 1.305225000   10.1.1.173 -> 10.1.1.139   NFS 310 V4 Reply (Call In 13) LOOKUP
- 15 1.305283000   10.1.1.139 -> 10.1.1.173   NFS 238 V4 Call ACCESS FH:0x4e5465ab, [Check: RD LU MD XT DL]
- 16 1.305798000   10.1.1.173 -> 10.1.1.139   NFS 194 V4 Reply (Call In 15) ACCESS, [Allowed: RD LU MD XT DL]
- 17 1.305835000   10.1.1.139 -> 10.1.1.173   NFS 250 V4 Call LOOKUP DH:0x4e5465ab/tagsdb
- 18 1.306330000   10.1.1.173 -> 10.1.1.139   NFS 310 V4 Reply (Call In 17) LOOKUP
- 19 1.306373000   10.1.1.139 -> 10.1.1.173   NFS 230 V4 Call GETATTR FH:0x445c531a
- 20 1.306864000   10.1.1.173 -> 10.1.1.139   NFS 262 V4 Reply (Call In 19) GETATTR
- 21 1.346003000   10.1.1.139 -> 10.1.1.173   TCP 66 gdoi > nfs [ACK]  Seq=877 Ack=941 Win=3507 Len=0 TSval=119293282 TSecr=440910225
-# tshark -r bad tcp
- 14 2.078769000   10.1.1.139 -> 10.1.1.173   NFS 238 V4 Call ACCESS FH:0x76aee435, [Check: RD LU MD XT DL]
- 15 2.079266000   10.1.1.173 -> 10.1.1.139   NFS 194 V4 Reply (Call In 14) ACCESS, [Allowed: RD LU MD XT DL]
- 16 2.079296000   10.1.1.139 -> 10.1.1.173   TCP 66 gdoi > nfs [ACK] Seq=173 Ack=129 Win=3507 Len=0 TSval=180576023 TSecr=502193004
- 17 2.079338000   10.1.1.139 -> 10.1.1.173   NFS 238 V4 Call ACCESS FH:0x4e5465ab, [Check: RD LU MD XT DL]
- 18 2.079797000   10.1.1.173 -> 10.1.1.139   NFS 194 V4 Reply (Call In 17) ACCESS, [Allowed: RD LU MD XT DL]
- 19 2.079834000   10.1.1.139 -> 10.1.1.173   NFS 230 V4 Call GETATTR FH:0xb12cdc45
- 20 2.080331000   10.1.1.173 -> 10.1.1.139   NFS 262 V4 Reply (Call In 19) GETATTR
- 21 2.080410000   10.1.1.139 -> 10.1.1.173   NFS 250 V4 Call LOOKUP DH:0x4e5465ab/tagsdb
- 22 2.080903000   10.1.1.173 -> 10.1.1.139   NFS 310 V4 Reply (Call In 21) LOOKUP
- 23 2.080982000   10.1.1.139 -> 10.1.1.173   NFS 226 V4 Call GETATTR FH:0xb12cdc45
- 24 2.081477000   10.1.1.173 -> 10.1.1.139   NFS 162 V4 Reply (Call In 23) GETATTR
- 25 2.081509000   10.1.1.139 -> 10.1.1.173   NFS 230 V4 Call GETATTR FH:0xb12cdc45
- 26 2.082010000   10.1.1.173 -> 10.1.1.139   NFS 178 V4 Reply (Call In 25) GETATTR
- 27 2.082040000   10.1.1.139 -> 10.1.1.173   NFS 226 V4 Call GETATTR FH:0xb12cdc45
- 28 2.082542000   10.1.1.173 -> 10.1.1.139   NFS 142 V4 Reply (Call In 27) GETATTR
- 29 2.089525000   10.1.1.139 -> 10.1.1.173   NFS 226 V4 Call GETATTR FH:0xb12cdc45
- 30 2.089996000   10.1.1.173 -> 10.1.1.139   NFS 162 V4 Reply (Call In 29) GETATTR
- 31 2.090028000   10.1.1.139 -> 10.1.1.173   NFS 230 V4 Call GETATTR FH:0xb12cdc45
- 32 2.090529000   10.1.1.173 -> 10.1.1.139   NFS 262 V4 Reply (Call In 31) GETATTR
- 33 2.090577000   10.1.1.139 -> 10.1.1.173   NFS 230 V4 Call GETATTR FH:0x4e5465ab
- 34 2.091061000   10.1.1.173 -> 10.1.1.139   NFS 262 V4 Reply (Call In 33) GETATTR
- 35 2.091110000   10.1.1.139 -> 10.1.1.173   NFS 250 V4 Call LOOKUP DH:0x4e5465ab/tagsdb
- 36 2.091593000   10.1.1.173 -> 10.1.1.139   NFS 310 V4 Reply (Call In 35) LOOKUP
- 37 2.091657000   10.1.1.139 -> 10.1.1.173   NFS 226 V4 Call GETATTR FH:0xb12cdc45
- 38 2.092126000   10.1.1.173 -> 10.1.1.139   NFS 162 V4 Reply (Call In 37) GETATTR
- 39 2.092157000   10.1.1.139 -> 10.1.1.173   NFS 230 V4 Call GETATTR FH:0xb12cdc45
- 40 2.092658000   10.1.1.173 -> 10.1.1.139   NFS 178 V4 Reply (Call In 39) GETATTR
- 41 2.092684000   10.1.1.139 -> 10.1.1.173   NFS 226 V4 Call GETATTR FH:0xb12cdc45
- 42 2.093150000   10.1.1.173 -> 10.1.1.139   NFS 142 V4 Reply (Call In 41) GETATTR
- 43 2.100520000   10.1.1.139 -> 10.1.1.173   NFS 226 V4 Call GETATTR FH:0xb12cdc45
- 44 2.101014000   10.1.1.173 -> 10.1.1.139   NFS 162 V4 Reply (Call In 43) GETATTR
- 45 2.101040000   10.1.1.139 -> 10.1.1.173   NFS 230 V4 Call GETATTR FH:0xb12cdc45
- 46 2.101547000   10.1.1.173 -> 10.1.1.139   NFS 262 V4 Reply (Call In 45) GETATTR
- 47 2.141500000   10.1.1.139 -> 10.1.1.173   TCP 66 gdoi > nfs [ACK] Seq=2657 Ack=2289 Win=3507 Len=0 TSval=180576086 TSecr=502193026
-# _
-
-The first thing that strikes me is the bad trace is much longer. This
-strikes me as reasonable because as well as the ESTALE problem I've
-noticed that the whole system seems sluggish. claws-mail is
-particularly so because it keeps saving my typing into a drafts
-mailbox, and because claws doesn't really understand traditional
-mboxes, it spends an inordinate amount of time locking and unlocking
-the boxes for each message in them. Claws also spews tracebacks
-frequently and it crashes from time to time, something it never did
-before the ESTALE problem occurred.
-
-Yours,
-
-Larry
+> Acked-by: Jeff Layton <jlayton@redhat.com>
