@@ -1,69 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:29065 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:27952 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753557Ab3GIUle (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Jul 2013 16:41:34 -0400
-Date: Tue, 9 Jul 2013 16:41:30 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
+	id S1756723Ab3GZLYC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Jul 2013 07:24:02 -0400
+Date: Fri, 26 Jul 2013 07:24:35 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
 Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Tyler Hicks <tyhicks@canonical.com>,
-        Dustin Kirkland <dustin.kirkland@gazzang.com>
-Subject: Re: [PATCH 11/12] locks: break delegations on link
-Message-ID: <20130709204130.GJ32574@pad.fieldses.org>
-References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
- <1372882356-14168-12-git-send-email-bfields@redhat.com>
- <20130709091617.1c175da4@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130709091617.1c175da4@tlielax.poochiereds.net>
+        linux-fsdevel@vger.kernel.org, Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 16/16] nfsd4: break only delegations when appropriate
+Message-ID: <20130726072435.275a3b76@corrin.poochiereds.net>
+In-Reply-To: <1374094217-31493-18-git-send-email-bfields@redhat.com>
+References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+	<1374094217-31493-18-git-send-email-bfields@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 09, 2013 at 09:16:17AM -0400, Jeff Layton wrote:
-> On Wed,  3 Jul 2013 16:12:35 -0400
-> "J. Bruce Fields" <bfields@redhat.com> wrote:
-> 
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > Cc: Tyler Hicks <tyhicks@canonical.com>
-> > Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > ---
-> >  fs/ecryptfs/inode.c |    2 +-
-> >  fs/namei.c          |   17 +++++++++++++----
-> >  fs/nfsd/vfs.c       |    2 +-
-> >  include/linux/fs.h  |    2 +-
-> >  4 files changed, 16 insertions(+), 7 deletions(-)
-> > 
-> > diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-> > index af42d88..19e4435 100644
-> > --- a/fs/ecryptfs/inode.c
-> > +++ b/fs/ecryptfs/inode.c
-> > @@ -475,7 +475,7 @@ static int ecryptfs_link(struct dentry *old_dentry, struct inode *dir,
-> >  	dget(lower_new_dentry);
-> >  	lower_dir_dentry = lock_parent(lower_new_dentry);
-> >  	rc = vfs_link(lower_old_dentry, lower_dir_dentry->d_inode,
-> > -		      lower_new_dentry);
-> > +		      lower_new_dentry, NULL);
-> >  	if (rc || !lower_new_dentry->d_inode)
-> >  		goto out_lock;
-> >  	rc = ecryptfs_interpose(lower_new_dentry, new_dentry, dir->i_sb);
-> > diff --git a/fs/namei.c b/fs/namei.c
-> > index be00d37..18267e0 100644
-> > --- a/fs/namei.c
-> > +++ b/fs/namei.c
-> > @@ -3566,7 +3566,7 @@ SYSCALL_DEFINE2(symlink, const char __user *, oldname, const char __user *, newn
-> >  	return sys_symlinkat(oldname, AT_FDCWD, newname);
-> >  }
-> >  
-> > -int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry)
-> > +int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry, struct inode **delegated_inode)
-> 
-> A kerneldoc comment would be nice here. Ditto for vfs_rename* in the
-> previous patch...
+On Wed, 17 Jul 2013 16:50:17 -0400
+"J. Bruce Fields" <bfields@redhat.com> wrote:
 
-OK, done locally, using modified versions of the comment for unlink.
-I'll resend the series soon.
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> As a temporary fix, nfsd was breaking all leases on unlink, link,
+> rename, and setattr.
+> 
+> Now that we can distinguish between leases and delegations, we can be
+> nicer and break only the delegations, and not bother lease-holders with
+> operations they don't care about.
+> 
+> And we get to delete some code while we're at it.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/nfsd/vfs.c |   27 ---------------------------
+>  1 file changed, 27 deletions(-)
+> 
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 2586f6d..51a5ede 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -273,13 +273,6 @@ out:
+>  	return err;
+>  }
+>  
+> -static int nfsd_break_lease(struct inode *inode)
+> -{
+> -	if (!S_ISREG(inode->i_mode))
+> -		return 0;
+> -	return break_lease(inode, O_WRONLY | O_NONBLOCK);
+> -}
+> -
+>  /*
+>   * Commit metadata changes to stable storage.
+>   */
+> @@ -422,9 +415,6 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+>  
+>  	err = nfserr_notsync;
+>  	if (!check_guard || guardtime == inode->i_ctime.tv_sec) {
+> -		host_err = nfsd_break_lease(inode);
+> -		if (host_err)
+> -			goto out_nfserr;
+>  		fh_lock(fhp);
+>  
+>  		host_err = notify_change(dentry, iap, NULL);
+> @@ -1735,11 +1725,6 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
+>  	err = nfserr_noent;
+>  	if (!dold->d_inode)
+>  		goto out_dput;
+> -	host_err = nfsd_break_lease(dold->d_inode);
+> -	if (host_err) {
+> -		err = nfserrno(host_err);
+> -		goto out_dput;
+> -	}
+>  	host_err = vfs_link(dold, dirp, dnew, NULL);
+>  	if (!host_err) {
+>  		err = nfserrno(commit_metadata(ffhp));
+> @@ -1833,14 +1818,6 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+>  	if (ffhp->fh_export->ex_path.dentry != tfhp->fh_export->ex_path.dentry)
+>  		goto out_dput_new;
+>  
+> -	host_err = nfsd_break_lease(odentry->d_inode);
+> -	if (host_err)
+> -		goto out_dput_new;
+> -	if (ndentry->d_inode) {
+> -		host_err = nfsd_break_lease(ndentry->d_inode);
+> -		if (host_err)
+> -			goto out_dput_new;
+> -	}
+>  	host_err = vfs_rename(fdir, odentry, tdir, ndentry, NULL);
+>  	if (!host_err) {
+>  		host_err = commit_metadata(tfhp);
+> @@ -1910,16 +1887,12 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+>  	if (!type)
+>  		type = rdentry->d_inode->i_mode & S_IFMT;
+>  
+> -	host_err = nfsd_break_lease(rdentry->d_inode);
+> -	if (host_err)
+> -		goto out_put;
+>  	if (type != S_IFDIR)
+>  		host_err = vfs_unlink(dirp, rdentry, NULL);
+>  	else
+>  		host_err = vfs_rmdir(dirp, rdentry);
+>  	if (!host_err)
+>  		host_err = commit_metadata(fhp);
+> -out_put:
+>  	dput(rdentry);
+>  
+>  out_nfserr:
 
---b.
+Acked-by: Jeff Layton <jlayton@redhat.com>
