@@ -1,203 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53624 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:41227 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756138Ab3GQUuU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 16:50:20 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: [PATCH 01/16] vfs: pull ext4's double-i_mutex-locking into common code
-Date: Wed, 17 Jul 2013 16:50:02 -0400
-Message-Id: <1374094217-31493-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1374094217-31493-1-git-send-email-bfields@redhat.com>
-References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+	id S1755507Ab3GZOTS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Jul 2013 10:19:18 -0400
+Date: Fri, 26 Jul 2013 10:19:16 -0400
+From: "J.Bruce Fields" <bfields@citi.umich.edu>
+To: NeilBrown <neilb@suse.de>
+Cc: Ben Myers <bpm@sgi.com>, Olga Kornievskaia <aglo@citi.umich.edu>,
+        NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSD/sunrpc: avoid deadlock on TCP connection due to
+ memory pressure.
+Message-ID: <20130726141916.GA30651@fieldses.org>
+References: <20130710190727.GA22305@fieldses.org>
+ <20130715143203.51bc583b@notabene.brown>
+ <20130716015803.GA5271@fieldses.org>
+ <20130716140021.312b5b07@notabene.brown>
+ <20130716142430.GA11977@fieldses.org>
+ <20130718000319.GL1681@sgi.com>
+ <20130724210746.GB5777@fieldses.org>
+ <20130725113023.7bcbc347@notabene.brown>
+ <20130725201805.GB17962@fieldses.org>
+ <20130726063303.0d1495b3@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130726063303.0d1495b3@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Fri, Jul 26, 2013 at 06:33:03AM +1000, NeilBrown wrote:
+> On Thu, 25 Jul 2013 16:18:05 -0400 "J.Bruce Fields" <bfields@citi.umich.edu>
+> wrote:
+> 
+> > On Thu, Jul 25, 2013 at 11:30:23AM +1000, NeilBrown wrote:
+> > > 
+> > > Since we enabled auto-tuning for sunrpc TCP connections we do not
+> > > guarantee that there is enough write-space on each connection to
+> > > queue a reply.
+...
+> > This is great, thanks!
+> > 
+> > Inclined to queue it up for 3.11 and stable....
+> 
+> I'd agree for 3.11.
+> It feels a bit border-line for stable.  "dead-lock" and "has been seen in the
+> wild" are technically enough justification...
+> I'd probably mark it as "pleas don't apply to -stable until 3.11 is released"
+> or something like that, just for a bit of breathing space.
+> Your call though.
 
-We want to do this elsewhere as well.
 
-Also catch any attempts to use it for directories (where this ordering
-would conflict with ancestor-first directory ordering in lock_rename).
+So my takeaway from http://lwn.net/Articles/559113/ was that Linus and
+Greg were requesting that:
 
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: Dave Chinner <david@fromorbit.com>
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Acked-by: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/ext4/ext4.h        |    2 --
- fs/ext4/ioctl.c       |    4 ++--
- fs/ext4/move_extent.c |   40 ++--------------------------------------
- fs/inode.c            |   36 ++++++++++++++++++++++++++++++++++++
- include/linux/fs.h    |    3 +++
- 5 files changed, 43 insertions(+), 42 deletions(-)
+	- criteria for -stable and late -rc's should really be about the
+	  same, and
+	- people should follow Documentation/stable-kernel-rules.txt.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b577e45..c8fcdfd 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2699,8 +2699,6 @@ extern void ext4_double_down_write_data_sem(struct inode *first,
- 					    struct inode *second);
- extern void ext4_double_up_write_data_sem(struct inode *orig_inode,
- 					  struct inode *donor_inode);
--void ext4_inode_double_lock(struct inode *inode1, struct inode *inode2);
--void ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2);
- extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 			     __u64 start_orig, __u64 start_donor,
- 			     __u64 len, __u64 *moved_len);
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 9491ac0..12048f7 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -129,7 +129,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 
- 	/* Protect orig inodes against a truncate and make sure,
- 	 * that only 1 swap_inode_boot_loader is running. */
--	ext4_inode_double_lock(inode, inode_bl);
-+	lock_two_nondirectories(inode, inode_bl);
- 
- 	truncate_inode_pages(&inode->i_data, 0);
- 	truncate_inode_pages(&inode_bl->i_data, 0);
-@@ -204,7 +204,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 	ext4_inode_resume_unlocked_dio(inode);
- 	ext4_inode_resume_unlocked_dio(inode_bl);
- 
--	ext4_inode_double_unlock(inode, inode_bl);
-+	unlock_two_nondirectories(inode, inode_bl);
- 
- 	iput(inode_bl);
- 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index e86dddb..f591a75 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -1203,42 +1203,6 @@ mext_check_arguments(struct inode *orig_inode,
- }
- 
- /**
-- * ext4_inode_double_lock - Lock i_mutex on both @inode1 and @inode2
-- *
-- * @inode1:	the inode structure
-- * @inode2:	the inode structure
-- *
-- * Lock two inodes' i_mutex
-- */
--void
--ext4_inode_double_lock(struct inode *inode1, struct inode *inode2)
--{
--	BUG_ON(inode1 == inode2);
--	if (inode1 < inode2) {
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
--	} else {
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
--	}
--}
--
--/**
-- * ext4_inode_double_unlock - Release i_mutex on both @inode1 and @inode2
-- *
-- * @inode1:     the inode that is released first
-- * @inode2:     the inode that is released second
-- *
-- */
--
--void
--ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2)
--{
--	mutex_unlock(&inode1->i_mutex);
--	mutex_unlock(&inode2->i_mutex);
--}
--
--/**
-  * ext4_move_extents - Exchange the specified range of a file
-  *
-  * @o_filp:		file structure of the original file
-@@ -1327,7 +1291,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 		return -EINVAL;
- 	}
- 	/* Protect orig and donor inodes against a truncate */
--	ext4_inode_double_lock(orig_inode, donor_inode);
-+	lock_two_nondirectories(orig_inode, donor_inode);
- 
- 	/* Wait for all existing dio workers */
- 	ext4_inode_block_unlocked_dio(orig_inode);
-@@ -1535,7 +1499,7 @@ out:
- 	ext4_double_up_write_data_sem(orig_inode, donor_inode);
- 	ext4_inode_resume_unlocked_dio(orig_inode);
- 	ext4_inode_resume_unlocked_dio(donor_inode);
--	ext4_inode_double_unlock(orig_inode, donor_inode);
-+	unlock_two_nondirectories(orig_inode, donor_inode);
- 
- 	return ret;
- }
-diff --git a/fs/inode.c b/fs/inode.c
-index d6dfb09..57d273e 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -982,6 +982,42 @@ void unlock_new_inode(struct inode *inode)
- EXPORT_SYMBOL(unlock_new_inode);
- 
- /**
-+ * lock_two_nondirectories - take two i_mutexes on non-directory objects
-+ * @inode1: first inode to lock
-+ * @inode2: second inode to lock
-+ */
-+void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
-+{
-+	WARN_ON_ONCE(S_ISDIR(inode1->i_mode));
-+	if (inode1 == inode2 || !inode2) {
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
-+		return;
-+	}
-+	WARN_ON_ONCE(S_ISDIR(inode2->i_mode));
-+	if (inode1 < inode2) {
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
-+		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
-+	} else {
-+		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
-+	}
-+}
-+EXPORT_SYMBOL(lock_two_nondirectories);
-+
-+/**
-+ * unlock_two_nondirectories - release locks from lock_two_nondirectories()
-+ * @inode1: first inode to unlock
-+ * @inode2: second inode to unlock
-+ */
-+void unlock_two_nondirectories(struct inode *inode1, struct inode *inode2)
-+{
-+	mutex_unlock(&inode1->i_mutex);
-+	if (inode2 && inode2 != inode1)
-+		mutex_unlock(&inode2->i_mutex);
-+}
-+EXPORT_SYMBOL(unlock_two_nondirectories);
-+
-+/**
-  * iget5_locked - obtain an inode from a mounted file system
-  * @sb:		super block of file system
-  * @hashval:	hash value (usually inode number) to get
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 9818747..431427a 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -636,6 +636,9 @@ enum inode_i_mutex_lock_class
- 	I_MUTEX_QUOTA
- };
- 
-+void lock_two_nondirectories(struct inode *, struct inode*);
-+void unlock_two_nondirectories(struct inode *, struct inode*);
-+
- /*
-  * NOTE: in a 32bit arch with a preemptable kernel and
-  * an UP compile the i_size_read/write must be atomic
--- 
-1.7.9.5
+So as an exercise to remind me what those rules are:
 
+Easy questions:
+
+	- "no bigger than 100 lines, with context."  Check.
+	- "It must fix only one thing."  Check.
+	- "real bug that bothers people".  Check.
+	- "tested": yep.  It doesn't actually say "tested on stable
+	  trees", and I recall this did land you with a tricky bug one
+	  time when a prerequisite was omitted from the backport.
+
+Judgement calls:
+
+	- "obviously correct": it's short, but admittedly subtle, and
+	  performance regressions can take a while to get sorted out.
+	- "It must fix a problem that causes a build error (but not for
+	  things marked CONFIG_BROKEN), an oops, a hang, data
+	  corruption, a real security issue, or some "oh, that's not
+	  good" issue.  In short, something critical."  We could argue
+	  that "server stops responding" is critical, though not to the
+	  same degree as a panic.
+	- OR: alternatively: "Serious issues as reported by a user of a
+	  distribution kernel may also be considered if they fix a
+	  notable performance or interactivity issue." The only bz I've
+	  personally seen was the result of artificial testing of some
+	  kind, and it sounds like your case involved a disk failure?
+
+--b.
