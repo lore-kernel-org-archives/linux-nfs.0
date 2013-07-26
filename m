@@ -1,129 +1,145 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:55946 "EHLO mx11.netapp.com"
+Received: from pfw.demon.co.uk ([62.49.22.168]:45620 "EHLO pfw.demon.co.uk"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756461Ab3GVQmQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Jul 2013 12:42:16 -0400
-From: <andros@netapp.com>
-To: <trond.myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 2/4] NFSv4.1 Use clientid management rpc_clnt for fs_locations
-Date: Mon, 22 Jul 2013 12:42:06 -0400
-Message-ID: <1374511328-49579-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1374511328-49579-1-git-send-email-andros@netapp.com>
-References: <1374511328-49579-1-git-send-email-andros@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1760023Ab3GZXVR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Jul 2013 19:21:17 -0400
+Date: Fri, 26 Jul 2013 23:21:11 +0000
+From: Larry Keegan <lk@pfw.demon.co.uk>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Larry Keegan <lk@pfw.demon.co.uk>, Jeff Layton <jlayton@redhat.com>,
+        <linux-nfs@vger.kernel.org>
+Subject: Re: nfs client: Now you see it, now you don't (aka spurious ESTALE
+ errors)
+Message-ID: <20130726232111.2567a941@cs3.al.itld>
+In-Reply-To: <20130726145937.GB30651@fieldses.org>
+References: <20130725134515.67af44e2@cs3.al.itld>
+ <20130725101143.6a22cb81@corrin.poochiereds.net>
+ <20130725170526.6e54c7db@cs3.al.itld>
+ <20130726145937.GB30651@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Fri, 26 Jul 2013 10:59:37 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Thu, Jul 25, 2013 at 05:05:26PM +0000, Larry Keegan wrote:
+> > On Thu, 25 Jul 2013 10:11:43 -0400
+> > Jeff Layton <jlayton@redhat.com> wrote:
+> > > On Thu, 25 Jul 2013 13:45:15 +0000
+> > > Larry Keegan <lk@pfw.demon.co.uk> wrote:
+> > > 
+> > > > Dear Chaps,
+> > > > 
+> > > > I am experiencing some inexplicable NFS behaviour which I would
+> > > > like to run past you.
+> > > > 
+> > > > I have a linux NFS server running kernel 3.10.2 and some clients
+> > > > running the same. The server is actually a pair of identical
+> > > > machines serving up a small number of ext4 filesystems atop
+> > > > drbd. They don't do much apart from serve home directories and
+> > > > deliver mail into them. These have worked just fine for aeons.
+> > > > 
+> > > > The problem I am seeing is that for the past month or so, on and
+> > > > off, one NFS client starts reporting stale NFS file handles on
+> > > > some part of the directory tree exported by the NFS server.
+> > > > During the outage the other parts of the same export remain
+> > > > unaffected. Then, some ten minutes to an hour later they're
+> > > > back to normal. Access to the affected sub-directories remains
+> > > > possible from the server (both directly and via nfs) and from
+> > > > other clients. There do not appear to be any errors on the
+> > > > underlying ext4 filesystems.
+> > > > 
+> > > > Each NFS client seems to get the heebie-jeebies over some
+> > > > directory or other pretty much independently. The problem
+> > > > affects all of the filesystems exported by the NFS server, but
+> > > > clearly I notice it first in home directories, and in
+> > > > particular in my dot subdirectories for things like my mail
+> > > > client and browser. I'd say something's up the spout about 20%
+> > > > of the time.
+> 
+> And the problem affects just that one directory?
 
-As per RFC 3530 and RFC 5661 Security Considerations.
+Yes. It's almost always .claws-mail/tagsdb. Sometimes
+it's .claws-mail/mailmboxcache and sometimes it's (what you would
+call) .mozilla. I suspect this is because very little else is being
+actively changed.
 
-Commit 4edaa308 "NFS: Use "krb5i" to establish NFSv4 state whenever possible"
-uses the nfs_client cl_rpcclient for all clientid management operations.
+>  Ohter files and
+> directories on the same filesystem continue to be accessible?
 
-Remove un-needed rpc_clnt parameter from nfs4_proc_fs_locations and friends.
+Spot on. Furthermore, whilst one client is returning ESTALE the others
+are able to see and modify those same files as if there were no
+problems at all.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4_fs.h       |  2 +-
- fs/nfs/nfs4namespace.c |  2 +-
- fs/nfs/nfs4proc.c      | 13 +++++++------
- 3 files changed, 9 insertions(+), 8 deletions(-)
+After however long it takes the client which was getting ESTALE on
+those directories is back to normal. The client sees the latest version
+of the files if those files have been changed by another client in the
+meantime. IOW if I hadn't been there when the ESTALE had happened, I'd
+never have noticed.
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index ee81e35..97feff2 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -231,7 +231,7 @@ extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
- extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
- extern int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait);
- extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
--extern int nfs4_proc_fs_locations(struct rpc_clnt *, struct inode *, const struct qstr *,
-+extern int nfs4_proc_fs_locations(struct inode *, const struct qstr *,
- 				  struct nfs4_fs_locations *, struct page *);
- extern struct rpc_clnt *nfs4_proc_lookup_mountpoint(struct inode *, struct qstr *,
- 			    struct nfs_fh *, struct nfs_fattr *);
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index cdb0b41..dca2f3a 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -350,7 +350,7 @@ static struct vfsmount *nfs_do_refmount(struct rpc_clnt *client, struct dentry *
- 	dprintk("%s: getting locations for %s/%s\n",
- 		__func__, parent->d_name.name, dentry->d_name.name);
- 
--	err = nfs4_proc_fs_locations(client, parent->d_inode, &dentry->d_name, fs_locations, page);
-+	err = nfs4_proc_fs_locations(parent->d_inode, &dentry->d_name, fs_locations, page);
- 	dput(parent);
- 	if (err != 0 ||
- 	    fs_locations->nlocations <= 0 ||
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 7a846b6..7761802 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2831,7 +2831,7 @@ err_free_label:
-  * Note that we'll actually follow the referral later when
-  * we detect fsid mismatch in inode revalidation
-  */
--static int nfs4_get_referral(struct rpc_clnt *client, struct inode *dir,
-+static int nfs4_get_referral(struct inode *dir,
- 			     const struct qstr *name, struct nfs_fattr *fattr,
- 			     struct nfs_fh *fhandle)
- {
-@@ -2846,7 +2846,7 @@ static int nfs4_get_referral(struct rpc_clnt *client, struct inode *dir,
- 	if (locations == NULL)
- 		goto out;
- 
--	status = nfs4_proc_fs_locations(client, dir, name, locations, page);
-+	status = nfs4_proc_fs_locations(dir, name, locations, page);
- 	if (status != 0)
- 		goto out;
- 	/* Make sure server returned a different fsid for the referral */
-@@ -3025,7 +3025,7 @@ static int nfs4_proc_lookup_common(struct rpc_clnt **clnt, struct inode *dir,
- 			err = -ENOENT;
- 			goto out;
- 		case -NFS4ERR_MOVED:
--			err = nfs4_get_referral(client, dir, name, fattr, fhandle);
-+			err = nfs4_get_referral(dir, name, fattr, fhandle);
- 			goto out;
- 		case -NFS4ERR_WRONGSEC:
- 			err = -EPERM;
-@@ -5733,7 +5733,7 @@ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
- 	fattr->nlink = 2;
- }
- 
--static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
-+static int _nfs4_proc_fs_locations(struct inode *dir,
- 				   const struct qstr *name,
- 				   struct nfs4_fs_locations *fs_locations,
- 				   struct page *page)
-@@ -5756,6 +5756,7 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
- 		.rpc_argp = &args,
- 		.rpc_resp = &res,
- 	};
-+	struct rpc_clnt *client = NFS_SERVER(dir)->nfs_client->cl_rpcclient;
- 	int status;
- 
- 	dprintk("%s: start\n", __func__);
-@@ -5775,7 +5776,7 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
- 	return status;
- }
- 
--int nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
-+int nfs4_proc_fs_locations(struct inode *dir,
- 			   const struct qstr *name,
- 			   struct nfs4_fs_locations *fs_locations,
- 			   struct page *page)
-@@ -5784,7 +5785,7 @@ int nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(dir),
--				_nfs4_proc_fs_locations(client, dir, name, fs_locations, page),
-+				_nfs4_proc_fs_locations(dir, name, fs_locations, page),
- 				&exception);
- 	} while (exception.retry);
- 	return err;
--- 
-1.8.3.1
+However, if another client (or the server itself with its client hat
+on) starts to experience ESTALE on some directories or others, their
+errors can start and end completely independently. So, for instance I
+might have /home/larry/this/that inaccessible on one NFS client,
+/home/larry/the/other inaccessible on another NFS client, and
+and /home/mary/quite/contrary on another NFS client. Each one bobs up
+and down with no apparent timing relationship with the others.
 
+> > > > The server and clients are using nfs4, although for a while I
+> > > > tried nfs3 without any appreciable difference. I do not have
+> > > > CONFIG_FSCACHE set.
+> > > > 
+> > > > I wonder if anyone could tell me if they have ever come across
+> > > > this before, or what debugging settings might help me diagnose
+> > > > the problem?
+> > > Were these machines running older kernels before this started
+> > > happening? What kernel did you upgrade from if so?
+> > The full story is this:
+> > 
+> > I had a pair of boxes running kernel 3.4.3 with the aforementioned
+> > drbd pacemaker malarkey and some clients running the same.
+> > 
+> > Then I upgraded the machines by moving from plain old dos
+> > partitions to gpt. This necessitated a complete reload of
+> > everything, but there were no software changes. I can be sure that
+> > nothing else was changed because I build my entire operating system
+> > in one ginormous makefile.
+> > 
+> > Rapidly afterwards I switched the motherboards for ones with more
+> > PCI slots. There were no software changes except those relating to
+> > MAC addresses.
+> > 
+> > Next I moved from 100Mbit to gigabit hubs. Then the problems
+> > started.
+> 
+> So both the "good" and "bad" behavior were seen with the same 3.4.3
+> kernel?
+
+Yes. I'm now running 3.10.2, but yes, 3.10.1, 3.10, 3.4.4 and 3.4.3
+all exhibit the same behaviour. I was running 3.10.2 when I made the
+network captures I spoke of.
+
+However, when I first noticed the problem with kernel 3.4.3 it affected
+several filesystems and I thought the machines needed to be rebooted,
+but since then I've been toughing it out. I don't suppose the
+character of the problem has changed at all, but my experience of it
+has, if that makes sense.
+
+> > Anyway, to cut a long story short, this problem seemed to me to be a
+> > file server problem so I replaced network cards, swapped hubs,
+> 
+> Including reverting back to your original configuration with 100Mbit
+> hubs?
+
+No, guilty as charged. I haven't swapped back the /original/
+hubs, and I haven't reconstructed the old hardware arrangement exactly
+(it's a little difficult because those parts are now in use elsewhere),
+but I've done what I considered to be equivalent tests. I'll do some
+more swapping and see if I can shake something out.
+
+Thank you for your suggestions.
+
+Yours,
+
+Larry.
