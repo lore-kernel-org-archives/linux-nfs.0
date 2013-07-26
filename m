@@ -1,118 +1,227 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:37990 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:6451 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752493Ab3GITij (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Jul 2013 15:38:39 -0400
-Date: Tue, 9 Jul 2013 15:38:36 -0400
+	id S1758033Ab3GZQEh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Jul 2013 12:04:37 -0400
+Date: Fri, 26 Jul 2013 12:04:33 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
-To: Jeff Layton <jlayton@poochiereds.net>
+To: Jeff Layton <jlayton@redhat.com>
 Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 09/12] locks: helper functions for delegation breaking
-Message-ID: <20130709193836.GI32574@pad.fieldses.org>
-References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
- <1372882356-14168-10-git-send-email-bfields@redhat.com>
- <20130709092310.476b6ca7@tlielax.poochiereds.net>
+        linux-fsdevel@vger.kernel.org, Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 15/16] nfsd4: close open-deleg/unlink/rename race
+Message-ID: <20130726160433.GA15846@pad.fieldses.org>
+References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+ <1374094217-31493-17-git-send-email-bfields@redhat.com>
+ <20130726072326.56113a2c@corrin.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130709092310.476b6ca7@tlielax.poochiereds.net>
+In-Reply-To: <20130726072326.56113a2c@corrin.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 09, 2013 at 09:23:10AM -0400, Jeff Layton wrote:
-> On Wed,  3 Jul 2013 16:12:33 -0400
+On Fri, Jul 26, 2013 at 07:23:26AM -0400, Jeff Layton wrote:
+> On Wed, 17 Jul 2013 16:50:16 -0400
 > "J. Bruce Fields" <bfields@redhat.com> wrote:
 > 
 > > From: "J. Bruce Fields" <bfields@redhat.com>
 > > 
-> > We'll need the same logic for rename and link.
+> > If a file is unlinked or renamed between the time when we do the local
+> > open and the time when we get the delegation, then we will return to the
+> > client indicating that it holds a delegation even though the file no
+> > longer exists under the name it was open under.
+> > 
+> > But a client performing an open-by-name, when it is returned a
+> > delegation, must be able to assume that the file is still linked at the
+> > name it was opened under.
+> > 
+> > So, pass the parent filehandle into the delegation and lease-setting
+> > code, and use it to re-lookup the file after we get the lease.
 > > 
 > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 > > ---
-> >  fs/namei.c         |   13 +++----------
-> >  include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
-> >  2 files changed, 34 insertions(+), 12 deletions(-)
+> >  fs/nfsd/nfs4proc.c  |    2 +-
+> >  fs/nfsd/nfs4state.c |   52 +++++++++++++++++++++++++++++++++++++++++++--------
+> >  fs/nfsd/xdr4.h      |    3 ++-
+> >  3 files changed, 47 insertions(+), 10 deletions(-)
 > > 
-> > diff --git a/fs/namei.c b/fs/namei.c
-> > index cba3db1..a9d4031 100644
-> > --- a/fs/namei.c
-> > +++ b/fs/namei.c
-> > @@ -3401,14 +3401,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
-> >  	else {
-> >  		error = security_inode_unlink(dir, dentry);
-> >  		if (!error) {
-> > -			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
-> > -			if (error) {
-> > -				if (error == -EWOULDBLOCK && delegated_inode) {
-> > -					*delegated_inode = target;
-> > -					ihold(target);
-> > -				}
-> > +			error = try_break_deleg(target, delegated_inode);
-> > +			if (error)
-> >  				goto out;
-> > -			}
-> >  			error = dir->i_op->unlink(dir, dentry);
-> >  			if (!error)
-> >  				dont_mount(dentry);
-> > @@ -3478,9 +3473,7 @@ exit2:
-> >  		iput(inode);	/* truncate the inode here */
-> >  	inode = NULL;
-> >  	if (delegated_inode) {
-> > -		error = break_deleg(delegated_inode, O_WRONLY);
-> > -		iput(delegated_inode);
-> > -		delegated_inode = NULL;
-> > +		error = break_deleg_wait(&delegated_inode);
-> >  		if (!error)
-> >  			goto retry_deleg;
-> >  	}
-> > diff --git a/include/linux/fs.h b/include/linux/fs.h
-> > index f951588..c37e463 100644
-> > --- a/include/linux/fs.h
-> > +++ b/include/linux/fs.h
-> > @@ -1894,6 +1894,9 @@ extern bool our_mnt(struct vfsmount *mnt);
-> >  
-> >  extern int current_umask(void);
-> >  
-> > +extern void ihold(struct inode * inode);
-> > +extern void iput(struct inode *);
-> > +
-> >  /* /sys/fs */
-> >  extern struct kobject *fs_kobj;
-> >  
-> > @@ -1962,6 +1965,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
-> >  	return 0;
+> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> > index 4c0cbeb..f44b29d 100644
+> > --- a/fs/nfsd/nfs4proc.c
+> > +++ b/fs/nfsd/nfs4proc.c
+> > @@ -457,7 +457,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  	 * successful, it (1) truncates the file if open->op_truncate was
+> >  	 * set, (2) sets open->op_stateid, (3) sets open->op_delegation.
+> >  	 */
+> > -	status = nfsd4_process_open2(rqstp, resfh, open);
+> > +	status = nfsd4_process_open2(rqstp, resfh, open, &cstate->current_fh);
+> >  	WARN_ON(status && open->op_created);
+> >  out:
+> >  	if (resfh && resfh != &cstate->current_fh) {
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index 7c91b6c..193f2bb 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -3018,7 +3018,28 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_delegation *dp, int f
+> >  	return fl;
 > >  }
 > >  
-> > +static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
+> > -static int nfs4_setlease(struct nfs4_delegation *dp)
+> > +static bool nfsd4_name_still_same(struct svc_fh *parent, struct nfsd4_open *open, struct dentry *dentry)
 > > +{
-> > +	int ret;
+> > +	struct xdr_netobj *name = &open->op_fname;
+> > +	struct dentry *res;
+> > +	bool ret;
 > > +
-> > +	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
-> > +	if (ret == -EWOULDBLOCK && delegated_inode) {
-> > +		*delegated_inode = inode;
-> > +		ihold(inode);
-> > +	}
+> > +	if (parent->fh_dentry == dentry)
+> > +		/* This was an open by filehandle, we don't care: */
+> > +		return true;
+> > +	if (nfsd_mountpoint(dentry, parent->fh_export))
+> > +		/* We assume those never change */
+> > +		return true;
+> > +	mutex_lock(&parent->fh_dentry->d_inode->i_mutex); /* XXX? */
+> > +	res = lookup_one_len(name->data, parent->fh_dentry, name->len);
+> > +	mutex_unlock(&parent->fh_dentry->d_inode->i_mutex);
+> > +	ret = res == dentry;
+> > +	if (!IS_ERR(res))
+> > +		dput(res);
 > > +	return ret;
 > > +}
 > > +
+> > +static int nfs4_setlease(struct nfs4_delegation *dp, struct nfsd4_open *open, struct svc_fh *parent)
+> >  {
+> >  	struct nfs4_file *fp = dp->dl_file;
+> >  	struct file_lock *fl;
+> > @@ -3031,23 +3052,37 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+> >  	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
+> >  	if (status)
+> >  		goto out_free;
+> > +	if (!nfsd4_name_still_same(parent, open, fl->fl_file->f_dentry))
+> > +		goto out_unlease;
+> > +	spin_lock(&recall_lock);
+> > +	if (fp->fi_had_conflict)
+> > +		/*
+> > +		 * whoops, already broken, but before we got a chance to
+> > +		 * install our delegation; never mind:
+> > +		 */
+> > +		 goto out_unlock;
+> > +	list_add(&dp->dl_perfile, &fp->fi_delegations);
+> > +	spin_unlock(&recall_lock);
+> >  	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+> >  	fp->fi_lease = fl;
+> >  	fp->fi_deleg_file = get_file(fl->fl_file);
+> >  	atomic_set(&fp->fi_delegees, 1);
+> > -	list_add(&dp->dl_perfile, &fp->fi_delegations);
+> >  	return 0;
+> > +out_unlock:
+> > +	spin_unlock(&recall_lock);
+> > +out_unlease:
+> > +	vfs_setlease(fl->fl_file, F_UNLCK, &fl);
+> >  out_free:
+> >  	locks_free_lock(fl);
+> >  	return -ENOMEM;
 > 
-> Actually, now that I look...
-> 
-> Suppose a vfs_unlink caller passes in a NULL delegated_inode pointer.
-> He'll get back a -EWOULDBLOCK here if there's a delegation on it.
-> Presumably he'll just treat that as a hard error and the delegation
-> would never get broken. Is that expected?
+> Seems a little odd to return -ENOMEM when fi_had_conflict is true, but
+> from looking over the code I think that eventually becomes something
+> else so it shouldn't affect anything.
 
-Yes.
+Yeah.  Errors setting a lease are ignored.  But I suppose eventually
+(e.g. as we implement more 4.1 stuff that tells client more about why
+delegations failed) we may want to use that.  So, probably fix this up
+with something like:
 
-The callers that pass in NULL are callers who should really never
-encounter a write delegation.  E.g. it might happen if you exported a
-filesystem that you're also stacking ecryptfs on top of (assuming that's
-possible).  Maybe I'm missing something, but that looks pointless.
-Erroring out seems a safe way to handle it.
 
-It wouldn't be a problem to convert more of those callers to do the same
-retry loop, it just seems better to avoid the extra spaghetti to support
-what looks like a nutty use case.
+ 	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
+ 	if (status)
+ 		goto out_free;
++	status = -EAGAIN;
+ 	if (!nfsd4_name_still_same(parent, open, fl->fl_file->f_dentry))
+ 		goto out_unlease;
+ 	spin_lock(&recall_lock);
+@@ -3074,7 +3075,7 @@ out_unlease:
+ 	vfs_setlease(fl->fl_file, F_UNLCK, &fl);
+ out_free:
+ 	locks_free_lock(fl);
+-	return -ENOMEM;
++	return status;
+ }
+ 
+in a later patch.
+
+Thanks!
+
+Actually this was an accident, I didn't mean to send out these last four
+"nfsd4:" patches yet.
+
+They depend on that but they're much more nfsd-specific (and probably
+shouldn't go through the vfs tree for example).
 
 --b.
+
+> 
+> >  }
+> >  
+> > -static int nfs4_set_delegation(struct nfs4_delegation *dp)
+> > +static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfsd4_open *open, struct svc_fh *parent)
+> >  {
+> >  	struct nfs4_file *fp = dp->dl_file;
+> >  
+> >  	if (!fp->fi_lease)
+> > -		return nfs4_setlease(dp);
+> > +		return nfs4_setlease(dp, open, parent);
+> >  	spin_lock(&recall_lock);
+> >  	if (fp->fi_had_conflict) {
+> >  		spin_unlock(&recall_lock);
+> > @@ -3089,7 +3124,8 @@ static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status)
+> >   */
+> >  static void
+> >  nfs4_open_delegation(struct net *net, struct svc_fh *fh,
+> > -		     struct nfsd4_open *open, struct nfs4_ol_stateid *stp)
+> > +		     struct nfsd4_open *open, struct nfs4_ol_stateid *stp,
+> > +		     struct svc_fh *parent)
+> >  {
+> >  	struct nfs4_delegation *dp;
+> >  	struct nfs4_openowner *oo = container_of(stp->st_stateowner, struct nfs4_openowner, oo_owner);
+> > @@ -3132,7 +3168,7 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
+> >  	dp = alloc_init_deleg(oo->oo_owner.so_client, stp, fh);
+> >  	if (dp == NULL)
+> >  		goto out_no_deleg;
+> > -	status = nfs4_set_delegation(dp);
+> > +	status = nfs4_set_delegation(dp, open, parent);
+> >  	if (status)
+> >  		goto out_free;
+> >  
+> > @@ -3181,7 +3217,7 @@ static void nfsd4_deleg_xgrade_none_ext(struct nfsd4_open *open,
+> >   * called with nfs4_lock_state() held.
+> >   */
+> >  __be32
+> > -nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_open *open)
+> > +nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_open *open, struct svc_fh *parent)
+> >  {
+> >  	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+> >  	struct nfs4_client *cl = open->op_openowner->oo_owner.so_client;
+> > @@ -3250,7 +3286,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+> >  	* Attempt to hand out a delegation. No error return, because the
+> >  	* OPEN succeeds even if we fail.
+> >  	*/
+> > -	nfs4_open_delegation(SVC_NET(rqstp), current_fh, open, stp);
+> > +	nfs4_open_delegation(SVC_NET(rqstp), current_fh, open, stp, parent);
+> >  nodeleg:
+> >  	status = nfs_ok;
+> >  
+> > diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> > index b3ed644..3058885 100644
+> > --- a/fs/nfsd/xdr4.h
+> > +++ b/fs/nfsd/xdr4.h
+> > @@ -596,7 +596,8 @@ __be32 nfsd4_reclaim_complete(struct svc_rqst *, struct nfsd4_compound_state *,
+> >  extern __be32 nfsd4_process_open1(struct nfsd4_compound_state *,
+> >  		struct nfsd4_open *open, struct nfsd_net *nn);
+> >  extern __be32 nfsd4_process_open2(struct svc_rqst *rqstp,
+> > -		struct svc_fh *current_fh, struct nfsd4_open *open);
+> > +		struct svc_fh *current_fh, struct nfsd4_open *open,
+> > +		struct svc_fh *parent);
+> >  extern void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status);
+> >  extern __be32 nfsd4_open_confirm(struct svc_rqst *rqstp,
+> >  		struct nfsd4_compound_state *, struct nfsd4_open_confirm *oc);
+> 
+> 
+> Acked-by: Jeff Layton <jlayton@redhat.com>
