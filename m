@@ -1,191 +1,322 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39206 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:16951 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933171Ab3GCUMp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Jul 2013 16:12:45 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: [PATCH 01/12] vfs: pull ext4's double-i_mutex-locking into common code
-Date: Wed,  3 Jul 2013 16:12:25 -0400
-Message-Id: <1372882356-14168-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1372882356-14168-1-git-send-email-bfields@redhat.com>
-References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+	id S1751983Ab3GZKu7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Jul 2013 06:50:59 -0400
+Date: Fri, 26 Jul 2013 06:50:55 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
+        Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
+        David Howells <dhowells@redhat.com>,
+        Tyler Hicks <tyhicks@canonical.com>,
+        Dustin Kirkland <dustin.kirkland@gazzang.com>
+Subject: Re: [PATCH 12/16] locks: break delegations on any attribute
+ modification
+Message-ID: <20130726065055.33964c73@corrin.poochiereds.net>
+In-Reply-To: <1374094217-31493-14-git-send-email-bfields@redhat.com>
+References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+	<1374094217-31493-14-git-send-email-bfields@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, 17 Jul 2013 16:50:13 -0400
+"J. Bruce Fields" <bfields@redhat.com> wrote:
 
-We want to do this elsewhere as well.
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> NFSv4 uses leases to guarantee that clients can cache metadata as well
+> as data.
+> 
+> Cc: Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>
+> Cc: David Howells <dhowells@redhat.com>
+> Cc: Tyler Hicks <tyhicks@canonical.com>
+> Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  drivers/base/devtmpfs.c   |    4 ++--
+>  fs/attr.c                 |   25 ++++++++++++++++++++++++-
+>  fs/cachefiles/interface.c |    4 ++--
+>  fs/ecryptfs/inode.c       |    2 +-
+>  fs/hpfs/namei.c           |    2 +-
+>  fs/inode.c                |    6 +++++-
+>  fs/nfsd/vfs.c             |    8 ++++++--
+>  fs/open.c                 |   22 ++++++++++++++++++----
+>  fs/utimes.c               |    9 ++++++++-
+>  include/linux/fs.h        |    2 +-
+>  10 files changed, 68 insertions(+), 16 deletions(-)
+> 
+> diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
+> index 1b8490e..0f38201 100644
+> --- a/drivers/base/devtmpfs.c
+> +++ b/drivers/base/devtmpfs.c
+> @@ -216,7 +216,7 @@ static int handle_create(const char *nodename, umode_t mode, kuid_t uid,
+>  		newattrs.ia_gid = gid;
+>  		newattrs.ia_valid = ATTR_MODE|ATTR_UID|ATTR_GID;
+>  		mutex_lock(&dentry->d_inode->i_mutex);
+> -		notify_change(dentry, &newattrs);
+> +		notify_change(dentry, &newattrs, NULL);
+>  		mutex_unlock(&dentry->d_inode->i_mutex);
+>  
+>  		/* mark as kernel-created inode */
+> @@ -322,7 +322,7 @@ static int handle_remove(const char *nodename, struct device *dev)
+>  			newattrs.ia_valid =
+>  				ATTR_UID|ATTR_GID|ATTR_MODE;
+>  			mutex_lock(&dentry->d_inode->i_mutex);
+> -			notify_change(dentry, &newattrs);
+> +			notify_change(dentry, &newattrs, NULL);
+>  			mutex_unlock(&dentry->d_inode->i_mutex);
+>  			err = vfs_unlink(parent.dentry->d_inode, dentry, NULL);
+>  			if (!err || err == -ENOENT)
+> diff --git a/fs/attr.c b/fs/attr.c
+> index 1449adb..267968d 100644
+> --- a/fs/attr.c
+> +++ b/fs/attr.c
+> @@ -167,7 +167,27 @@ void setattr_copy(struct inode *inode, const struct iattr *attr)
+>  }
+>  EXPORT_SYMBOL(setattr_copy);
+>  
+> -int notify_change(struct dentry * dentry, struct iattr * attr)
+> +/**
+> + * notify_change - modify attributes of a filesytem object
+> + * @dentry:	object affected
+> + * @iattr:	new attributes
+> + * @delegated_inode: returns inode, if the inode is delegated
+> + *
+> + * The caller must hold the i_mutex on the affected object.
+> + *
+> + * If notify_change discovers a delegation in need of breaking,
+> + * it will return -EWOULDBLOCK and return a reference to the inode in
+> + * delegated_inode.  The caller should then break the delegation and
+> + * retry.  Because breaking a delegation may take a long time, the
+> + * caller should drop the i_mutex before doing so.
+> + *
+> + * Alternatively, a caller may pass NULL for delegated_inode.  This may
+> + * be appropriate for callers that expect the underlying filesystem not
+> + * to be NFS exported.  Also, passing NULL is fine for callers holding
+> + * the file open for write, as there can be no conflicting delegation in
+> + * that case.
+> + */
+> +int notify_change(struct dentry * dentry, struct iattr * attr, struct inode **delegated_inode)
+>  {
+>  	struct inode *inode = dentry->d_inode;
+>  	umode_t mode = inode->i_mode;
+> @@ -243,6 +263,9 @@ int notify_change(struct dentry * dentry, struct iattr * attr)
+>  	error = security_inode_setattr(dentry, attr);
+>  	if (error)
+>  		return error;
+> +	error = try_break_deleg(inode, delegated_inode);
+> +	if (error)
+> +		return error;
+>  
+>  	if (inode->i_op->setattr)
+>  		error = inode->i_op->setattr(dentry, attr);
+> diff --git a/fs/cachefiles/interface.c b/fs/cachefiles/interface.c
+> index d4c1206..ccc01f1 100644
+> --- a/fs/cachefiles/interface.c
+> +++ b/fs/cachefiles/interface.c
+> @@ -424,14 +424,14 @@ static int cachefiles_attr_changed(struct fscache_object *_object)
+>  		_debug("discard tail %llx", oi_size);
+>  		newattrs.ia_valid = ATTR_SIZE;
+>  		newattrs.ia_size = oi_size & PAGE_MASK;
+> -		ret = notify_change(object->backer, &newattrs);
+> +		ret = notify_change(object->backer, &newattrs, NULL);
+>  		if (ret < 0)
+>  			goto truncate_failed;
+>  	}
+>  
+>  	newattrs.ia_valid = ATTR_SIZE;
+>  	newattrs.ia_size = ni_size;
+> -	ret = notify_change(object->backer, &newattrs);
+> +	ret = notify_change(object->backer, &newattrs, NULL);
+>  
+>  truncate_failed:
+>  	mutex_unlock(&object->backer->d_inode->i_mutex);
+> diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+> index cb3ac33..7b19ebb 100644
+> --- a/fs/ecryptfs/inode.c
+> +++ b/fs/ecryptfs/inode.c
+> @@ -992,7 +992,7 @@ static int ecryptfs_setattr(struct dentry *dentry, struct iattr *ia)
+>  		lower_ia.ia_valid &= ~ATTR_MODE;
+>  
+>  	mutex_lock(&lower_dentry->d_inode->i_mutex);
+> -	rc = notify_change(lower_dentry, &lower_ia);
+> +	rc = notify_change(lower_dentry, &lower_ia, NULL);
+>  	mutex_unlock(&lower_dentry->d_inode->i_mutex);
+>  out:
+>  	fsstack_copy_attr_all(inode, lower_inode);
+> diff --git a/fs/hpfs/namei.c b/fs/hpfs/namei.c
+> index 345713d..1b39afd 100644
+> --- a/fs/hpfs/namei.c
+> +++ b/fs/hpfs/namei.c
+> @@ -407,7 +407,7 @@ again:
+>  			/*printk("HPFS: truncating file before delete.\n");*/
+>  			newattrs.ia_size = 0;
+>  			newattrs.ia_valid = ATTR_SIZE | ATTR_CTIME;
+> -			err = notify_change(dentry, &newattrs);
+> +			err = notify_change(dentry, &newattrs, NULL);
+>  			put_write_access(inode);
+>  			if (!err)
+>  				goto again;
+> diff --git a/fs/inode.c b/fs/inode.c
+> index 4178e91..82a5a30 100644
+> --- a/fs/inode.c
+> +++ b/fs/inode.c
+> @@ -1642,7 +1642,11 @@ static int __remove_suid(struct dentry *dentry, int kill)
+>  	struct iattr newattrs;
+>  
+>  	newattrs.ia_valid = ATTR_FORCE | kill;
+> -	return notify_change(dentry, &newattrs);
+> +	/*
+> +	 * Note we call this on write, so notify_change will not
+> +	 * encounter any conflicting delegations:
+> +	 */
+> +	return notify_change(dentry, &newattrs, NULL);
+>  }
+>  
+>  int file_remove_suid(struct file *file)
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 5479fff..2586f6d 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -427,7 +427,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+>  			goto out_nfserr;
+>  		fh_lock(fhp);
+>  
+> -		host_err = notify_change(dentry, iap);
+> +		host_err = notify_change(dentry, iap, NULL);
+>  		err = nfserrno(host_err);
+>  		fh_unlock(fhp);
+>  	}
+> @@ -987,7 +987,11 @@ static void kill_suid(struct dentry *dentry)
+>  	ia.ia_valid = ATTR_KILL_SUID | ATTR_KILL_SGID | ATTR_KILL_PRIV;
+>  
+>  	mutex_lock(&dentry->d_inode->i_mutex);
+> -	notify_change(dentry, &ia);
+> +	/*
+> +	 * Note we call this on write, so notify_change will not
+> +	 * encounter any conflicting delegations:
+> +	 */
+> +	notify_change(dentry, &ia, NULL);
+>  	mutex_unlock(&dentry->d_inode->i_mutex);
+>  }
+>  
+> diff --git a/fs/open.c b/fs/open.c
+> index 9156cb0..68e50fd 100644
+> --- a/fs/open.c
+> +++ b/fs/open.c
+> @@ -57,7 +57,8 @@ int do_truncate(struct dentry *dentry, loff_t length, unsigned int time_attrs,
+>  		newattrs.ia_valid |= ret | ATTR_FORCE;
+>  
+>  	mutex_lock(&dentry->d_inode->i_mutex);
+> -	ret = notify_change(dentry, &newattrs);
+> +	/* Note any delegations or leases have already been broken: */
+> +	ret = notify_change(dentry, &newattrs, NULL);
+>  	mutex_unlock(&dentry->d_inode->i_mutex);
+>  	return ret;
+>  }
+> @@ -464,21 +465,28 @@ out:
+>  static int chmod_common(struct path *path, umode_t mode)
+>  {
+>  	struct inode *inode = path->dentry->d_inode;
+> +	struct inode *delegated_inode = NULL;
+>  	struct iattr newattrs;
+>  	int error;
+>  
+>  	error = mnt_want_write(path->mnt);
+>  	if (error)
+>  		return error;
+> +retry_deleg:
+>  	mutex_lock(&inode->i_mutex);
+>  	error = security_path_chmod(path, mode);
+>  	if (error)
+>  		goto out_unlock;
+>  	newattrs.ia_mode = (mode & S_IALLUGO) | (inode->i_mode & ~S_IALLUGO);
+>  	newattrs.ia_valid = ATTR_MODE | ATTR_CTIME;
+> -	error = notify_change(path->dentry, &newattrs);
+> +	error = notify_change(path->dentry, &newattrs, &delegated_inode);
+>  out_unlock:
+>  	mutex_unlock(&inode->i_mutex);
+> +	if (delegated_inode) {
+> +		error = break_deleg_wait(&delegated_inode);
+> +		if (!error)
+> +			goto retry_deleg;
+> +	}
+>  	mnt_drop_write(path->mnt);
+>  	return error;
+>  }
+> @@ -523,6 +531,7 @@ SYSCALL_DEFINE2(chmod, const char __user *, filename, umode_t, mode)
+>  static int chown_common(struct path *path, uid_t user, gid_t group)
+>  {
+>  	struct inode *inode = path->dentry->d_inode;
+> +	struct inode *delegated_inode = NULL;
+>  	int error;
+>  	struct iattr newattrs;
+>  	kuid_t uid;
+> @@ -547,12 +556,17 @@ static int chown_common(struct path *path, uid_t user, gid_t group)
+>  	if (!S_ISDIR(inode->i_mode))
+>  		newattrs.ia_valid |=
+>  			ATTR_KILL_SUID | ATTR_KILL_SGID | ATTR_KILL_PRIV;
+> +retry_deleg:
+>  	mutex_lock(&inode->i_mutex);
+>  	error = security_path_chown(path, uid, gid);
+>  	if (!error)
+> -		error = notify_change(path->dentry, &newattrs);
+> +		error = notify_change(path->dentry, &newattrs, &delegated_inode);
+>  	mutex_unlock(&inode->i_mutex);
+> -
+> +	if (delegated_inode) {
+> +		error = break_deleg_wait(&delegated_inode);
+> +		if (!error)
+> +			goto retry_deleg;
+> +	}
+>  	return error;
+>  }
+>  
+> diff --git a/fs/utimes.c b/fs/utimes.c
+> index f4fb7ec..aa138d6 100644
+> --- a/fs/utimes.c
+> +++ b/fs/utimes.c
+> @@ -53,6 +53,7 @@ static int utimes_common(struct path *path, struct timespec *times)
+>  	int error;
+>  	struct iattr newattrs;
+>  	struct inode *inode = path->dentry->d_inode;
+> +	struct inode *delegated_inode = NULL;
+>  
+>  	error = mnt_want_write(path->mnt);
+>  	if (error)
+> @@ -101,9 +102,15 @@ static int utimes_common(struct path *path, struct timespec *times)
+>  				goto mnt_drop_write_and_out;
+>  		}
+>  	}
+> +retry_deleg:
+>  	mutex_lock(&inode->i_mutex);
+> -	error = notify_change(path->dentry, &newattrs);
+> +	error = notify_change(path->dentry, &newattrs, &delegated_inode);
+>  	mutex_unlock(&inode->i_mutex);
+> +	if (delegated_inode) {
+> +		error = break_deleg_wait(&delegated_inode);
+> +		if (!error)
+> +			goto retry_deleg;
+> +	}
+>  
+>  mnt_drop_write_and_out:
+>  	mnt_drop_write(path->mnt);
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index a2403f9..638cdae 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -2268,7 +2268,7 @@ extern void emergency_remount(void);
+>  #ifdef CONFIG_BLOCK
+>  extern sector_t bmap(struct inode *, sector_t);
+>  #endif
+> -extern int notify_change(struct dentry *, struct iattr *);
+> +extern int notify_change(struct dentry *, struct iattr *, struct inode **);
+>  extern int inode_permission(struct inode *, int);
+>  extern int generic_permission(struct inode *, int);
+>  
 
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/ext4/ext4.h        |    2 --
- fs/ext4/ioctl.c       |    4 ++--
- fs/ext4/move_extent.c |   40 ++--------------------------------------
- fs/inode.c            |   29 +++++++++++++++++++++++++++++
- include/linux/fs.h    |    3 +++
- 5 files changed, 36 insertions(+), 42 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 5aae3d1..3590abe 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2642,8 +2642,6 @@ extern void ext4_double_down_write_data_sem(struct inode *first,
- 					    struct inode *second);
- extern void ext4_double_up_write_data_sem(struct inode *orig_inode,
- 					  struct inode *donor_inode);
--void ext4_inode_double_lock(struct inode *inode1, struct inode *inode2);
--void ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2);
- extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 			     __u64 start_orig, __u64 start_donor,
- 			     __u64 len, __u64 *moved_len);
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 9491ac0..12048f7 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -129,7 +129,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 
- 	/* Protect orig inodes against a truncate and make sure,
- 	 * that only 1 swap_inode_boot_loader is running. */
--	ext4_inode_double_lock(inode, inode_bl);
-+	lock_two_nondirectories(inode, inode_bl);
- 
- 	truncate_inode_pages(&inode->i_data, 0);
- 	truncate_inode_pages(&inode_bl->i_data, 0);
-@@ -204,7 +204,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 	ext4_inode_resume_unlocked_dio(inode);
- 	ext4_inode_resume_unlocked_dio(inode_bl);
- 
--	ext4_inode_double_unlock(inode, inode_bl);
-+	unlock_two_nondirectories(inode, inode_bl);
- 
- 	iput(inode_bl);
- 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 3dcbf36..986a838 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -1206,42 +1206,6 @@ mext_check_arguments(struct inode *orig_inode,
- }
- 
- /**
-- * ext4_inode_double_lock - Lock i_mutex on both @inode1 and @inode2
-- *
-- * @inode1:	the inode structure
-- * @inode2:	the inode structure
-- *
-- * Lock two inodes' i_mutex
-- */
--void
--ext4_inode_double_lock(struct inode *inode1, struct inode *inode2)
--{
--	BUG_ON(inode1 == inode2);
--	if (inode1 < inode2) {
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
--	} else {
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
--	}
--}
--
--/**
-- * ext4_inode_double_unlock - Release i_mutex on both @inode1 and @inode2
-- *
-- * @inode1:     the inode that is released first
-- * @inode2:     the inode that is released second
-- *
-- */
--
--void
--ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2)
--{
--	mutex_unlock(&inode1->i_mutex);
--	mutex_unlock(&inode2->i_mutex);
--}
--
--/**
-  * ext4_move_extents - Exchange the specified range of a file
-  *
-  * @o_filp:		file structure of the original file
-@@ -1330,7 +1294,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 		return -EINVAL;
- 	}
- 	/* Protect orig and donor inodes against a truncate */
--	ext4_inode_double_lock(orig_inode, donor_inode);
-+	lock_two_nondirectories(orig_inode, donor_inode);
- 
- 	/* Wait for all existing dio workers */
- 	ext4_inode_block_unlocked_dio(orig_inode);
-@@ -1538,7 +1502,7 @@ out:
- 	ext4_double_up_write_data_sem(orig_inode, donor_inode);
- 	ext4_inode_resume_unlocked_dio(orig_inode);
- 	ext4_inode_resume_unlocked_dio(donor_inode);
--	ext4_inode_double_unlock(orig_inode, donor_inode);
-+	unlock_two_nondirectories(orig_inode, donor_inode);
- 
- 	return ret;
- }
-diff --git a/fs/inode.c b/fs/inode.c
-index 00d5fc3..b8afbc7 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -980,6 +980,35 @@ void unlock_new_inode(struct inode *inode)
- EXPORT_SYMBOL(unlock_new_inode);
- 
- /**
-+ * lock_two_nondirectories - take two i_mutexes on non-directory objects
-+ * @inode1: first inode to lock
-+ * @inode2: second inode to lock
-+ */
-+void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
-+{
-+	if (inode1 < inode2) {
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
-+		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
-+	} else {
-+		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
-+	}
-+}
-+EXPORT_SYMBOL(lock_two_nondirectories);
-+
-+/**
-+ * unlock_two_nondirectories - release locks from lock_two_nondirectories()
-+ * @inode1: first inode to unlock
-+ * @inode2: second inode to unlock
-+ */
-+void unlock_two_nondirectories(struct inode *inode1, struct inode *inode2)
-+{
-+	mutex_unlock(&inode1->i_mutex);
-+	mutex_unlock(&inode2->i_mutex);
-+}
-+EXPORT_SYMBOL(unlock_two_nondirectories);
-+
-+/**
-  * iget5_locked - obtain an inode from a mounted file system
-  * @sb:		super block of file system
-  * @hashval:	hash value (usually inode number) to get
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 65c2be2..3258761 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -634,6 +634,9 @@ enum inode_i_mutex_lock_class
- 	I_MUTEX_QUOTA
- };
- 
-+void lock_two_nondirectories(struct inode *, struct inode*);
-+void unlock_two_nondirectories(struct inode *, struct inode*);
-+
- /*
-  * NOTE: in a 32bit arch with a preemptable kernel and
-  * an UP compile the i_size_read/write must be atomic
--- 
-1.7.9.5
-
+Acked-by: Jeff Layton <jlayton@redhat.com>
