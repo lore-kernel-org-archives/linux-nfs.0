@@ -1,108 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:38352 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:50301 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750991Ab3GXP74 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Jul 2013 11:59:56 -0400
-From: <andros@netapp.com>
-To: <trond.myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 1/2] NFS Remove unused authflavour parameter from init_client
-Date: Wed, 24 Jul 2013 11:59:49 -0400
-Message-ID: <1374681590-2134-1-git-send-email-andros@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1751983Ab3GZKuM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Jul 2013 06:50:12 -0400
+Date: Fri, 26 Jul 2013 06:50:35 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 09/16] locks: helper functions for delegation breaking
+Message-ID: <20130726065035.3551f2d6@corrin.poochiereds.net>
+In-Reply-To: <1374094217-31493-11-git-send-email-bfields@redhat.com>
+References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+	<1374094217-31493-11-git-send-email-bfields@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Wed, 17 Jul 2013 16:50:10 -0400
+"J. Bruce Fields" <bfields@redhat.com> wrote:
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/client.c         | 6 ++----
- fs/nfs/internal.h       | 5 ++---
- fs/nfs/nfs4client.c     | 3 +--
- include/linux/nfs_xdr.h | 2 +-
- 4 files changed, 6 insertions(+), 10 deletions(-)
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> We'll need the same logic for rename and link.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/namei.c         |   13 +++----------
+>  include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
+>  2 files changed, 34 insertions(+), 12 deletions(-)
+> 
+> diff --git a/fs/namei.c b/fs/namei.c
+> index 2826bbd..d3b6a35 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -3466,14 +3466,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
+>  	else {
+>  		error = security_inode_unlink(dir, dentry);
+>  		if (!error) {
+> -			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
+> -			if (error) {
+> -				if (error == -EWOULDBLOCK && delegated_inode) {
+> -					*delegated_inode = target;
+> -					ihold(target);
+> -				}
+> +			error = try_break_deleg(target, delegated_inode);
+> +			if (error)
+>  				goto out;
+> -			}
+>  			error = dir->i_op->unlink(dir, dentry);
+>  			if (!error)
+>  				dont_mount(dentry);
+> @@ -3543,9 +3538,7 @@ exit2:
+>  		iput(inode);	/* truncate the inode here */
+>  	inode = NULL;
+>  	if (delegated_inode) {
+> -		error = break_deleg(delegated_inode, O_WRONLY);
+> -		iput(delegated_inode);
+> -		delegated_inode = NULL;
+> +		error = break_deleg_wait(&delegated_inode);
+>  		if (!error)
+>  			goto retry_deleg;
+>  	}
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index ba29b37..43a3506 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1907,6 +1907,9 @@ extern bool our_mnt(struct vfsmount *mnt);
+>  
+>  extern int current_umask(void);
+>  
+> +extern void ihold(struct inode * inode);
+> +extern void iput(struct inode *);
+> +
+>  /* /sys/fs */
+>  extern struct kobject *fs_kobj;
+>  
+> @@ -1974,6 +1977,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+>  	return 0;
+>  }
+>  
+> +static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
+> +{
+> +	int ret;
+> +
+> +	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
+> +	if (ret == -EWOULDBLOCK && delegated_inode) {
+> +		*delegated_inode = inode;
+> +		ihold(inode);
+> +	}
+> +	return ret;
+> +}
+> +
+> +static inline int break_deleg_wait(struct inode **delegated_inode)
+> +{
+> +	int ret;
+> +
+> +	ret = break_deleg(*delegated_inode, O_WRONLY);
+> +	iput(*delegated_inode);
+> +	*delegated_inode = NULL;
+> +	return ret;
+> +}
+> +
+>  #else /* !CONFIG_FILE_LOCKING */
+>  static inline int locks_mandatory_locked(struct inode *inode)
+>  {
+> @@ -2017,6 +2042,12 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+>  {
+>  	return 0;
+>  }
+> +
+> +static inline int try_break_deleg(struct inode *inode, struct delegated_inode **inode)
+> +{
+> +	return 0;
+> +}
+> +
+>  #endif /* CONFIG_FILE_LOCKING */
+>  
+>  /* fs/open.c */
+> @@ -2346,8 +2377,6 @@ extern loff_t vfs_llseek(struct file *file, loff_t offset, int whence);
+>  extern int inode_init_always(struct super_block *, struct inode *);
+>  extern void inode_init_once(struct inode *);
+>  extern void address_space_init_once(struct address_space *mapping);
+> -extern void ihold(struct inode * inode);
+> -extern void iput(struct inode *);
+>  extern struct inode * igrab(struct inode *);
+>  extern ino_t iunique(struct super_block *, ino_t);
+>  extern int inode_needs_sync(struct inode *inode);
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 340b1ef..2dceee4 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -501,8 +501,7 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
- 					&nn->nfs_client_list);
- 			spin_unlock(&nn->nfs_client_lock);
- 			new->cl_flags = cl_init->init_flags;
--			return rpc_ops->init_client(new, timeparms, ip_addr,
--						    authflavour);
-+			return rpc_ops->init_client(new, timeparms, ip_addr);
- 		}
- 
- 		spin_unlock(&nn->nfs_client_lock);
-@@ -694,13 +693,12 @@ EXPORT_SYMBOL_GPL(nfs_init_server_rpcclient);
-  * @clp: nfs_client to initialise
-  * @timeparms: timeout parameters for underlying RPC transport
-  * @ip_addr: IP presentation address (not used)
-- * @authflavor: authentication flavor for underlying RPC transport
-  *
-  * Returns pointer to an NFS client, or an ERR_PTR value.
-  */
- struct nfs_client *nfs_init_client(struct nfs_client *clp,
- 		    const struct rpc_timeout *timeparms,
--		    const char *ip_addr, rpc_authflavor_t authflavour)
-+		    const char *ip_addr)
- {
- 	int error;
- 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 3c8373f..9b694f1 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -267,7 +267,7 @@ extern struct rpc_procinfo nfs4_procedures[];
- void nfs_close_context(struct nfs_open_context *ctx, int is_sync);
- extern struct nfs_client *nfs_init_client(struct nfs_client *clp,
- 			   const struct rpc_timeout *timeparms,
--			   const char *ip_addr, rpc_authflavor_t authflavour);
-+			   const char *ip_addr);
- 
- /* dir.c */
- extern int nfs_access_cache_shrinker(struct shrinker *shrink,
-@@ -451,8 +451,7 @@ extern ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq);
- extern void __nfs4_read_done_cb(struct nfs_read_data *);
- extern struct nfs_client *nfs4_init_client(struct nfs_client *clp,
- 			    const struct rpc_timeout *timeparms,
--			    const char *ip_addr,
--			    rpc_authflavor_t authflavour);
-+			    const char *ip_addr);
- extern int nfs40_walk_client_list(struct nfs_client *clp,
- 				struct nfs_client **result,
- 				struct rpc_cred *cred);
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 90dce91..767a5e3 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -187,8 +187,7 @@ static int nfs4_init_client_minor_version(struct nfs_client *clp)
-  */
- struct nfs_client *nfs4_init_client(struct nfs_client *clp,
- 				    const struct rpc_timeout *timeparms,
--				    const char *ip_addr,
--				    rpc_authflavor_t authflavour)
-+				    const char *ip_addr)
- {
- 	char buf[INET6_ADDRSTRLEN + 1];
- 	struct nfs_client *old;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 8651574..ddc3e32 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1442,7 +1442,7 @@ struct nfs_rpc_ops {
- 	struct nfs_client *(*alloc_client) (const struct nfs_client_initdata *);
- 	struct nfs_client *
- 		(*init_client) (struct nfs_client *, const struct rpc_timeout *,
--				const char *, rpc_authflavor_t);
-+				const char *);
- 	void	(*free_client) (struct nfs_client *);
- 	struct nfs_server *(*create_server)(struct nfs_mount_info *, struct nfs_subversion *);
- 	struct nfs_server *(*clone_server)(struct nfs_server *, struct nfs_fh *,
--- 
-1.8.3.1
-
+Acked-by: Jeff Layton <jlayton@redhat.com>
