@@ -1,104 +1,167 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f178.google.com ([209.85.214.178]:53428 "EHLO
-	mail-ob0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752717Ab3GVXz7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Jul 2013 19:55:59 -0400
-Received: by mail-ob0-f178.google.com with SMTP id fb19so8819646obc.37
-        for <linux-nfs@vger.kernel.org>; Mon, 22 Jul 2013 16:55:59 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:35750 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760355Ab3GZVOq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Jul 2013 17:14:46 -0400
+Date: Fri, 26 Jul 2013 17:14:42 -0400
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Jeff Layton <jlayton@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 15/16] nfsd4: close open-deleg/unlink/rename race
+Message-ID: <20130726211441.GE30651@fieldses.org>
+References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+ <1374094217-31493-17-git-send-email-bfields@redhat.com>
+ <20130726072326.56113a2c@corrin.poochiereds.net>
+ <20130726160433.GA15846@pad.fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <20130723010250.5a3465ec@xenia.leun.net>
-References: <1367884221-20462-1-git-send-email-ccross@android.com>
-	<1367884221-20462-14-git-send-email-ccross@android.com>
-	<20130723010250.5a3465ec@xenia.leun.net>
-Date: Mon, 22 Jul 2013 16:55:58 -0700
-Message-ID: <CAMbhsRQv+W897_5qGuNJD47jQ9ozN6KxeCa6UJAvZpqVuBpQ4w@mail.gmail.com>
-Subject: Re: 3.11-rc regression bisected: s2disk does not work (was Re: [PATCH
- v3 13/16] futex: use freezable blocking call)
-From: Colin Cross <ccross@android.com>
-To: Michael Leun <lkml20130126@newton.leun.net>
-Cc: lkml <linux-kernel@vger.kernel.org>, Pavel Machek <pavel@ucw.cz>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>,
-        Linux PM list <linux-pm@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Tejun Heo <tj@kernel.org>, Darren Hart <dvhart@linux.intel.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Randy Dunlap <rdunlap@infradead.org>,
-        Al Viro <viro@zeniv.linux.org.uk>
-Content-Type: multipart/mixed; boundary=047d7b3a7f8004216704e2226b54
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130726160433.GA15846@pad.fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---047d7b3a7f8004216704e2226b54
-Content-Type: text/plain; charset=ISO-8859-1
+On Fri, Jul 26, 2013 at 12:04:33PM -0400, J. Bruce Fields wrote:
+> On Fri, Jul 26, 2013 at 07:23:26AM -0400, Jeff Layton wrote:
+> > On Wed, 17 Jul 2013 16:50:16 -0400
+> > "J. Bruce Fields" <bfields@redhat.com> wrote:
+> > 
+> > > From: "J. Bruce Fields" <bfields@redhat.com>
+> > > 
+> > > If a file is unlinked or renamed between the time when we do the local
+> > > open and the time when we get the delegation, then we will return to the
+> > > client indicating that it holds a delegation even though the file no
+> > > longer exists under the name it was open under.
+> > > 
+> > > But a client performing an open-by-name, when it is returned a
+> > > delegation, must be able to assume that the file is still linked at the
+> > > name it was opened under.
+> > > 
+> > > So, pass the parent filehandle into the delegation and lease-setting
+> > > code, and use it to re-lookup the file after we get the lease.
+> > > 
+> > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > > ---
+> > >  fs/nfsd/nfs4proc.c  |    2 +-
+> > >  fs/nfsd/nfs4state.c |   52 +++++++++++++++++++++++++++++++++++++++++++--------
+> > >  fs/nfsd/xdr4.h      |    3 ++-
+> > >  3 files changed, 47 insertions(+), 10 deletions(-)
+> > > 
+> > > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> > > index 4c0cbeb..f44b29d 100644
+> > > --- a/fs/nfsd/nfs4proc.c
+> > > +++ b/fs/nfsd/nfs4proc.c
+> > > @@ -457,7 +457,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> > >  	 * successful, it (1) truncates the file if open->op_truncate was
+> > >  	 * set, (2) sets open->op_stateid, (3) sets open->op_delegation.
+> > >  	 */
+> > > -	status = nfsd4_process_open2(rqstp, resfh, open);
+> > > +	status = nfsd4_process_open2(rqstp, resfh, open, &cstate->current_fh);
+> > >  	WARN_ON(status && open->op_created);
+> > >  out:
+> > >  	if (resfh && resfh != &cstate->current_fh) {
+> > > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > > index 7c91b6c..193f2bb 100644
+> > > --- a/fs/nfsd/nfs4state.c
+> > > +++ b/fs/nfsd/nfs4state.c
+> > > @@ -3018,7 +3018,28 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_delegation *dp, int f
+> > >  	return fl;
+> > >  }
+> > >  
+> > > -static int nfs4_setlease(struct nfs4_delegation *dp)
+> > > +static bool nfsd4_name_still_same(struct svc_fh *parent, struct nfsd4_open *open, struct dentry *dentry)
+> > > +{
+> > > +	struct xdr_netobj *name = &open->op_fname;
+> > > +	struct dentry *res;
+> > > +	bool ret;
+> > > +
+> > > +	if (parent->fh_dentry == dentry)
+> > > +		/* This was an open by filehandle, we don't care: */
+> > > +		return true;
+> > > +	if (nfsd_mountpoint(dentry, parent->fh_export))
+> > > +		/* We assume those never change */
+> > > +		return true;
+> > > +	mutex_lock(&parent->fh_dentry->d_inode->i_mutex); /* XXX? */
+> > > +	res = lookup_one_len(name->data, parent->fh_dentry, name->len);
+> > > +	mutex_unlock(&parent->fh_dentry->d_inode->i_mutex);
+> > > +	ret = res == dentry;
+> > > +	if (!IS_ERR(res))
+> > > +		dput(res);
+> > > +	return ret;
+> > > +}
+> > > +
+> > > +static int nfs4_setlease(struct nfs4_delegation *dp, struct nfsd4_open *open, struct svc_fh *parent)
+> > >  {
+> > >  	struct nfs4_file *fp = dp->dl_file;
+> > >  	struct file_lock *fl;
+> > > @@ -3031,23 +3052,37 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+> > >  	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
+> > >  	if (status)
+> > >  		goto out_free;
+> > > +	if (!nfsd4_name_still_same(parent, open, fl->fl_file->f_dentry))
+> > > +		goto out_unlease;
+> > > +	spin_lock(&recall_lock);
+> > > +	if (fp->fi_had_conflict)
+> > > +		/*
+> > > +		 * whoops, already broken, but before we got a chance to
+> > > +		 * install our delegation; never mind:
+> > > +		 */
+> > > +		 goto out_unlock;
+> > > +	list_add(&dp->dl_perfile, &fp->fi_delegations);
+> > > +	spin_unlock(&recall_lock);
+> > >  	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+> > >  	fp->fi_lease = fl;
+> > >  	fp->fi_deleg_file = get_file(fl->fl_file);
+> > >  	atomic_set(&fp->fi_delegees, 1);
+> > > -	list_add(&dp->dl_perfile, &fp->fi_delegations);
+> > >  	return 0;
+> > > +out_unlock:
+> > > +	spin_unlock(&recall_lock);
+> > > +out_unlease:
+> > > +	vfs_setlease(fl->fl_file, F_UNLCK, &fl);
+> > >  out_free:
+> > >  	locks_free_lock(fl);
+> > >  	return -ENOMEM;
+> > 
+> > Seems a little odd to return -ENOMEM when fi_had_conflict is true, but
+> > from looking over the code I think that eventually becomes something
+> > else so it shouldn't affect anything.
+> 
+> Yeah.  Errors setting a lease are ignored.  But I suppose eventually
+> (e.g. as we implement more 4.1 stuff that tells client more about why
+> delegations failed) we may want to use that.
 
-On Mon, Jul 22, 2013 at 4:02 PM, Michael Leun
-<lkml20130126@newton.leun.net> wrote:
-> On Mon,  6 May 2013 16:50:18 -0700
-> Colin Cross <ccross@android.com> wrote:
->
->> Avoid waking up every thread sleeping in a futex_wait call during
-> [...]
->
-> With 3.11-rc s2disk from suspend-utils stopped working: Frozen at
-> displaying 0% of saving image to disk.
->
-> echo "1" >/sys/power/state still works.
->
-> Bisecting yielded 88c8004fd3a5fdd2378069de86b90b21110d33a4, reverting
-> that from 3.11-rc2 makes s2disk working again.
->
+Oh, actually we already do enough of that for the difference to be
+visible to a 4.1 client (it will get either WND4_CONTENTION or
+WND4_RESOURCE).  Doubt it makes much difference, probably no client is
+even using this information yet, but I'll queue this up for 3.12.
 
-I think the expanded use of the freezable_* helpers is exposing an
-existing bug in hibernation.  The SNAPSHOT_FREEZE ioctl calls
-freeze_processes(), which sets the global system_freezing_cnt and
-pm_freezing.  try_to_freeze_tasks then sends every process except
-current a signal which causes them all to end up in the refrigerator.
-The current task then returns back to userspace and continues its work
-to suspend to disk.  If that task ever hits a call to try_to_freeze()
-in the kernel, it will see system_freezing_cnt and pm_freezing=true
-and freeze, and suspend to disk will hang forever.  It could hit
-try_to_freeze() because of a signal delivered to the task, or from
-calling any syscall that uses a freezable_* helper like the one I
-added to sys_futex.
+--b.
 
-I think the right solution is to add a flag to the freezing task that
-marks it unfreezable.  I  think PF_NOFREEZE would work, although it is
-normally used on kernel threads, can you see if the attached patch
-helps?
+commit b1948a641daefe8d128749f3d419ed24d529a8ed
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Fri Jul 26 16:57:20 2013 -0400
 
---047d7b3a7f8004216704e2226b54
-Content-Type: application/octet-stream;
-	name="0001-power-set-PF_NOFREEZE-flag-on-SNAPSHOT_FREEZE-task.patch"
-Content-Disposition: attachment;
-	filename="0001-power-set-PF_NOFREEZE-flag-on-SNAPSHOT_FREEZE-task.patch"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_hjgc1d5z0
+    nfsd4: fix setlease error return
+    
+    This actually makes a difference in the 4.1 case, since we use the
+    status to decide what reason to give the client for the delegation
+    refusal (see nfsd4_open_deleg_none_ext), and in theory a client might
+    choose suboptimal behavior if we give the wrong answer.
+    
+    Reported-by: Jeff Layton <jlayton@redhat.com>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-RnJvbSAwZjIyZjJiMzU3YjA2MjA4ZmM3YzBiODJjZTNmMDkyOWQwMDg3N2NhIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBDb2xpbiBDcm9zcyA8Y2Nyb3NzQGFuZHJvaWQuY29tPgpEYXRl
-OiBNb24sIDIyIEp1bCAyMDEzIDE2OjUzOjE1IC0wNzAwClN1YmplY3Q6IFtQQVRDSF0gcG93ZXI6
-IHNldCBQRl9OT0ZSRUVaRSBmbGFnIG9uIFNOQVBTSE9UX0ZSRUVaRSB0YXNrCgpUaGUgdGFzayB0
-aGF0IGNhbGxzIHRoZSBTTkFQU0hPVF9GUkVFWkUgaW9jdGwgbmVlZHMgdG8gcmV0dXJuIGJhY2sK
-dG8gdXNlcnNwYWNlIGFuZCBjb250aW51ZSBwcmVwYXJpbmcgYSBzdXNwZW5kLXRvLWRpc2sgaW1h
-Z2UuIFNldAp0aGUgUEZfTk9GUkVFWkUgZmxhZyBvbiBpdCBzbyB0aGF0IGl0IGRvZXNuJ3QgYWNj
-aWRlbnRhbGx5IGZyZWV6ZQppZiBpdCBjb21lcyBhY3Jvc3MgYSBjYWxsIHRvIHRyeV90b19mcmVl
-emUoKS4KClJlcG9ydGVkLWJ5OiBNaWNoYWVsIExldW4gPGxrbWwyMDEzMDEyNkBuZXd0b24ubGV1
-bi5uZXQ+ClNpZ25lZC1vZmYtYnk6IENvbGluIENyb3NzIDxjY3Jvc3NAYW5kcm9pZC5jb20+Ci0t
-LQoga2VybmVsL3Bvd2VyL3VzZXIuYyB8IDIgKysKIDEgZmlsZSBjaGFuZ2VkLCAyIGluc2VydGlv
-bnMoKykKCmRpZmYgLS1naXQgYS9rZXJuZWwvcG93ZXIvdXNlci5jIGIva2VybmVsL3Bvd2VyL3Vz
-ZXIuYwppbmRleCA0ZWQ4MWU3Li4xN2Y5YzIwIDEwMDY0NAotLS0gYS9rZXJuZWwvcG93ZXIvdXNl
-ci5jCisrKyBiL2tlcm5lbC9wb3dlci91c2VyLmMKQEAgLTIxOSw2ICsyMTksNyBAQCBzdGF0aWMg
-bG9uZyBzbmFwc2hvdF9pb2N0bChzdHJ1Y3QgZmlsZSAqZmlscCwgdW5zaWduZWQgaW50IGNtZCwK
-IAkJc3lzX3N5bmMoKTsKIAkJcHJpbnRrKCJkb25lLlxuIik7CiAKKwkJY3VycmVudC0+ZmxhZ3Mg
-fD0gUEZfTk9GUkVFWkU7CiAJCWVycm9yID0gZnJlZXplX3Byb2Nlc3NlcygpOwogCQlpZiAoIWVy
-cm9yKQogCQkJZGF0YS0+ZnJvemVuID0gMTsKQEAgLTIyOSw2ICsyMzAsNyBAQCBzdGF0aWMgbG9u
-ZyBzbmFwc2hvdF9pb2N0bChzdHJ1Y3QgZmlsZSAqZmlscCwgdW5zaWduZWQgaW50IGNtZCwKIAkJ
-CWJyZWFrOwogCQlwbV9yZXN0b3JlX2dmcF9tYXNrKCk7CiAJCXRoYXdfcHJvY2Vzc2VzKCk7CisJ
-CWN1cnJlbnQtPmZsYWdzICY9IH5QRl9OT0ZSRUVaRTsKIAkJZGF0YS0+ZnJvemVuID0gMDsKIAkJ
-YnJlYWs7CiAKLS0gCjEuOC4zCgo=
---047d7b3a7f8004216704e2226b54--
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 1cb6211..1852f53 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3028,7 +3028,7 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ 	if (status) {
+ 		list_del_init(&dp->dl_perclnt);
+ 		locks_free_lock(fl);
+-		return -ENOMEM;
++		return status;
+ 	}
+ 	fp->fi_lease = fl;
+ 	fp->fi_deleg_file = get_file(fl->fl_file);
