@@ -1,108 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.194]:56908 "EHLO mout.perfora.net"
+Received: from fieldses.org ([174.143.236.118]:37983 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755985Ab3GOL5V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Jul 2013 07:57:21 -0400
-Date: Mon, 15 Jul 2013 07:57:11 -0400
-From: Jim Rees <rees@umich.edu>
-To: NeilBrown <neilb@suse.de>
-Cc: "J.Bruce Fields" <bfields@citi.umich.edu>,
-        Olga Kornievskaia <aglo@citi.umich.edu>,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: Re: Is tcp autotuning really what NFS wants?
-Message-ID: <20130715115711.GA9053@umich.edu>
-References: <20130710092255.0240a36d@notabene.brown>
- <20130710022735.GI8281@fieldses.org>
- <20130715012620.GC7429@umich.edu>
- <20130715150229.06ff8464@notabene.brown>
+	id S1757386Ab3GZO7l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Jul 2013 10:59:41 -0400
+Date: Fri, 26 Jul 2013 10:59:37 -0400
+To: Larry Keegan <lk@pfw.demon.co.uk>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: nfs client: Now you see it, now you don't (aka spurious ESTALE
+ errors)
+Message-ID: <20130726145937.GB30651@fieldses.org>
+References: <20130725134515.67af44e2@cs3.al.itld>
+ <20130725101143.6a22cb81@corrin.poochiereds.net>
+ <20130725170526.6e54c7db@cs3.al.itld>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130715150229.06ff8464@notabene.brown>
+In-Reply-To: <20130725170526.6e54c7db@cs3.al.itld>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NeilBrown wrote:
+On Thu, Jul 25, 2013 at 05:05:26PM +0000, Larry Keegan wrote:
+> On Thu, 25 Jul 2013 10:11:43 -0400
+> Jeff Layton <jlayton@redhat.com> wrote:
+> > On Thu, 25 Jul 2013 13:45:15 +0000
+> > Larry Keegan <lk@pfw.demon.co.uk> wrote:
+> > 
+> > > Dear Chaps,
+> > > 
+> > > I am experiencing some inexplicable NFS behaviour which I would
+> > > like to run past you.
+> > > 
+> > > I have a linux NFS server running kernel 3.10.2 and some clients
+> > > running the same. The server is actually a pair of identical
+> > > machines serving up a small number of ext4 filesystems atop drbd.
+> > > They don't do much apart from serve home directories and deliver
+> > > mail into them. These have worked just fine for aeons.
+> > > 
+> > > The problem I am seeing is that for the past month or so, on and
+> > > off, one NFS client starts reporting stale NFS file handles on some
+> > > part of the directory tree exported by the NFS server. During the
+> > > outage the other parts of the same export remain unaffected. Then,
+> > > some ten minutes to an hour later they're back to normal. Access to
+> > > the affected sub-directories remains possible from the server (both
+> > > directly and via nfs) and from other clients. There do not appear
+> > > to be any errors on the underlying ext4 filesystems.
+> > > 
+> > > Each NFS client seems to get the heebie-jeebies over some directory
+> > > or other pretty much independently. The problem affects all of the
+> > > filesystems exported by the NFS server, but clearly I notice it
+> > > first in home directories, and in particular in my dot
+> > > subdirectories for things like my mail client and browser. I'd say
+> > > something's up the spout about 20% of the time.
 
-  On Sun, 14 Jul 2013 21:26:20 -0400 Jim Rees <rees@umich.edu> wrote:
-  
-  > J.Bruce Fields wrote:
-  > 
-  >   On Wed, Jul 10, 2013 at 09:22:55AM +1000, NeilBrown wrote:
-  >   > 
-  >   > Hi,
-  >   >  I just noticed this commit:
-  >   > 
-  >   > commit 9660439861aa8dbd5e2b8087f33e20760c2c9afc
-  >   > Author: Olga Kornievskaia <aglo@citi.umich.edu>
-  >   > Date:   Tue Oct 21 14:13:47 2008 -0400
-  >   > 
-  >   >     svcrpc: take advantage of tcp autotuning
-  >   > 
-  >   > 
-  >   > which I must confess surprised me.  I wonder if the full implications of
-  >   > removing that functionality were understood.
-  >   > 
-  >   > Previously nfsd would set the transmit buffer space for a connection to
-  >   > ensure there is plenty to hold all replies.  Now it doesn't.
-  >   > 
-  >   > nfsd refuses to accept a request if there isn't enough space in the transmit
-  >   > buffer to send a reply.  This is important to ensure that each reply gets
-  >   > sent atomically without blocking and there is no risk of replies getting
-  >   > interleaved.
-  >   > 
-  >   > The server starts out with a large estimate of the reply space (1M) and for
-  >   > NFSv3 and v2 it quickly adjusts this down to something realistic.  For NFSv4
-  >   > it is much harder to estimate the space needed so it just assumes every
-  >   > reply will require 1M of space.
-  >   > 
-  >   > This means that with NFSv4, as soon as you have enough concurrent requests
-  >   > such that 1M each reserves all of whatever window size was auto-tuned, new
-  >   > requests on that connection will be ignored.
-  >   >
-  >   > This could significantly limit the amount of parallelism that can be achieved
-  >   > for a single TCP connection (and given that the Linux client strongly prefers
-  >   > a single connection now, this could become more of an issue).
-  >   
-  >   Worse, I believe it can deadlock completely if the transmit buffer
-  >   shrinks too far, and people really have run into this:
-  > 
-  > It's been a few years since I looked at this, but are you sure autotuning
-  > reduces the buffer space available on the sending socket? That doesn't sound
-  > like correct behavior to me. I know we thought about this at the time.
-  
-  Autotuning is enabled when SOCK_SNDBUF_LOCK is not set in sk_userlocks.
-  
-  One of the main effects of this flag is to disable:
-  
-  static inline void sk_stream_moderate_sndbuf(struct sock *sk)
-  {
-  	if (!(sk->sk_userlocks & SOCK_SNDBUF_LOCK)) {
-  		sk->sk_sndbuf = min(sk->sk_sndbuf, sk->sk_wmem_queued >> 1);
-  		sk->sk_sndbuf = max(sk->sk_sndbuf, SOCK_MIN_SNDBUF);
-  	}
-  }
-  
-  
-  which will reduce sk_sndbuf to half the queued writes. As sk_wmem_queued
-  cannot grow above sk_sndbuf, the definitely reduces sk_sndbuf (though never
-  below SOCK_MIN_SNDBUF which is 2K.
-  
-  This seems to happen under memory pressure (sk_stream_alloc_skb).
-  
-  So yes: memory pressure can reduce the sndbuf size when autotuning is enabled, and it
-  can get as low as 2K.
-  (An API to set this minimum to e.g. 2M for nfsd connections would be an alternate
-  fix for the deadlock, as Bruce has already mentioned).
-  
-  > 
-  > It does seem like a bug that we don't multiply the needed send buffer space
-  > by the number of threads. I think that's because we don't know how many
-  > threads there are going to be in svc_setup_socket()?
-  
-  We used to, but it turned out to be too small in practice!  As it auto-grows,
-  the "4 * serv->sv_max_mesg" setting is big enough ... if only it wouldn't
-  shrink below that.
+And the problem affects just that one directory?  Ohter files and
+directories on the same filesystem continue to be accessible?
 
-This sounds familiar. In fact I think we asked on the network mailing list
-about providing an api to set a minimum on the socket buffer. I'll go
-through my old email and see if I can find it.
+> > > The server and clients are using nfs4, although for a while I tried
+> > > nfs3 without any appreciable difference. I do not have
+> > > CONFIG_FSCACHE set.
+> > > 
+> > > I wonder if anyone could tell me if they have ever come across this
+> > > before, or what debugging settings might help me diagnose the
+> > > problem?
+> > > 
+> > > Yours,
+> > > 
+> > > Larry
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe
+> > > linux-nfs" in the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> > 
+> > Were these machines running older kernels before this started
+> > happening? What kernel did you upgrade from if so?
+> > 
+> 
+> Dear Jeff,
+> 
+> The full story is this:
+> 
+> I had a pair of boxes running kernel 3.4.3 with the aforementioned drbd
+> pacemaker malarkey and some clients running the same.
+> 
+> Then I upgraded the machines by moving from plain old dos partitions to
+> gpt. This necessitated a complete reload of everything, but there were
+> no software changes. I can be sure that nothing else was changed
+> because I build my entire operating system in one ginormous makefile.
+> 
+> Rapidly afterwards I switched the motherboards for ones with more PCI
+> slots. There were no software changes except those relating to MAC
+> addresses.
+> 
+> Next I moved from 100Mbit to gigabit hubs. Then the problems started.
+
+So both the "good" and "bad" behavior were seen with the same 3.4.3
+kernel?
+
+...
+> Anyway, to cut a long story short, this problem seemed to me to be a
+> file server problem so I replaced network cards, swapped hubs,
+
+Including reverting back to your original configuration with 100Mbit
+hubs?
+
+--b.
