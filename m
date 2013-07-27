@@ -1,241 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f45.google.com ([209.85.215.45]:64770 "EHLO
-	mail-la0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752123Ab3GAQnE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Jul 2013 12:43:04 -0400
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: linux-kernel@vger.kernel.org
-Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wine-devel@winehq.org
-Subject: [PATCH v7 4/7] CIFS: Add O_DENY* open flags support
-Date: Mon,  1 Jul 2013 20:49:56 +0400
-Message-Id: <1372697399-21361-5-git-send-email-piastry@etersoft.ru>
-In-Reply-To: <1372697399-21361-1-git-send-email-piastry@etersoft.ru>
-References: <1372697399-21361-1-git-send-email-piastry@etersoft.ru>
+Received: from mout.gmx.net ([212.227.15.15]:55666 "EHLO mout.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751188Ab3G0KDY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 27 Jul 2013 06:03:24 -0400
+Received: from [80.171.177.38] ([80.171.177.38]) by mail.gmx.com (mrgmx101)
+ with ESMTPSA (Nemesis) id 0MK4fR-1V3qpD3CvV-001V8S for
+ <linux-nfs@vger.kernel.org>; Sat, 27 Jul 2013 12:03:23 +0200
+Message-ID: <51F39AE8.3090401@gmx.de>
+Date: Sat, 27 Jul 2013 12:03:20 +0200
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+MIME-Version: 1.0
+To: Andrey Vagin <avagin@openvz.org>, Oleg Nesterov <oleg@redhat.com>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Andrey Vagin <avagin@openvz.org>, Al Viro <viro@zeniv.linux.org.uk>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: fuzz tested user mode linux core dumps in fs/lockd/clntproc.c:131
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Construct share_access value from O_DENY* flags and send it to
-the server. Use NTCreateAndX command rather than Trans2
-all the time we have any of O_DENY* flags regardless of unix
-extensions support. Also change smb error mapping of
-NT_STATUS_SHARING_VIOLATION to -ESHAREDENIED.
+I do have a user mode linux image (stable 32 bit Gentoo Linux ) which erratically crashes
+while fuzz tested with trinity if the victim files are located on a NFS share.
 
-Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
----
- fs/cifs/cifsfs.c       |  2 +-
- fs/cifs/cifsglob.h     | 16 +++++++++++++++-
- fs/cifs/dir.c          |  4 ++++
- fs/cifs/file.c         | 15 +++++++++++++--
- fs/cifs/inode.c        |  5 +++--
- fs/cifs/netmisc.c      |  2 +-
- fs/cifs/smb2maperror.c |  2 +-
- fs/locks.c             | 11 ++++++++++-
- include/linux/fs.h     |  1 +
- 9 files changed, 49 insertions(+), 9 deletions(-)
+The back trace of the core dumps always looks like the attached.
 
-diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
-index 345fc89..92bd685 100644
---- a/fs/cifs/cifsfs.c
-+++ b/fs/cifs/cifsfs.c
-@@ -799,7 +799,7 @@ struct file_system_type cifs_fs_type = {
- 	.name = "cifs",
- 	.mount = cifs_do_mount,
- 	.kill_sb = cifs_kill_sb,
--	/*  .fs_flags */
-+	.fs_flags = FS_DOES_SHARELOCK,
- };
- MODULE_ALIAS_FS("cifs");
- const struct inode_operations cifs_dir_inode_ops = {
-diff --git a/fs/cifs/cifsglob.h b/fs/cifs/cifsglob.h
-index 80af61d..85703f6 100644
---- a/fs/cifs/cifsglob.h
-+++ b/fs/cifs/cifsglob.h
-@@ -465,7 +465,7 @@ struct smb_vol {
- 			 CIFS_MOUNT_CIFS_BACKUPUID | CIFS_MOUNT_CIFS_BACKUPGID)
- 
- #define CIFS_MS_MASK (MS_RDONLY | MS_MANDLOCK | MS_NOEXEC | MS_NOSUID | \
--		      MS_NODEV | MS_SYNCHRONOUS)
-+		      MS_NODEV | MS_SYNCHRONOUS | MS_SHARELOCK)
- 
- struct cifs_mnt_data {
- 	struct cifs_sb_info *cifs_sb;
-@@ -947,6 +947,20 @@ struct cifsFileInfo {
- 	struct work_struct oplock_break; /* work for oplock breaks */
- };
- 
-+static inline int
-+cifs_get_share_flags(unsigned int flags)
-+{
-+	int share_access = 0;
-+
-+	if (!(flags & O_DENYREAD))
-+		share_access |= FILE_SHARE_READ;
-+	if (!(flags & O_DENYWRITE))
-+		share_access |= FILE_SHARE_WRITE;
-+	if (!(flags & O_DENYDELETE))
-+		share_access |= FILE_SHARE_DELETE;
-+	return share_access;
-+}
-+
- struct cifs_io_parms {
- 	__u16 netfid;
- #ifdef CONFIG_CIFS_SMB2
-diff --git a/fs/cifs/dir.c b/fs/cifs/dir.c
-index e5f6723..c03ad8c 100644
---- a/fs/cifs/dir.c
-+++ b/fs/cifs/dir.c
-@@ -216,7 +216,11 @@ cifs_do_create(struct inode *inode, struct dentry *direntry, unsigned int xid,
- 		goto out;
- 	}
- 
-+	if (IS_SHARELOCK(inode))
-+		share_access = cifs_get_share_flags(oflags);
-+
- 	if (tcon->unix_ext && cap_unix(tcon->ses) && !tcon->broken_posix_open &&
-+	    (share_access == FILE_SHARE_ALL) &&
- 	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
- 			le64_to_cpu(tcon->fsUnixInfo.Capability))) {
- 		rc = cifs_posix_open(full_path, &newinode, inode->i_sb, mode,
-diff --git a/fs/cifs/file.c b/fs/cifs/file.c
-index 7631b0c..febf807 100644
---- a/fs/cifs/file.c
-+++ b/fs/cifs/file.c
-@@ -216,6 +216,8 @@ cifs_nt_open(char *full_path, struct inode *inode, struct cifs_sb_info *cifs_sb,
-  *********************************************************************/
- 
- 	disposition = cifs_get_disposition(f_flags);
-+	if (IS_SHARELOCK(inode))
-+		share_access = cifs_get_share_flags(f_flags);
- 
- 	/* BB pass O_SYNC flag through on file attributes .. BB */
- 
-@@ -428,6 +430,7 @@ int cifs_open(struct inode *inode, struct file *file)
- 	int rc = -EACCES;
- 	unsigned int xid;
- 	__u32 oplock;
-+	int share_access = FILE_SHARE_ALL;
- 	struct cifs_sb_info *cifs_sb;
- 	struct TCP_Server_Info *server;
- 	struct cifs_tcon *tcon;
-@@ -463,8 +466,12 @@ int cifs_open(struct inode *inode, struct file *file)
- 	else
- 		oplock = 0;
- 
--	if (!tcon->broken_posix_open && tcon->unix_ext &&
--	    cap_unix(tcon->ses) && (CIFS_UNIX_POSIX_PATH_OPS_CAP &
-+	if (IS_SHARELOCK(inode))
-+		share_access = cifs_get_share_flags(file->f_flags);
-+
-+	if (!tcon->broken_posix_open && tcon->unix_ext && cap_unix(tcon->ses) &&
-+	    (share_access == FILE_SHARE_ALL) &&
-+	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
- 				le64_to_cpu(tcon->fsUnixInfo.Capability))) {
- 		/* can not refresh inode info since size could be stale */
- 		rc = cifs_posix_open(full_path, &inode, inode->i_sb,
-@@ -631,7 +638,11 @@ cifs_reopen_file(struct cifsFileInfo *cfile, bool can_flush)
- 	else
- 		oplock = 0;
- 
-+	if (IS_SHARELOCK(inode))
-+		share_access = cifs_get_share_flags(cfile->f_flags);
-+
- 	if (tcon->unix_ext && cap_unix(tcon->ses) &&
-+	    (share_access == FILE_SHARE_ALL) &&
- 	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
- 				le64_to_cpu(tcon->fsUnixInfo.Capability))) {
- 		/*
-diff --git a/fs/cifs/inode.c b/fs/cifs/inode.c
-index 039d9a1..7aed606 100644
---- a/fs/cifs/inode.c
-+++ b/fs/cifs/inode.c
-@@ -1167,7 +1167,8 @@ psx_del_no_retry:
- 			cifs_drop_nlink(inode);
- 	} else if (rc == -ENOENT) {
- 		d_drop(dentry);
--	} else if (rc == -EBUSY) {
-+	} else if (rc == -ESHAREDENIED) {
-+		rc = -EBUSY;
- 		if (server->ops->rename_pending_delete) {
- 			rc = server->ops->rename_pending_delete(full_path,
- 								dentry, xid);
-@@ -1514,7 +1515,7 @@ cifs_do_rename(const unsigned int xid, struct dentry *from_dentry,
- 	 * source. Note that cross directory moves do not work with
- 	 * rename by filehandle to various Windows servers.
- 	 */
--	if (rc == 0 || rc != -EBUSY)
-+	if (rc == 0 || rc != -ESHAREDENIED)
- 		goto do_rename_exit;
- 
- 	/* open-file renames don't work across directories */
-diff --git a/fs/cifs/netmisc.c b/fs/cifs/netmisc.c
-index c0b25b2..a9c8bef 100644
---- a/fs/cifs/netmisc.c
-+++ b/fs/cifs/netmisc.c
-@@ -62,7 +62,7 @@ static const struct smb_to_posix_error mapping_table_ERRDOS[] = {
- 	{ERRdiffdevice, -EXDEV},
- 	{ERRnofiles, -ENOENT},
- 	{ERRwriteprot, -EROFS},
--	{ERRbadshare, -EBUSY},
-+	{ERRbadshare, -ESHAREDENIED},
- 	{ERRlock, -EACCES},
- 	{ERRunsup, -EINVAL},
- 	{ERRnosuchshare, -ENXIO},
-diff --git a/fs/cifs/smb2maperror.c b/fs/cifs/smb2maperror.c
-index 494c912..d70b6ca 100644
---- a/fs/cifs/smb2maperror.c
-+++ b/fs/cifs/smb2maperror.c
-@@ -356,7 +356,7 @@ static const struct status_to_posix_error smb2_error_map_table[] = {
- 	{STATUS_PORT_CONNECTION_REFUSED, -ECONNREFUSED,
- 	"STATUS_PORT_CONNECTION_REFUSED"},
- 	{STATUS_INVALID_PORT_HANDLE, -EIO, "STATUS_INVALID_PORT_HANDLE"},
--	{STATUS_SHARING_VIOLATION, -EBUSY, "STATUS_SHARING_VIOLATION"},
-+	{STATUS_SHARING_VIOLATION, -ESHAREDENIED, "STATUS_SHARING_VIOLATION"},
- 	{STATUS_QUOTA_EXCEEDED, -EDQUOT, "STATUS_QUOTA_EXCEEDED"},
- 	{STATUS_INVALID_PAGE_PROTECTION, -EIO,
- 	"STATUS_INVALID_PAGE_PROTECTION"},
-diff --git a/fs/locks.c b/fs/locks.c
-index c2fa136..09c1d0e 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -847,6 +847,10 @@ sharelock_may_delete(struct dentry *dentry)
- 	if (!IS_SHARELOCK(dentry->d_inode))
- 		return rc;
- 
-+	/* Don't check a lock on file systems that do it internally */
-+	if (dentry->d_inode->i_sb->s_type->fs_flags & FS_DOES_SHARELOCK)
-+		return rc;
-+
- 	lock_flocks();
- 	for_each_lock(dentry->d_inode, before) {
- 		struct file_lock *fl = *before;
-@@ -875,8 +879,13 @@ sharelock_lock_file(struct file *filp)
- {
- 	struct file_lock *lock;
- 	int error = 0;
-+	struct inode *inode = filp->f_path.dentry->d_inode;
-+
-+	if (!IS_SHARELOCK(inode))
-+		return error;
- 
--	if (!IS_SHARELOCK(filp->f_path.dentry->d_inode))
-+	/* Don't set a lock on file systems that do it internally */
-+	if (inode->i_sb->s_type->fs_flags & FS_DOES_SHARELOCK)
- 		return error;
- 
- 	error = flock_make_lock(filp, &lock, deny_flags_to_cmd(filp->f_flags));
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 3247fb4..f802776b 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1821,6 +1821,7 @@ struct file_system_type {
- #define FS_USERNS_MOUNT		8	/* Can be mounted by userns root */
- #define FS_USERNS_DEV_MOUNT	16 /* A userns mount does not imply MNT_NODEV */
- #define FS_RENAME_DOES_D_MOVE	32768	/* FS will handle d_move() during rename() internally. */
-+#define FS_DOES_SHARELOCK	65536	/* FS does sharelocks internally */
- 	struct dentry *(*mount) (struct file_system_type *, int,
- 		       const char *, void *);
- 	void (*kill_sb) (struct super_block *);
+To bisect it is hard. However after few attempts in the last weeks the following
+commit is either the first bad commit or at least the upper limit (less likely).
+
+
+commit 8aac62706adaaf0fab02c4327761561c8bda9448
+Author: Oleg Nesterov <oleg@redhat.com>
+Date:   Fri Jun 14 21:09:49 2013 +0200
+
+    move exit_task_namespaces() outside of exit_notify()
+
+
+
+tfoerste@n22 ~/devel/linux $ gdb --core=/mnt/ramdisk/core /home/tfoerste/devel/linux/linux -n -batch -ex bt
+[New LWP 20802]
+Core was generated by `/home/tfoerste/devel/linux/linux earlyprintk ubda=/home/tfoerste/virtual/uml/tr'.
+Program terminated with signal 6, Aborted.
+#0  0xb778e424 in __kernel_vsyscall ()
+#0  0xb778e424 in __kernel_vsyscall ()
+#1  0x08396175 in kill ()
+#2  0x0807155d in uml_abort () at arch/um/os-Linux/util.c:93
+#3  0x08071845 in os_dump_core () at arch/um/os-Linux/util.c:138
+#4  0x08061197 in panic_exit (self=0x8591518 <panic_exit_notifier>, unused1=0, unused2=0x85c5d60 <buf.12251>) at arch/um/kernel/um_arch.c:240
+#5  0x0809daf8 in notifier_call_chain (nl=0x0, val=0, v=0x85c5d60 <buf.12251>, nr_to_call=-2, nr_calls=0x0) at kernel/notifier.c:93
+#6  0x0809dc43 in __atomic_notifier_call_chain (nr_calls=<optimized out>, nr_to_call=<optimized out>, v=<optimized out>, val=<optimized out>, nh=<optimized out>) at kernel/notifier.c:182
+#7  atomic_notifier_call_chain (nh=0x85c5d44 <panic_notifier_list>, val=0, v=0x85c5d60 <buf.12251>) at kernel/notifier.c:191
+#8  0x083f34f8 in panic (fmt=0x0) at kernel/panic.c:127
+#9  0x08060b5e in segv (fi=<incomplete type>, ip=136527369, is_user=0, regs=0x858f85c <cpu0_irqstack+30812>) at arch/um/kernel/trap.c:209
+#10 0x08060e13 in segv_handler (sig=11, unused_si=0x858fb0c <cpu0_irqstack+31500>, regs=0x858f85c <cpu0_irqstack+30812>) at arch/um/kernel/trap.c:185
+#11 0x080706a8 in sig_handler_common (sig=11, si=0x858fb0c <cpu0_irqstack+31500>, mc=0x858fba0 <cpu0_irqstack+31648>) at arch/um/os-Linux/signal.c:44
+#12 0x080707ed in sig_handler (sig=0, si=0x858fb0c <cpu0_irqstack+31500>, mc=0x858fba0 <cpu0_irqstack+31648>) at arch/um/os-Linux/signal.c:231
+#13 0x0807033b in hard_handler (sig=6, si=0x858fb0c <cpu0_irqstack+31500>, p=0x858fba0 <cpu0_irqstack+31648>) at arch/um/os-Linux/signal.c:165
+#14 <signal handler called>
+#15 nlmclnt_setlockargs (req=0x48e18860, fl=0x48f27c8c) at fs/lockd/clntproc.c:131
+#16 0x08234892 in nlmclnt_proc (host=0x48e18860, cmd=7, fl=0x48f27c8c) at fs/lockd/clntproc.c:170
+#17 0x081d91ae in nfs_proc_lock (filp=0x0, cmd=0, fl=0x0) at fs/nfs/proc.c:667
+#18 0x081ca386 in do_unlk (filp=0x48fbe0c0, cmd=7, fl=0x48f27c8c, is_local=0) at fs/nfs/file.c:773
+#19 0x081ca572 in nfs_flock (filp=0x48fbe0c0, cmd=7, fl=0x0) at fs/nfs/file.c:902
+#20 0x0813ee6e in locks_remove_flock (filp=0x48fbe0c0) at fs/locks.c:2074
+#21 0x080fe438 in __fput (file=0x48fbe0c0) at fs/file_table.c:240
+#22 0x080fe55b in ____fput (work=0x48fbe0c0) at fs/file_table.c:285
+#23 0x08095f3e in task_work_run () at kernel/task_work.c:87
+#24 0x08080c9d in exit_task_work (task=<optimized out>) at include/linux/task_work.h:21
+#25 do_exit (code=1224150016) at kernel/exit.c:798
+#26 0x080812a7 in do_group_exit (exit_code=11) at kernel/exit.c:931
+#27 0x0808bc2d in get_signal_to_deliver (info=0x48f27e34, return_ka=0x48f27eb4, regs=0x48db31d4, cookie=0x0) at kernel/signal.c:2370
+#28 0x0805f6ec in kern_do_signal (regs=0x48db31d4) at arch/um/kernel/signal.c:77
+#29 0x0805f7ed in do_signal () at arch/um/kernel/signal.c:123
+#30 0x0805e6b7 in interrupt_end () at arch/um/kernel/process.c:107
+#31 0x08073c1b in userspace (regs=0x48db31d4) at arch/um/os-Linux/skas/process.c:464
+#32 0x0805e44c in fork_handler () at arch/um/kernel/process.c:160
+#33 0x5a5a5a5a in ?? ()
+
+
 -- 
-1.8.1.5
-
+MfG/Sincerely
+Toralf Förster
+pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
