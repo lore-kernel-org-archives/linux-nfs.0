@@ -1,56 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga11.intel.com ([192.55.52.93]:2504 "EHLO mga11.intel.com"
+Received: from mx1.redhat.com ([209.132.183.28]:32789 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756078Ab3GBDbg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Jul 2013 23:31:36 -0400
-From: "Zheng, Kai" <kai.zheng@intel.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>, drankye <drankye@yahoo.com.cn>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: What's the status of SPKM3/LIPKEY for NFS4 on Linux
-Date: Tue, 2 Jul 2013 03:31:33 +0000
-Message-ID: <8D5F7E3237B3ED47B84CF187BB17B66611669237@SHSMSX103.ccr.corp.intel.com>
-References: <1372664858.77543.YahooMailNeo@web15903.mail.cnb.yahoo.com>
- <20130701150105.GC19945@fieldses.org>
-In-Reply-To: <20130701150105.GC19945@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+	id S1753912Ab3G1SDt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 28 Jul 2013 14:03:49 -0400
+Date: Sun, 28 Jul 2013 19:58:28 +0200
+From: Oleg Nesterov <oleg@redhat.com>
+To: Toralf =?iso-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>,
+        Andrey Vagin <avagin@openvz.org>
+Cc: "Serge E. Hallyn" <serue@us.ibm.com>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: fuzz tested user mode linux core dumps in
+	fs/lockd/clntproc.c:131
+Message-ID: <20130728175828.GA15020@redhat.com>
+References: <51F39AE8.3090401@gmx.de> <20130727170051.GA31447@redhat.com> <51F5381D.1080904@gmx.de>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <51F5381D.1080904@gmx.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-VGhhbmsgeW91IEJydWNlIGZvciB0aGUgdXBkYXRlLiANCg0KLS0tLS1PcmlnaW5hbCBNZXNzYWdl
-LS0tLS0NCkZyb206IGxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmcgW21haWx0bzpsaW51
-eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnXSBPbiBCZWhhbGYgT2YgSi4gQnJ1Y2UgRmllbGRz
-DQpTZW50OiBNb25kYXksIEp1bHkgMDEsIDIwMTMgMTE6MDEgUE0NClRvOiBkcmFua3llDQpDYzog
-bGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KU3ViamVjdDogUmU6IFdoYXQncyB0aGUgc3RhdHVz
-IG9mIFNQS00zL0xJUEtFWSBmb3IgTkZTNCBvbiBMaW51eA0KDQpPbiBNb24sIEp1bCAwMSwgMjAx
-MyBhdCAwMzo0NzozOFBNICswODAwLCBkcmFua3llIHdyb3RlOg0KPiANCj4gDQo+IEhpIGFsbCwN
-Cj4gwqANCj4gQWJvdXQgMiB5ZWFycyBhZ28sIGl0IHdhcyBhc2tlZCDigJx3aGVuIHdpbGwgd2Ug
-YmUgYWJsZSB0byB1c2UgTElQS0VZIG9uIA0KPiBORlM0IG9uIExpbnV4P+KAnS4gUmVmLiBodHRw
-Oi8vcGVybWFsaW5rLmdtYW5lLm9yZy9nbWFuZS5saW51eC5uZnMvMzU1NjAuDQo+IFRoZXJlIFRy
-b25kIHJlcGxpZWQgYXMgYmVsb3c6DQo+IOKAnA0KPiBXZSdyZSBsaWtlbHkgdG8gZHJvcCB0aGUg
-cmVxdWlyZW1lbnQgdGhhdCBTUEtNMy9MSVBLRVkgYmUgYSBtYW5kYXRvcnkgDQo+IHNlY3VyaXR5
-IG1lY2hhbmlzbSBmb3IgTkZTdjQgaW4gdGhlIHJldmlzZWQgUkZDMzUzMCAoYS5rLmEuDQo+IFJG
-QzM1MzBiaXMpDQo+IHRoYXQgaXMgYmVpbmcgZHJhZnRlZC4NCj4gwqANCj4gVGhlIHJlYXNvbiBp
-cyB0aGF0IHRoZSBTUEtNMyBtZWNoYW5pc20gKG9uIHdoaWNoIExJUEtFWQ0KPiByZWxpZXMpIGFw
-cGVhcnMNCj4gdG8gY29udGFpbiBpbmhlcmVudCBzZWN1cml0eSBmbGF3cyB0aGF0IGFyZSBkaWZm
-aWN1bHQgdG8gZml4LiBUaGUgSUVURiANCj4gc2VjdXJpdHkgZ3JvdXAgaGF2ZSB0aGVyZWZvcmUg
-cHJldHR5IG11Y2gga2lsbGVkIGl0IGFzIGFuIG9wdGlvbi4NCj4gT3RoZXIgYWx0ZXJuYXRpdmVz
-IHRvIFNQS00zIGFyZSBiZWluZyBkaXNjdXNzZWQsIGJ1dCBJJ20gbm90IGF3YXJlIG9mIA0KPiBh
-bnl0aGluZyB0aGF0IHJlcGxhY2VzIExJUEtFWS4NCj4g4oCcDQo+IEnigJltIHdvbmRlcmluZyB0
-b2RheSB3aGF04oCZcyB0aGUgc3RhdHVzIG9mIFNQS00zL0xJUEtFWSBzdXBwb3J0IGZvciBORlM0
-IA0KPiBvbiBMaW51eC4gRG9lcyBhbnlvbmUga25vdyB0aGF0PyBJcyBTUEtNMy9MSVBLRVkgZHJv
-cHBlZCBmcm9tDQo+IE5GUzQgb3IgYXZhaWxhYmxlIG5vdyB3aXRoIHRoZSBpbmhlcmVudCBzZWN1
-cml0eSBmbGF3cyBiZWluZyBmaXhlZD8NCg0KSXQncyBnb25lLiAgKFRoZSBrZXJuZWwgY29kZSB3
-YXMgcmVtb3ZlZCBieSAxZTdhZjFiODA2MjU5OGEwMzhjMDRkZmFhYWJkMDM4YTBkNmU4YjZhICJK
-LiBCcnVjZSBGaWVsZHMNCjxiZmllbGRzQHJlZGhhdC5jb20+Ii4pDQoNCkFuZCBteSB1bmRlcnN0
-YW5kaW5nIGlzIHRoYXQgdGhlIGZsYXdzIHdlcmUgaW5oZXJlbnQgdG8gdGhlIHNwZWNpZmljYXRp
-b24gYW5kIG5vdCBmaXhhYmxlIGluIGltcGxlbWVudGF0aW9uLg0KDQotLWIuDQoNCj4gwqANCj4g
-VGhhbmsgeW91IHZlcnkgbXVjaCBmb3IgeW91ciB1cGRhdGUuIA0KPiDCoA0KPiBSZWdhcmRzLA0K
-PiBLYWkNCj4gDQo+IC0tDQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRo
-ZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIA0KPiBpbiB0aGUgYm9keSBvZiBhIG1lc3Nh
-Z2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZyBNb3JlIG1ham9yZG9tbyANCj4gaW5mbyBh
-dCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQotLQ0KVG8gdW5z
-dWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4
-LW5mcyIgaW4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5v
-cmcgTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRv
-bW8taW5mby5odG1sDQo=
+On 07/28, Toralf Förster wrote:
+>
+> The attached patch works - applied on top of current git -
+> at least the issue cannot be reproduced then.
+
+Thanks Toralf.
+
+I'll write the changelog and send the patch tomorrow.
+
+Andrey, any chance you can check that with this patch free_ipc_ns()
+doesn't have any problem with ->shm_file ?
+
+e7b2c406 should be enough to fix that leak, but it would be nice if
+you can confirm.
+
+> On 07/27/2013 07:00 PM, Oleg Nesterov wrote:
+> > On 07/27, Toralf Förster wrote:
+> >>
+> >> I do have a user mode linux image (stable 32 bit Gentoo Linux ) which erratically crashes
+> >> while fuzz tested with trinity if the victim files are located on a NFS share.
+> >>
+> >> The back trace of the core dumps always looks like the attached.
+> >>
+> >> To bisect it is hard. However after few attempts in the last weeks the following
+> >> commit is either the first bad commit or at least the upper limit (less likely).
+> >>
+> >>
+> >> commit 8aac62706adaaf0fab02c4327761561c8bda9448
+> >> Author: Oleg Nesterov <oleg@redhat.com>
+> >> Date:   Fri Jun 14 21:09:49 2013 +0200
+> >>
+> >>     move exit_task_namespaces() outside of exit_notify()
+> >>
+> >> #15 nlmclnt_setlockargs (req=0x48e18860, fl=0x48f27c8c) at fs/lockd/clntproc.c:131
+> > 
+> > Thanks.
+> > 
+> > So nlmclnt_setlockargs()->utsname() crashes and we probably need
+> > the patch below.
+> > 
+> > But is it correct? I know _absolutely_ nothing about nfs/sunrpc/etc and
+> > I never looked into this code before, most probably I am wrong.
+> > 
+> > But it seems that __nlm_async_call() relies on workqueues.
+> > nlmclnt_async_call() does rpc_wait_for_completion_task(), but what if
+> > the caller is killed?
+> > 
+> > nlm_rqst can't go away, ->a_count was incremented. But can't the caller
+> > exit before call->name is used? In this case the memory it points to
+> > can be already freed.
+> > 
+> > Oleg.
+> > 
+> > --- x/kernel/exit.c
+> > +++ x/kernel/exit.c
+> > @@ -783,8 +783,8 @@ void do_exit(long code)
+> >  	exit_shm(tsk);
+> >  	exit_files(tsk);
+> >  	exit_fs(tsk);
+> > -	exit_task_namespaces(tsk);
+> >  	exit_task_work(tsk);
+> > +	exit_task_namespaces(tsk);
+> >  	check_stack_usage();
+> >  	exit_thread();
+> >  
+> > 
+> > 
+> 
+> 
+> -- 
+> MfG/Sincerely
+> Toralf Förster
+> pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+
