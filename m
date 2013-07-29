@@ -1,125 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:48900 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753820Ab3GIOV3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jul 2013 10:21:29 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
-Subject: Re: [PATCH - RFC]  new "nosharetransport" option for NFS mounts.
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130709132253.3dd4f90a@notabene.brown>
-Date: Tue, 9 Jul 2013 10:21:20 -0400
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        NFS <linux-nfs@vger.kernel.org>
-Message-Id: <1F5C5B8C-9D29-445D-A8E5-E1AB4E86339C@oracle.com>
-References: <20130708095812.355d7cfc@notabene.brown> <1373309499.2231.46.camel@leira.trondhjem.org> <20130709132253.3dd4f90a@notabene.brown>
-To: NeilBrown <neilb@suse.de>
+Received: from out01.mta.xmission.com ([166.70.13.231]:44848 "EHLO
+	out01.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751381Ab3G2RnP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jul 2013 13:43:15 -0400
+From: ebiederm@xmission.com (Eric W. Biederman)
+To: Oleg Nesterov <oleg@redhat.com>
+Cc: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>,
+        "Serge E. Hallyn" <serge@hallyn.com>, Andrey Vagin <avagin@openvz.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+References: <51F39AE8.3090401@gmx.de> <20130727170051.GA31447@redhat.com>
+	<87iozujkdy.fsf@xmission.com> <87r4eii4td.fsf@xmission.com>
+	<20130729141758.GA8505@redhat.com>
+Date: Mon, 29 Jul 2013 10:42:57 -0700
+In-Reply-To: <20130729141758.GA8505@redhat.com> (Oleg Nesterov's message of
+	"Mon, 29 Jul 2013 16:17:58 +0200")
+Message-ID: <871u6h45zy.fsf_-_@xmission.com>
+MIME-Version: 1.0
+Content-Type: text/plain
+Subject: Re: fuzz tested user mode linux core dumps in fs/lockd/clntproc.c:131 (nfs in a netns utsns problems?)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Jul 8, 2013, at 11:22 PM, NeilBrown <neilb@suse.de> wrote:
+Adding some people who pay more attention to nfs in network namespaces
+than I usually do.
 
-> On Mon, 8 Jul 2013 18:51:40 +0000 "Myklebust, Trond"
-> <Trond.Myklebust@netapp.com> wrote:
-> 
->> On Mon, 2013-07-08 at 09:58 +1000, NeilBrown wrote:
->>> 
->>> This patch adds a "nosharetransport" option to allow two different
->>> mounts from the same server to use different transports.
->>> If the mounts use NFSv4, or are of the same filesystem, then
->>> "nosharecache" must be used as well.
->> 
->> Won't this interfere with the recently added NFSv4 trunking detection?
-> 
-> Will it?  I googled around a bit but couldn't find anything that tells me
-> what trunking really was in this context.  Then I found commit 05f4c350ee02 
-> which makes it quite clear (thanks Chuck!).
-> 
-> Probably the code I wrote could interfere.
-> 
->> 
->> Also, how will it work with NFSv4.1 sessions? The server will usually
->> require a BIND_CONN_TO_SESSION when new TCP connections attempt to
->> attach to an existing session.
-> 
-> Why would it attempt to attach to an existing session?  I would hope there
-> the two different mounts with separate TCP connections would look completely
-> separate - different transport, different cache, different session.
-> ??
-> 
->> 
->>> There are at least two circumstances where it might be desirable
->>> to use separate transports:
->>> 
->>> 1/ If the NFS server can get into a state where it will ignore
->>>  requests for one filesystem while servicing request for another,
->>>  then using separate connections for the separate filesystems can
->>>  stop problems with one affecting access to the other.
->>> 
->>>  This is particularly relevant for NetApp filers where one filesystem
->>>  has been "suspended".  Requests to that filesystem will be dropped
->>>  (rather than the more correct NFS3ERR_JUKEBOX).  This currently
->>>  interferes with other filesystems.
->> 
->> This is a known issue that really needs to be fixed on the server, not
->> on the client. As far as I know, work is already underway to fix this.
-> 
-> I wasn't aware of this, nor were our support people.  I've passed it on so
-> maybe they can bug Netapp....
-> 
->> 
->>> 2/ If a very fast network is used with a many-processor client, a
->>>  single TCP connection can present a bottle neck which reduces total
->>>  throughput.  Using multiple TCP connections (one per mount) removes
->>>  the bottleneck.
->>>  An alternate workaround is to configure multiple virtual IP
->>>  addresses on the server and mount each filesystem from a different
->>>  IP.  This is effective (throughput goes up) but an unnecessary
->>>  administrative burden.
->> 
->> As I understand it, using multiple simultaneous TCP connections between
->> the same endpoints also adds a risk that the congestion windows will
->> interfere. Do you have numbers to back up the claim of a performance
->> improvement?
-> 
-> A customer upgraded from SLES10 (2.6.16 based) to SLES11 (3.0 based) and saw
-> a slowdown on some large DB jobs of between 1.5 and 2 times (i.e. total time
-> 150% to 200% of what is was before).
-> After some analysis they created multiple virtual IPs on the server and
-> mounted the several filesystem each from different IPs and got the
-> performance back (they see this as a work-around rather than a genuine
-> solution).
-> Numbers are like "500MB/s on a single connection, 850MB/sec peaking to
-> 1000MB/sec on multiple connections".
-> 
-> If I can get something more concrete I'll let you know.
-> 
-> As this worked well in 2.6.16 (which doesn't try to share connections) this
-> is seen as a regression.
-> 
-> On links that are easy to saturate, congestion windows are important and
-> having a single connection is probably a good idea - so the current default
-> is certainly correct.
-> On a 10G ethernet or infiniband connection (where the issue has been
-> measured) congestion just doesn't seem to be an issue.
+Oleg Nesterov <oleg@redhat.com> writes:
 
-We've toyed with the idea of using multiple TCP connections per mount for years.  The choice was made to stick with one connection (and one session on NFSv4.1) for each server.
+> On 07/28, Eric W. Biederman wrote:
+>>
+>> > This untested patch should fix it without any need to worry about
+>> > dynamic behavior.
+>
+> Yeees ;) I was thinking about this change too, but I have no idea
+> what this ->nodename actually means for nfs.
+>
+> If you are going to send this patch - great!
 
-The main limitation has been having a single RPC slot table for the transport, allowing only 16 concurrent RPC requests per server at a time.  Andy and Trond did some good work making the slot table widen itself dynamically as the TCP window opens.
+Just batting it around for now, and hoping we have the right combination
+of eyeballs look at it.  There are more places in nfs that have
+questionable uses of utsname() instead of init_utsname().  So I think we
+probably need a more comprehensive patch at the very least.
 
-A secondary concern is head-of-queue blocking.  The server end can certainly stall a client by not taking the top request off the socket queue, and thereby delay any requests that are behind that one in the queue.  I think the preferred solution there is to build out support for RPC over SCTP, and use SCTP's multi-stream feature.  Alternately we might choose to try out M-TCP. Server implementations can also be made sensitive to this issue to help prevent delays.
+nfsclnt_reclaim is never called from userspace.
+nfsclnt_cancel is called from a callback that seems to have no guarantee
+                 of an approprate userspace context.
+nfsclnt_proc is called from rpc_ops and I did not spend the time to see
+             if that could be a userspace context.
 
-A tertiary issue is contention for the transport on multi-socket systems.  For a long while I've suspected it may occur, but I've never measured it in practice.
+So I really don't think using utsname() aka current->nsproxy->uts_ns
+makes sense in nlmclnt_setlockargs.
 
-Re: the problem at hand: You've definitely measured a performance regression.  However, I don't think those numbers explain _why_ it is occurring.
+We most definitely have an inconsistency in nfs.  I am a little hesitant
+to suggest my patch because it is likely to have strange effects on nfs
+in a network namespace.  On the flip side the code is broken anyway, we
+might as well at least use a version that is guarnateed not to cause
+a null pointer dereference in the kernel.
 
-The first thing to check is whether SuSE11 has the dynamic RPC slot table logic I mentioned above.  I think it starts with upstream commit d9ba131d, but someone should correct me if I'm wrong.
+This is the first time someone has seen a problem since late 2006 since
+Serge updated most of the references to use system_utsname but I think
+we have just been lucky.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+>> Although I am wondering if we have a few other spots
+>> > where the dynamic behavior might be iffy.
+>
+> Yes. And perhaps the patch which moves exit_task_namespaces() after
+> exit_task_work() makes sense anyway (the patch I showed).
+>
+> (but if you change nlmclnt_setlockargs() then it is not 3.11 material).
+>
+> The original motivation for 8aac62706 was the leak reported by Andrey,
+> but that leak should be also fixed by e7b2c406. "Move exit_task_namespaces()
+> from exit_notify() to do_exit()" is still fine imho, the reason for
+> exit_task_namespaces() from the middle of exit_notify() has gone away.
+>
+> But perhaps it would be better if work->func() could use ->nsproxy even
+> if the task is PF_EXITING.
 
+So far there is nothing in the nfs code that would suggest allowing
+work->func() being able to use ->nsproxy would make this code any
+better.  I think that would just paper over the problem we are seeing
+right now.
 
-
-
+>> > Serge do you remember any of this?
+>> >
+>> > On a good day I can follow the nfs code but it takes quite a while.  I
+>> > feel the same way about filesystems locks so I am not really certain
+>> > what is going on.
+>> >
+>> > Eric
+>> >
+>> > diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+>> > index 9760ecb..6643cfc 100644
+>> > --- a/fs/lockd/clntproc.c
+>> > +++ b/fs/lockd/clntproc.c
+>> > @@ -128,11 +128,11 @@ static void nlmclnt_setlockargs(struct nlm_rqst *req, struct file_lock *fl)
+>> >  
+>> >         nlmclnt_next_cookie(&argp->cookie);
+>> >         memcpy(&lock->fh, NFS_FH(file_inode(fl->fl_file)), sizeof(struct nfs_fh));
+>> > -       lock->caller  = utsname()->nodename;
+>> > +       lock->caller  = init_utsname()->nodename;
+>> >         lock->oh.data = req->a_owner;
+>> >         lock->oh.len  = snprintf(req->a_owner, sizeof(req->a_owner), "%u@%s",
+>> >                                 (unsigned int)fl->fl_u.nfs_fl.owner->pid,
+>> > -                               utsname()->nodename);
+>> > +                               init_utsname()->nodename);
+>> >         lock->svid = fl->fl_u.nfs_fl.owner->pid;
+>> >         lock->fl.fl_start = fl->fl_start;
+>> >         lock->fl.fl_end = fl->fl_end;
+>> >
+>> > Eric  
