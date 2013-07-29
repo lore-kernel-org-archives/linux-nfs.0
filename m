@@ -1,158 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from [216.240.18.76] ([216.240.18.76]:62397 "EHLO mx11.netapp.com"
-	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751392Ab3GHSAH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jul 2013 14:00:07 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Linux linux-kernel <linux-kernel@vger.kernel.org>,
-        James Morris <james.l.morris@oracle.com>
-Subject: [GIT PULL] Please pull NFS client updates
-Date: Mon, 8 Jul 2013 17:59:33 +0000
-Message-ID: <1373306369.2231.16.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from out03.mta.xmission.com ([166.70.13.233]:38905 "EHLO
+	out03.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751871Ab3G2BXT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Jul 2013 21:23:19 -0400
+From: ebiederm@xmission.com (Eric W. Biederman)
+To: Oleg Nesterov <oleg@redhat.com>
+Cc: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>,
+        "Serge E. Hallyn" <serge@hallyn.com>, Andrey Vagin <avagin@openvz.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+References: <51F39AE8.3090401@gmx.de> <20130727170051.GA31447@redhat.com>
+	<87iozujkdy.fsf@xmission.com>
+Date: Sun, 28 Jul 2013 17:32:30 -0700
+In-Reply-To: <87iozujkdy.fsf@xmission.com> (Eric W. Biederman's message of
+	"Sun, 28 Jul 2013 17:10:49 -0700")
+Message-ID: <87r4eii4td.fsf@xmission.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Subject: Re: fuzz tested user mode linux core dumps in fs/lockd/clntproc.c:131
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgZjcyMjQwNmZh
-YWUyZDA3M2NjMWQwMTA2M2QxMTIzYzM1NDI1OTM5ZToNCg0KICBMaW51eCAzLjEwLXJjMSAoMjAx
-My0wNS0xMSAxNzoxNDowOCAtMDcwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgZ2l0IHJlcG9z
-aXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9s
-aW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci0zLjExLTENCg0KZm9yIHlvdSB0byBmZXRjaCBjaGFu
-Z2VzIHVwIHRvIDk1OWQ5MjFmNWViODg3OGVhMTYwNDlhN2Y2ZTliY2JiNmRmYmNiODg6DQoNCiAg
-TWVyZ2UgYnJhbmNoICdsYWJlbGVkLW5mcycgaW50byBsaW51eC1uZXh0ICgyMDEzLTA2LTI4IDE2
-OjI5OjUxIC0wNDAwKQ0KDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQoNCk5GUyBjbGllbnQgdXBkYXRlcyBmb3IgTGludXgg
-My4xMQ0KDQpGZWF0dXJlIGhpZ2hsaWdodHMgaW5jbHVkZToNCi0gQWRkIGJhc2ljIGNsaWVudCBz
-dXBwb3J0IGZvciBORlN2NC4yDQotIEFkZCBiYXNpYyBjbGllbnQgc3VwcG9ydCBmb3IgTGFiZWxl
-ZCBORlMgKHNlbGludXggZm9yIE5GU3Y0LjIpDQotIEZpeCB0aGUgdXNlIG9mIGNyZWRlbnRpYWxz
-IGluIE5GU3Y0LjEgc3RhdGVmdWwgb3BlcmF0aW9ucywgYW5kDQogIGFkZCBzdXBwb3J0IGZvciBO
-RlN2NC4xIHN0YXRlIHByb3RlY3Rpb24uDQoNCkJ1Z2ZpeCBoaWdobGlnaHRzOg0KLSBGaXggYW5v
-dGhlciBORlN2NCBvcGVuIHN0YXRlIHJlY292ZXJ5IHJhY2UNCi0gRml4IGFuIE5GU3Y0LjEgYmFj
-ayBjaGFubmVsIHNlc3Npb24gcmVncmVzc2lvbg0KLSBWYXJpb3VzIHJwY19waXBlZnMgcmFjZXMN
-Ci0gRml4IGFub3RoZXIgaXNzdWUgd2l0aCBORlN2MyBhdXRoIG5lZ290aWF0aW9uDQoNCg0KUGxl
-YXNlIG5vdGUgdGhhdCBMYWJlbGVkIE5GUyBkb2VzIHJlcXVpcmUgc29tZSBhZGRpdGlvbmFsIHN1
-cHBvcnQgZnJvbQ0KdGhlIHNlY3VyaXR5IHN1YnN5c3RlbS4gVGhlIHJlbGV2YW50IGNoYW5nZXNl
-dHMgaGF2ZSBhbGwgYmVlbiByZXZpZXdlZA0KYW5kIGFja2VkIGJ5IEphbWVzIE1vcnJpcy4NCg0K
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLQ0KQW5keSBBZGFtc29uICg2KToNCiAgICAgIE5GU3Y0LjEgRml4IGEgcE5GUyBzZXNz
-aW9uIGRyYWluaW5nIGRlYWRsb2NrDQogICAgICBORlN2NC4xIGVuZCBiYWNrIGNoYW5uZWwgc2Vz
-c2lvbiBkcmFpbmluZw0KICAgICAgTkZTdjQuMSBGaXggZ2RpYV9tYXhjb3VudCBjYWxjdWxhdGlv
-biB0byBmaXQgaW4gY2FfbWF4cmVzcG9uc2VzaXplDQogICAgICBORlN2NC4xIHVzZSBwbmZzX2Rl
-dmljZSBtYXhjb3VudCBmb3IgdGhlIGJsb2NrbGF5b3V0IGdkaWFfbWF4Y291bnQNCiAgICAgIE5G
-U3Y0LjEgdXNlIHBuZnNfZGV2aWNlIG1heGNvdW50IGZvciB0aGUgb2JqZWN0bGF5b3V0IGdkaWFf
-bWF4Y291bnQNCiAgICAgIE5GU3Y0LjEgUmVmYWN0b3IgbmZzNF9pbml0X3Nlc3Npb24gYW5kIG5m
-czRfaW5pdF9jaGFubmVsX2F0dHJzDQoNCkJyeWFuIFNjaHVtYWtlciAoNCk6DQogICAgICBORlM6
-IE1ha2UgY2FsbGJhY2tzIG1pbm9yIHZlcnNpb24gZ2VuZXJpYw0KICAgICAgTkZTOiBBZGQgaW4g
-djQuMiBjYWxsYmFjayBvcGVyYXRpb24NCiAgICAgIE5GUzogQXBwbHkgdjQuMSBjYXBhYmlsaXRp
-ZXMgdG8gdjQuMg0KICAgICAgTkZTOiBJbXByb3ZlIGxlZ2FjeSBpZG1hcHBpbmcgZmFsbGJhY2sN
-Cg0KQ2h1Y2sgTGV2ZXIgKDMpOg0KICAgICAgTkZTOiBGaXggU0VUQ0xJRU5USUQgZmFsbGJhY2sg
-aWYgR1NTIGlzIG5vdCBhdmFpbGFibGUNCiAgICAgIE5GUzogRml4IHNlY3VyaXR5IGZsYXZvciBu
-ZWdvdGlhdGlvbiB3aXRoIGxlZ2FjeSBiaW5hcnkgbW91bnRzDQogICAgICBORlM6IFNldCBORlNf
-Q1NfTUlHUkFUSU9OIGZvciBORlN2NCBtb3VudHMNCg0KRGF2aWQgUXVpZ2xleSAoMTApOg0KICAg
-ICAgU2VjdXJpdHk6IEFkZCBob29rIHRvIGNhbGN1bGF0ZSBjb250ZXh0IGJhc2VkIG9uIGEgbmVn
-YXRpdmUgZGVudHJ5Lg0KICAgICAgU2VjdXJpdHk6IEFkZCBIb29rIHRvIHRlc3QgaWYgdGhlIHBh
-cnRpY3VsYXIgeGF0dHIgaXMgcGFydCBvZiBhIE1BQyBtb2RlbC4NCiAgICAgIExTTTogQWRkIGZs
-YWdzIGZpZWxkIHRvIHNlY3VyaXR5X3NiX3NldF9tbnRfb3B0cyBmb3IgaW4ga2VybmVsIG1vdW50
-IGRhdGEuDQogICAgICBTRUxpbnV4OiBBZGQgbmV3IGxhYmVsaW5nIHR5cGUgbmF0aXZlIGxhYmVs
-cw0KICAgICAgTkZTdjQ6IEFkZCBsYWJlbCByZWNvbW1lbmRlZCBhdHRyaWJ1dGUgYW5kIE5GU3Y0
-IGZsYWdzDQogICAgICBORlN2NDogRXh0ZW5kIGZhdHRyIGJpdG1hcHMgdG8gc3VwcG9ydCBhbGwg
-MyB3b3Jkcw0KICAgICAgTkZTOkFkZCBsYWJlbHMgdG8gY2xpZW50IGZ1bmN0aW9uIHByb3RvdHlw
-ZXMNCiAgICAgIE5GUzogQWRkIGxhYmVsIGxpZmVjeWNsZSBtYW5hZ2VtZW50DQogICAgICBORlM6
-IENsaWVudCBpbXBsZW1lbnRhdGlvbiBvZiBMYWJlbGVkLU5GUw0KICAgICAgTkZTOiBFeHRlbmQg
-TkZTIHhhdHRyIGhhbmRsZXJzIHRvIGFjY2VwdCB0aGUgc2VjdXJpdHkgbmFtZXNwYWNlDQoNCkRq
-YWxhbCBIYXJvdW5pICgxKToNCiAgICAgIE5GU3Y0OiBTRVRDTElFTlRJRCBhZGQgdGhlIGZvcm1h
-dCBzdHJpbmcgZm9yIHRoZSBORVRJRA0KDQpKZWZmIExheXRvbiAoNSk6DQogICAgICBycGNfcGlw
-ZWZzOiBvbmx5IHNldCBycGNfZGVudHJ5X29wcyBpZiBkX29wIGlzbid0IGFscmVhZHkgc2V0DQog
-ICAgICBuZnM6IHJlZmFjdG9yICJuZWVkX21vdW50IiBjb2RlIG91dCBvZiBuZnNfdHJ5X21vdW50
-DQogICAgICBuZnM6IG1vdmUgc2VydmVyX2F1dGhsaXN0IGludG8gbmZzX3RyeV9tb3VudF9yZXF1
-ZXN0DQogICAgICBuZnM6IGhhdmUgbmZzX21vdW50IGZha2UgdXAgYSBhdXRoX2ZsYXZzIGxpc3Qg
-d2hlbiB0aGUgc2VydmVyIGRpZG4ndCBwcm92aWRlIGl0DQogICAgICBuZnM6IGhhdmUgTkZTdjMg
-dHJ5IHNlcnZlci1zcGVjaWZpZWQgYXV0aCBmbGF2b3JzIGluIHR1cm4NCg0KU3RhbmlzbGF2IEtp
-bnNidXJza3kgKDQpOg0KICAgICAgU1VOUlBDOiBmaXggcmFjZXMgb24gUGlwZUZTIE1PVU5UIG5v
-dGlmaWNhdGlvbnMNCiAgICAgIFNVTlJQQzogZml4IHJhY2VzIG9uIFBpcGVGUyBVTU9VTlQgbm90
-aWZpY2F0aW9ucw0KICAgICAgU1VOUlBDOiBzcGxpdCBjbGllbnQgY3JlYXRpb24gcm91dGluZSBp
-bnRvIHNldHVwIGFuZCByZWdpc3RyYXRpb24NCiAgICAgIFNVTlJQQzogUGlwZUZTIE1PVU5UIG5v
-dGlmaWNhdGlvbiBvcHRpbWl6YXRpb24gZm9yIGR5aW5nIGNsaWVudHMNCg0KU3RldmUgRGlja3Nv
-biAoNCk6DQogICAgICBORlM6IEFkZCBORlN2NC4yIHByb3RvY29sIGNvbnN0YW50cw0KICAgICAg
-TkZTdjQuMjogQWRkZWQgTkZTIHY0LjIgc3VwcG9ydCB0byB0aGUgTkZTIGNsaWVudA0KICAgICAg
-TkZTdjQ6IEludHJvZHVjZSBuZXcgbGFiZWwgc3RydWN0dXJlDQogICAgICBLY29uZmlnOiBBZGQg
-S2NvbmZpZyBlbnRyeSBmb3IgTGFiZWxlZCBORlMgVjQgY2xpZW50DQoNClRyb25kIE15a2xlYnVz
-dCAoMjYpOg0KICAgICAgU1VOUlBDOiBGaXggYSBidWcgaW4gZ3NzX2NyZWF0ZV91cGNhbGwNCiAg
-ICAgIFNVTlJQQzogRmFzdGVyIGRldGVjdGlvbiBpZiBnc3NkIGlzIGFjdHVhbGx5IHJ1bm5pbmcN
-CiAgICAgIFNVTlJQQzogQ29udmVydCBhdXRoX2dzcyBwaXBlIGRldGVjdGlvbiB0byB3b3JrIGlu
-IG5hbWVzcGFjZXMNCiAgICAgIFNVTlJQQzogUHJldmVudCBhbiBycGNfdGFzayB3YWtldXAgcmFj
-ZQ0KICAgICAgTkZTdjQ6IEZpeCBhIHRoaW5rbyBpbiBuZnM0X3RyeV9vcGVuX2NhY2hlZA0KICAg
-ICAgTkZTdjQuMTogRW5zdXJlIHRoYXQgbGF5b3V0Z2V0IGlzIGNhbGxlZCB1c2luZyB0aGUgbGF5
-b3V0IGNyZWRlbnRpYWwNCiAgICAgIE5GU3Y0LjE6IEVuc3VyZSB0aGF0IGxheW91dHJldHVybiB1
-c2VzIHRoZSBjb3JyZWN0IGNyZWRlbnRpYWwNCiAgICAgIE5GU3Y0LjE6IEVuc3VyZSB0aGF0IHJl
-Y2xhaW1fY29tcGxldGUgdXNlcyB0aGUgcmlnaHQgY3JlZGVudGlhbA0KICAgICAgTkZTdjQuMTog
-RW5zdXJlIHRoYXQgdGVzdF9zdGF0ZWlkIGFuZCBmcmVlX3N0YXRlaWQgdXNlIGNvcnJlY3QgY3Jl
-ZGVudGlhbHMNCiAgICAgIE5GU3Y0LjE6IFVzZSBsYXlvdXQgY3JlZGVudGlhbHMgZm9yIGdldF9k
-ZXZpY2VpbmZvIGNhbGxzDQogICAgICBORlN2NC4xOiBFbmFibGUgc3RhdGUgcHJvdGVjdGlvbg0K
-ICAgICAgTkZTdjQuMTogU2ltcGxpZnkgc2V0dGluZyB0aGUgbGF5b3V0IGhlYWRlciBjcmVkZW50
-aWFsDQogICAgICBTVU5SUEM6IEZpeCBhIHBvdGVudGlhbCByYWNlIGluIHJwY19leGVjdXRlDQog
-ICAgICBTVU5SUEM6IFJlbW92ZSB1bnVzZWQgZnVuY3Rpb24gcnBjX3F1ZXVlX2VtcHR5DQogICAg
-ICBTVU5SUEM6IFJlbW92ZSB0aGUgdW51c2VkIGhlbHBlcnMgdGFza19mb3JfZWFjaCgpIGFuZCB0
-YXNrX2Zvcl9maXJzdCgpDQogICAgICBTVU5SUEM6IFJlbW92ZSB1bnVzZWQgZnVuY3Rpb25zIHJw
-Y190YXNrX3NldC9oYXNfcHJpb3JpdHkNCiAgICAgIFNVTlJQQzogUmVtb3ZlIHJlZHVuZGFudCBj
-YWxsIHRvIHJwY19zZXRfcnVubmluZygpIGluIF9fcnBjX2V4ZWN1dGUoKQ0KICAgICAgTkZTdjQ6
-IFJlbW92ZSByZWR1bmRhbnQgY2hlY2sgZm9yIEZNT0RFX0VYRUMgaW4gbmZzX2ZpbmlzaF9vcGVu
-DQogICAgICBORlN2NDogQ2xlYW51cDogcGFzcyB0aGUgbmZzX29wZW5fY29udGV4dCB0byBuZnM0
-X2RvX29wZW4NCiAgICAgIE5GU3Y0OiBSZWZhY3RvciBfbmZzNF9vcGVuX2FuZF9nZXRfc3RhdGUg
-dG8gc2V0IGN0eC0+c3RhdGUNCiAgICAgIE5GU3Y0OiBNb3ZlIGRlbnRyeSBpbnN0YW50aWF0aW9u
-IGludG8gdGhlIE5GU3Y0LXNwZWNpZmljIGF0b21pYyBvcGVuIGNvZGUNCiAgICAgIE5GU3Y0OiBD
-bG9zZSBhbm90aGVyIE5GU3Y0IHJlY292ZXJ5IHJhY2UNCiAgICAgIE5GU3Y0OiBNb3ZlIHRoZSBE
-TlMgcmVzb2x2ZXIgaW50byB0aGUgTkZTdjQgbW9kdWxlDQogICAgICBORlN2NC4xOiBsYXlvdXQg
-c2VnbWVudCBjb21wYXJpc29uIGhlbHBlcnMgc2hvdWxkIHRha2UgJ2NvbnN0JyBwYXJhbWV0ZXJz
-DQogICAgICBORlN2NC4xOiBDbGVhbiB1cCBsYXlvdXQgc2VnbWVudCBjb21wYXJpc29uIGhlbHBl
-ciBuYW1lcw0KICAgICAgTWVyZ2UgYnJhbmNoICdsYWJlbGVkLW5mcycgaW50byBsaW51eC1uZXh0
-DQoNCiBmcy9uZnMvS2NvbmZpZyAgICAgICAgICAgICAgICAgICAgICB8ICAxNCArDQogZnMvbmZz
-L01ha2VmaWxlICAgICAgICAgICAgICAgICAgICAgfCAgIDYgKy0NCiBmcy9uZnMvYmxvY2tsYXlv
-dXQvYmxvY2tsYXlvdXQuYyAgICB8ICAgMyArLQ0KIGZzL25mcy9jYWxsYmFjay5jICAgICAgICAg
-ICAgICAgICAgIHwgICAxICsNCiBmcy9uZnMvY2FsbGJhY2suaCAgICAgICAgICAgICAgICAgICB8
-ICAgMyArDQogZnMvbmZzL2NhbGxiYWNrX3Byb2MuYyAgICAgICAgICAgICAgfCAgIDUgKy0NCiBm
-cy9uZnMvY2FsbGJhY2tfeGRyLmMgICAgICAgICAgICAgICB8ICA1NCArKy0NCiBmcy9uZnMvY2xp
-ZW50LmMgICAgICAgICAgICAgICAgICAgICB8ICAgNCArLQ0KIGZzL25mcy9kaXIuYyAgICAgICAg
-ICAgICAgICAgICAgICAgIHwgIDc1ICsrLS0NCiBmcy9uZnMvZG5zX3Jlc29sdmUuYyAgICAgICAg
-ICAgICAgICB8ICAzMiArLQ0KIGZzL25mcy9nZXRyb290LmMgICAgICAgICAgICAgICAgICAgIHwg
-ICAyICstDQogZnMvbmZzL2lkbWFwLmMgICAgICAgICAgICAgICAgICAgICAgfCAgNTYgKystDQog
-ZnMvbmZzL2lub2RlLmMgICAgICAgICAgICAgICAgICAgICAgfCAxMzYgKysrKystLQ0KIGZzL25m
-cy9pbnRlcm5hbC5oICAgICAgICAgICAgICAgICAgIHwgICAzICstDQogZnMvbmZzL21vdW50X2Ns
-bnQuYyAgICAgICAgICAgICAgICAgfCAgMTQgKy0NCiBmcy9uZnMvbmFtZXNwYWNlLmMgICAgICAg
-ICAgICAgICAgICB8ICAgMiArLQ0KIGZzL25mcy9uZnMzcHJvYy5jICAgICAgICAgICAgICAgICAg
-IHwgICA3ICstDQogZnMvbmZzL25mczRfZnMuaCAgICAgICAgICAgICAgICAgICAgfCAgIDggKy0N
-CiBmcy9uZnMvbmZzNGNsaWVudC5jICAgICAgICAgICAgICAgICB8ICAxNyArLQ0KIGZzL25mcy9u
-ZnM0ZmlsZS5jICAgICAgICAgICAgICAgICAgIHwgICAxIC0NCiBmcy9uZnMvbmZzNGZpbGVsYXlv
-dXQuYyAgICAgICAgICAgICB8ICAgMyArLQ0KIGZzL25mcy9uZnM0ZmlsZWxheW91dC5oICAgICAg
-ICAgICAgIHwgICAzICstDQogZnMvbmZzL25mczRmaWxlbGF5b3V0ZGV2LmMgICAgICAgICAgfCAg
-IDggKy0NCiBmcy9uZnMvbmZzNHByb2MuYyAgICAgICAgICAgICAgICAgICB8IDY5MSArKysrKysr
-KysrKysrKysrKysrKysrKysrKysrKystLS0tLS0NCiBmcy9uZnMvbmZzNHNlc3Npb24uYyAgICAg
-ICAgICAgICAgICB8ICA0NCArLS0NCiBmcy9uZnMvbmZzNHNlc3Npb24uaCAgICAgICAgICAgICAg
-ICB8ICAyMCArLQ0KIGZzL25mcy9uZnM0c3RhdGUuYyAgICAgICAgICAgICAgICAgIHwgIDUxICst
-LQ0KIGZzL25mcy9uZnM0c3VwZXIuYyAgICAgICAgICAgICAgICAgIHwgIDE0ICstDQogZnMvbmZz
-L25mczR4ZHIuYyAgICAgICAgICAgICAgICAgICAgfCAxODIgKysrKysrKystLQ0KIGZzL25mcy9v
-YmpsYXlvdXQvb2JqbGF5b3V0LmMgICAgICAgIHwgICA0ICstDQogZnMvbmZzL3BuZnMuYyAgICAg
-ICAgICAgICAgICAgICAgICAgfCAgNDIgKy0tDQogZnMvbmZzL3BuZnMuaCAgICAgICAgICAgICAg
-ICAgICAgICAgfCAgIDYgKy0NCiBmcy9uZnMvcHJvYy5jICAgICAgICAgICAgICAgICAgICAgICB8
-ICAxMyArLQ0KIGZzL25mcy9zdXBlci5jICAgICAgICAgICAgICAgICAgICAgIHwgMjAxICsrKysr
-Ky0tLS0tDQogZnMvbmZzZC9uZnNkLmggICAgICAgICAgICAgICAgICAgICAgfCAgIDYgKw0KIGlu
-Y2x1ZGUvbGludXgvbmZzNC5oICAgICAgICAgICAgICAgIHwgIDIyICsrDQogaW5jbHVkZS9saW51
-eC9uZnNfZnMuaCAgICAgICAgICAgICAgfCAgMjcgKy0NCiBpbmNsdWRlL2xpbnV4L25mc19mc19z
-Yi5oICAgICAgICAgICB8ICAgOCArLQ0KIGluY2x1ZGUvbGludXgvbmZzX3hkci5oICAgICAgICAg
-ICAgIHwgIDIwICstDQogaW5jbHVkZS9saW51eC9zZWN1cml0eS5oICAgICAgICAgICAgfCAgNTcg
-KystDQogaW5jbHVkZS9saW51eC9zdW5ycGMvc2NoZWQuaCAgICAgICAgfCAgMjAgLS0NCiBuZXQv
-c3VucnBjL2F1dGhfZ3NzL2F1dGhfZ3NzLmMgICAgICB8ICA2MiArKy0tDQogbmV0L3N1bnJwYy9j
-bG50LmMgICAgICAgICAgICAgICAgICAgfCAgNzEgKystLQ0KIG5ldC9zdW5ycGMvbmV0bnMuaCAg
-ICAgICAgICAgICAgICAgIHwgICA0ICsNCiBuZXQvc3VucnBjL3JwY19waXBlLmMgICAgICAgICAg
-ICAgICB8ICAxMyArLQ0KIG5ldC9zdW5ycGMvc2NoZWQuYyAgICAgICAgICAgICAgICAgIHwgIDI3
-ICstDQogc2VjdXJpdHkvY2FwYWJpbGl0eS5jICAgICAgICAgICAgICAgfCAgMTkgKy0NCiBzZWN1
-cml0eS9zZWN1cml0eS5jICAgICAgICAgICAgICAgICB8ICAyNCArLQ0KIHNlY3VyaXR5L3NlbGlu
-dXgvaG9va3MuYyAgICAgICAgICAgIHwgIDkyICsrKystDQogc2VjdXJpdHkvc2VsaW51eC9pbmNs
-dWRlL3NlY3VyaXR5LmggfCAgIDIgKw0KIHNlY3VyaXR5L3NlbGludXgvc3MvcG9saWN5ZGIuYyAg
-ICAgIHwgICA1ICstDQogc2VjdXJpdHkvc21hY2svc21hY2tfbHNtLmMgICAgICAgICAgfCAgMTEg
-Kw0KIDUyIGZpbGVzIGNoYW5nZWQsIDE2MzEgaW5zZXJ0aW9ucygrKSwgNTg0IGRlbGV0aW9ucygt
-KQ0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoN
-Ck5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+
+Resending with Serge's current email address.
+
+Eric
+
+ebiederm@xmission.com (Eric W. Biederman) writes:
+
+> Oleg Nesterov <oleg@redhat.com> writes:
+>
+>> On 07/27, Toralf Förster wrote:
+>>>
+>>> I do have a user mode linux image (stable 32 bit Gentoo Linux ) which erratically crashes
+>>> while fuzz tested with trinity if the victim files are located on a NFS share.
+>>>
+>>> The back trace of the core dumps always looks like the attached.
+>>>
+>>> To bisect it is hard. However after few attempts in the last weeks the following
+>>> commit is either the first bad commit or at least the upper limit (less likely).
+>>>
+>>>
+>>> commit 8aac62706adaaf0fab02c4327761561c8bda9448
+>>> Author: Oleg Nesterov <oleg@redhat.com>
+>>> Date:   Fri Jun 14 21:09:49 2013 +0200
+>>>
+>>>     move exit_task_namespaces() outside of exit_notify()
+>>>
+>>> #15 nlmclnt_setlockargs (req=0x48e18860, fl=0x48f27c8c) at fs/lockd/clntproc.c:131
+>>
+>> Thanks.
+>>
+>> So nlmclnt_setlockargs()->utsname() crashes and we probably need
+>> the patch below.
+>>
+>> But is it correct? I know _absolutely_ nothing about nfs/sunrpc/etc and
+>> I never looked into this code before, most probably I am wrong.
+>>
+>> But it seems that __nlm_async_call() relies on workqueues.
+>> nlmclnt_async_call() does rpc_wait_for_completion_task(), but what if
+>> the caller is killed?
+>>
+>> nlm_rqst can't go away, ->a_count was incremented. But can't the caller
+>> exit before call->name is used? In this case the memory it points to
+>> can be already freed.
+>
+> I don't think anyone has ever looked into that.  This was a flyby
+> conversion by Serge in 2006 when he originally did the uts namespace.
+>
+>
+> from commit e9ff3990f08e9a0c2839cc22808b01732ea5b3e4
+>    [PATCH] namespaces: utsname: switch to using uts namespaces
+>     
+>     Replace references to system_utsname to the per-process uts namespace
+>     where appropriate.  This includes things like uname.
+>     
+>     Changes: Per Eric Biederman's comments, use the per-process uts namespace
+>         for ELF_PLATFORM, sunrpc, and parts of net/ipv4/ipconfig.c
+>
+> Hmm.  That credits with me with this mess.  What was I thinking?
+> Perhaps I just said you missed a couple of spots.
+>
+> This untested patch should fix it without any need to worry about
+> dynamic behavior.  Although I am wondering if we have a few other spots
+> where the dynamic behavior might be iffy.
+>
+> Serge do you remember any of this?
+>
+> On a good day I can follow the nfs code but it takes quite a while.  I
+> feel the same way about filesystems locks so I am not really certain
+> what is going on.
+>
+> Eric
+>
+> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+> index 9760ecb..6643cfc 100644
+> --- a/fs/lockd/clntproc.c
+> +++ b/fs/lockd/clntproc.c
+> @@ -128,11 +128,11 @@ static void nlmclnt_setlockargs(struct nlm_rqst *req, struct file_lock *fl)
+>  
+>         nlmclnt_next_cookie(&argp->cookie);
+>         memcpy(&lock->fh, NFS_FH(file_inode(fl->fl_file)), sizeof(struct nfs_fh));
+> -       lock->caller  = utsname()->nodename;
+> +       lock->caller  = init_utsname()->nodename;
+>         lock->oh.data = req->a_owner;
+>         lock->oh.len  = snprintf(req->a_owner, sizeof(req->a_owner), "%u@%s",
+>                                 (unsigned int)fl->fl_u.nfs_fl.owner->pid,
+> -                               utsname()->nodename);
+> +                               init_utsname()->nodename);
+>         lock->svid = fl->fl_u.nfs_fl.owner->pid;
+>         lock->fl.fl_start = fl->fl_start;
+>         lock->fl.fl_end = fl->fl_end;
+>
+> Eric  
