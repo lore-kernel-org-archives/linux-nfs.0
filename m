@@ -1,96 +1,162 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:29152 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752554Ab3GaSrB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 31 Jul 2013 14:47:01 -0400
-Date: Wed, 31 Jul 2013 14:46:57 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Quentin Barnes <qbarnes@gmail.com>
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: don't allow nfs_find_actor to match inodes of the
- wrong type
-Message-ID: <20130731144657.7b94482b@tlielax.poochiereds.net>
-In-Reply-To: <CAKjHkpAi_-jucPnFXg=3vMZg+pWSha3xR7KhjMPqN56K12SbCQ@mail.gmail.com>
-References: <1362013834-29600-1-git-send-email-jlayton@redhat.com>
-	<CAKjHkpAi_-jucPnFXg=3vMZg+pWSha3xR7KhjMPqN56K12SbCQ@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from relay.parallels.com ([195.214.232.42]:44491 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752715Ab3G2GcH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jul 2013 02:32:07 -0400
+Date: Mon, 29 Jul 2013 10:29:06 +0400
+From: Andrew Vagin <avagin@parallels.com>
+To: Oleg Nesterov <oleg@redhat.com>
+CC: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>,
+        Andrey Vagin <avagin@openvz.org>, "Serge E. Hallyn" <serue@us.ibm.com>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: fuzz tested user mode linux core dumps in fs/lockd/clntproc.c:131
+Message-ID: <20130729062905.GA28282@paralelels.com>
+References: <51F39AE8.3090401@gmx.de>
+ <20130727170051.GA31447@redhat.com>
+ <51F5381D.1080904@gmx.de>
+ <20130728175828.GA15020@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20130728175828.GA15020@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 31 Jul 2013 13:36:21 -0500
-Quentin Barnes <qbarnes@gmail.com> wrote:
-
-> I was reviewing patches I was integrating into my NFS source base
-> and this one popped up (commit f6488c9b).  In reviewing it, it would
-> fix the problem, however, I think it's not the best fix for it.
-> Catching it in nfs_find_actor() is after the horse has left the
-> barn so to speak.
-> 
-> I think the problem is in nfs_fhget() when constructing the new
-> inode (inside the if (inode->i_state & I_NEW) {...}) and should be
-> addressed there.
-> 
-> The nfs module already has checks to ensure that the expression
-> "((S_IFMT & inode->i_mode) == (S_IFMT & fattr->mode))" is true
-> in nfs_update_inode() and nfs_check_inode_attributes().  I think
-> problem Benny hit was that the equivalent check is missing in
-> nfs_fhget() when constructing a new inode.  The same check that's
-> in those other two functions needs to be added to nfs_fhget()'s "if
-> (inode->i_state & I_NEW) {...}" conditional block to prevent the
-> problem of an inconsistent fattr/inode state from occurring in the
-> first place.
-> 
-> I can come up with a patch if you'd like, but I wanted to make
-> sure my assertions were valid first.  Is removing a check from
-> nfs_find_actor() and adding the check to nfs_fhget() to prevent the
-> inconsistency in the first place a better approach?
-> 
-> Quentin
-> 
-> On Wed, Feb 27, 2013 at 7:10 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> > Benny Halevy reported the following oops when testing RHEL6:
-> [...]
-> > This should fix the oops reported here:
+On Sun, Jul 28, 2013 at 07:58:28PM +0200, Oleg Nesterov wrote:
+> On 07/28, Toralf Förster wrote:
 > >
-> >     https://bugzilla.redhat.com/show_bug.cgi?id=913660
-> >
-> > Reported-by: Benny Halevy <bhalevy@tonian.com>
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  fs/nfs/inode.c | 2 ++
-> >  1 file changed, 2 insertions(+)
-> >
-> > diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> > index 6acc73c..f52c99f 100644
-> > --- a/fs/nfs/inode.c
-> > +++ b/fs/nfs/inode.c
-> > @@ -237,6 +237,8 @@ nfs_find_actor(struct inode *inode, void *opaque)
-> >
-> >         if (NFS_FILEID(inode) != fattr->fileid)
-> >                 return 0;
-> > +       if ((S_IFMT & inode->i_mode) != (S_IFMT & fattr->mode))
-> > +               return 0;
-> >         if (nfs_compare_fh(NFS_FH(inode), fh))
-> >                 return 0;
-> >         if (is_bad_inode(inode) || NFS_STALE(inode))
-> > --
-> > 1.7.11.7
-> >
-> > --
+> > The attached patch works - applied on top of current git -
+> > at least the issue cannot be reproduced then.
+> 
+> Thanks Toralf.
+> 
+> I'll write the changelog and send the patch tomorrow.
+> 
+> Andrey, any chance you can check that with this patch free_ipc_ns()
+> doesn't have any problem with ->shm_file ?
+
+kmemleak doesn't detect any leak, but I think this patch is incorrect.
+
+According to my previous investigations exit_task_work should be called
+after exit task namespaces
+(http://comments.gmane.org/gmane.linux.kernel/1475123)
+
+I applied the following patch:
+
+@@ -11,8 +11,11 @@ task_work_add(struct task_struct *task, struct
+callback_head *work, bool notify)
+ 
+        do {
+                head = ACCESS_ONCE(task->task_works);
+-               if (unlikely(head == &work_exited))
++               if (unlikely(head == &work_exited)) {
++                       printk("%s:%d\n", __func__, __LINE__);
++                       dump_stack();
+                        return -ESRCH;
++               }
+                work->next = head;
+        } while (cmpxchg(&task->task_works, head, work) != head);
+ 
+
+and I got a few backtraces in a kernel log
+
+[  151.513725] task_work_add:15
+[  151.514860] CPU: 1 PID: 15303 Comm: ipc Not tainted 3.11.0-rc2+ #75
+[  151.516743] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+[  151.518558]  ffff880067bf0000 ffff88006922fba0 ffffffff81630dd5 ffff88006d9b2280
+[  151.521767]  ffff88006922fbb0 ffffffff8107b478 ffff88006922fbd0 ffffffff8119ad43
+[  151.524587]  ffff880079e81740 ffff88007a9035c8 ffff88006922fbe8 ffffffff81281ebd
+[  151.527785] Call Trace:
+[  151.528811]  [<ffffffff81630dd5>] dump_stack+0x45/0x56
+[  151.530378]  [<ffffffff8107b478>] task_work_add+0x78/0x80
+[  151.533219]  [<ffffffff8119ad43>] fput+0x63/0xa0
+[  151.534884]  [<ffffffff81281ebd>] shm_destroy+0x7d/0xb0
+[  151.536813]  [<ffffffff81281f05>] do_shm_rmid+0x15/0x50
+[  151.539523]  [<ffffffff81286572>] free_ipcs+0xa2/0xf0
+[  151.541595]  [<ffffffff81286534>] ? free_ipcs+0x64/0xf0
+[  151.544188]  [<ffffffff81281ef0>] ? shm_destroy+0xb0/0xb0
+[  151.546393]  [<ffffffff81282990>] shm_exit_ns+0x20/0x30
+[  151.548675]  [<ffffffff81286619>] put_ipc_ns+0x59/0x80
+[  151.552764]  [<ffffffff81083afd>] free_nsproxy+0x3d/0x90
+[  151.560241]  [<ffffffff81083d45>] switch_task_namespaces+0x45/0x50
+[  151.564211]  [<ffffffff81083d60>] exit_task_namespaces+0x10/0x20
+[  151.566097]  [<ffffffff8105d3fd>] do_exit+0x2ad/0xa20
+[  151.567744]  [<ffffffff81307ec1>] ? do_raw_spin_lock+0x41/0x110
+[  151.570734]  [<ffffffff8163965c>] ? _raw_spin_unlock_irq+0x2c/0x40
+[  151.573967]  [<ffffffff8105dbf9>] do_group_exit+0x49/0xc0
+[  151.576773]  [<ffffffff8106d593>] get_signal_to_deliver+0x293/0x640
+[  151.580575]  [<ffffffff81002458>] do_signal+0x48/0x5a0
+[  151.582401]  [<ffffffff811b83f6>] ? mntput_no_expire+0xd6/0x120
+[  151.584418]  [<ffffffff8163a41e>] ? paranoid_userspace+0x39/0x5a
+[  151.588639]  [<ffffffff810bc42d>] ? trace_hardirqs_on_caller+0xfd/0x1c0
+[  151.590809]  [<ffffffff81002a18>] do_notify_resume+0x68/0x90
+[  151.604976]  [<ffffffff8163a430>] paranoid_userspace+0x4b/0x5a
 
 
-I don't think I agree. The whole problem was that we were allowing
-iget5_locked to match an existing inode even though (S_IFMT & mode) was
-different.
+Thanks,
+Andrey
 
-Why would it be preferable to use the same struct inode even though
-it's clearly a different one on the server? inodes generally don't
-change their type after they've been created.
-
-That said, patches speak louder than words so if you have one to
-propose I can certainly take a look. Maybe it'll make sense to me
-then...
-
--- 
-Jeff Layton <jlayton@redhat.com>
+> 
+> e7b2c406 should be enough to fix that leak, but it would be nice if
+> you can confirm.
+> 
+> > On 07/27/2013 07:00 PM, Oleg Nesterov wrote:
+> > > On 07/27, Toralf Förster wrote:
+> > >>
+> > >> I do have a user mode linux image (stable 32 bit Gentoo Linux ) which erratically crashes
+> > >> while fuzz tested with trinity if the victim files are located on a NFS share.
+> > >>
+> > >> The back trace of the core dumps always looks like the attached.
+> > >>
+> > >> To bisect it is hard. However after few attempts in the last weeks the following
+> > >> commit is either the first bad commit or at least the upper limit (less likely).
+> > >>
+> > >>
+> > >> commit 8aac62706adaaf0fab02c4327761561c8bda9448
+> > >> Author: Oleg Nesterov <oleg@redhat.com>
+> > >> Date:   Fri Jun 14 21:09:49 2013 +0200
+> > >>
+> > >>     move exit_task_namespaces() outside of exit_notify()
+> > >>
+> > >> #15 nlmclnt_setlockargs (req=0x48e18860, fl=0x48f27c8c) at fs/lockd/clntproc.c:131
+> > > 
+> > > Thanks.
+> > > 
+> > > So nlmclnt_setlockargs()->utsname() crashes and we probably need
+> > > the patch below.
+> > > 
+> > > But is it correct? I know _absolutely_ nothing about nfs/sunrpc/etc and
+> > > I never looked into this code before, most probably I am wrong.
+> > > 
+> > > But it seems that __nlm_async_call() relies on workqueues.
+> > > nlmclnt_async_call() does rpc_wait_for_completion_task(), but what if
+> > > the caller is killed?
+> > > 
+> > > nlm_rqst can't go away, ->a_count was incremented. But can't the caller
+> > > exit before call->name is used? In this case the memory it points to
+> > > can be already freed.
+> > > 
+> > > Oleg.
+> > > 
+> > > --- x/kernel/exit.c
+> > > +++ x/kernel/exit.c
+> > > @@ -783,8 +783,8 @@ void do_exit(long code)
+> > >  	exit_shm(tsk);
+> > >  	exit_files(tsk);
+> > >  	exit_fs(tsk);
+> > > -	exit_task_namespaces(tsk);
+> > >  	exit_task_work(tsk);
+> > > +	exit_task_namespaces(tsk);
+> > >  	check_stack_usage();
+> > >  	exit_thread();
+> > >  
+> > > 
+> > > 
+> > 
+> > 
+> > -- 
+> > MfG/Sincerely
+> > Toralf Förster
+> > pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+> 
