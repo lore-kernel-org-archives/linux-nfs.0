@@ -1,64 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39210 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933188Ab3GCUMp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Jul 2013 16:12:45 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 07/12] namei: minor vfs_unlink cleanup
-Date: Wed,  3 Jul 2013 16:12:31 -0400
-Message-Id: <1372882356-14168-8-git-send-email-bfields@redhat.com>
-In-Reply-To: <1372882356-14168-1-git-send-email-bfields@redhat.com>
-References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+Received: from mail-vb0-f52.google.com ([209.85.212.52]:37914 "EHLO
+	mail-vb0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751787Ab3G2PnY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jul 2013 11:43:24 -0400
+Received: by mail-vb0-f52.google.com with SMTP id f12so450651vbg.11
+        for <linux-nfs@vger.kernel.org>; Mon, 29 Jul 2013 08:43:23 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20130729145112.GA10489@redhat.com>
+References: <51F39AE8.3090401@gmx.de>
+	<20130727170051.GA31447@redhat.com>
+	<51F5381D.1080904@gmx.de>
+	<20130728175828.GA15020@redhat.com>
+	<20130729062905.GA28282@paralelels.com>
+	<20130729131031.GA6157@redhat.com>
+	<20130729142749.GA27205@paralelels.com>
+	<20130729145112.GA10489@redhat.com>
+Date: Mon, 29 Jul 2013 19:43:22 +0400
+Message-ID: <CANaxB-zfKTervWSOxZ5wj77RmLD_G7mJwFiuBmTp4TaoBOta9w@mail.gmail.com>
+Subject: Re: fuzz tested user mode linux core dumps in fs/lockd/clntproc.c:131
+From: Andrey Vagin <avagin@openvz.org>
+To: Oleg Nesterov <oleg@redhat.com>
+Cc: Andrew Vagin <avagin@parallels.com>,
+        =?ISO-8859-1?Q?Toralf_F=F6rster?= <toralf.foerster@gmx.de>,
+        "Serge E. Hallyn" <serge@hallyn.com>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+2013/7/29 Oleg Nesterov <oleg@redhat.com>:
+> On 07/29, Andrew Vagin wrote:
+>>
+>> I don't have objections against this patch. All my tests work find.
+>
+> Great, thanks for confirmation. Can I translate this into your
+> acked-by or tested-by if I send this patch?
 
-We'll be using dentry->d_inode in one more place.
+Yes, you can.
+Acked-by: Andrew Vagin <avagin@openvz.org>
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/namei.c |    7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
-
-diff --git a/fs/namei.c b/fs/namei.c
-index 61f6076..7e76fe1 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3386,6 +3386,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
- 
- int vfs_unlink(struct inode *dir, struct dentry *dentry)
- {
-+	struct inode *target = dentry->d_inode;
- 	int error = may_delete(dir, dentry, 0);
- 
- 	if (error)
-@@ -3394,7 +3395,7 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
- 	if (!dir->i_op->unlink)
- 		return -EPERM;
- 
--	mutex_lock(&dentry->d_inode->i_mutex);
-+	mutex_lock(&target->i_mutex);
- 	if (d_mountpoint(dentry))
- 		error = -EBUSY;
- 	else {
-@@ -3405,11 +3406,11 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
- 				dont_mount(dentry);
- 		}
- 	}
--	mutex_unlock(&dentry->d_inode->i_mutex);
-+	mutex_unlock(&target->i_mutex);
- 
- 	/* We don't d_delete() NFS sillyrenamed files--they still exist. */
- 	if (!error && !(dentry->d_flags & DCACHE_NFSFS_RENAMED)) {
--		fsnotify_link_count(dentry->d_inode);
-+		fsnotify_link_count(target);
- 		d_delete(dentry);
- 	}
- 
--- 
-1.7.9.5
-
+>
+> (there is another fix from Eric, it is not clear to me if I
+>  should send it right now).
+>
+> Oleg.
+>
