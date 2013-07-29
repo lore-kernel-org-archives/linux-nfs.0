@@ -1,75 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:32544 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751368Ab3GSX5E convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Jul 2013 19:57:04 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:34188 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751756Ab3G2SIW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Jul 2013 14:08:22 -0400
+Date: Mon, 29 Jul 2013 20:03:01 +0200
+From: Oleg Nesterov <oleg@redhat.com>
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: Toralf =?iso-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>,
+        "Serge E. Hallyn" <serge@hallyn.com>, Andrey Vagin <avagin@openvz.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: fuzz tested user mode linux core dumps in
+	fs/lockd/clntproc.c:131 (nfs in a netns utsns problems?)
+Message-ID: <20130729180301.GA27148@redhat.com>
+References: <51F39AE8.3090401@gmx.de> <20130727170051.GA31447@redhat.com> <87iozujkdy.fsf@xmission.com> <87r4eii4td.fsf@xmission.com> <20130729141758.GA8505@redhat.com> <871u6h45zy.fsf_-_@xmission.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
-Subject: Re: [PATCH 1/1] NFSv4.1 Increase NFS4_DEF_SLOT_TABLE_SIZE
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1374268191-4469-1-git-send-email-andros@netapp.com>
-Date: Fri, 19 Jul 2013 19:56:55 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <D8BB2DCD-4166-4425-8C08-EF0CCA9B926D@oracle.com>
-References: <1374268191-4469-1-git-send-email-andros@netapp.com>
-To: andros@netapp.com
+In-Reply-To: <871u6h45zy.fsf_-_@xmission.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Andy-
+On 07/29, Eric W. Biederman wrote:
+>
+> So I really don't think using utsname() aka current->nsproxy->uts_ns
+> makes sense in nlmclnt_setlockargs.
+>
+> We most definitely have an inconsistency in nfs.
 
-On Jul 19, 2013, at 5:09 PM, andros@netapp.com wrote:
+I tend to agree, but can't really comment.
 
-> From: Andy Adamson <andros@netapp.com>
-> 
-> max_session_slots is a ushort. Bump NFS4_DEF_SLOT_TABLE_SIZE to the max ushort
-> value: e.g. ask for 256 slots and let the server negotiate down if needed.
+> > Yes. And perhaps the patch which moves exit_task_namespaces() after
+> > exit_task_work() makes sense anyway (the patch I showed).
+> >
+> > (but if you change nlmclnt_setlockargs() then it is not 3.11 material).
+> >
+> > The original motivation for 8aac62706 was the leak reported by Andrey,
+> > but that leak should be also fixed by e7b2c406. "Move exit_task_namespaces()
+> > from exit_notify() to do_exit()" is still fine imho, the reason for
+> > exit_task_namespaces() from the middle of exit_notify() has gone away.
+> >
+> > But perhaps it would be better if work->func() could use ->nsproxy even
+> > if the task is PF_EXITING.
+>
+> So far there is nothing in the nfs code that would suggest allowing
+> work->func() being able to use ->nsproxy would make this code any
+> better.  I think that would just paper over the problem we are seeing
+> right now.
 
-I don't have an objection to your patch, but the description is confusing.
+I think you misunderstood my point.
 
-In fs/nfs/super.c I see
+I fully agree if you change nlmclnt_setlockargs(). I am suggesting to
+move exit_task_namespaces() down after exit_task_work() as a separate
+change which perhaps makes sense by itself. Not to fix this problem,
+not for nfs, not for fput().
 
-   unsigned short max_session_slots = NFS4_DEF_SLOT_TABLE_SIZE;
+Just to allow work->func() to play with ->nsproxy if needed. task_work
+has other users, not only fput().
 
-but /usr/include/limits.h has
-
-   #define USHRT_MAX 65535
-
-The maximum value you can store in an unsigned octet is 255 (UCHAR_MAX).
-
-Why did you choose 256 and not 65535?
-
-
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
-> fs/nfs/nfs4session.h | 2 +-
-> 1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
-> index 3a153d8..8b7899f 100644
-> --- a/fs/nfs/nfs4session.h
-> +++ b/fs/nfs/nfs4session.h
-> @@ -8,7 +8,7 @@
-> #define __LINUX_FS_NFS_NFS4SESSION_H
-> 
-> /* maximum number of slots to use */
-> -#define NFS4_DEF_SLOT_TABLE_SIZE (16U)
-> +#define NFS4_DEF_SLOT_TABLE_SIZE (256U)
-> #define NFS4_MAX_SLOT_TABLE (1024U)
-> #define NFS4_NO_SLOT ((u32)-1)
-> 
-> -- 
-> 1.8.3.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+Oleg.
 
