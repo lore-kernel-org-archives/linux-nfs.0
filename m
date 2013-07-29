@@ -1,165 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39211 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:6598 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933183Ab3GCUMp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Jul 2013 16:12:45 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 04/12] vfs: take i_mutex on renamed file
-Date: Wed,  3 Jul 2013 16:12:28 -0400
-Message-Id: <1372882356-14168-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1372882356-14168-1-git-send-email-bfields@redhat.com>
-References: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+	id S1755792Ab3G2OXU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Jul 2013 10:23:20 -0400
+Date: Mon, 29 Jul 2013 16:17:58 +0200
+From: Oleg Nesterov <oleg@redhat.com>
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: Toralf =?iso-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>,
+        "Serge E. Hallyn" <serge@hallyn.com>, Andrey Vagin <avagin@openvz.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: fuzz tested user mode linux core dumps in
+	fs/lockd/clntproc.c:131
+Message-ID: <20130729141758.GA8505@redhat.com>
+References: <51F39AE8.3090401@gmx.de> <20130727170051.GA31447@redhat.com> <87iozujkdy.fsf@xmission.com> <87r4eii4td.fsf@xmission.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87r4eii4td.fsf@xmission.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On 07/28, Eric W. Biederman wrote:
+>
+> > This untested patch should fix it without any need to worry about
+> > dynamic behavior.
 
-A read delegation is used by NFSv4 as a guarantee that a client can
-perform local read opens without informing the server.
+Yeees ;) I was thinking about this change too, but I have no idea
+what this ->nodename actually means for nfs.
 
-The open operation takes the last component of the pathname as an
-argument, thus is also a lookup operation, and giving the client the
-above guarantee means informing the client before we allow anything that
-would change the set of names pointing to the inode.
+If you are going to send this patch - great!
 
-Therefore, we need to break delegations on rename, link, and unlink.
+> Although I am wondering if we have a few other spots
+> > where the dynamic behavior might be iffy.
 
-We also need to prevent new delegations from being acquired while one of
-these operations is in progress.
+Yes. And perhaps the patch which moves exit_task_namespaces() after
+exit_task_work() makes sense anyway (the patch I showed).
 
-We could add some completely new locking for that purpose, but it's
-simpler to use the i_mutex, since that's already taken by all the
-operations we care about.
+(but if you change nlmclnt_setlockargs() then it is not 3.11 material).
 
-The single exception is rename.  So, modify rename to take the i_mutex
-on the file that is being renamed.
+The original motivation for 8aac62706 was the leak reported by Andrey,
+but that leak should be also fixed by e7b2c406. "Move exit_task_namespaces()
+from exit_notify() to do_exit()" is still fine imho, the reason for
+exit_task_namespaces() from the middle of exit_notify() has gone away.
 
-Also fix up lockdep and Documentation/filesystems/directory-locking to
-reflect the change.
+But perhaps it would be better if work->func() could use ->nsproxy even
+if the task is PF_EXITING.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- Documentation/filesystems/directory-locking |   31 +++++++++++++++++++--------
- fs/namei.c                                  |   12 ++++++++---
- 2 files changed, 31 insertions(+), 12 deletions(-)
-
-diff --git a/Documentation/filesystems/directory-locking b/Documentation/filesystems/directory-locking
-index ff7b611..09bbf9a 100644
---- a/Documentation/filesystems/directory-locking
-+++ b/Documentation/filesystems/directory-locking
-@@ -2,6 +2,10 @@
- kinds of locks - per-inode (->i_mutex) and per-filesystem
- (->s_vfs_rename_mutex).
- 
-+	When taking the i_mutex on multiple non-directory objects, we
-+always acquire the locks in order by increasing address.  We'll call
-+that "inode pointer" order in the following.
-+
- 	For our purposes all operations fall in 5 classes:
- 
- 1) read access.  Locking rules: caller locks directory we are accessing.
-@@ -12,8 +16,9 @@ kinds of locks - per-inode (->i_mutex) and per-filesystem
- locks victim and calls the method.
- 
- 4) rename() that is _not_ cross-directory.  Locking rules: caller locks
--the parent, finds source and target, if target already exists - locks it
--and then calls the method.
-+the parent and finds source and target.  If target already exists, lock
-+it.  If source is a non-directory, lock it.  If that means we need to
-+lock both, lock them in inode pointer order.
- 
- 5) link creation.  Locking rules:
- 	* lock parent
-@@ -30,7 +35,9 @@ rules:
- 		fail with -ENOTEMPTY
- 	* if new parent is equal to or is a descendent of source
- 		fail with -ELOOP
--	* if target exists - lock it.
-+	* If target exists, lock it.  If source is a non-directory, lock
-+	  it.  In case that means we need to lock both source and target,
-+	  do so in inode pointer order.
- 	* call the method.
- 
- 
-@@ -56,9 +63,11 @@ objects - A < B iff A is an ancestor of B.
-     renames will be blocked on filesystem lock and we don't start changing
-     the order until we had acquired all locks).
- 
--(3) any operation holds at most one lock on non-directory object and
--    that lock is acquired after all other locks.  (Proof: see descriptions
--    of operations).
-+(3) locks on non-directory objects are acquired only after locks on
-+    directory objects, and are acquired in inode pointer order.
-+    (Proof: all operations but renames take lock on at most one
-+    non-directory object, except renames, which take locks on source and
-+    target in inode pointer order in the case they are not directories.)
- 
- 	Now consider the minimal deadlock.  Each process is blocked on
- attempt to acquire some lock and already holds at least one lock.  Let's
-@@ -66,9 +75,13 @@ consider the set of contended locks.  First of all, filesystem lock is
- not contended, since any process blocked on it is not holding any locks.
- Thus all processes are blocked on ->i_mutex.
- 
--	Non-directory objects are not contended due to (3).  Thus link
--creation can't be a part of deadlock - it can't be blocked on source
--and it means that it doesn't hold any locks.
-+	By (3), any process holding a non-directory lock can only be
-+waiting on another non-directory lock with a larger address.  Therefore
-+the process holding the "largest" such lock can always make progress, and
-+non-directory objects are not included in the set of contended locks.
-+
-+	Thus link creation can't be a part of deadlock - it can't be
-+blocked on source and it means that it doesn't hold any locks.
- 
- 	Any contended object is either held by cross-directory rename or
- has a child that is also contended.  Indeed, suppose that it is held by
-diff --git a/fs/namei.c b/fs/namei.c
-index 9ed9361..61f6076 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3677,7 +3677,8 @@ SYSCALL_DEFINE2(link, const char __user *, oldname, const char __user *, newname
-  *	   That's where 4.4 screws up. Current fix: serialization on
-  *	   sb->s_vfs_rename_mutex. We might be more accurate, but that's another
-  *	   story.
-- *	c) we have to lock _three_ objects - parents and victim (if it exists).
-+ *	c) we have to lock _four_ objects - parents and victim (if it exists),
-+ *	   and source (if it is not a directory).
-  *	   And that - after we got ->i_mutex on parents (until then we don't know
-  *	   whether the target exists).  Solution: try to be smart with locking
-  *	   order for inodes.  We rely on the fact that tree topology may change
-@@ -3753,6 +3754,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 			    struct inode *new_dir, struct dentry *new_dentry)
- {
- 	struct inode *target = new_dentry->d_inode;
-+	struct inode *source = old_dentry->d_inode;
- 	int error;
- 
- 	error = security_inode_rename(old_dir, old_dentry, new_dir, new_dentry);
-@@ -3761,7 +3763,9 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 
- 	dget(new_dentry);
- 	if (target)
--		mutex_lock(&target->i_mutex);
-+		lock_two_nondirectories(source, target);
-+	else
-+		mutex_lock(&source->i_mutex);
- 
- 	error = -EBUSY;
- 	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
-@@ -3777,7 +3781,9 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 		d_move(old_dentry, new_dentry);
- out:
- 	if (target)
--		mutex_unlock(&target->i_mutex);
-+		unlock_two_nondirectories(source, target);
-+	else
-+		mutex_unlock(&source->i_mutex);
- 	dput(new_dentry);
- 	return error;
- }
--- 
-1.7.9.5
+> > Serge do you remember any of this?
+> >
+> > On a good day I can follow the nfs code but it takes quite a while.  I
+> > feel the same way about filesystems locks so I am not really certain
+> > what is going on.
+> >
+> > Eric
+> >
+> > diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+> > index 9760ecb..6643cfc 100644
+> > --- a/fs/lockd/clntproc.c
+> > +++ b/fs/lockd/clntproc.c
+> > @@ -128,11 +128,11 @@ static void nlmclnt_setlockargs(struct nlm_rqst *req, struct file_lock *fl)
+> >  
+> >         nlmclnt_next_cookie(&argp->cookie);
+> >         memcpy(&lock->fh, NFS_FH(file_inode(fl->fl_file)), sizeof(struct nfs_fh));
+> > -       lock->caller  = utsname()->nodename;
+> > +       lock->caller  = init_utsname()->nodename;
+> >         lock->oh.data = req->a_owner;
+> >         lock->oh.len  = snprintf(req->a_owner, sizeof(req->a_owner), "%u@%s",
+> >                                 (unsigned int)fl->fl_u.nfs_fl.owner->pid,
+> > -                               utsname()->nodename);
+> > +                               init_utsname()->nodename);
+> >         lock->svid = fl->fl_u.nfs_fl.owner->pid;
+> >         lock->fl.fl_start = fl->fl_start;
+> >         lock->fl.fl_end = fl->fl_end;
+> >
+> > Eric  
 
