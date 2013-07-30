@@ -1,72 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from haggis.pcug.org.au ([203.10.76.10]:49712 "EHLO
-	members.tip.net.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752592Ab3GBXi0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Jul 2013 19:38:26 -0400
-Date: Wed, 3 Jul 2013 09:38:15 +1000
-From: Stephen Rothwell <sfr@canb.auug.org.au>
-To: David Howells <dhowells@redhat.com>
-Cc: torvalds@linux-foundation.org, linux-cachefs@redhat.com,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        milosz@adfin.com
-Subject: Re: [GIT PULL] Fix assorted FS-Cache issues
-Message-Id: <20130703093815.006437fd5f18210b7729b060@canb.auug.org.au>
-In-Reply-To: <6302.1372775256@warthog.procyon.org.uk>
-References: <6302.1372775256@warthog.procyon.org.uk>
-Mime-Version: 1.0
-Content-Type: multipart/signed; protocol="application/pgp-signature";
- micalg="PGP-SHA256";
- boundary="Signature=_Wed__3_Jul_2013_09_38_15_+1000_9NdgPHqZVeTtkxKU"
+Received: from mx12.netapp.com ([216.240.18.77]:62653 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757044Ab3G3VUn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Jul 2013 17:20:43 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Eric W. Biederman" <ebiederm@xmission.com>,
+        Oleg Nesterov <oleg@redhat.com>,
+        =?utf-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>,
+        "Serge E. Hallyn" <serge@hallyn.com>, Andrey Vagin <avagin@openvz.org>,
+        "Al Viro" <viro@zeniv.linux.org.uk>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>
+Subject: Re: fuzz tested user mode linux core dumps in
+ fs/lockd/clntproc.c:131 (nfs in a netns utsns problems?)
+Date: Tue, 30 Jul 2013 21:20:32 +0000
+Message-ID: <1375219230.2468.7.camel@leira.trondhjem.org>
+References: <51F39AE8.3090401@gmx.de> <20130727170051.GA31447@redhat.com>
+	 <87iozujkdy.fsf@xmission.com> <87r4eii4td.fsf@xmission.com>
+	 <20130729141758.GA8505@redhat.com> <871u6h45zy.fsf_-_@xmission.com>
+	 <20130730211202.GH1443@fieldses.org>
+In-Reply-To: <20130730211202.GH1443@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Signature=_Wed__3_Jul_2013_09_38_15_+1000_9NdgPHqZVeTtkxKU
-Content-Type: text/plain; charset=US-ASCII
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-
-On Tue, 02 Jul 2013 15:27:36 +0100 David Howells <dhowells@redhat.com> wrot=
-e:
->
-> Hi Linus,
->=20
-> The following changes since commit b973425cbb51e08301b34fecdfd476a44507d8=
-cf:
->=20
->   Merge tag 'ext4_for_linus_stable' of git://git.kernel.org/pub/scm/linux=
-/kernel/git/tytso/ext4 (2013-05-14 09:30:54 -0700)
->=20
-> are available in the git repository at:
->=20
->=20
->   git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git tag=
-s/fscache-20130702
-
-/me wonders where this has been hiding for the last month and a half ...
-
---=20
-Cheers,
-Stephen Rothwell                    sfr@canb.auug.org.au
-
---Signature=_Wed__3_Jul_2013_09_38_15_+1000_9NdgPHqZVeTtkxKU
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.20 (GNU/Linux)
-
-iQIcBAEBCAAGBQJR02RrAAoJEECxmPOUX5FE77oP/0P9ssO3c4Q1hTXdwzq8+zF2
-tXhN0GaToykhxJAXn0bo0dFhiPlTemC+Ow5qSTS+L7XF4LeOuB2eUNM+Z1/HNZVp
-afHaTPMGyMYtHeqZ3/Qcz98C6E7maCD8r0d9X2ont3rRmVItquvBycJ1N82vSnnm
-QpsRDoszyE2m89lkUjxWTWlqKFOpRM3OqplP0Wucal6JEVJHA7udPukG2DicwTGr
-iq4n7hz5VTXFnQJ1PkhoISXj+vDIXPZQP23OgNOTiSD1UvHyjvWVYqqOudQPtn9y
-sttF8siqsI+xnXu1bd+oL34oe+xzvSRAw6mmzmCd1fyuIw6ZEJbw7T6za5Y6PyQZ
-FYksiAt1NPSq3yFyN7J8ahziREQIRu3LVTu4sG2qldodPTr0VshPWKcpoURwxjQ7
-ZSRkSv7HqoUtuAGaINp7U7d8UOVXwmhqMDBF4UvCLrg4ArTQ9TFi6LzTWAgn87Xh
-SZCXGk3X9Njkd5ucV5EhXsrWNUqrBcks/JOrqQ/4eRHiLQ04ej5HYI5vX6tg/UQW
-Ux+hfuYCeqGpcMlpbUdkdJfU7ekzhERIIQoYqb4dGyILlilU7xLe0eDEDjY6b/Te
-SPkXz1Yg/3wQVWOJKhX7ieKYMQyv91zcC76byNcNqNKymwga4wthbi0JjIVJE0mt
-rB729Pj6LMTmldGD2h8u
-=SEpm
------END PGP SIGNATURE-----
-
---Signature=_Wed__3_Jul_2013_09_38_15_+1000_9NdgPHqZVeTtkxKU--
+T24gVHVlLCAyMDEzLTA3LTMwIGF0IDE3OjEyIC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIE1vbiwgSnVsIDI5LCAyMDEzIGF0IDEwOjQyOjU3QU0gLTA3MDAsIEVyaWMgVy4gQmll
+ZGVybWFuIHdyb3RlOg0KPiA+IA0KPiA+IEFkZGluZyBzb21lIHBlb3BsZSB3aG8gcGF5IG1vcmUg
+YXR0ZW50aW9uIHRvIG5mcyBpbiBuZXR3b3JrIG5hbWVzcGFjZXMNCj4gPiB0aGFuIEkgdXN1YWxs
+eSBkby4NCj4gPiANCj4gPiBPbGVnIE5lc3Rlcm92IDxvbGVnQHJlZGhhdC5jb20+IHdyaXRlczoN
+Cj4gPiANCj4gPiA+IE9uIDA3LzI4LCBFcmljIFcuIEJpZWRlcm1hbiB3cm90ZToNCj4gPiA+Pg0K
+PiA+ID4+ID4gVGhpcyB1bnRlc3RlZCBwYXRjaCBzaG91bGQgZml4IGl0IHdpdGhvdXQgYW55IG5l
+ZWQgdG8gd29ycnkgYWJvdXQNCj4gPiA+PiA+IGR5bmFtaWMgYmVoYXZpb3IuDQo+ID4gPg0KPiA+
+ID4gWWVlZXMgOykgSSB3YXMgdGhpbmtpbmcgYWJvdXQgdGhpcyBjaGFuZ2UgdG9vLCBidXQgSSBo
+YXZlIG5vIGlkZWENCj4gPiA+IHdoYXQgdGhpcyAtPm5vZGVuYW1lIGFjdHVhbGx5IG1lYW5zIGZv
+ciBuZnMuDQo+ID4gPg0KPiA+ID4gSWYgeW91IGFyZSBnb2luZyB0byBzZW5kIHRoaXMgcGF0Y2gg
+LSBncmVhdCENCj4gPiANCj4gPiBKdXN0IGJhdHRpbmcgaXQgYXJvdW5kIGZvciBub3csIGFuZCBo
+b3Bpbmcgd2UgaGF2ZSB0aGUgcmlnaHQgY29tYmluYXRpb24NCj4gPiBvZiBleWViYWxscyBsb29r
+IGF0IGl0LiAgVGhlcmUgYXJlIG1vcmUgcGxhY2VzIGluIG5mcyB0aGF0IGhhdmUNCj4gPiBxdWVz
+dGlvbmFibGUgdXNlcyBvZiB1dHNuYW1lKCkgaW5zdGVhZCBvZiBpbml0X3V0c25hbWUoKS4gIFNv
+IEkgdGhpbmsgd2UNCj4gPiBwcm9iYWJseSBuZWVkIGEgbW9yZSBjb21wcmVoZW5zaXZlIHBhdGNo
+IGF0IHRoZSB2ZXJ5IGxlYXN0Lg0KPiA+IA0KPiA+IG5mc2NsbnRfcmVjbGFpbSBpcyBuZXZlciBj
+YWxsZWQgZnJvbSB1c2Vyc3BhY2UuDQo+IA0KPiBTbywgbG9va2luZyBqdXN0IGF0IHRoaXMgb25l
+Li4uLg0KPiANCj4gTm90ZSBJIHRoaW5rIHlvdSBtZWFuIG5sbWNsbnRfcmVjbGFpbS4NCj4gDQo+
+IFRoYXQncyBwYXJ0IG9mIHRoZSBjbGllbnQncyBoYW5kbGluZyBvZiBzZXJ2ZXIgcmVib290cy4g
+IFRoZSBjbGllbnQNCj4ga25vd3MgdGhhdCBpdCBzaG91bGQgaG9sZCBzb21lIGZpbGUgbG9jaywg
+YnV0IGtub3dzIHRoYXQgdGhlIHNlcnZlciBoYXMNCj4gbm93IGZvcmdvdHRlbiB0aGF0IGZhY3Qs
+IGFuZCBuZWVkcyB0byBzZW5kIGEgInJlY2xhaW0iIHRvIGdldCB0aGUgbG9jaw0KPiBiYWNrLg0K
+PiANCj4gVGhhdCByZWNsYWltIHdpbGwgZ2V0IGtpY2tlZCBvZmYgd2hlbiB0aGUgY2xpZW50J3Mg
+bm90aWZpZWQgdGhhdCB0aGUNCj4gc2VydmVyIHJlYm9vdGVkLg0KPiANCj4gU28gd2UncmUgbm90
+IGluIHRoZSBjb250ZXh0IG9mIHdob2V2ZXIgb3JpZ2luYWxseSBkaWQgdGhlDQo+IGZjbnRsKC4s
+Rl9TRVRMSywuKSwgYW5kIHRyeWluZyB0byBnZXQgdGhlIG5hbWVzcGFjZSBvdXQgb2YgY3VycmVu
+dCBpcw0KPiBjbGVhcmx5IHdyb25nLg0KPiANCj4gbmxtX2hvc3QgY3VycmVudGx5IGhhcyBhICJz
+dHJ1Y3QgbmV0ICpuZXQiIGZpZWxkLiAgTWF5YmUgd2UgYWxzbyBuZWVkIHRvDQo+IHN0YXNoIGEg
+InN0cnVjdCB1dHNfbmFtZXNwYWNlICoiLCBvciBqdXN0IGEgY29weSBvZiB0aGUgbm9kZW5hbWU/
+DQoNClRoZSBzdHJ1Y3QgcnBjX2NsbnQgYWxyZWFkeSBoYXMgdGhhdCBpbmZvcm1hdGlvbiBpbiB0
+aGUgY2xfbm9kZW5hbWUNCmZpZWxkLg0KDQpDaGVlcnMNCiAgVHJvbmQNCg0KLS0gDQpUcm9uZCBN
+eWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15
+a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
