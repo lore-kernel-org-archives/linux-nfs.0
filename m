@@ -1,180 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53645 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:36581 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756375Ab3GQUuX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 16:50:23 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        David Howells <dhowells@redhat.com>
-Subject: [PATCH 10/16] locks: break delegations on rename
-Date: Wed, 17 Jul 2013 16:50:11 -0400
-Message-Id: <1374094217-31493-12-git-send-email-bfields@redhat.com>
-In-Reply-To: <1374094217-31493-1-git-send-email-bfields@redhat.com>
-References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+	id S1753488Ab3G3CtM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Jul 2013 22:49:12 -0400
+Date: Tue, 30 Jul 2013 12:48:57 +1000
+From: NeilBrown <neilb@suse.de>
+To: "J.Bruce Fields" <bfields@citi.umich.edu>
+Cc: Ben Myers <bpm@sgi.com>, Olga Kornievskaia <aglo@citi.umich.edu>,
+        NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSD/sunrpc: avoid deadlock on TCP connection due to
+ memory pressure.
+Message-ID: <20130730124857.7c066858@notabene.brown>
+In-Reply-To: <20130726141916.GA30651@fieldses.org>
+References: <20130710190727.GA22305@fieldses.org>
+	<20130715143203.51bc583b@notabene.brown>
+	<20130716015803.GA5271@fieldses.org>
+	<20130716140021.312b5b07@notabene.brown>
+	<20130716142430.GA11977@fieldses.org>
+	<20130718000319.GL1681@sgi.com>
+	<20130724210746.GB5777@fieldses.org>
+	<20130725113023.7bcbc347@notabene.brown>
+	<20130725201805.GB17962@fieldses.org>
+	<20130726063303.0d1495b3@notabene.brown>
+	<20130726141916.GA30651@fieldses.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/GxYcf1Gn0mkfMppDq0B0QXP"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+--Sig_/GxYcf1Gn0mkfMppDq0B0QXP
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Cc: David Howells <dhowells@redhat.com>
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/cachefiles/namei.c |    2 +-
- fs/namei.c            |   47 +++++++++++++++++++++++++++++++++++++++++++----
- fs/nfsd/vfs.c         |    2 +-
- include/linux/fs.h    |    2 +-
- 4 files changed, 46 insertions(+), 7 deletions(-)
+On Fri, 26 Jul 2013 10:19:16 -0400 "J.Bruce Fields" <bfields@citi.umich.edu>
+wrote:
 
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index 6846fcef..1363eae 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -396,7 +396,7 @@ try_again:
- 		cachefiles_io_error(cache, "Rename security error %d", ret);
- 	} else {
- 		ret = vfs_rename(dir->d_inode, rep,
--				 cache->graveyard->d_inode, grave);
-+				 cache->graveyard->d_inode, grave, NULL);
- 		if (ret != 0 && ret != -ENOMEM)
- 			cachefiles_io_error(cache,
- 					    "Rename failed with error %d", ret);
-diff --git a/fs/namei.c b/fs/namei.c
-index d3b6a35..0554c9a 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3834,7 +3834,8 @@ out:
- }
- 
- static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
--			    struct inode *new_dir, struct dentry *new_dentry)
-+			    struct inode *new_dir, struct dentry *new_dentry,
-+			    struct inode **delegated_inode)
- {
- 	struct inode *target = new_dentry->d_inode;
- 	struct inode *source = old_dentry->d_inode;
-@@ -3851,6 +3852,14 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
- 		goto out;
- 
-+	error = try_break_deleg(source, delegated_inode);
-+	if (error)
-+		goto out;
-+	if (target) {
-+		error = try_break_deleg(target, delegated_inode);
-+		if (error)
-+			goto out;
-+	}
- 	error = old_dir->i_op->rename(old_dir, old_dentry, new_dir, new_dentry);
- 	if (error)
- 		goto out;
-@@ -3865,8 +3874,30 @@ out:
- 	return error;
- }
- 
-+/**
-+ * vfs_rename - rename a filesystem object
-+ * @old_dir:	parent of source
-+ * @old_dentry:	source
-+ * @new_dir:	parent of destination
-+ * @new_dentry:	destination
-+ * @delegated_inode: returns an inode needing a delegation break
-+ *
-+ * The caller must hold multiple mutexes--see lock_rename()).
-+ *
-+ * If vfs_rename discovers a delegation in need of breaking at either
-+ * the source or destination, it will return -EWOULDBLOCK and return a
-+ * reference to the inode in delegated_inode.  The caller should then
-+ * break the delegation and retry.  Because breaking a delegation may
-+ * take a long time, the caller should drop all locks before doing
-+ * so.
-+ *
-+ * Alternatively, a caller may pass NULL for delegated_inode.  This may
-+ * be appropriate for callers that expect the underlying filesystem not
-+ * to be NFS exported.
-+ */
- int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
--	       struct inode *new_dir, struct dentry *new_dentry)
-+	       struct inode *new_dir, struct dentry *new_dentry,
-+	       struct inode **delegated_inode)
- {
- 	int error;
- 	int is_dir = S_ISDIR(old_dentry->d_inode->i_mode);
-@@ -3894,7 +3925,7 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	if (is_dir)
- 		error = vfs_rename_dir(old_dir,old_dentry,new_dir,new_dentry);
- 	else
--		error = vfs_rename_other(old_dir,old_dentry,new_dir,new_dentry);
-+		error = vfs_rename_other(old_dir,old_dentry,new_dir,new_dentry,delegated_inode);
- 	if (!error)
- 		fsnotify_move(old_dir, new_dir, old_name, is_dir,
- 			      new_dentry->d_inode, old_dentry);
-@@ -3910,6 +3941,7 @@ SYSCALL_DEFINE4(renameat, int, olddfd, const char __user *, oldname,
- 	struct dentry *old_dentry, *new_dentry;
- 	struct dentry *trap;
- 	struct nameidata oldnd, newnd;
-+	struct inode *delegated_inode = NULL;
- 	struct filename *from;
- 	struct filename *to;
- 	unsigned int lookup_flags = 0;
-@@ -3949,6 +3981,7 @@ retry:
- 	newnd.flags &= ~LOOKUP_PARENT;
- 	newnd.flags |= LOOKUP_RENAME_TARGET;
- 
-+retry_deleg:
- 	trap = lock_rename(new_dir, old_dir);
- 
- 	old_dentry = lookup_hash(&oldnd);
-@@ -3985,13 +4018,19 @@ retry:
- 	if (error)
- 		goto exit5;
- 	error = vfs_rename(old_dir->d_inode, old_dentry,
--				   new_dir->d_inode, new_dentry);
-+				   new_dir->d_inode, new_dentry,
-+				   &delegated_inode);
- exit5:
- 	dput(new_dentry);
- exit4:
- 	dput(old_dentry);
- exit3:
- 	unlock_rename(new_dir, old_dir);
-+	if (delegated_inode) {
-+		error = break_deleg_wait(&delegated_inode);
-+		if (!error)
-+			goto retry_deleg;
-+	}
- 	mnt_drop_write(oldnd.path.mnt);
- exit2:
- 	if (retry_estale(error, lookup_flags))
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index ff1fc44..fbf22d2 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1837,7 +1837,7 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
- 		if (host_err)
- 			goto out_dput_new;
- 	}
--	host_err = vfs_rename(fdir, odentry, tdir, ndentry);
-+	host_err = vfs_rename(fdir, odentry, tdir, ndentry, NULL);
- 	if (!host_err) {
- 		host_err = commit_metadata(tfhp);
- 		if (!host_err)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 43a3506..74aa0c7 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1470,7 +1470,7 @@ extern int vfs_symlink(struct inode *, struct dentry *, const char *);
- extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
- extern int vfs_rmdir(struct inode *, struct dentry *);
- extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
--extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *);
-+extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **);
- 
- /*
-  * VFS dentry helper functions.
--- 
-1.7.9.5
+> On Fri, Jul 26, 2013 at 06:33:03AM +1000, NeilBrown wrote:
+> > On Thu, 25 Jul 2013 16:18:05 -0400 "J.Bruce Fields" <bfields@citi.umich=
+.edu>
+> > wrote:
+> >=20
+> > > On Thu, Jul 25, 2013 at 11:30:23AM +1000, NeilBrown wrote:
+> > > >=20
+> > > > Since we enabled auto-tuning for sunrpc TCP connections we do not
+> > > > guarantee that there is enough write-space on each connection to
+> > > > queue a reply.
+> ...
+> > > This is great, thanks!
+> > >=20
+> > > Inclined to queue it up for 3.11 and stable....
+> >=20
+> > I'd agree for 3.11.
+> > It feels a bit border-line for stable.  "dead-lock" and "has been seen =
+in the
+> > wild" are technically enough justification...
+> > I'd probably mark it as "pleas don't apply to -stable until 3.11 is rel=
+eased"
+> > or something like that, just for a bit of breathing space.
+> > Your call though.
+>=20
+>=20
+> So my takeaway from http://lwn.net/Articles/559113/ was that Linus and
+> Greg were requesting that:
+>=20
+> 	- criteria for -stable and late -rc's should really be about the
+> 	  same, and
+> 	- people should follow Documentation/stable-kernel-rules.txt.
+>=20
+> So as an exercise to remind me what those rules are:
+>=20
+> Easy questions:
+>=20
+> 	- "no bigger than 100 lines, with context."  Check.
+> 	- "It must fix only one thing."  Check.
+> 	- "real bug that bothers people".  Check.
+> 	- "tested": yep.  It doesn't actually say "tested on stable
+> 	  trees", and I recall this did land you with a tricky bug one
+> 	  time when a prerequisite was omitted from the backport.
+>=20
+> Judgement calls:
+>=20
+> 	- "obviously correct": it's short, but admittedly subtle, and
+> 	  performance regressions can take a while to get sorted out.
+> 	- "It must fix a problem that causes a build error (but not for
+> 	  things marked CONFIG_BROKEN), an oops, a hang, data
+> 	  corruption, a real security issue, or some "oh, that's not
+> 	  good" issue.  In short, something critical."  We could argue
+> 	  that "server stops responding" is critical, though not to the
+> 	  same degree as a panic.
+> 	- OR: alternatively: "Serious issues as reported by a user of a
+> 	  distribution kernel may also be considered if they fix a
+> 	  notable performance or interactivity issue." The only bz I've
+> 	  personally seen was the result of artificial testing of some
+> 	  kind, and it sounds like your case involved a disk failure?
+>=20
+> --b.
 
+Looks like  good analysis ... except that it doesn't seem conclusive.  Being
+conclusive would make it really good. :-)
+
+The case that brought it to my attention doesn't require the fix.
+A file system was mis-behaving (blocking when it should return EJUKEBOX) and
+this resulted in nfsd behaviour different than my expectation.
+I expected nfsd to keep accepting requests until all threads were blocks.
+However only 4 requests were accepted (which is actually better behaviour,
+but not what I expected).
+So I looked into it and thought that what I found wasn't really right.  Whi=
+ch
+turned out to be the case, but not the way I thought...
+
+So my direct experience doesn't argue for the patch going to -stable at all.
+If the only other reports are from artificial testing then I'd leave it out
+of -stable.  I don't feel -rc4 (that's next I think) is too late for it
+though.
+
+NeilBrown
+
+
+--Sig_/GxYcf1Gn0mkfMppDq0B0QXP
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUfcpmTnsnt1WYoG5AQITnQ/9G0wbE/hJBnU8KNtkEsbkNl2KmtrLh82y
+wxh0jbIOvYBqVr1Ttzm/Cb7tKRfqB/f4c+HYtVj7a9uaNu/R5+QlPzJWN+SE3gal
+2xf8nT8Ddkio0CiZ8Yj5/8pYQqqkvGa9qGFOCdAfmLHabfimXi/dM08JmfAYSxRJ
+13s+uaf4RRYXsMMWjDD3xXD7LLhtkD3aXv0zSnrZjQXEiBZ+d8bIdKJOGeqwG8EL
+SXtPjS1kWkTdXcQtB6q90INo7p1UaEsb8PWs74N5Jx+1vGcbpHKXBM1mLZwmkVKH
+2RsGK6A/uRJX9IBZSoirSXJwpTCzv7Qi9uLi/IDTcweoZWmOKhznOrXuAhsCHveT
+pg05Aw6xklJCVAyqxBnYT5NIrSC/x11uU6YSEx5X2GPeuzl4WvZyqfQ7zQlsOBGV
+ZGsDQ5rKZ6LRkAN0/YOr/ONhla5j+6f3rPf5sgr5L/pm1WRXNK/QVcaspCjpyASb
+kSBK0VL139dEErWQ3XBz5o6xZtLVsXAQ+esodGXkUJHNRNmhFRh0Y3stww61UtEq
+sDoGI/YB7iBdP5wg9YqF0kB9NPfovsYc/sB6cx2dcWBeXtl1kGr5/b2tc5Kx666l
+tHIDSfjHtQxWhSrFZQ/rabGVZDdQfroOjv3SiUpRV5XbX38fUge5IXXlMUxUjVbn
+yEHQBEHruRU=
+=D9D9
+-----END PGP SIGNATURE-----
+
+--Sig_/GxYcf1Gn0mkfMppDq0B0QXP--
