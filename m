@@ -1,91 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39200 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:50187 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932690Ab3GCUMk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Jul 2013 16:12:40 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 00/12] Implement NFSv4 delegations, take 8
-Date: Wed,  3 Jul 2013 16:12:24 -0400
-Message-Id: <1372882356-14168-1-git-send-email-bfields@redhat.com>
+	id S1760455Ab3GaOVN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 31 Jul 2013 10:21:13 -0400
+Date: Wed, 31 Jul 2013 10:21:11 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Scott Mayhew <smayhew@redhat.com>
+Cc: linux-nfs@vger.kernel.org, trond.myklebust@netapp.com
+Subject: Re: [PATCH] NFSv4: Fix the sync mount option for nfs4 mounts
+Message-ID: <20130731102111.51bfc07d@tlielax.poochiereds.net>
+In-Reply-To: <1375279301-48950-1-git-send-email-smayhew@redhat.com>
+References: <1375279301-48950-1-git-send-email-smayhew@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, 31 Jul 2013 10:01:41 -0400
+Scott Mayhew <smayhew@redhat.com> wrote:
 
-This is just a rebase to 3.10 of the previous posting.  As far as I can
-tell, it's ready to be merged.  Introduction (repeated from before) follows:
+> The sync mount option stopped working for NFSv4 mounts after commit
+> c02d7adf8c5429727a98bad1d039bccad4c61c50 (NFSv4: Replace nfs4_path_walk() with
+> FS path lookup in a private namespace).  If MS_SYNCHRONOUS is set in the
+> super_block that we're cloning from, then it should be set in the new
+> super_block as well.
+> 
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> ---
+>  fs/nfs/super.c | 4 ++++
+>  1 file changed, 4 insertions(+)
+> 
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index 71fdc0d..f6db66d 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -2478,6 +2478,10 @@ struct dentry *nfs_fs_mount_common(struct nfs_server *server,
+>  	if (server->flags & NFS_MOUNT_NOAC)
+>  		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
+>  
+> +	if (mount_info->cloned != NULL && mount_info->cloned->sb != NULL)
+> +		if (mount_info->cloned->sb->s_flags & MS_SYNCHRONOUS)
+> +			sb_mntdata.mntflags |= MS_SYNCHRONOUS;
+> +
+>  	/* Get a superblock - note that we may end up sharing one that already exists */
+>  	s = sget(nfs_mod->nfs_fs, compare_super, nfs_set_super, flags, &sb_mntdata);
+>  	if (IS_ERR(s)) {
 
-
-This patch series implements read delegations, which allow NFSv4 clients
-to perform read opens without contacting the server, by promising to
-call back to clients before modifying the data, metadata, or set of
-links pointing to a file.
-
-The main recent change was in response to review from Linus, who didn't
-want us to hang under directory i_mutex's on timeouts communicating with
-unresponsive clients.
-
-So, this version of the series drops the i_mutex before waiting.  The
-logic ends up looking something like:
-
-        acquire locks
-        look up inode
-        test for delegation; if found:
-                take reference on inode
-                release locks
-                wait for delegation break
-                drop reference on inode
-                retry
-
-
-The initial test for a delegation happens after the lock on the
-delegated inode is acquired, but additional directory mutexes may have
-been acquired further up the call stack.  I therefore add a "struct
-inode **" argument to any intervening functions, which we use to pass
-the inode back up to the caller in the case it needs to wait for the
-delegation to be broken.
-
-I also allow callers to pass in NULL for the "struct inode **" argument
-to indicate they'd rather just fail than wait for a delegation.  For
-example, as long as ecryptfs isn't exportable I assume they'd rather not
-see retry logic there that they won't use.  But I may have misjudged in
-some of these cases.
-
-
-J. Bruce Fields (12):
-  vfs: pull ext4's double-i_mutex-locking into common code
-  vfs: don't use PARENT/CHILD lock classes for non-directories
-  vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
-  vfs: take i_mutex on renamed file
-  locks: introduce new FL_DELEG lock flag
-  locks: implement delegations
-  namei: minor vfs_unlink cleanup
-  locks: break delegations on unlink
-  locks: helper functions for delegation breaking
-  locks: break delegations on rename
-  locks: break delegations on link
-  locks: break delegations on any attribute modification
-
- Documentation/filesystems/directory-locking |   31 ++++++++---
- drivers/base/devtmpfs.c                     |    6 +-
- fs/attr.c                                   |    5 +-
- fs/cachefiles/interface.c                   |    4 +-
- fs/cachefiles/namei.c                       |    4 +-
- fs/ecryptfs/inode.c                         |    6 +-
- fs/ext4/ext4.h                              |    2 -
- fs/ext4/ioctl.c                             |    4 +-
- fs/ext4/move_extent.c                       |   40 +-------------
- fs/hpfs/namei.c                             |    2 +-
- fs/inode.c                                  |   35 +++++++++++-
- fs/locks.c                                  |   51 +++++++++++++----
- fs/namei.c                                  |   79 +++++++++++++++++++++------
- fs/nfsd/nfs4state.c                         |    2 +-
- fs/nfsd/vfs.c                               |   14 +++--
- fs/open.c                                   |   21 +++++--
- fs/utimes.c                                 |    9 ++-
- include/linux/fs.h                          |   72 ++++++++++++++++++++----
- ipc/mqueue.c                                |    2 +-
- 19 files changed, 273 insertions(+), 116 deletions(-)
+Might also consider this for stable, since it's a regression, though it
+is a relatively minor bug...
+ 
+Reviewed-and-Tested-by: Jeff Layton <jlayton@redhat.com>
