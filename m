@@ -1,63 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ea0-f176.google.com ([209.85.215.176]:49552 "EHLO
-	mail-ea0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751871Ab3GHNzV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jul 2013 09:55:21 -0400
-Received: by mail-ea0-f176.google.com with SMTP id z15so2955930ead.35
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Jul 2013 06:55:20 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:34642 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752209Ab3GaUfu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 31 Jul 2013 16:35:50 -0400
+Date: Wed, 31 Jul 2013 16:35:37 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Larry Keegan <lk@pfw.demon.co.uk>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: nfs client: Now you see it, now you don't (aka spurious ESTALE
+ errors)
+Message-ID: <20130731203537.GA2668@fieldses.org>
+References: <20130725134515.67af44e2@cs3.al.itld>
+ <20130725101143.6a22cb81@corrin.poochiereds.net>
+ <20130725170526.6e54c7db@cs3.al.itld>
+ <20130725141828.1862a1e1@tlielax.poochiereds.net>
+ <20130726124101.058df8dc@cs3.al.itld>
+ <20130726091225.5f299ff6@corrin.poochiereds.net>
+ <20130726150222.GC30651@fieldses.org>
+ <20130726222510.793c1627@cs3.al.itld>
+ <20130731140328.GA28266@fieldses.org>
+ <20130731195017.334bb05c@cs3.al.itld>
 MIME-Version: 1.0
-In-Reply-To: <CAF38w7Xf87k=GfM38XcO+ag+Na=f=Mg1KDn0jv2Y8Yp6Q_5a=g@mail.gmail.com>
-References: <CAF38w7Xx0_TqZem6cen+EJKpUrziGT_dAVcjG7oFFwM+ANm5mA@mail.gmail.com>
- <CAF38w7Xf87k=GfM38XcO+ag+Na=f=Mg1KDn0jv2Y8Yp6Q_5a=g@mail.gmail.com>
-From: "bjschuma@gmail.com" <bjschuma@gmail.com>
-Date: Mon, 8 Jul 2013 09:55:00 -0400
-Message-ID: <CAMFXNOw7a-uuW8ze+Lz0DeBvLChjgNLmKjPAqiH586NqqirF4g@mail.gmail.com>
-Subject: Re: Problem with sharing mounted iso
-To: Johan GUILBAUD <guilbaud.johan@gmail.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130731195017.334bb05c@cs3.al.itld>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-(This should have made it to Johan, but I forgot to enable plain text
-mode so vger rejected it)
+On Wed, Jul 31, 2013 at 07:50:17PM +0000, Larry Keegan wrote:
+> On Wed, 31 Jul 2013 10:03:28 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > On Fri, Jul 26, 2013 at 10:25:10PM +0000, Larry Keegan wrote:
+> > > As far as NFS client arrangements are concerned, both of the NFS
+> > > server machines also function as NFS clients, so /home/larry works
+> > > on them in the same way as it does on any other NFS client on the
+> > > network. It is just that the NFS servers also run my postfix MTAs.
+> > 
+> > It's unrelated to your ESTALE problem, but note that a setup like this
+> > may be prone to deadlock.  (The client may need to write to the server
+> > to free up memory.  The server may need memory to service the write.
+> > If the server and client are on the same machine, this can deadlock.)
+> > 
+> > --b.
+> > 
+> 
+> Dear Bruce,
+> 
+> Perhaps you can clear something up for me. If I understand you
+> correctly, the following commands might lead to deadlock:
+> 
+> nfsserver# mount localhost:/filesystem /mnt
+> nfsserver# memory-eater &
+> [1] 1234
+> nfsserver# echo tip it over the edge > /mnt/file
+> 
+> but that it won't deadlock if there is memory to spare. The reason I
+> ask is I'd always assumed that any 'spare' memory in an active Linux
+> system would end up being consumed by the disc cache, and that the
+> cached pages are discarded or copied to disc when other parts of the
 
-Hi Johan,
+Note if the pages are backed by NFS files then "copying to disk" may
+mean writing to the NFS server.
 
-Does the server include "crossmnt" in its /etc/exports options for
-/pub?  By default, clients aren't able to cross mountpoints in the
-export directory.  Including this option should help!
+> system want memory (or sooner), assuming there is memory available to do
+> that.
+> 
+> What I'm asking is whether this deadlock scenario is 'prone' to occur
+> whenever there are insufficient reclaimable pages free or whether this
+> can occur before that point? Can this deadlock occur even if the cache
+> is large enough to ensure that most of what it contains has been
+> written to disc already? IOW, ignoring the other parts of the O/S, if a
+> programme writes 100MB/sec maximum to an NFS mounted directory on the
+> same machine, and the NFS server commits its data to disc within 10
+> seconds say, would 4GB of RAM provide enough headroom to make this
+> deadlock unlikely?
 
-- Bryan
+Sorry, I don't know.
 
-On Mon, Jul 8, 2013 at 8:47 AM, Johan GUILBAUD <guilbaud.johan@gmail.com> wrote:
-> Hello !
->
-> I have a problem to access a mounted ISO through NFS protocol
->
-> i have a server (RHEL6) on which are mounted ISOs
-> i have a lot of client accessing files into ISO via the NFS share
->
-> My problem is clients (RHEL5 & 6, Solaris 8 & 10) don't see content of
-> ISO folder
->
-> In example :
->
-> on NFS server i have a folder /pub/ where the ISO are mounted (ie :
-> with the iso mybeautifuliso.iso on the mount point
-> "/pub/mybeautifuliso/") there are also, for test, text files in /pub/
-> NFS shares content of /pub
->
->
-> Client see tests text files, and folder "mybeautifuliso" but this one
-> is empty...
->
->
-> thanks for help
->
-> --
-> GUILBAUD Johan
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--b.
