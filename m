@@ -1,86 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41227 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:48595 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755507Ab3GZOTS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Jul 2013 10:19:18 -0400
-Date: Fri, 26 Jul 2013 10:19:16 -0400
-From: "J.Bruce Fields" <bfields@citi.umich.edu>
-To: NeilBrown <neilb@suse.de>
-Cc: Ben Myers <bpm@sgi.com>, Olga Kornievskaia <aglo@citi.umich.edu>,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSD/sunrpc: avoid deadlock on TCP connection due to
- memory pressure.
-Message-ID: <20130726141916.GA30651@fieldses.org>
-References: <20130710190727.GA22305@fieldses.org>
- <20130715143203.51bc583b@notabene.brown>
- <20130716015803.GA5271@fieldses.org>
- <20130716140021.312b5b07@notabene.brown>
- <20130716142430.GA11977@fieldses.org>
- <20130718000319.GL1681@sgi.com>
- <20130724210746.GB5777@fieldses.org>
- <20130725113023.7bcbc347@notabene.brown>
- <20130725201805.GB17962@fieldses.org>
- <20130726063303.0d1495b3@notabene.brown>
+	id S1753245Ab3GaUc1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 31 Jul 2013 16:32:27 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Quentin Barnes <qbarnes@gmail.com>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: don't allow nfs_find_actor to match inodes of the
+ wrong type
+Date: Wed, 31 Jul 2013 20:32:24 +0000
+Message-ID: <1375302743.12465.2.camel@leira.trondhjem.org>
+References: <1362013834-29600-1-git-send-email-jlayton@redhat.com>
+	 <CAKjHkpAi_-jucPnFXg=3vMZg+pWSha3xR7KhjMPqN56K12SbCQ@mail.gmail.com>
+	 <20130731144657.7b94482b@tlielax.poochiereds.net>
+	 <CAKjHkpBGeQxy98osnJ4Q=NpqOjqC5uk32aYh+-bZ72ZBP3zmJQ@mail.gmail.com>
+In-Reply-To: <CAKjHkpBGeQxy98osnJ4Q=NpqOjqC5uk32aYh+-bZ72ZBP3zmJQ@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130726063303.0d1495b3@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 26, 2013 at 06:33:03AM +1000, NeilBrown wrote:
-> On Thu, 25 Jul 2013 16:18:05 -0400 "J.Bruce Fields" <bfields@citi.umich.edu>
-> wrote:
-> 
-> > On Thu, Jul 25, 2013 at 11:30:23AM +1000, NeilBrown wrote:
-> > > 
-> > > Since we enabled auto-tuning for sunrpc TCP connections we do not
-> > > guarantee that there is enough write-space on each connection to
-> > > queue a reply.
-...
-> > This is great, thanks!
-> > 
-> > Inclined to queue it up for 3.11 and stable....
-> 
-> I'd agree for 3.11.
-> It feels a bit border-line for stable.  "dead-lock" and "has been seen in the
-> wild" are technically enough justification...
-> I'd probably mark it as "pleas don't apply to -stable until 3.11 is released"
-> or something like that, just for a bit of breathing space.
-> Your call though.
-
-
-So my takeaway from http://lwn.net/Articles/559113/ was that Linus and
-Greg were requesting that:
-
-	- criteria for -stable and late -rc's should really be about the
-	  same, and
-	- people should follow Documentation/stable-kernel-rules.txt.
-
-So as an exercise to remind me what those rules are:
-
-Easy questions:
-
-	- "no bigger than 100 lines, with context."  Check.
-	- "It must fix only one thing."  Check.
-	- "real bug that bothers people".  Check.
-	- "tested": yep.  It doesn't actually say "tested on stable
-	  trees", and I recall this did land you with a tricky bug one
-	  time when a prerequisite was omitted from the backport.
-
-Judgement calls:
-
-	- "obviously correct": it's short, but admittedly subtle, and
-	  performance regressions can take a while to get sorted out.
-	- "It must fix a problem that causes a build error (but not for
-	  things marked CONFIG_BROKEN), an oops, a hang, data
-	  corruption, a real security issue, or some "oh, that's not
-	  good" issue.  In short, something critical."  We could argue
-	  that "server stops responding" is critical, though not to the
-	  same degree as a panic.
-	- OR: alternatively: "Serious issues as reported by a user of a
-	  distribution kernel may also be considered if they fix a
-	  notable performance or interactivity issue." The only bz I've
-	  personally seen was the result of artificial testing of some
-	  kind, and it sounds like your case involved a disk failure?
-
---b.
+T24gV2VkLCAyMDEzLTA3LTMxIGF0IDE1OjI2IC0wNTAwLCBRdWVudGluIEJhcm5lcyB3cm90ZToN
+Cj4gT24gV2VkLCBKdWwgMzEsIDIwMTMgYXQgMTo0NiBQTSwgSmVmZiBMYXl0b24gPGpsYXl0b25A
+cmVkaGF0LmNvbT4gd3JvdGU6DQo+ID4gT24gV2VkLCAzMSBKdWwgMjAxMyAxMzozNjoyMSAtMDUw
+MA0KPiA+IFF1ZW50aW4gQmFybmVzIDxxYmFybmVzQGdtYWlsLmNvbT4gd3JvdGU6DQo+ID4NCj4g
+Pj4gSSB3YXMgcmV2aWV3aW5nIHBhdGNoZXMgSSB3YXMgaW50ZWdyYXRpbmcgaW50byBteSBORlMg
+c291cmNlIGJhc2UNCj4gPj4gYW5kIHRoaXMgb25lIHBvcHBlZCB1cCAoY29tbWl0IGY2NDg4Yzli
+KS4gIEluIHJldmlld2luZyBpdCwgaXQgd291bGQNCj4gPj4gZml4IHRoZSBwcm9ibGVtLCBob3dl
+dmVyLCBJIHRoaW5rIGl0J3Mgbm90IHRoZSBiZXN0IGZpeCBmb3IgaXQuDQo+ID4+IENhdGNoaW5n
+IGl0IGluIG5mc19maW5kX2FjdG9yKCkgaXMgYWZ0ZXIgdGhlIGhvcnNlIGhhcyBsZWZ0IHRoZQ0K
+PiA+PiBiYXJuIHNvIHRvIHNwZWFrLg0KPiA+Pg0KPiA+PiBJIHRoaW5rIHRoZSBwcm9ibGVtIGlz
+IGluIG5mc19maGdldCgpIHdoZW4gY29uc3RydWN0aW5nIHRoZSBuZXcNCj4gPj4gaW5vZGUgKGlu
+c2lkZSB0aGUgaWYgKGlub2RlLT5pX3N0YXRlICYgSV9ORVcpIHsuLi59KSBhbmQgc2hvdWxkIGJl
+DQo+ID4+IGFkZHJlc3NlZCB0aGVyZS4NCj4gPj4NCj4gPj4gVGhlIG5mcyBtb2R1bGUgYWxyZWFk
+eSBoYXMgY2hlY2tzIHRvIGVuc3VyZSB0aGF0IHRoZSBleHByZXNzaW9uDQo+ID4+ICIoKFNfSUZN
+VCAmIGlub2RlLT5pX21vZGUpID09IChTX0lGTVQgJiBmYXR0ci0+bW9kZSkpIiBpcyB0cnVlDQo+
+ID4+IGluIG5mc191cGRhdGVfaW5vZGUoKSBhbmQgbmZzX2NoZWNrX2lub2RlX2F0dHJpYnV0ZXMo
+KS4gIEkgdGhpbmsNCj4gPj4gcHJvYmxlbSBCZW5ueSBoaXQgd2FzIHRoYXQgdGhlIGVxdWl2YWxl
+bnQgY2hlY2sgaXMgbWlzc2luZyBpbg0KPiA+PiBuZnNfZmhnZXQoKSB3aGVuIGNvbnN0cnVjdGlu
+ZyBhIG5ldyBpbm9kZS4gIFRoZSBzYW1lIGNoZWNrIHRoYXQncw0KPiA+PiBpbiB0aG9zZSBvdGhl
+ciB0d28gZnVuY3Rpb25zIG5lZWRzIHRvIGJlIGFkZGVkIHRvIG5mc19maGdldCgpJ3MgImlmDQo+
+ID4+IChpbm9kZS0+aV9zdGF0ZSAmIElfTkVXKSB7Li4ufSIgY29uZGl0aW9uYWwgYmxvY2sgdG8g
+cHJldmVudCB0aGUNCj4gPj4gcHJvYmxlbSBvZiBhbiBpbmNvbnNpc3RlbnQgZmF0dHIvaW5vZGUg
+c3RhdGUgZnJvbSBvY2N1cnJpbmcgaW4gdGhlDQo+ID4+IGZpcnN0IHBsYWNlLg0KPiA+Pg0KPiA+
+PiBJIGNhbiBjb21lIHVwIHdpdGggYSBwYXRjaCBpZiB5b3UnZCBsaWtlLCBidXQgSSB3YW50ZWQg
+dG8gbWFrZQ0KPiA+PiBzdXJlIG15IGFzc2VydGlvbnMgd2VyZSB2YWxpZCBmaXJzdC4gIElzIHJl
+bW92aW5nIGEgY2hlY2sgZnJvbQ0KPiA+PiBuZnNfZmluZF9hY3RvcigpIGFuZCBhZGRpbmcgdGhl
+IGNoZWNrIHRvIG5mc19maGdldCgpIHRvIHByZXZlbnQgdGhlDQo+ID4+IGluY29uc2lzdGVuY3kg
+aW4gdGhlIGZpcnN0IHBsYWNlIGEgYmV0dGVyIGFwcHJvYWNoPw0KPiA+Pg0KPiA+PiBRdWVudGlu
+DQo+ID4NCj4gPiBJIGRvbid0IHRoaW5rIEkgYWdyZWUuIFRoZSB3aG9sZSBwcm9ibGVtIHdhcyB0
+aGF0IHdlIHdlcmUgYWxsb3dpbmcNCj4gPiBpZ2V0NV9sb2NrZWQgdG8gbWF0Y2ggYW4gZXhpc3Rp
+bmcgaW5vZGUgZXZlbiB0aG91Z2ggKFNfSUZNVCAmIG1vZGUpIHdhcw0KPiA+IGRpZmZlcmVudC4N
+Cj4gDQo+IEkgYXNzZXJ0IHRoYXQgd2hlbiBhbiBpbmNvbnNpc3RlbnQgc3RhdGUgaGFwcGVucyB5
+b3UgZG9uJ3Qgd2FudA0KPiBuZnNfZmluZF9hY3RvcigpIHRvIGJlIHRoZSBvbmUgcmVzcG9uc2li
+bGUgZm9yIG5vdGljaW5nIGl0DQo+IChhY3R1YWxseSwgaWdub3JpbmcgdGhlIHByb2JsZW0pLiAg
+WW91IHdhbnQgdGhlIGV4aXN0aW5nIGNvbnNpc3RlbmN5DQo+IGFuZCBlcnJvciByZWNvdmVyeSBw
+YXRocyB0byBoYW5kbGUgaXQgaW5zdGVhZC4NCj4gDQo+IFNvIG9uZSBvciB0d28gdGhpbmdzIGFy
+ZSBnb2luZyBvbi4gIFRoZSBleGlzdGluZyBlcnJvciByZWNvdmVyeQ0KPiBwYXRocyBhcmUgaW5h
+ZGVxdWF0ZSBvciB0aGF0IHRoZXJlJ3MgYSBob2xlIGluIHRoZSBmYXR0ci9pbm9kZQ0KPiBjb25z
+aXN0ZW5jeSBjaGVja2luZyAob3IgcG9zc2libHkgYm90aCkuICBZb3VyIHBhdGNoIGNvdmVycyBv
+dmVyDQo+IHRoaXMgdW5kZXJseWluZyBidWcgcmF0aGVyIHRoYW4gYWRkcmVzc2luZyBpdCBhbmQg
+d2hpY2ggYWxzbyBsZXRzDQo+IHRoZSBvbGQgaW5vZGUgbm90IGdldCBmbGFnZ2VkIGFzIGludmFs
+aWQuICBJIHdvdWxkIHJhdGhlciBzZWUgdGhlDQo+IHJlYWwgcHJvYmxlbSBmaXhlZCBhbmQgdGhl
+IG9sZCBpbm9kZSBnZXQgZmxhZ2dlZCByYXRoZXIgdGhhbiBqdXN0DQo+IGlnbm9yaW5nIGl0IGFu
+ZCBjcmVhdGluZyBhbm90aGVyIG5ldyBpbm9kZS4NCj4gDQo+IEJlZm9yZSB5b3VyIHBhdGNoLCBp
+ZiBiZWNhdXNlIG9mIGEgc2VydmVyIGJ1ZyByZXVzaW5nIGEgZmlsZQ0KPiBoYW5kbGUsIG5mc19m
+aW5kX2FjdG9yKCksIHdvdWxkIG1hdGNoIGFuZCBpZ2V0NV9sb2NrZWQoKSB3b3VsZA0KPiByZXR1
+cm4gYW4gaW5vZGUgdGhhdCBtYXRjaGVkIG9uIGl0cyBmaWxlIGhhbmRsZSBidXQgdGhhdCBkaWRu
+J3QNCj4gbmVjZXNzYXJpbHkgbWF0Y2ggdGhlIGZhdHRyIGluZm8uDQo+IA0KPiBJZiB0aGF0IGlu
+b2RlIHJldHVybmVkIGJ5IGlnZXQ1X2xvY2tlZCgpIHdhcyBub3QgSV9ORVcgKHRoZSBlbHNlDQo+
+IGNhc2UpLCBuZnNfZmhnZXQoKSB3b3VsZCBpbnZva2UgbmZzX3JlZnJlc2hfaW5vZGUoKSwgd2hp
+Y2ggd291bGQNCj4gY2FsbCBuZnNfcmVmcmVzaF9pbm9kZV9sb2NrZWQoKS4gIEl0IGNhbGxzIGVp
+dGhlciBuZnNfdXBkYXRlX2lub2RlKCkNCj4gb3IgbmZzX2NoZWNrX2lub2RlX2F0dHJpYnV0ZXMo
+KS4gIEJvdGggb2YgdGhvc2UgZnVuY3Rpb25zIGFscmVhZHkNCj4gY2hlY2sgZm9yIGZhdHRyL2lu
+b2RlIFNfSUZNVCBjb25zaXN0ZW5jeSBjYXRjaGluZyBiYWQgc3RhdGVzLg0KPiANCj4gPiBXaHkg
+d291bGQgaXQgYmUgcHJlZmVyYWJsZSB0byB1c2UgdGhlIHNhbWUgc3RydWN0IGlub2RlIGV2ZW4g
+dGhvdWdoDQo+ID4gaXQncyBjbGVhcmx5IGEgZGlmZmVyZW50IG9uZSBvbiB0aGUgc2VydmVyPyBp
+bm9kZXMgZ2VuZXJhbGx5IGRvbid0DQo+ID4gY2hhbmdlIHRoZWlyIHR5cGUgYWZ0ZXIgdGhleSd2
+ZSBiZWVuIGNyZWF0ZWQuDQo+IA0KPiBJdCdzIG5vdCBwcmVmZXJhYmxlIHRvIGhhdmUgdGhlIHNh
+bWUgaW5vZGUgaW4gYSBkaWZmZXJlbnQgc3RhdGUuDQo+IFdoYXQgeW91IGRvbid0IHdhbnQgaXMg
+bmZzX2ZpbmRfYWN0b3IoKSBhcyBhIHNpZGUtZWZmZWN0IHRvIGxldCB0aGUNCj4gcHJvYmxlbSBn
+byB1bm5vdGljZWQuICBZb3Ugd2FudCBsZXQgdGhlIG5vcm1hbCwgZXhpc3RpbmcgZXJyb3INCj4g
+aGFuZGxpbmcgcGF0aHMgZGVhbCB3aXRoIGl0LCBvciBpZiB0aGV5J3JlIG5vdCBmdWxseSBkZWFs
+aW5nIHdpdGgNCj4gaXQsIGZpeCB0aGVtLg0KPiANCj4gU2luY2UgdGhlIElfTkVXIGNvbmRpdGlv
+bmFsIGZhbHNlIHBhdGggKHRoZSBlbHNlIGNhc2UpIGluIG5mc19maGdldCgpDQo+IHNob3VsZCBj
+YXRjaCB0aGUgcHJvYmxlbSwgSSBoYWQgdGhvdWdodCB0aGF0IHRoZSBwcm9ibGVtIG11c3QgbGF5
+DQo+IHdpdGggdGhlIElfTkVXIGNvbmRpdGlvbmFsIHRydWUgcGF0aC4gIE5vdyBJIGRvbid0IHRo
+aW5rIHNvLg0KPiANCj4gSSBzZWUgbm93IHRoYXQgbmZzX2NoZWNrX2lub2RlX2F0dHJpYnV0ZXMo
+KSBpcyBqdXN0IHJldHVybmluZyBhbg0KPiBlcnJvciB3aGVuIHRoZSBmYXR0ciBhbmQgaW5vZGUg
+c3RhdGVzIGFyZSBmb3VuZCB0byBiZSBpbmNvbnNpc3RlbnQsDQo+IGJ1dCBpcyB0YWtpbmcgbm8g
+YWN0aW9uIG9uIHRoZSBiYWQgaW5vZGUncyBzdGF0ZSAoaS5lLiBmbGFnZ2luZyBpdA0KPiBhcyBp
+bnZhbGlkKS4gIEFuZCB1cG9uIHJldHVybiwgbmZzX2ZoZ2V0KCkgaXMgbm90IGRvaW5nIGFueXRo
+aW5nIHdpdGgNCj4gdGhlIGJhZCByZXR1cm4gc3RhdGUgcGFzc2VkIHVwIHRvIG5mc19yZWZyZXNo
+X2lub2RlKCkuICBOb3cgSSdtDQo+IHRoaW5raW5nIHRoYXQgdGhpcyBpcyBwcm9ibGVtYXRpYyBo
+b2xlIGJlY2F1c2UgaXQgaXMgaWdub3JpbmcgdGhlDQo+IGVycm9yIHN0YXRlIGFuZCB0aGF0IGxl
+dCBCZW5ueSdzIHBhbmljIGhhcHBlbi4NCj4gDQo+IEl0IGRvZXNuJ3Qgc2VlbSB0byBtZSB0aGF0
+IGl0IHNob3VsZCBiZSBuZnNfY2hlY2tfaW5vZGVfYXR0cmlidXRlcygpDQo+IGpvYiB0byBmbGFn
+IHRoZSBpbm9kZSBhcyBpbnZhbGlkLiAgVGhhdCBzZWVtcyBvdXRzaWRlIGl0cyByb2xlLiAgSQ0K
+PiB3b3VsZCB0aGluayBpdCBzaG91bGQgYmUgbmZzX3JlZnJlc2hfaW5vZGVfbG9ja2VkKCkncyBq
+b2IsIGJ1dCBJJ20NCj4gc3RpbGwgcmV2aWV3aW5nIHRoZSBjb2RlLg0KPiANCj4gVGhvdWdodHM/
+DQoNClF1aXRlIGZyYW5rbHksIGFsbCBJIGNhcmUgYWJvdXQgaW4gYSBzaXR1YXRpb24gbGlrZSB0
+aGlzIGlzIHRoYXQgdGhlDQpjbGllbnQgZG9lc24ndCBPb3BzLg0KDQpJZiBhIHNlcnZlciBpcyBy
+ZWFsbHkgdGhpcyB1dHRlcmx5IGJyb2tlbiwgdGhlbiB0aGVyZSBpcyBubyB3YXkgd2UgY2FuDQpm
+aXggaXQgb24gdGhlIGNsaWVudCwgYW5kIHdlJ3JlIG5vdCBldmVuIGdvaW5nIHRvIHRyeS4NCg0K
+LS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRB
+cHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
