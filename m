@@ -1,240 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53637 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:55648 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756357Ab3GQUuW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Jul 2013 16:50:22 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        David Howells <dhowells@redhat.com>,
-        Tyler Hicks <tyhicks@canonical.com>,
-        Dustin Kirkland <dustin.kirkland@gazzang.com>
-Subject: [PATCH 08/16] locks: break delegations on unlink
-Date: Wed, 17 Jul 2013 16:50:09 -0400
-Message-Id: <1374094217-31493-10-git-send-email-bfields@redhat.com>
-In-Reply-To: <1374094217-31493-1-git-send-email-bfields@redhat.com>
-References: <1374094217-31493-1-git-send-email-bfields@redhat.com>
+	id S1756017Ab3GaLP3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 31 Jul 2013 07:15:29 -0400
+Date: Wed, 31 Jul 2013 07:15:27 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Anton Starikov <ant.starikov@gmail.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>, smayhew@redhat.com
+Subject: Re: NFS4 server, performance and cache consistency in comparison
+ with solaris.
+Message-ID: <20130731071527.5c68e5e8@tlielax.poochiereds.net>
+In-Reply-To: <7385CFE1-E63F-45C5-A38C-59C6FC4F0C5C@gmail.com>
+References: <E774E8EC-5CC0-436F-A8F3-0AB84534C316@gmail.com>
+	<7385CFE1-E63F-45C5-A38C-59C6FC4F0C5C@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, 31 Jul 2013 08:25:09 +0200
+Anton Starikov <ant.starikov@gmail.com> wrote:
 
-We need to break delegations on any operation that changes the set of
-links pointing to an inode.  Start with unlink.
+> Actually, my mistake.
+> option "sync" on a client side also does not change something. Probably it is RHEL bug, but I see "sync" in /proc/mounts only when I mount with noac. When I mount with "sync", it is not present in /proc/mounts.
+> 
+> Anton.
+> 
 
-Such operations also hold the i_mutex on a parent directory.  Breaking a
-delegation may require waiting for a timeout (by default 90 seconds) in
-the case of a unresponsive NFS client.  To avoid blocking all directory
-operations, we therefore drop locks before waiting for the delegation.
-The logic then looks like:
+Do you already have an existing mount to the same server without '-o
+sync' ? If so, then I think that's a known bug. I'd post a link to it
+here, but it's unfortunately marked "private" for reasons that aren't
+clear to me.
 
-	acquire locks
-	...
-	test for delegation; if found:
-		take reference on inode
-		release locks
-		wait for delegation break
-		drop reference on inode
-		retry
+I think Scott (cc'ed here) has a patch for this bug in mainline kernels
+and in RHEL6. If you open a support case with us, then we can see about
+getting you a test kernel with it.
 
-It is possible this could never terminate.  (Even if we take precautions
-to prevent another delegation being acquired on the same inode, we could
-get a different inode on each retry.)  But this seems very unlikely.
+> 
+> On Jul 31, 2013, at 6:35 AM, Anton Starikov <ant.starikov@gmail.com> wrote:
+> 
+> > Hey, 
+> > 
+> > we are in the process of migration of our storage from solaris to linux (RHEL6) and I see some strange things, which depends on server side.
+> > 
+> > In our old solaris setup we have slower network (1GbE vs 10GbE), much slower storage than new one, but still when I export volume with default solaris options and mount on linux clients with options:
+> > rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,minorversion=0,local_lock=none
+> > 
+> > I have reasonable performance combined with reasonable cache consistency, i.e. when on one client some process keeps writing file (process opens file and writes to it while running, it also flushes stream like couple of times a second) on the NFS volume, on another client I can follow current state of this file practically realtime.
+> > 
+> > When I export from linux host with options: 
+> > 
+> > rw,sync,wdelay,hide,nocrossmnt,insecure,no_root_squash,no_all_squash,no_subtree_check,secure_locks,no_acl,mountpoint,anonuid=65534,anongid=65534,sec=sys,rw,no_root_squash,no_all_squash (it is options as shown in /var/lib/nfs/etab),
+> > 
+> > and mount on linux clients with the same options as with old setup, I have great "dbench 4" performance (about 200Mb/s), but consistency is nonexistent, in the same case (one client keep writing to file, second is reading), on second client I can see state of file with delayed for 5-30 secs. Out of curiosity I tried to use "sync" in loop on a first client (where it writes) to flush cache, but it does not affect something. File isn't really large, but client updates it 2-4 times a sec.
+> > 
+> > All my attempts to improve consistency had two possible impacts:
+> > 
+> > 1) either still luck of consistency (like actimeo=0,lookupcache=none) and reasonable or good dbench results.
+> > 2) consistency is recovered (or almost recovered) (like sync, noac), but dbench results drops to 10MB/s or even less! 
+> > 
+> > Taking into account that mounting happens with the same options on a client side in both cases, it there some server-side trick with options?
+> > 
+> > Time is synchronised between hosts. 
+> > 
+> > Anton.
+> 
 
-The initial test for a delegation happens after the lock on the target
-inode is acquired, but the directory inode may have been acquired
-further up the call stack.  We therefore add a "struct inode **"
-argument to any intervening functions, which we use to pass the inode
-back up to the caller in the case it needs a delegation synchronously
-broken.
 
-Cc: David Howells <dhowells@redhat.com>
-Cc: Tyler Hicks <tyhicks@canonical.com>
-Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- drivers/base/devtmpfs.c |    2 +-
- fs/cachefiles/namei.c   |    2 +-
- fs/ecryptfs/inode.c     |    2 +-
- fs/namei.c              |   42 +++++++++++++++++++++++++++++++++++++++---
- fs/nfsd/vfs.c           |    2 +-
- include/linux/fs.h      |    2 +-
- ipc/mqueue.c            |    2 +-
- 7 files changed, 45 insertions(+), 9 deletions(-)
+This is all due to client-side effects, so there's little you can do
+server-side to affect this.
 
-diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
-index 7413d06..1b8490e 100644
---- a/drivers/base/devtmpfs.c
-+++ b/drivers/base/devtmpfs.c
-@@ -324,7 +324,7 @@ static int handle_remove(const char *nodename, struct device *dev)
- 			mutex_lock(&dentry->d_inode->i_mutex);
- 			notify_change(dentry, &newattrs);
- 			mutex_unlock(&dentry->d_inode->i_mutex);
--			err = vfs_unlink(parent.dentry->d_inode, dentry);
-+			err = vfs_unlink(parent.dentry->d_inode, dentry, NULL);
- 			if (!err || err == -ENOENT)
- 				deleted = 1;
- 		}
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index 25badd1..6846fcef 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -294,7 +294,7 @@ static int cachefiles_bury_object(struct cachefiles_cache *cache,
- 		if (ret < 0) {
- 			cachefiles_io_error(cache, "Unlink security error");
- 		} else {
--			ret = vfs_unlink(dir->d_inode, rep);
-+			ret = vfs_unlink(dir->d_inode, rep, NULL);
- 
- 			if (preemptive)
- 				cachefiles_mark_object_buried(cache, rep);
-diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-index 67e9b63..0b8b632 100644
---- a/fs/ecryptfs/inode.c
-+++ b/fs/ecryptfs/inode.c
-@@ -153,7 +153,7 @@ static int ecryptfs_do_unlink(struct inode *dir, struct dentry *dentry,
- 
- 	dget(lower_dentry);
- 	lower_dir_dentry = lock_parent(lower_dentry);
--	rc = vfs_unlink(lower_dir_inode, lower_dentry);
-+	rc = vfs_unlink(lower_dir_inode, lower_dentry, NULL);
- 	if (rc) {
- 		printk(KERN_ERR "Error in vfs_unlink; rc = [%d]\n", rc);
- 		goto out_unlock;
-diff --git a/fs/namei.c b/fs/namei.c
-index 2b44960..2826bbd 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3431,7 +3431,25 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
- 	return do_rmdir(AT_FDCWD, pathname);
- }
- 
--int vfs_unlink(struct inode *dir, struct dentry *dentry)
-+/**
-+ * vfs_unlink - unlink a filesystem object
-+ * @dir:	parent directory
-+ * @dentry:	victim
-+ * @delegated_inode: returns victim inode, if the inode is delegated.
-+ *
-+ * The caller must hold dir->i_mutex.
-+ *
-+ * If vfs_unlink discovers a delegation, it will return -EWOULDBLOCK and
-+ * return a reference to the inode in delegated_inode.  The caller
-+ * should then break the delegation on that inode and retry.  Because
-+ * breaking a delegation may take a long time, the caller should drop
-+ * dir->i_mutex before doing so.
-+ *
-+ * Alternatively, a caller may pass NULL for delegated_inode.  This may
-+ * be appropriate for callers that expect the underlying filesystem not
-+ * to be NFS exported.
-+ */
-+int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
- {
- 	struct inode *target = dentry->d_inode;
- 	int error = may_delete(dir, dentry, 0);
-@@ -3448,11 +3466,20 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
- 	else {
- 		error = security_inode_unlink(dir, dentry);
- 		if (!error) {
-+			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
-+			if (error) {
-+				if (error == -EWOULDBLOCK && delegated_inode) {
-+					*delegated_inode = target;
-+					ihold(target);
-+				}
-+				goto out;
-+			}
- 			error = dir->i_op->unlink(dir, dentry);
- 			if (!error)
- 				dont_mount(dentry);
- 		}
- 	}
-+out:
- 	mutex_unlock(&target->i_mutex);
- 
- 	/* We don't d_delete() NFS sillyrenamed files--they still exist. */
-@@ -3477,6 +3504,7 @@ static long do_unlinkat(int dfd, const char __user *pathname)
- 	struct dentry *dentry;
- 	struct nameidata nd;
- 	struct inode *inode = NULL;
-+	struct inode *delegated_inode = NULL;
- 	unsigned int lookup_flags = 0;
- retry:
- 	name = user_path_parent(dfd, pathname, &nd, lookup_flags);
-@@ -3491,7 +3519,7 @@ retry:
- 	error = mnt_want_write(nd.path.mnt);
- 	if (error)
- 		goto exit1;
--
-+retry_deleg:
- 	mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex, I_MUTEX_PARENT);
- 	dentry = lookup_hash(&nd);
- 	error = PTR_ERR(dentry);
-@@ -3506,13 +3534,21 @@ retry:
- 		error = security_path_unlink(&nd.path, dentry);
- 		if (error)
- 			goto exit2;
--		error = vfs_unlink(nd.path.dentry->d_inode, dentry);
-+		error = vfs_unlink(nd.path.dentry->d_inode, dentry, &delegated_inode);
- exit2:
- 		dput(dentry);
- 	}
- 	mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
- 	if (inode)
- 		iput(inode);	/* truncate the inode here */
-+	inode = NULL;
-+	if (delegated_inode) {
-+		error = break_deleg(delegated_inode, O_WRONLY);
-+		iput(delegated_inode);
-+		delegated_inode = NULL;
-+		if (!error)
-+			goto retry_deleg;
-+	}
- 	mnt_drop_write(nd.path.mnt);
- exit1:
- 	path_put(&nd.path);
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 8ff6a00..ff1fc44 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1910,7 +1910,7 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 	if (host_err)
- 		goto out_put;
- 	if (type != S_IFDIR)
--		host_err = vfs_unlink(dirp, rdentry);
-+		host_err = vfs_unlink(dirp, rdentry, NULL);
- 	else
- 		host_err = vfs_rmdir(dirp, rdentry);
- 	if (!host_err)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index bc1d8b8..ba29b37 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1469,7 +1469,7 @@ extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
- extern int vfs_symlink(struct inode *, struct dentry *, const char *);
- extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
- extern int vfs_rmdir(struct inode *, struct dentry *);
--extern int vfs_unlink(struct inode *, struct dentry *);
-+extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
- extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *);
- 
- /*
-diff --git a/ipc/mqueue.c b/ipc/mqueue.c
-index ae1996d..95827ce 100644
---- a/ipc/mqueue.c
-+++ b/ipc/mqueue.c
-@@ -886,7 +886,7 @@ SYSCALL_DEFINE1(mq_unlink, const char __user *, u_name)
- 		err = -ENOENT;
- 	} else {
- 		ihold(inode);
--		err = vfs_unlink(dentry->d_parent->d_inode, dentry);
-+		err = vfs_unlink(dentry->d_parent->d_inode, dentry, NULL);
- 	}
- 	dput(dentry);
- 
+lookupcache= option probably won't make a lot of difference here, but
+actimeo= option likely would. actimeo= means that the client never
+caches attributes, so every time it needs to check cache coherency it
+has to issue a GETATTR to the server. Dialing this to a more reasonable
+value (e.g. actimeo=1 or so) should still give you pretty tight cache
+coherency w/o killing performance too badly.
+
+The cache coherency logic in the Linux NFS client is pretty complex,
+but typically when you have a file that's changing rapidly it should
+quickly dial down the attribute cache timeout to the default minimum
+(3s). None of that matters though unless you have the "writing" client
+aggressively flushing the dirty data out to the server.
+
 -- 
-1.7.9.5
-
+Jeff Layton <jlayton@redhat.com>
