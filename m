@@ -1,160 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f52.google.com ([209.85.213.52]:44837 "EHLO
-	mail-yh0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S964992Ab3GLQb3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jul 2013 12:31:29 -0400
-Received: by mail-yh0-f52.google.com with SMTP id f10so3699618yha.25
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Jul 2013 09:31:28 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe93:815b])
-        by mx.google.com with ESMTPSA id v32sm69001436yhc.12.2013.07.12.09.31.27
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Fri, 12 Jul 2013 09:31:28 -0700 (PDT)
-Subject: [PATCH v1 00/19] NFSv4 migration
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 12 Jul 2013 12:31:26 -0400
-Message-ID: <20130712155303.1444.62697.stgit@seurat.1015granger.net>
+Received: from fieldses.org ([174.143.236.118]:46494 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751338Ab3GaODb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 31 Jul 2013 10:03:31 -0400
+Date: Wed, 31 Jul 2013 10:03:28 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Larry Keegan <lk@pfw.demon.co.uk>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: nfs client: Now you see it, now you don't (aka spurious ESTALE
+ errors)
+Message-ID: <20130731140328.GA28266@fieldses.org>
+References: <20130725134515.67af44e2@cs3.al.itld>
+ <20130725101143.6a22cb81@corrin.poochiereds.net>
+ <20130725170526.6e54c7db@cs3.al.itld>
+ <20130725141828.1862a1e1@tlielax.poochiereds.net>
+ <20130726124101.058df8dc@cs3.al.itld>
+ <20130726091225.5f299ff6@corrin.poochiereds.net>
+ <20130726150222.GC30651@fieldses.org>
+ <20130726222510.793c1627@cs3.al.itld>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130726222510.793c1627@cs3.al.itld>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I hope to get basic NFSv4 migration support into 3.12.  This is the
-patch series, still based on 3.10, posted here for review.  See also
+On Fri, Jul 26, 2013 at 10:25:10PM +0000, Larry Keegan wrote:
+> On Fri, 26 Jul 2013 11:02:22 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > On Fri, Jul 26, 2013 at 09:12:25AM -0400, Jeff Layton wrote:
+> > > On Fri, 26 Jul 2013 12:41:01 +0000
+> > > Larry Keegan <lk@pfw.demon.co.uk> wrote:
+> > > > I now have a good and a bad packet capture. I can run them through
+> > > > tshark -V but if I do this, they're really long, so I'm wondering
+> > > > how best to post them. I've posted the summaries below.
+> > > > 
+> > > > The set-up is as follows: I'm running a few xterms on my desktop
+> > > > (the affected client) as well as claws-mail using the mailmbox
+> > > > plugin. Claws keeps a cache of the mailbox
+> > > > in .clawsmail/tagsdb/<foldername>. From time to time I blast a
+> > > > load of mail into these mail boxes using procmail. This seems to
+> > > > demonstrate the problem most of the time. After a few minutes
+> > > > everything gets back to normal.
+> > > > 
+> > > > The actual mail is being delivered on my file server pair directly
+> > > > into /home/larry/Mail/<foldername>. Both file servers use
+> > > > automount to mount the same filesystem
+> > 
+> > Wait, I'm confused: that sounds like you're mounting the same ext4
+> > filesystem from two different machines?
+> > 
+> > --b.
+> > 
+> 
+> Dear Bruce,
+> 
+> I'm sorry, I didn't express myself clearly enough. I described my
+> server-side NFS arrangements a few hours ago in a note to Jeff Layton.
+> (I'm afraid I didn't catch your email until just now - NFS problems,
+> you know). In summary, whereas I do have two NFS servers, only one has
+> the filesystems mounted and exported at a time. The other just sees the
+> underlying drbd device in secondary mode.
 
-  http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=commit;
-	h=8aa9aa847fdd073abe24789c5acb28b853755616
+Got it, thanks for the clarification.
 
+> It merely keeps the data on
+> the block device up-to-date for when I cut over to it. I pretty much
+> never do this unless I wish to reboot the active NFS server. To all
+> intents and purposes, I only have one NFS server. I purposefully didn't
+> use primary-primary drbd replication with OCFS or GFS2 because it
+> was all too new when I set this up.
+> 
+> As far as NFS client arrangements are concerned, both of the NFS server
+> machines also function as NFS clients, so /home/larry works on them in
+> the same way as it does on any other NFS client on the network. It is
+> just that the NFS servers also run my postfix MTAs.
 
-- Patch roadmap -
+It's unrelated to your ESTALE problem, but note that a setup like this
+may be prone to deadlock.  (The client may need to write to the server
+to free up memory.  The server may need memory to service the write.  If
+the server and client are on the same machine, this can deadlock.)
 
-The first two patches are bug fixes.
+--b.
 
-Patches "NFS: Refactor nfs4_call_data_sequence()" through "NFS:
-Implement a transport blocking scheme for migration" introduce a
-mechanism that can plug and uncork an NFS transport.  NFSv4.0
-migration uses this mechanism to block forward NFS operations while
-migration recovery is occurring.  NFSv4.1 and following will use
-session draining to accomplish the same.
-
-Patch "NFS: Add functions to swap transports during migration
-recovery" moves an nfs_server from one nfs_client to another, and
-swaps out the nfs_server's RPC transport at the same time.  This
-mechanism probably still needs some work.
-
-Patches "NFS: Add method to retrieve fs_locations during migration
-recovery" through "NFS: Add migration recovery callouts in
-nfs4proc.c" add the bulk of support for recovering from NFS4ERR_MOVED.
-
-Patches "NFS: Add method to detect whether an FSID is still on the
-server" through "NFS: Implement support for NFS4ERR_LEASE_MOVED" add
-support for recovering from NFS4ERR_LEASE_MOVED.
-
-Patch "NFS: Set EXCHGID4_FLAG_SUPP_MOVED_MIGR" advertises migration
-support for NFSv4.1.
-
-
-- Merge criteria -
-
-I have three criteria for determining whether I believe this work is
-ready to merge:
-
-  1.  The series doesn't regress any non-migration related
-      functionality
-
-  2.  Everyone is happy with the architecture and APIs, such that
-      subsequent patches will amount to bug fixes and enhancements
-      rather than reworking anything
-
-  3.  The series is ported to the tip of Linus' master (3.11-rc1
-      as of this writing)
-
-I'd like to merge sooner rather than later so others can start to
-build on this functionality, and so I don't have to keep forward
-porting for another two years.
-
-In addition, this is something that distributions want yesterday.
-Including it now and then fixing it makes it easier for them to
-include it in their kernels.
-
-I expect bug fixes and enhancements after merge.  Enhancements might
-include:
-
-  Optimize LEASE_MOVED recovery by performing the fsid_present
-  checks asynchronously
-
-  Introduce support for fs_locations_info
-
-  Finish NFSv4.1 migration support
-
-One thing that hasn't been tested yet is NFSv4.1 migration.  There
-are no server implementations yet, and we believe there may be some
-(IETF) protocol work to do to get NFSv4.1 migration working
-reliably.
-
-We could drop that patch, or we could change it to add a CONFIG
-option, default N, marked EXPERIMENTAL so that the flag can be
-enabled conveniently for testing.
-
-
-- Test plan -
-
-This implementation still needs a lot of testing.  I've done some of
-this list, plan to do more.
-
-   * Single filesystem migration with TSM
-   * Single filesystem migration without TSM
-   * Active filesystem A while B is migrated (lease-moved recovery)
-   * Active filesystem A while active filesystem B is migrated
-   * Migrate filesystem A, reboot destination server, migrate B
-   * Migration during lock-intensive workload
-   * What happens when migration recovery fails?
-   * How about migration with a Kerberos 5 mount?
-
-
----
-
-Chuck Lever (18):
-      NFS: Never use user credentials for lease renewal
-      NFS: Fix return type of nfs4_end_drain_session() stub
-      NFS: Introduce a vector of migration recovery ops
-      NFS: Refactor nfs4_call_data_sequence()
-      NFS: Rename nfs41_call_sync_data as a common data structure
-      NFS: Clean up nfs4_setup_sequence()
-      NFS: Fix compiler warning in nfs_setup_sequence()
-      NFS: Use RPC callouts to start NFSv4.0 synchronous requests
-      NFS: Add a "struct nfs_server *" argument to nfs4_sequence_done()
-      NFS: Implement a transport blocking scheme for migration
-      NFS: Add a super_block backpointer to the nfs_server struct
-      NFS: Add functions to swap transports during migration recovery
-      NFS: Add method to retrieve fs_locations during migration recovery
-      NFS: Add basic migration support to state manager thread
-      NFS: Add migration recovery callouts in nfs4proc.c
-      NFS: Add method to detect whether an FSID is still on the server
-      NFS: Implement support for NFS4ERR_LEASE_MOVED
-      NFS: Set EXCHGID4_FLAG_SUPP_MOVED_MIGR
-
-Trond Myklebust (1):
-      SUNRPC: Add a helper to switch the transport of an rpc_clnt
-
-
- fs/nfs/client.c             |    3 
- fs/nfs/internal.h           |    3 
- fs/nfs/nfs4_fs.h            |   36 +--
- fs/nfs/nfs4client.c         |   83 ++++++
- fs/nfs/nfs4namespace.c      |  114 +++++++++
- fs/nfs/nfs4proc.c           |  554 +++++++++++++++++++++++++++++++++++++------
- fs/nfs/nfs4session.c        |    2 
- fs/nfs/nfs4state.c          |  318 +++++++++++++++++++++----
- fs/nfs/nfs4xdr.c            |  115 ++++++++-
- fs/nfs/super.c              |    1 
- include/linux/nfs4.h        |    1 
- include/linux/nfs_fs_sb.h   |   11 +
- include/linux/nfs_xdr.h     |   17 +
- include/linux/sunrpc/clnt.h |    4 
- net/sunrpc/clnt.c           |   83 ++++++
- 15 files changed, 1183 insertions(+), 162 deletions(-)
-
--- 
-Chuck Lever
+> In turn, postfix
+> delivers mail to my (multiple) inboxes under /home/larry/Mail/whatever.
+> 
+> Mail comes in from my perimeter mail boxes is in round-robin fashion to
+> both the NFS server/client/postfix MTA machines, so inevitably yes, both
+> of these machines automount /home/larry most of the time, but this is no
+> different from, say my desktop computer which is also
+> mounting /home/larry.
+> 
+> The point about email delivery is that in this arrangement both my NFS
+> server computers, with purely their NFS client hats on, contend to
+> deliver messages into the same mail files on the same filesystem served
+> by just one NFS server. For instance, the linux-nfs mailing list traffic
+> all goes into one file. This often causes a lot of thumb-twiddling
+> whilst the procmails try to get the lock on the mail file. It's all
+> happens too fast for me to notice, but I'm sure procmail would rather
+> be sunning itself on the beach or something.
+> 
+> The reason why email delivery seems to be a pretty consistent trigger
+> for this problem is: a) there's bugger all else going on with all these
+> NFS problems, b) the fact that the two NFS server/client/postfix boxes
+> and claws-mail on my desktop box are all investigating and modifying
+> the same files all the time, and c) I'm deliberately holding back
+> inbound mail and releasing it in large batches to try to exercise this
+> problem.
+> 
+> The odd thing is that I haven't (yet) had any problems with the
+> mailboxes themselves, only the state-files and caches that claws mail
+> keeps under /home/whatever/.clawsmail. These are only ever accessed
+> from my desktop machine.
+> 
+> Yours,
+> 
+> larry
