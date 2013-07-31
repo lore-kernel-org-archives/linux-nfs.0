@@ -1,83 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.gmx.net ([212.227.17.20]:54462 "EHLO mout.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751167Ab3G0Jx7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 27 Jul 2013 05:53:59 -0400
-Received: from [80.171.177.38] ([80.171.177.38]) by mail.gmx.com (mrgmx002)
- with ESMTPSA (Nemesis) id 0LaG7C-1UNfIJ2d8o-00m1g4 for
- <linux-nfs@vger.kernel.org>; Sat, 27 Jul 2013 11:53:57 +0200
-Message-ID: <51F398B3.7040500@gmx.de>
-Date: Sat, 27 Jul 2013 11:53:55 +0200
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
-MIME-Version: 1.0
-To: Andrey Vagin <avagin@openvz.org>, Oleg Nesterov <oleg@redhat.com>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Andrey Vagin <avagin@openvz.org>, Al Viro <viro@zeniv.linux.org.uk>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: fuzz tested user mode linux core dumps in fs/lockd/clntproc.c:131
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-ea0-f182.google.com ([209.85.215.182]:59950 "EHLO
+	mail-ea0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751934Ab3GaGZO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Jul 2013 02:25:14 -0400
+Received: by mail-ea0-f182.google.com with SMTP id o10so128401eaj.27
+        for <linux-nfs@vger.kernel.org>; Tue, 30 Jul 2013 23:25:13 -0700 (PDT)
+Received: from [192.168.43.130] ([31.21.165.149])
+        by mx.google.com with ESMTPSA id ci50sm43684eeb.12.2013.07.30.23.25.11
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=ECDHE-RSA-RC4-SHA bits=128/128);
+        Tue, 30 Jul 2013 23:25:12 -0700 (PDT)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: NFS4 server, performance and cache consistency in comparison with solaris.
+From: Anton Starikov <ant.starikov@gmail.com>
+In-Reply-To: <E774E8EC-5CC0-436F-A8F3-0AB84534C316@gmail.com>
+Date: Wed, 31 Jul 2013 08:25:09 +0200
+Message-Id: <7385CFE1-E63F-45C5-A38C-59C6FC4F0C5C@gmail.com>
+References: <E774E8EC-5CC0-436F-A8F3-0AB84534C316@gmail.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I do have a user mode linux image (stable 32 bit Gentoo Linux ) which erratically crashes
-while fuzz tested with trinity if the victim files are located on a NFS share.
+Actually, my mistake.
+option "sync" on a client side also does not change something. Probably it is RHEL bug, but I see "sync" in /proc/mounts only when I mount with noac. When I mount with "sync", it is not present in /proc/mounts.
 
-The back trace of the core dumps always looks like the attached.
-
-To bisect it is hard. However after few attempts in the last weeks the following
-commit is either the first bad commit or at least the upper limit.
+Anton.
 
 
-commit 8aac62706adaaf0fab02c4327761561c8bda9448
-Author: Oleg Nesterov <oleg@redhat.com>
-Date:   Fri Jun 14 21:09:49 2013 +0200
+On Jul 31, 2013, at 6:35 AM, Anton Starikov <ant.starikov@gmail.com> wrote:
 
-    move exit_task_namespaces() outside of exit_notify()
+> Hey, 
+> 
+> we are in the process of migration of our storage from solaris to linux (RHEL6) and I see some strange things, which depends on server side.
+> 
+> In our old solaris setup we have slower network (1GbE vs 10GbE), much slower storage than new one, but still when I export volume with default solaris options and mount on linux clients with options:
+> rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,minorversion=0,local_lock=none
+> 
+> I have reasonable performance combined with reasonable cache consistency, i.e. when on one client some process keeps writing file (process opens file and writes to it while running, it also flushes stream like couple of times a second) on the NFS volume, on another client I can follow current state of this file practically realtime.
+> 
+> When I export from linux host with options: 
+> 
+> rw,sync,wdelay,hide,nocrossmnt,insecure,no_root_squash,no_all_squash,no_subtree_check,secure_locks,no_acl,mountpoint,anonuid=65534,anongid=65534,sec=sys,rw,no_root_squash,no_all_squash (it is options as shown in /var/lib/nfs/etab),
+> 
+> and mount on linux clients with the same options as with old setup, I have great "dbench 4" performance (about 200Mb/s), but consistency is nonexistent, in the same case (one client keep writing to file, second is reading), on second client I can see state of file with delayed for 5-30 secs. Out of curiosity I tried to use "sync" in loop on a first client (where it writes) to flush cache, but it does not affect something. File isn't really large, but client updates it 2-4 times a sec.
+> 
+> All my attempts to improve consistency had two possible impacts:
+> 
+> 1) either still luck of consistency (like actimeo=0,lookupcache=none) and reasonable or good dbench results.
+> 2) consistency is recovered (or almost recovered) (like sync, noac), but dbench results drops to 10MB/s or even less! 
+> 
+> Taking into account that mounting happens with the same options on a client side in both cases, it there some server-side trick with options?
+> 
+> Time is synchronised between hosts. 
+> 
+> Anton.
 
-
-
-tfoerste@n22 ~/devel/linux $ gdb --core=/mnt/ramdisk/core /home/tfoerste/devel/linux/linux -n -batch -ex bt
-[New LWP 20802]
-Core was generated by `/home/tfoerste/devel/linux/linux earlyprintk ubda=/home/tfoerste/virtual/uml/tr'.
-Program terminated with signal 6, Aborted.
-#0  0xb778e424 in __kernel_vsyscall ()
-#0  0xb778e424 in __kernel_vsyscall ()
-#1  0x08396175 in kill ()
-#2  0x0807155d in uml_abort () at arch/um/os-Linux/util.c:93
-#3  0x08071845 in os_dump_core () at arch/um/os-Linux/util.c:138
-#4  0x08061197 in panic_exit (self=0x8591518 <panic_exit_notifier>, unused1=0, unused2=0x85c5d60 <buf.12251>) at arch/um/kernel/um_arch.c:240
-#5  0x0809daf8 in notifier_call_chain (nl=0x0, val=0, v=0x85c5d60 <buf.12251>, nr_to_call=-2, nr_calls=0x0) at kernel/notifier.c:93
-#6  0x0809dc43 in __atomic_notifier_call_chain (nr_calls=<optimized out>, nr_to_call=<optimized out>, v=<optimized out>, val=<optimized out>, nh=<optimized out>) at kernel/notifier.c:182
-#7  atomic_notifier_call_chain (nh=0x85c5d44 <panic_notifier_list>, val=0, v=0x85c5d60 <buf.12251>) at kernel/notifier.c:191
-#8  0x083f34f8 in panic (fmt=0x0) at kernel/panic.c:127
-#9  0x08060b5e in segv (fi=<incomplete type>, ip=136527369, is_user=0, regs=0x858f85c <cpu0_irqstack+30812>) at arch/um/kernel/trap.c:209
-#10 0x08060e13 in segv_handler (sig=11, unused_si=0x858fb0c <cpu0_irqstack+31500>, regs=0x858f85c <cpu0_irqstack+30812>) at arch/um/kernel/trap.c:185
-#11 0x080706a8 in sig_handler_common (sig=11, si=0x858fb0c <cpu0_irqstack+31500>, mc=0x858fba0 <cpu0_irqstack+31648>) at arch/um/os-Linux/signal.c:44
-#12 0x080707ed in sig_handler (sig=0, si=0x858fb0c <cpu0_irqstack+31500>, mc=0x858fba0 <cpu0_irqstack+31648>) at arch/um/os-Linux/signal.c:231
-#13 0x0807033b in hard_handler (sig=6, si=0x858fb0c <cpu0_irqstack+31500>, p=0x858fba0 <cpu0_irqstack+31648>) at arch/um/os-Linux/signal.c:165
-#14 <signal handler called>
-#15 nlmclnt_setlockargs (req=0x48e18860, fl=0x48f27c8c) at fs/lockd/clntproc.c:131
-#16 0x08234892 in nlmclnt_proc (host=0x48e18860, cmd=7, fl=0x48f27c8c) at fs/lockd/clntproc.c:170
-#17 0x081d91ae in nfs_proc_lock (filp=0x0, cmd=0, fl=0x0) at fs/nfs/proc.c:667
-#18 0x081ca386 in do_unlk (filp=0x48fbe0c0, cmd=7, fl=0x48f27c8c, is_local=0) at fs/nfs/file.c:773
-#19 0x081ca572 in nfs_flock (filp=0x48fbe0c0, cmd=7, fl=0x0) at fs/nfs/file.c:902
-#20 0x0813ee6e in locks_remove_flock (filp=0x48fbe0c0) at fs/locks.c:2074
-#21 0x080fe438 in __fput (file=0x48fbe0c0) at fs/file_table.c:240
-#22 0x080fe55b in ____fput (work=0x48fbe0c0) at fs/file_table.c:285
-#23 0x08095f3e in task_work_run () at kernel/task_work.c:87
-#24 0x08080c9d in exit_task_work (task=<optimized out>) at include/linux/task_work.h:21
-#25 do_exit (code=1224150016) at kernel/exit.c:798
-#26 0x080812a7 in do_group_exit (exit_code=11) at kernel/exit.c:931
-#27 0x0808bc2d in get_signal_to_deliver (info=0x48f27e34, return_ka=0x48f27eb4, regs=0x48db31d4, cookie=0x0) at kernel/signal.c:2370
-#28 0x0805f6ec in kern_do_signal (regs=0x48db31d4) at arch/um/kernel/signal.c:77
-#29 0x0805f7ed in do_signal () at arch/um/kernel/signal.c:123
-#30 0x0805e6b7 in interrupt_end () at arch/um/kernel/process.c:107
-#31 0x08073c1b in userspace (regs=0x48db31d4) at arch/um/os-Linux/skas/process.c:464
-#32 0x0805e44c in fork_handler () at arch/um/kernel/process.c:160
-#33 0x5a5a5a5a in ?? ()
-
-
--- 
-MfG/Sincerely
-Toralf Förster
-pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
