@@ -1,303 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:10289 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752806Ab3HVAYY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Aug 2013 20:24:24 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 04/21] NFS: Add event tracing for generic NFS lookups
-Date: Wed, 21 Aug 2013 20:24:02 -0400
-Message-ID: <1377131059-40121-5-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377131059-40121-4-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377131059-40121-1-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-2-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-3-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-4-git-send-email-Trond.Myklebust@netapp.com>
+Received: from ecs-ex10-cas2.engr.uconn.edu ([137.99.15.237]:18648 "EHLO
+	mail.engr.uconn.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1757219Ab3HAUvw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Aug 2013 16:51:52 -0400
+Message-ID: <51FAC933.40508@engr.uconn.edu>
+Date: Thu, 1 Aug 2013 16:46:43 -0400
+From: Rohit Kumar Mehta <rohitm@engr.uconn.edu>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: <linux-nfs@vger.kernel.org>
+Subject: Trouble with kerberized NFS client after upgrading from nfs-utils
+ 1.2.0 to 1.2.5
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add tracepoints for lookup, lookup_revalidate and atomic_open
+Hello everyone, I am stuck trying to figure out why I cannot get 
+sec=krb5 Linux clients working after upgrading from Ubuntu 10.04 LTS 
+(Lucid) to 12.04 (Precise)
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/dir.c      |   7 ++
- fs/nfs/nfstrace.c |   1 +
- fs/nfs/nfstrace.h | 195 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 203 insertions(+)
+I suspect the same problem is with the newer nfs-utils, but cannot be sure.
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 29d5463..2263a6b 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1102,7 +1102,9 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 	if (IS_ERR(label))
- 		goto out_error;
- 
-+	trace_nfs_lookup_revalidate_enter(dir, dentry, flags);
- 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, label);
-+	trace_nfs_lookup_revalidate_exit(dir, dentry, flags, error);
- 	if (error)
- 		goto out_bad;
- 	if (nfs_compare_fh(NFS_FH(inode), fhandle))
-@@ -1315,6 +1317,7 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
- 
- 	parent = dentry->d_parent;
- 	/* Protect against concurrent sillydeletes */
-+	trace_nfs_lookup_enter(dir, dentry, flags);
- 	nfs_block_sillyrename(parent);
- 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, label);
- 	if (error == -ENOENT)
-@@ -1341,6 +1344,7 @@ no_entry:
- 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
- out_unblock_sillyrename:
- 	nfs_unblock_sillyrename(parent);
-+	trace_nfs_lookup_exit(dir, dentry, flags, error);
- 	nfs4_label_free(label);
- out:
- 	nfs_free_fattr(fattr);
-@@ -1451,12 +1455,14 @@ int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
- 	if (IS_ERR(ctx))
- 		goto out;
- 
-+	trace_nfs_atomic_open_enter(dir, ctx, open_flags);
- 	nfs_block_sillyrename(dentry->d_parent);
- 	inode = NFS_PROTO(dir)->open_context(dir, ctx, open_flags, &attr);
- 	nfs_unblock_sillyrename(dentry->d_parent);
- 	if (IS_ERR(inode)) {
- 		put_nfs_open_context(ctx);
- 		err = PTR_ERR(inode);
-+		trace_nfs_atomic_open_exit(dir, ctx, open_flags, err);
- 		switch (err) {
- 		case -ENOENT:
- 			d_drop(dentry);
-@@ -1477,6 +1483,7 @@ int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
- 	}
- 
- 	err = nfs_finish_open(ctx, ctx->dentry, file, open_flags, opened);
-+	trace_nfs_atomic_open_exit(dir, ctx, open_flags, err);
- out:
- 	return err;
- 
-diff --git a/fs/nfs/nfstrace.c b/fs/nfs/nfstrace.c
-index cc91461..4eb0aea 100644
---- a/fs/nfs/nfstrace.c
-+++ b/fs/nfs/nfstrace.c
-@@ -2,6 +2,7 @@
-  * Copyright (c) 2013 Trond Myklebust <Trond.Myklebust@netapp.com>
-  */
- #include <linux/nfs_fs.h>
-+#include <linux/namei.h>
- #include "internal.h"
- 
- #define CREATE_TRACE_POINTS
-diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
-index 73c8e1e..fba194b 100644
---- a/fs/nfs/nfstrace.h
-+++ b/fs/nfs/nfstrace.h
-@@ -157,6 +157,201 @@ DEFINE_NFS_INODE_EVENT_DONE(nfs_fsync_exit);
- DEFINE_NFS_INODE_EVENT(nfs_access_enter);
- DEFINE_NFS_INODE_EVENT_DONE(nfs_access_exit);
- 
-+#define show_lookup_flags(flags) \
-+	__print_flags((unsigned long)flags, "|", \
-+			{ LOOKUP_AUTOMOUNT, "AUTOMOUNT" }, \
-+			{ LOOKUP_DIRECTORY, "DIRECTORY" }, \
-+			{ LOOKUP_OPEN, "OPEN" }, \
-+			{ LOOKUP_CREATE, "CREATE" }, \
-+			{ LOOKUP_EXCL, "EXCL" })
-+
-+DECLARE_EVENT_CLASS(nfs_lookup_event,
-+		TP_PROTO(
-+			const struct inode *dir,
-+			const struct dentry *dentry,
-+			unsigned int flags
-+		),
-+
-+		TP_ARGS(dir, dentry, flags),
-+
-+		TP_STRUCT__entry(
-+			__field(unsigned int, flags)
-+			__field(dev_t, dev)
-+			__field(u64, dir)
-+			__string(name, dentry->d_name.name)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->dev = dir->i_sb->s_dev;
-+			__entry->dir = NFS_FILEID(dir);
-+			__entry->flags = flags;
-+			__assign_str(name, dentry->d_name.name);
-+		),
-+
-+		TP_printk(
-+			"flags=%u (%s) name=%02x:%02x:%llu/%s",
-+			__entry->flags,
-+			show_lookup_flags(__entry->flags),
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->dir,
-+			__get_str(name)
-+		)
-+);
-+
-+#define DEFINE_NFS_LOOKUP_EVENT(name) \
-+	DEFINE_EVENT(nfs_lookup_event, name, \
-+			TP_PROTO( \
-+				const struct inode *dir, \
-+				const struct dentry *dentry, \
-+				unsigned int flags \
-+			), \
-+			TP_ARGS(dir, dentry, flags))
-+
-+DECLARE_EVENT_CLASS(nfs_lookup_event_done,
-+		TP_PROTO(
-+			const struct inode *dir,
-+			const struct dentry *dentry,
-+			unsigned int flags,
-+			int error
-+		),
-+
-+		TP_ARGS(dir, dentry, flags, error),
-+
-+		TP_STRUCT__entry(
-+			__field(int, error)
-+			__field(unsigned int, flags)
-+			__field(dev_t, dev)
-+			__field(u64, dir)
-+			__string(name, dentry->d_name.name)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->dev = dir->i_sb->s_dev;
-+			__entry->dir = NFS_FILEID(dir);
-+			__entry->error = error;
-+			__entry->flags = flags;
-+			__assign_str(name, dentry->d_name.name);
-+		),
-+
-+		TP_printk(
-+			"error=%d flags=%u (%s) name=%02x:%02x:%llu/%s",
-+			__entry->error,
-+			__entry->flags,
-+			show_lookup_flags(__entry->flags),
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->dir,
-+			__get_str(name)
-+		)
-+);
-+
-+#define DEFINE_NFS_LOOKUP_EVENT_DONE(name) \
-+	DEFINE_EVENT(nfs_lookup_event_done, name, \
-+			TP_PROTO( \
-+				const struct inode *dir, \
-+				const struct dentry *dentry, \
-+				unsigned int flags, \
-+				int error \
-+			), \
-+			TP_ARGS(dir, dentry, flags, error))
-+
-+DEFINE_NFS_LOOKUP_EVENT(nfs_lookup_enter);
-+DEFINE_NFS_LOOKUP_EVENT_DONE(nfs_lookup_exit);
-+DEFINE_NFS_LOOKUP_EVENT(nfs_lookup_revalidate_enter);
-+DEFINE_NFS_LOOKUP_EVENT_DONE(nfs_lookup_revalidate_exit);
-+
-+#define show_open_flags(flags) \
-+	__print_flags((unsigned long)flags, "|", \
-+		{ O_CREAT, "O_CREAT" }, \
-+		{ O_EXCL, "O_EXCL" }, \
-+		{ O_TRUNC, "O_TRUNC" }, \
-+		{ O_APPEND, "O_APPEND" }, \
-+		{ O_DSYNC, "O_DSYNC" }, \
-+		{ O_DIRECT, "O_DIRECT" }, \
-+		{ O_DIRECTORY, "O_DIRECTORY" })
-+
-+#define show_fmode_flags(mode) \
-+	__print_flags(mode, "|", \
-+		{ ((__force unsigned long)FMODE_READ), "READ" }, \
-+		{ ((__force unsigned long)FMODE_WRITE), "WRITE" }, \
-+		{ ((__force unsigned long)FMODE_EXEC), "EXEC" })
-+
-+TRACE_EVENT(nfs_atomic_open_enter,
-+		TP_PROTO(
-+			const struct inode *dir,
-+			const struct nfs_open_context *ctx,
-+			unsigned int flags
-+		),
-+
-+		TP_ARGS(dir, ctx, flags),
-+
-+		TP_STRUCT__entry(
-+			__field(unsigned int, flags)
-+			__field(unsigned int, fmode)
-+			__field(dev_t, dev)
-+			__field(u64, dir)
-+			__string(name, ctx->dentry->d_name.name)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->dev = dir->i_sb->s_dev;
-+			__entry->dir = NFS_FILEID(dir);
-+			__entry->flags = flags;
-+			__entry->fmode = (__force unsigned int)ctx->mode;
-+			__assign_str(name, ctx->dentry->d_name.name);
-+		),
-+
-+		TP_printk(
-+			"flags=%u (%s) fmode=%s name=%02x:%02x:%llu/%s",
-+			__entry->flags,
-+			show_open_flags(__entry->flags),
-+			show_fmode_flags(__entry->fmode),
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->dir,
-+			__get_str(name)
-+		)
-+);
-+
-+TRACE_EVENT(nfs_atomic_open_exit,
-+		TP_PROTO(
-+			const struct inode *dir,
-+			const struct nfs_open_context *ctx,
-+			unsigned int flags,
-+			int error
-+		),
-+
-+		TP_ARGS(dir, ctx, flags, error),
-+
-+		TP_STRUCT__entry(
-+			__field(int, error)
-+			__field(unsigned int, flags)
-+			__field(unsigned int, fmode)
-+			__field(dev_t, dev)
-+			__field(u64, dir)
-+			__string(name, ctx->dentry->d_name.name)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->error = error;
-+			__entry->dev = dir->i_sb->s_dev;
-+			__entry->dir = NFS_FILEID(dir);
-+			__entry->flags = flags;
-+			__entry->fmode = (__force unsigned int)ctx->mode;
-+			__assign_str(name, ctx->dentry->d_name.name);
-+		),
-+
-+		TP_printk(
-+			"error=%d flags=%u (%s) fmode=%s "
-+			"name=%02x:%02x:%llu/%s",
-+			__entry->error,
-+			__entry->flags,
-+			show_open_flags(__entry->flags),
-+			show_fmode_flags(__entry->fmode),
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->dir,
-+			__get_str(name)
-+		)
-+);
-+
- #endif /* _TRACE_NFS_H */
- 
- #undef TRACE_INCLUDE_PATH
+On the old (working) Lucid system, I think the important software is:
+# dpkg -l |grep nfs-common
+ii  nfs-common 1:1.2.0-4ubuntu4.2                              NFS 
+support files common to client and serve
+# uname -a
+Linux cselin3 2.6.32-29-generic #58-Ubuntu SMP Fri Feb 11 20:52:10 UTC 
+2011 x86_64 GNU/Linux
+
+And on the newer (sec=krb5 mounts fail) system, the important software is:
+# dpkg -l |grep nfs-common
+ii  nfs-common 1:1.2.5-3ubuntu3.1                      NFS support files 
+common to client and server
+# uname -a
+Linux c27-00 3.2.0-51-generic #77-Ubuntu SMP Wed Jul 24 20:18:19 UTC 
+2013 x86_64 x86_64 x86_64 GNU/Linux
+
+
+The NFS server we are using is a Hitachi BlueARC, and like I said, older 
+Linux clients work fine.  After upgrading to new kernel and
+
+nfs-utils, any attempt to mount yields an error:
+# mount hnas.engr.uconn.edu:/EngrUser/users/rohitm /foo -o sec=krb5
+mount.nfs: access denied by server while mounting 
+hnas.engr.uconn.edu:/EngrUser/users/rohitm
+
+I've reproduced the same behavior with both -t nfs4 and -t nfs. (Both 
+nfsv3 and nfsv4 work with kerberos security in our configuration with 
+Lucid, but not Precise)  I've checked the Kerberos credential cache:
+
+root@c27-00:~# klist -e -f -c /tmp/krb5cc_machine_ENGR.UCONN.EDU
+Ticket cache: FILE:/tmp/krb5cc_machine_ENGR.UCONN.EDU
+Default principal: nfs/c27-00.engr.uconn.edu@ENGR.UCONN.EDU
+
+Valid starting    Expires           Service principal
+01/08/2013 15:40  02/08/2013 01:40 krbtgt/ENGR.UCONN.EDU@ENGR.UCONN.EDU
+     renew until 02/08/2013 15:40, Flags: FRI
+     Etype (skey, tkt): des3-cbc-sha1, des3-cbc-sha1
+01/08/2013 15:40  02/08/2013 01:40 nfs/hnas.engr.uconn.edu@ENGR.UCONN.EDU
+     renew until 02/08/2013 15:40, Flags: FRT
+     Etype (skey, tkt): des3-cbc-sha1, des3-cbc-sha1
+
+I also have rpc.idmapd and rpc.gssd running with extra verbosity.  I 
+don't see anything blatantly wrong.  This looks slightly suspicious:
+Aug  1 16:32:50 c27-00 rpc.gssd[780]: creating tcp client for server 
+hnas.engr.uconn.edu
+Aug  1 16:32:50 c27-00 rpc.gssd[780]: DEBUG: port already set to 2049
+Aug  1 16:32:50 c27-00 rpc.gssd[780]: creating context with server 
+nfs@hnas.engr.uconn.edu
+Aug  1 16:32:50 c27-00 rpc.gssd[780]: WARNING: Failed to create krb5 
+context for user with uid 0 for server hnas.engr.uconn.edu
+Aug  1 16:32:50 c27-00 rpc.gssd[780]: WARNING: Failed to create machine 
+krb5 context with credentials cache 
+FILE:/tmp/krb5cc_machine_ENGR.UCONN.EDU for server hnas.engr.uconn.edu
+Aug  1 16:32:50 c27-00 rpc.gssd[780]: WARNING: Failed to create machine 
+krb5 context with any credentials cache for server hnas.engr.uconn.edu
+Aug  1 16:32:50 c27-00 rpc.gssd[780]: doing error downcall
+Aug  1 16:32:50 c27-00 rpc.gssd[780]: dir_notify_handler: sig 37 si 
+0x7fffdf0135b0 data 0x7fffdf013480
+Aug  1 16:32:50 c27-00 rpc.gssd[780]: dir_notify_handler: sig 37 si 
+0x7fffdf0135b0 data 0x7fffdf013480
+Aug  1 16:32:50 c27-00 rpc.gssd[780]: dir_notify_handler: sig 37 si 
+0x7fffdf0134f0 data 0x7fffdf0133c0
+Aug  1 16:32:50  rpc.gssd[780]: last message repeated 4 times
+Aug  1 16:32:50 c27-00 rpc.gssd[780]: destroying client 
+/run/rpc_pipefs/nfs/clnt5
+Aug  1 16:32:50 c27-00 rpc.gssd[780]: destroying client 
+/run/rpc_pipefs/nfs/clnt4
+
+I am able to successfuly get the nfs principal for the client from 
+/etc/krb5.keytab "nfs/c27-00.engr.uconn.edu" and I can see the principal 
+for the server "nfs/hnas.engr.uconn.edu" in cache 
+/tmp/krb5cc_machine_ENGR.UCONN.EDU.
+
+I appreciate any advice or assistance.  Thanks in advance!
+Rohit
+
 -- 
-1.8.3.1
+Rohit Mehta
+Computer Engineer
+University of Connecticut
+Engineering Computing Services
+371 Fairfield Road Unit 4031
+Storrs, CT 06269-4031
+
+Office: (860) 486 - 2331
+Fax: (860) 486 - 1273
 
