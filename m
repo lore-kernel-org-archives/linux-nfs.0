@@ -1,114 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:6737 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37690 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757056Ab3HGTH7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Aug 2013 15:07:59 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 4 5/5] SUNRPC refactor rpcauth_checkverf error
- returns
-Date: Wed, 7 Aug 2013 19:07:58 +0000
-Message-ID: <1375902478.7280.39.camel@leira.trondhjem.org>
-References: <1374176130-11657-1-git-send-email-andros@netapp.com>
-	 <1374176130-11657-6-git-send-email-andros@netapp.com>
-In-Reply-To: <1374176130-11657-6-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1754927Ab3HARi4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Aug 2013 13:38:56 -0400
+Subject: [RFC][PATCH 0/2] KEYS: Kerberos caching support
+To: keyrings@linux-nfs.org, linux-nfs@vger.kernel.org
+From: David Howells <dhowells@redhat.com>
+Cc: krbdev@mit.edu, linux-kernel@vger.kernel.org, simo@redhat.com
+Date: Thu, 01 Aug 2013 18:38:46 +0100
+Message-ID: <20130801173846.28023.19009.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEzLTA3LTE4IGF0IDE1OjM1IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IE1vc3Qg
-b2YgdGhlIHRpbWUgYW4gZXJyb3IgZnJvbSB0aGUgY3JlZG9wcyBjcnZhbGlkYXRlIGZ1bmN0aW9u
-IG1lYW5zIHRoZQ0KPiBzZXJ2ZXIgaGFzIHNlbnQgdXMgYSBnYXJiYWdlIHZlcmlmaWVyLiBUaGUg
-Z3NzX3ZhbGlkYXRlIGZ1bmN0aW9uIGlzIHRoZQ0KPiBleGNlcHRpb24gd2hlcmUgdGhlcmUgaXMg
-YW4gLUVBQ0NFUyBjYXNlIGlmIHRoZSB1c2VyIEdTU19jb250ZXh0IG9uIHRoZSBjbGllbnQNCj4g
-aGFzIGV4cGlyZWQuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBBbmR5IEFkYW1zb24gPGFuZHJvc0Bu
-ZXRhcHAuY29tPg0KPiAtLS0NCj4gIG5ldC9zdW5ycGMvYXV0aF9nc3MvYXV0aF9nc3MuYyB8ICA3
-ICsrKysrLS0NCj4gIG5ldC9zdW5ycGMvYXV0aF9udWxsLmMgICAgICAgICB8ICA1ICsrKy0tDQo+
-ICBuZXQvc3VucnBjL2F1dGhfdW5peC5jICAgICAgICAgfCAgNSArKystLQ0KPiAgbmV0L3N1bnJw
-Yy9jbG50LmMgICAgICAgICAgICAgIHwgMTcgKysrKysrKysrKy0tLS0tLS0NCj4gIDQgZmlsZXMg
-Y2hhbmdlZCwgMjEgaW5zZXJ0aW9ucygrKSwgMTMgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0t
-Z2l0IGEvbmV0L3N1bnJwYy9hdXRoX2dzcy9hdXRoX2dzcy5jIGIvbmV0L3N1bnJwYy9hdXRoX2dz
-cy9hdXRoX2dzcy5jDQo+IGluZGV4IGUxZjQ3MzUuLmQwNTAwYmMgMTAwNjQ0DQo+IC0tLSBhL25l
-dC9zdW5ycGMvYXV0aF9nc3MvYXV0aF9nc3MuYw0KPiArKysgYi9uZXQvc3VucnBjL2F1dGhfZ3Nz
-L2F1dGhfZ3NzLmMNCj4gQEAgLTEzMzQsNiArMTMzNCw3IEBAIGdzc192YWxpZGF0ZShzdHJ1Y3Qg
-cnBjX3Rhc2sgKnRhc2ssIF9fYmUzMiAqcCkNCj4gIAlzdHJ1Y3QgeGRyX25ldG9iaiBtaWM7DQo+
-ICAJdTMyCQlmbGF2LGxlbjsNCj4gIAl1MzIJCW1hal9zdGF0Ow0KPiArCV9fYmUzMgkJKnJldCA9
-IEVSUl9QVFIoLUVJTyk7DQo+ICANCj4gIAlkcHJpbnRrKCJSUEM6ICU1dSAlc1xuIiwgdGFzay0+
-dGtfcGlkLCBfX2Z1bmNfXyk7DQo+ICANCj4gQEAgLTEzNDksNiArMTM1MCw3IEBAIGdzc192YWxp
-ZGF0ZShzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2ssIF9fYmUzMiAqcCkNCj4gIAltaWMuZGF0YSA9ICh1
-OCAqKXA7DQo+ICAJbWljLmxlbiA9IGxlbjsNCj4gIA0KPiArCXJldCA9IEVSUl9QVFIoLUVBQ0NF
-Uyk7DQo+ICAJbWFqX3N0YXQgPSBnc3NfdmVyaWZ5X21pYyhjdHgtPmdjX2dzc19jdHgsICZ2ZXJm
-X2J1ZiwgJm1pYyk7DQo+ICAJaWYgKG1hal9zdGF0ID09IEdTU19TX0NPTlRFWFRfRVhQSVJFRCkN
-Cj4gIAkJY2xlYXJfYml0KFJQQ0FVVEhfQ1JFRF9VUFRPREFURSwgJmNyZWQtPmNyX2ZsYWdzKTsN
-Cj4gQEAgLTEzNjYsOCArMTM2OCw5IEBAIGdzc192YWxpZGF0ZShzdHJ1Y3QgcnBjX3Rhc2sgKnRh
-c2ssIF9fYmUzMiAqcCkNCj4gIAlyZXR1cm4gcCArIFhEUl9RVUFETEVOKGxlbik7DQo+ICBvdXRf
-YmFkOg0KPiAgCWdzc19wdXRfY3R4KGN0eCk7DQo+IC0JZHByaW50aygiUlBDOiAlNXUgJXMgZmFp
-bGVkLlxuIiwgdGFzay0+dGtfcGlkLCBfX2Z1bmNfXyk7DQo+IC0JcmV0dXJuIE5VTEw7DQo+ICsJ
-ZHByaW50aygiUlBDOiAlNXUgJXMgZmFpbGVkIHJldCAlbGQuXG4iLCB0YXNrLT50a19waWQsIF9f
-ZnVuY19fLA0KPiArCQlQVFJfRVJSKHJldCkpOw0KPiArCXJldHVybiByZXQ7DQo+ICB9DQo+ICAN
-Cj4gIHN0YXRpYyB2b2lkIGdzc193cmFwX3JlcV9lbmNvZGUoa3hkcmVwcm9jX3QgZW5jb2RlLCBz
-dHJ1Y3QgcnBjX3Jxc3QgKnJxc3RwLA0KPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9hdXRoX251
-bGwuYyBiL25ldC9zdW5ycGMvYXV0aF9udWxsLmMNCj4gaW5kZXggYTVjMzZjMC4uZDYwYTY3MyAx
-MDA2NDQNCj4gLS0tIGEvbmV0L3N1bnJwYy9hdXRoX251bGwuYw0KPiArKysgYi9uZXQvc3VucnBj
-L2F1dGhfbnVsbC5jDQo+IEBAIC04NCwxNyArODQsMTggQEAgbnVsX3ZhbGlkYXRlKHN0cnVjdCBy
-cGNfdGFzayAqdGFzaywgX19iZTMyICpwKQ0KPiAgew0KPiAgCXJwY19hdXRoZmxhdm9yX3QJZmxh
-dm9yOw0KPiAgCXUzMgkJCXNpemU7DQo+ICsJX19iZTMyCQkJKnJldCA9IEVSUl9QVFIoLUVJTyk7
-DQo+ICANCj4gIAlmbGF2b3IgPSBudG9obCgqcCsrKTsNCj4gIAlpZiAoZmxhdm9yICE9IFJQQ19B
-VVRIX05VTEwpIHsNCj4gIAkJcHJpbnRrKCJSUEM6IGJhZCB2ZXJmIGZsYXZvcjogJXVcbiIsIGZs
-YXZvcik7DQo+IC0JCXJldHVybiBOVUxMOw0KPiArCQlyZXR1cm4gcmV0Ow0KDQpXaHkgbm90IGp1
-c3QgcmV0dXJuIEVSUl9QVFIoLUVJTyk/IEl0IGRvZXNuJ3QgbG9vayBhcyBpZiAncmV0JyBjYW4g
-ZXZlcg0KdGFrZSBhbnkgZGlmZmVyZW50IHZhbHVlcy4gRGl0dG8gYmVsb3cuDQoNCj4gIAl9DQo+
-ICANCj4gIAlzaXplID0gbnRvaGwoKnArKyk7DQo+ICAJaWYgKHNpemUgIT0gMCkgew0KPiAgCQlw
-cmludGsoIlJQQzogYmFkIHZlcmYgc2l6ZTogJXVcbiIsIHNpemUpOw0KPiAtCQlyZXR1cm4gTlVM
-TDsNCj4gKwkJcmV0dXJuIHJldDsNCj4gIAl9DQo+ICANCj4gIAlyZXR1cm4gcDsNCj4gZGlmZiAt
-LWdpdCBhL25ldC9zdW5ycGMvYXV0aF91bml4LmMgYi9uZXQvc3VucnBjL2F1dGhfdW5peC5jDQo+
-IGluZGV4IGRjMzcwMjEuLjQ2MWE0NDQgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMvYXV0aF91
-bml4LmMNCj4gKysrIGIvbmV0L3N1bnJwYy9hdXRoX3VuaXguYw0KPiBAQCAtMTg2LDE5ICsxODYs
-MjAgQEAgdW54X3ZhbGlkYXRlKHN0cnVjdCBycGNfdGFzayAqdGFzaywgX19iZTMyICpwKQ0KPiAg
-ew0KPiAgCXJwY19hdXRoZmxhdm9yX3QJZmxhdm9yOw0KPiAgCXUzMgkJCXNpemU7DQo+ICsJX19i
-ZTMyCQkJKnJldCA9IEVSUl9QVFIoLUVJTyk7DQo+ICANCj4gIAlmbGF2b3IgPSBudG9obCgqcCsr
-KTsNCj4gIAlpZiAoZmxhdm9yICE9IFJQQ19BVVRIX05VTEwgJiYNCj4gIAkgICAgZmxhdm9yICE9
-IFJQQ19BVVRIX1VOSVggJiYNCj4gIAkgICAgZmxhdm9yICE9IFJQQ19BVVRIX1NIT1JUKSB7DQo+
-ICAJCXByaW50aygiUlBDOiBiYWQgdmVyZiBmbGF2b3I6ICV1XG4iLCBmbGF2b3IpOw0KPiAtCQly
-ZXR1cm4gTlVMTDsNCj4gKwkJcmV0dXJuIHJldDsNCj4gIAl9DQo+ICANCj4gIAlzaXplID0gbnRv
-aGwoKnArKyk7DQo+ICAJaWYgKHNpemUgPiBSUENfTUFYX0FVVEhfU0laRSkgew0KPiAgCQlwcmlu
-dGsoIlJQQzogZ2lhbnQgdmVyZiBzaXplOiAldVxuIiwgc2l6ZSk7DQo+IC0JCXJldHVybiBOVUxM
-Ow0KPiArCQlyZXR1cm4gcmV0Ow0KPiAgCX0NCj4gIAl0YXNrLT50a19ycXN0cC0+cnFfY3JlZC0+
-Y3JfYXV0aC0+YXVfcnNsYWNrID0gKHNpemUgPj4gMikgKyAyOw0KPiAgCXAgKz0gKHNpemUgPj4g
-Mik7DQo+IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL2NsbnQuYyBiL25ldC9zdW5ycGMvY2xudC5j
-DQo+IGluZGV4IDY4ZTg1OTUuLjVlZmM4OWMgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMvY2xu
-dC5jDQo+ICsrKyBiL25ldC9zdW5ycGMvY2xudC5jDQo+IEBAIC0yMDkwLDcgKzIwOTAsOCBAQCBy
-cGNfdmVyaWZ5X2hlYWRlcihzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spDQo+ICAJCWRwcmludGsoIlJQ
-QzogJTV1ICVzOiBYRFIgcmVwcmVzZW50YXRpb24gbm90IGEgbXVsdGlwbGUgb2YiDQo+ICAJCSAg
-ICAgICAiIDQgYnl0ZXM6IDB4JXhcbiIsIHRhc2stPnRrX3BpZCwgX19mdW5jX18sDQo+ICAJCSAg
-ICAgICB0YXNrLT50a19ycXN0cC0+cnFfcmN2X2J1Zi5sZW4pOw0KPiAtCQlnb3RvIG91dF9laW87
-DQo+ICsJCWVycm9yID0gLUVJTzsNCj4gKwkJZ290byBvdXRfZXJyOw0KPiAgCX0NCj4gIAlpZiAo
-KGxlbiAtPSAzKSA8IDApDQo+ICAJCWdvdG8gb3V0X292ZXJmbG93Ow0KPiBAQCAtMjA5OSw2ICsy
-MTAwLDcgQEAgcnBjX3ZlcmlmeV9oZWFkZXIoc3RydWN0IHJwY190YXNrICp0YXNrKQ0KPiAgCWlm
-ICgobiA9IG50b2hsKCpwKyspKSAhPSBSUENfUkVQTFkpIHsNCj4gIAkJZHByaW50aygiUlBDOiAl
-NXUgJXM6IG5vdCBhbiBSUEMgcmVwbHk6ICV4XG4iLA0KPiAgCQkJdGFzay0+dGtfcGlkLCBfX2Z1
-bmNfXywgbik7DQo+ICsJCWVycm9yID0gLUVJTzsNCj4gIAkJZ290byBvdXRfZ2FyYmFnZTsNCj4g
-IAl9DQo+ICANCj4gQEAgLTIxMTcsNyArMjExOSw4IEBAIHJwY192ZXJpZnlfaGVhZGVyKHN0cnVj
-dCBycGNfdGFzayAqdGFzaykNCj4gIAkJCWRwcmludGsoIlJQQzogJTV1ICVzOiBSUEMgY2FsbCBy
-ZWplY3RlZCwgIg0KPiAgCQkJCSJ1bmtub3duIGVycm9yOiAleFxuIiwNCj4gIAkJCQl0YXNrLT50
-a19waWQsIF9fZnVuY19fLCBuKTsNCj4gLQkJCWdvdG8gb3V0X2VpbzsNCj4gKwkJCWVycm9yID0g
-LUVJTzsNCj4gKwkJCWdvdG8gb3V0X2VycjsNCj4gIAkJfQ0KPiAgCQlpZiAoLS1sZW4gPCAwKQ0K
-PiAgCQkJZ290byBvdXRfb3ZlcmZsb3c7DQo+IEBAIC0yMTYyLDkgKzIxNjUsMTEgQEAgcnBjX3Zl
-cmlmeV9oZWFkZXIoc3RydWN0IHJwY190YXNrICp0YXNrKQ0KPiAgCQkJCXRhc2stPnRrX3BpZCwg
-X19mdW5jX18sIG4pOw0KPiAgCQlnb3RvIG91dF9lcnI7DQo+ICAJfQ0KPiAtCWlmICghKHAgPSBy
-cGNhdXRoX2NoZWNrdmVyZih0YXNrLCBwKSkpIHsNCj4gLQkJZHByaW50aygiUlBDOiAlNXUgJXM6
-IGF1dGggY2hlY2sgZmFpbGVkXG4iLA0KPiAtCQkJCXRhc2stPnRrX3BpZCwgX19mdW5jX18pOw0K
-PiArCXAgPSBycGNhdXRoX2NoZWNrdmVyZih0YXNrLCBwKTsNCj4gKwlpZiAoSVNfRVJSKHApKSB7
-DQo+ICsJCWVycm9yID0gUFRSX0VSUihwKTsNCj4gKwkJZHByaW50aygiUlBDOiAlNXUgJXM6IGF1
-dGggY2hlY2sgZmFpbGVkIHdpdGggJWRcbiIsDQo+ICsJCQkJdGFzay0+dGtfcGlkLCBfX2Z1bmNf
-XywgZXJyb3IpOw0KPiAgCQlnb3RvIG91dF9nYXJiYWdlOwkJLyogYmFkIHZlcmlmaWVyLCByZXRy
-eSAqLw0KPiAgCX0NCj4gIAlsZW4gPSBwIC0gKF9fYmUzMiAqKWlvdi0+aW92X2Jhc2UgLSAxOw0K
-PiBAQCAtMjIxNyw4ICsyMjIyLDYgQEAgb3V0X2dhcmJhZ2U6DQo+ICBvdXRfcmV0cnk6DQo+ICAJ
-CXJldHVybiBFUlJfUFRSKC1FQUdBSU4pOw0KPiAgCX0NCj4gLW91dF9laW86DQo+IC0JZXJyb3Ig
-PSAtRUlPOw0KPiAgb3V0X2VycjoNCj4gIAlycGNfZXhpdCh0YXNrLCBlcnJvcik7DQo+ICAJZHBy
-aW50aygiUlBDOiAlNXUgJXM6IGNhbGwgZmFpbGVkIHdpdGggZXJyb3IgJWRcbiIsIHRhc2stPnRr
-X3BpZCwNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
-cg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+
+Here are a couple of keyrings patches I'd like to propose to aid the support
+for Kerberos to cache tickets in keys:
+
+ (1) A large-capacity key type.
+
+     This is a general purpose key type that can hold up to 1MB of data.  The
+     data is stored in a SHM file and so can be stored out to swap if need be.
+
+     I think it might be worth storing the data encrypted in the SHM file with
+     a randomly generated transient symmetric key that the kernel creates and
+     retains in memory for each key.  This would then be lost when the power
+     went off, rendering the tickets irretrievable.
+
+     This is necessary because some Kerberos tickets, particularly those
+     returned by Windows Active Directory, for instance, can be huge, easily
+     64KB or more, due to additional information stored in the ticket (the
+     MS-PAC).
+
+ (2) Per-user_namespace registers of per-UID kerberos caches.
+
+     This allows the kerberos cache to be retained beyond the life of all a
+     user's processes so that the user's cron jobs can work.
+
+     The user asks for their Kerberos cache by:
+
+	krb_cache = keyctl_get_krbcache(uid, dest_keyring);
+
+     The uid is -1 or the user's own UID for the user's own cache or the uid
+     of some other user's cache (requires CAP_SETUID).
+
+     The cache returned is a keyring named "_krb.<uid>" that the possessor can
+     read, search, clear, invalidate, unlink from and add links to.  SELinux
+     and co. get a say as to whether this call will succeed as the caller must
+     have LINK permission on the cache keyring.
+
+     Each uid's cache keyring is created when it first accessed and is given a
+     timeout that is extended each time this function is called so that the
+     keyring goes away after a while.  The timeout is configurable by sysctl
+     but defaults to 3 days.
+
+     Each user_namespace gets a lazily-created keyring that serves as the
+     register.  The cache keyrings are added to it.  This means that standard
+     key search and garbage collection facilities are available.
+
+     The user_namespace's register goes away when it does.
+
+Note that these patches were constructed on top of my keyring capacity
+expansion patches - but there shouldn't be much to change to apply them on top
+of the vanilla kernel.
+
+David
+---
+David Howells (2):
+      KEYS: Implement a big key type that can save to tmpfs
+      KEYS: Add per-user_namespace registers for persistent per-UID kerberos caches
+
+
+ include/keys/big_key-type.h    |   27 ++++++
+ include/linux/key.h            |    1 
+ include/linux/user_namespace.h |    6 +
+ include/uapi/linux/keyctl.h    |    1 
+ kernel/user.c                  |    4 +
+ kernel/user_namespace.c        |    2 
+ security/keys/Kconfig          |   23 +++++
+ security/keys/Makefile         |    2 
+ security/keys/big_key.c        |  181 ++++++++++++++++++++++++++++++++++++++++
+ security/keys/compat.c         |    3 +
+ security/keys/internal.h       |    9 ++
+ security/keys/keyctl.c         |    3 +
+ security/keys/krbcache.c       |  132 +++++++++++++++++++++++++++++
+ security/keys/sysctl.c         |   11 ++
+ 14 files changed, 405 insertions(+)
+ create mode 100644 include/keys/big_key-type.h
+ create mode 100644 security/keys/big_key.c
+ create mode 100644 security/keys/krbcache.c
+
