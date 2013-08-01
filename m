@@ -1,117 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from stator.leun.net ([85.214.203.199]:39271 "EHLO stator.leun.net"
+Received: from fieldses.org ([174.143.236.118]:56708 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934008Ab3GWV7n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Jul 2013 17:59:43 -0400
-Date: Tue, 23 Jul 2013 23:58:27 +0200
-From: Michael Leun <lkml20130126@newton.leun.net>
-To: Colin Cross <ccross@android.com>
-Cc: "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        lkml <linux-kernel@vger.kernel.org>, Pavel Machek <pavel@ucw.cz>,
-        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Oleg Nesterov <oleg@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>,
-        Linux PM list <linux-pm@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>, Tejun Heo <tj@kernel.org>,
-        Darren Hart <dvhart@linux.intel.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Randy Dunlap <rdunlap@infradead.org>,
-        Al Viro <viro@zeniv.linux.org.uk>
-Subject: Re: 3.11-rc regression bisected: s2disk does not work (was Re:
- [PATCH v3 13/16] futex: use freezable blocking call)
-Message-ID: <20130723235827.014f7899@xenia.leun.net>
-In-Reply-To: <CAMbhsRSRcQ-CgCTkRGJJSVSArPqmGRjgxeRBUY0zE94Osxa-nA@mail.gmail.com>
-References: <1367884221-20462-1-git-send-email-ccross@android.com>
-	<CA+55aFzUVPJe96z8V0F-znc8ZcpJid7LEeYww80M-Mx=S91tAA@mail.gmail.com>
-	<CAMbhsRReF9xB597i9CcCj7D1P5kvB4cc0JmDQYeboqi11Kp99A@mail.gmail.com>
-	<15305281.aClQ8XUG9t@vostro.rjw.lan>
-	<CAMbhsRSsq0pgS6KvCjiFGneDEJd6zSXsYB_2MCV=sh+6F2muog@mail.gmail.com>
-	<CAMbhsRSRcQ-CgCTkRGJJSVSArPqmGRjgxeRBUY0zE94Osxa-nA@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1752040Ab3HACt1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 31 Jul 2013 22:49:27 -0400
+Date: Wed, 31 Jul 2013 22:49:23 -0400
+From: "J.Bruce Fields" <bfields@citi.umich.edu>
+To: NeilBrown <neilb@suse.de>
+Cc: Ben Myers <bpm@sgi.com>, Olga Kornievskaia <aglo@citi.umich.edu>,
+        NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSD/sunrpc: avoid deadlock on TCP connection due to
+ memory pressure.
+Message-ID: <20130801024923.GD2668@fieldses.org>
+References: <20130716015803.GA5271@fieldses.org>
+ <20130716140021.312b5b07@notabene.brown>
+ <20130716142430.GA11977@fieldses.org>
+ <20130718000319.GL1681@sgi.com>
+ <20130724210746.GB5777@fieldses.org>
+ <20130725113023.7bcbc347@notabene.brown>
+ <20130725201805.GB17962@fieldses.org>
+ <20130726063303.0d1495b3@notabene.brown>
+ <20130726141916.GA30651@fieldses.org>
+ <20130730124857.7c066858@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130730124857.7c066858@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 23 Jul 2013 13:31:49 -0700
-Colin Cross <ccross@android.com> wrote:
-
-> On Mon, Jul 22, 2013 at 11:28 PM, Colin Cross <ccross@android.com>
+On Tue, Jul 30, 2013 at 12:48:57PM +1000, NeilBrown wrote:
+> On Fri, 26 Jul 2013 10:19:16 -0400 "J.Bruce Fields" <bfields@citi.umich.edu>
 > wrote:
-> > On Mon, Jul 22, 2013 at 6:41 PM, Rafael J. Wysocki <rjw@sisk.pl>
-> > wrote:
-> >> On Monday, July 22, 2013 05:42:49 PM Colin Cross wrote:
-> >>> On Mon, Jul 22, 2013 at 5:32 PM, Linus Torvalds
-> >>> <torvalds@linux-foundation.org> wrote:
-> >>> > On Mon, Jul 22, 2013 at 4:55 PM, Colin Cross
-> >>> > <ccross@android.com> wrote:
-> >>> >>
-> >>> >> I think the right solution is to add a flag to the freezing
-> >>> >> task that marks it unfreezable.  I  think PF_NOFREEZE would
-> >>> >> work, although it is normally used on kernel threads, can you
-> >>> >> see if the attached patch helps?
-> >>> >
-> >>> > Hmm. That does seem to be the right thing to do, but I wonder
-> >>> > about the *other* callers of freeze_processes() IOW, kexec and
-> >>> > friends.
-> >>> >
-> >>> > So maybe we should do this in {freeze|thaw}_processes() itself,
-> >>> > and just make the rule be that the caller of freeze_processes()
-> >>> > itself is obviously not frozen, and has to be the same one that
-> >>> > then thaws things?
-> >>> >
-> >>> > Colin? Rafael? Comments?
-> >>> >
-> >>> >                 Linus
-> >>>
-> >>> I was worried about clearing the flag in thaw_processes().  If a
-> >>> kernel thread with PF_NOFREEZE set ever called thaw_processes(),
-> >>> which autosleep might do, it would clear the flag.  Or if a
-> >>> different thread called freeze_processes() and thaw_processes().
-> >>
-> >> Is that legitimate?
-> >
-> > Nothing precludes it today, but I don't see any need for it.  I'll
-> > add a comment when I add the flag.
-> >
-> >>> All the other callers besides the SNAPSHOT_FREEZE ioctl stay in
-> >>> the kernel between freeze_processes() and thaw_processes(), which
-> >>> makes the fanout of places that could call try_to_freeze() much
-> >>> more controllable.
-> >>>
-> >>> Using a new flag that operates like PF_NOFREEZE but doesn't
-> >>> conflict with it, or a nofreeze_depth counter, would also work.
-> >>
-> >> Well, that would be robust enough.  At least if the purpose of
-> >> that new flag is clearly specified, people hopefully won't be
-> >> tempted to optimize it away in the future.
-> >>
-> >> Thanks,
-> >> Rafael
-> >
-> > OK, I'll add a new flag.
 > 
+> > On Fri, Jul 26, 2013 at 06:33:03AM +1000, NeilBrown wrote:
+> > > On Thu, 25 Jul 2013 16:18:05 -0400 "J.Bruce Fields" <bfields@citi.umich.edu>
+> > > wrote:
+> > > 
+> > > > On Thu, Jul 25, 2013 at 11:30:23AM +1000, NeilBrown wrote:
+> > > > > 
+> > > > > Since we enabled auto-tuning for sunrpc TCP connections we do not
+> > > > > guarantee that there is enough write-space on each connection to
+> > > > > queue a reply.
+> > ...
+> > > > This is great, thanks!
+> > > > 
+> > > > Inclined to queue it up for 3.11 and stable....
+> > > 
+> > > I'd agree for 3.11.
+> > > It feels a bit border-line for stable.  "dead-lock" and "has been seen in the
+> > > wild" are technically enough justification...
+> > > I'd probably mark it as "pleas don't apply to -stable until 3.11 is released"
+> > > or something like that, just for a bit of breathing space.
+> > > Your call though.
+> > 
+> > 
+> > So my takeaway from http://lwn.net/Articles/559113/ was that Linus and
+> > Greg were requesting that:
+> > 
+> > 	- criteria for -stable and late -rc's should really be about the
+> > 	  same, and
+> > 	- people should follow Documentation/stable-kernel-rules.txt.
+> > 
+> > So as an exercise to remind me what those rules are:
+> > 
+> > Easy questions:
+> > 
+> > 	- "no bigger than 100 lines, with context."  Check.
+> > 	- "It must fix only one thing."  Check.
+> > 	- "real bug that bothers people".  Check.
+> > 	- "tested": yep.  It doesn't actually say "tested on stable
+> > 	  trees", and I recall this did land you with a tricky bug one
+> > 	  time when a prerequisite was omitted from the backport.
+> > 
+> > Judgement calls:
+> > 
+> > 	- "obviously correct": it's short, but admittedly subtle, and
+> > 	  performance regressions can take a while to get sorted out.
+> > 	- "It must fix a problem that causes a build error (but not for
+> > 	  things marked CONFIG_BROKEN), an oops, a hang, data
+> > 	  corruption, a real security issue, or some "oh, that's not
+> > 	  good" issue.  In short, something critical."  We could argue
+> > 	  that "server stops responding" is critical, though not to the
+> > 	  same degree as a panic.
+> > 	- OR: alternatively: "Serious issues as reported by a user of a
+> > 	  distribution kernel may also be considered if they fix a
+> > 	  notable performance or interactivity issue." The only bz I've
+> > 	  personally seen was the result of artificial testing of some
+> > 	  kind, and it sounds like your case involved a disk failure?
+> > 
+> > --b.
 > 
-> Michael, can you see if this patch works and doesn't throw any
-> warnings during suspend or resume?
+> Looks like  good analysis ... except that it doesn't seem conclusive.  Being
+> conclusive would make it really good. :-)
 
-Tried several times with and without threads = y in suspend.conf, tried
-also to produce high load / much processes / high memory usage.
+Hah, yeah sorry.
 
-Worked every time, no WARN seen.
+> The case that brought it to my attention doesn't require the fix.
+> A file system was mis-behaving (blocking when it should return EJUKEBOX) and
+> this resulted in nfsd behaviour different than my expectation.
+> I expected nfsd to keep accepting requests until all threads were blocks.
+> However only 4 requests were accepted (which is actually better behaviour,
+> but not what I expected).
+> So I looked into it and thought that what I found wasn't really right.  Which
+> turned out to be the case, but not the way I thought...
+> 
+> So my direct experience doesn't argue for the patch going to -stable at all.
+> If the only other reports are from artificial testing then I'd leave it out
+> of -stable.  I don't feel -rc4 (that's next I think) is too late for it
+> though.
 
-> If the extra process flag is considered too precious for this
-> (there are only 2 left after this patch) I could get the
-> same functionality by having freeze_processes() reject calls
-> from a PF_KTHREAD|PF_NOFREEZE thread, and use PF_KTHREAD to
-> determine if PF_NOFREEZE should be cleared in thaw_processes().
+OK, I think I agree.  We can pass it along to stable later if more
+complaints surface....
 
-If another solution is considered please do not hesitate to send me the
-patch for another round of check.
-
--- 
-MfG,
-
-Michael Leun
-
+--b.
