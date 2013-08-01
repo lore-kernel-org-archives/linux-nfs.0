@@ -1,134 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:10024 "EHLO mx1.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:48140 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752740Ab3HVAY0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Aug 2013 20:24:26 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 08/21] NFS: Add tracepoints for debugging NFS hard links
-Date: Wed, 21 Aug 2013 20:24:06 -0400
-Message-ID: <1377131059-40121-9-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377131059-40121-8-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377131059-40121-1-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-2-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-3-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-4-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-5-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-6-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-7-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-8-git-send-email-Trond.Myklebust@netapp.com>
+	id S1755851Ab3HATF3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Aug 2013 15:05:29 -0400
+Date: Thu, 1 Aug 2013 15:05:26 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: SP4_MACH_CRED
+Message-ID: <20130801190526.GB17581@fieldses.org>
+References: <A0A1021A-64E6-4E0C-89A5-9F719C8E1AFC@netapp.com>
+ <20130731213904.GB2668@fieldses.org>
+ <75E5568D-320C-45A1-B7E6-23CE73217BAF@netapp.com>
+ <20130731234800.GC2668@fieldses.org>
+ <0E0FF4CB-4388-417B-9D1C-24940472D844@netapp.com>
+ <47D6EDEC-B91A-446F-A227-FDA9D37DB618@netapp.com>
+ <20130801145617.GA15123@fieldses.org>
+ <88EAD768-768D-43A3-8E4D-D9B904C0283C@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <88EAD768-768D-43A3-8E4D-D9B904C0283C@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/dir.c      |  2 ++
- fs/nfs/nfstrace.h | 70 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 72 insertions(+)
+On Thu, Aug 01, 2013 at 03:24:05PM +0000, Adamson, Dros wrote:
+> 
+> On Aug 1, 2013, at 10:56 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> 
+> > So the choices are:
+> > 	1. allow those problems, or
+> > 	2. change the nfs/krb5 security model from "once you give a
+> > 	   client your credential, you trust it with your data till the
+> > 	   credential expires" to "once you give a client your
+> > 	   credential, you trust it indefinitely".  (Well, until its
+> > 	   state expires, anyway.)
+> > 
+> > And we can implement either 1, or 2, or both, and if we implement both,
+> > we get to choose which of 1 or 2 is the default.
+> > 
+> > So I don't have a strong opinion yet, but I do fear that if we only
+> > implement #2 there will be users who see that as a serious regression in
+> > security.
+> 
+> Perhaps you're right - the server is essentially trusting the client machine to do the right thing here, but the server is already trusting the client machine (not users) to do the right thing.  A rouge client implementation could create all types of havoc as it stands now, i.e. using another user's credentials to bypass permissions, etc.
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index dca7deb..4ce7f76 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1860,6 +1860,7 @@ nfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *dentry)
- 		old_dentry->d_parent->d_name.name, old_dentry->d_name.name,
- 		dentry->d_parent->d_name.name, dentry->d_name.name);
- 
-+	trace_nfs_link_enter(inode, dir, dentry);
- 	NFS_PROTO(inode)->return_delegation(inode);
- 
- 	d_drop(dentry);
-@@ -1868,6 +1869,7 @@ nfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *dentry)
- 		ihold(inode);
- 		d_add(dentry, inode);
- 	}
-+	trace_nfs_link_exit(inode, dir, dentry, error);
- 	return error;
- }
- EXPORT_SYMBOL_GPL(nfs_link);
-diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
-index a20f0d1..89fe741 100644
---- a/fs/nfs/nfstrace.h
-+++ b/fs/nfs/nfstrace.h
-@@ -512,6 +512,76 @@ DEFINE_NFS_DIRECTORY_EVENT_DONE(nfs_unlink_exit);
- DEFINE_NFS_DIRECTORY_EVENT(nfs_symlink_enter);
- DEFINE_NFS_DIRECTORY_EVENT_DONE(nfs_symlink_exit);
- 
-+TRACE_EVENT(nfs_link_enter,
-+		TP_PROTO(
-+			const struct inode *inode,
-+			const struct inode *dir,
-+			const struct dentry *dentry
-+		),
-+
-+		TP_ARGS(inode, dir, dentry),
-+
-+		TP_STRUCT__entry(
-+			__field(dev_t, dev)
-+			__field(u64, fileid)
-+			__field(u64, dir)
-+			__string(name, dentry->d_name.name)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->dev = inode->i_sb->s_dev;
-+			__entry->fileid = NFS_FILEID(inode);
-+			__entry->dir = NFS_FILEID(dir);
-+			__assign_str(name, dentry->d_name.name);
-+		),
-+
-+		TP_printk(
-+			"fileid=%02x:%02x:%llu name=%02x:%02x:%llu/%s",
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			__entry->fileid,
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->dir,
-+			__get_str(name)
-+		)
-+);
-+
-+TRACE_EVENT(nfs_link_exit,
-+		TP_PROTO(
-+			const struct inode *inode,
-+			const struct inode *dir,
-+			const struct dentry *dentry,
-+			int error
-+		),
-+
-+		TP_ARGS(inode, dir, dentry, error),
-+
-+		TP_STRUCT__entry(
-+			__field(int, error)
-+			__field(dev_t, dev)
-+			__field(u64, fileid)
-+			__field(u64, dir)
-+			__string(name, dentry->d_name.name)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->dev = inode->i_sb->s_dev;
-+			__entry->fileid = NFS_FILEID(inode);
-+			__entry->dir = NFS_FILEID(dir);
-+			__entry->error = error;
-+			__assign_str(name, dentry->d_name.name);
-+		),
-+
-+		TP_printk(
-+			"error=%d fileid=%02x:%02x:%llu name=%02x:%02x:%llu/%s",
-+			__entry->error,
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			__entry->fileid,
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->dir,
-+			__get_str(name)
-+		)
-+);
-+
- DECLARE_EVENT_CLASS(nfs_rename_event,
- 		TP_PROTO(
- 			const struct inode *old_dir,
--- 
-1.8.3.1
+Right, but normally that capacity for havoc is time-limited.  For
+example, you're not affected if a client is compromised after your creds
+expire.
 
+I think that's pretty important.  So let's make this optional.  I'm
+willing to argue about the default policy.
+
+Do all the operations that might conceivably be affected by this take
+filehandles?  If so an export option might make sense.  Something like
+
+	trust_client_writeback
+
+		NFSv4.1 and higher clients who have accessed a file
+		using a user's credential will be permitted further
+		write access to that file using only their machine
+		credential.  Some clients can take advantage of this to
+		write back cached data after user credentials expire,
+		preventing possible data loss in some cases.
+
+Maybe there's a better name!
+
+--b.
