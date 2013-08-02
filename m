@@ -1,41 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49852 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:19606 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753853Ab3HANRZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Aug 2013 09:17:25 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 0/4] gss-proxy fixes for 3.11
-Date: Thu,  1 Aug 2013 09:17:18 -0400
-Message-Id: <1375363042-14440-1-git-send-email-bfields@redhat.com>
+	id S1754331Ab3HBRAm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 Aug 2013 13:00:42 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <87ob9hovop.fsf@xmission.com>
+References: <87ob9hovop.fsf@xmission.com> <20130801173846.28023.19009.stgit@warthog.procyon.org.uk> <20130801173902.28023.68819.stgit@warthog.procyon.org.uk>
+To: ebiederm@xmission.com (Eric W. Biederman)
+Cc: dhowells@redhat.com, keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
+        krbdev@mit.edu, "Serge E. Hallyn" <serge.hallyn@ubuntu.com>,
+        linux-kernel@vger.kernel.org, simo@redhat.com
+Subject: Re: [PATCH 2/2] KEYS: Add per-user_namespace registers for persistent per-UID kerberos caches
+Date: Fri, 02 Aug 2013 18:00:30 +0100
+Message-ID: <7202.1375462830@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Eric W. Biederman <ebiederm@xmission.com> wrote:
 
-These are few gss proxy bugfixes, two found during the original testing
-that I mistakenly dropped, two more than I found during more recent
-testing (the last a regression introduced in 3.11).
+> > Add support for per-user_namespace registers of persistent per-UID kerberos
+> > caches held within the kernel.
+> 
+> Out of curiosity is this cache per user namspace because the key lookup
+> is per user namespace?
 
-With these applied I can do a krb5 mount with either rpc.svcgssd or
-gss-proxy.
+Yes.  You can't see keys in another namespace.  I occasionally wonder if I
+should make the key serial number tree per namespace so that you don't search
+keys outside your namespace and can't try looking them up by ID - but it
+complicates the garbage collector which iterates over the entire tree (though
+it could maintain a list of per-ns trees).
 
-I intend to submit them for 3.11.
+> Some minor nits below. But I don't see anything particulary scary about
+> this patch.  Other than seeming to make it easy for root to get my
+> kerbose tickets.
 
---b.
-
-J. Bruce Fields (4):
-  svcrpc: fix gss_rpc_upcall create error
-  svcrpc: fix gss-proxy xdr decoding oops
-  svcrpc: fix kfree oops in gss-proxy code
-  svcrpc: set cr_gss_mech from gss-proxy as well as legacy upcall
-
- net/sunrpc/auth_gss/gss_rpc_upcall.c |    3 +--
- net/sunrpc/auth_gss/gss_rpc_xdr.c    |    9 +++++----
- net/sunrpc/auth_gss/svcauth_gss.c    |    2 +-
- 3 files changed, 7 insertions(+), 7 deletions(-)
-
--- 
-1.7.9.5
+Root can do that anyway with file-based ccaches, I believe.  However, you can
+change the key permissions to prevent root even seeing that your keys/keyrings
+exist, let alone stealing them.
 
