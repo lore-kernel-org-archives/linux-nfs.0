@@ -1,65 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:58677 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758274Ab3HMTUc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Aug 2013 15:20:32 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r7DJKWup010158
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Aug 2013 15:20:32 -0400
-Received: from tonberry.usersys.redhat.com (dhcp145-64.rdu.redhat.com [10.13.145.64])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r7DJKWOw010812
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Aug 2013 15:20:32 -0400
-Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
-	by tonberry.usersys.redhat.com (8.14.5/8.14.5) with ESMTP id r7DJKVdH021437
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Aug 2013 15:20:31 -0400
-Received: (from smayhew@localhost)
-	by tonberry.usersys.redhat.com (8.14.5/8.14.5/Submit) id r7DJKVwO021436
-	for linux-nfs@vger.kernel.org; Tue, 13 Aug 2013 15:20:31 -0400
-From: Scott Mayhew <smayhew@redhat.com>
+Received: from mail-pa0-f50.google.com ([209.85.220.50]:41442 "EHLO
+	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754401Ab3HBQPT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Aug 2013 12:15:19 -0400
+Received: by mail-pa0-f50.google.com with SMTP id fb10so843219pad.9
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Aug 2013 09:15:18 -0700 (PDT)
+Received: from [128.95.176.96] (moist.atmos.washington.edu. [128.95.176.96])
+        by mx.google.com with ESMTPSA id a5sm11133271pbw.4.2013.08.02.09.15.17
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=ECDHE-RSA-RC4-SHA bits=128/128);
+        Fri, 02 Aug 2013 09:15:17 -0700 (PDT)
+Message-ID: <51FBDB14.4040801@uw.edu>
+Date: Fri, 02 Aug 2013 09:15:16 -0700
+From: Harry Edmon <harry@uw.edu>
+MIME-Version: 1.0
 To: linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH 4/4] mount.nfs:  clean up conf_parse_mntopts()
-Date: Tue, 13 Aug 2013 15:20:29 -0400
-Message-Id: <1376421629-21382-5-git-send-email-smayhew@redhat.com>
-In-Reply-To: <1376421629-21382-1-git-send-email-smayhew@redhat.com>
-References: <1376421629-21382-1-git-send-email-smayhew@redhat.com>
+Subject: clientid is in use
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It's no longer necessary for conf_parse_mntopts to explicitly check for
-argtype != MNT_NOARG after calling should_add_noarg_opt().
+Occasionally I am seeing the following in our kernel log on a NFS client:
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- utils/mount/configfile.c | 13 +++++--------
- 1 file changed, 5 insertions(+), 8 deletions(-)
+[2321389.137595] NFS: Server enkf reports our clientid is in use
+[2321389.137615] NFS: state manager: lease expired failed on NFSv4 server enkf 
+with error 1
 
-diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
-index 623c886..8f68a6e 100644
---- a/utils/mount/configfile.c
-+++ b/utils/mount/configfile.c
-@@ -364,15 +364,12 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
- 			}
- 			continue;
- 		}
--		if (argtype != MNT_NOARG) {
--			snprintf(buf, BUFSIZ, "no%s", field);
--			if (lookup_entry(buf) != NULL)
--				continue;
--			buf[0] = '\0';
--		}
-+		snprintf(buf, BUFSIZ, "no%s", field);
-+		if (lookup_entry(buf) != NULL)
-+			continue;
-+		buf[0] = '\0';
- 		if (strcasecmp(value, "false") == 0) {
--			if (argtype != MNT_NOARG)
--				snprintf(buf, BUFSIZ, "no%s", field);
-+			snprintf(buf, BUFSIZ, "no%s", field);
- 		} else if (strcasecmp(value, "true") == 0) {
- 			snprintf(buf, BUFSIZ, "%s", field);
- 		} else {
+The result is that the read of the file in question fails.   This occurs for 
+multiple kernel versions on multiple machines.  Anyone have an idea how I should 
+start debugging this?  How is the clientid calculated/assigned?
 -- 
-1.7.11.7
-
+Dr. Harry Edmon
+harry@uw.edu, 206-543-0547, FAX: 206-543-0308
+Director of IT, College of the Environment and
+Director of Computing, Dept of Atmospheric Sciences
+University of Washington, Box 351640, Seattle, WA 98195-1640
