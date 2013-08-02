@@ -1,119 +1,341 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37617 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:33206 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752677Ab3H1Pl2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Aug 2013 11:41:28 -0400
-Date: Wed, 28 Aug 2013 11:41:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Matt Craighead <mcraighead@nvidia.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Mark Young <MYoung@nvidia.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Issue found with kernel/net/sunrpc/xdr.c
-Message-ID: <20130828154124.GC2960@fieldses.org>
-References: <1FC56210173BB445BD77F608D6FB8D03620A9978B5@HQMAIL03.nvidia.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA94677C96F@SACEXCMBX04-PRD.hq.netapp.com>
- <20130828143256.GA2960@fieldses.org>
- <71D0C6F08977AC42A3EF66AA1BEB0F10A11801ADF5@HQMAIL02.nvidia.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <71D0C6F08977AC42A3EF66AA1BEB0F10A11801ADF5@HQMAIL02.nvidia.com>
+	id S1751560Ab3HBNge (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 Aug 2013 09:36:34 -0400
+Date: Fri, 2 Aug 2013 09:36:25 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Cong Wang <amwang@redhat.com>
+Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [Patch net-next v2 5/8] sunrpc: use generic union inet_addr
+Message-ID: <20130802093625.2c70a330@tlielax.poochiereds.net>
+In-Reply-To: <1375427674-21735-6-git-send-email-amwang@redhat.com>
+References: <1375427674-21735-1-git-send-email-amwang@redhat.com>
+	<1375427674-21735-6-git-send-email-amwang@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 28, 2013 at 08:18:10AM -0700, Matt Craighead wrote:
-> > I'm curious why we haven't seen it before
-> 
-> I agree, it's slightly mysterious.  We're hitting the bug on a 32-bit ARM system with 1GB or 2GB of memory; surely that's not very far off the beaten path.
+On Fri,  2 Aug 2013 15:14:31 +0800
+Cong Wang <amwang@redhat.com> wrote:
 
-Yeah, it probably gets less testing, but I doubt you're the first to use
-32-bit ARM with whatever minimum memory size is required to hit this.
-Hm.  (Are you using krb5?  Which version of NFS?  And I guess this
-manifested as the client seeing corrupted file data?)
+> From: Cong Wang <amwang@redhat.com>
+> 
+> sunrpc defines some helper functions for sockaddr, actually they
+> can re-use the generic functions for union inet_addr too.
 
-Oh well, just curiosity on my part.  The fix is simple enough.
+Only some of these patches in this series have made it to lists to
+which I'm subscribed, so I may be missing some context here...
 
---b.
+I'm not sure I really understand the value of "union inet_addr". Why
+not just use the conventional method of passing around "struct sockaddr"
+pointers, and then casting them to struct sockaddr_in/sockaddr_in6
+depending on what the sa_family is set to?
+
+With that you wouldn't need to leave the (now pointless) rpc_* wrappers
+in place and could just call your new helpers directly.
 
 > 
+> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: "J. Bruce Fields" <bfields@fieldses.org>
+> Cc: linux-nfs@vger.kernel.org
+> Signed-off-by: Cong Wang <amwang@redhat.com>
+> ---
+>  include/linux/sunrpc/addr.h |  118 +++----------------------------------------
+>  include/net/inet_addr.h     |   74 +++++++++++++++++++++------
+>  net/core/utils.c            |   25 +++++++++
+>  3 files changed, 89 insertions(+), 128 deletions(-)
 > 
-> > Or maybe memmove is an architecture-specific implementation that happens to handle left-to-right overlapping copies correctly on common architectures?
-> 
-> It's architecture specific, e.g.: http://lxr.linux.no/linux+v3.8/arch/arm/lib/memmove.S
-> 
-> In this particular case, it decides that the memory is non-overlapping (by comparing the virtual addresses), so it incorrectly dispatches to memcpy().  At that point all bets are off in terms of the direction, chunk size, etc. of the copy.
-> 
-> I guess I'd typically expect memcpy() to stride through memory forwards rather than backwards though.  And since this function mandates "from < to", it seems like this would usually fail.
-> 
-> 
-> For x86: http://lxr.linux.no/linux+v3.8/arch/x86/lib/memcpy_32.c
-> 
-> In this case, it looks like it doesn't dispatch to memcpy().  It just determines forward/backwards and copies accordingly.  So it would work as long as the "from < to" property was preserved.
-> 
-> If I'm reading the code correctly, kmap_atomic appears to grow downward on x86:
-> http://lxr.linux.no/linux+v3.8/arch/x86/mm/highmem_32.c
-> http://lxr.linux.no/linux+v3.8/arch/x86/include/asm/fixmap.h
-> etc.
-> 
-> Since xdr.c calls kmap_atomic on *pgto first, then *pgfrom, the "from < to" property will therefore be preserved.
-> 
-> 
-> Therefore, I suspect you might be able to reproduce the bug on (32-bit) x86 by doing any of the following:
-> - swapping the order of those kmap_atomic/kunmap_atomic calls 
-> - modifying kmap_atomic to grow in the opposite direction
-> - modifying memmove() to dispatch to memcpy() when the virtual regions are non-overlapping
-> 
-> It's still possible that there is something else funny about how memory gets allocated in our setup that makes the bug more likely, but empirically, the bug didn't seem hard to hit.  We didn't need to copy very much data/very many files over NFS before we typically got corruption, and the bug happened on a variety of specific platforms.  It was (unsurprisingly) easier to reproduce with 2GB than with 1GB though.
-> 
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org] 
-> Sent: Wednesday, August 28, 2013 9:33 AM
-> To: Myklebust, Trond
-> Cc: Mark Young; linux-nfs@vger.kernel.org; Matt Craighead
-> Subject: Re: Issue found with kernel/net/sunrpc/xdr.c
-> 
-> On Tue, Aug 27, 2013 at 10:01:38PM +0000, Myklebust, Trond wrote:
-> > > -----Original Message-----
-> > > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs- 
-> > > owner@vger.kernel.org] On Behalf Of Mark Young
-> > > Sent: Tuesday, August 27, 2013 5:17 PM
-> > > To: linux-nfs@vger.kernel.org
-> > > Cc: Matt Craighead
-> > > Subject: Issue found with kernel/net/sunrpc/xdr.c
-> > > 
-> > > I was pointed to this mailing list by Brian Fields.
-> > > 
-> > >  We're currently seeing NFS data corruption, which we traced back to 
-> > > memory corruption that happens in the function 
-> > > _shift_data_right_pages in net/sunrpc/xdr.c.
-> > > 
-> > >  When we see the issue, we're running a 32bit os with systems running with
-> > > more than 1GB of physical memory.   The errant behavior appears to be that
-> > > two calls to kmap_atomic (on 32bit systems with highmem present) 
-> > > with the same physical address (on addresses within highmem)  will return two
-> > > different vaddrs.    In our assessment, this confuses the memmove code into
-> > > thinking that the two addresses are non-overlapping in spite of the 
-> > > fact that they are overlapping in physical space.  This, in turn, results in corruption.
-> > > 
-> > >  A proposed solution to the problem would involve calling 
-> > > kmap_atomic only once in the case that the pgfrom and pgto are 
-> > > identical, and then re-using the resultant vaddr for both vto and vfrom.
-> > > 
-> > > Any insight on the issue or the proposed solution would be greatly 
-> > > appreciated.
-> > 
-> > I'm fine with that solution. Mind sending a duly conformant patch w/ a signed-off-by line?
-> 
-> I'm curious why we haven't seen it before: the code's done this for years.  It looks to me like the two kmap_atomic()s, if they're non-trivial, should always return different addresses.  And overlapping copies are probably the normal case for this function.
-> 
-> Shouldn't anyone on 32 bit and high memory have seen filesystem corruption?
-> 
-> Or maybe memmove is an architecture-specific implementation that happens to handle left-to-right overlapping copies correctly on common architectures?
-> 
-> --b.
-> -----------------------------------------------------------------------------------
-> This email message is for the sole use of the intended recipient(s) and may contain
-> confidential information.  Any unauthorized review, use, disclosure or distribution
-> is prohibited.  If you are not the intended recipient, please contact the sender by
-> reply email and destroy all copies of the original message.
-> -----------------------------------------------------------------------------------
+> diff --git a/include/linux/sunrpc/addr.h b/include/linux/sunrpc/addr.h
+> index 07d8e53..10d07f6 100644
+> --- a/include/linux/sunrpc/addr.h
+> +++ b/include/linux/sunrpc/addr.h
+> @@ -11,6 +11,7 @@
+>  #include <linux/in.h>
+>  #include <linux/in6.h>
+>  #include <net/ipv6.h>
+> +#include <net/inet_addr.h>
+>  
+>  size_t		rpc_ntop(const struct sockaddr *, char *, const size_t);
+>  size_t		rpc_pton(struct net *, const char *, const size_t,
+> @@ -21,135 +22,30 @@ size_t		rpc_uaddr2sockaddr(struct net *, const char *, const size_t,
+>  
+>  static inline unsigned short rpc_get_port(const struct sockaddr *sap)
+>  {
+> -	switch (sap->sa_family) {
+> -	case AF_INET:
+> -		return ntohs(((struct sockaddr_in *)sap)->sin_port);
+> -	case AF_INET6:
+> -		return ntohs(((struct sockaddr_in6 *)sap)->sin6_port);
+> -	}
+> -	return 0;
+> +	return inet_addr_get_port((const union inet_addr *)sap);
+>  }
+>  
+>  static inline void rpc_set_port(struct sockaddr *sap,
+>  				const unsigned short port)
+>  {
+> -	switch (sap->sa_family) {
+> -	case AF_INET:
+> -		((struct sockaddr_in *)sap)->sin_port = htons(port);
+> -		break;
+> -	case AF_INET6:
+> -		((struct sockaddr_in6 *)sap)->sin6_port = htons(port);
+> -		break;
+> -	}
+> +	inet_addr_set_port((union inet_addr *)sap, port);
+>  }
+>  
+>  #define IPV6_SCOPE_DELIMITER		'%'
+>  #define IPV6_SCOPE_ID_LEN		sizeof("%nnnnnnnnnn")
+>  
+> -static inline bool __rpc_cmp_addr4(const struct sockaddr *sap1,
+> -				   const struct sockaddr *sap2)
+> -{
+> -	const struct sockaddr_in *sin1 = (const struct sockaddr_in *)sap1;
+> -	const struct sockaddr_in *sin2 = (const struct sockaddr_in *)sap2;
+> -
+> -	return sin1->sin_addr.s_addr == sin2->sin_addr.s_addr;
+> -}
+> -
+> -static inline bool __rpc_copy_addr4(struct sockaddr *dst,
+> -				    const struct sockaddr *src)
+> -{
+> -	const struct sockaddr_in *ssin = (struct sockaddr_in *) src;
+> -	struct sockaddr_in *dsin = (struct sockaddr_in *) dst;
+> -
+> -	dsin->sin_family = ssin->sin_family;
+> -	dsin->sin_addr.s_addr = ssin->sin_addr.s_addr;
+> -	return true;
+> -}
+> -
+> -#if IS_ENABLED(CONFIG_IPV6)
+> -static inline bool __rpc_cmp_addr6(const struct sockaddr *sap1,
+> -				   const struct sockaddr *sap2)
+> -{
+> -	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sap1;
+> -	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sap2;
+> -
+> -	if (!ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr))
+> -		return false;
+> -	else if (ipv6_addr_type(&sin1->sin6_addr) & IPV6_ADDR_LINKLOCAL)
+> -		return sin1->sin6_scope_id == sin2->sin6_scope_id;
+> -
+> -	return true;
+> -}
+> -
+> -static inline bool __rpc_copy_addr6(struct sockaddr *dst,
+> -				    const struct sockaddr *src)
+> -{
+> -	const struct sockaddr_in6 *ssin6 = (const struct sockaddr_in6 *) src;
+> -	struct sockaddr_in6 *dsin6 = (struct sockaddr_in6 *) dst;
+> -
+> -	dsin6->sin6_family = ssin6->sin6_family;
+> -	dsin6->sin6_addr = ssin6->sin6_addr;
+> -	dsin6->sin6_scope_id = ssin6->sin6_scope_id;
+> -	return true;
+> -}
+> -#else	/* !(IS_ENABLED(CONFIG_IPV6) */
+> -static inline bool __rpc_cmp_addr6(const struct sockaddr *sap1,
+> -				   const struct sockaddr *sap2)
+> -{
+> -	return false;
+> -}
+> -
+> -static inline bool __rpc_copy_addr6(struct sockaddr *dst,
+> -				    const struct sockaddr *src)
+> -{
+> -	return false;
+> -}
+> -#endif	/* !(IS_ENABLED(CONFIG_IPV6) */
+> -
+> -/**
+> - * rpc_cmp_addr - compare the address portion of two sockaddrs.
+> - * @sap1: first sockaddr
+> - * @sap2: second sockaddr
+> - *
+> - * Just compares the family and address portion. Ignores port, but
+> - * compares the scope if it's a link-local address.
+> - *
+> - * Returns true if the addrs are equal, false if they aren't.
+> - */
+>  static inline bool rpc_cmp_addr(const struct sockaddr *sap1,
+>  				const struct sockaddr *sap2)
+>  {
+> -	if (sap1->sa_family == sap2->sa_family) {
+> -		switch (sap1->sa_family) {
+> -		case AF_INET:
+> -			return __rpc_cmp_addr4(sap1, sap2);
+> -		case AF_INET6:
+> -			return __rpc_cmp_addr6(sap1, sap2);
+> -		}
+> -	}
+> -	return false;
+> +	return inet_addr_equal((const union inet_addr *)sap1,
+> +			       (const union inet_addr *)sap2);
+>  }
+>  
+> -/**
+> - * rpc_copy_addr - copy the address portion of one sockaddr to another
+> - * @dst: destination sockaddr
+> - * @src: source sockaddr
+> - *
+> - * Just copies the address portion and family. Ignores port, scope, etc.
+> - * Caller is responsible for making certain that dst is large enough to hold
+> - * the address in src. Returns true if address family is supported. Returns
+> - * false otherwise.
+> - */
+>  static inline bool rpc_copy_addr(struct sockaddr *dst,
+>  				 const struct sockaddr *src)
+>  {
+> -	switch (src->sa_family) {
+> -	case AF_INET:
+> -		return __rpc_copy_addr4(dst, src);
+> -	case AF_INET6:
+> -		return __rpc_copy_addr6(dst, src);
+> -	}
+> -	return false;
+> +	return inet_addr_copy((union inet_addr *)dst,
+> +			      (const union inet_addr *)src);
+>  }
+>  
+>  /**
+> diff --git a/include/net/inet_addr.h b/include/net/inet_addr.h
+> index ee80df4..e846050 100644
+> --- a/include/net/inet_addr.h
+> +++ b/include/net/inet_addr.h
+> @@ -36,17 +36,6 @@ bool in_addr_gen_equal(const struct in_addr_gen *a, const struct in_addr_gen *b)
+>  }
+>  
+>  #if IS_ENABLED(CONFIG_IPV6)
+> -static inline
+> -bool inet_addr_equal(const union inet_addr *a, const union inet_addr *b)
+> -{
+> -	if (a->sa.sa_family != b->sa.sa_family)
+> -		return false;
+> -	if (a->sa.sa_family == AF_INET6)
+> -		return ipv6_addr_equal(&a->sin6.sin6_addr, &b->sin6.sin6_addr);
+> -	else
+> -		return a->sin.sin_addr.s_addr == b->sin.sin_addr.s_addr;
+> -}
+> -
+>  static inline bool inet_addr_any(const union inet_addr *ipa)
+>  {
+>  	if (ipa->sa.sa_family == AF_INET6)
+> @@ -65,12 +54,6 @@ static inline bool inet_addr_multicast(const union inet_addr *ipa)
+>  
+>  #else /* !CONFIG_IPV6 */
+>  
+> -static inline
+> -bool inet_addr_equal(const union inet_addr *a, const union inet_addr *b)
+> -{
+> -	return a->sin.sin_addr.s_addr == b->sin.sin_addr.s_addr;
+> -}
+> -
+>  static inline bool inet_addr_any(const union inet_addr *ipa)
+>  {
+>  	return ipa->sin.sin_addr.s_addr == htonl(INADDR_ANY);
+> @@ -82,6 +65,63 @@ static inline bool inet_addr_multicast(const union inet_addr *ipa)
+>  }
+>  #endif
+>  
+> +/**
+> + * inet_addr_copy - copy the address portion of one inet_addr to another
+> + * @dst: destination sockaddr
+> + * @src: source sockaddr
+> + *
+> + * Just copies the address portion and family. Ignores port, scope, etc.
+> + * Caller is responsible for making certain that dst is large enough to hold
+> + * the address in src. Returns true if address family is supported. Returns
+> + * false otherwise.
+> + */
+> +static inline bool inet_addr_copy(union inet_addr *dst,
+> +				  const union inet_addr *src)
+> +{
+> +	dst->sa.sa_family = src->sa.sa_family;
+> +
+> +	switch (src->sa.sa_family) {
+> +	case AF_INET:
+> +		dst->sin.sin_addr.s_addr = src->sin.sin_addr.s_addr;
+> +		return true;
+> +#if IS_ENABLED(CONFIG_IPV6)
+> +	case AF_INET6:
+> +		dst->sin6.sin6_addr = src->sin6.sin6_addr;
+> +		dst->sin6.sin6_scope_id = src->sin6.sin6_scope_id;
+> +		return true;
+> +#endif
+> +	}
+> +
+> +	return false;
+> +}
+> +
+> +static inline
+> +unsigned short inet_addr_get_port(const union inet_addr *sap)
+> +{
+> +	switch (sap->sa.sa_family) {
+> +	case AF_INET:
+> +		return ntohs(sap->sin.sin_port);
+> +	case AF_INET6:
+> +		return ntohs(sap->sin6.sin6_port);
+> +	}
+> +	return 0;
+> +}
+> +
+> +static inline
+> +void inet_addr_set_port(union inet_addr *sap,
+> +			const unsigned short port)
+> +{
+> +	switch (sap->sa.sa_family) {
+> +	case AF_INET:
+> +		sap->sin.sin_port = htons(port);
+> +		break;
+> +	case AF_INET6:
+> +		sap->sin6.sin6_port = htons(port);
+> +		break;
+> +	}
+> +}
+> +
+> +bool inet_addr_equal(const union inet_addr *a, const union inet_addr *b);
+>  int simple_inet_pton(const char *str, union inet_addr *addr);
+>  
+>  #endif
+> diff --git a/net/core/utils.c b/net/core/utils.c
+> index 22dd621..837bb18 100644
+> --- a/net/core/utils.c
+> +++ b/net/core/utils.c
+> @@ -374,3 +374,28 @@ int simple_inet_pton(const char *str, union inet_addr *addr)
+>  	return -EINVAL;
+>  }
+>  EXPORT_SYMBOL(simple_inet_pton);
+> +
+> +#if IS_ENABLED(CONFIG_IPV6)
+> +bool inet_addr_equal(const union inet_addr *a, const union inet_addr *b)
+> +{
+> +	if (a->sa.sa_family != b->sa.sa_family)
+> +		return false;
+> +	else if (a->sa.sa_family == AF_INET6) {
+> +		if (!ipv6_addr_equal(&a->sin6.sin6_addr, &b->sin6.sin6_addr))
+> +			return false;
+> +		else if (__ipv6_addr_needs_scope_id(__ipv6_addr_type(&a->sin6.sin6_addr)))
+> +			return a->sin6.sin6_scope_id == b->sin6.sin6_scope_id;
+> +		else
+> +			return true;
+> +	} else
+> +		return a->sin.sin_addr.s_addr == b->sin.sin_addr.s_addr;
+> +}
+> +#else
+> +bool inet_addr_equal(const union inet_addr *a, const union inet_addr *b)
+> +{
+> +	if (a->sa.sa_family == AF_UNSPEC)
+> +		return a->sa.sa_family == b->sa.sa_family;
+> +	return a->sin.sin_addr.s_addr == b->sin.sin_addr.s_addr;
+> +}
+> +#endif
+> +EXPORT_SYMBOL(inet_addr_equal);
+
+
+-- 
+Jeff Layton <jlayton@redhat.com>
