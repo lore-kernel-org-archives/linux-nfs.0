@@ -1,57 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f48.google.com ([209.85.214.48]:35682 "EHLO
-	mail-bk0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754965Ab3HFOa1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Aug 2013 10:30:27 -0400
-Received: by mail-bk0-f48.google.com with SMTP id jf20so182335bkc.21
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Aug 2013 07:30:25 -0700 (PDT)
-From: Miklos Szeredi <miklos@szeredi.hu>
-To: rwheeler@redhat.com, avati@redhat.com, viro@ZenIV.linux.org.uk
-Cc: bfoster@redhat.com, dhowells@redhat.com, eparis@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        swhiteho@redhat.com, mszeredi@suse.cz
-Subject: [PATCH 4/4] fuse: drop dentry on failed revalidate
-Date: Tue,  6 Aug 2013 16:30:03 +0200
-Message-Id: <1375799403-28544-5-git-send-email-miklos@szeredi.hu>
-In-Reply-To: <1375799403-28544-1-git-send-email-miklos@szeredi.hu>
-References: <1375799403-28544-1-git-send-email-miklos@szeredi.hu>
+Received: from fieldses.org ([174.143.236.118]:44721 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751071Ab3HBS3E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 Aug 2013 14:29:04 -0400
+Date: Fri, 2 Aug 2013 14:29:00 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: SP4_MACH_CRED
+Message-ID: <20130802182900.GN17581@fieldses.org>
+References: <A0A1021A-64E6-4E0C-89A5-9F719C8E1AFC@netapp.com>
+ <20130731213904.GB2668@fieldses.org>
+ <75E5568D-320C-45A1-B7E6-23CE73217BAF@netapp.com>
+ <20130731234800.GC2668@fieldses.org>
+ <0E0FF4CB-4388-417B-9D1C-24940472D844@netapp.com>
+ <20130802153215.GK17581@fieldses.org>
+ <F833CAE7-7BD2-4946-89A9-DFB9674124E4@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <F833CAE7-7BD2-4946-89A9-DFB9674124E4@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anand Avati <avati@redhat.com>
+On Fri, Aug 02, 2013 at 04:51:28PM +0000, Adamson, Dros wrote:
+> On Aug 2, 2013, at 11:32 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> 
+> > On Thu, Aug 01, 2013 at 02:03:29PM +0000, Adamson, Dros wrote:
+> >> The other case we are aiming for with the client is to be able to use
+> >> the machine cred in recovery when the user's creds expire so that
+> >> flushing of buffers can happen once recovery is complete. Of course,
+> >> if you don't want to see the flushing changes, this is useless.
+> > 
+> > Just so I understand: addressing this case would require allowing more
+> > operations, right?  (OPEN to do the reclaim, for example.)
+> 
+> Correct.
 
-Drop a subtree when we find that it has moved or been delated.  This can be
-done as long as there are no submounts under this location.
+That one seems bigger--I'm not sure how to keep it from becoming
+"clients can write anywhere they want" without a lot of work (like, say,
+storing on disk some information about which users have written from
+that client recently).
 
-If the directory was moved and we come across the same directory in a
-future lookup it will be reconnected by d_materialise_unique().
-
-Signed-off-by: Anand Avati <avati@redhat.com>
-Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
----
- fs/fuse/dir.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
-
-diff --git a/fs/fuse/dir.c b/fs/fuse/dir.c
-index 131d14b..4ba5893 100644
---- a/fs/fuse/dir.c
-+++ b/fs/fuse/dir.c
-@@ -226,8 +226,13 @@ static int fuse_dentry_revalidate(struct dentry *entry, unsigned int flags)
- 		if (!err) {
- 			struct fuse_inode *fi = get_fuse_inode(inode);
- 			if (outarg.nodeid != get_node_id(inode)) {
-+				int ret = 0;
-+
-+				if (check_submounts_and_drop(entry) != 0)
-+					ret = 1;
-+
- 				fuse_queue_forget(fc, forget, outarg.nodeid, 1);
--				return 0;
-+				return ret;
- 			}
- 			spin_lock(&fc->lock);
- 			fi->nlookup++;
--- 
-1.8.1.4
-
+--b.
