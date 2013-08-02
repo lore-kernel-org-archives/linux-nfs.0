@@ -1,75 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:37341 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757978Ab3HHSLh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Aug 2013 14:11:37 -0400
-Date: Thu, 8 Aug 2013 14:11:30 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: <linux-nfs@vger.kernel.org>, William Dauchy <william@gandi.net>,
-        Pascal Bouchareine <pascal@gandi.net>
-Subject: Re: [PATCH v3] NFS: Fix writeback performance issue on cache
- invalidation
-Message-ID: <20130808141130.27cf2b26@tlielax.poochiereds.net>
-In-Reply-To: <1375910064-23731-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1375910064-23731-1-git-send-email-Trond.Myklebust@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from hapkido.dreamhost.com ([66.33.216.122]:49651 "EHLO
+	hapkido.dreamhost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752132Ab3HBUUt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Aug 2013 16:20:49 -0400
+MIME-Version: 1.0
+In-Reply-To: <20130802095555.07a2cda3@tlielax.poochiereds.net>
+References: <20130801173846.28023.19009.stgit@warthog.procyon.org.uk>
+	<20130801173902.28023.68819.stgit@warthog.procyon.org.uk>
+	<20130802095555.07a2cda3@tlielax.poochiereds.net>
+Date: Fri, 2 Aug 2013 15:20:07 -0500
+Message-ID: <CAK3OfOhoeya1t76TaWG_g3jE24B_uXmDFxLqhriEgx0DEdzZqA@mail.gmail.com>
+Subject: Re: [PATCH 2/2] KEYS: Add per-user_namespace registers for persistent
+ per-UID kerberos caches
+From: Nico Williams <nico@cryptonector.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: David Howells <dhowells@redhat.com>, keyrings@linux-nfs.org,
+        "Eric W. Biederman" <ebiederm@xmission.com>, simo@redhat.com,
+        "Serge E. Hallyn" <serge.hallyn@ubuntu.com>, linux-nfs@vger.kernel.org,
+        krbdev@mit.edu, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 7 Aug 2013 17:14:24 -0400
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+On Fri, Aug 2, 2013 at 8:55 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> Isn't it possible to have a valid uid of (unsigned int)-1? I know that
+> at least some sites use that for "nobody". Why not just require passing
+> in the correct UID?
 
-> If a cache invalidation is triggered, and we happen to have a lot of
-> writebacks cached at the time, then the call to invalidate_inode_pages2()
-> will end up calling ->launder_page() on each and every dirty page in order
-> to sync its contents to disk, thus defeating write coalescing.
-> The following patch ensures that we try to sync the inode to disk before
-> calling invalidate_inode_pages2() so that we do the writeback as efficiently
-> as possible.
-> 
-> Reported-by: William Dauchy <william@gandi.net>
-> Reported-by: Pascal Bouchareine <pascal@gandi.net>
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Tested-by: William Dauchy <william@gandi.net>
-> Reviewed-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> v2: Add check for regular file as per Jeff Layton's suggestion.
-> v3: Minor cleanup and add Jeff as a reviewer
-> 
->  fs/nfs/inode.c | 10 ++++++++--
->  1 file changed, 8 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index af6e806..3ea4f64 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -963,9 +963,15 @@ EXPORT_SYMBOL_GPL(nfs_revalidate_inode);
->  static int nfs_invalidate_mapping(struct inode *inode, struct address_space *mapping)
->  {
->  	struct nfs_inode *nfsi = NFS_I(inode);
-> -	
-> +	int ret;
-> +
->  	if (mapping->nrpages != 0) {
-> -		int ret = invalidate_inode_pages2(mapping);
-> +		if (S_ISREG(inode->i_mode)) {
-> +			ret = nfs_sync_mapping(mapping);
-> +			if (ret < 0)
-> +				return ret;
-> +		}
-> +		ret = invalidate_inode_pages2(mapping);
->  		if (ret < 0)
->  			return ret;
->  	}
+POSIX requires valid UIDs to be non-nengative.  POSIX does not require
+uid_t to be signed or unsigned.  POSIX does make use of (uid_t)-1 as a
+sentinel (e.g., in setreuid(2)).  (uid_t)-1 is special.  Do not use
+it.
 
-It occurs to me that we have several places that call nfs_sync_mapping
-without checking S_ISREG. Are they potentially problematic?
+As an aside, note that on Solaris 10 and less uid_t was signed, so
+UIDs 2^31..2^32-2 were unusable.  Interop with S10 and less requires
+that you not use such UIDs.  Ditto gid_t and GIDs.
 
-Might it make more sense to move the S_ISREG test inside of
-nfs_sync_mapping and just have it "return 0" when it's not a regular
-file?
+Also note that in Solaris 11 uid_t is unsigned BUT the range of UIDs
+2^31..2^32-2 is still reserved (for automatic, on-demand,
+non-persistent allocation for ID mapping purposes).  Interop with S11
+requires that you not use such UIDs.  Ditto gid_t and GIDs.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Nico
+--
