@@ -1,92 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f54.google.com ([209.85.213.54]:56546 "EHLO
-	mail-yh0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S968210Ab3HIQuo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:50:44 -0400
-Received: by mail-yh0-f54.google.com with SMTP id f10so1506251yha.13
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:50:43 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
-        by mx.google.com with ESMTPSA id m63sm20689877yhb.10.2013.08.09.09.50.41
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
-        Fri, 09 Aug 2013 09:50:42 -0700 (PDT)
-Subject: [PATCH v2 20/33] NFS: Introduce a vector of migration recovery ops
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 09 Aug 2013 12:50:41 -0400
-Message-ID: <20130809165041.5362.9024.stgit@seurat.1015granger.net>
-In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
-References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+Received: from mail-qa0-f51.google.com ([209.85.216.51]:56115 "EHLO
+	mail-qa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755010Ab3HBJC1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Aug 2013 05:02:27 -0400
+Received: by mail-qa0-f51.google.com with SMTP id f11so190318qae.3
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Aug 2013 02:02:26 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <51FAACD9.8020205@redhat.com>
+References: <20130725055209.GA15621@sh-el5.eng.rdu2.redhat.com>
+	<51F13948.3050100@redhat.com>
+	<CAJfpegtpcXz+i-3txRC_NjTsYjXP5S4oJUdGstG+-PWVzazEWQ@mail.gmail.com>
+	<51F81465.9010402@redhat.com>
+	<20130801163940.GA1356@tucsk.piliscsaba.szeredi.hu>
+	<51FAACD9.8020205@redhat.com>
+Date: Fri, 2 Aug 2013 11:02:25 +0200
+Message-ID: <CAJfpegu1RXAYOGWyuCeckJ8WHfK=3dFc5bm1zsM=1Qt3zcfbsg@mail.gmail.com>
+Subject: Re: [PATCH] [REPOST] fuse: drop dentry on failed revalidate
+From: Miklos Szeredi <miklos@szeredi.hu>
+To: Ric Wheeler <rwheeler@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Anand Avati <avati@redhat.com>, Brian Foster <bfoster@redhat.com>,
+        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+        Alexander Viro <aviro@redhat.com>, David Howells <dhowells@redhat.com>,
+        Eric Paris <eparis@redhat.com>,
+        Linux NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The differences between minor version 0 and minor version 1
-migration will be abstracted by the addition of a set of migration
-recovery ops.
+On Thu, Aug 1, 2013 at 8:45 PM, Ric Wheeler <rwheeler@redhat.com> wrote:
+>
+> Adding in the NFS list for broader review.
+>
+> I thought that the issue was primarily in FUSE itself, not seen in practice
+> in NFS?
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/nfs4_fs.h  |    4 ++++
- fs/nfs/nfs4proc.c |   10 ++++++++++
- 2 files changed, 14 insertions(+)
+I haven't tested NFS (have but a single notebook here) but AFAICS the
+issue of not fuse specific but is inherent in the fact that NFS does
+d_drop() on a non-empty directory dentry.  It does check for submounts
+*before*, but it doesn't do anything about submounts *after* (or
+during) the d_drop().   It's probably not something people complain
+about, because they choose mountpoints to be pretty stable points in
+the tree that don't get removed or moved around.
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 75b2335..02af354 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -50,6 +50,7 @@ struct nfs4_minor_version_ops {
- 	const struct nfs4_state_recovery_ops *reboot_recovery_ops;
- 	const struct nfs4_state_recovery_ops *nograce_recovery_ops;
- 	const struct nfs4_state_maintenance_ops *state_renewal_ops;
-+	const struct nfs4_mig_recovery_ops *mig_recovery_ops;
- };
- 
- #define NFS_SEQID_CONFIRMED 1
-@@ -202,6 +203,9 @@ struct nfs4_state_maintenance_ops {
- 	int (*renew_lease)(struct nfs_client *, struct rpc_cred *);
- };
- 
-+struct nfs4_mig_recovery_ops {
-+};
-+
- extern const struct dentry_operations nfs4_dentry_operations;
- 
- /* dir.c */
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5640dc0..513de09 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7501,6 +7501,14 @@ static const struct nfs4_state_maintenance_ops nfs41_state_renewal_ops = {
- };
- #endif
- 
-+static const struct nfs4_mig_recovery_ops nfs40_mig_recovery_ops = {
-+};
-+
-+#if defined(CONFIG_NFS_V4_1)
-+static const struct nfs4_mig_recovery_ops nfs41_mig_recovery_ops = {
-+};
-+#endif	/* CONFIG_NFS_V4_1 */
-+
- static const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
- 	.minor_version = 0,
- 	.init_caps = NFS_CAP_READDIRPLUS
-@@ -7516,6 +7524,7 @@ static const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
- 	.reboot_recovery_ops = &nfs40_reboot_recovery_ops,
- 	.nograce_recovery_ops = &nfs40_nograce_recovery_ops,
- 	.state_renewal_ops = &nfs40_state_renewal_ops,
-+	.mig_recovery_ops = &nfs40_mig_recovery_ops,
- };
- 
- #if defined(CONFIG_NFS_V4_1)
-@@ -7536,6 +7545,7 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
- 	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
- 	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
- 	.state_renewal_ops = &nfs41_state_renewal_ops,
-+	.mig_recovery_ops = &nfs41_mig_recovery_ops,
- };
- #endif
- 
+Thanks,
+Miklos
 
+>>
+>> diff --git a/fs/dcache.c b/fs/dcache.c
+>> index 87bdb53..5c51217 100644
+>> --- a/fs/dcache.c
+>> +++ b/fs/dcache.c
+>> @@ -1103,6 +1103,34 @@ rename_retry:
+>>   }
+>>   EXPORT_SYMBOL(have_submounts);
+>>   +static bool __has_unlinked_ancestor(struct dentry *dentry)
+>> +{
+>> +       struct dentry *this;
+>> +
+>> +       for (this = dentry; !IS_ROOT(this); this = this->d_parent) {
+>> +               if (d_unhashed(this))
+>> +                       return true;
+>> +       }
+>> +       return false;
+>> +}
+>> +
+>> +/*
+>> + * Called by mount code to check if the mountpoint is reachable (e.g. NFS
+>> can
+>> + * unhash a directory dentry and then the complete subtree can become
+>> + * unreachable).
+>> + */
+>> +bool has_unlinked_ancestor(struct dentry *dentry)
+>> +{
+>> +       bool found;
+>> +
+>> +       /* Need exclusion wrt. have_submounts() */
+>> +       write_seqlock(&rename_lock);
+>> +       found = __has_unlinked_ancestor(dentry);
+>> +       write_sequnlock(&rename_lock);
+>> +
+>> +       return found;
+>> +}
+>> +
+>>   /*
+>>    * Search the dentry child list of the specified parent,
+>>    * and move any unused dentries to the end of the unused
+>> diff --git a/fs/internal.h b/fs/internal.h
+>> index 7c5f01c..d232355 100644
+>> --- a/fs/internal.h
+>> +++ b/fs/internal.h
+>> @@ -126,6 +126,7 @@ extern int invalidate_inodes(struct super_block *,
+>> bool);
+>>    * dcache.c
+>>    */
+>>   extern struct dentry *__d_alloc(struct super_block *, const struct qstr
+>> *);
+>> +extern bool has_unlinked_ancestor(struct dentry *dentry);
+>>     /*
+>>    * read_write.c
+>> diff --git a/fs/namespace.c b/fs/namespace.c
+>> index 7b1ca9b..bb92a9c 100644
+>> --- a/fs/namespace.c
+>> +++ b/fs/namespace.c
+>> @@ -634,6 +634,15 @@ static struct mountpoint *new_mountpoint(struct
+>> dentry *dentry)
+>>         }
+>>         dentry->d_flags |= DCACHE_MOUNTED;
+>>         spin_unlock(&dentry->d_lock);
+>> +
+>> +       if (has_unlinked_ancestor(dentry)) {
+>> +               spin_lock(&dentry->d_lock);
+>> +               dentry->d_flags &= ~DCACHE_MOUNTED;
+>> +               spin_unlock(&dentry->d_lock);
+>> +               kfree(mp);
+>> +               return ERR_PTR(-ENOENT);
+>> +       }
+>> +
+>>         mp->m_dentry = dentry;
+>>         mp->m_count = 1;
+>>         list_add(&mp->m_hash, chain);
+>
+>
