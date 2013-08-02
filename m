@@ -1,44 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47010 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751675Ab3HZRLV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Aug 2013 13:11:21 -0400
-Date: Mon, 26 Aug 2013 13:11:19 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        Jan Stancek <jstancek@redhat.com>
-Subject: Re: [PATCH v3] SUNRPC: Ensure that the RPCSEC_GSS daemon uses the
- correct service names
-Message-ID: <20130826171119.GA13212@fieldses.org>
-References: <1377202213-5031-1-git-send-email-jlayton@redhat.com>
- <20130823231843.GB18084@fieldses.org>
- <20130824124314.GD18084@fieldses.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:48683 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753612Ab3HBKbK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Aug 2013 06:31:10 -0400
+Date: Fri, 2 Aug 2013 03:31:07 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Cong Wang <amwang@redhat.com>
+Cc: netdev@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, cluster-devel@redhat.com,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-kernel@vger.kernel.org, Steve French <sfrench@samba.org>,
+        "David S. Miller" <davem@davemloft.net>
+Subject: Re: [Cluster-devel] [Patch net-next v2 6/8] fs: use generic union
+ inet_addr and helper functions
+Message-ID: <20130802103107.GA17244@infradead.org>
+References: <1375427674-21735-1-git-send-email-amwang@redhat.com>
+ <1375427674-21735-7-git-send-email-amwang@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130824124314.GD18084@fieldses.org>
+In-Reply-To: <1375427674-21735-7-git-send-email-amwang@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Aug 24, 2013 at 08:43:14AM -0400, J. Bruce Fields wrote:
-> On Fri, Aug 23, 2013 at 07:18:43PM -0400, J. Bruce Fields wrote:
-> > On Thu, Aug 22, 2013 at 04:10:13PM -0400, Jeff Layton wrote:
-> > > From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > > 
-> > > v2: added pipe_dir_name field to nfsacl program to fix v3+krb5
-> > >     (Should we add pipe_dir_name fields to other programs too?).
-> > > 
-> > > v3: Drop changes to gss_encode_v1_msg. They don't seem to be
-> > >     needed since gssd scrapes that out of the "info" file.
-> > 
-> > Hm.  nfsv3/krb5 is still broken for me after this patch.  I'll try to
-> > figure out why....
+On Fri, Aug 02, 2013 at 03:14:32PM +0800, Cong Wang wrote:
+> From: Cong Wang <amwang@redhat.com>
 > 
-> Whoops, never mind, my client was booted to the wrong kernel, with this
-> patch it does work.
+> nfs and cifs define some helper functions for sockaddr,
+> they can use the generic functions for union inet_addr too.
+> 
+> Since some dlm code needs to compare ->sin_port, introduce a
+> generic function inet_addr_equal_strict() for it.
 
-Oh, and by the way, I made the same mistake testing Jan's original patch
-(installed the patched kernel to the server but not the client...).
-Retesting, it worked fine too.
+Would sound more useful to have a sockaddr_equal case that can be used
+on any sockaddr.  For cases that no current user handles just return
+false.
 
---b.
