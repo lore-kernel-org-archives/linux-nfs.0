@@ -1,149 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fn.samba.org ([216.83.154.106]:57185 "EHLO mail.samba.org"
+Received: from mx11.netapp.com ([216.240.18.76]:11697 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751433Ab3HSMob (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Aug 2013 08:44:31 -0400
-Message-ID: <1376915814.21291.4.camel@pico.ipa.ssimo.org>
-Subject: Re: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
-From: simo <idra@samba.org>
-Reply-To: idra@samba.org
-To: Jeff Layton <jlayton@redhat.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Jan Stancek <jstancek@redhat.com>, linux-nfs@vger.kernel.org,
-        bfields@redhat.com, Trond Myklebust <Trond.Myklebust@netapp.com>
-Date: Mon, 19 Aug 2013 08:36:54 -0400
-In-Reply-To: <20130819080644.0a6cae56@corrin.poochiereds.net>
-References: <682ebd8ecc7309b18396da356a0feb38bfa41674.1372692346.git.jstancek@redhat.com>
-	 <20130708201643.GI29071@fieldses.org>
-	 <1157529877.873319.1373353194344.JavaMail.root@redhat.com>
-	 <20130726220924.GG30651@fieldses.org>
-	 <20130815100244.370de645@corrin.poochiereds.net>
-	 <20130815141917.GR17781@fieldses.org>
-	 <20130816150454.2aacd5ff@corrin.poochiereds.net>
-	 <20130816191634.GA19942@fieldses.org>
-	 <20130819080644.0a6cae56@corrin.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1752664Ab3HBQvc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Aug 2013 12:51:32 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: SP4_MACH_CRED
+Date: Fri, 2 Aug 2013 16:51:28 +0000
+Message-ID: <F833CAE7-7BD2-4946-89A9-DFB9674124E4@netapp.com>
+References: <A0A1021A-64E6-4E0C-89A5-9F719C8E1AFC@netapp.com>
+ <20130731213904.GB2668@fieldses.org>
+ <75E5568D-320C-45A1-B7E6-23CE73217BAF@netapp.com>
+ <20130731234800.GC2668@fieldses.org>
+ <0E0FF4CB-4388-417B-9D1C-24940472D844@netapp.com>
+ <20130802153215.GK17581@fieldses.org>
+In-Reply-To: <20130802153215.GK17581@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-08-19 at 08:06 -0400, Jeff Layton wrote:
-> On Fri, 16 Aug 2013 15:16:34 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Fri, Aug 16, 2013 at 03:04:54PM -0400, Jeff Layton wrote:
-> > > On Thu, 15 Aug 2013 10:19:18 -0400
-> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > 
-> > > > On Thu, Aug 15, 2013 at 10:02:44AM -0400, Jeff Layton wrote:
-> > > > > On Fri, 26 Jul 2013 18:09:24 -0400
-> > > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > > > 
-> > > > > > On Tue, Jul 09, 2013 at 02:59:54AM -0400, Jan Stancek wrote:
-> > > > > > > 
-> > > > > > > 
-> > > > > > > 
-> > > > > > > 
-> > > > > > > ----- Original Message -----
-> > > > > > > > From: "J. Bruce Fields" <bfields@fieldses.org>
-> > > > > > > > To: "Jan Stancek" <jstancek@redhat.com>
-> > > > > > > > Cc: linux-nfs@vger.kernel.org, bfields@redhat.com, "Trond Myklebust" <Trond.Myklebust@netapp.com>
-> > > > > > > > Sent: Monday, 8 July, 2013 10:16:43 PM
-> > > > > > > > Subject: Re: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
-> > > > > > > > 
-> > > > > > > > On Mon, Jul 01, 2013 at 05:32:34PM +0200, Jan Stancek wrote:
-> > > > > > > > > Starting with commit:
-> > > > > > > > >   commit f994c43d19a9116727d4c228d3f13db595bff562
-> > > > > > > > >   Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > > > > > > > >   Date:   Thu Nov 1 12:14:14 2012 -0400
-> > > > > > > > >       SUNRPC: Clean up rpc_bind_new_program
-> > > > > > > > > 
-> > > > > > > > > operations on directory mounted with -onfsvers=3,tcp,sec=krb5 fail
-> > > > > > > > > with Input/Output error after ~60 second timeout. This is presumably
-> > > > > > > > > because upcalls for 'nfsacl' are not getting anywhere.
-> > > > > > > > > 
-> > > > > > > > > This patch enables pipe dir for nfsacl_program and changes its name
-> > > > > > > > > to 'nfs'. This name will be used in upcalls and whole setup should
-> > > > > > > > > work as it did in past - just with nfs/hostname principal.
-> > > > > > > > 
-> > > > > > > > I think this was the problem that nfs-utils commits
-> > > > > > > > 
-> > > > > > > > 	a1f8afc560 gssd: Remove insane sanity checks of the service name
-> > > > > > > > 	a56989b665 gssd: Handle the target name correctly
-> > > > > > > > 
-> > > > > > > > were supposed to fix?
-> > > > > > > > 
-> > > > > > > > But perhaps the kernel needs a fix too to fix a regression with old
-> > > > > > > > userspace.
-> > > > > > > 
-> > > > > > > I saw this error with nfs-utils.1.2.9-rc1, which should already contain
-> > > > > > > those 2 commits.
-> > > > > > 
-> > > > > > Actually, I think your patch is just a subset of Trond's
-> > > > > > http://mid.gmane.org/<4FA345DA4F4AE44899BD2B03EEEC2FA9092EC392@SACEXCMBX04-PRD.hq.netapp.com>
-> > > > > > 
-> > > > > > Trond, is there a reason that never got applied?
-> > > > > > 
-> > > > > > --b.
-> > > > > > 
-> > > > > 
-> > > > > Hmm...gmane just says "No such article" when I feed it the above URL.
-> > > > > Do you know what the title of the email was?
-> > > > 
-> > > > Argh sorry hadn't noticed that was private mail.
-> > > > 
-> > > > Last I checked actually neither of these patches fixed v3/krb5 for me.
-> > > > 
-> > > > --b.
-> > > > 
-> > > > Here is v2 with appropriate service names for mountd, statd, etc.
-> > > > 
-> > > > 
-> > > 
-> > > Ok, I tested both this patch and Jan's. This one doesn't help at all,
-> > > but Jan's does seem to fix the problem. I'm still looking over the
-> > > kernel and userland code to determine whether it's the best fix or
-> > > not...
-> > 
-> > Ah, crap, sorry, I missed that Jan's modified rpc_program.name and
-> > Trond's rpc_program.service_name.
-> > 
-> > As Simo pointed out in irc yesterday this can't be right:
-> > 
-> > > > diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> > > > index 909dc0c..b19dab8 100644
-> > > > --- a/net/sunrpc/auth_gss/auth_gss.c
-> > > > +++ b/net/sunrpc/auth_gss/auth_gss.c
-> > > > @@ -403,7 +403,9 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
-> > > >  				   gss_msg->uid);
-> > > >  	p += gss_msg->msg.len;
-> > > >  	if (clnt->cl_principal) {
-> > > > -		len = sprintf(p, "target=%s ", clnt->cl_principal);
-> > > > +		len = sprintf(p, "target=%s@%s ",
-> > > > +				clnt->cl_program->service_name,
-> > > > +				clnt->cl_principal);
-> > 
-> > I'd think this should instead be going in the "service_name" field, but
-> > I'm not sure.
-> > 
-> 
-> 
-> Actually, this patch seems to work correctly. The only thing that was
-> missing was the pipe_dir_name field for the nfsacl program. There is a
-> separate service= field that gssd understands as well, but I don't see
-> any read advantage to using that over this patch. I'll send a respun
-> patch in a bit that seems to fix this for me.
-> 
-> I'll also note that several other rpc_programs don't have their
-> pipe_dir_name set. We may want to go ahead and set those as well in
-> case we ever do want to enable GSSAPI auth for those services.
+On Aug 2, 2013, at 11:32 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-If I understand what Bruce told me correctly, cl_principal is what
-rpc.svcgssd sent down to the kernel.
-In that case it is already a gssapi-like name (not really a principal
-given how svcgssd butchers it) of the form svc@host 
-So it sound strange to me that you have to prepend service a second
-time.
+> On Thu, Aug 01, 2013 at 02:03:29PM +0000, Adamson, Dros wrote:
+>> The other case we are aiming for with the client is to be able to use
+>> the machine cred in recovery when the user's creds expire so that
+>> flushing of buffers can happen once recovery is complete. Of course,
+>> if you don't want to see the flushing changes, this is useless.
+> 
+> Just so I understand: addressing this case would require allowing more
+> operations, right?  (OPEN to do the reclaim, for example.)
 
-Simo.
+Correct.
+
+-dros
+
+> 
+> --b.
 
