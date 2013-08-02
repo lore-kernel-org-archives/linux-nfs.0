@@ -1,267 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:58766 "EHLO mx1.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753140Ab3HVAYd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Aug 2013 20:24:33 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 20/21] NFSv4.1: Add tracepoints for debugging slot table operations
-Date: Wed, 21 Aug 2013 20:24:18 -0400
-Message-ID: <1377131059-40121-21-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377131059-40121-20-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377131059-40121-1-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-2-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-3-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-4-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-5-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-6-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-7-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-8-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-9-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-10-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-11-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-12-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-13-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-14-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-15-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-16-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-17-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-18-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-19-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-20-git-send-email-Trond.Myklebust@netapp.com>
+Received: from caiajhbdcaid.dreamhost.com ([208.97.132.83]:55275 "EHLO
+	homiemail-a85.g.dreamhost.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751670Ab3HBUtJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Aug 2013 16:49:09 -0400
 MIME-Version: 1.0
-Content-Type: text/plain
+In-Reply-To: <20130801173854.28023.82045.stgit@warthog.procyon.org.uk>
+References: <20130801173846.28023.19009.stgit@warthog.procyon.org.uk>
+	<20130801173854.28023.82045.stgit@warthog.procyon.org.uk>
+Date: Fri, 2 Aug 2013 15:49:06 -0500
+Message-ID: <CAK3OfOj6E_thwgwdZUDXrr_7XW4xJkzwxdGU6gKcEJ3twOsm=A@mail.gmail.com>
+Subject: Re: [PATCH 1/2] KEYS: Implement a big key type that can save to tmpfs
+From: Nico Williams <nico@cryptonector.com>
+To: David Howells <dhowells@redhat.com>
+Cc: keyrings@linux-nfs.org, linux-nfs@vger.kernel.org, simo@redhat.com,
+        linux-kernel@vger.kernel.org, krbdev@mit.edu
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add tracepoints to nfs41_setup_sequence and nfs41_sequence_done
-to track session and slot table state changes.
+I think this is the wrong design.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/callback_proc.c |   1 +
- fs/nfs/nfs4proc.c      |   2 +
- fs/nfs/nfs4session.h   |  10 ++++
- fs/nfs/nfs4trace.c     |   2 +
- fs/nfs/nfs4trace.h     | 139 +++++++++++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 154 insertions(+)
+There are two problems you're trying to solve:
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index c074930..b25ed7e 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -464,6 +464,7 @@ out:
- 	} else
- 		res->csr_status = status;
- 
-+	trace_nfs4_cb_sequence(args, res, status);
- 	dprintk("%s: exit with status = %d res->csr_status %d\n", __func__,
- 		ntohl(status), ntohl(res->csr_status));
- 	return status;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 156a86b..44ba5eb 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -508,6 +508,7 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
- 		interrupted = true;
- 	}
- 
-+	trace_nfs4_sequence_done(session, res);
- 	/* Check the SEQUENCE operation status */
- 	switch (res->sr_status) {
- 	case 0:
-@@ -660,6 +661,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
- 	 * set to 1 if an rpc level failure occurs.
- 	 */
- 	res->sr_status = 1;
-+	trace_nfs4_setup_sequence(session, args);
- out_success:
- 	rpc_call_start(task);
- 	return 0;
-diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
-index 86a0669..e3e6ce3 100644
---- a/fs/nfs/nfs4session.h
-+++ b/fs/nfs/nfs4session.h
-@@ -117,6 +117,16 @@ static inline int nfs4_has_persistent_session(const struct nfs_client *clp)
- 	return 0;
- }
- 
-+#ifdef CONFIG_CRC32
-+/*
-+ * nfs_session_id_hash - calculate the crc32 hash for the session id
-+ * @session - pointer to session
-+ */
-+#define nfs_session_id_hash(sess_id) \
-+	(~crc32_le(0xFFFFFFFF, &(sess_id)->data[0], sizeof((sess_id)->data)))
-+#else
-+#define nfs_session_id_hash(session) (0)
-+#endif
- #else /* defined(CONFIG_NFS_V4_1) */
- 
- static inline int nfs4_init_session(struct nfs_client *clp)
-diff --git a/fs/nfs/nfs4trace.c b/fs/nfs/nfs4trace.c
-index f840974..d774335 100644
---- a/fs/nfs/nfs4trace.c
-+++ b/fs/nfs/nfs4trace.c
-@@ -4,6 +4,8 @@
- #include <linux/nfs_fs.h>
- #include "nfs4_fs.h"
- #include "internal.h"
-+#include "nfs4session.h"
-+#include "callback.h"
- 
- #define CREATE_TRACE_POINTS
- #include "nfs4trace.h"
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index b2a2d8a..05b96a6 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -240,6 +240,145 @@ DEFINE_NFS4_CLIENTID_EVENT(nfs4_destroy_clientid);
- DEFINE_NFS4_CLIENTID_EVENT(nfs4_bind_conn_to_session);
- DEFINE_NFS4_CLIENTID_EVENT(nfs4_sequence);
- DEFINE_NFS4_CLIENTID_EVENT(nfs4_reclaim_complete);
-+
-+TRACE_EVENT(nfs4_setup_sequence,
-+		TP_PROTO(
-+			const struct nfs4_session *session,
-+			const struct nfs4_sequence_args *args
-+		),
-+		TP_ARGS(session, args),
-+
-+		TP_STRUCT__entry(
-+			__field(unsigned int, session)
-+			__field(unsigned int, slot_nr)
-+			__field(unsigned int, seq_nr)
-+			__field(unsigned int, highest_used_slotid)
-+		),
-+
-+		TP_fast_assign(
-+			const struct nfs4_slot *sa_slot = args->sa_slot;
-+			__entry->session = nfs_session_id_hash(&session->sess_id);
-+			__entry->slot_nr = sa_slot->slot_nr;
-+			__entry->seq_nr = sa_slot->seq_nr;
-+			__entry->highest_used_slotid =
-+					sa_slot->table->highest_used_slotid;
-+		),
-+		TP_printk(
-+			"session=0x%08x slot_nr=%u seq_nr=%u "
-+			"highest_used_slotid=%u",
-+			__entry->session,
-+			__entry->slot_nr,
-+			__entry->seq_nr,
-+			__entry->highest_used_slotid
-+		)
-+);
-+
-+#define show_nfs4_sequence_status_flags(status) \
-+	__print_flags((unsigned long)status, "|", \
-+		{ SEQ4_STATUS_CB_PATH_DOWN, "CB_PATH_DOWN" }, \
-+		{ SEQ4_STATUS_CB_GSS_CONTEXTS_EXPIRING, \
-+			"CB_GSS_CONTEXTS_EXPIRING" }, \
-+		{ SEQ4_STATUS_CB_GSS_CONTEXTS_EXPIRED, \
-+			"CB_GSS_CONTEXTS_EXPIRED" }, \
-+		{ SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED, \
-+			"EXPIRED_ALL_STATE_REVOKED" }, \
-+		{ SEQ4_STATUS_EXPIRED_SOME_STATE_REVOKED, \
-+			"EXPIRED_SOME_STATE_REVOKED" }, \
-+		{ SEQ4_STATUS_ADMIN_STATE_REVOKED, \
-+			"ADMIN_STATE_REVOKED" }, \
-+		{ SEQ4_STATUS_RECALLABLE_STATE_REVOKED,	 \
-+			"RECALLABLE_STATE_REVOKED" }, \
-+		{ SEQ4_STATUS_LEASE_MOVED, "LEASE_MOVED" }, \
-+		{ SEQ4_STATUS_RESTART_RECLAIM_NEEDED, \
-+			"RESTART_RECLAIM_NEEDED" }, \
-+		{ SEQ4_STATUS_CB_PATH_DOWN_SESSION, \
-+			"CB_PATH_DOWN_SESSION" }, \
-+		{ SEQ4_STATUS_BACKCHANNEL_FAULT, \
-+			"BACKCHANNEL_FAULT" })
-+
-+TRACE_EVENT(nfs4_sequence_done,
-+		TP_PROTO(
-+			const struct nfs4_session *session,
-+			const struct nfs4_sequence_res *res
-+		),
-+		TP_ARGS(session, res),
-+
-+		TP_STRUCT__entry(
-+			__field(unsigned int, session)
-+			__field(unsigned int, slot_nr)
-+			__field(unsigned int, seq_nr)
-+			__field(unsigned int, highest_slotid)
-+			__field(unsigned int, target_highest_slotid)
-+			__field(unsigned int, status_flags)
-+			__field(int, error)
-+		),
-+
-+		TP_fast_assign(
-+			const struct nfs4_slot *sr_slot = res->sr_slot;
-+			__entry->session = nfs_session_id_hash(&session->sess_id);
-+			__entry->slot_nr = sr_slot->slot_nr;
-+			__entry->seq_nr = sr_slot->seq_nr;
-+			__entry->highest_slotid = res->sr_highest_slotid;
-+			__entry->target_highest_slotid =
-+					res->sr_target_highest_slotid;
-+			__entry->error = res->sr_status;
-+		),
-+		TP_printk(
-+			"error=%d (%s) session=0x%08x slot_nr=%u seq_nr=%u "
-+			"highest_slotid=%u target_highest_slotid=%u "
-+			"status_flags=%u (%s)",
-+			__entry->error,
-+			show_nfsv4_errors(__entry->error),
-+			__entry->session,
-+			__entry->slot_nr,
-+			__entry->seq_nr,
-+			__entry->highest_slotid,
-+			__entry->target_highest_slotid,
-+			__entry->status_flags,
-+			show_nfs4_sequence_status_flags(__entry->status_flags)
-+		)
-+);
-+
-+struct cb_sequenceargs;
-+struct cb_sequenceres;
-+
-+TRACE_EVENT(nfs4_cb_sequence,
-+		TP_PROTO(
-+			const struct cb_sequenceargs *args,
-+			const struct cb_sequenceres *res,
-+			__be32 status
-+		),
-+		TP_ARGS(args, res, status),
-+
-+		TP_STRUCT__entry(
-+			__field(unsigned int, session)
-+			__field(unsigned int, slot_nr)
-+			__field(unsigned int, seq_nr)
-+			__field(unsigned int, highest_slotid)
-+			__field(unsigned int, cachethis)
-+			__field(int, error)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->session = nfs_session_id_hash(&args->csa_sessionid);
-+			__entry->slot_nr = args->csa_slotid;
-+			__entry->seq_nr = args->csa_sequenceid;
-+			__entry->highest_slotid = args->csa_highestslotid;
-+			__entry->cachethis = args->csa_cachethis;
-+			__entry->error = -be32_to_cpu(status);
-+		),
-+
-+		TP_printk(
-+			"error=%d (%s) session=0x%08x slot_nr=%u seq_nr=%u "
-+			"highest_slotid=%u",
-+			__entry->error,
-+			show_nfsv4_errors(__entry->error),
-+			__entry->session,
-+			__entry->slot_nr,
-+			__entry->seq_nr,
-+			__entry->highest_slotid
-+		)
-+);
- #endif /* CONFIG_NFS_V4_1 */
- 
- DECLARE_EVENT_CLASS(nfs4_open_event,
--- 
-1.8.3.1
+a) how rpc.gssd finds credentials for processes on behalf of which it's acting
 
+b) how to create tmpfs locations in which to store credentials (which
+can be unbounded in size, so storing them in the kernel is silly; also
+the apps that use them are all user-land apps, so that too means
+there's no point in storing them in the kernel).
+
+Keyrings for the forst problem (or PAGs, or anything similar) is fine:
+on upcall to gssd the kernel tells it what it needs to know to find
+those credentials.
+
+(b) can be solved in many ways, and the simplest is to have a
+filesystem where top-level directories named after UIDs "exist" as
+soon as they are referenced and as long as they are non-empty.  You
+can use autofs + tmpfs, or a variant of tmpfs for this.
+
+Solving (b) in a way that does not add a new ccache type (though
+having a KEYRING: ccache type that means "find the ccache URI in my
+keyring" is fine) is important because many of us run multiple
+implementations of Kerberos on any given host, and we do it because:
+
+ - vendors are always behind the curve
+ - legacy software linked with old versions of libkrb5 and friends
+ - third party software
+
+Please review the above.  Thanks,
+
+Nico
+--
