@@ -1,68 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48140 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755851Ab3HATF3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Aug 2013 15:05:29 -0400
-Date: Thu, 1 Aug 2013 15:05:26 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: SP4_MACH_CRED
-Message-ID: <20130801190526.GB17581@fieldses.org>
-References: <A0A1021A-64E6-4E0C-89A5-9F719C8E1AFC@netapp.com>
- <20130731213904.GB2668@fieldses.org>
- <75E5568D-320C-45A1-B7E6-23CE73217BAF@netapp.com>
- <20130731234800.GC2668@fieldses.org>
- <0E0FF4CB-4388-417B-9D1C-24940472D844@netapp.com>
- <47D6EDEC-B91A-446F-A227-FDA9D37DB618@netapp.com>
- <20130801145617.GA15123@fieldses.org>
- <88EAD768-768D-43A3-8E4D-D9B904C0283C@netapp.com>
+Received: from ecs-ex10-cas2.engr.uconn.edu ([137.99.15.237]:46437 "EHLO
+	mail.engr.uconn.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751898Ab3HBMQC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Aug 2013 08:16:02 -0400
+Message-ID: <51FBA2FD.7070704@engr.uconn.edu>
+Date: Fri, 2 Aug 2013 08:15:57 -0400
+From: Rohit Mehta <rohitm@engr.uconn.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <88EAD768-768D-43A3-8E4D-D9B904C0283C@netapp.com>
+To: Simo Sorce <simo@redhat.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: Trouble with kerberized NFS client after upgrading from nfs-utils
+ 1.2.0 to 1.2.5
+References: <51FAC933.40508@engr.uconn.edu>  <1375391193.15733.213.camel@willson.li.ssimo.org>  <51FB0946.5020505@engr.uconn.edu> <1375410802.15733.216.camel@willson.li.ssimo.org>
+In-Reply-To: <1375410802.15733.216.camel@willson.li.ssimo.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 01, 2013 at 03:24:05PM +0000, Adamson, Dros wrote:
-> 
-> On Aug 1, 2013, at 10:56 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> 
-> > So the choices are:
-> > 	1. allow those problems, or
-> > 	2. change the nfs/krb5 security model from "once you give a
-> > 	   client your credential, you trust it with your data till the
-> > 	   credential expires" to "once you give a client your
-> > 	   credential, you trust it indefinitely".  (Well, until its
-> > 	   state expires, anyway.)
-> > 
-> > And we can implement either 1, or 2, or both, and if we implement both,
-> > we get to choose which of 1 or 2 is the default.
-> > 
-> > So I don't have a strong opinion yet, but I do fear that if we only
-> > implement #2 there will be users who see that as a serious regression in
-> > security.
-> 
-> Perhaps you're right - the server is essentially trusting the client machine to do the right thing here, but the server is already trusting the client machine (not users) to do the right thing.  A rouge client implementation could create all types of havoc as it stands now, i.e. using another user's credentials to bypass permissions, etc.
+Thanks Simo,  I apologize for the copy and paste error.  You are 
+correct  about it being "ldd /usr/sbin/rpc.gssd" command.
 
-Right, but normally that capacity for havoc is time-limited.  For
-example, you're not affected if a client is compromised after your creds
-expire.
+The actual error message we get is from the mount command:
+mount.nfs: access denied by server while mounting 
+hnas.engr.uconn.edu:/EngrUser/users/rohitm
 
-I think that's pretty important.  So let's make this optional.  I'm
-willing to argue about the default policy.
+I got a little more output with mount -v
+root@c27-00:~# mount -vvv hnas.engr.uconn.edu:/EngrUser/users/rohitm 
+/foo -o sec=krb5
+mount: fstab path: "/etc/fstab"
+mount: mtab path:  "/etc/mtab"
+mount: lock path:  "/etc/mtab~"
+mount: temp path:  "/etc/mtab.tmp"
+mount: UID:        0
+mount: eUID:       0
+mount: no type was given - I'll assume nfs because of the colon
+mount: spec: "hnas.engr.uconn.edu:/EngrUser/users/rohitm"
+mount: node:  "/foo"
+mount: types: "nfs"
+mount: opts:  "sec=krb5"
+mount: external mount: argv[0] = "/sbin/mount.nfs"
+mount: external mount: argv[1] = 
+"hnas.engr.uconn.edu:/EngrUser/users/rohitm"
+mount: external mount: argv[2] = "/foo"
+mount: external mount: argv[3] = "-v"
+mount: external mount: argv[4] = "-o"
+mount: external mount: argv[5] = "rw,sec=krb5"
+mount.nfs: timeout set for Fri Aug  2 08:04:08 2013
+mount.nfs: trying text-based options 
+'sec=krb5,vers=4,addr=137.99.203.4,clientaddr=137.99.2.29'
+mount.nfs: mount(2): Permission denied
+mount.nfs: access denied by server while mounting 
+hnas.engr.uconn.edu:/EngrUser/users/rohitm
 
-Do all the operations that might conceivably be affected by this take
-filehandles?  If so an export option might make sense.  Something like
+So there is unfortunately no more info available from mount command and 
+rpc.gssd output did not have any red flags for me. I'm trying to find 
+out if there is a way to get more information from the NFS server 
+itself, but as of now I'm not sure how to do that.
 
-	trust_client_writeback
+Thanks,
 
-		NFSv4.1 and higher clients who have accessed a file
-		using a user's credential will be permitted further
-		write access to that file using only their machine
-		credential.  Some clients can take advantage of this to
-		write back cached data after user credentials expire,
-		preventing possible data loss in some cases.
+Rohit
+On 08/01/2013 10:33 PM, Simo Sorce wrote:
+> On Thu, 2013-08-01 at 21:20 -0400, Rohit Mehta wrote:
+>> Thanks Simo, it doesn't look like libtirpc was available in previous
+>> (10.04) release of Ubuntu.
+>> root@c27-00:~# ldd /usr/sbin/
+> I assume this had ^^ rpc.gssd at the end and is just a copy&paste error.
+>
+>>           linux-vdso.so.1 =>  (0x00007fffeedff000)
+>>           libgssglue.so.1 => /lib/libgssglue.so.1 (0x00007fb06778e000)
+>>           libkrb5.so.3 => /usr/lib/x86_64-linux-gnu/libkrb5.so.3
+>> (0x00007fb0674c0000)
+>>           libcom_err.so.2 => /lib/x86_64-linux-gnu/libcom_err.so.2
+>> (0x00007fb0672bb000)
+>>           libtirpc.so.1 => /lib/x86_64-linux-gnu/libtirpc.so.1
+>> (0x00007fb067093000)
+>>           libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fb066cd4000)
+>>           libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007fb066acf000)
+>>           libk5crypto.so.3 => /usr/lib/x86_64-linux-gnu/libk5crypto.so.3
+>> (0x00007fb0668a7000)
+>>           libkrb5support.so.0 =>
+>> /usr/lib/x86_64-linux-gnu/libkrb5support.so.0 (0x00007fb06669f000)
+>>           libkeyutils.so.1 => /lib/x86_64-linux-gnu/libkeyutils.so.1
+>> (0x00007fb06649a000)
+>>           libresolv.so.2 => /lib/x86_64-linux-gnu/libresolv.so.2
+>> (0x00007fb06627e000)
+>>           libpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0
+>> (0x00007fb066061000)
+>>           /lib64/ld-linux-x86-64.so.2 (0x00007fb0679b8000)
+>> root@c27-00:~# locate libtirpc.so
+>> /lib/x86_64-linux-gnu/libtirpc.so.1
+>> /lib/x86_64-linux-gnu/libtirpc.so.1.0.10
+>> root@c27-00:~# ldd /lib/x86_64-linux-gnu/libtirpc.so.1
+>>           linux-vdso.so.1 =>  (0x00007fff01dc1000)
+>>           libgssglue.so.1 => /lib/libgssglue.so.1 (0x00007fb701d54000)
+>>           libpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0
+>> (0x00007fb701b37000)
+>>           libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fb701777000)
+>>           libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007fb701573000)
+>>           /lib64/ld-linux-x86-64.so.2 (0x00007fb7021a6000)
+>> root@c27-00:~#
+> Both are built against libgssglue so at least they are consistent, and
+> that is not the source of the problem as I suspected.
+>
+> More information on the actual error would help.
+>
+> Simo.
+>
+>
+>> On 08/01/2013 05:06 PM, Simo Sorce wrote:
+>>> Rohit
+>>> Was libtirpc also updated ?
+>>> There has beena  change recently where we eliminated the use of
+>>> libgssglue and you will get issues if both nfs-utils and libtirpc are
+>>> not compiled to use the same gssapi library.
+>>>
+>>> Please post ldd output on rpc.gssd and libtirpc.so to verify if this is
+>>> the issue.
+>>>
+>>> Simo.
+>>>
+>>
+>
 
-Maybe there's a better name!
 
---b.
+-- 
+Rohit Mehta
+Computer Engineer
+University of Connecticut
+Engineering Computing Services
+371 Fairfield Road Unit 2031
+Storrs, CT 06269-2031
+
