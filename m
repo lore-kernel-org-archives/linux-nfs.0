@@ -1,166 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:51494 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758425Ab3HODzV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Aug 2013 23:55:21 -0400
-Message-ID: <520C50F7.3010209@oracle.com>
-Date: Wed, 14 Aug 2013 22:54:31 -0500
-From: Dave Kleikamp <dave.kleikamp@oracle.com>
+Received: from mail-vb0-f53.google.com ([209.85.212.53]:37468 "EHLO
+	mail-vb0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752528Ab3HBSAK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Aug 2013 14:00:10 -0400
+Received: by mail-vb0-f53.google.com with SMTP id i3so910563vbh.40
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Aug 2013 11:00:09 -0700 (PDT)
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Christian Kujau <lists@nerdbynature.de>, Karl Schmidt <karl@xtronics.com>,
-        Jonathan McDowell <noodles@earth.li>,
-        jfs-discussion@lists.sourceforge.net, 714974@bugs.debian.org,
-        Ben Hutchings <ben@decadent.org.uk>, linux-nfs@vger.kernel.org
-Subject: [PATCH] jfs: avoid misuse of cookie value of 2
-References: <1373245980.3428.46.camel@deadeye.wl.decadent.org.uk> <520554A5.3060401@xtronics.com> <alpine.DEB.2.10.1308092352550.7081@trent.utfs.org> <alpine.DEB.2.10.1308120113360.7081@trent.utfs.org> <alpine.DEB.2.10.1308120122500.7081@trent.utfs.org> <20130812162924.GB2395@fieldses.org>
-In-Reply-To: <20130812162924.GB2395@fieldses.org>
+In-Reply-To: <1375314445.14217.53.camel@leira.trondhjem.org>
+References: <20130731230051.GB31859@gmail.com>
+	<1375314445.14217.53.camel@leira.trondhjem.org>
+Date: Fri, 2 Aug 2013 13:00:09 -0500
+Message-ID: <CAKjHkpBux8Hpg+gPc9m=BG15+GBWn5drLG5p=RMS2cEU_iXFyQ@mail.gmail.com>
+Subject: Re: [PATCH] nfs: don't allow nfs_find_actor to match inodes of the
+ wrong type
+From: Quentin Barnes <qbarnes@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For the sake of those not watching
-https://bugzilla.kernel.org/show_bug.cgi?id=60737
+On Wed, Jul 31, 2013 at 6:47 PM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Wed, 2013-07-31 at 18:00 -0500, Quentin Barnes wrote:
+>> > Quite frankly, all I care about in a situation like this is that the
+>> > client doesn't Oops.
+>>
+>> Certainly, and his patch does do that, but it's also pointing out
+>> there's another bug running around.  And once you fix that bug, the
+>> original patch is no longer needed.
+>>
+>> > If a server is really this utterly broken, then there is no way we can
+>> > fix it on the client, and we're not even going to try.
+>>
+>> Of course.  But you also don't want to unnecessarily leave the
+>> client with an invalid inode that's not properly flagged and
+>> possibly leave another bug unfixed.
+>
+> Why is the invalid inode not being flagged a problem that needs to be
+> solved?
+> How does the patch that you've proposed change matters for the end user
+> or application?
 
-It looks like the problem is that jfs was using a cookie value of 2 for
-a real directory entry, where NFSv4 expect 2 to represent "..". This
-patch has so far only been lightly tested.
+Ah, good questions!  Let's see if I can address them to your satisfaction.
 
-NFSv4 reserves cookie values 0, 1 and 2 for a rewind, and the "." and ".."
-entries. jfs was using 0 and 1 for "." and "..", but 2 for a regular entry.
-This patch makes jfs conform by using 1 and 2 for "." and ".." and fixes
-any regular entry using the value 2.
+> Why is the invalid inode not being flagged a problem that needs to be
+> solved?
 
-Signed-off-by: Dave Kleikamp <dave.kleikamp@oracle.com>
+It's giving nfs_refresh_inode_locked() a consistent behavior.
 
-diff --git a/fs/jfs/jfs_dtree.c b/fs/jfs/jfs_dtree.c
-index 8743ba9..93466e8 100644
---- a/fs/jfs/jfs_dtree.c
-+++ b/fs/jfs/jfs_dtree.c
-@@ -349,11 +349,8 @@ static u32 add_index(tid_t tid, struct inode *ip, s64 bn, int slot)
- 
- 	ASSERT(DO_INDEX(ip));
- 
--	if (jfs_ip->next_index < 2) {
--		jfs_warn("add_index: next_index = %d.  Resetting!",
--			   jfs_ip->next_index);
--		jfs_ip->next_index = 2;
--	}
-+	if (jfs_ip->next_index < 3) {
-+		jfs_ip->next_index = 3;
- 
- 	index = jfs_ip->next_index++;
- 
-@@ -2864,7 +2861,7 @@ void dtInitRoot(tid_t tid, struct inode *ip, u32 idotdot)
- 		} else
- 			ip->i_size = 1;
- 
--		jfs_ip->next_index = 2;
-+		jfs_ip->next_index = 3;
- 	} else
- 		ip->i_size = IDATASIZE;
- 
-@@ -2951,7 +2948,7 @@ static void add_missing_indices(struct inode *inode, s64 bn)
- 	for (i = 0; i < p->header.nextindex; i++) {
- 		d = (struct ldtentry *) &p->slot[stbl[i]];
- 		index = le32_to_cpu(d->index);
--		if ((index < 2) || (index >= JFS_IP(inode)->next_index)) {
-+		if ((index < 3) || (index >= JFS_IP(inode)->next_index)) {
- 			d->index = cpu_to_le32(add_index(tid, inode, bn, i));
- 			if (dtlck->index >= dtlck->maxcnt)
- 				dtlck = (struct dt_lock *) txLinelock(dtlck);
-@@ -3031,7 +3028,7 @@ int jfs_readdir(struct file *file, struct dir_context *ctx)
- 	struct jfs_dirent *jfs_dirent;
- 	int jfs_dirents;
- 	int overflow, fix_page, page_fixed = 0;
--	static int unique_pos = 2;	/* If we can't fix broken index */
-+	static int unique_pos = 3;	/* If we can't fix broken index */
- 
- 	if (ctx->pos == DIREND)
- 		return 0;
-@@ -3039,15 +3036,16 @@ int jfs_readdir(struct file *file, struct dir_context *ctx)
- 	if (DO_INDEX(ip)) {
- 		/*
- 		 * persistent index is stored in directory entries.
--		 * Special cases:	 0 = .
--		 *			 1 = ..
-+		 * Special cases:	 0 = rewind
-+		 *			 1 = .
-+		 *			 2 = ..
- 		 *			-1 = End of directory
- 		 */
- 		do_index = 1;
- 
- 		dir_index = (u32) ctx->pos;
- 
--		if (dir_index > 1) {
-+		if (dir_index > 2) {
- 			struct dir_table_slot dirtab_slot;
- 
- 			if (dtEmpty(ip) ||
-@@ -3090,18 +3088,18 @@ int jfs_readdir(struct file *file, struct dir_context *ctx)
- 				return 0;
- 			}
- 		} else {
--			if (dir_index == 0) {
-+			if (dir_index < 2) {
- 				/*
- 				 * self "."
- 				 */
--				ctx->pos = 0;
-+				ctx->pos = 1;
- 				if (!dir_emit(ctx, ".", 1, ip->i_ino, DT_DIR))
- 					return 0;
- 			}
- 			/*
- 			 * parent ".."
- 			 */
--			ctx->pos = 1;
-+			ctx->pos = 2;
- 			if (!dir_emit(ctx, "..", 2, PARENT(ip), DT_DIR))
- 				return 0;
- 
-@@ -3122,22 +3120,24 @@ int jfs_readdir(struct file *file, struct dir_context *ctx)
- 		/*
- 		 * Legacy filesystem - OS/2 & Linux JFS < 0.3.6
- 		 *
--		 * pn = index = 0:	First entry "."
--		 * pn = 0; index = 1:	Second entry ".."
-+		 * pn = 0; index = 1:	First entry "."
-+		 * pn = 0; index = 2:	Second entry ".."
- 		 * pn > 0:		Real entries, pn=1 -> leftmost page
- 		 * pn = index = -1:	No more entries
- 		 */
- 		dtpos = ctx->pos;
--		if (dtpos == 0) {
-+		if (dtpos < 2) {
-+			ctx->pos = 1;
- 			/* build "." entry */
- 			if (!dir_emit(ctx, ".", 1, ip->i_ino, DT_DIR))
- 				return 0;
--			dtoffset->index = 1;
-+			dtoffset->index = 2;
- 			ctx->pos = dtpos;
- 		}
- 
- 		if (dtoffset->pn == 0) {
--			if (dtoffset->index == 1) {
-+			if (dtoffset->index == 2) {
-+				ctx->pos = 2;
- 				/* build ".." entry */
- 				if (!dir_emit(ctx, "..", 2, PARENT(ip), DT_DIR))
- 					return 0;
-@@ -3210,8 +3210,12 @@ int jfs_readdir(struct file *file, struct dir_context *ctx)
- 				 * directory index for the lost+found
- 				 * directory.  Rather than let it go,
- 				 * we can try to fix it.
-+				 *
-+				 * Additionally, a value of 2 used to be
-+				 * valid, but it didn't work well with
-+				 * NFSv4, so if found, we need to change it
- 				 */
--				if ((jfs_dirent->position < 2) ||
-+				if ((jfs_dirent->position < 3) ||
- 				    (jfs_dirent->position >=
- 				     JFS_IP(ip)->next_index)) {
- 					if (!page_fixed && !isReadOnly(ip)) {
+If nfs_refresh_inode_locked() has two paths depending on if
+nfs_inode_attrs_need_update() happens to be true or not,
+calling either nfs_update_inode() or nfs_check_inode_attributes().
+
+If nfs_refresh_inode_locked() happens to go down the
+nfs_update_inode() [which could simply be due to nothing other than
+timing], the problem of having an NFS server reusing a file handle
+would be caught, the inode flagged, and the error bubbled up to the
+caller.
+
+However, without the proposed change, if the path taken is to
+nfs_check_inode_attributes(), the error it caught is silently
+ignored (which I assert led to Benny's reported panic).
+
+> How does the patch that you've proposed change matters for the end user
+> or application?
+
+With the original patch, user space could either get back from a
+syscall on the file either a failure or success depending on how or
+when the nfs subsystem noticed that the NFS server had reused a file
+handle.
+
+With the new patch, user space will consistently always get a failure.
+
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
