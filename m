@@ -1,156 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f170.google.com ([209.85.160.170]:34674 "EHLO
-	mail-gh0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S968218Ab3HIQwO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:52:14 -0400
-Received: by mail-gh0-f170.google.com with SMTP id z10so1286923ghb.29
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:52:13 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
-        by mx.google.com with ESMTPSA id v68sm20682690yhn.22.2013.08.09.09.52.03
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
-        Fri, 09 Aug 2013 09:52:12 -0700 (PDT)
-Subject: [PATCH v2 29/33] NFS: Implement support for NFS4ERR_LEASE_MOVED in
- state manager
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 09 Aug 2013 12:52:02 -0400
-Message-ID: <20130809165202.5362.18066.stgit@seurat.1015granger.net>
-In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
-References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:11010 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752521Ab3HBQxf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 Aug 2013 12:53:35 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <20130802095555.07a2cda3@tlielax.poochiereds.net>
+References: <20130802095555.07a2cda3@tlielax.poochiereds.net> <20130801173846.28023.19009.stgit@warthog.procyon.org.uk> <20130801173902.28023.68819.stgit@warthog.procyon.org.uk>
+To: Jeff Layton <jlayton@redhat.com>, simo@redhat.com
+Cc: dhowells@redhat.com, keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
+        krbdev@mit.edu, "Serge E. Hallyn" <serge.hallyn@ubuntu.com>,
+        linux-kernel@vger.kernel.org,
+        "Eric W. Biederman" <ebiederm@xmission.com>
+Subject: Re: [PATCH 2/2] KEYS: Add per-user_namespace registers for persistent per-UID kerberos caches
+Date: Fri, 02 Aug 2013 17:53:25 +0100
+Message-ID: <7136.1375462405@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To recover from NFS4ERR_LEASE_MOVED, check each FSID for that server
-to see if it is still present.  Invoke nfs4_try_migration() if the
-FSID is no longer present on the server.
+Jeff Layton <jlayton@redhat.com> wrote:
 
-The FSID presence check also informs servers that this client has
-recognized the LEASE_MOVED condition and that therefore the server
-should no longer assert LEASE_MOVED for that client.
+> > +	/* -1 indicates the current user */
+> > +	if (_uid == (uid_t)-1) {
+> > +		uid = current_uid();
+>
+> Isn't it possible to have a valid uid of (unsigned int)-1? I know that
+> at least some sites use that for "nobody". Why not just require passing
+> in the correct UID?
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/nfs4_fs.h   |    2 ++
- fs/nfs/nfs4state.c |   64 +++++++++++++++++++++++++++++++++++++++++++++++++++-
- 2 files changed, 65 insertions(+), 1 deletion(-)
+See setresuid() and co. - there -1 is "don't change".
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index b4d7559..5c14712 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -30,6 +30,7 @@ enum nfs4_client_state {
- 	NFS4CLNT_PURGE_STATE,
- 	NFS4CLNT_BIND_CONN_TO_SESSION,
- 	NFS4CLNT_MOVED,
-+	NFS4CLNT_LEASE_MOVED,
- };
- 
- #define NFS4_RENEW_TIMEOUT		0x01
-@@ -359,6 +360,7 @@ extern void nfs4_schedule_state_manager(struct nfs_client *);
- extern void nfs4_schedule_path_down_recovery(struct nfs_client *clp);
- extern int nfs4_schedule_stateid_recovery(const struct nfs_server *, struct nfs4_state *);
- extern int nfs4_schedule_migration_recovery(const struct nfs_server *);
-+extern void nfs4_schedule_lease_moved_recovery(struct nfs_client *);
- extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags);
- extern void nfs41_handle_server_scope(struct nfs_client *,
- 				      struct nfs41_server_scope **);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 9443b67..175c0c7 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1231,6 +1231,22 @@ int nfs4_schedule_migration_recovery(const struct nfs_server *server)
- }
- EXPORT_SYMBOL_GPL(nfs4_schedule_migration_recovery);
- 
-+/**
-+ * nfs4_schedule_lease_moved_recovery - start lease-moved recovery
-+ *
-+ * @clp: server to check for moved leases
-+ *
-+ */
-+void nfs4_schedule_lease_moved_recovery(struct nfs_client *clp)
-+{
-+	dprintk("%s: scheduling lease-moved recovery for client ID %llx on %s\n",
-+		__func__, clp->cl_clientid, clp->cl_hostname);
-+
-+	set_bit(NFS4CLNT_LEASE_MOVED, &clp->cl_state);
-+	nfs4_schedule_state_manager(clp);
-+}
-+EXPORT_SYMBOL_GPL(nfs4_schedule_lease_moved_recovery);
-+
- int nfs4_wait_clnt_recover(struct nfs_client *clp)
- {
- 	int res;
-@@ -1660,7 +1676,6 @@ static int nfs4_recovery_handle_error(struct nfs_client *clp, int error)
- 			nfs4_state_end_reclaim_reboot(clp);
- 			break;
- 		case -NFS4ERR_STALE_CLIENTID:
--		case -NFS4ERR_LEASE_MOVED:
- 			set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
- 			nfs4_state_clear_reclaim_reboot(clp);
- 			nfs4_state_start_reclaim_reboot(clp);
-@@ -1962,6 +1977,45 @@ restart:
- 	return 0;
- }
- 
-+/*
-+ * Test each nfs_server on the clp's cl_superblocks list to see
-+ * if it's moved to another server.  Stop when the server no longer
-+ * returns NFS4ERR_LEASE_MOVED.
-+ */
-+static int nfs4_handle_lease_moved(struct nfs_client *clp)
-+{
-+	struct nfs_server *server;
-+
-+	dprintk("%s: lease moved reported on \"%s\"\n", __func__,
-+			clp->cl_hostname);
-+
-+	clp->cl_mig_gen++;
-+restart:
-+	rcu_read_lock();
-+	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
-+		struct inode *inode;
-+		int status;
-+
-+		if (server->mig_gen == clp->cl_mig_gen)
-+			continue;
-+		server->mig_gen = clp->cl_mig_gen;
-+
-+		rcu_read_unlock();
-+
-+		inode = server->super->s_root->d_inode;
-+		status = nfs4_proc_fsid_present(inode);
-+		if (status != -NFS4ERR_MOVED)
-+			goto restart;	/* wasn't this one */
-+		if (nfs4_try_migration(server) == -NFS4ERR_LEASE_MOVED)
-+			goto restart;	/* there are more */
-+		goto out;
-+	}
-+	rcu_read_unlock();
-+
-+out:
-+	return 0;
-+}
-+
- /**
-  * nfs4_discover_server_trunking - Detect server IP address trunking
-  *
-@@ -2300,6 +2354,14 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 			continue;
- 		}
- 
-+		if (test_and_clear_bit(NFS4CLNT_LEASE_MOVED, &clp->cl_state)) {
-+			section = "lease moved";
-+			status = nfs4_handle_lease_moved(clp);
-+			if (status < 0)
-+				goto out_error;
-+			continue;
-+		}
-+
- 		/* First recover reboot state... */
- 		if (test_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state)) {
- 			section = "reclaim reboot";
+> Looks good overall, but I share Daniel's concerns about making
+> krb5-specific infrastructure like this. Essentially this is just a
+> persistent keyring that's associated with a kuid, right? Perhaps this
+> could be done in such a way that it could be usable for other
+> applications in the future?
 
+It's not too hard, I suppose:
+
+	keyctl_get_persistent(uid, prefix, destring)
+
+eg:
+
+	keyctl_get_persistent(-1, "_krb.", KEYCTL_SPEC_PROCESS_KEYRING)
+
+giving:
+
+	struct user_namespace
+	  \___ .krb_cache keyring
+		\___ _krb.0 keyring
+		\___ _krb.5000 keyring
+		\___ _krb.5001 keyring
+		|	\___ tkt785 big_key
+		|	\___ tkt12345 big_key
+		\___ _afs.5000 keyring
+			\___ afs.redhat.com rxrpc
+
+The other way to do it is create one keyring per user and let userspace create
+subkeyrings under that:
+
+	struct user_namespace
+	  \___ .krb_cache keyring
+		\___ _uid_p.0 keyring
+		\___ _uid_p.5000 keyring
+		\___ _uid_p.5001 keyring
+			\___ krb keyring
+			|	\___ tkt785 big_key
+			|	\___ tkt12345 big_key
+			\___ afs keyring
+				\___ afs.redhat.com rxrpc
+
+In the above scheme, it might be worth just making these the same as the user
+keyring - which means KEYCTL_SPEC_USER_KEYRING will automatically target it.
+
+Simo:  I believe the problem you have with the user keyring is that it's not
+persistent beyond the life of the processes of that UID, right?
+
+David
