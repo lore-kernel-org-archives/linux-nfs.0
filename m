@@ -1,169 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:15740 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753888Ab3H1Tka (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Aug 2013 15:40:30 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-CC: <andros@netapp.com>
-Subject: [PATCH v2 06/16] RPCSEC_GSS: Further cleanups
-Date: Wed, 28 Aug 2013 15:40:11 -0400
-Message-ID: <1377718821-28159-6-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377718821-28159-5-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377718821-28159-1-git-send-email-Trond.Myklebust@netapp.com>
- <1377718821-28159-2-git-send-email-Trond.Myklebust@netapp.com>
- <1377718821-28159-3-git-send-email-Trond.Myklebust@netapp.com>
- <1377718821-28159-4-git-send-email-Trond.Myklebust@netapp.com>
- <1377718821-28159-5-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-qe0-f44.google.com ([209.85.128.44]:64306 "EHLO
+	mail-qe0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753679Ab3HBOaY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Aug 2013 10:30:24 -0400
+Received: by mail-qe0-f44.google.com with SMTP id 6so373025qeb.17
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Aug 2013 07:30:23 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain
+In-Reply-To: <20130802074353.514c8886@corrin.poochiereds.net>
+References: <20130725055209.GA15621@sh-el5.eng.rdu2.redhat.com>
+	<51F13948.3050100@redhat.com>
+	<CAJfpegtpcXz+i-3txRC_NjTsYjXP5S4oJUdGstG+-PWVzazEWQ@mail.gmail.com>
+	<51F81465.9010402@redhat.com>
+	<20130801163940.GA1356@tucsk.piliscsaba.szeredi.hu>
+	<51FAACD9.8020205@redhat.com>
+	<CAJfpegu1RXAYOGWyuCeckJ8WHfK=3dFc5bm1zsM=1Qt3zcfbsg@mail.gmail.com>
+	<20130802074353.514c8886@corrin.poochiereds.net>
+Date: Fri, 2 Aug 2013 16:30:23 +0200
+Message-ID: <CAJfpegthEZJEQhus=4CnvR+yb+vGj5c85kUnn18SrR0S1wbbtQ@mail.gmail.com>
+Subject: Re: [PATCH] [REPOST] fuse: drop dentry on failed revalidate
+From: Miklos Szeredi <miklos@szeredi.hu>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Ric Wheeler <rwheeler@redhat.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Anand Avati <avati@redhat.com>, Brian Foster <bfoster@redhat.com>,
+        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+        Alexander Viro <aviro@redhat.com>, David Howells <dhowells@redhat.com>,
+        Eric Paris <eparis@redhat.com>,
+        Linux NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Don't pass the rpc_client as a parameter, when what we really want is
-the net namespace.
+On Fri, Aug 2, 2013 at 1:43 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> Ok, took me a couple of times to look over the code but I think I
+> understand the problem now...
+>
+> IIUC, then this patch should only ever cause this to return -ENOENT in
+> a situation similar to the one in Anand's reproducer, right? The
+> mountpoint-to-be was unlinked in another tree, and thus we found it to
+> be invalid in the tree that we're mounting in. If so, then the dentry
+> didn't exist at some point during the race window. Returning -ENOENT
+> seems reasonable to me in that situation.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- net/sunrpc/auth_gss/auth_gss.c | 31 ++++++++++++++++++++-----------
- 1 file changed, 20 insertions(+), 11 deletions(-)
+Yes, that's one part of it and ENOENT fits perfectly.
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 672a67f..6323803 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -77,6 +77,7 @@ struct gss_auth {
- 	struct gss_api_mech *mech;
- 	enum rpc_gss_svc service;
- 	struct rpc_clnt *client;
-+	struct net *net;
- 	/*
- 	 * There are two upcall pipes; dentry[1], named "gssd", is used
- 	 * for the new text-based upcall; dentry[0] is named after the
-@@ -295,7 +296,7 @@ static void put_pipe_version(struct net *net)
- static void
- gss_release_msg(struct gss_upcall_msg *gss_msg)
- {
--	struct net *net = rpc_net_ns(gss_msg->auth->client);
-+	struct net *net = gss_msg->auth->net;
- 	if (!atomic_dec_and_test(&gss_msg->count))
- 		return;
- 	put_pipe_version(net);
-@@ -441,7 +442,7 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
- }
- 
- static struct gss_upcall_msg *
--gss_alloc_msg(struct gss_auth *gss_auth, struct rpc_clnt *clnt,
-+gss_alloc_msg(struct gss_auth *gss_auth,
- 		kuid_t uid, const char *service_name)
- {
- 	struct gss_upcall_msg *gss_msg;
-@@ -450,7 +451,7 @@ gss_alloc_msg(struct gss_auth *gss_auth, struct rpc_clnt *clnt,
- 	gss_msg = kzalloc(sizeof(*gss_msg), GFP_NOFS);
- 	if (gss_msg == NULL)
- 		return ERR_PTR(-ENOMEM);
--	vers = get_pipe_version(rpc_net_ns(clnt));
-+	vers = get_pipe_version(gss_auth->net);
- 	if (vers < 0) {
- 		kfree(gss_msg);
- 		return ERR_PTR(vers);
-@@ -472,14 +473,14 @@ gss_alloc_msg(struct gss_auth *gss_auth, struct rpc_clnt *clnt,
- }
- 
- static struct gss_upcall_msg *
--gss_setup_upcall(struct rpc_clnt *clnt, struct gss_auth *gss_auth, struct rpc_cred *cred)
-+gss_setup_upcall(struct gss_auth *gss_auth, struct rpc_cred *cred)
- {
- 	struct gss_cred *gss_cred = container_of(cred,
- 			struct gss_cred, gc_base);
- 	struct gss_upcall_msg *gss_new, *gss_msg;
- 	kuid_t uid = cred->cr_uid;
- 
--	gss_new = gss_alloc_msg(gss_auth, clnt, uid, gss_cred->gc_principal);
-+	gss_new = gss_alloc_msg(gss_auth, uid, gss_cred->gc_principal);
- 	if (IS_ERR(gss_new))
- 		return gss_new;
- 	gss_msg = gss_add_msg(gss_new);
-@@ -520,7 +521,7 @@ gss_refresh_upcall(struct rpc_task *task)
- 
- 	dprintk("RPC: %5u %s for uid %u\n",
- 		task->tk_pid, __func__, from_kuid(&init_user_ns, cred->cr_uid));
--	gss_msg = gss_setup_upcall(task->tk_client, gss_auth, cred);
-+	gss_msg = gss_setup_upcall(gss_auth, cred);
- 	if (PTR_ERR(gss_msg) == -EAGAIN) {
- 		/* XXX: warning on the first, under the assumption we
- 		 * shouldn't normally hit this case on a refresh. */
-@@ -559,7 +560,7 @@ out:
- static inline int
- gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
- {
--	struct net *net = rpc_net_ns(gss_auth->client);
-+	struct net *net = gss_auth->net;
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 	struct rpc_pipe *pipe;
- 	struct rpc_cred *cred = &gss_cred->gc_base;
-@@ -576,7 +577,7 @@ retry:
- 	timeout = 15 * HZ;
- 	if (!sn->gssd_running)
- 		timeout = HZ >> 2;
--	gss_msg = gss_setup_upcall(gss_auth->client, gss_auth, cred);
-+	gss_msg = gss_setup_upcall(gss_auth, cred);
- 	if (PTR_ERR(gss_msg) == -EAGAIN) {
- 		err = wait_event_interruptible_timeout(pipe_version_waitqueue,
- 				sn->pipe_version >= 0, timeout);
-@@ -832,7 +833,9 @@ err_unlink_pipe_1:
- static void gss_pipes_dentries_destroy_net(struct rpc_clnt *clnt,
- 					   struct rpc_auth *auth)
- {
--	struct net *net = rpc_net_ns(clnt);
-+	struct gss_auth *gss_auth = container_of(auth, struct gss_auth,
-+			rpc_auth);
-+	struct net *net = gss_auth->net;
- 	struct super_block *sb;
- 
- 	sb = rpc_get_sb_net(net);
-@@ -846,7 +849,9 @@ static void gss_pipes_dentries_destroy_net(struct rpc_clnt *clnt,
- static int gss_pipes_dentries_create_net(struct rpc_clnt *clnt,
- 					 struct rpc_auth *auth)
- {
--	struct net *net = rpc_net_ns(clnt);
-+	struct gss_auth *gss_auth = container_of(auth, struct gss_auth,
-+			rpc_auth);
-+	struct net *net = gss_auth->net;
- 	struct super_block *sb;
- 	int err = 0;
- 
-@@ -884,11 +889,12 @@ gss_create(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
- 			goto err_free;
- 	}
- 	gss_auth->client = clnt;
-+	gss_auth->net = get_net(rpc_net_ns(clnt));
- 	err = -EINVAL;
- 	gss_auth->mech = gss_mech_get_by_pseudoflavor(flavor);
- 	if (!gss_auth->mech) {
- 		dprintk("RPC:       Pseudoflavor %d not found!\n", flavor);
--		goto err_free;
-+		goto err_put_net;
- 	}
- 	gss_auth->service = gss_pseudoflavor_to_service(gss_auth->mech, flavor);
- 	if (gss_auth->service == 0)
-@@ -936,6 +942,8 @@ err_destroy_pipe_1:
- 	rpc_destroy_pipe_data(gss_auth->pipe[1]);
- err_put_mech:
- 	gss_mech_put(gss_auth->mech);
-+err_put_net:
-+	put_net(gss_auth->net);
- err_free:
- 	kfree(gss_auth->target_name);
- 	kfree(gss_auth);
-@@ -951,6 +959,7 @@ gss_free(struct gss_auth *gss_auth)
- 	rpc_destroy_pipe_data(gss_auth->pipe[0]);
- 	rpc_destroy_pipe_data(gss_auth->pipe[1]);
- 	gss_mech_put(gss_auth->mech);
-+	put_net(gss_auth->net);
- 	kfree(gss_auth->target_name);
- 
- 	kfree(gss_auth);
--- 
-1.8.3.1
+The other part is when the subtree is moved on another host.  Yes, NFS
+can reconnect it, but only if it is accessed through the new location.
+ Until then it will be inaccessible and the new location of the
+mountpoint not discoverable through /proc/mounts or in any way without
+outside knowledge.
 
+And there was a pre-existing mount under the moved directory we don't
+allow the d_drop in this "move" case either, and the mount is
+accessible through the old name.  I seem to recall that there was a
+discussion about this back then and Linus was quite adamant about
+mountpoints not being allowed to be dissolved or moved without an
+explicit action on the localhost (i.e. something that happens on
+remote hosts shouldn't affect the status or location of mounts on the
+localhost).
+
+So what happens in this case:
+
+host1: cd /nfs/foo/bar
+host2: mv /nfs/foo /nfs/old-foo
+host2: mkdir /nfs/foo
+host1: ls /nfs/foo  [drops "old-foo" and adds a new foo dentry]
+host1: mkdir bin [cwd is now not accessible from root]
+host1: mount --bind /bin ./bin [???]
+
+Currently that last one succeeds, with my patch it gives ENOENT, but
+that's not the best error, since the mountpoint does exist.
+
+Thanks,
+Miklos
