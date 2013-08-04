@@ -1,57 +1,142 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:13483 "EHLO mx12.netapp.com"
+Received: from mx4.wp.pl ([212.77.101.8]:46653 "EHLO mx4.wp.pl"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754677Ab3HGSOS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Aug 2013 14:14:18 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/5] nfs4.1: Initial SP4_MACH_CRED implementation
-Date: Wed, 7 Aug 2013 18:14:16 +0000
-Message-ID: <6A6290EE-02C8-434A-8EED-EF1AC05C63CE@netapp.com>
-References: <1375823311-18457-1-git-send-email-dros@netapp.com>
-In-Reply-To: <1375823311-18457-1-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset="us-ascii"
+	id S1751831Ab3HDH3n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 4 Aug 2013 03:29:43 -0400
+Message-ID: <51FE02E1.3080108@xl.wp.pl>
+Date: Sun, 04 Aug 2013 09:29:37 +0200
+From: Dawid Stawiarski <neeo@xl.wp.pl>
 MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: Performance/stability problems with nfs shares
+References: <51fb4bf3a9bde1.52024761@wp.pl> <20130802091242.23b9c904@corrin.poochiereds.net> <51FBC445.4000006@xl.wp.pl> <20130802154703.GL17581@fieldses.org>
+In-Reply-To: <20130802154703.GL17581@fieldses.org>
+Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha1; boundary="------------ms030502070205050007010901"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I've decided to change a few things since posting this, so unless someone is in the middle of reviewing, please wait for the new patchset.
+Kryptograficznie podpisana wiadomoED w formacie MIME.
 
-Thanks!
+--------------ms030502070205050007010901
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: quoted-printable
 
--dros
+W dniu 02.08.2013 17:47, J. Bruce Fields pisze:
+> On Fri, Aug 02, 2013 at 04:37:57PM +0200, Dawid Stawiarski wrote:
+>> W dniu 02.08.2013 15:12, Jeff Layton pisze:
+>>> Typically, a stack trace like that indicates that the process is
+>>> waiting for the server to respond. The first thing I would do would b=
+e
+>>> to ascertain whether the server is actually responding to these
+>>> requests.
+>>>
+>>
+>> The same share is accessible on other nodes, so the problem involves
+>> only one of the nodes (completly random) at a time.
+>
+> It's still conceivable that a server problem could cause it to stop
+> responding to calls only from a single client--it'd be useful if
+> possible to check a trace to see if that's what's happening.  If the
+> traffic is really huge then capturing and analyzing a good trace may be=
 
-On Aug 6, 2013, at 5:08 PM, Weston Andros Adamson <dros@netapp.com> wrote:
+> difficult.
 
-> These patches are the initial client-side SP4_MACH_CRED implementation.
-> 
-> Patch 1 is a repost with a few cleanups
-> 
-> Patch 2 adds the sp4 handler that replaces the cred on an rpc message (and
-> picks the right rpc_clnt).  Note that for now, we always use the machine cred
-> if supported - we could only use it if the user cred expires, but this is
-> simple and spec compliant.
-> 
-> Patch 3-5 implement SP4_MACH_CRED "features":
->  - cleanup - CLOSE and LOCKU use machine cred
->  - secinfo - SECINFO and SECINFO_NO_NAME use machine cred
->  - stateid - TEST_STATEID and FREE_STATEID use machine cred
-> 
-> There are three more features that I've been working on, but need to be tested
-> before I post:
->  - commit - COMMIT uses machine cred
->  - write - WRITE uses machine cred, forces stable writes unless commit feature
->            is also enabled
->  - recovery - OPEN and LOCK can use machine cred - only in recovery.
-> 
-> The commit and write cases should be easy to test against a hacked nfsd, but
-> I need to think more about how to test the recovery stuff...
-> 
-> -dros
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+We have almost one hundred NFS nodes, and they're all using the same=20
+shares with about the same volume of traffic - and only one of the nodes =
 
+at a time has a problem for only one share (other shares from the SAME=20
+server work OK on the "failing" node) - so it's hard to belive it's the=20
+server that causes the problem. And yes - with that amount of traffic=20
+it's hard to make a meaningfull trace on the server side (as noted=20
+before server is NexentaStor based, and not Linux).
+
+Dawid
+
+
+--------------ms030502070205050007010901
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Description: Kryptograficzna sygnatura S/MIME
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIMbDCC
+BjAwggUYoAMCAQICAwa/eTANBgkqhkiG9w0BAQUFADCBjDELMAkGA1UEBhMCSUwxFjAUBgNV
+BAoTDVN0YXJ0Q29tIEx0ZC4xKzApBgNVBAsTIlNlY3VyZSBEaWdpdGFsIENlcnRpZmljYXRl
+IFNpZ25pbmcxODA2BgNVBAMTL1N0YXJ0Q29tIENsYXNzIDEgUHJpbWFyeSBJbnRlcm1lZGlh
+dGUgQ2xpZW50IENBMB4XDTEzMDYwMzE4NTMwOVoXDTE0MDYwNDIxNTMxOFowUTEZMBcGA1UE
+DRMQUHRwMFlsNDBrREV3ZjZaQjEWMBQGA1UEAwwNbmVlb0B4bC53cC5wbDEcMBoGCSqGSIb3
+DQEJARYNbmVlb0B4bC53cC5wbDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBANlh
+cuj8w2ADTJR9gMknGcxPai1jIN5plafbCbOxQOqtwa+92nkuLWN5kuSpb3tfplx9oYxNNuvV
+EivvDusj8c5/EHlylylRvr8lBW3Wj/BHSMo1b60hIx/mLovevzA7z7oFRYGNrCZ7MrW5x9Dp
+dh82rcuseH1puiOn3/7u0/5ZueisWJj/JhZ4bJPJYVZ+Eqvjzk3YFraJkSA8GXVCYdBtYmDS
+S3P5YDGZEQJYTTq0/S8WnUXDjqlgnQtMsgeYgfo6MMklMYi1zpGeb4jY3XpQder5/gFUS7Vk
+AuxDiTwb7SOHThUF+Qqvriieg+IZtqU3GOBnttcStgXDtR1IDf8CAwEAAaOCAtMwggLPMAkG
+A1UdEwQCMAAwCwYDVR0PBAQDAgSwMB0GA1UdJQQWMBQGCCsGAQUFBwMCBggrBgEFBQcDBDAd
+BgNVHQ4EFgQUpRa3BRIf+bxFy2eCYX/cZofZiz8wHwYDVR0jBBgwFoAUU3Ltkpzg2ssBXHx+
+ljVO8tS4UYIwGAYDVR0RBBEwD4ENbmVlb0B4bC53cC5wbDCCAUwGA1UdIASCAUMwggE/MIIB
+OwYLKwYBBAGBtTcBAgMwggEqMC4GCCsGAQUFBwIBFiJodHRwOi8vd3d3LnN0YXJ0c3NsLmNv
+bS9wb2xpY3kucGRmMIH3BggrBgEFBQcCAjCB6jAnFiBTdGFydENvbSBDZXJ0aWZpY2F0aW9u
+IEF1dGhvcml0eTADAgEBGoG+VGhpcyBjZXJ0aWZpY2F0ZSB3YXMgaXNzdWVkIGFjY29yZGlu
+ZyB0byB0aGUgQ2xhc3MgMSBWYWxpZGF0aW9uIHJlcXVpcmVtZW50cyBvZiB0aGUgU3RhcnRD
+b20gQ0EgcG9saWN5LCByZWxpYW5jZSBvbmx5IGZvciB0aGUgaW50ZW5kZWQgcHVycG9zZSBp
+biBjb21wbGlhbmNlIG9mIHRoZSByZWx5aW5nIHBhcnR5IG9ibGlnYXRpb25zLjA2BgNVHR8E
+LzAtMCugKaAnhiVodHRwOi8vY3JsLnN0YXJ0c3NsLmNvbS9jcnR1MS1jcmwuY3JsMIGOBggr
+BgEFBQcBAQSBgTB/MDkGCCsGAQUFBzABhi1odHRwOi8vb2NzcC5zdGFydHNzbC5jb20vc3Vi
+L2NsYXNzMS9jbGllbnQvY2EwQgYIKwYBBQUHMAKGNmh0dHA6Ly9haWEuc3RhcnRzc2wuY29t
+L2NlcnRzL3N1Yi5jbGFzczEuY2xpZW50LmNhLmNydDAjBgNVHRIEHDAahhhodHRwOi8vd3d3
+LnN0YXJ0c3NsLmNvbS8wDQYJKoZIhvcNAQEFBQADggEBABrj5sKK9vcRX7FO2JJBF/0n5PUB
+fLwD91IOElcR8aUbsmOikPzjbv3QbjJA4BQwfuwe89i+i6X9aBd89ykl9+zRMprBXHD1g3Zq
+got0MRzYlK8Aqw6TBbLySmj9CFciGwmnDNcxMqfZVyGe+iVyyom8BMs3vPLF8AZwcnurBfRh
+PL9lDJflMM3WztZqwsi1CFC0agMY5ym9ddsTzZCLSwezPER+QF8IjhUm97u1pBRKF9J/lPgl
+JjBN/QbYNaedpuaoRTFfnqEal527kKSBZhcIbDeegZ0FRibJKBccCT1nv0huDr0OVc6CUCrD
+yxV8mCDPaZYPixrZah2IhxVxgrQwggY0MIIEHKADAgECAgEeMA0GCSqGSIb3DQEBBQUAMH0x
+CzAJBgNVBAYTAklMMRYwFAYDVQQKEw1TdGFydENvbSBMdGQuMSswKQYDVQQLEyJTZWN1cmUg
+RGlnaXRhbCBDZXJ0aWZpY2F0ZSBTaWduaW5nMSkwJwYDVQQDEyBTdGFydENvbSBDZXJ0aWZp
+Y2F0aW9uIEF1dGhvcml0eTAeFw0wNzEwMjQyMTAxNTVaFw0xNzEwMjQyMTAxNTVaMIGMMQsw
+CQYDVQQGEwJJTDEWMBQGA1UEChMNU3RhcnRDb20gTHRkLjErMCkGA1UECxMiU2VjdXJlIERp
+Z2l0YWwgQ2VydGlmaWNhdGUgU2lnbmluZzE4MDYGA1UEAxMvU3RhcnRDb20gQ2xhc3MgMSBQ
+cmltYXJ5IEludGVybWVkaWF0ZSBDbGllbnQgQ0EwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAw
+ggEKAoIBAQDHCYPMzi3YGrEppC4Tq5a+ijKDjKaIQZZVR63UbxIP6uq/I0fhCu+cQhoUfE6E
+RKKnu8zPf1Jwuk0tsvVCk6U9b+0UjM0dLep3ZdE1gblK/1FwYT5Pipsu2yOMluLqwvsuz9/9
+f1+1PKHG/FaR/wpbfuIqu54qzHDYeqiUfsYzoVflR80DAC7hmJ+SmZnNTWyUGHJbBpA8Q89l
+GxahNvuryGaC/o2/ceD2uYDX9U8Eg5DpIpGQdcbQeGarV04WgAUjjXX5r/2dabmtxWMZwhZn
+a//jdiSyrrSMTGKkDiXm6/3/4ebfeZuCYKzN2P8O2F/Xe2AC/Y7zeEsnR7FOp+uXAgMBAAGj
+ggGtMIIBqTAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBBjAdBgNVHQ4EFgQUU3Lt
+kpzg2ssBXHx+ljVO8tS4UYIwHwYDVR0jBBgwFoAUTgvvGqRAW6UXaYcwyjRoQ9BBrvIwZgYI
+KwYBBQUHAQEEWjBYMCcGCCsGAQUFBzABhhtodHRwOi8vb2NzcC5zdGFydHNzbC5jb20vY2Ew
+LQYIKwYBBQUHMAKGIWh0dHA6Ly93d3cuc3RhcnRzc2wuY29tL3Nmc2NhLmNydDBbBgNVHR8E
+VDBSMCegJaAjhiFodHRwOi8vd3d3LnN0YXJ0c3NsLmNvbS9zZnNjYS5jcmwwJ6AloCOGIWh0
+dHA6Ly9jcmwuc3RhcnRzc2wuY29tL3Nmc2NhLmNybDCBgAYDVR0gBHkwdzB1BgsrBgEEAYG1
+NwECATBmMC4GCCsGAQUFBwIBFiJodHRwOi8vd3d3LnN0YXJ0c3NsLmNvbS9wb2xpY3kucGRm
+MDQGCCsGAQUFBwIBFihodHRwOi8vd3d3LnN0YXJ0c3NsLmNvbS9pbnRlcm1lZGlhdGUucGRm
+MA0GCSqGSIb3DQEBBQUAA4ICAQAKgwh9eKssBly4Y4xerhy5I3dNoXHYfYa8PlVLL/qtXnkF
+gdtY1o95CfegFJTwqBBmf8pyTUnFsukDFUI22zF5bVHzuJ+GxhnSqN2sD1qetbYwBYK2iyYA
+5Pg7Er1A+hKMIzEzcduRkIMmCeUTyMyikfbUFvIBivtvkR8ZFAk22BZy+pJfAoedO61HTz4q
+SfQoCRcLN5A0t4DkuVhTMXIzuQ8CnykhExD6x4e6ebIbrjZLb7L+ocR0y4YjCl/Pd4MXU91y
+0vTipgr/O75CDUHDRHCCKBVmz/Rzkc/b970MEeHt5LC3NiWTgBSvrLEuVzBKM586YoRD9Dy3
+OHQgWI270g+5MYA8GfgI/EPT5G7xPbCDz+zjdH89PeR3U4So4lSXur6H6vp+m9TQXPF3a0Lw
+Zrp8MQ+Z77U1uL7TelWO5lApsbAonrqASfTpaprFVkL4nyGH+NHST2ZJPWIBk81i6Vw0ny0q
+ZW2Niy/QvVNKbb43A43ny076khXO7cNbBIRdJ/6qQNq9Bqb5C0Q5nEsFcj75oxQRqlKf6Tcv
+GbjxkJh8BYtv9ePsXklAxtm8J7GCUBthHSQgepbkOexhJ0wP8imUkyiPHQ0GvEnd83129fZj
+oEhdGwXV27ioRKbj/cIq7JRXun0NbeY+UdMYu9jGfIpDLtUUGSgsg2zMGs5R4jGCA90wggPZ
+AgEBMIGUMIGMMQswCQYDVQQGEwJJTDEWMBQGA1UEChMNU3RhcnRDb20gTHRkLjErMCkGA1UE
+CxMiU2VjdXJlIERpZ2l0YWwgQ2VydGlmaWNhdGUgU2lnbmluZzE4MDYGA1UEAxMvU3RhcnRD
+b20gQ2xhc3MgMSBQcmltYXJ5IEludGVybWVkaWF0ZSBDbGllbnQgQ0ECAwa/eTAJBgUrDgMC
+GgUAoIICHTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqGSIb3DQEJBTEPFw0xMzA4
+MDQwNzI5MzdaMCMGCSqGSIb3DQEJBDEWBBQ39rYuJO9wF+XGkX1e1kZm0sqSITBsBgkqhkiG
+9w0BCQ8xXzBdMAsGCWCGSAFlAwQBKjALBglghkgBZQMEAQIwCgYIKoZIhvcNAwcwDgYIKoZI
+hvcNAwICAgCAMA0GCCqGSIb3DQMCAgFAMAcGBSsOAwIHMA0GCCqGSIb3DQMCAgEoMIGlBgkr
+BgEEAYI3EAQxgZcwgZQwgYwxCzAJBgNVBAYTAklMMRYwFAYDVQQKEw1TdGFydENvbSBMdGQu
+MSswKQYDVQQLEyJTZWN1cmUgRGlnaXRhbCBDZXJ0aWZpY2F0ZSBTaWduaW5nMTgwNgYDVQQD
+Ey9TdGFydENvbSBDbGFzcyAxIFByaW1hcnkgSW50ZXJtZWRpYXRlIENsaWVudCBDQQIDBr95
+MIGnBgsqhkiG9w0BCRACCzGBl6CBlDCBjDELMAkGA1UEBhMCSUwxFjAUBgNVBAoTDVN0YXJ0
+Q29tIEx0ZC4xKzApBgNVBAsTIlNlY3VyZSBEaWdpdGFsIENlcnRpZmljYXRlIFNpZ25pbmcx
+ODA2BgNVBAMTL1N0YXJ0Q29tIENsYXNzIDEgUHJpbWFyeSBJbnRlcm1lZGlhdGUgQ2xpZW50
+IENBAgMGv3kwDQYJKoZIhvcNAQEBBQAEggEAnAwtCwTqa9mchRBLz4TW6vW1FfVK77EsOZXx
+JZziqSH5Up4MtXN9QBuk6Js7CfRuw+nHF4rwVq6zdrY6a6EEXNt6ha/PnVZh5xiWntdHrrfI
+q7mUBzYGRS/fOTgjHthbeThHy6Df0WWz1kIz6jpiBCxTRfyxUAKkryiL4v0aii5lC0yEArev
+b1SzhtxUUstBM+HqmXB3xoKVscriO0Jx3WMonWRqDluMUBsLGutxz4K7HUP7dfFbER67wb2K
+E0sQRkzgeBm+dj4smTI2zYVumIGG3SHsS/05oJCJfZhUGE/HgDekhS4ytEyse/O2Iee0ghCu
+bMkmLDr/0h1Qqbj4tQAAAAAAAA==
+--------------ms030502070205050007010901--
