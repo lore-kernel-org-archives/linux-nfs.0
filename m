@@ -1,151 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:15345 "EHLO mx11.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:33968 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753169Ab3H0U7F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Aug 2013 16:59:05 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-CC: <andros@netapp.com>
-Subject: [PATCH 13/15] SUNRPC: Remove the rpc_client->cl_dentry
-Date: Tue, 27 Aug 2013 16:58:50 -0400
-Message-ID: <1377637132-53318-13-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377637132-53318-12-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377637132-53318-1-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-2-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-3-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-4-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-5-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-6-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-7-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-8-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-9-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-10-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-11-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-12-git-send-email-Trond.Myklebust@netapp.com>
+	id S1753933Ab3HEUuI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Aug 2013 16:50:08 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd: Fix SP4_MACH_CRED negotiation in EXCHANGE_ID
+Date: Mon, 5 Aug 2013 20:50:06 +0000
+Message-ID: <6BD80745-EA0C-41B9-9C50-9F5FFE06C6C9@netapp.com>
+References: <1375732027-4905-1-git-send-email-dros@netapp.com>
+ <20130805204200.GE1583@fieldses.org>
+In-Reply-To: <20130805204200.GE1583@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It is now redundant.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- include/linux/sunrpc/clnt.h        |  1 -
- include/linux/sunrpc/rpc_pipe_fs.h |  2 +-
- net/sunrpc/clnt.c                  | 24 +++++++++++++-----------
- net/sunrpc/rpc_pipe.c              | 13 +++++++------
- 4 files changed, 21 insertions(+), 19 deletions(-)
+On Aug 5, 2013, at 4:42 PM, "J. Bruce Fields" <bfields@fieldses.org>
+ wrote:
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 0dccd01..76c0bf6 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -57,7 +57,6 @@ struct rpc_clnt {
- 	int			cl_nodelen;	/* nodename length */
- 	char 			cl_nodename[UNX_MAXNODENAME];
- 	struct rpc_pipe_dir_head cl_pipedir_objects;
--	struct dentry *		cl_dentry;
- 	struct rpc_clnt *	cl_parent;	/* Points to parent of clones */
- 	struct rpc_rtt		cl_rtt_default;
- 	struct rpc_timeout	cl_timeout_default;
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index 188e7fc..b0cf181 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -94,7 +94,7 @@ extern int rpc_queue_upcall(struct rpc_pipe *, struct rpc_pipe_msg *);
- 
- struct rpc_clnt;
- extern struct dentry *rpc_create_client_dir(struct dentry *, const char *, struct rpc_clnt *);
--extern int rpc_remove_client_dir(struct dentry *, struct rpc_clnt *);
-+extern int rpc_remove_client_dir(struct rpc_clnt *);
- 
- extern void rpc_init_pipe_dir_head(struct rpc_pipe_dir_head *pdh);
- extern void rpc_init_pipe_dir_object(struct rpc_pipe_dir_object *pdo,
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index e60b135..f1c3896 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -102,9 +102,7 @@ static void rpc_unregister_client(struct rpc_clnt *clnt)
- 
- static void __rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
- {
--	if (clnt->cl_dentry)
--		rpc_remove_client_dir(clnt->cl_dentry, clnt);
--	clnt->cl_dentry = NULL;
-+	rpc_remove_client_dir(clnt);
- }
- 
- static void rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
-@@ -154,21 +152,26 @@ rpc_setup_pipedir(struct super_block *pipefs_sb, struct rpc_clnt *clnt)
- {
- 	struct dentry *dentry;
- 
--	clnt->cl_dentry = NULL;
- 	dentry = rpc_setup_pipedir_sb(pipefs_sb, clnt);
- 	if (IS_ERR(dentry))
- 		return PTR_ERR(dentry);
--	clnt->cl_dentry = dentry;
- 	return 0;
- }
- 
- static inline int rpc_clnt_skip_event(struct rpc_clnt *clnt, unsigned long event)
- {
--	if (((event == RPC_PIPEFS_MOUNT) && clnt->cl_dentry) ||
--	    ((event == RPC_PIPEFS_UMOUNT) && !clnt->cl_dentry))
--		return 1;
--	if ((event == RPC_PIPEFS_MOUNT) && atomic_read(&clnt->cl_count) == 0)
--		return 1;
-+	switch (event) {
-+	case RPC_PIPEFS_MOUNT:
-+		if (clnt->cl_pipedir_objects.pdh_dentry != NULL)
-+			return 1;
-+		if (atomic_read(&clnt->cl_count) == 0)
-+			return 1;
-+		break;
-+	case RPC_PIPEFS_UMOUNT:
-+		if (clnt->cl_pipedir_objects.pdh_dentry == NULL)
-+			return 1;
-+		break;
-+	}
- 	return 0;
- }
- 
-@@ -185,7 +188,6 @@ static int __rpc_clnt_handle_event(struct rpc_clnt *clnt, unsigned long event,
- 			return -ENOENT;
- 		if (IS_ERR(dentry))
- 			return PTR_ERR(dentry);
--		clnt->cl_dentry = dentry;
- 		break;
- 	case RPC_PIPEFS_UMOUNT:
- 		__rpc_clnt_remove_pipedir(clnt);
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index cfeba77..a35b2f4 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -1055,15 +1055,16 @@ struct dentry *rpc_create_client_dir(struct dentry *dentry,
- 
- /**
-  * rpc_remove_client_dir - Remove a directory created with rpc_create_client_dir()
-- * @dentry: dentry for the pipe
-  * @rpc_client: rpc_client for the pipe
-  */
--int rpc_remove_client_dir(struct dentry *dentry, struct rpc_clnt *rpc_client)
-+int rpc_remove_client_dir(struct rpc_clnt *rpc_client)
- {
--	if (rpc_client->cl_pipedir_objects.pdh_dentry) {
--		rpc_destroy_pipe_dir_objects(&rpc_client->cl_pipedir_objects);
--		rpc_client->cl_pipedir_objects.pdh_dentry = NULL;
--	}
-+	struct dentry *dentry = rpc_client->cl_pipedir_objects.pdh_dentry;
-+
-+	if (dentry == NULL)
-+		return 0;
-+	rpc_destroy_pipe_dir_objects(&rpc_client->cl_pipedir_objects);
-+	rpc_client->cl_pipedir_objects.pdh_dentry = NULL;
- 	return rpc_rmdir_depopulate(dentry, rpc_clntdir_depopulate);
- }
- 
--- 
-1.8.3.1
+> On Mon, Aug 05, 2013 at 03:47:07PM -0400, Weston Andros Adamson wrote:
+>> - don't BUG_ON() when not SP4_NONE
+>> - calculate recv and send reserve sizes correctly
+> 
+> Looks good, thanks!  (Ouch to that BUG_ON...).
+> 
+> Could I get the client-side code you're using to test this?
+> 
+> It's fine if it's a mess, I just want to be able to run it once and see
+> a mount work.
+> 
+
+I just posted a client side patch to the list alongside this patch - it does the basic SP4_MACH_CRED negotiation and nothing else.
+
+I'll be posting more patches implementing specific SP4_MACH_CRED features shortly, but the already posted patch should work for you.
+
+-dros
+
+> --b.
+> 
+>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>> ---
+>> fs/nfsd/nfs4proc.c | 2 +-
+>> fs/nfsd/nfs4xdr.c  | 5 ++---
+>> 2 files changed, 3 insertions(+), 4 deletions(-)
+>> 
+>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+>> index 0d4c410..419572f 100644
+>> --- a/fs/nfsd/nfs4proc.c
+>> +++ b/fs/nfsd/nfs4proc.c
+>> @@ -1524,7 +1524,7 @@ static inline u32 nfsd4_write_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+>> static inline u32 nfsd4_exchange_id_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+>> {
+>> 	return (op_encode_hdr_size + 2 + 1 + /* eir_clientid, eir_sequenceid */\
+>> -		1 + 1 + 0 + /* eir_flags, spr_how, SP4_NONE (for now) */\
+>> +		1 + 1 + 2 + /* eir_flags, spr_how, spo_must_enforce & _allow */\
+>> 		2 + /*eir_server_owner.so_minor_id */\
+>> 		/* eir_server_owner.so_major_id<> */\
+>> 		XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + 1 +\
+>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> index 0c0f3ea9..c2a4701 100644
+>> --- a/fs/nfsd/nfs4xdr.c
+>> +++ b/fs/nfsd/nfs4xdr.c
+>> @@ -3360,7 +3360,8 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
+>> 		8 /* eir_clientid */ +
+>> 		4 /* eir_sequenceid */ +
+>> 		4 /* eir_flags */ +
+>> -		4 /* spr_how (SP4_NONE) */ +
+>> +		4 /* spr_how */ +
+>> +		8 /* spo_must_enforce, spo_must_allow */ +
+>> 		8 /* so_minor_id */ +
+>> 		4 /* so_major_id.len */ +
+>> 		(XDR_QUADLEN(major_id_sz) * 4) +
+>> @@ -3372,8 +3373,6 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
+>> 	WRITE32(exid->seqid);
+>> 	WRITE32(exid->flags);
+>> 
+>> -	/* state_protect4_r. Currently only support SP4_NONE */
+>> -	BUG_ON(exid->spa_how != SP4_NONE);
+>> 	WRITE32(exid->spa_how);
+>> 	switch (exid->spa_how) {
+>> 	case SP4_NONE:
+>> -- 
+>> 1.7.12.4 (Apple Git-37)
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
