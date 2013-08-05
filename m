@@ -1,50 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from trent.utfs.org ([94.185.90.103]:58740 "EHLO trent.utfs.org"
+Received: from mx1.redhat.com ([209.132.183.28]:46862 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754868Ab3HLUFG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Aug 2013 16:05:06 -0400
-Date: Mon, 12 Aug 2013 13:04:56 -0700 (PDT)
-From: Christian Kujau <lists@nerdbynature.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-cc: Karl Schmidt <karl@xtronics.com>, Jonathan McDowell <noodles@earth.li>,
-        jfs-discussion@lists.sourceforge.net, 714974@bugs.debian.org,
-        Ben Hutchings <ben@decadent.org.uk>, linux-nfs@vger.kernel.org,
-        dave.kleikamp@oracle.com
-Subject: Re: [Jfs-discussion] NFS 'readdir loop' error on JFS
-In-Reply-To: <20130812162924.GB2395@fieldses.org>
-Message-ID: <alpine.DEB.2.10.1308121257020.7081@trent.utfs.org>
-References: <1373245980.3428.46.camel@deadeye.wl.decadent.org.uk> <520554A5.3060401@xtronics.com> <alpine.DEB.2.10.1308092352550.7081@trent.utfs.org> <alpine.DEB.2.10.1308120113360.7081@trent.utfs.org> <alpine.DEB.2.10.1308120122500.7081@trent.utfs.org>
- <20130812162924.GB2395@fieldses.org>
-MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+	id S1754276Ab3HEDO1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 4 Aug 2013 23:14:27 -0400
+Message-ID: <1375672445.32485.8.camel@cr0>
+Subject: Re: [Patch net-next v2 5/8] sunrpc: use generic union inet_addr
+From: Cong Wang <amwang@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Date: Mon, 05 Aug 2013 11:14:05 +0800
+In-Reply-To: <20130802093625.2c70a330@tlielax.poochiereds.net>
+References: <1375427674-21735-1-git-send-email-amwang@redhat.com>
+	 <1375427674-21735-6-git-send-email-amwang@redhat.com>
+	 <20130802093625.2c70a330@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 12 Aug 2013 at 12:29, J. Bruce Fields wrote:
-> It might be interesting to get a network trace (something like tcpdump
-> -s0 -wtmp.pcap; then "wireshark tmp.pcap" and look at the "cookie"
-> fields in the readdir calls and replies.
+On Fri, 2013-08-02 at 09:36 -0400, Jeff Layton wrote:
+> On Fri,  2 Aug 2013 15:14:31 +0800
+> Cong Wang <amwang@redhat.com> wrote:
+> 
+> > From: Cong Wang <amwang@redhat.com>
+> > 
+> > sunrpc defines some helper functions for sockaddr, actually they
+> > can re-use the generic functions for union inet_addr too.
+> 
+> Only some of these patches in this series have made it to lists to
+> which I'm subscribed, so I may be missing some context here...
+> 
+> I'm not sure I really understand the value of "union inet_addr". Why
+> not just use the conventional method of passing around "struct sockaddr"
+> pointers, and then casting them to struct sockaddr_in/sockaddr_in6
+> depending on what the sa_family is set to?
 
-I've created #60737[0] to track this issue upstream and attached a pcap to 
-the bug, obtained while running "find <dir> -ls" on the client. But I fail 
-to look at the right details in tcpdump/wireshare, I don't see any cookie 
-information...
+Yes.
 
-> You could also just run "strace -egetdents64 -v ls" on the server on
-> the exported filesystem, in a problem directory, and see if the offsets
-> are unique.
+> 
+> With that you wouldn't need to leave the (now pointless) rpc_* wrappers
+> in place and could just call your new helpers directly.
+> 
 
-strace returned nothing for "getdents64", only "getdents". My test 
-filesystems are 256 MB in size, maybe this is too small for getdents64 to 
-be used? All the calls to "getdents" however return unique offsets, if I 
-did this right:
+J. Bruce asked the same question, see:
+http://marc.info/?l=linux-nfs&m=137475685903460&w=2
 
-$ strace -egetdents -v ls /mnt/disk_jfs/usr/share/terminfo/q 2>&1 | egrep -o "d_off=[0-9]*" | sort
+Thanks.
 
-When running "ls" (even w/o "-l") on the client on that NFS share, this 
-"readdir loop" message is printed.
-
-HTH,
-Christian.
-
-[0] https://bugzilla.kernel.org/show_bug.cgi?id=60737
