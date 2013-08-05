@@ -1,340 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:24631 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754684Ab3HPROB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Aug 2013 13:14:01 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
-Subject: Re: [PATCH/RFC]  Don't try to recover NFS locks when they are lost.
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130816093007.2095fd63@corrin.poochiereds.net>
-Date: Fri, 16 Aug 2013 13:13:44 -0400
-Cc: NeilBrown <neilb@suse.de>, NFS <linux-nfs@vger.kernel.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Bryan Schumaker <bjschuma@netapp.com>
-Message-Id: <A916E41E-86AE-49D1-A693-390CE4790061@oracle.com>
-References: <20130815123604.47755509@notabene.brown> <20130815084706.4811d74e@corrin.poochiereds.net> <20130816203821.1a61f3ce@notabene.brown> <20130816093007.2095fd63@corrin.poochiereds.net>
-To: Jeff Layton <jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:17919 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753254Ab3HEOo3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Aug 2013 10:44:29 -0400
+Message-ID: <51FFBA42.4050104@redhat.com>
+Date: Mon, 05 Aug 2013 15:44:18 +0100
+From: Ric Wheeler <rwheeler@redhat.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Bryan Schumaker <bjschuma@netapp.com>, Trond.Myklebust@netapp.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [RFC 4/5] NFSD: Defer copying
+References: <1374267830-30154-1-git-send-email-bjschuma@netapp.com> <1374267830-30154-5-git-send-email-bjschuma@netapp.com> <20130722185002.GB10109@fieldses.org> <51ED8549.3040308@netapp.com> <20130722193000.GD10109@fieldses.org> <51ED89DC.7050406@netapp.com> <20130722194331.GF10109@fieldses.org> <51ED8DD8.1060703@netapp.com> <20130722195556.GG10109@fieldses.org> <51FF647C.3020704@redhat.com> <20130805144127.GA31169@fieldses.org>
+In-Reply-To: <20130805144127.GA31169@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 08/05/2013 03:41 PM, J. Bruce Fields wrote:
+> On Mon, Aug 05, 2013 at 09:38:20AM +0100, Ric Wheeler wrote:
+>> On 07/22/2013 08:55 PM, J. Bruce Fields wrote:
+>>> On Mon, Jul 22, 2013 at 03:54:00PM -0400, Bryan Schumaker wrote:
+>>>> On 07/22/2013 03:43 PM, J. Bruce Fields wrote:
+>>>>> On Mon, Jul 22, 2013 at 03:37:00PM -0400, Bryan Schumaker wrote:
+>>>>>> On 07/22/2013 03:30 PM, J. Bruce Fields wrote:
+>>>>>>> On Mon, Jul 22, 2013 at 03:17:29PM -0400, Bryan Schumaker wrote:
+>>>>>>>> On 07/22/2013 02:50 PM, J. Bruce Fields wrote:
+>>>>>>>>> On Fri, Jul 19, 2013 at 05:03:49PM -0400, bjschuma@netapp.com wrote:
+>>>>>>>>>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>>>>>>>>>
+>>>>>>>>>> Rather than performing the copy right away, schedule it to run later and
+>>>>>>>>>> reply to the client.  Later, send a callback to notify the client that
+>>>>>>>>>> the copy has finished.
+>>>>>>>>> I believe you need to implement the referring triple support described
+>>>>>>>>> in http://tools.ietf.org/html/rfc5661#section-2.10.6.3 to fix the race
+>>>>>>>>> described in
+>>>>>>>>> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-15.1.3
+>>>>>>>>> .
+>>>>>>>> I'll re-read and re-write.
+>>>>>>>>
+>>>>>>>>> I see cb_delay initialized below, but not otherwise used.  Am I missing
+>>>>>>>>> anything?
+>>>>>>>> Whoops!  I was using that earlier to try to fake up a callback, but I eventually decided it's easier to just do the copy asynchronously.  I must have forgotten to take it out :(
+>>>>>>>>
+>>>>>>>>> What about OFFLOAD_STATUS and OFFLOAD_ABORT?
+>>>>>>>> I haven't thought out those too much... I haven't thought about a use for them on the client yet.
+>>>>>>> If it might be a long-running copy, I assume the client needs the
+>>>>>>> ability to abort if the caller is killed.
+>>>>>>>
+>>>>>>> (Dumb question: what happens on the network partition?  Does the server
+>>>>>>> abort the copy when it expires the client state?)
+>>>>>>>
+>>>>>>> In any case,
+>>>>>>> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-15.1.3
+>>>>>>> says "If a server's COPY operation returns a stateid, then the server
+>>>>>>> MUST also support these operations: CB_OFFLOAD, OFFLOAD_ABORT, and
+>>>>>>> OFFLOAD_STATUS."
+>>>>>>>
+>>>>>>> So even if we've no use for them on the client then we still need to
+>>>>>>> implement them (and probably just write a basic pynfs test).  Either
+>>>>>>> that or update the spec.
+>>>>>> Fair enough.  I'll think it out and do something!  Easy solution: save this patch for later and only support the sync version of copy for the final version of this patch series.
+>>>>> I can't remember--does the spec give the server a clear way to bail out
+>>>>> and tell the client to fall back on a normal copy in cases where the
+>>>>> server knows the copy could take an unreasonable amount of time?
+>>>>>
+>>>>> --b.
+>>>> I don't think so.  Is there ever a case where copying over the network would be slower than copying on the server?
+>>> Mybe not, but if the copy will take a minute, then we don't want to tie
+>>> up an rpc slot for a minute.
+>>>
+>>> --b.
+>> I think that we need to be able to handle copies that would take a
+>> lot longer than just a minute - this offload could take a very long
+>> time I assume depending on the size of the data getting copied and
+>> the back end storage device....
+> Bryan suggested in offline discussion that one possibility might be to
+> copy, say, at most a gigabyte at a time before returning and making the
+> client continue the copy.
+>
+> Where for "a gigabyte" read, "some amount that doesn't take too long to
+> copy but is still enough to allow close to full bandwidth".  Hopefully
+> that's an easy number to find.
+>
+> But based on
+> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-14.1.2
+> the COPY operation isn't designed for that--it doesn't give the option
+> of returning bytes_copied in the successful case.
+>
+> Maybe we should fix that in the spec, or maybe we just need to implement
+> the asynchronous case.  I guess it depends on which is easier,
+>
+> 	a) implementing the asynchronous case (and the referring-triple
+> 	   support to fix the COPY/callback races), or
+> 	b) implementing this sort of "short copy" loop in a way that gives
+> 	   good performance.
+>
+> On the client side it's clearly a) since you're forced to handle that
+> case anyway.  (Unless we argue that *all* copies should work that way,
+> and that the spec should ditch the asynchronous case.) On the server
+> side, b) looks easier.
+>
+> --b.
 
-On Aug 16, 2013, at 9:30 AM, Jeff Layton <jlayton@redhat.com> wrote:
+I am not sure that 1GB/time is enough - for a lot of servers, you could do an 
+enormous range since no data is actually moved inside of the target (just 
+pointers updated like in reflinked files for example)....
 
-> On Fri, 16 Aug 2013 20:38:21 +1000
-> NeilBrown <neilb@suse.de> wrote:
-> 
->> On Thu, 15 Aug 2013 08:47:06 -0400 Jeff Layton <jlayton@redhat.com> wrote:
->> 
->>> On Thu, 15 Aug 2013 12:36:04 +1000
->>> NeilBrown <neilb@suse.de> wrote:
->>> 
->>>> 
->>>> 
->>>> When an NFS (V4 specifically) client loses contact with the server it can
->>>> lose any locks that it holds.
->>>> Currently when it reconnects to the server it simply tries to reclaim
->>>> those locks.  This might succeed even though some other client has held and
->>>> released a lock in the mean time.  So the first client might think the file
->>>> is unchanged, but it isn't.  This isn't good.
->>>> 
->>>> If, when recovery happens, the locks cannot be claimed because some other
->>>> client still holds the lock, then  we get a message in the kernel logs, but
->>>> the client can still write.  So two clients can both think they have a lock
->>>> and can both write at the same time.  This is equally not good.
->>>> 
->>>> There was a patch a while ago
->>>>  http://comments.gmane.org/gmane.linux.nfs/41917
->>>> 
->>>> which tried to address some of this, but it didn't seem to go anywhere.
->>>> That patch would also send a signal to the process.  That might be useful
->>>> but I'm really just interested in failing the writes.
->>>> For NFSv4 (unlike v2/v3) there is a strong link between the lock and the
->>>> write request so we can fairly easily fail an IO of the lock is gone.
->>>> 
->>>> The patch below attempts to do this.  Does it make sense?
->>>> Because this is a fairly big change I introduces a module parameter
->>>> "recover_locks" which defaults to true (the current behaviour) but can be set
->>>> to "false" to tell the client not to try to recover things that were lost.
->>>> 
->>>> Comments?
->>>> 
->>>> Thanks,
->>>> NeilBrown
->>>> 
->>>> 
->>> 
->>> Failing a read or write when we can't recover a lock over the range
->>> seems reasonable to me. IIUC though, you're also saying that we
->>> shouldn't try to recover locks when the lease has expired? If so, then
->>> that seems wrong...
->>> 
->>> Isn't it the responsibility of the server to not allow a lock to be
->>> reclaimed when there has been a conflicting lock in the interim? It's
->>> quite possible (and even advantageous) for a server to hold onto a lock
->>> for a client that has missed renewing its lease when no other client has
->>> made a conflicting lock request.
->> 
->> Hi Jeff,
->> I had thought that too.  But when I looked I could find no evidence for it.
->> The only time a client can 'reclaim' a lock is during the grace period when
->> the server might have lost the lock due to a reboot.
->> The case I'm looking at is when neither host rebooted but there was a network
->> partition.
->> I think that if the server is to preserve the lock while no other client
->> contends it, it has to preserve the whole state and not return
->> NFS4ERR_EXPIRED.
->> Once the client gets NFS4ERR_EXPIRED it must assume that all related locks
->> may have been subject to conflicting locks from other clients.
->> 
->> Thanks,
->> NeilBrown
->> 
->> 
-> 
-> Ahh, a very good point. So I guess to reiterate, NFS4ERR_EXPIRED means
-> that the state (if there was any) has been purged, and all bets are
-> off. So yeah, ok...trying to reclaim locks at that point is probably
-> wrong.
-> 
-> That said...why is the server granting those lock reclaims in this case?
-> Presumably the grace period has passed and it shouldn't be granting any
-> reclaim requests, right?
-
-After NFS4ERR_EXPIRED, our client uses a normal open ( OPEN(CLAIM_NULL) ).  That is allowed any time the server is out of its grace period.
-
-
-
-> 
-> 
-> 
->>> 
->>>> 
->>>> diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
->>>> index f5c84c3..de0229b 100644
->>>> --- a/fs/nfs/nfs3proc.c
->>>> +++ b/fs/nfs/nfs3proc.c
->>>> @@ -826,9 +826,10 @@ static void nfs3_proc_read_setup(struct nfs_read_data *data, struct rpc_message
->>>> 	msg->rpc_proc = &nfs3_procedures[NFS3PROC_READ];
->>>> }
->>>> 
->>>> -static void nfs3_proc_read_rpc_prepare(struct rpc_task *task, struct nfs_read_data *data)
->>>> +static int nfs3_proc_read_rpc_prepare(struct rpc_task *task, struct nfs_read_data *data)
->>>> {
->>>> 	rpc_call_start(task);
->>>> +	return 0;
->>>> }
->>>> 
->>>> static int nfs3_write_done(struct rpc_task *task, struct nfs_write_data *data)
->>>> @@ -847,9 +848,10 @@ static void nfs3_proc_write_setup(struct nfs_write_data *data, struct rpc_messag
->>>> 	msg->rpc_proc = &nfs3_procedures[NFS3PROC_WRITE];
->>>> }
->>>> 
->>>> -static void nfs3_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_write_data *data)
->>>> +static int nfs3_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_write_data *data)
->>>> {
->>>> 	rpc_call_start(task);
->>>> +	return 0;
->>>> }
->>>> 
->>>> static void nfs3_proc_commit_rpc_prepare(struct rpc_task *task, struct nfs_commit_data *data)
->>>> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
->>>> index ee81e35..a468b345 100644
->>>> --- a/fs/nfs/nfs4_fs.h
->>>> +++ b/fs/nfs/nfs4_fs.h
->>>> @@ -135,6 +135,7 @@ struct nfs4_lock_state {
->>>> 	struct list_head	ls_locks;	/* Other lock stateids */
->>>> 	struct nfs4_state *	ls_state;	/* Pointer to open state */
->>>> #define NFS_LOCK_INITIALIZED 0
->>>> +#define NFS_LOCK_LOST        1
->>>> 	unsigned long		ls_flags;
->>>> 	struct nfs_seqid_counter	ls_seqid;
->>>> 	nfs4_stateid		ls_stateid;
->>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>>> index cf11799..bcbcd07 100644
->>>> --- a/fs/nfs/nfs4proc.c
->>>> +++ b/fs/nfs/nfs4proc.c
->>>> @@ -3907,15 +3907,19 @@ static void nfs4_proc_read_setup(struct nfs_read_data *data, struct rpc_message
->>>> 	nfs41_init_sequence(&data->args.seq_args, &data->res.seq_res, 0);
->>>> }
->>>> 
->>>> -static void nfs4_proc_read_rpc_prepare(struct rpc_task *task, struct nfs_read_data *data)
->>>> +static int nfs4_proc_read_rpc_prepare(struct rpc_task *task, struct nfs_read_data *data)
->>>> {
->>>> 	if (nfs4_setup_sequence(NFS_SERVER(data->header->inode),
->>>> 			&data->args.seq_args,
->>>> 			&data->res.seq_res,
->>>> 			task))
->>>> -		return;
->>>> -	nfs4_set_rw_stateid(&data->args.stateid, data->args.context,
->>>> -			data->args.lock_context, FMODE_READ);
->>>> +		return 0;
->>>> +	if (nfs4_set_rw_stateid(&data->args.stateid, data->args.context,
->>>> +				data->args.lock_context, FMODE_READ) == -EIO)
->>>> +		return -EIO;
->>>> +	if (unlikely(test_bit(NFS_CONTEXT_BAD, &data->args.context->flags)))
->>>> +		return -EIO;
->>>> +	return 0;
->>>> }
->>>> 
->>>> static int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data)
->>>> @@ -3990,15 +3994,19 @@ static void nfs4_proc_write_setup(struct nfs_write_data *data, struct rpc_messag
->>>> 	nfs41_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
->>>> }
->>>> 
->>>> -static void nfs4_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_write_data *data)
->>>> +static int nfs4_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_write_data *data)
->>>> {
->>>> 	if (nfs4_setup_sequence(NFS_SERVER(data->header->inode),
->>>> 			&data->args.seq_args,
->>>> 			&data->res.seq_res,
->>>> 			task))
->>>> -		return;
->>>> -	nfs4_set_rw_stateid(&data->args.stateid, data->args.context,
->>>> -			data->args.lock_context, FMODE_WRITE);
->>>> +		return 0;
->>>> +	if (nfs4_set_rw_stateid(&data->args.stateid, data->args.context,
->>>> +				data->args.lock_context, FMODE_WRITE) == -EIO)
->>>> +		return -EIO;
->>>> +	if (unlikely(test_bit(NFS_CONTEXT_BAD, &data->args.context->flags)))
->>>> +		return -EIO;
->>>> +	return 0;
->>>> }
->>>> 
->>>> static void nfs4_proc_commit_rpc_prepare(struct rpc_task *task, struct nfs_commit_data *data)
->>>> @@ -5380,6 +5388,11 @@ static int nfs4_lock_reclaim(struct nfs4_state *state, struct file_lock *request
->>>> 	return err;
->>>> }
->>>> 
->>>> +bool recover_locks = true;
->>>> +module_param(recover_locks, bool, 0644);
->>>> +MODULE_PARM_DESC(recovery_locks,
->>>> +		 "If the server reports that a lock might be lost, "
->>>> +		 "try to recovery it risking corruption.");
->>>> static int nfs4_lock_expired(struct nfs4_state *state, struct file_lock *request)
->>>> {
->>>> 	struct nfs_server *server = NFS_SERVER(state->inode);
->>>> @@ -5391,6 +5404,10 @@ static int nfs4_lock_expired(struct nfs4_state *state, struct file_lock *request
->>>> 	err = nfs4_set_lock_state(state, request);
->>>> 	if (err != 0)
->>>> 		return err;
->>>> +	if (!recover_locks) {
->>>> +		set_bit(NFS_LOCK_LOST, &request->fl_u.nfs4_fl.owner->ls_flags);
->>>> +		return 0;
->>>> +	}
->>>> 	do {
->>>> 		if (test_bit(NFS_DELEGATED_STATE, &state->flags) != 0)
->>>> 			return 0;
->>>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->>>> index e22862f..4d103ff 100644
->>>> --- a/fs/nfs/nfs4state.c
->>>> +++ b/fs/nfs/nfs4state.c
->>>> @@ -998,7 +998,9 @@ static int nfs4_copy_lock_stateid(nfs4_stateid *dst,
->>>> 	fl_pid = lockowner->l_pid;
->>>> 	spin_lock(&state->state_lock);
->>>> 	lsp = __nfs4_find_lock_state(state, fl_owner, fl_pid, NFS4_ANY_LOCK_TYPE);
->>>> -	if (lsp != NULL && test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags) != 0) {
->>>> +	if (lsp && test_bit(NFS_LOCK_LOST, &lsp->ls_flags))
->>>> +		ret = -EIO;
->>>> +	else if (lsp != NULL && test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags) != 0) {
->>>> 		nfs4_stateid_copy(dst, &lsp->ls_stateid);
->>>> 		ret = 0;
->>>> 		smp_rmb();
->>>> diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
->>>> index c041c41..a8f57c7 100644
->>>> --- a/fs/nfs/proc.c
->>>> +++ b/fs/nfs/proc.c
->>>> @@ -623,9 +623,10 @@ static void nfs_proc_read_setup(struct nfs_read_data *data, struct rpc_message *
->>>> 	msg->rpc_proc = &nfs_procedures[NFSPROC_READ];
->>>> }
->>>> 
->>>> -static void nfs_proc_read_rpc_prepare(struct rpc_task *task, struct nfs_read_data *data)
->>>> +static int nfs_proc_read_rpc_prepare(struct rpc_task *task, struct nfs_read_data *data)
->>>> {
->>>> 	rpc_call_start(task);
->>>> +	return 0;
->>>> }
->>>> 
->>>> static int nfs_write_done(struct rpc_task *task, struct nfs_write_data *data)
->>>> @@ -644,9 +645,10 @@ static void nfs_proc_write_setup(struct nfs_write_data *data, struct rpc_message
->>>> 	msg->rpc_proc = &nfs_procedures[NFSPROC_WRITE];
->>>> }
->>>> 
->>>> -static void nfs_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_write_data *data)
->>>> +static int nfs_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_write_data *data)
->>>> {
->>>> 	rpc_call_start(task);
->>>> +	return 0;
->>>> }
->>>> 
->>>> static void nfs_proc_commit_rpc_prepare(struct rpc_task *task, struct nfs_commit_data *data)
->>>> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
->>>> index 70a26c6..31db5c3 100644
->>>> --- a/fs/nfs/read.c
->>>> +++ b/fs/nfs/read.c
->>>> @@ -513,9 +513,10 @@ static void nfs_readpage_release_common(void *calldata)
->>>> void nfs_read_prepare(struct rpc_task *task, void *calldata)
->>>> {
->>>> 	struct nfs_read_data *data = calldata;
->>>> -	NFS_PROTO(data->header->inode)->read_rpc_prepare(task, data);
->>>> -	if (unlikely(test_bit(NFS_CONTEXT_BAD, &data->args.context->flags)))
->>>> -		rpc_exit(task, -EIO);
->>>> +	int err;
->>>> +	err = NFS_PROTO(data->header->inode)->read_rpc_prepare(task, data);
->>>> +	if (err)
->>>> +		rpc_exit(task, err);
->>>> }
->>>> 
->>>> static const struct rpc_call_ops nfs_read_common_ops = {
->>>> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
->>>> index f1bdb72..7816801 100644
->>>> --- a/fs/nfs/write.c
->>>> +++ b/fs/nfs/write.c
->>>> @@ -1265,9 +1265,10 @@ EXPORT_SYMBOL_GPL(nfs_pageio_reset_write_mds);
->>>> void nfs_write_prepare(struct rpc_task *task, void *calldata)
->>>> {
->>>> 	struct nfs_write_data *data = calldata;
->>>> -	NFS_PROTO(data->header->inode)->write_rpc_prepare(task, data);
->>>> -	if (unlikely(test_bit(NFS_CONTEXT_BAD, &data->args.context->flags)))
->>>> -		rpc_exit(task, -EIO);
->>>> +	int err;
->>>> +	err = NFS_PROTO(data->header->inode)->write_rpc_prepare(task, data);
->>>> +	if (err)
->>>> +		rpc_exit(task, err);
->>>> }
->>>> 
->>>> void nfs_commit_prepare(struct rpc_task *task, void *calldata)
->>>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
->>>> index 8651574..c71e12b 100644
->>>> --- a/include/linux/nfs_xdr.h
->>>> +++ b/include/linux/nfs_xdr.h
->>>> @@ -1419,12 +1419,12 @@ struct nfs_rpc_ops {
->>>> 	void	(*read_setup)   (struct nfs_read_data *, struct rpc_message *);
->>>> 	void	(*read_pageio_init)(struct nfs_pageio_descriptor *, struct inode *,
->>>> 				    const struct nfs_pgio_completion_ops *);
->>>> -	void	(*read_rpc_prepare)(struct rpc_task *, struct nfs_read_data *);
->>>> +	int	(*read_rpc_prepare)(struct rpc_task *, struct nfs_read_data *);
->>>> 	int	(*read_done)  (struct rpc_task *, struct nfs_read_data *);
->>>> 	void	(*write_setup)  (struct nfs_write_data *, struct rpc_message *);
->>>> 	void	(*write_pageio_init)(struct nfs_pageio_descriptor *, struct inode *, int,
->>>> 				     const struct nfs_pgio_completion_ops *);
->>>> -	void	(*write_rpc_prepare)(struct rpc_task *, struct nfs_write_data *);
->>>> +	int	(*write_rpc_prepare)(struct rpc_task *, struct nfs_write_data *);
->>>> 	int	(*write_done)  (struct rpc_task *, struct nfs_write_data *);
->>>> 	void	(*commit_setup) (struct nfs_commit_data *, struct rpc_message *);
->>>> 	void	(*commit_rpc_prepare)(struct rpc_task *, struct nfs_commit_data *);
->>> 
->>> 
->> 
-> 
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+ric
 
