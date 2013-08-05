@@ -1,41 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49858 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:14572 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753853Ab3HANR1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Aug 2013 09:17:27 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>, stable@vger.kernel.org
-Subject: [PATCH 3/4] svcrpc: fix kfree oops in gss-proxy code
-Date: Thu,  1 Aug 2013 09:17:21 -0400
-Message-Id: <1375363042-14440-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1375363042-14440-1-git-send-email-bfields@redhat.com>
-References: <1375363042-14440-1-git-send-email-bfields@redhat.com>
+	id S1754886Ab3HEIi0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Aug 2013 04:38:26 -0400
+Message-ID: <51FF647C.3020704@redhat.com>
+Date: Mon, 05 Aug 2013 09:38:20 +0100
+From: Ric Wheeler <rwheeler@redhat.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Bryan Schumaker <bjschuma@netapp.com>, Trond.Myklebust@netapp.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [RFC 4/5] NFSD: Defer copying
+References: <1374267830-30154-1-git-send-email-bjschuma@netapp.com> <1374267830-30154-5-git-send-email-bjschuma@netapp.com> <20130722185002.GB10109@fieldses.org> <51ED8549.3040308@netapp.com> <20130722193000.GD10109@fieldses.org> <51ED89DC.7050406@netapp.com> <20130722194331.GF10109@fieldses.org> <51ED8DD8.1060703@netapp.com> <20130722195556.GG10109@fieldses.org>
+In-Reply-To: <20130722195556.GG10109@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On 07/22/2013 08:55 PM, J. Bruce Fields wrote:
+> On Mon, Jul 22, 2013 at 03:54:00PM -0400, Bryan Schumaker wrote:
+>> On 07/22/2013 03:43 PM, J. Bruce Fields wrote:
+>>> On Mon, Jul 22, 2013 at 03:37:00PM -0400, Bryan Schumaker wrote:
+>>>> On 07/22/2013 03:30 PM, J. Bruce Fields wrote:
+>>>>> On Mon, Jul 22, 2013 at 03:17:29PM -0400, Bryan Schumaker wrote:
+>>>>>> On 07/22/2013 02:50 PM, J. Bruce Fields wrote:
+>>>>>>> On Fri, Jul 19, 2013 at 05:03:49PM -0400, bjschuma@netapp.com wrote:
+>>>>>>>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>>>>>>>
+>>>>>>>> Rather than performing the copy right away, schedule it to run later and
+>>>>>>>> reply to the client.  Later, send a callback to notify the client that
+>>>>>>>> the copy has finished.
+>>>>>>> I believe you need to implement the referring triple support described
+>>>>>>> in http://tools.ietf.org/html/rfc5661#section-2.10.6.3 to fix the race
+>>>>>>> described in
+>>>>>>> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-15.1.3
+>>>>>>> .
+>>>>>> I'll re-read and re-write.
+>>>>>>
+>>>>>>> I see cb_delay initialized below, but not otherwise used.  Am I missing
+>>>>>>> anything?
+>>>>>> Whoops!  I was using that earlier to try to fake up a callback, but I eventually decided it's easier to just do the copy asynchronously.  I must have forgotten to take it out :(
+>>>>>>
+>>>>>>> What about OFFLOAD_STATUS and OFFLOAD_ABORT?
+>>>>>> I haven't thought out those too much... I haven't thought about a use for them on the client yet.
+>>>>> If it might be a long-running copy, I assume the client needs the
+>>>>> ability to abort if the caller is killed.
+>>>>>
+>>>>> (Dumb question: what happens on the network partition?  Does the server
+>>>>> abort the copy when it expires the client state?)
+>>>>>
+>>>>> In any case,
+>>>>> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-15.1.3
+>>>>> says "If a server's COPY operation returns a stateid, then the server
+>>>>> MUST also support these operations: CB_OFFLOAD, OFFLOAD_ABORT, and
+>>>>> OFFLOAD_STATUS."
+>>>>>
+>>>>> So even if we've no use for them on the client then we still need to
+>>>>> implement them (and probably just write a basic pynfs test).  Either
+>>>>> that or update the spec.
+>>>> Fair enough.  I'll think it out and do something!  Easy solution: save this patch for later and only support the sync version of copy for the final version of this patch series.
+>>> I can't remember--does the spec give the server a clear way to bail out
+>>> and tell the client to fall back on a normal copy in cases where the
+>>> server knows the copy could take an unreasonable amount of time?
+>>>
+>>> --b.
+>> I don't think so.  Is there ever a case where copying over the network would be slower than copying on the server?
+> Mybe not, but if the copy will take a minute, then we don't want to tie
+> up an rpc slot for a minute.
+>
+> --b.
 
-mech_oid.data is an array, not kmalloc()'d memory.
+I think that we need to be able to handle copies that would take a lot longer 
+than just a minute - this offload could take a very long time I assume depending 
+on the size of the data getting copied and the back end storage device....
 
-Cc: stable@vger.kernel.org
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/auth_gss/gss_rpc_upcall.c |    1 -
- 1 file changed, 1 deletion(-)
+ric
 
-diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-index 1e1ccf5..af7ffd4 100644
---- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-@@ -328,7 +328,6 @@ void gssp_free_upcall_data(struct gssp_upcall_data *data)
- 	kfree(data->in_handle.data);
- 	kfree(data->out_handle.data);
- 	kfree(data->out_token.data);
--	kfree(data->mech_oid.data);
- 	free_svc_cred(&data->creds);
- }
- 
--- 
-1.7.9.5
 
