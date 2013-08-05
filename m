@@ -1,131 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f52.google.com ([209.85.213.52]:33610 "EHLO
-	mail-yh0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S968201Ab3HIQt6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:49:58 -0400
-Received: by mail-yh0-f52.google.com with SMTP id f11so1527532yha.39
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:49:58 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
-        by mx.google.com with ESMTPSA id s65sm20681954yhs.14.2013.08.09.09.49.57
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
-        Fri, 09 Aug 2013 09:49:57 -0700 (PDT)
-Subject: [PATCH v2 15/33] NFS: Update session draining barriers for NFSv4.0
- transport blocking
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 09 Aug 2013 12:49:56 -0400
-Message-ID: <20130809164956.5362.39856.stgit@seurat.1015granger.net>
-In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
-References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+Received: from fieldses.org ([174.143.236.118]:57569 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752915Ab3HESLY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Aug 2013 14:11:24 -0400
+Date: Mon, 5 Aug 2013 14:11:21 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Ric Wheeler <rwheeler@redhat.com>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC 4/5] NFSD: Defer copying
+Message-ID: <20130805181121.GA1583@fieldses.org>
+References: <20130722185002.GB10109@fieldses.org>
+ <51ED8549.3040308@netapp.com>
+ <20130722193000.GD10109@fieldses.org>
+ <51ED89DC.7050406@netapp.com>
+ <20130722194331.GF10109@fieldses.org>
+ <51ED8DD8.1060703@netapp.com>
+ <20130722195556.GG10109@fieldses.org>
+ <51FF647C.3020704@redhat.com>
+ <20130805144127.GA31169@fieldses.org>
+ <1375714236.7337.5.camel@leira.trondhjem.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1375714236.7337.5.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/nfs4state.c |   61 +++++++++++++++++++++++++++++-----------------------
- 1 file changed, 34 insertions(+), 27 deletions(-)
+On Mon, Aug 05, 2013 at 02:50:38PM +0000, Myklebust, Trond wrote:
+> On Mon, 2013-08-05 at 10:41 -0400, J. Bruce Fields wrote:
+> > Bryan suggested in offline discussion that one possibility might be to
+> > copy, say, at most a gigabyte at a time before returning and making the
+> > client continue the copy.
+> > 
+> > Where for "a gigabyte" read, "some amount that doesn't take too long to
+> > copy but is still enough to allow close to full bandwidth".  Hopefully
+> > that's an easy number to find.
+> > 
+> > But based on
+> > http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-14.1.2
+> > the COPY operation isn't designed for that--it doesn't give the option
+> > of returning bytes_copied in the successful case.
+> 
+> The reason is that the spec writers did not want to force the server to
+> copy the data in sequential order (or any other particular order for
+> that matter).
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 8826df3..d816d93 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -215,32 +215,6 @@ out:
- 	return cred;
- }
- 
--#if defined(CONFIG_NFS_V4_1)
--
--static int nfs41_setup_state_renewal(struct nfs_client *clp)
--{
--	int status;
--	struct nfs_fsinfo fsinfo;
--
--	if (!test_bit(NFS_CS_CHECK_LEASE_TIME, &clp->cl_res_state)) {
--		nfs4_schedule_state_renewal(clp);
--		return 0;
--	}
--
--	status = nfs4_proc_get_lease_time(clp, &fsinfo);
--	if (status == 0) {
--		/* Update lease time and schedule renewal */
--		spin_lock(&clp->cl_lock);
--		clp->cl_lease_time = fsinfo.lease_time * HZ;
--		clp->cl_last_renewal = jiffies;
--		spin_unlock(&clp->cl_lock);
--
--		nfs4_schedule_state_renewal(clp);
--	}
--
--	return status;
--}
--
- static void nfs4_end_drain_slot_table(struct nfs4_slot_table *tbl)
- {
- 	if (test_and_clear_bit(NFS4_SLOT_TBL_DRAINING, &tbl->slot_tbl_state)) {
-@@ -254,6 +228,11 @@ static void nfs4_end_drain_session(struct nfs_client *clp)
- {
- 	struct nfs4_session *ses = clp->cl_session;
- 
-+	if (clp->cl_slot_tbl) {
-+		nfs4_end_drain_slot_table(clp->cl_slot_tbl);
-+		return;
-+	}
-+
- 	if (ses != NULL) {
- 		nfs4_end_drain_slot_table(&ses->bc_slot_table);
- 		nfs4_end_drain_slot_table(&ses->fc_slot_table);
-@@ -278,6 +257,9 @@ static int nfs4_begin_drain_session(struct nfs_client *clp)
- 	struct nfs4_session *ses = clp->cl_session;
- 	int ret = 0;
- 
-+	if (clp->cl_slot_tbl)
-+		return nfs4_drain_slot_tbl(clp->cl_slot_tbl);
-+
- 	/* back channel */
- 	ret = nfs4_drain_slot_tbl(&ses->bc_slot_table);
- 	if (ret)
-@@ -286,6 +268,32 @@ static int nfs4_begin_drain_session(struct nfs_client *clp)
- 	return nfs4_drain_slot_tbl(&ses->fc_slot_table);
- }
- 
-+#if defined(CONFIG_NFS_V4_1)
-+
-+static int nfs41_setup_state_renewal(struct nfs_client *clp)
-+{
-+	int status;
-+	struct nfs_fsinfo fsinfo;
-+
-+	if (!test_bit(NFS_CS_CHECK_LEASE_TIME, &clp->cl_res_state)) {
-+		nfs4_schedule_state_renewal(clp);
-+		return 0;
-+	}
-+
-+	status = nfs4_proc_get_lease_time(clp, &fsinfo);
-+	if (status == 0) {
-+		/* Update lease time and schedule renewal */
-+		spin_lock(&clp->cl_lock);
-+		clp->cl_lease_time = fsinfo.lease_time * HZ;
-+		clp->cl_last_renewal = jiffies;
-+		spin_unlock(&clp->cl_lock);
-+
-+		nfs4_schedule_state_renewal(clp);
-+	}
-+
-+	return status;
-+}
-+
- static void nfs41_finish_session_reset(struct nfs_client *clp)
- {
- 	clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
-@@ -2083,7 +2091,6 @@ static int nfs4_bind_conn_to_session(struct nfs_client *clp)
- }
- #else /* CONFIG_NFS_V4_1 */
- static int nfs4_reset_session(struct nfs_client *clp) { return 0; }
--static void nfs4_end_drain_session(struct nfs_client *clp) { }
- 
- static int nfs4_bind_conn_to_session(struct nfs_client *clp)
- {
+Well, servers would still have the option not to return success unless
+the whole copy succeeded, so I'm not sure this *forces* servers to do
+sequential copies.
 
+(Unless we also got rid of the callback.)
+
+--b.
+
+> 
+> If the copy was short, then the client can't know which bytes were
+> copied; they could be at the beginning of the file, in the middle, or
+> even the very end. Basically, it needs to redo the entire copy in order
+> to be certain.
+> 
+> > Maybe we should fix that in the spec, or maybe we just need to implement
+> > the asynchronous case.  I guess it depends on which is easier,
+> > 
+> > 	a) implementing the asynchronous case (and the referring-triple
+> > 	   support to fix the COPY/callback races), or
+> > 	b) implementing this sort of "short copy" loop in a way that gives
+> > 	   good performance.
+> > 
+> > On the client side it's clearly a) since you're forced to handle that
+> > case anyway.  (Unless we argue that *all* copies should work that way,
+> > and that the spec should ditch the asynchronous case.) On the server
+> > side, b) looks easier.
+> > 
+> > --b.
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> N?????r??y????b?X??ǧv?^?)޺{.n?+????{???"??^n?r???z???h?????&???G???h?(?階?ݢj"???m??????z?ޖ???f???h???~?m
