@@ -1,299 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:25166 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:51253 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751726Ab3HARi6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Aug 2013 13:38:58 -0400
-Subject: [PATCH 1/2] KEYS: Implement a big key type that can save to tmpfs
-To: keyrings@linux-nfs.org, linux-nfs@vger.kernel.org
-From: David Howells <dhowells@redhat.com>
-Cc: krbdev@mit.edu, linux-kernel@vger.kernel.org, simo@redhat.com
-Date: Thu, 01 Aug 2013 18:38:54 +0100
-Message-ID: <20130801173854.28023.82045.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20130801173846.28023.19009.stgit@warthog.procyon.org.uk>
-References: <20130801173846.28023.19009.stgit@warthog.procyon.org.uk>
+	id S1754062Ab3HESac convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Aug 2013 14:30:32 -0400
+Date: Mon, 5 Aug 2013 14:30:30 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Ric Wheeler <rwheeler@redhat.com>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC 4/5] NFSD: Defer copying
+Message-ID: <20130805183030.GB1583@fieldses.org>
+References: <51ED8549.3040308@netapp.com>
+ <20130722193000.GD10109@fieldses.org>
+ <51ED89DC.7050406@netapp.com>
+ <20130722194331.GF10109@fieldses.org>
+ <51ED8DD8.1060703@netapp.com>
+ <20130722195556.GG10109@fieldses.org>
+ <51FF647C.3020704@redhat.com>
+ <20130805144127.GA31169@fieldses.org>
+ <1375714236.7337.5.camel@leira.trondhjem.org>
+ <20130805181121.GA1583@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20130805181121.GA1583@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Implement a big key type that can save its contents to tmpfs and thus
-swapspace when memory is tight.  This is useful for Kerberos ticket caches.
+On Mon, Aug 05, 2013 at 02:11:21PM -0400, J. Bruce Fields wrote:
+> On Mon, Aug 05, 2013 at 02:50:38PM +0000, Myklebust, Trond wrote:
+> > On Mon, 2013-08-05 at 10:41 -0400, J. Bruce Fields wrote:
+> > > Bryan suggested in offline discussion that one possibility might be to
+> > > copy, say, at most a gigabyte at a time before returning and making the
+> > > client continue the copy.
+> > > 
+> > > Where for "a gigabyte" read, "some amount that doesn't take too long to
+> > > copy but is still enough to allow close to full bandwidth".  Hopefully
+> > > that's an easy number to find.
+> > > 
+> > > But based on
+> > > http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-14.1.2
+> > > the COPY operation isn't designed for that--it doesn't give the option
+> > > of returning bytes_copied in the successful case.
+> > 
+> > The reason is that the spec writers did not want to force the server to
+> > copy the data in sequential order (or any other particular order for
+> > that matter).
+> 
+> Well, servers would still have the option not to return success unless
+> the whole copy succeeded, so I'm not sure this *forces* servers to do
+> sequential copies.
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+Uh, sorry, I was confused, I missed the write_response4 in the COPY
+result entirely.
 
- include/keys/big_key-type.h |   27 ++++++
- include/linux/key.h         |    1 
- security/keys/Kconfig       |   11 +++
- security/keys/Makefile      |    1 
- security/keys/big_key.c     |  181 +++++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 221 insertions(+)
- create mode 100644 include/keys/big_key-type.h
- create mode 100644 security/keys/big_key.c
+Yeah obviously that's useless.  (Why's it there anyway?  No client or
+application is going to care about anything other than whether it's 0 or
+not, right?)
 
-diff --git a/include/keys/big_key-type.h b/include/keys/big_key-type.h
-new file mode 100644
-index 0000000..6610d46
---- /dev/null
-+++ b/include/keys/big_key-type.h
-@@ -0,0 +1,27 @@
-+/* Big capacity key type.
-+ *
-+ * Copyright (C) 2013 Red Hat, Inc. All Rights Reserved.
-+ * Written by David Howells (dhowells@redhat.com)
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public License
-+ * as published by the Free Software Foundation; either version
-+ * 2 of the License, or (at your option) any later version.
-+ */
-+
-+#ifndef _KEYS_BIG_KEY_TYPE_H
-+#define _KEYS_BIG_KEY_TYPE_H
-+
-+#include <linux/key-type.h>
-+
-+extern struct key_type key_type_big_key;
-+
-+struct key_preparsed_payload;
-+
-+extern int big_key_instantiate(struct key *key, struct key_preparsed_payload *prep);
-+extern void big_key_revoke(struct key *key);
-+extern void big_key_destroy(struct key *key);
-+extern void big_key_describe(const struct key *big_key, struct seq_file *m);
-+extern long big_key_read(const struct key *key, char __user *buffer, size_t buflen);
-+
-+#endif /* _KEYS_BIG_KEY_TYPE_H */
-diff --git a/include/linux/key.h b/include/linux/key.h
-index 2417f78..010dbb6 100644
---- a/include/linux/key.h
-+++ b/include/linux/key.h
-@@ -201,6 +201,7 @@ struct key {
- 			unsigned long		value;
- 			void __rcu		*rcudata;
- 			void			*data;
-+			void			*data2[2];
- 		} payload;
- 		struct assoc_array keys;
- 	};
-diff --git a/security/keys/Kconfig b/security/keys/Kconfig
-index 15e0dfe..eafb335 100644
---- a/security/keys/Kconfig
-+++ b/security/keys/Kconfig
-@@ -20,6 +20,17 @@ config KEYS
- 
- 	  If you are unsure as to whether this is required, answer N.
- 
-+config BIG_KEYS
-+	tristate "Large payload keys"
-+	depends on KEYS
-+	select TMPFS
-+	help
-+	  This option provides support for holding large keys within the kernel
-+	  (for example Kerberos ticket caches).  The data may be stored out to
-+	  swapspace by tmpfs.
-+
-+	  If you are unsure as to whether this is required, answer N.
-+
- config TRUSTED_KEYS
- 	tristate "TRUSTED KEYS"
- 	depends on KEYS && TCG_TPM
-diff --git a/security/keys/Makefile b/security/keys/Makefile
-index 504aaa0..c487c77 100644
---- a/security/keys/Makefile
-+++ b/security/keys/Makefile
-@@ -22,5 +22,6 @@ obj-$(CONFIG_SYSCTL) += sysctl.o
- #
- # Key types
- #
-+obj-$(CONFIG_BIG_KEYS) += big_key.o
- obj-$(CONFIG_TRUSTED_KEYS) += trusted.o
- obj-$(CONFIG_ENCRYPTED_KEYS) += encrypted-keys/
-diff --git a/security/keys/big_key.c b/security/keys/big_key.c
-new file mode 100644
-index 0000000..bd19afc
---- /dev/null
-+++ b/security/keys/big_key.c
-@@ -0,0 +1,181 @@
-+/* Big capacity key type
-+ *
-+ * Copyright (C) 2013 Red Hat, Inc. All Rights Reserved.
-+ * Written by David Howells (dhowells@redhat.com)
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public Licence
-+ * as published by the Free Software Foundation; either version
-+ * 2 of the Licence, or (at your option) any later version.
-+ */
-+
-+#include <linux/module.h>
-+#include <linux/init.h>
-+#include <linux/seq_file.h>
-+#include <linux/file.h>
-+#include <linux/shmem_fs.h>
-+#include <linux/err.h>
-+#include <keys/user-type.h>
-+#include <keys/big_key-type.h>
-+
-+MODULE_LICENSE("GPL");
-+
-+/*
-+ * big_key defined keys take an arbitrary string as the description and an
-+ * arbitrary blob of data as the payload
-+ */
-+struct key_type key_type_big_key = {
-+	.name			= "big_key",
-+	.def_lookup_type	= KEYRING_SEARCH_LOOKUP_DIRECT,
-+	.instantiate		= big_key_instantiate,
-+	.match			= user_match,
-+	.revoke			= big_key_revoke,
-+	.destroy		= big_key_destroy,
-+	.describe		= big_key_describe,
-+	.read			= big_key_read,
-+};
-+
-+/*
-+ * Instantiate a big key
-+ */
-+int big_key_instantiate(struct key *key, struct key_preparsed_payload *prep)
-+{
-+	struct path *path = (struct path *)&key->payload.data2;
-+	struct file *file;
-+	ssize_t written;
-+	size_t datalen = prep->datalen;
-+	int ret;
-+
-+	ret = -EINVAL;
-+	if (datalen <= 0 || datalen > 1024 * 1024 || !prep->data)
-+		goto error;
-+
-+	/* Set an arbitrary quota */
-+	ret = key_payload_reserve(key, 16);
-+	if (ret < 0)
-+		goto error;
-+
-+	/* Create a shmem file to store the data in.  This will permit the data
-+	 * to be swapped out if needed.
-+	 *
-+	 * TODO: Encrypt the stored data with a temporary key.
-+	 */
-+	file = shmem_file_setup("", datalen, 0);
-+	if (IS_ERR(file))
-+		goto err_quota;
-+
-+	written = kernel_write(file, prep->data, prep->datalen, 0);
-+	if (written != datalen) {
-+		if (written >= 0)
-+			ret = -ENOMEM;
-+		goto err_fput;
-+	}
-+
-+	/* Pin the mount and dentry to the key so that we can open it again
-+	 * later
-+	 */
-+	*path = file->f_path;
-+	path_get(path);
-+	fput(file);
-+	return 0;
-+
-+err_fput:
-+	fput(file);
-+err_quota:
-+	key_payload_reserve(key, 0);
-+error:
-+	return ret;
-+}
-+
-+/*
-+ * match big_keys on their name
-+ */
-+int big_key_match(const struct key *key, const void *description)
-+{
-+	return strcmp(key->description, description) == 0;
-+}
-+
-+/*
-+ * dispose of the links from a revoked keyring
-+ * - called with the key sem write-locked
-+ */
-+void big_key_revoke(struct key *key)
-+{
-+	struct path *path = (struct path *)&key->payload.data2;
-+
-+	/* clear the quota */
-+	key_payload_reserve(key, 0);
-+	if (key_is_instantiated(key))
-+		vfs_truncate(path, 0);
-+}
-+
-+/*
-+ * dispose of the data dangling from the corpse of a big_key key
-+ */
-+void big_key_destroy(struct key *key)
-+{
-+	struct path *path = (struct path *)&key->payload.data2;
-+	path_put(path);
-+	path->mnt = NULL;
-+	path->dentry = NULL;
-+}
-+
-+/*
-+ * describe the big_key key
-+ */
-+void big_key_describe(const struct key *key, struct seq_file *m)
-+{
-+	struct path *path = (struct path *)&key->payload.data2;
-+	struct dentry *dentry = path->dentry;
-+	struct inode *inode = dentry ? dentry->d_inode : NULL;
-+
-+	seq_puts(m, key->description);
-+
-+	if (inode &&
-+	    key_is_instantiated(key) &&
-+	    !test_bit(KEY_FLAG_REVOKED, &key->flags))
-+		seq_printf(m, ": %llu", i_size_read(inode));
-+}
-+
-+/*
-+ * read the key data
-+ * - the key's semaphore is read-locked
-+ */
-+long big_key_read(const struct key *key, char __user *buffer, size_t buflen)
-+{
-+	struct path *path = (struct path *)&key->payload.data2;
-+	struct file *file;
-+	loff_t pos, size = i_size_read(path->dentry->d_inode);
-+	long ret;
-+
-+	ret = size;
-+	if (buffer && buflen >= size) {
-+		file = dentry_open(path, O_RDONLY, current_cred());
-+		if (IS_ERR(file))
-+			return PTR_ERR(file);
-+
-+		pos = 0;
-+		ret = vfs_read(file, buffer, size, &pos);
-+		fput(file);
-+		if (ret >= 0 && ret != size)
-+			return -EIO;
-+	}
-+
-+	return ret;
-+}
-+
-+/*
-+ * Module stuff
-+ */
-+static int __init big_key_init(void)
-+{
-+	return register_key_type(&key_type_big_key);
-+}
-+
-+static void __exit big_key_cleanup(void)
-+{
-+	unregister_key_type(&key_type_big_key);
-+}
-+
-+module_init(big_key_init);
-+module_exit(big_key_cleanup);
+So maybe it would be useful to add a way for a server to optionally
+communicate a sequential bytes_written, I don't know.
 
+Without that, at least, I think the only reasonable implementation of
+"dumb" server-side copies will need to implement the asynchronous case
+(and referring triples).  Which might be worth doing.
+
+But for the first cut maybe we should instead *only* implement this on
+btrfs (or whoever else can do quick copies).
+
+--b.
+
+> 
+> (Unless we also got rid of the callback.)
+> > If the copy was short, then the client can't know which bytes were
+> > copied; they could be at the beginning of the file, in the middle, or
+> > even the very end. Basically, it needs to redo the entire copy in order
+> > to be certain.
+> > 
+> > > Maybe we should fix that in the spec, or maybe we just need to implement
+> > > the asynchronous case.  I guess it depends on which is easier,
+> > > 
+> > > 	a) implementing the asynchronous case (and the referring-triple
+> > > 	   support to fix the COPY/callback races), or
+> > > 	b) implementing this sort of "short copy" loop in a way that gives
+> > > 	   good performance.
+> > > 
+> > > On the client side it's clearly a) since you're forced to handle that
+> > > case anyway.  (Unless we argue that *all* copies should work that way,
+> > > and that the spec should ditch the asynchronous case.) On the server
+> > > side, b) looks easier.
+> > > 
+> > > --b.
+> > 
+> > -- 
+> > Trond Myklebust
+> > Linux NFS client maintainer
+> > 
+> > NetApp
+> > Trond.Myklebust@netapp.com
+> > www.netapp.com
+> > N?????r??y????b?X??ǧv?^?)޺{.n?+????{???"??^n?r???z???h?????&???G???h?(?階?ݢj"???m??????z?ޖ???f???h???~?m
