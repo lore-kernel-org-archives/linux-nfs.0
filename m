@@ -1,131 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:18269 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:20054 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932368Ab3HNXZQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Aug 2013 19:25:16 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 09/13] NFSv4: Add tracepoints for debugging the idmapper
-Date: Wed, 14 Aug 2013 19:24:54 -0400
-Message-ID: <1376522698-44596-10-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1376522698-44596-9-git-send-email-Trond.Myklebust@netapp.com>
-References: <1376522698-44596-1-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-2-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-3-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-4-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-5-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-6-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-7-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-8-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-9-git-send-email-Trond.Myklebust@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1753485Ab3HEPLL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Aug 2013 11:11:11 -0400
+Date: Mon, 5 Aug 2013 11:11:06 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Nix <nix@esperi.org.uk>, NFS list <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        dhowells@redhat.com
+Subject: Re: [3.10.4] NFS locking panic, plus persisting NFS shutdown panic
+ from 3.9.*
+Message-ID: <20130805111106.73d6ab90@tlielax.poochiereds.net>
+In-Reply-To: <20130805110427.509db424@tlielax.poochiereds.net>
+References: <8761vlv4z9.fsf@spindle.srvr.nix>
+	<20130805084436.69ee4415@corrin.poochiereds.net>
+	<87siyotcri.fsf@spindle.srvr.nix>
+	<20130805110427.509db424@tlielax.poochiereds.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add tracepoints to help debug uid/gid mappings to username/group.
+On Mon, 5 Aug 2013 11:04:27 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/idmap.c     |  5 +++++
- fs/nfs/nfs4trace.h | 41 +++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 46 insertions(+)
+> On Mon, 05 Aug 2013 15:48:01 +0100
+> Nix <nix@esperi.org.uk> wrote:
+> 
+> > On 5 Aug 2013, Jeff Layton stated:
+> > 
+> > > On Sun, 04 Aug 2013 16:40:58 +0100
+> > > Nix <nix@esperi.org.uk> wrote:
+> > >
+> > >> I just got this panic on 3.10.4, in the middle of a large parallel
+> > >> compilation (of Chromium, as it happens) over NFSv3:
+> > >> 
+> > >> [16364.527516] BUG: unable to handle kernel NULL pointer dereference at 0000000000000008
+> > >> [16364.527571] IP: [<ffffffff81245157>] nlmclnt_setlockargs+0x55/0xcf
+> > >> [16364.527611] PGD 0 
+> > >> [16364.527626] Oops: 0000 [#1] PREEMPT SMP 
+> > >> [16364.527656] Modules linked in: [last unloaded: microcode] 
+> > >> [16364.527690] CPU: 0 PID: 17034 Comm: flock Not tainted 3.10.4-05315-gf4ce424-dirty #1
+> > >> [16364.527730] Hardware name: System manufacturer System Product Name/P8H61-MX USB3, BIOS 0506 08/10/2012
+> > >> [16364.527775] task: ffff88041a97ad60 ti: ffff8803501d4000 task.ti: ffff8803501d4000
+> > >> [16364.527813] RIP: 0010:[<ffffffff81245157>] [<ffffffff81245157>] nlmclnt_setlockargs+0x55/0xcf
+> > >> [16364.527860] RSP: 0018:ffff8803501d5c58  EFLAGS: 00010282
+> > >> [16364.527889] RAX: ffff88041a97ad60 RBX: ffff8803e49c8800 RCX: 0000000000000000
+> > >> [16364.527926] RDX: 0000000000000000 RSI: 000000000000004a RDI: ffff8803e49c8b54
+> > >> [16364.527962] RBP: ffff8803501d5c68 R08: 0000000000015720 R09: 0000000000000000
+> > >> [16364.527998] R10: 00007ffffffff000 R11: ffff8803501d5d58 R12: ffff8803501d5d58
+> > >> [16364.528034] R13: ffff88041bd2bc00 R14: 0000000000000000 R15: ffff8803fc9e2900
+> > >> [16364.528070] FS:  0000000000000000(0000) GS:ffff88042fa00000(0000) knlGS:0000000000000000
+> > >> [16364.528111] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> > >> [16364.528142] CR2: 0000000000000008 CR3: 0000000001c0b000 CR4: 00000000001407f0
+> > >> [16364.528177] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> > >> [16364.528214] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> > >> [16364.528303] Stack:
+> > >> [16364.528316]  ffff8803501d5d58 ffff8803e49c8800 ffff8803501d5cd8 ffffffff81245418 
+> > >> [16364.528369]  0000000000000000 ffff8803516f0bc0 ffff8803d7b7b6c0 ffffffff81215c81 
+> > >> [16364.528418]  ffff880300000007 ffff88041bd2bdc8 ffff8801aabe9650 ffff8803fc9e2900 
+> > >> [16364.528467] Call Trace:
+> > >> [16364.528485]  [<ffffffff81245418>] nlmclnt_proc+0x148/0x5fb
+> > >> [16364.528516]  [<ffffffff81215c81>] ? nfs_put_lock_context+0x69/0x6e
+> > >> [16364.528550]  [<ffffffff812209a2>] nfs3_proc_lock+0x21/0x23
+> > >> [16364.528581]  [<ffffffff812149dd>] do_unlk+0x96/0xb2
+> > >> [16364.528608]  [<ffffffff81214b41>] nfs_flock+0x5a/0x71
+> > >> [16364.528637]  [<ffffffff8119a747>] locks_remove_flock+0x9e/0x113
+> > >> [16364.528668]  [<ffffffff8115cc68>] __fput+0xb6/0x1e6
+> > >> [16364.528695]  [<ffffffff8115cda6>] ____fput+0xe/0x10
+> > >> [16364.528724]  [<ffffffff810998da>] task_work_run+0x7e/0x98
+> > >> [16364.528754]  [<ffffffff81082bc5>] do_exit+0x3cc/0x8fa
+> > >> [16364.528782]  [<ffffffff81083501>] ? SyS_wait4+0xa5/0xc2
+> > >> [16364.528811]  [<ffffffff8108328d>] do_group_exit+0x6f/0xa2
+> > >> [16364.528843]  [<ffffffff810832d7>] SyS_exit_group+0x17/0x17
+> > >> [16364.528876]  [<ffffffff81613e92>] system_call_fastpath+0x16/0x1b
+> > >> [16364.528907] Code: 00 00 65 48 8b 04 25 c0 b8 00 00 48 8b 72 20 48 81 ee c0 01 00 00 f3 a4 48 8d bb 54 03 00 00 be 4a 00 00 00 48 8b 90 68 05 00 00 <48> 8b 52 08 48 89 bb d0 00 00 00 48 83 c2 45 48 89 53 38 48 8b 
+> > >> [16364.529176] RIP [<ffffffff81245157>] nlmclnt_setlockargs+0x55/0xcf
+> > >> [16364.529264]  RSP <ffff8803501d5c58>
+> > >> [16364.529283] CR2: 0000000000000008
+> > >> [16364.539039] ---[ end trace 5a73fddf23441377 ]---
+> > >
+> > > What might be most helpful is to figure out exactly where the above
+> > > panic occurred.
+> > 
+> > OK. My kernel is non-modular and built without debugging information:
+> > rebuilt with debugging info, and got this:
+> > 
+> > 0xffffffff81245418 is in nlmclnt_proc (fs/lockd/clntproc.c:172).
+> > 167                     return -ENOMEM;
+> > 168             }
+> > 169             /* Set up the argument struct */
+> > 170             nlmclnt_setlockargs(call, fl);
+> > 171
+> > 172             if (IS_SETLK(cmd) || IS_SETLKW(cmd)) {
+> > 173                     if (fl->fl_type != F_UNLCK) {
+> > 174                             call->a_args.block = IS_SETLKW(cmd) ? 1 : 0;
+> > 175                             status = nlmclnt_lock(call, fl);
+> > 176                     } else
+> > 
+> > That's decimal 328:
+> > 
+> >    0xffffffff81245413 <+323>:   callq  0xffffffff81245102 <nlmclnt_setlockargs>
+> >    0xffffffff81245418 <+328>:   mov    -0x40(%rbp),%eax
+> >    0xffffffff8124541b <+331>:   sub    $0x6,%eax
+> >    0xffffffff8124541e <+334>:   cmp    $0x1,%eax
+> > 
+> > nlm_alloc_call() cannot fail (we have a NULL check right there), and fl
+> > also cannot be NULL because it's dereferenced in nfs_flock(), up the
+> > call chain from where we are.
+> > 
+> > Time to stick some printk()s in, I susupect. (Not sure how to keep them
+> > from utterly flooding the log, though.)
+> > 
 
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index c2c4163..f16a872 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -49,6 +49,7 @@
- 
- #include "internal.h"
- #include "netns.h"
-+#include "nfs4trace.h"
- 
- #define NFS_UINT_MAXLEN 11
- 
-@@ -849,6 +850,7 @@ int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_
- 		if (!uid_valid(*uid))
- 			ret = -ERANGE;
- 	}
-+	trace_nfs4_map_name_to_uid(name, namelen, id, ret);
- 	return ret;
- }
- 
-@@ -865,6 +867,7 @@ int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size
- 		if (!gid_valid(*gid))
- 			ret = -ERANGE;
- 	}
-+	trace_nfs4_map_group_to_gid(name, namelen, id, ret);
- 	return ret;
- }
- 
-@@ -879,6 +882,7 @@ int nfs_map_uid_to_name(const struct nfs_server *server, kuid_t uid, char *buf,
- 		ret = nfs_idmap_lookup_name(id, "user", buf, buflen, idmap);
- 	if (ret < 0)
- 		ret = nfs_map_numeric_to_string(id, buf, buflen);
-+	trace_nfs4_map_uid_to_name(buf, ret, id, ret);
- 	return ret;
- }
- int nfs_map_gid_to_group(const struct nfs_server *server, kgid_t gid, char *buf, size_t buflen)
-@@ -892,5 +896,6 @@ int nfs_map_gid_to_group(const struct nfs_server *server, kgid_t gid, char *buf,
- 		ret = nfs_idmap_lookup_name(id, "group", buf, buflen, idmap);
- 	if (ret < 0)
- 		ret = nfs_map_numeric_to_string(id, buf, buflen);
-+	trace_nfs4_map_gid_to_group(buf, ret, id, ret);
- 	return ret;
- }
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index c4d9e70..429a7f4 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -570,6 +570,47 @@ DEFINE_NFS4_INODE_EVENT(nfs4_set_security_label);
- DEFINE_NFS4_INODE_EVENT(nfs4_recall_delegation);
- DEFINE_NFS4_INODE_EVENT(nfs4_delegreturn);
- 
-+DECLARE_EVENT_CLASS(nfs4_idmap_event,
-+		TP_PROTO(const char *name,
-+			int len,
-+			u32 id,
-+			int error),
-+
-+		TP_ARGS(name, len, id, error),
-+
-+		TP_STRUCT__entry(
-+			__field(int, error)
-+			__field(u32, id)
-+			__dynamic_array(char, name, len > 0 ? len + 1 : 1)
-+		),
-+
-+		TP_fast_assign(
-+			if (len < 0)
-+				len = 0;
-+			__entry->error = error < 0 ? error : 0;
-+			__entry->id = id;
-+			memcpy(__get_dynamic_array(name), name, len);
-+			((char *)__get_dynamic_array(name))[len] = 0;
-+		),
-+
-+		TP_printk("error=%d, id=%u, name=%s",
-+			__entry->error,
-+			__entry->id,
-+			__get_str(name)
-+		)
-+);
-+#define DEFINE_NFS4_IDMAP_EVENT(name)		\
-+DEFINE_EVENT(nfs4_idmap_event, name,		\
-+		TP_PROTO(const char *name,	\
-+			int len,		\
-+			u32 id,			\
-+			int error),		\
-+		TP_ARGS(name, len, id, error))
-+DEFINE_NFS4_IDMAP_EVENT(nfs4_map_name_to_uid);
-+DEFINE_NFS4_IDMAP_EVENT(nfs4_map_group_to_gid);
-+DEFINE_NFS4_IDMAP_EVENT(nfs4_map_uid_to_name);
-+DEFINE_NFS4_IDMAP_EVENT(nfs4_map_gid_to_group);
-+
- #endif /* _TRACE_NFS4_H */
- 
- #undef TRACE_INCLUDE_PATH
+The listing and disassembly from nlmclnt_proc is not terribly
+interesting unfortunately. You really want to do the listing and
+disassembly of the RIP at panic time (nlmclnt_setlockargs+0x55).
+
 -- 
-1.8.3.1
-
+Jeff Layton <jlayton@redhat.com>
