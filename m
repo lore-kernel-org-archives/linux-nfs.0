@@ -1,53 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from caiajhbdcaid.dreamhost.com ([208.97.132.83]:55275 "EHLO
-	homiemail-a85.g.dreamhost.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751670Ab3HBUtJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Aug 2013 16:49:09 -0400
+Received: from fieldses.org ([174.143.236.118]:59136 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753497Ab3HEOld (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Aug 2013 10:41:33 -0400
+Date: Mon, 5 Aug 2013 10:41:27 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Ric Wheeler <rwheeler@redhat.com>
+Cc: Bryan Schumaker <bjschuma@netapp.com>, Trond.Myklebust@netapp.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [RFC 4/5] NFSD: Defer copying
+Message-ID: <20130805144127.GA31169@fieldses.org>
+References: <1374267830-30154-1-git-send-email-bjschuma@netapp.com>
+ <1374267830-30154-5-git-send-email-bjschuma@netapp.com>
+ <20130722185002.GB10109@fieldses.org>
+ <51ED8549.3040308@netapp.com>
+ <20130722193000.GD10109@fieldses.org>
+ <51ED89DC.7050406@netapp.com>
+ <20130722194331.GF10109@fieldses.org>
+ <51ED8DD8.1060703@netapp.com>
+ <20130722195556.GG10109@fieldses.org>
+ <51FF647C.3020704@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <20130801173854.28023.82045.stgit@warthog.procyon.org.uk>
-References: <20130801173846.28023.19009.stgit@warthog.procyon.org.uk>
-	<20130801173854.28023.82045.stgit@warthog.procyon.org.uk>
-Date: Fri, 2 Aug 2013 15:49:06 -0500
-Message-ID: <CAK3OfOj6E_thwgwdZUDXrr_7XW4xJkzwxdGU6gKcEJ3twOsm=A@mail.gmail.com>
-Subject: Re: [PATCH 1/2] KEYS: Implement a big key type that can save to tmpfs
-From: Nico Williams <nico@cryptonector.com>
-To: David Howells <dhowells@redhat.com>
-Cc: keyrings@linux-nfs.org, linux-nfs@vger.kernel.org, simo@redhat.com,
-        linux-kernel@vger.kernel.org, krbdev@mit.edu
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <51FF647C.3020704@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I think this is the wrong design.
+On Mon, Aug 05, 2013 at 09:38:20AM +0100, Ric Wheeler wrote:
+> On 07/22/2013 08:55 PM, J. Bruce Fields wrote:
+> >On Mon, Jul 22, 2013 at 03:54:00PM -0400, Bryan Schumaker wrote:
+> >>On 07/22/2013 03:43 PM, J. Bruce Fields wrote:
+> >>>On Mon, Jul 22, 2013 at 03:37:00PM -0400, Bryan Schumaker wrote:
+> >>>>On 07/22/2013 03:30 PM, J. Bruce Fields wrote:
+> >>>>>On Mon, Jul 22, 2013 at 03:17:29PM -0400, Bryan Schumaker wrote:
+> >>>>>>On 07/22/2013 02:50 PM, J. Bruce Fields wrote:
+> >>>>>>>On Fri, Jul 19, 2013 at 05:03:49PM -0400, bjschuma@netapp.com wrote:
+> >>>>>>>>From: Bryan Schumaker <bjschuma@netapp.com>
+> >>>>>>>>
+> >>>>>>>>Rather than performing the copy right away, schedule it to run later and
+> >>>>>>>>reply to the client.  Later, send a callback to notify the client that
+> >>>>>>>>the copy has finished.
+> >>>>>>>I believe you need to implement the referring triple support described
+> >>>>>>>in http://tools.ietf.org/html/rfc5661#section-2.10.6.3 to fix the race
+> >>>>>>>described in
+> >>>>>>>http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-15.1.3
+> >>>>>>>.
+> >>>>>>I'll re-read and re-write.
+> >>>>>>
+> >>>>>>>I see cb_delay initialized below, but not otherwise used.  Am I missing
+> >>>>>>>anything?
+> >>>>>>Whoops!  I was using that earlier to try to fake up a callback, but I eventually decided it's easier to just do the copy asynchronously.  I must have forgotten to take it out :(
+> >>>>>>
+> >>>>>>>What about OFFLOAD_STATUS and OFFLOAD_ABORT?
+> >>>>>>I haven't thought out those too much... I haven't thought about a use for them on the client yet.
+> >>>>>If it might be a long-running copy, I assume the client needs the
+> >>>>>ability to abort if the caller is killed.
+> >>>>>
+> >>>>>(Dumb question: what happens on the network partition?  Does the server
+> >>>>>abort the copy when it expires the client state?)
+> >>>>>
+> >>>>>In any case,
+> >>>>>http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-15.1.3
+> >>>>>says "If a server's COPY operation returns a stateid, then the server
+> >>>>>MUST also support these operations: CB_OFFLOAD, OFFLOAD_ABORT, and
+> >>>>>OFFLOAD_STATUS."
+> >>>>>
+> >>>>>So even if we've no use for them on the client then we still need to
+> >>>>>implement them (and probably just write a basic pynfs test).  Either
+> >>>>>that or update the spec.
+> >>>>Fair enough.  I'll think it out and do something!  Easy solution: save this patch for later and only support the sync version of copy for the final version of this patch series.
+> >>>I can't remember--does the spec give the server a clear way to bail out
+> >>>and tell the client to fall back on a normal copy in cases where the
+> >>>server knows the copy could take an unreasonable amount of time?
+> >>>
+> >>>--b.
+> >>I don't think so.  Is there ever a case where copying over the network would be slower than copying on the server?
+> >Mybe not, but if the copy will take a minute, then we don't want to tie
+> >up an rpc slot for a minute.
+> >
+> >--b.
+> 
+> I think that we need to be able to handle copies that would take a
+> lot longer than just a minute - this offload could take a very long
+> time I assume depending on the size of the data getting copied and
+> the back end storage device....
 
-There are two problems you're trying to solve:
+Bryan suggested in offline discussion that one possibility might be to
+copy, say, at most a gigabyte at a time before returning and making the
+client continue the copy.
 
-a) how rpc.gssd finds credentials for processes on behalf of which it's acting
+Where for "a gigabyte" read, "some amount that doesn't take too long to
+copy but is still enough to allow close to full bandwidth".  Hopefully
+that's an easy number to find.
 
-b) how to create tmpfs locations in which to store credentials (which
-can be unbounded in size, so storing them in the kernel is silly; also
-the apps that use them are all user-land apps, so that too means
-there's no point in storing them in the kernel).
+But based on
+http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-14.1.2
+the COPY operation isn't designed for that--it doesn't give the option
+of returning bytes_copied in the successful case.
 
-Keyrings for the forst problem (or PAGs, or anything similar) is fine:
-on upcall to gssd the kernel tells it what it needs to know to find
-those credentials.
+Maybe we should fix that in the spec, or maybe we just need to implement
+the asynchronous case.  I guess it depends on which is easier,
 
-(b) can be solved in many ways, and the simplest is to have a
-filesystem where top-level directories named after UIDs "exist" as
-soon as they are referenced and as long as they are non-empty.  You
-can use autofs + tmpfs, or a variant of tmpfs for this.
+	a) implementing the asynchronous case (and the referring-triple
+	   support to fix the COPY/callback races), or
+	b) implementing this sort of "short copy" loop in a way that gives
+	   good performance.
 
-Solving (b) in a way that does not add a new ccache type (though
-having a KEYRING: ccache type that means "find the ccache URI in my
-keyring" is fine) is important because many of us run multiple
-implementations of Kerberos on any given host, and we do it because:
+On the client side it's clearly a) since you're forced to handle that
+case anyway.  (Unless we argue that *all* copies should work that way,
+and that the spec should ditch the asynchronous case.) On the server
+side, b) looks easier.
 
- - vendors are always behind the curve
- - legacy software linked with old versions of libkrb5 and friends
- - third party software
-
-Please review the above.  Thanks,
-
-Nico
---
+--b.
