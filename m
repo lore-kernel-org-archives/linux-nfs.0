@@ -1,147 +1,183 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:40089 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756033Ab3HOPtI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Aug 2013 11:49:08 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
-Subject: Re: [nfs-utils PATCH] mount.nfs: improve handling of bg, fg, and sloppy in nfsmount.conf
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130815154032.GD2514@tonberry.usersys.redhat.com>
-Date: Thu, 15 Aug 2013 11:49:01 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <FBE980B3-66D2-4F33-8244-0E26047E798C@oracle.com>
-References: <1376575095-15403-1-git-send-email-smayhew@redhat.com> <EFB98378-3D68-46CA-A03E-C9E19FFFC265@oracle.com> <20130815154032.GD2514@tonberry.usersys.redhat.com>
-To: Scott Mayhew <smayhew@redhat.com>
+Received: from mx11.netapp.com ([216.240.18.76]:10356 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753673Ab3HETM5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Aug 2013 15:12:57 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Nix <nix@esperi.org.uk>
+CC: =?utf-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>,
+        Oleg Nesterov <oleg@redhat.com>, Jeff Layton <jlayton@redhat.com>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "dhowells@redhat.com" <dhowells@redhat.com>
+Subject: Re: [3.10.4] NFS locking panic, plus persisting NFS shutdown panic
+ from 3.9.*
+Date: Mon, 5 Aug 2013 19:12:55 +0000
+Message-ID: <1375729975.7337.39.camel@leira.trondhjem.org>
+References: <8761vlv4z9.fsf@spindle.srvr.nix>
+	 <20130805084436.69ee4415@corrin.poochiereds.net>
+	 <87siyotcri.fsf@spindle.srvr.nix>
+	 <20130805110427.509db424@tlielax.poochiereds.net>
+	 <20130805111106.73d6ab90@tlielax.poochiereds.net>
+	 <87zjswrvaq.fsf@spindle.srvr.nix>
+	 <1375719301.7337.14.camel@leira.trondhjem.org>
+	 <87txj4rnru.fsf@spindle.srvr.nix>
+In-Reply-To: <87txj4rnru.fsf@spindle.srvr.nix>
+Content-Type: multipart/mixed;
+	boundary="_002_1375729975733739camelleiratrondhjemorg_"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--_002_1375729975733739camelleiratrondhjemorg_
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <4A833216273DE745A45D5834A65329DA@hq.netapp.com>
+Content-Transfer-Encoding: base64
 
-On Aug 15, 2013, at 11:40 AM, Scott Mayhew <smayhew@redhat.com> wrote:
+T24gTW9uLCAyMDEzLTA4LTA1IGF0IDE5OjMzICswMTAwLCBOaXggd3JvdGU6DQo+IE9uIDUgQXVn
+IDIwMTMsIFRyb25kIE15a2xlYnVzdCB0b2xkIHRoaXM6DQo+ID4gRG9lcyB0aGUgYXR0YWNoZWQg
+cGF0Y2ggZml4IHRoZSBwcm9ibGVtPw0KPiANCj4gPiBGcm9tIDNjNTBiYTgwMTA1NDY0YTI4ZDQ1
+NmQ5YTFlMGYxZDgxZDRhZjkyYTggTW9uIFNlcCAxNyAwMDowMDowMCAyMDAxDQo+ID4gRnJvbTog
+VHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gPiBEYXRlOiBN
+b24sIDUgQXVnIDIwMTMgMTI6MDY6MTIgLTA0MDANCj4gPiBTdWJqZWN0OiBbUEFUQ0hdIExPQ0tE
+OiBEb24ndCBjYWxsIHV0c25hbWUoKS0+bm9kZW5hbWUgZnJvbQ0KPiA+ICBubG1jbG50X3NldGxv
+Y2thcmdzDQo+ID4gTUlNRS1WZXJzaW9uOiAxLjANCj4gPiBDb250ZW50LVR5cGU6IHRleHQvcGxh
+aW47IGNoYXJzZXQ9VVRGLTgNCj4gPiBDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiA4Yml0DQo+
+IA0KPiBJdCBtYWtlcyBpdCB3b3JzZS4gTXVjaCwgbXVjaCB3b3JzZS4gRnJvbSBhIGNyYXNoIGV2
+ZXJ5IHNvIG9mdGVuIHdoZW4NCj4gSSdtIGRvaW5nIGNvbXBpbGF0aW9ucyBvdmVyIE5GUywgSSBn
+ZXQgYW4gaW1tZWRpYXRlIHBhbmljIG9uIHN0YXJ0eCwNCj4gbG9uZyBsb25nIGJlZm9yZSBJIGV2
+ZW4gdHJ5IHRvIHJlcGxpY2F0ZSB0aGUgZWFybGllciBwYW5pYzoNCj4gDQo+IFsgICA4My40MzIz
+NThdIHRhc2s6IGZmZmY4ODA0MWFhYTVhYzAgdGk6IGZmZmY4ODA0MTk5ZTIwMDAgdGFzay50aTog
+ZmZmZjg4MDQxOTllMjAwMA0KPiBbICAgODMuNDMyNDI4XSBSSVA6IDAwMTA6WzxmZmZmZmZmZjgx
+MjRhZjY5Pl0gWzxmZmZmZmZmZjgxMjRhZjY5Pl0gZW5jb2RlX25sbTRfbG9jaysweDI2LzB4YmUN
+Cj4gWyAgIDgzLjQzMjUxMl0gUlNQOiAwMDE4OmZmZmY4ODA0MTk5ZTNhNzggIEVGTEFHUzogMDAw
+MTAyODYNCj4gWyAgIDgzLjQzMjU2NF0gUkFYOiAwMDAwMDAwMDAwMDAwMDAwIFJCWDogZmZmZjg4
+MDQxYTU3NzAzOCBSQ1g6IGZmZmZmZmZmZmZmZmZmZmYNCj4gWyAgIDgzLjQzMjYzMF0gUkRYOiBm
+ZmZmODgwNDE5M2IzMDk4IFJTSTogZmZmZjg4MDQxYTU3NzAzOCBSREk6IDAwMDAwMDAwMDAwMDAw
+OGMNCj4gWyAgIDgzLjQzMjY5N10gUkJQOiBmZmZmODgwNDE5OWUzYWE4IFIwODogZmZmZjg4MDQx
+OTNiMzA5OCBSMDk6IDAwMDAwMDAwMDAwMDAwMDENCj4gWyAgIDgzLjQzMjc2M10gUjEwOiBmZmZm
+ODgwNDJmYTEyOTgwIFIxMTogZmZmZjg4MDQyZmExMjk4MCBSMTI6IGZmZmY4ODA0MTk5ZTNhZTgN
+Cj4gWyAgIDgzLjQzMjgzMF0gUjEzOiAwMDAwMDAwMDAwMDAwMDhjIFIxNDogZmZmZjg4MDQxOTll
+M2ZkOCBSMTU6IGZmZmZmZmZmODE1ZGU4MGUNCj4gWyAgIDgzLjQzMjg5OF0gRlM6ICAwMDAwN2Y1
+OTRiNDBjNzQwKDAwMDApIEdTOmZmZmY4ODA0MmZhMDAwMDAoMDAwMCkga25sR1M6MDAwMDAwMDAw
+MDAwMDAwMA0KPiBbICAgODMuNDMyOTc0XSBDUzogIDAwMTAgRFM6IDAwMDAgRVM6IDAwMDAgQ1Iw
+OiAwMDAwMDAwMDgwMDUwMDMzDQo+IFsgICA4My40MzMwMjhdIENSMjogMDAwMDAwMDAwMDAwMDA4
+YyBDUjM6IDAwMDAwMDA0MWFiM2QwMDAgQ1I0OiAwMDAwMDAwMDAwMTQwN2YwDQo+IFsgICA4My40
+MzMwOTVdIERSMDogMDAwMDAwMDAwMDAwMDAwMCBEUjE6IDAwMDAwMDAwMDAwMDAwMDAgRFIyOiAw
+MDAwMDAwMDAwMDAwMDAwDQo+IFsgICA4My40MzMxNzZdIERSMzogMDAwMDAwMDAwMDAwMDAwMCBE
+UjY6IDAwMDAwMDAwZmZmZjBmZjAgRFI3OiAwMDAwMDAwMDAwMDAwNDAwDQo+IFsgICA4My40MzMy
+NTVdIFN0YWNrOg0KPiBbICAgODMuNDMzMjc2XSAgZmZmZjg4MDQxYTQ0ZmI3MCBmZmZmODgwNDAw
+MDAwMDA0IGZmZmY4ODA0MTk5ZTNhZTggZmZmZjg4MDQxYTU3NzAxMCANCj4gWyAgIDgzLjQzMzM2
+MF0gIGZmZmY4ODA0MTg4ZTBlMDAgZmZmZjg4MDQxOTllM2ZkOCBmZmZmODgwNDE5OWUzYWM4IGZm
+ZmZmZmZmODEyNGIwZDcgDQo+IFsgICA4My40MzM0NDNdICBmZmZmODgwNDE4OGUwZTAwIGZmZmZm
+ZmZmODEyNGIwODYgZmZmZjg4MDQxOTllM2IzOCBmZmZmZmZmZjgxNWU2MDMyIA0KPiBbICAgODMu
+NDMzNjE2XSBDYWxsIFRyYWNlOg0KPiBbICAgODMuNDMzNjQ2XSAgWzxmZmZmZmZmZjgxMjRiMGQ3
+Pl0gbmxtNF94ZHJfZW5jX2xvY2thcmdzKzB4NTEvMHg3Ng0KPiBbICAgODMuNDMzNzA3XSAgWzxm
+ZmZmZmZmZjgxMjRiMDg2Pl0gPyBubG00X3hkcl9lbmNfY2FuY2FyZ3MrMHg1Ni8weDU2DQo+IFsg
+ICA4My40MzM3NjldICBbPGZmZmZmZmZmODE1ZTYwMzI+XSBycGNhdXRoX3dyYXBfcmVxKzB4NTcv
+MHg2Mg0KPiBbICAgODMuNDMzODI2XSAgWzxmZmZmZmZmZjgxNWRlOThhPl0gY2FsbF90cmFuc21p
+dCsweDE3Yy8weDFmOQ0KPiBbICAgODMuNDMzODgwXSAgWzxmZmZmZmZmZjgxNWU0ZTU4Pl0gX19y
+cGNfZXhlY3V0ZSsweGU4LzB4MmNhDQo+IFsgICA4My40MzM5MzVdICBbPGZmZmZmZmZmODE1ZTUw
+Zjk+XSBycGNfZXhlY3V0ZSsweDc2LzB4OWQNCj4gWyAgIDgzLjQzMzk4Nl0gIFs8ZmZmZmZmZmY4
+MTVkZWJjMT5dIHJwY19ydW5fdGFzaysweDc4LzB4ODANCj4gWyAgIDgzLjQzNDAzOV0gIFs8ZmZm
+ZmZmZmY4MTVkZWNmZj5dIHJwY19jYWxsX3N5bmMrMHg4OC8weDllDQo+IFsgICA4My40MzQwOTJd
+ICBbPGZmZmZmZmZmODEyNDRiM2M+XSBubG1jbG50X2NhbGwrMHhiNS8weDI0MA0KPiBbICAgODMu
+NDM0MTQ2XSAgWzxmZmZmZmZmZjgxMjQ1NGYwPl0gbmxtY2xudF9wcm9jKzB4MjI2LzB4NWZiDQo+
+IFsgICA4My40MzQyMjZdICBbPGZmZmZmZmZmODEyMjA5YTI+XSBuZnMzX3Byb2NfbG9jaysweDIx
+LzB4MjMNCj4gWyAgIDgzLjQzNDI4MF0gIFs8ZmZmZmZmZmY4MTIxNGE1ZT5dIGRvX3NldGxrKzB4
+NjUvMHhlZQ0KPiBbICAgODMuNDM0MzI5XSAgWzxmZmZmZmZmZjgxMjE0Y2E2Pl0gbmZzX2xvY2sr
+MHgxNGUvMHgxNjINCj4gWyAgIDgzLjQzNDM4Ml0gIFs8ZmZmZmZmZmY4MTE5OTY2MT5dIHZmc19s
+b2NrX2ZpbGUrMHgyOS8weDM1DQo+IFsgICA4My40MzQ0MzVdICBbPGZmZmZmZmZmODExOWE1MWQ+
+XSBmY250bF9zZXRsaysweDEzOS8weDJjNQ0KPiBbICAgODMuNDM0NDkwXSAgWzxmZmZmZmZmZjgx
+MTY5NjIxPl0gU3lTX2ZjbnRsKzB4MmI2LzB4NDdkDQo+IFsgICA4My40MzQ1NDNdICBbPGZmZmZm
+ZmZmODE2MTNlOTI+XSBzeXN0ZW1fY2FsbF9mYXN0cGF0aCsweDE2LzB4MWINCj4gWyAgIDgzLjQz
+NDYwMF0gQ29kZTogNWIgNDEgNWMgNWQgYzMgMGYgMWYgNDQgMDAgMDAgNTUgMzEgYzAgNDggODMg
+YzkgZmYgNDggODkgZTUgNDEgNTYgNDEgNTUgNDEgNTQgNDkgODkgZmMgNTMgNDggODkgZjMgNDgg
+ODMgZWMgMTAgNGMgOGIgMmUgNGMgODkgZWYgPGYyPiBhZSA0YyA4OSBlNyA0OCBmNyBkMSA0YyA4
+ZCA3MSBmZiA0MSA4ZCA3NiAwNCBlOCA5ZiAxNiAzYSAwMCANCj4gWyAgIDgzLjQzNTA3N10gUklQ
+IFs8ZmZmZmZmZmY4MTI0YWY2OT5dIGVuY29kZV9ubG00X2xvY2srMHgyNi8weGJlDQo+IFsgICA4
+My40MzUxNDBdICBSU1AgPGZmZmY4ODA0MTk5ZTNhNzg+DQo+IFsgICA4My40MzUxOTddIENSMjog
+MDAwMDAwMDAwMDAwMDA4Yw0KPiANCj4gVGhhdCdzIGhlcmU6DQo+IA0KPiAoZ2RiKSBsaXN0ICoo
+ZW5jb2RlX25sbTRfbG9jaysweDI2KQ0KPiAweGZmZmZmZmZmODEyNGFmNjkgaXMgaW4gZW5jb2Rl
+X25sbTRfbG9jayAoZnMvbG9ja2QvY2xudDR4ZHIuYzozMjkpLg0KPiAzMjQgICAgICAqICAgICAg
+c3RyaW5nIGNhbGxlcl9uYW1lPExNX01BWFNUUkxFTj47DQo+IDMyNSAgICAgICovDQo+IDMyNiAg
+ICAgc3RhdGljIHZvaWQgZW5jb2RlX2NhbGxlcl9uYW1lKHN0cnVjdCB4ZHJfc3RyZWFtICp4ZHIs
+IGNvbnN0IGNoYXIgKm5hbWUpDQo+IDMyNyAgICAgew0KPiAzMjggICAgICAgICAgICAgLyogTkI6
+IGNsaWVudC1zaWRlIGRvZXMgbm90IHNldCBsb2NrLT5sZW4gKi8NCj4gMzI5ICAgICAgICAgICAg
+IHUzMiBsZW5ndGggPSBzdHJsZW4obmFtZSk7DQo+IDMzMCAgICAgICAgICAgICBfX2JlMzIgKnA7
+DQo+IDMzMQ0KPiAzMzIgICAgICAgICAgICAgcCA9IHhkcl9yZXNlcnZlX3NwYWNlKHhkciwgNCAr
+IGxlbmd0aCk7DQo+IDMzMyAgICAgICAgICAgICB4ZHJfZW5jb2RlX29wYXF1ZShwLCBuYW1lLCBs
+ZW5ndGgpOw0KPiANCj4gICAgMHhmZmZmZmZmZjgxMjRhZjY5IDwrMzg+OiAgICByZXBueiBzY2Fz
+ICVlczooJXJkaSksJWFsDQo+IA0KPiBQcmV0dHkgY2xlYXJseSwgIm5hbWUiIGNhbiBiZSBOVUxM
+IGFmdGVyIHRoaXMgcGF0Y2guLi4NCj4gDQpZZXMuIFRoaXMgc2NoZW1lIHdpbGwgb25seSB3b3Jr
+IGlmIHdlIG1ha2Ugc3VyZSB0aGF0IGhvc3QtPmhfcnBjY2xudCBpcw0KaW5pdGlhbGlzZWQgYXQg
+bW91bnQgdGltZS4gSGVyZSBpcyBhIHYyIHBhdGNoIHRoYXQgc2hvdWxkIGRvIHRoZSByaWdodA0K
+dGhpbmcuDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVy
+DQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
 
-> On Thu, 15 Aug 2013, Chuck Lever wrote:
-> 
->> Hi Scott-
->> 
->> On Aug 15, 2013, at 9:58 AM, Scott Mayhew <smayhew@redhat.com> wrote:
->> 
->>> This patch makes 2 small improvements to the parsing of the bg, fg, and
->>> sloppy mount options in nfsmount.conf.
->>> 
->>> 1. "bg" and "fg" negate should each other.  "Background=True" should
->>> mean "bg" and "Background=False" should mean "fg".  The same applies to
->>> "Foreground".
->> 
->> This looks OK.
->> 
->>> 2. Once we see "Sloppy=False" while parsing the configuration file we
->>> should ignore subsequent occurrences of the sloppy option.  This will
->>> preserve the "right-most setting wins" behavior for the sloppy mount
->>> option.
->> 
->> Here, I'm confused.  The "right-most wins" rule goes:
->> 
->>  1.  mount options are parsed in order from left (closest to the command-line prompt) to right (closest to the carriage return)
->> 
->>  2.  the last instance of an option (the right-most instance) is the setting that takes effect 
->> 
->> As I understand it, this applies to config file settings in the following way:  config file settings are specified in order from "whole system" to "server" to "mount point", then the command line options are appended to the end of that.
-> 
-> conf_get_mntopts parses the mountpoint specific options first, then the
-> server-specific options, and finally global options, inserting each
-> option at the head of a list as it goes.  It then walks the list and
-> appends each option to the string that it ultimately returns to the
-> caller.  So the order that options appear in the list is reversed from
-> how they appear in the string.
+--_002_1375729975733739camelleiratrondhjemorg_
+Content-Type: text/x-patch;
+	name="0001-LOCKD-Don-t-call-utsname-nodename-from-nlmclnt_setlo.patch"
+Content-Description: 0001-LOCKD-Don-t-call-utsname-nodename-from-nlmclnt_setlo.patch
+Content-Disposition: attachment;
+	filename="0001-LOCKD-Don-t-call-utsname-nodename-from-nlmclnt_setlo.patch";
+	size=2991; creation-date="Mon, 05 Aug 2013 19:12:55 GMT";
+	modification-date="Mon, 05 Aug 2013 19:12:55 GMT"
+Content-ID: <5379AA22A36AE14E8AE667C602636155@hq.netapp.com>
+Content-Transfer-Encoding: base64
 
-For what it's worth:
+RnJvbSA5YTFiNmJmODE4ZTc0YmI3YWFiYWVjYjU5NDkyYjczOWYyZjRkNzQyIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
+YXBwLmNvbT4NCkRhdGU6IE1vbiwgNSBBdWcgMjAxMyAxMjowNjoxMiAtMDQwMA0KU3ViamVjdDog
+W1BBVENIIHYyXSBMT0NLRDogRG9uJ3QgY2FsbCB1dHNuYW1lKCktPm5vZGVuYW1lIGZyb20NCiBu
+bG1jbG50X3NldGxvY2thcmdzDQpNSU1FLVZlcnNpb246IDEuMA0KQ29udGVudC1UeXBlOiB0ZXh0
+L3BsYWluOyBjaGFyc2V0PVVURi04DQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiA4Yml0DQoN
+CkZpcnN0bHksIG5sbWNsbnRfc2V0bG9ja2FyZ3MgY2FuIGJlIGNhbGxlZCBmcm9tIGEgcmVjbGFp
+bWVyIHRocmVhZCwgaW4NCndoaWNoIGNhc2Ugd2UncmUgaW4gZW50aXJlbHkgdGhlIHdyb25nIG5h
+bWVzcGFjZS4NCg0KU2Vjb25kbHksIGNvbW1pdCA4YWFjNjI3MDZhZGFhZjBmYWIwMmM0MzI3NzYx
+NTYxYzhiZGE5NDQ4IChtb3ZlDQpleGl0X3Rhc2tfbmFtZXNwYWNlcygpIG91dHNpZGUgb2YgZXhp
+dF9ub3RpZnkoKSkgbm93IG1lYW5zIHRoYXQNCmV4aXRfdGFza193b3JrKCkgaXMgY2FsbGVkIGFm
+dGVyIGV4aXRfdGFza19uYW1lc3BhY2VzKCksIHdoaWNoDQp0cmlnZ2VycyBhbiBPb3BzIHdoZW4g
+d2UncmUgZnJlZWluZyB1cCB0aGUgbG9ja3MuDQoNCkZpeCB0aGlzIGJ5IGVuc3VyaW5nIHRoYXQg
+d2UgaW5pdGlhbGlzZSB0aGUgbmxtX2hvc3QncyBycGNfY2xpZW50IGF0IG1vdW50DQp0aW1lLCBz
+byB0aGF0IHRoZSBjbF9ub2RlbmFtZSBmaWVsZCBpcyBpbml0aWFsaXNlZCB0byB0aGUgdmFsdWUg
+b2YNCnV0c25hbWUoKS0+bm9kZW5hbWUgdGhhdCB0aGUgbmV0IG5hbWVzcGFjZSB1c2VzLiBUaGVu
+IHJlcGxhY2UgdGhlDQpsb2NrZCBjYWxsZXJzIG9mIHV0c25hbWUoKS0+bm9kZW5hbWUuDQoNClNp
+Z25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+
+DQpDYzogVG9yYWxmIEbDtnJzdGVyIDx0b3JhbGYuZm9lcnN0ZXJAZ214LmRlPg0KQ2M6IE9sZWcg
+TmVzdGVyb3YgPG9sZWdAcmVkaGF0LmNvbT4NCkNjOiBOaXggPG5peEBlc3Blcmkub3JnLnVrPg0K
+Q2M6IEplZmYgTGF5dG9uIDxqbGF5dG9uQHJlZGhhdC5jb20+DQpDYzogc3RhYmxlQHZnZXIua2Vy
+bmVsLm9yZyAjIDMuMTAueA0KLS0tDQogZnMvbG9ja2QvY2xudGxvY2suYyB8IDEzICsrKysrKysr
+Ky0tLS0NCiBmcy9sb2NrZC9jbG50cHJvYy5jIHwgIDUgKysrLS0NCiAyIGZpbGVzIGNoYW5nZWQs
+IDEyIGluc2VydGlvbnMoKyksIDYgZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1naXQgYS9mcy9sb2Nr
+ZC9jbG50bG9jay5jIGIvZnMvbG9ja2QvY2xudGxvY2suYw0KaW5kZXggMDFiZmU3Ni4uNDFlNDkx
+YiAxMDA2NDQNCi0tLSBhL2ZzL2xvY2tkL2NsbnRsb2NrLmMNCisrKyBiL2ZzL2xvY2tkL2NsbnRs
+b2NrLmMNCkBAIC02NCwxMiArNjQsMTcgQEAgc3RydWN0IG5sbV9ob3N0ICpubG1jbG50X2luaXQo
+Y29uc3Qgc3RydWN0IG5sbWNsbnRfaW5pdGRhdGEgKm5sbV9pbml0KQ0KIAkJCQkgICBubG1faW5p
+dC0+cHJvdG9jb2wsIG5sbV92ZXJzaW9uLA0KIAkJCQkgICBubG1faW5pdC0+aG9zdG5hbWUsIG5s
+bV9pbml0LT5ub3Jlc3Zwb3J0LA0KIAkJCQkgICBubG1faW5pdC0+bmV0KTsNCi0JaWYgKGhvc3Qg
+PT0gTlVMTCkgew0KLQkJbG9ja2RfZG93bihubG1faW5pdC0+bmV0KTsNCi0JCXJldHVybiBFUlJf
+UFRSKC1FTk9MQ0spOw0KLQl9DQorCWlmIChob3N0ID09IE5VTEwpDQorCQlnb3RvIG91dF9ub2hv
+c3Q7DQorCWlmIChob3N0LT5oX3JwY2NsbnQgPT0gTlVMTCAmJiBubG1fYmluZF9ob3N0KGhvc3Qp
+ID09IE5VTEwpDQorCQlnb3RvIG91dF9ub2JpbmQ7DQogDQogCXJldHVybiBob3N0Ow0KK291dF9u
+b2JpbmQ6DQorCW5sbWNsbnRfcmVsZWFzZV9ob3N0KGhvc3QpOw0KK291dF9ub2hvc3Q6DQorCWxv
+Y2tkX2Rvd24obmxtX2luaXQtPm5ldCk7DQorCXJldHVybiBFUlJfUFRSKC1FTk9MQ0spOw0KIH0N
+CiBFWFBPUlRfU1lNQk9MX0dQTChubG1jbG50X2luaXQpOw0KIA0KZGlmZiAtLWdpdCBhL2ZzL2xv
+Y2tkL2NsbnRwcm9jLmMgYi9mcy9sb2NrZC9jbG50cHJvYy5jDQppbmRleCA5NzYwZWNiLi5hY2Qz
+OTQ3IDEwMDY0NA0KLS0tIGEvZnMvbG9ja2QvY2xudHByb2MuYw0KKysrIGIvZnMvbG9ja2QvY2xu
+dHByb2MuYw0KQEAgLTEyNSwxNCArMTI1LDE1IEBAIHN0YXRpYyB2b2lkIG5sbWNsbnRfc2V0bG9j
+a2FyZ3Moc3RydWN0IG5sbV9ycXN0ICpyZXEsIHN0cnVjdCBmaWxlX2xvY2sgKmZsKQ0KIHsNCiAJ
+c3RydWN0IG5sbV9hcmdzCSphcmdwID0gJnJlcS0+YV9hcmdzOw0KIAlzdHJ1Y3QgbmxtX2xvY2sJ
+KmxvY2sgPSAmYXJncC0+bG9jazsNCisJY2hhciAqbm9kZW5hbWUgPSByZXEtPmFfaG9zdC0+aF9y
+cGNjbG50LT5jbF9ub2RlbmFtZTsNCiANCiAJbmxtY2xudF9uZXh0X2Nvb2tpZSgmYXJncC0+Y29v
+a2llKTsNCiAJbWVtY3B5KCZsb2NrLT5maCwgTkZTX0ZIKGZpbGVfaW5vZGUoZmwtPmZsX2ZpbGUp
+KSwgc2l6ZW9mKHN0cnVjdCBuZnNfZmgpKTsNCi0JbG9jay0+Y2FsbGVyICA9IHV0c25hbWUoKS0+
+bm9kZW5hbWU7DQorCWxvY2stPmNhbGxlciAgPSBub2RlbmFtZTsNCiAJbG9jay0+b2guZGF0YSA9
+IHJlcS0+YV9vd25lcjsNCiAJbG9jay0+b2gubGVuICA9IHNucHJpbnRmKHJlcS0+YV9vd25lciwg
+c2l6ZW9mKHJlcS0+YV9vd25lciksICIldUAlcyIsDQogCQkJCSh1bnNpZ25lZCBpbnQpZmwtPmZs
+X3UubmZzX2ZsLm93bmVyLT5waWQsDQotCQkJCXV0c25hbWUoKS0+bm9kZW5hbWUpOw0KKwkJCQlu
+b2RlbmFtZSk7DQogCWxvY2stPnN2aWQgPSBmbC0+ZmxfdS5uZnNfZmwub3duZXItPnBpZDsNCiAJ
+bG9jay0+ZmwuZmxfc3RhcnQgPSBmbC0+Zmxfc3RhcnQ7DQogCWxvY2stPmZsLmZsX2VuZCA9IGZs
+LT5mbF9lbmQ7DQotLSANCjEuOC4zLjENCg0K
 
-Acked-by: Chuck Lever <chuck.lever@oracle.com>
-
-
->> 
->> Then, "Right-most wins" means the last occurrence of "Sloppy=true" should override any previous occurrence of "Sloppy=False", right?  Or did I misunderstand again?
-> 
-> Yes, this is what it does.
->> 
->> It seems like you can just walk the appropriate sections of the config file, and set the sloppiness in each section that has such a setting.  The last section you walked with a sloppiness setting wins.  After you are done walking, append (or don't) a "sloppy" option, then pass that on to the mount.nfs command.
->> 
->> IIUC if the last config file setting is "Sloppy=True" there is no way for command-line options to disable "sloppy".
-> 
-> That's true with the existing code as well though.  I don't see any way
-> around that besides adding another nfs mount option to the kernel... but
-> what is the likelihood that someone would specify sloppy=true in their
-> config file and then want to override it from the command line?
-> 
-> -Scott
->> 
->> 
->>> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
->>> ---
->>> utils/mount/configfile.c | 11 +++++++++++
->>> 1 file changed, 11 insertions(+)
->>> 
->>> diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
->>> index 1f1b6e7..68b9f93 100644
->>> --- a/utils/mount/configfile.c
->>> +++ b/utils/mount/configfile.c
->>> @@ -73,6 +73,8 @@ struct mnt_alias {
->>> };
->>> int mnt_alias_sz = (sizeof(mnt_alias_tab)/sizeof(mnt_alias_tab[0]));
->>> 
->>> +static int strict;
->>> +
->>> /*
->>> * See if the option is an alias, if so return the 
->>> * real mount option along with the argument type.
->>> @@ -310,7 +312,15 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
->>> 		if (strcasecmp(value, "false") == 0) {
->>> 			if (argtype != MNT_NOARG)
->>> 				snprintf(buf, BUFSIZ, "no%s", field);
->>> +			else if (strcasecmp(field, "bg") == 0)
->>> +				snprintf(buf, BUFSIZ, "fg");
->>> +			else if (strcasecmp(field, "fg") == 0)
->>> +				snprintf(buf, BUFSIZ, "bg");
->>> +			else if (strcasecmp(field, "sloppy") == 0)
->>> +				strict = 1;
->>> 		} else if (strcasecmp(value, "true") == 0) {
->>> +			if ((strcasecmp(field, "sloppy") == 0) && strict)
->>> +				continue;
->>> 			snprintf(buf, BUFSIZ, "%s", field);
->>> 		} else {
->>> 			nvalue = strdup(value);
->>> @@ -345,6 +355,7 @@ char *conf_get_mntopts(char *spec, char *mount_point,
->>> 	char *ptr, *server, *config_opts;
->>> 	int optlen = 0;
->>> 
->>> +	strict = 0;
->>> 	SLIST_INIT(&head);
->>> 	list_size = 0;
->>> 	/*
->>> -- 
->>> 1.7.11.7
->>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> -- 
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->> 
->> 
->> 
->> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+--_002_1375729975733739camelleiratrondhjemorg_--
