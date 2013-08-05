@@ -1,191 +1,205 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:31192 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:45156 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757594Ab3HPWoU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Aug 2013 18:44:20 -0400
-Date: Fri, 16 Aug 2013 16:40:34 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jan Stancek <jstancek@redhat.com>, linux-nfs@vger.kernel.org,
-        bfields@redhat.com, Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
-Message-ID: <20130816164034.58975e5b@corrin.poochiereds.net>
-In-Reply-To: <20130816191634.GA19942@fieldses.org>
-References: <682ebd8ecc7309b18396da356a0feb38bfa41674.1372692346.git.jstancek@redhat.com>
-	<20130708201643.GI29071@fieldses.org>
-	<1157529877.873319.1373353194344.JavaMail.root@redhat.com>
-	<20130726220924.GG30651@fieldses.org>
-	<20130815100244.370de645@corrin.poochiereds.net>
-	<20130815141917.GR17781@fieldses.org>
-	<20130816150454.2aacd5ff@corrin.poochiereds.net>
-	<20130816191634.GA19942@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1752014Ab3HEQPX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Aug 2013 12:15:23 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Nix <nix@esperi.org.uk>,
+        =?utf-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>,
+        Oleg Nesterov <oleg@redhat.com>
+CC: Jeff Layton <jlayton@redhat.com>, NFS list <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "dhowells@redhat.com" <dhowells@redhat.com>
+Subject: Re: [3.10.4] NFS locking panic, plus persisting NFS shutdown panic
+ from 3.9.*
+Date: Mon, 5 Aug 2013 16:15:01 +0000
+Message-ID: <1375719301.7337.14.camel@leira.trondhjem.org>
+References: <8761vlv4z9.fsf@spindle.srvr.nix>
+	 <20130805084436.69ee4415@corrin.poochiereds.net>
+	 <87siyotcri.fsf@spindle.srvr.nix>
+	 <20130805110427.509db424@tlielax.poochiereds.net>
+	 <20130805111106.73d6ab90@tlielax.poochiereds.net>
+	 <87zjswrvaq.fsf@spindle.srvr.nix>
+In-Reply-To: <87zjswrvaq.fsf@spindle.srvr.nix>
+Content-Type: multipart/mixed;
+	boundary="_002_1375719301733714camelleiratrondhjemorg_"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 16 Aug 2013 15:16:34 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+--_002_1375719301733714camelleiratrondhjemorg_
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <288135BE0610AD48835F7E4B13D3B6D4@hq.netapp.com>
+Content-Transfer-Encoding: base64
 
-> On Fri, Aug 16, 2013 at 03:04:54PM -0400, Jeff Layton wrote:
-> > On Thu, 15 Aug 2013 10:19:18 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Thu, Aug 15, 2013 at 10:02:44AM -0400, Jeff Layton wrote:
-> > > > On Fri, 26 Jul 2013 18:09:24 -0400
-> > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > > 
-> > > > > On Tue, Jul 09, 2013 at 02:59:54AM -0400, Jan Stancek wrote:
-> > > > > > 
-> > > > > > 
-> > > > > > 
-> > > > > > 
-> > > > > > ----- Original Message -----
-> > > > > > > From: "J. Bruce Fields" <bfields@fieldses.org>
-> > > > > > > To: "Jan Stancek" <jstancek@redhat.com>
-> > > > > > > Cc: linux-nfs@vger.kernel.org, bfields@redhat.com, "Trond Myklebust" <Trond.Myklebust@netapp.com>
-> > > > > > > Sent: Monday, 8 July, 2013 10:16:43 PM
-> > > > > > > Subject: Re: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
-> > > > > > > 
-> > > > > > > On Mon, Jul 01, 2013 at 05:32:34PM +0200, Jan Stancek wrote:
-> > > > > > > > Starting with commit:
-> > > > > > > >   commit f994c43d19a9116727d4c228d3f13db595bff562
-> > > > > > > >   Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > > > > > > >   Date:   Thu Nov 1 12:14:14 2012 -0400
-> > > > > > > >       SUNRPC: Clean up rpc_bind_new_program
-> > > > > > > > 
-> > > > > > > > operations on directory mounted with -onfsvers=3,tcp,sec=krb5 fail
-> > > > > > > > with Input/Output error after ~60 second timeout. This is presumably
-> > > > > > > > because upcalls for 'nfsacl' are not getting anywhere.
-> > > > > > > > 
-> > > > > > > > This patch enables pipe dir for nfsacl_program and changes its name
-> > > > > > > > to 'nfs'. This name will be used in upcalls and whole setup should
-> > > > > > > > work as it did in past - just with nfs/hostname principal.
-> > > > > > > 
-> > > > > > > I think this was the problem that nfs-utils commits
-> > > > > > > 
-> > > > > > > 	a1f8afc560 gssd: Remove insane sanity checks of the service name
-> > > > > > > 	a56989b665 gssd: Handle the target name correctly
-> > > > > > > 
-> > > > > > > were supposed to fix?
-> > > > > > > 
-> > > > > > > But perhaps the kernel needs a fix too to fix a regression with old
-> > > > > > > userspace.
-> > > > > > 
-> > > > > > I saw this error with nfs-utils.1.2.9-rc1, which should already contain
-> > > > > > those 2 commits.
-> > > > > 
-> > > > > Actually, I think your patch is just a subset of Trond's
-> > > > > http://mid.gmane.org/<4FA345DA4F4AE44899BD2B03EEEC2FA9092EC392@SACEXCMBX04-PRD.hq.netapp.com>
-> > > > > 
-> > > > > Trond, is there a reason that never got applied?
-> > > > > 
-> > > > > --b.
-> > > > > 
-> > > > 
-> > > > Hmm...gmane just says "No such article" when I feed it the above URL.
-> > > > Do you know what the title of the email was?
-> > > 
-> > > Argh sorry hadn't noticed that was private mail.
-> > > 
-> > > Last I checked actually neither of these patches fixed v3/krb5 for me.
-> > > 
-> > > --b.
-> > > 
-> > > Here is v2 with appropriate service names for mountd, statd, etc.
-> > > 
-> > > 
-> > 
-> > Ok, I tested both this patch and Jan's. This one doesn't help at all,
-> > but Jan's does seem to fix the problem. I'm still looking over the
-> > kernel and userland code to determine whether it's the best fix or
-> > not...
-> 
-> Ah, crap, sorry, I missed that Jan's modified rpc_program.name and
-> Trond's rpc_program.service_name.
-> 
-> As Simo pointed out in irc yesterday this can't be right:
-> 
-> > > diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> > > index 909dc0c..b19dab8 100644
-> > > --- a/net/sunrpc/auth_gss/auth_gss.c
-> > > +++ b/net/sunrpc/auth_gss/auth_gss.c
-> > > @@ -403,7 +403,9 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
-> > >  				   gss_msg->uid);
-> > >  	p += gss_msg->msg.len;
-> > >  	if (clnt->cl_principal) {
-> > > -		len = sprintf(p, "target=%s ", clnt->cl_principal);
-> > > +		len = sprintf(p, "target=%s@%s ",
-> > > +				clnt->cl_program->service_name,
-> > > +				clnt->cl_principal);
-> 
-> I'd think this should instead be going in the "service_name" field, but
-> I'm not sure.
-> 
+T24gTW9uLCAyMDEzLTA4LTA1IGF0IDE2OjUwICswMTAwLCBOaXggd3JvdGU6DQo+IE9uIDUgQXVn
+IDIwMTMsIEplZmYgTGF5dG9uIHNhaWQ6DQo+IA0KPiA+IE9uIE1vbiwgNSBBdWcgMjAxMyAxMTow
+NDoyNyAtMDQwMA0KPiA+IEplZmYgTGF5dG9uIDxqbGF5dG9uQHJlZGhhdC5jb20+IHdyb3RlOg0K
+PiA+DQo+ID4+IE9uIE1vbiwgMDUgQXVnIDIwMTMgMTU6NDg6MDEgKzAxMDANCj4gPj4gTml4IDxu
+aXhAZXNwZXJpLm9yZy51az4gd3JvdGU6DQo+ID4+IA0KPiA+PiA+IE9uIDUgQXVnIDIwMTMsIEpl
+ZmYgTGF5dG9uIHN0YXRlZDoNCj4gPj4gPiANCj4gPj4gPiA+IE9uIFN1biwgMDQgQXVnIDIwMTMg
+MTY6NDA6NTggKzAxMDANCj4gPj4gPiA+IE5peCA8bml4QGVzcGVyaS5vcmcudWs+IHdyb3RlOg0K
+PiA+PiA+ID4NCj4gPj4gPiA+PiBJIGp1c3QgZ290IHRoaXMgcGFuaWMgb24gMy4xMC40LCBpbiB0
+aGUgbWlkZGxlIG9mIGEgbGFyZ2UgcGFyYWxsZWwNCj4gPj4gPiA+PiBjb21waWxhdGlvbiAob2Yg
+Q2hyb21pdW0sIGFzIGl0IGhhcHBlbnMpIG92ZXIgTkZTdjM6DQo+ID4+ID4gPj4gDQo+ID4+ID4g
+Pj4gWzE2MzY0LjUyNzUxNl0gQlVHOiB1bmFibGUgdG8gaGFuZGxlIGtlcm5lbCBOVUxMIHBvaW50
+ZXIgZGVyZWZlcmVuY2UgYXQgMDAwMDAwMDAwMDAwMDAwOA0KPiA+PiA+ID4+IFsxNjM2NC41Mjc1
+NzFdIElQOiBbPGZmZmZmZmZmODEyNDUxNTc+XSBubG1jbG50X3NldGxvY2thcmdzKzB4NTUvMHhj
+Zg0KPiA+PiA+ID4+IFsxNjM2NC41Mjc2MTFdIFBHRCAwIA0KPiA+PiA+ID4+IFsxNjM2NC41Mjc2
+MjZdIE9vcHM6IDAwMDAgWyMxXSBQUkVFTVBUIFNNUCANCj4gPj4gPiA+PiBbMTYzNjQuNTI3NjU2
+XSBNb2R1bGVzIGxpbmtlZCBpbjogW2xhc3QgdW5sb2FkZWQ6IG1pY3JvY29kZV0gDQo+ID4+ID4g
+Pj4gWzE2MzY0LjUyNzY5MF0gQ1BVOiAwIFBJRDogMTcwMzQgQ29tbTogZmxvY2sgTm90IHRhaW50
+ZWQgMy4xMC40LTA1MzE1LWdmNGNlNDI0LWRpcnR5ICMxDQo+ID4+ID4gPj4gWzE2MzY0LjUyNzcz
+MF0gSGFyZHdhcmUgbmFtZTogU3lzdGVtIG1hbnVmYWN0dXJlciBTeXN0ZW0gUHJvZHVjdCBOYW1l
+L1A4SDYxLU1YIFVTQjMsIEJJT1MgMDUwNiAwOC8xMC8yMDEyDQo+ID4+ID4gPj4gWzE2MzY0LjUy
+Nzc3NV0gdGFzazogZmZmZjg4MDQxYTk3YWQ2MCB0aTogZmZmZjg4MDM1MDFkNDAwMCB0YXNrLnRp
+OiBmZmZmODgwMzUwMWQ0MDAwDQo+ID4+ID4gPj4gWzE2MzY0LjUyNzgxM10gUklQOiAwMDEwOls8
+ZmZmZmZmZmY4MTI0NTE1Nz5dIFs8ZmZmZmZmZmY4MTI0NTE1Nz5dIG5sbWNsbnRfc2V0bG9ja2Fy
+Z3MrMHg1NS8weGNmDQo+ID4+ID4gPj4gWzE2MzY0LjUyNzg2MF0gUlNQOiAwMDE4OmZmZmY4ODAz
+NTAxZDVjNTggIEVGTEFHUzogMDAwMTAyODINCj4gPj4gPiA+PiBbMTYzNjQuNTI3ODg5XSBSQVg6
+IGZmZmY4ODA0MWE5N2FkNjAgUkJYOiBmZmZmODgwM2U0OWM4ODAwIFJDWDogMDAwMDAwMDAwMDAw
+MDAwMA0KPiA+PiA+ID4+IFsxNjM2NC41Mjc5MjZdIFJEWDogMDAwMDAwMDAwMDAwMDAwMCBSU0k6
+IDAwMDAwMDAwMDAwMDAwNGEgUkRJOiBmZmZmODgwM2U0OWM4YjU0DQo+ID4+ID4gPj4gWzE2MzY0
+LjUyNzk2Ml0gUkJQOiBmZmZmODgwMzUwMWQ1YzY4IFIwODogMDAwMDAwMDAwMDAxNTcyMCBSMDk6
+IDAwMDAwMDAwMDAwMDAwMDANCj4gPj4gPiA+PiBbMTYzNjQuNTI3OTk4XSBSMTA6IDAwMDA3ZmZm
+ZmZmZmYwMDAgUjExOiBmZmZmODgwMzUwMWQ1ZDU4IFIxMjogZmZmZjg4MDM1MDFkNWQ1OA0KPiA+
+PiA+ID4+IFsxNjM2NC41MjgwMzRdIFIxMzogZmZmZjg4MDQxYmQyYmMwMCBSMTQ6IDAwMDAwMDAw
+MDAwMDAwMDAgUjE1OiBmZmZmODgwM2ZjOWUyOTAwDQo+ID4+ID4gPj4gWzE2MzY0LjUyODA3MF0g
+RlM6ICAwMDAwMDAwMDAwMDAwMDAwKDAwMDApIEdTOmZmZmY4ODA0MmZhMDAwMDAoMDAwMCkga25s
+R1M6MDAwMDAwMDAwMDAwMDAwMA0KPiA+PiA+ID4+IFsxNjM2NC41MjgxMTFdIENTOiAgMDAxMCBE
+UzogMDAwMCBFUzogMDAwMCBDUjA6IDAwMDAwMDAwODAwNTAwMzMNCj4gPj4gPiA+PiBbMTYzNjQu
+NTI4MTQyXSBDUjI6IDAwMDAwMDAwMDAwMDAwMDggQ1IzOiAwMDAwMDAwMDAxYzBiMDAwIENSNDog
+MDAwMDAwMDAwMDE0MDdmMA0KPiA+PiA+ID4+IFsxNjM2NC41MjgxNzddIERSMDogMDAwMDAwMDAw
+MDAwMDAwMCBEUjE6IDAwMDAwMDAwMDAwMDAwMDAgRFIyOiAwMDAwMDAwMDAwMDAwMDAwDQo+ID4+
+ID4gPj4gWzE2MzY0LjUyODIxNF0gRFIzOiAwMDAwMDAwMDAwMDAwMDAwIERSNjogMDAwMDAwMDBm
+ZmZmMGZmMCBEUjc6IDAwMDAwMDAwMDAwMDA0MDANCj4gPj4gPiA+PiBbMTYzNjQuNTI4MzAzXSBT
+dGFjazoNCj4gPj4gPiA+PiBbMTYzNjQuNTI4MzE2XSAgZmZmZjg4MDM1MDFkNWQ1OCBmZmZmODgw
+M2U0OWM4ODAwIGZmZmY4ODAzNTAxZDVjZDggZmZmZmZmZmY4MTI0NTQxOCANCj4gPj4gPiA+PiBb
+MTYzNjQuNTI4MzY5XSAgMDAwMDAwMDAwMDAwMDAwMCBmZmZmODgwMzUxNmYwYmMwIGZmZmY4ODAz
+ZDdiN2I2YzAgZmZmZmZmZmY4MTIxNWM4MSANCj4gPj4gPiA+PiBbMTYzNjQuNTI4NDE4XSAgZmZm
+Zjg4MDMwMDAwMDAwNyBmZmZmODgwNDFiZDJiZGM4IGZmZmY4ODAxYWFiZTk2NTAgZmZmZjg4MDNm
+YzllMjkwMCANCj4gPj4gPiA+PiBbMTYzNjQuNTI4NDY3XSBDYWxsIFRyYWNlOg0KPiA+PiA+ID4+
+IFsxNjM2NC41Mjg0ODVdICBbPGZmZmZmZmZmODEyNDU0MTg+XSBubG1jbG50X3Byb2MrMHgxNDgv
+MHg1ZmINCj4gPj4gPiA+PiBbMTYzNjQuNTI4NTE2XSAgWzxmZmZmZmZmZjgxMjE1YzgxPl0gPyBu
+ZnNfcHV0X2xvY2tfY29udGV4dCsweDY5LzB4NmUNCj4gPj4gPiA+PiBbMTYzNjQuNTI4NTUwXSAg
+WzxmZmZmZmZmZjgxMjIwOWEyPl0gbmZzM19wcm9jX2xvY2srMHgyMS8weDIzDQo+ID4+ID4gPj4g
+WzE2MzY0LjUyODU4MV0gIFs8ZmZmZmZmZmY4MTIxNDlkZD5dIGRvX3VubGsrMHg5Ni8weGIyDQo+
+ID4+ID4gPj4gWzE2MzY0LjUyODYwOF0gIFs8ZmZmZmZmZmY4MTIxNGI0MT5dIG5mc19mbG9jaysw
+eDVhLzB4NzENCj4gPj4gPiA+PiBbMTYzNjQuNTI4NjM3XSAgWzxmZmZmZmZmZjgxMTlhNzQ3Pl0g
+bG9ja3NfcmVtb3ZlX2Zsb2NrKzB4OWUvMHgxMTMNCj4gPj4gPiA+PiBbMTYzNjQuNTI4NjY4XSAg
+WzxmZmZmZmZmZjgxMTVjYzY4Pl0gX19mcHV0KzB4YjYvMHgxZTYNCj4gPj4gPiA+PiBbMTYzNjQu
+NTI4Njk1XSAgWzxmZmZmZmZmZjgxMTVjZGE2Pl0gX19fX2ZwdXQrMHhlLzB4MTANCj4gPj4gPiA+
+PiBbMTYzNjQuNTI4NzI0XSAgWzxmZmZmZmZmZjgxMDk5OGRhPl0gdGFza193b3JrX3J1bisweDdl
+LzB4OTgNCj4gPj4gPiA+PiBbMTYzNjQuNTI4NzU0XSAgWzxmZmZmZmZmZjgxMDgyYmM1Pl0gZG9f
+ZXhpdCsweDNjYy8weDhmYQ0KPiA+PiA+ID4+IFsxNjM2NC41Mjg3ODJdICBbPGZmZmZmZmZmODEw
+ODM1MDE+XSA/IFN5U193YWl0NCsweGE1LzB4YzINCj4gPj4gPiA+PiBbMTYzNjQuNTI4ODExXSAg
+WzxmZmZmZmZmZjgxMDgzMjhkPl0gZG9fZ3JvdXBfZXhpdCsweDZmLzB4YTINCj4gPj4gPiA+PiBb
+MTYzNjQuNTI4ODQzXSAgWzxmZmZmZmZmZjgxMDgzMmQ3Pl0gU3lTX2V4aXRfZ3JvdXArMHgxNy8w
+eDE3DQo+ID4+ID4gPj4gWzE2MzY0LjUyODg3Nl0gIFs8ZmZmZmZmZmY4MTYxM2U5Mj5dIHN5c3Rl
+bV9jYWxsX2Zhc3RwYXRoKzB4MTYvMHgxYg0KPiA+PiA+ID4+IFsxNjM2NC41Mjg5MDddIENvZGU6
+IDAwIDAwIDY1IDQ4IDhiIDA0IDI1IGMwIGI4IDAwIDAwIDQ4IDhiIDcyIDIwIDQ4IDgxIGVlIGMw
+IDAxIDAwIDAwIGYzIGE0IDQ4IDhkIGJiIDU0IDAzIDAwIDAwIGJlIDRhIDAwIDAwIDAwIDQ4IDhi
+IDkwIDY4IDA1IDAwIDAwIDw0OD4gOGIgNTIgMDggNDggODkgYmIgZDAgMDAgMDAgMDAgNDggODMg
+YzIgNDUgNDggODkgNTMgMzggNDggOGIgDQo+ID4+ID4gPj4gWzE2MzY0LjUyOTE3Nl0gUklQIFs8
+ZmZmZmZmZmY4MTI0NTE1Nz5dIG5sbWNsbnRfc2V0bG9ja2FyZ3MrMHg1NS8weGNmDQo+ID4+ID4g
+Pj4gWzE2MzY0LjUyOTI2NF0gIFJTUCA8ZmZmZjg4MDM1MDFkNWM1OD4NCj4gPj4gPiA+PiBbMTYz
+NjQuNTI5MjgzXSBDUjI6IDAwMDAwMDAwMDAwMDAwMDgNCj4gPj4gPiA+PiBbMTYzNjQuNTM5MDM5
+XSAtLS1bIGVuZCB0cmFjZSA1YTczZmRkZjIzNDQxMzc3IF0tLS0NCj4gWy4uLl0NCj4gPiBUaGUg
+bGlzdGluZyBhbmQgZGlzYXNzZW1ibHkgZnJvbSBubG1jbG50X3Byb2MgaXMgbm90IHRlcnJpYmx5
+DQo+ID4gaW50ZXJlc3RpbmcgdW5mb3J0dW5hdGVseS4gWW91IHJlYWxseSB3YW50IHRvIGRvIHRo
+ZSBsaXN0aW5nIGFuZA0KPiA+IGRpc2Fzc2VtYmx5IG9mIHRoZSBSSVAgYXQgcGFuaWMgdGltZSAo
+bmxtY2xudF9zZXRsb2NrYXJncysweDU1KS4NCj4gDQo+IE9oLCBzb3JyeSEgV3JvbmcgZW5kIG9m
+IHRoZSBvb3BzIDopDQo+IA0KPiAweGZmZmZmZmZmODEyNDUxNTcgaXMgaW4gbmxtY2xudF9zZXRs
+b2NrYXJncyAoZnMvbG9ja2QvY2xudHByb2MuYzoxMzEpLg0KPiAxMjYgICAgICAgICAgICAgc3Ry
+dWN0IG5sbV9hcmdzICphcmdwID0gJnJlcS0+YV9hcmdzOw0KPiAxMjcgICAgICAgICAgICAgc3Ry
+dWN0IG5sbV9sb2NrICpsb2NrID0gJmFyZ3AtPmxvY2s7DQo+IDEyOA0KPiAxMjkgICAgICAgICAg
+ICAgbmxtY2xudF9uZXh0X2Nvb2tpZSgmYXJncC0+Y29va2llKTsNCj4gMTMwICAgICAgICAgICAg
+IG1lbWNweSgmbG9jay0+ZmgsIE5GU19GSChmaWxlX2lub2RlKGZsLT5mbF9maWxlKSksIHNpemVv
+ZihzdHJ1Y3QgbmZzX2ZoKSk7DQo+IDEzMSAgICAgICAgICAgICBsb2NrLT5jYWxsZXIgID0gdXRz
+bmFtZSgpLT5ub2RlbmFtZTsNCj4gMTMyICAgICAgICAgICAgIGxvY2stPm9oLmRhdGEgPSByZXEt
+PmFfb3duZXI7DQo+IDEzMyAgICAgICAgICAgICBsb2NrLT5vaC5sZW4gID0gc25wcmludGYocmVx
+LT5hX293bmVyLCBzaXplb2YocmVxLT5hX293bmVyKSwgIiV1QCVzIiwNCj4gMTM0ICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICh1bnNpZ25lZCBpbnQpZmwtPmZsX3UubmZzX2Zs
+Lm93bmVyLT5waWQsDQo+IDEzNSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB1
+dHNuYW1lKCktPm5vZGVuYW1lKTsNCj4gDQo+ICAgIDB4ZmZmZmZmZmY4MTI0NTEwMiA8KzA+OiAg
+ICAgY2FsbHEgIDB4ZmZmZmZmZmY4MTYxM2IwMCA8X19mZW50cnlfXz4NCj4gICAgMHhmZmZmZmZm
+ZjgxMjQ1MTA3IDwrNT46ICAgICBwdXNoICAgJXJicA0KPiAgICAweGZmZmZmZmZmODEyNDUxMDgg
+PCs2PjogICAgIG1vdiAgICAlcnNwLCVyYnANCj4gICAgMHhmZmZmZmZmZjgxMjQ1MTBiIDwrOT46
+ICAgICBwdXNoICAgJXIxMg0KPiAgICAweGZmZmZmZmZmODEyNDUxMGQgPCsxMT46ICAgIG1vdiAg
+ICAlcnNpLCVyMTINCj4gICAgMHhmZmZmZmZmZjgxMjQ1MTEwIDwrMTQ+OiAgICBwdXNoICAgJXJi
+eA0KPiAgICAweGZmZmZmZmZmODEyNDUxMTEgPCsxNT46ICAgIG1vdiAgICAlcmRpLCVyYngNCj4g
+ICAgMHhmZmZmZmZmZjgxMjQ1MTE0IDwrMTg+OiAgICBsZWEgICAgMHgxMCglcmRpKSwlcmRpDQo+
+ICAgIDB4ZmZmZmZmZmY4MTI0NTExOCA8KzIyPjogICAgY2FsbHEgIDB4ZmZmZmZmZmY4MTI0NTBk
+ZiA8bmxtY2xudF9uZXh0X2Nvb2tpZT4NCj4gICAgMHhmZmZmZmZmZjgxMjQ1MTFkIDwrMjc+OiAg
+ICBtb3YgICAgMHg2MCglcjEyKSwlcmR4DQo+ICAgIDB4ZmZmZmZmZmY4MTI0NTEyMiA8KzMyPjog
+ICAgbGVhICAgIDB4NDQoJXJieCksJXJheA0KPiAgICAweGZmZmZmZmZmODEyNDUxMjYgPCszNj46
+ICAgIG1vdiAgICAlcmF4LCVyZGkNCj4gICAgMHhmZmZmZmZmZjgxMjQ1MTI5IDwrMzk+OiAgICBt
+b3YgICAgJDB4ODIsJWVjeA0KPiAgICAweGZmZmZmZmZmODEyNDUxMmUgPCs0ND46ICAgIG1vdiAg
+ICAlZ3M6MHhiOGMwLCVyYXgNCj4gICAgMHhmZmZmZmZmZjgxMjQ1MTM3IDwrNTM+OiAgICBtb3Yg
+ICAgMHgyMCglcmR4KSwlcnNpDQo+ICAgIDB4ZmZmZmZmZmY4MTI0NTEzYiA8KzU3PjogICAgc3Vi
+ICAgICQweDFjMCwlcnNpDQo+ICAgIDB4ZmZmZmZmZmY4MTI0NTE0MiA8KzY0PjogICAgcmVwIG1v
+dnNiICVkczooJXJzaSksJWVzOiglcmRpKQ0KPiAgICAweGZmZmZmZmZmODEyNDUxNDQgPCs2Nj46
+ICAgIGxlYSAgICAweDM1NCglcmJ4KSwlcmRpDQo+ICAgIDB4ZmZmZmZmZmY4MTI0NTE0YiA8Kzcz
+PjogICAgbW92ICAgICQweDRhLCVlc2kNCj4gICAgMHhmZmZmZmZmZjgxMjQ1MTUwIDwrNzg+OiAg
+ICBtb3YgICAgMHg1NjgoJXJheCksJXJkeA0KPiAtPiAweGZmZmZmZmZmODEyNDUxNTcgPCs4NT46
+ICAgIG1vdiAgICAweDgoJXJkeCksJXJkeA0KPiAgICAweGZmZmZmZmZmODEyNDUxNWIgPCs4OT46
+ICAgIG1vdiAgICAlcmRpLDB4ZDAoJXJieCkNCj4gICAgMHhmZmZmZmZmZjgxMjQ1MTYyIDwrOTY+
+OiAgICBhZGQgICAgJDB4NDUsJXJkeA0KPiANCj4gKGFzaWRlOiB3aXNoIEdEQiByZXBvcnRlZCB0
+aG9zZSBvZmZzZXRzIGluIGhleCwgb3IgdGhlIGtlcm5lbCByZXBvcnRlZA0KPiB0aGVtIGluIGRl
+Y2ltYWwuIEV2ZXJ5IHRpbWUgSSBsb29rIGF0IHRoZXNlIEkgZm9yZ2V0IHRvIGNvbnZlcnQgYW5k
+IGdldA0KPiBjb25mdXNlZC4uLikNCj4gDQo+IEkgd29uZGVyIGlmIHJlcSBpcyBOVUxMIChwb3Nz
+aWJsZSBpZiB0aGUgYXNzaWdubWVudCB0byBhcmdwIGF0IHRoZSB0b3ANCj4gb2YgdGhlIGZ1bmN0
+aW9uJ3MgYmVlbiBwdXNoZWQgZG93biBieSB0aGUgb3B0aW1pemVyKS4gVGltZSB0byBzdGljayBh
+DQo+IHByaW50aygpIGluIGFuZCBmaW5kIG91dCAoYWZ0ZXIgd29yayBpcyBvdmVyIHNvIEkgY2Fu
+IHJlYm9vdCB0aGlzIGJveA0KPiBsaWtlIGJpbGx5LW8pLg0KPiANCg0KRG9lcyB0aGUgYXR0YWNo
+ZWQgcGF0Y2ggZml4IHRoZSBwcm9ibGVtPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
+TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
+b20NCnd3dy5uZXRhcHAuY29tDQo=
 
-The service= field is...ahem...weird. It seems to also signal that you
-want to use machine creds, and clearly if you're a regular old user you
-don't want to be doing that.
+--_002_1375719301733714camelleiratrondhjemorg_
+Content-Type: text/x-patch;
+	name="0001-LOCKD-Don-t-call-utsname-nodename-from-nlmclnt_setlo.patch"
+Content-Description: 0001-LOCKD-Don-t-call-utsname-nodename-from-nlmclnt_setlo.patch
+Content-Disposition: attachment;
+	filename="0001-LOCKD-Don-t-call-utsname-nodename-from-nlmclnt_setlo.patch";
+	size=1910; creation-date="Mon, 05 Aug 2013 16:15:01 GMT";
+	modification-date="Mon, 05 Aug 2013 16:15:01 GMT"
+Content-ID: <ADF6ECB8ACA7FE4AA415327EC5FFC85F@hq.netapp.com>
+Content-Transfer-Encoding: base64
 
-I've been able to get Trond's patch to work, but had to also couple it
-with the patch below. Part of the problem seems to have been that the
-nfsacl client isn't getting a rpc_pipe dir instantiated because
-pipe_dir_name isn't set (as Jan's patch also points out).
+RnJvbSAzYzUwYmE4MDEwNTQ2NGEyOGQ0NTZkOWExZTBmMWQ4MWQ0YWY5MmE4IE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
+YXBwLmNvbT4NCkRhdGU6IE1vbiwgNSBBdWcgMjAxMyAxMjowNjoxMiAtMDQwMA0KU3ViamVjdDog
+W1BBVENIXSBMT0NLRDogRG9uJ3QgY2FsbCB1dHNuYW1lKCktPm5vZGVuYW1lIGZyb20NCiBubG1j
+bG50X3NldGxvY2thcmdzDQpNSU1FLVZlcnNpb246IDEuMA0KQ29udGVudC1UeXBlOiB0ZXh0L3Bs
+YWluOyBjaGFyc2V0PVVURi04DQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiA4Yml0DQoNCkZp
+cnN0bHksIG5sbWNsbnRfc2V0bG9ja2FyZ3MgY2FuIGJlIGNhbGxlZCBmcm9tIGEgcmVjbGFpbWVy
+IHRocmVhZCwgaW4NCndoaWNoIGNhc2Ugd2UncmUgaW4gZW50aXJlbHkgdGhlIHdyb25nIG5hbWVz
+cGFjZS4NClNlY29uZGx5LCBjb21taXQgOGFhYzYyNzA2YWRhYWYwZmFiMDJjNDMyNzc2MTU2MWM4
+YmRhOTQ0OCAobW92ZQ0KZXhpdF90YXNrX25hbWVzcGFjZXMoKSBvdXRzaWRlIG9mIGV4aXRfbm90
+aWZ5KCkpIG5vdyBtZWFucyB0aGF0DQpleGl0X3Rhc2tfd29yaygpIGlzIGNhbGxlZCBhZnRlciBl
+eGl0X3Rhc2tfbmFtZXNwYWNlcygpLCB3aGljaA0KdHJpZ2dlcnMgYW4gT29wcyB3aGVuIHdlJ3Jl
+IGZyZWVpbmcgdXAgdGhlIGxvY2tzLg0KDQpTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3Qg
+PFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KQ2M6IFRvcmFsZiBGw7Zyc3RlciA8dG9yYWxm
+LmZvZXJzdGVyQGdteC5kZT4NCkNjOiBPbGVnIE5lc3Rlcm92IDxvbGVnQHJlZGhhdC5jb20+DQpD
+YzogTml4IDxuaXhAZXNwZXJpLm9yZy51az4NCkNjOiBKZWZmIExheXRvbiA8amxheXRvbkByZWRo
+YXQuY29tPg0KLS0tDQogZnMvbG9ja2QvY2xudHByb2MuYyB8IDUgKysrLS0NCiAxIGZpbGUgY2hh
+bmdlZCwgMyBpbnNlcnRpb25zKCspLCAyIGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMv
+bG9ja2QvY2xudHByb2MuYyBiL2ZzL2xvY2tkL2NsbnRwcm9jLmMNCmluZGV4IDk3NjBlY2IuLmFj
+ZDM5NDcgMTAwNjQ0DQotLS0gYS9mcy9sb2NrZC9jbG50cHJvYy5jDQorKysgYi9mcy9sb2NrZC9j
+bG50cHJvYy5jDQpAQCAtMTI1LDE0ICsxMjUsMTUgQEAgc3RhdGljIHZvaWQgbmxtY2xudF9zZXRs
+b2NrYXJncyhzdHJ1Y3QgbmxtX3Jxc3QgKnJlcSwgc3RydWN0IGZpbGVfbG9jayAqZmwpDQogew0K
+IAlzdHJ1Y3QgbmxtX2FyZ3MJKmFyZ3AgPSAmcmVxLT5hX2FyZ3M7DQogCXN0cnVjdCBubG1fbG9j
+awkqbG9jayA9ICZhcmdwLT5sb2NrOw0KKwljaGFyICpub2RlbmFtZSA9IHJlcS0+YV9ob3N0LT5o
+X3JwY2NsbnQtPmNsX25vZGVuYW1lOw0KIA0KIAlubG1jbG50X25leHRfY29va2llKCZhcmdwLT5j
+b29raWUpOw0KIAltZW1jcHkoJmxvY2stPmZoLCBORlNfRkgoZmlsZV9pbm9kZShmbC0+ZmxfZmls
+ZSkpLCBzaXplb2Yoc3RydWN0IG5mc19maCkpOw0KLQlsb2NrLT5jYWxsZXIgID0gdXRzbmFtZSgp
+LT5ub2RlbmFtZTsNCisJbG9jay0+Y2FsbGVyICA9IG5vZGVuYW1lOw0KIAlsb2NrLT5vaC5kYXRh
+ID0gcmVxLT5hX293bmVyOw0KIAlsb2NrLT5vaC5sZW4gID0gc25wcmludGYocmVxLT5hX293bmVy
+LCBzaXplb2YocmVxLT5hX293bmVyKSwgIiV1QCVzIiwNCiAJCQkJKHVuc2lnbmVkIGludClmbC0+
+ZmxfdS5uZnNfZmwub3duZXItPnBpZCwNCi0JCQkJdXRzbmFtZSgpLT5ub2RlbmFtZSk7DQorCQkJ
+CW5vZGVuYW1lKTsNCiAJbG9jay0+c3ZpZCA9IGZsLT5mbF91Lm5mc19mbC5vd25lci0+cGlkOw0K
+IAlsb2NrLT5mbC5mbF9zdGFydCA9IGZsLT5mbF9zdGFydDsNCiAJbG9jay0+ZmwuZmxfZW5kID0g
+ZmwtPmZsX2VuZDsNCi0tIA0KMS44LjMuMQ0KDQo=
 
-We could just as easily stick this in the "nfs" directory though.
-
-Thoughts?
-
-8<---------------------------------------------------------------
-
->From 3a181b99f7b01fff0c7d0412910c374fc2ebcdfd Mon Sep 17 00:00:00 2001
-From: Jeff Layton <jlayton@redhat.com>
-Date: Fri, 16 Aug 2013 15:17:08 -0400
-Subject: [PATCH] rpc_pipe: add nfsacl subdir
-
-For the gssd file for nfsacl.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/nfs3client.c   | 1 +
- net/sunrpc/rpc_pipe.c | 5 +++++
- 2 files changed, 6 insertions(+)
-
-diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
-index 20b3693..5dc6bf0 100644
---- a/fs/nfs/nfs3client.c
-+++ b/fs/nfs/nfs3client.c
-@@ -15,6 +15,7 @@ const struct rpc_program nfsacl_program = {
- 	.nrvers			= ARRAY_SIZE(nfsacl_version),
- 	.version		= nfsacl_version,
- 	.stats			= &nfsacl_rpcstat,
-+	.pipe_dir_name		= "nfsacl",
- };
- 
- /*
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 83b196d..42ce94c 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -1015,6 +1015,7 @@ enum {
- 	RPCAUTH_lockd,
- 	RPCAUTH_mount,
- 	RPCAUTH_nfs,
-+	RPCAUTH_nfsacl,
- 	RPCAUTH_portmap,
- 	RPCAUTH_statd,
- 	RPCAUTH_nfsd4_cb,
-@@ -1036,6 +1037,10 @@ static const struct rpc_filelist files[] = {
- 		.name = "nfs",
- 		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
- 	},
-+	[RPCAUTH_nfsacl] = {
-+		.name = "nfsacl",
-+		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
-+	},
- 	[RPCAUTH_portmap] = {
- 		.name = "portmap",
- 		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
--- 
-1.8.3.1
-
+--_002_1375719301733714camelleiratrondhjemorg_--
