@@ -1,173 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:36085 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:18461 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755725Ab3HAPYH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Aug 2013 11:24:07 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: SP4_MACH_CRED
-Date: Thu, 1 Aug 2013 15:24:05 +0000
-Message-ID: <88EAD768-768D-43A3-8E4D-D9B904C0283C@netapp.com>
-References: <A0A1021A-64E6-4E0C-89A5-9F719C8E1AFC@netapp.com>
- <20130731213904.GB2668@fieldses.org>
- <75E5568D-320C-45A1-B7E6-23CE73217BAF@netapp.com>
- <20130731234800.GC2668@fieldses.org>
- <0E0FF4CB-4388-417B-9D1C-24940472D844@netapp.com>
- <47D6EDEC-B91A-446F-A227-FDA9D37DB618@netapp.com>
- <20130801145617.GA15123@fieldses.org>
-In-Reply-To: <20130801145617.GA15123@fieldses.org>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+	id S1753970Ab3HESdT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Aug 2013 14:33:19 -0400
+Date: Mon, 5 Aug 2013 14:33:11 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Nix <nix@esperi.org.uk>,
+        Toralf =?ISO-8859-1?B?RvZyc3Rlcg==?= <toralf.foerster@gmx.de>,
+        Oleg Nesterov <oleg@redhat.com>, NFS list <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "dhowells@redhat.com" <dhowells@redhat.com>
+Subject: Re: [3.10.4] NFS locking panic, plus persisting NFS shutdown panic
+ from 3.9.*
+Message-ID: <20130805143311.4ae59067@tlielax.poochiereds.net>
+In-Reply-To: <1375726682.7337.29.camel@leira.trondhjem.org>
+References: <8761vlv4z9.fsf@spindle.srvr.nix>
+	<20130805084436.69ee4415@corrin.poochiereds.net>
+	<87siyotcri.fsf@spindle.srvr.nix>
+	<20130805110427.509db424@tlielax.poochiereds.net>
+	<20130805111106.73d6ab90@tlielax.poochiereds.net>
+	<87zjswrvaq.fsf@spindle.srvr.nix>
+	<1375719301.7337.14.camel@leira.trondhjem.org>
+	<20130805133739.21654ecb@tlielax.poochiereds.net>
+	<1375726682.7337.29.camel@leira.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, 5 Aug 2013 18:18:03 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-On Aug 1, 2013, at 10:56 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-
-> On Thu, Aug 01, 2013 at 02:09:49PM +0000, Adamson, Dros wrote:
->> 
->> On Aug 1, 2013, at 10:03 AM, "Adamson, Dros" <Weston.Adamson@netapp.com>
->> wrote:
->> 
->>> 
->>> On Jul 31, 2013, at 7:48 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
->>> 
->>>> On Wed, Jul 31, 2013 at 10:22:22PM +0000, Adamson, Dros wrote:
->>>>> 
->>>>> On Jul 31, 2013, at 5:39 PM, "J. Bruce Fields" <bfields@fieldses.org>
->>>>> wrote:
->>>>> 
->>>>>> This should probably be cc'd to the mailing list.
->>>>> 
->>>>> Agreed!
->>>>> 
->>>>>> 
->>>>>> On Wed, Jul 31, 2013 at 09:25:29PM +0000, Adamson, Dros wrote:
->>>>>>> I have a pretty functional client-side SP4_MACH_CRED implementation
->>>>>>> and I'm trying to implement the server side so I can fully test the
->>>>>>> client code. I was testing against another server, but that didn't
->>>>>>> implement any useful set of operations other than the required ones.
->>>>>> 
->>>>>> The latest Linux server implements SP4_MACH_CRED but only for the
->>>>>> required operations.  (But that hasn't really been tested--any testing
->>>>>> even to make sure that basic stuff works would be welcomed.)
->>>>>> 
->>>>> 
->>>>> Right, I'm happy to report that the initial implementation of the required operations seems to work with (at least) one small patch I'll send your way soon.
+> On Mon, 2013-08-05 at 13:37 -0400, Jeff Layton wrote:
+> > On Mon, 5 Aug 2013 16:15:01 +0000
+> > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+> > 
+> > > From 3c50ba80105464a28d456d9a1e0f1d81d4af92a8 Mon Sep 17 00:00:00 2001
+> > > From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > > Date: Mon, 5 Aug 2013 12:06:12 -0400
+> > > Subject: [PATCH] LOCKD: Don't call utsname()->nodename from
+> > >  nlmclnt_setlockargs
+> > > MIME-Version: 1.0
+> > > Content-Type: text/plain; charset=UTF-8
+> > > Content-Transfer-Encoding: 8bit
+> > > 
+> > > Firstly, nlmclnt_setlockargs can be called from a reclaimer thread, in
+> > > which case we're in entirely the wrong namespace.
+> > > Secondly, commit 8aac62706adaaf0fab02c4327761561c8bda9448 (move
+> > > exit_task_namespaces() outside of exit_notify()) now means that
+> > > exit_task_work() is called after exit_task_namespaces(), which
+> > > triggers an Oops when we're freeing up the locks.
+> > > 
+> > > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > > Cc: Toralf Förster <toralf.foerster@gmx.de>
+> > > Cc: Oleg Nesterov <oleg@redhat.com>
+> > > Cc: Nix <nix@esperi.org.uk>
+> > > Cc: Jeff Layton <jlayton@redhat.com>
+> > > ---
+> > >  fs/lockd/clntproc.c | 5 +++--
+> > >  1 file changed, 3 insertions(+), 2 deletions(-)
+> > > 
+> > > diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+> > > index 9760ecb..acd3947 100644
+> > > --- a/fs/lockd/clntproc.c
+> > > +++ b/fs/lockd/clntproc.c
+> > > @@ -125,14 +125,15 @@ static void nlmclnt_setlockargs(struct nlm_rqst *req, struct file_lock *fl)
+> > >  {
+> > >  	struct nlm_args	*argp = &req->a_args;
+> > >  	struct nlm_lock	*lock = &argp->lock;
+> > > +	char *nodename = req->a_host->h_rpcclnt->cl_nodename;
+> > >  
+> > >  	nlmclnt_next_cookie(&argp->cookie);
+> > >  	memcpy(&lock->fh, NFS_FH(file_inode(fl->fl_file)), sizeof(struct nfs_fh));
+> > > -	lock->caller  = utsname()->nodename;
+> > > +	lock->caller  = nodename;
+> > >  	lock->oh.data = req->a_owner;
+> > >  	lock->oh.len  = snprintf(req->a_owner, sizeof(req->a_owner), "%u@%s",
+> > >  				(unsigned int)fl->fl_u.nfs_fl.owner->pid,
+> > > -				utsname()->nodename);
+> > > +				nodename);
+> > >  	lock->svid = fl->fl_u.nfs_fl.owner->pid;
+> > >  	lock->fl.fl_start = fl->fl_start;
+> > >  	lock->fl.fl_end = fl->fl_end;
+> > 
+> > Looks good to me...
+> > 
+> > Reviewed-by: Jeff Layton <jlayton@redhat.com>
+> > 
+> > Trond, any thoughts on the other oops that Nix posted? The issue there
+> > seems to be that we're trying to do the pathwalk to the rpcbind unix
+> > socket from exit_task_work(), but that's happening after we've already
+> > called exit_fs().
+> > 
+> > The trivial answer seems to be to simply call exit_task_work() before
+> > exit_fs() there, but it seems like we ought to be doing the upcall to
+> > rpcbind in a mount namespace from which we know we can reach the
+> > socket...
 > 
-> (And I think I forgot to say thanks here!  It's useful to have that
-> tested.)
-
-I should note it's somewhat useless to use SP4_MACH_CRED in this way from the linux client's perspective. We already use the machine cred with krb5i if possible for state manager ops even in SP4_NONE mode.
-
+> Isn't it enough to just do the same thing as we did for gss proxy? i.e.
+> set the RPC_CLNT_CREATE_NO_IDLE_TIMEOUT flag.
 > 
->>>>> The problem I'm trying to solve initially with SP4_MACH_CRED is when there are a bunch of buffered writes and the user's credentials expire. Any client side operations initiated after the credentials expire will fail (as expected), but operations that have already been seen as successful still need to be flushed.
->>>>> 
->>>>> Andy is addressing this in a different way by falling back to unbuffered writes and flushing all data right before a cred expires, but this method is better when available - and it's Trond requested.
->>>> 
->>>> I understand the problem it solves, but it is a bit of a change to the
->>>> security model and I just wonder what the right thing is to do by
->>>> default.
->>> 
->>> So you think
-> 
-> I'm not staking out a position, just trying to understand the tradeoffs:
-> 
->> the default behavior should be that buffered writes just hang around
->> forever in the client's buffer cache when a user cred expires?  That
->> seems really wrong to me.
-> 
-> So once Andy's work is also done, I guess the client can attempt to:
-> 	- try to get creds renewed well in advance.
+> See attachment.
 
-This is still up to the user / distro / config.
+Yeah, that looks like a reasonable thing to do...
 
-> 	- if they aren't, flush everything and start writing
-> 	  synchronously.
-> 
-> But problems could still happen, for example, if:
-> 	- an unfortunately timed network outage prevents the above.
-> 	  (Then again, MACH_CHRED may not help here if that also means
-> 	  the client's state expires?)
+OTOH, Is there any other way for a unix socket to end up disconnected
+other than if we were to close it? Maybe if rpcbind stopped, the socket
+unlinked and recreated and then started again?
 
-Right. Using MACH_CRED has a much better chance of being able to flush the data.
+If so then you still could potentially end up in this situation even if
+you didn't autoclose it.
 
-> 	- an unfortunately timed server reboot prevents the above.
-
-Yep, and using the machine creds should help here.
-
-> 	- user credentials go away before they're expected to expire.
-> 	  (I wonder how this would typically happen?)
-
-I don't believe this can happen yet.  IIRC a kdestroy isn't noticed by gssd, but this is probably going to change soon with Andy's keyring work, so it'd be nice to plan for it.
-
-> 
-> And then the client may be forced to choose between throwing away
-> buffered data and allowing users to DOS it by filling memory with data
-> it can't write back.
-
-Right, and this leads to data corruption - the application believes it has written bytes to storage that never really made it.
-
-> 
-> So the choices are:
-> 	1. allow those problems, or
-> 	2. change the nfs/krb5 security model from "once you give a
-> 	   client your credential, you trust it with your data till the
-> 	   credential expires" to "once you give a client your
-> 	   credential, you trust it indefinitely".  (Well, until its
-> 	   state expires, anyway.)
-> 
-> And we can implement either 1, or 2, or both, and if we implement both,
-> we get to choose which of 1 or 2 is the default.
-> 
-> So I don't have a strong opinion yet, but I do fear that if we only
-> implement #2 there will be users who see that as a serious regression in
-> security.
-
-Perhaps you're right - the server is essentially trusting the client machine to do the right thing here, but the server is already trusting the client machine (not users) to do the right thing.  A rouge client implementation could create all types of havoc as it stands now, i.e. using another user's credentials to bypass permissions, etc.
-
-I argue that from a user's perspective, #2 is the right way to go.  If my credentials aren't expired when I write some bytes, and the application is told that the write succeeded, I expect those bytes next time I open the file.
-
--dros
-
-> 
-> --b.
-> 
->>> 
->>> If this isn't something you want, I'm not sure that we want any SP4_MACH_CRED support other than the required operations, which is kind of a moot point since we now use krb5i for state manager operations by default (whether in SP4_MACH_CRED or SP4_NONE).
->>> 
->>> The other case we are aiming for with the client is to be able to use the machine cred in recovery when the user's creds expire so that flushing of buffers can happen once recovery is complete. Of course, if you don't want to see the flushing changes, this is useless.
->>> 
->>> So… Is SP4_MACH_CRED support even worth the effort?
->>> 
->>> -dros
->>> 
->>>> 
->>>> --b.
->>>> 
->>>>> 
->>>>>> 
->>>>>> This violates that assumption, so I wonder if it needs to be
->>>>>> configurable, and even off by default.
->>>>>> 
->>>>> 
->>>>> This will fix potential data corruption in a corner case of the way things currently work and doesn't change expected behavior from a user's perspective. 
->>>>> 
->>>>> -dros
->>>>> 
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+-- 
+Jeff Layton <jlayton@redhat.com>
