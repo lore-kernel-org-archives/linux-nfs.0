@@ -1,190 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:42539 "EHLO mx1.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:7691 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760059Ab3HNXZN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Aug 2013 19:25:13 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 05/13] NFSv4: Add tracepoints for debugging lookup/create operations
-Date: Wed, 14 Aug 2013 19:24:50 -0400
-Message-ID: <1376522698-44596-6-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1376522698-44596-5-git-send-email-Trond.Myklebust@netapp.com>
-References: <1376522698-44596-1-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-2-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-3-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-4-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-5-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751922Ab3HEO75 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Aug 2013 10:59:57 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Julia Lawall <Julia.Lawall@lip6.fr>, Steve Dickson <steved@redhat.com>,
+        David Quigley <dpquigl@davequigley.com>
+CC: "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] fs/nfs/inode.c: adjust code alignment
+Date: Mon, 5 Aug 2013 14:59:55 +0000
+Message-ID: <1375714793.7337.12.camel@leira.trondhjem.org>
+References: <1375714059-29567-1-git-send-email-Julia.Lawall@lip6.fr>
+	 <1375714059-29567-2-git-send-email-Julia.Lawall@lip6.fr>
+In-Reply-To: <1375714059-29567-2-git-send-email-Julia.Lawall@lip6.fr>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Set up basic tracepoints for debugging NFSv4 lookup, unlink/remove,
-symlink, mkdir, mknod, fs_locations and secinfo.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c  | 37 +++++++++++++++++++++++--------------
- fs/nfs/nfs4trace.h | 46 ++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 69 insertions(+), 14 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 2796858..789be86 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3026,6 +3026,7 @@ static int nfs4_proc_lookup_common(struct rpc_clnt **clnt, struct inode *dir,
- 	int err;
- 	do {
- 		err = _nfs4_proc_lookup(client, dir, name, fhandle, fattr, label);
-+		trace_nfs4_lookup(dir, name, err);
- 		switch (err) {
- 		case -NFS4ERR_BADNAME:
- 			err = -ENOENT;
-@@ -3261,8 +3262,9 @@ static int nfs4_proc_remove(struct inode *dir, struct qstr *name)
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(dir),
--				_nfs4_proc_remove(dir, name),
-+		err = _nfs4_proc_remove(dir, name);
-+		trace_nfs4_remove(dir, name, err);
-+		err = nfs4_handle_exception(NFS_SERVER(dir), err,
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-@@ -3291,10 +3293,12 @@ static void nfs4_proc_unlink_rpc_prepare(struct rpc_task *task, struct nfs_unlin
- 
- static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
- {
--	struct nfs_removeres *res = task->tk_msg.rpc_resp;
-+	struct nfs_unlinkdata *data = task->tk_calldata;
-+	struct nfs_removeres *res = &data->res;
- 
- 	if (!nfs4_sequence_done(task, &res->seq_res))
- 		return 0;
-+	trace_nfs4_remove_async(dir, &data->args.name, task->tk_status);
- 	if (nfs4_async_handle_error(task, res->server, NULL) == -EAGAIN)
- 		return 0;
- 	update_changeattr(dir, &res->cinfo);
-@@ -3533,9 +3537,9 @@ static int nfs4_proc_symlink(struct inode *dir, struct dentry *dentry,
- 	label = nfs4_label_init_security(dir, dentry, sattr, &l);
- 
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(dir),
--				_nfs4_proc_symlink(dir, dentry, page,
--							len, sattr, label),
-+		err = _nfs4_proc_symlink(dir, dentry, page, len, sattr, label);
-+		trace_nfs4_symlink(dir, &dentry->d_name, err);
-+		err = nfs4_handle_exception(NFS_SERVER(dir), err,
- 				&exception);
- 	} while (exception.retry);
- 
-@@ -3572,8 +3576,9 @@ static int nfs4_proc_mkdir(struct inode *dir, struct dentry *dentry,
- 
- 	sattr->ia_mode &= ~current_umask();
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(dir),
--				_nfs4_proc_mkdir(dir, dentry, sattr, label),
-+		err = _nfs4_proc_mkdir(dir, dentry, sattr, label);
-+		trace_nfs4_mkdir(dir, &dentry->d_name, err);
-+		err = nfs4_handle_exception(NFS_SERVER(dir), err,
- 				&exception);
- 	} while (exception.retry);
- 	nfs4_label_release_security(label);
-@@ -3680,8 +3685,9 @@ static int nfs4_proc_mknod(struct inode *dir, struct dentry *dentry,
- 
- 	sattr->ia_mode &= ~current_umask();
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(dir),
--				_nfs4_proc_mknod(dir, dentry, sattr, label, rdev),
-+		err = _nfs4_proc_mknod(dir, dentry, sattr, label, rdev);
-+		trace_nfs4_mknod(dir, &dentry->d_name, err);
-+		err = nfs4_handle_exception(NFS_SERVER(dir), err,
- 				&exception);
- 	} while (exception.retry);
- 
-@@ -5801,8 +5807,10 @@ int nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(dir),
--				_nfs4_proc_fs_locations(client, dir, name, fs_locations, page),
-+		err = _nfs4_proc_fs_locations(client, dir, name,
-+				fs_locations, page);
-+		trace_nfs4_get_fs_locations(dir, name, err);
-+		err = nfs4_handle_exception(NFS_SERVER(dir), err,
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-@@ -5836,8 +5844,9 @@ int nfs4_proc_secinfo(struct inode *dir, const struct qstr *name,
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(dir),
--				_nfs4_proc_secinfo(dir, name, flavors),
-+		err = _nfs4_proc_secinfo(dir, name, flavors);
-+		trace_nfs4_secinfo(dir, name, err);
-+		err = nfs4_handle_exception(NFS_SERVER(dir), err,
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index eaf1f22..38fb509 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -391,6 +391,52 @@ DEFINE_NFS4_LOCK_EVENT(nfs4_lock_reclaim);
- DEFINE_NFS4_LOCK_EVENT(nfs4_lock_expired);
- DEFINE_NFS4_LOCK_EVENT(nfs4_unlock);
- 
-+DECLARE_EVENT_CLASS(nfs4_lookup_event,
-+		TP_PROTO(const struct inode *dir,
-+			const struct qstr *name,
-+			int error),
-+
-+		TP_ARGS(dir, name, error),
-+
-+		TP_STRUCT__entry(
-+			__field(dev_t, dev)
-+			__field(int, error)
-+			__field(u64, dir)
-+			__string(name, name->name)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->dev = dir->i_sb->s_dev;
-+			__entry->dir = NFS_FILEID(dir);
-+			__entry->error = error;
-+			__assign_str(name, name->name);
-+		),
-+
-+		TP_printk("error=%d (%s), name=%02x:%02x:%lld/%s",
-+			__entry->error,
-+			show_nfsv4_errors(__entry->error),
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->dir,
-+			__get_str(name)
-+		)
-+);
-+
-+#define DEFINE_NFS4_LOOKUP_EVENT(name)	\
-+DEFINE_EVENT(nfs4_lookup_event, name,		\
-+		TP_PROTO(const struct inode *dir,	\
-+			const struct qstr *name,	\
-+			int error),			\
-+		TP_ARGS(dir, name, error))
-+
-+DEFINE_NFS4_LOOKUP_EVENT(nfs4_lookup);
-+DEFINE_NFS4_LOOKUP_EVENT(nfs4_symlink);
-+DEFINE_NFS4_LOOKUP_EVENT(nfs4_mkdir);
-+DEFINE_NFS4_LOOKUP_EVENT(nfs4_mknod);
-+DEFINE_NFS4_LOOKUP_EVENT(nfs4_remove);
-+DEFINE_NFS4_LOOKUP_EVENT(nfs4_remove_async);
-+DEFINE_NFS4_LOOKUP_EVENT(nfs4_get_fs_locations);
-+DEFINE_NFS4_LOOKUP_EVENT(nfs4_secinfo);
-+
- #endif /* _TRACE_NFS4_H */
- 
- #undef TRACE_INCLUDE_PATH
--- 
-1.8.3.1
-
+T24gTW9uLCAyMDEzLTA4LTA1IGF0IDE2OjQ3ICswMjAwLCBKdWxpYSBMYXdhbGwgd3JvdGU6DQo+
+IEZyb206IEp1bGlhIExhd2FsbCA8SnVsaWEuTGF3YWxsQGxpcDYuZnI+DQo+IA0KPiBTaWduZWQt
+b2ZmLWJ5OiBKdWxpYSBMYXdhbGwgPEp1bGlhLkxhd2FsbEBsaXA2LmZyPg0KPiANCj4gLS0tDQo+
+IA0KPiBUaGlzIHBhdGNoIGFkanVzdHMgdGhlIGNvZGUgc28gdGhhdCB0aGUgYWxpZ25tZW50IG1h
+dGNoZXMgdGhlIGN1cnJlbnQNCj4gc2VtYW50aWNzLiAgSSBoYXZlIG5vIGlkZWEgaWYgaXQgaXMg
+dGhlIGludGVuZGVkIHNlbWFudGljcywgdGhvdWdoLiAgU2hvdWxkDQo+IHRoZSBjYWxsIHRvIG5m
+c19zZXRzZWN1cml0eSBhbHNvIGJlIHVuZGVyIHRoZSBlbHNlPw0KPiANCg0KPiAgZnMvbmZzL2lu
+b2RlLmMgfCAgICAyICstDQo+ICAxIGZpbGUgY2hhbmdlZCwgMSBpbnNlcnRpb24oKyksIDEgZGVs
+ZXRpb24oLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvaW5vZGUuYyBiL2ZzL25mcy9pbm9k
+ZS5jDQo+IGluZGV4IGFmNmU4MDYuLmQ4YWQ2ODUgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9pbm9k
+ZS5jDQo+ICsrKyBiL2ZzL25mcy9pbm9kZS5jDQo+IEBAIC00NjMsNyArNDYzLDcgQEAgbmZzX2Zo
+Z2V0KHN0cnVjdCBzdXBlcl9ibG9jayAqc2IsIHN0cnVjdCBuZnNfZmgNCj4gKmZoLCBzdHJ1Y3Qg
+bmZzX2ZhdHRyICpmYXR0ciwgc3QNCj4gICAgICAgICAgICAgICAgIHVubG9ja19uZXdfaW5vZGUo
+aW5vZGUpOw0KPiAgICAgICAgIH0gZWxzZQ0KPiAgICAgICAgICAgICAgICAgbmZzX3JlZnJlc2hf
+aW5vZGUoaW5vZGUsIGZhdHRyKTsNCj4gLSAgICAgICAgICAgICAgIG5mc19zZXRzZWN1cml0eShp
+bm9kZSwgZmF0dHIsIGxhYmVsKTsNCj4gKyAgICAgICBuZnNfc2V0c2VjdXJpdHkoaW5vZGUsIGZh
+dHRyLCBsYWJlbCk7DQo+ICAgICAgICAgZHByaW50aygiTkZTOiBuZnNfZmhnZXQoJXMvJUxkIGZo
+X2NyYz0weCUwOHggY3Q9JWQpXG4iLA0KPiAgICAgICAgICAgICAgICAgaW5vZGUtPmlfc2ItPnNf
+aWQsDQo+ICAgICAgICAgICAgICAgICAobG9uZyBsb25nKU5GU19GSUxFSUQoaW5vZGUpLA0KDQpI
+aSBKdWxpYSwNCg0KVGhhbmtzIGZvciBwb2ludGluZyB0aGlzIG91dCEgR2l2ZW4gdGhhdCB0aGUg
+J3RoZW4nIGNsYXVzZSBvZiB0aGUgaWYNCnN0YXRlbWVudCBhbHJlYWR5IGNhbGxzIG5mc19zZXRz
+ZWN1cml0eSBiZWZvcmUgdW5sb2NraW5nIHRoZSBpbm9kZSwgSQ0Kc3VzcGVjdCB0aGF0IHRoZSBh
+Ym92ZSBfc2hvdWxkXyByZWFsbHkgYmUgcGFydCBvZiB0aGUgJ2Vsc2UnIGNsYXVzZS4gDQoNClRo
+YXQgc2FpZCwgSSBjYW4ndCBzZWUgdGhhdCBjYWxsaW5nIG5mc19zZXRzZWN1cml0eSB0d2ljZSBv
+biB0aGUgaW5vZGUNCmNhbiBjYXVzZSBhbnkgdW5pbnRlbmRlZCBzaWRlLWVmZmVjdHMsIHNvIEkg
+c3VnZ2VzdCB0aGF0IHdlIHJhdGhlciBxdWV1ZQ0KdGhlIHBhdGNoIHVwIGZvciBpbmNsdXNpb24g
+aW4gMy4xMi4NClN0ZXZlIGFuZCBEYXZlLCBhbnkgY29tbWVudHM/DQoNCi0tIA0KVHJvbmQgTXlr
+bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWts
+ZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
