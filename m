@@ -1,263 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:35728 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:33786 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751787Ab3HTTfZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Aug 2013 15:35:25 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 16/16] NFSv4.1: Add tracepoints for debugging slot table operations
-Date: Tue, 20 Aug 2013 15:35:12 -0400
-Message-ID: <1377027312-45957-17-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377027312-45957-16-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377027312-45957-1-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-2-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-3-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-4-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-5-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-6-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-7-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-8-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-9-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-10-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-11-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-12-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-13-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-14-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-15-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-16-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751915Ab3HFNeL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Aug 2013 09:34:11 -0400
+Date: Tue, 6 Aug 2013 09:34:07 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Larry Keegan <lk@pfw.demon.co.uk>, linux-nfs@vger.kernel.org
+Subject: Re: nfs client: Now you see it, now you don't (aka spurious ESTALE
+ errors)
+Message-ID: <20130806133407.GB5282@fieldses.org>
+References: <20130725134515.67af44e2@cs3.al.itld>
+ <20130725101143.6a22cb81@corrin.poochiereds.net>
+ <20130725170526.6e54c7db@cs3.al.itld>
+ <20130726145937.GB30651@fieldses.org>
+ <20130726232111.2567a941@cs3.al.itld>
+ <20130806110209.56e554a7@cs3.al.itld>
+ <20130806071428.5d68052a@corrin.poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130806071428.5d68052a@corrin.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add tracepoints to nfs41_setup_sequence and nfs41_sequence_done
-to track session and slot table state changes.
+On Tue, Aug 06, 2013 at 07:14:28AM -0400, Jeff Layton wrote:
+> On Tue, 6 Aug 2013 11:02:09 +0000
+> Larry Keegan <lk@pfw.demon.co.uk> wrote:
+> > These figures seem reasonable for a single SATA HDD in concert
+> > with dmcrypt. Whilst I expected some degradation from exporting and
+> > mounting sync, I have to say that I'm truly flabbergasted by the
+> > difference between the sync and async figures. I can't help but
+> > think I am still suffering from some sort of configuration
+> > problem. Do the numbers from the NFS client seem unreasonable?
+> > 
+> 
+> That's expected. Performance is the tradeoff for tight cache coherency.
+> 
+> With -o sync, each write() sycall requires a round trip to the server.
+> They don't get batched and you can't issue them in parallel. That has a
+> terrible effect on write performance.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/callback_proc.c |   1 +
- fs/nfs/nfs4proc.c      |   2 +
- fs/nfs/nfs4session.h   |  10 ++++
- fs/nfs/nfs4trace.c     |   2 +
- fs/nfs/nfs4trace.h     | 139 +++++++++++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 154 insertions(+)
+Note also mounting -osync and exporting with the "sync" export option
+are entirely different things.
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index c074930..c44204d 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -464,6 +464,7 @@ out:
- 	} else
- 		res->csr_status = status;
- 
-+	trace_nfs4_cb_sequence(args, res, htonl(status));
- 	dprintk("%s: exit with status = %d res->csr_status %d\n", __func__,
- 		ntohl(status), ntohl(res->csr_status));
- 	return status;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 274e0e3..4d44c61 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -508,6 +508,7 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
- 		interrupted = true;
- 	}
- 
-+	trace_nfs4_sequence_done(session, res);
- 	/* Check the SEQUENCE operation status */
- 	switch (res->sr_status) {
- 	case 0:
-@@ -660,6 +661,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
- 	 * set to 1 if an rpc level failure occurs.
- 	 */
- 	res->sr_status = 1;
-+	trace_nfs4_setup_sequence(session, args);
- out_success:
- 	rpc_call_start(task);
- 	return 0;
-diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
-index 86a0669..e3e6ce3 100644
---- a/fs/nfs/nfs4session.h
-+++ b/fs/nfs/nfs4session.h
-@@ -117,6 +117,16 @@ static inline int nfs4_has_persistent_session(const struct nfs_client *clp)
- 	return 0;
- }
- 
-+#ifdef CONFIG_CRC32
-+/*
-+ * nfs_session_id_hash - calculate the crc32 hash for the session id
-+ * @session - pointer to session
-+ */
-+#define nfs_session_id_hash(sess_id) \
-+	(~crc32_le(0xFFFFFFFF, &(sess_id)->data[0], sizeof((sess_id)->data)))
-+#else
-+#define nfs_session_id_hash(session) (0)
-+#endif
- #else /* defined(CONFIG_NFS_V4_1) */
- 
- static inline int nfs4_init_session(struct nfs_client *clp)
-diff --git a/fs/nfs/nfs4trace.c b/fs/nfs/nfs4trace.c
-index f840974..d774335 100644
---- a/fs/nfs/nfs4trace.c
-+++ b/fs/nfs/nfs4trace.c
-@@ -4,6 +4,8 @@
- #include <linux/nfs_fs.h>
- #include "nfs4_fs.h"
- #include "internal.h"
-+#include "nfs4session.h"
-+#include "callback.h"
- 
- #define CREATE_TRACE_POINTS
- #include "nfs4trace.h"
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index 4420523..aac1564 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -237,6 +237,145 @@ DEFINE_NFS4_CLIENTID_EVENT(nfs4_destroy_clientid);
- DEFINE_NFS4_CLIENTID_EVENT(nfs4_bind_conn_to_session);
- DEFINE_NFS4_CLIENTID_EVENT(nfs4_sequence);
- DEFINE_NFS4_CLIENTID_EVENT(nfs4_reclaim_complete);
-+
-+TRACE_EVENT(nfs4_setup_sequence,
-+		TP_PROTO(
-+			const struct nfs4_session *session,
-+			const struct nfs4_sequence_args *args
-+		),
-+		TP_ARGS(session, args),
-+
-+		TP_STRUCT__entry(
-+			__field(unsigned int, session)
-+			__field(unsigned int, slot_nr)
-+			__field(unsigned int, seq_nr)
-+			__field(unsigned int, highest_used_slotid)
-+		),
-+
-+		TP_fast_assign(
-+			const struct nfs4_slot *sa_slot = args->sa_slot;
-+			__entry->session = nfs_session_id_hash(&session->sess_id);
-+			__entry->slot_nr = sa_slot->slot_nr;
-+			__entry->seq_nr = sa_slot->seq_nr;
-+			__entry->highest_used_slotid =
-+					sa_slot->table->highest_used_slotid;
-+		),
-+		TP_printk(
-+			"session=0x%08x slot_nr=%u seq_nr=%u "
-+			"highest_used_slotid=%u",
-+			__entry->session,
-+			__entry->slot_nr,
-+			__entry->seq_nr,
-+			__entry->highest_used_slotid
-+		)
-+);
-+
-+#define show_nfs4_sequence_status_flags(status) \
-+	__print_flags((unsigned long)status, "|", \
-+		{ SEQ4_STATUS_CB_PATH_DOWN, "CB_PATH_DOWN" }, \
-+		{ SEQ4_STATUS_CB_GSS_CONTEXTS_EXPIRING, \
-+			"CB_GSS_CONTEXTS_EXPIRING" }, \
-+		{ SEQ4_STATUS_CB_GSS_CONTEXTS_EXPIRED, \
-+			"CB_GSS_CONTEXTS_EXPIRED" }, \
-+		{ SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED, \
-+			"EXPIRED_ALL_STATE_REVOKED" }, \
-+		{ SEQ4_STATUS_EXPIRED_SOME_STATE_REVOKED, \
-+			"EXPIRED_SOME_STATE_REVOKED" }, \
-+		{ SEQ4_STATUS_ADMIN_STATE_REVOKED, \
-+			"ADMIN_STATE_REVOKED" }, \
-+		{ SEQ4_STATUS_RECALLABLE_STATE_REVOKED,	 \
-+			"RECALLABLE_STATE_REVOKED" }, \
-+		{ SEQ4_STATUS_LEASE_MOVED, "LEASE_MOVED" }, \
-+		{ SEQ4_STATUS_RESTART_RECLAIM_NEEDED, \
-+			"RESTART_RECLAIM_NEEDED" }, \
-+		{ SEQ4_STATUS_CB_PATH_DOWN_SESSION, \
-+			"CB_PATH_DOWN_SESSION" }, \
-+		{ SEQ4_STATUS_BACKCHANNEL_FAULT, \
-+			"BACKCHANNEL_FAULT" })
-+
-+TRACE_EVENT(nfs4_sequence_done,
-+		TP_PROTO(
-+			const struct nfs4_session *session,
-+			const struct nfs4_sequence_res *res
-+		),
-+		TP_ARGS(session, res),
-+
-+		TP_STRUCT__entry(
-+			__field(unsigned int, session)
-+			__field(unsigned int, slot_nr)
-+			__field(unsigned int, seq_nr)
-+			__field(unsigned int, highest_slotid)
-+			__field(unsigned int, target_highest_slotid)
-+			__field(unsigned int, status_flags)
-+			__field(int, error)
-+		),
-+
-+		TP_fast_assign(
-+			const struct nfs4_slot *sr_slot = res->sr_slot;
-+			__entry->session = nfs_session_id_hash(&session->sess_id);
-+			__entry->slot_nr = sr_slot->slot_nr;
-+			__entry->seq_nr = sr_slot->seq_nr;
-+			__entry->highest_slotid = res->sr_highest_slotid;
-+			__entry->target_highest_slotid =
-+					res->sr_target_highest_slotid;
-+			__entry->error = res->sr_status;
-+		),
-+		TP_printk(
-+			"error=%d (%s) session=0x%08x slot_nr=%u seq_nr=%u "
-+			"highest_slotid=%u target_highest_slotid=%u "
-+			"status_flags=%u (%s)",
-+			__entry->error,
-+			show_nfsv4_errors(__entry->error),
-+			__entry->session,
-+			__entry->slot_nr,
-+			__entry->seq_nr,
-+			__entry->highest_slotid,
-+			__entry->target_highest_slotid,
-+			__entry->status_flags,
-+			show_nfs4_sequence_status_flags(__entry->status_flags)
-+		)
-+);
-+
-+struct cb_sequenceargs;
-+struct cb_sequenceres;
-+
-+TRACE_EVENT(nfs4_cb_sequence,
-+		TP_PROTO(
-+			const struct cb_sequenceargs *args,
-+			const struct cb_sequenceres *res,
-+			__be32 status
-+		),
-+		TP_ARGS(args, res, status),
-+
-+		TP_STRUCT__entry(
-+			__field(unsigned int, session)
-+			__field(unsigned int, slot_nr)
-+			__field(unsigned int, seq_nr)
-+			__field(unsigned int, highest_slotid)
-+			__field(unsigned int, cachethis)
-+			__field(int, error)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->session = nfs_session_id_hash(&args->csa_sessionid);
-+			__entry->slot_nr = args->csa_slotid;
-+			__entry->seq_nr = args->csa_sequenceid;
-+			__entry->highest_slotid = args->csa_highestslotid;
-+			__entry->cachethis = args->csa_cachethis;
-+			__entry->error = -be32_to_cpu(status);
-+		),
-+
-+		TP_printk(
-+			"error=%d (%s) session=0x%08x slot_nr=%u seq_nr=%u "
-+			"highest_slotid=%u",
-+			__entry->error,
-+			show_nfsv4_errors(__entry->error),
-+			__entry->session,
-+			__entry->slot_nr,
-+			__entry->seq_nr,
-+			__entry->highest_slotid
-+		)
-+);
- #endif /* CONFIG_NFS_V4_1 */
- 
- DECLARE_EVENT_CLASS(nfs4_open_event,
--- 
-1.8.3.1
+The defaults are what you want (async mount option, sync export option)
+unless you've thought hard about it.  This is especially true on the
+server, since the "async" export option make it skip committing data to
+disk even when the protocol mandates it.
 
+--b.
