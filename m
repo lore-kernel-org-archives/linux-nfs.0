@@ -1,59 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:32090 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45910 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753031Ab3HVAYX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Aug 2013 20:24:23 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 03/21] NFS: Pass in lookup flags from nfs_atomic_open to nfs_lookup
-Date: Wed, 21 Aug 2013 20:24:01 -0400
-Message-ID: <1377131059-40121-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377131059-40121-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377131059-40121-1-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-2-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-3-git-send-email-Trond.Myklebust@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1755772Ab3HFK2L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Aug 2013 06:28:11 -0400
+Date: Tue, 6 Aug 2013 06:28:01 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Cong Wang <amwang@redhat.com>
+Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [Patch net-next v2 5/8] sunrpc: use generic union inet_addr
+Message-ID: <20130806062801.67714276@tlielax.poochiereds.net>
+In-Reply-To: <1375672445.32485.8.camel@cr0>
+References: <1375427674-21735-1-git-send-email-amwang@redhat.com>
+	<1375427674-21735-6-git-send-email-amwang@redhat.com>
+	<20130802093625.2c70a330@tlielax.poochiereds.net>
+	<1375672445.32485.8.camel@cr0>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When doing an open of a directory, ensure that we do pass the lookup flags
-from nfs_atomic_open into nfs_lookup.
+On Mon, 05 Aug 2013 11:14:05 +0800
+Cong Wang <amwang@redhat.com> wrote:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/dir.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+> On Fri, 2013-08-02 at 09:36 -0400, Jeff Layton wrote:
+> > On Fri,  2 Aug 2013 15:14:31 +0800
+> > Cong Wang <amwang@redhat.com> wrote:
+> > 
+> > > From: Cong Wang <amwang@redhat.com>
+> > > 
+> > > sunrpc defines some helper functions for sockaddr, actually they
+> > > can re-use the generic functions for union inet_addr too.
+> > 
+> > Only some of these patches in this series have made it to lists to
+> > which I'm subscribed, so I may be missing some context here...
+> > 
+> > I'm not sure I really understand the value of "union inet_addr". Why
+> > not just use the conventional method of passing around "struct sockaddr"
+> > pointers, and then casting them to struct sockaddr_in/sockaddr_in6
+> > depending on what the sa_family is set to?
+> 
+> Yes.
+> 
+> > 
+> > With that you wouldn't need to leave the (now pointless) rpc_* wrappers
+> > in place and could just call your new helpers directly.
+> > 
+> 
+> J. Bruce asked the same question, see:
+> http://marc.info/?l=linux-nfs&m=137475685903460&w=2
+> 
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index be3da6f..29d5463 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1407,6 +1407,7 @@ int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
- 	struct dentry *res;
- 	struct iattr attr = { .ia_valid = ATTR_OPEN };
- 	struct inode *inode;
-+	unsigned int lookup_flags = 0;
- 	int err;
- 
- 	/* Expect a negative dentry */
-@@ -1429,6 +1430,7 @@ int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
- 			 */
- 			return -ENOENT;
- 		}
-+		lookup_flags = LOOKUP_OPEN|LOOKUP_DIRECTORY;
- 		goto no_open;
- 	}
- 
-@@ -1479,7 +1481,7 @@ out:
- 	return err;
- 
- no_open:
--	res = nfs_lookup(dir, dentry, 0);
-+	res = nfs_lookup(dir, dentry, lookup_flags);
- 	err = PTR_ERR(res);
- 	if (IS_ERR(res))
- 		goto out;
+Not exactly...
+
+He asked why you were keeping the wrappers and you replied that it was
+because you didn't want to change all of the callers of rpc_get_port.
+That's a fair enough answer to his question.
+
+My question is a bit more fundamental: Why are you using this new union
+in your patches instead of simply passing around "struct sockaddr"
+pointers? If you did that, then you could simply replace all of the
+rpc_* wrappers with your generic ones, since you wouldn't need to do
+the cast to this (seemingly unnecessary) union.
+
+FWIW, I too am happy to see these routines moved to common code. I just
+wonder whether it might make more sense to use the existing convention
+instead of this new union.
+
 -- 
-1.8.3.1
-
+Jeff Layton <jlayton@redhat.com>
