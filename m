@@ -1,164 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f43.google.com ([209.85.213.43]:43784 "EHLO
-	mail-yh0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753470Ab3HVUKZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Aug 2013 16:10:25 -0400
-Received: by mail-yh0-f43.google.com with SMTP id z20so633567yhz.2
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Aug 2013 13:10:24 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Jan Stancek <jstancek@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH v3] SUNRPC: Ensure that the RPCSEC_GSS daemon uses the correct service names
-Date: Thu, 22 Aug 2013 16:10:13 -0400
-Message-Id: <1377202213-5031-1-git-send-email-jlayton@redhat.com>
+Received: from mail-bk0-f51.google.com ([209.85.214.51]:33121 "EHLO
+	mail-bk0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754760Ab3HFOaZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Aug 2013 10:30:25 -0400
+Received: by mail-bk0-f51.google.com with SMTP id ji2so186431bkc.10
+        for <linux-nfs@vger.kernel.org>; Tue, 06 Aug 2013 07:30:23 -0700 (PDT)
+From: Miklos Szeredi <miklos@szeredi.hu>
+To: rwheeler@redhat.com, avati@redhat.com, viro@ZenIV.linux.org.uk
+Cc: bfoster@redhat.com, dhowells@redhat.com, eparis@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        swhiteho@redhat.com, mszeredi@suse.cz
+Subject: [PATCH 2/4] vfs: check unlinked ancestors before mount
+Date: Tue,  6 Aug 2013 16:30:01 +0200
+Message-Id: <1375799403-28544-3-git-send-email-miklos@szeredi.hu>
+In-Reply-To: <1375799403-28544-1-git-send-email-miklos@szeredi.hu>
+References: <1375799403-28544-1-git-send-email-miklos@szeredi.hu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: Miklos Szeredi <mszeredi@suse.cz>
 
-v2: added pipe_dir_name field to nfsacl program to fix v3+krb5
-    (Should we add pipe_dir_name fields to other programs too?).
+We check submounts before doing d_drop() on a non-empty directory dentry in
+NFS (have_submounts()).  But we do not exclude a racing mount.  Nor do we
+prevent mounts to be added to the disconnected subtree using relative paths
+after the d_drop().
 
-v3: Drop changes to gss_encode_v1_msg. They don't seem to be
-    needed since gssd scrapes that out of the "info" file.
+This patch fixes these issues by checking for unlinked (unhashed, non-root)
+ancestors before proceeding with the mount.  This is done after setting
+DCACHE_MOUNTED on the soon-to-be mountpoint and with the rename seqlock
+taken for write.  This ensures that the only one of have_submounts() or
+has_unlinked_ancestor() can succeed.
 
-Fix the upcalls to use the right service names for gssd.  The old
-version of the rpc.gssd upcall expects the service name to be either
-"nfs" or "nfs4_cb", which it will then concatenate with the server name
-to create a target name of nfs@<server> or nfs4_cb@<server>
-
-Finally, make sure that we set the correct service names for lockd,
-statd and mountd in case we want to convert those to use rpcsec_gss at
-some point in the future.
-
-Fix the upcalls to use the right service names for gssd.  The old
-version of the rpc.gssd upcall expects the service name to be either
-"nfs" or "nfs4_cb", which it will then concatenate with the server name
-to create a target name of nfs@<server> or nfs4_cb@<server>
-
-Finally, make sure that we set the correct service names for lockd,
-statd and mountd in case we want to convert those to use rpcsec_gss at
-some point in the future.
-
-Cc: Jan Stancek <jstancek@redhat.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
 ---
- fs/lockd/clntxdr.c          | 1 +
- fs/lockd/mon.c              | 1 +
- fs/nfs/client.c             | 1 +
- fs/nfs/mount_clnt.c         | 1 +
- fs/nfs/nfs3client.c         | 2 ++
- fs/nfsd/nfs4callback.c      | 1 +
- include/linux/sunrpc/clnt.h | 1 +
- net/sunrpc/rpc_pipe.c       | 3 ++-
- 8 files changed, 10 insertions(+), 1 deletion(-)
+ fs/dcache.c    | 28 ++++++++++++++++++++++++++++
+ fs/internal.h  |  1 +
+ fs/namespace.c |  9 +++++++++
+ 3 files changed, 38 insertions(+)
 
-diff --git a/fs/lockd/clntxdr.c b/fs/lockd/clntxdr.c
-index 9a55797..18d0c34 100644
---- a/fs/lockd/clntxdr.c
-+++ b/fs/lockd/clntxdr.c
-@@ -612,6 +612,7 @@ static struct rpc_stat		nlm_rpc_stats;
+diff --git a/fs/dcache.c b/fs/dcache.c
+index ba429d9..eae7cc1 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -1103,6 +1103,34 @@ rename_retry:
+ }
+ EXPORT_SYMBOL(have_submounts);
  
- const struct rpc_program	nlm_program = {
- 		.name		= "lockd",
-+		.service_name	= "nlockmgr",
- 		.number		= NLM_PROGRAM,
- 		.nrvers		= ARRAY_SIZE(nlm_versions),
- 		.version	= nlm_versions,
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 1812f02..1ac10f4 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -606,6 +606,7 @@ static struct rpc_stat		nsm_stats;
- 
- static const struct rpc_program nsm_program = {
- 		.name		= "statd",
-+		.service_name	= "status",
- 		.number		= NSM_PROGRAM,
- 		.nrvers		= ARRAY_SIZE(nsm_version),
- 		.version	= nsm_version,
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 340b1ef..9fb1050 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -72,6 +72,7 @@ static const struct rpc_version *nfs_version[5] = {
- 
- const struct rpc_program nfs_program = {
- 	.name			= "nfs",
-+	.service_name		= "nfs",
- 	.number			= NFS_PROGRAM,
- 	.nrvers			= ARRAY_SIZE(nfs_version),
- 	.version		= nfs_version,
-diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-index 99a4528..5f1a888 100644
---- a/fs/nfs/mount_clnt.c
-+++ b/fs/nfs/mount_clnt.c
-@@ -528,6 +528,7 @@ static struct rpc_stat mnt_stats;
- 
- static const struct rpc_program mnt_program = {
- 	.name		= "mount",
-+	.service_name	= "mountd",
- 	.number		= NFS_MNT_PROGRAM,
- 	.nrvers		= ARRAY_SIZE(mnt_version),
- 	.version	= mnt_version,
-diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
-index b3fc65e..b61de6b 100644
---- a/fs/nfs/nfs3client.c
-+++ b/fs/nfs/nfs3client.c
-@@ -10,10 +10,12 @@ static const struct rpc_version *nfsacl_version[] = {
- 
- const struct rpc_program nfsacl_program = {
- 	.name			= "nfsacl",
-+	.service_name		= "nfs",
- 	.number			= NFS_ACL_PROGRAM,
- 	.nrvers			= ARRAY_SIZE(nfsacl_version),
- 	.version		= nfsacl_version,
- 	.stats			= &nfsacl_rpcstat,
-+	.pipe_dir_name		= "nfs",
- };
++static bool __has_unlinked_ancestor(struct dentry *dentry)
++{
++	struct dentry *this;
++
++	for (this = dentry; !IS_ROOT(this); this = this->d_parent) {
++		if (d_unhashed(this))
++			return true;
++	}
++	return false;
++}
++
++/*
++ * Called by mount code to check if the mountpoint is reachable (e.g. NFS can
++ * unhash a directory dentry and then the complete subtree can become
++ * unreachable).
++ */
++bool has_unlinked_ancestor(struct dentry *dentry)
++{
++	bool found;
++
++	/* Need exclusion wrt. check_submounts_and_drop() */
++	write_seqlock(&rename_lock);
++	found = __has_unlinked_ancestor(dentry);
++	write_sequnlock(&rename_lock);
++
++	return found;
++}
++
+ /*
+  * Search the dentry child list of the specified parent,
+  * and move any unused dentries to the end of the unused
+diff --git a/fs/internal.h b/fs/internal.h
+index 7c5f01c..d232355 100644
+--- a/fs/internal.h
++++ b/fs/internal.h
+@@ -126,6 +126,7 @@ extern int invalidate_inodes(struct super_block *, bool);
+  * dcache.c
+  */
+ extern struct dentry *__d_alloc(struct super_block *, const struct qstr *);
++extern bool has_unlinked_ancestor(struct dentry *dentry);
  
  /*
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 7f05cd1..2962890 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -596,6 +596,7 @@ static struct rpc_stat cb_stats = {
- #define NFS4_CALLBACK 0x40000000
- static const struct rpc_program cb_program = {
- 	.name			= "nfs4_cb",
-+	.service_name		= "nfs4_cb",
- 	.number			= NFS4_CALLBACK,
- 	.nrvers			= ARRAY_SIZE(nfs_cb_version),
- 	.version		= nfs_cb_version,
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index bfe11be..d902c55 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -70,6 +70,7 @@ struct rpc_clnt {
- #define RPC_MAXVERSION		4
- struct rpc_program {
- 	const char *		name;		/* protocol name */
-+	const char *		service_name;	/* protocol service name */
- 	u32			number;		/* program number */
- 	unsigned int		nrvers;		/* number of versions */
- 	const struct rpc_version **	version;	/* version array */
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 406859c..83b196d 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -409,7 +409,8 @@ rpc_show_info(struct seq_file *m, void *v)
- 	rcu_read_lock();
- 	seq_printf(m, "RPC server: %s\n",
- 			rcu_dereference(clnt->cl_xprt)->servername);
--	seq_printf(m, "service: %s (%d) version %d\n", clnt->cl_protname,
-+	seq_printf(m, "service: %s (%d) version %d\n",
-+			clnt->cl_program->service_name,
- 			clnt->cl_prog, clnt->cl_vers);
- 	seq_printf(m, "address: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_ADDR));
- 	seq_printf(m, "protocol: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_PROTO));
+  * read_write.c
+diff --git a/fs/namespace.c b/fs/namespace.c
+index 7b1ca9b..bb92a9c 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -634,6 +634,15 @@ static struct mountpoint *new_mountpoint(struct dentry *dentry)
+ 	}
+ 	dentry->d_flags |= DCACHE_MOUNTED;
+ 	spin_unlock(&dentry->d_lock);
++
++	if (has_unlinked_ancestor(dentry)) {
++		spin_lock(&dentry->d_lock);
++		dentry->d_flags &= ~DCACHE_MOUNTED;
++		spin_unlock(&dentry->d_lock);
++		kfree(mp);
++		return ERR_PTR(-ENOENT);
++	}
++
+ 	mp->m_dentry = dentry;
+ 	mp->m_count = 1;
+ 	list_add(&mp->m_hash, chain);
 -- 
-1.8.3.1
+1.8.1.4
 
