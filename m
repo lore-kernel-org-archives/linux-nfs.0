@@ -1,161 +1,151 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:50594 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755132Ab3HFX4S (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Aug 2013 19:56:18 -0400
-Received: by mail-ob0-f174.google.com with SMTP id wd6so2359259obb.19
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Aug 2013 16:56:17 -0700 (PDT)
-Date: Tue, 6 Aug 2013 18:56:07 -0500
-From: Quentin Barnes <qbarnes@gmail.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: don't allow nfs_find_actor to match inodes of the
- wrong type
-Message-ID: <20130806235458.GA28091@gmail.com>
-References: <20130731230051.GB31859@gmail.com>
- <20130731204615.03a6b37a@corrin.poochiereds.net>
- <CAKjHkpBN=k28M3wv_9Xnpeoy6buRn3V4AXu2emkMw+NsuFir1g@mail.gmail.com>
- <20130802142924.6b61f850@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130802142924.6b61f850@tlielax.poochiereds.net>
+Received: from mail-bk0-f48.google.com ([209.85.214.48]:55927 "EHLO
+	mail-bk0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754798Ab3HFOaZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Aug 2013 10:30:25 -0400
+Received: by mail-bk0-f48.google.com with SMTP id jf20so183682bkc.7
+        for <linux-nfs@vger.kernel.org>; Tue, 06 Aug 2013 07:30:24 -0700 (PDT)
+From: Miklos Szeredi <miklos@szeredi.hu>
+To: rwheeler@redhat.com, avati@redhat.com, viro@ZenIV.linux.org.uk
+Cc: bfoster@redhat.com, dhowells@redhat.com, eparis@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        swhiteho@redhat.com, mszeredi@suse.cz
+Subject: [PATCH 3/4] fuse: use d_materialise_unique()
+Date: Tue,  6 Aug 2013 16:30:02 +0200
+Message-Id: <1375799403-28544-4-git-send-email-miklos@szeredi.hu>
+In-Reply-To: <1375799403-28544-1-git-send-email-miklos@szeredi.hu>
+References: <1375799403-28544-1-git-send-email-miklos@szeredi.hu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 02, 2013 at 02:29:24PM -0400, Jeff Layton wrote:
-> On Fri, 2 Aug 2013 12:58:51 -0500
-> Quentin Barnes <qbarnes@gmail.com> wrote:
-> > On Wed, Jul 31, 2013 at 7:46 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> > > The patch above doesn't address that.
-> > 
-> > I disagree.
-> > 
-> > Let's take a look at it from the NFSv4 angle --
-> > 
-> > The NFSv4 atomic open call path is:
-> >   nfs4_atomic_open()->nfs4_do_open()->_nfs4_do_open()
-> > 
-> > In _nfs4_do_open(), it calls nfs4_do_setattr() which fills in an
-> > fattr structure then calls nfs_post_op_update_inode() with it to
-> > update the inode.  Then we call nfs_post_op_update_inode()->
-> > nfs_post_op_update_inode_locked()->nfs_refresh_inode_locked().
-> > 
-> > So, yes, I think even in Benny's case, fixing nfs_refresh_inode_locked()
-> > to invalidate an inode when nfs_check_inode_attributes() catches that
-> > an NFS server had pulled a switcheroo (dir to file with same fh), the
-> > approach above would have caught it when it happened.
-> 
-> No, it wouldn't have.
-> 
-> First, nfs4_do_setattr only gets called on an O_EXCL open. That bug is
-> still triggerable even without that flag set in the open() call.
+From: Miklos Szeredi <mszeredi@suse.cz>
 
-I'll have to look at that path.  Thanks for the additional details
-on the conditions triggering of the problem.
+Use d_materialise_unique() instead of d_splice_alias().  This allows dentry
+subtrees to be moved to a new place if there moved, even if something is
+referencing a dentry in the subtree (open fd, cwd, etc..).
 
-> Second, opening a directory is different from opening a file. They
-> create different open contexts and tearing those down at close time
-> requires a different set of operations.
+This will also allow us to drop a subtree if it is found to be replaced by
+something else.  In this case the disconnected subtree can later be
+reconnected to its new location.
 
-Of course.
+d_materialise_unique() ensures that a directory entry only ever has one
+alias.  We keep fc->inst_mutex around the calls for d_materialise_unique()
+on directories to prevent a race with mkdir "stealing" the inode.
 
-> If you use the *same* inode in
-> this situation, then you end up with the wrong set of operations for
-> tearing down the open context.
+Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
+---
+ fs/fuse/dir.c | 69 ++++++++++++++++++++++-------------------------------------
+ 1 file changed, 26 insertions(+), 43 deletions(-)
 
-Yes, I see your point.  I'm not seeing that so far.  I see it only
-looking at the inode's parent directory or the superblock, but I'm
-still reading.
+diff --git a/fs/fuse/dir.c b/fs/fuse/dir.c
+index 72a5d5b..131d14b 100644
+--- a/fs/fuse/dir.c
++++ b/fs/fuse/dir.c
+@@ -267,26 +267,6 @@ int fuse_valid_type(int m)
+ 		S_ISBLK(m) || S_ISFIFO(m) || S_ISSOCK(m);
+ }
+ 
+-/*
+- * Add a directory inode to a dentry, ensuring that no other dentry
+- * refers to this inode.  Called with fc->inst_mutex.
+- */
+-static struct dentry *fuse_d_add_directory(struct dentry *entry,
+-					   struct inode *inode)
+-{
+-	struct dentry *alias = d_find_alias(inode);
+-	if (alias && !(alias->d_flags & DCACHE_DISCONNECTED)) {
+-		/* This tries to shrink the subtree below alias */
+-		fuse_invalidate_entry(alias);
+-		dput(alias);
+-		if (!hlist_empty(&inode->i_dentry))
+-			return ERR_PTR(-EBUSY);
+-	} else {
+-		dput(alias);
+-	}
+-	return d_splice_alias(inode, entry);
+-}
+-
+ int fuse_lookup_name(struct super_block *sb, u64 nodeid, struct qstr *name,
+ 		     struct fuse_entry_out *outarg, struct inode **inode)
+ {
+@@ -345,6 +325,24 @@ int fuse_lookup_name(struct super_block *sb, u64 nodeid, struct qstr *name,
+ 	return err;
+ }
+ 
++static struct dentry *fuse_materialise_dentry(struct dentry *dentry,
++					      struct inode *inode)
++{
++	struct dentry *newent;
++
++	if (inode && S_ISDIR(inode->i_mode)) {
++		struct fuse_conn *fc = get_fuse_conn(inode);
++
++		mutex_lock(&fc->inst_mutex);
++		newent = d_materialise_unique(dentry, inode);
++		mutex_unlock(&fc->inst_mutex);
++	} else {
++		newent = d_materialise_unique(dentry, inode);
++	}
++
++	return newent;
++}
++
+ static struct dentry *fuse_lookup(struct inode *dir, struct dentry *entry,
+ 				  unsigned int flags)
+ {
+@@ -352,7 +350,6 @@ static struct dentry *fuse_lookup(struct inode *dir, struct dentry *entry,
+ 	struct fuse_entry_out outarg;
+ 	struct inode *inode;
+ 	struct dentry *newent;
+-	struct fuse_conn *fc = get_fuse_conn(dir);
+ 	bool outarg_valid = true;
+ 
+ 	err = fuse_lookup_name(dir->i_sb, get_node_id(dir), &entry->d_name,
+@@ -368,16 +365,10 @@ static struct dentry *fuse_lookup(struct inode *dir, struct dentry *entry,
+ 	if (inode && get_node_id(inode) == FUSE_ROOT_ID)
+ 		goto out_iput;
+ 
+-	if (inode && S_ISDIR(inode->i_mode)) {
+-		mutex_lock(&fc->inst_mutex);
+-		newent = fuse_d_add_directory(entry, inode);
+-		mutex_unlock(&fc->inst_mutex);
+-		err = PTR_ERR(newent);
+-		if (IS_ERR(newent))
+-			goto out_iput;
+-	} else {
+-		newent = d_splice_alias(inode, entry);
+-	}
++	newent = fuse_materialise_dentry(entry, inode);
++	err = PTR_ERR(newent);
++	if (IS_ERR(newent))
++		goto out_err;
+ 
+ 	entry = newent ? newent : entry;
+ 	if (outarg_valid)
+@@ -1275,18 +1266,10 @@ static int fuse_direntplus_link(struct file *file,
+ 	if (!inode)
+ 		goto out;
+ 
+-	if (S_ISDIR(inode->i_mode)) {
+-		mutex_lock(&fc->inst_mutex);
+-		alias = fuse_d_add_directory(dentry, inode);
+-		mutex_unlock(&fc->inst_mutex);
+-		err = PTR_ERR(alias);
+-		if (IS_ERR(alias)) {
+-			iput(inode);
+-			goto out;
+-		}
+-	} else {
+-		alias = d_splice_alias(inode, dentry);
+-	}
++	alias = fuse_materialise_dentry(dentry, inode);
++	err = PTR_ERR(alias);
++	if (IS_ERR(alias))
++		goto out;
+ 
+ 	if (alias) {
+ 		dput(dentry);
+-- 
+1.8.1.4
 
-> That's what causes the panic. So, marking the inode as stale makes no
-> difference whatsoever because we still have to tear down the context,
-> and that gets done using the fops associated with the inode.
-
-I know what you mean.  I'm thinking it won't get that far, but I
-know I'm still trying to get familiar with the NFSv4 paths.
-
-> > > It just adds an extra cache
-> > > invalidation, which won't help this case. The ops are still set the
-> > > same way and the teardown of the atomic_open will still end up hitting
-> > > the panic.
-> > 
-> > It would help me if you could explain how flagging the inode as
-> > invalid doesn't help here.  If that's the case, then other bugs
-> > might be running around.
-> 
-> That just flags the inode as stale and marks its attributes as invalid.
-> The inode still has the same operations. Aside from that, I'm not
-> convinced that marking that inode as stale is correct at all.
-
-Marking the inode as stale _may not_ actually be correct as you
-assert.  However, that's exactly how this error is already being
-handled when encountered by nfs_update_inode().  Do you consider
-nfs_update_inode() inappropriate in this regards as well, or is
-there a separate reason why how it handles the error is valid?
-
-> A stale inode has a pretty well-defined meaning in NFS. It means that
-> the server doesn't know what this filehandle refers to. That doesn't
-> seem to be the case here. We (likely) have a filehandle that got
-> recycled too quickly, or something along those lines. That's indicative
-> of a broken server, but there's nothing to suggest that the server will
-> return NFSERR_STALE on it in the future.
-
-I would think of the NFS errors available with this situation,
-ESTALE would fit about the best.  Even though the file handle was
-reused by the server, the server no longer has the original file
-that went with that filehandle, hence that reference is stale.
-
-In nfs_check_inode_attributes(), for this error (reusing a FH),
-it returns EIO (instead of ESTALE).  Given those two, I think
-the latter fits this weird situation a little better.
-
-> If you're serious about "fixing" this problem then I suggest:
-> 
-> 1) describing what the problem is. We have a broken server here so all
-> bets are off in working with it. Why should we care whether it's more
-> "correct" to do what you suggest? What breakage can we avoid by doing
-> this differently?
-
-I have been somewhat surprised by your comment.  I can certainly
-understand, appreciate, and agree the skepticism of different
-approaches, however, if a better approach is available and proven,
-it should almost always be desired (unless, for some odd reason,
-say, it triggers a massive rewrite).
-
-(As to why I originally flagged this patch, I don't want to trigger
-a tangent here, but if you're interested, I can send you an email.)
-
-I do have a question for you about my example patch though.  If you
-completely ignore the portion modifying nfs_find_actor() and only
-focus on the modification to nfs_refresh_inode_locked(), do you
-think that change fixes an existing problem of how the error return
-state from nfs_check_inode_attributes() is currently unchecked
-(calling from nfs_fhget())?
-
-> 2) consider rolling up a pynfs testcase or something that simulates
-> such a broken server, so you can verify that the original bug is still
-> fixed with the patch you propose.
-
-Oh, yes, before a patch such as mine is accepted, I should
-definitely have to prove that it still fixes the original panic with
-hard evidence.  No argument there.  I would expect nothing less.
-
-To emulate the bug, I was considering writing a systemtap script
-to monitor the NFSv4 protocols and then for a known file handle for
-a directory on a later call forge up a return for a regular file.
-Would you expect that this approach (with some tweaking as needed
-to get the protocol sequence right) be able to trigger the original
-panic on the kernel version it was reported on?
-
-To write the code to trigger the sequence of NFSv4 protocols, I
-would expect to do say a stat() on a directory to trigger a LOOKUP
-to load the dentry and inode, then do an open(...,O_CREAT|O_DIRECT)
-to trigger an OPEN intercepting its return information overwriting
-and forging it to look like a regular file.  Is that the correct
-sequence?  What variations should also be tested?
-
-> -- 
-> Jeff Layton <jlayton@redhat.com>
-
-Quentin
