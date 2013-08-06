@@ -1,66 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:46876 "EHLO mx12.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:62958 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758103Ab3HHSVh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Aug 2013 14:21:37 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        William Dauchy <william@gandi.net>,
-        Pascal Bouchareine <pascal@gandi.net>
-Subject: Re: [PATCH v3] NFS: Fix writeback performance issue on cache
- invalidation
-Date: Thu, 8 Aug 2013 18:21:35 +0000
-Message-ID: <1375986094.9193.2.camel@leira.trondhjem.org>
-References: <1375910064-23731-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <20130808141130.27cf2b26@tlielax.poochiereds.net>
-In-Reply-To: <20130808141130.27cf2b26@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
+	id S1754934Ab3HFVIm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Aug 2013 17:08:42 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: <Trond.Myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 3/5] nfs4.1: Add SP4_MACH_CRED cleanup support
+Date: Tue, 6 Aug 2013 17:08:29 -0400
+Message-ID: <1375823311-18457-4-git-send-email-dros@netapp.com>
+In-Reply-To: <1375823311-18457-1-git-send-email-dros@netapp.com>
+References: <1375823311-18457-1-git-send-email-dros@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEzLTA4LTA4IGF0IDE0OjExIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gV2VkLCA3IEF1ZyAyMDEzIDE3OjE0OjI0IC0wNDAwDQo+IFRyb25kIE15a2xlYnVzdCA8VHJv
-bmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiANCj4gPiBJZiBhIGNhY2hlIGludmFs
-aWRhdGlvbiBpcyB0cmlnZ2VyZWQsIGFuZCB3ZSBoYXBwZW4gdG8gaGF2ZSBhIGxvdCBvZg0KPiA+
-IHdyaXRlYmFja3MgY2FjaGVkIGF0IHRoZSB0aW1lLCB0aGVuIHRoZSBjYWxsIHRvIGludmFsaWRh
-dGVfaW5vZGVfcGFnZXMyKCkNCj4gPiB3aWxsIGVuZCB1cCBjYWxsaW5nIC0+bGF1bmRlcl9wYWdl
-KCkgb24gZWFjaCBhbmQgZXZlcnkgZGlydHkgcGFnZSBpbiBvcmRlcg0KPiA+IHRvIHN5bmMgaXRz
-IGNvbnRlbnRzIHRvIGRpc2ssIHRodXMgZGVmZWF0aW5nIHdyaXRlIGNvYWxlc2NpbmcuDQo+ID4g
-VGhlIGZvbGxvd2luZyBwYXRjaCBlbnN1cmVzIHRoYXQgd2UgdHJ5IHRvIHN5bmMgdGhlIGlub2Rl
-IHRvIGRpc2sgYmVmb3JlDQo+ID4gY2FsbGluZyBpbnZhbGlkYXRlX2lub2RlX3BhZ2VzMigpIHNv
-IHRoYXQgd2UgZG8gdGhlIHdyaXRlYmFjayBhcyBlZmZpY2llbnRseQ0KPiA+IGFzIHBvc3NpYmxl
-Lg0KPiA+IA0KPiA+IFJlcG9ydGVkLWJ5OiBXaWxsaWFtIERhdWNoeSA8d2lsbGlhbUBnYW5kaS5u
-ZXQ+DQo+ID4gUmVwb3J0ZWQtYnk6IFBhc2NhbCBCb3VjaGFyZWluZSA8cGFzY2FsQGdhbmRpLm5l
-dD4NCj4gPiBTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBu
-ZXRhcHAuY29tPg0KPiA+IFRlc3RlZC1ieTogV2lsbGlhbSBEYXVjaHkgPHdpbGxpYW1AZ2FuZGku
-bmV0Pg0KPiA+IFJldmlld2VkLWJ5OiBKZWZmIExheXRvbiA8amxheXRvbkByZWRoYXQuY29tPg0K
-PiA+IC0tLQ0KPiA+IHYyOiBBZGQgY2hlY2sgZm9yIHJlZ3VsYXIgZmlsZSBhcyBwZXIgSmVmZiBM
-YXl0b24ncyBzdWdnZXN0aW9uLg0KPiA+IHYzOiBNaW5vciBjbGVhbnVwIGFuZCBhZGQgSmVmZiBh
-cyBhIHJldmlld2VyDQo+ID4gDQo+ID4gIGZzL25mcy9pbm9kZS5jIHwgMTAgKysrKysrKystLQ0K
-PiA+ICAxIGZpbGUgY2hhbmdlZCwgOCBpbnNlcnRpb25zKCspLCAyIGRlbGV0aW9ucygtKQ0KPiA+
-IA0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvaW5vZGUuYyBiL2ZzL25mcy9pbm9kZS5jDQo+ID4g
-aW5kZXggYWY2ZTgwNi4uM2VhNGY2NCAxMDA2NDQNCj4gPiAtLS0gYS9mcy9uZnMvaW5vZGUuYw0K
-PiA+ICsrKyBiL2ZzL25mcy9pbm9kZS5jDQo+ID4gQEAgLTk2Myw5ICs5NjMsMTUgQEAgRVhQT1JU
-X1NZTUJPTF9HUEwobmZzX3JldmFsaWRhdGVfaW5vZGUpOw0KPiA+ICBzdGF0aWMgaW50IG5mc19p
-bnZhbGlkYXRlX21hcHBpbmcoc3RydWN0IGlub2RlICppbm9kZSwgc3RydWN0IGFkZHJlc3Nfc3Bh
-Y2UgKm1hcHBpbmcpDQo+ID4gIHsNCj4gPiAgCXN0cnVjdCBuZnNfaW5vZGUgKm5mc2kgPSBORlNf
-SShpbm9kZSk7DQo+ID4gLQkNCj4gPiArCWludCByZXQ7DQo+ID4gKw0KPiA+ICAJaWYgKG1hcHBp
-bmctPm5ycGFnZXMgIT0gMCkgew0KPiA+IC0JCWludCByZXQgPSBpbnZhbGlkYXRlX2lub2RlX3Bh
-Z2VzMihtYXBwaW5nKTsNCj4gPiArCQlpZiAoU19JU1JFRyhpbm9kZS0+aV9tb2RlKSkgew0KPiA+
-ICsJCQlyZXQgPSBuZnNfc3luY19tYXBwaW5nKG1hcHBpbmcpOw0KPiA+ICsJCQlpZiAocmV0IDwg
-MCkNCj4gPiArCQkJCXJldHVybiByZXQ7DQo+ID4gKwkJfQ0KPiA+ICsJCXJldCA9IGludmFsaWRh
-dGVfaW5vZGVfcGFnZXMyKG1hcHBpbmcpOw0KPiA+ICAJCWlmIChyZXQgPCAwKQ0KPiA+ICAJCQly
-ZXR1cm4gcmV0Ow0KPiA+ICAJfQ0KPiANCj4gSXQgb2NjdXJzIHRvIG1lIHRoYXQgd2UgaGF2ZSBz
-ZXZlcmFsIHBsYWNlcyB0aGF0IGNhbGwgbmZzX3N5bmNfbWFwcGluZw0KPiB3aXRob3V0IGNoZWNr
-aW5nIFNfSVNSRUcuIEFyZSB0aGV5IHBvdGVudGlhbGx5IHByb2JsZW1hdGljPw0KPiANCj4gTWln
-aHQgaXQgbWFrZSBtb3JlIHNlbnNlIHRvIG1vdmUgdGhlIFNfSVNSRUcgdGVzdCBpbnNpZGUgb2YN
-Cj4gbmZzX3N5bmNfbWFwcGluZyBhbmQganVzdCBoYXZlIGl0ICJyZXR1cm4gMCIgd2hlbiBpdCdz
-IG5vdCBhIHJlZ3VsYXINCj4gZmlsZT8NCg0KSSBzZWUgNSBjYWxsZXJzIG9mIG5mc19zeW5jX21h
-cHBpbmcoKSBhc2lkZSBmcm9tIHRoZSBhYm92ZTogMiBhcmUgaW4gdGhlDQpPX0RJUkVDVCBjb2Rl
-LCB0aGUgb3RoZXIgMyBhcmUgYWxsIGluIHRoZSBmaWxlIGxvY2tpbmcgY29kZS4gQUZBSUNTLA0K
-bm9uZSBvZiB0aG9zZSBjYW4gZXZlciBiZSBmZWQgdG8gbm9uLXJlZ3VsYXIgZmlsZXMuDQoNCkFt
-IEkgbWlzc2luZyBhbnl0aGluZz8NCg0KQ2hlZXJzDQogIFRyb25kDQoNCi0tIA0KVHJvbmQgTXlr
-bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWts
-ZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+CLOSE and LOCKU use the machine cred
+
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ fs/nfs/nfs4proc.c         | 28 +++++++++++++++++++++++++++-
+ include/linux/nfs_fs_sb.h |  1 +
+ 2 files changed, 28 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index faa3731..63b6e17 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2511,6 +2511,9 @@ int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait)
+ 	};
+ 	int status = -ENOMEM;
+ 
++	nfs4_state_protect(server->nfs_client, NFS_SP4_MACH_CRED_CLEANUP,
++		&task_setup_data.rpc_client, &msg);
++
+ 	calldata = kzalloc(sizeof(*calldata), gfp_mask);
+ 	if (calldata == NULL)
+ 		goto out;
+@@ -5093,6 +5096,9 @@ static struct rpc_task *nfs4_do_unlck(struct file_lock *fl,
+ 		.flags = RPC_TASK_ASYNC,
+ 	};
+ 
++	nfs4_state_protect(NFS_SERVER(lsp->ls_state->inode)->nfs_client,
++		NFS_SP4_MACH_CRED_CLEANUP, &task_setup_data.rpc_client, &msg);
++
+ 	/* Ensure this is an unlock - when canceling a lock, the
+ 	 * canceled lock is passed in, and it won't be an unlock.
+ 	 */
+@@ -5926,6 +5932,15 @@ static const uint32_t _nfs4_spo_must_enforce[NFS4_OP_MAP_NUM_WORDS] = {
+ };
+ 
+ /*
++ * Operations we'd like to see to enable certain features
++ */
++static const uint32_t _nfs4_spo_must_allow[NFS4_OP_MAP_NUM_WORDS] = {
++	[0] = 1 << (OP_CLOSE) |
++	      1 << (OP_LOCKU)
++};
++
++
++/*
+  * Select the state protection mode for client `clp' given the server results
+  * from exchange_id in `sp'.
+  *
+@@ -5965,6 +5980,12 @@ static int _nfs4_sp4_select_mode(struct nfs_client *clp,
+ 			dfprintk(MOUNT, "sp4_mach_cred: disabled\n");
+ 			return -EINVAL;
+ 		}
++
++		if (test_bit(OP_CLOSE, sp->allow.u.longs) &&
++		    test_bit(OP_LOCKU, sp->allow.u.longs)) {
++			dfprintk(MOUNT, "  cleanup mode enabled\n");
++			set_bit(NFS_SP4_MACH_CRED_CLEANUP, &clp->cl_sp4_flags);
++		}
+ 	}
+ 
+ 	return 0;
+@@ -6031,11 +6052,16 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
+ 	case SP4_MACH_CRED:
+ 		args.state_protect.how = SP4_MACH_CRED;
+ 
+-		/* request minumum set of operations */
++		/* request enforcement of minumum set of operations */
+ 		memcpy(args.state_protect.enforce.u.words,
+ 		       &_nfs4_spo_must_enforce,
+ 		       sizeof(uint32_t) * NFS4_OP_MAP_NUM_WORDS);
+ 
++		/* ask for any other ops we may need for SP4 features */
++		memcpy(args.state_protect.allow.u.words,
++		       &_nfs4_spo_must_allow,
++		       sizeof(uint32_t) * NFS4_OP_MAP_NUM_WORDS);
++
+ 		break;
+ 
+ 	default:
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index a0af429..7da24e0 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -91,6 +91,7 @@ struct nfs_client {
+ 	unsigned long		cl_sp4_flags;
+ #define NFS_SP4_MACH_CRED_MINIMAL  1	/* Minimal sp4_mach_cred - state ops
+ 					 * must use machine cred */
++#define NFS_SP4_MACH_CRED_CLEANUP  2	/* CLOSE and LOCKU */
+ #endif /* CONFIG_NFS_V4 */
+ 
+ #ifdef CONFIG_NFS_FSCACHE
+-- 
+1.7.12.4 (Apple Git-37)
+
