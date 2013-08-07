@@ -1,89 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:62228 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966439Ab3HHUQm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Aug 2013 16:16:42 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mail-lb0-f182.google.com ([209.85.217.182]:47636 "EHLO
+	mail-lb0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756346Ab3HGIFz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Aug 2013 04:05:55 -0400
+Received: by mail-lb0-f182.google.com with SMTP id v20so1249004lbc.41
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Aug 2013 01:05:53 -0700 (PDT)
+Received: from [192.168.43.130] ([217.118.81.51])
+        by mx.google.com with ESMTPSA id am8sm2235525lac.1.2013.08.07.01.05.52
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=ECDHE-RSA-RC4-SHA bits=128/128);
+        Wed, 07 Aug 2013 01:05:53 -0700 (PDT)
+Subject: Re: NFS4 server, performance and cache consistency in comparison with solaris.
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Content-Type: text/plain; charset=us-ascii
+From: Anton Starikov <ant.starikov@gmail.com>
+In-Reply-To: <20130731071527.5c68e5e8@tlielax.poochiereds.net>
+Date: Wed, 7 Aug 2013 09:47:56 +0200
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>, smayhew@redhat.com
+Message-Id: <CAENLDB_gm4wcXfT3BhD1SMQiuKdW6+APvd+gn5p96gODYzT6zA@mail.gmail.com>
+References: <E774E8EC-5CC0-436F-A8F3-0AB84534C316@gmail.com> <7385CFE1-E63F-45C5-A38C-59C6FC4F0C5C@gmail.com> <20130731071527.5c68e5e8@tlielax.poochiereds.net>
 To: Jeff Layton <jlayton@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        William Dauchy <william@gandi.net>,
-        Pascal Bouchareine <pascal@gandi.net>
-Subject: Re: [PATCH v3] NFS: Fix writeback performance issue on cache
- invalidation
-Date: Thu, 8 Aug 2013 20:16:40 +0000
-Message-ID: <1375993000.2494.8.camel@leira.trondhjem.org>
-References: <1375910064-23731-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <20130808141130.27cf2b26@tlielax.poochiereds.net>
-	 <1375986094.9193.2.camel@leira.trondhjem.org>
-	 <20130808144230.0efdfc2d@tlielax.poochiereds.net>
-In-Reply-To: <20130808144230.0efdfc2d@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEzLTA4LTA4IGF0IDE0OjQyIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gVGh1LCA4IEF1ZyAyMDEzIDE4OjIxOjM1ICswMDAwDQo+ICJNeWtsZWJ1c3QsIFRyb25kIiA8
-VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiANCj4gPiBPbiBUaHUsIDIwMTMt
-MDgtMDggYXQgMTQ6MTEgLTA0MDAsIEplZmYgTGF5dG9uIHdyb3RlOg0KPiA+ID4gT24gV2VkLCA3
-IEF1ZyAyMDEzIDE3OjE0OjI0IC0wNDAwDQo+ID4gPiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15
-a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiA+IA0KPiA+ID4gPiBJZiBhIGNhY2hlIGlu
-dmFsaWRhdGlvbiBpcyB0cmlnZ2VyZWQsIGFuZCB3ZSBoYXBwZW4gdG8gaGF2ZSBhIGxvdCBvZg0K
-PiA+ID4gPiB3cml0ZWJhY2tzIGNhY2hlZCBhdCB0aGUgdGltZSwgdGhlbiB0aGUgY2FsbCB0byBp
-bnZhbGlkYXRlX2lub2RlX3BhZ2VzMigpDQo+ID4gPiA+IHdpbGwgZW5kIHVwIGNhbGxpbmcgLT5s
-YXVuZGVyX3BhZ2UoKSBvbiBlYWNoIGFuZCBldmVyeSBkaXJ0eSBwYWdlIGluIG9yZGVyDQo+ID4g
-PiA+IHRvIHN5bmMgaXRzIGNvbnRlbnRzIHRvIGRpc2ssIHRodXMgZGVmZWF0aW5nIHdyaXRlIGNv
-YWxlc2NpbmcuDQo+ID4gPiA+IFRoZSBmb2xsb3dpbmcgcGF0Y2ggZW5zdXJlcyB0aGF0IHdlIHRy
-eSB0byBzeW5jIHRoZSBpbm9kZSB0byBkaXNrIGJlZm9yZQ0KPiA+ID4gPiBjYWxsaW5nIGludmFs
-aWRhdGVfaW5vZGVfcGFnZXMyKCkgc28gdGhhdCB3ZSBkbyB0aGUgd3JpdGViYWNrIGFzIGVmZmlj
-aWVudGx5DQo+ID4gPiA+IGFzIHBvc3NpYmxlLg0KPiA+ID4gPiANCj4gPiA+ID4gUmVwb3J0ZWQt
-Ynk6IFdpbGxpYW0gRGF1Y2h5IDx3aWxsaWFtQGdhbmRpLm5ldD4NCj4gPiA+ID4gUmVwb3J0ZWQt
-Ynk6IFBhc2NhbCBCb3VjaGFyZWluZSA8cGFzY2FsQGdhbmRpLm5ldD4NCj4gPiA+ID4gU2lnbmVk
-LW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4g
-PiA+ID4gVGVzdGVkLWJ5OiBXaWxsaWFtIERhdWNoeSA8d2lsbGlhbUBnYW5kaS5uZXQ+DQo+ID4g
-PiA+IFJldmlld2VkLWJ5OiBKZWZmIExheXRvbiA8amxheXRvbkByZWRoYXQuY29tPg0KPiA+ID4g
-PiAtLS0NCj4gPiA+ID4gdjI6IEFkZCBjaGVjayBmb3IgcmVndWxhciBmaWxlIGFzIHBlciBKZWZm
-IExheXRvbidzIHN1Z2dlc3Rpb24uDQo+ID4gPiA+IHYzOiBNaW5vciBjbGVhbnVwIGFuZCBhZGQg
-SmVmZiBhcyBhIHJldmlld2VyDQo+ID4gPiA+IA0KPiA+ID4gPiAgZnMvbmZzL2lub2RlLmMgfCAx
-MCArKysrKysrKy0tDQo+ID4gPiA+ICAxIGZpbGUgY2hhbmdlZCwgOCBpbnNlcnRpb25zKCspLCAy
-IGRlbGV0aW9ucygtKQ0KPiA+ID4gPiANCj4gPiA+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9pbm9k
-ZS5jIGIvZnMvbmZzL2lub2RlLmMNCj4gPiA+ID4gaW5kZXggYWY2ZTgwNi4uM2VhNGY2NCAxMDA2
-NDQNCj4gPiA+ID4gLS0tIGEvZnMvbmZzL2lub2RlLmMNCj4gPiA+ID4gKysrIGIvZnMvbmZzL2lu
-b2RlLmMNCj4gPiA+ID4gQEAgLTk2Myw5ICs5NjMsMTUgQEAgRVhQT1JUX1NZTUJPTF9HUEwobmZz
-X3JldmFsaWRhdGVfaW5vZGUpOw0KPiA+ID4gPiAgc3RhdGljIGludCBuZnNfaW52YWxpZGF0ZV9t
-YXBwaW5nKHN0cnVjdCBpbm9kZSAqaW5vZGUsIHN0cnVjdCBhZGRyZXNzX3NwYWNlICptYXBwaW5n
-KQ0KPiA+ID4gPiAgew0KPiA+ID4gPiAgCXN0cnVjdCBuZnNfaW5vZGUgKm5mc2kgPSBORlNfSShp
-bm9kZSk7DQo+ID4gPiA+IC0JDQo+ID4gPiA+ICsJaW50IHJldDsNCj4gPiA+ID4gKw0KPiA+ID4g
-PiAgCWlmIChtYXBwaW5nLT5ucnBhZ2VzICE9IDApIHsNCj4gPiA+ID4gLQkJaW50IHJldCA9IGlu
-dmFsaWRhdGVfaW5vZGVfcGFnZXMyKG1hcHBpbmcpOw0KPiA+ID4gPiArCQlpZiAoU19JU1JFRyhp
-bm9kZS0+aV9tb2RlKSkgew0KPiA+ID4gPiArCQkJcmV0ID0gbmZzX3N5bmNfbWFwcGluZyhtYXBw
-aW5nKTsNCj4gPiA+ID4gKwkJCWlmIChyZXQgPCAwKQ0KPiA+ID4gPiArCQkJCXJldHVybiByZXQ7
-DQo+ID4gPiA+ICsJCX0NCj4gPiA+ID4gKwkJcmV0ID0gaW52YWxpZGF0ZV9pbm9kZV9wYWdlczIo
-bWFwcGluZyk7DQo+ID4gPiA+ICAJCWlmIChyZXQgPCAwKQ0KPiA+ID4gPiAgCQkJcmV0dXJuIHJl
-dDsNCj4gPiA+ID4gIAl9DQo+ID4gPiANCj4gPiA+IEl0IG9jY3VycyB0byBtZSB0aGF0IHdlIGhh
-dmUgc2V2ZXJhbCBwbGFjZXMgdGhhdCBjYWxsIG5mc19zeW5jX21hcHBpbmcNCj4gPiA+IHdpdGhv
-dXQgY2hlY2tpbmcgU19JU1JFRy4gQXJlIHRoZXkgcG90ZW50aWFsbHkgcHJvYmxlbWF0aWM/DQo+
-ID4gPiANCj4gPiA+IE1pZ2h0IGl0IG1ha2UgbW9yZSBzZW5zZSB0byBtb3ZlIHRoZSBTX0lTUkVH
-IHRlc3QgaW5zaWRlIG9mDQo+ID4gPiBuZnNfc3luY19tYXBwaW5nIGFuZCBqdXN0IGhhdmUgaXQg
-InJldHVybiAwIiB3aGVuIGl0J3Mgbm90IGEgcmVndWxhcg0KPiA+ID4gZmlsZT8NCj4gPiANCj4g
-PiBJIHNlZSA1IGNhbGxlcnMgb2YgbmZzX3N5bmNfbWFwcGluZygpIGFzaWRlIGZyb20gdGhlIGFi
-b3ZlOiAyIGFyZSBpbiB0aGUNCj4gPiBPX0RJUkVDVCBjb2RlLCB0aGUgb3RoZXIgMyBhcmUgYWxs
-IGluIHRoZSBmaWxlIGxvY2tpbmcgY29kZS4gQUZBSUNTLA0KPiA+IG5vbmUgb2YgdGhvc2UgY2Fu
-IGV2ZXIgYmUgZmVkIHRvIG5vbi1yZWd1bGFyIGZpbGVzLg0KPiA+IA0KPiA+IEFtIEkgbWlzc2lu
-ZyBhbnl0aGluZz8NCj4gPiANCj4gDQo+IFlvdSBjYW4gbG9jayBhIGRpcmVjdG9yeSBvciBkZXZp
-Y2Ugc3BlY2lhbCBmaWxlIHRob3VnaCwgcmlnaHQ/DQoNCk5vLiBpbm9kZS0+aV9mb3AgaXMgc3Bl
-Y2lmaWMgdG8gdGhlIHJlZ3VsYXIgZmlsZXMuIE5GU3Y0IHdvbid0IHN1cHBvcnQNCmxvY2tpbmcg
-b24gYW55dGhpbmcgd2hpY2ggeW91IGNhbid0IE9QRU4uDQoNClBPU0lYIGl0c2VsZiBkb2VzIGFw
-cGVhciB0byBhbGxvdyBsb2NraW5nIG9uIGRpcmVjdG9yaWVzLCBidXQgc2luY2UgeW91DQpjYW4g
-b25seSBpbiBwcmFjdGljZSBkbyByZWFkIGxvY2tzIChBRkFJSyB5b3UgY2FuJ3Qgb3BlbiBhIGRp
-cmVjdG9yeSBmb3INCndyaXRpbmcpIHRoZW4gSSdtIG5vdCBsb3NpbmcgYW55IHNsZWVwIG92ZXIg
-aXQuDQoNCj4gSW4gcHJhY3RpY2UgSSBkb24ndCB0aGluayB0aGVyZSdzIGFueSB3YXkgdG8gZW5k
-IHVwIHdpdGggZGlydHkgcGFnZXMgb24NCj4gYSAhU19JU1JFRyBpbm9kZSwgYnV0IGluIHRoYXQg
-Y2FzZSwgdGhlIFNfSVNSRUcgY2hlY2sgaGVyZSB3b3VsZCBiZQ0KPiBzdXBlcmZsdW91cyAodGhv
-dWdoIGNoZWNraW5nIGl0IG1pZ2h0IGJlIGEgcmVhc29uYWJsZSBvcHRpbWl6YXRpb24pLg0KDQpB
-RkFJQ1IsIG5mc19zeW5jX21hcHBpbmcoKSBkb2VzIGFjdHVhbGx5IGJsb3cgdXAgaWYgeW91IGNh
-bGwgaXQgb24gYQ0Kbm9uLXJlZ3VsYXIgZmlsZSwgYnV0IGFzIEkgc2FpZCwgdGhlIG9ubHkgcGxh
-Y2Ugd2hlcmUgdGhhdCBhcHBlYXJzIHRvIGJlDQpwb3NzaWJsZSBpcyBuZnNfaW52YWxpZGF0ZV9t
-YXBwaW5nKCkuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
-YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5j
-b20NCg==
+>
+> On Jul 31, 2013, at 6:35 AM, Anton Starikov <ant.starikov@gmail.com> wrote:
+>
+> > Hey,
+> >
+> > we are in the process of migration of our storage from solaris to linux (RHEL6) and I see some strange things, which depends on server side.
+> >
+> > In our old solaris setup we have slower network (1GbE vs 10GbE), much slower storage than new one, but still when I export volume with default solaris options and mount on linux clients with options:
+> > rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,minorversion=0,local_lock=none
+> >
+
+> >
+> > When I export from linux host with options:
+> >
+> > rw,sync,wdelay,hide,nocrossmnt,insecure,no_root_squash,no_all_squash,no_subtree_check,secure_locks,no_acl,mountpoint,anonuid=65534,anongid=65534,sec=sys,rw,no_root_squash,no_all_squash (it is options as shown in /var/lib/nfs/etab),
+> >
+> > and mount on linux clients with the same options as with old setup, I have great "dbench 4" performance (about 200Mb/s), but consistency is nonexistent, in the same case (one client keep writing to file, second is reading), on second client I can see state of file with delayed for 5-30 secs. Out of curiosity I tried to use "sync" in loop on a first client (where it writes) to flush cache, but it does not affect something. File isn't really large, but client updates it 2-4 times a sec.
+> >
+> > All my attempts to improve consistency had two possible impacts:
+> >
+> > 1) either still luck of consistency (like actimeo=0,lookupcache=none) and reasonable or good dbench results.
+> > 2) consistency is recovered (or almost recovered) (like sync, noac), but dbench results drops to 10MB/s or even less!
+> >
+> > Taking into account that mounting happens with the same options on a client side in both cases, it there some server-side trick with options?
+> >
+> > Time is synchronised between hosts.
+> >
+> > Anton.
+>
+
+
+This is all due to client-side effects, so there's little you can do
+server-side to affect this.
+
+lookupcache= option probably won't make a lot of difference here, but
+actimeo= option likely would. actimeo= means that the client never
+caches attributes, so every time it needs to check cache coherency it
+has to issue a GETATTR to the server. Dialing this to a more reasonable
+value (e.g. actimeo=1 or so) should still give you pretty tight cache
+coherency w/o killing performance too badly.
+
+The cache coherency logic in the Linux NFS client is pretty complex,
+but typically when you have a file that's changing rapidly it should
+quickly dial down the attribute cache timeout to the default minimum
+(3s). None of that matters though unless you have the "writing" client
+aggressively flushing the dirty data out to the server.
+
+--
+Jeff Layton <jlayton@redhat.com>
+
+
+Then why results depend on the server?
+the same client mount options results in quite different results with linux and solaris servers.
+there is clearly must be something.
+
+Anton.
