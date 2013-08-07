@@ -1,47 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:58938 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:49079 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753910Ab3H2P57 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Aug 2013 11:57:59 -0400
-Message-ID: <521F6F84.2000109@RedHat.com>
-Date: Thu, 29 Aug 2013 11:57:56 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1756853Ab3HGSyk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Aug 2013 14:54:40 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 4 2/5] NFS: Warn when attempting a buffered
+ write or commit with an expired credential
+Date: Wed, 7 Aug 2013 18:54:39 +0000
+Message-ID: <1375901678.7280.32.camel@leira.trondhjem.org>
+References: <1374176130-11657-1-git-send-email-andros@netapp.com>
+	 <1374176130-11657-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1374176130-11657-3-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: NFSv4 <nfsv4@ietf.org>, Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: Sept  2013 Bakeathon in Westford, Ma
-References: <51DECC8A.30100@RedHat.com>
-In-Reply-To: <51DECC8A.30100@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Just a Reminder Next Monday is the hotel reservation 
-deadline... 
-
-If you plan on attending, please let me know ASAP...
-I'll need to know your name and T-shirt size...
-
-Note, the current count is 25 attending...
-
-steved.
-
-On 11/07/13 11:17, Steve Dickson wrote:
-> Red Hat is pleased to announce that it is hosting the an NFSv4
-> Bakeathon Sept 23-27 at our Westford, MA office.  
-> 
-> Details and registration info is here:
-> 
-> http://www.nfsv4bat.org/Events/2013/September/BAT/index.html
-> 
-> I have block of 25 rooms reserved at the Westford Regency Inn
-> right down the street from the office. Please make your 
-> reservation by *Mon Sept 2ed* and use "Red Hat Bakeathon" to
-> refer to the block of rooms... The adjusted rate is $105 per night.
-> 
-> Its a very nice hotel... Just yesterday I went and "tested" the 
-> hotel bar, just to make sure it works... It does! steved approved!
-> (Someone had to that dirty work!) 8-) 
-> 
-> 
-> steved.
-> 
+T24gVGh1LCAyMDEzLTA3LTE4IGF0IDE1OjM1IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFNpZ25l
+ZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiAgZnMv
+bmZzL3dyaXRlLmMgfCAxMCArKysrKysrKysrDQo+ICAxIGZpbGUgY2hhbmdlZCwgMTAgaW5zZXJ0
+aW9ucygrKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy93cml0ZS5jIGIvZnMvbmZzL3dyaXRl
+LmMNCj4gaW5kZXggZjFiZGI3Mi4uNzI0Yzg0NSAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL3dyaXRl
+LmMNCj4gKysrIGIvZnMvbmZzL3dyaXRlLmMNCj4gQEAgLTEzMzAsNiArMTMzMCwxNCBAQCB2b2lk
+IG5mc193cml0ZWJhY2tfZG9uZShzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2ssIHN0cnVjdCBuZnNfd3Jp
+dGVfZGF0YSAqZGF0YSkNCj4gIAlkcHJpbnRrKCJORlM6ICU1dSBuZnNfd3JpdGViYWNrX2RvbmUg
+KHN0YXR1cyAlZClcbiIsDQo+ICAJCXRhc2stPnRrX3BpZCwgdGFzay0+dGtfc3RhdHVzKTsNCj4g
+IA0KPiArCWlmICh0YXNrLT50a19zdGF0dXMgPT0gLUVLRVlFWFBJUkVEKQ0KPiArCQlwcl93YXJu
+KCJORlM6CXdyaXRlIGF0dGVtcHQgd2l0aCBleHBpcmVkIGNyZWRlbnRpYWwgIg0KPiArCQkJInJl
+cSAlcy8lbGxkLCAldSBieXRlcyBAIG9mZnNldCAlbGx1XG4iLA0KPiArCQkJaW5vZGUtPmlfc2It
+PnNfaWQsDQo+ICsJCQkobG9uZyBsb25nKU5GU19GSUxFSUQoaW5vZGUpLA0KPiArCQkJZGF0YS0+
+YXJncy5jb3VudCwNCj4gKwkJCSh1bnNpZ25lZCBsb25nIGxvbmcpZGF0YS0+YXJncy5vZmZzZXQp
+Ow0KDQpUaGlzIG5lZWRzIHRvIGJlIHJhdGVsaW1pdGVkIHRvIGF2b2lkIHRyb3VibGUgd2l0aCBz
+eXNsb2cuDQoNCj4gKw0KPiAgCS8qDQo+ICAJICogLT53cml0ZV9kb25lIHdpbGwgYXR0ZW1wdCB0
+byB1c2UgcG9zdC1vcCBhdHRyaWJ1dGVzIHRvIGRldGVjdA0KPiAgCSAqIGNvbmZsaWN0aW5nIHdy
+aXRlcyBieSBvdGhlciBjbGllbnRzLiAgQSBzdHJpY3QgaW50ZXJwcmV0YXRpb24NCj4gQEAgLTE1
+NTYsNiArMTU2NCw4IEBAIHN0YXRpYyB2b2lkIG5mc19jb21taXRfZG9uZShzdHJ1Y3QgcnBjX3Rh
+c2sgKnRhc2ssIHZvaWQgKmNhbGxkYXRhKQ0KPiAgDQo+ICAgICAgICAgIGRwcmludGsoIk5GUzog
+JTV1IG5mc19jb21taXRfZG9uZSAoc3RhdHVzICVkKVxuIiwNCj4gICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgdGFzay0+dGtfcGlkLCB0YXNrLT50a19zdGF0dXMpOw0KPiArCWlmICh0
+YXNrLT50a19zdGF0dXMgPT0gLUVLRVlFWFBJUkVEKQ0KPiArCQlwcl93YXJuKCJORlM6IGNvbW1p
+dCBhdHRlbXB0IHdpdGggZXhwaXJlZCBjcmVkZW50aWFsXG4iKTsNCg0KQWdhaW4sIHRoaXMgd2Fu
+dHMgdG8gYmUgcmF0ZSBsaW1pdGVkLg0KDQo+ICANCj4gIAkvKiBDYWxsIHRoZSBORlMgdmVyc2lv
+bi1zcGVjaWZpYyBjb2RlICovDQo+ICAJTkZTX1BST1RPKGRhdGEtPmlub2RlKS0+Y29tbWl0X2Rv
+bmUodGFzaywgZGF0YSk7DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50
+IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5l
+dGFwcC5jb20NCg==
