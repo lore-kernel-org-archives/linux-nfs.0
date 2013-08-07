@@ -1,61 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ye0-f181.google.com ([209.85.213.181]:54624 "EHLO
-	mail-ye0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S968214Ab3HIQvh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:51:37 -0400
-Received: by mail-ye0-f181.google.com with SMTP id q2so1315525yen.12
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:51:36 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
-        by mx.google.com with ESMTPSA id f67sm20693750yhh.9.2013.08.09.09.51.35
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
-        Fri, 09 Aug 2013 09:51:36 -0700 (PDT)
-Subject: [PATCH v2 26/33] NFS: Rename "stateid_invalid" label
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 09 Aug 2013 12:51:34 -0400
-Message-ID: <20130809165134.5362.92998.stgit@seurat.1015granger.net>
-In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
-References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
-MIME-Version: 1.0
+Received: from mx1.netapp.com ([216.240.18.38]:47666 "EHLO mx1.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932745Ab3HGSEH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Aug 2013 14:04:07 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/4] NFSv4.1 Use clientid management rpc_clnt for
+ fs_locations
+Date: Wed, 7 Aug 2013 18:04:05 +0000
+Message-ID: <1375898644.7280.10.camel@leira.trondhjem.org>
+References: <1374511328-49579-1-git-send-email-andros@netapp.com>
+	 <1374511328-49579-2-git-send-email-andros@netapp.com>
+	 <1375894458.7280.2.camel@leira.trondhjem.org>
+	 <479EB531-9CD2-42E2-AB98-A3CD9B13603D@netapp.com>
+In-Reply-To: <479EB531-9CD2-42E2-AB98-A3CD9B13603D@netapp.com>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm going to use this exit label also for migration recovery
-failures.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/nfs4proc.c |    6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 4cc5181..93eeac3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4653,12 +4653,12 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
- 			if (state == NULL)
- 				break;
- 			if (nfs4_schedule_stateid_recovery(server, state) < 0)
--				goto stateid_invalid;
-+				goto recovery_failed;
- 			goto wait_on_recovery;
- 		case -NFS4ERR_EXPIRED:
- 			if (state != NULL) {
- 				if (nfs4_schedule_stateid_recovery(server, state) < 0)
--					goto stateid_invalid;
-+					goto recovery_failed;
- 			}
- 		case -NFS4ERR_STALE_STATEID:
- 		case -NFS4ERR_STALE_CLIENTID:
-@@ -4687,7 +4687,7 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
- 	}
- 	task->tk_status = nfs4_map_errors(task->tk_status);
- 	return 0;
--stateid_invalid:
-+recovery_failed:
- 	task->tk_status = -EIO;
- 	return 0;
- wait_on_recovery:
-
+T24gV2VkLCAyMDEzLTA4LTA3IGF0IDE4OjAxICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
+PiANCj4gT24gQXVnIDcsIDIwMTMsIGF0IDEyOjU0IFBNLCAiTXlrbGVidXN0LCBUcm9uZCINCj4g
+PFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KPiAgd3JvdGU6DQo+IA0KPiA+IE9uIE1vbiwg
+MjAxMy0wNy0yMiBhdCAxMjo0MiAtMDQwMCwgYW5kcm9zQG5ldGFwcC5jb20gd3JvdGU6DQo+ID4g
+PiBGcm9tOiBBbmR5IEFkYW1zb24gPGFuZHJvc0BuZXRhcHAuY29tPg0KPiA+ID4gDQo+ID4gPiBB
+cyBwZXIgUkZDIDM1MzAgYW5kIFJGQyA1NjYxIFNlY3VyaXR5IENvbnNpZGVyYXRpb25zLg0KPiA+
+ID4gDQo+ID4gPiBDb21taXQgNGVkYWEzMDggIk5GUzogVXNlICJrcmI1aSIgdG8gZXN0YWJsaXNo
+IE5GU3Y0IHN0YXRlDQo+ID4gPiB3aGVuZXZlciBwb3NzaWJsZSINCj4gPiA+IHVzZXMgdGhlIG5m
+c19jbGllbnQgY2xfcnBjY2xpZW50IGZvciBhbGwgY2xpZW50aWQgbWFuYWdlbWVudA0KPiA+ID4g
+b3BlcmF0aW9ucy4NCj4gPiANCj4gPiBXaHk/IA0KPiANCj4gDQo+IFRvIHByb3RlY3QgdGhlIGlu
+dGVncml0eSBvZiB0aGUgZnNfbG9jYXRpb25zIHNlcnZlciBsaXN0Lg0KPiANCj4gPiBGcm9tIGEg
+c2VjdXJpdHkgcGVyc3BlY3RpdmUsIGhvdyBpcyB0aGlzIGFueSBkaWZmZXJlbnQgZnJvbSBkb2lu
+ZyBhDQo+ID4gUkVBRExJTkssIGZvciBpbnN0YW5jZT8NCj4gDQo+IA0KPiBmc19sb2NhdGlvbnMg
+ZGlmZmVycyBmcm9tIFJFQURMSU5LIGluIHRoYXQgY29tcHJvbWlzaW5nIHRoZQ0KPiBmc19sb2Nh
+dGlvbnMgYXR0cmlidXRlIHNlcnZlciBsaXN0IGNhbiByZXN1bHQgaW4gYWxsIG9mIHRoZSBjbGll
+bnQNCj4gdHJhZmZpYyB1bmRlciBhIGp1bmN0aW9uIHJlZGlyZWN0ZWQgYnkgYW4gYXR0YWNrZXIu
+DQoNCkkgcmVwZWF0OiBob3cgaXMgdGhpcyBpbiBhbnkgd2F5LCBzaGFwZSBvciBmb3JtIGRpZmZl
+cmVudCBmcm9tIFJFQURMSU5LPw0KDQo+IA0KPiBIZXJlIGlzIHRoZSBhdHRhY2sgYXMgZGVzY3Jp
+YmVkIGluIDM1MzBiaXMgU2VjdXJpdHkgQ29uc2lkZXJhdGlvbnMNCj4gc2VjdGlvbjoNCj4gDQo+
+IA0KPiAgICBUaGUgc2Vjb25kIG9wZXJhdGlvbiB0aGF0IHNob3VsZCBkZWZpbml0ZWx5IHVzZSBp
+bnRlZ3JpdHkgcHJvdGVjdGlvbg0KPiAgICBpcyBhbnkgR0VUQVRUUiBmb3IgdGhlIGZzX2xvY2F0
+aW9ucyBhdHRyaWJ1dGUuICBUaGUgYXR0YWNrIGhhcyB0d28NCj4gICAgc3RlcHMuICBGaXJzdCB0
+aGUgYXR0YWNrZXIgbW9kaWZpZXMgdGhlIHVucHJvdGVjdGVkIHJlc3VsdHMgb2Ygc29tZQ0KPiAg
+ICBvcGVyYXRpb24gdG8gcmV0dXJuIE5GUzRFUlJfTU9WRUQuICBTZWNvbmQsIHdoZW4gdGhlIGNs
+aWVudCBmb2xsb3dzDQo+ICAgIHVwIHdpdGggYSBHRVRBVFRSIGZvciB0aGUgZnNfbG9jYXRpb25z
+IGF0dHJpYnV0ZSwgdGhlIGF0dGFja2VyDQo+ICAgIG1vZGlmaWVzIHRoZSByZXN1bHRzIHRvIGNh
+dXNlIHRoZSBjbGllbnQgbWlncmF0ZSBpdHMgdHJhZmZpYyB0byBhDQo+ICAgIHNlcnZlciBjb250
+cm9sbGVkIGJ5IHRoZSBhdHRhY2tlci4NCg0KWW91IGNhbiB0aGUgZXhhY3Qgc2FtZSB0aGluZyBi
+eSBjaGFuZ2luZyB0aGUgUkVBRExJTksgcmVzdWx0cy4NCg0KDQotLSANClRyb25kIE15a2xlYnVz
+dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0
+QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
