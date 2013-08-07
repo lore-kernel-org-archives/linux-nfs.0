@@ -1,72 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:45910 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47841 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755772Ab3HFK2L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Aug 2013 06:28:11 -0400
-Date: Tue, 6 Aug 2013 06:28:01 -0400
+	id S932942Ab3HGNVc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Aug 2013 09:21:32 -0400
+Date: Wed, 7 Aug 2013 09:21:23 -0400
 From: Jeff Layton <jlayton@redhat.com>
 To: Cong Wang <amwang@redhat.com>
 Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
         Trond Myklebust <Trond.Myklebust@netapp.com>,
         "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
 Subject: Re: [Patch net-next v2 5/8] sunrpc: use generic union inet_addr
-Message-ID: <20130806062801.67714276@tlielax.poochiereds.net>
-In-Reply-To: <1375672445.32485.8.camel@cr0>
+Message-ID: <20130807092123.451e93db@tlielax.poochiereds.net>
+In-Reply-To: <1375878446.11370.36.camel@cr0>
 References: <1375427674-21735-1-git-send-email-amwang@redhat.com>
 	<1375427674-21735-6-git-send-email-amwang@redhat.com>
 	<20130802093625.2c70a330@tlielax.poochiereds.net>
 	<1375672445.32485.8.camel@cr0>
+	<20130806062801.67714276@tlielax.poochiereds.net>
+	<1375878446.11370.36.camel@cr0>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 05 Aug 2013 11:14:05 +0800
+On Wed, 07 Aug 2013 20:27:26 +0800
 Cong Wang <amwang@redhat.com> wrote:
 
-> On Fri, 2013-08-02 at 09:36 -0400, Jeff Layton wrote:
-> > On Fri,  2 Aug 2013 15:14:31 +0800
-> > Cong Wang <amwang@redhat.com> wrote:
+> On Tue, 2013-08-06 at 06:28 -0400, Jeff Layton wrote:
 > > 
-> > > From: Cong Wang <amwang@redhat.com>
-> > > 
-> > > sunrpc defines some helper functions for sockaddr, actually they
-> > > can re-use the generic functions for union inet_addr too.
-> > 
-> > Only some of these patches in this series have made it to lists to
-> > which I'm subscribed, so I may be missing some context here...
-> > 
-> > I'm not sure I really understand the value of "union inet_addr". Why
-> > not just use the conventional method of passing around "struct sockaddr"
-> > pointers, and then casting them to struct sockaddr_in/sockaddr_in6
-> > depending on what the sa_family is set to?
+> > My question is a bit more fundamental: Why are you using this new union
+> > in your patches instead of simply passing around "struct sockaddr"
+> > pointers? If you did that, then you could simply replace all of the
+> > rpc_* wrappers with your generic ones, since you wouldn't need to do
+> > the cast to this (seemingly unnecessary) union.
 > 
-> Yes.
+> Because there are some places have to interpret the structure, without
+> this union, they need to cast to either sockaddr_in or sockaddr_in6
+> first, which is not as pretty as using a union.
+> 
+> For example, the code in netpoll:
+> 
+> ipv6_addr_equal(daddr, &np->local_ip.sin6.sin6_addr)
+> 
+> without the union, it would be:
+> 
+> struct sockaddr_in6 *addr = (struct sockaddr_in6 *) &np->local_ip;
+> ipv6_addr_equal(daddr, addr->sin6_addr);
 > 
 > > 
-> > With that you wouldn't need to leave the (now pointless) rpc_* wrappers
-> > in place and could just call your new helpers directly.
+> > FWIW, I too am happy to see these routines moved to common code. I just
+> > wonder whether it might make more sense to use the existing convention
+> > instead of this new union.
 > > 
-> 
-> J. Bruce asked the same question, see:
-> http://marc.info/?l=linux-nfs&m=137475685903460&w=2
 > 
 
-Not exactly...
-
-He asked why you were keeping the wrappers and you replied that it was
-because you didn't want to change all of the callers of rpc_get_port.
-That's a fair enough answer to his question.
-
-My question is a bit more fundamental: Why are you using this new union
-in your patches instead of simply passing around "struct sockaddr"
-pointers? If you did that, then you could simply replace all of the
-rpc_* wrappers with your generic ones, since you wouldn't need to do
-the cast to this (seemingly unnecessary) union.
-
-FWIW, I too am happy to see these routines moved to common code. I just
-wonder whether it might make more sense to use the existing convention
-instead of this new union.
+Ok, good point. That does look cleaner. I'd still like to see the rpc_*
+wrappers go away, but that can be done later.
 
 -- 
 Jeff Layton <jlayton@redhat.com>
