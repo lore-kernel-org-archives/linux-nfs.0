@@ -1,109 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ecs-ex10-cas2.engr.uconn.edu ([137.99.15.237]:18648 "EHLO
-	mail.engr.uconn.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757219Ab3HAUvw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Aug 2013 16:51:52 -0400
-Message-ID: <51FAC933.40508@engr.uconn.edu>
-Date: Thu, 1 Aug 2013 16:46:43 -0400
-From: Rohit Kumar Mehta <rohitm@engr.uconn.edu>
+Received: from mx11.netapp.com ([216.240.18.76]:54452 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932595Ab3HGS2P convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Aug 2013 14:28:15 -0400
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "linux-nfs@vger.kernel.org list" <linux-nfs@vger.kernel.org>
+Subject: Fwd: [PATCH 2/4] NFSv4.1 Use clientid management rpc_clnt for
+ fs_locations
+Date: Wed, 7 Aug 2013 18:28:13 +0000
+Message-ID: <D95FC43A-2662-4922-8FF8-0FB063D781B0@netapp.com>
+References: <F7CE9E5F-E136-4E5B-98CA-929DA93D1083@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-To: <linux-nfs@vger.kernel.org>
-Subject: Trouble with kerberized NFS client after upgrading from nfs-utils
- 1.2.0 to 1.2.5
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello everyone, I am stuck trying to figure out why I cannot get 
-sec=krb5 Linux clients working after upgrading from Ubuntu 10.04 LTS 
-(Lucid) to 12.04 (Precise)
 
-I suspect the same problem is with the newer nfs-utils, but cannot be sure.
+Re-send due to my mailer adding html to the message, and thus being rejected by linux-nfs@vger.kernel.org
 
-On the old (working) Lucid system, I think the important software is:
-# dpkg -l |grep nfs-common
-ii  nfs-common 1:1.2.0-4ubuntu4.2                              NFS 
-support files common to client and serve
-# uname -a
-Linux cselin3 2.6.32-29-generic #58-Ubuntu SMP Fri Feb 11 20:52:10 UTC 
-2011 x86_64 GNU/Linux
+-->Andy
 
-And on the newer (sec=krb5 mounts fail) system, the important software is:
-# dpkg -l |grep nfs-common
-ii  nfs-common 1:1.2.5-3ubuntu3.1                      NFS support files 
-common to client and server
-# uname -a
-Linux c27-00 3.2.0-51-generic #77-Ubuntu SMP Wed Jul 24 20:18:19 UTC 
-2013 x86_64 x86_64 x86_64 GNU/Linux
+Begin forwarded message:
 
-
-The NFS server we are using is a Hitachi BlueARC, and like I said, older 
-Linux clients work fine.  After upgrading to new kernel and
-
-nfs-utils, any attempt to mount yields an error:
-# mount hnas.engr.uconn.edu:/EngrUser/users/rohitm /foo -o sec=krb5
-mount.nfs: access denied by server while mounting 
-hnas.engr.uconn.edu:/EngrUser/users/rohitm
-
-I've reproduced the same behavior with both -t nfs4 and -t nfs. (Both 
-nfsv3 and nfsv4 work with kerberos security in our configuration with 
-Lucid, but not Precise)  I've checked the Kerberos credential cache:
-
-root@c27-00:~# klist -e -f -c /tmp/krb5cc_machine_ENGR.UCONN.EDU
-Ticket cache: FILE:/tmp/krb5cc_machine_ENGR.UCONN.EDU
-Default principal: nfs/c27-00.engr.uconn.edu@ENGR.UCONN.EDU
-
-Valid starting    Expires           Service principal
-01/08/2013 15:40  02/08/2013 01:40 krbtgt/ENGR.UCONN.EDU@ENGR.UCONN.EDU
-     renew until 02/08/2013 15:40, Flags: FRI
-     Etype (skey, tkt): des3-cbc-sha1, des3-cbc-sha1
-01/08/2013 15:40  02/08/2013 01:40 nfs/hnas.engr.uconn.edu@ENGR.UCONN.EDU
-     renew until 02/08/2013 15:40, Flags: FRT
-     Etype (skey, tkt): des3-cbc-sha1, des3-cbc-sha1
-
-I also have rpc.idmapd and rpc.gssd running with extra verbosity.  I 
-don't see anything blatantly wrong.  This looks slightly suspicious:
-Aug  1 16:32:50 c27-00 rpc.gssd[780]: creating tcp client for server 
-hnas.engr.uconn.edu
-Aug  1 16:32:50 c27-00 rpc.gssd[780]: DEBUG: port already set to 2049
-Aug  1 16:32:50 c27-00 rpc.gssd[780]: creating context with server 
-nfs@hnas.engr.uconn.edu
-Aug  1 16:32:50 c27-00 rpc.gssd[780]: WARNING: Failed to create krb5 
-context for user with uid 0 for server hnas.engr.uconn.edu
-Aug  1 16:32:50 c27-00 rpc.gssd[780]: WARNING: Failed to create machine 
-krb5 context with credentials cache 
-FILE:/tmp/krb5cc_machine_ENGR.UCONN.EDU for server hnas.engr.uconn.edu
-Aug  1 16:32:50 c27-00 rpc.gssd[780]: WARNING: Failed to create machine 
-krb5 context with any credentials cache for server hnas.engr.uconn.edu
-Aug  1 16:32:50 c27-00 rpc.gssd[780]: doing error downcall
-Aug  1 16:32:50 c27-00 rpc.gssd[780]: dir_notify_handler: sig 37 si 
-0x7fffdf0135b0 data 0x7fffdf013480
-Aug  1 16:32:50 c27-00 rpc.gssd[780]: dir_notify_handler: sig 37 si 
-0x7fffdf0135b0 data 0x7fffdf013480
-Aug  1 16:32:50 c27-00 rpc.gssd[780]: dir_notify_handler: sig 37 si 
-0x7fffdf0134f0 data 0x7fffdf0133c0
-Aug  1 16:32:50  rpc.gssd[780]: last message repeated 4 times
-Aug  1 16:32:50 c27-00 rpc.gssd[780]: destroying client 
-/run/rpc_pipefs/nfs/clnt5
-Aug  1 16:32:50 c27-00 rpc.gssd[780]: destroying client 
-/run/rpc_pipefs/nfs/clnt4
-
-I am able to successfuly get the nfs principal for the client from 
-/etc/krb5.keytab "nfs/c27-00.engr.uconn.edu" and I can see the principal 
-for the server "nfs/hnas.engr.uconn.edu" in cache 
-/tmp/krb5cc_machine_ENGR.UCONN.EDU.
-
-I appreciate any advice or assistance.  Thanks in advance!
-Rohit
-
--- 
-Rohit Mehta
-Computer Engineer
-University of Connecticut
-Engineering Computing Services
-371 Fairfield Road Unit 4031
-Storrs, CT 06269-4031
-
-Office: (860) 486 - 2331
-Fax: (860) 486 - 1273
+> From: "Adamson, Andy" <William.Adamson@netapp.com>
+> Subject: Re: [PATCH 2/4] NFSv4.1 Use clientid management rpc_clnt for fs_locations
+> Date: August 7, 2013 2:24:31 PM EDT
+> To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+> Cc: "Adamson, Andy" <William.Adamson@netapp.com>, "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+> 
+> 
+> On Aug 7, 2013, at 2:19 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+> wrote:
+> 
+>> On Wed, 2013-08-07 at 14:04 -0400, Trond Myklebust wrote:
+>>> On Wed, 2013-08-07 at 18:01 +0000, Adamson, Andy wrote:
+>>>> 
+>>>> Here is the attack as described in 3530bis Security Considerations
+>>>> section:
+>>>> 
+>>>> 
+>>>>  The second operation that should definitely use integrity protection
+>>>>  is any GETATTR for the fs_locations attribute.  The attack has two
+>>>>  steps.  First the attacker modifies the unprotected results of some
+>>>>  operation to return NFS4ERR_MOVED.  Second, when the client follows
+>>>>  up with a GETATTR for the fs_locations attribute, the attacker
+>>>>  modifies the results to cause the client migrate its traffic to a
+>>>>  server controlled by the attacker.
+>>> 
+>>> You can the exact same thing by changing the READLINK results.
+>> 
+>> The attack is: change the unprotected LOOKUP results to point to a
+>> symlink, then feed '/net/<evil-ip-address>/my/evil/pathname' into
+>> READLINK.
+>> 
+>> My point is that if you're on a network where the above is a potential
+>> threat, then you should be using krb5i or, better yet, krb5p for _all_
+>> operations. It's not sufficient to single out fs_locations for special
+>> treatment.
+> 
+> In that case, why did you accept commit 4edaa308 "NFS: Use "krb5i" to establish NFSv4 state whenever possible" ?
+> 
+> -->Andy
+> 
+>> 
+>> -- 
+>> Trond Myklebust
+>> Linux NFS client maintainer
+>> 
+>> NetApp
+>> Trond.Myklebust@netapp.com
+>> www.netapp.com
+> 
 
