@@ -1,71 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:3034 "EHLO mx1.redhat.com"
+Received: from mx1.netapp.com ([216.240.18.38]:57032 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756078Ab3HFSEW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Aug 2013 14:04:22 -0400
-Message-ID: <52013A9D.4010905@RedHat.com>
-Date: Tue, 06 Aug 2013 14:04:13 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
+	id S1754691Ab3HGScU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Aug 2013 14:32:20 -0400
+From: "Adamson, Andy" <William.Adamson@netapp.com>
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Julia Lawall <Julia.Lawall@lip6.fr>,
-        David Quigley <dpquigl@davequigley.com>,
-        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] fs/nfs/inode.c: adjust code alignment
-References: <1375714059-29567-1-git-send-email-Julia.Lawall@lip6.fr>  <1375714059-29567-2-git-send-email-Julia.Lawall@lip6.fr> <1375714793.7337.12.camel@leira.trondhjem.org>
-In-Reply-To: <1375714793.7337.12.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/4] NFSv4.1 Use clientid management rpc_clnt for
+ fs_locations
+Date: Wed, 7 Aug 2013 18:32:18 +0000
+Message-ID: <015EF10A-7962-484C-90D1-A1520E8B3431@netapp.com>
+References: <1374511328-49579-1-git-send-email-andros@netapp.com>
+ <1374511328-49579-2-git-send-email-andros@netapp.com>
+ <1375894458.7280.2.camel@leira.trondhjem.org>
+ <479EB531-9CD2-42E2-AB98-A3CD9B13603D@netapp.com>
+ <1375898644.7280.10.camel@leira.trondhjem.org>
+ <1375899556.7280.16.camel@leira.trondhjem.org>
+In-Reply-To: <1375899556.7280.16.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
 
-On 05/08/13 10:59, Myklebust, Trond wrote:
-> On Mon, 2013-08-05 at 16:47 +0200, Julia Lawall wrote:
->> From: Julia Lawall <Julia.Lawall@lip6.fr>
->>
->> Signed-off-by: Julia Lawall <Julia.Lawall@lip6.fr>
->>
->> ---
->>
->> This patch adjusts the code so that the alignment matches the current
->> semantics.  I have no idea if it is the intended semantics, though.  Should
->> the call to nfs_setsecurity also be under the else?
->>
-> 
->>  fs/nfs/inode.c |    2 +-
->>  1 file changed, 1 insertion(+), 1 deletion(-)
->>
->> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
->> index af6e806..d8ad685 100644
->> --- a/fs/nfs/inode.c
->> +++ b/fs/nfs/inode.c
->> @@ -463,7 +463,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh
->> *fh, struct nfs_fattr *fattr, st
->>                 unlock_new_inode(inode);
->>         } else
->>                 nfs_refresh_inode(inode, fattr);
->> -               nfs_setsecurity(inode, fattr, label);
->> +       nfs_setsecurity(inode, fattr, label);
-This call to nfs_setsecurity() is not needed. The security only needs
-to be set when the i-node is created... 
+On Aug 7, 2013, at 2:19 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+ wrote:
 
-steved.
+> On Wed, 2013-08-07 at 14:04 -0400, Trond Myklebust wrote:
+>> On Wed, 2013-08-07 at 18:01 +0000, Adamson, Andy wrote:
+>>> 
+>>> Here is the attack as described in 3530bis Security Considerations
+>>> section:
+>>> 
+>>> 
+>>>   The second operation that should definitely use integrity protection
+>>>   is any GETATTR for the fs_locations attribute.  The attack has two
+>>>   steps.  First the attacker modifies the unprotected results of some
+>>>   operation to return NFS4ERR_MOVED.  Second, when the client follows
+>>>   up with a GETATTR for the fs_locations attribute, the attacker
+>>>   modifies the results to cause the client migrate its traffic to a
+>>>   server controlled by the attacker.
+>> 
+>> You can the exact same thing by changing the READLINK results.
+> 
+> The attack is: change the unprotected LOOKUP results to point to a
+> symlink, then feed '/net/<evil-ip-address>/my/evil/pathname' into
+> READLINK.
 
->>         dprintk("NFS: nfs_fhget(%s/%Ld fh_crc=0x%08x ct=%d)\n",
->>                 inode->i_sb->s_id,
->>                 (long long)NFS_FILEID(inode),
+Does the linux client actually follow links with embedded IP addresses?
+
+-->Andy
+
 > 
-> Hi Julia,
+> My point is that if you're on a network where the above is a potential
+> threat, then you should be using krb5i or, better yet, krb5p for _all_
+> operations. It's not sufficient to single out fs_locations for special
+> treatment.
 > 
-> Thanks for pointing this out! Given that the 'then' clause of the if
-> statement already calls nfs_setsecurity before unlocking the inode, I
-> suspect that the above _should_ really be part of the 'else' clause. 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
 > 
-> That said, I can't see that calling nfs_setsecurity twice on the inode
-> can cause any unintended side-effects, so I suggest that we rather queue
-> the patch up for inclusion in 3.12.
-> Steve and Dave, any comments?
-> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+
