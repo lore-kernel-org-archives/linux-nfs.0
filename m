@@ -1,40 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from icebox.esperi.org.uk ([81.187.191.129]:33475 "EHLO
-	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753255Ab3HFUqO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Aug 2013 16:46:14 -0400
-From: Nix <nix@esperi.org.uk>
-To: "Myklebust\, Trond" <Trond.Myklebust@netapp.com>
-Cc: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>,
-        Oleg Nesterov <oleg@redhat.com>, Jeff Layton <jlayton@redhat.com>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "dhowells\@redhat.com" <dhowells@redhat.com>
-Subject: Re: [3.10.4] NFS locking panic, plus persisting NFS shutdown panic from 3.9.*
-References: <8761vlv4z9.fsf@spindle.srvr.nix>
-	<20130805084436.69ee4415@corrin.poochiereds.net>
-	<87siyotcri.fsf@spindle.srvr.nix>
-	<20130805110427.509db424@tlielax.poochiereds.net>
-	<20130805111106.73d6ab90@tlielax.poochiereds.net>
-	<87zjswrvaq.fsf@spindle.srvr.nix>
-	<1375719301.7337.14.camel@leira.trondhjem.org>
-	<87txj4rnru.fsf@spindle.srvr.nix>
-	<1375729975.7337.39.camel@leira.trondhjem.org>
-Date: Tue, 06 Aug 2013 21:46:04 +0100
-In-Reply-To: <1375729975.7337.39.camel@leira.trondhjem.org> (Trond Myklebust's
-	message of "Mon, 5 Aug 2013 19:12:55 +0000")
-Message-ID: <87pptqsg37.fsf@spindle.srvr.nix>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from ironport02-1.csupomona.edu ([134.71.187.45]:8203 "EHLO
+	ironport02-1.csupomona.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756833Ab3HGCx2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Aug 2013 22:53:28 -0400
+Date: Tue, 6 Aug 2013 19:53:27 -0700
+From: Brian De Wolf <bldewolf@csupomona.edu>
+To: Bryan Schumaker <bjschuma@gmail.com>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: NFS uses wrong domain in SETATTR
+Message-ID: <20130806195327.71323541@csupomona.edu>
+In-Reply-To: <52015795.9060003@gmail.com>
+References: <20130718174155.0f189280@csupomona.edu>
+	<52015795.9060003@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 5 Aug 2013, Trond Myklebust uttered the following:
-> Yes. This scheme will only work if we make sure that host->h_rpcclnt is
-> initialised at mount time. Here is a v2 patch that should do the right
-> thing.
+On Tue, 6 Aug 2013 13:07:49 -0700
+Bryan Schumaker <bjschuma@gmail.com> wrote:
 
-Confirmed, that fixes it! I'll try your shutdown crash fix next.
+> Hi Brian,
+> 
+> I'm sorry it took so long to reply to you, but you haven't been
+> forgotten!  I've set up kerberos using freeipa on my own test system
+> but I haven't been able to reproduce the bug you're seeing.  I had it
+> working by using my kerberos domain set in /etc/idmap.conf and I saw
+> the new domain go over the wire when I changed it in idmap.conf.  Do
+> I need to do anything more to mimic your setup?
+> 
 
--- 
-NULL && (void)
+Thanks for responding!  It seems like DNS might be where the wrong
+kerberos domain is coming from.  Is your test client in the same domain
+as your kerberos realm?  My clients aren't, and the subdomain they're
+in is what is sent in the NFS requests.
+
+I was able to test this by preferring files for hosts in nsswitch.conf
+and overriding the host's name in /etc/hosts.  Normally the host is
+under unx.csupomona.edu.  Moving the host to csupomona.edu in hosts
+(and rebooting) causes chgrp to start working.  When I revert the
+nsswitch and hosts changes chgrp keeps working until another reboot.
+
+I hope this helps you reproduce this issue.  Let me know if there is
+any other information you need.
