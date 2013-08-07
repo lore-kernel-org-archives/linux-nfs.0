@@ -1,34 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:27198 "EHLO mx1.netapp.com"
+Received: from mout.gmx.net ([74.208.4.200]:51512 "EHLO mout.gmx.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751459Ab3HUNQq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Aug 2013 09:16:46 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Christoph Hellwig <hch@infradead.org>
-CC: Bryan Schumaker <bjschuma@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 00/16] NFS add tracepoints
-Date: Wed, 21 Aug 2013 13:16:45 +0000
-Message-ID: <1377091004.21393.12.camel@leira.trondhjem.org>
-References: <1377027312-45957-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <5213D689.3030103@gmail.com> <1377033113.21393.1.camel@leira.trondhjem.org>
-	 <20130821063958.GA3382@infradead.org>
-In-Reply-To: <20130821063958.GA3382@infradead.org>
-Content-Type: text/plain; charset="utf-8"
+	id S932518Ab3HGVvV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Aug 2013 17:51:21 -0400
+Received: from [192.168.1.101] ([71.135.96.196]) by mail.gmx.com (mrgmxus002)
+ with ESMTPSA (Nemesis) id 0M7YR7-1W31Zw3xbD-00xIgl for
+ <linux-nfs@vger.kernel.org>; Wed, 07 Aug 2013 23:51:20 +0200
+Message-ID: <5202C154.6020907@musician.org>
+Date: Wed, 07 Aug 2013 14:51:16 -0700
+From: Joe Lee <joe.lee@musician.org>
 MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: MDS setup
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ protocol="application/pgp-signature";
+ boundary="W98S7xsIDGjRRQXGBCRU9aGqnvtvqSwxp"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEzLTA4LTIwIGF0IDIzOjM5IC0wNzAwLCBDaHJpc3RvcGggSGVsbHdpZyB3cm90
-ZToNCj4gT24gVHVlLCBBdWcgMjAsIDIwMTMgYXQgMDk6MTE6NTJQTSArMDAwMCwgTXlrbGVidXN0
-LCBUcm9uZCB3cm90ZToNCj4gPiBIbW0uLi4gRG9lcyB0aGUgZm9sbG93aW5nIHBhdGNoIGZpeCB0
-aGUgcHJvYmxlbT8NCj4gDQo+IEkgdGhpbmsgeW91IGp1c3QgbmVlZCB0byBhZGQgdGhpcyBsaW5l
-IHRvIGZzL25mcy9NYWtlZmlsZToNCj4gDQo+IGNjZmxhZ3MteSArPSAtSSQoc3JjKSAgICAgICAg
-ICAgICAgICAgICAjIG5lZWRlZCBmb3IgdHJhY2UgZXZlbnRzDQo+IA0KPiAoc3RvbGVuIGZyb20g
-WEZTIDopKQ0KDQpUaGFua3MgQ2hyaXN0b3BoISBBZnRlciBzZWFyY2hpbmcgYXJvdW5kIGEgbGl0
-dGxlIGxhc3QgbmlnaHQsIEkgZm91bmQNCnRoZSBzYW1lIGRldmljZSBkZXNjcmliZWQgaW4gdGhl
-IHNhbXBsZXMvdHJhY2VfZXZlbnRzIGRpcmVjdG9yeS4NCg0KQnJ5YW4sIGNhbiB5b3UgcGxlYXNl
-IHNlZSBpZiB0aGUgcGF0Y2hzZXQgaW4gbXkgJ3Rlc3RpbmcnIGJyYW5jaCBub3cNCndvcmtzIGZv
-ciB5b3U/DQoNClRoYW5rcyENCiAgVHJvbmQNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
-RlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
-bQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
+--W98S7xsIDGjRRQXGBCRU9aGqnvtvqSwxp
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+
+I have an NFS server that I want to use as an MDS, so I'm going through
+the pNFS setup instructions from the wiki --
+http://www.linux-nfs.org/wiki/index.php/PNFS_Setup_Instructions
+
+When I get to the step to tell the MDS the IP addresses of the DSs, I
+get this response:
+
+    bash: /proc/fs/nfsd/pnfs_dlm_device: Permission denied
+
+Did I misconfigure something?
+
+The system I'm working on is version 6.4 of the CentOS GNU/Linux
+distribution.
+
+I've built and installed the linux and nfs-utils from bhalevy's git
+repositories. The linux version is 3.8.0-pnfs+, and the nfs-utils
+version is 1.1.0.
+
+
+-Joe
+
+
+--W98S7xsIDGjRRQXGBCRU9aGqnvtvqSwxp
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.20 (GNU/Linux)
+
+iQEcBAEBAgAGBQJSAsFUAAoJENdrWZED3ONIOLQH/RS945L7oEAtG5PGBYsGhsW8
+5MH4CpDOhaNDv3SiBR9/diw3PQnsEX0oazTOfBNU+j1Dr2F49Zd7w/BYih+h1IQS
+sUvJx0+GDha4TNE6jt8+kcl2zqkqqonIUQvjlF1g56IpLzLLRFuy2XppubqPhnt4
+3jk/4NGjcrnk/S0KgfXgO6XY5btE+t+V5Cf6Y5Ut42wbv4Bnj0UpNEMnc7pidcAb
+1ZFJv6l5E10yoRvjj7mBVTQLWFcPFz8jtaJbDWiFuuF0u6q0ohY4x7zEePaQr+XF
+0gNs5+GlmUZeO/bQv2LBfAqmiAarA2mQC1U/jq62sLTs/Z7Y8j1W2sXjO9c3ZC0=
+=k66B
+-----END PGP SIGNATURE-----
+
+--W98S7xsIDGjRRQXGBCRU9aGqnvtvqSwxp--
