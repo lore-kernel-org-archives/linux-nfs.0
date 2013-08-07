@@ -1,57 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ye0-f176.google.com ([209.85.213.176]:45130 "EHLO
-	mail-ye0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S968218Ab3HIQwW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:52:22 -0400
-Received: by mail-ye0-f176.google.com with SMTP id q3so1302996yen.21
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:52:22 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
-        by mx.google.com with ESMTPSA id m64sm20682680yho.25.2013.08.09.09.52.21
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
-        Fri, 09 Aug 2013 09:52:21 -0700 (PDT)
-Subject: [PATCH v2 30/33] NFS: Implement support for NFS4ERR_LEASE_MOVED
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 09 Aug 2013 12:52:20 -0400
-Message-ID: <20130809165220.5362.25921.stgit@seurat.1015granger.net>
-In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
-References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
-MIME-Version: 1.0
+Received: from mx2.netapp.com ([216.240.18.37]:25945 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932769Ab3HGUcf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Aug 2013 16:32:35 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 2 1/6] NFSv4.1 Fix an rpc client leak
+Date: Wed, 7 Aug 2013 20:32:33 +0000
+Message-ID: <1375907551.7280.57.camel@leira.trondhjem.org>
+References: <1375906192-1988-1-git-send-email-andros@netapp.com>
+In-Reply-To: <1375906192-1988-1-git-send-email-andros@netapp.com>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trigger lease-moved recovery when a request returns
-NFS4ERR_LEASE_MOVED.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/nfs4proc.c |    6 ++++++
- 1 file changed, 6 insertions(+)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 36cd989..11283da 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -386,6 +386,9 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
- 			if (ret < 0)
- 				break;
- 			goto wait_on_recovery;
-+		case -NFS4ERR_LEASE_MOVED:
-+			nfs4_schedule_lease_moved_recovery(clp);
-+			goto wait_on_recovery;
- #if defined(CONFIG_NFS_V4_1)
- 		case -NFS4ERR_BADSESSION:
- 		case -NFS4ERR_BADSLOT:
-@@ -4686,6 +4689,9 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
- 			if (nfs4_schedule_migration_recovery(server) < 0)
- 				goto recovery_failed;
- 			goto wait_on_recovery;
-+		case -NFS4ERR_LEASE_MOVED:
-+			nfs4_schedule_lease_moved_recovery(clp);
-+			goto wait_on_recovery;
- #if defined(CONFIG_NFS_V4_1)
- 		case -NFS4ERR_BADSESSION:
- 		case -NFS4ERR_BADSLOT:
-
+T24gV2VkLCAyMDEzLTA4LTA3IGF0IDE2OjA5IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IG5mczRf
+cHJvY19sb29rdXBfbW91bnRwb2ludCBjbG9uZXMgYW4gcnBjIGNsaWVudCB0byBwZXJmb3JtIGEg
+bG9va3VwIGFjcm9zcw0KPiBhIG1vdW50cG9pbnQuIElmIHRoZSBzZWN1cml0eSBvZiB0aGUgbW91
+bnRwb2ludCBpcyBkaWZmZXJlbnQgdGhhbiB0aGF0IG9mDQo+IHRoZSBjbG9uZGVkIHJwYyBjbGll
+bnQsIGEgc2VjaW5mbyBxdWVyeSBpcyBzZW50LCBhbmQgaWYgc3VjY2Vzc2Z1bCwgYSBuZXcNCj4g
+cnBjIGNsaWVudCBpcyBjbG9uZWQgYW4gcmV0dXJuZWQgdG8gbmZzNF9wcm9jX2xvb2t1cF9tb3Vu
+dHBvaW50IHJlcGxhY2luZw0KPiB0aGUgb3JpZ2luYWwgY2xvbmVkIGNsaWVudCBwb2ludGVyLiBJ
+biB0aGlzIGNhc2UsIHRoZSBvcmlnaW5vYWwgY2xvbmVkIGNsaWVudA0KPiBpcyBub3QgcmVhcGVk
+IC0gd2hpY2ggcmVzdWx0cyBpbiBhIGxlYWsgb2YgbXVsdGlwbGUgcnBjIGNsaWVudHMsIGFzIHRo
+ZQ0KPiBwYXJlbnQgb2YgdGhlIG9yaWdpbmFsIGNsb25lZCBjbGllbnQgd2lsbCBub3QgYmUgZGVy
+ZWZlcmVuY2VkLCBhbmQgaXQncw0KPiBwYXJlbnQgd2lsbCBub3QgYmUgZGVyZWZlcmVuY2VkLi4u
+DQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBBbmR5IEFkYW1zb24gPGFuZHJvc0BuZXRhcHAuY29tPg0K
+PiAtLS0NCj4gIGZzL25mcy9uZnM0cHJvYy5jIHwgMyArKysNCj4gIDEgZmlsZSBjaGFuZ2VkLCAz
+IGluc2VydGlvbnMoKykNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHByb2MuYyBiL2Zz
+L25mcy9uZnM0cHJvYy5jDQo+IGluZGV4IDBlNjRjY2MuLmVlMzBhNGYgMTAwNjQ0DQo+IC0tLSBh
+L2ZzL25mcy9uZnM0cHJvYy5jDQo+ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+IEBAIC0zMDcz
+LDEyICszMDczLDE1IEBAIG5mczRfcHJvY19sb29rdXBfbW91bnRwb2ludChzdHJ1Y3QgaW5vZGUg
+KmRpciwgc3RydWN0IHFzdHIgKm5hbWUsDQo+ICB7DQo+ICAJaW50IHN0YXR1czsNCj4gIAlzdHJ1
+Y3QgcnBjX2NsbnQgKmNsaWVudCA9IHJwY19jbG9uZV9jbGllbnQoTkZTX0NMSUVOVChkaXIpKTsN
+Cj4gKwlzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQgPSBjbGllbnQ7DQo+ICANCj4gIAlzdGF0dXMgPSBu
+ZnM0X3Byb2NfbG9va3VwX2NvbW1vbigmY2xpZW50LCBkaXIsIG5hbWUsIGZoYW5kbGUsIGZhdHRy
+LCBOVUxMKTsNCj4gIAlpZiAoc3RhdHVzIDwgMCkgew0KPiAgCQlycGNfc2h1dGRvd25fY2xpZW50
+KGNsaWVudCk7DQo+ICAJCXJldHVybiBFUlJfUFRSKHN0YXR1cyk7DQo+ICAJfQ0KPiArCWlmIChj
+bG50ICE9IGNsaWVudCkNCj4gKwkJcnBjX3NodXRkb3duX2NsaWVudChjbG50KTsNCj4gIAlyZXR1
+cm4gY2xpZW50Ow0KPiAgfQ0KPiAgDQpXb3VsZG4ndCB0aGF0IHNodXQgZG93biB0aGUgY2xpZW50
+IHRoYXQgc3RpbGwgYmVsb25ncyB0bw0KTkZTX1NFUlZFUihkaXIpPw0KDQoNCi0tIA0KVHJvbmQg
+TXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5N
+eWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
