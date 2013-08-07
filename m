@@ -1,76 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:58464 "EHLO mx11.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:13483 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756306Ab3H3N0b convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Aug 2013 09:26:31 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Dan Carpenter <dan.carpenter@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: NFS: Add event tracing for generic NFS lookups
-Date: Fri, 30 Aug 2013 13:26:30 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA946784B13@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20130829214909.GA15027@elgon.mountain>
-In-Reply-To: <20130829214909.GA15027@elgon.mountain>
-Content-Type: text/plain; charset="Windows-1252"
+	id S1754677Ab3HGSOS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Aug 2013 14:14:18 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/5] nfs4.1: Initial SP4_MACH_CRED implementation
+Date: Wed, 7 Aug 2013 18:14:16 +0000
+Message-ID: <6A6290EE-02C8-434A-8EED-EF1AC05C63CE@netapp.com>
+References: <1375823311-18457-1-git-send-email-dros@netapp.com>
+In-Reply-To: <1375823311-18457-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Dan Carpenter [mailto:dan.carpenter@oracle.com]
-> Sent: Thursday, August 29, 2013 5:49 PM
-> To: Myklebust, Trond
-> Cc: linux-nfs@vger.kernel.org
-> Subject: re: NFS: Add event tracing for generic NFS lookups
-> 
-> Hello Trond Myklebust,
-> 
-> The patch 6e0d0be715fe: "NFS: Add event tracing for generic NFS lookups"
-> from Aug 20, 2013, leads to the following static checker
-> warning: "fs/nfs/dir.c:1465 nfs_atomic_open()
-> 	 	warn: 'ctx' was already freed."
-> 
-> fs/nfs/dir.c
->   1462          if (IS_ERR(inode)) {
->   1463                  put_nfs_open_context(ctx);
->                         ^^^^^^^^^^^^^^^^^^^^^^^^^ Can free "ctx".
-> 
->   1464                  err = PTR_ERR(inode);
->   1465                  trace_nfs_atomic_open_exit(dir, ctx, open_flags, err);
->                                                         ^^^ Dereference.
-> 
->   1466                  switch (err) {
->   1467                  case -ENOENT:
->   1468                          d_drop(dentry);
->   1469                          d_add(dentry, NULL);
->   1470                          break;
->   1471                  case -EISDIR:
->   1472                  case -ENOTDIR:
->   1473                          goto no_open;
->   1474                  case -ELOOP:
->   1475                          if (!(open_flags & O_NOFOLLOW))
->   1476                                  goto no_open;
->   1477                          break;
->   1478                          /* case -EINVAL: */
->   1479                  default:
->   1480                          break;
->   1481                  }
->   1482                  goto out;
->   1483          }
->   1484
->   1485          err = nfs_finish_open(ctx, ctx->dentry, file, open_flags, opened);
->   1486          trace_nfs_atomic_open_exit(dir, ctx, open_flags, err);
->                                                 ^^^ If we hit an error in the call to nfs_finish_open()
-> then I think "ctx"
-> is freed.
-> 
->   1487  out:
->   1488          return err;
->   1489
-> 
+I've decided to change a few things since posting this, so unless someone is in the middle of reviewing, please wait for the new patchset.
 
-Thanks Dan! I've fixed this up.
+Thanks!
 
-Cheers
-  Trond
+-dros
+
+On Aug 6, 2013, at 5:08 PM, Weston Andros Adamson <dros@netapp.com> wrote:
+
+> These patches are the initial client-side SP4_MACH_CRED implementation.
+> 
+> Patch 1 is a repost with a few cleanups
+> 
+> Patch 2 adds the sp4 handler that replaces the cred on an rpc message (and
+> picks the right rpc_clnt).  Note that for now, we always use the machine cred
+> if supported - we could only use it if the user cred expires, but this is
+> simple and spec compliant.
+> 
+> Patch 3-5 implement SP4_MACH_CRED "features":
+>  - cleanup - CLOSE and LOCKU use machine cred
+>  - secinfo - SECINFO and SECINFO_NO_NAME use machine cred
+>  - stateid - TEST_STATEID and FREE_STATEID use machine cred
+> 
+> There are three more features that I've been working on, but need to be tested
+> before I post:
+>  - commit - COMMIT uses machine cred
+>  - write - WRITE uses machine cred, forces stable writes unless commit feature
+>            is also enabled
+>  - recovery - OPEN and LOCK can use machine cred - only in recovery.
+> 
+> The commit and write cases should be easy to test against a hacked nfsd, but
+> I need to think more about how to test the recovery stuff...
+> 
+> -dros
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
