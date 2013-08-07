@@ -1,345 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:8511 "EHLO mx11.netapp.com"
+Received: from mx1.netapp.com ([216.240.18.38]:20725 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754377Ab3HVVYQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Aug 2013 17:24:16 -0400
+	id S932194Ab3HGSYd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Aug 2013 14:24:33 -0400
 From: "Adamson, Andy" <William.Adamson@netapp.com>
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 CC: "Adamson, Andy" <William.Adamson@netapp.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 5 2/3] NFS Share RPC_AUTH_GSS rpc clients
-Date: Thu, 22 Aug 2013 21:24:15 +0000
-Message-ID: <E5721DE0-D624-403E-A5AD-F0DBF72F1977@netapp.com>
-References: <1376430469-3773-1-git-send-email-andros@netapp.com>
- <1376430469-3773-3-git-send-email-andros@netapp.com>
- <1377197380.11488.30.camel@leira.trondhjem.org>
-In-Reply-To: <1377197380.11488.30.camel@leira.trondhjem.org>
+Subject: Re: [PATCH 2/4] NFSv4.1 Use clientid management rpc_clnt for
+ fs_locations
+Date: Wed, 7 Aug 2013 18:24:31 +0000
+Message-ID: <F7CE9E5F-E136-4E5B-98CA-929DA93D1083@netapp.com>
+References: <1374511328-49579-1-git-send-email-andros@netapp.com>
+ <1374511328-49579-2-git-send-email-andros@netapp.com>
+ <1375894458.7280.2.camel@leira.trondhjem.org>
+ <479EB531-9CD2-42E2-AB98-A3CD9B13603D@netapp.com>
+ <1375898644.7280.10.camel@leira.trondhjem.org>
+ <1375899556.7280.16.camel@leira.trondhjem.org>
+In-Reply-To: <1375899556.7280.16.camel@leira.trondhjem.org>
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Aug 22, 2013, at 2:49 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+On Aug 7, 2013, at 2:19 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
  wrote:
 
-> On Tue, 2013-08-13 at 17:47 -0400, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
+> On Wed, 2013-08-07 at 14:04 -0400, Trond Myklebust wrote:
+>> On Wed, 2013-08-07 at 18:01 +0000, Adamson, Andy wrote:
+>>> 
+>>> Here is the attack as described in 3530bis Security Considerations
+>>> section:
+>>> 
+>>> 
+>>>   The second operation that should definitely use integrity protection
+>>>   is any GETATTR for the fs_locations attribute.  The attack has two
+>>>   steps.  First the attacker modifies the unprotected results of some
+>>>   operation to return NFS4ERR_MOVED.  Second, when the client follows
+>>>   up with a GETATTR for the fs_locations attribute, the attacker
+>>>   modifies the results to cause the client migrate its traffic to a
+>>>   server controlled by the attacker.
 >> 
->> The current use of __rpc_clone_client results in multiple rpc clients with
->> the same GSS rpc_auth type, each with it's own gss_context cache.
->> This can result in multiple gss_contexts for <user, pseudoflavor, server> tuple.
->> 
->> To avoid multiple gss_contexts share per server/pseudoflavor clients and the resultant gss_context cache.
->> 
->> We also add the RPC_AUTH_UNIX client for the pNFS Data Server case used in
->> a subsequent patch, even though the RPC_AUTH_UNIX auth cache is already shared.
->> 
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->> fs/nfs/client.c                 | 80 ++++++++++++++++++++++++++++++++++++++---
->> fs/nfs/internal.h               |  4 +++
->> fs/nfs/nfs4namespace.c          |  5 +--
->> fs/nfs/nfs4proc.c               |  9 +++--
->> fs/nfs/nfs4state.c              |  4 +--
->> include/linux/nfs_fs_sb.h       |  1 +
->> include/linux/sunrpc/msg_prot.h |  3 ++
->> 7 files changed, 94 insertions(+), 12 deletions(-)
->> 
->> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
->> index 2dceee4..1b4967f 100644
->> --- a/fs/nfs/client.c
->> +++ b/fs/nfs/client.c
->> @@ -152,7 +152,7 @@ struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_init)
->> {
->> 	struct nfs_client *clp;
->> 	struct rpc_cred *cred;
->> -	int err = -ENOMEM;
->> +	int err = -ENOMEM, i;
->> 
->> 	if ((clp = kzalloc(sizeof(*clp), GFP_KERNEL)) == NULL)
->> 		goto error_0;
->> @@ -178,6 +178,10 @@ struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_init)
->> 	INIT_LIST_HEAD(&clp->cl_superblocks);
->> 	clp->cl_rpcclient = ERR_PTR(-EINVAL);
->> 
->> +	/* The three Kerberos pseudoflavors plus RPC_AUTH_UNIX */
->> +	for (i = 0; i < RPC_AUTH_MAX_PSEUDO_FLAVOR + 1; i++)
->> +		clp->cl_rpc_clnt[i] = ERR_PTR(-EINVAL);
->> +
->> 	clp->cl_proto = cl_init->proto;
->> 	clp->cl_net = get_net(cl_init->net);
->> 
->> @@ -244,7 +248,7 @@ void nfs_free_client(struct nfs_client *clp)
->> 
->> 	/* -EIO all pending I/O */
->> 	if (!IS_ERR(clp->cl_rpcclient))
->> -		rpc_shutdown_client(clp->cl_rpcclient);
->> +		nfs_shutdown_rpc_client(clp, clp->cl_rpcclient);
->> 
->> 	if (clp->cl_machine_cred != NULL)
->> 		put_rpccred(clp->cl_machine_cred);
->> @@ -568,6 +572,68 @@ void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
->> }
->> EXPORT_SYMBOL_GPL(nfs_init_timeout_values);
->> 
->> +/**
->> + * Translate an authflavor into an nfs_client cl_rpc_clnt array index.
->> + * Note cl_gss_array is of RPC_AUTH_MAX_PSEUDO_FLAVOR + 1 size.
->> + */
->> +static inline
->> +int nfs_flavor_to_index(rpc_authflavor_t flavor)
->> +{
->> +	switch (flavor) {
->> +	case RPC_AUTH_UNIX:
->> +		return 0;
->> +	case RPC_AUTH_GSS_KRB5:
->> +		return 1;
->> +	case RPC_AUTH_GSS_KRB5I:
->> +		return 2;
->> +	case RPC_AUTH_GSS_KRB5P:
->> +		return 3;
->> +	default:
->> +		return -EINVAL;
->> +	}
->> +}
->> +
->> +struct rpc_clnt *
->> +nfs_get_auth_rpc_client(struct nfs_client *clp, rpc_authflavor_t flavor)
->> +{
->> +	struct rpc_clnt *clnt = clp->cl_rpcclient;
->> +	int idx;
->> +
->> +	dprintk("--> %s cl_rpcclient %p flavor %d\n", __func__, clnt, flavor);
->> +
->> +	idx = nfs_flavor_to_index(flavor);
->> +	if (idx < 0)
->> +		return ERR_PTR(idx);
->> +
->> +	if (IS_ERR(clp->cl_rpc_clnt[idx]))
->> +		clp->cl_rpc_clnt[idx] = rpc_clone_client_set_auth(clnt, flavor);
->> +	else
->> +		atomic_inc(&clp->cl_rpc_clnt[idx]->cl_count);
->> +
->> +	return clp->cl_rpc_clnt[idx];
->> +}
->> +EXPORT_SYMBOL_GPL(nfs_get_auth_rpc_client);
->> +
->> +void
->> +nfs_shutdown_rpc_client(struct nfs_client *clp, struct rpc_clnt *clnt)
->> +{
->> +	int idx;
->> +
->> +	dprintk("--> %s clnt %p flavor %d rpc clnt cl_count (%d)\n", __func__,
->> +		clnt, clnt->cl_auth->au_flavor, atomic_read(&clnt->cl_count));
->> +
->> +	/* rpc client creation checked the validity of the flavor */
->> +	idx = nfs_flavor_to_index(clnt->cl_auth->au_flavor);
->> +
->> +	/* Dec the refcount unless it is 1 in which case call shutdown */
->> +	if (atomic_add_unless(&clp->cl_rpc_clnt[idx]->cl_count, -1, 1) == 0) {
->> +		rpc_shutdown_client(clnt);
+>> You can the exact same thing by changing the READLINK results.
 > 
-> rpc_shutdown_client can sleep for a loooong time. What prevents
-> nfs_get_auth_rpc_client() from trying to use the rpc client?
-
-Good point. 
+> The attack is: change the unprotected LOOKUP results to point to a
+> symlink, then feed '/net/<evil-ip-address>/my/evil/pathname' into
+> READLINK.
 > 
->> +		clp->cl_rpc_clnt[idx] = ERR_PTR(-EINVAL);
->> +		return;
->> +	}
->> +}
->> +EXPORT_SYMBOL_GPL(nfs_shutdown_rpc_client);
->> +
->> /*
->>  * Create an RPC client handle
->>  */
->> @@ -587,6 +653,7 @@ int nfs_create_rpc_client(struct nfs_client *clp,
->> 		.version	= clp->rpc_ops->version,
->> 		.authflavor	= flavor,
->> 	};
->> +	int idx;
->> 
->> 	if (test_bit(NFS_CS_DISCRTRY, &clp->cl_flags))
->> 		args.flags |= RPC_CLNT_CREATE_DISCRTRY;
->> @@ -605,7 +672,11 @@ int nfs_create_rpc_client(struct nfs_client *clp,
->> 		return PTR_ERR(clnt);
->> 	}
->> 
->> +	/* rpcauth_create has verified the validity of the authflavor. */
->> +	idx = nfs_flavor_to_index(flavor);
->> +	clp->cl_rpc_clnt[idx] = clnt;
->> 	clp->cl_rpcclient = clnt;
->> +
->> 	return 0;
->> }
->> EXPORT_SYMBOL_GPL(nfs_create_rpc_client);
->> @@ -668,8 +739,7 @@ int nfs_init_server_rpcclient(struct nfs_server *server,
->> {
->> 	struct nfs_client *clp = server->nfs_client;
->> 
->> -	server->client = rpc_clone_client_set_auth(clp->cl_rpcclient,
->> -							pseudoflavour);
->> +	server->client = nfs_get_auth_rpc_client(clp, pseudoflavour);
->> 	if (IS_ERR(server->client)) {
->> 		dprintk("%s: couldn't create rpc_client!\n", __func__);
->> 		return PTR_ERR(server->client);
->> @@ -1018,7 +1088,7 @@ void nfs_free_server(struct nfs_server *server)
->> 	if (!IS_ERR(server->client_acl))
->> 		rpc_shutdown_client(server->client_acl);
->> 	if (!IS_ERR(server->client))
->> -		rpc_shutdown_client(server->client);
->> +		nfs_shutdown_rpc_client(server->nfs_client, server->client);
->> 
->> 	nfs_put_client(server->nfs_client);
->> 
->> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
->> index 9b694f1..4aa20ba 100644
->> --- a/fs/nfs/internal.h
->> +++ b/fs/nfs/internal.h
->> @@ -185,6 +185,10 @@ extern struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
->> 					     int ds_addrlen, int ds_proto,
->> 					     unsigned int ds_timeo,
->> 					     unsigned int ds_retrans);
->> +extern struct rpc_clnt *nfs_get_auth_rpc_client(struct nfs_client *clp,
->> +					rpc_authflavor_t flavor);
->> +extern void nfs_shutdown_rpc_client(struct nfs_client *clp,
->> +					struct rpc_clnt *clnt);
->> #ifdef CONFIG_PROC_FS
->> extern int __init nfs_fs_proc_init(void);
->> extern void nfs_fs_proc_exit(void);
->> diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
->> index cdb0b41..b274427 100644
->> --- a/fs/nfs/nfs4namespace.c
->> +++ b/fs/nfs/nfs4namespace.c
->> @@ -205,7 +205,7 @@ struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *clnt, struct inode *ino
->> 	if ((int)flavor < 0)
->> 		return ERR_PTR((int)flavor);
->> 
->> -	return rpc_clone_client_set_auth(clnt, flavor);
->> +	return nfs_get_auth_rpc_client(NFS_SERVER(inode)->nfs_client, flavor);
->> }
->> 
->> static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
->> @@ -370,6 +370,7 @@ struct vfsmount *nfs4_submount(struct nfs_server *server, struct dentry *dentry,
->> 			       struct nfs_fh *fh, struct nfs_fattr *fattr)
->> {
->> 	struct dentry *parent = dget_parent(dentry);
->> +	struct nfs_client *clp = NFS_SERVER(parent->d_inode)->nfs_client;
->> 	struct rpc_clnt *client;
->> 	struct vfsmount *mnt;
->> 
->> @@ -384,6 +385,6 @@ struct vfsmount *nfs4_submount(struct nfs_server *server, struct dentry *dentry,
->> 	else
->> 		mnt = nfs_do_submount(dentry, fh, fattr, client->cl_auth->au_flavor);
->> 
->> -	rpc_shutdown_client(client);
->> +	nfs_shutdown_rpc_client(clp, client);
->> 	return mnt;
->> }
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index f672c34..9160fcb 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -3047,7 +3047,7 @@ out:
->> 	if (err == 0)
->> 		*clnt = client;
->> 	else if (client != *clnt)
->> -		rpc_shutdown_client(client);
->> +		nfs_shutdown_rpc_client(NFS_SERVER(dir)->nfs_client, client);
->> 
->> 	return err;
->> }
->> @@ -3061,7 +3061,7 @@ static int nfs4_proc_lookup(struct inode *dir, struct qstr *name,
->> 
->> 	status = nfs4_proc_lookup_common(&client, dir, name, fhandle, fattr, label);
->> 	if (client != NFS_CLIENT(dir)) {
->> -		rpc_shutdown_client(client);
->> +		nfs_shutdown_rpc_client(NFS_SERVER(dir)->nfs_client, client);
->> 		nfs_fixup_secinfo_attributes(fattr);
->> 	}
->> 	return status;
->> @@ -3072,12 +3072,15 @@ nfs4_proc_lookup_mountpoint(struct inode *dir, struct qstr *name,
->> 			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
->> {
->> 	struct rpc_clnt *client = NFS_CLIENT(dir);
->> +	rpc_authflavor_t flavor = client->cl_auth->au_flavor;
->> +	struct nfs_client *clp = NFS_SERVER(dir)->nfs_client;
->> 	int status;
->> 
->> 	status = nfs4_proc_lookup_common(&client, dir, name, fhandle, fattr, NULL);
->> 	if (status < 0)
->> 		return ERR_PTR(status);
->> -	return (client == NFS_CLIENT(dir)) ? rpc_clone_client(client) : client;
->> +	return (client == NFS_CLIENT(dir)) ?
->> +				nfs_get_auth_rpc_client(clp, flavor) : client;
->> }
->> 
->> static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry)
->> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->> index 6818964..f7815ce 100644
->> --- a/fs/nfs/nfs4state.c
->> +++ b/fs/nfs/nfs4state.c
->> @@ -1876,7 +1876,7 @@ again:
->> 			break;
->> 	case -NFS4ERR_CLID_INUSE:
->> 	case -NFS4ERR_WRONGSEC:
->> -		clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_UNIX);
->> +		clnt = nfs_get_auth_rpc_client(clp, RPC_AUTH_UNIX);
->> 		if (IS_ERR(clnt)) {
->> 			status = PTR_ERR(clnt);
->> 			break;
->> @@ -1886,7 +1886,7 @@ again:
->> 		 * clp->cl_rpcclient
->> 		 */
->> 		clnt = xchg(&clp->cl_rpcclient, clnt);
->> -		rpc_shutdown_client(clnt);
->> +		nfs_shutdown_rpc_client(clp, clnt);
->> 		clnt = clp->cl_rpcclient;
->> 		goto again;
->> 
->> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
->> index d221243..e112cf2 100644
->> --- a/include/linux/nfs_fs_sb.h
->> +++ b/include/linux/nfs_fs_sb.h
->> @@ -56,6 +56,7 @@ struct nfs_client {
->> 	struct rpc_cred		*cl_machine_cred;
->> 
->> #if IS_ENABLED(CONFIG_NFS_V4)
->> +	struct rpc_clnt *	cl_rpc_clnt[RPC_AUTH_MAX_PSEUDO_FLAVOR + 1];
-> 
-> Can we make this dynamically sized? We currently only ship the NFS
-> client with 4 supported auth flavours, but the RPC layer itself already
-> supports arbitrary flavours, and so does the NFSv4 security negotiation.
+> My point is that if you're on a network where the above is a potential
+> threat, then you should be using krb5i or, better yet, krb5p for _all_
+> operations. It's not sufficient to single out fs_locations for special
+> treatment.
 
-
-Yes - I can make it dynamic..
-> 
-> Also, why do we only need this for NFSv4? Doesn't NFSv3 with security
-> negotiation have the same problem?
-
-A better approach might be to move the gss_auth caches into rpc_xprt for sharing.
+In that case, why did you accept commit 4edaa308 "NFS: Use "krb5i" to establish NFSv4 state whenever possible" ?
 
 -->Andy
 
-> 
->> 	u64			cl_clientid;	/* constant */
->> 	nfs4_verifier		cl_confirm;	/* Clientid verifier */
->> 	unsigned long		cl_state;
->> diff --git a/include/linux/sunrpc/msg_prot.h b/include/linux/sunrpc/msg_prot.h
->> index 1666da0..53c9a13 100644
->> --- a/include/linux/sunrpc/msg_prot.h
->> +++ b/include/linux/sunrpc/msg_prot.h
->> @@ -17,6 +17,9 @@
->> /* spec defines authentication flavor as an unsigned 32 bit integer */
->> typedef u32	rpc_authflavor_t;
->> 
->> +/* The number of supported pseudoflavors */
->> +#define RPC_AUTH_MAX_PSEUDO_FLAVOR	3
->> +
->> enum rpc_auth_flavors {
->> 	RPC_AUTH_NULL  = 0,
->> 	RPC_AUTH_UNIX  = 1,
 > 
 > -- 
 > Trond Myklebust
