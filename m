@@ -1,50 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:13993 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37341 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932088Ab3HGSgT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Aug 2013 14:36:19 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/4] NFSv4.1 Use clientid management rpc_clnt for
- fs_locations
-Date: Wed, 7 Aug 2013 18:36:16 +0000
-Message-ID: <1375900575.7280.26.camel@leira.trondhjem.org>
-References: <1374511328-49579-1-git-send-email-andros@netapp.com>
-	 <1374511328-49579-2-git-send-email-andros@netapp.com>
-	 <1375894458.7280.2.camel@leira.trondhjem.org>
-	 <479EB531-9CD2-42E2-AB98-A3CD9B13603D@netapp.com>
-	 <1375898644.7280.10.camel@leira.trondhjem.org>
-	 <1375899556.7280.16.camel@leira.trondhjem.org>
-	 <015EF10A-7962-484C-90D1-A1520E8B3431@netapp.com>
-In-Reply-To: <015EF10A-7962-484C-90D1-A1520E8B3431@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1757978Ab3HHSLh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Aug 2013 14:11:37 -0400
+Date: Thu, 8 Aug 2013 14:11:30 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: <linux-nfs@vger.kernel.org>, William Dauchy <william@gandi.net>,
+        Pascal Bouchareine <pascal@gandi.net>
+Subject: Re: [PATCH v3] NFS: Fix writeback performance issue on cache
+ invalidation
+Message-ID: <20130808141130.27cf2b26@tlielax.poochiereds.net>
+In-Reply-To: <1375910064-23731-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1375910064-23731-1-git-send-email-Trond.Myklebust@netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEzLTA4LTA3IGF0IDE4OjMyICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
-PiBPbiBBdWcgNywgMjAxMywgYXQgMjoxOSBQTSwgIk15a2xlYnVzdCwgVHJvbmQiIDxUcm9uZC5N
-eWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gIHdyb3RlOg0KPiANCj4gPiBPbiBXZWQsIDIwMTMtMDgt
-MDcgYXQgMTQ6MDQgLTA0MDAsIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gPj4gT24gV2VkLCAy
-MDEzLTA4LTA3IGF0IDE4OjAxICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0KPiA+Pj4gDQo+
-ID4+PiBIZXJlIGlzIHRoZSBhdHRhY2sgYXMgZGVzY3JpYmVkIGluIDM1MzBiaXMgU2VjdXJpdHkg
-Q29uc2lkZXJhdGlvbnMNCj4gPj4+IHNlY3Rpb246DQo+ID4+PiANCj4gPj4+IA0KPiA+Pj4gICBU
-aGUgc2Vjb25kIG9wZXJhdGlvbiB0aGF0IHNob3VsZCBkZWZpbml0ZWx5IHVzZSBpbnRlZ3JpdHkg
-cHJvdGVjdGlvbg0KPiA+Pj4gICBpcyBhbnkgR0VUQVRUUiBmb3IgdGhlIGZzX2xvY2F0aW9ucyBh
-dHRyaWJ1dGUuICBUaGUgYXR0YWNrIGhhcyB0d28NCj4gPj4+ICAgc3RlcHMuICBGaXJzdCB0aGUg
-YXR0YWNrZXIgbW9kaWZpZXMgdGhlIHVucHJvdGVjdGVkIHJlc3VsdHMgb2Ygc29tZQ0KPiA+Pj4g
-ICBvcGVyYXRpb24gdG8gcmV0dXJuIE5GUzRFUlJfTU9WRUQuICBTZWNvbmQsIHdoZW4gdGhlIGNs
-aWVudCBmb2xsb3dzDQo+ID4+PiAgIHVwIHdpdGggYSBHRVRBVFRSIGZvciB0aGUgZnNfbG9jYXRp
-b25zIGF0dHJpYnV0ZSwgdGhlIGF0dGFja2VyDQo+ID4+PiAgIG1vZGlmaWVzIHRoZSByZXN1bHRz
-IHRvIGNhdXNlIHRoZSBjbGllbnQgbWlncmF0ZSBpdHMgdHJhZmZpYyB0byBhDQo+ID4+PiAgIHNl
-cnZlciBjb250cm9sbGVkIGJ5IHRoZSBhdHRhY2tlci4NCj4gPj4gDQo+ID4+IFlvdSBjYW4gdGhl
-IGV4YWN0IHNhbWUgdGhpbmcgYnkgY2hhbmdpbmcgdGhlIFJFQURMSU5LIHJlc3VsdHMuDQo+ID4g
-DQo+ID4gVGhlIGF0dGFjayBpczogY2hhbmdlIHRoZSB1bnByb3RlY3RlZCBMT09LVVAgcmVzdWx0
-cyB0byBwb2ludCB0byBhDQo+ID4gc3ltbGluaywgdGhlbiBmZWVkICcvbmV0LzxldmlsLWlwLWFk
-ZHJlc3M+L215L2V2aWwvcGF0aG5hbWUnIGludG8NCj4gPiBSRUFETElOSy4NCj4gDQo+IERvZXMg
-dGhlIGxpbnV4IGNsaWVudCBhY3R1YWxseSBmb2xsb3cgbGlua3Mgd2l0aCBlbWJlZGRlZCBJUCBh
-ZGRyZXNzZXM/DQoNCklmIHlvdSBoYXZlIGF1dG9mcyBvciBhbWQgcnVubmluZyBvbiB5b3VyIGNs
-aWVudCwgdGhlbiBzdXJlLi4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
-ZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3
-Lm5ldGFwcC5jb20NCg==
+On Wed, 7 Aug 2013 17:14:24 -0400
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+
+> If a cache invalidation is triggered, and we happen to have a lot of
+> writebacks cached at the time, then the call to invalidate_inode_pages2()
+> will end up calling ->launder_page() on each and every dirty page in order
+> to sync its contents to disk, thus defeating write coalescing.
+> The following patch ensures that we try to sync the inode to disk before
+> calling invalidate_inode_pages2() so that we do the writeback as efficiently
+> as possible.
+> 
+> Reported-by: William Dauchy <william@gandi.net>
+> Reported-by: Pascal Bouchareine <pascal@gandi.net>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Tested-by: William Dauchy <william@gandi.net>
+> Reviewed-by: Jeff Layton <jlayton@redhat.com>
+> ---
+> v2: Add check for regular file as per Jeff Layton's suggestion.
+> v3: Minor cleanup and add Jeff as a reviewer
+> 
+>  fs/nfs/inode.c | 10 ++++++++--
+>  1 file changed, 8 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index af6e806..3ea4f64 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -963,9 +963,15 @@ EXPORT_SYMBOL_GPL(nfs_revalidate_inode);
+>  static int nfs_invalidate_mapping(struct inode *inode, struct address_space *mapping)
+>  {
+>  	struct nfs_inode *nfsi = NFS_I(inode);
+> -	
+> +	int ret;
+> +
+>  	if (mapping->nrpages != 0) {
+> -		int ret = invalidate_inode_pages2(mapping);
+> +		if (S_ISREG(inode->i_mode)) {
+> +			ret = nfs_sync_mapping(mapping);
+> +			if (ret < 0)
+> +				return ret;
+> +		}
+> +		ret = invalidate_inode_pages2(mapping);
+>  		if (ret < 0)
+>  			return ret;
+>  	}
+
+It occurs to me that we have several places that call nfs_sync_mapping
+without checking S_ISREG. Are they potentially problematic?
+
+Might it make more sense to move the S_ISREG test inside of
+nfs_sync_mapping and just have it "return 0" when it's not a regular
+file?
+
+-- 
+Jeff Layton <jlayton@redhat.com>
