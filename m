@@ -1,79 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:29727 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:64380 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756577Ab3HOOBx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Aug 2013 10:01:53 -0400
-Date: Thu, 15 Aug 2013 10:02:44 -0400
+	id S1758137Ab3HHSmg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Aug 2013 14:42:36 -0400
+Date: Thu, 8 Aug 2013 14:42:30 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jan Stancek <jstancek@redhat.com>, linux-nfs@vger.kernel.org,
-        bfields@redhat.com, Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
-Message-ID: <20130815100244.370de645@corrin.poochiereds.net>
-In-Reply-To: <20130726220924.GG30651@fieldses.org>
-References: <682ebd8ecc7309b18396da356a0feb38bfa41674.1372692346.git.jstancek@redhat.com>
-	<20130708201643.GI29071@fieldses.org>
-	<1157529877.873319.1373353194344.JavaMail.root@redhat.com>
-	<20130726220924.GG30651@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        William Dauchy <william@gandi.net>,
+        Pascal Bouchareine <pascal@gandi.net>
+Subject: Re: [PATCH v3] NFS: Fix writeback performance issue on cache
+ invalidation
+Message-ID: <20130808144230.0efdfc2d@tlielax.poochiereds.net>
+In-Reply-To: <1375986094.9193.2.camel@leira.trondhjem.org>
+References: <1375910064-23731-1-git-send-email-Trond.Myklebust@netapp.com>
+	<20130808141130.27cf2b26@tlielax.poochiereds.net>
+	<1375986094.9193.2.camel@leira.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 26 Jul 2013 18:09:24 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Thu, 8 Aug 2013 18:21:35 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-> On Tue, Jul 09, 2013 at 02:59:54AM -0400, Jan Stancek wrote:
+> On Thu, 2013-08-08 at 14:11 -0400, Jeff Layton wrote:
+> > On Wed, 7 Aug 2013 17:14:24 -0400
+> > Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 > > 
+> > > If a cache invalidation is triggered, and we happen to have a lot of
+> > > writebacks cached at the time, then the call to invalidate_inode_pages2()
+> > > will end up calling ->launder_page() on each and every dirty page in order
+> > > to sync its contents to disk, thus defeating write coalescing.
+> > > The following patch ensures that we try to sync the inode to disk before
+> > > calling invalidate_inode_pages2() so that we do the writeback as efficiently
+> > > as possible.
+> > > 
+> > > Reported-by: William Dauchy <william@gandi.net>
+> > > Reported-by: Pascal Bouchareine <pascal@gandi.net>
+> > > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > > Tested-by: William Dauchy <william@gandi.net>
+> > > Reviewed-by: Jeff Layton <jlayton@redhat.com>
+> > > ---
+> > > v2: Add check for regular file as per Jeff Layton's suggestion.
+> > > v3: Minor cleanup and add Jeff as a reviewer
+> > > 
+> > >  fs/nfs/inode.c | 10 ++++++++--
+> > >  1 file changed, 8 insertions(+), 2 deletions(-)
+> > > 
+> > > diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> > > index af6e806..3ea4f64 100644
+> > > --- a/fs/nfs/inode.c
+> > > +++ b/fs/nfs/inode.c
+> > > @@ -963,9 +963,15 @@ EXPORT_SYMBOL_GPL(nfs_revalidate_inode);
+> > >  static int nfs_invalidate_mapping(struct inode *inode, struct address_space *mapping)
+> > >  {
+> > >  	struct nfs_inode *nfsi = NFS_I(inode);
+> > > -	
+> > > +	int ret;
+> > > +
+> > >  	if (mapping->nrpages != 0) {
+> > > -		int ret = invalidate_inode_pages2(mapping);
+> > > +		if (S_ISREG(inode->i_mode)) {
+> > > +			ret = nfs_sync_mapping(mapping);
+> > > +			if (ret < 0)
+> > > +				return ret;
+> > > +		}
+> > > +		ret = invalidate_inode_pages2(mapping);
+> > >  		if (ret < 0)
+> > >  			return ret;
+> > >  	}
 > > 
+> > It occurs to me that we have several places that call nfs_sync_mapping
+> > without checking S_ISREG. Are they potentially problematic?
 > > 
-> > 
-> > ----- Original Message -----
-> > > From: "J. Bruce Fields" <bfields@fieldses.org>
-> > > To: "Jan Stancek" <jstancek@redhat.com>
-> > > Cc: linux-nfs@vger.kernel.org, bfields@redhat.com, "Trond Myklebust" <Trond.Myklebust@netapp.com>
-> > > Sent: Monday, 8 July, 2013 10:16:43 PM
-> > > Subject: Re: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
-> > > 
-> > > On Mon, Jul 01, 2013 at 05:32:34PM +0200, Jan Stancek wrote:
-> > > > Starting with commit:
-> > > >   commit f994c43d19a9116727d4c228d3f13db595bff562
-> > > >   Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > > >   Date:   Thu Nov 1 12:14:14 2012 -0400
-> > > >       SUNRPC: Clean up rpc_bind_new_program
-> > > > 
-> > > > operations on directory mounted with -onfsvers=3,tcp,sec=krb5 fail
-> > > > with Input/Output error after ~60 second timeout. This is presumably
-> > > > because upcalls for 'nfsacl' are not getting anywhere.
-> > > > 
-> > > > This patch enables pipe dir for nfsacl_program and changes its name
-> > > > to 'nfs'. This name will be used in upcalls and whole setup should
-> > > > work as it did in past - just with nfs/hostname principal.
-> > > 
-> > > I think this was the problem that nfs-utils commits
-> > > 
-> > > 	a1f8afc560 gssd: Remove insane sanity checks of the service name
-> > > 	a56989b665 gssd: Handle the target name correctly
-> > > 
-> > > were supposed to fix?
-> > > 
-> > > But perhaps the kernel needs a fix too to fix a regression with old
-> > > userspace.
-> > 
-> > I saw this error with nfs-utils.1.2.9-rc1, which should already contain
-> > those 2 commits.
+> > Might it make more sense to move the S_ISREG test inside of
+> > nfs_sync_mapping and just have it "return 0" when it's not a regular
+> > file?
 > 
-> Actually, I think your patch is just a subset of Trond's
-> http://mid.gmane.org/<4FA345DA4F4AE44899BD2B03EEEC2FA9092EC392@SACEXCMBX04-PRD.hq.netapp.com>
+> I see 5 callers of nfs_sync_mapping() aside from the above: 2 are in the
+> O_DIRECT code, the other 3 are all in the file locking code. AFAICS,
+> none of those can ever be fed to non-regular files.
 > 
-> Trond, is there a reason that never got applied?
-> 
-> --b.
+> Am I missing anything?
 > 
 
-Hmm...gmane just says "No such article" when I feed it the above URL.
-Do you know what the title of the email was?
+You can lock a directory or device special file though, right?
 
-Thanks,
+In practice I don't think there's any way to end up with dirty pages on
+a !S_ISREG inode, but in that case, the S_ISREG check here would be
+superfluous (though checking it might be a reasonable optimization).
+
 -- 
 Jeff Layton <jlayton@redhat.com>
