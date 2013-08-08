@@ -1,50 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f53.google.com ([209.85.214.53]:36422 "EHLO
-	mail-bk0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751107Ab3HFOaU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Aug 2013 10:30:20 -0400
-Received: by mail-bk0-f53.google.com with SMTP id d7so181411bkh.40
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Aug 2013 07:30:18 -0700 (PDT)
-From: Miklos Szeredi <miklos@szeredi.hu>
-To: rwheeler@redhat.com, avati@redhat.com, viro@ZenIV.linux.org.uk
-Cc: bfoster@redhat.com, dhowells@redhat.com, eparis@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        swhiteho@redhat.com, mszeredi@suse.cz
-Subject: [PATCH 0/4] [RFC] safely drop directory dentry on failed revalidate
-Date: Tue,  6 Aug 2013 16:29:59 +0200
-Message-Id: <1375799403-28544-1-git-send-email-miklos@szeredi.hu>
+Received: from mx2.netapp.com ([216.240.18.37]:62228 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S966439Ab3HHUQm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Aug 2013 16:16:42 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        William Dauchy <william@gandi.net>,
+        Pascal Bouchareine <pascal@gandi.net>
+Subject: Re: [PATCH v3] NFS: Fix writeback performance issue on cache
+ invalidation
+Date: Thu, 8 Aug 2013 20:16:40 +0000
+Message-ID: <1375993000.2494.8.camel@leira.trondhjem.org>
+References: <1375910064-23731-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <20130808141130.27cf2b26@tlielax.poochiereds.net>
+	 <1375986094.9193.2.camel@leira.trondhjem.org>
+	 <20130808144230.0efdfc2d@tlielax.poochiereds.net>
+In-Reply-To: <20130808144230.0efdfc2d@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Here's a series for fixing issues with d_drop on a directory dentry with
-children and adding support for such dropped directories in fuse.
-
-I tested the fuse part, but not the other filesystems (AFS, GFS2, NFS, SYSFS).
-The changes to filesystems are pretty trivial, though.
-
-Thanks,
-Miklos
-
----
-Anand Avati (1):
-      fuse: drop dentry on failed revalidate
-
-Miklos Szeredi (3):
-      vfs: check submounts and drop atomically
-      vfs: check unlinked ancestors before mount
-      fuse: use d_materialise_unique()
-
----
- fs/afs/dir.c           |   6 +-
- fs/dcache.c            | 159 +++++++++++++++++++++++++++++++++++++++++++++++++
- fs/fuse/dir.c          |  76 ++++++++++-------------
- fs/gfs2/dentry.c       |   6 +-
- fs/internal.h          |   1 +
- fs/namespace.c         |   9 +++
- fs/nfs/dir.c           |  10 ++--
- fs/sysfs/dir.c         |   6 +-
- include/linux/dcache.h |   1 +
- 9 files changed, 216 insertions(+), 58 deletions(-)
-
-
+T24gVGh1LCAyMDEzLTA4LTA4IGF0IDE0OjQyIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+T24gVGh1LCA4IEF1ZyAyMDEzIDE4OjIxOjM1ICswMDAwDQo+ICJNeWtsZWJ1c3QsIFRyb25kIiA8
+VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiANCj4gPiBPbiBUaHUsIDIwMTMt
+MDgtMDggYXQgMTQ6MTEgLTA0MDAsIEplZmYgTGF5dG9uIHdyb3RlOg0KPiA+ID4gT24gV2VkLCA3
+IEF1ZyAyMDEzIDE3OjE0OjI0IC0wNDAwDQo+ID4gPiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15
+a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiA+IA0KPiA+ID4gPiBJZiBhIGNhY2hlIGlu
+dmFsaWRhdGlvbiBpcyB0cmlnZ2VyZWQsIGFuZCB3ZSBoYXBwZW4gdG8gaGF2ZSBhIGxvdCBvZg0K
+PiA+ID4gPiB3cml0ZWJhY2tzIGNhY2hlZCBhdCB0aGUgdGltZSwgdGhlbiB0aGUgY2FsbCB0byBp
+bnZhbGlkYXRlX2lub2RlX3BhZ2VzMigpDQo+ID4gPiA+IHdpbGwgZW5kIHVwIGNhbGxpbmcgLT5s
+YXVuZGVyX3BhZ2UoKSBvbiBlYWNoIGFuZCBldmVyeSBkaXJ0eSBwYWdlIGluIG9yZGVyDQo+ID4g
+PiA+IHRvIHN5bmMgaXRzIGNvbnRlbnRzIHRvIGRpc2ssIHRodXMgZGVmZWF0aW5nIHdyaXRlIGNv
+YWxlc2NpbmcuDQo+ID4gPiA+IFRoZSBmb2xsb3dpbmcgcGF0Y2ggZW5zdXJlcyB0aGF0IHdlIHRy
+eSB0byBzeW5jIHRoZSBpbm9kZSB0byBkaXNrIGJlZm9yZQ0KPiA+ID4gPiBjYWxsaW5nIGludmFs
+aWRhdGVfaW5vZGVfcGFnZXMyKCkgc28gdGhhdCB3ZSBkbyB0aGUgd3JpdGViYWNrIGFzIGVmZmlj
+aWVudGx5DQo+ID4gPiA+IGFzIHBvc3NpYmxlLg0KPiA+ID4gPiANCj4gPiA+ID4gUmVwb3J0ZWQt
+Ynk6IFdpbGxpYW0gRGF1Y2h5IDx3aWxsaWFtQGdhbmRpLm5ldD4NCj4gPiA+ID4gUmVwb3J0ZWQt
+Ynk6IFBhc2NhbCBCb3VjaGFyZWluZSA8cGFzY2FsQGdhbmRpLm5ldD4NCj4gPiA+ID4gU2lnbmVk
+LW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4g
+PiA+ID4gVGVzdGVkLWJ5OiBXaWxsaWFtIERhdWNoeSA8d2lsbGlhbUBnYW5kaS5uZXQ+DQo+ID4g
+PiA+IFJldmlld2VkLWJ5OiBKZWZmIExheXRvbiA8amxheXRvbkByZWRoYXQuY29tPg0KPiA+ID4g
+PiAtLS0NCj4gPiA+ID4gdjI6IEFkZCBjaGVjayBmb3IgcmVndWxhciBmaWxlIGFzIHBlciBKZWZm
+IExheXRvbidzIHN1Z2dlc3Rpb24uDQo+ID4gPiA+IHYzOiBNaW5vciBjbGVhbnVwIGFuZCBhZGQg
+SmVmZiBhcyBhIHJldmlld2VyDQo+ID4gPiA+IA0KPiA+ID4gPiAgZnMvbmZzL2lub2RlLmMgfCAx
+MCArKysrKysrKy0tDQo+ID4gPiA+ICAxIGZpbGUgY2hhbmdlZCwgOCBpbnNlcnRpb25zKCspLCAy
+IGRlbGV0aW9ucygtKQ0KPiA+ID4gPiANCj4gPiA+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9pbm9k
+ZS5jIGIvZnMvbmZzL2lub2RlLmMNCj4gPiA+ID4gaW5kZXggYWY2ZTgwNi4uM2VhNGY2NCAxMDA2
+NDQNCj4gPiA+ID4gLS0tIGEvZnMvbmZzL2lub2RlLmMNCj4gPiA+ID4gKysrIGIvZnMvbmZzL2lu
+b2RlLmMNCj4gPiA+ID4gQEAgLTk2Myw5ICs5NjMsMTUgQEAgRVhQT1JUX1NZTUJPTF9HUEwobmZz
+X3JldmFsaWRhdGVfaW5vZGUpOw0KPiA+ID4gPiAgc3RhdGljIGludCBuZnNfaW52YWxpZGF0ZV9t
+YXBwaW5nKHN0cnVjdCBpbm9kZSAqaW5vZGUsIHN0cnVjdCBhZGRyZXNzX3NwYWNlICptYXBwaW5n
+KQ0KPiA+ID4gPiAgew0KPiA+ID4gPiAgCXN0cnVjdCBuZnNfaW5vZGUgKm5mc2kgPSBORlNfSShp
+bm9kZSk7DQo+ID4gPiA+IC0JDQo+ID4gPiA+ICsJaW50IHJldDsNCj4gPiA+ID4gKw0KPiA+ID4g
+PiAgCWlmIChtYXBwaW5nLT5ucnBhZ2VzICE9IDApIHsNCj4gPiA+ID4gLQkJaW50IHJldCA9IGlu
+dmFsaWRhdGVfaW5vZGVfcGFnZXMyKG1hcHBpbmcpOw0KPiA+ID4gPiArCQlpZiAoU19JU1JFRyhp
+bm9kZS0+aV9tb2RlKSkgew0KPiA+ID4gPiArCQkJcmV0ID0gbmZzX3N5bmNfbWFwcGluZyhtYXBw
+aW5nKTsNCj4gPiA+ID4gKwkJCWlmIChyZXQgPCAwKQ0KPiA+ID4gPiArCQkJCXJldHVybiByZXQ7
+DQo+ID4gPiA+ICsJCX0NCj4gPiA+ID4gKwkJcmV0ID0gaW52YWxpZGF0ZV9pbm9kZV9wYWdlczIo
+bWFwcGluZyk7DQo+ID4gPiA+ICAJCWlmIChyZXQgPCAwKQ0KPiA+ID4gPiAgCQkJcmV0dXJuIHJl
+dDsNCj4gPiA+ID4gIAl9DQo+ID4gPiANCj4gPiA+IEl0IG9jY3VycyB0byBtZSB0aGF0IHdlIGhh
+dmUgc2V2ZXJhbCBwbGFjZXMgdGhhdCBjYWxsIG5mc19zeW5jX21hcHBpbmcNCj4gPiA+IHdpdGhv
+dXQgY2hlY2tpbmcgU19JU1JFRy4gQXJlIHRoZXkgcG90ZW50aWFsbHkgcHJvYmxlbWF0aWM/DQo+
+ID4gPiANCj4gPiA+IE1pZ2h0IGl0IG1ha2UgbW9yZSBzZW5zZSB0byBtb3ZlIHRoZSBTX0lTUkVH
+IHRlc3QgaW5zaWRlIG9mDQo+ID4gPiBuZnNfc3luY19tYXBwaW5nIGFuZCBqdXN0IGhhdmUgaXQg
+InJldHVybiAwIiB3aGVuIGl0J3Mgbm90IGEgcmVndWxhcg0KPiA+ID4gZmlsZT8NCj4gPiANCj4g
+PiBJIHNlZSA1IGNhbGxlcnMgb2YgbmZzX3N5bmNfbWFwcGluZygpIGFzaWRlIGZyb20gdGhlIGFi
+b3ZlOiAyIGFyZSBpbiB0aGUNCj4gPiBPX0RJUkVDVCBjb2RlLCB0aGUgb3RoZXIgMyBhcmUgYWxs
+IGluIHRoZSBmaWxlIGxvY2tpbmcgY29kZS4gQUZBSUNTLA0KPiA+IG5vbmUgb2YgdGhvc2UgY2Fu
+IGV2ZXIgYmUgZmVkIHRvIG5vbi1yZWd1bGFyIGZpbGVzLg0KPiA+IA0KPiA+IEFtIEkgbWlzc2lu
+ZyBhbnl0aGluZz8NCj4gPiANCj4gDQo+IFlvdSBjYW4gbG9jayBhIGRpcmVjdG9yeSBvciBkZXZp
+Y2Ugc3BlY2lhbCBmaWxlIHRob3VnaCwgcmlnaHQ/DQoNCk5vLiBpbm9kZS0+aV9mb3AgaXMgc3Bl
+Y2lmaWMgdG8gdGhlIHJlZ3VsYXIgZmlsZXMuIE5GU3Y0IHdvbid0IHN1cHBvcnQNCmxvY2tpbmcg
+b24gYW55dGhpbmcgd2hpY2ggeW91IGNhbid0IE9QRU4uDQoNClBPU0lYIGl0c2VsZiBkb2VzIGFw
+cGVhciB0byBhbGxvdyBsb2NraW5nIG9uIGRpcmVjdG9yaWVzLCBidXQgc2luY2UgeW91DQpjYW4g
+b25seSBpbiBwcmFjdGljZSBkbyByZWFkIGxvY2tzIChBRkFJSyB5b3UgY2FuJ3Qgb3BlbiBhIGRp
+cmVjdG9yeSBmb3INCndyaXRpbmcpIHRoZW4gSSdtIG5vdCBsb3NpbmcgYW55IHNsZWVwIG92ZXIg
+aXQuDQoNCj4gSW4gcHJhY3RpY2UgSSBkb24ndCB0aGluayB0aGVyZSdzIGFueSB3YXkgdG8gZW5k
+IHVwIHdpdGggZGlydHkgcGFnZXMgb24NCj4gYSAhU19JU1JFRyBpbm9kZSwgYnV0IGluIHRoYXQg
+Y2FzZSwgdGhlIFNfSVNSRUcgY2hlY2sgaGVyZSB3b3VsZCBiZQ0KPiBzdXBlcmZsdW91cyAodGhv
+dWdoIGNoZWNraW5nIGl0IG1pZ2h0IGJlIGEgcmVhc29uYWJsZSBvcHRpbWl6YXRpb24pLg0KDQpB
+RkFJQ1IsIG5mc19zeW5jX21hcHBpbmcoKSBkb2VzIGFjdHVhbGx5IGJsb3cgdXAgaWYgeW91IGNh
+bGwgaXQgb24gYQ0Kbm9uLXJlZ3VsYXIgZmlsZSwgYnV0IGFzIEkgc2FpZCwgdGhlIG9ubHkgcGxh
+Y2Ugd2hlcmUgdGhhdCBhcHBlYXJzIHRvIGJlDQpwb3NzaWJsZSBpcyBuZnNfaW52YWxpZGF0ZV9t
+YXBwaW5nKCkuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
+YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5j
+b20NCg==
