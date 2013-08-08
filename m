@@ -1,195 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:40263 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:51445 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757483Ab3HMSgC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Aug 2013 14:36:02 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 03/10] NFSv4: Add tracepoints for debugging file open
-Date: Tue, 13 Aug 2013 14:35:45 -0400
-Message-ID: <1376418952-12481-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1376418952-12481-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1376418952-12481-1-git-send-email-Trond.Myklebust@netapp.com>
- <1376418952-12481-2-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752267Ab3HHP4o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Aug 2013 11:56:44 -0400
+Date: Thu, 8 Aug 2013 11:56:43 -0400
+To: Weston Andros Adamson <dros@netapp.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/5] nfs4.1: Initial SP4_MACH_CRED implementation
+Message-ID: <20130808155643.GK5282@fieldses.org>
+References: <1375823311-18457-1-git-send-email-dros@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1375823311-18457-1-git-send-email-dros@netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Set up basic tracepoints for debugging NFSv4 file open/close
+On Tue, Aug 06, 2013 at 05:08:26PM -0400, Weston Andros Adamson wrote:
+> These patches are the initial client-side SP4_MACH_CRED implementation.
+> 
+> Patch 1 is a repost with a few cleanups
+> 
+> Patch 2 adds the sp4 handler that replaces the cred on an rpc message (and
+> picks the right rpc_clnt).  Note that for now, we always use the machine cred
+> if supported - we could only use it if the user cred expires, but this is
+> simple and spec compliant.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c  |   4 ++
- fs/nfs/nfs4trace.h | 112 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 116 insertions(+)
+So anything on the spo_may_enforce_list will *always* use the machine
+cred?
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 3a55f24..213c519 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1442,6 +1442,7 @@ static int nfs4_do_open_reclaim(struct nfs_open_context *ctx, struct nfs4_state
- 	int err;
- 	do {
- 		err = _nfs4_do_open_reclaim(ctx, state);
-+		trace_nfs4_open_reclaim(ctx, state, 0, err);
- 		if (nfs4_clear_cap_atomic_open_v1(server, err, &exception))
- 			continue;
- 		if (err != -NFS4ERR_DELAY)
-@@ -1897,6 +1898,7 @@ static int nfs4_do_open_expired(struct nfs_open_context *ctx, struct nfs4_state
- 
- 	do {
- 		err = _nfs4_open_expired(ctx, state);
-+		trace_nfs4_open_expired(ctx, state, 0, err);
- 		if (nfs4_clear_cap_atomic_open_v1(server, err, &exception))
- 			continue;
- 		switch (err) {
-@@ -2199,6 +2201,7 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
- 	do {
- 		status = _nfs4_do_open(dir, ctx, flags, sattr, label);
- 		res = ctx->state;
-+		trace_nfs4_open_file(ctx, res, flags, status);
- 		if (status == 0)
- 			break;
- 		/* NOTE: BAD_SEQID means the server and client disagree about the
-@@ -2389,6 +2392,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
- 	dprintk("%s: begin!\n", __func__);
- 	if (!nfs4_sequence_done(task, &calldata->res.seq_res))
- 		return;
-+	trace_nfs4_close(state, calldata->arg.fmode, task->tk_status);
-         /* hmm. we are done with the inode, and in the process of freeing
- 	 * the state_owner. we keep this around to process errors
- 	 */
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index 451954f..251806f 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -155,6 +155,19 @@
- 		{ -NFS4ERR_WRONG_TYPE,		"WRONG_TYPE" },		\
- 		{ -NFS4ERR_XDEV,		"XDEV" })
- 
-+#define show_open_flags(flag)						\
-+	__print_flags((unsigned long)flags, "|",			\
-+		{ O_CREAT,			"O_CREAT" },		\
-+		{ O_EXCL,			"O_EXCL" },		\
-+		{ O_TRUNC,			"O_TRUNC" },		\
-+		{ O_DIRECT,			"O_DIRECT" })
-+
-+#define show_fmode_flags(fmode)						\
-+	__print_flags((unsigned long)fmode, "|",			\
-+		{ FMODE_READ,			"READ" },		\
-+		{ FMODE_WRITE,			"WRITE" },		\
-+		{ FMODE_EXEC,			"EXEC" })
-+
- DECLARE_EVENT_CLASS(nfs4_clientid_event,
- 		TP_PROTO(const struct nfs_client *clp,
- 			int error),
-@@ -196,6 +209,105 @@ DEFINE_NFS4_CLIENTID_EVENT(nfs4_destroy_clientid);
- DEFINE_NFS4_CLIENTID_EVENT(nfs4_bind_conn_to_session);
- #endif /* CONFIG_NFS_V4_1 */
- 
-+DECLARE_EVENT_CLASS(nfs4_open_event,
-+		TP_PROTO(const struct nfs_open_context *ctx,
-+			const struct nfs4_state *state,
-+			int flags,
-+			int error),
-+
-+		TP_ARGS(ctx, state, flags, error),
-+
-+		TP_STRUCT__entry(
-+			__field(int, error)
-+			__field(int, flags)
-+			__field(fmode_t, fmode)
-+			__field(dev_t, dev)
-+			__field(u32, fhandle)
-+			__field(u64, fileid)
-+			__field(u64, dir)
-+			__string(name, ctx->dentry->d_name.name)
-+		),
-+
-+		TP_fast_assign(
-+			struct inode *inode = NULL;
-+			if (!IS_ERR(state))
-+				inode = state->inode;
-+			__entry->error = error;
-+			__entry->flags = flags;
-+			__entry->dev = ctx->dentry->d_sb->s_dev;
-+			if (inode != NULL) {
-+				__entry->fileid = NFS_FILEID(inode);
-+				__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
-+			} else {
-+				__entry->fileid = 0;
-+				__entry->fhandle = 0;
-+			}
-+			__entry->dir = NFS_FILEID(ctx->dentry->d_parent->d_inode);
-+			__assign_str(name, ctx->dentry->d_name.name);
-+		),
-+
-+		TP_printk("error=%d (%s), flags=%d (%s) mode=%s fileid=%lld, "
-+			  "fhandle=%0x08x name=%02x:%02x:%lld/%s",
-+			  __entry->error,
-+			  show_nfsv4_errors(__entry->error),
-+			  __entry->flags,
-+			  show_open_flags(__entry->flags),
-+			  show_fmode_flags(__entry->fmode),
-+			  (unsigned long long)__entry->fileid,
-+			  __entry->fhandle,
-+			  MAJOR(__entry->dev), MINOR(__entry->dev),
-+			  (unsigned long long)__entry->dir,
-+			  __get_str(name)
-+		)
-+);
-+
-+#define DEFINE_NFS4_OPEN_EVENT(name)		\
-+DEFINE_EVENT(nfs4_open_event, name,			\
-+		TP_PROTO(const struct nfs_open_context *ctx,	\
-+			const struct nfs4_state *state,	\
-+			int flags,			\
-+			int error),			\
-+		TP_ARGS(ctx, state, flags, error))
-+DEFINE_NFS4_OPEN_EVENT(nfs4_open_reclaim);
-+DEFINE_NFS4_OPEN_EVENT(nfs4_open_expired);
-+DEFINE_NFS4_OPEN_EVENT(nfs4_open_file);
-+
-+TRACE_EVENT(nfs4_close,
-+		TP_PROTO(const struct nfs4_state *state,
-+			fmode_t fmode,
-+			int error),
-+
-+		TP_ARGS(state, fmode, error),
-+
-+		TP_STRUCT__entry(
-+			__field(dev_t, dev)
-+			__field(u32, fhandle)
-+			__field(u64, fileid)
-+			__field(fmode_t, fmode)
-+			__field(int, error)
-+		),
-+
-+		TP_fast_assign(
-+			struct inode *inode = state->inode;
-+
-+			__entry->dev = inode->i_sb->s_dev;
-+			__entry->fileid = NFS_FILEID(inode);
-+			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
-+			__entry->fmode = fmode;
-+			__entry->error = error;
-+		),
-+
-+		TP_printk("error=%d (%s) mode=%s fileid=%02x:%02x:%lld, "
-+			  "fhandle=%0x08x",
-+			  __entry->error,
-+			  show_nfsv4_errors(__entry->error),
-+			  show_fmode_flags(__entry->fmode),
-+			  MAJOR(__entry->dev), MINOR(__entry->dev),
-+			  (unsigned long long)__entry->fileid,
-+			  __entry->fhandle
-+		)
-+);
-+
- #endif /* _TRACE_NFS4_H */
- 
- #undef TRACE_INCLUDE_PATH
--- 
-1.8.3.1
+I wonder....  This is within the letter of the spec, but the spec also
+does also give the motivation.  ("The purpose of spo_must_allow is to
+allow clients to solve the following conundrum....")
 
+I'd worry that server implementors will also stick to the letter of the
+spec and allow this, but also design under the assumption that this is a
+rare case.  (E.g., allow the access but trigger some extra auditing??)
+
+I'd probably try it this way first too, as you say, it's simpler, but I
+wonder whether it's really what we want to client doing all the time.
+
+> Patch 3-5 implement SP4_MACH_CRED "features":
+>   - cleanup - CLOSE and LOCKU use machine cred
+>   - secinfo - SECINFO and SECINFO_NO_NAME use machine cred
+>   - stateid - TEST_STATEID and FREE_STATEID use machine cred
+> 
+> There are three more features that I've been working on, but need to be tested
+> before I post:
+>   - commit - COMMIT uses machine cred
+>   - write - WRITE uses machine cred, forces stable writes unless commit feature
+>             is also enabled
+>   - recovery - OPEN and LOCK can use machine cred - only in recovery.
+> 
+> The commit and write cases should be easy to test against a hacked nfsd, but
+> I need to think more about how to test the recovery stuff...
+
+Can't you just hack nfsd to allow those ops and then do a server
+restart, or try Bryan's fault-injection interface if you want to test
+some more exotic recovery scenario?
+
+--b.
