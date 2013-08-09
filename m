@@ -1,111 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f178.google.com ([74.125.82.178]:35523 "EHLO
-	mail-we0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752372Ab3HVM6E (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Aug 2013 08:58:04 -0400
-Received: by mail-we0-f178.google.com with SMTP id u54so1608486wes.37
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Aug 2013 05:58:02 -0700 (PDT)
+Received: from mx1.netapp.com ([216.240.18.38]:27492 "EHLO mx1.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S968090Ab3HIQk3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Aug 2013 12:40:29 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Linux linux-kernel <linux-kernel@vger.kernel.org>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: [GIT PULL] Please pull NFS client bug fixes
+Date: Fri, 9 Aug 2013 16:40:27 +0000
+Message-ID: <1376066427.7093.1.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <alpine.DEB.2.00.1308212203320.1479@cobra.newdream.net>
-References: <cover.1375999914.git.milosz@adfin.com>
-	<alpine.DEB.2.00.1308212203320.1479@cobra.newdream.net>
-Date: Thu, 22 Aug 2013 08:58:02 -0400
-Message-ID: <CANP1eJEwtoLVcF+v3dK+nv9W9zjF50opt06BHw=B2H2nO5kfvg@mail.gmail.com>
-Subject: Re: [PATCHv4 0/5] ceph: persistent caching with fscache
-From: Milosz Tanski <milosz@adfin.com>
-To: Sage Weil <sage@inktank.com>
-Cc: David Howells <dhowells@redhat.com>,
-        ceph-devel <ceph-devel@vger.kernel.org>,
-        "Yan, Zheng" <zheng.z.yan@intel.com>,
-        "linux-cachefs@redhat.com" <linux-cachefs@redhat.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sage,
-
-Thanks. If you run into any problems please let me know and I'll
-resolve them quick and I'll make sure I'm watching the qa mailing
-list.
-
-- Milosz
-
-On Thu, Aug 22, 2013 at 1:05 AM, Sage Weil <sage@inktank.com> wrote:
-> Hi Milosz,
->
-> I've pulled this into the ceph testing branch to make sure it holds up
-> in qa.
->
-> David, are the fscache patches here ready for the next merge window?  Do
-> you have a preference for whose tree they go through?
->
-> Thanks!
-> sage
->
->
-> On Wed, 21 Aug 2013, Milosz Tanski wrote:
->
->> This an updated version of the fscache support for the Ceph filesystem. What's
->> changed since the last patchset:
->>
->> 1. Sparater the readpages refactor into it's own patches. These were already
->>    accepted into the testing branch.
->>
->> 2. Tracked down the BUG in readahead cleanup code. We were returning with pages
->>    marked as private_2 from readpages(). I added a simple convenience function
->>    to the fscache netfs interface for cleaning up the page list at the end of
->>    asop readpages(). I know other filesystems (NFS) have ran into that since
->>    I've seen a few similar traces in Google search and the cachefs mailig list.
->>    The second patch new make Ceph use this interface.
->>
->> I've been running this code (minus the BUG fix) on clients for a couple weeks
->> with moderate 24/7 use without issues. At this point in time I feel like it's
->> solid enough to go into the ceph kclient.
->>
->> Please pull the code from my repository:
->> https://bitbucket.org/adfin/linux-fs.git branch: wip-ceph-fscache
->>
->> The first two patches I included were not written by me but were written by
->> Hongyi Jia. He implemented the cookie re-validation scheme into fscache core.
->>
->> Finally, I CCed a couple other mailing lists (fsdevel, nfs) because the new
->> fscache_readpages_cancel() should be used by other filesystems to avoid the
->> same problem.
->>
->>
->> Hongyi Jia (2):
->>   new cachefiles interface to check cache consistency
->>   new fscache interface to check cache consistency
->>
->> Milosz Tanski (3):
->>   ceph: use fscache as a local presisent cache
->>   fscache: netfs function for cleanup post readpages
->>   ceph: clean PgPrivate2 on returning from readpages
->>
->>  fs/cachefiles/interface.c     |  19 +++
->>  fs/cachefiles/internal.h      |   1 +
->>  fs/cachefiles/xattr.c         |  39 ++++++
->>  fs/ceph/Kconfig               |   9 ++
->>  fs/ceph/Makefile              |   2 +
->>  fs/ceph/addr.c                |  39 +++++-
->>  fs/ceph/cache.c               | 311 ++++++++++++++++++++++++++++++++++++++++++
->>  fs/ceph/cache.h               | 130 ++++++++++++++++++
->>  fs/ceph/caps.c                |  19 ++-
->>  fs/ceph/file.c                |  17 +++
->>  fs/ceph/inode.c               |  66 ++++++++-
->>  fs/ceph/super.c               |  47 ++++++-
->>  fs/ceph/super.h               |  17 +++
->>  fs/fscache/cookie.c           |  22 +++
->>  fs/fscache/page.c             |  16 +++
->>  include/linux/fscache-cache.h |   4 +
->>  include/linux/fscache.h       |  39 ++++++
->>  17 files changed, 785 insertions(+), 12 deletions(-)
->>  create mode 100644 fs/ceph/cache.c
->>  create mode 100644 fs/ceph/cache.h
->>
->> --
->> 1.8.1.2
->>
->>
+SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgYzA5NWJhNzIy
+NGQ4ZWRjNzFkY2VmMGQ2NTU5MTEzOTlhOGJkNGEzZjoNCg0KICBMaW51eCAzLjExLXJjNCAoMjAx
+My0wOC0wNCAxMzo0Njo0NiAtMDcwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgZ2l0IHJlcG9z
+aXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9s
+aW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci0zLjExLTQNCg0KZm9yIHlvdSB0byBmZXRjaCBjaGFu
+Z2VzIHVwIHRvIGI3Mjg4OGNiMGJhNjNiMmRmYzZjOGQzY2Q3OGE3ZmVhNTg0YmViYzY6DQoNCiAg
+TkZTdjQ6IEZpeCB1cCBuZnM0X3Byb2NfbG9va3VwX21vdW50cG9pbnQgKDIwMTMtMDgtMDcgMjA6
+NDc6MjYgLTA0MDApDQoNCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCk5GUyBjbGllbnQgYnVnZml4ZXMgZm9yIDMuMTENCg0K
+LSBTdGFibGUgcGF0Y2ggZm9yIGxvY2tkIHRvIGZpeCBPb3BzZXMgZHVlIHRvIGluYXBwcm9wcmlh
+dGUgY2FsbHMgdG8NCiAgdXRzbmFtZSgpLT5ub2RlbmFtZQ0KLSBTdGFibGUgcGF0Y2hlcyBmb3Ig
+c3VucnBjIHRvIGZpeCBPb3BzZXMgb24gc2h1dGRvd24gd2hlbiB1c2luZw0KICBBRl9MT0NBTCBz
+b2NrZXRzIHdpdGggcnBjYmluZA0KLSBGaXggbWVtb3J5IGxlYWsgYW5kIGVycm9yIGNoZWNraW5n
+IGlzc3VlcyBpbiBuZnM0X3Byb2NfbG9va3VwX21vdW50cG9pbnQNCi0gRml4IGEgcmVncmVzc2lv
+biB3aXRoIHRoZSBzeW5jIG1vdW50IG9wdGlvbiBmYWlsaW5nIHRvIHdvcmsgZm9yIG5mczQgbW91
+bnRzDQotIEZpeCBhIHdyaXRlYmFjayBwZXJmb3JtYW5jZSBpc3N1ZSB3aGVuIGRvaW5nIGNhY2hl
+IGludmFsaWRhdGlvbg0KLSBSZW1vdmUgYW4gaW5jb3JyZWN0IGNhbGwgdG8gbmZzX3NldHNlY3Vy
+aXR5IGluIG5mc19maGdldA0KDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpTY290dCBNYXloZXcgKDEpOg0KICAgICAgTkZT
+djQ6IEZpeCB0aGUgc3luYyBtb3VudCBvcHRpb24gZm9yIG5mczQgbW91bnRzDQoNClRyb25kIE15
+a2xlYnVzdCAoNik6DQogICAgICBMT0NLRDogRG9uJ3QgY2FsbCB1dHNuYW1lKCktPm5vZGVuYW1l
+IGZyb20gbmxtY2xudF9zZXRsb2NrYXJncw0KICAgICAgU1VOUlBDOiBEb24ndCBhdXRvLWRpc2Nv
+bm5lY3QgZnJvbSB0aGUgbG9jYWwgcnBjYmluZCBzb2NrZXQNCiAgICAgIFNVTlJQQzogSWYgdGhl
+IHJwY2JpbmQgY2hhbm5lbCBpcyBkaXNjb25uZWN0ZWQsIGZhaWwgdGhlIGNhbGwgdG8gdW5yZWdp
+c3Rlcg0KICAgICAgTkZTOiBGaXggd3JpdGViYWNrIHBlcmZvcm1hbmNlIGlzc3VlIG9uIGNhY2hl
+IGludmFsaWRhdGlvbg0KICAgICAgTkZTOiBSZW1vdmUgdW5uZWNlc3NhcnkgY2FsbCB0byBuZnNf
+c2V0c2VjdXJpdHkgaW4gbmZzX2ZoZ2V0KCkNCiAgICAgIE5GU3Y0OiBGaXggdXAgbmZzNF9wcm9j
+X2xvb2t1cF9tb3VudHBvaW50DQoNCiBmcy9sb2NrZC9jbG50bG9jay5jICAgICAgICAgIHwgMTMg
+KysrKysrKystLS0tDQogZnMvbG9ja2QvY2xudHByb2MuYyAgICAgICAgICB8ICA1ICsrKy0tDQog
+ZnMvbmZzL2lub2RlLmMgICAgICAgICAgICAgICB8IDExICsrKysrKystLS0NCiBmcy9uZnMvbmZz
+NHByb2MuYyAgICAgICAgICAgIHwgIDggKysrLS0tLS0NCiBmcy9uZnMvc3VwZXIuYyAgICAgICAg
+ICAgICAgIHwgIDQgKysrKw0KIGluY2x1ZGUvbGludXgvc3VucnBjL3NjaGVkLmggfCAgMSArDQog
+bmV0L3N1bnJwYy9jbG50LmMgICAgICAgICAgICB8ICA0ICsrKysNCiBuZXQvc3VucnBjL25ldG5z
+LmggICAgICAgICAgIHwgIDEgKw0KIG5ldC9zdW5ycGMvcnBjYl9jbG50LmMgICAgICAgfCA0OCAr
+KysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKy0tLS0tLS0tLS0tLQ0KIDkgZmlsZXMgY2hh
+bmdlZCwgNjggaW5zZXJ0aW9ucygrKSwgMjcgZGVsZXRpb25zKC0pDQoNCi0tIA0KVHJvbmQgTXlr
+bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWts
+ZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
