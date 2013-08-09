@@ -1,132 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:33169 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757824Ab3HMTUc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Aug 2013 15:20:32 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r7DJKWSn011085
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Aug 2013 15:20:32 -0400
-Received: from tonberry.usersys.redhat.com (dhcp145-64.rdu.redhat.com [10.13.145.64])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r7DJKVZv017268
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Aug 2013 15:20:31 -0400
-Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
-	by tonberry.usersys.redhat.com (8.14.5/8.14.5) with ESMTP id r7DJKVnY021432
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Aug 2013 15:20:31 -0400
-Received: (from smayhew@localhost)
-	by tonberry.usersys.redhat.com (8.14.5/8.14.5/Submit) id r7DJKVZc021431
-	for linux-nfs@vger.kernel.org; Tue, 13 Aug 2013 15:20:31 -0400
-From: Scott Mayhew <smayhew@redhat.com>
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:36840 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S968171Ab3HIQtk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:49:40 -0400
+Received: by mail-gh0-f174.google.com with SMTP id r17so1278197ghr.33
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:49:40 -0700 (PDT)
+Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
+        by mx.google.com with ESMTPSA id g39sm20680040yhb.13.2013.08.09.09.49.39
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
+        Fri, 09 Aug 2013 09:49:39 -0700 (PDT)
+Subject: [PATCH v2 13/33] NFS: Add nfs4_sequence calls for RELEASE_LOCKOWNER
 To: linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH 3/4] mount.nfs:  improve handling of MNT_NOARG type options
-Date: Tue, 13 Aug 2013 15:20:28 -0400
-Message-Id: <1376421629-21382-4-git-send-email-smayhew@redhat.com>
-In-Reply-To: <1376421629-21382-1-git-send-email-smayhew@redhat.com>
-References: <1376421629-21382-1-git-send-email-smayhew@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Date: Fri, 09 Aug 2013 12:49:38 -0400
+Message-ID: <20130809164938.5362.95295.stgit@seurat.1015granger.net>
+In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-conf_parse_mntopts() maintains a linked list of options that will
-ultimately be passed in the data field of the mount() syscall in order
-to avoid unnecessary duplicates and/or conflicts.  This doesn't work
-very well for MNT_NOARG type options, since setting any of these to
-false in the nfsmount.conf doesn't correspond to any 'real' mount option
-(i.e. there are no such options 'nobg', 'nofg', and 'nosloppy').
+Ensure RELEASE_LOCKOWNER is not emitted while the transport is
+plugged.
 
-This patch adds a set of internal variables for the three real MNT_NOARG
-options (bg, fg, sloppy) along with their pseudo options (nobg, nofg,
-nosloppy), and a helper function to track which of these options has
-been previously seen and to determine whether or not to append an option
-to the linked list.
-
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- utils/mount/configfile.c | 50 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 50 insertions(+)
+ fs/nfs/nfs4proc.c |   20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
 
-diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
-index 221436f..623c886 100644
---- a/utils/mount/configfile.c
-+++ b/utils/mount/configfile.c
-@@ -73,6 +73,8 @@ struct mnt_alias {
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index b915c7d..9104467 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5662,8 +5662,23 @@ struct nfs_release_lockowner_data {
+ 	struct nfs4_lock_state *lsp;
+ 	struct nfs_server *server;
+ 	struct nfs_release_lockowner_args args;
++	struct nfs4_sequence_args seq_args;
++	struct nfs4_sequence_res seq_res;
  };
- int mnt_alias_sz = (sizeof(mnt_alias_tab)/sizeof(mnt_alias_tab[0]));
  
-+static int bg, nobg, fg, nofg, sloppy, nosloppy;
-+
- /*
-  * See if the option is an alias, if so return the 
-  * real mount option along with the argument type.
-@@ -278,6 +280,46 @@ default_value(char *mopt)
- 
- 	return 1;
- }
-+
-+int
-+should_add_noarg_opt(char *opt, char *val)
++static void nfs4_release_lockowner_prepare(struct rpc_task *task, void *calldata)
 +{
-+	int ret = 0;
-+
-+	if (strcasecmp(opt, "bg") == 0) {
-+		if (strcasecmp(val, "true") == 0) {
-+			if (bg == 0 && nobg == 0 && fg == 0) {
-+				bg = 1;
-+				ret = 1;
-+			}
-+		} else if (strcasecmp(val, "false") == 0) {
-+			if (bg == 0 && nobg == 0)
-+				nobg = 1;
-+		}
-+	} else if (strcasecmp(opt, "fg") == 0) {
-+		if (strcasecmp(val, "true") == 0) {
-+			if (fg == 0 && nofg == 0 && bg == 0) {
-+				fg = 1;
-+				ret = 1;
-+			}
-+		} else if (strcasecmp(val, "false") == 0) {
-+			if (fg == 0 && nofg == 0)
-+				nofg = 1;
-+		}
-+	} else if (strcasecmp(opt, "sloppy") == 0) {
-+		if (sloppy == 0 && nosloppy == 0) {
-+			if(strcasecmp(val, "true") == 0) {
-+				sloppy = 1;
-+				ret = 1;
-+			} else
-+				nosloppy = 1;
-+		}
-+	} else
-+		xlog_warn("Invalid MNT_NOARG option: '%s'", opt);
-+
-+	return ret;
++	struct nfs_release_lockowner_data *data = calldata;
++	nfs40_setup_sequence(data->server,
++				&data->seq_args, &data->seq_res, task);
 +}
 +
- /*
-  * Parse the given section of the configuration 
-  * file to if there are any mount options set.
-@@ -315,6 +357,13 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
- 		field = mountopts_alias(node->field, &argtype);
- 		if (lookup_entry(field) != NULL)
- 			continue;
-+		if (argtype == MNT_NOARG) {
-+			if (should_add_noarg_opt(field, value)) {
-+				list_size += strlen(field) + 1;
-+				add_entry(field);
-+			}
-+			continue;
-+		}
- 		if (argtype != MNT_NOARG) {
- 			snprintf(buf, BUFSIZ, "no%s", field);
- 			if (lookup_entry(buf) != NULL)
-@@ -359,6 +408,7 @@ char *conf_get_mntopts(char *spec, char *mount_point,
- 	char *ptr, *server, *config_opts;
- 	int optlen = 0;
++static void nfs4_release_lockowner_done(struct rpc_task *task, void *calldata)
++{
++	struct nfs_release_lockowner_data *data = calldata;
++	nfs40_sequence_done(task, &data->seq_res);
++}
++
+ static void nfs4_release_lockowner_release(void *calldata)
+ {
+ 	struct nfs_release_lockowner_data *data = calldata;
+@@ -5672,6 +5687,8 @@ static void nfs4_release_lockowner_release(void *calldata)
+ }
  
-+	bg = nobg = fg = nofg = sloppy = nosloppy = 0;
- 	SLIST_INIT(&head);
- 	list_size = 0;
- 	/*
--- 
-1.7.11.7
+ static const struct rpc_call_ops nfs4_release_lockowner_ops = {
++	.rpc_call_prepare = nfs4_release_lockowner_prepare,
++	.rpc_call_done = nfs4_release_lockowner_done,
+ 	.rpc_release = nfs4_release_lockowner_release,
+ };
+ 
+@@ -5684,14 +5701,17 @@ static int nfs4_release_lockowner(struct nfs_server *server, struct nfs4_lock_st
+ 
+ 	if (server->nfs_client->cl_mvops->minor_version != 0)
+ 		return -EINVAL;
++
+ 	data = kmalloc(sizeof(*data), GFP_NOFS);
+ 	if (!data)
+ 		return -ENOMEM;
++	nfs4_init_sequence(&data->seq_args, &data->seq_res, 0);
+ 	data->lsp = lsp;
+ 	data->server = server;
+ 	data->args.lock_owner.clientid = server->nfs_client->cl_clientid;
+ 	data->args.lock_owner.id = lsp->ls_seqid.owner_id;
+ 	data->args.lock_owner.s_dev = server->s_dev;
++
+ 	msg.rpc_argp = &data->args;
+ 	rpc_call_async(server->client, &msg, 0, &nfs4_release_lockowner_ops, data);
+ 	return 0;
 
