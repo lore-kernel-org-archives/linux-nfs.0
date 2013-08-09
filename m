@@ -1,93 +1,274 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:37690 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754927Ab3HARi4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Aug 2013 13:38:56 -0400
-Subject: [RFC][PATCH 0/2] KEYS: Kerberos caching support
-To: keyrings@linux-nfs.org, linux-nfs@vger.kernel.org
-From: David Howells <dhowells@redhat.com>
-Cc: krbdev@mit.edu, linux-kernel@vger.kernel.org, simo@redhat.com
-Date: Thu, 01 Aug 2013 18:38:46 +0100
-Message-ID: <20130801173846.28023.19009.stgit@warthog.procyon.org.uk>
+Received: from mail-gh0-f182.google.com ([209.85.160.182]:42575 "EHLO
+	mail-gh0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S968171Ab3HIQsU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:48:20 -0400
+Received: by mail-gh0-f182.google.com with SMTP id z15so1294786ghb.41
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:48:20 -0700 (PDT)
+Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
+        by mx.google.com with ESMTPSA id f67sm20679890yhh.9.2013.08.09.09.48.19
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
+        Fri, 09 Aug 2013 09:48:19 -0700 (PDT)
+Subject: [PATCH v2 04/33] NFS: Common versions of sequence helper functions
+To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Date: Fri, 09 Aug 2013 12:48:18 -0400
+Message-ID: <20130809164818.5362.28355.stgit@seurat.1015granger.net>
+In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+NFSv4.0 will have need for this functionality when I add the ability
+to block NFSv4.0 traffic before migration recovery.
 
-Here are a couple of keyrings patches I'd like to propose to aid the support
-for Kerberos to cache tickets in keys:
+I'm not really clear on why nfs4_set_sequence_privileged() gets a
+generic name, but nfs41_init_sequence() gets a minor
+version-specific name.
 
- (1) A large-capacity key type.
-
-     This is a general purpose key type that can hold up to 1MB of data.  The
-     data is stored in a SHM file and so can be stored out to swap if need be.
-
-     I think it might be worth storing the data encrypted in the SHM file with
-     a randomly generated transient symmetric key that the kernel creates and
-     retains in memory for each key.  This would then be lost when the power
-     went off, rendering the tickets irretrievable.
-
-     This is necessary because some Kerberos tickets, particularly those
-     returned by Windows Active Directory, for instance, can be huge, easily
-     64KB or more, due to additional information stored in the ticket (the
-     MS-PAC).
-
- (2) Per-user_namespace registers of per-UID kerberos caches.
-
-     This allows the kerberos cache to be retained beyond the life of all a
-     user's processes so that the user's cron jobs can work.
-
-     The user asks for their Kerberos cache by:
-
-	krb_cache = keyctl_get_krbcache(uid, dest_keyring);
-
-     The uid is -1 or the user's own UID for the user's own cache or the uid
-     of some other user's cache (requires CAP_SETUID).
-
-     The cache returned is a keyring named "_krb.<uid>" that the possessor can
-     read, search, clear, invalidate, unlink from and add links to.  SELinux
-     and co. get a say as to whether this call will succeed as the caller must
-     have LINK permission on the cache keyring.
-
-     Each uid's cache keyring is created when it first accessed and is given a
-     timeout that is extended each time this function is called so that the
-     keyring goes away after a while.  The timeout is configurable by sysctl
-     but defaults to 3 days.
-
-     Each user_namespace gets a lazily-created keyring that serves as the
-     register.  The cache keyrings are added to it.  This means that standard
-     key search and garbage collection facilities are available.
-
-     The user_namespace's register goes away when it does.
-
-Note that these patches were constructed on top of my keyring capacity
-expansion patches - but there shouldn't be much to change to apply them on top
-of the vanilla kernel.
-
-David
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
-David Howells (2):
-      KEYS: Implement a big key type that can save to tmpfs
-      KEYS: Add per-user_namespace registers for persistent per-UID kerberos caches
+ fs/nfs/nfs4proc.c |   79 +++++++++++++++++++++++------------------------------
+ 1 file changed, 34 insertions(+), 45 deletions(-)
 
-
- include/keys/big_key-type.h    |   27 ++++++
- include/linux/key.h            |    1 
- include/linux/user_namespace.h |    6 +
- include/uapi/linux/keyctl.h    |    1 
- kernel/user.c                  |    4 +
- kernel/user_namespace.c        |    2 
- security/keys/Kconfig          |   23 +++++
- security/keys/Makefile         |    2 
- security/keys/big_key.c        |  181 ++++++++++++++++++++++++++++++++++++++++
- security/keys/compat.c         |    3 +
- security/keys/internal.h       |    9 ++
- security/keys/keyctl.c         |    3 +
- security/keys/krbcache.c       |  132 +++++++++++++++++++++++++++++
- security/keys/sysctl.c         |   11 ++
- 14 files changed, 405 insertions(+)
- create mode 100644 include/keys/big_key-type.h
- create mode 100644 security/keys/big_key.c
- create mode 100644 security/keys/krbcache.c
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 275d17d..bc8f5d7 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -453,6 +453,21 @@ struct nfs4_call_sync_data {
+ 	struct nfs4_sequence_res *seq_res;
+ };
+ 
++static void nfs4_init_sequence(struct nfs4_sequence_args *args,
++			       struct nfs4_sequence_res *res, int cache_reply)
++{
++	args->sa_slot = NULL;
++	args->sa_cache_this = cache_reply;
++	args->sa_privileged = 0;
++
++	res->sr_slot = NULL;
++}
++
++static void nfs4_set_sequence_privileged(struct nfs4_sequence_args *args)
++{
++	args->sa_privileged = 1;
++}
++
+ #if defined(CONFIG_NFS_V4_1)
+ 
+ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
+@@ -600,22 +615,6 @@ static int nfs4_sequence_done(struct rpc_task *task,
+ 	return nfs41_sequence_done(task, res);
+ }
+ 
+-static void nfs41_init_sequence(struct nfs4_sequence_args *args,
+-		struct nfs4_sequence_res *res, int cache_reply)
+-{
+-	args->sa_slot = NULL;
+-	args->sa_cache_this = 0;
+-	args->sa_privileged = 0;
+-	if (cache_reply)
+-		args->sa_cache_this = 1;
+-	res->sr_slot = NULL;
+-}
+-
+-static void nfs4_set_sequence_privileged(struct nfs4_sequence_args *args)
+-{
+-	args->sa_privileged = 1;
+-}
+-
+ int nfs41_setup_sequence(struct nfs4_session *session,
+ 				struct nfs4_sequence_args *args,
+ 				struct nfs4_sequence_res *res,
+@@ -755,16 +754,6 @@ static int nfs4_call_sync_sequence(struct rpc_clnt *clnt,
+ }
+ 
+ #else
+-static
+-void nfs41_init_sequence(struct nfs4_sequence_args *args,
+-		struct nfs4_sequence_res *res, int cache_reply)
+-{
+-}
+-
+-static void nfs4_set_sequence_privileged(struct nfs4_sequence_args *args)
+-{
+-}
+-
+ static int nfs4_setup_sequence(const struct nfs_server *server,
+ 			       struct nfs4_sequence_args *args,
+ 			       struct nfs4_sequence_res *res,
+@@ -799,7 +788,7 @@ int nfs4_call_sync(struct rpc_clnt *clnt,
+ 		   struct nfs4_sequence_res *res,
+ 		   int cache_reply)
+ {
+-	nfs41_init_sequence(args, res, cache_reply);
++	nfs4_init_sequence(args, res, cache_reply);
+ 	return server->nfs_client->cl_mvops->call_sync(clnt, server, msg,
+ 						args, res);
+ }
+@@ -1750,7 +1739,7 @@ static int nfs4_run_open_task(struct nfs4_opendata *data, int isrecover)
+ 	};
+ 	int status;
+ 
+-	nfs41_init_sequence(&o_arg->seq_args, &o_res->seq_res, 1);
++	nfs4_init_sequence(&o_arg->seq_args, &o_res->seq_res, 1);
+ 	kref_get(&data->kref);
+ 	data->rpc_done = 0;
+ 	data->rpc_status = 0;
+@@ -2522,7 +2511,7 @@ int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait)
+ 	calldata = kzalloc(sizeof(*calldata), gfp_mask);
+ 	if (calldata == NULL)
+ 		goto out;
+-	nfs41_init_sequence(&calldata->arg.seq_args, &calldata->res.seq_res, 1);
++	nfs4_init_sequence(&calldata->arg.seq_args, &calldata->res.seq_res, 1);
+ 	calldata->inode = state->inode;
+ 	calldata->state = state;
+ 	calldata->arg.fh = NFS_FH(state->inode);
+@@ -3278,7 +3267,7 @@ static void nfs4_proc_unlink_setup(struct rpc_message *msg, struct inode *dir)
+ 
+ 	res->server = server;
+ 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_REMOVE];
+-	nfs41_init_sequence(&args->seq_args, &res->seq_res, 1);
++	nfs4_init_sequence(&args->seq_args, &res->seq_res, 1);
+ 
+ 	nfs_fattr_init(res->dir_attr);
+ }
+@@ -3311,7 +3300,7 @@ static void nfs4_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
+ 
+ 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_RENAME];
+ 	res->server = server;
+-	nfs41_init_sequence(&arg->seq_args, &res->seq_res, 1);
++	nfs4_init_sequence(&arg->seq_args, &res->seq_res, 1);
+ }
+ 
+ static void nfs4_proc_rename_rpc_prepare(struct rpc_task *task, struct nfs_renamedata *data)
+@@ -3912,7 +3901,7 @@ static void nfs4_proc_read_setup(struct nfs_read_data *data, struct rpc_message
+ 	data->timestamp   = jiffies;
+ 	data->read_done_cb = nfs4_read_done_cb;
+ 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_READ];
+-	nfs41_init_sequence(&data->args.seq_args, &data->res.seq_res, 0);
++	nfs4_init_sequence(&data->args.seq_args, &data->res.seq_res, 0);
+ }
+ 
+ static void nfs4_proc_read_rpc_prepare(struct rpc_task *task, struct nfs_read_data *data)
+@@ -3995,7 +3984,7 @@ static void nfs4_proc_write_setup(struct nfs_write_data *data, struct rpc_messag
+ 	data->timestamp   = jiffies;
+ 
+ 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_WRITE];
+-	nfs41_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
++	nfs4_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
+ }
+ 
+ static void nfs4_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_write_data *data)
+@@ -4043,7 +4032,7 @@ static void nfs4_proc_commit_setup(struct nfs_commit_data *data, struct rpc_mess
+ 		data->commit_done_cb = nfs4_commit_done_cb;
+ 	data->res.server = server;
+ 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_COMMIT];
+-	nfs41_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
++	nfs4_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
+ }
+ 
+ struct nfs4_renewdata {
+@@ -4845,7 +4834,7 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
+ 	data = kzalloc(sizeof(*data), GFP_NOFS);
+ 	if (data == NULL)
+ 		return -ENOMEM;
+-	nfs41_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
++	nfs4_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
+ 	data->args.fhandle = &data->fh;
+ 	data->args.stateid = &data->stateid;
+ 	data->args.bitmask = server->cache_consistency_bitmask;
+@@ -5108,7 +5097,7 @@ static struct rpc_task *nfs4_do_unlck(struct file_lock *fl,
+ 		return ERR_PTR(-ENOMEM);
+ 	}
+ 
+-	nfs41_init_sequence(&data->arg.seq_args, &data->res.seq_res, 1);
++	nfs4_init_sequence(&data->arg.seq_args, &data->res.seq_res, 1);
+ 	msg.rpc_argp = &data->arg;
+ 	msg.rpc_resp = &data->res;
+ 	task_setup_data.callback_data = data;
+@@ -5343,7 +5332,7 @@ static int _nfs4_do_setlk(struct nfs4_state *state, int cmd, struct file_lock *f
+ 		return -ENOMEM;
+ 	if (IS_SETLKW(cmd))
+ 		data->arg.block = 1;
+-	nfs41_init_sequence(&data->arg.seq_args, &data->res.seq_res, 1);
++	nfs4_init_sequence(&data->arg.seq_args, &data->res.seq_res, 1);
+ 	msg.rpc_argp = &data->arg;
+ 	msg.rpc_resp = &data->res;
+ 	task_setup_data.callback_data = data;
+@@ -6165,7 +6154,7 @@ int nfs4_proc_get_lease_time(struct nfs_client *clp, struct nfs_fsinfo *fsinfo)
+ 	};
+ 	int status;
+ 
+-	nfs41_init_sequence(&args.la_seq_args, &res.lr_seq_res, 0);
++	nfs4_init_sequence(&args.la_seq_args, &res.lr_seq_res, 0);
+ 	nfs4_set_sequence_privileged(&args.la_seq_args);
+ 	dprintk("--> %s\n", __func__);
+ 	task = rpc_run_task(&task_setup);
+@@ -6468,7 +6457,7 @@ static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp,
+ 		nfs_put_client(clp);
+ 		return ERR_PTR(-ENOMEM);
+ 	}
+-	nfs41_init_sequence(&calldata->args, &calldata->res, 0);
++	nfs4_init_sequence(&calldata->args, &calldata->res, 0);
+ 	if (is_privileged)
+ 		nfs4_set_sequence_privileged(&calldata->args);
+ 	msg.rpc_argp = &calldata->args;
+@@ -6610,7 +6599,7 @@ static int nfs41_proc_reclaim_complete(struct nfs_client *clp,
+ 	calldata->clp = clp;
+ 	calldata->arg.one_fs = 0;
+ 
+-	nfs41_init_sequence(&calldata->arg.seq_args, &calldata->res.seq_res, 0);
++	nfs4_init_sequence(&calldata->arg.seq_args, &calldata->res.seq_res, 0);
+ 	nfs4_set_sequence_privileged(&calldata->arg.seq_args);
+ 	msg.rpc_argp = &calldata->arg;
+ 	msg.rpc_resp = &calldata->res;
+@@ -6801,7 +6790,7 @@ nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
+ 
+ 	lgp->res.layoutp = &lgp->args.layout;
+ 	lgp->res.seq_res.sr_slot = NULL;
+-	nfs41_init_sequence(&lgp->args.seq_args, &lgp->res.seq_res, 0);
++	nfs4_init_sequence(&lgp->args.seq_args, &lgp->res.seq_res, 0);
+ 
+ 	/* nfs4_layoutget_release calls pnfs_put_layout_hdr */
+ 	pnfs_get_layout_hdr(NFS_I(inode)->layout);
+@@ -6892,7 +6881,7 @@ int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp)
+ 	int status;
+ 
+ 	dprintk("--> %s\n", __func__);
+-	nfs41_init_sequence(&lrp->args.seq_args, &lrp->res.seq_res, 1);
++	nfs4_init_sequence(&lrp->args.seq_args, &lrp->res.seq_res, 1);
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+ 		return PTR_ERR(task);
+@@ -7073,7 +7062,7 @@ nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, bool sync)
+ 		data->args.lastbytewritten,
+ 		data->args.inode->i_ino);
+ 
+-	nfs41_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
++	nfs4_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+ 		return PTR_ERR(task);
+@@ -7186,7 +7175,7 @@ static int _nfs41_test_stateid(struct nfs_server *server,
+ 	};
+ 
+ 	dprintk("NFS call  test_stateid %p\n", stateid);
+-	nfs41_init_sequence(&args.seq_args, &res.seq_res, 0);
++	nfs4_init_sequence(&args.seq_args, &res.seq_res, 0);
+ 	nfs4_set_sequence_privileged(&args.seq_args);
+ 	status = nfs4_call_sync_sequence(server->client, server, &msg,
+ 			&args.seq_args, &res.seq_res);
+@@ -7291,7 +7280,7 @@ static struct rpc_task *_nfs41_free_stateid(struct nfs_server *server,
+ 
+ 	msg.rpc_argp = &data->args;
+ 	msg.rpc_resp = &data->res;
+-	nfs41_init_sequence(&data->args.seq_args, &data->res.seq_res, 0);
++	nfs4_init_sequence(&data->args.seq_args, &data->res.seq_res, 0);
+ 	if (privileged)
+ 		nfs4_set_sequence_privileged(&data->args.seq_args);
+ 
 
