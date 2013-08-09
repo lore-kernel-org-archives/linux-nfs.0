@@ -1,151 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:65371 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754265Ab3H1Tki (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Aug 2013 15:40:38 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-CC: <andros@netapp.com>
-Subject: [PATCH v2 13/16] SUNRPC: Remove the rpc_client->cl_dentry
-Date: Wed, 28 Aug 2013 15:40:18 -0400
-Message-ID: <1377718821-28159-13-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377718821-28159-12-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377718821-28159-1-git-send-email-Trond.Myklebust@netapp.com>
- <1377718821-28159-2-git-send-email-Trond.Myklebust@netapp.com>
- <1377718821-28159-3-git-send-email-Trond.Myklebust@netapp.com>
- <1377718821-28159-4-git-send-email-Trond.Myklebust@netapp.com>
- <1377718821-28159-5-git-send-email-Trond.Myklebust@netapp.com>
- <1377718821-28159-6-git-send-email-Trond.Myklebust@netapp.com>
- <1377718821-28159-7-git-send-email-Trond.Myklebust@netapp.com>
- <1377718821-28159-8-git-send-email-Trond.Myklebust@netapp.com>
- <1377718821-28159-9-git-send-email-Trond.Myklebust@netapp.com>
- <1377718821-28159-10-git-send-email-Trond.Myklebust@netapp.com>
- <1377718821-28159-11-git-send-email-Trond.Myklebust@netapp.com>
- <1377718821-28159-12-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-gh0-f178.google.com ([209.85.160.178]:57145 "EHLO
+	mail-gh0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S968172Ab3HIQsD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:48:03 -0400
+Received: by mail-gh0-f178.google.com with SMTP id g15so1284453ghb.9
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:48:02 -0700 (PDT)
+Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
+        by mx.google.com with ESMTPSA id i70sm12877897yhd.4.2013.08.09.09.48.01
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
+        Fri, 09 Aug 2013 09:48:01 -0700 (PDT)
+Subject: [PATCH v2 02/33] NFS: Rename nfs41_call_sync_data as a common data
+ structure
+To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Date: Fri, 09 Aug 2013 12:48:00 -0400
+Message-ID: <20130809164800.5362.62683.stgit@seurat.1015granger.net>
+In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It is now redundant.
+Clean up: rename nfs41_call_sync_data for use as a data structure
+common to all NFSv4 minor versions.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/clnt.h        |  1 -
- include/linux/sunrpc/rpc_pipe_fs.h |  2 +-
- net/sunrpc/clnt.c                  | 24 +++++++++++++-----------
- net/sunrpc/rpc_pipe.c              | 13 +++++++------
- 4 files changed, 21 insertions(+), 19 deletions(-)
+ fs/nfs/nfs4proc.c |   18 +++++++++---------
+ 1 file changed, 9 insertions(+), 9 deletions(-)
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 0dccd01..76c0bf6 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -57,7 +57,6 @@ struct rpc_clnt {
- 	int			cl_nodelen;	/* nodename length */
- 	char 			cl_nodename[UNX_MAXNODENAME];
- 	struct rpc_pipe_dir_head cl_pipedir_objects;
--	struct dentry *		cl_dentry;
- 	struct rpc_clnt *	cl_parent;	/* Points to parent of clones */
- 	struct rpc_rtt		cl_rtt_default;
- 	struct rpc_timeout	cl_timeout_default;
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index 188e7fc..b0cf181 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -94,7 +94,7 @@ extern int rpc_queue_upcall(struct rpc_pipe *, struct rpc_pipe_msg *);
- 
- struct rpc_clnt;
- extern struct dentry *rpc_create_client_dir(struct dentry *, const char *, struct rpc_clnt *);
--extern int rpc_remove_client_dir(struct dentry *, struct rpc_clnt *);
-+extern int rpc_remove_client_dir(struct rpc_clnt *);
- 
- extern void rpc_init_pipe_dir_head(struct rpc_pipe_dir_head *pdh);
- extern void rpc_init_pipe_dir_object(struct rpc_pipe_dir_object *pdo,
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index e60b135..f1c3896 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -102,9 +102,7 @@ static void rpc_unregister_client(struct rpc_clnt *clnt)
- 
- static void __rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
- {
--	if (clnt->cl_dentry)
--		rpc_remove_client_dir(clnt->cl_dentry, clnt);
--	clnt->cl_dentry = NULL;
-+	rpc_remove_client_dir(clnt);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f7a8f53..63e2279 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -447,6 +447,12 @@ static void renew_lease(const struct nfs_server *server, unsigned long timestamp
+ 	do_renew_lease(server->nfs_client, timestamp);
  }
  
- static void rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
-@@ -154,21 +152,26 @@ rpc_setup_pipedir(struct super_block *pipefs_sb, struct rpc_clnt *clnt)
- {
- 	struct dentry *dentry;
- 
--	clnt->cl_dentry = NULL;
- 	dentry = rpc_setup_pipedir_sb(pipefs_sb, clnt);
- 	if (IS_ERR(dentry))
- 		return PTR_ERR(dentry);
--	clnt->cl_dentry = dentry;
- 	return 0;
- }
- 
- static inline int rpc_clnt_skip_event(struct rpc_clnt *clnt, unsigned long event)
- {
--	if (((event == RPC_PIPEFS_MOUNT) && clnt->cl_dentry) ||
--	    ((event == RPC_PIPEFS_UMOUNT) && !clnt->cl_dentry))
--		return 1;
--	if ((event == RPC_PIPEFS_MOUNT) && atomic_read(&clnt->cl_count) == 0)
--		return 1;
-+	switch (event) {
-+	case RPC_PIPEFS_MOUNT:
-+		if (clnt->cl_pipedir_objects.pdh_dentry != NULL)
-+			return 1;
-+		if (atomic_read(&clnt->cl_count) == 0)
-+			return 1;
-+		break;
-+	case RPC_PIPEFS_UMOUNT:
-+		if (clnt->cl_pipedir_objects.pdh_dentry == NULL)
-+			return 1;
-+		break;
-+	}
- 	return 0;
- }
- 
-@@ -185,7 +188,6 @@ static int __rpc_clnt_handle_event(struct rpc_clnt *clnt, unsigned long event,
- 			return -ENOENT;
- 		if (IS_ERR(dentry))
- 			return PTR_ERR(dentry);
--		clnt->cl_dentry = dentry;
- 		break;
- 	case RPC_PIPEFS_UMOUNT:
- 		__rpc_clnt_remove_pipedir(clnt);
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index cfeba77..a35b2f4 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -1055,15 +1055,16 @@ struct dentry *rpc_create_client_dir(struct dentry *dentry,
- 
- /**
-  * rpc_remove_client_dir - Remove a directory created with rpc_create_client_dir()
-- * @dentry: dentry for the pipe
-  * @rpc_client: rpc_client for the pipe
-  */
--int rpc_remove_client_dir(struct dentry *dentry, struct rpc_clnt *rpc_client)
-+int rpc_remove_client_dir(struct rpc_clnt *rpc_client)
- {
--	if (rpc_client->cl_pipedir_objects.pdh_dentry) {
--		rpc_destroy_pipe_dir_objects(&rpc_client->cl_pipedir_objects);
--		rpc_client->cl_pipedir_objects.pdh_dentry = NULL;
--	}
-+	struct dentry *dentry = rpc_client->cl_pipedir_objects.pdh_dentry;
++struct nfs4_call_sync_data {
++	const struct nfs_server *seq_server;
++	struct nfs4_sequence_args *seq_args;
++	struct nfs4_sequence_res *seq_res;
++};
 +
-+	if (dentry == NULL)
-+		return 0;
-+	rpc_destroy_pipe_dir_objects(&rpc_client->cl_pipedir_objects);
-+	rpc_client->cl_pipedir_objects.pdh_dentry = NULL;
- 	return rpc_rmdir_depopulate(dentry, rpc_clntdir_depopulate);
+ #if defined(CONFIG_NFS_V4_1)
+ 
+ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
+@@ -696,15 +702,9 @@ out:
+ 	return ret;
  }
  
--- 
-1.8.3.1
+-struct nfs41_call_sync_data {
+-	const struct nfs_server *seq_server;
+-	struct nfs4_sequence_args *seq_args;
+-	struct nfs4_sequence_res *seq_res;
+-};
+-
+ static void nfs41_call_sync_prepare(struct rpc_task *task, void *calldata)
+ {
+-	struct nfs41_call_sync_data *data = calldata;
++	struct nfs4_call_sync_data *data = calldata;
+ 	struct nfs4_session *session = nfs4_get_session(data->seq_server);
+ 
+ 	dprintk("--> %s data->seq_server %p\n", __func__, data->seq_server);
+@@ -714,7 +714,7 @@ static void nfs41_call_sync_prepare(struct rpc_task *task, void *calldata)
+ 
+ static void nfs41_call_sync_done(struct rpc_task *task, void *calldata)
+ {
+-	struct nfs41_call_sync_data *data = calldata;
++	struct nfs4_call_sync_data *data = calldata;
+ 
+ 	nfs41_sequence_done(task, data->seq_res);
+ }
+@@ -732,7 +732,7 @@ static int nfs4_call_sync_sequence(struct rpc_clnt *clnt,
+ {
+ 	int ret;
+ 	struct rpc_task *task;
+-	struct nfs41_call_sync_data data = {
++	struct nfs4_call_sync_data data = {
+ 		.seq_server = server,
+ 		.seq_args = args,
+ 		.seq_res = res,
 
