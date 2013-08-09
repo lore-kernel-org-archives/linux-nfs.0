@@ -1,146 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:12867 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755950Ab3HAOJu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Aug 2013 10:09:50 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: SP4_MACH_CRED
-Date: Thu, 1 Aug 2013 14:09:49 +0000
-Message-ID: <47D6EDEC-B91A-446F-A227-FDA9D37DB618@netapp.com>
-References: <A0A1021A-64E6-4E0C-89A5-9F719C8E1AFC@netapp.com>
- <20130731213904.GB2668@fieldses.org>
- <75E5568D-320C-45A1-B7E6-23CE73217BAF@netapp.com>
- <20130731234800.GC2668@fieldses.org>
- <0E0FF4CB-4388-417B-9D1C-24940472D844@netapp.com>
-In-Reply-To: <0E0FF4CB-4388-417B-9D1C-24940472D844@netapp.com>
-Content-Type: text/plain; charset="Windows-1252"
+Received: from mail-yh0-f43.google.com ([209.85.213.43]:44078 "EHLO
+	mail-yh0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S968214Ab3HIQvr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:51:47 -0400
+Received: by mail-yh0-f43.google.com with SMTP id z12so1521125yhz.16
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:51:46 -0700 (PDT)
+Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
+        by mx.google.com with ESMTPSA id i4sm20660855yhg.16.2013.08.09.09.51.45
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
+        Fri, 09 Aug 2013 09:51:46 -0700 (PDT)
+Subject: [PATCH v2 27/33] NFS: Add migration recovery callouts in nfs4proc.c
+To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Date: Fri, 09 Aug 2013 12:51:43 -0400
+Message-ID: <20130809165143.5362.64989.stgit@seurat.1015granger.net>
+In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+When a server returns NFS4ERR_MOVED, trigger the new migration
+recovery logic in the state manager.
 
-On Aug 1, 2013, at 10:03 AM, "Adamson, Dros" <Weston.Adamson@netapp.com>
- wrote:
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfs/nfs4proc.c |   28 ++++++++++++++++++++++++++--
+ 1 file changed, 26 insertions(+), 2 deletions(-)
 
-> 
-> On Jul 31, 2013, at 7:48 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> 
->> On Wed, Jul 31, 2013 at 10:22:22PM +0000, Adamson, Dros wrote:
->>> 
->>> On Jul 31, 2013, at 5:39 PM, "J. Bruce Fields" <bfields@fieldses.org>
->>> wrote:
->>> 
->>>> This should probably be cc'd to the mailing list.
->>> 
->>> Agreed!
->>> 
->>>> 
->>>> On Wed, Jul 31, 2013 at 09:25:29PM +0000, Adamson, Dros wrote:
->>>>> I have a pretty functional client-side SP4_MACH_CRED implementation
->>>>> and I'm trying to implement the server side so I can fully test the
->>>>> client code. I was testing against another server, but that didn't
->>>>> implement any useful set of operations other than the required ones.
->>>> 
->>>> The latest Linux server implements SP4_MACH_CRED but only for the
->>>> required operations.  (But that hasn't really been tested--any testing
->>>> even to make sure that basic stuff works would be welcomed.)
->>>> 
->>> 
->>> Right, I'm happy to report that the initial implementation of the required operations seems to work with (at least) one small patch I'll send your way soon.
->>> 
->>>>> I'm currently trying to figure out the best way to set nfsd's current cred to that of the user really doing the operation.
->>>>> 
->>>>> i.e.:
->>>>> 
->>>>> - WRITE, CLOSE, LOCKT, LOCKU are supported by SP4_MACH_CRED.
->>>> 
->>>> "are supported by" means they're included in the spo_must_allow list
->>>> returned by the server?
->>>> 
->>> 
->>> Yes, what I meant was "the client thinks it can use the machine cred for these ops".
->>> 
->>>>> - OPEN calls use the user cred
->>>>> - When cred expires, SP4_MACH_CRED kicks in and cached WRITE calls are sent out using the machine cred.
->>>>> - nfsd handles request with the machine cred as the current cred
->>>>> 
->>>>> Currently, these writes fail in nfsd_permission (after I made a few other
->>>>> changes) because the current cred (the machine cred of the client) maps to
->>>>> a UID that is not the owner of the file (even though the io was done as the
->>>>> user).
->>>>> 
->>>>> I think what we need is a way to look up the cred associated with the state owner of the current operation's stateid and use that as the current credential when the machine cred is in use.
->>>> 
->>>> Is there a rule that says a stateowner or stateid can only be used with
->>>> one credential?  If not, I'm not sure what you mean by "the cred
->>>> associated with the state owner of the current operation's stateid".
->>>> 
->>>> Maybe we could just pick "a cred" instead of "the cred"?  So stash the
->>>> last cred used with a given stateid in the stateid, and use that in this
->>>> case?
->>> 
->>> Yeah... I was a bit confused.  This sounds like a good approach. Thanks!
->>> 
->>>> 
->>>>> Does that make sense to you? Is there something like this already? If
->>>>> not, any pointers on what you'd like to see?
->>>> 
->>>> As a user I'd normally expect that once my credentials have expired, the
->>>> client will no longer be able to write to my files.
->>> 
->>> That's true with unbuffered writes, but what about buffered writes that are already considered written by the application?
->> 
->> Well, the server can't distinguish between these two, all it can do is
->> say that once you've allowed the client to open a file as you, it's
->> going to continue allowing the client to access the file without needing
->> your credentials.
->> 
-> 
-> Right! And using state protection here extends the trust to the client machine so it's not just allowing continued access without needing user credentials.
-
-s/user //
-
-> 
->>> The problem I'm trying to solve initially with SP4_MACH_CRED is when there are a bunch of buffered writes and the user's credentials expire. Any client side operations initiated after the credentials expire will fail (as expected), but operations that have already been seen as successful still need to be flushed.
->>> 
->>> Andy is addressing this in a different way by falling back to unbuffered writes and flushing all data right before a cred expires, but this method is better when available - and it's Trond requested.
->> 
->> I understand the problem it solves, but it is a bit of a change to the
->> security model and I just wonder what the right thing is to do by
->> default.
-> 
-> So you think the default behavior should be that buffered writes just hang around forever in the client's buffer cache when a user cred expires?  That seems really wrong to me.
-> 
-> If this isn't something you want, I'm not sure that we want any SP4_MACH_CRED support other than the required operations, which is kind of a moot point since we now use krb5i for state manager operations by default (whether in SP4_MACH_CRED or SP4_NONE).
-> 
-> The other case we are aiming for with the client is to be able to use the machine cred in recovery when the user's creds expire so that flushing of buffers can happen once recovery is complete. Of course, if you don't want to see the flushing changes, this is useless.
-> 
-> So… Is SP4_MACH_CRED support even worth the effort?
-> 
-> -dros
-> 
->> 
->> --b.
->> 
->>> 
->>>> 
->>>> This violates that assumption, so I wonder if it needs to be
->>>> configurable, and even off by default.
->>>> 
->>> 
->>> This will fix potential data corruption in a corner case of the way things currently work and doesn't change expected behavior from a user's perspective. 
->>> 
->>> -dros
->>> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 93eeac3..ae19cd5 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -381,6 +381,11 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
+ 		case -NFS4ERR_STALE_CLIENTID:
+ 			nfs4_schedule_lease_recovery(clp);
+ 			goto wait_on_recovery;
++		case -NFS4ERR_MOVED:
++			ret = nfs4_schedule_migration_recovery(server);
++			if (ret < 0)
++				break;
++			goto wait_on_recovery;
+ #if defined(CONFIG_NFS_V4_1)
+ 		case -NFS4ERR_BADSESSION:
+ 		case -NFS4ERR_BADSLOT:
+@@ -428,6 +433,8 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
+ 	return nfs4_map_errors(ret);
+ wait_on_recovery:
+ 	ret = nfs4_wait_clnt_recover(clp);
++	if (test_bit(NFS_MIG_FAILED, &server->mig_status))
++		return -EIO;
+ 	if (ret == 0)
+ 		exception->retry = 1;
+ 	return ret;
+@@ -2928,11 +2935,16 @@ static int nfs4_get_referral(struct rpc_clnt *client, struct inode *dir,
+ 	status = nfs4_proc_fs_locations(client, dir, name, locations, page);
+ 	if (status != 0)
+ 		goto out;
+-	/* Make sure server returned a different fsid for the referral */
++
++	/*
++	 * If the fsid didn't change, this is a migration event, not a
++	 * referral.  Cause us to drop into the exception handler, which
++	 * will kick off migration recovery.
++	 */
+ 	if (nfs_fsid_equal(&NFS_SERVER(dir)->fsid, &locations->fattr.fsid)) {
+ 		dprintk("%s: server did not return a different fsid for"
+ 			" a referral at %s\n", __func__, name->name);
+-		status = -EIO;
++		status = -NFS4ERR_MOVED;
+ 		goto out;
+ 	}
+ 	/* Fixup attributes for the nfs_lookup() call to nfs_fhget() */
+@@ -4664,6 +4676,16 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
+ 		case -NFS4ERR_STALE_CLIENTID:
+ 			nfs4_schedule_lease_recovery(clp);
+ 			goto wait_on_recovery;
++		case -NFS4ERR_MOVED:
++			if (state == NULL) {
++				pr_err("%s: no inode for migration recovery\n",
++					__func__);
++				WARN_ON(1);
++				goto recovery_failed;
++			}
++			if (nfs4_schedule_migration_recovery(server) < 0)
++				goto recovery_failed;
++			goto wait_on_recovery;
+ #if defined(CONFIG_NFS_V4_1)
+ 		case -NFS4ERR_BADSESSION:
+ 		case -NFS4ERR_BADSLOT:
+@@ -4694,6 +4716,8 @@ wait_on_recovery:
+ 	rpc_sleep_on(&clp->cl_rpcwaitq, task, NULL);
+ 	if (test_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) == 0)
+ 		rpc_wake_up_queued_task(&clp->cl_rpcwaitq, task);
++	if (test_bit(NFS_MIG_FAILED, &server->mig_status))
++		goto recovery_failed;
+ restart_call:
+ 	task->tk_status = 0;
+ 	return -EAGAIN;
 
