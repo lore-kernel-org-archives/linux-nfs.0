@@ -1,153 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:4678 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932361Ab3HNXZQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Aug 2013 19:25:16 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 08/13] NFSv4: Add tracepoints for debugging delegations
-Date: Wed, 14 Aug 2013 19:24:53 -0400
-Message-ID: <1376522698-44596-9-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1376522698-44596-8-git-send-email-Trond.Myklebust@netapp.com>
-References: <1376522698-44596-1-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-2-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-3-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-4-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-5-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-6-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-7-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-8-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-yh0-f54.google.com ([209.85.213.54]:56546 "EHLO
+	mail-yh0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S968210Ab3HIQuo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:50:44 -0400
+Received: by mail-yh0-f54.google.com with SMTP id f10so1506251yha.13
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:50:43 -0700 (PDT)
+Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
+        by mx.google.com with ESMTPSA id m63sm20689877yhb.10.2013.08.09.09.50.41
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
+        Fri, 09 Aug 2013 09:50:42 -0700 (PDT)
+Subject: [PATCH v2 20/33] NFS: Introduce a vector of migration recovery ops
+To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Date: Fri, 09 Aug 2013 12:50:41 -0400
+Message-ID: <20130809165041.5362.9024.stgit@seurat.1015granger.net>
+In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Set up tracepoints to track when delegations are set, reclaimed,
-returned by the client, or recalled by the server.
+The differences between minor version 0 and minor version 1
+migration will be abstracted by the addition of a set of migration
+recovery ops.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/callback_proc.c |  2 ++
- fs/nfs/delegation.c    |  3 +++
- fs/nfs/nfs4proc.c      |  1 +
- fs/nfs/nfs4trace.h     | 37 +++++++++++++++++++++++++++++++++++++
- 4 files changed, 43 insertions(+)
+ fs/nfs/nfs4_fs.h  |    4 ++++
+ fs/nfs/nfs4proc.c |   10 ++++++++++
+ 2 files changed, 14 insertions(+)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index e6ebc4c..c074930 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -15,6 +15,7 @@
- #include "internal.h"
- #include "pnfs.h"
- #include "nfs4session.h"
-+#include "nfs4trace.h"
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 75b2335..02af354 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -50,6 +50,7 @@ struct nfs4_minor_version_ops {
+ 	const struct nfs4_state_recovery_ops *reboot_recovery_ops;
+ 	const struct nfs4_state_recovery_ops *nograce_recovery_ops;
+ 	const struct nfs4_state_maintenance_ops *state_renewal_ops;
++	const struct nfs4_mig_recovery_ops *mig_recovery_ops;
+ };
  
- #ifdef NFS_DEBUG
- #define NFSDBG_FACILITY NFSDBG_CALLBACK
-@@ -93,6 +94,7 @@ __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
- 	default:
- 		res = htonl(NFS4ERR_RESOURCE);
- 	}
-+	trace_nfs4_recall_delegation(inode, -ntohl(res));
- 	iput(inode);
- out:
- 	dprintk("%s: exit with status = %d\n", __func__, ntohl(res));
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 7ec4814..ef792f2 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -20,6 +20,7 @@
- #include "nfs4_fs.h"
- #include "delegation.h"
- #include "internal.h"
-+#include "nfs4trace.h"
+ #define NFS_SEQID_CONFIRMED 1
+@@ -202,6 +203,9 @@ struct nfs4_state_maintenance_ops {
+ 	int (*renew_lease)(struct nfs_client *, struct rpc_cred *);
+ };
  
- static void nfs_free_delegation(struct nfs_delegation *delegation)
- {
-@@ -160,6 +161,7 @@ void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred,
- 			spin_unlock(&delegation->lock);
- 			put_rpccred(oldcred);
- 			rcu_read_unlock();
-+			trace_nfs4_reclaim_delegation(inode, res->delegation_type);
- 		} else {
- 			/* We appear to have raced with a delegation return. */
- 			spin_unlock(&delegation->lock);
-@@ -344,6 +346,7 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
- 	spin_lock(&inode->i_lock);
- 	nfsi->cache_validity |= NFS_INO_REVAL_FORCED;
- 	spin_unlock(&inode->i_lock);
-+	trace_nfs4_set_delegation(inode, res->delegation_type);
++struct nfs4_mig_recovery_ops {
++};
++
+ extern const struct dentry_operations nfs4_dentry_operations;
  
- out:
- 	spin_unlock(&clp->cl_lock);
+ /* dir.c */
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1b39139..7f6c801 100644
+index 5640dc0..513de09 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -4909,6 +4909,7 @@ int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4
- 	int err;
- 	do {
- 		err = _nfs4_proc_delegreturn(inode, cred, stateid, issync);
-+		trace_nfs4_delegreturn(inode, err);
- 		switch (err) {
- 			case -NFS4ERR_STALE_STATEID:
- 			case -NFS4ERR_EXPIRED:
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index d707366..c4d9e70 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -391,6 +391,41 @@ DEFINE_NFS4_LOCK_EVENT(nfs4_lock_reclaim);
- DEFINE_NFS4_LOCK_EVENT(nfs4_lock_expired);
- DEFINE_NFS4_LOCK_EVENT(nfs4_unlock);
+@@ -7501,6 +7501,14 @@ static const struct nfs4_state_maintenance_ops nfs41_state_renewal_ops = {
+ };
+ #endif
  
-+DECLARE_EVENT_CLASS(nfs4_set_delegation_event,
-+		TP_PROTO(const struct inode *inode,
-+			fmode_t fmode),
++static const struct nfs4_mig_recovery_ops nfs40_mig_recovery_ops = {
++};
 +
-+		TP_ARGS(inode, fmode),
++#if defined(CONFIG_NFS_V4_1)
++static const struct nfs4_mig_recovery_ops nfs41_mig_recovery_ops = {
++};
++#endif	/* CONFIG_NFS_V4_1 */
 +
-+		TP_STRUCT__entry(
-+			__field(dev_t, dev)
-+			__field(u32, fhandle)
-+			__field(u64, fileid)
-+			__field(fmode_t, fmode)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->dev = inode->i_sb->s_dev;
-+			__entry->fileid = NFS_FILEID(inode);
-+			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
-+			__entry->fmode = fmode;
-+		),
-+
-+		TP_printk("mode=%s fileid=%02x:%02x:%lld, fhandle=%0x08x",
-+			show_fmode_flags(__entry->fmode),
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->fileid,
-+			__entry->fhandle
-+		)
-+);
-+#define DEFINE_NFS4_SET_DELEGATION_EVENT(name)		\
-+DEFINE_EVENT(nfs4_set_delegation_event, name,		\
-+		TP_PROTO(const struct inode *inode,	\
-+			fmode_t fmode),			\
-+		TP_ARGS(inode, fmode))
-+DEFINE_NFS4_SET_DELEGATION_EVENT(nfs4_set_delegation);
-+DEFINE_NFS4_SET_DELEGATION_EVENT(nfs4_reclaim_delegation);
-+
- DECLARE_EVENT_CLASS(nfs4_lookup_event,
- 		TP_PROTO(const struct inode *dir,
- 			const struct qstr *name,
-@@ -532,6 +567,8 @@ DEFINE_NFS4_INODE_EVENT(nfs4_set_acl);
- DEFINE_NFS4_INODE_EVENT(nfs4_get_security_label);
- DEFINE_NFS4_INODE_EVENT(nfs4_set_security_label);
- #endif /* CONFIG_NFS_V4_SECURITY_LABEL */
-+DEFINE_NFS4_INODE_EVENT(nfs4_recall_delegation);
-+DEFINE_NFS4_INODE_EVENT(nfs4_delegreturn);
+ static const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
+ 	.minor_version = 0,
+ 	.init_caps = NFS_CAP_READDIRPLUS
+@@ -7516,6 +7524,7 @@ static const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
+ 	.reboot_recovery_ops = &nfs40_reboot_recovery_ops,
+ 	.nograce_recovery_ops = &nfs40_nograce_recovery_ops,
+ 	.state_renewal_ops = &nfs40_state_renewal_ops,
++	.mig_recovery_ops = &nfs40_mig_recovery_ops,
+ };
  
- #endif /* _TRACE_NFS4_H */
+ #if defined(CONFIG_NFS_V4_1)
+@@ -7536,6 +7545,7 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
+ 	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
+ 	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
+ 	.state_renewal_ops = &nfs41_state_renewal_ops,
++	.mig_recovery_ops = &nfs41_mig_recovery_ops,
+ };
+ #endif
  
--- 
-1.8.3.1
 
