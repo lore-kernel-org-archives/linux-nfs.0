@@ -1,100 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.gmx.net ([212.227.17.20]:51517 "EHLO mout.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756142Ab3H3OKq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Aug 2013 10:10:46 -0400
-Received: from [80.171.176.210] ([80.171.176.210]) by mail.gmx.com (mrgmx002)
- with ESMTPSA (Nemesis) id 0M2ts6-1W7mNh2I6Q-00sb8f for
- <linux-nfs@vger.kernel.org>; Fri, 30 Aug 2013 16:10:44 +0200
-Message-ID: <5220A7E2.1070704@gmx.de>
-Date: Fri, 30 Aug 2013 16:10:42 +0200
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+Received: from mail-gh0-f178.google.com ([209.85.160.178]:34158 "EHLO
+	mail-gh0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S968210Ab3HIQvK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:51:10 -0400
+Received: by mail-gh0-f178.google.com with SMTP id g15so1280841ghb.37
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:51:10 -0700 (PDT)
+Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
+        by mx.google.com with ESMTPSA id f67sm20691811yhh.9.2013.08.09.09.51.08
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
+        Fri, 09 Aug 2013 09:51:09 -0700 (PDT)
+Subject: [PATCH v2 23/33] NFS: Add a super_block backpointer to the
+ nfs_server struct
+To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Date: Fri, 09 Aug 2013 12:51:07 -0400
+Message-ID: <20130809165107.5362.68985.stgit@seurat.1015granger.net>
+In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: richard -rw- weinberger <richard.weinberger@gmail.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "user-mode-linux-devel@lists.sourceforge.net"
-	<user-mode-linux-devel@lists.sourceforge.net>,
-        Linux Kernel <linux-kernel@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-        linux-ext4@vger.kernel.org
-Subject: Re: [uml-devel] Issues with a rather unusual configured NFS server
-References: <52075E01.7030506@gmx.de> <20130812143640.GF4596@quack.suse.cz> <20130813215313.GH17781@fieldses.org> <20130827180655.GE14809@fieldses.org> <521E318C.7040401@gmx.de> <CAFLxGvyK5+nB9TgW1uPho9KGwQrWQHx=wEpj+o-mZcN92bWAOg@mail.gmail.com> <20130829133010.GA14773@fieldses.org>
-In-Reply-To: <20130829133010.GA14773@fieldses.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/29/2013 03:30 PM, J. Bruce Fields wrote:
-> On Thu, Aug 29, 2013 at 11:57:45AM +0200, richard -rw- weinberger wrote:
->> On Wed, Aug 28, 2013 at 7:21 PM, Toralf Förster <toralf.foerster@gmx.de> wrote:
->>> On 08/27/2013 08:06 PM, J. Bruce Fields wrote:
->>>> On Tue, Aug 13, 2013 at 05:53:14PM -0400, bfields wrote:
->>>>> On Mon, Aug 12, 2013 at 04:36:40PM +0200, Jan Kara wrote:
->>>>>> On Sun 11-08-13 11:48:49, Toralf Förster wrote:
->>>>>>> so that the server either crashes (if it is a user mode linux image) or at least its reboot functionality got broken
->>>>>>> - if the NFS server is hammered with scary NFS calls using a fuzzy tool running at a remote NFS client under a non-privileged user id.
->>>>>>>
->>>>>>> It can re reproduced, if
->>>>>>>    - the NFS share is an EXT3 or EXT4 directory
->>>>>>>    - and it is created at file located at tempfs and mounted via loop device
->>>>>>>    - and the NFS server is forced to umount the NFS share
->>>>>>>    - and the server forced to restart the NSF service afterwards
->>>>>>>    - and trinity is used
->>>>>>>
->>>>>>> I could find a scenario for an automated bisect. 2 times it brought this commit
->>>>>>> commit 68a3396178e6688ad7367202cdf0af8ed03c8727
->>>>>>> Author: J. Bruce Fields <bfields@redhat.com>
->>>>>>> Date:   Thu Mar 21 11:21:50 2013 -0400
->>>>>>>
->>>>>>>     nfsd4: shut down more of delegation earlier
->>>>>
->>>>> Thanks for the report.  I think I see the problem--after this commit
->>>>> nfs4_set_delegation() failures result in nfs4_put_delegation being
->>>>> called, but nfs4_put_delegation doesn't free the nfs4_file that has
->>>>> already been set by alloc_init_deleg().
->>>>>
->>>>> Let me think about how to fix that....
->>>>
->>>> Sorry for the slow response--can you check whether this fixes the
->>>> problem?
->>>>
->>> Yes.
->>>
->>> With the attached patch the problem can't be reproduced any longer with
->>> the prepared test case and current git kernels.
->>
->> BTW: Is nobody else fuzz testing NFS?
-> 
-> I don't know.  Toralf's reports are the only ones I recall off the top
-> of my head, but I may have forgotten others.
-> 
+NFS_SB() returns the pointer to an nfs_server struct, given a
+pointer to a super_block.  But we have no way to go back the other
+way.
 
-well, 7255e71 and 3c50ba8 I'd say.
+Add a super_block backpointer field so that, given an nfs_server
+struct, it is easy to get to the filesystem's root dentry.
 
->> Or are these bugs just more likely to hit on UML?
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfs/super.c            |    1 +
+ include/linux/nfs_fs_sb.h |    1 +
+ 2 files changed, 2 insertions(+)
 
-This definitely not. I observed at a real system EXT4 corruptions/
-issues but reported them to the EXT4 mailing list.
-It just took me a longer time to figure out a reliable configuration
-with 2 UML machiens to automatic bisect it.
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 71fdc0d..f530ee5 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2494,6 +2494,7 @@ struct dentry *nfs_fs_mount_common(struct nfs_server *server,
+ 			mntroot = ERR_PTR(error);
+ 			goto error_splat_bdi;
+ 		}
++		server->super = s;
+ 	}
+ 
+ 	if (!s->s_root) {
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index fc83d3d..8064980 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -137,6 +137,7 @@ struct nfs_server {
+ 	__u64			maxfilesize;	/* maximum file size */
+ 	struct timespec		time_delta;	/* smallest time granularity */
+ 	unsigned long		mount_time;	/* when this fs was mounted */
++	struct super_block	*super;		/* VFS super block */
+ 	dev_t			s_dev;		/* superblock dev numbers */
+ 
+ #ifdef CONFIG_NFS_FSCACHE
 
-
-> That's also possible.
-> 
->> This is not the first NFS issue found by Toralf using UML and Trinity.
-> 
-> Yep.  The testing is definitely appreciated.
-
-Thx - in the mean while although my UML bisect scripts are working fine
-and trinity is stable enough even in UML environments to be trust worth.
-
-> 
-> --b.
-> 
-
-
--- 
-MfG/Sincerely
-Toralf Förster
-pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
