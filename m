@@ -1,42 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:21769 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753905Ab3HFVJb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Aug 2013 17:09:31 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/5] nfs4.1: Initial SP4_MACH_CRED implementation
-Date: Tue, 6 Aug 2013 17:08:26 -0400
-Message-ID: <1375823311-18457-1-git-send-email-dros@netapp.com>
+Received: from mail-gh0-f178.google.com ([209.85.160.178]:48607 "EHLO
+	mail-gh0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S968171Ab3HIQtE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:49:04 -0400
+Received: by mail-gh0-f178.google.com with SMTP id g15so1280269ghb.37
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:49:03 -0700 (PDT)
+Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
+        by mx.google.com with ESMTPSA id a42sm18474634yhb.19.2013.08.09.09.49.03
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
+        Fri, 09 Aug 2013 09:49:03 -0700 (PDT)
+Subject: [PATCH v2 09/33] NFS: Add global helper for releasing slot table
+ resources
+To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Date: Fri, 09 Aug 2013 12:49:02 -0400
+Message-ID: <20130809164902.5362.75813.stgit@seurat.1015granger.net>
+In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These patches are the initial client-side SP4_MACH_CRED implementation.
+The nfs4_destroy_slot_tables() function is renamed to avoid
+confusion with the new helper.
 
-Patch 1 is a repost with a few cleanups
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfs/nfs4session.c |   21 +++++++++++++++------
+ fs/nfs/nfs4session.h |    1 +
+ 2 files changed, 16 insertions(+), 6 deletions(-)
 
-Patch 2 adds the sp4 handler that replaces the cred on an rpc message (and
-picks the right rpc_clnt).  Note that for now, we always use the machine cred
-if supported - we could only use it if the user cred expires, but this is
-simple and spec compliant.
-
-Patch 3-5 implement SP4_MACH_CRED "features":
-  - cleanup - CLOSE and LOCKU use machine cred
-  - secinfo - SECINFO and SECINFO_NO_NAME use machine cred
-  - stateid - TEST_STATEID and FREE_STATEID use machine cred
-
-There are three more features that I've been working on, but need to be tested
-before I post:
-  - commit - COMMIT uses machine cred
-  - write - WRITE uses machine cred, forces stable writes unless commit feature
-            is also enabled
-  - recovery - OPEN and LOCK can use machine cred - only in recovery.
-
-The commit and write cases should be easy to test against a hacked nfsd, but
-I need to think more about how to test the recovery stuff...
-
--dros
+diff --git a/fs/nfs/nfs4session.c b/fs/nfs/nfs4session.c
+index be273c5..e0bf666 100644
+--- a/fs/nfs/nfs4session.c
++++ b/fs/nfs/nfs4session.c
+@@ -232,6 +232,16 @@ out:
+ }
+ 
+ /**
++ * nfs4_release_slot_table - release resources attached to a slot table
++ * @tbl: slot table to shut down
++ *
++ */
++void nfs4_release_slot_table(struct nfs4_slot_table *tbl)
++{
++	nfs4_shrink_slot_table(tbl, 0);
++}
++
++/**
+  * nfs4_setup_slot_table - prepare a stand-alone slot table for use
+  * @tbl: slot table to set up
+  * @max_reqs: maximum number of requests allowed
+@@ -412,11 +422,10 @@ void nfs41_update_target_slotid(struct nfs4_slot_table *tbl,
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ 
+-/* Destroy the slot table */
+-static void nfs4_destroy_slot_tables(struct nfs4_session *session)
++static void nfs4_destroy_session_slot_tables(struct nfs4_session *session)
+ {
+-	nfs4_shrink_slot_table(&session->fc_slot_table, 0);
+-	nfs4_shrink_slot_table(&session->bc_slot_table, 0);
++	nfs4_release_slot_table(&session->fc_slot_table);
++	nfs4_release_slot_table(&session->bc_slot_table);
+ }
+ 
+ /*
+@@ -441,7 +450,7 @@ int nfs4_setup_session_slot_tables(struct nfs4_session *ses)
+ 	if (status && tbl->slots == NULL)
+ 		/* Fore and back channel share a connection so get
+ 		 * both slot tables or neither */
+-		nfs4_destroy_slot_tables(ses);
++		nfs4_destroy_session_slot_tables(ses);
+ 	return status;
+ }
+ 
+@@ -477,7 +486,7 @@ void nfs4_destroy_session(struct nfs4_session *session)
+ 	dprintk("%s Destroy backchannel for xprt %p\n",
+ 		__func__, xprt);
+ 	xprt_destroy_backchannel(xprt, NFS41_BC_MIN_CALLBACKS);
+-	nfs4_destroy_slot_tables(session);
++	nfs4_destroy_session_slot_tables(session);
+ 	kfree(session);
+ }
+ 
+diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
+index 7781838..92c27f4 100644
+--- a/fs/nfs/nfs4session.h
++++ b/fs/nfs/nfs4session.h
+@@ -74,6 +74,7 @@ enum nfs4_session_state {
+ 
+ extern int nfs4_setup_slot_table(struct nfs4_slot_table *tbl,
+ 		unsigned int max_reqs, const char *queue);
++extern void nfs4_release_slot_table(struct nfs4_slot_table *tbl);
+ extern struct nfs4_slot *nfs4_alloc_slot(struct nfs4_slot_table *tbl);
+ extern void nfs4_free_slot(struct nfs4_slot_table *tbl, struct nfs4_slot *slot);
+ extern void nfs4_slot_tbl_drain_complete(struct nfs4_slot_table *tbl);
 
