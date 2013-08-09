@@ -1,85 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:29799 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756354Ab3H3OZT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Aug 2013 10:25:19 -0400
-Date: Fri, 30 Aug 2013 10:25:03 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Toralf =?iso-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        richard -rw- weinberger <richard.weinberger@gmail.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        "user-mode-linux-devel@lists.sourceforge.net"
-	<user-mode-linux-devel@lists.sourceforge.net>,
-        Linux Kernel <linux-kernel@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-        linux-ext4@vger.kernel.org
-Subject: Re: [uml-devel] Issues with a rather unusual configured NFS server
-Message-ID: <20130830142503.GA31129@pad.fieldses.org>
-References: <52075E01.7030506@gmx.de>
- <20130812143640.GF4596@quack.suse.cz>
- <20130813215313.GH17781@fieldses.org>
- <20130827180655.GE14809@fieldses.org>
- <521E318C.7040401@gmx.de>
- <CAFLxGvyK5+nB9TgW1uPho9KGwQrWQHx=wEpj+o-mZcN92bWAOg@mail.gmail.com>
- <20130829133010.GA14773@fieldses.org>
- <5220A7E2.1070704@gmx.de>
+Received: from smtp.xtronics.com ([139.146.185.26]:59527 "EHLO
+	smtp.xtronics.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1031057Ab3HIUow (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 16:44:52 -0400
+Message-ID: <520554A5.3060401@xtronics.com>
+Date: Fri, 09 Aug 2013 15:44:21 -0500
+From: Karl Schmidt <karl@xtronics.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <5220A7E2.1070704@gmx.de>
+To: Ben Hutchings <ben@decadent.org.uk>
+CC: jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org,
+        714974@bugs.debian.org, Jonathan McDowell <noodles@earth.li>
+Subject: Re: NFS 'readdir loop' error on JFS
+References: <1373245980.3428.46.camel@deadeye.wl.decadent.org.uk>
+In-Reply-To: <1373245980.3428.46.camel@deadeye.wl.decadent.org.uk>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 30, 2013 at 04:10:42PM +0200, Toralf Förster wrote:
-> On 08/29/2013 03:30 PM, J. Bruce Fields wrote:
-> > On Thu, Aug 29, 2013 at 11:57:45AM +0200, richard -rw- weinberger wrote:
-> >> On Wed, Aug 28, 2013 at 7:21 PM, Toralf Förster <toralf.foerster@gmx.de> wrote:
-> >>> On 08/27/2013 08:06 PM, J. Bruce Fields wrote:
-> >>>> On Tue, Aug 13, 2013 at 05:53:14PM -0400, bfields wrote:
-> >>>>> On Mon, Aug 12, 2013 at 04:36:40PM +0200, Jan Kara wrote:
-> >>>>>> On Sun 11-08-13 11:48:49, Toralf Förster wrote:
-> >>>>>>> so that the server either crashes (if it is a user mode linux image) or at least its reboot functionality got broken
-> >>>>>>> - if the NFS server is hammered with scary NFS calls using a fuzzy tool running at a remote NFS client under a non-privileged user id.
-> >>>>>>>
-> >>>>>>> It can re reproduced, if
-> >>>>>>>    - the NFS share is an EXT3 or EXT4 directory
-> >>>>>>>    - and it is created at file located at tempfs and mounted via loop device
-> >>>>>>>    - and the NFS server is forced to umount the NFS share
-> >>>>>>>    - and the server forced to restart the NSF service afterwards
-> >>>>>>>    - and trinity is used
-> >>>>>>>
-> >>>>>>> I could find a scenario for an automated bisect. 2 times it brought this commit
-> >>>>>>> commit 68a3396178e6688ad7367202cdf0af8ed03c8727
-> >>>>>>> Author: J. Bruce Fields <bfields@redhat.com>
-> >>>>>>> Date:   Thu Mar 21 11:21:50 2013 -0400
-> >>>>>>>
-> >>>>>>>     nfsd4: shut down more of delegation earlier
-> >>>>>
-> >>>>> Thanks for the report.  I think I see the problem--after this commit
-> >>>>> nfs4_set_delegation() failures result in nfs4_put_delegation being
-> >>>>> called, but nfs4_put_delegation doesn't free the nfs4_file that has
-> >>>>> already been set by alloc_init_deleg().
-> >>>>>
-> >>>>> Let me think about how to fix that....
-> >>>>
-> >>>> Sorry for the slow response--can you check whether this fixes the
-> >>>> problem?
-> >>>>
-> >>> Yes.
-> >>>
-> >>> With the attached patch the problem can't be reproduced any longer with
-> >>> the prepared test case and current git kernels.
-> >>
-> >> BTW: Is nobody else fuzz testing NFS?
-> > 
-> > I don't know.  Toralf's reports are the only ones I recall off the top
-> > of my head, but I may have forgotten others.
-> > 
-> 
-> well, 7255e71 and 3c50ba8 I'd say.
+This problem is still alive - took a while for it to show up again:
 
-I don't know any 3c50ba8.  0c7c3e67 "nfsd4: don't close read-write opens
-too soon" and 64a817cf "nfsd4: reject "negative" acl lengths" are two
-other serious bugs found by your testing.  I don't recall fuzz testing
-results from anyone else, but as I say I may have forgotten.
+(From the client - but speaks of the server )
 
---b.
+Aug  9 14:32:20 singapore kernel: [497500.291867] NFS: directory timeless/JFK-prep contains a 
+readdir loop.Please contact your server vendor.  The file: 234t.jpg has duplicate cookie 18
+Aug  9 14:32:20 singapore kernel: [497500.291930] NFS: directory timeless/JFK-prep contains a 
+readdir loop.Please contact your server vendor.  The file: 234t.jpg has duplicate cookie 18
+Aug  9 14:32:20 singapore kernel: [497500.346824] NFS: directory pictures/wells_index contains a 
+readdir loop.Please contact your server vendor.  The file: img_1260.jpgQâ–’J@Kï¿½ï¿½ï¿½jï¿½^ has duplicate 
+cookie 24
+Aug  9 14:32:20 singapore kernel: [497500.346884] NFS: directory pictures/wells_index contains a 
+readdir loop.Please contact your server vendor.  The file: img_1260.jpgQâ–’J@Kï¿½ï¿½ï¿½jï¿½^ has duplicate 
+cookie 24
+
+
+This is a wheezy production server - I can run tests, provide information, but I'm about to purchase 
+some spare drives and move the server to ext4 to protect the data. So if anyone wants information, 
+now is the time to ask.
+
+I will reboot this system in a few hours - waiting for your response.
+
+( this problem took 25 days to reappear - so you might want to get some information ).
+
+I'm an aging assembly programmer - I can do most things from the shell in Debian - I once did a 
+little C programming - but digging into this code is beyond me.  On the other had, I am able and 
+willing to supply what every I can to help.
+
+Server has:
+# uname -a
+Linux malaysia 3.2.0-4-amd64 #1 SMP Debian 3.2.46-1 x86_64 GNU/Linux
+# wajig list nfs
+ii  libnfsidmap2:amd64                    0.25-4                             amd64        NFS 
+idmapping library
+ii  nfs-common                            1:1.2.6-4                          amd64        NFS 
+support files common to client and server
+ii  nfs-kernel-server                     1:1.2.6-4                          amd64        support 
+for NFS kernel server
+
+Export with loop:
+/home/content           192.168.1.0/22(rw,sync,no_root_squash)
+
+-
+
+
+Client has:
+# uname -a
+Linux singapore 3.2.0-4-amd64 #1 SMP Debian 3.2.46-1 x86_64 GNU/Linux
+
+
+# wajig list nfs
+ii  libnfsidmap2:amd64                     0.25-4                             amd64        NFS 
+idmapping library
+ii  nfs-common                             1:1.2.6-4                          amd64        NFS 
+support files common to client and server
+
+fstab mount with loop:
+malaysia:/home/content       /mnt/content    nfs     defaults,rsize=8192,wsize=8192,intr 0 0
+
+
+
+
+
+--------------------------------------------------------------------------------
+Karl Schmidt                                  EMail Karl@xtronics.com
+Transtronics, Inc.                              WEB http://secure.transtronics.com
+3209 West 9th Street                             Ph (785) 841-3089
+Lawrence, KS 66049                              FAX (785) 841-0434
+
+Wrapping people up in the symbols of success when they are unearned, is very destructive. kps
+
+--------------------------------------------------------------------------------
