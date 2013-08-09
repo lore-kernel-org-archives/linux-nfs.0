@@ -1,57 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from p3plsmtpa11-05.prod.phx3.secureserver.net ([68.178.252.106]:40880
-	"EHLO p3plsmtpa11-05.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751641Ab3HZNWw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Aug 2013 09:22:52 -0400
-Message-ID: <521B56A9.9090003@talpey.com>
-Date: Mon, 26 Aug 2013 09:22:49 -0400
-From: Tom Talpey <tom@talpey.com>
+Received: from mail-gh0-f178.google.com ([209.85.160.178]:34495 "EHLO
+	mail-gh0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933856Ab3HIQzz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:55:55 -0400
+Received: by mail-gh0-f178.google.com with SMTP id g15so1278581ghb.23
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:55:55 -0700 (PDT)
+Subject: [PATCH v2 16/33] SUNRPC: Modify synopsis of rpc_client_register()
+To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Date: Fri, 09 Aug 2013 12:50:05 -0400
+Message-ID: <20130809165005.5362.34943.stgit@seurat.1015granger.net>
+In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-To: Wendy Cheng <s.wendy.cheng@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>
-Subject: Re: Helps to Decode rpc_debug Output
-References: <CABgxfbGFHv2n5=78_irkxXnX9BFDFPzZvqgs_iDn64AR_3cf5w@mail.gmail.com> <520CCDBB.1020501@talpey.com> <CABgxfbFixDTUy4e1EQty86dvNeisG7+hd2QdVSQvv4T2tokFoQ@mail.gmail.com> <CABgxfbH3uA2WzQ2DgOgRrCMhcJ1J6E2NCh13FtDfRzDWje9vWQ@mail.gmail.com>
-In-Reply-To: <CABgxfbH3uA2WzQ2DgOgRrCMhcJ1J6E2NCh13FtDfRzDWje9vWQ@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 8/21/2013 11:55 AM, Wendy Cheng wrote:
-> On Thu, Aug 15, 2013 at 11:08 AM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
->> On Thu, Aug 15, 2013 at 5:46 AM, Tom Talpey <tom@talpey.com> wrote:
->>> On 8/14/2013 8:14 PM, Wendy Cheng wrote:
->>>>
->>>> Longer version of the question:
->>>> I'm trying to enable NFS-RDMA on an embedded system (based on 2.6.38
->>>> kernel) as a client. The IB stacks are taken from OFED 1.5.4. NFS
->>>> server is a RHEL 6.3 Xeon box. The connection uses mellox-4 driver.
->>>> Memory registration is "RPCRDMA_ALLPHYSICAL". There are many issues so
->>>> far but I do manage to get nfs mount working. Simple file operations
->>>> (such as "ls", file read/write, "scp", etc) seem to work as well.
->>>
->
-> Yay ... got this up .. amazingly on a uOS that does not have much of
-> the conventional kernel debug facilities.
+The rpc_client_register() helper was added in commit e73f4cc0,
+"SUNRPC: split client creation routine into setup and registration,"
+Mon Jun 24 11:52:52 2013.
 
-Congrats!
+I'd like to invoke rpc_client_register() from a context where a
+struct rpc_create_args is not available.  There appear to be only
+two fields of interest in struct rpc_create_args: .program and
+.authflavor .
 
-> One thing I'm still scratching my head is that ... by looking at the
-> raw IOPS, I don't see dramatic difference between NFS-RDMA vs. NFS
-> over IPOIB (TCP).
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ net/sunrpc/clnt.c |   12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-Sounds like your bottleneck lies in some other component. What's the
-storage, for example? RDMA won't do a thing to improve a slow disk.
-Or, what kind of IOPS rate are you seeing? If these systems aren't
-generating enough load to push a CPU limit, then shifting the protocol
-on the same link might not yield much.
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 74f6a70..f9e3926 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -279,10 +279,10 @@ static void rpc_clnt_set_nodename(struct rpc_clnt *clnt, const char *nodename)
+ 	memcpy(clnt->cl_nodename, nodename, clnt->cl_nodelen);
+ }
+ 
+-static int rpc_client_register(const struct rpc_create_args *args,
+-			       struct rpc_clnt *clnt)
++static int rpc_client_register(struct rpc_clnt *clnt,
++			       rpc_authflavor_t pseudoflavor)
+ {
+-	const struct rpc_program *program = args->program;
++	const struct rpc_program *program = clnt->cl_program;
+ 	struct rpc_auth *auth;
+ 	struct net *net = rpc_net_ns(clnt);
+ 	struct super_block *pipefs_sb;
+@@ -299,10 +299,10 @@ static int rpc_client_register(const struct rpc_create_args *args,
+ 	if (pipefs_sb)
+ 		rpc_put_sb_net(net);
+ 
+-	auth = rpcauth_create(args->authflavor, clnt);
++	auth = rpcauth_create(pseudoflavor, clnt);
+ 	if (IS_ERR(auth)) {
+ 		dprintk("RPC:       Couldn't create auth handle (flavor %u)\n",
+-				args->authflavor);
++				pseudoflavor);
+ 		err = PTR_ERR(auth);
+ 		goto err_auth;
+ 	}
+@@ -384,7 +384,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 	/* save the nodename */
+ 	rpc_clnt_set_nodename(clnt, utsname()->nodename);
+ 
+-	err = rpc_client_register(args, clnt);
++	err = rpc_client_register(clnt, args->authflavor);
+ 	if (err)
+ 		goto out_no_path;
+ 	return clnt;
 
-> However, the total run time differs greatly. NFS
-> over RDMA seems to take a much longer time to finish (vs. NFS over
-> IPOIB). Not sure why is that .... Maybe by the constant
-> connect/disconnect triggered by reestablish_timeout ? The connection
-> re-establish is known to be expensive on this uOS.
-
-Um, yes, of course. Fix that before drawing any conclusions.
-
-Tom.
