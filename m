@@ -1,99 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43488 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758186Ab3HMTUb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Aug 2013 15:20:31 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r7DJKVMj000819
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Aug 2013 15:20:31 -0400
-Received: from tonberry.usersys.redhat.com (dhcp145-64.rdu.redhat.com [10.13.145.64])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r7DJKVAH017259
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Aug 2013 15:20:31 -0400
-Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
-	by tonberry.usersys.redhat.com (8.14.5/8.14.5) with ESMTP id r7DJKUA3021428
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Aug 2013 15:20:30 -0400
-Received: (from smayhew@localhost)
-	by tonberry.usersys.redhat.com (8.14.5/8.14.5/Submit) id r7DJKUst021427
-	for linux-nfs@vger.kernel.org; Tue, 13 Aug 2013 15:20:30 -0400
-From: Scott Mayhew <smayhew@redhat.com>
+Received: from mail-ye0-f181.google.com ([209.85.213.181]:54624 "EHLO
+	mail-ye0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S968214Ab3HIQvh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:51:37 -0400
+Received: by mail-ye0-f181.google.com with SMTP id q2so1315525yen.12
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:51:36 -0700 (PDT)
+Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
+        by mx.google.com with ESMTPSA id f67sm20693750yhh.9.2013.08.09.09.51.35
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
+        Fri, 09 Aug 2013 09:51:36 -0700 (PDT)
+Subject: [PATCH v2 26/33] NFS: Rename "stateid_invalid" label
 To: linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH 2/4] mount.nfs: avoid sending conflicting mount options
-Date: Tue, 13 Aug 2013 15:20:27 -0400
-Message-Id: <1376421629-21382-3-git-send-email-smayhew@redhat.com>
-In-Reply-To: <1376421629-21382-1-git-send-email-smayhew@redhat.com>
-References: <1376421629-21382-1-git-send-email-smayhew@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Date: Fri, 09 Aug 2013 12:51:34 -0400
+Message-ID: <20130809165134.5362.92998.stgit@seurat.1015granger.net>
+In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-conf_parse_mntopts() calls lookup_entry() in an attempt to avoid
-"overwriting" of mount options (actually it tries to avoid appending
-conflicting options to the string passed to mount(2)).  Currently this doesn't
-do much of anything.  For example, if you have Timeo=600 in the global
-section, Timeo=300 in the server-specific section, and Timeo=150 in the
-mountpoint-specific section, then the string that is passed to the mount
-syscall will contain "timeo=600,timeo=300,timeo=150".
+I'm going to use this exit label also for migration recovery
+failures.
 
-Note that the ordering of the conflicting options ensures that the
-correct option will ultimately be applied, but we should still avoid sending
-the conflicting options in the first place if possible.
-
-This patch fixes all but the MNT_NOARG type options (fg, bg, and sloppy).
-
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- utils/mount/configfile.c | 24 +++++++++++++++++++-----
- 1 file changed, 19 insertions(+), 5 deletions(-)
+ fs/nfs/nfs4proc.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
-index 1f1b6e7..221436f 100644
---- a/utils/mount/configfile.c
-+++ b/utils/mount/configfile.c
-@@ -170,10 +170,16 @@ char *lookup_entry(char *opt)
- {
- 	struct entry *entry;
- 
--	SLIST_FOREACH(entry, &head, entries) {
--		if (strcasecmp(entry->opt, opt) == 0)
--			return opt;
--	}
-+	if (strlen(opt) > 0 && opt[strlen(opt) - 1] == '=')
-+		SLIST_FOREACH(entry, &head, entries) {
-+			if (strncasecmp(entry->opt, opt, strlen(opt)) == 0)
-+				return opt;
-+		}
-+	else
-+		SLIST_FOREACH(entry, &head, entries) {
-+			if (strcasecmp(entry->opt, opt) == 0)
-+				return opt;
-+		}
- 	return NULL;
- }
- /*
-@@ -300,13 +306,21 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
- 		if (opts && check_vers(opts, node->field))
- 			continue;
- 
--		if (lookup_entry(node->field) != NULL)
-+		if (lookup_entry(buf) != NULL)
- 			continue;
- 		buf[0] = '\0';
- 		value = conf_get_section(section, arg, node->field);
- 		if (value == NULL)
- 			continue;
- 		field = mountopts_alias(node->field, &argtype);
-+		if (lookup_entry(field) != NULL)
-+			continue;
-+		if (argtype != MNT_NOARG) {
-+			snprintf(buf, BUFSIZ, "no%s", field);
-+			if (lookup_entry(buf) != NULL)
-+				continue;
-+			buf[0] = '\0';
-+		}
- 		if (strcasecmp(value, "false") == 0) {
- 			if (argtype != MNT_NOARG)
- 				snprintf(buf, BUFSIZ, "no%s", field);
--- 
-1.7.11.7
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 4cc5181..93eeac3 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4653,12 +4653,12 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
+ 			if (state == NULL)
+ 				break;
+ 			if (nfs4_schedule_stateid_recovery(server, state) < 0)
+-				goto stateid_invalid;
++				goto recovery_failed;
+ 			goto wait_on_recovery;
+ 		case -NFS4ERR_EXPIRED:
+ 			if (state != NULL) {
+ 				if (nfs4_schedule_stateid_recovery(server, state) < 0)
+-					goto stateid_invalid;
++					goto recovery_failed;
+ 			}
+ 		case -NFS4ERR_STALE_STATEID:
+ 		case -NFS4ERR_STALE_CLIENTID:
+@@ -4687,7 +4687,7 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
+ 	}
+ 	task->tk_status = nfs4_map_errors(task->tk_status);
+ 	return 0;
+-stateid_invalid:
++recovery_failed:
+ 	task->tk_status = -EIO;
+ 	return 0;
+ wait_on_recovery:
 
