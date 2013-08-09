@@ -1,187 +1,251 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:15345 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753190Ab3H0U7G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Aug 2013 16:59:06 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-CC: <andros@netapp.com>
-Subject: [PATCH 15/15] RPCSEC_GSS: Share rpc_pipes when an rpc_clnt owns multiple rpcsec auth caches
-Date: Tue, 27 Aug 2013 16:58:52 -0400
-Message-ID: <1377637132-53318-15-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377637132-53318-14-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377637132-53318-1-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-2-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-3-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-4-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-5-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-6-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-7-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-8-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-9-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-10-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-11-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-12-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-13-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-14-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-yh0-f45.google.com ([209.85.213.45]:59997 "EHLO
+	mail-yh0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S968171Ab3HIQtN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:49:13 -0400
+Received: by mail-yh0-f45.google.com with SMTP id i72so156632yha.4
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:49:12 -0700 (PDT)
+Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
+        by mx.google.com with ESMTPSA id e69sm20694751yhl.3.2013.08.09.09.49.11
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
+        Fri, 09 Aug 2013 09:49:12 -0700 (PDT)
+Subject: [PATCH v2 10/33] NFS: Add a slot table to struct nfs_client for
+ NFSv4.0 transport blocking
+To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Date: Fri, 09 Aug 2013 12:49:11 -0400
+Message-ID: <20130809164910.5362.84774.stgit@seurat.1015granger.net>
+In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that if an rpc_clnt owns more than one RPCSEC_GSS-based authentication
-mechanism, then those caches will share the same 'gssd' upcall pipe.
+Anchor an nfs4_slot_table in the nfs_client for use with NFSv4.0
+transport blocking.  It is initialized only for NFSv4.0 nfs_client's.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Introduce appropriate minor version ops to handle nfs_client
+initialization and shutdown requirements that differ for each minor
+version.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/auth_gss/auth_gss.c | 79 ++++++++++++++++++++++++++++++++++++------
- 1 file changed, 68 insertions(+), 11 deletions(-)
+ fs/nfs/nfs4_fs.h          |    6 +++
+ fs/nfs/nfs4client.c       |  101 +++++++++++++++++++++++++++++++++------------
+ fs/nfs/nfs4proc.c         |    6 +++
+ include/linux/nfs_fs_sb.h |    3 +
+ 4 files changed, 89 insertions(+), 27 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index b9674e3..67ada62 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -76,6 +76,7 @@ struct gss_pipe {
- 	struct rpc_pipe *pipe;
- 	struct rpc_clnt *clnt;
- 	const char *name;
-+	struct kref kref;
- };
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 8de9b93..af2d5bf 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -38,6 +38,8 @@ struct nfs4_minor_version_ops {
+ 	u32	minor_version;
+ 	unsigned init_caps;
  
- struct gss_auth {
-@@ -832,10 +833,8 @@ static struct gss_pipe *gss_pipe_alloc(struct rpc_clnt *clnt,
- 		const char *name,
- 		const struct rpc_pipe_ops *upcall_ops)
++	int	(*init_client)(struct nfs_client *);
++	void	(*shutdown_client)(struct nfs_client *);
+ 	bool	(*match_stateid)(const nfs4_stateid *,
+ 			const nfs4_stateid *);
+ 	int	(*find_root_sec)(struct nfs_server *, struct nfs_fh *,
+@@ -292,6 +294,10 @@ extern const u32 nfs4_pathconf_bitmap[3];
+ extern const u32 nfs4_fsinfo_bitmap[3];
+ extern const u32 nfs4_fs_locations_bitmap[3];
+ 
++void nfs40_shutdown_client(struct nfs_client *);
++void nfs41_shutdown_client(struct nfs_client *);
++int nfs40_init_client(struct nfs_client *);
++int nfs41_init_client(struct nfs_client *);
+ void nfs4_free_client(struct nfs_client *);
+ 
+ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *);
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 90dce91..eedd686 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -41,7 +41,7 @@ static int nfs_get_cb_ident_idr(struct nfs_client *clp, int minorversion)
+ }
+ 
+ #ifdef CONFIG_NFS_V4_1
+-static void nfs4_shutdown_session(struct nfs_client *clp)
++void nfs41_shutdown_client(struct nfs_client *clp)
  {
--	struct net *net = rpc_net_ns(clnt);
- 	struct gss_pipe *ret = ERR_PTR(-ENOMEM);
- 	struct gss_pipe *p;
--	int err;
- 
- 	p = kmalloc(sizeof(*ret), GFP_KERNEL);
- 	if (p == NULL)
-@@ -847,20 +846,71 @@ static struct gss_pipe *gss_pipe_alloc(struct rpc_clnt *clnt,
+ 	if (nfs4_has_session(clp)) {
+ 		nfs4_destroy_session(clp->cl_session);
+@@ -49,11 +49,15 @@ static void nfs4_shutdown_session(struct nfs_client *clp)
  	}
- 	p->name = name;
- 	p->clnt = clnt;
-+	kref_init(&p->kref);
- 	rpc_init_pipe_dir_object(&ret->pdo,
- 			&gss_pipe_dir_object_ops,
- 			p);
--	err = rpc_add_pipe_dir_object(net, &clnt->cl_pipedir_objects, &p->pdo);
--	if (!err)
--		return p;
--	ret = ERR_PTR(err);
--	rpc_destroy_pipe_data(p->pipe);
-+	return p;
- err_free_gss_pipe:
- 	kfree(p);
- err:
- 	return ret;
- }
  
-+struct gss_alloc_pdo {
-+	struct rpc_clnt *clnt;
-+	const char *name;
-+	const struct rpc_pipe_ops *upcall_ops;
-+};
+ }
+-#else /* CONFIG_NFS_V4_1 */
+-static void nfs4_shutdown_session(struct nfs_client *clp)
++#endif	/* CONFIG_NFS_V4_1 */
 +
-+static int gss_pipe_match_pdo(struct rpc_pipe_dir_object *pdo, void *data)
-+{
-+	struct gss_pipe *gss_pipe;
-+	struct gss_alloc_pdo *args = data;
-+
-+	if (pdo->pdo_ops != &gss_pipe_dir_object_ops)
-+		return 0;
-+	gss_pipe = container_of(pdo, struct gss_pipe, pdo);
-+	if (strcmp(gss_pipe->name, args->name) != 0)
-+		return 0;
-+	if (!kref_get_unless_zero(&gss_pipe->kref))
-+		return 0;
-+	return 1;
-+}
-+
-+static struct rpc_pipe_dir_object *gss_pipe_alloc_pdo(void *data)
-+{
-+	struct gss_pipe *gss_pipe;
-+	struct gss_alloc_pdo *args = data;
-+
-+	gss_pipe = gss_pipe_alloc(args->clnt, args->name, args->upcall_ops);
-+	if (!IS_ERR(gss_pipe))
-+		return &gss_pipe->pdo;
-+	return NULL;
-+}
-+
-+static struct gss_pipe *gss_pipe_get(struct rpc_clnt *clnt,
-+		const char *name,
-+		const struct rpc_pipe_ops *upcall_ops)
-+{
-+	struct net *net = rpc_net_ns(clnt);
-+	struct rpc_pipe_dir_object *pdo;
-+	struct gss_alloc_pdo args = {
-+		.clnt = clnt,
-+		.name = name,
-+		.upcall_ops = upcall_ops,
-+	};
-+
-+	pdo = rpc_find_or_alloc_pipe_dir_object(net,
-+			&clnt->cl_pipedir_objects,
-+			gss_pipe_match_pdo,
-+			gss_pipe_alloc_pdo,
-+			&args);
-+	if (pdo != NULL)
-+		return container_of(pdo, struct gss_pipe, pdo);
-+	return ERR_PTR(-ENOMEM);
-+}
-+
- static void __gss_pipe_free(struct gss_pipe *p)
++void nfs40_shutdown_client(struct nfs_client *clp)
  {
- 	struct rpc_clnt *clnt = p->clnt;
-@@ -873,10 +923,17 @@ static void __gss_pipe_free(struct gss_pipe *p)
- 	kfree(p);
++	if (clp->cl_slot_tbl) {
++		nfs4_release_slot_table(clp->cl_slot_tbl);
++		kfree(clp->cl_slot_tbl);
++	}
+ }
+-#endif /* CONFIG_NFS_V4_1 */
+ 
+ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
+ {
+@@ -97,7 +101,7 @@ static void nfs4_shutdown_client(struct nfs_client *clp)
+ {
+ 	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
+ 		nfs4_kill_renewd(clp);
+-	nfs4_shutdown_session(clp);
++	clp->cl_mvops->shutdown_client(clp);
+ 	nfs4_destroy_callback(clp);
+ 	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
+ 		nfs_idmap_delete(clp);
+@@ -144,34 +148,77 @@ static int nfs4_init_callback(struct nfs_client *clp)
+ 	return 0;
  }
  
-+static void __gss_pipe_release(struct kref *kref)
++/**
++ * nfs40_init_client - nfs_client initialization tasks for NFSv4.0
++ * @clp - nfs_client to initialize
++ *
++ * Returns zero on success, or a negative errno if some error occurred.
++ */
++int nfs40_init_client(struct nfs_client *clp)
 +{
-+	struct gss_pipe *p = container_of(kref, struct gss_pipe, kref);
++	struct nfs4_slot_table *tbl;
++	int ret;
 +
-+	__gss_pipe_free(p);
++	tbl = kzalloc(sizeof(*tbl), GFP_NOFS);
++	if (tbl == NULL)
++		return -ENOMEM;
++
++	ret = nfs4_setup_slot_table(tbl, NFS4_MAX_SLOT_TABLE,
++					"NFSv4.0 transport Slot table");
++	if (ret) {
++		kfree(tbl);
++		return ret;
++	}
++
++	clp->cl_slot_tbl = tbl;
++	return 0;
 +}
 +
- static void gss_pipe_free(struct gss_pipe *p)
- {
- 	if (p != NULL)
--		__gss_pipe_free(p);
-+		kref_put(&p->kref, __gss_pipe_release);
- }
- 
++#if defined(CONFIG_NFS_V4_1)
++
++/**
++ * nfs41_init_client - nfs_client initialization tasks for NFSv4.1+
++ * @clp - nfs_client to initialize
++ *
++ * Returns zero on success, or a negative errno if some error occurred.
++ */
++int nfs41_init_client(struct nfs_client *clp)
++{
++	struct nfs4_session *session = NULL;
++
++	/*
++	 * Create the session and mark it expired.
++	 * When a SEQUENCE operation encounters the expired session
++	 * it will do session recovery to initialize it.
++	 */
++	session = nfs4_alloc_session(clp);
++	if (!session)
++		return -ENOMEM;
++
++	clp->cl_session = session;
++
++	/*
++	 * The create session reply races with the server back
++	 * channel probe. Mark the client NFS_CS_SESSION_INITING
++	 * so that the client back channel can find the
++	 * nfs_client struct
++	 */
++	nfs_mark_client_ready(clp, NFS_CS_SESSION_INITING);
++	return 0;
++}
++
++#endif	/* CONFIG_NFS_V4_1 */
++
  /*
-@@ -932,14 +989,14 @@ gss_create(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
- 	 * that we supported only the old pipe.  So we instead create
- 	 * the new pipe first.
- 	 */
--	gss_pipe = gss_pipe_alloc(clnt, "gssd", &gss_upcall_ops_v1);
-+	gss_pipe = gss_pipe_get(clnt, "gssd", &gss_upcall_ops_v1);
- 	if (IS_ERR(gss_pipe)) {
- 		err = PTR_ERR(gss_pipe);
- 		goto err_destroy_credcache;
- 	}
- 	gss_auth->gss_pipe[1] = gss_pipe;
+  * Initialize the minor version specific parts of an NFS4 client record
+  */
+ static int nfs4_init_client_minor_version(struct nfs_client *clp)
+ {
+-#if defined(CONFIG_NFS_V4_1)
+-	if (clp->cl_mvops->minor_version) {
+-		struct nfs4_session *session = NULL;
+-		/*
+-		 * Create the session and mark it expired.
+-		 * When a SEQUENCE operation encounters the expired session
+-		 * it will do session recovery to initialize it.
+-		 */
+-		session = nfs4_alloc_session(clp);
+-		if (!session)
+-			return -ENOMEM;
+-
+-		clp->cl_session = session;
+-		/*
+-		 * The create session reply races with the server back
+-		 * channel probe. Mark the client NFS_CS_SESSION_INITING
+-		 * so that the client back channel can find the
+-		 * nfs_client struct
+-		 */
+-		nfs_mark_client_ready(clp, NFS_CS_SESSION_INITING);
+-	}
+-#endif /* CONFIG_NFS_V4_1 */
++	int ret;
  
--	gss_pipe = gss_pipe_alloc(clnt, gss_auth->mech->gm_name,
-+	gss_pipe = gss_pipe_get(clnt, gss_auth->mech->gm_name,
- 			&gss_upcall_ops_v0);
- 	if (IS_ERR(gss_pipe)) {
- 		err = PTR_ERR(gss_pipe);
-@@ -948,7 +1005,7 @@ gss_create(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
++	ret = clp->cl_mvops->init_client(clp);
++	if (ret)
++		return ret;
+ 	return nfs4_init_callback(clp);
+ }
  
- 	return auth;
- err_destroy_pipe_1:
--	__gss_pipe_free(gss_auth->gss_pipe[1]);
-+	gss_pipe_free(gss_auth->gss_pipe[1]);
- err_destroy_credcache:
- 	rpcauth_destroy_credcache(auth);
- err_put_mech:
--- 
-1.8.3.1
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 0ba7e35..4352d51 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7417,6 +7417,8 @@ static const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
+ 		| NFS_CAP_ATOMIC_OPEN
+ 		| NFS_CAP_CHANGE_ATTR
+ 		| NFS_CAP_POSIX_LOCK,
++	.init_client = nfs40_init_client,
++	.shutdown_client = nfs40_shutdown_client,
+ 	.match_stateid = nfs4_match_stateid,
+ 	.find_root_sec = nfs4_find_root_sec,
+ 	.free_lock_state = nfs4_release_lockowner,
+@@ -7435,6 +7437,8 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
+ 		| NFS_CAP_POSIX_LOCK
+ 		| NFS_CAP_STATEID_NFSV41
+ 		| NFS_CAP_ATOMIC_OPEN_V1,
++	.init_client = nfs41_init_client,
++	.shutdown_client = nfs41_shutdown_client,
+ 	.match_stateid = nfs41_match_stateid,
+ 	.find_root_sec = nfs41_find_root_sec,
+ 	.free_lock_state = nfs41_free_lock_state,
+@@ -7454,6 +7458,8 @@ static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
+ 		| NFS_CAP_POSIX_LOCK
+ 		| NFS_CAP_STATEID_NFSV41
+ 		| NFS_CAP_ATOMIC_OPEN_V1,
++	.init_client = nfs41_init_client,
++	.shutdown_client = nfs41_shutdown_client,
+ 	.match_stateid = nfs41_match_stateid,
+ 	.find_root_sec = nfs41_find_root_sec,
+ 	.free_lock_state = nfs41_free_lock_state,
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index d221243..fc83d3d 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -78,6 +78,9 @@ struct nfs_client {
+ 	u32			cl_cb_ident;	/* v4.0 callback identifier */
+ 	const struct nfs4_minor_version_ops *cl_mvops;
+ 
++	/* NFSv4.0 transport blocking */
++	struct nfs4_slot_table	*cl_slot_tbl;
++
+ 	/* The sequence id to use for the next CREATE_SESSION */
+ 	u32			cl_seqid;
+ 	/* The flags used for obtaining the clientid during EXCHANGE_ID */
 
