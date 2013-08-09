@@ -1,45 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:54104 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756986Ab3HMVsA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Aug 2013 17:48:00 -0400
-From: <andros@netapp.com>
-To: <trond.myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 5 0/3] Use the MDS nfs_server authflavor for pNFS data server connections
-Date: Tue, 13 Aug 2013 17:47:46 -0400
-Message-ID: <1376430469-3773-1-git-send-email-andros@netapp.com>
+Received: from mail-gh0-f179.google.com ([209.85.160.179]:59847 "EHLO
+	mail-gh0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S968171Ab3HIQtc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:49:32 -0400
+Received: by mail-gh0-f179.google.com with SMTP id f16so1291746ghb.38
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:49:31 -0700 (PDT)
+Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
+        by mx.google.com with ESMTPSA id s65sm20680045yhs.14.2013.08.09.09.49.30
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
+        Fri, 09 Aug 2013 09:49:30 -0700 (PDT)
+Subject: [PATCH v2 12/33] NFS: Enable nfs4_setup_sequence() for DELEGRETURN
+To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Date: Fri, 09 Aug 2013 12:49:29 -0400
+Message-ID: <20130809164929.5362.2502.stgit@seurat.1015granger.net>
+In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+When CONFIG_NFS_V4_1 is disabled, the calls to nfs4_setup_sequence()
+and nfs4_sequence_done() are compiled out for the DELEGRETURN
+operation.  To allow NFSv4.0 transport blocking to work for
+DELEGRETURN, these call sites have to be present all the time.
 
-Differences from Version 4
-- added NFSv4 Remove unused LIPKEY and SPKM enums
-- shared GSS context caches when possible via shared rpc_clnt structs
-- DS conections use the shared rpc_clnts
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfs/nfs4proc.c |    4 ----
+ 1 file changed, 4 deletions(-)
 
-Andy Adamson (3):
-  NFSv4 Remove unused LIPKEY and SPKM enums
-  NFS Share RPC_AUTH_GSS rpc clients
-  NFSv4.1 Use the shared nfs_client rpc_clnts for pNFS data server
-    connections
-
- fs/nfs/client.c                 | 80 ++++++++++++++++++++++++++++++++++++++---
- fs/nfs/internal.h               |  4 +++
- fs/nfs/nfs4filelayout.c         | 69 +++++++++++++++++++++++++++++------
- fs/nfs/nfs4filelayout.h         |  3 ++
- fs/nfs/nfs4filelayoutdev.c      |  4 ++-
- fs/nfs/nfs4namespace.c          |  5 +--
- fs/nfs/nfs4proc.c               |  9 +++--
- fs/nfs/nfs4state.c              |  4 +--
- fs/nfs/super.c                  | 34 ------------------
- include/linux/nfs_fs_sb.h       |  1 +
- include/linux/sunrpc/msg_prot.h |  9 ++---
- 11 files changed, 158 insertions(+), 64 deletions(-)
-
--- 
-1.8.3.1
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 51f4272..b915c7d 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4862,7 +4862,6 @@ static void nfs4_delegreturn_release(void *calldata)
+ 	kfree(calldata);
+ }
+ 
+-#if defined(CONFIG_NFS_V4_1)
+ static void nfs4_delegreturn_prepare(struct rpc_task *task, void *data)
+ {
+ 	struct nfs4_delegreturndata *d_data;
+@@ -4874,12 +4873,9 @@ static void nfs4_delegreturn_prepare(struct rpc_task *task, void *data)
+ 			&d_data->res.seq_res,
+ 			task);
+ }
+-#endif /* CONFIG_NFS_V4_1 */
+ 
+ static const struct rpc_call_ops nfs4_delegreturn_ops = {
+-#if defined(CONFIG_NFS_V4_1)
+ 	.rpc_call_prepare = nfs4_delegreturn_prepare,
+-#endif /* CONFIG_NFS_V4_1 */
+ 	.rpc_call_done = nfs4_delegreturn_done,
+ 	.rpc_release = nfs4_delegreturn_release,
+ };
 
