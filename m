@@ -1,173 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:63205 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757740Ab3HMWpx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Aug 2013 18:45:53 -0400
-Date: Tue, 13 Aug 2013 18:45:48 -0400
-From: Scott Mayhew <smayhew@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [nfs-utils PATCH 3/4] mount.nfs:  improve handling of
- MNT_NOARG type options
-Message-ID: <20130813224548.GB2514@tonberry.usersys.redhat.com>
-References: <1376421629-21382-1-git-send-email-smayhew@redhat.com>
- <1376421629-21382-4-git-send-email-smayhew@redhat.com>
- <9C8AB6BD-D33B-4708-B8A8-C5420101BA26@oracle.com>
+Received: from mout-xforward.gmx.net ([82.165.159.42]:55506 "EHLO
+	mout-xforward.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752788Ab3HKJsx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Aug 2013 05:48:53 -0400
+Received: from [92.224.126.156] ([92.224.126.156]) by mail.gmx.com (mrgmx001)
+ with ESMTPSA (Nemesis) id 0M3iU5-1Vz2zD3RE9-00rHOc for
+ <linux-nfs@vger.kernel.org>; Sun, 11 Aug 2013 11:48:51 +0200
+Message-ID: <52075E01.7030506@gmx.de>
+Date: Sun, 11 Aug 2013 11:48:49 +0200
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <9C8AB6BD-D33B-4708-B8A8-C5420101BA26@oracle.com>
+To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+CC: "user-mode-linux-devel@lists.sourceforge.net"
+	<user-mode-linux-devel@lists.sourceforge.net>,
+        linux-ext4@vger.kernel.org,
+        Linux Kernel <linux-kernel@vger.kernel.org>
+Subject: Issues with a rather unusual configured NFS server
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 13 Aug 2013, Chuck Lever wrote:
+so that the server either crashes (if it is a user mode linux image) or at least its reboot functionality got broken
+- if the NFS server is hammered with scary NFS calls using a fuzzy tool running at a remote NFS client under a non-privileged user id.
 
-> Hi Scott-
-> 
-> On Aug 13, 2013, at 3:20 PM, Scott Mayhew <smayhew@redhat.com> wrote:
-> 
-> > conf_parse_mntopts() maintains a linked list of options that will
-> > ultimately be passed in the data field of the mount() syscall in order
-> > to avoid unnecessary duplicates and/or conflicts.  This doesn't work
-> > very well for MNT_NOARG type options, since setting any of these to
-> > false in the nfsmount.conf doesn't correspond to any 'real' mount option
-> > (i.e. there are no such options 'nobg', 'nofg', and 'nosloppy').
-> 
-> What's broken here, exactly?
+It can re reproduced, if
+	- the NFS share is an EXT3 or EXT4 directory
+	- and it is created at file located at tempfs and mounted via loop device
+	- and the NFS server is forced to umount the NFS share
+	- and the server forced to restart the NSF service afterwards
+	- and trinity is used
 
-The problem here is that specifying something like bg=false, fg=false, or 
-sloppy=false doesn't perform any negation if those options appeared
-somewhere in an earlier section.  Take for example a simple config that 
-ooks like this:
+I could find a scenario for an automated bisect. 2 times it brought this commit 
+commit 68a3396178e6688ad7367202cdf0af8ed03c8727
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Thu Mar 21 11:21:50 2013 -0400
 
-[ NFSMount_Global_Options ]
-        Nfsvers=4
+    nfsd4: shut down more of delegation earlier
 
-[ Server "nfs.smayhew.test" ]
-        Background=True
 
-[ MountPoint "/mnt" ]
-        Background=False
+to be the one after which the user mode linux server crashes with a back trace like this:
 
-If I try to perform a mount using that server and mountpoint, and the
-server happens to be unresponsive, then what should happen is that the
-mount should time out after 2 minutes.  What actually happens is that
-we'll keep retrying for 10000 minutes.
 
--Scott
-> 
-> > 
-> > This patch adds a set of internal variables for the three real MNT_NOARG
-> > options (bg, fg, sloppy) along with their pseudo options (nobg, nofg,
-> > nosloppy), and a helper function to track which of these options has
-> > been previously seen and to determine whether or not to append an option
-> > to the linked list.
-> > 
-> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> > ---
-> > utils/mount/configfile.c | 50 ++++++++++++++++++++++++++++++++++++++++++++++++
-> > 1 file changed, 50 insertions(+)
-> > 
-> > diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
-> > index 221436f..623c886 100644
-> > --- a/utils/mount/configfile.c
-> > +++ b/utils/mount/configfile.c
-> > @@ -73,6 +73,8 @@ struct mnt_alias {
-> > };
-> > int mnt_alias_sz = (sizeof(mnt_alias_tab)/sizeof(mnt_alias_tab[0]));
-> > 
-> > +static int bg, nobg, fg, nofg, sloppy, nosloppy;
-> > +
-> > /*
-> >  * See if the option is an alias, if so return the 
-> >  * real mount option along with the argument type.
-> > @@ -278,6 +280,46 @@ default_value(char *mopt)
-> > 
-> > 	return 1;
-> > }
-> > +
-> > +int
-> > +should_add_noarg_opt(char *opt, char *val)
-> > +{
-> > +	int ret = 0;
-> > +
-> > +	if (strcasecmp(opt, "bg") == 0) {
-> > +		if (strcasecmp(val, "true") == 0) {
-> > +			if (bg == 0 && nobg == 0 && fg == 0) {
-> > +				bg = 1;
-> > +				ret = 1;
-> > +			}
-> > +		} else if (strcasecmp(val, "false") == 0) {
-> > +			if (bg == 0 && nobg == 0)
-> > +				nobg = 1;
-> > +		}
-> > +	} else if (strcasecmp(opt, "fg") == 0) {
-> > +		if (strcasecmp(val, "true") == 0) {
-> > +			if (fg == 0 && nofg == 0 && bg == 0) {
-> > +				fg = 1;
-> > +				ret = 1;
-> > +			}
-> > +		} else if (strcasecmp(val, "false") == 0) {
-> > +			if (fg == 0 && nofg == 0)
-> > +				nofg = 1;
-> > +		}
-> > +	} else if (strcasecmp(opt, "sloppy") == 0) {
-> > +		if (sloppy == 0 && nosloppy == 0) {
-> > +			if(strcasecmp(val, "true") == 0) {
-> > +				sloppy = 1;
-> > +				ret = 1;
-> > +			} else
-> > +				nosloppy = 1;
-> > +		}
-> > +	} else
-> > +		xlog_warn("Invalid MNT_NOARG option: '%s'", opt);
-> > +
-> > +	return ret;
-> > +}
-> > +
-> > /*
-> >  * Parse the given section of the configuration 
-> >  * file to if there are any mount options set.
-> > @@ -315,6 +357,13 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
-> > 		field = mountopts_alias(node->field, &argtype);
-> > 		if (lookup_entry(field) != NULL)
-> > 			continue;
-> > +		if (argtype == MNT_NOARG) {
-> > +			if (should_add_noarg_opt(field, value)) {
-> > +				list_size += strlen(field) + 1;
-> > +				add_entry(field);
-> > +			}
-> > +			continue;
-> > +		}
-> > 		if (argtype != MNT_NOARG) {
-> > 			snprintf(buf, BUFSIZ, "no%s", field);
-> > 			if (lookup_entry(buf) != NULL)
-> > @@ -359,6 +408,7 @@ char *conf_get_mntopts(char *spec, char *mount_point,
-> > 	char *ptr, *server, *config_opts;
-> > 	int optlen = 0;
-> > 
-> > +	bg = nobg = fg = nofg = sloppy = nosloppy = 0;
-> > 	SLIST_INIT(&head);
-> > 	list_size = 0;
-> > 	/*
-> > -- 
-> > 1.7.11.7
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
+$ cat /mnt/ramdisk/bt.v3.11-rc4-172-g8ae3f1d
+[New LWP 14025]
+Core was generated by `/home/tfoerste/devel/linux/linux earlyprintk ubda=/home/tfoerste/virtual/uml/tr'.
+Program terminated with signal 6, Aborted.
+#0  0xb77ef424 in __kernel_vsyscall ()
+#0  0xb77ef424 in __kernel_vsyscall ()
+#1  0x083a33c5 in kill ()
+#2  0x0807163d in uml_abort () at arch/um/os-Linux/util.c:93
+#3  0x08071925 in os_dump_core () at arch/um/os-Linux/util.c:138
+#4  0x080613a7 in panic_exit (self=0x85a1518 <panic_exit_notifier>, unused1=0, unused2=0x85d6ce0 <buf.15904>) at arch/um/kernel/um_arch.c:240
+#5  0x0809a3b8 in notifier_call_chain (nl=0x0, val=0, v=0x85d6ce0 <buf.15904>, nr_to_call=-2, nr_calls=0x0) at kernel/notifier.c:93
+#6  0x0809a503 in __atomic_notifier_call_chain (nr_calls=<optimized out>, nr_to_call=<optimized out>, v=<optimized out>, val=<optimized out>, nh=<optimized out>) at kernel/notifier.c:182
+#7  atomic_notifier_call_chain (nh=0x85d6cc4 <panic_notifier_list>, val=0, v=0x85d6ce0 <buf.15904>) at kernel/notifier.c:191
+#8  0x08400ba8 in panic (fmt=0x0) at kernel/panic.c:128
+#9  0x0818edf4 in ext4_put_super (sb=0x4a042690) at fs/ext4/super.c:818
+#10 0x081010d2 in generic_shutdown_super (sb=0x4a042690) at fs/super.c:418
+#11 0x0810209a in kill_block_super (sb=0x0) at fs/super.c:1028
+#12 0x08100f6a in deactivate_locked_super (s=0x4a042690) at fs/super.c:299
+#13 0x08101001 in deactivate_super (s=0x4a042690) at fs/super.c:324
+#14 0x08118e0c in mntfree (mnt=<optimized out>) at fs/namespace.c:891
+#15 mntput_no_expire (mnt=0x0) at fs/namespace.c:929
+#16 0x0811a2f5 in SYSC_umount (flags=<optimized out>, name=<optimized out>) at fs/namespace.c:1335
+#17 SyS_umount (name=134541632, flags=0) at fs/namespace.c:1305
+#18 0x0811a369 in SYSC_oldumount (name=<optimized out>) at fs/namespace.c:1347
+#19 SyS_oldumount (name=134541632) at fs/namespace.c:1345
+#20 0x080618e2 in handle_syscall (r=0x49e919d4) at arch/um/kernel/skas/syscall.c:35
+#21 0x08073c0d in handle_trap (local_using_sysemu=<optimized out>, regs=<optimized out>, pid=<optimized out>) at arch/um/os-Linux/skas/process.c:198
+#22 userspace (regs=0x49e919d4) at arch/um/os-Linux/skas/process.c:431
+#23 0x0805e65c in fork_handler () at arch/um/kernel/process.c:160
+#24 0x00000000 in ?? ()
+
+
+
+A real system however would not crash bug would give a kernel BUG as reported here:
+http://article.gmane.org/gmane.comp.file-systems.ext4/38915
+Furthermore the server won't be able any longer to reboot - it would hang infinitely in the reboot phase.
+Just the magic sysrq keys still works then.
+
+
+
+Steps to reproduce at two 32 bit Gentoo Linux user mode linux images:
+
+1. prepare the server :
+	<mount a tempfs onto /mnt/ramdisk>
+	mkdir /mnt/ramdisk/victims
+	dd if=/dev/zero of=/mnt/ramdisk/disk1 bs=1M count=257 2>/dev/null
+	yes | mkfs.ext4 -q /mnt/ramdisk/disk1 1>/dev/null
+	mount -o loop /mnt/ramdisk/disk1 /mnt/ramdisk/victims
+	chmod 777 /mnt/ramdisk/victims
+	/etc/init.d/nfs restart
+
+2. prepare the client
+	mount the NFS share onto the local mount point /mnt/ramdisk/victims/ with NFSv4
+	
+3. run the fuzzy tool trinity at the client:
+	while [[ : ]]; do
+		<(re-)create and fill /mnt/ramdisk/victims/v1/v2 with 100 empty files and 100 empty directories>
+		trinity -V /mnt/ramdisk/victims/v1/v2 -C 1 -N 10000 -q
+		sleep 3
+	done
+
+4. after 15 min kill the user mode linux client with -9
+
+5. now run at the server
+	umount /mnt/ramdisk/victims || /etc/init.d/nfs restart && umount /mnt/ramdisk/victims && echo ' no issue so far'
+
+
+You might need this patch too from Oleg Nesterov <oleg@redhat.com> (not in mainline currently) .
+
+--- x/kernel/exit.c
++++ x/kernel/exit.c
+@@ -783,8 +783,8 @@ void do_exit(long code)
+        exit_shm(tsk);
+        exit_files(tsk);
+        exit_fs(tsk);
+-       exit_task_namespaces(tsk);
+        exit_task_work(tsk);
++       exit_task_namespaces(tsk);
+        check_stack_usage();
+        exit_thread();
+
 
 -- 
-Scott Mayhew, RHCE
-Software Maintenance Engineer
-Red Hat Global Support Services
-smayhew@redhat.com
-1-888-REDHAT1 x43741
+MfG/Sincerely
+Toralf Förster
+pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
