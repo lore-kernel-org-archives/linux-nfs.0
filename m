@@ -1,60 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f179.google.com ([209.85.160.179]:59847 "EHLO
-	mail-gh0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S968171Ab3HIQtc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:49:32 -0400
-Received: by mail-gh0-f179.google.com with SMTP id f16so1291746ghb.38
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:49:31 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
-        by mx.google.com with ESMTPSA id s65sm20680045yhs.14.2013.08.09.09.49.30
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
-        Fri, 09 Aug 2013 09:49:30 -0700 (PDT)
-Subject: [PATCH v2 12/33] NFS: Enable nfs4_setup_sequence() for DELEGRETURN
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 09 Aug 2013 12:49:29 -0400
-Message-ID: <20130809164929.5362.2502.stgit@seurat.1015granger.net>
-In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
-References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from cantor2.suse.de ([195.135.220.15]:48927 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751288Ab3HLGxD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Aug 2013 02:53:03 -0400
+Date: Mon, 12 Aug 2013 16:52:47 +1000
+From: NeilBrown <neilb@suse.de>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH] NFS: remove incorrect "Lock reclaim failed!" warning.
+Message-ID: <20130812165247.74c66315@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/YxCg8/Z2wiIwu1GVB.h7vUW"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When CONFIG_NFS_V4_1 is disabled, the calls to nfs4_setup_sequence()
-and nfs4_sequence_done() are compiled out for the DELEGRETURN
-operation.  To allow NFSv4.0 transport blocking to work for
-DELEGRETURN, these call sites have to be present all the time.
+--Sig_/YxCg8/Z2wiIwu1GVB.h7vUW
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/nfs4proc.c |    4 ----
- 1 file changed, 4 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 51f4272..b915c7d 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4862,7 +4862,6 @@ static void nfs4_delegreturn_release(void *calldata)
- 	kfree(calldata);
- }
- 
--#if defined(CONFIG_NFS_V4_1)
- static void nfs4_delegreturn_prepare(struct rpc_task *task, void *data)
- {
- 	struct nfs4_delegreturndata *d_data;
-@@ -4874,12 +4873,9 @@ static void nfs4_delegreturn_prepare(struct rpc_task *task, void *data)
- 			&d_data->res.seq_res,
- 			task);
- }
--#endif /* CONFIG_NFS_V4_1 */
- 
- static const struct rpc_call_ops nfs4_delegreturn_ops = {
--#if defined(CONFIG_NFS_V4_1)
- 	.rpc_call_prepare = nfs4_delegreturn_prepare,
--#endif /* CONFIG_NFS_V4_1 */
- 	.rpc_call_done = nfs4_delegreturn_done,
- 	.rpc_release = nfs4_delegreturn_release,
- };
 
+After reclaiming state that was lost, the NFS client tries to reclaim
+any locks, and then checks that each one has NFS_LOCK_INITIALIZED set
+(which means that the server has confirmed the lock).
+However if the client holds a delegation, nfs_reclaim_locks() simply aborts
+(or more accurately it called nfs_lock_reclaim() and that returns without
+doing anything).
+
+This is because when a delegation is held, the server doesn't need to
+know about locks.
+
+So if a delegation is held, NFS_LOCK_INITIALIZED is not expected, and
+its absence is certainly not an error.
+
+So don't print the warnings if NFS_DELGATED_STATE is set.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
+
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index e22862f..e4e063f 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1443,14 +1443,16 @@ restart:
+ 		if (status >=3D 0) {
+ 			status =3D nfs4_reclaim_locks(state, ops);
+ 			if (status >=3D 0) {
+-				spin_lock(&state->state_lock);
+-				list_for_each_entry(lock, &state->lock_states, ls_locks) {
+-					if (!test_bit(NFS_LOCK_INITIALIZED, &lock->ls_flags))
+-						pr_warn_ratelimited("NFS: "
+-							"%s: Lock reclaim "
+-							"failed!\n", __func__);
++				if (test_bit(NFS_DELEGATED_STATE, &state->flags) !=3D 0) {
++					spin_lock(&state->state_lock);
++					list_for_each_entry(lock, &state->lock_states, ls_locks) {
++						if (!test_bit(NFS_LOCK_INITIALIZED, &lock->ls_flags))
++							pr_warn_ratelimited("NFS: "
++									    "%s: Lock reclaim "
++									    "failed!\n", __func__);
++					}
++					spin_unlock(&state->state_lock);
+ 				}
+-				spin_unlock(&state->state_lock);
+ 				nfs4_put_open_state(state);
+ 				spin_lock(&sp->so_lock);
+ 				goto restart;
+
+--Sig_/YxCg8/Z2wiIwu1GVB.h7vUW
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUgiGPznsnt1WYoG5AQIXZhAAh6vwnY8JkokyOp56ZEdszI1eiXUYkMDu
+kDsebkZyccDfngGoQ7OYvrpufxwWui2SIfeSkaTp/qw2FomX5T7stdVUoejUgYVk
+xf2zR8ZuDWzBo7wEPSAAIVIHiT7zrQTceqUnqW5EW2fnhEPeUdiVQCMSkeR8UcwK
+xmw870/zp6ywhnKLiyV5s1G0GflE4UC/30wQCPNC4XfWEB12V24Yd8/O0esW14PP
+w9eKmxQiVIKuSMCnHOthjed9xbT5n1FF5SlDMVE3IAN9kxShmx54jgYjreSmQxMS
+cP5BJcgF1+ya+2BH+iW9mR+keO5Lwi/6V1vZD1g00wxMVgIoLXTgEDC5tJqvjnLh
+2KY42W159+ptBFISTWRq8HCWPartqVQedzvmmcb6L9q5qoKVa7w3IEzIVmDlDG2C
+dMZMLESGW6IKoNeDd8D5XiCHZdsPgCoeCkBSHVnZHkjIA9CWrVqpowDu8GJEQN7g
+pCm2sL/5MJFpo8RuAWmKJptkFvG13oc3wybMR5IMEK2FVD5S6B9F+y29fD8ZQxfB
+Ttu3ACW6gkGJpjp/tnv6CgZYkYal0t8tF4ddOsLIggHJdC3vDZMguuObpfzhMi6a
+4sok8wY680lg/0rpK68LDuH5fjQoV99nBVjQ/OmNn5gYd7VOhfmm7Vzd51Cfn4j5
+93IjvQ/PWBI=
+=kMa1
+-----END PGP SIGNATURE-----
+
+--Sig_/YxCg8/Z2wiIwu1GVB.h7vUW--
