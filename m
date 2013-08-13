@@ -1,75 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f44.google.com ([209.85.128.44]:64306 "EHLO
-	mail-qe0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753679Ab3HBOaY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Aug 2013 10:30:24 -0400
-Received: by mail-qe0-f44.google.com with SMTP id 6so373025qeb.17
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Aug 2013 07:30:23 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20130802074353.514c8886@corrin.poochiereds.net>
-References: <20130725055209.GA15621@sh-el5.eng.rdu2.redhat.com>
-	<51F13948.3050100@redhat.com>
-	<CAJfpegtpcXz+i-3txRC_NjTsYjXP5S4oJUdGstG+-PWVzazEWQ@mail.gmail.com>
-	<51F81465.9010402@redhat.com>
-	<20130801163940.GA1356@tucsk.piliscsaba.szeredi.hu>
-	<51FAACD9.8020205@redhat.com>
-	<CAJfpegu1RXAYOGWyuCeckJ8WHfK=3dFc5bm1zsM=1Qt3zcfbsg@mail.gmail.com>
-	<20130802074353.514c8886@corrin.poochiereds.net>
-Date: Fri, 2 Aug 2013 16:30:23 +0200
-Message-ID: <CAJfpegthEZJEQhus=4CnvR+yb+vGj5c85kUnn18SrR0S1wbbtQ@mail.gmail.com>
-Subject: Re: [PATCH] [REPOST] fuse: drop dentry on failed revalidate
-From: Miklos Szeredi <miklos@szeredi.hu>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Ric Wheeler <rwheeler@redhat.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Anand Avati <avati@redhat.com>, Brian Foster <bfoster@redhat.com>,
-        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-        Alexander Viro <aviro@redhat.com>, David Howells <dhowells@redhat.com>,
-        Eric Paris <eparis@redhat.com>,
-        Linux NFS list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:43488 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758186Ab3HMTUb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Aug 2013 15:20:31 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r7DJKVMj000819
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Aug 2013 15:20:31 -0400
+Received: from tonberry.usersys.redhat.com (dhcp145-64.rdu.redhat.com [10.13.145.64])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r7DJKVAH017259
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Aug 2013 15:20:31 -0400
+Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
+	by tonberry.usersys.redhat.com (8.14.5/8.14.5) with ESMTP id r7DJKUA3021428
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Aug 2013 15:20:30 -0400
+Received: (from smayhew@localhost)
+	by tonberry.usersys.redhat.com (8.14.5/8.14.5/Submit) id r7DJKUst021427
+	for linux-nfs@vger.kernel.org; Tue, 13 Aug 2013 15:20:30 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [nfs-utils PATCH 2/4] mount.nfs: avoid sending conflicting mount options
+Date: Tue, 13 Aug 2013 15:20:27 -0400
+Message-Id: <1376421629-21382-3-git-send-email-smayhew@redhat.com>
+In-Reply-To: <1376421629-21382-1-git-send-email-smayhew@redhat.com>
+References: <1376421629-21382-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 2, 2013 at 1:43 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> Ok, took me a couple of times to look over the code but I think I
-> understand the problem now...
->
-> IIUC, then this patch should only ever cause this to return -ENOENT in
-> a situation similar to the one in Anand's reproducer, right? The
-> mountpoint-to-be was unlinked in another tree, and thus we found it to
-> be invalid in the tree that we're mounting in. If so, then the dentry
-> didn't exist at some point during the race window. Returning -ENOENT
-> seems reasonable to me in that situation.
+conf_parse_mntopts() calls lookup_entry() in an attempt to avoid
+"overwriting" of mount options (actually it tries to avoid appending
+conflicting options to the string passed to mount(2)).  Currently this doesn't
+do much of anything.  For example, if you have Timeo=600 in the global
+section, Timeo=300 in the server-specific section, and Timeo=150 in the
+mountpoint-specific section, then the string that is passed to the mount
+syscall will contain "timeo=600,timeo=300,timeo=150".
 
-Yes, that's one part of it and ENOENT fits perfectly.
+Note that the ordering of the conflicting options ensures that the
+correct option will ultimately be applied, but we should still avoid sending
+the conflicting options in the first place if possible.
 
-The other part is when the subtree is moved on another host.  Yes, NFS
-can reconnect it, but only if it is accessed through the new location.
- Until then it will be inaccessible and the new location of the
-mountpoint not discoverable through /proc/mounts or in any way without
-outside knowledge.
+This patch fixes all but the MNT_NOARG type options (fg, bg, and sloppy).
 
-And there was a pre-existing mount under the moved directory we don't
-allow the d_drop in this "move" case either, and the mount is
-accessible through the old name.  I seem to recall that there was a
-discussion about this back then and Linus was quite adamant about
-mountpoints not being allowed to be dissolved or moved without an
-explicit action on the localhost (i.e. something that happens on
-remote hosts shouldn't affect the status or location of mounts on the
-localhost).
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ utils/mount/configfile.c | 24 +++++++++++++++++++-----
+ 1 file changed, 19 insertions(+), 5 deletions(-)
 
-So what happens in this case:
+diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
+index 1f1b6e7..221436f 100644
+--- a/utils/mount/configfile.c
++++ b/utils/mount/configfile.c
+@@ -170,10 +170,16 @@ char *lookup_entry(char *opt)
+ {
+ 	struct entry *entry;
+ 
+-	SLIST_FOREACH(entry, &head, entries) {
+-		if (strcasecmp(entry->opt, opt) == 0)
+-			return opt;
+-	}
++	if (strlen(opt) > 0 && opt[strlen(opt) - 1] == '=')
++		SLIST_FOREACH(entry, &head, entries) {
++			if (strncasecmp(entry->opt, opt, strlen(opt)) == 0)
++				return opt;
++		}
++	else
++		SLIST_FOREACH(entry, &head, entries) {
++			if (strcasecmp(entry->opt, opt) == 0)
++				return opt;
++		}
+ 	return NULL;
+ }
+ /*
+@@ -300,13 +306,21 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
+ 		if (opts && check_vers(opts, node->field))
+ 			continue;
+ 
+-		if (lookup_entry(node->field) != NULL)
++		if (lookup_entry(buf) != NULL)
+ 			continue;
+ 		buf[0] = '\0';
+ 		value = conf_get_section(section, arg, node->field);
+ 		if (value == NULL)
+ 			continue;
+ 		field = mountopts_alias(node->field, &argtype);
++		if (lookup_entry(field) != NULL)
++			continue;
++		if (argtype != MNT_NOARG) {
++			snprintf(buf, BUFSIZ, "no%s", field);
++			if (lookup_entry(buf) != NULL)
++				continue;
++			buf[0] = '\0';
++		}
+ 		if (strcasecmp(value, "false") == 0) {
+ 			if (argtype != MNT_NOARG)
+ 				snprintf(buf, BUFSIZ, "no%s", field);
+-- 
+1.7.11.7
 
-host1: cd /nfs/foo/bar
-host2: mv /nfs/foo /nfs/old-foo
-host2: mkdir /nfs/foo
-host1: ls /nfs/foo  [drops "old-foo" and adds a new foo dentry]
-host1: mkdir bin [cwd is now not accessible from root]
-host1: mount --bind /bin ./bin [???]
-
-Currently that last one succeeds, with my patch it gives ENOENT, but
-that's not the best error, since the mountpoint does exist.
-
-Thanks,
-Miklos
