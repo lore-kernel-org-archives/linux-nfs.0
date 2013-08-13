@@ -1,91 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:15345 "EHLO mx11.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:17900 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752141Ab3H0U67 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Aug 2013 16:58:59 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-CC: <andros@netapp.com>
-Subject: [PATCH 03/15] SUNRPC: Cleanup rpc_setup_pipedir
-Date: Tue, 27 Aug 2013 16:58:40 -0400
-Message-ID: <1377637132-53318-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377637132-53318-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377637132-53318-1-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-2-git-send-email-Trond.Myklebust@netapp.com>
+	id S1757039Ab3HMVsA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Aug 2013 17:48:00 -0400
+From: <andros@netapp.com>
+To: <trond.myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 5 1/3] NFSv4 Remove unused LIPKEY and SPKM enums
+Date: Tue, 13 Aug 2013 17:47:47 -0400
+Message-ID: <1376430469-3773-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1376430469-3773-1-git-send-email-andros@netapp.com>
+References: <1376430469-3773-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The directory name is _always_ clnt->cl_program->pipe_dir_name.
+From: Andy Adamson <andros@netapp.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+SPKM and LIPKEY are not supported.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- net/sunrpc/clnt.c | 17 ++++++-----------
- 1 file changed, 6 insertions(+), 11 deletions(-)
+ fs/nfs/super.c                  | 34 ----------------------------------
+ include/linux/sunrpc/msg_prot.h |  6 ------
+ 2 files changed, 40 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index a327cc7..0cf4e09 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -123,10 +123,10 @@ static void rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
- }
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index d26bd63..f4d3768 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -209,8 +209,6 @@ static const match_table_t nfs_xprt_protocol_tokens = {
+ enum {
+ 	Opt_sec_none, Opt_sec_sys,
+ 	Opt_sec_krb5, Opt_sec_krb5i, Opt_sec_krb5p,
+-	Opt_sec_lkey, Opt_sec_lkeyi, Opt_sec_lkeyp,
+-	Opt_sec_spkm, Opt_sec_spkmi, Opt_sec_spkmp,
  
- static struct dentry *rpc_setup_pipedir_sb(struct super_block *sb,
--				    struct rpc_clnt *clnt,
--				    const char *dir_name)
-+				    struct rpc_clnt *clnt)
- {
- 	static uint32_t clntid;
-+	const char *dir_name = clnt->cl_program->pipe_dir_name;
- 	char name[15];
- 	struct dentry *dir, *dentry;
+ 	Opt_sec_err
+ };
+@@ -224,14 +222,6 @@ static const match_table_t nfs_secflavor_tokens = {
+ 	{ Opt_sec_krb5i, "krb5i" },
+ 	{ Opt_sec_krb5p, "krb5p" },
  
-@@ -153,15 +153,12 @@ static struct dentry *rpc_setup_pipedir_sb(struct super_block *sb,
- }
+-	{ Opt_sec_lkey, "lkey" },
+-	{ Opt_sec_lkeyi, "lkeyi" },
+-	{ Opt_sec_lkeyp, "lkeyp" },
+-
+-	{ Opt_sec_spkm, "spkm3" },
+-	{ Opt_sec_spkmi, "spkm3i" },
+-	{ Opt_sec_spkmp, "spkm3p" },
+-
+ 	{ Opt_sec_err, NULL }
+ };
  
- static int
--rpc_setup_pipedir(struct rpc_clnt *clnt, const char *dir_name,
--		  struct super_block *pipefs_sb)
-+rpc_setup_pipedir(struct super_block *pipefs_sb, struct rpc_clnt *clnt)
- {
- 	struct dentry *dentry;
- 
- 	clnt->cl_dentry = NULL;
--	if (dir_name == NULL)
--		return 0;
--	dentry = rpc_setup_pipedir_sb(pipefs_sb, clnt, dir_name);
-+	dentry = rpc_setup_pipedir_sb(pipefs_sb, clnt);
- 	if (IS_ERR(dentry))
- 		return PTR_ERR(dentry);
- 	clnt->cl_dentry = dentry;
-@@ -186,8 +183,7 @@ static int __rpc_clnt_handle_event(struct rpc_clnt *clnt, unsigned long event,
- 
- 	switch (event) {
- 	case RPC_PIPEFS_MOUNT:
--		dentry = rpc_setup_pipedir_sb(sb, clnt,
--					      clnt->cl_program->pipe_dir_name);
-+		dentry = rpc_setup_pipedir_sb(sb, clnt);
- 		if (!dentry)
- 			return -ENOENT;
- 		if (IS_ERR(dentry))
-@@ -282,7 +278,6 @@ static void rpc_clnt_set_nodename(struct rpc_clnt *clnt, const char *nodename)
- static int rpc_client_register(const struct rpc_create_args *args,
- 			       struct rpc_clnt *clnt)
- {
--	const struct rpc_program *program = args->program;
- 	struct rpc_auth *auth;
- 	struct net *net = rpc_net_ns(clnt);
- 	struct super_block *pipefs_sb;
-@@ -290,7 +285,7 @@ static int rpc_client_register(const struct rpc_create_args *args,
- 
- 	pipefs_sb = rpc_get_sb_net(net);
- 	if (pipefs_sb) {
--		err = rpc_setup_pipedir(clnt, program->pipe_dir_name, pipefs_sb);
-+		err = rpc_setup_pipedir(pipefs_sb, clnt);
- 		if (err)
- 			goto out;
+@@ -502,12 +492,6 @@ static const char *nfs_pseudoflavour_to_name(rpc_authflavor_t flavour)
+ 		{ RPC_AUTH_GSS_KRB5, "krb5" },
+ 		{ RPC_AUTH_GSS_KRB5I, "krb5i" },
+ 		{ RPC_AUTH_GSS_KRB5P, "krb5p" },
+-		{ RPC_AUTH_GSS_LKEY, "lkey" },
+-		{ RPC_AUTH_GSS_LKEYI, "lkeyi" },
+-		{ RPC_AUTH_GSS_LKEYP, "lkeyp" },
+-		{ RPC_AUTH_GSS_SPKM, "spkm" },
+-		{ RPC_AUTH_GSS_SPKMI, "spkmi" },
+-		{ RPC_AUTH_GSS_SPKMP, "spkmp" },
+ 		{ UINT_MAX, "unknown" }
+ 	};
+ 	int i;
+@@ -1044,24 +1028,6 @@ static int nfs_parse_security_flavors(char *value,
+ 	case Opt_sec_krb5p:
+ 		mnt->auth_flavors[0] = RPC_AUTH_GSS_KRB5P;
+ 		break;
+-	case Opt_sec_lkey:
+-		mnt->auth_flavors[0] = RPC_AUTH_GSS_LKEY;
+-		break;
+-	case Opt_sec_lkeyi:
+-		mnt->auth_flavors[0] = RPC_AUTH_GSS_LKEYI;
+-		break;
+-	case Opt_sec_lkeyp:
+-		mnt->auth_flavors[0] = RPC_AUTH_GSS_LKEYP;
+-		break;
+-	case Opt_sec_spkm:
+-		mnt->auth_flavors[0] = RPC_AUTH_GSS_SPKM;
+-		break;
+-	case Opt_sec_spkmi:
+-		mnt->auth_flavors[0] = RPC_AUTH_GSS_SPKMI;
+-		break;
+-	case Opt_sec_spkmp:
+-		mnt->auth_flavors[0] = RPC_AUTH_GSS_SPKMP;
+-		break;
+ 	default:
+ 		return 0;
  	}
+diff --git a/include/linux/sunrpc/msg_prot.h b/include/linux/sunrpc/msg_prot.h
+index aadc6a0..1666da0 100644
+--- a/include/linux/sunrpc/msg_prot.h
++++ b/include/linux/sunrpc/msg_prot.h
+@@ -29,12 +29,6 @@ enum rpc_auth_flavors {
+ 	RPC_AUTH_GSS_KRB5  = 390003,
+ 	RPC_AUTH_GSS_KRB5I = 390004,
+ 	RPC_AUTH_GSS_KRB5P = 390005,
+-	RPC_AUTH_GSS_LKEY  = 390006,
+-	RPC_AUTH_GSS_LKEYI = 390007,
+-	RPC_AUTH_GSS_LKEYP = 390008,
+-	RPC_AUTH_GSS_SPKM  = 390009,
+-	RPC_AUTH_GSS_SPKMI = 390010,
+-	RPC_AUTH_GSS_SPKMP = 390011,
+ };
+ 
+ /* Maximum size (in bytes) of an rpc credential or verifier */
 -- 
 1.8.3.1
 
