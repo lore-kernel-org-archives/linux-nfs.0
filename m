@@ -1,51 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:36416 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753169Ab3H0U7I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Aug 2013 16:59:08 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-CC: <andros@netapp.com>
-Subject: [PATCH 02/15] SUNRPC: Remove unused struct rpc_clnt field cl_protname
-Date: Tue, 27 Aug 2013 16:58:39 -0400
-Message-ID: <1377637132-53318-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377637132-53318-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377637132-53318-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from nm32-vm3.bullet.mail.bf1.yahoo.com ([72.30.239.139]:48954 "EHLO
+	nm32-vm3.bullet.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758062Ab3HMShv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Aug 2013 14:37:51 -0400
+Message-ID: <1376418720.80003.YahooMailNeo@web160903.mail.bf1.yahoo.com>
+Date: Tue, 13 Aug 2013 11:32:00 -0700 (PDT)
+From: Troy Bernhard <troynto134@yahoo.com>
+Reply-To: Troy Bernhard <kasaetyypyotr@photofile.ru>
+Subject: Whats up! So i'm hunting for man!
+To: linux-nfs@vger.kernel.org
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: multipart/mixed; boundary="980202461-1546153058-1376418720=:80003"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- include/linux/sunrpc/clnt.h | 1 -
- net/sunrpc/clnt.c           | 1 -
- 2 files changed, 2 deletions(-)
+--980202461-1546153058-1376418720=:80003
+Content-Type: text/plain; charset=us-ascii
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index bfe11be..481f9c0 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -41,7 +41,6 @@ struct rpc_clnt {
- 				cl_vers,	/* RPC version number */
- 				cl_maxproc;	/* max procedure number */
- 
--	const char *		cl_protname;	/* protocol name */
- 	struct rpc_auth *	cl_auth;	/* authenticator */
- 	struct rpc_stat *	cl_stats;	/* per-program statistics */
- 	struct rpc_iostats *	cl_metrics;	/* per-client statistics */
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index e862f8c..a327cc7 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -348,7 +348,6 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
- 	rcu_assign_pointer(clnt->cl_xprt, xprt);
- 	clnt->cl_procinfo = version->procs;
- 	clnt->cl_maxproc  = version->nrprocs;
--	clnt->cl_protname = program->name;
- 	clnt->cl_prog     = args->prognumber ? : program->number;
- 	clnt->cl_vers     = version->number;
- 	clnt->cl_stats    = program->stats;
--- 
-1.8.3.1
+zerdwmyq xaxhcnbdx jfycpe
+jubstqg dbgvne pxqeqht
+jsrycv Y Z U A E X U I
+hsrullfw B V K Z S C T S G V G V
+ytinn rutcxopr fyjghohioalkaammiqr
+zjfznyms qpihrjl rmvqpggno
+zswfxknrl E O H H X V W N
+wfjtqzrvkfmau D M P T Y N X Z S E M
+--980202461-1546153058-1376418720=:80003
+Content-Type: image/jpeg; name="xcfxa.jpg"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="xcfxa.jpg"
 
+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
+/wDc/wAjvfT6cM8CvJ//2Q==
+
+--980202461-1546153058-1376418720=:80003--
