@@ -1,96 +1,140 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:21769 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755330Ab3HFVJe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Aug 2013 17:09:34 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 5/5] nfs4.1: Add SP4_MACH_CRED stateid support
-Date: Tue, 6 Aug 2013 17:08:31 -0400
-Message-ID: <1375823311-18457-6-git-send-email-dros@netapp.com>
-In-Reply-To: <1375823311-18457-1-git-send-email-dros@netapp.com>
-References: <1375823311-18457-1-git-send-email-dros@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from userp1040.oracle.com ([156.151.31.81]:51810 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757516Ab3HMTcd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Aug 2013 15:32:33 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: [nfs-utils PATCH 3/4] mount.nfs:  improve handling of MNT_NOARG type options
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1376421629-21382-4-git-send-email-smayhew@redhat.com>
+Date: Tue, 13 Aug 2013 15:32:25 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <9C8AB6BD-D33B-4708-B8A8-C5420101BA26@oracle.com>
+References: <1376421629-21382-1-git-send-email-smayhew@redhat.com> <1376421629-21382-4-git-send-email-smayhew@redhat.com>
+To: Scott Mayhew <smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-TEST_STATEID and FREE_STATEID use the machine cred
+Hi Scott-
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- fs/nfs/nfs4proc.c         | 19 +++++++++++++++++--
- include/linux/nfs_fs_sb.h |  1 +
- 2 files changed, 18 insertions(+), 2 deletions(-)
+On Aug 13, 2013, at 3:20 PM, Scott Mayhew <smayhew@redhat.com> wrote:
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index d4aa158..7dee833 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5943,7 +5943,9 @@ static const uint32_t _nfs4_spo_must_allow[NFS4_OP_MAP_NUM_WORDS] = {
- 	[0] = 1 << (OP_CLOSE) |
- 	      1 << (OP_LOCKU),
- 	[1] = 1 << (OP_SECINFO - 32) |
--	      1 << (OP_SECINFO_NO_NAME - 32)
-+	      1 << (OP_SECINFO_NO_NAME - 32) |
-+	      1 << (OP_TEST_STATEID - 32) |
-+	      1 << (OP_FREE_STATEID - 32)
- };
- 
- 
-@@ -5999,6 +6001,12 @@ static int _nfs4_sp4_select_mode(struct nfs_client *clp,
- 			dfprintk(MOUNT, "  secinfo mode enabled\n");
- 			set_bit(NFS_SP4_MACH_CRED_SECINFO, &clp->cl_sp4_flags);
- 		}
-+
-+		if (test_bit(OP_TEST_STATEID, sp->allow.u.longs) &&
-+		    test_bit(OP_FREE_STATEID, sp->allow.u.longs)) {
-+			dfprintk(MOUNT, "  stateid mode enabled\n");
-+			set_bit(NFS_SP4_MACH_CRED_STATEID, &clp->cl_sp4_flags);
-+		}
- 	}
- 
- 	return 0;
-@@ -7325,11 +7333,15 @@ static int _nfs41_test_stateid(struct nfs_server *server,
- 		.rpc_resp = &res,
- 		.rpc_cred = cred,
- 	};
-+	struct rpc_clnt *rpc_client = server->client;
-+
-+	nfs4_state_protect(server->nfs_client, NFS_SP4_MACH_CRED_STATEID,
-+		&rpc_client, &msg);
- 
- 	dprintk("NFS call  test_stateid %p\n", stateid);
- 	nfs41_init_sequence(&args.seq_args, &res.seq_res, 0);
- 	nfs4_set_sequence_privileged(&args.seq_args);
--	status = nfs4_call_sync_sequence(server->client, server, &msg,
-+	status = nfs4_call_sync_sequence(rpc_client, server, &msg,
- 			&args.seq_args, &res.seq_res);
- 	if (status != NFS_OK) {
- 		dprintk("NFS reply test_stateid: failed, %d\n", status);
-@@ -7421,6 +7433,9 @@ static struct rpc_task *_nfs41_free_stateid(struct nfs_server *server,
- 	};
- 	struct nfs_free_stateid_data *data;
- 
-+	nfs4_state_protect(server->nfs_client, NFS_SP4_MACH_CRED_STATEID,
-+		&task_setup.rpc_client, &msg);
-+
- 	dprintk("NFS call  free_stateid %p\n", stateid);
- 	data = kmalloc(sizeof(*data), GFP_NOFS);
- 	if (!data)
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 02fa36b..8ef3371 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -93,6 +93,7 @@ struct nfs_client {
- 					 * must use machine cred */
- #define NFS_SP4_MACH_CRED_CLEANUP  2	/* CLOSE and LOCKU */
- #define NFS_SP4_MACH_CRED_SECINFO  3	/* SECINFO and SECINFO_NONAME */
-+#define NFS_SP4_MACH_CRED_STATEID  4	/* TEST_STATEID and FREE_STATEID */
- #endif /* CONFIG_NFS_V4 */
- 
- #ifdef CONFIG_NFS_FSCACHE
+> conf_parse_mntopts() maintains a linked list of options that will
+> ultimately be passed in the data field of the mount() syscall in order
+> to avoid unnecessary duplicates and/or conflicts.  This doesn't work
+> very well for MNT_NOARG type options, since setting any of these to
+> false in the nfsmount.conf doesn't correspond to any 'real' mount option
+> (i.e. there are no such options 'nobg', 'nofg', and 'nosloppy').
+
+What's broken here, exactly?
+
+> 
+> This patch adds a set of internal variables for the three real MNT_NOARG
+> options (bg, fg, sloppy) along with their pseudo options (nobg, nofg,
+> nosloppy), and a helper function to track which of these options has
+> been previously seen and to determine whether or not to append an option
+> to the linked list.
+> 
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> ---
+> utils/mount/configfile.c | 50 ++++++++++++++++++++++++++++++++++++++++++++++++
+> 1 file changed, 50 insertions(+)
+> 
+> diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
+> index 221436f..623c886 100644
+> --- a/utils/mount/configfile.c
+> +++ b/utils/mount/configfile.c
+> @@ -73,6 +73,8 @@ struct mnt_alias {
+> };
+> int mnt_alias_sz = (sizeof(mnt_alias_tab)/sizeof(mnt_alias_tab[0]));
+> 
+> +static int bg, nobg, fg, nofg, sloppy, nosloppy;
+> +
+> /*
+>  * See if the option is an alias, if so return the 
+>  * real mount option along with the argument type.
+> @@ -278,6 +280,46 @@ default_value(char *mopt)
+> 
+> 	return 1;
+> }
+> +
+> +int
+> +should_add_noarg_opt(char *opt, char *val)
+> +{
+> +	int ret = 0;
+> +
+> +	if (strcasecmp(opt, "bg") == 0) {
+> +		if (strcasecmp(val, "true") == 0) {
+> +			if (bg == 0 && nobg == 0 && fg == 0) {
+> +				bg = 1;
+> +				ret = 1;
+> +			}
+> +		} else if (strcasecmp(val, "false") == 0) {
+> +			if (bg == 0 && nobg == 0)
+> +				nobg = 1;
+> +		}
+> +	} else if (strcasecmp(opt, "fg") == 0) {
+> +		if (strcasecmp(val, "true") == 0) {
+> +			if (fg == 0 && nofg == 0 && bg == 0) {
+> +				fg = 1;
+> +				ret = 1;
+> +			}
+> +		} else if (strcasecmp(val, "false") == 0) {
+> +			if (fg == 0 && nofg == 0)
+> +				nofg = 1;
+> +		}
+> +	} else if (strcasecmp(opt, "sloppy") == 0) {
+> +		if (sloppy == 0 && nosloppy == 0) {
+> +			if(strcasecmp(val, "true") == 0) {
+> +				sloppy = 1;
+> +				ret = 1;
+> +			} else
+> +				nosloppy = 1;
+> +		}
+> +	} else
+> +		xlog_warn("Invalid MNT_NOARG option: '%s'", opt);
+> +
+> +	return ret;
+> +}
+> +
+> /*
+>  * Parse the given section of the configuration 
+>  * file to if there are any mount options set.
+> @@ -315,6 +357,13 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
+> 		field = mountopts_alias(node->field, &argtype);
+> 		if (lookup_entry(field) != NULL)
+> 			continue;
+> +		if (argtype == MNT_NOARG) {
+> +			if (should_add_noarg_opt(field, value)) {
+> +				list_size += strlen(field) + 1;
+> +				add_entry(field);
+> +			}
+> +			continue;
+> +		}
+> 		if (argtype != MNT_NOARG) {
+> 			snprintf(buf, BUFSIZ, "no%s", field);
+> 			if (lookup_entry(buf) != NULL)
+> @@ -359,6 +408,7 @@ char *conf_get_mntopts(char *spec, char *mount_point,
+> 	char *ptr, *server, *config_opts;
+> 	int optlen = 0;
+> 
+> +	bg = nobg = fg = nofg = sloppy = nosloppy = 0;
+> 	SLIST_INIT(&head);
+> 	list_size = 0;
+> 	/*
+> -- 
+> 1.7.11.7
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-1.7.12.4 (Apple Git-37)
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
