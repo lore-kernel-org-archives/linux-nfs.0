@@ -1,101 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:53534 "EHLO mx2.suse.de"
+Received: from mx11.netapp.com ([216.240.18.76]:1636 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757555Ab3HHC7t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Aug 2013 22:59:49 -0400
-Received: from relay2.suse.de (unknown [195.135.220.254])
-	by mx2.suse.de (Postfix) with ESMTP id E7380A4EB7
-	for <linux-nfs@vger.kernel.org>; Thu,  8 Aug 2013 04:59:47 +0200 (CEST)
-Date: Thu, 8 Aug 2013 12:59:37 +1000
-From: NeilBrown <neilb@suse.de>
-To: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH/RFC] remove incorrect "Lock reclaim failed" warning when
- delegation is in force.
-Message-ID: <20130808125937.126d8ef1@notabene.brown>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/CRbzZH_t+=t=MPe4SlrFZ96"; protocol="application/pgp-signature"
+	id S1758012Ab3HMSgE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Aug 2013 14:36:04 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 07/10] NFSv4: Add tracepoints for debugging rename
+Date: Tue, 13 Aug 2013 14:35:49 -0400
+Message-ID: <1376418952-12481-7-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1376418952-12481-6-git-send-email-Trond.Myklebust@netapp.com>
+References: <1376418952-12481-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1376418952-12481-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1376418952-12481-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1376418952-12481-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1376418952-12481-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1376418952-12481-6-git-send-email-Trond.Myklebust@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/CRbzZH_t+=t=MPe4SlrFZ96
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Add tracepoints to debug both synchronous and asynchronous renames.
 
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c  | 13 +++++++++----
+ fs/nfs/nfs4trace.h | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 59 insertions(+), 4 deletions(-)
 
-Hi,
- I'm trying to track down a strange problem with state ids going bad
- (possibly linked to ntp changing the system time on the non-Linux server)
- and am still learning about how the state management works.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index be75a11..e3d69b3 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3330,10 +3330,14 @@ static void nfs4_proc_rename_rpc_prepare(struct rpc_task *task, struct nfs_renam
+ static int nfs4_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
+ 				 struct inode *new_dir)
+ {
+-	struct nfs_renameres *res = task->tk_msg.rpc_resp;
++	struct nfs_renamedata *data = task->tk_calldata;
++	struct nfs_renameres *res = &data->res;
+ 
+ 	if (!nfs4_sequence_done(task, &res->seq_res))
+ 		return 0;
++	trace_nfs4_rename_async(old_dir, data->args.old_name,
++			new_dir, data->args.new_name,
++			task->tk_status);
+ 	if (nfs4_async_handle_error(task, res->server, NULL) == -EAGAIN)
+ 		return 0;
+ 
+@@ -3376,9 +3380,10 @@ static int nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(old_dir),
+-				_nfs4_proc_rename(old_dir, old_name,
+-					new_dir, new_name),
++		err = _nfs4_proc_rename(old_dir, old_name,
++					new_dir, new_name);
++		trace_nfs4_rename(old_dir, old_name, new_dir, new_name, err);
++		err = nfs4_handle_exception(NFS_SERVER(old_dir), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index f32cd614..638fc7a 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -431,6 +431,56 @@ DEFINE_NFS4_LOOKUP_EVENT(nfs4_remove_async);
+ DEFINE_NFS4_LOOKUP_EVENT(nfs4_get_fs_locations);
+ DEFINE_NFS4_LOOKUP_EVENT(nfs4_secinfo);
+ 
++DECLARE_EVENT_CLASS(nfs4_rename_event,
++		TP_PROTO(const struct inode *olddir,
++			const struct qstr *oldname,
++			const struct inode *newdir,
++			const struct qstr *newname,
++			int error),
++
++		TP_ARGS(olddir, oldname, newdir, newname, error),
++
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(int, error)
++			__field(u64, olddir)
++			__string(oldname, oldname->name)
++			__field(u64, newdir)
++			__string(newname, newname->name)
++		),
++
++		TP_fast_assign(
++			__entry->dev = olddir->i_sb->s_dev;
++			__entry->olddir = NFS_FILEID(olddir);
++			__entry->newdir = NFS_FILEID(newdir);
++			__entry->error = error;
++			__assign_str(oldname, oldname->name);
++			__assign_str(newname, newname->name);
++		),
++
++		TP_printk("error=%d (%s), oldname=%02x:%02x:%lld/%s, "
++			  "newname=%02x:%02x:%lld/%s",
++			  __entry->error,
++			  show_nfsv4_errors(__entry->error),
++			  MAJOR(__entry->dev), MINOR(__entry->dev),
++			  (unsigned long long)__entry->olddir,
++			  __get_str(oldname),
++			  MAJOR(__entry->dev), MINOR(__entry->dev),
++			  (unsigned long long)__entry->newdir,
++			  __get_str(newname)
++		)
++);
++#define DEFINE_NFS4_RENAME_EVENT(name)				\
++	DEFINE_EVENT(nfs4_rename_event, name,			\
++		TP_PROTO(const struct inode *olddir,		\
++			const struct qstr *oldname,		\
++			const struct inode *newdir,		\
++			const struct qstr *newname,		\
++			int error),				\
++		TP_ARGS(olddir, oldname, newdir, newname, error))
++DEFINE_NFS4_RENAME_EVENT(nfs4_rename);
++DEFINE_NFS4_RENAME_EVENT(nfs4_rename_async);
++
+ DECLARE_EVENT_CLASS(nfs4_inode_event,
+ 		TP_PROTO(const struct inode *inode,
+ 			int error),
+-- 
+1.8.3.1
 
- But I've come across an error where I don't think there should be one.
-
- For whatever reason the client gets a BAD_STATEID on a file that it has a
- lock on.  The open gets a write delegation so that when it runs
- nfs4_reclaim_locks(), nfs4_lock_reclaim aborts early without doing anything
- (it doesn't need to because there is a delegation).
- But the code below then checks that NFS_LOCK_INITIALIZED is set on all lock
- states.  But it isn't because nfs4_clear_open_state cleared it and
- nfs4_lock_reclaim didn't bother setting it.
-
- So I think the error should only be printed if there is no delegated state,
- hence this patch.
-
- Does it look right, or have I misunderstood something?
-
-Thanks,
-NeilBrown
-
-
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 1fab140..1876ee7 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1444,14 +1444,16 @@ restart:
- 		if (status >=3D 0) {
- 			status =3D nfs4_reclaim_locks(state, ops);
- 			if (status >=3D 0) {
--				spin_lock(&state->state_lock);
--				list_for_each_entry(lock, &state->lock_states, ls_locks) {
--					if (!test_bit(NFS_LOCK_INITIALIZED, &lock->ls_flags))
--						pr_warn_ratelimited("NFS: "
--							"%s: Lock reclaim "
--							"failed!\n", __func__);
-+				if (test_bit(NFS_DELEGATED_STATE, &state->flags) !=3D 0) {
-+					spin_lock(&state->state_lock);
-+					list_for_each_entry(lock, &state->lock_states, ls_locks) {
-+						if (!test_bit(NFS_LOCK_INITIALIZED, &lock->ls_flags))
-+							pr_warn_ratelimited("NFS: "
-+									    "%s: Lock reclaim "
-+									    "failed!\n", __func__);
-+					}
-+					spin_unlock(&state->state_lock);
- 				}
--				spin_unlock(&state->state_lock);
- 				nfs4_put_open_state(state);
- 				spin_lock(&sp->so_lock);
- 				goto restart;
-
---Sig_/CRbzZH_t+=t=MPe4SlrFZ96
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBUgMJmTnsnt1WYoG5AQL2/A/+OhxFVlPPn/X8eM7UHPSJEFs+JKHtARQq
-P322lRNtgNv8GWJh/Mnc+qaLa+rwG7rr8+oXks5eLvh7ZjAjl13VHP9nihvcF6jS
-+c2ggTb8bAfCatEJdjLGTmG6bCi85cYQMSKd8h3E4R9f/tUhJ+x5PW+zb++va/HP
-zzEy2paKH0P1Gv51uM6qKXp0HW3iRsx2Xo6/MfRCx9H0hnTTBF+wcpoaGb24QA6v
-ZRpSueWpFbqT+ErRhCLu24e3kM2zhw0OmrdqAJI3FAkZ21DDgBu3vhbDIGYaYd13
-tz9945TTYBNHudDxk1CqL1XLFjxnzaMBR34xBXxpEdiz1uUOpKvOogtr6lwlexjs
-PWNJZjd908IcTUv8x+OAiKBOkHDAm4NosjKRR/CKg0/hiBf2//6VJg5p+VV190SX
-HM4Nu/q8nkL/iO4D8BNQpqtOyNigXAIFhHcM1vn8RjnV2EZEQBTzL7O0tYX5WLNd
-OoIhGuVY9cEKJ30ZXBjTVEUVcJZBhQchuvKPYCdpAqXqoNzU6cwWG0kw6X1lrJv7
-shEuCcgniLzlWtcSs3ATn0c4ao76KBtNu10o1buc6ctuF1Iw2mhKuq41EIACmjDG
-41tc5tSQb+f/av9uix9F1cGQ9+66ciRwy3o7wPgJkT5xnErcKNvYrulLUC1tFZpf
-rPIxVk4EZaM=
-=zB9k
------END PGP SIGNATURE-----
-
---Sig_/CRbzZH_t+=t=MPe4SlrFZ96--
