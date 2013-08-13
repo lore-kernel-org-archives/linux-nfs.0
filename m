@@ -1,66 +1,195 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:37198 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756732Ab3H2VtN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Aug 2013 17:49:13 -0400
-Date: Fri, 30 Aug 2013 00:49:09 +0300
-From: Dan Carpenter <dan.carpenter@oracle.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: re: NFS: Add event tracing for generic NFS lookups
-Message-ID: <20130829214909.GA15027@elgon.mountain>
+Received: from mx11.netapp.com ([216.240.18.76]:40263 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757483Ab3HMSgC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Aug 2013 14:36:02 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 03/10] NFSv4: Add tracepoints for debugging file open
+Date: Tue, 13 Aug 2013 14:35:45 -0400
+Message-ID: <1376418952-12481-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1376418952-12481-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1376418952-12481-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1376418952-12481-2-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello Trond Myklebust,
+Set up basic tracepoints for debugging NFSv4 file open/close
 
-The patch 6e0d0be715fe: "NFS: Add event tracing for generic NFS
-lookups" from Aug 20, 2013, leads to the following static checker
-warning: "fs/nfs/dir.c:1465 nfs_atomic_open()
-	 	warn: 'ctx' was already freed."
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c  |   4 ++
+ fs/nfs/nfs4trace.h | 112 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 116 insertions(+)
 
-fs/nfs/dir.c
-  1462          if (IS_ERR(inode)) {
-  1463                  put_nfs_open_context(ctx);
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^
-Can free "ctx".
-
-  1464                  err = PTR_ERR(inode);
-  1465                  trace_nfs_atomic_open_exit(dir, ctx, open_flags, err);
-                                                        ^^^
-Dereference.
-
-  1466                  switch (err) {
-  1467                  case -ENOENT:
-  1468                          d_drop(dentry);
-  1469                          d_add(dentry, NULL);
-  1470                          break;
-  1471                  case -EISDIR:
-  1472                  case -ENOTDIR:
-  1473                          goto no_open;
-  1474                  case -ELOOP:
-  1475                          if (!(open_flags & O_NOFOLLOW))
-  1476                                  goto no_open;
-  1477                          break;
-  1478                          /* case -EINVAL: */
-  1479                  default:
-  1480                          break;
-  1481                  }
-  1482                  goto out;
-  1483          }
-  1484  
-  1485          err = nfs_finish_open(ctx, ctx->dentry, file, open_flags, opened);
-  1486          trace_nfs_atomic_open_exit(dir, ctx, open_flags, err);
-                                                ^^^
-If we hit an error in the call to nfs_finish_open() then I think "ctx"
-is freed.
-
-  1487  out:
-  1488          return err;
-  1489  
-
-regards,
-dan carpenter
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 3a55f24..213c519 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1442,6 +1442,7 @@ static int nfs4_do_open_reclaim(struct nfs_open_context *ctx, struct nfs4_state
+ 	int err;
+ 	do {
+ 		err = _nfs4_do_open_reclaim(ctx, state);
++		trace_nfs4_open_reclaim(ctx, state, 0, err);
+ 		if (nfs4_clear_cap_atomic_open_v1(server, err, &exception))
+ 			continue;
+ 		if (err != -NFS4ERR_DELAY)
+@@ -1897,6 +1898,7 @@ static int nfs4_do_open_expired(struct nfs_open_context *ctx, struct nfs4_state
+ 
+ 	do {
+ 		err = _nfs4_open_expired(ctx, state);
++		trace_nfs4_open_expired(ctx, state, 0, err);
+ 		if (nfs4_clear_cap_atomic_open_v1(server, err, &exception))
+ 			continue;
+ 		switch (err) {
+@@ -2199,6 +2201,7 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
+ 	do {
+ 		status = _nfs4_do_open(dir, ctx, flags, sattr, label);
+ 		res = ctx->state;
++		trace_nfs4_open_file(ctx, res, flags, status);
+ 		if (status == 0)
+ 			break;
+ 		/* NOTE: BAD_SEQID means the server and client disagree about the
+@@ -2389,6 +2392,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 	dprintk("%s: begin!\n", __func__);
+ 	if (!nfs4_sequence_done(task, &calldata->res.seq_res))
+ 		return;
++	trace_nfs4_close(state, calldata->arg.fmode, task->tk_status);
+         /* hmm. we are done with the inode, and in the process of freeing
+ 	 * the state_owner. we keep this around to process errors
+ 	 */
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index 451954f..251806f 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -155,6 +155,19 @@
+ 		{ -NFS4ERR_WRONG_TYPE,		"WRONG_TYPE" },		\
+ 		{ -NFS4ERR_XDEV,		"XDEV" })
+ 
++#define show_open_flags(flag)						\
++	__print_flags((unsigned long)flags, "|",			\
++		{ O_CREAT,			"O_CREAT" },		\
++		{ O_EXCL,			"O_EXCL" },		\
++		{ O_TRUNC,			"O_TRUNC" },		\
++		{ O_DIRECT,			"O_DIRECT" })
++
++#define show_fmode_flags(fmode)						\
++	__print_flags((unsigned long)fmode, "|",			\
++		{ FMODE_READ,			"READ" },		\
++		{ FMODE_WRITE,			"WRITE" },		\
++		{ FMODE_EXEC,			"EXEC" })
++
+ DECLARE_EVENT_CLASS(nfs4_clientid_event,
+ 		TP_PROTO(const struct nfs_client *clp,
+ 			int error),
+@@ -196,6 +209,105 @@ DEFINE_NFS4_CLIENTID_EVENT(nfs4_destroy_clientid);
+ DEFINE_NFS4_CLIENTID_EVENT(nfs4_bind_conn_to_session);
+ #endif /* CONFIG_NFS_V4_1 */
+ 
++DECLARE_EVENT_CLASS(nfs4_open_event,
++		TP_PROTO(const struct nfs_open_context *ctx,
++			const struct nfs4_state *state,
++			int flags,
++			int error),
++
++		TP_ARGS(ctx, state, flags, error),
++
++		TP_STRUCT__entry(
++			__field(int, error)
++			__field(int, flags)
++			__field(fmode_t, fmode)
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++			__field(u64, dir)
++			__string(name, ctx->dentry->d_name.name)
++		),
++
++		TP_fast_assign(
++			struct inode *inode = NULL;
++			if (!IS_ERR(state))
++				inode = state->inode;
++			__entry->error = error;
++			__entry->flags = flags;
++			__entry->dev = ctx->dentry->d_sb->s_dev;
++			if (inode != NULL) {
++				__entry->fileid = NFS_FILEID(inode);
++				__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
++			} else {
++				__entry->fileid = 0;
++				__entry->fhandle = 0;
++			}
++			__entry->dir = NFS_FILEID(ctx->dentry->d_parent->d_inode);
++			__assign_str(name, ctx->dentry->d_name.name);
++		),
++
++		TP_printk("error=%d (%s), flags=%d (%s) mode=%s fileid=%lld, "
++			  "fhandle=%0x08x name=%02x:%02x:%lld/%s",
++			  __entry->error,
++			  show_nfsv4_errors(__entry->error),
++			  __entry->flags,
++			  show_open_flags(__entry->flags),
++			  show_fmode_flags(__entry->fmode),
++			  (unsigned long long)__entry->fileid,
++			  __entry->fhandle,
++			  MAJOR(__entry->dev), MINOR(__entry->dev),
++			  (unsigned long long)__entry->dir,
++			  __get_str(name)
++		)
++);
++
++#define DEFINE_NFS4_OPEN_EVENT(name)		\
++DEFINE_EVENT(nfs4_open_event, name,			\
++		TP_PROTO(const struct nfs_open_context *ctx,	\
++			const struct nfs4_state *state,	\
++			int flags,			\
++			int error),			\
++		TP_ARGS(ctx, state, flags, error))
++DEFINE_NFS4_OPEN_EVENT(nfs4_open_reclaim);
++DEFINE_NFS4_OPEN_EVENT(nfs4_open_expired);
++DEFINE_NFS4_OPEN_EVENT(nfs4_open_file);
++
++TRACE_EVENT(nfs4_close,
++		TP_PROTO(const struct nfs4_state *state,
++			fmode_t fmode,
++			int error),
++
++		TP_ARGS(state, fmode, error),
++
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++			__field(fmode_t, fmode)
++			__field(int, error)
++		),
++
++		TP_fast_assign(
++			struct inode *inode = state->inode;
++
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = NFS_FILEID(inode);
++			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
++			__entry->fmode = fmode;
++			__entry->error = error;
++		),
++
++		TP_printk("error=%d (%s) mode=%s fileid=%02x:%02x:%lld, "
++			  "fhandle=%0x08x",
++			  __entry->error,
++			  show_nfsv4_errors(__entry->error),
++			  show_fmode_flags(__entry->fmode),
++			  MAJOR(__entry->dev), MINOR(__entry->dev),
++			  (unsigned long long)__entry->fileid,
++			  __entry->fhandle
++		)
++);
++
+ #endif /* _TRACE_NFS4_H */
+ 
+ #undef TRACE_INCLUDE_PATH
+-- 
+1.8.3.1
 
