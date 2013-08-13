@@ -1,111 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:17919 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:15664 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753254Ab3HEOo3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Aug 2013 10:44:29 -0400
-Message-ID: <51FFBA42.4050104@redhat.com>
-Date: Mon, 05 Aug 2013 15:44:18 +0100
-From: Ric Wheeler <rwheeler@redhat.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Bryan Schumaker <bjschuma@netapp.com>, Trond.Myklebust@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [RFC 4/5] NFSD: Defer copying
-References: <1374267830-30154-1-git-send-email-bjschuma@netapp.com> <1374267830-30154-5-git-send-email-bjschuma@netapp.com> <20130722185002.GB10109@fieldses.org> <51ED8549.3040308@netapp.com> <20130722193000.GD10109@fieldses.org> <51ED89DC.7050406@netapp.com> <20130722194331.GF10109@fieldses.org> <51ED8DD8.1060703@netapp.com> <20130722195556.GG10109@fieldses.org> <51FF647C.3020704@redhat.com> <20130805144127.GA31169@fieldses.org>
-In-Reply-To: <20130805144127.GA31169@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+	id S1757824Ab3HMTUb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Aug 2013 15:20:31 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r7DJKV17000809
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Aug 2013 15:20:31 -0400
+Received: from tonberry.usersys.redhat.com (dhcp145-64.rdu.redhat.com [10.13.145.64])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r7DJKUcM017254
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Aug 2013 15:20:31 -0400
+Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
+	by tonberry.usersys.redhat.com (8.14.5/8.14.5) with ESMTP id r7DJKU9t021423
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Aug 2013 15:20:30 -0400
+Received: (from smayhew@localhost)
+	by tonberry.usersys.redhat.com (8.14.5/8.14.5/Submit) id r7DJKUV4021422
+	for linux-nfs@vger.kernel.org; Tue, 13 Aug 2013 15:20:30 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [nfs-utils PATCH 1/4] mount.nfs: avoid unnecessary duplication of options passed to mount(2)
+Date: Tue, 13 Aug 2013 15:20:26 -0400
+Message-Id: <1376421629-21382-2-git-send-email-smayhew@redhat.com>
+In-Reply-To: <1376421629-21382-1-git-send-email-smayhew@redhat.com>
+References: <1376421629-21382-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/05/2013 03:41 PM, J. Bruce Fields wrote:
-> On Mon, Aug 05, 2013 at 09:38:20AM +0100, Ric Wheeler wrote:
->> On 07/22/2013 08:55 PM, J. Bruce Fields wrote:
->>> On Mon, Jul 22, 2013 at 03:54:00PM -0400, Bryan Schumaker wrote:
->>>> On 07/22/2013 03:43 PM, J. Bruce Fields wrote:
->>>>> On Mon, Jul 22, 2013 at 03:37:00PM -0400, Bryan Schumaker wrote:
->>>>>> On 07/22/2013 03:30 PM, J. Bruce Fields wrote:
->>>>>>> On Mon, Jul 22, 2013 at 03:17:29PM -0400, Bryan Schumaker wrote:
->>>>>>>> On 07/22/2013 02:50 PM, J. Bruce Fields wrote:
->>>>>>>>> On Fri, Jul 19, 2013 at 05:03:49PM -0400, bjschuma@netapp.com wrote:
->>>>>>>>>> From: Bryan Schumaker <bjschuma@netapp.com>
->>>>>>>>>>
->>>>>>>>>> Rather than performing the copy right away, schedule it to run later and
->>>>>>>>>> reply to the client.  Later, send a callback to notify the client that
->>>>>>>>>> the copy has finished.
->>>>>>>>> I believe you need to implement the referring triple support described
->>>>>>>>> in http://tools.ietf.org/html/rfc5661#section-2.10.6.3 to fix the race
->>>>>>>>> described in
->>>>>>>>> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-15.1.3
->>>>>>>>> .
->>>>>>>> I'll re-read and re-write.
->>>>>>>>
->>>>>>>>> I see cb_delay initialized below, but not otherwise used.  Am I missing
->>>>>>>>> anything?
->>>>>>>> Whoops!  I was using that earlier to try to fake up a callback, but I eventually decided it's easier to just do the copy asynchronously.  I must have forgotten to take it out :(
->>>>>>>>
->>>>>>>>> What about OFFLOAD_STATUS and OFFLOAD_ABORT?
->>>>>>>> I haven't thought out those too much... I haven't thought about a use for them on the client yet.
->>>>>>> If it might be a long-running copy, I assume the client needs the
->>>>>>> ability to abort if the caller is killed.
->>>>>>>
->>>>>>> (Dumb question: what happens on the network partition?  Does the server
->>>>>>> abort the copy when it expires the client state?)
->>>>>>>
->>>>>>> In any case,
->>>>>>> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-15.1.3
->>>>>>> says "If a server's COPY operation returns a stateid, then the server
->>>>>>> MUST also support these operations: CB_OFFLOAD, OFFLOAD_ABORT, and
->>>>>>> OFFLOAD_STATUS."
->>>>>>>
->>>>>>> So even if we've no use for them on the client then we still need to
->>>>>>> implement them (and probably just write a basic pynfs test).  Either
->>>>>>> that or update the spec.
->>>>>> Fair enough.  I'll think it out and do something!  Easy solution: save this patch for later and only support the sync version of copy for the final version of this patch series.
->>>>> I can't remember--does the spec give the server a clear way to bail out
->>>>> and tell the client to fall back on a normal copy in cases where the
->>>>> server knows the copy could take an unreasonable amount of time?
->>>>>
->>>>> --b.
->>>> I don't think so.  Is there ever a case where copying over the network would be slower than copying on the server?
->>> Mybe not, but if the copy will take a minute, then we don't want to tie
->>> up an rpc slot for a minute.
->>>
->>> --b.
->> I think that we need to be able to handle copies that would take a
->> lot longer than just a minute - this offload could take a very long
->> time I assume depending on the size of the data getting copied and
->> the back end storage device....
-> Bryan suggested in offline discussion that one possibility might be to
-> copy, say, at most a gigabyte at a time before returning and making the
-> client continue the copy.
->
-> Where for "a gigabyte" read, "some amount that doesn't take too long to
-> copy but is still enough to allow close to full bandwidth".  Hopefully
-> that's an easy number to find.
->
-> But based on
-> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-14.1.2
-> the COPY operation isn't designed for that--it doesn't give the option
-> of returning bytes_copied in the successful case.
->
-> Maybe we should fix that in the spec, or maybe we just need to implement
-> the asynchronous case.  I guess it depends on which is easier,
->
-> 	a) implementing the asynchronous case (and the referring-triple
-> 	   support to fix the COPY/callback races), or
-> 	b) implementing this sort of "short copy" loop in a way that gives
-> 	   good performance.
->
-> On the client side it's clearly a) since you're forced to handle that
-> case anyway.  (Unless we argue that *all* copies should work that way,
-> and that the spec should ditch the asynchronous case.) On the server
-> side, b) looks easier.
->
-> --b.
+The nfsmount.conf file has the following format:
 
-I am not sure that 1GB/time is enough - for a lot of servers, you could do an 
-enormous range since no data is actually moved inside of the target (just 
-pointers updated like in reflinked files for example)....
+[ section "arg" ]
+	tag = value
 
-ric
+conf_get_tag_list() currently doesn't check the arg field so we wind up
+getting all the options that fall under a particular section value,
+instead of just the ones that match the specific "arg" field.  As a
+result, we wind up passing options to the mount syscall multiple times.
+
+For example, if we have three different server sections, and each
+section has an Nfsvers tag, then the string we pass to the mount syscall
+will have three occurrences of the nfsvers option.
+
+Note that the call to conf_get_section() in conf_parse_mntopts() will
+ensure that we never pass the wrong value for an option, but we should
+still avoid sending duplicate options if it's at all possible.
+
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ support/include/conffile.h | 2 +-
+ support/nfs/conffile.c     | 4 +++-
+ utils/mount/configfile.c   | 2 +-
+ 3 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/support/include/conffile.h b/support/include/conffile.h
+index ce7aa21..05ea5d2 100644
+--- a/support/include/conffile.h
++++ b/support/include/conffile.h
+@@ -54,7 +54,7 @@ extern int      conf_end(int, int);
+ extern void     conf_free_list(struct conf_list *);
+ extern struct sockaddr *conf_get_address(char *, char *);
+ extern struct conf_list *conf_get_list(char *, char *);
+-extern struct conf_list *conf_get_tag_list(char *);
++extern struct conf_list *conf_get_tag_list(char *, char *);
+ extern int      conf_get_num(char *, char *, int);
+ extern char    *conf_get_str(char *, char *);
+ extern char    *conf_get_section(char *, char *, char *);
+diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+index 5015e94..c3434d5 100644
+--- a/support/nfs/conffile.c
++++ b/support/nfs/conffile.c
+@@ -565,7 +565,7 @@ cleanup:
+ }
+ 
+ struct conf_list *
+-conf_get_tag_list(char *section)
++conf_get_tag_list(char *section, char *arg)
+ {
+ 	struct conf_list *list = 0;
+ 	struct conf_list_node *node;
+@@ -579,6 +579,8 @@ conf_get_tag_list(char *section)
+ 	cb = LIST_FIRST(&conf_bindings[conf_hash (section)]);
+ 	for (; cb; cb = LIST_NEXT(cb, link)) {
+ 		if (strcasecmp (section, cb->section) == 0) {
++			if (arg != NULL && strcasecmp(arg, cb->arg) != 0)
++				continue;
+ 			list->cnt++;
+ 			node = calloc(1, sizeof *node);
+ 			if (!node)
+diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
+index 6f2ee75..1f1b6e7 100644
+--- a/utils/mount/configfile.c
++++ b/utils/mount/configfile.c
+@@ -286,7 +286,7 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
+ 	char *nvalue, *ptr;
+ 	int argtype;
+ 
+-	list = conf_get_tag_list(section);
++	list = conf_get_tag_list(section, arg);
+ 	TAILQ_FOREACH(node, &list->fields, link) {
+ 		/*
+ 		 * Do not overwrite options if already exists 
+-- 
+1.7.11.7
 
