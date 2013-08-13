@@ -1,197 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:39950 "EHLO mx11.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:48951 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753110Ab3HVAY3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Aug 2013 20:24:29 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 12/21] NFSv4: Add tracepoints for debugging lookup/create operations
-Date: Wed, 21 Aug 2013 20:24:10 -0400
-Message-ID: <1377131059-40121-13-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377131059-40121-12-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377131059-40121-1-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-2-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-3-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-4-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-5-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-6-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-7-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-8-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-9-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-10-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-11-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-12-git-send-email-Trond.Myklebust@netapp.com>
+	id S1757862Ab3HMTw0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Aug 2013 15:52:26 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 02/10] NFS: refactor code for calculating the crc32 hash
+ of a filehandle
+Date: Tue, 13 Aug 2013 19:52:25 +0000
+Message-ID: <60B814F0-8EED-466E-B06E-4EAB9809B541@netapp.com>
+References: <1376418952-12481-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1376418952-12481-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1376418952-12481-2-git-send-email-Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Set up basic tracepoints for debugging NFSv4 lookup, unlink/remove,
-symlink, mkdir, mknod, fs_locations and secinfo.
+I think I was the last one to touch this.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c  | 36 ++++++++++++++++++++++--------------
- fs/nfs/nfs4trace.h | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 72 insertions(+), 14 deletions(-)
+On Aug 13, 2013, at 2:35 PM, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 0b27837..9ff50a5 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3022,6 +3022,7 @@ static int nfs4_proc_lookup_common(struct rpc_clnt **clnt, struct inode *dir,
- 	int err;
- 	do {
- 		err = _nfs4_proc_lookup(client, dir, name, fhandle, fattr, label);
-+		trace_nfs4_lookup(dir, name, err);
- 		switch (err) {
- 		case -NFS4ERR_BADNAME:
- 			err = -ENOENT;
-@@ -3257,8 +3258,9 @@ static int nfs4_proc_remove(struct inode *dir, struct qstr *name)
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(dir),
--				_nfs4_proc_remove(dir, name),
-+		err = _nfs4_proc_remove(dir, name);
-+		trace_nfs4_remove(dir, name, err);
-+		err = nfs4_handle_exception(NFS_SERVER(dir), err,
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-@@ -3287,7 +3289,8 @@ static void nfs4_proc_unlink_rpc_prepare(struct rpc_task *task, struct nfs_unlin
- 
- static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
- {
--	struct nfs_removeres *res = task->tk_msg.rpc_resp;
-+	struct nfs_unlinkdata *data = task->tk_calldata;
-+	struct nfs_removeres *res = &data->res;
- 
- 	if (!nfs4_sequence_done(task, &res->seq_res))
- 		return 0;
-@@ -3529,9 +3532,9 @@ static int nfs4_proc_symlink(struct inode *dir, struct dentry *dentry,
- 	label = nfs4_label_init_security(dir, dentry, sattr, &l);
- 
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(dir),
--				_nfs4_proc_symlink(dir, dentry, page,
--							len, sattr, label),
-+		err = _nfs4_proc_symlink(dir, dentry, page, len, sattr, label);
-+		trace_nfs4_symlink(dir, &dentry->d_name, err);
-+		err = nfs4_handle_exception(NFS_SERVER(dir), err,
- 				&exception);
- 	} while (exception.retry);
- 
-@@ -3568,8 +3571,9 @@ static int nfs4_proc_mkdir(struct inode *dir, struct dentry *dentry,
- 
- 	sattr->ia_mode &= ~current_umask();
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(dir),
--				_nfs4_proc_mkdir(dir, dentry, sattr, label),
-+		err = _nfs4_proc_mkdir(dir, dentry, sattr, label);
-+		trace_nfs4_mkdir(dir, &dentry->d_name, err);
-+		err = nfs4_handle_exception(NFS_SERVER(dir), err,
- 				&exception);
- 	} while (exception.retry);
- 	nfs4_label_release_security(label);
-@@ -3676,8 +3680,9 @@ static int nfs4_proc_mknod(struct inode *dir, struct dentry *dentry,
- 
- 	sattr->ia_mode &= ~current_umask();
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(dir),
--				_nfs4_proc_mknod(dir, dentry, sattr, label, rdev),
-+		err = _nfs4_proc_mknod(dir, dentry, sattr, label, rdev);
-+		trace_nfs4_mknod(dir, &dentry->d_name, err);
-+		err = nfs4_handle_exception(NFS_SERVER(dir), err,
- 				&exception);
- 	} while (exception.retry);
- 
-@@ -5797,8 +5802,10 @@ int nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(dir),
--				_nfs4_proc_fs_locations(client, dir, name, fs_locations, page),
-+		err = _nfs4_proc_fs_locations(client, dir, name,
-+				fs_locations, page);
-+		trace_nfs4_get_fs_locations(dir, name, err);
-+		err = nfs4_handle_exception(NFS_SERVER(dir), err,
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-@@ -5837,8 +5844,9 @@ int nfs4_proc_secinfo(struct inode *dir, const struct qstr *name,
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(dir),
--				_nfs4_proc_secinfo(dir, name, flavors),
-+		err = _nfs4_proc_secinfo(dir, name, flavors);
-+		trace_nfs4_secinfo(dir, name, err);
-+		err = nfs4_handle_exception(NFS_SERVER(dir), err,
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index 3f124db..2646a50 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -411,6 +411,56 @@ DEFINE_NFS4_LOCK_EVENT(nfs4_lock_reclaim);
- DEFINE_NFS4_LOCK_EVENT(nfs4_lock_expired);
- DEFINE_NFS4_LOCK_EVENT(nfs4_unlock);
- 
-+DECLARE_EVENT_CLASS(nfs4_lookup_event,
-+		TP_PROTO(
-+			const struct inode *dir,
-+			const struct qstr *name,
-+			int error
-+		),
-+
-+		TP_ARGS(dir, name, error),
-+
-+		TP_STRUCT__entry(
-+			__field(dev_t, dev)
-+			__field(int, error)
-+			__field(u64, dir)
-+			__string(name, name->name)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->dev = dir->i_sb->s_dev;
-+			__entry->dir = NFS_FILEID(dir);
-+			__entry->error = error;
-+			__assign_str(name, name->name);
-+		),
-+
-+		TP_printk(
-+			"error=%d (%s) name=%02x:%02x:%llu/%s",
-+			__entry->error,
-+			show_nfsv4_errors(__entry->error),
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->dir,
-+			__get_str(name)
-+		)
-+);
-+
-+#define DEFINE_NFS4_LOOKUP_EVENT(name) \
-+	DEFINE_EVENT(nfs4_lookup_event, name, \
-+			TP_PROTO( \
-+				const struct inode *dir, \
-+				const struct qstr *name, \
-+				int error \
-+			), \
-+			TP_ARGS(dir, name, error))
-+
-+DEFINE_NFS4_LOOKUP_EVENT(nfs4_lookup);
-+DEFINE_NFS4_LOOKUP_EVENT(nfs4_symlink);
-+DEFINE_NFS4_LOOKUP_EVENT(nfs4_mkdir);
-+DEFINE_NFS4_LOOKUP_EVENT(nfs4_mknod);
-+DEFINE_NFS4_LOOKUP_EVENT(nfs4_remove);
-+DEFINE_NFS4_LOOKUP_EVENT(nfs4_get_fs_locations);
-+DEFINE_NFS4_LOOKUP_EVENT(nfs4_secinfo);
-+
- #endif /* _TRACE_NFS4_H */
- 
- #undef TRACE_INCLUDE_PATH
--- 
-1.8.3.1
+> We want to be able to display the crc32 hash of the filehandle in
+> tracepoints.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> fs/nfs/inode.c    |  3 +--
+> fs/nfs/internal.h | 20 ++++++++++++++++++++
+> 2 files changed, 21 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index af6e806..9a98b04 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -38,7 +38,6 @@
+> #include <linux/slab.h>
+> #include <linux/compat.h>
+> #include <linux/freezer.h>
+> -#include <linux/crc32.h>
+> 
+> #include <asm/uaccess.h>
+> 
+> @@ -1190,7 +1189,7 @@ u32 _nfs_display_fhandle_hash(const struct nfs_fh *fh)
+> {
+> 	/* wireshark uses 32-bit AUTODIN crc and does a bitwise
+> 	 * not on the result */
+> -	return ~crc32(0xFFFFFFFF, &fh->data[0], fh->size);
+> +	return nfs_fhandle_hash(fh);
+> }
+> 
+> /*
+> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+> index 9b694f1..50f7068 100644
+> --- a/fs/nfs/internal.h
+> +++ b/fs/nfs/internal.h
+> @@ -5,6 +5,7 @@
+> #include "nfs4_fs.h"
+> #include <linux/mount.h>
+> #include <linux/security.h>
+> +#include <linux/crc32.h>
+> 
+> #define NFS_MS_MASK (MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC|MS_SYNCHRONOUS)
+> 
+> @@ -574,3 +575,22 @@ u64 nfs_timespec_to_change_attr(const struct timespec *ts)
+> {
+> 	return ((u64)ts->tv_sec << 30) + ts->tv_nsec;
+> }
+> +
+> +#ifdef CONFIG_CRC32
+
+Good catch!
+
+> +/**
+> + * nfs_fhandle_hash - calculate the crc32 hash for the filehandle
+> + * @fh - pointer to filehandle
+> + *
+> + * returns a crc32 hash for the filehandle that is compatible with
+> + * the one displayed by "wireshark".
+> + */
+> +static inline u32 nfs_fhandle_hash(const struct nfs_fh *fh)
+> +{
+> +	return ~crc32_le(0xFFFFFFFF, &fh->data[0], fh->size);
+
+Why the change to crc32_le? Is that what wireshark does? I don't remember exactly what I found when I looked at how wireshark made FH hashes.
+
+-dros
+
+> +}
+> +#else
+> +static inline u32 nfs_fhandle_hash(const struct nfs_fh *fh)
+> +{
+> +	return 0;
+> +}
+> +#endif
+> -- 
+> 1.8.3.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
