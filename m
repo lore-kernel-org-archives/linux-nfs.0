@@ -1,200 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:32090 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:46513 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753063Ab3HVAY3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Aug 2013 20:24:29 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 13/21] NFSv4: Add tracepoints for debugging inode manipulations
-Date: Wed, 21 Aug 2013 20:24:11 -0400
-Message-ID: <1377131059-40121-14-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377131059-40121-13-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377131059-40121-1-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-2-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-3-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-4-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-5-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-6-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-7-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-8-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-9-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-10-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-11-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-12-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-13-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751265Ab3HMVxY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Aug 2013 17:53:24 -0400
+Date: Tue, 13 Aug 2013 17:53:14 -0400
+To: Jan Kara <jack@suse.cz>
+Cc: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        "user-mode-linux-devel@lists.sourceforge.net"
+	<user-mode-linux-devel@lists.sourceforge.net>,
+        linux-ext4@vger.kernel.org,
+        Linux Kernel <linux-kernel@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: Re: Issues with a rather unusual configured NFS server
+Message-ID: <20130813215313.GH17781@fieldses.org>
+References: <52075E01.7030506@gmx.de>
+ <20130812143640.GF4596@quack.suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20130812143640.GF4596@quack.suse.cz>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Set up basic tracepoints for debugging NFSv4 setattr, access,
-readlink, readdir, get_acl set_acl get_security_label,
-and set_security_label.
+On Mon, Aug 12, 2013 at 04:36:40PM +0200, Jan Kara wrote:
+> On Sun 11-08-13 11:48:49, Toralf Förster wrote:
+> > so that the server either crashes (if it is a user mode linux image) or at least its reboot functionality got broken
+> > - if the NFS server is hammered with scary NFS calls using a fuzzy tool running at a remote NFS client under a non-privileged user id.
+> > 
+> > It can re reproduced, if
+> > 	- the NFS share is an EXT3 or EXT4 directory
+> > 	- and it is created at file located at tempfs and mounted via loop device
+> > 	- and the NFS server is forced to umount the NFS share
+> > 	- and the server forced to restart the NSF service afterwards
+> > 	- and trinity is used
+> > 
+> > I could find a scenario for an automated bisect. 2 times it brought this commit 
+> > commit 68a3396178e6688ad7367202cdf0af8ed03c8727
+> > Author: J. Bruce Fields <bfields@redhat.com>
+> > Date:   Thu Mar 21 11:21:50 2013 -0400
+> > 
+> >     nfsd4: shut down more of delegation earlier
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c  | 36 ++++++++++++++++++++++--------------
- fs/nfs/nfs4trace.h | 51 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 73 insertions(+), 14 deletions(-)
+Thanks for the report.  I think I see the problem--after this commit
+nfs4_set_delegation() failures result in nfs4_put_delegation being
+called, but nfs4_put_delegation doesn't free the nfs4_file that has
+already been set by alloc_init_deleg().
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 9ff50a5..42a0b7f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2311,6 +2311,7 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 	int err;
- 	do {
- 		err = _nfs4_do_setattr(inode, cred, fattr, sattr, state, ilabel, olabel);
-+		trace_nfs4_setattr(inode, err);
- 		switch (err) {
- 		case -NFS4ERR_OPENMODE:
- 			if (!(sattr->ia_valid & ATTR_SIZE)) {
-@@ -3139,8 +3140,9 @@ static int nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry)
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(inode),
--				_nfs4_proc_access(inode, entry),
-+		err = _nfs4_proc_access(inode, entry);
-+		trace_nfs4_access(inode, err);
-+		err = nfs4_handle_exception(NFS_SERVER(inode), err,
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-@@ -3193,8 +3195,9 @@ static int nfs4_proc_readlink(struct inode *inode, struct page *page,
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(inode),
--				_nfs4_proc_readlink(inode, page, pgbase, pglen),
-+		err = _nfs4_proc_readlink(inode, page, pgbase, pglen);
-+		trace_nfs4_readlink(inode, err);
-+		err = nfs4_handle_exception(NFS_SERVER(inode), err,
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-@@ -3626,9 +3629,10 @@ static int nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(dentry->d_inode),
--				_nfs4_proc_readdir(dentry, cred, cookie,
--					pages, count, plus),
-+		err = _nfs4_proc_readdir(dentry, cred, cookie,
-+				pages, count, plus);
-+		trace_nfs4_readdir(dentry->d_inode, err);
-+		err = nfs4_handle_exception(NFS_SERVER(dentry->d_inode), err,
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-@@ -4329,6 +4333,7 @@ static ssize_t nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bufl
- 	ssize_t ret;
- 	do {
- 		ret = __nfs4_get_acl_uncached(inode, buf, buflen);
-+		trace_nfs4_get_acl(inode, ret);
- 		if (ret >= 0)
- 			break;
- 		ret = nfs4_handle_exception(NFS_SERVER(inode), ret, &exception);
-@@ -4408,8 +4413,9 @@ static int nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t buflen
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(inode),
--				__nfs4_proc_set_acl(inode, buf, buflen),
-+		err = __nfs4_proc_set_acl(inode, buf, buflen);
-+		trace_nfs4_set_acl(inode, err);
-+		err = nfs4_handle_exception(NFS_SERVER(inode), err,
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-@@ -4462,8 +4468,9 @@ static int nfs4_get_security_label(struct inode *inode, void *buf,
- 		return -EOPNOTSUPP;
- 
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(inode),
--				_nfs4_get_security_label(inode, buf, buflen),
-+		err = _nfs4_get_security_label(inode, buf, buflen);
-+		trace_nfs4_get_security_label(inode, err);
-+		err = nfs4_handle_exception(NFS_SERVER(inode), err,
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-@@ -4515,9 +4522,10 @@ static int nfs4_do_set_security_label(struct inode *inode,
- 	int err;
- 
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(inode),
--				_nfs4_do_set_security_label(inode, ilabel,
--				fattr, olabel),
-+		err = _nfs4_do_set_security_label(inode, ilabel,
-+				fattr, olabel);
-+		trace_nfs4_set_security_label(inode, err);
-+		err = nfs4_handle_exception(NFS_SERVER(inode), err,
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index 2646a50..6bd65c2 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -461,6 +461,57 @@ DEFINE_NFS4_LOOKUP_EVENT(nfs4_remove);
- DEFINE_NFS4_LOOKUP_EVENT(nfs4_get_fs_locations);
- DEFINE_NFS4_LOOKUP_EVENT(nfs4_secinfo);
- 
-+DECLARE_EVENT_CLASS(nfs4_inode_event,
-+		TP_PROTO(
-+			const struct inode *inode,
-+			int error
-+		),
-+
-+		TP_ARGS(inode, error),
-+
-+		TP_STRUCT__entry(
-+			__field(dev_t, dev)
-+			__field(u32, fhandle)
-+			__field(u64, fileid)
-+			__field(int, error)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->dev = inode->i_sb->s_dev;
-+			__entry->fileid = NFS_FILEID(inode);
-+			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
-+			__entry->error = error;
-+		),
-+
-+		TP_printk(
-+			"error=%d (%s) fileid=%02x:%02x:%llu fhandle=0x%08x",
-+			__entry->error,
-+			show_nfsv4_errors(__entry->error),
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->fileid,
-+			__entry->fhandle
-+		)
-+);
-+
-+#define DEFINE_NFS4_INODE_EVENT(name) \
-+	DEFINE_EVENT(nfs4_inode_event, name, \
-+			TP_PROTO( \
-+				const struct inode *inode, \
-+				int error \
-+			), \
-+			TP_ARGS(inode, error))
-+
-+DEFINE_NFS4_INODE_EVENT(nfs4_setattr);
-+DEFINE_NFS4_INODE_EVENT(nfs4_access);
-+DEFINE_NFS4_INODE_EVENT(nfs4_readlink);
-+DEFINE_NFS4_INODE_EVENT(nfs4_readdir);
-+DEFINE_NFS4_INODE_EVENT(nfs4_get_acl);
-+DEFINE_NFS4_INODE_EVENT(nfs4_set_acl);
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+DEFINE_NFS4_INODE_EVENT(nfs4_get_security_label);
-+DEFINE_NFS4_INODE_EVENT(nfs4_set_security_label);
-+#endif /* CONFIG_NFS_V4_SECURITY_LABEL */
-+
- #endif /* _TRACE_NFS4_H */
- 
- #undef TRACE_INCLUDE_PATH
--- 
-1.8.3.1
+Let me think about how to fix that....
 
+--b.
+
+>   Added Bruce to CC.
+> 
+> > to be the one after which the user mode linux server crashes with a back trace like this:
+> > 
+> > 
+> > $ cat /mnt/ramdisk/bt.v3.11-rc4-172-g8ae3f1d
+> > [New LWP 14025]
+> > Core was generated by `/home/tfoerste/devel/linux/linux earlyprintk ubda=/home/tfoerste/virtual/uml/tr'.
+> > Program terminated with signal 6, Aborted.
+> > #0  0xb77ef424 in __kernel_vsyscall ()
+> > #0  0xb77ef424 in __kernel_vsyscall ()
+> > #1  0x083a33c5 in kill ()
+> > #2  0x0807163d in uml_abort () at arch/um/os-Linux/util.c:93
+> > #3  0x08071925 in os_dump_core () at arch/um/os-Linux/util.c:138
+> > #4  0x080613a7 in panic_exit (self=0x85a1518 <panic_exit_notifier>, unused1=0, unused2=0x85d6ce0 <buf.15904>) at arch/um/kernel/um_arch.c:240
+> > #5  0x0809a3b8 in notifier_call_chain (nl=0x0, val=0, v=0x85d6ce0 <buf.15904>, nr_to_call=-2, nr_calls=0x0) at kernel/notifier.c:93
+> > #6  0x0809a503 in __atomic_notifier_call_chain (nr_calls=<optimized out>, nr_to_call=<optimized out>, v=<optimized out>, val=<optimized out>, nh=<optimized out>) at kernel/notifier.c:182
+> > #7  atomic_notifier_call_chain (nh=0x85d6cc4 <panic_notifier_list>, val=0, v=0x85d6ce0 <buf.15904>) at kernel/notifier.c:191
+> > #8  0x08400ba8 in panic (fmt=0x0) at kernel/panic.c:128
+> > #9  0x0818edf4 in ext4_put_super (sb=0x4a042690) at fs/ext4/super.c:818
+> > #10 0x081010d2 in generic_shutdown_super (sb=0x4a042690) at fs/super.c:418
+> > #11 0x0810209a in kill_block_super (sb=0x0) at fs/super.c:1028
+> > #12 0x08100f6a in deactivate_locked_super (s=0x4a042690) at fs/super.c:299
+> > #13 0x08101001 in deactivate_super (s=0x4a042690) at fs/super.c:324
+> > #14 0x08118e0c in mntfree (mnt=<optimized out>) at fs/namespace.c:891
+> > #15 mntput_no_expire (mnt=0x0) at fs/namespace.c:929
+> > #16 0x0811a2f5 in SYSC_umount (flags=<optimized out>, name=<optimized out>) at fs/namespace.c:1335
+> > #17 SyS_umount (name=134541632, flags=0) at fs/namespace.c:1305
+> > #18 0x0811a369 in SYSC_oldumount (name=<optimized out>) at fs/namespace.c:1347
+> > #19 SyS_oldumount (name=134541632) at fs/namespace.c:1345
+> > #20 0x080618e2 in handle_syscall (r=0x49e919d4) at arch/um/kernel/skas/syscall.c:35
+> > #21 0x08073c0d in handle_trap (local_using_sysemu=<optimized out>, regs=<optimized out>, pid=<optimized out>) at arch/um/os-Linux/skas/process.c:198
+> > #22 userspace (regs=0x49e919d4) at arch/um/os-Linux/skas/process.c:431
+> > #23 0x0805e65c in fork_handler () at arch/um/kernel/process.c:160
+> > #24 0x00000000 in ?? ()
+> > 
+> > 
+> > 
+> > A real system however would not crash bug would give a kernel BUG as reported here:
+> > http://article.gmane.org/gmane.comp.file-systems.ext4/38915
+>   We have deleted inodes (regular files) in the orphan list during
+> ext4_put_super(). My guess is that NFS is still holding some inode
+> references to these inodes and thus inodes don't get deleted. So ext3/4
+> would be just a victim here.
+> 
+> > Furthermore the server won't be able any longer to reboot - it would hang
+> > infinitely in the reboot phase.  Just the magic sysrq keys still works
+> > then.
+>   Well, this is likely because the filesystem cannot be shut down.
+> 
+> 								Honza
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
