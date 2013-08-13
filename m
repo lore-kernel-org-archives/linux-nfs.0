@@ -1,93 +1,148 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:51356 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:35916 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753319Ab3HERhu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Aug 2013 13:37:50 -0400
-Date: Mon, 5 Aug 2013 13:37:39 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Nix <nix@esperi.org.uk>,
-        Toralf =?ISO-8859-1?B?RvZyc3Rlcg==?= <toralf.foerster@gmx.de>,
-        Oleg Nesterov <oleg@redhat.com>, NFS list <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "dhowells@redhat.com" <dhowells@redhat.com>
-Subject: Re: [3.10.4] NFS locking panic, plus persisting NFS shutdown panic
- from 3.9.*
-Message-ID: <20130805133739.21654ecb@tlielax.poochiereds.net>
-In-Reply-To: <1375719301.7337.14.camel@leira.trondhjem.org>
-References: <8761vlv4z9.fsf@spindle.srvr.nix>
-	<20130805084436.69ee4415@corrin.poochiereds.net>
-	<87siyotcri.fsf@spindle.srvr.nix>
-	<20130805110427.509db424@tlielax.poochiereds.net>
-	<20130805111106.73d6ab90@tlielax.poochiereds.net>
-	<87zjswrvaq.fsf@spindle.srvr.nix>
-	<1375719301.7337.14.camel@leira.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1757537Ab3HMWj4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Aug 2013 18:39:56 -0400
+Date: Tue, 13 Aug 2013 18:39:52 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [nfs-utils PATCH 1/4] mount.nfs: avoid unnecessary duplication
+ of options passed to mount(2)
+Message-ID: <20130813223952.GA2514@tonberry.usersys.redhat.com>
+References: <1376421629-21382-1-git-send-email-smayhew@redhat.com>
+ <1376421629-21382-2-git-send-email-smayhew@redhat.com>
+ <B88ACB44-F0FF-4365-A783-D32892A9BCC9@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <B88ACB44-F0FF-4365-A783-D32892A9BCC9@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 5 Aug 2013 16:15:01 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+On Tue, 13 Aug 2013, Chuck Lever wrote:
 
-> From 3c50ba80105464a28d456d9a1e0f1d81d4af92a8 Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date: Mon, 5 Aug 2013 12:06:12 -0400
-> Subject: [PATCH] LOCKD: Don't call utsname()->nodename from
->  nlmclnt_setlockargs
-> MIME-Version: 1.0
-> Content-Type: text/plain; charset=UTF-8
-> Content-Transfer-Encoding: 8bit
 > 
-> Firstly, nlmclnt_setlockargs can be called from a reclaimer thread, in
-> which case we're in entirely the wrong namespace.
-> Secondly, commit 8aac62706adaaf0fab02c4327761561c8bda9448 (move
-> exit_task_namespaces() outside of exit_notify()) now means that
-> exit_task_work() is called after exit_task_namespaces(), which
-> triggers an Oops when we're freeing up the locks.
+> On Aug 13, 2013, at 3:20 PM, Scott Mayhew <smayhew@redhat.com> wrote:
 > 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: Toralf Förster <toralf.foerster@gmx.de>
-> Cc: Oleg Nesterov <oleg@redhat.com>
-> Cc: Nix <nix@esperi.org.uk>
-> Cc: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/lockd/clntproc.c | 5 +++--
->  1 file changed, 3 insertions(+), 2 deletions(-)
+> > The nfsmount.conf file has the following format:
+> > 
+> > [ section "arg" ]
+> > 	tag = value
+> > 
+> > conf_get_tag_list() currently doesn't check the arg field so we wind up
+> > getting all the options that fall under a particular section value,
+> > instead of just the ones that match the specific "arg" field.  As a
+> > result, we wind up passing options to the mount syscall multiple times.
+> > 
+> > For example, if we have three different server sections, and each
+> > section has an Nfsvers tag, then the string we pass to the mount syscall
+> > will have three occurrences of the nfsvers option.
+> > 
+> > Note that the call to conf_get_section() in conf_parse_mntopts() will
+> > ensure that we never pass the wrong value for an option, but we should
+> > still avoid sending duplicate options if it's at all possible.
 > 
-> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-> index 9760ecb..acd3947 100644
-> --- a/fs/lockd/clntproc.c
-> +++ b/fs/lockd/clntproc.c
-> @@ -125,14 +125,15 @@ static void nlmclnt_setlockargs(struct nlm_rqst *req, struct file_lock *fl)
->  {
->  	struct nlm_args	*argp = &req->a_args;
->  	struct nlm_lock	*lock = &argp->lock;
-> +	char *nodename = req->a_host->h_rpcclnt->cl_nodename;
->  
->  	nlmclnt_next_cookie(&argp->cookie);
->  	memcpy(&lock->fh, NFS_FH(file_inode(fl->fl_file)), sizeof(struct nfs_fh));
-> -	lock->caller  = utsname()->nodename;
-> +	lock->caller  = nodename;
->  	lock->oh.data = req->a_owner;
->  	lock->oh.len  = snprintf(req->a_owner, sizeof(req->a_owner), "%u@%s",
->  				(unsigned int)fl->fl_u.nfs_fl.owner->pid,
-> -				utsname()->nodename);
-> +				nodename);
->  	lock->svid = fl->fl_u.nfs_fl.owner->pid;
->  	lock->fl.fl_start = fl->fl_start;
->  	lock->fl.fl_end = fl->fl_end;
+> You haven't convinced me that passing duplicate options is incorrect behavior.
+> 
+> The idea was to do this kind of data reduction in one place.  It's either done in the kernel's NFS mount option parser, or in mount.nfs's legacy mount option parser.  There should be one authority on what setting takes effect.
+> 
+> Do your changes preserve the "right-most setting wins" behavior? 
 
-Looks good to me...
+Yes, they do.
 
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
+> This is why the config file logic sends duplicate options: it's easier to simply stack the options onto a list, with the system specific options first, then the server specific, then the mount point specific options.  The kernel's option parser then sorts it out and applies the correct setting.
+> 
 
-Trond, any thoughts on the other oops that Nix posted? The issue there
-seems to be that we're trying to do the pathwalk to the rpcbind unix
-socket from exit_task_work(), but that's happening after we've already
-called exit_fs().
+I would expect to see a particular mount option at most 3 times then
+(once from the global options, once from the server specific options,
+and once from the mountpoint-specific options).  That's fine (although
+that's what patch 2 was changing). 
 
-The trivial answer seems to be to simply call exit_task_work() before
-exit_fs() there, but it seems like we ought to be doing the upcall to
-rpcbind in a mount namespace from which we know we can reach the
-socket...
+The problem is that we're adding that option to the list based on config
+file settings that aren't even relevant to the mount operation we happen
+to be performing.  For instance if your nfsmount.conf has 100 server
+sections, and each of those (along with your global and
+mountpoint-specific sections) has an nfsvers option, then you could wind
+up sending the nfsvers option 102 times.
+
+If you have enough entries in your config file that the option string
+exceeds one page then chances are an option is going to be lopped off
+somewhere in the middle and the mount will likely fail with -EINVAL (and
+even if that doesn't happen the rightmost options will most likely to be
+lost).
+
+-Scott
+
+> If the right-most setting of an option is not taking effect, that's a bug.
+> 
+> 
+> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> > ---
+> > support/include/conffile.h | 2 +-
+> > support/nfs/conffile.c     | 4 +++-
+> > utils/mount/configfile.c   | 2 +-
+> > 3 files changed, 5 insertions(+), 3 deletions(-)
+> > 
+> > diff --git a/support/include/conffile.h b/support/include/conffile.h
+> > index ce7aa21..05ea5d2 100644
+> > --- a/support/include/conffile.h
+> > +++ b/support/include/conffile.h
+> > @@ -54,7 +54,7 @@ extern int      conf_end(int, int);
+> > extern void     conf_free_list(struct conf_list *);
+> > extern struct sockaddr *conf_get_address(char *, char *);
+> > extern struct conf_list *conf_get_list(char *, char *);
+> > -extern struct conf_list *conf_get_tag_list(char *);
+> > +extern struct conf_list *conf_get_tag_list(char *, char *);
+> > extern int      conf_get_num(char *, char *, int);
+> > extern char    *conf_get_str(char *, char *);
+> > extern char    *conf_get_section(char *, char *, char *);
+> > diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+> > index 5015e94..c3434d5 100644
+> > --- a/support/nfs/conffile.c
+> > +++ b/support/nfs/conffile.c
+> > @@ -565,7 +565,7 @@ cleanup:
+> > }
+> > 
+> > struct conf_list *
+> > -conf_get_tag_list(char *section)
+> > +conf_get_tag_list(char *section, char *arg)
+> > {
+> > 	struct conf_list *list = 0;
+> > 	struct conf_list_node *node;
+> > @@ -579,6 +579,8 @@ conf_get_tag_list(char *section)
+> > 	cb = LIST_FIRST(&conf_bindings[conf_hash (section)]);
+> > 	for (; cb; cb = LIST_NEXT(cb, link)) {
+> > 		if (strcasecmp (section, cb->section) == 0) {
+> > +			if (arg != NULL && strcasecmp(arg, cb->arg) != 0)
+> > +				continue;
+> > 			list->cnt++;
+> > 			node = calloc(1, sizeof *node);
+> > 			if (!node)
+> > diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
+> > index 6f2ee75..1f1b6e7 100644
+> > --- a/utils/mount/configfile.c
+> > +++ b/utils/mount/configfile.c
+> > @@ -286,7 +286,7 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
+> > 	char *nvalue, *ptr;
+> > 	int argtype;
+> > 
+> > -	list = conf_get_tag_list(section);
+> > +	list = conf_get_tag_list(section, arg);
+> > 	TAILQ_FOREACH(node, &list->fields, link) {
+> > 		/*
+> > 		 * Do not overwrite options if already exists 
+> > -- 
+> > 1.7.11.7
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+> 
