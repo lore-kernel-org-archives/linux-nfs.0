@@ -1,40 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:58922 "EHLO mx11.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:2204 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932592Ab3HGQ6J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Aug 2013 12:58:09 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/4] NFSv4.1 Use clientid management rpc_clnt for
- secinfo_no_name
-Date: Wed, 7 Aug 2013 16:58:07 +0000
-Message-ID: <1375894688.7280.6.camel@leira.trondhjem.org>
-References: <1374511328-49579-1-git-send-email-andros@netapp.com>
-	 <1374511328-49579-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1374511328-49579-4-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1759174Ab3HMUht (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Aug 2013 16:37:49 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: <Trond.Myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 4/7] nfs4.1: Add SP4_MACH_CRED secinfo support
+Date: Tue, 13 Aug 2013 16:37:35 -0400
+Message-ID: <1376426258-28244-5-git-send-email-dros@netapp.com>
+In-Reply-To: <1376426258-28244-1-git-send-email-dros@netapp.com>
+References: <1376426258-28244-1-git-send-email-dros@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEzLTA3LTIyIGF0IDEyOjQyIC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IEFzIHBl
-ciBSRkMgNTY2MSBTZWN1cml0eSBDb25zaWRlcmF0aW9ucw0KPiANCj4gQ29tbWl0IDRlZGFhMzA4
-ICJORlM6IFVzZSAia3JiNWkiIHRvIGVzdGFibGlzaCBORlN2NCBzdGF0ZSB3aGVuZXZlciBwb3Nz
-aWJsZSINCj4gdXNlcyB0aGUgbmZzX2NsaWVudCBjbF9ycGNjbGllbnQgZm9yIGFsbCBjbGllbnRp
-ZCBtYW5hZ2VtZW50IG9wZXJhdGlvbnMuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBBbmR5IEFkYW1z
-b24gPGFuZHJvc0BuZXRhcHAuY29tPg0KPiAtLS0NCj4gIGZzL25mcy9uZnM0cHJvYy5jIHwgMyAr
-Ky0NCj4gIDEgZmlsZSBjaGFuZ2VkLCAyIGluc2VydGlvbnMoKyksIDEgZGVsZXRpb24oLSkNCj4g
-DQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+
-IGluZGV4IDZhMzBhNzIuLjA0NTJiNjEgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5j
-DQo+ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+IEBAIC03MDk4LDcgKzcwOTgsOCBAQCBfbmZz
-NDFfcHJvY19zZWNpbmZvX25vX25hbWUoc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwgc3RydWN0
-IG5mc19maCAqZmhhbmRsZSwNCj4gIAkJLnJwY19hcmdwID0gJmFyZ3MsDQo+ICAJCS5ycGNfcmVz
-cCA9ICZyZXMsDQo+ICAJfTsNCj4gLQlyZXR1cm4gbmZzNF9jYWxsX3N5bmMoc2VydmVyLT5jbGll
-bnQsIHNlcnZlciwgJm1zZywgJmFyZ3Muc2VxX2FyZ3MsICZyZXMuc2VxX3JlcywgMCk7DQo+ICsJ
-cmV0dXJuIG5mczRfY2FsbF9zeW5jKHNlcnZlci0+bmZzX2NsaWVudC0+Y2xfcnBjY2xpZW50LCBz
-ZXJ2ZXIsICZtc2csDQo+ICsJCQkJJmFyZ3Muc2VxX2FyZ3MsICZyZXMuc2VxX3JlcywgMCk7DQo+
-ICB9DQo+ICANCj4gIHN0YXRpYyBpbnQNCg0KRGl0dG86IFRoaXMgbmVlZHMgYSBjb2RlIGNvbW1l
-bnQuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIN
-Cg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+SECINFO and SECINFO_NONAME can use the machine credential.
+
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ fs/nfs/nfs4proc.c         | 15 ++++++++++++++-
+ include/linux/nfs_fs_sb.h |  1 +
+ 2 files changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 76cfd0b..b86a7b2 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5820,7 +5820,12 @@ static int _nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct
+ 	struct rpc_clnt *clnt = NFS_SERVER(dir)->nfs_client->cl_rpcclient;
+ 
+ 	dprintk("NFS call  secinfo %s\n", name->name);
++
++	nfs4_state_protect(NFS_SERVER(dir)->nfs_client,
++		NFS_SP4_MACH_CRED_SECINFO, &clnt, &msg);
++
+ 	status = nfs4_call_sync(clnt, NFS_SERVER(dir), &msg, &args.seq_args, &res.seq_res, 0);
++
+ 	dprintk("NFS reply  secinfo: %d\n", status);
+ 	return status;
+ }
+@@ -5938,7 +5943,9 @@ static const struct nfs41_state_protection nfs4_sp4_mach_cred_request = {
+ 	},
+ 	.allow.u.words = {
+ 		[0] = 1 << (OP_CLOSE) |
+-		      1 << (OP_LOCKU)
++		      1 << (OP_LOCKU),
++		[1] = 1 << (OP_SECINFO - 32) |
++		      1 << (OP_SECINFO_NO_NAME - 32)
+ 	}
+ };
+ 
+@@ -6004,6 +6011,12 @@ static int nfs4_sp4_select_mode(struct nfs_client *clp,
+ 			dfprintk(MOUNT, "  cleanup mode enabled\n");
+ 			set_bit(NFS_SP4_MACH_CRED_CLEANUP, &clp->cl_sp4_flags);
+ 		}
++
++		if (test_bit(OP_SECINFO, sp->allow.u.longs) &&
++		    test_bit(OP_SECINFO_NO_NAME, sp->allow.u.longs)) {
++			dfprintk(MOUNT, "  secinfo mode enabled\n");
++			set_bit(NFS_SP4_MACH_CRED_SECINFO, &clp->cl_sp4_flags);
++		}
+ 	}
+ 
+ 	return 0;
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 7da24e0..0d86cec 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -92,6 +92,7 @@ struct nfs_client {
+ #define NFS_SP4_MACH_CRED_MINIMAL  1	/* Minimal sp4_mach_cred - state ops
+ 					 * must use machine cred */
+ #define NFS_SP4_MACH_CRED_CLEANUP  2	/* CLOSE and LOCKU */
++#define NFS_SP4_MACH_CRED_SECINFO  3	/* SECINFO and SECINFO_NO_NAME */
+ #endif /* CONFIG_NFS_V4 */
+ 
+ #ifdef CONFIG_NFS_FSCACHE
+-- 
+1.7.12.4 (Apple Git-37)
+
