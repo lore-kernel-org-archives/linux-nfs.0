@@ -1,38 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from trent.utfs.org ([94.185.90.103]:50764 "EHLO trent.utfs.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751146Ab3HOV0c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Aug 2013 17:26:32 -0400
-Date: Thu, 15 Aug 2013 14:26:16 -0700 (PDT)
-From: Christian Kujau <lists@nerdbynature.de>
-To: Dave Kleikamp <dave.kleikamp@oracle.com>
-cc: "J. Bruce Fields" <bfields@fieldses.org>, Karl Schmidt <karl@xtronics.com>,
-        Jonathan McDowell <noodles@earth.li>,
-        jfs-discussion@lists.sourceforge.net, 714974@bugs.debian.org,
-        Ben Hutchings <ben@decadent.org.uk>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] jfs: fix readdir cookie incompatibility with NFSv4
-In-Reply-To: <520D3EA7.1010109@oracle.com>
-Message-ID: <alpine.DEB.2.10.1308151420140.7081@trent.utfs.org>
-References: <1373245980.3428.46.camel@deadeye.wl.decadent.org.uk> <520554A5.3060401@xtronics.com> <alpine.DEB.2.10.1308092352550.7081@trent.utfs.org> <alpine.DEB.2.10.1308120113360.7081@trent.utfs.org> <alpine.DEB.2.10.1308120122500.7081@trent.utfs.org>
- <20130812162924.GB2395@fieldses.org> <520C50F7.3010209@oracle.com> <alpine.DEB.2.10.1308142122550.7081@trent.utfs.org> <alpine.DEB.2.10.1308150001530.7081@trent.utfs.org> <520D3EA7.1010109@oracle.com>
-MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from aserp1040.oracle.com ([141.146.126.69]:24857 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758747Ab3HMTbF convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Aug 2013 15:31:05 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: [nfs-utils PATCH 1/4] mount.nfs: avoid unnecessary duplication of options passed to mount(2)
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1376421629-21382-2-git-send-email-smayhew@redhat.com>
+Date: Tue, 13 Aug 2013 15:30:47 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <B88ACB44-F0FF-4365-A783-D32892A9BCC9@oracle.com>
+References: <1376421629-21382-1-git-send-email-smayhew@redhat.com> <1376421629-21382-2-git-send-email-smayhew@redhat.com>
+To: Scott Mayhew <smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 15 Aug 2013 at 15:48, Dave Kleikamp wrote:
-> This patch replaces the one I posted yesterday. I like this better since
-> it doesn't require fixing existing on-disk cookies or skipping a
-> position in the in-inode index table.
 
-Thanks. Applied to 3.11-rc5 and tested, no more "readdir loop" messages 
-and with unique inode numbers, great!
+On Aug 13, 2013, at 3:20 PM, Scott Mayhew <smayhew@redhat.com> wrote:
 
-  Tested-by: Christian Kujau <lists@nerdbynature.de>
+> The nfsmount.conf file has the following format:
+> 
+> [ section "arg" ]
+> 	tag = value
+> 
+> conf_get_tag_list() currently doesn't check the arg field so we wind up
+> getting all the options that fall under a particular section value,
+> instead of just the ones that match the specific "arg" field.  As a
+> result, we wind up passing options to the mount syscall multiple times.
+> 
+> For example, if we have three different server sections, and each
+> section has an Nfsvers tag, then the string we pass to the mount syscall
+> will have three occurrences of the nfsvers option.
+> 
+> Note that the call to conf_get_section() in conf_parse_mntopts() will
+> ensure that we never pass the wrong value for an option, but we should
+> still avoid sending duplicate options if it's at all possible.
 
-Thanks for the fix!
-Christian.
+You haven't convinced me that passing duplicate options is incorrect behavior.
+
+The idea was to do this kind of data reduction in one place.  It's either done in the kernel's NFS mount option parser, or in mount.nfs's legacy mount option parser.  There should be one authority on what setting takes effect.
+
+Do your changes preserve the "right-most setting wins" behavior?  This is why the config file logic sends duplicate options: it's easier to simply stack the options onto a list, with the system specific options first, then the server specific, then the mount point specific options.  The kernel's option parser then sorts it out and applies the correct setting.
+
+If the right-most setting of an option is not taking effect, that's a bug.
+
+
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> ---
+> support/include/conffile.h | 2 +-
+> support/nfs/conffile.c     | 4 +++-
+> utils/mount/configfile.c   | 2 +-
+> 3 files changed, 5 insertions(+), 3 deletions(-)
+> 
+> diff --git a/support/include/conffile.h b/support/include/conffile.h
+> index ce7aa21..05ea5d2 100644
+> --- a/support/include/conffile.h
+> +++ b/support/include/conffile.h
+> @@ -54,7 +54,7 @@ extern int      conf_end(int, int);
+> extern void     conf_free_list(struct conf_list *);
+> extern struct sockaddr *conf_get_address(char *, char *);
+> extern struct conf_list *conf_get_list(char *, char *);
+> -extern struct conf_list *conf_get_tag_list(char *);
+> +extern struct conf_list *conf_get_tag_list(char *, char *);
+> extern int      conf_get_num(char *, char *, int);
+> extern char    *conf_get_str(char *, char *);
+> extern char    *conf_get_section(char *, char *, char *);
+> diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+> index 5015e94..c3434d5 100644
+> --- a/support/nfs/conffile.c
+> +++ b/support/nfs/conffile.c
+> @@ -565,7 +565,7 @@ cleanup:
+> }
+> 
+> struct conf_list *
+> -conf_get_tag_list(char *section)
+> +conf_get_tag_list(char *section, char *arg)
+> {
+> 	struct conf_list *list = 0;
+> 	struct conf_list_node *node;
+> @@ -579,6 +579,8 @@ conf_get_tag_list(char *section)
+> 	cb = LIST_FIRST(&conf_bindings[conf_hash (section)]);
+> 	for (; cb; cb = LIST_NEXT(cb, link)) {
+> 		if (strcasecmp (section, cb->section) == 0) {
+> +			if (arg != NULL && strcasecmp(arg, cb->arg) != 0)
+> +				continue;
+> 			list->cnt++;
+> 			node = calloc(1, sizeof *node);
+> 			if (!node)
+> diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
+> index 6f2ee75..1f1b6e7 100644
+> --- a/utils/mount/configfile.c
+> +++ b/utils/mount/configfile.c
+> @@ -286,7 +286,7 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
+> 	char *nvalue, *ptr;
+> 	int argtype;
+> 
+> -	list = conf_get_tag_list(section);
+> +	list = conf_get_tag_list(section, arg);
+> 	TAILQ_FOREACH(node, &list->fields, link) {
+> 		/*
+> 		 * Do not overwrite options if already exists 
+> -- 
+> 1.7.11.7
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-BOFH excuse #442:
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Trojan horse ran out of hay
+
+
+
