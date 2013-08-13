@@ -1,92 +1,148 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:15314 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:46511 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752999Ab3HBRAf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 Aug 2013 13:00:35 -0400
-Subject: Re: [PATCH 2/2] KEYS: Add per-user_namespace registers for
- persistent per-UID kerberos caches
-From: Simo Sorce <simo@redhat.com>
-To: David Howells <dhowells@redhat.com>
-Cc: Jeff Layton <jlayton@redhat.com>, keyrings@linux-nfs.org,
-        linux-nfs@vger.kernel.org, krbdev@mit.edu,
-        "Serge E. Hallyn" <serge.hallyn@ubuntu.com>,
-        linux-kernel@vger.kernel.org,
-        "Eric W. Biederman" <ebiederm@xmission.com>
-In-Reply-To: <7136.1375462405@warthog.procyon.org.uk>
-References: <20130802095555.07a2cda3@tlielax.poochiereds.net>
-	 <20130801173846.28023.19009.stgit@warthog.procyon.org.uk>
-	 <20130801173902.28023.68819.stgit@warthog.procyon.org.uk>
-	 <7136.1375462405@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 02 Aug 2013 13:00:21 -0400
-Message-ID: <1375462821.15733.262.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+	id S1757287Ab3HMSgH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Aug 2013 14:36:07 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 10/10] NFSv4: Add tracepoints for debugging getattr
+Date: Tue, 13 Aug 2013 14:35:52 -0400
+Message-ID: <1376418952-12481-10-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1376418952-12481-9-git-send-email-Trond.Myklebust@netapp.com>
+References: <1376418952-12481-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1376418952-12481-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1376418952-12481-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1376418952-12481-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1376418952-12481-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1376418952-12481-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1376418952-12481-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1376418952-12481-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1376418952-12481-9-git-send-email-Trond.Myklebust@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2013-08-02 at 17:53 +0100, David Howells wrote:
-> Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> > > +	/* -1 indicates the current user */
-> > > +	if (_uid == (uid_t)-1) {
-> > > +		uid = current_uid();
-> >
-> > Isn't it possible to have a valid uid of (unsigned int)-1? I know that
-> > at least some sites use that for "nobody". Why not just require passing
-> > in the correct UID?
-> 
-> See setresuid() and co. - there -1 is "don't change".
-> 
-> > Looks good overall, but I share Daniel's concerns about making
-> > krb5-specific infrastructure like this. Essentially this is just a
-> > persistent keyring that's associated with a kuid, right? Perhaps this
-> > could be done in such a way that it could be usable for other
-> > applications in the future?
-> 
-> It's not too hard, I suppose:
-> 
-> 	keyctl_get_persistent(uid, prefix, destring)
-> 
-> eg:
-> 
-> 	keyctl_get_persistent(-1, "_krb.", KEYCTL_SPEC_PROCESS_KEYRING)
-> 
-> giving:
-> 
-> 	struct user_namespace
-> 	  \___ .krb_cache keyring
-> 		\___ _krb.0 keyring
-> 		\___ _krb.5000 keyring
-> 		\___ _krb.5001 keyring
-> 		|	\___ tkt785 big_key
-> 		|	\___ tkt12345 big_key
-> 		\___ _afs.5000 keyring
-> 			\___ afs.redhat.com rxrpc
-> 
-> The other way to do it is create one keyring per user and let userspace create
-> subkeyrings under that:
-> 
-> 	struct user_namespace
-> 	  \___ .krb_cache keyring
-> 		\___ _uid_p.0 keyring
-> 		\___ _uid_p.5000 keyring
-> 		\___ _uid_p.5001 keyring
-> 			\___ krb keyring
-> 			|	\___ tkt785 big_key
-> 			|	\___ tkt12345 big_key
-> 			\___ afs keyring
-> 				\___ afs.redhat.com rxrpc
-> 
-> In the above scheme, it might be worth just making these the same as the user
-> keyring - which means KEYCTL_SPEC_USER_KEYRING will automatically target it.
-> 
-> Simo:  I believe the problem you have with the user keyring is that it's not
-> persistent beyond the life of the processes of that UID, right?
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c  |  7 ++++--
+ fs/nfs/nfs4trace.h | 64 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 69 insertions(+), 2 deletions(-)
 
-Correct.
-
-Simo.
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ce6ef6a..3330ac0 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2697,6 +2697,7 @@ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	int err;
+ 	do {
+ 		err = _nfs4_lookup_root(server, fhandle, info);
++		trace_nfs4_lookup_root(server, fhandle, info->fattr, err);
+ 		switch (err) {
+ 		case 0:
+ 		case -NFS4ERR_WRONGSEC:
+@@ -2906,8 +2907,9 @@ static int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = nfs4_handle_exception(server,
+-				_nfs4_proc_getattr(server, fhandle, fattr, label),
++		err = _nfs4_proc_getattr(server, fhandle, fattr, label);
++		trace_nfs4_getattr(server, fhandle, fattr, err);
++		err = nfs4_handle_exception(server, err,
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+@@ -3764,6 +3766,7 @@ static int nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle, str
+ 
+ 	do {
+ 		err = _nfs4_do_fsinfo(server, fhandle, fsinfo);
++		trace_nfs4_fsinfo(server, fhandle, fsinfo->fattr, err);
+ 		if (err == 0) {
+ 			struct nfs_client *clp = server->nfs_client;
+ 
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index 11b2b98..67a6bbb 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -168,6 +168,24 @@
+ 		{ FMODE_WRITE,			"WRITE" },		\
+ 		{ FMODE_EXEC,			"EXEC" })
+ 
++#define show_nfs_fattr_flags(valid)					\
++	__print_flags((unsigned long)valid, "|",			\
++		{ NFS_ATTR_FATTR_TYPE,		"TYPE" },		\
++		{ NFS_ATTR_FATTR_MODE,		"MODE" },		\
++		{ NFS_ATTR_FATTR_NLINK,		"NLINK" },		\
++		{ NFS_ATTR_FATTR_OWNER,		"OWNER" },		\
++		{ NFS_ATTR_FATTR_GROUP,		"GROUP" },		\
++		{ NFS_ATTR_FATTR_RDEV,		"RDEV" },		\
++		{ NFS_ATTR_FATTR_SIZE,		"SIZE" },		\
++		{ NFS_ATTR_FATTR_FSID,		"FSID" },		\
++		{ NFS_ATTR_FATTR_FILEID,	"FILEID" },		\
++		{ NFS_ATTR_FATTR_ATIME,		"ATIME" },		\
++		{ NFS_ATTR_FATTR_MTIME,		"MTIME" },		\
++		{ NFS_ATTR_FATTR_CTIME,		"CTIME" },		\
++		{ NFS_ATTR_FATTR_CHANGE,	"CHANGE" },		\
++		{ NFS_ATTR_FATTR_OWNER_NAME,	"OWNER_NAME" },		\
++		{ NFS_ATTR_FATTR_GROUP_NAME,	"GROUP_NAME" })
++
+ DECLARE_EVENT_CLASS(nfs4_clientid_event,
+ 		TP_PROTO(const struct nfs_client *clp,
+ 			int error),
+@@ -564,6 +582,52 @@ DEFINE_NFS4_INODE_EVENT(nfs4_set_security_label);
+ DEFINE_NFS4_INODE_EVENT(nfs4_recall_delegation);
+ DEFINE_NFS4_INODE_EVENT(nfs4_delegreturn);
+ 
++DECLARE_EVENT_CLASS(nfs4_getattr_event,
++		TP_PROTO(const struct nfs_server *server,
++			const struct nfs_fh *fhandle,
++			const struct nfs_fattr *fattr,
++			int error),
++
++		TP_ARGS(server, fhandle, fattr, error),
++
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++			__field(unsigned int, valid)
++			__field(int, error)
++		),
++
++		TP_fast_assign(
++			__entry->dev = server->s_dev;
++			__entry->valid = fattr->valid;
++			__entry->fhandle = nfs_fhandle_hash(fhandle);
++			__entry->fileid = (fattr->valid & NFS_ATTR_FATTR_FILEID) ? fattr->fileid : 0;
++			__entry->error = error;
++		),
++
++		TP_printk("error=%d (%s) fileid=%02x:%02x:%lld fhandle=%0x08x "
++			  "valid=%s",
++			  __entry->error,
++			  show_nfsv4_errors(__entry->error),
++			  MAJOR(__entry->dev), MINOR(__entry->dev),
++			  (unsigned long long)__entry->fileid,
++			  __entry->fhandle,
++			  show_nfs_fattr_flags(__entry->valid)
++		)
++);
++
++#define DEFINE_NFS4_GETATTR_EVENT(name)		\
++DEFINE_EVENT(nfs4_getattr_event, name,			\
++		TP_PROTO(const struct nfs_server *server, \
++			const struct nfs_fh *fhandle,	\
++			const struct nfs_fattr *fattr,	\
++			int error),			\
++		TP_ARGS(server, fhandle, fattr, error))
++DEFINE_NFS4_GETATTR_EVENT(nfs4_getattr);
++DEFINE_NFS4_GETATTR_EVENT(nfs4_lookup_root);
++DEFINE_NFS4_GETATTR_EVENT(nfs4_fsinfo);
++
+ DECLARE_EVENT_CLASS(nfs4_idmap_event,
+ 		TP_PROTO(const char *name,
+ 			int len,
 -- 
-Simo Sorce * Red Hat, Inc * New York
+1.8.3.1
 
