@@ -1,85 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57569 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:65511 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752915Ab3HESLY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Aug 2013 14:11:24 -0400
-Date: Mon, 5 Aug 2013 14:11:21 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Ric Wheeler <rwheeler@redhat.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC 4/5] NFSD: Defer copying
-Message-ID: <20130805181121.GA1583@fieldses.org>
-References: <20130722185002.GB10109@fieldses.org>
- <51ED8549.3040308@netapp.com>
- <20130722193000.GD10109@fieldses.org>
- <51ED89DC.7050406@netapp.com>
- <20130722194331.GF10109@fieldses.org>
- <51ED8DD8.1060703@netapp.com>
- <20130722195556.GG10109@fieldses.org>
- <51FF647C.3020704@redhat.com>
- <20130805144127.GA31169@fieldses.org>
- <1375714236.7337.5.camel@leira.trondhjem.org>
+	id S1751244Ab3HNP7X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Aug 2013 11:59:23 -0400
+From: <andros@netapp.com>
+To: <trond.myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 5 1/5] SUNRPC: don't map EKEYEXPIRED to EACCES in call_refreshresult
+Date: Wed, 14 Aug 2013 11:59:13 -0400
+Message-ID: <1376495957-7482-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1376495957-7482-1-git-send-email-andros@netapp.com>
+References: <1376495957-7482-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1375714236.7337.5.camel@leira.trondhjem.org>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 05, 2013 at 02:50:38PM +0000, Myklebust, Trond wrote:
-> On Mon, 2013-08-05 at 10:41 -0400, J. Bruce Fields wrote:
-> > Bryan suggested in offline discussion that one possibility might be to
-> > copy, say, at most a gigabyte at a time before returning and making the
-> > client continue the copy.
-> > 
-> > Where for "a gigabyte" read, "some amount that doesn't take too long to
-> > copy but is still enough to allow close to full bandwidth".  Hopefully
-> > that's an easy number to find.
-> > 
-> > But based on
-> > http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-14.1.2
-> > the COPY operation isn't designed for that--it doesn't give the option
-> > of returning bytes_copied in the successful case.
-> 
-> The reason is that the spec writers did not want to force the server to
-> copy the data in sequential order (or any other particular order for
-> that matter).
+From: Andy Adamson <andros@netapp.com>
 
-Well, servers would still have the option not to return success unless
-the whole copy succeeded, so I'm not sure this *forces* servers to do
-sequential copies.
+The NFS layer needs to know when a key has expired.
+This change also returns -EKEYEXPIRED to the application, and the informative
+"Key has expired" error message is displayed. The user then knows that
+credential renewal is required.
 
-(Unless we also got rid of the callback.)
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ net/sunrpc/clnt.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
---b.
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index ecbc4e3..b544965 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1423,9 +1423,9 @@ call_refreshresult(struct rpc_task *task)
+ 		return;
+ 	case -ETIMEDOUT:
+ 		rpc_delay(task, 3*HZ);
+-	case -EKEYEXPIRED:
+ 	case -EAGAIN:
+ 		status = -EACCES;
++	case -EKEYEXPIRED:
+ 		if (!task->tk_cred_retry)
+ 			break;
+ 		task->tk_cred_retry--;
+-- 
+1.8.3.1
 
-> 
-> If the copy was short, then the client can't know which bytes were
-> copied; they could be at the beginning of the file, in the middle, or
-> even the very end. Basically, it needs to redo the entire copy in order
-> to be certain.
-> 
-> > Maybe we should fix that in the spec, or maybe we just need to implement
-> > the asynchronous case.  I guess it depends on which is easier,
-> > 
-> > 	a) implementing the asynchronous case (and the referring-triple
-> > 	   support to fix the COPY/callback races), or
-> > 	b) implementing this sort of "short copy" loop in a way that gives
-> > 	   good performance.
-> > 
-> > On the client side it's clearly a) since you're forced to handle that
-> > case anyway.  (Unless we argue that *all* copies should work that way,
-> > and that the spec should ditch the asynchronous case.) On the server
-> > side, b) looks easier.
-> > 
-> > --b.
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> N?????r??y????b?X??ǧv?^?)޺{.n?+????{???"??^n?r???z???h?????&???G???h?(?階?ݢj"???m??????z?ޖ???f???h???~?m
