@@ -1,194 +1,277 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ye0-f181.google.com ([209.85.213.181]:34772 "EHLO
-	mail-ye0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S968137Ab3HIQrq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:47:46 -0400
-Received: by mail-ye0-f181.google.com with SMTP id q2so1314395yen.12
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:47:45 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
-        by mx.google.com with ESMTPSA id b50sm20693156yhl.1.2013.08.09.09.47.42
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
-        Fri, 09 Aug 2013 09:47:43 -0700 (PDT)
-Subject: [PATCH v2 00/33] Proposed migration patches for 3.12
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 09 Aug 2013 12:47:40 -0400
-Message-ID: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+Received: from mx11.netapp.com ([216.240.18.76]:32911 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933153Ab3HNXZT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Aug 2013 19:25:19 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 11/13] NFSv4: Add tracepoints for debugging reads and writes
+Date: Wed, 14 Aug 2013 19:24:56 -0400
+Message-ID: <1376522698-44596-12-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1376522698-44596-11-git-send-email-Trond.Myklebust@netapp.com>
+References: <1376522698-44596-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1376522698-44596-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1376522698-44596-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1376522698-44596-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1376522698-44596-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1376522698-44596-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1376522698-44596-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1376522698-44596-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1376522698-44596-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1376522698-44596-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1376522698-44596-11-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch series implements NFSv4 migration.  I hope to get this
-series merged into 3.12.  See also this topic branch:
+Set up tracepoints to track read, write and commit, as well as
+pNFS reads and writes and commits to the data server.
 
- http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=shortlog;\
-		h=refs/heads/for-3.12
-
-
-- Changes since v1 -
-
- o  Rebased on 3.11-rc4
- o  Review comments addressed
- o  Tighter integration with struct nfs4_slot_table
- o  Graceful failure when migration does not succeed
- o  Temporary kernel config option to disable NFSv4.1 migration
-
-
-- Patch roadmap -
-
-After a dprintk clean-up patch, patches "NFS: Rename
-nfs41_call_sync_data as a common data structure" through "NFS:
-Update session draining barriers for NFSv4.0 transport blocking"
-implement a transport blocking scheme for NFSv4.0 based on
-struct nfs4_slot_table.
-
-Patches "SUNRPC: Modify synopsis of rpc_client_register()" through
-"NFS: Add functions to swap transports during migration recovery"
-provide a method of swapping an rpc_clnt's rpc_xprt by choosing
-a location in an array.
-
-Patches "NFS: Introduce a vector of migration recovery ops" through
-"NFS: Add migration recovery callouts in nfs4proc.c" implement
-support for recovering from NFS4ERR_MOVED.
-
-Patches "NFS: Add method to detect whether an FSID is still on the
-server" through "NFS: Implement NFSv4.1 support for
-NFS4ERR_LEASE_MOVED" implement support for recovering from
-NFS4ERR_LEASE_MOVED.
-
-The final patch "NFS: Set EXCHGID4_FLAG_SUPP_MOVED_MIGR" adds a
-provisional advertisement to NFSv4.1 servers that our client now
-supports migration.
-
-
-- Merge criteria -
-
-I have three criteria for determining whether I believe this work is
-ready to merge:
-
- 1.  The series doesn't regress any non-migration related
-     functionality
-
- 2.  Everyone is happy with the architecture and APIs, such that
-     subsequent patches will amount to bug fixes and enhancements
-     rather than reworking anything
-
- 3.  The series is ported to the tip of Linus' master (3.11-rc4
-     as of this writing)
-
-I'd like to merge sooner rather than later so others can start to
-build on this functionality, and so I don't have to keep forward
-porting for another two years.
-
-In addition, this is something that distributions want yesterday.
-Including it now and then fixing it makes it easier for them to
-include it in their kernels.
-
-I expect bug fixes and enhancements after merge.  Enhancements might
-include:
-
- Optimize LEASE_MOVED recovery by performing the fsid_present
- checks asynchronously
-
- Introduce support for fs_locations_info
-
- Finish NFSv4.1 migration support
-
- Finish support for non-TSM migration
-
-NFSv4.1 migration is almost sure not to work yet, so I've left the
-default setting for the EXCHANGE_ID flags as "don't advertise".  We
-may have a prototype server to test with soon.  I expect there are
-some protocol issues to work out as well.  Once NFSv4.1 migration
-is working, the new CONFIG option will be removed.
-
-Migration without TSM showed our prototype server is not behaving
-optimally.  However, the Linux client was able to recover open and
-lock state successfully.  More testing is needed.
-
-
-- Test plan -
-
-This implementation still needs a lot of testing.  I've done some of
-this list, plan to do more.
-
-  x Builds and runs non-migration workload with CONFIG_NFS_V4_1
-    disabled
-  x Builds and runs non-migration workload with CONFIG_NFS_V4_1
-    enabled
-  x Single filesystem migration under load with TSM
-  x Single filesystem migration under load without TSM
-  x Single filesystem under load migrated twice
-  * Active filesystem A while B is migrated (lease-moved recovery)
-  * Active filesystem A while active filesystem B is migrated
-  * Migrate filesystem A, reboot destination server, migrate B
-  * Migration during lock-intensive workload
-  x What happens when migration recovery fails?
-  * How about migration with a Kerberos 5 mount?
-
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
+ fs/nfs/nfs4filelayout.c |  10 +++++
+ fs/nfs/nfs4proc.c       |   8 ++++
+ fs/nfs/nfs4trace.c      |   5 +++
+ fs/nfs/nfs4trace.h      | 104 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/pnfs.c           |   7 ++++
+ 5 files changed, 134 insertions(+)
 
-Chuck Lever (32):
-      NFS: When displaying session slot numbers, use "%u" consistently
-      NFS: Rename nfs41_call_sync_data as a common data structure
-      NFS: Clean up nfs4_setup_sequence()
-      NFS: Common versions of sequence helper functions
-      NFS: Add RPC callouts to start NFSv4.0 synchronous requests
-      NFS: Remove unused call_sync minor version op
-      NFS: Enable slot table helpers for NFSv4.0
-      NFS: Add global helper to set up a stand-along nfs4_slot_table
-      NFS: Add global helper for releasing slot table resources
-      NFS: Add a slot table to struct nfs_client for NFSv4.0 transport blocking
-      NFS: NFSv4.0 transport blocking
-      NFS: Enable nfs4_setup_sequence() for DELEGRETURN
-      NFS: Add nfs4_sequence calls for RELEASE_LOCKOWNER
-      NFS: Add nfs4_sequence calls for OPEN_CONFIRM
-      NFS: Update session draining barriers for NFSv4.0 transport blocking
-      SUNRPC: Modify synopsis of rpc_client_register()
-      NFS: Add nfs4_update_server
-      NFS: Add functions to swap transports during migration recovery
-      NFS: Introduce a vector of migration recovery ops
-      NFS: Export _nfs_display_fhandle()
-      NFS: Add method to retrieve fs_locations during migration recovery
-      NFS: Add a super_block backpointer to the nfs_server struct
-      NFS: Add basic migration support to state manager thread
-      NFS: Re-use exit code in nfs4_async_handle_error()
-      NFS: Rename "stateid_invalid" label
-      NFS: Add migration recovery callouts in nfs4proc.c
-      NFS: Add method to detect whether an FSID is still on the server
-      NFS: Implement support for NFS4ERR_LEASE_MOVED in state manager
-      NFS: Implement support for NFS4ERR_LEASE_MOVED
-      NFS: Implement support for NFS4ERR_LEASE_MOVED
-      NFS: Implement NFSv4.1 support for NFS4ERR_LEASE_MOVED
-      NFS: Set EXCHGID4_FLAG_SUPP_MOVED_MIGR
-
-Trond Myklebust (1):
-      SUNRPC: Add a helper to switch the transport of an rpc_clnt
-
-
- fs/nfs/Kconfig              |   11 +
- fs/nfs/Makefile             |    4 
- fs/nfs/callback_proc.c      |    8 -
- fs/nfs/client.c             |    3 
- fs/nfs/inode.c              |    2 
- fs/nfs/internal.h           |    3 
- fs/nfs/nfs4_fs.h            |   39 ++-
- fs/nfs/nfs4client.c         |  191 +++++++++++--
- fs/nfs/nfs4namespace.c      |  101 +++++++
- fs/nfs/nfs4proc.c           |  641 ++++++++++++++++++++++++++++++++++++-------
- fs/nfs/nfs4session.c        |   84 ++++--
- fs/nfs/nfs4session.h        |   31 +-
- fs/nfs/nfs4state.c          |  289 +++++++++++++++++--
- fs/nfs/nfs4xdr.c            |  126 +++++++-
- fs/nfs/super.c              |    1 
- include/linux/nfs4.h        |    1 
- include/linux/nfs_fs_sb.h   |   11 +
- include/linux/nfs_xdr.h     |   17 +
- include/linux/sunrpc/clnt.h |    4 
- net/sunrpc/clnt.c           |  102 ++++++-
- 20 files changed, 1399 insertions(+), 270 deletions(-)
-
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index f6ec7c7..ca92340 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -39,6 +39,7 @@
+ #include "internal.h"
+ #include "delegation.h"
+ #include "nfs4filelayout.h"
++#include "nfs4trace.h"
+ 
+ #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
+ 
+@@ -273,6 +274,9 @@ static int filelayout_read_done_cb(struct rpc_task *task,
+ 	struct nfs_pgio_header *hdr = data->header;
+ 	int err;
+ 
++	trace_nfs4_pnfs_read(hdr, data->args.context,
++			data->args.offset, data->args.count,
++			task->tk_status);
+ 	err = filelayout_async_handle_error(task, data->args.context->state,
+ 					    data->ds_clp, hdr->lseg);
+ 
+@@ -389,6 +393,9 @@ static int filelayout_write_done_cb(struct rpc_task *task,
+ 	struct nfs_pgio_header *hdr = data->header;
+ 	int err;
+ 
++	trace_nfs4_pnfs_write(hdr, data->args.context,
++			data->args.offset, data->args.count,
++			task->tk_status);
+ 	err = filelayout_async_handle_error(task, data->args.context->state,
+ 					    data->ds_clp, hdr->lseg);
+ 
+@@ -421,6 +428,9 @@ static int filelayout_commit_done_cb(struct rpc_task *task,
+ {
+ 	int err;
+ 
++	trace_nfs4_pnfs_commit_ds(data->inode,
++			data->args.offset, data->args.count,
++			task->tk_status);
+ 	err = filelayout_async_handle_error(task, NULL, data->ds_clp,
+ 					    data->lseg);
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d269199..a1aac14 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3885,6 +3885,9 @@ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
+ {
+ 	struct nfs_server *server = NFS_SERVER(data->header->inode);
+ 
++	trace_nfs4_read(data->header, data->args.context,
++			data->args.offset, data->args.count,
++			task->tk_status);
+ 	if (nfs4_async_handle_error(task, server, data->args.context->state) == -EAGAIN) {
+ 		rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+@@ -3946,6 +3949,9 @@ static int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data
+ {
+ 	struct inode *inode = data->header->inode;
+ 	
++	trace_nfs4_write(data->header, data->args.context,
++			data->args.offset, data->args.count,
++			task->tk_status);
+ 	if (nfs4_async_handle_error(task, NFS_SERVER(inode), data->args.context->state) == -EAGAIN) {
+ 		rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+@@ -4037,6 +4043,8 @@ static int nfs4_commit_done_cb(struct rpc_task *task, struct nfs_commit_data *da
+ {
+ 	struct inode *inode = data->inode;
+ 
++	trace_nfs4_commit(inode, data->args.offset, data->args.count,
++			task->tk_status);
+ 	if (nfs4_async_handle_error(task, NFS_SERVER(inode), NULL) == -EAGAIN) {
+ 		rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+diff --git a/fs/nfs/nfs4trace.c b/fs/nfs/nfs4trace.c
+index 3f02183..f840974 100644
+--- a/fs/nfs/nfs4trace.c
++++ b/fs/nfs/nfs4trace.c
+@@ -8,3 +8,8 @@
+ #define CREATE_TRACE_POINTS
+ #include "nfs4trace.h"
+ 
++#ifdef CONFIG_NFS_V4_1
++EXPORT_TRACEPOINT_SYMBOL_GPL(nfs4_pnfs_read);
++EXPORT_TRACEPOINT_SYMBOL_GPL(nfs4_pnfs_write);
++EXPORT_TRACEPOINT_SYMBOL_GPL(nfs4_pnfs_commit_ds);
++#endif
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index 7b3cfbf..eea87d9 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -675,6 +675,110 @@ DEFINE_NFS4_IDMAP_EVENT(nfs4_map_group_to_gid);
+ DEFINE_NFS4_IDMAP_EVENT(nfs4_map_uid_to_name);
+ DEFINE_NFS4_IDMAP_EVENT(nfs4_map_gid_to_group);
+ 
++DECLARE_EVENT_CLASS(nfs4_read_write_event,
++		TP_PROTO(const struct nfs_pgio_header *header,
++			const struct nfs_open_context *ctx,
++			loff_t offset,
++			size_t count,
++			int error),
++
++		TP_ARGS(header, ctx, offset, count, error),
++
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++			__field(loff_t, offset)
++			__field(size_t, count)
++			__field(int, error)
++		),
++
++		TP_fast_assign(
++			struct inode *inode = header->inode;
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = NFS_FILEID(inode);
++			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
++			__entry->offset = offset;
++			__entry->count = count;
++			__entry->error = error;
++		),
++
++		TP_printk("error=%d (%s) fileid=%02x:%02x:%lld, fhandle=%0x08x"
++			  "offset=%llu, count=%zu",
++			  __entry->error,
++			  show_nfsv4_errors(__entry->error),
++			  MAJOR(__entry->dev), MINOR(__entry->dev),
++			  (unsigned long long)__entry->fileid,
++			  __entry->fhandle,
++			  (unsigned long long)__entry->offset,
++			  __entry->count
++		)
++);
++
++#define DEFINE_NFS4_READ_WRITE_EVENT(name)			\
++DEFINE_EVENT(nfs4_read_write_event, name,			\
++		TP_PROTO(const struct nfs_pgio_header *header,	\
++			const struct nfs_open_context *ctx,	\
++			loff_t offset,				\
++			size_t count,				\
++			int error),				\
++		TP_ARGS(header, ctx, offset, count, error))
++DEFINE_NFS4_READ_WRITE_EVENT(nfs4_read);
++DEFINE_NFS4_READ_WRITE_EVENT(nfs4_write);
++#ifdef CONFIG_NFS_V4_1
++DEFINE_NFS4_READ_WRITE_EVENT(nfs4_pnfs_read);
++DEFINE_NFS4_READ_WRITE_EVENT(nfs4_pnfs_write);
++#endif /* CONFIG_NFS_V4_1 */
++
++DECLARE_EVENT_CLASS(nfs4_commit_event,
++		TP_PROTO(const struct inode *inode,
++			loff_t offset,
++			size_t count,
++			int error),
++
++		TP_ARGS(inode, offset, count, error),
++
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++			__field(loff_t, offset)
++			__field(size_t, count)
++			__field(int, error)
++		),
++
++		TP_fast_assign(
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = NFS_FILEID(inode);
++			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
++			__entry->offset = offset;
++			__entry->count = count;
++			__entry->error = error;
++		),
++
++		TP_printk("error=%d (%s) fileid=%02x:%02x:%lld, fhandle=%0x08x"
++			  "offset=%llu, count=%zu",
++			  __entry->error,
++			  show_nfsv4_errors(__entry->error),
++			  MAJOR(__entry->dev), MINOR(__entry->dev),
++			  (unsigned long long)__entry->fileid,
++			  __entry->fhandle,
++			  (unsigned long long)__entry->offset,
++			  __entry->count
++		)
++);
++#define DEFINE_NFS4_COMMIT_EVENT(name)			\
++DEFINE_EVENT(nfs4_commit_event, name,			\
++		TP_PROTO(const struct inode *inode,	\
++			loff_t offset,			\
++			size_t count,			\
++			int error),			\
++		TP_ARGS(inode, offset, count, error))
++DEFINE_NFS4_COMMIT_EVENT(nfs4_commit);
++#ifdef CONFIG_NFS_V4_1
++DEFINE_NFS4_COMMIT_EVENT(nfs4_pnfs_commit_ds);
++#endif /* CONFIG_NFS_V4_1 */
++
+ #endif /* _TRACE_NFS4_H */
+ 
+ #undef TRACE_INCLUDE_PATH
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 9bf5cda..3a147dd 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -33,6 +33,7 @@
+ #include "internal.h"
+ #include "pnfs.h"
+ #include "iostat.h"
++#include "nfs4trace.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PNFS
+ #define PNFS_LAYOUTGET_RETRY_TIMEOUT (120*HZ)
+@@ -1551,6 +1552,9 @@ void pnfs_ld_write_done(struct nfs_write_data *data)
+ {
+ 	struct nfs_pgio_header *hdr = data->header;
+ 
++	trace_nfs4_pnfs_write(hdr, data->args.context,
++			data->args.offset, data->args.count,
++			hdr->pnfs_error);
+ 	if (!hdr->pnfs_error) {
+ 		pnfs_set_layoutcommit(data);
+ 		hdr->mds_ops->rpc_call_done(&data->task, data);
+@@ -1705,6 +1709,9 @@ void pnfs_ld_read_done(struct nfs_read_data *data)
+ {
+ 	struct nfs_pgio_header *hdr = data->header;
+ 
++	trace_nfs4_pnfs_write(hdr, data->args.context,
++			data->args.offset, data->args.count,
++			hdr->pnfs_error);
+ 	if (likely(!hdr->pnfs_error)) {
+ 		__nfs4_read_done_cb(data);
+ 		hdr->mds_ops->rpc_call_done(&data->task, data);
 -- 
-Chuck Lever
+1.8.3.1
+
