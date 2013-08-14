@@ -1,131 +1,182 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21272 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:29343 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750938Ab3HSS0C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Aug 2013 14:26:02 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r7JIQ11f012370
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 19 Aug 2013 14:26:02 -0400
-Message-ID: <5212633A.4090700@RedHat.com>
-Date: Mon, 19 Aug 2013 14:26:02 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1757587Ab3HNOYs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Aug 2013 10:24:48 -0400
+Date: Wed, 14 Aug 2013 10:24:45 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [nfs-utils PATCH 1/4] mount.nfs: avoid unnecessary duplication
+ of options passed to mount(2)
+Message-ID: <20130814142445.GC2514@tonberry.usersys.redhat.com>
+References: <1376421629-21382-1-git-send-email-smayhew@redhat.com>
+ <1376421629-21382-2-git-send-email-smayhew@redhat.com>
+ <B88ACB44-F0FF-4365-A783-D32892A9BCC9@oracle.com>
+ <20130813223952.GA2514@tonberry.usersys.redhat.com>
+ <7D76D57A-E298-4E31-8D33-652AFE0E3BB5@oracle.com>
 MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] rpc.nfsd: Allow v4.2 server support with the -V option
-References: <1375036598-31090-1-git-send-email-steved@redhat.com> <1375036598-31090-2-git-send-email-steved@redhat.com>
-In-Reply-To: <1375036598-31090-2-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <7D76D57A-E298-4E31-8D33-652AFE0E3BB5@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 28/07/13 14:36, Steve Dickson wrote:
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  support/include/nfs/nfs.h |  4 ++++
->  utils/nfsd/nfsd.c         | 12 ++++++------
->  utils/nfsd/nfssvc.c       | 11 +++++++----
->  3 files changed, 17 insertions(+), 10 deletions(-)
-Committed...
-
-steved.
+On Tue, 13 Aug 2013, Chuck Lever wrote:
 
 > 
-> diff --git a/support/include/nfs/nfs.h b/support/include/nfs/nfs.h
-> index 5fd86f6..38db5b5 100644
-> --- a/support/include/nfs/nfs.h
-> +++ b/support/include/nfs/nfs.h
-> @@ -15,6 +15,10 @@
->  #define NFSD_MINVERS 2
->  #define NFSD_MAXVERS 4
->  
-> +#define NFS4_MINMINOR 1
-> +#define NFS4_MAXMINOR 2
-> +#define NFS4_VERDEFAULT  0x1  /* minor verion 1 */
-> +
->  struct nfs_fh_len {
->  	int		fh_size;
->  	u_int8_t	fh_handle[NFS3_FHSIZE];
-> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-> index df48392..6db92f0 100644
-> --- a/utils/nfsd/nfsd.c
-> +++ b/utils/nfsd/nfsd.c
-> @@ -99,7 +99,7 @@ main(int argc, char **argv)
->  	char *p, *progname, *port;
->  	char *haddr = NULL;
->  	int	socket_up = 0;
-> -	int minorvers41 = 0;	/* nfsv4 minor version */
-> +	int minorvers = NFS4_VERDEFAULT;	/* nfsv4 minor version */
->  	unsigned int versbits = NFSCTL_VERDEFAULT;
->  	unsigned int protobits = NFSCTL_ALLBITS;
->  	unsigned int proto4 = 0;
-> @@ -160,11 +160,11 @@ main(int argc, char **argv)
->  			case 4:
->  				if (*p == '.') {
->  					int i = atoi(p+1);
-> -					if (i != 1) {
-> +					if (i > 2) {
->  						fprintf(stderr, "%s: unsupported minor version\n", optarg);
->  						exit(1);
->  					}
-> -					minorvers41 = -1;
-> +					NFSCTL_VERUNSET(minorvers, i);
->  					break;
->  				}
->  			case 3:
-> @@ -181,11 +181,11 @@ main(int argc, char **argv)
->  			case 4:
->  				if (*p == '.') {
->  					int i = atoi(p+1);
-> -					if (i != 1) {
-> +					if (i > 2) {
->  						fprintf(stderr, "%s: unsupported minor version\n", optarg);
->  						exit(1);
->  					}
-> -					minorvers41 = 1;
-> +					NFSCTL_VERSET(minorvers, i);
->  					break;
->  				}
->  			case 3:
-> @@ -282,7 +282,7 @@ main(int argc, char **argv)
->  	 * registered with rpcbind. Note that on older kernels w/o the right
->  	 * interfaces, these are a no-op.
->  	 */
-> -	nfssvc_setvers(versbits, minorvers41);
-> +	nfssvc_setvers(versbits, minorvers);
->   
->  	error = nfssvc_set_sockets(AF_INET, proto4, haddr, port);
->  	if (!error)
-> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-> index 683008e..8b85846 100644
-> --- a/utils/nfsd/nfssvc.c
-> +++ b/utils/nfsd/nfssvc.c
-> @@ -269,7 +269,7 @@ nfssvc_set_sockets(const int family, const unsigned int protobits,
->  }
->  
->  void
-> -nfssvc_setvers(unsigned int ctlbits, int minorvers41)
-> +nfssvc_setvers(unsigned int ctlbits, int minorvers)
->  {
->  	int fd, n, off;
->  	char *ptr;
-> @@ -280,9 +280,12 @@ nfssvc_setvers(unsigned int ctlbits, int minorvers41)
->  	if (fd < 0)
->  		return;
->  
-> -	if (minorvers41)
-> -		off += snprintf(ptr+off, sizeof(buf) - off, "%c4.1",
-> -				minorvers41 > 0 ? '+' : '-');
-> +	for (n = NFS4_MINMINOR; n <= NFS4_MAXMINOR; n++) {
-> +		if (NFSCTL_VERISSET(minorvers, n)) 
-> +			off += snprintf(ptr+off, sizeof(buf) - off, "+4.%d ", n);
-> +		else			
-> +			off += snprintf(ptr+off, sizeof(buf) - off, "-4.%d ", n);
-> +	}
->  	for (n = NFSD_MINVERS; n <= NFSD_MAXVERS; n++) {
->  		if (NFSCTL_VERISSET(ctlbits, n))
->  		    off += snprintf(ptr+off, sizeof(buf) - off, "+%d ", n);
+> On Aug 13, 2013, at 6:39 PM, Scott Mayhew <smayhew@redhat.com> wrote:
+> 
+> > On Tue, 13 Aug 2013, Chuck Lever wrote:
+> > 
+> >> 
+> >> On Aug 13, 2013, at 3:20 PM, Scott Mayhew <smayhew@redhat.com> wrote:
+> >> 
+> >>> The nfsmount.conf file has the following format:
+> >>> 
+> >>> [ section "arg" ]
+> >>> 	tag = value
+> >>> 
+> >>> conf_get_tag_list() currently doesn't check the arg field so we wind up
+> >>> getting all the options that fall under a particular section value,
+> >>> instead of just the ones that match the specific "arg" field.  As a
+> >>> result, we wind up passing options to the mount syscall multiple times.
+> >>> 
+> >>> For example, if we have three different server sections, and each
+> >>> section has an Nfsvers tag, then the string we pass to the mount syscall
+> >>> will have three occurrences of the nfsvers option.
+> >>> 
+> >>> Note that the call to conf_get_section() in conf_parse_mntopts() will
+> >>> ensure that we never pass the wrong value for an option, but we should
+> >>> still avoid sending duplicate options if it's at all possible.
+> >> 
+> >> You haven't convinced me that passing duplicate options is incorrect behavior.
+> >> 
+> >> The idea was to do this kind of data reduction in one place.  It's either done in the kernel's NFS mount option parser, or in mount.nfs's legacy mount option parser.  There should be one authority on what setting takes effect.
+> >> 
+> >> Do your changes preserve the "right-most setting wins" behavior? 
+> > 
+> > Yes, they do.
+> > 
+> >> This is why the config file logic sends duplicate options: it's easier to simply stack the options onto a list, with the system specific options first, then the server specific, then the mount point specific options.  The kernel's option parser then sorts it out and applies the correct setting.
+> >> 
+> > 
+> > I would expect to see a particular mount option at most 3 times then
+> > (once from the global options, once from the server specific options,
+> > and once from the mountpoint-specific options).  That's fine (although
+> > that's what patch 2 was changing).
+> 
+> (Well, to be precise, possibly 4 times: once for the system section, once for server-specific section, once for mount-specific options, and once in the command line mount options).
+> 
+> > The problem is that we're adding that option to the list based on config
+> > file settings that aren't even relevant to the mount operation we happen
+> > to be performing.  For instance if your nfsmount.conf has 100 server
+> > sections, and each of those (along with your global and
+> > mountpoint-specific sections) has an nfsvers option, then you could wind
+> > up sending the nfsvers option 102 times.
+> 
+> OK, that's clearly broken.  The config file logic should not include mount options from sections that are not relevant.  If that's all that is addressed in 1/4, that's probably a good fix.
+> 
+> > If you have enough entries in your config file that the option string
+> > exceeds one page then chances are an option is going to be lopped off
+> > somewhere in the middle and the mount will likely fail with -EINVAL (and
+> > even if that doesn't happen the rightmost options will most likely to be
+> > lost).
+> 
+> I agree, buffer overrun is a valid risk.  I might also suggest that EINVAL is not a terribly descriptive error, and the mount.nfs command could do something to report this error more accurately.
+> 
+> However, I disagree with the claim made in your patch description and cover letter.  Duplicate options, in and of themselves, are not a problem, and the mount option parsing stack leverages that in favor of simplicity.
+
+Okay, I'll fix the patch description and resend it as a standalone
+patch.
+
+> 
+> After the irrelevant mount options are excluded, do you think we are still at risk of overrunning the options buffer for any realistic configuration?
+
+No.
+> 
+> > -Scott
+> > 
+> >> If the right-most setting of an option is not taking effect, that's a bug.
+> >> 
+> >> 
+> >>> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> >>> ---
+> >>> support/include/conffile.h | 2 +-
+> >>> support/nfs/conffile.c     | 4 +++-
+> >>> utils/mount/configfile.c   | 2 +-
+> >>> 3 files changed, 5 insertions(+), 3 deletions(-)
+> >>> 
+> >>> diff --git a/support/include/conffile.h b/support/include/conffile.h
+> >>> index ce7aa21..05ea5d2 100644
+> >>> --- a/support/include/conffile.h
+> >>> +++ b/support/include/conffile.h
+> >>> @@ -54,7 +54,7 @@ extern int      conf_end(int, int);
+> >>> extern void     conf_free_list(struct conf_list *);
+> >>> extern struct sockaddr *conf_get_address(char *, char *);
+> >>> extern struct conf_list *conf_get_list(char *, char *);
+> >>> -extern struct conf_list *conf_get_tag_list(char *);
+> >>> +extern struct conf_list *conf_get_tag_list(char *, char *);
+> >>> extern int      conf_get_num(char *, char *, int);
+> >>> extern char    *conf_get_str(char *, char *);
+> >>> extern char    *conf_get_section(char *, char *, char *);
+> >>> diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+> >>> index 5015e94..c3434d5 100644
+> >>> --- a/support/nfs/conffile.c
+> >>> +++ b/support/nfs/conffile.c
+> >>> @@ -565,7 +565,7 @@ cleanup:
+> >>> }
+> >>> 
+> >>> struct conf_list *
+> >>> -conf_get_tag_list(char *section)
+> >>> +conf_get_tag_list(char *section, char *arg)
+> >>> {
+> >>> 	struct conf_list *list = 0;
+> >>> 	struct conf_list_node *node;
+> >>> @@ -579,6 +579,8 @@ conf_get_tag_list(char *section)
+> >>> 	cb = LIST_FIRST(&conf_bindings[conf_hash (section)]);
+> >>> 	for (; cb; cb = LIST_NEXT(cb, link)) {
+> >>> 		if (strcasecmp (section, cb->section) == 0) {
+> >>> +			if (arg != NULL && strcasecmp(arg, cb->arg) != 0)
+> >>> +				continue;
+> >>> 			list->cnt++;
+> >>> 			node = calloc(1, sizeof *node);
+> >>> 			if (!node)
+> >>> diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
+> >>> index 6f2ee75..1f1b6e7 100644
+> >>> --- a/utils/mount/configfile.c
+> >>> +++ b/utils/mount/configfile.c
+> >>> @@ -286,7 +286,7 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
+> >>> 	char *nvalue, *ptr;
+> >>> 	int argtype;
+> >>> 
+> >>> -	list = conf_get_tag_list(section);
+> >>> +	list = conf_get_tag_list(section, arg);
+> >>> 	TAILQ_FOREACH(node, &list->fields, link) {
+> >>> 		/*
+> >>> 		 * Do not overwrite options if already exists 
+> >>> -- 
+> >>> 1.7.11.7
+> >>> 
+> >>> --
+> >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>> the body of a message to majordomo@vger.kernel.org
+> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >> 
+> >> -- 
+> >> Chuck Lever
+> >> chuck[dot]lever[at]oracle[dot]com
+> >> 
+> >> 
+> >> 
+> >> 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
 > 
