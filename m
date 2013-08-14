@@ -1,91 +1,190 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from caiajhbdcaid.dreamhost.com ([208.97.132.83]:46912 "EHLO
-	homiemail-a77.g.dreamhost.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S934385Ab3HIQYe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:24:34 -0400
+Received: from mx1.netapp.com ([216.240.18.38]:42539 "EHLO mx1.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760059Ab3HNXZN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Aug 2013 19:25:13 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 05/13] NFSv4: Add tracepoints for debugging lookup/create operations
+Date: Wed, 14 Aug 2013 19:24:50 -0400
+Message-ID: <1376522698-44596-6-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1376522698-44596-5-git-send-email-Trond.Myklebust@netapp.com>
+References: <1376522698-44596-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1376522698-44596-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1376522698-44596-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1376522698-44596-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1376522698-44596-5-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <16961.1375973205@warthog.procyon.org.uk>
-References: <20130801173846.28023.19009.stgit@warthog.procyon.org.uk>
-	<20130801173854.28023.82045.stgit@warthog.procyon.org.uk>
-	<CAK3OfOj6E_thwgwdZUDXrr_7XW4xJkzwxdGU6gKcEJ3twOsm=A@mail.gmail.com>
-	<16961.1375973205@warthog.procyon.org.uk>
-Date: Fri, 9 Aug 2013 11:24:29 -0500
-Message-ID: <CAK3OfOgUbQO+5dKXVEn1e70Y959-GKV9sZxV32Yy6ZSPr=x7Sg@mail.gmail.com>
-Subject: Re: [PATCH 1/2] KEYS: Implement a big key type that can save to tmpfs
-From: Nico Williams <nico@cryptonector.com>
-To: David Howells <dhowells@redhat.com>
-Cc: keyrings@linux-nfs.org, linux-nfs@vger.kernel.org, simo@redhat.com,
-        linux-kernel@vger.kernel.org, krbdev@mit.edu
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 8, 2013 at 9:46 AM, David Howells <dhowells@redhat.com> wrote:
-> Nico Williams <nico@cryptonector.com> wrote:
->
->> b) how to create tmpfs locations in which to store credentials (which
->> can be unbounded in size, so storing them in the kernel is silly;
->
-> Ummm...  tmpfs stores them in the kernel too - though it can page them out to
-> swap.
+Set up basic tracepoints for debugging NFSv4 lookup, unlink/remove,
+symlink, mkdir, mknod, fs_locations and secinfo.
 
-Any filesystem uses kernel, doesn't it?  Notionally, however, they
-don't.  And notionally tmpfs is not about using memory but about being
-non-persistent.  This is important because tmpfs *is* subject to
-swapping and that does create security problems (you should want to
-encrypt swap).
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c  | 37 +++++++++++++++++++++++--------------
+ fs/nfs/nfs4trace.h | 46 ++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 69 insertions(+), 14 deletions(-)
 
-There's a difference between "notionally not persistent across
-reboots" and "notionally stored in the kernel's address space".  The
-real question is: why do you want the latter?
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 2796858..789be86 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3026,6 +3026,7 @@ static int nfs4_proc_lookup_common(struct rpc_clnt **clnt, struct inode *dir,
+ 	int err;
+ 	do {
+ 		err = _nfs4_proc_lookup(client, dir, name, fhandle, fattr, label);
++		trace_nfs4_lookup(dir, name, err);
+ 		switch (err) {
+ 		case -NFS4ERR_BADNAME:
+ 			err = -ENOENT;
+@@ -3261,8 +3262,9 @@ static int nfs4_proc_remove(struct inode *dir, struct qstr *name)
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(dir),
+-				_nfs4_proc_remove(dir, name),
++		err = _nfs4_proc_remove(dir, name);
++		trace_nfs4_remove(dir, name, err);
++		err = nfs4_handle_exception(NFS_SERVER(dir), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+@@ -3291,10 +3293,12 @@ static void nfs4_proc_unlink_rpc_prepare(struct rpc_task *task, struct nfs_unlin
+ 
+ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
+ {
+-	struct nfs_removeres *res = task->tk_msg.rpc_resp;
++	struct nfs_unlinkdata *data = task->tk_calldata;
++	struct nfs_removeres *res = &data->res;
+ 
+ 	if (!nfs4_sequence_done(task, &res->seq_res))
+ 		return 0;
++	trace_nfs4_remove_async(dir, &data->args.name, task->tk_status);
+ 	if (nfs4_async_handle_error(task, res->server, NULL) == -EAGAIN)
+ 		return 0;
+ 	update_changeattr(dir, &res->cinfo);
+@@ -3533,9 +3537,9 @@ static int nfs4_proc_symlink(struct inode *dir, struct dentry *dentry,
+ 	label = nfs4_label_init_security(dir, dentry, sattr, &l);
+ 
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(dir),
+-				_nfs4_proc_symlink(dir, dentry, page,
+-							len, sattr, label),
++		err = _nfs4_proc_symlink(dir, dentry, page, len, sattr, label);
++		trace_nfs4_symlink(dir, &dentry->d_name, err);
++		err = nfs4_handle_exception(NFS_SERVER(dir), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 
+@@ -3572,8 +3576,9 @@ static int nfs4_proc_mkdir(struct inode *dir, struct dentry *dentry,
+ 
+ 	sattr->ia_mode &= ~current_umask();
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(dir),
+-				_nfs4_proc_mkdir(dir, dentry, sattr, label),
++		err = _nfs4_proc_mkdir(dir, dentry, sattr, label);
++		trace_nfs4_mkdir(dir, &dentry->d_name, err);
++		err = nfs4_handle_exception(NFS_SERVER(dir), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 	nfs4_label_release_security(label);
+@@ -3680,8 +3685,9 @@ static int nfs4_proc_mknod(struct inode *dir, struct dentry *dentry,
+ 
+ 	sattr->ia_mode &= ~current_umask();
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(dir),
+-				_nfs4_proc_mknod(dir, dentry, sattr, label, rdev),
++		err = _nfs4_proc_mknod(dir, dentry, sattr, label, rdev);
++		trace_nfs4_mknod(dir, &dentry->d_name, err);
++		err = nfs4_handle_exception(NFS_SERVER(dir), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 
+@@ -5801,8 +5807,10 @@ int nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(dir),
+-				_nfs4_proc_fs_locations(client, dir, name, fs_locations, page),
++		err = _nfs4_proc_fs_locations(client, dir, name,
++				fs_locations, page);
++		trace_nfs4_get_fs_locations(dir, name, err);
++		err = nfs4_handle_exception(NFS_SERVER(dir), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+@@ -5836,8 +5844,9 @@ int nfs4_proc_secinfo(struct inode *dir, const struct qstr *name,
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(dir),
+-				_nfs4_proc_secinfo(dir, name, flavors),
++		err = _nfs4_proc_secinfo(dir, name, flavors);
++		trace_nfs4_secinfo(dir, name, err);
++		err = nfs4_handle_exception(NFS_SERVER(dir), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index eaf1f22..38fb509 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -391,6 +391,52 @@ DEFINE_NFS4_LOCK_EVENT(nfs4_lock_reclaim);
+ DEFINE_NFS4_LOCK_EVENT(nfs4_lock_expired);
+ DEFINE_NFS4_LOCK_EVENT(nfs4_unlock);
+ 
++DECLARE_EVENT_CLASS(nfs4_lookup_event,
++		TP_PROTO(const struct inode *dir,
++			const struct qstr *name,
++			int error),
++
++		TP_ARGS(dir, name, error),
++
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(int, error)
++			__field(u64, dir)
++			__string(name, name->name)
++		),
++
++		TP_fast_assign(
++			__entry->dev = dir->i_sb->s_dev;
++			__entry->dir = NFS_FILEID(dir);
++			__entry->error = error;
++			__assign_str(name, name->name);
++		),
++
++		TP_printk("error=%d (%s), name=%02x:%02x:%lld/%s",
++			__entry->error,
++			show_nfsv4_errors(__entry->error),
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->dir,
++			__get_str(name)
++		)
++);
++
++#define DEFINE_NFS4_LOOKUP_EVENT(name)	\
++DEFINE_EVENT(nfs4_lookup_event, name,		\
++		TP_PROTO(const struct inode *dir,	\
++			const struct qstr *name,	\
++			int error),			\
++		TP_ARGS(dir, name, error))
++
++DEFINE_NFS4_LOOKUP_EVENT(nfs4_lookup);
++DEFINE_NFS4_LOOKUP_EVENT(nfs4_symlink);
++DEFINE_NFS4_LOOKUP_EVENT(nfs4_mkdir);
++DEFINE_NFS4_LOOKUP_EVENT(nfs4_mknod);
++DEFINE_NFS4_LOOKUP_EVENT(nfs4_remove);
++DEFINE_NFS4_LOOKUP_EVENT(nfs4_remove_async);
++DEFINE_NFS4_LOOKUP_EVENT(nfs4_get_fs_locations);
++DEFINE_NFS4_LOOKUP_EVENT(nfs4_secinfo);
++
+ #endif /* _TRACE_NFS4_H */
+ 
+ #undef TRACE_INCLUDE_PATH
+-- 
+1.8.3.1
 
-Some people have argued (not in this thread, and not recently on this
-list) that credentials should be stored in the kernel and not leave it
-(i.e., you shouldn't be able to extract them from the kernel).  This
-implies a number of things, but one of those is a bad thing: unbounded
-kernel credential caches OR LRU/LFU cache eviction.  Some of us rely
-on caching to keep latency predictable, so cache eviction could be a
-bit rough.  Unbounded kernel credential caches not subject to paging
-are a DoS.  Unbounded-but-paged cred caches would be fine, but really,
-what's the difference vis-a-vis FILE ccaches in /tmp?  The answer
-depends on whether you allow the creds to leave kernel space.
-
-That brings us to: what do we really want?  If we really want users to
-not be able to see their tickets' session keys, then we don't need to
-store their tickets in kernel land and we don't need to put
-krb5_mk_req*() in the kernel either: we need only *wrap* the keys to
-that low-level crypto use of those keys happens in the kernel and the
-only thing the kernel stores is the wrapping key.  You might even have
-a TPM or similar crypto decelerator handle this.
-
-ISTM that a new ccache type whose purpose is to defeat the tmpfs race
-conditions of the FILE ccache is a good thing.  I would prefer it to
-be *portable*, and it could be, but keyring stuff isn't.  And FILE
-ccache remains the lowest common denominator, so there's that too.
-And since I've been dealing with some FILE ccache race conditions (see
-new thread I'll start next), I think a) I hate FILE ccaches, b) I
-don't see how to avoid having them.
-
-> I have altered my big-key implementation to just store small items in an
-> internal buffer and big items in a tmpfs file.  This means that small items
-> will use up _less_ kernel memory if they're in a key because they won't require
-> the overhead of a dentry struct and an inode struct.
-
-Please make sure to have a cache eviction policy...  I don't know what
-is "small" when it comes to Kerberos credentials either.  If the
-difference between small and large is "lacks / has PAC and/or CAMMAC"
-then you'll find that this difference mostly depends on the
-environment, and generally your items will be either all "small" or
-all large.  Are you building dead code?
-
->> (b) can be solved in many ways, and the simplest is to have a
->> filesystem where top-level directories named after UIDs "exist" as
->> soon as they are referenced and as long as they are non-empty.  You
->> can use autofs + tmpfs, or a variant of tmpfs for this.
->
-> Don't forget to add user namespaces into the mix :-/
-
-Sure; why the ambivalence smiley?
-
-Nico
---
