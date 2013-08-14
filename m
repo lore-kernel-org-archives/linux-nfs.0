@@ -1,76 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56138 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:22426 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755047Ab3HEUmE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Aug 2013 16:42:04 -0400
-Date: Mon, 5 Aug 2013 16:42:00 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Weston Andros Adamson <dros@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: Fix SP4_MACH_CRED negotiation in EXCHANGE_ID
-Message-ID: <20130805204200.GE1583@fieldses.org>
-References: <1375732027-4905-1-git-send-email-dros@netapp.com>
+	id S933022Ab3HNUIj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Aug 2013 16:08:39 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Orion Poplawski <orion@cora.nwra.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: rpc.idmapd: nss_getpwnam: name '#' does not map into domain
+Date: Wed, 14 Aug 2013 20:08:38 +0000
+Message-ID: <1376510917.29258.55.camel@leira.trondhjem.org>
+References: <loom.20130814T210744-290@post.gmane.org>
+	 <loom.20130814T212246-502@post.gmane.org>
+In-Reply-To: <loom.20130814T212246-502@post.gmane.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1375732027-4905-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 05, 2013 at 03:47:07PM -0400, Weston Andros Adamson wrote:
->  - don't BUG_ON() when not SP4_NONE
->  - calculate recv and send reserve sizes correctly
-
-Looks good, thanks!  (Ouch to that BUG_ON...).
-
-Could I get the client-side code you're using to test this?
-
-It's fine if it's a mess, I just want to be able to run it once and see
-a mount work.
-
---b.
-
-> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-> ---
->  fs/nfsd/nfs4proc.c | 2 +-
->  fs/nfsd/nfs4xdr.c  | 5 ++---
->  2 files changed, 3 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 0d4c410..419572f 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -1524,7 +1524,7 @@ static inline u32 nfsd4_write_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
->  static inline u32 nfsd4_exchange_id_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
->  {
->  	return (op_encode_hdr_size + 2 + 1 + /* eir_clientid, eir_sequenceid */\
-> -		1 + 1 + 0 + /* eir_flags, spr_how, SP4_NONE (for now) */\
-> +		1 + 1 + 2 + /* eir_flags, spr_how, spo_must_enforce & _allow */\
->  		2 + /*eir_server_owner.so_minor_id */\
->  		/* eir_server_owner.so_major_id<> */\
->  		XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + 1 +\
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 0c0f3ea9..c2a4701 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -3360,7 +3360,8 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
->  		8 /* eir_clientid */ +
->  		4 /* eir_sequenceid */ +
->  		4 /* eir_flags */ +
-> -		4 /* spr_how (SP4_NONE) */ +
-> +		4 /* spr_how */ +
-> +		8 /* spo_must_enforce, spo_must_allow */ +
->  		8 /* so_minor_id */ +
->  		4 /* so_major_id.len */ +
->  		(XDR_QUADLEN(major_id_sz) * 4) +
-> @@ -3372,8 +3373,6 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
->  	WRITE32(exid->seqid);
->  	WRITE32(exid->flags);
->  
-> -	/* state_protect4_r. Currently only support SP4_NONE */
-> -	BUG_ON(exid->spa_how != SP4_NONE);
->  	WRITE32(exid->spa_how);
->  	switch (exid->spa_how) {
->  	case SP4_NONE:
-> -- 
-> 1.7.12.4 (Apple Git-37)
-> 
+T24gV2VkLCAyMDEzLTA4LTE0IGF0IDE5OjI0ICswMDAwLCBPcmlvbiBQb3BsYXdza2kgd3JvdGU6
+DQo+IE9yaW9uIFBvcGxhd3NraSA8b3Jpb25ALi4uPiB3cml0ZXM6DQo+IA0KPiA+IA0KPiA+IE9u
+IG91ciBFTDYgbmZzIHNlcnZlcnMgd2Ugc2VlIHBlcmlvZGljIG1lc3NhZ2VzIGxpa2U6DQo+ID4g
+DQo+ID4gQXVnIDE0IDEyOjU1OjE5IGFsZXhhbmRyaWEgcnBjLmlkbWFwZFsxOTIzN106IG5zc19n
+ZXRwd25hbTogbmFtZSAnNjEyJyBkb2VzDQo+ID4gbm90IG1hcCBpbnRvIGRvbWFpbiAnY29yYS5u
+d3JhLmNvbScNCj4gPiANCj4gPiBJIGltYWdpbmUgdGhhdCB0aGlzIGlzIGNhdXNlZCBieSBhIGNs
+aWVudCBhY3R1YWxseSBwYXNzaW5nIHRoZSB1aWQgaW5zdGVhZA0KPiA+IG9mIHRoZSB1c2VybmFt
+ZSBmb3Igc29tZSByZWFzb24gYnV0IEkgaGF2ZSBubyBpZGVhIGhvdyB0byB0cmFjayBkb3duIHdo
+aWNoLg0KPiA+ICBBbnkgaWRlYXM/DQoNCkFyZSB5b3Ugc2VlaW5nIGFueSBfYWN0dWFsXyBhcHBs
+aWNhdGlvbiBlcnJvcnM/DQoNCj4gVGhlc2UgKmFwcGVhciogdG8gYmUgdHJpZ2dlcmVkIGJ5IHRo
+ZSBmb2xsb3dpbmcgdHlwZXMgb2YgcmVxdWVzdHM6DQo+IA0KPiANCj4gTmV0d29yayBGaWxlIFN5
+c3RlbSwgT3BzKDMpOiBQVVRGSCBTRVRBVFRSIEdFVEFUVFINCg0KVGhhdCBpcyAxMDAlIGV4cGVj
+dGVkIGJlaGF2aW91ciBpZiB5b3UgYXJlIHVzaW5nIEFVVEhfU1lTIG9uIHRoZSBjbGllbnQNCihz
+ZWUgdGhlIGV4cGxhbmF0aW9uIGluIFJGQzM1MzBiaXMpLiBUaGUgZGVmYXVsdCB0aGVyZSBpcyB0
+byB1c2UNCnVubWFwcGVkIHVpZHMgYW5kIGdpZHMgZm9yIGJhY2t3YXJkIGNvbXBhdGliaWxpdHkg
+d2l0aCBORlN2MywgYW5kIHRvDQplbnN1cmUgdGhhdCB0aGUgbmFtZXMvZ3JvdXBzIHVzZWQgYnkg
+TkZTdjQgbWF0Y2ggdGhlIHVpZHMvZ2lkcyB1c2VkIGJ5DQp0aGUgQVVUSF9TWVMgYXV0aGVudGlj
+YXRpb24uDQoNCkluIHRoZSBjYXNlIHdoZXJlIHRoZSBORlN2NCBzZXJ2ZXIgZG9lc24ndCBzdXBw
+b3J0IHRoYXQgbW9kZSBvZg0Kb3BlcmF0aW9uLCBpdCBpcyBleHBlY3RlZCB0byByZXR1cm4gTkZT
+NEVSUl9CQURPV05FUiAoYWx0aG91Z2ggTGludXgNCmNsaWVudHMgYWxzbyBhY2NlcHQgTkZTNEVS
+Ul9CQUROQU1FKSBpbiB3aGljaCBjYXNlIHRoZSBjbGllbnQgd2lsbA0Kc3dpdGNoIHRvIHVzaW5n
+IG1hcHBlZCBpZHMuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1h
+aW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFw
+cC5jb20NCg==
