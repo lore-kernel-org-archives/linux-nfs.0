@@ -1,205 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:45156 "EHLO mx11.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:24510 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752014Ab3HEQPX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Aug 2013 12:15:23 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Nix <nix@esperi.org.uk>,
-        =?utf-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>,
-        Oleg Nesterov <oleg@redhat.com>
-CC: Jeff Layton <jlayton@redhat.com>, NFS list <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "dhowells@redhat.com" <dhowells@redhat.com>
-Subject: Re: [3.10.4] NFS locking panic, plus persisting NFS shutdown panic
- from 3.9.*
-Date: Mon, 5 Aug 2013 16:15:01 +0000
-Message-ID: <1375719301.7337.14.camel@leira.trondhjem.org>
-References: <8761vlv4z9.fsf@spindle.srvr.nix>
-	 <20130805084436.69ee4415@corrin.poochiereds.net>
-	 <87siyotcri.fsf@spindle.srvr.nix>
-	 <20130805110427.509db424@tlielax.poochiereds.net>
-	 <20130805111106.73d6ab90@tlielax.poochiereds.net>
-	 <87zjswrvaq.fsf@spindle.srvr.nix>
-In-Reply-To: <87zjswrvaq.fsf@spindle.srvr.nix>
-Content-Type: multipart/mixed;
-	boundary="_002_1375719301733714camelleiratrondhjemorg_"
+	id S1751019Ab3HNP7X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Aug 2013 11:59:23 -0400
+From: <andros@netapp.com>
+To: <trond.myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 5 0/5] Avoid expired credential keys for buffered writes
+Date: Wed, 14 Aug 2013 11:59:12 -0400
+Message-ID: <1376495957-7482-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---_002_1375719301733714camelleiratrondhjemorg_
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <288135BE0610AD48835F7E4B13D3B6D4@hq.netapp.com>
-Content-Transfer-Encoding: base64
+From: Andy Adamson <andros@netapp.com>
 
-T24gTW9uLCAyMDEzLTA4LTA1IGF0IDE2OjUwICswMTAwLCBOaXggd3JvdGU6DQo+IE9uIDUgQXVn
-IDIwMTMsIEplZmYgTGF5dG9uIHNhaWQ6DQo+IA0KPiA+IE9uIE1vbiwgNSBBdWcgMjAxMyAxMTow
-NDoyNyAtMDQwMA0KPiA+IEplZmYgTGF5dG9uIDxqbGF5dG9uQHJlZGhhdC5jb20+IHdyb3RlOg0K
-PiA+DQo+ID4+IE9uIE1vbiwgMDUgQXVnIDIwMTMgMTU6NDg6MDEgKzAxMDANCj4gPj4gTml4IDxu
-aXhAZXNwZXJpLm9yZy51az4gd3JvdGU6DQo+ID4+IA0KPiA+PiA+IE9uIDUgQXVnIDIwMTMsIEpl
-ZmYgTGF5dG9uIHN0YXRlZDoNCj4gPj4gPiANCj4gPj4gPiA+IE9uIFN1biwgMDQgQXVnIDIwMTMg
-MTY6NDA6NTggKzAxMDANCj4gPj4gPiA+IE5peCA8bml4QGVzcGVyaS5vcmcudWs+IHdyb3RlOg0K
-PiA+PiA+ID4NCj4gPj4gPiA+PiBJIGp1c3QgZ290IHRoaXMgcGFuaWMgb24gMy4xMC40LCBpbiB0
-aGUgbWlkZGxlIG9mIGEgbGFyZ2UgcGFyYWxsZWwNCj4gPj4gPiA+PiBjb21waWxhdGlvbiAob2Yg
-Q2hyb21pdW0sIGFzIGl0IGhhcHBlbnMpIG92ZXIgTkZTdjM6DQo+ID4+ID4gPj4gDQo+ID4+ID4g
-Pj4gWzE2MzY0LjUyNzUxNl0gQlVHOiB1bmFibGUgdG8gaGFuZGxlIGtlcm5lbCBOVUxMIHBvaW50
-ZXIgZGVyZWZlcmVuY2UgYXQgMDAwMDAwMDAwMDAwMDAwOA0KPiA+PiA+ID4+IFsxNjM2NC41Mjc1
-NzFdIElQOiBbPGZmZmZmZmZmODEyNDUxNTc+XSBubG1jbG50X3NldGxvY2thcmdzKzB4NTUvMHhj
-Zg0KPiA+PiA+ID4+IFsxNjM2NC41Mjc2MTFdIFBHRCAwIA0KPiA+PiA+ID4+IFsxNjM2NC41Mjc2
-MjZdIE9vcHM6IDAwMDAgWyMxXSBQUkVFTVBUIFNNUCANCj4gPj4gPiA+PiBbMTYzNjQuNTI3NjU2
-XSBNb2R1bGVzIGxpbmtlZCBpbjogW2xhc3QgdW5sb2FkZWQ6IG1pY3JvY29kZV0gDQo+ID4+ID4g
-Pj4gWzE2MzY0LjUyNzY5MF0gQ1BVOiAwIFBJRDogMTcwMzQgQ29tbTogZmxvY2sgTm90IHRhaW50
-ZWQgMy4xMC40LTA1MzE1LWdmNGNlNDI0LWRpcnR5ICMxDQo+ID4+ID4gPj4gWzE2MzY0LjUyNzcz
-MF0gSGFyZHdhcmUgbmFtZTogU3lzdGVtIG1hbnVmYWN0dXJlciBTeXN0ZW0gUHJvZHVjdCBOYW1l
-L1A4SDYxLU1YIFVTQjMsIEJJT1MgMDUwNiAwOC8xMC8yMDEyDQo+ID4+ID4gPj4gWzE2MzY0LjUy
-Nzc3NV0gdGFzazogZmZmZjg4MDQxYTk3YWQ2MCB0aTogZmZmZjg4MDM1MDFkNDAwMCB0YXNrLnRp
-OiBmZmZmODgwMzUwMWQ0MDAwDQo+ID4+ID4gPj4gWzE2MzY0LjUyNzgxM10gUklQOiAwMDEwOls8
-ZmZmZmZmZmY4MTI0NTE1Nz5dIFs8ZmZmZmZmZmY4MTI0NTE1Nz5dIG5sbWNsbnRfc2V0bG9ja2Fy
-Z3MrMHg1NS8weGNmDQo+ID4+ID4gPj4gWzE2MzY0LjUyNzg2MF0gUlNQOiAwMDE4OmZmZmY4ODAz
-NTAxZDVjNTggIEVGTEFHUzogMDAwMTAyODINCj4gPj4gPiA+PiBbMTYzNjQuNTI3ODg5XSBSQVg6
-IGZmZmY4ODA0MWE5N2FkNjAgUkJYOiBmZmZmODgwM2U0OWM4ODAwIFJDWDogMDAwMDAwMDAwMDAw
-MDAwMA0KPiA+PiA+ID4+IFsxNjM2NC41Mjc5MjZdIFJEWDogMDAwMDAwMDAwMDAwMDAwMCBSU0k6
-IDAwMDAwMDAwMDAwMDAwNGEgUkRJOiBmZmZmODgwM2U0OWM4YjU0DQo+ID4+ID4gPj4gWzE2MzY0
-LjUyNzk2Ml0gUkJQOiBmZmZmODgwMzUwMWQ1YzY4IFIwODogMDAwMDAwMDAwMDAxNTcyMCBSMDk6
-IDAwMDAwMDAwMDAwMDAwMDANCj4gPj4gPiA+PiBbMTYzNjQuNTI3OTk4XSBSMTA6IDAwMDA3ZmZm
-ZmZmZmYwMDAgUjExOiBmZmZmODgwMzUwMWQ1ZDU4IFIxMjogZmZmZjg4MDM1MDFkNWQ1OA0KPiA+
-PiA+ID4+IFsxNjM2NC41MjgwMzRdIFIxMzogZmZmZjg4MDQxYmQyYmMwMCBSMTQ6IDAwMDAwMDAw
-MDAwMDAwMDAgUjE1OiBmZmZmODgwM2ZjOWUyOTAwDQo+ID4+ID4gPj4gWzE2MzY0LjUyODA3MF0g
-RlM6ICAwMDAwMDAwMDAwMDAwMDAwKDAwMDApIEdTOmZmZmY4ODA0MmZhMDAwMDAoMDAwMCkga25s
-R1M6MDAwMDAwMDAwMDAwMDAwMA0KPiA+PiA+ID4+IFsxNjM2NC41MjgxMTFdIENTOiAgMDAxMCBE
-UzogMDAwMCBFUzogMDAwMCBDUjA6IDAwMDAwMDAwODAwNTAwMzMNCj4gPj4gPiA+PiBbMTYzNjQu
-NTI4MTQyXSBDUjI6IDAwMDAwMDAwMDAwMDAwMDggQ1IzOiAwMDAwMDAwMDAxYzBiMDAwIENSNDog
-MDAwMDAwMDAwMDE0MDdmMA0KPiA+PiA+ID4+IFsxNjM2NC41MjgxNzddIERSMDogMDAwMDAwMDAw
-MDAwMDAwMCBEUjE6IDAwMDAwMDAwMDAwMDAwMDAgRFIyOiAwMDAwMDAwMDAwMDAwMDAwDQo+ID4+
-ID4gPj4gWzE2MzY0LjUyODIxNF0gRFIzOiAwMDAwMDAwMDAwMDAwMDAwIERSNjogMDAwMDAwMDBm
-ZmZmMGZmMCBEUjc6IDAwMDAwMDAwMDAwMDA0MDANCj4gPj4gPiA+PiBbMTYzNjQuNTI4MzAzXSBT
-dGFjazoNCj4gPj4gPiA+PiBbMTYzNjQuNTI4MzE2XSAgZmZmZjg4MDM1MDFkNWQ1OCBmZmZmODgw
-M2U0OWM4ODAwIGZmZmY4ODAzNTAxZDVjZDggZmZmZmZmZmY4MTI0NTQxOCANCj4gPj4gPiA+PiBb
-MTYzNjQuNTI4MzY5XSAgMDAwMDAwMDAwMDAwMDAwMCBmZmZmODgwMzUxNmYwYmMwIGZmZmY4ODAz
-ZDdiN2I2YzAgZmZmZmZmZmY4MTIxNWM4MSANCj4gPj4gPiA+PiBbMTYzNjQuNTI4NDE4XSAgZmZm
-Zjg4MDMwMDAwMDAwNyBmZmZmODgwNDFiZDJiZGM4IGZmZmY4ODAxYWFiZTk2NTAgZmZmZjg4MDNm
-YzllMjkwMCANCj4gPj4gPiA+PiBbMTYzNjQuNTI4NDY3XSBDYWxsIFRyYWNlOg0KPiA+PiA+ID4+
-IFsxNjM2NC41Mjg0ODVdICBbPGZmZmZmZmZmODEyNDU0MTg+XSBubG1jbG50X3Byb2MrMHgxNDgv
-MHg1ZmINCj4gPj4gPiA+PiBbMTYzNjQuNTI4NTE2XSAgWzxmZmZmZmZmZjgxMjE1YzgxPl0gPyBu
-ZnNfcHV0X2xvY2tfY29udGV4dCsweDY5LzB4NmUNCj4gPj4gPiA+PiBbMTYzNjQuNTI4NTUwXSAg
-WzxmZmZmZmZmZjgxMjIwOWEyPl0gbmZzM19wcm9jX2xvY2srMHgyMS8weDIzDQo+ID4+ID4gPj4g
-WzE2MzY0LjUyODU4MV0gIFs8ZmZmZmZmZmY4MTIxNDlkZD5dIGRvX3VubGsrMHg5Ni8weGIyDQo+
-ID4+ID4gPj4gWzE2MzY0LjUyODYwOF0gIFs8ZmZmZmZmZmY4MTIxNGI0MT5dIG5mc19mbG9jaysw
-eDVhLzB4NzENCj4gPj4gPiA+PiBbMTYzNjQuNTI4NjM3XSAgWzxmZmZmZmZmZjgxMTlhNzQ3Pl0g
-bG9ja3NfcmVtb3ZlX2Zsb2NrKzB4OWUvMHgxMTMNCj4gPj4gPiA+PiBbMTYzNjQuNTI4NjY4XSAg
-WzxmZmZmZmZmZjgxMTVjYzY4Pl0gX19mcHV0KzB4YjYvMHgxZTYNCj4gPj4gPiA+PiBbMTYzNjQu
-NTI4Njk1XSAgWzxmZmZmZmZmZjgxMTVjZGE2Pl0gX19fX2ZwdXQrMHhlLzB4MTANCj4gPj4gPiA+
-PiBbMTYzNjQuNTI4NzI0XSAgWzxmZmZmZmZmZjgxMDk5OGRhPl0gdGFza193b3JrX3J1bisweDdl
-LzB4OTgNCj4gPj4gPiA+PiBbMTYzNjQuNTI4NzU0XSAgWzxmZmZmZmZmZjgxMDgyYmM1Pl0gZG9f
-ZXhpdCsweDNjYy8weDhmYQ0KPiA+PiA+ID4+IFsxNjM2NC41Mjg3ODJdICBbPGZmZmZmZmZmODEw
-ODM1MDE+XSA/IFN5U193YWl0NCsweGE1LzB4YzINCj4gPj4gPiA+PiBbMTYzNjQuNTI4ODExXSAg
-WzxmZmZmZmZmZjgxMDgzMjhkPl0gZG9fZ3JvdXBfZXhpdCsweDZmLzB4YTINCj4gPj4gPiA+PiBb
-MTYzNjQuNTI4ODQzXSAgWzxmZmZmZmZmZjgxMDgzMmQ3Pl0gU3lTX2V4aXRfZ3JvdXArMHgxNy8w
-eDE3DQo+ID4+ID4gPj4gWzE2MzY0LjUyODg3Nl0gIFs8ZmZmZmZmZmY4MTYxM2U5Mj5dIHN5c3Rl
-bV9jYWxsX2Zhc3RwYXRoKzB4MTYvMHgxYg0KPiA+PiA+ID4+IFsxNjM2NC41Mjg5MDddIENvZGU6
-IDAwIDAwIDY1IDQ4IDhiIDA0IDI1IGMwIGI4IDAwIDAwIDQ4IDhiIDcyIDIwIDQ4IDgxIGVlIGMw
-IDAxIDAwIDAwIGYzIGE0IDQ4IDhkIGJiIDU0IDAzIDAwIDAwIGJlIDRhIDAwIDAwIDAwIDQ4IDhi
-IDkwIDY4IDA1IDAwIDAwIDw0OD4gOGIgNTIgMDggNDggODkgYmIgZDAgMDAgMDAgMDAgNDggODMg
-YzIgNDUgNDggODkgNTMgMzggNDggOGIgDQo+ID4+ID4gPj4gWzE2MzY0LjUyOTE3Nl0gUklQIFs8
-ZmZmZmZmZmY4MTI0NTE1Nz5dIG5sbWNsbnRfc2V0bG9ja2FyZ3MrMHg1NS8weGNmDQo+ID4+ID4g
-Pj4gWzE2MzY0LjUyOTI2NF0gIFJTUCA8ZmZmZjg4MDM1MDFkNWM1OD4NCj4gPj4gPiA+PiBbMTYz
-NjQuNTI5MjgzXSBDUjI6IDAwMDAwMDAwMDAwMDAwMDgNCj4gPj4gPiA+PiBbMTYzNjQuNTM5MDM5
-XSAtLS1bIGVuZCB0cmFjZSA1YTczZmRkZjIzNDQxMzc3IF0tLS0NCj4gWy4uLl0NCj4gPiBUaGUg
-bGlzdGluZyBhbmQgZGlzYXNzZW1ibHkgZnJvbSBubG1jbG50X3Byb2MgaXMgbm90IHRlcnJpYmx5
-DQo+ID4gaW50ZXJlc3RpbmcgdW5mb3J0dW5hdGVseS4gWW91IHJlYWxseSB3YW50IHRvIGRvIHRo
-ZSBsaXN0aW5nIGFuZA0KPiA+IGRpc2Fzc2VtYmx5IG9mIHRoZSBSSVAgYXQgcGFuaWMgdGltZSAo
-bmxtY2xudF9zZXRsb2NrYXJncysweDU1KS4NCj4gDQo+IE9oLCBzb3JyeSEgV3JvbmcgZW5kIG9m
-IHRoZSBvb3BzIDopDQo+IA0KPiAweGZmZmZmZmZmODEyNDUxNTcgaXMgaW4gbmxtY2xudF9zZXRs
-b2NrYXJncyAoZnMvbG9ja2QvY2xudHByb2MuYzoxMzEpLg0KPiAxMjYgICAgICAgICAgICAgc3Ry
-dWN0IG5sbV9hcmdzICphcmdwID0gJnJlcS0+YV9hcmdzOw0KPiAxMjcgICAgICAgICAgICAgc3Ry
-dWN0IG5sbV9sb2NrICpsb2NrID0gJmFyZ3AtPmxvY2s7DQo+IDEyOA0KPiAxMjkgICAgICAgICAg
-ICAgbmxtY2xudF9uZXh0X2Nvb2tpZSgmYXJncC0+Y29va2llKTsNCj4gMTMwICAgICAgICAgICAg
-IG1lbWNweSgmbG9jay0+ZmgsIE5GU19GSChmaWxlX2lub2RlKGZsLT5mbF9maWxlKSksIHNpemVv
-ZihzdHJ1Y3QgbmZzX2ZoKSk7DQo+IDEzMSAgICAgICAgICAgICBsb2NrLT5jYWxsZXIgID0gdXRz
-bmFtZSgpLT5ub2RlbmFtZTsNCj4gMTMyICAgICAgICAgICAgIGxvY2stPm9oLmRhdGEgPSByZXEt
-PmFfb3duZXI7DQo+IDEzMyAgICAgICAgICAgICBsb2NrLT5vaC5sZW4gID0gc25wcmludGYocmVx
-LT5hX293bmVyLCBzaXplb2YocmVxLT5hX293bmVyKSwgIiV1QCVzIiwNCj4gMTM0ICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICh1bnNpZ25lZCBpbnQpZmwtPmZsX3UubmZzX2Zs
-Lm93bmVyLT5waWQsDQo+IDEzNSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB1
-dHNuYW1lKCktPm5vZGVuYW1lKTsNCj4gDQo+ICAgIDB4ZmZmZmZmZmY4MTI0NTEwMiA8KzA+OiAg
-ICAgY2FsbHEgIDB4ZmZmZmZmZmY4MTYxM2IwMCA8X19mZW50cnlfXz4NCj4gICAgMHhmZmZmZmZm
-ZjgxMjQ1MTA3IDwrNT46ICAgICBwdXNoICAgJXJicA0KPiAgICAweGZmZmZmZmZmODEyNDUxMDgg
-PCs2PjogICAgIG1vdiAgICAlcnNwLCVyYnANCj4gICAgMHhmZmZmZmZmZjgxMjQ1MTBiIDwrOT46
-ICAgICBwdXNoICAgJXIxMg0KPiAgICAweGZmZmZmZmZmODEyNDUxMGQgPCsxMT46ICAgIG1vdiAg
-ICAlcnNpLCVyMTINCj4gICAgMHhmZmZmZmZmZjgxMjQ1MTEwIDwrMTQ+OiAgICBwdXNoICAgJXJi
-eA0KPiAgICAweGZmZmZmZmZmODEyNDUxMTEgPCsxNT46ICAgIG1vdiAgICAlcmRpLCVyYngNCj4g
-ICAgMHhmZmZmZmZmZjgxMjQ1MTE0IDwrMTg+OiAgICBsZWEgICAgMHgxMCglcmRpKSwlcmRpDQo+
-ICAgIDB4ZmZmZmZmZmY4MTI0NTExOCA8KzIyPjogICAgY2FsbHEgIDB4ZmZmZmZmZmY4MTI0NTBk
-ZiA8bmxtY2xudF9uZXh0X2Nvb2tpZT4NCj4gICAgMHhmZmZmZmZmZjgxMjQ1MTFkIDwrMjc+OiAg
-ICBtb3YgICAgMHg2MCglcjEyKSwlcmR4DQo+ICAgIDB4ZmZmZmZmZmY4MTI0NTEyMiA8KzMyPjog
-ICAgbGVhICAgIDB4NDQoJXJieCksJXJheA0KPiAgICAweGZmZmZmZmZmODEyNDUxMjYgPCszNj46
-ICAgIG1vdiAgICAlcmF4LCVyZGkNCj4gICAgMHhmZmZmZmZmZjgxMjQ1MTI5IDwrMzk+OiAgICBt
-b3YgICAgJDB4ODIsJWVjeA0KPiAgICAweGZmZmZmZmZmODEyNDUxMmUgPCs0ND46ICAgIG1vdiAg
-ICAlZ3M6MHhiOGMwLCVyYXgNCj4gICAgMHhmZmZmZmZmZjgxMjQ1MTM3IDwrNTM+OiAgICBtb3Yg
-ICAgMHgyMCglcmR4KSwlcnNpDQo+ICAgIDB4ZmZmZmZmZmY4MTI0NTEzYiA8KzU3PjogICAgc3Vi
-ICAgICQweDFjMCwlcnNpDQo+ICAgIDB4ZmZmZmZmZmY4MTI0NTE0MiA8KzY0PjogICAgcmVwIG1v
-dnNiICVkczooJXJzaSksJWVzOiglcmRpKQ0KPiAgICAweGZmZmZmZmZmODEyNDUxNDQgPCs2Nj46
-ICAgIGxlYSAgICAweDM1NCglcmJ4KSwlcmRpDQo+ICAgIDB4ZmZmZmZmZmY4MTI0NTE0YiA8Kzcz
-PjogICAgbW92ICAgICQweDRhLCVlc2kNCj4gICAgMHhmZmZmZmZmZjgxMjQ1MTUwIDwrNzg+OiAg
-ICBtb3YgICAgMHg1NjgoJXJheCksJXJkeA0KPiAtPiAweGZmZmZmZmZmODEyNDUxNTcgPCs4NT46
-ICAgIG1vdiAgICAweDgoJXJkeCksJXJkeA0KPiAgICAweGZmZmZmZmZmODEyNDUxNWIgPCs4OT46
-ICAgIG1vdiAgICAlcmRpLDB4ZDAoJXJieCkNCj4gICAgMHhmZmZmZmZmZjgxMjQ1MTYyIDwrOTY+
-OiAgICBhZGQgICAgJDB4NDUsJXJkeA0KPiANCj4gKGFzaWRlOiB3aXNoIEdEQiByZXBvcnRlZCB0
-aG9zZSBvZmZzZXRzIGluIGhleCwgb3IgdGhlIGtlcm5lbCByZXBvcnRlZA0KPiB0aGVtIGluIGRl
-Y2ltYWwuIEV2ZXJ5IHRpbWUgSSBsb29rIGF0IHRoZXNlIEkgZm9yZ2V0IHRvIGNvbnZlcnQgYW5k
-IGdldA0KPiBjb25mdXNlZC4uLikNCj4gDQo+IEkgd29uZGVyIGlmIHJlcSBpcyBOVUxMIChwb3Nz
-aWJsZSBpZiB0aGUgYXNzaWdubWVudCB0byBhcmdwIGF0IHRoZSB0b3ANCj4gb2YgdGhlIGZ1bmN0
-aW9uJ3MgYmVlbiBwdXNoZWQgZG93biBieSB0aGUgb3B0aW1pemVyKS4gVGltZSB0byBzdGljayBh
-DQo+IHByaW50aygpIGluIGFuZCBmaW5kIG91dCAoYWZ0ZXIgd29yayBpcyBvdmVyIHNvIEkgY2Fu
-IHJlYm9vdCB0aGlzIGJveA0KPiBsaWtlIGJpbGx5LW8pLg0KPiANCg0KRG9lcyB0aGUgYXR0YWNo
-ZWQgcGF0Y2ggZml4IHRoZSBwcm9ibGVtPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
-TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
-b20NCnd3dy5uZXRhcHAuY29tDQo=
 
---_002_1375719301733714camelleiratrondhjemorg_
-Content-Type: text/x-patch;
-	name="0001-LOCKD-Don-t-call-utsname-nodename-from-nlmclnt_setlo.patch"
-Content-Description: 0001-LOCKD-Don-t-call-utsname-nodename-from-nlmclnt_setlo.patch
-Content-Disposition: attachment;
-	filename="0001-LOCKD-Don-t-call-utsname-nodename-from-nlmclnt_setlo.patch";
-	size=1910; creation-date="Mon, 05 Aug 2013 16:15:01 GMT";
-	modification-date="Mon, 05 Aug 2013 16:15:01 GMT"
-Content-ID: <ADF6ECB8ACA7FE4AA415327EC5FFC85F@hq.netapp.com>
-Content-Transfer-Encoding: base64
+This version: responded to Trond's comments - mostly rate limiting the
+pr_warn's. Also, Jorge Mora did official regression testing on Version 4
+and showed the pathset introduced no regressions.
 
-RnJvbSAzYzUwYmE4MDEwNTQ2NGEyOGQ0NTZkOWExZTBmMWQ4MWQ0YWY5MmE4IE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbT4NCkRhdGU6IE1vbiwgNSBBdWcgMjAxMyAxMjowNjoxMiAtMDQwMA0KU3ViamVjdDog
-W1BBVENIXSBMT0NLRDogRG9uJ3QgY2FsbCB1dHNuYW1lKCktPm5vZGVuYW1lIGZyb20NCiBubG1j
-bG50X3NldGxvY2thcmdzDQpNSU1FLVZlcnNpb246IDEuMA0KQ29udGVudC1UeXBlOiB0ZXh0L3Bs
-YWluOyBjaGFyc2V0PVVURi04DQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiA4Yml0DQoNCkZp
-cnN0bHksIG5sbWNsbnRfc2V0bG9ja2FyZ3MgY2FuIGJlIGNhbGxlZCBmcm9tIGEgcmVjbGFpbWVy
-IHRocmVhZCwgaW4NCndoaWNoIGNhc2Ugd2UncmUgaW4gZW50aXJlbHkgdGhlIHdyb25nIG5hbWVz
-cGFjZS4NClNlY29uZGx5LCBjb21taXQgOGFhYzYyNzA2YWRhYWYwZmFiMDJjNDMyNzc2MTU2MWM4
-YmRhOTQ0OCAobW92ZQ0KZXhpdF90YXNrX25hbWVzcGFjZXMoKSBvdXRzaWRlIG9mIGV4aXRfbm90
-aWZ5KCkpIG5vdyBtZWFucyB0aGF0DQpleGl0X3Rhc2tfd29yaygpIGlzIGNhbGxlZCBhZnRlciBl
-eGl0X3Rhc2tfbmFtZXNwYWNlcygpLCB3aGljaA0KdHJpZ2dlcnMgYW4gT29wcyB3aGVuIHdlJ3Jl
-IGZyZWVpbmcgdXAgdGhlIGxvY2tzLg0KDQpTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3Qg
-PFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KQ2M6IFRvcmFsZiBGw7Zyc3RlciA8dG9yYWxm
-LmZvZXJzdGVyQGdteC5kZT4NCkNjOiBPbGVnIE5lc3Rlcm92IDxvbGVnQHJlZGhhdC5jb20+DQpD
-YzogTml4IDxuaXhAZXNwZXJpLm9yZy51az4NCkNjOiBKZWZmIExheXRvbiA8amxheXRvbkByZWRo
-YXQuY29tPg0KLS0tDQogZnMvbG9ja2QvY2xudHByb2MuYyB8IDUgKysrLS0NCiAxIGZpbGUgY2hh
-bmdlZCwgMyBpbnNlcnRpb25zKCspLCAyIGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMv
-bG9ja2QvY2xudHByb2MuYyBiL2ZzL2xvY2tkL2NsbnRwcm9jLmMNCmluZGV4IDk3NjBlY2IuLmFj
-ZDM5NDcgMTAwNjQ0DQotLS0gYS9mcy9sb2NrZC9jbG50cHJvYy5jDQorKysgYi9mcy9sb2NrZC9j
-bG50cHJvYy5jDQpAQCAtMTI1LDE0ICsxMjUsMTUgQEAgc3RhdGljIHZvaWQgbmxtY2xudF9zZXRs
-b2NrYXJncyhzdHJ1Y3QgbmxtX3Jxc3QgKnJlcSwgc3RydWN0IGZpbGVfbG9jayAqZmwpDQogew0K
-IAlzdHJ1Y3QgbmxtX2FyZ3MJKmFyZ3AgPSAmcmVxLT5hX2FyZ3M7DQogCXN0cnVjdCBubG1fbG9j
-awkqbG9jayA9ICZhcmdwLT5sb2NrOw0KKwljaGFyICpub2RlbmFtZSA9IHJlcS0+YV9ob3N0LT5o
-X3JwY2NsbnQtPmNsX25vZGVuYW1lOw0KIA0KIAlubG1jbG50X25leHRfY29va2llKCZhcmdwLT5j
-b29raWUpOw0KIAltZW1jcHkoJmxvY2stPmZoLCBORlNfRkgoZmlsZV9pbm9kZShmbC0+ZmxfZmls
-ZSkpLCBzaXplb2Yoc3RydWN0IG5mc19maCkpOw0KLQlsb2NrLT5jYWxsZXIgID0gdXRzbmFtZSgp
-LT5ub2RlbmFtZTsNCisJbG9jay0+Y2FsbGVyICA9IG5vZGVuYW1lOw0KIAlsb2NrLT5vaC5kYXRh
-ID0gcmVxLT5hX293bmVyOw0KIAlsb2NrLT5vaC5sZW4gID0gc25wcmludGYocmVxLT5hX293bmVy
-LCBzaXplb2YocmVxLT5hX293bmVyKSwgIiV1QCVzIiwNCiAJCQkJKHVuc2lnbmVkIGludClmbC0+
-ZmxfdS5uZnNfZmwub3duZXItPnBpZCwNCi0JCQkJdXRzbmFtZSgpLT5ub2RlbmFtZSk7DQorCQkJ
-CW5vZGVuYW1lKTsNCiAJbG9jay0+c3ZpZCA9IGZsLT5mbF91Lm5mc19mbC5vd25lci0+cGlkOw0K
-IAlsb2NrLT5mbC5mbF9zdGFydCA9IGZsLT5mbF9zdGFydDsNCiAJbG9jay0+ZmwuZmxfZW5kID0g
-ZmwtPmZsX2VuZDsNCi0tIA0KMS44LjMuMQ0KDQo=
+See the testing section below.
 
---_002_1375719301733714camelleiratrondhjemorg_--
+-------
+Version 4, responded to comments:
+This code has been refactored since version 3, and the first two patches
+are new.
+
+Related code to destroy the gss context upon kdestoy that also uses some of the
+underlying SUNRPC functionality will come in a separate patch set.
+
+-----------
+Version 3, responded to comments:
+
+1) Changed "SUNRPC Fix rpc_verify_header error returns" into
+"SUNRPC refactor rpcauth_checkverf error returns" which only returns -EACCES on
+rpcauth_checkverf error in gss_validate if -EKEYEXPIRED is returned.
+
+Rebased on 3.7-rc7 Trond's testing branch.
+-------------
+Version 2, responded to comments:
+1) Just use high water mark
+2) Move expiration testing into nfs_file_write
+3) Added a patch to clean up rpc_verify_header error processing
+
+Edited explanation from version 3:
+
+We must avoid buffering a WRITE that is using a credential key (e.g. a GSS
+context key) that is about to expire.  We currently will paint ourselves into
+a corner by returning success to the applciation for such a buffered WRITE,
+only to discover that we do not have permission when we attempt to flush the
+WRITE (and potentially associated COMMIT) to disk.  This results in the
+the application thinking it has written more to disk than it actually has.
+
+Pages for buffered WRITEs are allocated in nfs_write_begin where we have an
+nfs_open_context and associated rpc_cred. This is a generic rpc_cred, NOT
+the gss_cred used in the actual WRITE RPC. Each WRITE RPC call takes the generic
+rpc_cred (or uses the 'current_cred') uid and uses it to lookup the associated
+gss_cred and gss_context in the call_refresh RPC state. So, there is a
+one-to-one association between the nfs_open_context generic_cred and a
+gss_cred with a matching uid and a valid non expired gss context.
+
+We need to check the nfs_open_context generic cred 'underlying' gss_cred
+gss_context gc_expiry in nfs_write_begin to determine if there is enough
+time left in the gss_context lifetime to complete the buffered WRITEs.
+
+I've added a credential key expiry watermark, RPC_KEY_EXPIRE_TIMEO set to 240
+seconds as a default and can be set via a module parameter as we need to
+ensure there is time for any dirty data to be flushed.
+
+If a WRITE is using a credential with a key that will expire within
+watermark seconds, we flush the inode in nfs_write_end and send only
+NFS_FILE_SYNC WRITEs.
+
+TESTING:
+
+We've tested with and without this patchset mounting Kerberos shares, and
+have found no regressions. We also validated that buffered writes are flushed
+before the GSS context expires.
+
+-->Andy
+
+
+
+Andy Adamson (5):
+  SUNRPC: don't map EKEYEXPIRED to EACCES in call_refreshresult
+  NFS: Warn when attempting a buffered write or commit with an expired
+    credential
+  SUNRPC new rpc_credops to test credential expiry
+  NFS avoid expired credential keys for buffered writes
+  SUNRPC refactor rpcauth_checkverf error returns
+
+ fs/nfs/file.c                  | 20 ++++++++++-
+ fs/nfs/internal.h              |  2 ++
+ fs/nfs/write.c                 | 38 ++++++++++++++++++++
+ include/linux/sunrpc/auth.h    | 16 +++++++++
+ net/sunrpc/auth.c              | 21 +++++++++++
+ net/sunrpc/auth_generic.c      | 82 ++++++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/auth_gss/auth_gss.c | 62 +++++++++++++++++++++++++++++---
+ net/sunrpc/auth_null.c         |  4 +--
+ net/sunrpc/auth_unix.c         |  4 +--
+ net/sunrpc/clnt.c              | 19 +++++-----
+ 10 files changed, 251 insertions(+), 17 deletions(-)
+
+-- 
+1.8.3.1
+
