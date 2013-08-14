@@ -1,54 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:43429 "EHLO mx11.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:64503 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753700Ab3HVSg7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Aug 2013 14:36:59 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: NeilBrown <neilb@suse.de>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: remove incorrect "Lock reclaim failed!" warning.
-Date: Thu, 22 Aug 2013 18:36:58 +0000
-Message-ID: <1377196617.11488.23.camel@leira.trondhjem.org>
-References: <20130812165247.74c66315@notabene.brown>
-In-Reply-To: <20130812165247.74c66315@notabene.brown>
-Content-Type: text/plain; charset="utf-8"
+	id S932448Ab3HNX0G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Aug 2013 19:26:06 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 00/13] NFSv4 add debugging tracepoints
+Date: Wed, 14 Aug 2013 19:24:45 -0400
+Message-ID: <1376522698-44596-1-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEzLTA4LTEyIGF0IDE2OjUyICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IA0K
-PiBBZnRlciByZWNsYWltaW5nIHN0YXRlIHRoYXQgd2FzIGxvc3QsIHRoZSBORlMgY2xpZW50IHRy
-aWVzIHRvIHJlY2xhaW0NCj4gYW55IGxvY2tzLCBhbmQgdGhlbiBjaGVja3MgdGhhdCBlYWNoIG9u
-ZSBoYXMgTkZTX0xPQ0tfSU5JVElBTElaRUQgc2V0DQo+ICh3aGljaCBtZWFucyB0aGF0IHRoZSBz
-ZXJ2ZXIgaGFzIGNvbmZpcm1lZCB0aGUgbG9jaykuDQo+IEhvd2V2ZXIgaWYgdGhlIGNsaWVudCBo
-b2xkcyBhIGRlbGVnYXRpb24sIG5mc19yZWNsYWltX2xvY2tzKCkgc2ltcGx5IGFib3J0cw0KPiAo
-b3IgbW9yZSBhY2N1cmF0ZWx5IGl0IGNhbGxlZCBuZnNfbG9ja19yZWNsYWltKCkgYW5kIHRoYXQg
-cmV0dXJucyB3aXRob3V0DQo+IGRvaW5nIGFueXRoaW5nKS4NCj4gDQo+IFRoaXMgaXMgYmVjYXVz
-ZSB3aGVuIGEgZGVsZWdhdGlvbiBpcyBoZWxkLCB0aGUgc2VydmVyIGRvZXNuJ3QgbmVlZCB0bw0K
-PiBrbm93IGFib3V0IGxvY2tzLg0KPiANCj4gU28gaWYgYSBkZWxlZ2F0aW9uIGlzIGhlbGQsIE5G
-U19MT0NLX0lOSVRJQUxJWkVEIGlzIG5vdCBleHBlY3RlZCwgYW5kDQo+IGl0cyBhYnNlbmNlIGlz
-IGNlcnRhaW5seSBub3QgYW4gZXJyb3IuDQo+IA0KPiBTbyBkb24ndCBwcmludCB0aGUgd2Fybmlu
-Z3MgaWYgTkZTX0RFTEdBVEVEX1NUQVRFIGlzIHNldC4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IE5l
-aWxCcm93biA8bmVpbGJAc3VzZS5kZT4NCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHN0
-YXRlLmMgYi9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gaW5kZXggZTIyODYyZi4uZTRlMDYzZiAxMDA2
-NDQNCj4gLS0tIGEvZnMvbmZzL25mczRzdGF0ZS5jDQo+ICsrKyBiL2ZzL25mcy9uZnM0c3RhdGUu
-Yw0KPiBAQCAtMTQ0MywxNCArMTQ0MywxNiBAQCByZXN0YXJ0Og0KPiAgCQlpZiAoc3RhdHVzID49
-IDApIHsNCj4gIAkJCXN0YXR1cyA9IG5mczRfcmVjbGFpbV9sb2NrcyhzdGF0ZSwgb3BzKTsNCj4g
-IAkJCWlmIChzdGF0dXMgPj0gMCkgew0KPiAtCQkJCXNwaW5fbG9jaygmc3RhdGUtPnN0YXRlX2xv
-Y2spOw0KPiAtCQkJCWxpc3RfZm9yX2VhY2hfZW50cnkobG9jaywgJnN0YXRlLT5sb2NrX3N0YXRl
-cywgbHNfbG9ja3MpIHsNCj4gLQkJCQkJaWYgKCF0ZXN0X2JpdChORlNfTE9DS19JTklUSUFMSVpF
-RCwgJmxvY2stPmxzX2ZsYWdzKSkNCj4gLQkJCQkJCXByX3dhcm5fcmF0ZWxpbWl0ZWQoIk5GUzog
-Ig0KPiAtCQkJCQkJCSIlczogTG9jayByZWNsYWltICINCj4gLQkJCQkJCQkiZmFpbGVkIVxuIiwg
-X19mdW5jX18pOw0KPiArCQkJCWlmICh0ZXN0X2JpdChORlNfREVMRUdBVEVEX1NUQVRFLCAmc3Rh
-dGUtPmZsYWdzKSAhPSAwKSB7DQo+ICsJCQkJCXNwaW5fbG9jaygmc3RhdGUtPnN0YXRlX2xvY2sp
-Ow0KPiArCQkJCQlsaXN0X2Zvcl9lYWNoX2VudHJ5KGxvY2ssICZzdGF0ZS0+bG9ja19zdGF0ZXMs
-IGxzX2xvY2tzKSB7DQo+ICsJCQkJCQlpZiAoIXRlc3RfYml0KE5GU19MT0NLX0lOSVRJQUxJWkVE
-LCAmbG9jay0+bHNfZmxhZ3MpKQ0KPiArCQkJCQkJCXByX3dhcm5fcmF0ZWxpbWl0ZWQoIk5GUzog
-Ig0KPiArCQkJCQkJCQkJICAgICIlczogTG9jayByZWNsYWltICINCj4gKwkJCQkJCQkJCSAgICAi
-ZmFpbGVkIVxuIiwgX19mdW5jX18pOw0KPiArCQkJCQl9DQo+ICsJCQkJCXNwaW5fdW5sb2NrKCZz
-dGF0ZS0+c3RhdGVfbG9jayk7DQo+ICAJCQkJfQ0KPiAtCQkJCXNwaW5fdW5sb2NrKCZzdGF0ZS0+
-c3RhdGVfbG9jayk7DQo+ICAJCQkJbmZzNF9wdXRfb3Blbl9zdGF0ZShzdGF0ZSk7DQo+ICAJCQkJ
-c3Bpbl9sb2NrKCZzcC0+c29fbG9jayk7DQo+ICAJCQkJZ290byByZXN0YXJ0Ow0KDQpUaGF0IGxv
-b2tzIGNvcnJlY3QgdG8gbWUuIEFwcGxpZWQuDQoNClRoYW5rcyBOZWlsIQ0KICBUcm9uZA0KLS0g
-DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHAN
-ClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+The following patchset sets up a number of ftrace tracepoints for use
+when debugging state operations.
+
+Changes in v2:
+ - Fixed compile bugs
+ - We need to convert the delegation recall status to a negative number
+ - Added tracepoints for read/write, pnfs and slot table debugging.
+
+Trond Myklebust (13):
+  NFSv4: Add tracepoints for debugging state management problems
+  NFS: refactor code for calculating the crc32 hash of a filehandle
+  NFSv4: Add tracepoints for debugging file open
+  NFSv4: Add tracepoints for debugging file locking
+  NFSv4: Add tracepoints for debugging lookup/create operations
+  NFSv4: Add tracepoints for debugging inode manipulations
+  NFSv4: Add tracepoints for debugging rename
+  NFSv4: Add tracepoints for debugging delegations
+  NFSv4: Add tracepoints for debugging the idmapper
+  NFSv4: Add tracepoints for debugging getattr
+  NFSv4: Add tracepoints for debugging reads and writes
+  NFSv4.1: Add tracepoints for debugging layoutget/return/commit
+  NFSv4.1: Add tracepoints for debugging slot table operations
+
+ fs/nfs/Makefile         |   3 +-
+ fs/nfs/callback_proc.c  |   3 +
+ fs/nfs/delegation.c     |   3 +
+ fs/nfs/idmap.c          |   5 +
+ fs/nfs/inode.c          |   3 +-
+ fs/nfs/internal.h       |  20 +
+ fs/nfs/nfs4filelayout.c |  10 +
+ fs/nfs/nfs4proc.c       | 135 +++++--
+ fs/nfs/nfs4session.h    |  10 +
+ fs/nfs/nfs4trace.c      |  17 +
+ fs/nfs/nfs4trace.h      | 969 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/pnfs.c           |   7 +
+ 12 files changed, 1146 insertions(+), 39 deletions(-)
+ create mode 100644 fs/nfs/nfs4trace.c
+ create mode 100644 fs/nfs/nfs4trace.h
+
+-- 
+1.8.3.1
+
