@@ -1,86 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:42539 "EHLO mx1.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760033Ab3HNXZL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Aug 2013 19:25:11 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 02/13] NFS: refactor code for calculating the crc32 hash of a filehandle
-Date: Wed, 14 Aug 2013 19:24:47 -0400
-Message-ID: <1376522698-44596-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1376522698-44596-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1376522698-44596-1-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-2-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:47446 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758844Ab3HORdu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Aug 2013 13:33:50 -0400
+Received: by mail-qc0-f175.google.com with SMTP id s11so543944qcv.20
+        for <linux-nfs@vger.kernel.org>; Thu, 15 Aug 2013 10:33:49 -0700 (PDT)
+Message-ID: <520D0F23.5070201@gmail.com>
+Date: Thu, 15 Aug 2013 13:25:55 -0400
+From: Bryan Schumaker <bjschuma@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: Brian De Wolf <bldewolf@csupomona.edu>
+CC: Linux NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: NFS uses wrong domain in SETATTR
+References: <20130718174155.0f189280@csupomona.edu> <52015795.9060003@gmail.com> <20130806195327.71323541@csupomona.edu>
+In-Reply-To: <20130806195327.71323541@csupomona.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We want to be able to display the crc32 hash of the filehandle in
-tracepoints.
+On 08/06/2013 10:53 PM, Brian De Wolf wrote:
+> On Tue, 6 Aug 2013 13:07:49 -0700
+> Bryan Schumaker <bjschuma@gmail.com> wrote:
+> 
+>> Hi Brian,
+>>
+>> I'm sorry it took so long to reply to you, but you haven't been
+>> forgotten!  I've set up kerberos using freeipa on my own test system
+>> but I haven't been able to reproduce the bug you're seeing.  I had it
+>> working by using my kerberos domain set in /etc/idmap.conf and I saw
+>> the new domain go over the wire when I changed it in idmap.conf.  Do
+>> I need to do anything more to mimic your setup?
+>>
+> 
+> Thanks for responding!  It seems like DNS might be where the wrong
+> kerberos domain is coming from.  Is your test client in the same domain
+> as your kerberos realm?  My clients aren't, and the subdomain they're
+> in is what is sent in the NFS requests.
+> 
+> I was able to test this by preferring files for hosts in nsswitch.conf
+> and overriding the host's name in /etc/hosts.  Normally the host is
+> under unx.csupomona.edu.  Moving the host to csupomona.edu in hosts
+> (and rebooting) causes chgrp to start working.  When I revert the
+> nsswitch and hosts changes chgrp keeps working until another reboot.
+> 
+> I hope this helps you reproduce this issue.  Let me know if there is
+> any other information you need.
+> 
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/inode.c    |  3 +--
- fs/nfs/internal.h | 20 ++++++++++++++++++++
- 2 files changed, 21 insertions(+), 2 deletions(-)
+Have you made sure to reboot or restart idmapd after making changes to /etc/idmap.conf?  The only time I've been able to reproduce this is when the config file has been changed but not reloaded.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index af6e806..9a98b04 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -38,7 +38,6 @@
- #include <linux/slab.h>
- #include <linux/compat.h>
- #include <linux/freezer.h>
--#include <linux/crc32.h>
- 
- #include <asm/uaccess.h>
- 
-@@ -1190,7 +1189,7 @@ u32 _nfs_display_fhandle_hash(const struct nfs_fh *fh)
- {
- 	/* wireshark uses 32-bit AUTODIN crc and does a bitwise
- 	 * not on the result */
--	return ~crc32(0xFFFFFFFF, &fh->data[0], fh->size);
-+	return nfs_fhandle_hash(fh);
- }
- 
- /*
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 9b694f1..50f7068 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -5,6 +5,7 @@
- #include "nfs4_fs.h"
- #include <linux/mount.h>
- #include <linux/security.h>
-+#include <linux/crc32.h>
- 
- #define NFS_MS_MASK (MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC|MS_SYNCHRONOUS)
- 
-@@ -574,3 +575,22 @@ u64 nfs_timespec_to_change_attr(const struct timespec *ts)
- {
- 	return ((u64)ts->tv_sec << 30) + ts->tv_nsec;
- }
-+
-+#ifdef CONFIG_CRC32
-+/**
-+ * nfs_fhandle_hash - calculate the crc32 hash for the filehandle
-+ * @fh - pointer to filehandle
-+ *
-+ * returns a crc32 hash for the filehandle that is compatible with
-+ * the one displayed by "wireshark".
-+ */
-+static inline u32 nfs_fhandle_hash(const struct nfs_fh *fh)
-+{
-+	return ~crc32_le(0xFFFFFFFF, &fh->data[0], fh->size);
-+}
-+#else
-+static inline u32 nfs_fhandle_hash(const struct nfs_fh *fh)
-+{
-+	return 0;
-+}
-+#endif
--- 
-1.8.3.1
+Bryan
 
