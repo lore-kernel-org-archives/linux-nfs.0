@@ -1,123 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout-xforward.gmx.net ([82.165.159.41]:64688 "EHLO
-	mout-xforward.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932885Ab3HNQo3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Aug 2013 12:44:29 -0400
-Received: from [80.171.223.246] ([80.171.223.246]) by mail.gmx.com (mrgmx102)
- with ESMTPSA (Nemesis) id 0MMYZG-1VCOH70b2E-008HKY for
- <linux-nfs@vger.kernel.org>; Wed, 14 Aug 2013 18:44:28 +0200
-Message-ID: <520BB3EA.7050909@gmx.de>
-Date: Wed, 14 Aug 2013 18:44:26 +0200
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
-MIME-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:29727 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756577Ab3HOOBx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Aug 2013 10:01:53 -0400
+Date: Thu, 15 Aug 2013 10:02:44 -0400
+From: Jeff Layton <jlayton@redhat.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jan Kara <jack@suse.cz>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        "user-mode-linux-devel@lists.sourceforge.net"
-	<user-mode-linux-devel@lists.sourceforge.net>,
-        linux-ext4@vger.kernel.org,
-        Linux Kernel <linux-kernel@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: Re: Issues with a rather unusual configured NFS server
-References: <52075E01.7030506@gmx.de> <20130812143640.GF4596@quack.suse.cz> <20130813215313.GH17781@fieldses.org>
-In-Reply-To: <20130813215313.GH17781@fieldses.org>
-Content-Type: text/plain; charset=UTF-8
+Cc: Jan Stancek <jstancek@redhat.com>, linux-nfs@vger.kernel.org,
+        bfields@redhat.com, Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
+Message-ID: <20130815100244.370de645@corrin.poochiereds.net>
+In-Reply-To: <20130726220924.GG30651@fieldses.org>
+References: <682ebd8ecc7309b18396da356a0feb38bfa41674.1372692346.git.jstancek@redhat.com>
+	<20130708201643.GI29071@fieldses.org>
+	<1157529877.873319.1373353194344.JavaMail.root@redhat.com>
+	<20130726220924.GG30651@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/13/2013 11:53 PM, J. Bruce Fields wrote:
-> On Mon, Aug 12, 2013 at 04:36:40PM +0200, Jan Kara wrote:
->> On Sun 11-08-13 11:48:49, Toralf Förster wrote:
->>> so that the server either crashes (if it is a user mode linux image) or at least its reboot functionality got broken
->>> - if the NFS server is hammered with scary NFS calls using a fuzzy tool running at a remote NFS client under a non-privileged user id.
->>>
->>> It can re reproduced, if
->>> 	- the NFS share is an EXT3 or EXT4 directory
->>> 	- and it is created at file located at tempfs and mounted via loop device
->>> 	- and the NFS server is forced to umount the NFS share
->>> 	- and the server forced to restart the NSF service afterwards
->>> 	- and trinity is used
->>>
->>> I could find a scenario for an automated bisect. 2 times it brought this commit 
->>> commit 68a3396178e6688ad7367202cdf0af8ed03c8727
->>> Author: J. Bruce Fields <bfields@redhat.com>
->>> Date:   Thu Mar 21 11:21:50 2013 -0400
->>>
->>>     nfsd4: shut down more of delegation earlier
+On Fri, 26 Jul 2013 18:09:24 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Tue, Jul 09, 2013 at 02:59:54AM -0400, Jan Stancek wrote:
+> > 
+> > 
+> > 
+> > 
+> > ----- Original Message -----
+> > > From: "J. Bruce Fields" <bfields@fieldses.org>
+> > > To: "Jan Stancek" <jstancek@redhat.com>
+> > > Cc: linux-nfs@vger.kernel.org, bfields@redhat.com, "Trond Myklebust" <Trond.Myklebust@netapp.com>
+> > > Sent: Monday, 8 July, 2013 10:16:43 PM
+> > > Subject: Re: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
+> > > 
+> > > On Mon, Jul 01, 2013 at 05:32:34PM +0200, Jan Stancek wrote:
+> > > > Starting with commit:
+> > > >   commit f994c43d19a9116727d4c228d3f13db595bff562
+> > > >   Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > > >   Date:   Thu Nov 1 12:14:14 2012 -0400
+> > > >       SUNRPC: Clean up rpc_bind_new_program
+> > > > 
+> > > > operations on directory mounted with -onfsvers=3,tcp,sec=krb5 fail
+> > > > with Input/Output error after ~60 second timeout. This is presumably
+> > > > because upcalls for 'nfsacl' are not getting anywhere.
+> > > > 
+> > > > This patch enables pipe dir for nfsacl_program and changes its name
+> > > > to 'nfs'. This name will be used in upcalls and whole setup should
+> > > > work as it did in past - just with nfs/hostname principal.
+> > > 
+> > > I think this was the problem that nfs-utils commits
+> > > 
+> > > 	a1f8afc560 gssd: Remove insane sanity checks of the service name
+> > > 	a56989b665 gssd: Handle the target name correctly
+> > > 
+> > > were supposed to fix?
+> > > 
+> > > But perhaps the kernel needs a fix too to fix a regression with old
+> > > userspace.
+> > 
+> > I saw this error with nfs-utils.1.2.9-rc1, which should already contain
+> > those 2 commits.
 > 
-> Thanks for the report.  I think I see the problem--after this commit
-> nfs4_set_delegation() failures result in nfs4_put_delegation being
-> called, but nfs4_put_delegation doesn't free the nfs4_file that has
-> already been set by alloc_init_deleg().
+> Actually, I think your patch is just a subset of Trond's
+> http://mid.gmane.org/<4FA345DA4F4AE44899BD2B03EEEC2FA9092EC392@SACEXCMBX04-PRD.hq.netapp.com>
 > 
-> Let me think about how to fix that....
+> Trond, is there a reason that never got applied?
 > 
 > --b.
 > 
->>   Added Bruce to CC.
->>
->>> to be the one after which the user mode linux server crashes with a back trace like this:
->>>
->>>
->>> $ cat /mnt/ramdisk/bt.v3.11-rc4-172-g8ae3f1d
->>> [New LWP 14025]
->>> Core was generated by `/home/tfoerste/devel/linux/linux earlyprintk ubda=/home/tfoerste/virtual/uml/tr'.
->>> Program terminated with signal 6, Aborted.
->>> #0  0xb77ef424 in __kernel_vsyscall ()
->>> #0  0xb77ef424 in __kernel_vsyscall ()
->>> #1  0x083a33c5 in kill ()
->>> #2  0x0807163d in uml_abort () at arch/um/os-Linux/util.c:93
->>> #3  0x08071925 in os_dump_core () at arch/um/os-Linux/util.c:138
->>> #4  0x080613a7 in panic_exit (self=0x85a1518 <panic_exit_notifier>, unused1=0, unused2=0x85d6ce0 <buf.15904>) at arch/um/kernel/um_arch.c:240
->>> #5  0x0809a3b8 in notifier_call_chain (nl=0x0, val=0, v=0x85d6ce0 <buf.15904>, nr_to_call=-2, nr_calls=0x0) at kernel/notifier.c:93
->>> #6  0x0809a503 in __atomic_notifier_call_chain (nr_calls=<optimized out>, nr_to_call=<optimized out>, v=<optimized out>, val=<optimized out>, nh=<optimized out>) at kernel/notifier.c:182
->>> #7  atomic_notifier_call_chain (nh=0x85d6cc4 <panic_notifier_list>, val=0, v=0x85d6ce0 <buf.15904>) at kernel/notifier.c:191
->>> #8  0x08400ba8 in panic (fmt=0x0) at kernel/panic.c:128
->>> #9  0x0818edf4 in ext4_put_super (sb=0x4a042690) at fs/ext4/super.c:818
->>> #10 0x081010d2 in generic_shutdown_super (sb=0x4a042690) at fs/super.c:418
->>> #11 0x0810209a in kill_block_super (sb=0x0) at fs/super.c:1028
->>> #12 0x08100f6a in deactivate_locked_super (s=0x4a042690) at fs/super.c:299
->>> #13 0x08101001 in deactivate_super (s=0x4a042690) at fs/super.c:324
->>> #14 0x08118e0c in mntfree (mnt=<optimized out>) at fs/namespace.c:891
->>> #15 mntput_no_expire (mnt=0x0) at fs/namespace.c:929
->>> #16 0x0811a2f5 in SYSC_umount (flags=<optimized out>, name=<optimized out>) at fs/namespace.c:1335
->>> #17 SyS_umount (name=134541632, flags=0) at fs/namespace.c:1305
->>> #18 0x0811a369 in SYSC_oldumount (name=<optimized out>) at fs/namespace.c:1347
->>> #19 SyS_oldumount (name=134541632) at fs/namespace.c:1345
->>> #20 0x080618e2 in handle_syscall (r=0x49e919d4) at arch/um/kernel/skas/syscall.c:35
->>> #21 0x08073c0d in handle_trap (local_using_sysemu=<optimized out>, regs=<optimized out>, pid=<optimized out>) at arch/um/os-Linux/skas/process.c:198
->>> #22 userspace (regs=0x49e919d4) at arch/um/os-Linux/skas/process.c:431
->>> #23 0x0805e65c in fork_handler () at arch/um/kernel/process.c:160
->>> #24 0x00000000 in ?? ()
->>>
->>>
->>>
->>> A real system however would not crash bug would give a kernel BUG as reported here:
->>> http://article.gmane.org/gmane.comp.file-systems.ext4/38915
->>   We have deleted inodes (regular files) in the orphan list during
->> ext4_put_super(). My guess is that NFS is still holding some inode
->> references to these inodes and thus inodes don't get deleted. So ext3/4
->> would be just a victim here.
 
-Just FWIW, EXT2 is not affected.
+Hmm...gmane just says "No such article" when I feed it the above URL.
+Do you know what the title of the email was?
 
->>> Furthermore the server won't be able any longer to reboot - it would hang
->>> infinitely in the reboot phase.  Just the magic sysrq keys still works
->>> then.
->>   Well, this is likely because the filesystem cannot be shut down.
->>
->> 								Honza
->> -- 
->> Jan Kara <jack@suse.cz>
->> SUSE Labs, CR
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
-
+Thanks,
 -- 
-MfG/Sincerely
-Toralf Förster
-pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+Jeff Layton <jlayton@redhat.com>
