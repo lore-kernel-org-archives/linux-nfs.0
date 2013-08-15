@@ -1,54 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:62550 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751319Ab3HTRWS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Aug 2013 13:22:18 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: Remove the NFSv4 "open optimisation" from
- nfs_permission
-Date: Tue, 20 Aug 2013 17:22:16 +0000
-Message-ID: <9146DF7D-CBC0-4B28-9F60-DF448AD7BF1A@netapp.com>
-References: <1377018821-18925-1-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377018821-18925-1-git-send-email-Trond.Myklebust@netapp.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from userp1040.oracle.com ([156.151.31.81]:19792 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751002Ab3HOWK0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Aug 2013 18:10:26 -0400
+Message-ID: <520D519F.6080102@oracle.com>
+Date: Thu, 15 Aug 2013 17:09:35 -0500
+From: Dave Kleikamp <dave.kleikamp@oracle.com>
 MIME-Version: 1.0
+To: Christian Kujau <lists@nerdbynature.de>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, Karl Schmidt <karl@xtronics.com>,
+        Jonathan McDowell <noodles@earth.li>,
+        jfs-discussion@lists.sourceforge.net, 714974@bugs.debian.org,
+        Ben Hutchings <ben@decadent.org.uk>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] jfs: fix readdir cookie incompatibility with NFSv4
+References: <1373245980.3428.46.camel@deadeye.wl.decadent.org.uk> <520554A5.3060401@xtronics.com> <alpine.DEB.2.10.1308092352550.7081@trent.utfs.org> <alpine.DEB.2.10.1308120113360.7081@trent.utfs.org> <alpine.DEB.2.10.1308120122500.7081@trent.utfs.org> <20130812162924.GB2395@fieldses.org> <520C50F7.3010209@oracle.com> <alpine.DEB.2.10.1308142122550.7081@trent.utfs.org> <alpine.DEB.2.10.1308150001530.7081@trent.utfs.org> <520D3EA7.1010109@oracle.com> <alpine.DEB.2.10.1308151420140.7081@trent.utfs.org>
+In-Reply-To: <alpine.DEB.2.10.1308151420140.7081@trent.utfs.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Good catch!
-
--dros
-
-On Aug 20, 2013, at 1:13 PM, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-
-> Ever since commit 6168f62cb (Add ACCESS operation to OPEN compound)
-> the NFSv4 atomic open has primed the access cache, and so nfs_permission
-> will no longer do an RPC call on the wire.
+On 08/15/2013 04:26 PM, Christian Kujau wrote:
+> On Thu, 15 Aug 2013 at 15:48, Dave Kleikamp wrote:
+>> This patch replaces the one I posted yesterday. I like this better since
+>> it doesn't require fixing existing on-disk cookies or skipping a
+>> position in the in-inode index table.
 > 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> fs/nfs/dir.c | 5 -----
-> 1 file changed, 5 deletions(-)
+> Thanks. Applied to 3.11-rc5 and tested, no more "readdir loop" messages 
+> and with unique inode numbers, great!
 > 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index 39e69d4..5d737bd 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -2245,11 +2245,6 @@ int nfs_permission(struct inode *inode, int mask)
-> 		case S_IFLNK:
-> 			goto out;
-> 		case S_IFREG:
-> -			/* NFSv4 has atomic_open... */
-> -			if (nfs_server_capable(inode, NFS_CAP_ATOMIC_OPEN)
-> -					&& (mask & MAY_OPEN)
-> -					&& !(mask & MAY_EXEC))
-> -				goto out;
-> 			break;
-> 		case S_IFDIR:
-> 			/*
-> -- 
-> 1.8.3.1
+>   Tested-by: Christian Kujau <lists@nerdbynature.de>
 > 
+> Thanks for the fix!
+> Christian.
+
+Thanks for reporting, investigating and testing!
+
+Dave
 
