@@ -1,139 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:35728 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44674 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751819Ab3HTTfX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Aug 2013 15:35:23 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 12/16] NFSv4: Add tracepoints for debugging the idmapper
-Date: Tue, 20 Aug 2013 15:35:08 -0400
-Message-ID: <1377027312-45957-13-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377027312-45957-12-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377027312-45957-1-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-2-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-3-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-4-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-5-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-6-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-7-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-8-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-9-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-10-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-11-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-12-git-send-email-Trond.Myklebust@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1759352Ab3HORqq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Aug 2013 13:46:46 -0400
+Message-ID: <1376588800.17754.14.camel@serendib>
+Subject: [PATCH] sunrpc: prepare NFS for 2038
+From: Harshula Jayasuriya <harshula@redhat.com>
+To: "J.Bruce Fields" <bfields@citi.umich.edu>
+Cc: linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.de>,
+        Jeff Layton <jlayton@redhat.com>
+Date: Fri, 16 Aug 2013 03:46:40 +1000
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add tracepoints to help debug uid/gid mappings to username/group.
+1) The kernel sunrpc code needs to handle seconds since epoch
+greater than 2147483647. This means functions that parse time
+as an int need to handle it as time_t.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+2) The kernel changes must be accompanied by userspace changes
+in nfs-utils.
+
+Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
 ---
- fs/nfs/idmap.c     |  5 +++++
- fs/nfs/nfs4trace.h | 46 ++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 51 insertions(+)
+ include/linux/sunrpc/cache.h | 22 ++++++++++++++++++++--
+ 1 file changed, 20 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index c2c4163..f16a872 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -49,6 +49,7 @@
- 
- #include "internal.h"
- #include "netns.h"
-+#include "nfs4trace.h"
- 
- #define NFS_UINT_MAXLEN 11
- 
-@@ -849,6 +850,7 @@ int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_
- 		if (!uid_valid(*uid))
- 			ret = -ERANGE;
- 	}
-+	trace_nfs4_map_name_to_uid(name, namelen, id, ret);
- 	return ret;
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 6ce690d..437ddb6 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -264,12 +264,30 @@ static inline int get_uint(char **bpp, unsigned int *anint)
+ 	return 0;
  }
  
-@@ -865,6 +867,7 @@ int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size
- 		if (!gid_valid(*gid))
- 			ret = -ERANGE;
- 	}
-+	trace_nfs4_map_group_to_gid(name, namelen, id, ret);
- 	return ret;
- }
++static inline int get_time(char **bpp, time_t *time)
++{
++	char buf[50];
++	long long ll;
++	int len = qword_get(bpp, buf, sizeof(buf));
++
++	if (len < 0)
++		return -EINVAL;
++	if (len == 0)
++		return -ENOENT;
++
++	if (kstrtoll(buf, 0, &ll))
++		return -EINVAL;
++
++	*time = (time_t)ll;
++	return 0;
++}
++
+ static inline time_t get_expiry(char **bpp)
+ {
+-	int rv;
++	time_t rv;
+ 	struct timespec boot;
  
-@@ -879,6 +882,7 @@ int nfs_map_uid_to_name(const struct nfs_server *server, kuid_t uid, char *buf,
- 		ret = nfs_idmap_lookup_name(id, "user", buf, buflen, idmap);
- 	if (ret < 0)
- 		ret = nfs_map_numeric_to_string(id, buf, buflen);
-+	trace_nfs4_map_uid_to_name(buf, ret, id, ret);
- 	return ret;
- }
- int nfs_map_gid_to_group(const struct nfs_server *server, kgid_t gid, char *buf, size_t buflen)
-@@ -892,5 +896,6 @@ int nfs_map_gid_to_group(const struct nfs_server *server, kgid_t gid, char *buf,
- 		ret = nfs_idmap_lookup_name(id, "group", buf, buflen, idmap);
- 	if (ret < 0)
- 		ret = nfs_map_numeric_to_string(id, buf, buflen);
-+	trace_nfs4_map_gid_to_group(buf, ret, id, ret);
- 	return ret;
- }
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index 82428fb..f00fa87 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -637,6 +637,52 @@ DEFINE_NFS4_INODE_EVENT(nfs4_set_security_label);
- DEFINE_NFS4_INODE_EVENT(nfs4_recall_delegation);
- DEFINE_NFS4_INODE_EVENT(nfs4_delegreturn);
- 
-+DECLARE_EVENT_CLASS(nfs4_idmap_event,
-+		TP_PROTO(
-+			const char *name,
-+			int len,
-+			u32 id,
-+			int error
-+		),
-+
-+		TP_ARGS(name, len, id, error),
-+
-+		TP_STRUCT__entry(
-+			__field(int, error)
-+			__field(u32, id)
-+			__dynamic_array(char, name, len > 0 ? len + 1 : 1)
-+		),
-+
-+		TP_fast_assign(
-+			if (len < 0)
-+				len = 0;
-+			__entry->error = error < 0 ? error : 0;
-+			__entry->id = id;
-+			memcpy(__get_dynamic_array(name), name, len);
-+			((char *)__get_dynamic_array(name))[len] = 0;
-+		),
-+
-+		TP_printk(
-+			"error=%d id=%u name=%s",
-+			__entry->error,
-+			__entry->id,
-+			__get_str(name)
-+		)
-+);
-+#define DEFINE_NFS4_IDMAP_EVENT(name) \
-+	DEFINE_EVENT(nfs4_idmap_event, name, \
-+			TP_PROTO( \
-+				const char *name, \
-+				int len, \
-+				u32 id, \
-+				int error \
-+			), \
-+			TP_ARGS(name, len, id, error))
-+DEFINE_NFS4_IDMAP_EVENT(nfs4_map_name_to_uid);
-+DEFINE_NFS4_IDMAP_EVENT(nfs4_map_group_to_gid);
-+DEFINE_NFS4_IDMAP_EVENT(nfs4_map_uid_to_name);
-+DEFINE_NFS4_IDMAP_EVENT(nfs4_map_gid_to_group);
-+
- #endif /* _TRACE_NFS4_H */
- 
- #undef TRACE_INCLUDE_PATH
+-	if (get_int(bpp, &rv))
++	if (get_time(bpp, &rv))
+ 		return 0;
+ 	if (rv < 0)
+ 		return 0;
 -- 
 1.8.3.1
 
