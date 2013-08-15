@@ -1,128 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:51939 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756994Ab3HOPkh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Aug 2013 11:40:37 -0400
-Date: Thu, 15 Aug 2013 11:40:32 -0400
-From: Scott Mayhew <smayhew@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [nfs-utils PATCH] mount.nfs: improve handling of bg, fg, and
- sloppy in nfsmount.conf
-Message-ID: <20130815154032.GD2514@tonberry.usersys.redhat.com>
-References: <1376575095-15403-1-git-send-email-smayhew@redhat.com>
- <EFB98378-3D68-46CA-A03E-C9E19FFFC265@oracle.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:40975 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756298Ab3HONjG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Aug 2013 09:39:06 -0400
+Message-ID: <520CD9C8.8000305@oracle.com>
+Date: Thu, 15 Aug 2013 08:38:16 -0500
+From: Dave Kleikamp <dave.kleikamp@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <EFB98378-3D68-46CA-A03E-C9E19FFFC265@oracle.com>
+To: Christian Kujau <lists@nerdbynature.de>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, Karl Schmidt <karl@xtronics.com>,
+        Jonathan McDowell <noodles@earth.li>,
+        jfs-discussion@lists.sourceforge.net, 714974@bugs.debian.org,
+        Ben Hutchings <ben@decadent.org.uk>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] jfs: avoid misuse of cookie value of 2
+References: <1373245980.3428.46.camel@deadeye.wl.decadent.org.uk> <520554A5.3060401@xtronics.com> <alpine.DEB.2.10.1308092352550.7081@trent.utfs.org> <alpine.DEB.2.10.1308120113360.7081@trent.utfs.org> <alpine.DEB.2.10.1308120122500.7081@trent.utfs.org> <20130812162924.GB2395@fieldses.org> <520C50F7.3010209@oracle.com> <alpine.DEB.2.10.1308142122550.7081@trent.utfs.org> <alpine.DEB.2.10.1308150001530.7081@trent.utfs.org>
+In-Reply-To: <alpine.DEB.2.10.1308150001530.7081@trent.utfs.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 15 Aug 2013, Chuck Lever wrote:
+On 08/15/2013 02:09 AM, Christian Kujau wrote:
+> On Wed, 14 Aug 2013 at 21:29, Christian Kujau wrote:
+> 
+>> On Wed, 14 Aug 2013 at 22:54, Dave Kleikamp wrote:
+>>> It looks like the problem is that jfs was using a cookie value of 2 for
+>>> a real directory entry, where NFSv4 expect 2 to represent "..". This
+>>> patch has so far only been lightly tested.
+>>
+>> Hm, a first compile of 3.11-rc5 errors out with:
+>>
+>>   CC [M]  fs/jfs/jfs_dtree.o
+>> /usr/local/src/linux-git/fs/jfs/jfs_dtree.c: In function ‘add_index’:
+>> /usr/local/src/linux-git/fs/jfs/jfs_dtree.c:493:13: error: invalid storage class for function ‘free_index’
+> [...]
+>>
+>> I'll run mrproper and try again...
+> 
+> This did not help, but adding a closing bracket did, in fs/jfs/jfs_dtree.c:354
+> 
+>         if (jfs_ip->next_index < 3) {
+>                 jfs_ip->next_index = 3;
+>         }
+>    -----^
+> 
+> This compiled and booted and now I can run find(1) over that whole NFS 
+> share, without any "readdir loop" messages and with unique inode numbers, 
+> yay!
 
-> Hi Scott-
-> 
-> On Aug 15, 2013, at 9:58 AM, Scott Mayhew <smayhew@redhat.com> wrote:
-> 
-> > This patch makes 2 small improvements to the parsing of the bg, fg, and
-> > sloppy mount options in nfsmount.conf.
-> > 
-> > 1. "bg" and "fg" negate should each other.  "Background=True" should
-> > mean "bg" and "Background=False" should mean "fg".  The same applies to
-> > "Foreground".
-> 
-> This looks OK.
-> 
-> > 2. Once we see "Sloppy=False" while parsing the configuration file we
-> > should ignore subsequent occurrences of the sloppy option.  This will
-> > preserve the "right-most setting wins" behavior for the sloppy mount
-> > option.
-> 
-> Here, I'm confused.  The "right-most wins" rule goes:
-> 
->   1.  mount options are parsed in order from left (closest to the command-line prompt) to right (closest to the carriage return)
-> 
->   2.  the last instance of an option (the right-most instance) is the setting that takes effect 
-> 
-> As I understand it, this applies to config file settings in the following way:  config file settings are specified in order from "whole system" to "server" to "mount point", then the command line options are appended to the end of that.
+My bad. That's what happens when you clean up the patch after you test
+it. I intended to remove the opening bracket when I removed a warning.
 
-conf_get_mntopts parses the mountpoint specific options first, then the
-server-specific options, and finally global options, inserting each
-option at the head of a list as it goes.  It then walks the list and
-appends each option to the string that it ultimately returns to the
-caller.  So the order that options appear in the list is reversed from
-how they appear in the string.
-> 
-> Then, "Right-most wins" means the last occurrence of "Sloppy=true" should override any previous occurrence of "Sloppy=False", right?  Or did I misunderstand again?
+>   Tested-by: Christian Kujau <lists@nerdbynature.de>
 
-Yes, this is what it does.
-> 
-> It seems like you can just walk the appropriate sections of the config file, and set the sloppiness in each section that has such a setting.  The last section you walked with a sloppiness setting wins.  After you are done walking, append (or don't) a "sloppy" option, then pass that on to the mount.nfs command.
-> 
-> IIUC if the last config file setting is "Sloppy=True" there is no way for command-line options to disable "sloppy".
+Thanks. After sleeping on it, I'm contemplating a simpler patch. I'll
+keep you up to date.
 
-That's true with the existing code as well though.  I don't see any way
-around that besides adding another nfs mount option to the kernel... but
-what is the likelihood that someone would specify sloppy=true in their
-config file and then want to override it from the command line?
-
--Scott
 > 
-> 
-> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> > ---
-> > utils/mount/configfile.c | 11 +++++++++++
-> > 1 file changed, 11 insertions(+)
-> > 
-> > diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
-> > index 1f1b6e7..68b9f93 100644
-> > --- a/utils/mount/configfile.c
-> > +++ b/utils/mount/configfile.c
-> > @@ -73,6 +73,8 @@ struct mnt_alias {
-> > };
-> > int mnt_alias_sz = (sizeof(mnt_alias_tab)/sizeof(mnt_alias_tab[0]));
-> > 
-> > +static int strict;
-> > +
-> > /*
-> >  * See if the option is an alias, if so return the 
-> >  * real mount option along with the argument type.
-> > @@ -310,7 +312,15 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
-> > 		if (strcasecmp(value, "false") == 0) {
-> > 			if (argtype != MNT_NOARG)
-> > 				snprintf(buf, BUFSIZ, "no%s", field);
-> > +			else if (strcasecmp(field, "bg") == 0)
-> > +				snprintf(buf, BUFSIZ, "fg");
-> > +			else if (strcasecmp(field, "fg") == 0)
-> > +				snprintf(buf, BUFSIZ, "bg");
-> > +			else if (strcasecmp(field, "sloppy") == 0)
-> > +				strict = 1;
-> > 		} else if (strcasecmp(value, "true") == 0) {
-> > +			if ((strcasecmp(field, "sloppy") == 0) && strict)
-> > +				continue;
-> > 			snprintf(buf, BUFSIZ, "%s", field);
-> > 		} else {
-> > 			nvalue = strdup(value);
-> > @@ -345,6 +355,7 @@ char *conf_get_mntopts(char *spec, char *mount_point,
-> > 	char *ptr, *server, *config_opts;
-> > 	int optlen = 0;
-> > 
-> > +	strict = 0;
-> > 	SLIST_INIT(&head);
-> > 	list_size = 0;
-> > 	/*
-> > -- 
-> > 1.7.11.7
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
+> Thanks!
+> Christian.
 > 
