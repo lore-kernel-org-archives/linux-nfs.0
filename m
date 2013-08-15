@@ -1,68 +1,190 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:57032 "EHLO mx1.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:51479 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754691Ab3HGScU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Aug 2013 14:32:20 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/4] NFSv4.1 Use clientid management rpc_clnt for
- fs_locations
-Date: Wed, 7 Aug 2013 18:32:18 +0000
-Message-ID: <015EF10A-7962-484C-90D1-A1520E8B3431@netapp.com>
-References: <1374511328-49579-1-git-send-email-andros@netapp.com>
- <1374511328-49579-2-git-send-email-andros@netapp.com>
- <1375894458.7280.2.camel@leira.trondhjem.org>
- <479EB531-9CD2-42E2-AB98-A3CD9B13603D@netapp.com>
- <1375898644.7280.10.camel@leira.trondhjem.org>
- <1375899556.7280.16.camel@leira.trondhjem.org>
-In-Reply-To: <1375899556.7280.16.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="us-ascii"
+	id S1756298Ab3HONiZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Aug 2013 09:38:25 -0400
+Date: Thu, 15 Aug 2013 09:38:05 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Dave Kleikamp <dave.kleikamp@oracle.com>
+Cc: Christian Kujau <lists@nerdbynature.de>, Karl Schmidt <karl@xtronics.com>,
+        Jonathan McDowell <noodles@earth.li>,
+        jfs-discussion@lists.sourceforge.net, 714974@bugs.debian.org,
+        Ben Hutchings <ben@decadent.org.uk>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] jfs: avoid misuse of cookie value of 2
+Message-ID: <20130815133805.GQ17781@fieldses.org>
+References: <1373245980.3428.46.camel@deadeye.wl.decadent.org.uk>
+ <520554A5.3060401@xtronics.com>
+ <alpine.DEB.2.10.1308092352550.7081@trent.utfs.org>
+ <alpine.DEB.2.10.1308120113360.7081@trent.utfs.org>
+ <alpine.DEB.2.10.1308120122500.7081@trent.utfs.org>
+ <20130812162924.GB2395@fieldses.org>
+ <520C50F7.3010209@oracle.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <520C50F7.3010209@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Aug 7, 2013, at 2:19 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
- wrote:
-
-> On Wed, 2013-08-07 at 14:04 -0400, Trond Myklebust wrote:
->> On Wed, 2013-08-07 at 18:01 +0000, Adamson, Andy wrote:
->>> 
->>> Here is the attack as described in 3530bis Security Considerations
->>> section:
->>> 
->>> 
->>>   The second operation that should definitely use integrity protection
->>>   is any GETATTR for the fs_locations attribute.  The attack has two
->>>   steps.  First the attacker modifies the unprotected results of some
->>>   operation to return NFS4ERR_MOVED.  Second, when the client follows
->>>   up with a GETATTR for the fs_locations attribute, the attacker
->>>   modifies the results to cause the client migrate its traffic to a
->>>   server controlled by the attacker.
->> 
->> You can the exact same thing by changing the READLINK results.
+On Wed, Aug 14, 2013 at 10:54:31PM -0500, Dave Kleikamp wrote:
+> For the sake of those not watching
+> https://bugzilla.kernel.org/show_bug.cgi?id=60737
 > 
-> The attack is: change the unprotected LOOKUP results to point to a
-> symlink, then feed '/net/<evil-ip-address>/my/evil/pathname' into
-> READLINK.
+> It looks like the problem is that jfs was using a cookie value of 2 for
+> a real directory entry, where NFSv4 expect 2 to represent "..". This
+> patch has so far only been lightly tested.
+> 
+> NFSv4 reserves cookie values 0, 1 and 2 for a rewind, and the "." and ".."
+> entries. jfs was using 0 and 1 for "." and "..", but 2 for a regular entry.
+> This patch makes jfs conform by using 1 and 2 for "." and ".." and fixes
+> any regular entry using the value 2.
 
-Does the linux client actually follow links with embedded IP addresses?
+Oh, I'd forgotten that.  From rfc 5661:
 
--->Andy
+	For some file system environments, the directory entries "." and
+	".." have special meaning, and in other environments, they do
+	not.  If the server supports these special entries within a
+	directory, they SHOULD NOT be returned to the client as part of
+	the READDIR response.  To enable some client environments, the
+	cookie values of zero, 1, and 2 are to be considered reserved.
+	Note that the UNIX client will use these values when combining
+	the server's response and local representations to enable a
+	fully formed UNIX directory presentation to the application.
+
+OK!
+
+--b.
 
 > 
-> My point is that if you're on a network where the above is a potential
-> threat, then you should be using krb5i or, better yet, krb5p for _all_
-> operations. It's not sufficient to single out fs_locations for special
-> treatment.
+> Signed-off-by: Dave Kleikamp <dave.kleikamp@oracle.com>
 > 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-
+> diff --git a/fs/jfs/jfs_dtree.c b/fs/jfs/jfs_dtree.c
+> index 8743ba9..93466e8 100644
+> --- a/fs/jfs/jfs_dtree.c
+> +++ b/fs/jfs/jfs_dtree.c
+> @@ -349,11 +349,8 @@ static u32 add_index(tid_t tid, struct inode *ip, s64 bn, int slot)
+>  
+>  	ASSERT(DO_INDEX(ip));
+>  
+> -	if (jfs_ip->next_index < 2) {
+> -		jfs_warn("add_index: next_index = %d.  Resetting!",
+> -			   jfs_ip->next_index);
+> -		jfs_ip->next_index = 2;
+> -	}
+> +	if (jfs_ip->next_index < 3) {
+> +		jfs_ip->next_index = 3;
+>  
+>  	index = jfs_ip->next_index++;
+>  
+> @@ -2864,7 +2861,7 @@ void dtInitRoot(tid_t tid, struct inode *ip, u32 idotdot)
+>  		} else
+>  			ip->i_size = 1;
+>  
+> -		jfs_ip->next_index = 2;
+> +		jfs_ip->next_index = 3;
+>  	} else
+>  		ip->i_size = IDATASIZE;
+>  
+> @@ -2951,7 +2948,7 @@ static void add_missing_indices(struct inode *inode, s64 bn)
+>  	for (i = 0; i < p->header.nextindex; i++) {
+>  		d = (struct ldtentry *) &p->slot[stbl[i]];
+>  		index = le32_to_cpu(d->index);
+> -		if ((index < 2) || (index >= JFS_IP(inode)->next_index)) {
+> +		if ((index < 3) || (index >= JFS_IP(inode)->next_index)) {
+>  			d->index = cpu_to_le32(add_index(tid, inode, bn, i));
+>  			if (dtlck->index >= dtlck->maxcnt)
+>  				dtlck = (struct dt_lock *) txLinelock(dtlck);
+> @@ -3031,7 +3028,7 @@ int jfs_readdir(struct file *file, struct dir_context *ctx)
+>  	struct jfs_dirent *jfs_dirent;
+>  	int jfs_dirents;
+>  	int overflow, fix_page, page_fixed = 0;
+> -	static int unique_pos = 2;	/* If we can't fix broken index */
+> +	static int unique_pos = 3;	/* If we can't fix broken index */
+>  
+>  	if (ctx->pos == DIREND)
+>  		return 0;
+> @@ -3039,15 +3036,16 @@ int jfs_readdir(struct file *file, struct dir_context *ctx)
+>  	if (DO_INDEX(ip)) {
+>  		/*
+>  		 * persistent index is stored in directory entries.
+> -		 * Special cases:	 0 = .
+> -		 *			 1 = ..
+> +		 * Special cases:	 0 = rewind
+> +		 *			 1 = .
+> +		 *			 2 = ..
+>  		 *			-1 = End of directory
+>  		 */
+>  		do_index = 1;
+>  
+>  		dir_index = (u32) ctx->pos;
+>  
+> -		if (dir_index > 1) {
+> +		if (dir_index > 2) {
+>  			struct dir_table_slot dirtab_slot;
+>  
+>  			if (dtEmpty(ip) ||
+> @@ -3090,18 +3088,18 @@ int jfs_readdir(struct file *file, struct dir_context *ctx)
+>  				return 0;
+>  			}
+>  		} else {
+> -			if (dir_index == 0) {
+> +			if (dir_index < 2) {
+>  				/*
+>  				 * self "."
+>  				 */
+> -				ctx->pos = 0;
+> +				ctx->pos = 1;
+>  				if (!dir_emit(ctx, ".", 1, ip->i_ino, DT_DIR))
+>  					return 0;
+>  			}
+>  			/*
+>  			 * parent ".."
+>  			 */
+> -			ctx->pos = 1;
+> +			ctx->pos = 2;
+>  			if (!dir_emit(ctx, "..", 2, PARENT(ip), DT_DIR))
+>  				return 0;
+>  
+> @@ -3122,22 +3120,24 @@ int jfs_readdir(struct file *file, struct dir_context *ctx)
+>  		/*
+>  		 * Legacy filesystem - OS/2 & Linux JFS < 0.3.6
+>  		 *
+> -		 * pn = index = 0:	First entry "."
+> -		 * pn = 0; index = 1:	Second entry ".."
+> +		 * pn = 0; index = 1:	First entry "."
+> +		 * pn = 0; index = 2:	Second entry ".."
+>  		 * pn > 0:		Real entries, pn=1 -> leftmost page
+>  		 * pn = index = -1:	No more entries
+>  		 */
+>  		dtpos = ctx->pos;
+> -		if (dtpos == 0) {
+> +		if (dtpos < 2) {
+> +			ctx->pos = 1;
+>  			/* build "." entry */
+>  			if (!dir_emit(ctx, ".", 1, ip->i_ino, DT_DIR))
+>  				return 0;
+> -			dtoffset->index = 1;
+> +			dtoffset->index = 2;
+>  			ctx->pos = dtpos;
+>  		}
+>  
+>  		if (dtoffset->pn == 0) {
+> -			if (dtoffset->index == 1) {
+> +			if (dtoffset->index == 2) {
+> +				ctx->pos = 2;
+>  				/* build ".." entry */
+>  				if (!dir_emit(ctx, "..", 2, PARENT(ip), DT_DIR))
+>  					return 0;
+> @@ -3210,8 +3210,12 @@ int jfs_readdir(struct file *file, struct dir_context *ctx)
+>  				 * directory index for the lost+found
+>  				 * directory.  Rather than let it go,
+>  				 * we can try to fix it.
+> +				 *
+> +				 * Additionally, a value of 2 used to be
+> +				 * valid, but it didn't work well with
+> +				 * NFSv4, so if found, we need to change it
+>  				 */
+> -				if ((jfs_dirent->position < 2) ||
+> +				if ((jfs_dirent->position < 3) ||
+>  				    (jfs_dirent->position >=
+>  				     JFS_IP(ip)->next_index)) {
+>  					if (!page_fixed && !isReadOnly(ip)) {
