@@ -1,74 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:2416 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753284Ab3HBOXQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 Aug 2013 10:23:16 -0400
-Subject: Re: Trouble with kerberized NFS client after upgrading from
- nfs-utils 1.2.0 to 1.2.5
-From: Simo Sorce <simo@redhat.com>
-To: Rohit Mehta <rohitm@engr.uconn.edu>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <51FBA2FD.7070704@engr.uconn.edu>
-References: <51FAC933.40508@engr.uconn.edu>
-	 <1375391193.15733.213.camel@willson.li.ssimo.org>
-	 <51FB0946.5020505@engr.uconn.edu>
-	 <1375410802.15733.216.camel@willson.li.ssimo.org>
-	 <51FBA2FD.7070704@engr.uconn.edu>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 02 Aug 2013 10:23:13 -0400
-Message-ID: <1375453393.15733.255.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+Received: from p3plsmtpa11-03.prod.phx3.secureserver.net ([68.178.252.104]:38589
+	"EHLO p3plsmtpa11-03.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752860Ab3HOMxS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Aug 2013 08:53:18 -0400
+Message-ID: <520CCDBB.1020501@talpey.com>
+Date: Thu, 15 Aug 2013 08:46:51 -0400
+From: Tom Talpey <tom@talpey.com>
+MIME-Version: 1.0
+To: Wendy Cheng <s.wendy.cheng@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>
+Subject: Re: Helps to Decode rpc_debug Output
+References: <CABgxfbGFHv2n5=78_irkxXnX9BFDFPzZvqgs_iDn64AR_3cf5w@mail.gmail.com>
+In-Reply-To: <CABgxfbGFHv2n5=78_irkxXnX9BFDFPzZvqgs_iDn64AR_3cf5w@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2013-08-02 at 08:15 -0400, Rohit Mehta wrote:
-> Thanks Simo,  I apologize for the copy and paste error.  You are 
-> correct  about it being "ldd /usr/sbin/rpc.gssd" command.
-> 
-> The actual error message we get is from the mount command:
-> mount.nfs: access denied by server while mounting 
-> hnas.engr.uconn.edu:/EngrUser/users/rohitm
-> 
-> I got a little more output with mount -v
-> root@c27-00:~# mount -vvv hnas.engr.uconn.edu:/EngrUser/users/rohitm 
-> /foo -o sec=krb5
-> mount: fstab path: "/etc/fstab"
-> mount: mtab path:  "/etc/mtab"
-> mount: lock path:  "/etc/mtab~"
-> mount: temp path:  "/etc/mtab.tmp"
-> mount: UID:        0
-> mount: eUID:       0
-> mount: no type was given - I'll assume nfs because of the colon
-> mount: spec: "hnas.engr.uconn.edu:/EngrUser/users/rohitm"
-> mount: node:  "/foo"
-> mount: types: "nfs"
-> mount: opts:  "sec=krb5"
-> mount: external mount: argv[0] = "/sbin/mount.nfs"
-> mount: external mount: argv[1] = 
-> "hnas.engr.uconn.edu:/EngrUser/users/rohitm"
-> mount: external mount: argv[2] = "/foo"
-> mount: external mount: argv[3] = "-v"
-> mount: external mount: argv[4] = "-o"
-> mount: external mount: argv[5] = "rw,sec=krb5"
-> mount.nfs: timeout set for Fri Aug  2 08:04:08 2013
-> mount.nfs: trying text-based options 
-> 'sec=krb5,vers=4,addr=137.99.203.4,clientaddr=137.99.2.29'
-> mount.nfs: mount(2): Permission denied
-> mount.nfs: access denied by server while mounting 
-> hnas.engr.uconn.edu:/EngrUser/users/rohitm
-> 
-> So there is unfortunately no more info available from mount command and 
-> rpc.gssd output did not have any red flags for me. I'm trying to find 
-> out if there is a way to get more information from the NFS server 
-> itself, but as of now I'm not sure how to do that.
+On 8/14/2013 8:14 PM, Wendy Cheng wrote:
+> Longer version of the question:
+> I'm trying to enable NFS-RDMA on an embedded system (based on 2.6.38
+> kernel) as a client. The IB stacks are taken from OFED 1.5.4. NFS
+> server is a RHEL 6.3 Xeon box. The connection uses mellox-4 driver.
+> Memory registration is "RPCRDMA_ALLPHYSICAL". There are many issues so
+> far but I do manage to get nfs mount working. Simple file operations
+> (such as "ls", file read/write, "scp", etc) seem to work as well.
 
-It looks like you have to look at the server side here.
-Bump up rpc.svcgssd (or whatever is used on your server) debug and maybe
-even the kernel log with the rpcdebug command and see why it is refusing
-your authentication.
+You're probably seeing connection loss from bad RDMA handles, which
+come into play when you send large r/w traffic. The fact that small
+i/o such as simple ls, and non-NFS traffic such as scp, means the
+network itself is ok.
 
-Simo.
+ > While trying to run iozone to see whether the performance gain can be
+ > justified for the development efforts, the program runs until it
+ > reaches 2MB file size - at that point, RDMA CM sends out
+ > "TIMEWAIT_EXIT" event, the xprt is disconnected, and all IOs on that
+ > share hang. IPOIB still works though. Not sure what would be the best
+ > way to debug this.
 
--- 
-Simo Sorce * Red Hat, Inc * New York
+I would suggest enabling RPC "transport" debugging, and any tracing
+in the IB stack itself, looking to see if you can find any patterns.
+You may want to look at the server side, too.
 
+Unfortunately, because you are using Infiniband, packet capture is
+going to be next to impossible. You might try using an iWARP adapter,
+or one which can be sniffed, if you suspect a traffic issue.
+
+Why did you replace the Linux IB stack with OFED? Did you also take the
+NFS/RDMA from that package, and if so are you sure that it all is
+is working properly? Doesn't 2.6.38 already have all this?
+
+Tom.
