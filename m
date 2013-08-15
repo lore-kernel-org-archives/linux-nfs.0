@@ -1,88 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:36840 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S968171Ab3HIQtk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:49:40 -0400
-Received: by mail-gh0-f174.google.com with SMTP id r17so1278197ghr.33
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:49:40 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
-        by mx.google.com with ESMTPSA id g39sm20680040yhb.13.2013.08.09.09.49.39
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
-        Fri, 09 Aug 2013 09:49:39 -0700 (PDT)
-Subject: [PATCH v2 13/33] NFS: Add nfs4_sequence calls for RELEASE_LOCKOWNER
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 09 Aug 2013 12:49:38 -0400
-Message-ID: <20130809164938.5362.95295.stgit@seurat.1015granger.net>
-In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
-References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+Received: from aserp1040.oracle.com ([141.146.126.69]:34136 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751133Ab3HOUt1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Aug 2013 16:49:27 -0400
+Message-ID: <520D3EA7.1010109@oracle.com>
+Date: Thu, 15 Aug 2013 15:48:39 -0500
+From: Dave Kleikamp <dave.kleikamp@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Christian Kujau <lists@nerdbynature.de>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, Karl Schmidt <karl@xtronics.com>,
+        Jonathan McDowell <noodles@earth.li>,
+        jfs-discussion@lists.sourceforge.net, 714974@bugs.debian.org,
+        Ben Hutchings <ben@decadent.org.uk>, linux-nfs@vger.kernel.org
+Subject: [PATCH] jfs: fix readdir cookie incompatibility with NFSv4
+References: <1373245980.3428.46.camel@deadeye.wl.decadent.org.uk> <520554A5.3060401@xtronics.com> <alpine.DEB.2.10.1308092352550.7081@trent.utfs.org> <alpine.DEB.2.10.1308120113360.7081@trent.utfs.org> <alpine.DEB.2.10.1308120122500.7081@trent.utfs.org> <20130812162924.GB2395@fieldses.org> <520C50F7.3010209@oracle.com> <alpine.DEB.2.10.1308142122550.7081@trent.utfs.org> <alpine.DEB.2.10.1308150001530.7081@trent.utfs.org>
+In-Reply-To: <alpine.DEB.2.10.1308150001530.7081@trent.utfs.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure RELEASE_LOCKOWNER is not emitted while the transport is
-plugged.
+This patch replaces the one I posted yesterday. I like this better since
+it doesn't require fixing existing on-disk cookies or skipping a
+position in the in-inode index table.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+NFSv4 reserves readdir cookie values 0-2 for special entries (. and ..),
+but jfs allows a value of 2 for a non-special entry. This incompatibility
+can result in the nfs client reporting a readdir loop.
+
+This patch doesn't change the value stored internally, but adds one to
+the value exposed to the iterate method.
+
+Signed-off-by: Dave Kleikamp <dave.kleikamp@oracle.com>
 ---
- fs/nfs/nfs4proc.c |   20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+ fs/jfs/jfs_dtree.c | 31 +++++++++++++++++++++++--------
+ 1 file changed, 23 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index b915c7d..9104467 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5662,8 +5662,23 @@ struct nfs_release_lockowner_data {
- 	struct nfs4_lock_state *lsp;
- 	struct nfs_server *server;
- 	struct nfs_release_lockowner_args args;
-+	struct nfs4_sequence_args seq_args;
-+	struct nfs4_sequence_res seq_res;
- };
+diff --git a/fs/jfs/jfs_dtree.c b/fs/jfs/jfs_dtree.c
+index 8743ba9..0ec767e 100644
+--- a/fs/jfs/jfs_dtree.c
++++ b/fs/jfs/jfs_dtree.c
+@@ -3047,6 +3047,14 @@ int jfs_readdir(struct file *file, struct dir_context *ctx)
  
-+static void nfs4_release_lockowner_prepare(struct rpc_task *task, void *calldata)
-+{
-+	struct nfs_release_lockowner_data *data = calldata;
-+	nfs40_setup_sequence(data->server,
-+				&data->seq_args, &data->seq_res, task);
-+}
-+
-+static void nfs4_release_lockowner_done(struct rpc_task *task, void *calldata)
-+{
-+	struct nfs_release_lockowner_data *data = calldata;
-+	nfs40_sequence_done(task, &data->seq_res);
-+}
-+
- static void nfs4_release_lockowner_release(void *calldata)
- {
- 	struct nfs_release_lockowner_data *data = calldata;
-@@ -5672,6 +5687,8 @@ static void nfs4_release_lockowner_release(void *calldata)
- }
+ 		dir_index = (u32) ctx->pos;
  
- static const struct rpc_call_ops nfs4_release_lockowner_ops = {
-+	.rpc_call_prepare = nfs4_release_lockowner_prepare,
-+	.rpc_call_done = nfs4_release_lockowner_done,
- 	.rpc_release = nfs4_release_lockowner_release,
- };
- 
-@@ -5684,14 +5701,17 @@ static int nfs4_release_lockowner(struct nfs_server *server, struct nfs4_lock_st
- 
- 	if (server->nfs_client->cl_mvops->minor_version != 0)
- 		return -EINVAL;
++		/*
++		 * NFSv4 reserves cookies 1 and 2 for . and .. so we add
++		 * the value we return to the vfs is one greater than the
++		 * one we use internally.
++		 */
++		if (dir_index)
++			dir_index--;
 +
- 	data = kmalloc(sizeof(*data), GFP_NOFS);
- 	if (!data)
- 		return -ENOMEM;
-+	nfs4_init_sequence(&data->seq_args, &data->seq_res, 0);
- 	data->lsp = lsp;
- 	data->server = server;
- 	data->args.lock_owner.clientid = server->nfs_client->cl_clientid;
- 	data->args.lock_owner.id = lsp->ls_seqid.owner_id;
- 	data->args.lock_owner.s_dev = server->s_dev;
-+
- 	msg.rpc_argp = &data->args;
- 	rpc_call_async(server->client, &msg, 0, &nfs4_release_lockowner_ops, data);
- 	return 0;
+ 		if (dir_index > 1) {
+ 			struct dir_table_slot dirtab_slot;
+ 
+@@ -3086,7 +3094,7 @@ int jfs_readdir(struct file *file, struct dir_context *ctx)
+ 			if (p->header.flag & BT_INTERNAL) {
+ 				jfs_err("jfs_readdir: bad index table");
+ 				DT_PUTPAGE(mp);
+-				ctx->pos = -1;
++				ctx->pos = DIREND;
+ 				return 0;
+ 			}
+ 		} else {
+@@ -3094,14 +3102,14 @@ int jfs_readdir(struct file *file, struct dir_context *ctx)
+ 				/*
+ 				 * self "."
+ 				 */
+-				ctx->pos = 0;
++				ctx->pos = 1;
+ 				if (!dir_emit(ctx, ".", 1, ip->i_ino, DT_DIR))
+ 					return 0;
+ 			}
+ 			/*
+ 			 * parent ".."
+ 			 */
+-			ctx->pos = 1;
++			ctx->pos = 2;
+ 			if (!dir_emit(ctx, "..", 2, PARENT(ip), DT_DIR))
+ 				return 0;
+ 
+@@ -3122,22 +3130,23 @@ int jfs_readdir(struct file *file, struct dir_context *ctx)
+ 		/*
+ 		 * Legacy filesystem - OS/2 & Linux JFS < 0.3.6
+ 		 *
+-		 * pn = index = 0:	First entry "."
+-		 * pn = 0; index = 1:	Second entry ".."
++		 * pn = 0; index = 1:	First entry "."
++		 * pn = 0; index = 2:	Second entry ".."
+ 		 * pn > 0:		Real entries, pn=1 -> leftmost page
+ 		 * pn = index = -1:	No more entries
+ 		 */
+ 		dtpos = ctx->pos;
+-		if (dtpos == 0) {
++		if (dtpos < 2) {
+ 			/* build "." entry */
++			ctx->pos = 1;
+ 			if (!dir_emit(ctx, ".", 1, ip->i_ino, DT_DIR))
+ 				return 0;
+-			dtoffset->index = 1;
++			dtoffset->index = 2;
+ 			ctx->pos = dtpos;
+ 		}
+ 
+ 		if (dtoffset->pn == 0) {
+-			if (dtoffset->index == 1) {
++			if (dtoffset->index == 2) {
+ 				/* build ".." entry */
+ 				if (!dir_emit(ctx, "..", 2, PARENT(ip), DT_DIR))
+ 					return 0;
+@@ -3228,6 +3237,12 @@ int jfs_readdir(struct file *file, struct dir_context *ctx)
+ 					}
+ 					jfs_dirent->position = unique_pos++;
+ 				}
++				/*
++				 * We add 1 to the index because we may
++				 * use a value of 2 internally, and NFSv4
++				 * doesn't like that.
++				 */
++				jfs_dirent->position++;
+ 			} else {
+ 				jfs_dirent->position = dtpos;
+ 				len = min(d_namleft, DTLHDRDATALEN_LEGACY);
+-- 
+1.8.3.4
 
