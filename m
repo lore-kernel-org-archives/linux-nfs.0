@@ -1,85 +1,340 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-o-1.desy.de ([131.169.56.154]:33347 "EHLO smtp-o-1.desy.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753417Ab3H2OmM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Aug 2013 10:42:12 -0400
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 3A4A8280994
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Aug 2013 16:42:08 +0200 (CEST)
-Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 28FF313E83
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Aug 2013 16:42:05 +0200 (MEST)
-Received: from smtp-intra-3.desy.de (lb-40-26.desy.de) by ZITSWEEP1.win.desy.de
- (Clearswift SMTPRS 5.4.1) with ESMTP id <Tadd75ccee083a9615f7a00@ZITSWEEP1.win.desy.de> for <linux-nfs@vger.kernel.org>;
- Thu, 29 Aug 2013 16:42:05 +0200
-Received: from zimbratest.desy.de (zimbratest.desy.de [131.169.72.254])
-	by smtp-intra-3.desy.de (DESY-INTRA-3) with ESMTP id C0B1210C8
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Aug 2013 16:42:05 +0200 (MEST)
-Date: Thu, 29 Aug 2013 16:42:05 +0200 (CEST)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: linux-nfs@vger.kernel.org
-Message-ID: <792883988.3232533.1377787325193.JavaMail.zimbra@desy.de>
-In-Reply-To: <427608263.3232319.1377785594378.JavaMail.zimbra@desy.de>
-Subject: kernel panic  with 3.10.9 with pNFS write
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from userp1040.oracle.com ([156.151.31.81]:24631 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754684Ab3HPROB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Aug 2013 13:14:01 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: [PATCH/RFC]  Don't try to recover NFS locks when they are lost.
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20130816093007.2095fd63@corrin.poochiereds.net>
+Date: Fri, 16 Aug 2013 13:13:44 -0400
+Cc: NeilBrown <neilb@suse.de>, NFS <linux-nfs@vger.kernel.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Bryan Schumaker <bjschuma@netapp.com>
+Message-Id: <A916E41E-86AE-49D1-A693-390CE4790061@oracle.com>
+References: <20130815123604.47755509@notabene.brown> <20130815084706.4811d74e@corrin.poochiereds.net> <20130816203821.1a61f3ce@notabene.brown> <20130816093007.2095fd63@corrin.poochiereds.net>
+To: Jeff Layton <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+On Aug 16, 2013, at 9:30 AM, Jeff Layton <jlayton@redhat.com> wrote:
 
-I am getting this every time (IOW, reproducible ) when I trying to write.
-This is fedora 19, 64 bit 3.10.9-200.fc19.x86_64
+> On Fri, 16 Aug 2013 20:38:21 +1000
+> NeilBrown <neilb@suse.de> wrote:
+> 
+>> On Thu, 15 Aug 2013 08:47:06 -0400 Jeff Layton <jlayton@redhat.com> wrote:
+>> 
+>>> On Thu, 15 Aug 2013 12:36:04 +1000
+>>> NeilBrown <neilb@suse.de> wrote:
+>>> 
+>>>> 
+>>>> 
+>>>> When an NFS (V4 specifically) client loses contact with the server it can
+>>>> lose any locks that it holds.
+>>>> Currently when it reconnects to the server it simply tries to reclaim
+>>>> those locks.  This might succeed even though some other client has held and
+>>>> released a lock in the mean time.  So the first client might think the file
+>>>> is unchanged, but it isn't.  This isn't good.
+>>>> 
+>>>> If, when recovery happens, the locks cannot be claimed because some other
+>>>> client still holds the lock, then  we get a message in the kernel logs, but
+>>>> the client can still write.  So two clients can both think they have a lock
+>>>> and can both write at the same time.  This is equally not good.
+>>>> 
+>>>> There was a patch a while ago
+>>>>  http://comments.gmane.org/gmane.linux.nfs/41917
+>>>> 
+>>>> which tried to address some of this, but it didn't seem to go anywhere.
+>>>> That patch would also send a signal to the process.  That might be useful
+>>>> but I'm really just interested in failing the writes.
+>>>> For NFSv4 (unlike v2/v3) there is a strong link between the lock and the
+>>>> write request so we can fairly easily fail an IO of the lock is gone.
+>>>> 
+>>>> The patch below attempts to do this.  Does it make sense?
+>>>> Because this is a fairly big change I introduces a module parameter
+>>>> "recover_locks" which defaults to true (the current behaviour) but can be set
+>>>> to "false" to tell the client not to try to recover things that were lost.
+>>>> 
+>>>> Comments?
+>>>> 
+>>>> Thanks,
+>>>> NeilBrown
+>>>> 
+>>>> 
+>>> 
+>>> Failing a read or write when we can't recover a lock over the range
+>>> seems reasonable to me. IIUC though, you're also saying that we
+>>> shouldn't try to recover locks when the lease has expired? If so, then
+>>> that seems wrong...
+>>> 
+>>> Isn't it the responsibility of the server to not allow a lock to be
+>>> reclaimed when there has been a conflicting lock in the interim? It's
+>>> quite possible (and even advantageous) for a server to hold onto a lock
+>>> for a client that has missed renewing its lease when no other client has
+>>> made a conflicting lock request.
+>> 
+>> Hi Jeff,
+>> I had thought that too.  But when I looked I could find no evidence for it.
+>> The only time a client can 'reclaim' a lock is during the grace period when
+>> the server might have lost the lock due to a reboot.
+>> The case I'm looking at is when neither host rebooted but there was a network
+>> partition.
+>> I think that if the server is to preserve the lock while no other client
+>> contends it, it has to preserve the whole state and not return
+>> NFS4ERR_EXPIRED.
+>> Once the client gets NFS4ERR_EXPIRED it must assume that all related locks
+>> may have been subject to conflicting locks from other clients.
+>> 
+>> Thanks,
+>> NeilBrown
+>> 
+>> 
+> 
+> Ahh, a very good point. So I guess to reiterate, NFS4ERR_EXPIRED means
+> that the state (if there was any) has been purged, and all bets are
+> off. So yeah, ok...trying to reclaim locks at that point is probably
+> wrong.
+> 
+> That said...why is the server granting those lock reclaims in this case?
+> Presumably the grace period has passed and it shouldn't be granting any
+> reclaim requests, right?
 
-[257349.666159] nfs4filelayout_init: NFSv4 File Layout Driver Registering...
-[257366.629133] BUG: unable to handle kernel NULL pointer dereference at 0000000000000038
-[257366.629154] IP: [<ffffffffa075d527>] nfs4_fl_prepare_ds+0x127/0x280 [nfs_layout_nfsv41_files]
-[257366.629167] PGD 1fc02f067 PUD 16a081067 PMD 0 
-[257366.629176] Oops: 0002 [#1] SMP 
-[257366.629182] Modules linked in: nfs_layout_nfsv41_files rpcsec_gss_krb5 auth_rpcgss nfsv4 nfs lockd sunrpc dns_resolver fscache tcp_lp fuse nf_conntrack_netbios_ns nf_conntrack_broadcast ipt_MASQUERADE ip6table_nat nf_nat_ipv6 ip6table_mangle ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 iptable_nat nf_nat_ipv4 nf_nat iptable_mangle nf_conntrack_ipv4 nf_defrag_ipv4 xt_conntrack nf_conntrack vboxpci(OF) vboxnetadp(OF) vboxnetflt(OF) ebtable_filter rfcomm ebtables ip6table_filter bnep ip6_tables vboxdrv(OF) snd_hda_codec_hdmi snd_hda_codec_idt uvcvideo videobuf2_vmalloc videobuf2_memops videobuf2_core videodev arc4 iTCO_wdt iTCO_vendor_support media mperf coretemp kvm_intel iwldvm dell_laptop btusb dell_wmi mac80211 kvm bluetooth sdhci_pci snd_hda_intel ppdev sparse_keymap crc32_pclmul crc32c_intel dcdbas
-[257366.629308]  ghash_clmulni_intel iwlwifi microcode snd_hda_codec cfg80211 snd_hwdep snd_seq joydev snd_seq_device snd_pcm i2c_i801 sdhci snd_page_alloc e1000e mmc_core snd_timer snd lpc_ich mei_me mfd_core rfkill mei ptp soundcore pps_core parport_pc parport uinput nouveau mxm_wmi i2c_algo_bit drm_kms_helper ttm drm firewire_ohci firewire_core crc_itu_t i2c_core wmi video
-[257366.629381] CPU: 0 PID: 16763 Comm: cp Tainted: GF        C O 3.10.9-200.fc19.x86_64 #1
-[257366.629387] Hardware name: Dell Inc. Latitude E6520/0J4TFW, BIOS A06 07/11/2011
-[257366.629393] task: ffff8800a3a5b560 ti: ffff880221416000 task.ti: ffff880221416000
-[257366.629398] RIP: 0010:[<ffffffffa075d527>]  [<ffffffffa075d527>] nfs4_fl_prepare_ds+0x127/0x280 [nfs_layout_nfsv41_files]
-[257366.629409] RSP: 0018:ffff880221417c70  EFLAGS: 00010202
-[257366.629414] RAX: 000000010f4e66ef RBX: 0000000000000000 RCX: 0000000000000000
-[257366.629419] RDX: 00000000000bbbf6 RSI: ffffffffa07eb248 RDI: ffff8801709a8580
-[257366.629424] RBP: ffff880221417ca8 R08: 0000000000016f20 R09: 019d86e3c80c0000
-[257366.629429] R10: ffff880213b10d10 R11: 0000000000000000 R12: ffffffffffffff8f
-[257366.629434] R13: ffff8801709a8580 R14: ffff8802125f4800 R15: 0000000000000038
-[257366.629439] FS:  00007f519c809800(0000) GS:ffff88022dc00000(0000) knlGS:0000000000000000
-[257366.629449] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[257366.629453] CR2: 0000000000000038 CR3: 000000022006d000 CR4: 00000000000407f0
-[257366.629459] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-[257366.629464] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-[257366.629469] Stack:
-[257366.629472]  ffff880213b10d98 ffff88009b3449c0 ffff8801fc0f00a0 ffff880101683800
-[257366.629482]  ffff8802125f4800 0000000000000000 0000000000000000 ffff880221417d00
-[257366.629491]  ffffffffa075b210 ffff8801eaddc598 ffff88009b345f48 ffff8801fc0f0000
-[257366.629501] Call Trace:
-[257366.629508]  [<ffffffffa075b210>] filelayout_write_pagelist+0x50/0x150 [nfs_layout_nfsv41_files]
-[257366.629524]  [<ffffffffa084b2de>] pnfs_generic_pg_writepages+0xee/0x280 [nfsv4]
-[257366.629536]  [<ffffffffa080d869>] nfs_pageio_doio+0x19/0x50 [nfs]
-[257366.629546]  [<ffffffffa080dba4>] nfs_pageio_complete+0x24/0x30 [nfs]
-[257366.629556]  [<ffffffffa0811c6c>] nfs_writepages+0xac/0x130 [nfs]
-[257366.629565]  [<ffffffff8113a55e>] do_writepages+0x1e/0x40
-[257366.629571]  [<ffffffff8112f909>] __filemap_fdatawrite_range+0x59/0x60
-[257366.629578]  [<ffffffff8112fa0a>] filemap_write_and_wait_range+0x2a/0x70
-[257366.629592]  [<ffffffffa0842aaf>] nfs4_file_fsync+0x5f/0xb0 [nfsv4]
-[257366.629599]  [<ffffffff811c42cb>] vfs_fsync+0x2b/0x40
-[257366.629607]  [<ffffffffa0803b9a>] nfs_file_flush+0x7a/0xb0 [nfs]
-[257366.629614]  [<ffffffff811957a4>] filp_close+0x34/0x80
-[257366.629622]  [<ffffffff811b352a>] __close_fd+0x6a/0x80
-[257366.629628]  [<ffffffff81196f63>] SyS_close+0x23/0x50
-[257366.629635]  [<ffffffff81647719>] system_call_fastpath+0x16/0x1b
-[257366.629640] Code: 49 8b 06 4c 89 e7 48 8b b0 20 01 00 00 e8 c2 c8 0e 00 85 c0 0f 85 9f 00 00 00 f6 05 c4 08 09 00 20 4c 89 63 28 0f 85 0c 01 00 00 <f0> 41 80 27 fe 31 f6 4c 89 ff 49 89 dc e8 87 43 92 e0 e9 0c ff 
-[257366.629728] RIP  [<ffffffffa075d527>] nfs4_fl_prepare_ds+0x127/0x280 [nfs_layout_nfsv41_files]
-[257366.629736]  RSP <ffff880221417c70>
-[257366.629740] CR2: 0000000000000038
-[257366.637157] ---[ end trace 72a58bcbc080508c ]---
-[root@ani data]#
+After NFS4ERR_EXPIRED, our client uses a normal open ( OPEN(CLAIM_NULL) ).  That is allowed any time the server is out of its grace period.
 
 
 
-Tigran.
+> 
+> 
+> 
+>>> 
+>>>> 
+>>>> diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+>>>> index f5c84c3..de0229b 100644
+>>>> --- a/fs/nfs/nfs3proc.c
+>>>> +++ b/fs/nfs/nfs3proc.c
+>>>> @@ -826,9 +826,10 @@ static void nfs3_proc_read_setup(struct nfs_read_data *data, struct rpc_message
+>>>> 	msg->rpc_proc = &nfs3_procedures[NFS3PROC_READ];
+>>>> }
+>>>> 
+>>>> -static void nfs3_proc_read_rpc_prepare(struct rpc_task *task, struct nfs_read_data *data)
+>>>> +static int nfs3_proc_read_rpc_prepare(struct rpc_task *task, struct nfs_read_data *data)
+>>>> {
+>>>> 	rpc_call_start(task);
+>>>> +	return 0;
+>>>> }
+>>>> 
+>>>> static int nfs3_write_done(struct rpc_task *task, struct nfs_write_data *data)
+>>>> @@ -847,9 +848,10 @@ static void nfs3_proc_write_setup(struct nfs_write_data *data, struct rpc_messag
+>>>> 	msg->rpc_proc = &nfs3_procedures[NFS3PROC_WRITE];
+>>>> }
+>>>> 
+>>>> -static void nfs3_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_write_data *data)
+>>>> +static int nfs3_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_write_data *data)
+>>>> {
+>>>> 	rpc_call_start(task);
+>>>> +	return 0;
+>>>> }
+>>>> 
+>>>> static void nfs3_proc_commit_rpc_prepare(struct rpc_task *task, struct nfs_commit_data *data)
+>>>> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+>>>> index ee81e35..a468b345 100644
+>>>> --- a/fs/nfs/nfs4_fs.h
+>>>> +++ b/fs/nfs/nfs4_fs.h
+>>>> @@ -135,6 +135,7 @@ struct nfs4_lock_state {
+>>>> 	struct list_head	ls_locks;	/* Other lock stateids */
+>>>> 	struct nfs4_state *	ls_state;	/* Pointer to open state */
+>>>> #define NFS_LOCK_INITIALIZED 0
+>>>> +#define NFS_LOCK_LOST        1
+>>>> 	unsigned long		ls_flags;
+>>>> 	struct nfs_seqid_counter	ls_seqid;
+>>>> 	nfs4_stateid		ls_stateid;
+>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>>> index cf11799..bcbcd07 100644
+>>>> --- a/fs/nfs/nfs4proc.c
+>>>> +++ b/fs/nfs/nfs4proc.c
+>>>> @@ -3907,15 +3907,19 @@ static void nfs4_proc_read_setup(struct nfs_read_data *data, struct rpc_message
+>>>> 	nfs41_init_sequence(&data->args.seq_args, &data->res.seq_res, 0);
+>>>> }
+>>>> 
+>>>> -static void nfs4_proc_read_rpc_prepare(struct rpc_task *task, struct nfs_read_data *data)
+>>>> +static int nfs4_proc_read_rpc_prepare(struct rpc_task *task, struct nfs_read_data *data)
+>>>> {
+>>>> 	if (nfs4_setup_sequence(NFS_SERVER(data->header->inode),
+>>>> 			&data->args.seq_args,
+>>>> 			&data->res.seq_res,
+>>>> 			task))
+>>>> -		return;
+>>>> -	nfs4_set_rw_stateid(&data->args.stateid, data->args.context,
+>>>> -			data->args.lock_context, FMODE_READ);
+>>>> +		return 0;
+>>>> +	if (nfs4_set_rw_stateid(&data->args.stateid, data->args.context,
+>>>> +				data->args.lock_context, FMODE_READ) == -EIO)
+>>>> +		return -EIO;
+>>>> +	if (unlikely(test_bit(NFS_CONTEXT_BAD, &data->args.context->flags)))
+>>>> +		return -EIO;
+>>>> +	return 0;
+>>>> }
+>>>> 
+>>>> static int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data)
+>>>> @@ -3990,15 +3994,19 @@ static void nfs4_proc_write_setup(struct nfs_write_data *data, struct rpc_messag
+>>>> 	nfs41_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
+>>>> }
+>>>> 
+>>>> -static void nfs4_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_write_data *data)
+>>>> +static int nfs4_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_write_data *data)
+>>>> {
+>>>> 	if (nfs4_setup_sequence(NFS_SERVER(data->header->inode),
+>>>> 			&data->args.seq_args,
+>>>> 			&data->res.seq_res,
+>>>> 			task))
+>>>> -		return;
+>>>> -	nfs4_set_rw_stateid(&data->args.stateid, data->args.context,
+>>>> -			data->args.lock_context, FMODE_WRITE);
+>>>> +		return 0;
+>>>> +	if (nfs4_set_rw_stateid(&data->args.stateid, data->args.context,
+>>>> +				data->args.lock_context, FMODE_WRITE) == -EIO)
+>>>> +		return -EIO;
+>>>> +	if (unlikely(test_bit(NFS_CONTEXT_BAD, &data->args.context->flags)))
+>>>> +		return -EIO;
+>>>> +	return 0;
+>>>> }
+>>>> 
+>>>> static void nfs4_proc_commit_rpc_prepare(struct rpc_task *task, struct nfs_commit_data *data)
+>>>> @@ -5380,6 +5388,11 @@ static int nfs4_lock_reclaim(struct nfs4_state *state, struct file_lock *request
+>>>> 	return err;
+>>>> }
+>>>> 
+>>>> +bool recover_locks = true;
+>>>> +module_param(recover_locks, bool, 0644);
+>>>> +MODULE_PARM_DESC(recovery_locks,
+>>>> +		 "If the server reports that a lock might be lost, "
+>>>> +		 "try to recovery it risking corruption.");
+>>>> static int nfs4_lock_expired(struct nfs4_state *state, struct file_lock *request)
+>>>> {
+>>>> 	struct nfs_server *server = NFS_SERVER(state->inode);
+>>>> @@ -5391,6 +5404,10 @@ static int nfs4_lock_expired(struct nfs4_state *state, struct file_lock *request
+>>>> 	err = nfs4_set_lock_state(state, request);
+>>>> 	if (err != 0)
+>>>> 		return err;
+>>>> +	if (!recover_locks) {
+>>>> +		set_bit(NFS_LOCK_LOST, &request->fl_u.nfs4_fl.owner->ls_flags);
+>>>> +		return 0;
+>>>> +	}
+>>>> 	do {
+>>>> 		if (test_bit(NFS_DELEGATED_STATE, &state->flags) != 0)
+>>>> 			return 0;
+>>>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>>>> index e22862f..4d103ff 100644
+>>>> --- a/fs/nfs/nfs4state.c
+>>>> +++ b/fs/nfs/nfs4state.c
+>>>> @@ -998,7 +998,9 @@ static int nfs4_copy_lock_stateid(nfs4_stateid *dst,
+>>>> 	fl_pid = lockowner->l_pid;
+>>>> 	spin_lock(&state->state_lock);
+>>>> 	lsp = __nfs4_find_lock_state(state, fl_owner, fl_pid, NFS4_ANY_LOCK_TYPE);
+>>>> -	if (lsp != NULL && test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags) != 0) {
+>>>> +	if (lsp && test_bit(NFS_LOCK_LOST, &lsp->ls_flags))
+>>>> +		ret = -EIO;
+>>>> +	else if (lsp != NULL && test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags) != 0) {
+>>>> 		nfs4_stateid_copy(dst, &lsp->ls_stateid);
+>>>> 		ret = 0;
+>>>> 		smp_rmb();
+>>>> diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+>>>> index c041c41..a8f57c7 100644
+>>>> --- a/fs/nfs/proc.c
+>>>> +++ b/fs/nfs/proc.c
+>>>> @@ -623,9 +623,10 @@ static void nfs_proc_read_setup(struct nfs_read_data *data, struct rpc_message *
+>>>> 	msg->rpc_proc = &nfs_procedures[NFSPROC_READ];
+>>>> }
+>>>> 
+>>>> -static void nfs_proc_read_rpc_prepare(struct rpc_task *task, struct nfs_read_data *data)
+>>>> +static int nfs_proc_read_rpc_prepare(struct rpc_task *task, struct nfs_read_data *data)
+>>>> {
+>>>> 	rpc_call_start(task);
+>>>> +	return 0;
+>>>> }
+>>>> 
+>>>> static int nfs_write_done(struct rpc_task *task, struct nfs_write_data *data)
+>>>> @@ -644,9 +645,10 @@ static void nfs_proc_write_setup(struct nfs_write_data *data, struct rpc_message
+>>>> 	msg->rpc_proc = &nfs_procedures[NFSPROC_WRITE];
+>>>> }
+>>>> 
+>>>> -static void nfs_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_write_data *data)
+>>>> +static int nfs_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_write_data *data)
+>>>> {
+>>>> 	rpc_call_start(task);
+>>>> +	return 0;
+>>>> }
+>>>> 
+>>>> static void nfs_proc_commit_rpc_prepare(struct rpc_task *task, struct nfs_commit_data *data)
+>>>> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+>>>> index 70a26c6..31db5c3 100644
+>>>> --- a/fs/nfs/read.c
+>>>> +++ b/fs/nfs/read.c
+>>>> @@ -513,9 +513,10 @@ static void nfs_readpage_release_common(void *calldata)
+>>>> void nfs_read_prepare(struct rpc_task *task, void *calldata)
+>>>> {
+>>>> 	struct nfs_read_data *data = calldata;
+>>>> -	NFS_PROTO(data->header->inode)->read_rpc_prepare(task, data);
+>>>> -	if (unlikely(test_bit(NFS_CONTEXT_BAD, &data->args.context->flags)))
+>>>> -		rpc_exit(task, -EIO);
+>>>> +	int err;
+>>>> +	err = NFS_PROTO(data->header->inode)->read_rpc_prepare(task, data);
+>>>> +	if (err)
+>>>> +		rpc_exit(task, err);
+>>>> }
+>>>> 
+>>>> static const struct rpc_call_ops nfs_read_common_ops = {
+>>>> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+>>>> index f1bdb72..7816801 100644
+>>>> --- a/fs/nfs/write.c
+>>>> +++ b/fs/nfs/write.c
+>>>> @@ -1265,9 +1265,10 @@ EXPORT_SYMBOL_GPL(nfs_pageio_reset_write_mds);
+>>>> void nfs_write_prepare(struct rpc_task *task, void *calldata)
+>>>> {
+>>>> 	struct nfs_write_data *data = calldata;
+>>>> -	NFS_PROTO(data->header->inode)->write_rpc_prepare(task, data);
+>>>> -	if (unlikely(test_bit(NFS_CONTEXT_BAD, &data->args.context->flags)))
+>>>> -		rpc_exit(task, -EIO);
+>>>> +	int err;
+>>>> +	err = NFS_PROTO(data->header->inode)->write_rpc_prepare(task, data);
+>>>> +	if (err)
+>>>> +		rpc_exit(task, err);
+>>>> }
+>>>> 
+>>>> void nfs_commit_prepare(struct rpc_task *task, void *calldata)
+>>>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+>>>> index 8651574..c71e12b 100644
+>>>> --- a/include/linux/nfs_xdr.h
+>>>> +++ b/include/linux/nfs_xdr.h
+>>>> @@ -1419,12 +1419,12 @@ struct nfs_rpc_ops {
+>>>> 	void	(*read_setup)   (struct nfs_read_data *, struct rpc_message *);
+>>>> 	void	(*read_pageio_init)(struct nfs_pageio_descriptor *, struct inode *,
+>>>> 				    const struct nfs_pgio_completion_ops *);
+>>>> -	void	(*read_rpc_prepare)(struct rpc_task *, struct nfs_read_data *);
+>>>> +	int	(*read_rpc_prepare)(struct rpc_task *, struct nfs_read_data *);
+>>>> 	int	(*read_done)  (struct rpc_task *, struct nfs_read_data *);
+>>>> 	void	(*write_setup)  (struct nfs_write_data *, struct rpc_message *);
+>>>> 	void	(*write_pageio_init)(struct nfs_pageio_descriptor *, struct inode *, int,
+>>>> 				     const struct nfs_pgio_completion_ops *);
+>>>> -	void	(*write_rpc_prepare)(struct rpc_task *, struct nfs_write_data *);
+>>>> +	int	(*write_rpc_prepare)(struct rpc_task *, struct nfs_write_data *);
+>>>> 	int	(*write_done)  (struct rpc_task *, struct nfs_write_data *);
+>>>> 	void	(*commit_setup) (struct nfs_commit_data *, struct rpc_message *);
+>>>> 	void	(*commit_rpc_prepare)(struct rpc_task *, struct nfs_commit_data *);
+>>> 
+>>> 
+>> 
+> 
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
