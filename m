@@ -1,80 +1,191 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f182.google.com ([209.85.216.182]:36895 "EHLO
-	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754240Ab3H2QvK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Aug 2013 12:51:10 -0400
-Received: by mail-qc0-f182.google.com with SMTP id k18so303607qcv.41
-        for <linux-nfs@vger.kernel.org>; Thu, 29 Aug 2013 09:51:09 -0700 (PDT)
-Message-ID: <521F7BFB.8020202@gmail.com>
-Date: Thu, 29 Aug 2013 12:51:07 -0400
-From: Bryan Schumaker <bjschuma@gmail.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Adamson, Andy" <William.Adamson@netapp.com>
-Subject: Re: [PATCH v2 03/16] SUNRPC: Cleanup rpc_setup_pipedir
-References: <1377718821-28159-1-git-send-email-Trond.Myklebust@netapp.com>  <1377718821-28159-2-git-send-email-Trond.Myklebust@netapp.com>  <1377718821-28159-3-git-send-email-Trond.Myklebust@netapp.com>  <521F6BAF.7000504@gmail.com> <1377792920.3202.4.camel@leira.trondhjem.org>
-In-Reply-To: <1377792920.3202.4.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:31192 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757594Ab3HPWoU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Aug 2013 18:44:20 -0400
+Date: Fri, 16 Aug 2013 16:40:34 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jan Stancek <jstancek@redhat.com>, linux-nfs@vger.kernel.org,
+        bfields@redhat.com, Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
+Message-ID: <20130816164034.58975e5b@corrin.poochiereds.net>
+In-Reply-To: <20130816191634.GA19942@fieldses.org>
+References: <682ebd8ecc7309b18396da356a0feb38bfa41674.1372692346.git.jstancek@redhat.com>
+	<20130708201643.GI29071@fieldses.org>
+	<1157529877.873319.1373353194344.JavaMail.root@redhat.com>
+	<20130726220924.GG30651@fieldses.org>
+	<20130815100244.370de645@corrin.poochiereds.net>
+	<20130815141917.GR17781@fieldses.org>
+	<20130816150454.2aacd5ff@corrin.poochiereds.net>
+	<20130816191634.GA19942@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/29/2013 12:15 PM, Myklebust, Trond wrote:
-> On Thu, 2013-08-29 at 11:41 -0400, Bryan Schumaker wrote:
->> Hi Trond,
->>
->> This patch is causing this bug for me on my testing server:
->>
->> [    6.742695] BUG: unable to handle kernel NULL pointer dereference at           (null)
->> [    6.742791] IP: [<ffffffff812de260>] skip_spaces+0x30/0x30
->> [    6.742848] PGD 1d719067 PUD 1de21067 PMD 0 
->> [    6.742900] Oops: 0000 [#1] PREEMPT SMP 
->> [    6.742949] Modules linked in: nfsd auth_rpcgss oid_registry nfs_acl snd_hda_intel pcspkr snd_hda_codec cirrus syscopyarea snd_hwdep sysfillrect psmouse snd_pcm serio_raw snd_page_alloc sysimgblt evdev snd_timer snd soundcore drm_kms_helper ttm drm i2c_piix4 i2c_core intel_agp intel_gtt button processor nfs lockd sunrpc fscache ata_generic pata_acpi btrfs libcrc32c xor zlib_deflate ata_piix crc32c_intel uhci_hcd libata scsi_mod usbcore usb_common raid6_pq floppy virtio_balloon virtio_net virtio_pci virtio_blk virtio_ring virtio
->> [    6.743339] CPU: 0 PID: 211 Comm: rpc.nfsd Not tainted 3.11.0-rc2-ARCH+ #250
->> [    6.743339] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
->> [    6.743339] task: ffff88001bfc5c20 ti: ffff88001dff2000 task.ti: ffff88001dff2000
->> [    6.743339] RIP: 0010:[<ffffffff812de260>]  [<ffffffff812de260>] skip_spaces+0x30/0x30
->> [    6.743339] RSP: 0018:ffff88001dff3bc8  EFLAGS: 00010282
->> [    6.743339] RAX: ffffffffa025cb20 RBX: 0000000000000000 RCX: 0000000000000000
->> [    6.743339] RDX: ffff88001de62838 RSI: 0000000000000000 RDI: 0000000000000000
->> [    6.743339] RBP: ffff88001dff3bf0 R08: 0000000000017360 R09: 0000000000000000
->> [    6.743339] R10: ffff88001e401700 R11: ffff88001dff3fd8 R12: ffff88001df2a000
->> [    6.743339] R13: ffff88001cebca00 R14: 0000000000000000 R15: 0000000000000000
->> [    6.743339] FS:  00007f04a4159700(0000) GS:ffff88001fc00000(0000) knlGS:0000000000000000
->> [    6.743339] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
->> [    6.743339] CR2: 0000000000000000 CR3: 000000001df02000 CR4: 00000000000407f0
->> [    6.743339] Stack:
->> [    6.743339]  ffffffffa0255dbe 0000000000000000 0000000000000000 ffff88001dff3d38
->> [    6.743339]  ffff88001cebca00 ffff88001dff3c38 ffffffffa023a0d9 ffffffff81511052
->> [    6.743339]  ffff88001de62800 00000000b2b4b509 ffff88001dff3d38 ffff88001cebca00
->> [    6.743339] Call Trace:
->> [    6.743339]  [<ffffffffa0255dbe>] ? rpc_d_lookup_sb+0x2e/0x50 [sunrpc]
->> [    6.743339]  [<ffffffffa023a0d9>] rpc_setup_pipedir_sb+0x39/0xf0 [sunrpc]
->> [    6.743339]  [<ffffffff81511052>] ? mutex_lock+0x12/0x30
->> [    6.743339]  [<ffffffffa023c653>] rpc_new_client+0x233/0x450 [sunrpc]
->> [    6.743339]  [<ffffffffa023d3ec>] rpc_create+0xcc/0x250 [sunrpc]
->> [    6.743339]  [<ffffffffa024f1ec>] rpcb_create_local_unix+0x5c/0xe0 [sunrpc]
->> [    6.743339]  [<ffffffffa024ff98>] rpcb_create_local+0x68/0x80 [sunrpc]
->> [    6.743339]  [<ffffffffa0249a3e>] svc_rpcb_setup+0x1e/0x40 [sunrpc]
->> [    6.743339]  [<ffffffffa0249a89>] svc_bind+0x29/0x30 [sunrpc]
->> [    6.743339]  [<ffffffffa0498475>] nfsd_create_serv+0xd5/0x1a0 [nfsd]
->> [    6.743339]  [<ffffffffa049a000>] write_ports+0x2f0/0x350 [nfsd]
->> [    6.743339]  [<ffffffff811335ae>] ? __get_free_pages+0xe/0x50
->> [    6.743339]  [<ffffffff81133606>] ? get_zeroed_page+0x16/0x20
->> [    6.743339]  [<ffffffffa0499d10>] ? write_leasetime+0xa0/0xa0 [nfsd]
->> [    6.743339]  [<ffffffffa0499178>] nfsctl_transaction_write+0x48/0x80 [nfsd]
->> [    6.743339]  [<ffffffff811997cd>] vfs_write+0xbd/0x1e0
->> [    6.743339]  [<ffffffff8119a229>] SyS_write+0x49/0xa0
->> [    6.743339]  [<ffffffff8151b99d>] system_call_fastpath+0x1a/0x1f
->> [    6.743339] Code: 89 f8 48 89 e5 f6 82 00 2a 64 81 20 74 15 0f 1f 44 00 00 48 83 c0 01 0f b6 10 f6 82 00 2a 64 81 20 75 f0 5d c3 66 0f 1f 44 00 00 <80> 3f 00 55 48 89 e5 74 15 48 89 f8 0f 1f 40 00 48 83 c0 01 80 
->> [    6.743339] RIP  [<ffffffff812de260>] skip_spaces+0x30/0x30
->> [    6.743339]  RSP <ffff88001dff3bc8>
->> [    6.743339] CR2: 0000000000000000
->> [    6.750025] ---[ end trace 112065af093b07b3 ]---
-> 
-> Argh! Thanks for bisecting that... The attached patch should fix it...
+On Fri, 16 Aug 2013 15:16:34 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-It did, thanks!
+> On Fri, Aug 16, 2013 at 03:04:54PM -0400, Jeff Layton wrote:
+> > On Thu, 15 Aug 2013 10:19:18 -0400
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > > On Thu, Aug 15, 2013 at 10:02:44AM -0400, Jeff Layton wrote:
+> > > > On Fri, 26 Jul 2013 18:09:24 -0400
+> > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > 
+> > > > > On Tue, Jul 09, 2013 at 02:59:54AM -0400, Jan Stancek wrote:
+> > > > > > 
+> > > > > > 
+> > > > > > 
+> > > > > > 
+> > > > > > ----- Original Message -----
+> > > > > > > From: "J. Bruce Fields" <bfields@fieldses.org>
+> > > > > > > To: "Jan Stancek" <jstancek@redhat.com>
+> > > > > > > Cc: linux-nfs@vger.kernel.org, bfields@redhat.com, "Trond Myklebust" <Trond.Myklebust@netapp.com>
+> > > > > > > Sent: Monday, 8 July, 2013 10:16:43 PM
+> > > > > > > Subject: Re: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
+> > > > > > > 
+> > > > > > > On Mon, Jul 01, 2013 at 05:32:34PM +0200, Jan Stancek wrote:
+> > > > > > > > Starting with commit:
+> > > > > > > >   commit f994c43d19a9116727d4c228d3f13db595bff562
+> > > > > > > >   Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > > > > > > >   Date:   Thu Nov 1 12:14:14 2012 -0400
+> > > > > > > >       SUNRPC: Clean up rpc_bind_new_program
+> > > > > > > > 
+> > > > > > > > operations on directory mounted with -onfsvers=3,tcp,sec=krb5 fail
+> > > > > > > > with Input/Output error after ~60 second timeout. This is presumably
+> > > > > > > > because upcalls for 'nfsacl' are not getting anywhere.
+> > > > > > > > 
+> > > > > > > > This patch enables pipe dir for nfsacl_program and changes its name
+> > > > > > > > to 'nfs'. This name will be used in upcalls and whole setup should
+> > > > > > > > work as it did in past - just with nfs/hostname principal.
+> > > > > > > 
+> > > > > > > I think this was the problem that nfs-utils commits
+> > > > > > > 
+> > > > > > > 	a1f8afc560 gssd: Remove insane sanity checks of the service name
+> > > > > > > 	a56989b665 gssd: Handle the target name correctly
+> > > > > > > 
+> > > > > > > were supposed to fix?
+> > > > > > > 
+> > > > > > > But perhaps the kernel needs a fix too to fix a regression with old
+> > > > > > > userspace.
+> > > > > > 
+> > > > > > I saw this error with nfs-utils.1.2.9-rc1, which should already contain
+> > > > > > those 2 commits.
+> > > > > 
+> > > > > Actually, I think your patch is just a subset of Trond's
+> > > > > http://mid.gmane.org/<4FA345DA4F4AE44899BD2B03EEEC2FA9092EC392@SACEXCMBX04-PRD.hq.netapp.com>
+> > > > > 
+> > > > > Trond, is there a reason that never got applied?
+> > > > > 
+> > > > > --b.
+> > > > > 
+> > > > 
+> > > > Hmm...gmane just says "No such article" when I feed it the above URL.
+> > > > Do you know what the title of the email was?
+> > > 
+> > > Argh sorry hadn't noticed that was private mail.
+> > > 
+> > > Last I checked actually neither of these patches fixed v3/krb5 for me.
+> > > 
+> > > --b.
+> > > 
+> > > Here is v2 with appropriate service names for mountd, statd, etc.
+> > > 
+> > > 
+> > 
+> > Ok, I tested both this patch and Jan's. This one doesn't help at all,
+> > but Jan's does seem to fix the problem. I'm still looking over the
+> > kernel and userland code to determine whether it's the best fix or
+> > not...
 > 
+> Ah, crap, sorry, I missed that Jan's modified rpc_program.name and
+> Trond's rpc_program.service_name.
 > 
+> As Simo pointed out in irc yesterday this can't be right:
+> 
+> > > diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+> > > index 909dc0c..b19dab8 100644
+> > > --- a/net/sunrpc/auth_gss/auth_gss.c
+> > > +++ b/net/sunrpc/auth_gss/auth_gss.c
+> > > @@ -403,7 +403,9 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+> > >  				   gss_msg->uid);
+> > >  	p += gss_msg->msg.len;
+> > >  	if (clnt->cl_principal) {
+> > > -		len = sprintf(p, "target=%s ", clnt->cl_principal);
+> > > +		len = sprintf(p, "target=%s@%s ",
+> > > +				clnt->cl_program->service_name,
+> > > +				clnt->cl_principal);
+> 
+> I'd think this should instead be going in the "service_name" field, but
+> I'm not sure.
+> 
+
+The service= field is...ahem...weird. It seems to also signal that you
+want to use machine creds, and clearly if you're a regular old user you
+don't want to be doing that.
+
+I've been able to get Trond's patch to work, but had to also couple it
+with the patch below. Part of the problem seems to have been that the
+nfsacl client isn't getting a rpc_pipe dir instantiated because
+pipe_dir_name isn't set (as Jan's patch also points out).
+
+We could just as easily stick this in the "nfs" directory though.
+
+Thoughts?
+
+8<---------------------------------------------------------------
+
+>From 3a181b99f7b01fff0c7d0412910c374fc2ebcdfd Mon Sep 17 00:00:00 2001
+From: Jeff Layton <jlayton@redhat.com>
+Date: Fri, 16 Aug 2013 15:17:08 -0400
+Subject: [PATCH] rpc_pipe: add nfsacl subdir
+
+For the gssd file for nfsacl.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/nfs3client.c   | 1 +
+ net/sunrpc/rpc_pipe.c | 5 +++++
+ 2 files changed, 6 insertions(+)
+
+diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
+index 20b3693..5dc6bf0 100644
+--- a/fs/nfs/nfs3client.c
++++ b/fs/nfs/nfs3client.c
+@@ -15,6 +15,7 @@ const struct rpc_program nfsacl_program = {
+ 	.nrvers			= ARRAY_SIZE(nfsacl_version),
+ 	.version		= nfsacl_version,
+ 	.stats			= &nfsacl_rpcstat,
++	.pipe_dir_name		= "nfsacl",
+ };
+ 
+ /*
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 83b196d..42ce94c 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -1015,6 +1015,7 @@ enum {
+ 	RPCAUTH_lockd,
+ 	RPCAUTH_mount,
+ 	RPCAUTH_nfs,
++	RPCAUTH_nfsacl,
+ 	RPCAUTH_portmap,
+ 	RPCAUTH_statd,
+ 	RPCAUTH_nfsd4_cb,
+@@ -1036,6 +1037,10 @@ static const struct rpc_filelist files[] = {
+ 		.name = "nfs",
+ 		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
+ 	},
++	[RPCAUTH_nfsacl] = {
++		.name = "nfsacl",
++		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
++	},
+ 	[RPCAUTH_portmap] = {
+ 		.name = "portmap",
+ 		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
+-- 
+1.8.3.1
 
