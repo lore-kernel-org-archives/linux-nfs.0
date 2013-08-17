@@ -1,379 +1,162 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:37860 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751095Ab3HPKii (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Aug 2013 06:38:38 -0400
-Date: Fri, 16 Aug 2013 20:38:21 +1000
-From: NeilBrown <neilb@suse.de>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: NFS <linux-nfs@vger.kernel.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Bryan Schumaker <bjschuma@netapp.com>
-Subject: Re: [PATCH/RFC]  Don't try to recover NFS locks when they are lost.
-Message-ID: <20130816203821.1a61f3ce@notabene.brown>
-In-Reply-To: <20130815084706.4811d74e@corrin.poochiereds.net>
-References: <20130815123604.47755509@notabene.brown>
-	<20130815084706.4811d74e@corrin.poochiereds.net>
+Received: from shadbolt.e.decadent.org.uk ([88.96.1.126]:59897 "EHLO
+	shadbolt.e.decadent.org.uk" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754409Ab3HQUCC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Aug 2013 16:02:02 -0400
+Message-ID: <1376769691.2544.4.camel@deadeye.wl.decadent.org.uk>
+Subject: Re: [PATCH] jfs: fix readdir cookie incompatibility with NFSv4
+From: Ben Hutchings <ben@decadent.org.uk>
+To: Karl Schmidt <karl@xtronics.com>, Jonathan McDowell <noodles@earth.li>
+Cc: Dave Kleikamp <dave.kleikamp@oracle.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        jfs-discussion@lists.sourceforge.net, 714974@bugs.debian.org,
+        linux-nfs@vger.kernel.org, Christian Kujau <lists@nerdbynature.de>
+Date: Sat, 17 Aug 2013 22:01:31 +0200
+In-Reply-To: <alpine.DEB.2.10.1308151420140.7081@trent.utfs.org>
+References: <1373245980.3428.46.camel@deadeye.wl.decadent.org.uk>
+	 <520554A5.3060401@xtronics.com>
+	 <alpine.DEB.2.10.1308092352550.7081@trent.utfs.org>
+	 <alpine.DEB.2.10.1308120113360.7081@trent.utfs.org>
+	 <alpine.DEB.2.10.1308120122500.7081@trent.utfs.org>
+	 <20130812162924.GB2395@fieldses.org> <520C50F7.3010209@oracle.com>
+	 <alpine.DEB.2.10.1308142122550.7081@trent.utfs.org>
+	 <alpine.DEB.2.10.1308150001530.7081@trent.utfs.org>
+	 <520D3EA7.1010109@oracle.com>
+	 <alpine.DEB.2.10.1308151420140.7081@trent.utfs.org>
+Content-Type: multipart/signed; micalg="pgp-sha512";
+	protocol="application/pgp-signature"; boundary="=-N0GdbyaQyS+aU+67diJ7"
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/IthpTzERq4fHU/NatpgtiJ5"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/IthpTzERq4fHU/NatpgtiJ5
-Content-Type: text/plain; charset=US-ASCII
+
+--=-N0GdbyaQyS+aU+67diJ7
+Content-Type: multipart/mixed; boundary="=-0h7l+umR75/1W+yhr4V1"
+
+
+--=-0h7l+umR75/1W+yhr4V1
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, 15 Aug 2013 08:47:06 -0400 Jeff Layton <jlayton@redhat.com> wrote:
-
-> On Thu, 15 Aug 2013 12:36:04 +1000
-> NeilBrown <neilb@suse.de> wrote:
+On Thu, 2013-08-15 at 14:26 -0700, Christian Kujau wrote:
+> On Thu, 15 Aug 2013 at 15:48, Dave Kleikamp wrote:
+> > This patch replaces the one I posted yesterday. I like this better sinc=
+e
+> > it doesn't require fixing existing on-disk cookies or skipping a
+> > position in the in-inode index table.
 >=20
-> >=20
-> >=20
-> > When an NFS (V4 specifically) client loses contact with the server it c=
-an
-> > lose any locks that it holds.
-> > Currently when it reconnects to the server it simply tries to reclaim
-> > those locks.  This might succeed even though some other client has held=
- and
-> > released a lock in the mean time.  So the first client might think the =
-file
-> > is unchanged, but it isn't.  This isn't good.
-> >=20
-> > If, when recovery happens, the locks cannot be claimed because some oth=
-er
-> > client still holds the lock, then  we get a message in the kernel logs,=
- but
-> > the client can still write.  So two clients can both think they have a =
-lock
-> > and can both write at the same time.  This is equally not good.
-> >=20
-> > There was a patch a while ago
-> >   http://comments.gmane.org/gmane.linux.nfs/41917
-> >=20
-> > which tried to address some of this, but it didn't seem to go anywhere.
-> > That patch would also send a signal to the process.  That might be usef=
-ul
-> > but I'm really just interested in failing the writes.
-> > For NFSv4 (unlike v2/v3) there is a strong link between the lock and the
-> > write request so we can fairly easily fail an IO of the lock is gone.
-> >=20
-> > The patch below attempts to do this.  Does it make sense?
-> > Because this is a fairly big change I introduces a module parameter
-> > "recover_locks" which defaults to true (the current behaviour) but can =
-be set
-> > to "false" to tell the client not to try to recover things that were lo=
-st.
-> >=20
-> > Comments?
-> >=20
-> > Thanks,
-> > NeilBrown
-> >=20
-> >=20
+> Thanks. Applied to 3.11-rc5 and tested, no more "readdir loop" messages=
+=20
+> and with unique inode numbers, great!
 >=20
-> Failing a read or write when we can't recover a lock over the range
-> seems reasonable to me. IIUC though, you're also saying that we
-> shouldn't try to recover locks when the lease has expired? If so, then
-> that seems wrong...
->=20
-> Isn't it the responsibility of the server to not allow a lock to be
-> reclaimed when there has been a conflicting lock in the interim? It's
-> quite possible (and even advantageous) for a server to hold onto a lock
-> for a client that has missed renewing its lease when no other client has
-> made a conflicting lock request.
+>   Tested-by: Christian Kujau <lists@nerdbynature.de>
 
-Hi Jeff,
-I had thought that too.  But when I looked I could find no evidence for it.
-The only time a client can 'reclaim' a lock is during the grace period when
-the server might have lost the lock due to a reboot.
-The case I'm looking at is when neither host rebooted but there was a netwo=
-rk
-partition.
-I think that if the server is to preserve the lock while no other client
-contends it, it has to preserve the whole state and not return
-NFS4ERR_EXPIRED.
-Once the client gets NFS4ERR_EXPIRED it must assume that all related locks
-may have been subject to conflicting locks from other clients.
+Karl and Jonathan, could you test the attached backport to 3.2?
 
-Thanks,
-NeilBrown
+(Instructions for rebuilding the Debian kernel package are at:
+<http://kernel-handbook.alioth.debian.org/ch-common-tasks.html#s-common-off=
+icial>)
 
+Ben.
 
->=20
-> >=20
-> > diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-> > index f5c84c3..de0229b 100644
-> > --- a/fs/nfs/nfs3proc.c
-> > +++ b/fs/nfs/nfs3proc.c
-> > @@ -826,9 +826,10 @@ static void nfs3_proc_read_setup(struct nfs_read_d=
-ata *data, struct rpc_message
-> >  	msg->rpc_proc =3D &nfs3_procedures[NFS3PROC_READ];
-> >  }
-> > =20
-> > -static void nfs3_proc_read_rpc_prepare(struct rpc_task *task, struct n=
-fs_read_data *data)
-> > +static int nfs3_proc_read_rpc_prepare(struct rpc_task *task, struct nf=
-s_read_data *data)
-> >  {
-> >  	rpc_call_start(task);
-> > +	return 0;
-> >  }
-> > =20
-> >  static int nfs3_write_done(struct rpc_task *task, struct nfs_write_dat=
-a *data)
-> > @@ -847,9 +848,10 @@ static void nfs3_proc_write_setup(struct nfs_write=
-_data *data, struct rpc_messag
-> >  	msg->rpc_proc =3D &nfs3_procedures[NFS3PROC_WRITE];
-> >  }
-> > =20
-> > -static void nfs3_proc_write_rpc_prepare(struct rpc_task *task, struct =
-nfs_write_data *data)
-> > +static int nfs3_proc_write_rpc_prepare(struct rpc_task *task, struct n=
-fs_write_data *data)
-> >  {
-> >  	rpc_call_start(task);
-> > +	return 0;
-> >  }
-> > =20
-> >  static void nfs3_proc_commit_rpc_prepare(struct rpc_task *task, struct=
- nfs_commit_data *data)
-> > diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-> > index ee81e35..a468b345 100644
-> > --- a/fs/nfs/nfs4_fs.h
-> > +++ b/fs/nfs/nfs4_fs.h
-> > @@ -135,6 +135,7 @@ struct nfs4_lock_state {
-> >  	struct list_head	ls_locks;	/* Other lock stateids */
-> >  	struct nfs4_state *	ls_state;	/* Pointer to open state */
-> >  #define NFS_LOCK_INITIALIZED 0
-> > +#define NFS_LOCK_LOST        1
-> >  	unsigned long		ls_flags;
-> >  	struct nfs_seqid_counter	ls_seqid;
-> >  	nfs4_stateid		ls_stateid;
-> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> > index cf11799..bcbcd07 100644
-> > --- a/fs/nfs/nfs4proc.c
-> > +++ b/fs/nfs/nfs4proc.c
-> > @@ -3907,15 +3907,19 @@ static void nfs4_proc_read_setup(struct nfs_rea=
-d_data *data, struct rpc_message
-> >  	nfs41_init_sequence(&data->args.seq_args, &data->res.seq_res, 0);
-> >  }
-> > =20
-> > -static void nfs4_proc_read_rpc_prepare(struct rpc_task *task, struct n=
-fs_read_data *data)
-> > +static int nfs4_proc_read_rpc_prepare(struct rpc_task *task, struct nf=
-s_read_data *data)
-> >  {
-> >  	if (nfs4_setup_sequence(NFS_SERVER(data->header->inode),
-> >  			&data->args.seq_args,
-> >  			&data->res.seq_res,
-> >  			task))
-> > -		return;
-> > -	nfs4_set_rw_stateid(&data->args.stateid, data->args.context,
-> > -			data->args.lock_context, FMODE_READ);
-> > +		return 0;
-> > +	if (nfs4_set_rw_stateid(&data->args.stateid, data->args.context,
-> > +				data->args.lock_context, FMODE_READ) =3D=3D -EIO)
-> > +		return -EIO;
-> > +	if (unlikely(test_bit(NFS_CONTEXT_BAD, &data->args.context->flags)))
-> > +		return -EIO;
-> > +	return 0;
-> >  }
-> > =20
-> >  static int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_=
-data *data)
-> > @@ -3990,15 +3994,19 @@ static void nfs4_proc_write_setup(struct nfs_wr=
-ite_data *data, struct rpc_messag
-> >  	nfs41_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
-> >  }
-> > =20
-> > -static void nfs4_proc_write_rpc_prepare(struct rpc_task *task, struct =
-nfs_write_data *data)
-> > +static int nfs4_proc_write_rpc_prepare(struct rpc_task *task, struct n=
-fs_write_data *data)
-> >  {
-> >  	if (nfs4_setup_sequence(NFS_SERVER(data->header->inode),
-> >  			&data->args.seq_args,
-> >  			&data->res.seq_res,
-> >  			task))
-> > -		return;
-> > -	nfs4_set_rw_stateid(&data->args.stateid, data->args.context,
-> > -			data->args.lock_context, FMODE_WRITE);
-> > +		return 0;
-> > +	if (nfs4_set_rw_stateid(&data->args.stateid, data->args.context,
-> > +				data->args.lock_context, FMODE_WRITE) =3D=3D -EIO)
-> > +		return -EIO;
-> > +	if (unlikely(test_bit(NFS_CONTEXT_BAD, &data->args.context->flags)))
-> > +		return -EIO;
-> > +	return 0;
-> >  }
-> > =20
-> >  static void nfs4_proc_commit_rpc_prepare(struct rpc_task *task, struct=
- nfs_commit_data *data)
-> > @@ -5380,6 +5388,11 @@ static int nfs4_lock_reclaim(struct nfs4_state *=
-state, struct file_lock *request
-> >  	return err;
-> >  }
-> > =20
-> > +bool recover_locks =3D true;
-> > +module_param(recover_locks, bool, 0644);
-> > +MODULE_PARM_DESC(recovery_locks,
-> > +		 "If the server reports that a lock might be lost, "
-> > +		 "try to recovery it risking corruption.");
-> >  static int nfs4_lock_expired(struct nfs4_state *state, struct file_loc=
-k *request)
-> >  {
-> >  	struct nfs_server *server =3D NFS_SERVER(state->inode);
-> > @@ -5391,6 +5404,10 @@ static int nfs4_lock_expired(struct nfs4_state *=
-state, struct file_lock *request
-> >  	err =3D nfs4_set_lock_state(state, request);
-> >  	if (err !=3D 0)
-> >  		return err;
-> > +	if (!recover_locks) {
-> > +		set_bit(NFS_LOCK_LOST, &request->fl_u.nfs4_fl.owner->ls_flags);
-> > +		return 0;
-> > +	}
-> >  	do {
-> >  		if (test_bit(NFS_DELEGATED_STATE, &state->flags) !=3D 0)
-> >  			return 0;
-> > diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> > index e22862f..4d103ff 100644
-> > --- a/fs/nfs/nfs4state.c
-> > +++ b/fs/nfs/nfs4state.c
-> > @@ -998,7 +998,9 @@ static int nfs4_copy_lock_stateid(nfs4_stateid *dst,
-> >  	fl_pid =3D lockowner->l_pid;
-> >  	spin_lock(&state->state_lock);
-> >  	lsp =3D __nfs4_find_lock_state(state, fl_owner, fl_pid, NFS4_ANY_LOCK=
-_TYPE);
-> > -	if (lsp !=3D NULL && test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags) !=
-=3D 0) {
-> > +	if (lsp && test_bit(NFS_LOCK_LOST, &lsp->ls_flags))
-> > +		ret =3D -EIO;
-> > +	else if (lsp !=3D NULL && test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_fla=
-gs) !=3D 0) {
-> >  		nfs4_stateid_copy(dst, &lsp->ls_stateid);
-> >  		ret =3D 0;
-> >  		smp_rmb();
-> > diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-> > index c041c41..a8f57c7 100644
-> > --- a/fs/nfs/proc.c
-> > +++ b/fs/nfs/proc.c
-> > @@ -623,9 +623,10 @@ static void nfs_proc_read_setup(struct nfs_read_da=
-ta *data, struct rpc_message *
-> >  	msg->rpc_proc =3D &nfs_procedures[NFSPROC_READ];
-> >  }
-> > =20
-> > -static void nfs_proc_read_rpc_prepare(struct rpc_task *task, struct nf=
-s_read_data *data)
-> > +static int nfs_proc_read_rpc_prepare(struct rpc_task *task, struct nfs=
-_read_data *data)
-> >  {
-> >  	rpc_call_start(task);
-> > +	return 0;
-> >  }
-> > =20
-> >  static int nfs_write_done(struct rpc_task *task, struct nfs_write_data=
- *data)
-> > @@ -644,9 +645,10 @@ static void nfs_proc_write_setup(struct nfs_write_=
-data *data, struct rpc_message
-> >  	msg->rpc_proc =3D &nfs_procedures[NFSPROC_WRITE];
-> >  }
-> > =20
-> > -static void nfs_proc_write_rpc_prepare(struct rpc_task *task, struct n=
-fs_write_data *data)
-> > +static int nfs_proc_write_rpc_prepare(struct rpc_task *task, struct nf=
-s_write_data *data)
-> >  {
-> >  	rpc_call_start(task);
-> > +	return 0;
-> >  }
-> > =20
-> >  static void nfs_proc_commit_rpc_prepare(struct rpc_task *task, struct =
-nfs_commit_data *data)
-> > diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-> > index 70a26c6..31db5c3 100644
-> > --- a/fs/nfs/read.c
-> > +++ b/fs/nfs/read.c
-> > @@ -513,9 +513,10 @@ static void nfs_readpage_release_common(void *call=
-data)
-> >  void nfs_read_prepare(struct rpc_task *task, void *calldata)
-> >  {
-> >  	struct nfs_read_data *data =3D calldata;
-> > -	NFS_PROTO(data->header->inode)->read_rpc_prepare(task, data);
-> > -	if (unlikely(test_bit(NFS_CONTEXT_BAD, &data->args.context->flags)))
-> > -		rpc_exit(task, -EIO);
-> > +	int err;
-> > +	err =3D NFS_PROTO(data->header->inode)->read_rpc_prepare(task, data);
-> > +	if (err)
-> > +		rpc_exit(task, err);
-> >  }
-> > =20
-> >  static const struct rpc_call_ops nfs_read_common_ops =3D {
-> > diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> > index f1bdb72..7816801 100644
-> > --- a/fs/nfs/write.c
-> > +++ b/fs/nfs/write.c
-> > @@ -1265,9 +1265,10 @@ EXPORT_SYMBOL_GPL(nfs_pageio_reset_write_mds);
-> >  void nfs_write_prepare(struct rpc_task *task, void *calldata)
-> >  {
-> >  	struct nfs_write_data *data =3D calldata;
-> > -	NFS_PROTO(data->header->inode)->write_rpc_prepare(task, data);
-> > -	if (unlikely(test_bit(NFS_CONTEXT_BAD, &data->args.context->flags)))
-> > -		rpc_exit(task, -EIO);
-> > +	int err;
-> > +	err =3D NFS_PROTO(data->header->inode)->write_rpc_prepare(task, data);
-> > +	if (err)
-> > +		rpc_exit(task, err);
-> >  }
-> > =20
-> >  void nfs_commit_prepare(struct rpc_task *task, void *calldata)
-> > diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> > index 8651574..c71e12b 100644
-> > --- a/include/linux/nfs_xdr.h
-> > +++ b/include/linux/nfs_xdr.h
-> > @@ -1419,12 +1419,12 @@ struct nfs_rpc_ops {
-> >  	void	(*read_setup)   (struct nfs_read_data *, struct rpc_message *);
-> >  	void	(*read_pageio_init)(struct nfs_pageio_descriptor *, struct inode=
- *,
-> >  				    const struct nfs_pgio_completion_ops *);
-> > -	void	(*read_rpc_prepare)(struct rpc_task *, struct nfs_read_data *);
-> > +	int	(*read_rpc_prepare)(struct rpc_task *, struct nfs_read_data *);
-> >  	int	(*read_done)  (struct rpc_task *, struct nfs_read_data *);
-> >  	void	(*write_setup)  (struct nfs_write_data *, struct rpc_message *);
-> >  	void	(*write_pageio_init)(struct nfs_pageio_descriptor *, struct inod=
-e *, int,
-> >  				     const struct nfs_pgio_completion_ops *);
-> > -	void	(*write_rpc_prepare)(struct rpc_task *, struct nfs_write_data *);
-> > +	int	(*write_rpc_prepare)(struct rpc_task *, struct nfs_write_data *);
-> >  	int	(*write_done)  (struct rpc_task *, struct nfs_write_data *);
-> >  	void	(*commit_setup) (struct nfs_commit_data *, struct rpc_message *);
-> >  	void	(*commit_rpc_prepare)(struct rpc_task *, struct nfs_commit_data =
-*);
->=20
->=20
+--=20
+Ben Hutchings
+Teamwork is essential - it allows you to blame someone else.
+
+--=-0h7l+umR75/1W+yhr4V1
+Content-Disposition: attachment;
+	filename="jfs-fix-readdir-cookie-incompatibility-with-nfsv4-3.2.patch"
+Content-Type: text/x-patch;
+	name="jfs-fix-readdir-cookie-incompatibility-with-nfsv4-3.2.patch";
+	charset="UTF-8"
+Content-Transfer-Encoding: base64
+
+RGF0ZTogVGh1LCAxNSBBdWcgMjAxMyAxNTo0ODozOSAtMDUwMA0KRnJvbTogRGF2ZSBLbGVpa2Ft
+cCA8ZGF2ZS5rbGVpa2FtcEBvcmFjbGUuY29tPg0KU3ViamVjdDogamZzOiBmaXggcmVhZGRpciBj
+b29raWUgaW5jb21wYXRpYmlsaXR5IHdpdGggTkZTdjQNCg0KVGhpcyBwYXRjaCByZXBsYWNlcyB0
+aGUgb25lIEkgcG9zdGVkIHllc3RlcmRheS4gSSBsaWtlIHRoaXMgYmV0dGVyIHNpbmNlDQppdCBk
+b2Vzbid0IHJlcXVpcmUgZml4aW5nIGV4aXN0aW5nIG9uLWRpc2sgY29va2llcyBvciBza2lwcGlu
+ZyBhDQpwb3NpdGlvbiBpbiB0aGUgaW4taW5vZGUgaW5kZXggdGFibGUuDQoNCk5GU3Y0IHJlc2Vy
+dmVzIHJlYWRkaXIgY29va2llIHZhbHVlcyAwLTIgZm9yIHNwZWNpYWwgZW50cmllcyAoLiBhbmQg
+Li4pLA0KYnV0IGpmcyBhbGxvd3MgYSB2YWx1ZSBvZiAyIGZvciBhIG5vbi1zcGVjaWFsIGVudHJ5
+LiBUaGlzIGluY29tcGF0aWJpbGl0eQ0KY2FuIHJlc3VsdCBpbiB0aGUgbmZzIGNsaWVudCByZXBv
+cnRpbmcgYSByZWFkZGlyIGxvb3AuDQoNClRoaXMgcGF0Y2ggZG9lc24ndCBjaGFuZ2UgdGhlIHZh
+bHVlIHN0b3JlZCBpbnRlcm5hbGx5LCBidXQgYWRkcyBvbmUgdG8NCnRoZSB2YWx1ZSBleHBvc2Vk
+IHRvIHRoZSBpdGVyYXRlIG1ldGhvZC4NCg0KU2lnbmVkLW9mZi1ieTogRGF2ZSBLbGVpa2FtcCA8
+ZGF2ZS5rbGVpa2FtcEBvcmFjbGUuY29tPg0KW2J3aDogQmFja3BvcnRlZCB0byAzLjI6DQogLSBB
+ZGp1c3QgY29udGV4dA0KIC0gcy9jdHgtPnBvcy9maWxwLT5mX3Bvcy9dDQpTaWduZWQtb2ZmLWJ5
+OiBCZW4gSHV0Y2hpbmdzIDxiZW5AZGVjYWRlbnQub3JnLnVrPg0KLS0tDQogZnMvamZzL2pmc19k
+dHJlZS5jIHwgMzEgKysrKysrKysrKysrKysrKysrKysrKystLS0tLS0tLQ0KIDEgZmlsZSBjaGFu
+Z2VkLCAyMyBpbnNlcnRpb25zKCspLCA4IGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMv
+amZzL2pmc19kdHJlZS5jIGIvZnMvamZzL2pmc19kdHJlZS5jDQppbmRleCA4NzQzYmE5Li4wZWM3
+NjdlIDEwMDY0NA0KLS0tIGEvZnMvamZzL2pmc19kdHJlZS5jDQorKysgYi9mcy9qZnMvamZzX2R0
+cmVlLmMNCkBAIC0zMDQ3LDYgKzMwNDcsMTQgQEAgaW50IGpmc19yZWFkZGlyKHN0cnVjdCBmaWxl
+ICpmaWxlLCBzdHJ1Y3QgZGlyX2NvbnRleHQgKmN0eCkNCiANCiAJCWRpcl9pbmRleCA9ICh1MzIp
+IGZpbHAtPmZfcG9zOw0KIA0KKwkJLyoNCisJCSAqIE5GU3Y0IHJlc2VydmVzIGNvb2tpZXMgMSBh
+bmQgMiBmb3IgLiBhbmQgLi4gc28gd2UgYWRkDQorCQkgKiB0aGUgdmFsdWUgd2UgcmV0dXJuIHRv
+IHRoZSB2ZnMgaXMgb25lIGdyZWF0ZXIgdGhhbiB0aGUNCisJCSAqIG9uZSB3ZSB1c2UgaW50ZXJu
+YWxseS4NCisJCSAqLw0KKwkJaWYgKGRpcl9pbmRleCkNCisJCQlkaXJfaW5kZXgtLTsNCisNCiAJ
+CWlmIChkaXJfaW5kZXggPiAxKSB7DQogCQkJc3RydWN0IGRpcl90YWJsZV9zbG90IGRpcnRhYl9z
+bG90Ow0KIA0KQEAgLTMwODYsNyArMzA5NCw3IEBAIGludCBqZnNfcmVhZGRpcihzdHJ1Y3QgZmls
+ZSAqZmlsZSwgc3RydWN0IGRpcl9jb250ZXh0ICpjdHgpDQogCQkJaWYgKHAtPmhlYWRlci5mbGFn
+ICYgQlRfSU5URVJOQUwpIHsNCiAJCQkJamZzX2VycigiamZzX3JlYWRkaXI6IGJhZCBpbmRleCB0
+YWJsZSIpOw0KIAkJCQlEVF9QVVRQQUdFKG1wKTsNCi0JCQkJZmlscC0+Zl9wb3MgPSAtMTsNCisJ
+CQkJZmlscC0+Zl9wb3MgPSBESVJFTkQ7DQogCQkJCXJldHVybiAwOw0KIAkJCX0NCiAJCX0gZWxz
+ZSB7DQpAQCAtMzA5NCwxNSArMzEwMiwxNSBAQCBpbnQgamZzX3JlYWRkaXIoc3RydWN0IGZpbGUg
+KmZpbGUsIHN0cnVjdCBkaXJfY29udGV4dCAqY3R4KQ0KIAkJCQkvKg0KIAkJCQkgKiBzZWxmICIu
+Ig0KIAkJCQkgKi8NCi0JCQkJZmlscC0+Zl9wb3MgPSAwOw0KKwkJCQlmaWxwLT5mX3BvcyA9IDE7
+DQogCQkJCWlmIChmaWxsZGlyKGRpcmVudCwgIi4iLCAxLCAwLCBpcC0+aV9pbm8sDQogCQkJCQkg
+ICAgRFRfRElSKSkNCiAJCQkJCXJldHVybiAwOw0KIAkJCX0NCiAJCQkvKg0KIAkJCSAqIHBhcmVu
+dCAiLi4iDQogCQkJICovDQotCQkJZmlscC0+Zl9wb3MgPSAxOw0KKwkJCWZpbHAtPmZfcG9zID0g
+MjsNCiAJCQlpZiAoZmlsbGRpcihkaXJlbnQsICIuLiIsIDIsIDEsIFBBUkVOVChpcCksIERUX0RJ
+UikpDQogCQkJCXJldHVybiAwOw0KIA0KQEAgLTMxMjMsMjQgKzMxMzEsMjUgQEAgaW50IGpmc19y
+ZWFkZGlyKHN0cnVjdCBmaWxlICpmaWxlLCBzdHJ1Y3QgZGlyX2NvbnRleHQgKmN0eCkNCiAJCS8q
+DQogCQkgKiBMZWdhY3kgZmlsZXN5c3RlbSAtIE9TLzIgJiBMaW51eCBKRlMgPCAwLjMuNg0KIAkJ
+ICoNCi0JCSAqIHBuID0gaW5kZXggPSAwOglGaXJzdCBlbnRyeSAiLiINCi0JCSAqIHBuID0gMDsg
+aW5kZXggPSAxOglTZWNvbmQgZW50cnkgIi4uIg0KKwkJICogcG4gPSAwOyBpbmRleCA9IDE6CUZp
+cnN0IGVudHJ5ICIuIg0KKwkJICogcG4gPSAwOyBpbmRleCA9IDI6CVNlY29uZCBlbnRyeSAiLi4i
+DQogCQkgKiBwbiA+IDA6CQlSZWFsIGVudHJpZXMsIHBuPTEgLT4gbGVmdG1vc3QgcGFnZQ0KIAkJ
+ICogcG4gPSBpbmRleCA9IC0xOglObyBtb3JlIGVudHJpZXMNCiAJCSAqLw0KIAkJZHRwb3MgPSBm
+aWxwLT5mX3BvczsNCi0JCWlmIChkdHBvcyA9PSAwKSB7DQorCQlpZiAoZHRwb3MgPCAyKSB7DQog
+CQkJLyogYnVpbGQgIi4iIGVudHJ5ICovDQogDQorCQkJZmlscC0+Zl9wb3MgPSAxOw0KIAkJCWlm
+IChmaWxsZGlyKGRpcmVudCwgIi4iLCAxLCBmaWxwLT5mX3BvcywgaXAtPmlfaW5vLA0KIAkJCQkg
+ICAgRFRfRElSKSkNCiAJCQkJcmV0dXJuIDA7DQotCQkJZHRvZmZzZXQtPmluZGV4ID0gMTsNCisJ
+CQlkdG9mZnNldC0+aW5kZXggPSAyOw0KIAkJCWZpbHAtPmZfcG9zID0gZHRwb3M7DQogCQl9DQog
+DQogCQlpZiAoZHRvZmZzZXQtPnBuID09IDApIHsNCi0JCQlpZiAoZHRvZmZzZXQtPmluZGV4ID09
+IDEpIHsNCisJCQlpZiAoZHRvZmZzZXQtPmluZGV4ID09IDIpIHsNCiAJCQkJLyogYnVpbGQgIi4u
+IiBlbnRyeSAqLw0KIA0KIAkJCQlpZiAoZmlsbGRpcihkaXJlbnQsICIuLiIsIDIsIGZpbHAtPmZf
+cG9zLA0KQEAgLTMyMzMsNiArMzI0MiwxMiBAQCBpbnQgamZzX3JlYWRkaXIoc3RydWN0IGZpbGUg
+KmZpbGUsIHN0cnVjdCBkaXJfY29udGV4dCAqY3R4KQ0KIAkJCQkJfQ0KIAkJCQkJamZzX2RpcmVu
+dC0+cG9zaXRpb24gPSB1bmlxdWVfcG9zKys7DQogCQkJCX0NCisJCQkJLyoNCisJCQkJICogV2Ug
+YWRkIDEgdG8gdGhlIGluZGV4IGJlY2F1c2Ugd2UgbWF5DQorCQkJCSAqIHVzZSBhIHZhbHVlIG9m
+IDIgaW50ZXJuYWxseSwgYW5kIE5GU3Y0DQorCQkJCSAqIGRvZXNuJ3QgbGlrZSB0aGF0Lg0KKwkJ
+CQkgKi8NCisJCQkJamZzX2RpcmVudC0+cG9zaXRpb24rKzsNCiAJCQl9IGVsc2Ugew0KIAkJCQlq
+ZnNfZGlyZW50LT5wb3NpdGlvbiA9IGR0cG9zOw0KIAkJCQlsZW4gPSBtaW4oZF9uYW1sZWZ0LCBE
+VExIRFJEQVRBTEVOX0xFR0FDWSk7DQo=
 
 
---Sig_/IthpTzERq4fHU/NatpgtiJ5
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
+--=-0h7l+umR75/1W+yhr4V1--
+
+--=-N0GdbyaQyS+aU+67diJ7
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
 
 -----BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
+Version: GnuPG v1.4.14 (GNU/Linux)
 
-iQIVAwUBUg4BHTnsnt1WYoG5AQLpXxAAppkigMVKBg+pjKqzRdRTbddKS0Xh0/cE
-gpQmHig0ZwTFO3LnxgbjYYquLfEIimjHr61ZQchH+HdxakyfXDR7craRm5kKwvhb
-Ob+iy126OCg/qFUhiZm3wGhZIqstmCbfyYGUTwM5xi27o85m4N30SaOhcH/pnV+T
-U31Lrp3Gg1K0vTkjt827QkgunK9AVirIM28lYr3W7Up6fhfwGh635PJRXlPNB6Zo
-3p3Ea35noNsnQZZHqTrcYfQ4e/79y3PC+MWeLTr/47pk0ffE25wdyKIZJdOLGmRq
-ft0UXOGJYUhcpFeR9o1EGSpWEnWLBv9U71KOA/MsWYnL45S1wyE5HbRfJRgMITmk
-q0GFJLFg6t2yhPW3laQZNZmXp2y6KeA8fmoMp9564GLAvesukxRDly2XR2uzAgSg
-v85LkOhuE9iZCVreuS3ev0ZH6pEz2L7Ydexxb85PVVwYNzrqBJZEntMeP3Q71WQT
-VLWKaX+JHtB9Us2g7tfDuWwNTx2xYdXNy4hb7ufo3Ffa+Hbzl7f1cJEGpHjK7rDn
-gOn++n//xQlTpB0uilFYxu60GnyRTOTbI+hmuNthvTVSgPqAB2vgPUy1mc+3RIAx
-iCdDNvx/B2Xf2nYtlJbULwV9vX/IlDLSTR2iHjvo08mTAUGMAT9jNrUNOQ6kE7B0
-CaVStPipcnU=
-=GIec
+iQIVAwUAUg/Wm+e/yOyVhhEJAQr2DxAA1UAahpwKW0TcPiUVsjCdsw6mSeSH8QnF
+gBJTaHdYAMVkMbQcYzRL3mZh64k0R7GTqJbJpiV2AKAOpxfmQ8rp39klYKWvzvQd
+wdlX1nLzQPfjEOmldWfF3rLUDbz9RniLfa1ntkuwnhMnB4EPvt9phyLCgetmwFD5
+m6II/p6hk1Pk7OWpbPothDRRew/9mXQe2umQJ5/d1vyAMFVEnY27hvnsLbv9RMaY
+akG9oCss7crV+mKudDdlg2UBuZbQhrZ31flZt6hwNoRjaNs9Y8eYlwN0dXdnKKvT
+mjXy3VRkITw4Ry8z2AXedJyP1deTgaBUpmdgQnZMy94gdn+6d2fYs8cVtWJVSEAY
+ELRjCcnTQppjo+42yaPgl6WGRcXjLPXitN/GJfJKakoMb2QunTNCmT0i/Xih2Plw
+dOgtMzKDP8pj7kv3UPPaHED3S3jQiB/nj0dPVx7x36fLhUX05fNzG5D/T3tuQ2ns
+Lp1HD5G+zJvCxxD+H5fK71B4K8n4SRP+1oXtT3MsIwDlc2wdzaB1jmoFP4/eFfW0
+Gb1JHryYYv32K2VnZOCj1gxyJSRmPggArJ5XIAXyMnfpnOwHSwqqpR5J6g9S/TjR
+eGNS/g/JFFYcyy/7cXZYzSAdqwyQMXWcW3gnqhtkQq7/kCV5FbQ+BBQt/2o0KtBd
+9qH3Suy9pCU=
+=R5yZ
 -----END PGP SIGNATURE-----
 
---Sig_/IthpTzERq4fHU/NatpgtiJ5--
+--=-N0GdbyaQyS+aU+67diJ7--
