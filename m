@@ -1,196 +1,173 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:47525 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:26754 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751188Ab3HTTfV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Aug 2013 15:35:21 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 09/16] NFSv4: Add tracepoints for debugging inode manipulations
-Date: Tue, 20 Aug 2013 15:35:05 -0400
-Message-ID: <1377027312-45957-10-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377027312-45957-9-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377027312-45957-1-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-2-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-3-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-4-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-5-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-6-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-7-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-8-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-9-git-send-email-Trond.Myklebust@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1751412Ab3HSNOm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Aug 2013 09:14:42 -0400
+Date: Mon, 19 Aug 2013 09:15:35 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: idra@samba.org
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jan Stancek <jstancek@redhat.com>, linux-nfs@vger.kernel.org,
+        bfields@redhat.com, Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
+Message-ID: <20130819091535.367be194@corrin.poochiereds.net>
+In-Reply-To: <1376915814.21291.4.camel@pico.ipa.ssimo.org>
+References: <682ebd8ecc7309b18396da356a0feb38bfa41674.1372692346.git.jstancek@redhat.com>
+	<20130708201643.GI29071@fieldses.org>
+	<1157529877.873319.1373353194344.JavaMail.root@redhat.com>
+	<20130726220924.GG30651@fieldses.org>
+	<20130815100244.370de645@corrin.poochiereds.net>
+	<20130815141917.GR17781@fieldses.org>
+	<20130816150454.2aacd5ff@corrin.poochiereds.net>
+	<20130816191634.GA19942@fieldses.org>
+	<20130819080644.0a6cae56@corrin.poochiereds.net>
+	<1376915814.21291.4.camel@pico.ipa.ssimo.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Set up basic tracepoints for debugging NFSv4 setattr, access,
-readlink, readdir, get_acl set_acl get_security_label,
-and set_security_label.
+On Mon, 19 Aug 2013 08:36:54 -0400
+simo <idra@samba.org> wrote:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c  | 36 ++++++++++++++++++++++--------------
- fs/nfs/nfs4trace.h | 51 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 73 insertions(+), 14 deletions(-)
+> On Mon, 2013-08-19 at 08:06 -0400, Jeff Layton wrote:
+> > On Fri, 16 Aug 2013 15:16:34 -0400
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > > On Fri, Aug 16, 2013 at 03:04:54PM -0400, Jeff Layton wrote:
+> > > > On Thu, 15 Aug 2013 10:19:18 -0400
+> > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > 
+> > > > > On Thu, Aug 15, 2013 at 10:02:44AM -0400, Jeff Layton wrote:
+> > > > > > On Fri, 26 Jul 2013 18:09:24 -0400
+> > > > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > > > 
+> > > > > > > On Tue, Jul 09, 2013 at 02:59:54AM -0400, Jan Stancek wrote:
+> > > > > > > > 
+> > > > > > > > 
+> > > > > > > > 
+> > > > > > > > 
+> > > > > > > > ----- Original Message -----
+> > > > > > > > > From: "J. Bruce Fields" <bfields@fieldses.org>
+> > > > > > > > > To: "Jan Stancek" <jstancek@redhat.com>
+> > > > > > > > > Cc: linux-nfs@vger.kernel.org, bfields@redhat.com, "Trond Myklebust" <Trond.Myklebust@netapp.com>
+> > > > > > > > > Sent: Monday, 8 July, 2013 10:16:43 PM
+> > > > > > > > > Subject: Re: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
+> > > > > > > > > 
+> > > > > > > > > On Mon, Jul 01, 2013 at 05:32:34PM +0200, Jan Stancek wrote:
+> > > > > > > > > > Starting with commit:
+> > > > > > > > > >   commit f994c43d19a9116727d4c228d3f13db595bff562
+> > > > > > > > > >   Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > > > > > > > > >   Date:   Thu Nov 1 12:14:14 2012 -0400
+> > > > > > > > > >       SUNRPC: Clean up rpc_bind_new_program
+> > > > > > > > > > 
+> > > > > > > > > > operations on directory mounted with -onfsvers=3,tcp,sec=krb5 fail
+> > > > > > > > > > with Input/Output error after ~60 second timeout. This is presumably
+> > > > > > > > > > because upcalls for 'nfsacl' are not getting anywhere.
+> > > > > > > > > > 
+> > > > > > > > > > This patch enables pipe dir for nfsacl_program and changes its name
+> > > > > > > > > > to 'nfs'. This name will be used in upcalls and whole setup should
+> > > > > > > > > > work as it did in past - just with nfs/hostname principal.
+> > > > > > > > > 
+> > > > > > > > > I think this was the problem that nfs-utils commits
+> > > > > > > > > 
+> > > > > > > > > 	a1f8afc560 gssd: Remove insane sanity checks of the service name
+> > > > > > > > > 	a56989b665 gssd: Handle the target name correctly
+> > > > > > > > > 
+> > > > > > > > > were supposed to fix?
+> > > > > > > > > 
+> > > > > > > > > But perhaps the kernel needs a fix too to fix a regression with old
+> > > > > > > > > userspace.
+> > > > > > > > 
+> > > > > > > > I saw this error with nfs-utils.1.2.9-rc1, which should already contain
+> > > > > > > > those 2 commits.
+> > > > > > > 
+> > > > > > > Actually, I think your patch is just a subset of Trond's
+> > > > > > > http://mid.gmane.org/<4FA345DA4F4AE44899BD2B03EEEC2FA9092EC392@SACEXCMBX04-PRD.hq.netapp.com>
+> > > > > > > 
+> > > > > > > Trond, is there a reason that never got applied?
+> > > > > > > 
+> > > > > > > --b.
+> > > > > > > 
+> > > > > > 
+> > > > > > Hmm...gmane just says "No such article" when I feed it the above URL.
+> > > > > > Do you know what the title of the email was?
+> > > > > 
+> > > > > Argh sorry hadn't noticed that was private mail.
+> > > > > 
+> > > > > Last I checked actually neither of these patches fixed v3/krb5 for me.
+> > > > > 
+> > > > > --b.
+> > > > > 
+> > > > > Here is v2 with appropriate service names for mountd, statd, etc.
+> > > > > 
+> > > > > 
+> > > > 
+> > > > Ok, I tested both this patch and Jan's. This one doesn't help at all,
+> > > > but Jan's does seem to fix the problem. I'm still looking over the
+> > > > kernel and userland code to determine whether it's the best fix or
+> > > > not...
+> > > 
+> > > Ah, crap, sorry, I missed that Jan's modified rpc_program.name and
+> > > Trond's rpc_program.service_name.
+> > > 
+> > > As Simo pointed out in irc yesterday this can't be right:
+> > > 
+> > > > > diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+> > > > > index 909dc0c..b19dab8 100644
+> > > > > --- a/net/sunrpc/auth_gss/auth_gss.c
+> > > > > +++ b/net/sunrpc/auth_gss/auth_gss.c
+> > > > > @@ -403,7 +403,9 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+> > > > >  				   gss_msg->uid);
+> > > > >  	p += gss_msg->msg.len;
+> > > > >  	if (clnt->cl_principal) {
+> > > > > -		len = sprintf(p, "target=%s ", clnt->cl_principal);
+> > > > > +		len = sprintf(p, "target=%s@%s ",
+> > > > > +				clnt->cl_program->service_name,
+> > > > > +				clnt->cl_principal);
+> > > 
+> > > I'd think this should instead be going in the "service_name" field, but
+> > > I'm not sure.
+> > > 
+> > 
+> > 
+> > Actually, this patch seems to work correctly. The only thing that was
+> > missing was the pipe_dir_name field for the nfsacl program. There is a
+> > separate service= field that gssd understands as well, but I don't see
+> > any read advantage to using that over this patch. I'll send a respun
+> > patch in a bit that seems to fix this for me.
+> > 
+> > I'll also note that several other rpc_programs don't have their
+> > pipe_dir_name set. We may want to go ahead and set those as well in
+> > case we ever do want to enable GSSAPI auth for those services.
+> 
+> If I understand what Bruce told me correctly, cl_principal is what
+> rpc.svcgssd sent down to the kernel.
+> In that case it is already a gssapi-like name (not really a principal
+> given how svcgssd butchers it) of the form svc@host 
+> So it sound strange to me that you have to prepend service a second
+> time.
+> 
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8da223c..e2f0627 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2315,6 +2315,7 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 	int err;
- 	do {
- 		err = _nfs4_do_setattr(inode, cred, fattr, sattr, state, ilabel, olabel);
-+		trace_nfs4_setattr(inode, err);
- 		switch (err) {
- 		case -NFS4ERR_OPENMODE:
- 			if (!(sattr->ia_valid & ATTR_SIZE)) {
-@@ -3143,8 +3144,9 @@ static int nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry)
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(inode),
--				_nfs4_proc_access(inode, entry),
-+		err = _nfs4_proc_access(inode, entry);
-+		trace_nfs4_access(inode, err);
-+		err = nfs4_handle_exception(NFS_SERVER(inode), err,
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-@@ -3197,8 +3199,9 @@ static int nfs4_proc_readlink(struct inode *inode, struct page *page,
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(inode),
--				_nfs4_proc_readlink(inode, page, pgbase, pglen),
-+		err = _nfs4_proc_readlink(inode, page, pgbase, pglen);
-+		trace_nfs4_readlink(inode, err);
-+		err = nfs4_handle_exception(NFS_SERVER(inode), err,
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-@@ -3631,9 +3634,10 @@ static int nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(dentry->d_inode),
--				_nfs4_proc_readdir(dentry, cred, cookie,
--					pages, count, plus),
-+		err = _nfs4_proc_readdir(dentry, cred, cookie,
-+				pages, count, plus);
-+		trace_nfs4_readdir(dentry->d_inode, err);
-+		err = nfs4_handle_exception(NFS_SERVER(dentry->d_inode), err,
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-@@ -4334,6 +4338,7 @@ static ssize_t nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bufl
- 	ssize_t ret;
- 	do {
- 		ret = __nfs4_get_acl_uncached(inode, buf, buflen);
-+		trace_nfs4_get_acl(inode, ret);
- 		if (ret >= 0)
- 			break;
- 		ret = nfs4_handle_exception(NFS_SERVER(inode), ret, &exception);
-@@ -4413,8 +4418,9 @@ static int nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t buflen
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(inode),
--				__nfs4_proc_set_acl(inode, buf, buflen),
-+		err = __nfs4_proc_set_acl(inode, buf, buflen);
-+		trace_nfs4_set_acl(inode, err);
-+		err = nfs4_handle_exception(NFS_SERVER(inode), err,
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-@@ -4467,8 +4473,9 @@ static int nfs4_get_security_label(struct inode *inode, void *buf,
- 		return -EOPNOTSUPP;
- 
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(inode),
--				_nfs4_get_security_label(inode, buf, buflen),
-+		err = _nfs4_get_security_label(inode, buf, buflen);
-+		trace_nfs4_get_security_label(inode, err);
-+		err = nfs4_handle_exception(NFS_SERVER(inode), err,
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-@@ -4520,9 +4527,10 @@ static int nfs4_do_set_security_label(struct inode *inode,
- 	int err;
- 
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(inode),
--				_nfs4_do_set_security_label(inode, ilabel,
--				fattr, olabel),
-+		err = _nfs4_do_set_security_label(inode, ilabel,
-+				fattr, olabel);
-+		trace_nfs4_set_security_label(inode, err);
-+		err = nfs4_handle_exception(NFS_SERVER(inode), err,
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index ec379c3..2f3d0fc 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -459,6 +459,57 @@ DEFINE_NFS4_LOOKUP_EVENT(nfs4_remove_async);
- DEFINE_NFS4_LOOKUP_EVENT(nfs4_get_fs_locations);
- DEFINE_NFS4_LOOKUP_EVENT(nfs4_secinfo);
- 
-+DECLARE_EVENT_CLASS(nfs4_inode_event,
-+		TP_PROTO(
-+			const struct inode *inode,
-+			int error
-+		),
-+
-+		TP_ARGS(inode, error),
-+
-+		TP_STRUCT__entry(
-+			__field(dev_t, dev)
-+			__field(u32, fhandle)
-+			__field(u64, fileid)
-+			__field(int, error)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->dev = inode->i_sb->s_dev;
-+			__entry->fileid = NFS_FILEID(inode);
-+			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
-+			__entry->error = error;
-+		),
-+
-+		TP_printk(
-+			"error=%d (%s) fileid=%02x:%02x:%llu fhandle=0x%08x",
-+			__entry->error,
-+			show_nfsv4_errors(__entry->error),
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->fileid,
-+			__entry->fhandle
-+		)
-+);
-+
-+#define DEFINE_NFS4_INODE_EVENT(name) \
-+	DEFINE_EVENT(nfs4_inode_event, name, \
-+			TP_PROTO( \
-+				const struct inode *inode, \
-+				int error \
-+			), \
-+			TP_ARGS(inode, error))
-+
-+DEFINE_NFS4_INODE_EVENT(nfs4_setattr);
-+DEFINE_NFS4_INODE_EVENT(nfs4_access);
-+DEFINE_NFS4_INODE_EVENT(nfs4_readlink);
-+DEFINE_NFS4_INODE_EVENT(nfs4_readdir);
-+DEFINE_NFS4_INODE_EVENT(nfs4_get_acl);
-+DEFINE_NFS4_INODE_EVENT(nfs4_set_acl);
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+DEFINE_NFS4_INODE_EVENT(nfs4_get_security_label);
-+DEFINE_NFS4_INODE_EVENT(nfs4_set_security_label);
-+#endif /* CONFIG_NFS_V4_SECURITY_LABEL */
-+
- #endif /* _TRACE_NFS4_H */
- 
- #undef TRACE_INCLUDE_PATH
+This is all client-side stuff, so it doesn't really have anything to
+do with rpc.svcgssd.
+
+Now that I look more closely, it looks like the cl_principal field is
+not ever populated (except maybe with the nfs4cb stuff). What really
+matters for the client-side piece is that the stuff in the "info" file
+is correct.
+
+So, there are actually two problems (as Jan's original patch) points out:
+
+1) the rpc_pipe files aren't being created for the nfsacl client
+because the pipe_dir_name isn't being set on the service.
+
+2) the nfsacl client is setting a service name that looks like
+"nfsacl" instead of "nfs" in the "info" file. There's no
+nfsacl/hostname SPN of course, so that fails.
+
+We could probably drop the hunk in gss_encode_v1_msg and this patch
+would still work fine for the client.
+
 -- 
-1.8.3.1
-
+Jeff Layton <jlayton@redhat.com>
