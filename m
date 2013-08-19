@@ -1,85 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:46511 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:21272 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757287Ab3HMSgB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Aug 2013 14:36:01 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 02/10] NFS: refactor code for calculating the crc32 hash of a filehandle
-Date: Tue, 13 Aug 2013 14:35:44 -0400
-Message-ID: <1376418952-12481-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1376418952-12481-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1376418952-12481-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1750938Ab3HSS0C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Aug 2013 14:26:02 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r7JIQ11f012370
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 19 Aug 2013 14:26:02 -0400
+Message-ID: <5212633A.4090700@RedHat.com>
+Date: Mon, 19 Aug 2013 14:26:02 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: Steve Dickson <steved@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] rpc.nfsd: Allow v4.2 server support with the -V option
+References: <1375036598-31090-1-git-send-email-steved@redhat.com> <1375036598-31090-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1375036598-31090-2-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We want to be able to display the crc32 hash of the filehandle in
-tracepoints.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/inode.c    |  3 +--
- fs/nfs/internal.h | 20 ++++++++++++++++++++
- 2 files changed, 21 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index af6e806..9a98b04 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -38,7 +38,6 @@
- #include <linux/slab.h>
- #include <linux/compat.h>
- #include <linux/freezer.h>
--#include <linux/crc32.h>
- 
- #include <asm/uaccess.h>
- 
-@@ -1190,7 +1189,7 @@ u32 _nfs_display_fhandle_hash(const struct nfs_fh *fh)
- {
- 	/* wireshark uses 32-bit AUTODIN crc and does a bitwise
- 	 * not on the result */
--	return ~crc32(0xFFFFFFFF, &fh->data[0], fh->size);
-+	return nfs_fhandle_hash(fh);
- }
- 
- /*
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 9b694f1..50f7068 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -5,6 +5,7 @@
- #include "nfs4_fs.h"
- #include <linux/mount.h>
- #include <linux/security.h>
-+#include <linux/crc32.h>
- 
- #define NFS_MS_MASK (MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC|MS_SYNCHRONOUS)
- 
-@@ -574,3 +575,22 @@ u64 nfs_timespec_to_change_attr(const struct timespec *ts)
- {
- 	return ((u64)ts->tv_sec << 30) + ts->tv_nsec;
- }
-+
-+#ifdef CONFIG_CRC32
-+/**
-+ * nfs_fhandle_hash - calculate the crc32 hash for the filehandle
-+ * @fh - pointer to filehandle
-+ *
-+ * returns a crc32 hash for the filehandle that is compatible with
-+ * the one displayed by "wireshark".
-+ */
-+static inline u32 nfs_fhandle_hash(const struct nfs_fh *fh)
-+{
-+	return ~crc32_le(0xFFFFFFFF, &fh->data[0], fh->size);
-+}
-+#else
-+static inline u32 nfs_fhandle_hash(const struct nfs_fh *fh)
-+{
-+	return 0;
-+}
-+#endif
--- 
-1.8.3.1
+On 28/07/13 14:36, Steve Dickson wrote:
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  support/include/nfs/nfs.h |  4 ++++
+>  utils/nfsd/nfsd.c         | 12 ++++++------
+>  utils/nfsd/nfssvc.c       | 11 +++++++----
+>  3 files changed, 17 insertions(+), 10 deletions(-)
+Committed...
 
+steved.
+
+> 
+> diff --git a/support/include/nfs/nfs.h b/support/include/nfs/nfs.h
+> index 5fd86f6..38db5b5 100644
+> --- a/support/include/nfs/nfs.h
+> +++ b/support/include/nfs/nfs.h
+> @@ -15,6 +15,10 @@
+>  #define NFSD_MINVERS 2
+>  #define NFSD_MAXVERS 4
+>  
+> +#define NFS4_MINMINOR 1
+> +#define NFS4_MAXMINOR 2
+> +#define NFS4_VERDEFAULT  0x1  /* minor verion 1 */
+> +
+>  struct nfs_fh_len {
+>  	int		fh_size;
+>  	u_int8_t	fh_handle[NFS3_FHSIZE];
+> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+> index df48392..6db92f0 100644
+> --- a/utils/nfsd/nfsd.c
+> +++ b/utils/nfsd/nfsd.c
+> @@ -99,7 +99,7 @@ main(int argc, char **argv)
+>  	char *p, *progname, *port;
+>  	char *haddr = NULL;
+>  	int	socket_up = 0;
+> -	int minorvers41 = 0;	/* nfsv4 minor version */
+> +	int minorvers = NFS4_VERDEFAULT;	/* nfsv4 minor version */
+>  	unsigned int versbits = NFSCTL_VERDEFAULT;
+>  	unsigned int protobits = NFSCTL_ALLBITS;
+>  	unsigned int proto4 = 0;
+> @@ -160,11 +160,11 @@ main(int argc, char **argv)
+>  			case 4:
+>  				if (*p == '.') {
+>  					int i = atoi(p+1);
+> -					if (i != 1) {
+> +					if (i > 2) {
+>  						fprintf(stderr, "%s: unsupported minor version\n", optarg);
+>  						exit(1);
+>  					}
+> -					minorvers41 = -1;
+> +					NFSCTL_VERUNSET(minorvers, i);
+>  					break;
+>  				}
+>  			case 3:
+> @@ -181,11 +181,11 @@ main(int argc, char **argv)
+>  			case 4:
+>  				if (*p == '.') {
+>  					int i = atoi(p+1);
+> -					if (i != 1) {
+> +					if (i > 2) {
+>  						fprintf(stderr, "%s: unsupported minor version\n", optarg);
+>  						exit(1);
+>  					}
+> -					minorvers41 = 1;
+> +					NFSCTL_VERSET(minorvers, i);
+>  					break;
+>  				}
+>  			case 3:
+> @@ -282,7 +282,7 @@ main(int argc, char **argv)
+>  	 * registered with rpcbind. Note that on older kernels w/o the right
+>  	 * interfaces, these are a no-op.
+>  	 */
+> -	nfssvc_setvers(versbits, minorvers41);
+> +	nfssvc_setvers(versbits, minorvers);
+>   
+>  	error = nfssvc_set_sockets(AF_INET, proto4, haddr, port);
+>  	if (!error)
+> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+> index 683008e..8b85846 100644
+> --- a/utils/nfsd/nfssvc.c
+> +++ b/utils/nfsd/nfssvc.c
+> @@ -269,7 +269,7 @@ nfssvc_set_sockets(const int family, const unsigned int protobits,
+>  }
+>  
+>  void
+> -nfssvc_setvers(unsigned int ctlbits, int minorvers41)
+> +nfssvc_setvers(unsigned int ctlbits, int minorvers)
+>  {
+>  	int fd, n, off;
+>  	char *ptr;
+> @@ -280,9 +280,12 @@ nfssvc_setvers(unsigned int ctlbits, int minorvers41)
+>  	if (fd < 0)
+>  		return;
+>  
+> -	if (minorvers41)
+> -		off += snprintf(ptr+off, sizeof(buf) - off, "%c4.1",
+> -				minorvers41 > 0 ? '+' : '-');
+> +	for (n = NFS4_MINMINOR; n <= NFS4_MAXMINOR; n++) {
+> +		if (NFSCTL_VERISSET(minorvers, n)) 
+> +			off += snprintf(ptr+off, sizeof(buf) - off, "+4.%d ", n);
+> +		else			
+> +			off += snprintf(ptr+off, sizeof(buf) - off, "-4.%d ", n);
+> +	}
+>  	for (n = NFSD_MINVERS; n <= NFSD_MAXVERS; n++) {
+>  		if (NFSCTL_VERISSET(ctlbits, n))
+>  		    off += snprintf(ptr+off, sizeof(buf) - off, "+%d ", n);
+> 
