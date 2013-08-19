@@ -1,31 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.195]:57646 "EHLO mout.perfora.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932343Ab3HGU0V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Aug 2013 16:26:21 -0400
-Date: Wed, 7 Aug 2013 16:26:17 -0400
-From: Jim Rees <rees@umich.edu>
-To: Toralf =?iso-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: bisecting an NFS issue prevented by fs/nfsd/nfs4recover.c:1414
-Message-ID: <20130807202617.GA29924@umich.edu>
-References: <5202AB04.9010006@gmx.de>
+Received: from bombadil.infradead.org ([198.137.202.9]:35686 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750811Ab3HSOh4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Aug 2013 10:37:56 -0400
+Date: Mon, 19 Aug 2013 07:37:52 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Cong Wang <amwang@redhat.com>
+Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
+        Steve French <sfrench@samba.org>,
+        Christine Caulfield <ccaulfie@redhat.com>,
+        David Teigland <teigland@redhat.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [Patch net-next v3 7/9] fs: use generic union inet_addr and
+ helper functions
+Message-ID: <20130819143752.GA12266@infradead.org>
+References: <1376907278-26377-1-git-send-email-amwang@redhat.com>
+ <1376907278-26377-8-git-send-email-amwang@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <5202AB04.9010006@gmx.de>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1376907278-26377-8-git-send-email-amwang@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Toralf Förster wrote:
+> @@ -1900,17 +1901,9 @@ srcip_matches(struct sockaddr *srcaddr, struct sockaddr *rhs)
+>  {
 
-  I'm trying to bisect a NFS + EXT3/4 + loop device issue introduced
-  probably between v3.8 and v3.10. Unfortunately my test systems (2 user
-  mode linux images) often fails to reproduce the origin issue due to a
-  crash in at another place.
-  
-  Now I'm wondering if somebody can point me to (few) patches, which I could
-  just apply during bisect to avoid running into the "false" bug.
+I think your new sockaddr_equal should be equivalent to to this
+srcip_matches, that is it should warn about and return false for unknown
+address families.
 
-It could be this:
-
-7255e71 nfsd: fix oops when legacy_recdir_name_error is passed a -ENOENT error
