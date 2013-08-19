@@ -1,85 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:32090 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:35221 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752806Ab3HVAYW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Aug 2013 20:24:22 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 01/21] NFS: refactor code for calculating the crc32 hash of a filehandle
-Date: Wed, 21 Aug 2013 20:23:59 -0400
-Message-ID: <1377131059-40121-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377131059-40121-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377131059-40121-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751061Ab3HSS1P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Aug 2013 14:27:15 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r7JIRFjo010880
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 19 Aug 2013 14:27:15 -0400
+Message-ID: <52126384.9040106@RedHat.com>
+Date: Mon, 19 Aug 2013 14:27:16 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: Scott Mayhew <smayhew@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [nfs-utils PATCH] mount.nfs: improve handling of bg, fg, and
+ sloppy in nfsmount.conf
+References: <1376575095-15403-1-git-send-email-smayhew@redhat.com>
+In-Reply-To: <1376575095-15403-1-git-send-email-smayhew@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We want to be able to display the crc32 hash of the filehandle in
-tracepoints.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/inode.c    |  3 +--
- fs/nfs/internal.h | 20 ++++++++++++++++++++
- 2 files changed, 21 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index af6e806..9a98b04 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -38,7 +38,6 @@
- #include <linux/slab.h>
- #include <linux/compat.h>
- #include <linux/freezer.h>
--#include <linux/crc32.h>
- 
- #include <asm/uaccess.h>
- 
-@@ -1190,7 +1189,7 @@ u32 _nfs_display_fhandle_hash(const struct nfs_fh *fh)
- {
- 	/* wireshark uses 32-bit AUTODIN crc and does a bitwise
- 	 * not on the result */
--	return ~crc32(0xFFFFFFFF, &fh->data[0], fh->size);
-+	return nfs_fhandle_hash(fh);
- }
- 
- /*
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 9b694f1..50f7068 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -5,6 +5,7 @@
- #include "nfs4_fs.h"
- #include <linux/mount.h>
- #include <linux/security.h>
-+#include <linux/crc32.h>
- 
- #define NFS_MS_MASK (MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC|MS_SYNCHRONOUS)
- 
-@@ -574,3 +575,22 @@ u64 nfs_timespec_to_change_attr(const struct timespec *ts)
- {
- 	return ((u64)ts->tv_sec << 30) + ts->tv_nsec;
- }
-+
-+#ifdef CONFIG_CRC32
-+/**
-+ * nfs_fhandle_hash - calculate the crc32 hash for the filehandle
-+ * @fh - pointer to filehandle
-+ *
-+ * returns a crc32 hash for the filehandle that is compatible with
-+ * the one displayed by "wireshark".
-+ */
-+static inline u32 nfs_fhandle_hash(const struct nfs_fh *fh)
-+{
-+	return ~crc32_le(0xFFFFFFFF, &fh->data[0], fh->size);
-+}
-+#else
-+static inline u32 nfs_fhandle_hash(const struct nfs_fh *fh)
-+{
-+	return 0;
-+}
-+#endif
--- 
-1.8.3.1
+On 15/08/13 09:58, Scott Mayhew wrote:
+> This patch makes 2 small improvements to the parsing of the bg, fg, and
+> sloppy mount options in nfsmount.conf.
+> 
+> 1. "bg" and "fg" negate should each other.  "Background=True" should
+> mean "bg" and "Background=False" should mean "fg".  The same applies to
+> "Foreground".
+> 
+> 2. Once we see "Sloppy=False" while parsing the configuration file we
+> should ignore subsequent occurrences of the sloppy option.  This will
+> preserve the "right-most setting wins" behavior for the sloppy mount
+> option.
+> 
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Committed...
 
+steved.
+
+> ---
+>  utils/mount/configfile.c | 11 +++++++++++
+>  1 file changed, 11 insertions(+)
+> 
+> diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
+> index 1f1b6e7..68b9f93 100644
+> --- a/utils/mount/configfile.c
+> +++ b/utils/mount/configfile.c
+> @@ -73,6 +73,8 @@ struct mnt_alias {
+>  };
+>  int mnt_alias_sz = (sizeof(mnt_alias_tab)/sizeof(mnt_alias_tab[0]));
+>  
+> +static int strict;
+> +
+>  /*
+>   * See if the option is an alias, if so return the 
+>   * real mount option along with the argument type.
+> @@ -310,7 +312,15 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
+>  		if (strcasecmp(value, "false") == 0) {
+>  			if (argtype != MNT_NOARG)
+>  				snprintf(buf, BUFSIZ, "no%s", field);
+> +			else if (strcasecmp(field, "bg") == 0)
+> +				snprintf(buf, BUFSIZ, "fg");
+> +			else if (strcasecmp(field, "fg") == 0)
+> +				snprintf(buf, BUFSIZ, "bg");
+> +			else if (strcasecmp(field, "sloppy") == 0)
+> +				strict = 1;
+>  		} else if (strcasecmp(value, "true") == 0) {
+> +			if ((strcasecmp(field, "sloppy") == 0) && strict)
+> +				continue;
+>  			snprintf(buf, BUFSIZ, "%s", field);
+>  		} else {
+>  			nvalue = strdup(value);
+> @@ -345,6 +355,7 @@ char *conf_get_mntopts(char *spec, char *mount_point,
+>  	char *ptr, *server, *config_opts;
+>  	int optlen = 0;
+>  
+> +	strict = 0;
+>  	SLIST_INIT(&head);
+>  	list_size = 0;
+>  	/*
+> 
