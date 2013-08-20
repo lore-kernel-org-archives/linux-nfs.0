@@ -1,95 +1,199 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from b.ns.miles-group.at ([95.130.255.144]:1660 "EHLO radon.swed.at"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754011Ab3H3OnH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Aug 2013 10:43:07 -0400
-Message-ID: <5220ADE7.1010502@nod.at>
-Date: Fri, 30 Aug 2013 16:36:23 +0200
-From: Richard Weinberger <richard@nod.at>
+Received: from mx11.netapp.com ([216.240.18.76]:47525 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751816Ab3HTTfW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Aug 2013 15:35:22 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v3 11/16] NFSv4: Add tracepoints for debugging delegations
+Date: Tue, 20 Aug 2013 15:35:07 -0400
+Message-ID: <1377027312-45957-12-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377027312-45957-11-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377027312-45957-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-11-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-To: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "user-mode-linux-devel@lists.sourceforge.net"
-	<user-mode-linux-devel@lists.sourceforge.net>,
-        Linux Kernel <linux-kernel@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-        linux-ext4@vger.kernel.org
-Subject: Re: [uml-devel] Issues with a rather unusual configured NFS server
-References: <52075E01.7030506@gmx.de> <20130812143640.GF4596@quack.suse.cz> <20130813215313.GH17781@fieldses.org> <20130827180655.GE14809@fieldses.org> <521E318C.7040401@gmx.de> <CAFLxGvyK5+nB9TgW1uPho9KGwQrWQHx=wEpj+o-mZcN92bWAOg@mail.gmail.com> <20130829133010.GA14773@fieldses.org> <5220A7E2.1070704@gmx.de>
-In-Reply-To: <5220A7E2.1070704@gmx.de>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Am 30.08.2013 16:10, schrieb Toralf Förster:
-> On 08/29/2013 03:30 PM, J. Bruce Fields wrote:
->> On Thu, Aug 29, 2013 at 11:57:45AM +0200, richard -rw- weinberger wrote:
->>> On Wed, Aug 28, 2013 at 7:21 PM, Toralf Förster <toralf.foerster@gmx.de> wrote:
->>>> On 08/27/2013 08:06 PM, J. Bruce Fields wrote:
->>>>> On Tue, Aug 13, 2013 at 05:53:14PM -0400, bfields wrote:
->>>>>> On Mon, Aug 12, 2013 at 04:36:40PM +0200, Jan Kara wrote:
->>>>>>> On Sun 11-08-13 11:48:49, Toralf Förster wrote:
->>>>>>>> so that the server either crashes (if it is a user mode linux image) or at least its reboot functionality got broken
->>>>>>>> - if the NFS server is hammered with scary NFS calls using a fuzzy tool running at a remote NFS client under a non-privileged user id.
->>>>>>>>
->>>>>>>> It can re reproduced, if
->>>>>>>>    - the NFS share is an EXT3 or EXT4 directory
->>>>>>>>    - and it is created at file located at tempfs and mounted via loop device
->>>>>>>>    - and the NFS server is forced to umount the NFS share
->>>>>>>>    - and the server forced to restart the NSF service afterwards
->>>>>>>>    - and trinity is used
->>>>>>>>
->>>>>>>> I could find a scenario for an automated bisect. 2 times it brought this commit
->>>>>>>> commit 68a3396178e6688ad7367202cdf0af8ed03c8727
->>>>>>>> Author: J. Bruce Fields <bfields@redhat.com>
->>>>>>>> Date:   Thu Mar 21 11:21:50 2013 -0400
->>>>>>>>
->>>>>>>>     nfsd4: shut down more of delegation earlier
->>>>>>
->>>>>> Thanks for the report.  I think I see the problem--after this commit
->>>>>> nfs4_set_delegation() failures result in nfs4_put_delegation being
->>>>>> called, but nfs4_put_delegation doesn't free the nfs4_file that has
->>>>>> already been set by alloc_init_deleg().
->>>>>>
->>>>>> Let me think about how to fix that....
->>>>>
->>>>> Sorry for the slow response--can you check whether this fixes the
->>>>> problem?
->>>>>
->>>> Yes.
->>>>
->>>> With the attached patch the problem can't be reproduced any longer with
->>>> the prepared test case and current git kernels.
->>>
->>> BTW: Is nobody else fuzz testing NFS?
->>
->> I don't know.  Toralf's reports are the only ones I recall off the top
->> of my head, but I may have forgotten others.
->>
-> 
-> well, 7255e71 and 3c50ba8 I'd say.
-> 
->>> Or are these bugs just more likely to hit on UML?
-> 
-> This definitely not. I observed at a real system EXT4 corruptions/
-> issues but reported them to the EXT4 mailing list.
-> It just took me a longer time to figure out a reliable configuration
-> with 2 UML machiens to automatic bisect it.
-> 
-> 
->> That's also possible.
->>
->>> This is not the first NFS issue found by Toralf using UML and Trinity.
->>
->> Yep.  The testing is definitely appreciated.
-> 
-> Thx - in the mean while although my UML bisect scripts are working fine
-> and trinity is stable enough even in UML environments to be trust worth.
+Set up tracepoints to track when delegations are set, reclaimed,
+returned by the client, or recalled by the server.
 
-That's good to know.
-Thanks you and trinity we got rid of some nasty UML bugs.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/callback_proc.c |  2 ++
+ fs/nfs/delegation.c    |  3 +++
+ fs/nfs/nfs4proc.c      |  2 ++
+ fs/nfs/nfs4trace.h     | 72 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 79 insertions(+)
 
-Thanks,
-//richard
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index e6ebc4c..c074930 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -15,6 +15,7 @@
+ #include "internal.h"
+ #include "pnfs.h"
+ #include "nfs4session.h"
++#include "nfs4trace.h"
+ 
+ #ifdef NFS_DEBUG
+ #define NFSDBG_FACILITY NFSDBG_CALLBACK
+@@ -93,6 +94,7 @@ __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
+ 	default:
+ 		res = htonl(NFS4ERR_RESOURCE);
+ 	}
++	trace_nfs4_recall_delegation(inode, -ntohl(res));
+ 	iput(inode);
+ out:
+ 	dprintk("%s: exit with status = %d\n", __func__, ntohl(res));
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 7ec4814..ef792f2 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -20,6 +20,7 @@
+ #include "nfs4_fs.h"
+ #include "delegation.h"
+ #include "internal.h"
++#include "nfs4trace.h"
+ 
+ static void nfs_free_delegation(struct nfs_delegation *delegation)
+ {
+@@ -160,6 +161,7 @@ void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred,
+ 			spin_unlock(&delegation->lock);
+ 			put_rpccred(oldcred);
+ 			rcu_read_unlock();
++			trace_nfs4_reclaim_delegation(inode, res->delegation_type);
+ 		} else {
+ 			/* We appear to have raced with a delegation return. */
+ 			spin_unlock(&delegation->lock);
+@@ -344,6 +346,7 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
+ 	spin_lock(&inode->i_lock);
+ 	nfsi->cache_validity |= NFS_INO_REVAL_FORCED;
+ 	spin_unlock(&inode->i_lock);
++	trace_nfs4_set_delegation(inode, res->delegation_type);
+ 
+ out:
+ 	spin_unlock(&clp->cl_lock);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index a7543b9..3a4a569 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4806,6 +4806,7 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
+ 	if (!nfs4_sequence_done(task, &data->res.seq_res))
+ 		return;
+ 
++	trace_nfs4_delegreturn_exit(&data->args, &data->res, task->tk_status);
+ 	switch (task->tk_status) {
+ 	case -NFS4ERR_STALE_STATEID:
+ 	case -NFS4ERR_EXPIRED:
+@@ -4909,6 +4910,7 @@ int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4
+ 	int err;
+ 	do {
+ 		err = _nfs4_proc_delegreturn(inode, cred, stateid, issync);
++		trace_nfs4_delegreturn(inode, err);
+ 		switch (err) {
+ 			case -NFS4ERR_STALE_STATEID:
+ 			case -NFS4ERR_EXPIRED:
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index 90d2083..82428fb 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -408,6 +408,76 @@ DEFINE_NFS4_LOCK_EVENT(nfs4_lock_reclaim);
+ DEFINE_NFS4_LOCK_EVENT(nfs4_lock_expired);
+ DEFINE_NFS4_LOCK_EVENT(nfs4_unlock);
+ 
++DECLARE_EVENT_CLASS(nfs4_set_delegation_event,
++		TP_PROTO(
++			const struct inode *inode,
++			fmode_t fmode
++		),
++
++		TP_ARGS(inode, fmode),
++
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++			__field(fmode_t, fmode)
++		),
++
++		TP_fast_assign(
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = NFS_FILEID(inode);
++			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
++			__entry->fmode = fmode;
++		),
++
++		TP_printk(
++			"fmode=%s fileid=%02x:%02x:%llu fhandle=0x%08x",
++			show_fmode_flags(__entry->fmode),
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle
++		)
++);
++#define DEFINE_NFS4_SET_DELEGATION_EVENT(name) \
++	DEFINE_EVENT(nfs4_set_delegation_event, name, \
++			TP_PROTO( \
++				const struct inode *inode, \
++				fmode_t fmode \
++			), \
++			TP_ARGS(inode, fmode))
++DEFINE_NFS4_SET_DELEGATION_EVENT(nfs4_set_delegation);
++DEFINE_NFS4_SET_DELEGATION_EVENT(nfs4_reclaim_delegation);
++
++TRACE_EVENT(nfs4_delegreturn_exit,
++		TP_PROTO(
++			const struct nfs4_delegreturnargs *args,
++			const struct nfs4_delegreturnres *res,
++			int error
++		),
++
++		TP_ARGS(args, res, error),
++
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(int, error)
++		),
++
++		TP_fast_assign(
++			__entry->dev = res->server->s_dev;
++			__entry->fhandle = nfs_fhandle_hash(args->fhandle);
++			__entry->error = error;
++		),
++
++		TP_printk(
++			"error=%d (%s) dev=%02x:%02x fhandle=0x%08x",
++			__entry->error,
++			show_nfsv4_errors(__entry->error),
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			__entry->fhandle
++		)
++);
++
+ DECLARE_EVENT_CLASS(nfs4_lookup_event,
+ 		TP_PROTO(
+ 			const struct inode *dir,
+@@ -564,6 +634,8 @@ DEFINE_NFS4_INODE_EVENT(nfs4_set_acl);
+ DEFINE_NFS4_INODE_EVENT(nfs4_get_security_label);
+ DEFINE_NFS4_INODE_EVENT(nfs4_set_security_label);
+ #endif /* CONFIG_NFS_V4_SECURITY_LABEL */
++DEFINE_NFS4_INODE_EVENT(nfs4_recall_delegation);
++DEFINE_NFS4_INODE_EVENT(nfs4_delegreturn);
+ 
+ #endif /* _TRACE_NFS4_H */
+ 
+-- 
+1.8.3.1
 
