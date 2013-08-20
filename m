@@ -1,36 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:30405 "EHLO mx12.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:49414 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934262Ab3HHO6D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Aug 2013 10:58:03 -0400
-From: <andros@netapp.com>
-To: <trond.myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 0/2] NFSv4.1 Use clientid management rpc_clnt
-Date: Thu, 8 Aug 2013 10:57:54 -0400
-Message-ID: <1375973876-2522-1-git-send-email-andros@netapp.com>
+	id S1751787Ab3HTTfR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Aug 2013 15:35:17 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v3 01/16] NFS: refactor code for calculating the crc32 hash of a filehandle
+Date: Tue, 20 Aug 2013 15:34:57 -0400
+Message-ID: <1377027312-45957-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377027312-45957-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377027312-45957-1-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+We want to be able to display the crc32 hash of the filehandle in
+tracepoints.
 
-Version 2 changes:
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/inode.c    |  3 +--
+ fs/nfs/internal.h | 20 ++++++++++++++++++++
+ 2 files changed, 21 insertions(+), 2 deletions(-)
 
-remove the fs_locations patch
-add code comments as per review
-
-Testing: SECINFO against a filer. Still need to test SECINFO_NO_NAME
-
-
-Andy Adamson (2):
-  NFSv4.1 Use clientid management rpc_clnt for secinfo
-  NFSv4.1 Use clientid management rpc_clnt for secinfo_no_name
-
- fs/nfs/nfs4proc.c | 10 ++++++++--
- 1 file changed, 8 insertions(+), 2 deletions(-)
-
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index af6e806..9a98b04 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -38,7 +38,6 @@
+ #include <linux/slab.h>
+ #include <linux/compat.h>
+ #include <linux/freezer.h>
+-#include <linux/crc32.h>
+ 
+ #include <asm/uaccess.h>
+ 
+@@ -1190,7 +1189,7 @@ u32 _nfs_display_fhandle_hash(const struct nfs_fh *fh)
+ {
+ 	/* wireshark uses 32-bit AUTODIN crc and does a bitwise
+ 	 * not on the result */
+-	return ~crc32(0xFFFFFFFF, &fh->data[0], fh->size);
++	return nfs_fhandle_hash(fh);
+ }
+ 
+ /*
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 9b694f1..50f7068 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -5,6 +5,7 @@
+ #include "nfs4_fs.h"
+ #include <linux/mount.h>
+ #include <linux/security.h>
++#include <linux/crc32.h>
+ 
+ #define NFS_MS_MASK (MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC|MS_SYNCHRONOUS)
+ 
+@@ -574,3 +575,22 @@ u64 nfs_timespec_to_change_attr(const struct timespec *ts)
+ {
+ 	return ((u64)ts->tv_sec << 30) + ts->tv_nsec;
+ }
++
++#ifdef CONFIG_CRC32
++/**
++ * nfs_fhandle_hash - calculate the crc32 hash for the filehandle
++ * @fh - pointer to filehandle
++ *
++ * returns a crc32 hash for the filehandle that is compatible with
++ * the one displayed by "wireshark".
++ */
++static inline u32 nfs_fhandle_hash(const struct nfs_fh *fh)
++{
++	return ~crc32_le(0xFFFFFFFF, &fh->data[0], fh->size);
++}
++#else
++static inline u32 nfs_fhandle_hash(const struct nfs_fh *fh)
++{
++	return 0;
++}
++#endif
 -- 
 1.8.3.1
 
