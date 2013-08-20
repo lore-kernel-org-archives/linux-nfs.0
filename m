@@ -1,118 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:24857 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758747Ab3HMTbF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Aug 2013 15:31:05 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
-Subject: Re: [nfs-utils PATCH 1/4] mount.nfs: avoid unnecessary duplication of options passed to mount(2)
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1376421629-21382-2-git-send-email-smayhew@redhat.com>
-Date: Tue, 13 Aug 2013 15:30:47 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <B88ACB44-F0FF-4365-A783-D32892A9BCC9@oracle.com>
-References: <1376421629-21382-1-git-send-email-smayhew@redhat.com> <1376421629-21382-2-git-send-email-smayhew@redhat.com>
-To: Scott Mayhew <smayhew@redhat.com>
+Received: from mx11.netapp.com ([216.240.18.76]:62550 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751319Ab3HTRWS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Aug 2013 13:22:18 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: Remove the NFSv4 "open optimisation" from
+ nfs_permission
+Date: Tue, 20 Aug 2013 17:22:16 +0000
+Message-ID: <9146DF7D-CBC0-4B28-9F60-DF448AD7BF1A@netapp.com>
+References: <1377018821-18925-1-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377018821-18925-1-git-send-email-Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Good catch!
 
-On Aug 13, 2013, at 3:20 PM, Scott Mayhew <smayhew@redhat.com> wrote:
+-dros
 
-> The nfsmount.conf file has the following format:
+On Aug 20, 2013, at 1:13 PM, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+
+> Ever since commit 6168f62cb (Add ACCESS operation to OPEN compound)
+> the NFSv4 atomic open has primed the access cache, and so nfs_permission
+> will no longer do an RPC call on the wire.
 > 
-> [ section "arg" ]
-> 	tag = value
-> 
-> conf_get_tag_list() currently doesn't check the arg field so we wind up
-> getting all the options that fall under a particular section value,
-> instead of just the ones that match the specific "arg" field.  As a
-> result, we wind up passing options to the mount syscall multiple times.
-> 
-> For example, if we have three different server sections, and each
-> section has an Nfsvers tag, then the string we pass to the mount syscall
-> will have three occurrences of the nfsvers option.
-> 
-> Note that the call to conf_get_section() in conf_parse_mntopts() will
-> ensure that we never pass the wrong value for an option, but we should
-> still avoid sending duplicate options if it's at all possible.
-
-You haven't convinced me that passing duplicate options is incorrect behavior.
-
-The idea was to do this kind of data reduction in one place.  It's either done in the kernel's NFS mount option parser, or in mount.nfs's legacy mount option parser.  There should be one authority on what setting takes effect.
-
-Do your changes preserve the "right-most setting wins" behavior?  This is why the config file logic sends duplicate options: it's easier to simply stack the options onto a list, with the system specific options first, then the server specific, then the mount point specific options.  The kernel's option parser then sorts it out and applies the correct setting.
-
-If the right-most setting of an option is not taking effect, that's a bug.
-
-
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 > ---
-> support/include/conffile.h | 2 +-
-> support/nfs/conffile.c     | 4 +++-
-> utils/mount/configfile.c   | 2 +-
-> 3 files changed, 5 insertions(+), 3 deletions(-)
+> fs/nfs/dir.c | 5 -----
+> 1 file changed, 5 deletions(-)
 > 
-> diff --git a/support/include/conffile.h b/support/include/conffile.h
-> index ce7aa21..05ea5d2 100644
-> --- a/support/include/conffile.h
-> +++ b/support/include/conffile.h
-> @@ -54,7 +54,7 @@ extern int      conf_end(int, int);
-> extern void     conf_free_list(struct conf_list *);
-> extern struct sockaddr *conf_get_address(char *, char *);
-> extern struct conf_list *conf_get_list(char *, char *);
-> -extern struct conf_list *conf_get_tag_list(char *);
-> +extern struct conf_list *conf_get_tag_list(char *, char *);
-> extern int      conf_get_num(char *, char *, int);
-> extern char    *conf_get_str(char *, char *);
-> extern char    *conf_get_section(char *, char *, char *);
-> diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-> index 5015e94..c3434d5 100644
-> --- a/support/nfs/conffile.c
-> +++ b/support/nfs/conffile.c
-> @@ -565,7 +565,7 @@ cleanup:
-> }
-> 
-> struct conf_list *
-> -conf_get_tag_list(char *section)
-> +conf_get_tag_list(char *section, char *arg)
-> {
-> 	struct conf_list *list = 0;
-> 	struct conf_list_node *node;
-> @@ -579,6 +579,8 @@ conf_get_tag_list(char *section)
-> 	cb = LIST_FIRST(&conf_bindings[conf_hash (section)]);
-> 	for (; cb; cb = LIST_NEXT(cb, link)) {
-> 		if (strcasecmp (section, cb->section) == 0) {
-> +			if (arg != NULL && strcasecmp(arg, cb->arg) != 0)
-> +				continue;
-> 			list->cnt++;
-> 			node = calloc(1, sizeof *node);
-> 			if (!node)
-> diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
-> index 6f2ee75..1f1b6e7 100644
-> --- a/utils/mount/configfile.c
-> +++ b/utils/mount/configfile.c
-> @@ -286,7 +286,7 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
-> 	char *nvalue, *ptr;
-> 	int argtype;
-> 
-> -	list = conf_get_tag_list(section);
-> +	list = conf_get_tag_list(section, arg);
-> 	TAILQ_FOREACH(node, &list->fields, link) {
-> 		/*
-> 		 * Do not overwrite options if already exists 
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index 39e69d4..5d737bd 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -2245,11 +2245,6 @@ int nfs_permission(struct inode *inode, int mask)
+> 		case S_IFLNK:
+> 			goto out;
+> 		case S_IFREG:
+> -			/* NFSv4 has atomic_open... */
+> -			if (nfs_server_capable(inode, NFS_CAP_ATOMIC_OPEN)
+> -					&& (mask & MAY_OPEN)
+> -					&& !(mask & MAY_EXEC))
+> -				goto out;
+> 			break;
+> 		case S_IFDIR:
+> 			/*
 > -- 
-> 1.7.11.7
+> 1.8.3.1
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
 
