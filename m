@@ -1,298 +1,157 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:36416 "EHLO mx12.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:35728 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753466Ab3H0U7I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Aug 2013 16:59:08 -0400
+	id S1751825Ab3HTTfX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Aug 2013 15:35:23 -0400
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: <linux-nfs@vger.kernel.org>
-CC: <andros@netapp.com>
-Subject: [PATCH 09/15] SUNRPC: Add a framework to clean up management of rpc_pipefs directories
-Date: Tue, 27 Aug 2013 16:58:46 -0400
-Message-ID: <1377637132-53318-9-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377637132-53318-8-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377637132-53318-1-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-2-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-3-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-4-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-5-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-6-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-7-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-8-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH v3 13/16] NFSv4: Add tracepoints for debugging getattr
+Date: Tue, 20 Aug 2013 15:35:09 -0400
+Message-ID: <1377027312-45957-14-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377027312-45957-13-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377027312-45957-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-13-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The current system requires everyone to set up notifiers, manage directory
-locking, etc.
-What we really want to do is have the rpc_client create its directory,
-and then create all the entries.
-
-This patch will allow the RPCSEC_GSS and NFS code to register all the
-objects that they want to have appear in the directory, and then have
-the sunrpc code call them back to actually create/destroy their pipefs
-dentries when the rpc_client creates/destroys the parent.
-
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- include/linux/sunrpc/clnt.h        |   2 +
- include/linux/sunrpc/rpc_pipe_fs.h |  33 ++++++++-
- net/sunrpc/clnt.c                  |   3 +-
- net/sunrpc/rpc_pipe.c              | 134 ++++++++++++++++++++++++++++++++++++-
- 4 files changed, 168 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4proc.c  |  7 ++++--
+ fs/nfs/nfs4trace.h | 69 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 74 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index b93b4aa..0dccd01 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -21,6 +21,7 @@
- #include <linux/sunrpc/stats.h>
- #include <linux/sunrpc/xdr.h>
- #include <linux/sunrpc/timer.h>
-+#include <linux/sunrpc/rpc_pipe_fs.h>
- #include <asm/signal.h>
- #include <linux/path.h>
- #include <net/ipv6.h>
-@@ -55,6 +56,7 @@ struct rpc_clnt {
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 3a4a569..2182669 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2697,6 +2697,7 @@ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	int err;
+ 	do {
+ 		err = _nfs4_lookup_root(server, fhandle, info);
++		trace_nfs4_lookup_root(server, fhandle, info->fattr, err);
+ 		switch (err) {
+ 		case 0:
+ 		case -NFS4ERR_WRONGSEC:
+@@ -2906,8 +2907,9 @@ static int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = nfs4_handle_exception(server,
+-				_nfs4_proc_getattr(server, fhandle, fattr, label),
++		err = _nfs4_proc_getattr(server, fhandle, fattr, label);
++		trace_nfs4_getattr(server, fhandle, fattr, err);
++		err = nfs4_handle_exception(server, err,
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+@@ -3764,6 +3766,7 @@ static int nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle, str
  
- 	int			cl_nodelen;	/* nodename length */
- 	char 			cl_nodename[UNX_MAXNODENAME];
-+	struct rpc_pipe_dir_head cl_pipedir_objects;
- 	struct dentry *		cl_dentry;
- 	struct rpc_clnt *	cl_parent;	/* Points to parent of clones */
- 	struct rpc_rtt		cl_rtt_default;
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index aa5b582..188e7fc 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -5,6 +5,26 @@
+ 	do {
+ 		err = _nfs4_do_fsinfo(server, fhandle, fsinfo);
++		trace_nfs4_fsinfo(server, fhandle, fsinfo->fattr, err);
+ 		if (err == 0) {
+ 			struct nfs_client *clp = server->nfs_client;
  
- #include <linux/workqueue.h>
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index f00fa87..791e0d6 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -171,6 +171,24 @@
+ 		{ FMODE_WRITE, "WRITE" }, \
+ 		{ FMODE_EXEC, "EXEC" })
  
-+struct rpc_pipe_dir_head {
-+	struct list_head pdh_entries;
-+	struct dentry *pdh_dentry;
-+};
++#define show_nfs_fattr_flags(valid) \
++	__print_flags((unsigned long)valid, "|", \
++		{ NFS_ATTR_FATTR_TYPE, "TYPE" }, \
++		{ NFS_ATTR_FATTR_MODE, "MODE" }, \
++		{ NFS_ATTR_FATTR_NLINK, "NLINK" }, \
++		{ NFS_ATTR_FATTR_OWNER, "OWNER" }, \
++		{ NFS_ATTR_FATTR_GROUP, "GROUP" }, \
++		{ NFS_ATTR_FATTR_RDEV, "RDEV" }, \
++		{ NFS_ATTR_FATTR_SIZE, "SIZE" }, \
++		{ NFS_ATTR_FATTR_FSID, "FSID" }, \
++		{ NFS_ATTR_FATTR_FILEID, "FILEID" }, \
++		{ NFS_ATTR_FATTR_ATIME, "ATIME" }, \
++		{ NFS_ATTR_FATTR_MTIME, "MTIME" }, \
++		{ NFS_ATTR_FATTR_CTIME, "CTIME" }, \
++		{ NFS_ATTR_FATTR_CHANGE, "CHANGE" }, \
++		{ NFS_ATTR_FATTR_OWNER_NAME, "OWNER_NAME" }, \
++		{ NFS_ATTR_FATTR_GROUP_NAME, "GROUP_NAME" })
 +
-+struct rpc_pipe_dir_object_ops;
-+struct rpc_pipe_dir_object {
-+	struct list_head pdo_head;
-+	const struct rpc_pipe_dir_object_ops *pdo_ops;
-+
-+	void *pdo_data;
-+};
-+
-+struct rpc_pipe_dir_object_ops {
-+	int (*create)(struct dentry *dir,
-+			struct rpc_pipe_dir_object *pdo);
-+	void (*destroy)(struct dentry *dir,
-+			struct rpc_pipe_dir_object *pdo);
-+};
-+
- struct rpc_pipe_msg {
- 	struct list_head list;
- 	void *data;
-@@ -74,7 +94,18 @@ extern int rpc_queue_upcall(struct rpc_pipe *, struct rpc_pipe_msg *);
+ DECLARE_EVENT_CLASS(nfs4_clientid_event,
+ 		TP_PROTO(
+ 			const struct nfs_client *clp,
+@@ -637,6 +655,57 @@ DEFINE_NFS4_INODE_EVENT(nfs4_set_security_label);
+ DEFINE_NFS4_INODE_EVENT(nfs4_recall_delegation);
+ DEFINE_NFS4_INODE_EVENT(nfs4_delegreturn);
  
- struct rpc_clnt;
- extern struct dentry *rpc_create_client_dir(struct dentry *, const char *, struct rpc_clnt *);
--extern int rpc_remove_client_dir(struct dentry *);
-+extern int rpc_remove_client_dir(struct dentry *, struct rpc_clnt *);
++DECLARE_EVENT_CLASS(nfs4_getattr_event,
++		TP_PROTO(
++			const struct nfs_server *server,
++			const struct nfs_fh *fhandle,
++			const struct nfs_fattr *fattr,
++			int error
++		),
 +
-+extern void rpc_init_pipe_dir_head(struct rpc_pipe_dir_head *pdh);
-+extern void rpc_init_pipe_dir_object(struct rpc_pipe_dir_object *pdo,
-+		const struct rpc_pipe_dir_object_ops *pdo_ops,
-+		void *pdo_data);
-+extern int rpc_add_pipe_dir_object(struct net *net,
-+		struct rpc_pipe_dir_head *pdh,
-+		struct rpc_pipe_dir_object *pdo);
-+extern void rpc_remove_pipe_dir_object(struct net *net,
-+		struct rpc_pipe_dir_head *pdh,
-+		struct rpc_pipe_dir_object *pdo);
- 
- struct cache_detail;
- extern struct dentry *rpc_create_cache_dir(struct dentry *,
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 436adce..c736031 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -105,7 +105,7 @@ static void __rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
- 	if (clnt->cl_dentry) {
- 		if (clnt->cl_auth && clnt->cl_auth->au_ops->pipes_destroy)
- 			clnt->cl_auth->au_ops->pipes_destroy(clnt->cl_auth);
--		rpc_remove_client_dir(clnt->cl_dentry);
-+		rpc_remove_client_dir(clnt->cl_dentry, clnt);
- 	}
- 	clnt->cl_dentry = NULL;
- }
-@@ -351,6 +351,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
- 	clnt->cl_vers     = version->number;
- 	clnt->cl_stats    = program->stats;
- 	clnt->cl_metrics  = rpc_alloc_iostats(clnt);
-+	rpc_init_pipe_dir_head(&clnt->cl_pipedir_objects);
- 	err = -ENOMEM;
- 	if (clnt->cl_metrics == NULL)
- 		goto out_no_stats;
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index b36bfb9..cfeba77 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -884,6 +884,124 @@ rpc_unlink(struct dentry *dentry)
- }
- EXPORT_SYMBOL_GPL(rpc_unlink);
- 
-+/**
-+ * rpc_init_pipe_dir_head - initialise a struct rpc_pipe_dir_head
-+ * @pdh: pointer to struct rpc_pipe_dir_head
-+ */
-+void rpc_init_pipe_dir_head(struct rpc_pipe_dir_head *pdh)
-+{
-+	INIT_LIST_HEAD(&pdh->pdh_entries);
-+	pdh->pdh_dentry = NULL;
-+}
-+EXPORT_SYMBOL_GPL(rpc_init_pipe_dir_head);
++		TP_ARGS(server, fhandle, fattr, error),
 +
-+/**
-+ * rpc_init_pipe_dir_object - initialise a struct rpc_pipe_dir_object
-+ * @pdo: pointer to struct rpc_pipe_dir_object
-+ * @pdo_ops: pointer to const struct rpc_pipe_dir_object_ops
-+ * @pdo_data: pointer to caller-defined data
-+ */
-+void rpc_init_pipe_dir_object(struct rpc_pipe_dir_object *pdo,
-+		const struct rpc_pipe_dir_object_ops *pdo_ops,
-+		void *pdo_data)
-+{
-+	INIT_LIST_HEAD(&pdo->pdo_head);
-+	pdo->pdo_ops = pdo_ops;
-+	pdo->pdo_data = pdo_data;
-+}
-+EXPORT_SYMBOL_GPL(rpc_init_pipe_dir_object);
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++			__field(unsigned int, valid)
++			__field(int, error)
++		),
 +
-+static int
-+rpc_add_pipe_dir_object_locked(struct net *net,
-+		struct rpc_pipe_dir_head *pdh,
-+		struct rpc_pipe_dir_object *pdo)
-+{
-+	int ret = 0;
++		TP_fast_assign(
++			__entry->dev = server->s_dev;
++			__entry->valid = fattr->valid;
++			__entry->fhandle = nfs_fhandle_hash(fhandle);
++			__entry->fileid = (fattr->valid & NFS_ATTR_FATTR_FILEID) ? fattr->fileid : 0;
++			__entry->error = error;
++		),
 +
-+	if (pdh->pdh_dentry)
-+		ret = pdo->pdo_ops->create(pdh->pdh_dentry, pdo);
-+	if (ret == 0)
-+		list_add_tail(&pdo->pdo_head, &pdh->pdh_entries);
-+	return ret;
-+}
++		TP_printk(
++			"error=%d (%s) fileid=%02x:%02x:%llu fhandle=0x%08x "
++			"valid=%s",
++			__entry->error,
++			show_nfsv4_errors(__entry->error),
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle,
++			show_nfs_fattr_flags(__entry->valid)
++		)
++);
 +
-+static void
-+rpc_remove_pipe_dir_object_locked(struct net *net,
-+		struct rpc_pipe_dir_head *pdh,
-+		struct rpc_pipe_dir_object *pdo)
-+{
-+	if (pdh->pdh_dentry)
-+		pdo->pdo_ops->destroy(pdh->pdh_dentry, pdo);
-+	list_del_init(&pdo->pdo_head);
-+}
++#define DEFINE_NFS4_GETATTR_EVENT(name) \
++	DEFINE_EVENT(nfs4_getattr_event, name, \
++			TP_PROTO( \
++				const struct nfs_server *server, \
++				const struct nfs_fh *fhandle, \
++				const struct nfs_fattr *fattr, \
++				int error \
++			), \
++			TP_ARGS(server, fhandle, fattr, error))
++DEFINE_NFS4_GETATTR_EVENT(nfs4_getattr);
++DEFINE_NFS4_GETATTR_EVENT(nfs4_lookup_root);
++DEFINE_NFS4_GETATTR_EVENT(nfs4_fsinfo);
 +
-+/**
-+ * rpc_add_pipe_dir_object - associate a rpc_pipe_dir_object to a directory
-+ * @net: pointer to struct net
-+ * @pdh: pointer to struct rpc_pipe_dir_head
-+ * @pdo: pointer to struct rpc_pipe_dir_object
-+ *
-+ */
-+int
-+rpc_add_pipe_dir_object(struct net *net,
-+		struct rpc_pipe_dir_head *pdh,
-+		struct rpc_pipe_dir_object *pdo)
-+{
-+	int ret = 0;
-+
-+	if (list_empty(&pdo->pdo_head)) {
-+		struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+
-+		mutex_lock(&sn->pipefs_sb_lock);
-+		ret = rpc_add_pipe_dir_object_locked(net, pdh, pdo);
-+		mutex_unlock(&sn->pipefs_sb_lock);
-+	}
-+	return ret;
-+}
-+EXPORT_SYMBOL_GPL(rpc_add_pipe_dir_object);
-+
-+/**
-+ * rpc_remove_pipe_dir_object - remove a rpc_pipe_dir_object from a directory
-+ * @net: pointer to struct net
-+ * @pdh: pointer to struct rpc_pipe_dir_head
-+ * @pdo: pointer to struct rpc_pipe_dir_object
-+ *
-+ */
-+void
-+rpc_remove_pipe_dir_object(struct net *net,
-+		struct rpc_pipe_dir_head *pdh,
-+		struct rpc_pipe_dir_object *pdo)
-+{
-+	if (!list_empty(&pdo->pdo_head)) {
-+		struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+
-+		mutex_lock(&sn->pipefs_sb_lock);
-+		rpc_remove_pipe_dir_object_locked(net, pdh, pdo);
-+		mutex_unlock(&sn->pipefs_sb_lock);
-+	}
-+}
-+EXPORT_SYMBOL_GPL(rpc_remove_pipe_dir_object);
-+
-+static void
-+rpc_create_pipe_dir_objects(struct rpc_pipe_dir_head *pdh)
-+{
-+	struct rpc_pipe_dir_object *pdo;
-+	struct dentry *dir = pdh->pdh_dentry;
-+
-+	list_for_each_entry(pdo, &pdh->pdh_entries, pdo_head)
-+		pdo->pdo_ops->create(dir, pdo);
-+}
-+
-+static void
-+rpc_destroy_pipe_dir_objects(struct rpc_pipe_dir_head *pdh)
-+{
-+	struct rpc_pipe_dir_object *pdo;
-+	struct dentry *dir = pdh->pdh_dentry;
-+
-+	list_for_each_entry(pdo, &pdh->pdh_entries, pdo_head)
-+		pdo->pdo_ops->destroy(dir, pdo);
-+}
-+
- enum {
- 	RPCAUTH_info,
- 	RPCAUTH_EOF
-@@ -924,16 +1042,28 @@ struct dentry *rpc_create_client_dir(struct dentry *dentry,
- 				   const char *name,
- 				   struct rpc_clnt *rpc_client)
- {
--	return rpc_mkdir_populate(dentry, name, S_IRUGO | S_IXUGO, NULL,
-+	struct dentry *ret;
-+
-+	ret = rpc_mkdir_populate(dentry, name, S_IRUGO | S_IXUGO, NULL,
- 			rpc_clntdir_populate, rpc_client);
-+	if (!IS_ERR(ret)) {
-+		rpc_client->cl_pipedir_objects.pdh_dentry = ret;
-+		rpc_create_pipe_dir_objects(&rpc_client->cl_pipedir_objects);
-+	}
-+	return ret;
- }
- 
- /**
-  * rpc_remove_client_dir - Remove a directory created with rpc_create_client_dir()
-  * @dentry: dentry for the pipe
-+ * @rpc_client: rpc_client for the pipe
-  */
--int rpc_remove_client_dir(struct dentry *dentry)
-+int rpc_remove_client_dir(struct dentry *dentry, struct rpc_clnt *rpc_client)
- {
-+	if (rpc_client->cl_pipedir_objects.pdh_dentry) {
-+		rpc_destroy_pipe_dir_objects(&rpc_client->cl_pipedir_objects);
-+		rpc_client->cl_pipedir_objects.pdh_dentry = NULL;
-+	}
- 	return rpc_rmdir_depopulate(dentry, rpc_clntdir_depopulate);
- }
- 
+ DECLARE_EVENT_CLASS(nfs4_idmap_event,
+ 		TP_PROTO(
+ 			const char *name,
 -- 
 1.8.3.1
 
