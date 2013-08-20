@@ -1,341 +1,139 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:33206 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:35728 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751560Ab3HBNge (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 Aug 2013 09:36:34 -0400
-Date: Fri, 2 Aug 2013 09:36:25 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Cong Wang <amwang@redhat.com>
-Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [Patch net-next v2 5/8] sunrpc: use generic union inet_addr
-Message-ID: <20130802093625.2c70a330@tlielax.poochiereds.net>
-In-Reply-To: <1375427674-21735-6-git-send-email-amwang@redhat.com>
-References: <1375427674-21735-1-git-send-email-amwang@redhat.com>
-	<1375427674-21735-6-git-send-email-amwang@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1751819Ab3HTTfX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Aug 2013 15:35:23 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v3 12/16] NFSv4: Add tracepoints for debugging the idmapper
+Date: Tue, 20 Aug 2013 15:35:08 -0400
+Message-ID: <1377027312-45957-13-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377027312-45957-12-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377027312-45957-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-12-git-send-email-Trond.Myklebust@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri,  2 Aug 2013 15:14:31 +0800
-Cong Wang <amwang@redhat.com> wrote:
+Add tracepoints to help debug uid/gid mappings to username/group.
 
-> From: Cong Wang <amwang@redhat.com>
-> 
-> sunrpc defines some helper functions for sockaddr, actually they
-> can re-use the generic functions for union inet_addr too.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/idmap.c     |  5 +++++
+ fs/nfs/nfs4trace.h | 46 ++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 51 insertions(+)
 
-Only some of these patches in this series have made it to lists to
-which I'm subscribed, so I may be missing some context here...
-
-I'm not sure I really understand the value of "union inet_addr". Why
-not just use the conventional method of passing around "struct sockaddr"
-pointers, and then casting them to struct sockaddr_in/sockaddr_in6
-depending on what the sa_family is set to?
-
-With that you wouldn't need to leave the (now pointless) rpc_* wrappers
-in place and could just call your new helpers directly.
-
-> 
-> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> Cc: linux-nfs@vger.kernel.org
-> Signed-off-by: Cong Wang <amwang@redhat.com>
-> ---
->  include/linux/sunrpc/addr.h |  118 +++----------------------------------------
->  include/net/inet_addr.h     |   74 +++++++++++++++++++++------
->  net/core/utils.c            |   25 +++++++++
->  3 files changed, 89 insertions(+), 128 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/addr.h b/include/linux/sunrpc/addr.h
-> index 07d8e53..10d07f6 100644
-> --- a/include/linux/sunrpc/addr.h
-> +++ b/include/linux/sunrpc/addr.h
-> @@ -11,6 +11,7 @@
->  #include <linux/in.h>
->  #include <linux/in6.h>
->  #include <net/ipv6.h>
-> +#include <net/inet_addr.h>
->  
->  size_t		rpc_ntop(const struct sockaddr *, char *, const size_t);
->  size_t		rpc_pton(struct net *, const char *, const size_t,
-> @@ -21,135 +22,30 @@ size_t		rpc_uaddr2sockaddr(struct net *, const char *, const size_t,
->  
->  static inline unsigned short rpc_get_port(const struct sockaddr *sap)
->  {
-> -	switch (sap->sa_family) {
-> -	case AF_INET:
-> -		return ntohs(((struct sockaddr_in *)sap)->sin_port);
-> -	case AF_INET6:
-> -		return ntohs(((struct sockaddr_in6 *)sap)->sin6_port);
-> -	}
-> -	return 0;
-> +	return inet_addr_get_port((const union inet_addr *)sap);
->  }
->  
->  static inline void rpc_set_port(struct sockaddr *sap,
->  				const unsigned short port)
->  {
-> -	switch (sap->sa_family) {
-> -	case AF_INET:
-> -		((struct sockaddr_in *)sap)->sin_port = htons(port);
-> -		break;
-> -	case AF_INET6:
-> -		((struct sockaddr_in6 *)sap)->sin6_port = htons(port);
-> -		break;
-> -	}
-> +	inet_addr_set_port((union inet_addr *)sap, port);
->  }
->  
->  #define IPV6_SCOPE_DELIMITER		'%'
->  #define IPV6_SCOPE_ID_LEN		sizeof("%nnnnnnnnnn")
->  
-> -static inline bool __rpc_cmp_addr4(const struct sockaddr *sap1,
-> -				   const struct sockaddr *sap2)
-> -{
-> -	const struct sockaddr_in *sin1 = (const struct sockaddr_in *)sap1;
-> -	const struct sockaddr_in *sin2 = (const struct sockaddr_in *)sap2;
-> -
-> -	return sin1->sin_addr.s_addr == sin2->sin_addr.s_addr;
-> -}
-> -
-> -static inline bool __rpc_copy_addr4(struct sockaddr *dst,
-> -				    const struct sockaddr *src)
-> -{
-> -	const struct sockaddr_in *ssin = (struct sockaddr_in *) src;
-> -	struct sockaddr_in *dsin = (struct sockaddr_in *) dst;
-> -
-> -	dsin->sin_family = ssin->sin_family;
-> -	dsin->sin_addr.s_addr = ssin->sin_addr.s_addr;
-> -	return true;
-> -}
-> -
-> -#if IS_ENABLED(CONFIG_IPV6)
-> -static inline bool __rpc_cmp_addr6(const struct sockaddr *sap1,
-> -				   const struct sockaddr *sap2)
-> -{
-> -	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sap1;
-> -	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sap2;
-> -
-> -	if (!ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr))
-> -		return false;
-> -	else if (ipv6_addr_type(&sin1->sin6_addr) & IPV6_ADDR_LINKLOCAL)
-> -		return sin1->sin6_scope_id == sin2->sin6_scope_id;
-> -
-> -	return true;
-> -}
-> -
-> -static inline bool __rpc_copy_addr6(struct sockaddr *dst,
-> -				    const struct sockaddr *src)
-> -{
-> -	const struct sockaddr_in6 *ssin6 = (const struct sockaddr_in6 *) src;
-> -	struct sockaddr_in6 *dsin6 = (struct sockaddr_in6 *) dst;
-> -
-> -	dsin6->sin6_family = ssin6->sin6_family;
-> -	dsin6->sin6_addr = ssin6->sin6_addr;
-> -	dsin6->sin6_scope_id = ssin6->sin6_scope_id;
-> -	return true;
-> -}
-> -#else	/* !(IS_ENABLED(CONFIG_IPV6) */
-> -static inline bool __rpc_cmp_addr6(const struct sockaddr *sap1,
-> -				   const struct sockaddr *sap2)
-> -{
-> -	return false;
-> -}
-> -
-> -static inline bool __rpc_copy_addr6(struct sockaddr *dst,
-> -				    const struct sockaddr *src)
-> -{
-> -	return false;
-> -}
-> -#endif	/* !(IS_ENABLED(CONFIG_IPV6) */
-> -
-> -/**
-> - * rpc_cmp_addr - compare the address portion of two sockaddrs.
-> - * @sap1: first sockaddr
-> - * @sap2: second sockaddr
-> - *
-> - * Just compares the family and address portion. Ignores port, but
-> - * compares the scope if it's a link-local address.
-> - *
-> - * Returns true if the addrs are equal, false if they aren't.
-> - */
->  static inline bool rpc_cmp_addr(const struct sockaddr *sap1,
->  				const struct sockaddr *sap2)
->  {
-> -	if (sap1->sa_family == sap2->sa_family) {
-> -		switch (sap1->sa_family) {
-> -		case AF_INET:
-> -			return __rpc_cmp_addr4(sap1, sap2);
-> -		case AF_INET6:
-> -			return __rpc_cmp_addr6(sap1, sap2);
-> -		}
-> -	}
-> -	return false;
-> +	return inet_addr_equal((const union inet_addr *)sap1,
-> +			       (const union inet_addr *)sap2);
->  }
->  
-> -/**
-> - * rpc_copy_addr - copy the address portion of one sockaddr to another
-> - * @dst: destination sockaddr
-> - * @src: source sockaddr
-> - *
-> - * Just copies the address portion and family. Ignores port, scope, etc.
-> - * Caller is responsible for making certain that dst is large enough to hold
-> - * the address in src. Returns true if address family is supported. Returns
-> - * false otherwise.
-> - */
->  static inline bool rpc_copy_addr(struct sockaddr *dst,
->  				 const struct sockaddr *src)
->  {
-> -	switch (src->sa_family) {
-> -	case AF_INET:
-> -		return __rpc_copy_addr4(dst, src);
-> -	case AF_INET6:
-> -		return __rpc_copy_addr6(dst, src);
-> -	}
-> -	return false;
-> +	return inet_addr_copy((union inet_addr *)dst,
-> +			      (const union inet_addr *)src);
->  }
->  
->  /**
-> diff --git a/include/net/inet_addr.h b/include/net/inet_addr.h
-> index ee80df4..e846050 100644
-> --- a/include/net/inet_addr.h
-> +++ b/include/net/inet_addr.h
-> @@ -36,17 +36,6 @@ bool in_addr_gen_equal(const struct in_addr_gen *a, const struct in_addr_gen *b)
->  }
->  
->  #if IS_ENABLED(CONFIG_IPV6)
-> -static inline
-> -bool inet_addr_equal(const union inet_addr *a, const union inet_addr *b)
-> -{
-> -	if (a->sa.sa_family != b->sa.sa_family)
-> -		return false;
-> -	if (a->sa.sa_family == AF_INET6)
-> -		return ipv6_addr_equal(&a->sin6.sin6_addr, &b->sin6.sin6_addr);
-> -	else
-> -		return a->sin.sin_addr.s_addr == b->sin.sin_addr.s_addr;
-> -}
-> -
->  static inline bool inet_addr_any(const union inet_addr *ipa)
->  {
->  	if (ipa->sa.sa_family == AF_INET6)
-> @@ -65,12 +54,6 @@ static inline bool inet_addr_multicast(const union inet_addr *ipa)
->  
->  #else /* !CONFIG_IPV6 */
->  
-> -static inline
-> -bool inet_addr_equal(const union inet_addr *a, const union inet_addr *b)
-> -{
-> -	return a->sin.sin_addr.s_addr == b->sin.sin_addr.s_addr;
-> -}
-> -
->  static inline bool inet_addr_any(const union inet_addr *ipa)
->  {
->  	return ipa->sin.sin_addr.s_addr == htonl(INADDR_ANY);
-> @@ -82,6 +65,63 @@ static inline bool inet_addr_multicast(const union inet_addr *ipa)
->  }
->  #endif
->  
-> +/**
-> + * inet_addr_copy - copy the address portion of one inet_addr to another
-> + * @dst: destination sockaddr
-> + * @src: source sockaddr
-> + *
-> + * Just copies the address portion and family. Ignores port, scope, etc.
-> + * Caller is responsible for making certain that dst is large enough to hold
-> + * the address in src. Returns true if address family is supported. Returns
-> + * false otherwise.
-> + */
-> +static inline bool inet_addr_copy(union inet_addr *dst,
-> +				  const union inet_addr *src)
-> +{
-> +	dst->sa.sa_family = src->sa.sa_family;
-> +
-> +	switch (src->sa.sa_family) {
-> +	case AF_INET:
-> +		dst->sin.sin_addr.s_addr = src->sin.sin_addr.s_addr;
-> +		return true;
-> +#if IS_ENABLED(CONFIG_IPV6)
-> +	case AF_INET6:
-> +		dst->sin6.sin6_addr = src->sin6.sin6_addr;
-> +		dst->sin6.sin6_scope_id = src->sin6.sin6_scope_id;
-> +		return true;
-> +#endif
-> +	}
-> +
-> +	return false;
-> +}
-> +
-> +static inline
-> +unsigned short inet_addr_get_port(const union inet_addr *sap)
-> +{
-> +	switch (sap->sa.sa_family) {
-> +	case AF_INET:
-> +		return ntohs(sap->sin.sin_port);
-> +	case AF_INET6:
-> +		return ntohs(sap->sin6.sin6_port);
-> +	}
-> +	return 0;
-> +}
-> +
-> +static inline
-> +void inet_addr_set_port(union inet_addr *sap,
-> +			const unsigned short port)
-> +{
-> +	switch (sap->sa.sa_family) {
-> +	case AF_INET:
-> +		sap->sin.sin_port = htons(port);
-> +		break;
-> +	case AF_INET6:
-> +		sap->sin6.sin6_port = htons(port);
-> +		break;
-> +	}
-> +}
-> +
-> +bool inet_addr_equal(const union inet_addr *a, const union inet_addr *b);
->  int simple_inet_pton(const char *str, union inet_addr *addr);
->  
->  #endif
-> diff --git a/net/core/utils.c b/net/core/utils.c
-> index 22dd621..837bb18 100644
-> --- a/net/core/utils.c
-> +++ b/net/core/utils.c
-> @@ -374,3 +374,28 @@ int simple_inet_pton(const char *str, union inet_addr *addr)
->  	return -EINVAL;
->  }
->  EXPORT_SYMBOL(simple_inet_pton);
-> +
-> +#if IS_ENABLED(CONFIG_IPV6)
-> +bool inet_addr_equal(const union inet_addr *a, const union inet_addr *b)
-> +{
-> +	if (a->sa.sa_family != b->sa.sa_family)
-> +		return false;
-> +	else if (a->sa.sa_family == AF_INET6) {
-> +		if (!ipv6_addr_equal(&a->sin6.sin6_addr, &b->sin6.sin6_addr))
-> +			return false;
-> +		else if (__ipv6_addr_needs_scope_id(__ipv6_addr_type(&a->sin6.sin6_addr)))
-> +			return a->sin6.sin6_scope_id == b->sin6.sin6_scope_id;
-> +		else
-> +			return true;
-> +	} else
-> +		return a->sin.sin_addr.s_addr == b->sin.sin_addr.s_addr;
-> +}
-> +#else
-> +bool inet_addr_equal(const union inet_addr *a, const union inet_addr *b)
-> +{
-> +	if (a->sa.sa_family == AF_UNSPEC)
-> +		return a->sa.sa_family == b->sa.sa_family;
-> +	return a->sin.sin_addr.s_addr == b->sin.sin_addr.s_addr;
-> +}
-> +#endif
-> +EXPORT_SYMBOL(inet_addr_equal);
-
-
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index c2c4163..f16a872 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -49,6 +49,7 @@
+ 
+ #include "internal.h"
+ #include "netns.h"
++#include "nfs4trace.h"
+ 
+ #define NFS_UINT_MAXLEN 11
+ 
+@@ -849,6 +850,7 @@ int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_
+ 		if (!uid_valid(*uid))
+ 			ret = -ERANGE;
+ 	}
++	trace_nfs4_map_name_to_uid(name, namelen, id, ret);
+ 	return ret;
+ }
+ 
+@@ -865,6 +867,7 @@ int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size
+ 		if (!gid_valid(*gid))
+ 			ret = -ERANGE;
+ 	}
++	trace_nfs4_map_group_to_gid(name, namelen, id, ret);
+ 	return ret;
+ }
+ 
+@@ -879,6 +882,7 @@ int nfs_map_uid_to_name(const struct nfs_server *server, kuid_t uid, char *buf,
+ 		ret = nfs_idmap_lookup_name(id, "user", buf, buflen, idmap);
+ 	if (ret < 0)
+ 		ret = nfs_map_numeric_to_string(id, buf, buflen);
++	trace_nfs4_map_uid_to_name(buf, ret, id, ret);
+ 	return ret;
+ }
+ int nfs_map_gid_to_group(const struct nfs_server *server, kgid_t gid, char *buf, size_t buflen)
+@@ -892,5 +896,6 @@ int nfs_map_gid_to_group(const struct nfs_server *server, kgid_t gid, char *buf,
+ 		ret = nfs_idmap_lookup_name(id, "group", buf, buflen, idmap);
+ 	if (ret < 0)
+ 		ret = nfs_map_numeric_to_string(id, buf, buflen);
++	trace_nfs4_map_gid_to_group(buf, ret, id, ret);
+ 	return ret;
+ }
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index 82428fb..f00fa87 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -637,6 +637,52 @@ DEFINE_NFS4_INODE_EVENT(nfs4_set_security_label);
+ DEFINE_NFS4_INODE_EVENT(nfs4_recall_delegation);
+ DEFINE_NFS4_INODE_EVENT(nfs4_delegreturn);
+ 
++DECLARE_EVENT_CLASS(nfs4_idmap_event,
++		TP_PROTO(
++			const char *name,
++			int len,
++			u32 id,
++			int error
++		),
++
++		TP_ARGS(name, len, id, error),
++
++		TP_STRUCT__entry(
++			__field(int, error)
++			__field(u32, id)
++			__dynamic_array(char, name, len > 0 ? len + 1 : 1)
++		),
++
++		TP_fast_assign(
++			if (len < 0)
++				len = 0;
++			__entry->error = error < 0 ? error : 0;
++			__entry->id = id;
++			memcpy(__get_dynamic_array(name), name, len);
++			((char *)__get_dynamic_array(name))[len] = 0;
++		),
++
++		TP_printk(
++			"error=%d id=%u name=%s",
++			__entry->error,
++			__entry->id,
++			__get_str(name)
++		)
++);
++#define DEFINE_NFS4_IDMAP_EVENT(name) \
++	DEFINE_EVENT(nfs4_idmap_event, name, \
++			TP_PROTO( \
++				const char *name, \
++				int len, \
++				u32 id, \
++				int error \
++			), \
++			TP_ARGS(name, len, id, error))
++DEFINE_NFS4_IDMAP_EVENT(nfs4_map_name_to_uid);
++DEFINE_NFS4_IDMAP_EVENT(nfs4_map_group_to_gid);
++DEFINE_NFS4_IDMAP_EVENT(nfs4_map_uid_to_name);
++DEFINE_NFS4_IDMAP_EVENT(nfs4_map_gid_to_group);
++
+ #endif /* _TRACE_NFS4_H */
+ 
+ #undef TRACE_INCLUDE_PATH
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.8.3.1
+
