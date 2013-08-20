@@ -1,121 +1,315 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40908 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:31359 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751792Ab3HQAL4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Aug 2013 20:11:56 -0400
-Date: Fri, 16 Aug 2013 15:16:34 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Jan Stancek <jstancek@redhat.com>, linux-nfs@vger.kernel.org,
-        bfields@redhat.com, Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
-Message-ID: <20130816191634.GA19942@fieldses.org>
-References: <682ebd8ecc7309b18396da356a0feb38bfa41674.1372692346.git.jstancek@redhat.com>
- <20130708201643.GI29071@fieldses.org>
- <1157529877.873319.1373353194344.JavaMail.root@redhat.com>
- <20130726220924.GG30651@fieldses.org>
- <20130815100244.370de645@corrin.poochiereds.net>
- <20130815141917.GR17781@fieldses.org>
- <20130816150454.2aacd5ff@corrin.poochiereds.net>
+	id S1751188Ab3HTTfY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Aug 2013 15:35:24 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v3 14/16] NFSv4: Add tracepoints for debugging reads and writes
+Date: Tue, 20 Aug 2013 15:35:10 -0400
+Message-ID: <1377027312-45957-15-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377027312-45957-14-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377027312-45957-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-13-git-send-email-Trond.Myklebust@netapp.com>
+ <1377027312-45957-14-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130816150454.2aacd5ff@corrin.poochiereds.net>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 16, 2013 at 03:04:54PM -0400, Jeff Layton wrote:
-> On Thu, 15 Aug 2013 10:19:18 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Thu, Aug 15, 2013 at 10:02:44AM -0400, Jeff Layton wrote:
-> > > On Fri, 26 Jul 2013 18:09:24 -0400
-> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > 
-> > > > On Tue, Jul 09, 2013 at 02:59:54AM -0400, Jan Stancek wrote:
-> > > > > 
-> > > > > 
-> > > > > 
-> > > > > 
-> > > > > ----- Original Message -----
-> > > > > > From: "J. Bruce Fields" <bfields@fieldses.org>
-> > > > > > To: "Jan Stancek" <jstancek@redhat.com>
-> > > > > > Cc: linux-nfs@vger.kernel.org, bfields@redhat.com, "Trond Myklebust" <Trond.Myklebust@netapp.com>
-> > > > > > Sent: Monday, 8 July, 2013 10:16:43 PM
-> > > > > > Subject: Re: [PATCH] NFS: fix NFSv3 with sec=krb5 and CONFIG_NFS_V3_ACL=y
-> > > > > > 
-> > > > > > On Mon, Jul 01, 2013 at 05:32:34PM +0200, Jan Stancek wrote:
-> > > > > > > Starting with commit:
-> > > > > > >   commit f994c43d19a9116727d4c228d3f13db595bff562
-> > > > > > >   Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > > > > > >   Date:   Thu Nov 1 12:14:14 2012 -0400
-> > > > > > >       SUNRPC: Clean up rpc_bind_new_program
-> > > > > > > 
-> > > > > > > operations on directory mounted with -onfsvers=3,tcp,sec=krb5 fail
-> > > > > > > with Input/Output error after ~60 second timeout. This is presumably
-> > > > > > > because upcalls for 'nfsacl' are not getting anywhere.
-> > > > > > > 
-> > > > > > > This patch enables pipe dir for nfsacl_program and changes its name
-> > > > > > > to 'nfs'. This name will be used in upcalls and whole setup should
-> > > > > > > work as it did in past - just with nfs/hostname principal.
-> > > > > > 
-> > > > > > I think this was the problem that nfs-utils commits
-> > > > > > 
-> > > > > > 	a1f8afc560 gssd: Remove insane sanity checks of the service name
-> > > > > > 	a56989b665 gssd: Handle the target name correctly
-> > > > > > 
-> > > > > > were supposed to fix?
-> > > > > > 
-> > > > > > But perhaps the kernel needs a fix too to fix a regression with old
-> > > > > > userspace.
-> > > > > 
-> > > > > I saw this error with nfs-utils.1.2.9-rc1, which should already contain
-> > > > > those 2 commits.
-> > > > 
-> > > > Actually, I think your patch is just a subset of Trond's
-> > > > http://mid.gmane.org/<4FA345DA4F4AE44899BD2B03EEEC2FA9092EC392@SACEXCMBX04-PRD.hq.netapp.com>
-> > > > 
-> > > > Trond, is there a reason that never got applied?
-> > > > 
-> > > > --b.
-> > > > 
-> > > 
-> > > Hmm...gmane just says "No such article" when I feed it the above URL.
-> > > Do you know what the title of the email was?
-> > 
-> > Argh sorry hadn't noticed that was private mail.
-> > 
-> > Last I checked actually neither of these patches fixed v3/krb5 for me.
-> > 
-> > --b.
-> > 
-> > Here is v2 with appropriate service names for mountd, statd, etc.
-> > 
-> > 
-> 
-> Ok, I tested both this patch and Jan's. This one doesn't help at all,
-> but Jan's does seem to fix the problem. I'm still looking over the
-> kernel and userland code to determine whether it's the best fix or
-> not...
+Set up tracepoints to track read, write and commit, as well as
+pNFS reads and writes and commits to the data server.
 
-Ah, crap, sorry, I missed that Jan's modified rpc_program.name and
-Trond's rpc_program.service_name.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |   4 ++
+ fs/nfs/nfs4proc.c       |   3 +
+ fs/nfs/nfs4trace.c      |   5 ++
+ fs/nfs/nfs4trace.h      | 154 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/pnfs.c           |   3 +
+ 5 files changed, 169 insertions(+)
 
-As Simo pointed out in irc yesterday this can't be right:
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index f6ec7c7..6c608d4 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -39,6 +39,7 @@
+ #include "internal.h"
+ #include "delegation.h"
+ #include "nfs4filelayout.h"
++#include "nfs4trace.h"
+ 
+ #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
+ 
+@@ -273,6 +274,7 @@ static int filelayout_read_done_cb(struct rpc_task *task,
+ 	struct nfs_pgio_header *hdr = data->header;
+ 	int err;
+ 
++	trace_nfs4_pnfs_read(data, task->tk_status);
+ 	err = filelayout_async_handle_error(task, data->args.context->state,
+ 					    data->ds_clp, hdr->lseg);
+ 
+@@ -389,6 +391,7 @@ static int filelayout_write_done_cb(struct rpc_task *task,
+ 	struct nfs_pgio_header *hdr = data->header;
+ 	int err;
+ 
++	trace_nfs4_pnfs_write(data, task->tk_status);
+ 	err = filelayout_async_handle_error(task, data->args.context->state,
+ 					    data->ds_clp, hdr->lseg);
+ 
+@@ -421,6 +424,7 @@ static int filelayout_commit_done_cb(struct rpc_task *task,
+ {
+ 	int err;
+ 
++	trace_nfs4_pnfs_commit_ds(data, task->tk_status);
+ 	err = filelayout_async_handle_error(task, NULL, data->ds_clp,
+ 					    data->lseg);
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 2182669..b2edaec 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3885,6 +3885,7 @@ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
+ {
+ 	struct nfs_server *server = NFS_SERVER(data->header->inode);
+ 
++	trace_nfs4_read(data, task->tk_status);
+ 	if (nfs4_async_handle_error(task, server, data->args.context->state) == -EAGAIN) {
+ 		rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+@@ -3946,6 +3947,7 @@ static int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data
+ {
+ 	struct inode *inode = data->header->inode;
+ 	
++	trace_nfs4_write(data, task->tk_status);
+ 	if (nfs4_async_handle_error(task, NFS_SERVER(inode), data->args.context->state) == -EAGAIN) {
+ 		rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+@@ -4037,6 +4039,7 @@ static int nfs4_commit_done_cb(struct rpc_task *task, struct nfs_commit_data *da
+ {
+ 	struct inode *inode = data->inode;
+ 
++	trace_nfs4_commit(data, task->tk_status);
+ 	if (nfs4_async_handle_error(task, NFS_SERVER(inode), NULL) == -EAGAIN) {
+ 		rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+diff --git a/fs/nfs/nfs4trace.c b/fs/nfs/nfs4trace.c
+index 3f02183..f840974 100644
+--- a/fs/nfs/nfs4trace.c
++++ b/fs/nfs/nfs4trace.c
+@@ -8,3 +8,8 @@
+ #define CREATE_TRACE_POINTS
+ #include "nfs4trace.h"
+ 
++#ifdef CONFIG_NFS_V4_1
++EXPORT_TRACEPOINT_SYMBOL_GPL(nfs4_pnfs_read);
++EXPORT_TRACEPOINT_SYMBOL_GPL(nfs4_pnfs_write);
++EXPORT_TRACEPOINT_SYMBOL_GPL(nfs4_pnfs_commit_ds);
++#endif
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index 791e0d6..7546c74 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -752,6 +752,160 @@ DEFINE_NFS4_IDMAP_EVENT(nfs4_map_group_to_gid);
+ DEFINE_NFS4_IDMAP_EVENT(nfs4_map_uid_to_name);
+ DEFINE_NFS4_IDMAP_EVENT(nfs4_map_gid_to_group);
+ 
++DECLARE_EVENT_CLASS(nfs4_read_event,
++		TP_PROTO(
++			const struct nfs_read_data *data,
++			int error
++		),
++
++		TP_ARGS(data, error),
++
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++			__field(loff_t, offset)
++			__field(size_t, count)
++			__field(int, error)
++		),
++
++		TP_fast_assign(
++			const struct inode *inode = data->header->inode;
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = NFS_FILEID(inode);
++			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
++			__entry->offset = data->args.offset;
++			__entry->count = data->args.count;
++			__entry->error = error;
++		),
++
++		TP_printk(
++			"error=%d (%s) fileid=%02x:%02x:%llu fhandle=0x%08x "
++			"offset=%lld count=%zu",
++			__entry->error,
++			show_nfsv4_errors(__entry->error),
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle,
++			(long long)__entry->offset,
++			__entry->count
++		)
++);
++#define DEFINE_NFS4_READ_EVENT(name) \
++	DEFINE_EVENT(nfs4_read_event, name, \
++			TP_PROTO( \
++				const struct nfs_read_data *data, \
++				int error \
++			), \
++			TP_ARGS(data, error))
++DEFINE_NFS4_READ_EVENT(nfs4_read);
++#ifdef CONFIG_NFS_V4_1
++DEFINE_NFS4_READ_EVENT(nfs4_pnfs_read);
++#endif /* CONFIG_NFS_V4_1 */
++
++DECLARE_EVENT_CLASS(nfs4_write_event,
++		TP_PROTO(
++			const struct nfs_write_data *data,
++			int error
++		),
++
++		TP_ARGS(data, error),
++
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++			__field(loff_t, offset)
++			__field(size_t, count)
++			__field(int, error)
++		),
++
++		TP_fast_assign(
++			const struct inode *inode = data->header->inode;
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = NFS_FILEID(inode);
++			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
++			__entry->offset = data->args.offset;
++			__entry->count = data->args.count;
++			__entry->error = error;
++		),
++
++		TP_printk(
++			"error=%d (%s) fileid=%02x:%02x:%llu fhandle=0x%08x "
++			"offset=%lld count=%zu",
++			__entry->error,
++			show_nfsv4_errors(__entry->error),
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle,
++			(long long)__entry->offset,
++			__entry->count
++		)
++);
++
++#define DEFINE_NFS4_WRITE_EVENT(name) \
++	DEFINE_EVENT(nfs4_write_event, name, \
++			TP_PROTO( \
++				const struct nfs_write_data *data, \
++				int error \
++			), \
++			TP_ARGS(data, error))
++DEFINE_NFS4_WRITE_EVENT(nfs4_write);
++#ifdef CONFIG_NFS_V4_1
++DEFINE_NFS4_WRITE_EVENT(nfs4_pnfs_write);
++#endif /* CONFIG_NFS_V4_1 */
++
++DECLARE_EVENT_CLASS(nfs4_commit_event,
++		TP_PROTO(
++			const struct nfs_commit_data *data,
++			int error
++		),
++
++		TP_ARGS(data, error),
++
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++			__field(loff_t, offset)
++			__field(size_t, count)
++			__field(int, error)
++		),
++
++		TP_fast_assign(
++			const struct inode *inode = data->inode;
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = NFS_FILEID(inode);
++			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
++			__entry->offset = data->args.offset;
++			__entry->count = data->args.count;
++			__entry->error = error;
++		),
++
++		TP_printk(
++			"error=%d (%s) fileid=%02x:%02x:%llu fhandle=0x%08x "
++			"offset=%lld count=%zu",
++			__entry->error,
++			show_nfsv4_errors(__entry->error),
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle,
++			(long long)__entry->offset,
++			__entry->count
++		)
++);
++#define DEFINE_NFS4_COMMIT_EVENT(name) \
++	DEFINE_EVENT(nfs4_commit_event, name, \
++			TP_PROTO( \
++				const struct nfs_commit_data *data, \
++				int error \
++			), \
++			TP_ARGS(data, error))
++DEFINE_NFS4_COMMIT_EVENT(nfs4_commit);
++#ifdef CONFIG_NFS_V4_1
++DEFINE_NFS4_COMMIT_EVENT(nfs4_pnfs_commit_ds);
++#endif /* CONFIG_NFS_V4_1 */
++
+ #endif /* _TRACE_NFS4_H */
+ 
+ #undef TRACE_INCLUDE_PATH
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 9bf5cda..a02593b 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -33,6 +33,7 @@
+ #include "internal.h"
+ #include "pnfs.h"
+ #include "iostat.h"
++#include "nfs4trace.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PNFS
+ #define PNFS_LAYOUTGET_RETRY_TIMEOUT (120*HZ)
+@@ -1551,6 +1552,7 @@ void pnfs_ld_write_done(struct nfs_write_data *data)
+ {
+ 	struct nfs_pgio_header *hdr = data->header;
+ 
++	trace_nfs4_pnfs_write(data, hdr->pnfs_error);
+ 	if (!hdr->pnfs_error) {
+ 		pnfs_set_layoutcommit(data);
+ 		hdr->mds_ops->rpc_call_done(&data->task, data);
+@@ -1705,6 +1707,7 @@ void pnfs_ld_read_done(struct nfs_read_data *data)
+ {
+ 	struct nfs_pgio_header *hdr = data->header;
+ 
++	trace_nfs4_pnfs_read(data, hdr->pnfs_error);
+ 	if (likely(!hdr->pnfs_error)) {
+ 		__nfs4_read_done_cb(data);
+ 		hdr->mds_ops->rpc_call_done(&data->task, data);
+-- 
+1.8.3.1
 
-> > diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> > index 909dc0c..b19dab8 100644
-> > --- a/net/sunrpc/auth_gss/auth_gss.c
-> > +++ b/net/sunrpc/auth_gss/auth_gss.c
-> > @@ -403,7 +403,9 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
-> >  				   gss_msg->uid);
-> >  	p += gss_msg->msg.len;
-> >  	if (clnt->cl_principal) {
-> > -		len = sprintf(p, "target=%s ", clnt->cl_principal);
-> > +		len = sprintf(p, "target=%s@%s ",
-> > +				clnt->cl_program->service_name,
-> > +				clnt->cl_principal);
-
-I'd think this should instead be going in the "service_name" field, but
-I'm not sure.
-
---b.
