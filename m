@@ -1,45 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:46214 "EHLO mx11.netapp.com"
+Received: from mx1.netapp.com ([216.240.18.38]:27198 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752473Ab3HVMzL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Aug 2013 08:55:11 -0400
-Message-ID: <52160A2C.7000804@netapp.com>
-Date: Thu, 22 Aug 2013 08:55:08 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S1751459Ab3HUNQq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Aug 2013 09:16:46 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Christoph Hellwig <hch@infradead.org>
+CC: Bryan Schumaker <bjschuma@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3 00/16] NFS add tracepoints
+Date: Wed, 21 Aug 2013 13:16:45 +0000
+Message-ID: <1377091004.21393.12.camel@leira.trondhjem.org>
+References: <1377027312-45957-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <5213D689.3030103@gmail.com> <1377033113.21393.1.camel@leira.trondhjem.org>
+	 <20130821063958.GA3382@infradead.org>
+In-Reply-To: <20130821063958.GA3382@infradead.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Bryan Schumaker <bjschuma@netapp.com>
-Subject: Re: [PATCH 4/6] NFSv4: Deal with a sparse warning in nfs_idmap_get_key()
-References: <1377131186-40249-1-git-send-email-Trond.Myklebust@netapp.com> <1377131186-40249-2-git-send-email-Trond.Myklebust@netapp.com> <1377131186-40249-3-git-send-email-Trond.Myklebust@netapp.com> <1377131186-40249-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377131186-40249-4-git-send-email-Trond.Myklebust@netapp.com>
-Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/21/2013 08:26 PM, Trond Myklebust wrote:
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: Bryan Schumaker <bjschuma@netapp.com>
-> ---
->  fs/nfs/idmap.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-> index c2c4163..65c7d91 100644
-> --- a/fs/nfs/idmap.c
-> +++ b/fs/nfs/idmap.c
-> @@ -310,7 +310,7 @@ static ssize_t nfs_idmap_get_key(const char *name, size_t namelen,
->  	if (ret < 0)
->  		goto out_up;
->  
-> -	payload = rcu_dereference(rkey->payload.data);
-> +	payload = rcu_dereference(rkey->payload.rcudata);
-
-Loks good to me!
-
-Acked-by: Bryan Schumaker <bjschuma@netapp.com>
-
->  	if (IS_ERR_OR_NULL(payload)) {
->  		ret = PTR_ERR(payload);
->  		goto out_up;
-> 
-
+T24gVHVlLCAyMDEzLTA4LTIwIGF0IDIzOjM5IC0wNzAwLCBDaHJpc3RvcGggSGVsbHdpZyB3cm90
+ZToNCj4gT24gVHVlLCBBdWcgMjAsIDIwMTMgYXQgMDk6MTE6NTJQTSArMDAwMCwgTXlrbGVidXN0
+LCBUcm9uZCB3cm90ZToNCj4gPiBIbW0uLi4gRG9lcyB0aGUgZm9sbG93aW5nIHBhdGNoIGZpeCB0
+aGUgcHJvYmxlbT8NCj4gDQo+IEkgdGhpbmsgeW91IGp1c3QgbmVlZCB0byBhZGQgdGhpcyBsaW5l
+IHRvIGZzL25mcy9NYWtlZmlsZToNCj4gDQo+IGNjZmxhZ3MteSArPSAtSSQoc3JjKSAgICAgICAg
+ICAgICAgICAgICAjIG5lZWRlZCBmb3IgdHJhY2UgZXZlbnRzDQo+IA0KPiAoc3RvbGVuIGZyb20g
+WEZTIDopKQ0KDQpUaGFua3MgQ2hyaXN0b3BoISBBZnRlciBzZWFyY2hpbmcgYXJvdW5kIGEgbGl0
+dGxlIGxhc3QgbmlnaHQsIEkgZm91bmQNCnRoZSBzYW1lIGRldmljZSBkZXNjcmliZWQgaW4gdGhl
+IHNhbXBsZXMvdHJhY2VfZXZlbnRzIGRpcmVjdG9yeS4NCg0KQnJ5YW4sIGNhbiB5b3UgcGxlYXNl
+IHNlZSBpZiB0aGUgcGF0Y2hzZXQgaW4gbXkgJ3Rlc3RpbmcnIGJyYW5jaCBub3cNCndvcmtzIGZv
+ciB5b3U/DQoNClRoYW5rcyENCiAgVHJvbmQNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
+RlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
+bQ0Kd3d3Lm5ldGFwcC5jb20NCg==
