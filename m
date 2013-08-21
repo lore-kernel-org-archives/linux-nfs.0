@@ -1,143 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:51139 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754822Ab3H2QPX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Aug 2013 12:15:23 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Bryan Schumaker <bjschuma@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Adamson, Andy" <William.Adamson@netapp.com>
-Subject: Re: [PATCH v2 03/16] SUNRPC: Cleanup rpc_setup_pipedir
-Date: Thu, 29 Aug 2013 16:15:20 +0000
-Message-ID: <1377792920.3202.4.camel@leira.trondhjem.org>
-References: <1377718821-28159-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1377718821-28159-2-git-send-email-Trond.Myklebust@netapp.com>
-	 <1377718821-28159-3-git-send-email-Trond.Myklebust@netapp.com>
-	 <521F6BAF.7000504@gmail.com>
-In-Reply-To: <521F6BAF.7000504@gmail.com>
-Content-Type: multipart/mixed;
-	boundary="_002_137779292032024camelleiratrondhjemorg_"
+Received: from mail-qa0-f50.google.com ([209.85.216.50]:49533 "EHLO
+	mail-qa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752369Ab3HUV0j (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Aug 2013 17:26:39 -0400
+Received: by mail-qa0-f50.google.com with SMTP id o13so542929qaj.9
+        for <linux-nfs@vger.kernel.org>; Wed, 21 Aug 2013 14:26:38 -0700 (PDT)
+Date: Wed, 21 Aug 2013 17:26:41 -0400
+From: Milosz Tanski <milosz@adfin.com>
+To: ceph-devel@vger.kernel.org
+Cc: sage@inktank.com, zheng.z.yan@intel.com, dhowells@redhat.com,
+        linux-cachefs@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: [PATCHv4 0/5] ceph: persistent caching with fscache
+Message-ID: <cover.1375999914.git.milosz@adfin.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---_002_137779292032024camelleiratrondhjemorg_
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <3707C2D15DAA6F4B8D611937A0FA2B9F@hq.netapp.com>
-Content-Transfer-Encoding: base64
+This an updated version of the fscache support for the Ceph filesystem. What's
+changed since the last patchset:
 
-T24gVGh1LCAyMDEzLTA4LTI5IGF0IDExOjQxIC0wNDAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
-DQo+IEhpIFRyb25kLA0KPiANCj4gVGhpcyBwYXRjaCBpcyBjYXVzaW5nIHRoaXMgYnVnIGZvciBt
-ZSBvbiBteSB0ZXN0aW5nIHNlcnZlcjoNCj4gDQo+IFsgICAgNi43NDI2OTVdIEJVRzogdW5hYmxl
-IHRvIGhhbmRsZSBrZXJuZWwgTlVMTCBwb2ludGVyIGRlcmVmZXJlbmNlIGF0ICAgICAgICAgICAo
-bnVsbCkNCj4gWyAgICA2Ljc0Mjc5MV0gSVA6IFs8ZmZmZmZmZmY4MTJkZTI2MD5dIHNraXBfc3Bh
-Y2VzKzB4MzAvMHgzMA0KPiBbICAgIDYuNzQyODQ4XSBQR0QgMWQ3MTkwNjcgUFVEIDFkZTIxMDY3
-IFBNRCAwIA0KPiBbICAgIDYuNzQyOTAwXSBPb3BzOiAwMDAwIFsjMV0gUFJFRU1QVCBTTVAgDQo+
-IFsgICAgNi43NDI5NDldIE1vZHVsZXMgbGlua2VkIGluOiBuZnNkIGF1dGhfcnBjZ3NzIG9pZF9y
-ZWdpc3RyeSBuZnNfYWNsIHNuZF9oZGFfaW50ZWwgcGNzcGtyIHNuZF9oZGFfY29kZWMgY2lycnVz
-IHN5c2NvcHlhcmVhIHNuZF9od2RlcCBzeXNmaWxscmVjdCBwc21vdXNlIHNuZF9wY20gc2VyaW9f
-cmF3IHNuZF9wYWdlX2FsbG9jIHN5c2ltZ2JsdCBldmRldiBzbmRfdGltZXIgc25kIHNvdW5kY29y
-ZSBkcm1fa21zX2hlbHBlciB0dG0gZHJtIGkyY19waWl4NCBpMmNfY29yZSBpbnRlbF9hZ3AgaW50
-ZWxfZ3R0IGJ1dHRvbiBwcm9jZXNzb3IgbmZzIGxvY2tkIHN1bnJwYyBmc2NhY2hlIGF0YV9nZW5l
-cmljIHBhdGFfYWNwaSBidHJmcyBsaWJjcmMzMmMgeG9yIHpsaWJfZGVmbGF0ZSBhdGFfcGlpeCBj
-cmMzMmNfaW50ZWwgdWhjaV9oY2QgbGliYXRhIHNjc2lfbW9kIHVzYmNvcmUgdXNiX2NvbW1vbiBy
-YWlkNl9wcSBmbG9wcHkgdmlydGlvX2JhbGxvb24gdmlydGlvX25ldCB2aXJ0aW9fcGNpIHZpcnRp
-b19ibGsgdmlydGlvX3JpbmcgdmlydGlvDQo+IFsgICAgNi43NDMzMzldIENQVTogMCBQSUQ6IDIx
-MSBDb21tOiBycGMubmZzZCBOb3QgdGFpbnRlZCAzLjExLjAtcmMyLUFSQ0grICMyNTANCj4gWyAg
-ICA2Ljc0MzMzOV0gSGFyZHdhcmUgbmFtZTogQm9jaHMgQm9jaHMsIEJJT1MgQm9jaHMgMDEvMDEv
-MjAxMQ0KPiBbICAgIDYuNzQzMzM5XSB0YXNrOiBmZmZmODgwMDFiZmM1YzIwIHRpOiBmZmZmODgw
-MDFkZmYyMDAwIHRhc2sudGk6IGZmZmY4ODAwMWRmZjIwMDANCj4gWyAgICA2Ljc0MzMzOV0gUklQ
-OiAwMDEwOls8ZmZmZmZmZmY4MTJkZTI2MD5dICBbPGZmZmZmZmZmODEyZGUyNjA+XSBza2lwX3Nw
-YWNlcysweDMwLzB4MzANCj4gWyAgICA2Ljc0MzMzOV0gUlNQOiAwMDE4OmZmZmY4ODAwMWRmZjNi
-YzggIEVGTEFHUzogMDAwMTAyODINCj4gWyAgICA2Ljc0MzMzOV0gUkFYOiBmZmZmZmZmZmEwMjVj
-YjIwIFJCWDogMDAwMDAwMDAwMDAwMDAwMCBSQ1g6IDAwMDAwMDAwMDAwMDAwMDANCj4gWyAgICA2
-Ljc0MzMzOV0gUkRYOiBmZmZmODgwMDFkZTYyODM4IFJTSTogMDAwMDAwMDAwMDAwMDAwMCBSREk6
-IDAwMDAwMDAwMDAwMDAwMDANCj4gWyAgICA2Ljc0MzMzOV0gUkJQOiBmZmZmODgwMDFkZmYzYmYw
-IFIwODogMDAwMDAwMDAwMDAxNzM2MCBSMDk6IDAwMDAwMDAwMDAwMDAwMDANCj4gWyAgICA2Ljc0
-MzMzOV0gUjEwOiBmZmZmODgwMDFlNDAxNzAwIFIxMTogZmZmZjg4MDAxZGZmM2ZkOCBSMTI6IGZm
-ZmY4ODAwMWRmMmEwMDANCj4gWyAgICA2Ljc0MzMzOV0gUjEzOiBmZmZmODgwMDFjZWJjYTAwIFIx
-NDogMDAwMDAwMDAwMDAwMDAwMCBSMTU6IDAwMDAwMDAwMDAwMDAwMDANCj4gWyAgICA2Ljc0MzMz
-OV0gRlM6ICAwMDAwN2YwNGE0MTU5NzAwKDAwMDApIEdTOmZmZmY4ODAwMWZjMDAwMDAoMDAwMCkg
-a25sR1M6MDAwMDAwMDAwMDAwMDAwMA0KPiBbICAgIDYuNzQzMzM5XSBDUzogIDAwMTAgRFM6IDAw
-MDAgRVM6IDAwMDAgQ1IwOiAwMDAwMDAwMDgwMDUwMDMzDQo+IFsgICAgNi43NDMzMzldIENSMjog
-MDAwMDAwMDAwMDAwMDAwMCBDUjM6IDAwMDAwMDAwMWRmMDIwMDAgQ1I0OiAwMDAwMDAwMDAwMDQw
-N2YwDQo+IFsgICAgNi43NDMzMzldIFN0YWNrOg0KPiBbICAgIDYuNzQzMzM5XSAgZmZmZmZmZmZh
-MDI1NWRiZSAwMDAwMDAwMDAwMDAwMDAwIDAwMDAwMDAwMDAwMDAwMDAgZmZmZjg4MDAxZGZmM2Qz
-OA0KPiBbICAgIDYuNzQzMzM5XSAgZmZmZjg4MDAxY2ViY2EwMCBmZmZmODgwMDFkZmYzYzM4IGZm
-ZmZmZmZmYTAyM2EwZDkgZmZmZmZmZmY4MTUxMTA1Mg0KPiBbICAgIDYuNzQzMzM5XSAgZmZmZjg4
-MDAxZGU2MjgwMCAwMDAwMDAwMGIyYjRiNTA5IGZmZmY4ODAwMWRmZjNkMzggZmZmZjg4MDAxY2Vi
-Y2EwMA0KPiBbICAgIDYuNzQzMzM5XSBDYWxsIFRyYWNlOg0KPiBbICAgIDYuNzQzMzM5XSAgWzxm
-ZmZmZmZmZmEwMjU1ZGJlPl0gPyBycGNfZF9sb29rdXBfc2IrMHgyZS8weDUwIFtzdW5ycGNdDQo+
-IFsgICAgNi43NDMzMzldICBbPGZmZmZmZmZmYTAyM2EwZDk+XSBycGNfc2V0dXBfcGlwZWRpcl9z
-YisweDM5LzB4ZjAgW3N1bnJwY10NCj4gWyAgICA2Ljc0MzMzOV0gIFs8ZmZmZmZmZmY4MTUxMTA1
-Mj5dID8gbXV0ZXhfbG9jaysweDEyLzB4MzANCj4gWyAgICA2Ljc0MzMzOV0gIFs8ZmZmZmZmZmZh
-MDIzYzY1Mz5dIHJwY19uZXdfY2xpZW50KzB4MjMzLzB4NDUwIFtzdW5ycGNdDQo+IFsgICAgNi43
-NDMzMzldICBbPGZmZmZmZmZmYTAyM2QzZWM+XSBycGNfY3JlYXRlKzB4Y2MvMHgyNTAgW3N1bnJw
-Y10NCj4gWyAgICA2Ljc0MzMzOV0gIFs8ZmZmZmZmZmZhMDI0ZjFlYz5dIHJwY2JfY3JlYXRlX2xv
-Y2FsX3VuaXgrMHg1Yy8weGUwIFtzdW5ycGNdDQo+IFsgICAgNi43NDMzMzldICBbPGZmZmZmZmZm
-YTAyNGZmOTg+XSBycGNiX2NyZWF0ZV9sb2NhbCsweDY4LzB4ODAgW3N1bnJwY10NCj4gWyAgICA2
-Ljc0MzMzOV0gIFs8ZmZmZmZmZmZhMDI0OWEzZT5dIHN2Y19ycGNiX3NldHVwKzB4MWUvMHg0MCBb
-c3VucnBjXQ0KPiBbICAgIDYuNzQzMzM5XSAgWzxmZmZmZmZmZmEwMjQ5YTg5Pl0gc3ZjX2JpbmQr
-MHgyOS8weDMwIFtzdW5ycGNdDQo+IFsgICAgNi43NDMzMzldICBbPGZmZmZmZmZmYTA0OTg0NzU+
-XSBuZnNkX2NyZWF0ZV9zZXJ2KzB4ZDUvMHgxYTAgW25mc2RdDQo+IFsgICAgNi43NDMzMzldICBb
-PGZmZmZmZmZmYTA0OWEwMDA+XSB3cml0ZV9wb3J0cysweDJmMC8weDM1MCBbbmZzZF0NCj4gWyAg
-ICA2Ljc0MzMzOV0gIFs8ZmZmZmZmZmY4MTEzMzVhZT5dID8gX19nZXRfZnJlZV9wYWdlcysweGUv
-MHg1MA0KPiBbICAgIDYuNzQzMzM5XSAgWzxmZmZmZmZmZjgxMTMzNjA2Pl0gPyBnZXRfemVyb2Vk
-X3BhZ2UrMHgxNi8weDIwDQo+IFsgICAgNi43NDMzMzldICBbPGZmZmZmZmZmYTA0OTlkMTA+XSA/
-IHdyaXRlX2xlYXNldGltZSsweGEwLzB4YTAgW25mc2RdDQo+IFsgICAgNi43NDMzMzldICBbPGZm
-ZmZmZmZmYTA0OTkxNzg+XSBuZnNjdGxfdHJhbnNhY3Rpb25fd3JpdGUrMHg0OC8weDgwIFtuZnNk
-XQ0KPiBbICAgIDYuNzQzMzM5XSAgWzxmZmZmZmZmZjgxMTk5N2NkPl0gdmZzX3dyaXRlKzB4YmQv
-MHgxZTANCj4gWyAgICA2Ljc0MzMzOV0gIFs8ZmZmZmZmZmY4MTE5YTIyOT5dIFN5U193cml0ZSsw
-eDQ5LzB4YTANCj4gWyAgICA2Ljc0MzMzOV0gIFs8ZmZmZmZmZmY4MTUxYjk5ZD5dIHN5c3RlbV9j
-YWxsX2Zhc3RwYXRoKzB4MWEvMHgxZg0KPiBbICAgIDYuNzQzMzM5XSBDb2RlOiA4OSBmOCA0OCA4
-OSBlNSBmNiA4MiAwMCAyYSA2NCA4MSAyMCA3NCAxNSAwZiAxZiA0NCAwMCAwMCA0OCA4MyBjMCAw
-MSAwZiBiNiAxMCBmNiA4MiAwMCAyYSA2NCA4MSAyMCA3NSBmMCA1ZCBjMyA2NiAwZiAxZiA0NCAw
-MCAwMCA8ODA+IDNmIDAwIDU1IDQ4IDg5IGU1IDc0IDE1IDQ4IDg5IGY4IDBmIDFmIDQwIDAwIDQ4
-IDgzIGMwIDAxIDgwIA0KPiBbICAgIDYuNzQzMzM5XSBSSVAgIFs8ZmZmZmZmZmY4MTJkZTI2MD5d
-IHNraXBfc3BhY2VzKzB4MzAvMHgzMA0KPiBbICAgIDYuNzQzMzM5XSAgUlNQIDxmZmZmODgwMDFk
-ZmYzYmM4Pg0KPiBbICAgIDYuNzQzMzM5XSBDUjI6IDAwMDAwMDAwMDAwMDAwMDANCj4gWyAgICA2
-Ljc1MDAyNV0gLS0tWyBlbmQgdHJhY2UgMTEyMDY1YWYwOTNiMDdiMyBdLS0tDQoNCkFyZ2ghIFRo
-YW5rcyBmb3IgYmlzZWN0aW5nIHRoYXQuLi4gVGhlIGF0dGFjaGVkIHBhdGNoIHNob3VsZCBmaXgg
-aXQuLi4NCg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
-bmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29t
-DQo=
+1. Sparater the readpages refactor into it's own patches. These were already
+   accepted into the testing branch.
 
---_002_137779292032024camelleiratrondhjemorg_
-Content-Type: text/x-patch;
-	name="0001-fixup-SUNRPC-Cleanup-rpc_setup_pipedir.patch"
-Content-Description: 0001-fixup-SUNRPC-Cleanup-rpc_setup_pipedir.patch
-Content-Disposition: attachment;
-	filename="0001-fixup-SUNRPC-Cleanup-rpc_setup_pipedir.patch"; size=1461;
-	creation-date="Thu, 29 Aug 2013 16:15:20 GMT";
-	modification-date="Thu, 29 Aug 2013 16:15:20 GMT"
-Content-ID: <650F1EC7D5A96F40BDC771081777FAE7@hq.netapp.com>
-Content-Transfer-Encoding: base64
+2. Tracked down the BUG in readahead cleanup code. We were returning with pages
+   marked as private_2 from readpages(). I added a simple convenience function
+   to the fscache netfs interface for cleaning up the page list at the end of
+   asop readpages(). I know other filesystems (NFS) have ran into that since
+   I've seen a few similar traces in Google search and the cachefs mailig list.
+   The second patch new make Ceph use this interface.
 
-RnJvbSA0NDg0ODc5NmMzMGFiOTI0YTc0OGYyN2QxMjE2MjNlNjI4MzEyN2I2IE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbT4NCkRhdGU6IFRodSwgMjkgQXVnIDIwMTMgMTI6MTQ6NDcgLTA0MDANClN1YmplY3Q6
-IFtQQVRDSF0gZml4dXAhIFNVTlJQQzogQ2xlYW51cCBycGNfc2V0dXBfcGlwZWRpcg0KDQotLS0N
-CiBuZXQvc3VucnBjL2NsbnQuYyB8IDcgKysrKy0tLQ0KIDEgZmlsZSBjaGFuZ2VkLCA0IGluc2Vy
-dGlvbnMoKyksIDMgZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1naXQgYS9uZXQvc3VucnBjL2NsbnQu
-YyBiL25ldC9zdW5ycGMvY2xudC5jDQppbmRleCBmMWMzODk2Li5iMWZmNDI5IDEwMDY0NA0KLS0t
-IGEvbmV0L3N1bnJwYy9jbG50LmMNCisrKyBiL25ldC9zdW5ycGMvY2xudC5jDQpAQCAtMTYwLDYg
-KzE2MCw5IEBAIHJwY19zZXR1cF9waXBlZGlyKHN0cnVjdCBzdXBlcl9ibG9jayAqcGlwZWZzX3Ni
-LCBzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQpDQogDQogc3RhdGljIGlubGluZSBpbnQgcnBjX2NsbnRf
-c2tpcF9ldmVudChzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQsIHVuc2lnbmVkIGxvbmcgZXZlbnQpDQog
-ew0KKwlpZiAoY2xudC0+Y2xfcHJvZ3JhbS0+cGlwZV9kaXJfbmFtZSA9PSBOVUxMKQ0KKwkJcmV0
-dXJuIDE7DQorDQogCXN3aXRjaCAoZXZlbnQpIHsNCiAJY2FzZSBSUENfUElQRUZTX01PVU5UOg0K
-IAkJaWYgKGNsbnQtPmNsX3BpcGVkaXJfb2JqZWN0cy5wZGhfZGVudHJ5ICE9IE5VTEwpDQpAQCAt
-MjIwLDggKzIyMyw2IEBAIHN0YXRpYyBzdHJ1Y3QgcnBjX2NsbnQgKnJwY19nZXRfY2xpZW50X2Zv
-cl9ldmVudChzdHJ1Y3QgbmV0ICpuZXQsIGludCBldmVudCkNCiANCiAJc3Bpbl9sb2NrKCZzbi0+
-cnBjX2NsaWVudF9sb2NrKTsNCiAJbGlzdF9mb3JfZWFjaF9lbnRyeShjbG50LCAmc24tPmFsbF9j
-bGllbnRzLCBjbF9jbGllbnRzKSB7DQotCQlpZiAoY2xudC0+Y2xfcHJvZ3JhbS0+cGlwZV9kaXJf
-bmFtZSA9PSBOVUxMKQ0KLQkJCWNvbnRpbnVlOw0KIAkJaWYgKHJwY19jbG50X3NraXBfZXZlbnQo
-Y2xudCwgZXZlbnQpKQ0KIAkJCWNvbnRpbnVlOw0KIAkJc3Bpbl91bmxvY2soJnNuLT5ycGNfY2xp
-ZW50X2xvY2spOw0KQEAgLTI4Miw3ICsyODMsNyBAQCBzdGF0aWMgaW50IHJwY19jbGllbnRfcmVn
-aXN0ZXIoY29uc3Qgc3RydWN0IHJwY19jcmVhdGVfYXJncyAqYXJncywNCiAJaW50IGVycjsNCiAN
-CiAJcGlwZWZzX3NiID0gcnBjX2dldF9zYl9uZXQobmV0KTsNCi0JaWYgKHBpcGVmc19zYikgew0K
-KwlpZiAocGlwZWZzX3NiICYmIGFyZ3MtPnByb2dyYW0tPnBpcGVfZGlyX25hbWUgIT0gTlVMTCkg
-ew0KIAkJZXJyID0gcnBjX3NldHVwX3BpcGVkaXIocGlwZWZzX3NiLCBjbG50KTsNCiAJCWlmIChl
-cnIpDQogCQkJZ290byBvdXQ7DQotLSANCjEuOC4zLjENCg0K
+I've been running this code (minus the BUG fix) on clients for a couple weeks
+with moderate 24/7 use without issues. At this point in time I feel like it's
+solid enough to go into the ceph kclient.
 
---_002_137779292032024camelleiratrondhjemorg_--
+Please pull the code from my repository:
+https://bitbucket.org/adfin/linux-fs.git branch: wip-ceph-fscache
+
+The first two patches I included were not written by me but were written by 
+Hongyi Jia. He implemented the cookie re-validation scheme into fscache core.
+
+Finally, I CCed a couple other mailing lists (fsdevel, nfs) because the new
+fscache_readpages_cancel() should be used by other filesystems to avoid the
+same problem.
+
+
+Hongyi Jia (2):
+  new cachefiles interface to check cache consistency
+  new fscache interface to check cache consistency
+
+Milosz Tanski (3):
+  ceph: use fscache as a local presisent cache
+  fscache: netfs function for cleanup post readpages
+  ceph: clean PgPrivate2 on returning from readpages
+
+ fs/cachefiles/interface.c     |  19 +++
+ fs/cachefiles/internal.h      |   1 +
+ fs/cachefiles/xattr.c         |  39 ++++++
+ fs/ceph/Kconfig               |   9 ++
+ fs/ceph/Makefile              |   2 +
+ fs/ceph/addr.c                |  39 +++++-
+ fs/ceph/cache.c               | 311 ++++++++++++++++++++++++++++++++++++++++++
+ fs/ceph/cache.h               | 130 ++++++++++++++++++
+ fs/ceph/caps.c                |  19 ++-
+ fs/ceph/file.c                |  17 +++
+ fs/ceph/inode.c               |  66 ++++++++-
+ fs/ceph/super.c               |  47 ++++++-
+ fs/ceph/super.h               |  17 +++
+ fs/fscache/cookie.c           |  22 +++
+ fs/fscache/page.c             |  16 +++
+ include/linux/fscache-cache.h |   4 +
+ include/linux/fscache.h       |  39 ++++++
+ 17 files changed, 785 insertions(+), 12 deletions(-)
+ create mode 100644 fs/ceph/cache.c
+ create mode 100644 fs/ceph/cache.h
+
+-- 
+1.8.1.2
+
