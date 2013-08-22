@@ -1,62 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from pfw.demon.co.uk ([62.49.22.168]:47944 "EHLO pfw.demon.co.uk"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755757Ab3HFPib (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Aug 2013 11:38:31 -0400
-Date: Tue, 6 Aug 2013 15:38:27 +0000
-From: Larry Keegan <lk@pfw.demon.co.uk>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jlayton@redhat.com>, <linux-nfs@vger.kernel.org>
-Subject: Re: nfs client: Now you see it, now you don't (aka spurious ESTALE
- errors)
-Message-ID: <20130806153827.19a1ec21@cs3.al.itld>
-In-Reply-To: <20130806133407.GB5282@fieldses.org>
-References: <20130725134515.67af44e2@cs3.al.itld>
-	<20130725101143.6a22cb81@corrin.poochiereds.net>
-	<20130725170526.6e54c7db@cs3.al.itld>
-	<20130726145937.GB30651@fieldses.org>
-	<20130726232111.2567a941@cs3.al.itld>
-	<20130806110209.56e554a7@cs3.al.itld>
-	<20130806071428.5d68052a@corrin.poochiereds.net>
-	<20130806133407.GB5282@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from cobra.newdream.net ([66.33.216.30]:51785 "EHLO
+	cobra.newdream.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753415Ab3HVFFS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Aug 2013 01:05:18 -0400
+Date: Wed, 21 Aug 2013 22:05:17 -0700 (PDT)
+From: Sage Weil <sage@inktank.com>
+To: dhowells@redhat.com, Milosz Tanski <milosz@adfin.com>
+cc: ceph-devel@vger.kernel.org, zheng.z.yan@intel.com,
+        linux-cachefs@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCHv4 0/5] ceph: persistent caching with fscache
+In-Reply-To: <cover.1375999914.git.milosz@adfin.com>
+Message-ID: <alpine.DEB.2.00.1308212203320.1479@cobra.newdream.net>
+References: <cover.1375999914.git.milosz@adfin.com>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 6 Aug 2013 09:34:07 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Tue, Aug 06, 2013 at 07:14:28AM -0400, Jeff Layton wrote:
-> > On Tue, 6 Aug 2013 11:02:09 +0000
-> > Larry Keegan <lk@pfw.demon.co.uk> wrote:
-> > > These figures seem reasonable for a single SATA HDD in concert
-> > > with dmcrypt. Whilst I expected some degradation from exporting
-> > > and mounting sync, I have to say that I'm truly flabbergasted by
-> > > the difference between the sync and async figures. I can't help
-> > > but think I am still suffering from some sort of configuration
-> > > problem. Do the numbers from the NFS client seem unreasonable?
-> > > 
-> > 
-> > That's expected. Performance is the tradeoff for tight cache
-> > coherency.
-> > 
-> > With -o sync, each write() sycall requires a round trip to the
-> > server. They don't get batched and you can't issue them in
-> > parallel. That has a terrible effect on write performance.
+Hi Milosz,
+
+I've pulled this into the ceph testing branch to make sure it holds up 
+in qa.
+
+David, are the fscache patches here ready for the next merge window?  Do 
+you have a preference for whose tree they go through?
+
+Thanks!
+sage
+
+
+On Wed, 21 Aug 2013, Milosz Tanski wrote:
+
+> This an updated version of the fscache support for the Ceph filesystem. What's
+> changed since the last patchset:
 > 
-> Note also mounting -osync and exporting with the "sync" export option
-> are entirely different things.
+> 1. Sparater the readpages refactor into it's own patches. These were already
+>    accepted into the testing branch.
 > 
-> The defaults are what you want (async mount option, sync export
-> option) unless you've thought hard about it.  This is especially true
-> on the server, since the "async" export option make it skip
-> committing data to disk even when the protocol mandates it.
-
-Righto. This makes sense. After a brief pause I'll see if I can tickle
-the ESTALE problem under NFS 4.
-
-With many thanks.
-
-Yours,
-
-Larry.
+> 2. Tracked down the BUG in readahead cleanup code. We were returning with pages
+>    marked as private_2 from readpages(). I added a simple convenience function
+>    to the fscache netfs interface for cleaning up the page list at the end of
+>    asop readpages(). I know other filesystems (NFS) have ran into that since
+>    I've seen a few similar traces in Google search and the cachefs mailig list.
+>    The second patch new make Ceph use this interface.
+> 
+> I've been running this code (minus the BUG fix) on clients for a couple weeks
+> with moderate 24/7 use without issues. At this point in time I feel like it's
+> solid enough to go into the ceph kclient.
+> 
+> Please pull the code from my repository:
+> https://bitbucket.org/adfin/linux-fs.git branch: wip-ceph-fscache
+> 
+> The first two patches I included were not written by me but were written by 
+> Hongyi Jia. He implemented the cookie re-validation scheme into fscache core.
+> 
+> Finally, I CCed a couple other mailing lists (fsdevel, nfs) because the new
+> fscache_readpages_cancel() should be used by other filesystems to avoid the
+> same problem.
+> 
+> 
+> Hongyi Jia (2):
+>   new cachefiles interface to check cache consistency
+>   new fscache interface to check cache consistency
+> 
+> Milosz Tanski (3):
+>   ceph: use fscache as a local presisent cache
+>   fscache: netfs function for cleanup post readpages
+>   ceph: clean PgPrivate2 on returning from readpages
+> 
+>  fs/cachefiles/interface.c     |  19 +++
+>  fs/cachefiles/internal.h      |   1 +
+>  fs/cachefiles/xattr.c         |  39 ++++++
+>  fs/ceph/Kconfig               |   9 ++
+>  fs/ceph/Makefile              |   2 +
+>  fs/ceph/addr.c                |  39 +++++-
+>  fs/ceph/cache.c               | 311 ++++++++++++++++++++++++++++++++++++++++++
+>  fs/ceph/cache.h               | 130 ++++++++++++++++++
+>  fs/ceph/caps.c                |  19 ++-
+>  fs/ceph/file.c                |  17 +++
+>  fs/ceph/inode.c               |  66 ++++++++-
+>  fs/ceph/super.c               |  47 ++++++-
+>  fs/ceph/super.h               |  17 +++
+>  fs/fscache/cookie.c           |  22 +++
+>  fs/fscache/page.c             |  16 +++
+>  include/linux/fscache-cache.h |   4 +
+>  include/linux/fscache.h       |  39 ++++++
+>  17 files changed, 785 insertions(+), 12 deletions(-)
+>  create mode 100644 fs/ceph/cache.c
+>  create mode 100644 fs/ceph/cache.h
+> 
+> -- 
+> 1.8.1.2
+> 
+> 
