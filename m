@@ -1,183 +1,200 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f173.google.com ([209.85.160.173]:34314 "EHLO
-	mail-gh0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S968171Ab3HIQsr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:48:47 -0400
-Received: by mail-gh0-f173.google.com with SMTP id g16so1288647ghb.32
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:48:46 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
-        by mx.google.com with ESMTPSA id n28sm20695730yhn.0.2013.08.09.09.48.45
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
-        Fri, 09 Aug 2013 09:48:45 -0700 (PDT)
-Subject: [PATCH v2 07/33] NFS: Enable slot table helpers for NFSv4.0
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 09 Aug 2013 12:48:44 -0400
-Message-ID: <20130809164844.5362.23032.stgit@seurat.1015granger.net>
-In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
-References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+Received: from mx12.netapp.com ([216.240.18.77]:32090 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753063Ab3HVAY3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Aug 2013 20:24:29 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v4 13/21] NFSv4: Add tracepoints for debugging inode manipulations
+Date: Wed, 21 Aug 2013 20:24:11 -0400
+Message-ID: <1377131059-40121-14-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377131059-40121-13-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377131059-40121-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-13-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'd like to re-use NFSv4.1's slot table machinery for NFSv4.0
-transport blocking.  Re-organize some of nfs4session.c so the slot
-table code is built even when NFS_V4_1 is disabled.
+Set up basic tracepoints for debugging NFSv4 setattr, access,
+readlink, readdir, get_acl set_acl get_security_label,
+and set_security_label.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/Makefile      |    4 ++--
- fs/nfs/nfs4session.c |   29 +++++++++++++++++++++--------
- fs/nfs/nfs4session.h |   28 +++++++++++++---------------
- fs/nfs/nfs4state.c   |    9 ---------
- 4 files changed, 36 insertions(+), 34 deletions(-)
+ fs/nfs/nfs4proc.c  | 36 ++++++++++++++++++++++--------------
+ fs/nfs/nfs4trace.h | 51 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 73 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index e0bb048..2839bfe 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -21,10 +21,10 @@ nfsv3-$(CONFIG_NFS_V3_ACL) += nfs3acl.o
- obj-$(CONFIG_NFS_V4) += nfsv4.o
- nfsv4-y := nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o nfs4super.o nfs4file.o \
- 	  delegation.o idmap.o callback.o callback_xdr.o callback_proc.o \
--	  nfs4namespace.o nfs4getroot.o nfs4client.o dns_resolve.o
-+	  nfs4namespace.o nfs4getroot.o nfs4client.o dns_resolve.o nfs4session.o
- nfsv4-$(CONFIG_NFS_USE_LEGACY_DNS) += cache_lib.o
- nfsv4-$(CONFIG_SYSCTL)	+= nfs4sysctl.o
--nfsv4-$(CONFIG_NFS_V4_1)	+= nfs4session.o pnfs.o pnfs_dev.o
-+nfsv4-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 9ff50a5..42a0b7f 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2311,6 +2311,7 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 	int err;
+ 	do {
+ 		err = _nfs4_do_setattr(inode, cred, fattr, sattr, state, ilabel, olabel);
++		trace_nfs4_setattr(inode, err);
+ 		switch (err) {
+ 		case -NFS4ERR_OPENMODE:
+ 			if (!(sattr->ia_valid & ATTR_SIZE)) {
+@@ -3139,8 +3140,9 @@ static int nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry)
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(inode),
+-				_nfs4_proc_access(inode, entry),
++		err = _nfs4_proc_access(inode, entry);
++		trace_nfs4_access(inode, err);
++		err = nfs4_handle_exception(NFS_SERVER(inode), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+@@ -3193,8 +3195,9 @@ static int nfs4_proc_readlink(struct inode *inode, struct page *page,
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(inode),
+-				_nfs4_proc_readlink(inode, page, pgbase, pglen),
++		err = _nfs4_proc_readlink(inode, page, pgbase, pglen);
++		trace_nfs4_readlink(inode, err);
++		err = nfs4_handle_exception(NFS_SERVER(inode), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+@@ -3626,9 +3629,10 @@ static int nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(dentry->d_inode),
+-				_nfs4_proc_readdir(dentry, cred, cookie,
+-					pages, count, plus),
++		err = _nfs4_proc_readdir(dentry, cred, cookie,
++				pages, count, plus);
++		trace_nfs4_readdir(dentry->d_inode, err);
++		err = nfs4_handle_exception(NFS_SERVER(dentry->d_inode), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+@@ -4329,6 +4333,7 @@ static ssize_t nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bufl
+ 	ssize_t ret;
+ 	do {
+ 		ret = __nfs4_get_acl_uncached(inode, buf, buflen);
++		trace_nfs4_get_acl(inode, ret);
+ 		if (ret >= 0)
+ 			break;
+ 		ret = nfs4_handle_exception(NFS_SERVER(inode), ret, &exception);
+@@ -4408,8 +4413,9 @@ static int nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t buflen
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(inode),
+-				__nfs4_proc_set_acl(inode, buf, buflen),
++		err = __nfs4_proc_set_acl(inode, buf, buflen);
++		trace_nfs4_set_acl(inode, err);
++		err = nfs4_handle_exception(NFS_SERVER(inode), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+@@ -4462,8 +4468,9 @@ static int nfs4_get_security_label(struct inode *inode, void *buf,
+ 		return -EOPNOTSUPP;
  
- obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
- nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
-diff --git a/fs/nfs/nfs4session.c b/fs/nfs/nfs4session.c
-index 0161ad2..746675b 100644
---- a/fs/nfs/nfs4session.c
-+++ b/fs/nfs/nfs4session.c
-@@ -44,6 +44,17 @@ static void nfs4_shrink_slot_table(struct nfs4_slot_table  *tbl, u32 newsize)
- 	}
- }
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(inode),
+-				_nfs4_get_security_label(inode, buf, buflen),
++		err = _nfs4_get_security_label(inode, buf, buflen);
++		trace_nfs4_get_security_label(inode, err);
++		err = nfs4_handle_exception(NFS_SERVER(inode), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+@@ -4515,9 +4522,10 @@ static int nfs4_do_set_security_label(struct inode *inode,
+ 	int err;
  
-+/**
-+ * nfs4_slot_tbl_drain_complete - wake waiters when drain is complete
-+ * @tbl - controlling slot table
-+ *
-+ */
-+void nfs4_slot_tbl_drain_complete(struct nfs4_slot_table *tbl)
-+{
-+	if (nfs4_slot_tbl_draining(tbl))
-+		complete(&tbl->complete);
-+}
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(inode),
+-				_nfs4_do_set_security_label(inode, ilabel,
+-				fattr, olabel),
++		err = _nfs4_do_set_security_label(inode, ilabel,
++				fattr, olabel);
++		trace_nfs4_set_security_label(inode, err);
++		err = nfs4_handle_exception(NFS_SERVER(inode), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index 2646a50..6bd65c2 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -461,6 +461,57 @@ DEFINE_NFS4_LOOKUP_EVENT(nfs4_remove);
+ DEFINE_NFS4_LOOKUP_EVENT(nfs4_get_fs_locations);
+ DEFINE_NFS4_LOOKUP_EVENT(nfs4_secinfo);
+ 
++DECLARE_EVENT_CLASS(nfs4_inode_event,
++		TP_PROTO(
++			const struct inode *inode,
++			int error
++		),
 +
- /*
-  * nfs4_free_slot - free a slot and efficiently update slot table.
-  *
-@@ -212,13 +223,6 @@ out:
- 	return ret;
- }
- 
--/* Destroy the slot table */
--static void nfs4_destroy_slot_tables(struct nfs4_session *session)
--{
--	nfs4_shrink_slot_table(&session->fc_slot_table, 0);
--	nfs4_shrink_slot_table(&session->bc_slot_table, 0);
--}
--
- static bool nfs41_assign_slot(struct rpc_task *task, void *pslot)
- {
- 	struct nfs4_sequence_args *args = task->tk_msg.rpc_argp;
-@@ -383,6 +387,15 @@ void nfs41_update_target_slotid(struct nfs4_slot_table *tbl,
- 	spin_unlock(&tbl->slot_tbl_lock);
- }
- 
-+#if defined(CONFIG_NFS_V4_1)
++		TP_ARGS(inode, error),
 +
-+/* Destroy the slot table */
-+static void nfs4_destroy_slot_tables(struct nfs4_session *session)
-+{
-+	nfs4_shrink_slot_table(&session->fc_slot_table, 0);
-+	nfs4_shrink_slot_table(&session->bc_slot_table, 0);
-+}
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++			__field(int, error)
++		),
 +
- /*
-  * Initialize or reset the forechannel and backchannel tables
-  */
-@@ -513,4 +526,4 @@ int nfs4_init_ds_session(struct nfs_client *clp, unsigned long lease_time)
- }
- EXPORT_SYMBOL_GPL(nfs4_init_ds_session);
- 
--
-+#endif	/* defined(CONFIG_NFS_V4_1) */
-diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
-index 3a153d8..23d26b4 100644
---- a/fs/nfs/nfs4session.h
-+++ b/fs/nfs/nfs4session.h
-@@ -72,15 +72,24 @@ enum nfs4_session_state {
- 	NFS4_SESSION_INITING,
- };
- 
--#if defined(CONFIG_NFS_V4_1)
- extern struct nfs4_slot *nfs4_alloc_slot(struct nfs4_slot_table *tbl);
- extern void nfs4_free_slot(struct nfs4_slot_table *tbl, struct nfs4_slot *slot);
--
--extern void nfs41_set_target_slotid(struct nfs4_slot_table *tbl,
--		u32 target_highest_slotid);
-+extern void nfs4_slot_tbl_drain_complete(struct nfs4_slot_table *tbl);
- extern void nfs41_update_target_slotid(struct nfs4_slot_table *tbl,
- 		struct nfs4_slot *slot,
- 		struct nfs4_sequence_res *res);
-+bool nfs41_wake_and_assign_slot(struct nfs4_slot_table *tbl,
-+		struct nfs4_slot *slot);
-+void nfs41_wake_slot_table(struct nfs4_slot_table *tbl);
++		TP_fast_assign(
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = NFS_FILEID(inode);
++			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
++			__entry->error = error;
++		),
 +
-+static inline bool nfs4_slot_tbl_draining(struct nfs4_slot_table *tbl)
-+{
-+	return !!test_bit(NFS4_SLOT_TBL_DRAINING, &tbl->slot_tbl_state);
-+}
++		TP_printk(
++			"error=%d (%s) fileid=%02x:%02x:%llu fhandle=0x%08x",
++			__entry->error,
++			show_nfsv4_errors(__entry->error),
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle
++		)
++);
 +
-+#if defined(CONFIG_NFS_V4_1)
-+extern void nfs41_set_target_slotid(struct nfs4_slot_table *tbl,
-+		u32 target_highest_slotid);
++#define DEFINE_NFS4_INODE_EVENT(name) \
++	DEFINE_EVENT(nfs4_inode_event, name, \
++			TP_PROTO( \
++				const struct inode *inode, \
++				int error \
++			), \
++			TP_ARGS(inode, error))
++
++DEFINE_NFS4_INODE_EVENT(nfs4_setattr);
++DEFINE_NFS4_INODE_EVENT(nfs4_access);
++DEFINE_NFS4_INODE_EVENT(nfs4_readlink);
++DEFINE_NFS4_INODE_EVENT(nfs4_readdir);
++DEFINE_NFS4_INODE_EVENT(nfs4_get_acl);
++DEFINE_NFS4_INODE_EVENT(nfs4_set_acl);
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++DEFINE_NFS4_INODE_EVENT(nfs4_get_security_label);
++DEFINE_NFS4_INODE_EVENT(nfs4_set_security_label);
++#endif /* CONFIG_NFS_V4_SECURITY_LABEL */
++
+ #endif /* _TRACE_NFS4_H */
  
- extern int nfs4_setup_session_slot_tables(struct nfs4_session *ses);
- 
-@@ -89,17 +98,6 @@ extern void nfs4_destroy_session(struct nfs4_session *session);
- extern int nfs4_init_session(struct nfs_client *clp);
- extern int nfs4_init_ds_session(struct nfs_client *, unsigned long);
- 
--extern void nfs4_slot_tbl_drain_complete(struct nfs4_slot_table *tbl);
--
--static inline bool nfs4_slot_tbl_draining(struct nfs4_slot_table *tbl)
--{
--	return !!test_bit(NFS4_SLOT_TBL_DRAINING, &tbl->slot_tbl_state);
--}
--
--bool nfs41_wake_and_assign_slot(struct nfs4_slot_table *tbl,
--		struct nfs4_slot *slot);
--void nfs41_wake_slot_table(struct nfs4_slot_table *tbl);
--
- /*
-  * Determine if sessions are in use.
-  */
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 6818964..8826df3 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -260,15 +260,6 @@ static void nfs4_end_drain_session(struct nfs_client *clp)
- 	}
- }
- 
--/*
-- * Signal state manager thread if session fore channel is drained
-- */
--void nfs4_slot_tbl_drain_complete(struct nfs4_slot_table *tbl)
--{
--	if (nfs4_slot_tbl_draining(tbl))
--		complete(&tbl->complete);
--}
--
- static int nfs4_drain_slot_tbl(struct nfs4_slot_table *tbl)
- {
- 	set_bit(NFS4_SLOT_TBL_DRAINING, &tbl->slot_tbl_state);
+ #undef TRACE_INCLUDE_PATH
+-- 
+1.8.3.1
 
