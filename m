@@ -1,53 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:47666 "EHLO mx1.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:60287 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932745Ab3HGSEH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Aug 2013 14:04:07 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/4] NFSv4.1 Use clientid management rpc_clnt for
- fs_locations
-Date: Wed, 7 Aug 2013 18:04:05 +0000
-Message-ID: <1375898644.7280.10.camel@leira.trondhjem.org>
-References: <1374511328-49579-1-git-send-email-andros@netapp.com>
-	 <1374511328-49579-2-git-send-email-andros@netapp.com>
-	 <1375894458.7280.2.camel@leira.trondhjem.org>
-	 <479EB531-9CD2-42E2-AB98-A3CD9B13603D@netapp.com>
-In-Reply-To: <479EB531-9CD2-42E2-AB98-A3CD9B13603D@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1753262Ab3HVVW3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Aug 2013 17:22:29 -0400
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 5 1/3] NFSv4 Remove unused LIPKEY and SPKM enums
+Date: Thu, 22 Aug 2013 21:22:27 +0000
+Message-ID: <75493002-76E0-45C1-9AC6-68B9300ED200@netapp.com>
+References: <1376430469-3773-1-git-send-email-andros@netapp.com>
+ <1376430469-3773-2-git-send-email-andros@netapp.com>
+ <1377197453.11488.32.camel@leira.trondhjem.org>
+In-Reply-To: <1377197453.11488.32.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEzLTA4LTA3IGF0IDE4OjAxICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
-PiANCj4gT24gQXVnIDcsIDIwMTMsIGF0IDEyOjU0IFBNLCAiTXlrbGVidXN0LCBUcm9uZCINCj4g
-PFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KPiAgd3JvdGU6DQo+IA0KPiA+IE9uIE1vbiwg
-MjAxMy0wNy0yMiBhdCAxMjo0MiAtMDQwMCwgYW5kcm9zQG5ldGFwcC5jb20gd3JvdGU6DQo+ID4g
-PiBGcm9tOiBBbmR5IEFkYW1zb24gPGFuZHJvc0BuZXRhcHAuY29tPg0KPiA+ID4gDQo+ID4gPiBB
-cyBwZXIgUkZDIDM1MzAgYW5kIFJGQyA1NjYxIFNlY3VyaXR5IENvbnNpZGVyYXRpb25zLg0KPiA+
-ID4gDQo+ID4gPiBDb21taXQgNGVkYWEzMDggIk5GUzogVXNlICJrcmI1aSIgdG8gZXN0YWJsaXNo
-IE5GU3Y0IHN0YXRlDQo+ID4gPiB3aGVuZXZlciBwb3NzaWJsZSINCj4gPiA+IHVzZXMgdGhlIG5m
-c19jbGllbnQgY2xfcnBjY2xpZW50IGZvciBhbGwgY2xpZW50aWQgbWFuYWdlbWVudA0KPiA+ID4g
-b3BlcmF0aW9ucy4NCj4gPiANCj4gPiBXaHk/IA0KPiANCj4gDQo+IFRvIHByb3RlY3QgdGhlIGlu
-dGVncml0eSBvZiB0aGUgZnNfbG9jYXRpb25zIHNlcnZlciBsaXN0Lg0KPiANCj4gPiBGcm9tIGEg
-c2VjdXJpdHkgcGVyc3BlY3RpdmUsIGhvdyBpcyB0aGlzIGFueSBkaWZmZXJlbnQgZnJvbSBkb2lu
-ZyBhDQo+ID4gUkVBRExJTkssIGZvciBpbnN0YW5jZT8NCj4gDQo+IA0KPiBmc19sb2NhdGlvbnMg
-ZGlmZmVycyBmcm9tIFJFQURMSU5LIGluIHRoYXQgY29tcHJvbWlzaW5nIHRoZQ0KPiBmc19sb2Nh
-dGlvbnMgYXR0cmlidXRlIHNlcnZlciBsaXN0IGNhbiByZXN1bHQgaW4gYWxsIG9mIHRoZSBjbGll
-bnQNCj4gdHJhZmZpYyB1bmRlciBhIGp1bmN0aW9uIHJlZGlyZWN0ZWQgYnkgYW4gYXR0YWNrZXIu
-DQoNCkkgcmVwZWF0OiBob3cgaXMgdGhpcyBpbiBhbnkgd2F5LCBzaGFwZSBvciBmb3JtIGRpZmZl
-cmVudCBmcm9tIFJFQURMSU5LPw0KDQo+IA0KPiBIZXJlIGlzIHRoZSBhdHRhY2sgYXMgZGVzY3Jp
-YmVkIGluIDM1MzBiaXMgU2VjdXJpdHkgQ29uc2lkZXJhdGlvbnMNCj4gc2VjdGlvbjoNCj4gDQo+
-IA0KPiAgICBUaGUgc2Vjb25kIG9wZXJhdGlvbiB0aGF0IHNob3VsZCBkZWZpbml0ZWx5IHVzZSBp
-bnRlZ3JpdHkgcHJvdGVjdGlvbg0KPiAgICBpcyBhbnkgR0VUQVRUUiBmb3IgdGhlIGZzX2xvY2F0
-aW9ucyBhdHRyaWJ1dGUuICBUaGUgYXR0YWNrIGhhcyB0d28NCj4gICAgc3RlcHMuICBGaXJzdCB0
-aGUgYXR0YWNrZXIgbW9kaWZpZXMgdGhlIHVucHJvdGVjdGVkIHJlc3VsdHMgb2Ygc29tZQ0KPiAg
-ICBvcGVyYXRpb24gdG8gcmV0dXJuIE5GUzRFUlJfTU9WRUQuICBTZWNvbmQsIHdoZW4gdGhlIGNs
-aWVudCBmb2xsb3dzDQo+ICAgIHVwIHdpdGggYSBHRVRBVFRSIGZvciB0aGUgZnNfbG9jYXRpb25z
-IGF0dHJpYnV0ZSwgdGhlIGF0dGFja2VyDQo+ICAgIG1vZGlmaWVzIHRoZSByZXN1bHRzIHRvIGNh
-dXNlIHRoZSBjbGllbnQgbWlncmF0ZSBpdHMgdHJhZmZpYyB0byBhDQo+ICAgIHNlcnZlciBjb250
-cm9sbGVkIGJ5IHRoZSBhdHRhY2tlci4NCg0KWW91IGNhbiB0aGUgZXhhY3Qgc2FtZSB0aGluZyBi
-eSBjaGFuZ2luZyB0aGUgUkVBRExJTksgcmVzdWx0cy4NCg0KDQotLSANClRyb25kIE15a2xlYnVz
-dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0
-QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+
+On Aug 22, 2013, at 2:50 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+ wrote:
+
+> On Tue, 2013-08-13 at 17:47 -0400, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>> 
+>> SPKM and LIPKEY are not supported.
+> 
+> We don't ship with SPKM and LIPKEY, but afaik nothing prevents someone
+> from adding support again.
+
+I think that the lack of an internet draft will prevent someone from adding support again. draft-adamson-rfc2847-bis-01.txt was the last attempt to fix SPKM3 - and was rejected by the Security AD after much debate. It died in Aug 2006. So, there is no standard to code to. 
+
+So I see no need to keep these un-used declarations around.
+
+-->Andy
+
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+
