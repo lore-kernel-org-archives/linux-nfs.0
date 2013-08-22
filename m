@@ -1,81 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46655 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:43429 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752431Ab3H2NaU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Aug 2013 09:30:20 -0400
-Date: Thu, 29 Aug 2013 09:30:10 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: richard -rw- weinberger <richard.weinberger@gmail.com>
-Cc: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "user-mode-linux-devel@lists.sourceforge.net"
-	<user-mode-linux-devel@lists.sourceforge.net>,
-        Linux Kernel <linux-kernel@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-        linux-ext4@vger.kernel.org
-Subject: Re: [uml-devel] Issues with a rather unusual configured NFS server
-Message-ID: <20130829133010.GA14773@fieldses.org>
-References: <52075E01.7030506@gmx.de>
- <20130812143640.GF4596@quack.suse.cz>
- <20130813215313.GH17781@fieldses.org>
- <20130827180655.GE14809@fieldses.org>
- <521E318C.7040401@gmx.de>
- <CAFLxGvyK5+nB9TgW1uPho9KGwQrWQHx=wEpj+o-mZcN92bWAOg@mail.gmail.com>
+	id S1753700Ab3HVSg7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Aug 2013 14:36:59 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: NeilBrown <neilb@suse.de>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: remove incorrect "Lock reclaim failed!" warning.
+Date: Thu, 22 Aug 2013 18:36:58 +0000
+Message-ID: <1377196617.11488.23.camel@leira.trondhjem.org>
+References: <20130812165247.74c66315@notabene.brown>
+In-Reply-To: <20130812165247.74c66315@notabene.brown>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <CAFLxGvyK5+nB9TgW1uPho9KGwQrWQHx=wEpj+o-mZcN92bWAOg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 29, 2013 at 11:57:45AM +0200, richard -rw- weinberger wrote:
-> On Wed, Aug 28, 2013 at 7:21 PM, Toralf Förster <toralf.foerster@gmx.de> wrote:
-> > On 08/27/2013 08:06 PM, J. Bruce Fields wrote:
-> >> On Tue, Aug 13, 2013 at 05:53:14PM -0400, bfields wrote:
-> >>> On Mon, Aug 12, 2013 at 04:36:40PM +0200, Jan Kara wrote:
-> >>>> On Sun 11-08-13 11:48:49, Toralf Förster wrote:
-> >>>>> so that the server either crashes (if it is a user mode linux image) or at least its reboot functionality got broken
-> >>>>> - if the NFS server is hammered with scary NFS calls using a fuzzy tool running at a remote NFS client under a non-privileged user id.
-> >>>>>
-> >>>>> It can re reproduced, if
-> >>>>>    - the NFS share is an EXT3 or EXT4 directory
-> >>>>>    - and it is created at file located at tempfs and mounted via loop device
-> >>>>>    - and the NFS server is forced to umount the NFS share
-> >>>>>    - and the server forced to restart the NSF service afterwards
-> >>>>>    - and trinity is used
-> >>>>>
-> >>>>> I could find a scenario for an automated bisect. 2 times it brought this commit
-> >>>>> commit 68a3396178e6688ad7367202cdf0af8ed03c8727
-> >>>>> Author: J. Bruce Fields <bfields@redhat.com>
-> >>>>> Date:   Thu Mar 21 11:21:50 2013 -0400
-> >>>>>
-> >>>>>     nfsd4: shut down more of delegation earlier
-> >>>
-> >>> Thanks for the report.  I think I see the problem--after this commit
-> >>> nfs4_set_delegation() failures result in nfs4_put_delegation being
-> >>> called, but nfs4_put_delegation doesn't free the nfs4_file that has
-> >>> already been set by alloc_init_deleg().
-> >>>
-> >>> Let me think about how to fix that....
-> >>
-> >> Sorry for the slow response--can you check whether this fixes the
-> >> problem?
-> >>
-> > Yes.
-> >
-> > With the attached patch the problem can't be reproduced any longer with
-> > the prepared test case and current git kernels.
-> 
-> BTW: Is nobody else fuzz testing NFS?
-
-I don't know.  Toralf's reports are the only ones I recall off the top
-of my head, but I may have forgotten others.
-
-> Or are these bugs just more likely to hit on UML?
-
-That's also possible.
-
-> This is not the first NFS issue found by Toralf using UML and Trinity.
-
-Yep.  The testing is definitely appreciated.
-
---b.
+T24gTW9uLCAyMDEzLTA4LTEyIGF0IDE2OjUyICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IA0K
+PiBBZnRlciByZWNsYWltaW5nIHN0YXRlIHRoYXQgd2FzIGxvc3QsIHRoZSBORlMgY2xpZW50IHRy
+aWVzIHRvIHJlY2xhaW0NCj4gYW55IGxvY2tzLCBhbmQgdGhlbiBjaGVja3MgdGhhdCBlYWNoIG9u
+ZSBoYXMgTkZTX0xPQ0tfSU5JVElBTElaRUQgc2V0DQo+ICh3aGljaCBtZWFucyB0aGF0IHRoZSBz
+ZXJ2ZXIgaGFzIGNvbmZpcm1lZCB0aGUgbG9jaykuDQo+IEhvd2V2ZXIgaWYgdGhlIGNsaWVudCBo
+b2xkcyBhIGRlbGVnYXRpb24sIG5mc19yZWNsYWltX2xvY2tzKCkgc2ltcGx5IGFib3J0cw0KPiAo
+b3IgbW9yZSBhY2N1cmF0ZWx5IGl0IGNhbGxlZCBuZnNfbG9ja19yZWNsYWltKCkgYW5kIHRoYXQg
+cmV0dXJucyB3aXRob3V0DQo+IGRvaW5nIGFueXRoaW5nKS4NCj4gDQo+IFRoaXMgaXMgYmVjYXVz
+ZSB3aGVuIGEgZGVsZWdhdGlvbiBpcyBoZWxkLCB0aGUgc2VydmVyIGRvZXNuJ3QgbmVlZCB0bw0K
+PiBrbm93IGFib3V0IGxvY2tzLg0KPiANCj4gU28gaWYgYSBkZWxlZ2F0aW9uIGlzIGhlbGQsIE5G
+U19MT0NLX0lOSVRJQUxJWkVEIGlzIG5vdCBleHBlY3RlZCwgYW5kDQo+IGl0cyBhYnNlbmNlIGlz
+IGNlcnRhaW5seSBub3QgYW4gZXJyb3IuDQo+IA0KPiBTbyBkb24ndCBwcmludCB0aGUgd2Fybmlu
+Z3MgaWYgTkZTX0RFTEdBVEVEX1NUQVRFIGlzIHNldC4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IE5l
+aWxCcm93biA8bmVpbGJAc3VzZS5kZT4NCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHN0
+YXRlLmMgYi9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gaW5kZXggZTIyODYyZi4uZTRlMDYzZiAxMDA2
+NDQNCj4gLS0tIGEvZnMvbmZzL25mczRzdGF0ZS5jDQo+ICsrKyBiL2ZzL25mcy9uZnM0c3RhdGUu
+Yw0KPiBAQCAtMTQ0MywxNCArMTQ0MywxNiBAQCByZXN0YXJ0Og0KPiAgCQlpZiAoc3RhdHVzID49
+IDApIHsNCj4gIAkJCXN0YXR1cyA9IG5mczRfcmVjbGFpbV9sb2NrcyhzdGF0ZSwgb3BzKTsNCj4g
+IAkJCWlmIChzdGF0dXMgPj0gMCkgew0KPiAtCQkJCXNwaW5fbG9jaygmc3RhdGUtPnN0YXRlX2xv
+Y2spOw0KPiAtCQkJCWxpc3RfZm9yX2VhY2hfZW50cnkobG9jaywgJnN0YXRlLT5sb2NrX3N0YXRl
+cywgbHNfbG9ja3MpIHsNCj4gLQkJCQkJaWYgKCF0ZXN0X2JpdChORlNfTE9DS19JTklUSUFMSVpF
+RCwgJmxvY2stPmxzX2ZsYWdzKSkNCj4gLQkJCQkJCXByX3dhcm5fcmF0ZWxpbWl0ZWQoIk5GUzog
+Ig0KPiAtCQkJCQkJCSIlczogTG9jayByZWNsYWltICINCj4gLQkJCQkJCQkiZmFpbGVkIVxuIiwg
+X19mdW5jX18pOw0KPiArCQkJCWlmICh0ZXN0X2JpdChORlNfREVMRUdBVEVEX1NUQVRFLCAmc3Rh
+dGUtPmZsYWdzKSAhPSAwKSB7DQo+ICsJCQkJCXNwaW5fbG9jaygmc3RhdGUtPnN0YXRlX2xvY2sp
+Ow0KPiArCQkJCQlsaXN0X2Zvcl9lYWNoX2VudHJ5KGxvY2ssICZzdGF0ZS0+bG9ja19zdGF0ZXMs
+IGxzX2xvY2tzKSB7DQo+ICsJCQkJCQlpZiAoIXRlc3RfYml0KE5GU19MT0NLX0lOSVRJQUxJWkVE
+LCAmbG9jay0+bHNfZmxhZ3MpKQ0KPiArCQkJCQkJCXByX3dhcm5fcmF0ZWxpbWl0ZWQoIk5GUzog
+Ig0KPiArCQkJCQkJCQkJICAgICIlczogTG9jayByZWNsYWltICINCj4gKwkJCQkJCQkJCSAgICAi
+ZmFpbGVkIVxuIiwgX19mdW5jX18pOw0KPiArCQkJCQl9DQo+ICsJCQkJCXNwaW5fdW5sb2NrKCZz
+dGF0ZS0+c3RhdGVfbG9jayk7DQo+ICAJCQkJfQ0KPiAtCQkJCXNwaW5fdW5sb2NrKCZzdGF0ZS0+
+c3RhdGVfbG9jayk7DQo+ICAJCQkJbmZzNF9wdXRfb3Blbl9zdGF0ZShzdGF0ZSk7DQo+ICAJCQkJ
+c3Bpbl9sb2NrKCZzcC0+c29fbG9jayk7DQo+ICAJCQkJZ290byByZXN0YXJ0Ow0KDQpUaGF0IGxv
+b2tzIGNvcnJlY3QgdG8gbWUuIEFwcGxpZWQuDQoNClRoYW5rcyBOZWlsIQ0KICBUcm9uZA0KLS0g
+DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHAN
+ClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
