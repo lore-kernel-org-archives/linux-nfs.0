@@ -1,87 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:24021 "EHLO mx1.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:32090 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750994Ab3HTVLy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Aug 2013 17:11:54 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Bryan Schumaker <bjschuma@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 00/16] NFS add tracepoints
-Date: Tue, 20 Aug 2013 21:11:52 +0000
-Message-ID: <1377033113.21393.1.camel@leira.trondhjem.org>
-References: <1377027312-45957-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <5213D689.3030103@gmail.com>
-In-Reply-To: <5213D689.3030103@gmail.com>
-Content-Type: multipart/mixed;
-	boundary="_002_1377033113213931camelleiratrondhjemorg_"
+	id S1752740Ab3HVAYb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Aug 2013 20:24:31 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v4 16/21] NFSv4: Add tracepoints for debugging the idmapper
+Date: Wed, 21 Aug 2013 20:24:14 -0400
+Message-ID: <1377131059-40121-17-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377131059-40121-16-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377131059-40121-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-13-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-14-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-15-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-16-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---_002_1377033113213931camelleiratrondhjemorg_
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <4DDD758E37C0C54DAC0DC4218F68FD02@hq.netapp.com>
-Content-Transfer-Encoding: base64
+Add tracepoints to help debug uid/gid mappings to username/group.
 
-T24gVHVlLCAyMDEzLTA4LTIwIGF0IDE2OjUwIC0wNDAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
-DQo+IEhpIFRyb25kLA0KPiANCj4gVGhpcyBpcyB3aGF0IEkgc2VlIHdoZW4gSSB0cnkgdG8gY29t
-cGlsZSB0ZXN0aW5nLg0KPiANCj4gLSBCcnlhbg0KPiANCj4gDQo+IHNjcmlwdHMva2NvbmZpZy9j
-b25mIC0tb2xkY29uZmlnIEtjb25maWcNCj4gIw0KPiAjIGNvbmZpZ3VyYXRpb24gd3JpdHRlbiB0
-byAuY29uZmlnDQo+ICMNCj4gc2NyaXB0cy9rY29uZmlnL2NvbmYgLS1zaWxlbnRvbGRjb25maWcg
-S2NvbmZpZw0KPiBtYWtlWzFdOiBOb3RoaW5nIHRvIGJlIGRvbmUgZm9yIGBhbGwnLg0KPiAgIENI
-SyAgICAgaW5jbHVkZS9nZW5lcmF0ZWQvdWFwaS9saW51eC92ZXJzaW9uLmgNCj4gICBDSEsgICAg
-IGluY2x1ZGUvZ2VuZXJhdGVkL3V0c3JlbGVhc2UuaA0KPiBtYWtlWzFdOiBOb3RoaW5nIHRvIGJl
-IGRvbmUgZm9yIGByZWxvY3MnLg0KPiAgIENBTEwgICAgc2NyaXB0cy9jaGVja3N5c2NhbGxzLnNo
-DQo+ICAgQ0hLICAgICBpbmNsdWRlL2dlbmVyYXRlZC9jb21waWxlLmgNCj4gbWFrZVszXTogYGFy
-Y2gveDg2L3JlYWxtb2RlL3JtL3JlYWxtb2RlLmJpbicgaXMgdXAgdG8gZGF0ZS4NCj4gICBHWklQ
-ICAgIGtlcm5lbC9jb25maWdfZGF0YS5neg0KPiAgIENISyAgICAga2VybmVsL2NvbmZpZ19kYXRh
-LmgNCj4gICBDQyBbTV0gIGZzL25mcy9uZnN0cmFjZS5vDQo+IEluIGZpbGUgaW5jbHVkZWQgZnJv
-bSBmcy9uZnMvbmZzdHJhY2UuaDozNTg6MCwNCj4gICAgICAgICAgICAgICAgICBmcm9tIGZzL25m
-cy9uZnN0cmFjZS5jOjk6DQo+IGluY2x1ZGUvdHJhY2UvZGVmaW5lX3RyYWNlLmg6ODM6NDM6IGZh
-dGFsIGVycm9yOiAuL25mc3RyYWNlLmg6IE5vIHN1Y2ggZmlsZSBvciBkaXJlY3RvcnkNCj4gICNp
-bmNsdWRlIFRSQUNFX0lOQ0xVREUoVFJBQ0VfSU5DTFVERV9GSUxFKQ0KPiAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXg0KPiBjb21waWxhdGlvbiB0ZXJtaW5hdGVk
-Lg0KPiBtYWtlWzJdOiAqKiogW2ZzL25mcy9uZnN0cmFjZS5vXSBFcnJvciAxDQo+ICAgQ0MgW01d
-ICBmcy9uZnMvbmZzNHRyYWNlLm8NCj4gSW4gZmlsZSBpbmNsdWRlZCBmcm9tIGZzL25mcy9uZnM0
-dHJhY2UuaDoxMTA5OjAsDQo+ICAgICAgICAgICAgICAgICAgZnJvbSBmcy9uZnMvbmZzNHRyYWNl
-LmM6MTE6DQo+IGluY2x1ZGUvdHJhY2UvZGVmaW5lX3RyYWNlLmg6ODM6NDM6IGZhdGFsIGVycm9y
-OiAuL25mczR0cmFjZS5oOiBObyBzdWNoIGZpbGUgb3IgZGlyZWN0b3J5DQo+ICAjaW5jbHVkZSBU
-UkFDRV9JTkNMVURFKFRSQUNFX0lOQ0xVREVfRklMRSkNCj4gICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgIF4NCj4gY29tcGlsYXRpb24gdGVybWluYXRlZC4NCj4gbWFr
-ZVsyXTogKioqIFtmcy9uZnMvbmZzNHRyYWNlLm9dIEVycm9yIDENCj4gbWFrZVsyXTogVGFyZ2V0
-IGBfX2J1aWxkJyBub3QgcmVtYWRlIGJlY2F1c2Ugb2YgZXJyb3JzLg0KPiBtYWtlWzFdOiAqKiog
-W2ZzL25mc10gRXJyb3IgMg0KPiBtYWtlWzFdOiBUYXJnZXQgYF9fYnVpbGQnIG5vdCByZW1hZGUg
-YmVjYXVzZSBvZiBlcnJvcnMuDQo+IG1ha2U6ICoqKiBbZnNdIEVycm9yIDINCj4gbWFrZTogVGFy
-Z2V0IGBfYWxsJyBub3QgcmVtYWRlIGJlY2F1c2Ugb2YgZXJyb3JzLg0KPiBuZnMgbWFrZSAgMTMu
-NThzIHVzZXIgMy4xOXMgc3lzdGVtIDI1NyUgY3B1IDYuNTEyIHRvdGFsDQo+IA0KDQpIbW0uLi4g
-RG9lcyB0aGUgZm9sbG93aW5nIHBhdGNoIGZpeCB0aGUgcHJvYmxlbT8NCg0KQ2hlZXJzDQogIFRy
-b25kDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoN
-Ck5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/idmap.c     |  5 +++++
+ fs/nfs/nfs4trace.h | 46 ++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 51 insertions(+)
 
---_002_1377033113213931camelleiratrondhjemorg_
-Content-Type: text/x-patch; name="fix_include.dif"
-Content-Description: fix_include.dif
-Content-Disposition: attachment; filename="fix_include.dif"; size=893;
-	creation-date="Tue, 20 Aug 2013 21:11:52 GMT";
-	modification-date="Tue, 20 Aug 2013 21:11:52 GMT"
-Content-ID: <92793649195B0F46B0C8270428D362A2@hq.netapp.com>
-Content-Transfer-Encoding: base64
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 65c7d91..e9b0c59 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -49,6 +49,7 @@
+ 
+ #include "internal.h"
+ #include "netns.h"
++#include "nfs4trace.h"
+ 
+ #define NFS_UINT_MAXLEN 11
+ 
+@@ -849,6 +850,7 @@ int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_
+ 		if (!uid_valid(*uid))
+ 			ret = -ERANGE;
+ 	}
++	trace_nfs4_map_name_to_uid(name, namelen, id, ret);
+ 	return ret;
+ }
+ 
+@@ -865,6 +867,7 @@ int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size
+ 		if (!gid_valid(*gid))
+ 			ret = -ERANGE;
+ 	}
++	trace_nfs4_map_group_to_gid(name, namelen, id, ret);
+ 	return ret;
+ }
+ 
+@@ -879,6 +882,7 @@ int nfs_map_uid_to_name(const struct nfs_server *server, kuid_t uid, char *buf,
+ 		ret = nfs_idmap_lookup_name(id, "user", buf, buflen, idmap);
+ 	if (ret < 0)
+ 		ret = nfs_map_numeric_to_string(id, buf, buflen);
++	trace_nfs4_map_uid_to_name(buf, ret, id, ret);
+ 	return ret;
+ }
+ int nfs_map_gid_to_group(const struct nfs_server *server, kgid_t gid, char *buf, size_t buflen)
+@@ -892,5 +896,6 @@ int nfs_map_gid_to_group(const struct nfs_server *server, kgid_t gid, char *buf,
+ 		ret = nfs_idmap_lookup_name(id, "group", buf, buflen, idmap);
+ 	if (ret < 0)
+ 		ret = nfs_map_numeric_to_string(id, buf, buflen);
++	trace_nfs4_map_gid_to_group(buf, ret, id, ret);
+ 	return ret;
+ }
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index 900f233..f58edcf 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -627,6 +627,52 @@ DEFINE_NFS4_INODE_EVENT(nfs4_set_security_label);
+ DEFINE_NFS4_INODE_EVENT(nfs4_recall_delegation);
+ DEFINE_NFS4_INODE_EVENT(nfs4_delegreturn);
+ 
++DECLARE_EVENT_CLASS(nfs4_idmap_event,
++		TP_PROTO(
++			const char *name,
++			int len,
++			u32 id,
++			int error
++		),
++
++		TP_ARGS(name, len, id, error),
++
++		TP_STRUCT__entry(
++			__field(int, error)
++			__field(u32, id)
++			__dynamic_array(char, name, len > 0 ? len + 1 : 1)
++		),
++
++		TP_fast_assign(
++			if (len < 0)
++				len = 0;
++			__entry->error = error < 0 ? error : 0;
++			__entry->id = id;
++			memcpy(__get_dynamic_array(name), name, len);
++			((char *)__get_dynamic_array(name))[len] = 0;
++		),
++
++		TP_printk(
++			"error=%d id=%u name=%s",
++			__entry->error,
++			__entry->id,
++			__get_str(name)
++		)
++);
++#define DEFINE_NFS4_IDMAP_EVENT(name) \
++	DEFINE_EVENT(nfs4_idmap_event, name, \
++			TP_PROTO( \
++				const char *name, \
++				int len, \
++				u32 id, \
++				int error \
++			), \
++			TP_ARGS(name, len, id, error))
++DEFINE_NFS4_IDMAP_EVENT(nfs4_map_name_to_uid);
++DEFINE_NFS4_IDMAP_EVENT(nfs4_map_group_to_gid);
++DEFINE_NFS4_IDMAP_EVENT(nfs4_map_uid_to_name);
++DEFINE_NFS4_IDMAP_EVENT(nfs4_map_gid_to_group);
++
+ #endif /* _TRACE_NFS4_H */
+ 
+ #undef TRACE_INCLUDE_PATH
+-- 
+1.8.3.1
 
-ZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0dHJhY2UuaCBiL2ZzL25mcy9uZnM0dHJhY2UuaA0KaW5k
-ZXggYWFjMTU2NC4uYmE5MDQ2MzYgMTAwNjQ0DQotLS0gYS9mcy9uZnMvbmZzNHRyYWNlLmgNCisr
-KyBiL2ZzL25mcy9uZnM0dHJhY2UuaA0KQEAgLTExMDMsNyArMTEwMyw3IEBAIERFRklORV9ORlM0
-X0lOT0RFX0VWRU5UKG5mczRfbGF5b3V0cmV0dXJuKTsNCiAjZW5kaWYgLyogX1RSQUNFX05GUzRf
-SCAqLw0KIA0KICN1bmRlZiBUUkFDRV9JTkNMVURFX1BBVEgNCi0jZGVmaW5lIFRSQUNFX0lOQ0xV
-REVfUEFUSCAuDQorI2RlZmluZSBUUkFDRV9JTkNMVURFX1BBVEggLi4vLi4vZnMvbmZzDQogI2Rl
-ZmluZSBUUkFDRV9JTkNMVURFX0ZJTEUgbmZzNHRyYWNlDQogLyogVGhpcyBwYXJ0IG11c3QgYmUg
-b3V0c2lkZSBwcm90ZWN0aW9uICovDQogI2luY2x1ZGUgPHRyYWNlL2RlZmluZV90cmFjZS5oPg0K
-ZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnN0cmFjZS5oIGIvZnMvbmZzL25mc3RyYWNlLmgNCmluZGV4
-IDc0Y2QxZDcuLmI5ZDhjYTkgMTAwNjQ0DQotLS0gYS9mcy9uZnMvbmZzdHJhY2UuaA0KKysrIGIv
-ZnMvbmZzL25mc3RyYWNlLmgNCkBAIC0zNTIsNyArMzUyLDcgQEAgVFJBQ0VfRVZFTlQobmZzX2F0
-b21pY19vcGVuX2V4aXQsDQogI2VuZGlmIC8qIF9UUkFDRV9ORlNfSCAqLw0KIA0KICN1bmRlZiBU
-UkFDRV9JTkNMVURFX1BBVEgNCi0jZGVmaW5lIFRSQUNFX0lOQ0xVREVfUEFUSCAuDQorI2RlZmlu
-ZSBUUkFDRV9JTkNMVURFX1BBVEggLi4vLi4vZnMvbmZzDQogI2RlZmluZSBUUkFDRV9JTkNMVURF
-X0ZJTEUgbmZzdHJhY2UNCiAvKiBUaGlzIHBhcnQgbXVzdCBiZSBvdXRzaWRlIHByb3RlY3Rpb24g
-Ki8NCiAjaW5jbHVkZSA8dHJhY2UvZGVmaW5lX3RyYWNlLmg+DQo=
-
---_002_1377033113213931camelleiratrondhjemorg_--
