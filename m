@@ -1,54 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:5664 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57577 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754681Ab3HBRMt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 Aug 2013 13:12:49 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <51FAA0CC.7010106@fifthhorseman.net>
-References: <51FAA0CC.7010106@fifthhorseman.net> <20130801173846.28023.19009.stgit@warthog.procyon.org.uk> <20130801173902.28023.68819.stgit@warthog.procyon.org.uk>
-To: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
-Cc: dhowells@redhat.com, keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
-        krbdev@mit.edu, "Serge E. Hallyn" <serge.hallyn@ubuntu.com>,
-        linux-kernel@vger.kernel.org, simo@redhat.com,
-        "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: Re: [PATCH 2/2] KEYS: Add per-user_namespace registers for persistent per-UID kerberos caches
-Date: Fri, 02 Aug 2013 18:12:40 +0100
-Message-ID: <7370.1375463560@warthog.procyon.org.uk>
+	id S1752516Ab3HVN6v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Aug 2013 09:58:51 -0400
+Date: Thu, 22 Aug 2013 09:58:47 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>, steved@redhat.com
+Subject: Re: [PATCH] SUNRPC: We must not use list_for_each_entry_safe() in
+ rpc_wake_up()
+Message-ID: <20130822095847.398a1685@tlielax.poochiereds.net>
+In-Reply-To: <20130822095224.13eec221@tlielax.poochiereds.net>
+References: <1332181002-10302-1-git-send-email-Trond.Myklebust@netapp.com>
+	<20130822095224.13eec221@tlielax.poochiereds.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Daniel Kahn Gillmor <dkg@fifthhorseman.net> wrote:
+On Thu, 22 Aug 2013 09:52:24 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
 
-> > The uid is -1 or the user's own UID for the user's own cache or the uid of
-> > some other user's cache (requires CAP_SETUID).  This permits rpc.gssd or
-> > whatever to mess with the cache.
+> On Mon, 19 Mar 2012 14:16:42 -0400
+> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 > 
-> Is the goal here eventually to be able to avoid the upcall to rpc.gssd
-> entirely?  It seems a little bit roundabout to have the kernel call up
-> into userspace for the credentials, only to talk to a process which then
-> calls back into the kernel for something that the kernel has already
-> well-defined internally.
+> > The problem is that for the case of priority queues, we
+> > have to assume that __rpc_remove_wait_queue_priority will move new
+> > elements from the tk_wait.links lists into the queue->tasks[] list.
+> > We therefore cannot use list_for_each_entry_safe() on queue->tasks[],
+> > since that will skip these new tasks that __rpc_remove_wait_queue_priority
+> > is adding.
+> > 
+> > Without this fix, rpc_wake_up and rpc_wake_up_status will both fail
+> > to wake up all functions on priority wait queues, which can result
+> > in some nasty hangs.
+> > 
+> > Reported-by: Andy Adamson <andros@netapp.com>
+> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > Cc: stable@vger.kernel.org
+> > ---
+> >  net/sunrpc/sched.c |   15 +++++++++++----
+> >  1 files changed, 11 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+> > index 1c570a8..994cfea 100644
+> > --- a/net/sunrpc/sched.c
+> > +++ b/net/sunrpc/sched.c
+> > @@ -534,14 +534,18 @@ EXPORT_SYMBOL_GPL(rpc_wake_up_next);
+> >   */
+> >  void rpc_wake_up(struct rpc_wait_queue *queue)
+> >  {
+> > -	struct rpc_task *task, *next;
+> >  	struct list_head *head;
+> >  
+> >  	spin_lock_bh(&queue->lock);
+> >  	head = &queue->tasks[queue->maxpriority];
+> >  	for (;;) {
+> > -		list_for_each_entry_safe(task, next, head, u.tk_wait.list)
+> > +		while (!list_empty(head)) {
+> > +			struct rpc_task *task;
+> > +			task = list_first_entry(head,
+> > +					struct rpc_task,
+> > +					u.tk_wait.list);
+> >  			rpc_wake_up_task_queue_locked(queue, task);
+> > +		}
+> >  		if (head == &queue->tasks[0])
+> >  			break;
+> >  		head--;
+> > @@ -559,13 +563,16 @@ EXPORT_SYMBOL_GPL(rpc_wake_up);
+> >   */
+> >  void rpc_wake_up_status(struct rpc_wait_queue *queue, int status)
+> >  {
+> > -	struct rpc_task *task, *next;
+> >  	struct list_head *head;
+> >  
+> >  	spin_lock_bh(&queue->lock);
+> >  	head = &queue->tasks[queue->maxpriority];
+> >  	for (;;) {
+> > -		list_for_each_entry_safe(task, next, head, u.tk_wait.list) {
+> > +		while (!list_empty(head)) {
+> > +			struct rpc_task *task;
+> > +			task = list_first_entry(head,
+> > +					struct rpc_task,
+> > +					u.tk_wait.list);
+> >  			task->tk_status = status;
+> >  			rpc_wake_up_task_queue_locked(queue, task);
+> >  		}
+> 
+> I have a question about this (old) patch...
+> 
+> Steve D. backported this patch for RHEL5, and it's causing a deadlock
+> there. This is mainly due to the fact that this code in RHEL5 is based
+> on 2.6.18 and is quite different (it still has the RPC_TASK_WAKEUP
+> flag, and there's an inversion problem with it in the code). I don't
+> think it's a problem in most later kernels.
+> 
+> What I'm not clear on is this: how can new entries end up on these lists
+> even though we hold the queue->lock here? It looks like the queue->lock
+> is always held when __rpc_remove_wait_queue_priority is called.
+> 
+> Even if there is some way for that to happen, how is it safe to add
+> entries to that list without taking the lock? That seems like it would
+> be a great way to corrupt the list.
+> 
+> Thanks,
 
-I would like to see use of request_key() eventually so that the kernel can
-fish a key directly out of the keyring if it needs one.  My kAFS filesystem
-could pretty much use that immediately.
+<facepalm>
 
-However, I don't really want to put all the Kerberos communications into the
-kernel.  The keys obtained by request_key() on behalf of a filesystem might be
-kerberos tickets or they might be something else.
+I get it now. We do hold the queue->lock. I guess the concern is that
+this will occur when we end up calling rpc_wake_up_task_queue_locked
+from within the loop. 
 
-> It seems like a non-privileged user could use this to store arbitrary data
-> in this keyring as a way of hiding what would otherwise be filesystem
-> activity or using it for some sort of odd/sneaky IPC mechanism.  Is this an
-> intentional side effect?
-
-It is true that a non-privileged user can store arbitrary keys in their
-keyring and they could use it as an IPC mechanism if they really wanted to -
-but if they could do that, they could use socketpairs, pipes or shm instead so
-I'm not sure they can do anything that they couldn't do by some other
-mechanism anyway.
-
-Note that key accesses are regulated by the active LSM and I think can appear
-in the audit log.
-
-David
+Sorry for the noise! Now to figure out how to fix this in RHEL5...
+-- 
+Jeff Layton <jlayton@redhat.com>
