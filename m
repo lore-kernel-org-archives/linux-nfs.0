@@ -1,73 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f172.google.com ([209.85.160.172]:56497 "EHLO
-	mail-gh0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S968171Ab3HIQtt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:49:49 -0400
-Received: by mail-gh0-f172.google.com with SMTP id r18so1299890ghr.3
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:49:49 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
-        by mx.google.com with ESMTPSA id l67sm20675747yhc.26.2013.08.09.09.49.48
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
-        Fri, 09 Aug 2013 09:49:48 -0700 (PDT)
-Subject: [PATCH v2 14/33] NFS: Add nfs4_sequence calls for OPEN_CONFIRM
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 09 Aug 2013 12:49:47 -0400
-Message-ID: <20130809164947.5362.51597.stgit@seurat.1015granger.net>
-In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
-References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+Received: from mail-pb0-f52.google.com ([209.85.160.52]:44442 "EHLO
+	mail-pb0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752352Ab3HVNo1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Aug 2013 09:44:27 -0400
+Received: by mail-pb0-f52.google.com with SMTP id wz12so1773805pbc.39
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Aug 2013 06:44:26 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20130821112700.GD25198@fieldses.org>
+References: <CAJUS3XmebzQHnQNwEYECUjYyK+nj2cVpKz_-4gmPacEWzmxEZQ@mail.gmail.com>
+	<20130816211217.GB21539@fieldses.org>
+	<20130821124343.4f5462cc@notabene.brown>
+	<20130821112700.GD25198@fieldses.org>
+Date: Thu, 22 Aug 2013 09:44:26 -0400
+Message-ID: <CAJUS3XkJjGxevUi3gLZACdfQXLhar7qxrnNgE3ogAuyMZrFt-w@mail.gmail.com>
+Subject: Re: server mountpoint busy after unexporting nfs4 share
+From: Martin Hicks <mort@bork.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: NeilBrown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure OPEN_CONFIRM is not emitted while the transport is plugged.
+On Wed, Aug 21, 2013 at 7:27 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Wed, Aug 21, 2013 at 12:43:43PM +1000, NeilBrown wrote:
+>> On Fri, 16 Aug 2013 17:12:18 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+>> wrote:
+>>
+>> > On Thu, Aug 15, 2013 at 12:04:33PM -0400, Martin Hicks wrote:
+>> > > I'm wondering if I'm missing something or if this is a bug.
+>> > >
+>> > > A NFS4 export has active clients.  The mount is removed from
+>> > > /etc/exports and 'exportfs -r' is run.  Clients immediately start
+>> > > getting 'Stale file handle' errors, but the mountpoint is still busy
+>> > > and cannot be unmounted.  Killing off nfsd solves the problem, but is
+>> > > undesirable for obvious reasons.
+>> > >
+>> > > On debian linux, kernel version 3.10-2-amd64,  with nfs-utils 1.2.8.
+>> >
+>> > Yeah, the clients may hold opens or locks on the filesystem and those
+>> > don't get removed on exports -r.
+>> >
+>> > For now shutting down the server is the only solution.
+>>
+>> How far does:
+>>   echo /path/to/export > /proc/fs/nfsd/unlock_filesystem
+>> get you? Or does that just drop 'lockd' locks and not NFSv4 locks?
+>
+> Right, it just does lockd locks.  It should also do NFSv4 locks, opens,
+> and delegations.  Happy if somebody wants to finish that job off--it
+> probably wouldn't be too hard?  Although there may be a bit of work to
+> get the error returns right in the v4 case--I think we'd want to keep
+> the relevant stateid's around and return NFS4ERR_ADMIN_REVOKED when a
+> client continues to use them.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/nfs4proc.c |   12 ++++++++++++
- 1 file changed, 12 insertions(+)
+I don't have the bandwidth to take this on right now, but I may in the future.
+Thanks for your help,
+mh
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 9104467..5640dc0 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1591,10 +1591,20 @@ int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state
- 	return nfs4_handle_delegation_recall_error(server, state, stateid, err);
- }
- 
-+static void nfs4_open_confirm_prepare(struct rpc_task *task, void *calldata)
-+{
-+	struct nfs4_opendata *data = calldata;
-+
-+	nfs40_setup_sequence(data->o_arg.server, &data->o_arg.seq_args,
-+				&data->o_res.seq_res, task);
-+}
-+
- static void nfs4_open_confirm_done(struct rpc_task *task, void *calldata)
- {
- 	struct nfs4_opendata *data = calldata;
- 
-+	nfs40_sequence_done(task, &data->o_res.seq_res);
-+
- 	data->rpc_status = task->tk_status;
- 	if (data->rpc_status == 0) {
- 		nfs4_stateid_copy(&data->o_res.stateid, &data->c_res.stateid);
-@@ -1623,6 +1633,7 @@ out_free:
- }
- 
- static const struct rpc_call_ops nfs4_open_confirm_ops = {
-+	.rpc_call_prepare = nfs4_open_confirm_prepare,
- 	.rpc_call_done = nfs4_open_confirm_done,
- 	.rpc_release = nfs4_open_confirm_release,
- };
-@@ -1650,6 +1661,7 @@ static int _nfs4_proc_open_confirm(struct nfs4_opendata *data)
- 	};
- 	int status;
- 
-+	nfs4_init_sequence(&data->o_arg.seq_args, &data->o_res.seq_res, 1);
- 	kref_get(&data->kref);
- 	data->rpc_done = 0;
- 	data->rpc_status = 0;
-
+-- 
+Martin Hicks P.Eng.      |         mort@bork.org
+Bork Consulting Inc.     |   +1 (613) 266-2296
