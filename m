@@ -1,68 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55886 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:26593 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751091Ab3HSSmO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Aug 2013 14:42:14 -0400
-Date: Mon, 19 Aug 2013 14:42:12 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Martin Hicks <mort@bork.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: server mountpoint busy after unexporting nfs4 share
-Message-ID: <20130819184212.GA15945@fieldses.org>
-References: <CAJUS3XmebzQHnQNwEYECUjYyK+nj2cVpKz_-4gmPacEWzmxEZQ@mail.gmail.com>
- <20130816211217.GB21539@fieldses.org>
- <CAJUS3Xk=vqunKx8bKGV2iWTV=o9N_TX3h+2PL0iMm3m7FKjuig@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAJUS3Xk=vqunKx8bKGV2iWTV=o9N_TX3h+2PL0iMm3m7FKjuig@mail.gmail.com>
+	id S1752167Ab3HVNw2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Aug 2013 09:52:28 -0400
+Date: Thu, 22 Aug 2013 09:52:24 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>,
+        steved@redhat.com
+Subject: Re: [PATCH] SUNRPC: We must not use list_for_each_entry_safe() in
+ rpc_wake_up()
+Message-ID: <20130822095224.13eec221@tlielax.poochiereds.net>
+In-Reply-To: <1332181002-10302-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1332181002-10302-1-git-send-email-Trond.Myklebust@netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 19, 2013 at 11:55:58AM -0400, Martin Hicks wrote:
-> Hi Bruce,
+On Mon, 19 Mar 2012 14:16:42 -0400
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+
+> The problem is that for the case of priority queues, we
+> have to assume that __rpc_remove_wait_queue_priority will move new
+> elements from the tk_wait.links lists into the queue->tasks[] list.
+> We therefore cannot use list_for_each_entry_safe() on queue->tasks[],
+> since that will skip these new tasks that __rpc_remove_wait_queue_priority
+> is adding.
 > 
-> On Fri, Aug 16, 2013 at 5:12 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Thu, Aug 15, 2013 at 12:04:33PM -0400, Martin Hicks wrote:
-> >> I'm wondering if I'm missing something or if this is a bug.
-> >>
-> >> A NFS4 export has active clients.  The mount is removed from
-> >> /etc/exports and 'exportfs -r' is run.  Clients immediately start
-> >> getting 'Stale file handle' errors, but the mountpoint is still busy
-> >> and cannot be unmounted.  Killing off nfsd solves the problem, but is
-> >> undesirable for obvious reasons.
-> >>
-> >> On debian linux, kernel version 3.10-2-amd64,  with nfs-utils 1.2.8.
-> >
-> > Yeah, the clients may hold opens or locks on the filesystem and those
-> > don't get removed on exports -r.
-> >
-> > For now shutting down the server is the only solution.
-> >
-> > We could possibly fix that, or provide some other way to do whatever it
-> > is you're trying to do, but it's likely not a small change.
+> Without this fix, rpc_wake_up and rpc_wake_up_status will both fail
+> to wake up all functions on priority wait queues, which can result
+> in some nasty hangs.
 > 
-> Essentially I've got a NAS with two doors that have removable disks
-> behind them.  I get a signal from hardware when one of the doors is
-> opened, and I need to kill services, unmount and remove the block
-> device very quickly so the user can remove or swap disks.  I was
-> trying to avoid killing nfsd so that any clients connected to the
-> block device behind the other door could continue uninterrupted.
+> Reported-by: Andy Adamson <andros@netapp.com>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: stable@vger.kernel.org
+> ---
+>  net/sunrpc/sched.c |   15 +++++++++++----
+>  1 files changed, 11 insertions(+), 4 deletions(-)
+> 
+> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+> index 1c570a8..994cfea 100644
+> --- a/net/sunrpc/sched.c
+> +++ b/net/sunrpc/sched.c
+> @@ -534,14 +534,18 @@ EXPORT_SYMBOL_GPL(rpc_wake_up_next);
+>   */
+>  void rpc_wake_up(struct rpc_wait_queue *queue)
+>  {
+> -	struct rpc_task *task, *next;
+>  	struct list_head *head;
+>  
+>  	spin_lock_bh(&queue->lock);
+>  	head = &queue->tasks[queue->maxpriority];
+>  	for (;;) {
+> -		list_for_each_entry_safe(task, next, head, u.tk_wait.list)
+> +		while (!list_empty(head)) {
+> +			struct rpc_task *task;
+> +			task = list_first_entry(head,
+> +					struct rpc_task,
+> +					u.tk_wait.list);
+>  			rpc_wake_up_task_queue_locked(queue, task);
+> +		}
+>  		if (head == &queue->tasks[0])
+>  			break;
+>  		head--;
+> @@ -559,13 +563,16 @@ EXPORT_SYMBOL_GPL(rpc_wake_up);
+>   */
+>  void rpc_wake_up_status(struct rpc_wait_queue *queue, int status)
+>  {
+> -	struct rpc_task *task, *next;
+>  	struct list_head *head;
+>  
+>  	spin_lock_bh(&queue->lock);
+>  	head = &queue->tasks[queue->maxpriority];
+>  	for (;;) {
+> -		list_for_each_entry_safe(task, next, head, u.tk_wait.list) {
+> +		while (!list_empty(head)) {
+> +			struct rpc_task *task;
+> +			task = list_first_entry(head,
+> +					struct rpc_task,
+> +					u.tk_wait.list);
+>  			task->tk_status = status;
+>  			rpc_wake_up_task_queue_locked(queue, task);
+>  		}
 
-OK, understood, so  you're mainly worried about access to the remaining
-data continuing uniterrrupted.
+I have a question about this (old) patch...
 
-That said--it's *really* not a problem that the other stuff starts
-erroring out immediately?  I imagine the typical application isn't
-going to handle the errors very gracefully.
+Steve D. backported this patch for RHEL5, and it's causing a deadlock
+there. This is mainly due to the fact that this code in RHEL5 is based
+on 2.6.18 and is quite different (it still has the RPC_TASK_WAKEUP
+flag, and there's an inversion problem with it in the code). I don't
+think it's a problem in most later kernels.
 
-> If this isn't possible then I need to minimize the downtime to the
-> other disk.  With quick experiements this morning if I simply restart
-> nfs it seems to take between 60 and 90 seconds for the client to start
-> doing IO again.  I haven't tracked down the reason yet, but it seems
-> like the server is preventing the client from doing IO for some
-> time...
+What I'm not clear on is this: how can new entries end up on these lists
+even though we hold the queue->lock here? It looks like the queue->lock
+is always held when __rpc_remove_wait_queue_priority is called.
 
-It's probably the grace period (which will block pretty much any IO for
-clients using NFSv4).
+Even if there is some way for that to happen, how is it safe to add
+entries to that list without taking the lock? That seems like it would
+be a great way to corrupt the list.
 
---b.
+Thanks,
+-- 
+Jeff Layton <jlayton@redhat.com>
