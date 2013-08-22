@@ -1,52 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55064 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:32090 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751466Ab3HUL1D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Aug 2013 07:27:03 -0400
-Date: Wed, 21 Aug 2013 07:27:00 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Martin Hicks <mort@bork.org>, linux-nfs@vger.kernel.org
-Subject: Re: server mountpoint busy after unexporting nfs4 share
-Message-ID: <20130821112700.GD25198@fieldses.org>
-References: <CAJUS3XmebzQHnQNwEYECUjYyK+nj2cVpKz_-4gmPacEWzmxEZQ@mail.gmail.com>
- <20130816211217.GB21539@fieldses.org>
- <20130821124343.4f5462cc@notabene.brown>
+	id S1753031Ab3HVAYX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Aug 2013 20:24:23 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v4 03/21] NFS: Pass in lookup flags from nfs_atomic_open to nfs_lookup
+Date: Wed, 21 Aug 2013 20:24:01 -0400
+Message-ID: <1377131059-40121-4-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377131059-40121-3-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377131059-40121-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-3-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130821124343.4f5462cc@notabene.brown>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 21, 2013 at 12:43:43PM +1000, NeilBrown wrote:
-> On Fri, 16 Aug 2013 17:12:18 -0400 "J. Bruce Fields" <bfields@fieldses.org>
-> wrote:
-> 
-> > On Thu, Aug 15, 2013 at 12:04:33PM -0400, Martin Hicks wrote:
-> > > I'm wondering if I'm missing something or if this is a bug.
-> > > 
-> > > A NFS4 export has active clients.  The mount is removed from
-> > > /etc/exports and 'exportfs -r' is run.  Clients immediately start
-> > > getting 'Stale file handle' errors, but the mountpoint is still busy
-> > > and cannot be unmounted.  Killing off nfsd solves the problem, but is
-> > > undesirable for obvious reasons.
-> > > 
-> > > On debian linux, kernel version 3.10-2-amd64,  with nfs-utils 1.2.8.
-> > 
-> > Yeah, the clients may hold opens or locks on the filesystem and those
-> > don't get removed on exports -r.
-> > 
-> > For now shutting down the server is the only solution.
-> 
-> How far does:
->   echo /path/to/export > /proc/fs/nfsd/unlock_filesystem
-> get you? Or does that just drop 'lockd' locks and not NFSv4 locks?
+When doing an open of a directory, ensure that we do pass the lookup flags
+from nfs_atomic_open into nfs_lookup.
 
-Right, it just does lockd locks.  It should also do NFSv4 locks, opens,
-and delegations.  Happy if somebody wants to finish that job off--it
-probably wouldn't be too hard?  Although there may be a bit of work to
-get the error returns right in the v4 case--I think we'd want to keep
-the relevant stateid's around and return NFS4ERR_ADMIN_REVOKED when a
-client continues to use them.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/dir.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
---b.
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index be3da6f..29d5463 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1407,6 +1407,7 @@ int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
+ 	struct dentry *res;
+ 	struct iattr attr = { .ia_valid = ATTR_OPEN };
+ 	struct inode *inode;
++	unsigned int lookup_flags = 0;
+ 	int err;
+ 
+ 	/* Expect a negative dentry */
+@@ -1429,6 +1430,7 @@ int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
+ 			 */
+ 			return -ENOENT;
+ 		}
++		lookup_flags = LOOKUP_OPEN|LOOKUP_DIRECTORY;
+ 		goto no_open;
+ 	}
+ 
+@@ -1479,7 +1481,7 @@ out:
+ 	return err;
+ 
+ no_open:
+-	res = nfs_lookup(dir, dentry, 0);
++	res = nfs_lookup(dir, dentry, lookup_flags);
+ 	err = PTR_ERR(res);
+ 	if (IS_ERR(res))
+ 		goto out;
+-- 
+1.8.3.1
+
