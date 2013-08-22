@@ -1,34 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57399 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:63017 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030743Ab3HITBo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Aug 2013 15:01:44 -0400
-Date: Fri, 9 Aug 2013 15:01:40 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: nfsd fixes for 3.11
-Message-ID: <20130809190140.GD10500@fieldses.org>
+	id S1753063Ab3HVAYY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Aug 2013 20:24:24 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v4 05/21] NFS: Add tracepoints for debugging generic file create events
+Date: Wed, 21 Aug 2013 20:24:03 -0400
+Message-ID: <1377131059-40121-6-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377131059-40121-5-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377131059-40121-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-5-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Some fixes for a 4.1 feature that in retrospect probably should have
-waited for 3.12.... But it appears to be working now.  Please pull:
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/dir.c      |  2 ++
+ fs/nfs/nfstrace.h | 70 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 72 insertions(+)
 
-  git://linux-nfs.org/~bfields/linux.git for-3.11
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 2263a6b..9c07812 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1612,7 +1612,9 @@ int nfs_create(struct inode *dir, struct dentry *dentry,
+ 	attr.ia_mode = mode;
+ 	attr.ia_valid = ATTR_MODE;
+ 
++	trace_nfs_create_enter(dir, dentry, open_flags);
+ 	error = NFS_PROTO(dir)->create(dir, dentry, &attr, open_flags);
++	trace_nfs_create_exit(dir, dentry, open_flags, error);
+ 	if (error != 0)
+ 		goto out_err;
+ 	return 0;
+diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
+index fba194b..2963a05 100644
+--- a/fs/nfs/nfstrace.h
++++ b/fs/nfs/nfstrace.h
+@@ -352,6 +352,76 @@ TRACE_EVENT(nfs_atomic_open_exit,
+ 		)
+ );
+ 
++TRACE_EVENT(nfs_create_enter,
++		TP_PROTO(
++			const struct inode *dir,
++			const struct dentry *dentry,
++			unsigned int flags
++		),
++
++		TP_ARGS(dir, dentry, flags),
++
++		TP_STRUCT__entry(
++			__field(unsigned int, flags)
++			__field(dev_t, dev)
++			__field(u64, dir)
++			__string(name, dentry->d_name.name)
++		),
++
++		TP_fast_assign(
++			__entry->dev = dir->i_sb->s_dev;
++			__entry->dir = NFS_FILEID(dir);
++			__entry->flags = flags;
++			__assign_str(name, dentry->d_name.name);
++		),
++
++		TP_printk(
++			"flags=%u (%s) name=%02x:%02x:%llu/%s",
++			__entry->flags,
++			show_open_flags(__entry->flags),
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->dir,
++			__get_str(name)
++		)
++);
++
++TRACE_EVENT(nfs_create_exit,
++		TP_PROTO(
++			const struct inode *dir,
++			const struct dentry *dentry,
++			unsigned int flags,
++			int error
++		),
++
++		TP_ARGS(dir, dentry, flags, error),
++
++		TP_STRUCT__entry(
++			__field(int, error)
++			__field(unsigned int, flags)
++			__field(dev_t, dev)
++			__field(u64, dir)
++			__string(name, dentry->d_name.name)
++		),
++
++		TP_fast_assign(
++			__entry->error = error;
++			__entry->dev = dir->i_sb->s_dev;
++			__entry->dir = NFS_FILEID(dir);
++			__entry->flags = flags;
++			__assign_str(name, dentry->d_name.name);
++		),
++
++		TP_printk(
++			"error=%d flags=%u (%s) name=%02x:%02x:%llu/%s",
++			__entry->error,
++			__entry->flags,
++			show_open_flags(__entry->flags),
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->dir,
++			__get_str(name)
++		)
++);
++
+ #endif /* _TRACE_NFS_H */
+ 
+ #undef TRACE_INCLUDE_PATH
+-- 
+1.8.3.1
 
---b.
-
-----------------------------------------------------------------
-J. Bruce Fields (1):
-      nfsd4: Fix MACH_CRED NULL dereference
-
-Weston Andros Adamson (1):
-      nfsd: Fix SP4_MACH_CRED negotiation in EXCHANGE_ID
-
- fs/nfsd/nfs4proc.c  |    2 +-
- fs/nfsd/nfs4state.c |    2 ++
- fs/nfsd/nfs4xdr.c   |    5 ++---
- 3 files changed, 5 insertions(+), 4 deletions(-)
