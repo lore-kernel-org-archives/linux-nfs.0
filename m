@@ -1,120 +1,197 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:10490 "EHLO mx12.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:39950 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752524Ab3H1Rvi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Aug 2013 13:51:38 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Matt Craighead <mcraighead@nvidia.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, Mark Young <MYoung@nvidia.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Issue found with kernel/net/sunrpc/xdr.c
-Date: Wed, 28 Aug 2013 17:51:36 +0000
-Message-ID: <1377712295.15144.1.camel@leira.trondhjem.org>
-References: <1FC56210173BB445BD77F608D6FB8D03620A9978B5@HQMAIL03.nvidia.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA94677C96F@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20130828143256.GA2960@fieldses.org>
-	 <71D0C6F08977AC42A3EF66AA1BEB0F10A11801ADF5@HQMAIL02.nvidia.com>
-In-Reply-To: <71D0C6F08977AC42A3EF66AA1BEB0F10A11801ADF5@HQMAIL02.nvidia.com>
-Content-Type: multipart/mixed;
-	boundary="_002_1377712295151441camelleiratrondhjemorg_"
+	id S1753110Ab3HVAY3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Aug 2013 20:24:29 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v4 12/21] NFSv4: Add tracepoints for debugging lookup/create operations
+Date: Wed, 21 Aug 2013 20:24:10 -0400
+Message-ID: <1377131059-40121-13-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377131059-40121-12-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377131059-40121-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-12-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---_002_1377712295151441camelleiratrondhjemorg_
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <325A71931B7C0740A7814D593F8A5738@hq.netapp.com>
-Content-Transfer-Encoding: base64
+Set up basic tracepoints for debugging NFSv4 lookup, unlink/remove,
+symlink, mkdir, mknod, fs_locations and secinfo.
 
-T24gV2VkLCAyMDEzLTA4LTI4IGF0IDA4OjE4IC0wNzAwLCBNYXR0IENyYWlnaGVhZCB3cm90ZToN
-Cj4gPiBJJ20gY3VyaW91cyB3aHkgd2UgaGF2ZW4ndCBzZWVuIGl0IGJlZm9yZQ0KPiANCj4gSSBh
-Z3JlZSwgaXQncyBzbGlnaHRseSBteXN0ZXJpb3VzLiAgV2UncmUgaGl0dGluZyB0aGUgYnVnIG9u
-IGEgMzItYml0IEFSTSBzeXN0ZW0gd2l0aCAxR0Igb3IgMkdCIG9mIG1lbW9yeTsgc3VyZWx5IHRo
-YXQncyBub3QgdmVyeSBmYXIgb2ZmIHRoZSBiZWF0ZW4gcGF0aC4NCj4gDQo+IA0KPiA+IE9yIG1h
-eWJlIG1lbW1vdmUgaXMgYW4gYXJjaGl0ZWN0dXJlLXNwZWNpZmljIGltcGxlbWVudGF0aW9uIHRo
-YXQgaGFwcGVucyB0byBoYW5kbGUgbGVmdC10by1yaWdodCBvdmVybGFwcGluZyBjb3BpZXMgY29y
-cmVjdGx5IG9uIGNvbW1vbiBhcmNoaXRlY3R1cmVzPw0KPiANCj4gSXQncyBhcmNoaXRlY3R1cmUg
-c3BlY2lmaWMsIGUuZy46IGh0dHA6Ly9seHIubGludXgubm8vbGludXgrdjMuOC9hcmNoL2FybS9s
-aWIvbWVtbW92ZS5TDQo+IA0KPiBJbiB0aGlzIHBhcnRpY3VsYXIgY2FzZSwgaXQgZGVjaWRlcyB0
-aGF0IHRoZSBtZW1vcnkgaXMgbm9uLW92ZXJsYXBwaW5nIChieSBjb21wYXJpbmcgdGhlIHZpcnR1
-YWwgYWRkcmVzc2VzKSwgc28gaXQgaW5jb3JyZWN0bHkgZGlzcGF0Y2hlcyB0byBtZW1jcHkoKS4g
-IEF0IHRoYXQgcG9pbnQgYWxsIGJldHMgYXJlIG9mZiBpbiB0ZXJtcyBvZiB0aGUgZGlyZWN0aW9u
-LCBjaHVuayBzaXplLCBldGMuIG9mIHRoZSBjb3B5Lg0KPiANCj4gSSBndWVzcyBJJ2QgdHlwaWNh
-bGx5IGV4cGVjdCBtZW1jcHkoKSB0byBzdHJpZGUgdGhyb3VnaCBtZW1vcnkgZm9yd2FyZHMgcmF0
-aGVyIHRoYW4gYmFja3dhcmRzIHRob3VnaC4gIEFuZCBzaW5jZSB0aGlzIGZ1bmN0aW9uIG1hbmRh
-dGVzICJmcm9tIDwgdG8iLCBpdCBzZWVtcyBsaWtlIHRoaXMgd291bGQgdXN1YWxseSBmYWlsLg0K
-PiANCj4gDQo+IEZvciB4ODY6IGh0dHA6Ly9seHIubGludXgubm8vbGludXgrdjMuOC9hcmNoL3g4
-Ni9saWIvbWVtY3B5XzMyLmMNCj4gDQo+IEluIHRoaXMgY2FzZSwgaXQgbG9va3MgbGlrZSBpdCBk
-b2Vzbid0IGRpc3BhdGNoIHRvIG1lbWNweSgpLiAgSXQganVzdCBkZXRlcm1pbmVzIGZvcndhcmQv
-YmFja3dhcmRzIGFuZCBjb3BpZXMgYWNjb3JkaW5nbHkuICBTbyBpdCB3b3VsZCB3b3JrIGFzIGxv
-bmcgYXMgdGhlICJmcm9tIDwgdG8iIHByb3BlcnR5IHdhcyBwcmVzZXJ2ZWQuDQo+IA0KPiBJZiBJ
-J20gcmVhZGluZyB0aGUgY29kZSBjb3JyZWN0bHksIGttYXBfYXRvbWljIGFwcGVhcnMgdG8gZ3Jv
-dyBkb3dud2FyZCBvbiB4ODY6DQo+IGh0dHA6Ly9seHIubGludXgubm8vbGludXgrdjMuOC9hcmNo
-L3g4Ni9tbS9oaWdobWVtXzMyLmMNCj4gaHR0cDovL2x4ci5saW51eC5uby9saW51eCt2My44L2Fy
-Y2gveDg2L2luY2x1ZGUvYXNtL2ZpeG1hcC5oDQo+IGV0Yy4NCj4gDQo+IFNpbmNlIHhkci5jIGNh
-bGxzIGttYXBfYXRvbWljIG9uICpwZ3RvIGZpcnN0LCB0aGVuICpwZ2Zyb20sIHRoZSAiZnJvbSA8
-IHRvIiBwcm9wZXJ0eSB3aWxsIHRoZXJlZm9yZSBiZSBwcmVzZXJ2ZWQuDQo+IA0KPiANCj4gVGhl
-cmVmb3JlLCBJIHN1c3BlY3QgeW91IG1pZ2h0IGJlIGFibGUgdG8gcmVwcm9kdWNlIHRoZSBidWcg
-b24gKDMyLWJpdCkgeDg2IGJ5IGRvaW5nIGFueSBvZiB0aGUgZm9sbG93aW5nOg0KPiAtIHN3YXBw
-aW5nIHRoZSBvcmRlciBvZiB0aG9zZSBrbWFwX2F0b21pYy9rdW5tYXBfYXRvbWljIGNhbGxzIA0K
-PiAtIG1vZGlmeWluZyBrbWFwX2F0b21pYyB0byBncm93IGluIHRoZSBvcHBvc2l0ZSBkaXJlY3Rp
-b24NCj4gLSBtb2RpZnlpbmcgbWVtbW92ZSgpIHRvIGRpc3BhdGNoIHRvIG1lbWNweSgpIHdoZW4g
-dGhlIHZpcnR1YWwgcmVnaW9ucyBhcmUgbm9uLW92ZXJsYXBwaW5nDQo+IA0KPiBJdCdzIHN0aWxs
-IHBvc3NpYmxlIHRoYXQgdGhlcmUgaXMgc29tZXRoaW5nIGVsc2UgZnVubnkgYWJvdXQgaG93IG1l
-bW9yeSBnZXRzIGFsbG9jYXRlZCBpbiBvdXIgc2V0dXAgdGhhdCBtYWtlcyB0aGUgYnVnIG1vcmUg
-bGlrZWx5LCBidXQgZW1waXJpY2FsbHksIHRoZSBidWcgZGlkbid0IHNlZW0gaGFyZCB0byBoaXQu
-ICBXZSBkaWRuJ3QgbmVlZCB0byBjb3B5IHZlcnkgbXVjaCBkYXRhL3ZlcnkgbWFueSBmaWxlcyBv
-dmVyIE5GUyBiZWZvcmUgd2UgdHlwaWNhbGx5IGdvdCBjb3JydXB0aW9uLCBhbmQgdGhlIGJ1ZyBo
-YXBwZW5lZCBvbiBhIHZhcmlldHkgb2Ygc3BlY2lmaWMgcGxhdGZvcm1zLiAgSXQgd2FzICh1bnN1
-cnByaXNpbmdseSkgZWFzaWVyIHRvIHJlcHJvZHVjZSB3aXRoIDJHQiB0aGFuIHdpdGggMUdCIHRo
-b3VnaC4NCg0KQ2FuIHlvdSBwbGVhc2UgdGVzdCB0aGF0IHRoZSBhdHRhY2hlZCBwYXRjaCBmaXhl
-cyB0aGUgY29ycnVwdGlvbj8NCg0KVGhhbmtzDQogIFRyb25kDQoNCi0tIA0KVHJvbmQgTXlrbGVi
-dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1
-c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c  | 36 ++++++++++++++++++++++--------------
+ fs/nfs/nfs4trace.h | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 72 insertions(+), 14 deletions(-)
 
---_002_1377712295151441camelleiratrondhjemorg_
-Content-Type: text/x-patch;
-	name="0001-SUNRPC-Fix-memory-corruption-issue-on-32-bit-highmem.patch"
-Content-Description: 0001-SUNRPC-Fix-memory-corruption-issue-on-32-bit-highmem.patch
-Content-Disposition: attachment;
-	filename="0001-SUNRPC-Fix-memory-corruption-issue-on-32-bit-highmem.patch";
-	size=1848; creation-date="Wed, 28 Aug 2013 17:51:36 GMT";
-	modification-date="Wed, 28 Aug 2013 17:51:36 GMT"
-Content-ID: <E61A36E0610390428E08B9212B65131A@hq.netapp.com>
-Content-Transfer-Encoding: base64
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 0b27837..9ff50a5 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3022,6 +3022,7 @@ static int nfs4_proc_lookup_common(struct rpc_clnt **clnt, struct inode *dir,
+ 	int err;
+ 	do {
+ 		err = _nfs4_proc_lookup(client, dir, name, fhandle, fattr, label);
++		trace_nfs4_lookup(dir, name, err);
+ 		switch (err) {
+ 		case -NFS4ERR_BADNAME:
+ 			err = -ENOENT;
+@@ -3257,8 +3258,9 @@ static int nfs4_proc_remove(struct inode *dir, struct qstr *name)
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(dir),
+-				_nfs4_proc_remove(dir, name),
++		err = _nfs4_proc_remove(dir, name);
++		trace_nfs4_remove(dir, name, err);
++		err = nfs4_handle_exception(NFS_SERVER(dir), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+@@ -3287,7 +3289,8 @@ static void nfs4_proc_unlink_rpc_prepare(struct rpc_task *task, struct nfs_unlin
+ 
+ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
+ {
+-	struct nfs_removeres *res = task->tk_msg.rpc_resp;
++	struct nfs_unlinkdata *data = task->tk_calldata;
++	struct nfs_removeres *res = &data->res;
+ 
+ 	if (!nfs4_sequence_done(task, &res->seq_res))
+ 		return 0;
+@@ -3529,9 +3532,9 @@ static int nfs4_proc_symlink(struct inode *dir, struct dentry *dentry,
+ 	label = nfs4_label_init_security(dir, dentry, sattr, &l);
+ 
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(dir),
+-				_nfs4_proc_symlink(dir, dentry, page,
+-							len, sattr, label),
++		err = _nfs4_proc_symlink(dir, dentry, page, len, sattr, label);
++		trace_nfs4_symlink(dir, &dentry->d_name, err);
++		err = nfs4_handle_exception(NFS_SERVER(dir), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 
+@@ -3568,8 +3571,9 @@ static int nfs4_proc_mkdir(struct inode *dir, struct dentry *dentry,
+ 
+ 	sattr->ia_mode &= ~current_umask();
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(dir),
+-				_nfs4_proc_mkdir(dir, dentry, sattr, label),
++		err = _nfs4_proc_mkdir(dir, dentry, sattr, label);
++		trace_nfs4_mkdir(dir, &dentry->d_name, err);
++		err = nfs4_handle_exception(NFS_SERVER(dir), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 	nfs4_label_release_security(label);
+@@ -3676,8 +3680,9 @@ static int nfs4_proc_mknod(struct inode *dir, struct dentry *dentry,
+ 
+ 	sattr->ia_mode &= ~current_umask();
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(dir),
+-				_nfs4_proc_mknod(dir, dentry, sattr, label, rdev),
++		err = _nfs4_proc_mknod(dir, dentry, sattr, label, rdev);
++		trace_nfs4_mknod(dir, &dentry->d_name, err);
++		err = nfs4_handle_exception(NFS_SERVER(dir), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 
+@@ -5797,8 +5802,10 @@ int nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(dir),
+-				_nfs4_proc_fs_locations(client, dir, name, fs_locations, page),
++		err = _nfs4_proc_fs_locations(client, dir, name,
++				fs_locations, page);
++		trace_nfs4_get_fs_locations(dir, name, err);
++		err = nfs4_handle_exception(NFS_SERVER(dir), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+@@ -5837,8 +5844,9 @@ int nfs4_proc_secinfo(struct inode *dir, const struct qstr *name,
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(dir),
+-				_nfs4_proc_secinfo(dir, name, flavors),
++		err = _nfs4_proc_secinfo(dir, name, flavors);
++		trace_nfs4_secinfo(dir, name, err);
++		err = nfs4_handle_exception(NFS_SERVER(dir), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index 3f124db..2646a50 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -411,6 +411,56 @@ DEFINE_NFS4_LOCK_EVENT(nfs4_lock_reclaim);
+ DEFINE_NFS4_LOCK_EVENT(nfs4_lock_expired);
+ DEFINE_NFS4_LOCK_EVENT(nfs4_unlock);
+ 
++DECLARE_EVENT_CLASS(nfs4_lookup_event,
++		TP_PROTO(
++			const struct inode *dir,
++			const struct qstr *name,
++			int error
++		),
++
++		TP_ARGS(dir, name, error),
++
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(int, error)
++			__field(u64, dir)
++			__string(name, name->name)
++		),
++
++		TP_fast_assign(
++			__entry->dev = dir->i_sb->s_dev;
++			__entry->dir = NFS_FILEID(dir);
++			__entry->error = error;
++			__assign_str(name, name->name);
++		),
++
++		TP_printk(
++			"error=%d (%s) name=%02x:%02x:%llu/%s",
++			__entry->error,
++			show_nfsv4_errors(__entry->error),
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->dir,
++			__get_str(name)
++		)
++);
++
++#define DEFINE_NFS4_LOOKUP_EVENT(name) \
++	DEFINE_EVENT(nfs4_lookup_event, name, \
++			TP_PROTO( \
++				const struct inode *dir, \
++				const struct qstr *name, \
++				int error \
++			), \
++			TP_ARGS(dir, name, error))
++
++DEFINE_NFS4_LOOKUP_EVENT(nfs4_lookup);
++DEFINE_NFS4_LOOKUP_EVENT(nfs4_symlink);
++DEFINE_NFS4_LOOKUP_EVENT(nfs4_mkdir);
++DEFINE_NFS4_LOOKUP_EVENT(nfs4_mknod);
++DEFINE_NFS4_LOOKUP_EVENT(nfs4_remove);
++DEFINE_NFS4_LOOKUP_EVENT(nfs4_get_fs_locations);
++DEFINE_NFS4_LOOKUP_EVENT(nfs4_secinfo);
++
+ #endif /* _TRACE_NFS4_H */
+ 
+ #undef TRACE_INCLUDE_PATH
+-- 
+1.8.3.1
 
-RnJvbSBlOTI1MGExOGIwYTIxNWVjNWQ5NzBiZGVkODFmZGUwMWVlOGI5N2FhIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbT4NCkRhdGU6IFdlZCwgMjggQXVnIDIwMTMgMTM6MzU6MTMgLTA0MDANClN1YmplY3Q6
-IFtQQVRDSF0gU1VOUlBDOiBGaXggbWVtb3J5IGNvcnJ1cHRpb24gaXNzdWUgb24gMzItYml0IGhp
-Z2htZW0gc3lzdGVtcw0KDQpTb21lIGFyY2hpdGVjdHVyZXMsIHN1Y2ggYXMgQVJNLTMyIGRvIG5v
-dCByZXR1cm4gdGhlIHNhbWUgYmFzZSBhZGRyZXNzDQp3aGVuIHlvdSBjYWxsIGttYXBfYXRvbWlj
-KCkgdHdpY2Ugb24gdGhlIHNhbWUgcGFnZS4NClRoaXMgY2F1c2VzIHByb2JsZW1zIGZvciB0aGUg
-bWVtbW92ZSgpIGNhbGwgaW4gdGhlIFhEUiBoZWxwZXIgcm91dGluZQ0KIl9zaGlmdF9kYXRhX3Jp
-Z2h0X3BhZ2VzKCkiLCBzaW5jZSBpdCBkZWZlYXRzIHRoZSBkZXRlY3Rpb24gb2YNCm92ZXJsYXBw
-aW5nIG1lbW9yeSByYW5nZXMsIGFuZCBoYXMgYmVlbiBzZWVuIHRvIGNvcnJ1cHQgbWVtb3J5Lg0K
-DQpUaGUgZml4IGlzIHRvIGRpc3Rpbmd1aXNoIGJldHdlZW4gdGhlIGNhc2Ugd2hlcmUgd2UncmUg
-ZG9pbmcgYW4NCmludGVyLXBhZ2UgY29weSBvciBub3QuIEluIHRoZSBmb3JtZXIgY2FzZSBvZiB3
-ZSBrbm93IHRoYXQgdGhlIG1lbW9yeQ0KcmFuZ2VzIGNhbm5vdCBwb3NzaWJseSBvdmVybGFwLCBz
-byB3ZSBjYW4gYWRkaXRpb25hbGx5IG1pY3JvLW9wdGltaXNlDQpieSByZXBsYWNpbmcgbWVtbW92
-ZSgpIHdpdGggbWVtY3B5KCkuDQoNClJlcG9ydGVkLWJ5OiBNYXJrIFlvdW5nIDxNWW91bmdAbnZp
-ZGlhLmNvbT4NClJlcG9ydGVkLWJ5OiBNYXR0IENyYWlnaGVhZCA8bWNyYWlnaGVhZEBudmlkaWEu
-Y29tPg0KQ2M6IEJydWNlIEZpZWxkcyA8YmZpZWxkc0BmaWVsZHNlcy5vcmc+DQpDYzogc3RhYmxl
-QHZnZXIua2VybmVsLm9yZw0KU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5N
-eWtsZWJ1c3RAbmV0YXBwLmNvbT4NCi0tLQ0KIG5ldC9zdW5ycGMveGRyLmMgfCA5ICsrKysrKy0t
-LQ0KIDEgZmlsZSBjaGFuZ2VkLCA2IGluc2VydGlvbnMoKyksIDMgZGVsZXRpb25zKC0pDQoNCmRp
-ZmYgLS1naXQgYS9uZXQvc3VucnBjL3hkci5jIGIvbmV0L3N1bnJwYy94ZHIuYw0KaW5kZXggNzVl
-ZGNmYS4uMTUwNGJiMSAxMDA2NDQNCi0tLSBhL25ldC9zdW5ycGMveGRyLmMNCisrKyBiL25ldC9z
-dW5ycGMveGRyLmMNCkBAIC0yMDcsMTAgKzIwNywxMyBAQCBfc2hpZnRfZGF0YV9yaWdodF9wYWdl
-cyhzdHJ1Y3QgcGFnZSAqKnBhZ2VzLCBzaXplX3QgcGd0b19iYXNlLA0KIAkJcGdmcm9tX2Jhc2Ug
-LT0gY29weTsNCiANCiAJCXZ0byA9IGttYXBfYXRvbWljKCpwZ3RvKTsNCi0JCXZmcm9tID0ga21h
-cF9hdG9taWMoKnBnZnJvbSk7DQotCQltZW1tb3ZlKHZ0byArIHBndG9fYmFzZSwgdmZyb20gKyBw
-Z2Zyb21fYmFzZSwgY29weSk7DQorCQlpZiAoKnBndG8gIT0gKnBnZnJvbSkgew0KKwkJCXZmcm9t
-ID0ga21hcF9hdG9taWMoKnBnZnJvbSk7DQorCQkJbWVtY3B5KHZ0byArIHBndG9fYmFzZSwgdmZy
-b20gKyBwZ2Zyb21fYmFzZSwgY29weSk7DQorCQkJa3VubWFwX2F0b21pYyh2ZnJvbSk7DQorCQl9
-IGVsc2UNCisJCQltZW1tb3ZlKHZ0byArIHBndG9fYmFzZSwgdnRvICsgcGdmcm9tX2Jhc2UsIGNv
-cHkpOw0KIAkJZmx1c2hfZGNhY2hlX3BhZ2UoKnBndG8pOw0KLQkJa3VubWFwX2F0b21pYyh2ZnJv
-bSk7DQogCQlrdW5tYXBfYXRvbWljKHZ0byk7DQogDQogCX0gd2hpbGUgKChsZW4gLT0gY29weSkg
-IT0gMCk7DQotLSANCjEuOC4zLjENCg0K
-
---_002_1377712295151441camelleiratrondhjemorg_--
