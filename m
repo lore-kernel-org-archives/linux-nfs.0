@@ -1,112 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:62958 "EHLO mx11.netapp.com"
+Received: from mx1.netapp.com ([216.240.18.38]:58766 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754934Ab3HFVIm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Aug 2013 17:08:42 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 3/5] nfs4.1: Add SP4_MACH_CRED cleanup support
-Date: Tue, 6 Aug 2013 17:08:29 -0400
-Message-ID: <1375823311-18457-4-git-send-email-dros@netapp.com>
-In-Reply-To: <1375823311-18457-1-git-send-email-dros@netapp.com>
-References: <1375823311-18457-1-git-send-email-dros@netapp.com>
+	id S1753110Ab3HVAYe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Aug 2013 20:24:34 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v4 21/21] NFSv4.1: Add tracepoints for debugging test_stateid events
+Date: Wed, 21 Aug 2013 20:24:19 -0400
+Message-ID: <1377131059-40121-22-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377131059-40121-21-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377131059-40121-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-13-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-14-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-15-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-16-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-17-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-18-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-19-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-20-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-21-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-CLOSE and LOCKU use the machine cred
+Add tracepoints to detect issues with the TEST_STATEID operation.
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4proc.c         | 28 +++++++++++++++++++++++++++-
- include/linux/nfs_fs_sb.h |  1 +
- 2 files changed, 28 insertions(+), 1 deletion(-)
+ fs/nfs/nfs4proc.c  |  3 +++
+ fs/nfs/nfs4trace.h | 49 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 52 insertions(+)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index faa3731..63b6e17 100644
+index 44ba5eb..ee3bc24 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -2511,6 +2511,9 @@ int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait)
- 	};
- 	int status = -ENOMEM;
+@@ -1946,6 +1946,7 @@ static void nfs41_clear_delegation_stateid(struct nfs4_state *state)
+ 		cred = get_rpccred(delegation->cred);
+ 		rcu_read_unlock();
+ 		status = nfs41_test_stateid(server, stateid, cred);
++		trace_nfs4_test_delegation_stateid(state, NULL, status);
+ 	} else
+ 		rcu_read_unlock();
  
-+	nfs4_state_protect(server->nfs_client, NFS_SP4_MACH_CRED_CLEANUP,
-+		&task_setup_data.rpc_client, &msg);
+@@ -1988,6 +1989,7 @@ static int nfs41_check_open_stateid(struct nfs4_state *state)
+ 		return -NFS4ERR_BAD_STATEID;
+ 
+ 	status = nfs41_test_stateid(server, stateid, cred);
++	trace_nfs4_test_open_stateid(state, NULL, status);
+ 	if (status != NFS_OK) {
+ 		/* Free the stateid unless the server explicitly
+ 		 * informs us the stateid is unrecognized. */
+@@ -5468,6 +5470,7 @@ static int nfs41_check_expired_locks(struct nfs4_state *state)
+ 			status = nfs41_test_stateid(server,
+ 					&lsp->ls_stateid,
+ 					cred);
++			trace_nfs4_test_lock_stateid(state, lsp, status);
+ 			if (status != NFS_OK) {
+ 				/* Free the stateid unless the server
+ 				 * informs us the stateid is unrecognized. */
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index 05b96a6..849cf14 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -638,6 +638,55 @@ TRACE_EVENT(nfs4_delegreturn_exit,
+ 		)
+ );
+ 
++#ifdef CONFIG_NFS_V4_1
++DECLARE_EVENT_CLASS(nfs4_test_stateid_event,
++		TP_PROTO(
++			const struct nfs4_state *state,
++			const struct nfs4_lock_state *lsp,
++			int error
++		),
 +
- 	calldata = kzalloc(sizeof(*calldata), gfp_mask);
- 	if (calldata == NULL)
- 		goto out;
-@@ -5093,6 +5096,9 @@ static struct rpc_task *nfs4_do_unlck(struct file_lock *fl,
- 		.flags = RPC_TASK_ASYNC,
- 	};
- 
-+	nfs4_state_protect(NFS_SERVER(lsp->ls_state->inode)->nfs_client,
-+		NFS_SP4_MACH_CRED_CLEANUP, &task_setup_data.rpc_client, &msg);
++		TP_ARGS(state, lsp, error),
 +
- 	/* Ensure this is an unlock - when canceling a lock, the
- 	 * canceled lock is passed in, and it won't be an unlock.
- 	 */
-@@ -5926,6 +5932,15 @@ static const uint32_t _nfs4_spo_must_enforce[NFS4_OP_MAP_NUM_WORDS] = {
- };
- 
- /*
-+ * Operations we'd like to see to enable certain features
-+ */
-+static const uint32_t _nfs4_spo_must_allow[NFS4_OP_MAP_NUM_WORDS] = {
-+	[0] = 1 << (OP_CLOSE) |
-+	      1 << (OP_LOCKU)
-+};
++		TP_STRUCT__entry(
++			__field(int, error)
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++		),
 +
++		TP_fast_assign(
++			const struct inode *inode = state->inode;
 +
-+/*
-  * Select the state protection mode for client `clp' given the server results
-  * from exchange_id in `sp'.
-  *
-@@ -5965,6 +5980,12 @@ static int _nfs4_sp4_select_mode(struct nfs_client *clp,
- 			dfprintk(MOUNT, "sp4_mach_cred: disabled\n");
- 			return -EINVAL;
- 		}
++			__entry->error = error;
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = NFS_FILEID(inode);
++			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
++		),
 +
-+		if (test_bit(OP_CLOSE, sp->allow.u.longs) &&
-+		    test_bit(OP_LOCKU, sp->allow.u.longs)) {
-+			dfprintk(MOUNT, "  cleanup mode enabled\n");
-+			set_bit(NFS_SP4_MACH_CRED_CLEANUP, &clp->cl_sp4_flags);
-+		}
- 	}
- 
- 	return 0;
-@@ -6031,11 +6052,16 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
- 	case SP4_MACH_CRED:
- 		args.state_protect.how = SP4_MACH_CRED;
- 
--		/* request minumum set of operations */
-+		/* request enforcement of minumum set of operations */
- 		memcpy(args.state_protect.enforce.u.words,
- 		       &_nfs4_spo_must_enforce,
- 		       sizeof(uint32_t) * NFS4_OP_MAP_NUM_WORDS);
- 
-+		/* ask for any other ops we may need for SP4 features */
-+		memcpy(args.state_protect.allow.u.words,
-+		       &_nfs4_spo_must_allow,
-+		       sizeof(uint32_t) * NFS4_OP_MAP_NUM_WORDS);
++		TP_printk(
++			"error=%d (%s) fileid=%02x:%02x:%llu fhandle=0x%08x",
++			__entry->error,
++			show_nfsv4_errors(__entry->error),
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle
++		)
++);
 +
- 		break;
- 
- 	default:
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index a0af429..7da24e0 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -91,6 +91,7 @@ struct nfs_client {
- 	unsigned long		cl_sp4_flags;
- #define NFS_SP4_MACH_CRED_MINIMAL  1	/* Minimal sp4_mach_cred - state ops
- 					 * must use machine cred */
-+#define NFS_SP4_MACH_CRED_CLEANUP  2	/* CLOSE and LOCKU */
- #endif /* CONFIG_NFS_V4 */
- 
- #ifdef CONFIG_NFS_FSCACHE
++#define DEFINE_NFS4_TEST_STATEID_EVENT(name) \
++	DEFINE_EVENT(nfs4_test_stateid_event, name, \
++			TP_PROTO( \
++				const struct nfs4_state *state, \
++				const struct nfs4_lock_state *lsp, \
++				int error \
++			), \
++			TP_ARGS(state, lsp, error))
++DEFINE_NFS4_TEST_STATEID_EVENT(nfs4_test_delegation_stateid);
++DEFINE_NFS4_TEST_STATEID_EVENT(nfs4_test_open_stateid);
++DEFINE_NFS4_TEST_STATEID_EVENT(nfs4_test_lock_stateid);
++#endif /* CONFIG_NFS_V4_1 */
++
+ DECLARE_EVENT_CLASS(nfs4_lookup_event,
+ 		TP_PROTO(
+ 			const struct inode *dir,
 -- 
-1.7.12.4 (Apple Git-37)
+1.8.3.1
 
