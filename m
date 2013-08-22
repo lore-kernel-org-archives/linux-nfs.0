@@ -1,115 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:6317 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:32090 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757257Ab3HMTUb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Aug 2013 15:20:31 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r7DJKUXc026450
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Aug 2013 15:20:31 -0400
-Received: from tonberry.usersys.redhat.com (dhcp145-64.rdu.redhat.com [10.13.145.64])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r7DJKU69012107
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Aug 2013 15:20:30 -0400
-Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
-	by tonberry.usersys.redhat.com (8.14.5/8.14.5) with ESMTP id r7DJKU57021419
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Aug 2013 15:20:30 -0400
-Received: (from smayhew@localhost)
-	by tonberry.usersys.redhat.com (8.14.5/8.14.5/Submit) id r7DJKTA2021418
-	for linux-nfs@vger.kernel.org; Tue, 13 Aug 2013 15:20:29 -0400
-From: Scott Mayhew <smayhew@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH 0/4] Improve nfsmount.conf configuration parsing.
-Date: Tue, 13 Aug 2013 15:20:25 -0400
-Message-Id: <1376421629-21382-1-git-send-email-smayhew@redhat.com>
+	id S1753123Ab3HVAYa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Aug 2013 20:24:30 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v4 14/21] NFSv4: Add tracepoints for debugging rename
+Date: Wed, 21 Aug 2013 20:24:12 -0400
+Message-ID: <1377131059-40121-15-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377131059-40121-14-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377131059-40121-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-13-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-14-git-send-email-Trond.Myklebust@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The parsing of the nfsmount.conf configuration file has various issues.
+Add tracepoints to debug renames.
 
-Here's an example config file I've been testing with:
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c  | 10 ++++++----
+ fs/nfs/nfs4trace.h | 43 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 49 insertions(+), 4 deletions(-)
 
-# cat /etc/nfsmount.conf
-[ NFSMount_Global_Options ]
-	Acl=False
-	Ac=False
-	Timeo=600
-	Background=True
-
-[ Server "nfs.smayhew.test" ]
-	Sec=krb5p
-	Nfsvers=4
-	Acl=True
-	Ac=True
-	Timeo=300
-	Sloppy=True
-	Foreground=True
-
-[ Server "rhel7alpha2.smayhew.test" ]
-	Sec=krb5i
-	Nfsvers=4
-
-[ Server "rhel6u2.smayhew.test" ]
-	Nfsvers=4	
-
-[ Server "rhel5u8.smayhew.test" ]
-	Nfsvers=3
-
-[ Server "rhel4u8.smayhew.test" ]
-	Nfsvers=3
-
-[ MountPoint "/mnt/nfs" ]
-	Timeo=150
-	Background=False
-	Ac=False
-	Sloppy=False
-
-I then mount a filesystem using:
-
-# mount nfs.smayhew.test:/export /mnt/nfs
-  
-# mount | grep smayhew
-nfs.smayhew.test:/export on /mnt/nfs type nfs
-(rw,timeo=600,bg,sec=krb5p,nfsvers=4,acl,ac,timeo=300,sloppy,fg,sec=krb5p,nfsvers=4,nfsvers=4,nfsvers=4,nfsvers=4,addr=192.168.122.179,clientaddr=192.168.122.202)
-# grep smayhew /proc/mounts
-nfs.smayhew.test:/export/ /mnt/nfs nfs4
-rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=300,retrans=2,sec=krb5p,clientaddr=192.168.122.202,minorversion=0,local_lock=none,addr=192.168.122.179
-0 0
-
-In the output of mount (no arguments) as well as /etc/mtab,
-1. nfsvers=4 is shown four times
-2. sec=krb5p is shown twice
-3. both fg and bg is shown
-4. timeo appears twice
-
-In /proc/mounts we can see that we have the wrong value for timeo (it should be
-150).
-
-In newer distros where /etc/mtab is a symlink to /proc/mounts, you're unlikely
-to see most of these issues unless you're watching the mount command with
-something like systemtap, e.g.
-
-# stap -e 'probe syscall.mount { printf("%s %s\n", probefunc(),
-# kernel_string($data)) }'
-sys_mount
-timeo=600,bg,sec=krb5p,nfsvers=4,acl,ac,timeo=300,sloppy,fg,sec=krb5p,nfsvers=4,nfsvers=4,nfsvers=4,nfsvers=4,addr=192.168.122.179,clientaddr=192.168.122.202
-
-Regardless, rather than sending a slew of mount options and letting the kernel
-sort it out, we can do a better job of parsing them on the front end.
-
-
-Scott Mayhew (4):
-  mount.nfs: avoid unnecessary duplication of options passed to
-    mount(2)
-  mount.nfs: avoid sending conflicting mount options
-  mount.nfs:  improve handling of MNT_NOARG type options
-  mount.nfs:  clean up conf_parse_mntopts()
-
- support/include/conffile.h |  2 +-
- support/nfs/conffile.c     |  4 ++-
- utils/mount/configfile.c   | 77 +++++++++++++++++++++++++++++++++++++++++-----
- 3 files changed, 73 insertions(+), 10 deletions(-)
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 42a0b7f..3910ee6 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3325,7 +3325,8 @@ static void nfs4_proc_rename_rpc_prepare(struct rpc_task *task, struct nfs_renam
+ static int nfs4_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
+ 				 struct inode *new_dir)
+ {
+-	struct nfs_renameres *res = task->tk_msg.rpc_resp;
++	struct nfs_renamedata *data = task->tk_calldata;
++	struct nfs_renameres *res = &data->res;
+ 
+ 	if (!nfs4_sequence_done(task, &res->seq_res))
+ 		return 0;
+@@ -3371,9 +3372,10 @@ static int nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(old_dir),
+-				_nfs4_proc_rename(old_dir, old_name,
+-					new_dir, new_name),
++		err = _nfs4_proc_rename(old_dir, old_name,
++					new_dir, new_name);
++		trace_nfs4_rename(old_dir, old_name, new_dir, new_name, err);
++		err = nfs4_handle_exception(NFS_SERVER(old_dir), err,
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index 6bd65c2..6388db8 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -461,6 +461,49 @@ DEFINE_NFS4_LOOKUP_EVENT(nfs4_remove);
+ DEFINE_NFS4_LOOKUP_EVENT(nfs4_get_fs_locations);
+ DEFINE_NFS4_LOOKUP_EVENT(nfs4_secinfo);
+ 
++TRACE_EVENT(nfs4_rename,
++		TP_PROTO(
++			const struct inode *olddir,
++			const struct qstr *oldname,
++			const struct inode *newdir,
++			const struct qstr *newname,
++			int error
++		),
++
++		TP_ARGS(olddir, oldname, newdir, newname, error),
++
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(int, error)
++			__field(u64, olddir)
++			__string(oldname, oldname->name)
++			__field(u64, newdir)
++			__string(newname, newname->name)
++		),
++
++		TP_fast_assign(
++			__entry->dev = olddir->i_sb->s_dev;
++			__entry->olddir = NFS_FILEID(olddir);
++			__entry->newdir = NFS_FILEID(newdir);
++			__entry->error = error;
++			__assign_str(oldname, oldname->name);
++			__assign_str(newname, newname->name);
++		),
++
++		TP_printk(
++			"error=%d (%s) oldname=%02x:%02x:%llu/%s "
++			"newname=%02x:%02x:%llu/%s",
++			__entry->error,
++			show_nfsv4_errors(__entry->error),
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->olddir,
++			__get_str(oldname),
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->newdir,
++			__get_str(newname)
++		)
++);
++
+ DECLARE_EVENT_CLASS(nfs4_inode_event,
+ 		TP_PROTO(
+ 			const struct inode *inode,
 -- 
-1.7.11.7
+1.8.3.1
 
