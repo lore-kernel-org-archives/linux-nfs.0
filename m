@@ -1,38 +1,161 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:20709 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:39950 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965524Ab3HHOq4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Aug 2013 10:46:56 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <CAK3OfOj6E_thwgwdZUDXrr_7XW4xJkzwxdGU6gKcEJ3twOsm=A@mail.gmail.com>
-References: <CAK3OfOj6E_thwgwdZUDXrr_7XW4xJkzwxdGU6gKcEJ3twOsm=A@mail.gmail.com> <20130801173846.28023.19009.stgit@warthog.procyon.org.uk> <20130801173854.28023.82045.stgit@warthog.procyon.org.uk>
-To: Nico Williams <nico@cryptonector.com>
-Cc: dhowells@redhat.com, keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
-        simo@redhat.com, linux-kernel@vger.kernel.org, krbdev@mit.edu
-Subject: Re: [PATCH 1/2] KEYS: Implement a big key type that can save to tmpfs
-Date: Thu, 08 Aug 2013 15:46:45 +0100
-Message-ID: <16961.1375973205@warthog.procyon.org.uk>
+	id S1753110Ab3HVAYb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Aug 2013 20:24:31 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v4 17/21] NFSv4: Add tracepoints for debugging getattr
+Date: Wed, 21 Aug 2013 20:24:15 -0400
+Message-ID: <1377131059-40121-18-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377131059-40121-17-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377131059-40121-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-13-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-14-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-15-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-16-git-send-email-Trond.Myklebust@netapp.com>
+ <1377131059-40121-17-git-send-email-Trond.Myklebust@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Nico Williams <nico@cryptonector.com> wrote:
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c  |  7 ++++--
+ fs/nfs/nfs4trace.h | 69 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 74 insertions(+), 2 deletions(-)
 
-> b) how to create tmpfs locations in which to store credentials (which
-> can be unbounded in size, so storing them in the kernel is silly;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index e3ac877..d6c98bd 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2693,6 +2693,7 @@ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	int err;
+ 	do {
+ 		err = _nfs4_lookup_root(server, fhandle, info);
++		trace_nfs4_lookup_root(server, fhandle, info->fattr, err);
+ 		switch (err) {
+ 		case 0:
+ 		case -NFS4ERR_WRONGSEC:
+@@ -2902,8 +2903,9 @@ static int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = nfs4_handle_exception(server,
+-				_nfs4_proc_getattr(server, fhandle, fattr, label),
++		err = _nfs4_proc_getattr(server, fhandle, fattr, label);
++		trace_nfs4_getattr(server, fhandle, fattr, err);
++		err = nfs4_handle_exception(server, err,
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+@@ -3756,6 +3758,7 @@ static int nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle, str
+ 
+ 	do {
+ 		err = _nfs4_do_fsinfo(server, fhandle, fsinfo);
++		trace_nfs4_fsinfo(server, fhandle, fsinfo->fattr, err);
+ 		if (err == 0) {
+ 			struct nfs_client *clp = server->nfs_client;
+ 
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index f58edcf..99d1b1e 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -174,6 +174,24 @@
+ 		{ ((__force unsigned long)FMODE_WRITE), "WRITE" }, \
+ 		{ ((__force unsigned long)FMODE_EXEC), "EXEC" })
+ 
++#define show_nfs_fattr_flags(valid) \
++	__print_flags((unsigned long)valid, "|", \
++		{ NFS_ATTR_FATTR_TYPE, "TYPE" }, \
++		{ NFS_ATTR_FATTR_MODE, "MODE" }, \
++		{ NFS_ATTR_FATTR_NLINK, "NLINK" }, \
++		{ NFS_ATTR_FATTR_OWNER, "OWNER" }, \
++		{ NFS_ATTR_FATTR_GROUP, "GROUP" }, \
++		{ NFS_ATTR_FATTR_RDEV, "RDEV" }, \
++		{ NFS_ATTR_FATTR_SIZE, "SIZE" }, \
++		{ NFS_ATTR_FATTR_FSID, "FSID" }, \
++		{ NFS_ATTR_FATTR_FILEID, "FILEID" }, \
++		{ NFS_ATTR_FATTR_ATIME, "ATIME" }, \
++		{ NFS_ATTR_FATTR_MTIME, "MTIME" }, \
++		{ NFS_ATTR_FATTR_CTIME, "CTIME" }, \
++		{ NFS_ATTR_FATTR_CHANGE, "CHANGE" }, \
++		{ NFS_ATTR_FATTR_OWNER_NAME, "OWNER_NAME" }, \
++		{ NFS_ATTR_FATTR_GROUP_NAME, "GROUP_NAME" })
++
+ DECLARE_EVENT_CLASS(nfs4_clientid_event,
+ 		TP_PROTO(
+ 			const struct nfs_client *clp,
+@@ -627,6 +645,57 @@ DEFINE_NFS4_INODE_EVENT(nfs4_set_security_label);
+ DEFINE_NFS4_INODE_EVENT(nfs4_recall_delegation);
+ DEFINE_NFS4_INODE_EVENT(nfs4_delegreturn);
+ 
++DECLARE_EVENT_CLASS(nfs4_getattr_event,
++		TP_PROTO(
++			const struct nfs_server *server,
++			const struct nfs_fh *fhandle,
++			const struct nfs_fattr *fattr,
++			int error
++		),
++
++		TP_ARGS(server, fhandle, fattr, error),
++
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++			__field(unsigned int, valid)
++			__field(int, error)
++		),
++
++		TP_fast_assign(
++			__entry->dev = server->s_dev;
++			__entry->valid = fattr->valid;
++			__entry->fhandle = nfs_fhandle_hash(fhandle);
++			__entry->fileid = (fattr->valid & NFS_ATTR_FATTR_FILEID) ? fattr->fileid : 0;
++			__entry->error = error;
++		),
++
++		TP_printk(
++			"error=%d (%s) fileid=%02x:%02x:%llu fhandle=0x%08x "
++			"valid=%s",
++			__entry->error,
++			show_nfsv4_errors(__entry->error),
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle,
++			show_nfs_fattr_flags(__entry->valid)
++		)
++);
++
++#define DEFINE_NFS4_GETATTR_EVENT(name) \
++	DEFINE_EVENT(nfs4_getattr_event, name, \
++			TP_PROTO( \
++				const struct nfs_server *server, \
++				const struct nfs_fh *fhandle, \
++				const struct nfs_fattr *fattr, \
++				int error \
++			), \
++			TP_ARGS(server, fhandle, fattr, error))
++DEFINE_NFS4_GETATTR_EVENT(nfs4_getattr);
++DEFINE_NFS4_GETATTR_EVENT(nfs4_lookup_root);
++DEFINE_NFS4_GETATTR_EVENT(nfs4_fsinfo);
++
+ DECLARE_EVENT_CLASS(nfs4_idmap_event,
+ 		TP_PROTO(
+ 			const char *name,
+-- 
+1.8.3.1
 
-Ummm...  tmpfs stores them in the kernel too - though it can page them out to
-swap.
-
-I have altered my big-key implementation to just store small items in an
-internal buffer and big items in a tmpfs file.  This means that small items
-will use up _less_ kernel memory if they're in a key because they won't require
-the overhead of a dentry struct and an inode struct.
-
-> (b) can be solved in many ways, and the simplest is to have a
-> filesystem where top-level directories named after UIDs "exist" as
-> soon as they are referenced and as long as they are non-empty.  You
-> can use autofs + tmpfs, or a variant of tmpfs for this.
-
-Don't forget to add user namespaces into the mix :-/
-
-David
