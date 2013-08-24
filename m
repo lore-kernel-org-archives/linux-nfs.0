@@ -1,142 +1,211 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx4.wp.pl ([212.77.101.8]:46653 "EHLO mx4.wp.pl"
+Received: from fieldses.org ([174.143.236.118]:52183 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751831Ab3HDH3n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 4 Aug 2013 03:29:43 -0400
-Message-ID: <51FE02E1.3080108@xl.wp.pl>
-Date: Sun, 04 Aug 2013 09:29:37 +0200
-From: Dawid Stawiarski <neeo@xl.wp.pl>
+	id S1754189Ab3HXMmf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 24 Aug 2013 08:42:35 -0400
+Date: Sat, 24 Aug 2013 08:42:33 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Simo Sorce <simo@redhat.com>, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, Jan Stancek <jstancek@redhat.com>
+Subject: Re: [PATCH v3] SUNRPC: Ensure that the RPCSEC_GSS daemon uses the
+ correct service names
+Message-ID: <20130824124233.GC18084@fieldses.org>
+References: <1377202213-5031-1-git-send-email-jlayton@redhat.com>
+ <1377320162.2814.331.camel@willson.li.ssimo.org>
+ <20130824065706.7bf780e8@tlielax.poochiereds.net>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: Performance/stability problems with nfs shares
-References: <51fb4bf3a9bde1.52024761@wp.pl> <20130802091242.23b9c904@corrin.poochiereds.net> <51FBC445.4000006@xl.wp.pl> <20130802154703.GL17581@fieldses.org>
-In-Reply-To: <20130802154703.GL17581@fieldses.org>
-Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha1; boundary="------------ms030502070205050007010901"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130824065706.7bf780e8@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Kryptograficznie podpisana wiadomoED w formacie MIME.
+On Sat, Aug 24, 2013 at 06:57:06AM -0400, Jeff Layton wrote:
+> On Sat, 24 Aug 2013 00:56:02 -0400
+> Simo Sorce <simo@redhat.com> wrote:
+> 
+> > On Thu, 2013-08-22 at 16:10 -0400, Jeff Layton wrote:
+> > > From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > > 
+> > > v2: added pipe_dir_name field to nfsacl program to fix v3+krb5
+> > >     (Should we add pipe_dir_name fields to other programs too?).
+> > > 
+> > > v3: Drop changes to gss_encode_v1_msg. They don't seem to be
+> > >     needed since gssd scrapes that out of the "info" file.
+> > > 
+> > > Fix the upcalls to use the right service names for gssd.  The old
+> > > version of the rpc.gssd upcall expects the service name to be either
+> > > "nfs" or "nfs4_cb", which it will then concatenate with the server name
+> > > to create a target name of nfs@<server> or nfs4_cb@<server>
+> > 
+> > I've never seen anyone deply keytabs with nfs4_cb/fqdn service names,
+> > what are you trying to do here exactly ?
+> > 
+> > Afaik the only service names used historically have been host/ and nfs/
+> > and in some rare cases root/
+> > 
+> > Also the patch seem to add a bunch of other 'service' names ? If you are
+> > going to kerberize those services are you going to expect admins to drop
+> > multiple keys down in the keytabs ? What is the exact intent here ?
+> > 
+> 
+> Mostly, I'm trying to ensure that the nfsacl service uses a nfs/
+> principal to fix the immediate pain point that nfsv3+krb5 doesn't work.
+> With the rest, I was mainly trusting that Trond knew what he was
+> doing. ;)
+> 
+> I agree though...I've never seen a nfs4_cb/ principal in use, and I'm
+> not sure that we'd really get a lot of value from using a separate
+> principal for callbacks.
 
---------------ms030502070205050007010901
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: quoted-printable
+It's wrong, in fact: an NFSv4.0 callback is supposed to authenticate to
+the principal that performed the setclientid.
 
-W dniu 02.08.2013 17:47, J. Bruce Fields pisze:
-> On Fri, Aug 02, 2013 at 04:37:57PM +0200, Dawid Stawiarski wrote:
->> W dniu 02.08.2013 15:12, Jeff Layton pisze:
->>> Typically, a stack trace like that indicates that the process is
->>> waiting for the server to respond. The first thing I would do would b=
-e
->>> to ascertain whether the server is actually responding to these
->>> requests.
->>>
->>
->> The same share is accessible on other nodes, so the problem involves
->> only one of the nodes (completly random) at a time.
->
-> It's still conceivable that a server problem could cause it to stop
-> responding to calls only from a single client--it'd be useful if
-> possible to check a trace to see if that's what's happening.  If the
-> traffic is really huge then capturing and analyzing a good trace may be=
+--b.
 
-> difficult.
-
-We have almost one hundred NFS nodes, and they're all using the same=20
-shares with about the same volume of traffic - and only one of the nodes =
-
-at a time has a problem for only one share (other shares from the SAME=20
-server work OK on the "failing" node) - so it's hard to belive it's the=20
-server that causes the problem. And yes - with that amount of traffic=20
-it's hard to make a meaningfull trace on the server side (as noted=20
-before server is NexentaStor based, and not Linux).
-
-Dawid
-
-
---------------ms030502070205050007010901
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Description: Kryptograficzna sygnatura S/MIME
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIMbDCC
-BjAwggUYoAMCAQICAwa/eTANBgkqhkiG9w0BAQUFADCBjDELMAkGA1UEBhMCSUwxFjAUBgNV
-BAoTDVN0YXJ0Q29tIEx0ZC4xKzApBgNVBAsTIlNlY3VyZSBEaWdpdGFsIENlcnRpZmljYXRl
-IFNpZ25pbmcxODA2BgNVBAMTL1N0YXJ0Q29tIENsYXNzIDEgUHJpbWFyeSBJbnRlcm1lZGlh
-dGUgQ2xpZW50IENBMB4XDTEzMDYwMzE4NTMwOVoXDTE0MDYwNDIxNTMxOFowUTEZMBcGA1UE
-DRMQUHRwMFlsNDBrREV3ZjZaQjEWMBQGA1UEAwwNbmVlb0B4bC53cC5wbDEcMBoGCSqGSIb3
-DQEJARYNbmVlb0B4bC53cC5wbDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBANlh
-cuj8w2ADTJR9gMknGcxPai1jIN5plafbCbOxQOqtwa+92nkuLWN5kuSpb3tfplx9oYxNNuvV
-EivvDusj8c5/EHlylylRvr8lBW3Wj/BHSMo1b60hIx/mLovevzA7z7oFRYGNrCZ7MrW5x9Dp
-dh82rcuseH1puiOn3/7u0/5ZueisWJj/JhZ4bJPJYVZ+Eqvjzk3YFraJkSA8GXVCYdBtYmDS
-S3P5YDGZEQJYTTq0/S8WnUXDjqlgnQtMsgeYgfo6MMklMYi1zpGeb4jY3XpQder5/gFUS7Vk
-AuxDiTwb7SOHThUF+Qqvriieg+IZtqU3GOBnttcStgXDtR1IDf8CAwEAAaOCAtMwggLPMAkG
-A1UdEwQCMAAwCwYDVR0PBAQDAgSwMB0GA1UdJQQWMBQGCCsGAQUFBwMCBggrBgEFBQcDBDAd
-BgNVHQ4EFgQUpRa3BRIf+bxFy2eCYX/cZofZiz8wHwYDVR0jBBgwFoAUU3Ltkpzg2ssBXHx+
-ljVO8tS4UYIwGAYDVR0RBBEwD4ENbmVlb0B4bC53cC5wbDCCAUwGA1UdIASCAUMwggE/MIIB
-OwYLKwYBBAGBtTcBAgMwggEqMC4GCCsGAQUFBwIBFiJodHRwOi8vd3d3LnN0YXJ0c3NsLmNv
-bS9wb2xpY3kucGRmMIH3BggrBgEFBQcCAjCB6jAnFiBTdGFydENvbSBDZXJ0aWZpY2F0aW9u
-IEF1dGhvcml0eTADAgEBGoG+VGhpcyBjZXJ0aWZpY2F0ZSB3YXMgaXNzdWVkIGFjY29yZGlu
-ZyB0byB0aGUgQ2xhc3MgMSBWYWxpZGF0aW9uIHJlcXVpcmVtZW50cyBvZiB0aGUgU3RhcnRD
-b20gQ0EgcG9saWN5LCByZWxpYW5jZSBvbmx5IGZvciB0aGUgaW50ZW5kZWQgcHVycG9zZSBp
-biBjb21wbGlhbmNlIG9mIHRoZSByZWx5aW5nIHBhcnR5IG9ibGlnYXRpb25zLjA2BgNVHR8E
-LzAtMCugKaAnhiVodHRwOi8vY3JsLnN0YXJ0c3NsLmNvbS9jcnR1MS1jcmwuY3JsMIGOBggr
-BgEFBQcBAQSBgTB/MDkGCCsGAQUFBzABhi1odHRwOi8vb2NzcC5zdGFydHNzbC5jb20vc3Vi
-L2NsYXNzMS9jbGllbnQvY2EwQgYIKwYBBQUHMAKGNmh0dHA6Ly9haWEuc3RhcnRzc2wuY29t
-L2NlcnRzL3N1Yi5jbGFzczEuY2xpZW50LmNhLmNydDAjBgNVHRIEHDAahhhodHRwOi8vd3d3
-LnN0YXJ0c3NsLmNvbS8wDQYJKoZIhvcNAQEFBQADggEBABrj5sKK9vcRX7FO2JJBF/0n5PUB
-fLwD91IOElcR8aUbsmOikPzjbv3QbjJA4BQwfuwe89i+i6X9aBd89ykl9+zRMprBXHD1g3Zq
-got0MRzYlK8Aqw6TBbLySmj9CFciGwmnDNcxMqfZVyGe+iVyyom8BMs3vPLF8AZwcnurBfRh
-PL9lDJflMM3WztZqwsi1CFC0agMY5ym9ddsTzZCLSwezPER+QF8IjhUm97u1pBRKF9J/lPgl
-JjBN/QbYNaedpuaoRTFfnqEal527kKSBZhcIbDeegZ0FRibJKBccCT1nv0huDr0OVc6CUCrD
-yxV8mCDPaZYPixrZah2IhxVxgrQwggY0MIIEHKADAgECAgEeMA0GCSqGSIb3DQEBBQUAMH0x
-CzAJBgNVBAYTAklMMRYwFAYDVQQKEw1TdGFydENvbSBMdGQuMSswKQYDVQQLEyJTZWN1cmUg
-RGlnaXRhbCBDZXJ0aWZpY2F0ZSBTaWduaW5nMSkwJwYDVQQDEyBTdGFydENvbSBDZXJ0aWZp
-Y2F0aW9uIEF1dGhvcml0eTAeFw0wNzEwMjQyMTAxNTVaFw0xNzEwMjQyMTAxNTVaMIGMMQsw
-CQYDVQQGEwJJTDEWMBQGA1UEChMNU3RhcnRDb20gTHRkLjErMCkGA1UECxMiU2VjdXJlIERp
-Z2l0YWwgQ2VydGlmaWNhdGUgU2lnbmluZzE4MDYGA1UEAxMvU3RhcnRDb20gQ2xhc3MgMSBQ
-cmltYXJ5IEludGVybWVkaWF0ZSBDbGllbnQgQ0EwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAw
-ggEKAoIBAQDHCYPMzi3YGrEppC4Tq5a+ijKDjKaIQZZVR63UbxIP6uq/I0fhCu+cQhoUfE6E
-RKKnu8zPf1Jwuk0tsvVCk6U9b+0UjM0dLep3ZdE1gblK/1FwYT5Pipsu2yOMluLqwvsuz9/9
-f1+1PKHG/FaR/wpbfuIqu54qzHDYeqiUfsYzoVflR80DAC7hmJ+SmZnNTWyUGHJbBpA8Q89l
-GxahNvuryGaC/o2/ceD2uYDX9U8Eg5DpIpGQdcbQeGarV04WgAUjjXX5r/2dabmtxWMZwhZn
-a//jdiSyrrSMTGKkDiXm6/3/4ebfeZuCYKzN2P8O2F/Xe2AC/Y7zeEsnR7FOp+uXAgMBAAGj
-ggGtMIIBqTAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBBjAdBgNVHQ4EFgQUU3Lt
-kpzg2ssBXHx+ljVO8tS4UYIwHwYDVR0jBBgwFoAUTgvvGqRAW6UXaYcwyjRoQ9BBrvIwZgYI
-KwYBBQUHAQEEWjBYMCcGCCsGAQUFBzABhhtodHRwOi8vb2NzcC5zdGFydHNzbC5jb20vY2Ew
-LQYIKwYBBQUHMAKGIWh0dHA6Ly93d3cuc3RhcnRzc2wuY29tL3Nmc2NhLmNydDBbBgNVHR8E
-VDBSMCegJaAjhiFodHRwOi8vd3d3LnN0YXJ0c3NsLmNvbS9zZnNjYS5jcmwwJ6AloCOGIWh0
-dHA6Ly9jcmwuc3RhcnRzc2wuY29tL3Nmc2NhLmNybDCBgAYDVR0gBHkwdzB1BgsrBgEEAYG1
-NwECATBmMC4GCCsGAQUFBwIBFiJodHRwOi8vd3d3LnN0YXJ0c3NsLmNvbS9wb2xpY3kucGRm
-MDQGCCsGAQUFBwIBFihodHRwOi8vd3d3LnN0YXJ0c3NsLmNvbS9pbnRlcm1lZGlhdGUucGRm
-MA0GCSqGSIb3DQEBBQUAA4ICAQAKgwh9eKssBly4Y4xerhy5I3dNoXHYfYa8PlVLL/qtXnkF
-gdtY1o95CfegFJTwqBBmf8pyTUnFsukDFUI22zF5bVHzuJ+GxhnSqN2sD1qetbYwBYK2iyYA
-5Pg7Er1A+hKMIzEzcduRkIMmCeUTyMyikfbUFvIBivtvkR8ZFAk22BZy+pJfAoedO61HTz4q
-SfQoCRcLN5A0t4DkuVhTMXIzuQ8CnykhExD6x4e6ebIbrjZLb7L+ocR0y4YjCl/Pd4MXU91y
-0vTipgr/O75CDUHDRHCCKBVmz/Rzkc/b970MEeHt5LC3NiWTgBSvrLEuVzBKM586YoRD9Dy3
-OHQgWI270g+5MYA8GfgI/EPT5G7xPbCDz+zjdH89PeR3U4So4lSXur6H6vp+m9TQXPF3a0Lw
-Zrp8MQ+Z77U1uL7TelWO5lApsbAonrqASfTpaprFVkL4nyGH+NHST2ZJPWIBk81i6Vw0ny0q
-ZW2Niy/QvVNKbb43A43ny076khXO7cNbBIRdJ/6qQNq9Bqb5C0Q5nEsFcj75oxQRqlKf6Tcv
-GbjxkJh8BYtv9ePsXklAxtm8J7GCUBthHSQgepbkOexhJ0wP8imUkyiPHQ0GvEnd83129fZj
-oEhdGwXV27ioRKbj/cIq7JRXun0NbeY+UdMYu9jGfIpDLtUUGSgsg2zMGs5R4jGCA90wggPZ
-AgEBMIGUMIGMMQswCQYDVQQGEwJJTDEWMBQGA1UEChMNU3RhcnRDb20gTHRkLjErMCkGA1UE
-CxMiU2VjdXJlIERpZ2l0YWwgQ2VydGlmaWNhdGUgU2lnbmluZzE4MDYGA1UEAxMvU3RhcnRD
-b20gQ2xhc3MgMSBQcmltYXJ5IEludGVybWVkaWF0ZSBDbGllbnQgQ0ECAwa/eTAJBgUrDgMC
-GgUAoIICHTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqGSIb3DQEJBTEPFw0xMzA4
-MDQwNzI5MzdaMCMGCSqGSIb3DQEJBDEWBBQ39rYuJO9wF+XGkX1e1kZm0sqSITBsBgkqhkiG
-9w0BCQ8xXzBdMAsGCWCGSAFlAwQBKjALBglghkgBZQMEAQIwCgYIKoZIhvcNAwcwDgYIKoZI
-hvcNAwICAgCAMA0GCCqGSIb3DQMCAgFAMAcGBSsOAwIHMA0GCCqGSIb3DQMCAgEoMIGlBgkr
-BgEEAYI3EAQxgZcwgZQwgYwxCzAJBgNVBAYTAklMMRYwFAYDVQQKEw1TdGFydENvbSBMdGQu
-MSswKQYDVQQLEyJTZWN1cmUgRGlnaXRhbCBDZXJ0aWZpY2F0ZSBTaWduaW5nMTgwNgYDVQQD
-Ey9TdGFydENvbSBDbGFzcyAxIFByaW1hcnkgSW50ZXJtZWRpYXRlIENsaWVudCBDQQIDBr95
-MIGnBgsqhkiG9w0BCRACCzGBl6CBlDCBjDELMAkGA1UEBhMCSUwxFjAUBgNVBAoTDVN0YXJ0
-Q29tIEx0ZC4xKzApBgNVBAsTIlNlY3VyZSBEaWdpdGFsIENlcnRpZmljYXRlIFNpZ25pbmcx
-ODA2BgNVBAMTL1N0YXJ0Q29tIENsYXNzIDEgUHJpbWFyeSBJbnRlcm1lZGlhdGUgQ2xpZW50
-IENBAgMGv3kwDQYJKoZIhvcNAQEBBQAEggEAnAwtCwTqa9mchRBLz4TW6vW1FfVK77EsOZXx
-JZziqSH5Up4MtXN9QBuk6Js7CfRuw+nHF4rwVq6zdrY6a6EEXNt6ha/PnVZh5xiWntdHrrfI
-q7mUBzYGRS/fOTgjHthbeThHy6Df0WWz1kIz6jpiBCxTRfyxUAKkryiL4v0aii5lC0yEArev
-b1SzhtxUUstBM+HqmXB3xoKVscriO0Jx3WMonWRqDluMUBsLGutxz4K7HUP7dfFbER67wb2K
-E0sQRkzgeBm+dj4smTI2zYVumIGG3SHsS/05oJCJfZhUGE/HgDekhS4ytEyse/O2Iee0ghCu
-bMkmLDr/0h1Qqbj4tQAAAAAAAA==
---------------ms030502070205050007010901--
+> Perhaps we should just hardcode "nfs" as the
+> service= parm in the "info" file for now?
+> 
+> Longer term, I think it's time to start a serious re-think of this
+> upcall. Having to have a running daemon for this sucks, particularly
+> now that you end up with a 15s delay on the first mount attempt when
+> it's not. This sort of use-case was the original idea behind the keys
+> API -- maybe it's time to figure out how to make that transition?
+> 
+> > > Finally, make sure that we set the correct service names for lockd,
+> > > statd and mountd in case we want to convert those to use rpcsec_gss at
+> > > some point in the future.
+> > > 
+> > > Fix the upcalls to use the right service names for gssd.  The old
+> > > version of the rpc.gssd upcall expects the service name to be either
+> > > "nfs" or "nfs4_cb", which it will then concatenate with the server name
+> > > to create a target name of nfs@<server> or nfs4_cb@<server>
+> > > 
+> > > Finally, make sure that we set the correct service names for lockd,
+> > > statd and mountd in case we want to convert those to use rpcsec_gss at
+> > > some point in the future.
+> > > 
+> > > Cc: Jan Stancek <jstancek@redhat.com>
+> > > Cc: "J. Bruce Fields" <bfields@fieldses.org>
+> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > > ---
+> > >  fs/lockd/clntxdr.c          | 1 +
+> > >  fs/lockd/mon.c              | 1 +
+> > >  fs/nfs/client.c             | 1 +
+> > >  fs/nfs/mount_clnt.c         | 1 +
+> > >  fs/nfs/nfs3client.c         | 2 ++
+> > >  fs/nfsd/nfs4callback.c      | 1 +
+> > >  include/linux/sunrpc/clnt.h | 1 +
+> > >  net/sunrpc/rpc_pipe.c       | 3 ++-
+> > >  8 files changed, 10 insertions(+), 1 deletion(-)
+> > > 
+> > > diff --git a/fs/lockd/clntxdr.c b/fs/lockd/clntxdr.c
+> > > index 9a55797..18d0c34 100644
+> > > --- a/fs/lockd/clntxdr.c
+> > > +++ b/fs/lockd/clntxdr.c
+> > > @@ -612,6 +612,7 @@ static struct rpc_stat		nlm_rpc_stats;
+> > >  
+> > >  const struct rpc_program	nlm_program = {
+> > >  		.name		= "lockd",
+> > > +		.service_name	= "nlockmgr",
+> > >  		.number		= NLM_PROGRAM,
+> > >  		.nrvers		= ARRAY_SIZE(nlm_versions),
+> > >  		.version	= nlm_versions,
+> > > diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+> > > index 1812f02..1ac10f4 100644
+> > > --- a/fs/lockd/mon.c
+> > > +++ b/fs/lockd/mon.c
+> > > @@ -606,6 +606,7 @@ static struct rpc_stat		nsm_stats;
+> > >  
+> > >  static const struct rpc_program nsm_program = {
+> > >  		.name		= "statd",
+> > > +		.service_name	= "status",
+> > >  		.number		= NSM_PROGRAM,
+> > >  		.nrvers		= ARRAY_SIZE(nsm_version),
+> > >  		.version	= nsm_version,
+> > > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> > > index 340b1ef..9fb1050 100644
+> > > --- a/fs/nfs/client.c
+> > > +++ b/fs/nfs/client.c
+> > > @@ -72,6 +72,7 @@ static const struct rpc_version *nfs_version[5] = {
+> > >  
+> > >  const struct rpc_program nfs_program = {
+> > >  	.name			= "nfs",
+> > > +	.service_name		= "nfs",
+> > >  	.number			= NFS_PROGRAM,
+> > >  	.nrvers			= ARRAY_SIZE(nfs_version),
+> > >  	.version		= nfs_version,
+> > > diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+> > > index 99a4528..5f1a888 100644
+> > > --- a/fs/nfs/mount_clnt.c
+> > > +++ b/fs/nfs/mount_clnt.c
+> > > @@ -528,6 +528,7 @@ static struct rpc_stat mnt_stats;
+> > >  
+> > >  static const struct rpc_program mnt_program = {
+> > >  	.name		= "mount",
+> > > +	.service_name	= "mountd",
+> > >  	.number		= NFS_MNT_PROGRAM,
+> > >  	.nrvers		= ARRAY_SIZE(mnt_version),
+> > >  	.version	= mnt_version,
+> > > diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
+> > > index b3fc65e..b61de6b 100644
+> > > --- a/fs/nfs/nfs3client.c
+> > > +++ b/fs/nfs/nfs3client.c
+> > > @@ -10,10 +10,12 @@ static const struct rpc_version *nfsacl_version[] = {
+> > >  
+> > >  const struct rpc_program nfsacl_program = {
+> > >  	.name			= "nfsacl",
+> > > +	.service_name		= "nfs",
+> > >  	.number			= NFS_ACL_PROGRAM,
+> > >  	.nrvers			= ARRAY_SIZE(nfsacl_version),
+> > >  	.version		= nfsacl_version,
+> > >  	.stats			= &nfsacl_rpcstat,
+> > > +	.pipe_dir_name		= "nfs",
+> > >  };
+> > >  
+> > >  /*
+> > > diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> > > index 7f05cd1..2962890 100644
+> > > --- a/fs/nfsd/nfs4callback.c
+> > > +++ b/fs/nfsd/nfs4callback.c
+> > > @@ -596,6 +596,7 @@ static struct rpc_stat cb_stats = {
+> > >  #define NFS4_CALLBACK 0x40000000
+> > >  static const struct rpc_program cb_program = {
+> > >  	.name			= "nfs4_cb",
+> > > +	.service_name		= "nfs4_cb",
+> > >  	.number			= NFS4_CALLBACK,
+> > >  	.nrvers			= ARRAY_SIZE(nfs_cb_version),
+> > >  	.version		= nfs_cb_version,
+> > > diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+> > > index bfe11be..d902c55 100644
+> > > --- a/include/linux/sunrpc/clnt.h
+> > > +++ b/include/linux/sunrpc/clnt.h
+> > > @@ -70,6 +70,7 @@ struct rpc_clnt {
+> > >  #define RPC_MAXVERSION		4
+> > >  struct rpc_program {
+> > >  	const char *		name;		/* protocol name */
+> > > +	const char *		service_name;	/* protocol service name */
+> > >  	u32			number;		/* program number */
+> > >  	unsigned int		nrvers;		/* number of versions */
+> > >  	const struct rpc_version **	version;	/* version array */
+> > > diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+> > > index 406859c..83b196d 100644
+> > > --- a/net/sunrpc/rpc_pipe.c
+> > > +++ b/net/sunrpc/rpc_pipe.c
+> > > @@ -409,7 +409,8 @@ rpc_show_info(struct seq_file *m, void *v)
+> > >  	rcu_read_lock();
+> > >  	seq_printf(m, "RPC server: %s\n",
+> > >  			rcu_dereference(clnt->cl_xprt)->servername);
+> > > -	seq_printf(m, "service: %s (%d) version %d\n", clnt->cl_protname,
+> > > +	seq_printf(m, "service: %s (%d) version %d\n",
+> > > +			clnt->cl_program->service_name,
+> > >  			clnt->cl_prog, clnt->cl_vers);
+> > >  	seq_printf(m, "address: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_ADDR));
+> > >  	seq_printf(m, "protocol: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_PROTO));
+> > 
+> > 
+> 
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
