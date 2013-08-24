@@ -1,141 +1,182 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:58766 "EHLO mx1.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:52186 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753110Ab3HVAYd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Aug 2013 20:24:33 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 19/21] NFSv4.1: Add tracepoints for debugging layoutget/return/commit
-Date: Wed, 21 Aug 2013 20:24:17 -0400
-Message-ID: <1377131059-40121-20-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377131059-40121-19-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377131059-40121-1-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-2-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-3-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-4-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-5-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-6-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-7-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-8-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-9-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-10-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-11-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-12-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-13-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-14-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-15-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-16-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-17-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-18-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-19-git-send-email-Trond.Myklebust@netapp.com>
+	id S1754189Ab3HXMnR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 24 Aug 2013 08:43:17 -0400
+Date: Sat, 24 Aug 2013 08:43:14 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        Jan Stancek <jstancek@redhat.com>
+Subject: Re: [PATCH v3] SUNRPC: Ensure that the RPCSEC_GSS daemon uses the
+ correct service names
+Message-ID: <20130824124314.GD18084@fieldses.org>
+References: <1377202213-5031-1-git-send-email-jlayton@redhat.com>
+ <20130823231843.GB18084@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130823231843.GB18084@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c  |  6 ++++++
- fs/nfs/nfs4trace.h | 55 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 61 insertions(+)
+On Fri, Aug 23, 2013 at 07:18:43PM -0400, J. Bruce Fields wrote:
+> On Thu, Aug 22, 2013 at 04:10:13PM -0400, Jeff Layton wrote:
+> > From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > 
+> > v2: added pipe_dir_name field to nfsacl program to fix v3+krb5
+> >     (Should we add pipe_dir_name fields to other programs too?).
+> > 
+> > v3: Drop changes to gss_encode_v1_msg. They don't seem to be
+> >     needed since gssd scrapes that out of the "info" file.
+> 
+> Hm.  nfsv3/krb5 is still broken for me after this patch.  I'll try to
+> figure out why....
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index e9551ae..156a86b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6856,6 +6856,10 @@ nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
- 	status = nfs4_wait_for_completion_rpc_task(task);
- 	if (status == 0)
- 		status = task->tk_status;
-+	trace_nfs4_layoutget(lgp->args.ctx,
-+			&lgp->args.range,
-+			&lgp->res.range,
-+			status);
- 	/* if layoutp->len is 0, nfs4_layoutget_prepare called rpc_exit */
- 	if (status == 0 && lgp->res.layoutp->len)
- 		lseg = pnfs_layout_process(lgp);
-@@ -6941,6 +6945,7 @@ int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp)
- 	if (IS_ERR(task))
- 		return PTR_ERR(task);
- 	status = task->tk_status;
-+	trace_nfs4_layoutreturn(lrp->args.inode, status);
- 	dprintk("<-- %s status=%d\n", __func__, status);
- 	rpc_put_task(task);
- 	return status;
-@@ -7127,6 +7132,7 @@ nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, bool sync)
- 	if (status != 0)
- 		goto out;
- 	status = task->tk_status;
-+	trace_nfs4_layoutcommit(data->args.inode, status);
- out:
- 	dprintk("%s: status %d\n", __func__, status);
- 	rpc_put_task(task);
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index 1ea6983..b2a2d8a 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -894,6 +894,61 @@ DECLARE_EVENT_CLASS(nfs4_commit_event,
- DEFINE_NFS4_COMMIT_EVENT(nfs4_commit);
- #ifdef CONFIG_NFS_V4_1
- DEFINE_NFS4_COMMIT_EVENT(nfs4_pnfs_commit_ds);
-+
-+#define show_pnfs_iomode(iomode) \
-+	__print_symbolic(iomode, \
-+		{ IOMODE_READ, "READ" }, \
-+		{ IOMODE_RW, "RW" }, \
-+		{ IOMODE_ANY, "ANY" })
-+
-+TRACE_EVENT(nfs4_layoutget,
-+		TP_PROTO(
-+			const struct nfs_open_context *ctx,
-+			const struct pnfs_layout_range *args,
-+			const struct pnfs_layout_range *res,
-+			int error
-+		),
-+
-+		TP_ARGS(ctx, args, res, error),
-+
-+		TP_STRUCT__entry(
-+			__field(dev_t, dev)
-+			__field(u32, fhandle)
-+			__field(u64, fileid)
-+			__field(u32, iomode)
-+			__field(u64, offset)
-+			__field(u64, count)
-+			__field(int, error)
-+		),
-+
-+		TP_fast_assign(
-+			const struct inode *inode = ctx->dentry->d_inode;
-+			__entry->dev = inode->i_sb->s_dev;
-+			__entry->fileid = NFS_FILEID(inode);
-+			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
-+			__entry->iomode = args->iomode;
-+			__entry->offset = args->offset;
-+			__entry->count = args->length;
-+			__entry->error = error;
-+		),
-+
-+		TP_printk(
-+			"error=%d (%s) fileid=%02x:%02x:%llu fhandle=0x%08x "
-+			"iomode=%s offset=%llu count=%llu",
-+			__entry->error,
-+			show_nfsv4_errors(__entry->error),
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->fileid,
-+			__entry->fhandle,
-+			show_pnfs_iomode(__entry->iomode),
-+			(unsigned long long)__entry->offset,
-+			(unsigned long long)__entry->count
-+		)
-+);
-+
-+DEFINE_NFS4_INODE_EVENT(nfs4_layoutcommit);
-+DEFINE_NFS4_INODE_EVENT(nfs4_layoutreturn);
-+
- #endif /* CONFIG_NFS_V4_1 */
- 
- #endif /* _TRACE_NFS4_H */
--- 
-1.8.3.1
+Whoops, never mind, my client was booted to the wrong kernel, with this
+patch it does work.
 
+--b.
+
+> 
+> --b.
+> 
+> > 
+> > Fix the upcalls to use the right service names for gssd.  The old
+> > version of the rpc.gssd upcall expects the service name to be either
+> > "nfs" or "nfs4_cb", which it will then concatenate with the server name
+> > to create a target name of nfs@<server> or nfs4_cb@<server>
+> > 
+> > Finally, make sure that we set the correct service names for lockd,
+> > statd and mountd in case we want to convert those to use rpcsec_gss at
+> > some point in the future.
+> > 
+> > Fix the upcalls to use the right service names for gssd.  The old
+> > version of the rpc.gssd upcall expects the service name to be either
+> > "nfs" or "nfs4_cb", which it will then concatenate with the server name
+> > to create a target name of nfs@<server> or nfs4_cb@<server>
+> > 
+> > Finally, make sure that we set the correct service names for lockd,
+> > statd and mountd in case we want to convert those to use rpcsec_gss at
+> > some point in the future.
+> > 
+> > Cc: Jan Stancek <jstancek@redhat.com>
+> > Cc: "J. Bruce Fields" <bfields@fieldses.org>
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > ---
+> >  fs/lockd/clntxdr.c          | 1 +
+> >  fs/lockd/mon.c              | 1 +
+> >  fs/nfs/client.c             | 1 +
+> >  fs/nfs/mount_clnt.c         | 1 +
+> >  fs/nfs/nfs3client.c         | 2 ++
+> >  fs/nfsd/nfs4callback.c      | 1 +
+> >  include/linux/sunrpc/clnt.h | 1 +
+> >  net/sunrpc/rpc_pipe.c       | 3 ++-
+> >  8 files changed, 10 insertions(+), 1 deletion(-)
+> > 
+> > diff --git a/fs/lockd/clntxdr.c b/fs/lockd/clntxdr.c
+> > index 9a55797..18d0c34 100644
+> > --- a/fs/lockd/clntxdr.c
+> > +++ b/fs/lockd/clntxdr.c
+> > @@ -612,6 +612,7 @@ static struct rpc_stat		nlm_rpc_stats;
+> >  
+> >  const struct rpc_program	nlm_program = {
+> >  		.name		= "lockd",
+> > +		.service_name	= "nlockmgr",
+> >  		.number		= NLM_PROGRAM,
+> >  		.nrvers		= ARRAY_SIZE(nlm_versions),
+> >  		.version	= nlm_versions,
+> > diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+> > index 1812f02..1ac10f4 100644
+> > --- a/fs/lockd/mon.c
+> > +++ b/fs/lockd/mon.c
+> > @@ -606,6 +606,7 @@ static struct rpc_stat		nsm_stats;
+> >  
+> >  static const struct rpc_program nsm_program = {
+> >  		.name		= "statd",
+> > +		.service_name	= "status",
+> >  		.number		= NSM_PROGRAM,
+> >  		.nrvers		= ARRAY_SIZE(nsm_version),
+> >  		.version	= nsm_version,
+> > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> > index 340b1ef..9fb1050 100644
+> > --- a/fs/nfs/client.c
+> > +++ b/fs/nfs/client.c
+> > @@ -72,6 +72,7 @@ static const struct rpc_version *nfs_version[5] = {
+> >  
+> >  const struct rpc_program nfs_program = {
+> >  	.name			= "nfs",
+> > +	.service_name		= "nfs",
+> >  	.number			= NFS_PROGRAM,
+> >  	.nrvers			= ARRAY_SIZE(nfs_version),
+> >  	.version		= nfs_version,
+> > diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+> > index 99a4528..5f1a888 100644
+> > --- a/fs/nfs/mount_clnt.c
+> > +++ b/fs/nfs/mount_clnt.c
+> > @@ -528,6 +528,7 @@ static struct rpc_stat mnt_stats;
+> >  
+> >  static const struct rpc_program mnt_program = {
+> >  	.name		= "mount",
+> > +	.service_name	= "mountd",
+> >  	.number		= NFS_MNT_PROGRAM,
+> >  	.nrvers		= ARRAY_SIZE(mnt_version),
+> >  	.version	= mnt_version,
+> > diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
+> > index b3fc65e..b61de6b 100644
+> > --- a/fs/nfs/nfs3client.c
+> > +++ b/fs/nfs/nfs3client.c
+> > @@ -10,10 +10,12 @@ static const struct rpc_version *nfsacl_version[] = {
+> >  
+> >  const struct rpc_program nfsacl_program = {
+> >  	.name			= "nfsacl",
+> > +	.service_name		= "nfs",
+> >  	.number			= NFS_ACL_PROGRAM,
+> >  	.nrvers			= ARRAY_SIZE(nfsacl_version),
+> >  	.version		= nfsacl_version,
+> >  	.stats			= &nfsacl_rpcstat,
+> > +	.pipe_dir_name		= "nfs",
+> >  };
+> >  
+> >  /*
+> > diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> > index 7f05cd1..2962890 100644
+> > --- a/fs/nfsd/nfs4callback.c
+> > +++ b/fs/nfsd/nfs4callback.c
+> > @@ -596,6 +596,7 @@ static struct rpc_stat cb_stats = {
+> >  #define NFS4_CALLBACK 0x40000000
+> >  static const struct rpc_program cb_program = {
+> >  	.name			= "nfs4_cb",
+> > +	.service_name		= "nfs4_cb",
+> >  	.number			= NFS4_CALLBACK,
+> >  	.nrvers			= ARRAY_SIZE(nfs_cb_version),
+> >  	.version		= nfs_cb_version,
+> > diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+> > index bfe11be..d902c55 100644
+> > --- a/include/linux/sunrpc/clnt.h
+> > +++ b/include/linux/sunrpc/clnt.h
+> > @@ -70,6 +70,7 @@ struct rpc_clnt {
+> >  #define RPC_MAXVERSION		4
+> >  struct rpc_program {
+> >  	const char *		name;		/* protocol name */
+> > +	const char *		service_name;	/* protocol service name */
+> >  	u32			number;		/* program number */
+> >  	unsigned int		nrvers;		/* number of versions */
+> >  	const struct rpc_version **	version;	/* version array */
+> > diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+> > index 406859c..83b196d 100644
+> > --- a/net/sunrpc/rpc_pipe.c
+> > +++ b/net/sunrpc/rpc_pipe.c
+> > @@ -409,7 +409,8 @@ rpc_show_info(struct seq_file *m, void *v)
+> >  	rcu_read_lock();
+> >  	seq_printf(m, "RPC server: %s\n",
+> >  			rcu_dereference(clnt->cl_xprt)->servername);
+> > -	seq_printf(m, "service: %s (%d) version %d\n", clnt->cl_protname,
+> > +	seq_printf(m, "service: %s (%d) version %d\n",
+> > +			clnt->cl_program->service_name,
+> >  			clnt->cl_prog, clnt->cl_vers);
+> >  	seq_printf(m, "address: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_ADDR));
+> >  	seq_printf(m, "protocol: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_PROTO));
+> > -- 
+> > 1.8.3.1
+> > 
