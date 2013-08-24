@@ -1,62 +1,181 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54482 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:64221 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754454Ab3HET1H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Aug 2013 15:27:07 -0400
-Date: Mon, 5 Aug 2013 15:27:02 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Dawid Stawiarski <neeo@xl.wp.pl>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: Odp: Re: Performance/stability problems with nfs shares
-Message-ID: <20130805192702.GC1583@fieldses.org>
-References: <51ff6748611fb6.11394927@wp.pl>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <51ff6748611fb6.11394927@wp.pl>
+	id S1754107Ab3HXE4H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 24 Aug 2013 00:56:07 -0400
+Subject: Re: [PATCH v3] SUNRPC: Ensure that the RPCSEC_GSS daemon uses the
+ correct service names
+From: Simo Sorce <simo@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        Jan Stancek <jstancek@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <1377202213-5031-1-git-send-email-jlayton@redhat.com>
+References: <1377202213-5031-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Sat, 24 Aug 2013 00:56:02 -0400
+Message-ID: <1377320162.2814.331.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 05, 2013 at 10:50:16AM +0200, Dawid Stawiarski wrote:
-> Dnia Piątek, 2 Sierpnia 2013 17:47 J. Bruce Fields  napisał(a) 
-> > On Fri, Aug 02, 2013 at 04:37:57PM +0200, Dawid Stawiarski wrote:
-> > > W dniu 02.08.2013 15:12, Jeff Layton pisze:
-> > > >Typically, a stack trace like that indicates that the process is
-> > > >waiting for the server to respond. The first thing I would do would be
-> > > >to ascertain whether the server is actually responding to these
-> > > >requests.
-> > > >
-> > > 
-> > > The same share is accessible on other nodes, so the problem involves
-> > > only one of the nodes (completly random) at a time.
-> >  
-> > It's still conceivable that a server problem could cause it to stop
-> > responding to calls only from a single client--it'd be useful if
-> > possible to check a trace to see if that's what's happening.  If the
-> > traffic is really huge then capturing and analyzing a good trace may be
-> > difficult.
+On Thu, 2013-08-22 at 16:10 -0400, Jeff Layton wrote:
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
 > 
-> I've managed to capture network traffic on client side, when the problem starts.
-> It seems like:
-> 0. operation SETATTR before problem works as charm (attached for reference)
-> 1. retransmission happens very fast after sending 3 packets for WRITE operation
-> 1a. linux is not using jumbo frame (3 packets of ~1K size instead of one)
-> 2. linux ignores the ACK received after retransmission (actually it's SACK for the third packet)
-
-I don't see any SACK?
-
-But yes I see it appears to be ACKing a sequence number that should
-cover the segment the client keeps retransmitting.
-
-And I don't know what would cause that.
-
-Might be worth asking networking folks?  (netdev@vger.kernel.org).
-
---b.
-
-> 3. both client and server start to retransmit their packets
+> v2: added pipe_dir_name field to nfsacl program to fix v3+krb5
+>     (Should we add pipe_dir_name fields to other programs too?).
 > 
-> what happens next (not visible in the pcap attached) is that the server sends RST after some time, and client starts new connection - after that, things start to work normally again. So maybe, it's more general problem with TCP stack and not NFS itself?
+> v3: Drop changes to gss_encode_v1_msg. They don't seem to be
+>     needed since gssd scrapes that out of the "info" file.
 > 
-> D.
+> Fix the upcalls to use the right service names for gssd.  The old
+> version of the rpc.gssd upcall expects the service name to be either
+> "nfs" or "nfs4_cb", which it will then concatenate with the server name
+> to create a target name of nfs@<server> or nfs4_cb@<server>
 
+I've never seen anyone deply keytabs with nfs4_cb/fqdn service names,
+what are you trying to do here exactly ?
+
+Afaik the only service names used historically have been host/ and nfs/
+and in some rare cases root/
+
+Also the patch seem to add a bunch of other 'service' names ? If you are
+going to kerberize those services are you going to expect admins to drop
+multiple keys down in the keytabs ? What is the exact intent here ?
+
+> Finally, make sure that we set the correct service names for lockd,
+> statd and mountd in case we want to convert those to use rpcsec_gss at
+> some point in the future.
+> 
+> Fix the upcalls to use the right service names for gssd.  The old
+> version of the rpc.gssd upcall expects the service name to be either
+> "nfs" or "nfs4_cb", which it will then concatenate with the server name
+> to create a target name of nfs@<server> or nfs4_cb@<server>
+> 
+> Finally, make sure that we set the correct service names for lockd,
+> statd and mountd in case we want to convert those to use rpcsec_gss at
+> some point in the future.
+> 
+> Cc: Jan Stancek <jstancek@redhat.com>
+> Cc: "J. Bruce Fields" <bfields@fieldses.org>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  fs/lockd/clntxdr.c          | 1 +
+>  fs/lockd/mon.c              | 1 +
+>  fs/nfs/client.c             | 1 +
+>  fs/nfs/mount_clnt.c         | 1 +
+>  fs/nfs/nfs3client.c         | 2 ++
+>  fs/nfsd/nfs4callback.c      | 1 +
+>  include/linux/sunrpc/clnt.h | 1 +
+>  net/sunrpc/rpc_pipe.c       | 3 ++-
+>  8 files changed, 10 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/lockd/clntxdr.c b/fs/lockd/clntxdr.c
+> index 9a55797..18d0c34 100644
+> --- a/fs/lockd/clntxdr.c
+> +++ b/fs/lockd/clntxdr.c
+> @@ -612,6 +612,7 @@ static struct rpc_stat		nlm_rpc_stats;
+>  
+>  const struct rpc_program	nlm_program = {
+>  		.name		= "lockd",
+> +		.service_name	= "nlockmgr",
+>  		.number		= NLM_PROGRAM,
+>  		.nrvers		= ARRAY_SIZE(nlm_versions),
+>  		.version	= nlm_versions,
+> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+> index 1812f02..1ac10f4 100644
+> --- a/fs/lockd/mon.c
+> +++ b/fs/lockd/mon.c
+> @@ -606,6 +606,7 @@ static struct rpc_stat		nsm_stats;
+>  
+>  static const struct rpc_program nsm_program = {
+>  		.name		= "statd",
+> +		.service_name	= "status",
+>  		.number		= NSM_PROGRAM,
+>  		.nrvers		= ARRAY_SIZE(nsm_version),
+>  		.version	= nsm_version,
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 340b1ef..9fb1050 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -72,6 +72,7 @@ static const struct rpc_version *nfs_version[5] = {
+>  
+>  const struct rpc_program nfs_program = {
+>  	.name			= "nfs",
+> +	.service_name		= "nfs",
+>  	.number			= NFS_PROGRAM,
+>  	.nrvers			= ARRAY_SIZE(nfs_version),
+>  	.version		= nfs_version,
+> diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+> index 99a4528..5f1a888 100644
+> --- a/fs/nfs/mount_clnt.c
+> +++ b/fs/nfs/mount_clnt.c
+> @@ -528,6 +528,7 @@ static struct rpc_stat mnt_stats;
+>  
+>  static const struct rpc_program mnt_program = {
+>  	.name		= "mount",
+> +	.service_name	= "mountd",
+>  	.number		= NFS_MNT_PROGRAM,
+>  	.nrvers		= ARRAY_SIZE(mnt_version),
+>  	.version	= mnt_version,
+> diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
+> index b3fc65e..b61de6b 100644
+> --- a/fs/nfs/nfs3client.c
+> +++ b/fs/nfs/nfs3client.c
+> @@ -10,10 +10,12 @@ static const struct rpc_version *nfsacl_version[] = {
+>  
+>  const struct rpc_program nfsacl_program = {
+>  	.name			= "nfsacl",
+> +	.service_name		= "nfs",
+>  	.number			= NFS_ACL_PROGRAM,
+>  	.nrvers			= ARRAY_SIZE(nfsacl_version),
+>  	.version		= nfsacl_version,
+>  	.stats			= &nfsacl_rpcstat,
+> +	.pipe_dir_name		= "nfs",
+>  };
+>  
+>  /*
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index 7f05cd1..2962890 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+> @@ -596,6 +596,7 @@ static struct rpc_stat cb_stats = {
+>  #define NFS4_CALLBACK 0x40000000
+>  static const struct rpc_program cb_program = {
+>  	.name			= "nfs4_cb",
+> +	.service_name		= "nfs4_cb",
+>  	.number			= NFS4_CALLBACK,
+>  	.nrvers			= ARRAY_SIZE(nfs_cb_version),
+>  	.version		= nfs_cb_version,
+> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+> index bfe11be..d902c55 100644
+> --- a/include/linux/sunrpc/clnt.h
+> +++ b/include/linux/sunrpc/clnt.h
+> @@ -70,6 +70,7 @@ struct rpc_clnt {
+>  #define RPC_MAXVERSION		4
+>  struct rpc_program {
+>  	const char *		name;		/* protocol name */
+> +	const char *		service_name;	/* protocol service name */
+>  	u32			number;		/* program number */
+>  	unsigned int		nrvers;		/* number of versions */
+>  	const struct rpc_version **	version;	/* version array */
+> diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+> index 406859c..83b196d 100644
+> --- a/net/sunrpc/rpc_pipe.c
+> +++ b/net/sunrpc/rpc_pipe.c
+> @@ -409,7 +409,8 @@ rpc_show_info(struct seq_file *m, void *v)
+>  	rcu_read_lock();
+>  	seq_printf(m, "RPC server: %s\n",
+>  			rcu_dereference(clnt->cl_xprt)->servername);
+> -	seq_printf(m, "service: %s (%d) version %d\n", clnt->cl_protname,
+> +	seq_printf(m, "service: %s (%d) version %d\n",
+> +			clnt->cl_program->service_name,
+>  			clnt->cl_prog, clnt->cl_vers);
+>  	seq_printf(m, "address: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_ADDR));
+>  	seq_printf(m, "protocol: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_PROTO));
+
+
+-- 
+Simo Sorce * Red Hat, Inc * New York
 
