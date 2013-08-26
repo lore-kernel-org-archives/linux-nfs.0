@@ -1,74 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f50.google.com ([209.85.160.50]:60124 "EHLO
-	mail-pb0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751521Ab3HTRt7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Aug 2013 13:49:59 -0400
-Received: by mail-pb0-f50.google.com with SMTP id uo5so676557pbc.23
-        for <linux-nfs@vger.kernel.org>; Tue, 20 Aug 2013 10:49:59 -0700 (PDT)
+Received: from mail-vc0-f180.google.com ([209.85.220.180]:40990 "EHLO
+	mail-vc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752298Ab3HZRIU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Aug 2013 13:08:20 -0400
 MIME-Version: 1.0
-In-Reply-To: <20130819184212.GA15945@fieldses.org>
-References: <CAJUS3XmebzQHnQNwEYECUjYyK+nj2cVpKz_-4gmPacEWzmxEZQ@mail.gmail.com>
-	<20130816211217.GB21539@fieldses.org>
-	<CAJUS3Xk=vqunKx8bKGV2iWTV=o9N_TX3h+2PL0iMm3m7FKjuig@mail.gmail.com>
-	<20130819184212.GA15945@fieldses.org>
-Date: Tue, 20 Aug 2013 13:49:58 -0400
-Message-ID: <CAJUS3XmYm390VtTzEyfqjVKdMxjd+QGbOnd7qTfwUTumZv8ewQ@mail.gmail.com>
-Subject: Re: server mountpoint busy after unexporting nfs4 share
-From: Martin Hicks <mort@bork.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <521B56A9.9090003@talpey.com>
+References: <CABgxfbGFHv2n5=78_irkxXnX9BFDFPzZvqgs_iDn64AR_3cf5w@mail.gmail.com>
+	<520CCDBB.1020501@talpey.com>
+	<CABgxfbFixDTUy4e1EQty86dvNeisG7+hd2QdVSQvv4T2tokFoQ@mail.gmail.com>
+	<CABgxfbH3uA2WzQ2DgOgRrCMhcJ1J6E2NCh13FtDfRzDWje9vWQ@mail.gmail.com>
+	<521B56A9.9090003@talpey.com>
+Date: Mon, 26 Aug 2013 10:08:19 -0700
+Message-ID: <CABgxfbEkgH4f86G2K8SXXQuLsE_R6+Wk_jw294Kcu3vT8Y8WMg@mail.gmail.com>
+Subject: Re: Helps to Decode rpc_debug Output
+From: Wendy Cheng <s.wendy.cheng@gmail.com>
+To: Tom Talpey <tom@talpey.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 19, 2013 at 2:42 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Mon, Aug 19, 2013 at 11:55:58AM -0400, Martin Hicks wrote:
->> Hi Bruce,
->> >
->> > We could possibly fix that, or provide some other way to do whatever it
->> > is you're trying to do, but it's likely not a small change.
+On Mon, Aug 26, 2013 at 6:22 AM, Tom Talpey <tom@talpey.com> wrote:
+> On 8/21/2013 11:55 AM, Wendy Cheng wrote:
 >>
->> Essentially I've got a NAS with two doors that have removable disks
->> behind them.  I get a signal from hardware when one of the doors is
->> opened, and I need to kill services, unmount and remove the block
->> device very quickly so the user can remove or swap disks.  I was
->> trying to avoid killing nfsd so that any clients connected to the
->> block device behind the other door could continue uninterrupted.
+>> On Thu, Aug 15, 2013 at 11:08 AM, Wendy Cheng <s.wendy.cheng@gmail.com>
+>> wrote:
+>>>
+>>> On Thu, Aug 15, 2013 at 5:46 AM, Tom Talpey <tom@talpey.com> wrote:
+>>>>
+>>>> On 8/14/2013 8:14 PM, Wendy Cheng wrote:
+>>>>>
+>>>>>
+>>>>> Longer version of the question:
+>>>>> I'm trying to enable NFS-RDMA on an embedded system (based on 2.6.38
+>>>>> kernel) as a client. The IB stacks are taken from OFED 1.5.4. NFS
+>>>>> server is a RHEL 6.3 Xeon box. The connection uses mellox-4 driver.
+>>>>> Memory registration is "RPCRDMA_ALLPHYSICAL". There are many issues so
+>>>>> far but I do manage to get nfs mount working. Simple file operations
+>>>>> (such as "ls", file read/write, "scp", etc) seem to work as well.
+>>>>
+
+>> One thing I'm still scratching my head is that ... by looking at the
+>> raw IOPS, I don't see dramatic difference between NFS-RDMA vs. NFS
+>> over IPOIB (TCP).
 >
-> OK, understood, so  you're mainly worried about access to the remaining
-> data continuing uniterrrupted.
 >
-> That said--it's *really* not a problem that the other stuff starts
-> erroring out immediately?  I imagine the typical application isn't
-> going to handle the errors very gracefully.
->
+> Sounds like your bottleneck lies in some other component. What's the
+> storage, for example? RDMA won't do a thing to improve a slow disk.
+> Or, what kind of IOPS rate are you seeing? If these systems aren't
+> generating enough load to push a CPU limit, then shifting the protocol
+> on the same link might not yield much.
 
-This is a product where the client users of the system will be
-designing us in from the beginning, so their applications have to
-tolerate this type of disk swapping.
+There is no kernel profiling tool with this uOS (yet) so it is hard to
+identify the bottleneck. Looking from the surface, the slow down seems
+to be from SUNRPC's Van Jacobson congestion control
+(xprt_reserve_xprt_cong()) where it either creates a race condition
+for the transmissions (write/commit) to miss their wake-up(s); or the
+algorithm itself is not a right choice for this client system that
+consists of many (244 on my system) slower cores (CPU).
 
->> If this isn't possible then I need to minimize the downtime to the
->> other disk.  With quick experiements this morning if I simply restart
->> nfs it seems to take between 60 and 90 seconds for the client to start
->> doing IO again.  I haven't tracked down the reason yet, but it seems
->> like the server is preventing the client from doing IO for some
->> time...
->
-> It's probably the grace period (which will block pretty much any IO for
-> clients using NFSv4).
+Solid state drives are used on the RHEL server.
 
-This is correct.  nfsv3 seems to recover quite quickly if I restart
-the nfs services, in about 3 seconds.  I can see with wireshark that
-the server is holding off the nfsv4 clients for quite a while with
-NFS4ERR_GRACE.
-
-Setting nfsv4gracetime (once I also found fs.nfs.nlm_grace_period) get
-the drop-out time to just above 10 seconds, which is the minimum
-nfsv4gracetime.  That'll have to do for now.
-
-Thanks again,
-mh
-
--- 
-Martin Hicks P.Eng.      |         mort@bork.org
-Bork Consulting Inc.     |   +1 (613) 266-2296
+-- Wendy
