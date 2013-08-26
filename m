@@ -1,134 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ecs-ex10-cas2.engr.uconn.edu ([137.99.15.237]:46437 "EHLO
-	mail.engr.uconn.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751898Ab3HBMQC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Aug 2013 08:16:02 -0400
-Message-ID: <51FBA2FD.7070704@engr.uconn.edu>
-Date: Fri, 2 Aug 2013 08:15:57 -0400
-From: Rohit Mehta <rohitm@engr.uconn.edu>
+Received: from p3plsmtpa11-05.prod.phx3.secureserver.net ([68.178.252.106]:40880
+	"EHLO p3plsmtpa11-05.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751641Ab3HZNWw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Aug 2013 09:22:52 -0400
+Message-ID: <521B56A9.9090003@talpey.com>
+Date: Mon, 26 Aug 2013 09:22:49 -0400
+From: Tom Talpey <tom@talpey.com>
 MIME-Version: 1.0
-To: Simo Sorce <simo@redhat.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: Trouble with kerberized NFS client after upgrading from nfs-utils
- 1.2.0 to 1.2.5
-References: <51FAC933.40508@engr.uconn.edu>  <1375391193.15733.213.camel@willson.li.ssimo.org>  <51FB0946.5020505@engr.uconn.edu> <1375410802.15733.216.camel@willson.li.ssimo.org>
-In-Reply-To: <1375410802.15733.216.camel@willson.li.ssimo.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+To: Wendy Cheng <s.wendy.cheng@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>
+Subject: Re: Helps to Decode rpc_debug Output
+References: <CABgxfbGFHv2n5=78_irkxXnX9BFDFPzZvqgs_iDn64AR_3cf5w@mail.gmail.com> <520CCDBB.1020501@talpey.com> <CABgxfbFixDTUy4e1EQty86dvNeisG7+hd2QdVSQvv4T2tokFoQ@mail.gmail.com> <CABgxfbH3uA2WzQ2DgOgRrCMhcJ1J6E2NCh13FtDfRzDWje9vWQ@mail.gmail.com>
+In-Reply-To: <CABgxfbH3uA2WzQ2DgOgRrCMhcJ1J6E2NCh13FtDfRzDWje9vWQ@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks Simo,  I apologize for the copy and paste error.  You are 
-correct  about it being "ldd /usr/sbin/rpc.gssd" command.
-
-The actual error message we get is from the mount command:
-mount.nfs: access denied by server while mounting 
-hnas.engr.uconn.edu:/EngrUser/users/rohitm
-
-I got a little more output with mount -v
-root@c27-00:~# mount -vvv hnas.engr.uconn.edu:/EngrUser/users/rohitm 
-/foo -o sec=krb5
-mount: fstab path: "/etc/fstab"
-mount: mtab path:  "/etc/mtab"
-mount: lock path:  "/etc/mtab~"
-mount: temp path:  "/etc/mtab.tmp"
-mount: UID:        0
-mount: eUID:       0
-mount: no type was given - I'll assume nfs because of the colon
-mount: spec: "hnas.engr.uconn.edu:/EngrUser/users/rohitm"
-mount: node:  "/foo"
-mount: types: "nfs"
-mount: opts:  "sec=krb5"
-mount: external mount: argv[0] = "/sbin/mount.nfs"
-mount: external mount: argv[1] = 
-"hnas.engr.uconn.edu:/EngrUser/users/rohitm"
-mount: external mount: argv[2] = "/foo"
-mount: external mount: argv[3] = "-v"
-mount: external mount: argv[4] = "-o"
-mount: external mount: argv[5] = "rw,sec=krb5"
-mount.nfs: timeout set for Fri Aug  2 08:04:08 2013
-mount.nfs: trying text-based options 
-'sec=krb5,vers=4,addr=137.99.203.4,clientaddr=137.99.2.29'
-mount.nfs: mount(2): Permission denied
-mount.nfs: access denied by server while mounting 
-hnas.engr.uconn.edu:/EngrUser/users/rohitm
-
-So there is unfortunately no more info available from mount command and 
-rpc.gssd output did not have any red flags for me. I'm trying to find 
-out if there is a way to get more information from the NFS server 
-itself, but as of now I'm not sure how to do that.
-
-Thanks,
-
-Rohit
-On 08/01/2013 10:33 PM, Simo Sorce wrote:
-> On Thu, 2013-08-01 at 21:20 -0400, Rohit Mehta wrote:
->> Thanks Simo, it doesn't look like libtirpc was available in previous
->> (10.04) release of Ubuntu.
->> root@c27-00:~# ldd /usr/sbin/
-> I assume this had ^^ rpc.gssd at the end and is just a copy&paste error.
->
->>           linux-vdso.so.1 =>  (0x00007fffeedff000)
->>           libgssglue.so.1 => /lib/libgssglue.so.1 (0x00007fb06778e000)
->>           libkrb5.so.3 => /usr/lib/x86_64-linux-gnu/libkrb5.so.3
->> (0x00007fb0674c0000)
->>           libcom_err.so.2 => /lib/x86_64-linux-gnu/libcom_err.so.2
->> (0x00007fb0672bb000)
->>           libtirpc.so.1 => /lib/x86_64-linux-gnu/libtirpc.so.1
->> (0x00007fb067093000)
->>           libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fb066cd4000)
->>           libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007fb066acf000)
->>           libk5crypto.so.3 => /usr/lib/x86_64-linux-gnu/libk5crypto.so.3
->> (0x00007fb0668a7000)
->>           libkrb5support.so.0 =>
->> /usr/lib/x86_64-linux-gnu/libkrb5support.so.0 (0x00007fb06669f000)
->>           libkeyutils.so.1 => /lib/x86_64-linux-gnu/libkeyutils.so.1
->> (0x00007fb06649a000)
->>           libresolv.so.2 => /lib/x86_64-linux-gnu/libresolv.so.2
->> (0x00007fb06627e000)
->>           libpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0
->> (0x00007fb066061000)
->>           /lib64/ld-linux-x86-64.so.2 (0x00007fb0679b8000)
->> root@c27-00:~# locate libtirpc.so
->> /lib/x86_64-linux-gnu/libtirpc.so.1
->> /lib/x86_64-linux-gnu/libtirpc.so.1.0.10
->> root@c27-00:~# ldd /lib/x86_64-linux-gnu/libtirpc.so.1
->>           linux-vdso.so.1 =>  (0x00007fff01dc1000)
->>           libgssglue.so.1 => /lib/libgssglue.so.1 (0x00007fb701d54000)
->>           libpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0
->> (0x00007fb701b37000)
->>           libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fb701777000)
->>           libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007fb701573000)
->>           /lib64/ld-linux-x86-64.so.2 (0x00007fb7021a6000)
->> root@c27-00:~#
-> Both are built against libgssglue so at least they are consistent, and
-> that is not the source of the problem as I suspected.
->
-> More information on the actual error would help.
->
-> Simo.
->
->
->> On 08/01/2013 05:06 PM, Simo Sorce wrote:
->>> Rohit
->>> Was libtirpc also updated ?
->>> There has beena  change recently where we eliminated the use of
->>> libgssglue and you will get issues if both nfs-utils and libtirpc are
->>> not compiled to use the same gssapi library.
+On 8/21/2013 11:55 AM, Wendy Cheng wrote:
+> On Thu, Aug 15, 2013 at 11:08 AM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
+>> On Thu, Aug 15, 2013 at 5:46 AM, Tom Talpey <tom@talpey.com> wrote:
+>>> On 8/14/2013 8:14 PM, Wendy Cheng wrote:
+>>>>
+>>>> Longer version of the question:
+>>>> I'm trying to enable NFS-RDMA on an embedded system (based on 2.6.38
+>>>> kernel) as a client. The IB stacks are taken from OFED 1.5.4. NFS
+>>>> server is a RHEL 6.3 Xeon box. The connection uses mellox-4 driver.
+>>>> Memory registration is "RPCRDMA_ALLPHYSICAL". There are many issues so
+>>>> far but I do manage to get nfs mount working. Simple file operations
+>>>> (such as "ls", file read/write, "scp", etc) seem to work as well.
 >>>
->>> Please post ldd output on rpc.gssd and libtirpc.so to verify if this is
->>> the issue.
->>>
->>> Simo.
->>>
->>
 >
+> Yay ... got this up .. amazingly on a uOS that does not have much of
+> the conventional kernel debug facilities.
 
+Congrats!
 
--- 
-Rohit Mehta
-Computer Engineer
-University of Connecticut
-Engineering Computing Services
-371 Fairfield Road Unit 2031
-Storrs, CT 06269-2031
+> One thing I'm still scratching my head is that ... by looking at the
+> raw IOPS, I don't see dramatic difference between NFS-RDMA vs. NFS
+> over IPOIB (TCP).
 
+Sounds like your bottleneck lies in some other component. What's the
+storage, for example? RDMA won't do a thing to improve a slow disk.
+Or, what kind of IOPS rate are you seeing? If these systems aren't
+generating enough load to push a CPU limit, then shifting the protocol
+on the same link might not yield much.
+
+> However, the total run time differs greatly. NFS
+> over RDMA seems to take a much longer time to finish (vs. NFS over
+> IPOIB). Not sure why is that .... Maybe by the constant
+> connect/disconnect triggered by reestablish_timeout ? The connection
+> re-establish is known to be expensive on this uOS.
+
+Um, yes, of course. Fix that before drawing any conclusions.
+
+Tom.
