@@ -1,54 +1,158 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ye0-f174.google.com ([209.85.213.174]:45040 "EHLO
-	mail-ye0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S968218Ab3HIQwc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:52:32 -0400
-Received: by mail-ye0-f174.google.com with SMTP id q9so1300585yen.19
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:52:31 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
-        by mx.google.com with ESMTPSA id v32sm20695277yhc.12.2013.08.09.09.52.30
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
-        Fri, 09 Aug 2013 09:52:30 -0700 (PDT)
-Subject: [PATCH v2 31/33] NFS: Implement support for NFS4ERR_LEASE_MOVED
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 09 Aug 2013 12:52:29 -0400
-Message-ID: <20130809165229.5362.54228.stgit@seurat.1015granger.net>
-In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
-References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+Received: from fieldses.org ([174.143.236.118]:42360 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752354Ab3H0SHG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Aug 2013 14:07:06 -0400
+Date: Tue, 27 Aug 2013 14:06:55 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jan Kara <jack@suse.cz>
+Cc: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        "user-mode-linux-devel@lists.sourceforge.net"
+	<user-mode-linux-devel@lists.sourceforge.net>,
+        linux-ext4@vger.kernel.org,
+        Linux Kernel <linux-kernel@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: Re: Issues with a rather unusual configured NFS server
+Message-ID: <20130827180655.GE14809@fieldses.org>
+References: <52075E01.7030506@gmx.de>
+ <20130812143640.GF4596@quack.suse.cz>
+ <20130813215313.GH17781@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20130813215313.GH17781@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-With NFSv4 minor version 0, the asynchronous lease RENEW
-heartbeat can return NFS4ERR_LEASE_MOVED.  Error recovery logic for
-async RENEW is a separate code path from the generic NFS proc paths,
-so it must be updated to handle LEASE_MOVED as well.
+On Tue, Aug 13, 2013 at 05:53:14PM -0400, bfields wrote:
+> On Mon, Aug 12, 2013 at 04:36:40PM +0200, Jan Kara wrote:
+> > On Sun 11-08-13 11:48:49, Toralf Förster wrote:
+> > > so that the server either crashes (if it is a user mode linux image) or at least its reboot functionality got broken
+> > > - if the NFS server is hammered with scary NFS calls using a fuzzy tool running at a remote NFS client under a non-privileged user id.
+> > > 
+> > > It can re reproduced, if
+> > > 	- the NFS share is an EXT3 or EXT4 directory
+> > > 	- and it is created at file located at tempfs and mounted via loop device
+> > > 	- and the NFS server is forced to umount the NFS share
+> > > 	- and the server forced to restart the NSF service afterwards
+> > > 	- and trinity is used
+> > > 
+> > > I could find a scenario for an automated bisect. 2 times it brought this commit 
+> > > commit 68a3396178e6688ad7367202cdf0af8ed03c8727
+> > > Author: J. Bruce Fields <bfields@redhat.com>
+> > > Date:   Thu Mar 21 11:21:50 2013 -0400
+> > > 
+> > >     nfsd4: shut down more of delegation earlier
+> 
+> Thanks for the report.  I think I see the problem--after this commit
+> nfs4_set_delegation() failures result in nfs4_put_delegation being
+> called, but nfs4_put_delegation doesn't free the nfs4_file that has
+> already been set by alloc_init_deleg().
+> 
+> Let me think about how to fix that....
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/nfs4proc.c |    8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+Sorry for the slow response--can you check whether this fixes the
+problem?
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 11283da..ecf8e96 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4158,7 +4158,13 @@ static void nfs4_renew_done(struct rpc_task *task, void *calldata)
- 	struct nfs_client *clp = data->client;
- 	unsigned long timestamp = data->timestamp;
+--b.
+
+commit 624a0ee0375940ce4aa36330b0b5a70af6d2b6f5
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Thu Aug 15 16:55:26 2013 -0400
+
+    nfsd4: fix leak of inode reference on delegation failure
+    
+    This fixes a regression from 68a3396178e6688ad7367202cdf0af8ed03c8727
+    "nfsd4: shut down more of delegation earlier".
+    
+    After that commit, nfs4_set_delegation() failures result in
+    nfs4_put_delegation being called, but nfs4_put_delegation doesn't free
+    the nfs4_file that has already been set by alloc_init_deleg().
+    
+    This can result in an oops on later unmounting the exported filesystem.
+    
+    Note also delaying the fi_had_conflict check we're able to return a
+    better error (hence give 4.1 clients a better idea why the delegation
+    failed; though note CONFLICT isn't an exact match here, as that's
+    supposed to indicate a current conflict, but all we know here is that
+    there was one recently).
+    
+    Reported-by: Toralf Förster <toralf.foerster@gmx.de>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index eb9cf81..0874998 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -368,11 +368,8 @@ static struct nfs4_delegation *
+ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct svc_fh *current_fh)
+ {
+ 	struct nfs4_delegation *dp;
+-	struct nfs4_file *fp = stp->st_file;
  
--	if (task->tk_status < 0) {
-+	switch (task->tk_status) {
-+	case 0:
-+		break;
-+	case -NFS4ERR_LEASE_MOVED:
-+		nfs4_schedule_lease_moved_recovery(clp);
-+		break;
-+	default:
- 		/* Unless we're shutting down, schedule state recovery! */
- 		if (test_bit(NFS_CS_RENEWD, &clp->cl_res_state) == 0)
- 			return;
-
+ 	dprintk("NFSD alloc_init_deleg\n");
+-	if (fp->fi_had_conflict)
+-		return NULL;
+ 	if (num_delegations > max_delegations)
+ 		return NULL;
+ 	dp = delegstateid(nfs4_alloc_stid(clp, deleg_slab));
+@@ -389,8 +386,7 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 	INIT_LIST_HEAD(&dp->dl_perfile);
+ 	INIT_LIST_HEAD(&dp->dl_perclnt);
+ 	INIT_LIST_HEAD(&dp->dl_recall_lru);
+-	get_nfs4_file(fp);
+-	dp->dl_file = fp;
++	dp->dl_file = NULL;
+ 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
+ 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+ 	dp->dl_time = 0;
+@@ -3044,22 +3040,35 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ 	return 0;
+ }
+ 
+-static int nfs4_set_delegation(struct nfs4_delegation *dp)
++static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ {
+-	struct nfs4_file *fp = dp->dl_file;
++	int status;
+ 
+-	if (!fp->fi_lease)
+-		return nfs4_setlease(dp);
++	if (fp->fi_had_conflict)
++		return -EAGAIN;
++	get_nfs4_file(fp);
++	dp->dl_file = fp;
++	if (!fp->fi_lease) {
++		status = nfs4_setlease(dp);
++		if (status)
++			goto out_free;
++		return 0;
++	}
+ 	spin_lock(&recall_lock);
+ 	if (fp->fi_had_conflict) {
+ 		spin_unlock(&recall_lock);
+-		return -EAGAIN;
++		status = -EAGAIN;
++		goto out_free;
+ 	}
+ 	atomic_inc(&fp->fi_delegees);
+ 	list_add(&dp->dl_perfile, &fp->fi_delegations);
+ 	spin_unlock(&recall_lock);
+ 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+ 	return 0;
++out_free:
++	put_nfs4_file(fp);
++	dp->dl_file = fp;
++	return status;
+ }
+ 
+ static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status)
+@@ -3134,7 +3143,7 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
+ 	dp = alloc_init_deleg(oo->oo_owner.so_client, stp, fh);
+ 	if (dp == NULL)
+ 		goto out_no_deleg;
+-	status = nfs4_set_delegation(dp);
++	status = nfs4_set_delegation(dp, stp->st_file);
+ 	if (status)
+ 		goto out_free;
+ 
