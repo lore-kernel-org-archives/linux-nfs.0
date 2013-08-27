@@ -1,172 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:63712 "EHLO mx1.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:54793 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753095Ab3HVAY2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Aug 2013 20:24:28 -0400
+	id S1753521Ab3H0U7I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Aug 2013 16:59:08 -0400
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 11/21] NFSv4: Add tracepoints for debugging file locking
-Date: Wed, 21 Aug 2013 20:24:09 -0400
-Message-ID: <1377131059-40121-12-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377131059-40121-11-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377131059-40121-1-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-2-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-3-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-4-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-5-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-6-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-7-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-8-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-9-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-10-git-send-email-Trond.Myklebust@netapp.com>
- <1377131059-40121-11-git-send-email-Trond.Myklebust@netapp.com>
+CC: <andros@netapp.com>
+Subject: [PATCH 14/15] SUNRPC: Add a helper to allow sharing of rpc_pipefs directory objects
+Date: Tue, 27 Aug 2013 16:58:51 -0400
+Message-ID: <1377637132-53318-14-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377637132-53318-13-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377637132-53318-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-13-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Set up basic tracepoints for debugging NFSv4 file lock/unlock
+Add support for looking up existing objects and creating new ones if there
+is no match.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4proc.c  |  9 +++++--
- fs/nfs/nfs4trace.h | 75 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 82 insertions(+), 2 deletions(-)
+ include/linux/sunrpc/rpc_pipe_fs.h |  6 ++++++
+ net/sunrpc/rpc_pipe.c              | 35 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 41 insertions(+)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ce37c68..0b27837 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4960,8 +4960,9 @@ static int nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock *
- 	int err;
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index b0cf181..a353e03 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -106,6 +106,12 @@ extern int rpc_add_pipe_dir_object(struct net *net,
+ extern void rpc_remove_pipe_dir_object(struct net *net,
+ 		struct rpc_pipe_dir_head *pdh,
+ 		struct rpc_pipe_dir_object *pdo);
++extern struct rpc_pipe_dir_object *rpc_find_or_alloc_pipe_dir_object(
++		struct net *net,
++		struct rpc_pipe_dir_head *pdh,
++		int (*match)(struct rpc_pipe_dir_object *, void *),
++		struct rpc_pipe_dir_object *(*alloc)(void *),
++		void *data);
  
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(state->inode),
--				_nfs4_proc_getlk(state, cmd, request),
-+		err = _nfs4_proc_getlk(state, cmd, request);
-+		trace_nfs4_get_lock(request, state, cmd, err);
-+		err = nfs4_handle_exception(NFS_SERVER(state->inode), err,
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-@@ -5159,6 +5160,7 @@ static int nfs4_proc_unlck(struct nfs4_state *state, int cmd, struct file_lock *
- 	rpc_put_task(task);
- out:
- 	request->fl_flags = fl_flags;
-+	trace_nfs4_unlock(request, state, F_SETLK, status);
- 	return status;
+ struct cache_detail;
+ extern struct dentry *rpc_create_cache_dir(struct dentry *,
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index a35b2f4..f94567b 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -982,6 +982,41 @@ rpc_remove_pipe_dir_object(struct net *net,
  }
+ EXPORT_SYMBOL_GPL(rpc_remove_pipe_dir_object);
  
-@@ -5382,6 +5384,7 @@ static int nfs4_lock_reclaim(struct nfs4_state *state, struct file_lock *request
- 		if (test_bit(NFS_DELEGATED_STATE, &state->flags) != 0)
- 			return 0;
- 		err = _nfs4_do_setlk(state, F_SETLK, request, NFS_LOCK_RECLAIM);
-+		trace_nfs4_lock_reclaim(request, state, F_SETLK, err);
- 		if (err != -NFS4ERR_DELAY)
- 			break;
- 		nfs4_handle_exception(server, err, &exception);
-@@ -5404,6 +5407,7 @@ static int nfs4_lock_expired(struct nfs4_state *state, struct file_lock *request
- 		if (test_bit(NFS_DELEGATED_STATE, &state->flags) != 0)
- 			return 0;
- 		err = _nfs4_do_setlk(state, F_SETLK, request, NFS_LOCK_EXPIRED);
-+		trace_nfs4_lock_expired(request, state, F_SETLK, err);
- 		switch (err) {
- 		default:
- 			goto out;
-@@ -5526,6 +5530,7 @@ static int nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock *
- 
- 	do {
- 		err = _nfs4_proc_setlk(state, cmd, request);
-+		trace_nfs4_set_lock(request, state, cmd, err);
- 		if (err == -NFS4ERR_DENIED)
- 			err = -EAGAIN;
- 		err = nfs4_handle_exception(NFS_SERVER(state->inode),
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index a558dc9..3f124db 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -336,6 +336,81 @@ TRACE_EVENT(nfs4_close,
- 		)
- );
- 
-+#define show_lock_cmd(type) \
-+	__print_symbolic((int)type, \
-+		{ F_GETLK, "GETLK" }, \
-+		{ F_SETLK, "SETLK" }, \
-+		{ F_SETLKW, "SETLKW" })
-+#define show_lock_type(type) \
-+	__print_symbolic((int)type, \
-+		{ F_RDLCK, "RDLCK" }, \
-+		{ F_WRLCK, "WRLCK" }, \
-+		{ F_UNLCK, "UNLCK" })
++/**
++ * rpc_find_or_alloc_pipe_dir_object
++ * @net: pointer to struct net
++ * @pdh: pointer to struct rpc_pipe_dir_head
++ * @match: match struct rpc_pipe_dir_object to data
++ * @alloc: allocate a new struct rpc_pipe_dir_object
++ * @data: user defined data for match() and alloc()
++ *
++ */
++struct rpc_pipe_dir_object *
++rpc_find_or_alloc_pipe_dir_object(struct net *net,
++		struct rpc_pipe_dir_head *pdh,
++		int (*match)(struct rpc_pipe_dir_object *, void *),
++		struct rpc_pipe_dir_object *(*alloc)(void *),
++		void *data)
++{
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++	struct rpc_pipe_dir_object *pdo;
 +
-+DECLARE_EVENT_CLASS(nfs4_lock_event,
-+		TP_PROTO(
-+			const struct file_lock *request,
-+			const struct nfs4_state *state,
-+			int cmd,
-+			int error
-+		),
++	mutex_lock(&sn->pipefs_sb_lock);
++	list_for_each_entry(pdo, &pdh->pdh_entries, pdo_head) {
++		if (!match(pdo, data))
++			continue;
++		goto out;
++	}
++	pdo = alloc(data);
++	if (!pdo)
++		goto out;
++	rpc_add_pipe_dir_object_locked(net, pdh, pdo);
++out:
++	mutex_unlock(&sn->pipefs_sb_lock);
++	return pdo;
++}
++EXPORT_SYMBOL_GPL(rpc_find_or_alloc_pipe_dir_object);
 +
-+		TP_ARGS(request, state, cmd, error),
-+
-+		TP_STRUCT__entry(
-+			__field(int, error)
-+			__field(int, cmd)
-+			__field(char, type)
-+			__field(loff_t, start)
-+			__field(loff_t, end)
-+			__field(dev_t, dev)
-+			__field(u32, fhandle)
-+			__field(u64, fileid)
-+		),
-+
-+		TP_fast_assign(
-+			const struct inode *inode = state->inode;
-+
-+			__entry->error = error;
-+			__entry->cmd = cmd;
-+			__entry->type = request->fl_type;
-+			__entry->start = request->fl_start;
-+			__entry->end = request->fl_end;
-+			__entry->dev = inode->i_sb->s_dev;
-+			__entry->fileid = NFS_FILEID(inode);
-+			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
-+		),
-+
-+		TP_printk(
-+			"error=%d (%s) cmd=%s:%s range=%lld:%lld "
-+			"fileid=%02x:%02x:%llu fhandle=0x%08x",
-+			__entry->error,
-+			show_nfsv4_errors(__entry->error),
-+			show_lock_cmd(__entry->cmd),
-+			show_lock_type(__entry->type),
-+			(long long)__entry->start,
-+			(long long)__entry->end,
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->fileid,
-+			__entry->fhandle
-+		)
-+);
-+
-+#define DEFINE_NFS4_LOCK_EVENT(name) \
-+	DEFINE_EVENT(nfs4_lock_event, name, \
-+			TP_PROTO( \
-+				const struct file_lock *request, \
-+				const struct nfs4_state *state, \
-+				int cmd, \
-+				int error \
-+			), \
-+			TP_ARGS(request, state, cmd, error))
-+DEFINE_NFS4_LOCK_EVENT(nfs4_get_lock);
-+DEFINE_NFS4_LOCK_EVENT(nfs4_set_lock);
-+DEFINE_NFS4_LOCK_EVENT(nfs4_lock_reclaim);
-+DEFINE_NFS4_LOCK_EVENT(nfs4_lock_expired);
-+DEFINE_NFS4_LOCK_EVENT(nfs4_unlock);
-+
- #endif /* _TRACE_NFS4_H */
- 
- #undef TRACE_INCLUDE_PATH
+ static void
+ rpc_create_pipe_dir_objects(struct rpc_pipe_dir_head *pdh)
+ {
 -- 
 1.8.3.1
 
