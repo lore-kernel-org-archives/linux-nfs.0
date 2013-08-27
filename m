@@ -1,84 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52326 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:15345 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753173Ab3HORw7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Aug 2013 13:52:59 -0400
-Date: Thu, 15 Aug 2013 13:52:58 -0400
-From: "J.Bruce Fields" <bfields@citi.umich.edu>
-To: Harshula Jayasuriya <harshula@redhat.com>
-Cc: linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.de>,
-        Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] sunrpc: prepare NFS for 2038
-Message-ID: <20130815175258.GS17781@fieldses.org>
-References: <1376588800.17754.14.camel@serendib>
+	id S1752996Ab3H0U7B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Aug 2013 16:59:01 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+CC: <andros@netapp.com>
+Subject: [PATCH 07/15] RPCSEC_GSS: Fix an Oopsable condition when creating/destroying pipefs objects
+Date: Tue, 27 Aug 2013 16:58:44 -0400
+Message-ID: <1377637132-53318-7-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377637132-53318-6-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377637132-53318-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-6-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1376588800.17754.14.camel@serendib>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 16, 2013 at 03:46:40AM +1000, Harshula Jayasuriya wrote:
-> 1) The kernel sunrpc code needs to handle seconds since epoch
-> greater than 2147483647. This means functions that parse time
-> as an int need to handle it as time_t.
+If an error condition occurs on rpc_pipefs creation, or the user mounts
+rpc_pipefs and then unmounts it, then the dentries in struct gss_auth
+need to be reset to NULL so that a second call to gss_pipes_dentries_destroy
+doesn't try to free them again.
 
-Anyone expecting not to have to upgrade their nfs server once between
-now and 2038 is interesting, but... yes, may as well get it fixed now,
-OK.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ net/sunrpc/auth_gss/auth_gss.c | 32 ++++++++++++++++++++------------
+ 1 file changed, 20 insertions(+), 12 deletions(-)
 
-> 2) The kernel changes must be accompanied by userspace changes
-> in nfs-utils.
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 6323803..c0d36bb 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -796,10 +796,14 @@ static void gss_pipes_dentries_destroy(struct rpc_auth *auth)
+ 	struct gss_auth *gss_auth;
+ 
+ 	gss_auth = container_of(auth, struct gss_auth, rpc_auth);
+-	if (gss_auth->pipe[0]->dentry)
++	if (gss_auth->pipe[0]->dentry) {
+ 		rpc_unlink(gss_auth->pipe[0]->dentry);
+-	if (gss_auth->pipe[1]->dentry)
++		gss_auth->pipe[0]->dentry = NULL;
++	}
++	if (gss_auth->pipe[1]->dentry) {
+ 		rpc_unlink(gss_auth->pipe[1]->dentry);
++		gss_auth->pipe[1]->dentry = NULL;
++	}
+ }
+ 
+ static int gss_pipes_dentries_create(struct rpc_auth *auth)
+@@ -807,26 +811,30 @@ static int gss_pipes_dentries_create(struct rpc_auth *auth)
+ 	int err;
+ 	struct gss_auth *gss_auth;
+ 	struct rpc_clnt *clnt;
++	struct dentry *dentry;
+ 
+ 	gss_auth = container_of(auth, struct gss_auth, rpc_auth);
+ 	clnt = gss_auth->client;
+ 
+-	gss_auth->pipe[1]->dentry = rpc_mkpipe_dentry(clnt->cl_dentry,
+-						      "gssd",
+-						      clnt, gss_auth->pipe[1]);
+-	if (IS_ERR(gss_auth->pipe[1]->dentry))
+-		return PTR_ERR(gss_auth->pipe[1]->dentry);
+-	gss_auth->pipe[0]->dentry = rpc_mkpipe_dentry(clnt->cl_dentry,
+-						      gss_auth->mech->gm_name,
+-						      clnt, gss_auth->pipe[0]);
+-	if (IS_ERR(gss_auth->pipe[0]->dentry)) {
+-		err = PTR_ERR(gss_auth->pipe[0]->dentry);
++	dentry = rpc_mkpipe_dentry(clnt->cl_dentry, "gssd",
++			clnt, gss_auth->pipe[1]);
++	if (IS_ERR(dentry)) {
++		err = PTR_ERR(dentry);
++		goto err;
++	}
++	gss_auth->pipe[1]->dentry = dentry;
++	dentry = rpc_mkpipe_dentry(clnt->cl_dentry, gss_auth->mech->gm_name,
++			clnt, gss_auth->pipe[0]);
++	if (IS_ERR(dentry)) {
++		err = PTR_ERR(dentry);
+ 		goto err_unlink_pipe_1;
+ 	}
+ 	return 0;
+ 
+ err_unlink_pipe_1:
+ 	rpc_unlink(gss_auth->pipe[1]->dentry);
++	gss_auth->pipe[1]->dentry = NULL;
++err:
+ 	return err;
+ }
+ 
+-- 
+1.8.3.1
 
-This all looks backwards-compatible, so I assume that "must" is only if
-you want this particular bug fixed.
-
-Applying for 3.12 absent any objections.
-
---b.
-
-> 
-> Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
-> ---
->  include/linux/sunrpc/cache.h | 22 ++++++++++++++++++++--
->  1 file changed, 20 insertions(+), 2 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-> index 6ce690d..437ddb6 100644
-> --- a/include/linux/sunrpc/cache.h
-> +++ b/include/linux/sunrpc/cache.h
-> @@ -264,12 +264,30 @@ static inline int get_uint(char **bpp, unsigned int *anint)
->  	return 0;
->  }
->  
-> +static inline int get_time(char **bpp, time_t *time)
-> +{
-> +	char buf[50];
-> +	long long ll;
-> +	int len = qword_get(bpp, buf, sizeof(buf));
-> +
-> +	if (len < 0)
-> +		return -EINVAL;
-> +	if (len == 0)
-> +		return -ENOENT;
-> +
-> +	if (kstrtoll(buf, 0, &ll))
-> +		return -EINVAL;
-> +
-> +	*time = (time_t)ll;
-> +	return 0;
-> +}
-> +
->  static inline time_t get_expiry(char **bpp)
->  {
-> -	int rv;
-> +	time_t rv;
->  	struct timespec boot;
->  
-> -	if (get_int(bpp, &rv))
-> +	if (get_time(bpp, &rv))
->  		return 0;
->  	if (rv < 0)
->  		return 0;
-> -- 
-> 1.8.3.1
-> 
