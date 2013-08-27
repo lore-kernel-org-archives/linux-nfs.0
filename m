@@ -1,303 +1,187 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:49414 "EHLO mx12.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:15345 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751791Ab3HTTfS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Aug 2013 15:35:18 -0400
+	id S1753190Ab3H0U7G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Aug 2013 16:59:06 -0400
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 04/16] NFS: Add event tracing for generic NFS lookups
-Date: Tue, 20 Aug 2013 15:35:00 -0400
-Message-ID: <1377027312-45957-5-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377027312-45957-4-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377027312-45957-1-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-2-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-3-git-send-email-Trond.Myklebust@netapp.com>
- <1377027312-45957-4-git-send-email-Trond.Myklebust@netapp.com>
+CC: <andros@netapp.com>
+Subject: [PATCH 15/15] RPCSEC_GSS: Share rpc_pipes when an rpc_clnt owns multiple rpcsec auth caches
+Date: Tue, 27 Aug 2013 16:58:52 -0400
+Message-ID: <1377637132-53318-15-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377637132-53318-14-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377637132-53318-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-13-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-14-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add tracepoints for lookup, lookup_revalidate and atomic_open
+Ensure that if an rpc_clnt owns more than one RPCSEC_GSS-based authentication
+mechanism, then those caches will share the same 'gssd' upcall pipe.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/dir.c      |   7 ++
- fs/nfs/nfstrace.c |   1 +
- fs/nfs/nfstrace.h | 195 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 203 insertions(+)
+ net/sunrpc/auth_gss/auth_gss.c | 79 ++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 68 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 4b822b7..f42879f 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1102,7 +1102,9 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 	if (IS_ERR(label))
- 		goto out_error;
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index b9674e3..67ada62 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -76,6 +76,7 @@ struct gss_pipe {
+ 	struct rpc_pipe *pipe;
+ 	struct rpc_clnt *clnt;
+ 	const char *name;
++	struct kref kref;
+ };
  
-+	trace_nfs_lookup_revalidate_enter(dir, dentry, flags);
- 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, label);
-+	trace_nfs_lookup_revalidate_exit(dir, dentry, flags, error);
- 	if (error)
- 		goto out_bad;
- 	if (nfs_compare_fh(NFS_FH(inode), fhandle))
-@@ -1315,6 +1317,7 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
+ struct gss_auth {
+@@ -832,10 +833,8 @@ static struct gss_pipe *gss_pipe_alloc(struct rpc_clnt *clnt,
+ 		const char *name,
+ 		const struct rpc_pipe_ops *upcall_ops)
+ {
+-	struct net *net = rpc_net_ns(clnt);
+ 	struct gss_pipe *ret = ERR_PTR(-ENOMEM);
+ 	struct gss_pipe *p;
+-	int err;
  
- 	parent = dentry->d_parent;
- 	/* Protect against concurrent sillydeletes */
-+	trace_nfs_lookup_enter(dir, dentry, flags);
- 	nfs_block_sillyrename(parent);
- 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, label);
- 	if (error == -ENOENT)
-@@ -1341,6 +1344,7 @@ no_entry:
- 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
- out_unblock_sillyrename:
- 	nfs_unblock_sillyrename(parent);
-+	trace_nfs_lookup_exit(dir, dentry, flags, error);
- 	nfs4_label_free(label);
- out:
- 	nfs_free_fattr(fattr);
-@@ -1451,12 +1455,14 @@ int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
- 	if (IS_ERR(ctx))
- 		goto out;
- 
-+	trace_nfs_atomic_open_enter(dir, ctx, open_flags);
- 	nfs_block_sillyrename(dentry->d_parent);
- 	inode = NFS_PROTO(dir)->open_context(dir, ctx, open_flags, &attr);
- 	nfs_unblock_sillyrename(dentry->d_parent);
- 	if (IS_ERR(inode)) {
- 		put_nfs_open_context(ctx);
- 		err = PTR_ERR(inode);
-+		trace_nfs_atomic_open_exit(dir, ctx, open_flags, err);
- 		switch (err) {
- 		case -ENOENT:
- 			d_drop(dentry);
-@@ -1477,6 +1483,7 @@ int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
+ 	p = kmalloc(sizeof(*ret), GFP_KERNEL);
+ 	if (p == NULL)
+@@ -847,20 +846,71 @@ static struct gss_pipe *gss_pipe_alloc(struct rpc_clnt *clnt,
  	}
+ 	p->name = name;
+ 	p->clnt = clnt;
++	kref_init(&p->kref);
+ 	rpc_init_pipe_dir_object(&ret->pdo,
+ 			&gss_pipe_dir_object_ops,
+ 			p);
+-	err = rpc_add_pipe_dir_object(net, &clnt->cl_pipedir_objects, &p->pdo);
+-	if (!err)
+-		return p;
+-	ret = ERR_PTR(err);
+-	rpc_destroy_pipe_data(p->pipe);
++	return p;
+ err_free_gss_pipe:
+ 	kfree(p);
+ err:
+ 	return ret;
+ }
  
- 	err = nfs_finish_open(ctx, ctx->dentry, file, open_flags, opened);
-+	trace_nfs_atomic_open_exit(dir, ctx, open_flags, err);
- out:
- 	return err;
++struct gss_alloc_pdo {
++	struct rpc_clnt *clnt;
++	const char *name;
++	const struct rpc_pipe_ops *upcall_ops;
++};
++
++static int gss_pipe_match_pdo(struct rpc_pipe_dir_object *pdo, void *data)
++{
++	struct gss_pipe *gss_pipe;
++	struct gss_alloc_pdo *args = data;
++
++	if (pdo->pdo_ops != &gss_pipe_dir_object_ops)
++		return 0;
++	gss_pipe = container_of(pdo, struct gss_pipe, pdo);
++	if (strcmp(gss_pipe->name, args->name) != 0)
++		return 0;
++	if (!kref_get_unless_zero(&gss_pipe->kref))
++		return 0;
++	return 1;
++}
++
++static struct rpc_pipe_dir_object *gss_pipe_alloc_pdo(void *data)
++{
++	struct gss_pipe *gss_pipe;
++	struct gss_alloc_pdo *args = data;
++
++	gss_pipe = gss_pipe_alloc(args->clnt, args->name, args->upcall_ops);
++	if (!IS_ERR(gss_pipe))
++		return &gss_pipe->pdo;
++	return NULL;
++}
++
++static struct gss_pipe *gss_pipe_get(struct rpc_clnt *clnt,
++		const char *name,
++		const struct rpc_pipe_ops *upcall_ops)
++{
++	struct net *net = rpc_net_ns(clnt);
++	struct rpc_pipe_dir_object *pdo;
++	struct gss_alloc_pdo args = {
++		.clnt = clnt,
++		.name = name,
++		.upcall_ops = upcall_ops,
++	};
++
++	pdo = rpc_find_or_alloc_pipe_dir_object(net,
++			&clnt->cl_pipedir_objects,
++			gss_pipe_match_pdo,
++			gss_pipe_alloc_pdo,
++			&args);
++	if (pdo != NULL)
++		return container_of(pdo, struct gss_pipe, pdo);
++	return ERR_PTR(-ENOMEM);
++}
++
+ static void __gss_pipe_free(struct gss_pipe *p)
+ {
+ 	struct rpc_clnt *clnt = p->clnt;
+@@ -873,10 +923,17 @@ static void __gss_pipe_free(struct gss_pipe *p)
+ 	kfree(p);
+ }
  
-diff --git a/fs/nfs/nfstrace.c b/fs/nfs/nfstrace.c
-index cc91461..4eb0aea 100644
---- a/fs/nfs/nfstrace.c
-+++ b/fs/nfs/nfstrace.c
-@@ -2,6 +2,7 @@
-  * Copyright (c) 2013 Trond Myklebust <Trond.Myklebust@netapp.com>
-  */
- #include <linux/nfs_fs.h>
-+#include <linux/namei.h>
- #include "internal.h"
++static void __gss_pipe_release(struct kref *kref)
++{
++	struct gss_pipe *p = container_of(kref, struct gss_pipe, kref);
++
++	__gss_pipe_free(p);
++}
++
+ static void gss_pipe_free(struct gss_pipe *p)
+ {
+ 	if (p != NULL)
+-		__gss_pipe_free(p);
++		kref_put(&p->kref, __gss_pipe_release);
+ }
  
- #define CREATE_TRACE_POINTS
-diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
-index 4b7ed62..74cd1d7 100644
---- a/fs/nfs/nfstrace.h
-+++ b/fs/nfs/nfstrace.h
-@@ -154,6 +154,201 @@ DEFINE_NFS_INODE_EVENT_DONE(nfs_fsync_exit);
- DEFINE_NFS_INODE_EVENT(nfs_access_enter);
- DEFINE_NFS_INODE_EVENT_DONE(nfs_access_exit);
+ /*
+@@ -932,14 +989,14 @@ gss_create(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
+ 	 * that we supported only the old pipe.  So we instead create
+ 	 * the new pipe first.
+ 	 */
+-	gss_pipe = gss_pipe_alloc(clnt, "gssd", &gss_upcall_ops_v1);
++	gss_pipe = gss_pipe_get(clnt, "gssd", &gss_upcall_ops_v1);
+ 	if (IS_ERR(gss_pipe)) {
+ 		err = PTR_ERR(gss_pipe);
+ 		goto err_destroy_credcache;
+ 	}
+ 	gss_auth->gss_pipe[1] = gss_pipe;
  
-+#define show_lookup_flags(flags) \
-+	__print_flags((unsigned long)flags, "|", \
-+			{ LOOKUP_AUTOMOUNT, "AUTOMOUNT" }, \
-+			{ LOOKUP_DIRECTORY, "DIRECTORY" }, \
-+			{ LOOKUP_OPEN, "OPEN" }, \
-+			{ LOOKUP_CREATE, "CREATE" }, \
-+			{ LOOKUP_EXCL, "EXCL" })
-+
-+DECLARE_EVENT_CLASS(nfs_lookup_event,
-+		TP_PROTO(
-+			const struct inode *dir,
-+			const struct dentry *dentry,
-+			unsigned int flags
-+		),
-+
-+		TP_ARGS(dir, dentry, flags),
-+
-+		TP_STRUCT__entry(
-+			__field(unsigned int, flags)
-+			__field(dev_t, dev)
-+			__field(u64, dir)
-+			__string(name, dentry->d_name.name)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->dev = dir->i_sb->s_dev;
-+			__entry->dir = NFS_FILEID(dir);
-+			__entry->flags = flags;
-+			__assign_str(name, dentry->d_name.name);
-+		),
-+
-+		TP_printk(
-+			"flags=%u (%s) name=%02x:%02x:%llu/%s",
-+			__entry->flags,
-+			show_lookup_flags(__entry->flags),
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->dir,
-+			__get_str(name)
-+		)
-+);
-+
-+#define DEFINE_NFS_LOOKUP_EVENT(name) \
-+	DEFINE_EVENT(nfs_lookup_event, name, \
-+			TP_PROTO( \
-+				const struct inode *dir, \
-+				const struct dentry *dentry, \
-+				unsigned int flags \
-+			), \
-+			TP_ARGS(dir, dentry, flags))
-+
-+DECLARE_EVENT_CLASS(nfs_lookup_event_done,
-+		TP_PROTO(
-+			const struct inode *dir,
-+			const struct dentry *dentry,
-+			unsigned int flags,
-+			int error
-+		),
-+
-+		TP_ARGS(dir, dentry, flags, error),
-+
-+		TP_STRUCT__entry(
-+			__field(int, error)
-+			__field(unsigned int, flags)
-+			__field(dev_t, dev)
-+			__field(u64, dir)
-+			__string(name, dentry->d_name.name)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->dev = dir->i_sb->s_dev;
-+			__entry->dir = NFS_FILEID(dir);
-+			__entry->error = error;
-+			__entry->flags = flags;
-+			__assign_str(name, dentry->d_name.name);
-+		),
-+
-+		TP_printk(
-+			"error=%d flags=%u (%s) name=%02x:%02x:%llu/%s",
-+			__entry->error,
-+			__entry->flags,
-+			show_lookup_flags(__entry->flags),
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->dir,
-+			__get_str(name)
-+		)
-+);
-+
-+#define DEFINE_NFS_LOOKUP_EVENT_DONE(name) \
-+	DEFINE_EVENT(nfs_lookup_event_done, name, \
-+			TP_PROTO( \
-+				const struct inode *dir, \
-+				const struct dentry *dentry, \
-+				unsigned int flags, \
-+				int error \
-+			), \
-+			TP_ARGS(dir, dentry, flags, error))
-+
-+DEFINE_NFS_LOOKUP_EVENT(nfs_lookup_enter);
-+DEFINE_NFS_LOOKUP_EVENT_DONE(nfs_lookup_exit);
-+DEFINE_NFS_LOOKUP_EVENT(nfs_lookup_revalidate_enter);
-+DEFINE_NFS_LOOKUP_EVENT_DONE(nfs_lookup_revalidate_exit);
-+
-+#define show_open_flags(flag) \
-+	__print_flags((unsigned long)flags, "|", \
-+		{ O_CREAT, "O_CREAT" }, \
-+		{ O_EXCL, "O_EXCL" }, \
-+		{ O_TRUNC, "O_TRUNC" }, \
-+		{ O_APPEND, "O_APPEND" }, \
-+		{ O_DSYNC, "O_DSYNC" }, \
-+		{ O_DIRECT, "O_DIRECT" }, \
-+		{ O_DIRECTORY, "O_DIRECTORY" })
-+
-+#define show_fmode_flags(fmode) \
-+	__print_flags((unsigned long)fmode, "|", \
-+		{ FMODE_READ, "READ" }, \
-+		{ FMODE_WRITE, "WRITE" }, \
-+		{ FMODE_EXEC, "EXEC" })
-+
-+TRACE_EVENT(nfs_atomic_open_enter,
-+		TP_PROTO(
-+			const struct inode *dir,
-+			const struct nfs_open_context *ctx,
-+			unsigned int flags
-+		),
-+
-+		TP_ARGS(dir, ctx, flags),
-+
-+		TP_STRUCT__entry(
-+			__field(unsigned int, flags)
-+			__field(fmode_t, fmode)
-+			__field(dev_t, dev)
-+			__field(u64, dir)
-+			__string(name, ctx->dentry->d_name.name)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->dev = dir->i_sb->s_dev;
-+			__entry->dir = NFS_FILEID(dir);
-+			__entry->flags = flags;
-+			__entry->fmode = ctx->mode;
-+			__assign_str(name, ctx->dentry->d_name.name);
-+		),
-+
-+		TP_printk(
-+			"flags=%u (%s) fmode=%s name=%02x:%02x:%llu/%s",
-+			__entry->flags,
-+			show_open_flags(__entry->flags),
-+			show_fmode_flags(__entry->fmode),
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->dir,
-+			__get_str(name)
-+		)
-+);
-+
-+TRACE_EVENT(nfs_atomic_open_exit,
-+		TP_PROTO(
-+			const struct inode *dir,
-+			const struct nfs_open_context *ctx,
-+			unsigned int flags,
-+			int error
-+		),
-+
-+		TP_ARGS(dir, ctx, flags, error),
-+
-+		TP_STRUCT__entry(
-+			__field(int, error)
-+			__field(unsigned int, flags)
-+			__field(fmode_t, fmode)
-+			__field(dev_t, dev)
-+			__field(u64, dir)
-+			__string(name, ctx->dentry->d_name.name)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->error = error;
-+			__entry->dev = dir->i_sb->s_dev;
-+			__entry->dir = NFS_FILEID(dir);
-+			__entry->flags = flags;
-+			__entry->fmode = ctx->mode;
-+			__assign_str(name, ctx->dentry->d_name.name);
-+		),
-+
-+		TP_printk(
-+			"error=%d flags=%u (%s) fmode=%s "
-+			"name=%02x:%02x:%llu/%s",
-+			__entry->error,
-+			__entry->flags,
-+			show_open_flags(__entry->flags),
-+			show_fmode_flags(__entry->fmode),
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->dir,
-+			__get_str(name)
-+		)
-+);
-+
- #endif /* _TRACE_NFS_H */
+-	gss_pipe = gss_pipe_alloc(clnt, gss_auth->mech->gm_name,
++	gss_pipe = gss_pipe_get(clnt, gss_auth->mech->gm_name,
+ 			&gss_upcall_ops_v0);
+ 	if (IS_ERR(gss_pipe)) {
+ 		err = PTR_ERR(gss_pipe);
+@@ -948,7 +1005,7 @@ gss_create(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
  
- #undef TRACE_INCLUDE_PATH
+ 	return auth;
+ err_destroy_pipe_1:
+-	__gss_pipe_free(gss_auth->gss_pipe[1]);
++	gss_pipe_free(gss_auth->gss_pipe[1]);
+ err_destroy_credcache:
+ 	rpcauth_destroy_credcache(auth);
+ err_put_mech:
 -- 
 1.8.3.1
 
