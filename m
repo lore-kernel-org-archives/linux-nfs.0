@@ -1,124 +1,298 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f51.google.com ([209.85.216.51]:56115 "EHLO
-	mail-qa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755010Ab3HBJC1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Aug 2013 05:02:27 -0400
-Received: by mail-qa0-f51.google.com with SMTP id f11so190318qae.3
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Aug 2013 02:02:26 -0700 (PDT)
+Received: from mx12.netapp.com ([216.240.18.77]:36416 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753466Ab3H0U7I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Aug 2013 16:59:08 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+CC: <andros@netapp.com>
+Subject: [PATCH 09/15] SUNRPC: Add a framework to clean up management of rpc_pipefs directories
+Date: Tue, 27 Aug 2013 16:58:46 -0400
+Message-ID: <1377637132-53318-9-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377637132-53318-8-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377637132-53318-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-8-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <51FAACD9.8020205@redhat.com>
-References: <20130725055209.GA15621@sh-el5.eng.rdu2.redhat.com>
-	<51F13948.3050100@redhat.com>
-	<CAJfpegtpcXz+i-3txRC_NjTsYjXP5S4oJUdGstG+-PWVzazEWQ@mail.gmail.com>
-	<51F81465.9010402@redhat.com>
-	<20130801163940.GA1356@tucsk.piliscsaba.szeredi.hu>
-	<51FAACD9.8020205@redhat.com>
-Date: Fri, 2 Aug 2013 11:02:25 +0200
-Message-ID: <CAJfpegu1RXAYOGWyuCeckJ8WHfK=3dFc5bm1zsM=1Qt3zcfbsg@mail.gmail.com>
-Subject: Re: [PATCH] [REPOST] fuse: drop dentry on failed revalidate
-From: Miklos Szeredi <miklos@szeredi.hu>
-To: Ric Wheeler <rwheeler@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Anand Avati <avati@redhat.com>, Brian Foster <bfoster@redhat.com>,
-        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-        Alexander Viro <aviro@redhat.com>, David Howells <dhowells@redhat.com>,
-        Eric Paris <eparis@redhat.com>,
-        Linux NFS list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 1, 2013 at 8:45 PM, Ric Wheeler <rwheeler@redhat.com> wrote:
->
-> Adding in the NFS list for broader review.
->
-> I thought that the issue was primarily in FUSE itself, not seen in practice
-> in NFS?
+The current system requires everyone to set up notifiers, manage directory
+locking, etc.
+What we really want to do is have the rpc_client create its directory,
+and then create all the entries.
 
-I haven't tested NFS (have but a single notebook here) but AFAICS the
-issue of not fuse specific but is inherent in the fact that NFS does
-d_drop() on a non-empty directory dentry.  It does check for submounts
-*before*, but it doesn't do anything about submounts *after* (or
-during) the d_drop().   It's probably not something people complain
-about, because they choose mountpoints to be pretty stable points in
-the tree that don't get removed or moved around.
+This patch will allow the RPCSEC_GSS and NFS code to register all the
+objects that they want to have appear in the directory, and then have
+the sunrpc code call them back to actually create/destroy their pipefs
+dentries when the rpc_client creates/destroys the parent.
 
-Thanks,
-Miklos
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ include/linux/sunrpc/clnt.h        |   2 +
+ include/linux/sunrpc/rpc_pipe_fs.h |  33 ++++++++-
+ net/sunrpc/clnt.c                  |   3 +-
+ net/sunrpc/rpc_pipe.c              | 134 ++++++++++++++++++++++++++++++++++++-
+ 4 files changed, 168 insertions(+), 4 deletions(-)
 
->>
->> diff --git a/fs/dcache.c b/fs/dcache.c
->> index 87bdb53..5c51217 100644
->> --- a/fs/dcache.c
->> +++ b/fs/dcache.c
->> @@ -1103,6 +1103,34 @@ rename_retry:
->>   }
->>   EXPORT_SYMBOL(have_submounts);
->>   +static bool __has_unlinked_ancestor(struct dentry *dentry)
->> +{
->> +       struct dentry *this;
->> +
->> +       for (this = dentry; !IS_ROOT(this); this = this->d_parent) {
->> +               if (d_unhashed(this))
->> +                       return true;
->> +       }
->> +       return false;
->> +}
->> +
->> +/*
->> + * Called by mount code to check if the mountpoint is reachable (e.g. NFS
->> can
->> + * unhash a directory dentry and then the complete subtree can become
->> + * unreachable).
->> + */
->> +bool has_unlinked_ancestor(struct dentry *dentry)
->> +{
->> +       bool found;
->> +
->> +       /* Need exclusion wrt. have_submounts() */
->> +       write_seqlock(&rename_lock);
->> +       found = __has_unlinked_ancestor(dentry);
->> +       write_sequnlock(&rename_lock);
->> +
->> +       return found;
->> +}
->> +
->>   /*
->>    * Search the dentry child list of the specified parent,
->>    * and move any unused dentries to the end of the unused
->> diff --git a/fs/internal.h b/fs/internal.h
->> index 7c5f01c..d232355 100644
->> --- a/fs/internal.h
->> +++ b/fs/internal.h
->> @@ -126,6 +126,7 @@ extern int invalidate_inodes(struct super_block *,
->> bool);
->>    * dcache.c
->>    */
->>   extern struct dentry *__d_alloc(struct super_block *, const struct qstr
->> *);
->> +extern bool has_unlinked_ancestor(struct dentry *dentry);
->>     /*
->>    * read_write.c
->> diff --git a/fs/namespace.c b/fs/namespace.c
->> index 7b1ca9b..bb92a9c 100644
->> --- a/fs/namespace.c
->> +++ b/fs/namespace.c
->> @@ -634,6 +634,15 @@ static struct mountpoint *new_mountpoint(struct
->> dentry *dentry)
->>         }
->>         dentry->d_flags |= DCACHE_MOUNTED;
->>         spin_unlock(&dentry->d_lock);
->> +
->> +       if (has_unlinked_ancestor(dentry)) {
->> +               spin_lock(&dentry->d_lock);
->> +               dentry->d_flags &= ~DCACHE_MOUNTED;
->> +               spin_unlock(&dentry->d_lock);
->> +               kfree(mp);
->> +               return ERR_PTR(-ENOENT);
->> +       }
->> +
->>         mp->m_dentry = dentry;
->>         mp->m_count = 1;
->>         list_add(&mp->m_hash, chain);
->
->
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index b93b4aa..0dccd01 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -21,6 +21,7 @@
+ #include <linux/sunrpc/stats.h>
+ #include <linux/sunrpc/xdr.h>
+ #include <linux/sunrpc/timer.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <asm/signal.h>
+ #include <linux/path.h>
+ #include <net/ipv6.h>
+@@ -55,6 +56,7 @@ struct rpc_clnt {
+ 
+ 	int			cl_nodelen;	/* nodename length */
+ 	char 			cl_nodename[UNX_MAXNODENAME];
++	struct rpc_pipe_dir_head cl_pipedir_objects;
+ 	struct dentry *		cl_dentry;
+ 	struct rpc_clnt *	cl_parent;	/* Points to parent of clones */
+ 	struct rpc_rtt		cl_rtt_default;
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index aa5b582..188e7fc 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -5,6 +5,26 @@
+ 
+ #include <linux/workqueue.h>
+ 
++struct rpc_pipe_dir_head {
++	struct list_head pdh_entries;
++	struct dentry *pdh_dentry;
++};
++
++struct rpc_pipe_dir_object_ops;
++struct rpc_pipe_dir_object {
++	struct list_head pdo_head;
++	const struct rpc_pipe_dir_object_ops *pdo_ops;
++
++	void *pdo_data;
++};
++
++struct rpc_pipe_dir_object_ops {
++	int (*create)(struct dentry *dir,
++			struct rpc_pipe_dir_object *pdo);
++	void (*destroy)(struct dentry *dir,
++			struct rpc_pipe_dir_object *pdo);
++};
++
+ struct rpc_pipe_msg {
+ 	struct list_head list;
+ 	void *data;
+@@ -74,7 +94,18 @@ extern int rpc_queue_upcall(struct rpc_pipe *, struct rpc_pipe_msg *);
+ 
+ struct rpc_clnt;
+ extern struct dentry *rpc_create_client_dir(struct dentry *, const char *, struct rpc_clnt *);
+-extern int rpc_remove_client_dir(struct dentry *);
++extern int rpc_remove_client_dir(struct dentry *, struct rpc_clnt *);
++
++extern void rpc_init_pipe_dir_head(struct rpc_pipe_dir_head *pdh);
++extern void rpc_init_pipe_dir_object(struct rpc_pipe_dir_object *pdo,
++		const struct rpc_pipe_dir_object_ops *pdo_ops,
++		void *pdo_data);
++extern int rpc_add_pipe_dir_object(struct net *net,
++		struct rpc_pipe_dir_head *pdh,
++		struct rpc_pipe_dir_object *pdo);
++extern void rpc_remove_pipe_dir_object(struct net *net,
++		struct rpc_pipe_dir_head *pdh,
++		struct rpc_pipe_dir_object *pdo);
+ 
+ struct cache_detail;
+ extern struct dentry *rpc_create_cache_dir(struct dentry *,
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 436adce..c736031 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -105,7 +105,7 @@ static void __rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
+ 	if (clnt->cl_dentry) {
+ 		if (clnt->cl_auth && clnt->cl_auth->au_ops->pipes_destroy)
+ 			clnt->cl_auth->au_ops->pipes_destroy(clnt->cl_auth);
+-		rpc_remove_client_dir(clnt->cl_dentry);
++		rpc_remove_client_dir(clnt->cl_dentry, clnt);
+ 	}
+ 	clnt->cl_dentry = NULL;
+ }
+@@ -351,6 +351,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 	clnt->cl_vers     = version->number;
+ 	clnt->cl_stats    = program->stats;
+ 	clnt->cl_metrics  = rpc_alloc_iostats(clnt);
++	rpc_init_pipe_dir_head(&clnt->cl_pipedir_objects);
+ 	err = -ENOMEM;
+ 	if (clnt->cl_metrics == NULL)
+ 		goto out_no_stats;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index b36bfb9..cfeba77 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -884,6 +884,124 @@ rpc_unlink(struct dentry *dentry)
+ }
+ EXPORT_SYMBOL_GPL(rpc_unlink);
+ 
++/**
++ * rpc_init_pipe_dir_head - initialise a struct rpc_pipe_dir_head
++ * @pdh: pointer to struct rpc_pipe_dir_head
++ */
++void rpc_init_pipe_dir_head(struct rpc_pipe_dir_head *pdh)
++{
++	INIT_LIST_HEAD(&pdh->pdh_entries);
++	pdh->pdh_dentry = NULL;
++}
++EXPORT_SYMBOL_GPL(rpc_init_pipe_dir_head);
++
++/**
++ * rpc_init_pipe_dir_object - initialise a struct rpc_pipe_dir_object
++ * @pdo: pointer to struct rpc_pipe_dir_object
++ * @pdo_ops: pointer to const struct rpc_pipe_dir_object_ops
++ * @pdo_data: pointer to caller-defined data
++ */
++void rpc_init_pipe_dir_object(struct rpc_pipe_dir_object *pdo,
++		const struct rpc_pipe_dir_object_ops *pdo_ops,
++		void *pdo_data)
++{
++	INIT_LIST_HEAD(&pdo->pdo_head);
++	pdo->pdo_ops = pdo_ops;
++	pdo->pdo_data = pdo_data;
++}
++EXPORT_SYMBOL_GPL(rpc_init_pipe_dir_object);
++
++static int
++rpc_add_pipe_dir_object_locked(struct net *net,
++		struct rpc_pipe_dir_head *pdh,
++		struct rpc_pipe_dir_object *pdo)
++{
++	int ret = 0;
++
++	if (pdh->pdh_dentry)
++		ret = pdo->pdo_ops->create(pdh->pdh_dentry, pdo);
++	if (ret == 0)
++		list_add_tail(&pdo->pdo_head, &pdh->pdh_entries);
++	return ret;
++}
++
++static void
++rpc_remove_pipe_dir_object_locked(struct net *net,
++		struct rpc_pipe_dir_head *pdh,
++		struct rpc_pipe_dir_object *pdo)
++{
++	if (pdh->pdh_dentry)
++		pdo->pdo_ops->destroy(pdh->pdh_dentry, pdo);
++	list_del_init(&pdo->pdo_head);
++}
++
++/**
++ * rpc_add_pipe_dir_object - associate a rpc_pipe_dir_object to a directory
++ * @net: pointer to struct net
++ * @pdh: pointer to struct rpc_pipe_dir_head
++ * @pdo: pointer to struct rpc_pipe_dir_object
++ *
++ */
++int
++rpc_add_pipe_dir_object(struct net *net,
++		struct rpc_pipe_dir_head *pdh,
++		struct rpc_pipe_dir_object *pdo)
++{
++	int ret = 0;
++
++	if (list_empty(&pdo->pdo_head)) {
++		struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++
++		mutex_lock(&sn->pipefs_sb_lock);
++		ret = rpc_add_pipe_dir_object_locked(net, pdh, pdo);
++		mutex_unlock(&sn->pipefs_sb_lock);
++	}
++	return ret;
++}
++EXPORT_SYMBOL_GPL(rpc_add_pipe_dir_object);
++
++/**
++ * rpc_remove_pipe_dir_object - remove a rpc_pipe_dir_object from a directory
++ * @net: pointer to struct net
++ * @pdh: pointer to struct rpc_pipe_dir_head
++ * @pdo: pointer to struct rpc_pipe_dir_object
++ *
++ */
++void
++rpc_remove_pipe_dir_object(struct net *net,
++		struct rpc_pipe_dir_head *pdh,
++		struct rpc_pipe_dir_object *pdo)
++{
++	if (!list_empty(&pdo->pdo_head)) {
++		struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++
++		mutex_lock(&sn->pipefs_sb_lock);
++		rpc_remove_pipe_dir_object_locked(net, pdh, pdo);
++		mutex_unlock(&sn->pipefs_sb_lock);
++	}
++}
++EXPORT_SYMBOL_GPL(rpc_remove_pipe_dir_object);
++
++static void
++rpc_create_pipe_dir_objects(struct rpc_pipe_dir_head *pdh)
++{
++	struct rpc_pipe_dir_object *pdo;
++	struct dentry *dir = pdh->pdh_dentry;
++
++	list_for_each_entry(pdo, &pdh->pdh_entries, pdo_head)
++		pdo->pdo_ops->create(dir, pdo);
++}
++
++static void
++rpc_destroy_pipe_dir_objects(struct rpc_pipe_dir_head *pdh)
++{
++	struct rpc_pipe_dir_object *pdo;
++	struct dentry *dir = pdh->pdh_dentry;
++
++	list_for_each_entry(pdo, &pdh->pdh_entries, pdo_head)
++		pdo->pdo_ops->destroy(dir, pdo);
++}
++
+ enum {
+ 	RPCAUTH_info,
+ 	RPCAUTH_EOF
+@@ -924,16 +1042,28 @@ struct dentry *rpc_create_client_dir(struct dentry *dentry,
+ 				   const char *name,
+ 				   struct rpc_clnt *rpc_client)
+ {
+-	return rpc_mkdir_populate(dentry, name, S_IRUGO | S_IXUGO, NULL,
++	struct dentry *ret;
++
++	ret = rpc_mkdir_populate(dentry, name, S_IRUGO | S_IXUGO, NULL,
+ 			rpc_clntdir_populate, rpc_client);
++	if (!IS_ERR(ret)) {
++		rpc_client->cl_pipedir_objects.pdh_dentry = ret;
++		rpc_create_pipe_dir_objects(&rpc_client->cl_pipedir_objects);
++	}
++	return ret;
+ }
+ 
+ /**
+  * rpc_remove_client_dir - Remove a directory created with rpc_create_client_dir()
+  * @dentry: dentry for the pipe
++ * @rpc_client: rpc_client for the pipe
+  */
+-int rpc_remove_client_dir(struct dentry *dentry)
++int rpc_remove_client_dir(struct dentry *dentry, struct rpc_clnt *rpc_client)
+ {
++	if (rpc_client->cl_pipedir_objects.pdh_dentry) {
++		rpc_destroy_pipe_dir_objects(&rpc_client->cl_pipedir_objects);
++		rpc_client->cl_pipedir_objects.pdh_dentry = NULL;
++	}
+ 	return rpc_rmdir_depopulate(dentry, rpc_clntdir_depopulate);
+ }
+ 
+-- 
+1.8.3.1
+
