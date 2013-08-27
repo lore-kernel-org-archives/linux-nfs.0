@@ -1,203 +1,151 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:24004 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:15345 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753935Ab3HXK5J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 24 Aug 2013 06:57:09 -0400
-Date: Sat, 24 Aug 2013 06:57:06 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Simo Sorce <simo@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        Jan Stancek <jstancek@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH v3] SUNRPC: Ensure that the RPCSEC_GSS daemon uses the
- correct service names
-Message-ID: <20130824065706.7bf780e8@tlielax.poochiereds.net>
-In-Reply-To: <1377320162.2814.331.camel@willson.li.ssimo.org>
-References: <1377202213-5031-1-git-send-email-jlayton@redhat.com>
-	<1377320162.2814.331.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1753169Ab3H0U7F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Aug 2013 16:59:05 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+CC: <andros@netapp.com>
+Subject: [PATCH 13/15] SUNRPC: Remove the rpc_client->cl_dentry
+Date: Tue, 27 Aug 2013 16:58:50 -0400
+Message-ID: <1377637132-53318-13-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377637132-53318-12-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377637132-53318-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1377637132-53318-12-git-send-email-Trond.Myklebust@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 24 Aug 2013 00:56:02 -0400
-Simo Sorce <simo@redhat.com> wrote:
+It is now redundant.
 
-> On Thu, 2013-08-22 at 16:10 -0400, Jeff Layton wrote:
-> > From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > 
-> > v2: added pipe_dir_name field to nfsacl program to fix v3+krb5
-> >     (Should we add pipe_dir_name fields to other programs too?).
-> > 
-> > v3: Drop changes to gss_encode_v1_msg. They don't seem to be
-> >     needed since gssd scrapes that out of the "info" file.
-> > 
-> > Fix the upcalls to use the right service names for gssd.  The old
-> > version of the rpc.gssd upcall expects the service name to be either
-> > "nfs" or "nfs4_cb", which it will then concatenate with the server name
-> > to create a target name of nfs@<server> or nfs4_cb@<server>
-> 
-> I've never seen anyone deply keytabs with nfs4_cb/fqdn service names,
-> what are you trying to do here exactly ?
-> 
-> Afaik the only service names used historically have been host/ and nfs/
-> and in some rare cases root/
-> 
-> Also the patch seem to add a bunch of other 'service' names ? If you are
-> going to kerberize those services are you going to expect admins to drop
-> multiple keys down in the keytabs ? What is the exact intent here ?
-> 
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ include/linux/sunrpc/clnt.h        |  1 -
+ include/linux/sunrpc/rpc_pipe_fs.h |  2 +-
+ net/sunrpc/clnt.c                  | 24 +++++++++++++-----------
+ net/sunrpc/rpc_pipe.c              | 13 +++++++------
+ 4 files changed, 21 insertions(+), 19 deletions(-)
 
-Mostly, I'm trying to ensure that the nfsacl service uses a nfs/
-principal to fix the immediate pain point that nfsv3+krb5 doesn't work.
-With the rest, I was mainly trusting that Trond knew what he was
-doing. ;)
-
-I agree though...I've never seen a nfs4_cb/ principal in use, and I'm
-not sure that we'd really get a lot of value from using a separate
-principal for callbacks. Perhaps we should just hardcode "nfs" as the
-service= parm in the "info" file for now?
-
-Longer term, I think it's time to start a serious re-think of this
-upcall. Having to have a running daemon for this sucks, particularly
-now that you end up with a 15s delay on the first mount attempt when
-it's not. This sort of use-case was the original idea behind the keys
-API -- maybe it's time to figure out how to make that transition?
-
-> > Finally, make sure that we set the correct service names for lockd,
-> > statd and mountd in case we want to convert those to use rpcsec_gss at
-> > some point in the future.
-> > 
-> > Fix the upcalls to use the right service names for gssd.  The old
-> > version of the rpc.gssd upcall expects the service name to be either
-> > "nfs" or "nfs4_cb", which it will then concatenate with the server name
-> > to create a target name of nfs@<server> or nfs4_cb@<server>
-> > 
-> > Finally, make sure that we set the correct service names for lockd,
-> > statd and mountd in case we want to convert those to use rpcsec_gss at
-> > some point in the future.
-> > 
-> > Cc: Jan Stancek <jstancek@redhat.com>
-> > Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > ---
-> >  fs/lockd/clntxdr.c          | 1 +
-> >  fs/lockd/mon.c              | 1 +
-> >  fs/nfs/client.c             | 1 +
-> >  fs/nfs/mount_clnt.c         | 1 +
-> >  fs/nfs/nfs3client.c         | 2 ++
-> >  fs/nfsd/nfs4callback.c      | 1 +
-> >  include/linux/sunrpc/clnt.h | 1 +
-> >  net/sunrpc/rpc_pipe.c       | 3 ++-
-> >  8 files changed, 10 insertions(+), 1 deletion(-)
-> > 
-> > diff --git a/fs/lockd/clntxdr.c b/fs/lockd/clntxdr.c
-> > index 9a55797..18d0c34 100644
-> > --- a/fs/lockd/clntxdr.c
-> > +++ b/fs/lockd/clntxdr.c
-> > @@ -612,6 +612,7 @@ static struct rpc_stat		nlm_rpc_stats;
-> >  
-> >  const struct rpc_program	nlm_program = {
-> >  		.name		= "lockd",
-> > +		.service_name	= "nlockmgr",
-> >  		.number		= NLM_PROGRAM,
-> >  		.nrvers		= ARRAY_SIZE(nlm_versions),
-> >  		.version	= nlm_versions,
-> > diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-> > index 1812f02..1ac10f4 100644
-> > --- a/fs/lockd/mon.c
-> > +++ b/fs/lockd/mon.c
-> > @@ -606,6 +606,7 @@ static struct rpc_stat		nsm_stats;
-> >  
-> >  static const struct rpc_program nsm_program = {
-> >  		.name		= "statd",
-> > +		.service_name	= "status",
-> >  		.number		= NSM_PROGRAM,
-> >  		.nrvers		= ARRAY_SIZE(nsm_version),
-> >  		.version	= nsm_version,
-> > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> > index 340b1ef..9fb1050 100644
-> > --- a/fs/nfs/client.c
-> > +++ b/fs/nfs/client.c
-> > @@ -72,6 +72,7 @@ static const struct rpc_version *nfs_version[5] = {
-> >  
-> >  const struct rpc_program nfs_program = {
-> >  	.name			= "nfs",
-> > +	.service_name		= "nfs",
-> >  	.number			= NFS_PROGRAM,
-> >  	.nrvers			= ARRAY_SIZE(nfs_version),
-> >  	.version		= nfs_version,
-> > diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-> > index 99a4528..5f1a888 100644
-> > --- a/fs/nfs/mount_clnt.c
-> > +++ b/fs/nfs/mount_clnt.c
-> > @@ -528,6 +528,7 @@ static struct rpc_stat mnt_stats;
-> >  
-> >  static const struct rpc_program mnt_program = {
-> >  	.name		= "mount",
-> > +	.service_name	= "mountd",
-> >  	.number		= NFS_MNT_PROGRAM,
-> >  	.nrvers		= ARRAY_SIZE(mnt_version),
-> >  	.version	= mnt_version,
-> > diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
-> > index b3fc65e..b61de6b 100644
-> > --- a/fs/nfs/nfs3client.c
-> > +++ b/fs/nfs/nfs3client.c
-> > @@ -10,10 +10,12 @@ static const struct rpc_version *nfsacl_version[] = {
-> >  
-> >  const struct rpc_program nfsacl_program = {
-> >  	.name			= "nfsacl",
-> > +	.service_name		= "nfs",
-> >  	.number			= NFS_ACL_PROGRAM,
-> >  	.nrvers			= ARRAY_SIZE(nfsacl_version),
-> >  	.version		= nfsacl_version,
-> >  	.stats			= &nfsacl_rpcstat,
-> > +	.pipe_dir_name		= "nfs",
-> >  };
-> >  
-> >  /*
-> > diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> > index 7f05cd1..2962890 100644
-> > --- a/fs/nfsd/nfs4callback.c
-> > +++ b/fs/nfsd/nfs4callback.c
-> > @@ -596,6 +596,7 @@ static struct rpc_stat cb_stats = {
-> >  #define NFS4_CALLBACK 0x40000000
-> >  static const struct rpc_program cb_program = {
-> >  	.name			= "nfs4_cb",
-> > +	.service_name		= "nfs4_cb",
-> >  	.number			= NFS4_CALLBACK,
-> >  	.nrvers			= ARRAY_SIZE(nfs_cb_version),
-> >  	.version		= nfs_cb_version,
-> > diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-> > index bfe11be..d902c55 100644
-> > --- a/include/linux/sunrpc/clnt.h
-> > +++ b/include/linux/sunrpc/clnt.h
-> > @@ -70,6 +70,7 @@ struct rpc_clnt {
-> >  #define RPC_MAXVERSION		4
-> >  struct rpc_program {
-> >  	const char *		name;		/* protocol name */
-> > +	const char *		service_name;	/* protocol service name */
-> >  	u32			number;		/* program number */
-> >  	unsigned int		nrvers;		/* number of versions */
-> >  	const struct rpc_version **	version;	/* version array */
-> > diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-> > index 406859c..83b196d 100644
-> > --- a/net/sunrpc/rpc_pipe.c
-> > +++ b/net/sunrpc/rpc_pipe.c
-> > @@ -409,7 +409,8 @@ rpc_show_info(struct seq_file *m, void *v)
-> >  	rcu_read_lock();
-> >  	seq_printf(m, "RPC server: %s\n",
-> >  			rcu_dereference(clnt->cl_xprt)->servername);
-> > -	seq_printf(m, "service: %s (%d) version %d\n", clnt->cl_protname,
-> > +	seq_printf(m, "service: %s (%d) version %d\n",
-> > +			clnt->cl_program->service_name,
-> >  			clnt->cl_prog, clnt->cl_vers);
-> >  	seq_printf(m, "address: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_ADDR));
-> >  	seq_printf(m, "protocol: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_PROTO));
-> 
-> 
-
-
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 0dccd01..76c0bf6 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -57,7 +57,6 @@ struct rpc_clnt {
+ 	int			cl_nodelen;	/* nodename length */
+ 	char 			cl_nodename[UNX_MAXNODENAME];
+ 	struct rpc_pipe_dir_head cl_pipedir_objects;
+-	struct dentry *		cl_dentry;
+ 	struct rpc_clnt *	cl_parent;	/* Points to parent of clones */
+ 	struct rpc_rtt		cl_rtt_default;
+ 	struct rpc_timeout	cl_timeout_default;
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index 188e7fc..b0cf181 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -94,7 +94,7 @@ extern int rpc_queue_upcall(struct rpc_pipe *, struct rpc_pipe_msg *);
+ 
+ struct rpc_clnt;
+ extern struct dentry *rpc_create_client_dir(struct dentry *, const char *, struct rpc_clnt *);
+-extern int rpc_remove_client_dir(struct dentry *, struct rpc_clnt *);
++extern int rpc_remove_client_dir(struct rpc_clnt *);
+ 
+ extern void rpc_init_pipe_dir_head(struct rpc_pipe_dir_head *pdh);
+ extern void rpc_init_pipe_dir_object(struct rpc_pipe_dir_object *pdo,
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index e60b135..f1c3896 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -102,9 +102,7 @@ static void rpc_unregister_client(struct rpc_clnt *clnt)
+ 
+ static void __rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
+ {
+-	if (clnt->cl_dentry)
+-		rpc_remove_client_dir(clnt->cl_dentry, clnt);
+-	clnt->cl_dentry = NULL;
++	rpc_remove_client_dir(clnt);
+ }
+ 
+ static void rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
+@@ -154,21 +152,26 @@ rpc_setup_pipedir(struct super_block *pipefs_sb, struct rpc_clnt *clnt)
+ {
+ 	struct dentry *dentry;
+ 
+-	clnt->cl_dentry = NULL;
+ 	dentry = rpc_setup_pipedir_sb(pipefs_sb, clnt);
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+-	clnt->cl_dentry = dentry;
+ 	return 0;
+ }
+ 
+ static inline int rpc_clnt_skip_event(struct rpc_clnt *clnt, unsigned long event)
+ {
+-	if (((event == RPC_PIPEFS_MOUNT) && clnt->cl_dentry) ||
+-	    ((event == RPC_PIPEFS_UMOUNT) && !clnt->cl_dentry))
+-		return 1;
+-	if ((event == RPC_PIPEFS_MOUNT) && atomic_read(&clnt->cl_count) == 0)
+-		return 1;
++	switch (event) {
++	case RPC_PIPEFS_MOUNT:
++		if (clnt->cl_pipedir_objects.pdh_dentry != NULL)
++			return 1;
++		if (atomic_read(&clnt->cl_count) == 0)
++			return 1;
++		break;
++	case RPC_PIPEFS_UMOUNT:
++		if (clnt->cl_pipedir_objects.pdh_dentry == NULL)
++			return 1;
++		break;
++	}
+ 	return 0;
+ }
+ 
+@@ -185,7 +188,6 @@ static int __rpc_clnt_handle_event(struct rpc_clnt *clnt, unsigned long event,
+ 			return -ENOENT;
+ 		if (IS_ERR(dentry))
+ 			return PTR_ERR(dentry);
+-		clnt->cl_dentry = dentry;
+ 		break;
+ 	case RPC_PIPEFS_UMOUNT:
+ 		__rpc_clnt_remove_pipedir(clnt);
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index cfeba77..a35b2f4 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -1055,15 +1055,16 @@ struct dentry *rpc_create_client_dir(struct dentry *dentry,
+ 
+ /**
+  * rpc_remove_client_dir - Remove a directory created with rpc_create_client_dir()
+- * @dentry: dentry for the pipe
+  * @rpc_client: rpc_client for the pipe
+  */
+-int rpc_remove_client_dir(struct dentry *dentry, struct rpc_clnt *rpc_client)
++int rpc_remove_client_dir(struct rpc_clnt *rpc_client)
+ {
+-	if (rpc_client->cl_pipedir_objects.pdh_dentry) {
+-		rpc_destroy_pipe_dir_objects(&rpc_client->cl_pipedir_objects);
+-		rpc_client->cl_pipedir_objects.pdh_dentry = NULL;
+-	}
++	struct dentry *dentry = rpc_client->cl_pipedir_objects.pdh_dentry;
++
++	if (dentry == NULL)
++		return 0;
++	rpc_destroy_pipe_dir_objects(&rpc_client->cl_pipedir_objects);
++	rpc_client->cl_pipedir_objects.pdh_dentry = NULL;
+ 	return rpc_rmdir_depopulate(dentry, rpc_clntdir_depopulate);
+ }
+ 
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.8.3.1
+
