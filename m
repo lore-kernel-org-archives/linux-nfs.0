@@ -1,83 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50882 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753087Ab3HASgA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Aug 2013 14:36:00 -0400
-Date: Thu, 1 Aug 2013 14:35:59 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: SP4_MACH_CRED
-Message-ID: <20130801183559.GA17581@fieldses.org>
-References: <A0A1021A-64E6-4E0C-89A5-9F719C8E1AFC@netapp.com>
- <20130731213904.GB2668@fieldses.org>
- <75E5568D-320C-45A1-B7E6-23CE73217BAF@netapp.com>
- <20130731234800.GC2668@fieldses.org>
- <0E0FF4CB-4388-417B-9D1C-24940472D844@netapp.com>
- <47D6EDEC-B91A-446F-A227-FDA9D37DB618@netapp.com>
- <20130801145617.GA15123@fieldses.org>
- <88EAD768-768D-43A3-8E4D-D9B904C0283C@netapp.com>
+Received: from hqemgate16.nvidia.com ([216.228.121.65]:14199 "EHLO
+	hqemgate16.nvidia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753078Ab3H1TkT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Aug 2013 15:40:19 -0400
+From: Matt Craighead <mcraighead@nvidia.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, Mark Young <MYoung@nvidia.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Wed, 28 Aug 2013 12:40:19 -0700
+Subject: RE: Issue found with kernel/net/sunrpc/xdr.c
+Message-ID: <71D0C6F08977AC42A3EF66AA1BEB0F10A11801AF9E@HQMAIL02.nvidia.com>
+References: <1FC56210173BB445BD77F608D6FB8D03620A9978B5@HQMAIL03.nvidia.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA94677C96F@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20130828143256.GA2960@fieldses.org>
+	 <71D0C6F08977AC42A3EF66AA1BEB0F10A11801ADF5@HQMAIL02.nvidia.com>
+	 <1377712295.15144.1.camel@leira.trondhjem.org>
+	 <71D0C6F08977AC42A3EF66AA1BEB0F10A11801AF5E@HQMAIL02.nvidia.com>
+ <1377718761.15144.3.camel@leira.trondhjem.org>
+In-Reply-To: <1377718761.15144.3.camel@leira.trondhjem.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <88EAD768-768D-43A3-8E4D-D9B904C0283C@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 01, 2013 at 03:24:05PM +0000, Adamson, Dros wrote:
-> 
-> On Aug 1, 2013, at 10:56 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> 
-> > On Thu, Aug 01, 2013 at 02:09:49PM +0000, Adamson, Dros wrote:
-> >> 
-> >> On Aug 1, 2013, at 10:03 AM, "Adamson, Dros" <Weston.Adamson@netapp.com>
-> >> wrote:
-> >> 
-> >>> 
-> >>> On Jul 31, 2013, at 7:48 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >>> 
-> >>>> On Wed, Jul 31, 2013 at 10:22:22PM +0000, Adamson, Dros wrote:
-> >>>>> 
-> >>>>> On Jul 31, 2013, at 5:39 PM, "J. Bruce Fields" <bfields@fieldses.org>
-> >>>>> wrote:
-> >>>>> 
-> >>>>>> This should probably be cc'd to the mailing list.
-> >>>>> 
-> >>>>> Agreed!
-> >>>>> 
-> >>>>>> 
-> >>>>>> On Wed, Jul 31, 2013 at 09:25:29PM +0000, Adamson, Dros wrote:
-> >>>>>>> I have a pretty functional client-side SP4_MACH_CRED implementation
-> >>>>>>> and I'm trying to implement the server side so I can fully test the
-> >>>>>>> client code. I was testing against another server, but that didn't
-> >>>>>>> implement any useful set of operations other than the required ones.
-> >>>>>> 
-> >>>>>> The latest Linux server implements SP4_MACH_CRED but only for the
-> >>>>>> required operations.  (But that hasn't really been tested--any testing
-> >>>>>> even to make sure that basic stuff works would be welcomed.)
-> >>>>>> 
-> >>>>> 
-> >>>>> Right, I'm happy to report that the initial implementation of the required operations seems to work with (at least) one small patch I'll send your way soon.
-> > 
-> > (And I think I forgot to say thanks here!  It's useful to have that
-> > tested.)
-> 
-> I should note it's somewhat useless to use SP4_MACH_CRED in this way from the linux client's perspective. We already use the machine cred with krb5i if possible for state manager ops even in SP4_NONE mode.
-
-Without SP4_MACH_CRED anyone can e.g. destroy your client using just
-auth_sys.
-
-On its own all the use of krb5i really does is reassure you that your
-rpc replies are from the server.
-
-> > 	- user credentials go away before they're expected to expire.
-> > 	(I wonder how this would typically happen?)
-> 
-> I don't believe this can happen yet.  IIRC a kdestroy isn't noticed by
-> gssd, but this is probably going to change soon with Andy's keyring
-> work, so it'd be nice to plan for it.
-
-Yes.  I wonder if you could also take advantage of Andy's expiring-cred
-emergency mode here?  So when you get the kdestroy notification, you
-could try to flush writes before destroying contexts.
-
---b.
+U3VyZSwgZ28gYWhlYWQuICBUaGFua3MhDQoNCi0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQpG
+cm9tOiBNeWtsZWJ1c3QsIFRyb25kIFttYWlsdG86VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb21d
+IA0KU2VudDogV2VkbmVzZGF5LCBBdWd1c3QgMjgsIDIwMTMgMjozOSBQTQ0KVG86IE1hdHQgQ3Jh
+aWdoZWFkDQpDYzogSi4gQnJ1Y2UgRmllbGRzOyBNYXJrIFlvdW5nOyBsaW51eC1uZnNAdmdlci5r
+ZXJuZWwub3JnDQpTdWJqZWN0OiBSZTogSXNzdWUgZm91bmQgd2l0aCBrZXJuZWwvbmV0L3N1bnJw
+Yy94ZHIuYw0KDQpPbiBXZWQsIDIwMTMtMDgtMjggYXQgMTE6NTMgLTA3MDAsIE1hdHQgQ3JhaWdo
+ZWFkIHdyb3RlOg0KPiBUcm9uZCwgSSd2ZSBqdXN0IG5vdyBjb21wbGV0ZWQgdGVzdGluZyBvZiB5
+b3VyIHBhdGNoIC0tIGl0IGRlZmluaXRlbHkgZml4ZXMgdGhlIGNvcnJ1cHRpb24gaXNzdWUuDQo+
+IA0KPiBBbHNvLCB5b3VyIHBhdGNoIGlzIGNsZWFuZXIgYW5kIHByb2JhYmx5IG1vcmUgZWZmaWNp
+ZW50IHRoYW4gb3Vycy4NCj4gDQo+IExldCBtZSBhbmQgTWFyayBrbm93IGlmIHlvdSBuZWVkIGFu
+eXRoaW5nIGVsc2UgZnJvbSB1cyBvbiB0aGlzIGlzc3VlIC0tIHRoYW5rcyBmb3IgeW91ciBoZWxw
+IQ0KDQpUaGFua3MgTUF0dCEgRG8geW91IG1pbmQgaWYgSSBhZGQgYSAnVGVzdGVkLWJ5OiBNYXR0
+IENyYWlnaGVhZCcgbGluZT8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGll
+bnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cu
+bmV0YXBwLmNvbQ0KDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KVGhpcyBlbWFpbCBtZXNz
+YWdlIGlzIGZvciB0aGUgc29sZSB1c2Ugb2YgdGhlIGludGVuZGVkIHJlY2lwaWVudChzKSBhbmQg
+bWF5IGNvbnRhaW4NCmNvbmZpZGVudGlhbCBpbmZvcm1hdGlvbi4gIEFueSB1bmF1dGhvcml6ZWQg
+cmV2aWV3LCB1c2UsIGRpc2Nsb3N1cmUgb3IgZGlzdHJpYnV0aW9uDQppcyBwcm9oaWJpdGVkLiAg
+SWYgeW91IGFyZSBub3QgdGhlIGludGVuZGVkIHJlY2lwaWVudCwgcGxlYXNlIGNvbnRhY3QgdGhl
+IHNlbmRlciBieQ0KcmVwbHkgZW1haWwgYW5kIGRlc3Ryb3kgYWxsIGNvcGllcyBvZiB0aGUgb3Jp
+Z2luYWwgbWVzc2FnZS4NCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo=
