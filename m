@@ -1,353 +1,298 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39250 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:65371 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753344Ab3H0P0j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Aug 2013 11:26:39 -0400
-Date: Tue, 27 Aug 2013 11:26:37 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Shyam Kaushik <shyamnfs1@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFSD server is constantly returning nfserr_bad_stateid on 3.2
- kernel
-Message-ID: <20130827152637.GC14809@fieldses.org>
-References: <CA+uAZNMXLXcV6VNqOqVJEbOoKwj-fdmBp4mLz25W7nRxaB9A9w@mail.gmail.com>
- <CA+uAZNMgUQ7mWQOeD4EGcgWfwhUFeaBrXregUmbNP15gt2-yjw@mail.gmail.com>
- <20130625212137.GF17511@fieldses.org>
- <CA+uAZNO-C2MOOFhVwAEwU_WineaCNTuRpzdG_8+mHU_BSnrkdw@mail.gmail.com>
- <20130813115213.GG2395@fieldses.org>
- <CA+uAZNMj3C2JqJXXV7zePS7L_oasXH6AVkps9HEq7gLqcJqVhA@mail.gmail.com>
- <20130813180333.GB17781@fieldses.org>
- <CA+uAZNMJx=V-1=DHBuC1+n8+yD7MbpP6Oq2Q+NWshhCuTSwkNQ@mail.gmail.com>
+	id S1754332Ab3H1Tkh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Aug 2013 15:40:37 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+CC: <andros@netapp.com>
+Subject: [PATCH v2 09/16] SUNRPC: Add a framework to clean up management of rpc_pipefs directories
+Date: Wed, 28 Aug 2013 15:40:14 -0400
+Message-ID: <1377718821-28159-9-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377718821-28159-8-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377718821-28159-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-8-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <CA+uAZNMJx=V-1=DHBuC1+n8+yD7MbpP6Oq2Q+NWshhCuTSwkNQ@mail.gmail.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 14, 2013 at 11:04:47AM +0530, Shyam Kaushik wrote:
-> Hi Bruce,
-> 
-> I did a minor NFSD only correction in the version we use & this works perfect.
+The current system requires everyone to set up notifiers, manage directory
+locking, etc.
+What we really want to do is have the rpc_client create its directory,
+and then create all the entries.
 
-Thanks, looks reasonable.
+This patch will allow the RPCSEC_GSS and NFS code to register all the
+objects that they want to have appear in the directory, and then have
+the sunrpc code call them back to actually create/destroy their pipefs
+dentries when the rpc_client creates/destroys the parent.
 
-I'm not clear whether this fits the stable kernels.  But see
-Documentation/SubmittingPatches and
-Documentation/stable_kernel_rules.txt if you'd like to give it a try.
-Leave me on the cc: and I can ACK it.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ include/linux/sunrpc/clnt.h        |   2 +
+ include/linux/sunrpc/rpc_pipe_fs.h |  33 ++++++++-
+ net/sunrpc/clnt.c                  |   3 +-
+ net/sunrpc/rpc_pipe.c              | 134 ++++++++++++++++++++++++++++++++++++-
+ 4 files changed, 168 insertions(+), 4 deletions(-)
 
---b.
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index b93b4aa..0dccd01 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -21,6 +21,7 @@
+ #include <linux/sunrpc/stats.h>
+ #include <linux/sunrpc/xdr.h>
+ #include <linux/sunrpc/timer.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <asm/signal.h>
+ #include <linux/path.h>
+ #include <net/ipv6.h>
+@@ -55,6 +56,7 @@ struct rpc_clnt {
+ 
+ 	int			cl_nodelen;	/* nodename length */
+ 	char 			cl_nodename[UNX_MAXNODENAME];
++	struct rpc_pipe_dir_head cl_pipedir_objects;
+ 	struct dentry *		cl_dentry;
+ 	struct rpc_clnt *	cl_parent;	/* Points to parent of clones */
+ 	struct rpc_rtt		cl_rtt_default;
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index aa5b582..188e7fc 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -5,6 +5,26 @@
+ 
+ #include <linux/workqueue.h>
+ 
++struct rpc_pipe_dir_head {
++	struct list_head pdh_entries;
++	struct dentry *pdh_dentry;
++};
++
++struct rpc_pipe_dir_object_ops;
++struct rpc_pipe_dir_object {
++	struct list_head pdo_head;
++	const struct rpc_pipe_dir_object_ops *pdo_ops;
++
++	void *pdo_data;
++};
++
++struct rpc_pipe_dir_object_ops {
++	int (*create)(struct dentry *dir,
++			struct rpc_pipe_dir_object *pdo);
++	void (*destroy)(struct dentry *dir,
++			struct rpc_pipe_dir_object *pdo);
++};
++
+ struct rpc_pipe_msg {
+ 	struct list_head list;
+ 	void *data;
+@@ -74,7 +94,18 @@ extern int rpc_queue_upcall(struct rpc_pipe *, struct rpc_pipe_msg *);
+ 
+ struct rpc_clnt;
+ extern struct dentry *rpc_create_client_dir(struct dentry *, const char *, struct rpc_clnt *);
+-extern int rpc_remove_client_dir(struct dentry *);
++extern int rpc_remove_client_dir(struct dentry *, struct rpc_clnt *);
++
++extern void rpc_init_pipe_dir_head(struct rpc_pipe_dir_head *pdh);
++extern void rpc_init_pipe_dir_object(struct rpc_pipe_dir_object *pdo,
++		const struct rpc_pipe_dir_object_ops *pdo_ops,
++		void *pdo_data);
++extern int rpc_add_pipe_dir_object(struct net *net,
++		struct rpc_pipe_dir_head *pdh,
++		struct rpc_pipe_dir_object *pdo);
++extern void rpc_remove_pipe_dir_object(struct net *net,
++		struct rpc_pipe_dir_head *pdh,
++		struct rpc_pipe_dir_object *pdo);
+ 
+ struct cache_detail;
+ extern struct dentry *rpc_create_cache_dir(struct dentry *,
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 436adce..c736031 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -105,7 +105,7 @@ static void __rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
+ 	if (clnt->cl_dentry) {
+ 		if (clnt->cl_auth && clnt->cl_auth->au_ops->pipes_destroy)
+ 			clnt->cl_auth->au_ops->pipes_destroy(clnt->cl_auth);
+-		rpc_remove_client_dir(clnt->cl_dentry);
++		rpc_remove_client_dir(clnt->cl_dentry, clnt);
+ 	}
+ 	clnt->cl_dentry = NULL;
+ }
+@@ -351,6 +351,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 	clnt->cl_vers     = version->number;
+ 	clnt->cl_stats    = program->stats;
+ 	clnt->cl_metrics  = rpc_alloc_iostats(clnt);
++	rpc_init_pipe_dir_head(&clnt->cl_pipedir_objects);
+ 	err = -ENOMEM;
+ 	if (clnt->cl_metrics == NULL)
+ 		goto out_no_stats;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index b36bfb9..cfeba77 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -884,6 +884,124 @@ rpc_unlink(struct dentry *dentry)
+ }
+ EXPORT_SYMBOL_GPL(rpc_unlink);
+ 
++/**
++ * rpc_init_pipe_dir_head - initialise a struct rpc_pipe_dir_head
++ * @pdh: pointer to struct rpc_pipe_dir_head
++ */
++void rpc_init_pipe_dir_head(struct rpc_pipe_dir_head *pdh)
++{
++	INIT_LIST_HEAD(&pdh->pdh_entries);
++	pdh->pdh_dentry = NULL;
++}
++EXPORT_SYMBOL_GPL(rpc_init_pipe_dir_head);
++
++/**
++ * rpc_init_pipe_dir_object - initialise a struct rpc_pipe_dir_object
++ * @pdo: pointer to struct rpc_pipe_dir_object
++ * @pdo_ops: pointer to const struct rpc_pipe_dir_object_ops
++ * @pdo_data: pointer to caller-defined data
++ */
++void rpc_init_pipe_dir_object(struct rpc_pipe_dir_object *pdo,
++		const struct rpc_pipe_dir_object_ops *pdo_ops,
++		void *pdo_data)
++{
++	INIT_LIST_HEAD(&pdo->pdo_head);
++	pdo->pdo_ops = pdo_ops;
++	pdo->pdo_data = pdo_data;
++}
++EXPORT_SYMBOL_GPL(rpc_init_pipe_dir_object);
++
++static int
++rpc_add_pipe_dir_object_locked(struct net *net,
++		struct rpc_pipe_dir_head *pdh,
++		struct rpc_pipe_dir_object *pdo)
++{
++	int ret = 0;
++
++	if (pdh->pdh_dentry)
++		ret = pdo->pdo_ops->create(pdh->pdh_dentry, pdo);
++	if (ret == 0)
++		list_add_tail(&pdo->pdo_head, &pdh->pdh_entries);
++	return ret;
++}
++
++static void
++rpc_remove_pipe_dir_object_locked(struct net *net,
++		struct rpc_pipe_dir_head *pdh,
++		struct rpc_pipe_dir_object *pdo)
++{
++	if (pdh->pdh_dentry)
++		pdo->pdo_ops->destroy(pdh->pdh_dentry, pdo);
++	list_del_init(&pdo->pdo_head);
++}
++
++/**
++ * rpc_add_pipe_dir_object - associate a rpc_pipe_dir_object to a directory
++ * @net: pointer to struct net
++ * @pdh: pointer to struct rpc_pipe_dir_head
++ * @pdo: pointer to struct rpc_pipe_dir_object
++ *
++ */
++int
++rpc_add_pipe_dir_object(struct net *net,
++		struct rpc_pipe_dir_head *pdh,
++		struct rpc_pipe_dir_object *pdo)
++{
++	int ret = 0;
++
++	if (list_empty(&pdo->pdo_head)) {
++		struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++
++		mutex_lock(&sn->pipefs_sb_lock);
++		ret = rpc_add_pipe_dir_object_locked(net, pdh, pdo);
++		mutex_unlock(&sn->pipefs_sb_lock);
++	}
++	return ret;
++}
++EXPORT_SYMBOL_GPL(rpc_add_pipe_dir_object);
++
++/**
++ * rpc_remove_pipe_dir_object - remove a rpc_pipe_dir_object from a directory
++ * @net: pointer to struct net
++ * @pdh: pointer to struct rpc_pipe_dir_head
++ * @pdo: pointer to struct rpc_pipe_dir_object
++ *
++ */
++void
++rpc_remove_pipe_dir_object(struct net *net,
++		struct rpc_pipe_dir_head *pdh,
++		struct rpc_pipe_dir_object *pdo)
++{
++	if (!list_empty(&pdo->pdo_head)) {
++		struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++
++		mutex_lock(&sn->pipefs_sb_lock);
++		rpc_remove_pipe_dir_object_locked(net, pdh, pdo);
++		mutex_unlock(&sn->pipefs_sb_lock);
++	}
++}
++EXPORT_SYMBOL_GPL(rpc_remove_pipe_dir_object);
++
++static void
++rpc_create_pipe_dir_objects(struct rpc_pipe_dir_head *pdh)
++{
++	struct rpc_pipe_dir_object *pdo;
++	struct dentry *dir = pdh->pdh_dentry;
++
++	list_for_each_entry(pdo, &pdh->pdh_entries, pdo_head)
++		pdo->pdo_ops->create(dir, pdo);
++}
++
++static void
++rpc_destroy_pipe_dir_objects(struct rpc_pipe_dir_head *pdh)
++{
++	struct rpc_pipe_dir_object *pdo;
++	struct dentry *dir = pdh->pdh_dentry;
++
++	list_for_each_entry(pdo, &pdh->pdh_entries, pdo_head)
++		pdo->pdo_ops->destroy(dir, pdo);
++}
++
+ enum {
+ 	RPCAUTH_info,
+ 	RPCAUTH_EOF
+@@ -924,16 +1042,28 @@ struct dentry *rpc_create_client_dir(struct dentry *dentry,
+ 				   const char *name,
+ 				   struct rpc_clnt *rpc_client)
+ {
+-	return rpc_mkdir_populate(dentry, name, S_IRUGO | S_IXUGO, NULL,
++	struct dentry *ret;
++
++	ret = rpc_mkdir_populate(dentry, name, S_IRUGO | S_IXUGO, NULL,
+ 			rpc_clntdir_populate, rpc_client);
++	if (!IS_ERR(ret)) {
++		rpc_client->cl_pipedir_objects.pdh_dentry = ret;
++		rpc_create_pipe_dir_objects(&rpc_client->cl_pipedir_objects);
++	}
++	return ret;
+ }
+ 
+ /**
+  * rpc_remove_client_dir - Remove a directory created with rpc_create_client_dir()
+  * @dentry: dentry for the pipe
++ * @rpc_client: rpc_client for the pipe
+  */
+-int rpc_remove_client_dir(struct dentry *dentry)
++int rpc_remove_client_dir(struct dentry *dentry, struct rpc_clnt *rpc_client)
+ {
++	if (rpc_client->cl_pipedir_objects.pdh_dentry) {
++		rpc_destroy_pipe_dir_objects(&rpc_client->cl_pipedir_objects);
++		rpc_client->cl_pipedir_objects.pdh_dentry = NULL;
++	}
+ 	return rpc_rmdir_depopulate(dentry, rpc_clntdir_depopulate);
+ }
+ 
+-- 
+1.8.3.1
 
-> 
-> *** nfs4state.c.org     2013-08-14 08:29:12.476369844 +0300
-> --- nfs4state.c 2013-08-14 08:29:36.880622009 +0300
-> ***************
-> @@ -235,6 +235,8 @@ static inline int get_new_stid(struct nfs4_stid *stid)
-> *** 235,241 ****
->          */
-> 
->         min_stateid = new_stid+1;
-> !       if (min_stateid == INT_MAX)
->                 min_stateid = 0;
->         return new_stid;
->   }
-> --- 235,243 ----
->          */
-> 
->         min_stateid = new_stid+1;
-> !       // We limit min_stateid roll over at 2^29 to be safe with IDR
-> as it has a roll over problem around 2^30 in kernels <3.9
-> ! #define NFSD_IDR_MIN_STATEID_MAX      536870912
-> !       if (min_stateid == NFSD_IDR_MIN_STATEID_MAX)
->                 min_stateid = 0;
->         return new_stid;
->   }
-> 
-> I am not familiar enough with sending the patch. Greatly appreciate if
-> you could apply this change in <3.9 kernels. Thanks.
-> 
-> --Shyam
-> 
-> On Tue, Aug 13, 2013 at 11:33 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Tue, Aug 13, 2013 at 05:41:03PM +0530, Shyam Kaushik wrote:
-> >> Yep its fixed in the IDR rewrite.
-> >
-> > OK.  If you have in mind some minimal nfsd-only solution for stable
-> > kernels I'm happy to review it.  Otherwise I'd likely advise people
-> > to update to a newer kernel.
-> >
-> > --b.
-> >
-> >>
-> >> --Shyam
-> >>
-> >> On Tue, Aug 13, 2013 at 5:22 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >> > On Tue, Aug 13, 2013 at 12:48:01PM +0530, Shyam Kaushik wrote:
-> >> >> Hi Bruce,
-> >> >>
-> >> >> I managed to nail this issue down. We have a flaw in IDR that it wraps
-> >> >> around at 2^30. See this chain for more on it
-> >> >> http://comments.gmane.org/gmane.linux.kernel/1543273
-> >> >
-> >> > Looks like this got fixed by the recent IDR rewrite?
-> >> >
-> >> > --b.
-> >> >
-> >> >> Unfortunately NFSD wraps around at MAX_INT which is currently flawed.
-> >> >>
-> >> >> I added debug within NFSD as you suggested & here are the snippets
-> >> >>
-> >> >> NFS client came & did an open of file
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.629810] nfsv4 compound op #2/5:
-> >> >> 18 (OP_OPEN)
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.629812] NFSD: nfsd4_open filename
-> >> >> exports op_openowner           (null)
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.629816] [6809] renewing client
-> >> >> (clientid 5208f000/000013bf)
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.629827] nfsd: fh_verify(28:
-> >> >> 00070001 0000a4c0 00000000 28ffa6c2 854703cf dd60c89a)
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.629833] nfsd: nfsd_lookup(fh 28:
-> >> >> 00070001 0000a4c0 00000000 28ffa6c2 854703cf dd60c89a, exports)
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.629837] nfsd: fh_compose(exp
-> >> >> fd:01/42176 tmp_export/exports, ino=37203)
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.629842] nfsd: fh_verify(36:
-> >> >> 01070001 0000a4c0 00000000 28ffa6c2 854703cf dd60c89a)
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.629850] nfsd: fh_verify(36:
-> >> >> 01070001 0000a4c0 00000000 28ffa6c2 854703cf dd60c89a)
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.629857] [6809] NFSD
-> >> >> get_new_stid(5208f000/000013bf/40174d7e/ffff8802)
-> >> >> min_stateid[1075268991]/new_stid[1075268991]/error[0]
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.629862] [6809]
-> >> >> nfsd4_process_open2: stateid=(5208f000/000013bf/40174d7f/00000001)
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.629866] nfsv4 compound op
-> >> >> ffff8801f2015078 opcnt 5 #2: 18: status 0
-> >> >>
-> >> >> As seen above min_stateid (1075268991) is what we ask IDR to use
-> >> >> minimum ID to allocate & it also allocated this same number.
-> >> >>
-> >> >> After this open, NFS client sends an OPEN_CONFIRM
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.630528] nfsv4 compound op #2/2:
-> >> >> 20 (OP_OPEN_CONFIRM)
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.630530] [6809] NFSD:
-> >> >> nfsd4_open_confirm on file exports
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.630534] nfsd: fh_verify(36:
-> >> >> 01070001 0000a4c0 00000000 28ffa6c2 854703cf dd60c89a)
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.630538] [6809] NFSD:
-> >> >> nfs4_preprocess_seqid_op: seqid=11033 stateid =
-> >> >> (5208f000/000013bf/40174d7f/00000001)
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.630542] [6809] renewing client
-> >> >> (clientid 5208f000/000013bf)
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.630549] [6809] bad_stateid -
-> >> >> nfsd4_lookup_stateid: (5208f000/000013bf/40174d7f/00000001) -
-> >> >> find_stateid_by_type() returned NULL. find_stateid() returned[NULL]
-> >> >> stid->sc_type[0x0] typemask[0x1]
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.630551] nfsv4 compound op
-> >> >> ffff8801f2015078 opcnt 2 #2: 20: status 10025
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.630554] nfsv4 compound returned 10025
-> >> >>
-> >> >> As can be seen, we cant locate 40174d7f in IDR repository.
-> >> >>
-> >> >> With debug infrastructure, dumped all the IDs of NFSD in IDR repository
-> >> >>
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.631994] NFSD: Dumping Confirmed
-> >> >> ID hashtable clients
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.632000] NFSD:
-> >> >> Client[conf_id_hashtbl] [5208f000/000013bf]
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.632006]       NFSD:
-> >> >> [5208f000/000013bf] IDR ID[1527167]
-> >> >> (5208f000/000013bf/40174d7f/00000001) sc_type[1]
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.632048]       NFSD: openowner
-> >> >> [ffff88010b31ef50] oo_flags[0] so_seqid[11033] so_is_open_owner[1]]
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.632052]               NFSD:
-> >> >> nfs4_file stp[ffff88020ae36690] (5208f000/000013bf/40174d7f/00000001)
-> >> >> sc_type[1] in zshare_id[1]
-> >> >> Aug 12 11:21:34 srv1 kernel: [377723.632059] NFSD: Finished Dumping
-> >> >> Confirmed ID hashtable clients
-> >> >>
-> >> >> IDR has the ID as 1527167 for 0x40174d7f (1075268991)
-> >> >>
-> >> >> i.e. IDR has representation like
-> >> >>
-> >> >> 1075268991 – 1073741824 (2^30) = 1527167
-> >> >>
-> >> >> Is it possible that you can fix NFSD till a proper fix is available in
-> >> >> IDR? Thanks.
-> >> >>
-> >> >> --Shyam
-> >> >>
-> >> >>
-> >> >> On Wed, Jun 26, 2013 at 2:51 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >> >> > On Tue, Jun 25, 2013 at 10:29:00PM +0530, Shyam Kaushik wrote:
-> >> >> >> Hi,
-> >> >> >>
-> >> >> >> I looked up at this issue further & see the problem is this:
-> >> >> >> # Client sends OPEN() of a file & as part of this NFSD server sets up
-> >> >> >> a stateid & returns to the client.
-> >> >> >> # Client comes back immediately with OPEN_CONFIRM() presenting the
-> >> >> >> same stateid & NFSD server replies back that its a bad-stateid.
-> >> >> >>
-> >> >> >> Here are some pieces from tcpdump:
-> >> >> >> NFS client comes with an OPEN of a file
-> >> >> >> 10.189253 10.0.27.163 172.31.240.116 NFS 326 V4 Call (Reply In 8264)
-> >> >> >> OPEN DH:0xfe4b0254/index.html
-> >> >> >>          share_access: OPEN4_SHARE_ACCESS_READ (1)
-> >> >> >>          share_deny: OPEN4_SHARE_DENY_NONE (0)
-> >> >> >>          clientid: 0xcb76ab5114000000
-> >> >> >>          Claim Type: CLAIM_NULL (0)
-> >> >> >>
-> >> >> >> NFS server reply
-> >> >> >> 10.457226 172.31.240.116 10.0.27.163 NFS 498 V4 Reply (Call In 8057)
-> >> >> >> OPEN StateID:0x50ee
-> >> >> >>         Status: NFS4_OK (0)
-> >> >> >>         StateID Hash: 0x50ee
-> >> >> >>         seqid: 0x00000001
-> >> >> >>         Data: cb76ab5114000000c4ca2540
-> >> >> >>         1. = OPEN4_RESULT_CONFIRM
-> >> >> >>         Delegation Type: OPEN_DELEGATE_NONE (0)
-> >> >> >>
-> >> >> >>
-> >> >> >> Client comes back with OPEN_CONFIRM
-> >> >> >> 10.459343 10.0.27.163 172.31.240.116 NFS 238 V4 Call (Reply In 8465)
-> >> >> >> OPEN_CONFIRM
-> >> >> >>         StateID Hash: 0x50ee
-> >> >> >>         seqid: 0x00000001
-> >> >> >>         Data: cb76ab5114000000c4ca2540
-> >> >> >>
-> >> >> >> Server replies with bad-stateid
-> >> >> >> 10.733341 172.31.240.116 10.0.27.163 NFS 122 V4 Reply (Call In 8275)
-> >> >> >> OPEN_CONFIRM Status: NFS4ERR_BAD_STATEID
-> >> >> >>         Status: NFS4ERR_BAD_STATEID (10025)
-> >> >> >
-> >> >> > That does look like a server bug.  But I have trouble seeing how that's
-> >> >> > happening (or why you would be able to reproduce it and not me).
-> >> >> >
-> >> >> > On the final OPEN_CONFIRM the server is either failing to find the
-> >> >> > stateid or found it and thinks it's been closed or already confirmed.
-> >> >> >
-> >> >> > This is a different case from the one below where the server returns
-> >> >> > BAD_STATEID on the write.
-> >> >> >
-> >> >> >> This keeps happening & nothing really progresses.
-> >> >> >>
-> >> >> >> Any thoughts/ideas on how to debug this further greatly appreciated.
-> >> >> >
-> >> >> > Off hand all I can suggest is tracing through the code (worst case,
-> >> >> > sprinkling some printk's around) to figure out exactly where the
-> >> >> > bad_stateid is being returned from originally.
-> >> >> >
-> >> >> > Or running a git bisect if you have a known-good kernel.
-> >> >> >
-> >> >> > Or if there's anything particular about your workload that you could
-> >> >> > tell us so someone else could attempt to reproduce it.
-> >> >> >
-> >> >> > Also it's interesting if you can verify whether this is reproduceable on
-> >> >> > newer kernels.
-> >> >> >
-> >> >> > --b.
-> >> >> >
-> >> >> >>
-> >> >> >> Thanks.
-> >> >> >>
-> >> >> >> --Shyam
-> >> >> >>
-> >> >> >> On Mon, Jun 24, 2013 at 10:43 PM, Shyam Kaushik <shyamnfs1@gmail.com> wrote:
-> >> >> >> > Hi Folks,
-> >> >> >> >
-> >> >> >> > Need help regarding a strange NFS server issue on 3.2 kernel.
-> >> >> >> >
-> >> >> >> > We are running a NFS server on Ubuntu precise with 3.2.0-25-generic
-> >> >> >> > #40-Ubuntu kernel.
-> >> >> >> >
-> >> >> >> > We have several NFS exports out of this server & multiple clients
-> >> >> >> > running different versions of linux kernel consume these exports. We
-> >> >> >> > use ext4 with sync mount as the filesystem.
-> >> >> >> >
-> >> >> >> > We periodically see that all NFS activity comes to a standstill on all
-> >> >> >> > NFS exports. Enabling NFS debug shows that there are numerous
-> >> >> >> > nfserr_bad_stateid on almost all operations. This makes all of the
-> >> >> >> > NFSD threads to consume all of CPU on the server.
-> >> >> >> >
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.342457] nfsd_dispatch: vers 4 proc 1
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.342457] nfsv4 compound op
-> >> >> >> > #1/7: 22 (OP_PUTFH)
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.342467] nfsv4 compound op
-> >> >> >> > ffff880095744078 opcnt 3 #1: 22: status 0
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.342472] nfsv4 compound op
-> >> >> >> > #2/3: 38 (OP_WRITE)
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.342472] nfsd: fh_verify(36:
-> >> >> >> > 01070001 00d40001 00000000 ac63c188 0a4859a1 feb41e83)
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.342484] renewing client
-> >> >> >> > (clientid 51ab76cb/00005fc9)
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.342486] NFSD: nfsd4_write:
-> >> >> >> > couldn't process stateid!
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.342529] nfsv4 compound op
-> >> >> >> > ffff880095744078 opcnt 3 #2: 38: status 10025
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.342544] nfsv4 compound returned 10025
-> >> >> >> >
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.444116] nfsd_dispatch: vers 4 proc 1
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.444122] nfsv4 compound op
-> >> >> >> > #1/3: 22 (OP_PUTFH)
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.444125] nfsd: fh_verify(36:
-> >> >> >> > 01070001 00020001 00000000 eb3726ca c8497c28 911b4a8d)
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.444134] nfsv4 compound op
-> >> >> >> > ffff880093436078 opcnt 3 #1: 22: status 0
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.444136] nfsv4 compound op
-> >> >> >> > #2/3: 38 (OP_WRITE)
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.446920] nfsd4_process_open2:
-> >> >> >> > stateid=(51ab76cb/0000000b/40259544/00000001)
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.446925] nfsv4 compound op
-> >> >> >> > ffff880095027078 opcnt 7 #3: 18: status 0
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.446929] renewing client
-> >> >> >> > (clientid 51ab76cb/00000022)
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.446929] NFSD: nfsd4_write:
-> >> >> >> > couldn't process stateid!
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.446929] nfsv4 compound op
-> >> >> >> > ffff880093436078 opcnt 3 #2: 38: status 10025
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.446929] nfsv4 compound returned 10025
-> >> >> >> >
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.447162] nfsd_dispatch: vers 4 proc 1
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.447163] nfsd: fh_verify(36:
-> >> >> >> > 01070001 00240001 00000000 a80fc170 1947ae6c 4fbf37b1)
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.447163] NFSD:
-> >> >> >> > nfs4_preprocess_seqid_op: seqid=1 stateid =
-> >> >> >> > (51ab76cb/00004b96/40259528/00000001)
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.447181] nfsv4 compound op
-> >> >> >> > #1/7: 22 (OP_PUTFH)
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.447185] nfsd: fh_verify(28:
-> >> >> >> > 00070001 00020001 00000000 53c0b8df a948fcb9 475e2cba)
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.447185] renewing client
-> >> >> >> > (clientid 51ab76cb/00004b96)
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.447187] nfsv4 compound op
-> >> >> >> > ffff88000813f078 opcnt 2 #2: 20: status 10025
-> >> >> >> > Jun 24 01:50:42 srv007 kernel: [5753609.447189] nfsv4 compound returned 10025
-> >> >> >> >
-> >> >> >> > NFSD stacks are like:
-> >> >> >> > [<ffffffffa022e765>] nfs4_lock_state+0x15/0x40 [nfsd]
-> >> >> >> > [<ffffffffa02234f4>] nfsd4_open+0xb4/0x440 [nfsd]
-> >> >> >> > [<ffffffffa0221bc8>] nfsd4_proc_compound+0x518/0x6d0 [nfsd]
-> >> >> >> > [<ffffffffa020fa0b>] nfsd_dispatch+0xeb/0x230 [nfsd]
-> >> >> >> > [<ffffffffa0131d95>] svc_process_common+0x345/0x690 [sunrpc]
-> >> >> >> > [<ffffffffa01321e2>] svc_process+0x102/0x150 [sunrpc]
-> >> >> >> > [<ffffffffa020f0bd>] nfsd+0xbd/0x160 [nfsd]
-> >> >> >> > [<ffffffff8108a59c>] kthread+0x8c/0xa0
-> >> >> >> > [<ffffffff81667db4>] kernel_thread_helper+0x4/0x10
-> >> >> >> > [<ffffffffffffffff>] 0xffffffffffffffff
-> >> >> >> >
-> >> >> >> > I couldnt exactly capture the running thread, but it appears that one
-> >> >> >> > thread of the NFSD thread pool runs & detects a bad-state-id & returns
-> >> >> >> > back.
-> >> >> >> >
-> >> >> >> > Is this a known issue or any help on how to dig in further is greatly
-> >> >> >> > appreciated.
-> >> >> >> >
-> >> >> >> > Thanks.
-> >> >> >> >
-> >> >> >> > --Shyam
-> >> >> >> --
-> >> >> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >> >> >> the body of a message to majordomo@vger.kernel.org
-> >> >> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
