@@ -1,169 +1,120 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:31823 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758205Ab3HNB3u convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Aug 2013 21:29:50 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
-Subject: Re: [nfs-utils PATCH 1/4] mount.nfs: avoid unnecessary duplication of options passed to mount(2)
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130813223952.GA2514@tonberry.usersys.redhat.com>
-Date: Tue, 13 Aug 2013 21:29:45 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <7D76D57A-E298-4E31-8D33-652AFE0E3BB5@oracle.com>
-References: <1376421629-21382-1-git-send-email-smayhew@redhat.com> <1376421629-21382-2-git-send-email-smayhew@redhat.com> <B88ACB44-F0FF-4365-A783-D32892A9BCC9@oracle.com> <20130813223952.GA2514@tonberry.usersys.redhat.com>
-To: Scott Mayhew <smayhew@redhat.com>
+Received: from mx12.netapp.com ([216.240.18.77]:10490 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752524Ab3H1Rvi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Aug 2013 13:51:38 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Matt Craighead <mcraighead@nvidia.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, Mark Young <MYoung@nvidia.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Issue found with kernel/net/sunrpc/xdr.c
+Date: Wed, 28 Aug 2013 17:51:36 +0000
+Message-ID: <1377712295.15144.1.camel@leira.trondhjem.org>
+References: <1FC56210173BB445BD77F608D6FB8D03620A9978B5@HQMAIL03.nvidia.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA94677C96F@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20130828143256.GA2960@fieldses.org>
+	 <71D0C6F08977AC42A3EF66AA1BEB0F10A11801ADF5@HQMAIL02.nvidia.com>
+In-Reply-To: <71D0C6F08977AC42A3EF66AA1BEB0F10A11801ADF5@HQMAIL02.nvidia.com>
+Content-Type: multipart/mixed;
+	boundary="_002_1377712295151441camelleiratrondhjemorg_"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--_002_1377712295151441camelleiratrondhjemorg_
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <325A71931B7C0740A7814D593F8A5738@hq.netapp.com>
+Content-Transfer-Encoding: base64
 
-On Aug 13, 2013, at 6:39 PM, Scott Mayhew <smayhew@redhat.com> wrote:
+T24gV2VkLCAyMDEzLTA4LTI4IGF0IDA4OjE4IC0wNzAwLCBNYXR0IENyYWlnaGVhZCB3cm90ZToN
+Cj4gPiBJJ20gY3VyaW91cyB3aHkgd2UgaGF2ZW4ndCBzZWVuIGl0IGJlZm9yZQ0KPiANCj4gSSBh
+Z3JlZSwgaXQncyBzbGlnaHRseSBteXN0ZXJpb3VzLiAgV2UncmUgaGl0dGluZyB0aGUgYnVnIG9u
+IGEgMzItYml0IEFSTSBzeXN0ZW0gd2l0aCAxR0Igb3IgMkdCIG9mIG1lbW9yeTsgc3VyZWx5IHRo
+YXQncyBub3QgdmVyeSBmYXIgb2ZmIHRoZSBiZWF0ZW4gcGF0aC4NCj4gDQo+IA0KPiA+IE9yIG1h
+eWJlIG1lbW1vdmUgaXMgYW4gYXJjaGl0ZWN0dXJlLXNwZWNpZmljIGltcGxlbWVudGF0aW9uIHRo
+YXQgaGFwcGVucyB0byBoYW5kbGUgbGVmdC10by1yaWdodCBvdmVybGFwcGluZyBjb3BpZXMgY29y
+cmVjdGx5IG9uIGNvbW1vbiBhcmNoaXRlY3R1cmVzPw0KPiANCj4gSXQncyBhcmNoaXRlY3R1cmUg
+c3BlY2lmaWMsIGUuZy46IGh0dHA6Ly9seHIubGludXgubm8vbGludXgrdjMuOC9hcmNoL2FybS9s
+aWIvbWVtbW92ZS5TDQo+IA0KPiBJbiB0aGlzIHBhcnRpY3VsYXIgY2FzZSwgaXQgZGVjaWRlcyB0
+aGF0IHRoZSBtZW1vcnkgaXMgbm9uLW92ZXJsYXBwaW5nIChieSBjb21wYXJpbmcgdGhlIHZpcnR1
+YWwgYWRkcmVzc2VzKSwgc28gaXQgaW5jb3JyZWN0bHkgZGlzcGF0Y2hlcyB0byBtZW1jcHkoKS4g
+IEF0IHRoYXQgcG9pbnQgYWxsIGJldHMgYXJlIG9mZiBpbiB0ZXJtcyBvZiB0aGUgZGlyZWN0aW9u
+LCBjaHVuayBzaXplLCBldGMuIG9mIHRoZSBjb3B5Lg0KPiANCj4gSSBndWVzcyBJJ2QgdHlwaWNh
+bGx5IGV4cGVjdCBtZW1jcHkoKSB0byBzdHJpZGUgdGhyb3VnaCBtZW1vcnkgZm9yd2FyZHMgcmF0
+aGVyIHRoYW4gYmFja3dhcmRzIHRob3VnaC4gIEFuZCBzaW5jZSB0aGlzIGZ1bmN0aW9uIG1hbmRh
+dGVzICJmcm9tIDwgdG8iLCBpdCBzZWVtcyBsaWtlIHRoaXMgd291bGQgdXN1YWxseSBmYWlsLg0K
+PiANCj4gDQo+IEZvciB4ODY6IGh0dHA6Ly9seHIubGludXgubm8vbGludXgrdjMuOC9hcmNoL3g4
+Ni9saWIvbWVtY3B5XzMyLmMNCj4gDQo+IEluIHRoaXMgY2FzZSwgaXQgbG9va3MgbGlrZSBpdCBk
+b2Vzbid0IGRpc3BhdGNoIHRvIG1lbWNweSgpLiAgSXQganVzdCBkZXRlcm1pbmVzIGZvcndhcmQv
+YmFja3dhcmRzIGFuZCBjb3BpZXMgYWNjb3JkaW5nbHkuICBTbyBpdCB3b3VsZCB3b3JrIGFzIGxv
+bmcgYXMgdGhlICJmcm9tIDwgdG8iIHByb3BlcnR5IHdhcyBwcmVzZXJ2ZWQuDQo+IA0KPiBJZiBJ
+J20gcmVhZGluZyB0aGUgY29kZSBjb3JyZWN0bHksIGttYXBfYXRvbWljIGFwcGVhcnMgdG8gZ3Jv
+dyBkb3dud2FyZCBvbiB4ODY6DQo+IGh0dHA6Ly9seHIubGludXgubm8vbGludXgrdjMuOC9hcmNo
+L3g4Ni9tbS9oaWdobWVtXzMyLmMNCj4gaHR0cDovL2x4ci5saW51eC5uby9saW51eCt2My44L2Fy
+Y2gveDg2L2luY2x1ZGUvYXNtL2ZpeG1hcC5oDQo+IGV0Yy4NCj4gDQo+IFNpbmNlIHhkci5jIGNh
+bGxzIGttYXBfYXRvbWljIG9uICpwZ3RvIGZpcnN0LCB0aGVuICpwZ2Zyb20sIHRoZSAiZnJvbSA8
+IHRvIiBwcm9wZXJ0eSB3aWxsIHRoZXJlZm9yZSBiZSBwcmVzZXJ2ZWQuDQo+IA0KPiANCj4gVGhl
+cmVmb3JlLCBJIHN1c3BlY3QgeW91IG1pZ2h0IGJlIGFibGUgdG8gcmVwcm9kdWNlIHRoZSBidWcg
+b24gKDMyLWJpdCkgeDg2IGJ5IGRvaW5nIGFueSBvZiB0aGUgZm9sbG93aW5nOg0KPiAtIHN3YXBw
+aW5nIHRoZSBvcmRlciBvZiB0aG9zZSBrbWFwX2F0b21pYy9rdW5tYXBfYXRvbWljIGNhbGxzIA0K
+PiAtIG1vZGlmeWluZyBrbWFwX2F0b21pYyB0byBncm93IGluIHRoZSBvcHBvc2l0ZSBkaXJlY3Rp
+b24NCj4gLSBtb2RpZnlpbmcgbWVtbW92ZSgpIHRvIGRpc3BhdGNoIHRvIG1lbWNweSgpIHdoZW4g
+dGhlIHZpcnR1YWwgcmVnaW9ucyBhcmUgbm9uLW92ZXJsYXBwaW5nDQo+IA0KPiBJdCdzIHN0aWxs
+IHBvc3NpYmxlIHRoYXQgdGhlcmUgaXMgc29tZXRoaW5nIGVsc2UgZnVubnkgYWJvdXQgaG93IG1l
+bW9yeSBnZXRzIGFsbG9jYXRlZCBpbiBvdXIgc2V0dXAgdGhhdCBtYWtlcyB0aGUgYnVnIG1vcmUg
+bGlrZWx5LCBidXQgZW1waXJpY2FsbHksIHRoZSBidWcgZGlkbid0IHNlZW0gaGFyZCB0byBoaXQu
+ICBXZSBkaWRuJ3QgbmVlZCB0byBjb3B5IHZlcnkgbXVjaCBkYXRhL3ZlcnkgbWFueSBmaWxlcyBv
+dmVyIE5GUyBiZWZvcmUgd2UgdHlwaWNhbGx5IGdvdCBjb3JydXB0aW9uLCBhbmQgdGhlIGJ1ZyBo
+YXBwZW5lZCBvbiBhIHZhcmlldHkgb2Ygc3BlY2lmaWMgcGxhdGZvcm1zLiAgSXQgd2FzICh1bnN1
+cnByaXNpbmdseSkgZWFzaWVyIHRvIHJlcHJvZHVjZSB3aXRoIDJHQiB0aGFuIHdpdGggMUdCIHRo
+b3VnaC4NCg0KQ2FuIHlvdSBwbGVhc2UgdGVzdCB0aGF0IHRoZSBhdHRhY2hlZCBwYXRjaCBmaXhl
+cyB0aGUgY29ycnVwdGlvbj8NCg0KVGhhbmtzDQogIFRyb25kDQoNCi0tIA0KVHJvbmQgTXlrbGVi
+dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1
+c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
 
-> On Tue, 13 Aug 2013, Chuck Lever wrote:
-> 
->> 
->> On Aug 13, 2013, at 3:20 PM, Scott Mayhew <smayhew@redhat.com> wrote:
->> 
->>> The nfsmount.conf file has the following format:
->>> 
->>> [ section "arg" ]
->>> 	tag = value
->>> 
->>> conf_get_tag_list() currently doesn't check the arg field so we wind up
->>> getting all the options that fall under a particular section value,
->>> instead of just the ones that match the specific "arg" field.  As a
->>> result, we wind up passing options to the mount syscall multiple times.
->>> 
->>> For example, if we have three different server sections, and each
->>> section has an Nfsvers tag, then the string we pass to the mount syscall
->>> will have three occurrences of the nfsvers option.
->>> 
->>> Note that the call to conf_get_section() in conf_parse_mntopts() will
->>> ensure that we never pass the wrong value for an option, but we should
->>> still avoid sending duplicate options if it's at all possible.
->> 
->> You haven't convinced me that passing duplicate options is incorrect behavior.
->> 
->> The idea was to do this kind of data reduction in one place.  It's either done in the kernel's NFS mount option parser, or in mount.nfs's legacy mount option parser.  There should be one authority on what setting takes effect.
->> 
->> Do your changes preserve the "right-most setting wins" behavior? 
-> 
-> Yes, they do.
-> 
->> This is why the config file logic sends duplicate options: it's easier to simply stack the options onto a list, with the system specific options first, then the server specific, then the mount point specific options.  The kernel's option parser then sorts it out and applies the correct setting.
->> 
-> 
-> I would expect to see a particular mount option at most 3 times then
-> (once from the global options, once from the server specific options,
-> and once from the mountpoint-specific options).  That's fine (although
-> that's what patch 2 was changing).
+--_002_1377712295151441camelleiratrondhjemorg_
+Content-Type: text/x-patch;
+	name="0001-SUNRPC-Fix-memory-corruption-issue-on-32-bit-highmem.patch"
+Content-Description: 0001-SUNRPC-Fix-memory-corruption-issue-on-32-bit-highmem.patch
+Content-Disposition: attachment;
+	filename="0001-SUNRPC-Fix-memory-corruption-issue-on-32-bit-highmem.patch";
+	size=1848; creation-date="Wed, 28 Aug 2013 17:51:36 GMT";
+	modification-date="Wed, 28 Aug 2013 17:51:36 GMT"
+Content-ID: <E61A36E0610390428E08B9212B65131A@hq.netapp.com>
+Content-Transfer-Encoding: base64
 
-(Well, to be precise, possibly 4 times: once for the system section, once for server-specific section, once for mount-specific options, and once in the command line mount options).
+RnJvbSBlOTI1MGExOGIwYTIxNWVjNWQ5NzBiZGVkODFmZGUwMWVlOGI5N2FhIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
+YXBwLmNvbT4NCkRhdGU6IFdlZCwgMjggQXVnIDIwMTMgMTM6MzU6MTMgLTA0MDANClN1YmplY3Q6
+IFtQQVRDSF0gU1VOUlBDOiBGaXggbWVtb3J5IGNvcnJ1cHRpb24gaXNzdWUgb24gMzItYml0IGhp
+Z2htZW0gc3lzdGVtcw0KDQpTb21lIGFyY2hpdGVjdHVyZXMsIHN1Y2ggYXMgQVJNLTMyIGRvIG5v
+dCByZXR1cm4gdGhlIHNhbWUgYmFzZSBhZGRyZXNzDQp3aGVuIHlvdSBjYWxsIGttYXBfYXRvbWlj
+KCkgdHdpY2Ugb24gdGhlIHNhbWUgcGFnZS4NClRoaXMgY2F1c2VzIHByb2JsZW1zIGZvciB0aGUg
+bWVtbW92ZSgpIGNhbGwgaW4gdGhlIFhEUiBoZWxwZXIgcm91dGluZQ0KIl9zaGlmdF9kYXRhX3Jp
+Z2h0X3BhZ2VzKCkiLCBzaW5jZSBpdCBkZWZlYXRzIHRoZSBkZXRlY3Rpb24gb2YNCm92ZXJsYXBw
+aW5nIG1lbW9yeSByYW5nZXMsIGFuZCBoYXMgYmVlbiBzZWVuIHRvIGNvcnJ1cHQgbWVtb3J5Lg0K
+DQpUaGUgZml4IGlzIHRvIGRpc3Rpbmd1aXNoIGJldHdlZW4gdGhlIGNhc2Ugd2hlcmUgd2UncmUg
+ZG9pbmcgYW4NCmludGVyLXBhZ2UgY29weSBvciBub3QuIEluIHRoZSBmb3JtZXIgY2FzZSBvZiB3
+ZSBrbm93IHRoYXQgdGhlIG1lbW9yeQ0KcmFuZ2VzIGNhbm5vdCBwb3NzaWJseSBvdmVybGFwLCBz
+byB3ZSBjYW4gYWRkaXRpb25hbGx5IG1pY3JvLW9wdGltaXNlDQpieSByZXBsYWNpbmcgbWVtbW92
+ZSgpIHdpdGggbWVtY3B5KCkuDQoNClJlcG9ydGVkLWJ5OiBNYXJrIFlvdW5nIDxNWW91bmdAbnZp
+ZGlhLmNvbT4NClJlcG9ydGVkLWJ5OiBNYXR0IENyYWlnaGVhZCA8bWNyYWlnaGVhZEBudmlkaWEu
+Y29tPg0KQ2M6IEJydWNlIEZpZWxkcyA8YmZpZWxkc0BmaWVsZHNlcy5vcmc+DQpDYzogc3RhYmxl
+QHZnZXIua2VybmVsLm9yZw0KU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5N
+eWtsZWJ1c3RAbmV0YXBwLmNvbT4NCi0tLQ0KIG5ldC9zdW5ycGMveGRyLmMgfCA5ICsrKysrKy0t
+LQ0KIDEgZmlsZSBjaGFuZ2VkLCA2IGluc2VydGlvbnMoKyksIDMgZGVsZXRpb25zKC0pDQoNCmRp
+ZmYgLS1naXQgYS9uZXQvc3VucnBjL3hkci5jIGIvbmV0L3N1bnJwYy94ZHIuYw0KaW5kZXggNzVl
+ZGNmYS4uMTUwNGJiMSAxMDA2NDQNCi0tLSBhL25ldC9zdW5ycGMveGRyLmMNCisrKyBiL25ldC9z
+dW5ycGMveGRyLmMNCkBAIC0yMDcsMTAgKzIwNywxMyBAQCBfc2hpZnRfZGF0YV9yaWdodF9wYWdl
+cyhzdHJ1Y3QgcGFnZSAqKnBhZ2VzLCBzaXplX3QgcGd0b19iYXNlLA0KIAkJcGdmcm9tX2Jhc2Ug
+LT0gY29weTsNCiANCiAJCXZ0byA9IGttYXBfYXRvbWljKCpwZ3RvKTsNCi0JCXZmcm9tID0ga21h
+cF9hdG9taWMoKnBnZnJvbSk7DQotCQltZW1tb3ZlKHZ0byArIHBndG9fYmFzZSwgdmZyb20gKyBw
+Z2Zyb21fYmFzZSwgY29weSk7DQorCQlpZiAoKnBndG8gIT0gKnBnZnJvbSkgew0KKwkJCXZmcm9t
+ID0ga21hcF9hdG9taWMoKnBnZnJvbSk7DQorCQkJbWVtY3B5KHZ0byArIHBndG9fYmFzZSwgdmZy
+b20gKyBwZ2Zyb21fYmFzZSwgY29weSk7DQorCQkJa3VubWFwX2F0b21pYyh2ZnJvbSk7DQorCQl9
+IGVsc2UNCisJCQltZW1tb3ZlKHZ0byArIHBndG9fYmFzZSwgdnRvICsgcGdmcm9tX2Jhc2UsIGNv
+cHkpOw0KIAkJZmx1c2hfZGNhY2hlX3BhZ2UoKnBndG8pOw0KLQkJa3VubWFwX2F0b21pYyh2ZnJv
+bSk7DQogCQlrdW5tYXBfYXRvbWljKHZ0byk7DQogDQogCX0gd2hpbGUgKChsZW4gLT0gY29weSkg
+IT0gMCk7DQotLSANCjEuOC4zLjENCg0K
 
-> The problem is that we're adding that option to the list based on config
-> file settings that aren't even relevant to the mount operation we happen
-> to be performing.  For instance if your nfsmount.conf has 100 server
-> sections, and each of those (along with your global and
-> mountpoint-specific sections) has an nfsvers option, then you could wind
-> up sending the nfsvers option 102 times.
-
-OK, that's clearly broken.  The config file logic should not include mount options from sections that are not relevant.  If that's all that is addressed in 1/4, that's probably a good fix.
-
-> If you have enough entries in your config file that the option string
-> exceeds one page then chances are an option is going to be lopped off
-> somewhere in the middle and the mount will likely fail with -EINVAL (and
-> even if that doesn't happen the rightmost options will most likely to be
-> lost).
-
-I agree, buffer overrun is a valid risk.  I might also suggest that EINVAL is not a terribly descriptive error, and the mount.nfs command could do something to report this error more accurately.
-
-However, I disagree with the claim made in your patch description and cover letter.  Duplicate options, in and of themselves, are not a problem, and the mount option parsing stack leverages that in favor of simplicity.
-
-After the irrelevant mount options are excluded, do you think we are still at risk of overrunning the options buffer for any realistic configuration?
-
-> -Scott
-> 
->> If the right-most setting of an option is not taking effect, that's a bug.
->> 
->> 
->>> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
->>> ---
->>> support/include/conffile.h | 2 +-
->>> support/nfs/conffile.c     | 4 +++-
->>> utils/mount/configfile.c   | 2 +-
->>> 3 files changed, 5 insertions(+), 3 deletions(-)
->>> 
->>> diff --git a/support/include/conffile.h b/support/include/conffile.h
->>> index ce7aa21..05ea5d2 100644
->>> --- a/support/include/conffile.h
->>> +++ b/support/include/conffile.h
->>> @@ -54,7 +54,7 @@ extern int      conf_end(int, int);
->>> extern void     conf_free_list(struct conf_list *);
->>> extern struct sockaddr *conf_get_address(char *, char *);
->>> extern struct conf_list *conf_get_list(char *, char *);
->>> -extern struct conf_list *conf_get_tag_list(char *);
->>> +extern struct conf_list *conf_get_tag_list(char *, char *);
->>> extern int      conf_get_num(char *, char *, int);
->>> extern char    *conf_get_str(char *, char *);
->>> extern char    *conf_get_section(char *, char *, char *);
->>> diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
->>> index 5015e94..c3434d5 100644
->>> --- a/support/nfs/conffile.c
->>> +++ b/support/nfs/conffile.c
->>> @@ -565,7 +565,7 @@ cleanup:
->>> }
->>> 
->>> struct conf_list *
->>> -conf_get_tag_list(char *section)
->>> +conf_get_tag_list(char *section, char *arg)
->>> {
->>> 	struct conf_list *list = 0;
->>> 	struct conf_list_node *node;
->>> @@ -579,6 +579,8 @@ conf_get_tag_list(char *section)
->>> 	cb = LIST_FIRST(&conf_bindings[conf_hash (section)]);
->>> 	for (; cb; cb = LIST_NEXT(cb, link)) {
->>> 		if (strcasecmp (section, cb->section) == 0) {
->>> +			if (arg != NULL && strcasecmp(arg, cb->arg) != 0)
->>> +				continue;
->>> 			list->cnt++;
->>> 			node = calloc(1, sizeof *node);
->>> 			if (!node)
->>> diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
->>> index 6f2ee75..1f1b6e7 100644
->>> --- a/utils/mount/configfile.c
->>> +++ b/utils/mount/configfile.c
->>> @@ -286,7 +286,7 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
->>> 	char *nvalue, *ptr;
->>> 	int argtype;
->>> 
->>> -	list = conf_get_tag_list(section);
->>> +	list = conf_get_tag_list(section, arg);
->>> 	TAILQ_FOREACH(node, &list->fields, link) {
->>> 		/*
->>> 		 * Do not overwrite options if already exists 
->>> -- 
->>> 1.7.11.7
->>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> -- 
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->> 
->> 
->> 
->> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+--_002_1377712295151441camelleiratrondhjemorg_--
