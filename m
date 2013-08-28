@@ -1,37 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:48683 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753612Ab3HBKbK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Aug 2013 06:31:10 -0400
-Date: Fri, 2 Aug 2013 03:31:07 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Cong Wang <amwang@redhat.com>
-Cc: netdev@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, cluster-devel@redhat.com,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-kernel@vger.kernel.org, Steve French <sfrench@samba.org>,
-        "David S. Miller" <davem@davemloft.net>
-Subject: Re: [Cluster-devel] [Patch net-next v2 6/8] fs: use generic union
- inet_addr and helper functions
-Message-ID: <20130802103107.GA17244@infradead.org>
-References: <1375427674-21735-1-git-send-email-amwang@redhat.com>
- <1375427674-21735-7-git-send-email-amwang@redhat.com>
+Received: from mx12.netapp.com ([216.240.18.77]:1449 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754332Ab3H1Tky (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Aug 2013 15:40:54 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+CC: <andros@netapp.com>
+Subject: [PATCH v2 08/16] NFSv4: Fix a potentially Oopsable condition in __nfs_idmap_unregister
+Date: Wed, 28 Aug 2013 15:40:13 -0400
+Message-ID: <1377718821-28159-8-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377718821-28159-7-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377718821-28159-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-7-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1375427674-21735-7-git-send-email-amwang@redhat.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 02, 2013 at 03:14:32PM +0800, Cong Wang wrote:
-> From: Cong Wang <amwang@redhat.com>
-> 
-> nfs and cifs define some helper functions for sockaddr,
-> they can use the generic functions for union inet_addr too.
-> 
-> Since some dlm code needs to compare ->sin_port, introduce a
-> generic function inet_addr_equal_strict() for it.
+Ensure that __nfs_idmap_unregister can be called twice without
+consequences.
 
-Would sound more useful to have a sockaddr_equal case that can be used
-on any sockaddr.  For cases that no current user handles just return
-false.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/idmap.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index e9b0c59..8b7e94a 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -404,8 +404,10 @@ static struct key_type key_type_id_resolver_legacy = {
+ 
+ static void __nfs_idmap_unregister(struct rpc_pipe *pipe)
+ {
+-	if (pipe->dentry)
++	if (pipe->dentry) {
+ 		rpc_unlink(pipe->dentry);
++		pipe->dentry = NULL;
++	}
+ }
+ 
+ static int __nfs_idmap_register(struct dentry *dir,
+-- 
+1.8.3.1
 
