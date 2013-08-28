@@ -1,88 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:63017 "EHLO mx11.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:61858 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752806Ab3HVAYW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Aug 2013 20:24:22 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 00/21] NFS add tracepoints (final version)
-Date: Wed, 21 Aug 2013 20:23:58 -0400
-Message-ID: <1377131059-40121-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1754770Ab3H1QcM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Aug 2013 12:32:12 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Matt Craighead <mcraighead@nvidia.com>, Mark Young <MYoung@nvidia.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Issue found with kernel/net/sunrpc/xdr.c
+Date: Wed, 28 Aug 2013 16:32:10 +0000
+Message-ID: <1377707529.11903.3.camel@leira.trondhjem.org>
+References: <1FC56210173BB445BD77F608D6FB8D03620A9978B5@HQMAIL03.nvidia.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA94677C96F@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20130828143256.GA2960@fieldses.org>
+	 <71D0C6F08977AC42A3EF66AA1BEB0F10A11801ADF5@HQMAIL02.nvidia.com>
+	 <20130828154124.GC2960@fieldses.org>
+	 <71D0C6F08977AC42A3EF66AA1BEB0F10A11801AE16@HQMAIL02.nvidia.com>
+	 <20130828160853.GD2960@fieldses.org>
+In-Reply-To: <20130828160853.GD2960@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following patchset sets up a number of ftrace tracepoints for use
-when debugging NFSv4 state operations and NFS performance issues.
-
-Changes in v2:
- - Fixed compile bugs
- - We need to convert the delegation recall status to a negative number
- - Added tracepoints for read/write, pnfs and slot table debugging.
-
-Changes in v3:
- - Added tracepoints for generic NFS code
-   - lookups
-   - atomic open
-   - inode cache consistency operations
-   - internal fsync and data flush operations
- - Assorted cleanups and bugfixes
-
-Changes in v4:
- - Fix the include file bug
- - Add more tracepoints for the generic NFS code
-   - rename and sillyrename
-   - generic directory related changes (file create/mknod/mkdir/rmdir/...)
- - Add debugging for NFSv4 free stateid events
-
-Trond Myklebust (21):
-  NFS: refactor code for calculating the crc32 hash of a filehandle
-  NFS: Add event tracing for generic NFS events
-  NFS: Pass in lookup flags from nfs_atomic_open to nfs_lookup
-  NFS: Add event tracing for generic NFS lookups
-  NFS: Add tracepoints for debugging generic file create events
-  NFS: Add tracepoints for debugging directory changes
-  NFS: Add tracepoints for debugging NFS rename and sillyrename issues
-  NFS: Add tracepoints for debugging NFS hard links
-  NFSv4: Add tracepoints for debugging state management problems
-  NFSv4: Add tracepoints for debugging file open
-  NFSv4: Add tracepoints for debugging file locking
-  NFSv4: Add tracepoints for debugging lookup/create operations
-  NFSv4: Add tracepoints for debugging inode manipulations
-  NFSv4: Add tracepoints for debugging rename
-  NFSv4: Add tracepoints for debugging delegations
-  NFSv4: Add tracepoints for debugging the idmapper
-  NFSv4: Add tracepoints for debugging getattr
-  NFSv4: Add tracepoints for debugging reads and writes
-  NFSv4.1: Add tracepoints for debugging layoutget/return/commit
-  NFSv4.1: Add tracepoints for debugging slot table operations
-  NFSv4.1: Add tracepoints for debugging test_stateid events
-
- fs/nfs/Makefile         |    7 +-
- fs/nfs/callback_proc.c  |    3 +
- fs/nfs/delegation.c     |    3 +
- fs/nfs/dir.c            |   49 +-
- fs/nfs/file.c           |    5 +
- fs/nfs/idmap.c          |    5 +
- fs/nfs/inode.c          |   32 +-
- fs/nfs/internal.h       |   20 +
- fs/nfs/nfs4filelayout.c |    4 +
- fs/nfs/nfs4proc.c       |  130 ++++--
- fs/nfs/nfs4session.h    |   10 +
- fs/nfs/nfs4trace.c      |   17 +
- fs/nfs/nfs4trace.h      | 1148 +++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfstrace.c       |    9 +
- fs/nfs/nfstrace.h       |  729 ++++++++++++++++++++++++++++++
- fs/nfs/pnfs.c           |    3 +
- fs/nfs/unlink.c         |    5 +
- fs/nfs/write.c          |   15 +-
- 18 files changed, 2142 insertions(+), 52 deletions(-)
- create mode 100644 fs/nfs/nfs4trace.c
- create mode 100644 fs/nfs/nfs4trace.h
- create mode 100644 fs/nfs/nfstrace.c
- create mode 100644 fs/nfs/nfstrace.h
-
--- 
-1.8.3.1
-
+T24gV2VkLCAyMDEzLTA4LTI4IGF0IDEyOjA4IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFdlZCwgQXVnIDI4LCAyMDEzIGF0IDA4OjQ3OjU3QU0gLTA3MDAsIE1hdHQgQ3JhaWdo
+ZWFkIHdyb3RlOg0KPiA+IE5GU3YzIG92ZXIgVURQLiAgTm8gS2VyYmVyb3Mgb3IgYW55IG90aGVy
+IGF1dGhlbnRpY2F0aW9uIG9mIGFueSBzb3J0Lg0KPiANCj4gVHJvbmQsIHNob3VsZG4ndCB0aGUg
+c2l6ZSBvZiB0aGUgUlBDIGhlYWRlciBiZSBlbnRpcmVseSBwcmVkaWN0YWJsZSBpbg0KPiB0aGlz
+IGNhc2U/ICBJIHdvbmRlciB3aHkgaXQgd2FzIGdldHRpbmcgdG8geGRyX3Nocmlua19idWZoZWFk
+Lg0KDQpORlN2MyBwb3N0LW9wIGF0dHJpYnV0ZXMgYXJlIG9wdGlvbmFsIHRvIHJldHVybiwgc28g
+d2hpbGUgdGhlIFJQQyBoZWFkZXINCm1heSBiZSBjb21wbGV0ZWx5IHByZWRpY3RhYmxlLCB0aGUg
+TkZTIHJlcGx5IHBheWxvYWQgYmVmb3JlIGEgUkVBRCBvcg0KUkVBRERJUiBjYWxsIHRvIHhkcl9y
+ZWFkX3BhZ2VzKCkgaXMgbm90Lg0KDQpDaGVlcnMsDQogIFRyb25kDQoNCi0tIA0KVHJvbmQgTXlr
+bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWts
+ZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
