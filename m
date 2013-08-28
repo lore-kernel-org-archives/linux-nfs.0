@@ -1,263 +1,292 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:36416 "EHLO mx12.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:27513 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753169Ab3H0U7H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Aug 2013 16:59:07 -0400
+	id S1754460Ab3H1Tki (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Aug 2013 15:40:38 -0400
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: <linux-nfs@vger.kernel.org>
 CC: <andros@netapp.com>
-Subject: [PATCH 05/15] SUNRPC: Replace clnt->cl_principal
-Date: Tue, 27 Aug 2013 16:58:42 -0400
-Message-ID: <1377637132-53318-5-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1377637132-53318-4-git-send-email-Trond.Myklebust@netapp.com>
-References: <1377637132-53318-1-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-2-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-3-git-send-email-Trond.Myklebust@netapp.com>
- <1377637132-53318-4-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH v2 12/16] NFSv4: Convert idmapper to use the new framework for pipefs dentries
+Date: Wed, 28 Aug 2013 15:40:17 -0400
+Message-ID: <1377718821-28159-12-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377718821-28159-11-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377718821-28159-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-11-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The clnt->cl_principal is being used exclusively to store the service
-target name for RPCSEC_GSS/krb5 callbacks. Replace it with something that
-is stored only in the RPCSEC_GSS-specific code.
-
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4proc.c              |  5 ++++-
- include/linux/sunrpc/auth.h    | 10 ++++++++--
- include/linux/sunrpc/clnt.h    |  1 -
- net/sunrpc/auth.c              |  6 +++---
- net/sunrpc/auth_gss/auth_gss.c |  7 ++++---
- net/sunrpc/auth_null.c         |  2 +-
- net/sunrpc/auth_unix.c         |  2 +-
- net/sunrpc/clnt.c              | 18 +++++-------------
- 8 files changed, 26 insertions(+), 25 deletions(-)
+ fs/nfs/idmap.c | 184 +++++++++++----------------------------------------------
+ 1 file changed, 34 insertions(+), 150 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1671e1f..09c7e3b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2717,10 +2717,13 @@ out:
- static int nfs4_lookup_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
- 				struct nfs_fsinfo *info, rpc_authflavor_t flavor)
- {
-+	struct rpc_auth_create_args auth_args = {
-+		.pseudoflavor = flavor,
-+	};
- 	struct rpc_auth *auth;
- 	int ret;
- 
--	auth = rpcauth_create(flavor, server->client);
-+	auth = rpcauth_create(&auth_args, server->client);
- 	if (IS_ERR(auth)) {
- 		ret = -EACCES;
- 		goto out;
-diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index 0dd00f4..a9ab577 100644
---- a/include/linux/sunrpc/auth.h
-+++ b/include/linux/sunrpc/auth.h
-@@ -87,6 +87,11 @@ struct rpc_auth {
- 	/* per-flavor data */
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 8b7e94a..567983d 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -64,6 +64,7 @@ struct idmap_legacy_upcalldata {
  };
  
-+struct rpc_auth_create_args {
-+	rpc_authflavor_t pseudoflavor;
-+	const char *target_name;
-+};
+ struct idmap {
++	struct rpc_pipe_dir_object idmap_pdo;
+ 	struct rpc_pipe		*idmap_pipe;
+ 	struct idmap_legacy_upcalldata *idmap_upcall_data;
+ 	struct mutex		idmap_mutex;
+@@ -402,18 +403,23 @@ static struct key_type key_type_id_resolver_legacy = {
+ 	.request_key	= nfs_idmap_legacy_upcall,
+ };
+ 
+-static void __nfs_idmap_unregister(struct rpc_pipe *pipe)
++static void nfs_idmap_pipe_destroy(struct dentry *dir,
++		struct rpc_pipe_dir_object *pdo)
+ {
++	struct idmap *idmap = pdo->pdo_data;
++	struct rpc_pipe *pipe = idmap->idmap_pipe;
 +
- /* Flags for rpcauth_lookupcred() */
- #define RPCAUTH_LOOKUP_NEW		0x01	/* Accept an uninitialised cred */
- 
-@@ -97,7 +102,7 @@ struct rpc_authops {
- 	struct module		*owner;
- 	rpc_authflavor_t	au_flavor;	/* flavor (RPC_AUTH_*) */
- 	char *			au_name;
--	struct rpc_auth *	(*create)(struct rpc_clnt *, rpc_authflavor_t);
-+	struct rpc_auth *	(*create)(struct rpc_auth_create_args *, struct rpc_clnt *);
- 	void			(*destroy)(struct rpc_auth *);
- 
- 	struct rpc_cred *	(*lookup_cred)(struct rpc_auth *, struct auth_cred *, int);
-@@ -140,7 +145,8 @@ struct rpc_cred *	rpc_lookup_cred(void);
- struct rpc_cred *	rpc_lookup_machine_cred(const char *service_name);
- int			rpcauth_register(const struct rpc_authops *);
- int			rpcauth_unregister(const struct rpc_authops *);
--struct rpc_auth *	rpcauth_create(rpc_authflavor_t, struct rpc_clnt *);
-+struct rpc_auth *	rpcauth_create(struct rpc_auth_create_args *,
-+				struct rpc_clnt *);
- void			rpcauth_release(struct rpc_auth *);
- rpc_authflavor_t	rpcauth_get_pseudoflavor(rpc_authflavor_t,
- 				struct rpcsec_gss_info *);
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 481f9c0..b93b4aa 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -60,7 +60,6 @@ struct rpc_clnt {
- 	struct rpc_rtt		cl_rtt_default;
- 	struct rpc_timeout	cl_timeout_default;
- 	const struct rpc_program *cl_program;
--	char			*cl_principal;	/* target to authenticate to */
- };
- 
- /*
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index ed2fdd2..5071e43 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -250,11 +250,11 @@ rpcauth_list_flavors(rpc_authflavor_t *array, int size)
- EXPORT_SYMBOL_GPL(rpcauth_list_flavors);
- 
- struct rpc_auth *
--rpcauth_create(rpc_authflavor_t pseudoflavor, struct rpc_clnt *clnt)
-+rpcauth_create(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
- {
- 	struct rpc_auth		*auth;
- 	const struct rpc_authops *ops;
--	u32			flavor = pseudoflavor_to_flavor(pseudoflavor);
-+	u32			flavor = pseudoflavor_to_flavor(args->pseudoflavor);
- 
- 	auth = ERR_PTR(-EINVAL);
- 	if (flavor >= RPC_AUTH_MAXFLAVOR)
-@@ -269,7 +269,7 @@ rpcauth_create(rpc_authflavor_t pseudoflavor, struct rpc_clnt *clnt)
- 		goto out;
+ 	if (pipe->dentry) {
+ 		rpc_unlink(pipe->dentry);
+ 		pipe->dentry = NULL;
  	}
- 	spin_unlock(&rpc_authflavor_lock);
--	auth = ops->create(clnt, pseudoflavor);
-+	auth = ops->create(args, clnt);
- 	module_put(ops->owner);
- 	if (IS_ERR(auth))
- 		return auth;
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index b62812a..672a67f 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -864,8 +864,9 @@ static int gss_pipes_dentries_create_net(struct rpc_clnt *clnt,
-  * parameters based on the input flavor (which must be a pseudoflavor)
-  */
- static struct rpc_auth *
--gss_create(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
-+gss_create(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
- {
-+	rpc_authflavor_t flavor = args->pseudoflavor;
- 	struct gss_auth *gss_auth;
- 	struct rpc_auth * auth;
- 	int err = -ENOMEM; /* XXX? */
-@@ -877,8 +878,8 @@ gss_create(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
- 	if (!(gss_auth = kmalloc(sizeof(*gss_auth), GFP_KERNEL)))
- 		goto out_dec;
- 	gss_auth->target_name = NULL;
--	if (clnt->cl_principal) {
--		gss_auth->target_name = kstrdup(clnt->cl_principal, GFP_KERNEL);
-+	if (args->target_name) {
-+		gss_auth->target_name = kstrdup(args->target_name, GFP_KERNEL);
- 		if (gss_auth->target_name == NULL)
- 			goto err_free;
- 	}
-diff --git a/net/sunrpc/auth_null.c b/net/sunrpc/auth_null.c
-index a5c36c0..4664eb4 100644
---- a/net/sunrpc/auth_null.c
-+++ b/net/sunrpc/auth_null.c
-@@ -18,7 +18,7 @@ static struct rpc_auth null_auth;
- static struct rpc_cred null_cred;
+ }
  
- static struct rpc_auth *
--nul_create(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
-+nul_create(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
+-static int __nfs_idmap_register(struct dentry *dir,
+-				     struct idmap *idmap,
+-				     struct rpc_pipe *pipe)
++static int nfs_idmap_pipe_create(struct dentry *dir,
++		struct rpc_pipe_dir_object *pdo)
  {
- 	atomic_inc(&null_auth.au_count);
- 	return &null_auth;
-diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
-index dc37021..e52d832 100644
---- a/net/sunrpc/auth_unix.c
-+++ b/net/sunrpc/auth_unix.c
-@@ -33,7 +33,7 @@ static struct rpc_auth		unix_auth;
- static const struct rpc_credops	unix_credops;
++	struct idmap *idmap = pdo->pdo_data;
++	struct rpc_pipe *pipe = idmap->idmap_pipe;
+ 	struct dentry *dentry;
  
- static struct rpc_auth *
--unx_create(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
-+unx_create(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
- {
- 	dprintk("RPC:       creating UNIX authenticator for client %p\n",
- 			clnt);
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 0cf4e09..436adce 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -278,6 +278,10 @@ static void rpc_clnt_set_nodename(struct rpc_clnt *clnt, const char *nodename)
- static int rpc_client_register(const struct rpc_create_args *args,
- 			       struct rpc_clnt *clnt)
- {
-+	struct rpc_auth_create_args auth_args = {
-+		.pseudoflavor = args->authflavor,
-+		.target_name = args->client_name,
-+	};
- 	struct rpc_auth *auth;
- 	struct net *net = rpc_net_ns(clnt);
- 	struct super_block *pipefs_sb;
-@@ -294,7 +298,7 @@ static int rpc_client_register(const struct rpc_create_args *args,
- 	if (pipefs_sb)
- 		rpc_put_sb_net(net);
+ 	dentry = rpc_mkpipe_dentry(dir, "idmap", idmap, pipe);
+@@ -423,36 +429,10 @@ static int __nfs_idmap_register(struct dentry *dir,
+ 	return 0;
+ }
  
--	auth = rpcauth_create(args->authflavor, clnt);
-+	auth = rpcauth_create(&auth_args, clnt);
- 	if (IS_ERR(auth)) {
- 		dprintk("RPC:       Couldn't create auth handle (flavor %u)\n",
- 				args->authflavor);
-@@ -366,12 +370,6 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
- 
- 	clnt->cl_rtt = &clnt->cl_rtt_default;
- 	rpc_init_rtt(&clnt->cl_rtt_default, clnt->cl_timeout->to_initval);
--	clnt->cl_principal = NULL;
--	if (args->client_name) {
--		clnt->cl_principal = kstrdup(args->client_name, GFP_KERNEL);
--		if (!clnt->cl_principal)
--			goto out_no_principal;
+-static void nfs_idmap_unregister(struct nfs_client *clp,
+-				      struct rpc_pipe *pipe)
+-{
+-	struct net *net = clp->cl_net;
+-	struct super_block *pipefs_sb;
+-
+-	pipefs_sb = rpc_get_sb_net(net);
+-	if (pipefs_sb) {
+-		__nfs_idmap_unregister(pipe);
+-		rpc_put_sb_net(net);
 -	}
+-}
+-
+-static int nfs_idmap_register(struct nfs_client *clp,
+-				   struct idmap *idmap,
+-				   struct rpc_pipe *pipe)
+-{
+-	struct net *net = clp->cl_net;
+-	struct super_block *pipefs_sb;
+-	int err = 0;
+-
+-	pipefs_sb = rpc_get_sb_net(net);
+-	if (pipefs_sb) {
+-		if (clp->cl_rpcclient->cl_dentry)
+-			err = __nfs_idmap_register(clp->cl_rpcclient->cl_dentry,
+-						   idmap, pipe);
+-		rpc_put_sb_net(net);
+-	}
+-	return err;
+-}
++static const struct rpc_pipe_dir_object_ops nfs_idmap_pipe_dir_object_ops = {
++	.create = nfs_idmap_pipe_create,
++	.destroy = nfs_idmap_pipe_destroy,
++};
  
- 	atomic_set(&clnt->cl_count, 1);
+ int
+ nfs_idmap_new(struct nfs_client *clp)
+@@ -465,23 +445,31 @@ nfs_idmap_new(struct nfs_client *clp)
+ 	if (idmap == NULL)
+ 		return -ENOMEM;
  
-@@ -384,8 +382,6 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
- 	return clnt;
++	rpc_init_pipe_dir_object(&idmap->idmap_pdo,
++			&nfs_idmap_pipe_dir_object_ops,
++			idmap);
++
+ 	pipe = rpc_mkpipe_data(&idmap_upcall_ops, 0);
+ 	if (IS_ERR(pipe)) {
+ 		error = PTR_ERR(pipe);
+-		kfree(idmap);
+-		return error;
+-	}
+-	error = nfs_idmap_register(clp, idmap, pipe);
+-	if (error) {
+-		rpc_destroy_pipe_data(pipe);
+-		kfree(idmap);
+-		return error;
++		goto err;
+ 	}
+ 	idmap->idmap_pipe = pipe;
+ 	mutex_init(&idmap->idmap_mutex);
  
- out_no_path:
--	kfree(clnt->cl_principal);
--out_no_principal:
- 	rpc_free_iostats(clnt->cl_metrics);
- out_no_stats:
- 	kfree(clnt);
-@@ -555,7 +551,6 @@ struct rpc_clnt *rpc_clone_client(struct rpc_clnt *clnt)
- 		.prognumber	= clnt->cl_prog,
- 		.version	= clnt->cl_vers,
- 		.authflavor	= clnt->cl_auth->au_flavor,
--		.client_name	= clnt->cl_principal,
- 	};
- 	return __rpc_clone_client(&args, clnt);
++	error = rpc_add_pipe_dir_object(clp->cl_net,
++			&clp->cl_rpcclient->cl_pipedir_objects,
++			&idmap->idmap_pdo);
++	if (error)
++		goto err_destroy_pipe;
++
+ 	clp->cl_idmap = idmap;
+ 	return 0;
++err_destroy_pipe:
++	rpc_destroy_pipe_data(idmap->idmap_pipe);
++err:
++	kfree(idmap);
++	return error;
  }
-@@ -577,7 +572,6 @@ rpc_clone_client_set_auth(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
- 		.prognumber	= clnt->cl_prog,
- 		.version	= clnt->cl_vers,
- 		.authflavor	= flavor,
--		.client_name	= clnt->cl_principal,
- 	};
- 	return __rpc_clone_client(&args, clnt);
+ 
+ void
+@@ -491,130 +479,26 @@ nfs_idmap_delete(struct nfs_client *clp)
+ 
+ 	if (!idmap)
+ 		return;
+-	nfs_idmap_unregister(clp, idmap->idmap_pipe);
+-	rpc_destroy_pipe_data(idmap->idmap_pipe);
+ 	clp->cl_idmap = NULL;
++	rpc_remove_pipe_dir_object(clp->cl_net,
++			&clp->cl_rpcclient->cl_pipedir_objects,
++			&idmap->idmap_pdo);
++	rpc_destroy_pipe_data(idmap->idmap_pipe);
+ 	kfree(idmap);
  }
-@@ -650,7 +644,6 @@ rpc_free_client(struct rpc_clnt *clnt)
- 	rpc_clnt_remove_pipedir(clnt);
- 	rpc_unregister_client(clnt);
- 	rpc_free_iostats(clnt->cl_metrics);
--	kfree(clnt->cl_principal);
- 	clnt->cl_metrics = NULL;
- 	xprt_put(rcu_dereference_raw(clnt->cl_xprt));
- 	rpciod_down();
-@@ -714,7 +707,6 @@ struct rpc_clnt *rpc_bind_new_program(struct rpc_clnt *old,
- 		.prognumber	= program->number,
- 		.version	= vers,
- 		.authflavor	= old->cl_auth->au_flavor,
--		.client_name	= old->cl_principal,
- 	};
- 	struct rpc_clnt *clnt;
- 	int err;
+ 
+-static int __rpc_pipefs_event(struct nfs_client *clp, unsigned long event,
+-			      struct super_block *sb)
+-{
+-	int err = 0;
+-
+-	switch (event) {
+-	case RPC_PIPEFS_MOUNT:
+-		err = __nfs_idmap_register(clp->cl_rpcclient->cl_dentry,
+-						clp->cl_idmap,
+-						clp->cl_idmap->idmap_pipe);
+-		break;
+-	case RPC_PIPEFS_UMOUNT:
+-		if (clp->cl_idmap->idmap_pipe) {
+-			struct dentry *parent;
+-
+-			parent = clp->cl_idmap->idmap_pipe->dentry->d_parent;
+-			__nfs_idmap_unregister(clp->cl_idmap->idmap_pipe);
+-			/*
+-			 * Note: This is a dirty hack. SUNRPC hook has been
+-			 * called already but simple_rmdir() call for the
+-			 * directory returned with error because of idmap pipe
+-			 * inside. Thus now we have to remove this directory
+-			 * here.
+-			 */
+-			if (rpc_rmdir(parent))
+-				printk(KERN_ERR "NFS: %s: failed to remove "
+-					"clnt dir!\n", __func__);
+-		}
+-		break;
+-	default:
+-		printk(KERN_ERR "NFS: %s: unknown event: %ld\n", __func__,
+-			event);
+-		return -ENOTSUPP;
+-	}
+-	return err;
+-}
+-
+-static struct nfs_client *nfs_get_client_for_event(struct net *net, int event)
+-{
+-	struct nfs_net *nn = net_generic(net, nfs_net_id);
+-	struct dentry *cl_dentry;
+-	struct nfs_client *clp;
+-	int err;
+-
+-restart:
+-	spin_lock(&nn->nfs_client_lock);
+-	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
+-		/* Wait for initialisation to finish */
+-		if (clp->cl_cons_state == NFS_CS_INITING) {
+-			atomic_inc(&clp->cl_count);
+-			spin_unlock(&nn->nfs_client_lock);
+-			err = nfs_wait_client_init_complete(clp);
+-			nfs_put_client(clp);
+-			if (err)
+-				return NULL;
+-			goto restart;
+-		}
+-		/* Skip nfs_clients that failed to initialise */
+-		if (clp->cl_cons_state < 0)
+-			continue;
+-		smp_rmb();
+-		if (clp->rpc_ops != &nfs_v4_clientops)
+-			continue;
+-		cl_dentry = clp->cl_idmap->idmap_pipe->dentry;
+-		if (((event == RPC_PIPEFS_MOUNT) && cl_dentry) ||
+-		    ((event == RPC_PIPEFS_UMOUNT) && !cl_dentry))
+-			continue;
+-		atomic_inc(&clp->cl_count);
+-		spin_unlock(&nn->nfs_client_lock);
+-		return clp;
+-	}
+-	spin_unlock(&nn->nfs_client_lock);
+-	return NULL;
+-}
+-
+-static int rpc_pipefs_event(struct notifier_block *nb, unsigned long event,
+-			    void *ptr)
+-{
+-	struct super_block *sb = ptr;
+-	struct nfs_client *clp;
+-	int error = 0;
+-
+-	if (!try_module_get(THIS_MODULE))
+-		return 0;
+-
+-	while ((clp = nfs_get_client_for_event(sb->s_fs_info, event))) {
+-		error = __rpc_pipefs_event(clp, event, sb);
+-		nfs_put_client(clp);
+-		if (error)
+-			break;
+-	}
+-	module_put(THIS_MODULE);
+-	return error;
+-}
+-
+-#define PIPEFS_NFS_PRIO		1
+-
+-static struct notifier_block nfs_idmap_block = {
+-	.notifier_call	= rpc_pipefs_event,
+-	.priority	= SUNRPC_PIPEFS_NFS_PRIO,
+-};
+-
+ int nfs_idmap_init(void)
+ {
+ 	int ret;
+ 	ret = nfs_idmap_init_keyring();
+ 	if (ret != 0)
+ 		goto out;
+-	ret = rpc_pipefs_notifier_register(&nfs_idmap_block);
+-	if (ret != 0)
+-		nfs_idmap_quit_keyring();
+ out:
+ 	return ret;
+ }
+ 
+ void nfs_idmap_quit(void)
+ {
+-	rpc_pipefs_notifier_unregister(&nfs_idmap_block);
+ 	nfs_idmap_quit_keyring();
+ }
+ 
 -- 
 1.8.3.1
 
