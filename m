@@ -1,277 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:32911 "EHLO mx11.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:27513 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933153Ab3HNXZT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Aug 2013 19:25:19 -0400
+	id S1754315Ab3H1Tkh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Aug 2013 15:40:37 -0400
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 11/13] NFSv4: Add tracepoints for debugging reads and writes
-Date: Wed, 14 Aug 2013 19:24:56 -0400
-Message-ID: <1376522698-44596-12-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1376522698-44596-11-git-send-email-Trond.Myklebust@netapp.com>
-References: <1376522698-44596-1-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-2-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-3-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-4-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-5-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-6-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-7-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-8-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-9-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-10-git-send-email-Trond.Myklebust@netapp.com>
- <1376522698-44596-11-git-send-email-Trond.Myklebust@netapp.com>
+CC: <andros@netapp.com>
+Subject: [PATCH v2 07/16] RPCSEC_GSS: Fix an Oopsable condition when creating/destroying pipefs objects
+Date: Wed, 28 Aug 2013 15:40:12 -0400
+Message-ID: <1377718821-28159-7-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1377718821-28159-6-git-send-email-Trond.Myklebust@netapp.com>
+References: <1377718821-28159-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1377718821-28159-6-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Set up tracepoints to track read, write and commit, as well as
-pNFS reads and writes and commits to the data server.
+If an error condition occurs on rpc_pipefs creation, or the user mounts
+rpc_pipefs and then unmounts it, then the dentries in struct gss_auth
+need to be reset to NULL so that a second call to gss_pipes_dentries_destroy
+doesn't try to free them again.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4filelayout.c |  10 +++++
- fs/nfs/nfs4proc.c       |   8 ++++
- fs/nfs/nfs4trace.c      |   5 +++
- fs/nfs/nfs4trace.h      | 104 ++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/pnfs.c           |   7 ++++
- 5 files changed, 134 insertions(+)
+ net/sunrpc/auth_gss/auth_gss.c | 32 ++++++++++++++++++++------------
+ 1 file changed, 20 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index f6ec7c7..ca92340 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -39,6 +39,7 @@
- #include "internal.h"
- #include "delegation.h"
- #include "nfs4filelayout.h"
-+#include "nfs4trace.h"
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 6323803..c0d36bb 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -796,10 +796,14 @@ static void gss_pipes_dentries_destroy(struct rpc_auth *auth)
+ 	struct gss_auth *gss_auth;
  
- #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
+ 	gss_auth = container_of(auth, struct gss_auth, rpc_auth);
+-	if (gss_auth->pipe[0]->dentry)
++	if (gss_auth->pipe[0]->dentry) {
+ 		rpc_unlink(gss_auth->pipe[0]->dentry);
+-	if (gss_auth->pipe[1]->dentry)
++		gss_auth->pipe[0]->dentry = NULL;
++	}
++	if (gss_auth->pipe[1]->dentry) {
+ 		rpc_unlink(gss_auth->pipe[1]->dentry);
++		gss_auth->pipe[1]->dentry = NULL;
++	}
+ }
  
-@@ -273,6 +274,9 @@ static int filelayout_read_done_cb(struct rpc_task *task,
- 	struct nfs_pgio_header *hdr = data->header;
+ static int gss_pipes_dentries_create(struct rpc_auth *auth)
+@@ -807,26 +811,30 @@ static int gss_pipes_dentries_create(struct rpc_auth *auth)
  	int err;
+ 	struct gss_auth *gss_auth;
+ 	struct rpc_clnt *clnt;
++	struct dentry *dentry;
  
-+	trace_nfs4_pnfs_read(hdr, data->args.context,
-+			data->args.offset, data->args.count,
-+			task->tk_status);
- 	err = filelayout_async_handle_error(task, data->args.context->state,
- 					    data->ds_clp, hdr->lseg);
+ 	gss_auth = container_of(auth, struct gss_auth, rpc_auth);
+ 	clnt = gss_auth->client;
  
-@@ -389,6 +393,9 @@ static int filelayout_write_done_cb(struct rpc_task *task,
- 	struct nfs_pgio_header *hdr = data->header;
- 	int err;
+-	gss_auth->pipe[1]->dentry = rpc_mkpipe_dentry(clnt->cl_dentry,
+-						      "gssd",
+-						      clnt, gss_auth->pipe[1]);
+-	if (IS_ERR(gss_auth->pipe[1]->dentry))
+-		return PTR_ERR(gss_auth->pipe[1]->dentry);
+-	gss_auth->pipe[0]->dentry = rpc_mkpipe_dentry(clnt->cl_dentry,
+-						      gss_auth->mech->gm_name,
+-						      clnt, gss_auth->pipe[0]);
+-	if (IS_ERR(gss_auth->pipe[0]->dentry)) {
+-		err = PTR_ERR(gss_auth->pipe[0]->dentry);
++	dentry = rpc_mkpipe_dentry(clnt->cl_dentry, "gssd",
++			clnt, gss_auth->pipe[1]);
++	if (IS_ERR(dentry)) {
++		err = PTR_ERR(dentry);
++		goto err;
++	}
++	gss_auth->pipe[1]->dentry = dentry;
++	dentry = rpc_mkpipe_dentry(clnt->cl_dentry, gss_auth->mech->gm_name,
++			clnt, gss_auth->pipe[0]);
++	if (IS_ERR(dentry)) {
++		err = PTR_ERR(dentry);
+ 		goto err_unlink_pipe_1;
+ 	}
+ 	return 0;
  
-+	trace_nfs4_pnfs_write(hdr, data->args.context,
-+			data->args.offset, data->args.count,
-+			task->tk_status);
- 	err = filelayout_async_handle_error(task, data->args.context->state,
- 					    data->ds_clp, hdr->lseg);
+ err_unlink_pipe_1:
+ 	rpc_unlink(gss_auth->pipe[1]->dentry);
++	gss_auth->pipe[1]->dentry = NULL;
++err:
+ 	return err;
+ }
  
-@@ -421,6 +428,9 @@ static int filelayout_commit_done_cb(struct rpc_task *task,
- {
- 	int err;
- 
-+	trace_nfs4_pnfs_commit_ds(data->inode,
-+			data->args.offset, data->args.count,
-+			task->tk_status);
- 	err = filelayout_async_handle_error(task, NULL, data->ds_clp,
- 					    data->lseg);
- 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index d269199..a1aac14 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3885,6 +3885,9 @@ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
- {
- 	struct nfs_server *server = NFS_SERVER(data->header->inode);
- 
-+	trace_nfs4_read(data->header, data->args.context,
-+			data->args.offset, data->args.count,
-+			task->tk_status);
- 	if (nfs4_async_handle_error(task, server, data->args.context->state) == -EAGAIN) {
- 		rpc_restart_call_prepare(task);
- 		return -EAGAIN;
-@@ -3946,6 +3949,9 @@ static int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data
- {
- 	struct inode *inode = data->header->inode;
- 	
-+	trace_nfs4_write(data->header, data->args.context,
-+			data->args.offset, data->args.count,
-+			task->tk_status);
- 	if (nfs4_async_handle_error(task, NFS_SERVER(inode), data->args.context->state) == -EAGAIN) {
- 		rpc_restart_call_prepare(task);
- 		return -EAGAIN;
-@@ -4037,6 +4043,8 @@ static int nfs4_commit_done_cb(struct rpc_task *task, struct nfs_commit_data *da
- {
- 	struct inode *inode = data->inode;
- 
-+	trace_nfs4_commit(inode, data->args.offset, data->args.count,
-+			task->tk_status);
- 	if (nfs4_async_handle_error(task, NFS_SERVER(inode), NULL) == -EAGAIN) {
- 		rpc_restart_call_prepare(task);
- 		return -EAGAIN;
-diff --git a/fs/nfs/nfs4trace.c b/fs/nfs/nfs4trace.c
-index 3f02183..f840974 100644
---- a/fs/nfs/nfs4trace.c
-+++ b/fs/nfs/nfs4trace.c
-@@ -8,3 +8,8 @@
- #define CREATE_TRACE_POINTS
- #include "nfs4trace.h"
- 
-+#ifdef CONFIG_NFS_V4_1
-+EXPORT_TRACEPOINT_SYMBOL_GPL(nfs4_pnfs_read);
-+EXPORT_TRACEPOINT_SYMBOL_GPL(nfs4_pnfs_write);
-+EXPORT_TRACEPOINT_SYMBOL_GPL(nfs4_pnfs_commit_ds);
-+#endif
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index 7b3cfbf..eea87d9 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -675,6 +675,110 @@ DEFINE_NFS4_IDMAP_EVENT(nfs4_map_group_to_gid);
- DEFINE_NFS4_IDMAP_EVENT(nfs4_map_uid_to_name);
- DEFINE_NFS4_IDMAP_EVENT(nfs4_map_gid_to_group);
- 
-+DECLARE_EVENT_CLASS(nfs4_read_write_event,
-+		TP_PROTO(const struct nfs_pgio_header *header,
-+			const struct nfs_open_context *ctx,
-+			loff_t offset,
-+			size_t count,
-+			int error),
-+
-+		TP_ARGS(header, ctx, offset, count, error),
-+
-+		TP_STRUCT__entry(
-+			__field(dev_t, dev)
-+			__field(u32, fhandle)
-+			__field(u64, fileid)
-+			__field(loff_t, offset)
-+			__field(size_t, count)
-+			__field(int, error)
-+		),
-+
-+		TP_fast_assign(
-+			struct inode *inode = header->inode;
-+			__entry->dev = inode->i_sb->s_dev;
-+			__entry->fileid = NFS_FILEID(inode);
-+			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
-+			__entry->offset = offset;
-+			__entry->count = count;
-+			__entry->error = error;
-+		),
-+
-+		TP_printk("error=%d (%s) fileid=%02x:%02x:%lld, fhandle=%0x08x"
-+			  "offset=%llu, count=%zu",
-+			  __entry->error,
-+			  show_nfsv4_errors(__entry->error),
-+			  MAJOR(__entry->dev), MINOR(__entry->dev),
-+			  (unsigned long long)__entry->fileid,
-+			  __entry->fhandle,
-+			  (unsigned long long)__entry->offset,
-+			  __entry->count
-+		)
-+);
-+
-+#define DEFINE_NFS4_READ_WRITE_EVENT(name)			\
-+DEFINE_EVENT(nfs4_read_write_event, name,			\
-+		TP_PROTO(const struct nfs_pgio_header *header,	\
-+			const struct nfs_open_context *ctx,	\
-+			loff_t offset,				\
-+			size_t count,				\
-+			int error),				\
-+		TP_ARGS(header, ctx, offset, count, error))
-+DEFINE_NFS4_READ_WRITE_EVENT(nfs4_read);
-+DEFINE_NFS4_READ_WRITE_EVENT(nfs4_write);
-+#ifdef CONFIG_NFS_V4_1
-+DEFINE_NFS4_READ_WRITE_EVENT(nfs4_pnfs_read);
-+DEFINE_NFS4_READ_WRITE_EVENT(nfs4_pnfs_write);
-+#endif /* CONFIG_NFS_V4_1 */
-+
-+DECLARE_EVENT_CLASS(nfs4_commit_event,
-+		TP_PROTO(const struct inode *inode,
-+			loff_t offset,
-+			size_t count,
-+			int error),
-+
-+		TP_ARGS(inode, offset, count, error),
-+
-+		TP_STRUCT__entry(
-+			__field(dev_t, dev)
-+			__field(u32, fhandle)
-+			__field(u64, fileid)
-+			__field(loff_t, offset)
-+			__field(size_t, count)
-+			__field(int, error)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->dev = inode->i_sb->s_dev;
-+			__entry->fileid = NFS_FILEID(inode);
-+			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
-+			__entry->offset = offset;
-+			__entry->count = count;
-+			__entry->error = error;
-+		),
-+
-+		TP_printk("error=%d (%s) fileid=%02x:%02x:%lld, fhandle=%0x08x"
-+			  "offset=%llu, count=%zu",
-+			  __entry->error,
-+			  show_nfsv4_errors(__entry->error),
-+			  MAJOR(__entry->dev), MINOR(__entry->dev),
-+			  (unsigned long long)__entry->fileid,
-+			  __entry->fhandle,
-+			  (unsigned long long)__entry->offset,
-+			  __entry->count
-+		)
-+);
-+#define DEFINE_NFS4_COMMIT_EVENT(name)			\
-+DEFINE_EVENT(nfs4_commit_event, name,			\
-+		TP_PROTO(const struct inode *inode,	\
-+			loff_t offset,			\
-+			size_t count,			\
-+			int error),			\
-+		TP_ARGS(inode, offset, count, error))
-+DEFINE_NFS4_COMMIT_EVENT(nfs4_commit);
-+#ifdef CONFIG_NFS_V4_1
-+DEFINE_NFS4_COMMIT_EVENT(nfs4_pnfs_commit_ds);
-+#endif /* CONFIG_NFS_V4_1 */
-+
- #endif /* _TRACE_NFS4_H */
- 
- #undef TRACE_INCLUDE_PATH
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 9bf5cda..3a147dd 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -33,6 +33,7 @@
- #include "internal.h"
- #include "pnfs.h"
- #include "iostat.h"
-+#include "nfs4trace.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_PNFS
- #define PNFS_LAYOUTGET_RETRY_TIMEOUT (120*HZ)
-@@ -1551,6 +1552,9 @@ void pnfs_ld_write_done(struct nfs_write_data *data)
- {
- 	struct nfs_pgio_header *hdr = data->header;
- 
-+	trace_nfs4_pnfs_write(hdr, data->args.context,
-+			data->args.offset, data->args.count,
-+			hdr->pnfs_error);
- 	if (!hdr->pnfs_error) {
- 		pnfs_set_layoutcommit(data);
- 		hdr->mds_ops->rpc_call_done(&data->task, data);
-@@ -1705,6 +1709,9 @@ void pnfs_ld_read_done(struct nfs_read_data *data)
- {
- 	struct nfs_pgio_header *hdr = data->header;
- 
-+	trace_nfs4_pnfs_write(hdr, data->args.context,
-+			data->args.offset, data->args.count,
-+			hdr->pnfs_error);
- 	if (likely(!hdr->pnfs_error)) {
- 		__nfs4_read_done_cb(data);
- 		hdr->mds_ops->rpc_call_done(&data->task, data);
 -- 
 1.8.3.1
 
