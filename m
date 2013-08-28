@@ -1,151 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f48.google.com ([209.85.214.48]:55927 "EHLO
-	mail-bk0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754798Ab3HFOaZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Aug 2013 10:30:25 -0400
-Received: by mail-bk0-f48.google.com with SMTP id jf20so183682bkc.7
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Aug 2013 07:30:24 -0700 (PDT)
-From: Miklos Szeredi <miklos@szeredi.hu>
-To: rwheeler@redhat.com, avati@redhat.com, viro@ZenIV.linux.org.uk
-Cc: bfoster@redhat.com, dhowells@redhat.com, eparis@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        swhiteho@redhat.com, mszeredi@suse.cz
-Subject: [PATCH 3/4] fuse: use d_materialise_unique()
-Date: Tue,  6 Aug 2013 16:30:02 +0200
-Message-Id: <1375799403-28544-4-git-send-email-miklos@szeredi.hu>
-In-Reply-To: <1375799403-28544-1-git-send-email-miklos@szeredi.hu>
-References: <1375799403-28544-1-git-send-email-miklos@szeredi.hu>
+Received: from hqemgate15.nvidia.com ([216.228.121.64]:11596 "EHLO
+	hqemgate15.nvidia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752677Ab3H1Pr7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Aug 2013 11:47:59 -0400
+From: Matt Craighead <mcraighead@nvidia.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Mark Young <MYoung@nvidia.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Wed, 28 Aug 2013 08:47:57 -0700
+Subject: RE: Issue found with kernel/net/sunrpc/xdr.c
+Message-ID: <71D0C6F08977AC42A3EF66AA1BEB0F10A11801AE16@HQMAIL02.nvidia.com>
+References: <1FC56210173BB445BD77F608D6FB8D03620A9978B5@HQMAIL03.nvidia.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA94677C96F@SACEXCMBX04-PRD.hq.netapp.com>
+ <20130828143256.GA2960@fieldses.org>
+ <71D0C6F08977AC42A3EF66AA1BEB0F10A11801ADF5@HQMAIL02.nvidia.com>
+ <20130828154124.GC2960@fieldses.org>
+In-Reply-To: <20130828154124.GC2960@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Miklos Szeredi <mszeredi@suse.cz>
+NFSv3 over UDP.  No Kerberos or any other authentication of any sort.
 
-Use d_materialise_unique() instead of d_splice_alias().  This allows dentry
-subtrees to be moved to a new place if there moved, even if something is
-referencing a dentry in the subtree (open fd, cwd, etc..).
+There are some non-default mount options, and perhaps some other things that might be unique to this particular test environment, but I don't see anything in particular that seems likely to perturb this code's behavior very much.
 
-This will also allow us to drop a subtree if it is found to be replaced by
-something else.  In this case the disconnected subtree can later be
-reconnected to its new location.
+-----Original Message-----
+From: J. Bruce Fields [mailto:bfields@fieldses.org] 
+Sent: Wednesday, August 28, 2013 10:41 AM
+To: Matt Craighead
+Cc: Myklebust, Trond; Mark Young; linux-nfs@vger.kernel.org
+Subject: Re: Issue found with kernel/net/sunrpc/xdr.c
 
-d_materialise_unique() ensures that a directory entry only ever has one
-alias.  We keep fc->inst_mutex around the calls for d_materialise_unique()
-on directories to prevent a race with mkdir "stealing" the inode.
+On Wed, Aug 28, 2013 at 08:18:10AM -0700, Matt Craighead wrote:
+> > I'm curious why we haven't seen it before
+> 
+> I agree, it's slightly mysterious.  We're hitting the bug on a 32-bit ARM system with 1GB or 2GB of memory; surely that's not very far off the beaten path.
 
-Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
----
- fs/fuse/dir.c | 69 ++++++++++++++++++++++-------------------------------------
- 1 file changed, 26 insertions(+), 43 deletions(-)
+Yeah, it probably gets less testing, but I doubt you're the first to use 32-bit ARM with whatever minimum memory size is required to hit this.
+Hm.  (Are you using krb5?  Which version of NFS?  And I guess this manifested as the client seeing corrupted file data?)
 
-diff --git a/fs/fuse/dir.c b/fs/fuse/dir.c
-index 72a5d5b..131d14b 100644
---- a/fs/fuse/dir.c
-+++ b/fs/fuse/dir.c
-@@ -267,26 +267,6 @@ int fuse_valid_type(int m)
- 		S_ISBLK(m) || S_ISFIFO(m) || S_ISSOCK(m);
- }
- 
--/*
-- * Add a directory inode to a dentry, ensuring that no other dentry
-- * refers to this inode.  Called with fc->inst_mutex.
-- */
--static struct dentry *fuse_d_add_directory(struct dentry *entry,
--					   struct inode *inode)
--{
--	struct dentry *alias = d_find_alias(inode);
--	if (alias && !(alias->d_flags & DCACHE_DISCONNECTED)) {
--		/* This tries to shrink the subtree below alias */
--		fuse_invalidate_entry(alias);
--		dput(alias);
--		if (!hlist_empty(&inode->i_dentry))
--			return ERR_PTR(-EBUSY);
--	} else {
--		dput(alias);
--	}
--	return d_splice_alias(inode, entry);
--}
--
- int fuse_lookup_name(struct super_block *sb, u64 nodeid, struct qstr *name,
- 		     struct fuse_entry_out *outarg, struct inode **inode)
- {
-@@ -345,6 +325,24 @@ int fuse_lookup_name(struct super_block *sb, u64 nodeid, struct qstr *name,
- 	return err;
- }
- 
-+static struct dentry *fuse_materialise_dentry(struct dentry *dentry,
-+					      struct inode *inode)
-+{
-+	struct dentry *newent;
-+
-+	if (inode && S_ISDIR(inode->i_mode)) {
-+		struct fuse_conn *fc = get_fuse_conn(inode);
-+
-+		mutex_lock(&fc->inst_mutex);
-+		newent = d_materialise_unique(dentry, inode);
-+		mutex_unlock(&fc->inst_mutex);
-+	} else {
-+		newent = d_materialise_unique(dentry, inode);
-+	}
-+
-+	return newent;
-+}
-+
- static struct dentry *fuse_lookup(struct inode *dir, struct dentry *entry,
- 				  unsigned int flags)
- {
-@@ -352,7 +350,6 @@ static struct dentry *fuse_lookup(struct inode *dir, struct dentry *entry,
- 	struct fuse_entry_out outarg;
- 	struct inode *inode;
- 	struct dentry *newent;
--	struct fuse_conn *fc = get_fuse_conn(dir);
- 	bool outarg_valid = true;
- 
- 	err = fuse_lookup_name(dir->i_sb, get_node_id(dir), &entry->d_name,
-@@ -368,16 +365,10 @@ static struct dentry *fuse_lookup(struct inode *dir, struct dentry *entry,
- 	if (inode && get_node_id(inode) == FUSE_ROOT_ID)
- 		goto out_iput;
- 
--	if (inode && S_ISDIR(inode->i_mode)) {
--		mutex_lock(&fc->inst_mutex);
--		newent = fuse_d_add_directory(entry, inode);
--		mutex_unlock(&fc->inst_mutex);
--		err = PTR_ERR(newent);
--		if (IS_ERR(newent))
--			goto out_iput;
--	} else {
--		newent = d_splice_alias(inode, entry);
--	}
-+	newent = fuse_materialise_dentry(entry, inode);
-+	err = PTR_ERR(newent);
-+	if (IS_ERR(newent))
-+		goto out_err;
- 
- 	entry = newent ? newent : entry;
- 	if (outarg_valid)
-@@ -1275,18 +1266,10 @@ static int fuse_direntplus_link(struct file *file,
- 	if (!inode)
- 		goto out;
- 
--	if (S_ISDIR(inode->i_mode)) {
--		mutex_lock(&fc->inst_mutex);
--		alias = fuse_d_add_directory(dentry, inode);
--		mutex_unlock(&fc->inst_mutex);
--		err = PTR_ERR(alias);
--		if (IS_ERR(alias)) {
--			iput(inode);
--			goto out;
--		}
--	} else {
--		alias = d_splice_alias(inode, dentry);
--	}
-+	alias = fuse_materialise_dentry(dentry, inode);
-+	err = PTR_ERR(alias);
-+	if (IS_ERR(alias))
-+		goto out;
- 
- 	if (alias) {
- 		dput(dentry);
--- 
-1.8.1.4
+Oh well, just curiosity on my part.  The fix is simple enough.
 
+--b.
+
+> 
+> 
+> > Or maybe memmove is an architecture-specific implementation that happens to handle left-to-right overlapping copies correctly on common architectures?
+> 
+> It's architecture specific, e.g.: 
+> http://lxr.linux.no/linux+v3.8/arch/arm/lib/memmove.S
+> 
+> In this particular case, it decides that the memory is non-overlapping (by comparing the virtual addresses), so it incorrectly dispatches to memcpy().  At that point all bets are off in terms of the direction, chunk size, etc. of the copy.
+> 
+> I guess I'd typically expect memcpy() to stride through memory forwards rather than backwards though.  And since this function mandates "from < to", it seems like this would usually fail.
+> 
+> 
+> For x86: http://lxr.linux.no/linux+v3.8/arch/x86/lib/memcpy_32.c
+> 
+> In this case, it looks like it doesn't dispatch to memcpy().  It just determines forward/backwards and copies accordingly.  So it would work as long as the "from < to" property was preserved.
+> 
+> If I'm reading the code correctly, kmap_atomic appears to grow downward on x86:
+> http://lxr.linux.no/linux+v3.8/arch/x86/mm/highmem_32.c
+> http://lxr.linux.no/linux+v3.8/arch/x86/include/asm/fixmap.h
+> etc.
+> 
+> Since xdr.c calls kmap_atomic on *pgto first, then *pgfrom, the "from < to" property will therefore be preserved.
+> 
+> 
+> Therefore, I suspect you might be able to reproduce the bug on (32-bit) x86 by doing any of the following:
+> - swapping the order of those kmap_atomic/kunmap_atomic calls
+> - modifying kmap_atomic to grow in the opposite direction
+> - modifying memmove() to dispatch to memcpy() when the virtual regions 
+> are non-overlapping
+> 
+> It's still possible that there is something else funny about how memory gets allocated in our setup that makes the bug more likely, but empirically, the bug didn't seem hard to hit.  We didn't need to copy very much data/very many files over NFS before we typically got corruption, and the bug happened on a variety of specific platforms.  It was (unsurprisingly) easier to reproduce with 2GB than with 1GB though.
+> 
+> -----Original Message-----
+> From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> Sent: Wednesday, August 28, 2013 9:33 AM
+> To: Myklebust, Trond
+> Cc: Mark Young; linux-nfs@vger.kernel.org; Matt Craighead
+> Subject: Re: Issue found with kernel/net/sunrpc/xdr.c
+> 
+> On Tue, Aug 27, 2013 at 10:01:38PM +0000, Myklebust, Trond wrote:
+> > > -----Original Message-----
+> > > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs- 
+> > > owner@vger.kernel.org] On Behalf Of Mark Young
+> > > Sent: Tuesday, August 27, 2013 5:17 PM
+> > > To: linux-nfs@vger.kernel.org
+> > > Cc: Matt Craighead
+> > > Subject: Issue found with kernel/net/sunrpc/xdr.c
+> > > 
+> > > I was pointed to this mailing list by Brian Fields.
+> > > 
+> > >  We're currently seeing NFS data corruption, which we traced back 
+> > > to memory corruption that happens in the function 
+> > > _shift_data_right_pages in net/sunrpc/xdr.c.
+> > > 
+> > >  When we see the issue, we're running a 32bit os with systems running with
+> > > more than 1GB of physical memory.   The errant behavior appears to be that
+> > > two calls to kmap_atomic (on 32bit systems with highmem present) 
+> > > with the same physical address (on addresses within highmem)  will return two
+> > > different vaddrs.    In our assessment, this confuses the memmove code into
+> > > thinking that the two addresses are non-overlapping in spite of 
+> > > the fact that they are overlapping in physical space.  This, in turn, results in corruption.
+> > > 
+> > >  A proposed solution to the problem would involve calling 
+> > > kmap_atomic only once in the case that the pgfrom and pgto are 
+> > > identical, and then re-using the resultant vaddr for both vto and vfrom.
+> > > 
+> > > Any insight on the issue or the proposed solution would be greatly 
+> > > appreciated.
+> > 
+> > I'm fine with that solution. Mind sending a duly conformant patch w/ a signed-off-by line?
+> 
+> I'm curious why we haven't seen it before: the code's done this for years.  It looks to me like the two kmap_atomic()s, if they're non-trivial, should always return different addresses.  And overlapping copies are probably the normal case for this function.
+> 
+> Shouldn't anyone on 32 bit and high memory have seen filesystem corruption?
+> 
+> Or maybe memmove is an architecture-specific implementation that happens to handle left-to-right overlapping copies correctly on common architectures?
+> 
+> --b.
+> ----------------------------------------------------------------------
+> ------------- This email message is for the sole use of the intended 
+> recipient(s) and may contain confidential information.  Any 
+> unauthorized review, use, disclosure or distribution is prohibited.  
+> If you are not the intended recipient, please contact the sender by 
+> reply email and destroy all copies of the original message.
+> ----------------------------------------------------------------------
+> -------------
