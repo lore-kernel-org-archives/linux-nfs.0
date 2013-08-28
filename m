@@ -1,205 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f43.google.com ([209.85.213.43]:41820 "EHLO
-	mail-yh0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S968171Ab3HIQtX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Aug 2013 12:49:23 -0400
-Received: by mail-yh0-f43.google.com with SMTP id z12so1539887yhz.30
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Aug 2013 09:49:22 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
-        by mx.google.com with ESMTPSA id y70sm20675916yhe.15.2013.08.09.09.49.20
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
-        Fri, 09 Aug 2013 09:49:21 -0700 (PDT)
-Subject: [PATCH v2 11/33] NFS: NFSv4.0 transport blocking
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Fri, 09 Aug 2013 12:49:19 -0400
-Message-ID: <20130809164919.5362.82216.stgit@seurat.1015granger.net>
-In-Reply-To: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
-References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+Received: from hqemgate16.nvidia.com ([216.228.121.65]:3635 "EHLO
+	hqemgate16.nvidia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752334Ab3H1PSL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Aug 2013 11:18:11 -0400
+From: Matt Craighead <mcraighead@nvidia.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Mark Young <MYoung@nvidia.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Wed, 28 Aug 2013 08:18:10 -0700
+Subject: RE: Issue found with kernel/net/sunrpc/xdr.c
+Message-ID: <71D0C6F08977AC42A3EF66AA1BEB0F10A11801ADF5@HQMAIL02.nvidia.com>
+References: <1FC56210173BB445BD77F608D6FB8D03620A9978B5@HQMAIL03.nvidia.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA94677C96F@SACEXCMBX04-PRD.hq.netapp.com>
+ <20130828143256.GA2960@fieldses.org>
+In-Reply-To: <20130828143256.GA2960@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Plumb in a mechanism for plugging an NFSv4.0 mount, using the
-same infrastructure as NFSv4.1 sessions.
+> I'm curious why we haven't seen it before
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/nfs4proc.c |   82 +++++++++++++++++++++++++++++++++++++++++++++++------
- fs/nfs/nfs4xdr.c  |   13 +++++---
- 2 files changed, 79 insertions(+), 16 deletions(-)
+I agree, it's slightly mysterious.  We're hitting the bug on a 32-bit ARM system with 1GB or 2GB of memory; surely that's not very far off the beaten path.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 4352d51..51f4272 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -468,6 +468,67 @@ static void nfs4_set_sequence_privileged(struct nfs4_sequence_args *args)
- 	args->sa_privileged = 1;
- }
- 
-+static int nfs40_setup_sequence(const struct nfs_server *server,
-+				struct nfs4_sequence_args *args,
-+				struct nfs4_sequence_res *res,
-+				struct rpc_task *task)
-+{
-+	struct nfs4_slot_table *tbl = server->nfs_client->cl_slot_tbl;
-+	struct nfs4_slot *slot;
-+
-+	/* slot already allocated? */
-+	if (res->sr_slot != NULL)
-+		goto out_start;
-+
-+	spin_lock(&tbl->slot_tbl_lock);
-+	if (nfs4_slot_tbl_draining(tbl) && !args->sa_privileged)
-+		goto out_sleep;
-+
-+	slot = nfs4_alloc_slot(tbl);
-+	if (IS_ERR(slot)) {
-+		if (slot == ERR_PTR(-ENOMEM))
-+			task->tk_timeout = HZ >> 2;
-+		goto out_sleep;
-+	}
-+	spin_unlock(&tbl->slot_tbl_lock);
-+
-+	args->sa_slot = slot;
-+	res->sr_slot = slot;
-+
-+out_start:
-+	rpc_call_start(task);
-+	return 0;
-+
-+out_sleep:
-+	if (args->sa_privileged)
-+		rpc_sleep_on_priority(&tbl->slot_tbl_waitq, task,
-+				NULL, RPC_PRIORITY_PRIVILEGED);
-+	else
-+		rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
-+	spin_unlock(&tbl->slot_tbl_lock);
-+	return -EAGAIN;
-+}
-+
-+static int nfs40_sequence_done(struct rpc_task *task,
-+			       struct nfs4_sequence_res *res)
-+{
-+	struct nfs4_slot *slot = res->sr_slot;
-+	struct nfs4_slot_table *tbl;
-+
-+	if (!RPC_WAS_SENT(task))
-+		goto out;
-+
-+	tbl = slot->table;
-+	spin_lock(&tbl->slot_tbl_lock);
-+	if (!nfs41_wake_and_assign_slot(tbl, slot))
-+		nfs4_free_slot(tbl, slot);
-+	spin_unlock(&tbl->slot_tbl_lock);
-+
-+	res->sr_slot = NULL;
-+out:
-+	return 1;
-+}
-+
- #if defined(CONFIG_NFS_V4_1)
- 
- static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
-@@ -612,6 +673,8 @@ static int nfs4_sequence_done(struct rpc_task *task,
- {
- 	if (res->sr_slot == NULL)
- 		return 1;
-+	if (!res->sr_slot->table->session)
-+		return nfs40_sequence_done(task, res);
- 	return nfs41_sequence_done(task, res);
- }
- 
-@@ -686,17 +749,15 @@ static int nfs4_setup_sequence(const struct nfs_server *server,
- 	struct nfs4_session *session = nfs4_get_session(server);
- 	int ret = 0;
- 
--	if (session == NULL) {
--		rpc_call_start(task);
--		goto out;
--	}
-+	if (!session)
-+		return nfs40_setup_sequence(server, args, res, task);
- 
- 	dprintk("--> %s clp %p session %p sr_slot %u\n",
- 		__func__, session->clp, session, res->sr_slot ?
- 			res->sr_slot->slot_nr : NFS4_NO_SLOT);
- 
- 	ret = nfs41_setup_sequence(session, args, res, task);
--out:
-+
- 	dprintk("<-- %s status=%d\n", __func__, ret);
- 	return ret;
- }
-@@ -723,22 +784,23 @@ static const struct rpc_call_ops nfs41_call_sync_ops = {
- 	.rpc_call_done = nfs41_call_sync_done,
- };
- 
--#else
-+#else	/* !CONFIG_NFS_V4_1 */
-+
- static int nfs4_setup_sequence(const struct nfs_server *server,
- 			       struct nfs4_sequence_args *args,
- 			       struct nfs4_sequence_res *res,
- 			       struct rpc_task *task)
- {
--	rpc_call_start(task);
--	return 0;
-+	return nfs40_setup_sequence(server, args, res, task);
- }
- 
- static int nfs4_sequence_done(struct rpc_task *task,
- 			       struct nfs4_sequence_res *res)
- {
--	return 1;
-+	return nfs40_sequence_done(task, res);
- }
--#endif /* CONFIG_NFS_V4_1 */
-+
-+#endif	/* !CONFIG_NFS_V4_1 */
- 
- static void nfs40_call_sync_prepare(struct rpc_task *task, void *calldata)
- {
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 3850b01..9b195fb 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1877,11 +1877,10 @@ static void encode_sequence(struct xdr_stream *xdr,
- 	struct nfs4_slot *slot = args->sa_slot;
- 	__be32 *p;
- 
--	if (slot == NULL)
--		return;
--
- 	tp = slot->table;
- 	session = tp->session;
-+	if (!session)
-+		return;
- 
- 	encode_op_hdr(xdr, OP_SEQUENCE, decode_sequence_maxsz, hdr);
- 
-@@ -2062,9 +2061,9 @@ static void encode_free_stateid(struct xdr_stream *xdr,
- static u32 nfs4_xdr_minorversion(const struct nfs4_sequence_args *args)
- {
- #if defined(CONFIG_NFS_V4_1)
--
--	if (args->sa_slot)
--		return args->sa_slot->table->session->clp->cl_mvops->minor_version;
-+	struct nfs4_session *session = args->sa_slot->table->session;
-+	if (session)
-+		return session->clp->cl_mvops->minor_version;
- #endif /* CONFIG_NFS_V4_1 */
- 	return 0;
- }
-@@ -5614,6 +5613,8 @@ static int decode_sequence(struct xdr_stream *xdr,
- 
- 	if (res->sr_slot == NULL)
- 		return 0;
-+	if (!res->sr_slot->table->session)
-+		return 0;
- 
- 	status = decode_op_hdr(xdr, OP_SEQUENCE);
- 	if (!status)
 
+> Or maybe memmove is an architecture-specific implementation that happens to handle left-to-right overlapping copies correctly on common architectures?
+
+It's architecture specific, e.g.: http://lxr.linux.no/linux+v3.8/arch/arm/lib/memmove.S
+
+In this particular case, it decides that the memory is non-overlapping (by comparing the virtual addresses), so it incorrectly dispatches to memcpy().  At that point all bets are off in terms of the direction, chunk size, etc. of the copy.
+
+I guess I'd typically expect memcpy() to stride through memory forwards rather than backwards though.  And since this function mandates "from < to", it seems like this would usually fail.
+
+
+For x86: http://lxr.linux.no/linux+v3.8/arch/x86/lib/memcpy_32.c
+
+In this case, it looks like it doesn't dispatch to memcpy().  It just determines forward/backwards and copies accordingly.  So it would work as long as the "from < to" property was preserved.
+
+If I'm reading the code correctly, kmap_atomic appears to grow downward on x86:
+http://lxr.linux.no/linux+v3.8/arch/x86/mm/highmem_32.c
+http://lxr.linux.no/linux+v3.8/arch/x86/include/asm/fixmap.h
+etc.
+
+Since xdr.c calls kmap_atomic on *pgto first, then *pgfrom, the "from < to" property will therefore be preserved.
+
+
+Therefore, I suspect you might be able to reproduce the bug on (32-bit) x86 by doing any of the following:
+- swapping the order of those kmap_atomic/kunmap_atomic calls 
+- modifying kmap_atomic to grow in the opposite direction
+- modifying memmove() to dispatch to memcpy() when the virtual regions are non-overlapping
+
+It's still possible that there is something else funny about how memory gets allocated in our setup that makes the bug more likely, but empirically, the bug didn't seem hard to hit.  We didn't need to copy very much data/very many files over NFS before we typically got corruption, and the bug happened on a variety of specific platforms.  It was (unsurprisingly) easier to reproduce with 2GB than with 1GB though.
+
+-----Original Message-----
+From: J. Bruce Fields [mailto:bfields@fieldses.org] 
+Sent: Wednesday, August 28, 2013 9:33 AM
+To: Myklebust, Trond
+Cc: Mark Young; linux-nfs@vger.kernel.org; Matt Craighead
+Subject: Re: Issue found with kernel/net/sunrpc/xdr.c
+
+On Tue, Aug 27, 2013 at 10:01:38PM +0000, Myklebust, Trond wrote:
+> > -----Original Message-----
+> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs- 
+> > owner@vger.kernel.org] On Behalf Of Mark Young
+> > Sent: Tuesday, August 27, 2013 5:17 PM
+> > To: linux-nfs@vger.kernel.org
+> > Cc: Matt Craighead
+> > Subject: Issue found with kernel/net/sunrpc/xdr.c
+> > 
+> > I was pointed to this mailing list by Brian Fields.
+> > 
+> >  We're currently seeing NFS data corruption, which we traced back to 
+> > memory corruption that happens in the function 
+> > _shift_data_right_pages in net/sunrpc/xdr.c.
+> > 
+> >  When we see the issue, we're running a 32bit os with systems running with
+> > more than 1GB of physical memory.   The errant behavior appears to be that
+> > two calls to kmap_atomic (on 32bit systems with highmem present) 
+> > with the same physical address (on addresses within highmem)  will return two
+> > different vaddrs.    In our assessment, this confuses the memmove code into
+> > thinking that the two addresses are non-overlapping in spite of the 
+> > fact that they are overlapping in physical space.  This, in turn, results in corruption.
+> > 
+> >  A proposed solution to the problem would involve calling 
+> > kmap_atomic only once in the case that the pgfrom and pgto are 
+> > identical, and then re-using the resultant vaddr for both vto and vfrom.
+> > 
+> > Any insight on the issue or the proposed solution would be greatly 
+> > appreciated.
+> 
+> I'm fine with that solution. Mind sending a duly conformant patch w/ a signed-off-by line?
+
+I'm curious why we haven't seen it before: the code's done this for years.  It looks to me like the two kmap_atomic()s, if they're non-trivial, should always return different addresses.  And overlapping copies are probably the normal case for this function.
+
+Shouldn't anyone on 32 bit and high memory have seen filesystem corruption?
+
+Or maybe memmove is an architecture-specific implementation that happens to handle left-to-right overlapping copies correctly on common architectures?
+
+--b.
+-----------------------------------------------------------------------------------
+This email message is for the sole use of the intended recipient(s) and may contain
+confidential information.  Any unauthorized review, use, disclosure or distribution
+is prohibited.  If you are not the intended recipient, please contact the sender by
+reply email and destroy all copies of the original message.
+-----------------------------------------------------------------------------------
