@@ -1,118 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:40608 "EHLO mx11.netapp.com"
+Received: from smtp-o-1.desy.de ([131.169.56.154]:33347 "EHLO smtp-o-1.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752198Ab3HEOuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Aug 2013 10:50:39 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Ric Wheeler <rwheeler@redhat.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC 4/5] NFSD: Defer copying
-Date: Mon, 5 Aug 2013 14:50:38 +0000
-Message-ID: <1375714236.7337.5.camel@leira.trondhjem.org>
-References: <1374267830-30154-1-git-send-email-bjschuma@netapp.com>
-	 <1374267830-30154-5-git-send-email-bjschuma@netapp.com>
-	 <20130722185002.GB10109@fieldses.org> <51ED8549.3040308@netapp.com>
-	 <20130722193000.GD10109@fieldses.org> <51ED89DC.7050406@netapp.com>
-	 <20130722194331.GF10109@fieldses.org> <51ED8DD8.1060703@netapp.com>
-	 <20130722195556.GG10109@fieldses.org> <51FF647C.3020704@redhat.com>
-	 <20130805144127.GA31169@fieldses.org>
-In-Reply-To: <20130805144127.GA31169@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+	id S1753417Ab3H2OmM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Aug 2013 10:42:12 -0400
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 3A4A8280994
+	for <linux-nfs@vger.kernel.org>; Thu, 29 Aug 2013 16:42:08 +0200 (CEST)
+Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 28FF313E83
+	for <linux-nfs@vger.kernel.org>; Thu, 29 Aug 2013 16:42:05 +0200 (MEST)
+Received: from smtp-intra-3.desy.de (lb-40-26.desy.de) by ZITSWEEP1.win.desy.de
+ (Clearswift SMTPRS 5.4.1) with ESMTP id <Tadd75ccee083a9615f7a00@ZITSWEEP1.win.desy.de> for <linux-nfs@vger.kernel.org>;
+ Thu, 29 Aug 2013 16:42:05 +0200
+Received: from zimbratest.desy.de (zimbratest.desy.de [131.169.72.254])
+	by smtp-intra-3.desy.de (DESY-INTRA-3) with ESMTP id C0B1210C8
+	for <linux-nfs@vger.kernel.org>; Thu, 29 Aug 2013 16:42:05 +0200 (MEST)
+Date: Thu, 29 Aug 2013 16:42:05 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: linux-nfs@vger.kernel.org
+Message-ID: <792883988.3232533.1377787325193.JavaMail.zimbra@desy.de>
+In-Reply-To: <427608263.3232319.1377785594378.JavaMail.zimbra@desy.de>
+Subject: kernel panic  with 3.10.9 with pNFS write
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEzLTA4LTA1IGF0IDEwOjQxIC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIE1vbiwgQXVnIDA1LCAyMDEzIGF0IDA5OjM4OjIwQU0gKzAxMDAsIFJpYyBXaGVlbGVy
-IHdyb3RlOg0KPiA+IE9uIDA3LzIyLzIwMTMgMDg6NTUgUE0sIEouIEJydWNlIEZpZWxkcyB3cm90
-ZToNCj4gPiA+T24gTW9uLCBKdWwgMjIsIDIwMTMgYXQgMDM6NTQ6MDBQTSAtMDQwMCwgQnJ5YW4g
-U2NodW1ha2VyIHdyb3RlOg0KPiA+ID4+T24gMDcvMjIvMjAxMyAwMzo0MyBQTSwgSi4gQnJ1Y2Ug
-RmllbGRzIHdyb3RlOg0KPiA+ID4+Pk9uIE1vbiwgSnVsIDIyLCAyMDEzIGF0IDAzOjM3OjAwUE0g
-LTA0MDAsIEJyeWFuIFNjaHVtYWtlciB3cm90ZToNCj4gPiA+Pj4+T24gMDcvMjIvMjAxMyAwMzoz
-MCBQTSwgSi4gQnJ1Y2UgRmllbGRzIHdyb3RlOg0KPiA+ID4+Pj4+T24gTW9uLCBKdWwgMjIsIDIw
-MTMgYXQgMDM6MTc6MjlQTSAtMDQwMCwgQnJ5YW4gU2NodW1ha2VyIHdyb3RlOg0KPiA+ID4+Pj4+
-Pk9uIDA3LzIyLzIwMTMgMDI6NTAgUE0sIEouIEJydWNlIEZpZWxkcyB3cm90ZToNCj4gPiA+Pj4+
-Pj4+T24gRnJpLCBKdWwgMTksIDIwMTMgYXQgMDU6MDM6NDlQTSAtMDQwMCwgYmpzY2h1bWFAbmV0
-YXBwLmNvbSB3cm90ZToNCj4gPiA+Pj4+Pj4+PkZyb206IEJyeWFuIFNjaHVtYWtlciA8YmpzY2h1
-bWFAbmV0YXBwLmNvbT4NCj4gPiA+Pj4+Pj4+Pg0KPiA+ID4+Pj4+Pj4+UmF0aGVyIHRoYW4gcGVy
-Zm9ybWluZyB0aGUgY29weSByaWdodCBhd2F5LCBzY2hlZHVsZSBpdCB0byBydW4gbGF0ZXIgYW5k
-DQo+ID4gPj4+Pj4+Pj5yZXBseSB0byB0aGUgY2xpZW50LiAgTGF0ZXIsIHNlbmQgYSBjYWxsYmFj
-ayB0byBub3RpZnkgdGhlIGNsaWVudCB0aGF0DQo+ID4gPj4+Pj4+Pj50aGUgY29weSBoYXMgZmlu
-aXNoZWQuDQo+ID4gPj4+Pj4+PkkgYmVsaWV2ZSB5b3UgbmVlZCB0byBpbXBsZW1lbnQgdGhlIHJl
-ZmVycmluZyB0cmlwbGUgc3VwcG9ydCBkZXNjcmliZWQNCj4gPiA+Pj4+Pj4+aW4gaHR0cDovL3Rv
-b2xzLmlldGYub3JnL2h0bWwvcmZjNTY2MSNzZWN0aW9uLTIuMTAuNi4zIHRvIGZpeCB0aGUgcmFj
-ZQ0KPiA+ID4+Pj4+Pj5kZXNjcmliZWQgaW4NCj4gPiA+Pj4+Pj4+aHR0cDovL3Rvb2xzLmlldGYu
-b3JnL2h0bWwvZHJhZnQtaWV0Zi1uZnN2NC1taW5vcnZlcnNpb24yLTE5I3NlY3Rpb24tMTUuMS4z
-DQo+ID4gPj4+Pj4+Pi4NCj4gPiA+Pj4+Pj5JJ2xsIHJlLXJlYWQgYW5kIHJlLXdyaXRlLg0KPiA+
-ID4+Pj4+Pg0KPiA+ID4+Pj4+Pj5JIHNlZSBjYl9kZWxheSBpbml0aWFsaXplZCBiZWxvdywgYnV0
-IG5vdCBvdGhlcndpc2UgdXNlZC4gIEFtIEkgbWlzc2luZw0KPiA+ID4+Pj4+Pj5hbnl0aGluZz8N
-Cj4gPiA+Pj4+Pj5XaG9vcHMhICBJIHdhcyB1c2luZyB0aGF0IGVhcmxpZXIgdG8gdHJ5IHRvIGZh
-a2UgdXAgYSBjYWxsYmFjaywgYnV0IEkgZXZlbnR1YWxseSBkZWNpZGVkIGl0J3MgZWFzaWVyIHRv
-IGp1c3QgZG8gdGhlIGNvcHkgYXN5bmNocm9ub3VzbHkuICBJIG11c3QgaGF2ZSBmb3Jnb3R0ZW4g
-dG8gdGFrZSBpdCBvdXQgOigNCj4gPiA+Pj4+Pj4NCj4gPiA+Pj4+Pj4+V2hhdCBhYm91dCBPRkZM
-T0FEX1NUQVRVUyBhbmQgT0ZGTE9BRF9BQk9SVD8NCj4gPiA+Pj4+Pj5JIGhhdmVuJ3QgdGhvdWdo
-dCBvdXQgdGhvc2UgdG9vIG11Y2guLi4gSSBoYXZlbid0IHRob3VnaHQgYWJvdXQgYSB1c2UgZm9y
-IHRoZW0gb24gdGhlIGNsaWVudCB5ZXQuDQo+ID4gPj4+Pj5JZiBpdCBtaWdodCBiZSBhIGxvbmct
-cnVubmluZyBjb3B5LCBJIGFzc3VtZSB0aGUgY2xpZW50IG5lZWRzIHRoZQ0KPiA+ID4+Pj4+YWJp
-bGl0eSB0byBhYm9ydCBpZiB0aGUgY2FsbGVyIGlzIGtpbGxlZC4NCj4gPiA+Pj4+Pg0KPiA+ID4+
-Pj4+KER1bWIgcXVlc3Rpb246IHdoYXQgaGFwcGVucyBvbiB0aGUgbmV0d29yayBwYXJ0aXRpb24/
-ICBEb2VzIHRoZSBzZXJ2ZXINCj4gPiA+Pj4+PmFib3J0IHRoZSBjb3B5IHdoZW4gaXQgZXhwaXJl
-cyB0aGUgY2xpZW50IHN0YXRlPykNCj4gPiA+Pj4+Pg0KPiA+ID4+Pj4+SW4gYW55IGNhc2UsDQo+
-ID4gPj4+Pj5odHRwOi8vdG9vbHMuaWV0Zi5vcmcvaHRtbC9kcmFmdC1pZXRmLW5mc3Y0LW1pbm9y
-dmVyc2lvbjItMTkjc2VjdGlvbi0xNS4xLjMNCj4gPiA+Pj4+PnNheXMgIklmIGEgc2VydmVyJ3Mg
-Q09QWSBvcGVyYXRpb24gcmV0dXJucyBhIHN0YXRlaWQsIHRoZW4gdGhlIHNlcnZlcg0KPiA+ID4+
-Pj4+TVVTVCBhbHNvIHN1cHBvcnQgdGhlc2Ugb3BlcmF0aW9uczogQ0JfT0ZGTE9BRCwgT0ZGTE9B
-RF9BQk9SVCwgYW5kDQo+ID4gPj4+Pj5PRkZMT0FEX1NUQVRVUy4iDQo+ID4gPj4+Pj4NCj4gPiA+
-Pj4+PlNvIGV2ZW4gaWYgd2UndmUgbm8gdXNlIGZvciB0aGVtIG9uIHRoZSBjbGllbnQgdGhlbiB3
-ZSBzdGlsbCBuZWVkIHRvDQo+ID4gPj4+Pj5pbXBsZW1lbnQgdGhlbSAoYW5kIHByb2JhYmx5IGp1
-c3Qgd3JpdGUgYSBiYXNpYyBweW5mcyB0ZXN0KS4gIEVpdGhlcg0KPiA+ID4+Pj4+dGhhdCBvciB1
-cGRhdGUgdGhlIHNwZWMuDQo+ID4gPj4+PkZhaXIgZW5vdWdoLiAgSSdsbCB0aGluayBpdCBvdXQg
-YW5kIGRvIHNvbWV0aGluZyEgIEVhc3kgc29sdXRpb246IHNhdmUgdGhpcyBwYXRjaCBmb3IgbGF0
-ZXIgYW5kIG9ubHkgc3VwcG9ydCB0aGUgc3luYyB2ZXJzaW9uIG9mIGNvcHkgZm9yIHRoZSBmaW5h
-bCB2ZXJzaW9uIG9mIHRoaXMgcGF0Y2ggc2VyaWVzLg0KPiA+ID4+PkkgY2FuJ3QgcmVtZW1iZXIt
-LWRvZXMgdGhlIHNwZWMgZ2l2ZSB0aGUgc2VydmVyIGEgY2xlYXIgd2F5IHRvIGJhaWwgb3V0DQo+
-ID4gPj4+YW5kIHRlbGwgdGhlIGNsaWVudCB0byBmYWxsIGJhY2sgb24gYSBub3JtYWwgY29weSBp
-biBjYXNlcyB3aGVyZSB0aGUNCj4gPiA+Pj5zZXJ2ZXIga25vd3MgdGhlIGNvcHkgY291bGQgdGFr
-ZSBhbiB1bnJlYXNvbmFibGUgYW1vdW50IG9mIHRpbWU/DQo+ID4gPj4+DQo+ID4gPj4+LS1iLg0K
-PiA+ID4+SSBkb24ndCB0aGluayBzby4gIElzIHRoZXJlIGV2ZXIgYSBjYXNlIHdoZXJlIGNvcHlp
-bmcgb3ZlciB0aGUgbmV0d29yayB3b3VsZCBiZSBzbG93ZXIgdGhhbiBjb3B5aW5nIG9uIHRoZSBz
-ZXJ2ZXI/DQo+ID4gPk15YmUgbm90LCBidXQgaWYgdGhlIGNvcHkgd2lsbCB0YWtlIGEgbWludXRl
-LCB0aGVuIHdlIGRvbid0IHdhbnQgdG8gdGllDQo+ID4gPnVwIGFuIHJwYyBzbG90IGZvciBhIG1p
-bnV0ZS4NCj4gPiA+DQo+ID4gPi0tYi4NCj4gPiANCj4gPiBJIHRoaW5rIHRoYXQgd2UgbmVlZCB0
-byBiZSBhYmxlIHRvIGhhbmRsZSBjb3BpZXMgdGhhdCB3b3VsZCB0YWtlIGENCj4gPiBsb3QgbG9u
-Z2VyIHRoYW4ganVzdCBhIG1pbnV0ZSAtIHRoaXMgb2ZmbG9hZCBjb3VsZCB0YWtlIGEgdmVyeSBs
-b25nDQo+ID4gdGltZSBJIGFzc3VtZSBkZXBlbmRpbmcgb24gdGhlIHNpemUgb2YgdGhlIGRhdGEg
-Z2V0dGluZyBjb3BpZWQgYW5kDQo+ID4gdGhlIGJhY2sgZW5kIHN0b3JhZ2UgZGV2aWNlLi4uLg0K
-PiANCj4gQnJ5YW4gc3VnZ2VzdGVkIGluIG9mZmxpbmUgZGlzY3Vzc2lvbiB0aGF0IG9uZSBwb3Nz
-aWJpbGl0eSBtaWdodCBiZSB0bw0KPiBjb3B5LCBzYXksIGF0IG1vc3QgYSBnaWdhYnl0ZSBhdCBh
-IHRpbWUgYmVmb3JlIHJldHVybmluZyBhbmQgbWFraW5nIHRoZQ0KPiBjbGllbnQgY29udGludWUg
-dGhlIGNvcHkuDQo+IA0KPiBXaGVyZSBmb3IgImEgZ2lnYWJ5dGUiIHJlYWQsICJzb21lIGFtb3Vu
-dCB0aGF0IGRvZXNuJ3QgdGFrZSB0b28gbG9uZyB0bw0KPiBjb3B5IGJ1dCBpcyBzdGlsbCBlbm91
-Z2ggdG8gYWxsb3cgY2xvc2UgdG8gZnVsbCBiYW5kd2lkdGgiLiAgSG9wZWZ1bGx5DQo+IHRoYXQn
-cyBhbiBlYXN5IG51bWJlciB0byBmaW5kLg0KPiANCj4gQnV0IGJhc2VkIG9uDQo+IGh0dHA6Ly90
-b29scy5pZXRmLm9yZy9odG1sL2RyYWZ0LWlldGYtbmZzdjQtbWlub3J2ZXJzaW9uMi0xOSNzZWN0
-aW9uLTE0LjEuMg0KPiB0aGUgQ09QWSBvcGVyYXRpb24gaXNuJ3QgZGVzaWduZWQgZm9yIHRoYXQt
-LWl0IGRvZXNuJ3QgZ2l2ZSB0aGUgb3B0aW9uDQo+IG9mIHJldHVybmluZyBieXRlc19jb3BpZWQg
-aW4gdGhlIHN1Y2Nlc3NmdWwgY2FzZS4NCg0KVGhlIHJlYXNvbiBpcyB0aGF0IHRoZSBzcGVjIHdy
-aXRlcnMgZGlkIG5vdCB3YW50IHRvIGZvcmNlIHRoZSBzZXJ2ZXIgdG8NCmNvcHkgdGhlIGRhdGEg
-aW4gc2VxdWVudGlhbCBvcmRlciAob3IgYW55IG90aGVyIHBhcnRpY3VsYXIgb3JkZXIgZm9yDQp0
-aGF0IG1hdHRlcikuDQoNCklmIHRoZSBjb3B5IHdhcyBzaG9ydCwgdGhlbiB0aGUgY2xpZW50IGNh
-bid0IGtub3cgd2hpY2ggYnl0ZXMgd2VyZQ0KY29waWVkOyB0aGV5IGNvdWxkIGJlIGF0IHRoZSBi
-ZWdpbm5pbmcgb2YgdGhlIGZpbGUsIGluIHRoZSBtaWRkbGUsIG9yDQpldmVuIHRoZSB2ZXJ5IGVu
-ZC4gQmFzaWNhbGx5LCBpdCBuZWVkcyB0byByZWRvIHRoZSBlbnRpcmUgY29weSBpbiBvcmRlcg0K
-dG8gYmUgY2VydGFpbi4NCg0KPiBNYXliZSB3ZSBzaG91bGQgZml4IHRoYXQgaW4gdGhlIHNwZWMs
-IG9yIG1heWJlIHdlIGp1c3QgbmVlZCB0byBpbXBsZW1lbnQNCj4gdGhlIGFzeW5jaHJvbm91cyBj
-YXNlLiAgSSBndWVzcyBpdCBkZXBlbmRzIG9uIHdoaWNoIGlzIGVhc2llciwNCj4gDQo+IAlhKSBp
-bXBsZW1lbnRpbmcgdGhlIGFzeW5jaHJvbm91cyBjYXNlIChhbmQgdGhlIHJlZmVycmluZy10cmlw
-bGUNCj4gCSAgIHN1cHBvcnQgdG8gZml4IHRoZSBDT1BZL2NhbGxiYWNrIHJhY2VzKSwgb3INCj4g
-CWIpIGltcGxlbWVudGluZyB0aGlzIHNvcnQgb2YgInNob3J0IGNvcHkiIGxvb3AgaW4gYSB3YXkg
-dGhhdCBnaXZlcw0KPiAJICAgZ29vZCBwZXJmb3JtYW5jZS4NCj4gDQo+IE9uIHRoZSBjbGllbnQg
-c2lkZSBpdCdzIGNsZWFybHkgYSkgc2luY2UgeW91J3JlIGZvcmNlZCB0byBoYW5kbGUgdGhhdA0K
-PiBjYXNlIGFueXdheS4gIChVbmxlc3Mgd2UgYXJndWUgdGhhdCAqYWxsKiBjb3BpZXMgc2hvdWxk
-IHdvcmsgdGhhdCB3YXksDQo+IGFuZCB0aGF0IHRoZSBzcGVjIHNob3VsZCBkaXRjaCB0aGUgYXN5
-bmNocm9ub3VzIGNhc2UuKSBPbiB0aGUgc2VydmVyDQo+IHNpZGUsIGIpIGxvb2tzIGVhc2llci4N
-Cj4gDQo+IC0tYi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFp
-bnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBw
-LmNvbQ0K
+
+
+I am getting this every time (IOW, reproducible ) when I trying to write.
+This is fedora 19, 64 bit 3.10.9-200.fc19.x86_64
+
+[257349.666159] nfs4filelayout_init: NFSv4 File Layout Driver Registering...
+[257366.629133] BUG: unable to handle kernel NULL pointer dereference at 0000000000000038
+[257366.629154] IP: [<ffffffffa075d527>] nfs4_fl_prepare_ds+0x127/0x280 [nfs_layout_nfsv41_files]
+[257366.629167] PGD 1fc02f067 PUD 16a081067 PMD 0 
+[257366.629176] Oops: 0002 [#1] SMP 
+[257366.629182] Modules linked in: nfs_layout_nfsv41_files rpcsec_gss_krb5 auth_rpcgss nfsv4 nfs lockd sunrpc dns_resolver fscache tcp_lp fuse nf_conntrack_netbios_ns nf_conntrack_broadcast ipt_MASQUERADE ip6table_nat nf_nat_ipv6 ip6table_mangle ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 iptable_nat nf_nat_ipv4 nf_nat iptable_mangle nf_conntrack_ipv4 nf_defrag_ipv4 xt_conntrack nf_conntrack vboxpci(OF) vboxnetadp(OF) vboxnetflt(OF) ebtable_filter rfcomm ebtables ip6table_filter bnep ip6_tables vboxdrv(OF) snd_hda_codec_hdmi snd_hda_codec_idt uvcvideo videobuf2_vmalloc videobuf2_memops videobuf2_core videodev arc4 iTCO_wdt iTCO_vendor_support media mperf coretemp kvm_intel iwldvm dell_laptop btusb dell_wmi mac80211 kvm bluetooth sdhci_pci snd_hda_intel ppdev sparse_keymap crc32_pclmul crc32c_intel dcdbas
+[257366.629308]  ghash_clmulni_intel iwlwifi microcode snd_hda_codec cfg80211 snd_hwdep snd_seq joydev snd_seq_device snd_pcm i2c_i801 sdhci snd_page_alloc e1000e mmc_core snd_timer snd lpc_ich mei_me mfd_core rfkill mei ptp soundcore pps_core parport_pc parport uinput nouveau mxm_wmi i2c_algo_bit drm_kms_helper ttm drm firewire_ohci firewire_core crc_itu_t i2c_core wmi video
+[257366.629381] CPU: 0 PID: 16763 Comm: cp Tainted: GF        C O 3.10.9-200.fc19.x86_64 #1
+[257366.629387] Hardware name: Dell Inc. Latitude E6520/0J4TFW, BIOS A06 07/11/2011
+[257366.629393] task: ffff8800a3a5b560 ti: ffff880221416000 task.ti: ffff880221416000
+[257366.629398] RIP: 0010:[<ffffffffa075d527>]  [<ffffffffa075d527>] nfs4_fl_prepare_ds+0x127/0x280 [nfs_layout_nfsv41_files]
+[257366.629409] RSP: 0018:ffff880221417c70  EFLAGS: 00010202
+[257366.629414] RAX: 000000010f4e66ef RBX: 0000000000000000 RCX: 0000000000000000
+[257366.629419] RDX: 00000000000bbbf6 RSI: ffffffffa07eb248 RDI: ffff8801709a8580
+[257366.629424] RBP: ffff880221417ca8 R08: 0000000000016f20 R09: 019d86e3c80c0000
+[257366.629429] R10: ffff880213b10d10 R11: 0000000000000000 R12: ffffffffffffff8f
+[257366.629434] R13: ffff8801709a8580 R14: ffff8802125f4800 R15: 0000000000000038
+[257366.629439] FS:  00007f519c809800(0000) GS:ffff88022dc00000(0000) knlGS:0000000000000000
+[257366.629449] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[257366.629453] CR2: 0000000000000038 CR3: 000000022006d000 CR4: 00000000000407f0
+[257366.629459] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+[257366.629464] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+[257366.629469] Stack:
+[257366.629472]  ffff880213b10d98 ffff88009b3449c0 ffff8801fc0f00a0 ffff880101683800
+[257366.629482]  ffff8802125f4800 0000000000000000 0000000000000000 ffff880221417d00
+[257366.629491]  ffffffffa075b210 ffff8801eaddc598 ffff88009b345f48 ffff8801fc0f0000
+[257366.629501] Call Trace:
+[257366.629508]  [<ffffffffa075b210>] filelayout_write_pagelist+0x50/0x150 [nfs_layout_nfsv41_files]
+[257366.629524]  [<ffffffffa084b2de>] pnfs_generic_pg_writepages+0xee/0x280 [nfsv4]
+[257366.629536]  [<ffffffffa080d869>] nfs_pageio_doio+0x19/0x50 [nfs]
+[257366.629546]  [<ffffffffa080dba4>] nfs_pageio_complete+0x24/0x30 [nfs]
+[257366.629556]  [<ffffffffa0811c6c>] nfs_writepages+0xac/0x130 [nfs]
+[257366.629565]  [<ffffffff8113a55e>] do_writepages+0x1e/0x40
+[257366.629571]  [<ffffffff8112f909>] __filemap_fdatawrite_range+0x59/0x60
+[257366.629578]  [<ffffffff8112fa0a>] filemap_write_and_wait_range+0x2a/0x70
+[257366.629592]  [<ffffffffa0842aaf>] nfs4_file_fsync+0x5f/0xb0 [nfsv4]
+[257366.629599]  [<ffffffff811c42cb>] vfs_fsync+0x2b/0x40
+[257366.629607]  [<ffffffffa0803b9a>] nfs_file_flush+0x7a/0xb0 [nfs]
+[257366.629614]  [<ffffffff811957a4>] filp_close+0x34/0x80
+[257366.629622]  [<ffffffff811b352a>] __close_fd+0x6a/0x80
+[257366.629628]  [<ffffffff81196f63>] SyS_close+0x23/0x50
+[257366.629635]  [<ffffffff81647719>] system_call_fastpath+0x16/0x1b
+[257366.629640] Code: 49 8b 06 4c 89 e7 48 8b b0 20 01 00 00 e8 c2 c8 0e 00 85 c0 0f 85 9f 00 00 00 f6 05 c4 08 09 00 20 4c 89 63 28 0f 85 0c 01 00 00 <f0> 41 80 27 fe 31 f6 4c 89 ff 49 89 dc e8 87 43 92 e0 e9 0c ff 
+[257366.629728] RIP  [<ffffffffa075d527>] nfs4_fl_prepare_ds+0x127/0x280 [nfs_layout_nfsv41_files]
+[257366.629736]  RSP <ffff880221417c70>
+[257366.629740] CR2: 0000000000000038
+[257366.637157] ---[ end trace 72a58bcbc080508c ]---
+[root@ani data]#
+
+
+
+Tigran.
