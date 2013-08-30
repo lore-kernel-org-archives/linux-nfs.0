@@ -1,51 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:7691 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751922Ab3HEO75 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Aug 2013 10:59:57 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Julia Lawall <Julia.Lawall@lip6.fr>, Steve Dickson <steved@redhat.com>,
-        David Quigley <dpquigl@davequigley.com>
-CC: "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] fs/nfs/inode.c: adjust code alignment
-Date: Mon, 5 Aug 2013 14:59:55 +0000
-Message-ID: <1375714793.7337.12.camel@leira.trondhjem.org>
-References: <1375714059-29567-1-git-send-email-Julia.Lawall@lip6.fr>
-	 <1375714059-29567-2-git-send-email-Julia.Lawall@lip6.fr>
-In-Reply-To: <1375714059-29567-2-git-send-email-Julia.Lawall@lip6.fr>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from tuna.sandelman.ca ([209.87.252.184]:53163 "EHLO
+	tuna.sandelman.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752855Ab3H3S1S (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Aug 2013 14:27:18 -0400
+From: Michael Richardson <mcr@sandelman.ca>
+To: richard -rw- weinberger <richard.weinberger@gmail.com>
+cc: =?ISO-8859-1?Q?Toralf_F=F6rster?= <toralf.foerster@gmx.de>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Jan Kara <jack@suse.cz>,
+        "user-mode-linux-devel@lists.sourceforge.net"
+	<user-mode-linux-devel@lists.sourceforge.net>,
+        Linux Kernel <linux-kernel@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "J. Bruce Fields" <bfields@redhat.com>, linux-ext4@vger.kernel.org
+Subject: Re: [uml-devel] Issues with a rather unusual configured NFS server
+In-Reply-To: <CAFLxGvyK5+nB9TgW1uPho9KGwQrWQHx=wEpj+o-mZcN92bWAOg@mail.gmail.com>
+References: <52075E01.7030506@gmx.de> <20130812143640.GF4596@quack.suse.cz> <20130813215313.GH17781@fieldses.org> <20130827180655.GE14809@fieldses.org> <521E318C.7040401@gmx.de> <CAFLxGvyK5+nB9TgW1uPho9KGwQrWQHx=wEpj+o-mZcN92bWAOg@mail.gmail.com>
+Date: Fri, 30 Aug 2013 14:27:08 -0400
+Message-ID: <29555.1377887228@sandelman.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEzLTA4LTA1IGF0IDE2OjQ3ICswMjAwLCBKdWxpYSBMYXdhbGwgd3JvdGU6DQo+
-IEZyb206IEp1bGlhIExhd2FsbCA8SnVsaWEuTGF3YWxsQGxpcDYuZnI+DQo+IA0KPiBTaWduZWQt
-b2ZmLWJ5OiBKdWxpYSBMYXdhbGwgPEp1bGlhLkxhd2FsbEBsaXA2LmZyPg0KPiANCj4gLS0tDQo+
-IA0KPiBUaGlzIHBhdGNoIGFkanVzdHMgdGhlIGNvZGUgc28gdGhhdCB0aGUgYWxpZ25tZW50IG1h
-dGNoZXMgdGhlIGN1cnJlbnQNCj4gc2VtYW50aWNzLiAgSSBoYXZlIG5vIGlkZWEgaWYgaXQgaXMg
-dGhlIGludGVuZGVkIHNlbWFudGljcywgdGhvdWdoLiAgU2hvdWxkDQo+IHRoZSBjYWxsIHRvIG5m
-c19zZXRzZWN1cml0eSBhbHNvIGJlIHVuZGVyIHRoZSBlbHNlPw0KPiANCg0KPiAgZnMvbmZzL2lu
-b2RlLmMgfCAgICAyICstDQo+ICAxIGZpbGUgY2hhbmdlZCwgMSBpbnNlcnRpb24oKyksIDEgZGVs
-ZXRpb24oLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvaW5vZGUuYyBiL2ZzL25mcy9pbm9k
-ZS5jDQo+IGluZGV4IGFmNmU4MDYuLmQ4YWQ2ODUgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9pbm9k
-ZS5jDQo+ICsrKyBiL2ZzL25mcy9pbm9kZS5jDQo+IEBAIC00NjMsNyArNDYzLDcgQEAgbmZzX2Zo
-Z2V0KHN0cnVjdCBzdXBlcl9ibG9jayAqc2IsIHN0cnVjdCBuZnNfZmgNCj4gKmZoLCBzdHJ1Y3Qg
-bmZzX2ZhdHRyICpmYXR0ciwgc3QNCj4gICAgICAgICAgICAgICAgIHVubG9ja19uZXdfaW5vZGUo
-aW5vZGUpOw0KPiAgICAgICAgIH0gZWxzZQ0KPiAgICAgICAgICAgICAgICAgbmZzX3JlZnJlc2hf
-aW5vZGUoaW5vZGUsIGZhdHRyKTsNCj4gLSAgICAgICAgICAgICAgIG5mc19zZXRzZWN1cml0eShp
-bm9kZSwgZmF0dHIsIGxhYmVsKTsNCj4gKyAgICAgICBuZnNfc2V0c2VjdXJpdHkoaW5vZGUsIGZh
-dHRyLCBsYWJlbCk7DQo+ICAgICAgICAgZHByaW50aygiTkZTOiBuZnNfZmhnZXQoJXMvJUxkIGZo
-X2NyYz0weCUwOHggY3Q9JWQpXG4iLA0KPiAgICAgICAgICAgICAgICAgaW5vZGUtPmlfc2ItPnNf
-aWQsDQo+ICAgICAgICAgICAgICAgICAobG9uZyBsb25nKU5GU19GSUxFSUQoaW5vZGUpLA0KDQpI
-aSBKdWxpYSwNCg0KVGhhbmtzIGZvciBwb2ludGluZyB0aGlzIG91dCEgR2l2ZW4gdGhhdCB0aGUg
-J3RoZW4nIGNsYXVzZSBvZiB0aGUgaWYNCnN0YXRlbWVudCBhbHJlYWR5IGNhbGxzIG5mc19zZXRz
-ZWN1cml0eSBiZWZvcmUgdW5sb2NraW5nIHRoZSBpbm9kZSwgSQ0Kc3VzcGVjdCB0aGF0IHRoZSBh
-Ym92ZSBfc2hvdWxkXyByZWFsbHkgYmUgcGFydCBvZiB0aGUgJ2Vsc2UnIGNsYXVzZS4gDQoNClRo
-YXQgc2FpZCwgSSBjYW4ndCBzZWUgdGhhdCBjYWxsaW5nIG5mc19zZXRzZWN1cml0eSB0d2ljZSBv
-biB0aGUgaW5vZGUNCmNhbiBjYXVzZSBhbnkgdW5pbnRlbmRlZCBzaWRlLWVmZmVjdHMsIHNvIEkg
-c3VnZ2VzdCB0aGF0IHdlIHJhdGhlciBxdWV1ZQ0KdGhlIHBhdGNoIHVwIGZvciBpbmNsdXNpb24g
-aW4gMy4xMi4NClN0ZXZlIGFuZCBEYXZlLCBhbnkgY29tbWVudHM/DQoNCi0tIA0KVHJvbmQgTXlr
-bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWts
-ZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+
+richard -rw- weinberger <richard.weinberger@gmail.com> wrote:
+    >>>> Thanks for the report.  I think I see the problem--after this commit
+    >>>> nfs4_set_delegation() failures result in nfs4_put_delegation being
+    >>>> called, but nfs4_put_delegation doesn't free the nfs4_file that has
+    >>>> already been set by alloc_init_deleg().
+    >>>>
+    >>>> Let me think about how to fix that....
+    >>>
+    >>> Sorry for the slow response--can you check whether this fixes the
+    >>> problem?
+    >>>
+    >> Yes.
+    >>
+    >> With the attached patch the problem can't be reproduced any longer
+    >> with the prepared test case and current git kernels.
+
+    > BTW: Is nobody else fuzz testing NFS?  Or are these bugs just more
+    > likely to hit on UML?  This is not the first NFS issue found by Toralf
+    > using UML and Trinity.
+
+Kernel thread scheduling is likely very different on UML than other
+architectures.
+
+My guess is that there could well be be gaps where no kernel thread is
+scheduled (because another process is running), followed by resumption of a
+thread other than the one which would have been resumed on other
+virtualization.
+
+--
+]               Never tell me the odds!                 | ipv6 mesh networks [
+]   Michael Richardson, Sandelman Software Works        | network architect  [
+]     mcr@sandelman.ca  http://www.sandelman.ca/        |   ruby on rails    [
+
