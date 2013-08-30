@@ -1,108 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:55861 "EHLO mx11.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:58464 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932109Ab3HGSzm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Aug 2013 14:55:42 -0400
+	id S1756306Ab3H3N0b convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Aug 2013 09:26:31 -0400
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
+To: Dan Carpenter <dan.carpenter@oracle.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 4 4/5] NFS avoid expired credential keys for
- buffered writes
-Date: Wed, 7 Aug 2013 18:55:41 +0000
-Message-ID: <1375901741.7280.33.camel@leira.trondhjem.org>
-References: <1374176130-11657-1-git-send-email-andros@netapp.com>
-	 <1374176130-11657-5-git-send-email-andros@netapp.com>
-In-Reply-To: <1374176130-11657-5-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Subject: RE: NFS: Add event tracing for generic NFS lookups
+Date: Fri, 30 Aug 2013 13:26:30 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA946784B13@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20130829214909.GA15027@elgon.mountain>
+In-Reply-To: <20130829214909.GA15027@elgon.mountain>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEzLTA3LTE4IGF0IDE1OjM1IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFdlIG11
-c3QgYXZvaWQgYnVmZmVyaW5nIGEgV1JJVEUgdGhhdCBpcyB1c2luZyBhIGNyZWRlbnRpYWwga2V5
-IChlLmcuIGEgR1NTDQo+IGNvbnRleHQga2V5KSB0aGF0IGlzIGFib3V0IHRvIGV4cGlyZS4gIFdl
-IGN1cnJlbnRseSB3aWxsIHBhaW50IG91cnNlbHZlcw0KPiBpbnRvIGEgY29ybmVyIGJ5IHJldHVy
-bmluZyBzdWNjZXNzIHRvIHRoZSBhcHBsY2lhdGlvbiBmb3Igc3VjaCBhIGJ1ZmZlcmVkDQo+IFdS
-SVRFLCBvbmx5IHRvIGRpc2NvdmVyIHRoYXQgd2UgZG8gbm90IGhhdmUgcGVybWlzc2lvbiB3aGVu
-DQo+IHdlIGF0dGVtcHQgdG8gZmx1c2ggdGhlIFdSSVRFIChhbmQgcG90ZW50aWFsbHkgYXNzb2Np
-YXRlZCBDT01NSVQpIHRvIGRpc2suDQo+IA0KPiBVc2UgdGhlIFJQQyBsYXllciBjcmVkZW50aWFs
-IGtleSB0aW1lb3V0IGFuZCBleHBpcmUgcm91dGluZXMgd2hpY2ggdXNlIGENCj4gYSB3YXRlcm1h
-cmssIGdzc19rZXlfZXhwaXJlX3RpbWVvLiBXZSB0ZXN0IHRoZSBrZXkgaW4gbmZzX2ZpbGVfd3Jp
-dGUuDQo+IA0KPiBJZiBhIFdSSVRFIGlzIHVzaW5nIGEgY3JlZGVudGlhbCB3aXRoIGEga2V5IHRo
-YXQgd2lsbCBleHBpcmUgd2l0aGluDQo+IHdhdGVybWFyayBzZWNvbmRzLCBmbHVzaCB0aGUgaW5v
-ZGUgaW4gbmZzX3dyaXRlX2VuZCBhbmQgc2VuZCBvbmx5DQo+IE5GU19GSUxFX1NZTkMgV1JJVEVz
-IGJ5IGFkZGluZyBuZnNfY3R4X2tleV90b19leHBpcmUgdG8gbmZzX25lZWRfc3luY193cml0ZS4N
-Cj4gTm90ZSB0aGF0IHRoaXMgcmVzdWx0cyBpbiBzaW5nbGUgcGFnZSBORlNfRklMRV9TWU5DIFdS
-SVRFcy4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5j
-b20+DQo+IC0tLQ0KPiAgZnMvbmZzL2ZpbGUuYyAgICAgfCAxOSArKysrKysrKysrKysrKysrKyst
-DQo+ICBmcy9uZnMvaW50ZXJuYWwuaCB8ICAyICsrDQo+ICBmcy9uZnMvd3JpdGUuYyAgICB8IDI3
-ICsrKysrKysrKysrKysrKysrKysrKysrKysrKw0KPiAgMyBmaWxlcyBjaGFuZ2VkLCA0NyBpbnNl
-cnRpb25zKCspLCAxIGRlbGV0aW9uKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2ZpbGUu
-YyBiL2ZzL25mcy9maWxlLmMNCj4gaW5kZXggOTRlOTRiZC4uZGZmZjhkZiAxMDA2NDQNCj4gLS0t
-IGEvZnMvbmZzL2ZpbGUuYw0KPiArKysgYi9mcy9uZnMvZmlsZS5jDQo+IEBAIC00MDYsNiArNDA2
-LDcgQEAgc3RhdGljIGludCBuZnNfd3JpdGVfZW5kKHN0cnVjdCBmaWxlICpmaWxlLCBzdHJ1Y3Qg
-YWRkcmVzc19zcGFjZSAqbWFwcGluZywNCj4gIAkJCXN0cnVjdCBwYWdlICpwYWdlLCB2b2lkICpm
-c2RhdGEpDQo+ICB7DQo+ICAJdW5zaWduZWQgb2Zmc2V0ID0gcG9zICYgKFBBR0VfQ0FDSEVfU0la
-RSAtIDEpOw0KPiArCXN0cnVjdCBuZnNfb3Blbl9jb250ZXh0ICpjdHggPSBuZnNfZmlsZV9vcGVu
-X2NvbnRleHQoZmlsZSk7DQo+ICAJaW50IHN0YXR1czsNCj4gIA0KPiAgCWRmcHJpbnRrKFBBR0VD
-QUNIRSwgIk5GUzogd3JpdGVfZW5kKCVzLyVzKCVsZCksICV1QCVsbGQpXG4iLA0KPiBAQCAtNDQx
-LDYgKzQ0MiwxNyBAQCBzdGF0aWMgaW50IG5mc193cml0ZV9lbmQoc3RydWN0IGZpbGUgKmZpbGUs
-IHN0cnVjdCBhZGRyZXNzX3NwYWNlICptYXBwaW5nLA0KPiAgCWlmIChzdGF0dXMgPCAwKQ0KPiAg
-CQlyZXR1cm4gc3RhdHVzOw0KPiAgCU5GU19JKG1hcHBpbmctPmhvc3QpLT53cml0ZV9pbyArPSBj
-b3BpZWQ7DQo+ICsNCj4gKwlpZiAobmZzX2N0eF9rZXlfdG9fZXhwaXJlKGN0eCkpIHsNCj4gKwkJ
-cHJfd2Fybl9vbmNlKCJORlM6CUNyZWRlbnRpYWwgS2V5IHRvIGV4cGlyZS4gRmx1c2ggJXMvJXMo
-JWxkKVxuIiwNCg0KcHJfd2Fybl9yYXRlbGltaXRlZD8NCg0KPiArCQkJZmlsZS0+Zl9wYXRoLmRl
-bnRyeS0+ZF9wYXJlbnQtPmRfbmFtZS5uYW1lLA0KPiArCQkJZmlsZS0+Zl9wYXRoLmRlbnRyeS0+
-ZF9uYW1lLm5hbWUsDQo+ICsJCQltYXBwaW5nLT5ob3N0LT5pX2lubyk7DQo+ICsJCXN0YXR1cyA9
-IG5mc193Yl9hbGwobWFwcGluZy0+aG9zdCk7DQo+ICsJCWlmIChzdGF0dXMgPCAwKQ0KPiArCQkJ
-cmV0dXJuIHN0YXR1czsNCj4gKwl9DQo+ICsNCj4gIAlyZXR1cm4gY29waWVkOw0KPiAgfQ0KPiAg
-DQo+IEBAIC02MzcsNyArNjQ5LDggQEAgc3RhdGljIGludCBuZnNfbmVlZF9zeW5jX3dyaXRlKHN0
-cnVjdCBmaWxlICpmaWxwLCBzdHJ1Y3QgaW5vZGUgKmlub2RlKQ0KPiAgCWlmIChJU19TWU5DKGlu
-b2RlKSB8fCAoZmlscC0+Zl9mbGFncyAmIE9fRFNZTkMpKQ0KPiAgCQlyZXR1cm4gMTsNCj4gIAlj
-dHggPSBuZnNfZmlsZV9vcGVuX2NvbnRleHQoZmlscCk7DQo+IC0JaWYgKHRlc3RfYml0KE5GU19D
-T05URVhUX0VSUk9SX1dSSVRFLCAmY3R4LT5mbGFncykpDQo+ICsJaWYgKHRlc3RfYml0KE5GU19D
-T05URVhUX0VSUk9SX1dSSVRFLCAmY3R4LT5mbGFncykgfHwNCj4gKwkgICAgbmZzX2N0eF9rZXlf
-dG9fZXhwaXJlKGN0eCkpDQo+ICAJCXJldHVybiAxOw0KPiAgCXJldHVybiAwOw0KPiAgfQ0KPiBA
-QCAtNjUxLDYgKzY2NCwxMCBAQCBzc2l6ZV90IG5mc19maWxlX3dyaXRlKHN0cnVjdCBraW9jYiAq
-aW9jYiwgY29uc3Qgc3RydWN0IGlvdmVjICppb3YsDQo+ICAJc3NpemVfdCByZXN1bHQ7DQo+ICAJ
-c2l6ZV90IGNvdW50ID0gaW92X2xlbmd0aChpb3YsIG5yX3NlZ3MpOw0KPiAgDQo+ICsJcmVzdWx0
-ID0gbmZzX2tleV90aW1lb3V0X25vdGlmeShpb2NiLT5raV9maWxwLCBpbm9kZSk7DQo+ICsJaWYg
-KHJlc3VsdCkNCj4gKwkJcmV0dXJuIHJlc3VsdDsNCj4gKw0KPiAgCWlmIChpb2NiLT5raV9maWxw
-LT5mX2ZsYWdzICYgT19ESVJFQ1QpDQo+ICAJCXJldHVybiBuZnNfZmlsZV9kaXJlY3Rfd3JpdGUo
-aW9jYiwgaW92LCBucl9zZWdzLCBwb3MsIHRydWUpOw0KPiAgDQo+IGRpZmYgLS1naXQgYS9mcy9u
-ZnMvaW50ZXJuYWwuaCBiL2ZzL25mcy9pbnRlcm5hbC5oDQo+IGluZGV4IDNjODM3M2YuLmU4NmRj
-MjAgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9pbnRlcm5hbC5oDQo+ICsrKyBiL2ZzL25mcy9pbnRl
-cm5hbC5oDQo+IEBAIC00MzAsNiArNDMwLDggQEAgdm9pZCBuZnNfcmVxdWVzdF9yZW1vdmVfY29t
-bWl0X2xpc3Qoc3RydWN0IG5mc19wYWdlICpyZXEsDQo+ICB2b2lkIG5mc19pbml0X2NpbmZvKHN0
-cnVjdCBuZnNfY29tbWl0X2luZm8gKmNpbmZvLA0KPiAgCQkgICAgc3RydWN0IGlub2RlICppbm9k
-ZSwNCj4gIAkJICAgIHN0cnVjdCBuZnNfZGlyZWN0X3JlcSAqZHJlcSk7DQo+ICtpbnQgbmZzX2tl
-eV90aW1lb3V0X25vdGlmeShzdHJ1Y3QgZmlsZSAqZmlscCwgc3RydWN0IGlub2RlICppbm9kZSk7
-DQo+ICtib29sIG5mc19jdHhfa2V5X3RvX2V4cGlyZShzdHJ1Y3QgbmZzX29wZW5fY29udGV4dCAq
-Y3R4KTsNCj4gIA0KPiAgI2lmZGVmIENPTkZJR19NSUdSQVRJT04NCj4gIGV4dGVybiBpbnQgbmZz
-X21pZ3JhdGVfcGFnZShzdHJ1Y3QgYWRkcmVzc19zcGFjZSAqLA0KPiBkaWZmIC0tZ2l0IGEvZnMv
-bmZzL3dyaXRlLmMgYi9mcy9uZnMvd3JpdGUuYw0KPiBpbmRleCA3MjRjODQ1Li4xNDQwODVjIDEw
-MDY0NA0KPiAtLS0gYS9mcy9uZnMvd3JpdGUuYw0KPiArKysgYi9mcy9uZnMvd3JpdGUuYw0KPiBA
-QCAtODc0LDYgKzg3NCwzMyBAQCBpbnQgbmZzX2ZsdXNoX2luY29tcGF0aWJsZShzdHJ1Y3QgZmls
-ZSAqZmlsZSwgc3RydWN0IHBhZ2UgKnBhZ2UpDQo+ICB9DQo+ICANCj4gIC8qDQo+ICsgKiBBdm9p
-ZCBidWZmZXJlZCB3cml0ZXMgd2hlbiBhIG9wZW4gY29udGV4dCBjcmVkZW50aWFsJ3Mga2V5IHdv
-dWxkDQo+ICsgKiBleHBpcmUgc29vbi4NCj4gKyAqDQo+ICsgKiBSZXR1cm5zIC1FQUNDRVMgaWYg
-dGhlIGtleSB3aWxsIGV4cGlyZSB3aXRoaW4gUlBDX0tFWV9FWFBJUkVfRkFJTC4NCj4gKyAqDQo+
-ICsgKiBSZXR1cm4gMCBhbmQgc2V0IGEgY3JlZGVudGlhbCBmbGFnIHdoaWNoIHRyaWdnZXJzIHRo
-ZSBpbm9kZSB0byBmbHVzaA0KPiArICogYW5kIHBlcmZvcm1zICBORlNfRklMRV9TWU5DIHdyaXRl
-cyBpZiB0aGUga2V5IHdpbGwgZXhwaXJlZCB3aXRoaW4NCj4gKyAqIFJQQ19LRVlfRVhQSVJFX1RJ
-TUVPLg0KPiArICovDQo+ICtpbnQNCj4gK25mc19rZXlfdGltZW91dF9ub3RpZnkoc3RydWN0IGZp
-bGUgKmZpbHAsIHN0cnVjdCBpbm9kZSAqaW5vZGUpDQo+ICt7DQo+ICsJc3RydWN0IG5mc19vcGVu
-X2NvbnRleHQgKmN0eCA9IG5mc19maWxlX29wZW5fY29udGV4dChmaWxwKTsNCj4gKwlzdHJ1Y3Qg
-cnBjX2F1dGggKmF1dGggPSBORlNfU0VSVkVSKGlub2RlKS0+Y2xpZW50LT5jbF9hdXRoOw0KPiAr
-DQo+ICsJcmV0dXJuIHJwY2F1dGhfa2V5X3RpbWVvdXRfbm90aWZ5KGF1dGgsIGN0eC0+Y3JlZCk7
-DQo+ICt9DQo+ICsNCj4gKy8qDQo+ICsgKiBUZXN0IGlmIHRoZSBvcGVuIGNvbnRleHQgY3JlZGVu
-dGlhbCBrZXkgaXMgbWFya2VkIHRvIGV4cGlyZSBzb29uLg0KPiArICovDQo+ICtib29sIG5mc19j
-dHhfa2V5X3RvX2V4cGlyZShzdHJ1Y3QgbmZzX29wZW5fY29udGV4dCAqY3R4KQ0KPiArew0KPiAr
-CXJldHVybiBycGNhdXRoX2NyZWRfa2V5X3RvX2V4cGlyZShjdHgtPmNyZWQpOw0KPiArfQ0KPiAr
-DQo+ICsvKg0KPiAgICogSWYgdGhlIHBhZ2UgY2FjaGUgaXMgbWFya2VkIGFzIHVuc2FmZSBvciBp
-bnZhbGlkLCB0aGVuIHdlIGNhbid0IHJlbHkgb24NCj4gICAqIHRoZSBQYWdlVXB0b2RhdGUoKSBm
-bGFnLiBJbiB0aGlzIGNhc2UsIHdlIHdpbGwgbmVlZCB0byB0dXJuIG9mZg0KPiAgICogd3JpdGUg
-b3B0aW1pc2F0aW9ucyB0aGF0IGRlcGVuZCBvbiB0aGUgcGFnZSBjb250ZW50cyBiZWluZyBjb3Jy
-ZWN0Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVy
-DQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+> -----Original Message-----
+> From: Dan Carpenter [mailto:dan.carpenter@oracle.com]
+> Sent: Thursday, August 29, 2013 5:49 PM
+> To: Myklebust, Trond
+> Cc: linux-nfs@vger.kernel.org
+> Subject: re: NFS: Add event tracing for generic NFS lookups
+> 
+> Hello Trond Myklebust,
+> 
+> The patch 6e0d0be715fe: "NFS: Add event tracing for generic NFS lookups"
+> from Aug 20, 2013, leads to the following static checker
+> warning: "fs/nfs/dir.c:1465 nfs_atomic_open()
+> 	 	warn: 'ctx' was already freed."
+> 
+> fs/nfs/dir.c
+>   1462          if (IS_ERR(inode)) {
+>   1463                  put_nfs_open_context(ctx);
+>                         ^^^^^^^^^^^^^^^^^^^^^^^^^ Can free "ctx".
+> 
+>   1464                  err = PTR_ERR(inode);
+>   1465                  trace_nfs_atomic_open_exit(dir, ctx, open_flags, err);
+>                                                         ^^^ Dereference.
+> 
+>   1466                  switch (err) {
+>   1467                  case -ENOENT:
+>   1468                          d_drop(dentry);
+>   1469                          d_add(dentry, NULL);
+>   1470                          break;
+>   1471                  case -EISDIR:
+>   1472                  case -ENOTDIR:
+>   1473                          goto no_open;
+>   1474                  case -ELOOP:
+>   1475                          if (!(open_flags & O_NOFOLLOW))
+>   1476                                  goto no_open;
+>   1477                          break;
+>   1478                          /* case -EINVAL: */
+>   1479                  default:
+>   1480                          break;
+>   1481                  }
+>   1482                  goto out;
+>   1483          }
+>   1484
+>   1485          err = nfs_finish_open(ctx, ctx->dentry, file, open_flags, opened);
+>   1486          trace_nfs_atomic_open_exit(dir, ctx, open_flags, err);
+>                                                 ^^^ If we hit an error in the call to nfs_finish_open()
+> then I think "ctx"
+> is freed.
+> 
+>   1487  out:
+>   1488          return err;
+>   1489
+> 
+
+Thanks Dan! I've fixed this up.
+
+Cheers
+  Trond
+
