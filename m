@@ -1,81 +1,183 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:58280 "EHLO mx11.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:61092 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750774Ab3IXRhB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Sep 2013 13:37:01 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "<schumaker.anna@gmail.com>" <schumaker.anna@gmail.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4.1: try SECINFO_NO_NAME flavs until one works
-Date: Tue, 24 Sep 2013 17:37:00 +0000
-Message-ID: <1716F3CF-8591-42B7-B906-4E830609E12B@netapp.com>
-References: <1380044164-4486-1-git-send-email-dros@netapp.com>
-In-Reply-To: <1380044164-4486-1-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset="Windows-1252"
+	id S932067Ab3IBSRR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Sep 2013 14:17:17 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+CC: <andros@netapp.com>
+Subject: [PATCH v3 15/17] RPCSEC_GSS: Share rpc_pipes when an rpc_clnt owns multiple rpcsec auth caches
+Date: Mon, 2 Sep 2013 14:16:58 -0400
+Message-ID: <1378145820-29990-15-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1378145820-29990-14-git-send-email-Trond.Myklebust@netapp.com>
+References: <1378145820-29990-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-13-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-14-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bah, ignore this. Reposting….
+Ensure that if an rpc_clnt owns more than one RPCSEC_GSS-based authentication
+mechanism, then those caches will share the same 'gssd' upcall pipe.
 
--dros
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ net/sunrpc/auth_gss/auth_gss.c | 77 +++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 68 insertions(+), 9 deletions(-)
 
-On Sep 24, 2013, at 1:36 PM, Weston Andros Adamson <dros@netapp.com>
- wrote:
-
-> Call nfs4_lookup_root_sec for each flavor returned by SECINFO_NO_NAME until
-> one works.
-> 
-> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-> ---
-> fs/nfs/nfs4proc.c | 25 ++++++++++++++++++++++---
-> 1 file changed, 22 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 989bb9d..9043a02 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -7566,6 +7566,8 @@ nfs41_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
-> 	struct page *page;
-> 	rpc_authflavor_t flavor;
-> 	struct nfs4_secinfo_flavors *flavors;
-> +	struct nfs4_secinfo4 *secinfo;
-> +	int i;
-> 
-> 	page = alloc_page(GFP_KERNEL);
-> 	if (!page) {
-> @@ -7587,9 +7589,26 @@ nfs41_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
-> 	if (err)
-> 		goto out_freepage;
-> 
-> -	flavor = nfs_find_best_sec(flavors);
-> -	if (err == 0)
-> -		err = nfs4_lookup_root_sec(server, fhandle, info, flavor);
-> +	for (i = 0; i < flavors->num_flavors; i++) {
-> +		secinfo = &flavors->flavors[i];
-> +
-> +		switch (secinfo->flavor) {
-> +		case RPC_AUTH_NULL:
-> +		case RPC_AUTH_UNIX:
-> +		case RPC_AUTH_GSS:
-> +			flavor = rpcauth_get_pseudoflavor(secinfo->flavor,
-> +					&secinfo->flavor_info);
-> +			break;
-> +		}
-> +
-> +		if (flavor != RPC_AUTH_MAXFLAVOR) {
-> +			err = nfs4_lookup_root_sec(server, fhandle,
-> +						   info, flavor);
-> +
-> +			if (!err)
-> +				break;
-> +		}
-> +	}
-> 
-> out_freepage:
-> 	put_page(page);
-> -- 
-> 1.7.12.4 (Apple Git-37)
-> 
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index d214aec..5ec15bb 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -76,6 +76,7 @@ struct gss_pipe {
+ 	struct rpc_pipe *pipe;
+ 	struct rpc_clnt *clnt;
+ 	const char *name;
++	struct kref kref;
+ };
+ 
+ struct gss_auth {
+@@ -832,7 +833,6 @@ static struct gss_pipe *gss_pipe_alloc(struct rpc_clnt *clnt,
+ 		const char *name,
+ 		const struct rpc_pipe_ops *upcall_ops)
+ {
+-	struct net *net = rpc_net_ns(clnt);
+ 	struct gss_pipe *p;
+ 	int err = -ENOMEM;
+ 
+@@ -846,19 +846,71 @@ static struct gss_pipe *gss_pipe_alloc(struct rpc_clnt *clnt,
+ 	}
+ 	p->name = name;
+ 	p->clnt = clnt;
++	kref_init(&p->kref);
+ 	rpc_init_pipe_dir_object(&p->pdo,
+ 			&gss_pipe_dir_object_ops,
+ 			p);
+-	err = rpc_add_pipe_dir_object(net, &clnt->cl_pipedir_objects, &p->pdo);
+-	if (!err)
+-		return p;
+-	rpc_destroy_pipe_data(p->pipe);
++	return p;
+ err_free_gss_pipe:
+ 	kfree(p);
+ err:
+ 	return ERR_PTR(err);
+ }
+ 
++struct gss_alloc_pdo {
++	struct rpc_clnt *clnt;
++	const char *name;
++	const struct rpc_pipe_ops *upcall_ops;
++};
++
++static int gss_pipe_match_pdo(struct rpc_pipe_dir_object *pdo, void *data)
++{
++	struct gss_pipe *gss_pipe;
++	struct gss_alloc_pdo *args = data;
++
++	if (pdo->pdo_ops != &gss_pipe_dir_object_ops)
++		return 0;
++	gss_pipe = container_of(pdo, struct gss_pipe, pdo);
++	if (strcmp(gss_pipe->name, args->name) != 0)
++		return 0;
++	if (!kref_get_unless_zero(&gss_pipe->kref))
++		return 0;
++	return 1;
++}
++
++static struct rpc_pipe_dir_object *gss_pipe_alloc_pdo(void *data)
++{
++	struct gss_pipe *gss_pipe;
++	struct gss_alloc_pdo *args = data;
++
++	gss_pipe = gss_pipe_alloc(args->clnt, args->name, args->upcall_ops);
++	if (!IS_ERR(gss_pipe))
++		return &gss_pipe->pdo;
++	return NULL;
++}
++
++static struct gss_pipe *gss_pipe_get(struct rpc_clnt *clnt,
++		const char *name,
++		const struct rpc_pipe_ops *upcall_ops)
++{
++	struct net *net = rpc_net_ns(clnt);
++	struct rpc_pipe_dir_object *pdo;
++	struct gss_alloc_pdo args = {
++		.clnt = clnt,
++		.name = name,
++		.upcall_ops = upcall_ops,
++	};
++
++	pdo = rpc_find_or_alloc_pipe_dir_object(net,
++			&clnt->cl_pipedir_objects,
++			gss_pipe_match_pdo,
++			gss_pipe_alloc_pdo,
++			&args);
++	if (pdo != NULL)
++		return container_of(pdo, struct gss_pipe, pdo);
++	return ERR_PTR(-ENOMEM);
++}
++
+ static void __gss_pipe_free(struct gss_pipe *p)
+ {
+ 	struct rpc_clnt *clnt = p->clnt;
+@@ -871,10 +923,17 @@ static void __gss_pipe_free(struct gss_pipe *p)
+ 	kfree(p);
+ }
+ 
++static void __gss_pipe_release(struct kref *kref)
++{
++	struct gss_pipe *p = container_of(kref, struct gss_pipe, kref);
++
++	__gss_pipe_free(p);
++}
++
+ static void gss_pipe_free(struct gss_pipe *p)
+ {
+ 	if (p != NULL)
+-		__gss_pipe_free(p);
++		kref_put(&p->kref, __gss_pipe_release);
+ }
+ 
+ /*
+@@ -930,14 +989,14 @@ gss_create(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
+ 	 * that we supported only the old pipe.  So we instead create
+ 	 * the new pipe first.
+ 	 */
+-	gss_pipe = gss_pipe_alloc(clnt, "gssd", &gss_upcall_ops_v1);
++	gss_pipe = gss_pipe_get(clnt, "gssd", &gss_upcall_ops_v1);
+ 	if (IS_ERR(gss_pipe)) {
+ 		err = PTR_ERR(gss_pipe);
+ 		goto err_destroy_credcache;
+ 	}
+ 	gss_auth->gss_pipe[1] = gss_pipe;
+ 
+-	gss_pipe = gss_pipe_alloc(clnt, gss_auth->mech->gm_name,
++	gss_pipe = gss_pipe_get(clnt, gss_auth->mech->gm_name,
+ 			&gss_upcall_ops_v0);
+ 	if (IS_ERR(gss_pipe)) {
+ 		err = PTR_ERR(gss_pipe);
+@@ -947,7 +1006,7 @@ gss_create(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
+ 
+ 	return auth;
+ err_destroy_pipe_1:
+-	__gss_pipe_free(gss_auth->gss_pipe[1]);
++	gss_pipe_free(gss_auth->gss_pipe[1]);
+ err_destroy_credcache:
+ 	rpcauth_destroy_credcache(auth);
+ err_put_mech:
+-- 
+1.8.3.1
 
