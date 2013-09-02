@@ -1,39 +1,161 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:24190 "EHLO mx11.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:61092 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755723Ab3ICQHs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Sep 2013 12:07:48 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 5 1/5] SUNRPC: don't map EKEYEXPIRED to EACCES
- in call_refreshresult
-Date: Tue, 3 Sep 2013 16:07:47 +0000
-Message-ID: <1378224467.6410.3.camel@leira.trondhjem.org>
-References: <1376495957-7482-1-git-send-email-andros@netapp.com>
-	 <1376495957-7482-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1376495957-7482-2-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S932118Ab3IBSRP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Sep 2013 14:17:15 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+CC: <andros@netapp.com>
+Subject: [PATCH v3 13/17] SUNRPC: Remove the rpc_client->cl_dentry
+Date: Mon, 2 Sep 2013 14:16:56 -0400
+Message-ID: <1378145820-29990-13-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1378145820-29990-12-git-send-email-Trond.Myklebust@netapp.com>
+References: <1378145820-29990-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-12-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEzLTA4LTE0IGF0IDExOjU5IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFRoZSBO
-RlMgbGF5ZXIgbmVlZHMgdG8ga25vdyB3aGVuIGEga2V5IGhhcyBleHBpcmVkLg0KPiBUaGlzIGNo
-YW5nZSBhbHNvIHJldHVybnMgLUVLRVlFWFBJUkVEIHRvIHRoZSBhcHBsaWNhdGlvbiwgYW5kIHRo
-ZSBpbmZvcm1hdGl2ZQ0KPiAiS2V5IGhhcyBleHBpcmVkIiBlcnJvciBtZXNzYWdlIGlzIGRpc3Bs
-YXllZC4gVGhlIHVzZXIgdGhlbiBrbm93cyB0aGF0DQo+IGNyZWRlbnRpYWwgcmVuZXdhbCBpcyBy
-ZXF1aXJlZC4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFw
-cC5jb20+DQo+IC0tLQ0KPiAgbmV0L3N1bnJwYy9jbG50LmMgfCAyICstDQo+ICAxIGZpbGUgY2hh
-bmdlZCwgMSBpbnNlcnRpb24oKyksIDEgZGVsZXRpb24oLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9u
-ZXQvc3VucnBjL2NsbnQuYyBiL25ldC9zdW5ycGMvY2xudC5jDQo+IGluZGV4IGVjYmM0ZTMuLmI1
-NDQ5NjUgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMvY2xudC5jDQo+ICsrKyBiL25ldC9zdW5y
-cGMvY2xudC5jDQo+IEBAIC0xNDIzLDkgKzE0MjMsOSBAQCBjYWxsX3JlZnJlc2hyZXN1bHQoc3Ry
-dWN0IHJwY190YXNrICp0YXNrKQ0KPiAgCQlyZXR1cm47DQo+ICAJY2FzZSAtRVRJTUVET1VUOg0K
-PiAgCQlycGNfZGVsYXkodGFzaywgMypIWik7DQo+IC0JY2FzZSAtRUtFWUVYUElSRUQ6DQo+ICAJ
-Y2FzZSAtRUFHQUlOOg0KPiAgCQlzdGF0dXMgPSAtRUFDQ0VTOw0KPiArCWNhc2UgLUVLRVlFWFBJ
-UkVEOg0KPiAgCQlpZiAoIXRhc2stPnRrX2NyZWRfcmV0cnkpDQo+ICAJCQlicmVhazsNCj4gIAkJ
-dGFzay0+dGtfY3JlZF9yZXRyeS0tOw0KDQpBcHBsaWVkLg0KDQotLSANClRyb25kIE15a2xlYnVz
-dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0
-QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+It is now redundant.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ include/linux/sunrpc/clnt.h        |  1 -
+ include/linux/sunrpc/rpc_pipe_fs.h |  2 +-
+ net/sunrpc/clnt.c                  | 35 ++++++++++++++++++-----------------
+ net/sunrpc/rpc_pipe.c              | 13 +++++++------
+ 4 files changed, 26 insertions(+), 25 deletions(-)
+
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 0dccd01..76c0bf6 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -57,7 +57,6 @@ struct rpc_clnt {
+ 	int			cl_nodelen;	/* nodename length */
+ 	char 			cl_nodename[UNX_MAXNODENAME];
+ 	struct rpc_pipe_dir_head cl_pipedir_objects;
+-	struct dentry *		cl_dentry;
+ 	struct rpc_clnt *	cl_parent;	/* Points to parent of clones */
+ 	struct rpc_rtt		cl_rtt_default;
+ 	struct rpc_timeout	cl_timeout_default;
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index 188e7fc..b0cf181 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -94,7 +94,7 @@ extern int rpc_queue_upcall(struct rpc_pipe *, struct rpc_pipe_msg *);
+ 
+ struct rpc_clnt;
+ extern struct dentry *rpc_create_client_dir(struct dentry *, const char *, struct rpc_clnt *);
+-extern int rpc_remove_client_dir(struct dentry *, struct rpc_clnt *);
++extern int rpc_remove_client_dir(struct rpc_clnt *);
+ 
+ extern void rpc_init_pipe_dir_head(struct rpc_pipe_dir_head *pdh);
+ extern void rpc_init_pipe_dir_object(struct rpc_pipe_dir_object *pdo,
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 3c074de..af3f0cf 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -102,9 +102,7 @@ static void rpc_unregister_client(struct rpc_clnt *clnt)
+ 
+ static void __rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
+ {
+-	if (clnt->cl_dentry)
+-		rpc_remove_client_dir(clnt->cl_dentry, clnt);
+-	clnt->cl_dentry = NULL;
++	rpc_remove_client_dir(clnt);
+ }
+ 
+ static void rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
+@@ -154,14 +152,11 @@ rpc_setup_pipedir(struct super_block *pipefs_sb, struct rpc_clnt *clnt)
+ {
+ 	struct dentry *dentry;
+ 
+-	if (clnt->cl_program->pipe_dir_name == NULL)
+-		goto out;
+-	clnt->cl_dentry = NULL;
+-	dentry = rpc_setup_pipedir_sb(pipefs_sb, clnt);
+-	if (IS_ERR(dentry))
+-		return PTR_ERR(dentry);
+-	clnt->cl_dentry = dentry;
+-out:
++	if (clnt->cl_program->pipe_dir_name != NULL) {
++		dentry = rpc_setup_pipedir_sb(pipefs_sb, clnt);
++		if (IS_ERR(dentry))
++			return PTR_ERR(dentry);
++	}
+ 	return 0;
+ }
+ 
+@@ -170,11 +165,18 @@ static int rpc_clnt_skip_event(struct rpc_clnt *clnt, unsigned long event)
+ 	if (clnt->cl_program->pipe_dir_name == NULL)
+ 		return 1;
+ 
+-	if (((event == RPC_PIPEFS_MOUNT) && clnt->cl_dentry) ||
+-	    ((event == RPC_PIPEFS_UMOUNT) && !clnt->cl_dentry))
+-		return 1;
+-	if ((event == RPC_PIPEFS_MOUNT) && atomic_read(&clnt->cl_count) == 0)
+-		return 1;
++	switch (event) {
++	case RPC_PIPEFS_MOUNT:
++		if (clnt->cl_pipedir_objects.pdh_dentry != NULL)
++			return 1;
++		if (atomic_read(&clnt->cl_count) == 0)
++			return 1;
++		break;
++	case RPC_PIPEFS_UMOUNT:
++		if (clnt->cl_pipedir_objects.pdh_dentry == NULL)
++			return 1;
++		break;
++	}
+ 	return 0;
+ }
+ 
+@@ -191,7 +193,6 @@ static int __rpc_clnt_handle_event(struct rpc_clnt *clnt, unsigned long event,
+ 			return -ENOENT;
+ 		if (IS_ERR(dentry))
+ 			return PTR_ERR(dentry);
+-		clnt->cl_dentry = dentry;
+ 		break;
+ 	case RPC_PIPEFS_UMOUNT:
+ 		__rpc_clnt_remove_pipedir(clnt);
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index cfeba77..a35b2f4 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -1055,15 +1055,16 @@ struct dentry *rpc_create_client_dir(struct dentry *dentry,
+ 
+ /**
+  * rpc_remove_client_dir - Remove a directory created with rpc_create_client_dir()
+- * @dentry: dentry for the pipe
+  * @rpc_client: rpc_client for the pipe
+  */
+-int rpc_remove_client_dir(struct dentry *dentry, struct rpc_clnt *rpc_client)
++int rpc_remove_client_dir(struct rpc_clnt *rpc_client)
+ {
+-	if (rpc_client->cl_pipedir_objects.pdh_dentry) {
+-		rpc_destroy_pipe_dir_objects(&rpc_client->cl_pipedir_objects);
+-		rpc_client->cl_pipedir_objects.pdh_dentry = NULL;
+-	}
++	struct dentry *dentry = rpc_client->cl_pipedir_objects.pdh_dentry;
++
++	if (dentry == NULL)
++		return 0;
++	rpc_destroy_pipe_dir_objects(&rpc_client->cl_pipedir_objects);
++	rpc_client->cl_pipedir_objects.pdh_dentry = NULL;
+ 	return rpc_rmdir_depopulate(dentry, rpc_clntdir_depopulate);
+ }
+ 
+-- 
+1.8.3.1
+
