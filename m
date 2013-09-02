@@ -1,72 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f178.google.com ([209.85.223.178]:49423 "EHLO
-	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754427Ab3ITJt4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Sep 2013 05:49:56 -0400
+Received: from mx1.netapp.com ([216.240.18.38]:24296 "EHLO mx1.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755681Ab3IBSR4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Sep 2013 14:17:56 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+CC: <andros@netapp.com>
+Subject: [PATCH v2] NFS: Ensure that rmdir() waits for sillyrenames to complete
+Date: Mon, 2 Sep 2013 14:17:51 -0400
+Message-ID: <1378145871-30071-1-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <1378919210-10372-1-git-send-email-zab@redhat.com>
-References: <1378919210-10372-1-git-send-email-zab@redhat.com>
-Date: Fri, 20 Sep 2013 11:49:56 +0200
-Message-ID: <CAELBmZBGD4rph=gjLCPKCdEj+nzEQ-F=DExoL+h3vRm7qF7dCQ@mail.gmail.com>
-Subject: Re: [RFC] extending splice for copy offloading
-From: Szeredi Miklos <miklos@szeredi.hu>
-To: Zach Brown <zab@redhat.com>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Bryan Schumaker <bjschuma@netapp.com>,
-        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        Eric Wong <normalperson@yhbt.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 11, 2013 at 7:06 PM, Zach Brown <zab@redhat.com> wrote:
->
-> When I first started on this stuff I followed the lead of previous
-> work and added a new syscall for the copy operation:
->
-> https://lkml.org/lkml/2013/5/14/618
->
-> Towards the end of that thread Eric Wong asked why we didn't just
-> extend splice.  I immediately replied with some dumb dismissive
-> answer.  Once I sat down and looked at it, though, it does make a
-> lot of sense.  So good job, Eric.  +10 Dummie points for me.
->
-> Extending splice avoids all the noise of adding a new syscall and
-> naturally falls back to buffered copying as that's what the direct
-> splice path does for sendfile() today.
+If an NFS client does
 
-Nice idea.
+	mkdir("dir");
+	fd = open("dir/file");
+	unlink("dir/file");
+	close(fd);
+	rmdir("dir");
 
->
-> So that's what this patch series demonstrates.  It adds a flag that
-> lets splice get at the same direct splicing that sendfile() does.
-> We then add a file system file_operations method to accelerate the
-> copy which has access to both files.
->
-> Some things to talk about:
-> - I really don't care about the naming here.  If you do, holler.
-> - We might want different flags for file-to-file splicing and acceleration
+then the asynchronous nature of the sillyrename operation means that
+we can end up getting EBUSY for the rmdir() in the above test. Fix
+that by ensuring that we wait for any in-progress sillyrenames
+before sending the rmdir() to the server.
 
-Yes, I think "copy" and "reflink" needs to be differentiated.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/dir.c           | 19 +++++++++++++------
+ fs/nfs/unlink.c        |  7 +++++++
+ include/linux/nfs_fs.h |  1 +
+ 3 files changed, 21 insertions(+), 6 deletions(-)
 
-> - We might want flags to require or forbid acceleration
-> - We might want to provide all these flags to sendfile, too
->
-> Thoughts?  Objections?
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index d8149e9..187caa4 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1694,12 +1694,19 @@ int nfs_rmdir(struct inode *dir, struct dentry *dentry)
+ 			dir->i_sb->s_id, dir->i_ino, dentry->d_name.name);
+ 
+ 	trace_nfs_rmdir_enter(dir, dentry);
+-	error = NFS_PROTO(dir)->rmdir(dir, &dentry->d_name);
+-	/* Ensure the VFS deletes this inode */
+-	if (error == 0 && dentry->d_inode != NULL)
+-		clear_nlink(dentry->d_inode);
+-	else if (error == -ENOENT)
+-		nfs_dentry_handle_enoent(dentry);
++	if (dentry->d_inode) {
++		nfs_wait_on_sillyrename(dentry);
++		error = NFS_PROTO(dir)->rmdir(dir, &dentry->d_name);
++		/* Ensure the VFS deletes this inode */
++		switch (error) {
++		case 0:
++			clear_nlink(dentry->d_inode);
++			break;
++		case -ENOENT:
++			nfs_dentry_handle_enoent(dentry);
++		}
++	} else
++		error = NFS_PROTO(dir)->rmdir(dir, &dentry->d_name);
+ 	trace_nfs_rmdir_exit(dir, dentry, error);
+ 
+ 	return error;
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index 2c1485d..0c6dfe0 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -207,6 +207,13 @@ out_free:
+ 	return ret;
+ }
+ 
++void nfs_wait_on_sillyrename(struct dentry *dentry)
++{
++	struct nfs_inode *nfsi = NFS_I(dentry->d_inode);
++
++	wait_event(nfsi->waitqueue, atomic_read(&nfsi->silly_count) == 1);
++}
++
+ void nfs_block_sillyrename(struct dentry *dentry)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(dentry->d_inode);
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 7125cef..3ea4cde 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -524,6 +524,7 @@ static inline void nfs4_label_free(void *label) {}
+  * linux/fs/nfs/unlink.c
+  */
+ extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
++extern void nfs_wait_on_sillyrename(struct dentry *dentry);
+ extern void nfs_block_sillyrename(struct dentry *dentry);
+ extern void nfs_unblock_sillyrename(struct dentry *dentry);
+ extern int  nfs_sillyrename(struct inode *dir, struct dentry *dentry);
+-- 
+1.8.3.1
 
-Can filesystem support "whole file copy" only?  Or arbitrary
-block-to-block copy should be mandatory?
-
-Splice has size_t argument for the size, which is limited to 4G on 32
-bit.  Won't this be an issue for whole-file-copy?  We could have
-special value (-1) for whole file, but that's starting to be hackish.
-
-We are talking about copying large amounts of data in a single
-syscall, which will possibly take a long time.  Will the syscall be
-interruptible?  Restartable?
-
-Thanks,
-Miklos
