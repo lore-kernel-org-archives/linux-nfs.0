@@ -1,69 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:35894 "EHLO mx11.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:37320 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932315Ab3ICSEd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Sep 2013 14:04:33 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Stanislav Kinsbursky" <skinsbursky@parallels.com>
-Subject: Re: [PATCH v2 16/33] SUNRPC: Modify synopsis of
- rpc_client_register()
-Date: Tue, 3 Sep 2013 18:04:32 +0000
-Message-ID: <1378231471.6410.18.camel@leira.trondhjem.org>
-References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
-	 <20130809165005.5362.34943.stgit@seurat.1015granger.net>
-In-Reply-To: <20130809165005.5362.34943.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+	id S1758836Ab3IBSRK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Sep 2013 14:17:10 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+CC: <andros@netapp.com>
+Subject: [PATCH v3 07/17] RPCSEC_GSS: Fix an Oopsable condition when creating/destroying pipefs objects
+Date: Mon, 2 Sep 2013 14:16:50 -0400
+Message-ID: <1378145820-29990-7-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1378145820-29990-6-git-send-email-Trond.Myklebust@netapp.com>
+References: <1378145820-29990-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-6-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEzLTA4LTA5IGF0IDEyOjUwIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-VGhlIHJwY19jbGllbnRfcmVnaXN0ZXIoKSBoZWxwZXIgd2FzIGFkZGVkIGluIGNvbW1pdCBlNzNm
-NGNjMCwNCj4gIlNVTlJQQzogc3BsaXQgY2xpZW50IGNyZWF0aW9uIHJvdXRpbmUgaW50byBzZXR1
-cCBhbmQgcmVnaXN0cmF0aW9uLCINCj4gTW9uIEp1biAyNCAxMTo1Mjo1MiAyMDEzLg0KPiANCj4g
-SSdkIGxpa2UgdG8gaW52b2tlIHJwY19jbGllbnRfcmVnaXN0ZXIoKSBmcm9tIGEgY29udGV4dCB3
-aGVyZSBhDQo+IHN0cnVjdCBycGNfY3JlYXRlX2FyZ3MgaXMgbm90IGF2YWlsYWJsZS4gIFRoZXJl
-IGFwcGVhciB0byBiZSBvbmx5DQo+IHR3byBmaWVsZHMgb2YgaW50ZXJlc3QgaW4gc3RydWN0IHJw
-Y19jcmVhdGVfYXJnczogLnByb2dyYW0gYW5kDQo+IC5hdXRoZmxhdm9yIC4NCj4gDQo+IFNpZ25l
-ZC1vZmYtYnk6IENodWNrIExldmVyIDxjaHVjay5sZXZlckBvcmFjbGUuY29tPg0KPiBDYzogU3Rh
-bmlzbGF2IEtpbnNidXJza3kgPHNraW5zYnVyc2t5QHBhcmFsbGVscy5jb20+DQo+IC0tLQ0KPiAg
-bmV0L3N1bnJwYy9jbG50LmMgfCAgIDEyICsrKysrKy0tLS0tLQ0KPiAgMSBmaWxlIGNoYW5nZWQs
-IDYgaW5zZXJ0aW9ucygrKSwgNiBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9uZXQv
-c3VucnBjL2NsbnQuYyBiL25ldC9zdW5ycGMvY2xudC5jDQo+IGluZGV4IDc0ZjZhNzAuLmY5ZTM5
-MjYgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMvY2xudC5jDQo+ICsrKyBiL25ldC9zdW5ycGMv
-Y2xudC5jDQo+IEBAIC0yNzksMTAgKzI3OSwxMCBAQCBzdGF0aWMgdm9pZCBycGNfY2xudF9zZXRf
-bm9kZW5hbWUoc3RydWN0IHJwY19jbG50ICpjbG50LCBjb25zdCBjaGFyICpub2RlbmFtZSkNCj4g
-IAltZW1jcHkoY2xudC0+Y2xfbm9kZW5hbWUsIG5vZGVuYW1lLCBjbG50LT5jbF9ub2RlbGVuKTsN
-Cj4gIH0NCj4gIA0KPiAtc3RhdGljIGludCBycGNfY2xpZW50X3JlZ2lzdGVyKGNvbnN0IHN0cnVj
-dCBycGNfY3JlYXRlX2FyZ3MgKmFyZ3MsDQo+IC0JCQkgICAgICAgc3RydWN0IHJwY19jbG50ICpj
-bG50KQ0KPiArc3RhdGljIGludCBycGNfY2xpZW50X3JlZ2lzdGVyKHN0cnVjdCBycGNfY2xudCAq
-Y2xudCwNCj4gKwkJCSAgICAgICBycGNfYXV0aGZsYXZvcl90IHBzZXVkb2ZsYXZvcikNCj4gIHsN
-Cj4gLQljb25zdCBzdHJ1Y3QgcnBjX3Byb2dyYW0gKnByb2dyYW0gPSBhcmdzLT5wcm9ncmFtOw0K
-PiArCWNvbnN0IHN0cnVjdCBycGNfcHJvZ3JhbSAqcHJvZ3JhbSA9IGNsbnQtPmNsX3Byb2dyYW07
-DQo+ICAJc3RydWN0IHJwY19hdXRoICphdXRoOw0KPiAgCXN0cnVjdCBuZXQgKm5ldCA9IHJwY19u
-ZXRfbnMoY2xudCk7DQo+ICAJc3RydWN0IHN1cGVyX2Jsb2NrICpwaXBlZnNfc2I7DQo+IEBAIC0y
-OTksMTAgKzI5OSwxMCBAQCBzdGF0aWMgaW50IHJwY19jbGllbnRfcmVnaXN0ZXIoY29uc3Qgc3Ry
-dWN0IHJwY19jcmVhdGVfYXJncyAqYXJncywNCj4gIAlpZiAocGlwZWZzX3NiKQ0KPiAgCQlycGNf
-cHV0X3NiX25ldChuZXQpOw0KPiAgDQo+IC0JYXV0aCA9IHJwY2F1dGhfY3JlYXRlKGFyZ3MtPmF1
-dGhmbGF2b3IsIGNsbnQpOw0KPiArCWF1dGggPSBycGNhdXRoX2NyZWF0ZShwc2V1ZG9mbGF2b3Is
-IGNsbnQpOw0KPiAgCWlmIChJU19FUlIoYXV0aCkpIHsNCj4gIAkJZHByaW50aygiUlBDOiAgICAg
-ICBDb3VsZG4ndCBjcmVhdGUgYXV0aCBoYW5kbGUgKGZsYXZvciAldSlcbiIsDQo+IC0JCQkJYXJn
-cy0+YXV0aGZsYXZvcik7DQo+ICsJCQkJcHNldWRvZmxhdm9yKTsNCj4gIAkJZXJyID0gUFRSX0VS
-UihhdXRoKTsNCj4gIAkJZ290byBlcnJfYXV0aDsNCj4gIAl9DQo+IEBAIC0zODQsNyArMzg0LDcg
-QEAgc3RhdGljIHN0cnVjdCBycGNfY2xudCAqIHJwY19uZXdfY2xpZW50KGNvbnN0IHN0cnVjdCBy
-cGNfY3JlYXRlX2FyZ3MgKmFyZ3MsIHN0cnUNCj4gIAkvKiBzYXZlIHRoZSBub2RlbmFtZSAqLw0K
-PiAgCXJwY19jbG50X3NldF9ub2RlbmFtZShjbG50LCB1dHNuYW1lKCktPm5vZGVuYW1lKTsNCj4g
-IA0KPiAtCWVyciA9IHJwY19jbGllbnRfcmVnaXN0ZXIoYXJncywgY2xudCk7DQo+ICsJZXJyID0g
-cnBjX2NsaWVudF9yZWdpc3RlcihjbG50LCBhcmdzLT5hdXRoZmxhdm9yKTsNCj4gIAlpZiAoZXJy
-KQ0KPiAgCQlnb3RvIG91dF9ub19wYXRoOw0KPiAgCXJldHVybiBjbG50Ow0KPiANCg0KVGhpcyBj
-b25mbGljdHMgYSBiaXQgd2l0aCB0aGUgbmV3IG1hbmFnZW1lbnQgY29kZSBmb3IgdGhlIHJwY19j
-bG50J3MNCnJwY19waXBlZnMuIFRoZSBmaXh1cCBhYm92ZSBpcyB0cml2aWFsLCBidXQgSSB0aGlu
-ayB0aGF0IHlvdSBtaWdodCB3YW50DQp0byBsb29rIGludG8gd2hldGhlciBvciBub3QgdGhlIG5l
-dyBjb2RlIGNoYW5nZXMgYW55dGhpbmcgZm9yIHlvdXINCnJwY19hdXRoIHN0cmF0ZWd5Lg0KSW4g
-cGFydGljdWxhciBub3RlIHRoYXQgdGhlIG5ldyBjb2RlIHVzZXMgdGhlIHJwY19jbG50LT5jbF9w
-YXJlbnQgY2hhaW4NCmluIG9yZGVyIHRvIGltcGxlbWVudCBzaGFyaW5nIG9mIHRoZSBSUENTRUNf
-R1NTIGNhY2hlcyBhbmQgcGlwZSB1cGNhbGxzLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGlu
-dXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFw
-cC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+If an error condition occurs on rpc_pipefs creation, or the user mounts
+rpc_pipefs and then unmounts it, then the dentries in struct gss_auth
+need to be reset to NULL so that a second call to gss_pipes_dentries_destroy
+doesn't try to free them again.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ net/sunrpc/auth_gss/auth_gss.c | 32 ++++++++++++++++++++------------
+ 1 file changed, 20 insertions(+), 12 deletions(-)
+
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 6323803..c0d36bb 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -796,10 +796,14 @@ static void gss_pipes_dentries_destroy(struct rpc_auth *auth)
+ 	struct gss_auth *gss_auth;
+ 
+ 	gss_auth = container_of(auth, struct gss_auth, rpc_auth);
+-	if (gss_auth->pipe[0]->dentry)
++	if (gss_auth->pipe[0]->dentry) {
+ 		rpc_unlink(gss_auth->pipe[0]->dentry);
+-	if (gss_auth->pipe[1]->dentry)
++		gss_auth->pipe[0]->dentry = NULL;
++	}
++	if (gss_auth->pipe[1]->dentry) {
+ 		rpc_unlink(gss_auth->pipe[1]->dentry);
++		gss_auth->pipe[1]->dentry = NULL;
++	}
+ }
+ 
+ static int gss_pipes_dentries_create(struct rpc_auth *auth)
+@@ -807,26 +811,30 @@ static int gss_pipes_dentries_create(struct rpc_auth *auth)
+ 	int err;
+ 	struct gss_auth *gss_auth;
+ 	struct rpc_clnt *clnt;
++	struct dentry *dentry;
+ 
+ 	gss_auth = container_of(auth, struct gss_auth, rpc_auth);
+ 	clnt = gss_auth->client;
+ 
+-	gss_auth->pipe[1]->dentry = rpc_mkpipe_dentry(clnt->cl_dentry,
+-						      "gssd",
+-						      clnt, gss_auth->pipe[1]);
+-	if (IS_ERR(gss_auth->pipe[1]->dentry))
+-		return PTR_ERR(gss_auth->pipe[1]->dentry);
+-	gss_auth->pipe[0]->dentry = rpc_mkpipe_dentry(clnt->cl_dentry,
+-						      gss_auth->mech->gm_name,
+-						      clnt, gss_auth->pipe[0]);
+-	if (IS_ERR(gss_auth->pipe[0]->dentry)) {
+-		err = PTR_ERR(gss_auth->pipe[0]->dentry);
++	dentry = rpc_mkpipe_dentry(clnt->cl_dentry, "gssd",
++			clnt, gss_auth->pipe[1]);
++	if (IS_ERR(dentry)) {
++		err = PTR_ERR(dentry);
++		goto err;
++	}
++	gss_auth->pipe[1]->dentry = dentry;
++	dentry = rpc_mkpipe_dentry(clnt->cl_dentry, gss_auth->mech->gm_name,
++			clnt, gss_auth->pipe[0]);
++	if (IS_ERR(dentry)) {
++		err = PTR_ERR(dentry);
+ 		goto err_unlink_pipe_1;
+ 	}
+ 	return 0;
+ 
+ err_unlink_pipe_1:
+ 	rpc_unlink(gss_auth->pipe[1]->dentry);
++	gss_auth->pipe[1]->dentry = NULL;
++err:
+ 	return err;
+ }
+ 
+-- 
+1.8.3.1
+
