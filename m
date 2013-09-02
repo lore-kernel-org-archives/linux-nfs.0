@@ -1,122 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f176.google.com ([74.125.82.176]:44070 "EHLO
-	mail-we0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755784Ab3IYNwl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Sep 2013 09:52:41 -0400
+Received: from fieldses.org ([174.143.236.118]:40376 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757074Ab3IBTtu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Sep 2013 15:49:50 -0400
+Date: Mon, 2 Sep 2013 15:49:48 -0400
+To: Benny Halevy <bhalevy@primarydata.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: list debug fallout
+Message-ID: <20130902194948.GB23891@fieldses.org>
+References: <52247034.6020305@primarydata.com>
 MIME-Version: 1.0
-In-Reply-To: <22596229.54071380086390046.JavaMail.weblogic@epv6ml04>
-References: <22596229.54071380086390046.JavaMail.weblogic@epv6ml04>
-From: Anna Schumaker <schumaker.anna@gmail.com>
-Date: Wed, 25 Sep 2013 09:52:19 -0400
-Message-ID: <CAFX2Jf=s0RmimpDM-KrujoxQ=LcJL2g0hR3w5JS+KXJd8Wbotw@mail.gmail.com>
-Subject: Re: Regression caused by commit 4bdc33ed ("NFSDv4.2: Add NFS v4.2
- support to the NFS server")
-To: jongman.heo@samsung.com
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <52247034.6020305@primarydata.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Jongman,
+On Mon, Sep 02, 2013 at 02:02:12PM +0300, Benny Halevy wrote:
+> Bruce,
+> 
+> I see the following warnings when running over nfsv4.0 and nfsv4.1 with a 3.10 based kernel
+> in the close, delegreturn and laundromat paths.
+> The branch is pnfs-all-latest but since this happens regardless of pnfs I don't think it's related...
 
-Is the panic on your client or server?  I don't see how the patch your
-bisect led you to could cause the problem, since all it does is expand
-the minor version array on the server.  Your client doesn't have NFSD
-enabled, so this code shouldn't even be affecting it.
+Could be, though I haven't seen it, and the log fragment below does show
+some pNFS ops happening before the crash.
 
-A few questions:  what is your /etc/exports on the server?  What
-version of NFS are you using for nfsroot?
+> What I ran is simply mount and cat of a file in the root directory.
+> 
+> The corrupt value seems like uninitialized (and poisoned) memory, right?
 
-Thanks!
-Anna
+>From include/linux/poison.h:
 
-On Wed, Sep 25, 2013 at 1:19 AM, Jongman Heo <jongman.heo@samsung.com> wrote:
->
-> Hi all,
->
-> My embedded development box fails to NFS-boot with NFS server which uses recent kernel.
->
-> Using git bisect, I found it is caused by commit 4bdc33ed ("NFSDv4.2: Add NFS v4.2 support to the NFS server").
->
->
-> 1. dmesg (NFS boot failure case)
->
-> ...
-> [    2.040893] ADDRCONF(NETDEV_UP): eth0: link is not ready
-> [    2.046207] e1000: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: RX
-> [    2.053570] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
-> [    3.055023] IP-Config: Guessing netmask 255.255.0.0
-> [    3.059979] IP-Config: Gateway not on directly connected network.
-> [    3.066330] Looking up port of RPC 100003/2 on 165.213.88.249
-> [    3.074001] Looking up port of RPC 100005/1 on 165.213.88.249
-> [    3.122878] VFS: Unable to mount root fs via NFS, trying floppy.
-> [    3.129134] VFS: Cannot open root device "nfs" or unknown-block(2,0)
-> [    3.135478] Please append a correct "root=" boot option; here are the available partitions:
-> [    3.143831] 1f00            3072 mtdblock0 (driver?)
-> [    3.148798] 1f01              64 mtdblock1 (driver?)
-> [    3.153758] 1f02              64 mtdblock2 (driver?)
-> [    3.158719] 1f03              64 mtdblock3 (driver?)
-> [    3.163682] 1f04              64 mtdblock4 (driver?)
-> [    3.168644] 1f05              64 mtdblock5 (driver?)
-> [    3.173607] 1f06              64 mtdblock6 (driver?)
-> [    3.178568] 0800       488386584 sda driver: sd
-> [    3.183099]   0801          506016 sda1
-> [    3.186927]   0802         4008217 sda2
-> [    3.190755]   0803       483869767 sda3
-> [    3.194584] b300         1880064 mmcblk0 driver: mmcblk
-> [    3.199802]   b301            4096 mmcblk0p1
-> [    3.204063]   b302          102400 mmcblk0p2
-> [    3.208330]   b303            4096 mmcblk0p3
-> [    3.212594]   b304               1 mmcblk0p4
-> [    3.216855]   b305            2048 mmcblk0p5
-> [    3.221116]   b306            2048 mmcblk0p6
-> [    3.225382]   b307            2048 mmcblk0p7
-> [    3.229644]   b308            4096 mmcblk0p8
-> [    3.233906]   b309           12288 mmcblk0p9
-> [    3.238176]   b30a           16384 mmcblk0p10
-> [    3.242524]   b30b          142336 mmcblk0p11
-> [    3.246869]   b30c         1572864 mmcblk0p12
-> [    3.251219] b320           12288 mmcblk0gp1 (driver?)
-> [    3.256272] b310           12288 mmcblk0gp0 (driver?)
-> [    3.261320] Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(2,0)
-> [    3.269566] Pid: 1, comm: swapper Not tainted 2.6.35 #1
-> [    3.274776] Call Trace:
-> [    3.277232]  [<80d0db5b>] ? printk+0x1e/0x20
-> [    3.281492]  [<80d0dad1>] panic+0x65/0xd1
-> [    3.285495]  [<80eb9ce3>] mount_block_root+0x125/0x1be
-> [    3.290631]  [<809d1f6d>] ? sys_mknod+0x2d/0x30
-> [    3.295156]  [<80eb9f6d>] mount_root+0xd0/0xf2
-> [    3.299591]  [<80eba0d9>] prepare_namespace+0x14a/0x184
-> [    3.304803]  [<809c44f6>] ? sys_access+0x26/0x30
-> [    3.309411]  [<80eb9a4e>] kernel_init+0x25e/0x26e
-> [    3.314105]  [<80eb97f0>] ? kernel_init+0x0/0x26e
-> [    3.318800]  [<80903242>] kernel_thread_helper+0x6/0x10
->
->
-> 2. Client (my embedded box) configuration
->   It's kernel 2.6.35 based, and has following NFS kernel configs.
->
-> # grep NFS .config
-> CONFIG_NFS_FS=y
-> CONFIG_NFS_V3=y
-> CONFIG_NFS_V3_ACL=y
-> CONFIG_NFS_V4=y
-> # CONFIG_NFS_V4_1 is not set
-> CONFIG_ROOT_NFS=y
-> # CONFIG_NFSD is not set
-> CONFIG_NFS_ACL_SUPPORT=y
-> CONFIG_NFS_COMMON=y
->
->
-> 3. Server (NFSD) configuration
->    Fedora 19 + latest linus git kernel 3.12.0-rc2+ (commit 22356f44, mm: Place preemption point in do_mlockall() loop)
->
->
-> 4. workaround
->
-> Reverting the commit 4bdc33ed resolves my issue, NFS boot is working then.
-> I've done git bisect, but lost the resulting bisect log due to sudden power loss :(.
->
-> Best regards,
-> Jongman Heo
+#define POISON_FREE     0x6b    /* for use-after-free poisoning */
+
+--b.
+
+> 
+> Sep  2 13:07:58 localhost kernel: nfsv4 compound op #3/4: 4 (OP_CLOSE)
+> Sep  2 13:07:58 localhost kernel: nfsd4_check_resp_size length 116, xb->page_len 0 tlen 0 pad 24
+> Sep  2 13:07:58 localhost kernel: NFSD: nfsd4_close on file foo
+> Sep  2 13:07:58 localhost kernel: NFSD: nfs4_preprocess_seqid_op: seqid=0 stateid = (52244b55/00000004/0000000b/00000001)
+> Sep  2 13:07:58 localhost kernel: renewing client (clientid 52244b55/00000004)
+> Sep  2 13:07:58 localhost kernel: --> pnfsd_lexp_layout_return: inode=6671
+> Sep  2 13:07:58 localhost kernel: return_layout_to_fs: inode 6671 iomode=2 offset=0x0 length=0xffffffffffffffff flags=0x1 status=0
+> Sep  2 13:07:58 localhost kernel: pNFS put_layout_state: ls ffff8800360e2000 ls_ref 2
+> Sep  2 13:07:58 localhost kernel: pNFS destroy_layout: lp ffff88003b554000 ls ffff8800360e2000 ino 6671
+> Sep  2 13:07:58 localhost kernel: pNFS put_layout_state: ls ffff8800360e2000 ls_ref 1
+> Sep  2 13:07:58 localhost kernel: ------------[ cut here ]------------
+> Sep  2 13:07:58 localhost kernel: WARNING: at /usr0/home/bhalevy/dev/linux-pnfs/
+> lib/list_debug.c:59 __list_del_entry+0xa1/0xd0()
+> Sep  2 13:07:58 localhost kernel: list_del corruption. prev->next should be ffff880037af6020, but was 6b6b6b6b6b6b6b6b
+> Sep  2 13:07:58 localhost kernel: Modules linked in: nfs_layout_nfsv41_files rpcsec_gss_krb5 nfsv4 nfs nfsd auth_rpcgss oid_registry nfs_acl lockd sunrpc autofs4
+> Sep  2 13:07:58 localhost kernel: CPU: 1 PID: 832 Comm: nfsd Tainted: G        W    3.10.0-pnfs+ #5
+> Sep  2 13:07:58 localhost kernel: Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+> Sep  2 13:07:58 localhost kernel: 0000000000000009 ffff88003b815bd8 ffffffff816cf76b ffff88003b815c10
+> Sep  2 13:07:58 localhost kernel: ffffffff8105a4b1 ffff880037af6020 ffff880037af6000 ffff880037af6040
+> Sep  2 13:07:58 localhost kernel: ffff88003c3c0000 ffff880037a5c8c4 ffff88003b815c70 ffffffff8105a51c
+> Sep  2 13:07:58 localhost kernel: Call Trace:
+> Sep  2 13:07:58 localhost kernel: [<ffffffff816cf76b>] dump_stack+0x19/0x1b
+> Sep  2 13:07:58 localhost kernel: [<ffffffff8105a4b1>] warn_slowpath_common+0x61/0x80
+> Sep  2 13:07:58 localhost kernel: [<ffffffff8105a51c>] warn_slowpath_fmt+0x4c/0x50
+> Sep  2 13:07:58 localhost kernel: [<ffffffff8135e741>] __list_del_entry+0xa1/0xd0
+> Sep  2 13:07:58 localhost kernel: [<ffffffff8135e77d>] list_del+0xd/0x30
+> Sep  2 13:07:58 localhost kernel: [<ffffffffa012b19f>] unhash_open_stateid+0x1f/0x80 [nfsd]
+> Sep  2 13:07:58 localhost kernel: [<ffffffffa013094e>] nfsd4_close+0x18e/0x5a0 [nfsd]
+> Sep  2 13:07:58 localhost kernel: [<ffffffffa01307c5>] ? nfsd4_close+0x5/0x5a0 [nfsd]
+> Sep  2 13:07:58 localhost kernel: [<ffffffffa011b061>] nfsd4_proc_compound+0x5c1/0x7d0 [nfsd]
+> Sep  2 13:07:58 localhost kernel: [<ffffffffa0103f1b>] nfsd_dispatch+0xbb/0x200 [nfsd]
+> Sep  2 13:07:58 localhost kernel: [<ffffffffa001e04d>] svc_process_common+0x46d/0x6e0 [sunrpc]
+> Sep  2 13:07:58 localhost kernel: [<ffffffffa001e3c7>] svc_process+0x107/0x170 [sunrpc]
+> Sep  2 13:07:58 localhost kernel: [<ffffffffa01032b3>] nfsd+0xd3/0x160 [nfsd]
+> Sep  2 13:07:58 localhost kernel: [<ffffffffa01031e0>] ? nfsd_destroy+0x220/0x220 [nfsd]
+> Sep  2 13:07:58 localhost kernel: [<ffffffff810889ad>] kthread+0xed/0x100
+> Sep  2 13:07:58 localhost kernel: [<ffffffff810c796d>] ? trace_hardirqs_off+0xd/0x10
+> Sep  2 13:07:58 localhost kernel: [<ffffffff810cb07d>] ? trace_hardirqs_on_caller+0xfd/0x1c0
+> Sep  2 13:07:58 localhost kernel: [<ffffffff810888c0>] ? insert_kthread_work+0x80/0x80
+> Sep  2 13:07:58 localhost kernel: [<ffffffff816e126c>] ret_from_fork+0x7c/0xb0
+> Sep  2 13:07:58 localhost kernel: [<ffffffff810888c0>] ? insert_kthread_work+0x80/0x80
+> Sep  2 13:07:58 localhost kernel: ---[ end trace 2b7eb5db0f72eb08 ]---
+> 
+> Sep  2 13:28:33 localhost kernel: nfsv4 compound op #4/4: 8 (OP_DELEGRETURN)
+> Sep  2 13:28:33 localhost kernel: nfsd4_check_resp_size length 164, xb->page_len 0 tlen 0 pad 8
+> Sep  2 13:28:33 localhost kernel: nfsd: fh_verify(16: 01010001 00000000 00001a0f dc6a31eb 00000000 00000000)
+> Sep  2 13:28:33 localhost kernel: renewing client (clientid 5224676e/00000001)
+> Sep  2 13:28:33 localhost kernel: ------------[ cut here ]------------
+> Sep  2 13:28:33 localhost kernel: WARNING: at /usr0/home/bhalevy/dev/linux-pnfs/lib/list_debug.c:59 __list_del_entry+0xa1/0xd0()
+> Sep  2 13:28:33 localhost kernel: list_del corruption. prev->next should be ffff88003b960020, but was 6b6b6b6b6b6b6b6b
+> Sep  2 13:28:33 localhost kernel: Modules linked in: nfs_layout_nfsv41_files rpc
+> sec_gss_krb5 nfsv4 nfs nfsd auth_rpcgss oid_registry nfs_acl lockd sunrpc autofs4
+> Sep  2 13:28:33 localhost kernel: CPU: 1 PID: 306 Comm: nfsd Tainted: G        W    3.10.0-pnfs+ #6
+> Sep  2 13:28:33 localhost kernel: Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+> Sep  2 13:28:33 localhost kernel: 0000000000000009 ffff88003bce3be8 ffffffff816cf76b ffff88003bce3c20
+> Sep  2 13:28:33 localhost kernel: ffffffff8105a4b1 ffff88003b960000 ffff88003b960020 ffff88003b27a2d0
+> Sep  2 13:28:33 localhost kernel: ffff88003b27db88 ffff88003d7028e8 ffff88003bce3c80 ffffffff8105a51c
+> Sep  2 13:28:33 localhost kernel: Call Trace:
+> Sep  2 13:28:33 localhost kernel: [<ffffffff816cf76b>] dump_stack+0x19/0x1b
+> Sep  2 13:28:33 localhost kernel: [<ffffffff8105a4b1>] warn_slowpath_common+0x61/0x80
+> Sep  2 13:28:33 localhost kernel: [<ffffffff8105a51c>] warn_slowpath_fmt+0x4c/0x50
+> Sep  2 13:28:33 localhost kernel: [<ffffffff8135e741>] __list_del_entry+0xa1/0xd0
+> Sep  2 13:28:33 localhost kernel: [<ffffffffa012955b>] unhash_delegation+0x3b/0xc0 [nfsd]
+> Sep  2 13:28:33 localhost kernel: [<ffffffffa01298d2>] destroy_delegation+0x12/0x30 [nfsd]
+> Sep  2 13:28:33 localhost kernel: [<ffffffffa0130de5>] nfsd4_delegreturn+0x275/0x2b0 [nfsd]
+> Sep  2 13:28:33 localhost kernel: [<ffffffffa0130b75>] ? nfsd4_delegreturn+0x5/0x2b0 [nfsd]
+> Sep  2 13:28:33 localhost kernel: [<ffffffffa011b061>] nfsd4_proc_compound+0x5c1/0x7d0 [nfsd]
+> Sep  2 13:28:33 localhost kernel: [<ffffffffa0103f1b>] nfsd_dispatch+0xbb/0x200 [nfsd]
+> Sep  2 13:28:33 localhost kernel: [<ffffffffa001e04d>] svc_process_common+0x46d/0x6e0 [sunrpc]
+> Sep  2 13:28:33 localhost kernel: [<ffffffffa001e3c7>] svc_process+0x107/0x170 [sunrpc]
+> Sep  2 13:28:33 localhost kernel: [<ffffffffa01032b3>] nfsd+0xd3/0x160 [nfsd]
+> Sep  2 13:28:33 localhost kernel: [<ffffffffa01031e0>] ? nfsd_destroy+0x220/0x220 [nfsd]
+> Sep  2 13:28:33 localhost kernel: [<ffffffff810889ad>] kthread+0xed/0x100
+> Sep  2 13:28:33 localhost kernel: [<ffffffff810c796d>] ? trace_hardirqs_off+0xd/0x10
+> Sep  2 13:28:33 localhost kernel: [<ffffffff810cb07d>] ? trace_hardirqs_on_caller+0xfd/0x1c0
+> Sep  2 13:28:33 localhost kernel: [<ffffffff810888c0>] ? insert_kthread_work+0x80/0x80
+> Sep  2 13:28:33 localhost kernel: [<ffffffff816e126c>] ret_from_fork+0x7c/0xb0
+> Sep  2 13:28:33 localhost kernel: [<ffffffff810888c0>] ? insert_kthread_work+0x80/0x80
+> Sep  2 13:28:33 localhost kernel: ---[ end trace 343813d8d9f6371e ]---
+> 
+> Sep  2 13:47:36 localhost kernel: NFSD: laundromat service - starting
+> Sep  2 13:47:36 localhost kernel: NFSD: purging unused client (clientid 00000001)
+> Sep  2 13:47:36 localhost kernel: nfsd4_umh_cltrack_upcall: cmd: remove
+> Sep  2 13:47:36 localhost kernel: nfsd4_umh_cltrack_upcall: arg: 4c696e7578204e465376342e31206c6f63616c686f73742e6c6f63616c646f6d61696e
+> Sep  2 13:47:36 localhost kernel: nfsd4_umh_cltrack_upcall: legacy: (null)
+> Sep  2 13:47:36 localhost kernel: nfsd4_umh_cltrack_upcall: /sbin/nfsdcltrack return value: 0
+> Sep  2 13:47:36 localhost kernel: ------------[ cut here ]------------
+> Sep  2 13:47:36 localhost kernel: WARNING: at /usr0/home/bhalevy/dev/linux-pnfs/lib/list_debug.c:59 __list_del_entry+0xa1/0xd0()
+> Sep  2 13:47:36 localhost kernel: list_del corruption. prev->next should be ffff88003b2b0020, but was 6b6b6b6b6b6b6b6b
+> Sep  2 13:47:36 localhost kernel: Modules linked in: nfs_layout_nfsv41_files rpcsec_gss_krb5 nfsv4 nfs nfsd auth_rpcgss oid_registry nfs_acl lockd sunrpc autofs4
+> Sep  2 13:47:36 localhost kernel: CPU: 0 PID: 39 Comm: kworker/u4:1 Tainted: G        W    3.10.0-pnfs+ #6
+> Sep  2 13:47:36 localhost kernel: Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+> Sep  2 13:47:36 localhost kernel: Workqueue: nfsd4 laundromat_main [nfsd]
+> Sep  2 13:47:36 localhost kernel: 0000000000000009 ffff8800390b5ba8 ffffffff816cf76b ffff8800390b5be0
+> Sep  2 13:47:36 localhost kernel: ffffffff8105a4b1 ffff88003b2b0000 ffff88003b2b0020 ffff8800390b5ca8
+> Sep  2 13:47:36 localhost kernel: ffff88003865ef88 ffff88003855f008 ffff8800390b5c40 ffffffff8105a51c
+> Sep  2 13:47:36 localhost kernel: Call Trace:
+> Sep  2 13:47:36 localhost kernel: [<ffffffff816cf76b>] dump_stack+0x19/0x1b
+> Sep  2 13:47:36 localhost kernel: [<ffffffff8105a4b1>] warn_slowpath_common+0x61/0x80
+> Sep  2 13:47:36 localhost kernel: [<ffffffff8105a51c>] warn_slowpath_fmt+0x4c/0x50
+> Sep  2 13:47:36 localhost kernel: [<ffffffff8135e741>] __list_del_entry+0xa1/0xd0
+> Sep  2 13:47:36 localhost kernel: [<ffffffffa012955b>] unhash_delegation+0x3b/0xc0 [nfsd]
+> Sep  2 13:47:36 localhost kernel: [<ffffffffa01298d2>] destroy_delegation+0x12/0x30 [nfsd]
+> Sep  2 13:47:36 localhost kernel: [<ffffffffa012b219>] destroy_client+0x179/0x660 [nfsd]
+> Sep  2 13:47:36 localhost kernel: [<ffffffffa012b0a5>] ? destroy_client+0x5/0x660 [nfsd]
+> Sep  2 13:47:36 localhost kernel: [<ffffffffa013907d>] ? nfsd4_umh_cltrack_remove+0x3d/0x60 [nfsd]
+> Sep  2 13:47:36 localhost kernel: [<ffffffffa012d74a>] laundromat_main+0x1ba/0x570 [nfsd]
+> Sep  2 13:47:36 localhost kernel: [<ffffffff81080255>] ? process_one_work+0x1a5/0x6c0
+> Sep  2 13:47:36 localhost kernel: [<ffffffff810802c1>] process_one_work+0x211/0x6c0
+> Sep  2 13:47:36 localhost kernel: [<ffffffff81080255>] ? process_one_work+0x1a5/0x6c0
+> Sep  2 13:47:36 localhost kernel: [<ffffffff8108088d>] worker_thread+0x11d/0x3a0
+> Sep  2 13:47:36 localhost kernel: [<ffffffff81080770>] ? process_one_work+0x6c0/0x6c0
+> Sep  2 13:47:36 localhost kernel: [<ffffffff810889ad>] kthread+0xed/0x100
+> Sep  2 13:47:36 localhost kernel: [<ffffffff810c796d>] ? trace_hardirqs_off+0xd/0x10
+> Sep  2 13:47:36 localhost kernel: [<ffffffff810cb07d>] ? trace_hardirqs_on_caller+0xfd/0x1c0
+> Sep  2 13:47:36 localhost kernel: [<ffffffff810888c0>] ? insert_kthread_work+0x80/0x80
+> Sep  2 13:47:36 localhost kernel: [<ffffffff816e126c>] ret_from_fork+0x7c/0xb0
+> Sep  2 13:47:36 localhost kernel: [<ffffffff810888c0>] ? insert_kthread_work+0x80/0x80
+> Sep  2 13:47:36 localhost kernel: ---[ end trace d023d316d3a6f48c ]---
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
