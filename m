@@ -1,60 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:30017 "EHLO mx1.redhat.com"
+Received: from mx1.netapp.com ([216.240.18.38]:42494 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755433Ab3IKRIN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Sep 2013 13:08:13 -0400
-From: Zach Brown <zab@redhat.com>
-To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Bryan Schumaker <bjschuma@netapp.com>,
-        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        Eric Wong <normalperson@yhbt.net>
-Subject: [RFC] extending splice for copy offloading
-Date: Wed, 11 Sep 2013 10:06:47 -0700
-Message-Id: <1378919210-10372-1-git-send-email-zab@redhat.com>
+	id S932067Ab3IBSRN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Sep 2013 14:17:13 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+CC: <andros@netapp.com>
+Subject: [PATCH v3 11/17] SUNRPC: Remove the obsolete auth-only interface for pipefs dentry management
+Date: Mon, 2 Sep 2013 14:16:54 -0400
+Message-ID: <1378145820-29990-11-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1378145820-29990-10-git-send-email-Trond.Myklebust@netapp.com>
+References: <1378145820-29990-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1378145820-29990-10-git-send-email-Trond.Myklebust@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When I first started on this stuff I followed the lead of previous
-work and added a new syscall for the copy operation:
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ include/linux/sunrpc/auth.h |  2 --
+ net/sunrpc/clnt.c           | 10 +---------
+ 2 files changed, 1 insertion(+), 11 deletions(-)
 
-https://lkml.org/lkml/2013/5/14/618
-
-Towards the end of that thread Eric Wong asked why we didn't just
-extend splice.  I immediately replied with some dumb dismissive
-answer.  Once I sat down and looked at it, though, it does make a
-lot of sense.  So good job, Eric.  +10 Dummie points for me.
-
-Extending splice avoids all the noise of adding a new syscall and
-naturally falls back to buffered copying as that's what the direct
-splice path does for sendfile() today.
-
-So that's what this patch series demonstrates.  It adds a flag that
-lets splice get at the same direct splicing that sendfile() does.
-We then add a file system file_operations method to accelerate the
-copy which has access to both files.
-
-Some things to talk about:
-- I really don't care about the naming here.  If you do, holler.
-- We might want different flags for file-to-file splicing and acceleration
-- We might want flags to require or forbid acceleration
-- We might want to provide all these flags to sendfile, too
-
-Thoughts?  Objections?
-
-Bryan, do you see any problems with wiring the NFS COPY RPC under this?
-
-Martin, are we any closer to getting blk_() calls to kick off XCOPY
-bios?
-
-OCFS2 friends, is it a managable amount of work to implement an
-ocfs2_splice_direct() that only modifies a region of the destination
-file?
-
-Finally, there's a slot in the plumbers schedule next week to talk
-about this stuff. Come say hi if you're interested.
-
--z
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index a9ab577..6de26f2 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -107,8 +107,6 @@ struct rpc_authops {
+ 
+ 	struct rpc_cred *	(*lookup_cred)(struct rpc_auth *, struct auth_cred *, int);
+ 	struct rpc_cred *	(*crcreate)(struct rpc_auth*, struct auth_cred *, int);
+-	int			(*pipes_create)(struct rpc_auth *);
+-	void			(*pipes_destroy)(struct rpc_auth *);
+ 	int			(*list_pseudoflavors)(rpc_authflavor_t *, int);
+ 	rpc_authflavor_t	(*info2flavor)(struct rpcsec_gss_info *);
+ 	int			(*flavor2info)(rpc_authflavor_t,
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 01d2296..3c074de 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -102,11 +102,8 @@ static void rpc_unregister_client(struct rpc_clnt *clnt)
+ 
+ static void __rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
+ {
+-	if (clnt->cl_dentry) {
+-		if (clnt->cl_auth && clnt->cl_auth->au_ops->pipes_destroy)
+-			clnt->cl_auth->au_ops->pipes_destroy(clnt->cl_auth);
++	if (clnt->cl_dentry)
+ 		rpc_remove_client_dir(clnt->cl_dentry, clnt);
+-	}
+ 	clnt->cl_dentry = NULL;
+ }
+ 
+@@ -195,11 +192,6 @@ static int __rpc_clnt_handle_event(struct rpc_clnt *clnt, unsigned long event,
+ 		if (IS_ERR(dentry))
+ 			return PTR_ERR(dentry);
+ 		clnt->cl_dentry = dentry;
+-		if (clnt->cl_auth->au_ops->pipes_create) {
+-			err = clnt->cl_auth->au_ops->pipes_create(clnt->cl_auth);
+-			if (err)
+-				__rpc_clnt_remove_pipedir(clnt);
+-		}
+ 		break;
+ 	case RPC_PIPEFS_UMOUNT:
+ 		__rpc_clnt_remove_pipedir(clnt);
+-- 
+1.8.3.1
 
