@@ -1,110 +1,151 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:35046 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:41282 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761528Ab3IDBgp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Sep 2013 21:36:45 -0400
-Date: Wed, 4 Sep 2013 11:36:32 +1000
-From: NeilBrown <neilb@suse.de>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH/RFC] make nfs_flush_incompatible more forgiving.
-Message-ID: <20130904113632.1a1eb337@notabene.brown>
+	id S932831Ab3ICMSh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Sep 2013 08:18:37 -0400
+Date: Tue, 3 Sep 2013 08:18:34 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: <linux-nfs@vger.kernel.org>, <andros@netapp.com>
+Subject: Re: [PATCH v3 01/17] SUNRPC: Deprecate rpc_client->cl_protname
+Message-ID: <20130903081834.5ec7ca7c@tlielax.poochiereds.net>
+In-Reply-To: <1378145820-29990-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1378145820-29990-1-git-send-email-Trond.Myklebust@netapp.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/dwbkUAqr0yhzNpFy=UGyzkF"; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/dwbkUAqr0yhzNpFy=UGyzkF
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Mon, 2 Sep 2013 14:16:44 -0400
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
+> It just duplicates the cl_program->name, and is not used in any fast
+> paths where the extra dereference will cause a hit.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  net/sunrpc/clnt.c     | 18 +++++++++---------
+>  net/sunrpc/rpc_pipe.c |  2 +-
+>  net/sunrpc/stats.c    |  2 +-
+>  3 files changed, 11 insertions(+), 11 deletions(-)
+> 
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 74f6a70..e862f8c 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -629,7 +629,7 @@ void rpc_shutdown_client(struct rpc_clnt *clnt)
+>  	might_sleep();
+>  
+>  	dprintk_rcu("RPC:       shutting down %s client for %s\n",
+> -			clnt->cl_protname,
+> +			clnt->cl_program->name,
+>  			rcu_dereference(clnt->cl_xprt)->servername);
+>  
+>  	while (!list_empty(&clnt->cl_tasks)) {
+> @@ -649,7 +649,7 @@ static void
+>  rpc_free_client(struct rpc_clnt *clnt)
+>  {
+>  	dprintk_rcu("RPC:       destroying %s client for %s\n",
+> -			clnt->cl_protname,
+> +			clnt->cl_program->name,
+>  			rcu_dereference(clnt->cl_xprt)->servername);
+>  	if (clnt->cl_parent != clnt)
+>  		rpc_release_client(clnt->cl_parent);
+> @@ -1299,7 +1299,7 @@ call_start(struct rpc_task *task)
+>  	struct rpc_clnt	*clnt = task->tk_client;
+>  
+>  	dprintk("RPC: %5u call_start %s%d proc %s (%s)\n", task->tk_pid,
+> -			clnt->cl_protname, clnt->cl_vers,
+> +			clnt->cl_program->name, clnt->cl_vers,
+>  			rpc_proc_name(task),
+>  			(RPC_IS_ASYNC(task) ? "async" : "sync"));
+>  
+> @@ -1908,7 +1908,7 @@ call_status(struct rpc_task *task)
+>  	default:
+>  		if (clnt->cl_chatty)
+>  			printk("%s: RPC call returned error %d\n",
+> -			       clnt->cl_protname, -status);
+> +			       clnt->cl_program->name, -status);
+>  		rpc_exit(task, status);
+>  	}
+>  }
+> @@ -1939,7 +1939,7 @@ call_timeout(struct rpc_task *task)
+>  		if (clnt->cl_chatty) {
+>  			rcu_read_lock();
+>  			printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
+> -				clnt->cl_protname,
+> +				clnt->cl_program->name,
+>  				rcu_dereference(clnt->cl_xprt)->servername);
+>  			rcu_read_unlock();
+>  		}
+> @@ -1955,7 +1955,7 @@ call_timeout(struct rpc_task *task)
+>  		if (clnt->cl_chatty) {
+>  			rcu_read_lock();
+>  			printk(KERN_NOTICE "%s: server %s not responding, still trying\n",
+> -			clnt->cl_protname,
+> +			clnt->cl_program->name,
+>  			rcu_dereference(clnt->cl_xprt)->servername);
+>  			rcu_read_unlock();
+>  		}
+> @@ -1990,7 +1990,7 @@ call_decode(struct rpc_task *task)
+>  		if (clnt->cl_chatty) {
+>  			rcu_read_lock();
+>  			printk(KERN_NOTICE "%s: server %s OK\n",
+> -				clnt->cl_protname,
+> +				clnt->cl_program->name,
+>  				rcu_dereference(clnt->cl_xprt)->servername);
+>  			rcu_read_unlock();
+>  		}
+> @@ -2015,7 +2015,7 @@ call_decode(struct rpc_task *task)
+>  			goto out_retry;
+>  		}
+>  		dprintk("RPC:       %s: too small RPC reply size (%d bytes)\n",
+> -				clnt->cl_protname, task->tk_status);
+> +				clnt->cl_program->name, task->tk_status);
+>  		task->tk_action = call_timeout;
+>  		goto out_retry;
+>  	}
+> @@ -2287,7 +2287,7 @@ static void rpc_show_task(const struct rpc_clnt *clnt,
+>  	printk(KERN_INFO "%5u %04x %6d %8p %8p %8ld %8p %sv%u %s a:%ps q:%s\n",
+>  		task->tk_pid, task->tk_flags, task->tk_status,
+>  		clnt, task->tk_rqstp, task->tk_timeout, task->tk_ops,
+> -		clnt->cl_protname, clnt->cl_vers, rpc_proc_name(task),
+> +		clnt->cl_program->name, clnt->cl_vers, rpc_proc_name(task),
+>  		task->tk_action, rpc_waitq);
+>  }
+>  
+> diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+> index 017aedc..b36bfb9 100644
+> --- a/net/sunrpc/rpc_pipe.c
+> +++ b/net/sunrpc/rpc_pipe.c
+> @@ -409,7 +409,7 @@ rpc_show_info(struct seq_file *m, void *v)
+>  	rcu_read_lock();
+>  	seq_printf(m, "RPC server: %s\n",
+>  			rcu_dereference(clnt->cl_xprt)->servername);
+> -	seq_printf(m, "service: %s (%d) version %d\n", clnt->cl_protname,
+> +	seq_printf(m, "service: %s (%d) version %d\n", clnt->cl_program->name,
+>  			clnt->cl_prog, clnt->cl_vers);
+>  	seq_printf(m, "address: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_ADDR));
+>  	seq_printf(m, "protocol: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_PROTO));
+> diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
+> index 21b75cb..5453049 100644
+> --- a/net/sunrpc/stats.c
+> +++ b/net/sunrpc/stats.c
+> @@ -188,7 +188,7 @@ void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt)
+>  
+>  	seq_printf(seq, "\tRPC iostats version: %s  ", RPC_IOSTATS_VERS);
+>  	seq_printf(seq, "p/v: %u/%u (%s)\n",
+> -			clnt->cl_prog, clnt->cl_vers, clnt->cl_protname);
+> +			clnt->cl_prog, clnt->cl_vers, clnt->cl_program->name);
+>  
+>  	rcu_read_lock();
+>  	xprt = rcu_dereference(clnt->cl_xprt);
 
-Hi,
- we have a customer who has noticed a significant regression in NFS
- performance between SLES10 (2.6.16+) and SLES11 (3.0+).
+Thanks Trond!
 
- The use case involves two different processes on the same client mmapping a
- file and making changes.
+This set looks good to me, and seems to fix the nfsv3/nfsacl + krb5
+problems that were reported recently. I'll plan to do some more
+extensive testing with it as I get time...
 
- In 2.6.16, all these changes would be cached on the client until a flush or
- close or other normal process flushed the changes out - much the same as if
- just one process was accessing the file.
-
- In 3.0 the file is flushed out every time a different process performs an
- update. So if they interleave accesses, you get a flush-to-the-server on
- every access.
-
- This is caused by nfs_flush_incompatible.  It deems access through differe=
-nt
- file descriptors to be incompatible.  However I don't think this is
- justified.  Accessed using different credentials can reasonably be seen as
- incompatible(*), but if two processes with identical credentials open the
- same file there there should be not need to differentiate between them.
-
- The patch below changes the test in nfs_flush_incompatible to just test the
- credentials (and the dentry, though that might be superfluous - it seems
- safer).
-
-(*) In this specific customer's case the process do currently have slightly
- different credentials.  In one, the primary gid is included in the list of
- auxiliary gids.  In the other the primary gid is excluded.  This is enough
- to make the credentials appear different so this patch doesn't help in that
- case.  They are looking at being more consistent in their setgroups usage
- but it would help them if we only actually compared the credentials that
- were important.  In this case there is no important difference.
- Would it make sense to treat a more broad credential as compatible with a
- more narrow credential?  So a write from a process with a given
- uid,gid,grouplist could ultimately be sent to the server with same uid/gid,
- but a subset of the group list?
-=20
-
- Thoughts?
-
-Thanks,
-NeilBrown
-
-
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 7816801..b0d4e47 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -860,7 +860,12 @@ int nfs_flush_incompatible(struct file *file, struct p=
-age *page)
- 		if (req =3D=3D NULL)
- 			return 0;
- 		l_ctx =3D req->wb_lock_context;
--		do_flush =3D req->wb_page !=3D page || req->wb_context !=3D ctx;
-+		do_flush =3D req->wb_page !=3D page;
-+		if (req->wb_context !=3D ctx) {
-+			do_flush |=3D
-+				req->wb_context->dentry !=3D ctx->dentry ||
-+				req->wb_context->cred !=3D ctx->cred;
-+		}
- 		if (l_ctx) {
- 			do_flush |=3D l_ctx->lockowner.l_owner !=3D current->files
- 				|| l_ctx->lockowner.l_pid !=3D current->tgid;
-
---Sig_/dwbkUAqr0yhzNpFy=UGyzkF
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBUiaOoTnsnt1WYoG5AQK2TxAAhD0HKeCk1+O7y8fpyE1SPqLFLr1Rq5kc
-338RUO9EoFdIt15v9gl4hMqQybDc6nxEy8rqWlUHUhQ0t+BiTNKlkJSSzF4rqxYL
-hEIsFhE8CHmgN7/XkFlG0KuEwEdstLboZ271/EfAqCtvCAhOYp7ekWZKl27Pm46x
-IF4asJzqEncw6F/4AXba4UZW4115TYzIyzF5cs4sSHURf9Sz9NWB6zPcNXeabKrB
-8PHQi+m1uYk82J5bcHj+N5lr0+Q3HdXqGnpDjD+AabFZ7W5LUbv0OAEfXdd95PJp
-8o7M2dboSrZ2w2vdMM3JMPEZ/bNnt+p+YNAor/EsVFknb3j0IlONvkmv58N11ew5
-7S48q7eh2XxADghvbhnCBOZ4GK9fPqtkFBHUkkDRPYjNGS67V5PPTdRl7+Bnj56S
-YSGiXWMWp8gpSj0MDC+wKvjrc6fTY2Pls96L1rm1tyETGYRBc6WK4u+675dFUEz6
-XLMsaVf3sC9YTz9IDNbtZaUiQZYiiXT7smfGlSb6XR4u2Wppj51SIhho2EuiuRW7
-WP2eyb9DR/3QXk9kDQfoLopqmiM9MVpWx7f6UMvgaofZKxMEGJQJ6w4xuplOY4Su
-64QyFdSdiKK+BnCQSvjdmDvxr66Wyo3qu/Ofx3cliUYWQ27I1rm7Aoozx4MY9pxU
-2n6ErZ69KGA=
-=t8jS
------END PGP SIGNATURE-----
-
---Sig_/dwbkUAqr0yhzNpFy=UGyzkF--
+-- 
+Jeff Layton <jlayton@redhat.com>
