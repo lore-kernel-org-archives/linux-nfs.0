@@ -1,46 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:2684 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:8316 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757085Ab3IDQzf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Sep 2013 12:55:35 -0400
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r84GtZvT025667
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 4 Sep 2013 12:55:35 -0400
-Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
-	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r84GtYW5020064
-	for <linux-nfs@vger.kernel.org>; Wed, 4 Sep 2013 12:55:34 -0400
-Message-ID: <52276616.6080100@RedHat.com>
-Date: Wed, 04 Sep 2013 12:55:50 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1757015Ab3ICTZf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Sep 2013 15:25:35 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: use the mach cred for SECINFO w/ integrity
+Date: Tue, 3 Sep 2013 19:25:28 +0000
+Message-ID: <1378236327.6410.38.camel@leira.trondhjem.org>
+References: <1378235929-4710-1-git-send-email-dros@netapp.com>
+In-Reply-To: <1378235929-4710-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Linux NFS Town Hall  meeting 09/05/13
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
-
-A Linux NFS town hall is schedule for tomorrow (Thur Sep 5th)
-
-The usual agenda is for the maintainers to give a quick status of what's
-happening in area's they maintain. Next, Chuck updates us on what's 
-happen in the FedFS world. Next we open up the floor to other other contributors,
-like Andy, who likes talks about security "stuff" ;-) Finally, we open the 
-floor to questions, comments, concerns from the community.  
-
-Generally the meeting last between 30 to 45 mins, with a very hard stop at 60mins. 
-
-It is open to the entire community, so feel free to attend. 
-
-Time: 9:30 AM PST (12:30 PM EST)
-
-The call in numbers are:
-U.S. and Canada: (800) 451-8679
-International dial-in number: (212) 729-5016
-Israel Toll-Free: 1-809-462-557
-Conference code: 564.272.1552
-
-steved.
-
+T24gVHVlLCAyMDEzLTA5LTAzIGF0IDE1OjE4IC0wNDAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
+d3JvdGU6DQo+IENvbW1pdCA1ZWMxNmE4NTAwZDMzOWIwZTdhMGNjNzZiNzg1ZDE4ZGFhZDM1NGQ0
+IGludHJvZHVjZWQgYSByZWdyZXNzaW9uDQo+IHRoYXQgY2F1c2VzIFNFQ0lORk8gdG8gZmFpbCB3
+aXRob3V0IGFjdHVhbHkgc2VuZGluZyBhbiBSUEMgaWY6DQo+IA0KPiAgMSkgdGhlIG5mc19jbGll
+bnQncyBycGNfY2xpZW50IHdhcyB1c2luZyBLUkI1aS9wIChub3cgdHJpZWQgYnkgZGVmYXVsdCkN
+Cj4gIDIpIHRoZSBjdXJyZW50IHVzZXIgZG9lc24ndCBoYXZlIHZhbGlkIGtlcmJlcm9zIGNyZWRl
+bnRpYWxzDQo+IA0KPiBUaGlzIHNpdHVhdGlvbiBpcyBxdWl0ZSBjb21tb24gLSBhcyBvZiBub3cg
+YSBzZWM9c3lzIG1vdW50IHdvdWxkIHVzZQ0KPiBrcmI1aSBmb3IgdGhlIG5mc19jbGllbnQncyBy
+cGNfY2xpZW50IGFuZCBhIHVzZXIgd291bGQgaGFyZGx5IGJlIGZhdWx0ZWQNCj4gZm9yIG5vdCBo
+YXZpbmcgcnVuIGtpbml0Lg0KPiANCj4gVGhlIHNvbHV0aW9uIGlzIHRvIHVzZSB0aGUgbWFjaGlu
+ZSBjcmVkIHdoZW4gdHJ5aW5nIHRvIHVzZSBhbiBpbnRlZ3JpdHkNCj4gcHJvdGVjdGVkIGF1dGgg
+Zmxhdm9yIGZvciBTRUNJTkZPLg0KPiANCj4gT2xkZXIgc2VydmVycyBtYXkgbm90IHN1cHBvcnQg
+dXNpbmcgdGhlIG1hY2hpbmUgY3JlZCBvciBhbiBpbnRlZ3JpdHkNCj4gcHJvdGVjdGVkIGF1dGgg
+Zmxhdm9yIGZvciBTRUNJTkZPIGluIGV2ZXJ5IGNpcmN1bXN0YW5jZSwgc28gd2UgZmFsbCBiYWNr
+DQo+IHRvIHVzaW5nIHRoZSB1c2VyJ3MgY3JlZCBhbmQgdGhlIGZpbGVzeXN0ZW0ncyBhdXRoIGZs
+YXZvciBpbiB0aGlzIGNhc2UuDQo+IA0KPiBXZSBydW4gaW50byBhbm90aGVyIHByb2JsZW0gd2hl
+biBydW5uaW5nIGFnYWluc3QgbGludXggbmZzIHNlcnZlcnMgLQ0KPiB0aGV5IHJldHVybiBORlM0
+RVJSX1dST05HU0VDIHdoZW4gdXNpbmcgaW50ZWdyaXR5IGF1dGggZmxhdm9yICh1bmxlc3MgdGhl
+DQo+IG1vdW50IGlzIGFsc28gdGhhdCBmbGF2b3IpIGV2ZW4gdGhvdWdoIHRoYXQgaXMgbm90IGEg
+dmFsaWQgZXJyb3IgZm9yDQo+IFNFQ0lORk8qLiAgRXZlbiB0aG91Z2ggaXQncyBhZ2FpbnN0IHNw
+ZWMsIGhhbmRsZSBXUk9OR1NFQyBlcnJvcnMgb24gU0VDSU5GTw0KPiBieSBmYWxsaW5nIGJhY2sg
+dG8gdXNpbmcgdGhlIHVzZXIgY3JlZCBhbmQgdGhlIGZpbGVzeXN0ZW0ncyBhdXRoIGZsYXZvci4N
+Cj4gDQo+IFNpZ25lZC1vZmYtYnk6IFdlc3RvbiBBbmRyb3MgQWRhbXNvbiA8ZHJvc0BuZXRhcHAu
+Y29tPg0KPiAtLS0NCg0KVGhhbmtzISBBcHBsaWVkLi4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
+DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RA
+bmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
