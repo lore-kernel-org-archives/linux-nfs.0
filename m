@@ -1,240 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39119 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:31648 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753283Ab3ISUuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Sep 2013 16:50:39 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        David Howells <dhowells@redhat.com>,
-        Tyler Hicks <tyhicks@canonical.com>,
-        Dustin Kirkland <dustin.kirkland@gazzang.com>
-Subject: [PATCH 08/13] locks: break delegations on unlink
-Date: Thu, 19 Sep 2013 16:50:32 -0400
-Message-Id: <1379623837-30798-9-git-send-email-bfields@redhat.com>
-In-Reply-To: <1379623837-30798-1-git-send-email-bfields@redhat.com>
-References: <1379623837-30798-1-git-send-email-bfields@redhat.com>
+	id S1757022Ab3ICRxB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Sep 2013 13:53:01 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 15/33] NFS: Update session draining barriers for
+ NFSv4.0 transport blocking
+Date: Tue, 3 Sep 2013 17:52:59 +0000
+Message-ID: <1378230779.6410.13.camel@leira.trondhjem.org>
+References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+	 <20130809164956.5362.39856.stgit@seurat.1015granger.net>
+In-Reply-To: <20130809164956.5362.39856.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-We need to break delegations on any operation that changes the set of
-links pointing to an inode.  Start with unlink.
-
-Such operations also hold the i_mutex on a parent directory.  Breaking a
-delegation may require waiting for a timeout (by default 90 seconds) in
-the case of a unresponsive NFS client.  To avoid blocking all directory
-operations, we therefore drop locks before waiting for the delegation.
-The logic then looks like:
-
-	acquire locks
-	...
-	test for delegation; if found:
-		take reference on inode
-		release locks
-		wait for delegation break
-		drop reference on inode
-		retry
-
-It is possible this could never terminate.  (Even if we take precautions
-to prevent another delegation being acquired on the same inode, we could
-get a different inode on each retry.)  But this seems very unlikely.
-
-The initial test for a delegation happens after the lock on the target
-inode is acquired, but the directory inode may have been acquired
-further up the call stack.  We therefore add a "struct inode **"
-argument to any intervening functions, which we use to pass the inode
-back up to the caller in the case it needs a delegation synchronously
-broken.
-
-Cc: David Howells <dhowells@redhat.com>
-Cc: Tyler Hicks <tyhicks@canonical.com>
-Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- drivers/base/devtmpfs.c |    2 +-
- fs/cachefiles/namei.c   |    2 +-
- fs/ecryptfs/inode.c     |    2 +-
- fs/namei.c              |   42 +++++++++++++++++++++++++++++++++++++++---
- fs/nfsd/vfs.c           |    2 +-
- include/linux/fs.h      |    2 +-
- ipc/mqueue.c            |    2 +-
- 7 files changed, 45 insertions(+), 9 deletions(-)
-
-diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
-index 7413d06..1b8490e 100644
---- a/drivers/base/devtmpfs.c
-+++ b/drivers/base/devtmpfs.c
-@@ -324,7 +324,7 @@ static int handle_remove(const char *nodename, struct device *dev)
- 			mutex_lock(&dentry->d_inode->i_mutex);
- 			notify_change(dentry, &newattrs);
- 			mutex_unlock(&dentry->d_inode->i_mutex);
--			err = vfs_unlink(parent.dentry->d_inode, dentry);
-+			err = vfs_unlink(parent.dentry->d_inode, dentry, NULL);
- 			if (!err || err == -ENOENT)
- 				deleted = 1;
- 		}
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index 25badd1..6846fcef 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -294,7 +294,7 @@ static int cachefiles_bury_object(struct cachefiles_cache *cache,
- 		if (ret < 0) {
- 			cachefiles_io_error(cache, "Unlink security error");
- 		} else {
--			ret = vfs_unlink(dir->d_inode, rep);
-+			ret = vfs_unlink(dir->d_inode, rep, NULL);
- 
- 			if (preemptive)
- 				cachefiles_mark_object_buried(cache, rep);
-diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-index 67e9b63..0b8b632 100644
---- a/fs/ecryptfs/inode.c
-+++ b/fs/ecryptfs/inode.c
-@@ -153,7 +153,7 @@ static int ecryptfs_do_unlink(struct inode *dir, struct dentry *dentry,
- 
- 	dget(lower_dentry);
- 	lower_dir_dentry = lock_parent(lower_dentry);
--	rc = vfs_unlink(lower_dir_inode, lower_dentry);
-+	rc = vfs_unlink(lower_dir_inode, lower_dentry, NULL);
- 	if (rc) {
- 		printk(KERN_ERR "Error in vfs_unlink; rc = [%d]\n", rc);
- 		goto out_unlock;
-diff --git a/fs/namei.c b/fs/namei.c
-index 5450e9b..5a5fdb9 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3636,7 +3636,25 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
- 	return do_rmdir(AT_FDCWD, pathname);
- }
- 
--int vfs_unlink(struct inode *dir, struct dentry *dentry)
-+/**
-+ * vfs_unlink - unlink a filesystem object
-+ * @dir:	parent directory
-+ * @dentry:	victim
-+ * @delegated_inode: returns victim inode, if the inode is delegated.
-+ *
-+ * The caller must hold dir->i_mutex.
-+ *
-+ * If vfs_unlink discovers a delegation, it will return -EWOULDBLOCK and
-+ * return a reference to the inode in delegated_inode.  The caller
-+ * should then break the delegation on that inode and retry.  Because
-+ * breaking a delegation may take a long time, the caller should drop
-+ * dir->i_mutex before doing so.
-+ *
-+ * Alternatively, a caller may pass NULL for delegated_inode.  This may
-+ * be appropriate for callers that expect the underlying filesystem not
-+ * to be NFS exported.
-+ */
-+int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
- {
- 	struct inode *target = dentry->d_inode;
- 	int error = may_delete(dir, dentry, 0);
-@@ -3653,11 +3671,20 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
- 	else {
- 		error = security_inode_unlink(dir, dentry);
- 		if (!error) {
-+			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
-+			if (error) {
-+				if (error == -EWOULDBLOCK && delegated_inode) {
-+					*delegated_inode = target;
-+					ihold(target);
-+				}
-+				goto out;
-+			}
- 			error = dir->i_op->unlink(dir, dentry);
- 			if (!error)
- 				dont_mount(dentry);
- 		}
- 	}
-+out:
- 	mutex_unlock(&target->i_mutex);
- 
- 	/* We don't d_delete() NFS sillyrenamed files--they still exist. */
-@@ -3682,6 +3709,7 @@ static long do_unlinkat(int dfd, const char __user *pathname)
- 	struct dentry *dentry;
- 	struct nameidata nd;
- 	struct inode *inode = NULL;
-+	struct inode *delegated_inode = NULL;
- 	unsigned int lookup_flags = 0;
- retry:
- 	name = user_path_parent(dfd, pathname, &nd, lookup_flags);
-@@ -3696,7 +3724,7 @@ retry:
- 	error = mnt_want_write(nd.path.mnt);
- 	if (error)
- 		goto exit1;
--
-+retry_deleg:
- 	mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex, I_MUTEX_PARENT);
- 	dentry = lookup_hash(&nd);
- 	error = PTR_ERR(dentry);
-@@ -3711,13 +3739,21 @@ retry:
- 		error = security_path_unlink(&nd.path, dentry);
- 		if (error)
- 			goto exit2;
--		error = vfs_unlink(nd.path.dentry->d_inode, dentry);
-+		error = vfs_unlink(nd.path.dentry->d_inode, dentry, &delegated_inode);
- exit2:
- 		dput(dentry);
- 	}
- 	mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
- 	if (inode)
- 		iput(inode);	/* truncate the inode here */
-+	inode = NULL;
-+	if (delegated_inode) {
-+		error = break_deleg(delegated_inode, O_WRONLY);
-+		iput(delegated_inode);
-+		delegated_inode = NULL;
-+		if (!error)
-+			goto retry_deleg;
-+	}
- 	mnt_drop_write(nd.path.mnt);
- exit1:
- 	path_put(&nd.path);
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index c827acb..00d0616 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1911,7 +1911,7 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 	if (host_err)
- 		goto out_put;
- 	if (type != S_IFDIR)
--		host_err = vfs_unlink(dirp, rdentry);
-+		host_err = vfs_unlink(dirp, rdentry, NULL);
- 	else
- 		host_err = vfs_rmdir(dirp, rdentry);
- 	if (!host_err)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 7a7df5e..e9c536f 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1467,7 +1467,7 @@ extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
- extern int vfs_symlink(struct inode *, struct dentry *, const char *);
- extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
- extern int vfs_rmdir(struct inode *, struct dentry *);
--extern int vfs_unlink(struct inode *, struct dentry *);
-+extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
- extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *);
- 
- /*
-diff --git a/ipc/mqueue.c b/ipc/mqueue.c
-index ae1996d..95827ce 100644
---- a/ipc/mqueue.c
-+++ b/ipc/mqueue.c
-@@ -886,7 +886,7 @@ SYSCALL_DEFINE1(mq_unlink, const char __user *, u_name)
- 		err = -ENOENT;
- 	} else {
- 		ihold(inode);
--		err = vfs_unlink(dentry->d_parent->d_inode, dentry);
-+		err = vfs_unlink(dentry->d_parent->d_inode, dentry, NULL);
- 	}
- 	dput(dentry);
- 
--- 
-1.7.9.5
-
+T24gRnJpLCAyMDEzLTA4LTA5IGF0IDEyOjQ5IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+U2lnbmVkLW9mZi1ieTogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+IC0t
+LQ0KPiAgZnMvbmZzL25mczRzdGF0ZS5jIHwgICA2MSArKysrKysrKysrKysrKysrKysrKysrKysr
+KysrKy0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ICAxIGZpbGUgY2hhbmdlZCwgMzQgaW5zZXJ0
+aW9ucygrKSwgMjcgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRz
+dGF0ZS5jIGIvZnMvbmZzL25mczRzdGF0ZS5jDQo+IGluZGV4IDg4MjZkZjMuLmQ4MTZkOTMgMTAw
+NjQ0DQo+IC0tLSBhL2ZzL25mcy9uZnM0c3RhdGUuYw0KPiArKysgYi9mcy9uZnMvbmZzNHN0YXRl
+LmMNCj4gQEAgLTIxNSwzMiArMjE1LDYgQEAgb3V0Og0KPiAgCXJldHVybiBjcmVkOw0KPiAgfQ0K
+PiAgDQo+IC0jaWYgZGVmaW5lZChDT05GSUdfTkZTX1Y0XzEpDQo+IC0NCj4gLXN0YXRpYyBpbnQg
+bmZzNDFfc2V0dXBfc3RhdGVfcmVuZXdhbChzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwKQ0KPiAtew0K
+PiAtCWludCBzdGF0dXM7DQo+IC0Jc3RydWN0IG5mc19mc2luZm8gZnNpbmZvOw0KPiAtDQo+IC0J
+aWYgKCF0ZXN0X2JpdChORlNfQ1NfQ0hFQ0tfTEVBU0VfVElNRSwgJmNscC0+Y2xfcmVzX3N0YXRl
+KSkgew0KPiAtCQluZnM0X3NjaGVkdWxlX3N0YXRlX3JlbmV3YWwoY2xwKTsNCj4gLQkJcmV0dXJu
+IDA7DQo+IC0JfQ0KPiAtDQo+IC0Jc3RhdHVzID0gbmZzNF9wcm9jX2dldF9sZWFzZV90aW1lKGNs
+cCwgJmZzaW5mbyk7DQo+IC0JaWYgKHN0YXR1cyA9PSAwKSB7DQo+IC0JCS8qIFVwZGF0ZSBsZWFz
+ZSB0aW1lIGFuZCBzY2hlZHVsZSByZW5ld2FsICovDQo+IC0JCXNwaW5fbG9jaygmY2xwLT5jbF9s
+b2NrKTsNCj4gLQkJY2xwLT5jbF9sZWFzZV90aW1lID0gZnNpbmZvLmxlYXNlX3RpbWUgKiBIWjsN
+Cj4gLQkJY2xwLT5jbF9sYXN0X3JlbmV3YWwgPSBqaWZmaWVzOw0KPiAtCQlzcGluX3VubG9jaygm
+Y2xwLT5jbF9sb2NrKTsNCj4gLQ0KPiAtCQluZnM0X3NjaGVkdWxlX3N0YXRlX3JlbmV3YWwoY2xw
+KTsNCj4gLQl9DQo+IC0NCj4gLQlyZXR1cm4gc3RhdHVzOw0KPiAtfQ0KPiAtDQo+ICBzdGF0aWMg
+dm9pZCBuZnM0X2VuZF9kcmFpbl9zbG90X3RhYmxlKHN0cnVjdCBuZnM0X3Nsb3RfdGFibGUgKnRi
+bCkNCj4gIHsNCj4gIAlpZiAodGVzdF9hbmRfY2xlYXJfYml0KE5GUzRfU0xPVF9UQkxfRFJBSU5J
+TkcsICZ0YmwtPnNsb3RfdGJsX3N0YXRlKSkgew0KPiBAQCAtMjU0LDYgKzIyOCwxMSBAQCBzdGF0
+aWMgdm9pZCBuZnM0X2VuZF9kcmFpbl9zZXNzaW9uKHN0cnVjdCBuZnNfY2xpZW50ICpjbHApDQo+
+ICB7DQo+ICAJc3RydWN0IG5mczRfc2Vzc2lvbiAqc2VzID0gY2xwLT5jbF9zZXNzaW9uOw0KPiAg
+DQo+ICsJaWYgKGNscC0+Y2xfc2xvdF90YmwpIHsNCj4gKwkJbmZzNF9lbmRfZHJhaW5fc2xvdF90
+YWJsZShjbHAtPmNsX3Nsb3RfdGJsKTsNCj4gKwkJcmV0dXJuOw0KPiArCX0NCj4gKw0KPiAgCWlm
+IChzZXMgIT0gTlVMTCkgew0KPiAgCQluZnM0X2VuZF9kcmFpbl9zbG90X3RhYmxlKCZzZXMtPmJj
+X3Nsb3RfdGFibGUpOw0KPiAgCQluZnM0X2VuZF9kcmFpbl9zbG90X3RhYmxlKCZzZXMtPmZjX3Ns
+b3RfdGFibGUpOw0KPiBAQCAtMjc4LDYgKzI1Nyw5IEBAIHN0YXRpYyBpbnQgbmZzNF9iZWdpbl9k
+cmFpbl9zZXNzaW9uKHN0cnVjdCBuZnNfY2xpZW50ICpjbHApDQo+ICAJc3RydWN0IG5mczRfc2Vz
+c2lvbiAqc2VzID0gY2xwLT5jbF9zZXNzaW9uOw0KPiAgCWludCByZXQgPSAwOw0KPiAgDQo+ICsJ
+aWYgKGNscC0+Y2xfc2xvdF90YmwpDQo+ICsJCXJldHVybiBuZnM0X2RyYWluX3Nsb3RfdGJsKGNs
+cC0+Y2xfc2xvdF90YmwpOw0KPiArDQo+ICAJLyogYmFjayBjaGFubmVsICovDQo+ICAJcmV0ID0g
+bmZzNF9kcmFpbl9zbG90X3RibCgmc2VzLT5iY19zbG90X3RhYmxlKTsNCj4gIAlpZiAocmV0KQ0K
+PiBAQCAtMjg2LDYgKzI2OCwzMiBAQCBzdGF0aWMgaW50IG5mczRfYmVnaW5fZHJhaW5fc2Vzc2lv
+bihzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwKQ0KPiAgCXJldHVybiBuZnM0X2RyYWluX3Nsb3RfdGJs
+KCZzZXMtPmZjX3Nsb3RfdGFibGUpOw0KPiAgfQ0KPiAgDQo+ICsjaWYgZGVmaW5lZChDT05GSUdf
+TkZTX1Y0XzEpDQo+ICsNCj4gK3N0YXRpYyBpbnQgbmZzNDFfc2V0dXBfc3RhdGVfcmVuZXdhbChz
+dHJ1Y3QgbmZzX2NsaWVudCAqY2xwKQ0KPiArew0KPiArCWludCBzdGF0dXM7DQo+ICsJc3RydWN0
+IG5mc19mc2luZm8gZnNpbmZvOw0KPiArDQo+ICsJaWYgKCF0ZXN0X2JpdChORlNfQ1NfQ0hFQ0tf
+TEVBU0VfVElNRSwgJmNscC0+Y2xfcmVzX3N0YXRlKSkgew0KPiArCQluZnM0X3NjaGVkdWxlX3N0
+YXRlX3JlbmV3YWwoY2xwKTsNCj4gKwkJcmV0dXJuIDA7DQo+ICsJfQ0KPiArDQo+ICsJc3RhdHVz
+ID0gbmZzNF9wcm9jX2dldF9sZWFzZV90aW1lKGNscCwgJmZzaW5mbyk7DQo+ICsJaWYgKHN0YXR1
+cyA9PSAwKSB7DQo+ICsJCS8qIFVwZGF0ZSBsZWFzZSB0aW1lIGFuZCBzY2hlZHVsZSByZW5ld2Fs
+ICovDQo+ICsJCXNwaW5fbG9jaygmY2xwLT5jbF9sb2NrKTsNCj4gKwkJY2xwLT5jbF9sZWFzZV90
+aW1lID0gZnNpbmZvLmxlYXNlX3RpbWUgKiBIWjsNCj4gKwkJY2xwLT5jbF9sYXN0X3JlbmV3YWwg
+PSBqaWZmaWVzOw0KPiArCQlzcGluX3VubG9jaygmY2xwLT5jbF9sb2NrKTsNCj4gKw0KPiArCQlu
+ZnM0X3NjaGVkdWxlX3N0YXRlX3JlbmV3YWwoY2xwKTsNCj4gKwl9DQo+ICsNCj4gKwlyZXR1cm4g
+c3RhdHVzOw0KPiArfQ0KPiArDQo+ICBzdGF0aWMgdm9pZCBuZnM0MV9maW5pc2hfc2Vzc2lvbl9y
+ZXNldChzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwKQ0KPiAgew0KPiAgCWNsZWFyX2JpdChORlM0Q0xO
+VF9MRUFTRV9DT05GSVJNLCAmY2xwLT5jbF9zdGF0ZSk7DQo+IEBAIC0yMDgzLDcgKzIwOTEsNiBA
+QCBzdGF0aWMgaW50IG5mczRfYmluZF9jb25uX3RvX3Nlc3Npb24oc3RydWN0IG5mc19jbGllbnQg
+KmNscCkNCj4gIH0NCj4gICNlbHNlIC8qIENPTkZJR19ORlNfVjRfMSAqLw0KPiAgc3RhdGljIGlu
+dCBuZnM0X3Jlc2V0X3Nlc3Npb24oc3RydWN0IG5mc19jbGllbnQgKmNscCkgeyByZXR1cm4gMDsg
+fQ0KPiAtc3RhdGljIHZvaWQgbmZzNF9lbmRfZHJhaW5fc2Vzc2lvbihzdHJ1Y3QgbmZzX2NsaWVu
+dCAqY2xwKSB7IH0NCj4gIA0KPiAgc3RhdGljIGludCBuZnM0X2JpbmRfY29ubl90b19zZXNzaW9u
+KHN0cnVjdCBuZnNfY2xpZW50ICpjbHApDQo+ICB7DQo+IA0KPiAtLQ0KPiBUbyB1bnN1YnNjcmli
+ZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBp
+bg0KPiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0K
+PiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9t
+by1pbmZvLmh0bWwNCg0KV2hlbiBjb21waWxpbmcgd2l0aG91dCBDT05GSUdfTkZTX1Y0XzE6DQoN
+Clt0cm9uZG15QGxlaXJhIGxpbnV4LW5mc10kIG1ha2UgTz0uLi9vYmplY3QueDg2XzY0IFc9MSBD
+PTIgZnMvbmZzL25mczRzdGF0ZS5vDQptYWtlWzJdOiBOb3RoaW5nIHRvIGJlIGRvbmUgZm9yIGBh
+bGwnLg0KbWFrZVsyXTogTm90aGluZyB0byBiZSBkb25lIGZvciBgcmVsb2NzJy4NCiAgVXNpbmcg
+L2hvbWUvdHJvbmRteS9kZXZlbC9rZXJuZWwvbGludXgtbmZzIGFzIHNvdXJjZSBmb3Iga2VybmVs
+DQogIEdFTiAgICAgL2hvbWUvdHJvbmRteS9kZXZlbC9rZXJuZWwvb2JqZWN0Lng4Nl82NC9NYWtl
+ZmlsZQ0KICBDSEsgICAgIGluY2x1ZGUvZ2VuZXJhdGVkL3VhcGkvbGludXgvdmVyc2lvbi5oDQog
+IENISyAgICAgaW5jbHVkZS9nZW5lcmF0ZWQvdXRzcmVsZWFzZS5oDQogIENBTEwgICAgL2hvbWUv
+dHJvbmRteS9kZXZlbC9rZXJuZWwvbGludXgtbmZzL3NjcmlwdHMvY2hlY2tzeXNjYWxscy5zaA0K
+ICBDSEVDSyAgIC9ob21lL3Ryb25kbXkvZGV2ZWwva2VybmVsL2xpbnV4LW5mcy9zY3JpcHRzL21v
+ZC9lbXB0eS5jDQogIENIRUNLICAgL2hvbWUvdHJvbmRteS9kZXZlbC9rZXJuZWwvbGludXgtbmZz
+L2ZzL25mcy9uZnM0c3RhdGUuYw0KL2hvbWUvdHJvbmRteS9kZXZlbC9rZXJuZWwvbGludXgtbmZz
+L2luY2x1ZGUvbGludXgvZXJyLmg6MzQ6MTY6IHdhcm5pbmc6IGRlcmVmZXJlbmNlIG9mIG5vZGVy
+ZWYgZXhwcmVzc2lvbg0KL2hvbWUvdHJvbmRteS9kZXZlbC9rZXJuZWwvbGludXgtbmZzL2luY2x1
+ZGUvbGludXgvZXJyLmg6MzQ6MTY6IHdhcm5pbmc6IGRlcmVmZXJlbmNlIG9mIG5vZGVyZWYgZXhw
+cmVzc2lvbg0KL2hvbWUvdHJvbmRteS9kZXZlbC9rZXJuZWwvbGludXgtbmZzL2luY2x1ZGUvbGlu
+dXgvZXJyLmg6Mjk6MjM6IHdhcm5pbmc6IGRlcmVmZXJlbmNlIG9mIG5vZGVyZWYgZXhwcmVzc2lv
+bg0KL2hvbWUvdHJvbmRteS9kZXZlbC9rZXJuZWwvbGludXgtbmZzL2luY2x1ZGUvbGludXgvZXJy
+Lmg6MzQ6MTY6IHdhcm5pbmc6IGRlcmVmZXJlbmNlIG9mIG5vZGVyZWYgZXhwcmVzc2lvbg0KL2hv
+bWUvdHJvbmRteS9kZXZlbC9rZXJuZWwvbGludXgtbmZzL2luY2x1ZGUvbGludXgvZXJyLmg6Mjk6
+MjM6IHdhcm5pbmc6IGRlcmVmZXJlbmNlIG9mIG5vZGVyZWYgZXhwcmVzc2lvbg0KICBDQyBbTV0g
+IGZzL25mcy9uZnM0c3RhdGUubw0KL2hvbWUvdHJvbmRteS9kZXZlbC9rZXJuZWwvbGludXgtbmZz
+L2ZzL25mcy9uZnM0c3RhdGUuYzoyNTU6MTI6IHdhcm5pbmc6IOKAmG5mczRfYmVnaW5fZHJhaW5f
+c2Vzc2lvbuKAmSBkZWZpbmVkIGJ1dCBub3QgdXNlZCBbLVd1bnVzZWQtZnVuY3Rpb25dDQogc3Rh
+dGljIGludCBuZnM0X2JlZ2luX2RyYWluX3Nlc3Npb24oc3RydWN0IG5mc19jbGllbnQgKmNscCkN
+Cg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpO
+ZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
