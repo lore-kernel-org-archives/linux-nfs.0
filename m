@@ -1,180 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45443 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756960Ab3IKUDW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Sep 2013 16:03:22 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        David Howells <dhowells@redhat.com>
-Subject: [PATCH 10/13] locks: break delegations on rename
-Date: Wed, 11 Sep 2013 16:03:16 -0400
-Message-Id: <1378929799-1110-11-git-send-email-bfields@redhat.com>
-In-Reply-To: <1378929799-1110-1-git-send-email-bfields@redhat.com>
-References: <1378929799-1110-1-git-send-email-bfields@redhat.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:27587 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760319Ab3ICSeD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Sep 2013 14:34:03 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: [PATCH v2 16/33] SUNRPC: Modify synopsis of rpc_client_register()
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1378232595.6410.23.camel@leira.trondhjem.org>
+Date: Tue, 3 Sep 2013 14:33:55 -0400
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Stanislav Kinsbursky" <skinsbursky@parallels.com>
+Message-Id: <61E707DA-47D8-4415-BFFD-744F14CC9BF9@oracle.com>
+References: <20130809161957.5362.90865.stgit@seurat.1015granger.net> <20130809165005.5362.34943.stgit@seurat.1015granger.net> <1378231471.6410.18.camel@leira.trondhjem.org> <6022E033-F121-48E1-860D-E163AF7A3CC3@oracle.com> <1378232595.6410.23.camel@leira.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-Cc: David Howells <dhowells@redhat.com>
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/cachefiles/namei.c |    2 +-
- fs/namei.c            |   47 +++++++++++++++++++++++++++++++++++++++++++----
- fs/nfsd/vfs.c         |    2 +-
- include/linux/fs.h    |    2 +-
- 4 files changed, 46 insertions(+), 7 deletions(-)
+On Sep 3, 2013, at 2:23 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index 6846fcef..1363eae 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -396,7 +396,7 @@ try_again:
- 		cachefiles_io_error(cache, "Rename security error %d", ret);
- 	} else {
- 		ret = vfs_rename(dir->d_inode, rep,
--				 cache->graveyard->d_inode, grave);
-+				 cache->graveyard->d_inode, grave, NULL);
- 		if (ret != 0 && ret != -ENOMEM)
- 			cachefiles_io_error(cache,
- 					    "Rename failed with error %d", ret);
-diff --git a/fs/namei.c b/fs/namei.c
-index fd92b19..fcce3cc 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -4046,7 +4046,8 @@ out:
- }
- 
- static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
--			    struct inode *new_dir, struct dentry *new_dentry)
-+			    struct inode *new_dir, struct dentry *new_dentry,
-+			    struct inode **delegated_inode)
- {
- 	struct inode *target = new_dentry->d_inode;
- 	struct inode *source = old_dentry->d_inode;
-@@ -4063,6 +4064,14 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
- 		goto out;
- 
-+	error = try_break_deleg(source, delegated_inode);
-+	if (error)
-+		goto out;
-+	if (target) {
-+		error = try_break_deleg(target, delegated_inode);
-+		if (error)
-+			goto out;
-+	}
- 	error = old_dir->i_op->rename(old_dir, old_dentry, new_dir, new_dentry);
- 	if (error)
- 		goto out;
-@@ -4077,8 +4086,30 @@ out:
- 	return error;
- }
- 
-+/**
-+ * vfs_rename - rename a filesystem object
-+ * @old_dir:	parent of source
-+ * @old_dentry:	source
-+ * @new_dir:	parent of destination
-+ * @new_dentry:	destination
-+ * @delegated_inode: returns an inode needing a delegation break
-+ *
-+ * The caller must hold multiple mutexes--see lock_rename()).
-+ *
-+ * If vfs_rename discovers a delegation in need of breaking at either
-+ * the source or destination, it will return -EWOULDBLOCK and return a
-+ * reference to the inode in delegated_inode.  The caller should then
-+ * break the delegation and retry.  Because breaking a delegation may
-+ * take a long time, the caller should drop all locks before doing
-+ * so.
-+ *
-+ * Alternatively, a caller may pass NULL for delegated_inode.  This may
-+ * be appropriate for callers that expect the underlying filesystem not
-+ * to be NFS exported.
-+ */
- int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
--	       struct inode *new_dir, struct dentry *new_dentry)
-+	       struct inode *new_dir, struct dentry *new_dentry,
-+	       struct inode **delegated_inode)
- {
- 	int error;
- 	int is_dir = S_ISDIR(old_dentry->d_inode->i_mode);
-@@ -4106,7 +4137,7 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	if (is_dir)
- 		error = vfs_rename_dir(old_dir,old_dentry,new_dir,new_dentry);
- 	else
--		error = vfs_rename_other(old_dir,old_dentry,new_dir,new_dentry);
-+		error = vfs_rename_other(old_dir,old_dentry,new_dir,new_dentry,delegated_inode);
- 	if (!error)
- 		fsnotify_move(old_dir, new_dir, old_name, is_dir,
- 			      new_dentry->d_inode, old_dentry);
-@@ -4122,6 +4153,7 @@ SYSCALL_DEFINE4(renameat, int, olddfd, const char __user *, oldname,
- 	struct dentry *old_dentry, *new_dentry;
- 	struct dentry *trap;
- 	struct nameidata oldnd, newnd;
-+	struct inode *delegated_inode = NULL;
- 	struct filename *from;
- 	struct filename *to;
- 	unsigned int lookup_flags = 0;
-@@ -4161,6 +4193,7 @@ retry:
- 	newnd.flags &= ~LOOKUP_PARENT;
- 	newnd.flags |= LOOKUP_RENAME_TARGET;
- 
-+retry_deleg:
- 	trap = lock_rename(new_dir, old_dir);
- 
- 	old_dentry = lookup_hash(&oldnd);
-@@ -4197,13 +4230,19 @@ retry:
- 	if (error)
- 		goto exit5;
- 	error = vfs_rename(old_dir->d_inode, old_dentry,
--				   new_dir->d_inode, new_dentry);
-+				   new_dir->d_inode, new_dentry,
-+				   &delegated_inode);
- exit5:
- 	dput(new_dentry);
- exit4:
- 	dput(old_dentry);
- exit3:
- 	unlock_rename(new_dir, old_dir);
-+	if (delegated_inode) {
-+		error = break_deleg_wait(&delegated_inode);
-+		if (!error)
-+			goto retry_deleg;
-+	}
- 	mnt_drop_write(oldnd.path.mnt);
- exit2:
- 	if (retry_estale(error, lookup_flags))
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 00d0616..680081b 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1838,7 +1838,7 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
- 		if (host_err)
- 			goto out_dput_new;
- 	}
--	host_err = vfs_rename(fdir, odentry, tdir, ndentry);
-+	host_err = vfs_rename(fdir, odentry, tdir, ndentry, NULL);
- 	if (!host_err) {
- 		host_err = commit_metadata(tfhp);
- 		if (!host_err)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index db8e5ab..e476e5a 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1473,7 +1473,7 @@ extern int vfs_symlink(struct inode *, struct dentry *, const char *);
- extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
- extern int vfs_rmdir(struct inode *, struct dentry *);
- extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
--extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *);
-+extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **);
- 
- /*
-  * VFS dentry helper functions.
+> On Tue, 2013-09-03 at 14:16 -0400, Chuck Lever wrote:
+>> On Sep 3, 2013, at 2:04 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+>>> In particular note that the new code uses the rpc_clnt->cl_parent chain
+>>> in order to implement sharing of the RPCSEC_GSS caches and pipe upcalls.
+>> 
+>> This might be a problem when swapping in a transport to a destination server, for example.
+> 
+> You're already swapping the cl_xprt and the cl_auth, why shouldn't you
+> also swap the cl_parent in this situation?
+
+Sounds reasonable.
+
+
+>> How would you like to proceed with merging these?  Hold off until 3.13, take up to 15/33 now and the rest in 3.13, or take the whole series now and fix it up after the window closes?
+> 
+> I can take up to 15/33 now, but I'd like those warnings fixed. Can you
+> throw in some 'fixup!' commits for the 2 issues that were pointed out?
+
+Having up to 15/33 merged will be very helpful, thanks.  I'll work up fixes that apply on 15/33, and post them later today or tomorrow (depending on how fast the little legs of my build machine can run).
+
+
 -- 
-1.7.9.5
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
