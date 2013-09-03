@@ -1,100 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47260 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:43295 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752072Ab3ISU5W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Sep 2013 16:57:22 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/3] gssd: don't use tgtname to find our keytab
-Date: Thu, 19 Sep 2013 16:57:18 -0400
-Message-Id: <1379624239-31199-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1379624239-31199-1-git-send-email-bfields@redhat.com>
-References: <1379624239-31199-1-git-send-email-bfields@redhat.com>
+	id S1755986Ab3ICUrh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Sep 2013 16:47:37 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: William Dauchy <william@gandi.net>
+CC: William Dauchy <wdauchy@gmail.com>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        "Adamson, Andy" <William.Adamson@netapp.com>
+Subject: Re: [PATCH v2] NFS: Ensure that rmdir() waits for sillyrenames to
+ complete
+Date: Tue, 3 Sep 2013 20:47:35 +0000
+Message-ID: <1378241254.6410.52.camel@leira.trondhjem.org>
+References: <1378145871-30071-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <CAJ75kXbRgsYVRNobCmjeL-t+AJproq8jAxXkbkk9DxGnE9eYhQ@mail.gmail.com>
+	 <1378234234.6410.36.camel@leira.trondhjem.org>
+	 <20130903204431.GF22430@gandi.net>
+In-Reply-To: <20130903204431.GF22430@gandi.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-The tgtname is of the form service@hostname.  It's not a hostname, and
-attempting to look it up here just causes failure of any upcall with a
-"target=" field (currently, any upcall on behalf of an nfsv4.0
-callback).
-
-I think the theory was that knowning that target= name might help pick
-the right keytab, but I don't really know if that's helpful.  For now,
-just stop trying to do this.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- utils/gssd/gssd_proc.c |  3 +--
- utils/gssd/krb5_util.c | 10 +++-------
- utils/gssd/krb5_util.h |  3 +--
- 3 files changed, 5 insertions(+), 11 deletions(-)
-
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index 0383883..7200a78 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -1035,8 +1035,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
- 			int success = 0;
- 			do {
- 				gssd_refresh_krb5_machine_credential(clp->servername,
--								     NULL, service,
--								     tgtname);
-+								     NULL, service);
- 				/*
- 				 * Get a list of credential cache names and try each
- 				 * of them until one works or we've tried them all
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index 83b9651..c6e52fd 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -1149,7 +1149,7 @@ gssd_get_krb5_machine_cred_list(char ***list)
- 		if (ple->ccname) {
- 			/* Make sure cred is up-to-date before returning it */
- 			retval = gssd_refresh_krb5_machine_credential(NULL, ple,
--				NULL, NULL);
-+				NULL);
- 			if (retval)
- 				continue;
- 			if (i + 1 > listsize) {
-@@ -1240,8 +1240,7 @@ gssd_destroy_krb5_machine_creds(void)
- int
- gssd_refresh_krb5_machine_credential(char *hostname,
- 				     struct gssd_k5_kt_princ *ple, 
--					 char *service,
--					 char *tgtname)
-+					 char *service)
- {
- 	krb5_error_code code = 0;
- 	krb5_context context;
-@@ -1280,10 +1279,7 @@ gssd_refresh_krb5_machine_credential(char *hostname,
- 	if (ple == NULL) {
- 		krb5_keytab_entry kte;
- 
--		if (tgtname == NULL)
--			tgtname = hostname;
--
--		code = find_keytab_entry(context, kt, tgtname, &kte, svcnames);
-+		code = find_keytab_entry(context, kt, hostname, &kte, svcnames);
- 		if (code) {
- 			printerr(0, "ERROR: %s: no usable keytab entry found "
- 				 "in keytab %s for connection with host %s\n",
-diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
-index eed1294..3f0723e 100644
---- a/utils/gssd/krb5_util.h
-+++ b/utils/gssd/krb5_util.h
-@@ -31,8 +31,7 @@ void gssd_setup_krb5_machine_gss_ccache(char *servername);
- void gssd_destroy_krb5_machine_creds(void);
- int  gssd_refresh_krb5_machine_credential(char *hostname,
- 					  struct gssd_k5_kt_princ *ple, 
--					  char *service,
--					  char *tgtname);
-+					  char *service);
- char *gssd_k5_err_msg(krb5_context context, krb5_error_code code);
- void gssd_k5_get_default_realm(char **def_realm);
- 
--- 
-1.8.3.1
-
+T24gVHVlLCAyMDEzLTA5LTAzIGF0IDIyOjQ0ICswMjAwLCBXaWxsaWFtIERhdWNoeSB3cm90ZToN
+Cj4gT24gU2VwMDMgMTg6NTAsIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gVGhhbmtzIGFn
+YWluIGZvciB0ZXN0aW5nISBEb2VzIHRoZSBmb2xsb3dpbmcgZml4dXAgb24gdG9wIG9mIHRoZSAn
+djInDQo+ID4gcGF0Y2ggYWxzbyBoZWxwPw0KPiA+IC0tLSBhL2ZzL25mcy91bmxpbmsuYw0KPiA+
+ICsrKyBiL2ZzL25mcy91bmxpbmsuYw0KPiA+IEBAIC0yMTEsNyArMjExLDcgQEAgdm9pZCBuZnNf
+d2FpdF9vbl9zaWxseXJlbmFtZShzdHJ1Y3QgZGVudHJ5ICpkZW50cnkpDQo+ID4gIHsNCj4gPiAg
+CXN0cnVjdCBuZnNfaW5vZGUgKm5mc2kgPSBORlNfSShkZW50cnktPmRfaW5vZGUpOw0KPiA+ICAN
+Cj4gPiAtCXdhaXRfZXZlbnQobmZzaS0+d2FpdHF1ZXVlLCBhdG9taWNfcmVhZCgmbmZzaS0+c2ls
+bHlfY291bnQpID09IDEpOw0KPiA+ICsJd2FpdF9ldmVudChuZnNpLT53YWl0cXVldWUsIGF0b21p
+Y19yZWFkKCZuZnNpLT5zaWxseV9jb3VudCkgPD0gMSk7DQo+ID4gIH0NCj4gPiAgDQo+ID4gIHZv
+aWQgbmZzX2Jsb2NrX3NpbGx5cmVuYW1lKHN0cnVjdCBkZW50cnkgKmRlbnRyeSkNCj4gDQo+IGht
+bW0gSSBqdXN0IHJlYWxpemVkIHlvdXIgdjIgdmVyc2lvbiBoYWQgYD09IDFgOyBpbiBmYWN0IEkg
+dGVzdGVkIHlvdXIgdjENCj4gd2l0aCBgPT0gMGAuIExldCBtZSBzb21lIHRpbWUgdG8gcmV0ZXN0
+IHRoZSB2Mi4NCg0KT0suIFRoYW5rcyBhZ2FpbiENCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxp
+bnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRh
+cHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
