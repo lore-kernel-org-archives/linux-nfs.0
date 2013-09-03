@@ -1,121 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40810 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752168Ab3IEQaY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Sep 2013 12:30:24 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/4] rpc: clean up decoding of gssproxy linux creds
-Date: Thu,  5 Sep 2013 12:30:05 -0400
-Message-Id: <1378398620-23018-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1378398620-23018-1-git-send-email-bfields@redhat.com>
-References: <1378398620-23018-1-git-send-email-bfields@redhat.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:26807 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755878Ab3ICR5f convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Sep 2013 13:57:35 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: [PATCH v2 15/33] NFS: Update session draining barriers for NFSv4.0 transport blocking
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1378230779.6410.13.camel@leira.trondhjem.org>
+Date: Tue, 3 Sep 2013 13:57:31 -0400
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <75B1EFC0-8338-475A-B489-55AE360B07BF@oracle.com>
+References: <20130809161957.5362.90865.stgit@seurat.1015granger.net> <20130809164956.5362.39856.stgit@seurat.1015granger.net> <1378230779.6410.13.camel@leira.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-We can use the normal coding infrastructure here.
+On Sep 3, 2013, at 1:52 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-Two minor behavior changes:
+> On Fri, 2013-08-09 at 12:49 -0400, Chuck Lever wrote:
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> fs/nfs/nfs4state.c |   61 +++++++++++++++++++++++++++++-----------------------
+>> 1 file changed, 34 insertions(+), 27 deletions(-)
+>> 
+>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>> index 8826df3..d816d93 100644
+>> --- a/fs/nfs/nfs4state.c
+>> +++ b/fs/nfs/nfs4state.c
+>> @@ -215,32 +215,6 @@ out:
+>> 	return cred;
+>> }
+>> 
+>> -#if defined(CONFIG_NFS_V4_1)
+>> -
+>> -static int nfs41_setup_state_renewal(struct nfs_client *clp)
+>> -{
+>> -	int status;
+>> -	struct nfs_fsinfo fsinfo;
+>> -
+>> -	if (!test_bit(NFS_CS_CHECK_LEASE_TIME, &clp->cl_res_state)) {
+>> -		nfs4_schedule_state_renewal(clp);
+>> -		return 0;
+>> -	}
+>> -
+>> -	status = nfs4_proc_get_lease_time(clp, &fsinfo);
+>> -	if (status == 0) {
+>> -		/* Update lease time and schedule renewal */
+>> -		spin_lock(&clp->cl_lock);
+>> -		clp->cl_lease_time = fsinfo.lease_time * HZ;
+>> -		clp->cl_last_renewal = jiffies;
+>> -		spin_unlock(&clp->cl_lock);
+>> -
+>> -		nfs4_schedule_state_renewal(clp);
+>> -	}
+>> -
+>> -	return status;
+>> -}
+>> -
+>> static void nfs4_end_drain_slot_table(struct nfs4_slot_table *tbl)
+>> {
+>> 	if (test_and_clear_bit(NFS4_SLOT_TBL_DRAINING, &tbl->slot_tbl_state)) {
+>> @@ -254,6 +228,11 @@ static void nfs4_end_drain_session(struct nfs_client *clp)
+>> {
+>> 	struct nfs4_session *ses = clp->cl_session;
+>> 
+>> +	if (clp->cl_slot_tbl) {
+>> +		nfs4_end_drain_slot_table(clp->cl_slot_tbl);
+>> +		return;
+>> +	}
+>> +
+>> 	if (ses != NULL) {
+>> 		nfs4_end_drain_slot_table(&ses->bc_slot_table);
+>> 		nfs4_end_drain_slot_table(&ses->fc_slot_table);
+>> @@ -278,6 +257,9 @@ static int nfs4_begin_drain_session(struct nfs_client *clp)
+>> 	struct nfs4_session *ses = clp->cl_session;
+>> 	int ret = 0;
+>> 
+>> +	if (clp->cl_slot_tbl)
+>> +		return nfs4_drain_slot_tbl(clp->cl_slot_tbl);
+>> +
+>> 	/* back channel */
+>> 	ret = nfs4_drain_slot_tbl(&ses->bc_slot_table);
+>> 	if (ret)
+>> @@ -286,6 +268,32 @@ static int nfs4_begin_drain_session(struct nfs_client *clp)
+>> 	return nfs4_drain_slot_tbl(&ses->fc_slot_table);
+>> }
+>> 
+>> +#if defined(CONFIG_NFS_V4_1)
+>> +
+>> +static int nfs41_setup_state_renewal(struct nfs_client *clp)
+>> +{
+>> +	int status;
+>> +	struct nfs_fsinfo fsinfo;
+>> +
+>> +	if (!test_bit(NFS_CS_CHECK_LEASE_TIME, &clp->cl_res_state)) {
+>> +		nfs4_schedule_state_renewal(clp);
+>> +		return 0;
+>> +	}
+>> +
+>> +	status = nfs4_proc_get_lease_time(clp, &fsinfo);
+>> +	if (status == 0) {
+>> +		/* Update lease time and schedule renewal */
+>> +		spin_lock(&clp->cl_lock);
+>> +		clp->cl_lease_time = fsinfo.lease_time * HZ;
+>> +		clp->cl_last_renewal = jiffies;
+>> +		spin_unlock(&clp->cl_lock);
+>> +
+>> +		nfs4_schedule_state_renewal(clp);
+>> +	}
+>> +
+>> +	return status;
+>> +}
+>> +
+>> static void nfs41_finish_session_reset(struct nfs_client *clp)
+>> {
+>> 	clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
+>> @@ -2083,7 +2091,6 @@ static int nfs4_bind_conn_to_session(struct nfs_client *clp)
+>> }
+>> #else /* CONFIG_NFS_V4_1 */
+>> static int nfs4_reset_session(struct nfs_client *clp) { return 0; }
+>> -static void nfs4_end_drain_session(struct nfs_client *clp) { }
+>> 
+>> static int nfs4_bind_conn_to_session(struct nfs_client *clp)
+>> {
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> When compiling without CONFIG_NFS_V4_1:
+> 
+> [trondmy@leira linux-nfs]$ make O=../object.x86_64 W=1 C=2 fs/nfs/nfs4state.o
+> make[2]: Nothing to be done for `all'.
+> make[2]: Nothing to be done for `relocs'.
+>  Using /home/trondmy/devel/kernel/linux-nfs as source for kernel
+>  GEN     /home/trondmy/devel/kernel/object.x86_64/Makefile
+>  CHK     include/generated/uapi/linux/version.h
+>  CHK     include/generated/utsrelease.h
+>  CALL    /home/trondmy/devel/kernel/linux-nfs/scripts/checksyscalls.sh
+>  CHECK   /home/trondmy/devel/kernel/linux-nfs/scripts/mod/empty.c
+>  CHECK   /home/trondmy/devel/kernel/linux-nfs/fs/nfs/nfs4state.c
+> /home/trondmy/devel/kernel/linux-nfs/include/linux/err.h:34:16: warning: dereference of noderef expression
+> /home/trondmy/devel/kernel/linux-nfs/include/linux/err.h:34:16: warning: dereference of noderef expression
+> /home/trondmy/devel/kernel/linux-nfs/include/linux/err.h:29:23: warning: dereference of noderef expression
+> /home/trondmy/devel/kernel/linux-nfs/include/linux/err.h:34:16: warning: dereference of noderef expression
+> /home/trondmy/devel/kernel/linux-nfs/include/linux/err.h:29:23: warning: dereference of noderef expression
+>  CC [M]  fs/nfs/nfs4state.o
+> /home/trondmy/devel/kernel/linux-nfs/fs/nfs/nfs4state.c:255:12: warning: ‘nfs4_begin_drain_session’ defined but not used [-Wunused-function]
+> static int nfs4_begin_drain_session(struct nfs_client *clp)
 
-	- we're assuming no wasted space at the end of the linux cred.
-	  That seems to match gss-proxy's behavior, and I can't see why
-	  it would need to do differently in the future.
+That warning should be gone after "NFS: Add basic migration support to state manager thread".
 
-	- NGROUPS_MAX check added: note groups_alloc doesn't do this,
-	  this is the caller's responsibility.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/auth_gss/gss_rpc_xdr.c |   32 +++++++++++++-------------------
- 1 file changed, 13 insertions(+), 19 deletions(-)
-
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-index 3c85d1c..f5067b2 100644
---- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-@@ -166,14 +166,14 @@ static int dummy_dec_opt_array(struct xdr_stream *xdr,
- 	return 0;
- }
- 
--static int get_s32(void **p, void *max, s32 *res)
-+static int get_s32(struct xdr_stream *xdr, s32 *res)
- {
--	void *base = *p;
--	void *next = (void *)((char *)base + sizeof(s32));
--	if (unlikely(next > max || next < base))
-+	__be32 *p;
-+
-+	p = xdr_inline_decode(xdr, 4);
-+	if (!p)
- 		return -EINVAL;
--	memcpy(res, base, sizeof(s32));
--	*p = next;
-+	memcpy(res, p, sizeof(s32));
- 	return 0;
- }
- 
-@@ -182,7 +182,6 @@ static int gssx_dec_linux_creds(struct xdr_stream *xdr,
- {
- 	u32 length;
- 	__be32 *p;
--	void *q, *end;
- 	s32 tmp;
- 	int N, i, err;
- 
-@@ -192,33 +191,28 @@ static int gssx_dec_linux_creds(struct xdr_stream *xdr,
- 
- 	length = be32_to_cpup(p);
- 
--	/* FIXME: we do not want to use the scratch buffer for this one
--	 * may need to use functions that allows us to access an io vector
--	 * directly */
--	p = xdr_inline_decode(xdr, length);
--	if (unlikely(p == NULL))
-+	if (length > (3 + NGROUPS_MAX) * sizeof(u32))
- 		return -ENOSPC;
- 
--	q = p;
--	end = q + length;
--
- 	/* uid */
--	err = get_s32(&q, end, &tmp);
-+	err = get_s32(xdr, &tmp);
- 	if (err)
- 		return err;
- 	creds->cr_uid = make_kuid(&init_user_ns, tmp);
- 
- 	/* gid */
--	err = get_s32(&q, end, &tmp);
-+	err = get_s32(xdr, &tmp);
- 	if (err)
- 		return err;
- 	creds->cr_gid = make_kgid(&init_user_ns, tmp);
- 
- 	/* number of additional gid's */
--	err = get_s32(&q, end, &tmp);
-+	err = get_s32(xdr, &tmp);
- 	if (err)
- 		return err;
- 	N = tmp;
-+	if ((3 + N) * sizeof(u32) != length)
-+		return -EINVAL;
- 	creds->cr_group_info = groups_alloc(N);
- 	if (creds->cr_group_info == NULL)
- 		return -ENOMEM;
-@@ -226,7 +220,7 @@ static int gssx_dec_linux_creds(struct xdr_stream *xdr,
- 	/* gid's */
- 	for (i = 0; i < N; i++) {
- 		kgid_t kgid;
--		err = get_s32(&q, end, &tmp);
-+		err = get_s32(xdr, &tmp);
- 		if (err)
- 			goto out_free_groups;
- 		err = -EINVAL;
 -- 
-1.7.9.5
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
