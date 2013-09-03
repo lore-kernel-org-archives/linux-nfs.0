@@ -1,154 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aa.linuxbox.com ([69.128.83.226]:2060 "EHLO aa.linuxbox.com"
+Received: from mx12.netapp.com ([216.240.18.77]:17965 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965028Ab3IDQel (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Sep 2013 12:34:41 -0400
-Date: Wed, 4 Sep 2013 12:29:08 -0400 (EDT)
-From: "Matt W. Benjamin" <matt@linuxbox.com>
-To: Weston Andros Adamson <dros@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>
-Message-ID: <1816381628.87.1378312148730.JavaMail.root@thunderbeast.private.linuxbox.com>
-In-Reply-To: <983545972.85.1378311975965.JavaMail.root@thunderbeast.private.linuxbox.com>
-Subject: Re: [PATCH] NFSv4: use mach cred for SECINFO_NO_NAME w/ integrity
+	id S1758278Ab3ICT7R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Sep 2013 15:59:17 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: use the mach cred for SECINFO w/ integrity
+Date: Tue, 3 Sep 2013 19:59:16 +0000
+Message-ID: <1378238355.6410.49.camel@leira.trondhjem.org>
+References: <1378235929-4710-1-git-send-email-dros@netapp.com>
+	 <1378236327.6410.38.camel@leira.trondhjem.org>
+	 <5C9B2128-9A64-4231-8FF3-BEDDCB2C733D@netapp.com>
+	 <1378237184.6410.42.camel@leira.trondhjem.org>
+	 <1A867669-31A4-40E4-9FBB-EA344687FAEA@oracle.com>
+	 <1378237941.6410.46.camel@leira.trondhjem.org>
+	 <DF7339A3-B8E6-4372-809A-AE9D56C3F7A0@netapp.com>
+In-Reply-To: <DF7339A3-B8E6-4372-809A-AE9D56C3F7A0@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi
-
-It honestly feels quite odd to me for sec=sys to actually connote krb5i.
-
-Matt
-
------ "Weston Andros Adamson" <dros@netapp.com> wrote:
-
-> Commit 97431204ea005ec8070ac94bc3251e836daa7ca7 introduced a
-> regression
-> that causes SECINFO_NO_NAME to fail without sending an RPC if:
-> 
->  1) the nfs_client's rpc_client is using krb5i/p (now tried by
-> default)
->  2) the current user doesn't have valid kerberos credentials
-> 
-> This situation is quite common - as of now a sec=sys mount would use
-> krb5i for the nfs_client's rpc_client and a user would hardly be
-> faulted
-> for not having run kinit.
-> 
-> The solution is to use the machine cred when trying to use an
-> integrity
-> protected auth flavor for SECINFO_NO_NAME.
-> 
-> Older servers may not support using the machine cred or an integrity
-> protected auth flavor for SECINFO_NO_NAME in every circumstance, so we
-> fall
-> back to using the user's cred and the filesystem's auth flavor in this
-> case.
-> 
-> We run into another problem when running against linux nfs servers -
-> they return NFS4ERR_WRONGSEC when using integrity auth flavor (unless
-> the
-> mount is also that flavor) even though that is not a valid error for
-> SECINFO*.  Even though it's against spec, handle WRONGSEC errors on
-> SECINFO_NO_NAME by falling back to using the user cred and the
-> filesystem's auth flavor.
-> 
-> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-> ---
-> 
-> This patch goes along with yesterday's SECINFO patch
-> 
->  fs/nfs/nfs4proc.c | 41 +++++++++++++++++++++++++++++++++++++----
->  1 file changed, 37 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index ab1461e..74b37f5 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -7291,7 +7291,8 @@ out:
->   */
->  static int
->  _nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh
-> *fhandle,
-> -		    struct nfs_fsinfo *info, struct nfs4_secinfo_flavors *flavors)
-> +		    struct nfs_fsinfo *info,
-> +		    struct nfs4_secinfo_flavors *flavors, bool use_integrity)
->  {
->  	struct nfs41_secinfo_no_name_args args = {
->  		.style = SECINFO_STYLE_CURRENT_FH,
-> @@ -7304,8 +7305,23 @@ _nfs41_proc_secinfo_no_name(struct nfs_server
-> *server, struct nfs_fh *fhandle,
->  		.rpc_argp = &args,
->  		.rpc_resp = &res,
->  	};
-> -	return nfs4_call_sync(server->nfs_client->cl_rpcclient, server,
-> &msg,
-> -				&args.seq_args, &res.seq_res, 0);
-> +	struct rpc_clnt *clnt = server->client;
-> +	int status;
-> +
-> +	if (use_integrity) {
-> +		clnt = server->nfs_client->cl_rpcclient;
-> +		msg.rpc_cred = nfs4_get_clid_cred(server->nfs_client);
-> +	}
-> +
-> +	dprintk("--> %s\n", __func__);
-> +	status = nfs4_call_sync(clnt, server, &msg, &args.seq_args,
-> +				&res.seq_res, 0);
-> +	dprintk("<-- %s status=%d\n", __func__, status);
-> +
-> +	if (msg.rpc_cred)
-> +		put_rpccred(msg.rpc_cred);
-> +
-> +	return status;
->  }
->  
->  static int
-> @@ -7315,7 +7331,24 @@ nfs41_proc_secinfo_no_name(struct nfs_server
-> *server, struct nfs_fh *fhandle,
->  	struct nfs4_exception exception = { };
->  	int err;
->  	do {
-> -		err = _nfs41_proc_secinfo_no_name(server, fhandle, info, flavors);
-> +		/* first try using integrity protection */
-> +		err = -NFS4ERR_WRONGSEC;
-> +
-> +		/* try to use integrity protection with machine cred */
-> +		if (_nfs4_is_integrity_protected(server->nfs_client))
-> +			err = _nfs41_proc_secinfo_no_name(server, fhandle, info,
-> +							  flavors, true);
-> +
-> +		/*
-> +		 * if unable to use integrity protection, or SECINFO with
-> +		 * integrity protection returns NFS4ERR_WRONGSEC (which is
-> +		 * disallowed by spec, but exists in deployed servers) use
-> +		 * the current filesystem's rpc_client and the user cred.
-> +		 */
-> +		if (err == -NFS4ERR_WRONGSEC)
-> +			err = _nfs41_proc_secinfo_no_name(server, fhandle, info,
-> +							  flavors, false);
-> +
->  		switch (err) {
->  		case 0:
->  		case -NFS4ERR_WRONGSEC:
-> -- 
-> 1.7.12.4 (Apple Git-37)
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Matt Benjamin
-The Linux Box
-206 South Fifth Ave. Suite 150
-Ann Arbor, MI  48104
-
-http://linuxbox.com
-
-tel.  734-761-4689 
-fax.  734-769-8938 
-cel.  734-216-5309 
+T24gVHVlLCAyMDEzLTA5LTAzIGF0IDE5OjU1ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
+PiBPbiBTZXAgMywgMjAxMywgYXQgMzo1MiBQTSwgIk15a2xlYnVzdCwgVHJvbmQiIDxUcm9uZC5N
+eWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+IA0KPiA+IE9uIFR1ZSwgMjAxMy0wOS0wMyBh
+dCAxNTo0MCAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4+IE9uIFNlcCAzLCAyMDEzLCBh
+dCAzOjM5IFBNLCAiTXlrbGVidXN0LCBUcm9uZCIgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29t
+PiB3cm90ZToNCj4gPj4gDQo+ID4+PiBPbiBUdWUsIDIwMTMtMDktMDMgYXQgMTk6MzAgKzAwMDAs
+IEFkYW1zb24sIERyb3Mgd3JvdGU6DQo+ID4+Pj4gT24gU2VwIDMsIDIwMTMsIGF0IDM6MjUgUE0s
+ICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ID4+Pj4g
+d3JvdGU6DQo+ID4+Pj4gDQo+ID4+Pj4+IE9uIFR1ZSwgMjAxMy0wOS0wMyBhdCAxNToxOCAtMDQw
+MCwgV2VzdG9uIEFuZHJvcyBBZGFtc29uIHdyb3RlOg0KPiA+Pj4+Pj4gQ29tbWl0IDVlYzE2YTg1
+MDBkMzM5YjBlN2EwY2M3NmI3ODVkMThkYWFkMzU0ZDQgaW50cm9kdWNlZCBhIHJlZ3Jlc3Npb24N
+Cj4gPj4+Pj4+IHRoYXQgY2F1c2VzIFNFQ0lORk8gdG8gZmFpbCB3aXRob3V0IGFjdHVhbHkgc2Vu
+ZGluZyBhbiBSUEMgaWY6DQo+ID4+Pj4+PiANCj4gPj4+Pj4+IDEpIHRoZSBuZnNfY2xpZW50J3Mg
+cnBjX2NsaWVudCB3YXMgdXNpbmcgS1JCNWkvcCAobm93IHRyaWVkIGJ5IGRlZmF1bHQpDQo+ID4+
+Pj4+PiAyKSB0aGUgY3VycmVudCB1c2VyIGRvZXNuJ3QgaGF2ZSB2YWxpZCBrZXJiZXJvcyBjcmVk
+ZW50aWFscw0KPiA+Pj4+Pj4gDQo+ID4+Pj4+PiBUaGlzIHNpdHVhdGlvbiBpcyBxdWl0ZSBjb21t
+b24gLSBhcyBvZiBub3cgYSBzZWM9c3lzIG1vdW50IHdvdWxkIHVzZQ0KPiA+Pj4+Pj4ga3JiNWkg
+Zm9yIHRoZSBuZnNfY2xpZW50J3MgcnBjX2NsaWVudCBhbmQgYSB1c2VyIHdvdWxkIGhhcmRseSBi
+ZSBmYXVsdGVkDQo+ID4+Pj4+PiBmb3Igbm90IGhhdmluZyBydW4ga2luaXQuDQo+ID4+Pj4+PiAN
+Cj4gPj4+Pj4+IFRoZSBzb2x1dGlvbiBpcyB0byB1c2UgdGhlIG1hY2hpbmUgY3JlZCB3aGVuIHRy
+eWluZyB0byB1c2UgYW4gaW50ZWdyaXR5DQo+ID4+Pj4+PiBwcm90ZWN0ZWQgYXV0aCBmbGF2b3Ig
+Zm9yIFNFQ0lORk8uDQo+ID4+Pj4+PiANCj4gPj4+Pj4+IE9sZGVyIHNlcnZlcnMgbWF5IG5vdCBz
+dXBwb3J0IHVzaW5nIHRoZSBtYWNoaW5lIGNyZWQgb3IgYW4gaW50ZWdyaXR5DQo+ID4+Pj4+PiBw
+cm90ZWN0ZWQgYXV0aCBmbGF2b3IgZm9yIFNFQ0lORk8gaW4gZXZlcnkgY2lyY3Vtc3RhbmNlLCBz
+byB3ZSBmYWxsIGJhY2sNCj4gPj4+Pj4+IHRvIHVzaW5nIHRoZSB1c2VyJ3MgY3JlZCBhbmQgdGhl
+IGZpbGVzeXN0ZW0ncyBhdXRoIGZsYXZvciBpbiB0aGlzIGNhc2UuDQo+ID4+Pj4+PiANCj4gPj4+
+Pj4+IFdlIHJ1biBpbnRvIGFub3RoZXIgcHJvYmxlbSB3aGVuIHJ1bm5pbmcgYWdhaW5zdCBsaW51
+eCBuZnMgc2VydmVycyAtDQo+ID4+Pj4+PiB0aGV5IHJldHVybiBORlM0RVJSX1dST05HU0VDIHdo
+ZW4gdXNpbmcgaW50ZWdyaXR5IGF1dGggZmxhdm9yICh1bmxlc3MgdGhlDQo+ID4+Pj4+PiBtb3Vu
+dCBpcyBhbHNvIHRoYXQgZmxhdm9yKSBldmVuIHRob3VnaCB0aGF0IGlzIG5vdCBhIHZhbGlkIGVy
+cm9yIGZvcg0KPiA+Pj4+Pj4gU0VDSU5GTyouICBFdmVuIHRob3VnaCBpdCdzIGFnYWluc3Qgc3Bl
+YywgaGFuZGxlIFdST05HU0VDIGVycm9ycyBvbiBTRUNJTkZPDQo+ID4+Pj4+PiBieSBmYWxsaW5n
+IGJhY2sgdG8gdXNpbmcgdGhlIHVzZXIgY3JlZCBhbmQgdGhlIGZpbGVzeXN0ZW0ncyBhdXRoIGZs
+YXZvci4NCj4gPj4+Pj4+IA0KPiA+Pj4+Pj4gU2lnbmVkLW9mZi1ieTogV2VzdG9uIEFuZHJvcyBB
+ZGFtc29uIDxkcm9zQG5ldGFwcC5jb20+DQo+ID4+Pj4+PiAtLS0NCj4gPj4+Pj4gDQo+ID4+Pj4+
+IFRoYW5rcyEgQXBwbGllZOKApg0KPiA+Pj4+IA0KPiA+Pj4+IE9oLCBzb3JyeSwgSSB3YXMgaG9w
+aW5nIHRvIGZvc3RlciBtb3JlIGRpc2N1c3Npb24gYXJvdW5kIENodWNrJ3MgY29tbWVudHMgdG8g
+dGhlIG5mc2Qgc2lkZSBvZiB0aGlzIGVmZm9ydCBiZWZvcmUgYWRkaW5nIHRoaXMsIGFsdGhvdWdo
+IGl0J3MgYmV0dGVyIHRoYW4gdGhlIHN0YXRlIHRoZSBjbGllbnQgd2FzIGluIHNpbmNlIDVlYzE2
+YTg1MDBkMzM5YjBlN2EwY2M3NmI3ODVkMThkYWFkMzU0ZDQuICBTaG91bGQgSSBwb3N0IHRoZSBz
+aW1pbGFyIHBhdGNoZXMgZm9yIFNFQ0lORk9fTk9OQU1FIGFuZCBMQVlPVVRHRVQ/DQo+ID4+Pj4g
+DQo+ID4+Pj4gU3BlY2lmaWNhbGx5LCBDaHVjaydzICh2ZXJ5IHZhbGlkKSBwb2ludCBpcyB3aGF0
+IGVycm9yIHNob3VsZCBhIHNlcnZlciByZXR1cm4gdG8gU0VDSU5GTyB1c2luZyBrcmI1aSBpZiBp
+dCBkb2Vzbid0IHN1cHBvcnQgdGhhdCBhdXRoIGZsYXZvcj8gICANCj4gPj4+PiBORlM0RVJSX0FD
+Q0VTUyBsb29rcyBsaWtlIHRoZSBiZXN0IGF2YWlsYWJsZSBvcHRpb24gdG8gbWUgLS0gc2hvdWxk
+IEkgdGFrZSB0aGlzIHRvIHRoZSBJRVRGIGxpc3Q/DQo+ID4+PiANCj4gPj4+IElmIHRoZSBzZXJ2
+ZXIgZG9lc24ndCBzdXBwb3J0IGtyYjVpLCB0aGVuIGl0IHdvbid0IGV2ZW4gYmUgYWJsZSB0bw0K
+PiA+Pj4gcmVjZWl2ZSBvdXIgUlBDIGNhbGwsIHNvIGl0IGNhbiBhdCBiZXN0IHJlcGx5IHdpdGgg
+YW4gQVVUSF9CQURDUkVEIHJwYw0KPiA+Pj4gbGV2ZWwgZXJyb3IsIHdoaWNoIHJwY192ZXJpZnlf
+aGVhZGVyKCkgd2lsbCB0cmFuc2xhdGUgYXMgRUFDQ0VTLg0KPiA+PiANCj4gPj4gV2hhdCBpZiB0
+aGUgc2VydmVyIHN1cHBvcnRzIFJQQ1NFQ19HU1MsIGJ1dCB0aGUgZXhwb3J0IG9wdGlvbnMgc3Bl
+Y2lmeSBvbmx5IHNlYz1zeXM/DQo+ID4gDQo+ID4gUkZDNTY2MSBzcGVjaWZpY2FsbHkgc3RhdGVz
+IHRoYXQgaXQgc2hvdWxkIGFjY2VwdCB0aGUgU0VDSU5GTyBjYWxsIHdpdGgNCj4gPiBSUENTRUNf
+R1NTIGluIHRoYXQgY2FzZS4NCj4gPiANCj4gPiBSRkMzNTMwYmlzIGRvZXMgdG9vLCBidXQgdGhl
+cmUgbWF5IGJlIGEgbGVnYWN5IFJGQzM1MzAgaXNzdWUgdGhlcmUuDQo+IA0KPiBJIGd1ZXNzIGFz
+IGZhciBhcyB0aGlzIHBhdGNoIChhbmQgZm9ydGhjb21pbmcgU0VDSU5GT19OT05BTUUpIGdvZXMs
+IGRvIHdlIHdhbnQgdG8gcmV0cnkgKGZhbGxpbmcgYmFjayB0byB1c2VyIGNyZWQpIG9uIE5GUzRF
+UlJfQUNDRVNTIHRvbz8NCg0KU0VDSU5GT19OT19OQU1FIGlzIGNvdmVyZWQgYnkgUkZDNTY2MSwg
+c28gdGhlcmUgc2hvdWxkIGJlIG5vIGxlZ2FjeQ0KcHJvYmxlbXMgKG9ubHkgc2VydmVyIGJ1Z3Mp
+LiBUaGUgY3VycmVudCBjb2RlIHNob3VsZCB0aGVyZWZvcmUgYmUNCmNvcnJlY3Qgd2l0aG91dCBh
+bnkgbmVlZCBmb3IgY2hhbmdlcy4NCg0KVGhlIG9ubHkgcG90ZW50aWFsIHByb2JsZW0gaXMgU0VD
+SU5GTyBpdHNlbGYgZm9yIHRoZSBORlN2NC4wIGNhc2UuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
+DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RA
+bmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
