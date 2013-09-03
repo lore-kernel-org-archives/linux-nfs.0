@@ -1,71 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:41658 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754029Ab3IEPbh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Sep 2013 11:31:37 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] NFSv4.1 Use MDS auth flavor for data server
- connection
-Date: Thu, 5 Sep 2013 15:31:35 +0000
-Message-ID: <1378395094.5450.7.camel@leira.trondhjem.org>
-References: <1378394074-2165-1-git-send-email-andros@netapp.com>
-In-Reply-To: <1378394074-2165-1-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ve0-f171.google.com ([209.85.128.171]:58401 "EHLO
+	mail-ve0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932313Ab3ICJdu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Sep 2013 05:33:50 -0400
+Received: by mail-ve0-f171.google.com with SMTP id pa12so3735828veb.2
+        for <linux-nfs@vger.kernel.org>; Tue, 03 Sep 2013 02:33:50 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <1378145871-30071-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1378145871-30071-1-git-send-email-Trond.Myklebust@netapp.com>
+From: William Dauchy <wdauchy@gmail.com>
+Date: Tue, 3 Sep 2013 11:33:30 +0200
+Message-ID: <CAJ75kXbRgsYVRNobCmjeL-t+AJproq8jAxXkbkk9DxGnE9eYhQ@mail.gmail.com>
+Subject: Re: [PATCH v2] NFS: Ensure that rmdir() waits for sillyrenames to complete
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>, andros@netapp.com,
+        William Dauchy <william@gandi.net>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEzLTA5LTA1IGF0IDExOjE0IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IENvbW1p
-dCA0ZWRhYTMwOCAiTkZTOiBVc2UgImtyYjVpIiB0byBlc3RhYmxpc2ggTkZTdjQgc3RhdGUgd2hl
-bmV2ZXIgcG9zc2libGUiDQo+IHVzZXMgdGhlIG5mc19jbGllbnQgY2xfcnBjY2xpZW50IGZvciBh
-bGwgc3RhdGUgbWFuYWdlbWVudCBvcGVyYXRpb25zLCBhbmQNCj4gd2lsbCB1c2Uga3JiNWkgb3Ig
-YXV0aF9zeXMgd2l0aCBubyByZWdhcmQgdG8gdGhlIG1vdW50IGNvbW1hbmQgYXV0aGZsYXZvcg0K
-PiBjaG9pY2UuDQo+IA0KPiBUaGUgTURTLCBhcyBhbnkgTkZTdjQuMSBtb3VudCBwb2ludCwgdXNl
-cyB0aGUgbmZzX3NlcnZlciBycGMgY2xpZW50IGZvciBhbGwNCj4gbm9uLXN0YXRlIG1hbmFnZW1l
-bnQgb3BlcmF0aW9ucyB3aXRoIGEgZGlmZmVyZW50IG5mc19zZXJ2ZXIgZm9yIGVhY2ggZnNpZA0K
-PiBlbmNvdW50ZXJlZCB0cmF2ZXJzaW5nIHRoZSBtb3VudCBwb2ludCwgZWFjaCB3aXRoIGEgcG90
-ZW50aWFsbHkgZGlmZmVyZW50DQo+IGF1dGggZmxhdm9yLg0KPiANCj4gcE5GUyBkYXRhIHNlcnZl
-cnMgYXJlIG5vdCBtb3VudGVkIGluIHRoZSBub3JtYWwgc2Vuc2UgYXMgdGhlcmUgaXMgbm8gYXNz
-b2NpYXRlZA0KPiBuZnNfc2VydmVyIHN0cnVjdHVyZS4gRGF0YSBzZXJ2ZXJzIGNhbiBhbHNvIGV4
-cG9ydCBtdWx0aXBsZSBmc2lkcywgZWFjaCB3aXRoDQo+IGEgcG90ZW50aWFsbHkgZGlmZmVyZW50
-IGF1dGggZmxhdm9yLg0KPiANCj4gRGF0YSBzZXJ2ZXJzIG5lZWQgdG8gdXNlIHRoZSBzYW1lIGF1
-dGhmbGF2b3IgYXMgdGhlIE1EUyBzZXJ2ZXIgcnBjIGNsaWVudCBmb3INCj4gbm9uLXN0YXRlIG1h
-bmFnZW1lbnQgb3BlcmF0aW9ucy4gUG9wdWxhdGUgYSBsaXN0IG9mIHJwYyBjbGllbnRzIHdpdGgg
-dGhlIE1EUw0KPiBzZXJ2ZXIgcnBjIGNsaWVudCBhdXRoIGZsYXZvciBmb3IgdGhlIERTIHRvIHVz
-ZS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+
-DQo+IC0tLQ0KPiAgZnMvbmZzL2ludGVybmFsLmggICAgICAgICAgIHwgIDIgKysNCj4gIGZzL25m
-cy9uZnM0Y2xpZW50LmMgICAgICAgICB8IDc1ICsrKysrKysrKysrKysrKysrKysrKysrKysrKysr
-KysrKysrKysrKysrKysrKw0KPiAgZnMvbmZzL25mczRmaWxlbGF5b3V0LmMgICAgIHwgMzUgKysr
-KysrKysrKysrKysrKy0tLS0tDQo+ICBpbmNsdWRlL2xpbnV4L25mc19mc19zYi5oICAgfCAgMSAr
-DQo+ICBpbmNsdWRlL2xpbnV4L3N1bnJwYy9jbG50LmggfCAgMiArKw0KPiAgbmV0L3N1bnJwYy9j
-bG50LmMgICAgICAgICAgIHwgIDEgKw0KPiAgNiBmaWxlcyBjaGFuZ2VkLCAxMDggaW5zZXJ0aW9u
-cygrKSwgOCBkZWxldGlvbnMoLSkNCj4gDQo8c25pcD4NCj4gZGlmZiAtLWdpdCBhL2luY2x1ZGUv
-bGludXgvc3VucnBjL2NsbnQuaCBiL2luY2x1ZGUvbGludXgvc3VucnBjL2NsbnQuaA0KPiBpbmRl
-eCA3NmMwYmY2Li4zOTE5ZjJiIDEwMDY0NA0KPiAtLS0gYS9pbmNsdWRlL2xpbnV4L3N1bnJwYy9j
-bG50LmgNCj4gKysrIGIvaW5jbHVkZS9saW51eC9zdW5ycGMvY2xudC5oDQo+IEBAIC0zNSw2ICsz
-NSw4IEBAIHN0cnVjdCBycGNfY2xudCB7DQo+ICAJYXRvbWljX3QJCWNsX2NvdW50OwkvKiBOdW1i
-ZXIgb2YgcmVmZXJlbmNlcyAqLw0KPiAgCXN0cnVjdCBsaXN0X2hlYWQJY2xfY2xpZW50czsJLyog
-R2xvYmFsIGxpc3Qgb2YgY2xpZW50cyAqLw0KPiAgCXN0cnVjdCBsaXN0X2hlYWQJY2xfdGFza3M7
-CS8qIExpc3Qgb2YgdGFza3MgKi8NCj4gKwlzdHJ1Y3QgbGlzdF9oZWFkCWNsX2RzX2NsbnRzOwkv
-KiBsaXN0IG9mIHBlciBhdXRoIGZsYXZvcg0KPiArCQkJCQkJICAgZGF0YSBzZXJ2ZXJzICovDQoN
-ClRoaXMgbGlzdCBkb2Vzbid0IGJlbG9uZyBpbiB0aGUgUlBDIGxheWVyLiBQbGVhc2UgbWFrZSBh
-IHNlcGFyYXRlDQpzdHJ1Y3R1cmUgdGhhdCBsaXZlcyBpbiB0aGUgTkZTIGxheWVyLCBhbmQgdGhh
-dCBvd25zIHRoZSBycGNfY2xudC4NCg0KSU9XIHNvbWV0aGluZyBhbG9uZyB0aGUgbGluZXMgb2Y6
-DQoNCnN0cnVjdCBuZnNfZHNfc2VydmVyIHsNCglzdHJ1Y3QgbGlzdF9oZWFkIGxpc3Q7CS8qIGRz
-X2NscC0+Y2xfZHNfY2xpZW50cyAqLw0KCXN0cnVjdCBycGNfY2xudCAqcnBjX2NsbnQ7DQp9Ow0K
-DQo+ICAJc3BpbmxvY2tfdAkJY2xfbG9jazsJLyogc3BpbmxvY2sgKi8NCj4gIAlzdHJ1Y3QgcnBj
-X3hwcnQgX19yY3UgKgljbF94cHJ0OwkvKiB0cmFuc3BvcnQgKi8NCj4gIAlzdHJ1Y3QgcnBjX3By
-b2NpbmZvICoJY2xfcHJvY2luZm87CS8qIHByb2NlZHVyZSBpbmZvICovDQo+IGRpZmYgLS1naXQg
-YS9uZXQvc3VucnBjL2NsbnQuYyBiL25ldC9zdW5ycGMvY2xudC5jDQo+IGluZGV4IGJhZjBkZjYu
-LjNjMTgzOTQgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMvY2xudC5jDQo+ICsrKyBiL25ldC9z
-dW5ycGMvY2xudC5jDQo+IEBAIC0zNTYsNiArMzU2LDcgQEAgc3RhdGljIHN0cnVjdCBycGNfY2xu
-dCAqIHJwY19uZXdfY2xpZW50KGNvbnN0IHN0cnVjdCBycGNfY3JlYXRlX2FyZ3MgKmFyZ3MsDQo+
-ICAJCWdvdG8gb3V0X25vX3N0YXRzOw0KPiAgCWNsbnQtPmNsX3Byb2dyYW0gID0gcHJvZ3JhbTsN
-Cj4gIAlJTklUX0xJU1RfSEVBRCgmY2xudC0+Y2xfdGFza3MpOw0KPiArCUlOSVRfTElTVF9IRUFE
-KCZjbG50LT5jbF9kc19jbG50cyk7DQo+ICAJc3Bpbl9sb2NrX2luaXQoJmNsbnQtPmNsX2xvY2sp
-Ow0KPiAgDQo+ICAJaWYgKCF4cHJ0X2JvdW5kKHhwcnQpKQ0KDQotLSANClRyb25kIE15a2xlYnVz
-dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0
-QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+On Mon, Sep 2, 2013 at 8:17 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> If an NFS client does
+>
+>         mkdir("dir");
+>         fd = open("dir/file");
+>         unlink("dir/file");
+>         close(fd);
+>         rmdir("dir");
+>
+> then the asynchronous nature of the sillyrename operation means that
+> we can end up getting EBUSY for the rmdir() in the above test. Fix
+> that by ensuring that we wait for any in-progress sillyrenames
+> before sending the rmdir() to the server.
+
+I tested the patch on top of a 3.10.x
+When doing heavy operations like rm -rf dir/ with lots of data, the
+process gets stuck for ever.
+removing the patch fixes the issue.
+
+-- 
+William
