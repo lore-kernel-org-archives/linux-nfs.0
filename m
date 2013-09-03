@@ -1,104 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35955 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:10579 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751076Ab3IJWLq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Sep 2013 18:11:46 -0400
-Date: Tue, 10 Sep 2013 18:11:46 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Joschi Brauchle <joschi.brauchle@tum.de>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfsd4: utime sometimes takes 40+ seconds to return (but on
- SLES11SP3 with kernel 3.0.82)
-Message-ID: <20130910221146.GB21829@fieldses.org>
-References: <522F69A1.5090005@tum.de>
- <20130910203530.GA20296@fieldses.org>
- <038EA8B0-BD46-47F2-8F20-DEC8B6DA9087@tum.de>
- <20130910215534.GA21829@fieldses.org>
- <D10808DE-57A1-4C80-8000-2F9E27A423A3@tum.de>
+	id S1754147Ab3ICSXQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Sep 2013 14:23:16 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Stanislav Kinsbursky" <skinsbursky@parallels.com>
+Subject: Re: [PATCH v2 16/33] SUNRPC: Modify synopsis of
+ rpc_client_register()
+Date: Tue, 3 Sep 2013 18:23:15 +0000
+Message-ID: <1378232595.6410.23.camel@leira.trondhjem.org>
+References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
+	 <20130809165005.5362.34943.stgit@seurat.1015granger.net>
+	 <1378231471.6410.18.camel@leira.trondhjem.org>
+	 <6022E033-F121-48E1-860D-E163AF7A3CC3@oracle.com>
+In-Reply-To: <6022E033-F121-48E1-860D-E163AF7A3CC3@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <D10808DE-57A1-4C80-8000-2F9E27A423A3@tum.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 10, 2013 at 10:08:36PM +0000, Joschi Brauchle wrote:
-> Am 10.09.2013 um 23:55 schrieb "J. Bruce Fields" <bfields@fieldses.org>:
-> 
-> > On Tue, Sep 10, 2013 at 09:48:12PM +0000, Joschi Brauchle wrote:
-> >> Am 10.09.2013 um 22:35 schrieb "J. Bruce Fields" <bfields@fieldses.org>:
-> >> 
-> >>> On Tue, Sep 10, 2013 at 08:49:05PM +0200, Joschi Brauchle wrote:
-> >>>> Hello everyone,
-> >>>> 
-> >>>> we are administrating an NFS high-availability cluster running on
-> >>>> SLES11SP1 with kernel 2.6.32.59. Just recently, one of the cluster
-> >>>> machines was updated to SLES11SP3 with kernel 3.0.82.
-> >>>> 
-> >>>> 
-> >>>> We are now experiencing severe hangs on NFS clients when the
-> >>>> SLES11SP3 server is running the NFS services. An strace on the
-> >>>> hanging processes on the client side show that is is waiting up to
-> >>>> 60+ seconds for a "utime()" call to complete.
-> >>>> 
-> >>>> 
-> >>>> The problem we see is matching the problem described in the thread
-> >>>> "v3.5 nfsd4 regression; utime sometimes takes 40+ seconds to
-> >>>> return". If the NFS server is running on SLES11SP3, the little test
-> >>>> program provided in this tread hangs at the "utime()" call for 60+
-> >>>> seconds. It hangs each time it is run! It finishes right away with 0
-> >>>> seconds delay is SLES11SP1 is providing NFS services, each time.
-> >>>> 
-> >>>> 
-> >>>> Now, in the serverside logfiles of SLES11SP3 we see these messages
-> >>>> (not so on SP1):
-> >>>> --------------
-> >>>> kernel: [99381.184976] RPC: AUTH_GSS upcall timed out.
-> >>>> kernel: [99381.184978] Please check user daemon is running.
-> >>>> --------------
-> >>>> 
-> >>>> We have always been running the NFS server without rpc.gssd on the
-> >>>> server side, as the init script for the nfsserver also does not
-> >>>> start rpc.gssd.
-> >>>> 
-> >>>> 
-> >>>> Once we started rpc.gssd on the SLES11SP3 server, using the test
-> >>>> utility on the client shows that the first call to "utime()"
-> >>>> succeeds right away, the second call takes ~25s to complete. But
-> >>>> now, any consecutive runs of the utility finish with no more delay.
-> >>>> 
-> >>>> 
-> >>>> So can anyone confirm that with kernel 3.0+ the rpc.gssd daemon is
-> >>>> also required on the server side for correct operation?
-> >>>> 
-> >>>> Has there been a change between kernel 2.6.32.59 and 3.0.x?
-> >>>> 
-> >>>> Thus, is the init script of the nfsserver in SLES11SP3 indeed
-> >>>> missing to start rpc.gssd?
-> >>> 
-> >>> It should be starting rpc.gssd to allow callbacks, yes.
-> >>> 
-> >>> --b.
-> >> 
-> >> Ok, we will run rpc.gssd on the server. Thanks. 
-> >> 
-> >> Could you please comment on having the nfs clients hang on utime() calls is to be expected when *not* running rpc.gssd? Or is this a problem that needs to be investigated?
-> > 
-> > I think what happens is the utime call breaks a delegation, and the
-> > delay is because the lack of gssd prevents the server from calling back
-> > to the client to tell it that its delegation is broken, so the
-> > delegation has to time out.
-> > 
-> > That said, the server does a null callback to the client to test whether
-> > callbacks are working before it gives out any delegations, so I'm
-> > surprised it wouldn't have noticed the broken callbacks then.
-> > 
-> > --b.
-> 
-> Is there any information I can provide to figure this out? At what time is the null callback sent to the client? Maybe I can tcpdump that sequence...
-
-It happens when the client sends a SETCLIENTID, which I think will be
-the first time it opens a file.  Running "rpcdebug -m nfsd -s proc" on
-the server and then looking in the logs afterwards might also be
-enlightening.
-
---b.
+T24gVHVlLCAyMDEzLTA5LTAzIGF0IDE0OjE2IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gU2VwIDMsIDIwMTMsIGF0IDI6MDQgUE0sICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJvbmQuTXlr
+bGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+IEluIHBhcnRpY3VsYXIgbm90ZSB0aGF0IHRo
+ZSBuZXcgY29kZSB1c2VzIHRoZSBycGNfY2xudC0+Y2xfcGFyZW50IGNoYWluDQo+ID4gaW4gb3Jk
+ZXIgdG8gaW1wbGVtZW50IHNoYXJpbmcgb2YgdGhlIFJQQ1NFQ19HU1MgY2FjaGVzIGFuZCBwaXBl
+IHVwY2FsbHMuDQo+IA0KPiBUaGlzIG1pZ2h0IGJlIGEgcHJvYmxlbSB3aGVuIHN3YXBwaW5nIGlu
+IGEgdHJhbnNwb3J0IHRvIGEgZGVzdGluYXRpb24gc2VydmVyLCBmb3IgZXhhbXBsZS4NCg0KWW91
+J3JlIGFscmVhZHkgc3dhcHBpbmcgdGhlIGNsX3hwcnQgYW5kIHRoZSBjbF9hdXRoLCB3aHkgc2hv
+dWxkbid0IHlvdQ0KYWxzbyBzd2FwIHRoZSBjbF9wYXJlbnQgaW4gdGhpcyBzaXR1YXRpb24/DQoN
+Cj4gSG93IHdvdWxkIHlvdSBsaWtlIHRvIHByb2NlZWQgd2l0aCBtZXJnaW5nIHRoZXNlPyAgSG9s
+ZCBvZmYgdW50aWwgMy4xMywgdGFrZSB1cCB0byAxNS8zMyBub3cgYW5kIHRoZSByZXN0IGluIDMu
+MTMsIG9yIHRha2UgdGhlIHdob2xlIHNlcmllcyBub3cgYW5kIGZpeCBpdCB1cCBhZnRlciB0aGUg
+d2luZG93IGNsb3Nlcz8NCg0KSSBjYW4gdGFrZSB1cCB0byAxNS8zMyBub3csIGJ1dCBJJ2QgbGlr
+ZSB0aG9zZSB3YXJuaW5ncyBmaXhlZC4gQ2FuIHlvdQ0KdGhyb3cgaW4gc29tZSAnZml4dXAhJyBj
+b21taXRzIGZvciB0aGUgMiBpc3N1ZXMgdGhhdCB3ZXJlIHBvaW50ZWQgb3V0Pw0KDQotLSANClRy
+b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJv
+bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
