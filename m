@@ -1,169 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46170 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:7135 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753548Ab3IERWr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Sep 2013 13:22:47 -0400
-Date: Thu, 5 Sep 2013 13:22:41 -0400
-From: Dr James Bruce Fields <bfields@fieldses.org>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: use mach cred for SECINFO_NO_NAME w/ integrity
-Message-ID: <20130905172241.GA23777@fieldses.org>
-References: <1378311199-1695-1-git-send-email-dros@netapp.com>
- <1378311850.3527.16.camel@leira.trondhjem.org>
- <F4CF12A0-4D67-4C6B-8413-CC2E895E1B9F@netapp.com>
- <1378341909.6143.1.camel@leira.trondhjem.org>
- <20130905140718.GI10232@fieldses.org>
- <ECF01CCB-9391-46C9-8542-8F9163D58E8A@netapp.com>
- <20130905153121.GJ10232@fieldses.org>
- <316C2554-07BD-4DB1-9BA2-4956C83680D0@netapp.com>
+	id S1756709Ab3ICSuf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Sep 2013 14:50:35 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: William Dauchy <wdauchy@gmail.com>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        "Adamson, Andy" <William.Adamson@netapp.com>,
+        William Dauchy <william@gandi.net>
+Subject: Re: [PATCH v2] NFS: Ensure that rmdir() waits for sillyrenames to
+ complete
+Date: Tue, 3 Sep 2013 18:50:34 +0000
+Message-ID: <1378234234.6410.36.camel@leira.trondhjem.org>
+References: <1378145871-30071-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <CAJ75kXbRgsYVRNobCmjeL-t+AJproq8jAxXkbkk9DxGnE9eYhQ@mail.gmail.com>
+In-Reply-To: <CAJ75kXbRgsYVRNobCmjeL-t+AJproq8jAxXkbkk9DxGnE9eYhQ@mail.gmail.com>
+Content-Type: multipart/mixed;
+	boundary="_002_1378234234641036camelleiratrondhjemorg_"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <316C2554-07BD-4DB1-9BA2-4956C83680D0@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 05, 2013 at 05:05:09PM +0000, Adamson, Dros wrote:
-> 
-> On Sep 5, 2013, at 11:31 AM, Dr James Bruce Fields <bfields@fieldses.org> wrote:
-> 
-> > On Thu, Sep 05, 2013 at 03:17:37PM +0000, Adamson, Dros wrote:
-> >> 
-> >> On Sep 5, 2013, at 10:07 AM, Dr James Bruce Fields <bfields@fieldses.org> wrote:
-> >> 
-> >>> On Thu, Sep 05, 2013 at 12:45:09AM +0000, Myklebust, Trond wrote:
-> >>>> On Wed, 2013-09-04 at 16:48 +0000, Adamson, Dros wrote:
-> >>>>> On Sep 4, 2013, at 12:24 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-> >>>>> 
-> >>>>>> On Wed, 2013-09-04 at 12:13 -0400, Weston Andros Adamson wrote:
-> >>>>>>> Commit 97431204ea005ec8070ac94bc3251e836daa7ca7 introduced a regression
-> >>>>>>> that causes SECINFO_NO_NAME to fail without sending an RPC if:
-> >>>>>>> 
-> >>>>>>> 1) the nfs_client's rpc_client is using krb5i/p (now tried by default)
-> >>>>>>> 2) the current user doesn't have valid kerberos credentials
-> >>>>>>> 
-> >>>>>>> This situation is quite common - as of now a sec=sys mount would use
-> >>>>>>> krb5i for the nfs_client's rpc_client and a user would hardly be faulted
-> >>>>>>> for not having run kinit.
-> >>>>>>> 
-> >>>>>>> The solution is to use the machine cred when trying to use an integrity
-> >>>>>>> protected auth flavor for SECINFO_NO_NAME.
-> >>>>>>> 
-> >>>>>>> Older servers may not support using the machine cred or an integrity
-> >>>>>>> protected auth flavor for SECINFO_NO_NAME in every circumstance, so we fall
-> >>>>>>> back to using the user's cred and the filesystem's auth flavor in this case.
-> >>>>>>> 
-> >>>>>>> We run into another problem when running against linux nfs servers -
-> >>>>>>> they return NFS4ERR_WRONGSEC when using integrity auth flavor (unless the
-> >>>>>>> mount is also that flavor) even though that is not a valid error for
-> >>>>>>> SECINFO*.  Even though it's against spec, handle WRONGSEC errors on
-> >>>>>>> SECINFO_NO_NAME by falling back to using the user cred and the
-> >>>>>>> filesystem's auth flavor.
-> >>>>>>> 
-> >>>>>>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-> >>>>>>> ---
-> >>>>>>> 
-> >>>>>>> This patch goes along with yesterday's SECINFO patch
-> >>>>>>> 
-> >>>>>>> fs/nfs/nfs4proc.c | 41 +++++++++++++++++++++++++++++++++++++----
-> >>>>>>> 1 file changed, 37 insertions(+), 4 deletions(-)
-> >>>>>>> 
-> >>>>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> >>>>>>> index ab1461e..74b37f5 100644
-> >>>>>>> --- a/fs/nfs/nfs4proc.c
-> >>>>>>> +++ b/fs/nfs/nfs4proc.c
-> >>>>>>> @@ -7291,7 +7291,8 @@ out:
-> >>>>>>> */
-> >>>>>>> static int
-> >>>>>>> _nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
-> >>>>>>> -		    struct nfs_fsinfo *info, struct nfs4_secinfo_flavors *flavors)
-> >>>>>>> +		    struct nfs_fsinfo *info,
-> >>>>>>> +		    struct nfs4_secinfo_flavors *flavors, bool use_integrity)
-> >>>>>>> {
-> >>>>>>> 	struct nfs41_secinfo_no_name_args args = {
-> >>>>>>> 		.style = SECINFO_STYLE_CURRENT_FH,
-> >>>>>>> @@ -7304,8 +7305,23 @@ _nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
-> >>>>>>> 		.rpc_argp = &args,
-> >>>>>>> 		.rpc_resp = &res,
-> >>>>>>> 	};
-> >>>>>>> -	return nfs4_call_sync(server->nfs_client->cl_rpcclient, server, &msg,
-> >>>>>>> -				&args.seq_args, &res.seq_res, 0);
-> >>>>>>> +	struct rpc_clnt *clnt = server->client;
-> >>>>>>> +	int status;
-> >>>>>>> +
-> >>>>>>> +	if (use_integrity) {
-> >>>>>>> +		clnt = server->nfs_client->cl_rpcclient;
-> >>>>>>> +		msg.rpc_cred = nfs4_get_clid_cred(server->nfs_client);
-> >>>>>>> +	}
-> >>>>>>> +
-> >>>>>>> +	dprintk("--> %s\n", __func__);
-> >>>>>>> +	status = nfs4_call_sync(clnt, server, &msg, &args.seq_args,
-> >>>>>>> +				&res.seq_res, 0);
-> >>>>>>> +	dprintk("<-- %s status=%d\n", __func__, status);
-> >>>>>>> +
-> >>>>>>> +	if (msg.rpc_cred)
-> >>>>>>> +		put_rpccred(msg.rpc_cred);
-> >>>>>>> +
-> >>>>>>> +	return status;
-> >>>>>>> }
-> >>>>>>> 
-> >>>>>>> static int
-> >>>>>>> @@ -7315,7 +7331,24 @@ nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
-> >>>>>>> 	struct nfs4_exception exception = { };
-> >>>>>>> 	int err;
-> >>>>>>> 	do {
-> >>>>>>> -		err = _nfs41_proc_secinfo_no_name(server, fhandle, info, flavors);
-> >>>>>>> +		/* first try using integrity protection */
-> >>>>>>> +		err = -NFS4ERR_WRONGSEC;
-> >>>>>>> +
-> >>>>>>> +		/* try to use integrity protection with machine cred */
-> >>>>>>> +		if (_nfs4_is_integrity_protected(server->nfs_client))
-> >>>>>>> +			err = _nfs41_proc_secinfo_no_name(server, fhandle, info,
-> >>>>>>> +							  flavors, true);
-> >>>>>>> +
-> >>>>>>> +		/*
-> >>>>>>> +		 * if unable to use integrity protection, or SECINFO with
-> >>>>>>> +		 * integrity protection returns NFS4ERR_WRONGSEC (which is
-> >>>>>>> +		 * disallowed by spec, but exists in deployed servers) use
-> >>>>>>> +		 * the current filesystem's rpc_client and the user cred.
-> >>>>>>> +		 */
-> >>>>>>> +		if (err == -NFS4ERR_WRONGSEC)
-> >>>>>>> +			err = _nfs41_proc_secinfo_no_name(server, fhandle, info,
-> >>>>>>> +							  flavors, false);
-> >>>>>> 
-> >>>>>> As I said yesterday, RFC5661 forbids SECINFO_NO_NAME from returning
-> >>>>>> NFS4ERR_WRONGSEC, so this is 100% equivalent to
-> >>>>>> 
-> >>>>>> 	if (!_nfs4_is_integrity_protected())
-> >>>>>> 		err = ….
-> >>>>> 
-> >>>>> Right, but I thought we were doing this to support server implementations like linux that *do* return NFS4ERR_WRONGSEC on SECINFO_NO_NAME even though it's forbidden.  I know we normally don't work around server bugs, but this seems pretty simple.
-> >>>>> 
-> >>>>> If we don't do this, then SECINFO_NO_NAME will always fail against current linux severs no matter what the mount options - unless krb5i/p is unusable (not configured, time skew, no machine cred, etc).
-> >>>> 
-> >>>> Bruce, you're it: what's the deal here?
-> >>> 
-> >>> Dros, in what cases exactly do you see SECINFO_NO_NAME returning
-> >>> WRONGSEC?
-> >>> 
-> >>> From a quick skim of the code it looks like it shouldn't happen in the
-> >>> CURRENT_FH case, which is the one the client uses.  But I probably
-> >>> overlooked something....
-> >>> 
-> >>> --b.
-> >> 
-> >> SECINFO_NO_NAME will fail with NFS4ERR_WRONGSEC in check_nfsd_access when the rpc auth flavor is different from the export's auth flavor - in the same way as SECINFO.
-> > 
-> > Huh.  There's no check_nfsd_access call in secinfo_no_name in the
-> > CURRENT_FH case.  And any checks on the putfh op should be turned off by
-> > the OP_HANDLES_WRONGSEC flag on secinfo_no_name.
-> > 
-> > But I haven't actually tried it, and presumably you have (any hints on
-> > reproducing?), so I'll take a look....
-> > 
-> > --b.
-> 
-> You may be right here - I'm pretty sure I saw SECINFO_NO_NAME fail like this, but I'm not 100%.  I'll try to reproduce and report back.
+--_002_1378234234641036camelleiratrondhjemorg_
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <1A2809469691944FB3066F0930E47C97@hq.netapp.com>
+Content-Transfer-Encoding: base64
 
-OK, thanks.--b.
+T24gVHVlLCAyMDEzLTA5LTAzIGF0IDExOjMzICswMjAwLCBXaWxsaWFtIERhdWNoeSB3cm90ZToN
+Cj4gT24gTW9uLCBTZXAgMiwgMjAxMyBhdCA4OjE3IFBNLCBUcm9uZCBNeWtsZWJ1c3QNCj4gPFRy
+b25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiBJZiBhbiBORlMgY2xpZW50IGRv
+ZXMNCj4gPg0KPiA+ICAgICAgICAgbWtkaXIoImRpciIpOw0KPiA+ICAgICAgICAgZmQgPSBvcGVu
+KCJkaXIvZmlsZSIpOw0KPiA+ICAgICAgICAgdW5saW5rKCJkaXIvZmlsZSIpOw0KPiA+ICAgICAg
+ICAgY2xvc2UoZmQpOw0KPiA+ICAgICAgICAgcm1kaXIoImRpciIpOw0KPiA+DQo+ID4gdGhlbiB0
+aGUgYXN5bmNocm9ub3VzIG5hdHVyZSBvZiB0aGUgc2lsbHlyZW5hbWUgb3BlcmF0aW9uIG1lYW5z
+IHRoYXQNCj4gPiB3ZSBjYW4gZW5kIHVwIGdldHRpbmcgRUJVU1kgZm9yIHRoZSBybWRpcigpIGlu
+IHRoZSBhYm92ZSB0ZXN0LiBGaXgNCj4gPiB0aGF0IGJ5IGVuc3VyaW5nIHRoYXQgd2Ugd2FpdCBm
+b3IgYW55IGluLXByb2dyZXNzIHNpbGx5cmVuYW1lcw0KPiA+IGJlZm9yZSBzZW5kaW5nIHRoZSBy
+bWRpcigpIHRvIHRoZSBzZXJ2ZXIuDQo+IA0KPiBJIHRlc3RlZCB0aGUgcGF0Y2ggb24gdG9wIG9m
+IGEgMy4xMC54DQo+IFdoZW4gZG9pbmcgaGVhdnkgb3BlcmF0aW9ucyBsaWtlIHJtIC1yZiBkaXIv
+IHdpdGggbG90cyBvZiBkYXRhLCB0aGUNCj4gcHJvY2VzcyBnZXRzIHN0dWNrIGZvciBldmVyLg0K
+PiByZW1vdmluZyB0aGUgcGF0Y2ggZml4ZXMgdGhlIGlzc3VlLg0KPiANCg0KSGkgV2lsbGlhbSwN
+Cg0KVGhhbmtzIGFnYWluIGZvciB0ZXN0aW5nISBEb2VzIHRoZSBmb2xsb3dpbmcgZml4dXAgb24g
+dG9wIG9mIHRoZSAndjInDQpwYXRjaCBhbHNvIGhlbHA/DQoNCkNoZWVycw0KICBUcm9uZA0KDQot
+LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFw
+cA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+
+--_002_1378234234641036camelleiratrondhjemorg_
+Content-Type: text/x-patch;
+	name="0001-fixup-NFS-Ensure-that-rmdir-waits-for-sillyrenames-t.patch"
+Content-Description: 0001-fixup-NFS-Ensure-that-rmdir-waits-for-sillyrenames-t.patch
+Content-Disposition: attachment;
+	filename="0001-fixup-NFS-Ensure-that-rmdir-waits-for-sillyrenames-t.patch";
+	size=803; creation-date="Tue, 03 Sep 2013 18:50:34 GMT";
+	modification-date="Tue, 03 Sep 2013 18:50:34 GMT"
+Content-ID: <57F3B4C358670C48BE14B8FDB81C0091@hq.netapp.com>
+Content-Transfer-Encoding: base64
+
+RnJvbSAyODc1ZTZmMzY3NTVkYjEyZWQ2YTViMzYzZjBkMTRhMjZmY2I0OTViIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
+YXBwLmNvbT4NCkRhdGU6IFR1ZSwgMyBTZXAgMjAxMyAxNDo0ODoyMSAtMDQwMA0KU3ViamVjdDog
+W1BBVENIXSBmaXh1cCEgTkZTOiBFbnN1cmUgdGhhdCBybWRpcigpIHdhaXRzIGZvciBzaWxseXJl
+bmFtZXMgdG8NCiBjb21wbGV0ZQ0KDQotLS0NCiBmcy9uZnMvdW5saW5rLmMgfCAyICstDQogMSBm
+aWxlIGNoYW5nZWQsIDEgaW5zZXJ0aW9uKCspLCAxIGRlbGV0aW9uKC0pDQoNCmRpZmYgLS1naXQg
+YS9mcy9uZnMvdW5saW5rLmMgYi9mcy9uZnMvdW5saW5rLmMNCmluZGV4IDBjNmRmZTAuLmJiOTM5
+ZWQgMTAwNjQ0DQotLS0gYS9mcy9uZnMvdW5saW5rLmMNCisrKyBiL2ZzL25mcy91bmxpbmsuYw0K
+QEAgLTIxMSw3ICsyMTEsNyBAQCB2b2lkIG5mc193YWl0X29uX3NpbGx5cmVuYW1lKHN0cnVjdCBk
+ZW50cnkgKmRlbnRyeSkNCiB7DQogCXN0cnVjdCBuZnNfaW5vZGUgKm5mc2kgPSBORlNfSShkZW50
+cnktPmRfaW5vZGUpOw0KIA0KLQl3YWl0X2V2ZW50KG5mc2ktPndhaXRxdWV1ZSwgYXRvbWljX3Jl
+YWQoJm5mc2ktPnNpbGx5X2NvdW50KSA9PSAxKTsNCisJd2FpdF9ldmVudChuZnNpLT53YWl0cXVl
+dWUsIGF0b21pY19yZWFkKCZuZnNpLT5zaWxseV9jb3VudCkgPD0gMSk7DQogfQ0KIA0KIHZvaWQg
+bmZzX2Jsb2NrX3NpbGx5cmVuYW1lKHN0cnVjdCBkZW50cnkgKmRlbnRyeSkNCi0tIA0KMS44LjMu
+MQ0KDQo=
+
+--_002_1378234234641036camelleiratrondhjemorg_--
