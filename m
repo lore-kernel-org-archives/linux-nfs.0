@@ -1,154 +1,178 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:32866 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752968Ab3IEUCE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Sep 2013 16:02:04 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Quentin Barnes <qbarnes@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
-Date: Thu, 5 Sep 2013 20:02:01 +0000
-Message-ID: <1378411320.5450.27.camel@leira.trondhjem.org>
-References: <20130905162110.GA17920@gmail.com>
-	 <20130905170303.GB17330@us.ibm.com> <20130905191139.GA20830@gmail.com>
-In-Reply-To: <20130905191139.GA20830@gmail.com>
-Content-Type: multipart/mixed;
-	boundary="_002_1378411320545027camelleiratrondhjemorg_"
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:51979 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759627Ab3ICSsU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Sep 2013 14:48:20 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
+Subject: Re: [PATCH] nfsd: SECINFO* can use integrity protected flavors
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1378232772-4066-1-git-send-email-dros@netapp.com>
+Date: Tue, 3 Sep 2013 14:48:05 -0400
+Cc: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
+Message-Id: <FA9EEDBA-44B6-4C4D-B981-D5C933A161C2@oracle.com>
+References: <1378232772-4066-1-git-send-email-dros@netapp.com>
+To: Weston Andros Adamson <dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---_002_1378411320545027camelleiratrondhjemorg_
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <51CFE6B1A8CADF40A497B20F799E31F5@hq.netapp.com>
-Content-Transfer-Encoding: base64
 
-T24gVGh1LCAyMDEzLTA5LTA1IGF0IDE0OjExIC0wNTAwLCBRdWVudGluIEJhcm5lcyB3cm90ZToN
-Cj4gT24gVGh1LCBTZXAgMDUsIDIwMTMgYXQgMTI6MDM6MDNQTSAtMDUwMCwgTWFsYWhhbCBOYWlu
-ZW5pIHdyb3RlOg0KPiA+IE5laWwgQnJvd24gcG9zdGVkIGEgcGF0Y2ggY291cGxlIGRheXMgYWdv
-IGZvciB0aGlzIQ0KPiA+IA0KPiA+IGh0dHA6Ly90aHJlYWQuZ21hbmUub3JnL2dtYW5lLmxpbnV4
-Lm5mcy81ODQ3Mw0KPiANCj4gSSB0cmllZCBOZWlsJ3MgcGF0Y2ggb24gYSB2My4xMSBrZXJuZWwu
-ICBUaGUgcmVidWlsdCBrZXJuZWwgc3RpbGwNCj4gZXhoaWJpdGVkIHRoZSBzYW1lIDEwMDBzIG9m
-IFdSSVRFcy9zZWMgcHJvYmxlbS4NCj4gDQo+IEFueSBvdGhlciBpZGVhcz8NCg0KWWVzLiBQbGVh
-c2UgdHJ5IHRoZSBhdHRhY2hlZCBwYXRjaC4NCg0KPiA+IFJlZ2FyZHMsIE1hbGFoYWwuDQo+ID4g
-DQo+ID4gUXVlbnRpbiBCYXJuZXMgW3FiYXJuZXNAZ21haWwuY29tXSB3cm90ZToNCj4gPiA+IElm
-IHR3byAob3IgbW9yZSkgcHJvY2Vzc2VzIGFyZSBkb2luZyBub3RoaW5nIG1vcmUgdGhhbiB3cml0
-aW5nIHRvDQo+ID4gPiB0aGUgbWVtb3J5IGFkZHJlc3NlcyBvZiBhbiBtbWFwcGVkIHNoYXJlZCBm
-aWxlIG9uIGFuIE5GUyBtb3VudGVkDQo+ID4gPiBmaWxlIHN5c3RlbSwgaXQgcmVzdWx0cyBpbiB0
-aGUga2VybmVsIHNjcmliYmxpbmcgV1JJVEVzIHRvIHRoZQ0KPiA+ID4gc2VydmVyIGFzIGZhc3Qg
-YXMgaXQgY2FuICgxMDAwcyBwZXIgc2Vjb25kKSBldmVuIHdoaWxlIG5vIHN5c2NhbGxzDQo+ID4g
-PiBhcmUgZ29pbmcgb24uDQo+ID4gPiANCj4gPiA+IFRoZSBwcm9ibGVtcyBoYXBwZW5zIG9uIE5G
-UyBjbGllbnRzIG1vdW50aW5nIE5GU3YzIG9yIE5GU3Y0LiAgSSd2ZQ0KPiA+ID4gcmVwcm9kdWNl
-ZCB0aGlzIG9uIHRoZSAzLjExIGtlcm5lbCwgYW5kIGl0IGhhcHBlbnMgYXMgZmFyIGJhY2sgYXMN
-Cj4gPiA+IFJIRUw2ICgyLjYuMzIgYmFzZWQpLCBob3dldmVyLCBpdCBpcyBub3QgYSBwcm9ibGVt
-IG9uIFJIRUw1ICgyLjYuMTgNCj4gPiA+IGJhc2VkKS4gIChBbGwgeDg2XzY0IHN5c3RlbXMuKSAg
-SSBkaWRuJ3QgdHJ5IGFueXRoaW5nIGluIGJldHdlZW4uDQo+ID4gPiANCj4gPiA+IEkndmUgY3Jl
-YXRlZCBhIHNlbGYtY29udGFpbmVkIHByb2dyYW0gYmVsb3cgdGhhdCB3aWxsIGRlbW9uc3RyYXRl
-DQo+ID4gPiB0aGUgcHJvYmxlbSAoY2FsbCBpdCAidDEiKS4gIEFzc3VtaW5nIC9tbnQgaGFzIGFu
-IE5GUyBmaWxlIHN5c3RlbToNCj4gPiA+IA0KPiA+ID4gICAkIHQxIC9tbnQvbXluZnNmaWxlIDEg
-ICAgIyBGb3JrIDEgd3JpdGVyLCBrZXJuZWwgYmVoYXZlcyBub3JtYWxseQ0KPiA+ID4gICAkIHQx
-IC9tbnQvbXluZnNmaWxlIDIgICAgIyBGb3JrIDIgd3JpdGVycywga2VybmVsIGdvZXMgY3Jhenkg
-V1JJVEVpbmcNCj4gPiA+IA0KPiA+ID4gSnVzdCBydW4gIndhdGNoIC1kIG5mc3N0YXQiIGluIGFu
-b3RoZXIgd2luZG93IHdoaWxlIHJ1bm5pbmcgdGhlIHR3bw0KPiA+ID4gd3JpdGVyIHRlc3QgYW5k
-IHdhdGNoIHRoZSBXUklURSBjb3VudCBleHBsb2RlLg0KPiA+ID4gDQo+ID4gPiBJIGRvbid0IHNl
-ZSBhbnl0aGluZyBwYXJ0aWN1bGFybHkgd3Jvbmcgd2l0aCB3aGF0IHRoZSBleGFtcGxlIGNvZGUN
-Cj4gPiA+IGlzIGRvaW5nIHdpdGggaXRzIHVzZSBvZiBtbWFwLiAgSXMgdGhlcmUgYW55dGhpbmcg
-dW5kZWZpbmVkIGFib3V0DQo+ID4gPiB0aGUgY29kZSB0aGF0IHdvdWxkIGV4cGxhaW4gdGhpcyBi
-ZWhhdmlvciwgb3IgaXMgdGhpcyBhIE5GUyBidWcNCj4gPiA+IHRoYXQncyByZWFsbHkgbGl2ZWQg
-dGhpcyBsb25nPw0KPiA+ID4gDQo+ID4gPiBRdWVudGluDQo+ID4gPiANCj4gPiA+IA0KPiA+ID4g
-DQo+ID4gPiAjaW5jbHVkZSA8c3lzL3N0YXQuaD4NCj4gPiA+ICNpbmNsdWRlIDxzeXMvbW1hbi5o
-Pg0KPiA+ID4gI2luY2x1ZGUgPHN5cy9zdGF0Lmg+DQo+ID4gPiAjaW5jbHVkZSA8c3lzL3dhaXQu
-aD4NCj4gPiA+ICNpbmNsdWRlIDxlcnJuby5oPg0KPiA+ID4gI2luY2x1ZGUgPGZjbnRsLmg+DQo+
-ID4gPiAjaW5jbHVkZSA8c3RkaW8uaD4NCj4gPiA+ICNpbmNsdWRlIDxzdGRsaWIuaD4NCj4gPiA+
-ICNpbmNsdWRlIDxzaWduYWwuaD4NCj4gPiA+ICNpbmNsdWRlIDxzdHJpbmcuaD4NCj4gPiA+ICNp
-bmNsdWRlIDx1bmlzdGQuaD4NCj4gPiA+IA0KPiA+ID4gaW50DQo+ID4gPiBraWxsX2NoaWxkcmVu
-KCkNCj4gPiA+IHsNCj4gPiA+IAlpbnQJCWNudCA9IDA7DQo+ID4gPiAJc2lnaW5mb190CWluZm9w
-Ow0KPiA+ID4gDQo+ID4gPiAJc2lnbmFsKFNJR0lOVCwgU0lHX0lHTik7DQo+ID4gPiAJa2lsbCgw
-LCBTSUdJTlQpOw0KPiA+ID4gCXdoaWxlICh3YWl0aWQoUF9BTEwsIDAsICZpbmZvcCwgV0VYSVRF
-RCkgIT0gLTEpICsrY250Ow0KPiA+ID4gDQo+ID4gPiAJcmV0dXJuIGNudDsNCj4gPiA+IH0NCj4g
-PiA+IA0KPiA+ID4gdm9pZA0KPiA+ID4gc2lnaGFuZGxlcihpbnQgc2lnKQ0KPiA+ID4gew0KPiA+
-ID4gCXByaW50ZigiQ2xlYW5pbmcgdXAgYWxsIGNoaWxkcmVuLlxuIik7DQo+ID4gPiAJaW50IGNu
-dCA9IGtpbGxfY2hpbGRyZW4oKTsNCj4gPiA+IAlwcmludGYoIkNsZWFuZWQgdXAgJWQgY2hpbGQl
-cy5cbiIsIGNudCwgY250ID09IDEgPyAiIiA6ICJyZW4iKTsNCj4gPiA+IA0KPiA+ID4gCWV4aXQo
-MCk7DQo+ID4gPiB9DQo+ID4gPiANCj4gPiA+IGludA0KPiA+ID4gZG9fY2hpbGQodm9sYXRpbGUg
-aW50ICppYWRkcikNCj4gPiA+IHsNCj4gPiA+IAl3aGlsZSAoMSkgKmlhZGRyID0gMTsNCj4gPiA+
-IH0NCj4gPiA+IA0KPiA+ID4gaW50DQo+ID4gPiBtYWluKGludCBhcmdjLCBjaGFyICoqYXJndikN
-Cj4gPiA+IHsNCj4gPiA+IAljb25zdCBjaGFyCSpwYXRoOw0KPiA+ID4gCWludAkJZmQ7DQo+ID4g
-PiAJc3NpemVfdAkJd2xlbjsNCj4gPiA+IAlpbnQJCSppcDsNCj4gPiA+IAlpbnQJCWZvcmtfY291
-bnQgPSAxOw0KPiA+ID4gDQo+ID4gPiAJaWYgKGFyZ2MgPT0gMSkgew0KPiA+ID4gCQlmcHJpbnRm
-KHN0ZGVyciwgIlVzYWdlOiAlcyB7ZmlsZW5hbWV9IFtmb3JrX2NvdW50XS5cbiIsDQo+ID4gPiAJ
-CQlhcmd2WzBdKTsNCj4gPiA+IAkJcmV0dXJuIDE7DQo+ID4gPiAJfQ0KPiA+ID4gDQo+ID4gPiAJ
-cGF0aCA9IGFyZ3ZbMV07DQo+ID4gPiANCj4gPiA+IAlpZiAoYXJnYyA+IDIpIHsNCj4gPiA+IAkJ
-aW50IGZjID0gYXRvaShhcmd2WzJdKTsNCj4gPiA+IAkJaWYgKGZjID49IDApDQo+ID4gPiAJCQlm
-b3JrX2NvdW50ID0gZmM7DQo+ID4gPiAJfQ0KPiA+ID4gDQo+ID4gPiAJZmQgPSBvcGVuKHBhdGgs
-IE9fQ1JFQVR8T19UUlVOQ3xPX1JEV1J8T19BUFBFTkQsIFNfSVJVU1J8U19JV1VTUik7DQo+ID4g
-PiAJaWYgKGZkIDwgMCkgew0KPiA+ID4gCQlmcHJpbnRmKHN0ZGVyciwgIk9wZW4gb2YgJyVzJyBm
-YWlsZWQ6ICVzICglZClcbiIsDQo+ID4gPiAJCQlwYXRoLCBzdHJlcnJvcihlcnJubyksIGVycm5v
-KTsNCj4gPiA+IAkJcmV0dXJuIDE7DQo+ID4gPiAJfQ0KPiA+ID4gDQo+ID4gPiAJd2xlbiA9IHdy
-aXRlKGZkLCAmKGludCl7MH0sIHNpemVvZihpbnQpKTsNCj4gPiA+IAlpZiAod2xlbiAhPSBzaXpl
-b2YoaW50KSkgew0KPiA+ID4gCQlpZiAod2xlbiA8IDApDQo+ID4gPiAJCQlmcHJpbnRmKHN0ZGVy
-ciwgIldyaXRlIG9mICclcycgZmFpbGVkOiAlcyAoJWQpXG4iLA0KPiA+ID4gCQkJCXBhdGgsIHN0
-cmVycm9yKGVycm5vKSwgZXJybm8pOw0KPiA+ID4gCQllbHNlDQo+ID4gPiAJCQlmcHJpbnRmKHN0
-ZGVyciwgIlNob3J0IHdyaXRlIHRvICclcydcbiIsIHBhdGgpOw0KPiA+ID4gCQlyZXR1cm4gMTsN
-Cj4gPiA+IAl9DQo+ID4gPiANCj4gPiA+IAlpcCA9IChpbnQgKiltbWFwKE5VTEwsIHNpemVvZihp
-bnQpLCBQUk9UX1JFQUR8UFJPVF9XUklURSwNCj4gPiA+IAkJCSAgIE1BUF9TSEFSRUQsIGZkLCAw
-KTsNCj4gPiA+IAlpZiAoaXAgPT0gTUFQX0ZBSUxFRCkgew0KPiA+ID4gCQlmcHJpbnRmKHN0ZGVy
-ciwgIk1tYXAgb2YgJyVzJyBmYWlsZWQ6ICVzICglZClcbiIsDQo+ID4gPiAJCQlwYXRoLCBzdHJl
-cnJvcihlcnJubyksIGVycm5vKTsNCj4gPiA+IAkJcmV0dXJuIDE7DQo+ID4gPiAJfQ0KPiA+ID4g
-DQo+ID4gPiAJc2lnbmFsKFNJR0lOVCwgc2lnaGFuZGxlcik7DQo+ID4gPiANCj4gPiA+IAl3aGls
-ZSAoZm9ya19jb3VudC0tID4gMCkgew0KPiA+ID4gCQlzd2l0Y2goZm9yaygpKSB7DQo+ID4gPiAJ
-CWNhc2UgLTE6DQo+ID4gPiAJCQlmcHJpbnRmKHN0ZGVyciwgIkZvcmsgZmFpbGVkOiAlcyAoJWQp
-XG4iLA0KPiA+ID4gCQkJCXN0cmVycm9yKGVycm5vKSwgZXJybm8pOw0KPiA+ID4gCQkJa2lsbF9j
-aGlsZHJlbigpOw0KPiA+ID4gCQkJcmV0dXJuIDE7DQo+ID4gPiAJCWNhc2UgMDogICAvKiBjaGls
-ZCAgKi8NCj4gPiA+IAkJCXNpZ25hbChTSUdJTlQsIFNJR19ERkwpOw0KPiA+ID4gCQkJZG9fY2hp
-bGQoaXApOw0KPiA+ID4gCQkJYnJlYWs7DQo+ID4gPiAJCWRlZmF1bHQ6ICAvKiBwYXJlbnQgKi8N
-Cj4gPiA+IAkJCWJyZWFrOw0KPiA+ID4gCQl9DQo+ID4gPiAJfQ0KPiA+ID4gDQo+ID4gPiAJcHJp
-bnRmKCJQcmVzcyBeQyB0byB0ZXJtaW5hdGUgdGVzdC5cbiIpOw0KPiA+ID4gCXBhdXNlKCk7DQo+
-ID4gPiANCj4gPiA+IAlyZXR1cm4gMDsNCj4gPiA+IH0NCj4gPiA+IC0tDQo+ID4gPiBUbyB1bnN1
-YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgt
-bmZzIiBpbg0KPiA+ID4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtl
-cm5lbC5vcmcNCj4gPiA+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5l
-bC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KPiA+ID4gDQo+ID4gDQo+IA0KPiBRdWVudGluDQo+
-IC0tDQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1
-YnNjcmliZSBsaW51eC1uZnMiIGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRv
-bW9Admdlci5rZXJuZWwub3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2Vy
-Lmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
-TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5l
-dGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+On Sep 3, 2013, at 2:26 PM, Weston Andros Adamson <dros@netapp.com> wrote:
 
---_002_1378411320545027camelleiratrondhjemorg_
-Content-Type: text/x-patch;
-	name="0001-NFS-Don-t-check-lock-owner-compatibility-in-writes-u.patch"
-Content-Description: 0001-NFS-Don-t-check-lock-owner-compatibility-in-writes-u.patch
-Content-Disposition: attachment;
-	filename="0001-NFS-Don-t-check-lock-owner-compatibility-in-writes-u.patch";
-	size=1257; creation-date="Thu, 05 Sep 2013 20:02:01 GMT";
-	modification-date="Thu, 05 Sep 2013 20:02:01 GMT"
-Content-ID: <91368020B98CA54CA732529781BED2A8@hq.netapp.com>
-Content-Transfer-Encoding: base64
+> SECINFO and SECINFO_NONAME should be able to use integrity protected auth
+> flavors even if the export wasn't explicitly configured to use them.
+> 
+> An example is a sec=sys export - upstream linux clients will attempt to use
+> krb5i for EXCHANGE_ID, CREATE_SESSION, DESTROY_SESSION, etc.  If this is
+> successful, the client will try to use the same auth flavor for SECINFO
+> as described in the Security Considerations sections of rfc3530 and rfc5661.
 
-RnJvbSA5MDNlYmFlZWZhZTc4ZTZlMDNmMzcxOWFhZmE4ZmQ1ZGQyMmQzMjg4IE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbT4NCkRhdGU6IFRodSwgNSBTZXAgMjAxMyAxNTo1Mjo1MSAtMDQwMA0KU3ViamVjdDog
-W1BBVENIXSBORlM6IERvbid0IGNoZWNrIGxvY2sgb3duZXIgY29tcGF0aWJpbGl0eSBpbiB3cml0
-ZXMgdW5sZXNzDQogZmlsZSBpcyBsb2NrZWQNCg0KSWYgd2UncmUgZG9pbmcgYnVmZmVyZWQgd3Jp
-dGVzLCBhbmQgdGhlcmUgaXMgbm8gZmlsZSBsb2NraW5nIGludm9sdmVkLA0KdGhlbiB3ZSBkb24n
-dCBoYXZlIHRvIHdvcnJ5IGFib3V0IHdoZXRoZXIgb3Igbm90IHRoZSBsb2NrIG93bmVyIGluZm9y
-bWF0aW9uDQppcyBpZGVudGljYWwuDQpCeSByZWxheGluZyB0aGlzIGNoZWNrLCB3ZSBlbnN1cmUg
-dGhhdCBmb3JrKCllZCBjaGlsZCBwcm9jZXNzZXMgY2FuIHdyaXRlDQp0byBhIHBhZ2Ugd2l0aG91
-dCBoYXZpbmcgdG8gZmlyc3Qgc3luYyBkaXJ0eSBkYXRhIHRoYXQgd2FzIHdyaXR0ZW4NCmJ5IHRo
-ZSBwYXJlbnQgdG8gZGlzay4NCg0KU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9u
-ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCi0tLQ0KIGZzL25mcy93cml0ZS5jIHwgMiArLQ0KIDEg
-ZmlsZSBjaGFuZ2VkLCAxIGluc2VydGlvbigrKSwgMSBkZWxldGlvbigtKQ0KDQpkaWZmIC0tZ2l0
-IGEvZnMvbmZzL3dyaXRlLmMgYi9mcy9uZnMvd3JpdGUuYw0KaW5kZXggNDA5NzllOC4uYWMxZGMz
-MyAxMDA2NDQNCi0tLSBhL2ZzL25mcy93cml0ZS5jDQorKysgYi9mcy9uZnMvd3JpdGUuYw0KQEAg
-LTg2Myw3ICs4NjMsNyBAQCBpbnQgbmZzX2ZsdXNoX2luY29tcGF0aWJsZShzdHJ1Y3QgZmlsZSAq
-ZmlsZSwgc3RydWN0IHBhZ2UgKnBhZ2UpDQogCQkJcmV0dXJuIDA7DQogCQlsX2N0eCA9IHJlcS0+
-d2JfbG9ja19jb250ZXh0Ow0KIAkJZG9fZmx1c2ggPSByZXEtPndiX3BhZ2UgIT0gcGFnZSB8fCBy
-ZXEtPndiX2NvbnRleHQgIT0gY3R4Ow0KLQkJaWYgKGxfY3R4KSB7DQorCQlpZiAobF9jdHggJiYg
-Y3R4LT5kZW50cnktPmRfaW5vZGUtPmlfZmxvY2sgIT0gTlVMTCkgew0KIAkJCWRvX2ZsdXNoIHw9
-IGxfY3R4LT5sb2Nrb3duZXIubF9vd25lciAhPSBjdXJyZW50LT5maWxlcw0KIAkJCQl8fCBsX2N0
-eC0+bG9ja293bmVyLmxfcGlkICE9IGN1cnJlbnQtPnRnaWQ7DQogCQl9DQotLSANCjEuOC4zLjEN
-Cg0K
+The reason krb5i can work for lease management operations is because those operations are not connected to any particular export, so typically they are not controlled directly by export security settings.
 
---_002_1378411320545027camelleiratrondhjemorg_--
+But I'm not sure all server implementations will allow a SECINFO on an FSID using a flavor not allowed by the FSID's export options.  SECINFO is definitely connected to a particular FSID, unlike lease management operations.
+
+Given FreeBSD's implementation choices wrt lease management security flavors, that would be the first server I'd check.
+
+> This patch adds a nfsd4_op_flag to describe operations that may use these
+> auth flavors to get around nfsd_access() checks. This should be useful in
+> future implementations of SP4_MACH_CRED (nfsd_permission still needs to be
+> handled).
+> 
+> This patch also stops SECINFO* from returning NFS4ERR_WRONGSEC which is
+> not allowed by either rfc3530 (not in list of allowed errors) or rfc6551
+
+5661
+
+> (section 2.6.3.1.1.5 says it MUST NOT).
+
+That sounds inconsistent with the Security Considerations recommendation.
+
+Recommending that a client use integrity protection means servers MUST support it, or the client has to be prepared to retry it with some other flavor, and the server MUST have a way to ask for a retry (ie in that case, wouldn't WRONGSEC be the correct way to make such a request?).
+
+Is there anything more in these RFCs that would require a server to support SECINFO via krb5i?
+
+Thus I wonder if clients can depend on a krb5i SECINFO on a sec=sys FSID working everywhere.
+
+> 
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> ---
+> fs/nfsd/export.c   | 10 ++++++++++
+> fs/nfsd/nfs4proc.c | 27 ++++++++++++++++++++++++---
+> fs/nfsd/xdr4.h     |  2 ++
+> 3 files changed, 36 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+> index 5f38ea3..e2e5a13 100644
+> --- a/fs/nfsd/export.c
+> +++ b/fs/nfsd/export.c
+> @@ -22,6 +22,7 @@
+> #include "nfsd.h"
+> #include "nfsfh.h"
+> #include "netns.h"
+> +#include "xdr4.h"
+> 
+> #define NFSDDBG_FACILITY	NFSDDBG_EXPORT
+> 
+> @@ -909,6 +910,15 @@ __be32 check_nfsd_access(struct svc_export *exp, struct svc_rqst *rqstp)
+> 		    rqstp->rq_cred.cr_flavor == RPC_AUTH_UNIX)
+> 			return 0;
+> 	}
+> +
+> +	/* some operations allow use of integrity even though the mount
+> +	 * may not be */
+> +	if (nfsd4_allow_integrity(rqstp)) {
+> +		if (rqstp->rq_cred.cr_flavor == RPC_AUTH_GSS_KRB5I ||
+> +		    rqstp->rq_cred.cr_flavor == RPC_AUTH_GSS_KRB5P)
+> +			return 0;
+> +	}
+> +
+> 	return nfserr_wrongsec;
+> }
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 0d4c410..ce79483 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1158,6 +1158,11 @@ enum nfsd4_op_flags {
+> 	 * These are ops which clear current state id.
+> 	 */
+> 	OP_CLEAR_STATEID = 1 << 7,
+> +	/*
+> +	 * Procedures that can use auth flavors other than flavors
+> +	 * specified in the export as long as they are integrity protected.
+> +	 */
+> +	OP_ALLOW_INTEGRITY = 1 << 8,
+> };
+> 
+> struct nfsd4_operation {
+> @@ -1249,7 +1254,23 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
+> 	 * errors themselves as necessary; others should check for them
+> 	 * now:
+> 	 */
+> -	return !(nextd->op_flags & OP_HANDLES_WRONGSEC);
+> +	return !(nextd->op_flags & (OP_HANDLES_WRONGSEC | OP_ALLOW_INTEGRITY));
+> +}
+> +
+> +bool
+> +nfsd4_allow_integrity(struct svc_rqst *rqstp)
+> +{
+> +	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+> +	struct nfsd4_compoundargs *argp = rqstp->rq_argp;
+> +	struct nfsd4_op *this = &argp->ops[resp->opcnt - 1];
+> +	struct nfsd4_operation *thisd;
+> +
+> +	thisd = OPDESC(this);
+> +
+> +	if (thisd->op_flags & OP_ALLOW_INTEGRITY)
+> +		return true;
+> +
+> +	return false;
+> }
+> 
+> /*
+> @@ -1727,7 +1748,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+> 	},
+> 	[OP_SECINFO] = {
+> 		.op_func = (nfsd4op_func)nfsd4_secinfo,
+> -		.op_flags = OP_HANDLES_WRONGSEC,
+> +		.op_flags = OP_ALLOW_INTEGRITY,
+> 		.op_name = "OP_SECINFO",
+> 	},
+> 	[OP_SETATTR] = {
+> @@ -1825,7 +1846,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+> 	},
+> 	[OP_SECINFO_NO_NAME] = {
+> 		.op_func = (nfsd4op_func)nfsd4_secinfo_no_name,
+> -		.op_flags = OP_HANDLES_WRONGSEC,
+> +		.op_flags = OP_ALLOW_INTEGRITY,
+> 		.op_name = "OP_SECINFO_NO_NAME",
+> 	},
+> 	[OP_TEST_STATEID] = {
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index b3ed644..ed79b6d 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -481,6 +481,8 @@ struct nfsd4_op {
+> 
+> bool nfsd4_cache_this_op(struct nfsd4_op *);
+> 
+> +bool nfsd4_allow_integrity(struct svc_rqst *);
+> +
+> struct nfsd4_compoundargs {
+> 	/* scratch variables for XDR decode */
+> 	__be32 *			p;
+> -- 
+> 1.7.12.4 (Apple Git-37)
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
