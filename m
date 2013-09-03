@@ -1,35 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.195]:61964 "EHLO mout.perfora.net"
+Received: from mx11.netapp.com ([216.240.18.76]:36784 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752655Ab3IBXZH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Sep 2013 19:25:07 -0400
-From: Jim Rees <rees@umich.edu>
-To: Steve Dickson <steved@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] utils/exportfs/exports.man: quote command to preserve space
-Date: Mon,  2 Sep 2013 19:24:55 -0400
-Message-Id: <1378164295-2032-1-git-send-email-rees@umich.edu>
+	id S1753680Ab3ICQLL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Sep 2013 12:11:11 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 5 2/5] NFS: Warn when attempting a buffered
+ write or commit with an expired credential
+Date: Tue, 3 Sep 2013 16:10:54 +0000
+Message-ID: <1378224652.6410.6.camel@leira.trondhjem.org>
+References: <1376495957-7482-1-git-send-email-andros@netapp.com>
+	 <1376495957-7482-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1376495957-7482-3-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- utils/exportfs/exports.man | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
-index bc1de73..58c0f66 100644
---- a/utils/exportfs/exports.man
-+++ b/utils/exportfs/exports.man
-@@ -39,7 +39,7 @@ the export name using a backslash followed by the character code as three
- octal digits.
- .PP
- To apply changes to this file, run
--.BR exportfs \-ra
-+.BR "exportfs \-ra"
- or restart the NFS server.
- .PP
- .SS Machine Name Formats
--- 
-1.8.3.4
-
+T24gV2VkLCAyMDEzLTA4LTE0IGF0IDExOjU5IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFNpZ25l
+ZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiAgZnMv
+bmZzL3dyaXRlLmMgfCAxMSArKysrKysrKysrKw0KPiAgMSBmaWxlIGNoYW5nZWQsIDExIGluc2Vy
+dGlvbnMoKykNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvd3JpdGUuYyBiL2ZzL25mcy93cml0
+ZS5jDQo+IGluZGV4IGYxYmRiNzIuLjdiN2QzNjAgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy93cml0
+ZS5jDQo+ICsrKyBiL2ZzL25mcy93cml0ZS5jDQo+IEBAIC0xMzMwLDYgKzEzMzAsMTQgQEAgdm9p
+ZCBuZnNfd3JpdGViYWNrX2RvbmUoc3RydWN0IHJwY190YXNrICp0YXNrLCBzdHJ1Y3QgbmZzX3dy
+aXRlX2RhdGEgKmRhdGEpDQo+ICAJZHByaW50aygiTkZTOiAlNXUgbmZzX3dyaXRlYmFja19kb25l
+IChzdGF0dXMgJWQpXG4iLA0KPiAgCQl0YXNrLT50a19waWQsIHRhc2stPnRrX3N0YXR1cyk7DQo+
+ICANCj4gKwlpZiAodGFzay0+dGtfc3RhdHVzID09IC1FS0VZRVhQSVJFRCkNCj4gKwkJcHJfd2Fy
+bl9yYXRlbGltaXRlZCgiTkZTOiAgICAgICAgd3JpdGUgYXR0ZW1wdCB3aXRoIGV4cGlyZWQgIg0K
+PiArCQkJImNyZWRlbnRpYWwgcmVxICVzLyVsbGQsICV1IGJ5dGVzIEAgb2Zmc2V0ICVsbHVcbiIs
+DQo+ICsJCQlpbm9kZS0+aV9zYi0+c19pZCwNCj4gKwkJCShsb25nIGxvbmcpTkZTX0ZJTEVJRChp
+bm9kZSksDQo+ICsJCQlkYXRhLT5hcmdzLmNvdW50LA0KPiArCQkJKHVuc2lnbmVkIGxvbmcgbG9u
+ZylkYXRhLT5hcmdzLm9mZnNldCk7DQo+ICsNCj4gIAkvKg0KPiAgCSAqIC0+d3JpdGVfZG9uZSB3
+aWxsIGF0dGVtcHQgdG8gdXNlIHBvc3Qtb3AgYXR0cmlidXRlcyB0byBkZXRlY3QNCj4gIAkgKiBj
+b25mbGljdGluZyB3cml0ZXMgYnkgb3RoZXIgY2xpZW50cy4gIEEgc3RyaWN0IGludGVycHJldGF0
+aW9uDQo+IEBAIC0xNTU2LDYgKzE1NjQsOSBAQCBzdGF0aWMgdm9pZCBuZnNfY29tbWl0X2RvbmUo
+c3RydWN0IHJwY190YXNrICp0YXNrLCB2b2lkICpjYWxsZGF0YSkNCj4gIA0KPiAgICAgICAgICBk
+cHJpbnRrKCJORlM6ICU1dSBuZnNfY29tbWl0X2RvbmUgKHN0YXR1cyAlZClcbiIsDQo+ICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgIHRhc2stPnRrX3BpZCwgdGFzay0+dGtfc3RhdHVz
+KTsNCj4gKwlpZiAodGFzay0+dGtfc3RhdHVzID09IC1FS0VZRVhQSVJFRCkNCj4gKwkJcHJfd2Fy
+bl9yYXRlbGltaXRlZCgiTkZTOiAgICAgICBjb21taXQgYXR0ZW1wdCB3aXRoIGV4cGlyZWQgIg0K
+PiArCQkJCSJjcmVkZW50aWFsXG4iKTsNCj4gIA0KPiAgCS8qIENhbGwgdGhlIE5GUyB2ZXJzaW9u
+LXNwZWNpZmljIGNvZGUgKi8NCj4gIAlORlNfUFJPVE8oZGF0YS0+aW5vZGUpLT5jb21taXRfZG9u
+ZSh0YXNrLCBkYXRhKTsNCg0KSSB3YW50IHRvIGhvbGQgb24gYXBwbHlpbmcgdGhpcyB1bnRpbCBp
+dCBpcyBjbGVhciB0aGF0IHdlIG5lZWQgaXQuIEl0DQppc24ndCBvYnZpb3VzIHRvIG1lIHdoeSB3
+ZSBuZWVkIHRvIGxvZyB0aGlzIGluZm9ybWF0aW9uIHRvIHRoZSBjb25zb2xlDQppZiB3ZSdyZSBh
+bHJlYWR5IHJldHVybmluZyBlcnJvciB2YWx1ZXMgdG8gdGhlIGFwcGxpY2F0aW9uLg0KDQotLSAN
+ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
+VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
