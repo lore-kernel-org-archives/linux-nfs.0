@@ -1,69 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:18807 "EHLO mx12.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:30701 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754643Ab3IZVpZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Sep 2013 17:45:25 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH] SUNRPC: call_connect_status should recheck bind and connect status on error
-Date: Thu, 26 Sep 2013 17:45:07 -0400
-Message-ID: <1380231907-13733-9-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1380231907-13733-8-git-send-email-Trond.Myklebust@netapp.com>
-References: <1380231907-13733-1-git-send-email-Trond.Myklebust@netapp.com>
- <1380231907-13733-2-git-send-email-Trond.Myklebust@netapp.com>
- <1380231907-13733-3-git-send-email-Trond.Myklebust@netapp.com>
- <1380231907-13733-4-git-send-email-Trond.Myklebust@netapp.com>
- <1380231907-13733-5-git-send-email-Trond.Myklebust@netapp.com>
- <1380231907-13733-6-git-send-email-Trond.Myklebust@netapp.com>
- <1380231907-13733-7-git-send-email-Trond.Myklebust@netapp.com>
- <1380231907-13733-8-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752605Ab3ICQEX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Sep 2013 12:04:23 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 5 2/3] NFS Share RPC_AUTH_GSS rpc clients
+Date: Tue, 3 Sep 2013 16:04:22 +0000
+Message-ID: <1378224261.6410.2.camel@leira.trondhjem.org>
+References: <1376430469-3773-1-git-send-email-andros@netapp.com>
+	 <1376430469-3773-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1376430469-3773-3-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, we go directly to call_transmit which sends us to call_status
-on error. If we know that the connect attempt failed, we should rather
-just jump straight back to call_bind and/or call_transmit
-
-Also ensure that EAGAIN checks for a timeout event.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- net/sunrpc/clnt.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
-
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 46d061f..6ebf74c 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1692,20 +1692,23 @@ call_connect_status(struct rpc_task *task)
- 	dprint_status(task);
- 
- 	trace_rpc_connect_status(task, status);
-+	task->tk_status = 0;
- 	switch (status) {
- 		/* if soft mounted, test if we've timed out */
-+	case -EAGAIN:
- 	case -ETIMEDOUT:
- 		task->tk_action = call_timeout;
- 		return;
- 	case -ECONNREFUSED:
- 	case -ECONNRESET:
- 	case -ENETUNREACH:
-+		/* retry with existing socket, after a delay */
-+		rpc_delay(task, 3*HZ);
- 		if (RPC_IS_SOFTCONN(task))
- 			break;
--		/* retry with existing socket, after a delay */
-+		task->tk_action = call_bind;
-+		return;
- 	case 0:
--	case -EAGAIN:
--		task->tk_status = 0;
- 		clnt->cl_stats->netreconn++;
- 		task->tk_action = call_transmit;
- 		return;
--- 
-1.8.3.1
-
+SGkgQW5keSwNCg0KT24gVHVlLCAyMDEzLTA4LTEzIGF0IDE3OjQ3IC0wNDAwLCBhbmRyb3NAbmV0
+YXBwLmNvbSB3cm90ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4N
+Cj4gDQo+IFRoZSBjdXJyZW50IHVzZSBvZiBfX3JwY19jbG9uZV9jbGllbnQgcmVzdWx0cyBpbiBt
+dWx0aXBsZSBycGMgY2xpZW50cyB3aXRoDQo+IHRoZSBzYW1lIEdTUyBycGNfYXV0aCB0eXBlLCBl
+YWNoIHdpdGggaXQncyBvd24gZ3NzX2NvbnRleHQgY2FjaGUuDQo+IFRoaXMgY2FuIHJlc3VsdCBp
+biBtdWx0aXBsZSBnc3NfY29udGV4dHMgZm9yIDx1c2VyLCBwc2V1ZG9mbGF2b3IsIHNlcnZlcj4g
+dHVwbGUuDQo+IA0KPiBUbyBhdm9pZCBtdWx0aXBsZSBnc3NfY29udGV4dHMgc2hhcmUgcGVyIHNl
+cnZlci9wc2V1ZG9mbGF2b3IgY2xpZW50cyBhbmQgdGhlIHJlc3VsdGFudCBnc3NfY29udGV4dCBj
+YWNoZS4NCg0KVGhpcyBpc3N1ZSBoYXMgbm93IGJlZW4gc29sdmVkIGF0IHRoZSBycGNfYXV0aCBs
+ZXZlbC4gUGxlYXNlIG5vdGUgdGhhdA0Kd2UgX2hhZF8gdG8gc29sdmUgaXQgdGhlcmUgc2luY2Ug
+dGhlIHVwY2FsbCBwaXBlcyBmb3Iga3JiNSwga3JiNWkgYW5kDQprcmI1cCBuZWVkIHRvIGJlIHNo
+YXJlZCB0b28uDQoNCj4gV2UgYWxzbyBhZGQgdGhlIFJQQ19BVVRIX1VOSVggY2xpZW50IGZvciB0
+aGUgcE5GUyBEYXRhIFNlcnZlciBjYXNlIHVzZWQgaW4NCj4gYSBzdWJzZXF1ZW50IHBhdGNoLCBl
+dmVuIHRob3VnaCB0aGUgUlBDX0FVVEhfVU5JWCBhdXRoIGNhY2hlIGlzIGFscmVhZHkgc2hhcmVk
+Lg0KDQpDYW4geW91IHBsZWFzZSBsb29rIGludG8gd2hldGhlciBvciBub3Qgd2Ugc3RpbGwgd2Fu
+dCB0byBkbyB0aGlzPw0KDQpDaGVlcnMsDQogIFRyb25kDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
+DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RA
+bmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
