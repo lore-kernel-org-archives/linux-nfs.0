@@ -1,73 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:59478 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752643Ab3I0PXN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Sep 2013 11:23:13 -0400
-Message-ID: <5245A2DE.9020307@opengridcomputing.com>
-Date: Fri, 27 Sep 2013 10:23:10 -0500
-From: Tom Tucker <tom@opengridcomputing.com>
+Received: from mx11.netapp.com ([216.240.18.76]:24190 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755723Ab3ICQHs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Sep 2013 12:07:48 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 5 1/5] SUNRPC: don't map EKEYEXPIRED to EACCES
+ in call_refreshresult
+Date: Tue, 3 Sep 2013 16:07:47 +0000
+Message-ID: <1378224467.6410.3.camel@leira.trondhjem.org>
+References: <1376495957-7482-1-git-send-email-andros@netapp.com>
+	 <1376495957-7482-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1376495957-7482-2-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Dan Carpenter <dan.carpenter@oracle.com>
-CC: Tom Tucker <tom@ogc.us>, "J. Bruce Fields" <bfields@redhat.com>,
-        netdev@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: question about map_read_chunks()
-References: <20120220095019.GA21338@elgon.mountain> <20130927122108.GF6247@mwanda>
-In-Reply-To: <20130927122108.GF6247@mwanda>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Dan,
-
-On 9/27/13 7:21 AM, Dan Carpenter wrote:
-> I have looked at this again, and I still worry that it looks like a bug.
-> (remote security related blah blah blah).
->
-> regards,
-> dan carpenter
->
-> On Mon, Feb 20, 2012 at 12:50:19PM +0300, Dan Carpenter wrote:
->> I had a couple questions about some map_read_chunks().
->>
->> net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
->>
->>     150          ch_bytes = ntohl(ch->rc_target.rs_length);
->>                  ^^^^^^^^
->> It look like this is 32 bits from the network?
->>
->>     151          head->arg.head[0] = rqstp->rq_arg.head[0];
->>     152          head->arg.tail[0] = rqstp->rq_arg.tail[0];
->>     153          head->arg.pages = &head->pages[head->count];
->>     154          head->hdr_count = head->count; /* save count of hdr pages */
->>     155          head->arg.page_base = 0;
->>     156          head->arg.page_len = ch_bytes;
->>     157          head->arg.len = rqstp->rq_arg.len + ch_bytes;
->>                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
->> Can overflow.
->>     158          head->arg.buflen = rqstp->rq_arg.buflen + ch_bytes;
-agreed.
->>                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
->> Same.  I didn't follow it through to see if an overflow matters.  Does
->> it?
->>
->>     159          head->count++;
->>     160          chl_map->ch[0].start = 0;
->>     161          while (byte_count) {
->>     162                  rpl_map->sge[sge_no].iov_base =
->>     163                          page_address(rqstp->rq_arg.pages[page_no]) + page_off;
->>     164                  sge_bytes = min_t(int, PAGE_SIZE-page_off, ch_bytes);
->>                                            ^^^
->> This is the wrong cast to use.  A large ch_bytes would be counted as a
->> negative value and get around the cap here.
-True, but if we validate the wire data like we should, that's probably 
-not an issue.
-
->>     165                  rpl_map->sge[sge_no].iov_len = sge_bytes;
->>
->> regards,
->> dan carpenter
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+T24gV2VkLCAyMDEzLTA4LTE0IGF0IDExOjU5IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFRoZSBO
+RlMgbGF5ZXIgbmVlZHMgdG8ga25vdyB3aGVuIGEga2V5IGhhcyBleHBpcmVkLg0KPiBUaGlzIGNo
+YW5nZSBhbHNvIHJldHVybnMgLUVLRVlFWFBJUkVEIHRvIHRoZSBhcHBsaWNhdGlvbiwgYW5kIHRo
+ZSBpbmZvcm1hdGl2ZQ0KPiAiS2V5IGhhcyBleHBpcmVkIiBlcnJvciBtZXNzYWdlIGlzIGRpc3Bs
+YXllZC4gVGhlIHVzZXIgdGhlbiBrbm93cyB0aGF0DQo+IGNyZWRlbnRpYWwgcmVuZXdhbCBpcyBy
+ZXF1aXJlZC4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFw
+cC5jb20+DQo+IC0tLQ0KPiAgbmV0L3N1bnJwYy9jbG50LmMgfCAyICstDQo+ICAxIGZpbGUgY2hh
+bmdlZCwgMSBpbnNlcnRpb24oKyksIDEgZGVsZXRpb24oLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9u
+ZXQvc3VucnBjL2NsbnQuYyBiL25ldC9zdW5ycGMvY2xudC5jDQo+IGluZGV4IGVjYmM0ZTMuLmI1
+NDQ5NjUgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMvY2xudC5jDQo+ICsrKyBiL25ldC9zdW5y
+cGMvY2xudC5jDQo+IEBAIC0xNDIzLDkgKzE0MjMsOSBAQCBjYWxsX3JlZnJlc2hyZXN1bHQoc3Ry
+dWN0IHJwY190YXNrICp0YXNrKQ0KPiAgCQlyZXR1cm47DQo+ICAJY2FzZSAtRVRJTUVET1VUOg0K
+PiAgCQlycGNfZGVsYXkodGFzaywgMypIWik7DQo+IC0JY2FzZSAtRUtFWUVYUElSRUQ6DQo+ICAJ
+Y2FzZSAtRUFHQUlOOg0KPiAgCQlzdGF0dXMgPSAtRUFDQ0VTOw0KPiArCWNhc2UgLUVLRVlFWFBJ
+UkVEOg0KPiAgCQlpZiAoIXRhc2stPnRrX2NyZWRfcmV0cnkpDQo+ICAJCQlicmVhazsNCj4gIAkJ
+dGFzay0+dGtfY3JlZF9yZXRyeS0tOw0KDQpBcHBsaWVkLg0KDQotLSANClRyb25kIE15a2xlYnVz
+dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0
+QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
