@@ -1,47 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:58379 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755110Ab3I3RtC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Sep 2013 13:49:02 -0400
-Message-ID: <5249B987.8020807@itwm.fraunhofer.de>
-Date: Mon, 30 Sep 2013 19:48:55 +0200
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Received: from mx12.netapp.com ([216.240.18.77]:44748 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754304Ab3ICQMM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Sep 2013 12:12:12 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 5 3/5] SUNRPC new rpc_credops to test credential
+ expiry
+Date: Tue, 3 Sep 2013 16:12:10 +0000
+Message-ID: <1378224730.6410.7.camel@leira.trondhjem.org>
+References: <1376495957-7482-1-git-send-email-andros@netapp.com>
+	 <1376495957-7482-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1376495957-7482-4-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Miklos Szeredi <miklos@szeredi.hu>, Ric Wheeler <rwheeler@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Zach Brown <zab@redhat.com>,
-        Anna Schumaker <schumaker.anna@gmail.com>,
-        Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        Eric Wong <normalperson@yhbt.net>
-Subject: Re: [RFC] extending splice for copy offloading
-References: <20130930143432.GG16579@fieldses.org>	 <CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com>	 <52499026.3090802@redhat.com>	 <CAJfpegtpXuh9070ALGy16Y8kdgioBqSf4JQqBBCF4FHvFJWAWQ@mail.gmail.com>	 <52498AA8.2090204@redhat.com>	 <CAJfpegv_C6cLOuA-mNtgtf2QbmmmcHwjQVo8mAnhf_wbJ8iRhg@mail.gmail.com>	 <52498DB6.7060901@redhat.com>	 <CAJfpegsvrr7x3MbdpvxUmzq0ZfDHfZkzAar6Od2G7wg8DgPLYQ@mail.gmail.com>	 <52498F68.8050200@redhat.com>	 <CAJfpegvvN_5c5oMv8UoODXQHc-DQnijhOtPDXmNamVpQLDoWMQ@mail.gmail.com>	 <20130930163159.GA14242@tucsk.piliscsaba.szeredi.hu>	 <5249B21E.70603@itwm.fraunhofer.de> <1380563050.6501.15.camel@leira.trondhjem.org>
-In-Reply-To: <1380563050.6501.15.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/30/2013 07:44 PM, Myklebust, Trond wrote:
-> On Mon, 2013-09-30 at 19:17 +0200, Bernd Schubert wrote:
->> It would be nice if there would be way if the file system would get a
->> hint that the target file is supposed to be copy of another file. That
->> way distributed file systems could also create the target-file with the
->> correct meta-information (same storage targets as in-file has).
->> Well, if we cannot agree on that, file system with a custom protocol at
->> least can detect from 0 to SSIZE_MAX and then reset metadata. I'm not
->> sure if this would work for pNFS, though.
->
-> splice() does not create new files. What you appear to be asking for
-> lies way outside the scope of that system call interface.
->
-
-Sorry I know, definitely outside the scope of splice, but in the context 
-of offloaded file copies. So the question is, what is the best way to 
-address/discuss that?
-
-Thanks,
-Bernd
+T24gV2VkLCAyMDEzLTA4LTE0IGF0IDExOjU5IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFRoaXMg
+cGF0Y2ggcHJvdmlkZXMgdGhlIFJQQyBsYXllciBoZWxwZXIgZnVuY3Rpb25zIHRvIGFsbG93IE5G
+UyB0byBtYW5hZ2UNCj4gZGF0YSBpbiB0aGUgZmFjZSBvZiBleHBpcmVkIGNyZWRlbnRpYWxzIC0g
+c3VjaCBhcyBhdm9pZGluZyBidWZmZXJlZCBXUklURXMNCj4gYW5kIENPTU1JVHMgd2hlbiB0aGUg
+Z3NzIGNvbnRleHQgd2lsbCBleHBpcmUgYmVmb3JlIHRoZSBXUklURXMgYXJlIGZsdXNoZWQNCj4g
+YW5kIENPTU1JVHMgYXJlIHNlbnQuDQo+IA0KPiBUaGVzZSBoZWxwZXIgZnVuY3Rpb25zIGVuYWJs
+ZSBjaGVja2luZyB0aGUgZXhwaXJhdGlvbiBvZiBhbiB1bmRlcmx5aW5nDQo+IGNyZWRlbnRpYWwg
+a2V5IGZvciBhIGdlbmVyaWMgcnBjIGNyZWRlbnRpYWwsIGUuZy4gdGhlIGdzc19jcmVkIGdzcyBj
+b250ZXh0DQo+IGdjX2V4cGlyeSB3aGljaCBmb3IgS2VyYmVyb3MgaXMgc2V0IHRvIHRoZSByZW1h
+aW5pbmcgVEdUIGxpZmV0aW1lLg0KPiANCj4gQSBuZXcgcnBjX2F1dGhvcHMga2V5X3RpbWVvdXQg
+aXMgb25seSBkZWZpbmVkIGZvciB0aGUgZ2VuZXJpYyBhdXRoLg0KPiBBIG5ldyBycGNfY3JlZG9w
+cyBjcmtleV90b19leHBpcmUgaXMgb25seSBkZWZpbmVkIGZvciB0aGUgZ2VuZXJpYyBjcmVkLg0K
+PiBBIG5ldyBycGNfY3JlZG9wcyBjcmtleV90aW1lb3V0IGlzIG9ubHkgZGVmaW5lZCBmb3IgdGhl
+IGdzcyBjcmVkLg0KPiANCj4gU2V0IGEgY3JlZGVudGlhbCBrZXkgZXhwaXJ5IHdhdGVybWFyaywg
+UlBDX0tFWV9FWFBJUkVfVElNRU8gc2V0IHRvIDI0MCBzZWNvbmRzDQo+IGFzIGEgZGVmYXVsdCBh
+bmQgY2FuIGJlIHNldCB2aWEgYSBtb2R1bGUgcGFyYW1ldGVyIGFzIHdlIG5lZWQgdG8gZW5zdXJl
+IHRoZXJlDQo+IGlzIHRpbWUgZm9yIGFueSBkaXJ0eSBkYXRhIHRvIGJlIGZsdXNoZWQuDQo+IA0K
+PiBJZiBrZXlfdGltZW91dCBpcyBjYWxsZWQgb24gYSBjcmVkZW50aWFsIHdpdGggYW4gdW5kZXJs
+eWluZyBjcmVkZW50aWFsIGtleSB0aGF0DQo+IHdpbGwgZXhwaXJlIHdpdGhpbiB3YXRlcm1hcmsg
+c2Vjb25kcywgd2Ugc2V0IHRoZSBSUENfQ1JFRF9LRVlfRVhQSVJFX1NPT04NCj4gZmxhZyBpbiB0
+aGUgZ2VuZXJpY19jcmVkIGFjcmVkIHNvIHRoYXQgdGhlIE5GUyBsYXllciBjYW4gY2xlYW4gdXAg
+cHJpb3IgdG8NCj4ga2V5IGV4cGlyYXRpb24uDQo+IA0KPiBDaGVja2luZyBhIGdlbmVyaWMgY3Jl
+ZGVudGlhbCdzIHVuZGVybHlpbmcgY3JlZGVudGlhbCBpbnZvbHZlcyBhIGNyZWQgbG9va3VwLg0K
+PiBUbyBhdm9pZCB0aGlzIGxvb2t1cCBpbiB0aGUgbm9ybWFsIGNhc2Ugd2hlbiB0aGUgdW5kZXJs
+eWluZyBjcmVkZW50aWFsIGhhcw0KPiBhIGtleSB0aGF0IGlzIHZhbGlkIChiZWZvcmUgdGhlIHdh
+dGVybWFyayksIGEgbm90aWZ5IGZsYWcgaXMgc2V0IGluDQo+IHRoZSBnZW5lcmljIGNyZWRlbnRp
+YWwgdGhlIGZpcnN0IHRpbWUgdGhlIGtleV90aW1lb3V0IGlzIGNhbGxlZC4gVGhlDQo+IGdlbmVy
+aWMgY3JlZGVudGlhbCB0aGVuIHN0b3BzIGNoZWNraW5nIHRoZSB1bmRlcmx5aW5nIGNyZWRlbnRp
+YWwga2V5IGV4cGlyeSwgYW5kDQo+IHRoZSB1bmRlcmx5aW5nIGNyZWRlbnRpYWwgKGdzc19jcmVk
+KSBtYXRjaCByb3V0aW5lIHRoZW4gY2hlY2tzIHRoZSBrZXkNCj4gZXhwaXJhdGlvbiB1cG9uIGVh
+Y2ggbm9ybWFsIHVzZSBhbmQgc2V0cyBhIGZsYWcgaW4gdGhlIGFzc29jaWF0ZWQgZ2VuZXJpYw0K
+PiBjcmVkZW50aWFsIG9ubHkgd2hlbiB0aGUga2V5IGV4cGlyYXRpb24gaXMgd2l0aGluIHRoZSB3
+YXRlcm1hcmsuDQo+IFRoaXMgaW4gdHVybiBzaWduYWxzIHRoZSBnZW5lcmljIGNyZWRlbnRpYWwg
+a2V5X3RpbWVvdXQgdG8gcGVyZm9ybSB0aGUgZXh0cmENCj4gY3JlZGVudGlhbCBsb29rdXAgdGhl
+cmVhZnRlci4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFw
+cC5jb20+DQo+IC0tLQ0KDQpBcHBsaWVkLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
+TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
+b20NCnd3dy5uZXRhcHAuY29tDQo=
