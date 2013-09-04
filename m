@@ -1,77 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:13286 "EHLO mx11.netapp.com"
+Received: from e8.ny.us.ibm.com ([32.97.182.138]:57776 "EHLO e8.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750704Ab3IERZt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Sep 2013 13:25:49 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: use mach cred for SECINFO_NO_NAME w/ integrity
-Date: Thu, 5 Sep 2013 17:25:48 +0000
-Message-ID: <1378401946.5450.13.camel@leira.trondhjem.org>
-References: <1378311199-1695-1-git-send-email-dros@netapp.com>
-In-Reply-To: <1378311199-1695-1-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1757178Ab3IDQUz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Sep 2013 12:20:55 -0400
+Received: from /spool/local
+	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Wed, 4 Sep 2013 17:20:54 +0100
+Received: from b01cxnp23033.gho.pok.ibm.com (b01cxnp23033.gho.pok.ibm.com [9.57.198.28])
+	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 459276E803F
+	for <linux-nfs@vger.kernel.org>; Wed,  4 Sep 2013 12:20:48 -0400 (EDT)
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by b01cxnp23033.gho.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r84GKmgq16122100
+	for <linux-nfs@vger.kernel.org>; Wed, 4 Sep 2013 16:20:48 GMT
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r84GKlBi019953
+	for <linux-nfs@vger.kernel.org>; Wed, 4 Sep 2013 12:20:48 -0400
+Date: Wed, 4 Sep 2013 11:20:45 -0500
+From: Malahal Naineni <malahal@us.ibm.com>
+To: jupiter <jupiter.hce@gmail.com>
+Cc: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: NFS 4 error
+Message-ID: <20130904162045.GC7433@us.ibm.com>
+References: <CAA=hcWR28P=bbJvZAmWRF9sr=0=B8SyBsq3U1x2-kTQ=Rr0U4A@mail.gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAA=hcWR28P=bbJvZAmWRF9sr=0=B8SyBsq3U1x2-kTQ=Rr0U4A@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEzLTA5LTA0IGF0IDEyOjEzIC0wNDAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
-d3JvdGU6DQo+IENvbW1pdCA5NzQzMTIwNGVhMDA1ZWM4MDcwYWM5NGJjMzI1MWU4MzZkYWE3Y2E3
-IGludHJvZHVjZWQgYSByZWdyZXNzaW9uDQo+IHRoYXQgY2F1c2VzIFNFQ0lORk9fTk9fTkFNRSB0
-byBmYWlsIHdpdGhvdXQgc2VuZGluZyBhbiBSUEMgaWY6DQo+IA0KPiAgMSkgdGhlIG5mc19jbGll
-bnQncyBycGNfY2xpZW50IGlzIHVzaW5nIGtyYjVpL3AgKG5vdyB0cmllZCBieSBkZWZhdWx0KQ0K
-PiAgMikgdGhlIGN1cnJlbnQgdXNlciBkb2Vzbid0IGhhdmUgdmFsaWQga2VyYmVyb3MgY3JlZGVu
-dGlhbHMNCj4gDQo+IFRoaXMgc2l0dWF0aW9uIGlzIHF1aXRlIGNvbW1vbiAtIGFzIG9mIG5vdyBh
-IHNlYz1zeXMgbW91bnQgd291bGQgdXNlDQo+IGtyYjVpIGZvciB0aGUgbmZzX2NsaWVudCdzIHJw
-Y19jbGllbnQgYW5kIGEgdXNlciB3b3VsZCBoYXJkbHkgYmUgZmF1bHRlZA0KPiBmb3Igbm90IGhh
-dmluZyBydW4ga2luaXQuDQo+IA0KPiBUaGUgc29sdXRpb24gaXMgdG8gdXNlIHRoZSBtYWNoaW5l
-IGNyZWQgd2hlbiB0cnlpbmcgdG8gdXNlIGFuIGludGVncml0eQ0KPiBwcm90ZWN0ZWQgYXV0aCBm
-bGF2b3IgZm9yIFNFQ0lORk9fTk9fTkFNRS4NCj4gDQo+IE9sZGVyIHNlcnZlcnMgbWF5IG5vdCBz
-dXBwb3J0IHVzaW5nIHRoZSBtYWNoaW5lIGNyZWQgb3IgYW4gaW50ZWdyaXR5DQo+IHByb3RlY3Rl
-ZCBhdXRoIGZsYXZvciBmb3IgU0VDSU5GT19OT19OQU1FIGluIGV2ZXJ5IGNpcmN1bXN0YW5jZSwg
-c28gd2UgZmFsbA0KPiBiYWNrIHRvIHVzaW5nIHRoZSB1c2VyJ3MgY3JlZCBhbmQgdGhlIGZpbGVz
-eXN0ZW0ncyBhdXRoIGZsYXZvciBpbiB0aGlzIGNhc2UuDQo+IA0KPiBXZSBydW4gaW50byBhbm90
-aGVyIHByb2JsZW0gd2hlbiBydW5uaW5nIGFnYWluc3QgbGludXggbmZzIHNlcnZlcnMgLQ0KPiB0
-aGV5IHJldHVybiBORlM0RVJSX1dST05HU0VDIHdoZW4gdXNpbmcgaW50ZWdyaXR5IGF1dGggZmxh
-dm9yICh1bmxlc3MgdGhlDQo+IG1vdW50IGlzIGFsc28gdGhhdCBmbGF2b3IpIGV2ZW4gdGhvdWdo
-IHRoYXQgaXMgbm90IGEgdmFsaWQgZXJyb3IgZm9yDQo+IFNFQ0lORk8qLiAgRXZlbiB0aG91Z2gg
-aXQncyBhZ2FpbnN0IHNwZWMsIGhhbmRsZSBXUk9OR1NFQyBlcnJvcnMgb24NCj4gU0VDSU5GT19O
-T19OQU1FIGJ5IGZhbGxpbmcgYmFjayB0byB1c2luZyB0aGUgdXNlciBjcmVkIGFuZCB0aGUNCj4g
-ZmlsZXN5c3RlbSdzIGF1dGggZmxhdm9yLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogV2VzdG9uIEFu
-ZHJvcyBBZGFtc29uIDxkcm9zQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiANCj4gVGhpcyBwYXRjaCBn
-b2VzIGFsb25nIHdpdGggeWVzdGVyZGF5J3MgU0VDSU5GTyBwYXRjaA0KPiANCj4gIGZzL25mcy9u
-ZnM0cHJvYy5jIHwgNDEgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKy0tLS0N
-Cj4gIDEgZmlsZSBjaGFuZ2VkLCAzNyBpbnNlcnRpb25zKCspLCA0IGRlbGV0aW9ucygtKQ0KPiAN
-Cj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZzL25mczRwcm9jLmMNCj4g
-aW5kZXggYWIxNDYxZS4uNzRiMzdmNSAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL25mczRwcm9jLmMN
-Cj4gKysrIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gQEAgLTcyOTEsNyArNzI5MSw4IEBAIG91dDoN
-Cj4gICAqLw0KPiAgc3RhdGljIGludA0KPiAgX25mczQxX3Byb2Nfc2VjaW5mb19ub19uYW1lKHN0
-cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIsIHN0cnVjdCBuZnNfZmggKmZoYW5kbGUsDQo+IC0JCSAg
-ICBzdHJ1Y3QgbmZzX2ZzaW5mbyAqaW5mbywgc3RydWN0IG5mczRfc2VjaW5mb19mbGF2b3JzICpm
-bGF2b3JzKQ0KPiArCQkgICAgc3RydWN0IG5mc19mc2luZm8gKmluZm8sDQo+ICsJCSAgICBzdHJ1
-Y3QgbmZzNF9zZWNpbmZvX2ZsYXZvcnMgKmZsYXZvcnMsIGJvb2wgdXNlX2ludGVncml0eSkNCj4g
-IHsNCj4gIAlzdHJ1Y3QgbmZzNDFfc2VjaW5mb19ub19uYW1lX2FyZ3MgYXJncyA9IHsNCj4gIAkJ
-LnN0eWxlID0gU0VDSU5GT19TVFlMRV9DVVJSRU5UX0ZILA0KPiBAQCAtNzMwNCw4ICs3MzA1LDIz
-IEBAIF9uZnM0MV9wcm9jX3NlY2luZm9fbm9fbmFtZShzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVy
-LCBzdHJ1Y3QgbmZzX2ZoICpmaGFuZGxlLA0KPiAgCQkucnBjX2FyZ3AgPSAmYXJncywNCj4gIAkJ
-LnJwY19yZXNwID0gJnJlcywNCj4gIAl9Ow0KPiAtCXJldHVybiBuZnM0X2NhbGxfc3luYyhzZXJ2
-ZXItPm5mc19jbGllbnQtPmNsX3JwY2NsaWVudCwgc2VydmVyLCAmbXNnLA0KPiAtCQkJCSZhcmdz
-LnNlcV9hcmdzLCAmcmVzLnNlcV9yZXMsIDApOw0KPiArCXN0cnVjdCBycGNfY2xudCAqY2xudCA9
-IHNlcnZlci0+Y2xpZW50Ow0KPiArCWludCBzdGF0dXM7DQo+ICsNCj4gKwlpZiAodXNlX2ludGVn
-cml0eSkgew0KPiArCQljbG50ID0gc2VydmVyLT5uZnNfY2xpZW50LT5jbF9ycGNjbGllbnQ7DQo+
-ICsJCW1zZy5ycGNfY3JlZCA9IG5mczRfZ2V0X2NsaWRfY3JlZChzZXJ2ZXItPm5mc19jbGllbnQp
-Ow0KPiArCX0NCj4gKw0KPiArCWRwcmludGsoIi0tPiAlc1xuIiwgX19mdW5jX18pOw0KPiArCXN0
-YXR1cyA9IG5mczRfY2FsbF9zeW5jKGNsbnQsIHNlcnZlciwgJm1zZywgJmFyZ3Muc2VxX2FyZ3Ms
-DQo+ICsJCQkJJnJlcy5zZXFfcmVzLCAwKTsNCj4gKwlkcHJpbnRrKCI8LS0gJXMgc3RhdHVzPSVk
-XG4iLCBfX2Z1bmNfXywgc3RhdHVzKTsNCj4gKw0KPiArCWlmIChtc2cucnBjX2NyZWQpDQo+ICsJ
-CXB1dF9ycGNjcmVkKG1zZy5ycGNfY3JlZCk7DQo+ICsNCj4gKwlyZXR1cm4gc3RhdHVzOw0KPiAg
-fQ0KDQpJIGhhdmUgYSBxdWVzdGlvbjogaWYgd2UgdXNlIHRoZSBtYWNoaW5lIGNyZWRlbnRpYWws
-IGRvbid0IHdlIHJpc2sgYQ0KTkZTNEVSUl9BQ0NFU1MgZHVlIHRvIHRoZSBkaXJlY3RvcnkgcGVy
-bWlzc2lvbiBzZXR0aW5ncz8NCg0KSSBkb24ndCBzZWUgYW55dGhpbmcgaW4gdGhlIHNwZWMgYWJv
-dXQgd2hhdCBwZXJtaXNzaW9ucyB5b3UgZG8gbmVlZCBmb3INCmEgU0VDSU5GT19OT19OQU1FLCBi
-dXQgc2luY2UgTkZTNEVSUl9BQ0NFU1MgaXMgbGlzdGVkIGFzIGEgdmFsaWQgcmV0dXJuDQpjb2Rl
-LCBJJ20gYXNzdW1pbmcgdGhhdCB0aGUgc2VydmVyIG1heSBlbmZvcmNlIGxvb2t1cCBwZXJtaXNz
-aW9ucy4uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
-bmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29t
-DQo=
+jupiter [jupiter.hce@gmail.com] wrote:
+> Hi,
+> 
+> I am running NFS 4 server on CentOS 6.4 for many months, it works
+> well. Recently I found that the dmesg display many following errors
+> but it still works. I searched google but could not find result of how
+> to fix it. What are those error message means? Are the errors serious
+> or not? How to fix it?
+> 
+> --------
+> rpc-srv/tcp: nfsd: got error -32 when sending 24 bytes - shutting down socket
+> rpc-srv/tcp: nfsd: got error -32 when sending 24 bytes - shutting down socket
+
+When the nfsd (NFS server thread) was trying to send something, it got
+-32 (EPIPE) error.  I have seen this kind of errors when the socket is
+closed by clients.  Clients do close the socket (and recreate one) when
+they need to retry due to network failures.
+
+They are NOT serious errors, and if they are still happening, then look
+at your network errors/retries etc.
+
+Regards, Malahal.
+
