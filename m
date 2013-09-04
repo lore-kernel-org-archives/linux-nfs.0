@@ -1,203 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39115 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:2684 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753261Ab3ISUuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Sep 2013 16:50:39 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: [PATCH 01/13] vfs: pull ext4's double-i_mutex-locking into common code
-Date: Thu, 19 Sep 2013 16:50:25 -0400
-Message-Id: <1379623837-30798-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1379623837-30798-1-git-send-email-bfields@redhat.com>
-References: <1379623837-30798-1-git-send-email-bfields@redhat.com>
+	id S1757085Ab3IDQzf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Sep 2013 12:55:35 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r84GtZvT025667
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 4 Sep 2013 12:55:35 -0400
+Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r84GtYW5020064
+	for <linux-nfs@vger.kernel.org>; Wed, 4 Sep 2013 12:55:34 -0400
+Message-ID: <52276616.6080100@RedHat.com>
+Date: Wed, 04 Sep 2013 12:55:50 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Linux NFS Town Hall  meeting 09/05/13
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Hello,
 
-We want to do this elsewhere as well.
+A Linux NFS town hall is schedule for tomorrow (Thur Sep 5th)
 
-Also catch any attempts to use it for directories (where this ordering
-would conflict with ancestor-first directory ordering in lock_rename).
+The usual agenda is for the maintainers to give a quick status of what's
+happening in area's they maintain. Next, Chuck updates us on what's 
+happen in the FedFS world. Next we open up the floor to other other contributors,
+like Andy, who likes talks about security "stuff" ;-) Finally, we open the 
+floor to questions, comments, concerns from the community.  
 
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: Dave Chinner <david@fromorbit.com>
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Acked-by: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/ext4/ext4.h        |    2 --
- fs/ext4/ioctl.c       |    4 ++--
- fs/ext4/move_extent.c |   40 ++--------------------------------------
- fs/inode.c            |   36 ++++++++++++++++++++++++++++++++++++
- include/linux/fs.h    |    3 +++
- 5 files changed, 43 insertions(+), 42 deletions(-)
+Generally the meeting last between 30 to 45 mins, with a very hard stop at 60mins. 
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index af815ea..d01d623 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2734,8 +2734,6 @@ extern void ext4_double_down_write_data_sem(struct inode *first,
- 					    struct inode *second);
- extern void ext4_double_up_write_data_sem(struct inode *orig_inode,
- 					  struct inode *donor_inode);
--void ext4_inode_double_lock(struct inode *inode1, struct inode *inode2);
--void ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2);
- extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 			     __u64 start_orig, __u64 start_donor,
- 			     __u64 len, __u64 *moved_len);
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index a569d33..60589b6 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -130,7 +130,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 
- 	/* Protect orig inodes against a truncate and make sure,
- 	 * that only 1 swap_inode_boot_loader is running. */
--	ext4_inode_double_lock(inode, inode_bl);
-+	lock_two_nondirectories(inode, inode_bl);
- 
- 	truncate_inode_pages(&inode->i_data, 0);
- 	truncate_inode_pages(&inode_bl->i_data, 0);
-@@ -205,7 +205,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 	ext4_inode_resume_unlocked_dio(inode);
- 	ext4_inode_resume_unlocked_dio(inode_bl);
- 
--	ext4_inode_double_unlock(inode, inode_bl);
-+	unlock_two_nondirectories(inode, inode_bl);
- 
- 	iput(inode_bl);
- 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 7fa4d85..773b503 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -1203,42 +1203,6 @@ mext_check_arguments(struct inode *orig_inode,
- }
- 
- /**
-- * ext4_inode_double_lock - Lock i_mutex on both @inode1 and @inode2
-- *
-- * @inode1:	the inode structure
-- * @inode2:	the inode structure
-- *
-- * Lock two inodes' i_mutex
-- */
--void
--ext4_inode_double_lock(struct inode *inode1, struct inode *inode2)
--{
--	BUG_ON(inode1 == inode2);
--	if (inode1 < inode2) {
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
--	} else {
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
--	}
--}
--
--/**
-- * ext4_inode_double_unlock - Release i_mutex on both @inode1 and @inode2
-- *
-- * @inode1:     the inode that is released first
-- * @inode2:     the inode that is released second
-- *
-- */
--
--void
--ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2)
--{
--	mutex_unlock(&inode1->i_mutex);
--	mutex_unlock(&inode2->i_mutex);
--}
--
--/**
-  * ext4_move_extents - Exchange the specified range of a file
-  *
-  * @o_filp:		file structure of the original file
-@@ -1327,7 +1291,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 		return -EINVAL;
- 	}
- 	/* Protect orig and donor inodes against a truncate */
--	ext4_inode_double_lock(orig_inode, donor_inode);
-+	lock_two_nondirectories(orig_inode, donor_inode);
- 
- 	/* Wait for all existing dio workers */
- 	ext4_inode_block_unlocked_dio(orig_inode);
-@@ -1535,7 +1499,7 @@ out:
- 	ext4_double_up_write_data_sem(orig_inode, donor_inode);
- 	ext4_inode_resume_unlocked_dio(orig_inode);
- 	ext4_inode_resume_unlocked_dio(donor_inode);
--	ext4_inode_double_unlock(orig_inode, donor_inode);
-+	unlock_two_nondirectories(orig_inode, donor_inode);
- 
- 	return ret;
- }
-diff --git a/fs/inode.c b/fs/inode.c
-index b33ba8e..9271c48 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -951,6 +951,42 @@ void unlock_new_inode(struct inode *inode)
- EXPORT_SYMBOL(unlock_new_inode);
- 
- /**
-+ * lock_two_nondirectories - take two i_mutexes on non-directory objects
-+ * @inode1: first inode to lock
-+ * @inode2: second inode to lock
-+ */
-+void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
-+{
-+	WARN_ON_ONCE(S_ISDIR(inode1->i_mode));
-+	if (inode1 == inode2 || !inode2) {
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
-+		return;
-+	}
-+	WARN_ON_ONCE(S_ISDIR(inode2->i_mode));
-+	if (inode1 < inode2) {
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
-+		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
-+	} else {
-+		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
-+	}
-+}
-+EXPORT_SYMBOL(lock_two_nondirectories);
-+
-+/**
-+ * unlock_two_nondirectories - release locks from lock_two_nondirectories()
-+ * @inode1: first inode to unlock
-+ * @inode2: second inode to unlock
-+ */
-+void unlock_two_nondirectories(struct inode *inode1, struct inode *inode2)
-+{
-+	mutex_unlock(&inode1->i_mutex);
-+	if (inode2 && inode2 != inode1)
-+		mutex_unlock(&inode2->i_mutex);
-+}
-+EXPORT_SYMBOL(unlock_two_nondirectories);
-+
-+/**
-  * iget5_locked - obtain an inode from a mounted file system
-  * @sb:		super block of file system
-  * @hashval:	hash value (usually inode number) to get
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 3f40547..9f83ed3 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -637,6 +637,9 @@ enum inode_i_mutex_lock_class
- 	I_MUTEX_QUOTA
- };
- 
-+void lock_two_nondirectories(struct inode *, struct inode*);
-+void unlock_two_nondirectories(struct inode *, struct inode*);
-+
- /*
-  * NOTE: in a 32bit arch with a preemptable kernel and
-  * an UP compile the i_size_read/write must be atomic
--- 
-1.7.9.5
+It is open to the entire community, so feel free to attend. 
+
+Time: 9:30 AM PST (12:30 PM EST)
+
+The call in numbers are:
+U.S. and Canada: (800) 451-8679
+International dial-in number: (212) 729-5016
+Israel Toll-Free: 1-809-462-557
+Conference code: 564.272.1552
+
+steved.
 
