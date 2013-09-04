@@ -1,69 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e7.ny.us.ibm.com ([32.97.182.137]:43388 "EHLO e7.ny.us.ibm.com"
+Received: from mx12.netapp.com ([216.240.18.77]:21762 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755812Ab3IDTuY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Sep 2013 15:50:24 -0400
-Received: from /spool/local
-	by e7.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Wed, 4 Sep 2013 15:50:23 -0400
-Received: from b01cxnp23034.gho.pok.ibm.com (b01cxnp23034.gho.pok.ibm.com [9.57.198.29])
-	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id 4B5C1C90048
-	for <linux-nfs@vger.kernel.org>; Wed,  4 Sep 2013 15:50:10 -0400 (EDT)
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by b01cxnp23034.gho.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r84Jo9Sg16318648
-	for <linux-nfs@vger.kernel.org>; Wed, 4 Sep 2013 19:50:09 GMT
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r84Jo8VC008308
-	for <linux-nfs@vger.kernel.org>; Wed, 4 Sep 2013 13:50:08 -0600
-Date: Wed, 4 Sep 2013 14:50:07 -0500
-From: Malahal Naineni <malahal@us.ibm.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: jupiter <jupiter.hce@gmail.com>, NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: NFS 4 error
-Message-ID: <20130904195007.GC9877@us.ibm.com>
-References: <CAA=hcWR28P=bbJvZAmWRF9sr=0=B8SyBsq3U1x2-kTQ=Rr0U4A@mail.gmail.com>
- <20130904162045.GC7433@us.ibm.com>
- <20130904193852.GD10232@fieldses.org>
+	id S1756792Ab3IDOdg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Sep 2013 10:33:36 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: NeilBrown <neilb@suse.de>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH/RFC] make nfs_flush_incompatible more forgiving.
+Date: Wed, 4 Sep 2013 14:33:35 +0000
+Message-ID: <1378305214.3527.10.camel@leira.trondhjem.org>
+References: <20130904113632.1a1eb337@notabene.brown>
+In-Reply-To: <20130904113632.1a1eb337@notabene.brown>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130904193852.GD10232@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields [bfields@fieldses.org] wrote:
-> On Wed, Sep 04, 2013 at 11:20:45AM -0500, Malahal Naineni wrote:
-> > jupiter [jupiter.hce@gmail.com] wrote:
-> > > Hi,
-> > > 
-> > > I am running NFS 4 server on CentOS 6.4 for many months, it works
-> > > well. Recently I found that the dmesg display many following errors
-> > > but it still works. I searched google but could not find result of how
-> > > to fix it. What are those error message means? Are the errors serious
-> > > or not? How to fix it?
-> > > 
-> > > --------
-> > > rpc-srv/tcp: nfsd: got error -32 when sending 24 bytes - shutting down socket
-> > > rpc-srv/tcp: nfsd: got error -32 when sending 24 bytes - shutting down socket
-> > 
-> > When the nfsd (NFS server thread) was trying to send something, it got
-> > -32 (EPIPE) error.  I have seen this kind of errors when the socket is
-> > closed by clients.  Clients do close the socket (and recreate one) when
-> > they need to retry due to network failures.
-> > 
-> > They are NOT serious errors, and if they are still happening, then look
-> > at your network errors/retries etc.
-> 
-> We should really just demote this to a dprintk, in that case.
-> 
-> The network failures are potentially a serious problem if they mean the
-> client's forced to retry a nonidempotent operation.  But we probably
-> shouldn't be spamming the logs by default?
-
-I haven't seen many of these messages. That is the only message logged when
-the socket gets closed. It is a KERN_NOTICE level message. We can rate
-limit it, but in my experience, I haven't seen a need for rate limiting
-it.
-
-Regards, Malahal.
-
+T24gV2VkLCAyMDEzLTA5LTA0IGF0IDExOjM2ICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IEhp
+LA0KPiAgd2UgaGF2ZSBhIGN1c3RvbWVyIHdobyBoYXMgbm90aWNlZCBhIHNpZ25pZmljYW50IHJl
+Z3Jlc3Npb24gaW4gTkZTDQo+ICBwZXJmb3JtYW5jZSBiZXR3ZWVuIFNMRVMxMCAoMi42LjE2Kykg
+YW5kIFNMRVMxMSAoMy4wKykuDQo+IA0KPiAgVGhlIHVzZSBjYXNlIGludm9sdmVzIHR3byBkaWZm
+ZXJlbnQgcHJvY2Vzc2VzIG9uIHRoZSBzYW1lIGNsaWVudCBtbWFwcGluZyBhDQo+ICBmaWxlIGFu
+ZCBtYWtpbmcgY2hhbmdlcy4NCj4gDQo+ICBJbiAyLjYuMTYsIGFsbCB0aGVzZSBjaGFuZ2VzIHdv
+dWxkIGJlIGNhY2hlZCBvbiB0aGUgY2xpZW50IHVudGlsIGEgZmx1c2ggb3INCj4gIGNsb3NlIG9y
+IG90aGVyIG5vcm1hbCBwcm9jZXNzIGZsdXNoZWQgdGhlIGNoYW5nZXMgb3V0IC0gbXVjaCB0aGUg
+c2FtZSBhcyBpZg0KPiAganVzdCBvbmUgcHJvY2VzcyB3YXMgYWNjZXNzaW5nIHRoZSBmaWxlLg0K
+PiANCj4gIEluIDMuMCB0aGUgZmlsZSBpcyBmbHVzaGVkIG91dCBldmVyeSB0aW1lIGEgZGlmZmVy
+ZW50IHByb2Nlc3MgcGVyZm9ybXMgYW4NCj4gIHVwZGF0ZS4gU28gaWYgdGhleSBpbnRlcmxlYXZl
+IGFjY2Vzc2VzLCB5b3UgZ2V0IGEgZmx1c2gtdG8tdGhlLXNlcnZlciBvbg0KPiAgZXZlcnkgYWNj
+ZXNzLg0KPiANCj4gIFRoaXMgaXMgY2F1c2VkIGJ5IG5mc19mbHVzaF9pbmNvbXBhdGlibGUuICBJ
+dCBkZWVtcyBhY2Nlc3MgdGhyb3VnaCBkaWZmZXJlbnQNCj4gIGZpbGUgZGVzY3JpcHRvcnMgdG8g
+YmUgaW5jb21wYXRpYmxlLiAgSG93ZXZlciBJIGRvbid0IHRoaW5rIHRoaXMgaXMNCj4gIGp1c3Rp
+ZmllZC4gIEFjY2Vzc2VkIHVzaW5nIGRpZmZlcmVudCBjcmVkZW50aWFscyBjYW4gcmVhc29uYWJs
+eSBiZSBzZWVuIGFzDQo+ICBpbmNvbXBhdGlibGUoKiksIGJ1dCBpZiB0d28gcHJvY2Vzc2VzIHdp
+dGggaWRlbnRpY2FsIGNyZWRlbnRpYWxzIG9wZW4gdGhlDQo+ICBzYW1lIGZpbGUgdGhlcmUgdGhl
+cmUgc2hvdWxkIGJlIG5vdCBuZWVkIHRvIGRpZmZlcmVudGlhdGUgYmV0d2VlbiB0aGVtLg0KPiAN
+Cj4gIFRoZSBwYXRjaCBiZWxvdyBjaGFuZ2VzIHRoZSB0ZXN0IGluIG5mc19mbHVzaF9pbmNvbXBh
+dGlibGUgdG8ganVzdCB0ZXN0IHRoZQ0KPiAgY3JlZGVudGlhbHMgKGFuZCB0aGUgZGVudHJ5LCB0
+aG91Z2ggdGhhdCBtaWdodCBiZSBzdXBlcmZsdW91cyAtIGl0IHNlZW1zDQo+ICBzYWZlcikuDQo+
+IA0KPiAoKikgSW4gdGhpcyBzcGVjaWZpYyBjdXN0b21lcidzIGNhc2UgdGhlIHByb2Nlc3MgZG8g
+Y3VycmVudGx5IGhhdmUgc2xpZ2h0bHkNCj4gIGRpZmZlcmVudCBjcmVkZW50aWFscy4gIEluIG9u
+ZSwgdGhlIHByaW1hcnkgZ2lkIGlzIGluY2x1ZGVkIGluIHRoZSBsaXN0IG9mDQo+ICBhdXhpbGlh
+cnkgZ2lkcy4gIEluIHRoZSBvdGhlciB0aGUgcHJpbWFyeSBnaWQgaXMgZXhjbHVkZWQuICBUaGlz
+IGlzIGVub3VnaA0KPiAgdG8gbWFrZSB0aGUgY3JlZGVudGlhbHMgYXBwZWFyIGRpZmZlcmVudCBz
+byB0aGlzIHBhdGNoIGRvZXNuJ3QgaGVscCBpbiB0aGF0DQo+ICBjYXNlLiAgVGhleSBhcmUgbG9v
+a2luZyBhdCBiZWluZyBtb3JlIGNvbnNpc3RlbnQgaW4gdGhlaXIgc2V0Z3JvdXBzIHVzYWdlDQo+
+ICBidXQgaXQgd291bGQgaGVscCB0aGVtIGlmIHdlIG9ubHkgYWN0dWFsbHkgY29tcGFyZWQgdGhl
+IGNyZWRlbnRpYWxzIHRoYXQNCj4gIHdlcmUgaW1wb3J0YW50LiAgSW4gdGhpcyBjYXNlIHRoZXJl
+IGlzIG5vIGltcG9ydGFudCBkaWZmZXJlbmNlLg0KPiAgV291bGQgaXQgbWFrZSBzZW5zZSB0byB0
+cmVhdCBhIG1vcmUgYnJvYWQgY3JlZGVudGlhbCBhcyBjb21wYXRpYmxlIHdpdGggYQ0KPiAgbW9y
+ZSBuYXJyb3cgY3JlZGVudGlhbD8gIFNvIGEgd3JpdGUgZnJvbSBhIHByb2Nlc3Mgd2l0aCBhIGdp
+dmVuDQo+ICB1aWQsZ2lkLGdyb3VwbGlzdCBjb3VsZCB1bHRpbWF0ZWx5IGJlIHNlbnQgdG8gdGhl
+IHNlcnZlciB3aXRoIHNhbWUgdWlkL2dpZCwNCj4gIGJ1dCBhIHN1YnNldCBvZiB0aGUgZ3JvdXAg
+bGlzdD8NCj4gIA0KPiANCj4gIFRob3VnaHRzPw0KPiANCj4gVGhhbmtzLA0KPiBOZWlsQnJvd24N
+Cj4gDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL3dyaXRlLmMgYi9mcy9uZnMvd3JpdGUuYw0K
+PiBpbmRleCA3ODE2ODAxLi5iMGQ0ZTQ3IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvd3JpdGUuYw0K
+PiArKysgYi9mcy9uZnMvd3JpdGUuYw0KPiBAQCAtODYwLDcgKzg2MCwxMiBAQCBpbnQgbmZzX2Zs
+dXNoX2luY29tcGF0aWJsZShzdHJ1Y3QgZmlsZSAqZmlsZSwgc3RydWN0IHBhZ2UgKnBhZ2UpDQo+
+ICAJCWlmIChyZXEgPT0gTlVMTCkNCj4gIAkJCXJldHVybiAwOw0KPiAgCQlsX2N0eCA9IHJlcS0+
+d2JfbG9ja19jb250ZXh0Ow0KPiAtCQlkb19mbHVzaCA9IHJlcS0+d2JfcGFnZSAhPSBwYWdlIHx8
+IHJlcS0+d2JfY29udGV4dCAhPSBjdHg7DQo+ICsJCWRvX2ZsdXNoID0gcmVxLT53Yl9wYWdlICE9
+IHBhZ2U7DQo+ICsJCWlmIChyZXEtPndiX2NvbnRleHQgIT0gY3R4KSB7DQo+ICsJCQlkb19mbHVz
+aCB8PQ0KPiArCQkJCXJlcS0+d2JfY29udGV4dC0+ZGVudHJ5ICE9IGN0eC0+ZGVudHJ5IHx8DQo+
+ICsJCQkJcmVxLT53Yl9jb250ZXh0LT5jcmVkICE9IGN0eC0+Y3JlZDsNCj4gKwkJfQ0KPiAgCQlp
+ZiAobF9jdHgpIHsNCj4gIAkJCWRvX2ZsdXNoIHw9IGxfY3R4LT5sb2Nrb3duZXIubF9vd25lciAh
+PSBjdXJyZW50LT5maWxlcw0KPiAgCQkJCXx8IGxfY3R4LT5sb2Nrb3duZXIubF9waWQgIT0gY3Vy
+cmVudC0+dGdpZDsNCg0KSGkgTmVpbCwNCg0KV29uJ3QgdGhpcyBjYXVzZSBhbnkgd3JpdGUgZXJy
+b3JzIHRvIGJlIHByb3BhZ2F0ZWQgdG8gdGhlIHdyb25nIHByb2Nlc3M/DQoNCkNoZWVycw0KICBU
+cm9uZA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0K
+DQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
