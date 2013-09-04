@@ -1,203 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45453 "EHLO fieldses.org"
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:43388 "EHLO e7.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757048Ab3IKUDW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Sep 2013 16:03:22 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: [PATCH 01/13] vfs: pull ext4's double-i_mutex-locking into common code
-Date: Wed, 11 Sep 2013 16:03:07 -0400
-Message-Id: <1378929799-1110-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1378929799-1110-1-git-send-email-bfields@redhat.com>
-References: <1378929799-1110-1-git-send-email-bfields@redhat.com>
+	id S1755812Ab3IDTuY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Sep 2013 15:50:24 -0400
+Received: from /spool/local
+	by e7.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Wed, 4 Sep 2013 15:50:23 -0400
+Received: from b01cxnp23034.gho.pok.ibm.com (b01cxnp23034.gho.pok.ibm.com [9.57.198.29])
+	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id 4B5C1C90048
+	for <linux-nfs@vger.kernel.org>; Wed,  4 Sep 2013 15:50:10 -0400 (EDT)
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by b01cxnp23034.gho.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r84Jo9Sg16318648
+	for <linux-nfs@vger.kernel.org>; Wed, 4 Sep 2013 19:50:09 GMT
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r84Jo8VC008308
+	for <linux-nfs@vger.kernel.org>; Wed, 4 Sep 2013 13:50:08 -0600
+Date: Wed, 4 Sep 2013 14:50:07 -0500
+From: Malahal Naineni <malahal@us.ibm.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: jupiter <jupiter.hce@gmail.com>, NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: NFS 4 error
+Message-ID: <20130904195007.GC9877@us.ibm.com>
+References: <CAA=hcWR28P=bbJvZAmWRF9sr=0=B8SyBsq3U1x2-kTQ=Rr0U4A@mail.gmail.com>
+ <20130904162045.GC7433@us.ibm.com>
+ <20130904193852.GD10232@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130904193852.GD10232@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+J. Bruce Fields [bfields@fieldses.org] wrote:
+> On Wed, Sep 04, 2013 at 11:20:45AM -0500, Malahal Naineni wrote:
+> > jupiter [jupiter.hce@gmail.com] wrote:
+> > > Hi,
+> > > 
+> > > I am running NFS 4 server on CentOS 6.4 for many months, it works
+> > > well. Recently I found that the dmesg display many following errors
+> > > but it still works. I searched google but could not find result of how
+> > > to fix it. What are those error message means? Are the errors serious
+> > > or not? How to fix it?
+> > > 
+> > > --------
+> > > rpc-srv/tcp: nfsd: got error -32 when sending 24 bytes - shutting down socket
+> > > rpc-srv/tcp: nfsd: got error -32 when sending 24 bytes - shutting down socket
+> > 
+> > When the nfsd (NFS server thread) was trying to send something, it got
+> > -32 (EPIPE) error.  I have seen this kind of errors when the socket is
+> > closed by clients.  Clients do close the socket (and recreate one) when
+> > they need to retry due to network failures.
+> > 
+> > They are NOT serious errors, and if they are still happening, then look
+> > at your network errors/retries etc.
+> 
+> We should really just demote this to a dprintk, in that case.
+> 
+> The network failures are potentially a serious problem if they mean the
+> client's forced to retry a nonidempotent operation.  But we probably
+> shouldn't be spamming the logs by default?
 
-We want to do this elsewhere as well.
+I haven't seen many of these messages. That is the only message logged when
+the socket gets closed. It is a KERN_NOTICE level message. We can rate
+limit it, but in my experience, I haven't seen a need for rate limiting
+it.
 
-Also catch any attempts to use it for directories (where this ordering
-would conflict with ancestor-first directory ordering in lock_rename).
-
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: Dave Chinner <david@fromorbit.com>
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Acked-by: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/ext4/ext4.h        |    2 --
- fs/ext4/ioctl.c       |    4 ++--
- fs/ext4/move_extent.c |   40 ++--------------------------------------
- fs/inode.c            |   36 ++++++++++++++++++++++++++++++++++++
- include/linux/fs.h    |    3 +++
- 5 files changed, 43 insertions(+), 42 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index af815ea..d01d623 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2734,8 +2734,6 @@ extern void ext4_double_down_write_data_sem(struct inode *first,
- 					    struct inode *second);
- extern void ext4_double_up_write_data_sem(struct inode *orig_inode,
- 					  struct inode *donor_inode);
--void ext4_inode_double_lock(struct inode *inode1, struct inode *inode2);
--void ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2);
- extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 			     __u64 start_orig, __u64 start_donor,
- 			     __u64 len, __u64 *moved_len);
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index a569d33..60589b6 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -130,7 +130,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 
- 	/* Protect orig inodes against a truncate and make sure,
- 	 * that only 1 swap_inode_boot_loader is running. */
--	ext4_inode_double_lock(inode, inode_bl);
-+	lock_two_nondirectories(inode, inode_bl);
- 
- 	truncate_inode_pages(&inode->i_data, 0);
- 	truncate_inode_pages(&inode_bl->i_data, 0);
-@@ -205,7 +205,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 	ext4_inode_resume_unlocked_dio(inode);
- 	ext4_inode_resume_unlocked_dio(inode_bl);
- 
--	ext4_inode_double_unlock(inode, inode_bl);
-+	unlock_two_nondirectories(inode, inode_bl);
- 
- 	iput(inode_bl);
- 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 7fa4d85..773b503 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -1203,42 +1203,6 @@ mext_check_arguments(struct inode *orig_inode,
- }
- 
- /**
-- * ext4_inode_double_lock - Lock i_mutex on both @inode1 and @inode2
-- *
-- * @inode1:	the inode structure
-- * @inode2:	the inode structure
-- *
-- * Lock two inodes' i_mutex
-- */
--void
--ext4_inode_double_lock(struct inode *inode1, struct inode *inode2)
--{
--	BUG_ON(inode1 == inode2);
--	if (inode1 < inode2) {
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
--	} else {
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
--	}
--}
--
--/**
-- * ext4_inode_double_unlock - Release i_mutex on both @inode1 and @inode2
-- *
-- * @inode1:     the inode that is released first
-- * @inode2:     the inode that is released second
-- *
-- */
--
--void
--ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2)
--{
--	mutex_unlock(&inode1->i_mutex);
--	mutex_unlock(&inode2->i_mutex);
--}
--
--/**
-  * ext4_move_extents - Exchange the specified range of a file
-  *
-  * @o_filp:		file structure of the original file
-@@ -1327,7 +1291,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 		return -EINVAL;
- 	}
- 	/* Protect orig and donor inodes against a truncate */
--	ext4_inode_double_lock(orig_inode, donor_inode);
-+	lock_two_nondirectories(orig_inode, donor_inode);
- 
- 	/* Wait for all existing dio workers */
- 	ext4_inode_block_unlocked_dio(orig_inode);
-@@ -1535,7 +1499,7 @@ out:
- 	ext4_double_up_write_data_sem(orig_inode, donor_inode);
- 	ext4_inode_resume_unlocked_dio(orig_inode);
- 	ext4_inode_resume_unlocked_dio(donor_inode);
--	ext4_inode_double_unlock(orig_inode, donor_inode);
-+	unlock_two_nondirectories(orig_inode, donor_inode);
- 
- 	return ret;
- }
-diff --git a/fs/inode.c b/fs/inode.c
-index 93a0625..20750b0 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -982,6 +982,42 @@ void unlock_new_inode(struct inode *inode)
- EXPORT_SYMBOL(unlock_new_inode);
- 
- /**
-+ * lock_two_nondirectories - take two i_mutexes on non-directory objects
-+ * @inode1: first inode to lock
-+ * @inode2: second inode to lock
-+ */
-+void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
-+{
-+	WARN_ON_ONCE(S_ISDIR(inode1->i_mode));
-+	if (inode1 == inode2 || !inode2) {
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
-+		return;
-+	}
-+	WARN_ON_ONCE(S_ISDIR(inode2->i_mode));
-+	if (inode1 < inode2) {
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
-+		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
-+	} else {
-+		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
-+	}
-+}
-+EXPORT_SYMBOL(lock_two_nondirectories);
-+
-+/**
-+ * unlock_two_nondirectories - release locks from lock_two_nondirectories()
-+ * @inode1: first inode to unlock
-+ * @inode2: second inode to unlock
-+ */
-+void unlock_two_nondirectories(struct inode *inode1, struct inode *inode2)
-+{
-+	mutex_unlock(&inode1->i_mutex);
-+	if (inode2 && inode2 != inode1)
-+		mutex_unlock(&inode2->i_mutex);
-+}
-+EXPORT_SYMBOL(unlock_two_nondirectories);
-+
-+/**
-  * iget5_locked - obtain an inode from a mounted file system
-  * @sb:		super block of file system
-  * @hashval:	hash value (usually inode number) to get
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 529d871..1b9fedd 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -636,6 +636,9 @@ enum inode_i_mutex_lock_class
- 	I_MUTEX_QUOTA
- };
- 
-+void lock_two_nondirectories(struct inode *, struct inode*);
-+void unlock_two_nondirectories(struct inode *, struct inode*);
-+
- /*
-  * NOTE: in a 32bit arch with a preemptable kernel and
-  * an UP compile the i_size_read/write must be atomic
--- 
-1.7.9.5
+Regards, Malahal.
 
