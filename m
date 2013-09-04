@@ -1,240 +1,120 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45439 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:32873 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756848Ab3IKUDW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Sep 2013 16:03:22 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        David Howells <dhowells@redhat.com>,
-        Tyler Hicks <tyhicks@canonical.com>,
-        Dustin Kirkland <dustin.kirkland@gazzang.com>
-Subject: [PATCH 08/13] locks: break delegations on unlink
-Date: Wed, 11 Sep 2013 16:03:14 -0400
-Message-Id: <1378929799-1110-9-git-send-email-bfields@redhat.com>
-In-Reply-To: <1378929799-1110-1-git-send-email-bfields@redhat.com>
-References: <1378929799-1110-1-git-send-email-bfields@redhat.com>
+	id S1762737Ab3IDRV7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Sep 2013 13:21:59 -0400
+Subject: Re: [PATCH v3] SUNRPC: Ensure that the RPCSEC_GSS daemon uses the
+ correct service names
+From: Simo Sorce <simo@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, Jan Stancek <jstancek@redhat.com>
+In-Reply-To: <20130904133901.GE557@fieldses.org>
+References: <1377202213-5031-1-git-send-email-jlayton@redhat.com>
+	 <1377320162.2814.331.camel@willson.li.ssimo.org>
+	 <20130824065706.7bf780e8@tlielax.poochiereds.net>
+	 <20130824124233.GC18084@fieldses.org> <20130826165051.GF3121@fieldses.org>
+	 <1378264314.13768.89.camel@willson.li.ssimo.org>
+	 <20130904133901.GE557@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 04 Sep 2013 13:21:53 -0400
+Message-ID: <1378315313.13768.112.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, 2013-09-04 at 09:39 -0400, J. Bruce Fields wrote:
+> On Tue, Sep 03, 2013 at 11:11:54PM -0400, Simo Sorce wrote:
+> > On Mon, 2013-08-26 at 12:50 -0400, J. Bruce Fields wrote:
+> > > > > > Also the patch seem to add a bunch of other 'service' names ? If
+> > > you are
+> > > > > > going to kerberize those services are you going to expect admins
+> > > to drop
+> > > > > > multiple keys down in the keytabs ? What is the exact intent
+> > > here ?
+> > > 
+> > > Yeah, that seems wrong to me, if (big if) any of the other services
+> > > used gss I'd expect they'd want to authenticate to the same nfs/
+> > > principal.
+> > > 
+> > > > > Mostly, I'm trying to ensure that the nfsacl service uses a nfs/
+> > > > > principal to fix the immediate pain point that nfsv3+krb5 doesn't
+> > > work.
+> > > > > With the rest, I was mainly trusting that Trond knew what he was
+> > > > > doing. ;)
+> > > > > 
+> > > > > I agree though...I've never seen a nfs4_cb/ principal in use, and
+> > > I'm
+> > > > > not sure that we'd really get a lot of value from using a separate
+> > > > > principal for callbacks.
+> > > > 
+> > > > It's wrong, in fact: an NFSv4.0 callback is supposed to authenticate
+> > > to
+> > > > the principal that performed the setclientid.
+> > > 
+> > > Well, but: after refamiliarizing myself with the code this morning:
+> > > really, it's irrelevant.  The server's setup_callback_client() calls
+> > > rpc_create with client_name set to the principal that performed the
+> > > setclientid.  This sets cl_principal, which results in a "target="
+> > > argument in the upcall.
+> > > 
+> > > (The way this is set looks hairy:
+> > > 
+> > >         - svcgssd case: svcgssd passes it down at the end of the
+> > >           downcall.  It's calculated by
+> > >           utils/gssd/svcgssd_proc.c:get_hostbased_client_name by
+> > > calling
+> > >           gss_display_name() and then changing x/y@REALM to x@y in the
+> > >           krb5 case.  ??
+> > >         - gssproxy case: does the same transformation on the returned
+> > >           name in gssp_accept_sec_context_upcall.
+> > > 
+> > > But Simo'd be the expert on whether this makes sense and what we
+> > > should do instead if not.)
+> > 
+> > The way this is done make little sense, and I guess it is probably
+> > historical due to some deficiency in GSSAPI extensions at the time or
+> > knowledge of whoever was building the support.
+> > 
+> > GSSAPI uses by default service@server form for the target service name
+> > but it is not the only way to import a name. If you are going to force
+> > the usage of the krb5 mechanism (as we are) then we could have simply
+> > exported the name (gives a buffer) and then re-imported back later.
+> > 
+> > In any case it is what it is, I think it makes little sense in principle
+> > to try to 'contact back' the 'client' principal that authenticated
+> 
+> Well, that part at least is required by the spec, unless I've misread
+> something.  (RFC 3530 section 3.4.)
+> 
+> > as
+> > that principal may even be a user principal and you'll probably not be
+> > able to get a ticket to talk to 'it' and the receiving server will
+> > probably not have keys to understand your ticket even if you got one.
+> 
+> So if you want delegations to work you're expected to give the client a
+> principal that the server can authenticate back to.  (Delegations are
+> the only NFSv4.0 feature that depend on callbcks.)
 
-We need to break delegations on any operation that changes the set of
-links pointing to an inode.  Start with unlink.
+In many deployments this is not possible, so the original specification
+is unrealistic.
+If the client already has a channel open with the server, why on earth
+the server does not just reuse that channel to send back messages ?
+Why it is trying a call 'back' ?
 
-Such operations also hold the i_mutex on a parent directory.  Breaking a
-delegation may require waiting for a timeout (by default 90 seconds) in
-the case of a unresponsive NFS client.  To avoid blocking all directory
-operations, we therefore drop locks before waiting for the delegation.
-The logic then looks like:
+Callbacks are notoriously broken, they do not work when clients do not
+have a service principal, and if you are actually trying to open a TCP
+socket back it will break if a client is behind a NAT or has a strict
+firewall in front of it and so on and so forth...
 
-	acquire locks
-	...
-	test for delegation; if found:
-		take reference on inode
-		release locks
-		wait for delegation break
-		drop reference on inode
-		retry
+I hoped people stopped using callbacks for this type of operations long
+ago when Microsoft experimented with this bad idea in the 90ies with the
+CIFS protocol and gave up (they tried to use callback for printing for
+example).
 
-It is possible this could never terminate.  (Even if we take precautions
-to prevent another delegation being acquired on the same inode, we could
-get a different inode on each retry.)  But this seems very unlikely.
+Simo.
 
-The initial test for a delegation happens after the lock on the target
-inode is acquired, but the directory inode may have been acquired
-further up the call stack.  We therefore add a "struct inode **"
-argument to any intervening functions, which we use to pass the inode
-back up to the caller in the case it needs a delegation synchronously
-broken.
-
-Cc: David Howells <dhowells@redhat.com>
-Cc: Tyler Hicks <tyhicks@canonical.com>
-Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- drivers/base/devtmpfs.c |    2 +-
- fs/cachefiles/namei.c   |    2 +-
- fs/ecryptfs/inode.c     |    2 +-
- fs/namei.c              |   42 +++++++++++++++++++++++++++++++++++++++---
- fs/nfsd/vfs.c           |    2 +-
- include/linux/fs.h      |    2 +-
- ipc/mqueue.c            |    2 +-
- 7 files changed, 45 insertions(+), 9 deletions(-)
-
-diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
-index 7413d06..1b8490e 100644
---- a/drivers/base/devtmpfs.c
-+++ b/drivers/base/devtmpfs.c
-@@ -324,7 +324,7 @@ static int handle_remove(const char *nodename, struct device *dev)
- 			mutex_lock(&dentry->d_inode->i_mutex);
- 			notify_change(dentry, &newattrs);
- 			mutex_unlock(&dentry->d_inode->i_mutex);
--			err = vfs_unlink(parent.dentry->d_inode, dentry);
-+			err = vfs_unlink(parent.dentry->d_inode, dentry, NULL);
- 			if (!err || err == -ENOENT)
- 				deleted = 1;
- 		}
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index 25badd1..6846fcef 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -294,7 +294,7 @@ static int cachefiles_bury_object(struct cachefiles_cache *cache,
- 		if (ret < 0) {
- 			cachefiles_io_error(cache, "Unlink security error");
- 		} else {
--			ret = vfs_unlink(dir->d_inode, rep);
-+			ret = vfs_unlink(dir->d_inode, rep, NULL);
- 
- 			if (preemptive)
- 				cachefiles_mark_object_buried(cache, rep);
-diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-index 67e9b63..0b8b632 100644
---- a/fs/ecryptfs/inode.c
-+++ b/fs/ecryptfs/inode.c
-@@ -153,7 +153,7 @@ static int ecryptfs_do_unlink(struct inode *dir, struct dentry *dentry,
- 
- 	dget(lower_dentry);
- 	lower_dir_dentry = lock_parent(lower_dentry);
--	rc = vfs_unlink(lower_dir_inode, lower_dentry);
-+	rc = vfs_unlink(lower_dir_inode, lower_dentry, NULL);
- 	if (rc) {
- 		printk(KERN_ERR "Error in vfs_unlink; rc = [%d]\n", rc);
- 		goto out_unlock;
-diff --git a/fs/namei.c b/fs/namei.c
-index a23102c..14a00d9 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3643,7 +3643,25 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
- 	return do_rmdir(AT_FDCWD, pathname);
- }
- 
--int vfs_unlink(struct inode *dir, struct dentry *dentry)
-+/**
-+ * vfs_unlink - unlink a filesystem object
-+ * @dir:	parent directory
-+ * @dentry:	victim
-+ * @delegated_inode: returns victim inode, if the inode is delegated.
-+ *
-+ * The caller must hold dir->i_mutex.
-+ *
-+ * If vfs_unlink discovers a delegation, it will return -EWOULDBLOCK and
-+ * return a reference to the inode in delegated_inode.  The caller
-+ * should then break the delegation on that inode and retry.  Because
-+ * breaking a delegation may take a long time, the caller should drop
-+ * dir->i_mutex before doing so.
-+ *
-+ * Alternatively, a caller may pass NULL for delegated_inode.  This may
-+ * be appropriate for callers that expect the underlying filesystem not
-+ * to be NFS exported.
-+ */
-+int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
- {
- 	struct inode *target = dentry->d_inode;
- 	int error = may_delete(dir, dentry, 0);
-@@ -3660,11 +3678,20 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
- 	else {
- 		error = security_inode_unlink(dir, dentry);
- 		if (!error) {
-+			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
-+			if (error) {
-+				if (error == -EWOULDBLOCK && delegated_inode) {
-+					*delegated_inode = target;
-+					ihold(target);
-+				}
-+				goto out;
-+			}
- 			error = dir->i_op->unlink(dir, dentry);
- 			if (!error)
- 				dont_mount(dentry);
- 		}
- 	}
-+out:
- 	mutex_unlock(&target->i_mutex);
- 
- 	/* We don't d_delete() NFS sillyrenamed files--they still exist. */
-@@ -3689,6 +3716,7 @@ static long do_unlinkat(int dfd, const char __user *pathname)
- 	struct dentry *dentry;
- 	struct nameidata nd;
- 	struct inode *inode = NULL;
-+	struct inode *delegated_inode = NULL;
- 	unsigned int lookup_flags = 0;
- retry:
- 	name = user_path_parent(dfd, pathname, &nd, lookup_flags);
-@@ -3703,7 +3731,7 @@ retry:
- 	error = mnt_want_write(nd.path.mnt);
- 	if (error)
- 		goto exit1;
--
-+retry_deleg:
- 	mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex, I_MUTEX_PARENT);
- 	dentry = lookup_hash(&nd);
- 	error = PTR_ERR(dentry);
-@@ -3718,13 +3746,21 @@ retry:
- 		error = security_path_unlink(&nd.path, dentry);
- 		if (error)
- 			goto exit2;
--		error = vfs_unlink(nd.path.dentry->d_inode, dentry);
-+		error = vfs_unlink(nd.path.dentry->d_inode, dentry, &delegated_inode);
- exit2:
- 		dput(dentry);
- 	}
- 	mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
- 	if (inode)
- 		iput(inode);	/* truncate the inode here */
-+	inode = NULL;
-+	if (delegated_inode) {
-+		error = break_deleg(delegated_inode, O_WRONLY);
-+		iput(delegated_inode);
-+		delegated_inode = NULL;
-+		if (!error)
-+			goto retry_deleg;
-+	}
- 	mnt_drop_write(nd.path.mnt);
- exit1:
- 	path_put(&nd.path);
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index c827acb..00d0616 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1911,7 +1911,7 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 	if (host_err)
- 		goto out_put;
- 	if (type != S_IFDIR)
--		host_err = vfs_unlink(dirp, rdentry);
-+		host_err = vfs_unlink(dirp, rdentry, NULL);
- 	else
- 		host_err = vfs_rmdir(dirp, rdentry);
- 	if (!host_err)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 54dbb9c..b008bff 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1472,7 +1472,7 @@ extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
- extern int vfs_symlink(struct inode *, struct dentry *, const char *);
- extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
- extern int vfs_rmdir(struct inode *, struct dentry *);
--extern int vfs_unlink(struct inode *, struct dentry *);
-+extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
- extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *);
- 
- /*
-diff --git a/ipc/mqueue.c b/ipc/mqueue.c
-index ae1996d..95827ce 100644
---- a/ipc/mqueue.c
-+++ b/ipc/mqueue.c
-@@ -886,7 +886,7 @@ SYSCALL_DEFINE1(mq_unlink, const char __user *, u_name)
- 		err = -ENOENT;
- 	} else {
- 		ihold(inode);
--		err = vfs_unlink(dentry->d_parent->d_inode, dentry);
-+		err = vfs_unlink(dentry->d_parent->d_inode, dentry, NULL);
- 	}
- 	dput(dentry);
- 
 -- 
-1.7.9.5
+Simo Sorce * Red Hat, Inc * New York
 
