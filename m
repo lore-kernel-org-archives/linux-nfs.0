@@ -1,45 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50823 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751527Ab3IGSqN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 7 Sep 2013 14:46:13 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/4] dcache: don't clear DCACHE_DISCONNECTED too early
-Date: Sat,  7 Sep 2013 14:46:01 -0400
-Message-Id: <1378579561-26868-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1378579561-26868-1-git-send-email-bfields@redhat.com>
-References: <1378579561-26868-1-git-send-email-bfields@redhat.com>
+Received: from mail-pa0-f48.google.com ([209.85.220.48]:55238 "EHLO
+	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934290Ab3IDGOQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Sep 2013 02:14:16 -0400
+Received: by mail-pa0-f48.google.com with SMTP id kp13so7440589pab.21
+        for <linux-nfs@vger.kernel.org>; Tue, 03 Sep 2013 23:14:16 -0700 (PDT)
+MIME-Version: 1.0
+Date: Wed, 4 Sep 2013 16:14:16 +1000
+Message-ID: <CAA=hcWR28P=bbJvZAmWRF9sr=0=B8SyBsq3U1x2-kTQ=Rr0U4A@mail.gmail.com>
+Subject: NFS 4 error
+From: jupiter <jupiter.hce@gmail.com>
+To: NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Hi,
 
-DCACHE_DISCONNECTED should not be cleared until we're sure the dentry is
-connected all the way up to the root of the filesystem.  It *shouldn't*
-be cleared as soon as the dentry is connected to a parent.  That will
-cause bugs at least on exportable filesystems.
+I am running NFS 4 server on CentOS 6.4 for many months, it works
+well. Recently I found that the dmesg display many following errors
+but it still works. I searched google but could not find result of how
+to fix it. What are those error message means? Are the errors serious
+or not? How to fix it?
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/dcache.c |    1 -
- 1 file changed, 1 deletion(-)
+--------
+rpc-srv/tcp: nfsd: got error -32 when sending 24 bytes - shutting down socket
+rpc-srv/tcp: nfsd: got error -32 when sending 24 bytes - shutting down socket
+------------
 
-diff --git a/fs/dcache.c b/fs/dcache.c
-index a53f55d..a4560ca 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -2404,7 +2404,6 @@ static void __d_materialise_dentry(struct dentry *dentry, struct dentry *anon)
- 	spin_unlock(&dentry->d_lock);
- 
- 	/* anon->d_lock still locked, returns locked */
--	anon->d_flags &= ~DCACHE_DISCONNECTED;
- }
- 
- /**
--- 
-1.7.9.5
+Thank you.
 
+Kind regards.
+
+jupiter
