@@ -1,59 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:2260 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754549Ab3IXTQw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Sep 2013 15:16:52 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r8OJGq3l023296
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 24 Sep 2013 15:16:52 -0400
-Message-ID: <5241E540.7030102@RedHat.com>
-Date: Tue, 24 Sep 2013 15:17:20 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCHv2 1/3] gssd: fix strncmp bug causing client removals
-References: <1379624239-31199-2-git-send-email-bfields@redhat.com> <1379624632-31476-1-git-send-email-bfields@redhat.com>
-In-Reply-To: <1379624632-31476-1-git-send-email-bfields@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from aserp1040.oracle.com ([141.146.126.69]:21912 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754446Ab3IDSYd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Sep 2013 14:24:33 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=windows-1252
+Subject: Announcing the release of fedfs-utils 0.9.3
+Date: Wed, 4 Sep 2013 14:24:08 -0400
+Message-Id: <69FDF390-6C4A-4C88-A756-65C9656B9C5C@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "autofs@vger.kernel.org" <autofs@vger.kernel.org>,
+        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>
+To: "fedfs-utils;release announcements"
+	<fedfs-utils-announce@oss.oracle.com>
+Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This package contains an implementation of the Federated Filesystem (FedFS) Proposed Standard for Linux.  For an introduction to FedFS, see RFC 5716.
 
+This is an ALPHA quality release.  The code in this release is not guaranteed to work.  Programming, administrative, and user interfaces may change significantly before the next release.  This release is for technology preview only.
 
-On 19/09/13 17:03, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> Both dirname and pdir are null-terminated strings, so there's no reason
-> I can see for the strncmp.
-> 
-> And this gives the wrong result when comparing the "nfsd" and "nfsd4_cb"
-> directories!  The results were callback clients being removed
-> immediately after creation, when lack of a client with the corresponding
-> name under "nfsd" lead gssd to believe it had disappeared from
-> "nfsd4_cb".
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-Committed...
+Changes since 0.9.2:
+	• Make the use of liburiparser optional
 
-steved.
+Changes since 0.9.1:
+	• Packaging-related improvements
 
-> ---
->  utils/gssd/gssd_proc.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index 2d3dbec..0383883 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -525,7 +525,7 @@ update_old_clients(struct dirent **namelist, int size, char *pdir)
->  		/* only compare entries in the global list that are from the
->  		 * same pipefs parent directory as "pdir"
->  		 */
-> -		if (strncmp(clp->dirname, pdir, strlen(pdir)) != 0) continue;
-> +		if (strcmp(clp->dirname, pdir) != 0) continue;
->  
->  		stillhere = 0;
->  		for (i=0; i < size; i++) {
-> 
+Changes since 0.9.0:
+	• Address build issues with recent automake and libtools
+	• Replace nl_langinfo(CODESET) check in command line tools
+
+New with fedfs-utils 0.9.0:
+	• NSDB schema complies with latest draft standard
+	• DNS SRV support complies with RFC 6641
+	• NSDB clients support the FEDFS_SEC_TLS security type
+	• NSDB clients can follow LDAP referrals returned by NSDB nodes
+	• New tools for configuration of NSDBs
+	• New "display-junction" debugging command
+
+Project web site
+http://wiki.linux-nfs.org/wiki/index.php/FedFsUtilsProject
+
+Installation guide:
+http://wiki.linux-nfs.org/wiki/index.php/FedFsInstallationGuide0.9
+
+Tarball releases:
+http://git.linux-nfs.org/?p=cel/fedfs-releases.git;a=summary
+
+Git repository:
+http://git.linux-nfs.org/?p=cel/fedfs-utils.git;a=shortlog;h=refs/heads/0.9-stable
+
+Patchwork:
+http://patchwork.ozlabs.org/project/fedfs-utils/list/
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
