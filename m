@@ -1,83 +1,162 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:40094 "EHLO mx12.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:37691 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752749Ab3IEP0J convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Sep 2013 11:26:09 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Matt W. Benjamin" <matt@linuxbox.com>
-CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] NFSv4: use mach cred for SECINFO_NO_NAME w/ integrity
-Date: Thu, 5 Sep 2013 15:26:07 +0000
-Message-ID: <F280C07A-314B-440A-995A-96198F36CE01@netapp.com>
-References: <931669980.21.1378385417507.JavaMail.root@thunderbeast.private.linuxbox.com>
-In-Reply-To: <931669980.21.1378385417507.JavaMail.root@thunderbeast.private.linuxbox.com>
-Content-Type: text/plain; charset="us-ascii"
+	id S1762664Ab3IDObJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Sep 2013 10:31:09 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: NeilBrown <neilb@suse.de>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH - alt-2] NFSv4:  Don't try to recover NFSv4 locks when
+ they are lost.
+Date: Wed, 4 Sep 2013 14:31:07 +0000
+Message-ID: <1378305066.3527.8.camel@leira.trondhjem.org>
+References: <20130904170449.7d2662cd@notabene.brown>
+In-Reply-To: <20130904170449.7d2662cd@notabene.brown>
+Content-Type: multipart/mixed;
+	boundary="_002_137830506635278camelleiratrondhjemorg_"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--_002_137830506635278camelleiratrondhjemorg_
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <E5970C3ADDCBA240A6B45C4D205CC1E5@hq.netapp.com>
+Content-Transfer-Encoding: base64
 
-On Sep 5, 2013, at 8:50 AM, Matt W. Benjamin <matt@linuxbox.com> wrote:
+T24gV2VkLCAyMDEzLTA5LTA0IGF0IDE3OjA0ICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IA0K
+PiBXaGVuIGFuIE5GU3Y0IGNsaWVudCBsb3NlcyBjb250YWN0IHdpdGggdGhlIHNlcnZlciBpdCBj
+YW4gbG9zZSBhbnkNCj4gbG9ja3MgdGhhdCBpdCBob2xkcy4NCj4gDQo+IEN1cnJlbnRseSB3aGVu
+IGl0IHJlY29ubmVjdHMgdG8gdGhlIHNlcnZlciBpdCBzaW1wbHkgdHJpZXMgdG8gcmVjbGFpbQ0K
+PiB0aG9zZSBsb2Nrcy4gIFRoaXMgbWlnaHQgc3VjY2VlZCBldmVuIHRob3VnaCBzb21lIG90aGVy
+IGNsaWVudCBoYXMNCj4gaGVsZCBhbmQgcmVsZWFzZWQgYSBsb2NrIGluIHRoZSBtZWFuIHRpbWUu
+ICBTbyB0aGUgZmlyc3QgY2xpZW50IG1pZ2h0DQo+IHRoaW5rIHRoZSBmaWxlIGlzIHVuY2hhbmdl
+ZCwgYnV0IGl0IGlzbid0LiAgVGhpcyBpc24ndCBnb29kLg0KPiANCj4gSWYsIHdoZW4gcmVjb3Zl
+cnkgaGFwcGVucywgdGhlIGxvY2tzIGNhbm5vdCBiZSBjbGFpbWVkIGJlY2F1c2Ugc29tZQ0KPiBv
+dGhlciBjbGllbnQgc3RpbGwgaG9sZHMgdGhlIGxvY2ssIHRoZW4gd2UgZ2V0IGEgbWVzc2FnZSBp
+biB0aGUga2VybmVsDQo+IGxvZ3MsIGJ1dCB0aGUgY2xpZW50IGNhbiBzdGlsbCB3cml0ZS4gIFNv
+IHR3byBjbGllbnRzIGNhbiBib3RoIHRoaW5rDQo+IHRoZXkgaGF2ZSBhIGxvY2sgYW5kIGNhbiBi
+b3RoIHdyaXRlIGF0IHRoZSBzYW1lIHRpbWUuICBUaGlzIGlzIGVxdWFsbHkNCj4gbm90IGdvb2Qu
+DQo+IA0KPiBUaGVyZSB3YXMgYSBwYXRjaCBhIHdoaWxlIGFnbw0KPiAgIGh0dHA6Ly9jb21tZW50
+cy5nbWFuZS5vcmcvZ21hbmUubGludXgubmZzLzQxOTE3DQo+IA0KPiB3aGljaCB0cmllZCB0byBh
+ZGRyZXNzIHNvbWUgb2YgdGhpcywgYnV0IGl0IGRpZG4ndCBzZWVtIHRvIGdvDQo+IGFueXdoZXJl
+LiAgVGhhdCBwYXRjaCB3b3VsZCBhbHNvIHNlbmQgYSBzaWduYWwgdG8gdGhlIHByb2Nlc3MuICBU
+aGF0DQo+IG1pZ2h0IGJlIHVzZWZ1bCBidXQgZm9yIG5vdyB0aGlzIHBhdGNoIGp1c3QgY2F1c2Vz
+IHdyaXRlcyB0byBmYWlsLg0KPiANCj4gRm9yIE5GU3Y0ICh1bmxpa2UgdjIvdjMpIHRoZXJlIGlz
+IGEgc3Ryb25nIGxpbmsgYmV0d2VlbiB0aGUgbG9jayBhbmQNCj4gdGhlIHdyaXRlIHJlcXVlc3Qg
+c28gd2UgY2FuIGZhaXJseSBlYXNpbHkgZmFpbCBhbnkgSU8gb2YgdGhlIGxvY2sgaXMNCj4gZ29u
+ZS4gIFdoaWxlIHNvbWUgYXBwbGljYXRpb25zIG1pZ2h0IG5vdCBleHBlY3QgdGhpcywgaXQgaXMg
+c3RpbGwNCj4gc2FmZXIgdGhhbiBhbGxvd2luZyB0aGUgd3JpdGUgdG8gc3VjY2VlZC4NCj4gDQo+
+IEJlY2F1c2UgdGhpcyBpcyBhIGZhaXJseSBiaWcgY2hhbmdlIGluIGJlaGF2aW91ciBhIG1vZHVs
+ZSBwYXJhbWV0ZXIsDQo+ICJyZWNvdmVyX2xvY2tzIiwgaXMgaW50cm9kdWNlZCB3aGljaCBkZWZh
+dWx0cyB0byB0cnVlICh0aGUgY3VycmVudA0KPiBiZWhhdmlvdXIpIGJ1dCBjYW4gYmUgc2V0IHRv
+ICJmYWxzZSIgdG8gdGVsbCB0aGUgY2xpZW50IG5vdCB0byB0cnkgdG8NCj4gcmVjb3ZlciB0aGlu
+Z3MgdGhhdCB3ZXJlIGxvc3QuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBOZWlsQnJvd24gPG5laWxi
+QHN1c2UuZGU+DQoNClRoYW5rcyENCg0KPiAtLQ0KPiBUaGlzIGFsdGVybmF0aXZlIHVzZXMgYSBt
+b2R1bGUgcGFyYW1ldGVyIHdoaWNoIGRlZmF1bHRzIHRvIHRoZSBjdXJyZW50LA0KPiBpbmNvcnJl
+Y3QsIGJlaGF2aW91ci4NCj4gSSBzdXNwZWN0IHdlIGRvbid0IHdhbnQgdGhhdCBvbmUuLg0KDQpB
+Z3JlZWQuIFdlIGFsc28gbmVlZCB0byBkb2N1bWVudCB0aGUgbW9kdWxlIHBhcmFtZXRlciwgc28g
+SSdtIGFkZGluZyBhDQpsaXR0bGUgYmx1cmIgaW4gRG9jdW1lbnRhdGlvbi9rZXJuZWwtcGFyYW1l
+dGVycy50eHQgKHNlZSBhdHRhY2htZW50KS4NCg0KSSdkIGFsc28gbGlrZSB0byBjaGFuZ2UgdGhl
+IHBhcmFtZXRlciBuYW1lIHRvICJyZWNvdmVyX2xvc3RfbG9ja3MiIHRvDQptYWtlIGl0IGEgbGl0
+dGxlIG1vcmUgb2J2aW91cy4NCg0KRmluYWxseSwgSSdkIGxpa2UgdG8gbW92ZSB0aGUgcGFyYW1l
+dGVyIHRvIGZzL25mcy9zdXBlci5jIHNvIHRoYXQgd2UgY2FuDQp1c2UgdGhlIHNhbWUgbW9kcHJv
+YmUuY29uZiAnb3B0aW9ucycgbGluZXMgZm9yIGJhY2sgcG9ydHMgb2YgdGhpcyBwYXRjaA0KKHll
+cyBJIHN0cm9uZ2x5IHN1c3BlY3Qgd2Ugd2lsbCB3YW50IHRvIGJhY2sgcG9ydCB0aGlzIHBhdGNo
+IHRvIGRpc3Rybw0Ka2VybmVscykuDQoNClNlZSBhdHRhY2htZW50Lg0KDQpDaGVlcnMNCiAgVHJv
+bmQNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0K
+DQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
 
-> Hi,
-> 
-> ----- "Dros Adamson" <Weston.Adamson@netapp.com> wrote:
-> 
->> On Sep 4, 2013, at 12:29 PM, Matt W. Benjamin <matt@linuxbox.com>
->> wrote:
->> 
->>> Hi
->>> 
->>> It honestly feels quite odd to me for sec=sys to actually connote
->> krb5i.
->> 
->> I should point out that my patches don't introduce the use of krb5i
->> here, they just fix it.
-> 
-> Ack.
-> 
->> 
->> I personally don't think it's weird for the client to use a *more*
->> secure flavor for certain (infrequent) operations when it makes sense.
->> What worries me that currently sec=krb5p can cross a SECINFO boundary
->> and suddenly be using sec=sys!
-> 
-> I think the behavior is obviously reasonable, but giving that policy a
-> different name would allow sec=sys to continue mean what it says.    
-> 
+--_002_137830506635278camelleiratrondhjemorg_
+Content-Type: text/x-patch;
+	name="0001-NFSv4-Document-the-recover_lost_locks-kernel-paramet.patch"
+Content-Description: 0001-NFSv4-Document-the-recover_lost_locks-kernel-paramet.patch
+Content-Disposition: attachment;
+	filename="0001-NFSv4-Document-the-recover_lost_locks-kernel-paramet.patch";
+	size=4564; creation-date="Wed, 04 Sep 2013 14:31:07 GMT";
+	modification-date="Wed, 04 Sep 2013 14:31:07 GMT"
+Content-ID: <D67D7773FD57F3459E1D84ABD1747B4B@hq.netapp.com>
+Content-Transfer-Encoding: base64
 
-I think there is definitely room for discussion on how sec= behavior has changed and how this will affect users, especially when I add the patches mentioned below.
+RnJvbSA3NzIyYjJmYTE1MGI5YjdiMjEyMTg5MjNhZDAxYjc1N2E2NjUzYjEwIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
+YXBwLmNvbT4NCkRhdGU6IFdlZCwgNCBTZXAgMjAxMyAxMDowODo1NCAtMDQwMA0KU3ViamVjdDog
+W1BBVENIXSBORlN2NDogRG9jdW1lbnQgdGhlIHJlY292ZXJfbG9zdF9sb2NrcyBrZXJuZWwgcGFy
+YW1ldGVyDQoNClJlbmFtZSB0aGUgbmV3ICdyZWNvdmVyX2xvY2tzJyBrZXJuZWwgcGFyYW1ldGVy
+IHRvICdyZWNvdmVyX2xvc3RfbG9ja3MnDQphbmQgY2hhbmdlIHRoZSBkZWZhdWx0IHRvICdmYWxz
+ZScuIERvY3VtZW50IHdoeSBpbg0KRG9jdW1lbnRhdGlvbi9rZXJuZWwtcGFyYW1ldGVycy50eHQN
+Cg0KTW92ZSB0aGUgJ3JlY292ZXJfbG9zdF9sb2Nrcycga2VybmVsIHBhcmFtZXRlciB0byBmcy9u
+ZnMvc3VwZXIuYyB0bw0KbWFrZSBpdCBlYXN5IHRvIGJhY2twb3J0IHRvIGtlcm5lbHMgcHJpb3Ig
+dG8gMy42LngsIHdoaWNoIGRvbid0IGhhdmUNCmEgc2VwYXJhdGUgTkZTdjQgbW9kdWxlLg0KDQpT
+aWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29t
+Pg0KLS0tDQogRG9jdW1lbnRhdGlvbi9rZXJuZWwtcGFyYW1ldGVycy50eHQgfCAxMiArKysrKysr
+KysrKysNCiBmcy9uZnMvbmZzNF9mcy5oICAgICAgICAgICAgICAgICAgICB8ICAxICsNCiBmcy9u
+ZnMvbmZzNHByb2MuYyAgICAgICAgICAgICAgICAgICB8ICA4ICstLS0tLS0tDQogZnMvbmZzL3N1
+cGVyLmMgICAgICAgICAgICAgICAgICAgICAgfCAgOCArKysrKysrKw0KIDQgZmlsZXMgY2hhbmdl
+ZCwgMjIgaW5zZXJ0aW9ucygrKSwgNyBkZWxldGlvbnMoLSkNCg0KZGlmZiAtLWdpdCBhL0RvY3Vt
+ZW50YXRpb24va2VybmVsLXBhcmFtZXRlcnMudHh0IGIvRG9jdW1lbnRhdGlvbi9rZXJuZWwtcGFy
+YW1ldGVycy50eHQNCmluZGV4IDE1MzU2YWMuLjMwNTg0YjEgMTAwNjQ0DQotLS0gYS9Eb2N1bWVu
+dGF0aW9uL2tlcm5lbC1wYXJhbWV0ZXJzLnR4dA0KKysrIGIvRG9jdW1lbnRhdGlvbi9rZXJuZWwt
+cGFyYW1ldGVycy50eHQNCkBAIC0xODQ3LDYgKzE4NDcsMTggQEAgYnl0ZXMgcmVzcGVjdGl2ZWx5
+LiBTdWNoIGxldHRlciBzdWZmaXhlcyBjYW4gYWxzbyBiZSBlbnRpcmVseSBvbWl0dGVkLg0KIAkJ
+CXdpbGwgYmUgc2VudC4NCiAJCQlUaGUgZGVmYXVsdCBpcyB0byBzZW5kIHRoZSBpbXBsZW1lbnRh
+dGlvbiBpZGVudGlmaWNhdGlvbg0KIAkJCWluZm9ybWF0aW9uLg0KKwkNCisJbmZzLnJlY292ZXJf
+bG9zdF9sb2NrcyA9DQorCQkJW05GU3Y0XSBBdHRlbXB0IHRvIHJlY292ZXIgbG9ja3MgdGhhdCB3
+ZXJlIGxvc3QgZHVlDQorCQkJdG8gYSBsZWFzZSB0aW1lb3V0IG9uIHRoZSBzZXJ2ZXIuIFBsZWFz
+ZSBub3RlIHRoYXQNCisJCQlkb2luZyB0aGlzIHJpc2tzIGRhdGEgY29ycnVwdGlvbiwgc2luY2Ug
+dGhlcmUgYXJlDQorCQkJbm8gZ3VhcmFudGVlcyB0aGF0IHRoZSBmaWxlIHdpbGwgcmVtYWluIHVu
+Y2hhbmdlZA0KKwkJCWFmdGVyIHRoZSBsb2NrcyBhcmUgbG9zdC4NCisJCQlJZiB5b3Ugd2FudCB0
+byBlbmFibGUgdGhlIGtlcm5lbCBsZWdhY3kgYmVoYXZpb3VyIG9mDQorCQkJYXR0ZW1wdGluZyB0
+byByZWNvdmVyIHRoZXNlIGxvY2tzLCB0aGVuIHNldCB0aGlzDQorCQkJcGFyYW1ldGVyIHRvICcx
+Jy4NCisJCQlUaGUgZGVmYXVsdCBwYXJhbWV0ZXIgdmFsdWUgb2YgJzAnIGNhdXNlcyB0aGUga2Vy
+bmVsDQorCQkJbm90IHRvIGF0dGVtcHQgcmVjb3Zlcnkgb2YgbG9zdCBsb2Nrcy4NCiANCiAJbmZz
+ZC5uZnM0X2Rpc2FibGVfaWRtYXBwaW5nPQ0KIAkJCVtORlN2NF0gV2hlbiBzZXQgdG8gdGhlIGRl
+ZmF1bHQgb2YgJzEnLCB0aGUgTkZTdjQNCmRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNF9mcy5oIGIv
+ZnMvbmZzL25mczRfZnMuaA0KaW5kZXggNjQxMTgzMS4uMjc3NDA3ZCAxMDA2NDQNCi0tLSBhL2Zz
+L25mcy9uZnM0X2ZzLmgNCisrKyBiL2ZzL25mcy9uZnM0X2ZzLmgNCkBAIC0zNzIsNiArMzcyLDcg
+QEAgc3RydWN0IGRlbnRyeSAqbmZzNF90cnlfbW91bnQoaW50LCBjb25zdCBjaGFyICosIHN0cnVj
+dCBuZnNfbW91bnRfaW5mbyAqLCBzdHJ1Y3QNCiBleHRlcm4gYm9vbCBuZnM0X2Rpc2FibGVfaWRt
+YXBwaW5nOw0KIGV4dGVybiB1bnNpZ25lZCBzaG9ydCBtYXhfc2Vzc2lvbl9zbG90czsNCiBleHRl
+cm4gdW5zaWduZWQgc2hvcnQgc2VuZF9pbXBsZW1lbnRhdGlvbl9pZDsNCitleHRlcm4gYm9vbCBy
+ZWNvdmVyX2xvc3RfbG9ja3M7DQogDQogI2RlZmluZSBORlM0X0NMSUVOVF9JRF9VTklRX0xFTgkJ
+KDY0KQ0KIGV4dGVybiBjaGFyIG5mczRfY2xpZW50X2lkX3VuaXF1aWZpZXJbTkZTNF9DTElFTlRf
+SURfVU5JUV9MRU5dOw0KZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZzL25m
+czRwcm9jLmMNCmluZGV4IDFlYjY5NGUuLjUzNTAxMWEgMTAwNjQ0DQotLS0gYS9mcy9uZnMvbmZz
+NHByb2MuYw0KKysrIGIvZnMvbmZzL25mczRwcm9jLmMNCkBAIC01NTIzLDEyICs1NTIzLDYgQEAg
+c3RhdGljIGludCBuZnM0X2xvY2tfcmVjbGFpbShzdHJ1Y3QgbmZzNF9zdGF0ZSAqc3RhdGUsIHN0
+cnVjdCBmaWxlX2xvY2sgKnJlcXVlc3QNCiAJcmV0dXJuIGVycjsNCiB9DQogDQotYm9vbCByZWNv
+dmVyX2xvY2tzID0gdHJ1ZTsNCi1tb2R1bGVfcGFyYW0ocmVjb3Zlcl9sb2NrcywgYm9vbCwgMDY0
+NCk7DQotTU9EVUxFX1BBUk1fREVTQyhyZWNvdmVyX2xvY2tzLA0KLQkJICJJZiB0aGUgc2VydmVy
+IHJlcG9ydHMgdGhhdCBhIGxvY2sgbWlnaHQgYmUgbG9zdCwgIg0KLQkJICJ0cnkgdG8gcmVjb3Zl
+cnkgaXQgcmlza2luZyBjb3JydXB0aW9uLiIpOw0KLQ0KIHN0YXRpYyBpbnQgbmZzNF9sb2NrX2V4
+cGlyZWQoc3RydWN0IG5mczRfc3RhdGUgKnN0YXRlLCBzdHJ1Y3QgZmlsZV9sb2NrICpyZXF1ZXN0
+KQ0KIHsNCiAJc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciA9IE5GU19TRVJWRVIoc3RhdGUtPmlu
+b2RlKTsNCkBAIC01NTQwLDcgKzU1MzQsNyBAQCBzdGF0aWMgaW50IG5mczRfbG9ja19leHBpcmVk
+KHN0cnVjdCBuZnM0X3N0YXRlICpzdGF0ZSwgc3RydWN0IGZpbGVfbG9jayAqcmVxdWVzdA0KIAll
+cnIgPSBuZnM0X3NldF9sb2NrX3N0YXRlKHN0YXRlLCByZXF1ZXN0KTsNCiAJaWYgKGVyciAhPSAw
+KQ0KIAkJcmV0dXJuIGVycjsNCi0JaWYgKCFyZWNvdmVyX2xvY2tzKSB7DQorCWlmICghcmVjb3Zl
+cl9sb3N0X2xvY2tzKSB7DQogCQlzZXRfYml0KE5GU19MT0NLX0xPU1QsICZyZXF1ZXN0LT5mbF91
+Lm5mczRfZmwub3duZXItPmxzX2ZsYWdzKTsNCiAJCXJldHVybiAwOw0KIAl9DQpkaWZmIC0tZ2l0
+IGEvZnMvbmZzL3N1cGVyLmMgYi9mcy9uZnMvc3VwZXIuYw0KaW5kZXggZjIwNzFkMi4uNmFkOTA1
+MyAxMDA2NDQNCi0tLSBhL2ZzL25mcy9zdXBlci5jDQorKysgYi9mcy9uZnMvc3VwZXIuYw0KQEAg
+LTI3NTgsNiArMjc1OCw3IEBAIGJvb2wgbmZzNF9kaXNhYmxlX2lkbWFwcGluZyA9IHRydWU7DQog
+dW5zaWduZWQgc2hvcnQgbWF4X3Nlc3Npb25fc2xvdHMgPSBORlM0X0RFRl9TTE9UX1RBQkxFX1NJ
+WkU7DQogdW5zaWduZWQgc2hvcnQgc2VuZF9pbXBsZW1lbnRhdGlvbl9pZCA9IDE7DQogY2hhciBu
+ZnM0X2NsaWVudF9pZF91bmlxdWlmaWVyW05GUzRfQ0xJRU5UX0lEX1VOSVFfTEVOXSA9ICIiOw0K
+K2Jvb2wgcmVjb3Zlcl9sb3N0X2xvY2tzID0gZmFsc2U7DQogDQogRVhQT1JUX1NZTUJPTF9HUEwo
+bmZzX2NhbGxiYWNrX3NldF90Y3Bwb3J0KTsNCiBFWFBPUlRfU1lNQk9MX0dQTChuZnNfY2FsbGJh
+Y2tfdGNwcG9ydCk7DQpAQCAtMjc2Niw2ICsyNzY3LDcgQEAgRVhQT1JUX1NZTUJPTF9HUEwobmZz
+NF9kaXNhYmxlX2lkbWFwcGluZyk7DQogRVhQT1JUX1NZTUJPTF9HUEwobWF4X3Nlc3Npb25fc2xv
+dHMpOw0KIEVYUE9SVF9TWU1CT0xfR1BMKHNlbmRfaW1wbGVtZW50YXRpb25faWQpOw0KIEVYUE9S
+VF9TWU1CT0xfR1BMKG5mczRfY2xpZW50X2lkX3VuaXF1aWZpZXIpOw0KK0VYUE9SVF9TWU1CT0xf
+R1BMKHJlY292ZXJfbG9zdF9sb2Nrcyk7DQogDQogI2RlZmluZSBORlNfQ0FMTEJBQ0tfTUFYUE9S
+VE5SICg2NTUzNVUpDQogDQpAQCAtMjgwMyw0ICsyODA1LDEwIEBAIE1PRFVMRV9QQVJNX0RFU0Mo
+c2VuZF9pbXBsZW1lbnRhdGlvbl9pZCwNCiAJCSJTZW5kIGltcGxlbWVudGF0aW9uIElEIHdpdGgg
+TkZTdjQuMSBleGNoYW5nZV9pZCIpOw0KIE1PRFVMRV9QQVJNX0RFU0MobmZzNF91bmlxdWVfaWQs
+ICJuZnNfY2xpZW50X2lkNCB1bmlxdWlmaWVyIHN0cmluZyIpOw0KIA0KK21vZHVsZV9wYXJhbShy
+ZWNvdmVyX2xvc3RfbG9ja3MsIGJvb2wsIDA2NDQpOw0KK01PRFVMRV9QQVJNX0RFU0MocmVjb3Zl
+cl9sb3N0X2xvY2tzLA0KKwkJICJJZiB0aGUgc2VydmVyIHJlcG9ydHMgdGhhdCBhIGxvY2sgbWln
+aHQgYmUgbG9zdCwgIg0KKwkJICJ0cnkgdG8gcmVjb3ZlciBpdCByaXNraW5nIGRhdGEgY29ycnVw
+dGlvbi4iKTsNCisNCisNCiAjZW5kaWYgLyogQ09ORklHX05GU19WNCAqLw0KLS0gDQoxLjguMy4x
+DQoNCg==
 
--dros
-
->> 
->> I'm testing patches that fix that now and also allow multiple sec=
->> options (in the same form as nfsd exports, i.e. sec=krb5:krb5i, but
->> I'm trying to fix all the recent regressions surrounding auth flavors
->> / SECINFO first...
-> 
-> That sounds great.
-> 
->> 
->> -dros
->> 
->>> 
-> 
-> Thanks,
-> 
-> Matt
-> 
-> -- 
-> Matt Benjamin
-> The Linux Box
-> 206 South Fifth Ave. Suite 150
-> Ann Arbor, MI  48104
-> 
-> http://linuxbox.com
-> 
-> tel.  734-761-4689 
-> fax.  734-769-8938 
-> cel.  734-216-5309 
-
+--_002_137830506635278camelleiratrondhjemorg_--
