@@ -1,120 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39099 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:35046 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752035Ab3ISUuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Sep 2013 16:50:39 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 00/13] Implement NFSv4 delegations, take 12
-Date: Thu, 19 Sep 2013 16:50:24 -0400
-Message-Id: <1379623837-30798-1-git-send-email-bfields@redhat.com>
+	id S1761528Ab3IDBgp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Sep 2013 21:36:45 -0400
+Date: Wed, 4 Sep 2013 11:36:32 +1000
+From: NeilBrown <neilb@suse.de>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH/RFC] make nfs_flush_incompatible more forgiving.
+Message-ID: <20130904113632.1a1eb337@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/dwbkUAqr0yhzNpFy=UGyzkF"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+--Sig_/dwbkUAqr0yhzNpFy=UGyzkF
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Al, if you don't see any objections, could you queue this up for 3.13?
 
-Changes since version 11:
-	- rebase to 3.12-rc1
-	- fix to lock class in single-lock case of
-	  lock_two_nondirectories
+Hi,
+ we have a customer who has noticed a significant regression in NFS
+ performance between SLES10 (2.6.16+) and SLES11 (3.0+).
 
-Changes since version 10:
-	- appended Jeff's fix for a setlease/open race (otherwise
-	  unrelated to this series, but there are some minor conficts to
-	  resolve).
+ The use case involves two different processes on the same client mmapping a
+ file and making changes.
 
-Changes since version 9:
-	- just a rebase to 3.11-rc6
+ In 2.6.16, all these changes would be cached on the client until a flush or
+ close or other normal process flushed the changes out - much the same as if
+ just one process was accessing the file.
 
-Changes since version 8:
-	- additional warnings in lock_two_nondirectories
-	- lock_two_nondirectories handles NULL second argument,
-	  simplifying vfs_rename_other
-	- kerneldoc comments on notify_change, vfs_link, vfs_rename,
-	  vfs_unlink, to explain delegated_inode argument.
-	- make clear non-support of write delegations in
-	  generic_add_lease
-	- rebase to 3.11-rc1
+ In 3.0 the file is flushed out every time a different process performs an
+ update. So if they interleave accesses, you get a flush-to-the-server on
+ every access.
 
-Introduction copied from previous posting:
+ This is caused by nfs_flush_incompatible.  It deems access through differe=
+nt
+ file descriptors to be incompatible.  However I don't think this is
+ justified.  Accessed using different credentials can reasonably be seen as
+ incompatible(*), but if two processes with identical credentials open the
+ same file there there should be not need to differentiate between them.
 
-This patch series implements read delegations, which allow NFSv4 clients
-to perform read opens without contacting the server, by promising to
-call back to clients before modifying the data, metadata, or set of
-links pointing to a file.
+ The patch below changes the test in nfs_flush_incompatible to just test the
+ credentials (and the dentry, though that might be superfluous - it seems
+ safer).
 
-The main recent change was in response to review from Linus, who didn't
-want us to hang under directory i_mutex's on timeouts communicating with
-unresponsive clients.
+(*) In this specific customer's case the process do currently have slightly
+ different credentials.  In one, the primary gid is included in the list of
+ auxiliary gids.  In the other the primary gid is excluded.  This is enough
+ to make the credentials appear different so this patch doesn't help in that
+ case.  They are looking at being more consistent in their setgroups usage
+ but it would help them if we only actually compared the credentials that
+ were important.  In this case there is no important difference.
+ Would it make sense to treat a more broad credential as compatible with a
+ more narrow credential?  So a write from a process with a given
+ uid,gid,grouplist could ultimately be sent to the server with same uid/gid,
+ but a subset of the group list?
+=20
 
-So, this version of the series drops the i_mutex before waiting.  The
-logic ends up looking something like:
+ Thoughts?
 
-        acquire locks
-        look up inode
-        test for delegation; if found:
-                take reference on inode
-                release locks
-                wait for delegation break
-                drop reference on inode
-                retry
+Thanks,
+NeilBrown
 
-The initial test for a delegation happens after the lock on the
-delegated inode is acquired, but additional directory mutexes may have
-been acquired further up the call stack.  I therefore add a "struct
-inode **" argument to any intervening functions, which we use to pass
-the inode back up to the caller in the case it needs to wait for the
-delegation to be broken.
 
-I also allow callers to pass in NULL for the "struct inode **" argument
-to indicate they'd rather just fail than wait for a delegation.  For
-example, as long as ecryptfs isn't exportable I assume they'd rather not
-see retry logic there that they won't use.  But I may have misjudged in
-some of these cases.
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 7816801..b0d4e47 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -860,7 +860,12 @@ int nfs_flush_incompatible(struct file *file, struct p=
+age *page)
+ 		if (req =3D=3D NULL)
+ 			return 0;
+ 		l_ctx =3D req->wb_lock_context;
+-		do_flush =3D req->wb_page !=3D page || req->wb_context !=3D ctx;
++		do_flush =3D req->wb_page !=3D page;
++		if (req->wb_context !=3D ctx) {
++			do_flush |=3D
++				req->wb_context->dentry !=3D ctx->dentry ||
++				req->wb_context->cred !=3D ctx->cred;
++		}
+ 		if (l_ctx) {
+ 			do_flush |=3D l_ctx->lockowner.l_owner !=3D current->files
+ 				|| l_ctx->lockowner.l_pid !=3D current->tgid;
 
-J. Bruce Fields (12):
-  vfs: pull ext4's double-i_mutex-locking into common code
-  vfs: don't use PARENT/CHILD lock classes for non-directories
-  vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
-  vfs: take i_mutex on renamed file
-  locks: introduce new FL_DELEG lock flag
-  locks: implement delegations
-  namei: minor vfs_unlink cleanup
-  locks: break delegations on unlink
-  locks: helper functions for delegation breaking
-  locks: break delegations on rename
-  locks: break delegations on link
-  locks: break delegations on any attribute modification
+--Sig_/dwbkUAqr0yhzNpFy=UGyzkF
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
 
-Jeff Layton (1):
-  locks: close potential race between setlease and open
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
 
- Documentation/filesystems/directory-locking |   31 ++++--
- drivers/base/devtmpfs.c                     |    6 +-
- fs/attr.c                                   |   25 ++++-
- fs/cachefiles/interface.c                   |    4 +-
- fs/cachefiles/namei.c                       |    4 +-
- fs/ecryptfs/inode.c                         |    6 +-
- fs/ext4/ext4.h                              |    2 -
- fs/ext4/ioctl.c                             |    4 +-
- fs/ext4/move_extent.c                       |   40 +-------
- fs/hpfs/namei.c                             |    2 +-
- fs/inode.c                                  |   42 ++++++++-
- fs/locks.c                                  |  130 +++++++++++++++++++++-----
- fs/namei.c                                  |  135 +++++++++++++++++++++++----
- fs/nfsd/nfs4state.c                         |    2 +-
- fs/nfsd/vfs.c                               |   14 ++-
- fs/open.c                                   |   22 ++++-
- fs/utimes.c                                 |    9 +-
- include/linux/fs.h                          |   78 +++++++++++++---
- ipc/mqueue.c                                |    2 +-
- 19 files changed, 428 insertions(+), 130 deletions(-)
+iQIVAwUBUiaOoTnsnt1WYoG5AQK2TxAAhD0HKeCk1+O7y8fpyE1SPqLFLr1Rq5kc
+338RUO9EoFdIt15v9gl4hMqQybDc6nxEy8rqWlUHUhQ0t+BiTNKlkJSSzF4rqxYL
+hEIsFhE8CHmgN7/XkFlG0KuEwEdstLboZ271/EfAqCtvCAhOYp7ekWZKl27Pm46x
+IF4asJzqEncw6F/4AXba4UZW4115TYzIyzF5cs4sSHURf9Sz9NWB6zPcNXeabKrB
+8PHQi+m1uYk82J5bcHj+N5lr0+Q3HdXqGnpDjD+AabFZ7W5LUbv0OAEfXdd95PJp
+8o7M2dboSrZ2w2vdMM3JMPEZ/bNnt+p+YNAor/EsVFknb3j0IlONvkmv58N11ew5
+7S48q7eh2XxADghvbhnCBOZ4GK9fPqtkFBHUkkDRPYjNGS67V5PPTdRl7+Bnj56S
+YSGiXWMWp8gpSj0MDC+wKvjrc6fTY2Pls96L1rm1tyETGYRBc6WK4u+675dFUEz6
+XLMsaVf3sC9YTz9IDNbtZaUiQZYiiXT7smfGlSb6XR4u2Wppj51SIhho2EuiuRW7
+WP2eyb9DR/3QXk9kDQfoLopqmiM9MVpWx7f6UMvgaofZKxMEGJQJ6w4xuplOY4Su
+64QyFdSdiKK+BnCQSvjdmDvxr66Wyo3qu/Ofx3cliUYWQ27I1rm7Aoozx4MY9pxU
+2n6ErZ69KGA=
+=t8jS
+-----END PGP SIGNATURE-----
 
--- 
-1.7.9.5
-
+--Sig_/dwbkUAqr0yhzNpFy=UGyzkF--
