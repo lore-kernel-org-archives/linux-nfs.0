@@ -1,48 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44168 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:40809 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758695Ab3IFQHm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Sep 2013 12:07:42 -0400
-Date: Fri, 6 Sep 2013 12:07:35 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Emmanuel Florac <eflorac@intellique.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Hard to debug NFS loss of connectivity
-Message-ID: <20130906160735.GA16396@fieldses.org>
-References: <20130905191800.1c75b2fb@harpe.intellique.com>
- <20130905204536.GB24805@fieldses.org>
- <20130905233449.5eb8bf79@galadriel.home>
- <20130905214002.GD24805@fieldses.org>
- <20130906175721.30082c11@harpe.intellique.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20130906175721.30082c11@harpe.intellique.com>
+	id S1751625Ab3IEQaY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Sep 2013 12:30:24 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 00/12] Implement NFSv4 delegations, take 10
+Date: Thu,  5 Sep 2013 12:30:04 -0400
+Message-Id: <1378398620-23018-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 06, 2013 at 05:57:21PM +0200, Emmanuel Florac wrote:
-> Le Thu, 5 Sep 2013 17:40:02 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> écrivait:
-> 
-> > I was asking about the on-the-wire errors and getattr replies here,
-> > not the application system calls.
-> > 
-> 
-> OK, I've done the dump; I've kept just the last few working calls, then
-> the failure calls, and filtered for NFS traffic (there are SSH and
-> LACP frames interspersed here). I have absolutely no idea about what's
-> going on there :) Any light from the network savvy?
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Weird.  Things look normal up through frame 14, which is a READDIRPLUS
-reply.  Then the server resends the reply after .2s, and and the client
-resends its call shortly thereafter (but without acking the latest
-reply).  And then the rest of the trace is resends of the reply.
+Changes since version 9:
+	- just a rebase to 3.11-rc6.
 
-So it looks like the client stopped ACKing the server's replies?
+Changes since version 8:
+	- additional warnings in lock_two_nondirectories
+	- lock_two_nondirectories handles NULL second argument,
+	  simplifying vfs_rename_other
+	- kerneldoc comments on notify_change, vfs_link, vfs_rename,
+	  vfs_unlink, to explain delegated_inode argument.
+	- make clear non-support of write delegations in
+	  generic_add_lease
+	- rebase to 3.11-rc1
 
-You may also have filtered out some TCP ACKs, which makes this harder to
-work out.
+This patch series implements read delegations, which allow NFSv4 clients
+to perform read opens without contacting the server, by promising to
+call back to clients before modifying the data, metadata, or set of
+links pointing to a file.
 
-Looks like a networking problem, but I don't know.
+The main recent change was in response to review from Linus, who didn't
+want us to hang under directory i_mutex's on timeouts communicating with
+unresponsive clients.
 
---b.
+So, this version of the series drops the i_mutex before waiting.  The
+logic ends up looking something like:
+
+        acquire locks
+        look up inode
+        test for delegation; if found:
+                take reference on inode
+                release locks
+                wait for delegation break
+                drop reference on inode
+                retry
+
+The initial test for a delegation happens after the lock on the
+delegated inode is acquired, but additional directory mutexes may have
+been acquired further up the call stack.  I therefore add a "struct
+inode **" argument to any intervening functions, which we use to pass
+the inode back up to the caller in the case it needs to wait for the
+delegation to be broken.
+
+I also allow callers to pass in NULL for the "struct inode **" argument
+to indicate they'd rather just fail than wait for a delegation.  For
+example, as long as ecryptfs isn't exportable I assume they'd rather not
+see retry logic there that they won't use.  But I may have misjudged in
+some of these cases.
+
+
+J. Bruce Fields (12):
+  vfs: pull ext4's double-i_mutex-locking into common code
+  vfs: don't use PARENT/CHILD lock classes for non-directories
+  vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
+  vfs: take i_mutex on renamed file
+  locks: introduce new FL_DELEG lock flag
+  locks: implement delegations
+  namei: minor vfs_unlink cleanup
+  locks: break delegations on unlink
+  locks: helper functions for delegation breaking
+  locks: break delegations on rename
+  locks: break delegations on link
+  locks: break delegations on any attribute modification
+
+ Documentation/filesystems/directory-locking |   31 ++++--
+ drivers/base/devtmpfs.c                     |    6 +-
+ fs/attr.c                                   |   25 ++++-
+ fs/cachefiles/interface.c                   |    4 +-
+ fs/cachefiles/namei.c                       |    4 +-
+ fs/ecryptfs/inode.c                         |    6 +-
+ fs/ext4/ext4.h                              |    2 -
+ fs/ext4/ioctl.c                             |    4 +-
+ fs/ext4/move_extent.c                       |   40 +-------
+ fs/hpfs/namei.c                             |    2 +-
+ fs/inode.c                                  |   42 ++++++++-
+ fs/locks.c                                  |   57 ++++++++---
+ fs/namei.c                                  |  135 +++++++++++++++++++++++----
+ fs/nfsd/nfs4state.c                         |    2 +-
+ fs/nfsd/vfs.c                               |   14 ++-
+ fs/open.c                                   |   22 ++++-
+ fs/utimes.c                                 |    9 +-
+ include/linux/fs.h                          |   72 +++++++++++---
+ ipc/mqueue.c                                |    2 +-
+ 19 files changed, 361 insertions(+), 118 deletions(-)
+
+-- 
+1.7.9.5
+
