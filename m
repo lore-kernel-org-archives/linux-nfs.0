@@ -1,153 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f53.google.com ([209.85.128.53]:63197 "EHLO
-	mail-qe0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753553Ab3IZSmZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:42:25 -0400
-Received: by mail-qe0-f53.google.com with SMTP id jy17so1108206qeb.12
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:42:25 -0700 (PDT)
-From: Benny Halevy <bhalevy@primarydata.com>
-To: " J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH RFC v0 37/49] pnfsd: make /proc/fs/nfsd/pnfs_dlm_device report dlm device list.
-Date: Thu, 26 Sep 2013 14:42:22 -0400
-Message-Id: <1380220942-14393-1-git-send-email-bhalevy@primarydata.com>
-In-Reply-To: <52447EA0.7070004@primarydata.com>
-References: <52447EA0.7070004@primarydata.com>
+Received: from mx1.netapp.com ([216.240.18.38]:5021 "EHLO mx1.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753018Ab3IESbe convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Sep 2013 14:31:34 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: use mach cred for SECINFO_NO_NAME w/ integrity
+Date: Thu, 5 Sep 2013 18:31:32 +0000
+Message-ID: <C58A46C9-4A5C-4EC7-A60E-DE23791A4B70@netapp.com>
+References: <1378311199-1695-1-git-send-email-dros@netapp.com>
+ <1378401946.5450.13.camel@leira.trondhjem.org>
+In-Reply-To: <1378401946.5450.13.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Eric Anderle <eanderle@umich.edu>
 
-The ability to read the current device list is useful for debugging.
+On Sep 5, 2013, at 1:25 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-Signed-off-by: Eric Anderle <eanderle@umich.edu>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-[pnfsd: fix dlm device naming]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
----
- fs/nfsd/nfs4pnfsdlm.c            | 44 +++++++++++++++++++++++++++++++++++++---
- fs/nfsd/nfsctl.c                 |  4 +++-
- include/linux/nfsd/nfs4pnfsdlm.h |  2 ++
- 3 files changed, 46 insertions(+), 4 deletions(-)
+> On Wed, 2013-09-04 at 12:13 -0400, Weston Andros Adamson wrote:
+>> Commit 97431204ea005ec8070ac94bc3251e836daa7ca7 introduced a regression
+>> that causes SECINFO_NO_NAME to fail without sending an RPC if:
+>> 
+>> 1) the nfs_client's rpc_client is using krb5i/p (now tried by default)
+>> 2) the current user doesn't have valid kerberos credentials
+>> 
+>> This situation is quite common - as of now a sec=sys mount would use
+>> krb5i for the nfs_client's rpc_client and a user would hardly be faulted
+>> for not having run kinit.
+>> 
+>> The solution is to use the machine cred when trying to use an integrity
+>> protected auth flavor for SECINFO_NO_NAME.
+>> 
+>> Older servers may not support using the machine cred or an integrity
+>> protected auth flavor for SECINFO_NO_NAME in every circumstance, so we fall
+>> back to using the user's cred and the filesystem's auth flavor in this case.
+>> 
+>> We run into another problem when running against linux nfs servers -
+>> they return NFS4ERR_WRONGSEC when using integrity auth flavor (unless the
+>> mount is also that flavor) even though that is not a valid error for
+>> SECINFO*.  Even though it's against spec, handle WRONGSEC errors on
+>> SECINFO_NO_NAME by falling back to using the user cred and the
+>> filesystem's auth flavor.
+>> 
+>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>> ---
+>> 
+>> This patch goes along with yesterday's SECINFO patch
+>> 
+>> fs/nfs/nfs4proc.c | 41 +++++++++++++++++++++++++++++++++++++----
+>> 1 file changed, 37 insertions(+), 4 deletions(-)
+>> 
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index ab1461e..74b37f5 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -7291,7 +7291,8 @@ out:
+>>  */
+>> static int
+>> _nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
+>> -		    struct nfs_fsinfo *info, struct nfs4_secinfo_flavors *flavors)
+>> +		    struct nfs_fsinfo *info,
+>> +		    struct nfs4_secinfo_flavors *flavors, bool use_integrity)
+>> {
+>> 	struct nfs41_secinfo_no_name_args args = {
+>> 		.style = SECINFO_STYLE_CURRENT_FH,
+>> @@ -7304,8 +7305,23 @@ _nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
+>> 		.rpc_argp = &args,
+>> 		.rpc_resp = &res,
+>> 	};
+>> -	return nfs4_call_sync(server->nfs_client->cl_rpcclient, server, &msg,
+>> -				&args.seq_args, &res.seq_res, 0);
+>> +	struct rpc_clnt *clnt = server->client;
+>> +	int status;
+>> +
+>> +	if (use_integrity) {
+>> +		clnt = server->nfs_client->cl_rpcclient;
+>> +		msg.rpc_cred = nfs4_get_clid_cred(server->nfs_client);
+>> +	}
+>> +
+>> +	dprintk("--> %s\n", __func__);
+>> +	status = nfs4_call_sync(clnt, server, &msg, &args.seq_args,
+>> +				&res.seq_res, 0);
+>> +	dprintk("<-- %s status=%d\n", __func__, status);
+>> +
+>> +	if (msg.rpc_cred)
+>> +		put_rpccred(msg.rpc_cred);
+>> +
+>> +	return status;
+>> }
+> 
+> I have a question: if we use the machine credential, don't we risk a
+> NFS4ERR_ACCESS due to the directory permission settings?
+> 
+> I don't see anything in the spec about what permissions you do need for
+> a SECINFO_NO_NAME, but since NFS4ERR_ACCESS is listed as a valid return
+> code, I'm assuming that the server may enforce lookup permissions…
+> 
 
-diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
-index 19002c1..4c2ab87 100644
---- a/fs/nfsd/nfs4pnfsdlm.c
-+++ b/fs/nfsd/nfs4pnfsdlm.c
-@@ -28,6 +28,8 @@
- #include <linux/nfsd/nfs4layoutxdr.h>
- #include <linux/sunrpc/addr.h>
- 
-+#include "nfsd.h"
-+
- #define NFSDDBG_FACILITY                NFSDDBG_FILELAYOUT
- 
- /* Just use a linked list. Do not expect more than 32 dlm_device_entries
-@@ -45,12 +47,15 @@ struct dlm_device_entry {
- };
- 
- static struct dlm_device_entry *
--nfsd4_find_pnfs_dlm_device(char *disk_name)
-+_nfsd4_find_pnfs_dlm_device(char *disk_name)
- {
- 	struct dlm_device_entry *dlm_pdev;
- 
-+	dprintk("--> %s  disk name %s\n", __func__, disk_name);
- 	spin_lock(&dlm_device_list_lock);
- 	list_for_each_entry(dlm_pdev, &dlm_device_list, dlm_dev_list) {
-+		dprintk("%s Look for dlm_pdev %s\n", __func__,
-+			dlm_pdev->disk_name);
- 		if (!memcmp(dlm_pdev->disk_name, disk_name, strlen(disk_name))) {
- 			spin_unlock(&dlm_device_list_lock);
- 			return dlm_pdev;
-@@ -60,6 +65,39 @@ struct dlm_device_entry {
- 	return NULL;
- }
- 
-+static struct dlm_device_entry *
-+nfsd4_find_pnfs_dlm_device(struct super_block *sb) {
-+	char dname[BDEVNAME_SIZE];
-+
-+	bdevname(sb->s_bdev, dname);
-+	return _nfsd4_find_pnfs_dlm_device(dname);
-+}
-+
-+ssize_t
-+nfsd4_get_pnfs_dlm_device_list(char *buf, ssize_t buflen)
-+{
-+	char *pos = buf;
-+	ssize_t size = 0;
-+	struct dlm_device_entry *dlm_pdev;
-+	int ret = -EINVAL;
-+
-+	spin_lock(&dlm_device_list_lock);
-+	list_for_each_entry(dlm_pdev, &dlm_device_list, dlm_dev_list)
-+	{
-+		int advanced;
-+		advanced = snprintf(pos, buflen - size, "%s:%s\n", dlm_pdev->disk_name, dlm_pdev->ds_list);
-+		if (advanced >= buflen - size)
-+			goto out;
-+		size += advanced;
-+		pos += advanced;
-+	}
-+	ret = size;
-+
-+out:
-+	spin_unlock(&dlm_device_list_lock);
-+	return ret;
-+}
-+
- bool nfsd4_validate_pnfs_dlm_device(char *ds_list, int *num_ds)
- {
- 	char *start = ds_list;
-@@ -140,7 +178,7 @@ bool nfsd4_validate_pnfs_dlm_device(char *ds_list, int *num_ds)
- 	dprintk("%s disk_name %s num_ds %d ds_list %s\n", __func__,
- 		new->disk_name, new->num_ds, new->ds_list);
- 
--	found = nfsd4_find_pnfs_dlm_device(new->disk_name);
-+	found = _nfsd4_find_pnfs_dlm_device(new->disk_name);
- 	if (found) {
- 		/* FIXME: should compare found->ds_list with new->ds_list
- 		 * and if it is different, kick off a CB_NOTIFY change
-@@ -235,7 +273,7 @@ static int nfsd4_pnfs_dlm_getdevinfo(struct super_block *sb,
- 	/*
- 	 * If the DS list has not been established, return -EINVAL
- 	 */
--	dlm_pdev = nfsd4_find_pnfs_dlm_device(sb->s_bdev->bd_disk->disk_name);
-+	dlm_pdev = nfsd4_find_pnfs_dlm_device(sb);
- 	if (!dlm_pdev) {
- 		dprintk("%s: DEBUG: disk %s Not Found\n", __func__,
- 			sb->s_bdev->bd_disk->disk_name);
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 7da8584..4fafa2a 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1068,7 +1068,9 @@ static ssize_t __write_pnfs_dlm_device(struct file *file, char *buf,
- 			return ret;
- 
- 		ret = nfsd4_set_pnfs_dlm_device(pnfs_dlm_device, len);
--	}
-+	} else
-+		return nfsd4_get_pnfs_dlm_device_list(buf, SIMPLE_TRANSACTION_LIMIT);
-+
- 	return ret <= 0 ? ret : strlen(buf);
- }
- 
-diff --git a/include/linux/nfsd/nfs4pnfsdlm.h b/include/linux/nfsd/nfs4pnfsdlm.h
-index 63248aa..a4f3477 100644
---- a/include/linux/nfsd/nfs4pnfsdlm.h
-+++ b/include/linux/nfsd/nfs4pnfsdlm.h
-@@ -39,6 +39,8 @@
- 
- void nfsd4_pnfs_dlm_shutdown(void);
- 
-+ssize_t nfsd4_get_pnfs_dlm_device_list(char *buf, ssize_t buflen);
-+
- #else /* CONFIG_PNFSD */
- 
- static inline void nfsd4_pnfs_dlm_shutdown(void)
--- 
-1.8.3.1
+This is a good question. Looking into it…
+
+-dros
+
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
 
