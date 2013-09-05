@@ -1,47 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49972 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756014Ab3I3WL3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Sep 2013 18:11:29 -0400
-Date: Mon, 30 Sep 2013 18:11:27 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: Frank Filz <ffilzlnx@mindspring.com>
-Cc: Kernel NFS List <linux-nfs@vger.kernel.org>,
-        "'Ganesha NFS List'" <nfs-ganesha-devel@lists.sourceforge.net>
-Subject: Re: pynfs updates
-Message-ID: <20130930221126.GD26382@fieldses.org>
-References: <003301cebe09$5bf81090$13e831b0$@mindspring.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <003301cebe09$5bf81090$13e831b0$@mindspring.com>
+Received: from smtpfb2-g21.free.fr ([212.27.42.10]:38893 "EHLO
+	smtpfb2-g21.free.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750704Ab3IERSx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Sep 2013 13:18:53 -0400
+Received: from smtp6-g21.free.fr (smtp6-g21.free.fr [212.27.42.6])
+	by smtpfb2-g21.free.fr (Postfix) with ESMTP id 1D49FD1A2FF
+	for <linux-nfs@vger.kernel.org>; Thu,  5 Sep 2013 19:18:48 +0200 (CEST)
+Received: from harpe.intellique.com (unknown [82.225.196.72])
+	by smtp6-g21.free.fr (Postfix) with ESMTP id 8FD6182425
+	for <linux-nfs@vger.kernel.org>; Thu,  5 Sep 2013 19:17:58 +0200 (CEST)
+Date: Thu, 5 Sep 2013 19:18:00 +0200
+From: Emmanuel Florac <eflorac@intellique.com>
+To: linux-nfs@vger.kernel.org
+Subject: Hard to debug NFS loss of connectivity
+Message-ID: <20130905191800.1c75b2fb@harpe.intellique.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 30, 2013 at 02:17:43PM -0400, Frank Filz wrote:
-> Bruce,
-> 
-> Please pull the following branch that contains the pynfs updates I made at
-> BAT:
-> 
-> https://github.com/ffilz/pynfs/commits/master
 
-Thanks!  A few questions:
+Hi list, I have a serious problem I've never met before. Here is the
+setup:
 
-	- "4.1 server tests: Fix some exception handling": could you
-	  include in the changelog and explanation of what problem this
-	  fixes?  (And ditto, maybe, for the following commit?)
+The NFS server is running Debian 6 amd64 but with a plain vanilla 3.2.50
+kernel. it shares a large 81 TB volume (XFS over LVM on hardware RAID6)
+through nfs without any particular options. Here is a glimpse
+of /etc/exports:
 
-	- "Fix SEQ9d to work in home directory instead of root": did you
-	  intend to include the chunk in nfs4.1/nfs4lib.py?  It looks
-	  irrelevant.
+/mnt/raid 10.1.1.0/255.255.255.128(fsid=1,rw,no_root_squash,async,no_subtree_check)
 
-	- "Add two SECINFO_NO_NAME tests for SECINFO_STYLE4_PARENT":
-		- SECNN3: is / required to have no parent?  (I'd assumed
-		  here that it would also be OK to follow the convention
-		  that / is its own parent, but I'll admit to not having
-		  thought about this much.)
-		- SECNN4: is env.home necessarily unequal to "/"?  Would
-		  seem better to do the lookup in a subdirectory just to
-		  be certain.
+On the other side is a VMWare ESX VM running Ubuntu 12.04LTS, kernel 3.2.0-52 Ubuntu 
+amd64 mounting the share. From the fstab:
 
---b.
+10.1.1.99:/mnt/raid          /server         nfs  rw,hard,intr            0    0
+
+The problem is as follow: stat'ing files on the VM makes the 
+NFS connection drop. For instance:
+
+find /server -type f -ls
+
+It works for a while, then stops responding. The NFS mount is frozen. 
+The network link is OK; I still can ssh from the server to the VM 
+and back, I can wget from the VM to the server, ping the server 
+from the VM, etc. Only NFS is affected.
+
+Restarting NFS on the server does nothing to unfreeze the mount. 
+Using nfs4 instead of nfs3 does nothing. The only remedy is to reboot the VM.
+There isn't any error in dmesg, /var/log/syslog or 
+/var/log/messages in the VM nor the server.
+
+I've tried rebooting the server on a 3.9.7 kernel. Same thing. 
+Of course there isn't any data corruption of any sort. 
+Running "find /mnt/raid -type f -ls" on the server works 
+perfectly and lists about 25000 files without the slightest trouble.
+
+It works equally well if I mount the NFS share on the server itself.
+
+
+Now it's becoming crazier: When I run the find command as
+previously said, it freezes always on the same file, for
+instance :
+
+/server/folder1/folder2/folder3/folder4/.svn/somefile
+
+However, if after a fresh reboot I do
+
+stat /server/folder1/folder2/folder3/folder4/.svn/somefile
+
+no problem. Even doing this:
+
+cd /server/folder1/folder2/folder3/folder4/ && find . -type f -ls
+
+works. However this
+
+cd /server/folder1/folder2/folder3/ && find . -type f -ls
+
+doesn't fly. It freezes at exactly the same point.
+In the first test (running directly from /server) it
+freezes after successfully listing 10000 files. In the last
+test it freezes after only 25 files. 
+So apparently it's not about the number of files.
+
+
+Now I'm stuck. Out of going through tcpdump, I have absolutely 
+not the faintest idea about what's going on, except I tend to 
+think that's some Ubuntu kernel bug.
+
+Any hint, idea, etc would be extremely welcome. Even some
+debugging method less painful than digging through huge 
+tcpdumps would be nice :)
+
+-- 
+------------------------------------------------------------------------
+Emmanuel Florac     |   Direction technique
+                    |   Intellique
+                    |	<eflorac@intellique.com>
+                    |   +33 1 78 94 84 02
+------------------------------------------------------------------------
