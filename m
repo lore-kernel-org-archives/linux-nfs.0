@@ -1,36 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:36296 "EHLO mx12.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:52377 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751044Ab3IJTbl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Sep 2013 15:31:41 -0400
+	id S1752830Ab3IEWH1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Sep 2013 18:07:27 -0400
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: Quentin Barnes <qbarnes@gmail.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFSv4.1: clean up after using machine cred
-Date: Tue, 10 Sep 2013 19:31:39 +0000
-Message-ID: <1378841499.21916.22.camel@leira.trondhjem.org>
-References: <1378839358-10389-1-git-send-email-dros@netapp.com>
-	 <1378839358-10389-2-git-send-email-dros@netapp.com>
-In-Reply-To: <1378839358-10389-2-git-send-email-dros@netapp.com>
+Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
+Date: Thu, 5 Sep 2013 22:07:26 +0000
+Message-ID: <1378418844.5450.30.camel@leira.trondhjem.org>
+References: <20130905162110.GA17920@gmail.com>
+	 <20130905170303.GB17330@us.ibm.com> <20130905191139.GA20830@gmail.com>
+	 <1378411320.5450.27.camel@leira.trondhjem.org>
+	 <20130905213649.GA21944@gmail.com>
+In-Reply-To: <20130905213649.GA21944@gmail.com>
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEzLTA5LTEwIGF0IDE0OjU1IC0wNDAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
-d3JvdGU6DQo+IENsaWVudCBjYWxscyBnZXRfcnBjY3JlZCB3aGVuIHJlZmVyZW5jaW5nIHRoZSBt
-YWNoaW5lIGNyZWQsIHNvIGl0IG11c3QgY2FsbA0KPiBwdXRfcnBjY3JlZCBhZnRlciBwYXNzaW5n
-IGNyZWQgdG8gcnBjIGxheWVyLg0KPiANCj4gVGhpcyBwYXRjaCBhbHNvIG1vdmVzIG5mczRfc3A0
-X2luaXQgKGZvcm1lcmx5IG5mczRfc3RhdGVfcHJvdGVjdCkgdG8gcmlnaHQNCj4gYmVmb3JlIHRo
-ZSBjYWxsIHRvIHJwY19ydW5fdGFzayAoYW5kIHdyYXBwZXJzIG9mIHJwY19ydW5fdGFzaykgdG8g
-bWluaW1pemUNCj4gZXJyb3IgcGF0aCBjbGVhbnVwIGNvZGUuDQo+IA0KDQpEbyB3ZSByZWFsbHkg
-bmVlZCB0aGlzPyBBRkFJQ1Mgb25jZSB0aGUgY2xwLT5jbF9tYWNoaW5lX2NyZWQgaXMgc2V0LCBp
-dA0KaXNuJ3QgZnJlZWQgdW50aWwgdGhlIGNhbGwgdG8gbmZzX2ZyZWVfY2xpZW50KCkuIEluIGZh
-Y3QsIHdlIHByb2JhYmx5DQpfcmVseV8gb24gdGhpcyBiZWluZyB0aGUgY2FzZSBmb3IgU1A0X01B
-Q0hfQ1JFRCwgc2luY2UgaWYgdGhlIG1hY2hpbmUNCmNyZWQgd2VyZSB0byBjaGFuZ2UsIHdlJ2Qg
-bm8gbG9uZ2VyIGJlIGFibGUgdG8gY2hhbmdlIG91ciBzZXNzaW9uIG9yDQpsZWFzZS4NCg0KSU9X
-OiBpbnN0ZWFkIG9mIHJlZmVyZW5jaW5nIHRoZSBjcmVkIHZpYSBnZXQvcHV0X3JwY2NyZWQoKSwg
-bWF5YmUgd2UgY2FuDQpqdXN0IGZlZWQgdGhlIGN1cnJlbnQgdmFsdWUgb2YgY2xwLT5jbF9tYWNo
-aW5lX2NyZWQgaW50byB0aGUNCm1zZy0+cnBjX2NyZWQuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
-DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RA
-bmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+T24gVGh1LCAyMDEzLTA5LTA1IGF0IDE2OjM2IC0wNTAwLCBRdWVudGluIEJhcm5lcyB3cm90ZToN
+Cj4gT24gVGh1LCBTZXAgMDUsIDIwMTMgYXQgMDg6MDI6MDFQTSArMDAwMCwgTXlrbGVidXN0LCBU
+cm9uZCB3cm90ZToNCj4gPiBPbiBUaHUsIDIwMTMtMDktMDUgYXQgMTQ6MTEgLTA1MDAsIFF1ZW50
+aW4gQmFybmVzIHdyb3RlOg0KPiA+ID4gT24gVGh1LCBTZXAgMDUsIDIwMTMgYXQgMTI6MDM6MDNQ
+TSAtMDUwMCwgTWFsYWhhbCBOYWluZW5pIHdyb3RlOg0KPiA+ID4gPiBOZWlsIEJyb3duIHBvc3Rl
+ZCBhIHBhdGNoIGNvdXBsZSBkYXlzIGFnbyBmb3IgdGhpcyENCj4gPiA+ID4gDQo+ID4gPiA+IGh0
+dHA6Ly90aHJlYWQuZ21hbmUub3JnL2dtYW5lLmxpbnV4Lm5mcy81ODQ3Mw0KPiA+ID4gDQo+ID4g
+PiBJIHRyaWVkIE5laWwncyBwYXRjaCBvbiBhIHYzLjExIGtlcm5lbC4gIFRoZSByZWJ1aWx0IGtl
+cm5lbCBzdGlsbA0KPiA+ID4gZXhoaWJpdGVkIHRoZSBzYW1lIDEwMDBzIG9mIFdSSVRFcy9zZWMg
+cHJvYmxlbS4NCj4gPiA+IA0KPiA+ID4gQW55IG90aGVyIGlkZWFzPw0KPiA+IA0KPiA+IFllcy4g
+UGxlYXNlIHRyeSB0aGUgYXR0YWNoZWQgcGF0Y2guDQo+IA0KPiBHcmVhdCEgIFRoYXQgZGlkIHRo
+ZSB0cmljayENCj4gDQo+IERvIHlvdSBmZWVsIHRoaXMgcGF0Y2ggY291bGQgYmUgd29ydGh5IG9m
+IHB1c2hpbmcgaXQgdXBzdHJlYW0gaW4gaXRzDQo+IGN1cnJlbnQgc3RhdGUgb3Igd2FzIGl0IGp1
+c3QgdG8gdmVyaWZ5IGEgdGhlb3J5Pw0KDQpJdCBzaG91bGQgYmUgc2FmZSB0byBtZXJnZSB0aGlz
+LiBJdCBpcyBhIHZhbGlkIG9wdGltaXNhdGlvbiBpbiB0aGUgY2FzZQ0Kd2hlcmUgdGhlcmUgYXJl
+IG5vIGxvY2tzIGFwcGxpZWQuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
+ZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3
+Lm5ldGFwcC5jb20NCg==
