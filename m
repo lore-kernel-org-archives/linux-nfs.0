@@ -1,125 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay3-d.mail.gandi.net ([217.70.183.195]:33784 "EHLO
-	relay3-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753520Ab3IPOn7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Sep 2013 10:43:59 -0400
-Received: from svelte.ryper.org (unknown [IPv6:2001:470:b825:1:76f0:6dff:fe51:7a39])
-	(Authenticated sender: contact@ryper.org)
-	by relay3-d.mail.gandi.net (Postfix) with ESMTPSA id 832F7A80D8
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Sep 2013 16:43:55 +0200 (CEST)
-Date: Mon, 16 Sep 2013 09:43:51 -0500
-From: Contact <contact@ryper.org>
-To: linux-nfs@vger.kernel.org
-Subject: 16+ GID issue, mountd's --manage-gids not helping
-Message-ID: <20130916094351.263d433d@svelte.ryper.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from fieldses.org ([174.143.236.118]:41125 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757904Ab3IEUpi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Sep 2013 16:45:38 -0400
+Date: Thu, 5 Sep 2013 16:45:36 -0400
+To: Emmanuel Florac <eflorac@intellique.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Hard to debug NFS loss of connectivity
+Message-ID: <20130905204536.GB24805@fieldses.org>
+References: <20130905191800.1c75b2fb@harpe.intellique.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130905191800.1c75b2fb@harpe.intellique.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all,
+On Thu, Sep 05, 2013 at 07:18:00PM +0200, Emmanuel Florac wrote:
+> 
+> Hi list, I have a serious problem I've never met before. Here is the
+> setup:
+> 
+> The NFS server is running Debian 6 amd64 but with a plain vanilla 3.2.50
+> kernel. it shares a large 81 TB volume (XFS over LVM on hardware RAID6)
+> through nfs without any particular options. Here is a glimpse
+> of /etc/exports:
+> 
+> /mnt/raid 10.1.1.0/255.255.255.128(fsid=1,rw,no_root_squash,async,no_subtree_check)
+> 
+> On the other side is a VMWare ESX VM running Ubuntu 12.04LTS, kernel 3.2.0-52 Ubuntu 
+> amd64 mounting the share. From the fstab:
+> 
+> 10.1.1.99:/mnt/raid          /server         nfs  rw,hard,intr            0    0
+> 
+> The problem is as follow: stat'ing files on the VM makes the 
+> NFS connection drop. For instance:
+> 
+> find /server -type f -ls
+> 
+> It works for a while, then stops responding. The NFS mount is frozen. 
+> The network link is OK; I still can ssh from the server to the VM 
+> and back, I can wget from the VM to the server, ping the server 
+> from the VM, etc. Only NFS is affected.
+> 
+> Restarting NFS on the server does nothing to unfreeze the mount. 
+> Using nfs4 instead of nfs3 does nothing. The only remedy is to reboot the VM.
+> There isn't any error in dmesg, /var/log/syslog or 
+> /var/log/messages in the VM nor the server.
+> 
+> I've tried rebooting the server on a 3.9.7 kernel. Same thing. 
+> Of course there isn't any data corruption of any sort. 
+> Running "find /mnt/raid -type f -ls" on the server works 
+> perfectly and lists about 25000 files without the slightest trouble.
+> 
+> It works equally well if I mount the NFS share on the server itself.
+> 
+> 
+> Now it's becoming crazier: When I run the find command as
+> previously said, it freezes always on the same file, for
+> instance :
+> 
+> /server/folder1/folder2/folder3/folder4/.svn/somefile
+> 
+> However, if after a fresh reboot I do
+> 
+> stat /server/folder1/folder2/folder3/folder4/.svn/somefile
+> 
+> no problem. Even doing this:
+> 
+> cd /server/folder1/folder2/folder3/folder4/ && find . -type f -ls
+> 
+> works. However this
+> 
+> cd /server/folder1/folder2/folder3/ && find . -type f -ls
+> 
+> doesn't fly. It freezes at exactly the same point.
+> In the first test (running directly from /server) it
+> freezes after successfully listing 10000 files. In the last
+> test it freezes after only 25 files. 
+> So apparently it's not about the number of files.
+> 
+> 
+> Now I'm stuck. Out of going through tcpdump, I have absolutely 
+> not the faintest idea about what's going on, except I tend to 
+> think that's some Ubuntu kernel bug.
+> 
+> Any hint, idea, etc would be extremely welcome. Even some
+> debugging method less painful than digging through huge 
+> tcpdumps would be nice :)
 
-I'm having an issue with my NFS mount and being able to access it from
-my normal user account. The mount point is chmod'ed to 2770 with a GID
-of 1100 (nfs) which is the same on both systems. I can access it if I
-change my active group using newgrp, but not normally.
+Well, it sounds like you have a reproducer that shouldn't be *too* huge
+(the test where it freezes after stat'ing 25 files).
 
-====================================
-noir ~ # ls -lhd /home/nfs/share
-drwxrws--- 8 nfs nfs 4.0K Sep  4 15:30 /home/nfs/share
+What do you see on the network in that case?
 
-rypervenche@svelte ~ $ pwd
-/home/rypervenche
-rypervenche@svelte ~ $ cd nfs
--su: cd: nfs: Permission denied
-rypervenche@svelte ~ $ newgrp nfs
-rypervenche@svelte ~ $ cd nfs
-rypervenche@svelte ~/nfs $ 
+Are you literally using just tcpdump?  Wireshark will give more
+(and easier to read) information.
 
-svelte ~ # grep nfs /etc/group
-nfs:x:1100:rypervenche
-====================================
+Does the server stop responding at some point, or reply with an error?
+Or does the getattr reply on the problem file look odd in any way?
 
-You can find the details of my NFS server and client here:
-
-====================================
-svelte = client
-noir = server
-
-svelte ~ # tail -1 /etc/fstab
-192.168.1.100:/ /home/rypervenche/nfs   nfs
-rw,noauto,noexec,nodev,nosuid   0       0
-
-noir ~ # cat /etc/exports 
-# /etc/exports: NFS file systems being exported.  See exports(5).
-/home/nfs/share 192.168.1.205(rw,sync,fsid=0,no_root_squash,no_subtree_check) 192.168.2.100(rw,sync,fsid=0,no_root_squash,no_subtree_check)
-
-noir ~ # id nfs
-uid=1100(nfs) gid=1100(nfs) groups=1100(nfs)
-
-noir ~ # grep -v ^# /etc/conf.d/nfs | grep -v ^$
-NFS_NEEDED_SERVICES="rpc.idmapd"
-OPTS_RPC_NFSD="8"
-OPTS_RPC_MOUNTD="-V 4 --manage-gids -p 32767"
-OPTS_RPC_STATD="-p 32765 -o 32766"
-OPTS_RPC_IDMAPD=""
-OPTS_RPC_GSSD=""
-OPTS_RPC_SVCGSSD=""
-OPTS_RPC_RQUOTAD=""
-EXPORTFS_TIMEOUT=30
-
-noir ~ # iptables-save | egrep '(NFS|T -m conn)'
--A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
--A INPUT -s 192.168.1.205/32 -p tcp -m tcp -m multiport --dports 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment --comment NFS -j ACCEPT
--A INPUT -s 192.168.1.205/32 -p udp -m udp -m multiport --dports 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment --comment NFS -j ACCEPT
--A INPUT -s 192.168.2.100/32 -p tcp -m tcp -m multiport --dports 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment --comment NFS -j ACCEPT
--A INPUT -s 192.168.2.100/32 -p udp -m udp -m multiport --dports 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment --comment NFS -j ACCEPT
-
-svelte:
-net-fs/nfs-utils-1.2.6 was built with the following:
-USE="ipv6 nfsdcld nfsidmap nfsv4 nfsv41 tcpd -caps -kerberos (-selinux)"
-
-noir:
-net-fs/nfs-utils-1.2.6 was built with the following:
-USE="ipv6 (multilib) nfsdcld nfsidmap nfsv4 nfsv41 tcpd -caps -kerberos (-selinux)" ABI_X86="64"
-
-svelte ~ # uname -a
-Linux svelte 3.10.7-gentoo-svelte #1 SMP Thu Aug 22 17:46:44 CDT 2013 i686 Intel(R) Atom(TM) CPU N450 @ 1.66GHz GenuineIntel GNU/Linux
-
-noir ~ # uname -a
-Linux noir 3.10.7-gentoo-noir #1 SMP Wed Aug 28 11:19:43 CDT 2013 x86_64 AMD Athlon(tm) II X2 260 Processor AuthenticAMD GNU/Linux
-====================================
-
-
-I found online that the issue is due to NFS not being able to grab
-over 16 GIDs. I found help in the following two links:
-
-https://xkyle.com/solving-the-nfs-16-group-limit-problem/
-https://wiki.archlinux.org/index.php/NFS_Troubleshooting
-
-I tried adding the --manage-gids flag to mountd (which can be seen in
-the /etc/conf.d/nfs file above), however, it does not appear to
-resolve the issue.
-
-====================================
-noir ~ #
-cat /proc/net/rpc/auth.unix.gid/content #uid cnt: gids...
-0 10: 0 1 2 3 4 6 10 11 26 27
-1000 9: 10 18 19 27 78 85 100 250 1000
-
-noir ~ # date +%s > /proc/net/rpc/auth.unix.gid/flush     
-                                                                                                                              
-noir ~ #
-cat /proc/net/rpc/auth.unix.gid/content #uid cnt: gids...
-
-Then I mount the NFS again:
-
-noir ~ # cat /proc/net/rpc/auth.unix.gid/content
-#uid cnt: gids...
-0 10: 0 1 2 3 4 6 10 11 26 27
-1000 9: 10 18 19 27 78 85 100 250 1000
-====================================
-
-It looks as though it is not grabbing all of my GIDs.
-
-Does anyone have some light they can shed on this? Thanks.
+--b.
