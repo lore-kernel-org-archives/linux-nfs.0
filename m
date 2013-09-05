@@ -1,40 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:43295 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755986Ab3ICUrh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Sep 2013 16:47:37 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: William Dauchy <william@gandi.net>
-CC: William Dauchy <wdauchy@gmail.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        "Adamson, Andy" <William.Adamson@netapp.com>
-Subject: Re: [PATCH v2] NFS: Ensure that rmdir() waits for sillyrenames to
- complete
-Date: Tue, 3 Sep 2013 20:47:35 +0000
-Message-ID: <1378241254.6410.52.camel@leira.trondhjem.org>
-References: <1378145871-30071-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <CAJ75kXbRgsYVRNobCmjeL-t+AJproq8jAxXkbkk9DxGnE9eYhQ@mail.gmail.com>
-	 <1378234234.6410.36.camel@leira.trondhjem.org>
-	 <20130903204431.GF22430@gandi.net>
-In-Reply-To: <20130903204431.GF22430@gandi.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-oa0-f43.google.com ([209.85.219.43]:53808 "EHLO
+	mail-oa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750721Ab3IEWeZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Sep 2013 18:34:25 -0400
+Received: by mail-oa0-f43.google.com with SMTP id i10so3152985oag.30
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Sep 2013 15:34:25 -0700 (PDT)
+Date: Thu, 5 Sep 2013 17:34:20 -0500
+From: Quentin Barnes <qbarnes@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
+Message-ID: <20130905223420.GA23192@gmail.com>
+References: <20130905162110.GA17920@gmail.com>
+ <20130905170303.GB17330@us.ibm.com>
+ <20130905191139.GA20830@gmail.com>
+ <1378411320.5450.27.camel@leira.trondhjem.org>
+ <20130905213649.GA21944@gmail.com>
+ <1378418243.5450.29.camel@leira.trondhjem.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1378418243.5450.29.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEzLTA5LTAzIGF0IDIyOjQ0ICswMjAwLCBXaWxsaWFtIERhdWNoeSB3cm90ZToN
-Cj4gT24gU2VwMDMgMTg6NTAsIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gVGhhbmtzIGFn
-YWluIGZvciB0ZXN0aW5nISBEb2VzIHRoZSBmb2xsb3dpbmcgZml4dXAgb24gdG9wIG9mIHRoZSAn
-djInDQo+ID4gcGF0Y2ggYWxzbyBoZWxwPw0KPiA+IC0tLSBhL2ZzL25mcy91bmxpbmsuYw0KPiA+
-ICsrKyBiL2ZzL25mcy91bmxpbmsuYw0KPiA+IEBAIC0yMTEsNyArMjExLDcgQEAgdm9pZCBuZnNf
-d2FpdF9vbl9zaWxseXJlbmFtZShzdHJ1Y3QgZGVudHJ5ICpkZW50cnkpDQo+ID4gIHsNCj4gPiAg
-CXN0cnVjdCBuZnNfaW5vZGUgKm5mc2kgPSBORlNfSShkZW50cnktPmRfaW5vZGUpOw0KPiA+ICAN
-Cj4gPiAtCXdhaXRfZXZlbnQobmZzaS0+d2FpdHF1ZXVlLCBhdG9taWNfcmVhZCgmbmZzaS0+c2ls
-bHlfY291bnQpID09IDEpOw0KPiA+ICsJd2FpdF9ldmVudChuZnNpLT53YWl0cXVldWUsIGF0b21p
-Y19yZWFkKCZuZnNpLT5zaWxseV9jb3VudCkgPD0gMSk7DQo+ID4gIH0NCj4gPiAgDQo+ID4gIHZv
-aWQgbmZzX2Jsb2NrX3NpbGx5cmVuYW1lKHN0cnVjdCBkZW50cnkgKmRlbnRyeSkNCj4gDQo+IGht
-bW0gSSBqdXN0IHJlYWxpemVkIHlvdXIgdjIgdmVyc2lvbiBoYWQgYD09IDFgOyBpbiBmYWN0IEkg
-dGVzdGVkIHlvdXIgdjENCj4gd2l0aCBgPT0gMGAuIExldCBtZSBzb21lIHRpbWUgdG8gcmV0ZXN0
-IHRoZSB2Mi4NCg0KT0suIFRoYW5rcyBhZ2FpbiENCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxp
-bnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRh
-cHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+On Thu, Sep 05, 2013 at 09:57:24PM +0000, Myklebust, Trond wrote:
+> On Thu, 2013-09-05 at 16:36 -0500, Quentin Barnes wrote:
+> > On Thu, Sep 05, 2013 at 08:02:01PM +0000, Myklebust, Trond wrote:
+> > > On Thu, 2013-09-05 at 14:11 -0500, Quentin Barnes wrote:
+> > > > On Thu, Sep 05, 2013 at 12:03:03PM -0500, Malahal Naineni wrote:
+> > > > > Neil Brown posted a patch couple days ago for this!
+> > > > > 
+> > > > > http://thread.gmane.org/gmane.linux.nfs/58473
+> > > > 
+> > > > I tried Neil's patch on a v3.11 kernel.  The rebuilt kernel still
+> > > > exhibited the same 1000s of WRITEs/sec problem.
+> > > > 
+> > > > Any other ideas?
+> > > 
+> > > Yes. Please try the attached patch.
+> > 
+> > Great!  That did the trick!
+> > 
+> > Do you feel this patch could be worthy of pushing it upstream in its
+> > current state or was it just to verify a theory?
+> > 
+> > 
+> > In comparing the nfs_flush_incompatible() implementations between
+> > RHEL5 and v3.11 (without your patch), the guts of the algorithm seem
+> > more or less logically equivalent to me on whether or not to flush
+> > the page.  Also, when and where nfs_flush_incompatible() is invoked
+> > seems the same.  Would you provide a very brief pointer to clue me
+> > in as to why this problem didn't also manifest circa 2.6.18 days?
+> 
+> There was no nfs_vm_page_mkwrite() to handle page faults in the 2.6.18
+> days, and so the risk was that your mmapped writes could end up being
+> sent with the wrong credentials.
+
+Ah!  You're right that nfs_vm_page_mkwrite() was missing from
+the original 2.6.18, so that makes sense, however, Red Hat had
+backported that function starting with their RHEL5.9(*) kernels,
+yet the problem doesn't manifest on RHEL5.9.  Maybe the answer lies
+somewhere in RHEL5.9's do_wp_page(), or up that call path, but
+glancing through it, it all looks pretty close though.
+
+
+(*) That was the source I using when comparing with the 3.11 source
+when studying your patch since it was the last kernel known to me
+without the problem.
+
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+
+Quentin
