@@ -1,165 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40844 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:41658 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752830Ab3IEQaf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Sep 2013 12:30:35 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 04/12] vfs: take i_mutex on renamed file
-Date: Thu,  5 Sep 2013 12:30:12 -0400
-Message-Id: <1378398620-23018-9-git-send-email-bfields@redhat.com>
-In-Reply-To: <1378398620-23018-1-git-send-email-bfields@redhat.com>
-References: <1378398620-23018-1-git-send-email-bfields@redhat.com>
+	id S1754029Ab3IEPbh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Sep 2013 11:31:37 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFSv4.1 Use MDS auth flavor for data server
+ connection
+Date: Thu, 5 Sep 2013 15:31:35 +0000
+Message-ID: <1378395094.5450.7.camel@leira.trondhjem.org>
+References: <1378394074-2165-1-git-send-email-andros@netapp.com>
+In-Reply-To: <1378394074-2165-1-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-A read delegation is used by NFSv4 as a guarantee that a client can
-perform local read opens without informing the server.
-
-The open operation takes the last component of the pathname as an
-argument, thus is also a lookup operation, and giving the client the
-above guarantee means informing the client before we allow anything that
-would change the set of names pointing to the inode.
-
-Therefore, we need to break delegations on rename, link, and unlink.
-
-We also need to prevent new delegations from being acquired while one of
-these operations is in progress.
-
-We could add some completely new locking for that purpose, but it's
-simpler to use the i_mutex, since that's already taken by all the
-operations we care about.
-
-The single exception is rename.  So, modify rename to take the i_mutex
-on the file that is being renamed.
-
-Also fix up lockdep and Documentation/filesystems/directory-locking to
-reflect the change.
-
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- Documentation/filesystems/directory-locking |   31 +++++++++++++++++++--------
- fs/namei.c                                  |   10 ++++-----
- 2 files changed, 27 insertions(+), 14 deletions(-)
-
-diff --git a/Documentation/filesystems/directory-locking b/Documentation/filesystems/directory-locking
-index ff7b611..09bbf9a 100644
---- a/Documentation/filesystems/directory-locking
-+++ b/Documentation/filesystems/directory-locking
-@@ -2,6 +2,10 @@
- kinds of locks - per-inode (->i_mutex) and per-filesystem
- (->s_vfs_rename_mutex).
- 
-+	When taking the i_mutex on multiple non-directory objects, we
-+always acquire the locks in order by increasing address.  We'll call
-+that "inode pointer" order in the following.
-+
- 	For our purposes all operations fall in 5 classes:
- 
- 1) read access.  Locking rules: caller locks directory we are accessing.
-@@ -12,8 +16,9 @@ kinds of locks - per-inode (->i_mutex) and per-filesystem
- locks victim and calls the method.
- 
- 4) rename() that is _not_ cross-directory.  Locking rules: caller locks
--the parent, finds source and target, if target already exists - locks it
--and then calls the method.
-+the parent and finds source and target.  If target already exists, lock
-+it.  If source is a non-directory, lock it.  If that means we need to
-+lock both, lock them in inode pointer order.
- 
- 5) link creation.  Locking rules:
- 	* lock parent
-@@ -30,7 +35,9 @@ rules:
- 		fail with -ENOTEMPTY
- 	* if new parent is equal to or is a descendent of source
- 		fail with -ELOOP
--	* if target exists - lock it.
-+	* If target exists, lock it.  If source is a non-directory, lock
-+	  it.  In case that means we need to lock both source and target,
-+	  do so in inode pointer order.
- 	* call the method.
- 
- 
-@@ -56,9 +63,11 @@ objects - A < B iff A is an ancestor of B.
-     renames will be blocked on filesystem lock and we don't start changing
-     the order until we had acquired all locks).
- 
--(3) any operation holds at most one lock on non-directory object and
--    that lock is acquired after all other locks.  (Proof: see descriptions
--    of operations).
-+(3) locks on non-directory objects are acquired only after locks on
-+    directory objects, and are acquired in inode pointer order.
-+    (Proof: all operations but renames take lock on at most one
-+    non-directory object, except renames, which take locks on source and
-+    target in inode pointer order in the case they are not directories.)
- 
- 	Now consider the minimal deadlock.  Each process is blocked on
- attempt to acquire some lock and already holds at least one lock.  Let's
-@@ -66,9 +75,13 @@ consider the set of contended locks.  First of all, filesystem lock is
- not contended, since any process blocked on it is not holding any locks.
- Thus all processes are blocked on ->i_mutex.
- 
--	Non-directory objects are not contended due to (3).  Thus link
--creation can't be a part of deadlock - it can't be blocked on source
--and it means that it doesn't hold any locks.
-+	By (3), any process holding a non-directory lock can only be
-+waiting on another non-directory lock with a larger address.  Therefore
-+the process holding the "largest" such lock can always make progress, and
-+non-directory objects are not included in the set of contended locks.
-+
-+	Thus link creation can't be a part of deadlock - it can't be
-+blocked on source and it means that it doesn't hold any locks.
- 
- 	Any contended object is either held by cross-directory rename or
- has a child that is also contended.  Indeed, suppose that it is held by
-diff --git a/fs/namei.c b/fs/namei.c
-index 89a612e..b732d77 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3726,7 +3726,8 @@ SYSCALL_DEFINE2(link, const char __user *, oldname, const char __user *, newname
-  *	   That's where 4.4 screws up. Current fix: serialization on
-  *	   sb->s_vfs_rename_mutex. We might be more accurate, but that's another
-  *	   story.
-- *	c) we have to lock _three_ objects - parents and victim (if it exists).
-+ *	c) we have to lock _four_ objects - parents and victim (if it exists),
-+ *	   and source (if it is not a directory).
-  *	   And that - after we got ->i_mutex on parents (until then we don't know
-  *	   whether the target exists).  Solution: try to be smart with locking
-  *	   order for inodes.  We rely on the fact that tree topology may change
-@@ -3802,6 +3803,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 			    struct inode *new_dir, struct dentry *new_dentry)
- {
- 	struct inode *target = new_dentry->d_inode;
-+	struct inode *source = old_dentry->d_inode;
- 	int error;
- 
- 	error = security_inode_rename(old_dir, old_dentry, new_dir, new_dentry);
-@@ -3809,8 +3811,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 		return error;
- 
- 	dget(new_dentry);
--	if (target)
--		mutex_lock(&target->i_mutex);
-+	lock_two_nondirectories(source, target);
- 
- 	error = -EBUSY;
- 	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
-@@ -3825,8 +3826,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 	if (!(old_dir->i_sb->s_type->fs_flags & FS_RENAME_DOES_D_MOVE))
- 		d_move(old_dentry, new_dentry);
- out:
--	if (target)
--		mutex_unlock(&target->i_mutex);
-+	unlock_two_nondirectories(source, target);
- 	dput(new_dentry);
- 	return error;
- }
--- 
-1.7.9.5
-
+T24gVGh1LCAyMDEzLTA5LTA1IGF0IDExOjE0IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IENvbW1p
+dCA0ZWRhYTMwOCAiTkZTOiBVc2UgImtyYjVpIiB0byBlc3RhYmxpc2ggTkZTdjQgc3RhdGUgd2hl
+bmV2ZXIgcG9zc2libGUiDQo+IHVzZXMgdGhlIG5mc19jbGllbnQgY2xfcnBjY2xpZW50IGZvciBh
+bGwgc3RhdGUgbWFuYWdlbWVudCBvcGVyYXRpb25zLCBhbmQNCj4gd2lsbCB1c2Uga3JiNWkgb3Ig
+YXV0aF9zeXMgd2l0aCBubyByZWdhcmQgdG8gdGhlIG1vdW50IGNvbW1hbmQgYXV0aGZsYXZvcg0K
+PiBjaG9pY2UuDQo+IA0KPiBUaGUgTURTLCBhcyBhbnkgTkZTdjQuMSBtb3VudCBwb2ludCwgdXNl
+cyB0aGUgbmZzX3NlcnZlciBycGMgY2xpZW50IGZvciBhbGwNCj4gbm9uLXN0YXRlIG1hbmFnZW1l
+bnQgb3BlcmF0aW9ucyB3aXRoIGEgZGlmZmVyZW50IG5mc19zZXJ2ZXIgZm9yIGVhY2ggZnNpZA0K
+PiBlbmNvdW50ZXJlZCB0cmF2ZXJzaW5nIHRoZSBtb3VudCBwb2ludCwgZWFjaCB3aXRoIGEgcG90
+ZW50aWFsbHkgZGlmZmVyZW50DQo+IGF1dGggZmxhdm9yLg0KPiANCj4gcE5GUyBkYXRhIHNlcnZl
+cnMgYXJlIG5vdCBtb3VudGVkIGluIHRoZSBub3JtYWwgc2Vuc2UgYXMgdGhlcmUgaXMgbm8gYXNz
+b2NpYXRlZA0KPiBuZnNfc2VydmVyIHN0cnVjdHVyZS4gRGF0YSBzZXJ2ZXJzIGNhbiBhbHNvIGV4
+cG9ydCBtdWx0aXBsZSBmc2lkcywgZWFjaCB3aXRoDQo+IGEgcG90ZW50aWFsbHkgZGlmZmVyZW50
+IGF1dGggZmxhdm9yLg0KPiANCj4gRGF0YSBzZXJ2ZXJzIG5lZWQgdG8gdXNlIHRoZSBzYW1lIGF1
+dGhmbGF2b3IgYXMgdGhlIE1EUyBzZXJ2ZXIgcnBjIGNsaWVudCBmb3INCj4gbm9uLXN0YXRlIG1h
+bmFnZW1lbnQgb3BlcmF0aW9ucy4gUG9wdWxhdGUgYSBsaXN0IG9mIHJwYyBjbGllbnRzIHdpdGgg
+dGhlIE1EUw0KPiBzZXJ2ZXIgcnBjIGNsaWVudCBhdXRoIGZsYXZvciBmb3IgdGhlIERTIHRvIHVz
+ZS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+
+DQo+IC0tLQ0KPiAgZnMvbmZzL2ludGVybmFsLmggICAgICAgICAgIHwgIDIgKysNCj4gIGZzL25m
+cy9uZnM0Y2xpZW50LmMgICAgICAgICB8IDc1ICsrKysrKysrKysrKysrKysrKysrKysrKysrKysr
+KysrKysrKysrKysrKysrKw0KPiAgZnMvbmZzL25mczRmaWxlbGF5b3V0LmMgICAgIHwgMzUgKysr
+KysrKysrKysrKysrKy0tLS0tDQo+ICBpbmNsdWRlL2xpbnV4L25mc19mc19zYi5oICAgfCAgMSAr
+DQo+ICBpbmNsdWRlL2xpbnV4L3N1bnJwYy9jbG50LmggfCAgMiArKw0KPiAgbmV0L3N1bnJwYy9j
+bG50LmMgICAgICAgICAgIHwgIDEgKw0KPiAgNiBmaWxlcyBjaGFuZ2VkLCAxMDggaW5zZXJ0aW9u
+cygrKSwgOCBkZWxldGlvbnMoLSkNCj4gDQo8c25pcD4NCj4gZGlmZiAtLWdpdCBhL2luY2x1ZGUv
+bGludXgvc3VucnBjL2NsbnQuaCBiL2luY2x1ZGUvbGludXgvc3VucnBjL2NsbnQuaA0KPiBpbmRl
+eCA3NmMwYmY2Li4zOTE5ZjJiIDEwMDY0NA0KPiAtLS0gYS9pbmNsdWRlL2xpbnV4L3N1bnJwYy9j
+bG50LmgNCj4gKysrIGIvaW5jbHVkZS9saW51eC9zdW5ycGMvY2xudC5oDQo+IEBAIC0zNSw2ICsz
+NSw4IEBAIHN0cnVjdCBycGNfY2xudCB7DQo+ICAJYXRvbWljX3QJCWNsX2NvdW50OwkvKiBOdW1i
+ZXIgb2YgcmVmZXJlbmNlcyAqLw0KPiAgCXN0cnVjdCBsaXN0X2hlYWQJY2xfY2xpZW50czsJLyog
+R2xvYmFsIGxpc3Qgb2YgY2xpZW50cyAqLw0KPiAgCXN0cnVjdCBsaXN0X2hlYWQJY2xfdGFza3M7
+CS8qIExpc3Qgb2YgdGFza3MgKi8NCj4gKwlzdHJ1Y3QgbGlzdF9oZWFkCWNsX2RzX2NsbnRzOwkv
+KiBsaXN0IG9mIHBlciBhdXRoIGZsYXZvcg0KPiArCQkJCQkJICAgZGF0YSBzZXJ2ZXJzICovDQoN
+ClRoaXMgbGlzdCBkb2Vzbid0IGJlbG9uZyBpbiB0aGUgUlBDIGxheWVyLiBQbGVhc2UgbWFrZSBh
+IHNlcGFyYXRlDQpzdHJ1Y3R1cmUgdGhhdCBsaXZlcyBpbiB0aGUgTkZTIGxheWVyLCBhbmQgdGhh
+dCBvd25zIHRoZSBycGNfY2xudC4NCg0KSU9XIHNvbWV0aGluZyBhbG9uZyB0aGUgbGluZXMgb2Y6
+DQoNCnN0cnVjdCBuZnNfZHNfc2VydmVyIHsNCglzdHJ1Y3QgbGlzdF9oZWFkIGxpc3Q7CS8qIGRz
+X2NscC0+Y2xfZHNfY2xpZW50cyAqLw0KCXN0cnVjdCBycGNfY2xudCAqcnBjX2NsbnQ7DQp9Ow0K
+DQo+ICAJc3BpbmxvY2tfdAkJY2xfbG9jazsJLyogc3BpbmxvY2sgKi8NCj4gIAlzdHJ1Y3QgcnBj
+X3hwcnQgX19yY3UgKgljbF94cHJ0OwkvKiB0cmFuc3BvcnQgKi8NCj4gIAlzdHJ1Y3QgcnBjX3By
+b2NpbmZvICoJY2xfcHJvY2luZm87CS8qIHByb2NlZHVyZSBpbmZvICovDQo+IGRpZmYgLS1naXQg
+YS9uZXQvc3VucnBjL2NsbnQuYyBiL25ldC9zdW5ycGMvY2xudC5jDQo+IGluZGV4IGJhZjBkZjYu
+LjNjMTgzOTQgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMvY2xudC5jDQo+ICsrKyBiL25ldC9z
+dW5ycGMvY2xudC5jDQo+IEBAIC0zNTYsNiArMzU2LDcgQEAgc3RhdGljIHN0cnVjdCBycGNfY2xu
+dCAqIHJwY19uZXdfY2xpZW50KGNvbnN0IHN0cnVjdCBycGNfY3JlYXRlX2FyZ3MgKmFyZ3MsDQo+
+ICAJCWdvdG8gb3V0X25vX3N0YXRzOw0KPiAgCWNsbnQtPmNsX3Byb2dyYW0gID0gcHJvZ3JhbTsN
+Cj4gIAlJTklUX0xJU1RfSEVBRCgmY2xudC0+Y2xfdGFza3MpOw0KPiArCUlOSVRfTElTVF9IRUFE
+KCZjbG50LT5jbF9kc19jbG50cyk7DQo+ICAJc3Bpbl9sb2NrX2luaXQoJmNsbnQtPmNsX2xvY2sp
+Ow0KPiAgDQo+ICAJaWYgKCF4cHJ0X2JvdW5kKHhwcnQpKQ0KDQotLSANClRyb25kIE15a2xlYnVz
+dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0
+QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
