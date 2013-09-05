@@ -1,92 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:45619 "EHLO mx11.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:40094 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757225Ab3IDQYM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Sep 2013 12:24:12 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+	id S1752749Ab3IEP0J convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Sep 2013 11:26:09 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Matt W. Benjamin" <matt@linuxbox.com>
+CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Subject: Re: [PATCH] NFSv4: use mach cred for SECINFO_NO_NAME w/ integrity
-Date: Wed, 4 Sep 2013 16:24:11 +0000
-Message-ID: <1378311850.3527.16.camel@leira.trondhjem.org>
-References: <1378311199-1695-1-git-send-email-dros@netapp.com>
-In-Reply-To: <1378311199-1695-1-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Date: Thu, 5 Sep 2013 15:26:07 +0000
+Message-ID: <F280C07A-314B-440A-995A-96198F36CE01@netapp.com>
+References: <931669980.21.1378385417507.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <931669980.21.1378385417507.JavaMail.root@thunderbeast.private.linuxbox.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEzLTA5LTA0IGF0IDEyOjEzIC0wNDAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
-d3JvdGU6DQo+IENvbW1pdCA5NzQzMTIwNGVhMDA1ZWM4MDcwYWM5NGJjMzI1MWU4MzZkYWE3Y2E3
-IGludHJvZHVjZWQgYSByZWdyZXNzaW9uDQo+IHRoYXQgY2F1c2VzIFNFQ0lORk9fTk9fTkFNRSB0
-byBmYWlsIHdpdGhvdXQgc2VuZGluZyBhbiBSUEMgaWY6DQo+IA0KPiAgMSkgdGhlIG5mc19jbGll
-bnQncyBycGNfY2xpZW50IGlzIHVzaW5nIGtyYjVpL3AgKG5vdyB0cmllZCBieSBkZWZhdWx0KQ0K
-PiAgMikgdGhlIGN1cnJlbnQgdXNlciBkb2Vzbid0IGhhdmUgdmFsaWQga2VyYmVyb3MgY3JlZGVu
-dGlhbHMNCj4gDQo+IFRoaXMgc2l0dWF0aW9uIGlzIHF1aXRlIGNvbW1vbiAtIGFzIG9mIG5vdyBh
-IHNlYz1zeXMgbW91bnQgd291bGQgdXNlDQo+IGtyYjVpIGZvciB0aGUgbmZzX2NsaWVudCdzIHJw
-Y19jbGllbnQgYW5kIGEgdXNlciB3b3VsZCBoYXJkbHkgYmUgZmF1bHRlZA0KPiBmb3Igbm90IGhh
-dmluZyBydW4ga2luaXQuDQo+IA0KPiBUaGUgc29sdXRpb24gaXMgdG8gdXNlIHRoZSBtYWNoaW5l
-IGNyZWQgd2hlbiB0cnlpbmcgdG8gdXNlIGFuIGludGVncml0eQ0KPiBwcm90ZWN0ZWQgYXV0aCBm
-bGF2b3IgZm9yIFNFQ0lORk9fTk9fTkFNRS4NCj4gDQo+IE9sZGVyIHNlcnZlcnMgbWF5IG5vdCBz
-dXBwb3J0IHVzaW5nIHRoZSBtYWNoaW5lIGNyZWQgb3IgYW4gaW50ZWdyaXR5DQo+IHByb3RlY3Rl
-ZCBhdXRoIGZsYXZvciBmb3IgU0VDSU5GT19OT19OQU1FIGluIGV2ZXJ5IGNpcmN1bXN0YW5jZSwg
-c28gd2UgZmFsbA0KPiBiYWNrIHRvIHVzaW5nIHRoZSB1c2VyJ3MgY3JlZCBhbmQgdGhlIGZpbGVz
-eXN0ZW0ncyBhdXRoIGZsYXZvciBpbiB0aGlzIGNhc2UuDQo+IA0KPiBXZSBydW4gaW50byBhbm90
-aGVyIHByb2JsZW0gd2hlbiBydW5uaW5nIGFnYWluc3QgbGludXggbmZzIHNlcnZlcnMgLQ0KPiB0
-aGV5IHJldHVybiBORlM0RVJSX1dST05HU0VDIHdoZW4gdXNpbmcgaW50ZWdyaXR5IGF1dGggZmxh
-dm9yICh1bmxlc3MgdGhlDQo+IG1vdW50IGlzIGFsc28gdGhhdCBmbGF2b3IpIGV2ZW4gdGhvdWdo
-IHRoYXQgaXMgbm90IGEgdmFsaWQgZXJyb3IgZm9yDQo+IFNFQ0lORk8qLiAgRXZlbiB0aG91Z2gg
-aXQncyBhZ2FpbnN0IHNwZWMsIGhhbmRsZSBXUk9OR1NFQyBlcnJvcnMgb24NCj4gU0VDSU5GT19O
-T19OQU1FIGJ5IGZhbGxpbmcgYmFjayB0byB1c2luZyB0aGUgdXNlciBjcmVkIGFuZCB0aGUNCj4g
-ZmlsZXN5c3RlbSdzIGF1dGggZmxhdm9yLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogV2VzdG9uIEFu
-ZHJvcyBBZGFtc29uIDxkcm9zQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiANCj4gVGhpcyBwYXRjaCBn
-b2VzIGFsb25nIHdpdGggeWVzdGVyZGF5J3MgU0VDSU5GTyBwYXRjaA0KPiANCj4gIGZzL25mcy9u
-ZnM0cHJvYy5jIHwgNDEgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKy0tLS0N
-Cj4gIDEgZmlsZSBjaGFuZ2VkLCAzNyBpbnNlcnRpb25zKCspLCA0IGRlbGV0aW9ucygtKQ0KPiAN
-Cj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZzL25mczRwcm9jLmMNCj4g
-aW5kZXggYWIxNDYxZS4uNzRiMzdmNSAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL25mczRwcm9jLmMN
-Cj4gKysrIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gQEAgLTcyOTEsNyArNzI5MSw4IEBAIG91dDoN
-Cj4gICAqLw0KPiAgc3RhdGljIGludA0KPiAgX25mczQxX3Byb2Nfc2VjaW5mb19ub19uYW1lKHN0
-cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIsIHN0cnVjdCBuZnNfZmggKmZoYW5kbGUsDQo+IC0JCSAg
-ICBzdHJ1Y3QgbmZzX2ZzaW5mbyAqaW5mbywgc3RydWN0IG5mczRfc2VjaW5mb19mbGF2b3JzICpm
-bGF2b3JzKQ0KPiArCQkgICAgc3RydWN0IG5mc19mc2luZm8gKmluZm8sDQo+ICsJCSAgICBzdHJ1
-Y3QgbmZzNF9zZWNpbmZvX2ZsYXZvcnMgKmZsYXZvcnMsIGJvb2wgdXNlX2ludGVncml0eSkNCj4g
-IHsNCj4gIAlzdHJ1Y3QgbmZzNDFfc2VjaW5mb19ub19uYW1lX2FyZ3MgYXJncyA9IHsNCj4gIAkJ
-LnN0eWxlID0gU0VDSU5GT19TVFlMRV9DVVJSRU5UX0ZILA0KPiBAQCAtNzMwNCw4ICs3MzA1LDIz
-IEBAIF9uZnM0MV9wcm9jX3NlY2luZm9fbm9fbmFtZShzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVy
-LCBzdHJ1Y3QgbmZzX2ZoICpmaGFuZGxlLA0KPiAgCQkucnBjX2FyZ3AgPSAmYXJncywNCj4gIAkJ
-LnJwY19yZXNwID0gJnJlcywNCj4gIAl9Ow0KPiAtCXJldHVybiBuZnM0X2NhbGxfc3luYyhzZXJ2
-ZXItPm5mc19jbGllbnQtPmNsX3JwY2NsaWVudCwgc2VydmVyLCAmbXNnLA0KPiAtCQkJCSZhcmdz
-LnNlcV9hcmdzLCAmcmVzLnNlcV9yZXMsIDApOw0KPiArCXN0cnVjdCBycGNfY2xudCAqY2xudCA9
-IHNlcnZlci0+Y2xpZW50Ow0KPiArCWludCBzdGF0dXM7DQo+ICsNCj4gKwlpZiAodXNlX2ludGVn
-cml0eSkgew0KPiArCQljbG50ID0gc2VydmVyLT5uZnNfY2xpZW50LT5jbF9ycGNjbGllbnQ7DQo+
-ICsJCW1zZy5ycGNfY3JlZCA9IG5mczRfZ2V0X2NsaWRfY3JlZChzZXJ2ZXItPm5mc19jbGllbnQp
-Ow0KPiArCX0NCj4gKw0KPiArCWRwcmludGsoIi0tPiAlc1xuIiwgX19mdW5jX18pOw0KPiArCXN0
-YXR1cyA9IG5mczRfY2FsbF9zeW5jKGNsbnQsIHNlcnZlciwgJm1zZywgJmFyZ3Muc2VxX2FyZ3Ms
-DQo+ICsJCQkJJnJlcy5zZXFfcmVzLCAwKTsNCj4gKwlkcHJpbnRrKCI8LS0gJXMgc3RhdHVzPSVk
-XG4iLCBfX2Z1bmNfXywgc3RhdHVzKTsNCj4gKw0KPiArCWlmIChtc2cucnBjX2NyZWQpDQo+ICsJ
-CXB1dF9ycGNjcmVkKG1zZy5ycGNfY3JlZCk7DQo+ICsNCj4gKwlyZXR1cm4gc3RhdHVzOw0KPiAg
-fQ0KPiAgDQo+ICBzdGF0aWMgaW50DQo+IEBAIC03MzE1LDcgKzczMzEsMjQgQEAgbmZzNDFfcHJv
-Y19zZWNpbmZvX25vX25hbWUoc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwgc3RydWN0IG5mc19m
-aCAqZmhhbmRsZSwNCj4gIAlzdHJ1Y3QgbmZzNF9leGNlcHRpb24gZXhjZXB0aW9uID0geyB9Ow0K
-PiAgCWludCBlcnI7DQo+ICAJZG8gew0KPiAtCQllcnIgPSBfbmZzNDFfcHJvY19zZWNpbmZvX25v
-X25hbWUoc2VydmVyLCBmaGFuZGxlLCBpbmZvLCBmbGF2b3JzKTsNCj4gKwkJLyogZmlyc3QgdHJ5
-IHVzaW5nIGludGVncml0eSBwcm90ZWN0aW9uICovDQo+ICsJCWVyciA9IC1ORlM0RVJSX1dST05H
-U0VDOw0KPiArDQo+ICsJCS8qIHRyeSB0byB1c2UgaW50ZWdyaXR5IHByb3RlY3Rpb24gd2l0aCBt
-YWNoaW5lIGNyZWQgKi8NCj4gKwkJaWYgKF9uZnM0X2lzX2ludGVncml0eV9wcm90ZWN0ZWQoc2Vy
-dmVyLT5uZnNfY2xpZW50KSkNCj4gKwkJCWVyciA9IF9uZnM0MV9wcm9jX3NlY2luZm9fbm9fbmFt
-ZShzZXJ2ZXIsIGZoYW5kbGUsIGluZm8sDQo+ICsJCQkJCQkJICBmbGF2b3JzLCB0cnVlKTsNCj4g
-Kw0KPiArCQkvKg0KPiArCQkgKiBpZiB1bmFibGUgdG8gdXNlIGludGVncml0eSBwcm90ZWN0aW9u
-LCBvciBTRUNJTkZPIHdpdGgNCj4gKwkJICogaW50ZWdyaXR5IHByb3RlY3Rpb24gcmV0dXJucyBO
-RlM0RVJSX1dST05HU0VDICh3aGljaCBpcw0KPiArCQkgKiBkaXNhbGxvd2VkIGJ5IHNwZWMsIGJ1
-dCBleGlzdHMgaW4gZGVwbG95ZWQgc2VydmVycykgdXNlDQo+ICsJCSAqIHRoZSBjdXJyZW50IGZp
-bGVzeXN0ZW0ncyBycGNfY2xpZW50IGFuZCB0aGUgdXNlciBjcmVkLg0KPiArCQkgKi8NCj4gKwkJ
-aWYgKGVyciA9PSAtTkZTNEVSUl9XUk9OR1NFQykNCj4gKwkJCWVyciA9IF9uZnM0MV9wcm9jX3Nl
-Y2luZm9fbm9fbmFtZShzZXJ2ZXIsIGZoYW5kbGUsIGluZm8sDQo+ICsJCQkJCQkJICBmbGF2b3Jz
-LCBmYWxzZSk7DQoNCkFzIEkgc2FpZCB5ZXN0ZXJkYXksIFJGQzU2NjEgZm9yYmlkcyBTRUNJTkZP
-X05PX05BTUUgZnJvbSByZXR1cm5pbmcNCk5GUzRFUlJfV1JPTkdTRUMsIHNvIHRoaXMgaXMgMTAw
-JSBlcXVpdmFsZW50IHRvDQoNCglpZiAoIV9uZnM0X2lzX2ludGVncml0eV9wcm90ZWN0ZWQoKSkN
-CgkJZXJyID0gLi4uLg0KDQo+ICsNCj4gIAkJc3dpdGNoIChlcnIpIHsNCj4gIAkJY2FzZSAwOg0K
-PiAgCQljYXNlIC1ORlM0RVJSX1dST05HU0VDOg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGlu
-dXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFw
-cC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+
+On Sep 5, 2013, at 8:50 AM, Matt W. Benjamin <matt@linuxbox.com> wrote:
+
+> Hi,
+> 
+> ----- "Dros Adamson" <Weston.Adamson@netapp.com> wrote:
+> 
+>> On Sep 4, 2013, at 12:29 PM, Matt W. Benjamin <matt@linuxbox.com>
+>> wrote:
+>> 
+>>> Hi
+>>> 
+>>> It honestly feels quite odd to me for sec=sys to actually connote
+>> krb5i.
+>> 
+>> I should point out that my patches don't introduce the use of krb5i
+>> here, they just fix it.
+> 
+> Ack.
+> 
+>> 
+>> I personally don't think it's weird for the client to use a *more*
+>> secure flavor for certain (infrequent) operations when it makes sense.
+>> What worries me that currently sec=krb5p can cross a SECINFO boundary
+>> and suddenly be using sec=sys!
+> 
+> I think the behavior is obviously reasonable, but giving that policy a
+> different name would allow sec=sys to continue mean what it says.    
+> 
+
+I think there is definitely room for discussion on how sec= behavior has changed and how this will affect users, especially when I add the patches mentioned below.
+
+-dros
+
+>> 
+>> I'm testing patches that fix that now and also allow multiple sec=
+>> options (in the same form as nfsd exports, i.e. sec=krb5:krb5i, but
+>> I'm trying to fix all the recent regressions surrounding auth flavors
+>> / SECINFO first...
+> 
+> That sounds great.
+> 
+>> 
+>> -dros
+>> 
+>>> 
+> 
+> Thanks,
+> 
+> Matt
+> 
+> -- 
+> Matt Benjamin
+> The Linux Box
+> 206 South Fifth Ave. Suite 150
+> Ann Arbor, MI  48104
+> 
+> http://linuxbox.com
+> 
+> tel.  734-761-4689 
+> fax.  734-769-8938 
+> cel.  734-216-5309 
+
