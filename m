@@ -1,75 +1,165 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:2375 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:40844 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751652Ab3ITPJH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Sep 2013 11:09:07 -0400
-Subject: [RFC][PATCH 0/3] FS-Cache: NFS(/CIFS/Ceph/9P): Fix start-caching
- whilst writing race
-To: Trond.Myklebust@netapp.com, steved@redhat.com
-From: David Howells <dhowells@redhat.com>
-Cc: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-cachefs@redhat.com,
-        linux-fsdevel@vger.kernel.org, ceph-devel@vger.kernel.org
-Date: Fri, 20 Sep 2013 16:09:03 +0100
-Message-ID: <20130920150902.16220.32737.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1752830Ab3IEQaf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Sep 2013 12:30:35 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 04/12] vfs: take i_mutex on renamed file
+Date: Thu,  5 Sep 2013 12:30:12 -0400
+Message-Id: <1378398620-23018-9-git-send-email-bfields@redhat.com>
+In-Reply-To: <1378398620-23018-1-git-send-email-bfields@redhat.com>
+References: <1378398620-23018-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
+A read delegation is used by NFSv4 as a guarantee that a client can
+perform local read opens without informing the server.
 
-Following this mail is a series of patches to fix an issue with NFS whereby
-caching can be enabled on a file that is open for writing by subsequently
-opening it for reading.  This can be made to crash by opening it for writing
-again if you're quick enough.
+The open operation takes the last component of the pathname as an
+argument, thus is also a lookup operation, and giving the client the
+above guarantee means informing the client before we allow anything that
+would change the set of names pointing to the inode.
 
-The patches mailed here may not apply directly.  They are based on top of three
-fix patches as can be seen in the GIT branch here:
+Therefore, we need to break delegations on rename, link, and unlink.
 
-  http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/log/?h=fscache
+We also need to prevent new delegations from being acquired while one of
+these operations is in progress.
 
+We could add some completely new locking for that purpose, but it's
+simpler to use the i_mutex, since that's already taken by all the
+operations we care about.
 
-The gist of the patchset is that the cookie should be acquired at inode
-creation only and subsequently enabled and disabled as appropriate (which
-dispenses with the backing objects when they're not needed).
+The single exception is rename.  So, modify rename to take the i_mutex
+on the file that is being renamed.
 
-The extra synchronisation that NFS does can then be dispensed with as it is
-thenceforth managed by FS-Cache.
+Also fix up lockdep and Documentation/filesystems/directory-locking to
+reflect the change.
 
-This likely will need applying to CIFS, Ceph and 9P also once this is okayed
-for NFS.  AFS is probably safe.
-
-David
+Acked-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
-David Howells (3):
-      FS-Cache: Add use/unuse/wake cookie wrappers
-      FS-Cache: Provide the ability to enable/disable cookies
-      NFS: Use i_writecount to control whether to get an fscache cookie in nfs_open()
+ Documentation/filesystems/directory-locking |   31 +++++++++++++++++++--------
+ fs/namei.c                                  |   10 ++++-----
+ 2 files changed, 27 insertions(+), 14 deletions(-)
 
-
- Documentation/filesystems/caching/netfs-api.txt |   73 +++++++--
- fs/9p/cache.c                                   |    6 -
- fs/afs/cell.c                                   |    2 
- fs/afs/inode.c                                  |    2 
- fs/afs/vlocation.c                              |    3 
- fs/afs/volume.c                                 |    2 
- fs/cachefiles/interface.c                       |    2 
- fs/ceph/cache.c                                 |    4 
- fs/cifs/fscache.c                               |    8 -
- fs/fscache/cookie.c                             |  193 +++++++++++++++++------
- fs/fscache/fsdef.c                              |    1 
- fs/fscache/netfs.c                              |    1 
- fs/fscache/object.c                             |    7 +
- fs/fscache/page.c                               |   59 +++++--
- fs/nfs/dir.c                                    |    2 
- fs/nfs/fscache.c                                |  196 +++++++----------------
- fs/nfs/fscache.h                                |   18 +-
- fs/nfs/inode.c                                  |    6 -
- fs/nfs/nfs4file.c                               |    2 
- include/linux/fs.h                              |    5 +
- include/linux/fscache-cache.h                   |   50 ++----
- include/linux/fscache.h                         |  113 ++++++++++++-
- include/linux/nfs_fs.h                          |    8 +
- 23 files changed, 462 insertions(+), 301 deletions(-)
+diff --git a/Documentation/filesystems/directory-locking b/Documentation/filesystems/directory-locking
+index ff7b611..09bbf9a 100644
+--- a/Documentation/filesystems/directory-locking
++++ b/Documentation/filesystems/directory-locking
+@@ -2,6 +2,10 @@
+ kinds of locks - per-inode (->i_mutex) and per-filesystem
+ (->s_vfs_rename_mutex).
+ 
++	When taking the i_mutex on multiple non-directory objects, we
++always acquire the locks in order by increasing address.  We'll call
++that "inode pointer" order in the following.
++
+ 	For our purposes all operations fall in 5 classes:
+ 
+ 1) read access.  Locking rules: caller locks directory we are accessing.
+@@ -12,8 +16,9 @@ kinds of locks - per-inode (->i_mutex) and per-filesystem
+ locks victim and calls the method.
+ 
+ 4) rename() that is _not_ cross-directory.  Locking rules: caller locks
+-the parent, finds source and target, if target already exists - locks it
+-and then calls the method.
++the parent and finds source and target.  If target already exists, lock
++it.  If source is a non-directory, lock it.  If that means we need to
++lock both, lock them in inode pointer order.
+ 
+ 5) link creation.  Locking rules:
+ 	* lock parent
+@@ -30,7 +35,9 @@ rules:
+ 		fail with -ENOTEMPTY
+ 	* if new parent is equal to or is a descendent of source
+ 		fail with -ELOOP
+-	* if target exists - lock it.
++	* If target exists, lock it.  If source is a non-directory, lock
++	  it.  In case that means we need to lock both source and target,
++	  do so in inode pointer order.
+ 	* call the method.
+ 
+ 
+@@ -56,9 +63,11 @@ objects - A < B iff A is an ancestor of B.
+     renames will be blocked on filesystem lock and we don't start changing
+     the order until we had acquired all locks).
+ 
+-(3) any operation holds at most one lock on non-directory object and
+-    that lock is acquired after all other locks.  (Proof: see descriptions
+-    of operations).
++(3) locks on non-directory objects are acquired only after locks on
++    directory objects, and are acquired in inode pointer order.
++    (Proof: all operations but renames take lock on at most one
++    non-directory object, except renames, which take locks on source and
++    target in inode pointer order in the case they are not directories.)
+ 
+ 	Now consider the minimal deadlock.  Each process is blocked on
+ attempt to acquire some lock and already holds at least one lock.  Let's
+@@ -66,9 +75,13 @@ consider the set of contended locks.  First of all, filesystem lock is
+ not contended, since any process blocked on it is not holding any locks.
+ Thus all processes are blocked on ->i_mutex.
+ 
+-	Non-directory objects are not contended due to (3).  Thus link
+-creation can't be a part of deadlock - it can't be blocked on source
+-and it means that it doesn't hold any locks.
++	By (3), any process holding a non-directory lock can only be
++waiting on another non-directory lock with a larger address.  Therefore
++the process holding the "largest" such lock can always make progress, and
++non-directory objects are not included in the set of contended locks.
++
++	Thus link creation can't be a part of deadlock - it can't be
++blocked on source and it means that it doesn't hold any locks.
+ 
+ 	Any contended object is either held by cross-directory rename or
+ has a child that is also contended.  Indeed, suppose that it is held by
+diff --git a/fs/namei.c b/fs/namei.c
+index 89a612e..b732d77 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3726,7 +3726,8 @@ SYSCALL_DEFINE2(link, const char __user *, oldname, const char __user *, newname
+  *	   That's where 4.4 screws up. Current fix: serialization on
+  *	   sb->s_vfs_rename_mutex. We might be more accurate, but that's another
+  *	   story.
+- *	c) we have to lock _three_ objects - parents and victim (if it exists).
++ *	c) we have to lock _four_ objects - parents and victim (if it exists),
++ *	   and source (if it is not a directory).
+  *	   And that - after we got ->i_mutex on parents (until then we don't know
+  *	   whether the target exists).  Solution: try to be smart with locking
+  *	   order for inodes.  We rely on the fact that tree topology may change
+@@ -3802,6 +3803,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+ 			    struct inode *new_dir, struct dentry *new_dentry)
+ {
+ 	struct inode *target = new_dentry->d_inode;
++	struct inode *source = old_dentry->d_inode;
+ 	int error;
+ 
+ 	error = security_inode_rename(old_dir, old_dentry, new_dir, new_dentry);
+@@ -3809,8 +3811,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+ 		return error;
+ 
+ 	dget(new_dentry);
+-	if (target)
+-		mutex_lock(&target->i_mutex);
++	lock_two_nondirectories(source, target);
+ 
+ 	error = -EBUSY;
+ 	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
+@@ -3825,8 +3826,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+ 	if (!(old_dir->i_sb->s_type->fs_flags & FS_RENAME_DOES_D_MOVE))
+ 		d_move(old_dentry, new_dentry);
+ out:
+-	if (target)
+-		mutex_unlock(&target->i_mutex);
++	unlock_two_nondirectories(source, target);
+ 	dput(new_dentry);
+ 	return error;
+ }
+-- 
+1.7.9.5
 
