@@ -1,101 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f180.google.com ([74.125.82.180]:61860 "EHLO
-	mail-we0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751226Ab3IYTCv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Sep 2013 15:02:51 -0400
+Received: from mx2.netapp.com ([216.240.18.37]:8997 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1761687Ab3IEApP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Sep 2013 20:45:15 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>,
+        Dr James Bruce Fields <bfields@fieldses.org>
+CC: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: use mach cred for SECINFO_NO_NAME w/ integrity
+Date: Thu, 5 Sep 2013 00:45:09 +0000
+Message-ID: <1378341909.6143.1.camel@leira.trondhjem.org>
+References: <1378311199-1695-1-git-send-email-dros@netapp.com>
+	 <1378311850.3527.16.camel@leira.trondhjem.org>
+	 <F4CF12A0-4D67-4C6B-8413-CC2E895E1B9F@netapp.com>
+In-Reply-To: <F4CF12A0-4D67-4C6B-8413-CC2E895E1B9F@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <20130925183828.GA30372@lenny.home.zabbo.net>
-References: <1378919210-10372-1-git-send-email-zab@redhat.com>
- <CAELBmZBGD4rph=gjLCPKCdEj+nzEQ-F=DExoL+h3vRm7qF7dCQ@mail.gmail.com> <20130925183828.GA30372@lenny.home.zabbo.net>
-From: Anna Schumaker <schumaker.anna@gmail.com>
-Date: Wed, 25 Sep 2013 15:02:29 -0400
-Message-ID: <CAFX2JfnyF8kyMYzCdqdr2JkoyQCom1bFLpFj89wODjoju54-Ow@mail.gmail.com>
-Subject: Re: [RFC] extending splice for copy offloading
-To: Zach Brown <zab@redhat.com>
-Cc: Szeredi Miklos <miklos@szeredi.hu>, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Bryan Schumaker <bjschuma@netapp.com>,
-        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        Eric Wong <normalperson@yhbt.net>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 25, 2013 at 2:38 PM, Zach Brown <zab@redhat.com> wrote:
->
-> Hrmph.  I had composed a reply to you during Plumbers but.. something
-> happened to it :).  Here's another try now that I'm back.
->
->> > Some things to talk about:
->> > - I really don't care about the naming here.  If you do, holler.
->> > - We might want different flags for file-to-file splicing and acceleration
->>
->> Yes, I think "copy" and "reflink" needs to be differentiated.
->
-> I initially agreed but I'm not so sure now.  The problem is that we
-> can't know whether the acceleration is copying or not.  XCOPY on some
-> array may well do some shared referencing tricks.  The nfs COPY op can
-> have a server use btrfs reflink, or ext* and XCOPY, or .. who knows.  At
-> some point we have to admit that we have no way to determine the
-> relative durability of writes.  Storage can do a lot to make writes more
-> or less fragile that we have no visibility of.  SSD FTLs can log a bunch
-> of unrelated sectors on to one flash failure domain.
->
-> And if such a flag couldn't *actually* guarantee anything for a bunch of
-> storage topologies, well, let's not bother with it.
->
-> The only flag I'm in favour of now is one that has splice return rather
-> than falling back to manual page cache reads and writes.  It's more like
-> O_NONBLOCK than any kind of data durability hint.
-
-For reference, I'm planning to have the NFS server do the fallback
-when it copies since any local copy will be faster than a read and
-write over the network.
-
-Anna
-
->
->> > - We might want flags to require or forbid acceleration
->> > - We might want to provide all these flags to sendfile, too
->> >
->> > Thoughts?  Objections?
->>
->> Can filesystem support "whole file copy" only?  Or arbitrary
->> block-to-block copy should be mandatory?
->
-> I'm not sure I understand what you're asking.  The interface specifies
-> byte ranges.  File systems can return errors if they can't accelerate
-> the copy.  We *can't* mandate copy acceleration granularity as some
-> formats and protocols just can't do it.  splice() will fall back to
-> doing buffered copies when the file system returns an error.
->
->> Splice has size_t argument for the size, which is limited to 4G on 32
->> bit.  Won't this be an issue for whole-file-copy?  We could have
->> special value (-1) for whole file, but that's starting to be hackish.
->
-> It will be an issue, yeah.  Just like it is with write() today.  I think
-> it's reasonable to start with a simple interface that matches current IO
-> syscalls.  I won't implement a special whole-file value, no.
->
-> And it's not just 32bit size_t.  While do_splice_direct() doesn't use
-> the truncated length that's returned from rw_verify_area(), it then
-> silently truncates the lengths to unsigned int in the splice_desc struct
-> fields.  It seems like we might want to address that :/.
->
->> We are talking about copying large amounts of data in a single
->> syscall, which will possibly take a long time.  Will the syscall be
->> interruptible?  Restartable?
->
-> In as much as file systems let it be, yeah.  As ever, you're not going
-> to have a lot of luck interrupting a process stuck in lock_page(),
-> mutex_lock(), wait_on_page_writeback(), etc.   Though you did remind me
-> to investigate restarting.  Thanks.
->
-> - z
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+T24gV2VkLCAyMDEzLTA5LTA0IGF0IDE2OjQ4ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
+PiBPbiBTZXAgNCwgMjAxMywgYXQgMTI6MjQgUE0sICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJvbmQu
+TXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiANCj4gPiBPbiBXZWQsIDIwMTMtMDktMDQg
+YXQgMTI6MTMgLTA0MDAsIFdlc3RvbiBBbmRyb3MgQWRhbXNvbiB3cm90ZToNCj4gPj4gQ29tbWl0
+IDk3NDMxMjA0ZWEwMDVlYzgwNzBhYzk0YmMzMjUxZTgzNmRhYTdjYTcgaW50cm9kdWNlZCBhIHJl
+Z3Jlc3Npb24NCj4gPj4gdGhhdCBjYXVzZXMgU0VDSU5GT19OT19OQU1FIHRvIGZhaWwgd2l0aG91
+dCBzZW5kaW5nIGFuIFJQQyBpZjoNCj4gPj4gDQo+ID4+IDEpIHRoZSBuZnNfY2xpZW50J3MgcnBj
+X2NsaWVudCBpcyB1c2luZyBrcmI1aS9wIChub3cgdHJpZWQgYnkgZGVmYXVsdCkNCj4gPj4gMikg
+dGhlIGN1cnJlbnQgdXNlciBkb2Vzbid0IGhhdmUgdmFsaWQga2VyYmVyb3MgY3JlZGVudGlhbHMN
+Cj4gPj4gDQo+ID4+IFRoaXMgc2l0dWF0aW9uIGlzIHF1aXRlIGNvbW1vbiAtIGFzIG9mIG5vdyBh
+IHNlYz1zeXMgbW91bnQgd291bGQgdXNlDQo+ID4+IGtyYjVpIGZvciB0aGUgbmZzX2NsaWVudCdz
+IHJwY19jbGllbnQgYW5kIGEgdXNlciB3b3VsZCBoYXJkbHkgYmUgZmF1bHRlZA0KPiA+PiBmb3Ig
+bm90IGhhdmluZyBydW4ga2luaXQuDQo+ID4+IA0KPiA+PiBUaGUgc29sdXRpb24gaXMgdG8gdXNl
+IHRoZSBtYWNoaW5lIGNyZWQgd2hlbiB0cnlpbmcgdG8gdXNlIGFuIGludGVncml0eQ0KPiA+PiBw
+cm90ZWN0ZWQgYXV0aCBmbGF2b3IgZm9yIFNFQ0lORk9fTk9fTkFNRS4NCj4gPj4gDQo+ID4+IE9s
+ZGVyIHNlcnZlcnMgbWF5IG5vdCBzdXBwb3J0IHVzaW5nIHRoZSBtYWNoaW5lIGNyZWQgb3IgYW4g
+aW50ZWdyaXR5DQo+ID4+IHByb3RlY3RlZCBhdXRoIGZsYXZvciBmb3IgU0VDSU5GT19OT19OQU1F
+IGluIGV2ZXJ5IGNpcmN1bXN0YW5jZSwgc28gd2UgZmFsbA0KPiA+PiBiYWNrIHRvIHVzaW5nIHRo
+ZSB1c2VyJ3MgY3JlZCBhbmQgdGhlIGZpbGVzeXN0ZW0ncyBhdXRoIGZsYXZvciBpbiB0aGlzIGNh
+c2UuDQo+ID4+IA0KPiA+PiBXZSBydW4gaW50byBhbm90aGVyIHByb2JsZW0gd2hlbiBydW5uaW5n
+IGFnYWluc3QgbGludXggbmZzIHNlcnZlcnMgLQ0KPiA+PiB0aGV5IHJldHVybiBORlM0RVJSX1dS
+T05HU0VDIHdoZW4gdXNpbmcgaW50ZWdyaXR5IGF1dGggZmxhdm9yICh1bmxlc3MgdGhlDQo+ID4+
+IG1vdW50IGlzIGFsc28gdGhhdCBmbGF2b3IpIGV2ZW4gdGhvdWdoIHRoYXQgaXMgbm90IGEgdmFs
+aWQgZXJyb3IgZm9yDQo+ID4+IFNFQ0lORk8qLiAgRXZlbiB0aG91Z2ggaXQncyBhZ2FpbnN0IHNw
+ZWMsIGhhbmRsZSBXUk9OR1NFQyBlcnJvcnMgb24NCj4gPj4gU0VDSU5GT19OT19OQU1FIGJ5IGZh
+bGxpbmcgYmFjayB0byB1c2luZyB0aGUgdXNlciBjcmVkIGFuZCB0aGUNCj4gPj4gZmlsZXN5c3Rl
+bSdzIGF1dGggZmxhdm9yLg0KPiA+PiANCj4gPj4gU2lnbmVkLW9mZi1ieTogV2VzdG9uIEFuZHJv
+cyBBZGFtc29uIDxkcm9zQG5ldGFwcC5jb20+DQo+ID4+IC0tLQ0KPiA+PiANCj4gPj4gVGhpcyBw
+YXRjaCBnb2VzIGFsb25nIHdpdGggeWVzdGVyZGF5J3MgU0VDSU5GTyBwYXRjaA0KPiA+PiANCj4g
+Pj4gZnMvbmZzL25mczRwcm9jLmMgfCA0MSArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
+KysrKysrLS0tLQ0KPiA+PiAxIGZpbGUgY2hhbmdlZCwgMzcgaW5zZXJ0aW9ucygrKSwgNCBkZWxl
+dGlvbnMoLSkNCj4gPj4gDQo+ID4+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHByb2MuYyBiL2Zz
+L25mcy9uZnM0cHJvYy5jDQo+ID4+IGluZGV4IGFiMTQ2MWUuLjc0YjM3ZjUgMTAwNjQ0DQo+ID4+
+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4+ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+
+ID4+IEBAIC03MjkxLDcgKzcyOTEsOCBAQCBvdXQ6DQo+ID4+ICAqLw0KPiA+PiBzdGF0aWMgaW50
+DQo+ID4+IF9uZnM0MV9wcm9jX3NlY2luZm9fbm9fbmFtZShzdHJ1Y3QgbmZzX3NlcnZlciAqc2Vy
+dmVyLCBzdHJ1Y3QgbmZzX2ZoICpmaGFuZGxlLA0KPiA+PiAtCQkgICAgc3RydWN0IG5mc19mc2lu
+Zm8gKmluZm8sIHN0cnVjdCBuZnM0X3NlY2luZm9fZmxhdm9ycyAqZmxhdm9ycykNCj4gPj4gKwkJ
+ICAgIHN0cnVjdCBuZnNfZnNpbmZvICppbmZvLA0KPiA+PiArCQkgICAgc3RydWN0IG5mczRfc2Vj
+aW5mb19mbGF2b3JzICpmbGF2b3JzLCBib29sIHVzZV9pbnRlZ3JpdHkpDQo+ID4+IHsNCj4gPj4g
+CXN0cnVjdCBuZnM0MV9zZWNpbmZvX25vX25hbWVfYXJncyBhcmdzID0gew0KPiA+PiAJCS5zdHls
+ZSA9IFNFQ0lORk9fU1RZTEVfQ1VSUkVOVF9GSCwNCj4gPj4gQEAgLTczMDQsOCArNzMwNSwyMyBA
+QCBfbmZzNDFfcHJvY19zZWNpbmZvX25vX25hbWUoc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwg
+c3RydWN0IG5mc19maCAqZmhhbmRsZSwNCj4gPj4gCQkucnBjX2FyZ3AgPSAmYXJncywNCj4gPj4g
+CQkucnBjX3Jlc3AgPSAmcmVzLA0KPiA+PiAJfTsNCj4gPj4gLQlyZXR1cm4gbmZzNF9jYWxsX3N5
+bmMoc2VydmVyLT5uZnNfY2xpZW50LT5jbF9ycGNjbGllbnQsIHNlcnZlciwgJm1zZywNCj4gPj4g
+LQkJCQkmYXJncy5zZXFfYXJncywgJnJlcy5zZXFfcmVzLCAwKTsNCj4gPj4gKwlzdHJ1Y3QgcnBj
+X2NsbnQgKmNsbnQgPSBzZXJ2ZXItPmNsaWVudDsNCj4gPj4gKwlpbnQgc3RhdHVzOw0KPiA+PiAr
+DQo+ID4+ICsJaWYgKHVzZV9pbnRlZ3JpdHkpIHsNCj4gPj4gKwkJY2xudCA9IHNlcnZlci0+bmZz
+X2NsaWVudC0+Y2xfcnBjY2xpZW50Ow0KPiA+PiArCQltc2cucnBjX2NyZWQgPSBuZnM0X2dldF9j
+bGlkX2NyZWQoc2VydmVyLT5uZnNfY2xpZW50KTsNCj4gPj4gKwl9DQo+ID4+ICsNCj4gPj4gKwlk
+cHJpbnRrKCItLT4gJXNcbiIsIF9fZnVuY19fKTsNCj4gPj4gKwlzdGF0dXMgPSBuZnM0X2NhbGxf
+c3luYyhjbG50LCBzZXJ2ZXIsICZtc2csICZhcmdzLnNlcV9hcmdzLA0KPiA+PiArCQkJCSZyZXMu
+c2VxX3JlcywgMCk7DQo+ID4+ICsJZHByaW50aygiPC0tICVzIHN0YXR1cz0lZFxuIiwgX19mdW5j
+X18sIHN0YXR1cyk7DQo+ID4+ICsNCj4gPj4gKwlpZiAobXNnLnJwY19jcmVkKQ0KPiA+PiArCQlw
+dXRfcnBjY3JlZChtc2cucnBjX2NyZWQpOw0KPiA+PiArDQo+ID4+ICsJcmV0dXJuIHN0YXR1czsN
+Cj4gPj4gfQ0KPiA+PiANCj4gPj4gc3RhdGljIGludA0KPiA+PiBAQCAtNzMxNSw3ICs3MzMxLDI0
+IEBAIG5mczQxX3Byb2Nfc2VjaW5mb19ub19uYW1lKHN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIs
+IHN0cnVjdCBuZnNfZmggKmZoYW5kbGUsDQo+ID4+IAlzdHJ1Y3QgbmZzNF9leGNlcHRpb24gZXhj
+ZXB0aW9uID0geyB9Ow0KPiA+PiAJaW50IGVycjsNCj4gPj4gCWRvIHsNCj4gPj4gLQkJZXJyID0g
+X25mczQxX3Byb2Nfc2VjaW5mb19ub19uYW1lKHNlcnZlciwgZmhhbmRsZSwgaW5mbywgZmxhdm9y
+cyk7DQo+ID4+ICsJCS8qIGZpcnN0IHRyeSB1c2luZyBpbnRlZ3JpdHkgcHJvdGVjdGlvbiAqLw0K
+PiA+PiArCQllcnIgPSAtTkZTNEVSUl9XUk9OR1NFQzsNCj4gPj4gKw0KPiA+PiArCQkvKiB0cnkg
+dG8gdXNlIGludGVncml0eSBwcm90ZWN0aW9uIHdpdGggbWFjaGluZSBjcmVkICovDQo+ID4+ICsJ
+CWlmIChfbmZzNF9pc19pbnRlZ3JpdHlfcHJvdGVjdGVkKHNlcnZlci0+bmZzX2NsaWVudCkpDQo+
+ID4+ICsJCQllcnIgPSBfbmZzNDFfcHJvY19zZWNpbmZvX25vX25hbWUoc2VydmVyLCBmaGFuZGxl
+LCBpbmZvLA0KPiA+PiArCQkJCQkJCSAgZmxhdm9ycywgdHJ1ZSk7DQo+ID4+ICsNCj4gPj4gKwkJ
+LyoNCj4gPj4gKwkJICogaWYgdW5hYmxlIHRvIHVzZSBpbnRlZ3JpdHkgcHJvdGVjdGlvbiwgb3Ig
+U0VDSU5GTyB3aXRoDQo+ID4+ICsJCSAqIGludGVncml0eSBwcm90ZWN0aW9uIHJldHVybnMgTkZT
+NEVSUl9XUk9OR1NFQyAod2hpY2ggaXMNCj4gPj4gKwkJICogZGlzYWxsb3dlZCBieSBzcGVjLCBi
+dXQgZXhpc3RzIGluIGRlcGxveWVkIHNlcnZlcnMpIHVzZQ0KPiA+PiArCQkgKiB0aGUgY3VycmVu
+dCBmaWxlc3lzdGVtJ3MgcnBjX2NsaWVudCBhbmQgdGhlIHVzZXIgY3JlZC4NCj4gPj4gKwkJICov
+DQo+ID4+ICsJCWlmIChlcnIgPT0gLU5GUzRFUlJfV1JPTkdTRUMpDQo+ID4+ICsJCQllcnIgPSBf
+bmZzNDFfcHJvY19zZWNpbmZvX25vX25hbWUoc2VydmVyLCBmaGFuZGxlLCBpbmZvLA0KPiA+PiAr
+CQkJCQkJCSAgZmxhdm9ycywgZmFsc2UpOw0KPiA+IA0KPiA+IEFzIEkgc2FpZCB5ZXN0ZXJkYXks
+IFJGQzU2NjEgZm9yYmlkcyBTRUNJTkZPX05PX05BTUUgZnJvbSByZXR1cm5pbmcNCj4gPiBORlM0
+RVJSX1dST05HU0VDLCBzbyB0aGlzIGlzIDEwMCUgZXF1aXZhbGVudCB0bw0KPiA+IA0KPiA+IAlp
+ZiAoIV9uZnM0X2lzX2ludGVncml0eV9wcm90ZWN0ZWQoKSkNCj4gPiAJCWVyciA9IOKApi4NCj4g
+DQo+IFJpZ2h0LCBidXQgSSB0aG91Z2h0IHdlIHdlcmUgZG9pbmcgdGhpcyB0byBzdXBwb3J0IHNl
+cnZlciBpbXBsZW1lbnRhdGlvbnMgbGlrZSBsaW51eCB0aGF0ICpkbyogcmV0dXJuIE5GUzRFUlJf
+V1JPTkdTRUMgb24gU0VDSU5GT19OT19OQU1FIGV2ZW4gdGhvdWdoIGl0J3MgZm9yYmlkZGVuLiAg
+SSBrbm93IHdlIG5vcm1hbGx5IGRvbid0IHdvcmsgYXJvdW5kIHNlcnZlciBidWdzLCBidXQgdGhp
+cyBzZWVtcyBwcmV0dHkgc2ltcGxlLg0KPiANCj4gSWYgd2UgZG9uJ3QgZG8gdGhpcywgdGhlbiBT
+RUNJTkZPX05PX05BTUUgd2lsbCBhbHdheXMgZmFpbCBhZ2FpbnN0IGN1cnJlbnQgbGludXggc2V2
+ZXJzIG5vIG1hdHRlciB3aGF0IHRoZSBtb3VudCBvcHRpb25zIC0gdW5sZXNzIGtyYjVpL3AgaXMg
+dW51c2FibGUgKG5vdCBjb25maWd1cmVkLCB0aW1lIHNrZXcsIG5vIG1hY2hpbmUgY3JlZCwgZXRj
+KS4NCg0KQnJ1Y2UsIHlvdSdyZSBpdDogd2hhdCdzIHRoZSBkZWFsIGhlcmU/DQoNCi0tIA0KVHJv
+bmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9u
+ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
