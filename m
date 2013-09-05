@@ -1,132 +1,159 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f182.google.com ([74.125.82.182]:61111 "EHLO
-	mail-we0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751019Ab3I2Kvc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Sep 2013 06:51:32 -0400
-Received: by mail-we0-f182.google.com with SMTP id q59so4334051wes.41
-        for <linux-nfs@vger.kernel.org>; Sun, 29 Sep 2013 03:51:30 -0700 (PDT)
-Message-ID: <5248062F.4080909@primarydata.com>
-Date: Sun, 29 Sep 2013 13:51:27 +0300
-From: Benny Halevy <bhalevy@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:60541 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753977Ab3IEPbZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Sep 2013 11:31:25 -0400
+Date: Thu, 5 Sep 2013 11:31:21 -0400
+From: Dr James Bruce Fields <bfields@fieldses.org>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: use mach cred for SECINFO_NO_NAME w/ integrity
+Message-ID: <20130905153121.GJ10232@fieldses.org>
+References: <1378311199-1695-1-git-send-email-dros@netapp.com>
+ <1378311850.3527.16.camel@leira.trondhjem.org>
+ <F4CF12A0-4D67-4C6B-8413-CC2E895E1B9F@netapp.com>
+ <1378341909.6143.1.camel@leira.trondhjem.org>
+ <20130905140718.GI10232@fieldses.org>
+ <ECF01CCB-9391-46C9-8542-8F9163D58E8A@netapp.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC v0 07/49] pnfsd: add pnfs export option
-References: <52447EA0.7070004@primarydata.com> <1380220819-12999-1-git-send-email-bhalevy@primarydata.com> <20130927143635.GB9946@pad.fieldses.org>
-In-Reply-To: <20130927143635.GB9946@pad.fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <ECF01CCB-9391-46C9-8542-8F9163D58E8A@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-09-27 17:36, J. Bruce Fields wrote:
-> Is this really necessary?  What would we lose if we just used pnfs
-> automatically when the filesystem supports it and all other necessary
-> configuration is in place?
+On Thu, Sep 05, 2013 at 03:17:37PM +0000, Adamson, Dros wrote:
+> 
+> On Sep 5, 2013, at 10:07 AM, Dr James Bruce Fields <bfields@fieldses.org> wrote:
+> 
+> > On Thu, Sep 05, 2013 at 12:45:09AM +0000, Myklebust, Trond wrote:
+> >> On Wed, 2013-09-04 at 16:48 +0000, Adamson, Dros wrote:
+> >>> On Sep 4, 2013, at 12:24 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+> >>> 
+> >>>> On Wed, 2013-09-04 at 12:13 -0400, Weston Andros Adamson wrote:
+> >>>>> Commit 97431204ea005ec8070ac94bc3251e836daa7ca7 introduced a regression
+> >>>>> that causes SECINFO_NO_NAME to fail without sending an RPC if:
+> >>>>> 
+> >>>>> 1) the nfs_client's rpc_client is using krb5i/p (now tried by default)
+> >>>>> 2) the current user doesn't have valid kerberos credentials
+> >>>>> 
+> >>>>> This situation is quite common - as of now a sec=sys mount would use
+> >>>>> krb5i for the nfs_client's rpc_client and a user would hardly be faulted
+> >>>>> for not having run kinit.
+> >>>>> 
+> >>>>> The solution is to use the machine cred when trying to use an integrity
+> >>>>> protected auth flavor for SECINFO_NO_NAME.
+> >>>>> 
+> >>>>> Older servers may not support using the machine cred or an integrity
+> >>>>> protected auth flavor for SECINFO_NO_NAME in every circumstance, so we fall
+> >>>>> back to using the user's cred and the filesystem's auth flavor in this case.
+> >>>>> 
+> >>>>> We run into another problem when running against linux nfs servers -
+> >>>>> they return NFS4ERR_WRONGSEC when using integrity auth flavor (unless the
+> >>>>> mount is also that flavor) even though that is not a valid error for
+> >>>>> SECINFO*.  Even though it's against spec, handle WRONGSEC errors on
+> >>>>> SECINFO_NO_NAME by falling back to using the user cred and the
+> >>>>> filesystem's auth flavor.
+> >>>>> 
+> >>>>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> >>>>> ---
+> >>>>> 
+> >>>>> This patch goes along with yesterday's SECINFO patch
+> >>>>> 
+> >>>>> fs/nfs/nfs4proc.c | 41 +++++++++++++++++++++++++++++++++++++----
+> >>>>> 1 file changed, 37 insertions(+), 4 deletions(-)
+> >>>>> 
+> >>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> >>>>> index ab1461e..74b37f5 100644
+> >>>>> --- a/fs/nfs/nfs4proc.c
+> >>>>> +++ b/fs/nfs/nfs4proc.c
+> >>>>> @@ -7291,7 +7291,8 @@ out:
+> >>>>> */
+> >>>>> static int
+> >>>>> _nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
+> >>>>> -		    struct nfs_fsinfo *info, struct nfs4_secinfo_flavors *flavors)
+> >>>>> +		    struct nfs_fsinfo *info,
+> >>>>> +		    struct nfs4_secinfo_flavors *flavors, bool use_integrity)
+> >>>>> {
+> >>>>> 	struct nfs41_secinfo_no_name_args args = {
+> >>>>> 		.style = SECINFO_STYLE_CURRENT_FH,
+> >>>>> @@ -7304,8 +7305,23 @@ _nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
+> >>>>> 		.rpc_argp = &args,
+> >>>>> 		.rpc_resp = &res,
+> >>>>> 	};
+> >>>>> -	return nfs4_call_sync(server->nfs_client->cl_rpcclient, server, &msg,
+> >>>>> -				&args.seq_args, &res.seq_res, 0);
+> >>>>> +	struct rpc_clnt *clnt = server->client;
+> >>>>> +	int status;
+> >>>>> +
+> >>>>> +	if (use_integrity) {
+> >>>>> +		clnt = server->nfs_client->cl_rpcclient;
+> >>>>> +		msg.rpc_cred = nfs4_get_clid_cred(server->nfs_client);
+> >>>>> +	}
+> >>>>> +
+> >>>>> +	dprintk("--> %s\n", __func__);
+> >>>>> +	status = nfs4_call_sync(clnt, server, &msg, &args.seq_args,
+> >>>>> +				&res.seq_res, 0);
+> >>>>> +	dprintk("<-- %s status=%d\n", __func__, status);
+> >>>>> +
+> >>>>> +	if (msg.rpc_cred)
+> >>>>> +		put_rpccred(msg.rpc_cred);
+> >>>>> +
+> >>>>> +	return status;
+> >>>>> }
+> >>>>> 
+> >>>>> static int
+> >>>>> @@ -7315,7 +7331,24 @@ nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
+> >>>>> 	struct nfs4_exception exception = { };
+> >>>>> 	int err;
+> >>>>> 	do {
+> >>>>> -		err = _nfs41_proc_secinfo_no_name(server, fhandle, info, flavors);
+> >>>>> +		/* first try using integrity protection */
+> >>>>> +		err = -NFS4ERR_WRONGSEC;
+> >>>>> +
+> >>>>> +		/* try to use integrity protection with machine cred */
+> >>>>> +		if (_nfs4_is_integrity_protected(server->nfs_client))
+> >>>>> +			err = _nfs41_proc_secinfo_no_name(server, fhandle, info,
+> >>>>> +							  flavors, true);
+> >>>>> +
+> >>>>> +		/*
+> >>>>> +		 * if unable to use integrity protection, or SECINFO with
+> >>>>> +		 * integrity protection returns NFS4ERR_WRONGSEC (which is
+> >>>>> +		 * disallowed by spec, but exists in deployed servers) use
+> >>>>> +		 * the current filesystem's rpc_client and the user cred.
+> >>>>> +		 */
+> >>>>> +		if (err == -NFS4ERR_WRONGSEC)
+> >>>>> +			err = _nfs41_proc_secinfo_no_name(server, fhandle, info,
+> >>>>> +							  flavors, false);
+> >>>> 
+> >>>> As I said yesterday, RFC5661 forbids SECINFO_NO_NAME from returning
+> >>>> NFS4ERR_WRONGSEC, so this is 100% equivalent to
+> >>>> 
+> >>>> 	if (!_nfs4_is_integrity_protected())
+> >>>> 		err = ….
+> >>> 
+> >>> Right, but I thought we were doing this to support server implementations like linux that *do* return NFS4ERR_WRONGSEC on SECINFO_NO_NAME even though it's forbidden.  I know we normally don't work around server bugs, but this seems pretty simple.
+> >>> 
+> >>> If we don't do this, then SECINFO_NO_NAME will always fail against current linux severs no matter what the mount options - unless krb5i/p is unusable (not configured, time skew, no machine cred, etc).
+> >> 
+> >> Bruce, you're it: what's the deal here?
+> > 
+> > Dros, in what cases exactly do you see SECINFO_NO_NAME returning
+> > WRONGSEC?
+> > 
+> > From a quick skim of the code it looks like it shouldn't happen in the
+> > CURRENT_FH case, which is the one the client uses.  But I probably
+> > overlooked something....
+> > 
+> > --b.
+> 
+> SECINFO_NO_NAME will fail with NFS4ERR_WRONGSEC in check_nfsd_access when the rpc auth flavor is different from the export's auth flavor - in the same way as SECINFO.
 
-We can do that and let the client decide whether to use pnfs or not.
-Though I think that to deal with client interoperability issues, one
-would want to control that.  If we don't provide a way to enable/disable
-pnfs at the export level every file system that supports pnfs would probably
-need a mount option to control pnfs exportability...
+Huh.  There's no check_nfsd_access call in secinfo_no_name in the
+CURRENT_FH case.  And any checks on the putfh op should be turned off by
+the OP_HANDLES_WRONGSEC flag on secinfo_no_name.
 
-Benny
+But I haven't actually tried it, and presumably you have (any hints on
+reproducing?), so I'll take a look....
 
-> 
-> On Thu, Sep 26, 2013 at 02:40:19PM -0400, Benny Halevy wrote:
->> From: Andy Adamson <andros@netapp.com>
->>
->> This is a boolean for now. When more layouttypes are supported, this can
->> change to "pnfs=", similar to "sec=".
->>
->> The ctl interface is not enhanced.
->>
->> Note: Export option strings are not guaranteed to be present in every call to
->> svc_export_parse. For example, nfs-utils-1.1.2 exportfs validates the export
->> with a test call that does not include the 'pnfs' export option even though
->> it is set in /etc/exports.
->>
->> nfsd4_layout_verify() checks if ex_pnfs is set so the ex_pnfs check in
->> check_export is not needed.
->>
->> Furthermore,the pnfs_export_operations super block pointer should not be
->> changed because a) it is a const and b) the exports options can be changed
->> while the file system is mounted.
->>
->> Remove the ex_pnfs check from check_export to prevent the pnfs_export_operations
->> superblock pointer from being set to NULL.
-> 
-> This patch doesn't touch check_export.  Is this describing a change from
-> a previous version of the patch?  If so, either drop this comment or
-> write it in a way that will make sense to someone who hasn't seen the
-> previous version.
-> 
-> --b.
-> 
-> 
->>
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> [pnfsd: fix cosmetic checkpatch warnings]
->> [pnfsd: test pnfs export option in check_export]
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> [pnfsd: fix ex_pnfs check_export bug]
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
->> ---
->>  fs/nfsd/export.c            | 6 ++++++
->>  include/linux/nfsd/export.h | 1 +
->>  2 files changed, 7 insertions(+)
->>
->> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
->> index f26b0b9..7730dfd 100644
->> --- a/fs/nfsd/export.c
->> +++ b/fs/nfsd/export.c
->> @@ -567,6 +567,8 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
->>  					if (exp.ex_uuid == NULL)
->>  						err = -ENOMEM;
->>  				}
->> +			} else if (strcmp(buf, "pnfs") == 0) {
->> +				exp.ex_pnfs = 1;
->>  			} else if (strcmp(buf, "secinfo") == 0)
->>  				err = secinfo_parse(&mesg, buf, &exp);
->>  			else
->> @@ -639,6 +641,8 @@ static int svc_export_show(struct seq_file *m,
->>  				seq_printf(m, "%02x", exp->ex_uuid[i]);
->>  			}
->>  		}
->> +		if (exp->ex_pnfs)
->> +			seq_puts(m, ",pnfs");
->>  		show_secinfo(m, exp);
->>  	}
->>  	seq_puts(m, ")\n");
->> @@ -666,6 +670,7 @@ static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
->>  	new->ex_fslocs.locations_count = 0;
->>  	new->ex_fslocs.migrated = 0;
->>  	new->ex_uuid = NULL;
->> +	new->ex_pnfs = 0;
->>  	new->cd = item->cd;
->>  }
->>  
->> @@ -679,6 +684,7 @@ static void export_update(struct cache_head *cnew, struct cache_head *citem)
->>  	new->ex_anon_uid = item->ex_anon_uid;
->>  	new->ex_anon_gid = item->ex_anon_gid;
->>  	new->ex_fsid = item->ex_fsid;
->> +	new->ex_pnfs = item->ex_pnfs;
->>  	new->ex_uuid = item->ex_uuid;
->>  	item->ex_uuid = NULL;
->>  	new->ex_fslocs.locations = item->ex_fslocs.locations;
->> diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
->> index 7898c99..b03ceee 100644
->> --- a/include/linux/nfsd/export.h
->> +++ b/include/linux/nfsd/export.h
->> @@ -52,6 +52,7 @@ struct svc_export {
->>  	kuid_t			ex_anon_uid;
->>  	kgid_t			ex_anon_gid;
->>  	int			ex_fsid;
->> +	int			ex_pnfs;
->>  	unsigned char *		ex_uuid; /* 16 byte fsid */
->>  	struct nfsd4_fs_locations ex_fslocs;
->>  	int			ex_nflavors;
->> -- 
->> 1.8.3.1
->>
+--b.
