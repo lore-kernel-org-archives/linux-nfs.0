@@ -1,95 +1,158 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f54.google.com ([209.85.216.54]:37708 "EHLO
-	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753553Ab3IZSmQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:42:16 -0400
-Received: by mail-qa0-f54.google.com with SMTP id bv4so1092824qab.6
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:42:15 -0700 (PDT)
-From: Benny Halevy <bhalevy@primarydata.com>
-To: " J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH RFC v0 35/49] pnfsd: nfsd4_pnfs_dlm_getdeviter
-Date: Thu, 26 Sep 2013 14:42:12 -0400
-Message-Id: <1380220932-14302-1-git-send-email-bhalevy@primarydata.com>
-In-Reply-To: <52447EA0.7070004@primarydata.com>
-References: <52447EA0.7070004@primarydata.com>
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:52616 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752955Ab3IEQVP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Sep 2013 12:21:15 -0400
+Received: by mail-ie0-f180.google.com with SMTP id 10so1164465ied.25
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Sep 2013 09:21:15 -0700 (PDT)
+Date: Thu, 5 Sep 2013 11:21:10 -0500
+From: Quentin Barnes <qbarnes@gmail.com>
+To: linux-nfs@vger.kernel.org
+Subject: nfs-backed mmap file results in 1000s of WRITEs per second
+Message-ID: <20130905162110.GA17920@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+If two (or more) processes are doing nothing more than writing to
+the memory addresses of an mmapped shared file on an NFS mounted
+file system, it results in the kernel scribbling WRITEs to the
+server as fast as it can (1000s per second) even while no syscalls
+are going on.
 
-Export nfsd4_pnfs_dlm_getdeviter for dlm cluster file system use.
+The problems happens on NFS clients mounting NFSv3 or NFSv4.  I've
+reproduced this on the 3.11 kernel, and it happens as far back as
+RHEL6 (2.6.32 based), however, it is not a problem on RHEL5 (2.6.18
+based).  (All x86_64 systems.)  I didn't try anything in between.
 
-[was pnfsd: hardwire DLM cluster file layout get device iterator]
-Signed-off-by: David M. Richter <richterd@citi.umich.edu>
-Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
-[pnfs-gfs2: return correct error value in GETDEVICEINFO]
-Signed-off-by: David M. Richter <richterd@citi.umich.edu>
-[Use the GFS2 iterator as the default file layout iterator.]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[Add the pnfsd default file layout getdevice info]
-Signed-off-by: David M. Richter <richterd@citi.umich.edu>
-Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
-[pnfs-gfs2: return correct error value in GETDEVICEINFO]
-Signed-off-by: David M. Richter <richterd@citi.umich.edu>
-[pnfsd: move and rename nfsd4_pnfs_fl_getdeviter]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Acked-by: Steven Whitehouse <swhiteho@redhat.com>
-[pnfsd: dev_iter: clean up export API]
-[pnfsd: dlm: fixup LAYOUT_NFSV4_1_FILES]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
----
- fs/nfsd/nfs4pnfsdlm.c | 29 +++++++++++++++++++++++++++++
- 1 file changed, 29 insertions(+)
+I've created a self-contained program below that will demonstrate
+the problem (call it "t1").  Assuming /mnt has an NFS file system:
 
-diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
-index ddc2188..0a14f06 100644
---- a/fs/nfsd/nfs4pnfsdlm.c
-+++ b/fs/nfsd/nfs4pnfsdlm.c
-@@ -21,8 +21,11 @@
-  *
-  ******************************************************************************/
- 
-+#include <linux/nfs4.h>
-+#include <linux/export.h>
- #include <linux/nfsd/debug.h>
- #include <linux/nfsd/nfs4pnfsdlm.h>
-+#include <linux/nfsd/nfs4layoutxdr.h>
- #include <linux/sunrpc/addr.h>
- 
- #define NFSDDBG_FACILITY                NFSDDBG_FILELAYOUT
-@@ -180,3 +183,29 @@ void nfsd4_pnfs_dlm_shutdown(void)
- 	}
- 	spin_unlock(&dlm_device_list_lock);
- }
-+
-+static int nfsd4_pnfs_dlm_getdeviter(struct super_block *sb,
-+				     u32 layout_type,
-+				     struct nfsd4_pnfs_dev_iter_res *res)
-+{
-+	if (layout_type != LAYOUT_NFSV4_1_FILES) {
-+		printk(KERN_ERR "%s: ERROR: layout type isn't 'file' "
-+			"(type: %x)\n", __func__, layout_type);
-+		return -ENOTSUPP;
-+	}
-+
-+	res->gd_eof = 1;
-+	if (res->gd_cookie)
-+		return -ENOENT;
-+
-+	res->gd_cookie = 1;
-+	res->gd_verf = 1;
-+	res->gd_devid = 1;
-+	return 0;
-+}
-+
-+/* For use by DLM cluster file systems exported by pNFSD */
-+const struct pnfs_export_operations pnfs_dlm_export_ops = {
-+	.get_device_iter = nfsd4_pnfs_dlm_getdeviter,
-+};
-+EXPORT_SYMBOL(pnfs_dlm_export_ops);
--- 
-1.8.3.1
+  $ t1 /mnt/mynfsfile 1    # Fork 1 writer, kernel behaves normally
+  $ t1 /mnt/mynfsfile 2    # Fork 2 writers, kernel goes crazy WRITEing
 
+Just run "watch -d nfsstat" in another window while running the two
+writer test and watch the WRITE count explode.
+
+I don't see anything particularly wrong with what the example code
+is doing with its use of mmap.  Is there anything undefined about
+the code that would explain this behavior, or is this a NFS bug
+that's really lived this long?
+
+Quentin
+
+
+
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <string.h>
+#include <unistd.h>
+
+int
+kill_children()
+{
+	int		cnt = 0;
+	siginfo_t	infop;
+
+	signal(SIGINT, SIG_IGN);
+	kill(0, SIGINT);
+	while (waitid(P_ALL, 0, &infop, WEXITED) != -1) ++cnt;
+
+	return cnt;
+}
+
+void
+sighandler(int sig)
+{
+	printf("Cleaning up all children.\n");
+	int cnt = kill_children();
+	printf("Cleaned up %d child%s.\n", cnt, cnt == 1 ? "" : "ren");
+
+	exit(0);
+}
+
+int
+do_child(volatile int *iaddr)
+{
+	while (1) *iaddr = 1;
+}
+
+int
+main(int argc, char **argv)
+{
+	const char	*path;
+	int		fd;
+	ssize_t		wlen;
+	int		*ip;
+	int		fork_count = 1;
+
+	if (argc == 1) {
+		fprintf(stderr, "Usage: %s {filename} [fork_count].\n",
+			argv[0]);
+		return 1;
+	}
+
+	path = argv[1];
+
+	if (argc > 2) {
+		int fc = atoi(argv[2]);
+		if (fc >= 0)
+			fork_count = fc;
+	}
+
+	fd = open(path, O_CREAT|O_TRUNC|O_RDWR|O_APPEND, S_IRUSR|S_IWUSR);
+	if (fd < 0) {
+		fprintf(stderr, "Open of '%s' failed: %s (%d)\n",
+			path, strerror(errno), errno);
+		return 1;
+	}
+
+	wlen = write(fd, &(int){0}, sizeof(int));
+	if (wlen != sizeof(int)) {
+		if (wlen < 0)
+			fprintf(stderr, "Write of '%s' failed: %s (%d)\n",
+				path, strerror(errno), errno);
+		else
+			fprintf(stderr, "Short write to '%s'\n", path);
+		return 1;
+	}
+
+	ip = (int *)mmap(NULL, sizeof(int), PROT_READ|PROT_WRITE,
+			   MAP_SHARED, fd, 0);
+	if (ip == MAP_FAILED) {
+		fprintf(stderr, "Mmap of '%s' failed: %s (%d)\n",
+			path, strerror(errno), errno);
+		return 1;
+	}
+
+	signal(SIGINT, sighandler);
+
+	while (fork_count-- > 0) {
+		switch(fork()) {
+		case -1:
+			fprintf(stderr, "Fork failed: %s (%d)\n",
+				strerror(errno), errno);
+			kill_children();
+			return 1;
+		case 0:   /* child  */
+			signal(SIGINT, SIG_DFL);
+			do_child(ip);
+			break;
+		default:  /* parent */
+			break;
+		}
+	}
+
+	printf("Press ^C to terminate test.\n");
+	pause();
+
+	return 0;
+}
