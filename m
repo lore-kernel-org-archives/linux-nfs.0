@@ -1,25 +1,185 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.195]:60455 "EHLO mout.perfora.net"
+Received: from e8.ny.us.ibm.com ([32.97.182.138]:50737 "EHLO e8.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752527Ab3IQMVm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Sep 2013 08:21:42 -0400
-Date: Tue, 17 Sep 2013 08:21:35 -0400
-From: Jim Rees <rees@umich.edu>
-To: Bohuslav Kabrda <bkabrda@redhat.com>
+	id S1753607Ab3IERDT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Sep 2013 13:03:19 -0400
+Received: from /spool/local
+	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Thu, 5 Sep 2013 18:03:18 +0100
+Received: from b01cxnp22033.gho.pok.ibm.com (b01cxnp22033.gho.pok.ibm.com [9.57.198.23])
+	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 68E2B6E805D
+	for <linux-nfs@vger.kernel.org>; Thu,  5 Sep 2013 13:03:13 -0400 (EDT)
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by b01cxnp22033.gho.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r85H3DWU33292476
+	for <linux-nfs@vger.kernel.org>; Thu, 5 Sep 2013 17:03:13 GMT
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r85H3A0M011365
+	for <linux-nfs@vger.kernel.org>; Thu, 5 Sep 2013 13:03:11 -0400
+Date: Thu, 5 Sep 2013 12:03:03 -0500
+From: Malahal Naineni <malahal@us.ibm.com>
+To: Quentin Barnes <qbarnes@gmail.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Make mountstats and nfs-iostat Python 3 compatible
-Message-ID: <20130917122135.GC11758@umich.edu>
-References: <1379409678-15730-1-git-send-email-bkabrda@redhat.com>
+Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
+Message-ID: <20130905170303.GB17330@us.ibm.com>
+References: <20130905162110.GA17920@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1379409678-15730-1-git-send-email-bkabrda@redhat.com>
+In-Reply-To: <20130905162110.GA17920@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bohuslav Kabrda wrote:
+Neil Brown posted a patch couple days ago for this!
 
-  This will make mountstat and nfs-iostat run on Python 2.6, 2.7
-  and >= 3.0
+http://thread.gmane.org/gmane.linux.nfs/58473
 
-Thanks! I looked at this once but was put off by all those prints. I know
-there's a conversion program but I've never used it.
+Regards, Malahal.
+
+Quentin Barnes [qbarnes@gmail.com] wrote:
+> If two (or more) processes are doing nothing more than writing to
+> the memory addresses of an mmapped shared file on an NFS mounted
+> file system, it results in the kernel scribbling WRITEs to the
+> server as fast as it can (1000s per second) even while no syscalls
+> are going on.
+> 
+> The problems happens on NFS clients mounting NFSv3 or NFSv4.  I've
+> reproduced this on the 3.11 kernel, and it happens as far back as
+> RHEL6 (2.6.32 based), however, it is not a problem on RHEL5 (2.6.18
+> based).  (All x86_64 systems.)  I didn't try anything in between.
+> 
+> I've created a self-contained program below that will demonstrate
+> the problem (call it "t1").  Assuming /mnt has an NFS file system:
+> 
+>   $ t1 /mnt/mynfsfile 1    # Fork 1 writer, kernel behaves normally
+>   $ t1 /mnt/mynfsfile 2    # Fork 2 writers, kernel goes crazy WRITEing
+> 
+> Just run "watch -d nfsstat" in another window while running the two
+> writer test and watch the WRITE count explode.
+> 
+> I don't see anything particularly wrong with what the example code
+> is doing with its use of mmap.  Is there anything undefined about
+> the code that would explain this behavior, or is this a NFS bug
+> that's really lived this long?
+> 
+> Quentin
+> 
+> 
+> 
+> #include <sys/stat.h>
+> #include <sys/mman.h>
+> #include <sys/stat.h>
+> #include <sys/wait.h>
+> #include <errno.h>
+> #include <fcntl.h>
+> #include <stdio.h>
+> #include <stdlib.h>
+> #include <signal.h>
+> #include <string.h>
+> #include <unistd.h>
+> 
+> int
+> kill_children()
+> {
+> 	int		cnt = 0;
+> 	siginfo_t	infop;
+> 
+> 	signal(SIGINT, SIG_IGN);
+> 	kill(0, SIGINT);
+> 	while (waitid(P_ALL, 0, &infop, WEXITED) != -1) ++cnt;
+> 
+> 	return cnt;
+> }
+> 
+> void
+> sighandler(int sig)
+> {
+> 	printf("Cleaning up all children.\n");
+> 	int cnt = kill_children();
+> 	printf("Cleaned up %d child%s.\n", cnt, cnt == 1 ? "" : "ren");
+> 
+> 	exit(0);
+> }
+> 
+> int
+> do_child(volatile int *iaddr)
+> {
+> 	while (1) *iaddr = 1;
+> }
+> 
+> int
+> main(int argc, char **argv)
+> {
+> 	const char	*path;
+> 	int		fd;
+> 	ssize_t		wlen;
+> 	int		*ip;
+> 	int		fork_count = 1;
+> 
+> 	if (argc == 1) {
+> 		fprintf(stderr, "Usage: %s {filename} [fork_count].\n",
+> 			argv[0]);
+> 		return 1;
+> 	}
+> 
+> 	path = argv[1];
+> 
+> 	if (argc > 2) {
+> 		int fc = atoi(argv[2]);
+> 		if (fc >= 0)
+> 			fork_count = fc;
+> 	}
+> 
+> 	fd = open(path, O_CREAT|O_TRUNC|O_RDWR|O_APPEND, S_IRUSR|S_IWUSR);
+> 	if (fd < 0) {
+> 		fprintf(stderr, "Open of '%s' failed: %s (%d)\n",
+> 			path, strerror(errno), errno);
+> 		return 1;
+> 	}
+> 
+> 	wlen = write(fd, &(int){0}, sizeof(int));
+> 	if (wlen != sizeof(int)) {
+> 		if (wlen < 0)
+> 			fprintf(stderr, "Write of '%s' failed: %s (%d)\n",
+> 				path, strerror(errno), errno);
+> 		else
+> 			fprintf(stderr, "Short write to '%s'\n", path);
+> 		return 1;
+> 	}
+> 
+> 	ip = (int *)mmap(NULL, sizeof(int), PROT_READ|PROT_WRITE,
+> 			   MAP_SHARED, fd, 0);
+> 	if (ip == MAP_FAILED) {
+> 		fprintf(stderr, "Mmap of '%s' failed: %s (%d)\n",
+> 			path, strerror(errno), errno);
+> 		return 1;
+> 	}
+> 
+> 	signal(SIGINT, sighandler);
+> 
+> 	while (fork_count-- > 0) {
+> 		switch(fork()) {
+> 		case -1:
+> 			fprintf(stderr, "Fork failed: %s (%d)\n",
+> 				strerror(errno), errno);
+> 			kill_children();
+> 			return 1;
+> 		case 0:   /* child  */
+> 			signal(SIGINT, SIG_DFL);
+> 			do_child(ip);
+> 			break;
+> 		default:  /* parent */
+> 			break;
+> 		}
+> 	}
+> 
+> 	printf("Press ^C to terminate test.\n");
+> 	pause();
+> 
+> 	return 0;
+> }
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
