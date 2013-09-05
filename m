@@ -1,42 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:41287 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750750Ab3IFSr4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Sep 2013 14:47:56 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 3 1/1] NFSv4.1 Use MDS auth flavor for data
- server connection
-Date: Fri, 6 Sep 2013 18:47:55 +0000
-Message-ID: <1378493274.10582.14.camel@leira.trondhjem.org>
-References: <1378491240-1848-1-git-send-email-andros@netapp.com>
-In-Reply-To: <1378491240-1848-1-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-vb0-f43.google.com ([209.85.212.43]:56521 "EHLO
+	mail-vb0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753439Ab3IEPoa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Sep 2013 11:44:30 -0400
+Received: by mail-vb0-f43.google.com with SMTP id h11so1255925vbh.2
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Sep 2013 08:44:29 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <1378395094.5450.7.camel@leira.trondhjem.org>
+References: <1378394074-2165-1-git-send-email-andros@netapp.com>
+	<1378395094.5450.7.camel@leira.trondhjem.org>
+Date: Thu, 5 Sep 2013 11:44:29 -0400
+Message-ID: <CAHVgHyVWAsGUK9cTnekChFeCf8JbMRocioPrvAz6_EV8V7zCNQ@mail.gmail.com>
+Subject: Re: [PATCH 1/1] NFSv4.1 Use MDS auth flavor for data server connection
+From: Andy Adamson <androsadamson@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEzLTA5LTA2IGF0IDE0OjE0IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IENvbW1p
-dCA0ZWRhYTMwOCAiTkZTOiBVc2UgImtyYjVpIiB0byBlc3RhYmxpc2ggTkZTdjQgc3RhdGUgd2hl
-bmV2ZXIgcG9zc2libGUiDQo+IHVzZXMgdGhlIG5mc19jbGllbnQgY2xfcnBjY2xpZW50IGZvciBh
-bGwgc3RhdGUgbWFuYWdlbWVudCBvcGVyYXRpb25zLCBhbmQNCj4gd2lsbCB1c2Uga3JiNWkgb3Ig
-YXV0aF9zeXMgd2l0aCBubyByZWdhcmQgdG8gdGhlIG1vdW50IGNvbW1hbmQgYXV0aGZsYXZvcg0K
-PiBjaG9pY2UuDQo+IA0KPiBUaGUgTURTLCBhcyBhbnkgTkZTdjQuMSBtb3VudCBwb2ludCwgdXNl
-cyB0aGUgbmZzX3NlcnZlciBycGMgY2xpZW50IGZvciBhbGwNCj4gbm9uLXN0YXRlIG1hbmFnZW1l
-bnQgb3BlcmF0aW9ucyB3aXRoIGEgZGlmZmVyZW50IG5mc19zZXJ2ZXIgZm9yIGVhY2ggZnNpZA0K
-PiBlbmNvdW50ZXJlZCB0cmF2ZXJzaW5nIHRoZSBtb3VudCBwb2ludCwgZWFjaCB3aXRoIGEgcG90
-ZW50aWFsbHkgZGlmZmVyZW50DQo+IGF1dGggZmxhdm9yLg0KPiANCj4gcE5GUyBkYXRhIHNlcnZl
-cnMgYXJlIG5vdCBtb3VudGVkIGluIHRoZSBub3JtYWwgc2Vuc2UgYXMgdGhlcmUgaXMgbm8gYXNz
-b2NpYXRlZA0KPiBuZnNfc2VydmVyIHN0cnVjdHVyZS4gRGF0YSBzZXJ2ZXJzIGNhbiBhbHNvIGV4
-cG9ydCBtdWx0aXBsZSBmc2lkcywgZWFjaCB3aXRoDQo+IGEgcG90ZW50aWFsbHkgZGlmZmVyZW50
-IGF1dGggZmxhdm9yLg0KPiANCj4gRGF0YSBzZXJ2ZXJzIG5lZWQgdG8gdXNlIHRoZSBzYW1lIGF1
-dGhmbGF2b3IgYXMgdGhlIE1EUyBzZXJ2ZXIgcnBjIGNsaWVudCBmb3INCj4gbm9uLXN0YXRlIG1h
-bmFnZW1lbnQgb3BlcmF0aW9ucy4gUG9wdWxhdGUgYSBsaXN0IG9mIHJwYyBjbGllbnRzIHdpdGgg
-dGhlIE1EUw0KPiBzZXJ2ZXIgcnBjIGNsaWVudCBhdXRoIGZsYXZvciBmb3IgdGhlIERTIHRvIHVz
-ZS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+
-DQo+IC0tLQ0KPiAgDQoNClRoYW5rIHlvdSBBbmR5ISBVbmxlc3Mgc29tZXRoaW5nIGNvbWVzIHVw
-LCBJJ20gYXBwbHlpbmcgdGhpcyBvbmUuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
-RlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
-bQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+On Thu, Sep 5, 2013 at 11:31 AM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Thu, 2013-09-05 at 11:14 -0400, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> Commit 4edaa308 "NFS: Use "krb5i" to establish NFSv4 state whenever possible"
+>> uses the nfs_client cl_rpcclient for all state management operations, and
+>> will use krb5i or auth_sys with no regard to the mount command authflavor
+>> choice.
+>>
+>> The MDS, as any NFSv4.1 mount point, uses the nfs_server rpc client for all
+>> non-state management operations with a different nfs_server for each fsid
+>> encountered traversing the mount point, each with a potentially different
+>> auth flavor.
+>>
+>> pNFS data servers are not mounted in the normal sense as there is no associated
+>> nfs_server structure. Data servers can also export multiple fsids, each with
+>> a potentially different auth flavor.
+>>
+>> Data servers need to use the same authflavor as the MDS server rpc client for
+>> non-state management operations. Populate a list of rpc clients with the MDS
+>> server rpc client auth flavor for the DS to use.
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>>  fs/nfs/internal.h           |  2 ++
+>>  fs/nfs/nfs4client.c         | 75 +++++++++++++++++++++++++++++++++++++++++++++
+>>  fs/nfs/nfs4filelayout.c     | 35 ++++++++++++++++-----
+>>  include/linux/nfs_fs_sb.h   |  1 +
+>>  include/linux/sunrpc/clnt.h |  2 ++
+>>  net/sunrpc/clnt.c           |  1 +
+>>  6 files changed, 108 insertions(+), 8 deletions(-)
+>>
+> <snip>
+>> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+>> index 76c0bf6..3919f2b 100644
+>> --- a/include/linux/sunrpc/clnt.h
+>> +++ b/include/linux/sunrpc/clnt.h
+>> @@ -35,6 +35,8 @@ struct rpc_clnt {
+>>       atomic_t                cl_count;       /* Number of references */
+>>       struct list_head        cl_clients;     /* Global list of clients */
+>>       struct list_head        cl_tasks;       /* List of tasks */
+>> +     struct list_head        cl_ds_clnts;    /* list of per auth flavor
+>> +                                                data servers */
+>
+> This list doesn't belong in the RPC layer. Please make a separate
+> structure that lives in the NFS layer, and that owns the rpc_clnt.
+>
+> IOW something along the lines of:
+>
+> struct nfs_ds_server {
+>         struct list_head list;  /* ds_clp->cl_ds_clients */
+>         struct rpc_clnt *rpc_clnt;
+> };
+
+OK
+
+-->Andy
+>
+>>       spinlock_t              cl_lock;        /* spinlock */
+>>       struct rpc_xprt __rcu * cl_xprt;        /* transport */
+>>       struct rpc_procinfo *   cl_procinfo;    /* procedure info */
+>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>> index baf0df6..3c18394 100644
+>> --- a/net/sunrpc/clnt.c
+>> +++ b/net/sunrpc/clnt.c
+>> @@ -356,6 +356,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args,
+>>               goto out_no_stats;
+>>       clnt->cl_program  = program;
+>>       INIT_LIST_HEAD(&clnt->cl_tasks);
+>> +     INIT_LIST_HEAD(&clnt->cl_ds_clnts);
+>>       spin_lock_init(&clnt->cl_lock);
+>>
+>>       if (!xprt_bound(xprt))
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
