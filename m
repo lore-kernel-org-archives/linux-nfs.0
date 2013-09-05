@@ -1,98 +1,27 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:37320 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:2834 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758836Ab3IBSRK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Sep 2013 14:17:10 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-CC: <andros@netapp.com>
-Subject: [PATCH v3 07/17] RPCSEC_GSS: Fix an Oopsable condition when creating/destroying pipefs objects
-Date: Mon, 2 Sep 2013 14:16:50 -0400
-Message-ID: <1378145820-29990-7-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1378145820-29990-6-git-send-email-Trond.Myklebust@netapp.com>
-References: <1378145820-29990-1-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-2-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-3-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-4-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-5-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-6-git-send-email-Trond.Myklebust@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S965208Ab3IEMeL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Sep 2013 08:34:11 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <alpine.DEB.2.00.1309040923080.1073@cobra.newdream.net>
+References: <alpine.DEB.2.00.1309040923080.1073@cobra.newdream.net> <alpine.DEB.2.00.1308212203320.1479@cobra.newdream.net> <cover.1375999914.git.milosz@adfin.com> <17341.1378309753@warthog.procyon.org.uk> <alpine.DEB.2.00.1309040851080.27503@cobra.newdream.net>
+To: Sage Weil <sage@inktank.com>
+Cc: dhowells@redhat.com, Milosz Tanski <milosz@adfin.com>,
+        ceph-devel@vger.kernel.org, zheng.z.yan@intel.com,
+        linux-cachefs@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCHv4 0/5] ceph: persistent caching with fscache
+Date: Thu, 05 Sep 2013 13:34:03 +0100
+Message-ID: <18383.1378384443@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If an error condition occurs on rpc_pipefs creation, or the user mounts
-rpc_pipefs and then unmounts it, then the dentries in struct gss_auth
-need to be reset to NULL so that a second call to gss_pipes_dentries_destroy
-doesn't try to free them again.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- net/sunrpc/auth_gss/auth_gss.c | 32 ++++++++++++++++++++------------
- 1 file changed, 20 insertions(+), 12 deletions(-)
+I've pushed the non-Ceph bits of the bad-page fix to here:
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 6323803..c0d36bb 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -796,10 +796,14 @@ static void gss_pipes_dentries_destroy(struct rpc_auth *auth)
- 	struct gss_auth *gss_auth;
- 
- 	gss_auth = container_of(auth, struct gss_auth, rpc_auth);
--	if (gss_auth->pipe[0]->dentry)
-+	if (gss_auth->pipe[0]->dentry) {
- 		rpc_unlink(gss_auth->pipe[0]->dentry);
--	if (gss_auth->pipe[1]->dentry)
-+		gss_auth->pipe[0]->dentry = NULL;
-+	}
-+	if (gss_auth->pipe[1]->dentry) {
- 		rpc_unlink(gss_auth->pipe[1]->dentry);
-+		gss_auth->pipe[1]->dentry = NULL;
-+	}
- }
- 
- static int gss_pipes_dentries_create(struct rpc_auth *auth)
-@@ -807,26 +811,30 @@ static int gss_pipes_dentries_create(struct rpc_auth *auth)
- 	int err;
- 	struct gss_auth *gss_auth;
- 	struct rpc_clnt *clnt;
-+	struct dentry *dentry;
- 
- 	gss_auth = container_of(auth, struct gss_auth, rpc_auth);
- 	clnt = gss_auth->client;
- 
--	gss_auth->pipe[1]->dentry = rpc_mkpipe_dentry(clnt->cl_dentry,
--						      "gssd",
--						      clnt, gss_auth->pipe[1]);
--	if (IS_ERR(gss_auth->pipe[1]->dentry))
--		return PTR_ERR(gss_auth->pipe[1]->dentry);
--	gss_auth->pipe[0]->dentry = rpc_mkpipe_dentry(clnt->cl_dentry,
--						      gss_auth->mech->gm_name,
--						      clnt, gss_auth->pipe[0]);
--	if (IS_ERR(gss_auth->pipe[0]->dentry)) {
--		err = PTR_ERR(gss_auth->pipe[0]->dentry);
-+	dentry = rpc_mkpipe_dentry(clnt->cl_dentry, "gssd",
-+			clnt, gss_auth->pipe[1]);
-+	if (IS_ERR(dentry)) {
-+		err = PTR_ERR(dentry);
-+		goto err;
-+	}
-+	gss_auth->pipe[1]->dentry = dentry;
-+	dentry = rpc_mkpipe_dentry(clnt->cl_dentry, gss_auth->mech->gm_name,
-+			clnt, gss_auth->pipe[0]);
-+	if (IS_ERR(dentry)) {
-+		err = PTR_ERR(dentry);
- 		goto err_unlink_pipe_1;
- 	}
- 	return 0;
- 
- err_unlink_pipe_1:
- 	rpc_unlink(gss_auth->pipe[1]->dentry);
-+	gss_auth->pipe[1]->dentry = NULL;
-+err:
- 	return err;
- }
- 
--- 
-1.8.3.1
+	http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/log/?h=fscache
 
+and added a CIFS fix.
+
+David
