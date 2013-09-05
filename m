@@ -1,128 +1,182 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38852 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750753Ab3IPThK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Sep 2013 15:37:10 -0400
-Date: Mon, 16 Sep 2013 15:37:09 -0400
-To: Contact <contact@ryper.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: 16+ GID issue, mountd's --manage-gids not helping
-Message-ID: <20130916193709.GA25308@fieldses.org>
-References: <20130916094351.263d433d@svelte.ryper.org>
+Received: from mail-ie0-f179.google.com ([209.85.223.179]:36068 "EHLO
+	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755541Ab3IETLo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Sep 2013 15:11:44 -0400
+Received: by mail-ie0-f179.google.com with SMTP id m16so4015614ieq.10
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Sep 2013 12:11:44 -0700 (PDT)
+Date: Thu, 5 Sep 2013 14:11:39 -0500
+From: Quentin Barnes <qbarnes@gmail.com>
+To: linux-nfs@vger.kernel.org
+Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
+Message-ID: <20130905191139.GA20830@gmail.com>
+References: <20130905162110.GA17920@gmail.com>
+ <20130905170303.GB17330@us.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130916094351.263d433d@svelte.ryper.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20130905170303.GB17330@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 16, 2013 at 09:43:51AM -0500, Contact wrote:
-> Hi all,
+On Thu, Sep 05, 2013 at 12:03:03PM -0500, Malahal Naineni wrote:
+> Neil Brown posted a patch couple days ago for this!
 > 
-> I'm having an issue with my NFS mount and being able to access it from
-> my normal user account. The mount point is chmod'ed to 2770 with a GID
-> of 1100 (nfs) which is the same on both systems. I can access it if I
-> change my active group using newgrp, but not normally.
-> 
-> ====================================
-> noir ~ # ls -lhd /home/nfs/share
-> drwxrws--- 8 nfs nfs 4.0K Sep  4 15:30 /home/nfs/share
-> 
-> rypervenche@svelte ~ $ pwd
-> /home/rypervenche
-> rypervenche@svelte ~ $ cd nfs
-> -su: cd: nfs: Permission denied
-> rypervenche@svelte ~ $ newgrp nfs
-> rypervenche@svelte ~ $ cd nfs
-> rypervenche@svelte ~/nfs $ 
-> 
-> svelte ~ # grep nfs /etc/group
-> nfs:x:1100:rypervenche
-> ====================================
-> 
-> You can find the details of my NFS server and client here:
-> 
-> ====================================
-> svelte = client
-> noir = server
-> 
-> svelte ~ # tail -1 /etc/fstab
-> 192.168.1.100:/ /home/rypervenche/nfs   nfs
-> rw,noauto,noexec,nodev,nosuid   0       0
-> 
-> noir ~ # cat /etc/exports 
-> # /etc/exports: NFS file systems being exported.  See exports(5).
-> /home/nfs/share 192.168.1.205(rw,sync,fsid=0,no_root_squash,no_subtree_check) 192.168.2.100(rw,sync,fsid=0,no_root_squash,no_subtree_check)
-> 
-> noir ~ # id nfs
-> uid=1100(nfs) gid=1100(nfs) groups=1100(nfs)
-> 
-> noir ~ # grep -v ^# /etc/conf.d/nfs | grep -v ^$
-> NFS_NEEDED_SERVICES="rpc.idmapd"
-> OPTS_RPC_NFSD="8"
-> OPTS_RPC_MOUNTD="-V 4 --manage-gids -p 32767"
-> OPTS_RPC_STATD="-p 32765 -o 32766"
-> OPTS_RPC_IDMAPD=""
-> OPTS_RPC_GSSD=""
-> OPTS_RPC_SVCGSSD=""
-> OPTS_RPC_RQUOTAD=""
-> EXPORTFS_TIMEOUT=30
-> 
-> noir ~ # iptables-save | egrep '(NFS|T -m conn)'
-> -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-> -A INPUT -s 192.168.1.205/32 -p tcp -m tcp -m multiport --dports 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment --comment NFS -j ACCEPT
-> -A INPUT -s 192.168.1.205/32 -p udp -m udp -m multiport --dports 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment --comment NFS -j ACCEPT
-> -A INPUT -s 192.168.2.100/32 -p tcp -m tcp -m multiport --dports 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment --comment NFS -j ACCEPT
-> -A INPUT -s 192.168.2.100/32 -p udp -m udp -m multiport --dports 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment --comment NFS -j ACCEPT
-> 
-> svelte:
-> net-fs/nfs-utils-1.2.6 was built with the following:
-> USE="ipv6 nfsdcld nfsidmap nfsv4 nfsv41 tcpd -caps -kerberos (-selinux)"
-> 
-> noir:
-> net-fs/nfs-utils-1.2.6 was built with the following:
-> USE="ipv6 (multilib) nfsdcld nfsidmap nfsv4 nfsv41 tcpd -caps -kerberos (-selinux)" ABI_X86="64"
-> 
-> svelte ~ # uname -a
-> Linux svelte 3.10.7-gentoo-svelte #1 SMP Thu Aug 22 17:46:44 CDT 2013 i686 Intel(R) Atom(TM) CPU N450 @ 1.66GHz GenuineIntel GNU/Linux
-> 
-> noir ~ # uname -a
-> Linux noir 3.10.7-gentoo-noir #1 SMP Wed Aug 28 11:19:43 CDT 2013 x86_64 AMD Athlon(tm) II X2 260 Processor AuthenticAMD GNU/Linux
-> ====================================
-> 
-> 
-> I found online that the issue is due to NFS not being able to grab
-> over 16 GIDs. I found help in the following two links:
-> 
-> https://xkyle.com/solving-the-nfs-16-group-limit-problem/
-> https://wiki.archlinux.org/index.php/NFS_Troubleshooting
-> 
-> I tried adding the --manage-gids flag to mountd (which can be seen in
-> the /etc/conf.d/nfs file above), however, it does not appear to
-> resolve the issue.
-> 
-> ====================================
-> noir ~ #
-> cat /proc/net/rpc/auth.unix.gid/content #uid cnt: gids...
-> 0 10: 0 1 2 3 4 6 10 11 26 27
-> 1000 9: 10 18 19 27 78 85 100 250 1000
-> 
-> noir ~ # date +%s > /proc/net/rpc/auth.unix.gid/flush     
->                                                                                                                               
-> noir ~ #
-> cat /proc/net/rpc/auth.unix.gid/content #uid cnt: gids...
-> 
-> Then I mount the NFS again:
-> 
-> noir ~ # cat /proc/net/rpc/auth.unix.gid/content
-> #uid cnt: gids...
-> 0 10: 0 1 2 3 4 6 10 11 26 27
-> 1000 9: 10 18 19 27 78 85 100 250 1000
-> ====================================
-> 
-> It looks as though it is not grabbing all of my GIDs.
+> http://thread.gmane.org/gmane.linux.nfs/58473
 
-What do you expect the list to be?  Which groups is uid 1000 a member of
-on the server?
+I tried Neil's patch on a v3.11 kernel.  The rebuilt kernel still
+exhibited the same 1000s of WRITEs/sec problem.
 
---b.
+Any other ideas?
+
+> Regards, Malahal.
+> 
+> Quentin Barnes [qbarnes@gmail.com] wrote:
+> > If two (or more) processes are doing nothing more than writing to
+> > the memory addresses of an mmapped shared file on an NFS mounted
+> > file system, it results in the kernel scribbling WRITEs to the
+> > server as fast as it can (1000s per second) even while no syscalls
+> > are going on.
+> > 
+> > The problems happens on NFS clients mounting NFSv3 or NFSv4.  I've
+> > reproduced this on the 3.11 kernel, and it happens as far back as
+> > RHEL6 (2.6.32 based), however, it is not a problem on RHEL5 (2.6.18
+> > based).  (All x86_64 systems.)  I didn't try anything in between.
+> > 
+> > I've created a self-contained program below that will demonstrate
+> > the problem (call it "t1").  Assuming /mnt has an NFS file system:
+> > 
+> >   $ t1 /mnt/mynfsfile 1    # Fork 1 writer, kernel behaves normally
+> >   $ t1 /mnt/mynfsfile 2    # Fork 2 writers, kernel goes crazy WRITEing
+> > 
+> > Just run "watch -d nfsstat" in another window while running the two
+> > writer test and watch the WRITE count explode.
+> > 
+> > I don't see anything particularly wrong with what the example code
+> > is doing with its use of mmap.  Is there anything undefined about
+> > the code that would explain this behavior, or is this a NFS bug
+> > that's really lived this long?
+> > 
+> > Quentin
+> > 
+> > 
+> > 
+> > #include <sys/stat.h>
+> > #include <sys/mman.h>
+> > #include <sys/stat.h>
+> > #include <sys/wait.h>
+> > #include <errno.h>
+> > #include <fcntl.h>
+> > #include <stdio.h>
+> > #include <stdlib.h>
+> > #include <signal.h>
+> > #include <string.h>
+> > #include <unistd.h>
+> > 
+> > int
+> > kill_children()
+> > {
+> > 	int		cnt = 0;
+> > 	siginfo_t	infop;
+> > 
+> > 	signal(SIGINT, SIG_IGN);
+> > 	kill(0, SIGINT);
+> > 	while (waitid(P_ALL, 0, &infop, WEXITED) != -1) ++cnt;
+> > 
+> > 	return cnt;
+> > }
+> > 
+> > void
+> > sighandler(int sig)
+> > {
+> > 	printf("Cleaning up all children.\n");
+> > 	int cnt = kill_children();
+> > 	printf("Cleaned up %d child%s.\n", cnt, cnt == 1 ? "" : "ren");
+> > 
+> > 	exit(0);
+> > }
+> > 
+> > int
+> > do_child(volatile int *iaddr)
+> > {
+> > 	while (1) *iaddr = 1;
+> > }
+> > 
+> > int
+> > main(int argc, char **argv)
+> > {
+> > 	const char	*path;
+> > 	int		fd;
+> > 	ssize_t		wlen;
+> > 	int		*ip;
+> > 	int		fork_count = 1;
+> > 
+> > 	if (argc == 1) {
+> > 		fprintf(stderr, "Usage: %s {filename} [fork_count].\n",
+> > 			argv[0]);
+> > 		return 1;
+> > 	}
+> > 
+> > 	path = argv[1];
+> > 
+> > 	if (argc > 2) {
+> > 		int fc = atoi(argv[2]);
+> > 		if (fc >= 0)
+> > 			fork_count = fc;
+> > 	}
+> > 
+> > 	fd = open(path, O_CREAT|O_TRUNC|O_RDWR|O_APPEND, S_IRUSR|S_IWUSR);
+> > 	if (fd < 0) {
+> > 		fprintf(stderr, "Open of '%s' failed: %s (%d)\n",
+> > 			path, strerror(errno), errno);
+> > 		return 1;
+> > 	}
+> > 
+> > 	wlen = write(fd, &(int){0}, sizeof(int));
+> > 	if (wlen != sizeof(int)) {
+> > 		if (wlen < 0)
+> > 			fprintf(stderr, "Write of '%s' failed: %s (%d)\n",
+> > 				path, strerror(errno), errno);
+> > 		else
+> > 			fprintf(stderr, "Short write to '%s'\n", path);
+> > 		return 1;
+> > 	}
+> > 
+> > 	ip = (int *)mmap(NULL, sizeof(int), PROT_READ|PROT_WRITE,
+> > 			   MAP_SHARED, fd, 0);
+> > 	if (ip == MAP_FAILED) {
+> > 		fprintf(stderr, "Mmap of '%s' failed: %s (%d)\n",
+> > 			path, strerror(errno), errno);
+> > 		return 1;
+> > 	}
+> > 
+> > 	signal(SIGINT, sighandler);
+> > 
+> > 	while (fork_count-- > 0) {
+> > 		switch(fork()) {
+> > 		case -1:
+> > 			fprintf(stderr, "Fork failed: %s (%d)\n",
+> > 				strerror(errno), errno);
+> > 			kill_children();
+> > 			return 1;
+> > 		case 0:   /* child  */
+> > 			signal(SIGINT, SIG_DFL);
+> > 			do_child(ip);
+> > 			break;
+> > 		default:  /* parent */
+> > 			break;
+> > 		}
+> > 	}
+> > 
+> > 	printf("Press ^C to terminate test.\n");
+> > 	pause();
+> > 
+> > 	return 0;
+> > }
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> 
+
+Quentin
