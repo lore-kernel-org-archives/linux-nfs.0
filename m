@@ -1,122 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51012 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752261Ab3ISP12 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Sep 2013 11:27:28 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: stable@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/4] rpc: clean up decoding of gssproxy linux creds
-Date: Thu, 19 Sep 2013 11:27:19 -0400
-Message-Id: <1379604442-27724-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1379604442-27724-1-git-send-email-bfields@redhat.com>
-References: <1379604442-27724-1-git-send-email-bfields@redhat.com>
+Received: from mail-ve0-f180.google.com ([209.85.128.180]:39783 "EHLO
+	mail-ve0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753238Ab3IEQmn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Sep 2013 12:42:43 -0400
+MIME-Version: 1.0
+In-Reply-To: <12EF8D94C6F8734FB2FF37B9FBEDD173585722AA@EXCHANGE.collogia.de>
+References: <12EF8D94C6F8734FB2FF37B9FBEDD173585722AA@EXCHANGE.collogia.de>
+Date: Thu, 5 Sep 2013 09:42:42 -0700
+Message-ID: <CABgxfbF6iWsDei3De0ePsrVnA-a3vYuUbD07Bog6m1Mquy6Ecw@mail.gmail.com>
+Subject: Re: Strange NFS client ACK behaviour
+From: Wendy Cheng <s.wendy.cheng@gmail.com>
+To: Markus Stockhausen <stockhausen@collogia.de>
+Cc: "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+CC linux-nfs .. maybe this is obvious to someone there ... Two
+comments inlined below.
 
-commit 778e512bb1d3315c6b55832248cd30c566c081d7 upstream.
+On Tue, Sep 3, 2013 at 11:28 AM, Markus Stockhausen
+<stockhausen@collogia.de> wrote:
+> Hello,
+>
+> we observed a performance drop in our IPoIB NFS backup
+> infrastructure since we switched to machines with newer
+> kernels. As I do not know where to start I hope someone
+> on this list can give me hint where to dig for more details.
 
-We can use the normal coding infrastructure here.
+In case of no other reply, I would start w/ a socket program (or a
+network performance measuring tool) on the interface that does similar
+logic as "dd" you described below; that is, send a 256K message in a
+fixed number of loops (so total transfer size somewhere close to your
+file size) between client and server, followed by comparing the
+interrupt counters (cat /proc/interrtups) on both kernels. If the
+interrupt count differs as you described, the problem is most likely
+with the IB driver, not NFS layer.
 
-Two minor behavior changes:
+>
+> To make a long story short. We use ConnectX cards with the
+> standard kernel drivers on version 2.6.32 (Ubuntu 10.04), 3.5
+> (Ubuntu 12.04) and 3.10 (Fedora 19). The very simple and not
+> scientific test consists of mounting a NFS share using IPoIB UD
+> network interfaces at MTU of 2044. Afterwards read a large file
+> on the client side with dd if=file of=/dev/null bs=256K.
+> During the transfer we run a tcpdump on the ibX interface on
+> the NFS server side. No special settings for kernel parameters
+> until now.
 
-	- we're assuming no wasted space at the end of the linux cred.
-	  That seems to match gss-proxy's behavior, and I can't see why
-	  it would need to do differently in the future.
+I don't know much about ConnectX. Not sure what "IPoIB UD" means ?
+"Datagram vs. CM" or "TCP vs. UDP" ?
 
-	- NGROUPS_MAX check added: note groups_alloc doesn't do this,
-	  this is the caller's responsibility.
-
-Tested-by: Simo Sorce <simo@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/auth_gss/gss_rpc_xdr.c |   32 +++++++++++++-------------------
- 1 file changed, 13 insertions(+), 19 deletions(-)
-
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-index 3c85d1c..f5067b2 100644
---- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-@@ -166,14 +166,14 @@ static int dummy_dec_opt_array(struct xdr_stream *xdr,
- 	return 0;
- }
- 
--static int get_s32(void **p, void *max, s32 *res)
-+static int get_s32(struct xdr_stream *xdr, s32 *res)
- {
--	void *base = *p;
--	void *next = (void *)((char *)base + sizeof(s32));
--	if (unlikely(next > max || next < base))
-+	__be32 *p;
-+
-+	p = xdr_inline_decode(xdr, 4);
-+	if (!p)
- 		return -EINVAL;
--	memcpy(res, base, sizeof(s32));
--	*p = next;
-+	memcpy(res, p, sizeof(s32));
- 	return 0;
- }
- 
-@@ -182,7 +182,6 @@ static int gssx_dec_linux_creds(struct xdr_stream *xdr,
- {
- 	u32 length;
- 	__be32 *p;
--	void *q, *end;
- 	s32 tmp;
- 	int N, i, err;
- 
-@@ -192,33 +191,28 @@ static int gssx_dec_linux_creds(struct xdr_stream *xdr,
- 
- 	length = be32_to_cpup(p);
- 
--	/* FIXME: we do not want to use the scratch buffer for this one
--	 * may need to use functions that allows us to access an io vector
--	 * directly */
--	p = xdr_inline_decode(xdr, length);
--	if (unlikely(p == NULL))
-+	if (length > (3 + NGROUPS_MAX) * sizeof(u32))
- 		return -ENOSPC;
- 
--	q = p;
--	end = q + length;
--
- 	/* uid */
--	err = get_s32(&q, end, &tmp);
-+	err = get_s32(xdr, &tmp);
- 	if (err)
- 		return err;
- 	creds->cr_uid = make_kuid(&init_user_ns, tmp);
- 
- 	/* gid */
--	err = get_s32(&q, end, &tmp);
-+	err = get_s32(xdr, &tmp);
- 	if (err)
- 		return err;
- 	creds->cr_gid = make_kgid(&init_user_ns, tmp);
- 
- 	/* number of additional gid's */
--	err = get_s32(&q, end, &tmp);
-+	err = get_s32(xdr, &tmp);
- 	if (err)
- 		return err;
- 	N = tmp;
-+	if ((3 + N) * sizeof(u32) != length)
-+		return -EINVAL;
- 	creds->cr_group_info = groups_alloc(N);
- 	if (creds->cr_group_info == NULL)
- 		return -ENOMEM;
-@@ -226,7 +220,7 @@ static int gssx_dec_linux_creds(struct xdr_stream *xdr,
- 	/* gid's */
- 	for (i = 0; i < N; i++) {
- 		kgid_t kgid;
--		err = get_s32(&q, end, &tmp);
-+		err = get_s32(xdr, &tmp);
- 		if (err)
- 			goto out_free_groups;
- 		err = -EINVAL;
--- 
-1.7.9.5
-
+>
+> When doing the test with a 2.6.32 kernel based client we see the
+> following packet sequence. More or less a lot of transferd blocks
+> from the NFS server to the client with sometimes an ACK package
+> from the client to the server:
+>
+> 16:16:45.050930 IP server.nfs > cli_2_6_32.896:
+>   Flags [.], seq 8909853:8913837, ack 1154149,
+>   win 604, options [nop,nop,TS val 1640401415
+>   ecr 3881919089], length 3984
+> 16:16:45.050936 IP server.nfs > cli_2_6_32.896:
+>   Flags [.], seq 8913837:8917821, ack 1154149,
+>   win 604, options [nop,nop,TS val 1640401415
+>   ecr 3881919089], length 3984
+>
+> ... 8 more ...
+>
+> 16:16:45.050976 IP cli_2_6_32.896 > server.nfs:
+>   Flags [.], ack 8909853, win 24574, options
+>   [nop,nop,TS val 3881919089 ecr 1640401415],
+>   length 0
+> ...
+>
+> After switchng to a client with a newer kernel (3.5 or 3.10) the
+> sequence all of a sudden gives just the opposite behaviour.
+> One should note that this is the same server as in the test
+> above. The server sends bigger packets (I guess TSO is doing
+> the rest of the work). After each packet the client sends
+> several ACK packages back.
+>
+> 16:15:21.038782 IP server.nfs > cli_3_5_0.928:
+>   Flags [.], seq 9612429:9652269, ack 372776,
+>   win 5815, options [nop,nop,TS val 1640380412
+>   ecr 560111379], length 39840
+> 16:15:21.038806 IP cli_3_5_0.928 > server.nfs:
+>   Flags [.], ack 9542205, win 16384, options
+>   [nop,nop,TS val 560111379 ecr 1640380412],
+>   length 0
+> 16:15:21.038812 IP cli_3_5_0.928 > server.nfs:
+>   Flags [.], ack 9546077, win 16384, options
+>   [nop,nop,TS val 560111379 ecr 1640380412],
+> length 0
+>
+> ... 6-8 more ...
+>
+> The visible side effects of this changed processing include:
+> - NIC interrupts on the NFS servers raise by a factor of 8.
+> - Transfer speed lowers by 50% (400->200 MB/sec)
+>
+> Best regards.
+>
+> Markus
