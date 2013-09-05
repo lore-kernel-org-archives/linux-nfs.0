@@ -1,49 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:64051 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:19419 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754795Ab3IYVIQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Sep 2013 17:08:16 -0400
-Date: Wed, 25 Sep 2013 14:07:42 -0700
-From: Zach Brown <zab@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Anna Schumaker <schumaker.anna@gmail.com>,
-        Szeredi Miklos <miklos@szeredi.hu>, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Bryan Schumaker <bjschuma@netapp.com>,
-        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        Eric Wong <normalperson@yhbt.net>
-Subject: Re: [RFC] extending splice for copy offloading
-Message-ID: <20130925210742.GG30372@lenny.home.zabbo.net>
-References: <1378919210-10372-1-git-send-email-zab@redhat.com>
- <CAELBmZBGD4rph=gjLCPKCdEj+nzEQ-F=DExoL+h3vRm7qF7dCQ@mail.gmail.com>
- <20130925183828.GA30372@lenny.home.zabbo.net>
- <CAFX2JfnyF8kyMYzCdqdr2JkoyQCom1bFLpFj89wODjoju54-Ow@mail.gmail.com>
- <20130925190620.GB30372@lenny.home.zabbo.net>
- <20130925195526.GA18971@fieldses.org>
+	id S1752412Ab3IESpE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Sep 2013 14:45:04 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 2 1/1] NFSv4.1 Use MDS auth flavor for data
+ server connection
+Date: Thu, 5 Sep 2013 18:45:03 +0000
+Message-ID: <1378406703.5450.25.camel@leira.trondhjem.org>
+References: <1378402213-1784-1-git-send-email-andros@netapp.com>
+	 <1378403300.5450.21.camel@leira.trondhjem.org>
+	 <735B0A9F-F6C8-47A9-A206-8A8701C96E71@netapp.com>
+In-Reply-To: <735B0A9F-F6C8-47A9-A206-8A8701C96E71@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130925195526.GA18971@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> A client-side copy will be slower, but I guess it does have the
-> advantage that the application can track progress to some degree, and
-> abort it fairly quickly without leaving the file in a totally undefined
-> state--and both might be useful if the copy's not a simple constant-time
-> operation.
-
-I suppose, but can't the app achieve a nice middle ground by copying the
-file in smaller syscalls?  Avoid bulk data motion back to the client,
-but still get notification every, I dunno, few hundred meg?
-
-> So maybe a way to pass your NONBLOCKy flag to the server would be
-> useful?
-
-Maybe, but maybe it also just won't be used in practice.  I'm to the
-point where I'd rather we get the stupidest possible thing out there so
-that we can learm from actual use of the interface.
-
-- z
+T24gVGh1LCAyMDEzLTA5LTA1IGF0IDE4OjIxICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
+PiBPbiBTZXAgNSwgMjAxMywgYXQgMTo0OCBQTSwgIk15a2xlYnVzdCwgVHJvbmQiIDxUcm9uZC5N
+eWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gIHdyb3RlOg0KPiA+PiArc3RhdGljIHZvaWQNCj4gPj4g
+K25mczRfc2h1dGRvd25fZHNfY2xpZW50cyhzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwKQ0KPiA+PiAr
+ew0KPiA+PiArCXN0cnVjdCBuZnM0X2RzX3NlcnZlciAqZHNzOw0KPiA+PiArCUxJU1RfSEVBRChz
+aHV0ZG93bl9saXN0KTsNCj4gPj4gKw0KPiA+PiArCXNwaW5fbG9jaygmY2xwLT5jbF9sb2NrKTsN
+Cj4gPj4gKwl3aGlsZSAoIWxpc3RfZW1wdHkoJmNscC0+Y2xfZHNfY2xpZW50cykpIHsNCj4gPj4g
+KwkJZHNzID0gbGlzdF9lbnRyeShjbHAtPmNsX2RzX2NsaWVudHMubmV4dCwNCj4gPj4gKwkJCQkg
+IHN0cnVjdCBuZnM0X2RzX3NlcnZlciwgbGlzdCk7DQo+ID4+ICsJCWxpc3RfbW92ZSgmZHNzLT5s
+aXN0LCAmc2h1dGRvd25fbGlzdCk7DQo+ID4gDQo+ID4gSXMgdGhpcyBzdGVwIG5lY2Vzc2FyeT8g
+V2Uga25vdyB0aGF0IG5vYm9keSBvdGhlciB0aGFuIHVzIGlzIHJlZmVyZW5jaW5nDQo+ID4gdGhl
+IG5mc19jbGllbnQgYXQgdGhpcyBwb2ludC4NCj4gDQo+IEJlY2F1c2Ugb2YgdGhlIGtmcmVlIHVu
+ZGVyIHRoZSBzcGluIGxvY2sgLSBidXQgcGVyaGFwcyB0aGF0IGlzIG5vIGxvbmdlciBhbiBpc3N1
+ZT8NCg0KRG8geW91IG5lZWQgdGhlIHNwaW4gbG9jayBhdCBhbGwgaGVyZT8gTm8gb3RoZXIgdGhy
+ZWFkcyBhcmUgc3VwcG9zZWQgdG8NCmJlIGFjY2Vzc2luZyB0aGUgbmZzX2NsaWVudCB3aGVuIHdl
+IGNhbGwgLT5mcmVlX2NsaWVudCgpLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
+IGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20N
+Cnd3dy5uZXRhcHAuY29tDQo=
