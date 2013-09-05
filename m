@@ -1,63 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f47.google.com ([209.85.216.47]:65342 "EHLO
-	mail-qa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750933Ab3IZI6H (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 04:58:07 -0400
-Received: by mail-qa0-f47.google.com with SMTP id k4so4139397qaq.6
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 01:58:05 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:42331 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753936Ab3IEVkD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Sep 2013 17:40:03 -0400
+Date: Thu, 5 Sep 2013 17:40:02 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Emmanuel Florac <eflorac@intellique.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Hard to debug NFS loss of connectivity
+Message-ID: <20130905214002.GD24805@fieldses.org>
+References: <20130905191800.1c75b2fb@harpe.intellique.com>
+ <20130905204536.GB24805@fieldses.org>
+ <20130905233449.5eb8bf79@galadriel.home>
 MIME-Version: 1.0
-In-Reply-To: <20130925210742.GG30372@lenny.home.zabbo.net>
-References: <1378919210-10372-1-git-send-email-zab@redhat.com>
-	<CAELBmZBGD4rph=gjLCPKCdEj+nzEQ-F=DExoL+h3vRm7qF7dCQ@mail.gmail.com>
-	<20130925183828.GA30372@lenny.home.zabbo.net>
-	<CAFX2JfnyF8kyMYzCdqdr2JkoyQCom1bFLpFj89wODjoju54-Ow@mail.gmail.com>
-	<20130925190620.GB30372@lenny.home.zabbo.net>
-	<20130925195526.GA18971@fieldses.org>
-	<20130925210742.GG30372@lenny.home.zabbo.net>
-Date: Thu, 26 Sep 2013 10:58:05 +0200
-Message-ID: <CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
-Subject: Re: [RFC] extending splice for copy offloading
-From: Miklos Szeredi <miklos@szeredi.hu>
-To: Zach Brown <zab@redhat.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Anna Schumaker <schumaker.anna@gmail.com>,
-        Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Bryan Schumaker <bjschuma@netapp.com>,
-        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        Eric Wong <normalperson@yhbt.net>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20130905233449.5eb8bf79@galadriel.home>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 25, 2013 at 11:07 PM, Zach Brown <zab@redhat.com> wrote:
->> A client-side copy will be slower, but I guess it does have the
->> advantage that the application can track progress to some degree, and
->> abort it fairly quickly without leaving the file in a totally undefined
->> state--and both might be useful if the copy's not a simple constant-time
->> operation.
->
-> I suppose, but can't the app achieve a nice middle ground by copying the
-> file in smaller syscalls?  Avoid bulk data motion back to the client,
-> but still get notification every, I dunno, few hundred meg?
+On Thu, Sep 05, 2013 at 11:34:49PM +0200, Emmanuel Florac wrote:
+> Le Thu, 5 Sep 2013 16:45:36 -0400 vous écriviez:
+> 
+> > Well, it sounds like you have a reproducer that shouldn't be *too*
+> > huge (the test where it freezes after stat'ing 25 files).
+> > 
+> > What do you see on the network in that case?
+> 
+> I didn't look yet what's actually happening, out of the drop in network
+> throughput.
+>  
+> > Are you literally using just tcpdump?  Wireshark will give more
+> > (and easier to read) information.
+> 
+> I didn't install tcpdump yet, but isn't wireshark with a GUI? I can't
+> run anything with a GUI, this is a remote site behind several ssh
+> portals. So I should run tshark, then get my hands on the results to
+> analyze them with wireshark on my PC. Will try that.
 
-Yes.  And if "cp"  could just be switched from a read+write syscall
-pair to a single splice syscall using the same buffer size.  And then
-the user would only notice that things got faster in case of server
-side copy.  No problems with long blocking times (at least not much
-worse than it was).
+Right, I just do "tcpdump -s0 -wtmp.pcap -i<interface>" and then run
+wireshark on tmp.pcap.
 
-However "cp" doesn't do reflinking by default, it has a switch for
-that.  If we just want "cp" and the like to use splice without fearing
-side effects then by default we should try to be as close to
-read+write behavior as possible.  No?   That's what I'm really
-worrying about when you want to wire up splice to reflink by default.
-I do think there should be a flag for that.  And if on the block level
-some magic happens, so be it.  It's not the fs deverloper's worry any
-more ;)
+> > Does the server stop responding at some point, or reply with an error?
+> 
+> No response. I don't know if the server actually stops responding or if
+> something's wrong on the client side. Unfortunately I don't have
+> access to any other NFS client on this network, out of this VM and the
+> server itself. When rebooting the VM reconnects to the server  all by
+> itself, so the server most probably is OK at all times.
+> 
+> > Or does the getattr reply on the problem file look odd in any way?
+> 
+> Not odd at all; it just stops after a particular file, though this file
+> and the following files can be accessed OK before I run the failing
+> test.
 
-Thanks,
-Miklos
+I was asking about the on-the-wire errors and getattr replies here, not
+the application system calls.
+
+--b.
