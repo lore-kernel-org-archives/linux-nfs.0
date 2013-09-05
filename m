@@ -1,58 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:37017 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752813Ab3IKNCJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Sep 2013 09:02:09 -0400
-Received: by mail-wg0-f44.google.com with SMTP id b12so6861191wgh.35
-        for <linux-nfs@vger.kernel.org>; Wed, 11 Sep 2013 06:02:08 -0700 (PDT)
+Received: from mx1.netapp.com ([216.240.18.38]:46148 "EHLO mx1.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752302Ab3IEV5Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Sep 2013 17:57:25 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Quentin Barnes <qbarnes@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
+Date: Thu, 5 Sep 2013 21:57:24 +0000
+Message-ID: <1378418243.5450.29.camel@leira.trondhjem.org>
+References: <20130905162110.GA17920@gmail.com>
+	 <20130905170303.GB17330@us.ibm.com> <20130905191139.GA20830@gmail.com>
+	 <1378411320.5450.27.camel@leira.trondhjem.org>
+	 <20130905213649.GA21944@gmail.com>
+In-Reply-To: <20130905213649.GA21944@gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <1378853073-13256-4-git-send-email-dros@netapp.com>
-References: <1378853073-13256-1-git-send-email-dros@netapp.com> <1378853073-13256-4-git-send-email-dros@netapp.com>
-From: Anna Schumaker <schumaker.anna@gmail.com>
-Date: Wed, 11 Sep 2013 09:01:48 -0400
-Message-ID: <CAFX2Jf=0v0=uKyWPM+fU3W_FQGvP6xAVJMQn9xQdPtaeDhbYwA@mail.gmail.com>
-Subject: Re: [PATCH 3/4] NFSv4.1: sp4_mach_cred: no need to ref count creds
-To: Weston Andros Adamson <dros@netapp.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Do we need to do a get_rpccred() after looking up the machine cred in
-nfs_alloc_client()?  Where does our guaranteed reference come from?
-
-On Tue, Sep 10, 2013 at 6:44 PM, Weston Andros Adamson <dros@netapp.com> wrote:
-> The cl_machine_cred doesn't need to be reference counted here -
-> a reference is held is for the lifetime of the struct nfs_client.
-> Also, no need to put_rpccred the rpc_message.rpc_cred.
->
-> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-> ---
->  fs/nfs/nfs4_fs.h | 6 +++---
->  1 file changed, 3 insertions(+), 3 deletions(-)
->
-> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-> index f520a11..07a8aa9 100644
-> --- a/fs/nfs/nfs4_fs.h
-> +++ b/fs/nfs/nfs4_fs.h
-> @@ -279,10 +279,10 @@ _nfs4_state_protect(struct nfs_client *clp, unsigned long sp4_mode,
->         if (test_bit(sp4_mode, &clp->cl_sp4_flags)) {
->                 spin_lock(&clp->cl_lock);
->                 if (clp->cl_machine_cred != NULL)
-> -                       newcred = get_rpccred(clp->cl_machine_cred);
-> +                       /* don't call get_rpccred on the machine cred -
-> +                        * a reference will be held for life of clp */
-> +                       newcred = clp->cl_machine_cred;
->                 spin_unlock(&clp->cl_lock);
-> -               if (msg->rpc_cred)
-> -                       put_rpccred(msg->rpc_cred);
->                 msg->rpc_cred = newcred;
->
->                 flavor = clp->cl_rpcclient->cl_auth->au_flavor;
-> --
-> 1.7.12.4 (Apple Git-37)
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+T24gVGh1LCAyMDEzLTA5LTA1IGF0IDE2OjM2IC0wNTAwLCBRdWVudGluIEJhcm5lcyB3cm90ZToN
+Cj4gT24gVGh1LCBTZXAgMDUsIDIwMTMgYXQgMDg6MDI6MDFQTSArMDAwMCwgTXlrbGVidXN0LCBU
+cm9uZCB3cm90ZToNCj4gPiBPbiBUaHUsIDIwMTMtMDktMDUgYXQgMTQ6MTEgLTA1MDAsIFF1ZW50
+aW4gQmFybmVzIHdyb3RlOg0KPiA+ID4gT24gVGh1LCBTZXAgMDUsIDIwMTMgYXQgMTI6MDM6MDNQ
+TSAtMDUwMCwgTWFsYWhhbCBOYWluZW5pIHdyb3RlOg0KPiA+ID4gPiBOZWlsIEJyb3duIHBvc3Rl
+ZCBhIHBhdGNoIGNvdXBsZSBkYXlzIGFnbyBmb3IgdGhpcyENCj4gPiA+ID4gDQo+ID4gPiA+IGh0
+dHA6Ly90aHJlYWQuZ21hbmUub3JnL2dtYW5lLmxpbnV4Lm5mcy81ODQ3Mw0KPiA+ID4gDQo+ID4g
+PiBJIHRyaWVkIE5laWwncyBwYXRjaCBvbiBhIHYzLjExIGtlcm5lbC4gIFRoZSByZWJ1aWx0IGtl
+cm5lbCBzdGlsbA0KPiA+ID4gZXhoaWJpdGVkIHRoZSBzYW1lIDEwMDBzIG9mIFdSSVRFcy9zZWMg
+cHJvYmxlbS4NCj4gPiA+IA0KPiA+ID4gQW55IG90aGVyIGlkZWFzPw0KPiA+IA0KPiA+IFllcy4g
+UGxlYXNlIHRyeSB0aGUgYXR0YWNoZWQgcGF0Y2guDQo+IA0KPiBHcmVhdCEgIFRoYXQgZGlkIHRo
+ZSB0cmljayENCj4gDQo+IERvIHlvdSBmZWVsIHRoaXMgcGF0Y2ggY291bGQgYmUgd29ydGh5IG9m
+IHB1c2hpbmcgaXQgdXBzdHJlYW0gaW4gaXRzDQo+IGN1cnJlbnQgc3RhdGUgb3Igd2FzIGl0IGp1
+c3QgdG8gdmVyaWZ5IGEgdGhlb3J5Pw0KPiANCj4gDQo+IEluIGNvbXBhcmluZyB0aGUgbmZzX2Zs
+dXNoX2luY29tcGF0aWJsZSgpIGltcGxlbWVudGF0aW9ucyBiZXR3ZWVuDQo+IFJIRUw1IGFuZCB2
+My4xMSAod2l0aG91dCB5b3VyIHBhdGNoKSwgdGhlIGd1dHMgb2YgdGhlIGFsZ29yaXRobSBzZWVt
+DQo+IG1vcmUgb3IgbGVzcyBsb2dpY2FsbHkgZXF1aXZhbGVudCB0byBtZSBvbiB3aGV0aGVyIG9y
+IG5vdCB0byBmbHVzaA0KPiB0aGUgcGFnZS4gIEFsc28sIHdoZW4gYW5kIHdoZXJlIG5mc19mbHVz
+aF9pbmNvbXBhdGlibGUoKSBpcyBpbnZva2VkDQo+IHNlZW1zIHRoZSBzYW1lLiAgV291bGQgeW91
+IHByb3ZpZGUgYSB2ZXJ5IGJyaWVmIHBvaW50ZXIgdG8gY2x1ZSBtZQ0KPiBpbiBhcyB0byB3aHkg
+dGhpcyBwcm9ibGVtIGRpZG4ndCBhbHNvIG1hbmlmZXN0IGNpcmNhIDIuNi4xOCBkYXlzPw0KDQpU
+aGVyZSB3YXMgbm8gbmZzX3ZtX3BhZ2VfbWt3cml0ZSgpIHRvIGhhbmRsZSBwYWdlIGZhdWx0cyBp
+biB0aGUgMi42LjE4DQpkYXlzLCBhbmQgc28gdGhlIHJpc2sgd2FzIHRoYXQgeW91ciBtbWFwcGVk
+IHdyaXRlcyBjb3VsZCBlbmQgdXAgYmVpbmcNCnNlbnQgd2l0aCB0aGUgd3JvbmcgY3JlZGVudGlh
+bHMuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIN
+Cg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
