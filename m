@@ -1,134 +1,142 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:63214 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:53555 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755231Ab3IKRIM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Sep 2013 13:08:12 -0400
-From: Zach Brown <zab@redhat.com>
-To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Bryan Schumaker <bjschuma@netapp.com>,
-        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        Eric Wong <normalperson@yhbt.net>
-Subject: [PATCH 2/3] splice: add f_op->splice_direct
-Date: Wed, 11 Sep 2013 10:06:49 -0700
-Message-Id: <1378919210-10372-3-git-send-email-zab@redhat.com>
-In-Reply-To: <1378919210-10372-1-git-send-email-zab@redhat.com>
-References: <1378919210-10372-1-git-send-email-zab@redhat.com>
+	id S1751993Ab3IEOHX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Sep 2013 10:07:23 -0400
+Date: Thu, 5 Sep 2013 10:07:18 -0400
+From: Dr James Bruce Fields <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Adamson, Dros" <Weston.Adamson@netapp.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: use mach cred for SECINFO_NO_NAME w/ integrity
+Message-ID: <20130905140718.GI10232@fieldses.org>
+References: <1378311199-1695-1-git-send-email-dros@netapp.com>
+ <1378311850.3527.16.camel@leira.trondhjem.org>
+ <F4CF12A0-4D67-4C6B-8413-CC2E895E1B9F@netapp.com>
+ <1378341909.6143.1.camel@leira.trondhjem.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1378341909.6143.1.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The splice_direct file_operations method gives file systems the
-opportunity to accelerate copying a region between two files.
+On Thu, Sep 05, 2013 at 12:45:09AM +0000, Myklebust, Trond wrote:
+> On Wed, 2013-09-04 at 16:48 +0000, Adamson, Dros wrote:
+> > On Sep 4, 2013, at 12:24 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+> > 
+> > > On Wed, 2013-09-04 at 12:13 -0400, Weston Andros Adamson wrote:
+> > >> Commit 97431204ea005ec8070ac94bc3251e836daa7ca7 introduced a regression
+> > >> that causes SECINFO_NO_NAME to fail without sending an RPC if:
+> > >> 
+> > >> 1) the nfs_client's rpc_client is using krb5i/p (now tried by default)
+> > >> 2) the current user doesn't have valid kerberos credentials
+> > >> 
+> > >> This situation is quite common - as of now a sec=sys mount would use
+> > >> krb5i for the nfs_client's rpc_client and a user would hardly be faulted
+> > >> for not having run kinit.
+> > >> 
+> > >> The solution is to use the machine cred when trying to use an integrity
+> > >> protected auth flavor for SECINFO_NO_NAME.
+> > >> 
+> > >> Older servers may not support using the machine cred or an integrity
+> > >> protected auth flavor for SECINFO_NO_NAME in every circumstance, so we fall
+> > >> back to using the user's cred and the filesystem's auth flavor in this case.
+> > >> 
+> > >> We run into another problem when running against linux nfs servers -
+> > >> they return NFS4ERR_WRONGSEC when using integrity auth flavor (unless the
+> > >> mount is also that flavor) even though that is not a valid error for
+> > >> SECINFO*.  Even though it's against spec, handle WRONGSEC errors on
+> > >> SECINFO_NO_NAME by falling back to using the user cred and the
+> > >> filesystem's auth flavor.
+> > >> 
+> > >> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> > >> ---
+> > >> 
+> > >> This patch goes along with yesterday's SECINFO patch
+> > >> 
+> > >> fs/nfs/nfs4proc.c | 41 +++++++++++++++++++++++++++++++++++++----
+> > >> 1 file changed, 37 insertions(+), 4 deletions(-)
+> > >> 
+> > >> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> > >> index ab1461e..74b37f5 100644
+> > >> --- a/fs/nfs/nfs4proc.c
+> > >> +++ b/fs/nfs/nfs4proc.c
+> > >> @@ -7291,7 +7291,8 @@ out:
+> > >>  */
+> > >> static int
+> > >> _nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
+> > >> -		    struct nfs_fsinfo *info, struct nfs4_secinfo_flavors *flavors)
+> > >> +		    struct nfs_fsinfo *info,
+> > >> +		    struct nfs4_secinfo_flavors *flavors, bool use_integrity)
+> > >> {
+> > >> 	struct nfs41_secinfo_no_name_args args = {
+> > >> 		.style = SECINFO_STYLE_CURRENT_FH,
+> > >> @@ -7304,8 +7305,23 @@ _nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
+> > >> 		.rpc_argp = &args,
+> > >> 		.rpc_resp = &res,
+> > >> 	};
+> > >> -	return nfs4_call_sync(server->nfs_client->cl_rpcclient, server, &msg,
+> > >> -				&args.seq_args, &res.seq_res, 0);
+> > >> +	struct rpc_clnt *clnt = server->client;
+> > >> +	int status;
+> > >> +
+> > >> +	if (use_integrity) {
+> > >> +		clnt = server->nfs_client->cl_rpcclient;
+> > >> +		msg.rpc_cred = nfs4_get_clid_cred(server->nfs_client);
+> > >> +	}
+> > >> +
+> > >> +	dprintk("--> %s\n", __func__);
+> > >> +	status = nfs4_call_sync(clnt, server, &msg, &args.seq_args,
+> > >> +				&res.seq_res, 0);
+> > >> +	dprintk("<-- %s status=%d\n", __func__, status);
+> > >> +
+> > >> +	if (msg.rpc_cred)
+> > >> +		put_rpccred(msg.rpc_cred);
+> > >> +
+> > >> +	return status;
+> > >> }
+> > >> 
+> > >> static int
+> > >> @@ -7315,7 +7331,24 @@ nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
+> > >> 	struct nfs4_exception exception = { };
+> > >> 	int err;
+> > >> 	do {
+> > >> -		err = _nfs41_proc_secinfo_no_name(server, fhandle, info, flavors);
+> > >> +		/* first try using integrity protection */
+> > >> +		err = -NFS4ERR_WRONGSEC;
+> > >> +
+> > >> +		/* try to use integrity protection with machine cred */
+> > >> +		if (_nfs4_is_integrity_protected(server->nfs_client))
+> > >> +			err = _nfs41_proc_secinfo_no_name(server, fhandle, info,
+> > >> +							  flavors, true);
+> > >> +
+> > >> +		/*
+> > >> +		 * if unable to use integrity protection, or SECINFO with
+> > >> +		 * integrity protection returns NFS4ERR_WRONGSEC (which is
+> > >> +		 * disallowed by spec, but exists in deployed servers) use
+> > >> +		 * the current filesystem's rpc_client and the user cred.
+> > >> +		 */
+> > >> +		if (err == -NFS4ERR_WRONGSEC)
+> > >> +			err = _nfs41_proc_secinfo_no_name(server, fhandle, info,
+> > >> +							  flavors, false);
+> > > 
+> > > As I said yesterday, RFC5661 forbids SECINFO_NO_NAME from returning
+> > > NFS4ERR_WRONGSEC, so this is 100% equivalent to
+> > > 
+> > > 	if (!_nfs4_is_integrity_protected())
+> > > 		err = ….
+> > 
+> > Right, but I thought we were doing this to support server implementations like linux that *do* return NFS4ERR_WRONGSEC on SECINFO_NO_NAME even though it's forbidden.  I know we normally don't work around server bugs, but this seems pretty simple.
+> > 
+> > If we don't do this, then SECINFO_NO_NAME will always fail against current linux severs no matter what the mount options - unless krb5i/p is unusable (not configured, time skew, no machine cred, etc).
+> 
+> Bruce, you're it: what's the deal here?
 
-The generic path attempts to copy the remainder of the region that the
-file system fails to accelerate, for whatever reason.  We may choose to
-dial this back a bit if the caller wants to avoid unaccelerated copying,
-perhaps by setting behavioural flags.
+Dros, in what cases exactly do you see SECINFO_NO_NAME returning
+WRONGSEC?
 
-The SPLICE_F_DIRECT flag is arguably misused here to indicate both
-file-to-file "direct" splicing *and* acceleration.
+>From a quick skim of the code it looks like it shouldn't happen in the
+CURRENT_FH case, which is the one the client uses.  But I probably
+overlooked something....
 
-Signed-off-by: Zach Brown <zab@redhat.com>
----
- fs/bad_inode.c     |  8 ++++++++
- fs/splice.c        | 28 +++++++++++++++++++++++-----
- include/linux/fs.h |  1 +
- 3 files changed, 32 insertions(+), 5 deletions(-)
-
-diff --git a/fs/bad_inode.c b/fs/bad_inode.c
-index 7c93953..394914b 100644
---- a/fs/bad_inode.c
-+++ b/fs/bad_inode.c
-@@ -145,6 +145,13 @@ static ssize_t bad_file_splice_read(struct file *in, loff_t *ppos,
- 	return -EIO;
- }
- 
-+static ssize_t bad_file_splice_direct(struct file *in, loff_t in_pos,
-+			struct file *out, loff_t out_pos, size_t len,
-+			unsigned int flags)
-+{
-+	return -EIO;
-+}
-+
- static const struct file_operations bad_file_ops =
- {
- 	.llseek		= bad_file_llseek,
-@@ -170,6 +177,7 @@ static const struct file_operations bad_file_ops =
- 	.flock		= bad_file_flock,
- 	.splice_write	= bad_file_splice_write,
- 	.splice_read	= bad_file_splice_read,
-+	.splice_direct	= bad_file_splice_direct,
- };
- 
- static int bad_inode_create (struct inode *dir, struct dentry *dentry,
-diff --git a/fs/splice.c b/fs/splice.c
-index c0f4e27..eac310f 100644
---- a/fs/splice.c
-+++ b/fs/splice.c
-@@ -1284,14 +1284,12 @@ long do_splice_direct(struct file *in, loff_t *ppos, struct file *out,
- 		      loff_t *opos, size_t len, unsigned int flags)
- {
- 	struct splice_desc sd = {
--		.len		= len,
--		.total_len	= len,
- 		.flags		= flags,
--		.pos		= *ppos,
- 		.u.file		= out,
- 		.opos		= opos,
- 	};
- 	long ret;
-+	long bytes = 0;
- 
- 	if (unlikely(!(out->f_mode & FMODE_WRITE)))
- 		return -EBADF;
-@@ -1303,11 +1301,31 @@ long do_splice_direct(struct file *in, loff_t *ppos, struct file *out,
- 	if (unlikely(ret < 0))
- 		return ret;
- 
-+	if ((flags & SPLICE_F_DIRECT) && out->f_op->splice_direct) {
-+		ret = out->f_op->splice_direct(in, *ppos, out, *opos, len,
-+					       flags);
-+		if (ret > 0) {
-+			bytes += ret;
-+			len -= ret;
-+			*opos += ret;
-+			*ppos += ret;
-+
-+			if (len == 0)
-+				return ret;
-+		}
-+	}
-+
-+	sd.len = len;
-+	sd.total_len = len;
-+	sd.pos = *ppos;
-+
- 	ret = splice_direct_to_actor(in, &sd, direct_splice_actor);
--	if (ret > 0)
-+	if (ret > 0) {
-+		bytes += ret;
- 		*ppos = sd.pos;
-+	}
- 
--	return ret;
-+	return bytes ? bytes : ret;
- }
- 
- static int splice_pipe_to_pipe(struct pipe_inode_info *ipipe,
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 529d871..725e6fc 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1553,6 +1553,7 @@ struct file_operations {
- 	int (*flock) (struct file *, int, struct file_lock *);
- 	ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, loff_t *, size_t, unsigned int);
- 	ssize_t (*splice_read)(struct file *, loff_t *, struct pipe_inode_info *, size_t, unsigned int);
-+	ssize_t (*splice_direct)(struct file *, loff_t, struct file *, loff_t, size_t, unsigned int);
- 	int (*setlease)(struct file *, long, struct file_lock **);
- 	long (*fallocate)(struct file *file, int mode, loff_t offset,
- 			  loff_t len);
--- 
-1.7.11.7
-
+--b.
