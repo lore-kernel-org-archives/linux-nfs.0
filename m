@@ -1,111 +1,240 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58761 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:40854 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751329Ab3I0UF4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Sep 2013 16:05:56 -0400
-Date: Fri, 27 Sep 2013 16:05:50 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Ric Wheeler <rwheeler@redhat.com>
-Cc: Zach Brown <zab@redhat.com>, Miklos Szeredi <miklos@szeredi.hu>,
-        Anna Schumaker <schumaker.anna@gmail.com>,
-        Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Bryan Schumaker <bjschuma@netapp.com>,
-        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        Eric Wong <normalperson@yhbt.net>
-Subject: Re: [RFC] extending splice for copy offloading
-Message-ID: <20130927200550.GA22640@fieldses.org>
-References: <1378919210-10372-1-git-send-email-zab@redhat.com>
- <CAELBmZBGD4rph=gjLCPKCdEj+nzEQ-F=DExoL+h3vRm7qF7dCQ@mail.gmail.com>
- <20130925183828.GA30372@lenny.home.zabbo.net>
- <CAFX2JfnyF8kyMYzCdqdr2JkoyQCom1bFLpFj89wODjoju54-Ow@mail.gmail.com>
- <20130925190620.GB30372@lenny.home.zabbo.net>
- <20130925195526.GA18971@fieldses.org>
- <20130925210742.GG30372@lenny.home.zabbo.net>
- <CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
- <20130926185508.GO30372@lenny.home.zabbo.net>
- <5244A68F.906@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5244A68F.906@redhat.com>
+	id S1752971Ab3IEQag (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Sep 2013 12:30:36 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        David Howells <dhowells@redhat.com>,
+        Tyler Hicks <tyhicks@canonical.com>,
+        Dustin Kirkland <dustin.kirkland@gazzang.com>
+Subject: [PATCH 08/12] locks: break delegations on unlink
+Date: Thu,  5 Sep 2013 12:30:16 -0400
+Message-Id: <1378398620-23018-13-git-send-email-bfields@redhat.com>
+In-Reply-To: <1378398620-23018-1-git-send-email-bfields@redhat.com>
+References: <1378398620-23018-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 26, 2013 at 05:26:39PM -0400, Ric Wheeler wrote:
-> On 09/26/2013 02:55 PM, Zach Brown wrote:
-> >On Thu, Sep 26, 2013 at 10:58:05AM +0200, Miklos Szeredi wrote:
-> >>On Wed, Sep 25, 2013 at 11:07 PM, Zach Brown <zab@redhat.com> wrote:
-> >>>>A client-side copy will be slower, but I guess it does have the
-> >>>>advantage that the application can track progress to some degree, and
-> >>>>abort it fairly quickly without leaving the file in a totally undefined
-> >>>>state--and both might be useful if the copy's not a simple constant-time
-> >>>>operation.
-> >>>I suppose, but can't the app achieve a nice middle ground by copying the
-> >>>file in smaller syscalls?  Avoid bulk data motion back to the client,
-> >>>but still get notification every, I dunno, few hundred meg?
-> >>Yes.  And if "cp"  could just be switched from a read+write syscall
-> >>pair to a single splice syscall using the same buffer size.  And then
-> >>the user would only notice that things got faster in case of server
-> >>side copy.  No problems with long blocking times (at least not much
-> >>worse than it was).
-> >Hmm, yes, that would be a nice outcome.
-> >
-> >>However "cp" doesn't do reflinking by default, it has a switch for
-> >>that.  If we just want "cp" and the like to use splice without fearing
-> >>side effects then by default we should try to be as close to
-> >>read+write behavior as possible.  No?
-> >I guess?  I don't find requiring --reflink hugely compelling.  But there
-> >it is.
-> >
-> >>That's what I'm really
-> >>worrying about when you want to wire up splice to reflink by default.
-> >>I do think there should be a flag for that.  And if on the block level
-> >>some magic happens, so be it.  It's not the fs deverloper's worry any
-> >>more ;)
-> >Sure.  So we'd have:
-> >
-> >- no flag default that forbids knowingly copying with shared references
-> >   so that it will be used by default by people who feel strongly about
-> >   their assumptions about independent write durability.
-> >
-> >- a flag that allows shared references for people who would otherwise
-> >   use the file system shared reference ioctls (ocfs2 reflink, btrfs
-> >   clone) but would like it to also do server-side read/write copies
-> >   over nfs without additional intervention.
-> >
-> >- a flag that requires shared references for callers who don't want
-> >   giant copies to take forever if they aren't instant.  (The qemu guys
-> >   asked for this at Plumbers.)
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Why not implement only the last flag only as  the first step?  It seems
-like the simplest one.  So I think that would mean:
+We need to break delegations on any operation that changes the set of
+links pointing to an inode.  Start with unlink.
 
-	- no worrying about cancelling, etc.
-	- apps should be told to pass the entire range at once (normally
-	  the whole file).
-	- The NFS server probably shouldn't do the internal copy loop by
-	  default.
+Such operations also hold the i_mutex on a parent directory.  Breaking a
+delegation may require waiting for a timeout (by default 90 seconds) in
+the case of a unresponsive NFS client.  To avoid blocking all directory
+operations, we therefore drop locks before waiting for the delegation.
+The logic then looks like:
 
-We can't prevent some storage system from implementing a high-latency
-copy operation, but we can refuse to provide them any help (providing no
-progress reports or easy way to cancel) and then they can deal with the
-complaints from their users.
+	acquire locks
+	...
+	test for delegation; if found:
+		take reference on inode
+		release locks
+		wait for delegation break
+		drop reference on inode
+		retry
 
-Also, I don't get the first option above at all.  The argument is that
-it's safer to have more copies?  How much safety does another copy on
-the same disk really give you?  Do systems that do dedup provide
-interfaces to turn it off per-file?
+It is possible this could never terminate.  (Even if we take precautions
+to prevent another delegation being acquired on the same inode, we could
+get a different inode on each retry.)  But this seems very unlikely.
 
-> This last flag should not prevent a remote target device (NFS or
-> SCSI array) copy from working though since they often do reflink
-> like operations inside of the remote target device....
+The initial test for a delegation happens after the lock on the target
+inode is acquired, but the directory inode may have been acquired
+further up the call stack.  We therefore add a "struct inode **"
+argument to any intervening functions, which we use to pass the inode
+back up to the caller in the case it needs a delegation synchronously
+broken.
 
-In fact maybe that's the only case to care about on the first pass.
+Cc: David Howells <dhowells@redhat.com>
+Cc: Tyler Hicks <tyhicks@canonical.com>
+Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
+Acked-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ drivers/base/devtmpfs.c |    2 +-
+ fs/cachefiles/namei.c   |    2 +-
+ fs/ecryptfs/inode.c     |    2 +-
+ fs/namei.c              |   42 +++++++++++++++++++++++++++++++++++++++---
+ fs/nfsd/vfs.c           |    2 +-
+ include/linux/fs.h      |    2 +-
+ ipc/mqueue.c            |    2 +-
+ 7 files changed, 45 insertions(+), 9 deletions(-)
 
-But I understand that Zach's tired of the woodshedding and I could live
-with the above I guess....
+diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
+index 7413d06..1b8490e 100644
+--- a/drivers/base/devtmpfs.c
++++ b/drivers/base/devtmpfs.c
+@@ -324,7 +324,7 @@ static int handle_remove(const char *nodename, struct device *dev)
+ 			mutex_lock(&dentry->d_inode->i_mutex);
+ 			notify_change(dentry, &newattrs);
+ 			mutex_unlock(&dentry->d_inode->i_mutex);
+-			err = vfs_unlink(parent.dentry->d_inode, dentry);
++			err = vfs_unlink(parent.dentry->d_inode, dentry, NULL);
+ 			if (!err || err == -ENOENT)
+ 				deleted = 1;
+ 		}
+diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
+index 25badd1..6846fcef 100644
+--- a/fs/cachefiles/namei.c
++++ b/fs/cachefiles/namei.c
+@@ -294,7 +294,7 @@ static int cachefiles_bury_object(struct cachefiles_cache *cache,
+ 		if (ret < 0) {
+ 			cachefiles_io_error(cache, "Unlink security error");
+ 		} else {
+-			ret = vfs_unlink(dir->d_inode, rep);
++			ret = vfs_unlink(dir->d_inode, rep, NULL);
+ 
+ 			if (preemptive)
+ 				cachefiles_mark_object_buried(cache, rep);
+diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+index 67e9b63..0b8b632 100644
+--- a/fs/ecryptfs/inode.c
++++ b/fs/ecryptfs/inode.c
+@@ -153,7 +153,7 @@ static int ecryptfs_do_unlink(struct inode *dir, struct dentry *dentry,
+ 
+ 	dget(lower_dentry);
+ 	lower_dir_dentry = lock_parent(lower_dentry);
+-	rc = vfs_unlink(lower_dir_inode, lower_dentry);
++	rc = vfs_unlink(lower_dir_inode, lower_dentry, NULL);
+ 	if (rc) {
+ 		printk(KERN_ERR "Error in vfs_unlink; rc = [%d]\n", rc);
+ 		goto out_unlock;
+diff --git a/fs/namei.c b/fs/namei.c
+index adccf24..b5ad182 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3431,7 +3431,25 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
+ 	return do_rmdir(AT_FDCWD, pathname);
+ }
+ 
+-int vfs_unlink(struct inode *dir, struct dentry *dentry)
++/**
++ * vfs_unlink - unlink a filesystem object
++ * @dir:	parent directory
++ * @dentry:	victim
++ * @delegated_inode: returns victim inode, if the inode is delegated.
++ *
++ * The caller must hold dir->i_mutex.
++ *
++ * If vfs_unlink discovers a delegation, it will return -EWOULDBLOCK and
++ * return a reference to the inode in delegated_inode.  The caller
++ * should then break the delegation on that inode and retry.  Because
++ * breaking a delegation may take a long time, the caller should drop
++ * dir->i_mutex before doing so.
++ *
++ * Alternatively, a caller may pass NULL for delegated_inode.  This may
++ * be appropriate for callers that expect the underlying filesystem not
++ * to be NFS exported.
++ */
++int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
+ {
+ 	struct inode *target = dentry->d_inode;
+ 	int error = may_delete(dir, dentry, 0);
+@@ -3448,11 +3466,20 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+ 	else {
+ 		error = security_inode_unlink(dir, dentry);
+ 		if (!error) {
++			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
++			if (error) {
++				if (error == -EWOULDBLOCK && delegated_inode) {
++					*delegated_inode = target;
++					ihold(target);
++				}
++				goto out;
++			}
+ 			error = dir->i_op->unlink(dir, dentry);
+ 			if (!error)
+ 				dont_mount(dentry);
+ 		}
+ 	}
++out:
+ 	mutex_unlock(&target->i_mutex);
+ 
+ 	/* We don't d_delete() NFS sillyrenamed files--they still exist. */
+@@ -3477,6 +3504,7 @@ static long do_unlinkat(int dfd, const char __user *pathname)
+ 	struct dentry *dentry;
+ 	struct nameidata nd;
+ 	struct inode *inode = NULL;
++	struct inode *delegated_inode = NULL;
+ 	unsigned int lookup_flags = 0;
+ retry:
+ 	name = user_path_parent(dfd, pathname, &nd, lookup_flags);
+@@ -3491,7 +3519,7 @@ retry:
+ 	error = mnt_want_write(nd.path.mnt);
+ 	if (error)
+ 		goto exit1;
+-
++retry_deleg:
+ 	mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex, I_MUTEX_PARENT);
+ 	dentry = lookup_hash(&nd);
+ 	error = PTR_ERR(dentry);
+@@ -3506,13 +3534,21 @@ retry:
+ 		error = security_path_unlink(&nd.path, dentry);
+ 		if (error)
+ 			goto exit2;
+-		error = vfs_unlink(nd.path.dentry->d_inode, dentry);
++		error = vfs_unlink(nd.path.dentry->d_inode, dentry, &delegated_inode);
+ exit2:
+ 		dput(dentry);
+ 	}
+ 	mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
+ 	if (inode)
+ 		iput(inode);	/* truncate the inode here */
++	inode = NULL;
++	if (delegated_inode) {
++		error = break_deleg(delegated_inode, O_WRONLY);
++		iput(delegated_inode);
++		delegated_inode = NULL;
++		if (!error)
++			goto retry_deleg;
++	}
+ 	mnt_drop_write(nd.path.mnt);
+ exit1:
+ 	path_put(&nd.path);
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index c827acb..00d0616 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1911,7 +1911,7 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+ 	if (host_err)
+ 		goto out_put;
+ 	if (type != S_IFDIR)
+-		host_err = vfs_unlink(dirp, rdentry);
++		host_err = vfs_unlink(dirp, rdentry, NULL);
+ 	else
+ 		host_err = vfs_rmdir(dirp, rdentry);
+ 	if (!host_err)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index bc1d8b8..ba29b37 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1469,7 +1469,7 @@ extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
+ extern int vfs_symlink(struct inode *, struct dentry *, const char *);
+ extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
+ extern int vfs_rmdir(struct inode *, struct dentry *);
+-extern int vfs_unlink(struct inode *, struct dentry *);
++extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
+ extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *);
+ 
+ /*
+diff --git a/ipc/mqueue.c b/ipc/mqueue.c
+index ae1996d..95827ce 100644
+--- a/ipc/mqueue.c
++++ b/ipc/mqueue.c
+@@ -886,7 +886,7 @@ SYSCALL_DEFINE1(mq_unlink, const char __user *, u_name)
+ 		err = -ENOENT;
+ 	} else {
+ 		ihold(inode);
+-		err = vfs_unlink(dentry->d_parent->d_inode, dentry);
++		err = vfs_unlink(dentry->d_parent->d_inode, dentry, NULL);
+ 	}
+ 	dput(dentry);
+ 
+-- 
+1.7.9.5
 
---b.
