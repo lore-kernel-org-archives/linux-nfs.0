@@ -1,82 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51511 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:40829 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753099Ab3ILQD0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Sep 2013 12:03:26 -0400
-Date: Thu, 12 Sep 2013 12:03:24 -0400
-To: linux-fsdevel@vger.kernel.org
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        sandeen@redhat.com
-Subject: why is i_ino unsigned long, anyway?
-Message-ID: <20130912160324.GE1462@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1752664Ab3IEQaa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Sep 2013 12:30:30 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/4] rpc: fix huge kmalloc's in gss-proxy
+Date: Thu,  5 Sep 2013 12:30:09 -0400
+Message-Id: <1378398620-23018-6-git-send-email-bfields@redhat.com>
+In-Reply-To: <1378398620-23018-1-git-send-email-bfields@redhat.com>
+References: <1378398620-23018-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Somebody noticed an "ls -l" over nfs failing on entries with inode
-numbers greater than 2^32 on a 32-bit NFS server.  The cause is some
-code that tries to compare i_ino to the full 64-bit inode number.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-I think the following will fix it, but I'm curious: why is i_ino
-"unsigned long", anyway?  Is there something know that depends on that,
-or is it just that the sheer number of users makes it too scary to
-change?
+The reply to a gssproxy can include up to NGROUPS_MAX gid's, which will
+take up more than a page.  We therefore need to allocate an array of
+pages to hold the reply instead of trying to allocate a single huge
+buffer.
 
---b.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/auth_gss/gss_rpc_upcall.c |   30 ++++++++++++++++++++++++++++++
+ net/sunrpc/auth_gss/gss_rpc_xdr.c    |    3 +++
+ net/sunrpc/auth_gss/gss_rpc_xdr.h    |    5 ++++-
+ 3 files changed, 37 insertions(+), 1 deletion(-)
 
-commit 0cc784eb430285535ae7a79dd5133ab66e9ce839
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Tue Sep 10 11:41:12 2013 -0400
-
-    exportfs: fix 32-bit nfsd handling of 64-bit inode numbers
-    
-    Symptoms were spurious -ENOENTs on stat of an NFS filesystem from a
-    32-bit NFS server exporting a very large XFS filesystem, when the
-    server's cache is cold (so the inodes in question are not in cache).
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
-index 293bc2e..6a79bb8 100644
---- a/fs/exportfs/expfs.c
-+++ b/fs/exportfs/expfs.c
-@@ -215,7 +215,7 @@ struct getdents_callback {
- 	struct dir_context ctx;
- 	char *name;		/* name that was found. It already points to a
- 				   buffer NAME_MAX+1 is size */
--	unsigned long ino;	/* the inum we are looking for */
-+	u64 ino;		/* the inum we are looking for */
- 	int found;		/* inode matched? */
- 	int sequence;		/* sequence counter */
- };
-@@ -255,10 +255,10 @@ static int get_name(const struct path *path, char *name, struct dentry *child)
- 	struct inode *dir = path->dentry->d_inode;
- 	int error;
- 	struct file *file;
-+	struct kstat stat;
- 	struct getdents_callback buffer = {
- 		.ctx.actor = filldir_one,
- 		.name = name,
--		.ino = child->d_inode->i_ino
- 	};
+diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+index af7ffd4..be95af3 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
++++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+@@ -213,6 +213,30 @@ static int gssp_call(struct net *net, struct rpc_message *msg)
+ 	return status;
+ }
  
- 	error = -ENOTDIR;
-@@ -268,6 +268,16 @@ static int get_name(const struct path *path, char *name, struct dentry *child)
- 	if (!dir->i_fop)
- 		goto out;
- 	/*
-+	 * inode->i_ino is unsigned long, kstat->ino is u64, so the
-+	 * former would be insufficient on 32-bit hosts when the
-+	 * filesystem supports 64-bit inode numbers.  So we need to
-+	 * actually call ->getattr, not just read i_ino:
-+	 */
-+	error = vfs_getattr(path, &stat);
-+	if (error)
-+		return error;
-+	buffer.ino = stat.ino;
-+	/*
- 	 * Open the directory ...
- 	 */
- 	file = dentry_open(path, O_RDONLY, cred);
++static void gssp_free_receive_pages(struct gssx_arg_accept_sec_context *arg)
++{
++	int i;
++
++	for (i = 0; i < arg->npages && arg->pages[i]; i++)
++		__free_page(arg->pages[i]);
++}
++
++static int gssp_alloc_receive_pages(struct gssx_arg_accept_sec_context *arg)
++{
++	int i;
++
++	arg->npages = DIV_ROUND_UP(NGROUPS_MAX * 4, PAGE_SIZE);
++	arg->pages = kzalloc(arg->npages * sizeof(struct page *), GFP_KERNEL);
++
++	for (i=0; i < arg->npages; i++) {
++		arg->pages[i] = alloc_page(GFP_KERNEL);
++		if (arg->pages[i] == NULL) {
++			gssp_free_receive_pages(arg);
++			return -ENOMEM;
++		}
++	}
++	return 0;
++}
+ 
+ /*
+  * Public functions
+@@ -261,10 +285,16 @@ int gssp_accept_sec_context_upcall(struct net *net,
+ 		arg.context_handle = &ctxh;
+ 	res.output_token->len = GSSX_max_output_token_sz;
+ 
++	ret = gssp_alloc_receive_pages(&arg);
++	if (ret)
++		return ret;
++
+ 	/* use nfs/ for targ_name ? */
+ 
+ 	ret = gssp_call(net, &msg);
+ 
++	gssp_free_receive_pages(&arg);
++
+ 	/* we need to fetch all data even in case of error so
+ 	 * that we can free special strctures is they have been allocated */
+ 	data->major_status = res.status.major_status;
+diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+index 3c19c7d..f0f78c5 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
++++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+@@ -780,6 +780,9 @@ void gssx_enc_accept_sec_context(struct rpc_rqst *req,
+ 	/* arg->options */
+ 	err = dummy_enc_opt_array(xdr, &arg->options);
+ 
++	xdr_inline_pages(&req->rq_rcv_buf,
++		PAGE_SIZE/2 /* pretty arbitrary */,
++		arg->pages, 0 /* page base */, arg->npages * PAGE_SIZE);
+ done:
+ 	if (err)
+ 		dprintk("RPC:       gssx_enc_accept_sec_context: %d\n", err);
+diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.h b/net/sunrpc/auth_gss/gss_rpc_xdr.h
+index 1c98b27..685a688 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_xdr.h
++++ b/net/sunrpc/auth_gss/gss_rpc_xdr.h
+@@ -147,6 +147,8 @@ struct gssx_arg_accept_sec_context {
+ 	struct gssx_cb *input_cb;
+ 	u32 ret_deleg_cred;
+ 	struct gssx_option_array options;
++	struct page **pages;
++	unsigned int npages;
+ };
+ 
+ struct gssx_res_accept_sec_context {
+@@ -240,7 +242,8 @@ int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
+ 			     2 * GSSX_max_princ_sz + \
+ 			     8 + 8 + 4 + 4 + 4)
+ #define GSSX_max_output_token_sz 1024
+-#define GSSX_max_creds_sz (4 + 4 + 4 + NGROUPS_MAX * 4)
++/* grouplist not included; we allocate separate pages for that: */
++#define GSSX_max_creds_sz (4 + 4 + 4 /* + NGROUPS_MAX*4 */)
+ #define GSSX_RES_accept_sec_context_sz (GSSX_default_status_sz + \
+ 					GSSX_default_ctx_sz + \
+ 					GSSX_max_output_token_sz + \
+-- 
+1.7.9.5
+
