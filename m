@@ -1,195 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:44124 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:37200 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755681Ab3IBSXj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Sep 2013 14:23:39 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-CC: <andros@netapp.com>
-Subject: [PATCH v3 16/17] RPCSEC_GSS: Share all credential caches on a per-transport basis
-Date: Mon, 2 Sep 2013 14:16:59 -0400
-Message-ID: <1378145820-29990-16-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1378145820-29990-15-git-send-email-Trond.Myklebust@netapp.com>
-References: <1378145820-29990-1-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-2-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-3-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-4-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-5-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-6-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-7-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-8-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-9-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-10-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-11-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-12-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-13-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-14-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-15-git-send-email-Trond.Myklebust@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1753745Ab3IEPtn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Sep 2013 11:49:43 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/4] rpc: fix huge kmalloc's in gss-proxy
+Date: Thu,  5 Sep 2013 11:49:32 -0400
+Message-Id: <1378396173-22352-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1378396173-22352-1-git-send-email-bfields@redhat.com>
+References: <1378396173-22352-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that all struct rpc_clnt for any given socket/rdma channel
-share the same RPCSEC_GSS/krb5,krb5i,krb5p caches.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+The reply to a gssproxy can include up to NGROUPS_MAX gid's, which will
+take up more than a page.  We therefore need to allocate an array of
+pages to hold the reply instead of trying to allocate a single huge
+buffer.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- net/sunrpc/auth_gss/auth_gss.c | 92 ++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 89 insertions(+), 3 deletions(-)
+ net/sunrpc/auth_gss/gss_rpc_upcall.c |   30 ++++++++++++++++++++++++++++++
+ net/sunrpc/auth_gss/gss_rpc_xdr.c    |    3 +++
+ net/sunrpc/auth_gss/gss_rpc_xdr.h    |    5 ++++-
+ 3 files changed, 37 insertions(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 5ec15bb..dc4b449 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -51,6 +51,7 @@
- #include <linux/sunrpc/rpc_pipe_fs.h>
- #include <linux/sunrpc/gss_api.h>
- #include <asm/uaccess.h>
-+#include <linux/hashtable.h>
- 
- #include "../netns.h"
- 
-@@ -71,6 +72,9 @@ static unsigned int gss_expired_cred_retry_delay = GSS_RETRY_EXPIRED;
-  * using integrity (two 4-byte integers): */
- #define GSS_VERF_SLACK		100
- 
-+static DEFINE_HASHTABLE(gss_auth_hash_table, 16);
-+static DEFINE_SPINLOCK(gss_auth_hash_lock);
-+
- struct gss_pipe {
- 	struct rpc_pipe_dir_object pdo;
- 	struct rpc_pipe *pipe;
-@@ -81,6 +85,7 @@ struct gss_pipe {
- 
- struct gss_auth {
- 	struct kref kref;
-+	struct hlist_node hash;
- 	struct rpc_auth rpc_auth;
- 	struct gss_api_mech *mech;
- 	enum rpc_gss_svc service;
-@@ -940,8 +945,8 @@ static void gss_pipe_free(struct gss_pipe *p)
-  * NOTE: we have the opportunity to use different
-  * parameters based on the input flavor (which must be a pseudoflavor)
-  */
--static struct rpc_auth *
--gss_create(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
-+static struct gss_auth *
-+gss_create_new(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
- {
- 	rpc_authflavor_t flavor = args->pseudoflavor;
- 	struct gss_auth *gss_auth;
-@@ -955,6 +960,7 @@ gss_create(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
- 		return ERR_PTR(err);
- 	if (!(gss_auth = kmalloc(sizeof(*gss_auth), GFP_KERNEL)))
- 		goto out_dec;
-+	INIT_HLIST_NODE(&gss_auth->hash);
- 	gss_auth->target_name = NULL;
- 	if (args->target_name) {
- 		gss_auth->target_name = kstrdup(args->target_name, GFP_KERNEL);
-@@ -1004,7 +1010,7 @@ gss_create(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
- 	}
- 	gss_auth->gss_pipe[0] = gss_pipe;
- 
--	return auth;
-+	return gss_auth;
- err_destroy_pipe_1:
- 	gss_pipe_free(gss_auth->gss_pipe[1]);
- err_destroy_credcache:
-@@ -1051,6 +1057,12 @@ gss_destroy(struct rpc_auth *auth)
- 	dprintk("RPC:       destroying GSS authenticator %p flavor %d\n",
- 			auth, auth->au_flavor);
- 
-+	if (hash_hashed(&gss_auth->hash)) {
-+		spin_lock(&gss_auth_hash_lock);
-+		hash_del(&gss_auth->hash);
-+		spin_unlock(&gss_auth_hash_lock);
-+	}
-+
- 	gss_pipe_free(gss_auth->gss_pipe[0]);
- 	gss_auth->gss_pipe[0] = NULL;
- 	gss_pipe_free(gss_auth->gss_pipe[1]);
-@@ -1060,6 +1072,80 @@ gss_destroy(struct rpc_auth *auth)
- 	kref_put(&gss_auth->kref, gss_free_callback);
+diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+index af7ffd4..be95af3 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
++++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+@@ -213,6 +213,30 @@ static int gssp_call(struct net *net, struct rpc_message *msg)
+ 	return status;
  }
  
-+static struct gss_auth *
-+gss_auth_find_or_add_hashed(struct rpc_auth_create_args *args,
-+		struct rpc_clnt *clnt,
-+		struct gss_auth *new)
++static void gssp_free_receive_pages(struct gssx_arg_accept_sec_context *arg)
 +{
-+	struct gss_auth *gss_auth;
-+	unsigned long hashval = (unsigned long)clnt;
++	int i;
 +
-+	spin_lock(&gss_auth_hash_lock);
-+	hash_for_each_possible(gss_auth_hash_table,
-+			gss_auth,
-+			hash,
-+			hashval) {
-+		if (gss_auth->rpc_auth.au_flavor != args->pseudoflavor)
-+			continue;
-+		if (gss_auth->target_name != args->target_name) {
-+			if (gss_auth->target_name == NULL)
-+				continue;
-+			if (args->target_name == NULL)
-+				continue;
-+			if (strcmp(gss_auth->target_name, args->target_name))
-+				continue;
++	for (i = 0; i < arg->npages && arg->pages[i]; i++)
++		__free_page(arg->pages[i]);
++}
++
++static int gssp_alloc_receive_pages(struct gssx_arg_accept_sec_context *arg)
++{
++	int i;
++
++	arg->npages = DIV_ROUND_UP(NGROUPS_MAX * 4, PAGE_SIZE);
++	arg->pages = kzalloc(arg->npages * sizeof(struct page *), GFP_KERNEL);
++
++	for (i=0; i < arg->npages; i++) {
++		arg->pages[i] = alloc_page(GFP_KERNEL);
++		if (arg->pages[i] == NULL) {
++			gssp_free_receive_pages(arg);
++			return -ENOMEM;
 +		}
-+		if (!atomic_inc_not_zero(&gss_auth->rpc_auth.au_count))
-+			continue;
-+		goto out;
 +	}
-+	if (new)
-+		hash_add(gss_auth_hash_table, &new->hash, hashval);
-+	gss_auth = new;
-+out:
-+	spin_unlock(&gss_auth_hash_lock);
-+	return gss_auth;
++	return 0;
 +}
-+
-+static struct gss_auth *
-+gss_create_hashed(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
-+{
-+	struct gss_auth *gss_auth;
-+	struct gss_auth *new;
-+
-+	gss_auth = gss_auth_find_or_add_hashed(args, clnt, NULL);
-+	if (gss_auth != NULL)
-+		goto out;
-+	new = gss_create_new(args, clnt);
-+	if (IS_ERR(new))
-+		return new;
-+	gss_auth = gss_auth_find_or_add_hashed(args, clnt, new);
-+	if (gss_auth != new)
-+		gss_destroy(&new->rpc_auth);
-+out:
-+	return gss_auth;
-+}
-+
-+static struct rpc_auth *
-+gss_create(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
-+{
-+	struct gss_auth *gss_auth;
-+	struct rpc_xprt *xprt = rcu_access_pointer(clnt->cl_xprt);
-+
-+	while (clnt != clnt->cl_parent) {
-+		struct rpc_clnt *parent = clnt->cl_parent;
-+		/* Find the original parent for this transport */
-+		if (rcu_access_pointer(parent->cl_xprt) != xprt)
-+			break;
-+		clnt = parent;
-+	}
-+
-+	gss_auth = gss_create_hashed(args, clnt);
-+	if (IS_ERR(gss_auth))
-+		return ERR_CAST(gss_auth);
-+	return &gss_auth->rpc_auth;
-+}
-+
+ 
  /*
-  * gss_destroying_context will cause the RPCSEC_GSS to send a NULL RPC call
-  * to the server with the GSS control procedure field set to
+  * Public functions
+@@ -261,10 +285,16 @@ int gssp_accept_sec_context_upcall(struct net *net,
+ 		arg.context_handle = &ctxh;
+ 	res.output_token->len = GSSX_max_output_token_sz;
+ 
++	ret = gssp_alloc_receive_pages(&arg);
++	if (ret)
++		return ret;
++
+ 	/* use nfs/ for targ_name ? */
+ 
+ 	ret = gssp_call(net, &msg);
+ 
++	gssp_free_receive_pages(&arg);
++
+ 	/* we need to fetch all data even in case of error so
+ 	 * that we can free special strctures is they have been allocated */
+ 	data->major_status = res.status.major_status;
+diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+index 3c19c7d..f0f78c5 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
++++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+@@ -780,6 +780,9 @@ void gssx_enc_accept_sec_context(struct rpc_rqst *req,
+ 	/* arg->options */
+ 	err = dummy_enc_opt_array(xdr, &arg->options);
+ 
++	xdr_inline_pages(&req->rq_rcv_buf,
++		PAGE_SIZE/2 /* pretty arbitrary */,
++		arg->pages, 0 /* page base */, arg->npages * PAGE_SIZE);
+ done:
+ 	if (err)
+ 		dprintk("RPC:       gssx_enc_accept_sec_context: %d\n", err);
+diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.h b/net/sunrpc/auth_gss/gss_rpc_xdr.h
+index 1c98b27..685a688 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_xdr.h
++++ b/net/sunrpc/auth_gss/gss_rpc_xdr.h
+@@ -147,6 +147,8 @@ struct gssx_arg_accept_sec_context {
+ 	struct gssx_cb *input_cb;
+ 	u32 ret_deleg_cred;
+ 	struct gssx_option_array options;
++	struct page **pages;
++	unsigned int npages;
+ };
+ 
+ struct gssx_res_accept_sec_context {
+@@ -240,7 +242,8 @@ int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
+ 			     2 * GSSX_max_princ_sz + \
+ 			     8 + 8 + 4 + 4 + 4)
+ #define GSSX_max_output_token_sz 1024
+-#define GSSX_max_creds_sz (4 + 4 + 4 + NGROUPS_MAX * 4)
++/* grouplist not included; we allocate separate pages for that: */
++#define GSSX_max_creds_sz (4 + 4 + 4 /* + NGROUPS_MAX*4 */)
+ #define GSSX_RES_accept_sec_context_sz (GSSX_default_status_sz + \
+ 					GSSX_default_ctx_sz + \
+ 					GSSX_max_output_token_sz + \
 -- 
-1.8.3.1
+1.7.9.5
 
