@@ -1,72 +1,253 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:18807 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754643Ab3IZVpY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Sep 2013 17:45:24 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 6/7] NFSv4: Ensure that we disable the resend timeout for NFSv4
-Date: Thu, 26 Sep 2013 17:45:05 -0400
-Message-ID: <1380231907-13733-7-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1380231907-13733-6-git-send-email-Trond.Myklebust@netapp.com>
-References: <1380231907-13733-1-git-send-email-Trond.Myklebust@netapp.com>
- <1380231907-13733-2-git-send-email-Trond.Myklebust@netapp.com>
- <1380231907-13733-3-git-send-email-Trond.Myklebust@netapp.com>
- <1380231907-13733-4-git-send-email-Trond.Myklebust@netapp.com>
- <1380231907-13733-5-git-send-email-Trond.Myklebust@netapp.com>
- <1380231907-13733-6-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-ob0-f177.google.com ([209.85.214.177]:45735 "EHLO
+	mail-ob0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753376Ab3IEVgz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Sep 2013 17:36:55 -0400
+Received: by mail-ob0-f177.google.com with SMTP id f8so2622762obp.8
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Sep 2013 14:36:54 -0700 (PDT)
+Date: Thu, 5 Sep 2013 16:36:49 -0500
+From: Quentin Barnes <qbarnes@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
+Message-ID: <20130905213649.GA21944@gmail.com>
+References: <20130905162110.GA17920@gmail.com>
+ <20130905170303.GB17330@us.ibm.com>
+ <20130905191139.GA20830@gmail.com>
+ <1378411320.5450.27.camel@leira.trondhjem.org>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1378411320.5450.27.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The spec states that the client should not resend requests because
-the server will disconnect if it needs to drop an RPC request.
+On Thu, Sep 05, 2013 at 08:02:01PM +0000, Myklebust, Trond wrote:
+> On Thu, 2013-09-05 at 14:11 -0500, Quentin Barnes wrote:
+> > On Thu, Sep 05, 2013 at 12:03:03PM -0500, Malahal Naineni wrote:
+> > > Neil Brown posted a patch couple days ago for this!
+> > > 
+> > > http://thread.gmane.org/gmane.linux.nfs/58473
+> > 
+> > I tried Neil's patch on a v3.11 kernel.  The rebuilt kernel still
+> > exhibited the same 1000s of WRITEs/sec problem.
+> > 
+> > Any other ideas?
+> 
+> Yes. Please try the attached patch.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/client.c           | 2 ++
- fs/nfs/nfs4client.c       | 1 +
- include/linux/nfs_fs_sb.h | 1 +
- 3 files changed, 4 insertions(+)
+Great!  That did the trick!
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 2dceee4..af03258 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -590,6 +590,8 @@ int nfs_create_rpc_client(struct nfs_client *clp,
- 
- 	if (test_bit(NFS_CS_DISCRTRY, &clp->cl_flags))
- 		args.flags |= RPC_CLNT_CREATE_DISCRTRY;
-+	if (test_bit(NFS_CS_NO_RETRANS_TIMEOUT, &clp->cl_flags))
-+		args.flags |= RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT;
- 	if (test_bit(NFS_CS_NORESVPORT, &clp->cl_flags))
- 		args.flags |= RPC_CLNT_CREATE_NONPRIVPORT;
- 	if (test_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags))
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index a860ab5..511cdce 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -368,6 +368,7 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
- 	if (clp->cl_minorversion != 0)
- 		__set_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags);
- 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
-+	__set_bit(NFS_CS_NO_RETRANS_TIMEOUT, &clp->cl_flags);
- 	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
- 	if (error == -EINVAL)
- 		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX);
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index b8cedce..f9c0a6c 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -41,6 +41,7 @@ struct nfs_client {
- #define NFS_CS_DISCRTRY		1		/* - disconnect on RPC retry */
- #define NFS_CS_MIGRATION	2		/* - transparent state migr */
- #define NFS_CS_INFINITE_SLOTS	3		/* - don't limit TCP slots */
-+#define NFS_CS_NO_RETRANS_TIMEOUT	4	/* - Disable retransmit timeouts */
- 	struct sockaddr_storage	cl_addr;	/* server identifier */
- 	size_t			cl_addrlen;
- 	char *			cl_hostname;	/* hostname of server */
--- 
-1.8.3.1
+Do you feel this patch could be worthy of pushing it upstream in its
+current state or was it just to verify a theory?
 
+
+In comparing the nfs_flush_incompatible() implementations between
+RHEL5 and v3.11 (without your patch), the guts of the algorithm seem
+more or less logically equivalent to me on whether or not to flush
+the page.  Also, when and where nfs_flush_incompatible() is invoked
+seems the same.  Would you provide a very brief pointer to clue me
+in as to why this problem didn't also manifest circa 2.6.18 days?
+
+Quentin
+
+
+
+> > > Regards, Malahal.
+> > > 
+> > > Quentin Barnes [qbarnes@gmail.com] wrote:
+> > > > If two (or more) processes are doing nothing more than writing to
+> > > > the memory addresses of an mmapped shared file on an NFS mounted
+> > > > file system, it results in the kernel scribbling WRITEs to the
+> > > > server as fast as it can (1000s per second) even while no syscalls
+> > > > are going on.
+> > > > 
+> > > > The problems happens on NFS clients mounting NFSv3 or NFSv4.  I've
+> > > > reproduced this on the 3.11 kernel, and it happens as far back as
+> > > > RHEL6 (2.6.32 based), however, it is not a problem on RHEL5 (2.6.18
+> > > > based).  (All x86_64 systems.)  I didn't try anything in between.
+> > > > 
+> > > > I've created a self-contained program below that will demonstrate
+> > > > the problem (call it "t1").  Assuming /mnt has an NFS file system:
+> > > > 
+> > > >   $ t1 /mnt/mynfsfile 1    # Fork 1 writer, kernel behaves normally
+> > > >   $ t1 /mnt/mynfsfile 2    # Fork 2 writers, kernel goes crazy WRITEing
+> > > > 
+> > > > Just run "watch -d nfsstat" in another window while running the two
+> > > > writer test and watch the WRITE count explode.
+> > > > 
+> > > > I don't see anything particularly wrong with what the example code
+> > > > is doing with its use of mmap.  Is there anything undefined about
+> > > > the code that would explain this behavior, or is this a NFS bug
+> > > > that's really lived this long?
+> > > > 
+> > > > Quentin
+> > > > 
+> > > > 
+> > > > 
+> > > > #include <sys/stat.h>
+> > > > #include <sys/mman.h>
+> > > > #include <sys/stat.h>
+> > > > #include <sys/wait.h>
+> > > > #include <errno.h>
+> > > > #include <fcntl.h>
+> > > > #include <stdio.h>
+> > > > #include <stdlib.h>
+> > > > #include <signal.h>
+> > > > #include <string.h>
+> > > > #include <unistd.h>
+> > > > 
+> > > > int
+> > > > kill_children()
+> > > > {
+> > > > 	int		cnt = 0;
+> > > > 	siginfo_t	infop;
+> > > > 
+> > > > 	signal(SIGINT, SIG_IGN);
+> > > > 	kill(0, SIGINT);
+> > > > 	while (waitid(P_ALL, 0, &infop, WEXITED) != -1) ++cnt;
+> > > > 
+> > > > 	return cnt;
+> > > > }
+> > > > 
+> > > > void
+> > > > sighandler(int sig)
+> > > > {
+> > > > 	printf("Cleaning up all children.\n");
+> > > > 	int cnt = kill_children();
+> > > > 	printf("Cleaned up %d child%s.\n", cnt, cnt == 1 ? "" : "ren");
+> > > > 
+> > > > 	exit(0);
+> > > > }
+> > > > 
+> > > > int
+> > > > do_child(volatile int *iaddr)
+> > > > {
+> > > > 	while (1) *iaddr = 1;
+> > > > }
+> > > > 
+> > > > int
+> > > > main(int argc, char **argv)
+> > > > {
+> > > > 	const char	*path;
+> > > > 	int		fd;
+> > > > 	ssize_t		wlen;
+> > > > 	int		*ip;
+> > > > 	int		fork_count = 1;
+> > > > 
+> > > > 	if (argc == 1) {
+> > > > 		fprintf(stderr, "Usage: %s {filename} [fork_count].\n",
+> > > > 			argv[0]);
+> > > > 		return 1;
+> > > > 	}
+> > > > 
+> > > > 	path = argv[1];
+> > > > 
+> > > > 	if (argc > 2) {
+> > > > 		int fc = atoi(argv[2]);
+> > > > 		if (fc >= 0)
+> > > > 			fork_count = fc;
+> > > > 	}
+> > > > 
+> > > > 	fd = open(path, O_CREAT|O_TRUNC|O_RDWR|O_APPEND, S_IRUSR|S_IWUSR);
+> > > > 	if (fd < 0) {
+> > > > 		fprintf(stderr, "Open of '%s' failed: %s (%d)\n",
+> > > > 			path, strerror(errno), errno);
+> > > > 		return 1;
+> > > > 	}
+> > > > 
+> > > > 	wlen = write(fd, &(int){0}, sizeof(int));
+> > > > 	if (wlen != sizeof(int)) {
+> > > > 		if (wlen < 0)
+> > > > 			fprintf(stderr, "Write of '%s' failed: %s (%d)\n",
+> > > > 				path, strerror(errno), errno);
+> > > > 		else
+> > > > 			fprintf(stderr, "Short write to '%s'\n", path);
+> > > > 		return 1;
+> > > > 	}
+> > > > 
+> > > > 	ip = (int *)mmap(NULL, sizeof(int), PROT_READ|PROT_WRITE,
+> > > > 			   MAP_SHARED, fd, 0);
+> > > > 	if (ip == MAP_FAILED) {
+> > > > 		fprintf(stderr, "Mmap of '%s' failed: %s (%d)\n",
+> > > > 			path, strerror(errno), errno);
+> > > > 		return 1;
+> > > > 	}
+> > > > 
+> > > > 	signal(SIGINT, sighandler);
+> > > > 
+> > > > 	while (fork_count-- > 0) {
+> > > > 		switch(fork()) {
+> > > > 		case -1:
+> > > > 			fprintf(stderr, "Fork failed: %s (%d)\n",
+> > > > 				strerror(errno), errno);
+> > > > 			kill_children();
+> > > > 			return 1;
+> > > > 		case 0:   /* child  */
+> > > > 			signal(SIGINT, SIG_DFL);
+> > > > 			do_child(ip);
+> > > > 			break;
+> > > > 		default:  /* parent */
+> > > > 			break;
+> > > > 		}
+> > > > 	}
+> > > > 
+> > > > 	printf("Press ^C to terminate test.\n");
+> > > > 	pause();
+> > > > 
+> > > > 	return 0;
+> > > > }
+> > > > --
+> > > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > > > the body of a message to majordomo@vger.kernel.org
+> > > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > > > 
+> > > 
+> > 
+> > Quentin
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+
+> From 903ebaeefae78e6e03f3719aafa8fd5dd22d3288 Mon Sep 17 00:00:00 2001
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Date: Thu, 5 Sep 2013 15:52:51 -0400
+> Subject: [PATCH] NFS: Don't check lock owner compatibility in writes unless
+>  file is locked
+> 
+> If we're doing buffered writes, and there is no file locking involved,
+> then we don't have to worry about whether or not the lock owner information
+> is identical.
+> By relaxing this check, we ensure that fork()ed child processes can write
+> to a page without having to first sync dirty data that was written
+> by the parent to disk.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  fs/nfs/write.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index 40979e8..ac1dc33 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -863,7 +863,7 @@ int nfs_flush_incompatible(struct file *file, struct page *page)
+>  			return 0;
+>  		l_ctx = req->wb_lock_context;
+>  		do_flush = req->wb_page != page || req->wb_context != ctx;
+> -		if (l_ctx) {
+> +		if (l_ctx && ctx->dentry->d_inode->i_flock != NULL) {
+>  			do_flush |= l_ctx->lockowner.l_owner != current->files
+>  				|| l_ctx->lockowner.l_pid != current->tgid;
+>  		}
+> -- 
+> 1.8.3.1
+> 
