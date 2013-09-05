@@ -1,61 +1,148 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37204 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:43487 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753851Ab3IEPto (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Sep 2013 11:49:44 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/4] rpc: let xdr layer allocate gssproxy receieve pages
-Date: Thu,  5 Sep 2013 11:49:33 -0400
-Message-Id: <1378396173-22352-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1378396173-22352-1-git-send-email-bfields@redhat.com>
-References: <1378396173-22352-1-git-send-email-bfields@redhat.com>
+	id S1761976Ab3IEC7B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Sep 2013 22:59:01 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/3] SUNRPC: Ensure that task->tk_pid is unique...
+Date: Wed, 4 Sep 2013 22:58:38 -0400
+Message-ID: <1378349920-31206-1-git-send-email-Trond.Myklebust@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Replace the task->tk_pid with a guaranteed unique parameter.
 
-In theory the linux cred in a gssproxy reply can include up to
-NGROUPS_MAX data, 256K of data.  In the common case we expect it to be
-shorter.  So do as the nfsv3 ACL code does and let the xdr code allocate
-the pages as they come in, instead of allocating a lot of pages that
-won't typically be used.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- net/sunrpc/auth_gss/gss_rpc_upcall.c |   16 ++++++----------
- 1 file changed, 6 insertions(+), 10 deletions(-)
+ include/linux/sunrpc/sched.h |  3 ++-
+ net/sunrpc/sched.c           | 57 +++++++++++++++++++++++++++++++++++++-------
+ 2 files changed, 51 insertions(+), 9 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-index be95af3..f1eb0d1 100644
---- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-@@ -223,18 +223,14 @@ static void gssp_free_receive_pages(struct gssx_arg_accept_sec_context *arg)
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index 8ebb7c0..6e8657c 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -80,7 +80,7 @@ struct rpc_task {
+ 	unsigned short		tk_timeouts;	/* maj timeouts */
  
- static int gssp_alloc_receive_pages(struct gssx_arg_accept_sec_context *arg)
- {
--	int i;
--
- 	arg->npages = DIV_ROUND_UP(NGROUPS_MAX * 4, PAGE_SIZE);
- 	arg->pages = kzalloc(arg->npages * sizeof(struct page *), GFP_KERNEL);
--
--	for (i=0; i < arg->npages; i++) {
--		arg->pages[i] = alloc_page(GFP_KERNEL);
--		if (arg->pages[i] == NULL) {
--			gssp_free_receive_pages(arg);
--			return -ENOMEM;
--		}
--	}
-+	/*
-+	 * XXX: actual pages are allocated by xdr layer in
-+	 * xdr_partial_copy_from_skb.
-+	 */
-+	if (!arg->pages)
-+		return -ENOMEM;
- 	return 0;
+ #if defined(RPC_DEBUG) || defined(RPC_TRACEPOINTS)
+-	unsigned short		tk_pid;		/* debugging aid */
++	unsigned int		tk_pid;		/* debugging aid */
+ #endif
+ 	unsigned char		tk_priority : 2,/* Task priority */
+ 				tk_garb_retry : 2,
+@@ -133,6 +133,7 @@ struct rpc_task_setup {
+ #define RPC_TASK_RUNNING	0
+ #define RPC_TASK_QUEUED		1
+ #define RPC_TASK_ACTIVE		2
++#define RPC_TASK_PID		3
+ 
+ #define RPC_IS_RUNNING(t)	test_bit(RPC_TASK_RUNNING, &(t)->tk_runstate)
+ #define rpc_set_running(t)	set_bit(RPC_TASK_RUNNING, &(t)->tk_runstate)
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index ff3cc4b..fd15110 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -259,24 +259,55 @@ static int rpc_wait_bit_killable(void *word)
  }
  
+ #if defined(RPC_DEBUG) || defined(RPC_TRACEPOINTS)
+-static void rpc_task_set_debuginfo(struct rpc_task *task)
++static DEFINE_IDA(rpc_pids);
++
++static int rpc_task_alloc_pid(struct rpc_task *task)
+ {
+-	static atomic_t rpc_pid;
++	int pid;
++
++	pid = ida_simple_get(&rpc_pids, 0, 0, GFP_NOFS);
++	if (pid < 0)
++		return pid;
++	task->tk_pid = pid;
++	set_bit(RPC_TASK_PID, &task->tk_runstate);
++	return 0;
++}
+ 
+-	task->tk_pid = atomic_inc_return(&rpc_pid);
++static bool rpc_task_need_free_pid(struct rpc_task *task)
++{
++	return test_and_clear_bit(RPC_TASK_PID, &task->tk_runstate) != 0;
++}
++
++static void rpc_task_free_pid(int pid)
++{
++	ida_simple_remove(&rpc_pids, pid);
+ }
+ #else
+-static inline void rpc_task_set_debuginfo(struct rpc_task *task)
++static int rpc_task_alloc_pid(struct rpc_task *task)
++{
++	return 0;
++}
++
++static bool rpc_task_need_free_pid(struct rpc_task *task)
++{
++	return false;
++}
++
++static void rpc_task_free_pid(int pid)
+ {
+ }
+ #endif
+ 
+-static void rpc_set_active(struct rpc_task *task)
++static int rpc_set_active(struct rpc_task *task)
+ {
+-	trace_rpc_task_begin(task->tk_client, task, NULL);
++	int ret;
+ 
+-	rpc_task_set_debuginfo(task);
++	ret = rpc_task_alloc_pid(task);
++	if (ret < 0)
++		return ret;
++	trace_rpc_task_begin(task->tk_client, task, NULL);
+ 	set_bit(RPC_TASK_ACTIVE, &task->tk_runstate);
++	return 0;
+ }
+ 
+ /*
+@@ -811,8 +842,14 @@ static void __rpc_execute(struct rpc_task *task)
+ void rpc_execute(struct rpc_task *task)
+ {
+ 	bool is_async = RPC_IS_ASYNC(task);
++	int ret;
+ 
+-	rpc_set_active(task);
++	ret = rpc_set_active(task);
++	if (ret < 0) {
++		task->tk_status = ret;
++		rpc_release_task(task);
++		return;
++	}
+ 	rpc_make_runnable(task);
+ 	if (!is_async)
+ 		__rpc_execute(task);
+@@ -970,6 +1007,8 @@ struct rpc_task *rpc_new_task(const struct rpc_task_setup *setup_data)
+ static void rpc_free_task(struct rpc_task *task)
+ {
+ 	unsigned short tk_flags = task->tk_flags;
++	bool free_pid = rpc_task_need_free_pid(task);
++	int pid = task->tk_pid;
+ 
+ 	rpc_release_calldata(task->tk_ops, task->tk_calldata);
+ 
+@@ -977,6 +1016,8 @@ static void rpc_free_task(struct rpc_task *task)
+ 		dprintk("RPC: %5u freeing task\n", task->tk_pid);
+ 		mempool_free(task, rpc_task_mempool);
+ 	}
++	if (free_pid)
++		rpc_task_free_pid(pid);
+ }
+ 
+ static void rpc_async_release(struct work_struct *work)
 -- 
-1.7.9.5
+1.8.3.1
 
