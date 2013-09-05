@@ -1,95 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f48.google.com ([209.85.219.48]:52732 "EHLO
-	mail-oa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751322Ab3IIRcP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Sep 2013 13:32:15 -0400
-Received: by mail-oa0-f48.google.com with SMTP id o17so6600181oag.7
-        for <linux-nfs@vger.kernel.org>; Mon, 09 Sep 2013 10:32:15 -0700 (PDT)
-Date: Mon, 9 Sep 2013 12:32:09 -0500
-From: Quentin Barnes <qbarnes@gmail.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
-Message-ID: <20130909173209.GA28353@gmail.com>
-References: <20130905162110.GA17920@gmail.com>
- <20130905170303.GB17330@us.ibm.com>
- <20130905191139.GA20830@gmail.com>
- <1378411320.5450.27.camel@leira.trondhjem.org>
- <20130905213649.GA21944@gmail.com>
- <1378418243.5450.29.camel@leira.trondhjem.org>
- <20130905223420.GA23192@gmail.com>
- <20130906093636.6818e7b2@corrin.poochiereds.net>
- <CAKjHkpBW+LWKuKuHnUfKNxwDZeX3SOFKv_jYeNGF8ezdAnKnvg@mail.gmail.com>
- <20130909090424.1a780b49@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130909090424.1a780b49@tlielax.poochiereds.net>
+Received: from fieldses.org ([174.143.236.118]:40850 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752930Ab3IEQaf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Sep 2013 12:30:35 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 05/12] locks: introduce new FL_DELEG lock flag
+Date: Thu,  5 Sep 2013 12:30:13 -0400
+Message-Id: <1378398620-23018-10-git-send-email-bfields@redhat.com>
+In-Reply-To: <1378398620-23018-1-git-send-email-bfields@redhat.com>
+References: <1378398620-23018-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 09, 2013 at 09:04:24AM -0400, Jeff Layton wrote:
-> On Fri, 6 Sep 2013 11:48:45 -0500
-> Quentin Barnes <qbarnes@gmail.com> wrote:
-> 
-> > Jeff, can your try out my test program in the base note on your
-> > RHEL5.9 or later RHEL5.x kernels?
-> > 
-> > I reverified that running the test on a 2.6.18-348.16.1.el5 x86_64
-> > kernel (latest released RHEL5.9) does not show the problem for me.
-> > Based on what you and Trond have said in this thread though, I'm
-> > really curious why it doesn't have the problem.
-> 
-> I can confirm what you see on RHEL5. One difference is that RHEL5's
-> page_mkwrite handler does not do wait_on_page_writeback. That was added
-> as part of the stable pages work that went in a while back, so that may 
-> be the main difference. Adding that in doesn't seem to materially
-> change things though.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Good to know you confirmed the behavior I saw on RHEL5 (just so that
-I know it's not some random variable in play I had overlooked).
+For now FL_DELEG is just a synonym for FL_LEASE.  So this patch doesn't
+change behavior.
 
-> In any case, what I see is that the initial program just ends up with a
-> two calls to nfs_vm_page_mkwrite(). They both push out a WRITE and then
-> things settle down (likely because the page is still marked dirty).
-> 
-> Eventually, another write occurs and the dirty page gets pushed out to
-> the server in a small flurry of WRITEs to the same range.Then, things
-> settle down again until there's another small flurry of activity.
-> 
-> My suspicion is that there is a race condition involved here, but I'm
-> unclear on where it is. I'm not 100% convinced this is a bug, but page
-> fault semantics aren't my strong suit.
+Next we'll modify break_lease to treat FL_DELEG leases differently, to
+account for the fact that NFSv4 delegations should be broken in more
+situations than Windows oplocks.
 
-As a test on RHEL6, I made a trivial systemtap script for kprobing
-nfs_vm_page_mkwrite() and nfs_flush_incompatible().  I wanted to
-make sure this bug was limited to just the nfs module and was not a
-result of some mm behavior change.
+Acked-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/locks.c          |    2 +-
+ fs/nfsd/nfs4state.c |    2 +-
+ include/linux/fs.h  |    1 +
+ 3 files changed, 3 insertions(+), 2 deletions(-)
 
-With the bug unfixed running the test program, nfs_vm_page_mkwrite()
-and nfs_flush_incompatible() are called repeatedly at a very high rate
-(hence all the WRITEs).
+diff --git a/fs/locks.c b/fs/locks.c
+index b27a300..6e46dede 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -134,7 +134,7 @@
+ 
+ #define IS_POSIX(fl)	(fl->fl_flags & FL_POSIX)
+ #define IS_FLOCK(fl)	(fl->fl_flags & FL_FLOCK)
+-#define IS_LEASE(fl)	(fl->fl_flags & FL_LEASE)
++#define IS_LEASE(fl)	(fl->fl_flags & (FL_LEASE|FL_DELEG))
+ 
+ static bool lease_breaking(struct file_lock *fl)
+ {
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 43f4229..85489e6 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3012,7 +3012,7 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_delegation *dp, int f
+ 		return NULL;
+ 	locks_init_lock(fl);
+ 	fl->fl_lmops = &nfsd_lease_mng_ops;
+-	fl->fl_flags = FL_LEASE;
++	fl->fl_flags = FL_DELEG;
+ 	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
+ 	fl->fl_end = OFFSET_MAX;
+ 	fl->fl_owner = (fl_owner_t)(dp->dl_file);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index edca504..f8a2343 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -887,6 +887,7 @@ static inline int file_check_writeable(struct file *filp)
+ 
+ #define FL_POSIX	1
+ #define FL_FLOCK	2
++#define FL_DELEG	4	/* NFSv4 delegation */
+ #define FL_ACCESS	8	/* not trying to lock, just looking */
+ #define FL_EXISTS	16	/* when unlocking, test for existence */
+ #define FL_LEASE	32	/* lease held on this file */
+-- 
+1.7.9.5
 
-After Trond's patch, the two functions are called just at the
-program's initialization and then called only every 30 seconds or
-so.
-
-It looks like to me from the code flow that there must be something
-nfs_wb_page() does that resets the need for mm to keeping reinvoking
-nfs_vm_page_mkwrite().  I didn't look any deeper than that though
-for now.  Maybe a race in how nfs_wb_page() updates status you're
-thinking of?
-
-> You may want to consider opening a "formal" RH support case if you have
-> interest in getting Trond's patch backported, and/or following up on
-> why RHEL5 behaves the way it does.
-
-Yes, I'll be doing that.  When I do, I'll send you an email with the
-case ticket.  Before filing it though, I want to hear back from the
-group that had the original problem to make sure Trond's patch fully
-addresses their problem (besides just the trivial test program).
-
-> -- 
-> Jeff Layton <jlayton@redhat.com>
-
-Quentin
