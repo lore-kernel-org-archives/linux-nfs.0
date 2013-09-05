@@ -1,120 +1,180 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48237 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:40866 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755238Ab3IYOFP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Sep 2013 10:05:15 -0400
-Date: Wed, 25 Sep 2013 10:05:13 -0400
-To: Jongman Heo <jongman.heo@samsung.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: Regression caused by commit 4bdc33ed ("NFSDv4.2: Add NFS v4.2
- support to the NFS server")
-Message-ID: <20130925140513.GB14739@fieldses.org>
-References: <22596229.54071380086390046.JavaMail.weblogic@epv6ml04>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <22596229.54071380086390046.JavaMail.weblogic@epv6ml04>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1753018Ab3IEQai (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Sep 2013 12:30:38 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        David Howells <dhowells@redhat.com>
+Subject: [PATCH 10/12] locks: break delegations on rename
+Date: Thu,  5 Sep 2013 12:30:18 -0400
+Message-Id: <1378398620-23018-15-git-send-email-bfields@redhat.com>
+In-Reply-To: <1378398620-23018-1-git-send-email-bfields@redhat.com>
+References: <1378398620-23018-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 25, 2013 at 05:19:50AM +0000, Jongman Heo wrote:
-> My embedded development box fails to NFS-boot with NFS server which uses recent kernel.
-> 
-> Using git bisect, I found it is caused by commit 4bdc33ed ("NFSDv4.2: Add NFS v4.2 support to the NFS server").
-> 
-> 
-> 1. dmesg (NFS boot failure case)
-> 
-> ...
-> [    2.040893] ADDRCONF(NETDEV_UP): eth0: link is not ready
-> [    2.046207] e1000: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: RX
-> [    2.053570] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
-> [    3.055023] IP-Config: Guessing netmask 255.255.0.0
-> [    3.059979] IP-Config: Gateway not on directly connected network.
-> [    3.066330] Looking up port of RPC 100003/2 on 165.213.88.249
-> [    3.074001] Looking up port of RPC 100005/1 on 165.213.88.249
-> [    3.122878] VFS: Unable to mount root fs via NFS, trying floppy.
-> [    3.129134] VFS: Cannot open root device "nfs" or unknown-block(2,0)
-> [    3.135478] Please append a correct "root=" boot option; here are the available partitions:
-> [    3.143831] 1f00            3072 mtdblock0 (driver?)
-> [    3.148798] 1f01              64 mtdblock1 (driver?)
-> [    3.153758] 1f02              64 mtdblock2 (driver?)
-> [    3.158719] 1f03              64 mtdblock3 (driver?)
-> [    3.163682] 1f04              64 mtdblock4 (driver?)
-> [    3.168644] 1f05              64 mtdblock5 (driver?)
-> [    3.173607] 1f06              64 mtdblock6 (driver?)
-> [    3.178568] 0800       488386584 sda driver: sd
-> [    3.183099]   0801          506016 sda1
-> [    3.186927]   0802         4008217 sda2
-> [    3.190755]   0803       483869767 sda3
-> [    3.194584] b300         1880064 mmcblk0 driver: mmcblk
-> [    3.199802]   b301            4096 mmcblk0p1
-> [    3.204063]   b302          102400 mmcblk0p2
-> [    3.208330]   b303            4096 mmcblk0p3
-> [    3.212594]   b304               1 mmcblk0p4
-> [    3.216855]   b305            2048 mmcblk0p5
-> [    3.221116]   b306            2048 mmcblk0p6
-> [    3.225382]   b307            2048 mmcblk0p7
-> [    3.229644]   b308            4096 mmcblk0p8
-> [    3.233906]   b309           12288 mmcblk0p9
-> [    3.238176]   b30a           16384 mmcblk0p10
-> [    3.242524]   b30b          142336 mmcblk0p11
-> [    3.246869]   b30c         1572864 mmcblk0p12
-> [    3.251219] b320           12288 mmcblk0gp1 (driver?)
-> [    3.256272] b310           12288 mmcblk0gp0 (driver?)
-> [    3.261320] Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(2,0)
-> [    3.269566] Pid: 1, comm: swapper Not tainted 2.6.35 #1
-> [    3.274776] Call Trace:
-> [    3.277232]  [<80d0db5b>] ? printk+0x1e/0x20
-> [    3.281492]  [<80d0dad1>] panic+0x65/0xd1
-> [    3.285495]  [<80eb9ce3>] mount_block_root+0x125/0x1be
-> [    3.290631]  [<809d1f6d>] ? sys_mknod+0x2d/0x30
-> [    3.295156]  [<80eb9f6d>] mount_root+0xd0/0xf2
-> [    3.299591]  [<80eba0d9>] prepare_namespace+0x14a/0x184
-> [    3.304803]  [<809c44f6>] ? sys_access+0x26/0x30
-> [    3.309411]  [<80eb9a4e>] kernel_init+0x25e/0x26e
-> [    3.314105]  [<80eb97f0>] ? kernel_init+0x0/0x26e
-> [    3.318800]  [<80903242>] kernel_thread_helper+0x6/0x10
-> 
-> 
-> 2. Client (my embedded box) configuration
->   It's kernel 2.6.35 based, and has following NFS kernel configs.
-> 
-> # grep NFS .config
-> CONFIG_NFS_FS=y
-> CONFIG_NFS_V3=y
-> CONFIG_NFS_V3_ACL=y
-> CONFIG_NFS_V4=y
-> # CONFIG_NFS_V4_1 is not set
-> CONFIG_ROOT_NFS=y
-> # CONFIG_NFSD is not set
-> CONFIG_NFS_ACL_SUPPORT=y
-> CONFIG_NFS_COMMON=y
-> 
-> 
-> 3. Server (NFSD) configuration
->    Fedora 19 + latest linus git kernel 3.12.0-rc2+ (commit 22356f44, mm: Place preemption point in do_mlockall() loop)
-> 
-> 
-> 4. workaround
-> 
-> Reverting the commit 4bdc33ed resolves my issue, NFS boot is working then.
-> I've done git bisect, but lost the resulting bisect log due to sudden power loss :(.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-So when you say you revert that commit, you mean you revert it on your
-*server*, right?  You're not changing the client at all throughout these
-tests?
+Cc: David Howells <dhowells@redhat.com>
+Acked-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/cachefiles/namei.c |    2 +-
+ fs/namei.c            |   47 +++++++++++++++++++++++++++++++++++++++++++----
+ fs/nfsd/vfs.c         |    2 +-
+ include/linux/fs.h    |    2 +-
+ 4 files changed, 46 insertions(+), 7 deletions(-)
 
-A network trace might be interesting: so, on the server, run
+diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
+index 6846fcef..1363eae 100644
+--- a/fs/cachefiles/namei.c
++++ b/fs/cachefiles/namei.c
+@@ -396,7 +396,7 @@ try_again:
+ 		cachefiles_io_error(cache, "Rename security error %d", ret);
+ 	} else {
+ 		ret = vfs_rename(dir->d_inode, rep,
+-				 cache->graveyard->d_inode, grave);
++				 cache->graveyard->d_inode, grave, NULL);
+ 		if (ret != 0 && ret != -ENOMEM)
+ 			cachefiles_io_error(cache,
+ 					    "Rename failed with error %d", ret);
+diff --git a/fs/namei.c b/fs/namei.c
+index 8de79f1..8658d5d 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3830,7 +3830,8 @@ out:
+ }
+ 
+ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+-			    struct inode *new_dir, struct dentry *new_dentry)
++			    struct inode *new_dir, struct dentry *new_dentry,
++			    struct inode **delegated_inode)
+ {
+ 	struct inode *target = new_dentry->d_inode;
+ 	struct inode *source = old_dentry->d_inode;
+@@ -3847,6 +3848,14 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+ 	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
+ 		goto out;
+ 
++	error = try_break_deleg(source, delegated_inode);
++	if (error)
++		goto out;
++	if (target) {
++		error = try_break_deleg(target, delegated_inode);
++		if (error)
++			goto out;
++	}
+ 	error = old_dir->i_op->rename(old_dir, old_dentry, new_dir, new_dentry);
+ 	if (error)
+ 		goto out;
+@@ -3861,8 +3870,30 @@ out:
+ 	return error;
+ }
+ 
++/**
++ * vfs_rename - rename a filesystem object
++ * @old_dir:	parent of source
++ * @old_dentry:	source
++ * @new_dir:	parent of destination
++ * @new_dentry:	destination
++ * @delegated_inode: returns an inode needing a delegation break
++ *
++ * The caller must hold multiple mutexes--see lock_rename()).
++ *
++ * If vfs_rename discovers a delegation in need of breaking at either
++ * the source or destination, it will return -EWOULDBLOCK and return a
++ * reference to the inode in delegated_inode.  The caller should then
++ * break the delegation and retry.  Because breaking a delegation may
++ * take a long time, the caller should drop all locks before doing
++ * so.
++ *
++ * Alternatively, a caller may pass NULL for delegated_inode.  This may
++ * be appropriate for callers that expect the underlying filesystem not
++ * to be NFS exported.
++ */
+ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+-	       struct inode *new_dir, struct dentry *new_dentry)
++	       struct inode *new_dir, struct dentry *new_dentry,
++	       struct inode **delegated_inode)
+ {
+ 	int error;
+ 	int is_dir = S_ISDIR(old_dentry->d_inode->i_mode);
+@@ -3890,7 +3921,7 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	if (is_dir)
+ 		error = vfs_rename_dir(old_dir,old_dentry,new_dir,new_dentry);
+ 	else
+-		error = vfs_rename_other(old_dir,old_dentry,new_dir,new_dentry);
++		error = vfs_rename_other(old_dir,old_dentry,new_dir,new_dentry,delegated_inode);
+ 	if (!error)
+ 		fsnotify_move(old_dir, new_dir, old_name, is_dir,
+ 			      new_dentry->d_inode, old_dentry);
+@@ -3906,6 +3937,7 @@ SYSCALL_DEFINE4(renameat, int, olddfd, const char __user *, oldname,
+ 	struct dentry *old_dentry, *new_dentry;
+ 	struct dentry *trap;
+ 	struct nameidata oldnd, newnd;
++	struct inode *delegated_inode = NULL;
+ 	struct filename *from;
+ 	struct filename *to;
+ 	unsigned int lookup_flags = 0;
+@@ -3945,6 +3977,7 @@ retry:
+ 	newnd.flags &= ~LOOKUP_PARENT;
+ 	newnd.flags |= LOOKUP_RENAME_TARGET;
+ 
++retry_deleg:
+ 	trap = lock_rename(new_dir, old_dir);
+ 
+ 	old_dentry = lookup_hash(&oldnd);
+@@ -3981,13 +4014,19 @@ retry:
+ 	if (error)
+ 		goto exit5;
+ 	error = vfs_rename(old_dir->d_inode, old_dentry,
+-				   new_dir->d_inode, new_dentry);
++				   new_dir->d_inode, new_dentry,
++				   &delegated_inode);
+ exit5:
+ 	dput(new_dentry);
+ exit4:
+ 	dput(old_dentry);
+ exit3:
+ 	unlock_rename(new_dir, old_dir);
++	if (delegated_inode) {
++		error = break_deleg_wait(&delegated_inode);
++		if (!error)
++			goto retry_deleg;
++	}
+ 	mnt_drop_write(oldnd.path.mnt);
+ exit2:
+ 	if (retry_estale(error, lookup_flags))
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 00d0616..680081b 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1838,7 +1838,7 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+ 		if (host_err)
+ 			goto out_dput_new;
+ 	}
+-	host_err = vfs_rename(fdir, odentry, tdir, ndentry);
++	host_err = vfs_rename(fdir, odentry, tdir, ndentry, NULL);
+ 	if (!host_err) {
+ 		host_err = commit_metadata(tfhp);
+ 		if (!host_err)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 43a3506..74aa0c7 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1470,7 +1470,7 @@ extern int vfs_symlink(struct inode *, struct dentry *, const char *);
+ extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
+ extern int vfs_rmdir(struct inode *, struct dentry *);
+ extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
+-extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *);
++extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **);
+ 
+ /*
+  * VFS dentry helper functions.
+-- 
+1.7.9.5
 
-	tcpdump -s0 -wtmp.pcap -ieth0
-
-(replace eth0 by the right network interface), then try booting the
-client and after the client fails, kill tcpdump and send us a copy of
-tmp.pcap.
-
-(And also you might want to fire up "wireshark tmp.pcap" and take a look
-yourself--you'll probably see something like a version mismatch error in
-the network traffic.)
-
---b.
