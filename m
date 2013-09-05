@@ -1,87 +1,145 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f175.google.com ([209.85.216.175]:35172 "EHLO
-	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754134Ab3I3MUb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Sep 2013 08:20:31 -0400
-Received: by mail-qc0-f175.google.com with SMTP id v2so3519099qcr.6
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Sep 2013 05:20:31 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <52474839.2080201@redhat.com>
-References: <CAELBmZBGD4rph=gjLCPKCdEj+nzEQ-F=DExoL+h3vRm7qF7dCQ@mail.gmail.com>
-	<20130925183828.GA30372@lenny.home.zabbo.net>
-	<CAFX2JfnyF8kyMYzCdqdr2JkoyQCom1bFLpFj89wODjoju54-Ow@mail.gmail.com>
-	<20130925190620.GB30372@lenny.home.zabbo.net>
-	<20130925195526.GA18971@fieldses.org>
-	<20130925210742.GG30372@lenny.home.zabbo.net>
-	<CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
-	<20130926185508.GO30372@lenny.home.zabbo.net>
-	<5244A68F.906@redhat.com>
-	<20130927200550.GA22640@fieldses.org>
-	<20130927205013.GZ30372@lenny.home.zabbo.net>
-	<CAJfpegtdiQzP7t5hc_OaHjSGTrjdZLfKi6fiKqBQ_+AP2Y0-oQ@mail.gmail.com>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA9467EF2D7@SACEXCMBX04-PRD.hq.netapp.com>
-	<52474839.2080201@redhat.com>
-Date: Mon, 30 Sep 2013 14:20:30 +0200
-Message-ID: <CAJfpegsN7Hu8uecSVQrhax+n+zhq=uUgpzOk=qZ6_n383tdNCQ@mail.gmail.com>
-Subject: Re: [RFC] extending splice for copy offloading
-From: Miklos Szeredi <miklos@szeredi.hu>
-To: Ric Wheeler <rwheeler@redhat.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Zach Brown <zab@redhat.com>, "J. Bruce Fields" <bfields@fieldses.org>,
-        Anna Schumaker <schumaker.anna@gmail.com>,
-        Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        Eric Wong <normalperson@yhbt.net>
-Content-Type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:40867 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753029Ab3IEQaj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Sep 2013 12:30:39 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Tyler Hicks <tyhicks@canonical.com>,
+        Dustin Kirkland <dustin.kirkland@gazzang.com>
+Subject: [PATCH 11/12] locks: break delegations on link
+Date: Thu,  5 Sep 2013 12:30:19 -0400
+Message-Id: <1378398620-23018-16-git-send-email-bfields@redhat.com>
+In-Reply-To: <1378398620-23018-1-git-send-email-bfields@redhat.com>
+References: <1378398620-23018-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Sep 28, 2013 at 11:20 PM, Ric Wheeler <rwheeler@redhat.com> wrote:
+From: "J. Bruce Fields" <bfields@redhat.com>
 
->>> I don't see the safety argument very compelling either.  There are real
->>> semantic differences, however: ENOSPC on a write to a
->>> (apparentlíy) already allocated block.  That could be a bit unexpected.
->>> Do we
->>> need a fallocate extension to deal with shared blocks?
->>
->> The above has been the case for all enterprise storage arrays ever since
->> the invention of snapshots. The NFSv4.2 spec does allow you to set a
->> per-file attribute that causes the storage server to always preallocate
->> enough buffers to guarantee that you can rewrite the entire file, however
->> the fact that we've lived without it for said 20 years leads me to believe
->> that demand for it is going to be limited. I haven't put it top of the list
->> of features we care to implement...
->>
->> Cheers,
->>     Trond
->
->
-> I agree - this has been common behaviour for a very long time in the array
-> space. Even without an array,  this is the same as overwriting a block in
-> btrfs or any file system with a read-write LVM snapshot.
+Cc: Tyler Hicks <tyhicks@canonical.com>
+Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
+Acked-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/ecryptfs/inode.c |    2 +-
+ fs/namei.c          |   36 ++++++++++++++++++++++++++++++++----
+ fs/nfsd/vfs.c       |    2 +-
+ include/linux/fs.h  |    2 +-
+ 4 files changed, 35 insertions(+), 7 deletions(-)
 
-Okay, I'm convinced.
+diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+index 0b8b632..cb3ac33 100644
+--- a/fs/ecryptfs/inode.c
++++ b/fs/ecryptfs/inode.c
+@@ -475,7 +475,7 @@ static int ecryptfs_link(struct dentry *old_dentry, struct inode *dir,
+ 	dget(lower_new_dentry);
+ 	lower_dir_dentry = lock_parent(lower_new_dentry);
+ 	rc = vfs_link(lower_old_dentry, lower_dir_dentry->d_inode,
+-		      lower_new_dentry);
++		      lower_new_dentry, NULL);
+ 	if (rc || !lower_new_dentry->d_inode)
+ 		goto out_lock;
+ 	rc = ecryptfs_interpose(lower_new_dentry, new_dentry, dir->i_sb);
+diff --git a/fs/namei.c b/fs/namei.c
+index 8658d5d..fabe0e1 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3631,7 +3631,26 @@ SYSCALL_DEFINE2(symlink, const char __user *, oldname, const char __user *, newn
+ 	return sys_symlinkat(oldname, AT_FDCWD, newname);
+ }
+ 
+-int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry)
++/**
++ * vfs_link - create a new link
++ * @old_dentry:	object to be linked
++ * @dir:	new parent
++ * @new_dentry:	where to create the new link
++ * @delegated_inode: returns inode needing a delegation break
++ *
++ * The caller must hold dir->i_mutex
++ *
++ * If vfs_link discovers a delegation on the to-be-linked file in need
++ * of breaking, it will return -EWOULDBLOCK and return a reference to the
++ * inode in delegated_inode.  The caller should then break the delegation
++ * and retry.  Because breaking a delegation may take a long time, the
++ * caller should drop the i_mutex before doing so.
++ *
++ * Alternatively, a caller may pass NULL for delegated_inode.  This may
++ * be appropriate for callers that expect the underlying filesystem not
++ * to be NFS exported.
++ */
++int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry, struct inode **delegated_inode)
+ {
+ 	struct inode *inode = old_dentry->d_inode;
+ 	unsigned max_links = dir->i_sb->s_max_links;
+@@ -3667,8 +3686,11 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
+ 		error =  -ENOENT;
+ 	else if (max_links && inode->i_nlink >= max_links)
+ 		error = -EMLINK;
+-	else
+-		error = dir->i_op->link(old_dentry, dir, new_dentry);
++	else {
++		error = try_break_deleg(inode, delegated_inode);
++		if (!error)
++			error = dir->i_op->link(old_dentry, dir, new_dentry);
++	}
+ 
+ 	if (!error && (inode->i_state & I_LINKABLE)) {
+ 		spin_lock(&inode->i_lock);
+@@ -3695,6 +3717,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
+ {
+ 	struct dentry *new_dentry;
+ 	struct path old_path, new_path;
++	struct inode *delegated_inode = NULL;
+ 	int how = 0;
+ 	int error;
+ 
+@@ -3729,9 +3752,14 @@ retry:
+ 	error = security_path_link(old_path.dentry, &new_path, new_dentry);
+ 	if (error)
+ 		goto out_dput;
+-	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry);
++	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry, &delegated_inode);
+ out_dput:
+ 	done_path_create(&new_path, new_dentry);
++	if (delegated_inode) {
++		error = break_deleg_wait(&delegated_inode);
++		if (!error)
++			goto retry;
++	}
+ 	if (retry_estale(error, how)) {
+ 		how |= LOOKUP_REVAL;
+ 		goto retry;
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 680081b..93227d9 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1737,7 +1737,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
+ 		err = nfserrno(host_err);
+ 		goto out_dput;
+ 	}
+-	host_err = vfs_link(dold, dirp, dnew);
++	host_err = vfs_link(dold, dirp, dnew, NULL);
+ 	if (!host_err) {
+ 		err = nfserrno(commit_metadata(ffhp));
+ 		if (!err)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 74aa0c7..a2403f9 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1467,7 +1467,7 @@ extern int vfs_create(struct inode *, struct dentry *, umode_t, bool);
+ extern int vfs_mkdir(struct inode *, struct dentry *, umode_t);
+ extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
+ extern int vfs_symlink(struct inode *, struct dentry *, const char *);
+-extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
++extern int vfs_link(struct dentry *, struct inode *, struct dentry *, struct inode **);
+ extern int vfs_rmdir(struct inode *, struct dentry *);
+ extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
+ extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **);
+-- 
+1.7.9.5
 
-So I suggest
-
- - mount(..., MNT_REFLINK): *allow* splice to reflink.  If this is not
-set, fall back to page cache copy.
- - splice(... SPLICE_REFLINK):  fail non-reflink copy.  With this app
-can force reflink.
-
-Both are trivial to implement and make sure that no backward
-incompatibility surprises happen.
-
-My other worry is about interruptibility/restartability.  Ideas?
-
-What happens on splice(from, to, 4G) and it's a non-reflink copy?
-Can the page cache copy be made restartable?   Or should splice() be
-allowed to return a short count?  What happens on (non-reflink) remote
-copies and huge request sizes?
-
-Thanks,
-Miklos
