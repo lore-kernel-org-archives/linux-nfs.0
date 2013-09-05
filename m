@@ -1,165 +1,313 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39111 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:46384 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753247Ab3ISUuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Sep 2013 16:50:39 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 04/13] vfs: take i_mutex on renamed file
-Date: Thu, 19 Sep 2013 16:50:28 -0400
-Message-Id: <1379623837-30798-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1379623837-30798-1-git-send-email-bfields@redhat.com>
-References: <1379623837-30798-1-git-send-email-bfields@redhat.com>
+	id S1752158Ab3IERaU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Sep 2013 13:30:20 -0400
+From: <andros@netapp.com>
+To: <trond.myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 2 1/1] NFSv4.1 Use MDS auth flavor for data server connection
+Date: Thu, 5 Sep 2013 13:30:13 -0400
+Message-ID: <1378402213-1784-1-git-send-email-andros@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Andy Adamson <andros@netapp.com>
 
-A read delegation is used by NFSv4 as a guarantee that a client can
-perform local read opens without informing the server.
+Commit 4edaa308 "NFS: Use "krb5i" to establish NFSv4 state whenever possible"
+uses the nfs_client cl_rpcclient for all state management operations, and
+will use krb5i or auth_sys with no regard to the mount command authflavor
+choice.
 
-The open operation takes the last component of the pathname as an
-argument, thus is also a lookup operation, and giving the client the
-above guarantee means informing the client before we allow anything that
-would change the set of names pointing to the inode.
+The MDS, as any NFSv4.1 mount point, uses the nfs_server rpc client for all
+non-state management operations with a different nfs_server for each fsid
+encountered traversing the mount point, each with a potentially different
+auth flavor.
 
-Therefore, we need to break delegations on rename, link, and unlink.
+pNFS data servers are not mounted in the normal sense as there is no associated
+nfs_server structure. Data servers can also export multiple fsids, each with
+a potentially different auth flavor.
 
-We also need to prevent new delegations from being acquired while one of
-these operations is in progress.
+Data servers need to use the same authflavor as the MDS server rpc client for
+non-state management operations. Populate a list of rpc clients with the MDS
+server rpc client auth flavor for the DS to use.
 
-We could add some completely new locking for that purpose, but it's
-simpler to use the i_mutex, since that's already taken by all the
-operations we care about.
-
-The single exception is rename.  So, modify rename to take the i_mutex
-on the file that is being renamed.
-
-Also fix up lockdep and Documentation/filesystems/directory-locking to
-reflect the change.
-
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- Documentation/filesystems/directory-locking |   31 +++++++++++++++++++--------
- fs/namei.c                                  |   10 ++++-----
- 2 files changed, 27 insertions(+), 14 deletions(-)
+ fs/nfs/internal.h         |   2 +
+ fs/nfs/nfs4client.c       | 110 ++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4filelayout.c   |  35 +++++++++++----
+ include/linux/nfs_fs_sb.h |   1 +
+ 4 files changed, 140 insertions(+), 8 deletions(-)
 
-diff --git a/Documentation/filesystems/directory-locking b/Documentation/filesystems/directory-locking
-index ff7b611..09bbf9a 100644
---- a/Documentation/filesystems/directory-locking
-+++ b/Documentation/filesystems/directory-locking
-@@ -2,6 +2,10 @@
- kinds of locks - per-inode (->i_mutex) and per-filesystem
- (->s_vfs_rename_mutex).
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 2415198..23ec6e8 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -186,6 +186,8 @@ extern struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+ 					     int ds_addrlen, int ds_proto,
+ 					     unsigned int ds_timeo,
+ 					     unsigned int ds_retrans);
++extern struct rpc_clnt *nfs4_find_or_create_ds_client(struct nfs_client *,
++						struct inode *);
+ #ifdef CONFIG_PROC_FS
+ extern int __init nfs_fs_proc_init(void);
+ extern void nfs_fs_proc_exit(void);
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 767a5e3..a8dd396 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -49,10 +49,118 @@ static void nfs4_shutdown_session(struct nfs_client *clp)
+ 	}
  
-+	When taking the i_mutex on multiple non-directory objects, we
-+always acquire the locks in order by increasing address.  We'll call
-+that "inode pointer" order in the following.
-+
- 	For our purposes all operations fall in 5 classes:
- 
- 1) read access.  Locking rules: caller locks directory we are accessing.
-@@ -12,8 +16,9 @@ kinds of locks - per-inode (->i_mutex) and per-filesystem
- locks victim and calls the method.
- 
- 4) rename() that is _not_ cross-directory.  Locking rules: caller locks
--the parent, finds source and target, if target already exists - locks it
--and then calls the method.
-+the parent and finds source and target.  If target already exists, lock
-+it.  If source is a non-directory, lock it.  If that means we need to
-+lock both, lock them in inode pointer order.
- 
- 5) link creation.  Locking rules:
- 	* lock parent
-@@ -30,7 +35,9 @@ rules:
- 		fail with -ENOTEMPTY
- 	* if new parent is equal to or is a descendent of source
- 		fail with -ELOOP
--	* if target exists - lock it.
-+	* If target exists, lock it.  If source is a non-directory, lock
-+	  it.  In case that means we need to lock both source and target,
-+	  do so in inode pointer order.
- 	* call the method.
- 
- 
-@@ -56,9 +63,11 @@ objects - A < B iff A is an ancestor of B.
-     renames will be blocked on filesystem lock and we don't start changing
-     the order until we had acquired all locks).
- 
--(3) any operation holds at most one lock on non-directory object and
--    that lock is acquired after all other locks.  (Proof: see descriptions
--    of operations).
-+(3) locks on non-directory objects are acquired only after locks on
-+    directory objects, and are acquired in inode pointer order.
-+    (Proof: all operations but renames take lock on at most one
-+    non-directory object, except renames, which take locks on source and
-+    target in inode pointer order in the case they are not directories.)
- 
- 	Now consider the minimal deadlock.  Each process is blocked on
- attempt to acquire some lock and already holds at least one lock.  Let's
-@@ -66,9 +75,13 @@ consider the set of contended locks.  First of all, filesystem lock is
- not contended, since any process blocked on it is not holding any locks.
- Thus all processes are blocked on ->i_mutex.
- 
--	Non-directory objects are not contended due to (3).  Thus link
--creation can't be a part of deadlock - it can't be blocked on source
--and it means that it doesn't hold any locks.
-+	By (3), any process holding a non-directory lock can only be
-+waiting on another non-directory lock with a larger address.  Therefore
-+the process holding the "largest" such lock can always make progress, and
-+non-directory objects are not included in the set of contended locks.
-+
-+	Thus link creation can't be a part of deadlock - it can't be
-+blocked on source and it means that it doesn't hold any locks.
- 
- 	Any contended object is either held by cross-directory rename or
- has a child that is also contended.  Indeed, suppose that it is held by
-diff --git a/fs/namei.c b/fs/namei.c
-index 0dc4cbf..7bafc66 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3935,7 +3935,8 @@ SYSCALL_DEFINE2(link, const char __user *, oldname, const char __user *, newname
-  *	   That's where 4.4 screws up. Current fix: serialization on
-  *	   sb->s_vfs_rename_mutex. We might be more accurate, but that's another
-  *	   story.
-- *	c) we have to lock _three_ objects - parents and victim (if it exists).
-+ *	c) we have to lock _four_ objects - parents and victim (if it exists),
-+ *	   and source (if it is not a directory).
-  *	   And that - after we got ->i_mutex on parents (until then we don't know
-  *	   whether the target exists).  Solution: try to be smart with locking
-  *	   order for inodes.  We rely on the fact that tree topology may change
-@@ -4011,6 +4012,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 			    struct inode *new_dir, struct dentry *new_dentry)
- {
- 	struct inode *target = new_dentry->d_inode;
-+	struct inode *source = old_dentry->d_inode;
- 	int error;
- 
- 	error = security_inode_rename(old_dir, old_dentry, new_dir, new_dentry);
-@@ -4018,8 +4020,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 		return error;
- 
- 	dget(new_dentry);
--	if (target)
--		mutex_lock(&target->i_mutex);
-+	lock_two_nondirectories(source, target);
- 
- 	error = -EBUSY;
- 	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
-@@ -4034,8 +4035,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 	if (!(old_dir->i_sb->s_type->fs_flags & FS_RENAME_DOES_D_MOVE))
- 		d_move(old_dentry, new_dentry);
- out:
--	if (target)
--		mutex_unlock(&target->i_mutex);
-+	unlock_two_nondirectories(source, target);
- 	dput(new_dentry);
- 	return error;
  }
++
++/**
++ * Per auth flavor data server rpc clients
++ */
++struct nfs4_ds_server {
++	struct list_head	list;	/* ds_clp->cl_ds_clients */
++	struct rpc_clnt		*rpc_clnt;
++};
++
++static struct nfs4_ds_server *
++nfs4_find_or_add_ds_client(struct nfs_client *ds_clp, rpc_authflavor_t flavor,
++			   struct nfs4_ds_server *new)
++{
++	struct nfs4_ds_server *dss, *tmp;
++
++	spin_lock(&ds_clp->cl_lock);
++	list_for_each_entry_safe(dss, tmp, &ds_clp->cl_ds_clients, list) {
++		if (dss->rpc_clnt->cl_auth->au_flavor != flavor)
++			continue;
++		goto out;
++	}
++	if (new)
++		list_add(&new->list, &ds_clp->cl_ds_clients);
++	dss = new;
++out:
++	spin_unlock(&ds_clp->cl_lock); /* need some lock to protect list */
++	return dss;
++}
++
++static struct nfs4_ds_server *
++nfs4_alloc_ds_server(struct nfs_client *ds_clp, rpc_authflavor_t flavor)
++{
++	struct nfs4_ds_server *dss;
++
++	dss = kmalloc(sizeof(*dss), GFP_NOFS);
++	if (dss == NULL)
++		return ERR_PTR(-ENOMEM);
++
++	dss->rpc_clnt = rpc_clone_client_set_auth(ds_clp->cl_rpcclient, flavor);
++	if (IS_ERR(dss->rpc_clnt)) {
++		int err = PTR_ERR(dss->rpc_clnt);
++		kfree (dss);
++		return ERR_PTR(err);
++	}
++	INIT_LIST_HEAD(&dss->list);
++
++	return dss;
++}
++
++static void
++nfs4_free_ds_server(struct nfs4_ds_server *dss)
++{
++	rpc_release_client(dss->rpc_clnt);
++	kfree(dss);
++}
++
++/**
++ * Find or create a DS rpc client with th MDS server rpc client auth flavor
++ * in the nfs_client cl_ds_clients list.
++ */
++struct rpc_clnt *
++nfs4_find_or_create_ds_client(struct nfs_client *ds_clp, struct inode *inode)
++{
++	struct nfs4_ds_server *dss, *new;
++	rpc_authflavor_t flavor = NFS_SERVER(inode)->client->cl_auth->au_flavor;
++
++	dss = nfs4_find_or_add_ds_client(ds_clp, flavor, NULL);
++	if (dss != NULL)
++		goto out;
++	new = nfs4_alloc_ds_server(ds_clp, flavor);
++	if (IS_ERR(new))
++		return (struct rpc_clnt *)new;
++	dss = nfs4_find_or_add_ds_client(ds_clp, flavor, new);
++	if (dss != new)
++		nfs4_free_ds_server(new);
++out:
++	return dss->rpc_clnt;
++}
++EXPORT_SYMBOL_GPL(nfs4_find_or_create_ds_client);
++
++static void
++nfs4_shutdown_ds_clients(struct nfs_client *clp)
++{
++	struct nfs4_ds_server *dss;
++	LIST_HEAD(shutdown_list);
++
++	spin_lock(&clp->cl_lock);
++	while (!list_empty(&clp->cl_ds_clients)) {
++		dss = list_entry(clp->cl_ds_clients.next,
++				  struct nfs4_ds_server, list);
++		list_move(&dss->list, &shutdown_list);
++	}
++	spin_unlock(&clp->cl_lock);
++
++	while (!list_empty(&shutdown_list)) {
++		dss = list_entry(shutdown_list.next,
++				  struct nfs4_ds_server, list);
++		list_del(&dss->list);
++		rpc_shutdown_client(dss->rpc_clnt);
++		kfree (dss);
++	}
++}
++
+ #else /* CONFIG_NFS_V4_1 */
+ static void nfs4_shutdown_session(struct nfs_client *clp)
+ {
+ }
++
++static void
++nfs4_shutdown_ds_clients(struct nfs_client *clp)
++{
++}
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
+@@ -73,6 +181,7 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
+ 
+ 	spin_lock_init(&clp->cl_lock);
+ 	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
++	INIT_LIST_HEAD(&clp->cl_ds_clients);
+ 	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
+ 	clp->cl_state = 1 << NFS4CLNT_LEASE_EXPIRED;
+ 	clp->cl_minorversion = cl_init->minorversion;
+@@ -97,6 +206,7 @@ static void nfs4_shutdown_client(struct nfs_client *clp)
+ {
+ 	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
+ 		nfs4_kill_renewd(clp);
++	nfs4_shutdown_ds_clients(clp);
+ 	nfs4_shutdown_session(clp);
+ 	nfs4_destroy_callback(clp);
+ 	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index a70cb3a..b86464b 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -528,6 +528,7 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 	struct nfs_pgio_header *hdr = data->header;
+ 	struct pnfs_layout_segment *lseg = hdr->lseg;
+ 	struct nfs4_pnfs_ds *ds;
++	struct rpc_clnt *ds_clnt;
+ 	loff_t offset = data->args.offset;
+ 	u32 j, idx;
+ 	struct nfs_fh *fh;
+@@ -542,6 +543,11 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+ 	if (!ds)
+ 		return PNFS_NOT_ATTEMPTED;
++
++	ds_clnt = nfs4_find_or_create_ds_client(ds->ds_clp, hdr->inode);
++	if (IS_ERR(ds_clnt))
++		return PNFS_NOT_ATTEMPTED;
++
+ 	dprintk("%s USE DS: %s cl_count %d\n", __func__,
+ 		ds->ds_remotestr, atomic_read(&ds->ds_clp->cl_count));
+ 
+@@ -556,7 +562,7 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 	data->mds_offset = offset;
+ 
+ 	/* Perform an asynchronous read to ds */
+-	nfs_initiate_read(ds->ds_clp->cl_rpcclient, data,
++	nfs_initiate_read(ds_clnt, data,
+ 				  &filelayout_read_call_ops, RPC_TASK_SOFTCONN);
+ 	return PNFS_ATTEMPTED;
+ }
+@@ -568,6 +574,7 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
+ 	struct nfs_pgio_header *hdr = data->header;
+ 	struct pnfs_layout_segment *lseg = hdr->lseg;
+ 	struct nfs4_pnfs_ds *ds;
++	struct rpc_clnt *ds_clnt;
+ 	loff_t offset = data->args.offset;
+ 	u32 j, idx;
+ 	struct nfs_fh *fh;
+@@ -578,6 +585,11 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+ 	if (!ds)
+ 		return PNFS_NOT_ATTEMPTED;
++
++	ds_clnt = nfs4_find_or_create_ds_client(ds->ds_clp, hdr->inode);
++	if (IS_ERR(ds_clnt))
++		return PNFS_NOT_ATTEMPTED;
++
+ 	dprintk("%s ino %lu sync %d req %Zu@%llu DS: %s cl_count %d\n",
+ 		__func__, hdr->inode->i_ino, sync, (size_t) data->args.count,
+ 		offset, ds->ds_remotestr, atomic_read(&ds->ds_clp->cl_count));
+@@ -595,7 +607,7 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
+ 	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
+ 
+ 	/* Perform an asynchronous write */
+-	nfs_initiate_write(ds->ds_clp->cl_rpcclient, data,
++	nfs_initiate_write(ds_clnt, data,
+ 				    &filelayout_write_call_ops, sync,
+ 				    RPC_TASK_SOFTCONN);
+ 	return PNFS_ATTEMPTED;
+@@ -1105,16 +1117,19 @@ static int filelayout_initiate_commit(struct nfs_commit_data *data, int how)
+ {
+ 	struct pnfs_layout_segment *lseg = data->lseg;
+ 	struct nfs4_pnfs_ds *ds;
++	struct rpc_clnt *ds_clnt;
+ 	u32 idx;
+ 	struct nfs_fh *fh;
+ 
+ 	idx = calc_ds_index_from_commit(lseg, data->ds_commit_index);
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+-	if (!ds) {
+-		prepare_to_resend_writes(data);
+-		filelayout_commit_release(data);
+-		return -EAGAIN;
+-	}
++	if (!ds)
++		goto out_err;
++
++	ds_clnt = nfs4_find_or_create_ds_client(ds->ds_clp, data->inode);
++	if (IS_ERR(ds_clnt))
++		goto out_err;
++
+ 	dprintk("%s ino %lu, how %d cl_count %d\n", __func__,
+ 		data->inode->i_ino, how, atomic_read(&ds->ds_clp->cl_count));
+ 	data->commit_done_cb = filelayout_commit_done_cb;
+@@ -1123,9 +1138,13 @@ static int filelayout_initiate_commit(struct nfs_commit_data *data, int how)
+ 	fh = select_ds_fh_from_commit(lseg, data->ds_commit_index);
+ 	if (fh)
+ 		data->args.fh = fh;
+-	return nfs_initiate_commit(ds->ds_clp->cl_rpcclient, data,
++	return nfs_initiate_commit(ds_clnt, data,
+ 				   &filelayout_commit_call_ops, how,
+ 				   RPC_TASK_SOFTCONN);
++out_err:
++	prepare_to_resend_writes(data);
++	filelayout_commit_release(data);
++	return -EAGAIN;
+ }
+ 
+ static int
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index d221243..4d476e7 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -56,6 +56,7 @@ struct nfs_client {
+ 	struct rpc_cred		*cl_machine_cred;
+ 
+ #if IS_ENABLED(CONFIG_NFS_V4)
++	struct list_head	cl_ds_clients; /* auth flavor data servers */
+ 	u64			cl_clientid;	/* constant */
+ 	nfs4_verifier		cl_confirm;	/* Clientid verifier */
+ 	unsigned long		cl_state;
 -- 
-1.7.9.5
+1.8.3.1
 
