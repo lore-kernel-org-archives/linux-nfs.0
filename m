@@ -1,172 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f44.google.com ([209.85.128.44]:35256 "EHLO
-	mail-qe0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753047Ab3IZSke (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:40:34 -0400
-Received: by mail-qe0-f44.google.com with SMTP id 3so1108012qeb.31
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:40:33 -0700 (PDT)
-From: Benny Halevy <bhalevy@primarydata.com>
-To: " J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH RFC v0 10/49] pnfsd: use sbid hash table to map super_blocks to devid major identifiers
-Date: Thu, 26 Sep 2013 14:40:31 -0400
-Message-Id: <1380220831-13136-1-git-send-email-bhalevy@primarydata.com>
-In-Reply-To: <52447EA0.7070004@primarydata.com>
-References: <52447EA0.7070004@primarydata.com>
+Received: from mx12.netapp.com ([216.240.18.77]:59477 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752510Ab3IFPA6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Sep 2013 11:00:58 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: Quentin Barnes <qbarnes@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
+Date: Fri, 6 Sep 2013 15:00:56 +0000
+Message-ID: <1378479655.3332.3.camel@leira.trondhjem.org>
+References: <20130905162110.GA17920@gmail.com>
+	 <20130905170303.GB17330@us.ibm.com> <20130905191139.GA20830@gmail.com>
+	 <1378411320.5450.27.camel@leira.trondhjem.org>
+	 <20130905213649.GA21944@gmail.com>
+	 <1378418243.5450.29.camel@leira.trondhjem.org>
+	 <20130905223420.GA23192@gmail.com>
+	 <20130906093636.6818e7b2@corrin.poochiereds.net>
+In-Reply-To: <20130906093636.6818e7b2@corrin.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@panasas.com>
-
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[pnfsd: alloc_sid should kmalloc a object not a pointer]
-Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
----
- fs/nfsd/nfs4pnfsd.c | 120 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/pnfsd.h     |   2 +
- 2 files changed, 122 insertions(+)
-
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index cb28207..9a7cbc9 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -25,3 +25,123 @@
- 
- #define NFSDDBG_FACILITY                NFSDDBG_PNFS
- 
-+static DEFINE_SPINLOCK(layout_lock);
-+
-+/* hash table for nfsd4_pnfs_deviceid.sbid */
-+#define SBID_HASH_BITS	8
-+#define SBID_HASH_SIZE	(1 << SBID_HASH_BITS)
-+#define SBID_HASH_MASK	(SBID_HASH_SIZE - 1)
-+
-+struct sbid_tracker {
-+	u64 id;
-+	struct super_block *sb;
-+	struct list_head hash;
-+};
-+
-+static u64 current_sbid;
-+static struct list_head sbid_hashtbl[SBID_HASH_SIZE];
-+
-+static unsigned long
-+sbid_hashval(struct super_block *sb)
-+{
-+	return hash_ptr(sb, SBID_HASH_BITS);
-+}
-+
-+static struct sbid_tracker *
-+alloc_sbid(void)
-+{
-+	return kmalloc(sizeof(struct sbid_tracker), GFP_KERNEL);
-+}
-+
-+static void
-+destroy_sbid(struct sbid_tracker *sbid)
-+{
-+	spin_lock(&layout_lock);
-+	list_del(&sbid->hash);
-+	spin_unlock(&layout_lock);
-+	kfree(sbid);
-+}
-+
-+void
-+nfsd4_free_pnfs_slabs(void)
-+{
-+	int i;
-+	struct sbid_tracker *sbid;
-+
-+	for (i = 0; i < SBID_HASH_SIZE; i++) {
-+		while (!list_empty(&sbid_hashtbl[i])) {
-+			sbid = list_first_entry(&sbid_hashtbl[i],
-+						struct sbid_tracker,
-+						hash);
-+			destroy_sbid(sbid);
-+		}
-+	}
-+}
-+
-+int
-+nfsd4_init_pnfs_slabs(void)
-+{
-+	int i;
-+
-+	for (i = 0; i < SBID_HASH_SIZE; i++)
-+		INIT_LIST_HEAD(&sbid_hashtbl[i]);
-+
-+	return 0;
-+}
-+
-+static u64
-+alloc_init_sbid(struct super_block *sb)
-+{
-+	struct sbid_tracker *sbid;
-+	struct sbid_tracker *new = alloc_sbid();
-+	unsigned long hash_idx = sbid_hashval(sb);
-+	u64 id = 0;
-+
-+	if (likely(new)) {
-+		spin_lock(&layout_lock);
-+		id = ++current_sbid;
-+		new->id = (id << SBID_HASH_BITS) | (hash_idx & SBID_HASH_MASK);
-+		id = new->id;
-+		BUG_ON(id == 0);
-+		new->sb = sb;
-+
-+		list_for_each_entry (sbid, &sbid_hashtbl[hash_idx], hash)
-+			if (sbid->sb == sb) {
-+				kfree(new);
-+				id = sbid->id;
-+				spin_unlock(&layout_lock);
-+				return id;
-+			}
-+		list_add(&new->hash, &sbid_hashtbl[hash_idx]);
-+		spin_unlock(&layout_lock);
-+	}
-+	return id;
-+}
-+
-+static u64
-+find_create_sbid(struct super_block *sb)
-+{
-+	struct sbid_tracker *sbid;
-+	unsigned long hash_idx = sbid_hashval(sb);
-+	int pos = 0;
-+	u64 id = 0;
-+
-+	spin_lock(&layout_lock);
-+	list_for_each_entry (sbid, &sbid_hashtbl[hash_idx], hash) {
-+		pos++;
-+		if (sbid->sb != sb)
-+			continue;
-+		if (pos > 1) {
-+			list_del(&sbid->hash);
-+			list_add(&sbid->hash, &sbid_hashtbl[hash_idx]);
-+		}
-+		id = sbid->id;
-+		break;
-+	}
-+	spin_unlock(&layout_lock);
-+
-+	if (!id)
-+		id = alloc_init_sbid(sb);
-+
-+	return id;
-+}
-diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
-index 7c46791..29ea2e7 100644
---- a/fs/nfsd/pnfsd.h
-+++ b/fs/nfsd/pnfsd.h
-@@ -36,4 +36,6 @@
- 
- #include <linux/nfsd/nfsd4_pnfs.h>
- 
-+#include "xdr4.h"
-+
- #endif /* LINUX_NFSD_PNFSD_H */
--- 
-1.8.3.1
-
+T24gRnJpLCAyMDEzLTA5LTA2IGF0IDA5OjM2IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+T24gVGh1LCA1IFNlcCAyMDEzIDE3OjM0OjIwIC0wNTAwDQo+IFF1ZW50aW4gQmFybmVzIDxxYmFy
+bmVzQGdtYWlsLmNvbT4gd3JvdGU6DQo+IA0KPiA+IE9uIFRodSwgU2VwIDA1LCAyMDEzIGF0IDA5
+OjU3OjI0UE0gKzAwMDAsIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gPiBPbiBUaHUsIDIw
+MTMtMDktMDUgYXQgMTY6MzYgLTA1MDAsIFF1ZW50aW4gQmFybmVzIHdyb3RlOg0KPiA+ID4gPiBP
+biBUaHUsIFNlcCAwNSwgMjAxMyBhdCAwODowMjowMVBNICswMDAwLCBNeWtsZWJ1c3QsIFRyb25k
+IHdyb3RlOg0KPiA+ID4gPiA+IE9uIFRodSwgMjAxMy0wOS0wNSBhdCAxNDoxMSAtMDUwMCwgUXVl
+bnRpbiBCYXJuZXMgd3JvdGU6DQo+ID4gPiA+ID4gPiBPbiBUaHUsIFNlcCAwNSwgMjAxMyBhdCAx
+MjowMzowM1BNIC0wNTAwLCBNYWxhaGFsIE5haW5lbmkgd3JvdGU6DQo+ID4gPiA+ID4gPiA+IE5l
+aWwgQnJvd24gcG9zdGVkIGEgcGF0Y2ggY291cGxlIGRheXMgYWdvIGZvciB0aGlzIQ0KPiA+ID4g
+PiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gaHR0cDovL3RocmVhZC5nbWFuZS5vcmcvZ21hbmUubGlu
+dXgubmZzLzU4NDczDQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IEkgdHJpZWQgTmVpbCdzIHBh
+dGNoIG9uIGEgdjMuMTEga2VybmVsLiAgVGhlIHJlYnVpbHQga2VybmVsIHN0aWxsDQo+ID4gPiA+
+ID4gPiBleGhpYml0ZWQgdGhlIHNhbWUgMTAwMHMgb2YgV1JJVEVzL3NlYyBwcm9ibGVtLg0KPiA+
+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBBbnkgb3RoZXIgaWRlYXM/DQo+ID4gPiA+ID4gDQo+ID4g
+PiA+ID4gWWVzLiBQbGVhc2UgdHJ5IHRoZSBhdHRhY2hlZCBwYXRjaC4NCj4gPiA+ID4gDQo+ID4g
+PiA+IEdyZWF0ISAgVGhhdCBkaWQgdGhlIHRyaWNrIQ0KPiA+ID4gPiANCj4gPiA+ID4gRG8geW91
+IGZlZWwgdGhpcyBwYXRjaCBjb3VsZCBiZSB3b3J0aHkgb2YgcHVzaGluZyBpdCB1cHN0cmVhbSBp
+biBpdHMNCj4gPiA+ID4gY3VycmVudCBzdGF0ZSBvciB3YXMgaXQganVzdCB0byB2ZXJpZnkgYSB0
+aGVvcnk/DQo+ID4gPiA+IA0KPiA+ID4gPiANCj4gPiA+ID4gSW4gY29tcGFyaW5nIHRoZSBuZnNf
+Zmx1c2hfaW5jb21wYXRpYmxlKCkgaW1wbGVtZW50YXRpb25zIGJldHdlZW4NCj4gPiA+ID4gUkhF
+TDUgYW5kIHYzLjExICh3aXRob3V0IHlvdXIgcGF0Y2gpLCB0aGUgZ3V0cyBvZiB0aGUgYWxnb3Jp
+dGhtIHNlZW0NCj4gPiA+ID4gbW9yZSBvciBsZXNzIGxvZ2ljYWxseSBlcXVpdmFsZW50IHRvIG1l
+IG9uIHdoZXRoZXIgb3Igbm90IHRvIGZsdXNoDQo+ID4gPiA+IHRoZSBwYWdlLiAgQWxzbywgd2hl
+biBhbmQgd2hlcmUgbmZzX2ZsdXNoX2luY29tcGF0aWJsZSgpIGlzIGludm9rZWQNCj4gPiA+ID4g
+c2VlbXMgdGhlIHNhbWUuICBXb3VsZCB5b3UgcHJvdmlkZSBhIHZlcnkgYnJpZWYgcG9pbnRlciB0
+byBjbHVlIG1lDQo+ID4gPiA+IGluIGFzIHRvIHdoeSB0aGlzIHByb2JsZW0gZGlkbid0IGFsc28g
+bWFuaWZlc3QgY2lyY2EgMi42LjE4IGRheXM/DQo+ID4gPiANCj4gPiA+IFRoZXJlIHdhcyBubyBu
+ZnNfdm1fcGFnZV9ta3dyaXRlKCkgdG8gaGFuZGxlIHBhZ2UgZmF1bHRzIGluIHRoZSAyLjYuMTgN
+Cj4gPiA+IGRheXMsIGFuZCBzbyB0aGUgcmlzayB3YXMgdGhhdCB5b3VyIG1tYXBwZWQgd3JpdGVz
+IGNvdWxkIGVuZCB1cCBiZWluZw0KPiA+ID4gc2VudCB3aXRoIHRoZSB3cm9uZyBjcmVkZW50aWFs
+cy4NCj4gPiANCj4gPiBBaCEgIFlvdSdyZSByaWdodCB0aGF0IG5mc192bV9wYWdlX21rd3JpdGUo
+KSB3YXMgbWlzc2luZyBmcm9tDQo+ID4gdGhlIG9yaWdpbmFsIDIuNi4xOCwgc28gdGhhdCBtYWtl
+cyBzZW5zZSwgaG93ZXZlciwgUmVkIEhhdCBoYWQNCj4gPiBiYWNrcG9ydGVkIHRoYXQgZnVuY3Rp
+b24gc3RhcnRpbmcgd2l0aCB0aGVpciBSSEVMNS45KCopIGtlcm5lbHMsDQo+ID4geWV0IHRoZSBw
+cm9ibGVtIGRvZXNuJ3QgbWFuaWZlc3Qgb24gUkhFTDUuOS4gIE1heWJlIHRoZSBhbnN3ZXIgbGll
+cw0KPiA+IHNvbWV3aGVyZSBpbiBSSEVMNS45J3MgZG9fd3BfcGFnZSgpLCBvciB1cCB0aGF0IGNh
+bGwgcGF0aCwgYnV0DQo+ID4gZ2xhbmNpbmcgdGhyb3VnaCBpdCwgaXQgYWxsIGxvb2tzIHByZXR0
+eSBjbG9zZSB0aG91Z2guDQo+ID4gDQo+ID4gDQo+ID4gKCopIFRoYXQgd2FzIHRoZSBzb3VyY2Ug
+SSB1c2luZyB3aGVuIGNvbXBhcmluZyB3aXRoIHRoZSAzLjExIHNvdXJjZQ0KPiA+IHdoZW4gc3R1
+ZHlpbmcgeW91ciBwYXRjaCBzaW5jZSBpdCB3YXMgdGhlIGxhc3Qga2VybmVsIGtub3duIHRvIG1l
+DQo+ID4gd2l0aG91dCB0aGUgcHJvYmxlbS4NCj4gPiANCj4gDQo+IEknbSBwcmV0dHkgc3VyZSBS
+SEVMNSBoYXMgYSBzaW1pbGFyIHByb2JsZW0sIGJ1dCBpdCdzIHVuY2xlYXIgdG8gbWUgd2h5DQo+
+IHlvdSdyZSBub3Qgc2VlaW5nIGl0IHRoZXJlLiBJIGhhdmUgYSBSSEJaIG9wZW4gdnMuIFJIRUw1
+IGJ1dCBpdCdzIG1hcmtlZA0KPiBwcml2YXRlIGF0IHRoZSBtb21lbnQgKEknbGwgc2VlIGFib3V0
+IG9wZW5pbmcgaXQgdXApLiBJIGJyb3VnaHQgdGhpcyB1cA0KPiB1cHN0cmVhbSBhYm91dCBhIHll
+YXIgYWdvIHdpdGggdGhpcyBzdHJhd21hbiBwYXRjaDoNCj4gDQo+ICAgICBodHRwOi8vYXJ0aWNs
+ZS5nbWFuZS5vcmcvZ21hbmUubGludXgubmZzLzUxMjQwDQo+IA0KPiAuLi5hdCB0aGUgdGltZSBU
+cm9uZCBzYWlkIGhlIHdhcyB3b3JraW5nIG9uIGEgc2V0IG9mIHBhdGNoZXMgdG8gdHJhY2sNCj4g
+dGhlIG9wZW4vbG9jayBzdGF0ZWlkIG9uIGEgcGVyLXJlcSBiYXNpcy4gRGlkIHRoYXQgYXBwcm9h
+Y2ggbm90IHBhbg0KPiBvdXQ/DQoNCldlJ3ZlIGFjaGlldmVkIHdoYXQgd2Ugd2FudGVkIHRvIGRv
+IChOZWlsJ3MgbG9jayByZWNvdmVyeSBwYXRjaCkgd2l0aG91dA0KdGhhdCBtYWNoaW5lcnksIHNv
+IGZvciBub3csIHdlJ3JlIGRyb3BwaW5nIHRoYXQuDQoNCj4gQWxzbywgZG8geW91IG5lZWQgdG8g
+ZG8gYSBzaW1pbGFyIGZpeCB0byBuZnNfY2FuX2NvYWxlc2NlX3JlcXVlc3RzPw0KDQpZZXMuIEdv
+b2QgcG9pbnQhDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
+YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5j
+b20NCg==
