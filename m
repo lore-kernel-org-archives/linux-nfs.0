@@ -1,71 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:21762 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756792Ab3IDOdg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Sep 2013 10:33:36 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: NeilBrown <neilb@suse.de>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH/RFC] make nfs_flush_incompatible more forgiving.
-Date: Wed, 4 Sep 2013 14:33:35 +0000
-Message-ID: <1378305214.3527.10.camel@leira.trondhjem.org>
-References: <20130904113632.1a1eb337@notabene.brown>
-In-Reply-To: <20130904113632.1a1eb337@notabene.brown>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ve0-f173.google.com ([209.85.128.173]:57085 "EHLO
+	mail-ve0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752990Ab3IFQsq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Sep 2013 12:48:46 -0400
+Received: by mail-ve0-f173.google.com with SMTP id cz12so1815601veb.32
+        for <linux-nfs@vger.kernel.org>; Fri, 06 Sep 2013 09:48:45 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <20130906093636.6818e7b2@corrin.poochiereds.net>
+References: <20130905162110.GA17920@gmail.com>
+	<20130905170303.GB17330@us.ibm.com>
+	<20130905191139.GA20830@gmail.com>
+	<1378411320.5450.27.camel@leira.trondhjem.org>
+	<20130905213649.GA21944@gmail.com>
+	<1378418243.5450.29.camel@leira.trondhjem.org>
+	<20130905223420.GA23192@gmail.com>
+	<20130906093636.6818e7b2@corrin.poochiereds.net>
+Date: Fri, 6 Sep 2013 11:48:45 -0500
+Message-ID: <CAKjHkpBW+LWKuKuHnUfKNxwDZeX3SOFKv_jYeNGF8ezdAnKnvg@mail.gmail.com>
+Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
+From: Quentin Barnes <qbarnes@gmail.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEzLTA5LTA0IGF0IDExOjM2ICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IEhp
-LA0KPiAgd2UgaGF2ZSBhIGN1c3RvbWVyIHdobyBoYXMgbm90aWNlZCBhIHNpZ25pZmljYW50IHJl
-Z3Jlc3Npb24gaW4gTkZTDQo+ICBwZXJmb3JtYW5jZSBiZXR3ZWVuIFNMRVMxMCAoMi42LjE2Kykg
-YW5kIFNMRVMxMSAoMy4wKykuDQo+IA0KPiAgVGhlIHVzZSBjYXNlIGludm9sdmVzIHR3byBkaWZm
-ZXJlbnQgcHJvY2Vzc2VzIG9uIHRoZSBzYW1lIGNsaWVudCBtbWFwcGluZyBhDQo+ICBmaWxlIGFu
-ZCBtYWtpbmcgY2hhbmdlcy4NCj4gDQo+ICBJbiAyLjYuMTYsIGFsbCB0aGVzZSBjaGFuZ2VzIHdv
-dWxkIGJlIGNhY2hlZCBvbiB0aGUgY2xpZW50IHVudGlsIGEgZmx1c2ggb3INCj4gIGNsb3NlIG9y
-IG90aGVyIG5vcm1hbCBwcm9jZXNzIGZsdXNoZWQgdGhlIGNoYW5nZXMgb3V0IC0gbXVjaCB0aGUg
-c2FtZSBhcyBpZg0KPiAganVzdCBvbmUgcHJvY2VzcyB3YXMgYWNjZXNzaW5nIHRoZSBmaWxlLg0K
-PiANCj4gIEluIDMuMCB0aGUgZmlsZSBpcyBmbHVzaGVkIG91dCBldmVyeSB0aW1lIGEgZGlmZmVy
-ZW50IHByb2Nlc3MgcGVyZm9ybXMgYW4NCj4gIHVwZGF0ZS4gU28gaWYgdGhleSBpbnRlcmxlYXZl
-IGFjY2Vzc2VzLCB5b3UgZ2V0IGEgZmx1c2gtdG8tdGhlLXNlcnZlciBvbg0KPiAgZXZlcnkgYWNj
-ZXNzLg0KPiANCj4gIFRoaXMgaXMgY2F1c2VkIGJ5IG5mc19mbHVzaF9pbmNvbXBhdGlibGUuICBJ
-dCBkZWVtcyBhY2Nlc3MgdGhyb3VnaCBkaWZmZXJlbnQNCj4gIGZpbGUgZGVzY3JpcHRvcnMgdG8g
-YmUgaW5jb21wYXRpYmxlLiAgSG93ZXZlciBJIGRvbid0IHRoaW5rIHRoaXMgaXMNCj4gIGp1c3Rp
-ZmllZC4gIEFjY2Vzc2VkIHVzaW5nIGRpZmZlcmVudCBjcmVkZW50aWFscyBjYW4gcmVhc29uYWJs
-eSBiZSBzZWVuIGFzDQo+ICBpbmNvbXBhdGlibGUoKiksIGJ1dCBpZiB0d28gcHJvY2Vzc2VzIHdp
-dGggaWRlbnRpY2FsIGNyZWRlbnRpYWxzIG9wZW4gdGhlDQo+ICBzYW1lIGZpbGUgdGhlcmUgdGhl
-cmUgc2hvdWxkIGJlIG5vdCBuZWVkIHRvIGRpZmZlcmVudGlhdGUgYmV0d2VlbiB0aGVtLg0KPiAN
-Cj4gIFRoZSBwYXRjaCBiZWxvdyBjaGFuZ2VzIHRoZSB0ZXN0IGluIG5mc19mbHVzaF9pbmNvbXBh
-dGlibGUgdG8ganVzdCB0ZXN0IHRoZQ0KPiAgY3JlZGVudGlhbHMgKGFuZCB0aGUgZGVudHJ5LCB0
-aG91Z2ggdGhhdCBtaWdodCBiZSBzdXBlcmZsdW91cyAtIGl0IHNlZW1zDQo+ICBzYWZlcikuDQo+
-IA0KPiAoKikgSW4gdGhpcyBzcGVjaWZpYyBjdXN0b21lcidzIGNhc2UgdGhlIHByb2Nlc3MgZG8g
-Y3VycmVudGx5IGhhdmUgc2xpZ2h0bHkNCj4gIGRpZmZlcmVudCBjcmVkZW50aWFscy4gIEluIG9u
-ZSwgdGhlIHByaW1hcnkgZ2lkIGlzIGluY2x1ZGVkIGluIHRoZSBsaXN0IG9mDQo+ICBhdXhpbGlh
-cnkgZ2lkcy4gIEluIHRoZSBvdGhlciB0aGUgcHJpbWFyeSBnaWQgaXMgZXhjbHVkZWQuICBUaGlz
-IGlzIGVub3VnaA0KPiAgdG8gbWFrZSB0aGUgY3JlZGVudGlhbHMgYXBwZWFyIGRpZmZlcmVudCBz
-byB0aGlzIHBhdGNoIGRvZXNuJ3QgaGVscCBpbiB0aGF0DQo+ICBjYXNlLiAgVGhleSBhcmUgbG9v
-a2luZyBhdCBiZWluZyBtb3JlIGNvbnNpc3RlbnQgaW4gdGhlaXIgc2V0Z3JvdXBzIHVzYWdlDQo+
-ICBidXQgaXQgd291bGQgaGVscCB0aGVtIGlmIHdlIG9ubHkgYWN0dWFsbHkgY29tcGFyZWQgdGhl
-IGNyZWRlbnRpYWxzIHRoYXQNCj4gIHdlcmUgaW1wb3J0YW50LiAgSW4gdGhpcyBjYXNlIHRoZXJl
-IGlzIG5vIGltcG9ydGFudCBkaWZmZXJlbmNlLg0KPiAgV291bGQgaXQgbWFrZSBzZW5zZSB0byB0
-cmVhdCBhIG1vcmUgYnJvYWQgY3JlZGVudGlhbCBhcyBjb21wYXRpYmxlIHdpdGggYQ0KPiAgbW9y
-ZSBuYXJyb3cgY3JlZGVudGlhbD8gIFNvIGEgd3JpdGUgZnJvbSBhIHByb2Nlc3Mgd2l0aCBhIGdp
-dmVuDQo+ICB1aWQsZ2lkLGdyb3VwbGlzdCBjb3VsZCB1bHRpbWF0ZWx5IGJlIHNlbnQgdG8gdGhl
-IHNlcnZlciB3aXRoIHNhbWUgdWlkL2dpZCwNCj4gIGJ1dCBhIHN1YnNldCBvZiB0aGUgZ3JvdXAg
-bGlzdD8NCj4gIA0KPiANCj4gIFRob3VnaHRzPw0KPiANCj4gVGhhbmtzLA0KPiBOZWlsQnJvd24N
-Cj4gDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL3dyaXRlLmMgYi9mcy9uZnMvd3JpdGUuYw0K
-PiBpbmRleCA3ODE2ODAxLi5iMGQ0ZTQ3IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvd3JpdGUuYw0K
-PiArKysgYi9mcy9uZnMvd3JpdGUuYw0KPiBAQCAtODYwLDcgKzg2MCwxMiBAQCBpbnQgbmZzX2Zs
-dXNoX2luY29tcGF0aWJsZShzdHJ1Y3QgZmlsZSAqZmlsZSwgc3RydWN0IHBhZ2UgKnBhZ2UpDQo+
-ICAJCWlmIChyZXEgPT0gTlVMTCkNCj4gIAkJCXJldHVybiAwOw0KPiAgCQlsX2N0eCA9IHJlcS0+
-d2JfbG9ja19jb250ZXh0Ow0KPiAtCQlkb19mbHVzaCA9IHJlcS0+d2JfcGFnZSAhPSBwYWdlIHx8
-IHJlcS0+d2JfY29udGV4dCAhPSBjdHg7DQo+ICsJCWRvX2ZsdXNoID0gcmVxLT53Yl9wYWdlICE9
-IHBhZ2U7DQo+ICsJCWlmIChyZXEtPndiX2NvbnRleHQgIT0gY3R4KSB7DQo+ICsJCQlkb19mbHVz
-aCB8PQ0KPiArCQkJCXJlcS0+d2JfY29udGV4dC0+ZGVudHJ5ICE9IGN0eC0+ZGVudHJ5IHx8DQo+
-ICsJCQkJcmVxLT53Yl9jb250ZXh0LT5jcmVkICE9IGN0eC0+Y3JlZDsNCj4gKwkJfQ0KPiAgCQlp
-ZiAobF9jdHgpIHsNCj4gIAkJCWRvX2ZsdXNoIHw9IGxfY3R4LT5sb2Nrb3duZXIubF9vd25lciAh
-PSBjdXJyZW50LT5maWxlcw0KPiAgCQkJCXx8IGxfY3R4LT5sb2Nrb3duZXIubF9waWQgIT0gY3Vy
-cmVudC0+dGdpZDsNCg0KSGkgTmVpbCwNCg0KV29uJ3QgdGhpcyBjYXVzZSBhbnkgd3JpdGUgZXJy
-b3JzIHRvIGJlIHByb3BhZ2F0ZWQgdG8gdGhlIHdyb25nIHByb2Nlc3M/DQoNCkNoZWVycw0KICBU
-cm9uZA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0K
-DQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+Jeff, can your try out my test program in the base note on your
+RHEL5.9 or later RHEL5.x kernels?
+
+I reverified that running the test on a 2.6.18-348.16.1.el5 x86_64
+kernel (latest released RHEL5.9) does not show the problem for me.
+Based on what you and Trond have said in this thread though, I'm
+really curious why it doesn't have the problem.
+
+On Fri, Sep 6, 2013 at 8:36 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> On Thu, 5 Sep 2013 17:34:20 -0500
+> Quentin Barnes <qbarnes@gmail.com> wrote:
+>
+>> On Thu, Sep 05, 2013 at 09:57:24PM +0000, Myklebust, Trond wrote:
+>> > On Thu, 2013-09-05 at 16:36 -0500, Quentin Barnes wrote:
+>> > > On Thu, Sep 05, 2013 at 08:02:01PM +0000, Myklebust, Trond wrote:
+>> > > > On Thu, 2013-09-05 at 14:11 -0500, Quentin Barnes wrote:
+>> > > > > On Thu, Sep 05, 2013 at 12:03:03PM -0500, Malahal Naineni wrote:
+>> > > > > > Neil Brown posted a patch couple days ago for this!
+>> > > > > >
+>> > > > > > http://thread.gmane.org/gmane.linux.nfs/58473
+>> > > > >
+>> > > > > I tried Neil's patch on a v3.11 kernel.  The rebuilt kernel still
+>> > > > > exhibited the same 1000s of WRITEs/sec problem.
+>> > > > >
+>> > > > > Any other ideas?
+>> > > >
+>> > > > Yes. Please try the attached patch.
+>> > >
+>> > > Great!  That did the trick!
+>> > >
+>> > > Do you feel this patch could be worthy of pushing it upstream in its
+>> > > current state or was it just to verify a theory?
+>> > >
+>> > >
+>> > > In comparing the nfs_flush_incompatible() implementations between
+>> > > RHEL5 and v3.11 (without your patch), the guts of the algorithm seem
+>> > > more or less logically equivalent to me on whether or not to flush
+>> > > the page.  Also, when and where nfs_flush_incompatible() is invoked
+>> > > seems the same.  Would you provide a very brief pointer to clue me
+>> > > in as to why this problem didn't also manifest circa 2.6.18 days?
+>> >
+>> > There was no nfs_vm_page_mkwrite() to handle page faults in the 2.6.18
+>> > days, and so the risk was that your mmapped writes could end up being
+>> > sent with the wrong credentials.
+>>
+>> Ah!  You're right that nfs_vm_page_mkwrite() was missing from
+>> the original 2.6.18, so that makes sense, however, Red Hat had
+>> backported that function starting with their RHEL5.9(*) kernels,
+>> yet the problem doesn't manifest on RHEL5.9.  Maybe the answer lies
+>> somewhere in RHEL5.9's do_wp_page(), or up that call path, but
+>> glancing through it, it all looks pretty close though.
+>>
+>>
+>> (*) That was the source I using when comparing with the 3.11 source
+>> when studying your patch since it was the last kernel known to me
+>> without the problem.
+>>
+>
+> I'm pretty sure RHEL5 has a similar problem, but it's unclear to me why
+> you're not seeing it there. I have a RHBZ open vs. RHEL5 but it's marked
+> private at the moment (I'll see about opening it up). I brought this up
+> upstream about a year ago with this strawman patch:
+>
+>     http://article.gmane.org/gmane.linux.nfs/51240
+>
+> ...at the time Trond said he was working on a set of patches to track
+> the open/lock stateid on a per-req basis. Did that approach not pan
+> out?
+>
+> Also, do you need to do a similar fix to nfs_can_coalesce_requests?
+>
+> Thanks,
+> --
+> Jeff Layton <jlayton@redhat.com>
