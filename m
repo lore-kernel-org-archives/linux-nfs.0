@@ -1,80 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50180 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:49113 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750978Ab3I0BMq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Sep 2013 21:12:46 -0400
-Date: Thu, 26 Sep 2013 21:12:46 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jongman Heo <jongman.heo@samsung.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: Re: Re: Regression caused by commit 4bdc33ed ("NFSDv4.2: Add NFS
- v4.2 support to the NFS server")
-Message-ID: <20130927011246.GA10245@fieldses.org>
-References: <26120922.5161380239877162.JavaMail.weblogic@epml04>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <26120922.5161380239877162.JavaMail.weblogic@epml04>
+	id S1753005Ab3IFPny (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Sep 2013 11:43:54 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Nick Piggin <npiggin@kernel.dk>
+Subject: [PATCH 1/3] dcache: use IS_ROOT to decide where dentry is hashed
+Date: Fri,  6 Sep 2013 11:43:48 -0400
+Message-Id: <1378482230-16312-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 26, 2013 at 11:57:57PM +0000, Jongman Heo wrote:
-> >------- Original Message -------
-> >Sender : J. Bruce Fields<bfields@fieldses.org>
-> >This is pretty weird--it's not at all obvious how that patch would
-> >affect this.
-> >
-> >You're absolutely positive that the *only* thing you're changing on the
-> >server between the "good" and "bad" cases is that one kernel patch?
-> >You're not changing anything in userspace?
-> >
-> 
-> Yes, pretty sure.
-> 
-> >What does "cat /proc/fs/nfsd/versions" report in the good and bad cases?
-> >
-> >(BTW, out of curiosity: what kind of client is this that only supports
-> >NFSv2 and NFSv3?  Even for an embedded system that's a bit surprising.)
-> >
-> >--b.
-> >
-> 
-> Here are /proc/fs/nfsd/versions information for good and bad cases ;
-> 
-> good (commit 4bdc33ed reverted)
-> 
-> # cat /proc/fs/nfsd/versions 
-> +2 +3 +4 +4.1
-> 
-> 
-> bad (current linus git)
-> 
-> # cat /proc/fs/nfsd/versions  
-> -2 +3 +4 +4.1 -4.2
-> 
-> 
-> I don't know why the commit 4bdc33ed makes this difference ( from +2 to -2 ).
-> 
-> My NFS server just uses Fedora 19 + latest kernel (which is not a rare setup...), 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-The thing is, nfs-utils *did* make exactly this change with commit
-6b4e4965a6b82e8d49cea1c0316b951ba4e9e83e "rpc.nfsd: No longer advertise
-NFS v2 support." in 1.2.9-rc4 which entered f19 recently.  And that
-kernel commit doesn't look related.  So I strongly suspect that you got
-the nfs-utils update (or rebooted after the update) at the same time as
-bisecting, and that confused the bisect results.
+Every hashed dentry is either hashed in the dentry_hashtable, or a
+superblock's s_anon list.
 
-> so I think some people can verify if this version information change happens w/ and w/o the commit revert.
-> 
-> Don't know the detail of NFS protocol, but our NFS client seems not to try with v3 and v4 in case v2 fails...
-> Is this an unexpected (buggy) behavior of my old embedded box (NFS client of kernel 2.6.35), or expected one from the NFS protocol?
+__d_shrink assumes it can determine which is the case by checking
+DCACHE_DISCONNECTED; this is not true.
 
-Digging into a historical git repo just for fun.... It looks like NFSv3
-support was added in 2.3.99pre4-3, probably in 2000?  (The date on that
-commit is 2007, so obviously this repo I have is very confused.  Maybe I
-should go find if there's a better one someplace.)
+It is true that when DCACHE_DISCONNECTED is cleared, the dentry is not
+only hashed on dentry_hashtable, but is fully connected to its parents
+back to the root.
 
-So anyway it's either configured out of the kernel or the mount
-commandline's asking for v2, or I don't know what....
+But the converse is *not* true: fs/exportfs/expfs.c:reconnect_path()
+attempts to connect a directory (found by filehandle lookup) back to
+root by ascending to parents and performing lookups one at a time.  It
+does not clear DCACHE_DISCONNECTED until it's done, and that is not at
+all an atomic process.
 
---b.
+In particular, it is possible for DCACHE_DISCONNECTED to be set on a
+dentry which is hashed on the dentry_hashtable.
+
+Instead, use IS_ROOT() to check which hash chain a dentry is on.  This
+*does* work:
+
+Dentries are hashed only by:
+
+	- d_obtain_alias, which adds an IS_ROOT() dentry to sb_anon.
+
+	- __d_rehash, called by _d_rehash: hashes to the dentry's
+	  parent, and all callers of _d_rehash appear to have d_parent
+	  set to a "real" parent.
+	- __d_rehash, called by __d_move: rehashes the moved dentry to
+	  hash chain determined by target, and assigns target's d_parent
+	  to its d_parent, before dropping the dentry's d_lock.
+
+Therefore I believe it's safe for a holder of a dentry's d_lock to
+assume that it is hashed on sb_anon if and only if IS_ROOT(dentry) is
+true.
+
+I believe the incorrect assumption about DCACHE_DISCONNECTED was
+originally introduced by ceb5bdc2d246 "fs: dcache per-bucket dcache hash
+locking".
+
+Cc: Nick Piggin <npiggin@kernel.dk>
+Reviewed-by: NeilBrown <neilb@suse.de>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/dcache.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/dcache.c b/fs/dcache.c
+index b949af8..934f02d 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -393,7 +393,7 @@ static void __d_shrink(struct dentry *dentry)
+ {
+ 	if (!d_unhashed(dentry)) {
+ 		struct hlist_bl_head *b;
+-		if (unlikely(dentry->d_flags & DCACHE_DISCONNECTED))
++		if (unlikely(IS_ROOT(dentry)))
+ 			b = &dentry->d_sb->s_anon;
+ 		else
+ 			b = d_hash(dentry->d_parent, dentry->d_name.hash);
+-- 
+1.7.9.5
+
