@@ -1,114 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:61563 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:5493 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761920Ab3IDDRn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Sep 2013 23:17:43 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Neil Brown <neilb@suse.de>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        NFS <linux-nfs@vger.kernel.org>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-Subject: Re: [PATCH/RFC]  Don't try to recover NFS locks when they are lost.
-Date: Wed, 4 Sep 2013 03:17:41 +0000
-Message-ID: <prdkh3xt7a0mituyt7v2xpmw.1378264657975@email.android.com>
-References: <20130815123604.47755509@notabene.brown>
-	<1378233802.6410.34.camel@leira.trondhjem.org>,<20130904104946.1be45e52@notabene.brown>
-In-Reply-To: <20130904104946.1be45e52@notabene.brown>
-Content-Type: text/plain; charset="us-ascii"
+	id S1750910Ab3IFT36 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Sep 2013 15:29:58 -0400
+Date: Fri, 6 Sep 2013 15:29:34 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Nick Piggin <npiggin@kernel.dk>
+Subject: Re: [PATCH 2/3] dcache: Don't set DISCONNECTED on "pseudo
+ filesystem" dentries
+Message-ID: <20130906192933.GC23157@pad.fieldses.org>
+References: <1378482230-16312-1-git-send-email-bfields@redhat.com>
+ <1378482230-16312-2-git-send-email-bfields@redhat.com>
+ <20130906170339.GB6460@infradead.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130906170339.GB6460@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Neil,
+On Fri, Sep 06, 2013 at 10:03:39AM -0700, Christoph Hellwig wrote:
+> On Fri, Sep 06, 2013 at 11:43:49AM -0400, J. Bruce Fields wrote:
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > I can't for the life of me see any reason why anyone would care whether
+> > a dentry that is never hooked into the dentry cache would need
+> > DCACHE_DISCONNECTED set.
+> 
+> __d_shrink did before your PATCH 1/3.
 
-That looks better, but we still want to send the delegation stateid in the case where we have both a lock and a delegation.
+Well, d_alloc_pseudo dentries aren't even hashed, so even d_shrink
+didn't actually reach that DCACHE_DISCONNECTED check.
 
-Cheers
-  Trond
+Uh, maybe change that "would" above to a "should".
 
-Sent from my tablet.
+> 
+> With that fixed your patch looks fine.
+> 
+> > +/*
+> > + * For filesystems that do not actually use the dentry cache at all, and
+> > + * only ever deal in IS_ROOT() dentries:
+> > + */
+> 
+> If you document the function it really should be a kerneldoc comment.
+> 
+> Also the description, while technically correct, isn't all that useful.
+> 
+> It need an explanation why the filesystem is fine with unhashed
+> dentries, and the reason is that it never performs any lookups as it
+> pins the dentries in memory.
 
-NeilBrown <neilb@suse.de> wrote:
+Makes sense--result follows.
 
+Thanks for the review.
 
-On Tue, 3 Sep 2013 18:43:23 +0000 "Myklebust, Trond"
-<Trond.Myklebust@netapp.com> wrote:
+--b.
 
-> On Thu, 2013-08-15 at 12:36 +1000, NeilBrown wrote:
-> >
-> > When an NFS (V4 specifically) client loses contact with the server it can
-> > lose any locks that it holds.
-> > Currently when it reconnects to the server it simply tries to reclaim
-> > those locks.  This might succeed even though some other client has held and
-> > released a lock in the mean time.  So the first client might think the file
-> > is unchanged, but it isn't.  This isn't good.
-> >
-> > If, when recovery happens, the locks cannot be claimed because some other
-> > client still holds the lock, then  we get a message in the kernel logs, but
-> > the client can still write.  So two clients can both think they have a lock
-> > and can both write at the same time.  This is equally not good.
-> >
-> > There was a patch a while ago
-> >   http://comments.gmane.org/gmane.linux.nfs/41917
-> >
-> > which tried to address some of this, but it didn't seem to go anywhere.
-> > That patch would also send a signal to the process.  That might be useful
-> > but I'm really just interested in failing the writes.
-> > For NFSv4 (unlike v2/v3) there is a strong link between the lock and the
-> > write request so we can fairly easily fail an IO of the lock is gone.
-> >
-> > The patch below attempts to do this.  Does it make sense?
-> > Because this is a fairly big change I introduces a module parameter
-> > "recover_locks" which defaults to true (the current behaviour) but can be set
-> > to "false" to tell the client not to try to recover things that were lost.
-> >
-> > Comments?
->
-> I think this patch is close to being usable. A couple of questions,
-> though:
->
->      1. What happens if another process' open() causes us to receive a
->         delegation after NFS_LOCK_LOST has been set on our lock stateid,
->         but before we call nfs4_set_rw_stateid()?
+commit 089d891965374b4262973e51839fe361e2ca3cf0
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Fri Jun 29 16:20:47 2012 -0400
 
-Good point.  I think we need to check for NFS_LOCK_LOST before checking for a
-delegation.  Does the incremental patch below look OK?
-It takes a spinlock in the case where we have a delegation and  hold some
-locks which it didn't have to take before.  Is that a concern?
+    dcache: Don't set DISCONNECTED on "pseudo filesystem" dentries
+    
+    I can't for the life of me see any reason why anyone should care whether
+    a dentry that is never hooked into the dentry cache would need
+    DCACHE_DISCONNECTED set.
+    
+    This originates from 4b936885ab04dc6e0bb0ef35e0e23c1a7364d9e5 "fs:
+    improve scalability of pseudo filesystems", which probably just made the
+    false assumption the DCACHE_DISCONNECTED was meant to be set on anything
+    not connected to a parent somehow.
+    
+    So this is just confusing.  Ideally the only uses of DCACHE_DISCONNECTED
+    would be in the filehandle-lookup code, which needs it to ensure
+    dentries are connected into the dentry tree before use.
+    
+    I left d_alloc_pseudo there even though it's now equivalent to
+    __d_alloc(), just on the theory the name is better documentation of its
+    intended use outside dcache.c.
+    
+    Cc: Nick Piggin <npiggin@kernel.dk>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-
->      2. Shouldn't we clear NFS_LOCK_LOST at some point? It looks to me
->         as if a process which sees the EIO, and decides to recover by
->         calling close(), reopen()ing the file and then locking it again,
->         might find NFS_LOCK_LOST still being set.
-
-
-NFS_LOCK_LOST is per nfs4_lock_state which should be freed by
-nfs4_fl_release_lock().
-So when the files is closed, the locks a dropped, and the structure holding
-the NFS_LOCK_LOST flag will go away.
-Or did I miss something?
-
-Thanks,
-NeilBrown
-
-
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 4d103ff..bb1fd5d 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1040,10 +1040,11 @@ static int nfs4_copy_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
- int nfs4_select_rw_stateid(nfs4_stateid *dst, struct nfs4_state *state,
-                fmode_t fmode, const struct nfs_lockowner *lockowner)
+diff --git a/fs/dcache.c b/fs/dcache.c
+index 7208b38..2255359 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -1313,12 +1313,17 @@ struct dentry *d_alloc(struct dentry * parent, const struct qstr *name)
+ }
+ EXPORT_SYMBOL(d_alloc);
+ 
++/**
++ * d_alloc_pseudo - allocate a dentry (for lookup-less filesystems)
++ * @sb: the superblock
++ * @name: qstr of the name
++ *
++ * For a filesystem that just pins its dentries in memory and never
++ * performs lookups at all, return an unhashed IS_ROOT dentry.
++ */
+ struct dentry *d_alloc_pseudo(struct super_block *sb, const struct qstr *name)
  {
--       int ret = 0;
-+       int ret = nfs4_copy_lock_stateid(dst, state, lockowner);
-+       if (ret == -EIO)
-+               goto out;
-        if (nfs4_copy_delegation_stateid(dst, state->inode, fmode))
-                goto out;
--       ret = nfs4_copy_lock_stateid(dst, state, lockowner);
-        if (ret != -ENOENT)
-                goto out;
-        ret = nfs4_copy_open_stateid(dst, state);
+-	struct dentry *dentry = __d_alloc(sb, name);
+-	if (dentry)
+-		dentry->d_flags |= DCACHE_DISCONNECTED;
+-	return dentry;
++	return __d_alloc(sb, name);
+ }
+ EXPORT_SYMBOL(d_alloc_pseudo);
+ 
