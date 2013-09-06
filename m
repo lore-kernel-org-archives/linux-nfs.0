@@ -1,71 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:42988 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55272 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753644Ab3IKNNz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Sep 2013 09:13:55 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Anna Schumaker <schumaker.anna@gmail.com>
-CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/4] NFSv4.1: sp4_mach_cred: no need to ref count creds
-Date: Wed, 11 Sep 2013 13:13:48 +0000
-Message-ID: <1378905228.34823.3.camel@leira.trondhjem.org>
-References: <1378853073-13256-1-git-send-email-dros@netapp.com>
-	 <1378853073-13256-4-git-send-email-dros@netapp.com>
-	 <CAFX2Jf=kbrS6byZBFOoZ64-rb9tCvUHDPZqkip3cy5K12FzaqQ@mail.gmail.com>
-In-Reply-To: <CAFX2Jf=kbrS6byZBFOoZ64-rb9tCvUHDPZqkip3cy5K12FzaqQ@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1751060Ab3IFTET (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Sep 2013 15:04:19 -0400
+Date: Fri, 6 Sep 2013 15:03:46 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Nick Piggin <npiggin@kernel.dk>
+Subject: Re: [PATCH 1/3] dcache: use IS_ROOT to decide where dentry is hashed
+Message-ID: <20130906190346.GB23157@pad.fieldses.org>
+References: <1378482230-16312-1-git-send-email-bfields@redhat.com>
+ <20130906170044.GA6460@infradead.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130906170044.GA6460@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEzLTA5LTExIGF0IDA4OjU5IC0wNDAwLCBBbm5hIFNjaHVtYWtlciB3cm90ZToN
-Cj4gRG8gd2UgbmVlZCB0byBkbyBhIGdldF9ycGNjcmVkKCkgYWZ0ZXIgbG9va2luZyB1cCB0aGUg
-bWFjaGluZSBjcmVkIGluDQo+IG5mc19hbGxvY19jbGllbnQoKT8gIFdoZXJlIGRvZXMgb3VyIGd1
-YXJhbnRlZWQgcmVmZXJlbmNlIGNvbWUgZnJvbT8NCg0KU2VlIG15IGNvbW1lbnQgdG8gRHJvcycg
-Zmlyc3QgcGF0Y2hzZXQgeWVzdGVyZGF5LiBJbiB0aGUgY2FzZSBvZg0KU1A0X01BQ0hfQ1JFRCwg
-d2UgY2Fubm90IGNoYW5nZSB0aGUgbWFjaGluZSBjcmVkZW50aWFsLCBzaW5jZSB0aGUgc3RhdGUN
-CnByb3RlY3Rpb24gaXMgY29tcGxldGVseSB0aWVkIHRvIHRoYXQgY3JlZGVudGlhbC4gSW4gZmFj
-dCBpZiB5b3UgbG9vayBhdA0KdGhlIGN1cnJlbnQgY29kZSwgd2Ugb25seSBhY3R1YWxseSBmcmVl
-IHRoZSBjbF9tYWNoaW5lX2NyZWQgaW4NCm5mc19mcmVlX2NsaWVudCgpLg0KDQpGb3IgdGhhdCBy
-ZWFzb24sIGl0IGlzIHNhZmUgdG8gYXNzdW1lIHRoYXQgaXQgaXMgYXZhaWxhYmxlIGZvciB0aGUN
-CmR1cmF0aW9uIG9mIHRoZSBSUEMgY2FsbC4gT2YgY291cnNlLCBycGNfdGFza19zZXRfcnBjX21l
-c3NhZ2UoKSB3aWxsDQphbHNvIHRha2UgYSByZWZlcmVuY2UsIGJ1dCB0aGF0IHRvbyBpcyByZWR1
-bmRhbnQgaW4gdGhpcyBwYXJ0aWN1bGFyDQpjYXNlLg0KDQpDaGVlcnMNCiAgVHJvbmQNCg0KPiBB
-bm5hDQo+IA0KPiANCj4gDQo+IE9uIFR1ZSwgU2VwIDEwLCAyMDEzIGF0IDY6NDQgUE0sIFdlc3Rv
-biBBbmRyb3MgQWRhbXNvbg0KPiA8ZHJvc0BuZXRhcHAuY29tPiB3cm90ZToNCj4gICAgICAgICBU
-aGUgY2xfbWFjaGluZV9jcmVkIGRvZXNuJ3QgbmVlZCB0byBiZSByZWZlcmVuY2UgY291bnRlZCBo
-ZXJlDQo+ICAgICAgICAgLQ0KPiAgICAgICAgIGEgcmVmZXJlbmNlIGlzIGhlbGQgaXMgZm9yIHRo
-ZSBsaWZldGltZSBvZiB0aGUgc3RydWN0DQo+ICAgICAgICAgbmZzX2NsaWVudC4NCj4gICAgICAg
-ICBBbHNvLCBubyBuZWVkIHRvIHB1dF9ycGNjcmVkIHRoZSBycGNfbWVzc2FnZS5ycGNfY3JlZC4N
-Cj4gICAgICAgICANCj4gICAgICAgICBTaWduZWQtb2ZmLWJ5OiBXZXN0b24gQW5kcm9zIEFkYW1z
-b24gPGRyb3NAbmV0YXBwLmNvbT4NCj4gICAgICAgICAtLS0NCj4gICAgICAgICAgZnMvbmZzL25m
-czRfZnMuaCB8IDYgKysrLS0tDQo+ICAgICAgICAgIDEgZmlsZSBjaGFuZ2VkLCAzIGluc2VydGlv
-bnMoKyksIDMgZGVsZXRpb25zKC0pDQo+ICAgICAgICAgDQo+ICAgICAgICAgZGlmZiAtLWdpdCBh
-L2ZzL25mcy9uZnM0X2ZzLmggYi9mcy9uZnMvbmZzNF9mcy5oDQo+ICAgICAgICAgaW5kZXggZjUy
-MGExMS4uMDdhOGFhOSAxMDA2NDQNCj4gICAgICAgICAtLS0gYS9mcy9uZnMvbmZzNF9mcy5oDQo+
-ICAgICAgICAgKysrIGIvZnMvbmZzL25mczRfZnMuaA0KPiAgICAgICAgIEBAIC0yNzksMTAgKzI3
-OSwxMCBAQCBfbmZzNF9zdGF0ZV9wcm90ZWN0KHN0cnVjdCBuZnNfY2xpZW50DQo+ICAgICAgICAg
-KmNscCwgdW5zaWduZWQgbG9uZyBzcDRfbW9kZSwNCj4gICAgICAgICAgICAgICAgIGlmICh0ZXN0
-X2JpdChzcDRfbW9kZSwgJmNscC0+Y2xfc3A0X2ZsYWdzKSkgew0KPiAgICAgICAgICAgICAgICAg
-ICAgICAgICBzcGluX2xvY2soJmNscC0+Y2xfbG9jayk7DQo+ICAgICAgICAgICAgICAgICAgICAg
-ICAgIGlmIChjbHAtPmNsX21hY2hpbmVfY3JlZCAhPSBOVUxMKQ0KPiAgICAgICAgIC0gICAgICAg
-ICAgICAgICAgICAgICAgIG5ld2NyZWQgPQ0KPiAgICAgICAgIGdldF9ycGNjcmVkKGNscC0+Y2xf
-bWFjaGluZV9jcmVkKTsNCj4gICAgICAgICArICAgICAgICAgICAgICAgICAgICAgICAvKiBkb24n
-dCBjYWxsIGdldF9ycGNjcmVkIG9uIHRoZQ0KPiAgICAgICAgIG1hY2hpbmUgY3JlZCAtDQo+ICAg
-ICAgICAgKyAgICAgICAgICAgICAgICAgICAgICAgICogYSByZWZlcmVuY2Ugd2lsbCBiZSBoZWxk
-IGZvciBsaWZlDQo+ICAgICAgICAgb2YgY2xwICovDQo+ICAgICAgICAgKyAgICAgICAgICAgICAg
-ICAgICAgICAgbmV3Y3JlZCA9IGNscC0+Y2xfbWFjaGluZV9jcmVkOw0KPiAgICAgICAgICAgICAg
-ICAgICAgICAgICBzcGluX3VubG9jaygmY2xwLT5jbF9sb2NrKTsNCj4gICAgICAgICAtICAgICAg
-ICAgICAgICAgaWYgKG1zZy0+cnBjX2NyZWQpDQo+ICAgICAgICAgLSAgICAgICAgICAgICAgICAg
-ICAgICAgcHV0X3JwY2NyZWQobXNnLT5ycGNfY3JlZCk7DQo+ICAgICAgICAgICAgICAgICAgICAg
-ICAgIG1zZy0+cnBjX2NyZWQgPSBuZXdjcmVkOw0KPiAgICAgICAgIA0KPiAgICAgICAgICAgICAg
-ICAgICAgICAgICBmbGF2b3IgPQ0KPiAgICAgICAgIGNscC0+Y2xfcnBjY2xpZW50LT5jbF9hdXRo
-LT5hdV9mbGF2b3I7DQo+ICAgICAgICAgLS0NCj4gICAgICAgICAxLjcuMTIuNCAoQXBwbGUgR2l0
-LTM3KQ0KPiAgICAgICAgIA0KPiAgICAgICAgIC0tDQo+ICAgICAgICAgVG8gdW5zdWJzY3JpYmUg
-ZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlDQo+ICAgICAgICAgbGlu
-dXgtbmZzIiBpbg0KPiAgICAgICAgIHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9A
-dmdlci5rZXJuZWwub3JnDQo+ICAgICAgICAgTW9yZSBtYWpvcmRvbW8gaW5mbyBhdA0KPiAgICAg
-ICAgICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCj4gDQo+IA0K
-DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5l
-dEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+On Fri, Sep 06, 2013 at 10:00:44AM -0700, Christoph Hellwig wrote:
+> On Fri, Sep 06, 2013 at 11:43:48AM -0400, J. Bruce Fields wrote:
+> > diff --git a/fs/dcache.c b/fs/dcache.c
+> > index b949af8..934f02d 100644
+> > --- a/fs/dcache.c
+> > +++ b/fs/dcache.c
+> > @@ -393,7 +393,7 @@ static void __d_shrink(struct dentry *dentry)
+> >  {
+> >  	if (!d_unhashed(dentry)) {
+> >  		struct hlist_bl_head *b;
+> > -		if (unlikely(dentry->d_flags & DCACHE_DISCONNECTED))
+> > +		if (unlikely(IS_ROOT(dentry)))
+> 
+> I think this needs a comment about why the IS_ROOT check is fine,
+> destilled from your commit log.
+
+How about this?:
+
+ 	if (!d_unhashed(dentry)) {
+ 		struct hlist_bl_head *b;
++		/*
++		 * Hashed dentries are normally on the dentry hashtable,
++		 * with the exception of those newly allocated by
++		 * d_obtain_alias, which are always IS_ROOT:
++		 */
+ 		if (unlikely(IS_ROOT(dentry)))
+ 			b = &dentry->d_sb->s_anon;
+ 		else
+
+> Also while reviewing this I noticed that one of the two callers of
+> __d_shrink already has the d_unhashed check - it might make sense to
+> move it to the other caller as well if you touch this area anyway.
+> (as a separate patch).
+
+Sure.  That'd look like the following.
+
+--b.
+
+diff --git a/fs/dcache.c b/fs/dcache.c
+index 113c82f..81db000 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -391,23 +391,21 @@ static struct dentry *d_kill(struct dentry *dentry, struct dentry *parent)
+  */
+ static void __d_shrink(struct dentry *dentry)
+ {
+-	if (!d_unhashed(dentry)) {
+-		struct hlist_bl_head *b;
+-		/*
+-		 * Hashed dentries are normally on the dentry hashtable,
+-		 * with the exception of those newly allocated by
+-		 * d_obtain_alias, which are always IS_ROOT:
+-		 */
+-		if (unlikely(IS_ROOT(dentry)))
+-			b = &dentry->d_sb->s_anon;
+-		else
+-			b = d_hash(dentry->d_parent, dentry->d_name.hash);
++	struct hlist_bl_head *b;
++	/*
++	 * Hashed dentries are normally on the dentry hashtable,
++	 * with the exception of those newly allocated by
++	 * d_obtain_alias, which are always IS_ROOT:
++	 */
++	if (unlikely(IS_ROOT(dentry)))
++		b = &dentry->d_sb->s_anon;
++	else
++		b = d_hash(dentry->d_parent, dentry->d_name.hash);
+ 
+-		hlist_bl_lock(b);
+-		__hlist_bl_del(&dentry->d_hash);
+-		dentry->d_hash.pprev = NULL;
+-		hlist_bl_unlock(b);
+-	}
++	hlist_bl_lock(b);
++	__hlist_bl_del(&dentry->d_hash);
++	dentry->d_hash.pprev = NULL;
++	hlist_bl_unlock(b);
+ }
+ 
+ /**
+@@ -902,7 +900,8 @@ static void shrink_dcache_for_umount_subtree(struct dentry *dentry)
+ 				dentry->d_op->d_prune(dentry);
+ 
+ 			dentry_lru_del(dentry);
+-			__d_shrink(dentry);
++			if (!d_unhashed(dentry))
++				__d_shrink(dentry);
+ 
+ 			if (dentry->d_lockref.count != 0) {
+ 				printk(KERN_ERR
