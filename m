@@ -1,81 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:32646 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:41287 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754307Ab3ISNJM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Sep 2013 09:09:12 -0400
-Date: Thu, 19 Sep 2013 08:59:24 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Eric Wong <normalperson@yhbt.net>
-Cc: Zach Brown <zab@redhat.com>, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Bryan Schumaker <bjschuma@netapp.com>,
-        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>
-Subject: Re: [RFC] extending splice for copy offloading
-Message-ID: <20130919085924.09b2a25c@tlielax.poochiereds.net>
-In-Reply-To: <20130911211722.GA9725@dcvr.yhbt.net>
-References: <1378919210-10372-1-git-send-email-zab@redhat.com>
-	<20130911211722.GA9725@dcvr.yhbt.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1750750Ab3IFSr4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Sep 2013 14:47:56 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 3 1/1] NFSv4.1 Use MDS auth flavor for data
+ server connection
+Date: Fri, 6 Sep 2013 18:47:55 +0000
+Message-ID: <1378493274.10582.14.camel@leira.trondhjem.org>
+References: <1378491240-1848-1-git-send-email-andros@netapp.com>
+In-Reply-To: <1378491240-1848-1-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 11 Sep 2013 21:17:23 +0000
-Eric Wong <normalperson@yhbt.net> wrote:
-
-> Zach Brown <zab@redhat.com> wrote:
-> > Towards the end of that thread Eric Wong asked why we didn't just
-> > extend splice.  I immediately replied with some dumb dismissive
-> > answer.  Once I sat down and looked at it, though, it does make a
-> > lot of sense.  So good job, Eric.  +10 Dummie points for me.
-> 
-> Thanks for revisiting that :>
-> 
-> > Some things to talk about:
-> > - I really don't care about the naming here.  If you do, holler.
-> 
-> Exposing "DIRECT" to userspace now might confuse users into expecting
-> O_DIRECT behavior.  I say this as an easily-confused user.
-> 
-> In the future, perhaps O_DIRECT behavior can become per-splice (instead
-> of just per-open) and can save SPLICE_F_DIRECT for that.
-> 
-> > - We might want different flags for file-to-file splicing and acceleration
-> > - We might want flags to require or forbid acceleration
-> 
-
-Do we need new flags at all? If both fds refer to files, then perhaps
-we can just take it that SPLICE_F_DIRECT behavior is implied?
-
-I'd probably suggest that we not add any more flags than are necessary
-until use-cases for them become clear.
-
-> > - We might want to provide all these flags to sendfile, too
-> 
-> Another syscall?  I prefer not.  Better to just maintain the sendfile
-> API as-is for compatibility reasons and nudge users towards splice.
-> 
-
-Agreed.
-
-> > Thoughts?  Objections?
-> 
-> I'll try to test/comment more in a week or two (not much time for
-> computing until then).
-
-On the whole, the concept looks sound.
-
-I'll note too that by simply lifting the restriction that one of the
-fd's to splice must always be a pipe, that may also give us a relatively
-simple way to add recvfile() as well, even if only as a macro wrapper
-around splice(). That's been a long sought-after feature of the samba
-developers...
-
-Just allow userland to do a splice straight from a socket fd to a file.
-We may end up having to copy data if the alignment isn't right, but it'd
-still be valuable to do that directly in the kernel in a single syscall.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+T24gRnJpLCAyMDEzLTA5LTA2IGF0IDE0OjE0IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IENvbW1p
+dCA0ZWRhYTMwOCAiTkZTOiBVc2UgImtyYjVpIiB0byBlc3RhYmxpc2ggTkZTdjQgc3RhdGUgd2hl
+bmV2ZXIgcG9zc2libGUiDQo+IHVzZXMgdGhlIG5mc19jbGllbnQgY2xfcnBjY2xpZW50IGZvciBh
+bGwgc3RhdGUgbWFuYWdlbWVudCBvcGVyYXRpb25zLCBhbmQNCj4gd2lsbCB1c2Uga3JiNWkgb3Ig
+YXV0aF9zeXMgd2l0aCBubyByZWdhcmQgdG8gdGhlIG1vdW50IGNvbW1hbmQgYXV0aGZsYXZvcg0K
+PiBjaG9pY2UuDQo+IA0KPiBUaGUgTURTLCBhcyBhbnkgTkZTdjQuMSBtb3VudCBwb2ludCwgdXNl
+cyB0aGUgbmZzX3NlcnZlciBycGMgY2xpZW50IGZvciBhbGwNCj4gbm9uLXN0YXRlIG1hbmFnZW1l
+bnQgb3BlcmF0aW9ucyB3aXRoIGEgZGlmZmVyZW50IG5mc19zZXJ2ZXIgZm9yIGVhY2ggZnNpZA0K
+PiBlbmNvdW50ZXJlZCB0cmF2ZXJzaW5nIHRoZSBtb3VudCBwb2ludCwgZWFjaCB3aXRoIGEgcG90
+ZW50aWFsbHkgZGlmZmVyZW50DQo+IGF1dGggZmxhdm9yLg0KPiANCj4gcE5GUyBkYXRhIHNlcnZl
+cnMgYXJlIG5vdCBtb3VudGVkIGluIHRoZSBub3JtYWwgc2Vuc2UgYXMgdGhlcmUgaXMgbm8gYXNz
+b2NpYXRlZA0KPiBuZnNfc2VydmVyIHN0cnVjdHVyZS4gRGF0YSBzZXJ2ZXJzIGNhbiBhbHNvIGV4
+cG9ydCBtdWx0aXBsZSBmc2lkcywgZWFjaCB3aXRoDQo+IGEgcG90ZW50aWFsbHkgZGlmZmVyZW50
+IGF1dGggZmxhdm9yLg0KPiANCj4gRGF0YSBzZXJ2ZXJzIG5lZWQgdG8gdXNlIHRoZSBzYW1lIGF1
+dGhmbGF2b3IgYXMgdGhlIE1EUyBzZXJ2ZXIgcnBjIGNsaWVudCBmb3INCj4gbm9uLXN0YXRlIG1h
+bmFnZW1lbnQgb3BlcmF0aW9ucy4gUG9wdWxhdGUgYSBsaXN0IG9mIHJwYyBjbGllbnRzIHdpdGgg
+dGhlIE1EUw0KPiBzZXJ2ZXIgcnBjIGNsaWVudCBhdXRoIGZsYXZvciBmb3IgdGhlIERTIHRvIHVz
+ZS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+
+DQo+IC0tLQ0KPiAgDQoNClRoYW5rIHlvdSBBbmR5ISBVbmxlc3Mgc29tZXRoaW5nIGNvbWVzIHVw
+LCBJJ20gYXBwbHlpbmcgdGhpcyBvbmUuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
+RlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
+bQ0Kd3d3Lm5ldGFwcC5jb20NCg==
