@@ -1,185 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f53.google.com ([209.85.128.53]:51217 "EHLO
-	mail-qe0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753047Ab3IZSki (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:40:38 -0400
-Received: by mail-qe0-f53.google.com with SMTP id jy17so1105241qeb.26
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:40:37 -0700 (PDT)
-From: Benny Halevy <bhalevy@primarydata.com>
-To: " J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH RFC v0 11/49] NFSD: introduce exp_xdr.h
-Date: Thu, 26 Sep 2013 14:40:35 -0400
-Message-Id: <1380220835-13182-1-git-send-email-bhalevy@primarydata.com>
-In-Reply-To: <52447EA0.7070004@primarydata.com>
-References: <52447EA0.7070004@primarydata.com>
+Received: from mx12.netapp.com ([216.240.18.77]:59641 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753655Ab3IFPjS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Sep 2013 11:39:18 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: Quentin Barnes <qbarnes@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
+Date: Fri, 6 Sep 2013 15:39:16 +0000
+Message-ID: <1378481956.3332.10.camel@leira.trondhjem.org>
+References: <20130905162110.GA17920@gmail.com>
+	 <20130905170303.GB17330@us.ibm.com> <20130905191139.GA20830@gmail.com>
+	 <1378411320.5450.27.camel@leira.trondhjem.org>
+	 <20130905213649.GA21944@gmail.com>
+	 <1378418243.5450.29.camel@leira.trondhjem.org>
+	 <20130905223420.GA23192@gmail.com>
+	 <20130906093636.6818e7b2@corrin.poochiereds.net>
+	 <1378479655.3332.3.camel@leira.trondhjem.org>
+	 <20130906110429.48000442@corrin.poochiereds.net>
+In-Reply-To: <20130906110429.48000442@corrin.poochiereds.net>
+Content-Type: multipart/mixed;
+	boundary="_002_1378481956333210camelleiratrondhjemorg_"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@panasas.com>
+--_002_1378481956333210camelleiratrondhjemorg_
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <87A486E9B9EE7642814F854EDFE6E862@hq.netapp.com>
+Content-Transfer-Encoding: base64
 
-Containing xdr encoding helpers to be used by the layout type library functions
-or by the file system to encode/decode layout-type specific device and layout
-information.
+T24gRnJpLCAyMDEzLTA5LTA2IGF0IDExOjA0IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+T24gRnJpLCA2IFNlcCAyMDEzIDE1OjAwOjU2ICswMDAwDQo+ICJNeWtsZWJ1c3QsIFRyb25kIiA8
+VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+ID4gQWxzbywgZG8geW91IG5l
+ZWQgdG8gZG8gYSBzaW1pbGFyIGZpeCB0byBuZnNfY2FuX2NvYWxlc2NlX3JlcXVlc3RzPw0KPiA+
+IA0KPiA+IFllcy4gR29vZCBwb2ludCENCj4gPiANCj4gDQo+IENvb2wuIEZXSVcsIGhlcmUncyB0
+aGUgb3JpZ2luYWwgYnVnIHRoYXQgd2FzIG9wZW5lZCBhZ2FpbnN0IFJIRUw1Og0KPiANCj4gICAg
+IGh0dHBzOi8vYnVnemlsbGEucmVkaGF0LmNvbS9zaG93X2J1Zy5jZ2k/aWQ9NzM2NTc4DQo+IA0K
+PiAuLi50aGUgcmVwcm9kdWNlciB0aGF0IE1heCBjb29rZWQgdXAgaXMgbm90IGRvaW5nIG1tYXBw
+ZWQgSS9PIHNvIHRoZXJlDQo+IG1heSBiZSBhIGRpZmZlcmVuY2UgdGhlcmUsIGJ1dCBJIGhhdmVu
+J3QgbG9va2VkIGNsb3NlbHkgYXQgd2h5IHRoYXQgaXMuDQoNCkhlcmUgaXMgdGhlIHBhdGNoLi4u
+DQoNClRoZXJlIHNob3VsZCBiZSBubyBiaWcgZGlmZmVyZW5jZXMgYmV0d2VlbiBtbWFwcGVkIEkv
+TyBhbmQgb3JkaW5hcnkgSS9PDQpub3cgdGhhdCB3ZSBoYXZlIHBhZ2VfbWt3cml0ZSgpIHRvIHNl
+dCB1cCB0aGUgcmVxdWVzdC4gVGhlIG9ubHkNCmRpZmZlcmVuY2UgdGhhdCBJIGNhbiB0aGluayBv
+ZiBvZmZoYW5kIGlzIHdoZW4geW91IHVzZSBsb2NraW5nOiBmb3INCm1tYXAoKSB3cml0ZXMsIE5G
+UyBjYW4gb25seSBndWFyYW50ZWUgZGF0YSBpbnRlZ3JpdHkgaWYgeW91IGxvY2sgdGhlDQplbnRp
+cmUgcGFnZS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
+aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
+bQ0K
 
-Cc: J. Bruce Fields <bfields@citi.umich.edu>
-[nfsd: fix exp_xdr_encode_u64 parameter type]
-Reported-by: J. Bruce Fields <bfields@citi.umich.edu>
-[exportfs: exp_xdr.h: Use #include <linux/string.h> instead of <asm/string.h>]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
----
- include/linux/exp_xdr.h | 141 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 141 insertions(+)
- create mode 100644 include/linux/exp_xdr.h
+--_002_1378481956333210camelleiratrondhjemorg_
+Content-Type: text/x-patch;
+	name="0001-NFS-Don-t-check-lock-owner-compatability-unless-file.patch"
+Content-Description: 0001-NFS-Don-t-check-lock-owner-compatability-unless-file.patch
+Content-Disposition: attachment;
+	filename="0001-NFS-Don-t-check-lock-owner-compatability-unless-file.patch";
+	size=2262; creation-date="Fri, 06 Sep 2013 15:39:16 GMT";
+	modification-date="Fri, 06 Sep 2013 15:39:16 GMT"
+Content-ID: <FBF55C85B7FC3E4B8162360E64E552F6@hq.netapp.com>
+Content-Transfer-Encoding: base64
 
-diff --git a/include/linux/exp_xdr.h b/include/linux/exp_xdr.h
-new file mode 100644
-index 0000000..b69c309
---- /dev/null
-+++ b/include/linux/exp_xdr.h
-@@ -0,0 +1,141 @@
-+#ifndef _LINUX_EXP_XDR_H
-+#define _LINUX_EXP_XDR_H
-+
-+#include <asm/byteorder.h>
-+#include <asm/unaligned.h>
-+#include <linux/string.h>
-+
-+struct exp_xdr_stream {
-+	__be32 *p;
-+	__be32 *end;
-+};
-+
-+/**
-+ * exp_xdr_qwords - Calculate the number of quad-words holding nbytes
-+ * @nbytes: number of bytes to encode
-+ */
-+static inline size_t
-+exp_xdr_qwords(__u32 nbytes)
-+{
-+	return DIV_ROUND_UP(nbytes, 4);
-+}
-+
-+/**
-+ * exp_xdr_qbytes - Calculate the number of bytes holding qwords
-+ * @qwords: number of quad-words to encode
-+ */
-+static inline size_t
-+exp_xdr_qbytes(size_t qwords)
-+{
-+	return qwords << 2;
-+}
-+
-+/**
-+ * exp_xdr_reserve_space - Reserve buffer space for sending
-+ * @xdr: pointer to exp_xdr_stream
-+ * @nbytes: number of bytes to reserve
-+ *
-+ * Checks that we have enough buffer space to encode 'nbytes' more
-+ * bytes of data. If so, update the xdr stream.
-+ */
-+static inline __be32 *
-+exp_xdr_reserve_space(struct exp_xdr_stream *xdr, size_t nbytes)
-+{
-+	__be32 *p = xdr->p;
-+	__be32 *q;
-+
-+	/* align nbytes on the next 32-bit boundary */
-+	q = p + exp_xdr_qwords(nbytes);
-+	if (unlikely(q > xdr->end || q < p))
-+		return NULL;
-+	xdr->p = q;
-+	return p;
-+}
-+
-+/**
-+ * exp_xdr_reserve_qwords - Reserve buffer space for sending
-+ * @xdr: pointer to exp_xdr_stream
-+ * @nwords: number of quad words (u32's) to reserve
-+ */
-+static inline __be32 *
-+exp_xdr_reserve_qwords(struct exp_xdr_stream *xdr, size_t qwords)
-+{
-+	return exp_xdr_reserve_space(xdr, exp_xdr_qbytes(qwords));
-+}
-+
-+/**
-+ * exp_xdr_encode_u32 - Encode an unsigned 32-bit value onto a xdr stream
-+ * @p: pointer to encoding destination
-+ * @val: value to encode
-+ */
-+static inline __be32 *
-+exp_xdr_encode_u32(__be32 *p, __u32 val)
-+{
-+	*p = cpu_to_be32(val);
-+	return p + 1;
-+}
-+
-+/**
-+ * exp_xdr_encode_u64 - Encode an unsigned 64-bit value onto a xdr stream
-+ * @p: pointer to encoding destination
-+ * @val: value to encode
-+ */
-+static inline __be32 *
-+exp_xdr_encode_u64(__be32 *p, __u64 val)
-+{
-+	put_unaligned_be64(val, p);
-+	return p + 2;
-+}
-+
-+/**
-+ * exp_xdr_encode_bytes - Encode an array of bytes onto a xdr stream
-+ * @p: pointer to encoding destination
-+ * @ptr: pointer to the array of bytes
-+ * @nbytes: number of bytes to encode
-+ */
-+static inline __be32 *
-+exp_xdr_encode_bytes(__be32 *p, const void *ptr, __u32 nbytes)
-+{
-+	if (likely(nbytes != 0)) {
-+		unsigned int qwords = exp_xdr_qwords(nbytes);
-+		unsigned int padding = exp_xdr_qbytes(qwords) - nbytes;
-+
-+		memcpy(p, ptr, nbytes);
-+		if (padding != 0)
-+			memset((char *)p + nbytes, 0, padding);
-+		p += qwords;
-+	}
-+	return p;
-+}
-+
-+/**
-+ * exp_xdr_encode_opaque - Encode an opaque type onto a xdr stream
-+ * @p: pointer to encoding destination
-+ * @ptr: pointer to the opaque array
-+ * @nbytes: number of bytes to encode
-+ *
-+ * Encodes the 32-bit opaque size in bytes followed by the opaque value.
-+ */
-+static inline __be32 *
-+exp_xdr_encode_opaque(__be32 *p, const void *ptr, __u32 nbytes)
-+{
-+	p = exp_xdr_encode_u32(p, nbytes);
-+	return exp_xdr_encode_bytes(p, ptr, nbytes);
-+}
-+
-+/**
-+ * exp_xdr_encode_opaque_qlen - Encode the opaque length onto a xdr stream
-+ * @lenp: pointer to the opaque length destination
-+ * @endp: pointer to the end of the opaque array
-+ *
-+ * Encodes the 32-bit opaque size in bytes given the start and end pointers
-+ */
-+static inline __be32 *
-+exp_xdr_encode_opaque_len(__be32 *lenp, const void *endp)
-+{
-+	size_t nbytes = (char *)endp - (char *)(lenp + 1);
-+
-+	exp_xdr_encode_u32(lenp, nbytes);
-+	return lenp + 1 + exp_xdr_qwords(nbytes);
-+}
-+#endif /* _LINUX_EXP_XDR_H */
--- 
-1.8.3.1
+RnJvbSA0MTA5YmI3NDk2NjQwYWE5N2ExMjkwNDUyN2JhOGUzYTE5YjdjZTdhIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
+YXBwLmNvbT4NCkRhdGU6IEZyaSwgNiBTZXAgMjAxMyAxMTowOTozOCAtMDQwMA0KU3ViamVjdDog
+W1BBVENIXSBORlM6IERvbid0IGNoZWNrIGxvY2sgb3duZXIgY29tcGF0YWJpbGl0eSB1bmxlc3Mg
+ZmlsZSBpcw0KIGxvY2tlZCAocGFydCAyKQ0KDQpXaGVuIGNvYWxlc2NpbmcgcmVxdWVzdHMgaW50
+byBhIHNpbmdsZSBSRUFEIG9yIFdSSVRFIFJQQyBjYWxsLCBhbmQgdGhlcmUNCmlzIG5vIGZpbGUg
+bG9ja2luZyBpbnZvbHZlZCwgd2UgZG9uJ3QgaGF2ZSB0byByZWZ1c2UgY29hbGVzY2luZyBmb3IN
+CnJlcXVlc3RzIHdoZXJlIHRoZSBsb2NrIG93bmVyIGluZm9ybWF0aW9uIGRvZXNuJ3QgbWF0Y2gu
+DQoNClJlcG9ydGVkLWJ5OiBKZWZmIExheXRvbiA8amxheXRvbkByZWRoYXQuY29tPg0KU2lnbmVk
+LW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCi0t
+LQ0KIGZzL25mcy9wYWdlbGlzdC5jIHwgMjIgKysrKysrKysrKysrKysrKy0tLS0tLQ0KIDEgZmls
+ZSBjaGFuZ2VkLCAxNiBpbnNlcnRpb25zKCspLCA2IGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0
+IGEvZnMvbmZzL3BhZ2VsaXN0LmMgYi9mcy9uZnMvcGFnZWxpc3QuYw0KaW5kZXggMjljZmI3YS4u
+MmZmZWJmMiAxMDA2NDQNCi0tLSBhL2ZzL25mcy9wYWdlbGlzdC5jDQorKysgYi9mcy9uZnMvcGFn
+ZWxpc3QuYw0KQEAgLTMyOCw2ICszMjgsMTkgQEAgdm9pZCBuZnNfcGFnZWlvX2luaXQoc3RydWN0
+IG5mc19wYWdlaW9fZGVzY3JpcHRvciAqZGVzYywNCiB9DQogRVhQT1JUX1NZTUJPTF9HUEwobmZz
+X3BhZ2Vpb19pbml0KTsNCiANCitzdGF0aWMgYm9vbCBuZnNfbWF0Y2hfb3Blbl9jb250ZXh0KGNv
+bnN0IHN0cnVjdCBuZnNfb3Blbl9jb250ZXh0ICpjdHgxLA0KKwkJY29uc3Qgc3RydWN0IG5mc19v
+cGVuX2NvbnRleHQgKmN0eDIpDQorew0KKwlyZXR1cm4gY3R4MS0+Y3JlZCA9PSBjdHgyLT5jcmVk
+ICYmIGN0eDEtPnN0YXRlID09IGN0eDItPnN0YXRlOw0KK30NCisNCitzdGF0aWMgYm9vbCBuZnNf
+bWF0Y2hfbG9ja19jb250ZXh0KGNvbnN0IHN0cnVjdCBuZnNfbG9ja19jb250ZXh0ICpsMSwNCisJ
+CWNvbnN0IHN0cnVjdCBuZnNfbG9ja19jb250ZXh0ICpsMikNCit7DQorCXJldHVybiBsMS0+bG9j
+a293bmVyLmxfb3duZXIgPT0gbDItPmxvY2tvd25lci5sX293bmVyDQorCQkmJiBsMS0+bG9ja293
+bmVyLmxfcGlkID09IGwyLT5sb2Nrb3duZXIubF9waWQ7DQorfQ0KKw0KIC8qKg0KICAqIG5mc19j
+YW5fY29hbGVzY2VfcmVxdWVzdHMgLSB0ZXN0IHR3byByZXF1ZXN0cyBmb3IgY29tcGF0aWJpbGl0
+eQ0KICAqIEBwcmV2OiBwb2ludGVyIHRvIG5mc19wYWdlDQpAQCAtMzQzLDEzICszNTYsMTAgQEAg
+c3RhdGljIGJvb2wgbmZzX2Nhbl9jb2FsZXNjZV9yZXF1ZXN0cyhzdHJ1Y3QgbmZzX3BhZ2UgKnBy
+ZXYsDQogCQkJCSAgICAgIHN0cnVjdCBuZnNfcGFnZSAqcmVxLA0KIAkJCQkgICAgICBzdHJ1Y3Qg
+bmZzX3BhZ2Vpb19kZXNjcmlwdG9yICpwZ2lvKQ0KIHsNCi0JaWYgKHJlcS0+d2JfY29udGV4dC0+
+Y3JlZCAhPSBwcmV2LT53Yl9jb250ZXh0LT5jcmVkKQ0KLQkJcmV0dXJuIGZhbHNlOw0KLQlpZiAo
+cmVxLT53Yl9sb2NrX2NvbnRleHQtPmxvY2tvd25lci5sX293bmVyICE9IHByZXYtPndiX2xvY2tf
+Y29udGV4dC0+bG9ja293bmVyLmxfb3duZXIpDQotCQlyZXR1cm4gZmFsc2U7DQotCWlmIChyZXEt
+PndiX2xvY2tfY29udGV4dC0+bG9ja293bmVyLmxfcGlkICE9IHByZXYtPndiX2xvY2tfY29udGV4
+dC0+bG9ja293bmVyLmxfcGlkKQ0KKwlpZiAoIW5mc19tYXRjaF9vcGVuX2NvbnRleHQocmVxLT53
+Yl9jb250ZXh0LCBwcmV2LT53Yl9jb250ZXh0KSkNCiAJCXJldHVybiBmYWxzZTsNCi0JaWYgKHJl
+cS0+d2JfY29udGV4dC0+c3RhdGUgIT0gcHJldi0+d2JfY29udGV4dC0+c3RhdGUpDQorCWlmIChy
+ZXEtPndiX2NvbnRleHQtPmRlbnRyeS0+ZF9pbm9kZS0+aV9mbG9jayAhPSBOVUxMICYmDQorCSAg
+ICAhbmZzX21hdGNoX2xvY2tfY29udGV4dChyZXEtPndiX2xvY2tfY29udGV4dCwgcHJldi0+d2Jf
+bG9ja19jb250ZXh0KSkNCiAJCXJldHVybiBmYWxzZTsNCiAJaWYgKHJlcS0+d2JfcGdiYXNlICE9
+IDApDQogCQlyZXR1cm4gZmFsc2U7DQotLSANCjEuOC4zLjENCg0K
 
+--_002_1378481956333210camelleiratrondhjemorg_--
