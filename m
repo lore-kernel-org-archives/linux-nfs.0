@@ -1,216 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39117 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:61708 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753289Ab3ISUuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Sep 2013 16:50:39 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 06/13] locks: implement delegations
-Date: Thu, 19 Sep 2013 16:50:30 -0400
-Message-Id: <1379623837-30798-7-git-send-email-bfields@redhat.com>
-In-Reply-To: <1379623837-30798-1-git-send-email-bfields@redhat.com>
-References: <1379623837-30798-1-git-send-email-bfields@redhat.com>
+	id S1750846Ab3IGXSU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 7 Sep 2013 19:18:20 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 5/6] NFSv4: Allow security autonegotiation for submounts
+Date: Sat, 7 Sep 2013 19:18:12 -0400
+Message-ID: <1378595893-60395-6-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1378595893-60395-5-git-send-email-Trond.Myklebust@netapp.com>
+References: <1378595893-60395-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1378595893-60395-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1378595893-60395-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1378595893-60395-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1378595893-60395-5-git-send-email-Trond.Myklebust@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+In cases where the parent super block was not mounted with a 'sec=' line,
+allow autonegotiation of security for the submounts.
 
-Implement NFSv4 delegations at the vfs level using the new FL_DELEG lock
-type.
-
-Note nfsd is the only delegation user and is only using read
-delegations.  Warn on any attempt to set a write delegation for now.
-We'll come back to that case later.
-
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/locks.c         |   55 ++++++++++++++++++++++++++++++++++++++++++----------
- include/linux/fs.h |   18 ++++++++++++++---
- 2 files changed, 60 insertions(+), 13 deletions(-)
+ fs/nfs/nfs4client.c    |  3 ++-
+ fs/nfs/nfs4namespace.c | 21 +++++++++++++++++----
+ 2 files changed, 19 insertions(+), 5 deletions(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 6e46dede..7336920 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -1292,28 +1292,40 @@ static void time_out_leases(struct inode *inode)
- 	}
- }
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index cc80085..a860ab5 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -1078,7 +1078,8 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
+ 	if (error < 0)
+ 		goto error;
  
-+static bool leases_conflict(struct file_lock *lease, struct file_lock *breaker)
-+{
-+	if ((breaker->fl_flags & FL_DELEG) && (lease->fl_flags & FL_LEASE))
-+		return false;
-+	return locks_conflict(breaker, lease);
-+}
-+
- /**
-  *	__break_lease	-	revoke all outstanding leases on file
-  *	@inode: the inode of the file to return
-- *	@mode: the open mode (read or write)
-+ *	@mode: O_RDONLY: break only write leases; O_WRONLY or O_RDWR:
-+ *	    break all leases
-+ *	@type: FL_LEASE: break leases and delegations; FL_DELEG: break
-+ *	    only delegations
-  *
-  *	break_lease (inlined for speed) has checked there already is at least
-  *	some kind of lock (maybe a lease) on this file.  Leases are broken on
-  *	a call to open() or truncate().  This function can sleep unless you
-  *	specified %O_NONBLOCK to your open().
-  */
--int __break_lease(struct inode *inode, unsigned int mode)
-+int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
+-	error = nfs4_server_common_setup(server, mntfh, false);
++	error = nfs4_server_common_setup(server, mntfh,
++			!(parent_server->flags & NFS_MOUNT_SECFLAVOUR));
+ 	if (error < 0)
+ 		goto error;
+ 
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index cdb0b41..2288cd3 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -11,6 +11,7 @@
+ #include <linux/mount.h>
+ #include <linux/namei.h>
+ #include <linux/nfs_fs.h>
++#include <linux/nfs_mount.h>
+ #include <linux/slab.h>
+ #include <linux/string.h>
+ #include <linux/sunrpc/clnt.h>
+@@ -369,21 +370,33 @@ out:
+ struct vfsmount *nfs4_submount(struct nfs_server *server, struct dentry *dentry,
+ 			       struct nfs_fh *fh, struct nfs_fattr *fattr)
  {
- 	int error = 0;
- 	struct file_lock *new_fl, *flock;
- 	struct file_lock *fl;
- 	unsigned long break_time;
- 	int i_have_this_lease = 0;
-+	bool lease_conflict = false;
- 	int want_write = (mode & O_ACCMODE) != O_RDONLY;
++	rpc_authflavor_t flavor = server->client->cl_auth->au_flavor;
+ 	struct dentry *parent = dget_parent(dentry);
++	struct inode *dir = parent->d_inode;
++	struct qstr *name = &dentry->d_name;
+ 	struct rpc_clnt *client;
+ 	struct vfsmount *mnt;
  
- 	new_fl = lease_alloc(NULL, want_write ? F_WRLCK : F_RDLCK);
- 	if (IS_ERR(new_fl))
- 		return PTR_ERR(new_fl);
-+	new_fl->fl_flags = type;
+ 	/* Look it up again to get its attributes and sec flavor */
+-	client = nfs4_proc_lookup_mountpoint(parent->d_inode, &dentry->d_name, fh, fattr);
++	client = nfs4_proc_lookup_mountpoint(dir, name, fh, fattr);
+ 	dput(parent);
+ 	if (IS_ERR(client))
+ 		return ERR_CAST(client);
  
- 	spin_lock(&inode->i_lock);
- 
-@@ -1323,13 +1335,16 @@ int __break_lease(struct inode *inode, unsigned int mode)
- 	if ((flock == NULL) || !IS_LEASE(flock))
- 		goto out;
- 
--	if (!locks_conflict(flock, new_fl))
-+	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
-+		if (leases_conflict(fl, new_fl)) {
-+			lease_conflict = true;
-+			if (fl->fl_owner == current->files)
-+				i_have_this_lease = 1;
-+		}
-+	}
-+	if (!lease_conflict)
- 		goto out;
- 
--	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next)
--		if (fl->fl_owner == current->files)
--			i_have_this_lease = 1;
--
- 	break_time = 0;
- 	if (lease_break_time > 0) {
- 		break_time = jiffies + lease_break_time * HZ;
-@@ -1338,6 +1353,8 @@ int __break_lease(struct inode *inode, unsigned int mode)
- 	}
- 
- 	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
-+		if (!leases_conflict(fl, new_fl))
-+			continue;
- 		if (want_write) {
- 			if (fl->fl_flags & FL_UNLOCK_PENDING)
- 				continue;
-@@ -1379,7 +1396,7 @@ restart:
- 		 */
- 		for (flock = inode->i_flock; flock && IS_LEASE(flock);
- 				flock = flock->fl_next) {
--			if (locks_conflict(new_fl, flock))
-+			if (leases_conflict(new_fl, flock))
- 				goto restart;
- 		}
- 		error = 0;
-@@ -1460,9 +1477,26 @@ static int generic_add_lease(struct file *filp, long arg, struct file_lock **flp
- 	struct file_lock *fl, **before, **my_before = NULL, *lease;
- 	struct dentry *dentry = filp->f_path.dentry;
- 	struct inode *inode = dentry->d_inode;
-+	bool is_deleg = (*flp)->fl_flags & FL_DELEG;
- 	int error;
- 
- 	lease = *flp;
-+	/*
-+	 * In the delegation case we need mutual exclusion with
-+	 * a number of operations that take the i_mutex.  We trylock
-+	 * because delegations are an optional optimization, and if
-+	 * there's some chance of a conflict--we'd rather not
-+	 * bother, maybe that's a sign this just isn't a good file to
-+	 * hand out a delegation on.
-+	 */
-+	if (is_deleg && !mutex_trylock(&inode->i_mutex))
-+		return -EAGAIN;
-+
-+	if (is_deleg && arg == F_WRLCK) {
-+		/* Write delegations are not currently supported: */
-+		WARN_ON_ONCE(1);
-+		return -EINVAL;
+-	if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
++	if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) {
+ 		mnt = nfs_do_refmount(client, dentry);
+-	else
+-		mnt = nfs_do_submount(dentry, fh, fattr, client->cl_auth->au_flavor);
++		goto out;
 +	}
  
- 	error = -EAGAIN;
- 	if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
-@@ -1514,9 +1548,10 @@ static int generic_add_lease(struct file *filp, long arg, struct file_lock **flp
- 		goto out;
- 
- 	locks_insert_lock(before, lease);
--	return 0;
--
-+	error = 0;
- out:
-+	if (is_deleg)
-+		mutex_unlock(&inode->i_mutex);
- 	return error;
++	if (client->cl_auth->au_flavor != flavor)
++		flavor = client->cl_auth->au_flavor;
++	else if (!(server->flags & NFS_MOUNT_SECFLAVOUR)) {
++		rpc_authflavor_t new = nfs4_negotiate_security(dir, name);
++		if ((int)new >= 0)
++			flavor = new;
++	}
++	mnt = nfs_do_submount(dentry, fh, fattr, flavor);
++out:
+ 	rpc_shutdown_client(client);
+ 	return mnt;
  }
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 35669fe..7a7df5e 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1030,7 +1030,7 @@ extern int vfs_test_lock(struct file *, struct file_lock *);
- extern int vfs_lock_file(struct file *, unsigned int, struct file_lock *, struct file_lock *);
- extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
- extern int flock_lock_file_wait(struct file *filp, struct file_lock *fl);
--extern int __break_lease(struct inode *inode, unsigned int flags);
-+extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
- extern void lease_get_mtime(struct inode *, struct timespec *time);
- extern int generic_setlease(struct file *, long, struct file_lock **);
- extern int vfs_setlease(struct file *, long, struct file_lock **);
-@@ -1139,7 +1139,7 @@ static inline int flock_lock_file_wait(struct file *filp,
- 	return -ENOLCK;
- }
- 
--static inline int __break_lease(struct inode *inode, unsigned int mode)
-+static inline int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
- {
- 	return 0;
- }
-@@ -1962,9 +1962,17 @@ static inline int locks_verify_truncate(struct inode *inode,
- static inline int break_lease(struct inode *inode, unsigned int mode)
- {
- 	if (inode->i_flock)
--		return __break_lease(inode, mode);
-+		return __break_lease(inode, mode, FL_LEASE);
- 	return 0;
- }
-+
-+static inline int break_deleg(struct inode *inode, unsigned int mode)
-+{
-+	if (inode->i_flock)
-+		return __break_lease(inode, mode, FL_DELEG);
-+	return 0;
-+}
-+
- #else /* !CONFIG_FILE_LOCKING */
- static inline int locks_mandatory_locked(struct inode *inode)
- {
-@@ -2004,6 +2012,10 @@ static inline int break_lease(struct inode *inode, unsigned int mode)
- 	return 0;
- }
- 
-+static inline int break_deleg(struct inode *inode, unsigned int mode)
-+{
-+	return 0;
-+}
- #endif /* CONFIG_FILE_LOCKING */
- 
- /* fs/open.c */
 -- 
-1.7.9.5
+1.8.3.1
 
