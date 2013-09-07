@@ -1,78 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f180.google.com ([209.85.216.180]:50643 "EHLO
-	mail-qc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753844Ab3I0OjR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Sep 2013 10:39:17 -0400
-Received: by mail-qc0-f180.google.com with SMTP id p19so1767031qcv.39
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Sep 2013 07:39:15 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <52458F79.8040801@redhat.com>
-References: <1378919210-10372-1-git-send-email-zab@redhat.com>
-	<CAELBmZBGD4rph=gjLCPKCdEj+nzEQ-F=DExoL+h3vRm7qF7dCQ@mail.gmail.com>
-	<20130925183828.GA30372@lenny.home.zabbo.net>
-	<CAFX2JfnyF8kyMYzCdqdr2JkoyQCom1bFLpFj89wODjoju54-Ow@mail.gmail.com>
-	<20130925190620.GB30372@lenny.home.zabbo.net>
-	<20130925195526.GA18971@fieldses.org>
-	<20130925210742.GG30372@lenny.home.zabbo.net>
-	<CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
-	<20130926153359.GE704@fieldses.org>
-	<CAJfpegsUchb0eX+Hi3rN5Ypje3Y-dgo=pxgM1Y3BQbHVp=1hSw@mail.gmail.com>
-	<20130926190611.GP30372@lenny.home.zabbo.net>
-	<CAJfpegvvWhs+jv2J9kOQrB31PEO3kyn_sLm_e2w9YKp=y6EDhA@mail.gmail.com>
-	<5244A5E7.90808@redhat.com>
-	<CAJfpegufnsU0LLvvZDmKpvRn8AaJ7NvKeegg-4YJ5AK9mBDBYQ@mail.gmail.com>
-	<52458F79.8040801@redhat.com>
-Date: Fri, 27 Sep 2013 16:39:15 +0200
-Message-ID: <CAJfpegseipg6DAseBTG4Z6024noQa7owv48rOJznCPiXK+hezw@mail.gmail.com>
-Subject: Re: [RFC] extending splice for copy offloading
-From: Miklos Szeredi <miklos@szeredi.hu>
-To: Ric Wheeler <rwheeler@redhat.com>
-Cc: Zach Brown <zab@redhat.com>, "J. Bruce Fields" <bfields@fieldses.org>,
-        Anna Schumaker <schumaker.anna@gmail.com>,
-        Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Bryan Schumaker <bjschuma@netapp.com>,
-        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        Eric Wong <normalperson@yhbt.net>
-Content-Type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:50823 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751527Ab3IGSqN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 7 Sep 2013 14:46:13 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 4/4] dcache: don't clear DCACHE_DISCONNECTED too early
+Date: Sat,  7 Sep 2013 14:46:01 -0400
+Message-Id: <1378579561-26868-5-git-send-email-bfields@redhat.com>
+In-Reply-To: <1378579561-26868-1-git-send-email-bfields@redhat.com>
+References: <1378579561-26868-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 27, 2013 at 4:00 PM, Ric Wheeler <rwheeler@redhat.com> wrote:
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-> I think that you are an order of magnitude off here in thinking about the
-> scale of the operations.
->
-> An enabled, synchronize copy offload to an array (or one that turns into a
-> reflink locally) is effectively the cost of the call itself. Let's say no
-> slower than one IO to a S-ATA disk (10ms?) as a pessimistic guess.
-> Realistically, that call is much faster than that worst case number.
->
-> Copying any substantial amount of data - like the target workload of VM
-> images or media files - would be hundreds of MB's per copy and that would
-> take seconds or minutes.
+DCACHE_DISCONNECTED should not be cleared until we're sure the dentry is
+connected all the way up to the root of the filesystem.  It *shouldn't*
+be cleared as soon as the dentry is connected to a parent.  That will
+cause bugs at least on exportable filesystems.
 
-Will a single splice-copy operation be interruptible/restartable?  If
-not, how should apps size one request so that it doesn't take too much
-time?  Even for slow devices (usb stick)?  If it will be restartable,
-how?   Can remote copy be done with this?  Over a high latency
-network?
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/dcache.c |    1 -
+ 1 file changed, 1 deletion(-)
 
-Those are the questions I'm worried about.
+diff --git a/fs/dcache.c b/fs/dcache.c
+index a53f55d..a4560ca 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -2404,7 +2404,6 @@ static void __d_materialise_dentry(struct dentry *dentry, struct dentry *anon)
+ 	spin_unlock(&dentry->d_lock);
+ 
+ 	/* anon->d_lock still locked, returns locked */
+-	anon->d_flags &= ~DCACHE_DISCONNECTED;
+ }
+ 
+ /**
+-- 
+1.7.9.5
 
->
-> We should really work on getting the basic mechanism working and robust
-> without any complications, then we can look at real, measured performance
-> and see if there is any justification for adding complexity.
-
-Go for that.  But don't forget that at the end of the day actual apps
-will need to be converted like file managers and "dd" and "cp" and we
-definitely don't wont a userspace library to be able to figure out how
-the copy is done most efficiently; it's something for the kernel to
-figure out.
-
-Thanks,
-Miklos
