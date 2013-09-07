@@ -1,105 +1,172 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:61092 "EHLO mx12.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:11907 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932111Ab3IBSRQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Sep 2013 14:17:16 -0400
+	id S1750819Ab3IGXSS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 7 Sep 2013 19:18:18 -0400
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: <linux-nfs@vger.kernel.org>
-CC: <andros@netapp.com>
-Subject: [PATCH v3 14/17] SUNRPC: Add a helper to allow sharing of rpc_pipefs directory objects
-Date: Mon, 2 Sep 2013 14:16:57 -0400
-Message-ID: <1378145820-29990-14-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1378145820-29990-13-git-send-email-Trond.Myklebust@netapp.com>
-References: <1378145820-29990-1-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-2-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-3-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-4-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-5-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-6-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-7-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-8-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-9-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-10-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-11-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-12-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-13-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH 1/6] NFS: Clean up the auth flavour array mess
+Date: Sat, 7 Sep 2013 19:18:08 -0400
+Message-ID: <1378595893-60395-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1378595893-60395-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1378595893-60395-1-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add support for looking up existing objects and creating new ones if there
-is no match.
+What is the point of having a 'auth_flavor_len' field, if it is
+always set to 1, and can't be used to determine if the user has
+selected an auth flavour?
+This cleanup goes back to using auth_flavor_len for its original
+intended purpose, and gets rid of the ad-hoc replacements.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- include/linux/sunrpc/rpc_pipe_fs.h |  6 ++++++
- net/sunrpc/rpc_pipe.c              | 35 +++++++++++++++++++++++++++++++++++
- 2 files changed, 41 insertions(+)
+ fs/nfs/nfs4super.c |  4 +++-
+ fs/nfs/super.c     | 37 +++++++++++++++++++++++++------------
+ 2 files changed, 28 insertions(+), 13 deletions(-)
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index b0cf181..a353e03 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -106,6 +106,12 @@ extern int rpc_add_pipe_dir_object(struct net *net,
- extern void rpc_remove_pipe_dir_object(struct net *net,
- 		struct rpc_pipe_dir_head *pdh,
- 		struct rpc_pipe_dir_object *pdo);
-+extern struct rpc_pipe_dir_object *rpc_find_or_alloc_pipe_dir_object(
-+		struct net *net,
-+		struct rpc_pipe_dir_head *pdh,
-+		int (*match)(struct rpc_pipe_dir_object *, void *),
-+		struct rpc_pipe_dir_object *(*alloc)(void *),
-+		void *data);
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index 5dbe2d2..4ad837c 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -253,8 +253,10 @@ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
  
- struct cache_detail;
- extern struct dentry *rpc_create_cache_dir(struct dentry *,
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index a35b2f4..f94567b 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -982,6 +982,41 @@ rpc_remove_pipe_dir_object(struct net *net,
- }
- EXPORT_SYMBOL_GPL(rpc_remove_pipe_dir_object);
+ 	dfprintk(MOUNT, "--> nfs4_try_mount()\n");
  
-+/**
-+ * rpc_find_or_alloc_pipe_dir_object
-+ * @net: pointer to struct net
-+ * @pdh: pointer to struct rpc_pipe_dir_head
-+ * @match: match struct rpc_pipe_dir_object to data
-+ * @alloc: allocate a new struct rpc_pipe_dir_object
-+ * @data: user defined data for match() and alloc()
-+ *
-+ */
-+struct rpc_pipe_dir_object *
-+rpc_find_or_alloc_pipe_dir_object(struct net *net,
-+		struct rpc_pipe_dir_head *pdh,
-+		int (*match)(struct rpc_pipe_dir_object *, void *),
-+		struct rpc_pipe_dir_object *(*alloc)(void *),
-+		void *data)
-+{
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+	struct rpc_pipe_dir_object *pdo;
-+
-+	mutex_lock(&sn->pipefs_sb_lock);
-+	list_for_each_entry(pdo, &pdh->pdh_entries, pdo_head) {
-+		if (!match(pdo, data))
-+			continue;
-+		goto out;
+-	if (data->auth_flavors[0] == RPC_AUTH_MAXFLAVOR)
++	if (data->auth_flavor_len < 1) {
+ 		data->auth_flavors[0] = RPC_AUTH_UNIX;
++		data->auth_flavor_len = 1;
 +	}
-+	pdo = alloc(data);
-+	if (!pdo)
-+		goto out;
-+	rpc_add_pipe_dir_object_locked(net, pdh, pdo);
-+out:
-+	mutex_unlock(&sn->pipefs_sb_lock);
-+	return pdo;
+ 	export_path = data->nfs_server.export_path;
+ 	data->nfs_server.export_path = "/";
+ 	root_mnt = nfs_do_root_mount(&nfs4_remote_fs_type, flags, mount_info,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 6ad9053..5d16ee3 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -923,7 +923,7 @@ static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(void)
+ 		data->nfs_server.port	= NFS_UNSPEC_PORT;
+ 		data->nfs_server.protocol = XPRT_TRANSPORT_TCP;
+ 		data->auth_flavors[0]	= RPC_AUTH_MAXFLAVOR;
+-		data->auth_flavor_len	= 1;
++		data->auth_flavor_len	= 0;
+ 		data->minorversion	= 0;
+ 		data->need_mount	= true;
+ 		data->net		= current->nsproxy->net_ns;
+@@ -1018,6 +1018,13 @@ static void nfs_set_mount_transport_protocol(struct nfs_parsed_mount_data *mnt)
+ 	}
+ }
+ 
++static void nfs_set_auth_parsed_mount_data(struct nfs_parsed_mount_data *data,
++		rpc_authflavor_t pseudoflavor)
++{
++	data->auth_flavors[0] = pseudoflavor;
++	data->auth_flavor_len = 1;
 +}
-+EXPORT_SYMBOL_GPL(rpc_find_or_alloc_pipe_dir_object);
 +
- static void
- rpc_create_pipe_dir_objects(struct rpc_pipe_dir_head *pdh)
+ /*
+  * Parse the value of the 'sec=' option.
+  */
+@@ -1729,7 +1736,7 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
+ 	 * Was a sec= authflavor specified in the options? First, verify
+ 	 * whether the server supports it, and then just try to use it if so.
+ 	 */
+-	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR) {
++	if (args->auth_flavor_len > 0) {
+ 		status = nfs_verify_authflavor(args, authlist, authlist_len);
+ 		dfprintk(MOUNT, "NFS: using auth flavor %u\n", args->auth_flavors[0]);
+ 		if (status)
+@@ -1760,7 +1767,7 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
+ 			/* Fallthrough */
+ 		}
+ 		dfprintk(MOUNT, "NFS: attempting to use auth flavor %u\n", flavor);
+-		args->auth_flavors[0] = flavor;
++		nfs_set_auth_parsed_mount_data(args, flavor);
+ 		server = nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
+ 		if (!IS_ERR(server))
+ 			return server;
+@@ -1776,7 +1783,7 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
+ 
+ 	/* Last chance! Try AUTH_UNIX */
+ 	dfprintk(MOUNT, "NFS: attempting to use auth flavor %u\n", RPC_AUTH_UNIX);
+-	args->auth_flavors[0] = RPC_AUTH_UNIX;
++	nfs_set_auth_parsed_mount_data(args, RPC_AUTH_UNIX);
+ 	return nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
+ }
+ 
+@@ -1893,6 +1900,7 @@ static int nfs23_validate_mount_data(void *options,
  {
+ 	struct nfs_mount_data *data = (struct nfs_mount_data *)options;
+ 	struct sockaddr *sap = (struct sockaddr *)&args->nfs_server.address;
++	int extra_flags = NFS_MOUNT_LEGACY_INTERFACE;
+ 
+ 	if (data == NULL)
+ 		goto out_no_data;
+@@ -1908,6 +1916,8 @@ static int nfs23_validate_mount_data(void *options,
+ 			goto out_no_v3;
+ 		data->root.size = NFS2_FHSIZE;
+ 		memcpy(data->root.data, data->old_root.data, NFS2_FHSIZE);
++		/* Turn off security negotiation */
++		extra_flags |= NFS_MOUNT_SECFLAVOUR;
+ 	case 4:
+ 		if (data->flags & NFS_MOUNT_SECFLAVOUR)
+ 			goto out_no_sec;
+@@ -1935,7 +1945,7 @@ static int nfs23_validate_mount_data(void *options,
+ 		 * can deal with.
+ 		 */
+ 		args->flags		= data->flags & NFS_MOUNT_FLAGMASK;
+-		args->flags		|= NFS_MOUNT_LEGACY_INTERFACE;
++		args->flags		|= extra_flags;
+ 		args->rsize		= data->rsize;
+ 		args->wsize		= data->wsize;
+ 		args->timeo		= data->timeo;
+@@ -1959,9 +1969,10 @@ static int nfs23_validate_mount_data(void *options,
+ 		args->namlen		= data->namlen;
+ 		args->bsize		= data->bsize;
+ 
+-		args->auth_flavors[0] = RPC_AUTH_UNIX;
+ 		if (data->flags & NFS_MOUNT_SECFLAVOUR)
+-			args->auth_flavors[0] = data->pseudoflavor;
++			nfs_set_auth_parsed_mount_data(args, data->pseudoflavor);
++		else
++			nfs_set_auth_parsed_mount_data(args, RPC_AUTH_UNIX);
+ 		if (!args->nfs_server.hostname)
+ 			goto out_nomem;
+ 
+@@ -2176,7 +2187,7 @@ nfs_remount(struct super_block *sb, int *flags, char *raw_data)
+ 	data->rsize = nfss->rsize;
+ 	data->wsize = nfss->wsize;
+ 	data->retrans = nfss->client->cl_timeout->to_retries;
+-	data->auth_flavors[0] = nfss->client->cl_auth->au_flavor;
++	nfs_set_auth_parsed_mount_data(data, nfss->client->cl_auth->au_flavor);
+ 	data->acregmin = nfss->acregmin / HZ;
+ 	data->acregmax = nfss->acregmax / HZ;
+ 	data->acdirmin = nfss->acdirmin / HZ;
+@@ -2675,15 +2686,17 @@ static int nfs4_validate_mount_data(void *options,
+ 			goto out_no_address;
+ 		args->nfs_server.port = ntohs(((struct sockaddr_in *)sap)->sin_port);
+ 
+-		args->auth_flavors[0] = RPC_AUTH_UNIX;
+ 		if (data->auth_flavourlen) {
++			rpc_authflavor_t pseudoflavor;
+ 			if (data->auth_flavourlen > 1)
+ 				goto out_inval_auth;
+-			if (copy_from_user(&args->auth_flavors[0],
++			if (copy_from_user(&pseudoflavor,
+ 					   data->auth_flavours,
+-					   sizeof(args->auth_flavors[0])))
++					   sizeof(pseudoflavor)))
+ 				return -EFAULT;
+-		}
++			nfs_set_auth_parsed_mount_data(args, pseudoflavor);
++		} else
++			nfs_set_auth_parsed_mount_data(args, RPC_AUTH_UNIX);
+ 
+ 		c = strndup_user(data->hostname.data, NFS4_MAXNAMLEN);
+ 		if (IS_ERR(c))
 -- 
 1.8.3.1
 
