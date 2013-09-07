@@ -1,45 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:53079 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751281Ab3IFRDk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Sep 2013 13:03:40 -0400
-Date: Fri, 6 Sep 2013 10:03:39 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Nick Piggin <npiggin@kernel.dk>
-Subject: Re: [PATCH 2/3] dcache: Don't set DISCONNECTED on "pseudo
- filesystem" dentries
-Message-ID: <20130906170339.GB6460@infradead.org>
-References: <1378482230-16312-1-git-send-email-bfields@redhat.com>
- <1378482230-16312-2-git-send-email-bfields@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1378482230-16312-2-git-send-email-bfields@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:50814 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751479Ab3IGSqL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 7 Sep 2013 14:46:11 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/4] dcache: make __d_shrink callers check d_unhashed()
+Date: Sat,  7 Sep 2013 14:45:59 -0400
+Message-Id: <1378579561-26868-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1378579561-26868-1-git-send-email-bfields@redhat.com>
+References: <1378579561-26868-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 06, 2013 at 11:43:49AM -0400, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> I can't for the life of me see any reason why anyone would care whether
-> a dentry that is never hooked into the dentry cache would need
-> DCACHE_DISCONNECTED set.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-__d_shrink did before your PATCH 1/3.
+__d_shrink only has two callers, one of whom already does the check, so
+may as well make this the caller's responsibility.
 
-With that fixed your patch looks fine.
+Cc: Christoph Hellwig <hch@infradead.org>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/dcache.c |   33 ++++++++++++++++-----------------
+ 1 file changed, 16 insertions(+), 17 deletions(-)
 
-> +/*
-> + * For filesystems that do not actually use the dentry cache at all, and
-> + * only ever deal in IS_ROOT() dentries:
-> + */
-
-If you document the function it really should be a kerneldoc comment.
-
-Also the description, while technically correct, isn't all that useful.
-
-It need an explanation why the filesystem is fine with unhashed
-dentries, and the reason is that it never performs any lookups as it
-pins the dentries in memory.
+diff --git a/fs/dcache.c b/fs/dcache.c
+index 7208b38..d9e4fba 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -391,23 +391,21 @@ static struct dentry *d_kill(struct dentry *dentry, struct dentry *parent)
+  */
+ static void __d_shrink(struct dentry *dentry)
+ {
+-	if (!d_unhashed(dentry)) {
+-		struct hlist_bl_head *b;
+-		/*
+-		 * Hashed dentries are normally on the dentry hashtable,
+-		 * with the exception of those newly allocated by
+-		 * d_obtain_alias, which are always IS_ROOT:
+-		 */
+-		if (unlikely(IS_ROOT(dentry)))
+-			b = &dentry->d_sb->s_anon;
+-		else
+-			b = d_hash(dentry->d_parent, dentry->d_name.hash);
++	struct hlist_bl_head *b;
++	/*
++	 * Hashed dentries are normally on the dentry hashtable,
++	 * with the exception of those newly allocated by
++	 * d_obtain_alias, which are always IS_ROOT:
++	 */
++	if (unlikely(IS_ROOT(dentry)))
++		b = &dentry->d_sb->s_anon;
++	else
++		b = d_hash(dentry->d_parent, dentry->d_name.hash);
+ 
+-		hlist_bl_lock(b);
+-		__hlist_bl_del(&dentry->d_hash);
+-		dentry->d_hash.pprev = NULL;
+-		hlist_bl_unlock(b);
+-	}
++	hlist_bl_lock(b);
++	__hlist_bl_del(&dentry->d_hash);
++	dentry->d_hash.pprev = NULL;
++	hlist_bl_unlock(b);
+ }
+ 
+ /**
+@@ -905,7 +903,8 @@ static void shrink_dcache_for_umount_subtree(struct dentry *dentry)
+ 				dentry->d_op->d_prune(dentry);
+ 
+ 			dentry_lru_del(dentry);
+-			__d_shrink(dentry);
++			if (!d_unhashed(dentry))
++				__d_shrink(dentry);
+ 
+ 			if (dentry->d_lockref.count != 0) {
+ 				printk(KERN_ERR
+-- 
+1.7.9.5
 
