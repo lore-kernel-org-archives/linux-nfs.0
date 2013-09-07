@@ -1,55 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.henderson-group.com ([62.253.225.167]:51783 "EHLO
-	mailedge.henderson-group.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754023Ab3I3MXv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Sep 2013 08:23:51 -0400
-Received: from mail.henderson-group.com ([10.1.1.50])
-	by mailedge.henderson-group.com (8.14.5/8.14.5) with ESMTP id r8UC758e014038
-	for <linux-nfs@vger.kernel.org>; Mon, 30 Sep 2013 13:07:05 +0100
-Received: from HGVEX01.Inside.John-Henderson.co.uk (unverified) by
-    mailsweeper.henderson-group.com (Clearswift SMTPRS 5.5.0) with ESMTP
-    id <Tae7b6524170a010132528@mailsweeper.henderson-group.com> for
-    <linux-nfs@vger.kernel.org>; Mon, 30 Sep 2013 13:08:55 +0100
-From: Michael Gliwinski <Michael.Gliwinski@henderson-group.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: gss context cache
-Date: Mon, 30 Sep 2013 13:06:47 +0100
-Message-ID: <1702585.AG7n1MCr0K@hgis96>
+Received: from mx1.netapp.com ([216.240.18.38]:52573 "EHLO mx1.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750846Ab3IGXSh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 7 Sep 2013 19:18:37 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 6/6] NFS: nfs_compare_super shouldn't check the auth flavour unless 'sec=' was set
+Date: Sat, 7 Sep 2013 19:18:13 -0400
+Message-ID: <1378595893-60395-7-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1378595893-60395-6-git-send-email-Trond.Myklebust@netapp.com>
+References: <1378595893-60395-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1378595893-60395-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1378595893-60395-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1378595893-60395-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1378595893-60395-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1378595893-60395-6-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all,
+Also don't worry about obsolete mount flags...
 
-On RHEL6 nfs-utils-1.2.3-36
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/super.c | 17 +++++++++++++++--
+ 1 file changed, 15 insertions(+), 2 deletions(-)
 
-man rpc.gssd says it -t wasn't specified then kernel gss contexts will be 
-cached for the lifettime of the Kerberos service ticket used in its creation.  
-Is there a way to see the contexts + service tickets in that cache?
-
-Also, is there any way short of rebooting the client to evict one entry from 
-that cache, or even clear the cache entirely?
-
-(looking for this as I had situations where access was denied by the NFS 
-server and I could see the principal was getting mapped to nfsnobody, etc. and 
-was suspecting the account was changed on the KDC and the old context/ticket 
-may have been causing problems)
-
-Thanks,
-Michael
-
-
-**********************************************************************************************
-The information in this email is confidential and may be legally privileged.  It is intended solely for the addressee and access to the email by anyone else is unauthorised.
-If you are not the intended recipient, any disclosure, copying, distribution or any action taken or omitted to be taken in reliance on it, is prohibited and may be unlawful.
-When addressed to our clients, any opinions or advice contained in this e-mail are subject to the terms and conditions expressed  in the governing client engagement leter or contract.
-If you have received this email in error please notify support@henderson-group.com
-
-John Henderson (Holdings) Ltd
-Registered office: 9 Hightown Avenue, Mallusk, County Antrim, Northern Ireland, BT36 4RT.
-Registered in Northern Ireland
-Registration Number NI010588
-Vat No.: 814 6399 12
-*********************************************************************************
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index b2dd6da..50bc31d 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2295,6 +2295,18 @@ void nfs_clone_super(struct super_block *sb, struct nfs_mount_info *mount_info)
+  	nfs_initialise_sb(sb);
+ }
+ 
++#define NFS_MOUNT_CMP_FLAGMASK ~(NFS_MOUNT_INTR \
++		| NFS_MOUNT_SECURE \
++		| NFS_MOUNT_TCP \
++		| NFS_MOUNT_VER3 \
++		| NFS_MOUNT_KERBEROS \
++		| NFS_MOUNT_NONLM \
++		| NFS_MOUNT_BROKEN_SUID \
++		| NFS_MOUNT_STRICTLOCK \
++		| NFS_MOUNT_UNSHARED \
++		| NFS_MOUNT_NORESVPORT \
++		| NFS_MOUNT_LEGACY_INTERFACE)
++
+ static int nfs_compare_mount_options(const struct super_block *s, const struct nfs_server *b, int flags)
+ {
+ 	const struct nfs_server *a = s->s_fs_info;
+@@ -2305,7 +2317,7 @@ static int nfs_compare_mount_options(const struct super_block *s, const struct n
+ 		goto Ebusy;
+ 	if (a->nfs_client != b->nfs_client)
+ 		goto Ebusy;
+-	if (a->flags != b->flags)
++	if ((a->flags ^ b->flags) & NFS_MOUNT_CMP_FLAGMASK)
+ 		goto Ebusy;
+ 	if (a->wsize != b->wsize)
+ 		goto Ebusy;
+@@ -2319,7 +2331,8 @@ static int nfs_compare_mount_options(const struct super_block *s, const struct n
+ 		goto Ebusy;
+ 	if (a->acdirmax != b->acdirmax)
+ 		goto Ebusy;
+-	if (clnt_a->cl_auth->au_flavor != clnt_b->cl_auth->au_flavor)
++	if (b->flags & NFS_MOUNT_SECFLAVOUR &&
++	   clnt_a->cl_auth->au_flavor != clnt_b->cl_auth->au_flavor)
+ 		goto Ebusy;
+ 	return 1;
+ Ebusy:
+-- 
+1.8.3.1
 
