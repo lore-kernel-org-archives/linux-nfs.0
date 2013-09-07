@@ -1,113 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailout2.samsung.com ([203.254.224.25]:13157 "EHLO
-	mailout2.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750805Ab3IZE1j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 00:27:39 -0400
-Received: from epcpsbgr4.samsung.com
- (u144.gpu120.samsung.co.kr [203.254.230.144])
- by mailout2.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0MTP00GTSTPOSE50@mailout2.samsung.com> for
- linux-nfs@vger.kernel.org; Thu, 26 Sep 2013 13:27:37 +0900 (KST)
-Date: Thu, 26 Sep 2013 04:27:37 +0000 (GMT)
-From: Jongman Heo <jongman.heo@samsung.com>
-Subject: Re: Re: Regression caused by commit 4bdc33ed
- ("NFSDv4.2: Add NFS v4.2 support to the NFS server")
-To: Anna Schumaker <schumaker.anna@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Reply-to: jongman.heo@samsung.com
-MIME-version: 1.0
-Content-type: text/plain; charset=euc-kr
-MIME-version: 1.0
-Message-id: <14287980.88031380169656788.JavaMail.weblogic@epml16>
+Received: from mx1.redhat.com ([209.132.183.28]:29740 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751260Ab3IGOva (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 7 Sep 2013 10:51:30 -0400
+Date: Sat, 7 Sep 2013 10:51:31 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Quentin Barnes <qbarnes@gmail.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
+Message-ID: <20130907105131.03069f25@tlielax.poochiereds.net>
+In-Reply-To: <CAKjHkpBW+LWKuKuHnUfKNxwDZeX3SOFKv_jYeNGF8ezdAnKnvg@mail.gmail.com>
+References: <20130905162110.GA17920@gmail.com>
+	<20130905170303.GB17330@us.ibm.com>
+	<20130905191139.GA20830@gmail.com>
+	<1378411320.5450.27.camel@leira.trondhjem.org>
+	<20130905213649.GA21944@gmail.com>
+	<1378418243.5450.29.camel@leira.trondhjem.org>
+	<20130905223420.GA23192@gmail.com>
+	<20130906093636.6818e7b2@corrin.poochiereds.net>
+	<CAKjHkpBW+LWKuKuHnUfKNxwDZeX3SOFKv_jYeNGF8ezdAnKnvg@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Pg0KPi0tLS0tLS0gT3JpZ2luYWwgTWVzc2FnZSAtLS0tLS0tDQo+DQo+U2VuZGVyIDogQW5uYSBT
-Y2h1bWFrZXI8c2NodW1ha2VyLmFubmFAZ21haWwuY29tPg0KPg0KPkRhdGUgOiAyMDEzLTA5LTI1
-IDIyOjUyIChHTVQrMDk6MDApDQo+DQo+VGl0bGUgOiBSZTogUmVncmVzc2lvbiBjYXVzZWQgYnkg
-Y29tbWl0IDRiZGMzM2VkICgiTkZTRHY0LjI6IEFkZCBORlMgdjQuMiBzdXBwb3J0IHRvIHRoZSBO
-RlMgc2VydmVyIikNCj4NCj4NCj4NCj5IaSBKb25nbWFuLA0KPg0KPklzIHRoZSBwYW5pYyBvbiB5
-b3VyIGNsaWVudCBvciBzZXJ2ZXI/ICBJIGRvbid0IHNlZSBob3cgdGhlIHBhdGNoIHlvdXINCj5i
-aXNlY3QgbGVkIHlvdSB0byBjb3VsZCBjYXVzZSB0aGUgcHJvYmxlbSwgc2luY2UgYWxsIGl0IGRv
-ZXMgaXMgZXhwYW5kDQo+dGhlIG1pbm9yIHZlcnNpb24gYXJyYXkgb24gdGhlIHNlcnZlci4gIFlv
-dXIgY2xpZW50IGRvZXNuJ3QgaGF2ZSBORlNEDQo+ZW5hYmxlZCwgc28gdGhpcyBjb2RlIHNob3Vs
-ZG4ndCBldmVuIGJlIGFmZmVjdGluZyBpdC4NCj4NCj5BIGZldyBxdWVzdGlvbnM6ICB3aGF0IGlz
-IHlvdXIgL2V0Yy9leHBvcnRzIG9uIHRoZSBzZXJ2ZXI/ICBXaGF0DQo+dmVyc2lvbiBvZiBORlMg
-YXJlIHlvdSB1c2luZyBmb3IgbmZzcm9vdD8NCj4NCj5UaGFua3MhDQo+QW5uYQ0KPg0KPk9uIFdl
-ZCwgU2VwIDI1LCAyMDEzIGF0IDE6MTkgQU0sIEpvbmdtYW4gSGVvIHdyb3RlOg0KPj4NCj4+IEhp
-IGFsbCwNCj4+DQo+PiBNeSBlbWJlZGRlZCBkZXZlbG9wbWVudCBib3ggZmFpbHMgdG8gTkZTLWJv
-b3Qgd2l0aCBORlMgc2VydmVyIHdoaWNoIHVzZXMgcmVjZW50IGtlcm5lbC4NCj4+DQo+PiBVc2lu
-ZyBnaXQgYmlzZWN0LCBJIGZvdW5kIGl0IGlzIGNhdXNlZCBieSBjb21taXQgNGJkYzMzZWQgKCJO
-RlNEdjQuMjogQWRkIE5GUyB2NC4yIHN1cHBvcnQgdG8gdGhlIE5GUyBzZXJ2ZXIiKS4NCj4+DQo+
-Pg0KPj4gMS4gZG1lc2cgKE5GUyBib290IGZhaWx1cmUgY2FzZSkNCj4+DQo+PiAuLi4NCj4+IFsg
-ICAgMi4wNDA4OTNdIEFERFJDT05GKE5FVERFVl9VUCk6IGV0aDA6IGxpbmsgaXMgbm90IHJlYWR5
-DQo+PiBbICAgIDIuMDQ2MjA3XSBlMTAwMDogZXRoMCBOSUMgTGluayBpcyBVcCAxMDAwIE1icHMg
-RnVsbCBEdXBsZXgsIEZsb3cgQ29udHJvbDogUlgNCj4+IFsgICAgMi4wNTM1NzBdIEFERFJDT05G
-KE5FVERFVl9DSEFOR0UpOiBldGgwOiBsaW5rIGJlY29tZXMgcmVhZHkNCj4+IFsgICAgMy4wNTUw
-MjNdIElQLUNvbmZpZzogR3Vlc3NpbmcgbmV0bWFzayAyNTUuMjU1LjAuMA0KPj4gWyAgICAzLjA1
-OTk3OV0gSVAtQ29uZmlnOiBHYXRld2F5IG5vdCBvbiBkaXJlY3RseSBjb25uZWN0ZWQgbmV0d29y
-ay4NCj4+IFsgICAgMy4wNjYzMzBdIExvb2tpbmcgdXAgcG9ydCBvZiBSUEMgMTAwMDAzLzIgb24g
-MTY1LjIxMy44OC4yNDkNCj4+IFsgICAgMy4wNzQwMDFdIExvb2tpbmcgdXAgcG9ydCBvZiBSUEMg
-MTAwMDA1LzEgb24gMTY1LjIxMy44OC4yNDkNCj4+IFsgICAgMy4xMjI4NzhdIFZGUzogVW5hYmxl
-IHRvIG1vdW50IHJvb3QgZnMgdmlhIE5GUywgdHJ5aW5nIGZsb3BweS4NCj4+IFsgICAgMy4xMjkx
-MzRdIFZGUzogQ2Fubm90IG9wZW4gcm9vdCBkZXZpY2UgIm5mcyIgb3IgdW5rbm93bi1ibG9jaygy
-LDApDQo+PiBbICAgIDMuMTM1NDc4XSBQbGVhc2UgYXBwZW5kIGEgY29ycmVjdCAicm9vdD0iIGJv
-b3Qgb3B0aW9uOyBoZXJlIGFyZSB0aGUgYXZhaWxhYmxlIHBhcnRpdGlvbnM6DQo+PiBbICAgIDMu
-MTQzODMxXSAxZjAwICAgICAgICAgICAgMzA3MiBtdGRibG9jazAgKGRyaXZlcj8pDQo+PiBbICAg
-IDMuMTQ4Nzk4XSAxZjAxICAgICAgICAgICAgICA2NCBtdGRibG9jazEgKGRyaXZlcj8pDQo+PiBb
-ICAgIDMuMTUzNzU4XSAxZjAyICAgICAgICAgICAgICA2NCBtdGRibG9jazIgKGRyaXZlcj8pDQo+
-PiBbICAgIDMuMTU4NzE5XSAxZjAzICAgICAgICAgICAgICA2NCBtdGRibG9jazMgKGRyaXZlcj8p
-DQo+PiBbICAgIDMuMTYzNjgyXSAxZjA0ICAgICAgICAgICAgICA2NCBtdGRibG9jazQgKGRyaXZl
-cj8pDQo+PiBbICAgIDMuMTY4NjQ0XSAxZjA1ICAgICAgICAgICAgICA2NCBtdGRibG9jazUgKGRy
-aXZlcj8pDQo+PiBbICAgIDMuMTczNjA3XSAxZjA2ICAgICAgICAgICAgICA2NCBtdGRibG9jazYg
-KGRyaXZlcj8pDQo+PiBbICAgIDMuMTc4NTY4XSAwODAwICAgICAgIDQ4ODM4NjU4NCBzZGEgZHJp
-dmVyOiBzZA0KPj4gWyAgICAzLjE4MzA5OV0gICAwODAxICAgICAgICAgIDUwNjAxNiBzZGExDQo+
-PiBbICAgIDMuMTg2OTI3XSAgIDA4MDIgICAgICAgICA0MDA4MjE3IHNkYTINCj4+IFsgICAgMy4x
-OTA3NTVdICAgMDgwMyAgICAgICA0ODM4Njk3Njcgc2RhMw0KPj4gWyAgICAzLjE5NDU4NF0gYjMw
-MCAgICAgICAgIDE4ODAwNjQgbW1jYmxrMCBkcml2ZXI6IG1tY2Jsaw0KPj4gWyAgICAzLjE5OTgw
-Ml0gICBiMzAxICAgICAgICAgICAgNDA5NiBtbWNibGswcDENCj4+IFsgICAgMy4yMDQwNjNdICAg
-YjMwMiAgICAgICAgICAxMDI0MDAgbW1jYmxrMHAyDQo+PiBbICAgIDMuMjA4MzMwXSAgIGIzMDMg
-ICAgICAgICAgICA0MDk2IG1tY2JsazBwMw0KPj4gWyAgICAzLjIxMjU5NF0gICBiMzA0ICAgICAg
-ICAgICAgICAgMSBtbWNibGswcDQNCj4+IFsgICAgMy4yMTY4NTVdICAgYjMwNSAgICAgICAgICAg
-IDIwNDggbW1jYmxrMHA1DQo+PiBbICAgIDMuMjIxMTE2XSAgIGIzMDYgICAgICAgICAgICAyMDQ4
-IG1tY2JsazBwNg0KPj4gWyAgICAzLjIyNTM4Ml0gICBiMzA3ICAgICAgICAgICAgMjA0OCBtbWNi
-bGswcDcNCj4+IFsgICAgMy4yMjk2NDRdICAgYjMwOCAgICAgICAgICAgIDQwOTYgbW1jYmxrMHA4
-DQo+PiBbICAgIDMuMjMzOTA2XSAgIGIzMDkgICAgICAgICAgIDEyMjg4IG1tY2JsazBwOQ0KPj4g
-WyAgICAzLjIzODE3Nl0gICBiMzBhICAgICAgICAgICAxNjM4NCBtbWNibGswcDEwDQo+PiBbICAg
-IDMuMjQyNTI0XSAgIGIzMGIgICAgICAgICAgMTQyMzM2IG1tY2JsazBwMTENCj4+IFsgICAgMy4y
-NDY4NjldICAgYjMwYyAgICAgICAgIDE1NzI4NjQgbW1jYmxrMHAxMg0KPj4gWyAgICAzLjI1MTIx
-OV0gYjMyMCAgICAgICAgICAgMTIyODggbW1jYmxrMGdwMSAoZHJpdmVyPykNCj4+IFsgICAgMy4y
-NTYyNzJdIGIzMTAgICAgICAgICAgIDEyMjg4IG1tY2JsazBncDAgKGRyaXZlcj8pDQo+PiBbICAg
-IDMuMjYxMzIwXSBLZXJuZWwgcGFuaWMgLSBub3Qgc3luY2luZzogVkZTOiBVbmFibGUgdG8gbW91
-bnQgcm9vdCBmcyBvbiB1bmtub3duLWJsb2NrKDIsMCkNCj4+IFsgICAgMy4yNjk1NjZdIFBpZDog
-MSwgY29tbTogc3dhcHBlciBOb3QgdGFpbnRlZCAyLjYuMzUgIzENCj4+IFsgICAgMy4yNzQ3NzZd
-IENhbGwgVHJhY2U6DQo+PiBbICAgIDMuMjc3MjMyXSAgWzw4MGQwZGI1Yj5dID8gcHJpbnRrKzB4
-MWUvMHgyMA0KPj4gWyAgICAzLjI4MTQ5Ml0gIFs8ODBkMGRhZDE+XSBwYW5pYysweDY1LzB4ZDEN
-Cj4+IFsgICAgMy4yODU0OTVdICBbPDgwZWI5Y2UzPl0gbW91bnRfYmxvY2tfcm9vdCsweDEyNS8w
-eDFiZQ0KPj4gWyAgICAzLjI5MDYzMV0gIFs8ODA5ZDFmNmQ+XSA/IHN5c19ta25vZCsweDJkLzB4
-MzANCj4+IFsgICAgMy4yOTUxNTZdICBbPDgwZWI5ZjZkPl0gbW91bnRfcm9vdCsweGQwLzB4ZjIN
-Cj4+IFsgICAgMy4yOTk1OTFdICBbPDgwZWJhMGQ5Pl0gcHJlcGFyZV9uYW1lc3BhY2UrMHgxNGEv
-MHgxODQNCj4+IFsgICAgMy4zMDQ4MDNdICBbPDgwOWM0NGY2Pl0gPyBzeXNfYWNjZXNzKzB4MjYv
-MHgzMA0KPj4gWyAgICAzLjMwOTQxMV0gIFs8ODBlYjlhNGU+XSBrZXJuZWxfaW5pdCsweDI1ZS8w
-eDI2ZQ0KPj4gWyAgICAzLjMxNDEwNV0gIFs8ODBlYjk3ZjA+XSA/IGtlcm5lbF9pbml0KzB4MC8w
-eDI2ZQ0KPj4gWyAgICAzLjMxODgwMF0gIFs8ODA5MDMyNDI+XSBrZXJuZWxfdGhyZWFkX2hlbHBl
-cisweDYvMHgxMA0KPj4NCj4+DQo+PiAyLiBDbGllbnQgKG15IGVtYmVkZGVkIGJveCkgY29uZmln
-dXJhdGlvbg0KPj4gICBJdCdzIGtlcm5lbCAyLjYuMzUgYmFzZWQsIGFuZCBoYXMgZm9sbG93aW5n
-IE5GUyBrZXJuZWwgY29uZmlncy4NCj4+DQo+PiAjIGdyZXAgTkZTIC5jb25maWcNCj4+IENPTkZJ
-R19ORlNfRlM9eQ0KPj4gQ09ORklHX05GU19WMz15DQo+PiBDT05GSUdfTkZTX1YzX0FDTD15DQo+
-PiBDT05GSUdfTkZTX1Y0PXkNCj4+ICMgQ09ORklHX05GU19WNF8xIGlzIG5vdCBzZXQNCj4+IENP
-TkZJR19ST09UX05GUz15DQo+PiAjIENPTkZJR19ORlNEIGlzIG5vdCBzZXQNCj4+IENPTkZJR19O
-RlNfQUNMX1NVUFBPUlQ9eQ0KPj4gQ09ORklHX05GU19DT01NT049eQ0KPj4NCj4+DQo+PiAzLiBT
-ZXJ2ZXIgKE5GU0QpIGNvbmZpZ3VyYXRpb24NCj4+ICAgIEZlZG9yYSAxOSArIGxhdGVzdCBsaW51
-cyBnaXQga2VybmVsIDMuMTIuMC1yYzIrIChjb21taXQgMjIzNTZmNDQsIG1tOiBQbGFjZSBwcmVl
-bXB0aW9uIHBvaW50IGluIGRvX21sb2NrYWxsKCkgbG9vcCkNCj4+DQo+Pg0KPj4gNC4gd29ya2Fy
-b3VuZA0KPj4NCj4+IFJldmVydGluZyB0aGUgY29tbWl0IDRiZGMzM2VkIHJlc29sdmVzIG15IGlz
-c3VlLCBORlMgYm9vdCBpcyB3b3JraW5nIHRoZW4uDQo+PiBJJ3ZlIGRvbmUgZ2l0IGJpc2VjdCwg
-YnV0IGxvc3QgdGhlIHJlc3VsdGluZyBiaXNlY3QgbG9nIGR1ZSB0byBzdWRkZW4gcG93ZXIgbG9z
-cyA6KC4NCj4+DQo+PiBCZXN0IHJlZ2FyZHMsDQo+PiBKb25nbWFuIEhlbw0KPg0KPg0KPg0KDQpI
-aSwNCg0KUGxlYXNlIHNlZSBteSBlLW1haWwgcmVwbHkgdG8gSi4gQnJ1Y2UgRmllbGRzIGZvciB0
-aGUgZGV0YWlsLg0KDQpUaGFua3MsDQpKb25nbWFuIEhlby4=
+On Fri, 6 Sep 2013 11:48:45 -0500
+Quentin Barnes <qbarnes@gmail.com> wrote:
 
+> Jeff, can your try out my test program in the base note on your
+> RHEL5.9 or later RHEL5.x kernels?
+> 
+> I reverified that running the test on a 2.6.18-348.16.1.el5 x86_64
+> kernel (latest released RHEL5.9) does not show the problem for me.
+> Based on what you and Trond have said in this thread though, I'm
+> really curious why it doesn't have the problem.
+> 
+> On Fri, Sep 6, 2013 at 8:36 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> > On Thu, 5 Sep 2013 17:34:20 -0500
+> > Quentin Barnes <qbarnes@gmail.com> wrote:
+> >
+> >> On Thu, Sep 05, 2013 at 09:57:24PM +0000, Myklebust, Trond wrote:
+> >> > On Thu, 2013-09-05 at 16:36 -0500, Quentin Barnes wrote:
+> >> > > On Thu, Sep 05, 2013 at 08:02:01PM +0000, Myklebust, Trond wrote:
+> >> > > > On Thu, 2013-09-05 at 14:11 -0500, Quentin Barnes wrote:
+> >> > > > > On Thu, Sep 05, 2013 at 12:03:03PM -0500, Malahal Naineni wrote:
+> >> > > > > > Neil Brown posted a patch couple days ago for this!
+> >> > > > > >
+> >> > > > > > http://thread.gmane.org/gmane.linux.nfs/58473
+> >> > > > >
+> >> > > > > I tried Neil's patch on a v3.11 kernel.  The rebuilt kernel still
+> >> > > > > exhibited the same 1000s of WRITEs/sec problem.
+> >> > > > >
+> >> > > > > Any other ideas?
+> >> > > >
+> >> > > > Yes. Please try the attached patch.
+> >> > >
+> >> > > Great!  That did the trick!
+> >> > >
+> >> > > Do you feel this patch could be worthy of pushing it upstream in its
+> >> > > current state or was it just to verify a theory?
+> >> > >
+> >> > >
+> >> > > In comparing the nfs_flush_incompatible() implementations between
+> >> > > RHEL5 and v3.11 (without your patch), the guts of the algorithm seem
+> >> > > more or less logically equivalent to me on whether or not to flush
+> >> > > the page.  Also, when and where nfs_flush_incompatible() is invoked
+> >> > > seems the same.  Would you provide a very brief pointer to clue me
+> >> > > in as to why this problem didn't also manifest circa 2.6.18 days?
+> >> >
+> >> > There was no nfs_vm_page_mkwrite() to handle page faults in the 2.6.18
+> >> > days, and so the risk was that your mmapped writes could end up being
+> >> > sent with the wrong credentials.
+> >>
+> >> Ah!  You're right that nfs_vm_page_mkwrite() was missing from
+> >> the original 2.6.18, so that makes sense, however, Red Hat had
+> >> backported that function starting with their RHEL5.9(*) kernels,
+> >> yet the problem doesn't manifest on RHEL5.9.  Maybe the answer lies
+> >> somewhere in RHEL5.9's do_wp_page(), or up that call path, but
+> >> glancing through it, it all looks pretty close though.
+> >>
+> >>
+> >> (*) That was the source I using when comparing with the 3.11 source
+> >> when studying your patch since it was the last kernel known to me
+> >> without the problem.
+> >>
+> >
+> > I'm pretty sure RHEL5 has a similar problem, but it's unclear to me why
+> > you're not seeing it there. I have a RHBZ open vs. RHEL5 but it's marked
+> > private at the moment (I'll see about opening it up). I brought this up
+> > upstream about a year ago with this strawman patch:
+> >
+> >     http://article.gmane.org/gmane.linux.nfs/51240
+> >
+> > ...at the time Trond said he was working on a set of patches to track
+> > the open/lock stateid on a per-req basis. Did that approach not pan
+> > out?
+> >
+> > Also, do you need to do a similar fix to nfs_can_coalesce_requests?
+> >
 
+Yes, I see the same behavior you do. With a recent kernel I see a ton
+of WRITE requests go out, with RHEL5 hardly any.
+
+I guess I'm a little confused as to the reverse question. Why are we
+seeing this data get flushed out so quickly in recent kernels from just
+changes to the mmaped pages?
+
+My understanding has always been that when a page is cleaned, we set
+the WP bit on it, and then when it goes dirty we clear it and also
+call page_mkwrite (not necessarily in that order).
+
+So here we have two processes that mmap the same page, and then are
+furiously writing to it. The kernel shouldn't really care or be aware
+of that thrashing until that page gets flushed out for some reason
+(msync() call or VM pressure).
+
+IOW, RHEL5 behaves the way I'd expect. What's unclear to me is why more
+recent kernels don't behave that way.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
