@@ -1,104 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40809 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:49422 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751625Ab3IEQaY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Sep 2013 12:30:24 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 00/12] Implement NFSv4 delegations, take 10
-Date: Thu,  5 Sep 2013 12:30:04 -0400
-Message-Id: <1378398620-23018-1-git-send-email-bfields@redhat.com>
+	id S1751217Ab3IHVIT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 8 Sep 2013 17:08:19 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Steve Dickson <steved@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] exportfs: Fix the default authentication flavour setting
+Date: Sun, 8 Sep 2013 21:08:18 +0000
+Message-ID: <1378674497.10262.14.camel@leira.trondhjem.org>
+References: <1378659519-18924-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <594F92D3-B085-4382-ACA2-7E43949BBCD2@oracle.com>
+In-Reply-To: <594F92D3-B085-4382-ACA2-7E43949BBCD2@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-Changes since version 9:
-	- just a rebase to 3.11-rc6.
-
-Changes since version 8:
-	- additional warnings in lock_two_nondirectories
-	- lock_two_nondirectories handles NULL second argument,
-	  simplifying vfs_rename_other
-	- kerneldoc comments on notify_change, vfs_link, vfs_rename,
-	  vfs_unlink, to explain delegated_inode argument.
-	- make clear non-support of write delegations in
-	  generic_add_lease
-	- rebase to 3.11-rc1
-
-This patch series implements read delegations, which allow NFSv4 clients
-to perform read opens without contacting the server, by promising to
-call back to clients before modifying the data, metadata, or set of
-links pointing to a file.
-
-The main recent change was in response to review from Linus, who didn't
-want us to hang under directory i_mutex's on timeouts communicating with
-unresponsive clients.
-
-So, this version of the series drops the i_mutex before waiting.  The
-logic ends up looking something like:
-
-        acquire locks
-        look up inode
-        test for delegation; if found:
-                take reference on inode
-                release locks
-                wait for delegation break
-                drop reference on inode
-                retry
-
-The initial test for a delegation happens after the lock on the
-delegated inode is acquired, but additional directory mutexes may have
-been acquired further up the call stack.  I therefore add a "struct
-inode **" argument to any intervening functions, which we use to pass
-the inode back up to the caller in the case it needs to wait for the
-delegation to be broken.
-
-I also allow callers to pass in NULL for the "struct inode **" argument
-to indicate they'd rather just fail than wait for a delegation.  For
-example, as long as ecryptfs isn't exportable I assume they'd rather not
-see retry logic there that they won't use.  But I may have misjudged in
-some of these cases.
-
-
-J. Bruce Fields (12):
-  vfs: pull ext4's double-i_mutex-locking into common code
-  vfs: don't use PARENT/CHILD lock classes for non-directories
-  vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
-  vfs: take i_mutex on renamed file
-  locks: introduce new FL_DELEG lock flag
-  locks: implement delegations
-  namei: minor vfs_unlink cleanup
-  locks: break delegations on unlink
-  locks: helper functions for delegation breaking
-  locks: break delegations on rename
-  locks: break delegations on link
-  locks: break delegations on any attribute modification
-
- Documentation/filesystems/directory-locking |   31 ++++--
- drivers/base/devtmpfs.c                     |    6 +-
- fs/attr.c                                   |   25 ++++-
- fs/cachefiles/interface.c                   |    4 +-
- fs/cachefiles/namei.c                       |    4 +-
- fs/ecryptfs/inode.c                         |    6 +-
- fs/ext4/ext4.h                              |    2 -
- fs/ext4/ioctl.c                             |    4 +-
- fs/ext4/move_extent.c                       |   40 +-------
- fs/hpfs/namei.c                             |    2 +-
- fs/inode.c                                  |   42 ++++++++-
- fs/locks.c                                  |   57 ++++++++---
- fs/namei.c                                  |  135 +++++++++++++++++++++++----
- fs/nfsd/nfs4state.c                         |    2 +-
- fs/nfsd/vfs.c                               |   14 ++-
- fs/open.c                                   |   22 ++++-
- fs/utimes.c                                 |    9 +-
- include/linux/fs.h                          |   72 +++++++++++---
- ipc/mqueue.c                                |    2 +-
- 19 files changed, 361 insertions(+), 118 deletions(-)
-
--- 
-1.7.9.5
-
+T24gU3VuLCAyMDEzLTA5LTA4IGF0IDE1OjU4IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gU2VwIDgsIDIwMTMsIGF0IDEyOjU4IFBNLCBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xl
+YnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gQ29tbWl0IDExYmEzYjFlMDFiNjdiN2Qx
+OWYyNmZiYTk0ZmFiZGI2MDg3OGU4MDkgKEFkZCBhIGRlZmF1bHQgZmxhdm9yDQo+ID4gdG8gYW4g
+ZXhwb3J0J3MgZV9zZWNpbmZvIGxpc3QpIGJyZWFrcyB0aGUgb3JkZXJpbmcgb2Ygc2VjdXJpdHkg
+Zmxhdm91cnMNCj4gPiBpbiB0aGUgc2VjaW5mbyBsaXN0LCBieSByZW9yZGVyaW5nICdzZWM9c3lz
+JyB0byBhbHdheXMgYmUgdGhlIGZpcnN0DQo+ID4gc2VjaW5mbyBmbGF2b3VyIGlmIG9uZSBmYWls
+cyB0byBzZXQgYSBkZWZhdWx0ICdzZWMnIHNldHRpbmcuDQo+IA0KPiBTZXR0aW5nIGEgZGVmYXVs
+dCBzZWN1cml0eSBmbGF2b3Igc2hvdWxkIG9jY3VyIG9ubHkgaWYgbm8gc2VjPSBvcHRpb24gaXMg
+c3BlY2lmaWVkLiAgSW4gdGhlIGJlbG93IGNhc2UsIGNsZWFybHkgdGhlcmUgaXMgYSBzZWM9IHNl
+dHRpbmcuICBXaHkgd2FzIHRoZSBkZWZhdWx0IHNlY3VyaXR5IGZsYXZvciBsb2dpYyB0cmlnZ2Vy
+ZWQgYW55d2F5Pw0KDQoNCnBhcnNlb3B0cygpIGlzIGNhbGxlZCBtdWx0aXBsZSB0aW1lcyBpbiwg
+Zm9yIGluc3RhbmNlLCBnZXRleHBvcnRlbnQoKS4NClRoZSBmaXJzdCB0aW1lIGlzIGZvciB0aGUg
+ZGVmYXVsdCBvcHRpb25zLiBUaGVuIGl0IGdldHMgY2FsbGVkIGZvciB0aGUNCmhvc3RuYW1lKHMp
+Lg0KDQpJT1c6IGl0IGlzIHRvbyBlYXJseSB0byBkbyB0aGF0IGtpbmQgb2YgY2hlY2sgaW4gcGFy
+c2VvcHRzLiBXZSBkb24ndA0KZXhwZWN0IHRoZSBzZWN1cml0eSBmbGF2b3VycyB0byBoYXZlIGJl
+ZW4gcmVzb2x2ZWQgdW50aWwgdGhlIGVudGlyZSBsaW5lDQpoYXMgYmVlbiBwYXJzZWQuDQoNCj4g
+PiBBbiBleHBvcnQgb2YgdGhlIGZvcm06DQo+ID4gDQo+ID4gL2V4cG9ydCAtc3luYyxub19zdWJ0
+cmVlX2NoZWNrLG1wIFwNCj4gPiAgICAgICAgICAgMTkyLjE2OC4xLjAvMjQoc2VjPWtyYjVwOmty
+YjVpOmtyYjUscncsc2VjPXN5cyxybykNCj4gPiANCj4gPiBlbmRzIHVwIGdldHRpbmcgdHJhbnNs
+YXRlZCBieSBleHBvcnRmcyBpbnRvIHRoZSBmb2xsb3dpbmcgZW50cnkgaW4NCj4gPiAvdmFyL2xp
+Yi9uZnMvZXRhYjoNCj4gPiANCj4gPiAvZXhwb3J0CTE5Mi4xNjguMS4wLzI0KHJvLHN5bmMsd2Rl
+bGF5LGhpZGUsbm9jcm9zc21udCxcDQo+ID4gICAgICAgICAgICAgICAgICAgICAgIHNlY3VyZSxy
+b290X3NxdWFzaCxub19hbGxfc3F1YXNoLFwNCj4gPiAJCSAgICAgICBub19zdWJ0cmVlX2NoZWNr
+LHNlY3VyZV9sb2NrcyxhY2wsXA0KPiA+IAkJICAgICAgIG1vdW50cG9pbnQsYW5vbnVpZD02NTUz
+NCxhbm9uZ2lkPTY1NTM0LFwNCj4gPiAJCSAgICAgICBzZWM9c3lzLHJvLHJvb3Rfc3F1YXNoLG5v
+X2FsbF9zcXVhc2gsXA0KPiA+IAkJICAgICAgIHNlYz1rcmI1cDprcmI1aTprcmI1LHJ3LHJvb3Rf
+c3F1YXNoLG5vX2FsbF9zcXVhc2gpDQo+ID4gDQo+ID4gTm90ZSBob3cgdGhlICdzZWM9c3lzJyBp
+cyBub3cgbGlzdGVkIGZpcnN04oCmDQo+IA0KPiA+IFRoZSBmaXggaXMgdG8gZGVmZXIgYWRkaW5n
+IHRoZSBkZWZhdWx0IGZsYXZvdXIgdW50aWwgdGhlIGNhbGwgdG8NCj4gPiBzZWNpbmZvX3Nob3cs
+IHdoZW4gd2UgY2FuIHNlZSBpZiBpdCBpcyBldmVuIG5lZWRlZCBhdCBhbGwuDQo+ID4gV2l0aCB0
+aGUgcGF0Y2gsIHRoZSBhYm92ZSBleHBvcnQgaXMgbm93IGNvcnJlY3RseSBlbnRlcmVkIGluDQo+
+ID4gL3Zhci9saWIvbmZzL2V0YWIgYXM6DQo+ID4gDQo+ID4gL2V4cG9ydAkxOTIuMTY4LjEuMC8y
+NChybyxzeW5jLHdkZWxheSxoaWRlLG5vY3Jvc3NtbnQsXA0KPiA+IAkJCXNlY3VyZSxyb290X3Nx
+dWFzaCxub19hbGxfc3F1YXNoLFwNCj4gPiAJCQlub19zdWJ0cmVlX2NoZWNrLHNlY3VyZV9sb2Nr
+cyxhY2wsXA0KPiA+IAkJCW1vdW50cG9pbnQsYW5vbnVpZD02NTUzNCxhbm9uZ2lkPTY1NTM0LFwN
+Cj4gPiAJCQlzZWM9a3JiNXA6a3JiNWk6a3JiNSxydyxyb290X3NxdWFzaCxub19hbGxfc3F1YXNo
+LFwNCj4gPiAJCQlzZWM9c3lzLHJvLHJvb3Rfc3F1YXNoLG5vX2FsbF9zcXVhc2gpDQo+ID4gDQo+
+ID4gU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBw
+LmNvbT4NCj4gPiBDYzogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+IA0K
+PiBUaGUga2V5IGlzIHdoZXRoZXIgdGhlIGRlcml2ZWQgcHNldWRvLXJvb3Qgc2VjdXJpdHkgZmxh
+dm9yIHNldHRpbmcgaXMgc3RpbGwgY29ycmVjdCBhZnRlciB5b3VyIGZpeC4gIERpZCB5b3UgY29u
+ZmlybSB0aGUgdGVzdCBjYXNlIGluIDExYmEzYjEncyBkZXNjcmlwdGlvbiBpcyBzdGlsbCBhZGRy
+ZXNzZWQ/DQoNClllcywgeW91ciB0ZXN0IGNhc2UgcGFzc2VzIHdpdGggZmx5aW5nIGNvbG91cnMu
+DQoNCltyb290QGRyYWd2b2xsIH5dIyAuL2V4cG9ydGZzIC12DQovbW50ICAgICAgICAgIAk8d29y
+bGQ+KHJvLHdkZWxheSxyb290X3NxdWFzaCxub19zdWJ0cmVlX2NoZWNrLG1vdW50cG9pbnQsc2Vj
+PXN5cyxybyxyb290X3NxdWFzaCxub19hbGxfc3F1YXNoKQ0KL2V4cG9ydCAgICAgICAJPHdvcmxk
+Pihybyx3ZGVsYXkscm9vdF9zcXVhc2gsbm9fc3VidHJlZV9jaGVjayxtb3VudHBvaW50LHNlYz1r
+cmI1aTprcmI1LHJ3LHJvb3Rfc3F1YXNoLG5vX2FsbF9zcXVhc2gsc2VjPXN5cyxybyxyb290X3Nx
+dWFzaCxub19hbGxfc3F1YXNoKQ0KW3Jvb3RAZHJhZ3ZvbGwgfl0jIGNhdCAvcHJvYy9uZXQvcnBj
+L25mc2QuZXhwb3J0L2NvbnRlbnQNCiNwYXRoIGRvbWFpbihmbGFncykNCi8JKihybyxyb290X3Nx
+dWFzaCxzeW5jLG5vX3dkZWxheSxub19zdWJ0cmVlX2NoZWNrLHY0cm9vdCxmc2lkPTAsdXVpZD0w
+MDAwZmQwMDowMDAwMDAwMDowMDAwMDAwMDowMDAwMDAwMCxzZWM9MTozOTAwMDQ6MzkwMDAzKQ0K
+DQphbmQNCg0KW3Jvb3RAZHJhZ3ZvbGwgfl0jIC4vZXhwb3J0ZnMgLXYNCi9leHBvcnQgICAgICAg
+CTx3b3JsZD4ocm8sd2RlbGF5LHJvb3Rfc3F1YXNoLG5vX3N1YnRyZWVfY2hlY2ssbW91bnRwb2lu
+dCxzZWM9a3JiNWk6a3JiNSxydyxyb290X3NxdWFzaCxub19hbGxfc3F1YXNoLHNlYz1zeXMscm8s
+cm9vdF9zcXVhc2gsbm9fYWxsX3NxdWFzaCkNCi9tbnQgICAgICAgICAgCTx3b3JsZD4ocm8sd2Rl
+bGF5LHJvb3Rfc3F1YXNoLG5vX3N1YnRyZWVfY2hlY2ssbW91bnRwb2ludCxzZWM9c3lzLHJvLHJv
+b3Rfc3F1YXNoLG5vX2FsbF9zcXVhc2gpDQpbcm9vdEBkcmFndm9sbCB+XSMgY2F0IC9wcm9jL25l
+dC9ycGMvbmZzZC5leHBvcnQvY29udGVudA0KI3BhdGggZG9tYWluKGZsYWdzKQ0KLwkqKHJvLHJv
+b3Rfc3F1YXNoLHN5bmMsbm9fd2RlbGF5LG5vX3N1YnRyZWVfY2hlY2ssdjRyb290LGZzaWQ9MCx1
+dWlkPTAwMDBmZDAwOjAwMDAwMDAwOjAwMDAwMDAwOjAwMDAwMDAwLHNlYz0zOTAwMDQ6MzkwMDAz
+OjEpDQoNCg0KDQoNClVuZm9ydHVuYXRlbHksIHRoZSBnZW5lcmFsIGNhc2UgaXMgc3RpbGwgYnJv
+a2VuOg0KDQpbcm9vdEBkcmFndm9sbCB+XSMgLi9leHBvcnRmcyAtdg0KL2V4cG9ydCAgICAgICAJ
+MTkyLjE2OC4xLjAvMjQocm8sd2RlbGF5LHJvb3Rfc3F1YXNoLG5vX3N1YnRyZWVfY2hlY2ssbW91
+bnRwb2ludCxzZWM9a3JiNWk6a3JiNSxydyxyb290X3NxdWFzaCxub19hbGxfc3F1YXNoLHNlYz1z
+eXMscm8scm9vdF9zcXVhc2gsbm9fYWxsX3NxdWFzaCkNCi9tbnQgICAgICAgICAgCTx3b3JsZD4o
+cm8sd2RlbGF5LHJvb3Rfc3F1YXNoLG5vX3N1YnRyZWVfY2hlY2ssbW91bnRwb2ludCxzZWM9c3lz
+LHJvLHJvb3Rfc3F1YXNoLG5vX2FsbF9zcXVhc2gpDQpbcm9vdEBkcmFndm9sbCB+XSMgY2F0IC9w
+cm9jL25ldC9ycGMvbmZzZC5leHBvcnQvY29udGVudA0KI3BhdGggZG9tYWluKGZsYWdzKQ0KLwkq
+LDE5Mi4xNjguMS4wLzI0KHJvLHJvb3Rfc3F1YXNoLHN5bmMsbm9fd2RlbGF5LG5vX3N1YnRyZWVf
+Y2hlY2ssdjRyb290LGZzaWQ9MCx1dWlkPTAwMDBmZDAwOjAwMDAwMDAwOjAwMDAwMDAwOjAwMDAw
+MDAwLHNlYz0xKQ0KDQpJT1c6IHdoZW4gdGhlIGNvZGUgY29tYmluZXMgMiBkaWZmZXJlbnQgZXhw
+b3J0cyBzdWNoIGFzIHRoZSBhYm92ZSBleHBvcnQNCnJ1bGVzIGludm9sdmluZyBvbmUgZXhwb3J0
+IGZvciB3b3JsZCArIG9uZSBleHBvcnQgZm9yIGEgc3VibmV0LCBpdA0Kc2NyZXdzIHVwIGFuZCBq
+dXN0IHNldHMgdGhlIHNlYz1zeXMgZGVmYXVsdC4uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
+TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5l
+dGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
