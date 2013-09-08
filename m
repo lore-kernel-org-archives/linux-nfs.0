@@ -1,52 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:28785 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755956Ab3ILUbG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Sep 2013 16:31:06 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Linux linux-kernel <linux-kernel@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS client changes (part 2)
-Date: Thu, 12 Sep 2013 20:31:05 +0000
-Message-ID: <1379017863.2627.5.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-vc0-f182.google.com ([209.85.220.182]:60900 "EHLO
+	mail-vc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752412Ab3IHN4K (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Sep 2013 09:56:10 -0400
+Received: by mail-vc0-f182.google.com with SMTP id hf12so3242995vcb.41
+        for <linux-nfs@vger.kernel.org>; Sun, 08 Sep 2013 06:56:09 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <1378595893-60395-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1378595893-60395-1-git-send-email-Trond.Myklebust@netapp.com>
+From: William Dauchy <wdauchy@gmail.com>
+Date: Sun, 8 Sep 2013 15:55:49 +0200
+Message-ID: <CAJ75kXZVrytD9J2yZ61tcEFC2bDoYE1pGUT+Wt4U8s_HJd2ODA@mail.gmail.com>
+Subject: Re: [PATCH 0/6] Fix NFSv4 client-side security autonegotiation
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgYjFiM2UxMzY5
-NDhhMmJmNDkxNTMyNmFjYjBkODI1ZDdkMTgwNzUzZjoNCg0KICBORlN2NDogdXNlIG1hY2ggY3Jl
-ZCBmb3IgU0VDSU5GT19OT19OQU1FIHcvIGludGVncml0eSAoMjAxMy0wOS0wNyAxODozOToyNSAt
-MDQwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgZ2l0IHJlcG9zaXRvcnkgYXQ6DQoNCiAgZ2l0
-Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9saW51eC1uZnMuZ2l0IHRhZ3Mv
-bmZzLWZvci0zLjEyLTINCg0KZm9yIHlvdSB0byBmZXRjaCBjaGFuZ2VzIHVwIHRvIDIzYzMyM2Fm
-MDM3NWE3ZjYzNzMyYmVkMDM4NmFiYTU5MzViOGRlNjk6DQoNCiAgU1VOUlBDOiBObywgSSBkaWQg
-bm90IGludGVuZCB0byBjcmVhdGUgYSAyNTZLaUIgaGFzaHRhYmxlICgyMDEzLTA5LTEyIDEwOjE2
-OjMxIC0wNDAwKQ0KDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpORlMgY2xpZW50IGJ1Z2ZpeGVzOg0KDQotIEZpeCBhIGZl
-dyBjcmVkZW50aWFsIHJlZmVyZW5jZSBsZWFrcyByZXN1bHRpbmcgZnJvbSB0aGUgU1A0X01BQ0hf
-Q1JFRA0KICBORlN2NC4xIHN0YXRlIHByb3RlY3Rpb24gY29kZS4NCi0gRml4IHRoZSBTVU5SUEMg
-YmxvYXRvbWV0ZXIgZm9vdHByaW50OiBjb252ZXJ0IGEgMjU2SyBoYXNodGFibGUgaW50byB0aGUN
-CiAgaW50ZW5kZWQgNjQgYnl0ZSBzdHJ1Y3R1cmUuDQotIEZpeCBhIGxvbmcgc3RhbmRpbmcgWERS
-IGlzc3VlIHdpdGggRlJFRV9TVEFURUlEDQotIEZpeCBhIHBvdGVudGlhbCBXQVJOX09OIHNwYW1t
-aW5nIGlzc3VlDQotIEZpeCBhIG1pc3NpbmcgZHByaW50aygpIGt1aWQgY29udmVyc2lvbg0KDQpO
-ZXcgZmVhdHVyZXM6DQotIEVuYWJsZSB0aGUgTkZTdjQuMSBzdGF0ZSBwcm90ZWN0aW9uIHN1cHBv
-cnQgZm9yIHRoZSBXUklURSBhbmQgQ09NTUlUDQogIG9wZXJhdGlvbnMuDQoNCi0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkFu
-ZHkgQWRhbXNvbiAoMSk6DQogICAgICBORlN2NC4xIGZpeCBkZWNvZGVfZnJlZV9zdGF0ZWlkDQoN
-CkdlZXJ0IFV5dHRlcmhvZXZlbiAoMSk6DQogICAgICBzdW5ycGM6IEFkZCBtaXNzaW5nIGt1aWRz
-IGNvbnZlcnNpb24gZm9yIHByaW50aW5nDQoNClRyb25kIE15a2xlYnVzdCAoMSk6DQogICAgICBT
-VU5SUEM6IE5vLCBJIGRpZCBub3QgaW50ZW5kIHRvIGNyZWF0ZSBhIDI1NktpQiBoYXNodGFibGUN
-Cg0KV2VzdG9uIEFuZHJvcyBBZGFtc29uICg0KToNCiAgICAgIE5GU3Y0LjE6IHNwNF9tYWNoX2Ny
-ZWQ6IGFzayBmb3IgV1JJVEUgYW5kIENPTU1JVA0KICAgICAgTkZTdjQuMTogZml4IFNFQ0lORk8q
-IHVzZSBvZiBwdXRfcnBjY3JlZA0KICAgICAgTkZTdjQuMTogc3A0X21hY2hfY3JlZDogbm8gbmVl
-ZCB0byByZWYgY291bnQgY3JlZHMNCiAgICAgIE5GU3Y0LjE6IHNwNF9tYWNoX2NyZWQ6IFdBUk5f
-T04gLT4gV0FSTl9PTl9PTkNFDQoNCiBmcy9uZnMvbmZzNF9mcy5oICAgICAgICAgICAgICAgfCAx
-MCArKysrKy0tLS0tDQogZnMvbmZzL25mczRwcm9jLmMgICAgICAgICAgICAgIHwgMjIgKysrKysr
-KysrKysrKystLS0tLS0tLQ0KIGZzL25mcy9uZnM0eGRyLmMgICAgICAgICAgICAgICB8IDE3ICsr
-LS0tLS0tLS0tLS0tLS0tDQogbmV0L3N1bnJwYy9hdXRoX2dlbmVyaWMuYyAgICAgIHwgIDIgKy0N
-CiBuZXQvc3VucnBjL2F1dGhfZ3NzL2F1dGhfZ3NzLmMgfCAgMiArLQ0KIDUgZmlsZXMgY2hhbmdl
-ZCwgMjMgaW5zZXJ0aW9ucygrKSwgMzAgZGVsZXRpb25zKC0pDQoNCi0tIA0KVHJvbmQgTXlrbGVi
-dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1
-c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+Hi Trond,
+
+On Sun, Sep 8, 2013 at 1:18 AM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> So, it turns out that security autonegotition on the NFSv4 client has been
+> broken since Linux 3.10. Nobody has noticed so far, and that is probably
+> because it is broken on the Linux server too...
+
+Since 3.10.x kernel will be a long term support, are these patches
+going to be applied in stable tree?
+
+Regards,
+
+-- 
+William
