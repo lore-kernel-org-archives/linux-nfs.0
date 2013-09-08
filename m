@@ -1,60 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:56070 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752639Ab3I0Qhn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Sep 2013 12:37:43 -0400
-Message-ID: <5245B44B.2080508@panasas.com>
-Date: Fri, 27 Sep 2013 12:37:31 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx12.netapp.com ([216.240.18.77]:10860 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751233Ab3IHUuC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 8 Sep 2013 16:50:02 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/6] NFSv4: Fix security auto-negotiation
+Date: Sun, 8 Sep 2013 20:50:00 +0000
+Message-ID: <1378673399.10262.2.camel@leira.trondhjem.org>
+References: <1378595893-60395-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1378595893-60395-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1378595893-60395-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <1378595893-60395-4-git-send-email-Trond.Myklebust@netapp.com>
+	 <198C66BF-35E7-40E8-91BB-1239CA6E89D7@oracle.com>
+In-Reply-To: <198C66BF-35E7-40E8-91BB-1239CA6E89D7@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Benny Halevy <bhalevy@primarydata.com>
-CC: "J. Bruce Fields" <bfields@redhat.com>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Lev Solomonov <solo@primarydata.com>,
-        Idan Kedar <idank@primarydata.com>,
-        Nadav Shemer <nadav@primarydata.com>
-Subject: Re: [PATCH RFC v0 0/49] pnfsd-dlm
-References: <52447EA0.7070004@primarydata.com> <524588C7.9040500@panasas.com> <CAEMWVhsD-f2wZJzASMtC10XHPH2aSTzVLtYje3U8ezP_+67rWw@mail.gmail.com>
-In-Reply-To: <CAEMWVhsD-f2wZJzASMtC10XHPH2aSTzVLtYje3U8ezP_+67rWw@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/27/2013 09:34 AM, Benny Halevy wrote:
->> I thought that we said that exofs server is going in first. What happened?
-> 
-> exofs requires much more functionality.
-> To help review the code we need to go through this milestone in any case.
-> 
-
-That is not true. Look at the way I staged the pnfsd-exofs patches. after
-the LO_GET LO_COMMIT and LO_RETURN patches you have a full functioning
-git cloning exofs. (BTW exofs does not need DEVICELIST)
-
-So OK your patches do not have LO_COMMIT but this code path is trivial
-and what is that contraption of returning "no-layout" for writes and
-then not having the LO_COMMIT support. This is plain hacky and not
-in accord to the pNFS philosophy of things.
-
-And We can farther split my original set to do read-only with out LO_COMMIT
-and add a simple LO_COMMIT stage with enable of write LAYOUTs, easily.
-Which is what you have with much less code.
-
-The recall comes in at a different patch that can be staged later and is
-effectively not needed for normal operations.
-
-Actually the all code including the exofs patches first stage is smaller and
-simpler then the DLM contraption. And it only touches exofs code which
-does not involve other sensitive subsystems.
-
-I have a deja vu about this. Why won't you talk to me before working on such
-DLM crap that is not at all pnfs, but a hack that demonstrates nothing?
-
-Please do the right thing, since you are already putting all this effort. And I can
-help as well with the pnfsd-exofs patches part.
-
-BTW: Thank you for doing this, it is about time someone should put some mainline love
-to the pNFS server
-
-Thanks
-Boaz
+T24gU3VuLCAyMDEzLTA5LTA4IGF0IDE2OjIyIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gU2VwIDcsIDIwMTMsIGF0IDc6MTggUE0sIFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVi
+dXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiANCj4gPiBORlN2NCBzZWN1cml0eSBhdXRvLW5lZ290
+aWF0aW9uIGhhcyBiZWVuIGJyb2tlbiBzaW5jZQ0KPiA+IGNvbW1pdCA0NTgwYTkyZDQ0ZTJiMjFj
+MjI1NGZhNWZlZjBmMWJmYjQzYzgyMzE4IChORlM6DQo+ID4gVXNlIHNlcnZlci1yZWNvbW1lbmRl
+ZCBzZWN1cml0eSBmbGF2b3IgYnkgZGVmYXVsdCAoTkZTdjMpKQ0KPiA+IGJlY2F1c2UgbmZzNF90
+cnlfbW91bnQoKSB3aWxsIGF1dG9tYXRpY2FsbHkgc2VsZWN0IEFVVEhfU1lTDQo+ID4gaWYgaXQg
+c2VlcyBubyBhdXRoIGZsYXZvdXJzLg0KPiANCj4gbmZzKDUpIHNheXMgdGhpczoNCj4gDQo+ICAg
+ICAgICBzZWM9bW9kZSAgICAgICBUaGUgIFJQQ0dTUyAgc2VjdXJpdHkgZmxhdm9yIHRvIHVzZSBm
+b3IgYWNjZXNzaW5nIGZpbGVzIG9uIHRoaXMNCj4gICAgICAgICAgICAgICAgICAgICAgIG1vdW50
+IHBvaW50LiAgSWYgdGhlIHNlYyBvcHRpb24gaXMgbm90IHNwZWNpZmllZCwgb3IgaWYgc2VjPXN5
+cw0KPiAgICAgICAgICAgICAgICAgICAgICAgaXMgIHNwZWNpZmllZCwgdGhlIE5GUyBjbGllbnQg
+dXNlcyB0aGUgQVVUSF9TWVMgc2VjdXJpdHkgZmxhdm9yDQo+ICAgICAgICAgICAgICAgICAgICAg
+ICBmb3IgYWxsIE5GUyByZXF1ZXN0cyBvbiB0aGlzIG1vdW50IHBvaW50LiAgDQo+IA0KPiBJZiBO
+RlN2NCBjYW4gbmVnb3RpYXRlIHNlY3VyaXR5IG5vdywgbmZzKDUpIHNob3VsZCBiZSB1cGRhdGVk
+Lg0KDQpJIHN1Z2dlc3QgdGhhdCB5b3UgcHVsbCBhZ2Fpbi4gTXkgY29weSBvZiBuZnMoNSkgc2F5
+cw0KDQogICAgICAgc2VjPWZsYXZvciAgICAgVGhlICBzZWN1cml0eSAgZmxhdm9yIHRvIHVzZSBm
+b3IgYWNjZXNzaW5nIGZpbGVzIG9uIHRoaXMNCiAgICAgICAgICAgICAgICAgICAgICBtb3VudCBw
+b2ludC4gIElmIHRoZSBzZXJ2ZXIgZG9lcyBub3Qgc3VwcG9ydCAgdGhpcyAgZmxh4oCQDQogICAg
+ICAgICAgICAgICAgICAgICAgdm9yLCAgdGhlICBtb3VudCBvcGVyYXRpb24gZmFpbHMuICBJZiBz
+ZWM9IGlzIG5vdCBzcGVjaeKAkA0KICAgICAgICAgICAgICAgICAgICAgIGZpZWQsIHRoZSBjbGll
+bnQgYXR0ZW1wdHMgdG8gZmluZCBhIHNlY3VyaXR5IGZsYXZvciB0aGF0DQogICAgICAgICAgICAg
+ICAgICAgICAgYm90aCAgdGhlIGNsaWVudCBhbmQgdGhlIHNlcnZlciBzdXBwb3J0cy4gIFZhbGlk
+IGZsYXZvcnMNCiAgICAgICAgICAgICAgICAgICAgICBhcmUgbm9uZSwgc3lzLCBrcmI1LCBrcmI1
+aSwgYW5kICBrcmI1cC4gICBSZWZlciAgdG8gIHRoZQ0KICAgICAgICAgICAgICAgICAgICAgIFNF
+Q1VSSVRZIENPTlNJREVSQVRJT05TIHNlY3Rpb24gZm9yIGRldGFpbHMuDQoNCg0KLS0gDQpUcm9u
+ZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25k
+Lk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
