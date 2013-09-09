@@ -1,90 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54087 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:5759 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753120Ab3I0UJm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Sep 2013 16:09:42 -0400
-Date: Fri, 27 Sep 2013 16:09:39 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jongman Heo <jongman.heo@samsung.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: Re: Re: Re: Regression caused by commit 4bdc33ed ("NFSDv4.2: Add
- NFS v4.2 support to the NFS server")
-Message-ID: <20130927200939.GB22640@fieldses.org>
-References: <15262316.12141380248492298.JavaMail.weblogic@epml04>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <15262316.12141380248492298.JavaMail.weblogic@epml04>
+	id S1754860Ab3IISVM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Sep 2013 14:21:12 -0400
+Date: Mon, 9 Sep 2013 14:21:08 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Quentin Barnes <qbarnes@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
+Message-ID: <20130909142108.51b4cf79@tlielax.poochiereds.net>
+In-Reply-To: <1378748866.11732.2.camel@leira.trondhjem.org>
+References: <20130905162110.GA17920@gmail.com>
+	<20130905170303.GB17330@us.ibm.com>
+	<20130905191139.GA20830@gmail.com>
+	<1378411320.5450.27.camel@leira.trondhjem.org>
+	<20130905213649.GA21944@gmail.com>
+	<1378418243.5450.29.camel@leira.trondhjem.org>
+	<20130905223420.GA23192@gmail.com>
+	<20130906093636.6818e7b2@corrin.poochiereds.net>
+	<CAKjHkpBW+LWKuKuHnUfKNxwDZeX3SOFKv_jYeNGF8ezdAnKnvg@mail.gmail.com>
+	<20130909090424.1a780b49@tlielax.poochiereds.net>
+	<20130909173209.GA28353@gmail.com>
+	<1378748866.11732.2.camel@leira.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 27, 2013 at 02:21:33AM +0000, Jongman Heo wrote:
-> Hi,
+On Mon, 9 Sep 2013 17:47:48 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+
+> On Mon, 2013-09-09 at 12:32 -0500, Quentin Barnes wrote:
+> > On Mon, Sep 09, 2013 at 09:04:24AM -0400, Jeff Layton wrote:
+> > > On Fri, 6 Sep 2013 11:48:45 -0500
+> > > Quentin Barnes <qbarnes@gmail.com> wrote:
+> > > 
+> > > > Jeff, can your try out my test program in the base note on your
+> > > > RHEL5.9 or later RHEL5.x kernels?
+> > > > 
+> > > > I reverified that running the test on a 2.6.18-348.16.1.el5 x86_64
+> > > > kernel (latest released RHEL5.9) does not show the problem for me.
+> > > > Based on what you and Trond have said in this thread though, I'm
+> > > > really curious why it doesn't have the problem.
+> > > 
+> > > I can confirm what you see on RHEL5. One difference is that RHEL5's
+> > > page_mkwrite handler does not do wait_on_page_writeback. That was added
+> > > as part of the stable pages work that went in a while back, so that may 
+> > > be the main difference. Adding that in doesn't seem to materially
+> > > change things though.
+> > 
+> > Good to know you confirmed the behavior I saw on RHEL5 (just so that
+> > I know it's not some random variable in play I had overlooked).
+> > 
+> > > In any case, what I see is that the initial program just ends up with a
+> > > two calls to nfs_vm_page_mkwrite(). They both push out a WRITE and then
+> > > things settle down (likely because the page is still marked dirty).
+> > > 
+> > > Eventually, another write occurs and the dirty page gets pushed out to
+> > > the server in a small flurry of WRITEs to the same range.Then, things
+> > > settle down again until there's another small flurry of activity.
+> > > 
+> > > My suspicion is that there is a race condition involved here, but I'm
+> > > unclear on where it is. I'm not 100% convinced this is a bug, but page
+> > > fault semantics aren't my strong suit.
+> > 
+> > As a test on RHEL6, I made a trivial systemtap script for kprobing
+> > nfs_vm_page_mkwrite() and nfs_flush_incompatible().  I wanted to
+> > make sure this bug was limited to just the nfs module and was not a
+> > result of some mm behavior change.
+> > 
+> > With the bug unfixed running the test program, nfs_vm_page_mkwrite()
+> > and nfs_flush_incompatible() are called repeatedly at a very high rate
+> > (hence all the WRITEs).
+> > 
+> > After Trond's patch, the two functions are called just at the
+> > program's initialization and then called only every 30 seconds or
+> > so.
+> > 
+> > It looks like to me from the code flow that there must be something
+> > nfs_wb_page() does that resets the need for mm to keeping reinvoking
+> > nfs_vm_page_mkwrite().  I didn't look any deeper than that though
+> > for now.  Maybe a race in how nfs_wb_page() updates status you're
+> > thinking of?
 > 
-> >
-> >------- Original Message -------
-> >Sender : J. Bruce Fields<bfields@fieldses.org>
-> >Date : 2013-09-27 10:12 (GMT+09:00)
-> >Title : Re: Re: Re: Regression caused by commit 4bdc33ed ("NFSDv4.2: Add NFS v4.2 support to the NFS server")
-> >
-> >On Thu, Sep 26, 2013 at 11:57:57PM +0000, Jongman Heo wrote:
-> >> >------- Original Message -------
-> >> >Sender : J. Bruce Fields
-> >> >This is pretty weird--it's not at all obvious how that patch would
-> >> >affect this.
-> >> >
-> >> >You're absolutely positive that the *only* thing you're changing on the
-> >> >server between the "good" and "bad" cases is that one kernel patch?
-> >> >You're not changing anything in userspace?
-> >> >
-> >> 
-> >> Yes, pretty sure.
-> >> 
-> >> >What does "cat /proc/fs/nfsd/versions" report in the good and bad cases?
-> >> >
-> >> >(BTW, out of curiosity: what kind of client is this that only supports
-> >> >NFSv2 and NFSv3?  Even for an embedded system that's a bit surprising.)
-> >> >
-> >> >--b.
-> >> >
-> >> 
-> >> Here are /proc/fs/nfsd/versions information for good and bad cases ;
-> >> 
-> >> good (commit 4bdc33ed reverted)
-> >> 
-> >> # cat /proc/fs/nfsd/versions 
-> >> +2 +3 +4 +4.1
-> >> 
-> >> 
-> >> bad (current linus git)
-> >> 
-> >> # cat /proc/fs/nfsd/versions  
-> >> -2 +3 +4 +4.1 -4.2
-> >> 
-> >> 
-> >> I don't know why the commit 4bdc33ed makes this difference ( from +2 to -2 ).
-> >> 
-> >> My NFS server just uses Fedora 19 + latest kernel (which is not a rare setup...), 
-> >
-> >The thing is, nfs-utils *did* make exactly this change with commit
-> >6b4e4965a6b82e8d49cea1c0316b951ba4e9e83e "rpc.nfsd: No longer advertise
-> >NFS v2 support." in 1.2.9-rc4 which entered f19 recently.  And that
-> >kernel commit doesn't look related.  So I strongly suspect that you got
-> >the nfs-utils update (or rebooted after the update) at the same time as
-> >bisecting, and that confused the bisect results.
-> >
+> In RHEL-5, nfs_wb_page() is just a wrapper to nfs_sync_inode_wait(),
+> which does _not_ call clear_page_dirty_for_io() (and hence does not call
+> page_mkclean()).
 > 
-> No, I haven't changed/upgraded nfs-utils package during git bisect.
+> That would explain it...
+> 
 
-Well, all it would take would be a long-ago yum update that you'd
-forgotten about by the time you rebooted to a new kernel at which point
-the new rpc.nfsd behavior would take affect on restarting the nfs
-server.
+Thanks Trond, that does explain it.
 
-> And I can still reproduce the issue.
+FWIW, at this point in the RHEL5 lifecycle I'd be disinclined to make
+any changes to that code without some strong justification. Backporting
+Trond's recent patch for RHEL6 and making sure that RHEL7 has it sounds
+quite reasonable though.
 
-So I'm still really skeptical but if you're positive then I guess I
-should go try to reproduce and make sure there's not something very
-screwed up with the nfsd/versions interface.
-
---b.
+-- 
+Jeff Layton <jlayton@redhat.com>
