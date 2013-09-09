@@ -1,84 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49015 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751098Ab3IJOJn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Sep 2013 10:09:43 -0400
-Date: Tue, 10 Sep 2013 10:09:37 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>
-Cc: Jan Kara <jack@suse.cz>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        "user-mode-linux-devel@lists.sourceforge.net"
-	<user-mode-linux-devel@lists.sourceforge.net>,
-        linux-ext4@vger.kernel.org,
-        Linux Kernel <linux-kernel@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: Re: Issues with a rather unusual configured NFS server
-Message-ID: <20130910140937.GD16011@fieldses.org>
-References: <52075E01.7030506@gmx.de>
- <20130812143640.GF4596@quack.suse.cz>
- <20130813215313.GH17781@fieldses.org>
- <20130827180655.GE14809@fieldses.org>
- <521E318C.7040401@gmx.de>
- <522B9010.8070902@gmx.de>
+Received: from mail-oa0-f48.google.com ([209.85.219.48]:52732 "EHLO
+	mail-oa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751322Ab3IIRcP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Sep 2013 13:32:15 -0400
+Received: by mail-oa0-f48.google.com with SMTP id o17so6600181oag.7
+        for <linux-nfs@vger.kernel.org>; Mon, 09 Sep 2013 10:32:15 -0700 (PDT)
+Date: Mon, 9 Sep 2013 12:32:09 -0500
+From: Quentin Barnes <qbarnes@gmail.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
+Message-ID: <20130909173209.GA28353@gmail.com>
+References: <20130905162110.GA17920@gmail.com>
+ <20130905170303.GB17330@us.ibm.com>
+ <20130905191139.GA20830@gmail.com>
+ <1378411320.5450.27.camel@leira.trondhjem.org>
+ <20130905213649.GA21944@gmail.com>
+ <1378418243.5450.29.camel@leira.trondhjem.org>
+ <20130905223420.GA23192@gmail.com>
+ <20130906093636.6818e7b2@corrin.poochiereds.net>
+ <CAKjHkpBW+LWKuKuHnUfKNxwDZeX3SOFKv_jYeNGF8ezdAnKnvg@mail.gmail.com>
+ <20130909090424.1a780b49@tlielax.poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <522B9010.8070902@gmx.de>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130909090424.1a780b49@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Sep 07, 2013 at 10:44:00PM +0200, Toralf Förster wrote:
-> Today I run latest git tree with a patched UML (this patch + one for xterm issues) and got 2 times a core dump
-> when I fuzzy test an UML machine with a nearly identical scenario as already described but just shutdowned
-> both UML images instead of shooting one of it in the head.
+On Mon, Sep 09, 2013 at 09:04:24AM -0400, Jeff Layton wrote:
+> On Fri, 6 Sep 2013 11:48:45 -0500
+> Quentin Barnes <qbarnes@gmail.com> wrote:
+> 
+> > Jeff, can your try out my test program in the base note on your
+> > RHEL5.9 or later RHEL5.x kernels?
+> > 
+> > I reverified that running the test on a 2.6.18-348.16.1.el5 x86_64
+> > kernel (latest released RHEL5.9) does not show the problem for me.
+> > Based on what you and Trond have said in this thread though, I'm
+> > really curious why it doesn't have the problem.
+> 
+> I can confirm what you see on RHEL5. One difference is that RHEL5's
+> page_mkwrite handler does not do wait_on_page_writeback. That was added
+> as part of the stable pages work that went in a while back, so that may 
+> be the main difference. Adding that in doesn't seem to materially
+> change things though.
 
-This is a slightly different test case, so for now it sounds like this
-could be a preexisting problem, not a regression?
+Good to know you confirmed the behavior I saw on RHEL5 (just so that
+I know it's not some random variable in play I had overlooked).
 
---b.
+> In any case, what I see is that the initial program just ends up with a
+> two calls to nfs_vm_page_mkwrite(). They both push out a WRITE and then
+> things settle down (likely because the page is still marked dirty).
+> 
+> Eventually, another write occurs and the dirty page gets pushed out to
+> the server in a small flurry of WRITEs to the same range.Then, things
+> settle down again until there's another small flurry of activity.
+> 
+> My suspicion is that there is a race condition involved here, but I'm
+> unclear on where it is. I'm not 100% convinced this is a bug, but page
+> fault semantics aren't my strong suit.
 
-> 
-> I'll probably need time to figure out a test case, but just as a pre-info here's the back trace:
-> 
-> tfoerste@n22 ~ $ gdb --core=/mnt/ramdisk/core /usr/local/bin/linux-v3.11-7550-g768c9d3 -n -batch -ex bt
-> 
-> warning: core file may not match specified executable file.
-> [New LWP 7470]
-> [New LWP 7479]
-> [New LWP 7477]
-> [New LWP 7478]
-> Core was generated by `/usr/local/bin/linux-v3.11-7550-g768c9d3 earlyprintk ubda=/home/tfoerste/virtua'.
-> Program terminated with signal 6, Aborted.
-> #0  0xb77be424 in __kernel_vsyscall ()
-> #0  0xb77be424 in __kernel_vsyscall ()
-> #1  0x083aada5 in kill ()
-> #2  0x0807163d in uml_abort () at arch/um/os-Linux/util.c:93
-> #3  0x08071925 in os_dump_core () at arch/um/os-Linux/util.c:138
-> #4  0x080613a7 in panic_exit (self=0x85b1518 <panic_exit_notifier>, unused1=0, unused2=0x85e76e0 <buf.15920>) at arch/um/kernel/um_arch.c:240
-> #5  0x0809a398 in notifier_call_chain (nl=0x0, val=0, v=0x85e76e0 <buf.15920>, nr_to_call=-2, nr_calls=0x0) at kernel/notifier.c:93
-> #6  0x0809a4e3 in __atomic_notifier_call_chain (nr_calls=<optimized out>, nr_to_call=<optimized out>, v=<optimized out>, val=<optimized out>, nh=<optimized out>) at kernel/notifier.c:182
-> #7  atomic_notifier_call_chain (nh=0x85e76c4 <panic_notifier_list>, val=0, v=0x85e76e0 <buf.15920>) at kernel/notifier.c:191
-> #8  0x08408628 in panic (fmt=0x0) at kernel/panic.c:128
-> #9  0x081131c9 in shrink_dcache_for_umount_subtree (dentry=0x428028f0) at fs/dcache.c:941
-> #10 0x08113948 in shrink_dcache_for_umount (sb=0x463b8000) at fs/dcache.c:1002
-> #11 0x08101677 in generic_shutdown_super (sb=0x463b8000) at fs/super.c:404
-> #12 0x08102395 in kill_anon_super (sb=0x0) at fs/super.c:875
-> #13 0x081d3ff8 in nfs_kill_super (s=0x0) at fs/nfs/super.c:2598
-> #14 0x0810153a in deactivate_locked_super (s=0x463b8000) at fs/super.c:294
-> #15 0x081015d1 in deactivate_super (s=0x463b8000) at fs/super.c:319
-> #16 0x08119c0c in mntfree (mnt=<optimized out>) at fs/namespace.c:891
-> #17 mntput_no_expire (mnt=0x0) at fs/namespace.c:929
-> #18 0x0811b195 in SYSC_umount (flags=<optimized out>, name=<optimized out>) at fs/namespace.c:1335
-> #19 SyS_umount (name=134633856, flags=2) at fs/namespace.c:1305
-> #20 0x080618e2 in handle_syscall (r=0x498be5d4) at arch/um/kernel/skas/syscall.c:35
-> #21 0x08073c0d in handle_trap (local_using_sysemu=<optimized out>, regs=<optimized out>, pid=<optimized out>) at arch/um/os-Linux/skas/process.c:198
-> #22 userspace (regs=0x498be5d4) at arch/um/os-Linux/skas/process.c:431
-> #23 0x0805e65c in fork_handler () at arch/um/kernel/process.c:160
-> #24 0x00000000 in ?? ()
-> 
-> 
-> 
+As a test on RHEL6, I made a trivial systemtap script for kprobing
+nfs_vm_page_mkwrite() and nfs_flush_incompatible().  I wanted to
+make sure this bug was limited to just the nfs module and was not a
+result of some mm behavior change.
+
+With the bug unfixed running the test program, nfs_vm_page_mkwrite()
+and nfs_flush_incompatible() are called repeatedly at a very high rate
+(hence all the WRITEs).
+
+After Trond's patch, the two functions are called just at the
+program's initialization and then called only every 30 seconds or
+so.
+
+It looks like to me from the code flow that there must be something
+nfs_wb_page() does that resets the need for mm to keeping reinvoking
+nfs_vm_page_mkwrite().  I didn't look any deeper than that though
+for now.  Maybe a race in how nfs_wb_page() updates status you're
+thinking of?
+
+> You may want to consider opening a "formal" RH support case if you have
+> interest in getting Trond's patch backported, and/or following up on
+> why RHEL5 behaves the way it does.
+
+Yes, I'll be doing that.  When I do, I'll send you an email with the
+case ticket.  Before filing it though, I want to hear back from the
+group that had the original problem to make sure Trond's patch fully
+addresses their problem (besides just the trivial test program).
+
 > -- 
-> MfG/Sincerely
-> Toralf Förster
-> pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+> Jeff Layton <jlayton@redhat.com>
+
+Quentin
