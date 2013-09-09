@@ -1,110 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:32461 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751078Ab3IHT6X convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Sep 2013 15:58:23 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
-Subject: Re: [PATCH] exportfs: Fix the default authentication flavour setting
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1378659519-18924-1-git-send-email-Trond.Myklebust@netapp.com>
-Date: Sun, 8 Sep 2013 15:58:13 -0400
-Cc: Steve Dickson <steved@redhat.com>, <linux-nfs@vger.kernel.org>
-Message-Id: <594F92D3-B085-4382-ACA2-7E43949BBCD2@oracle.com>
-References: <1378659519-18924-1-git-send-email-Trond.Myklebust@netapp.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:24110 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751171Ab3IIRRg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Sep 2013 13:17:36 -0400
+Message-ID: <1378747050.4117.122.camel@serendib>
+Subject: [PATCH] nfsiostat: periodically flush stdout
+From: Harshula Jayasuriya <harshula@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>, Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 10 Sep 2013 03:17:30 +1000
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+* In a shell script, when nfsiostat is run in the background with
+  stdout redirected to a file, flush stdout periodically to ensure
+  that we do not lose the buffered output if the nfsiostat process 
+  is killed.
 
-On Sep 8, 2013, at 12:58 PM, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
+---
+ tools/nfs-iostat/nfs-iostat.py | 2 ++
+ 1 file changed, 2 insertions(+)
 
-> Commit 11ba3b1e01b67b7d19f26fba94fabdb60878e809 (Add a default flavor
-> to an export's e_secinfo list) breaks the ordering of security flavours
-> in the secinfo list, by reordering 'sec=sys' to always be the first
-> secinfo flavour if one fails to set a default 'sec' setting.
-
-Setting a default security flavor should occur only if no sec= option is specified.  In the below case, clearly there is a sec= setting.  Why was the default security flavor logic triggered anyway?
-
-> An export of the form:
-> 
-> /export -sync,no_subtree_check,mp \
->           192.168.1.0/24(sec=krb5p:krb5i:krb5,rw,sec=sys,ro)
-> 
-> ends up getting translated by exportfs into the following entry in
-> /var/lib/nfs/etab:
-> 
-> /export	192.168.1.0/24(ro,sync,wdelay,hide,nocrossmnt,\
->                       secure,root_squash,no_all_squash,\
-> 		       no_subtree_check,secure_locks,acl,\
-> 		       mountpoint,anonuid=65534,anongid=65534,\
-> 		       sec=sys,ro,root_squash,no_all_squash,\
-> 		       sec=krb5p:krb5i:krb5,rw,root_squash,no_all_squash)
-> 
-> Note how the 'sec=sys' is now listed first…
-
-> The fix is to defer adding the default flavour until the call to
-> secinfo_show, when we can see if it is even needed at all.
-> With the patch, the above export is now correctly entered in
-> /var/lib/nfs/etab as:
-> 
-> /export	192.168.1.0/24(ro,sync,wdelay,hide,nocrossmnt,\
-> 			secure,root_squash,no_all_squash,\
-> 			no_subtree_check,secure_locks,acl,\
-> 			mountpoint,anonuid=65534,anongid=65534,\
-> 			sec=krb5p:krb5i:krb5,rw,root_squash,no_all_squash,\
-> 			sec=sys,ro,root_squash,no_all_squash)
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: Chuck Lever <chuck.lever@oracle.com>
-
-The key is whether the derived pseudo-root security flavor setting is still correct after your fix.  Did you confirm the test case in 11ba3b1's description is still addressed?
-
-> ---
-> support/nfs/exports.c | 5 +++--
-> 1 file changed, 3 insertions(+), 2 deletions(-)
-> 
-> diff --git a/support/nfs/exports.c b/support/nfs/exports.c
-> index dea040f..3e99de6 100644
-> --- a/support/nfs/exports.c
-> +++ b/support/nfs/exports.c
-> @@ -63,6 +63,7 @@ static int	parsesquash(char *list, int **idp, int *lenp, char **ep);
-> static int	parsenum(char **cpp);
-> static void	freesquash(void);
-> static void	syntaxerr(char *msg);
-> +static struct flav_info *find_flavor(char *name);
-> 
-> void
-> setexportent(char *fname, char *type)
-> @@ -201,6 +202,8 @@ void secinfo_show(FILE *fp, struct exportent *ep)
-> 	struct sec_entry *p1, *p2;
-> 	int flags;
-> 
-> +	if (ep->e_secinfo[0].flav == NULL)
-> +		secinfo_addflavor(find_flavor("sys"), ep);
-> 	for (p1=ep->e_secinfo; p1->flav; p1=p2) {
-> 
-> 		fprintf(fp, ",sec=%s", p1->flav->flavour);
-> @@ -643,8 +646,6 @@ bad_option:
-> 			cp++;
-> 	}
-> 
-> -	if (ep->e_secinfo[0].flav == NULL)
-> -		secinfo_addflavor(find_flavor("sys"), ep);
-> 	fix_pseudoflavor_flags(ep);
-> 	ep->e_squids = squids;
-> 	ep->e_sqgids = sqgids;
-> -- 
-> 1.8.3.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
+index c035537..155581c 100644
+--- a/tools/nfs-iostat/nfs-iostat.py
++++ b/tools/nfs-iostat/nfs-iostat.py
+@@ -413,6 +413,8 @@ class DeviceData:
+             self.__print_rpc_op_stats('WRITE', sample_time)
+             self.__print_page_stats(sample_time)
+ 
++        sys.stdout.flush()
++
+ #
+ # Functions
+ #
+-- 
+1.8.3.1
 
