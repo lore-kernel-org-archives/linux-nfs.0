@@ -1,97 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from nm36.bullet.mail.bf1.yahoo.com ([72.30.239.5]:42077 "EHLO
-	nm36.bullet.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751984Ab3ISOw6 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Sep 2013 10:52:58 -0400
-References: <1379582806.44080.YahooMailNeo@web140003.mail.bf1.yahoo.com> <20130919131429.GA20422@fieldses.org> <1379597501.95818.YahooMailNeo@web140002.mail.bf1.yahoo.com> <20130919134028.GB20422@fieldses.org> <1379599410.72261.YahooMailNeo@web140001.mail.bf1.yahoo.com> <20130919140846.GC20422@fieldses.org> <1379600464.91434.YahooMailNeo@web140005.mail.bf1.yahoo.com> <20130919142535.GD20422@fieldses.org>
-Message-ID: <1379601992.25969.YahooMailNeo@web140005.mail.bf1.yahoo.com>
-Date: Thu, 19 Sep 2013 07:46:32 -0700 (PDT)
-From: Jody Gugelhupf <knueffle@yahoo.com>
-Reply-To: Jody Gugelhupf <knueffle@yahoo.com>
-Subject: Re: help with nfs export/mount
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <20130919142535.GD20422@fieldses.org>
+Received: from mx12.netapp.com ([216.240.18.77]:9838 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751981Ab3IJWoo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Sep 2013 18:44:44 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: <Trond.Myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 3/4] NFSv4.1: sp4_mach_cred: no need to ref count creds
+Date: Tue, 10 Sep 2013 18:44:32 -0400
+Message-ID: <1378853073-13256-4-git-send-email-dros@netapp.com>
+In-Reply-To: <1378853073-13256-1-git-send-email-dros@netapp.com>
+References: <1378853073-13256-1-git-send-email-dros@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-ah ok, i have dropped the "fsid=0" as you had suggested but had still mounted with "sudo mount 192.168.2.3:/ /home/jarvis/Videos/xbmc"
-though when doing tab completition on cli it does show 
-ls /home/jarvis/Videos/xbmc/
-ls /home/jarvis/Videos/xbmc/home
+The cl_machine_cred doesn't need to be reference counted here -
+a reference is held is for the lifetime of the struct nfs_client.
+Also, no need to put_rpccred the rpc_message.rpc_cred.
 
-ls /home/jarvis/Videos/xbmc/home/user
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ fs/nfs/nfs4_fs.h | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-ls /home/jarvis/Videos/xbmc/home/user/media
-
-ls /home/jarvis/Videos/xbmc/home/user/media/Series
-
-and then hangs indeed
-
-
-
-
------ Original Message -----
-From: J. Bruce Fields <bfields@fieldses.org>
-To: Jody Gugelhupf <knueffle@yahoo.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Sent: Thursday, September 19, 2013 4:25:35 PM
-Subject: Re: help with nfs export/mount
-
-On Thu, Sep 19, 2013 at 07:21:04AM -0700, Jody Gugelhupf wrote:
-> on client side (in order):
-> 
-> sudo mount 192.168.2.3:/ /home/jarvis/Videos/xbmc
-
-As I said, if you've dropped the "fsid=0" (which you should) then you
-should be mounting the real server-side path, not /.
-
-> no error msg, then trying to access the directory:
-> ls /home/jarvis/Videos/xbmc/home/user/media/Series
-> the console does not react,
-
-So the mount succeeds, but the "ls" hangs?
-
---b.
-
-> i open a new console and see again 
-> Sep 19 14:15:56 darkstar kernel: [61095.429346] nfs: server 192.168.2.3 OK
-> Sep 19 14:17:01 darkstar kernel: [61280.169706] nfs: server 192.168.2.3 not responding, still trying
-> 
-> 
-> but i also noticed this (didn't see it before)
-> Sep 19 16:12:53 darkstar rpc.idmapd[576]: nss_getpwnam: name 'user' not found in domain 'localdomain'
-> 
-> 
-> 
-> ----- Original Message -----
-> From: J. Bruce Fields <bfields@fieldses.org>
-> To: Jody Gugelhupf <knueffle@yahoo.com>
-> Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-> Sent: Thursday, September 19, 2013 4:08:46 PM
-> Subject: Re: help with nfs export/mount
-> 
-> On Thu, Sep 19, 2013 at 07:03:30AM -0700, Jody Gugelhupf wrote:
-> > on server side I see in dmesg this:
-> > [8040437.603605] nfsd: last server has exited, flushing export cache
-> > [8040439.496016] NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
-> > [8040439.496035] NFSD: starting 90-second grace period
-> > 
-> > on client side i only see:
-> > Sep 19 13:27:56 darkstar kernel: [61095.429346] nfs: server 192.168.2.3 OK
-> > Sep 19 13:31:01 darkstar kernel: [61280.169706] nfs: server 192.168.2.3 not responding, still trying
-> >  is there a way to further debug?
-> 
-> Exactly what commands did you type, and what things happened, in what
-> order?
-> 
-> --b.
-> 
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index f520a11..07a8aa9 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -279,10 +279,10 @@ _nfs4_state_protect(struct nfs_client *clp, unsigned long sp4_mode,
+ 	if (test_bit(sp4_mode, &clp->cl_sp4_flags)) {
+ 		spin_lock(&clp->cl_lock);
+ 		if (clp->cl_machine_cred != NULL)
+-			newcred = get_rpccred(clp->cl_machine_cred);
++			/* don't call get_rpccred on the machine cred -
++			 * a reference will be held for life of clp */
++			newcred = clp->cl_machine_cred;
+ 		spin_unlock(&clp->cl_lock);
+-		if (msg->rpc_cred)
+-			put_rpccred(msg->rpc_cred);
+ 		msg->rpc_cred = newcred;
+ 
+ 		flavor = clp->cl_rpcclient->cl_auth->au_flavor;
+-- 
+1.7.12.4 (Apple Git-37)
 
