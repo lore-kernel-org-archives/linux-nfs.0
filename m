@@ -1,41 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f177.google.com ([74.125.82.177]:52335 "EHLO
-	mail-we0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751143Ab3I2Lyr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Sep 2013 07:54:47 -0400
-Received: by mail-we0-f177.google.com with SMTP id t60so4238648wes.8
-        for <linux-nfs@vger.kernel.org>; Sun, 29 Sep 2013 04:54:45 -0700 (PDT)
-Message-ID: <52481502.1010108@primarydata.com>
-Date: Sun, 29 Sep 2013 14:54:42 +0300
-From: Benny Halevy <bhalevy@primarydata.com>
+Received: from mx12.netapp.com ([216.240.18.77]:9838 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751561Ab3IJWok (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Sep 2013 18:44:40 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: <Trond.Myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 1/4] NFSv4.1: sp4_mach_cred: ask for WRITE and COMMIT
+Date: Tue, 10 Sep 2013 18:44:30 -0400
+Message-ID: <1378853073-13256-2-git-send-email-dros@netapp.com>
+In-Reply-To: <1378853073-13256-1-git-send-email-dros@netapp.com>
+References: <1378853073-13256-1-git-send-email-dros@netapp.com>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: "J. Bruce Fields" <bfields@redhat.com>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Lev Solomonov <solo@primarydata.com>,
-        Idan Kedar <idank@primarydata.com>,
-        Nadav Shemer <nadav@primarydata.com>
-Subject: Re: [PATCH RFC v0 0/49] pnfsd-dlm
-References: <52447EA0.7070004@primarydata.com> <20130929114240.GA25750@infradead.org>
-In-Reply-To: <20130929114240.GA25750@infradead.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-09-29 14:42, Christoph Hellwig wrote:
-> On Thu, Sep 26, 2013 at 02:36:16PM -0400, Benny Halevy wrote:
->> The following patchset implements an extension to nfsd
->> providing a complete minimal pnfs server exporting
->> DLM-based clustered file systems such as GFS2 or OCFS2.
-> 
-> Does this actually buy us anything by now?  Last time I saw numbers for
-> this implementation it was slower than an active/passive setup over
-> those filesystem due to the way their cluster locking works.
-> 
+Request SP4_MACH_CRED WRITE and COMMIT support in spo_must_allow list --
+they're already supported by the client.
 
-Was this for write sharing or read only?
-As far as I understand, the share locks do not cause arbitration
-and they do provide bandwidth scalability via multiple nodes.
-That said, it is worth measuring.
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ fs/nfs/nfs4proc.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-Benny
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 39b6cf2..dc2d27b 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6151,11 +6151,13 @@ static const struct nfs41_state_protection nfs4_sp4_mach_cred_request = {
+ 	},
+ 	.allow.u.words = {
+ 		[0] = 1 << (OP_CLOSE) |
+-		      1 << (OP_LOCKU),
++		      1 << (OP_LOCKU) |
++		      1 << (OP_COMMIT),
+ 		[1] = 1 << (OP_SECINFO - 32) |
+ 		      1 << (OP_SECINFO_NO_NAME - 32) |
+ 		      1 << (OP_TEST_STATEID - 32) |
+-		      1 << (OP_FREE_STATEID - 32)
++		      1 << (OP_FREE_STATEID - 32) |
++		      1 << (OP_WRITE - 32)
+ 	}
+ };
+ 
+-- 
+1.7.12.4 (Apple Git-37)
+
