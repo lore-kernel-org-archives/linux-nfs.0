@@ -1,52 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:36784 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:41967 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753680Ab3ICQLL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Sep 2013 12:11:11 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 5 2/5] NFS: Warn when attempting a buffered
- write or commit with an expired credential
-Date: Tue, 3 Sep 2013 16:10:54 +0000
-Message-ID: <1378224652.6410.6.camel@leira.trondhjem.org>
-References: <1376495957-7482-1-git-send-email-andros@netapp.com>
-	 <1376495957-7482-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1376495957-7482-3-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1751268Ab3IJN2m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Sep 2013 09:28:42 -0400
+Date: Tue, 10 Sep 2013 09:28:41 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Emmanuel Florac <eflorac@intellique.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Hard to debug NFS loss of connectivity
+Message-ID: <20130910132841.GC16011@fieldses.org>
+References: <20130905191800.1c75b2fb@harpe.intellique.com>
+ <20130905204536.GB24805@fieldses.org>
+ <20130905233449.5eb8bf79@galadriel.home>
+ <20130905214002.GD24805@fieldses.org>
+ <20130906175721.30082c11@harpe.intellique.com>
+ <20130906160735.GA16396@fieldses.org>
+ <20130906185508.3f0d2730@harpe.intellique.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20130906185508.3f0d2730@harpe.intellique.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEzLTA4LTE0IGF0IDExOjU5IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFNpZ25l
-ZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiAgZnMv
-bmZzL3dyaXRlLmMgfCAxMSArKysrKysrKysrKw0KPiAgMSBmaWxlIGNoYW5nZWQsIDExIGluc2Vy
-dGlvbnMoKykNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvd3JpdGUuYyBiL2ZzL25mcy93cml0
-ZS5jDQo+IGluZGV4IGYxYmRiNzIuLjdiN2QzNjAgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy93cml0
-ZS5jDQo+ICsrKyBiL2ZzL25mcy93cml0ZS5jDQo+IEBAIC0xMzMwLDYgKzEzMzAsMTQgQEAgdm9p
-ZCBuZnNfd3JpdGViYWNrX2RvbmUoc3RydWN0IHJwY190YXNrICp0YXNrLCBzdHJ1Y3QgbmZzX3dy
-aXRlX2RhdGEgKmRhdGEpDQo+ICAJZHByaW50aygiTkZTOiAlNXUgbmZzX3dyaXRlYmFja19kb25l
-IChzdGF0dXMgJWQpXG4iLA0KPiAgCQl0YXNrLT50a19waWQsIHRhc2stPnRrX3N0YXR1cyk7DQo+
-ICANCj4gKwlpZiAodGFzay0+dGtfc3RhdHVzID09IC1FS0VZRVhQSVJFRCkNCj4gKwkJcHJfd2Fy
-bl9yYXRlbGltaXRlZCgiTkZTOiAgICAgICAgd3JpdGUgYXR0ZW1wdCB3aXRoIGV4cGlyZWQgIg0K
-PiArCQkJImNyZWRlbnRpYWwgcmVxICVzLyVsbGQsICV1IGJ5dGVzIEAgb2Zmc2V0ICVsbHVcbiIs
-DQo+ICsJCQlpbm9kZS0+aV9zYi0+c19pZCwNCj4gKwkJCShsb25nIGxvbmcpTkZTX0ZJTEVJRChp
-bm9kZSksDQo+ICsJCQlkYXRhLT5hcmdzLmNvdW50LA0KPiArCQkJKHVuc2lnbmVkIGxvbmcgbG9u
-ZylkYXRhLT5hcmdzLm9mZnNldCk7DQo+ICsNCj4gIAkvKg0KPiAgCSAqIC0+d3JpdGVfZG9uZSB3
-aWxsIGF0dGVtcHQgdG8gdXNlIHBvc3Qtb3AgYXR0cmlidXRlcyB0byBkZXRlY3QNCj4gIAkgKiBj
-b25mbGljdGluZyB3cml0ZXMgYnkgb3RoZXIgY2xpZW50cy4gIEEgc3RyaWN0IGludGVycHJldGF0
-aW9uDQo+IEBAIC0xNTU2LDYgKzE1NjQsOSBAQCBzdGF0aWMgdm9pZCBuZnNfY29tbWl0X2RvbmUo
-c3RydWN0IHJwY190YXNrICp0YXNrLCB2b2lkICpjYWxsZGF0YSkNCj4gIA0KPiAgICAgICAgICBk
-cHJpbnRrKCJORlM6ICU1dSBuZnNfY29tbWl0X2RvbmUgKHN0YXR1cyAlZClcbiIsDQo+ICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgIHRhc2stPnRrX3BpZCwgdGFzay0+dGtfc3RhdHVz
-KTsNCj4gKwlpZiAodGFzay0+dGtfc3RhdHVzID09IC1FS0VZRVhQSVJFRCkNCj4gKwkJcHJfd2Fy
-bl9yYXRlbGltaXRlZCgiTkZTOiAgICAgICBjb21taXQgYXR0ZW1wdCB3aXRoIGV4cGlyZWQgIg0K
-PiArCQkJCSJjcmVkZW50aWFsXG4iKTsNCj4gIA0KPiAgCS8qIENhbGwgdGhlIE5GUyB2ZXJzaW9u
-LXNwZWNpZmljIGNvZGUgKi8NCj4gIAlORlNfUFJPVE8oZGF0YS0+aW5vZGUpLT5jb21taXRfZG9u
-ZSh0YXNrLCBkYXRhKTsNCg0KSSB3YW50IHRvIGhvbGQgb24gYXBwbHlpbmcgdGhpcyB1bnRpbCBp
-dCBpcyBjbGVhciB0aGF0IHdlIG5lZWQgaXQuIEl0DQppc24ndCBvYnZpb3VzIHRvIG1lIHdoeSB3
-ZSBuZWVkIHRvIGxvZyB0aGlzIGluZm9ybWF0aW9uIHRvIHRoZSBjb25zb2xlDQppZiB3ZSdyZSBh
-bHJlYWR5IHJldHVybmluZyBlcnJvciB2YWx1ZXMgdG8gdGhlIGFwcGxpY2F0aW9uLg0KDQotLSAN
-ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
-VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+On Fri, Sep 06, 2013 at 06:55:08PM +0200, Emmanuel Florac wrote:
+> Le Fri, 6 Sep 2013 12:07:35 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> écrivait:
+> 
+> > Weird.  Things look normal up through frame 14, which is a READDIRPLUS
+> > reply.  Then the server resends the reply after .2s, and and the
+> > client resends its call shortly thereafter (but without acking the
+> > latest reply).  And then the rest of the trace is resends of the
+> > reply.
+> > 
+> > So it looks like the client stopped ACKing the server's replies?
+> > 
+> > You may also have filtered out some TCP ACKs, which makes this harder
+> > to work out.
+> 
+> Ah yes, my bad, one TCP ACK was filtered out. Here I've kept trafic
+> between the two machines but ssh.
+
+Huh, no idea.  You can see the server retransmitting the readdir plus
+reply, and still no ACKs from the client.
+
+> Here I was capturing from the server, maybe I should try capturing on
+> the client side?
+
+Sure, maybe.
+
+Honestly looks like a network problem, if it weren't for the failing on
+the filesystem operation each time.
+
+Hm, it may just be the first packet of a certain size.  In fact it's the
+first frame > 1500 bytes in that trace.  Is there some problem with
+jumbo frame configuration on your network?
+
+--b.
