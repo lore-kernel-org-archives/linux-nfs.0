@@ -1,97 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f53.google.com ([209.85.128.53]:39026 "EHLO
-	mail-qe0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753553Ab3IZSlw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:41:52 -0400
-Received: by mail-qe0-f53.google.com with SMTP id jy17so1106331qeb.26
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:41:52 -0700 (PDT)
-From: Benny Halevy <bhalevy@primarydata.com>
-To: " J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH RFC v0 29/49] pnfsd: support layout_type attribute
-Date: Thu, 26 Sep 2013 14:41:48 -0400
-Message-Id: <1380220908-14009-1-git-send-email-bhalevy@primarydata.com>
-In-Reply-To: <52447EA0.7070004@primarydata.com>
-References: <52447EA0.7070004@primarydata.com>
+Received: from mout.gmx.net ([212.227.15.15]:49553 "EHLO mout.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753214Ab3IJPvM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Sep 2013 11:51:12 -0400
+Received: from [80.171.222.128] ([80.171.222.128]) by mail.gmx.com (mrgmx003)
+ with ESMTPSA (Nemesis) id 0MUoiS-1VTKDp3YOy-00Y85O for
+ <linux-nfs@vger.kernel.org>; Tue, 10 Sep 2013 17:51:10 +0200
+Message-ID: <522F3FEC.7080406@gmx.de>
+Date: Tue, 10 Sep 2013 17:51:08 +0200
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jan Kara <jack@suse.cz>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        "user-mode-linux-devel@lists.sourceforge.net"
+	<user-mode-linux-devel@lists.sourceforge.net>,
+        linux-ext4@vger.kernel.org,
+        Linux Kernel <linux-kernel@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: Re: Issues with a rather unusual configured NFS server
+References: <52075E01.7030506@gmx.de> <20130812143640.GF4596@quack.suse.cz> <20130813215313.GH17781@fieldses.org> <20130827180655.GE14809@fieldses.org> <521E318C.7040401@gmx.de> <522B9010.8070902@gmx.de> <20130910140937.GD16011@fieldses.org>
+In-Reply-To: <20130910140937.GD16011@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@panasas.com>
+On 09/10/2013 04:09 PM, J. Bruce Fields wrote:
+> On Sat, Sep 07, 2013 at 10:44:00PM +0200, Toralf Förster wrote:
+>> Today I run latest git tree with a patched UML (this patch + one for xterm issues) and got 2 times a core dump
+>> when I fuzzy test an UML machine with a nearly identical scenario as already described but just shutdowned
+>> both UML images instead of shooting one of it in the head.
+> 
+> This is a slightly different test case, so for now it sounds like this
+> could be a preexisting problem, not a regression?
+> 
+> --b.
 
-Provide for getting the (read-only) layout_type attribute
+If I found a test case I'll bisect it - but currently it does no longer
+happen during normal operations w/ current git.#
 
-[extraced from pnfsd: Initial pNFS server implementation.]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[pnfsd: Add super block to layout_type()]
-Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-[pnfsd: convert generic code to use new pnfs api]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[Remove the use of struct pnfs_export_operations.]
-[pnfsd: support layout_type attribute all layout types]
-[pnfsd: check ex_pnfs in nfsd4_verify_layout]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[pnfsd: handle s_pnfs_op==NULL]
-[pnfsd: test layout_type method in nfsd4_encode_fattr]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
----
- fs/nfsd/nfs4xdr.c | 24 ++++++++++++++++++++++++
- fs/nfsd/nfsd.h    |  5 +++++
- 2 files changed, 29 insertions(+)
+(
+Well, if I kill the NFS client during shutdown, then I get often a core
+dump with the mentioned back trace but I think this doesn't count :-D
+)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index b9c4417..83f7147 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2560,6 +2560,30 @@ static int get_parent_attributes(struct svc_export *exp, struct kstat *stat)
- 			get_parent_attributes(exp, &stat);
- 		WRITE64(stat.ino);
- 	}
-+#if defined(CONFIG_PNFSD)
-+	if (bmval1 & FATTR4_WORD1_FS_LAYOUT_TYPES) {
-+		struct super_block *sb = dentry->d_inode->i_sb;
-+		int type = 0;
-+
-+		/* Query the filesystem for supported pNFS layout types.
-+		 * Currently, we only support one layout type per file system.
-+		 * The export_ops->layout_type() returns the pnfs_layouttype4.
-+		 */
-+		buflen -= 4;
-+		if (buflen < 0)		/* length */
-+			goto out_resource;
-+
-+		if (sb && sb->s_pnfs_op && sb->s_pnfs_op->layout_type)
-+			type = sb->s_pnfs_op->layout_type(sb);
-+		if (type) {
-+			if ((buflen -= 4) < 0)	/* type */
-+				goto out_resource;
-+			WRITE32(1);	/* length */
-+			WRITE32(type);  /* type */
-+		} else
-+			WRITE32(0);  /* length */
-+	}
-+#endif /* CONFIG_PNFSD */
- 	if (bmval2 & FATTR4_WORD2_SECURITY_LABEL) {
- 		status = nfsd4_encode_security_label(rqstp, context,
- 				contextlen, &p, &buflen);
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 30f34ab..f49fb0b 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -321,8 +321,13 @@ static inline void nfs4_reset_lease(time_t leasetime) { }
- #define NFSD4_1_SUPPORTED_ATTRS_WORD0 \
- 	NFSD4_SUPPORTED_ATTRS_WORD0
- 
-+#if defined(CONFIG_PNFSD)
-+#define NFSD4_1_SUPPORTED_ATTRS_WORD1 \
-+	(NFSD4_SUPPORTED_ATTRS_WORD1 | FATTR4_WORD1_FS_LAYOUT_TYPES)
-+#else /* CONFIG_PNFSD */
- #define NFSD4_1_SUPPORTED_ATTRS_WORD1 \
- 	NFSD4_SUPPORTED_ATTRS_WORD1
-+#endif /* CONFIG_PNFSD */
- 
- #define NFSD4_1_SUPPORTED_ATTRS_WORD2 \
- 	(NFSD4_SUPPORTED_ATTRS_WORD2 | FATTR4_WORD2_SUPPATTR_EXCLCREAT)
+>>
+>> I'll probably need time to figure out a test case, but just as a pre-info here's the back trace:
+>>
+>> tfoerste@n22 ~ $ gdb --core=/mnt/ramdisk/core /usr/local/bin/linux-v3.11-7550-g768c9d3 -n -batch -ex bt
+>>
+>> warning: core file may not match specified executable file.
+>> [New LWP 7470]
+>> [New LWP 7479]
+>> [New LWP 7477]
+>> [New LWP 7478]
+>> Core was generated by `/usr/local/bin/linux-v3.11-7550-g768c9d3 earlyprintk ubda=/home/tfoerste/virtua'.
+>> Program terminated with signal 6, Aborted.
+>> #0  0xb77be424 in __kernel_vsyscall ()
+>> #0  0xb77be424 in __kernel_vsyscall ()
+>> #1  0x083aada5 in kill ()
+>> #2  0x0807163d in uml_abort () at arch/um/os-Linux/util.c:93
+>> #3  0x08071925 in os_dump_core () at arch/um/os-Linux/util.c:138
+>> #4  0x080613a7 in panic_exit (self=0x85b1518 <panic_exit_notifier>, unused1=0, unused2=0x85e76e0 <buf.15920>) at arch/um/kernel/um_arch.c:240
+>> #5  0x0809a398 in notifier_call_chain (nl=0x0, val=0, v=0x85e76e0 <buf.15920>, nr_to_call=-2, nr_calls=0x0) at kernel/notifier.c:93
+>> #6  0x0809a4e3 in __atomic_notifier_call_chain (nr_calls=<optimized out>, nr_to_call=<optimized out>, v=<optimized out>, val=<optimized out>, nh=<optimized out>) at kernel/notifier.c:182
+>> #7  atomic_notifier_call_chain (nh=0x85e76c4 <panic_notifier_list>, val=0, v=0x85e76e0 <buf.15920>) at kernel/notifier.c:191
+>> #8  0x08408628 in panic (fmt=0x0) at kernel/panic.c:128
+>> #9  0x081131c9 in shrink_dcache_for_umount_subtree (dentry=0x428028f0) at fs/dcache.c:941
+>> #10 0x08113948 in shrink_dcache_for_umount (sb=0x463b8000) at fs/dcache.c:1002
+>> #11 0x08101677 in generic_shutdown_super (sb=0x463b8000) at fs/super.c:404
+>> #12 0x08102395 in kill_anon_super (sb=0x0) at fs/super.c:875
+>> #13 0x081d3ff8 in nfs_kill_super (s=0x0) at fs/nfs/super.c:2598
+>> #14 0x0810153a in deactivate_locked_super (s=0x463b8000) at fs/super.c:294
+>> #15 0x081015d1 in deactivate_super (s=0x463b8000) at fs/super.c:319
+>> #16 0x08119c0c in mntfree (mnt=<optimized out>) at fs/namespace.c:891
+>> #17 mntput_no_expire (mnt=0x0) at fs/namespace.c:929
+>> #18 0x0811b195 in SYSC_umount (flags=<optimized out>, name=<optimized out>) at fs/namespace.c:1335
+>> #19 SyS_umount (name=134633856, flags=2) at fs/namespace.c:1305
+>> #20 0x080618e2 in handle_syscall (r=0x498be5d4) at arch/um/kernel/skas/syscall.c:35
+>> #21 0x08073c0d in handle_trap (local_using_sysemu=<optimized out>, regs=<optimized out>, pid=<optimized out>) at arch/um/os-Linux/skas/process.c:198
+>> #22 userspace (regs=0x498be5d4) at arch/um/os-Linux/skas/process.c:431
+>> #23 0x0805e65c in fork_handler () at arch/um/kernel/process.c:160
+>> #24 0x00000000 in ?? ()
+>>
+>>
+>>
+>> -- 
+>> MfG/Sincerely
+>> Toralf Förster
+>> pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+> 
+
+
 -- 
-1.8.3.1
-
+MfG/Sincerely
+Toralf Förster
+pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
