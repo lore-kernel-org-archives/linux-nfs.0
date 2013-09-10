@@ -1,129 +1,149 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f170.google.com ([209.85.220.170]:42920 "EHLO
-	mail-vc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751638Ab3I0Nea (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Sep 2013 09:34:30 -0400
-Received: by mail-vc0-f170.google.com with SMTP id lc6so1522115vcb.15
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Sep 2013 06:34:29 -0700 (PDT)
+Received: from mx12.netapp.com ([216.240.18.77]:56158 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752148Ab3IJOC1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Sep 2013 10:02:27 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: NeilBrown <neilb@suse.de>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH/RFC] make nfs_flush_incompatible more forgiving.
+Date: Tue, 10 Sep 2013 14:02:25 +0000
+Message-ID: <1378821746.21916.17.camel@leira.trondhjem.org>
+References: <20130904113632.1a1eb337@notabene.brown>
+	 <1378305214.3527.10.camel@leira.trondhjem.org>
+	 <20130905092947.248a80e6@notabene.brown>
+	 <1378351073.30440.14.camel@leira.trondhjem.org>
+	 <20130910144209.21361396@notabene.brown>
+In-Reply-To: <20130910144209.21361396@notabene.brown>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <524588C7.9040500@panasas.com>
-References: <52447EA0.7070004@primarydata.com> <524588C7.9040500@panasas.com>
-From: Benny Halevy <bhalevy@primarydata.com>
-Date: Fri, 27 Sep 2013 09:34:09 -0400
-Message-ID: <CAEMWVhsD-f2wZJzASMtC10XHPH2aSTzVLtYje3U8ezP_+67rWw@mail.gmail.com>
-Subject: Re: [PATCH RFC v0 0/49] pnfsd-dlm
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Lev Solomonov <solo@primarydata.com>,
-        Idan Kedar <idank@primarydata.com>,
-        Nadav Shemer <nadav@primarydata.com>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 27, 2013 at 9:31 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 09/26/2013 02:36 PM, Benny Halevy wrote:
->> The following patchset implements an extension to nfsd
->> providing a complete minimal pnfs server exporting
->> DLM-based clustered file systems such as GFS2 or OCFS2.
->>
->> The pNFS operations that are implemented are
->> GETDEVICELIST and GETDEVICEINFO,
->> LAYOUTGET and LAYOUTRETURN.
->>
->> The server does the bookkeeping of the outstanding layout
->> state in response to layout get and return.
->>
->> Also, the implementation cleans up the client layout state
->> opon client expiry and on CLOSE when the return_on_close
->> flag is set on the LAYOUTGET response.  The latter is the
->> default behavior until layout recalls are implemented
->> with which the server can reclaim its resources in case
->> the client holds layout state post closing files.
->>
->> The patchset is based on v3.12-rc2 and it's available also online here:
->> git://linux-nfs.org/~bhalevy/linux-pnfs.git pnfsd-dlm-3.12-rc2-2013-09-26
->>
->
-> I thought that we said that exofs server is going in first. What happened?
-
-exofs requires much more functionality.
-To help review the code we need to go through this milestone in any case.
-
-Benny
-
->
-> Cheers
-> Boaz
->
->> Benny
->>
->> General infrastructure:
->> [PATCH RFC v0 01/49] pnfsd: Define CONFIG_PNFSD
->> [PATCH RFC v0 02/49] pnfsd: define NFSDDBG_PNFS
->> [PATCH RFC v0 03/49] pnfsd: return pnfs flags on exchange_id
->> [PATCH RFC v0 04/49] pnfsd: don't set up back channel on create_session for ds
->> [PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
->> [PATCH RFC v0 06/49] pnfsd: define pnfs_export_operations
->> [PATCH RFC v0 07/49] pnfsd: add pnfs export option
->> [PATCH RFC v0 08/49] pnfsd: layout verify
->> [PATCH RFC v0 09/49] pnfsd: initial stub
->>
->> Device ops:
->> [PATCH RFC v0 10/49] pnfsd: use sbid hash table to map super_blocks to devid major identifiers
->> [PATCH RFC v0 11/49] NFSD: introduce exp_xdr.h
->> [PATCH RFC v0 12/49] pnfsd: get device list/info
->> [PATCH RFC v0 13/49] pnfsd: filelayout: get device list/info
->> [PATCH RFC v0 14/49] pnfsd: provide helper for xdr encoding of deviceid
->> [PATCH RFC v0 15/49] pnfsd: add helper functions for identifying DS filehandles
->> [PATCH RFC v0 16/49] pnfsd: accept all ds stateids
->>
->> layout get:
->> [PATCH RFC v0 17/49] DEBUG: nfsd: more client_lock asserts
->> [PATCH RFC v0 18/49] pnfsd: nfs4_assert_state_locked
->> [PATCH RFC v0 19/49] pnfsd: layout get
->> [PATCH RFC v0 20/49] pnfsd: filelayout: layout encoding
->>
->> layout state handling for layout get:
->> [PATCH RFC v0 21/49] nfsd: no need to unhash_stid before free
->> [PATCH RFC v0 22/49] nfsd: cleanup free_stid
->> [PATCH RFC v0 23/49] pnfsd: layout state allocation
->> [PATCH RFC v0 24/49] pnfsd: process the layout stateid
->> [PATCH RFC v0 25/49] pnfsd: layout state per client tracking
->> [PATCH RFC v0 26/49] pnfsd: layout state per file tracking
->> [PATCH RFC v0 27/49] pnfsd: hash layouts on layout state
->> [PATCH RFC v0 28/49] pnfsd: support layout segment merging
->>
->> pnfs attributes:
->> [PATCH RFC v0 29/49] pnfsd: support layout_type attribute
->> [PATCH RFC v0 30/49] pnfsd: make pnfs server return layout_blksize when the client asks for it
->> [PATCH RFC v0 31/49] pnfsd: add support for per-file layout_types attribute
->>
->> pnfsd over dlm:
->> [PATCH RFC v0 32/49] pnfsd: per block device dlm data server list cache
->> [PATCH RFC v0 33/49] pnfsd: Add IP address validation to nfsd4_set_pnfs_dlm_device()
->> [PATCH RFC v0 34/49] pnfsd: new nfsd filesystem file: pnfs_dlm_device
->> [PATCH RFC v0 35/49] pnfsd: nfsd4_pnfs_dlm_getdeviter
->> [PATCH RFC v0 36/49] pnfsd: nfsd4_pnfs_dlm_getdevinfo
->> [PATCH RFC v0 37/49] pnfsd: make /proc/fs/nfsd/pnfs_dlm_device report dlm device list.
->> [PATCH RFC v0 38/49] pnfsd: nfsd4_pnfs_dlm_layoutget
->> [PATCH RFC v0 39/49] pnfsd: DLM file layout only support read iomode layouts
->> [PATCH RFC v0 40/49] pnfsd: add dlm file layout layout-type
->> [PATCH RFC v0 41/49] pnfsd: dlm pnfs_export_operations
->> [PATCH RFC v0 42/49] pnfsd: gfs2: use generic file layout pnfs operations vector
->>
->> layout return / expire / return_on_close:
->> [PATCH RFC v0 43/49] pnfsd: release state lock around iput in put_nfs4_file
->> [PATCH RFC v0 44/49] posix_acl: resolve compile dependency in posix_acl.h
->> [PATCH RFC v0 45/49] nfs: resolve compile dependency in nfs_xdr.h
->> [PATCH RFC v0 46/49] pnfsd: layout return generic implementation
->> [PATCH RFC v0 47/49] pnfsd: pnfs_expire_client
->> [PATCH RFC v0 48/49] pnfsd: return on close
->> [PATCH RFC v0 49/49] pnfsd: dlm set return_on_close to true
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->
+T24gVHVlLCAyMDEzLTA5LTEwIGF0IDE0OjQyICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IE9u
+IFRodSwgNSBTZXAgMjAxMyAwMzoxNzo1NCArMDAwMCAiTXlrbGVidXN0LCBUcm9uZCINCj4gPFRy
+b25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gVGh1LCAyMDEzLTA5
+LTA1IGF0IDA5OjI5ICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+ID4gPiBPbiBXZWQsIDQgU2Vw
+IDIwMTMgMTQ6MzM6MzUgKzAwMDAgIk15a2xlYnVzdCwgVHJvbmQiDQo+ID4gPiA8VHJvbmQuTXlr
+bGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+ID4gDQo+ID4gPiA+IE9uIFdlZCwgMjAxMy0w
+OS0wNCBhdCAxMTozNiArMTAwMCwgTmVpbEJyb3duIHdyb3RlOg0KPiA+ID4gPiA+IEhpLA0KPiA+
+ID4gPiA+ICB3ZSBoYXZlIGEgY3VzdG9tZXIgd2hvIGhhcyBub3RpY2VkIGEgc2lnbmlmaWNhbnQg
+cmVncmVzc2lvbiBpbiBORlMNCj4gPiA+ID4gPiAgcGVyZm9ybWFuY2UgYmV0d2VlbiBTTEVTMTAg
+KDIuNi4xNispIGFuZCBTTEVTMTEgKDMuMCspLg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+ICBUaGUg
+dXNlIGNhc2UgaW52b2x2ZXMgdHdvIGRpZmZlcmVudCBwcm9jZXNzZXMgb24gdGhlIHNhbWUgY2xp
+ZW50IG1tYXBwaW5nIGENCj4gPiA+ID4gPiAgZmlsZSBhbmQgbWFraW5nIGNoYW5nZXMuDQo+ID4g
+PiA+ID4gDQo+ID4gPiA+ID4gIEluIDIuNi4xNiwgYWxsIHRoZXNlIGNoYW5nZXMgd291bGQgYmUg
+Y2FjaGVkIG9uIHRoZSBjbGllbnQgdW50aWwgYSBmbHVzaCBvcg0KPiA+ID4gPiA+ICBjbG9zZSBv
+ciBvdGhlciBub3JtYWwgcHJvY2VzcyBmbHVzaGVkIHRoZSBjaGFuZ2VzIG91dCAtIG11Y2ggdGhl
+IHNhbWUgYXMgaWYNCj4gPiA+ID4gPiAganVzdCBvbmUgcHJvY2VzcyB3YXMgYWNjZXNzaW5nIHRo
+ZSBmaWxlLg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+ICBJbiAzLjAgdGhlIGZpbGUgaXMgZmx1c2hl
+ZCBvdXQgZXZlcnkgdGltZSBhIGRpZmZlcmVudCBwcm9jZXNzIHBlcmZvcm1zIGFuDQo+ID4gPiA+
+ID4gIHVwZGF0ZS4gU28gaWYgdGhleSBpbnRlcmxlYXZlIGFjY2Vzc2VzLCB5b3UgZ2V0IGEgZmx1
+c2gtdG8tdGhlLXNlcnZlciBvbg0KPiA+ID4gPiA+ICBldmVyeSBhY2Nlc3MuDQo+ID4gPiA+ID4g
+DQo+ID4gPiA+ID4gIFRoaXMgaXMgY2F1c2VkIGJ5IG5mc19mbHVzaF9pbmNvbXBhdGlibGUuICBJ
+dCBkZWVtcyBhY2Nlc3MgdGhyb3VnaCBkaWZmZXJlbnQNCj4gPiA+ID4gPiAgZmlsZSBkZXNjcmlw
+dG9ycyB0byBiZSBpbmNvbXBhdGlibGUuICBIb3dldmVyIEkgZG9uJ3QgdGhpbmsgdGhpcyBpcw0K
+PiA+ID4gPiA+ICBqdXN0aWZpZWQuICBBY2Nlc3NlZCB1c2luZyBkaWZmZXJlbnQgY3JlZGVudGlh
+bHMgY2FuIHJlYXNvbmFibHkgYmUgc2VlbiBhcw0KPiA+ID4gPiA+ICBpbmNvbXBhdGlibGUoKiks
+IGJ1dCBpZiB0d28gcHJvY2Vzc2VzIHdpdGggaWRlbnRpY2FsIGNyZWRlbnRpYWxzIG9wZW4gdGhl
+DQo+ID4gPiA+ID4gIHNhbWUgZmlsZSB0aGVyZSB0aGVyZSBzaG91bGQgYmUgbm90IG5lZWQgdG8g
+ZGlmZmVyZW50aWF0ZSBiZXR3ZWVuIHRoZW0uDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gIFRoZSBw
+YXRjaCBiZWxvdyBjaGFuZ2VzIHRoZSB0ZXN0IGluIG5mc19mbHVzaF9pbmNvbXBhdGlibGUgdG8g
+anVzdCB0ZXN0IHRoZQ0KPiA+ID4gPiA+ICBjcmVkZW50aWFscyAoYW5kIHRoZSBkZW50cnksIHRo
+b3VnaCB0aGF0IG1pZ2h0IGJlIHN1cGVyZmx1b3VzIC0gaXQgc2VlbXMNCj4gPiA+ID4gPiAgc2Fm
+ZXIpLg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+ICgqKSBJbiB0aGlzIHNwZWNpZmljIGN1c3RvbWVy
+J3MgY2FzZSB0aGUgcHJvY2VzcyBkbyBjdXJyZW50bHkgaGF2ZSBzbGlnaHRseQ0KPiA+ID4gPiA+
+ICBkaWZmZXJlbnQgY3JlZGVudGlhbHMuICBJbiBvbmUsIHRoZSBwcmltYXJ5IGdpZCBpcyBpbmNs
+dWRlZCBpbiB0aGUgbGlzdCBvZg0KPiA+ID4gPiA+ICBhdXhpbGlhcnkgZ2lkcy4gIEluIHRoZSBv
+dGhlciB0aGUgcHJpbWFyeSBnaWQgaXMgZXhjbHVkZWQuICBUaGlzIGlzIGVub3VnaA0KPiA+ID4g
+PiA+ICB0byBtYWtlIHRoZSBjcmVkZW50aWFscyBhcHBlYXIgZGlmZmVyZW50IHNvIHRoaXMgcGF0
+Y2ggZG9lc24ndCBoZWxwIGluIHRoYXQNCj4gPiA+ID4gPiAgY2FzZS4gIFRoZXkgYXJlIGxvb2tp
+bmcgYXQgYmVpbmcgbW9yZSBjb25zaXN0ZW50IGluIHRoZWlyIHNldGdyb3VwcyB1c2FnZQ0KPiA+
+ID4gPiA+ICBidXQgaXQgd291bGQgaGVscCB0aGVtIGlmIHdlIG9ubHkgYWN0dWFsbHkgY29tcGFy
+ZWQgdGhlIGNyZWRlbnRpYWxzIHRoYXQNCj4gPiA+ID4gPiAgd2VyZSBpbXBvcnRhbnQuICBJbiB0
+aGlzIGNhc2UgdGhlcmUgaXMgbm8gaW1wb3J0YW50IGRpZmZlcmVuY2UuDQo+ID4gPiA+ID4gIFdv
+dWxkIGl0IG1ha2Ugc2Vuc2UgdG8gdHJlYXQgYSBtb3JlIGJyb2FkIGNyZWRlbnRpYWwgYXMgY29t
+cGF0aWJsZSB3aXRoIGENCj4gPiA+ID4gPiAgbW9yZSBuYXJyb3cgY3JlZGVudGlhbD8gIFNvIGEg
+d3JpdGUgZnJvbSBhIHByb2Nlc3Mgd2l0aCBhIGdpdmVuDQo+ID4gPiA+ID4gIHVpZCxnaWQsZ3Jv
+dXBsaXN0IGNvdWxkIHVsdGltYXRlbHkgYmUgc2VudCB0byB0aGUgc2VydmVyIHdpdGggc2FtZSB1
+aWQvZ2lkLA0KPiA+ID4gPiA+ICBidXQgYSBzdWJzZXQgb2YgdGhlIGdyb3VwIGxpc3Q/DQo+ID4g
+PiA+ID4gIA0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+ICBUaG91Z2h0cz8NCj4gPiA+ID4gPiANCj4g
+PiA+ID4gPiBUaGFua3MsDQo+ID4gPiA+ID4gTmVpbEJyb3duDQo+ID4gPiA+ID4gDQo+ID4gPiA+
+ID4gDQo+ID4gPiA+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy93cml0ZS5jIGIvZnMvbmZzL3dyaXRl
+LmMNCj4gPiA+ID4gPiBpbmRleCA3ODE2ODAxLi5iMGQ0ZTQ3IDEwMDY0NA0KPiA+ID4gPiA+IC0t
+LSBhL2ZzL25mcy93cml0ZS5jDQo+ID4gPiA+ID4gKysrIGIvZnMvbmZzL3dyaXRlLmMNCj4gPiA+
+ID4gPiBAQCAtODYwLDcgKzg2MCwxMiBAQCBpbnQgbmZzX2ZsdXNoX2luY29tcGF0aWJsZShzdHJ1
+Y3QgZmlsZSAqZmlsZSwgc3RydWN0IHBhZ2UgKnBhZ2UpDQo+ID4gPiA+ID4gIAkJaWYgKHJlcSA9
+PSBOVUxMKQ0KPiA+ID4gPiA+ICAJCQlyZXR1cm4gMDsNCj4gPiA+ID4gPiAgCQlsX2N0eCA9IHJl
+cS0+d2JfbG9ja19jb250ZXh0Ow0KPiA+ID4gPiA+IC0JCWRvX2ZsdXNoID0gcmVxLT53Yl9wYWdl
+ICE9IHBhZ2UgfHwgcmVxLT53Yl9jb250ZXh0ICE9IGN0eDsNCj4gPiA+ID4gPiArCQlkb19mbHVz
+aCA9IHJlcS0+d2JfcGFnZSAhPSBwYWdlOw0KPiA+ID4gPiA+ICsJCWlmIChyZXEtPndiX2NvbnRl
+eHQgIT0gY3R4KSB7DQo+ID4gPiA+ID4gKwkJCWRvX2ZsdXNoIHw9DQo+ID4gPiA+ID4gKwkJCQly
+ZXEtPndiX2NvbnRleHQtPmRlbnRyeSAhPSBjdHgtPmRlbnRyeSB8fA0KPiA+ID4gPiA+ICsJCQkJ
+cmVxLT53Yl9jb250ZXh0LT5jcmVkICE9IGN0eC0+Y3JlZDsNCj4gPiA+ID4gPiArCQl9DQo+ID4g
+PiA+ID4gIAkJaWYgKGxfY3R4KSB7DQo+ID4gPiA+ID4gIAkJCWRvX2ZsdXNoIHw9IGxfY3R4LT5s
+b2Nrb3duZXIubF9vd25lciAhPSBjdXJyZW50LT5maWxlcw0KPiA+ID4gPiA+ICAJCQkJfHwgbF9j
+dHgtPmxvY2tvd25lci5sX3BpZCAhPSBjdXJyZW50LT50Z2lkOw0KPiA+ID4gPiANCj4gPiA+ID4g
+SGkgTmVpbCwNCj4gPiA+ID4gDQo+ID4gPiA+IFdvbid0IHRoaXMgY2F1c2UgYW55IHdyaXRlIGVy
+cm9ycyB0byBiZSBwcm9wYWdhdGVkIHRvIHRoZSB3cm9uZyBwcm9jZXNzPw0KPiA+ID4gDQo+ID4g
+PiBJJ20gbm90IHN1cmUgd2hhdCB0aGlzIG1lYW5zLg0KPiA+ID4gDQo+ID4gPiBGb3IgYSBsb2Nh
+bCBmaWxlc3lzdGVtLCB0aGUgb25seSBlcnJvciB0aGF0IGlzbid0IHN5bmNocm9ub3VzIGlzIEVJ
+TyBhbmQgYW4NCj4gPiA+IGFwcGxpY2F0aW9uIGNhbiBvbmx5IGJlIHN1cmUgb2YgZ2V0dGluZyB0
+aGF0IGlmIGl0IHVzZXMgJ2ZzeW5jJy4gIEFuDQo+ID4gPiBhcHBsaWNhdGlvbiBjYW4gZ2V0IEVJ
+TyBmcm9tIGZzeW5jIGV2ZW4gaWYgaXQgZGlkbid0IHdyaXRlIHRvIHRoZSBwYWdlIHdoaWNoDQo+
+ID4gPiBpcyBjYXVzaW5nIHRoZSBwcm9ibGVtLiAgQWxsIGFwcHMgc2hvdWxkIGJlIGFibGUgdG8g
+c2VlIHRoZSBFSU8gaWYgdGhleQ0KPiA+ID4gYm90aGVyIHRvIGZzeW5jLg0KPiA+IA0KPiA+IFlv
+dSBhcmUgZGVzY3JpYmluZyBhIGNvbnNlcXVlbmNlIG9mIHRoZSBjb21wbGV0ZSBhbmQgdXR0ZXIg
+YnJva2VubmVzcyBvZg0KPiA+IHRoZSBibG9jayBsYXllci4gVGhlIGJsb2NrIGxheWVyIGRvZXNu
+J3QgdHJhY2sgd2hvIHdyb3RlIHdoYXQgaW50byB0aGUNCj4gPiBwYWdlIGNhY2hlLCBhbmQgc28g
+aXQganVzdCBwYXNzZXMgYW55IHdyaXRlIGVycm9ycyB0byB3aGljaGV2ZXIgcHJvY2Vzcw0KPiA+
+IHRoYXQgZmlyc3QgY2FsbHMgZmlsZW1hcF9jaGVja19lcnJvcnMoKSBmb3IgdGhhdCBmaWxlLg0K
+PiANCj4gSSB3b3VsZCBoYXZlIHNhaWQgInByYWdtYXRpYyBkZXNpZ24iIHJhdGhlciB0aGFuICJj
+b21wbGV0ZSAuLi4gYnJva2VubmVzcyIuDQo+IA0KPiBJZiBhIHdyaXRlIGhhcyBmYWlsZWQgdGhl
+biB0aGUgZmlsZSBpcyBjb3JydXB0IGFuZCBldmVyeSB3cml0ZXIgZGVzZXJ2ZXMgdG8NCj4ga25v
+dy4NCj4gSWYgbXVsdGlwbGUgcHJvY2Vzc2VzIHRyeSB0byBmc3luYyB0aGUgc2FtZSBmaWxlLCBw
+YWdlcyB0aGF0IGZhaWwgZm9yIG9uZQ0KPiBwcm9jZXNzIHdpbGwgbGlrZWx5IGZhaWwgZm9yIHRo
+ZSBuZXh0IHByb2Nlc3Mgc28gZWFjaCBzaG91bGQgZ2V0IHRvbGQgb2YgdGhlDQo+IGZhaWx1cmUu
+DQo+IA0KPiAoYWN0dWFsbHkuLi4gSSB3b25kZXIgaWYgSSdtIG1pc3Npbmcgc29tZXRoaW5nLiAg
+SWYgeW91IGhhdmUgYSBEaXJ0eSBwYWdlDQo+IHdoaWNoIHJlc3VsdHMgaW4gYW4gRXJyb3IgZXZl
+cnkgdGltZSBpdCBpcyB3cml0dGVuLCBpcyB0aGVyZSBhbnkgd2F5IGZvcg0KPiBpdCB0byBiZSBy
+ZW1vdmVkIGZyb20gdGhlIHBhZ2UgY2FjaGUsIG9yIHdpbGwgaXQgcmVtYWluIHRoZXJlIGNhdXNp
+bmcgZXZlcnkNCj4gJ2ZzeW5jJyBvbiB0aGUgZmlsZSB0byB0cnkgdG8gd3JpdGUgdGhlIHNhbWUg
+cGFnZSBhbmQgZ2V0IGFuIGVycm9yPykNCj4gDQoNCkl0IHdpbGwgdXN1YWxseSBiZSByZW1vdmVk
+LiBUaGVyZSBpcyBubyBwb2ludCBpbiBrZWVwaW5nIGEgcGFnZSB0aGF0IGlzDQpnZXR0aW5nIEVB
+Q0NFUyBkdWUgdG8gc2VydmVyLXNpZGUgcGVybWlzc2lvbiBjaGVja3MsIGZvciBpbnN0YW5jZS4g
+V2hhdA0Kd2UnbGwgZG8gaW4gdGhhdCBjYXNlIGlzIHRocm93IG91dCB0aGUgcGFnZSwgYW5kIHRo
+ZW4gcmV0dXJuIEVBQ0NFUyB0bw0KdGhlIG5leHQgd3JpdGUoKSBieSB0aGF0IHByb2Nlc3MgYW5k
+L29yIHRoZSBuZXh0IGZzeW5jKCkuDQoNCj4gPiANCj4gPiBJbiBORlMsIHdlIHVzZSB0aGUgbmZz
+X29wZW5fY29udGV4dCB0byB0cmFjayBleGFjdGx5IHdobyB3cm90ZSB3aGF0LCBhbmQNCj4gPiB1
+c2UgdGhhdCB0byBub3RpZnkgdGhlIHNwZWNpZmljIHByb2Nlc3MgdGhhdCB3cm90ZSB0aGUgZGF0
+YSB0aGF0IGZhaWxlZC4NCj4gDQo+IFdoaWxlIHRoaXMgY291bGQgYmUgc2VlbiBhcyBhbiBpbXBy
+b3ZlbWVudCwgdGhlIGV4dHJhIGd1YXJhbnRlZXMgYXJlIG9ubHkNCj4gYXZhaWxhYmxlIG9uIE5G
+Uywgc28gYXBwcyBhcmUgbm90IGxpa2VseSB0byBkZXBlbmQgb24gdGhlbSwgc28gdGhlIGV4dHJh
+IHZhbHVlDQo+IGRvZXNuJ3QgYWN0dWFsbHkgaGVscCBhbnlvbmUgLSBkb2VzIGl0Pw0KPiANCj4g
+QW5kIGl0IGhhcyBhIGNsZWFyIGNvc3Q6IHR3byBwcm9jZXNzZXMgb24gdGhlIG9uZSBtYWNoaW5l
+IGNhbiBzdWZmZXINCj4gc2lnbmlmaWNhbnRseSBkZWdyYWRlZCBwZXJmb3JtYW5jZS4NCj4gSXMg
+dGhlIHRoZW9yZXRpY2FsIGltcHJvdmVtZW50IGluIHNlbWFudGljcyB3b3J0aCB0aGF0IGNvc3Qu
+DQoNClRoZXNlIGFyZSB0aGUgc2VtYW50aWNzIHRoYXQgd2UndmUgZW5mb3JjZWQgZm9yIHRoZSBw
+YXN0IDE1IHllYXJzLiBXZQ0KZXZlbiB1c2VkIHRvIGhhdmUgYSBkZWRpY2F0ZWQgZmlscC0+Zl9l
+cnJvciBqdXN0IGZvciBORlMgdW50aWwgd2Ugd2VyZQ0KYWJsZSB0byBoaWRlIGl0IGluIHRoZSBm
+aWxlc3lzdGVtLXNwZWNpZmljIG9wZW4gY29udGV4dC4NCg0KQ2hhbmdpbmcgdGhvc2Ugc2VtYW50
+aWNzIG5vdyBpcyBub3Qgc29tZXRoaW5nIEknbSBwcmVwYXJlZCB0byBkbyB3aXRob3V0DQphIHZl
+cnkgZ29vZCByZWFzb24uIFlvdSd2ZSBhZG1pdHRlZCB0aGF0IHlvdXIgb3duIHdvcmtsb2FkIHdv
+dWxkIF9ub3RfDQpiZW5lZml0IGZyb20gdGhlIGtpbmQgb2YgY2hhbmdlIHRoYXQgeW91J3JlIGFk
+dm9jYXRpbmcsIHNvIGFzIGZhciBhcyBJJ20NCmNvbmNlcm5lZCB0aGF0IHByZXR0eSBtdWNoIG1h
+a2VzIHRoZSBxdWVzdGlvbiBtb290IGZvciBub3cuDQoNCj4gPiA+IEZvciBORlMsIEVEUVVPVCBh
+bmQgRU5PU1BDIGFyZSBhbHNvIGFzeW5jaHJvbm91cywgYW5kIHRoZXkgY2FuIGFsc28gY29tZSBp
+bg0KPiA+ID4gdGhyb3VnaCBjbG9zZSgpLiAgSSB0aGluayBldmVyeSBhcHAgc2hvdWxkIHN0aWxs
+IHNlZSBldmVyeSBlcnJvciB3aGV0aGVyICBpdA0KPiA+ID4gZGlydGllZCB0aGUgcGFnZSB3aGlj
+aCB0cmlnZ2VyZWQgdGhlIGVycm9yIG9yIG5vdC4NCj4gPiANCj4gPiBXaXRoIHRoaXMgcGF0Y2gs
+IHdlIGNhbiBlbmQgdXAgd3JpdGluZyB0aGUgZGF0YSB1c2luZyB0aGUgd3JvbmcNCj4gPiBuZnNf
+b3Blbl9jb250ZXh0LCBpbiB3aGljaCBjYXNlIHRoZSBlcnJvcnMgd2lsbCBnZXQgcmVwb3J0ZWQg
+dG8gdGhlDQo+ID4gcHJvY2VzcyB0aGF0IGFjdHVhbGx5IG93bnMgdGhhdCBuZnNfb3Blbl9jb250
+ZXh0Lg0KPiA+IA0KPiANCj4gSSBzZWUgeWVzLiAgSSB3b3VsZCB3YW50IHRoZSBlcnJvciB0byBi
+ZSByZXR1cm5lZCB0byB3aG9ldmVyIGluc3RpZ2F0ZWQgdGhlDQo+ICdmbHVzaCcsIG5vdCB3aG9l
+dmVyIGlzc3VlcyB0aGUgJ3dyaXRlJy4NCg0KVGhhdCBvbmx5IG1ha2VzIHNlbnNlIGlmIGFsbCBw
+cm9jZXNzZXMgdGhhdCBjYWxsIGZzeW5jKCkgc2VlIHRoZSBzYW1lDQplcnJvcnMsIHdoaWNoIGlz
+IG5vdCB0aGUgY2FzZSAoc2VlIGFib3ZlKS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
+IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAu
+Y29tDQp3d3cubmV0YXBwLmNvbQ0K
