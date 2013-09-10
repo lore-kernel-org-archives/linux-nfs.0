@@ -1,38 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zeniv.linux.org.uk ([195.92.253.2]:36930 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752383Ab3ISLBz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Sep 2013 07:01:55 -0400
-Date: Thu, 19 Sep 2013 12:01:47 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: David Howells <dhowells@redhat.com>
-Cc: Milosz Tanski <milosz@adfin.com>, Trond.Myklebust@netapp.com,
-        jlayton@redhat.com, moseleymark@gmail.com, linux-cachefs@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: evict_inode() vs iget5_locked() race [was Re: [Linux-cachefs]
- Blast from the past, CacheFiles: Error: Unexpected object collision]
-Message-ID: <20130919110147.GQ13318@ZenIV.linux.org.uk>
-References: <CANP1eJE=T4PPPBcvs4vj--zNMtkvRGqiAjR2ZfZuA0=DVGYA6A@mail.gmail.com>
- <5769.1379579209@warthog.procyon.org.uk>
+Received: from mx12.netapp.com ([216.240.18.77]:9838 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751981Ab3IJWop (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Sep 2013 18:44:45 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: <Trond.Myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 4/4] NFSv4.1: sp4_mach_cred: WARN_ON -> WARN_ON_ONCE
+Date: Tue, 10 Sep 2013 18:44:33 -0400
+Message-ID: <1378853073-13256-5-git-send-email-dros@netapp.com>
+In-Reply-To: <1378853073-13256-1-git-send-email-dros@netapp.com>
+References: <1378853073-13256-1-git-send-email-dros@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5769.1379579209@warthog.procyon.org.uk>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 19, 2013 at 09:26:49AM +0100, David Howells wrote:
+No need to spam the logs
 
-> There's a potential race between evict_inode() and iget5_locked() in which the
-> former can be tearing down an inode corresponding to a file whilst the latter
-> is trying to set up a new inode corresponding to that same file - but it's
-> possible that the cleanups for the former may adversely affect the setups for
-> the latter.
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ fs/nfs/nfs4_fs.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-evict() calls ->evict_inode() before removing it from hash.  It's called
-only with I_FREEING already set.  If find_inode() runs across that
-sucker, it will wait for evict() to do
-	wake_up_bit(&inode->i_state, __I_NEW);
-(after return from ->evict_inode() and after removal from hash chain)
-and repeat the search.
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 07a8aa9..28842ab 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -286,8 +286,8 @@ _nfs4_state_protect(struct nfs_client *clp, unsigned long sp4_mode,
+ 		msg->rpc_cred = newcred;
+ 
+ 		flavor = clp->cl_rpcclient->cl_auth->au_flavor;
+-		WARN_ON(flavor != RPC_AUTH_GSS_KRB5I &&
+-			flavor != RPC_AUTH_GSS_KRB5P);
++		WARN_ON_ONCE(flavor != RPC_AUTH_GSS_KRB5I &&
++			     flavor != RPC_AUTH_GSS_KRB5P);
+ 		*clntp = clp->cl_rpcclient;
+ 
+ 		return true;
+-- 
+1.7.12.4 (Apple Git-37)
 
-Details, please...
