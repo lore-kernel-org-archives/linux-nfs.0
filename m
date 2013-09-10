@@ -1,240 +1,158 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40854 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752971Ab3IEQag (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Sep 2013 12:30:36 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        David Howells <dhowells@redhat.com>,
-        Tyler Hicks <tyhicks@canonical.com>,
-        Dustin Kirkland <dustin.kirkland@gazzang.com>
-Subject: [PATCH 08/12] locks: break delegations on unlink
-Date: Thu,  5 Sep 2013 12:30:16 -0400
-Message-Id: <1378398620-23018-13-git-send-email-bfields@redhat.com>
-In-Reply-To: <1378398620-23018-1-git-send-email-bfields@redhat.com>
-References: <1378398620-23018-1-git-send-email-bfields@redhat.com>
+Received: from e35.co.us.ibm.com ([32.97.110.153]:60396 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750948Ab3IJUS7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Sep 2013 16:18:59 -0400
+Received: from /spool/local
+	by e35.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <cvogan@us.ibm.com>;
+	Tue, 10 Sep 2013 14:18:59 -0600
+Received: from d03relay05.boulder.ibm.com (d03relay05.boulder.ibm.com [9.17.195.107])
+	by d03dlp02.boulder.ibm.com (Postfix) with ESMTP id 1D4143E40026
+	for <linux-nfs@vger.kernel.org>; Tue, 10 Sep 2013 14:18:55 -0600 (MDT)
+Received: from d03av06.boulder.ibm.com (d03av06.boulder.ibm.com [9.17.195.245])
+	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r8AKIdMN423130
+	for <linux-nfs@vger.kernel.org>; Tue, 10 Sep 2013 14:18:40 -0600
+Received: from d03av06.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av06.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r8AKLaXH005892
+	for <linux-nfs@vger.kernel.org>; Tue, 10 Sep 2013 14:21:37 -0600
+In-Reply-To: <20130628080643.037bc080@corrin.poochiereds.net>
+References: <OF659496E7.43E03D23-ON87257B8E.004B852B-86257B8E.004BC3F6@us.ibm.com>	<1371568176.3868.5.camel@leira.trondhjem.org>
+	<OF0A202F9C.685475CA-ON87257B8E.005E218B-86257B8E.006D757C@us.ibm.com>	<4FA345DA4F4AE44899BD2B03EEEC2FA93F422610@SACEXCMBX04-PRD.hq.netapp.com>
+	<51CB3F08.9050005@RedHat.com>	<1372274707.36780.2.camel@leira.trondhjem.org>
+	<OFFA688044.F059006D-ON87257B96.0074D508-86257B96.0075968C@us.ibm.com>	<1372294255.3192.4.camel@leira.trondhjem.org>
+	<20130627004159.7852c43c@tlielax.poochiereds.net> <20130628080643.037bc080@corrin.poochiereds.net>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        NeilBrown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Al Viro <viro@ZenIV.linux.org.uk>
+MIME-Version: 1.0
+Subject: Re: NFSERR_STALE on umount  with 3.10.0.RC5 kernel
+Message-ID: <OF53526F99.89324B1F-ON86257BE2.006EF3C4-86257BE2.006F919F@us.ibm.com>
+From: Christopher T Vogan <cvogan@us.ibm.com>
+Date: Tue, 10 Sep 2013 15:18:58 -0500
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Reran the failing scenario today after applying kernel 3.12-1 with commits 
+up to b1b3e136948a2bf4915326acb0d825d7d180753f from Trond.
+    git://git.kernel.org/pub/scm/linux/kernel/git/mattst88/alpha
+The scenario passed. I no longer see the Stale FH message on umount.
 
-We need to break delegations on any operation that changes the set of
-links pointing to an inode.  Start with unlink.
+[root@reddy5 ~]# mount -overs=3,noac w42g:/hfs/home/chris /mnt
+[root@reddy5 ~]# ls /mnt
+mnt   mnt2  output   output2  reg
+mnt1  mnt3  output1  output3
+[root@reddy5 ~]# umount /mnt
+[root@reddy5 ~]#   
 
-Such operations also hold the i_mutex on a parent directory.  Breaking a
-delegation may require waiting for a timeout (by default 90 seconds) in
-the case of a unresponsive NFS client.  To avoid blocking all directory
-operations, we therefore drop locks before waiting for the delegation.
-The logic then looks like:
+Christopher Vogan
+NFS Development & Test
 
-	acquire locks
-	...
-	test for delegation; if found:
-		take reference on inode
-		release locks
-		wait for delegation break
-		drop reference on inode
-		retry
 
-It is possible this could never terminate.  (Even if we take precautions
-to prevent another delegation being acquired on the same inode, we could
-get a different inode on each retry.)  But this seems very unlikely.
 
-The initial test for a delegation happens after the lock on the target
-inode is acquired, but the directory inode may have been acquired
-further up the call stack.  We therefore add a "struct inode **"
-argument to any intervening functions, which we use to pass the inode
-back up to the caller in the case it needs a delegation synchronously
-broken.
+From:   Jeff Layton <jlayton@redhat.com>
+To:     Jeff Layton <jlayton@redhat.com>, 
+Cc:     "Myklebust, Trond" <Trond.Myklebust@netapp.com>, Christopher T 
+Vogan/San Jose/IBM@IBMUS, "linux-nfs@vger.kernel.org" 
+<linux-nfs@vger.kernel.org>, Steve Dickson <SteveD@redhat.com>, Al Viro 
+<viro@ZenIV.linux.org.uk>, NeilBrown <neilb@suse.de>
+Date:   06/28/2013 07:06 AM
+Subject:        Re: NFSERR_STALE on umount  with 3.10.0.RC5 kernel
 
-Cc: David Howells <dhowells@redhat.com>
-Cc: Tyler Hicks <tyhicks@canonical.com>
-Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- drivers/base/devtmpfs.c |    2 +-
- fs/cachefiles/namei.c   |    2 +-
- fs/ecryptfs/inode.c     |    2 +-
- fs/namei.c              |   42 +++++++++++++++++++++++++++++++++++++++---
- fs/nfsd/vfs.c           |    2 +-
- include/linux/fs.h      |    2 +-
- ipc/mqueue.c            |    2 +-
- 7 files changed, 45 insertions(+), 9 deletions(-)
 
-diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
-index 7413d06..1b8490e 100644
---- a/drivers/base/devtmpfs.c
-+++ b/drivers/base/devtmpfs.c
-@@ -324,7 +324,7 @@ static int handle_remove(const char *nodename, struct device *dev)
- 			mutex_lock(&dentry->d_inode->i_mutex);
- 			notify_change(dentry, &newattrs);
- 			mutex_unlock(&dentry->d_inode->i_mutex);
--			err = vfs_unlink(parent.dentry->d_inode, dentry);
-+			err = vfs_unlink(parent.dentry->d_inode, dentry, NULL);
- 			if (!err || err == -ENOENT)
- 				deleted = 1;
- 		}
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index 25badd1..6846fcef 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -294,7 +294,7 @@ static int cachefiles_bury_object(struct cachefiles_cache *cache,
- 		if (ret < 0) {
- 			cachefiles_io_error(cache, "Unlink security error");
- 		} else {
--			ret = vfs_unlink(dir->d_inode, rep);
-+			ret = vfs_unlink(dir->d_inode, rep, NULL);
- 
- 			if (preemptive)
- 				cachefiles_mark_object_buried(cache, rep);
-diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-index 67e9b63..0b8b632 100644
---- a/fs/ecryptfs/inode.c
-+++ b/fs/ecryptfs/inode.c
-@@ -153,7 +153,7 @@ static int ecryptfs_do_unlink(struct inode *dir, struct dentry *dentry,
- 
- 	dget(lower_dentry);
- 	lower_dir_dentry = lock_parent(lower_dentry);
--	rc = vfs_unlink(lower_dir_inode, lower_dentry);
-+	rc = vfs_unlink(lower_dir_inode, lower_dentry, NULL);
- 	if (rc) {
- 		printk(KERN_ERR "Error in vfs_unlink; rc = [%d]\n", rc);
- 		goto out_unlock;
-diff --git a/fs/namei.c b/fs/namei.c
-index adccf24..b5ad182 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3431,7 +3431,25 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
- 	return do_rmdir(AT_FDCWD, pathname);
- }
- 
--int vfs_unlink(struct inode *dir, struct dentry *dentry)
-+/**
-+ * vfs_unlink - unlink a filesystem object
-+ * @dir:	parent directory
-+ * @dentry:	victim
-+ * @delegated_inode: returns victim inode, if the inode is delegated.
-+ *
-+ * The caller must hold dir->i_mutex.
-+ *
-+ * If vfs_unlink discovers a delegation, it will return -EWOULDBLOCK and
-+ * return a reference to the inode in delegated_inode.  The caller
-+ * should then break the delegation on that inode and retry.  Because
-+ * breaking a delegation may take a long time, the caller should drop
-+ * dir->i_mutex before doing so.
-+ *
-+ * Alternatively, a caller may pass NULL for delegated_inode.  This may
-+ * be appropriate for callers that expect the underlying filesystem not
-+ * to be NFS exported.
-+ */
-+int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
- {
- 	struct inode *target = dentry->d_inode;
- 	int error = may_delete(dir, dentry, 0);
-@@ -3448,11 +3466,20 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
- 	else {
- 		error = security_inode_unlink(dir, dentry);
- 		if (!error) {
-+			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
-+			if (error) {
-+				if (error == -EWOULDBLOCK && delegated_inode) {
-+					*delegated_inode = target;
-+					ihold(target);
-+				}
-+				goto out;
-+			}
- 			error = dir->i_op->unlink(dir, dentry);
- 			if (!error)
- 				dont_mount(dentry);
- 		}
- 	}
-+out:
- 	mutex_unlock(&target->i_mutex);
- 
- 	/* We don't d_delete() NFS sillyrenamed files--they still exist. */
-@@ -3477,6 +3504,7 @@ static long do_unlinkat(int dfd, const char __user *pathname)
- 	struct dentry *dentry;
- 	struct nameidata nd;
- 	struct inode *inode = NULL;
-+	struct inode *delegated_inode = NULL;
- 	unsigned int lookup_flags = 0;
- retry:
- 	name = user_path_parent(dfd, pathname, &nd, lookup_flags);
-@@ -3491,7 +3519,7 @@ retry:
- 	error = mnt_want_write(nd.path.mnt);
- 	if (error)
- 		goto exit1;
--
-+retry_deleg:
- 	mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex, I_MUTEX_PARENT);
- 	dentry = lookup_hash(&nd);
- 	error = PTR_ERR(dentry);
-@@ -3506,13 +3534,21 @@ retry:
- 		error = security_path_unlink(&nd.path, dentry);
- 		if (error)
- 			goto exit2;
--		error = vfs_unlink(nd.path.dentry->d_inode, dentry);
-+		error = vfs_unlink(nd.path.dentry->d_inode, dentry, &delegated_inode);
- exit2:
- 		dput(dentry);
- 	}
- 	mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
- 	if (inode)
- 		iput(inode);	/* truncate the inode here */
-+	inode = NULL;
-+	if (delegated_inode) {
-+		error = break_deleg(delegated_inode, O_WRONLY);
-+		iput(delegated_inode);
-+		delegated_inode = NULL;
-+		if (!error)
-+			goto retry_deleg;
-+	}
- 	mnt_drop_write(nd.path.mnt);
- exit1:
- 	path_put(&nd.path);
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index c827acb..00d0616 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1911,7 +1911,7 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 	if (host_err)
- 		goto out_put;
- 	if (type != S_IFDIR)
--		host_err = vfs_unlink(dirp, rdentry);
-+		host_err = vfs_unlink(dirp, rdentry, NULL);
- 	else
- 		host_err = vfs_rmdir(dirp, rdentry);
- 	if (!host_err)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index bc1d8b8..ba29b37 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1469,7 +1469,7 @@ extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
- extern int vfs_symlink(struct inode *, struct dentry *, const char *);
- extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
- extern int vfs_rmdir(struct inode *, struct dentry *);
--extern int vfs_unlink(struct inode *, struct dentry *);
-+extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
- extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *);
- 
- /*
-diff --git a/ipc/mqueue.c b/ipc/mqueue.c
-index ae1996d..95827ce 100644
---- a/ipc/mqueue.c
-+++ b/ipc/mqueue.c
-@@ -886,7 +886,7 @@ SYSCALL_DEFINE1(mq_unlink, const char __user *, u_name)
- 		err = -ENOENT;
- 	} else {
- 		ihold(inode);
--		err = vfs_unlink(dentry->d_parent->d_inode, dentry);
-+		err = vfs_unlink(dentry->d_parent->d_inode, dentry, NULL);
- 	}
- 	dput(dentry);
- 
+
+On Thu, 27 Jun 2013 00:41:59 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
+
+> On Thu, 27 Jun 2013 00:51:01 +0000
+> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+> 
+> > On Wed, 2013-06-26 at 15:24 -0600, Christopher T Vogan wrote:
+> > > This is a complete network trace between the client and server.
+> > > 
+> > > 
+> > > So this issue only happens on Kernels 3.9.6 and newer.
+> > > I did not have this problem with Kernel 3.8.13
+> > > nfs-utils-1.2.3-36 (from Redhat) was used w/ all kernel versions.
+> > 
+> > Ah. I don't recall seeing that information before. In that case, I'm
+> > guessing that the change in behaviour is likely to be commit
+> > ecf3d1f1aa74da0d632b651a2e05a911f60e92c0 (vfs: kill FS_REVAL_DOT by
+> > adding a d_weak_revalidate dentry op).
+> > 
+> > Jeff, any comment on what behaviour you expect on umount()
+> > post-ecf3d1f1aa?
+> > 
+> 
+> (cc'ing Al and Neil in case they have thoughts on this too...)
+> 
+> Well...not that :)
+> 
+> It seems like we have a bit of a perfect storm here -- noac + this
+> strange server behavior wrt to UMNT calls. I can reproduce the client
+> behavior (UMNT before a GETATTR), but of course my servers don't start
+> rejecting calls when you send them a UMNT request.
+> 
+> First, I think I understand why you do *not* see this on earlier
+> kernels. Those used d_revalidate to revalidate those dentries:
+> 
+> -------------[snip]-------------
+>         if (!nfs_is_exclusive_create(dir, flags) && 
+nfs_check_verifier(dir, dentry)) {
+>                 if (nfs_lookup_verify_inode(inode, flags))
+>                         goto out_zap_parent;
+>                 goto out_valid;
+>         }
+> -------------[snip]-------------
+> 
+> So in this case, we're not doing an exclusive create and the verifier
+> check returns true because IS_ROOT(dentry) is true.
+> nfs_lookup_verify_inode returns false (none of the checks there pass),
+> so we then treat this dentry as valid w/o doing any revalidation.
+> 
+> The new nfs_weak_revalidate function doesn't treat IS_ROOT() dentries in
+> any special way. I did a quick test patch that makes
+> nfs_weak_revalidate return 1 if IS_ROOT(dentry) is true. That seems to
+> fix the problem. I'm not sure if it makes sense to always skip
+> revalidating IS_ROOT dentries like that though. It seems a bit
+> heavy-handed...
+> 
+> Like NeilB pointed out recently, umount() is a bit of a special case.
+> We're not really interested in anything but the dentry here so not
+> trying to revalidate the inode makes a lot of sense.
+> 
+> I wonder if it might make more sense to declare a new LOOKUP_NOREVAL
+> flag or something and have umount() syscalls set it in the lookup? Then
+> we could look for that and simply return 1 if it's set. Or maybe have
+> the VFS skip calling d_weak_revalidate (and maybe d_revalidate)
+> altogether if it's set.
+> 
+> On a related note, I think we ought to consider ripping out the UMNT
+> code from the userland helper or maybe just retiring umount.nfs
+> altogether. It's simply not possible for userland to handle that
+> properly. The UMNT (if any) needs to be sent when we tear down the
+> superblock, and only the kernel knows when that has happened.
+> 
+
+So, looking again at this. I think the right long-term solution is to
+do what Neil suggested in this thread from a few months ago:
+
+     "More fun with unmounting ESTALE directories."
+
+Basically we ought to fix umount() to do its lookup without
+revalidating the last step. We might also be able to get away without
+revaliding any path components in the umount lookup, but that might be
+more iffy if there are symlinks in the path...
+
+In the near term, Christopher should be able to work around this
+problem by simply getting rid of /sbin/umount.nfs. It'll mean that the
+client doesn't send UMNT calls, but AIUI those are intended to be
+advisory anyway.
 -- 
-1.7.9.5
+Jeff Layton <jlayton@redhat.com>
+
+
 
