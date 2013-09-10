@@ -1,160 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:61092 "EHLO mx12.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:47978 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932118Ab3IBSRP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Sep 2013 14:17:15 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-CC: <andros@netapp.com>
-Subject: [PATCH v3 13/17] SUNRPC: Remove the rpc_client->cl_dentry
-Date: Mon, 2 Sep 2013 14:16:56 -0400
-Message-ID: <1378145820-29990-13-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1378145820-29990-12-git-send-email-Trond.Myklebust@netapp.com>
-References: <1378145820-29990-1-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-2-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-3-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-4-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-5-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-6-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-7-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-8-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-9-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-10-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-11-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-12-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752408Ab3IJQ4f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Sep 2013 12:56:35 -0400
+From: <andros@netapp.com>
+To: <trond.myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 3 1/1] NFSv4.1 fix decode_free_stateid
+Date: Tue, 10 Sep 2013 12:56:29 -0400
+Message-ID: <1378832189-2532-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It is now redundant.
+From: Andy Adamson <andros@netapp.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+The operation status is decoded in decode_op_hdr.
+
+Stop the print_overflow message that is always hit without this patch:
+nfs: decode_free_stateid: prematurely hit end of receive buffer. Remaining
+buffer length is 0 words.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- include/linux/sunrpc/clnt.h        |  1 -
- include/linux/sunrpc/rpc_pipe_fs.h |  2 +-
- net/sunrpc/clnt.c                  | 35 ++++++++++++++++++-----------------
- net/sunrpc/rpc_pipe.c              | 13 +++++++------
- 4 files changed, 26 insertions(+), 25 deletions(-)
+ fs/nfs/nfs4xdr.c | 17 ++---------------
+ 1 file changed, 2 insertions(+), 15 deletions(-)
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 0dccd01..76c0bf6 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -57,7 +57,6 @@ struct rpc_clnt {
- 	int			cl_nodelen;	/* nodename length */
- 	char 			cl_nodename[UNX_MAXNODENAME];
- 	struct rpc_pipe_dir_head cl_pipedir_objects;
--	struct dentry *		cl_dentry;
- 	struct rpc_clnt *	cl_parent;	/* Points to parent of clones */
- 	struct rpc_rtt		cl_rtt_default;
- 	struct rpc_timeout	cl_timeout_default;
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index 188e7fc..b0cf181 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -94,7 +94,7 @@ extern int rpc_queue_upcall(struct rpc_pipe *, struct rpc_pipe_msg *);
- 
- struct rpc_clnt;
- extern struct dentry *rpc_create_client_dir(struct dentry *, const char *, struct rpc_clnt *);
--extern int rpc_remove_client_dir(struct dentry *, struct rpc_clnt *);
-+extern int rpc_remove_client_dir(struct rpc_clnt *);
- 
- extern void rpc_init_pipe_dir_head(struct rpc_pipe_dir_head *pdh);
- extern void rpc_init_pipe_dir_object(struct rpc_pipe_dir_object *pdo,
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 3c074de..af3f0cf 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -102,9 +102,7 @@ static void rpc_unregister_client(struct rpc_clnt *clnt)
- 
- static void __rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index fbdad9e..79210d2 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -414,7 +414,7 @@ static int nfs4_stat_to_errno(int);
+ #define decode_test_stateid_maxsz	(op_decode_hdr_maxsz + 2 + 1)
+ #define encode_free_stateid_maxsz	(op_encode_hdr_maxsz + 1 + \
+ 					 XDR_QUADLEN(NFS4_STATEID_SIZE))
+-#define decode_free_stateid_maxsz	(op_decode_hdr_maxsz + 1)
++#define decode_free_stateid_maxsz	(op_decode_hdr_maxsz)
+ #else /* CONFIG_NFS_V4_1 */
+ #define encode_sequence_maxsz	0
+ #define decode_sequence_maxsz	0
+@@ -5966,21 +5966,8 @@ out:
+ static int decode_free_stateid(struct xdr_stream *xdr,
+ 			       struct nfs41_free_stateid_res *res)
  {
--	if (clnt->cl_dentry)
--		rpc_remove_client_dir(clnt->cl_dentry, clnt);
--	clnt->cl_dentry = NULL;
-+	rpc_remove_client_dir(clnt);
+-	__be32 *p;
+-	int status;
+-
+-	status = decode_op_hdr(xdr, OP_FREE_STATEID);
+-	if (status)
+-		return status;
+-
+-	p = xdr_inline_decode(xdr, 4);
+-	if (unlikely(!p))
+-		goto out_overflow;
+-	res->status = be32_to_cpup(p++);
++	res->status = decode_op_hdr(xdr, OP_FREE_STATEID);
+ 	return res->status;
+-out_overflow:
+-	print_overflow_msg(__func__, xdr);
+-	return -EIO;
  }
- 
- static void rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
-@@ -154,14 +152,11 @@ rpc_setup_pipedir(struct super_block *pipefs_sb, struct rpc_clnt *clnt)
- {
- 	struct dentry *dentry;
- 
--	if (clnt->cl_program->pipe_dir_name == NULL)
--		goto out;
--	clnt->cl_dentry = NULL;
--	dentry = rpc_setup_pipedir_sb(pipefs_sb, clnt);
--	if (IS_ERR(dentry))
--		return PTR_ERR(dentry);
--	clnt->cl_dentry = dentry;
--out:
-+	if (clnt->cl_program->pipe_dir_name != NULL) {
-+		dentry = rpc_setup_pipedir_sb(pipefs_sb, clnt);
-+		if (IS_ERR(dentry))
-+			return PTR_ERR(dentry);
-+	}
- 	return 0;
- }
- 
-@@ -170,11 +165,18 @@ static int rpc_clnt_skip_event(struct rpc_clnt *clnt, unsigned long event)
- 	if (clnt->cl_program->pipe_dir_name == NULL)
- 		return 1;
- 
--	if (((event == RPC_PIPEFS_MOUNT) && clnt->cl_dentry) ||
--	    ((event == RPC_PIPEFS_UMOUNT) && !clnt->cl_dentry))
--		return 1;
--	if ((event == RPC_PIPEFS_MOUNT) && atomic_read(&clnt->cl_count) == 0)
--		return 1;
-+	switch (event) {
-+	case RPC_PIPEFS_MOUNT:
-+		if (clnt->cl_pipedir_objects.pdh_dentry != NULL)
-+			return 1;
-+		if (atomic_read(&clnt->cl_count) == 0)
-+			return 1;
-+		break;
-+	case RPC_PIPEFS_UMOUNT:
-+		if (clnt->cl_pipedir_objects.pdh_dentry == NULL)
-+			return 1;
-+		break;
-+	}
- 	return 0;
- }
- 
-@@ -191,7 +193,6 @@ static int __rpc_clnt_handle_event(struct rpc_clnt *clnt, unsigned long event,
- 			return -ENOENT;
- 		if (IS_ERR(dentry))
- 			return PTR_ERR(dentry);
--		clnt->cl_dentry = dentry;
- 		break;
- 	case RPC_PIPEFS_UMOUNT:
- 		__rpc_clnt_remove_pipedir(clnt);
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index cfeba77..a35b2f4 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -1055,15 +1055,16 @@ struct dentry *rpc_create_client_dir(struct dentry *dentry,
- 
- /**
-  * rpc_remove_client_dir - Remove a directory created with rpc_create_client_dir()
-- * @dentry: dentry for the pipe
-  * @rpc_client: rpc_client for the pipe
-  */
--int rpc_remove_client_dir(struct dentry *dentry, struct rpc_clnt *rpc_client)
-+int rpc_remove_client_dir(struct rpc_clnt *rpc_client)
- {
--	if (rpc_client->cl_pipedir_objects.pdh_dentry) {
--		rpc_destroy_pipe_dir_objects(&rpc_client->cl_pipedir_objects);
--		rpc_client->cl_pipedir_objects.pdh_dentry = NULL;
--	}
-+	struct dentry *dentry = rpc_client->cl_pipedir_objects.pdh_dentry;
-+
-+	if (dentry == NULL)
-+		return 0;
-+	rpc_destroy_pipe_dir_objects(&rpc_client->cl_pipedir_objects);
-+	rpc_client->cl_pipedir_objects.pdh_dentry = NULL;
- 	return rpc_rmdir_depopulate(dentry, rpc_clntdir_depopulate);
- }
+ #endif /* CONFIG_NFS_V4_1 */
  
 -- 
 1.8.3.1
