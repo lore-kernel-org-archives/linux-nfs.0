@@ -1,58 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f47.google.com ([209.85.214.47]:61325 "EHLO
-	mail-bk0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751576Ab3IMEmj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Sep 2013 00:42:39 -0400
-Message-ID: <52329471.7050001@gmail.com>
-Date: Fri, 13 Sep 2013 06:28:33 +0200
-From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
+Received: from dcvr.yhbt.net ([64.71.152.64]:37397 "EHLO dcvr.yhbt.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757248Ab3IKVYM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Sep 2013 17:24:12 -0400
+Date: Wed, 11 Sep 2013 21:17:23 +0000
+From: Eric Wong <normalperson@yhbt.net>
+To: Zach Brown <zab@redhat.com>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Bryan Schumaker <bjschuma@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>
+Subject: Re: [RFC] extending splice for copy offloading
+Message-ID: <20130911211722.GA9725@dcvr.yhbt.net>
+References: <1378919210-10372-1-git-send-email-zab@redhat.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: mtk.manpages@gmail.com, linux-nfs@vger.kernel.org,
-        linux-man@vger.kernel.org
-Subject: Re: [PATCH] access: fix outdated NFS information
-References: <20130911202210.GB1462@fieldses.org>
-In-Reply-To: <20130911202210.GB1462@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1378919210-10372-1-git-send-email-zab@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11.09.2013 22:22, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> Note that NFS versions since version 3 support an "access" call so that
-> the client doesn't have to guess permissions or id mapping on its own.
-> 
-> (See rfc 1813 sections 1.7 and 3.3.4.)
+Zach Brown <zab@redhat.com> wrote:
+> Towards the end of that thread Eric Wong asked why we didn't just
+> extend splice.  I immediately replied with some dumb dismissive
+> answer.  Once I sat down and looked at it, though, it does make a
+> lot of sense.  So good job, Eric.  +10 Dummie points for me.
 
-Thanks, Bruce. Applied.
+Thanks for revisiting that :>
 
-Cheers,
+> Some things to talk about:
+> - I really don't care about the naming here.  If you do, holler.
 
-Michael
+Exposing "DIRECT" to userspace now might confuse users into expecting
+O_DIRECT behavior.  I say this as an easily-confused user.
 
+In the future, perhaps O_DIRECT behavior can become per-splice (instead
+of just per-open) and can save SPLICE_F_DIRECT for that.
 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  man2/access.2 |    5 +++--
->  1 file changed, 3 insertions(+), 2 deletions(-)
-> 
-> diff --git a/man2/access.2 b/man2/access.2
-> index 6df68de..3bacab1 100644
-> --- a/man2/access.2
-> +++ b/man2/access.2
-> @@ -209,9 +209,10 @@ Similarly, a DOS file may be found to be "executable," but the
->  call will still fail.
->  .PP
->  .BR access ()
-> -may not work correctly on NFS filesystems with UID mapping enabled,
-> +may not work correctly on NFSv2 filesystems with UID mapping enabled,
->  because UID mapping is done on the server and hidden from the client,
-> -which checks permissions.
-> +which checks permissions.  (NFS versions 3 and higher perform the check on
-> +the server.)
->  Similar problems can occur to FUSE mounts.
->  .SH BUGS
->  In kernel 2.4 (and earlier) there is some strangeness in the handling of
-> 
+> - We might want different flags for file-to-file splicing and acceleration
+> - We might want flags to require or forbid acceleration
 
+> - We might want to provide all these flags to sendfile, too
+
+Another syscall?  I prefer not.  Better to just maintain the sendfile
+API as-is for compatibility reasons and nudge users towards splice.
+
+> Thoughts?  Objections?
+
+I'll try to test/comment more in a week or two (not much time for
+computing until then).
