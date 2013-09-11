@@ -1,33 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41990 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:45433 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751751Ab3ISNk3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Sep 2013 09:40:29 -0400
-Date: Thu, 19 Sep 2013 09:40:28 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jody Gugelhupf <knueffle@yahoo.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: help with nfs export/mount
-Message-ID: <20130919134028.GB20422@fieldses.org>
-References: <1379582806.44080.YahooMailNeo@web140003.mail.bf1.yahoo.com>
- <20130919131429.GA20422@fieldses.org>
- <1379597501.95818.YahooMailNeo@web140002.mail.bf1.yahoo.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1379597501.95818.YahooMailNeo@web140002.mail.bf1.yahoo.com>
+	id S1756831Ab3IKUDW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Sep 2013 16:03:22 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 02/13] vfs: don't use PARENT/CHILD lock classes for non-directories
+Date: Wed, 11 Sep 2013 16:03:08 -0400
+Message-Id: <1378929799-1110-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1378929799-1110-1-git-send-email-bfields@redhat.com>
+References: <1378929799-1110-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 19, 2013 at 06:31:41AM -0700, Jody Gugelhupf wrote:
-> Thanks also for your response, I have tried you suggestion of: 
->     /home/user/media/ 192.168.2.0/24(rw,insecure,crossmnt,no_root_check,no_subtree_check)
-> 
-> but got an error that 'no_root_check' was unknown, so i suppose just a type and meant was:
->     /home/user/media/ 192.168.2.0/24(rw,insecure,crossmnt,no_root_squash,no_subtree_check)
-> 
-> 
-> but still it does not work, not only on ubuntu but also not on xbmc (openelec/rpi)
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Could you explain exactly how it fails?
+Reserve I_MUTEX_PARENT and I_MUTEX_CHILD for locking of actual
+directories.
 
---b.
+(Also I_MUTEX_QUOTA isn't really a meaningful name for this locking
+class any more; fixed in a later patch.)
+
+Acked-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/inode.c |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/fs/inode.c b/fs/inode.c
+index 20750b0..9f50a7e 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -995,11 +995,11 @@ void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
+ 	}
+ 	WARN_ON_ONCE(S_ISDIR(inode2->i_mode));
+ 	if (inode1 < inode2) {
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
++		mutex_lock(&inode1->i_mutex);
++		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_QUOTA);
+ 	} else {
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
++		mutex_lock(&inode2->i_mutex);
++		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_QUOTA);
+ 	}
+ }
+ EXPORT_SYMBOL(lock_two_nondirectories);
+-- 
+1.7.9.5
+
