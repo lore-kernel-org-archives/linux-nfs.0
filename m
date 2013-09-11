@@ -1,51 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f181.google.com ([209.85.216.181]:57682 "EHLO
-	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752808Ab3IZSj6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:39:58 -0400
-Received: by mail-qc0-f181.google.com with SMTP id q4so1043276qcx.12
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:39:57 -0700 (PDT)
-From: Benny Halevy <bhalevy@primarydata.com>
-To: " J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH RFC v0 01/49] pnfsd: Define CONFIG_PNFSD
-Date: Thu, 26 Sep 2013 14:39:52 -0400
-Message-Id: <1380220792-12718-1-git-send-email-bhalevy@primarydata.com>
-In-Reply-To: <52447EA0.7070004@primarydata.com>
-References: <52447EA0.7070004@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:40470 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750839Ab3IKUWL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Sep 2013 16:22:11 -0400
+Date: Wed, 11 Sep 2013 16:22:11 -0400
+To: mtk.manpages@gmail.com
+Cc: linux-nfs@vger.kernel.org, linux-man@vger.kernel.org
+Subject: [PATCH] access: fix outdated NFS information
+Message-ID: <20130911202210.GB1462@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@panasas.com>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
-[rephrased text and moved down to fs/nfsd/Kconfig]
-[remove CONFIG_PNFSD's dependency on NFSD_V4_1]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[rephrase and remove CONFIG_PNFSD's dependency on EXPERIMENTAL]
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+Note that NFS versions since version 3 support an "access" call so that
+the client doesn't have to guess permissions or id mapping on its own.
+
+(See rfc 1813 sections 1.7 and 3.3.4.)
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/Kconfig | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ man2/access.2 |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index dc8f1ef..4d68a8c 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -106,3 +106,13 @@ config NFSD_FAULT_INJECTION
- 	  testing error recovery on the NFS client.
- 
- 	  If unsure, say N.
-+
-+config PNFSD
-+	bool "NFSv4.1 server support for Parallel NFS (pNFS) (EXPERIMENTAL)"
-+	depends on NFSD_V4
-+	help
-+	  This option enables support for the parallel NFS features of the
-+	  minor version 1 of the NFSv4 protocol (RFC5661)
-+	  in the kernel's NFS server.
-+
-+	  If unsure, say N.
+diff --git a/man2/access.2 b/man2/access.2
+index 6df68de..3bacab1 100644
+--- a/man2/access.2
++++ b/man2/access.2
+@@ -209,9 +209,10 @@ Similarly, a DOS file may be found to be "executable," but the
+ call will still fail.
+ .PP
+ .BR access ()
+-may not work correctly on NFS filesystems with UID mapping enabled,
++may not work correctly on NFSv2 filesystems with UID mapping enabled,
+ because UID mapping is done on the server and hidden from the client,
+-which checks permissions.
++which checks permissions.  (NFS versions 3 and higher perform the check on
++the server.)
+ Similar problems can occur to FUSE mounts.
+ .SH BUGS
+ In kernel 2.4 (and earlier) there is some strangeness in the handling of
 -- 
-1.8.3.1
+1.7.9.5
 
