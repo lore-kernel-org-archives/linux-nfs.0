@@ -1,121 +1,203 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from nm30-vm0.bullet.mail.bf1.yahoo.com ([98.139.213.126]:35737 "EHLO
-	nm30-vm0.bullet.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753675Ab3ISNbn convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Sep 2013 09:31:43 -0400
-References: <1379582806.44080.YahooMailNeo@web140003.mail.bf1.yahoo.com> <20130919131429.GA20422@fieldses.org>
-Message-ID: <1379597501.95818.YahooMailNeo@web140002.mail.bf1.yahoo.com>
-Date: Thu, 19 Sep 2013 06:31:41 -0700 (PDT)
-From: Jody Gugelhupf <knueffle@yahoo.com>
-Reply-To: Jody Gugelhupf <knueffle@yahoo.com>
-Subject: Re: help with nfs export/mount
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <20130919131429.GA20422@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Received: from fieldses.org ([174.143.236.118]:45453 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757048Ab3IKUDW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Sep 2013 16:03:22 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: [PATCH 01/13] vfs: pull ext4's double-i_mutex-locking into common code
+Date: Wed, 11 Sep 2013 16:03:07 -0400
+Message-Id: <1378929799-1110-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1378929799-1110-1-git-send-email-bfields@redhat.com>
+References: <1378929799-1110-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks also for your response, I have tried you suggestion of: 
-    /home/user/media/ 192.168.2.0/24(rw,insecure,crossmnt,no_root_check,no_subtree_check)
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-but got an error that 'no_root_check' was unknown, so i suppose just a type and meant was:
-    /home/user/media/ 192.168.2.0/24(rw,insecure,crossmnt,no_root_squash,no_subtree_check)
+We want to do this elsewhere as well.
 
+Also catch any attempts to use it for directories (where this ordering
+would conflict with ancestor-first directory ordering in lock_rename).
 
-but still it does not work, not only on ubuntu but also not on xbmc (openelec/rpi)
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: Dave Chinner <david@fromorbit.com>
+Acked-by: Jeff Layton <jlayton@redhat.com>
+Acked-by: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/ext4/ext4.h        |    2 --
+ fs/ext4/ioctl.c       |    4 ++--
+ fs/ext4/move_extent.c |   40 ++--------------------------------------
+ fs/inode.c            |   36 ++++++++++++++++++++++++++++++++++++
+ include/linux/fs.h    |    3 +++
+ 5 files changed, 43 insertions(+), 42 deletions(-)
 
------ Original Message -----
-From: J. Bruce Fields <bfields@fieldses.org>
-To: Jody Gugelhupf <knueffle@yahoo.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Sent: Thursday, September 19, 2013 3:14:29 PM
-Subject: Re: help with nfs export/mount
-
-On Thu, Sep 19, 2013 at 02:26:46AM -0700, Jody Gugelhupf wrote:
-> i'm currently using samba for fileshares with my media center (xbmc/openelec on a pi). I have a server on the network with 20 different harddisks on this system that contain all my media. I have directory "/home/user/media" on my server into which i "mount --bind" all the media i want to be accessible on xbmc (on the pi) or on other computers on the local network. To give you an idea of the mounts on my server:
-> 
-> /home/user/media#located on /dev/sda
-> /home/user/media/Movies#located on /dev/sdf used 'mount --bind /dev/sdf/Movies /home/user/media/Movies'
-> /home/user/media/Series#located on /dev/sda has +300 sub directories, that i created within '/home/user/media/Series' and 'mount --bind' from all other locations/hdd's into the respective folder within '/home/user/media/Series' e.g.
-> /home/user/media/Series/24#located on /dev/sdb used 'mount --bind /dev/sdb/24 /home/user/media/Series/24' 
-> /home/user/media/Series/Star.Trek#located on /dev/sdc used 'mount --bind' and so forth but also:
-> /home/user/media/Series/Animation#located on /dev/sda has +30 sub directories, e.g.
-> /home/user/media/Series/Animation/Ben10#located on /dev/sdz used 'mount --bind /dev/sdz/Ben10 /home/user/media/Series/Animation/Ben10'
-> 
-> a more elaborate list here: http://pastebin.com/DhUA5tks
-> 
-> this all works fine, but I was told NFS would be faster so i wanted to give it a try. the server runs ubuntu 12.04.2, kernel 3.2.0-48-generic x86_64, up to date NFSv4. After installing NFS I tried simple exports (one folder without any sub directories that have no 'mount --bind' in them) and accessing them works fine. So now I thought to export the '/home/user/media' directory but using the samba setup as described from above does not work. Ideally, I would like to have to nfs mount only '/home/user/media' and have all the 'mount --bind' folders accessible on the server also accessible on all clients.
-> Rather then using the xbmc/pi mentioned above I use my laptop with ubuntu to test the export mounts as a client. In samba it was enough to share the parent folder, in this case '/home/user/media' and everything below that share would be visible but as i understand this is not the case in nfs, I need to specify each sub directory that is 'mount --bind' (from a different file system) in the export.
-
-No, it should actually be sufficient just to export the parent.  Also,
-we don't recommend fsid=0 any longer.  Also, "async" should be avoided.
-So just:
-
-    /home/user/media/ 192.168.2.0/24(rw,insecure,crossmnt,no_root_check,no_subtree_check)
-
-and you mount that with "mount myserver:/home/user/media /mymountpoint".
-
-(Note the "crossmnt", which tells the server to export all the children
-automatically.)
-
-If that doesn't work you've probably found a bug.  I'd recommend
-reporting that to Ubuntu, and/or here if you can reproduce with recent
-kernel and nfs-utils.
-
---b.
-
-> 
-> my export file:
-> /home/user/media/       192.168.2.0/24(rw,insecure,fsid=0,nohide,no_root_squash,no_subtree_check,async)
-> /home/user/media/Movies       192.168.2.0/24(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
-> /home/user/media/Series       192.168.2.0/24(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
-> /home/user/media/Series/show_33       192.168.2.0/24(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
-> /home/user/media/Series/show_34       192.168.2.0/24(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
-> /home/user/media/Series/Animations       192.168.2.0/24(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
-> /home/user/media/Series/Animations/show_1       192.168.2.0/24(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
-> /home/user/media/Series/Animations/show_2       192.168.2.0/24(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
-> 
-> I also have tried 'crossmnt' instead of 'nohide' as I'm using a subnet and that appears to be problematic at times. 
-> /home/user/media/       192.168.2.0/24(rw,insecure,fsid=0,crossmnt,no_root_squash,no_subtree_check,async)
-> /home/user/media/Movies       192.168.2.0/24(rw,insecure,crossmnt,no_root_squash,no_subtree_check,async)
-> /home/user/media/Series       192.168.2.0/24(rw,insecure,crossmnt,no_root_squash,no_subtree_check,async)
-> /home/user/media/Series/show_33       192.168.2.0/24(rw,insecure,crossmnt,no_root_squash,no_subtree_check,async)
-> /home/user/media/Series/show_34       192.168.2.0/24(rw,insecure,crossmnt,no_root_squash,no_subtree_check,async)
-> /home/user/media/Series/Animations       192.168.2.0/24(rw,insecure,crossmnt,no_root_squash,no_subtree_check,async)
-> /home/user/media/Series/Animations/show_1       192.168.2.0/24(rw,insecure,crossmnt,no_root_squash,no_subtree_check,async)
-> /home/user/media/Series/Animations/show_2       192.168.2.0/24(rw,insecure,crossmnt,no_root_squash,no_subtree_check,async)
-> 
-> Same result.
-> 
-> I also have tried 'nohide' and then specified only the client IP instead of subnet info.
-> /home/user/media/       192.168.2.101(rw,insecure,fsid=0,nohide,no_root_squash,no_subtree_check,async)
-> /home/user/media/Movies       192.168.2.101(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
-> /home/user/media/Series       192.168.2.101(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
-> /home/user/media/Series/show_33       192.168.2.101(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
-> /home/user/media/Series/show_34       192.168.2.101(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
-> /home/user/media/Series/Animations       192.168.2.101(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
-> /home/user/media/Series/Animations/show_1       192.168.2.101(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
-> /home/user/media/Series/Animations/show_2       192.168.2.101(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
-> 
-> Also does not work.
-> 
-> In all the above scenarios I manage to mount on client side:
-> sudo mount -t nfs 192.168.2.3:/home/user/media/ /home/jarvis/Videos/xbmc
-> 
-> but when i try to mount in any of the above described scenarios i get timeout e.g.:
-> 
-> sudo mount -t nfs 192.168.2.3:/home/user/media/Movies /home/jarvis/Videos/xbmc/Movies
-> 
-> What I would want is to only mount the parent export on the client side, e.g.:
-> sudo mount -t nfs 192.168.2.3:/home/user/media/ /home/jarvis/Videos/xbmc
-> and have all directories/files that are available on the server side under '/home/user/media/' to be available on client side under '/home/jarvis/Videos/xbmc' as I have with samba at the moment
-> 
-> how to achieve this?
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index af815ea..d01d623 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2734,8 +2734,6 @@ extern void ext4_double_down_write_data_sem(struct inode *first,
+ 					    struct inode *second);
+ extern void ext4_double_up_write_data_sem(struct inode *orig_inode,
+ 					  struct inode *donor_inode);
+-void ext4_inode_double_lock(struct inode *inode1, struct inode *inode2);
+-void ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2);
+ extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 			     __u64 start_orig, __u64 start_donor,
+ 			     __u64 len, __u64 *moved_len);
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index a569d33..60589b6 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -130,7 +130,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
+ 
+ 	/* Protect orig inodes against a truncate and make sure,
+ 	 * that only 1 swap_inode_boot_loader is running. */
+-	ext4_inode_double_lock(inode, inode_bl);
++	lock_two_nondirectories(inode, inode_bl);
+ 
+ 	truncate_inode_pages(&inode->i_data, 0);
+ 	truncate_inode_pages(&inode_bl->i_data, 0);
+@@ -205,7 +205,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
+ 	ext4_inode_resume_unlocked_dio(inode);
+ 	ext4_inode_resume_unlocked_dio(inode_bl);
+ 
+-	ext4_inode_double_unlock(inode, inode_bl);
++	unlock_two_nondirectories(inode, inode_bl);
+ 
+ 	iput(inode_bl);
+ 
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 7fa4d85..773b503 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -1203,42 +1203,6 @@ mext_check_arguments(struct inode *orig_inode,
+ }
+ 
+ /**
+- * ext4_inode_double_lock - Lock i_mutex on both @inode1 and @inode2
+- *
+- * @inode1:	the inode structure
+- * @inode2:	the inode structure
+- *
+- * Lock two inodes' i_mutex
+- */
+-void
+-ext4_inode_double_lock(struct inode *inode1, struct inode *inode2)
+-{
+-	BUG_ON(inode1 == inode2);
+-	if (inode1 < inode2) {
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
+-	} else {
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
+-	}
+-}
+-
+-/**
+- * ext4_inode_double_unlock - Release i_mutex on both @inode1 and @inode2
+- *
+- * @inode1:     the inode that is released first
+- * @inode2:     the inode that is released second
+- *
+- */
+-
+-void
+-ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2)
+-{
+-	mutex_unlock(&inode1->i_mutex);
+-	mutex_unlock(&inode2->i_mutex);
+-}
+-
+-/**
+  * ext4_move_extents - Exchange the specified range of a file
+  *
+  * @o_filp:		file structure of the original file
+@@ -1327,7 +1291,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 		return -EINVAL;
+ 	}
+ 	/* Protect orig and donor inodes against a truncate */
+-	ext4_inode_double_lock(orig_inode, donor_inode);
++	lock_two_nondirectories(orig_inode, donor_inode);
+ 
+ 	/* Wait for all existing dio workers */
+ 	ext4_inode_block_unlocked_dio(orig_inode);
+@@ -1535,7 +1499,7 @@ out:
+ 	ext4_double_up_write_data_sem(orig_inode, donor_inode);
+ 	ext4_inode_resume_unlocked_dio(orig_inode);
+ 	ext4_inode_resume_unlocked_dio(donor_inode);
+-	ext4_inode_double_unlock(orig_inode, donor_inode);
++	unlock_two_nondirectories(orig_inode, donor_inode);
+ 
+ 	return ret;
+ }
+diff --git a/fs/inode.c b/fs/inode.c
+index 93a0625..20750b0 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -982,6 +982,42 @@ void unlock_new_inode(struct inode *inode)
+ EXPORT_SYMBOL(unlock_new_inode);
+ 
+ /**
++ * lock_two_nondirectories - take two i_mutexes on non-directory objects
++ * @inode1: first inode to lock
++ * @inode2: second inode to lock
++ */
++void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
++{
++	WARN_ON_ONCE(S_ISDIR(inode1->i_mode));
++	if (inode1 == inode2 || !inode2) {
++		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
++		return;
++	}
++	WARN_ON_ONCE(S_ISDIR(inode2->i_mode));
++	if (inode1 < inode2) {
++		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
++		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
++	} else {
++		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
++		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
++	}
++}
++EXPORT_SYMBOL(lock_two_nondirectories);
++
++/**
++ * unlock_two_nondirectories - release locks from lock_two_nondirectories()
++ * @inode1: first inode to unlock
++ * @inode2: second inode to unlock
++ */
++void unlock_two_nondirectories(struct inode *inode1, struct inode *inode2)
++{
++	mutex_unlock(&inode1->i_mutex);
++	if (inode2 && inode2 != inode1)
++		mutex_unlock(&inode2->i_mutex);
++}
++EXPORT_SYMBOL(unlock_two_nondirectories);
++
++/**
+  * iget5_locked - obtain an inode from a mounted file system
+  * @sb:		super block of file system
+  * @hashval:	hash value (usually inode number) to get
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 529d871..1b9fedd 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -636,6 +636,9 @@ enum inode_i_mutex_lock_class
+ 	I_MUTEX_QUOTA
+ };
+ 
++void lock_two_nondirectories(struct inode *, struct inode*);
++void unlock_two_nondirectories(struct inode *, struct inode*);
++
+ /*
+  * NOTE: in a 32bit arch with a preemptable kernel and
+  * an UP compile the i_size_read/write must be atomic
+-- 
+1.7.9.5
 
