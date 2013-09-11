@@ -1,66 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f182.google.com ([209.85.216.182]:41439 "EHLO
-	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752808Ab3IZSkK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:40:10 -0400
-Received: by mail-qc0-f182.google.com with SMTP id n4so1057088qcx.27
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:40:09 -0700 (PDT)
-From: Benny Halevy <bhalevy@primarydata.com>
-To: " J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH RFC v0 04/49] pnfsd: don't set up back channel on create_session for ds
-Date: Thu, 26 Sep 2013 14:40:07 -0400
-Message-Id: <1380220807-12857-1-git-send-email-bhalevy@primarydata.com>
-In-Reply-To: <52447EA0.7070004@primarydata.com>
-References: <52447EA0.7070004@primarydata.com>
+Received: from mx11.netapp.com ([216.240.18.76]:42988 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753644Ab3IKNNz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Sep 2013 09:13:55 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Anna Schumaker <schumaker.anna@gmail.com>
+CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/4] NFSv4.1: sp4_mach_cred: no need to ref count creds
+Date: Wed, 11 Sep 2013 13:13:48 +0000
+Message-ID: <1378905228.34823.3.camel@leira.trondhjem.org>
+References: <1378853073-13256-1-git-send-email-dros@netapp.com>
+	 <1378853073-13256-4-git-send-email-dros@netapp.com>
+	 <CAFX2Jf=kbrS6byZBFOoZ64-rb9tCvUHDPZqkip3cy5K12FzaqQ@mail.gmail.com>
+In-Reply-To: <CAFX2Jf=kbrS6byZBFOoZ64-rb9tCvUHDPZqkip3cy5K12FzaqQ@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Dean Hildebrand <seattleplus@gmail.com>
-
-[was pnfsd: Add use of pnfs exchange flags]
-Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
-[pnfsd: define a is_ds_only_session helper]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
----
- fs/nfsd/nfs4state.c       | 4 ++++
- include/uapi/linux/nfs4.h | 7 +++++++
- 2 files changed, 11 insertions(+)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 21c15fc..2c973e6 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1953,6 +1953,10 @@ static __be32 nfsd4_check_cb_sec(struct nfsd4_cb_sec *cbs)
- 			status = nfserr_seq_misordered;
- 			goto out_free_conn;
- 		}
-+
-+		if (is_ds_only_session(unconf->cl_exchange_flags))
-+			cr_ses->flags &= ~SESSION4_BACK_CHAN;
-+
- 		old = find_confirmed_client_by_name(&unconf->cl_name, nn);
- 		if (old) {
- 			status = mark_client_expired(old);
-diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
-index 788128e..028f5fc 100644
---- a/include/uapi/linux/nfs4.h
-+++ b/include/uapi/linux/nfs4.h
-@@ -125,6 +125,13 @@
- #define EXCHGID4_FLAG_USE_PNFS_DS		0x00040000
- #define EXCHGID4_FLAG_MASK_PNFS			0x00070000
- 
-+static inline bool
-+is_ds_only_session(u32 exchange_flags)
-+{
-+	u32 mask = EXCHGID4_FLAG_USE_PNFS_DS | EXCHGID4_FLAG_USE_PNFS_MDS;
-+	return (exchange_flags & mask) == EXCHGID4_FLAG_USE_PNFS_DS;
-+}
-+
- #define EXCHGID4_FLAG_UPD_CONFIRMED_REC_A	0x40000000
- #define EXCHGID4_FLAG_CONFIRMED_R		0x80000000
- /*
--- 
-1.8.3.1
-
+T24gV2VkLCAyMDEzLTA5LTExIGF0IDA4OjU5IC0wNDAwLCBBbm5hIFNjaHVtYWtlciB3cm90ZToN
+Cj4gRG8gd2UgbmVlZCB0byBkbyBhIGdldF9ycGNjcmVkKCkgYWZ0ZXIgbG9va2luZyB1cCB0aGUg
+bWFjaGluZSBjcmVkIGluDQo+IG5mc19hbGxvY19jbGllbnQoKT8gIFdoZXJlIGRvZXMgb3VyIGd1
+YXJhbnRlZWQgcmVmZXJlbmNlIGNvbWUgZnJvbT8NCg0KU2VlIG15IGNvbW1lbnQgdG8gRHJvcycg
+Zmlyc3QgcGF0Y2hzZXQgeWVzdGVyZGF5LiBJbiB0aGUgY2FzZSBvZg0KU1A0X01BQ0hfQ1JFRCwg
+d2UgY2Fubm90IGNoYW5nZSB0aGUgbWFjaGluZSBjcmVkZW50aWFsLCBzaW5jZSB0aGUgc3RhdGUN
+CnByb3RlY3Rpb24gaXMgY29tcGxldGVseSB0aWVkIHRvIHRoYXQgY3JlZGVudGlhbC4gSW4gZmFj
+dCBpZiB5b3UgbG9vayBhdA0KdGhlIGN1cnJlbnQgY29kZSwgd2Ugb25seSBhY3R1YWxseSBmcmVl
+IHRoZSBjbF9tYWNoaW5lX2NyZWQgaW4NCm5mc19mcmVlX2NsaWVudCgpLg0KDQpGb3IgdGhhdCBy
+ZWFzb24sIGl0IGlzIHNhZmUgdG8gYXNzdW1lIHRoYXQgaXQgaXMgYXZhaWxhYmxlIGZvciB0aGUN
+CmR1cmF0aW9uIG9mIHRoZSBSUEMgY2FsbC4gT2YgY291cnNlLCBycGNfdGFza19zZXRfcnBjX21l
+c3NhZ2UoKSB3aWxsDQphbHNvIHRha2UgYSByZWZlcmVuY2UsIGJ1dCB0aGF0IHRvbyBpcyByZWR1
+bmRhbnQgaW4gdGhpcyBwYXJ0aWN1bGFyDQpjYXNlLg0KDQpDaGVlcnMNCiAgVHJvbmQNCg0KPiBB
+bm5hDQo+IA0KPiANCj4gDQo+IE9uIFR1ZSwgU2VwIDEwLCAyMDEzIGF0IDY6NDQgUE0sIFdlc3Rv
+biBBbmRyb3MgQWRhbXNvbg0KPiA8ZHJvc0BuZXRhcHAuY29tPiB3cm90ZToNCj4gICAgICAgICBU
+aGUgY2xfbWFjaGluZV9jcmVkIGRvZXNuJ3QgbmVlZCB0byBiZSByZWZlcmVuY2UgY291bnRlZCBo
+ZXJlDQo+ICAgICAgICAgLQ0KPiAgICAgICAgIGEgcmVmZXJlbmNlIGlzIGhlbGQgaXMgZm9yIHRo
+ZSBsaWZldGltZSBvZiB0aGUgc3RydWN0DQo+ICAgICAgICAgbmZzX2NsaWVudC4NCj4gICAgICAg
+ICBBbHNvLCBubyBuZWVkIHRvIHB1dF9ycGNjcmVkIHRoZSBycGNfbWVzc2FnZS5ycGNfY3JlZC4N
+Cj4gICAgICAgICANCj4gICAgICAgICBTaWduZWQtb2ZmLWJ5OiBXZXN0b24gQW5kcm9zIEFkYW1z
+b24gPGRyb3NAbmV0YXBwLmNvbT4NCj4gICAgICAgICAtLS0NCj4gICAgICAgICAgZnMvbmZzL25m
+czRfZnMuaCB8IDYgKysrLS0tDQo+ICAgICAgICAgIDEgZmlsZSBjaGFuZ2VkLCAzIGluc2VydGlv
+bnMoKyksIDMgZGVsZXRpb25zKC0pDQo+ICAgICAgICAgDQo+ICAgICAgICAgZGlmZiAtLWdpdCBh
+L2ZzL25mcy9uZnM0X2ZzLmggYi9mcy9uZnMvbmZzNF9mcy5oDQo+ICAgICAgICAgaW5kZXggZjUy
+MGExMS4uMDdhOGFhOSAxMDA2NDQNCj4gICAgICAgICAtLS0gYS9mcy9uZnMvbmZzNF9mcy5oDQo+
+ICAgICAgICAgKysrIGIvZnMvbmZzL25mczRfZnMuaA0KPiAgICAgICAgIEBAIC0yNzksMTAgKzI3
+OSwxMCBAQCBfbmZzNF9zdGF0ZV9wcm90ZWN0KHN0cnVjdCBuZnNfY2xpZW50DQo+ICAgICAgICAg
+KmNscCwgdW5zaWduZWQgbG9uZyBzcDRfbW9kZSwNCj4gICAgICAgICAgICAgICAgIGlmICh0ZXN0
+X2JpdChzcDRfbW9kZSwgJmNscC0+Y2xfc3A0X2ZsYWdzKSkgew0KPiAgICAgICAgICAgICAgICAg
+ICAgICAgICBzcGluX2xvY2soJmNscC0+Y2xfbG9jayk7DQo+ICAgICAgICAgICAgICAgICAgICAg
+ICAgIGlmIChjbHAtPmNsX21hY2hpbmVfY3JlZCAhPSBOVUxMKQ0KPiAgICAgICAgIC0gICAgICAg
+ICAgICAgICAgICAgICAgIG5ld2NyZWQgPQ0KPiAgICAgICAgIGdldF9ycGNjcmVkKGNscC0+Y2xf
+bWFjaGluZV9jcmVkKTsNCj4gICAgICAgICArICAgICAgICAgICAgICAgICAgICAgICAvKiBkb24n
+dCBjYWxsIGdldF9ycGNjcmVkIG9uIHRoZQ0KPiAgICAgICAgIG1hY2hpbmUgY3JlZCAtDQo+ICAg
+ICAgICAgKyAgICAgICAgICAgICAgICAgICAgICAgICogYSByZWZlcmVuY2Ugd2lsbCBiZSBoZWxk
+IGZvciBsaWZlDQo+ICAgICAgICAgb2YgY2xwICovDQo+ICAgICAgICAgKyAgICAgICAgICAgICAg
+ICAgICAgICAgbmV3Y3JlZCA9IGNscC0+Y2xfbWFjaGluZV9jcmVkOw0KPiAgICAgICAgICAgICAg
+ICAgICAgICAgICBzcGluX3VubG9jaygmY2xwLT5jbF9sb2NrKTsNCj4gICAgICAgICAtICAgICAg
+ICAgICAgICAgaWYgKG1zZy0+cnBjX2NyZWQpDQo+ICAgICAgICAgLSAgICAgICAgICAgICAgICAg
+ICAgICAgcHV0X3JwY2NyZWQobXNnLT5ycGNfY3JlZCk7DQo+ICAgICAgICAgICAgICAgICAgICAg
+ICAgIG1zZy0+cnBjX2NyZWQgPSBuZXdjcmVkOw0KPiAgICAgICAgIA0KPiAgICAgICAgICAgICAg
+ICAgICAgICAgICBmbGF2b3IgPQ0KPiAgICAgICAgIGNscC0+Y2xfcnBjY2xpZW50LT5jbF9hdXRo
+LT5hdV9mbGF2b3I7DQo+ICAgICAgICAgLS0NCj4gICAgICAgICAxLjcuMTIuNCAoQXBwbGUgR2l0
+LTM3KQ0KPiAgICAgICAgIA0KPiAgICAgICAgIC0tDQo+ICAgICAgICAgVG8gdW5zdWJzY3JpYmUg
+ZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlDQo+ICAgICAgICAgbGlu
+dXgtbmZzIiBpbg0KPiAgICAgICAgIHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9A
+dmdlci5rZXJuZWwub3JnDQo+ICAgICAgICAgTW9yZSBtYWpvcmRvbW8gaW5mbyBhdA0KPiAgICAg
+ICAgICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCj4gDQo+IA0K
+DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5l
+dEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
