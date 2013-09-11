@@ -1,140 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f43.google.com ([209.85.216.43]:64211 "EHLO
-	mail-qa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753553Ab3IZSlr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:41:47 -0400
-Received: by mail-qa0-f43.google.com with SMTP id k15so4616997qaq.16
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:41:47 -0700 (PDT)
-From: Benny Halevy <bhalevy@primarydata.com>
-To: " J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH RFC v0 28/49] pnfsd: support layout segment merging
-Date: Thu, 26 Sep 2013 14:41:45 -0400
-Message-Id: <1380220905-13964-1-git-send-email-bhalevy@primarydata.com>
-In-Reply-To: <52447EA0.7070004@primarydata.com>
-References: <52447EA0.7070004@primarydata.com>
+Received: from mail-wg0-f43.google.com ([74.125.82.43]:57484 "EHLO
+	mail-wg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752424Ab3IKN13 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Sep 2013 09:27:29 -0400
+Received: by mail-wg0-f43.google.com with SMTP id z12so8009572wgg.22
+        for <linux-nfs@vger.kernel.org>; Wed, 11 Sep 2013 06:27:28 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1378905228.34823.3.camel@leira.trondhjem.org>
+References: <1378853073-13256-1-git-send-email-dros@netapp.com>
+ <1378853073-13256-4-git-send-email-dros@netapp.com> <CAFX2Jf=kbrS6byZBFOoZ64-rb9tCvUHDPZqkip3cy5K12FzaqQ@mail.gmail.com>
+ <1378905228.34823.3.camel@leira.trondhjem.org>
+From: Anna Schumaker <schumaker.anna@gmail.com>
+Date: Wed, 11 Sep 2013 09:27:07 -0400
+Message-ID: <CAFX2JfnzBqVJKqb1eU7WxwfvKXOAZsf3H0T-fe9buHRNFsTdPQ@mail.gmail.com>
+Subject: Re: [PATCH 3/4] NFSv4.1: sp4_mach_cred: no need to ref count creds
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Adamson, Dros" <Weston.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
----
- fs/nfsd/nfs4pnfsd.c | 75 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 75 insertions(+)
+Okay, thanks!  I think I missed that explanation yesterday.
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index 386afa3..8d16b85 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -364,6 +364,66 @@ struct super_block *
- 	return id;
- }
- 
-+/*
-+ * are two octet ranges overlapping or adjacent?
-+ */
-+static bool
-+lo_seg_mergeable(struct nfsd4_layout_seg *l1, struct nfsd4_layout_seg *l2)
-+{
-+	u64 start1 = l1->offset;
-+	u64 end1 = end_offset(start1, l1->length);
-+	u64 start2 = l2->offset;
-+	u64 end2 = end_offset(start2, l2->length);
-+
-+	/* is end1 == start2 ranges are adjacent */
-+	return (end2 >= start1) && (end1 >= start2);
-+}
-+
-+static void
-+extend_layout(struct nfsd4_layout_seg *lo, struct nfsd4_layout_seg *lg)
-+{
-+	u64 lo_start = lo->offset;
-+	u64 lo_end = end_offset(lo_start, lo->length);
-+	u64 lg_start = lg->offset;
-+	u64 lg_end = end_offset(lg_start, lg->length);
-+
-+	/* lo already covers lg? */
-+	if (lo_start <= lg_start && lg_end <= lo_end)
-+		return;
-+
-+	/* extend start offset */
-+	if (lo_start > lg_start)
-+		lo_start = lg_start;
-+
-+	/* extend end offset */
-+	if (lo_end < lg_end)
-+		lo_end = lg_end;
-+
-+	lo->offset = lo_start;
-+	lo->length = (lo_end == NFS4_MAX_UINT64) ?
-+		      lo_end : lo_end - lo_start;
-+}
-+
-+static bool
-+merge_layout(struct nfs4_layout_state *ls, struct nfsd4_layout_seg *seg)
-+{
-+	bool ret = false;
-+	struct nfs4_layout *lp;
-+
-+	spin_lock(&layout_lock);
-+	list_for_each_entry (lp, &ls->ls_layouts, lo_perstate)
-+		if (lp->lo_seg.layout_type == seg->layout_type &&
-+		    lp->lo_seg.clientid == seg->clientid &&
-+		    lp->lo_seg.iomode == seg->iomode &&
-+		    (ret = lo_seg_mergeable(&lp->lo_seg, seg))) {
-+			extend_layout(&lp->lo_seg, seg);
-+			break;
-+		}
-+	spin_unlock(&layout_lock);
-+
-+	return ret;
-+}
-+
- __be32
- nfs4_pnfs_get_layout(struct svc_rqst *rqstp,
- 		     struct nfsd4_pnfs_layoutget *lgp,
-@@ -373,6 +433,7 @@ struct super_block *
- 	__be32 nfserr;
- 	struct inode *ino = lgp->lg_fhp->fh_dentry->d_inode;
- 	struct super_block *sb = ino->i_sb;
-+	int can_merge;
- 	struct nfs4_file *fp;
- 	struct nfs4_client *clp;
- 	struct nfs4_layout *lp = NULL;
-@@ -412,6 +473,9 @@ struct super_block *
- 		goto out;
- 	}
- 
-+	can_merge = sb->s_pnfs_op->can_merge_layouts != NULL &&
-+		    sb->s_pnfs_op->can_merge_layouts(lgp->lg_seg.layout_type);
-+
- 	nfs4_lock_state();
- 	fp = find_alloc_file(ino, lgp->lg_fhp);
- 	clp = find_confirmed_client((clientid_t *)&lgp->lg_seg.clientid, true,
-@@ -430,6 +494,9 @@ struct super_block *
- 	if (nfserr)
- 		goto out_unlock;
- 
-+	/* pre-alloc layout in case we can't merge after we call
-+	 * the file system
-+	 */
- 	lp = alloc_layout();
- 	if (!lp) {
- 		nfserr = nfserr_layouttrylater;
-@@ -486,6 +553,14 @@ struct super_block *
- 	lgp->lg_seg = res.lg_seg;
- 	lgp->lg_roc = res.lg_return_on_close;
- 
-+	/* SUCCESS!
-+	 * Can the new layout be merged into an existing one?
-+	 * If so, free unused layout struct
-+	 */
-+	if (can_merge && merge_layout(ls, &res.lg_seg))
-+		goto out_freelayout;
-+
-+	/* Can't merge, so let's initialize this new layout */
- 	init_layout(lp, ls, lgp->lg_fhp, &res.lg_seg, &lgp->lg_sid);
- out_unlock:
- 	if (ls)
--- 
-1.8.3.1
-
+On Wed, Sep 11, 2013 at 9:13 AM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Wed, 2013-09-11 at 08:59 -0400, Anna Schumaker wrote:
+>> Do we need to do a get_rpccred() after looking up the machine cred in
+>> nfs_alloc_client()?  Where does our guaranteed reference come from?
+>
+> See my comment to Dros' first patchset yesterday. In the case of
+> SP4_MACH_CRED, we cannot change the machine credential, since the state
+> protection is completely tied to that credential. In fact if you look at
+> the current code, we only actually free the cl_machine_cred in
+> nfs_free_client().
+>
+> For that reason, it is safe to assume that it is available for the
+> duration of the RPC call. Of course, rpc_task_set_rpc_message() will
+> also take a reference, but that too is redundant in this particular
+> case.
+>
+> Cheers
+>   Trond
+>
+>> Anna
+>>
+>>
+>>
+>> On Tue, Sep 10, 2013 at 6:44 PM, Weston Andros Adamson
+>> <dros@netapp.com> wrote:
+>>         The cl_machine_cred doesn't need to be reference counted here
+>>         -
+>>         a reference is held is for the lifetime of the struct
+>>         nfs_client.
+>>         Also, no need to put_rpccred the rpc_message.rpc_cred.
+>>
+>>         Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>>         ---
+>>          fs/nfs/nfs4_fs.h | 6 +++---
+>>          1 file changed, 3 insertions(+), 3 deletions(-)
+>>
+>>         diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+>>         index f520a11..07a8aa9 100644
+>>         --- a/fs/nfs/nfs4_fs.h
+>>         +++ b/fs/nfs/nfs4_fs.h
+>>         @@ -279,10 +279,10 @@ _nfs4_state_protect(struct nfs_client
+>>         *clp, unsigned long sp4_mode,
+>>                 if (test_bit(sp4_mode, &clp->cl_sp4_flags)) {
+>>                         spin_lock(&clp->cl_lock);
+>>                         if (clp->cl_machine_cred != NULL)
+>>         -                       newcred =
+>>         get_rpccred(clp->cl_machine_cred);
+>>         +                       /* don't call get_rpccred on the
+>>         machine cred -
+>>         +                        * a reference will be held for life
+>>         of clp */
+>>         +                       newcred = clp->cl_machine_cred;
+>>                         spin_unlock(&clp->cl_lock);
+>>         -               if (msg->rpc_cred)
+>>         -                       put_rpccred(msg->rpc_cred);
+>>                         msg->rpc_cred = newcred;
+>>
+>>                         flavor =
+>>         clp->cl_rpcclient->cl_auth->au_flavor;
+>>         --
+>>         1.7.12.4 (Apple Git-37)
+>>
+>>         --
+>>         To unsubscribe from this list: send the line "unsubscribe
+>>         linux-nfs" in
+>>         the body of a message to majordomo@vger.kernel.org
+>>         More majordomo info at
+>>          http://vger.kernel.org/majordomo-info.html
+>>
+>>
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
