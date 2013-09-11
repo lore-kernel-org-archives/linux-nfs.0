@@ -1,140 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:34217 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:45430 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761538Ab3IDAt7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Sep 2013 20:49:59 -0400
-Date: Wed, 4 Sep 2013 10:49:46 +1000
-From: NeilBrown <neilb@suse.de>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: NFS <linux-nfs@vger.kernel.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-Subject: Re: [PATCH/RFC]  Don't try to recover NFS locks when they are lost.
-Message-ID: <20130904104946.1be45e52@notabene.brown>
-In-Reply-To: <1378233802.6410.34.camel@leira.trondhjem.org>
-References: <20130815123604.47755509@notabene.brown>
-	<1378233802.6410.34.camel@leira.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/vyyQpCS=nm.cm2Ex25AAjE9"; protocol="application/pgp-signature"
+	id S1756783Ab3IKUDW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Sep 2013 16:03:22 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 07/13] namei: minor vfs_unlink cleanup
+Date: Wed, 11 Sep 2013 16:03:13 -0400
+Message-Id: <1378929799-1110-8-git-send-email-bfields@redhat.com>
+In-Reply-To: <1378929799-1110-1-git-send-email-bfields@redhat.com>
+References: <1378929799-1110-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/vyyQpCS=nm.cm2Ex25AAjE9
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-On Tue, 3 Sep 2013 18:43:23 +0000 "Myklebust, Trond"
-<Trond.Myklebust@netapp.com> wrote:
+We'll be using dentry->d_inode in one more place.
 
-> On Thu, 2013-08-15 at 12:36 +1000, NeilBrown wrote:
-> >=20
-> > When an NFS (V4 specifically) client loses contact with the server it c=
-an
-> > lose any locks that it holds.
-> > Currently when it reconnects to the server it simply tries to reclaim
-> > those locks.  This might succeed even though some other client has held=
- and
-> > released a lock in the mean time.  So the first client might think the =
-file
-> > is unchanged, but it isn't.  This isn't good.
-> >=20
-> > If, when recovery happens, the locks cannot be claimed because some oth=
-er
-> > client still holds the lock, then  we get a message in the kernel logs,=
- but
-> > the client can still write.  So two clients can both think they have a =
-lock
-> > and can both write at the same time.  This is equally not good.
-> >=20
-> > There was a patch a while ago
-> >   http://comments.gmane.org/gmane.linux.nfs/41917
-> >=20
-> > which tried to address some of this, but it didn't seem to go anywhere.
-> > That patch would also send a signal to the process.  That might be usef=
-ul
-> > but I'm really just interested in failing the writes.
-> > For NFSv4 (unlike v2/v3) there is a strong link between the lock and the
-> > write request so we can fairly easily fail an IO of the lock is gone.
-> >=20
-> > The patch below attempts to do this.  Does it make sense?
-> > Because this is a fairly big change I introduces a module parameter
-> > "recover_locks" which defaults to true (the current behaviour) but can =
-be set
-> > to "false" to tell the client not to try to recover things that were lo=
-st.
-> >=20
-> > Comments?
->=20
-> I think this patch is close to being usable. A couple of questions,
-> though:
->=20
->      1. What happens if another process' open() causes us to receive a
->         delegation after NFS_LOCK_LOST has been set on our lock stateid,
->         but before we call nfs4_set_rw_stateid()?
+Acked-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/namei.c |    7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-Good point.  I think we need to check for NFS_LOCK_LOST before checking for=
- a
-delegation.  Does the incremental patch below look OK?
-It takes a spinlock in the case where we have a delegation and  hold some
-locks which it didn't have to take before.  Is that a concern?
-
-
->      2. Shouldn't we clear NFS_LOCK_LOST at some point? It looks to me
->         as if a process which sees the EIO, and decides to recover by
->         calling close(), reopen()ing the file and then locking it again,
->         might find NFS_LOCK_LOST still being set.
-
-
-NFS_LOCK_LOST is per nfs4_lock_state which should be freed by
-nfs4_fl_release_lock().
-So when the files is closed, the locks a dropped, and the structure holding
-the NFS_LOCK_LOST flag will go away.
-Or did I miss something?
-
-Thanks,
-NeilBrown
-
-
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 4d103ff..bb1fd5d 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1040,10 +1040,11 @@ static int nfs4_copy_open_stateid(nfs4_stateid *dst=
-, struct nfs4_state *state)
- int nfs4_select_rw_stateid(nfs4_stateid *dst, struct nfs4_state *state,
- 		fmode_t fmode, const struct nfs_lockowner *lockowner)
+diff --git a/fs/namei.c b/fs/namei.c
+index 1e85a89..a23102c 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3645,6 +3645,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
+ 
+ int vfs_unlink(struct inode *dir, struct dentry *dentry)
  {
--	int ret =3D 0;
-+	int ret =3D nfs4_copy_lock_stateid(dst, state, lockowner);
-+	if (ret =3D=3D -EIO)
-+		goto out;
- 	if (nfs4_copy_delegation_stateid(dst, state->inode, fmode))
- 		goto out;
--	ret =3D nfs4_copy_lock_stateid(dst, state, lockowner);
- 	if (ret !=3D -ENOENT)
- 		goto out;
- 	ret =3D nfs4_copy_open_stateid(dst, state);
++	struct inode *target = dentry->d_inode;
+ 	int error = may_delete(dir, dentry, 0);
+ 
+ 	if (error)
+@@ -3653,7 +3654,7 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+ 	if (!dir->i_op->unlink)
+ 		return -EPERM;
+ 
+-	mutex_lock(&dentry->d_inode->i_mutex);
++	mutex_lock(&target->i_mutex);
+ 	if (d_mountpoint(dentry))
+ 		error = -EBUSY;
+ 	else {
+@@ -3664,11 +3665,11 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+ 				dont_mount(dentry);
+ 		}
+ 	}
+-	mutex_unlock(&dentry->d_inode->i_mutex);
++	mutex_unlock(&target->i_mutex);
+ 
+ 	/* We don't d_delete() NFS sillyrenamed files--they still exist. */
+ 	if (!error && !(dentry->d_flags & DCACHE_NFSFS_RENAMED)) {
+-		fsnotify_link_count(dentry->d_inode);
++		fsnotify_link_count(target);
+ 		d_delete(dentry);
+ 	}
+ 
+-- 
+1.7.9.5
 
---Sig_/vyyQpCS=nm.cm2Ex25AAjE9
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBUiaDqjnsnt1WYoG5AQI1/w//W8P50hXe5uwUxVoJ3OwxJxaCsk8F+3Zu
-hAK9291abPCNUkuI9zmhPHPW4OOK/yoP5wn20sMhfGQfNeOnmUL4elxFMYzQ9zZQ
-+UA8BsYeSpglCbZYAaFg2rc5CxE42oySxPZBfnsSl7lgqmZD+kjQvsY4ztRx5e8J
-Qr5TRvl6k6184fdTjnqUcpnyT6sWehV7NOIfqGGduCXGXXBqOOPU1w8eeRifygCm
-DGtxv+fHLekJoZu/e36HT9Izz/CcnbyYVt74F6v9Yw6oFuQ2nuhHnM74BbaM4RCR
-tOgFTIqwbkdd7PNBf+XX3TwYlUgueon+M4Nn3Sy4azfwYHbBYXiKBH9K5i+rzmzW
-fg4PAw9NQlIxPRPTDeJycvI35/CwvCC6TKvjvJUSSpdtpYne1m9vJlItLTCYY7Cd
-p2LLoDymCh0YldDPbR4SyIHp9yZjUIZZagXPuvRMiCe+V8Doa7h+BlPpxNrxIKzL
-N8KwEEVYYh+QHgITczs2bNL4hHT/VtUcraVID+Zp7A+w0PvIq/TgWZYFX8RNHjGv
-FQYKjZXS2uheNkL5d3R3KjnGCdcby97yajQDSl0/8kuE9Fps58HFFouVH9Bj/zSv
-tehtbmV2CZha4Tw3lWM9zqRA/XrKgFQMBlBn/3P5pLAIWh+Z0Jjlp6ix95kMpTlk
-8d+GctloM0k=
-=17V1
------END PGP SIGNATURE-----
-
---Sig_/vyyQpCS=nm.cm2Ex25AAjE9--
