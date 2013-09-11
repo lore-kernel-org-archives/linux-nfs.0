@@ -1,112 +1,145 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f49.google.com ([209.85.128.49]:46191 "EHLO
-	mail-qe0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754776Ab3I3Pie (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Sep 2013 11:38:34 -0400
-Received: by mail-qe0-f49.google.com with SMTP id s14so3877919qeb.22
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Sep 2013 08:38:33 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <52498AA8.2090204@redhat.com>
-References: <20130925210742.GG30372@lenny.home.zabbo.net>
-	<CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
-	<20130926185508.GO30372@lenny.home.zabbo.net>
-	<5244A68F.906@redhat.com>
-	<20130927200550.GA22640@fieldses.org>
-	<20130927205013.GZ30372@lenny.home.zabbo.net>
-	<CAJfpegtdiQzP7t5hc_OaHjSGTrjdZLfKi6fiKqBQ_+AP2Y0-oQ@mail.gmail.com>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA9467EF2D7@SACEXCMBX04-PRD.hq.netapp.com>
-	<52474839.2080201@redhat.com>
-	<CAJfpegsN7Hu8uecSVQrhax+n+zhq=uUgpzOk=qZ6_n383tdNCQ@mail.gmail.com>
-	<20130930143432.GG16579@fieldses.org>
-	<CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com>
-	<52499026.3090802@redhat.com>
-	<CAJfpegtpXuh9070ALGy16Y8kdgioBqSf4JQqBBCF4FHvFJWAWQ@mail.gmail.com>
-	<52498AA8.2090204@redhat.com>
-Date: Mon, 30 Sep 2013 17:38:33 +0200
-Message-ID: <CAJfpegv_C6cLOuA-mNtgtf2QbmmmcHwjQVo8mAnhf_wbJ8iRhg@mail.gmail.com>
-Subject: Re: [RFC] extending splice for copy offloading
-From: Miklos Szeredi <miklos@szeredi.hu>
-To: Ric Wheeler <rwheeler@redhat.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Zach Brown <zab@redhat.com>, Anna Schumaker <schumaker.anna@gmail.com>,
-        Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        Eric Wong <normalperson@yhbt.net>
-Content-Type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:45441 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756847Ab3IKUDW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Sep 2013 16:03:22 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Tyler Hicks <tyhicks@canonical.com>,
+        Dustin Kirkland <dustin.kirkland@gazzang.com>
+Subject: [PATCH 11/13] locks: break delegations on link
+Date: Wed, 11 Sep 2013 16:03:17 -0400
+Message-Id: <1378929799-1110-12-git-send-email-bfields@redhat.com>
+In-Reply-To: <1378929799-1110-1-git-send-email-bfields@redhat.com>
+References: <1378929799-1110-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 30, 2013 at 4:28 PM, Ric Wheeler <rwheeler@redhat.com> wrote:
-> On 09/30/2013 10:24 AM, Miklos Szeredi wrote:
->>
->> On Mon, Sep 30, 2013 at 4:52 PM, Ric Wheeler <rwheeler@redhat.com> wrote:
->>>
->>> On 09/30/2013 10:51 AM, Miklos Szeredi wrote:
->>>>
->>>> On Mon, Sep 30, 2013 at 4:34 PM, J. Bruce Fields <bfields@fieldses.org>
->>>> wrote:
->>>>>>
->>>>>> My other worry is about interruptibility/restartability.  Ideas?
->>>>>>
->>>>>> What happens on splice(from, to, 4G) and it's a non-reflink copy?
->>>>>> Can the page cache copy be made restartable?   Or should splice() be
->>>>>> allowed to return a short count?  What happens on (non-reflink) remote
->>>>>> copies and huge request sizes?
->>>>>
->>>>> If I were writing an application that required copies to be
->>>>> restartable,
->>>>> I'd probably use the largest possible range in the reflink case but
->>>>> break the copy into smaller chunks in the splice case.
->>>>>
->>>> The app really doesn't want to care about that.  And it doesn't want
->>>> to care about restartability, etc..  It's something the *kernel* has
->>>> to care about.   You just can't have uninterruptible syscalls that
->>>> sleep for a "long" time, otherwise first you'll just have annoyed
->>>> users pressing ^C in vain; then, if the sleep is even longer, warnings
->>>> about task sleeping too long.
->>>>
->>>> One idea is letting splice() return a short count, and so the app can
->>>> safely issue SIZE_MAX requests and the kernel can decide if it can
->>>> copy the whole file in one go or if it wants to do it in smaller
->>>> chunks.
->>>>
->>> You cannot rely on a short count. That implies that an offloaded copy
->>> starts
->>> at byte 0 and the short count first bytes are all valid.
->>
->> Huh?
->>
->> - app calls splice(from, 0, to, 0, SIZE_MAX)
->>   1) VFS calls ->direct_splice(from, 0,  to, 0, SIZE_MAX)
->>      1.a) fs reflinks the whole file in a jiffy and returns the size of
->> the file
->>      1 b) fs does copy offload of, say, 64MB and returns 64M
->>   2) VFS does page copy of, say, 1MB and returns 1MB
->> - app calls splice(from, X, to, X, SIZE_MAX) where X is the new offset
->> ...
->>
->> The point is: the app is always doing the same (incrementing offset
->> with the return value from splice) and the kernel can decide what is
->> the best size it can service within a single uninterruptible syscall.
->>
->> Wouldn't that work?
->>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
->
-> No.
->
-> Keep in mind that the offload operation in (1) might fail partially. The
-> target file (the copy) is allocated, the question is what ranges have valid
-> data.
+Cc: Tyler Hicks <tyhicks@canonical.com>
+Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
+Acked-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/ecryptfs/inode.c |    2 +-
+ fs/namei.c          |   36 ++++++++++++++++++++++++++++++++----
+ fs/nfsd/vfs.c       |    2 +-
+ include/linux/fs.h  |    2 +-
+ 4 files changed, 35 insertions(+), 7 deletions(-)
 
-You are talking about case 1.a, right?  So if the offload copy 0-64MB
-fails partially, we return failure from splice, yet some of the copy
-did succeed.  Is that the problem?  Why?
+diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+index 0b8b632..cb3ac33 100644
+--- a/fs/ecryptfs/inode.c
++++ b/fs/ecryptfs/inode.c
+@@ -475,7 +475,7 @@ static int ecryptfs_link(struct dentry *old_dentry, struct inode *dir,
+ 	dget(lower_new_dentry);
+ 	lower_dir_dentry = lock_parent(lower_new_dentry);
+ 	rc = vfs_link(lower_old_dentry, lower_dir_dentry->d_inode,
+-		      lower_new_dentry);
++		      lower_new_dentry, NULL);
+ 	if (rc || !lower_new_dentry->d_inode)
+ 		goto out_lock;
+ 	rc = ecryptfs_interpose(lower_new_dentry, new_dentry, dir->i_sb);
+diff --git a/fs/namei.c b/fs/namei.c
+index fcce3cc..6e2edbd8 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3843,7 +3843,26 @@ SYSCALL_DEFINE2(symlink, const char __user *, oldname, const char __user *, newn
+ 	return sys_symlinkat(oldname, AT_FDCWD, newname);
+ }
+ 
+-int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry)
++/**
++ * vfs_link - create a new link
++ * @old_dentry:	object to be linked
++ * @dir:	new parent
++ * @new_dentry:	where to create the new link
++ * @delegated_inode: returns inode needing a delegation break
++ *
++ * The caller must hold dir->i_mutex
++ *
++ * If vfs_link discovers a delegation on the to-be-linked file in need
++ * of breaking, it will return -EWOULDBLOCK and return a reference to the
++ * inode in delegated_inode.  The caller should then break the delegation
++ * and retry.  Because breaking a delegation may take a long time, the
++ * caller should drop the i_mutex before doing so.
++ *
++ * Alternatively, a caller may pass NULL for delegated_inode.  This may
++ * be appropriate for callers that expect the underlying filesystem not
++ * to be NFS exported.
++ */
++int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry, struct inode **delegated_inode)
+ {
+ 	struct inode *inode = old_dentry->d_inode;
+ 	unsigned max_links = dir->i_sb->s_max_links;
+@@ -3879,8 +3898,11 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
+ 		error =  -ENOENT;
+ 	else if (max_links && inode->i_nlink >= max_links)
+ 		error = -EMLINK;
+-	else
+-		error = dir->i_op->link(old_dentry, dir, new_dentry);
++	else {
++		error = try_break_deleg(inode, delegated_inode);
++		if (!error)
++			error = dir->i_op->link(old_dentry, dir, new_dentry);
++	}
+ 
+ 	if (!error && (inode->i_state & I_LINKABLE)) {
+ 		spin_lock(&inode->i_lock);
+@@ -3907,6 +3929,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
+ {
+ 	struct dentry *new_dentry;
+ 	struct path old_path, new_path;
++	struct inode *delegated_inode = NULL;
+ 	int how = 0;
+ 	int error;
+ 
+@@ -3945,9 +3968,14 @@ retry:
+ 	error = security_path_link(old_path.dentry, &new_path, new_dentry);
+ 	if (error)
+ 		goto out_dput;
+-	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry);
++	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry, &delegated_inode);
+ out_dput:
+ 	done_path_create(&new_path, new_dentry);
++	if (delegated_inode) {
++		error = break_deleg_wait(&delegated_inode);
++		if (!error)
++			goto retry;
++	}
+ 	if (retry_estale(error, how)) {
+ 		how |= LOOKUP_REVAL;
+ 		goto retry;
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 680081b..93227d9 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1737,7 +1737,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
+ 		err = nfserrno(host_err);
+ 		goto out_dput;
+ 	}
+-	host_err = vfs_link(dold, dirp, dnew);
++	host_err = vfs_link(dold, dirp, dnew, NULL);
+ 	if (!host_err) {
+ 		err = nfserrno(commit_metadata(ffhp));
+ 		if (!err)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index e476e5a..a3e5554 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1470,7 +1470,7 @@ extern int vfs_create(struct inode *, struct dentry *, umode_t, bool);
+ extern int vfs_mkdir(struct inode *, struct dentry *, umode_t);
+ extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
+ extern int vfs_symlink(struct inode *, struct dentry *, const char *);
+-extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
++extern int vfs_link(struct dentry *, struct inode *, struct dentry *, struct inode **);
+ extern int vfs_rmdir(struct inode *, struct dentry *);
+ extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
+ extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **);
+-- 
+1.7.9.5
 
-Thanks,
-Miklos
