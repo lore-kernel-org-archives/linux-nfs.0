@@ -1,37 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zeniv.linux.org.uk ([195.92.253.2]:49131 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750885Ab3IIAqt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Sep 2013 20:46:49 -0400
-Date: Mon, 9 Sep 2013 01:46:47 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 4/4] dcache: don't clear DCACHE_DISCONNECTED too early
-Message-ID: <20130909004647.GK13318@ZenIV.linux.org.uk>
-References: <1378579561-26868-1-git-send-email-bfields@redhat.com>
- <1378579561-26868-5-git-send-email-bfields@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1378579561-26868-5-git-send-email-bfields@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:30017 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755433Ab3IKRIN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Sep 2013 13:08:13 -0400
+From: Zach Brown <zab@redhat.com>
+To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Bryan Schumaker <bjschuma@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Wong <normalperson@yhbt.net>
+Subject: [RFC] extending splice for copy offloading
+Date: Wed, 11 Sep 2013 10:06:47 -0700
+Message-Id: <1378919210-10372-1-git-send-email-zab@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Sep 07, 2013 at 02:46:01PM -0400, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> DCACHE_DISCONNECTED should not be cleared until we're sure the dentry is
-> connected all the way up to the root of the filesystem.  It *shouldn't*
-> be cleared as soon as the dentry is connected to a parent.  That will
-> cause bugs at least on exportable filesystems.
+When I first started on this stuff I followed the lead of previous
+work and added a new syscall for the copy operation:
 
-Then you probably want this
-                if (!IS_ROOT(pd)) {
-                        /* must have found a connected parent - great */
-                        spin_lock(&pd->d_lock);
-                        pd->d_flags &= ~DCACHE_DISCONNECTED;
-                        spin_unlock(&pd->d_lock);
-                        noprogress = 0;
-to go through all intermediates, clearing DCACHE_DISCONNECTED on all of
-them; O(depth^2) can suck when we have a long chain of directories...
+https://lkml.org/lkml/2013/5/14/618
+
+Towards the end of that thread Eric Wong asked why we didn't just
+extend splice.  I immediately replied with some dumb dismissive
+answer.  Once I sat down and looked at it, though, it does make a
+lot of sense.  So good job, Eric.  +10 Dummie points for me.
+
+Extending splice avoids all the noise of adding a new syscall and
+naturally falls back to buffered copying as that's what the direct
+splice path does for sendfile() today.
+
+So that's what this patch series demonstrates.  It adds a flag that
+lets splice get at the same direct splicing that sendfile() does.
+We then add a file system file_operations method to accelerate the
+copy which has access to both files.
+
+Some things to talk about:
+- I really don't care about the naming here.  If you do, holler.
+- We might want different flags for file-to-file splicing and acceleration
+- We might want flags to require or forbid acceleration
+- We might want to provide all these flags to sendfile, too
+
+Thoughts?  Objections?
+
+Bryan, do you see any problems with wiring the NFS COPY RPC under this?
+
+Martin, are we any closer to getting blk_() calls to kick off XCOPY
+bios?
+
+OCFS2 friends, is it a managable amount of work to implement an
+ocfs2_splice_direct() that only modifies a region of the destination
+file?
+
+Finally, there's a slot in the plumbers schedule next week to talk
+about this stuff. Come say hi if you're interested.
+
+-z
+
