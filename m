@@ -1,104 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailout2.samsung.com ([203.254.224.25]:62624 "EHLO
-	mailout2.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750710Ab3I0CVe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 22:21:34 -0400
-Received: from epcpsbgr5.samsung.com
- (u145.gpu120.samsung.co.kr [203.254.230.145])
- by mailout2.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0MTR004ZOIJKMII0@mailout2.samsung.com> for
- linux-nfs@vger.kernel.org; Fri, 27 Sep 2013 11:21:33 +0900 (KST)
-Date: Fri, 27 Sep 2013 02:21:33 +0000 (GMT)
-From: Jongman Heo <jongman.heo@samsung.com>
-Subject: Re: Re: Re: Re: Regression caused by commit 4bdc33ed
- ("NFSDv4.2: Add NFS v4.2 support to the NFS server")
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Reply-to: jongman.heo@samsung.com
-MIME-version: 1.0
-Content-type: text/plain; charset=utf-8
-MIME-version: 1.0
-Message-id: <15262316.12141380248492298.JavaMail.weblogic@epml04>
+Received: from fieldses.org ([174.143.236.118]:51511 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753099Ab3ILQD0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Sep 2013 12:03:26 -0400
+Date: Thu, 12 Sep 2013 12:03:24 -0400
+To: linux-fsdevel@vger.kernel.org
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        sandeen@redhat.com
+Subject: why is i_ino unsigned long, anyway?
+Message-ID: <20130912160324.GE1462@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGksDQoNCj4NCj4tLS0tLS0tIE9yaWdpbmFsIE1lc3NhZ2UgLS0tLS0tLQ0KPlNlbmRlciA6IEou
-IEJydWNlIEZpZWxkczxiZmllbGRzQGZpZWxkc2VzLm9yZz4NCj5EYXRlIDogMjAxMy0wOS0yNyAx
-MDoxMiAoR01UKzA5OjAwKQ0KPlRpdGxlIDogUmU6IFJlOiBSZTogUmVncmVzc2lvbiBjYXVzZWQg
-YnkgY29tbWl0IDRiZGMzM2VkICgiTkZTRHY0LjI6IEFkZCBORlMgdjQuMiBzdXBwb3J0IHRvIHRo
-ZSBORlMgc2VydmVyIikNCj4NCj5PbiBUaHUsIFNlcCAyNiwgMjAxMyBhdCAxMTo1Nzo1N1BNICsw
-MDAwLCBKb25nbWFuIEhlbyB3cm90ZToNCj4+ID4tLS0tLS0tIE9yaWdpbmFsIE1lc3NhZ2UgLS0t
-LS0tLQ0KPj4gPlNlbmRlciA6IEouIEJydWNlIEZpZWxkcw0KPj4gPlRoaXMgaXMgcHJldHR5IHdl
-aXJkLS1pdCdzIG5vdCBhdCBhbGwgb2J2aW91cyBob3cgdGhhdCBwYXRjaCB3b3VsZA0KPj4gPmFm
-ZmVjdCB0aGlzLg0KPj4gPg0KPj4gPllvdSdyZSBhYnNvbHV0ZWx5IHBvc2l0aXZlIHRoYXQgdGhl
-ICpvbmx5KiB0aGluZyB5b3UncmUgY2hhbmdpbmcgb24gdGhlDQo+PiA+c2VydmVyIGJldHdlZW4g
-dGhlICJnb29kIiBhbmQgImJhZCIgY2FzZXMgaXMgdGhhdCBvbmUga2VybmVsIHBhdGNoPw0KPj4g
-PllvdSdyZSBub3QgY2hhbmdpbmcgYW55dGhpbmcgaW4gdXNlcnNwYWNlPw0KPj4gPg0KPj4gDQo+
-PiBZZXMsIHByZXR0eSBzdXJlLg0KPj4gDQo+PiA+V2hhdCBkb2VzICJjYXQgL3Byb2MvZnMvbmZz
-ZC92ZXJzaW9ucyIgcmVwb3J0IGluIHRoZSBnb29kIGFuZCBiYWQgY2FzZXM/DQo+PiA+DQo+PiA+
-KEJUVywgb3V0IG9mIGN1cmlvc2l0eTogd2hhdCBraW5kIG9mIGNsaWVudCBpcyB0aGlzIHRoYXQg
-b25seSBzdXBwb3J0cw0KPj4gPk5GU3YyIGFuZCBORlN2Mz8gIEV2ZW4gZm9yIGFuIGVtYmVkZGVk
-IHN5c3RlbSB0aGF0J3MgYSBiaXQgc3VycHJpc2luZy4pDQo+PiA+DQo+PiA+LS1iLg0KPj4gPg0K
-Pj4gDQo+PiBIZXJlIGFyZSAvcHJvYy9mcy9uZnNkL3ZlcnNpb25zIGluZm9ybWF0aW9uIGZvciBn
-b29kIGFuZCBiYWQgY2FzZXMgOw0KPj4gDQo+PiBnb29kIChjb21taXQgNGJkYzMzZWQgcmV2ZXJ0
-ZWQpDQo+PiANCj4+ICMgY2F0IC9wcm9jL2ZzL25mc2QvdmVyc2lvbnMgDQo+PiArMiArMyArNCAr
-NC4xDQo+PiANCj4+IA0KPj4gYmFkIChjdXJyZW50IGxpbnVzIGdpdCkNCj4+IA0KPj4gIyBjYXQg
-L3Byb2MvZnMvbmZzZC92ZXJzaW9ucyAgDQo+PiAtMiArMyArNCArNC4xIC00LjINCj4+IA0KPj4g
-DQo+PiBJIGRvbid0IGtub3cgd2h5IHRoZSBjb21taXQgNGJkYzMzZWQgbWFrZXMgdGhpcyBkaWZm
-ZXJlbmNlICggZnJvbSArMiB0byAtMiApLg0KPj4gDQo+PiBNeSBORlMgc2VydmVyIGp1c3QgdXNl
-cyBGZWRvcmEgMTkgKyBsYXRlc3Qga2VybmVsICh3aGljaCBpcyBub3QgYSByYXJlIHNldHVwLi4u
-KSwgDQo+DQo+VGhlIHRoaW5nIGlzLCBuZnMtdXRpbHMgKmRpZCogbWFrZSBleGFjdGx5IHRoaXMg
-Y2hhbmdlIHdpdGggY29tbWl0DQo+NmI0ZTQ5NjVhNmI4MmU4ZDQ5Y2VhMWMwMzE2Yjk1MWJhNGU5
-ZTgzZSAicnBjLm5mc2Q6IE5vIGxvbmdlciBhZHZlcnRpc2UNCj5ORlMgdjIgc3VwcG9ydC4iIGlu
-IDEuMi45LXJjNCB3aGljaCBlbnRlcmVkIGYxOSByZWNlbnRseS4gIEFuZCB0aGF0DQo+a2VybmVs
-IGNvbW1pdCBkb2Vzbid0IGxvb2sgcmVsYXRlZC4gIFNvIEkgc3Ryb25nbHkgc3VzcGVjdCB0aGF0
-IHlvdSBnb3QNCj50aGUgbmZzLXV0aWxzIHVwZGF0ZSAob3IgcmVib290ZWQgYWZ0ZXIgdGhlIHVw
-ZGF0ZSkgYXQgdGhlIHNhbWUgdGltZSBhcw0KPmJpc2VjdGluZywgYW5kIHRoYXQgY29uZnVzZWQg
-dGhlIGJpc2VjdCByZXN1bHRzLg0KPg0KDQpObywgSSBoYXZlbid0IGNoYW5nZWQvdXBncmFkZWQg
-bmZzLXV0aWxzIHBhY2thZ2UgZHVyaW5nIGdpdCBiaXNlY3QuDQpBbmQgSSBjYW4gc3RpbGwgcmVw
-cm9kdWNlIHRoZSBpc3N1ZS4NCg0KIyBycG0gLXFhfGdyZXAgbmZzLXV0aWxzDQpuZnMtdXRpbHMt
-MS4yLjgtNC4wLmZjMTkuaTY4Ng0KDQojIHJwbSAtcSAtLWNoYW5nZWxvZyBuZnMtdXRpbHN8aGVh
-ZCAtNg0KKiBNb24gQXVnIDE5IDIwMTMgU3RldmUgRGlja3NvbiA8c3RldmVkQHJlZGhhdC5jb20+
-IDEuMi44LTQuMA0KLSBVcGRhdGVkIHRvIGxhdGVzdCB1cHN0cmVhbSBSQyByZWxlYXNlOiBuZnMt
-dXRpbHMtMS0yLTktcmM0DQoNCiogVHVlIEp1bCAyMyAyMDEzIFN0ZXZlIERpY2tzb24gPHN0ZXZl
-ZEByZWRoYXQuY29tPiAxLjIuOC0zLjANCi0gVXBkYXRlZCB0byBsYXRlc3QgdXBzdHJlYW0gUkMg
-cmVsZWFzZTogbmZzLXV0aWxzLTEtMi05LXJjMw0KDQpBcyB5b3Ugbm90aWNlZCwgMS4yLjktcmM0
-IGlzIGFwcGxpZWQgdG8gRmVkb3JhIDE5J3MgbmZzLXV0aWxzIHdoYXQgSSdtIHVzaW5nLi4uDQoN
-CldpdGggdGhlIG5mcy11dGlscywgcmV2ZXJ0aW5nIHRoZSBjb21taXQgbWFrZXMgZGlmZmVyZW5j
-ZSB0byBtZS4NCg0KDQpBbm90aGVyIHdvcmthcm91bmQgZnJvbSB1c2VyLXNwYWNlIChpbnN0ZWFk
-IG9mIHJldmVydCkgd29ya3MgZm9yIG1lLg0KDQpMYXRlc3QgbGludXMgZ2l0IGdpdmVzIGZvbGxv
-d2luZyBORlMgdmVyc2lvbiBzdXBwb3J0ICh3aXRoIG15IHNlcnZlcidzIC5jb25maWcpLg0KDQog
-ICMgY2F0IC9wcm9jL2ZzL25mc2QvdmVyc2lvbnMgDQogIC0yICszICs0ICs0LjEgLTQuMg0KDQpJ
-J3ZlIGNoYW5nZWQgL2V0Yy9zeXNjb25maWcvbmZzIGZpbGUgYXMgZm9sbG93aW5nIGRpZmYgOw0K
-DQpAQCAtMTAsNyArMTAsNyBAQA0KICNMT0NLRF9VRFBQT1JUPTMyNzY5DQogIw0KICMgT3B0aW9u
-YWwgYXJndW1lbnRzIHBhc3NlZCB0byBycGMubmZzZC4gU2VlIHJwYy5uZnNkKDgpDQotUlBDTkZT
-REFSR1M9IiINCitSUENORlNEQVJHUz0iLVYgMiINCg0KDQpUaGVuLiBydW4gbmZzIHNlcnZlciBh
-Z2Fpbi4uLg0KDQojIHN5c3RlbWN0bCByZXN0YXJ0IG5mcy1zZXJ2ZXIuc2VydmljZQ0KIyBjYXQg
-L3Byb2MvZnMvbmZzZC92ZXJzaW9ucyANCisyICszICs0ICs0LjEgLTQuMg0KDQpOb3cgTkZTIGJv
-b3QgaXMgd29ya2luZy4gDQpBY3R1YWxseSBJJ20gT0sgd2l0aCB0aGlzLCBzaW5jZSBORlMgYm9v
-dCBpcyBqdXN0IHVzZWQgZm9yIGRlYnVnZ2luZyBwdXJwb3NlLCBub3QgZm9yIHByb2R1Y3Rpb24g
-dXNlLCBpbiBteSBjYXNlLg0KDQoNCkZZSSwgaW4gb3RoZXIgTGludXggbWFjaGluZSAoVWJ1bnR1
-IDEyLjA0KSwgbmZzLXV0aWxzIHZlcnNpb24gaXMgIjEuMi41LTN1YnVudHUzLjEiLCBhbmQgdGhl
-IGtlcm5lbCBjb21taXQgZG9lc24ndCBjYXVzZSBORlMgdjIgc3VwcG9ydCBpc3N1ZS4NCg0KIyBj
-YXQgL3Byb2MvZnMvbmZzZC92ZXJzaW9ucw0KKzIgKzMgKzQgKzQuMSAtNC4yDQoNClNvLCB0aGUg
-Y2hhbmdlIGluIG5mcy11dGlscyAxLjIuOS1yYzQgc2VlbXMgdG8gYmUgdGhlIHJvb3QgY2F1c2Us
-IGJ1dCBJIGRvbid0IGtub3cgd2h5IHRoZSBrZXJuZWwgY29tbWl0IHJldmVydCByZXNvbHZlcyB0
-aGUgaXNzdWUuDQoNCj4+IHNvIEkgdGhpbmsgc29tZSBwZW9wbGUgY2FuIHZlcmlmeSBpZiB0aGlz
-IHZlcnNpb24gaW5mb3JtYXRpb24gY2hhbmdlIGhhcHBlbnMgdy8gYW5kIHcvbyB0aGUgY29tbWl0
-IHJldmVydC4NCj4+IA0KPj4gRG9uJ3Qga25vdyB0aGUgZGV0YWlsIG9mIE5GUyBwcm90b2NvbCwg
-YnV0IG91ciBORlMgY2xpZW50IHNlZW1zIG5vdCB0byB0cnkgd2l0aCB2MyBhbmQgdjQgaW4gY2Fz
-ZSB2MiBmYWlscy4uLg0KPj4gSXMgdGhpcyBhbiB1bmV4cGVjdGVkIChidWdneSkgYmVoYXZpb3Ig
-b2YgbXkgb2xkIGVtYmVkZGVkIGJveCAoTkZTIGNsaWVudCBvZiBrZXJuZWwgMi42LjM1KSwgb3Ig
-ZXhwZWN0ZWQgb25lIGZyb20gdGhlIE5GUyBwcm90b2NvbD8NCj4NCj5EaWdnaW5nIGludG8gYSBo
-aXN0b3JpY2FsIGdpdCByZXBvIGp1c3QgZm9yIGZ1bi4uLi4gSXQgbG9va3MgbGlrZSBORlN2Mw0K
-PnN1cHBvcnQgd2FzIGFkZGVkIGluIDIuMy45OXByZTQtMywgcHJvYmFibHkgaW4gMjAwMD8gIChU
-aGUgZGF0ZSBvbiB0aGF0DQo+Y29tbWl0IGlzIDIwMDcsIHNvIG9idmlvdXNseSB0aGlzIHJlcG8g
-SSBoYXZlIGlzIHZlcnkgY29uZnVzZWQuICBNYXliZSBJDQo+c2hvdWxkIGdvIGZpbmQgaWYgdGhl
-cmUncyBhIGJldHRlciBvbmUgc29tZXBsYWNlLikNCj4NCj5TbyBhbnl3YXkgaXQncyBlaXRoZXIg
-Y29uZmlndXJlZCBvdXQgb2YgdGhlIGtlcm5lbCBvciB0aGUgbW91bnQNCj5jb21tYW5kbGluZSdz
-IGFza2luZyBmb3IgdjIsIG9yIEkgZG9uJ3Qga25vdyB3aGF0Li4uLg0KPg0KPi0tYi4NCj4NCg0K
-VGhhbmtzLA0KSm9uZ21hbiBIZW8u
+Somebody noticed an "ls -l" over nfs failing on entries with inode
+numbers greater than 2^32 on a 32-bit NFS server.  The cause is some
+code that tries to compare i_ino to the full 64-bit inode number.
 
+I think the following will fix it, but I'm curious: why is i_ino
+"unsigned long", anyway?  Is there something know that depends on that,
+or is it just that the sheer number of users makes it too scary to
+change?
 
+--b.
+
+commit 0cc784eb430285535ae7a79dd5133ab66e9ce839
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Tue Sep 10 11:41:12 2013 -0400
+
+    exportfs: fix 32-bit nfsd handling of 64-bit inode numbers
+    
+    Symptoms were spurious -ENOENTs on stat of an NFS filesystem from a
+    32-bit NFS server exporting a very large XFS filesystem, when the
+    server's cache is cold (so the inodes in question are not in cache).
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
+index 293bc2e..6a79bb8 100644
+--- a/fs/exportfs/expfs.c
++++ b/fs/exportfs/expfs.c
+@@ -215,7 +215,7 @@ struct getdents_callback {
+ 	struct dir_context ctx;
+ 	char *name;		/* name that was found. It already points to a
+ 				   buffer NAME_MAX+1 is size */
+-	unsigned long ino;	/* the inum we are looking for */
++	u64 ino;		/* the inum we are looking for */
+ 	int found;		/* inode matched? */
+ 	int sequence;		/* sequence counter */
+ };
+@@ -255,10 +255,10 @@ static int get_name(const struct path *path, char *name, struct dentry *child)
+ 	struct inode *dir = path->dentry->d_inode;
+ 	int error;
+ 	struct file *file;
++	struct kstat stat;
+ 	struct getdents_callback buffer = {
+ 		.ctx.actor = filldir_one,
+ 		.name = name,
+-		.ino = child->d_inode->i_ino
+ 	};
+ 
+ 	error = -ENOTDIR;
+@@ -268,6 +268,16 @@ static int get_name(const struct path *path, char *name, struct dentry *child)
+ 	if (!dir->i_fop)
+ 		goto out;
+ 	/*
++	 * inode->i_ino is unsigned long, kstat->ino is u64, so the
++	 * former would be insufficient on 32-bit hosts when the
++	 * filesystem supports 64-bit inode numbers.  So we need to
++	 * actually call ->getattr, not just read i_ino:
++	 */
++	error = vfs_getattr(path, &stat);
++	if (error)
++		return error;
++	buffer.ino = stat.ino;
++	/*
+ 	 * Open the directory ...
+ 	 */
+ 	file = dentry_open(path, O_RDONLY, cred);
