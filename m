@@ -1,129 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45449 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756941Ab3IKUDW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Sep 2013 16:03:22 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 09/13] locks: helper functions for delegation breaking
-Date: Wed, 11 Sep 2013 16:03:15 -0400
-Message-Id: <1378929799-1110-10-git-send-email-bfields@redhat.com>
-In-Reply-To: <1378929799-1110-1-git-send-email-bfields@redhat.com>
-References: <1378929799-1110-1-git-send-email-bfields@redhat.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:38115 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752753Ab3ILTda (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Sep 2013 15:33:30 -0400
+Date: Thu, 12 Sep 2013 20:33:28 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        sandeen@redhat.com
+Subject: Re: why is i_ino unsigned long, anyway?
+Message-ID: <20130912193328.GP13318@ZenIV.linux.org.uk>
+References: <20130912160324.GE1462@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130912160324.GE1462@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Thu, Sep 12, 2013 at 12:03:24PM -0400, J. Bruce Fields wrote:
+> Somebody noticed an "ls -l" over nfs failing on entries with inode
+> numbers greater than 2^32 on a 32-bit NFS server.  The cause is some
+> code that tries to compare i_ino to the full 64-bit inode number.
+> 
+> I think the following will fix it, but I'm curious: why is i_ino
+> "unsigned long", anyway?  Is there something know that depends on that,
+> or is it just that the sheer number of users makes it too scary to
+> change?
 
-We'll need the same logic for rename and link.
+i_ino use is entirely up to filesystem; it may be used by library helpers,
+provided that the choice of using or not using those is, again, up to
+filesystem in question.  NFSD has no damn business looking at it; library
+helpers in fs/exportfs might, but that makes them not suitable for use
+by filesystems without inode numbers or with 64bit ones.
 
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/namei.c         |   13 +++----------
- include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
- 2 files changed, 34 insertions(+), 12 deletions(-)
+The reason why it's there at all is that it serves as convenient icache
+search key for many filesystems.  IOW, it's used by iget_locked() and
+avoiding the overhead of 64bit comparisons on 32bit hosts is the main
+reason to avoid making it u64.
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 14a00d9..fd92b19 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3678,14 +3678,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
- 	else {
- 		error = security_inode_unlink(dir, dentry);
- 		if (!error) {
--			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
--			if (error) {
--				if (error == -EWOULDBLOCK && delegated_inode) {
--					*delegated_inode = target;
--					ihold(target);
--				}
-+			error = try_break_deleg(target, delegated_inode);
-+			if (error)
- 				goto out;
--			}
- 			error = dir->i_op->unlink(dir, dentry);
- 			if (!error)
- 				dont_mount(dentry);
-@@ -3755,9 +3750,7 @@ exit2:
- 		iput(inode);	/* truncate the inode here */
- 	inode = NULL;
- 	if (delegated_inode) {
--		error = break_deleg(delegated_inode, O_WRONLY);
--		iput(delegated_inode);
--		delegated_inode = NULL;
-+		error = break_deleg_wait(&delegated_inode);
- 		if (!error)
- 			goto retry_deleg;
- 	}
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index b008bff..db8e5ab 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1911,6 +1911,9 @@ extern bool fs_fully_visible(struct file_system_type *);
- 
- extern int current_umask(void);
- 
-+extern void ihold(struct inode * inode);
-+extern void iput(struct inode *);
-+
- /* /sys/fs */
- extern struct kobject *fs_kobj;
- 
-@@ -1978,6 +1981,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
- 	return 0;
- }
- 
-+static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
-+{
-+	int ret;
-+
-+	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
-+	if (ret == -EWOULDBLOCK && delegated_inode) {
-+		*delegated_inode = inode;
-+		ihold(inode);
-+	}
-+	return ret;
-+}
-+
-+static inline int break_deleg_wait(struct inode **delegated_inode)
-+{
-+	int ret;
-+
-+	ret = break_deleg(*delegated_inode, O_WRONLY);
-+	iput(*delegated_inode);
-+	*delegated_inode = NULL;
-+	return ret;
-+}
-+
- #else /* !CONFIG_FILE_LOCKING */
- static inline int locks_mandatory_locked(struct inode *inode)
- {
-@@ -2021,6 +2046,12 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
- {
- 	return 0;
- }
-+
-+static inline int try_break_deleg(struct inode *inode, struct delegated_inode **inode)
-+{
-+	return 0;
-+}
-+
- #endif /* CONFIG_FILE_LOCKING */
- 
- /* fs/open.c */
-@@ -2350,8 +2381,6 @@ extern loff_t vfs_llseek(struct file *file, loff_t offset, int whence);
- extern int inode_init_always(struct super_block *, struct inode *);
- extern void inode_init_once(struct inode *);
- extern void address_space_init_once(struct address_space *mapping);
--extern void ihold(struct inode * inode);
--extern void iput(struct inode *);
- extern struct inode * igrab(struct inode *);
- extern ino_t iunique(struct super_block *, ino_t);
- extern int inode_needs_sync(struct inode *inode);
--- 
-1.7.9.5
-
+Again, no fs-independent code has any business looking at it, 64bit or
+not.  From the VFS point of view there is no such thing as inode number.
+And get_name() is just a library helper.  For many fs types it works
+as suitable ->s_export_op->get_name() instance, but decision to use it
+or not belongs to filesystem in question and frankly, it's probably better
+to provide an instance of your own anyway.
