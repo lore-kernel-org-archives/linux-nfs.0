@@ -1,70 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43916 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:27962 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755108Ab3I3SEG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Sep 2013 14:04:06 -0400
-Date: Mon, 30 Sep 2013 14:04:00 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Michael Gliwinski <Michael.Gliwinski@henderson-group.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: gss context cache
-Message-ID: <20130930140400.71637e95@corrin.poochiereds.net>
-In-Reply-To: <20130930150013.GH16579@fieldses.org>
-References: <1702585.AG7n1MCr0K@hgis96>
-	<20130930100000.70578c80@tlielax.poochiereds.net>
-	<20130930150013.GH16579@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1751458Ab3ILOWi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Sep 2013 10:22:38 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Geert Uytterhoeven <geert@linux-m68k.org>
+CC: "Eric W. Biederman" <ebiederm@xmission.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] sunrpc: Add missing kuids conversion for printing
+Date: Thu, 12 Sep 2013 14:22:36 +0000
+Message-ID: <1378995755.3117.10.camel@leira.trondhjem.org>
+References: <1378991379-9106-1-git-send-email-geert@linux-m68k.org>
+In-Reply-To: <1378991379-9106-1-git-send-email-geert@linux-m68k.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 30 Sep 2013 11:00:13 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Mon, Sep 30, 2013 at 10:00:00AM -0400, Jeff Layton wrote:
-> > On Mon, 30 Sep 2013 13:06:47 +0100
-> > Michael Gliwinski <Michael.Gliwinski@henderson-group.com> wrote:
-> > 
-> > > Hi all,
-> > > 
-> > > On RHEL6 nfs-utils-1.2.3-36
-> > > 
-> > > man rpc.gssd says it -t wasn't specified then kernel gss contexts will be 
-> > > cached for the lifettime of the Kerberos service ticket used in its creation.  
-> > > Is there a way to see the contexts + service tickets in that cache?
-> > > 
-> > 
-> > No, AFAIK.
-> > 
-> > > Also, is there any way short of rebooting the client to evict one entry from 
-> > > that cache, or even clear the cache entirely?
-> > > 
-> > 
-> > There is a gss_destroy_creds script which ships as part of nfs-utils.
-> > That should basically do what you need, but it's not well-documented so
-> > you'll have to play with it some...
-> 
-> My memory is that depended on some undocumented feature of the upcall
-> since removed.  (Maybe the ability to send a downcall that isn't a
-> response to some upcall?)  But I may be misremembering.  Somebody should
-> probably check and remove that script (and gss_cltn_send_err) if I'm
-> right.
-> 
-
-That appears to be correct. gss_clnt_send_err just does an unsolicited
-downcall to the given clnt directory for a given uid. AFAICT, that
-functionality was ripped out by this commit:
-
-    commit 3b68aaeaf54065e5c44583a1d33ffb7793953ba4
-    Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-    Date:   Thu Jun 7 10:14:15 2007 -0400
-
-        SUNRPC: Always match an upcall message in gss_pipe_downcall()
-    
-...so Bruce appears to be correct and this command no longer serves any
-purpose. I'll spin up a patch to remove it.
-
-Michael, you can disregard my earlier suggestion to use it....
--- 
-Jeff Layton <jlayton@redhat.com>
+T24gVGh1LCAyMDEzLTA5LTEyIGF0IDE1OjA5ICswMjAwLCBHZWVydCBVeXR0ZXJob2V2ZW4gd3Jv
+dGU6DQo+IG02OGsvYWxsbW9kY29uZmlnOg0KPiANCj4gbmV0L3N1bnJwYy9hdXRoX2dlbmVyaWMu
+YzogSW4gZnVuY3Rpb24g4oCYZ2VuZXJpY19rZXlfdGltZW91dOKAmToNCj4gbmV0L3N1bnJwYy9h
+dXRoX2dlbmVyaWMuYzoyNDE6IHdhcm5pbmc6IGZvcm1hdCDigJglZOKAmSBleHBlY3RzIHR5cGUg
+4oCYaW504oCZLCBidXQNCj4gYXJndW1lbnQgMiBoYXMgdHlwZSDigJhrdWlkX3TigJkNCj4gDQo+
+IGNvbW1pdCBjZGJhMzIxZTI5MWYwZmJmNWFiZGE0ZDg4MzQwMjkyYjg1OGUzZDRkICgic3VucnBj
+OiBDb252ZXJ0IGt1aWRzIGFuZA0KPiBrZ2lkcyB0byB1aWRzIGFuZCBnaWRzIGZvciBwcmludGlu
+ZyIpIGZvcmdvdCB0byBjb252ZXJ0IG9uZSBpbnN0YW5jZS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6
+IEdlZXJ0IFV5dHRlcmhvZXZlbiA8Z2VlcnRAbGludXgtbTY4ay5vcmc+DQo+IC0tLQ0KDQpUaGFu
+a3MhIEFwcGxpZWQuLi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
+bWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0
+YXBwLmNvbQ0K
