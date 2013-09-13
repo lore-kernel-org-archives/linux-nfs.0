@@ -1,59 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:44748 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754304Ab3ICQMM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Sep 2013 12:12:12 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 5 3/5] SUNRPC new rpc_credops to test credential
- expiry
-Date: Tue, 3 Sep 2013 16:12:10 +0000
-Message-ID: <1378224730.6410.7.camel@leira.trondhjem.org>
-References: <1376495957-7482-1-git-send-email-andros@netapp.com>
-	 <1376495957-7482-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1376495957-7482-4-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-bk0-f47.google.com ([209.85.214.47]:61325 "EHLO
+	mail-bk0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751576Ab3IMEmj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Sep 2013 00:42:39 -0400
+Message-ID: <52329471.7050001@gmail.com>
+Date: Fri, 13 Sep 2013 06:28:33 +0200
+From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
 MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: mtk.manpages@gmail.com, linux-nfs@vger.kernel.org,
+        linux-man@vger.kernel.org
+Subject: Re: [PATCH] access: fix outdated NFS information
+References: <20130911202210.GB1462@fieldses.org>
+In-Reply-To: <20130911202210.GB1462@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEzLTA4LTE0IGF0IDExOjU5IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFRoaXMg
-cGF0Y2ggcHJvdmlkZXMgdGhlIFJQQyBsYXllciBoZWxwZXIgZnVuY3Rpb25zIHRvIGFsbG93IE5G
-UyB0byBtYW5hZ2UNCj4gZGF0YSBpbiB0aGUgZmFjZSBvZiBleHBpcmVkIGNyZWRlbnRpYWxzIC0g
-c3VjaCBhcyBhdm9pZGluZyBidWZmZXJlZCBXUklURXMNCj4gYW5kIENPTU1JVHMgd2hlbiB0aGUg
-Z3NzIGNvbnRleHQgd2lsbCBleHBpcmUgYmVmb3JlIHRoZSBXUklURXMgYXJlIGZsdXNoZWQNCj4g
-YW5kIENPTU1JVHMgYXJlIHNlbnQuDQo+IA0KPiBUaGVzZSBoZWxwZXIgZnVuY3Rpb25zIGVuYWJs
-ZSBjaGVja2luZyB0aGUgZXhwaXJhdGlvbiBvZiBhbiB1bmRlcmx5aW5nDQo+IGNyZWRlbnRpYWwg
-a2V5IGZvciBhIGdlbmVyaWMgcnBjIGNyZWRlbnRpYWwsIGUuZy4gdGhlIGdzc19jcmVkIGdzcyBj
-b250ZXh0DQo+IGdjX2V4cGlyeSB3aGljaCBmb3IgS2VyYmVyb3MgaXMgc2V0IHRvIHRoZSByZW1h
-aW5pbmcgVEdUIGxpZmV0aW1lLg0KPiANCj4gQSBuZXcgcnBjX2F1dGhvcHMga2V5X3RpbWVvdXQg
-aXMgb25seSBkZWZpbmVkIGZvciB0aGUgZ2VuZXJpYyBhdXRoLg0KPiBBIG5ldyBycGNfY3JlZG9w
-cyBjcmtleV90b19leHBpcmUgaXMgb25seSBkZWZpbmVkIGZvciB0aGUgZ2VuZXJpYyBjcmVkLg0K
-PiBBIG5ldyBycGNfY3JlZG9wcyBjcmtleV90aW1lb3V0IGlzIG9ubHkgZGVmaW5lZCBmb3IgdGhl
-IGdzcyBjcmVkLg0KPiANCj4gU2V0IGEgY3JlZGVudGlhbCBrZXkgZXhwaXJ5IHdhdGVybWFyaywg
-UlBDX0tFWV9FWFBJUkVfVElNRU8gc2V0IHRvIDI0MCBzZWNvbmRzDQo+IGFzIGEgZGVmYXVsdCBh
-bmQgY2FuIGJlIHNldCB2aWEgYSBtb2R1bGUgcGFyYW1ldGVyIGFzIHdlIG5lZWQgdG8gZW5zdXJl
-IHRoZXJlDQo+IGlzIHRpbWUgZm9yIGFueSBkaXJ0eSBkYXRhIHRvIGJlIGZsdXNoZWQuDQo+IA0K
-PiBJZiBrZXlfdGltZW91dCBpcyBjYWxsZWQgb24gYSBjcmVkZW50aWFsIHdpdGggYW4gdW5kZXJs
-eWluZyBjcmVkZW50aWFsIGtleSB0aGF0DQo+IHdpbGwgZXhwaXJlIHdpdGhpbiB3YXRlcm1hcmsg
-c2Vjb25kcywgd2Ugc2V0IHRoZSBSUENfQ1JFRF9LRVlfRVhQSVJFX1NPT04NCj4gZmxhZyBpbiB0
-aGUgZ2VuZXJpY19jcmVkIGFjcmVkIHNvIHRoYXQgdGhlIE5GUyBsYXllciBjYW4gY2xlYW4gdXAg
-cHJpb3IgdG8NCj4ga2V5IGV4cGlyYXRpb24uDQo+IA0KPiBDaGVja2luZyBhIGdlbmVyaWMgY3Jl
-ZGVudGlhbCdzIHVuZGVybHlpbmcgY3JlZGVudGlhbCBpbnZvbHZlcyBhIGNyZWQgbG9va3VwLg0K
-PiBUbyBhdm9pZCB0aGlzIGxvb2t1cCBpbiB0aGUgbm9ybWFsIGNhc2Ugd2hlbiB0aGUgdW5kZXJs
-eWluZyBjcmVkZW50aWFsIGhhcw0KPiBhIGtleSB0aGF0IGlzIHZhbGlkIChiZWZvcmUgdGhlIHdh
-dGVybWFyayksIGEgbm90aWZ5IGZsYWcgaXMgc2V0IGluDQo+IHRoZSBnZW5lcmljIGNyZWRlbnRp
-YWwgdGhlIGZpcnN0IHRpbWUgdGhlIGtleV90aW1lb3V0IGlzIGNhbGxlZC4gVGhlDQo+IGdlbmVy
-aWMgY3JlZGVudGlhbCB0aGVuIHN0b3BzIGNoZWNraW5nIHRoZSB1bmRlcmx5aW5nIGNyZWRlbnRp
-YWwga2V5IGV4cGlyeSwgYW5kDQo+IHRoZSB1bmRlcmx5aW5nIGNyZWRlbnRpYWwgKGdzc19jcmVk
-KSBtYXRjaCByb3V0aW5lIHRoZW4gY2hlY2tzIHRoZSBrZXkNCj4gZXhwaXJhdGlvbiB1cG9uIGVh
-Y2ggbm9ybWFsIHVzZSBhbmQgc2V0cyBhIGZsYWcgaW4gdGhlIGFzc29jaWF0ZWQgZ2VuZXJpYw0K
-PiBjcmVkZW50aWFsIG9ubHkgd2hlbiB0aGUga2V5IGV4cGlyYXRpb24gaXMgd2l0aGluIHRoZSB3
-YXRlcm1hcmsuDQo+IFRoaXMgaW4gdHVybiBzaWduYWxzIHRoZSBnZW5lcmljIGNyZWRlbnRpYWwg
-a2V5X3RpbWVvdXQgdG8gcGVyZm9ybSB0aGUgZXh0cmENCj4gY3JlZGVudGlhbCBsb29rdXAgdGhl
-cmVhZnRlci4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFw
-cC5jb20+DQo+IC0tLQ0KDQpBcHBsaWVkLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
-TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
-b20NCnd3dy5uZXRhcHAuY29tDQo=
+On 11.09.2013 22:22, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> Note that NFS versions since version 3 support an "access" call so that
+> the client doesn't have to guess permissions or id mapping on its own.
+> 
+> (See rfc 1813 sections 1.7 and 3.3.4.)
+
+Thanks, Bruce. Applied.
+
+Cheers,
+
+Michael
+
+
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  man2/access.2 |    5 +++--
+>  1 file changed, 3 insertions(+), 2 deletions(-)
+> 
+> diff --git a/man2/access.2 b/man2/access.2
+> index 6df68de..3bacab1 100644
+> --- a/man2/access.2
+> +++ b/man2/access.2
+> @@ -209,9 +209,10 @@ Similarly, a DOS file may be found to be "executable," but the
+>  call will still fail.
+>  .PP
+>  .BR access ()
+> -may not work correctly on NFS filesystems with UID mapping enabled,
+> +may not work correctly on NFSv2 filesystems with UID mapping enabled,
+>  because UID mapping is done on the server and hidden from the client,
+> -which checks permissions.
+> +which checks permissions.  (NFS versions 3 and higher perform the check on
+> +the server.)
+>  Similar problems can occur to FUSE mounts.
+>  .SH BUGS
+>  In kernel 2.4 (and earlier) there is some strangeness in the handling of
+> 
+
