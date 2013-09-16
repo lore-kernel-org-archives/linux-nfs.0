@@ -1,152 +1,165 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:43487 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752862Ab3IEC7B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Sep 2013 22:59:01 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 3/3] SUNRPC: Replace pointer values with task->tk_pid and rpc_clnt->cl_clid
-Date: Wed, 4 Sep 2013 22:58:40 -0400
-Message-ID: <1378349920-31206-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1378349920-31206-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1378349920-31206-1-git-send-email-Trond.Myklebust@netapp.com>
- <1378349920-31206-2-git-send-email-Trond.Myklebust@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from relay4-d.mail.gandi.net ([217.70.183.196]:33312 "EHLO
+	relay4-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751347Ab3IPW4U convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Sep 2013 18:56:20 -0400
+Date: Mon, 16 Sep 2013 17:56:12 -0500
+From: Contact <contact@ryper.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: 16+ GID issue, mountd's --manage-gids not helping
+Message-ID: <20130916175612.012d7301@svelte.ryper.org>
+In-Reply-To: <20130916193709.GA25308@fieldses.org>
+References: <20130916094351.263d433d@svelte.ryper.org>
+	<20130916193709.GA25308@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of the pointer values, use the task and client identifier values
-for tracing purposes.
+Hello,
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- include/trace/events/sunrpc.h | 50 ++++++++++++++++++++++---------------------
- 1 file changed, 26 insertions(+), 24 deletions(-)
+I was assuming it would grab all of my GIDs as it appears to do in the
+following link:
+https://xkyle.com/solving-the-nfs-16-group-limit-problem/
 
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index b74a8ac..d51d16c 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -17,18 +17,20 @@ DECLARE_EVENT_CLASS(rpc_task_status,
- 	TP_ARGS(task),
- 
- 	TP_STRUCT__entry(
--		__field(const struct rpc_task *, task)
--		__field(const struct rpc_clnt *, clnt)
-+		__field(unsigned int, task_id)
-+		__field(unsigned int, client_id)
- 		__field(int, status)
- 	),
- 
- 	TP_fast_assign(
--		__entry->task = task;
--		__entry->clnt = task->tk_client;
-+		__entry->task_id = task->tk_pid;
-+		__entry->client_id = task->tk_client->cl_clid;
- 		__entry->status = task->tk_status;
- 	),
- 
--	TP_printk("task:%p@%p, status %d",__entry->task, __entry->clnt, __entry->status)
-+	TP_printk("task:%u@%u, status %d",
-+		__entry->task_id, __entry->client_id,
-+		__entry->status)
- );
- 
- DEFINE_EVENT(rpc_task_status, rpc_call_status,
-@@ -49,18 +51,20 @@ TRACE_EVENT(rpc_connect_status,
- 	TP_ARGS(task, status),
- 
- 	TP_STRUCT__entry(
--		__field(const struct rpc_task *, task)
--		__field(const struct rpc_clnt *, clnt)
-+		__field(unsigned int, task_id)
-+		__field(unsigned int, client_id)
- 		__field(int, status)
- 	),
- 
- 	TP_fast_assign(
--		__entry->task = task;
--		__entry->clnt = task->tk_client;
-+		__entry->task_id = task->tk_pid;
-+		__entry->client_id = task->tk_client->cl_clid;
- 		__entry->status = status;
- 	),
- 
--	TP_printk("task:%p@%p, status %d",__entry->task, __entry->clnt, __entry->status)
-+	TP_printk("task:%u@%u, status %d",
-+		__entry->task_id, __entry->client_id,
-+		__entry->status)
- );
- 
- DECLARE_EVENT_CLASS(rpc_task_running,
-@@ -70,8 +74,8 @@ DECLARE_EVENT_CLASS(rpc_task_running,
- 	TP_ARGS(clnt, task, action),
- 
- 	TP_STRUCT__entry(
--		__field(const struct rpc_clnt *, clnt)
--		__field(const struct rpc_task *, task)
-+		__field(unsigned int, task_id)
-+		__field(unsigned int, client_id)
- 		__field(const void *, action)
- 		__field(unsigned long, runstate)
- 		__field(int, status)
-@@ -79,17 +83,16 @@ DECLARE_EVENT_CLASS(rpc_task_running,
- 		),
- 
- 	TP_fast_assign(
--		__entry->clnt = clnt;
--		__entry->task = task;
-+		__entry->client_id = clnt->cl_clid;
-+		__entry->task_id = task->tk_pid;
- 		__entry->action = action;
- 		__entry->runstate = task->tk_runstate;
- 		__entry->status = task->tk_status;
- 		__entry->flags = task->tk_flags;
- 		),
- 
--	TP_printk("task:%p@%p flags=%4.4x state=%4.4lx status=%d action=%pf",
--		__entry->task,
--		__entry->clnt,
-+	TP_printk("task:%u@%u flags=%4.4x state=%4.4lx status=%d action=%pf",
-+		__entry->task_id, __entry->client_id,
- 		__entry->flags,
- 		__entry->runstate,
- 		__entry->status,
-@@ -128,8 +131,8 @@ DECLARE_EVENT_CLASS(rpc_task_queued,
- 	TP_ARGS(clnt, task, q),
- 
- 	TP_STRUCT__entry(
--		__field(const struct rpc_clnt *, clnt)
--		__field(const struct rpc_task *, task)
-+		__field(unsigned int, task_id)
-+		__field(unsigned int, client_id)
- 		__field(unsigned long, timeout)
- 		__field(unsigned long, runstate)
- 		__field(int, status)
-@@ -138,8 +141,8 @@ DECLARE_EVENT_CLASS(rpc_task_queued,
- 		),
- 
- 	TP_fast_assign(
--		__entry->clnt = clnt;
--		__entry->task = task;
-+		__entry->client_id = clnt->cl_clid;
-+		__entry->task_id = task->tk_pid;
- 		__entry->timeout = task->tk_timeout;
- 		__entry->runstate = task->tk_runstate;
- 		__entry->status = task->tk_status;
-@@ -147,9 +150,8 @@ DECLARE_EVENT_CLASS(rpc_task_queued,
- 		__assign_str(q_name, rpc_qname(q));
- 		),
- 
--	TP_printk("task:%p@%p flags=%4.4x state=%4.4lx status=%d timeout=%lu queue=%s",
--		__entry->task,
--		__entry->clnt,
-+	TP_printk("task:%u@%u flags=%4.4x state=%4.4lx status=%d timeout=%lu queue=%s",
-+		__entry->task_id, __entry->client_id,
- 		__entry->flags,
- 		__entry->runstate,
- 		__entry->status,
--- 
-1.8.3.1
+Just under the quote:
+"Also, the NFS server will cache group lookups so it doesn’t have to
+continuously make queries. The cache is visible like this:"
+
+The GID 1000 is my primary user on both boxes (rypervenche).
+
+If there is another way to do this (aside maybe from setting up
+kerberos/ldap) I would be willing to try that.
+
+Thank you.
+
+
+On Mon, 16 Sep 2013 15:37:09 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Mon, Sep 16, 2013 at 09:43:51AM -0500, Contact wrote:
+> > Hi all,
+> > 
+> > I'm having an issue with my NFS mount and being able to access it
+> > from my normal user account. The mount point is chmod'ed to 2770
+> > with a GID of 1100 (nfs) which is the same on both systems. I can
+> > access it if I change my active group using newgrp, but not
+> > normally.
+> > 
+> > ====================================
+> > noir ~ # ls -lhd /home/nfs/share
+> > drwxrws--- 8 nfs nfs 4.0K Sep  4 15:30 /home/nfs/share
+> > 
+> > rypervenche@svelte ~ $ pwd
+> > /home/rypervenche
+> > rypervenche@svelte ~ $ cd nfs
+> > -su: cd: nfs: Permission denied
+> > rypervenche@svelte ~ $ newgrp nfs
+> > rypervenche@svelte ~ $ cd nfs
+> > rypervenche@svelte ~/nfs $ 
+> > 
+> > svelte ~ # grep nfs /etc/group
+> > nfs:x:1100:rypervenche
+> > ====================================
+> > 
+> > You can find the details of my NFS server and client here:
+> > 
+> > ====================================
+> > svelte = client
+> > noir = server
+> > 
+> > svelte ~ # tail -1 /etc/fstab
+> > 192.168.1.100:/ /home/rypervenche/nfs   nfs
+> > rw,noauto,noexec,nodev,nosuid   0       0
+> > 
+> > noir ~ # cat /etc/exports 
+> > # /etc/exports: NFS file systems being exported.  See exports(5).
+> > /home/nfs/share
+> > 192.168.1.205(rw,sync,fsid=0,no_root_squash,no_subtree_check)
+> > 192.168.2.100(rw,sync,fsid=0,no_root_squash,no_subtree_check)
+> > 
+> > noir ~ # id nfs
+> > uid=1100(nfs) gid=1100(nfs) groups=1100(nfs)
+> > 
+> > noir ~ # grep -v ^# /etc/conf.d/nfs | grep -v ^$
+> > NFS_NEEDED_SERVICES="rpc.idmapd"
+> > OPTS_RPC_NFSD="8"
+> > OPTS_RPC_MOUNTD="-V 4 --manage-gids -p 32767"
+> > OPTS_RPC_STATD="-p 32765 -o 32766"
+> > OPTS_RPC_IDMAPD=""
+> > OPTS_RPC_GSSD=""
+> > OPTS_RPC_SVCGSSD=""
+> > OPTS_RPC_RQUOTAD=""
+> > EXPORTFS_TIMEOUT=30
+> > 
+> > noir ~ # iptables-save | egrep '(NFS|T -m conn)'
+> > -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+> > -A INPUT -s 192.168.1.205/32 -p tcp -m tcp -m multiport --dports
+> > 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment
+> > --comment NFS -j ACCEPT -A INPUT -s 192.168.1.205/32 -p udp -m udp
+> > -m multiport --dports 111,2049,4001,32765:32767 -m conntrack
+> > --ctstate NEW -m comment --comment NFS -j ACCEPT -A INPUT -s
+> > 192.168.2.100/32 -p tcp -m tcp -m multiport --dports
+> > 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment
+> > --comment NFS -j ACCEPT -A INPUT -s 192.168.2.100/32 -p udp -m udp
+> > -m multiport --dports 111,2049,4001,32765:32767 -m conntrack
+> > --ctstate NEW -m comment --comment NFS -j ACCEPT
+> > 
+> > svelte:
+> > net-fs/nfs-utils-1.2.6 was built with the following:
+> > USE="ipv6 nfsdcld nfsidmap nfsv4 nfsv41 tcpd -caps -kerberos
+> > (-selinux)"
+> > 
+> > noir:
+> > net-fs/nfs-utils-1.2.6 was built with the following:
+> > USE="ipv6 (multilib) nfsdcld nfsidmap nfsv4 nfsv41 tcpd -caps
+> > -kerberos (-selinux)" ABI_X86="64"
+> > 
+> > svelte ~ # uname -a
+> > Linux svelte 3.10.7-gentoo-svelte #1 SMP Thu Aug 22 17:46:44 CDT
+> > 2013 i686 Intel(R) Atom(TM) CPU N450 @ 1.66GHz GenuineIntel
+> > GNU/Linux
+> > 
+> > noir ~ # uname -a
+> > Linux noir 3.10.7-gentoo-noir #1 SMP Wed Aug 28 11:19:43 CDT 2013
+> > x86_64 AMD Athlon(tm) II X2 260 Processor AuthenticAMD GNU/Linux
+> > ====================================
+> > 
+> > 
+> > I found online that the issue is due to NFS not being able to grab
+> > over 16 GIDs. I found help in the following two links:
+> > 
+> > https://xkyle.com/solving-the-nfs-16-group-limit-problem/
+> > https://wiki.archlinux.org/index.php/NFS_Troubleshooting
+> > 
+> > I tried adding the --manage-gids flag to mountd (which can be seen
+> > in the /etc/conf.d/nfs file above), however, it does not appear to
+> > resolve the issue.
+> > 
+> > ====================================
+> > noir ~ #
+> > cat /proc/net/rpc/auth.unix.gid/content #uid cnt: gids...
+> > 0 10: 0 1 2 3 4 6 10 11 26 27
+> > 1000 9: 10 18 19 27 78 85 100 250 1000
+> > 
+> > noir ~ # date +%s > /proc/net/rpc/auth.unix.gid/flush     
+> >                                                                                                                               
+> > noir ~ #
+> > cat /proc/net/rpc/auth.unix.gid/content #uid cnt: gids...
+> > 
+> > Then I mount the NFS again:
+> > 
+> > noir ~ # cat /proc/net/rpc/auth.unix.gid/content
+> > #uid cnt: gids...
+> > 0 10: 0 1 2 3 4 6 10 11 26 27
+> > 1000 9: 10 18 19 27 78 85 100 250 1000
+> > ====================================
+> > 
+> > It looks as though it is not grabbing all of my GIDs.
+> 
+> What do you expect the list to be?  Which groups is uid 1000 a member
+> of on the server?
+> 
+> --b.
 
