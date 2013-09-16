@@ -1,92 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailout1.samsung.com ([203.254.224.24]:48674 "EHLO
-	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750991Ab3IYFUP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Sep 2013 01:20:15 -0400
-Received: from epcpsbgr2.samsung.com
- (u142.gpu120.samsung.co.kr [203.254.230.142])
- by mailout1.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0MTO0035A1HNIXP0@mailout1.samsung.com> for
- linux-nfs@vger.kernel.org; Wed, 25 Sep 2013 14:20:12 +0900 (KST)
-Date: Wed, 25 Sep 2013 05:19:50 +0000 (GMT)
-From: Jongman Heo <jongman.heo@samsung.com>
-Subject: Regression caused by commit 4bdc33ed
- ("NFSDv4.2: Add NFS v4.2 support to the NFS server")
-To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Reply-to: jongman.heo@samsung.com
-MIME-version: 1.0
-Content-type: text/plain; charset=utf-8
-MIME-version: 1.0
-Message-id: <22596229.54071380086390046.JavaMail.weblogic@epv6ml04>
+Received: from mail-ob0-f179.google.com ([209.85.214.179]:42775 "EHLO
+	mail-ob0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751640Ab3IQEms convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Sep 2013 00:42:48 -0400
+Received: by mail-ob0-f179.google.com with SMTP id wn1so4598445obc.24
+        for <linux-nfs@vger.kernel.org>; Mon, 16 Sep 2013 21:42:48 -0700 (PDT)
+Date: Mon, 16 Sep 2013 14:44:53 -0500
+From: Rob Landley <rob@landley.net>
+Subject: Re: [RFC] extending splice for copy offloading
+To: Eric Wong <normalperson@yhbt.net>
+Cc: Zach Brown <zab@redhat.com>, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Bryan Schumaker <bjschuma@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>
+References: <1378919210-10372-1-git-send-email-zab@redhat.com>
+	<20130911211722.GA9725@dcvr.yhbt.net>
+In-Reply-To: <20130911211722.GA9725@dcvr.yhbt.net> (from
+	normalperson@yhbt.net on Wed Sep 11 16:17:23 2013)
+Message-Id: <1379360693.1974.29@driftwood>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii; DelSp=Yes; Format=Flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQpIaSBhbGwsDQoNCk15IGVtYmVkZGVkIGRldmVsb3BtZW50IGJveCBmYWlscyB0byBORlMtYm9v
-dCB3aXRoIE5GUyBzZXJ2ZXIgd2hpY2ggdXNlcyByZWNlbnQga2VybmVsLg0KDQpVc2luZyBnaXQg
-YmlzZWN0LCBJIGZvdW5kIGl0IGlzIGNhdXNlZCBieSBjb21taXQgNGJkYzMzZWQgKCJORlNEdjQu
-MjogQWRkIE5GUyB2NC4yIHN1cHBvcnQgdG8gdGhlIE5GUyBzZXJ2ZXIiKS4NCg0KDQoxLiBkbWVz
-ZyAoTkZTIGJvb3QgZmFpbHVyZSBjYXNlKQ0KDQouLi4NClsgICAgMi4wNDA4OTNdIEFERFJDT05G
-KE5FVERFVl9VUCk6IGV0aDA6IGxpbmsgaXMgbm90IHJlYWR5DQpbICAgIDIuMDQ2MjA3XSBlMTAw
-MDogZXRoMCBOSUMgTGluayBpcyBVcCAxMDAwIE1icHMgRnVsbCBEdXBsZXgsIEZsb3cgQ29udHJv
-bDogUlgNClsgICAgMi4wNTM1NzBdIEFERFJDT05GKE5FVERFVl9DSEFOR0UpOiBldGgwOiBsaW5r
-IGJlY29tZXMgcmVhZHkNClsgICAgMy4wNTUwMjNdIElQLUNvbmZpZzogR3Vlc3NpbmcgbmV0bWFz
-ayAyNTUuMjU1LjAuMA0KWyAgICAzLjA1OTk3OV0gSVAtQ29uZmlnOiBHYXRld2F5IG5vdCBvbiBk
-aXJlY3RseSBjb25uZWN0ZWQgbmV0d29yay4NClsgICAgMy4wNjYzMzBdIExvb2tpbmcgdXAgcG9y
-dCBvZiBSUEMgMTAwMDAzLzIgb24gMTY1LjIxMy44OC4yNDkNClsgICAgMy4wNzQwMDFdIExvb2tp
-bmcgdXAgcG9ydCBvZiBSUEMgMTAwMDA1LzEgb24gMTY1LjIxMy44OC4yNDkNClsgICAgMy4xMjI4
-NzhdIFZGUzogVW5hYmxlIHRvIG1vdW50IHJvb3QgZnMgdmlhIE5GUywgdHJ5aW5nIGZsb3BweS4N
-ClsgICAgMy4xMjkxMzRdIFZGUzogQ2Fubm90IG9wZW4gcm9vdCBkZXZpY2UgIm5mcyIgb3IgdW5r
-bm93bi1ibG9jaygyLDApDQpbICAgIDMuMTM1NDc4XSBQbGVhc2UgYXBwZW5kIGEgY29ycmVjdCAi
-cm9vdD0iIGJvb3Qgb3B0aW9uOyBoZXJlIGFyZSB0aGUgYXZhaWxhYmxlIHBhcnRpdGlvbnM6DQpb
-ICAgIDMuMTQzODMxXSAxZjAwICAgICAgICAgICAgMzA3MiBtdGRibG9jazAgKGRyaXZlcj8pDQpb
-ICAgIDMuMTQ4Nzk4XSAxZjAxICAgICAgICAgICAgICA2NCBtdGRibG9jazEgKGRyaXZlcj8pDQpb
-ICAgIDMuMTUzNzU4XSAxZjAyICAgICAgICAgICAgICA2NCBtdGRibG9jazIgKGRyaXZlcj8pDQpb
-ICAgIDMuMTU4NzE5XSAxZjAzICAgICAgICAgICAgICA2NCBtdGRibG9jazMgKGRyaXZlcj8pDQpb
-ICAgIDMuMTYzNjgyXSAxZjA0ICAgICAgICAgICAgICA2NCBtdGRibG9jazQgKGRyaXZlcj8pDQpb
-ICAgIDMuMTY4NjQ0XSAxZjA1ICAgICAgICAgICAgICA2NCBtdGRibG9jazUgKGRyaXZlcj8pDQpb
-ICAgIDMuMTczNjA3XSAxZjA2ICAgICAgICAgICAgICA2NCBtdGRibG9jazYgKGRyaXZlcj8pDQpb
-ICAgIDMuMTc4NTY4XSAwODAwICAgICAgIDQ4ODM4NjU4NCBzZGEgZHJpdmVyOiBzZA0KWyAgICAz
-LjE4MzA5OV0gICAwODAxICAgICAgICAgIDUwNjAxNiBzZGExDQpbICAgIDMuMTg2OTI3XSAgIDA4
-MDIgICAgICAgICA0MDA4MjE3IHNkYTINClsgICAgMy4xOTA3NTVdICAgMDgwMyAgICAgICA0ODM4
-Njk3Njcgc2RhMw0KWyAgICAzLjE5NDU4NF0gYjMwMCAgICAgICAgIDE4ODAwNjQgbW1jYmxrMCBk
-cml2ZXI6IG1tY2Jsaw0KWyAgICAzLjE5OTgwMl0gICBiMzAxICAgICAgICAgICAgNDA5NiBtbWNi
-bGswcDENClsgICAgMy4yMDQwNjNdICAgYjMwMiAgICAgICAgICAxMDI0MDAgbW1jYmxrMHAyDQpb
-ICAgIDMuMjA4MzMwXSAgIGIzMDMgICAgICAgICAgICA0MDk2IG1tY2JsazBwMw0KWyAgICAzLjIx
-MjU5NF0gICBiMzA0ICAgICAgICAgICAgICAgMSBtbWNibGswcDQNClsgICAgMy4yMTY4NTVdICAg
-YjMwNSAgICAgICAgICAgIDIwNDggbW1jYmxrMHA1DQpbICAgIDMuMjIxMTE2XSAgIGIzMDYgICAg
-ICAgICAgICAyMDQ4IG1tY2JsazBwNg0KWyAgICAzLjIyNTM4Ml0gICBiMzA3ICAgICAgICAgICAg
-MjA0OCBtbWNibGswcDcNClsgICAgMy4yMjk2NDRdICAgYjMwOCAgICAgICAgICAgIDQwOTYgbW1j
-YmxrMHA4DQpbICAgIDMuMjMzOTA2XSAgIGIzMDkgICAgICAgICAgIDEyMjg4IG1tY2JsazBwOQ0K
-WyAgICAzLjIzODE3Nl0gICBiMzBhICAgICAgICAgICAxNjM4NCBtbWNibGswcDEwDQpbICAgIDMu
-MjQyNTI0XSAgIGIzMGIgICAgICAgICAgMTQyMzM2IG1tY2JsazBwMTENClsgICAgMy4yNDY4Njld
-ICAgYjMwYyAgICAgICAgIDE1NzI4NjQgbW1jYmxrMHAxMg0KWyAgICAzLjI1MTIxOV0gYjMyMCAg
-ICAgICAgICAgMTIyODggbW1jYmxrMGdwMSAoZHJpdmVyPykNClsgICAgMy4yNTYyNzJdIGIzMTAg
-ICAgICAgICAgIDEyMjg4IG1tY2JsazBncDAgKGRyaXZlcj8pDQpbICAgIDMuMjYxMzIwXSBLZXJu
-ZWwgcGFuaWMgLSBub3Qgc3luY2luZzogVkZTOiBVbmFibGUgdG8gbW91bnQgcm9vdCBmcyBvbiB1
-bmtub3duLWJsb2NrKDIsMCkNClsgICAgMy4yNjk1NjZdIFBpZDogMSwgY29tbTogc3dhcHBlciBO
-b3QgdGFpbnRlZCAyLjYuMzUgIzENClsgICAgMy4yNzQ3NzZdIENhbGwgVHJhY2U6DQpbICAgIDMu
-Mjc3MjMyXSAgWzw4MGQwZGI1Yj5dID8gcHJpbnRrKzB4MWUvMHgyMA0KWyAgICAzLjI4MTQ5Ml0g
-IFs8ODBkMGRhZDE+XSBwYW5pYysweDY1LzB4ZDENClsgICAgMy4yODU0OTVdICBbPDgwZWI5Y2Uz
-Pl0gbW91bnRfYmxvY2tfcm9vdCsweDEyNS8weDFiZQ0KWyAgICAzLjI5MDYzMV0gIFs8ODA5ZDFm
-NmQ+XSA/IHN5c19ta25vZCsweDJkLzB4MzANClsgICAgMy4yOTUxNTZdICBbPDgwZWI5ZjZkPl0g
-bW91bnRfcm9vdCsweGQwLzB4ZjINClsgICAgMy4yOTk1OTFdICBbPDgwZWJhMGQ5Pl0gcHJlcGFy
-ZV9uYW1lc3BhY2UrMHgxNGEvMHgxODQNClsgICAgMy4zMDQ4MDNdICBbPDgwOWM0NGY2Pl0gPyBz
-eXNfYWNjZXNzKzB4MjYvMHgzMA0KWyAgICAzLjMwOTQxMV0gIFs8ODBlYjlhNGU+XSBrZXJuZWxf
-aW5pdCsweDI1ZS8weDI2ZQ0KWyAgICAzLjMxNDEwNV0gIFs8ODBlYjk3ZjA+XSA/IGtlcm5lbF9p
-bml0KzB4MC8weDI2ZQ0KWyAgICAzLjMxODgwMF0gIFs8ODA5MDMyNDI+XSBrZXJuZWxfdGhyZWFk
-X2hlbHBlcisweDYvMHgxMA0KDQoNCjIuIENsaWVudCAobXkgZW1iZWRkZWQgYm94KSBjb25maWd1
-cmF0aW9uDQogIEl0J3Mga2VybmVsIDIuNi4zNSBiYXNlZCwgYW5kIGhhcyBmb2xsb3dpbmcgTkZT
-IGtlcm5lbCBjb25maWdzLg0KDQojIGdyZXAgTkZTIC5jb25maWcNCkNPTkZJR19ORlNfRlM9eQ0K
-Q09ORklHX05GU19WMz15DQpDT05GSUdfTkZTX1YzX0FDTD15DQpDT05GSUdfTkZTX1Y0PXkNCiMg
-Q09ORklHX05GU19WNF8xIGlzIG5vdCBzZXQNCkNPTkZJR19ST09UX05GUz15DQojIENPTkZJR19O
-RlNEIGlzIG5vdCBzZXQNCkNPTkZJR19ORlNfQUNMX1NVUFBPUlQ9eQ0KQ09ORklHX05GU19DT01N
-T049eQ0KDQoNCjMuIFNlcnZlciAoTkZTRCkgY29uZmlndXJhdGlvbg0KICAgRmVkb3JhIDE5ICsg
-bGF0ZXN0IGxpbnVzIGdpdCBrZXJuZWwgMy4xMi4wLXJjMisgKGNvbW1pdCAyMjM1NmY0NCwgbW06
-IFBsYWNlIHByZWVtcHRpb24gcG9pbnQgaW4gZG9fbWxvY2thbGwoKSBsb29wKQ0KDQoNCjQuIHdv
-cmthcm91bmQNCg0KUmV2ZXJ0aW5nIHRoZSBjb21taXQgNGJkYzMzZWQgcmVzb2x2ZXMgbXkgaXNz
-dWUsIE5GUyBib290IGlzIHdvcmtpbmcgdGhlbi4NCkkndmUgZG9uZSBnaXQgYmlzZWN0LCBidXQg
-bG9zdCB0aGUgcmVzdWx0aW5nIGJpc2VjdCBsb2cgZHVlIHRvIHN1ZGRlbiBwb3dlciBsb3NzIDoo
-Lg0KDQpCZXN0IHJlZ2FyZHMsDQpKb25nbWFuIEhlbw0K
+On 09/11/2013 04:17:23 PM, Eric Wong wrote:
+> Zach Brown <zab@redhat.com> wrote:
+> > Towards the end of that thread Eric Wong asked why we didn't just
+> > extend splice.  I immediately replied with some dumb dismissive
+> > answer.  Once I sat down and looked at it, though, it does make a
+> > lot of sense.  So good job, Eric.  +10 Dummie points for me.
+> 
+> Thanks for revisiting that :>
+> 
+> > Some things to talk about:
+> > - I really don't care about the naming here.  If you do, holler.
+> 
+> Exposing "DIRECT" to userspace now might confuse users into expecting
+> O_DIRECT behavior.  I say this as an easily-confused user.
+> 
+> In the future, perhaps O_DIRECT behavior can become per-splice  
+> (instead
+> of just per-open) and can save SPLICE_F_DIRECT for that.
+> 
+> > - We might want different flags for file-to-file splicing and  
+> acceleration
+> > - We might want flags to require or forbid acceleration
+> 
+> > - We might want to provide all these flags to sendfile, too
+> 
+> Another syscall?  I prefer not.  Better to just maintain the sendfile
+> API as-is for compatibility reasons and nudge users towards splice.
+> 
+> > Thoughts?  Objections?
+> 
+> I'll try to test/comment more in a week or two (not much time for
+> computing until then).
 
+Just a vague note that I've wanted to use splice implementing cp and  
+patch and cat and so on in toybox, but couldn't because it needs a pipe.
 
+So I'm quite interested in moves to lift this restriction...
+
+Rob
