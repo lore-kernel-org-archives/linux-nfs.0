@@ -1,109 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:53445 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:38852 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756783Ab3ICQOm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Sep 2013 12:14:42 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 5 4/5] NFS avoid expired credential keys for
- buffered writes
-Date: Tue, 3 Sep 2013 16:14:41 +0000
-Message-ID: <1378224879.6410.8.camel@leira.trondhjem.org>
-References: <1376495957-7482-1-git-send-email-andros@netapp.com>
-	 <1376495957-7482-5-git-send-email-andros@netapp.com>
-In-Reply-To: <1376495957-7482-5-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1750753Ab3IPThK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Sep 2013 15:37:10 -0400
+Date: Mon, 16 Sep 2013 15:37:09 -0400
+To: Contact <contact@ryper.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: 16+ GID issue, mountd's --manage-gids not helping
+Message-ID: <20130916193709.GA25308@fieldses.org>
+References: <20130916094351.263d433d@svelte.ryper.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130916094351.263d433d@svelte.ryper.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEzLTA4LTE0IGF0IDExOjU5IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFdlIG11
-c3QgYXZvaWQgYnVmZmVyaW5nIGEgV1JJVEUgdGhhdCBpcyB1c2luZyBhIGNyZWRlbnRpYWwga2V5
-IChlLmcuIGEgR1NTDQo+IGNvbnRleHQga2V5KSB0aGF0IGlzIGFib3V0IHRvIGV4cGlyZSBvciBo
-YXMgZXhwaXJlZC4gIFdlIGN1cnJlbnRseSB3aWxsDQo+IHBhaW50IG91cnNlbHZlcyBpbnRvIGEg
-Y29ybmVyIGJ5IHJldHVybmluZyBzdWNjZXNzIHRvIHRoZSBhcHBsY2lhdGlvbg0KPiBmb3Igc3Vj
-aCBhIGJ1ZmZlcmVkIFdSSVRFLCBvbmx5IHRvIGRpc2NvdmVyIHRoYXQgd2UgZG8gbm90IGhhdmUg
-cGVybWlzc2lvbiB3aGVuDQo+IHdlIGF0dGVtcHQgdG8gZmx1c2ggdGhlIFdSSVRFIChhbmQgcG90
-ZW50aWFsbHkgYXNzb2NpYXRlZCBDT01NSVQpIHRvIGRpc2suDQo+IA0KPiBVc2UgdGhlIFJQQyBs
-YXllciBjcmVkZW50aWFsIGtleSB0aW1lb3V0IGFuZCBleHBpcmUgcm91dGluZXMgd2hpY2ggdXNl
-IGENCj4gYSB3YXRlcm1hcmssIGdzc19rZXlfZXhwaXJlX3RpbWVvLiBXZSB0ZXN0IHRoZSBrZXkg
-aW4gbmZzX2ZpbGVfd3JpdGUuDQo+IA0KPiBJZiBhIFdSSVRFIGlzIHVzaW5nIGEgY3JlZGVudGlh
-bCB3aXRoIGEga2V5IHRoYXQgd2lsbCBleHBpcmUgd2l0aGluDQo+IHdhdGVybWFyayBzZWNvbmRz
-LCBmbHVzaCB0aGUgaW5vZGUgaW4gbmZzX3dyaXRlX2VuZCBhbmQgc2VuZCBvbmx5DQo+IE5GU19G
-SUxFX1NZTkMgV1JJVEVzIGJ5IGFkZGluZyBuZnNfY3R4X2tleV90b19leHBpcmUgdG8gbmZzX25l
-ZWRfc3luY193cml0ZS4NCj4gTm90ZSB0aGF0IHRoaXMgcmVzdWx0cyBpbiBzaW5nbGUgcGFnZSBO
-RlNfRklMRV9TWU5DIFdSSVRFcy4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8
-YW5kcm9zQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiAgZnMvbmZzL2ZpbGUuYyAgICAgfCAyMCArKysr
-KysrKysrKysrKysrKysrLQ0KPiAgZnMvbmZzL2ludGVybmFsLmggfCAgMiArKw0KPiAgZnMvbmZz
-L3dyaXRlLmMgICAgfCAyNyArKysrKysrKysrKysrKysrKysrKysrKysrKysNCj4gIDMgZmlsZXMg
-Y2hhbmdlZCwgNDggaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbigtKQ0KPiANCj4gZGlmZiAtLWdp
-dCBhL2ZzL25mcy9maWxlLmMgYi9mcy9uZnMvZmlsZS5jDQo+IGluZGV4IDk0ZTk0YmQuLjY5ZjE2
-NGQgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9maWxlLmMNCj4gKysrIGIvZnMvbmZzL2ZpbGUuYw0K
-PiBAQCAtNDA2LDYgKzQwNiw3IEBAIHN0YXRpYyBpbnQgbmZzX3dyaXRlX2VuZChzdHJ1Y3QgZmls
-ZSAqZmlsZSwgc3RydWN0IGFkZHJlc3Nfc3BhY2UgKm1hcHBpbmcsDQo+ICAJCQlzdHJ1Y3QgcGFn
-ZSAqcGFnZSwgdm9pZCAqZnNkYXRhKQ0KPiAgew0KPiAgCXVuc2lnbmVkIG9mZnNldCA9IHBvcyAm
-IChQQUdFX0NBQ0hFX1NJWkUgLSAxKTsNCj4gKwlzdHJ1Y3QgbmZzX29wZW5fY29udGV4dCAqY3R4
-ID0gbmZzX2ZpbGVfb3Blbl9jb250ZXh0KGZpbGUpOw0KPiAgCWludCBzdGF0dXM7DQo+ICANCj4g
-IAlkZnByaW50ayhQQUdFQ0FDSEUsICJORlM6IHdyaXRlX2VuZCglcy8lcyglbGQpLCAldUAlbGxk
-KVxuIiwNCj4gQEAgLTQ0MSw2ICs0NDIsMTggQEAgc3RhdGljIGludCBuZnNfd3JpdGVfZW5kKHN0
-cnVjdCBmaWxlICpmaWxlLCBzdHJ1Y3QgYWRkcmVzc19zcGFjZSAqbWFwcGluZywNCj4gIAlpZiAo
-c3RhdHVzIDwgMCkNCj4gIAkJcmV0dXJuIHN0YXR1czsNCj4gIAlORlNfSShtYXBwaW5nLT5ob3N0
-KS0+d3JpdGVfaW8gKz0gY29waWVkOw0KPiArDQo+ICsJaWYgKG5mc19jdHhfa2V5X3RvX2V4cGly
-ZShjdHgpKSB7DQo+ICsJCXByX3dhcm5fcmF0ZWxpbWl0ZWQoIk5GUzoJQ3JlZGVudGlhbCBLZXkg
-dG8gZXhwaXJlLiAiDQo+ICsJCQkiRmx1c2ggJXMvJXMoJWxkKVxuIiwNCj4gKwkJCWZpbGUtPmZf
-cGF0aC5kZW50cnktPmRfcGFyZW50LT5kX25hbWUubmFtZSwNCj4gKwkJCWZpbGUtPmZfcGF0aC5k
-ZW50cnktPmRfbmFtZS5uYW1lLA0KPiArCQkJbWFwcGluZy0+aG9zdC0+aV9pbm8pOw0KPiArCQlz
-dGF0dXMgPSBuZnNfd2JfYWxsKG1hcHBpbmctPmhvc3QpOw0KPiArCQlpZiAoc3RhdHVzIDwgMCkN
-Cj4gKwkJCXJldHVybiBzdGF0dXM7DQo+ICsJfQ0KPiArDQo+ICAJcmV0dXJuIGNvcGllZDsNCj4g
-IH0NCj4gIA0KPiBAQCAtNjM3LDcgKzY1MCw4IEBAIHN0YXRpYyBpbnQgbmZzX25lZWRfc3luY193
-cml0ZShzdHJ1Y3QgZmlsZSAqZmlscCwgc3RydWN0IGlub2RlICppbm9kZSkNCj4gIAlpZiAoSVNf
-U1lOQyhpbm9kZSkgfHwgKGZpbHAtPmZfZmxhZ3MgJiBPX0RTWU5DKSkNCj4gIAkJcmV0dXJuIDE7
-DQo+ICAJY3R4ID0gbmZzX2ZpbGVfb3Blbl9jb250ZXh0KGZpbHApOw0KPiAtCWlmICh0ZXN0X2Jp
-dChORlNfQ09OVEVYVF9FUlJPUl9XUklURSwgJmN0eC0+ZmxhZ3MpKQ0KPiArCWlmICh0ZXN0X2Jp
-dChORlNfQ09OVEVYVF9FUlJPUl9XUklURSwgJmN0eC0+ZmxhZ3MpIHx8DQo+ICsJICAgIG5mc19j
-dHhfa2V5X3RvX2V4cGlyZShjdHgpKQ0KPiAgCQlyZXR1cm4gMTsNCj4gIAlyZXR1cm4gMDsNCj4g
-IH0NCj4gQEAgLTY1MSw2ICs2NjUsMTAgQEAgc3NpemVfdCBuZnNfZmlsZV93cml0ZShzdHJ1Y3Qg
-a2lvY2IgKmlvY2IsIGNvbnN0IHN0cnVjdCBpb3ZlYyAqaW92LA0KPiAgCXNzaXplX3QgcmVzdWx0
-Ow0KPiAgCXNpemVfdCBjb3VudCA9IGlvdl9sZW5ndGgoaW92LCBucl9zZWdzKTsNCj4gIA0KPiAr
-CXJlc3VsdCA9IG5mc19rZXlfdGltZW91dF9ub3RpZnkoaW9jYi0+a2lfZmlscCwgaW5vZGUpOw0K
-PiArCWlmIChyZXN1bHQpDQo+ICsJCXJldHVybiByZXN1bHQ7DQo+ICsNCj4gIAlpZiAoaW9jYi0+
-a2lfZmlscC0+Zl9mbGFncyAmIE9fRElSRUNUKQ0KPiAgCQlyZXR1cm4gbmZzX2ZpbGVfZGlyZWN0
-X3dyaXRlKGlvY2IsIGlvdiwgbnJfc2VncywgcG9zLCB0cnVlKTsNCj4gIA0KPiBkaWZmIC0tZ2l0
-IGEvZnMvbmZzL2ludGVybmFsLmggYi9mcy9uZnMvaW50ZXJuYWwuaA0KPiBpbmRleCA0YWEyMGJh
-Li40N2M3NmY5IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvaW50ZXJuYWwuaA0KPiArKysgYi9mcy9u
-ZnMvaW50ZXJuYWwuaA0KPiBAQCAtNDM0LDYgKzQzNCw4IEBAIHZvaWQgbmZzX3JlcXVlc3RfcmVt
-b3ZlX2NvbW1pdF9saXN0KHN0cnVjdCBuZnNfcGFnZSAqcmVxLA0KPiAgdm9pZCBuZnNfaW5pdF9j
-aW5mbyhzdHJ1Y3QgbmZzX2NvbW1pdF9pbmZvICpjaW5mbywNCj4gIAkJICAgIHN0cnVjdCBpbm9k
-ZSAqaW5vZGUsDQo+ICAJCSAgICBzdHJ1Y3QgbmZzX2RpcmVjdF9yZXEgKmRyZXEpOw0KPiAraW50
-IG5mc19rZXlfdGltZW91dF9ub3RpZnkoc3RydWN0IGZpbGUgKmZpbHAsIHN0cnVjdCBpbm9kZSAq
-aW5vZGUpOw0KPiArYm9vbCBuZnNfY3R4X2tleV90b19leHBpcmUoc3RydWN0IG5mc19vcGVuX2Nv
-bnRleHQgKmN0eCk7DQo+ICANCj4gICNpZmRlZiBDT05GSUdfTUlHUkFUSU9ODQo+ICBleHRlcm4g
-aW50IG5mc19taWdyYXRlX3BhZ2Uoc3RydWN0IGFkZHJlc3Nfc3BhY2UgKiwNCj4gZGlmZiAtLWdp
-dCBhL2ZzL25mcy93cml0ZS5jIGIvZnMvbmZzL3dyaXRlLmMNCj4gaW5kZXggN2I3ZDM2MC4uZWVm
-ZTQ5OCAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL3dyaXRlLmMNCj4gKysrIGIvZnMvbmZzL3dyaXRl
-LmMNCj4gQEAgLTg3NCw2ICs4NzQsMzMgQEAgaW50IG5mc19mbHVzaF9pbmNvbXBhdGlibGUoc3Ry
-dWN0IGZpbGUgKmZpbGUsIHN0cnVjdCBwYWdlICpwYWdlKQ0KPiAgfQ0KPiAgDQo+ICAvKg0KPiAr
-ICogQXZvaWQgYnVmZmVyZWQgd3JpdGVzIHdoZW4gYSBvcGVuIGNvbnRleHQgY3JlZGVudGlhbCdz
-IGtleSB3b3VsZA0KPiArICogZXhwaXJlIHNvb24uDQo+ICsgKg0KPiArICogUmV0dXJucyAtRUFD
-Q0VTIGlmIHRoZSBrZXkgd2lsbCBleHBpcmUgd2l0aGluIFJQQ19LRVlfRVhQSVJFX0ZBSUwuDQo+
-ICsgKg0KPiArICogUmV0dXJuIDAgYW5kIHNldCBhIGNyZWRlbnRpYWwgZmxhZyB3aGljaCB0cmln
-Z2VycyB0aGUgaW5vZGUgdG8gZmx1c2gNCj4gKyAqIGFuZCBwZXJmb3JtcyAgTkZTX0ZJTEVfU1lO
-QyB3cml0ZXMgaWYgdGhlIGtleSB3aWxsIGV4cGlyZWQgd2l0aGluDQo+ICsgKiBSUENfS0VZX0VY
-UElSRV9USU1FTy4NCj4gKyAqLw0KPiAraW50DQo+ICtuZnNfa2V5X3RpbWVvdXRfbm90aWZ5KHN0
-cnVjdCBmaWxlICpmaWxwLCBzdHJ1Y3QgaW5vZGUgKmlub2RlKQ0KPiArew0KPiArCXN0cnVjdCBu
-ZnNfb3Blbl9jb250ZXh0ICpjdHggPSBuZnNfZmlsZV9vcGVuX2NvbnRleHQoZmlscCk7DQo+ICsJ
-c3RydWN0IHJwY19hdXRoICphdXRoID0gTkZTX1NFUlZFUihpbm9kZSktPmNsaWVudC0+Y2xfYXV0
-aDsNCj4gKw0KPiArCXJldHVybiBycGNhdXRoX2tleV90aW1lb3V0X25vdGlmeShhdXRoLCBjdHgt
-PmNyZWQpOw0KPiArfQ0KPiArDQo+ICsvKg0KPiArICogVGVzdCBpZiB0aGUgb3BlbiBjb250ZXh0
-IGNyZWRlbnRpYWwga2V5IGlzIG1hcmtlZCB0byBleHBpcmUgc29vbi4NCj4gKyAqLw0KPiArYm9v
-bCBuZnNfY3R4X2tleV90b19leHBpcmUoc3RydWN0IG5mc19vcGVuX2NvbnRleHQgKmN0eCkNCj4g
-K3sNCj4gKwlyZXR1cm4gcnBjYXV0aF9jcmVkX2tleV90b19leHBpcmUoY3R4LT5jcmVkKTsNCj4g
-K30NCj4gKw0KPiArLyoNCj4gICAqIElmIHRoZSBwYWdlIGNhY2hlIGlzIG1hcmtlZCBhcyB1bnNh
-ZmUgb3IgaW52YWxpZCwgdGhlbiB3ZSBjYW4ndCByZWx5IG9uDQo+ICAgKiB0aGUgUGFnZVVwdG9k
-YXRlKCkgZmxhZy4gSW4gdGhpcyBjYXNlLCB3ZSB3aWxsIG5lZWQgdG8gdHVybiBvZmYNCj4gICAq
-IHdyaXRlIG9wdGltaXNhdGlvbnMgdGhhdCBkZXBlbmQgb24gdGhlIHBhZ2UgY29udGVudHMgYmVp
-bmcgY29ycmVjdC4NCg0KQXBwbGllZCwgbWludXMgdGhlIHByaW50ay4uLg0KDQotLSANClRyb25k
-IE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQu
-TXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+On Mon, Sep 16, 2013 at 09:43:51AM -0500, Contact wrote:
+> Hi all,
+> 
+> I'm having an issue with my NFS mount and being able to access it from
+> my normal user account. The mount point is chmod'ed to 2770 with a GID
+> of 1100 (nfs) which is the same on both systems. I can access it if I
+> change my active group using newgrp, but not normally.
+> 
+> ====================================
+> noir ~ # ls -lhd /home/nfs/share
+> drwxrws--- 8 nfs nfs 4.0K Sep  4 15:30 /home/nfs/share
+> 
+> rypervenche@svelte ~ $ pwd
+> /home/rypervenche
+> rypervenche@svelte ~ $ cd nfs
+> -su: cd: nfs: Permission denied
+> rypervenche@svelte ~ $ newgrp nfs
+> rypervenche@svelte ~ $ cd nfs
+> rypervenche@svelte ~/nfs $ 
+> 
+> svelte ~ # grep nfs /etc/group
+> nfs:x:1100:rypervenche
+> ====================================
+> 
+> You can find the details of my NFS server and client here:
+> 
+> ====================================
+> svelte = client
+> noir = server
+> 
+> svelte ~ # tail -1 /etc/fstab
+> 192.168.1.100:/ /home/rypervenche/nfs   nfs
+> rw,noauto,noexec,nodev,nosuid   0       0
+> 
+> noir ~ # cat /etc/exports 
+> # /etc/exports: NFS file systems being exported.  See exports(5).
+> /home/nfs/share 192.168.1.205(rw,sync,fsid=0,no_root_squash,no_subtree_check) 192.168.2.100(rw,sync,fsid=0,no_root_squash,no_subtree_check)
+> 
+> noir ~ # id nfs
+> uid=1100(nfs) gid=1100(nfs) groups=1100(nfs)
+> 
+> noir ~ # grep -v ^# /etc/conf.d/nfs | grep -v ^$
+> NFS_NEEDED_SERVICES="rpc.idmapd"
+> OPTS_RPC_NFSD="8"
+> OPTS_RPC_MOUNTD="-V 4 --manage-gids -p 32767"
+> OPTS_RPC_STATD="-p 32765 -o 32766"
+> OPTS_RPC_IDMAPD=""
+> OPTS_RPC_GSSD=""
+> OPTS_RPC_SVCGSSD=""
+> OPTS_RPC_RQUOTAD=""
+> EXPORTFS_TIMEOUT=30
+> 
+> noir ~ # iptables-save | egrep '(NFS|T -m conn)'
+> -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+> -A INPUT -s 192.168.1.205/32 -p tcp -m tcp -m multiport --dports 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment --comment NFS -j ACCEPT
+> -A INPUT -s 192.168.1.205/32 -p udp -m udp -m multiport --dports 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment --comment NFS -j ACCEPT
+> -A INPUT -s 192.168.2.100/32 -p tcp -m tcp -m multiport --dports 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment --comment NFS -j ACCEPT
+> -A INPUT -s 192.168.2.100/32 -p udp -m udp -m multiport --dports 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment --comment NFS -j ACCEPT
+> 
+> svelte:
+> net-fs/nfs-utils-1.2.6 was built with the following:
+> USE="ipv6 nfsdcld nfsidmap nfsv4 nfsv41 tcpd -caps -kerberos (-selinux)"
+> 
+> noir:
+> net-fs/nfs-utils-1.2.6 was built with the following:
+> USE="ipv6 (multilib) nfsdcld nfsidmap nfsv4 nfsv41 tcpd -caps -kerberos (-selinux)" ABI_X86="64"
+> 
+> svelte ~ # uname -a
+> Linux svelte 3.10.7-gentoo-svelte #1 SMP Thu Aug 22 17:46:44 CDT 2013 i686 Intel(R) Atom(TM) CPU N450 @ 1.66GHz GenuineIntel GNU/Linux
+> 
+> noir ~ # uname -a
+> Linux noir 3.10.7-gentoo-noir #1 SMP Wed Aug 28 11:19:43 CDT 2013 x86_64 AMD Athlon(tm) II X2 260 Processor AuthenticAMD GNU/Linux
+> ====================================
+> 
+> 
+> I found online that the issue is due to NFS not being able to grab
+> over 16 GIDs. I found help in the following two links:
+> 
+> https://xkyle.com/solving-the-nfs-16-group-limit-problem/
+> https://wiki.archlinux.org/index.php/NFS_Troubleshooting
+> 
+> I tried adding the --manage-gids flag to mountd (which can be seen in
+> the /etc/conf.d/nfs file above), however, it does not appear to
+> resolve the issue.
+> 
+> ====================================
+> noir ~ #
+> cat /proc/net/rpc/auth.unix.gid/content #uid cnt: gids...
+> 0 10: 0 1 2 3 4 6 10 11 26 27
+> 1000 9: 10 18 19 27 78 85 100 250 1000
+> 
+> noir ~ # date +%s > /proc/net/rpc/auth.unix.gid/flush     
+>                                                                                                                               
+> noir ~ #
+> cat /proc/net/rpc/auth.unix.gid/content #uid cnt: gids...
+> 
+> Then I mount the NFS again:
+> 
+> noir ~ # cat /proc/net/rpc/auth.unix.gid/content
+> #uid cnt: gids...
+> 0 10: 0 1 2 3 4 6 10 11 26 27
+> 1000 9: 10 18 19 27 78 85 100 250 1000
+> ====================================
+> 
+> It looks as though it is not grabbing all of my GIDs.
+
+What do you expect the list to be?  Which groups is uid 1000 a member of
+on the server?
+
+--b.
