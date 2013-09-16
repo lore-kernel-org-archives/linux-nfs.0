@@ -1,22 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from pcc-yyc-mx-01.platinum.ca ([69.31.192.18]:48135 "HELO
-	frontend2.platinum.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751707Ab3IHDCd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Sep 2013 23:02:33 -0400
-Message-ID: <1ade8fb08cfec79a631ef5c59ffc84bd.squirrel@webmail.platinum.ca>
-Date: Sat, 7 Sep 2013 18:32:44 -0600 (MDT)
-Subject: PARTNERSHIP
-From: "Dennis and Lorna Guitton" <guittonfarms@platinum.ca>
-Reply-To: "Dennis & Lorna" <Guitton@vger.kernel.org>
-MIME-Version: 1.0
+Received: from relay3-d.mail.gandi.net ([217.70.183.195]:33784 "EHLO
+	relay3-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753520Ab3IPOn7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Sep 2013 10:43:59 -0400
+Received: from svelte.ryper.org (unknown [IPv6:2001:470:b825:1:76f0:6dff:fe51:7a39])
+	(Authenticated sender: contact@ryper.org)
+	by relay3-d.mail.gandi.net (Postfix) with ESMTPSA id 832F7A80D8
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Sep 2013 16:43:55 +0200 (CEST)
+Date: Mon, 16 Sep 2013 09:43:51 -0500
+From: Contact <contact@ryper.org>
+To: linux-nfs@vger.kernel.org
+Subject: 16+ GID issue, mountd's --manage-gids not helping
+Message-ID: <20130916094351.263d433d@svelte.ryper.org>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
-To: unlisted-recipients:; (no To-header on input)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-i have a business to discuss
-with you, for information contact
-me via:  mckoenig26@live.com
-Mrs Cecilia Koenig
+Hi all,
+
+I'm having an issue with my NFS mount and being able to access it from
+my normal user account. The mount point is chmod'ed to 2770 with a GID
+of 1100 (nfs) which is the same on both systems. I can access it if I
+change my active group using newgrp, but not normally.
+
+====================================
+noir ~ # ls -lhd /home/nfs/share
+drwxrws--- 8 nfs nfs 4.0K Sep  4 15:30 /home/nfs/share
+
+rypervenche@svelte ~ $ pwd
+/home/rypervenche
+rypervenche@svelte ~ $ cd nfs
+-su: cd: nfs: Permission denied
+rypervenche@svelte ~ $ newgrp nfs
+rypervenche@svelte ~ $ cd nfs
+rypervenche@svelte ~/nfs $ 
+
+svelte ~ # grep nfs /etc/group
+nfs:x:1100:rypervenche
+====================================
+
+You can find the details of my NFS server and client here:
+
+====================================
+svelte = client
+noir = server
+
+svelte ~ # tail -1 /etc/fstab
+192.168.1.100:/ /home/rypervenche/nfs   nfs
+rw,noauto,noexec,nodev,nosuid   0       0
+
+noir ~ # cat /etc/exports 
+# /etc/exports: NFS file systems being exported.  See exports(5).
+/home/nfs/share 192.168.1.205(rw,sync,fsid=0,no_root_squash,no_subtree_check) 192.168.2.100(rw,sync,fsid=0,no_root_squash,no_subtree_check)
+
+noir ~ # id nfs
+uid=1100(nfs) gid=1100(nfs) groups=1100(nfs)
+
+noir ~ # grep -v ^# /etc/conf.d/nfs | grep -v ^$
+NFS_NEEDED_SERVICES="rpc.idmapd"
+OPTS_RPC_NFSD="8"
+OPTS_RPC_MOUNTD="-V 4 --manage-gids -p 32767"
+OPTS_RPC_STATD="-p 32765 -o 32766"
+OPTS_RPC_IDMAPD=""
+OPTS_RPC_GSSD=""
+OPTS_RPC_SVCGSSD=""
+OPTS_RPC_RQUOTAD=""
+EXPORTFS_TIMEOUT=30
+
+noir ~ # iptables-save | egrep '(NFS|T -m conn)'
+-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -s 192.168.1.205/32 -p tcp -m tcp -m multiport --dports 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment --comment NFS -j ACCEPT
+-A INPUT -s 192.168.1.205/32 -p udp -m udp -m multiport --dports 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment --comment NFS -j ACCEPT
+-A INPUT -s 192.168.2.100/32 -p tcp -m tcp -m multiport --dports 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment --comment NFS -j ACCEPT
+-A INPUT -s 192.168.2.100/32 -p udp -m udp -m multiport --dports 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment --comment NFS -j ACCEPT
+
+svelte:
+net-fs/nfs-utils-1.2.6 was built with the following:
+USE="ipv6 nfsdcld nfsidmap nfsv4 nfsv41 tcpd -caps -kerberos (-selinux)"
+
+noir:
+net-fs/nfs-utils-1.2.6 was built with the following:
+USE="ipv6 (multilib) nfsdcld nfsidmap nfsv4 nfsv41 tcpd -caps -kerberos (-selinux)" ABI_X86="64"
+
+svelte ~ # uname -a
+Linux svelte 3.10.7-gentoo-svelte #1 SMP Thu Aug 22 17:46:44 CDT 2013 i686 Intel(R) Atom(TM) CPU N450 @ 1.66GHz GenuineIntel GNU/Linux
+
+noir ~ # uname -a
+Linux noir 3.10.7-gentoo-noir #1 SMP Wed Aug 28 11:19:43 CDT 2013 x86_64 AMD Athlon(tm) II X2 260 Processor AuthenticAMD GNU/Linux
+====================================
 
 
+I found online that the issue is due to NFS not being able to grab
+over 16 GIDs. I found help in the following two links:
+
+https://xkyle.com/solving-the-nfs-16-group-limit-problem/
+https://wiki.archlinux.org/index.php/NFS_Troubleshooting
+
+I tried adding the --manage-gids flag to mountd (which can be seen in
+the /etc/conf.d/nfs file above), however, it does not appear to
+resolve the issue.
+
+====================================
+noir ~ #
+cat /proc/net/rpc/auth.unix.gid/content #uid cnt: gids...
+0 10: 0 1 2 3 4 6 10 11 26 27
+1000 9: 10 18 19 27 78 85 100 250 1000
+
+noir ~ # date +%s > /proc/net/rpc/auth.unix.gid/flush     
+                                                                                                                              
+noir ~ #
+cat /proc/net/rpc/auth.unix.gid/content #uid cnt: gids...
+
+Then I mount the NFS again:
+
+noir ~ # cat /proc/net/rpc/auth.unix.gid/content
+#uid cnt: gids...
+0 10: 0 1 2 3 4 6 10 11 26 27
+1000 9: 10 18 19 27 78 85 100 250 1000
+====================================
+
+It looks as though it is not grabbing all of my GIDs.
+
+Does anyone have some light they can shed on this? Thanks.
