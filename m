@@ -1,129 +1,173 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40864 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:50903 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752855Ab3IEQai (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Sep 2013 12:30:38 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 09/12] locks: helper functions for delegation breaking
-Date: Thu,  5 Sep 2013 12:30:17 -0400
-Message-Id: <1378398620-23018-14-git-send-email-bfields@redhat.com>
-In-Reply-To: <1378398620-23018-1-git-send-email-bfields@redhat.com>
-References: <1378398620-23018-1-git-send-email-bfields@redhat.com>
+	id S1751204Ab3IPXUZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Sep 2013 19:20:25 -0400
+Date: Mon, 16 Sep 2013 19:20:24 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Contact <contact@ryper.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: 16+ GID issue, mountd's --manage-gids not helping
+Message-ID: <20130916232024.GC25308@fieldses.org>
+References: <20130916094351.263d433d@svelte.ryper.org>
+ <20130916193709.GA25308@fieldses.org>
+ <20130916175612.012d7301@svelte.ryper.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20130916175612.012d7301@svelte.ryper.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Mon, Sep 16, 2013 at 05:56:12PM -0500, Contact wrote:
+> Hello,
+> 
+> I was assuming it would grab all of my GIDs as it appears to do in the
+> following link:
+> https://xkyle.com/solving-the-nfs-16-group-limit-problem/
+> 
+> Just under the quote:
+> "Also, the NFS server will cache group lookups so it doesn’t have to
+> continuously make queries. The cache is visible like this:"
+> 
+> The GID 1000 is my primary user on both boxes (rypervenche).
+> 
+> If there is another way to do this (aside maybe from setting up
+> kerberos/ldap) I would be willing to try that.
 
-We'll need the same logic for rename and link.
+Could you please answer the two questions which I asked in my previous
+email?
 
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/namei.c         |   13 +++----------
- include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
- 2 files changed, 34 insertions(+), 12 deletions(-)
+--b.
 
-diff --git a/fs/namei.c b/fs/namei.c
-index b5ad182..8de79f1 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3466,14 +3466,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
- 	else {
- 		error = security_inode_unlink(dir, dentry);
- 		if (!error) {
--			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
--			if (error) {
--				if (error == -EWOULDBLOCK && delegated_inode) {
--					*delegated_inode = target;
--					ihold(target);
--				}
-+			error = try_break_deleg(target, delegated_inode);
-+			if (error)
- 				goto out;
--			}
- 			error = dir->i_op->unlink(dir, dentry);
- 			if (!error)
- 				dont_mount(dentry);
-@@ -3543,9 +3538,7 @@ exit2:
- 		iput(inode);	/* truncate the inode here */
- 	inode = NULL;
- 	if (delegated_inode) {
--		error = break_deleg(delegated_inode, O_WRONLY);
--		iput(delegated_inode);
--		delegated_inode = NULL;
-+		error = break_deleg_wait(&delegated_inode);
- 		if (!error)
- 			goto retry_deleg;
- 	}
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index ba29b37..43a3506 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1907,6 +1907,9 @@ extern bool our_mnt(struct vfsmount *mnt);
- 
- extern int current_umask(void);
- 
-+extern void ihold(struct inode * inode);
-+extern void iput(struct inode *);
-+
- /* /sys/fs */
- extern struct kobject *fs_kobj;
- 
-@@ -1974,6 +1977,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
- 	return 0;
- }
- 
-+static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
-+{
-+	int ret;
-+
-+	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
-+	if (ret == -EWOULDBLOCK && delegated_inode) {
-+		*delegated_inode = inode;
-+		ihold(inode);
-+	}
-+	return ret;
-+}
-+
-+static inline int break_deleg_wait(struct inode **delegated_inode)
-+{
-+	int ret;
-+
-+	ret = break_deleg(*delegated_inode, O_WRONLY);
-+	iput(*delegated_inode);
-+	*delegated_inode = NULL;
-+	return ret;
-+}
-+
- #else /* !CONFIG_FILE_LOCKING */
- static inline int locks_mandatory_locked(struct inode *inode)
- {
-@@ -2017,6 +2042,12 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
- {
- 	return 0;
- }
-+
-+static inline int try_break_deleg(struct inode *inode, struct delegated_inode **inode)
-+{
-+	return 0;
-+}
-+
- #endif /* CONFIG_FILE_LOCKING */
- 
- /* fs/open.c */
-@@ -2346,8 +2377,6 @@ extern loff_t vfs_llseek(struct file *file, loff_t offset, int whence);
- extern int inode_init_always(struct super_block *, struct inode *);
- extern void inode_init_once(struct inode *);
- extern void address_space_init_once(struct address_space *mapping);
--extern void ihold(struct inode * inode);
--extern void iput(struct inode *);
- extern struct inode * igrab(struct inode *);
- extern ino_t iunique(struct super_block *, ino_t);
- extern int inode_needs_sync(struct inode *inode);
--- 
-1.7.9.5
-
+> 
+> Thank you.
+> 
+> 
+> On Mon, 16 Sep 2013 15:37:09 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Mon, Sep 16, 2013 at 09:43:51AM -0500, Contact wrote:
+> > > Hi all,
+> > > 
+> > > I'm having an issue with my NFS mount and being able to access it
+> > > from my normal user account. The mount point is chmod'ed to 2770
+> > > with a GID of 1100 (nfs) which is the same on both systems. I can
+> > > access it if I change my active group using newgrp, but not
+> > > normally.
+> > > 
+> > > ====================================
+> > > noir ~ # ls -lhd /home/nfs/share
+> > > drwxrws--- 8 nfs nfs 4.0K Sep  4 15:30 /home/nfs/share
+> > > 
+> > > rypervenche@svelte ~ $ pwd
+> > > /home/rypervenche
+> > > rypervenche@svelte ~ $ cd nfs
+> > > -su: cd: nfs: Permission denied
+> > > rypervenche@svelte ~ $ newgrp nfs
+> > > rypervenche@svelte ~ $ cd nfs
+> > > rypervenche@svelte ~/nfs $ 
+> > > 
+> > > svelte ~ # grep nfs /etc/group
+> > > nfs:x:1100:rypervenche
+> > > ====================================
+> > > 
+> > > You can find the details of my NFS server and client here:
+> > > 
+> > > ====================================
+> > > svelte = client
+> > > noir = server
+> > > 
+> > > svelte ~ # tail -1 /etc/fstab
+> > > 192.168.1.100:/ /home/rypervenche/nfs   nfs
+> > > rw,noauto,noexec,nodev,nosuid   0       0
+> > > 
+> > > noir ~ # cat /etc/exports 
+> > > # /etc/exports: NFS file systems being exported.  See exports(5).
+> > > /home/nfs/share
+> > > 192.168.1.205(rw,sync,fsid=0,no_root_squash,no_subtree_check)
+> > > 192.168.2.100(rw,sync,fsid=0,no_root_squash,no_subtree_check)
+> > > 
+> > > noir ~ # id nfs
+> > > uid=1100(nfs) gid=1100(nfs) groups=1100(nfs)
+> > > 
+> > > noir ~ # grep -v ^# /etc/conf.d/nfs | grep -v ^$
+> > > NFS_NEEDED_SERVICES="rpc.idmapd"
+> > > OPTS_RPC_NFSD="8"
+> > > OPTS_RPC_MOUNTD="-V 4 --manage-gids -p 32767"
+> > > OPTS_RPC_STATD="-p 32765 -o 32766"
+> > > OPTS_RPC_IDMAPD=""
+> > > OPTS_RPC_GSSD=""
+> > > OPTS_RPC_SVCGSSD=""
+> > > OPTS_RPC_RQUOTAD=""
+> > > EXPORTFS_TIMEOUT=30
+> > > 
+> > > noir ~ # iptables-save | egrep '(NFS|T -m conn)'
+> > > -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+> > > -A INPUT -s 192.168.1.205/32 -p tcp -m tcp -m multiport --dports
+> > > 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment
+> > > --comment NFS -j ACCEPT -A INPUT -s 192.168.1.205/32 -p udp -m udp
+> > > -m multiport --dports 111,2049,4001,32765:32767 -m conntrack
+> > > --ctstate NEW -m comment --comment NFS -j ACCEPT -A INPUT -s
+> > > 192.168.2.100/32 -p tcp -m tcp -m multiport --dports
+> > > 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment
+> > > --comment NFS -j ACCEPT -A INPUT -s 192.168.2.100/32 -p udp -m udp
+> > > -m multiport --dports 111,2049,4001,32765:32767 -m conntrack
+> > > --ctstate NEW -m comment --comment NFS -j ACCEPT
+> > > 
+> > > svelte:
+> > > net-fs/nfs-utils-1.2.6 was built with the following:
+> > > USE="ipv6 nfsdcld nfsidmap nfsv4 nfsv41 tcpd -caps -kerberos
+> > > (-selinux)"
+> > > 
+> > > noir:
+> > > net-fs/nfs-utils-1.2.6 was built with the following:
+> > > USE="ipv6 (multilib) nfsdcld nfsidmap nfsv4 nfsv41 tcpd -caps
+> > > -kerberos (-selinux)" ABI_X86="64"
+> > > 
+> > > svelte ~ # uname -a
+> > > Linux svelte 3.10.7-gentoo-svelte #1 SMP Thu Aug 22 17:46:44 CDT
+> > > 2013 i686 Intel(R) Atom(TM) CPU N450 @ 1.66GHz GenuineIntel
+> > > GNU/Linux
+> > > 
+> > > noir ~ # uname -a
+> > > Linux noir 3.10.7-gentoo-noir #1 SMP Wed Aug 28 11:19:43 CDT 2013
+> > > x86_64 AMD Athlon(tm) II X2 260 Processor AuthenticAMD GNU/Linux
+> > > ====================================
+> > > 
+> > > 
+> > > I found online that the issue is due to NFS not being able to grab
+> > > over 16 GIDs. I found help in the following two links:
+> > > 
+> > > https://xkyle.com/solving-the-nfs-16-group-limit-problem/
+> > > https://wiki.archlinux.org/index.php/NFS_Troubleshooting
+> > > 
+> > > I tried adding the --manage-gids flag to mountd (which can be seen
+> > > in the /etc/conf.d/nfs file above), however, it does not appear to
+> > > resolve the issue.
+> > > 
+> > > ====================================
+> > > noir ~ #
+> > > cat /proc/net/rpc/auth.unix.gid/content #uid cnt: gids...
+> > > 0 10: 0 1 2 3 4 6 10 11 26 27
+> > > 1000 9: 10 18 19 27 78 85 100 250 1000
+> > > 
+> > > noir ~ # date +%s > /proc/net/rpc/auth.unix.gid/flush     
+> > >                                                                                                                               
+> > > noir ~ #
+> > > cat /proc/net/rpc/auth.unix.gid/content #uid cnt: gids...
+> > > 
+> > > Then I mount the NFS again:
+> > > 
+> > > noir ~ # cat /proc/net/rpc/auth.unix.gid/content
+> > > #uid cnt: gids...
+> > > 0 10: 0 1 2 3 4 6 10 11 26 27
+> > > 1000 9: 10 18 19 27 78 85 100 250 1000
+> > > ====================================
+> > > 
+> > > It looks as though it is not grabbing all of my GIDs.
+> > 
+> > What do you expect the list to be?  Which groups is uid 1000 a member
+> > of on the server?
+> > 
+> > --b.
+> 
