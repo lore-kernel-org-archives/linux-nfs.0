@@ -1,63 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40838 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752830Ab3IEQad (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Sep 2013 12:30:33 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/4] rpc: let xdr layer allocate gssproxy receieve pages
-Date: Thu,  5 Sep 2013 12:30:11 -0400
-Message-Id: <1378398620-23018-8-git-send-email-bfields@redhat.com>
-In-Reply-To: <1378398620-23018-1-git-send-email-bfields@redhat.com>
-References: <1378398620-23018-1-git-send-email-bfields@redhat.com>
+Received: from relay4-d.mail.gandi.net ([217.70.183.196]:39356 "EHLO
+	relay4-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751664Ab3IQCVA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Sep 2013 22:21:00 -0400
+Date: Mon, 16 Sep 2013 21:20:51 -0500
+From: Contact <contact@ryper.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: 16+ GID issue, mountd's --manage-gids not helping
+Message-ID: <20130916212051.12b0fafe@svelte.ryper.org>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9467CD9A6@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20130916094351.263d433d@svelte.ryper.org>
+	<20130916193709.GA25308@fieldses.org>
+	<20130916175612.012d7301@svelte.ryper.org>
+	<20130916232024.GC25308@fieldses.org>
+	<20130917003825.GD25308@fieldses.org>
+	<20130916201105.717449b1@svelte.ryper.org>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA9467CD9A6@SACEXCMBX04-PRD.hq.netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+THAT DID IT!
 
-In theory the linux cred in a gssproxy reply can include up to
-NGROUPS_MAX data, 256K of data.  In the common case we expect it to be
-shorter.  So do as the nfsv3 ACL code does and let the xdr code allocate
-the pages as they come in, instead of allocating a lot of pages that
-won't typically be used.
+You guys are awesome! I didn't realize that they had to be the same for
+the user. I thought that was independent of the user on the server's
+end. So user 1000 has to have GID 1100 on both client and server. I
+will remember that.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/auth_gss/gss_rpc_upcall.c |   16 ++++++----------
- 1 file changed, 6 insertions(+), 10 deletions(-)
+Again, thank you so much. I apologize if I made this more difficult
+than it needed to be.
 
-diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-index be95af3..f1eb0d1 100644
---- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-@@ -223,18 +223,14 @@ static void gssp_free_receive_pages(struct gssx_arg_accept_sec_context *arg)
- 
- static int gssp_alloc_receive_pages(struct gssx_arg_accept_sec_context *arg)
- {
--	int i;
--
- 	arg->npages = DIV_ROUND_UP(NGROUPS_MAX * 4, PAGE_SIZE);
- 	arg->pages = kzalloc(arg->npages * sizeof(struct page *), GFP_KERNEL);
--
--	for (i=0; i < arg->npages; i++) {
--		arg->pages[i] = alloc_page(GFP_KERNEL);
--		if (arg->pages[i] == NULL) {
--			gssp_free_receive_pages(arg);
--			return -ENOMEM;
--		}
--	}
-+	/*
-+	 * XXX: actual pages are allocated by xdr layer in
-+	 * xdr_partial_copy_from_skb.
-+	 */
-+	if (!arg->pages)
-+		return -ENOMEM;
- 	return 0;
- }
- 
--- 
-1.7.9.5
+
+On Tue, 17 Sep 2013 01:59:42 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+
+> > -----Original Message-----
+> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> > owner@vger.kernel.org] On Behalf Of Contact
+> > Sent: Monday, September 16, 2013 9:11 PM
+> > To: J. Bruce Fields
+> > Cc: linux-nfs@vger.kernel.org
+> > Subject: Re: 16+ GID issue, mountd's --manage-gids not helping
+> > 
+> > Hello,
+> > 
+> > My apologies for not providing the information that you requested.
+> > 
+> > (client)
+> > rypervenche@svelte ~ $ id
+> > uid=1000(rypervenche) gid=1000(rypervenche)
+> > groups=1000(rypervenche),4(adm),6(disk),7(lp),10(wheel),16(cron),18(audio
+> > ),27(video),35(games),70(postgres),85(usb),100(users),103(vboxusers),105(
+> > wireshark),106(lpadmin),244(plugdev),246(crontab),250(portage),1100(nfs)
+> > 
+> > (server)
+> > nfs@noir ~ $ id
+> > uid=1100(nfs) gid=1100(nfs) groups=1100(nfs)
+> 
+> Does the '/etc/groups' entries for the user with uid=1000 on the
+> server match those listed above for the client?
+> 
+> --manage-gids will only work correctly if the /etc/passwd
+> and /etc/groups entries on the server match those on the client.
+> 
+> Cheers,
+>   Trond
 
