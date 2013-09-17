@@ -1,102 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:5759 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:59724 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754860Ab3IISVM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Sep 2013 14:21:12 -0400
-Date: Mon, 9 Sep 2013 14:21:08 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Quentin Barnes <qbarnes@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
-Message-ID: <20130909142108.51b4cf79@tlielax.poochiereds.net>
-In-Reply-To: <1378748866.11732.2.camel@leira.trondhjem.org>
-References: <20130905162110.GA17920@gmail.com>
-	<20130905170303.GB17330@us.ibm.com>
-	<20130905191139.GA20830@gmail.com>
-	<1378411320.5450.27.camel@leira.trondhjem.org>
-	<20130905213649.GA21944@gmail.com>
-	<1378418243.5450.29.camel@leira.trondhjem.org>
-	<20130905223420.GA23192@gmail.com>
-	<20130906093636.6818e7b2@corrin.poochiereds.net>
-	<CAKjHkpBW+LWKuKuHnUfKNxwDZeX3SOFKv_jYeNGF8ezdAnKnvg@mail.gmail.com>
-	<20130909090424.1a780b49@tlielax.poochiereds.net>
-	<20130909173209.GA28353@gmail.com>
-	<1378748866.11732.2.camel@leira.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1753306Ab3IQVlR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Sep 2013 17:41:17 -0400
+Date: Tue, 17 Sep 2013 17:41:15 -0400
+To: Trond Myklebust <trond@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: gss_destroy crash
+Message-ID: <20130917214115.GA3079@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 9 Sep 2013 17:47:48 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+As of eb6dc19d8e72ce3a957af5511d20c0db0a8bd007 "RPCSEC_GSS: Share all
+credential caches on a per-transport basis" I'm getting an occasional
+crash on shutdown of nfsd's 4.0 callback client (see appended oops),
+because  rpc_shutdown_client() is called on a client whose cl_auth is a
+gss_auth with gss_pipe[0]->clnt pointing to freed memory.
 
-> On Mon, 2013-09-09 at 12:32 -0500, Quentin Barnes wrote:
-> > On Mon, Sep 09, 2013 at 09:04:24AM -0400, Jeff Layton wrote:
-> > > On Fri, 6 Sep 2013 11:48:45 -0500
-> > > Quentin Barnes <qbarnes@gmail.com> wrote:
-> > > 
-> > > > Jeff, can your try out my test program in the base note on your
-> > > > RHEL5.9 or later RHEL5.x kernels?
-> > > > 
-> > > > I reverified that running the test on a 2.6.18-348.16.1.el5 x86_64
-> > > > kernel (latest released RHEL5.9) does not show the problem for me.
-> > > > Based on what you and Trond have said in this thread though, I'm
-> > > > really curious why it doesn't have the problem.
-> > > 
-> > > I can confirm what you see on RHEL5. One difference is that RHEL5's
-> > > page_mkwrite handler does not do wait_on_page_writeback. That was added
-> > > as part of the stable pages work that went in a while back, so that may 
-> > > be the main difference. Adding that in doesn't seem to materially
-> > > change things though.
-> > 
-> > Good to know you confirmed the behavior I saw on RHEL5 (just so that
-> > I know it's not some random variable in play I had overlooked).
-> > 
-> > > In any case, what I see is that the initial program just ends up with a
-> > > two calls to nfs_vm_page_mkwrite(). They both push out a WRITE and then
-> > > things settle down (likely because the page is still marked dirty).
-> > > 
-> > > Eventually, another write occurs and the dirty page gets pushed out to
-> > > the server in a small flurry of WRITEs to the same range.Then, things
-> > > settle down again until there's another small flurry of activity.
-> > > 
-> > > My suspicion is that there is a race condition involved here, but I'm
-> > > unclear on where it is. I'm not 100% convinced this is a bug, but page
-> > > fault semantics aren't my strong suit.
-> > 
-> > As a test on RHEL6, I made a trivial systemtap script for kprobing
-> > nfs_vm_page_mkwrite() and nfs_flush_incompatible().  I wanted to
-> > make sure this bug was limited to just the nfs module and was not a
-> > result of some mm behavior change.
-> > 
-> > With the bug unfixed running the test program, nfs_vm_page_mkwrite()
-> > and nfs_flush_incompatible() are called repeatedly at a very high rate
-> > (hence all the WRITEs).
-> > 
-> > After Trond's patch, the two functions are called just at the
-> > program's initialization and then called only every 30 seconds or
-> > so.
-> > 
-> > It looks like to me from the code flow that there must be something
-> > nfs_wb_page() does that resets the need for mm to keeping reinvoking
-> > nfs_vm_page_mkwrite().  I didn't look any deeper than that though
-> > for now.  Maybe a race in how nfs_wb_page() updates status you're
-> > thinking of?
-> 
-> In RHEL-5, nfs_wb_page() is just a wrapper to nfs_sync_inode_wait(),
-> which does _not_ call clear_page_dirty_for_io() (and hence does not call
-> page_mkclean()).
-> 
-> That would explain it...
-> 
+Is there any known bug here?
 
-Thanks Trond, that does explain it.
+While I try to understand this....
 
-FWIW, at this point in the RHEL5 lifecycle I'd be disinclined to make
-any changes to that code without some strong justification. Backporting
-Trond's recent patch for RHEL6 and making sure that RHEL7 has it sounds
-quite reasonable though.
+I'm wondering what guarantees that gss_pipe[0]->clnt is still good at
+this point, and that leads me to be suspicious of the sharing introduced
+by this patch--how do we know that a gss_auth can't be shared between
+two clients that could disappear in either order?
 
--- 
-Jeff Layton <jlayton@redhat.com>
+The chasing of cl_parent pointers in gss_create() suggests that the
+auth's pointers back to clients are always supposed to be back to a
+common ancestor, but does gss_auth_find_or_add_hashed really guarantee
+that the auth will only be shared between clients that are cloned from a
+common ancestor?
+
+--b.
+
+general protection fault: 0000 [#1] PREEMPT SMP 
+Modules linked in: rpcsec_gss_krb5 nfsd auth_rpcgss oid_registry nfs_acl lockd sunrpc
+CPU: 3 PID: 4071 Comm: kworker/u8:2 Not tainted 3.11.0-rc2-00182-g025145f #1665
+Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+Workqueue: nfsd4_callbacks nfsd4_do_callback_rpc [nfsd]
+task: ffff88003e206080 ti: ffff88003c384000 task.ti: ffff88003c384000
+RIP: 0010:[<ffffffffa00001f3>]  [<ffffffffa00001f3>] rpc_net_ns+0x53/0x70 [sunrpc]
+RSP: 0000:ffff88003c385ab8  EFLAGS: 00010246
+RAX: 6b6b6b6b6b6b6b6b RBX: ffff88003af9a800 RCX: 0000000000000002
+RDX: ffffffffa00001a5 RSI: 0000000000000001 RDI: ffffffff81e284e0
+RBP: ffff88003c385ad8 R08: 0000000000000001 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000015 R12: ffff88003c990840
+R13: ffff88003c990878 R14: ffff88003c385ba8 R15: ffff88003e206080
+FS:  0000000000000000(0000) GS:ffff88003fd80000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+CR2: 00007fcdf737e000 CR3: 000000003ad2b000 CR4: 00000000000006e0
+Stack:
+ ffffffffa00001a5 0000000000000006 0000000000000006 ffff88003af9a800
+ ffff88003c385b08 ffffffffa00d52a4 ffff88003c385ba8 ffff88003c751bd8
+ ffff88003c751bc0 ffff88003e113600 ffff88003c385b18 ffffffffa00d530c
+Call Trace:
+ [<ffffffffa00001a5>] ? rpc_net_ns+0x5/0x70 [sunrpc]
+ [<ffffffffa00d52a4>] __gss_pipe_release+0x54/0x90 [auth_rpcgss]
+ [<ffffffffa00d530c>] gss_pipe_free+0x2c/0x30 [auth_rpcgss]
+ [<ffffffffa00d678b>] gss_destroy+0x9b/0xf0 [auth_rpcgss]
+ [<ffffffffa000de63>] rpcauth_release+0x23/0x30 [sunrpc]
+ [<ffffffffa0001e81>] rpc_release_client+0x51/0xb0 [sunrpc]
+ [<ffffffffa00020d5>] rpc_shutdown_client+0xe5/0x170 [sunrpc]
+ [<ffffffff81098a14>] ? cpuacct_charge+0xa4/0xb0
+ [<ffffffff81098975>] ? cpuacct_charge+0x5/0xb0
+ [<ffffffffa019556f>] nfsd4_process_cb_update.isra.17+0x2f/0x210 [nfsd]
+ [<ffffffff819a4ac0>] ? _raw_spin_unlock_irq+0x30/0x60
+ [<ffffffff819a4acb>] ? _raw_spin_unlock_irq+0x3b/0x60
+ [<ffffffff810703ab>] ? process_one_work+0x15b/0x510
+ [<ffffffffa01957dd>] nfsd4_do_callback_rpc+0x8d/0xa0 [nfsd]
+ [<ffffffff8107041e>] process_one_work+0x1ce/0x510
+ [<ffffffff810703ab>] ? process_one_work+0x15b/0x510
+ [<ffffffff810712ab>] worker_thread+0x11b/0x370
+ [<ffffffff81071190>] ? manage_workers.isra.24+0x2b0/0x2b0
+ [<ffffffff8107854b>] kthread+0xdb/0xe0
+ [<ffffffff819a4ac0>] ? _raw_spin_unlock_irq+0x30/0x60
+ [<ffffffff81078470>] ? __init_kthread_worker+0x70/0x70
+ [<ffffffff819ac7dc>] ret_from_fork+0x7c/0xb0
+ [<ffffffff81078470>] ? __init_kthread_worker+0x70/0x70
+Code: a5 01 00 a0 31 d2 31 f6 48 c7 c7 e0 84 e2 81 e8 f4 91 0a e1 48 8b 43 60 48 c7 c2 a5 01 00 a0 be 01 00 00 00 48 c7 c7 e0 84 e2 81 <48> 8b 98 10 07 00 00 e8 91 8f 0a e1 e8 3c 4e 07 e1 48 83 c4 18 
+RIP  [<ffffffffa00001f3>] rpc_net_ns+0x53/0x70 [sunrpc]
+ RSP <ffff88003c385ab8>
+---[ end trace ce5e3f2a85c100c0 ]---
+
