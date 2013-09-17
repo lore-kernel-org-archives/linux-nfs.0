@@ -1,86 +1,189 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:33054 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:48795 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754028Ab3IZSzy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Sep 2013 14:55:54 -0400
-Date: Thu, 26 Sep 2013 11:55:08 -0700
-From: Zach Brown <zab@redhat.com>
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Anna Schumaker <schumaker.anna@gmail.com>,
-        Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Bryan Schumaker <bjschuma@netapp.com>,
-        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        Eric Wong <normalperson@yhbt.net>
-Subject: Re: [RFC] extending splice for copy offloading
-Message-ID: <20130926185508.GO30372@lenny.home.zabbo.net>
-References: <1378919210-10372-1-git-send-email-zab@redhat.com>
- <CAELBmZBGD4rph=gjLCPKCdEj+nzEQ-F=DExoL+h3vRm7qF7dCQ@mail.gmail.com>
- <20130925183828.GA30372@lenny.home.zabbo.net>
- <CAFX2JfnyF8kyMYzCdqdr2JkoyQCom1bFLpFj89wODjoju54-Ow@mail.gmail.com>
- <20130925190620.GB30372@lenny.home.zabbo.net>
- <20130925195526.GA18971@fieldses.org>
- <20130925210742.GG30372@lenny.home.zabbo.net>
- <CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
+	id S1751602Ab3IQAi2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Sep 2013 20:38:28 -0400
+Date: Mon, 16 Sep 2013 20:38:25 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Contact <contact@ryper.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: 16+ GID issue, mountd's --manage-gids not helping
+Message-ID: <20130917003825.GD25308@fieldses.org>
+References: <20130916094351.263d433d@svelte.ryper.org>
+ <20130916193709.GA25308@fieldses.org>
+ <20130916175612.012d7301@svelte.ryper.org>
+ <20130916232024.GC25308@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20130916232024.GC25308@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 26, 2013 at 10:58:05AM +0200, Miklos Szeredi wrote:
-> On Wed, Sep 25, 2013 at 11:07 PM, Zach Brown <zab@redhat.com> wrote:
-> >> A client-side copy will be slower, but I guess it does have the
-> >> advantage that the application can track progress to some degree, and
-> >> abort it fairly quickly without leaving the file in a totally undefined
-> >> state--and both might be useful if the copy's not a simple constant-time
-> >> operation.
-> >
-> > I suppose, but can't the app achieve a nice middle ground by copying the
-> > file in smaller syscalls?  Avoid bulk data motion back to the client,
-> > but still get notification every, I dunno, few hundred meg?
+On Mon, Sep 16, 2013 at 07:20:24PM -0400, J. Bruce Fields wrote:
+> On Mon, Sep 16, 2013 at 05:56:12PM -0500, Contact wrote:
+> > Hello,
+> > 
+> > I was assuming it would grab all of my GIDs as it appears to do in the
+> > following link:
+> > https://xkyle.com/solving-the-nfs-16-group-limit-problem/
+> > 
+> > Just under the quote:
+> > "Also, the NFS server will cache group lookups so it doesn’t have to
+> > continuously make queries. The cache is visible like this:"
+> > 
+> > The GID 1000 is my primary user on both boxes (rypervenche).
+> > 
+> > If there is another way to do this (aside maybe from setting up
+> > kerberos/ldap) I would be willing to try that.
 > 
-> Yes.  And if "cp"  could just be switched from a read+write syscall
-> pair to a single splice syscall using the same buffer size.  And then
-> the user would only notice that things got faster in case of server
-> side copy.  No problems with long blocking times (at least not much
-> worse than it was).
+> Could you please answer the two questions which I asked in my previous
+> email?
 
-Hmm, yes, that would be a nice outcome.
+To make them more concrete:
 
-> However "cp" doesn't do reflinking by default, it has a switch for
-> that.  If we just want "cp" and the like to use splice without fearing
-> side effects then by default we should try to be as close to
-> read+write behavior as possible.  No?
+	- if you run "id rypervenche" on the server, what is the output?
+	- on the output from "cat /proc/net/rpc/auth.unix.gid/content"
+	  which you list below, which id that you expected to be present
+	  is not included?
 
-I guess?  I don't find requiring --reflink hugely compelling.  But there
-it is.
+--b.
 
-> That's what I'm really
-> worrying about when you want to wire up splice to reflink by default.
-> I do think there should be a flag for that.  And if on the block level
-> some magic happens, so be it.  It's not the fs deverloper's worry any
-> more ;)
-
-Sure.  So we'd have:
-
-- no flag default that forbids knowingly copying with shared references
-  so that it will be used by default by people who feel strongly about
-  their assumptions about independent write durability.
-
-- a flag that allows shared references for people who would otherwise
-  use the file system shared reference ioctls (ocfs2 reflink, btrfs
-  clone) but would like it to also do server-side read/write copies
-  over nfs without additional intervention.
-
-- a flag that requires shared references for callers who don't want
-  giant copies to take forever if they aren't instant.  (The qemu guys
-  asked for this at Plumbers.)
-
-I think I can live with that.
-
-- z
+> 
+> --b.
+> 
+> > 
+> > Thank you.
+> > 
+> > 
+> > On Mon, 16 Sep 2013 15:37:09 -0400
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > > On Mon, Sep 16, 2013 at 09:43:51AM -0500, Contact wrote:
+> > > > Hi all,
+> > > > 
+> > > > I'm having an issue with my NFS mount and being able to access it
+> > > > from my normal user account. The mount point is chmod'ed to 2770
+> > > > with a GID of 1100 (nfs) which is the same on both systems. I can
+> > > > access it if I change my active group using newgrp, but not
+> > > > normally.
+> > > > 
+> > > > ====================================
+> > > > noir ~ # ls -lhd /home/nfs/share
+> > > > drwxrws--- 8 nfs nfs 4.0K Sep  4 15:30 /home/nfs/share
+> > > > 
+> > > > rypervenche@svelte ~ $ pwd
+> > > > /home/rypervenche
+> > > > rypervenche@svelte ~ $ cd nfs
+> > > > -su: cd: nfs: Permission denied
+> > > > rypervenche@svelte ~ $ newgrp nfs
+> > > > rypervenche@svelte ~ $ cd nfs
+> > > > rypervenche@svelte ~/nfs $ 
+> > > > 
+> > > > svelte ~ # grep nfs /etc/group
+> > > > nfs:x:1100:rypervenche
+> > > > ====================================
+> > > > 
+> > > > You can find the details of my NFS server and client here:
+> > > > 
+> > > > ====================================
+> > > > svelte = client
+> > > > noir = server
+> > > > 
+> > > > svelte ~ # tail -1 /etc/fstab
+> > > > 192.168.1.100:/ /home/rypervenche/nfs   nfs
+> > > > rw,noauto,noexec,nodev,nosuid   0       0
+> > > > 
+> > > > noir ~ # cat /etc/exports 
+> > > > # /etc/exports: NFS file systems being exported.  See exports(5).
+> > > > /home/nfs/share
+> > > > 192.168.1.205(rw,sync,fsid=0,no_root_squash,no_subtree_check)
+> > > > 192.168.2.100(rw,sync,fsid=0,no_root_squash,no_subtree_check)
+> > > > 
+> > > > noir ~ # id nfs
+> > > > uid=1100(nfs) gid=1100(nfs) groups=1100(nfs)
+> > > > 
+> > > > noir ~ # grep -v ^# /etc/conf.d/nfs | grep -v ^$
+> > > > NFS_NEEDED_SERVICES="rpc.idmapd"
+> > > > OPTS_RPC_NFSD="8"
+> > > > OPTS_RPC_MOUNTD="-V 4 --manage-gids -p 32767"
+> > > > OPTS_RPC_STATD="-p 32765 -o 32766"
+> > > > OPTS_RPC_IDMAPD=""
+> > > > OPTS_RPC_GSSD=""
+> > > > OPTS_RPC_SVCGSSD=""
+> > > > OPTS_RPC_RQUOTAD=""
+> > > > EXPORTFS_TIMEOUT=30
+> > > > 
+> > > > noir ~ # iptables-save | egrep '(NFS|T -m conn)'
+> > > > -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+> > > > -A INPUT -s 192.168.1.205/32 -p tcp -m tcp -m multiport --dports
+> > > > 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment
+> > > > --comment NFS -j ACCEPT -A INPUT -s 192.168.1.205/32 -p udp -m udp
+> > > > -m multiport --dports 111,2049,4001,32765:32767 -m conntrack
+> > > > --ctstate NEW -m comment --comment NFS -j ACCEPT -A INPUT -s
+> > > > 192.168.2.100/32 -p tcp -m tcp -m multiport --dports
+> > > > 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment
+> > > > --comment NFS -j ACCEPT -A INPUT -s 192.168.2.100/32 -p udp -m udp
+> > > > -m multiport --dports 111,2049,4001,32765:32767 -m conntrack
+> > > > --ctstate NEW -m comment --comment NFS -j ACCEPT
+> > > > 
+> > > > svelte:
+> > > > net-fs/nfs-utils-1.2.6 was built with the following:
+> > > > USE="ipv6 nfsdcld nfsidmap nfsv4 nfsv41 tcpd -caps -kerberos
+> > > > (-selinux)"
+> > > > 
+> > > > noir:
+> > > > net-fs/nfs-utils-1.2.6 was built with the following:
+> > > > USE="ipv6 (multilib) nfsdcld nfsidmap nfsv4 nfsv41 tcpd -caps
+> > > > -kerberos (-selinux)" ABI_X86="64"
+> > > > 
+> > > > svelte ~ # uname -a
+> > > > Linux svelte 3.10.7-gentoo-svelte #1 SMP Thu Aug 22 17:46:44 CDT
+> > > > 2013 i686 Intel(R) Atom(TM) CPU N450 @ 1.66GHz GenuineIntel
+> > > > GNU/Linux
+> > > > 
+> > > > noir ~ # uname -a
+> > > > Linux noir 3.10.7-gentoo-noir #1 SMP Wed Aug 28 11:19:43 CDT 2013
+> > > > x86_64 AMD Athlon(tm) II X2 260 Processor AuthenticAMD GNU/Linux
+> > > > ====================================
+> > > > 
+> > > > 
+> > > > I found online that the issue is due to NFS not being able to grab
+> > > > over 16 GIDs. I found help in the following two links:
+> > > > 
+> > > > https://xkyle.com/solving-the-nfs-16-group-limit-problem/
+> > > > https://wiki.archlinux.org/index.php/NFS_Troubleshooting
+> > > > 
+> > > > I tried adding the --manage-gids flag to mountd (which can be seen
+> > > > in the /etc/conf.d/nfs file above), however, it does not appear to
+> > > > resolve the issue.
+> > > > 
+> > > > ====================================
+> > > > noir ~ #
+> > > > cat /proc/net/rpc/auth.unix.gid/content #uid cnt: gids...
+> > > > 0 10: 0 1 2 3 4 6 10 11 26 27
+> > > > 1000 9: 10 18 19 27 78 85 100 250 1000
+> > > > 
+> > > > noir ~ # date +%s > /proc/net/rpc/auth.unix.gid/flush     
+> > > >                                                                                                                               
+> > > > noir ~ #
+> > > > cat /proc/net/rpc/auth.unix.gid/content #uid cnt: gids...
+> > > > 
+> > > > Then I mount the NFS again:
+> > > > 
+> > > > noir ~ # cat /proc/net/rpc/auth.unix.gid/content
+> > > > #uid cnt: gids...
+> > > > 0 10: 0 1 2 3 4 6 10 11 26 27
+> > > > 1000 9: 10 18 19 27 78 85 100 250 1000
+> > > > ====================================
+> > > > 
+> > > > It looks as though it is not grabbing all of my GIDs.
+> > > 
+> > > What do you expect the list to be?  Which groups is uid 1000 a member
+> > > of on the server?
+> > > 
+> > > --b.
+> > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
