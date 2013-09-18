@@ -1,49 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp4-g21.free.fr ([212.27.42.4]:49598 "EHLO smtp4-g21.free.fr"
+Received: from mx12.netapp.com ([216.240.18.77]:16856 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751890Ab3IJNeR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Sep 2013 09:34:17 -0400
-Date: Tue, 10 Sep 2013 15:34:09 +0200
-From: Emmanuel Florac <eflorac@intellique.com>
+	id S1751344Ab3IRPVB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Sep 2013 11:21:01 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Hard to debug NFS loss of connectivity
-Message-ID: <20130910153409.3a418270@harpe.intellique.com>
-In-Reply-To: <20130910132841.GC16011@fieldses.org>
-References: <20130905191800.1c75b2fb@harpe.intellique.com>
-	<20130905204536.GB24805@fieldses.org>
-	<20130905233449.5eb8bf79@galadriel.home>
-	<20130905214002.GD24805@fieldses.org>
-	<20130906175721.30082c11@harpe.intellique.com>
-	<20130906160735.GA16396@fieldses.org>
-	<20130906185508.3f0d2730@harpe.intellique.com>
-	<20130910132841.GC16011@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] RPCSEC_GSS: fix crash on destroying gss auth
+Date: Wed, 18 Sep 2013 15:21:00 +0000
+Message-ID: <1379517658.2510.0.camel@leira.trondhjem.org>
+References: <20130917214115.GA3079@fieldses.org>
+	 <20130917221914.GB3079@fieldses.org> <20130918151603.GC12030@fieldses.org>
+In-Reply-To: <20130918151603.GC12030@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Le Tue, 10 Sep 2013 09:28:41 -0400
-"J. Bruce Fields" <bfields@fieldses.org> écrivait:
-
-> Sure, maybe.
-> 
-> Honestly looks like a network problem, if it weren't for the failing
-> on the filesystem operation each time.
-> 
-> Hm, it may just be the first packet of a certain size.  In fact it's
-> the first frame > 1500 bytes in that trace.  Is there some problem
-> with jumbo frame configuration on your network?
-> 
-
-Interesting idea. I could try forcing both interfaces to 1500 mtu and
-see what's happening. Oh, maybe the VMWare host interface /isn't/ set
-to 9000? I'll check that. Thank you.
-
--- 
-------------------------------------------------------------------------
-Emmanuel Florac     |   Direction technique
-                    |   Intellique
-                    |	<eflorac@intellique.com>
-                    |   +33 1 78 94 84 02
-------------------------------------------------------------------------
+T24gV2VkLCAyMDEzLTA5LTE4IGF0IDExOjE2IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IEZyb206ICJKLiBCcnVjZSBGaWVsZHMiIDxiZmllbGRzQHJlZGhhdC5jb20+DQo+IA0KPiBU
+aGlzIGZpeGVzIGEgcmVncmVzc2lvbiBzaW5jZSAgZWI2ZGMxOWQ4ZTcyY2UzYTk1N2FmNTUxMWQy
+MGMwZGIwYThiZDAwNw0KPiAiUlBDU0VDX0dTUzogU2hhcmUgYWxsIGNyZWRlbnRpYWwgY2FjaGVz
+IG9uIGEgcGVyLXRyYW5zcG9ydCBiYXNpcyIgd2hpY2gNCj4gY291bGQgY2F1c2UgYW4gb2NjYXNp
+b25hbCBvb3BzIGluIHRoZSBuZnNkIGNvZGUgKHNlZSBiZWxvdykuDQo+IA0KPiBUaGUgcHJvYmxl
+bSB3YXMgdGhhdCBhbiBhdXRoIHdhcyBsZWZ0IHJlZmVyZW5jaW5nIGEgY2xpZW50IHRoYXQgaGFk
+IGJlZW4NCj4gZnJlZWQuICBUbyBhdm9pZCB0aGlzIHdlIG5lZWQgdG8gZW5zdXJlIHRoYXQgYXV0
+aHMgYXJlIHNoYXJlZCBvbmx5DQo+IGJldHdlZW4gZGVzY2VuZGFudHMgb2YgYSBjb21tb24gY2xp
+ZW50OyB0aGUgZmFjdCB0aGF0IGEgY2xvbmUgb2YgYW4NCj4gcnBjX2NsaWVudCB0YWtlcyBhIHJl
+ZmVyZW5jZSBvbiBpdHMgcGFyZW50IHRoZW4gZW5zdXJlcyB0aGF0IHRoZSBwYXJlbnQNCj4gY2xp
+ZW50IHdpbGwgbGFzdCBhcyBsb25nIGFzIHRoZSBhdXRoLg0KPiANCj4gQWxzbyBhZGQgYSBjb21t
+ZW50IGV4cGxhaW5pbmcgd2hhdCBJIHRoaW5rIHdhcyB0aGUgaW50ZW50aW9uIG9mIHRoaXMNCj4g
+Y29kZS4NCj4gDQo+ICAgZ2VuZXJhbCBwcm90ZWN0aW9uIGZhdWx0OiAwMDAwIFsjMV0gUFJFRU1Q
+VCBTTVANCj4gICBNb2R1bGVzIGxpbmtlZCBpbjogcnBjc2VjX2dzc19rcmI1IG5mc2QgYXV0aF9y
+cGNnc3Mgb2lkX3JlZ2lzdHJ5IG5mc19hY2wgbG9ja2Qgc3VucnBjDQo+ICAgQ1BVOiAzIFBJRDog
+NDA3MSBDb21tOiBrd29ya2VyL3U4OjIgTm90IHRhaW50ZWQgMy4xMS4wLXJjMi0wMDE4Mi1nMDI1
+MTQ1ZiAjMTY2NQ0KPiAgIEhhcmR3YXJlIG5hbWU6IEJvY2hzIEJvY2hzLCBCSU9TIEJvY2hzIDAx
+LzAxLzIwMTENCj4gICBXb3JrcXVldWU6IG5mc2Q0X2NhbGxiYWNrcyBuZnNkNF9kb19jYWxsYmFj
+a19ycGMgW25mc2RdDQo+ICAgdGFzazogZmZmZjg4MDAzZTIwNjA4MCB0aTogZmZmZjg4MDAzYzM4
+NDAwMCB0YXNrLnRpOiBmZmZmODgwMDNjMzg0MDAwDQo+ICAgUklQOiAwMDEwOls8ZmZmZmZmZmZh
+MDAwMDFmMz5dICBbPGZmZmZmZmZmYTAwMDAxZjM+XSBycGNfbmV0X25zKzB4NTMvMHg3MCBbc3Vu
+cnBjXQ0KPiAgIFJTUDogMDAwMDpmZmZmODgwMDNjMzg1YWI4ICBFRkxBR1M6IDAwMDEwMjQ2DQo+
+ICAgUkFYOiA2YjZiNmI2YjZiNmI2YjZiIFJCWDogZmZmZjg4MDAzYWY5YTgwMCBSQ1g6IDAwMDAw
+MDAwMDAwMDAwMDINCj4gICBSRFg6IGZmZmZmZmZmYTAwMDAxYTUgUlNJOiAwMDAwMDAwMDAwMDAw
+MDAxIFJESTogZmZmZmZmZmY4MWUyODRlMA0KPiAgIFJCUDogZmZmZjg4MDAzYzM4NWFkOCBSMDg6
+IDAwMDAwMDAwMDAwMDAwMDEgUjA5OiAwMDAwMDAwMDAwMDAwMDAwDQo+ICAgUjEwOiAwMDAwMDAw
+MDAwMDAwMDAwIFIxMTogMDAwMDAwMDAwMDAwMDAxNSBSMTI6IGZmZmY4ODAwM2M5OTA4NDANCj4g
+ICBSMTM6IGZmZmY4ODAwM2M5OTA4NzggUjE0OiBmZmZmODgwMDNjMzg1YmE4IFIxNTogZmZmZjg4
+MDAzZTIwNjA4MA0KPiAgIEZTOiAgMDAwMDAwMDAwMDAwMDAwMCgwMDAwKSBHUzpmZmZmODgwMDNm
+ZDgwMDAwKDAwMDApIGtubEdTOjAwMDAwMDAwMDAwMDAwMDANCj4gICBDUzogIDAwMTAgRFM6IDAw
+MDAgRVM6IDAwMDAgQ1IwOiAwMDAwMDAwMDgwMDUwMDNiDQo+ICAgQ1IyOiAwMDAwN2ZjZGY3Mzdl
+MDAwIENSMzogMDAwMDAwMDAzYWQyYjAwMCBDUjQ6IDAwMDAwMDAwMDAwMDA2ZTANCj4gICBTdGFj
+azoNCj4gICAgZmZmZmZmZmZhMDAwMDFhNSAwMDAwMDAwMDAwMDAwMDA2IDAwMDAwMDAwMDAwMDAw
+MDYgZmZmZjg4MDAzYWY5YTgwMA0KPiAgICBmZmZmODgwMDNjMzg1YjA4IGZmZmZmZmZmYTAwZDUy
+YTQgZmZmZjg4MDAzYzM4NWJhOCBmZmZmODgwMDNjNzUxYmQ4DQo+ICAgIGZmZmY4ODAwM2M3NTFi
+YzAgZmZmZjg4MDAzZTExMzYwMCBmZmZmODgwMDNjMzg1YjE4IGZmZmZmZmZmYTAwZDUzMGMNCj4g
+ICBDYWxsIFRyYWNlOg0KPiAgICBbPGZmZmZmZmZmYTAwMDAxYTU+XSA/IHJwY19uZXRfbnMrMHg1
+LzB4NzAgW3N1bnJwY10NCj4gICAgWzxmZmZmZmZmZmEwMGQ1MmE0Pl0gX19nc3NfcGlwZV9yZWxl
+YXNlKzB4NTQvMHg5MCBbYXV0aF9ycGNnc3NdDQo+ICAgIFs8ZmZmZmZmZmZhMDBkNTMwYz5dIGdz
+c19waXBlX2ZyZWUrMHgyYy8weDMwIFthdXRoX3JwY2dzc10NCj4gICAgWzxmZmZmZmZmZmEwMGQ2
+NzhiPl0gZ3NzX2Rlc3Ryb3krMHg5Yi8weGYwIFthdXRoX3JwY2dzc10NCj4gICAgWzxmZmZmZmZm
+ZmEwMDBkZTYzPl0gcnBjYXV0aF9yZWxlYXNlKzB4MjMvMHgzMCBbc3VucnBjXQ0KPiAgICBbPGZm
+ZmZmZmZmYTAwMDFlODE+XSBycGNfcmVsZWFzZV9jbGllbnQrMHg1MS8weGIwIFtzdW5ycGNdDQo+
+ICAgIFs8ZmZmZmZmZmZhMDAwMjBkNT5dIHJwY19zaHV0ZG93bl9jbGllbnQrMHhlNS8weDE3MCBb
+c3VucnBjXQ0KPiAgICBbPGZmZmZmZmZmODEwOThhMTQ+XSA/IGNwdWFjY3RfY2hhcmdlKzB4YTQv
+MHhiMA0KPiAgICBbPGZmZmZmZmZmODEwOTg5NzU+XSA/IGNwdWFjY3RfY2hhcmdlKzB4NS8weGIw
+DQo+ICAgIFs8ZmZmZmZmZmZhMDE5NTU2Zj5dIG5mc2Q0X3Byb2Nlc3NfY2JfdXBkYXRlLmlzcmEu
+MTcrMHgyZi8weDIxMCBbbmZzZF0NCj4gICAgWzxmZmZmZmZmZjgxOWE0YWMwPl0gPyBfcmF3X3Nw
+aW5fdW5sb2NrX2lycSsweDMwLzB4NjANCj4gICAgWzxmZmZmZmZmZjgxOWE0YWNiPl0gPyBfcmF3
+X3NwaW5fdW5sb2NrX2lycSsweDNiLzB4NjANCj4gICAgWzxmZmZmZmZmZjgxMDcwM2FiPl0gPyBw
+cm9jZXNzX29uZV93b3JrKzB4MTViLzB4NTEwDQo+ICAgIFs8ZmZmZmZmZmZhMDE5NTdkZD5dIG5m
+c2Q0X2RvX2NhbGxiYWNrX3JwYysweDhkLzB4YTAgW25mc2RdDQo+ICAgIFs8ZmZmZmZmZmY4MTA3
+MDQxZT5dIHByb2Nlc3Nfb25lX3dvcmsrMHgxY2UvMHg1MTANCj4gICAgWzxmZmZmZmZmZjgxMDcw
+M2FiPl0gPyBwcm9jZXNzX29uZV93b3JrKzB4MTViLzB4NTEwDQo+ICAgIFs8ZmZmZmZmZmY4MTA3
+MTJhYj5dIHdvcmtlcl90aHJlYWQrMHgxMWIvMHgzNzANCj4gICAgWzxmZmZmZmZmZjgxMDcxMTkw
+Pl0gPyBtYW5hZ2Vfd29ya2Vycy5pc3JhLjI0KzB4MmIwLzB4MmIwDQo+ICAgIFs8ZmZmZmZmZmY4
+MTA3ODU0Yj5dIGt0aHJlYWQrMHhkYi8weGUwDQo+ICAgIFs8ZmZmZmZmZmY4MTlhNGFjMD5dID8g
+X3Jhd19zcGluX3VubG9ja19pcnErMHgzMC8weDYwDQo+ICAgIFs8ZmZmZmZmZmY4MTA3ODQ3MD5d
+ID8gX19pbml0X2t0aHJlYWRfd29ya2VyKzB4NzAvMHg3MA0KPiAgICBbPGZmZmZmZmZmODE5YWM3
+ZGM+XSByZXRfZnJvbV9mb3JrKzB4N2MvMHhiMA0KPiAgICBbPGZmZmZmZmZmODEwNzg0NzA+XSA/
+IF9faW5pdF9rdGhyZWFkX3dvcmtlcisweDcwLzB4NzANCj4gICBDb2RlOiBhNSAwMSAwMCBhMCAz
+MSBkMiAzMSBmNiA0OCBjNyBjNyBlMCA4NCBlMiA4MSBlOCBmNCA5MSAwYSBlMSA0OCA4YiA0MyA2
+MCA0OCBjNyBjMiBhNSAwMSAwMCBhMCBiZSAwMSAwMCAwMCAwMCA0OCBjNyBjNyBlMCA4NCBlMiA4
+MSA8NDg+IDhiIDk4IDEwIDA3IDAwIDAwIGU4IDkxIDhmIDBhIGUxIGU4DQo+ICAgKzNjIDRlIDA3
+IGUxIDQ4IDgzIGM0IDE4DQo+ICAgUklQICBbPGZmZmZmZmZmYTAwMDAxZjM+XSBycGNfbmV0X25z
+KzB4NTMvMHg3MCBbc3VucnBjXQ0KPiAgICBSU1AgPGZmZmY4ODAwM2MzODVhYjg+DQo+IA0KPiBT
+aWduZWQtb2ZmLWJ5OiBKLiBCcnVjZSBGaWVsZHMgPGJmaWVsZHNAcmVkaGF0LmNvbT4NCj4gLS0t
+DQo+ICBuZXQvc3VucnBjL2F1dGhfZ3NzL2F1dGhfZ3NzLmMgfCAgIDExICsrKysrKysrKysrDQo+
+ICAxIGZpbGUgY2hhbmdlZCwgMTEgaW5zZXJ0aW9ucygrKQ0KPiANCj4gT24gVHVlLCBTZXAgMTcs
+IDIwMTMgYXQgMDY6MTk6MTRQTSAtMDQwMCwgSi4gQnJ1Y2UgRmllbGRzIHdyb3RlOg0KPiA+IGZp
+eGVzIHRoZSBwcm9ibGVtLiAgSSBjYW4gc2VuZCBpbiBhIHByb3BlciBwYXRjaCBpZiB5b3UgdGhp
+bmsgdGhhdCBtYWtlcw0KPiA+IHNlbnNlLi4uLg0KPiANCj4gSGVyZSdzIG15IGF0dGVtcHQuDQoN
+ClRoYXQgbG9va3MgZ29vZC4gVGhhbmtzIQ0KDQogIFRyb25kDQotLSANClRyb25kIE15a2xlYnVz
+dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0
+QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
