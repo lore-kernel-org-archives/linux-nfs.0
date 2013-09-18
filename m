@@ -1,144 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:17696 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:50750 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964927Ab3IDQsQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Sep 2013 12:48:16 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: use mach cred for SECINFO_NO_NAME w/ integrity
-Date: Wed, 4 Sep 2013 16:48:14 +0000
-Message-ID: <F4CF12A0-4D67-4C6B-8413-CC2E895E1B9F@netapp.com>
-References: <1378311199-1695-1-git-send-email-dros@netapp.com>
- <1378311850.3527.16.camel@leira.trondhjem.org>
-In-Reply-To: <1378311850.3527.16.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="Windows-1252"
+	id S1751414Ab3IRPQH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Sep 2013 11:16:07 -0400
+Date: Wed, 18 Sep 2013 11:16:03 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] RPCSEC_GSS: fix crash on destroying gss auth
+Message-ID: <20130918151603.GC12030@fieldses.org>
+References: <20130917214115.GA3079@fieldses.org>
+ <20130917221914.GB3079@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130917221914.GB3079@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-On Sep 4, 2013, at 12:24 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+This fixes a regression since  eb6dc19d8e72ce3a957af5511d20c0db0a8bd007
+"RPCSEC_GSS: Share all credential caches on a per-transport basis" which
+could cause an occasional oops in the nfsd code (see below).
 
-> On Wed, 2013-09-04 at 12:13 -0400, Weston Andros Adamson wrote:
->> Commit 97431204ea005ec8070ac94bc3251e836daa7ca7 introduced a regression
->> that causes SECINFO_NO_NAME to fail without sending an RPC if:
->> 
->> 1) the nfs_client's rpc_client is using krb5i/p (now tried by default)
->> 2) the current user doesn't have valid kerberos credentials
->> 
->> This situation is quite common - as of now a sec=sys mount would use
->> krb5i for the nfs_client's rpc_client and a user would hardly be faulted
->> for not having run kinit.
->> 
->> The solution is to use the machine cred when trying to use an integrity
->> protected auth flavor for SECINFO_NO_NAME.
->> 
->> Older servers may not support using the machine cred or an integrity
->> protected auth flavor for SECINFO_NO_NAME in every circumstance, so we fall
->> back to using the user's cred and the filesystem's auth flavor in this case.
->> 
->> We run into another problem when running against linux nfs servers -
->> they return NFS4ERR_WRONGSEC when using integrity auth flavor (unless the
->> mount is also that flavor) even though that is not a valid error for
->> SECINFO*.  Even though it's against spec, handle WRONGSEC errors on
->> SECINFO_NO_NAME by falling back to using the user cred and the
->> filesystem's auth flavor.
->> 
->> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->> ---
->> 
->> This patch goes along with yesterday's SECINFO patch
->> 
->> fs/nfs/nfs4proc.c | 41 +++++++++++++++++++++++++++++++++++++----
->> 1 file changed, 37 insertions(+), 4 deletions(-)
->> 
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index ab1461e..74b37f5 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -7291,7 +7291,8 @@ out:
->>  */
->> static int
->> _nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
->> -		    struct nfs_fsinfo *info, struct nfs4_secinfo_flavors *flavors)
->> +		    struct nfs_fsinfo *info,
->> +		    struct nfs4_secinfo_flavors *flavors, bool use_integrity)
->> {
->> 	struct nfs41_secinfo_no_name_args args = {
->> 		.style = SECINFO_STYLE_CURRENT_FH,
->> @@ -7304,8 +7305,23 @@ _nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
->> 		.rpc_argp = &args,
->> 		.rpc_resp = &res,
->> 	};
->> -	return nfs4_call_sync(server->nfs_client->cl_rpcclient, server, &msg,
->> -				&args.seq_args, &res.seq_res, 0);
->> +	struct rpc_clnt *clnt = server->client;
->> +	int status;
->> +
->> +	if (use_integrity) {
->> +		clnt = server->nfs_client->cl_rpcclient;
->> +		msg.rpc_cred = nfs4_get_clid_cred(server->nfs_client);
->> +	}
->> +
->> +	dprintk("--> %s\n", __func__);
->> +	status = nfs4_call_sync(clnt, server, &msg, &args.seq_args,
->> +				&res.seq_res, 0);
->> +	dprintk("<-- %s status=%d\n", __func__, status);
->> +
->> +	if (msg.rpc_cred)
->> +		put_rpccred(msg.rpc_cred);
->> +
->> +	return status;
->> }
->> 
->> static int
->> @@ -7315,7 +7331,24 @@ nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
->> 	struct nfs4_exception exception = { };
->> 	int err;
->> 	do {
->> -		err = _nfs41_proc_secinfo_no_name(server, fhandle, info, flavors);
->> +		/* first try using integrity protection */
->> +		err = -NFS4ERR_WRONGSEC;
->> +
->> +		/* try to use integrity protection with machine cred */
->> +		if (_nfs4_is_integrity_protected(server->nfs_client))
->> +			err = _nfs41_proc_secinfo_no_name(server, fhandle, info,
->> +							  flavors, true);
->> +
->> +		/*
->> +		 * if unable to use integrity protection, or SECINFO with
->> +		 * integrity protection returns NFS4ERR_WRONGSEC (which is
->> +		 * disallowed by spec, but exists in deployed servers) use
->> +		 * the current filesystem's rpc_client and the user cred.
->> +		 */
->> +		if (err == -NFS4ERR_WRONGSEC)
->> +			err = _nfs41_proc_secinfo_no_name(server, fhandle, info,
->> +							  flavors, false);
-> 
-> As I said yesterday, RFC5661 forbids SECINFO_NO_NAME from returning
-> NFS4ERR_WRONGSEC, so this is 100% equivalent to
-> 
-> 	if (!_nfs4_is_integrity_protected())
-> 		err = ….
+The problem was that an auth was left referencing a client that had been
+freed.  To avoid this we need to ensure that auths are shared only
+between descendants of a common client; the fact that a clone of an
+rpc_client takes a reference on its parent then ensures that the parent
+client will last as long as the auth.
 
-Right, but I thought we were doing this to support server implementations like linux that *do* return NFS4ERR_WRONGSEC on SECINFO_NO_NAME even though it's forbidden.  I know we normally don't work around server bugs, but this seems pretty simple.
+Also add a comment explaining what I think was the intention of this
+code.
 
-If we don't do this, then SECINFO_NO_NAME will always fail against current linux severs no matter what the mount options - unless krb5i/p is unusable (not configured, time skew, no machine cred, etc).
+  general protection fault: 0000 [#1] PREEMPT SMP
+  Modules linked in: rpcsec_gss_krb5 nfsd auth_rpcgss oid_registry nfs_acl lockd sunrpc
+  CPU: 3 PID: 4071 Comm: kworker/u8:2 Not tainted 3.11.0-rc2-00182-g025145f #1665
+  Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+  Workqueue: nfsd4_callbacks nfsd4_do_callback_rpc [nfsd]
+  task: ffff88003e206080 ti: ffff88003c384000 task.ti: ffff88003c384000
+  RIP: 0010:[<ffffffffa00001f3>]  [<ffffffffa00001f3>] rpc_net_ns+0x53/0x70 [sunrpc]
+  RSP: 0000:ffff88003c385ab8  EFLAGS: 00010246
+  RAX: 6b6b6b6b6b6b6b6b RBX: ffff88003af9a800 RCX: 0000000000000002
+  RDX: ffffffffa00001a5 RSI: 0000000000000001 RDI: ffffffff81e284e0
+  RBP: ffff88003c385ad8 R08: 0000000000000001 R09: 0000000000000000
+  R10: 0000000000000000 R11: 0000000000000015 R12: ffff88003c990840
+  R13: ffff88003c990878 R14: ffff88003c385ba8 R15: ffff88003e206080
+  FS:  0000000000000000(0000) GS:ffff88003fd80000(0000) knlGS:0000000000000000
+  CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+  CR2: 00007fcdf737e000 CR3: 000000003ad2b000 CR4: 00000000000006e0
+  Stack:
+   ffffffffa00001a5 0000000000000006 0000000000000006 ffff88003af9a800
+   ffff88003c385b08 ffffffffa00d52a4 ffff88003c385ba8 ffff88003c751bd8
+   ffff88003c751bc0 ffff88003e113600 ffff88003c385b18 ffffffffa00d530c
+  Call Trace:
+   [<ffffffffa00001a5>] ? rpc_net_ns+0x5/0x70 [sunrpc]
+   [<ffffffffa00d52a4>] __gss_pipe_release+0x54/0x90 [auth_rpcgss]
+   [<ffffffffa00d530c>] gss_pipe_free+0x2c/0x30 [auth_rpcgss]
+   [<ffffffffa00d678b>] gss_destroy+0x9b/0xf0 [auth_rpcgss]
+   [<ffffffffa000de63>] rpcauth_release+0x23/0x30 [sunrpc]
+   [<ffffffffa0001e81>] rpc_release_client+0x51/0xb0 [sunrpc]
+   [<ffffffffa00020d5>] rpc_shutdown_client+0xe5/0x170 [sunrpc]
+   [<ffffffff81098a14>] ? cpuacct_charge+0xa4/0xb0
+   [<ffffffff81098975>] ? cpuacct_charge+0x5/0xb0
+   [<ffffffffa019556f>] nfsd4_process_cb_update.isra.17+0x2f/0x210 [nfsd]
+   [<ffffffff819a4ac0>] ? _raw_spin_unlock_irq+0x30/0x60
+   [<ffffffff819a4acb>] ? _raw_spin_unlock_irq+0x3b/0x60
+   [<ffffffff810703ab>] ? process_one_work+0x15b/0x510
+   [<ffffffffa01957dd>] nfsd4_do_callback_rpc+0x8d/0xa0 [nfsd]
+   [<ffffffff8107041e>] process_one_work+0x1ce/0x510
+   [<ffffffff810703ab>] ? process_one_work+0x15b/0x510
+   [<ffffffff810712ab>] worker_thread+0x11b/0x370
+   [<ffffffff81071190>] ? manage_workers.isra.24+0x2b0/0x2b0
+   [<ffffffff8107854b>] kthread+0xdb/0xe0
+   [<ffffffff819a4ac0>] ? _raw_spin_unlock_irq+0x30/0x60
+   [<ffffffff81078470>] ? __init_kthread_worker+0x70/0x70
+   [<ffffffff819ac7dc>] ret_from_fork+0x7c/0xb0
+   [<ffffffff81078470>] ? __init_kthread_worker+0x70/0x70
+  Code: a5 01 00 a0 31 d2 31 f6 48 c7 c7 e0 84 e2 81 e8 f4 91 0a e1 48 8b 43 60 48 c7 c2 a5 01 00 a0 be 01 00 00 00 48 c7 c7 e0 84 e2 81 <48> 8b 98 10 07 00 00 e8 91 8f 0a e1 e8
+  +3c 4e 07 e1 48 83 c4 18
+  RIP  [<ffffffffa00001f3>] rpc_net_ns+0x53/0x70 [sunrpc]
+   RSP <ffff88003c385ab8>
 
--dros
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/auth_gss/auth_gss.c |   11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-> 
->> +
->> 		switch (err) {
->> 		case 0:
->> 		case -NFS4ERR_WRONGSEC:
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
+On Tue, Sep 17, 2013 at 06:19:14PM -0400, J. Bruce Fields wrote:
+> fixes the problem.  I can send in a proper patch if you think that makes
+> sense....
+
+Here's my attempt.
+
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index fcac5d1..0846566 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1075,6 +1075,15 @@ gss_destroy(struct rpc_auth *auth)
+ 	kref_put(&gss_auth->kref, gss_free_callback);
+ }
+ 
++/*
++ * Auths may be shared between rpc clients that were cloned from a
++ * common client with the same xprt, if they also share the flavor and
++ * target_name.
++ *
++ * The auth is looked up from the oldest parent sharing the same
++ * cl_xprt, and the auth itself references only that common parent
++ * (which is guaranteed to last as long as any of its descendants).
++ */
+ static struct gss_auth *
+ gss_auth_find_or_add_hashed(struct rpc_auth_create_args *args,
+ 		struct rpc_clnt *clnt,
+@@ -1088,6 +1097,8 @@ gss_auth_find_or_add_hashed(struct rpc_auth_create_args *args,
+ 			gss_auth,
+ 			hash,
+ 			hashval) {
++		if (gss_auth->client != clnt)
++			continue;
+ 		if (gss_auth->rpc_auth.au_flavor != args->pseudoflavor)
+ 			continue;
+ 		if (gss_auth->target_name != args->target_name) {
+-- 
+1.7.9.5
 
