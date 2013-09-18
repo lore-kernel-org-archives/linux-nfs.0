@@ -1,26 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:57854 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751837Ab3IHJQU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Sep 2013 05:16:20 -0400
-Date: Sun, 8 Sep 2013 02:16:13 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Christoph Hellwig <hch@infradead.org>
-Subject: Re: 4 DCACHE_DISCONNECTED patches
-Message-ID: <20130908091613.GA17535@infradead.org>
-References: <1378579561-26868-1-git-send-email-bfields@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:12950 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752770Ab3IRP5D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Sep 2013 11:57:03 -0400
+Message-ID: <5239CD64.1000709@RedHat.com>
+Date: Wed, 18 Sep 2013 11:57:24 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1378579561-26868-1-git-send-email-bfields@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs(5): Document the "migration" mount option
+References: <20130910192730.2394.8803.stgit@seurat.1015granger.net>
+In-Reply-To: <20130910192730.2394.8803.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Sep 07, 2013 at 02:45:57PM -0400, J. Bruce Fields wrote:
-> This is a resend of some DCACHE_DISCONNECTED patches incorporating
-> suggestions from Christoph.
 
-The whole series looks good to me,
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+On 10/09/13 15:28, Chuck Lever wrote:
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+> This has been floating around for a while in my nfs-utils repo.
+> Now that migration support is getting merged upstream, I propose
+> this minor change to nfs(5).
+> 
+> Note that my pending migration patches currently allow migration
+> even if the "migration" option is not specified.  In this case,
+> standard state recovery will occur on the destination server (aka a
+> non-TSM migration) since the destination server can't match up a
+> client using the traditional clientid string with incoming migrated
+> state.
+> 
+> If we think this is dangerous to allow, then the client can be
+> changed to require the "migration" option to enable migration
+> support on NFSv4.0 mount points.
+> 
+> Non-TSM migration can still occur if the servers for some reason
+> fail to transfer open and lock state during a migration.
+> 
+> Comments...?
+This looks find to me... When the migration code "hits the streets"
+I'll commit this... Until then I'll keep on my TODO que... 
+
+steved.
+ 
+> 
+>  utils/mount/nfs.man |   20 ++++++++++++++++++++
+>  1 file changed, 20 insertions(+)
+> 
+> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+> index 2a42b93..e93bd16 100644
+> --- a/utils/mount/nfs.man
+> +++ b/utils/mount/nfs.man
+> @@ -855,6 +855,26 @@ In the presence of multiple client network interfaces,
+>  special routing policies,
+>  or atypical network topologies,
+>  the exact address to use for callbacks may be nontrivial to determine.
+> +.TP 1.5i
+> +.BR migration " / " nomigration
+> +Selects whether the client uses an identification string that is compatible
+> +with NFSv4 Transparent State Migration (TSM).
+> +If the mounted server supports NFSv4 migration with TSM, specify the
+> +.B migration
+> +option.
+> +.IP
+> +Some server features misbehave in the face of a migration-compatible
+> +identification string.
+> +The
+> +.B nomigration
+> +option retains the use of a traditional client indentification string
+> +which is compatible with legacy NFS servers.
+> +This is also the behavior if neither option is specified.
+> +A client's open and lock state cannot be migrated transparently
+> +when it identifies itself via a traditional identification string.
+> +.IP
+> +This mount option has no effect with NFSv4 minor versions greater than zero,
+> +as these versions always use TSM-compatible client identification strings.
+>  .SH nfs4 FILE SYSTEM TYPE
+>  The
+>  .BR nfs4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
