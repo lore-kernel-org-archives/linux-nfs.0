@@ -1,158 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f180.google.com ([209.85.223.180]:52616 "EHLO
-	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752955Ab3IEQVP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Sep 2013 12:21:15 -0400
-Received: by mail-ie0-f180.google.com with SMTP id 10so1164465ied.25
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Sep 2013 09:21:15 -0700 (PDT)
-Date: Thu, 5 Sep 2013 11:21:10 -0500
-From: Quentin Barnes <qbarnes@gmail.com>
-To: linux-nfs@vger.kernel.org
-Subject: nfs-backed mmap file results in 1000s of WRITEs per second
-Message-ID: <20130905162110.GA17920@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:54044 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751807Ab3IRTPB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Sep 2013 15:15:01 -0400
+Message-ID: <5239FBCA.3030803@RedHat.com>
+Date: Wed, 18 Sep 2013 15:15:22 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] exportfs: insecure/secure should be a secinfo_flag
+References: <1378680082-19229-1-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1378680082-19229-1-git-send-email-Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If two (or more) processes are doing nothing more than writing to
-the memory addresses of an mmapped shared file on an NFS mounted
-file system, it results in the kernel scribbling WRITEs to the
-server as fast as it can (1000s per second) even while no syscalls
-are going on.
-
-The problems happens on NFS clients mounting NFSv3 or NFSv4.  I've
-reproduced this on the 3.11 kernel, and it happens as far back as
-RHEL6 (2.6.32 based), however, it is not a problem on RHEL5 (2.6.18
-based).  (All x86_64 systems.)  I didn't try anything in between.
-
-I've created a self-contained program below that will demonstrate
-the problem (call it "t1").  Assuming /mnt has an NFS file system:
-
-  $ t1 /mnt/mynfsfile 1    # Fork 1 writer, kernel behaves normally
-  $ t1 /mnt/mynfsfile 2    # Fork 2 writers, kernel goes crazy WRITEing
-
-Just run "watch -d nfsstat" in another window while running the two
-writer test and watch the WRITE count explode.
-
-I don't see anything particularly wrong with what the example code
-is doing with its use of mmap.  Is there anything undefined about
-the code that would explain this behavior, or is this a NFS bug
-that's really lived this long?
-
-Quentin
 
 
+On 08/09/13 18:41, Trond Myklebust wrote:
+> The 'insecure' flag is listed in /proc/fs/nfsd/export_features
+> in newer kernels as being a secinfo_flag, however it is not displayed by
+> secinfo_show.
+> This patch fixes that, and sets up a framework which should make
+> it easy to add new flags to /proc/fs/nfsd/export_features and have
+> them be displayed properly.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Committed! 
 
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <signal.h>
-#include <string.h>
-#include <unistd.h>
+steved.
 
-int
-kill_children()
-{
-	int		cnt = 0;
-	siginfo_t	infop;
-
-	signal(SIGINT, SIG_IGN);
-	kill(0, SIGINT);
-	while (waitid(P_ALL, 0, &infop, WEXITED) != -1) ++cnt;
-
-	return cnt;
-}
-
-void
-sighandler(int sig)
-{
-	printf("Cleaning up all children.\n");
-	int cnt = kill_children();
-	printf("Cleaned up %d child%s.\n", cnt, cnt == 1 ? "" : "ren");
-
-	exit(0);
-}
-
-int
-do_child(volatile int *iaddr)
-{
-	while (1) *iaddr = 1;
-}
-
-int
-main(int argc, char **argv)
-{
-	const char	*path;
-	int		fd;
-	ssize_t		wlen;
-	int		*ip;
-	int		fork_count = 1;
-
-	if (argc == 1) {
-		fprintf(stderr, "Usage: %s {filename} [fork_count].\n",
-			argv[0]);
-		return 1;
-	}
-
-	path = argv[1];
-
-	if (argc > 2) {
-		int fc = atoi(argv[2]);
-		if (fc >= 0)
-			fork_count = fc;
-	}
-
-	fd = open(path, O_CREAT|O_TRUNC|O_RDWR|O_APPEND, S_IRUSR|S_IWUSR);
-	if (fd < 0) {
-		fprintf(stderr, "Open of '%s' failed: %s (%d)\n",
-			path, strerror(errno), errno);
-		return 1;
-	}
-
-	wlen = write(fd, &(int){0}, sizeof(int));
-	if (wlen != sizeof(int)) {
-		if (wlen < 0)
-			fprintf(stderr, "Write of '%s' failed: %s (%d)\n",
-				path, strerror(errno), errno);
-		else
-			fprintf(stderr, "Short write to '%s'\n", path);
-		return 1;
-	}
-
-	ip = (int *)mmap(NULL, sizeof(int), PROT_READ|PROT_WRITE,
-			   MAP_SHARED, fd, 0);
-	if (ip == MAP_FAILED) {
-		fprintf(stderr, "Mmap of '%s' failed: %s (%d)\n",
-			path, strerror(errno), errno);
-		return 1;
-	}
-
-	signal(SIGINT, sighandler);
-
-	while (fork_count-- > 0) {
-		switch(fork()) {
-		case -1:
-			fprintf(stderr, "Fork failed: %s (%d)\n",
-				strerror(errno), errno);
-			kill_children();
-			return 1;
-		case 0:   /* child  */
-			signal(SIGINT, SIG_DFL);
-			do_child(ip);
-			break;
-		default:  /* parent */
-			break;
-		}
-	}
-
-	printf("Press ^C to terminate test.\n");
-	pause();
-
-	return 0;
-}
+> ---
+>  support/nfs/exports.c | 34 +++++++++++++++++++++++++++-------
+>  1 file changed, 27 insertions(+), 7 deletions(-)
+> 
+> diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+> index 3e99de6..8d2adf7 100644
+> --- a/support/nfs/exports.c
+> +++ b/support/nfs/exports.c
+> @@ -197,10 +197,35 @@ getexportent(int fromkernel, int fromexports)
+>  	return &ee;
+>  }
+>  
+> +static const struct secinfo_flag_displaymap {
+> +	unsigned int flag;
+> +	const unsigned char *set;
+> +	const unsigned char *unset;
+> +} secinfo_flag_displaymap[] = {
+> +	{ NFSEXP_READONLY, "ro", "rw" },
+> +	{ NFSEXP_INSECURE_PORT, "insecure", "secure" },
+> +	{ NFSEXP_ROOTSQUASH, "root_squash", "no_root_squash" },
+> +	{ NFSEXP_ALLSQUASH, "all_squash", "no_all_squash" },
+> +	{ 0, NULL, NULL }
+> +};
+> +
+> +static void secinfo_flags_show(FILE *fp, unsigned int flags, unsigned int mask)
+> +{
+> +	const struct secinfo_flag_displaymap *p;
+> +
+> +	for (p = &secinfo_flag_displaymap[0]; p->flag != 0; p++) {
+> +		if (!(mask & p->flag))
+> +			continue;
+> +		fprintf(fp, ",%s", (flags & p->flag) ? p->set : p->unset);
+> +	}
+> +}
+> +
+>  void secinfo_show(FILE *fp, struct exportent *ep)
+>  {
+> +	const struct export_features *ef;
+>  	struct sec_entry *p1, *p2;
+> -	int flags;
+> +
+> +	ef = get_export_features();
+>  
+>  	if (ep->e_secinfo[0].flav == NULL)
+>  		secinfo_addflavor(find_flavor("sys"), ep);
+> @@ -211,12 +236,7 @@ void secinfo_show(FILE *fp, struct exportent *ep)
+>  								p2++) {
+>  			fprintf(fp, ":%s", p2->flav->flavour);
+>  		}
+> -		flags = p1->flags;
+> -		fprintf(fp, ",%s", (flags & NFSEXP_READONLY) ? "ro" : "rw");
+> -		fprintf(fp, ",%sroot_squash", (flags & NFSEXP_ROOTSQUASH)?
+> -				"" : "no_");
+> -		fprintf(fp, ",%sall_squash", (flags & NFSEXP_ALLSQUASH)?
+> -				"" : "no_");
+> +		secinfo_flags_show(fp, p1->flags, ef->secinfo_flags);
+>  	}
+>  }
+>  
+> 
