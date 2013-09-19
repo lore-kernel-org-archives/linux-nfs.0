@@ -1,70 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39002 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:39103 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751338Ab3IJUfc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Sep 2013 16:35:32 -0400
-Date: Tue, 10 Sep 2013 16:35:30 -0400
-To: Joschi Brauchle <joschi.brauchle@tum.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfsd4: utime sometimes takes 40+ seconds to return (but on
- SLES11SP3 with kernel 3.0.82)
-Message-ID: <20130910203530.GA20296@fieldses.org>
-References: <522F69A1.5090005@tum.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <522F69A1.5090005@tum.de>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1752628Ab3ISUuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Sep 2013 16:50:39 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 05/13] locks: introduce new FL_DELEG lock flag
+Date: Thu, 19 Sep 2013 16:50:29 -0400
+Message-Id: <1379623837-30798-6-git-send-email-bfields@redhat.com>
+In-Reply-To: <1379623837-30798-1-git-send-email-bfields@redhat.com>
+References: <1379623837-30798-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 10, 2013 at 08:49:05PM +0200, Joschi Brauchle wrote:
-> Hello everyone,
-> 
-> we are administrating an NFS high-availability cluster running on
-> SLES11SP1 with kernel 2.6.32.59. Just recently, one of the cluster
-> machines was updated to SLES11SP3 with kernel 3.0.82.
-> 
-> 
-> We are now experiencing severe hangs on NFS clients when the
-> SLES11SP3 server is running the NFS services. An strace on the
-> hanging processes on the client side show that is is waiting up to
-> 60+ seconds for a "utime()" call to complete.
-> 
-> 
-> The problem we see is matching the problem described in the thread
-> "v3.5 nfsd4 regression; utime sometimes takes 40+ seconds to
-> return". If the NFS server is running on SLES11SP3, the little test
-> program provided in this tread hangs at the "utime()" call for 60+
-> seconds. It hangs each time it is run! It finishes right away with 0
-> seconds delay is SLES11SP1 is providing NFS services, each time.
-> 
-> 
-> Now, in the serverside logfiles of SLES11SP3 we see these messages
-> (not so on SP1):
-> --------------
-> kernel: [99381.184976] RPC: AUTH_GSS upcall timed out.
-> kernel: [99381.184978] Please check user daemon is running.
-> --------------
-> 
-> We have always been running the NFS server without rpc.gssd on the
-> server side, as the init script for the nfsserver also does not
-> start rpc.gssd.
-> 
-> 
-> Once we started rpc.gssd on the SLES11SP3 server, using the test
-> utility on the client shows that the first call to "utime()"
-> succeeds right away, the second call takes ~25s to complete. But
-> now, any consecutive runs of the utility finish with no more delay.
-> 
-> 
-> So can anyone confirm that with kernel 3.0+ the rpc.gssd daemon is
-> also required on the server side for correct operation?
-> 
-> Has there been a change between kernel 2.6.32.59 and 3.0.x?
-> 
-> Thus, is the init script of the nfsserver in SLES11SP3 indeed
-> missing to start rpc.gssd?
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-It should be starting rpc.gssd to allow callbacks, yes.
+For now FL_DELEG is just a synonym for FL_LEASE.  So this patch doesn't
+change behavior.
 
---b.
+Next we'll modify break_lease to treat FL_DELEG leases differently, to
+account for the fact that NFSv4 delegations should be broken in more
+situations than Windows oplocks.
+
+Acked-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/locks.c          |    2 +-
+ fs/nfsd/nfs4state.c |    2 +-
+ include/linux/fs.h  |    1 +
+ 3 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/fs/locks.c b/fs/locks.c
+index b27a300..6e46dede 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -134,7 +134,7 @@
+ 
+ #define IS_POSIX(fl)	(fl->fl_flags & FL_POSIX)
+ #define IS_FLOCK(fl)	(fl->fl_flags & FL_FLOCK)
+-#define IS_LEASE(fl)	(fl->fl_flags & FL_LEASE)
++#define IS_LEASE(fl)	(fl->fl_flags & (FL_LEASE|FL_DELEG))
+ 
+ static bool lease_breaking(struct file_lock *fl)
+ {
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 0874998..bfbeb68 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3008,7 +3008,7 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_delegation *dp, int f
+ 		return NULL;
+ 	locks_init_lock(fl);
+ 	fl->fl_lmops = &nfsd_lease_mng_ops;
+-	fl->fl_flags = FL_LEASE;
++	fl->fl_flags = FL_DELEG;
+ 	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
+ 	fl->fl_end = OFFSET_MAX;
+ 	fl->fl_owner = (fl_owner_t)(dp->dl_file);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 2f8631b..35669fe 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -888,6 +888,7 @@ static inline int file_check_writeable(struct file *filp)
+ 
+ #define FL_POSIX	1
+ #define FL_FLOCK	2
++#define FL_DELEG	4	/* NFSv4 delegation */
+ #define FL_ACCESS	8	/* not trying to lock, just looking */
+ #define FL_EXISTS	16	/* when unlocking, test for existence */
+ #define FL_LEASE	32	/* lease held on this file */
+-- 
+1.7.9.5
+
