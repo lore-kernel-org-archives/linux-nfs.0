@@ -1,46 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:5293 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:51010 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754220Ab3IZVpd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Sep 2013 17:45:33 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/7] SUNRPC: Only update the TCP connect cookie on a successful connect
-Date: Thu, 26 Sep 2013 17:45:01 -0400
-Message-ID: <1380231907-13733-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1380231907-13733-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1380231907-13733-1-git-send-email-Trond.Myklebust@netapp.com>
- <1380231907-13733-2-git-send-email-Trond.Myklebust@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1752253Ab3ISP12 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Sep 2013 11:27:28 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: stable@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/4] rpc: fix huge kmalloc's in gss-proxy
+Date: Thu, 19 Sep 2013 11:27:21 -0400
+Message-Id: <1379604442-27724-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1379604442-27724-1-git-send-email-bfields@redhat.com>
+References: <1379604442-27724-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- net/sunrpc/xprtsock.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 208a763..9928ba1 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1511,6 +1511,7 @@ static void xs_tcp_state_change(struct sock *sk)
- 			transport->tcp_copied = 0;
- 			transport->tcp_flags =
- 				TCP_RCV_COPY_FRAGHDR | TCP_RCV_COPY_XID;
-+			xprt->connect_cookie++;
+commit 9dfd87da1aeb0fd364167ad199f40fe96a6a87be upstream.
+
+The reply to a gssproxy can include up to NGROUPS_MAX gid's, which will
+take up more than a page.  We therefore need to allocate an array of
+pages to hold the reply instead of trying to allocate a single huge
+buffer.
+
+Tested-by: Simo Sorce <simo@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/auth_gss/gss_rpc_upcall.c |   30 ++++++++++++++++++++++++++++++
+ net/sunrpc/auth_gss/gss_rpc_xdr.c    |    3 +++
+ net/sunrpc/auth_gss/gss_rpc_xdr.h    |    5 ++++-
+ 3 files changed, 37 insertions(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+index af7ffd4..be95af3 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
++++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+@@ -213,6 +213,30 @@ static int gssp_call(struct net *net, struct rpc_message *msg)
+ 	return status;
+ }
  
- 			xprt_wake_pending_tasks(xprt, -EAGAIN);
- 		}
-@@ -2164,7 +2165,6 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
- 	case 0:
- 	case -EINPROGRESS:
- 		/* SYN_SENT! */
--		xprt->connect_cookie++;
- 		if (xprt->reestablish_timeout < XS_TCP_INIT_REEST_TO)
- 			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
- 	}
++static void gssp_free_receive_pages(struct gssx_arg_accept_sec_context *arg)
++{
++	int i;
++
++	for (i = 0; i < arg->npages && arg->pages[i]; i++)
++		__free_page(arg->pages[i]);
++}
++
++static int gssp_alloc_receive_pages(struct gssx_arg_accept_sec_context *arg)
++{
++	int i;
++
++	arg->npages = DIV_ROUND_UP(NGROUPS_MAX * 4, PAGE_SIZE);
++	arg->pages = kzalloc(arg->npages * sizeof(struct page *), GFP_KERNEL);
++
++	for (i=0; i < arg->npages; i++) {
++		arg->pages[i] = alloc_page(GFP_KERNEL);
++		if (arg->pages[i] == NULL) {
++			gssp_free_receive_pages(arg);
++			return -ENOMEM;
++		}
++	}
++	return 0;
++}
+ 
+ /*
+  * Public functions
+@@ -261,10 +285,16 @@ int gssp_accept_sec_context_upcall(struct net *net,
+ 		arg.context_handle = &ctxh;
+ 	res.output_token->len = GSSX_max_output_token_sz;
+ 
++	ret = gssp_alloc_receive_pages(&arg);
++	if (ret)
++		return ret;
++
+ 	/* use nfs/ for targ_name ? */
+ 
+ 	ret = gssp_call(net, &msg);
+ 
++	gssp_free_receive_pages(&arg);
++
+ 	/* we need to fetch all data even in case of error so
+ 	 * that we can free special strctures is they have been allocated */
+ 	data->major_status = res.status.major_status;
+diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+index 3c19c7d..f0f78c5 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
++++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+@@ -780,6 +780,9 @@ void gssx_enc_accept_sec_context(struct rpc_rqst *req,
+ 	/* arg->options */
+ 	err = dummy_enc_opt_array(xdr, &arg->options);
+ 
++	xdr_inline_pages(&req->rq_rcv_buf,
++		PAGE_SIZE/2 /* pretty arbitrary */,
++		arg->pages, 0 /* page base */, arg->npages * PAGE_SIZE);
+ done:
+ 	if (err)
+ 		dprintk("RPC:       gssx_enc_accept_sec_context: %d\n", err);
+diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.h b/net/sunrpc/auth_gss/gss_rpc_xdr.h
+index 1c98b27..685a688 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_xdr.h
++++ b/net/sunrpc/auth_gss/gss_rpc_xdr.h
+@@ -147,6 +147,8 @@ struct gssx_arg_accept_sec_context {
+ 	struct gssx_cb *input_cb;
+ 	u32 ret_deleg_cred;
+ 	struct gssx_option_array options;
++	struct page **pages;
++	unsigned int npages;
+ };
+ 
+ struct gssx_res_accept_sec_context {
+@@ -240,7 +242,8 @@ int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
+ 			     2 * GSSX_max_princ_sz + \
+ 			     8 + 8 + 4 + 4 + 4)
+ #define GSSX_max_output_token_sz 1024
+-#define GSSX_max_creds_sz (4 + 4 + 4 + NGROUPS_MAX * 4)
++/* grouplist not included; we allocate separate pages for that: */
++#define GSSX_max_creds_sz (4 + 4 + 4 /* + NGROUPS_MAX*4 */)
+ #define GSSX_RES_accept_sec_context_sz (GSSX_default_status_sz + \
+ 					GSSX_default_ctx_sz + \
+ 					GSSX_max_output_token_sz + \
 -- 
-1.8.3.1
+1.7.9.5
 
