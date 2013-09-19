@@ -1,49 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44115 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:44681 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751047Ab3IRTP0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Sep 2013 15:15:26 -0400
-Message-ID: <5239FBE3.3020107@RedHat.com>
-Date: Wed, 18 Sep 2013 15:15:47 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Harshula Jayasuriya <harshula@redhat.com>
-CC: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsiostat: periodically flush stdout
-References: <1378747050.4117.122.camel@serendib>
-In-Reply-To: <1378747050.4117.122.camel@serendib>
-Content-Type: text/plain; charset=UTF-8
+	id S1752103Ab3ISVD6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Sep 2013 17:03:58 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCHv2 2/3] gssd: don't use tgtname to find our keytab
+Date: Thu, 19 Sep 2013 17:03:51 -0400
+Message-Id: <1379624632-31476-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1379624632-31476-1-git-send-email-bfields@redhat.com>
+References: <1379624239-31199-2-git-send-email-bfields@redhat.com>
+ <1379624632-31476-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
+The tgtname is of the form service@hostname.  It's not a hostname, and
+attempting to look it up here just causes failure of any upcall with a
+"target=" field (currently, any upcall on behalf of an nfsv4.0
+callback).
 
-On 09/09/13 13:17, Harshula Jayasuriya wrote:
-> * In a shell script, when nfsiostat is run in the background with
->   stdout redirected to a file, flush stdout periodically to ensure
->   that we do not lose the buffered output if the nfsiostat process 
->   is killed.
-> 
-> Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
-Committed!
+I think the theory was that knowning that target= name might help pick
+the right keytab, but I don't really know if that's helpful.  For now,
+just stop trying to do this.
 
-steved.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ utils/gssd/gssd_proc.c |  3 +--
+ utils/gssd/krb5_util.c | 10 +++-------
+ utils/gssd/krb5_util.h |  3 +--
+ 3 files changed, 5 insertions(+), 11 deletions(-)
 
-> ---
->  tools/nfs-iostat/nfs-iostat.py | 2 ++
->  1 file changed, 2 insertions(+)
-> 
-> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
-> index c035537..155581c 100644
-> --- a/tools/nfs-iostat/nfs-iostat.py
-> +++ b/tools/nfs-iostat/nfs-iostat.py
-> @@ -413,6 +413,8 @@ class DeviceData:
->              self.__print_rpc_op_stats('WRITE', sample_time)
->              self.__print_page_stats(sample_time)
->  
-> +        sys.stdout.flush()
-> +
->  #
->  # Functions
->  #
-> 
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 0383883..7200a78 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -1035,8 +1035,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+ 			int success = 0;
+ 			do {
+ 				gssd_refresh_krb5_machine_credential(clp->servername,
+-								     NULL, service,
+-								     tgtname);
++								     NULL, service);
+ 				/*
+ 				 * Get a list of credential cache names and try each
+ 				 * of them until one works or we've tried them all
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index 83b9651..c6e52fd 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -1149,7 +1149,7 @@ gssd_get_krb5_machine_cred_list(char ***list)
+ 		if (ple->ccname) {
+ 			/* Make sure cred is up-to-date before returning it */
+ 			retval = gssd_refresh_krb5_machine_credential(NULL, ple,
+-				NULL, NULL);
++				NULL);
+ 			if (retval)
+ 				continue;
+ 			if (i + 1 > listsize) {
+@@ -1240,8 +1240,7 @@ gssd_destroy_krb5_machine_creds(void)
+ int
+ gssd_refresh_krb5_machine_credential(char *hostname,
+ 				     struct gssd_k5_kt_princ *ple, 
+-					 char *service,
+-					 char *tgtname)
++					 char *service)
+ {
+ 	krb5_error_code code = 0;
+ 	krb5_context context;
+@@ -1280,10 +1279,7 @@ gssd_refresh_krb5_machine_credential(char *hostname,
+ 	if (ple == NULL) {
+ 		krb5_keytab_entry kte;
+ 
+-		if (tgtname == NULL)
+-			tgtname = hostname;
+-
+-		code = find_keytab_entry(context, kt, tgtname, &kte, svcnames);
++		code = find_keytab_entry(context, kt, hostname, &kte, svcnames);
+ 		if (code) {
+ 			printerr(0, "ERROR: %s: no usable keytab entry found "
+ 				 "in keytab %s for connection with host %s\n",
+diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
+index eed1294..3f0723e 100644
+--- a/utils/gssd/krb5_util.h
++++ b/utils/gssd/krb5_util.h
+@@ -31,8 +31,7 @@ void gssd_setup_krb5_machine_gss_ccache(char *servername);
+ void gssd_destroy_krb5_machine_creds(void);
+ int  gssd_refresh_krb5_machine_credential(char *hostname,
+ 					  struct gssd_k5_kt_princ *ple, 
+-					  char *service,
+-					  char *tgtname);
++					  char *service);
+ char *gssd_k5_err_msg(krb5_context context, krb5_error_code code);
+ void gssd_k5_get_default_realm(char **def_realm);
+ 
+-- 
+1.8.3.1
+
