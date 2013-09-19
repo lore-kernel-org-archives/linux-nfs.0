@@ -1,90 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.gmx.net ([212.227.15.15]:49640 "EHLO mout.gmx.net"
+Received: from fieldses.org ([174.143.236.118]:48812 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755695Ab3I2TsP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 29 Sep 2013 15:48:15 -0400
-Received: from [80.171.220.192] ([80.171.220.192]) by mail.gmx.com (mrgmx102)
- with ESMTPSA (Nemesis) id 0LhCDT-1WEbcI29At-00oUf1 for
- <linux-nfs@vger.kernel.org>; Sun, 29 Sep 2013 21:48:14 +0200
-Message-ID: <524883F9.6060403@gmx.de>
-Date: Sun, 29 Sep 2013 21:48:09 +0200
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+	id S1752153Ab3ISNOa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Sep 2013 09:14:30 -0400
+Date: Thu, 19 Sep 2013 09:14:29 -0400
+To: Jody Gugelhupf <knueffle@yahoo.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: help with nfs export/mount
+Message-ID: <20130919131429.GA20422@fieldses.org>
+References: <1379582806.44080.YahooMailNeo@web140003.mail.bf1.yahoo.com>
 MIME-Version: 1.0
-To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-CC: UML devel <user-mode-linux-devel@lists.sourceforge.net>,
-        Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: fuzz tested UML cores in pshrink_dcache_for_umount_subtree (dentry=0x47bd7840)
- at fs/dcache.c:928
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1379582806.44080.YahooMailNeo@web140003.mail.bf1.yahoo.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following commit was bisected 2 times in a row to be the trigger(*) of the given back trace.
-The core dump happens at a 32 bit user mode linux image (stable Gentoo) fuzzy tested with trinity.
-It crashed often if 3 NFS shares heavily used by trinity were tried to be remounted.
+On Thu, Sep 19, 2013 at 02:26:46AM -0700, Jody Gugelhupf wrote:
+> i'm currently using samba for fileshares with my media center (xbmc/openelec on a pi). I have a server on the network with 20 different harddisks on this system that contain all my media. I have directory "/home/user/media" on my server into which i "mount --bind" all the media i want to be accessible on xbmc (on the pi) or on other computers on the local network. To give you an idea of the mounts on my server:
+> 
+> /home/user/media#located on /dev/sda
+> /home/user/media/Movies#located on /dev/sdf used 'mount --bind /dev/sdf/Movies /home/user/media/Movies'
+> /home/user/media/Series#located on /dev/sda has +300 sub directories, that i created within '/home/user/media/Series' and 'mount --bind' from all other locations/hdd's into the respective folder within '/home/user/media/Series' e.g.
+> /home/user/media/Series/24#located on /dev/sdb used 'mount --bind /dev/sdb/24 /home/user/media/Series/24' 
+> /home/user/media/Series/Star.Trek#located on /dev/sdc used 'mount --bind' and so forth but also:
+> /home/user/media/Series/Animation#located on /dev/sda has +30 sub directories, e.g.
+> /home/user/media/Series/Animation/Ben10#located on /dev/sdz used 'mount --bind /dev/sdz/Ben10 /home/user/media/Series/Animation/Ben10'
+> 
+> a more elaborate list here: http://pastebin.com/DhUA5tks
+> 
+> this all works fine, but I was told NFS would be faster so i wanted to give it a try. the server runs ubuntu 12.04.2, kernel 3.2.0-48-generic x86_64, up to date NFSv4. After installing NFS I tried simple exports (one folder without any sub directories that have no 'mount --bind' in them) and accessing them works fine. So now I thought to export the '/home/user/media' directory but using the samba setup as described from above does not work. Ideally, I would like to have to nfs mount only '/home/user/media' and have all the 'mount --bind' folders accessible on the server also accessible on all clients.
+> Rather then using the xbmc/pi mentioned above I use my laptop with ubuntu to test the export mounts as a client. In samba it was enough to share the parent folder, in this case '/home/user/media' and everything below that share would be visible but as i understand this is not the case in nfs, I need to specify each sub directory that is 'mount --bind' (from a different file system) in the export.
 
+No, it should actually be sufficient just to export the parent.  Also,
+we don't recommend fsid=0 any longer.  Also, "async" should be avoided.
+So just:
 
+	/home/user/media/ 192.168.2.0/24(rw,insecure,crossmnt,no_root_check,no_subtree_check)
 
+and you mount that with "mount myserver:/home/user/media /mymountpoint".
 
-BAD commit
-Sun Sep 29 07:34:02 CEST 2013
-=======================================================================
+(Note the "crossmnt", which tells the server to export all the children
+automatically.)
 
-275bb307865a316cef390e01e6ab5e21e97023a2 is the first bad commit
-commit 275bb307865a316cef390e01e6ab5e21e97023a2
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Wed May 29 13:11:28 2013 -0400
+If that doesn't work you've probably found a bug.  I'd recommend
+reporting that to Ubuntu, and/or here if you can reproduce with recent
+kernel and nfs-utils.
 
-    NFSv4: Move dentry instantiation into the NFSv4-specific atomic open
-code
+--b.
 
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-:040000 040000 075a18b71db9f50ad71f4637315f7f9c7cc19545
-9bead78040810cb77ced8c134a8315e2e90eb237 M fs
-bisect run success
-
-
-back trace :
-
-tfoerste@n22 ~ $ cat /mnt/ramdisk/bt.v3.10-rc1-24-g275bb30
-[New LWP 5953]
-[New LWP 5962]
-Core was generated by `/home/tfoerste/devel/linux/linux earlyprintk ubda=/home/tfoerste/virtual/uml/tr'.
-Program terminated with signal 6, Aborted.
-#0  0xb77dd424 in __kernel_vsyscall ()
-#0  0xb77dd424 in __kernel_vsyscall ()
-#1  0x0839bc45 in kill ()
-#2  0x0807155d in uml_abort () at arch/um/os-Linux/util.c:93
-#3  0x08071845 in os_dump_core () at arch/um/os-Linux/util.c:138
-#4  0x08061197 in panic_exit (self=0x8599518 <panic_exit_notifier>, unused1=0, unused2=0x85ced60 <buf.12233>) at arch/um/kernel/um_arch.c:240
-#5  0x0809dac8 in notifier_call_chain (nl=0x0, val=0, v=0x85ced60 <buf.12233>, nr_to_call=-2, nr_calls=0x0) at kernel/notifier.c:93
-#6  0x0809dc13 in __atomic_notifier_call_chain (nr_calls=<optimized out>, nr_to_call=<optimized out>, v=<optimized out>, val=<optimized out>, nh=<optimized out>) at kernel/notifier.c:182
-#7  atomic_notifier_call_chain (nh=0x85ced44 <panic_notifier_list>, val=0, v=0x85ced60 <buf.12233>) at kernel/notifier.c:191
-#8  0x083f8fc8 in panic (fmt=0x0) at kernel/panic.c:127
-#9  0x0810fee2 in shrink_dcache_for_umount_subtree (dentry=0x47bd7840) at fs/dcache.c:928
-#10 0x08110628 in shrink_dcache_for_umount (sb=0x47eeef50) at fs/dcache.c:989
-#11 0x080fed47 in generic_shutdown_super (sb=0x47eeef50) at fs/super.c:409
-#12 0x080ffad5 in kill_anon_super (sb=0x0) at fs/super.c:880
-#13 0x081cdea8 in nfs_kill_super (s=0x0) at fs/nfs/super.c:2563
-#14 0x080fec0a in deactivate_locked_super (s=0x47eeef50) at fs/super.c:299
-#15 0x080feca1 in deactivate_super (s=0x47eeef50) at fs/super.c:324
-#16 0x0811686c in mntfree (mnt=<optimized out>) at fs/namespace.c:891
-#17 mntput_no_expire (mnt=0x0) at fs/namespace.c:929
-#18 0x08117d55 in SYSC_umount (flags=<optimized out>, name=<optimized out>) at fs/namespace.c:1335
-#19 SyS_umount (name=134634000, flags=1) at fs/namespace.c:1305
-#20 0x080616d2 in handle_syscall (r=0x4653f7d4) at arch/um/kernel/skas/syscall.c:35
-#21 0x08073b1d in handle_trap (local_using_sysemu=<optimized out>, regs=<optimized out>, pid=<optimized out>) at arch/um/os-Linux/skas/process.c:198
-#22 userspace (regs=0x4653f7d4) at arch/um/os-Linux/skas/process.c:431
-#23 0x0805e44c in fork_handler () at arch/um/kernel/process.c:160
-#24 0x00000000 in ?? ()
-
-
-
-(*) due to the erratic nature of the issue the used test case is not 100% reproducible.
-Therefore although bisected 2 times in a row there's a chance that this commit is rather the upper limit instead of the 1st bad commit
-
--- 
-MfG/Sincerely
-Toralf Förster
-pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+> 
+> my export file:
+> /home/user/media/       192.168.2.0/24(rw,insecure,fsid=0,nohide,no_root_squash,no_subtree_check,async)
+> /home/user/media/Movies       192.168.2.0/24(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
+> /home/user/media/Series       192.168.2.0/24(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
+> /home/user/media/Series/show_33       192.168.2.0/24(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
+> /home/user/media/Series/show_34       192.168.2.0/24(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
+> /home/user/media/Series/Animations       192.168.2.0/24(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
+> /home/user/media/Series/Animations/show_1       192.168.2.0/24(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
+> /home/user/media/Series/Animations/show_2       192.168.2.0/24(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
+> 
+> I also have tried 'crossmnt' instead of 'nohide' as I'm using a subnet and that appears to be problematic at times. 
+> /home/user/media/       192.168.2.0/24(rw,insecure,fsid=0,crossmnt,no_root_squash,no_subtree_check,async)
+> /home/user/media/Movies       192.168.2.0/24(rw,insecure,crossmnt,no_root_squash,no_subtree_check,async)
+> /home/user/media/Series       192.168.2.0/24(rw,insecure,crossmnt,no_root_squash,no_subtree_check,async)
+> /home/user/media/Series/show_33       192.168.2.0/24(rw,insecure,crossmnt,no_root_squash,no_subtree_check,async)
+> /home/user/media/Series/show_34       192.168.2.0/24(rw,insecure,crossmnt,no_root_squash,no_subtree_check,async)
+> /home/user/media/Series/Animations       192.168.2.0/24(rw,insecure,crossmnt,no_root_squash,no_subtree_check,async)
+> /home/user/media/Series/Animations/show_1       192.168.2.0/24(rw,insecure,crossmnt,no_root_squash,no_subtree_check,async)
+> /home/user/media/Series/Animations/show_2       192.168.2.0/24(rw,insecure,crossmnt,no_root_squash,no_subtree_check,async)
+> 
+> Same result.
+> 
+> I also have tried 'nohide' and then specified only the client IP instead of subnet info.
+> /home/user/media/       192.168.2.101(rw,insecure,fsid=0,nohide,no_root_squash,no_subtree_check,async)
+> /home/user/media/Movies       192.168.2.101(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
+> /home/user/media/Series       192.168.2.101(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
+> /home/user/media/Series/show_33       192.168.2.101(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
+> /home/user/media/Series/show_34       192.168.2.101(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
+> /home/user/media/Series/Animations       192.168.2.101(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
+> /home/user/media/Series/Animations/show_1       192.168.2.101(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
+> /home/user/media/Series/Animations/show_2       192.168.2.101(rw,insecure,nohide,no_root_squash,no_subtree_check,async)
+> 
+> Also does not work.
+> 
+> In all the above scenarios I manage to mount on client side:
+> sudo mount -t nfs 192.168.2.3:/home/user/media/ /home/jarvis/Videos/xbmc
+> 
+> but when i try to mount in any of the above described scenarios i get timeout e.g.:
+> 
+> sudo mount -t nfs 192.168.2.3:/home/user/media/Movies /home/jarvis/Videos/xbmc/Movies
+> 
+> What I would want is to only mount the parent export on the client side, e.g.:
+> sudo mount -t nfs 192.168.2.3:/home/user/media/ /home/jarvis/Videos/xbmc
+> and have all directories/files that are available on the server side under '/home/user/media/' to be available on client side under '/home/jarvis/Videos/xbmc' as I have with samba at the moment
+> 
+> how to achieve this?
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
