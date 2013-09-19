@@ -1,96 +1,240 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp2-g21.free.fr ([212.27.42.2]:48651 "EHLO smtp2-g21.free.fr"
+Received: from fieldses.org ([174.143.236.118]:39119 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753894Ab3IFP51 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Sep 2013 11:57:27 -0400
-Date: Fri, 6 Sep 2013 17:57:21 +0200
-From: Emmanuel Florac <eflorac@intellique.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Hard to debug NFS loss of connectivity
-Message-ID: <20130906175721.30082c11@harpe.intellique.com>
-In-Reply-To: <20130905214002.GD24805@fieldses.org>
-References: <20130905191800.1c75b2fb@harpe.intellique.com>
-	<20130905204536.GB24805@fieldses.org>
-	<20130905233449.5eb8bf79@galadriel.home>
-	<20130905214002.GD24805@fieldses.org>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="MP_//wQNq0x5QV.+yHLHe9Ao716"
+	id S1753283Ab3ISUuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Sep 2013 16:50:39 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        David Howells <dhowells@redhat.com>,
+        Tyler Hicks <tyhicks@canonical.com>,
+        Dustin Kirkland <dustin.kirkland@gazzang.com>
+Subject: [PATCH 08/13] locks: break delegations on unlink
+Date: Thu, 19 Sep 2013 16:50:32 -0400
+Message-Id: <1379623837-30798-9-git-send-email-bfields@redhat.com>
+In-Reply-To: <1379623837-30798-1-git-send-email-bfields@redhat.com>
+References: <1379623837-30798-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---MP_//wQNq0x5QV.+yHLHe9Ao716
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Le Thu, 5 Sep 2013 17:40:02 -0400
-"J. Bruce Fields" <bfields@fieldses.org> =E9crivait:
+We need to break delegations on any operation that changes the set of
+links pointing to an inode.  Start with unlink.
 
-> I was asking about the on-the-wire errors and getattr replies here,
-> not the application system calls.
->=20
+Such operations also hold the i_mutex on a parent directory.  Breaking a
+delegation may require waiting for a timeout (by default 90 seconds) in
+the case of a unresponsive NFS client.  To avoid blocking all directory
+operations, we therefore drop locks before waiting for the delegation.
+The logic then looks like:
 
-OK, I've done the dump; I've kept just the last few working calls, then
-the failure calls, and filtered for NFS traffic (there are SSH and
-LACP frames interspersed here). I have absolutely no idea about what's
-going on there :) Any light from the network savvy?
+	acquire locks
+	...
+	test for delegation; if found:
+		take reference on inode
+		release locks
+		wait for delegation break
+		drop reference on inode
+		retry
 
---=20
-------------------------------------------------------------------------
-Emmanuel Florac     |   Direction technique
-                    |   Intellique
-                    |	<eflorac@intellique.com>
-                    |   +33 1 78 94 84 02
-------------------------------------------------------------------------
+It is possible this could never terminate.  (Even if we take precautions
+to prevent another delegation being acquired on the same inode, we could
+get a different inode on each retry.)  But this seems very unlikely.
 
---MP_//wQNq0x5QV.+yHLHe9Ao716
-Content-Type: application/vnd.tcpdump.pcap
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename=nfserror.pcap
+The initial test for a delegation happens after the lock on the target
+inode is acquired, but the directory inode may have been acquired
+further up the call stack.  We therefore add a "struct inode **"
+argument to any intervening functions, which we use to pass the inode
+back up to the caller in the case it needs a delegation synchronously
+broken.
 
-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
+Cc: David Howells <dhowells@redhat.com>
+Cc: Tyler Hicks <tyhicks@canonical.com>
+Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
+Acked-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ drivers/base/devtmpfs.c |    2 +-
+ fs/cachefiles/namei.c   |    2 +-
+ fs/ecryptfs/inode.c     |    2 +-
+ fs/namei.c              |   42 +++++++++++++++++++++++++++++++++++++++---
+ fs/nfsd/vfs.c           |    2 +-
+ include/linux/fs.h      |    2 +-
+ ipc/mqueue.c            |    2 +-
+ 7 files changed, 45 insertions(+), 9 deletions(-)
 
---MP_//wQNq0x5QV.+yHLHe9Ao716--
+diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
+index 7413d06..1b8490e 100644
+--- a/drivers/base/devtmpfs.c
++++ b/drivers/base/devtmpfs.c
+@@ -324,7 +324,7 @@ static int handle_remove(const char *nodename, struct device *dev)
+ 			mutex_lock(&dentry->d_inode->i_mutex);
+ 			notify_change(dentry, &newattrs);
+ 			mutex_unlock(&dentry->d_inode->i_mutex);
+-			err = vfs_unlink(parent.dentry->d_inode, dentry);
++			err = vfs_unlink(parent.dentry->d_inode, dentry, NULL);
+ 			if (!err || err == -ENOENT)
+ 				deleted = 1;
+ 		}
+diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
+index 25badd1..6846fcef 100644
+--- a/fs/cachefiles/namei.c
++++ b/fs/cachefiles/namei.c
+@@ -294,7 +294,7 @@ static int cachefiles_bury_object(struct cachefiles_cache *cache,
+ 		if (ret < 0) {
+ 			cachefiles_io_error(cache, "Unlink security error");
+ 		} else {
+-			ret = vfs_unlink(dir->d_inode, rep);
++			ret = vfs_unlink(dir->d_inode, rep, NULL);
+ 
+ 			if (preemptive)
+ 				cachefiles_mark_object_buried(cache, rep);
+diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+index 67e9b63..0b8b632 100644
+--- a/fs/ecryptfs/inode.c
++++ b/fs/ecryptfs/inode.c
+@@ -153,7 +153,7 @@ static int ecryptfs_do_unlink(struct inode *dir, struct dentry *dentry,
+ 
+ 	dget(lower_dentry);
+ 	lower_dir_dentry = lock_parent(lower_dentry);
+-	rc = vfs_unlink(lower_dir_inode, lower_dentry);
++	rc = vfs_unlink(lower_dir_inode, lower_dentry, NULL);
+ 	if (rc) {
+ 		printk(KERN_ERR "Error in vfs_unlink; rc = [%d]\n", rc);
+ 		goto out_unlock;
+diff --git a/fs/namei.c b/fs/namei.c
+index 5450e9b..5a5fdb9 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3636,7 +3636,25 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
+ 	return do_rmdir(AT_FDCWD, pathname);
+ }
+ 
+-int vfs_unlink(struct inode *dir, struct dentry *dentry)
++/**
++ * vfs_unlink - unlink a filesystem object
++ * @dir:	parent directory
++ * @dentry:	victim
++ * @delegated_inode: returns victim inode, if the inode is delegated.
++ *
++ * The caller must hold dir->i_mutex.
++ *
++ * If vfs_unlink discovers a delegation, it will return -EWOULDBLOCK and
++ * return a reference to the inode in delegated_inode.  The caller
++ * should then break the delegation on that inode and retry.  Because
++ * breaking a delegation may take a long time, the caller should drop
++ * dir->i_mutex before doing so.
++ *
++ * Alternatively, a caller may pass NULL for delegated_inode.  This may
++ * be appropriate for callers that expect the underlying filesystem not
++ * to be NFS exported.
++ */
++int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
+ {
+ 	struct inode *target = dentry->d_inode;
+ 	int error = may_delete(dir, dentry, 0);
+@@ -3653,11 +3671,20 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+ 	else {
+ 		error = security_inode_unlink(dir, dentry);
+ 		if (!error) {
++			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
++			if (error) {
++				if (error == -EWOULDBLOCK && delegated_inode) {
++					*delegated_inode = target;
++					ihold(target);
++				}
++				goto out;
++			}
+ 			error = dir->i_op->unlink(dir, dentry);
+ 			if (!error)
+ 				dont_mount(dentry);
+ 		}
+ 	}
++out:
+ 	mutex_unlock(&target->i_mutex);
+ 
+ 	/* We don't d_delete() NFS sillyrenamed files--they still exist. */
+@@ -3682,6 +3709,7 @@ static long do_unlinkat(int dfd, const char __user *pathname)
+ 	struct dentry *dentry;
+ 	struct nameidata nd;
+ 	struct inode *inode = NULL;
++	struct inode *delegated_inode = NULL;
+ 	unsigned int lookup_flags = 0;
+ retry:
+ 	name = user_path_parent(dfd, pathname, &nd, lookup_flags);
+@@ -3696,7 +3724,7 @@ retry:
+ 	error = mnt_want_write(nd.path.mnt);
+ 	if (error)
+ 		goto exit1;
+-
++retry_deleg:
+ 	mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex, I_MUTEX_PARENT);
+ 	dentry = lookup_hash(&nd);
+ 	error = PTR_ERR(dentry);
+@@ -3711,13 +3739,21 @@ retry:
+ 		error = security_path_unlink(&nd.path, dentry);
+ 		if (error)
+ 			goto exit2;
+-		error = vfs_unlink(nd.path.dentry->d_inode, dentry);
++		error = vfs_unlink(nd.path.dentry->d_inode, dentry, &delegated_inode);
+ exit2:
+ 		dput(dentry);
+ 	}
+ 	mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
+ 	if (inode)
+ 		iput(inode);	/* truncate the inode here */
++	inode = NULL;
++	if (delegated_inode) {
++		error = break_deleg(delegated_inode, O_WRONLY);
++		iput(delegated_inode);
++		delegated_inode = NULL;
++		if (!error)
++			goto retry_deleg;
++	}
+ 	mnt_drop_write(nd.path.mnt);
+ exit1:
+ 	path_put(&nd.path);
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index c827acb..00d0616 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1911,7 +1911,7 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+ 	if (host_err)
+ 		goto out_put;
+ 	if (type != S_IFDIR)
+-		host_err = vfs_unlink(dirp, rdentry);
++		host_err = vfs_unlink(dirp, rdentry, NULL);
+ 	else
+ 		host_err = vfs_rmdir(dirp, rdentry);
+ 	if (!host_err)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 7a7df5e..e9c536f 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1467,7 +1467,7 @@ extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
+ extern int vfs_symlink(struct inode *, struct dentry *, const char *);
+ extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
+ extern int vfs_rmdir(struct inode *, struct dentry *);
+-extern int vfs_unlink(struct inode *, struct dentry *);
++extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
+ extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *);
+ 
+ /*
+diff --git a/ipc/mqueue.c b/ipc/mqueue.c
+index ae1996d..95827ce 100644
+--- a/ipc/mqueue.c
++++ b/ipc/mqueue.c
+@@ -886,7 +886,7 @@ SYSCALL_DEFINE1(mq_unlink, const char __user *, u_name)
+ 		err = -ENOENT;
+ 	} else {
+ 		ihold(inode);
+-		err = vfs_unlink(dentry->d_parent->d_inode, dentry);
++		err = vfs_unlink(dentry->d_parent->d_inode, dentry, NULL);
+ 	}
+ 	dput(dentry);
+ 
+-- 
+1.7.9.5
+
