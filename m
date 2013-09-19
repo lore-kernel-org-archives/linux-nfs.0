@@ -1,250 +1,216 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:59486 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:39117 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757178Ab3IDQjE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Sep 2013 12:39:04 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH] SUNRPC: Add tracepoints to help debug socket connection issues
-Date: Wed, 4 Sep 2013 12:35:46 -0400
-Message-ID: <1378312546-34073-1-git-send-email-Trond.Myklebust@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1753289Ab3ISUuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Sep 2013 16:50:39 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 06/13] locks: implement delegations
+Date: Thu, 19 Sep 2013 16:50:30 -0400
+Message-Id: <1379623837-30798-7-git-send-email-bfields@redhat.com>
+In-Reply-To: <1379623837-30798-1-git-send-email-bfields@redhat.com>
+References: <1379623837-30798-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add client side debugging to help trace socket connection/disconnection
-and unexpected state change issues.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Implement NFSv4 delegations at the vfs level using the new FL_DELEG lock
+type.
+
+Note nfsd is the only delegation user and is only using read
+delegations.  Warn on any attempt to set a write delegation for now.
+We'll come back to that case later.
+
+Acked-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- include/trace/events/sunrpc.h | 131 ++++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/xprtsock.c         |  13 ++++-
- 2 files changed, 143 insertions(+), 1 deletion(-)
+ fs/locks.c         |   55 ++++++++++++++++++++++++++++++++++++++++++----------
+ include/linux/fs.h |   18 ++++++++++++++---
+ 2 files changed, 60 insertions(+), 13 deletions(-)
 
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index 43be87d..b74a8ac 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -6,6 +6,8 @@
- 
- #include <linux/sunrpc/sched.h>
- #include <linux/sunrpc/clnt.h>
-+#include <net/tcp_states.h>
-+#include <linux/net.h>
- #include <linux/tracepoint.h>
- 
- DECLARE_EVENT_CLASS(rpc_task_status,
-@@ -172,6 +174,135 @@ DEFINE_EVENT(rpc_task_queued, rpc_task_wakeup,
- 
- );
- 
-+#define rpc_show_socket_state(state) \
-+	__print_symbolic(state, \
-+		{ SS_FREE, "FREE" }, \
-+		{ SS_UNCONNECTED, "UNCONNECTED" }, \
-+		{ SS_CONNECTING, "CONNECTING," }, \
-+		{ SS_CONNECTED, "CONNECTED," }, \
-+		{ SS_DISCONNECTING, "DISCONNECTING" })
-+
-+#define rpc_show_sock_state(state) \
-+	__print_symbolic(state, \
-+		{ TCP_ESTABLISHED, "ESTABLISHED" }, \
-+		{ TCP_SYN_SENT, "SYN_SENT" }, \
-+		{ TCP_SYN_RECV, "SYN_RECV" }, \
-+		{ TCP_FIN_WAIT1, "FIN_WAIT1" }, \
-+		{ TCP_FIN_WAIT2, "FIN_WAIT2" }, \
-+		{ TCP_TIME_WAIT, "TIME_WAIT" }, \
-+		{ TCP_CLOSE, "CLOSE" }, \
-+		{ TCP_CLOSE_WAIT, "CLOSE_WAIT" }, \
-+		{ TCP_LAST_ACK, "LAST_ACK" }, \
-+		{ TCP_LISTEN, "LISTEN" }, \
-+		{ TCP_CLOSING, "CLOSING" })
-+
-+DECLARE_EVENT_CLASS(xs_socket_event,
-+
-+		TP_PROTO(
-+			struct rpc_xprt *xprt,
-+			struct socket *socket
-+		),
-+
-+		TP_ARGS(xprt, socket),
-+
-+		TP_STRUCT__entry(
-+			__field(unsigned int, socket_state)
-+			__field(unsigned int, sock_state)
-+			__field(unsigned long long, ino)
-+			__string(dstaddr,
-+				xprt->address_strings[RPC_DISPLAY_ADDR])
-+			__string(dstport,
-+				xprt->address_strings[RPC_DISPLAY_PORT])
-+		),
-+
-+		TP_fast_assign(
-+			struct inode *inode = SOCK_INODE(socket);
-+			__entry->socket_state = socket->state;
-+			__entry->sock_state = socket->sk->sk_state;
-+			__entry->ino = (unsigned long long)inode->i_ino;
-+			__assign_str(dstaddr,
-+				xprt->address_strings[RPC_DISPLAY_ADDR]);
-+			__assign_str(dstport,
-+				xprt->address_strings[RPC_DISPLAY_PORT]);
-+		),
-+
-+		TP_printk(
-+			"socket:[%llu] dstaddr=%s/%s "
-+			"state=%u (%s) sk_state=%u (%s)",
-+			__entry->ino, __get_str(dstaddr), __get_str(dstport),
-+			__entry->socket_state,
-+			rpc_show_socket_state(__entry->socket_state),
-+			__entry->sock_state,
-+			rpc_show_sock_state(__entry->sock_state)
-+		)
-+);
-+#define DEFINE_RPC_SOCKET_EVENT(name) \
-+	DEFINE_EVENT(xs_socket_event, name, \
-+			TP_PROTO( \
-+				struct rpc_xprt *xprt, \
-+				struct socket *socket \
-+			), \
-+			TP_ARGS(xprt, socket))
-+
-+DECLARE_EVENT_CLASS(xs_socket_event_done,
-+
-+		TP_PROTO(
-+			struct rpc_xprt *xprt,
-+			struct socket *socket,
-+			int error
-+		),
-+
-+		TP_ARGS(xprt, socket, error),
-+
-+		TP_STRUCT__entry(
-+			__field(int, error)
-+			__field(unsigned int, socket_state)
-+			__field(unsigned int, sock_state)
-+			__field(unsigned long long, ino)
-+			__string(dstaddr,
-+				xprt->address_strings[RPC_DISPLAY_ADDR])
-+			__string(dstport,
-+				xprt->address_strings[RPC_DISPLAY_PORT])
-+		),
-+
-+		TP_fast_assign(
-+			struct inode *inode = SOCK_INODE(socket);
-+			__entry->socket_state = socket->state;
-+			__entry->sock_state = socket->sk->sk_state;
-+			__entry->ino = (unsigned long long)inode->i_ino;
-+			__entry->error = error;
-+			__assign_str(dstaddr,
-+				xprt->address_strings[RPC_DISPLAY_ADDR]);
-+			__assign_str(dstport,
-+				xprt->address_strings[RPC_DISPLAY_PORT]);
-+		),
-+
-+		TP_printk(
-+			"error=%d socket:[%llu] dstaddr=%s/%s "
-+			"state=%u (%s) sk_state=%u (%s)",
-+			__entry->error,
-+			__entry->ino, __get_str(dstaddr), __get_str(dstport),
-+			__entry->socket_state,
-+			rpc_show_socket_state(__entry->socket_state),
-+			__entry->sock_state,
-+			rpc_show_sock_state(__entry->sock_state)
-+		)
-+);
-+#define DEFINE_RPC_SOCKET_EVENT_DONE(name) \
-+	DEFINE_EVENT(xs_socket_event_done, name, \
-+			TP_PROTO( \
-+				struct rpc_xprt *xprt, \
-+				struct socket *socket, \
-+				int error \
-+			), \
-+			TP_ARGS(xprt, socket, error))
-+
-+DEFINE_RPC_SOCKET_EVENT(rpc_socket_state_change);
-+DEFINE_RPC_SOCKET_EVENT_DONE(rpc_socket_connect);
-+DEFINE_RPC_SOCKET_EVENT_DONE(rpc_socket_reset_connection);
-+DEFINE_RPC_SOCKET_EVENT(rpc_socket_close);
-+DEFINE_RPC_SOCKET_EVENT(rpc_socket_shutdown);
-+
- #endif /* _TRACE_SUNRPC_H */
- 
- #include <trace/define_trace.h>
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index ddf0602..b98bce5 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -47,6 +47,8 @@
- #include <net/udp.h>
- #include <net/tcp.h>
- 
-+#include <trace/events/sunrpc.h>
-+
- #include "sunrpc.h"
- 
- static void xs_close(struct rpc_xprt *xprt);
-@@ -665,8 +667,10 @@ static void xs_tcp_shutdown(struct rpc_xprt *xprt)
- 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
- 	struct socket *sock = transport->sock;
- 
--	if (sock != NULL)
-+	if (sock != NULL) {
- 		kernel_sock_shutdown(sock, SHUT_WR);
-+		trace_rpc_socket_shutdown(xprt, sock);
-+	}
+diff --git a/fs/locks.c b/fs/locks.c
+index 6e46dede..7336920 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1292,28 +1292,40 @@ static void time_out_leases(struct inode *inode)
+ 	}
  }
  
++static bool leases_conflict(struct file_lock *lease, struct file_lock *breaker)
++{
++	if ((breaker->fl_flags & FL_DELEG) && (lease->fl_flags & FL_LEASE))
++		return false;
++	return locks_conflict(breaker, lease);
++}
++
  /**
-@@ -811,6 +815,7 @@ static void xs_reset_transport(struct sock_xprt *transport)
+  *	__break_lease	-	revoke all outstanding leases on file
+  *	@inode: the inode of the file to return
+- *	@mode: the open mode (read or write)
++ *	@mode: O_RDONLY: break only write leases; O_WRONLY or O_RDWR:
++ *	    break all leases
++ *	@type: FL_LEASE: break leases and delegations; FL_DELEG: break
++ *	    only delegations
+  *
+  *	break_lease (inlined for speed) has checked there already is at least
+  *	some kind of lock (maybe a lease) on this file.  Leases are broken on
+  *	a call to open() or truncate().  This function can sleep unless you
+  *	specified %O_NONBLOCK to your open().
+  */
+-int __break_lease(struct inode *inode, unsigned int mode)
++int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
+ {
+ 	int error = 0;
+ 	struct file_lock *new_fl, *flock;
+ 	struct file_lock *fl;
+ 	unsigned long break_time;
+ 	int i_have_this_lease = 0;
++	bool lease_conflict = false;
+ 	int want_write = (mode & O_ACCMODE) != O_RDONLY;
  
- 	sk->sk_no_check = 0;
+ 	new_fl = lease_alloc(NULL, want_write ? F_WRLCK : F_RDLCK);
+ 	if (IS_ERR(new_fl))
+ 		return PTR_ERR(new_fl);
++	new_fl->fl_flags = type;
  
-+	trace_rpc_socket_close(&transport->xprt, sock);
- 	sock_release(sock);
+ 	spin_lock(&inode->i_lock);
+ 
+@@ -1323,13 +1335,16 @@ int __break_lease(struct inode *inode, unsigned int mode)
+ 	if ((flock == NULL) || !IS_LEASE(flock))
+ 		goto out;
+ 
+-	if (!locks_conflict(flock, new_fl))
++	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
++		if (leases_conflict(fl, new_fl)) {
++			lease_conflict = true;
++			if (fl->fl_owner == current->files)
++				i_have_this_lease = 1;
++		}
++	}
++	if (!lease_conflict)
+ 		goto out;
+ 
+-	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next)
+-		if (fl->fl_owner == current->files)
+-			i_have_this_lease = 1;
+-
+ 	break_time = 0;
+ 	if (lease_break_time > 0) {
+ 		break_time = jiffies + lease_break_time * HZ;
+@@ -1338,6 +1353,8 @@ int __break_lease(struct inode *inode, unsigned int mode)
+ 	}
+ 
+ 	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
++		if (!leases_conflict(fl, new_fl))
++			continue;
+ 		if (want_write) {
+ 			if (fl->fl_flags & FL_UNLOCK_PENDING)
+ 				continue;
+@@ -1379,7 +1396,7 @@ restart:
+ 		 */
+ 		for (flock = inode->i_flock; flock && IS_LEASE(flock);
+ 				flock = flock->fl_next) {
+-			if (locks_conflict(new_fl, flock))
++			if (leases_conflict(new_fl, flock))
+ 				goto restart;
+ 		}
+ 		error = 0;
+@@ -1460,9 +1477,26 @@ static int generic_add_lease(struct file *filp, long arg, struct file_lock **flp
+ 	struct file_lock *fl, **before, **my_before = NULL, *lease;
+ 	struct dentry *dentry = filp->f_path.dentry;
+ 	struct inode *inode = dentry->d_inode;
++	bool is_deleg = (*flp)->fl_flags & FL_DELEG;
+ 	int error;
+ 
+ 	lease = *flp;
++	/*
++	 * In the delegation case we need mutual exclusion with
++	 * a number of operations that take the i_mutex.  We trylock
++	 * because delegations are an optional optimization, and if
++	 * there's some chance of a conflict--we'd rather not
++	 * bother, maybe that's a sign this just isn't a good file to
++	 * hand out a delegation on.
++	 */
++	if (is_deleg && !mutex_trylock(&inode->i_mutex))
++		return -EAGAIN;
++
++	if (is_deleg && arg == F_WRLCK) {
++		/* Write delegations are not currently supported: */
++		WARN_ON_ONCE(1);
++		return -EINVAL;
++	}
+ 
+ 	error = -EAGAIN;
+ 	if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
+@@ -1514,9 +1548,10 @@ static int generic_add_lease(struct file *filp, long arg, struct file_lock **flp
+ 		goto out;
+ 
+ 	locks_insert_lock(before, lease);
+-	return 0;
+-
++	error = 0;
+ out:
++	if (is_deleg)
++		mutex_unlock(&inode->i_mutex);
+ 	return error;
  }
  
-@@ -1492,6 +1497,7 @@ static void xs_tcp_state_change(struct sock *sk)
- 			sock_flag(sk, SOCK_ZAPPED),
- 			sk->sk_shutdown);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 35669fe..7a7df5e 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1030,7 +1030,7 @@ extern int vfs_test_lock(struct file *, struct file_lock *);
+ extern int vfs_lock_file(struct file *, unsigned int, struct file_lock *, struct file_lock *);
+ extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
+ extern int flock_lock_file_wait(struct file *filp, struct file_lock *fl);
+-extern int __break_lease(struct inode *inode, unsigned int flags);
++extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
+ extern void lease_get_mtime(struct inode *, struct timespec *time);
+ extern int generic_setlease(struct file *, long, struct file_lock **);
+ extern int vfs_setlease(struct file *, long, struct file_lock **);
+@@ -1139,7 +1139,7 @@ static inline int flock_lock_file_wait(struct file *filp,
+ 	return -ENOLCK;
+ }
  
-+	trace_rpc_socket_state_change(xprt, sk->sk_socket);
- 	switch (sk->sk_state) {
- 	case TCP_ESTABLISHED:
- 		spin_lock(&xprt->transport_lock);
-@@ -1896,6 +1902,7 @@ static int xs_local_setup_socket(struct sock_xprt *transport)
- 			xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
+-static inline int __break_lease(struct inode *inode, unsigned int mode)
++static inline int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
+ {
+ 	return 0;
+ }
+@@ -1962,9 +1962,17 @@ static inline int locks_verify_truncate(struct inode *inode,
+ static inline int break_lease(struct inode *inode, unsigned int mode)
+ {
+ 	if (inode->i_flock)
+-		return __break_lease(inode, mode);
++		return __break_lease(inode, mode, FL_LEASE);
+ 	return 0;
+ }
++
++static inline int break_deleg(struct inode *inode, unsigned int mode)
++{
++	if (inode->i_flock)
++		return __break_lease(inode, mode, FL_DELEG);
++	return 0;
++}
++
+ #else /* !CONFIG_FILE_LOCKING */
+ static inline int locks_mandatory_locked(struct inode *inode)
+ {
+@@ -2004,6 +2012,10 @@ static inline int break_lease(struct inode *inode, unsigned int mode)
+ 	return 0;
+ }
  
- 	status = xs_local_finish_connecting(xprt, sock);
-+	trace_rpc_socket_connect(xprt, sock, status);
- 	switch (status) {
- 	case 0:
- 		dprintk("RPC:       xprt %p connected to %s\n",
-@@ -2039,6 +2046,7 @@ static void xs_udp_setup_socket(struct work_struct *work)
- 			xprt->address_strings[RPC_DISPLAY_PORT]);
++static inline int break_deleg(struct inode *inode, unsigned int mode)
++{
++	return 0;
++}
+ #endif /* CONFIG_FILE_LOCKING */
  
- 	xs_udp_finish_connecting(xprt, sock);
-+	trace_rpc_socket_connect(xprt, sock, 0);
- 	status = 0;
- out:
- 	xprt_clear_connecting(xprt);
-@@ -2064,6 +2072,8 @@ static void xs_abort_connection(struct sock_xprt *transport)
- 	memset(&any, 0, sizeof(any));
- 	any.sa_family = AF_UNSPEC;
- 	result = kernel_connect(transport->sock, &any, sizeof(any), 0);
-+	trace_rpc_socket_reset_connection(&transport->xprt,
-+			transport->sock, result);
- 	if (!result)
- 		xs_sock_reset_connection_flags(&transport->xprt);
- 	dprintk("RPC:       AF_UNSPEC connect return code %d\n", result);
-@@ -2194,6 +2204,7 @@ static void xs_tcp_setup_socket(struct work_struct *work)
- 			xprt->address_strings[RPC_DISPLAY_PORT]);
- 
- 	status = xs_tcp_finish_connecting(xprt, sock);
-+	trace_rpc_socket_connect(xprt, sock, status);
- 	dprintk("RPC:       %p connect status %d connected %d sock state %d\n",
- 			xprt, -status, xprt_connected(xprt),
- 			sock->sk->sk_state);
+ /* fs/open.c */
 -- 
-1.8.3.1
+1.7.9.5
 
