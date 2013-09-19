@@ -1,64 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43388 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:51012 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754842Ab3I3PAT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Sep 2013 11:00:19 -0400
-Date: Mon, 30 Sep 2013 11:00:13 -0400
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Michael Gliwinski <Michael.Gliwinski@henderson-group.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: gss context cache
-Message-ID: <20130930150013.GH16579@fieldses.org>
-References: <1702585.AG7n1MCr0K@hgis96>
- <20130930100000.70578c80@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130930100000.70578c80@tlielax.poochiereds.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1752261Ab3ISP12 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Sep 2013 11:27:28 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: stable@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/4] rpc: clean up decoding of gssproxy linux creds
+Date: Thu, 19 Sep 2013 11:27:19 -0400
+Message-Id: <1379604442-27724-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1379604442-27724-1-git-send-email-bfields@redhat.com>
+References: <1379604442-27724-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 30, 2013 at 10:00:00AM -0400, Jeff Layton wrote:
-> On Mon, 30 Sep 2013 13:06:47 +0100
-> Michael Gliwinski <Michael.Gliwinski@henderson-group.com> wrote:
-> 
-> > Hi all,
-> > 
-> > On RHEL6 nfs-utils-1.2.3-36
-> > 
-> > man rpc.gssd says it -t wasn't specified then kernel gss contexts will be 
-> > cached for the lifettime of the Kerberos service ticket used in its creation.  
-> > Is there a way to see the contexts + service tickets in that cache?
-> > 
-> 
-> No, AFAIK.
-> 
-> > Also, is there any way short of rebooting the client to evict one entry from 
-> > that cache, or even clear the cache entirely?
-> > 
-> 
-> There is a gss_destroy_creds script which ships as part of nfs-utils.
-> That should basically do what you need, but it's not well-documented so
-> you'll have to play with it some...
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-My memory is that depended on some undocumented feature of the upcall
-since removed.  (Maybe the ability to send a downcall that isn't a
-response to some upcall?)  But I may be misremembering.  Somebody should
-probably check and remove that script (and gss_cltn_send_err) if I'm
-right.
+commit 778e512bb1d3315c6b55832248cd30c566c081d7 upstream.
 
---b.
-> 
-> > (looking for this as I had situations where access was denied by the NFS 
-> > server and I could see the principal was getting mapped to nfsnobody, etc. and 
-> > was suspecting the account was changed on the KDC and the old context/ticket 
-> > may have been causing problems)
-> > 
-> 
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+We can use the normal coding infrastructure here.
+
+Two minor behavior changes:
+
+	- we're assuming no wasted space at the end of the linux cred.
+	  That seems to match gss-proxy's behavior, and I can't see why
+	  it would need to do differently in the future.
+
+	- NGROUPS_MAX check added: note groups_alloc doesn't do this,
+	  this is the caller's responsibility.
+
+Tested-by: Simo Sorce <simo@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/auth_gss/gss_rpc_xdr.c |   32 +++++++++++++-------------------
+ 1 file changed, 13 insertions(+), 19 deletions(-)
+
+diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+index 3c85d1c..f5067b2 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
++++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+@@ -166,14 +166,14 @@ static int dummy_dec_opt_array(struct xdr_stream *xdr,
+ 	return 0;
+ }
+ 
+-static int get_s32(void **p, void *max, s32 *res)
++static int get_s32(struct xdr_stream *xdr, s32 *res)
+ {
+-	void *base = *p;
+-	void *next = (void *)((char *)base + sizeof(s32));
+-	if (unlikely(next > max || next < base))
++	__be32 *p;
++
++	p = xdr_inline_decode(xdr, 4);
++	if (!p)
+ 		return -EINVAL;
+-	memcpy(res, base, sizeof(s32));
+-	*p = next;
++	memcpy(res, p, sizeof(s32));
+ 	return 0;
+ }
+ 
+@@ -182,7 +182,6 @@ static int gssx_dec_linux_creds(struct xdr_stream *xdr,
+ {
+ 	u32 length;
+ 	__be32 *p;
+-	void *q, *end;
+ 	s32 tmp;
+ 	int N, i, err;
+ 
+@@ -192,33 +191,28 @@ static int gssx_dec_linux_creds(struct xdr_stream *xdr,
+ 
+ 	length = be32_to_cpup(p);
+ 
+-	/* FIXME: we do not want to use the scratch buffer for this one
+-	 * may need to use functions that allows us to access an io vector
+-	 * directly */
+-	p = xdr_inline_decode(xdr, length);
+-	if (unlikely(p == NULL))
++	if (length > (3 + NGROUPS_MAX) * sizeof(u32))
+ 		return -ENOSPC;
+ 
+-	q = p;
+-	end = q + length;
+-
+ 	/* uid */
+-	err = get_s32(&q, end, &tmp);
++	err = get_s32(xdr, &tmp);
+ 	if (err)
+ 		return err;
+ 	creds->cr_uid = make_kuid(&init_user_ns, tmp);
+ 
+ 	/* gid */
+-	err = get_s32(&q, end, &tmp);
++	err = get_s32(xdr, &tmp);
+ 	if (err)
+ 		return err;
+ 	creds->cr_gid = make_kgid(&init_user_ns, tmp);
+ 
+ 	/* number of additional gid's */
+-	err = get_s32(&q, end, &tmp);
++	err = get_s32(xdr, &tmp);
+ 	if (err)
+ 		return err;
+ 	N = tmp;
++	if ((3 + N) * sizeof(u32) != length)
++		return -EINVAL;
+ 	creds->cr_group_info = groups_alloc(N);
+ 	if (creds->cr_group_info == NULL)
+ 		return -ENOMEM;
+@@ -226,7 +220,7 @@ static int gssx_dec_linux_creds(struct xdr_stream *xdr,
+ 	/* gid's */
+ 	for (i = 0; i < N; i++) {
+ 		kgid_t kgid;
+-		err = get_s32(&q, end, &tmp);
++		err = get_s32(xdr, &tmp);
+ 		if (err)
+ 			goto out_free_groups;
+ 		err = -EINVAL;
+-- 
+1.7.9.5
+
