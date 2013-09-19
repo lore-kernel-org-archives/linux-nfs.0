@@ -1,113 +1,202 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45437 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:39136 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756885Ab3IKUDW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Sep 2013 16:03:22 -0400
+	id S1752035Ab3ISUul (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Sep 2013 16:50:41 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
 To: Al Viro <viro@zeniv.linux.org.uk>
 Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
+        Bruce Fields <bfields@fieldses.org>,
+        David Howells <dhowells@redhat.com>,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 00/13] Implement NFSv4 delegations, take 11
-Date: Wed, 11 Sep 2013 16:03:06 -0400
-Message-Id: <1378929799-1110-1-git-send-email-bfields@redhat.com>
+Subject: [PATCH 13/13] locks: close potential race between setlease and open
+Date: Thu, 19 Sep 2013 16:50:37 -0400
+Message-Id: <1379623837-30798-14-git-send-email-bfields@redhat.com>
+In-Reply-To: <1379623837-30798-1-git-send-email-bfields@redhat.com>
+References: <1379623837-30798-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Jeff Layton <jlayton@redhat.com>
 
-Changes since version 10:
-	- appended Jeff's fix for a setlease/open race (otherwise
-	  unrelated to this series, but there are some minor conficts to
-	  resolve).
+v2:
+- fix potential double-free of lease if second check finds conflict
+- add smp_mb's to ensure that other CPUs see i_flock changes
 
-Changes since version 9:
-	- just a rebase to 3.11-rc6
+v3:
+- remove smp_mb calls. Partial ordering is unlikely to help here.
 
-Changes since version 8:
-	- additional warnings in lock_two_nondirectories
-	- lock_two_nondirectories handles NULL second argument,
-	  simplifying vfs_rename_other
-	- kerneldoc comments on notify_change, vfs_link, vfs_rename,
-	  vfs_unlink, to explain delegated_inode argument.
-	- make clear non-support of write delegations in
-	  generic_add_lease
-	- rebase to 3.11-rc1
+v4:
+- add back smp_mb calls. While we have implicit barriers in place
+  that enforce this today, it's best to be explicit about it as a
+  defensive coding measure.
 
-Introduction copied from previous posting:
+As Al Viro points out, there is an unlikely, but possible race between
+opening a file and setting a lease on it. generic_add_lease is done with
+the i_lock held, but the inode->i_flock check in break_lease is
+lockless. It's possible for another task doing an open to do the entire
+pathwalk and call break_lease between the point where generic_add_lease
+checks for a conflicting open and adds the lease to the list. If this
+occurs, we can end up with a lease set on the file with a conflicting
+open.
 
-This patch series implements read delegations, which allow NFSv4 clients
-to perform read opens without contacting the server, by promising to
-call back to clients before modifying the data, metadata, or set of
-links pointing to a file.
+To guard against that, check again for a conflicting open after adding
+the lease to the i_flock list. If the above race occurs, then we can
+simply unwind the lease setting and return -EAGAIN.
 
-The main recent change was in response to review from Linus, who didn't
-want us to hang under directory i_mutex's on timeouts communicating with
-unresponsive clients.
+Because we take dentry references and acquire write access on the file
+before calling break_lease, we know that if the i_flock list is empty
+when the open caller goes to check it then the necessary refcounts have
+already been incremented. Thus the additional check for a conflicting
+open will see that there is one and the setlease call will fail.
 
-So, this version of the series drops the i_mutex before waiting.  The
-logic ends up looking something like:
+Cc: Bruce Fields <bfields@fieldses.org>
+Cc: David Howells <dhowells@redhat.com>
+Cc: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+Reported-by: Al Viro <viro@ZenIV.linux.org.uk>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/locks.c         |   75 +++++++++++++++++++++++++++++++++++++++++++---------
+ include/linux/fs.h |    6 +++++
+ 2 files changed, 68 insertions(+), 13 deletions(-)
 
-        acquire locks
-        look up inode
-        test for delegation; if found:
-                take reference on inode
-                release locks
-                wait for delegation break
-                drop reference on inode
-                retry
-
-The initial test for a delegation happens after the lock on the
-delegated inode is acquired, but additional directory mutexes may have
-been acquired further up the call stack.  I therefore add a "struct
-inode **" argument to any intervening functions, which we use to pass
-the inode back up to the caller in the case it needs to wait for the
-delegation to be broken.
-
-I also allow callers to pass in NULL for the "struct inode **" argument
-to indicate they'd rather just fail than wait for a delegation.  For
-example, as long as ecryptfs isn't exportable I assume they'd rather not
-see retry logic there that they won't use.  But I may have misjudged in
-some of these cases.
-
-J. Bruce Fields (12):
-  vfs: pull ext4's double-i_mutex-locking into common code
-  vfs: don't use PARENT/CHILD lock classes for non-directories
-  vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
-  vfs: take i_mutex on renamed file
-  locks: introduce new FL_DELEG lock flag
-  locks: implement delegations
-  namei: minor vfs_unlink cleanup
-  locks: break delegations on unlink
-  locks: helper functions for delegation breaking
-  locks: break delegations on rename
-  locks: break delegations on link
-  locks: break delegations on any attribute modification
-
-Jeff Layton (1):
-  locks: close potential race between setlease and open
-
- Documentation/filesystems/directory-locking |   31 ++++--
- drivers/base/devtmpfs.c                     |    6 +-
- fs/attr.c                                   |   25 ++++-
- fs/cachefiles/interface.c                   |    4 +-
- fs/cachefiles/namei.c                       |    4 +-
- fs/ecryptfs/inode.c                         |    6 +-
- fs/ext4/ext4.h                              |    2 -
- fs/ext4/ioctl.c                             |    4 +-
- fs/ext4/move_extent.c                       |   40 +-------
- fs/hpfs/namei.c                             |    2 +-
- fs/inode.c                                  |   42 ++++++++-
- fs/locks.c                                  |  130 +++++++++++++++++++++-----
- fs/namei.c                                  |  135 +++++++++++++++++++++++----
- fs/nfsd/nfs4state.c                         |    2 +-
- fs/nfsd/vfs.c                               |   14 ++-
- fs/open.c                                   |   22 ++++-
- fs/utimes.c                                 |    9 +-
- include/linux/fs.h                          |   78 +++++++++++++---
- ipc/mqueue.c                                |    2 +-
- 19 files changed, 428 insertions(+), 130 deletions(-)
-
+diff --git a/fs/locks.c b/fs/locks.c
+index 7336920..64346ef 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -652,15 +652,18 @@ static void locks_insert_lock(struct file_lock **pos, struct file_lock *fl)
+ 	locks_insert_global_locks(fl);
+ }
+ 
+-/*
+- * Delete a lock and then free it.
+- * Wake up processes that are blocked waiting for this lock,
+- * notify the FS that the lock has been cleared and
+- * finally free the lock.
++/**
++ * locks_delete_lock - Delete a lock and then free it.
++ * @thisfl_p: pointer that points to the fl_next field of the previous
++ * 	      inode->i_flock list entry
++ *
++ * Unlink a lock from all lists and free the namespace reference, but don't
++ * free it yet. Wake up processes that are blocked waiting for this lock and
++ * notify the FS that the lock has been cleared.
+  *
+  * Must be called with the i_lock held!
+  */
+-static void locks_delete_lock(struct file_lock **thisfl_p)
++static void locks_unlink_lock(struct file_lock **thisfl_p)
+ {
+ 	struct file_lock *fl = *thisfl_p;
+ 
+@@ -675,6 +678,18 @@ static void locks_delete_lock(struct file_lock **thisfl_p)
+ 	}
+ 
+ 	locks_wake_up_blocks(fl);
++}
++
++/*
++ * Unlink a lock from all lists and free it.
++ *
++ * Must be called with i_lock held!
++ */
++static void locks_delete_lock(struct file_lock **thisfl_p)
++{
++	struct file_lock *fl = *thisfl_p;
++
++	locks_unlink_lock(thisfl_p);
+ 	locks_free_lock(fl);
+ }
+ 
+@@ -1472,6 +1487,32 @@ int fcntl_getlease(struct file *filp)
+ 	return type;
+ }
+ 
++/**
++ * check_conflicting_open - see if the given dentry points to a file that has
++ * 			    an existing open that would conflict with the
++ * 			    desired lease.
++ * @dentry:	dentry to check
++ * @arg:	type of lease that we're trying to acquire
++ *
++ * Check to see if there's an existing open fd on this file that would
++ * conflict with the lease we're trying to set.
++ */
++static int
++check_conflicting_open(const struct dentry *dentry, const long arg)
++{
++	int ret = 0;
++	struct inode *inode = dentry->d_inode;
++
++	if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
++		return -EAGAIN;
++
++	if ((arg == F_WRLCK) && ((d_count(dentry) > 1) ||
++	    (atomic_read(&inode->i_count) > 1)))
++		ret = -EAGAIN;
++
++	return ret;
++}
++
+ static int generic_add_lease(struct file *filp, long arg, struct file_lock **flp)
+ {
+ 	struct file_lock *fl, **before, **my_before = NULL, *lease;
+@@ -1498,12 +1539,8 @@ static int generic_add_lease(struct file *filp, long arg, struct file_lock **flp
+ 		return -EINVAL;
+ 	}
+ 
+-	error = -EAGAIN;
+-	if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
+-		goto out;
+-	if ((arg == F_WRLCK)
+-	    && ((d_count(dentry) > 1)
+-		|| (atomic_read(&inode->i_count) > 1)))
++	error = check_conflicting_open(dentry, arg);
++	if (error)
+ 		goto out;
+ 
+ 	/*
+@@ -1548,7 +1585,19 @@ static int generic_add_lease(struct file *filp, long arg, struct file_lock **flp
+ 		goto out;
+ 
+ 	locks_insert_lock(before, lease);
+-	error = 0;
++	/*
++	 * The check in break_lease() is lockless. It's possible for another
++	 * open to race in after we did the earlier check for a conflicting
++	 * open but before the lease was inserted. Check again for a
++	 * conflicting open and cancel the lease if there is one.
++	 *
++	 * We also add a barrier here to ensure that the insertion of the lock
++	 * precedes these checks.
++	 */
++	smp_mb();
++	error = check_conflicting_open(dentry, arg);
++	if (error)
++		locks_unlink_lock(flp);
+ out:
+ 	if (is_deleg)
+ 		mutex_unlock(&inode->i_mutex);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index f5dd4f3..e7404854 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1964,6 +1964,12 @@ static inline int locks_verify_truncate(struct inode *inode,
+ 
+ static inline int break_lease(struct inode *inode, unsigned int mode)
+ {
++	/*
++	 * Since this check is lockless, we must ensure that any refcounts
++	 * taken are done before checking inode->i_flock. Otherwise, we could
++	 * end up racing with tasks trying to set a new lease on this file.
++	 */
++	smp_mb();
+ 	if (inode->i_flock)
+ 		return __break_lease(inode, mode, FL_LEASE);
+ 	return 0;
 -- 
 1.7.9.5
 
