@@ -1,30 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:60020 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751227Ab3I2MPS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Sep 2013 08:15:18 -0400
-Date: Sun, 29 Sep 2013 05:15:17 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: " J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC v0 11/49] NFSD: introduce exp_xdr.h
-Message-ID: <20130929121517.GC21083@infradead.org>
-References: <52447EA0.7070004@primarydata.com>
- <1380220835-13182-1-git-send-email-bhalevy@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1380220835-13182-1-git-send-email-bhalevy@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:47258 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752035Ab3ISU5W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Sep 2013 16:57:22 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, root <root@pip4.fieldses.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/3] gssd: fix strncmp bug causing client removals
+Date: Thu, 19 Sep 2013 16:57:17 -0400
+Message-Id: <1379624239-31199-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1379624239-31199-1-git-send-email-bfields@redhat.com>
+References: <1379624239-31199-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 26, 2013 at 02:40:35PM -0400, Benny Halevy wrote:
-> From: Benny Halevy <bhalevy@panasas.com>
-> 
-> Containing xdr encoding helpers to be used by the layout type library functions
-> or by the file system to encode/decode layout-type specific device and layout
-> information.
+From: root <root@pip4.fieldses.org>
 
-Any reason why pnfs would use this, but not the rest of nfsd?  Maybe
-this should go in as part of a separate series cleaning up the xdr
-encoding and decoding?
+Both dirname and pdir are null-terminated strings, so there's no reason
+I can see for the strncmp.
+
+And this gives the wrong result when comparing the "nfsd" and "nfsd4_cb"
+directories!  The results were callback clients being removed
+immediately after creation, when lack of a client with the corresponding
+name under "nfsd" lead gssd to believe it had disappeared from
+"nfsd4_cb".
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ utils/gssd/gssd_proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 2d3dbec..0383883 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -525,7 +525,7 @@ update_old_clients(struct dirent **namelist, int size, char *pdir)
+ 		/* only compare entries in the global list that are from the
+ 		 * same pipefs parent directory as "pdir"
+ 		 */
+-		if (strncmp(clp->dirname, pdir, strlen(pdir)) != 0) continue;
++		if (strcmp(clp->dirname, pdir) != 0) continue;
+ 
+ 		stillhere = 0;
+ 		for (i=0; i < size; i++) {
+-- 
+1.8.3.1
 
