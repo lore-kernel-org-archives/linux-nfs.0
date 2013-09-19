@@ -1,48 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40470 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:47590 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750839Ab3IKUWL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Sep 2013 16:22:11 -0400
-Date: Wed, 11 Sep 2013 16:22:11 -0400
-To: mtk.manpages@gmail.com
-Cc: linux-nfs@vger.kernel.org, linux-man@vger.kernel.org
-Subject: [PATCH] access: fix outdated NFS information
-Message-ID: <20130911202210.GB1462@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+	id S1751767Ab3ISOIw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Sep 2013 10:08:52 -0400
+Date: Thu, 19 Sep 2013 10:08:46 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jody Gugelhupf <knueffle@yahoo.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: help with nfs export/mount
+Message-ID: <20130919140846.GC20422@fieldses.org>
+References: <1379582806.44080.YahooMailNeo@web140003.mail.bf1.yahoo.com>
+ <20130919131429.GA20422@fieldses.org>
+ <1379597501.95818.YahooMailNeo@web140002.mail.bf1.yahoo.com>
+ <20130919134028.GB20422@fieldses.org>
+ <1379599410.72261.YahooMailNeo@web140001.mail.bf1.yahoo.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1379599410.72261.YahooMailNeo@web140001.mail.bf1.yahoo.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Thu, Sep 19, 2013 at 07:03:30AM -0700, Jody Gugelhupf wrote:
+> on server side I see in dmesg this:
+> [8040437.603605] nfsd: last server has exited, flushing export cache
+> [8040439.496016] NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+> [8040439.496035] NFSD: starting 90-second grace period
+> 
+> on client side i only see:
+> Sep 19 13:27:56 darkstar kernel: [61095.429346] nfs: server 192.168.2.3 OK
+> Sep 19 13:31:01 darkstar kernel: [61280.169706] nfs: server 192.168.2.3 not responding, still trying
+>  is there a way to further debug?
 
-Note that NFS versions since version 3 support an "access" call so that
-the client doesn't have to guess permissions or id mapping on its own.
+Exactly what commands did you type, and what things happened, in what
+order?
 
-(See rfc 1813 sections 1.7 and 3.3.4.)
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- man2/access.2 |    5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/man2/access.2 b/man2/access.2
-index 6df68de..3bacab1 100644
---- a/man2/access.2
-+++ b/man2/access.2
-@@ -209,9 +209,10 @@ Similarly, a DOS file may be found to be "executable," but the
- call will still fail.
- .PP
- .BR access ()
--may not work correctly on NFS filesystems with UID mapping enabled,
-+may not work correctly on NFSv2 filesystems with UID mapping enabled,
- because UID mapping is done on the server and hidden from the client,
--which checks permissions.
-+which checks permissions.  (NFS versions 3 and higher perform the check on
-+the server.)
- Similar problems can occur to FUSE mounts.
- .SH BUGS
- In kernel 2.4 (and earlier) there is some strangeness in the handling of
--- 
-1.7.9.5
-
+--b.
