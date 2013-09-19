@@ -1,49 +1,25 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:59940 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751143Ab3I2Ly7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Sep 2013 07:54:59 -0400
-Date: Sun, 29 Sep 2013 04:54:54 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, sandeen@redhat.com
-Subject: Re: why is i_ino unsigned long, anyway?
-Message-ID: <20130929115454.GA3953@infradead.org>
-References: <20130912160324.GE1462@fieldses.org>
- <20130912193328.GP13318@ZenIV.linux.org.uk>
+Received: from fieldses.org ([174.143.236.118]:47270 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753261Ab3ISVAc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Sep 2013 17:00:32 -0400
+Date: Thu, 19 Sep 2013 17:00:31 -0400
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/3] gssd: fix strncmp bug causing client removals
+Message-ID: <20130919210031.GA31335@fieldses.org>
+References: <1379624239-31199-1-git-send-email-bfields@redhat.com>
+ <1379624239-31199-2-git-send-email-bfields@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130912193328.GP13318@ZenIV.linux.org.uk>
+In-Reply-To: <1379624239-31199-2-git-send-email-bfields@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 12, 2013 at 08:33:28PM +0100, Al Viro wrote:
-> i_ino use is entirely up to filesystem; it may be used by library helpers,
-> provided that the choice of using or not using those is, again, up to
-> filesystem in question.
+On Thu, Sep 19, 2013 at 04:57:17PM -0400, J. Bruce Fields wrote:
+> From: root <root@pip4.fieldses.org>
 
-With more and more filesystems using large inode numbers I'm starting to
-wonder if this still makes sense.  But given that it's been this way for
-a long time we should have more documentation of it for sure.
+Ugh, sorry.  I'll just resend all three of these with the authors fixed.
 
-> NFSD has no damn business looking at it; library
-> helpers in fs/exportfs might, but that makes them not suitable for use
-> by filesystems without inode numbers or with 64bit ones.
-> 
-> The reason why it's there at all is that it serves as convenient icache
-> search key for many filesystems.  IOW, it's used by iget_locked() and
-> avoiding the overhead of 64bit comparisons on 32bit hosts is the main
-> reason to avoid making it u64.
-> 
-> Again, no fs-independent code has any business looking at it, 64bit or
-> not.  From the VFS point of view there is no such thing as inode number.
-> And get_name() is just a library helper.  For many fs types it works
-> as suitable ->s_export_op->get_name() instance, but decision to use it
-> or not belongs to filesystem in question and frankly, it's probably better
-> to provide an instance of your own anyway.
-
-Given that these days most exportable filesystems use 64-bit inode
-numbers I think we should put the patch from Bruce in.  Nevermind that
-it's in a slow path, so the overhead of vfs_getattr really doesn't hurt.
-
+--b.
