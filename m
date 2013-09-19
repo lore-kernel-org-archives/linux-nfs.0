@@ -1,49 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:14399 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:57489 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751243Ab3IJS4J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Sep 2013 14:56:09 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 2/2] NFSv4.1: sp4_mach_cred: ask for WRITE and COMMIT
-Date: Tue, 10 Sep 2013 14:55:58 -0400
-Message-ID: <1378839358-10389-3-git-send-email-dros@netapp.com>
-In-Reply-To: <1378839358-10389-1-git-send-email-dros@netapp.com>
-References: <1378839358-10389-1-git-send-email-dros@netapp.com>
+	id S1751797Ab3ISOZg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Sep 2013 10:25:36 -0400
+Date: Thu, 19 Sep 2013 10:25:35 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jody Gugelhupf <knueffle@yahoo.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: help with nfs export/mount
+Message-ID: <20130919142535.GD20422@fieldses.org>
+References: <1379582806.44080.YahooMailNeo@web140003.mail.bf1.yahoo.com>
+ <20130919131429.GA20422@fieldses.org>
+ <1379597501.95818.YahooMailNeo@web140002.mail.bf1.yahoo.com>
+ <20130919134028.GB20422@fieldses.org>
+ <1379599410.72261.YahooMailNeo@web140001.mail.bf1.yahoo.com>
+ <20130919140846.GC20422@fieldses.org>
+ <1379600464.91434.YahooMailNeo@web140005.mail.bf1.yahoo.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1379600464.91434.YahooMailNeo@web140005.mail.bf1.yahoo.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Request SP4_MACH_CRED WRITE and COMMIT support in spo_must_allow list --
-they're already supported by the client.
+On Thu, Sep 19, 2013 at 07:21:04AM -0700, Jody Gugelhupf wrote:
+> on client side (in order):
+> 
+> sudo mount 192.168.2.3:/ /home/jarvis/Videos/xbmc
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- fs/nfs/nfs4proc.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+As I said, if you've dropped the "fsid=0" (which you should) then you
+should be mounting the real server-side path, not /.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ee0d1eb..10feb7b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6162,11 +6162,13 @@ static const struct nfs41_state_protection nfs4_sp4_mach_cred_request = {
- 	},
- 	.allow.u.words = {
- 		[0] = 1 << (OP_CLOSE) |
--		      1 << (OP_LOCKU),
-+		      1 << (OP_LOCKU) |
-+		      1 << (OP_COMMIT),
- 		[1] = 1 << (OP_SECINFO - 32) |
- 		      1 << (OP_SECINFO_NO_NAME - 32) |
- 		      1 << (OP_TEST_STATEID - 32) |
--		      1 << (OP_FREE_STATEID - 32)
-+		      1 << (OP_FREE_STATEID - 32) |
-+		      1 << (OP_WRITE - 32)
- 	}
- };
- 
--- 
-1.7.12.4 (Apple Git-37)
+> no error msg, then trying to access the directory:
+> ls /home/jarvis/Videos/xbmc/home/user/media/Series
+> the console does not react,
 
+So the mount succeeds, but the "ls" hangs?
+
+--b.
+
+> i open a new console and see again 
+> Sep 19 14:15:56 darkstar kernel: [61095.429346] nfs: server 192.168.2.3 OK
+> Sep 19 14:17:01 darkstar kernel: [61280.169706] nfs: server 192.168.2.3 not responding, still trying
+> 
+> 
+> but i also noticed this (didn't see it before)
+> Sep 19 16:12:53 darkstar rpc.idmapd[576]: nss_getpwnam: name 'user' not found in domain 'localdomain'
+> 
+> 
+> 
+> ----- Original Message -----
+> From: J. Bruce Fields <bfields@fieldses.org>
+> To: Jody Gugelhupf <knueffle@yahoo.com>
+> Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+> Sent: Thursday, September 19, 2013 4:08:46 PM
+> Subject: Re: help with nfs export/mount
+> 
+> On Thu, Sep 19, 2013 at 07:03:30AM -0700, Jody Gugelhupf wrote:
+> > on server side I see in dmesg this:
+> > [8040437.603605] nfsd: last server has exited, flushing export cache
+> > [8040439.496016] NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+> > [8040439.496035] NFSD: starting 90-second grace period
+> > 
+> > on client side i only see:
+> > Sep 19 13:27:56 darkstar kernel: [61095.429346] nfs: server 192.168.2.3 OK
+> > Sep 19 13:31:01 darkstar kernel: [61280.169706] nfs: server 192.168.2.3 not responding, still trying
+> >  is there a way to further debug?
+> 
+> Exactly what commands did you type, and what things happened, in what
+> order?
+> 
+> --b.
+> 
