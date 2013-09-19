@@ -1,124 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40829 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:39113 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752664Ab3IEQaa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Sep 2013 12:30:30 -0400
+	id S1753259Ab3ISUuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Sep 2013 16:50:39 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
 To: Al Viro <viro@zeniv.linux.org.uk>
 Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/4] rpc: fix huge kmalloc's in gss-proxy
-Date: Thu,  5 Sep 2013 12:30:09 -0400
-Message-Id: <1378398620-23018-6-git-send-email-bfields@redhat.com>
-In-Reply-To: <1378398620-23018-1-git-send-email-bfields@redhat.com>
-References: <1378398620-23018-1-git-send-email-bfields@redhat.com>
+Subject: [PATCH 09/13] locks: helper functions for delegation breaking
+Date: Thu, 19 Sep 2013 16:50:33 -0400
+Message-Id: <1379623837-30798-10-git-send-email-bfields@redhat.com>
+In-Reply-To: <1379623837-30798-1-git-send-email-bfields@redhat.com>
+References: <1379623837-30798-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-The reply to a gssproxy can include up to NGROUPS_MAX gid's, which will
-take up more than a page.  We therefore need to allocate an array of
-pages to hold the reply instead of trying to allocate a single huge
-buffer.
+We'll need the same logic for rename and link.
 
+Acked-by: Jeff Layton <jlayton@redhat.com>
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- net/sunrpc/auth_gss/gss_rpc_upcall.c |   30 ++++++++++++++++++++++++++++++
- net/sunrpc/auth_gss/gss_rpc_xdr.c    |    3 +++
- net/sunrpc/auth_gss/gss_rpc_xdr.h    |    5 ++++-
- 3 files changed, 37 insertions(+), 1 deletion(-)
+ fs/namei.c         |   13 +++----------
+ include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
+ 2 files changed, 34 insertions(+), 12 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-index af7ffd4..be95af3 100644
---- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-@@ -213,6 +213,30 @@ static int gssp_call(struct net *net, struct rpc_message *msg)
- 	return status;
+diff --git a/fs/namei.c b/fs/namei.c
+index 5a5fdb9..58d3557 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3671,14 +3671,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
+ 	else {
+ 		error = security_inode_unlink(dir, dentry);
+ 		if (!error) {
+-			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
+-			if (error) {
+-				if (error == -EWOULDBLOCK && delegated_inode) {
+-					*delegated_inode = target;
+-					ihold(target);
+-				}
++			error = try_break_deleg(target, delegated_inode);
++			if (error)
+ 				goto out;
+-			}
+ 			error = dir->i_op->unlink(dir, dentry);
+ 			if (!error)
+ 				dont_mount(dentry);
+@@ -3748,9 +3743,7 @@ exit2:
+ 		iput(inode);	/* truncate the inode here */
+ 	inode = NULL;
+ 	if (delegated_inode) {
+-		error = break_deleg(delegated_inode, O_WRONLY);
+-		iput(delegated_inode);
+-		delegated_inode = NULL;
++		error = break_deleg_wait(&delegated_inode);
+ 		if (!error)
+ 			goto retry_deleg;
+ 	}
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index e9c536f..9ca64a4 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1906,6 +1906,9 @@ extern bool fs_fully_visible(struct file_system_type *);
+ 
+ extern int current_umask(void);
+ 
++extern void ihold(struct inode * inode);
++extern void iput(struct inode *);
++
+ /* /sys/fs */
+ extern struct kobject *fs_kobj;
+ 
+@@ -1973,6 +1976,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+ 	return 0;
  }
  
-+static void gssp_free_receive_pages(struct gssx_arg_accept_sec_context *arg)
++static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
 +{
-+	int i;
++	int ret;
 +
-+	for (i = 0; i < arg->npages && arg->pages[i]; i++)
-+		__free_page(arg->pages[i]);
++	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
++	if (ret == -EWOULDBLOCK && delegated_inode) {
++		*delegated_inode = inode;
++		ihold(inode);
++	}
++	return ret;
 +}
 +
-+static int gssp_alloc_receive_pages(struct gssx_arg_accept_sec_context *arg)
++static inline int break_deleg_wait(struct inode **delegated_inode)
 +{
-+	int i;
++	int ret;
 +
-+	arg->npages = DIV_ROUND_UP(NGROUPS_MAX * 4, PAGE_SIZE);
-+	arg->pages = kzalloc(arg->npages * sizeof(struct page *), GFP_KERNEL);
++	ret = break_deleg(*delegated_inode, O_WRONLY);
++	iput(*delegated_inode);
++	*delegated_inode = NULL;
++	return ret;
++}
 +
-+	for (i=0; i < arg->npages; i++) {
-+		arg->pages[i] = alloc_page(GFP_KERNEL);
-+		if (arg->pages[i] == NULL) {
-+			gssp_free_receive_pages(arg);
-+			return -ENOMEM;
-+		}
-+	}
+ #else /* !CONFIG_FILE_LOCKING */
+ static inline int locks_mandatory_locked(struct inode *inode)
+ {
+@@ -2016,6 +2041,12 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+ {
+ 	return 0;
+ }
++
++static inline int try_break_deleg(struct inode *inode, struct delegated_inode **inode)
++{
 +	return 0;
 +}
- 
- /*
-  * Public functions
-@@ -261,10 +285,16 @@ int gssp_accept_sec_context_upcall(struct net *net,
- 		arg.context_handle = &ctxh;
- 	res.output_token->len = GSSX_max_output_token_sz;
- 
-+	ret = gssp_alloc_receive_pages(&arg);
-+	if (ret)
-+		return ret;
 +
- 	/* use nfs/ for targ_name ? */
+ #endif /* CONFIG_FILE_LOCKING */
  
- 	ret = gssp_call(net, &msg);
- 
-+	gssp_free_receive_pages(&arg);
-+
- 	/* we need to fetch all data even in case of error so
- 	 * that we can free special strctures is they have been allocated */
- 	data->major_status = res.status.major_status;
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-index 3c19c7d..f0f78c5 100644
---- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-@@ -780,6 +780,9 @@ void gssx_enc_accept_sec_context(struct rpc_rqst *req,
- 	/* arg->options */
- 	err = dummy_enc_opt_array(xdr, &arg->options);
- 
-+	xdr_inline_pages(&req->rq_rcv_buf,
-+		PAGE_SIZE/2 /* pretty arbitrary */,
-+		arg->pages, 0 /* page base */, arg->npages * PAGE_SIZE);
- done:
- 	if (err)
- 		dprintk("RPC:       gssx_enc_accept_sec_context: %d\n", err);
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.h b/net/sunrpc/auth_gss/gss_rpc_xdr.h
-index 1c98b27..685a688 100644
---- a/net/sunrpc/auth_gss/gss_rpc_xdr.h
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.h
-@@ -147,6 +147,8 @@ struct gssx_arg_accept_sec_context {
- 	struct gssx_cb *input_cb;
- 	u32 ret_deleg_cred;
- 	struct gssx_option_array options;
-+	struct page **pages;
-+	unsigned int npages;
- };
- 
- struct gssx_res_accept_sec_context {
-@@ -240,7 +242,8 @@ int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
- 			     2 * GSSX_max_princ_sz + \
- 			     8 + 8 + 4 + 4 + 4)
- #define GSSX_max_output_token_sz 1024
--#define GSSX_max_creds_sz (4 + 4 + 4 + NGROUPS_MAX * 4)
-+/* grouplist not included; we allocate separate pages for that: */
-+#define GSSX_max_creds_sz (4 + 4 + 4 /* + NGROUPS_MAX*4 */)
- #define GSSX_RES_accept_sec_context_sz (GSSX_default_status_sz + \
- 					GSSX_default_ctx_sz + \
- 					GSSX_max_output_token_sz + \
+ /* fs/open.c */
+@@ -2351,8 +2382,6 @@ extern loff_t vfs_llseek(struct file *file, loff_t offset, int whence);
+ extern int inode_init_always(struct super_block *, struct inode *);
+ extern void inode_init_once(struct inode *);
+ extern void address_space_init_once(struct address_space *mapping);
+-extern void ihold(struct inode * inode);
+-extern void iput(struct inode *);
+ extern struct inode * igrab(struct inode *);
+ extern ino_t iunique(struct super_block *, ino_t);
+ extern int inode_needs_sync(struct inode *inode);
 -- 
 1.7.9.5
 
