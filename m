@@ -1,60 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42331 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753936Ab3IEVkD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Sep 2013 17:40:03 -0400
-Date: Thu, 5 Sep 2013 17:40:02 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Emmanuel Florac <eflorac@intellique.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Hard to debug NFS loss of connectivity
-Message-ID: <20130905214002.GD24805@fieldses.org>
-References: <20130905191800.1c75b2fb@harpe.intellique.com>
- <20130905204536.GB24805@fieldses.org>
- <20130905233449.5eb8bf79@galadriel.home>
+Received: from nm5-vm0.bullet.mail.bf1.yahoo.com ([98.139.213.150]:28477 "EHLO
+	nm5-vm0.bullet.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751660Ab3ISOVF convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Sep 2013 10:21:05 -0400
+References: <1379582806.44080.YahooMailNeo@web140003.mail.bf1.yahoo.com> <20130919131429.GA20422@fieldses.org> <1379597501.95818.YahooMailNeo@web140002.mail.bf1.yahoo.com> <20130919134028.GB20422@fieldses.org> <1379599410.72261.YahooMailNeo@web140001.mail.bf1.yahoo.com> <20130919140846.GC20422@fieldses.org>
+Message-ID: <1379600464.91434.YahooMailNeo@web140005.mail.bf1.yahoo.com>
+Date: Thu, 19 Sep 2013 07:21:04 -0700 (PDT)
+From: Jody Gugelhupf <knueffle@yahoo.com>
+Reply-To: Jody Gugelhupf <knueffle@yahoo.com>
+Subject: Re: help with nfs export/mount
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <20130919140846.GC20422@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20130905233449.5eb8bf79@galadriel.home>
+Content-Type: text/plain; charset=iso-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 05, 2013 at 11:34:49PM +0200, Emmanuel Florac wrote:
-> Le Thu, 5 Sep 2013 16:45:36 -0400 vous Ã©criviez:
-> 
-> > Well, it sounds like you have a reproducer that shouldn't be *too*
-> > huge (the test where it freezes after stat'ing 25 files).
-> > 
-> > What do you see on the network in that case?
-> 
-> I didn't look yet what's actually happening, out of the drop in network
-> throughput.
->  
-> > Are you literally using just tcpdump?  Wireshark will give more
-> > (and easier to read) information.
-> 
-> I didn't install tcpdump yet, but isn't wireshark with a GUI? I can't
-> run anything with a GUI, this is a remote site behind several ssh
-> portals. So I should run tshark, then get my hands on the results to
-> analyze them with wireshark on my PC. Will try that.
+on client side (in order):
 
-Right, I just do "tcpdump -s0 -wtmp.pcap -i<interface>" and then run
-wireshark on tmp.pcap.
+sudo mount 192.168.2.3:/ /home/jarvis/Videos/xbmc
 
-> > Does the server stop responding at some point, or reply with an error?
-> 
-> No response. I don't know if the server actually stops responding or if
-> something's wrong on the client side. Unfortunately I don't have
-> access to any other NFS client on this network, out of this VM and the
-> server itself. When rebooting the VM reconnects to the server  all by
-> itself, so the server most probably is OK at all times.
-> 
-> > Or does the getattr reply on the problem file look odd in any way?
-> 
-> Not odd at all; it just stops after a particular file, though this file
-> and the following files can be accessed OK before I run the failing
-> test.
+no error msg, then trying to access the directory:
+ls /home/jarvis/Videos/xbmc/home/user/media/Series
+the console does not react, i open a new console and see again 
+Sep 19 14:15:56 darkstar kernel: [61095.429346] nfs: server 192.168.2.3 OK
+Sep 19 14:17:01 darkstar kernel: [61280.169706] nfs: server 192.168.2.3 not responding, still trying
 
-I was asking about the on-the-wire errors and getattr replies here, not
-the application system calls.
+
+but i also noticed this (didn't see it before)
+Sep 19 16:12:53 darkstar rpc.idmapd[576]: nss_getpwnam: name 'user' not found in domain 'localdomain'
+
+
+
+----- Original Message -----
+From: J. Bruce Fields <bfields@fieldses.org>
+To: Jody Gugelhupf <knueffle@yahoo.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Sent: Thursday, September 19, 2013 4:08:46 PM
+Subject: Re: help with nfs export/mount
+
+On Thu, Sep 19, 2013 at 07:03:30AM -0700, Jody Gugelhupf wrote:
+> on server side I see in dmesg this:
+> [8040437.603605] nfsd: last server has exited, flushing export cache
+> [8040439.496016] NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+> [8040439.496035] NFSD: starting 90-second grace period
+> 
+> on client side i only see:
+> Sep 19 13:27:56 darkstar kernel: [61095.429346] nfs: server 192.168.2.3 OK
+> Sep 19 13:31:01 darkstar kernel: [61280.169706] nfs: server 192.168.2.3 not responding, still trying
+>  is there a way to further debug?
+
+Exactly what commands did you type, and what things happened, in what
+order?
 
 --b.
+
