@@ -1,82 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:59477 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:64173 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752510Ab3IFPA6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Sep 2013 11:00:58 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Quentin Barnes <qbarnes@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
-Date: Fri, 6 Sep 2013 15:00:56 +0000
-Message-ID: <1378479655.3332.3.camel@leira.trondhjem.org>
-References: <20130905162110.GA17920@gmail.com>
-	 <20130905170303.GB17330@us.ibm.com> <20130905191139.GA20830@gmail.com>
-	 <1378411320.5450.27.camel@leira.trondhjem.org>
-	 <20130905213649.GA21944@gmail.com>
-	 <1378418243.5450.29.camel@leira.trondhjem.org>
-	 <20130905223420.GA23192@gmail.com>
-	 <20130906093636.6818e7b2@corrin.poochiereds.net>
-In-Reply-To: <20130906093636.6818e7b2@corrin.poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
+	id S1752189Ab3IVR7U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 22 Sep 2013 13:59:20 -0400
+Date: Sun, 22 Sep 2013 19:52:56 +0200
+From: Oleg Nesterov <oleg@redhat.com>
+To: Toralf =?iso-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>
+Cc: "Serge E. Hallyn" <serue@us.ibm.com>, Andrey Vagin <avagin@openvz.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: fuzz tested user mode linux core dumps in
+	fs/lockd/clntproc.c:131
+Message-ID: <20130922175256.GA18473@redhat.com>
+References: <51F39AE8.3090401@gmx.de> <20130727170051.GA31447@redhat.com> <523F22EA.2050609@gmx.de>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <523F22EA.2050609@gmx.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEzLTA5LTA2IGF0IDA5OjM2IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gVGh1LCA1IFNlcCAyMDEzIDE3OjM0OjIwIC0wNTAwDQo+IFF1ZW50aW4gQmFybmVzIDxxYmFy
-bmVzQGdtYWlsLmNvbT4gd3JvdGU6DQo+IA0KPiA+IE9uIFRodSwgU2VwIDA1LCAyMDEzIGF0IDA5
-OjU3OjI0UE0gKzAwMDAsIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gPiBPbiBUaHUsIDIw
-MTMtMDktMDUgYXQgMTY6MzYgLTA1MDAsIFF1ZW50aW4gQmFybmVzIHdyb3RlOg0KPiA+ID4gPiBP
-biBUaHUsIFNlcCAwNSwgMjAxMyBhdCAwODowMjowMVBNICswMDAwLCBNeWtsZWJ1c3QsIFRyb25k
-IHdyb3RlOg0KPiA+ID4gPiA+IE9uIFRodSwgMjAxMy0wOS0wNSBhdCAxNDoxMSAtMDUwMCwgUXVl
-bnRpbiBCYXJuZXMgd3JvdGU6DQo+ID4gPiA+ID4gPiBPbiBUaHUsIFNlcCAwNSwgMjAxMyBhdCAx
-MjowMzowM1BNIC0wNTAwLCBNYWxhaGFsIE5haW5lbmkgd3JvdGU6DQo+ID4gPiA+ID4gPiA+IE5l
-aWwgQnJvd24gcG9zdGVkIGEgcGF0Y2ggY291cGxlIGRheXMgYWdvIGZvciB0aGlzIQ0KPiA+ID4g
-PiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gaHR0cDovL3RocmVhZC5nbWFuZS5vcmcvZ21hbmUubGlu
-dXgubmZzLzU4NDczDQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IEkgdHJpZWQgTmVpbCdzIHBh
-dGNoIG9uIGEgdjMuMTEga2VybmVsLiAgVGhlIHJlYnVpbHQga2VybmVsIHN0aWxsDQo+ID4gPiA+
-ID4gPiBleGhpYml0ZWQgdGhlIHNhbWUgMTAwMHMgb2YgV1JJVEVzL3NlYyBwcm9ibGVtLg0KPiA+
-ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBBbnkgb3RoZXIgaWRlYXM/DQo+ID4gPiA+ID4gDQo+ID4g
-PiA+ID4gWWVzLiBQbGVhc2UgdHJ5IHRoZSBhdHRhY2hlZCBwYXRjaC4NCj4gPiA+ID4gDQo+ID4g
-PiA+IEdyZWF0ISAgVGhhdCBkaWQgdGhlIHRyaWNrIQ0KPiA+ID4gPiANCj4gPiA+ID4gRG8geW91
-IGZlZWwgdGhpcyBwYXRjaCBjb3VsZCBiZSB3b3J0aHkgb2YgcHVzaGluZyBpdCB1cHN0cmVhbSBp
-biBpdHMNCj4gPiA+ID4gY3VycmVudCBzdGF0ZSBvciB3YXMgaXQganVzdCB0byB2ZXJpZnkgYSB0
-aGVvcnk/DQo+ID4gPiA+IA0KPiA+ID4gPiANCj4gPiA+ID4gSW4gY29tcGFyaW5nIHRoZSBuZnNf
-Zmx1c2hfaW5jb21wYXRpYmxlKCkgaW1wbGVtZW50YXRpb25zIGJldHdlZW4NCj4gPiA+ID4gUkhF
-TDUgYW5kIHYzLjExICh3aXRob3V0IHlvdXIgcGF0Y2gpLCB0aGUgZ3V0cyBvZiB0aGUgYWxnb3Jp
-dGhtIHNlZW0NCj4gPiA+ID4gbW9yZSBvciBsZXNzIGxvZ2ljYWxseSBlcXVpdmFsZW50IHRvIG1l
-IG9uIHdoZXRoZXIgb3Igbm90IHRvIGZsdXNoDQo+ID4gPiA+IHRoZSBwYWdlLiAgQWxzbywgd2hl
-biBhbmQgd2hlcmUgbmZzX2ZsdXNoX2luY29tcGF0aWJsZSgpIGlzIGludm9rZWQNCj4gPiA+ID4g
-c2VlbXMgdGhlIHNhbWUuICBXb3VsZCB5b3UgcHJvdmlkZSBhIHZlcnkgYnJpZWYgcG9pbnRlciB0
-byBjbHVlIG1lDQo+ID4gPiA+IGluIGFzIHRvIHdoeSB0aGlzIHByb2JsZW0gZGlkbid0IGFsc28g
-bWFuaWZlc3QgY2lyY2EgMi42LjE4IGRheXM/DQo+ID4gPiANCj4gPiA+IFRoZXJlIHdhcyBubyBu
-ZnNfdm1fcGFnZV9ta3dyaXRlKCkgdG8gaGFuZGxlIHBhZ2UgZmF1bHRzIGluIHRoZSAyLjYuMTgN
-Cj4gPiA+IGRheXMsIGFuZCBzbyB0aGUgcmlzayB3YXMgdGhhdCB5b3VyIG1tYXBwZWQgd3JpdGVz
-IGNvdWxkIGVuZCB1cCBiZWluZw0KPiA+ID4gc2VudCB3aXRoIHRoZSB3cm9uZyBjcmVkZW50aWFs
-cy4NCj4gPiANCj4gPiBBaCEgIFlvdSdyZSByaWdodCB0aGF0IG5mc192bV9wYWdlX21rd3JpdGUo
-KSB3YXMgbWlzc2luZyBmcm9tDQo+ID4gdGhlIG9yaWdpbmFsIDIuNi4xOCwgc28gdGhhdCBtYWtl
-cyBzZW5zZSwgaG93ZXZlciwgUmVkIEhhdCBoYWQNCj4gPiBiYWNrcG9ydGVkIHRoYXQgZnVuY3Rp
-b24gc3RhcnRpbmcgd2l0aCB0aGVpciBSSEVMNS45KCopIGtlcm5lbHMsDQo+ID4geWV0IHRoZSBw
-cm9ibGVtIGRvZXNuJ3QgbWFuaWZlc3Qgb24gUkhFTDUuOS4gIE1heWJlIHRoZSBhbnN3ZXIgbGll
-cw0KPiA+IHNvbWV3aGVyZSBpbiBSSEVMNS45J3MgZG9fd3BfcGFnZSgpLCBvciB1cCB0aGF0IGNh
-bGwgcGF0aCwgYnV0DQo+ID4gZ2xhbmNpbmcgdGhyb3VnaCBpdCwgaXQgYWxsIGxvb2tzIHByZXR0
-eSBjbG9zZSB0aG91Z2guDQo+ID4gDQo+ID4gDQo+ID4gKCopIFRoYXQgd2FzIHRoZSBzb3VyY2Ug
-SSB1c2luZyB3aGVuIGNvbXBhcmluZyB3aXRoIHRoZSAzLjExIHNvdXJjZQ0KPiA+IHdoZW4gc3R1
-ZHlpbmcgeW91ciBwYXRjaCBzaW5jZSBpdCB3YXMgdGhlIGxhc3Qga2VybmVsIGtub3duIHRvIG1l
-DQo+ID4gd2l0aG91dCB0aGUgcHJvYmxlbS4NCj4gPiANCj4gDQo+IEknbSBwcmV0dHkgc3VyZSBS
-SEVMNSBoYXMgYSBzaW1pbGFyIHByb2JsZW0sIGJ1dCBpdCdzIHVuY2xlYXIgdG8gbWUgd2h5DQo+
-IHlvdSdyZSBub3Qgc2VlaW5nIGl0IHRoZXJlLiBJIGhhdmUgYSBSSEJaIG9wZW4gdnMuIFJIRUw1
-IGJ1dCBpdCdzIG1hcmtlZA0KPiBwcml2YXRlIGF0IHRoZSBtb21lbnQgKEknbGwgc2VlIGFib3V0
-IG9wZW5pbmcgaXQgdXApLiBJIGJyb3VnaHQgdGhpcyB1cA0KPiB1cHN0cmVhbSBhYm91dCBhIHll
-YXIgYWdvIHdpdGggdGhpcyBzdHJhd21hbiBwYXRjaDoNCj4gDQo+ICAgICBodHRwOi8vYXJ0aWNs
-ZS5nbWFuZS5vcmcvZ21hbmUubGludXgubmZzLzUxMjQwDQo+IA0KPiAuLi5hdCB0aGUgdGltZSBU
-cm9uZCBzYWlkIGhlIHdhcyB3b3JraW5nIG9uIGEgc2V0IG9mIHBhdGNoZXMgdG8gdHJhY2sNCj4g
-dGhlIG9wZW4vbG9jayBzdGF0ZWlkIG9uIGEgcGVyLXJlcSBiYXNpcy4gRGlkIHRoYXQgYXBwcm9h
-Y2ggbm90IHBhbg0KPiBvdXQ/DQoNCldlJ3ZlIGFjaGlldmVkIHdoYXQgd2Ugd2FudGVkIHRvIGRv
-IChOZWlsJ3MgbG9jayByZWNvdmVyeSBwYXRjaCkgd2l0aG91dA0KdGhhdCBtYWNoaW5lcnksIHNv
-IGZvciBub3csIHdlJ3JlIGRyb3BwaW5nIHRoYXQuDQoNCj4gQWxzbywgZG8geW91IG5lZWQgdG8g
-ZG8gYSBzaW1pbGFyIGZpeCB0byBuZnNfY2FuX2NvYWxlc2NlX3JlcXVlc3RzPw0KDQpZZXMuIEdv
-b2QgcG9pbnQhDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
-YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5j
-b20NCg==
+On 09/22, Toralf Förster wrote:
+>
+> On 07/27/2013 07:00 PM, Oleg Nesterov wrote:
+> >
+> > So nlmclnt_setlockargs()->utsname() crashes and we probably need
+> > the patch below.
+> >
+> > But is it correct? I know _absolutely_ nothing about nfs/sunrpc/etc and
+> > I never looked into this code before, most probably I am wrong.
+> >
+> > But it seems that __nlm_async_call() relies on workqueues.
+> > nlmclnt_async_call() does rpc_wait_for_completion_task(), but what if
+> > the caller is killed?
+> >
+> > nlm_rqst can't go away, ->a_count was incremented. But can't the caller
+> > exit before call->name is used? In this case the memory it points to
+> > can be already freed.
+> >
+> > Oleg.
+> >
+> > --- x/kernel/exit.c
+> > +++ x/kernel/exit.c
+> > @@ -783,8 +783,8 @@ void do_exit(long code)
+> >  	exit_shm(tsk);
+> >  	exit_files(tsk);
+> >  	exit_fs(tsk);
+> > -	exit_task_namespaces(tsk);
+> >  	exit_task_work(tsk);
+> > +	exit_task_namespaces(tsk);
+> >  	check_stack_usage();
+> >  	exit_thread();
+> >
+> >
+> >
+> /me wonders if/when this will go in the main kernel ?
+
+I think this was fixed by 9a1b6bf818e74 ?
+
+Oleg.
+
