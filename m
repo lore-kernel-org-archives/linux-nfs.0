@@ -1,173 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50903 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751204Ab3IPXUZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Sep 2013 19:20:25 -0400
-Date: Mon, 16 Sep 2013 19:20:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Contact <contact@ryper.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: 16+ GID issue, mountd's --manage-gids not helping
-Message-ID: <20130916232024.GC25308@fieldses.org>
-References: <20130916094351.263d433d@svelte.ryper.org>
- <20130916193709.GA25308@fieldses.org>
- <20130916175612.012d7301@svelte.ryper.org>
+Received: from mail-ie0-f171.google.com ([209.85.223.171]:46609 "EHLO
+	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752950Ab3IWRA4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Sep 2013 13:00:56 -0400
+Received: by mail-ie0-f171.google.com with SMTP id at1so7173987iec.30
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Sep 2013 10:00:56 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20130916175612.012d7301@svelte.ryper.org>
+In-Reply-To: <20130920150902.16220.32737.stgit@warthog.procyon.org.uk>
+References: <20130920150902.16220.32737.stgit@warthog.procyon.org.uk>
+Date: Mon, 23 Sep 2013 13:00:55 -0400
+Message-ID: <CANP1eJFH234+98DORsQub+6kXuuYfN93=bCjVK8Q5gMWbohtCg@mail.gmail.com>
+Subject: Re: [RFC][PATCH 0/3] FS-Cache: NFS(/CIFS/Ceph/9P): Fix start-caching
+ whilst writing race
+From: Milosz Tanski <milosz@adfin.com>
+To: David Howells <dhowells@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, steved@redhat.com,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        "linux-cachefs@redhat.com" <linux-cachefs@redhat.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        ceph-devel <ceph-devel@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 16, 2013 at 05:56:12PM -0500, Contact wrote:
-> Hello,
-> 
-> I was assuming it would grab all of my GIDs as it appears to do in the
-> following link:
-> https://xkyle.com/solving-the-nfs-16-group-limit-problem/
-> 
-> Just under the quote:
-> "Also, the NFS server will cache group lookups so it doesn’t have to
-> continuously make queries. The cache is visible like this:"
-> 
-> The GID 1000 is my primary user on both boxes (rypervenche).
-> 
-> If there is another way to do this (aside maybe from setting up
-> kerberos/ldap) I would be willing to try that.
+This should not be a problem with Ceph as the MDS (the metadata
+server) hands out cache capability bit for an inode. In this schema
+there's no need to worry about the count of of local file pointers
+open for write (or even across the cluster).
 
-Could you please answer the two questions which I asked in my previous
-email?
+As an aside, the Ceph code checks if we can perform the requested VMA
+operation by checking the valid_fscache generation (compared to the
+current cache generation). This way we only create the cookie the
+first time the file is open. This has greatly simplified the code and
+got rid of a lot of races.
 
---b.
+Best,
+- Milosz
 
-> 
-> Thank you.
-> 
-> 
-> On Mon, 16 Sep 2013 15:37:09 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Mon, Sep 16, 2013 at 09:43:51AM -0500, Contact wrote:
-> > > Hi all,
-> > > 
-> > > I'm having an issue with my NFS mount and being able to access it
-> > > from my normal user account. The mount point is chmod'ed to 2770
-> > > with a GID of 1100 (nfs) which is the same on both systems. I can
-> > > access it if I change my active group using newgrp, but not
-> > > normally.
-> > > 
-> > > ====================================
-> > > noir ~ # ls -lhd /home/nfs/share
-> > > drwxrws--- 8 nfs nfs 4.0K Sep  4 15:30 /home/nfs/share
-> > > 
-> > > rypervenche@svelte ~ $ pwd
-> > > /home/rypervenche
-> > > rypervenche@svelte ~ $ cd nfs
-> > > -su: cd: nfs: Permission denied
-> > > rypervenche@svelte ~ $ newgrp nfs
-> > > rypervenche@svelte ~ $ cd nfs
-> > > rypervenche@svelte ~/nfs $ 
-> > > 
-> > > svelte ~ # grep nfs /etc/group
-> > > nfs:x:1100:rypervenche
-> > > ====================================
-> > > 
-> > > You can find the details of my NFS server and client here:
-> > > 
-> > > ====================================
-> > > svelte = client
-> > > noir = server
-> > > 
-> > > svelte ~ # tail -1 /etc/fstab
-> > > 192.168.1.100:/ /home/rypervenche/nfs   nfs
-> > > rw,noauto,noexec,nodev,nosuid   0       0
-> > > 
-> > > noir ~ # cat /etc/exports 
-> > > # /etc/exports: NFS file systems being exported.  See exports(5).
-> > > /home/nfs/share
-> > > 192.168.1.205(rw,sync,fsid=0,no_root_squash,no_subtree_check)
-> > > 192.168.2.100(rw,sync,fsid=0,no_root_squash,no_subtree_check)
-> > > 
-> > > noir ~ # id nfs
-> > > uid=1100(nfs) gid=1100(nfs) groups=1100(nfs)
-> > > 
-> > > noir ~ # grep -v ^# /etc/conf.d/nfs | grep -v ^$
-> > > NFS_NEEDED_SERVICES="rpc.idmapd"
-> > > OPTS_RPC_NFSD="8"
-> > > OPTS_RPC_MOUNTD="-V 4 --manage-gids -p 32767"
-> > > OPTS_RPC_STATD="-p 32765 -o 32766"
-> > > OPTS_RPC_IDMAPD=""
-> > > OPTS_RPC_GSSD=""
-> > > OPTS_RPC_SVCGSSD=""
-> > > OPTS_RPC_RQUOTAD=""
-> > > EXPORTFS_TIMEOUT=30
-> > > 
-> > > noir ~ # iptables-save | egrep '(NFS|T -m conn)'
-> > > -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-> > > -A INPUT -s 192.168.1.205/32 -p tcp -m tcp -m multiport --dports
-> > > 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment
-> > > --comment NFS -j ACCEPT -A INPUT -s 192.168.1.205/32 -p udp -m udp
-> > > -m multiport --dports 111,2049,4001,32765:32767 -m conntrack
-> > > --ctstate NEW -m comment --comment NFS -j ACCEPT -A INPUT -s
-> > > 192.168.2.100/32 -p tcp -m tcp -m multiport --dports
-> > > 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment
-> > > --comment NFS -j ACCEPT -A INPUT -s 192.168.2.100/32 -p udp -m udp
-> > > -m multiport --dports 111,2049,4001,32765:32767 -m conntrack
-> > > --ctstate NEW -m comment --comment NFS -j ACCEPT
-> > > 
-> > > svelte:
-> > > net-fs/nfs-utils-1.2.6 was built with the following:
-> > > USE="ipv6 nfsdcld nfsidmap nfsv4 nfsv41 tcpd -caps -kerberos
-> > > (-selinux)"
-> > > 
-> > > noir:
-> > > net-fs/nfs-utils-1.2.6 was built with the following:
-> > > USE="ipv6 (multilib) nfsdcld nfsidmap nfsv4 nfsv41 tcpd -caps
-> > > -kerberos (-selinux)" ABI_X86="64"
-> > > 
-> > > svelte ~ # uname -a
-> > > Linux svelte 3.10.7-gentoo-svelte #1 SMP Thu Aug 22 17:46:44 CDT
-> > > 2013 i686 Intel(R) Atom(TM) CPU N450 @ 1.66GHz GenuineIntel
-> > > GNU/Linux
-> > > 
-> > > noir ~ # uname -a
-> > > Linux noir 3.10.7-gentoo-noir #1 SMP Wed Aug 28 11:19:43 CDT 2013
-> > > x86_64 AMD Athlon(tm) II X2 260 Processor AuthenticAMD GNU/Linux
-> > > ====================================
-> > > 
-> > > 
-> > > I found online that the issue is due to NFS not being able to grab
-> > > over 16 GIDs. I found help in the following two links:
-> > > 
-> > > https://xkyle.com/solving-the-nfs-16-group-limit-problem/
-> > > https://wiki.archlinux.org/index.php/NFS_Troubleshooting
-> > > 
-> > > I tried adding the --manage-gids flag to mountd (which can be seen
-> > > in the /etc/conf.d/nfs file above), however, it does not appear to
-> > > resolve the issue.
-> > > 
-> > > ====================================
-> > > noir ~ #
-> > > cat /proc/net/rpc/auth.unix.gid/content #uid cnt: gids...
-> > > 0 10: 0 1 2 3 4 6 10 11 26 27
-> > > 1000 9: 10 18 19 27 78 85 100 250 1000
-> > > 
-> > > noir ~ # date +%s > /proc/net/rpc/auth.unix.gid/flush     
-> > >                                                                                                                               
-> > > noir ~ #
-> > > cat /proc/net/rpc/auth.unix.gid/content #uid cnt: gids...
-> > > 
-> > > Then I mount the NFS again:
-> > > 
-> > > noir ~ # cat /proc/net/rpc/auth.unix.gid/content
-> > > #uid cnt: gids...
-> > > 0 10: 0 1 2 3 4 6 10 11 26 27
-> > > 1000 9: 10 18 19 27 78 85 100 250 1000
-> > > ====================================
-> > > 
-> > > It looks as though it is not grabbing all of my GIDs.
-> > 
-> > What do you expect the list to be?  Which groups is uid 1000 a member
-> > of on the server?
-> > 
-> > --b.
-> 
+On Fri, Sep 20, 2013 at 11:09 AM, David Howells <dhowells@redhat.com> wrote:
+>
+>
+> Following this mail is a series of patches to fix an issue with NFS whereby
+> caching can be enabled on a file that is open for writing by subsequently
+> opening it for reading.  This can be made to crash by opening it for writing
+> again if you're quick enough.
+>
+> The patches mailed here may not apply directly.  They are based on top of three
+> fix patches as can be seen in the GIT branch here:
+>
+>   http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/log/?h=fscache
+>
+>
+> The gist of the patchset is that the cookie should be acquired at inode
+> creation only and subsequently enabled and disabled as appropriate (which
+> dispenses with the backing objects when they're not needed).
+>
+> The extra synchronisation that NFS does can then be dispensed with as it is
+> thenceforth managed by FS-Cache.
+>
+> This likely will need applying to CIFS, Ceph and 9P also once this is okayed
+> for NFS.  AFS is probably safe.
+>
+> David
+> ---
+> David Howells (3):
+>       FS-Cache: Add use/unuse/wake cookie wrappers
+>       FS-Cache: Provide the ability to enable/disable cookies
+>       NFS: Use i_writecount to control whether to get an fscache cookie in nfs_open()
+>
+>
+>  Documentation/filesystems/caching/netfs-api.txt |   73 +++++++--
+>  fs/9p/cache.c                                   |    6 -
+>  fs/afs/cell.c                                   |    2
+>  fs/afs/inode.c                                  |    2
+>  fs/afs/vlocation.c                              |    3
+>  fs/afs/volume.c                                 |    2
+>  fs/cachefiles/interface.c                       |    2
+>  fs/ceph/cache.c                                 |    4
+>  fs/cifs/fscache.c                               |    8 -
+>  fs/fscache/cookie.c                             |  193 +++++++++++++++++------
+>  fs/fscache/fsdef.c                              |    1
+>  fs/fscache/netfs.c                              |    1
+>  fs/fscache/object.c                             |    7 +
+>  fs/fscache/page.c                               |   59 +++++--
+>  fs/nfs/dir.c                                    |    2
+>  fs/nfs/fscache.c                                |  196 +++++++----------------
+>  fs/nfs/fscache.h                                |   18 +-
+>  fs/nfs/inode.c                                  |    6 -
+>  fs/nfs/nfs4file.c                               |    2
+>  include/linux/fs.h                              |    5 +
+>  include/linux/fscache-cache.h                   |   50 ++----
+>  include/linux/fscache.h                         |  113 ++++++++++++-
+>  include/linux/nfs_fs.h                          |    8 +
+>  23 files changed, 462 insertions(+), 301 deletions(-)
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe ceph-devel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
