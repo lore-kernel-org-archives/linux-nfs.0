@@ -1,54 +1,120 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f50.google.com ([209.85.128.50]:33562 "EHLO
-	mail-qe0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754103Ab3IZSmr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:42:47 -0400
-Received: by mail-qe0-f50.google.com with SMTP id a11so1075653qen.23
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:42:47 -0700 (PDT)
-From: Benny Halevy <bhalevy@primarydata.com>
-To: " J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH RFC v0 42/49] pnfsd: gfs2: use generic file layout pnfs operations vector
-Date: Thu, 26 Sep 2013 14:42:44 -0400
-Message-Id: <1380220964-14623-1-git-send-email-bhalevy@primarydata.com>
-In-Reply-To: <52447EA0.7070004@primarydata.com>
-References: <52447EA0.7070004@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:41979 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752612Ab3IWRld (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Sep 2013 13:41:33 -0400
+Date: Mon, 23 Sep 2013 13:41:29 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>
+Cc: Jan Kara <jack@suse.cz>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        "user-mode-linux-devel@lists.sourceforge.net"
+	<user-mode-linux-devel@lists.sourceforge.net>,
+        linux-ext4@vger.kernel.org,
+        Linux Kernel <linux-kernel@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: Re: Issues with a rather unusual configured NFS server
+Message-ID: <20130923174129.GA19720@fieldses.org>
+References: <52075E01.7030506@gmx.de>
+ <20130812143640.GF4596@quack.suse.cz>
+ <20130813215313.GH17781@fieldses.org>
+ <20130827180655.GE14809@fieldses.org>
+ <521E318C.7040401@gmx.de>
+ <522B9010.8070902@gmx.de>
+ <20130910140937.GD16011@fieldses.org>
+ <523F21B5.2050305@gmx.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <523F21B5.2050305@gmx.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Sun, Sep 22, 2013 at 06:58:29PM +0200, Toralf Förster wrote:
+> On 09/10/2013 04:09 PM, J. Bruce Fields wrote:
+> > On Sat, Sep 07, 2013 at 10:44:00PM +0200, Toralf Förster wrote:
+> >> Today I run latest git tree with a patched UML (this patch + one for xterm issues) and got 2 times a core dump
+> >> when I fuzzy test an UML machine with a nearly identical scenario as already described but just shutdowned
+> >> both UML images instead of shooting one of it in the head.
+> > 
+> > This is a slightly different test case, so for now it sounds like this
+> > could be a preexisting problem, not a regression?
+> > 
+> Yes, pre-existing. I'm trying to bisect it, the issue is already in 7d3107d.
+> 
+> But every attempt to get the first bad commit before that commit id
+> failed till now. I started many attempts between v3.10 and 7d3107d. I
+> could not reproduce that issue 100% in that interval. In that interval
+> either all tested commits doesn't show the issue or the NFS client hangs
+> during the stop of NFS service infinitely - and counting that as a "bad"
+> commit doesn't work.
+> 
+> FWIW a single test case currently takes 2 1/2 hour and even then I do
+> not fully trust the result  (except for a bad commit, that's clear.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[gfs2: set pnfs_dlm_export_ops only for CONFIG_PNFSD]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Acked-by: Steven Whitehouse <swhiteho@redhat.com>
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
----
- fs/gfs2/ops_fstype.c | 4 ++++
- 1 file changed, 4 insertions(+)
+Well, we should figure out some other way to narrow down the problem....
 
-diff --git a/fs/gfs2/ops_fstype.c b/fs/gfs2/ops_fstype.c
-index 19ff5e8..d16a6e6 100644
---- a/fs/gfs2/ops_fstype.c
-+++ b/fs/gfs2/ops_fstype.c
-@@ -21,6 +21,7 @@
- #include <linux/quotaops.h>
- #include <linux/lockdep.h>
- #include <linux/module.h>
-+#include <linux/nfsd/nfs4pnfsdlm.h>
- 
- #include "gfs2.h"
- #include "incore.h"
-@@ -1154,6 +1155,9 @@ static int fill_super(struct super_block *sb, struct gfs2_args *args, int silent
- 	sb->s_op = &gfs2_super_ops;
- 	sb->s_d_op = &gfs2_dops;
- 	sb->s_export_op = &gfs2_export_ops;
-+#if defined(CONFIG_PNFSD)
-+	sb->s_pnfs_op = &pnfs_dlm_export_ops;
-+#endif /* CONFIG_PNFSD */
- 	sb->s_xattr = gfs2_xattr_handlers;
- 	sb->s_qcop = &gfs2_quotactl_ops;
- 	sb_dqopt(sb)->flags |= DQUOT_QUOTA_SYS_FILE;
--- 
-1.8.3.1
+I was trying to at least work out where exactly this crash was, but I
+don't have a commit 768c9d3.
 
+--b.
+
+> 
+> 
+> > --b.
+> > 
+> >>
+> >> I'll probably need time to figure out a test case, but just as a pre-info here's the back trace:
+> >>
+> >> tfoerste@n22 ~ $ gdb --core=/mnt/ramdisk/core /usr/local/bin/linux-v3.11-7550-g768c9d3 -n -batch -ex bt
+> >>
+> >> warning: core file may not match specified executable file.
+> >> [New LWP 7470]
+> >> [New LWP 7479]
+> >> [New LWP 7477]
+> >> [New LWP 7478]
+> >> Core was generated by `/usr/local/bin/linux-v3.11-7550-g768c9d3 earlyprintk ubda=/home/tfoerste/virtua'.
+> >> Program terminated with signal 6, Aborted.
+> >> #0  0xb77be424 in __kernel_vsyscall ()
+> >> #0  0xb77be424 in __kernel_vsyscall ()
+> >> #1  0x083aada5 in kill ()
+> >> #2  0x0807163d in uml_abort () at arch/um/os-Linux/util.c:93
+> >> #3  0x08071925 in os_dump_core () at arch/um/os-Linux/util.c:138
+> >> #4  0x080613a7 in panic_exit (self=0x85b1518 <panic_exit_notifier>, unused1=0, unused2=0x85e76e0 <buf.15920>) at arch/um/kernel/um_arch.c:240
+> >> #5  0x0809a398 in notifier_call_chain (nl=0x0, val=0, v=0x85e76e0 <buf.15920>, nr_to_call=-2, nr_calls=0x0) at kernel/notifier.c:93
+> >> #6  0x0809a4e3 in __atomic_notifier_call_chain (nr_calls=<optimized out>, nr_to_call=<optimized out>, v=<optimized out>, val=<optimized out>, nh=<optimized out>) at kernel/notifier.c:182
+> >> #7  atomic_notifier_call_chain (nh=0x85e76c4 <panic_notifier_list>, val=0, v=0x85e76e0 <buf.15920>) at kernel/notifier.c:191
+> >> #8  0x08408628 in panic (fmt=0x0) at kernel/panic.c:128
+> >> #9  0x081131c9 in shrink_dcache_for_umount_subtree (dentry=0x428028f0) at fs/dcache.c:941
+> >> #10 0x08113948 in shrink_dcache_for_umount (sb=0x463b8000) at fs/dcache.c:1002
+> >> #11 0x08101677 in generic_shutdown_super (sb=0x463b8000) at fs/super.c:404
+> >> #12 0x08102395 in kill_anon_super (sb=0x0) at fs/super.c:875
+> >> #13 0x081d3ff8 in nfs_kill_super (s=0x0) at fs/nfs/super.c:2598
+> >> #14 0x0810153a in deactivate_locked_super (s=0x463b8000) at fs/super.c:294
+> >> #15 0x081015d1 in deactivate_super (s=0x463b8000) at fs/super.c:319
+> >> #16 0x08119c0c in mntfree (mnt=<optimized out>) at fs/namespace.c:891
+> >> #17 mntput_no_expire (mnt=0x0) at fs/namespace.c:929
+> >> #18 0x0811b195 in SYSC_umount (flags=<optimized out>, name=<optimized out>) at fs/namespace.c:1335
+> >> #19 SyS_umount (name=134633856, flags=2) at fs/namespace.c:1305
+> >> #20 0x080618e2 in handle_syscall (r=0x498be5d4) at arch/um/kernel/skas/syscall.c:35
+> >> #21 0x08073c0d in handle_trap (local_using_sysemu=<optimized out>, regs=<optimized out>, pid=<optimized out>) at arch/um/os-Linux/skas/process.c:198
+> >> #22 userspace (regs=0x498be5d4) at arch/um/os-Linux/skas/process.c:431
+> >> #23 0x0805e65c in fork_handler () at arch/um/kernel/process.c:160
+> >> #24 0x00000000 in ?? ()
+> >>
+> >>
+> >>
+> >> -- 
+> >> MfG/Sincerely
+> >> Toralf Förster
+> >> pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+> > 
+> 
+> 
+> -- 
+> MfG/Sincerely
+> Toralf Förster
+> pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
