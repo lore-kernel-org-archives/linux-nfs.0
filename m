@@ -1,105 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:59641 "EHLO mx12.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:58280 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753655Ab3IFPjS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Sep 2013 11:39:18 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Quentin Barnes <qbarnes@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
-Date: Fri, 6 Sep 2013 15:39:16 +0000
-Message-ID: <1378481956.3332.10.camel@leira.trondhjem.org>
-References: <20130905162110.GA17920@gmail.com>
-	 <20130905170303.GB17330@us.ibm.com> <20130905191139.GA20830@gmail.com>
-	 <1378411320.5450.27.camel@leira.trondhjem.org>
-	 <20130905213649.GA21944@gmail.com>
-	 <1378418243.5450.29.camel@leira.trondhjem.org>
-	 <20130905223420.GA23192@gmail.com>
-	 <20130906093636.6818e7b2@corrin.poochiereds.net>
-	 <1378479655.3332.3.camel@leira.trondhjem.org>
-	 <20130906110429.48000442@corrin.poochiereds.net>
-In-Reply-To: <20130906110429.48000442@corrin.poochiereds.net>
-Content-Type: multipart/mixed;
-	boundary="_002_1378481956333210camelleiratrondhjemorg_"
+	id S1750774Ab3IXRhB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Sep 2013 13:37:01 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "<schumaker.anna@gmail.com>" <schumaker.anna@gmail.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4.1: try SECINFO_NO_NAME flavs until one works
+Date: Tue, 24 Sep 2013 17:37:00 +0000
+Message-ID: <1716F3CF-8591-42B7-B906-4E830609E12B@netapp.com>
+References: <1380044164-4486-1-git-send-email-dros@netapp.com>
+In-Reply-To: <1380044164-4486-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---_002_1378481956333210camelleiratrondhjemorg_
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <87A486E9B9EE7642814F854EDFE6E862@hq.netapp.com>
-Content-Transfer-Encoding: base64
+Bah, ignore this. Reposting….
 
-T24gRnJpLCAyMDEzLTA5LTA2IGF0IDExOjA0IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gRnJpLCA2IFNlcCAyMDEzIDE1OjAwOjU2ICswMDAwDQo+ICJNeWtsZWJ1c3QsIFRyb25kIiA8
-VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+ID4gQWxzbywgZG8geW91IG5l
-ZWQgdG8gZG8gYSBzaW1pbGFyIGZpeCB0byBuZnNfY2FuX2NvYWxlc2NlX3JlcXVlc3RzPw0KPiA+
-IA0KPiA+IFllcy4gR29vZCBwb2ludCENCj4gPiANCj4gDQo+IENvb2wuIEZXSVcsIGhlcmUncyB0
-aGUgb3JpZ2luYWwgYnVnIHRoYXQgd2FzIG9wZW5lZCBhZ2FpbnN0IFJIRUw1Og0KPiANCj4gICAg
-IGh0dHBzOi8vYnVnemlsbGEucmVkaGF0LmNvbS9zaG93X2J1Zy5jZ2k/aWQ9NzM2NTc4DQo+IA0K
-PiAuLi50aGUgcmVwcm9kdWNlciB0aGF0IE1heCBjb29rZWQgdXAgaXMgbm90IGRvaW5nIG1tYXBw
-ZWQgSS9PIHNvIHRoZXJlDQo+IG1heSBiZSBhIGRpZmZlcmVuY2UgdGhlcmUsIGJ1dCBJIGhhdmVu
-J3QgbG9va2VkIGNsb3NlbHkgYXQgd2h5IHRoYXQgaXMuDQoNCkhlcmUgaXMgdGhlIHBhdGNoLi4u
-DQoNClRoZXJlIHNob3VsZCBiZSBubyBiaWcgZGlmZmVyZW5jZXMgYmV0d2VlbiBtbWFwcGVkIEkv
-TyBhbmQgb3JkaW5hcnkgSS9PDQpub3cgdGhhdCB3ZSBoYXZlIHBhZ2VfbWt3cml0ZSgpIHRvIHNl
-dCB1cCB0aGUgcmVxdWVzdC4gVGhlIG9ubHkNCmRpZmZlcmVuY2UgdGhhdCBJIGNhbiB0aGluayBv
-ZiBvZmZoYW5kIGlzIHdoZW4geW91IHVzZSBsb2NraW5nOiBmb3INCm1tYXAoKSB3cml0ZXMsIE5G
-UyBjYW4gb25seSBndWFyYW50ZWUgZGF0YSBpbnRlZ3JpdHkgaWYgeW91IGxvY2sgdGhlDQplbnRp
-cmUgcGFnZS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
-aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
-bQ0K
+-dros
 
---_002_1378481956333210camelleiratrondhjemorg_
-Content-Type: text/x-patch;
-	name="0001-NFS-Don-t-check-lock-owner-compatability-unless-file.patch"
-Content-Description: 0001-NFS-Don-t-check-lock-owner-compatability-unless-file.patch
-Content-Disposition: attachment;
-	filename="0001-NFS-Don-t-check-lock-owner-compatability-unless-file.patch";
-	size=2262; creation-date="Fri, 06 Sep 2013 15:39:16 GMT";
-	modification-date="Fri, 06 Sep 2013 15:39:16 GMT"
-Content-ID: <FBF55C85B7FC3E4B8162360E64E552F6@hq.netapp.com>
-Content-Transfer-Encoding: base64
+On Sep 24, 2013, at 1:36 PM, Weston Andros Adamson <dros@netapp.com>
+ wrote:
 
-RnJvbSA0MTA5YmI3NDk2NjQwYWE5N2ExMjkwNDUyN2JhOGUzYTE5YjdjZTdhIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbT4NCkRhdGU6IEZyaSwgNiBTZXAgMjAxMyAxMTowOTozOCAtMDQwMA0KU3ViamVjdDog
-W1BBVENIXSBORlM6IERvbid0IGNoZWNrIGxvY2sgb3duZXIgY29tcGF0YWJpbGl0eSB1bmxlc3Mg
-ZmlsZSBpcw0KIGxvY2tlZCAocGFydCAyKQ0KDQpXaGVuIGNvYWxlc2NpbmcgcmVxdWVzdHMgaW50
-byBhIHNpbmdsZSBSRUFEIG9yIFdSSVRFIFJQQyBjYWxsLCBhbmQgdGhlcmUNCmlzIG5vIGZpbGUg
-bG9ja2luZyBpbnZvbHZlZCwgd2UgZG9uJ3QgaGF2ZSB0byByZWZ1c2UgY29hbGVzY2luZyBmb3IN
-CnJlcXVlc3RzIHdoZXJlIHRoZSBsb2NrIG93bmVyIGluZm9ybWF0aW9uIGRvZXNuJ3QgbWF0Y2gu
-DQoNClJlcG9ydGVkLWJ5OiBKZWZmIExheXRvbiA8amxheXRvbkByZWRoYXQuY29tPg0KU2lnbmVk
-LW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCi0t
-LQ0KIGZzL25mcy9wYWdlbGlzdC5jIHwgMjIgKysrKysrKysrKysrKysrKy0tLS0tLQ0KIDEgZmls
-ZSBjaGFuZ2VkLCAxNiBpbnNlcnRpb25zKCspLCA2IGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0
-IGEvZnMvbmZzL3BhZ2VsaXN0LmMgYi9mcy9uZnMvcGFnZWxpc3QuYw0KaW5kZXggMjljZmI3YS4u
-MmZmZWJmMiAxMDA2NDQNCi0tLSBhL2ZzL25mcy9wYWdlbGlzdC5jDQorKysgYi9mcy9uZnMvcGFn
-ZWxpc3QuYw0KQEAgLTMyOCw2ICszMjgsMTkgQEAgdm9pZCBuZnNfcGFnZWlvX2luaXQoc3RydWN0
-IG5mc19wYWdlaW9fZGVzY3JpcHRvciAqZGVzYywNCiB9DQogRVhQT1JUX1NZTUJPTF9HUEwobmZz
-X3BhZ2Vpb19pbml0KTsNCiANCitzdGF0aWMgYm9vbCBuZnNfbWF0Y2hfb3Blbl9jb250ZXh0KGNv
-bnN0IHN0cnVjdCBuZnNfb3Blbl9jb250ZXh0ICpjdHgxLA0KKwkJY29uc3Qgc3RydWN0IG5mc19v
-cGVuX2NvbnRleHQgKmN0eDIpDQorew0KKwlyZXR1cm4gY3R4MS0+Y3JlZCA9PSBjdHgyLT5jcmVk
-ICYmIGN0eDEtPnN0YXRlID09IGN0eDItPnN0YXRlOw0KK30NCisNCitzdGF0aWMgYm9vbCBuZnNf
-bWF0Y2hfbG9ja19jb250ZXh0KGNvbnN0IHN0cnVjdCBuZnNfbG9ja19jb250ZXh0ICpsMSwNCisJ
-CWNvbnN0IHN0cnVjdCBuZnNfbG9ja19jb250ZXh0ICpsMikNCit7DQorCXJldHVybiBsMS0+bG9j
-a293bmVyLmxfb3duZXIgPT0gbDItPmxvY2tvd25lci5sX293bmVyDQorCQkmJiBsMS0+bG9ja293
-bmVyLmxfcGlkID09IGwyLT5sb2Nrb3duZXIubF9waWQ7DQorfQ0KKw0KIC8qKg0KICAqIG5mc19j
-YW5fY29hbGVzY2VfcmVxdWVzdHMgLSB0ZXN0IHR3byByZXF1ZXN0cyBmb3IgY29tcGF0aWJpbGl0
-eQ0KICAqIEBwcmV2OiBwb2ludGVyIHRvIG5mc19wYWdlDQpAQCAtMzQzLDEzICszNTYsMTAgQEAg
-c3RhdGljIGJvb2wgbmZzX2Nhbl9jb2FsZXNjZV9yZXF1ZXN0cyhzdHJ1Y3QgbmZzX3BhZ2UgKnBy
-ZXYsDQogCQkJCSAgICAgIHN0cnVjdCBuZnNfcGFnZSAqcmVxLA0KIAkJCQkgICAgICBzdHJ1Y3Qg
-bmZzX3BhZ2Vpb19kZXNjcmlwdG9yICpwZ2lvKQ0KIHsNCi0JaWYgKHJlcS0+d2JfY29udGV4dC0+
-Y3JlZCAhPSBwcmV2LT53Yl9jb250ZXh0LT5jcmVkKQ0KLQkJcmV0dXJuIGZhbHNlOw0KLQlpZiAo
-cmVxLT53Yl9sb2NrX2NvbnRleHQtPmxvY2tvd25lci5sX293bmVyICE9IHByZXYtPndiX2xvY2tf
-Y29udGV4dC0+bG9ja293bmVyLmxfb3duZXIpDQotCQlyZXR1cm4gZmFsc2U7DQotCWlmIChyZXEt
-PndiX2xvY2tfY29udGV4dC0+bG9ja293bmVyLmxfcGlkICE9IHByZXYtPndiX2xvY2tfY29udGV4
-dC0+bG9ja293bmVyLmxfcGlkKQ0KKwlpZiAoIW5mc19tYXRjaF9vcGVuX2NvbnRleHQocmVxLT53
-Yl9jb250ZXh0LCBwcmV2LT53Yl9jb250ZXh0KSkNCiAJCXJldHVybiBmYWxzZTsNCi0JaWYgKHJl
-cS0+d2JfY29udGV4dC0+c3RhdGUgIT0gcHJldi0+d2JfY29udGV4dC0+c3RhdGUpDQorCWlmIChy
-ZXEtPndiX2NvbnRleHQtPmRlbnRyeS0+ZF9pbm9kZS0+aV9mbG9jayAhPSBOVUxMICYmDQorCSAg
-ICAhbmZzX21hdGNoX2xvY2tfY29udGV4dChyZXEtPndiX2xvY2tfY29udGV4dCwgcHJldi0+d2Jf
-bG9ja19jb250ZXh0KSkNCiAJCXJldHVybiBmYWxzZTsNCiAJaWYgKHJlcS0+d2JfcGdiYXNlICE9
-IDApDQogCQlyZXR1cm4gZmFsc2U7DQotLSANCjEuOC4zLjENCg0K
+> Call nfs4_lookup_root_sec for each flavor returned by SECINFO_NO_NAME until
+> one works.
+> 
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> ---
+> fs/nfs/nfs4proc.c | 25 ++++++++++++++++++++++---
+> 1 file changed, 22 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 989bb9d..9043a02 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -7566,6 +7566,8 @@ nfs41_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+> 	struct page *page;
+> 	rpc_authflavor_t flavor;
+> 	struct nfs4_secinfo_flavors *flavors;
+> +	struct nfs4_secinfo4 *secinfo;
+> +	int i;
+> 
+> 	page = alloc_page(GFP_KERNEL);
+> 	if (!page) {
+> @@ -7587,9 +7589,26 @@ nfs41_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+> 	if (err)
+> 		goto out_freepage;
+> 
+> -	flavor = nfs_find_best_sec(flavors);
+> -	if (err == 0)
+> -		err = nfs4_lookup_root_sec(server, fhandle, info, flavor);
+> +	for (i = 0; i < flavors->num_flavors; i++) {
+> +		secinfo = &flavors->flavors[i];
+> +
+> +		switch (secinfo->flavor) {
+> +		case RPC_AUTH_NULL:
+> +		case RPC_AUTH_UNIX:
+> +		case RPC_AUTH_GSS:
+> +			flavor = rpcauth_get_pseudoflavor(secinfo->flavor,
+> +					&secinfo->flavor_info);
+> +			break;
+> +		}
+> +
+> +		if (flavor != RPC_AUTH_MAXFLAVOR) {
+> +			err = nfs4_lookup_root_sec(server, fhandle,
+> +						   info, flavor);
+> +
+> +			if (!err)
+> +				break;
+> +		}
+> +	}
+> 
+> out_freepage:
+> 	put_page(page);
+> -- 
+> 1.7.12.4 (Apple Git-37)
+> 
 
---_002_1378481956333210camelleiratrondhjemorg_--
