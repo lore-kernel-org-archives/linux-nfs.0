@@ -1,68 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail4.gandi.net ([217.70.183.210]:45996 "EHLO mail4.gandi.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759828Ab3ICUoi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Sep 2013 16:44:38 -0400
-Date: Tue, 3 Sep 2013 22:44:31 +0200
-From: William Dauchy <william@gandi.net>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: William Dauchy <wdauchy@gmail.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        William Dauchy <william@gandi.net>
-Subject: Re: [PATCH v2] NFS: Ensure that rmdir() waits for sillyrenames to
- complete
-Message-ID: <20130903204431.GF22430@gandi.net>
-References: <1378145871-30071-1-git-send-email-Trond.Myklebust@netapp.com>
- <CAJ75kXbRgsYVRNobCmjeL-t+AJproq8jAxXkbkk9DxGnE9eYhQ@mail.gmail.com>
- <1378234234.6410.36.camel@leira.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="65ImJOski3p8EhYV"
-In-Reply-To: <1378234234.6410.36.camel@leira.trondhjem.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:41476 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750742Ab3IXNAZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Sep 2013 09:00:25 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=windows-1252
+Subject: fedfs-utils 0.9.3 packaged in Fedora
+Date: Tue, 24 Sep 2013 09:00:00 -0400
+Message-Id: <B94A9B58-EA2D-4566-A3B5-EAC15F428E9A@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "autofs@vger.kernel.org" <autofs@vger.kernel.org>,
+        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>
+To: "fedfs-utils;release announcements"
+	<fedfs-utils-announce@oss.oracle.com>
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The latest upstream release of fedfs-utils (0.9.3) is now available in Fedora 18, 19, 20, and rawhide.  This update replaces the previous version of the package (0.9.2).
 
---65ImJOski3p8EhYV
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+The fedfs-utils package contains an implementation of the Federated Filesystem (FedFS) Proposed Standard for Linux.  For an introduction to FedFS, see RFC 5716.
 
-On Sep03 18:50, Myklebust, Trond wrote:
-> Thanks again for testing! Does the following fixup on top of the 'v2'
-> patch also help?
-> --- a/fs/nfs/unlink.c
-> +++ b/fs/nfs/unlink.c
-> @@ -211,7 +211,7 @@ void nfs_wait_on_sillyrename(struct dentry *dentry)
->  {
->  	struct nfs_inode *nfsi =3D NFS_I(dentry->d_inode);
-> =20
-> -	wait_event(nfsi->waitqueue, atomic_read(&nfsi->silly_count) =3D=3D 1);
-> +	wait_event(nfsi->waitqueue, atomic_read(&nfsi->silly_count) <=3D 1);
->  }
-> =20
->  void nfs_block_sillyrename(struct dentry *dentry)
+This is an ALPHA quality release.  The code in this release is not guaranteed to work. Programming, administrative, and user interfaces may change significantly before the next release.  This release is for technology preview only.
 
-hmmm I just realized your v2 version had `=3D=3D 1`; in fact I tested your =
-v1
-with `=3D=3D 0`. Let me some time to retest the v2.
+Changes since 0.9.2:
+	• Allow fedfs-utils to build on systems that do not have liburiparser
 
-Thanks,
+Changes since 0.9.1:
+	• Packaging-related improvements
 
---=20
-William
+Changes since 0.9.0:
+	• Address build issues with recent automake and libtools
+	• Replace nl_langinfo(CODESET) check in command line tools
 
---65ImJOski3p8EhYV
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
+New with fedfs-utils 0.9.0:
+	• NSDB schema complies with latest draft standard
+	• DNS SRV support complies with RFC 6641
+	• NSDB clients support the FEDFS_SEC_TLS security type
+	• NSDB clients can follow LDAP referrals returned by NSDB nodes
+	• New tools for configuration of NSDBs
+	• New "display-junction" debugging command
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
+Project web site
+http://wiki.linux-nfs.org/wiki/index.php/FedFsUtilsProject
 
-iEYEARECAAYFAlImSi8ACgkQ1I6eqOUidQEmoACgrt4hE37tbHU42u9QIwbVdcAg
-oHYAniuPXxXtJ1rrRiVRjcXVcmqLzBND
-=YkAk
------END PGP SIGNATURE-----
+Installation guide:
+http://wiki.linux-nfs.org/wiki/index.php/FedFsInstallationGuide0.9
 
---65ImJOski3p8EhYV--
+Tarball releases available at
+http://git.linux-nfs.org/?p=cel/fedfs-releases.git;a=summary
+
+Git repository available at
+http://git.linux-nfs.org/?p=cel/fedfs-utils.git;a=shortlog;h=refs/heads/0.9-stable
+
+Patchwork available at
+http://patchwork.ozlabs.org/project/fedfs-utils/list/
