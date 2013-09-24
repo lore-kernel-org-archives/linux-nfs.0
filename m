@@ -1,40 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:14399 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:2260 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751088Ab3IJS4G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Sep 2013 14:56:06 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 0/2] NFSv4.1: sp4_mach_cred cleanup
-Date: Tue, 10 Sep 2013 14:55:56 -0400
-Message-ID: <1378839358-10389-1-git-send-email-dros@netapp.com>
+	id S1754549Ab3IXTQw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Sep 2013 15:16:52 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r8OJGq3l023296
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 24 Sep 2013 15:16:52 -0400
+Message-ID: <5241E540.7030102@RedHat.com>
+Date: Tue, 24 Sep 2013 15:17:20 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCHv2 1/3] gssd: fix strncmp bug causing client removals
+References: <1379624239-31199-2-git-send-email-bfields@redhat.com> <1379624632-31476-1-git-send-email-bfields@redhat.com>
+In-Reply-To: <1379624632-31476-1-git-send-email-bfields@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These two patches do some final cleanup of SP4_MACH_CRED:
-  - actually call put_rpccred() if we get_rpccred(clp->cl_machine_cred)
-  - advertise to server that we support WRITE and COMMIT
-
-Tested against a linux nfsd hacked to "support" sp4_mach_cred for the
-client supported ops.  Also tested building with v4.1 disabled and v4 disabled.
-
-Trond - it's (obviously) up to you if these get in during this merge window.
-I think they're pretty straightforward.  Also, these patches are independent
-from eachother, so it's ok to select one but not the other.
 
 
-Weston Andros Adamson (2):
-  NFSv4.1: clean up after using machine cred
-  NFSv4.1: sp4_mach_cred: ask for WRITE and COMMIT
+On 19/09/13 17:03, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> Both dirname and pdir are null-terminated strings, so there's no reason
+> I can see for the strncmp.
+> 
+> And this gives the wrong result when comparing the "nfsd" and "nfsd4_cb"
+> directories!  The results were callback clients being removed
+> immediately after creation, when lack of a client with the corresponding
+> name under "nfsd" lead gssd to believe it had disappeared from
+> "nfsd4_cb".
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Committed...
 
- fs/nfs/nfs4_fs.h  | 58 ++++++++++++++++++++++++++++++++++++-------------------
- fs/nfs/nfs4proc.c | 58 +++++++++++++++++++++++++++++++++++++------------------
- fs/nfs/write.c    | 18 +++++++++++------
- 3 files changed, 89 insertions(+), 45 deletions(-)
+steved.
 
--- 
-1.7.12.4 (Apple Git-37)
-
+> ---
+>  utils/gssd/gssd_proc.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index 2d3dbec..0383883 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -525,7 +525,7 @@ update_old_clients(struct dirent **namelist, int size, char *pdir)
+>  		/* only compare entries in the global list that are from the
+>  		 * same pipefs parent directory as "pdir"
+>  		 */
+> -		if (strncmp(clp->dirname, pdir, strlen(pdir)) != 0) continue;
+> +		if (strcmp(clp->dirname, pdir) != 0) continue;
+>  
+>  		stillhere = 0;
+>  		for (i=0; i < size; i++) {
+> 
