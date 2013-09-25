@@ -1,74 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50819 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:5444 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751522Ab3IGSqN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 7 Sep 2013 14:46:13 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Nick Piggin <npiggin@kernel.dk>
-Subject: [PATCH 3/4] dcache: Don't set DISCONNECTED on "pseudo filesystem" dentries
-Date: Sat,  7 Sep 2013 14:46:00 -0400
-Message-Id: <1378579561-26868-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1378579561-26868-1-git-send-email-bfields@redhat.com>
-References: <1378579561-26868-1-git-send-email-bfields@redhat.com>
+	id S1754910Ab3IYVQu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Sep 2013 17:16:50 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: Give "flavor" an initial value to fix a compile
+ warning
+Date: Wed, 25 Sep 2013 21:16:49 +0000
+Message-ID: <204AA022-3981-4505-BB0D-A7E9C8C769C8@netapp.com>
+References: <1380142968-9515-1-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1380142968-9515-1-git-send-email-bjschuma@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-I can't for the life of me see any reason why anyone should care whether
-a dentry that is never hooked into the dentry cache would need
-DCACHE_DISCONNECTED set.
+On Sep 25, 2013, at 5:02 PM, bjschuma@netapp.com wrote:
 
-This originates from 4b936885ab04dc6e0bb0ef35e0e23c1a7364d9e5 "fs:
-improve scalability of pseudo filesystems", which probably just made the
-false assumption the DCACHE_DISCONNECTED was meant to be set on anything
-not connected to a parent somehow.
+> From: Anna Schumaker <bjschuma@netapp.com>
+> 
+> cd3c993 introduces a compile warning by not assigning an initial value
+> to the "flavor" variable.  This could only be a problem if the server
+> returns a supported secflavor list of length zero, but it's better to
+> fix this before it's ever hit.
+> 
+> Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
 
-So this is just confusing.  Ideally the only uses of DCACHE_DISCONNECTED
-would be in the filehandle-lookup code, which needs it to ensure
-dentries are connected into the dentry tree before use.
+Acked-by: Weston Andros Adamson <dros@netapp.com>
 
-I left d_alloc_pseudo there even though it's now equivalent to
-__d_alloc(), just on the theory the name is better documentation of its
-intended use outside dcache.c.
+Thanks!
+-dros
 
-Cc: Nick Piggin <npiggin@kernel.dk>
-Cc: Christoph Hellwig <hch@infradead.org>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/dcache.c |   13 +++++++++----
- 1 file changed, 9 insertions(+), 4 deletions(-)
-
-diff --git a/fs/dcache.c b/fs/dcache.c
-index d9e4fba..a53f55d 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -1312,12 +1312,17 @@ struct dentry *d_alloc(struct dentry * parent, const struct qstr *name)
- }
- EXPORT_SYMBOL(d_alloc);
- 
-+/**
-+ * d_alloc_pseudo - allocate a dentry (for lookup-less filesystems)
-+ * @sb: the superblock
-+ * @name: qstr of the name
-+ *
-+ * For a filesystem that just pins its dentries in memory and never
-+ * performs lookups at all, return an unhashed IS_ROOT dentry.
-+ */
- struct dentry *d_alloc_pseudo(struct super_block *sb, const struct qstr *name)
- {
--	struct dentry *dentry = __d_alloc(sb, name);
--	if (dentry)
--		dentry->d_flags |= DCACHE_DISCONNECTED;
--	return dentry;
-+	return __d_alloc(sb, name);
- }
- EXPORT_SYMBOL(d_alloc_pseudo);
- 
--- 
-1.7.9.5
+> ---
+> fs/nfs/nfs4proc.c | 2 +-
+> 1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index f5fe16b..d53d678 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -7576,7 +7576,7 @@ nfs41_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+> {
+> 	int err;
+> 	struct page *page;
+> -	rpc_authflavor_t flavor;
+> +	rpc_authflavor_t flavor = RPC_AUTH_MAXFLAVOR;
+> 	struct nfs4_secinfo_flavors *flavors;
+> 	struct nfs4_secinfo4 *secinfo;
+> 	int i;
+> -- 
+> 1.8.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
