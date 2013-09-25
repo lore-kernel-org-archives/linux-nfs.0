@@ -1,69 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f170.google.com ([209.85.216.170]:48249 "EHLO
-	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753553Ab3IZSmA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:42:00 -0400
-Received: by mail-qc0-f170.google.com with SMTP id m20so1048253qcx.29
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:42:00 -0700 (PDT)
-From: Benny Halevy <bhalevy@primarydata.com>
-To: " J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH RFC v0 31/49] pnfsd: add support for per-file layout_types attribute
-Date: Thu, 26 Sep 2013 14:41:57 -0400
-Message-Id: <1380220917-14099-1-git-send-email-bhalevy@primarydata.com>
-In-Reply-To: <52447EA0.7070004@primarydata.com>
-References: <52447EA0.7070004@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:64218 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755216Ab3IYUU6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Sep 2013 16:20:58 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, andros@netapp.com
+Subject: [PATCH] nfs: fix NULL pointer dereference in nfs4_fl_prepare_ds
+Date: Wed, 25 Sep 2013 16:20:57 -0400
+Message-Id: <1380140457-27408-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, just return the same per-fs layout types
+In the event that there is an error connecting to a DS, we currently
+zero out the ds pointer and then try to dereference it to clear the
+NFS4DS_CONNECTING bit.
 
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+Fix this by clearing the bit unconditionally before zeroing out the
+pointer.
+
+Cc: Andy Adamson <andros@netapp.com>
+Cc: <stable@vger.kernel.org> # v3.10+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfs4xdr.c    | 3 ++-
- fs/nfsd/nfsd.h       | 2 +-
- include/linux/nfs4.h | 1 +
- 3 files changed, 4 insertions(+), 2 deletions(-)
+ fs/nfs/nfs4filelayoutdev.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 6781a33..1a50467 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2561,7 +2561,8 @@ static int get_parent_attributes(struct svc_export *exp, struct kstat *stat)
- 		WRITE64(stat.ino);
- 	}
- #if defined(CONFIG_PNFSD)
--	if (bmval1 & FATTR4_WORD1_FS_LAYOUT_TYPES) {
-+	if ((bmval1 & FATTR4_WORD1_FS_LAYOUT_TYPES) ||
-+	    (bmval2 & FATTR4_WORD2_LAYOUT_TYPES)) {
- 		struct super_block *sb = dentry->d_inode->i_sb;
- 		int type = 0;
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 95604f6..816cda8 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -819,11 +819,11 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+ 		int err;
  
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index d81db6e..87aa3aa 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -332,7 +332,7 @@ static inline void nfs4_reset_lease(time_t leasetime) { }
- #if defined(CONFIG_PNFSD)
- #define NFSD4_1_SUPPORTED_ATTRS_WORD2 \
- 	(NFSD4_SUPPORTED_ATTRS_WORD2 | FATTR4_WORD2_SUPPATTR_EXCLCREAT | \
--	 FATTR4_WORD2_LAYOUT_BLKSIZE)
-+	 FATTR4_WORD2_LAYOUT_TYPES | FATTR4_WORD2_LAYOUT_BLKSIZE)
- #else /* CONFIG_PNFSD */
- #define NFSD4_1_SUPPORTED_ATTRS_WORD2 \
- 	(NFSD4_SUPPORTED_ATTRS_WORD2 | FATTR4_WORD2_SUPPATTR_EXCLCREAT)
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 2c3aa9f..7f6e548 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -398,6 +398,7 @@ enum lock_type4 {
- #define FATTR4_WORD1_TIME_MODIFY_SET    (1UL << 22)
- #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
- #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
-+#define FATTR4_WORD2_LAYOUT_TYPES       (1UL << 0)
- #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
- #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
- #define FATTR4_WORD2_SECURITY_LABEL     (1UL << 17)
+ 		err = nfs4_ds_connect(s, ds);
++		nfs4_clear_ds_conn_bit(ds);
+ 		if (err) {
+ 			nfs4_mark_deviceid_unavailable(devid);
+ 			ds = NULL;
+ 		}
+-		nfs4_clear_ds_conn_bit(ds);
+ 	} else {
+ 		/* Either ds is connected, or ds is NULL */
+ 		nfs4_wait_ds_connect(ds);
 -- 
-1.8.3.1
+1.7.1
 
