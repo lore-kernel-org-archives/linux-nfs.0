@@ -1,188 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48795 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751602Ab3IQAi2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Sep 2013 20:38:28 -0400
-Date: Mon, 16 Sep 2013 20:38:25 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Contact <contact@ryper.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: 16+ GID issue, mountd's --manage-gids not helping
-Message-ID: <20130917003825.GD25308@fieldses.org>
-References: <20130916094351.263d433d@svelte.ryper.org>
- <20130916193709.GA25308@fieldses.org>
- <20130916175612.012d7301@svelte.ryper.org>
- <20130916232024.GC25308@fieldses.org>
+Received: from mail-we0-f180.google.com ([74.125.82.180]:61860 "EHLO
+	mail-we0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751226Ab3IYTCv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Sep 2013 15:02:51 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20130916232024.GC25308@fieldses.org>
+In-Reply-To: <20130925183828.GA30372@lenny.home.zabbo.net>
+References: <1378919210-10372-1-git-send-email-zab@redhat.com>
+ <CAELBmZBGD4rph=gjLCPKCdEj+nzEQ-F=DExoL+h3vRm7qF7dCQ@mail.gmail.com> <20130925183828.GA30372@lenny.home.zabbo.net>
+From: Anna Schumaker <schumaker.anna@gmail.com>
+Date: Wed, 25 Sep 2013 15:02:29 -0400
+Message-ID: <CAFX2JfnyF8kyMYzCdqdr2JkoyQCom1bFLpFj89wODjoju54-Ow@mail.gmail.com>
+Subject: Re: [RFC] extending splice for copy offloading
+To: Zach Brown <zab@redhat.com>
+Cc: Szeredi Miklos <miklos@szeredi.hu>, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Bryan Schumaker <bjschuma@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Wong <normalperson@yhbt.net>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 16, 2013 at 07:20:24PM -0400, J. Bruce Fields wrote:
-> On Mon, Sep 16, 2013 at 05:56:12PM -0500, Contact wrote:
-> > Hello,
-> > 
-> > I was assuming it would grab all of my GIDs as it appears to do in the
-> > following link:
-> > https://xkyle.com/solving-the-nfs-16-group-limit-problem/
-> > 
-> > Just under the quote:
-> > "Also, the NFS server will cache group lookups so it doesn’t have to
-> > continuously make queries. The cache is visible like this:"
-> > 
-> > The GID 1000 is my primary user on both boxes (rypervenche).
-> > 
-> > If there is another way to do this (aside maybe from setting up
-> > kerberos/ldap) I would be willing to try that.
-> 
-> Could you please answer the two questions which I asked in my previous
-> email?
+On Wed, Sep 25, 2013 at 2:38 PM, Zach Brown <zab@redhat.com> wrote:
+>
+> Hrmph.  I had composed a reply to you during Plumbers but.. something
+> happened to it :).  Here's another try now that I'm back.
+>
+>> > Some things to talk about:
+>> > - I really don't care about the naming here.  If you do, holler.
+>> > - We might want different flags for file-to-file splicing and acceleration
+>>
+>> Yes, I think "copy" and "reflink" needs to be differentiated.
+>
+> I initially agreed but I'm not so sure now.  The problem is that we
+> can't know whether the acceleration is copying or not.  XCOPY on some
+> array may well do some shared referencing tricks.  The nfs COPY op can
+> have a server use btrfs reflink, or ext* and XCOPY, or .. who knows.  At
+> some point we have to admit that we have no way to determine the
+> relative durability of writes.  Storage can do a lot to make writes more
+> or less fragile that we have no visibility of.  SSD FTLs can log a bunch
+> of unrelated sectors on to one flash failure domain.
+>
+> And if such a flag couldn't *actually* guarantee anything for a bunch of
+> storage topologies, well, let's not bother with it.
+>
+> The only flag I'm in favour of now is one that has splice return rather
+> than falling back to manual page cache reads and writes.  It's more like
+> O_NONBLOCK than any kind of data durability hint.
 
-To make them more concrete:
+For reference, I'm planning to have the NFS server do the fallback
+when it copies since any local copy will be faster than a read and
+write over the network.
 
-	- if you run "id rypervenche" on the server, what is the output?
-	- on the output from "cat /proc/net/rpc/auth.unix.gid/content"
-	  which you list below, which id that you expected to be present
-	  is not included?
+Anna
 
---b.
-
-> 
-> --b.
-> 
-> > 
-> > Thank you.
-> > 
-> > 
-> > On Mon, 16 Sep 2013 15:37:09 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Mon, Sep 16, 2013 at 09:43:51AM -0500, Contact wrote:
-> > > > Hi all,
-> > > > 
-> > > > I'm having an issue with my NFS mount and being able to access it
-> > > > from my normal user account. The mount point is chmod'ed to 2770
-> > > > with a GID of 1100 (nfs) which is the same on both systems. I can
-> > > > access it if I change my active group using newgrp, but not
-> > > > normally.
-> > > > 
-> > > > ====================================
-> > > > noir ~ # ls -lhd /home/nfs/share
-> > > > drwxrws--- 8 nfs nfs 4.0K Sep  4 15:30 /home/nfs/share
-> > > > 
-> > > > rypervenche@svelte ~ $ pwd
-> > > > /home/rypervenche
-> > > > rypervenche@svelte ~ $ cd nfs
-> > > > -su: cd: nfs: Permission denied
-> > > > rypervenche@svelte ~ $ newgrp nfs
-> > > > rypervenche@svelte ~ $ cd nfs
-> > > > rypervenche@svelte ~/nfs $ 
-> > > > 
-> > > > svelte ~ # grep nfs /etc/group
-> > > > nfs:x:1100:rypervenche
-> > > > ====================================
-> > > > 
-> > > > You can find the details of my NFS server and client here:
-> > > > 
-> > > > ====================================
-> > > > svelte = client
-> > > > noir = server
-> > > > 
-> > > > svelte ~ # tail -1 /etc/fstab
-> > > > 192.168.1.100:/ /home/rypervenche/nfs   nfs
-> > > > rw,noauto,noexec,nodev,nosuid   0       0
-> > > > 
-> > > > noir ~ # cat /etc/exports 
-> > > > # /etc/exports: NFS file systems being exported.  See exports(5).
-> > > > /home/nfs/share
-> > > > 192.168.1.205(rw,sync,fsid=0,no_root_squash,no_subtree_check)
-> > > > 192.168.2.100(rw,sync,fsid=0,no_root_squash,no_subtree_check)
-> > > > 
-> > > > noir ~ # id nfs
-> > > > uid=1100(nfs) gid=1100(nfs) groups=1100(nfs)
-> > > > 
-> > > > noir ~ # grep -v ^# /etc/conf.d/nfs | grep -v ^$
-> > > > NFS_NEEDED_SERVICES="rpc.idmapd"
-> > > > OPTS_RPC_NFSD="8"
-> > > > OPTS_RPC_MOUNTD="-V 4 --manage-gids -p 32767"
-> > > > OPTS_RPC_STATD="-p 32765 -o 32766"
-> > > > OPTS_RPC_IDMAPD=""
-> > > > OPTS_RPC_GSSD=""
-> > > > OPTS_RPC_SVCGSSD=""
-> > > > OPTS_RPC_RQUOTAD=""
-> > > > EXPORTFS_TIMEOUT=30
-> > > > 
-> > > > noir ~ # iptables-save | egrep '(NFS|T -m conn)'
-> > > > -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-> > > > -A INPUT -s 192.168.1.205/32 -p tcp -m tcp -m multiport --dports
-> > > > 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment
-> > > > --comment NFS -j ACCEPT -A INPUT -s 192.168.1.205/32 -p udp -m udp
-> > > > -m multiport --dports 111,2049,4001,32765:32767 -m conntrack
-> > > > --ctstate NEW -m comment --comment NFS -j ACCEPT -A INPUT -s
-> > > > 192.168.2.100/32 -p tcp -m tcp -m multiport --dports
-> > > > 111,2049,4001,32765:32767 -m conntrack --ctstate NEW -m comment
-> > > > --comment NFS -j ACCEPT -A INPUT -s 192.168.2.100/32 -p udp -m udp
-> > > > -m multiport --dports 111,2049,4001,32765:32767 -m conntrack
-> > > > --ctstate NEW -m comment --comment NFS -j ACCEPT
-> > > > 
-> > > > svelte:
-> > > > net-fs/nfs-utils-1.2.6 was built with the following:
-> > > > USE="ipv6 nfsdcld nfsidmap nfsv4 nfsv41 tcpd -caps -kerberos
-> > > > (-selinux)"
-> > > > 
-> > > > noir:
-> > > > net-fs/nfs-utils-1.2.6 was built with the following:
-> > > > USE="ipv6 (multilib) nfsdcld nfsidmap nfsv4 nfsv41 tcpd -caps
-> > > > -kerberos (-selinux)" ABI_X86="64"
-> > > > 
-> > > > svelte ~ # uname -a
-> > > > Linux svelte 3.10.7-gentoo-svelte #1 SMP Thu Aug 22 17:46:44 CDT
-> > > > 2013 i686 Intel(R) Atom(TM) CPU N450 @ 1.66GHz GenuineIntel
-> > > > GNU/Linux
-> > > > 
-> > > > noir ~ # uname -a
-> > > > Linux noir 3.10.7-gentoo-noir #1 SMP Wed Aug 28 11:19:43 CDT 2013
-> > > > x86_64 AMD Athlon(tm) II X2 260 Processor AuthenticAMD GNU/Linux
-> > > > ====================================
-> > > > 
-> > > > 
-> > > > I found online that the issue is due to NFS not being able to grab
-> > > > over 16 GIDs. I found help in the following two links:
-> > > > 
-> > > > https://xkyle.com/solving-the-nfs-16-group-limit-problem/
-> > > > https://wiki.archlinux.org/index.php/NFS_Troubleshooting
-> > > > 
-> > > > I tried adding the --manage-gids flag to mountd (which can be seen
-> > > > in the /etc/conf.d/nfs file above), however, it does not appear to
-> > > > resolve the issue.
-> > > > 
-> > > > ====================================
-> > > > noir ~ #
-> > > > cat /proc/net/rpc/auth.unix.gid/content #uid cnt: gids...
-> > > > 0 10: 0 1 2 3 4 6 10 11 26 27
-> > > > 1000 9: 10 18 19 27 78 85 100 250 1000
-> > > > 
-> > > > noir ~ # date +%s > /proc/net/rpc/auth.unix.gid/flush     
-> > > >                                                                                                                               
-> > > > noir ~ #
-> > > > cat /proc/net/rpc/auth.unix.gid/content #uid cnt: gids...
-> > > > 
-> > > > Then I mount the NFS again:
-> > > > 
-> > > > noir ~ # cat /proc/net/rpc/auth.unix.gid/content
-> > > > #uid cnt: gids...
-> > > > 0 10: 0 1 2 3 4 6 10 11 26 27
-> > > > 1000 9: 10 18 19 27 78 85 100 250 1000
-> > > > ====================================
-> > > > 
-> > > > It looks as though it is not grabbing all of my GIDs.
-> > > 
-> > > What do you expect the list to be?  Which groups is uid 1000 a member
-> > > of on the server?
-> > > 
-> > > --b.
-> > 
+>
+>> > - We might want flags to require or forbid acceleration
+>> > - We might want to provide all these flags to sendfile, too
+>> >
+>> > Thoughts?  Objections?
+>>
+>> Can filesystem support "whole file copy" only?  Or arbitrary
+>> block-to-block copy should be mandatory?
+>
+> I'm not sure I understand what you're asking.  The interface specifies
+> byte ranges.  File systems can return errors if they can't accelerate
+> the copy.  We *can't* mandate copy acceleration granularity as some
+> formats and protocols just can't do it.  splice() will fall back to
+> doing buffered copies when the file system returns an error.
+>
+>> Splice has size_t argument for the size, which is limited to 4G on 32
+>> bit.  Won't this be an issue for whole-file-copy?  We could have
+>> special value (-1) for whole file, but that's starting to be hackish.
+>
+> It will be an issue, yeah.  Just like it is with write() today.  I think
+> it's reasonable to start with a simple interface that matches current IO
+> syscalls.  I won't implement a special whole-file value, no.
+>
+> And it's not just 32bit size_t.  While do_splice_direct() doesn't use
+> the truncated length that's returned from rw_verify_area(), it then
+> silently truncates the lengths to unsigned int in the splice_desc struct
+> fields.  It seems like we might want to address that :/.
+>
+>> We are talking about copying large amounts of data in a single
+>> syscall, which will possibly take a long time.  Will the syscall be
+>> interruptible?  Restartable?
+>
+> In as much as file systems let it be, yeah.  As ever, you're not going
+> to have a lot of luck interrupting a process stuck in lock_page(),
+> mutex_lock(), wait_on_page_writeback(), etc.   Though you did remind me
+> to investigate restarting.  Thanks.
+>
+> - z
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
