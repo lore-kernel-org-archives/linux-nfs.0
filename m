@@ -1,58 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41967 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751268Ab3IJN2m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Sep 2013 09:28:42 -0400
-Date: Tue, 10 Sep 2013 09:28:41 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Emmanuel Florac <eflorac@intellique.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Hard to debug NFS loss of connectivity
-Message-ID: <20130910132841.GC16011@fieldses.org>
-References: <20130905191800.1c75b2fb@harpe.intellique.com>
- <20130905204536.GB24805@fieldses.org>
- <20130905233449.5eb8bf79@galadriel.home>
- <20130905214002.GD24805@fieldses.org>
- <20130906175721.30082c11@harpe.intellique.com>
- <20130906160735.GA16396@fieldses.org>
- <20130906185508.3f0d2730@harpe.intellique.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20130906185508.3f0d2730@harpe.intellique.com>
+Received: from mailout1.samsung.com ([203.254.224.24]:48674 "EHLO
+	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750991Ab3IYFUP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Sep 2013 01:20:15 -0400
+Received: from epcpsbgr2.samsung.com
+ (u142.gpu120.samsung.co.kr [203.254.230.142])
+ by mailout1.samsung.com (Oracle Communications Messaging Server 7u4-24.01
+ (7.0.4.24.0) 64bit (built Nov 17 2011))
+ with ESMTP id <0MTO0035A1HNIXP0@mailout1.samsung.com> for
+ linux-nfs@vger.kernel.org; Wed, 25 Sep 2013 14:20:12 +0900 (KST)
+Date: Wed, 25 Sep 2013 05:19:50 +0000 (GMT)
+From: Jongman Heo <jongman.heo@samsung.com>
+Subject: Regression caused by commit 4bdc33ed
+ ("NFSDv4.2: Add NFS v4.2 support to the NFS server")
+To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Reply-to: jongman.heo@samsung.com
+MIME-version: 1.0
+Content-type: text/plain; charset=utf-8
+MIME-version: 1.0
+Message-id: <22596229.54071380086390046.JavaMail.weblogic@epv6ml04>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 06, 2013 at 06:55:08PM +0200, Emmanuel Florac wrote:
-> Le Fri, 6 Sep 2013 12:07:35 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> écrivait:
-> 
-> > Weird.  Things look normal up through frame 14, which is a READDIRPLUS
-> > reply.  Then the server resends the reply after .2s, and and the
-> > client resends its call shortly thereafter (but without acking the
-> > latest reply).  And then the rest of the trace is resends of the
-> > reply.
-> > 
-> > So it looks like the client stopped ACKing the server's replies?
-> > 
-> > You may also have filtered out some TCP ACKs, which makes this harder
-> > to work out.
-> 
-> Ah yes, my bad, one TCP ACK was filtered out. Here I've kept trafic
-> between the two machines but ssh.
+DQpIaSBhbGwsDQoNCk15IGVtYmVkZGVkIGRldmVsb3BtZW50IGJveCBmYWlscyB0byBORlMtYm9v
+dCB3aXRoIE5GUyBzZXJ2ZXIgd2hpY2ggdXNlcyByZWNlbnQga2VybmVsLg0KDQpVc2luZyBnaXQg
+YmlzZWN0LCBJIGZvdW5kIGl0IGlzIGNhdXNlZCBieSBjb21taXQgNGJkYzMzZWQgKCJORlNEdjQu
+MjogQWRkIE5GUyB2NC4yIHN1cHBvcnQgdG8gdGhlIE5GUyBzZXJ2ZXIiKS4NCg0KDQoxLiBkbWVz
+ZyAoTkZTIGJvb3QgZmFpbHVyZSBjYXNlKQ0KDQouLi4NClsgICAgMi4wNDA4OTNdIEFERFJDT05G
+KE5FVERFVl9VUCk6IGV0aDA6IGxpbmsgaXMgbm90IHJlYWR5DQpbICAgIDIuMDQ2MjA3XSBlMTAw
+MDogZXRoMCBOSUMgTGluayBpcyBVcCAxMDAwIE1icHMgRnVsbCBEdXBsZXgsIEZsb3cgQ29udHJv
+bDogUlgNClsgICAgMi4wNTM1NzBdIEFERFJDT05GKE5FVERFVl9DSEFOR0UpOiBldGgwOiBsaW5r
+IGJlY29tZXMgcmVhZHkNClsgICAgMy4wNTUwMjNdIElQLUNvbmZpZzogR3Vlc3NpbmcgbmV0bWFz
+ayAyNTUuMjU1LjAuMA0KWyAgICAzLjA1OTk3OV0gSVAtQ29uZmlnOiBHYXRld2F5IG5vdCBvbiBk
+aXJlY3RseSBjb25uZWN0ZWQgbmV0d29yay4NClsgICAgMy4wNjYzMzBdIExvb2tpbmcgdXAgcG9y
+dCBvZiBSUEMgMTAwMDAzLzIgb24gMTY1LjIxMy44OC4yNDkNClsgICAgMy4wNzQwMDFdIExvb2tp
+bmcgdXAgcG9ydCBvZiBSUEMgMTAwMDA1LzEgb24gMTY1LjIxMy44OC4yNDkNClsgICAgMy4xMjI4
+NzhdIFZGUzogVW5hYmxlIHRvIG1vdW50IHJvb3QgZnMgdmlhIE5GUywgdHJ5aW5nIGZsb3BweS4N
+ClsgICAgMy4xMjkxMzRdIFZGUzogQ2Fubm90IG9wZW4gcm9vdCBkZXZpY2UgIm5mcyIgb3IgdW5r
+bm93bi1ibG9jaygyLDApDQpbICAgIDMuMTM1NDc4XSBQbGVhc2UgYXBwZW5kIGEgY29ycmVjdCAi
+cm9vdD0iIGJvb3Qgb3B0aW9uOyBoZXJlIGFyZSB0aGUgYXZhaWxhYmxlIHBhcnRpdGlvbnM6DQpb
+ICAgIDMuMTQzODMxXSAxZjAwICAgICAgICAgICAgMzA3MiBtdGRibG9jazAgKGRyaXZlcj8pDQpb
+ICAgIDMuMTQ4Nzk4XSAxZjAxICAgICAgICAgICAgICA2NCBtdGRibG9jazEgKGRyaXZlcj8pDQpb
+ICAgIDMuMTUzNzU4XSAxZjAyICAgICAgICAgICAgICA2NCBtdGRibG9jazIgKGRyaXZlcj8pDQpb
+ICAgIDMuMTU4NzE5XSAxZjAzICAgICAgICAgICAgICA2NCBtdGRibG9jazMgKGRyaXZlcj8pDQpb
+ICAgIDMuMTYzNjgyXSAxZjA0ICAgICAgICAgICAgICA2NCBtdGRibG9jazQgKGRyaXZlcj8pDQpb
+ICAgIDMuMTY4NjQ0XSAxZjA1ICAgICAgICAgICAgICA2NCBtdGRibG9jazUgKGRyaXZlcj8pDQpb
+ICAgIDMuMTczNjA3XSAxZjA2ICAgICAgICAgICAgICA2NCBtdGRibG9jazYgKGRyaXZlcj8pDQpb
+ICAgIDMuMTc4NTY4XSAwODAwICAgICAgIDQ4ODM4NjU4NCBzZGEgZHJpdmVyOiBzZA0KWyAgICAz
+LjE4MzA5OV0gICAwODAxICAgICAgICAgIDUwNjAxNiBzZGExDQpbICAgIDMuMTg2OTI3XSAgIDA4
+MDIgICAgICAgICA0MDA4MjE3IHNkYTINClsgICAgMy4xOTA3NTVdICAgMDgwMyAgICAgICA0ODM4
+Njk3Njcgc2RhMw0KWyAgICAzLjE5NDU4NF0gYjMwMCAgICAgICAgIDE4ODAwNjQgbW1jYmxrMCBk
+cml2ZXI6IG1tY2Jsaw0KWyAgICAzLjE5OTgwMl0gICBiMzAxICAgICAgICAgICAgNDA5NiBtbWNi
+bGswcDENClsgICAgMy4yMDQwNjNdICAgYjMwMiAgICAgICAgICAxMDI0MDAgbW1jYmxrMHAyDQpb
+ICAgIDMuMjA4MzMwXSAgIGIzMDMgICAgICAgICAgICA0MDk2IG1tY2JsazBwMw0KWyAgICAzLjIx
+MjU5NF0gICBiMzA0ICAgICAgICAgICAgICAgMSBtbWNibGswcDQNClsgICAgMy4yMTY4NTVdICAg
+YjMwNSAgICAgICAgICAgIDIwNDggbW1jYmxrMHA1DQpbICAgIDMuMjIxMTE2XSAgIGIzMDYgICAg
+ICAgICAgICAyMDQ4IG1tY2JsazBwNg0KWyAgICAzLjIyNTM4Ml0gICBiMzA3ICAgICAgICAgICAg
+MjA0OCBtbWNibGswcDcNClsgICAgMy4yMjk2NDRdICAgYjMwOCAgICAgICAgICAgIDQwOTYgbW1j
+YmxrMHA4DQpbICAgIDMuMjMzOTA2XSAgIGIzMDkgICAgICAgICAgIDEyMjg4IG1tY2JsazBwOQ0K
+WyAgICAzLjIzODE3Nl0gICBiMzBhICAgICAgICAgICAxNjM4NCBtbWNibGswcDEwDQpbICAgIDMu
+MjQyNTI0XSAgIGIzMGIgICAgICAgICAgMTQyMzM2IG1tY2JsazBwMTENClsgICAgMy4yNDY4Njld
+ICAgYjMwYyAgICAgICAgIDE1NzI4NjQgbW1jYmxrMHAxMg0KWyAgICAzLjI1MTIxOV0gYjMyMCAg
+ICAgICAgICAgMTIyODggbW1jYmxrMGdwMSAoZHJpdmVyPykNClsgICAgMy4yNTYyNzJdIGIzMTAg
+ICAgICAgICAgIDEyMjg4IG1tY2JsazBncDAgKGRyaXZlcj8pDQpbICAgIDMuMjYxMzIwXSBLZXJu
+ZWwgcGFuaWMgLSBub3Qgc3luY2luZzogVkZTOiBVbmFibGUgdG8gbW91bnQgcm9vdCBmcyBvbiB1
+bmtub3duLWJsb2NrKDIsMCkNClsgICAgMy4yNjk1NjZdIFBpZDogMSwgY29tbTogc3dhcHBlciBO
+b3QgdGFpbnRlZCAyLjYuMzUgIzENClsgICAgMy4yNzQ3NzZdIENhbGwgVHJhY2U6DQpbICAgIDMu
+Mjc3MjMyXSAgWzw4MGQwZGI1Yj5dID8gcHJpbnRrKzB4MWUvMHgyMA0KWyAgICAzLjI4MTQ5Ml0g
+IFs8ODBkMGRhZDE+XSBwYW5pYysweDY1LzB4ZDENClsgICAgMy4yODU0OTVdICBbPDgwZWI5Y2Uz
+Pl0gbW91bnRfYmxvY2tfcm9vdCsweDEyNS8weDFiZQ0KWyAgICAzLjI5MDYzMV0gIFs8ODA5ZDFm
+NmQ+XSA/IHN5c19ta25vZCsweDJkLzB4MzANClsgICAgMy4yOTUxNTZdICBbPDgwZWI5ZjZkPl0g
+bW91bnRfcm9vdCsweGQwLzB4ZjINClsgICAgMy4yOTk1OTFdICBbPDgwZWJhMGQ5Pl0gcHJlcGFy
+ZV9uYW1lc3BhY2UrMHgxNGEvMHgxODQNClsgICAgMy4zMDQ4MDNdICBbPDgwOWM0NGY2Pl0gPyBz
+eXNfYWNjZXNzKzB4MjYvMHgzMA0KWyAgICAzLjMwOTQxMV0gIFs8ODBlYjlhNGU+XSBrZXJuZWxf
+aW5pdCsweDI1ZS8weDI2ZQ0KWyAgICAzLjMxNDEwNV0gIFs8ODBlYjk3ZjA+XSA/IGtlcm5lbF9p
+bml0KzB4MC8weDI2ZQ0KWyAgICAzLjMxODgwMF0gIFs8ODA5MDMyNDI+XSBrZXJuZWxfdGhyZWFk
+X2hlbHBlcisweDYvMHgxMA0KDQoNCjIuIENsaWVudCAobXkgZW1iZWRkZWQgYm94KSBjb25maWd1
+cmF0aW9uDQogIEl0J3Mga2VybmVsIDIuNi4zNSBiYXNlZCwgYW5kIGhhcyBmb2xsb3dpbmcgTkZT
+IGtlcm5lbCBjb25maWdzLg0KDQojIGdyZXAgTkZTIC5jb25maWcNCkNPTkZJR19ORlNfRlM9eQ0K
+Q09ORklHX05GU19WMz15DQpDT05GSUdfTkZTX1YzX0FDTD15DQpDT05GSUdfTkZTX1Y0PXkNCiMg
+Q09ORklHX05GU19WNF8xIGlzIG5vdCBzZXQNCkNPTkZJR19ST09UX05GUz15DQojIENPTkZJR19O
+RlNEIGlzIG5vdCBzZXQNCkNPTkZJR19ORlNfQUNMX1NVUFBPUlQ9eQ0KQ09ORklHX05GU19DT01N
+T049eQ0KDQoNCjMuIFNlcnZlciAoTkZTRCkgY29uZmlndXJhdGlvbg0KICAgRmVkb3JhIDE5ICsg
+bGF0ZXN0IGxpbnVzIGdpdCBrZXJuZWwgMy4xMi4wLXJjMisgKGNvbW1pdCAyMjM1NmY0NCwgbW06
+IFBsYWNlIHByZWVtcHRpb24gcG9pbnQgaW4gZG9fbWxvY2thbGwoKSBsb29wKQ0KDQoNCjQuIHdv
+cmthcm91bmQNCg0KUmV2ZXJ0aW5nIHRoZSBjb21taXQgNGJkYzMzZWQgcmVzb2x2ZXMgbXkgaXNz
+dWUsIE5GUyBib290IGlzIHdvcmtpbmcgdGhlbi4NCkkndmUgZG9uZSBnaXQgYmlzZWN0LCBidXQg
+bG9zdCB0aGUgcmVzdWx0aW5nIGJpc2VjdCBsb2cgZHVlIHRvIHN1ZGRlbiBwb3dlciBsb3NzIDoo
+Lg0KDQpCZXN0IHJlZ2FyZHMsDQpKb25nbWFuIEhlbw0K
 
-Huh, no idea.  You can see the server retransmitting the readdir plus
-reply, and still no ACKs from the client.
 
-> Here I was capturing from the server, maybe I should try capturing on
-> the client side?
-
-Sure, maybe.
-
-Honestly looks like a network problem, if it weren't for the failing on
-the filesystem operation each time.
-
-Hm, it may just be the first packet of a certain size.  In fact it's the
-first frame > 1500 bytes in that trace.  Is there some problem with
-jumbo frame configuration on your network?
-
---b.
