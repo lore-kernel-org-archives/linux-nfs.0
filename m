@@ -1,14 +1,13 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44258 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:46803 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751134Ab3IZPeD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Sep 2013 11:34:03 -0400
-Date: Thu, 26 Sep 2013 11:34:00 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: Zach Brown <zab@redhat.com>, Anna Schumaker <schumaker.anna@gmail.com>,
-        Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+	id S1751242Ab3IYTG6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Sep 2013 15:06:58 -0400
+Date: Wed, 25 Sep 2013 12:06:20 -0700
+From: Zach Brown <zab@redhat.com>
+To: Anna Schumaker <schumaker.anna@gmail.com>
+Cc: Szeredi Miklos <miklos@szeredi.hu>, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         Trond Myklebust <Trond.Myklebust@netapp.com>,
         Bryan Schumaker <bjschuma@netapp.com>,
@@ -16,60 +15,49 @@ Cc: Zach Brown <zab@redhat.com>, Anna Schumaker <schumaker.anna@gmail.com>,
         Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
         Eric Wong <normalperson@yhbt.net>
 Subject: Re: [RFC] extending splice for copy offloading
-Message-ID: <20130926153359.GE704@fieldses.org>
+Message-ID: <20130925190620.GB30372@lenny.home.zabbo.net>
 References: <1378919210-10372-1-git-send-email-zab@redhat.com>
  <CAELBmZBGD4rph=gjLCPKCdEj+nzEQ-F=DExoL+h3vRm7qF7dCQ@mail.gmail.com>
  <20130925183828.GA30372@lenny.home.zabbo.net>
  <CAFX2JfnyF8kyMYzCdqdr2JkoyQCom1bFLpFj89wODjoju54-Ow@mail.gmail.com>
- <20130925190620.GB30372@lenny.home.zabbo.net>
- <20130925195526.GA18971@fieldses.org>
- <20130925210742.GG30372@lenny.home.zabbo.net>
- <CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
+In-Reply-To: <CAFX2JfnyF8kyMYzCdqdr2JkoyQCom1bFLpFj89wODjoju54-Ow@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 26, 2013 at 10:58:05AM +0200, Miklos Szeredi wrote:
-> On Wed, Sep 25, 2013 at 11:07 PM, Zach Brown <zab@redhat.com> wrote:
-> >> A client-side copy will be slower, but I guess it does have the
-> >> advantage that the application can track progress to some degree, and
-> >> abort it fairly quickly without leaving the file in a totally undefined
-> >> state--and both might be useful if the copy's not a simple constant-time
-> >> operation.
+On Wed, Sep 25, 2013 at 03:02:29PM -0400, Anna Schumaker wrote:
+> On Wed, Sep 25, 2013 at 2:38 PM, Zach Brown <zab@redhat.com> wrote:
 > >
-> > I suppose, but can't the app achieve a nice middle ground by copying the
-> > file in smaller syscalls?  Avoid bulk data motion back to the client,
-> > but still get notification every, I dunno, few hundred meg?
+> > Hrmph.  I had composed a reply to you during Plumbers but.. something
+> > happened to it :).  Here's another try now that I'm back.
+> >
+> >> > Some things to talk about:
+> >> > - I really don't care about the naming here.  If you do, holler.
+> >> > - We might want different flags for file-to-file splicing and acceleration
+> >>
+> >> Yes, I think "copy" and "reflink" needs to be differentiated.
+> >
+> > I initially agreed but I'm not so sure now.  The problem is that we
+> > can't know whether the acceleration is copying or not.  XCOPY on some
+> > array may well do some shared referencing tricks.  The nfs COPY op can
+> > have a server use btrfs reflink, or ext* and XCOPY, or .. who knows.  At
+> > some point we have to admit that we have no way to determine the
+> > relative durability of writes.  Storage can do a lot to make writes more
+> > or less fragile that we have no visibility of.  SSD FTLs can log a bunch
+> > of unrelated sectors on to one flash failure domain.
+> >
+> > And if such a flag couldn't *actually* guarantee anything for a bunch of
+> > storage topologies, well, let's not bother with it.
+> >
+> > The only flag I'm in favour of now is one that has splice return rather
+> > than falling back to manual page cache reads and writes.  It's more like
+> > O_NONBLOCK than any kind of data durability hint.
 > 
-> Yes.  And if "cp"  could just be switched from a read+write syscall
-> pair to a single splice syscall using the same buffer size.
+> For reference, I'm planning to have the NFS server do the fallback
+> when it copies since any local copy will be faster than a read and
+> write over the network.
 
-Will the various magic fs-specific copy operations become inefficient
-when the range copied is too small?
+Agreed, this is definitely the reasonable thing to do.
 
-(Totally naive question, as I have no idea how they really work.)
-
---b.
-
-> And then
-> the user would only notice that things got faster in case of server
-> side copy.  No problems with long blocking times (at least not much
-> worse than it was).
-> 
-> However "cp" doesn't do reflinking by default, it has a switch for
-> that.  If we just want "cp" and the like to use splice without fearing
-> side effects then by default we should try to be as close to
-> read+write behavior as possible.  No?   That's what I'm really
-> worrying about when you want to wire up splice to reflink by default.
-> I do think there should be a flag for that.  And if on the block level
-> some magic happens, so be it.  It's not the fs deverloper's worry any
-> more ;)
-> 
-> Thanks,
-> Miklos
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+- z
