@@ -1,38 +1,172 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vb0-f53.google.com ([209.85.212.53]:46587 "EHLO
-	mail-vb0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752719Ab3IHO0G (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Sep 2013 10:26:06 -0400
-Received: by mail-vb0-f53.google.com with SMTP id i3so3230514vbh.26
-        for <linux-nfs@vger.kernel.org>; Sun, 08 Sep 2013 07:26:04 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1378481956.3332.10.camel@leira.trondhjem.org>
-References: <20130905162110.GA17920@gmail.com> <20130905170303.GB17330@us.ibm.com>
- <20130905191139.GA20830@gmail.com> <1378411320.5450.27.camel@leira.trondhjem.org>
- <20130905213649.GA21944@gmail.com> <1378418243.5450.29.camel@leira.trondhjem.org>
- <20130905223420.GA23192@gmail.com> <20130906093636.6818e7b2@corrin.poochiereds.net>
- <1378479655.3332.3.camel@leira.trondhjem.org> <20130906110429.48000442@corrin.poochiereds.net>
- <1378481956.3332.10.camel@leira.trondhjem.org>
-From: William Dauchy <wdauchy@gmail.com>
-Date: Sun, 8 Sep 2013 16:25:44 +0200
-Message-ID: <CAJ75kXa_1zvcQuaGYk0_mh-6M3VuKy7iuDO_eJYA_cM4QTY1Jg@mail.gmail.com>
-Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Jeff Layton <jlayton@redhat.com>, Quentin Barnes <qbarnes@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qe0-f44.google.com ([209.85.128.44]:35256 "EHLO
+	mail-qe0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753047Ab3IZSke (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:40:34 -0400
+Received: by mail-qe0-f44.google.com with SMTP id 3so1108012qeb.31
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:40:33 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC v0 10/49] pnfsd: use sbid hash table to map super_blocks to devid major identifiers
+Date: Thu, 26 Sep 2013 14:40:31 -0400
+Message-Id: <1380220831-13136-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <52447EA0.7070004@primarydata.com>
+References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 6, 2013 at 5:39 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> There should be no big differences between mmapped I/O and ordinary I/O
-> now that we have page_mkwrite() to set up the request. The only
-> difference that I can think of offhand is when you use locking: for
-> mmap() writes, NFS can only guarantee data integrity if you lock the
-> entire page.
+From: Benny Halevy <bhalevy@panasas.com>
 
-Tested the two patches on top of a 3.10.x. Looks ok so far.
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[pnfsd: alloc_sid should kmalloc a object not a pointer]
+Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+---
+ fs/nfsd/nfs4pnfsd.c | 120 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/pnfsd.h     |   2 +
+ 2 files changed, 122 insertions(+)
 
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index cb28207..9a7cbc9 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -25,3 +25,123 @@
+ 
+ #define NFSDDBG_FACILITY                NFSDDBG_PNFS
+ 
++static DEFINE_SPINLOCK(layout_lock);
++
++/* hash table for nfsd4_pnfs_deviceid.sbid */
++#define SBID_HASH_BITS	8
++#define SBID_HASH_SIZE	(1 << SBID_HASH_BITS)
++#define SBID_HASH_MASK	(SBID_HASH_SIZE - 1)
++
++struct sbid_tracker {
++	u64 id;
++	struct super_block *sb;
++	struct list_head hash;
++};
++
++static u64 current_sbid;
++static struct list_head sbid_hashtbl[SBID_HASH_SIZE];
++
++static unsigned long
++sbid_hashval(struct super_block *sb)
++{
++	return hash_ptr(sb, SBID_HASH_BITS);
++}
++
++static struct sbid_tracker *
++alloc_sbid(void)
++{
++	return kmalloc(sizeof(struct sbid_tracker), GFP_KERNEL);
++}
++
++static void
++destroy_sbid(struct sbid_tracker *sbid)
++{
++	spin_lock(&layout_lock);
++	list_del(&sbid->hash);
++	spin_unlock(&layout_lock);
++	kfree(sbid);
++}
++
++void
++nfsd4_free_pnfs_slabs(void)
++{
++	int i;
++	struct sbid_tracker *sbid;
++
++	for (i = 0; i < SBID_HASH_SIZE; i++) {
++		while (!list_empty(&sbid_hashtbl[i])) {
++			sbid = list_first_entry(&sbid_hashtbl[i],
++						struct sbid_tracker,
++						hash);
++			destroy_sbid(sbid);
++		}
++	}
++}
++
++int
++nfsd4_init_pnfs_slabs(void)
++{
++	int i;
++
++	for (i = 0; i < SBID_HASH_SIZE; i++)
++		INIT_LIST_HEAD(&sbid_hashtbl[i]);
++
++	return 0;
++}
++
++static u64
++alloc_init_sbid(struct super_block *sb)
++{
++	struct sbid_tracker *sbid;
++	struct sbid_tracker *new = alloc_sbid();
++	unsigned long hash_idx = sbid_hashval(sb);
++	u64 id = 0;
++
++	if (likely(new)) {
++		spin_lock(&layout_lock);
++		id = ++current_sbid;
++		new->id = (id << SBID_HASH_BITS) | (hash_idx & SBID_HASH_MASK);
++		id = new->id;
++		BUG_ON(id == 0);
++		new->sb = sb;
++
++		list_for_each_entry (sbid, &sbid_hashtbl[hash_idx], hash)
++			if (sbid->sb == sb) {
++				kfree(new);
++				id = sbid->id;
++				spin_unlock(&layout_lock);
++				return id;
++			}
++		list_add(&new->hash, &sbid_hashtbl[hash_idx]);
++		spin_unlock(&layout_lock);
++	}
++	return id;
++}
++
++static u64
++find_create_sbid(struct super_block *sb)
++{
++	struct sbid_tracker *sbid;
++	unsigned long hash_idx = sbid_hashval(sb);
++	int pos = 0;
++	u64 id = 0;
++
++	spin_lock(&layout_lock);
++	list_for_each_entry (sbid, &sbid_hashtbl[hash_idx], hash) {
++		pos++;
++		if (sbid->sb != sb)
++			continue;
++		if (pos > 1) {
++			list_del(&sbid->hash);
++			list_add(&sbid->hash, &sbid_hashtbl[hash_idx]);
++		}
++		id = sbid->id;
++		break;
++	}
++	spin_unlock(&layout_lock);
++
++	if (!id)
++		id = alloc_init_sbid(sb);
++
++	return id;
++}
+diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
+index 7c46791..29ea2e7 100644
+--- a/fs/nfsd/pnfsd.h
++++ b/fs/nfsd/pnfsd.h
+@@ -36,4 +36,6 @@
+ 
+ #include <linux/nfsd/nfsd4_pnfs.h>
+ 
++#include "xdr4.h"
++
+ #endif /* LINUX_NFSD_PNFSD_H */
 -- 
-William
+1.8.3.1
+
