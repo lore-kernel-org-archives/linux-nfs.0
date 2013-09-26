@@ -1,101 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:15544 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56240 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751772Ab3IEDR4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Sep 2013 23:17:56 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: NeilBrown <neilb@suse.de>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH/RFC] make nfs_flush_incompatible more forgiving.
-Date: Thu, 5 Sep 2013 03:17:54 +0000
-Message-ID: <1378351073.30440.14.camel@leira.trondhjem.org>
-References: <20130904113632.1a1eb337@notabene.brown>
-	 <1378305214.3527.10.camel@leira.trondhjem.org>
-	 <20130905092947.248a80e6@notabene.brown>
-In-Reply-To: <20130905092947.248a80e6@notabene.brown>
-Content-Type: text/plain; charset="utf-8"
+	id S1750773Ab3IZOpP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Sep 2013 10:45:15 -0400
+Subject: [RFC][PATCH 0/4] SunRPC/NFS: Use no_printk() in 
+To: bfields@fieldses.org, Trond.Myklebust@netapp.com
+From: David Howells <dhowells@redhat.com>
+Cc: olof@lixom.net, linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Thu, 26 Sep 2013 15:45:02 +0100
+Message-ID: <20130926144502.29424.21633.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEzLTA5LTA1IGF0IDA5OjI5ICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IE9u
-IFdlZCwgNCBTZXAgMjAxMyAxNDozMzozNSArMDAwMCAiTXlrbGVidXN0LCBUcm9uZCINCj4gPFRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gV2VkLCAyMDEzLTA5
-LTA0IGF0IDExOjM2ICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+ID4gPiBIaSwNCj4gPiA+ICB3
-ZSBoYXZlIGEgY3VzdG9tZXIgd2hvIGhhcyBub3RpY2VkIGEgc2lnbmlmaWNhbnQgcmVncmVzc2lv
-biBpbiBORlMNCj4gPiA+ICBwZXJmb3JtYW5jZSBiZXR3ZWVuIFNMRVMxMCAoMi42LjE2KykgYW5k
-IFNMRVMxMSAoMy4wKykuDQo+ID4gPiANCj4gPiA+ICBUaGUgdXNlIGNhc2UgaW52b2x2ZXMgdHdv
-IGRpZmZlcmVudCBwcm9jZXNzZXMgb24gdGhlIHNhbWUgY2xpZW50IG1tYXBwaW5nIGENCj4gPiA+
-ICBmaWxlIGFuZCBtYWtpbmcgY2hhbmdlcy4NCj4gPiA+IA0KPiA+ID4gIEluIDIuNi4xNiwgYWxs
-IHRoZXNlIGNoYW5nZXMgd291bGQgYmUgY2FjaGVkIG9uIHRoZSBjbGllbnQgdW50aWwgYSBmbHVz
-aCBvcg0KPiA+ID4gIGNsb3NlIG9yIG90aGVyIG5vcm1hbCBwcm9jZXNzIGZsdXNoZWQgdGhlIGNo
-YW5nZXMgb3V0IC0gbXVjaCB0aGUgc2FtZSBhcyBpZg0KPiA+ID4gIGp1c3Qgb25lIHByb2Nlc3Mg
-d2FzIGFjY2Vzc2luZyB0aGUgZmlsZS4NCj4gPiA+IA0KPiA+ID4gIEluIDMuMCB0aGUgZmlsZSBp
-cyBmbHVzaGVkIG91dCBldmVyeSB0aW1lIGEgZGlmZmVyZW50IHByb2Nlc3MgcGVyZm9ybXMgYW4N
-Cj4gPiA+ICB1cGRhdGUuIFNvIGlmIHRoZXkgaW50ZXJsZWF2ZSBhY2Nlc3NlcywgeW91IGdldCBh
-IGZsdXNoLXRvLXRoZS1zZXJ2ZXIgb24NCj4gPiA+ICBldmVyeSBhY2Nlc3MuDQo+ID4gPiANCj4g
-PiA+ICBUaGlzIGlzIGNhdXNlZCBieSBuZnNfZmx1c2hfaW5jb21wYXRpYmxlLiAgSXQgZGVlbXMg
-YWNjZXNzIHRocm91Z2ggZGlmZmVyZW50DQo+ID4gPiAgZmlsZSBkZXNjcmlwdG9ycyB0byBiZSBp
-bmNvbXBhdGlibGUuICBIb3dldmVyIEkgZG9uJ3QgdGhpbmsgdGhpcyBpcw0KPiA+ID4gIGp1c3Rp
-ZmllZC4gIEFjY2Vzc2VkIHVzaW5nIGRpZmZlcmVudCBjcmVkZW50aWFscyBjYW4gcmVhc29uYWJs
-eSBiZSBzZWVuIGFzDQo+ID4gPiAgaW5jb21wYXRpYmxlKCopLCBidXQgaWYgdHdvIHByb2Nlc3Nl
-cyB3aXRoIGlkZW50aWNhbCBjcmVkZW50aWFscyBvcGVuIHRoZQ0KPiA+ID4gIHNhbWUgZmlsZSB0
-aGVyZSB0aGVyZSBzaG91bGQgYmUgbm90IG5lZWQgdG8gZGlmZmVyZW50aWF0ZSBiZXR3ZWVuIHRo
-ZW0uDQo+ID4gPiANCj4gPiA+ICBUaGUgcGF0Y2ggYmVsb3cgY2hhbmdlcyB0aGUgdGVzdCBpbiBu
-ZnNfZmx1c2hfaW5jb21wYXRpYmxlIHRvIGp1c3QgdGVzdCB0aGUNCj4gPiA+ICBjcmVkZW50aWFs
-cyAoYW5kIHRoZSBkZW50cnksIHRob3VnaCB0aGF0IG1pZ2h0IGJlIHN1cGVyZmx1b3VzIC0gaXQg
-c2VlbXMNCj4gPiA+ICBzYWZlcikuDQo+ID4gPiANCj4gPiA+ICgqKSBJbiB0aGlzIHNwZWNpZmlj
-IGN1c3RvbWVyJ3MgY2FzZSB0aGUgcHJvY2VzcyBkbyBjdXJyZW50bHkgaGF2ZSBzbGlnaHRseQ0K
-PiA+ID4gIGRpZmZlcmVudCBjcmVkZW50aWFscy4gIEluIG9uZSwgdGhlIHByaW1hcnkgZ2lkIGlz
-IGluY2x1ZGVkIGluIHRoZSBsaXN0IG9mDQo+ID4gPiAgYXV4aWxpYXJ5IGdpZHMuICBJbiB0aGUg
-b3RoZXIgdGhlIHByaW1hcnkgZ2lkIGlzIGV4Y2x1ZGVkLiAgVGhpcyBpcyBlbm91Z2gNCj4gPiA+
-ICB0byBtYWtlIHRoZSBjcmVkZW50aWFscyBhcHBlYXIgZGlmZmVyZW50IHNvIHRoaXMgcGF0Y2gg
-ZG9lc24ndCBoZWxwIGluIHRoYXQNCj4gPiA+ICBjYXNlLiAgVGhleSBhcmUgbG9va2luZyBhdCBi
-ZWluZyBtb3JlIGNvbnNpc3RlbnQgaW4gdGhlaXIgc2V0Z3JvdXBzIHVzYWdlDQo+ID4gPiAgYnV0
-IGl0IHdvdWxkIGhlbHAgdGhlbSBpZiB3ZSBvbmx5IGFjdHVhbGx5IGNvbXBhcmVkIHRoZSBjcmVk
-ZW50aWFscyB0aGF0DQo+ID4gPiAgd2VyZSBpbXBvcnRhbnQuICBJbiB0aGlzIGNhc2UgdGhlcmUg
-aXMgbm8gaW1wb3J0YW50IGRpZmZlcmVuY2UuDQo+ID4gPiAgV291bGQgaXQgbWFrZSBzZW5zZSB0
-byB0cmVhdCBhIG1vcmUgYnJvYWQgY3JlZGVudGlhbCBhcyBjb21wYXRpYmxlIHdpdGggYQ0KPiA+
-ID4gIG1vcmUgbmFycm93IGNyZWRlbnRpYWw/ICBTbyBhIHdyaXRlIGZyb20gYSBwcm9jZXNzIHdp
-dGggYSBnaXZlbg0KPiA+ID4gIHVpZCxnaWQsZ3JvdXBsaXN0IGNvdWxkIHVsdGltYXRlbHkgYmUg
-c2VudCB0byB0aGUgc2VydmVyIHdpdGggc2FtZSB1aWQvZ2lkLA0KPiA+ID4gIGJ1dCBhIHN1YnNl
-dCBvZiB0aGUgZ3JvdXAgbGlzdD8NCj4gPiA+ICANCj4gPiA+IA0KPiA+ID4gIFRob3VnaHRzPw0K
-PiA+ID4gDQo+ID4gPiBUaGFua3MsDQo+ID4gPiBOZWlsQnJvd24NCj4gPiA+IA0KPiA+ID4gDQo+
-ID4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL3dyaXRlLmMgYi9mcy9uZnMvd3JpdGUuYw0KPiA+ID4g
-aW5kZXggNzgxNjgwMS4uYjBkNGU0NyAxMDA2NDQNCj4gPiA+IC0tLSBhL2ZzL25mcy93cml0ZS5j
-DQo+ID4gPiArKysgYi9mcy9uZnMvd3JpdGUuYw0KPiA+ID4gQEAgLTg2MCw3ICs4NjAsMTIgQEAg
-aW50IG5mc19mbHVzaF9pbmNvbXBhdGlibGUoc3RydWN0IGZpbGUgKmZpbGUsIHN0cnVjdCBwYWdl
-ICpwYWdlKQ0KPiA+ID4gIAkJaWYgKHJlcSA9PSBOVUxMKQ0KPiA+ID4gIAkJCXJldHVybiAwOw0K
-PiA+ID4gIAkJbF9jdHggPSByZXEtPndiX2xvY2tfY29udGV4dDsNCj4gPiA+IC0JCWRvX2ZsdXNo
-ID0gcmVxLT53Yl9wYWdlICE9IHBhZ2UgfHwgcmVxLT53Yl9jb250ZXh0ICE9IGN0eDsNCj4gPiA+
-ICsJCWRvX2ZsdXNoID0gcmVxLT53Yl9wYWdlICE9IHBhZ2U7DQo+ID4gPiArCQlpZiAocmVxLT53
-Yl9jb250ZXh0ICE9IGN0eCkgew0KPiA+ID4gKwkJCWRvX2ZsdXNoIHw9DQo+ID4gPiArCQkJCXJl
-cS0+d2JfY29udGV4dC0+ZGVudHJ5ICE9IGN0eC0+ZGVudHJ5IHx8DQo+ID4gPiArCQkJCXJlcS0+
-d2JfY29udGV4dC0+Y3JlZCAhPSBjdHgtPmNyZWQ7DQo+ID4gPiArCQl9DQo+ID4gPiAgCQlpZiAo
-bF9jdHgpIHsNCj4gPiA+ICAJCQlkb19mbHVzaCB8PSBsX2N0eC0+bG9ja293bmVyLmxfb3duZXIg
-IT0gY3VycmVudC0+ZmlsZXMNCj4gPiA+ICAJCQkJfHwgbF9jdHgtPmxvY2tvd25lci5sX3BpZCAh
-PSBjdXJyZW50LT50Z2lkOw0KPiA+IA0KPiA+IEhpIE5laWwsDQo+ID4gDQo+ID4gV29uJ3QgdGhp
-cyBjYXVzZSBhbnkgd3JpdGUgZXJyb3JzIHRvIGJlIHByb3BhZ2F0ZWQgdG8gdGhlIHdyb25nIHBy
-b2Nlc3M/DQo+IA0KPiBJJ20gbm90IHN1cmUgd2hhdCB0aGlzIG1lYW5zLg0KPiANCj4gRm9yIGEg
-bG9jYWwgZmlsZXN5c3RlbSwgdGhlIG9ubHkgZXJyb3IgdGhhdCBpc24ndCBzeW5jaHJvbm91cyBp
-cyBFSU8gYW5kIGFuDQo+IGFwcGxpY2F0aW9uIGNhbiBvbmx5IGJlIHN1cmUgb2YgZ2V0dGluZyB0
-aGF0IGlmIGl0IHVzZXMgJ2ZzeW5jJy4gIEFuDQo+IGFwcGxpY2F0aW9uIGNhbiBnZXQgRUlPIGZy
-b20gZnN5bmMgZXZlbiBpZiBpdCBkaWRuJ3Qgd3JpdGUgdG8gdGhlIHBhZ2Ugd2hpY2gNCj4gaXMg
-Y2F1c2luZyB0aGUgcHJvYmxlbS4gIEFsbCBhcHBzIHNob3VsZCBiZSBhYmxlIHRvIHNlZSB0aGUg
-RUlPIGlmIHRoZXkNCj4gYm90aGVyIHRvIGZzeW5jLg0KDQpZb3UgYXJlIGRlc2NyaWJpbmcgYSBj
-b25zZXF1ZW5jZSBvZiB0aGUgY29tcGxldGUgYW5kIHV0dGVyIGJyb2tlbm5lc3Mgb2YNCnRoZSBi
-bG9jayBsYXllci4gVGhlIGJsb2NrIGxheWVyIGRvZXNuJ3QgdHJhY2sgd2hvIHdyb3RlIHdoYXQg
-aW50byB0aGUNCnBhZ2UgY2FjaGUsIGFuZCBzbyBpdCBqdXN0IHBhc3NlcyBhbnkgd3JpdGUgZXJy
-b3JzIHRvIHdoaWNoZXZlciBwcm9jZXNzDQp0aGF0IGZpcnN0IGNhbGxzIGZpbGVtYXBfY2hlY2tf
-ZXJyb3JzKCkgZm9yIHRoYXQgZmlsZS4NCg0KSW4gTkZTLCB3ZSB1c2UgdGhlIG5mc19vcGVuX2Nv
-bnRleHQgdG8gdHJhY2sgZXhhY3RseSB3aG8gd3JvdGUgd2hhdCwgYW5kDQp1c2UgdGhhdCB0byBu
-b3RpZnkgdGhlIHNwZWNpZmljIHByb2Nlc3MgdGhhdCB3cm90ZSB0aGUgZGF0YSB0aGF0IGZhaWxl
-ZC4NCg0KPiBGb3IgTkZTLCBFRFFVT1QgYW5kIEVOT1NQQyBhcmUgYWxzbyBhc3luY2hyb25vdXMs
-IGFuZCB0aGV5IGNhbiBhbHNvIGNvbWUgaW4NCj4gdGhyb3VnaCBjbG9zZSgpLiAgSSB0aGluayBl
-dmVyeSBhcHAgc2hvdWxkIHN0aWxsIHNlZSBldmVyeSBlcnJvciB3aGV0aGVyICBpdA0KPiBkaXJ0
-aWVkIHRoZSBwYWdlIHdoaWNoIHRyaWdnZXJlZCB0aGUgZXJyb3Igb3Igbm90Lg0KDQpXaXRoIHRo
-aXMgcGF0Y2gsIHdlIGNhbiBlbmQgdXAgd3JpdGluZyB0aGUgZGF0YSB1c2luZyB0aGUgd3JvbmcN
-Cm5mc19vcGVuX2NvbnRleHQsIGluIHdoaWNoIGNhc2UgdGhlIGVycm9ycyB3aWxsIGdldCByZXBv
-cnRlZCB0byB0aGUNCnByb2Nlc3MgdGhhdCBhY3R1YWxseSBvd25zIHRoYXQgbmZzX29wZW5fY29u
-dGV4dC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
-cg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+
+
+Here's a series of patches to make SunRPC/NFS use no_printk() to implement its
+null dfprintk() macro (ie. when RPC_DEBUG is disabled).  This prevents 'unused
+variable' errors from occurring when a variable is set only for use in
+debugging statements and renders RPC/NFS_IFDEBUG unnecessary.
+
+David
+---
+David Howells (4):
+      SunRPC: Use the standard varargs macro method for dfprintk() and co.
+      SunRPC: Declare and use rpc_task_pid() to wrap task->tk_pid
+      SunRPC: Use no_printk() for the null dprintk() and dfprintk()
+      SunRPC: Kill RPC_IFDEBUG() and NFS_IFDEBUG()
+
+
+ fs/lockd/clntproc.c            |    2 +
+ fs/lockd/svc.c                 |    6 ++-
+ fs/lockd/svc4proc.c            |    2 +
+ fs/lockd/svclock.c             |    6 ++-
+ fs/lockd/svcproc.c             |    2 +
+ fs/nfs/direct.c                |    6 ++-
+ fs/nfs/fscache.c               |    2 +
+ fs/nfs/nfs4filelayout.c        |    8 ++--
+ fs/nfs/nfs4proc.c              |    2 +
+ fs/nfs/read.c                  |    4 +-
+ fs/nfs/write.c                 |    8 ++--
+ fs/nfsd/nfs4proc.c             |    6 +--
+ fs/nfsd/nfsfh.c                |   10 +++---
+ include/linux/nfs_fs.h         |    2 -
+ include/linux/sunrpc/debug.h   |   39 ++++++++++------------
+ include/linux/sunrpc/sched.h   |   20 ++++++++---
+ include/trace/events/sunrpc.h  |    8 ++--
+ net/sunrpc/auth.c              |   18 +++++-----
+ net/sunrpc/auth_gss/auth_gss.c |   20 ++++++-----
+ net/sunrpc/clnt.c              |   72 ++++++++++++++++++++--------------------
+ net/sunrpc/rpcb_clnt.c         |   34 +++++++++----------
+ net/sunrpc/sched.c             |   39 +++++++++-------------
+ net/sunrpc/svcsock.c           |   33 +++++++++++-------
+ net/sunrpc/xprt.c              |   30 ++++++++---------
+ net/sunrpc/xprtsock.c          |    2 +
+ 25 files changed, 194 insertions(+), 187 deletions(-)
+
