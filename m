@@ -1,40 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:10579 "EHLO mx11.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:18807 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754147Ab3ICSXQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Sep 2013 14:23:16 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Stanislav Kinsbursky" <skinsbursky@parallels.com>
-Subject: Re: [PATCH v2 16/33] SUNRPC: Modify synopsis of
- rpc_client_register()
-Date: Tue, 3 Sep 2013 18:23:15 +0000
-Message-ID: <1378232595.6410.23.camel@leira.trondhjem.org>
-References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
-	 <20130809165005.5362.34943.stgit@seurat.1015granger.net>
-	 <1378231471.6410.18.camel@leira.trondhjem.org>
-	 <6022E033-F121-48E1-860D-E163AF7A3CC3@oracle.com>
-In-Reply-To: <6022E033-F121-48E1-860D-E163AF7A3CC3@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1754645Ab3IZVpY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Sep 2013 17:45:24 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 7/7] SUNRPC: Fix RPC call retransmission statistics
+Date: Thu, 26 Sep 2013 17:45:06 -0400
+Message-ID: <1380231907-13733-8-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1380231907-13733-7-git-send-email-Trond.Myklebust@netapp.com>
+References: <1380231907-13733-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1380231907-13733-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1380231907-13733-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1380231907-13733-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1380231907-13733-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1380231907-13733-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1380231907-13733-7-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEzLTA5LTAzIGF0IDE0OjE2IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gU2VwIDMsIDIwMTMsIGF0IDI6MDQgUE0sICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJvbmQuTXlr
-bGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+IEluIHBhcnRpY3VsYXIgbm90ZSB0aGF0IHRo
-ZSBuZXcgY29kZSB1c2VzIHRoZSBycGNfY2xudC0+Y2xfcGFyZW50IGNoYWluDQo+ID4gaW4gb3Jk
-ZXIgdG8gaW1wbGVtZW50IHNoYXJpbmcgb2YgdGhlIFJQQ1NFQ19HU1MgY2FjaGVzIGFuZCBwaXBl
-IHVwY2FsbHMuDQo+IA0KPiBUaGlzIG1pZ2h0IGJlIGEgcHJvYmxlbSB3aGVuIHN3YXBwaW5nIGlu
-IGEgdHJhbnNwb3J0IHRvIGEgZGVzdGluYXRpb24gc2VydmVyLCBmb3IgZXhhbXBsZS4NCg0KWW91
-J3JlIGFscmVhZHkgc3dhcHBpbmcgdGhlIGNsX3hwcnQgYW5kIHRoZSBjbF9hdXRoLCB3aHkgc2hv
-dWxkbid0IHlvdQ0KYWxzbyBzd2FwIHRoZSBjbF9wYXJlbnQgaW4gdGhpcyBzaXR1YXRpb24/DQoN
-Cj4gSG93IHdvdWxkIHlvdSBsaWtlIHRvIHByb2NlZWQgd2l0aCBtZXJnaW5nIHRoZXNlPyAgSG9s
-ZCBvZmYgdW50aWwgMy4xMywgdGFrZSB1cCB0byAxNS8zMyBub3cgYW5kIHRoZSByZXN0IGluIDMu
-MTMsIG9yIHRha2UgdGhlIHdob2xlIHNlcmllcyBub3cgYW5kIGZpeCBpdCB1cCBhZnRlciB0aGUg
-d2luZG93IGNsb3Nlcz8NCg0KSSBjYW4gdGFrZSB1cCB0byAxNS8zMyBub3csIGJ1dCBJJ2QgbGlr
-ZSB0aG9zZSB3YXJuaW5ncyBmaXhlZC4gQ2FuIHlvdQ0KdGhyb3cgaW4gc29tZSAnZml4dXAhJyBj
-b21taXRzIGZvciB0aGUgMiBpc3N1ZXMgdGhhdCB3ZXJlIHBvaW50ZWQgb3V0Pw0KDQotLSANClRy
-b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJv
-bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+A retransmit should be when you successfully transmit an RPC call to
+the server a second time.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ net/sunrpc/clnt.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index b585250..46d061f 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1719,6 +1719,8 @@ call_connect_status(struct rpc_task *task)
+ static void
+ call_transmit(struct rpc_task *task)
+ {
++	bool is_retrans = (task->tk_flags & RPC_TASK_SENT) != 0;
++
+ 	dprint_status(task);
+ 
+ 	task->tk_action = call_status;
+@@ -1743,6 +1745,8 @@ call_transmit(struct rpc_task *task)
+ 	xprt_transmit(task);
+ 	if (task->tk_status < 0)
+ 		return;
++	if (is_retrans)
++		task->tk_client->cl_stats->rpcretrans++;
+ 	/*
+ 	 * On success, ensure that we call xprt_end_transmit() before sleeping
+ 	 * in order to allow access to the socket to other RPC requests.
+@@ -1983,7 +1987,6 @@ call_timeout(struct rpc_task *task)
+ 	rpcauth_invalcred(task);
+ 
+ retry:
+-	clnt->cl_stats->rpcretrans++;
+ 	task->tk_action = call_bind;
+ 	task->tk_status = 0;
+ }
+@@ -2026,7 +2029,6 @@ call_decode(struct rpc_task *task)
+ 	if (req->rq_rcv_buf.len < 12) {
+ 		if (!RPC_IS_SOFT(task)) {
+ 			task->tk_action = call_bind;
+-			clnt->cl_stats->rpcretrans++;
+ 			goto out_retry;
+ 		}
+ 		dprintk("RPC:       %s: too small RPC reply size (%d bytes)\n",
+-- 
+1.8.3.1
+
