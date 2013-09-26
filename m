@@ -1,119 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:52251 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753487Ab3I0NcB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Sep 2013 09:32:01 -0400
-Message-ID: <524588C7.9040500@panasas.com>
-Date: Fri, 27 Sep 2013 09:31:51 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Benny Halevy <bhalevy@primarydata.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-CC: NFS list <linux-nfs@vger.kernel.org>, Lev Solomonov <solo@primarydata.com>,
-        Idan Kedar <idank@primarydata.com>,
-        Nadav Shemer <nadav@primarydata.com>
-Subject: Re: [PATCH RFC v0 0/49] pnfsd-dlm
-References: <52447EA0.7070004@primarydata.com>
+Received: from mail-qe0-f41.google.com ([209.85.128.41]:54417 "EHLO
+	mail-qe0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752808Ab3IZSkB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:40:01 -0400
+Received: by mail-qe0-f41.google.com with SMTP id 1so1114675qee.14
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:40:01 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC v0 02/49] pnfsd: define NFSDDBG_PNFS
+Date: Thu, 26 Sep 2013 14:39:58 -0400
+Message-Id: <1380220798-12766-1-git-send-email-bhalevy@primarydata.com>
 In-Reply-To: <52447EA0.7070004@primarydata.com>
-Content-Type: text/plain; charset="UTF-8"
+References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/26/2013 02:36 PM, Benny Halevy wrote:
-> The following patchset implements an extension to nfsd
-> providing a complete minimal pnfs server exporting
-> DLM-based clustered file systems such as GFS2 or OCFS2.
-> 
-> The pNFS operations that are implemented are
-> GETDEVICELIST and GETDEVICEINFO,
-> LAYOUTGET and LAYOUTRETURN.
-> 
-> The server does the bookkeeping of the outstanding layout
-> state in response to layout get and return.
-> 
-> Also, the implementation cleans up the client layout state
-> opon client expiry and on CLOSE when the return_on_close
-> flag is set on the LAYOUTGET response.  The latter is the
-> default behavior until layout recalls are implemented
-> with which the server can reclaim its resources in case
-> the client holds layout state post closing files.
-> 
-> The patchset is based on v3.12-rc2 and it's available also online here:
-> git://linux-nfs.org/~bhalevy/linux-pnfs.git pnfsd-dlm-3.12-rc2-2013-09-26
-> 
+From: Benny Halevy <bhalevy@panasas.com>
 
-I thought that we said that exofs server is going in first. What happened?
+[extraced from pnfsd: Initial pNFS server implementation.]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+---
+ include/uapi/linux/nfsd/debug.h | 1 +
+ 1 file changed, 1 insertion(+)
 
-Cheers
-Boaz
-
-> Benny
-> 
-> General infrastructure:
-> [PATCH RFC v0 01/49] pnfsd: Define CONFIG_PNFSD
-> [PATCH RFC v0 02/49] pnfsd: define NFSDDBG_PNFS
-> [PATCH RFC v0 03/49] pnfsd: return pnfs flags on exchange_id
-> [PATCH RFC v0 04/49] pnfsd: don't set up back channel on create_session for ds
-> [PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
-> [PATCH RFC v0 06/49] pnfsd: define pnfs_export_operations
-> [PATCH RFC v0 07/49] pnfsd: add pnfs export option
-> [PATCH RFC v0 08/49] pnfsd: layout verify
-> [PATCH RFC v0 09/49] pnfsd: initial stub
-> 
-> Device ops:
-> [PATCH RFC v0 10/49] pnfsd: use sbid hash table to map super_blocks to devid major identifiers
-> [PATCH RFC v0 11/49] NFSD: introduce exp_xdr.h
-> [PATCH RFC v0 12/49] pnfsd: get device list/info
-> [PATCH RFC v0 13/49] pnfsd: filelayout: get device list/info
-> [PATCH RFC v0 14/49] pnfsd: provide helper for xdr encoding of deviceid
-> [PATCH RFC v0 15/49] pnfsd: add helper functions for identifying DS filehandles
-> [PATCH RFC v0 16/49] pnfsd: accept all ds stateids
-> 
-> layout get:
-> [PATCH RFC v0 17/49] DEBUG: nfsd: more client_lock asserts
-> [PATCH RFC v0 18/49] pnfsd: nfs4_assert_state_locked
-> [PATCH RFC v0 19/49] pnfsd: layout get
-> [PATCH RFC v0 20/49] pnfsd: filelayout: layout encoding
-> 
-> layout state handling for layout get:
-> [PATCH RFC v0 21/49] nfsd: no need to unhash_stid before free
-> [PATCH RFC v0 22/49] nfsd: cleanup free_stid
-> [PATCH RFC v0 23/49] pnfsd: layout state allocation
-> [PATCH RFC v0 24/49] pnfsd: process the layout stateid
-> [PATCH RFC v0 25/49] pnfsd: layout state per client tracking
-> [PATCH RFC v0 26/49] pnfsd: layout state per file tracking
-> [PATCH RFC v0 27/49] pnfsd: hash layouts on layout state
-> [PATCH RFC v0 28/49] pnfsd: support layout segment merging
-> 
-> pnfs attributes:
-> [PATCH RFC v0 29/49] pnfsd: support layout_type attribute
-> [PATCH RFC v0 30/49] pnfsd: make pnfs server return layout_blksize when the client asks for it
-> [PATCH RFC v0 31/49] pnfsd: add support for per-file layout_types attribute
-> 
-> pnfsd over dlm:
-> [PATCH RFC v0 32/49] pnfsd: per block device dlm data server list cache
-> [PATCH RFC v0 33/49] pnfsd: Add IP address validation to nfsd4_set_pnfs_dlm_device()
-> [PATCH RFC v0 34/49] pnfsd: new nfsd filesystem file: pnfs_dlm_device
-> [PATCH RFC v0 35/49] pnfsd: nfsd4_pnfs_dlm_getdeviter
-> [PATCH RFC v0 36/49] pnfsd: nfsd4_pnfs_dlm_getdevinfo
-> [PATCH RFC v0 37/49] pnfsd: make /proc/fs/nfsd/pnfs_dlm_device report dlm device list.
-> [PATCH RFC v0 38/49] pnfsd: nfsd4_pnfs_dlm_layoutget
-> [PATCH RFC v0 39/49] pnfsd: DLM file layout only support read iomode layouts
-> [PATCH RFC v0 40/49] pnfsd: add dlm file layout layout-type
-> [PATCH RFC v0 41/49] pnfsd: dlm pnfs_export_operations
-> [PATCH RFC v0 42/49] pnfsd: gfs2: use generic file layout pnfs operations vector
-> 
-> layout return / expire / return_on_close:
-> [PATCH RFC v0 43/49] pnfsd: release state lock around iput in put_nfs4_file
-> [PATCH RFC v0 44/49] posix_acl: resolve compile dependency in posix_acl.h
-> [PATCH RFC v0 45/49] nfs: resolve compile dependency in nfs_xdr.h
-> [PATCH RFC v0 46/49] pnfsd: layout return generic implementation
-> [PATCH RFC v0 47/49] pnfsd: pnfs_expire_client
-> [PATCH RFC v0 48/49] pnfsd: return on close
-> [PATCH RFC v0 49/49] pnfsd: dlm set return_on_close to true
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/include/uapi/linux/nfsd/debug.h b/include/uapi/linux/nfsd/debug.h
+index a6f453c..168f3a3 100644
+--- a/include/uapi/linux/nfsd/debug.h
++++ b/include/uapi/linux/nfsd/debug.h
+@@ -32,6 +32,7 @@
+ #define NFSDDBG_REPCACHE	0x0080
+ #define NFSDDBG_XDR		0x0100
+ #define NFSDDBG_LOCKD		0x0200
++#define NFSDDBG_PNFS		0x0400
+ #define NFSDDBG_ALL		0x7FFF
+ #define NFSDDBG_NOCHANGE	0xFFFF
+ 
+-- 
+1.8.3.1
 
