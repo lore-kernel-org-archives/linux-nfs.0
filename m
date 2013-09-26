@@ -1,42 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:24110 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751171Ab3IIRRg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Sep 2013 13:17:36 -0400
-Message-ID: <1378747050.4117.122.camel@serendib>
-Subject: [PATCH] nfsiostat: periodically flush stdout
-From: Harshula Jayasuriya <harshula@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>, Chuck Lever <chuck.lever@oracle.com>
+Received: from mail-qc0-f171.google.com ([209.85.216.171]:56319 "EHLO
+	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753553Ab3IZSmd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:42:33 -0400
+Received: by mail-qc0-f171.google.com with SMTP id x19so1050723qcw.30
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:42:33 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
 Cc: linux-nfs@vger.kernel.org
-Date: Tue, 10 Sep 2013 03:17:30 +1000
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Subject: [PATCH RFC v0 39/49] pnfsd: DLM file layout only support read iomode layouts
+Date: Thu, 26 Sep 2013 14:42:30 -0400
+Message-Id: <1380220950-14484-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <52447EA0.7070004@primarydata.com>
+References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* In a shell script, when nfsiostat is run in the background with
-  stdout redirected to a file, flush stdout periodically to ensure
-  that we do not lose the buffered output if the nfsiostat process 
-  is killed.
+From: Andy Adamson <andros@netapp.com>
 
-Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
+In a DLM cluster, writing to a node other than the node where the open call
+occurred (where meta data is cached) will have performance implications when
+the write causes meta data changes that need to be propagated to the open call
+node.
+
+DlM clusters support only LAYOUTIOMODE4_READ layouts. Writes will go through
+the MDS.
+
+Return NFS4ERR_BADIOMODE for LAYOUTGET requests with LAYOUTIOMODE4_RW iomode.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[pnfsd: fixup DLM layout_get return type to u32]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
 ---
- tools/nfs-iostat/nfs-iostat.py | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/nfsd/nfs4pnfsdlm.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
-index c035537..155581c 100644
---- a/tools/nfs-iostat/nfs-iostat.py
-+++ b/tools/nfs-iostat/nfs-iostat.py
-@@ -413,6 +413,8 @@ class DeviceData:
-             self.__print_rpc_op_stats('WRITE', sample_time)
-             self.__print_page_stats(sample_time)
+diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+index 7ed8156..acc1f91 100644
+--- a/fs/nfsd/nfs4pnfsdlm.c
++++ b/fs/nfsd/nfs4pnfsdlm.c
+@@ -390,6 +390,10 @@ static enum nfsstat4 nfsd4_pnfs_dlm_layoutget(struct inode *inode,
  
-+        sys.stdout.flush()
+ 	dprintk("%s: LAYOUT_GET\n", __func__);
+ 
++	/* DLM exported file systems only support layouts for READ */
++	if (res->lg_seg.iomode == IOMODE_RW)
++		return NFS4ERR_BADIOMODE;
 +
- #
- # Functions
- #
+ 	index = dlm_ino_hash(inode);
+ 	dprintk("%s first stripe index %d i_ino %lu\n", __func__, index,
+ 		inode->i_ino);
 -- 
 1.8.3.1
 
