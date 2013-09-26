@@ -1,125 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51010 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752253Ab3ISP12 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Sep 2013 11:27:28 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: stable@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/4] rpc: fix huge kmalloc's in gss-proxy
-Date: Thu, 19 Sep 2013 11:27:21 -0400
-Message-Id: <1379604442-27724-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1379604442-27724-1-git-send-email-bfields@redhat.com>
-References: <1379604442-27724-1-git-send-email-bfields@redhat.com>
+Received: from mail-qc0-f181.google.com ([209.85.216.181]:57682 "EHLO
+	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752808Ab3IZSj6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:39:58 -0400
+Received: by mail-qc0-f181.google.com with SMTP id q4so1043276qcx.12
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:39:57 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC v0 01/49] pnfsd: Define CONFIG_PNFSD
+Date: Thu, 26 Sep 2013 14:39:52 -0400
+Message-Id: <1380220792-12718-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <52447EA0.7070004@primarydata.com>
+References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Benny Halevy <bhalevy@panasas.com>
 
-commit 9dfd87da1aeb0fd364167ad199f40fe96a6a87be upstream.
-
-The reply to a gssproxy can include up to NGROUPS_MAX gid's, which will
-take up more than a page.  We therefore need to allocate an array of
-pages to hold the reply instead of trying to allocate a single huge
-buffer.
-
-Tested-by: Simo Sorce <simo@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
+[rephrased text and moved down to fs/nfsd/Kconfig]
+[remove CONFIG_PNFSD's dependency on NFSD_V4_1]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[rephrase and remove CONFIG_PNFSD's dependency on EXPERIMENTAL]
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
 ---
- net/sunrpc/auth_gss/gss_rpc_upcall.c |   30 ++++++++++++++++++++++++++++++
- net/sunrpc/auth_gss/gss_rpc_xdr.c    |    3 +++
- net/sunrpc/auth_gss/gss_rpc_xdr.h    |    5 ++++-
- 3 files changed, 37 insertions(+), 1 deletion(-)
+ fs/nfsd/Kconfig | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-index af7ffd4..be95af3 100644
---- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-@@ -213,6 +213,30 @@ static int gssp_call(struct net *net, struct rpc_message *msg)
- 	return status;
- }
+diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+index dc8f1ef..4d68a8c 100644
+--- a/fs/nfsd/Kconfig
++++ b/fs/nfsd/Kconfig
+@@ -106,3 +106,13 @@ config NFSD_FAULT_INJECTION
+ 	  testing error recovery on the NFS client.
  
-+static void gssp_free_receive_pages(struct gssx_arg_accept_sec_context *arg)
-+{
-+	int i;
+ 	  If unsure, say N.
 +
-+	for (i = 0; i < arg->npages && arg->pages[i]; i++)
-+		__free_page(arg->pages[i]);
-+}
++config PNFSD
++	bool "NFSv4.1 server support for Parallel NFS (pNFS) (EXPERIMENTAL)"
++	depends on NFSD_V4
++	help
++	  This option enables support for the parallel NFS features of the
++	  minor version 1 of the NFSv4 protocol (RFC5661)
++	  in the kernel's NFS server.
 +
-+static int gssp_alloc_receive_pages(struct gssx_arg_accept_sec_context *arg)
-+{
-+	int i;
-+
-+	arg->npages = DIV_ROUND_UP(NGROUPS_MAX * 4, PAGE_SIZE);
-+	arg->pages = kzalloc(arg->npages * sizeof(struct page *), GFP_KERNEL);
-+
-+	for (i=0; i < arg->npages; i++) {
-+		arg->pages[i] = alloc_page(GFP_KERNEL);
-+		if (arg->pages[i] == NULL) {
-+			gssp_free_receive_pages(arg);
-+			return -ENOMEM;
-+		}
-+	}
-+	return 0;
-+}
- 
- /*
-  * Public functions
-@@ -261,10 +285,16 @@ int gssp_accept_sec_context_upcall(struct net *net,
- 		arg.context_handle = &ctxh;
- 	res.output_token->len = GSSX_max_output_token_sz;
- 
-+	ret = gssp_alloc_receive_pages(&arg);
-+	if (ret)
-+		return ret;
-+
- 	/* use nfs/ for targ_name ? */
- 
- 	ret = gssp_call(net, &msg);
- 
-+	gssp_free_receive_pages(&arg);
-+
- 	/* we need to fetch all data even in case of error so
- 	 * that we can free special strctures is they have been allocated */
- 	data->major_status = res.status.major_status;
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-index 3c19c7d..f0f78c5 100644
---- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-@@ -780,6 +780,9 @@ void gssx_enc_accept_sec_context(struct rpc_rqst *req,
- 	/* arg->options */
- 	err = dummy_enc_opt_array(xdr, &arg->options);
- 
-+	xdr_inline_pages(&req->rq_rcv_buf,
-+		PAGE_SIZE/2 /* pretty arbitrary */,
-+		arg->pages, 0 /* page base */, arg->npages * PAGE_SIZE);
- done:
- 	if (err)
- 		dprintk("RPC:       gssx_enc_accept_sec_context: %d\n", err);
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.h b/net/sunrpc/auth_gss/gss_rpc_xdr.h
-index 1c98b27..685a688 100644
---- a/net/sunrpc/auth_gss/gss_rpc_xdr.h
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.h
-@@ -147,6 +147,8 @@ struct gssx_arg_accept_sec_context {
- 	struct gssx_cb *input_cb;
- 	u32 ret_deleg_cred;
- 	struct gssx_option_array options;
-+	struct page **pages;
-+	unsigned int npages;
- };
- 
- struct gssx_res_accept_sec_context {
-@@ -240,7 +242,8 @@ int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
- 			     2 * GSSX_max_princ_sz + \
- 			     8 + 8 + 4 + 4 + 4)
- #define GSSX_max_output_token_sz 1024
--#define GSSX_max_creds_sz (4 + 4 + 4 + NGROUPS_MAX * 4)
-+/* grouplist not included; we allocate separate pages for that: */
-+#define GSSX_max_creds_sz (4 + 4 + 4 /* + NGROUPS_MAX*4 */)
- #define GSSX_RES_accept_sec_context_sz (GSSX_default_status_sz + \
- 					GSSX_default_ctx_sz + \
- 					GSSX_max_output_token_sz + \
++	  If unsure, say N.
 -- 
-1.7.9.5
+1.8.3.1
 
