@@ -1,98 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:49422 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751217Ab3IHVIT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 8 Sep 2013 17:08:19 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Steve Dickson <steved@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] exportfs: Fix the default authentication flavour setting
-Date: Sun, 8 Sep 2013 21:08:18 +0000
-Message-ID: <1378674497.10262.14.camel@leira.trondhjem.org>
-References: <1378659519-18924-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <594F92D3-B085-4382-ACA2-7E43949BBCD2@oracle.com>
-In-Reply-To: <594F92D3-B085-4382-ACA2-7E43949BBCD2@oracle.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:46579 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753047Ab3IZSkW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:40:22 -0400
+Received: by mail-qa0-f46.google.com with SMTP id j7so4618151qaq.19
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:40:22 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC v0 07/49] pnfsd: add pnfs export option
+Date: Thu, 26 Sep 2013 14:40:19 -0400
+Message-Id: <1380220819-12999-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <52447EA0.7070004@primarydata.com>
+References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDEzLTA5LTA4IGF0IDE1OjU4IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gU2VwIDgsIDIwMTMsIGF0IDEyOjU4IFBNLCBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xl
-YnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gQ29tbWl0IDExYmEzYjFlMDFiNjdiN2Qx
-OWYyNmZiYTk0ZmFiZGI2MDg3OGU4MDkgKEFkZCBhIGRlZmF1bHQgZmxhdm9yDQo+ID4gdG8gYW4g
-ZXhwb3J0J3MgZV9zZWNpbmZvIGxpc3QpIGJyZWFrcyB0aGUgb3JkZXJpbmcgb2Ygc2VjdXJpdHkg
-Zmxhdm91cnMNCj4gPiBpbiB0aGUgc2VjaW5mbyBsaXN0LCBieSByZW9yZGVyaW5nICdzZWM9c3lz
-JyB0byBhbHdheXMgYmUgdGhlIGZpcnN0DQo+ID4gc2VjaW5mbyBmbGF2b3VyIGlmIG9uZSBmYWls
-cyB0byBzZXQgYSBkZWZhdWx0ICdzZWMnIHNldHRpbmcuDQo+IA0KPiBTZXR0aW5nIGEgZGVmYXVs
-dCBzZWN1cml0eSBmbGF2b3Igc2hvdWxkIG9jY3VyIG9ubHkgaWYgbm8gc2VjPSBvcHRpb24gaXMg
-c3BlY2lmaWVkLiAgSW4gdGhlIGJlbG93IGNhc2UsIGNsZWFybHkgdGhlcmUgaXMgYSBzZWM9IHNl
-dHRpbmcuICBXaHkgd2FzIHRoZSBkZWZhdWx0IHNlY3VyaXR5IGZsYXZvciBsb2dpYyB0cmlnZ2Vy
-ZWQgYW55d2F5Pw0KDQoNCnBhcnNlb3B0cygpIGlzIGNhbGxlZCBtdWx0aXBsZSB0aW1lcyBpbiwg
-Zm9yIGluc3RhbmNlLCBnZXRleHBvcnRlbnQoKS4NClRoZSBmaXJzdCB0aW1lIGlzIGZvciB0aGUg
-ZGVmYXVsdCBvcHRpb25zLiBUaGVuIGl0IGdldHMgY2FsbGVkIGZvciB0aGUNCmhvc3RuYW1lKHMp
-Lg0KDQpJT1c6IGl0IGlzIHRvbyBlYXJseSB0byBkbyB0aGF0IGtpbmQgb2YgY2hlY2sgaW4gcGFy
-c2VvcHRzLiBXZSBkb24ndA0KZXhwZWN0IHRoZSBzZWN1cml0eSBmbGF2b3VycyB0byBoYXZlIGJl
-ZW4gcmVzb2x2ZWQgdW50aWwgdGhlIGVudGlyZSBsaW5lDQpoYXMgYmVlbiBwYXJzZWQuDQoNCj4g
-PiBBbiBleHBvcnQgb2YgdGhlIGZvcm06DQo+ID4gDQo+ID4gL2V4cG9ydCAtc3luYyxub19zdWJ0
-cmVlX2NoZWNrLG1wIFwNCj4gPiAgICAgICAgICAgMTkyLjE2OC4xLjAvMjQoc2VjPWtyYjVwOmty
-YjVpOmtyYjUscncsc2VjPXN5cyxybykNCj4gPiANCj4gPiBlbmRzIHVwIGdldHRpbmcgdHJhbnNs
-YXRlZCBieSBleHBvcnRmcyBpbnRvIHRoZSBmb2xsb3dpbmcgZW50cnkgaW4NCj4gPiAvdmFyL2xp
-Yi9uZnMvZXRhYjoNCj4gPiANCj4gPiAvZXhwb3J0CTE5Mi4xNjguMS4wLzI0KHJvLHN5bmMsd2Rl
-bGF5LGhpZGUsbm9jcm9zc21udCxcDQo+ID4gICAgICAgICAgICAgICAgICAgICAgIHNlY3VyZSxy
-b290X3NxdWFzaCxub19hbGxfc3F1YXNoLFwNCj4gPiAJCSAgICAgICBub19zdWJ0cmVlX2NoZWNr
-LHNlY3VyZV9sb2NrcyxhY2wsXA0KPiA+IAkJICAgICAgIG1vdW50cG9pbnQsYW5vbnVpZD02NTUz
-NCxhbm9uZ2lkPTY1NTM0LFwNCj4gPiAJCSAgICAgICBzZWM9c3lzLHJvLHJvb3Rfc3F1YXNoLG5v
-X2FsbF9zcXVhc2gsXA0KPiA+IAkJICAgICAgIHNlYz1rcmI1cDprcmI1aTprcmI1LHJ3LHJvb3Rf
-c3F1YXNoLG5vX2FsbF9zcXVhc2gpDQo+ID4gDQo+ID4gTm90ZSBob3cgdGhlICdzZWM9c3lzJyBp
-cyBub3cgbGlzdGVkIGZpcnN04oCmDQo+IA0KPiA+IFRoZSBmaXggaXMgdG8gZGVmZXIgYWRkaW5n
-IHRoZSBkZWZhdWx0IGZsYXZvdXIgdW50aWwgdGhlIGNhbGwgdG8NCj4gPiBzZWNpbmZvX3Nob3cs
-IHdoZW4gd2UgY2FuIHNlZSBpZiBpdCBpcyBldmVuIG5lZWRlZCBhdCBhbGwuDQo+ID4gV2l0aCB0
-aGUgcGF0Y2gsIHRoZSBhYm92ZSBleHBvcnQgaXMgbm93IGNvcnJlY3RseSBlbnRlcmVkIGluDQo+
-ID4gL3Zhci9saWIvbmZzL2V0YWIgYXM6DQo+ID4gDQo+ID4gL2V4cG9ydAkxOTIuMTY4LjEuMC8y
-NChybyxzeW5jLHdkZWxheSxoaWRlLG5vY3Jvc3NtbnQsXA0KPiA+IAkJCXNlY3VyZSxyb290X3Nx
-dWFzaCxub19hbGxfc3F1YXNoLFwNCj4gPiAJCQlub19zdWJ0cmVlX2NoZWNrLHNlY3VyZV9sb2Nr
-cyxhY2wsXA0KPiA+IAkJCW1vdW50cG9pbnQsYW5vbnVpZD02NTUzNCxhbm9uZ2lkPTY1NTM0LFwN
-Cj4gPiAJCQlzZWM9a3JiNXA6a3JiNWk6a3JiNSxydyxyb290X3NxdWFzaCxub19hbGxfc3F1YXNo
-LFwNCj4gPiAJCQlzZWM9c3lzLHJvLHJvb3Rfc3F1YXNoLG5vX2FsbF9zcXVhc2gpDQo+ID4gDQo+
-ID4gU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBw
-LmNvbT4NCj4gPiBDYzogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+IA0K
-PiBUaGUga2V5IGlzIHdoZXRoZXIgdGhlIGRlcml2ZWQgcHNldWRvLXJvb3Qgc2VjdXJpdHkgZmxh
-dm9yIHNldHRpbmcgaXMgc3RpbGwgY29ycmVjdCBhZnRlciB5b3VyIGZpeC4gIERpZCB5b3UgY29u
-ZmlybSB0aGUgdGVzdCBjYXNlIGluIDExYmEzYjEncyBkZXNjcmlwdGlvbiBpcyBzdGlsbCBhZGRy
-ZXNzZWQ/DQoNClllcywgeW91ciB0ZXN0IGNhc2UgcGFzc2VzIHdpdGggZmx5aW5nIGNvbG91cnMu
-DQoNCltyb290QGRyYWd2b2xsIH5dIyAuL2V4cG9ydGZzIC12DQovbW50ICAgICAgICAgIAk8d29y
-bGQ+KHJvLHdkZWxheSxyb290X3NxdWFzaCxub19zdWJ0cmVlX2NoZWNrLG1vdW50cG9pbnQsc2Vj
-PXN5cyxybyxyb290X3NxdWFzaCxub19hbGxfc3F1YXNoKQ0KL2V4cG9ydCAgICAgICAJPHdvcmxk
-Pihybyx3ZGVsYXkscm9vdF9zcXVhc2gsbm9fc3VidHJlZV9jaGVjayxtb3VudHBvaW50LHNlYz1r
-cmI1aTprcmI1LHJ3LHJvb3Rfc3F1YXNoLG5vX2FsbF9zcXVhc2gsc2VjPXN5cyxybyxyb290X3Nx
-dWFzaCxub19hbGxfc3F1YXNoKQ0KW3Jvb3RAZHJhZ3ZvbGwgfl0jIGNhdCAvcHJvYy9uZXQvcnBj
-L25mc2QuZXhwb3J0L2NvbnRlbnQNCiNwYXRoIGRvbWFpbihmbGFncykNCi8JKihybyxyb290X3Nx
-dWFzaCxzeW5jLG5vX3dkZWxheSxub19zdWJ0cmVlX2NoZWNrLHY0cm9vdCxmc2lkPTAsdXVpZD0w
-MDAwZmQwMDowMDAwMDAwMDowMDAwMDAwMDowMDAwMDAwMCxzZWM9MTozOTAwMDQ6MzkwMDAzKQ0K
-DQphbmQNCg0KW3Jvb3RAZHJhZ3ZvbGwgfl0jIC4vZXhwb3J0ZnMgLXYNCi9leHBvcnQgICAgICAg
-CTx3b3JsZD4ocm8sd2RlbGF5LHJvb3Rfc3F1YXNoLG5vX3N1YnRyZWVfY2hlY2ssbW91bnRwb2lu
-dCxzZWM9a3JiNWk6a3JiNSxydyxyb290X3NxdWFzaCxub19hbGxfc3F1YXNoLHNlYz1zeXMscm8s
-cm9vdF9zcXVhc2gsbm9fYWxsX3NxdWFzaCkNCi9tbnQgICAgICAgICAgCTx3b3JsZD4ocm8sd2Rl
-bGF5LHJvb3Rfc3F1YXNoLG5vX3N1YnRyZWVfY2hlY2ssbW91bnRwb2ludCxzZWM9c3lzLHJvLHJv
-b3Rfc3F1YXNoLG5vX2FsbF9zcXVhc2gpDQpbcm9vdEBkcmFndm9sbCB+XSMgY2F0IC9wcm9jL25l
-dC9ycGMvbmZzZC5leHBvcnQvY29udGVudA0KI3BhdGggZG9tYWluKGZsYWdzKQ0KLwkqKHJvLHJv
-b3Rfc3F1YXNoLHN5bmMsbm9fd2RlbGF5LG5vX3N1YnRyZWVfY2hlY2ssdjRyb290LGZzaWQ9MCx1
-dWlkPTAwMDBmZDAwOjAwMDAwMDAwOjAwMDAwMDAwOjAwMDAwMDAwLHNlYz0zOTAwMDQ6MzkwMDAz
-OjEpDQoNCg0KDQoNClVuZm9ydHVuYXRlbHksIHRoZSBnZW5lcmFsIGNhc2UgaXMgc3RpbGwgYnJv
-a2VuOg0KDQpbcm9vdEBkcmFndm9sbCB+XSMgLi9leHBvcnRmcyAtdg0KL2V4cG9ydCAgICAgICAJ
-MTkyLjE2OC4xLjAvMjQocm8sd2RlbGF5LHJvb3Rfc3F1YXNoLG5vX3N1YnRyZWVfY2hlY2ssbW91
-bnRwb2ludCxzZWM9a3JiNWk6a3JiNSxydyxyb290X3NxdWFzaCxub19hbGxfc3F1YXNoLHNlYz1z
-eXMscm8scm9vdF9zcXVhc2gsbm9fYWxsX3NxdWFzaCkNCi9tbnQgICAgICAgICAgCTx3b3JsZD4o
-cm8sd2RlbGF5LHJvb3Rfc3F1YXNoLG5vX3N1YnRyZWVfY2hlY2ssbW91bnRwb2ludCxzZWM9c3lz
-LHJvLHJvb3Rfc3F1YXNoLG5vX2FsbF9zcXVhc2gpDQpbcm9vdEBkcmFndm9sbCB+XSMgY2F0IC9w
-cm9jL25ldC9ycGMvbmZzZC5leHBvcnQvY29udGVudA0KI3BhdGggZG9tYWluKGZsYWdzKQ0KLwkq
-LDE5Mi4xNjguMS4wLzI0KHJvLHJvb3Rfc3F1YXNoLHN5bmMsbm9fd2RlbGF5LG5vX3N1YnRyZWVf
-Y2hlY2ssdjRyb290LGZzaWQ9MCx1dWlkPTAwMDBmZDAwOjAwMDAwMDAwOjAwMDAwMDAwOjAwMDAw
-MDAwLHNlYz0xKQ0KDQpJT1c6IHdoZW4gdGhlIGNvZGUgY29tYmluZXMgMiBkaWZmZXJlbnQgZXhw
-b3J0cyBzdWNoIGFzIHRoZSBhYm92ZSBleHBvcnQNCnJ1bGVzIGludm9sdmluZyBvbmUgZXhwb3J0
-IGZvciB3b3JsZCArIG9uZSBleHBvcnQgZm9yIGEgc3VibmV0LCBpdA0Kc2NyZXdzIHVwIGFuZCBq
-dXN0IHNldHMgdGhlIHNlYz1zeXMgZGVmYXVsdC4uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
-TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5l
-dGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+From: Andy Adamson <andros@netapp.com>
+
+This is a boolean for now. When more layouttypes are supported, this can
+change to "pnfs=", similar to "sec=".
+
+The ctl interface is not enhanced.
+
+Note: Export option strings are not guaranteed to be present in every call to
+svc_export_parse. For example, nfs-utils-1.1.2 exportfs validates the export
+with a test call that does not include the 'pnfs' export option even though
+it is set in /etc/exports.
+
+nfsd4_layout_verify() checks if ex_pnfs is set so the ex_pnfs check in
+check_export is not needed.
+
+Furthermore,the pnfs_export_operations super block pointer should not be
+changed because a) it is a const and b) the exports options can be changed
+while the file system is mounted.
+
+Remove the ex_pnfs check from check_export to prevent the pnfs_export_operations
+superblock pointer from being set to NULL.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[pnfsd: fix cosmetic checkpatch warnings]
+[pnfsd: test pnfs export option in check_export]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[pnfsd: fix ex_pnfs check_export bug]
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+---
+ fs/nfsd/export.c            | 6 ++++++
+ include/linux/nfsd/export.h | 1 +
+ 2 files changed, 7 insertions(+)
+
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index f26b0b9..7730dfd 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -567,6 +567,8 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
+ 					if (exp.ex_uuid == NULL)
+ 						err = -ENOMEM;
+ 				}
++			} else if (strcmp(buf, "pnfs") == 0) {
++				exp.ex_pnfs = 1;
+ 			} else if (strcmp(buf, "secinfo") == 0)
+ 				err = secinfo_parse(&mesg, buf, &exp);
+ 			else
+@@ -639,6 +641,8 @@ static int svc_export_show(struct seq_file *m,
+ 				seq_printf(m, "%02x", exp->ex_uuid[i]);
+ 			}
+ 		}
++		if (exp->ex_pnfs)
++			seq_puts(m, ",pnfs");
+ 		show_secinfo(m, exp);
+ 	}
+ 	seq_puts(m, ")\n");
+@@ -666,6 +670,7 @@ static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
+ 	new->ex_fslocs.locations_count = 0;
+ 	new->ex_fslocs.migrated = 0;
+ 	new->ex_uuid = NULL;
++	new->ex_pnfs = 0;
+ 	new->cd = item->cd;
+ }
+ 
+@@ -679,6 +684,7 @@ static void export_update(struct cache_head *cnew, struct cache_head *citem)
+ 	new->ex_anon_uid = item->ex_anon_uid;
+ 	new->ex_anon_gid = item->ex_anon_gid;
+ 	new->ex_fsid = item->ex_fsid;
++	new->ex_pnfs = item->ex_pnfs;
+ 	new->ex_uuid = item->ex_uuid;
+ 	item->ex_uuid = NULL;
+ 	new->ex_fslocs.locations = item->ex_fslocs.locations;
+diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
+index 7898c99..b03ceee 100644
+--- a/include/linux/nfsd/export.h
++++ b/include/linux/nfsd/export.h
+@@ -52,6 +52,7 @@ struct svc_export {
+ 	kuid_t			ex_anon_uid;
+ 	kgid_t			ex_anon_gid;
+ 	int			ex_fsid;
++	int			ex_pnfs;
+ 	unsigned char *		ex_uuid; /* 16 byte fsid */
+ 	struct nfsd4_fs_locations ex_fslocs;
+ 	int			ex_nflavors;
+-- 
+1.8.3.1
+
