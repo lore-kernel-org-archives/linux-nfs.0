@@ -1,93 +1,160 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50817 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751479Ab3IGSqM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 7 Sep 2013 14:46:12 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Nick Piggin <npiggin@kernel.dk>
-Subject: [PATCH 1/4] dcache: use IS_ROOT to decide where dentry is hashed
-Date: Sat,  7 Sep 2013 14:45:58 -0400
-Message-Id: <1378579561-26868-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1378579561-26868-1-git-send-email-bfields@redhat.com>
-References: <1378579561-26868-1-git-send-email-bfields@redhat.com>
+Received: from mail-qe0-f48.google.com ([209.85.128.48]:61372 "EHLO
+	mail-qe0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753047Ab3IZSk1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:40:27 -0400
+Received: by mail-qe0-f48.google.com with SMTP id nd7so1091391qeb.7
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:40:26 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC v0 08/49] pnfsd: layout verify
+Date: Thu, 26 Sep 2013 14:40:24 -0400
+Message-Id: <1380220824-13047-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <52447EA0.7070004@primarydata.com>
+References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Benny Halevy <bhalevy@panasas.com>
 
-Every hashed dentry is either hashed in the dentry_hashtable, or a
-superblock's s_anon list.
+Verify whether the server and file system support the given layout type.
 
-__d_shrink assumes it can determine which is the case by checking
-DCACHE_DISCONNECTED; this is not true.
-
-It is true that when DCACHE_DISCONNECTED is cleared, the dentry is not
-only hashed on dentry_hashtable, but is fully connected to its parents
-back to the root.
-
-But the converse is *not* true: fs/exportfs/expfs.c:reconnect_path()
-attempts to connect a directory (found by filehandle lookup) back to
-root by ascending to parents and performing lookups one at a time.  It
-does not clear DCACHE_DISCONNECTED until it's done, and that is not at
-all an atomic process.
-
-In particular, it is possible for DCACHE_DISCONNECTED to be set on a
-dentry which is hashed on the dentry_hashtable.
-
-Instead, use IS_ROOT() to check which hash chain a dentry is on.  This
-*does* work:
-
-Dentries are hashed only by:
-
-	- d_obtain_alias, which adds an IS_ROOT() dentry to sb_anon.
-
-	- __d_rehash, called by _d_rehash: hashes to the dentry's
-	  parent, and all callers of _d_rehash appear to have d_parent
-	  set to a "real" parent.
-	- __d_rehash, called by __d_move: rehashes the moved dentry to
-	  hash chain determined by target, and assigns target's d_parent
-	  to its d_parent, before dropping the dentry's d_lock.
-
-Therefore I believe it's safe for a holder of a dentry's d_lock to
-assume that it is hashed on sb_anon if and only if IS_ROOT(dentry) is
-true.
-
-I believe the incorrect assumption about DCACHE_DISCONNECTED was
-originally introduced by ceb5bdc2d246 "fs: dcache per-bucket dcache hash
-locking".
-
-Also add a comment while we're here.
-
-Cc: Nick Piggin <npiggin@kernel.dk>
-Cc: Christoph Hellwig <hch@infradead.org>
-Reviewed-by: NeilBrown <neilb@suse.de>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+[was pnfsd: Streamline error code checking for non-pnfs filesystems]
+Signed-off-by: Dean Hildebrand <seattleplus@gmail.com>
+[pnfsd: Add super block to layout_type()]
+Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+[pnfsd: Fix order of ops in nfsd4_layout_verify]
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+[pnfsd: convert generic code to use new pnfs api]
+[pnfsd: define pnfs_export_operations]
+[pnfsd: obliterate old vfs api]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[pnfsd: layout verify all layout types]
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[pnfsd: tone nfsd4_layout_verify printk down to dprintk]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[pnfsd: check ex_pnfs in nfsd4_verify_layout]
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[pnfsd: handle s_pnfs_op==NULL]
+[pnfsd: verify export option only if svc_export is present]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
 ---
- fs/dcache.c |    7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ fs/nfsd/export.c                |  6 ++++++
+ fs/nfsd/nfs4proc.c              | 39 +++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/pnfsd.h                 |  2 ++
+ include/linux/nfsd/nfsd4_pnfs.h |  5 ++++-
+ 4 files changed, 51 insertions(+), 1 deletion(-)
 
-diff --git a/fs/dcache.c b/fs/dcache.c
-index b949af8..7208b38 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -393,7 +393,12 @@ static void __d_shrink(struct dentry *dentry)
- {
- 	if (!d_unhashed(dentry)) {
- 		struct hlist_bl_head *b;
--		if (unlikely(dentry->d_flags & DCACHE_DISCONNECTED))
-+		/*
-+		 * Hashed dentries are normally on the dentry hashtable,
-+		 * with the exception of those newly allocated by
-+		 * d_obtain_alias, which are always IS_ROOT:
-+		 */
-+		if (unlikely(IS_ROOT(dentry)))
- 			b = &dentry->d_sb->s_anon;
- 		else
- 			b = d_hash(dentry->d_parent, dentry->d_name.hash);
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 7730dfd..d803414 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -376,6 +376,12 @@ static int check_export(struct inode *inode, int *flags, unsigned char *uuid)
+ 		return -EINVAL;
+ 	}
+ 
++	if (inode->i_sb->s_pnfs_op &&
++	    !inode->i_sb->s_pnfs_op->layout_type) {
++		dprintk("exp_export: export of invalid fs pnfs export ops.\n");
++		return -EINVAL;
++	}
++
+ 	return 0;
+ 
+ }
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 419572f..576b635 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -41,6 +41,7 @@
+ #include "vfs.h"
+ #include "current_stateid.h"
+ #include "netns.h"
++#include "pnfsd.h"
+ 
+ #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+ #include <linux/security.h>
+@@ -1109,6 +1110,44 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
+ 	return status == nfserr_same ? nfs_ok : status;
+ }
+ 
++#if defined(CONFIG_PNFSD)
++static __be32
++nfsd4_layout_verify(struct super_block *sb, struct svc_export *exp,
++		    unsigned int layout_type)
++{
++	int status, type;
++
++	/* check to see if pNFS  is supported. */
++	status = nfserr_layoutunavailable;
++	if (exp && exp->ex_pnfs == 0) {
++		dprintk("%s: Underlying file system "
++			"is not exported over pNFS\n", __func__);
++		goto out;
++	}
++	if (!sb->s_pnfs_op || !sb->s_pnfs_op->layout_type) {
++		dprintk("%s: Underlying file system "
++			"does not support pNFS\n", __func__);
++		goto out;
++	}
++
++	type = sb->s_pnfs_op->layout_type(sb);
++
++	/* check to see if requested layout type is supported. */
++	status = nfserr_unknown_layouttype;
++	if (!type)
++		dprintk("BUG: %s: layout_type 0 is reserved and must not be "
++			"used by filesystem\n", __func__);
++	else if (type != layout_type)
++		dprintk("%s: requested layout type %d "
++		       "does not match supported type %d\n",
++			__func__, layout_type, type);
++	else
++		status = nfs_ok;
++out:
++	return status;
++}
++#endif /* CONFIG_PNFSD */
++
+ /*
+  * NULL call.
+  */
+diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
+index 65fb57e..7c46791 100644
+--- a/fs/nfsd/pnfsd.h
++++ b/fs/nfsd/pnfsd.h
+@@ -34,4 +34,6 @@
+ #ifndef LINUX_NFSD_PNFSD_H
+ #define LINUX_NFSD_PNFSD_H
+ 
++#include <linux/nfsd/nfsd4_pnfs.h>
++
+ #endif /* LINUX_NFSD_PNFSD_H */
+diff --git a/include/linux/nfsd/nfsd4_pnfs.h b/include/linux/nfsd/nfsd4_pnfs.h
+index ff6613e..d44669e 100644
+--- a/include/linux/nfsd/nfsd4_pnfs.h
++++ b/include/linux/nfsd/nfsd4_pnfs.h
+@@ -34,6 +34,8 @@
+ #ifndef _LINUX_NFSD_NFSD4_PNFS_H
+ #define _LINUX_NFSD_NFSD4_PNFS_H
+ 
++#include <linux/exportfs.h>
++
+ /*
+  * pNFS export operations vector.
+  *
+@@ -45,7 +47,8 @@
+  * All other methods are optional and can be set to NULL if not implemented.
+  */
+ struct pnfs_export_operations {
+-	/* stub */
++	/* Returns the supported pnfs_layouttype4. */
++	int (*layout_type) (struct super_block *);
+ };
+ 
+ #endif /* _LINUX_NFSD_NFSD4_PNFS_H */
 -- 
-1.7.9.5
+1.8.3.1
 
