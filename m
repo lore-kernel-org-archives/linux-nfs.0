@@ -1,180 +1,210 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f41.google.com ([209.85.216.41]:58561 "EHLO
-	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753553Ab3IZSm3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:42:29 -0400
-Received: by mail-qa0-f41.google.com with SMTP id ii20so4643317qab.14
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:42:29 -0700 (PDT)
+Received: from mail-qe0-f46.google.com ([209.85.128.46]:40098 "EHLO
+	mail-qe0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753078Ab3IZSlQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:41:16 -0400
+Received: by mail-qe0-f46.google.com with SMTP id x7so1088715qeu.19
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:41:15 -0700 (PDT)
 From: Benny Halevy <bhalevy@primarydata.com>
 To: " J. Bruce Fields" <bfields@redhat.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH RFC v0 38/49] pnfsd: nfsd4_pnfs_dlm_layoutget
-Date: Thu, 26 Sep 2013 14:42:26 -0400
-Message-Id: <1380220946-14439-1-git-send-email-bhalevy@primarydata.com>
+Subject: [PATCH RFC v0 20/49] pnfsd: filelayout: layout encoding
+Date: Thu, 26 Sep 2013 14:41:12 -0400
+Message-Id: <1380220872-13597-1-git-send-email-bhalevy@primarydata.com>
 In-Reply-To: <52447EA0.7070004@primarydata.com>
 References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+From: Benny Halevy <bhalevy@panasas.com>
 
-Export nfsd4_pnfs_dlm_layoutget for dlm cluster file system use.
-
-Use the number of data servers as a hash mask and hash inode i_ino
-to choose the layout's first_stripe_index.
-
-Always give out whole file layouts.
-
-Always give out IOMODE_READ layouts. DLM locking semantics want to stripe
-only READs with WRITEs going through the MDS.
-
-[was pnfsd: hardwire DLM file layout layoutget]
-[was pnfs-gfs2: initial LAYOUT* work for pNFS/GFS2 integration]
-    Frank Filz's work on the layout_type() and layout_get() export operations,
-    with stubs for layout_commit() and layout_return().  Tested at Connectathon.
-Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
-Signed-off-by: David M. Richter <richterd@citi.umich.edu>
-[pnfs-gfs2: convert to using new pnfs export api]
+[extracted from: pnfsd: Initial pNFS server implementation.]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[pnfsd: gfs2 layout_type interface]
+[pnfsd: update pNFS server ops to draft 13]
 Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-[Since GFS2 only uses a stripe of one, changed lg_commit_through_mds from
- true to false.]
-[pnfsd: move and rename nfsd4_pnfs_fl_layoutget]
+[pnfsd: Check for dense layout in layout encode.]
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+[pnfsd: Fix server GETDEVICELIST to comply with NFSv4.1 Draft 13]
+Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
+[pnfsd: Fix file layout layoutget export op for d13]
+[pnfsd: Simplify layout get export interface.]
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+[pnfsd: improve nfs4_pnfs_get_layout dprintks]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[pnfsd: initialize layoutget return_on_close]
 Signed-off-by: Andy Adamson <andros@netapp.com>
+[pnfsd: Use 128 bit deviceid on server]
+[pnfsd: update server layout xdr for draft 19.]
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+[pnfsd: filelayout: use nfsd4_compoundres pointer in pnfs_xdr_info]
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[pnfsd: filelayout: get rid of xdr encoding macros for file layout xdr]
 [pnfsd: get rid of layout encoding function vector]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Acked-by: Steven Whitehouse <swhiteho@redhat.com>
+[pnfsd: filelayout: strictly define filelayout_encode_layout]
+[pnfsd: filelayout: convert to using exp_xdr]
+[include nfsd4_pnfs.h from nfs4layoutxdr.h for deviceid_t]
 [pnfsd: rename deviceid_t struct pnfs_deviceid]
-[pnfsd: clean up layoutget export API]
-[add requried headers]
+[pnfsd: fix cosmetic checkpatch warnings]
 [pnfsd: rename device fsid member to sbid]
-[pnfsd: fixup DLM layout_get return type to u32]
-[pnfsd: DLM file layout return only nfs errors on layout_get]
-[pnfsd: files layout: change layout_get return type to enum nfsstat4]
+[pnfsd: fixup filelayout_encode_layout return type to u32]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[pnfsd: fix DLM file layout no device return]
+[pnfsd: nfsd4_pnfs_dlm_layoutget]
 Signed-off-by: Andy Adamson <andros@netapp.com>
-[pnfsd: dlm: fixup LAYOUT_NFSV4_1_FILES]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
 ---
- fs/nfsd/nfs4pnfsdlm.c | 92 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 92 insertions(+)
+ fs/exportfs/nfs4filelayoutxdr.c    | 85 ++++++++++++++++++++++++++++++++++++++
+ include/linux/exportfs.h           |  4 +-
+ include/linux/nfsd/nfs4layoutxdr.h | 18 ++++++++
+ 3 files changed, 105 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
-index 4c2ab87..7ed8156 100644
---- a/fs/nfsd/nfs4pnfsdlm.c
-+++ b/fs/nfsd/nfs4pnfsdlm.c
-@@ -28,6 +28,7 @@
+diff --git a/fs/exportfs/nfs4filelayoutxdr.c b/fs/exportfs/nfs4filelayoutxdr.c
+index 4801bfe..f63c311 100644
+--- a/fs/exportfs/nfs4filelayoutxdr.c
++++ b/fs/exportfs/nfs4filelayoutxdr.c
+@@ -31,6 +31,8 @@
+  */
+ #include <linux/exp_xdr.h>
+ #include <linux/module.h>
++#include <linux/nfs4.h>
++#include <linux/nfsd/nfsfh.h>
  #include <linux/nfsd/nfs4layoutxdr.h>
- #include <linux/sunrpc/addr.h>
  
-+#include "nfsfh.h"
- #include "nfsd.h"
- 
- #define NFSDDBG_FACILITY                NFSDDBG_FILELAYOUT
-@@ -351,9 +352,100 @@ static int nfsd4_pnfs_dlm_getdevinfo(struct super_block *sb,
- 	return err;
+ /* We do our-own dprintk so filesystems are not dependent on sunrpc */
+@@ -131,3 +133,86 @@ static int fl_devinfo_xdr_words(const struct pnfs_filelayout_device *fdev)
+ 	return error;
  }
- 
-+static int get_stripe_unit(int blocksize)
-+{
-+	if (blocksize >= NFSSVC_MAXBLKSIZE)
-+		return blocksize;
-+	return NFSSVC_MAXBLKSIZE - (NFSSVC_MAXBLKSIZE % blocksize);
-+}
+ EXPORT_SYMBOL(filelayout_encode_devinfo);
 +
-+/*
-+ * Look up inode block device in pnfs_dlm_device list.
-+ * Hash on the inode->i_ino and number of data servers.
++/* Encodes the loc_body structure from draft 13
++ * on the response stream.
++ * Use linux error codes (not nfs) since these values are being
++ * returned to the file system.
 + */
-+static int dlm_ino_hash(struct inode *ino)
++enum nfsstat4
++filelayout_encode_layout(struct exp_xdr_stream *xdr,
++			 const struct pnfs_filelayout_layout *flp)
 +{
-+	struct dlm_device_entry *de;
-+	u32 hash_mask = 0;
++	u32 len = 0, nfl_util, fhlen, i;
++	u32 *layoutlen_p;
++	enum nfsstat4 nfserr;
++	__be32 *p;
 +
-+	/* If can't find the inode block device in the pnfs_dlm_deivce list
-+	 * then don't hand out a layout
-+	 */
-+	de = nfsd4_find_pnfs_dlm_device(ino->i_sb);
-+	if (!de)
-+		return -1;
-+	hash_mask = de->num_ds - 1;
-+	return ino->i_ino & hash_mask;
-+}
++	dprintk("%s: device_id %llx:%llx fsi %u, numfh %u\n",
++		__func__,
++		flp->device_id.pnfs_fsid,
++		flp->device_id.pnfs_devid,
++		flp->lg_first_stripe_index,
++		flp->lg_fh_length);
 +
-+static enum nfsstat4 nfsd4_pnfs_dlm_layoutget(struct inode *inode,
-+			   struct exp_xdr_stream *xdr,
-+			   const struct nfsd4_pnfs_layoutget_arg *args,
-+			   struct nfsd4_pnfs_layoutget_res *res)
-+{
-+	struct pnfs_filelayout_layout *layout = NULL;
-+	struct knfsd_fh *fhp = NULL;
-+	int index;
-+	enum nfsstat4 rc = NFS4_OK;
-+
-+	dprintk("%s: LAYOUT_GET\n", __func__);
-+
-+	index = dlm_ino_hash(inode);
-+	dprintk("%s first stripe index %d i_ino %lu\n", __func__, index,
-+		inode->i_ino);
-+	if (index < 0)
-+		return NFS4ERR_LAYOUTUNAVAILABLE;
-+
-+	res->lg_seg.layout_type = LAYOUT_NFSV4_1_FILES;
-+	/* Always give out whole file layouts */
-+	res->lg_seg.offset = 0;
-+	res->lg_seg.length = NFS4_MAX_UINT64;
-+	/* Always give out READ ONLY layouts */
-+	res->lg_seg.iomode = IOMODE_READ;
-+
-+	layout = kzalloc(sizeof(*layout), GFP_KERNEL);
-+	if (layout == NULL) {
-+		rc = NFS4ERR_LAYOUTTRYLATER;
-+		goto error;
++	/* Ensure file system added at least one file handle */
++	if (flp->lg_fh_length <= 0) {
++		dprintk("%s: File Layout has no file handles!!\n", __func__);
++		nfserr = NFS4ERR_LAYOUTUNAVAILABLE;
++		goto out;
 +	}
 +
-+	/* Set file layout response args */
-+	layout->lg_layout_type = LAYOUT_NFSV4_1_FILES;
-+	layout->lg_stripe_type = STRIPE_SPARSE;
-+	layout->lg_commit_through_mds = false;
-+	layout->lg_stripe_unit = get_stripe_unit(inode->i_sb->s_blocksize);
-+	layout->lg_fh_length = 1;
-+	layout->device_id.sbid = args->lg_sbid;
-+	layout->device_id.devid = 1;                                /*FSFTEMP*/
-+	layout->lg_first_stripe_index = index;                      /*FSFTEMP*/
-+	layout->lg_pattern_offset = 0;
-+
-+	fhp = kmalloc(sizeof(*fhp), GFP_KERNEL);
-+	if (fhp == NULL) {
-+		rc = NFS4ERR_LAYOUTTRYLATER;
-+		goto error;
++	/* Ensure room for len, devid, util, first_stripe_index,
++	 * pattern_offset, number of filehandles */
++	p = layoutlen_p = exp_xdr_reserve_qwords(xdr, 1+2+2+1+1+2+1);
++	if (!p) {
++		nfserr = NFS4ERR_TOOSMALL;
++		goto out;
 +	}
 +
-+	memcpy(fhp, args->lg_fh, sizeof(*fhp));
-+	pnfs_fh_mark_ds(fhp);
-+	layout->lg_fh_list = fhp;
++	/* save spot for opaque file layout length, fill-in later*/
++	p++;
 +
-+	/* Call nfsd to encode layout */
-+	rc = filelayout_encode_layout(xdr, layout);
-+exit:
-+	kfree(layout);
-+	kfree(fhp);
-+	return rc;
++	/* encode device id */
++	p = exp_xdr_encode_u64(p, flp->device_id.sbid);
++	p = exp_xdr_encode_u64(p, flp->device_id.devid);
 +
-+error:
-+	res->lg_seg.length = 0;
-+	goto exit;
++	/* set and encode flags */
++	nfl_util = flp->lg_stripe_unit;
++	if (flp->lg_commit_through_mds)
++		nfl_util |= NFL4_UFLG_COMMIT_THRU_MDS;
++	if (flp->lg_stripe_type == STRIPE_DENSE)
++		nfl_util |= NFL4_UFLG_DENSE;
++	p = exp_xdr_encode_u32(p, nfl_util);
++
++	/* encode first stripe index */
++	p = exp_xdr_encode_u32(p, flp->lg_first_stripe_index);
++
++	/* encode striping pattern start */
++	p = exp_xdr_encode_u64(p, flp->lg_pattern_offset);
++
++	/* encode number of file handles */
++	p = exp_xdr_encode_u32(p, flp->lg_fh_length);
++
++	/* encode file handles */
++	for (i = 0; i < flp->lg_fh_length; i++) {
++		fhlen = flp->lg_fh_list[i].fh_size;
++		p = exp_xdr_reserve_space(xdr, 4 + fhlen);
++		if (!p) {
++			nfserr = NFS4ERR_TOOSMALL;
++			goto out;
++		}
++		p = exp_xdr_encode_opaque(p, &flp->lg_fh_list[i].fh_base, fhlen);
++	}
++
++	/* Set number of bytes encoded =  total_bytes_encoded - length var */
++	len = (char *)p - (char *)layoutlen_p;
++	exp_xdr_encode_u32(layoutlen_p, len - 4);
++
++	nfserr = NFS4_OK;
++out:
++	dprintk("%s: End err %u xdrlen %d\n",
++		__func__, nfserr, len);
++	return nfserr;
 +}
-+
- /* For use by DLM cluster file systems exported by pNFSD */
- const struct pnfs_export_operations pnfs_dlm_export_ops = {
- 	.get_device_info = nfsd4_pnfs_dlm_getdevinfo,
- 	.get_device_iter = nfsd4_pnfs_dlm_getdeviter,
-+	.layout_get = nfsd4_pnfs_dlm_layoutget,
++EXPORT_SYMBOL(filelayout_encode_layout);
+diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
+index 017f1753..8e8b6a7 100644
+--- a/include/linux/exportfs.h
++++ b/include/linux/exportfs.h
+@@ -218,7 +218,7 @@ extern struct dentry *generic_fh_to_parent(struct super_block *sb,
+ 
+ extern int filelayout_encode_devinfo(struct exp_xdr_stream *xdr,
+ 				     const struct pnfs_filelayout_device *fdev);
+-extern int filelayout_encode_layout(struct exp_xdr_stream *xdr,
+-				    const struct pnfs_filelayout_layout *flp);
++extern enum nfsstat4 filelayout_encode_layout(struct exp_xdr_stream *xdr,
++				      const struct pnfs_filelayout_layout *flp);
+ #endif /* defined(CONFIG_EXPORTFS_FILE_LAYOUT) */
+ #endif /* LINUX_EXPORTFS_H */
+diff --git a/include/linux/nfsd/nfs4layoutxdr.h b/include/linux/nfsd/nfs4layoutxdr.h
+index 752055f..dc7831a 100644
+--- a/include/linux/nfsd/nfs4layoutxdr.h
++++ b/include/linux/nfsd/nfs4layoutxdr.h
+@@ -35,6 +35,7 @@
+ #define NFSD_NFS4LAYOUTXDR_H
+ 
+ #include <linux/sunrpc/xdr.h>
++#include <linux/nfsd/nfsd4_pnfs.h>
+ 
+ /* the nfsd4_pnfs_devlist dev_addr for the file layout type */
+ struct pnfs_filelayout_devaddr {
+@@ -55,4 +56,21 @@ struct pnfs_filelayout_device {
+ 	struct pnfs_filelayout_multipath	*fl_device_list;
  };
- EXPORT_SYMBOL(pnfs_dlm_export_ops);
+ 
++struct pnfs_filelayout_layout {
++	u32                             lg_layout_type; /* response */
++	u32                             lg_stripe_type; /* response */
++	u32                             lg_commit_through_mds; /* response */
++	u64                             lg_stripe_unit; /* response */
++	u64                             lg_pattern_offset; /* response */
++	u32                             lg_first_stripe_index;	/* response */
++	struct nfsd4_pnfs_deviceid	device_id;		/* response */
++	u32                             lg_fh_length;		/* response */
++	struct knfsd_fh                 *lg_fh_list;		/* response */
++};
++
++enum stripetype4 {
++	STRIPE_SPARSE = 1,
++	STRIPE_DENSE = 2
++};
++
+ #endif /* NFSD_NFS4LAYOUTXDR_H */
 -- 
 1.8.3.1
 
