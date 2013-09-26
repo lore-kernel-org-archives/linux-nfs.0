@@ -1,90 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50380 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751423Ab3IJVze (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Sep 2013 17:55:34 -0400
-Date: Tue, 10 Sep 2013 17:55:34 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Joschi Brauchle <joschi.brauchle@tum.de>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfsd4: utime sometimes takes 40+ seconds to return (but on
- SLES11SP3 with kernel 3.0.82)
-Message-ID: <20130910215534.GA21829@fieldses.org>
-References: <522F69A1.5090005@tum.de>
- <20130910203530.GA20296@fieldses.org>
- <038EA8B0-BD46-47F2-8F20-DEC8B6DA9087@tum.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <038EA8B0-BD46-47F2-8F20-DEC8B6DA9087@tum.de>
+Received: from mail-qc0-f177.google.com ([209.85.216.177]:65351 "EHLO
+	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753047Ab3IZSka (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:40:30 -0400
+Received: by mail-qc0-f177.google.com with SMTP id x12so1017037qcv.22
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:40:30 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC v0 09/49] pnfsd: initial stub
+Date: Thu, 26 Sep 2013 14:40:27 -0400
+Message-Id: <1380220827-13092-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <52447EA0.7070004@primarydata.com>
+References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 10, 2013 at 09:48:12PM +0000, Joschi Brauchle wrote:
-> Am 10.09.2013 um 22:35 schrieb "J. Bruce Fields" <bfields@fieldses.org>:
-> 
-> > On Tue, Sep 10, 2013 at 08:49:05PM +0200, Joschi Brauchle wrote:
-> >> Hello everyone,
-> >> 
-> >> we are administrating an NFS high-availability cluster running on
-> >> SLES11SP1 with kernel 2.6.32.59. Just recently, one of the cluster
-> >> machines was updated to SLES11SP3 with kernel 3.0.82.
-> >> 
-> >> 
-> >> We are now experiencing severe hangs on NFS clients when the
-> >> SLES11SP3 server is running the NFS services. An strace on the
-> >> hanging processes on the client side show that is is waiting up to
-> >> 60+ seconds for a "utime()" call to complete.
-> >> 
-> >> 
-> >> The problem we see is matching the problem described in the thread
-> >> "v3.5 nfsd4 regression; utime sometimes takes 40+ seconds to
-> >> return". If the NFS server is running on SLES11SP3, the little test
-> >> program provided in this tread hangs at the "utime()" call for 60+
-> >> seconds. It hangs each time it is run! It finishes right away with 0
-> >> seconds delay is SLES11SP1 is providing NFS services, each time.
-> >> 
-> >> 
-> >> Now, in the serverside logfiles of SLES11SP3 we see these messages
-> >> (not so on SP1):
-> >> --------------
-> >> kernel: [99381.184976] RPC: AUTH_GSS upcall timed out.
-> >> kernel: [99381.184978] Please check user daemon is running.
-> >> --------------
-> >> 
-> >> We have always been running the NFS server without rpc.gssd on the
-> >> server side, as the init script for the nfsserver also does not
-> >> start rpc.gssd.
-> >> 
-> >> 
-> >> Once we started rpc.gssd on the SLES11SP3 server, using the test
-> >> utility on the client shows that the first call to "utime()"
-> >> succeeds right away, the second call takes ~25s to complete. But
-> >> now, any consecutive runs of the utility finish with no more delay.
-> >> 
-> >> 
-> >> So can anyone confirm that with kernel 3.0+ the rpc.gssd daemon is
-> >> also required on the server side for correct operation?
-> >> 
-> >> Has there been a change between kernel 2.6.32.59 and 3.0.x?
-> >> 
-> >> Thus, is the init script of the nfsserver in SLES11SP3 indeed
-> >> missing to start rpc.gssd?
-> > 
-> > It should be starting rpc.gssd to allow callbacks, yes.
-> > 
-> > --b.
-> 
-> Ok, we will run rpc.gssd on the server. Thanks. 
-> 
-> Could you please comment on having the nfs clients hang on utime() calls is to be expected when *not* running rpc.gssd? Or is this a problem that needs to be investigated?
+From: Benny Halevy <bhalevy@panasas.com>
 
-I think what happens is the utime call breaks a delegation, and the
-delay is because the lack of gssd prevents the server from calling back
-to the client to tell it that its delegation is broken, so the
-delegation has to time out.
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+---
+ fs/nfsd/Makefile    |  1 +
+ fs/nfsd/nfs4pnfsd.c | 27 +++++++++++++++++++++++++++
+ 2 files changed, 28 insertions(+)
+ create mode 100644 fs/nfsd/nfs4pnfsd.c
 
-That said, the server does a null callback to the client to test whether
-callbacks are working before it gives out any delegations, so I'm
-surprised it wouldn't have noticed the broken callbacks then.
+diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
+index af32ef0..5ebe5df 100644
+--- a/fs/nfsd/Makefile
++++ b/fs/nfsd/Makefile
+@@ -12,3 +12,4 @@ nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs3xdr.o
+ nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
+ nfsd-$(CONFIG_NFSD_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4idmap.o \
+ 			   nfs4acl.o nfs4callback.o nfs4recover.o
++nfsd-$(CONFIG_PNFSD)	+= nfs4pnfsd.o
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+new file mode 100644
+index 0000000..cb28207
+--- /dev/null
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -0,0 +1,27 @@
++/******************************************************************************
++ *
++ * (c) 2007 Network Appliance, Inc.  All Rights Reserved.
++ * (c) 2009 NetApp.  All Rights Reserved.
++ *
++ * NetApp provides this source code under the GPL v2 License.
++ * The GPL v2 license is available at
++ * http://opensource.org/licenses/gpl-license.php.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
++ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
++ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
++ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
++ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
++ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
++ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ *****************************************************************************/
++
++#include "pnfsd.h"
++
++#define NFSDDBG_FACILITY                NFSDDBG_PNFS
++
+-- 
+1.8.3.1
 
---b.
