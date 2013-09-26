@@ -1,126 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50750 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751414Ab3IRPQH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Sep 2013 11:16:07 -0400
-Date: Wed, 18 Sep 2013 11:16:03 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trond@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] RPCSEC_GSS: fix crash on destroying gss auth
-Message-ID: <20130918151603.GC12030@fieldses.org>
-References: <20130917214115.GA3079@fieldses.org>
- <20130917221914.GB3079@fieldses.org>
+Received: from mail-ye0-f175.google.com ([209.85.213.175]:46967 "EHLO
+	mail-ye0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754042Ab3IZSgZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:36:25 -0400
+Received: by mail-ye0-f175.google.com with SMTP id q8so534820yen.34
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:36:24 -0700 (PDT)
+Message-ID: <52447EA0.7070004@primarydata.com>
+Date: Thu, 26 Sep 2013 14:36:16 -0400
+From: Benny Halevy <bhalevy@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130917221914.GB3079@fieldses.org>
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: NFS list <linux-nfs@vger.kernel.org>, Lev Solomonov <solo@primarydata.com>,
+        Idan Kedar <idank@primarydata.com>,
+        Nadav Shemer <nadav@primarydata.com>
+Subject: [PATCH RFC v0 0/49] pnfsd-dlm
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+The following patchset implements an extension to nfsd
+providing a complete minimal pnfs server exporting
+DLM-based clustered file systems such as GFS2 or OCFS2.
 
-This fixes a regression since  eb6dc19d8e72ce3a957af5511d20c0db0a8bd007
-"RPCSEC_GSS: Share all credential caches on a per-transport basis" which
-could cause an occasional oops in the nfsd code (see below).
+The pNFS operations that are implemented are
+GETDEVICELIST and GETDEVICEINFO,
+LAYOUTGET and LAYOUTRETURN.
 
-The problem was that an auth was left referencing a client that had been
-freed.  To avoid this we need to ensure that auths are shared only
-between descendants of a common client; the fact that a clone of an
-rpc_client takes a reference on its parent then ensures that the parent
-client will last as long as the auth.
+The server does the bookkeeping of the outstanding layout
+state in response to layout get and return.
 
-Also add a comment explaining what I think was the intention of this
-code.
+Also, the implementation cleans up the client layout state
+opon client expiry and on CLOSE when the return_on_close
+flag is set on the LAYOUTGET response.  The latter is the
+default behavior until layout recalls are implemented
+with which the server can reclaim its resources in case
+the client holds layout state post closing files.
 
-  general protection fault: 0000 [#1] PREEMPT SMP
-  Modules linked in: rpcsec_gss_krb5 nfsd auth_rpcgss oid_registry nfs_acl lockd sunrpc
-  CPU: 3 PID: 4071 Comm: kworker/u8:2 Not tainted 3.11.0-rc2-00182-g025145f #1665
-  Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-  Workqueue: nfsd4_callbacks nfsd4_do_callback_rpc [nfsd]
-  task: ffff88003e206080 ti: ffff88003c384000 task.ti: ffff88003c384000
-  RIP: 0010:[<ffffffffa00001f3>]  [<ffffffffa00001f3>] rpc_net_ns+0x53/0x70 [sunrpc]
-  RSP: 0000:ffff88003c385ab8  EFLAGS: 00010246
-  RAX: 6b6b6b6b6b6b6b6b RBX: ffff88003af9a800 RCX: 0000000000000002
-  RDX: ffffffffa00001a5 RSI: 0000000000000001 RDI: ffffffff81e284e0
-  RBP: ffff88003c385ad8 R08: 0000000000000001 R09: 0000000000000000
-  R10: 0000000000000000 R11: 0000000000000015 R12: ffff88003c990840
-  R13: ffff88003c990878 R14: ffff88003c385ba8 R15: ffff88003e206080
-  FS:  0000000000000000(0000) GS:ffff88003fd80000(0000) knlGS:0000000000000000
-  CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-  CR2: 00007fcdf737e000 CR3: 000000003ad2b000 CR4: 00000000000006e0
-  Stack:
-   ffffffffa00001a5 0000000000000006 0000000000000006 ffff88003af9a800
-   ffff88003c385b08 ffffffffa00d52a4 ffff88003c385ba8 ffff88003c751bd8
-   ffff88003c751bc0 ffff88003e113600 ffff88003c385b18 ffffffffa00d530c
-  Call Trace:
-   [<ffffffffa00001a5>] ? rpc_net_ns+0x5/0x70 [sunrpc]
-   [<ffffffffa00d52a4>] __gss_pipe_release+0x54/0x90 [auth_rpcgss]
-   [<ffffffffa00d530c>] gss_pipe_free+0x2c/0x30 [auth_rpcgss]
-   [<ffffffffa00d678b>] gss_destroy+0x9b/0xf0 [auth_rpcgss]
-   [<ffffffffa000de63>] rpcauth_release+0x23/0x30 [sunrpc]
-   [<ffffffffa0001e81>] rpc_release_client+0x51/0xb0 [sunrpc]
-   [<ffffffffa00020d5>] rpc_shutdown_client+0xe5/0x170 [sunrpc]
-   [<ffffffff81098a14>] ? cpuacct_charge+0xa4/0xb0
-   [<ffffffff81098975>] ? cpuacct_charge+0x5/0xb0
-   [<ffffffffa019556f>] nfsd4_process_cb_update.isra.17+0x2f/0x210 [nfsd]
-   [<ffffffff819a4ac0>] ? _raw_spin_unlock_irq+0x30/0x60
-   [<ffffffff819a4acb>] ? _raw_spin_unlock_irq+0x3b/0x60
-   [<ffffffff810703ab>] ? process_one_work+0x15b/0x510
-   [<ffffffffa01957dd>] nfsd4_do_callback_rpc+0x8d/0xa0 [nfsd]
-   [<ffffffff8107041e>] process_one_work+0x1ce/0x510
-   [<ffffffff810703ab>] ? process_one_work+0x15b/0x510
-   [<ffffffff810712ab>] worker_thread+0x11b/0x370
-   [<ffffffff81071190>] ? manage_workers.isra.24+0x2b0/0x2b0
-   [<ffffffff8107854b>] kthread+0xdb/0xe0
-   [<ffffffff819a4ac0>] ? _raw_spin_unlock_irq+0x30/0x60
-   [<ffffffff81078470>] ? __init_kthread_worker+0x70/0x70
-   [<ffffffff819ac7dc>] ret_from_fork+0x7c/0xb0
-   [<ffffffff81078470>] ? __init_kthread_worker+0x70/0x70
-  Code: a5 01 00 a0 31 d2 31 f6 48 c7 c7 e0 84 e2 81 e8 f4 91 0a e1 48 8b 43 60 48 c7 c2 a5 01 00 a0 be 01 00 00 00 48 c7 c7 e0 84 e2 81 <48> 8b 98 10 07 00 00 e8 91 8f 0a e1 e8
-  +3c 4e 07 e1 48 83 c4 18
-  RIP  [<ffffffffa00001f3>] rpc_net_ns+0x53/0x70 [sunrpc]
-   RSP <ffff88003c385ab8>
+The patchset is based on v3.12-rc2 and it's available also online here:
+git://linux-nfs.org/~bhalevy/linux-pnfs.git pnfsd-dlm-3.12-rc2-2013-09-26
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/auth_gss/auth_gss.c |   11 +++++++++++
- 1 file changed, 11 insertions(+)
+Benny
 
-On Tue, Sep 17, 2013 at 06:19:14PM -0400, J. Bruce Fields wrote:
-> fixes the problem.  I can send in a proper patch if you think that makes
-> sense....
+General infrastructure:
+[PATCH RFC v0 01/49] pnfsd: Define CONFIG_PNFSD
+[PATCH RFC v0 02/49] pnfsd: define NFSDDBG_PNFS
+[PATCH RFC v0 03/49] pnfsd: return pnfs flags on exchange_id
+[PATCH RFC v0 04/49] pnfsd: don't set up back channel on create_session for ds
+[PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
+[PATCH RFC v0 06/49] pnfsd: define pnfs_export_operations
+[PATCH RFC v0 07/49] pnfsd: add pnfs export option
+[PATCH RFC v0 08/49] pnfsd: layout verify
+[PATCH RFC v0 09/49] pnfsd: initial stub
 
-Here's my attempt.
+Device ops:
+[PATCH RFC v0 10/49] pnfsd: use sbid hash table to map super_blocks to devid major identifiers
+[PATCH RFC v0 11/49] NFSD: introduce exp_xdr.h
+[PATCH RFC v0 12/49] pnfsd: get device list/info
+[PATCH RFC v0 13/49] pnfsd: filelayout: get device list/info
+[PATCH RFC v0 14/49] pnfsd: provide helper for xdr encoding of deviceid
+[PATCH RFC v0 15/49] pnfsd: add helper functions for identifying DS filehandles
+[PATCH RFC v0 16/49] pnfsd: accept all ds stateids
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index fcac5d1..0846566 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1075,6 +1075,15 @@ gss_destroy(struct rpc_auth *auth)
- 	kref_put(&gss_auth->kref, gss_free_callback);
- }
- 
-+/*
-+ * Auths may be shared between rpc clients that were cloned from a
-+ * common client with the same xprt, if they also share the flavor and
-+ * target_name.
-+ *
-+ * The auth is looked up from the oldest parent sharing the same
-+ * cl_xprt, and the auth itself references only that common parent
-+ * (which is guaranteed to last as long as any of its descendants).
-+ */
- static struct gss_auth *
- gss_auth_find_or_add_hashed(struct rpc_auth_create_args *args,
- 		struct rpc_clnt *clnt,
-@@ -1088,6 +1097,8 @@ gss_auth_find_or_add_hashed(struct rpc_auth_create_args *args,
- 			gss_auth,
- 			hash,
- 			hashval) {
-+		if (gss_auth->client != clnt)
-+			continue;
- 		if (gss_auth->rpc_auth.au_flavor != args->pseudoflavor)
- 			continue;
- 		if (gss_auth->target_name != args->target_name) {
--- 
-1.7.9.5
+layout get:
+[PATCH RFC v0 17/49] DEBUG: nfsd: more client_lock asserts
+[PATCH RFC v0 18/49] pnfsd: nfs4_assert_state_locked
+[PATCH RFC v0 19/49] pnfsd: layout get
+[PATCH RFC v0 20/49] pnfsd: filelayout: layout encoding
 
+layout state handling for layout get:
+[PATCH RFC v0 21/49] nfsd: no need to unhash_stid before free
+[PATCH RFC v0 22/49] nfsd: cleanup free_stid
+[PATCH RFC v0 23/49] pnfsd: layout state allocation
+[PATCH RFC v0 24/49] pnfsd: process the layout stateid
+[PATCH RFC v0 25/49] pnfsd: layout state per client tracking
+[PATCH RFC v0 26/49] pnfsd: layout state per file tracking
+[PATCH RFC v0 27/49] pnfsd: hash layouts on layout state
+[PATCH RFC v0 28/49] pnfsd: support layout segment merging
+
+pnfs attributes:
+[PATCH RFC v0 29/49] pnfsd: support layout_type attribute
+[PATCH RFC v0 30/49] pnfsd: make pnfs server return layout_blksize when the client asks for it
+[PATCH RFC v0 31/49] pnfsd: add support for per-file layout_types attribute
+
+pnfsd over dlm:
+[PATCH RFC v0 32/49] pnfsd: per block device dlm data server list cache
+[PATCH RFC v0 33/49] pnfsd: Add IP address validation to nfsd4_set_pnfs_dlm_device()
+[PATCH RFC v0 34/49] pnfsd: new nfsd filesystem file: pnfs_dlm_device
+[PATCH RFC v0 35/49] pnfsd: nfsd4_pnfs_dlm_getdeviter
+[PATCH RFC v0 36/49] pnfsd: nfsd4_pnfs_dlm_getdevinfo
+[PATCH RFC v0 37/49] pnfsd: make /proc/fs/nfsd/pnfs_dlm_device report dlm device list.
+[PATCH RFC v0 38/49] pnfsd: nfsd4_pnfs_dlm_layoutget
+[PATCH RFC v0 39/49] pnfsd: DLM file layout only support read iomode layouts
+[PATCH RFC v0 40/49] pnfsd: add dlm file layout layout-type
+[PATCH RFC v0 41/49] pnfsd: dlm pnfs_export_operations
+[PATCH RFC v0 42/49] pnfsd: gfs2: use generic file layout pnfs operations vector
+
+layout return / expire / return_on_close:
+[PATCH RFC v0 43/49] pnfsd: release state lock around iput in put_nfs4_file
+[PATCH RFC v0 44/49] posix_acl: resolve compile dependency in posix_acl.h
+[PATCH RFC v0 45/49] nfs: resolve compile dependency in nfs_xdr.h
+[PATCH RFC v0 46/49] pnfsd: layout return generic implementation
+[PATCH RFC v0 47/49] pnfsd: pnfs_expire_client
+[PATCH RFC v0 48/49] pnfsd: return on close
+[PATCH RFC v0 49/49] pnfsd: dlm set return_on_close to true
