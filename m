@@ -1,65 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:48967 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750758Ab3IGXSR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 7 Sep 2013 19:18:17 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/6] Fix NFSv4 client-side security autonegotiation
-Date: Sat, 7 Sep 2013 19:18:07 -0400
-Message-ID: <1378595893-60395-1-git-send-email-Trond.Myklebust@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-qa0-f49.google.com ([209.85.216.49]:34984 "EHLO
+	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752597Ab3IZSk4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:40:56 -0400
+Received: by mail-qa0-f49.google.com with SMTP id k15so1104567qaq.1
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:40:55 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC v0 15/49] pnfsd: add helper functions for identifying DS filehandles
+Date: Thu, 26 Sep 2013 14:40:53 -0400
+Message-Id: <1380220853-13371-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <52447EA0.7070004@primarydata.com>
+References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-So, it turns out that security autonegotition on the NFSv4 client has been
-broken since Linux 3.10. Nobody has noticed so far, and that is probably
-because it is broken on the Linux server too...
+From: Benny Halevy <bhalevy@panasas.com>
 
-With this set of patches, the NFS client will track 'sec=', and will
-ensure that we do _not_ allow the crossing of mountpoint boundaries that
-violate the 'sec=' mount option.
-If the user does not set a 'sec=' mount option, the client will use
-autonegotiation and try to select the first supported flavour that is
-returned by the SECINFO/SECINFO_NO_NAME functions. The problem here is
-that the Linux server appears to sort the list of flavours that it
-supports, which makes a mockery of export lines of the form:
+[pnfsd: define and use FSID_MAX in enum nfsd_fsid]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[pnfsd: add helper functions for identifying DS stateids.]
+Signed-off-by: David M. Richter <richterd@citi.umich.edu>
+[define a no-op version of pnfs_fh_is_ds for !CONFIG_PNFSD]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+---
+ fs/nfsd/nfsfh.c |  7 +++++--
+ fs/nfsd/nfsfh.h | 39 +++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 44 insertions(+), 2 deletions(-)
 
-/export	-sync,no_wdelay,no_subtree_check 192.168.1.10/24 \
-		(sec=krb5p:krb5i,rw,sec=krb5:sys,ro)
-
-Normally, I'd expect an export like the above to order krb5p and
-krb5i _before_ the krb5 and sys in the response to SECINFO so that
-the client will prefer those over the flavours that only allow read
-access to the data...
-
-Anyhow, the client should now be ready for the server-side fix...
-
-Cheers
-  Trond
-
-
-Trond Myklebust (6):
-  NFS: Clean up the auth flavour array mess
-  NFS: Clean up nfs_parse_security_flavors()
-  NFSv4: Fix security auto-negotiation
-  NFSv4: Disallow security negotiation for lookups when 'sec=' is
-    specified
-  NFSv4: Allow security autonegotiation for submounts
-  NFS: nfs_compare_super shouldn't check the auth flavour unless 'sec='
-    was set
-
- fs/nfs/internal.h      |  2 +-
- fs/nfs/nfs4_fs.h       |  2 +-
- fs/nfs/nfs4client.c    | 20 +++++++++----
- fs/nfs/nfs4getroot.c   |  4 +--
- fs/nfs/nfs4namespace.c | 21 +++++++++++---
- fs/nfs/nfs4proc.c      | 21 ++++++++++----
- fs/nfs/nfs4super.c     |  2 --
- fs/nfs/super.c         | 79 +++++++++++++++++++++++++++++++++-----------------
- 8 files changed, 104 insertions(+), 47 deletions(-)
-
+diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+index 814afaa..71f9470 100644
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -10,6 +10,7 @@
+ #include <linux/exportfs.h>
+ 
+ #include <linux/sunrpc/svcauth_gss.h>
++#include <linux/nfsd/nfsd4_pnfs.h>
+ #include "nfsd.h"
+ #include "vfs.h"
+ #include "auth.h"
+@@ -136,6 +137,7 @@ static inline __be32 check_pseudo_root(struct svc_rqst *rqstp,
+ static __be32 nfsd_set_fh_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp)
+ {
+ 	struct knfsd_fh	*fh = &fhp->fh_handle;
++	int fsid_type;
+ 	struct fid *fid = NULL, sfid;
+ 	struct svc_export *exp;
+ 	struct dentry *dentry;
+@@ -156,7 +158,8 @@ static __be32 nfsd_set_fh_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp)
+ 			return error;
+ 		if (fh->fh_auth_type != 0)
+ 			return error;
+-		len = key_len(fh->fh_fsid_type) / 4;
++		fsid_type = pnfs_fh_fsid_type(fh);
++		len = key_len(fsid_type) / 4;
+ 		if (len == 0)
+ 			return error;
+ 		if  (fh->fh_fsid_type == FSID_MAJOR_MINOR) {
+@@ -169,7 +172,7 @@ static __be32 nfsd_set_fh_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp)
+ 		data_left -= len;
+ 		if (data_left < 0)
+ 			return error;
+-		exp = rqst_exp_find(rqstp, fh->fh_fsid_type, fh->fh_auth);
++		exp = rqst_exp_find(rqstp, fsid_type, fh->fh_auth);
+ 		fid = (struct fid *)(fh->fh_auth + len);
+ 	} else {
+ 		__u32 tfh[2];
+diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
+index e5e6707..2563e88 100644
+--- a/fs/nfsd/nfsfh.h
++++ b/fs/nfsd/nfsfh.h
+@@ -14,6 +14,7 @@ enum nfsd_fsid {
+ 	FSID_UUID8,
+ 	FSID_UUID16,
+ 	FSID_UUID16_INUM,
++	FSID_MAX
+ };
+ 
+ enum fsid_source {
+@@ -203,4 +204,42 @@ static inline int key_len(int type)
+ 	}
+ }
+ 
++#if defined(CONFIG_PNFSD)
++
++/*
++ * fh_fsid_type is overloaded to indicate whether a filehandle was one supplied
++ * to a DS by LAYOUTGET.  nfs4_preprocess_stateid_op() uses this to decide how
++ * to handle a given stateid.
++ */
++static inline int pnfs_fh_is_ds(struct knfsd_fh *fh)
++{
++	return fh->fh_fsid_type >= FSID_MAX;
++}
++
++static inline void pnfs_fh_mark_ds(struct knfsd_fh *fh)
++{
++	BUG_ON(fh->fh_version != 1);
++	BUG_ON(pnfs_fh_is_ds(fh));
++	fh->fh_fsid_type += FSID_MAX;
++}
++
++#else  /* CONFIG_PNFSD */
++
++static inline int pnfs_fh_is_ds(struct knfsd_fh *fh)
++{
++	return 0;
++}
++
++#endif /* CONFIG_PNFSD */
++
++/* allows fh_verify() to check the real fsid_type (i.e., not overloaded). */
++static inline int pnfs_fh_fsid_type(struct knfsd_fh *fh)
++{
++	int fsid_type = fh->fh_fsid_type;
++
++	if (pnfs_fh_is_ds(fh))
++		return fsid_type - FSID_MAX;
++	return fsid_type;
++}
++
+ #endif /* _LINUX_NFSD_FH_INT_H */
 -- 
 1.8.3.1
 
