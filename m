@@ -1,202 +1,140 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39136 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752035Ab3ISUul (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Sep 2013 16:50:41 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        Bruce Fields <bfields@fieldses.org>,
-        David Howells <dhowells@redhat.com>,
-        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 13/13] locks: close potential race between setlease and open
-Date: Thu, 19 Sep 2013 16:50:37 -0400
-Message-Id: <1379623837-30798-14-git-send-email-bfields@redhat.com>
-In-Reply-To: <1379623837-30798-1-git-send-email-bfields@redhat.com>
-References: <1379623837-30798-1-git-send-email-bfields@redhat.com>
+Received: from mail-qa0-f43.google.com ([209.85.216.43]:64211 "EHLO
+	mail-qa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753553Ab3IZSlr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:41:47 -0400
+Received: by mail-qa0-f43.google.com with SMTP id k15so4616997qaq.16
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:41:47 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC v0 28/49] pnfsd: support layout segment merging
+Date: Thu, 26 Sep 2013 14:41:45 -0400
+Message-Id: <1380220905-13964-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <52447EA0.7070004@primarydata.com>
+References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jeff Layton <jlayton@redhat.com>
-
-v2:
-- fix potential double-free of lease if second check finds conflict
-- add smp_mb's to ensure that other CPUs see i_flock changes
-
-v3:
-- remove smp_mb calls. Partial ordering is unlikely to help here.
-
-v4:
-- add back smp_mb calls. While we have implicit barriers in place
-  that enforce this today, it's best to be explicit about it as a
-  defensive coding measure.
-
-As Al Viro points out, there is an unlikely, but possible race between
-opening a file and setting a lease on it. generic_add_lease is done with
-the i_lock held, but the inode->i_flock check in break_lease is
-lockless. It's possible for another task doing an open to do the entire
-pathwalk and call break_lease between the point where generic_add_lease
-checks for a conflicting open and adds the lease to the list. If this
-occurs, we can end up with a lease set on the file with a conflicting
-open.
-
-To guard against that, check again for a conflicting open after adding
-the lease to the i_flock list. If the above race occurs, then we can
-simply unwind the lease setting and return -EAGAIN.
-
-Because we take dentry references and acquire write access on the file
-before calling break_lease, we know that if the i_flock list is empty
-when the open caller goes to check it then the necessary refcounts have
-already been incremented. Thus the additional check for a conflicting
-open will see that there is one and the setlease call will fail.
-
-Cc: Bruce Fields <bfields@fieldses.org>
-Cc: David Howells <dhowells@redhat.com>
-Cc: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Reported-by: Al Viro <viro@ZenIV.linux.org.uk>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
 ---
- fs/locks.c         |   75 +++++++++++++++++++++++++++++++++++++++++++---------
- include/linux/fs.h |    6 +++++
- 2 files changed, 68 insertions(+), 13 deletions(-)
+ fs/nfsd/nfs4pnfsd.c | 75 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 75 insertions(+)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 7336920..64346ef 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -652,15 +652,18 @@ static void locks_insert_lock(struct file_lock **pos, struct file_lock *fl)
- 	locks_insert_global_locks(fl);
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index 386afa3..8d16b85 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -364,6 +364,66 @@ struct super_block *
+ 	return id;
  }
  
--/*
-- * Delete a lock and then free it.
-- * Wake up processes that are blocked waiting for this lock,
-- * notify the FS that the lock has been cleared and
-- * finally free the lock.
-+/**
-+ * locks_delete_lock - Delete a lock and then free it.
-+ * @thisfl_p: pointer that points to the fl_next field of the previous
-+ * 	      inode->i_flock list entry
-+ *
-+ * Unlink a lock from all lists and free the namespace reference, but don't
-+ * free it yet. Wake up processes that are blocked waiting for this lock and
-+ * notify the FS that the lock has been cleared.
-  *
-  * Must be called with the i_lock held!
-  */
--static void locks_delete_lock(struct file_lock **thisfl_p)
-+static void locks_unlink_lock(struct file_lock **thisfl_p)
- {
- 	struct file_lock *fl = *thisfl_p;
- 
-@@ -675,6 +678,18 @@ static void locks_delete_lock(struct file_lock **thisfl_p)
- 	}
- 
- 	locks_wake_up_blocks(fl);
++/*
++ * are two octet ranges overlapping or adjacent?
++ */
++static bool
++lo_seg_mergeable(struct nfsd4_layout_seg *l1, struct nfsd4_layout_seg *l2)
++{
++	u64 start1 = l1->offset;
++	u64 end1 = end_offset(start1, l1->length);
++	u64 start2 = l2->offset;
++	u64 end2 = end_offset(start2, l2->length);
++
++	/* is end1 == start2 ranges are adjacent */
++	return (end2 >= start1) && (end1 >= start2);
 +}
 +
-+/*
-+ * Unlink a lock from all lists and free it.
-+ *
-+ * Must be called with i_lock held!
-+ */
-+static void locks_delete_lock(struct file_lock **thisfl_p)
++static void
++extend_layout(struct nfsd4_layout_seg *lo, struct nfsd4_layout_seg *lg)
 +{
-+	struct file_lock *fl = *thisfl_p;
++	u64 lo_start = lo->offset;
++	u64 lo_end = end_offset(lo_start, lo->length);
++	u64 lg_start = lg->offset;
++	u64 lg_end = end_offset(lg_start, lg->length);
 +
-+	locks_unlink_lock(thisfl_p);
- 	locks_free_lock(fl);
- }
- 
-@@ -1472,6 +1487,32 @@ int fcntl_getlease(struct file *filp)
- 	return type;
- }
- 
-+/**
-+ * check_conflicting_open - see if the given dentry points to a file that has
-+ * 			    an existing open that would conflict with the
-+ * 			    desired lease.
-+ * @dentry:	dentry to check
-+ * @arg:	type of lease that we're trying to acquire
-+ *
-+ * Check to see if there's an existing open fd on this file that would
-+ * conflict with the lease we're trying to set.
-+ */
-+static int
-+check_conflicting_open(const struct dentry *dentry, const long arg)
++	/* lo already covers lg? */
++	if (lo_start <= lg_start && lg_end <= lo_end)
++		return;
++
++	/* extend start offset */
++	if (lo_start > lg_start)
++		lo_start = lg_start;
++
++	/* extend end offset */
++	if (lo_end < lg_end)
++		lo_end = lg_end;
++
++	lo->offset = lo_start;
++	lo->length = (lo_end == NFS4_MAX_UINT64) ?
++		      lo_end : lo_end - lo_start;
++}
++
++static bool
++merge_layout(struct nfs4_layout_state *ls, struct nfsd4_layout_seg *seg)
 +{
-+	int ret = 0;
-+	struct inode *inode = dentry->d_inode;
++	bool ret = false;
++	struct nfs4_layout *lp;
 +
-+	if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
-+		return -EAGAIN;
-+
-+	if ((arg == F_WRLCK) && ((d_count(dentry) > 1) ||
-+	    (atomic_read(&inode->i_count) > 1)))
-+		ret = -EAGAIN;
++	spin_lock(&layout_lock);
++	list_for_each_entry (lp, &ls->ls_layouts, lo_perstate)
++		if (lp->lo_seg.layout_type == seg->layout_type &&
++		    lp->lo_seg.clientid == seg->clientid &&
++		    lp->lo_seg.iomode == seg->iomode &&
++		    (ret = lo_seg_mergeable(&lp->lo_seg, seg))) {
++			extend_layout(&lp->lo_seg, seg);
++			break;
++		}
++	spin_unlock(&layout_lock);
 +
 +	return ret;
 +}
 +
- static int generic_add_lease(struct file *filp, long arg, struct file_lock **flp)
- {
- 	struct file_lock *fl, **before, **my_before = NULL, *lease;
-@@ -1498,12 +1539,8 @@ static int generic_add_lease(struct file *filp, long arg, struct file_lock **flp
- 		return -EINVAL;
+ __be32
+ nfs4_pnfs_get_layout(struct svc_rqst *rqstp,
+ 		     struct nfsd4_pnfs_layoutget *lgp,
+@@ -373,6 +433,7 @@ struct super_block *
+ 	__be32 nfserr;
+ 	struct inode *ino = lgp->lg_fhp->fh_dentry->d_inode;
+ 	struct super_block *sb = ino->i_sb;
++	int can_merge;
+ 	struct nfs4_file *fp;
+ 	struct nfs4_client *clp;
+ 	struct nfs4_layout *lp = NULL;
+@@ -412,6 +473,9 @@ struct super_block *
+ 		goto out;
  	}
  
--	error = -EAGAIN;
--	if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
--		goto out;
--	if ((arg == F_WRLCK)
--	    && ((d_count(dentry) > 1)
--		|| (atomic_read(&inode->i_count) > 1)))
-+	error = check_conflicting_open(dentry, arg);
-+	if (error)
- 		goto out;
++	can_merge = sb->s_pnfs_op->can_merge_layouts != NULL &&
++		    sb->s_pnfs_op->can_merge_layouts(lgp->lg_seg.layout_type);
++
+ 	nfs4_lock_state();
+ 	fp = find_alloc_file(ino, lgp->lg_fhp);
+ 	clp = find_confirmed_client((clientid_t *)&lgp->lg_seg.clientid, true,
+@@ -430,6 +494,9 @@ struct super_block *
+ 	if (nfserr)
+ 		goto out_unlock;
  
- 	/*
-@@ -1548,7 +1585,19 @@ static int generic_add_lease(struct file *filp, long arg, struct file_lock **flp
- 		goto out;
- 
- 	locks_insert_lock(before, lease);
--	error = 0;
-+	/*
-+	 * The check in break_lease() is lockless. It's possible for another
-+	 * open to race in after we did the earlier check for a conflicting
-+	 * open but before the lease was inserted. Check again for a
-+	 * conflicting open and cancel the lease if there is one.
-+	 *
-+	 * We also add a barrier here to ensure that the insertion of the lock
-+	 * precedes these checks.
++	/* pre-alloc layout in case we can't merge after we call
++	 * the file system
 +	 */
-+	smp_mb();
-+	error = check_conflicting_open(dentry, arg);
-+	if (error)
-+		locks_unlink_lock(flp);
- out:
- 	if (is_deleg)
- 		mutex_unlock(&inode->i_mutex);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index f5dd4f3..e7404854 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1964,6 +1964,12 @@ static inline int locks_verify_truncate(struct inode *inode,
+ 	lp = alloc_layout();
+ 	if (!lp) {
+ 		nfserr = nfserr_layouttrylater;
+@@ -486,6 +553,14 @@ struct super_block *
+ 	lgp->lg_seg = res.lg_seg;
+ 	lgp->lg_roc = res.lg_return_on_close;
  
- static inline int break_lease(struct inode *inode, unsigned int mode)
- {
-+	/*
-+	 * Since this check is lockless, we must ensure that any refcounts
-+	 * taken are done before checking inode->i_flock. Otherwise, we could
-+	 * end up racing with tasks trying to set a new lease on this file.
++	/* SUCCESS!
++	 * Can the new layout be merged into an existing one?
++	 * If so, free unused layout struct
 +	 */
-+	smp_mb();
- 	if (inode->i_flock)
- 		return __break_lease(inode, mode, FL_LEASE);
- 	return 0;
++	if (can_merge && merge_layout(ls, &res.lg_seg))
++		goto out_freelayout;
++
++	/* Can't merge, so let's initialize this new layout */
+ 	init_layout(lp, ls, lgp->lg_fhp, &res.lg_seg, &lgp->lg_sid);
+ out_unlock:
+ 	if (ls)
 -- 
-1.7.9.5
+1.8.3.1
 
