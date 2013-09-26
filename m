@@ -1,88 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59724 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753306Ab3IQVlR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Sep 2013 17:41:17 -0400
-Date: Tue, 17 Sep 2013 17:41:15 -0400
-To: Trond Myklebust <trond@netapp.com>
+Received: from mail-qa0-f54.google.com ([209.85.216.54]:37708 "EHLO
+	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753553Ab3IZSmQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:42:16 -0400
+Received: by mail-qa0-f54.google.com with SMTP id bv4so1092824qab.6
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:42:15 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: gss_destroy crash
-Message-ID: <20130917214115.GA3079@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH RFC v0 35/49] pnfsd: nfsd4_pnfs_dlm_getdeviter
+Date: Thu, 26 Sep 2013 14:42:12 -0400
+Message-Id: <1380220932-14302-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <52447EA0.7070004@primarydata.com>
+References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As of eb6dc19d8e72ce3a957af5511d20c0db0a8bd007 "RPCSEC_GSS: Share all
-credential caches on a per-transport basis" I'm getting an occasional
-crash on shutdown of nfsd's 4.0 callback client (see appended oops),
-because  rpc_shutdown_client() is called on a client whose cl_auth is a
-gss_auth with gss_pipe[0]->clnt pointing to freed memory.
+From: Andy Adamson <andros@netapp.com>
 
-Is there any known bug here?
+Export nfsd4_pnfs_dlm_getdeviter for dlm cluster file system use.
 
-While I try to understand this....
+[was pnfsd: hardwire DLM cluster file layout get device iterator]
+Signed-off-by: David M. Richter <richterd@citi.umich.edu>
+Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
+[pnfs-gfs2: return correct error value in GETDEVICEINFO]
+Signed-off-by: David M. Richter <richterd@citi.umich.edu>
+[Use the GFS2 iterator as the default file layout iterator.]
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[Add the pnfsd default file layout getdevice info]
+Signed-off-by: David M. Richter <richterd@citi.umich.edu>
+Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
+[pnfs-gfs2: return correct error value in GETDEVICEINFO]
+Signed-off-by: David M. Richter <richterd@citi.umich.edu>
+[pnfsd: move and rename nfsd4_pnfs_fl_getdeviter]
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Acked-by: Steven Whitehouse <swhiteho@redhat.com>
+[pnfsd: dev_iter: clean up export API]
+[pnfsd: dlm: fixup LAYOUT_NFSV4_1_FILES]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+---
+ fs/nfsd/nfs4pnfsdlm.c | 29 +++++++++++++++++++++++++++++
+ 1 file changed, 29 insertions(+)
 
-I'm wondering what guarantees that gss_pipe[0]->clnt is still good at
-this point, and that leads me to be suspicious of the sharing introduced
-by this patch--how do we know that a gss_auth can't be shared between
-two clients that could disappear in either order?
-
-The chasing of cl_parent pointers in gss_create() suggests that the
-auth's pointers back to clients are always supposed to be back to a
-common ancestor, but does gss_auth_find_or_add_hashed really guarantee
-that the auth will only be shared between clients that are cloned from a
-common ancestor?
-
---b.
-
-general protection fault: 0000 [#1] PREEMPT SMP 
-Modules linked in: rpcsec_gss_krb5 nfsd auth_rpcgss oid_registry nfs_acl lockd sunrpc
-CPU: 3 PID: 4071 Comm: kworker/u8:2 Not tainted 3.11.0-rc2-00182-g025145f #1665
-Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-Workqueue: nfsd4_callbacks nfsd4_do_callback_rpc [nfsd]
-task: ffff88003e206080 ti: ffff88003c384000 task.ti: ffff88003c384000
-RIP: 0010:[<ffffffffa00001f3>]  [<ffffffffa00001f3>] rpc_net_ns+0x53/0x70 [sunrpc]
-RSP: 0000:ffff88003c385ab8  EFLAGS: 00010246
-RAX: 6b6b6b6b6b6b6b6b RBX: ffff88003af9a800 RCX: 0000000000000002
-RDX: ffffffffa00001a5 RSI: 0000000000000001 RDI: ffffffff81e284e0
-RBP: ffff88003c385ad8 R08: 0000000000000001 R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000015 R12: ffff88003c990840
-R13: ffff88003c990878 R14: ffff88003c385ba8 R15: ffff88003e206080
-FS:  0000000000000000(0000) GS:ffff88003fd80000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 00007fcdf737e000 CR3: 000000003ad2b000 CR4: 00000000000006e0
-Stack:
- ffffffffa00001a5 0000000000000006 0000000000000006 ffff88003af9a800
- ffff88003c385b08 ffffffffa00d52a4 ffff88003c385ba8 ffff88003c751bd8
- ffff88003c751bc0 ffff88003e113600 ffff88003c385b18 ffffffffa00d530c
-Call Trace:
- [<ffffffffa00001a5>] ? rpc_net_ns+0x5/0x70 [sunrpc]
- [<ffffffffa00d52a4>] __gss_pipe_release+0x54/0x90 [auth_rpcgss]
- [<ffffffffa00d530c>] gss_pipe_free+0x2c/0x30 [auth_rpcgss]
- [<ffffffffa00d678b>] gss_destroy+0x9b/0xf0 [auth_rpcgss]
- [<ffffffffa000de63>] rpcauth_release+0x23/0x30 [sunrpc]
- [<ffffffffa0001e81>] rpc_release_client+0x51/0xb0 [sunrpc]
- [<ffffffffa00020d5>] rpc_shutdown_client+0xe5/0x170 [sunrpc]
- [<ffffffff81098a14>] ? cpuacct_charge+0xa4/0xb0
- [<ffffffff81098975>] ? cpuacct_charge+0x5/0xb0
- [<ffffffffa019556f>] nfsd4_process_cb_update.isra.17+0x2f/0x210 [nfsd]
- [<ffffffff819a4ac0>] ? _raw_spin_unlock_irq+0x30/0x60
- [<ffffffff819a4acb>] ? _raw_spin_unlock_irq+0x3b/0x60
- [<ffffffff810703ab>] ? process_one_work+0x15b/0x510
- [<ffffffffa01957dd>] nfsd4_do_callback_rpc+0x8d/0xa0 [nfsd]
- [<ffffffff8107041e>] process_one_work+0x1ce/0x510
- [<ffffffff810703ab>] ? process_one_work+0x15b/0x510
- [<ffffffff810712ab>] worker_thread+0x11b/0x370
- [<ffffffff81071190>] ? manage_workers.isra.24+0x2b0/0x2b0
- [<ffffffff8107854b>] kthread+0xdb/0xe0
- [<ffffffff819a4ac0>] ? _raw_spin_unlock_irq+0x30/0x60
- [<ffffffff81078470>] ? __init_kthread_worker+0x70/0x70
- [<ffffffff819ac7dc>] ret_from_fork+0x7c/0xb0
- [<ffffffff81078470>] ? __init_kthread_worker+0x70/0x70
-Code: a5 01 00 a0 31 d2 31 f6 48 c7 c7 e0 84 e2 81 e8 f4 91 0a e1 48 8b 43 60 48 c7 c2 a5 01 00 a0 be 01 00 00 00 48 c7 c7 e0 84 e2 81 <48> 8b 98 10 07 00 00 e8 91 8f 0a e1 e8 3c 4e 07 e1 48 83 c4 18 
-RIP  [<ffffffffa00001f3>] rpc_net_ns+0x53/0x70 [sunrpc]
- RSP <ffff88003c385ab8>
----[ end trace ce5e3f2a85c100c0 ]---
+diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+index ddc2188..0a14f06 100644
+--- a/fs/nfsd/nfs4pnfsdlm.c
++++ b/fs/nfsd/nfs4pnfsdlm.c
+@@ -21,8 +21,11 @@
+  *
+  ******************************************************************************/
+ 
++#include <linux/nfs4.h>
++#include <linux/export.h>
+ #include <linux/nfsd/debug.h>
+ #include <linux/nfsd/nfs4pnfsdlm.h>
++#include <linux/nfsd/nfs4layoutxdr.h>
+ #include <linux/sunrpc/addr.h>
+ 
+ #define NFSDDBG_FACILITY                NFSDDBG_FILELAYOUT
+@@ -180,3 +183,29 @@ void nfsd4_pnfs_dlm_shutdown(void)
+ 	}
+ 	spin_unlock(&dlm_device_list_lock);
+ }
++
++static int nfsd4_pnfs_dlm_getdeviter(struct super_block *sb,
++				     u32 layout_type,
++				     struct nfsd4_pnfs_dev_iter_res *res)
++{
++	if (layout_type != LAYOUT_NFSV4_1_FILES) {
++		printk(KERN_ERR "%s: ERROR: layout type isn't 'file' "
++			"(type: %x)\n", __func__, layout_type);
++		return -ENOTSUPP;
++	}
++
++	res->gd_eof = 1;
++	if (res->gd_cookie)
++		return -ENOENT;
++
++	res->gd_cookie = 1;
++	res->gd_verf = 1;
++	res->gd_devid = 1;
++	return 0;
++}
++
++/* For use by DLM cluster file systems exported by pNFSD */
++const struct pnfs_export_operations pnfs_dlm_export_ops = {
++	.get_device_iter = nfsd4_pnfs_dlm_getdeviter,
++};
++EXPORT_SYMBOL(pnfs_dlm_export_ops);
+-- 
+1.8.3.1
 
