@@ -1,292 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:37320 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932111Ab3IBSRO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Sep 2013 14:17:14 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-CC: <andros@netapp.com>
-Subject: [PATCH v3 12/17] NFSv4: Convert idmapper to use the new framework for pipefs dentries
-Date: Mon, 2 Sep 2013 14:16:55 -0400
-Message-ID: <1378145820-29990-12-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1378145820-29990-11-git-send-email-Trond.Myklebust@netapp.com>
-References: <1378145820-29990-1-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-2-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-3-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-4-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-5-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-6-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-7-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-8-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-9-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-10-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-11-git-send-email-Trond.Myklebust@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-qe0-f45.google.com ([209.85.128.45]:60123 "EHLO
+	mail-qe0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753005Ab3IZSmy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:42:54 -0400
+Received: by mail-qe0-f45.google.com with SMTP id 6so1115822qea.32
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:42:53 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC v0 43/49] pnfsd: release state lock around iput in put_nfs4_file
+Date: Thu, 26 Sep 2013 14:42:48 -0400
+Message-Id: <1380220968-14669-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <52447EA0.7070004@primarydata.com>
+References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/idmap.c | 184 +++++++++++----------------------------------------------
- 1 file changed, 34 insertions(+), 150 deletions(-)
+we don't want to hold the state_lock while the file system may block
 
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index 8b7e94a..567983d 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -64,6 +64,7 @@ struct idmap_legacy_upcalldata {
- };
- 
- struct idmap {
-+	struct rpc_pipe_dir_object idmap_pdo;
- 	struct rpc_pipe		*idmap_pipe;
- 	struct idmap_legacy_upcalldata *idmap_upcall_data;
- 	struct mutex		idmap_mutex;
-@@ -402,18 +403,23 @@ static struct key_type key_type_id_resolver_legacy = {
- 	.request_key	= nfs_idmap_legacy_upcall,
- };
- 
--static void __nfs_idmap_unregister(struct rpc_pipe *pipe)
-+static void nfs_idmap_pipe_destroy(struct dentry *dir,
-+		struct rpc_pipe_dir_object *pdo)
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+---
+ fs/nfsd/nfs4pnfsd.c |  4 +++-
+ fs/nfsd/nfs4state.c | 34 +++++++++++++++++++++++++++++++---
+ fs/nfsd/state.h     |  1 +
+ 3 files changed, 35 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index 8d16b85..1807455 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -166,6 +166,7 @@ struct sbid_tracker {
  {
-+	struct idmap *idmap = pdo->pdo_data;
-+	struct rpc_pipe *pipe = idmap->idmap_pipe;
+ 	struct nfs4_layout_state *ls =
+ 			container_of(kref, struct nfs4_layout_state, ls_ref);
++	struct nfs4_file *fp;
+ 
+ 	nfsd4_remove_stid(&ls->ls_stid);
+ 	if (!list_empty(&ls->ls_perclnt)) {
+@@ -173,8 +174,9 @@ struct sbid_tracker {
+ 		unhash_layout_state(ls);
+ 		spin_unlock(&layout_lock);
+ 	}
+-	put_nfs4_file(ls->ls_file);
++	fp = ls->ls_file;
+ 	nfsd4_free_stid(layout_state_slab, &ls->ls_stid);
++	put_nfs4_file_locked(fp);
+ }
+ 
+ /*
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e11d96f..5d5dead 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -239,14 +239,42 @@ static void nfsd4_free_file(struct nfs4_file *f)
+ 	kmem_cache_free(file_slab, f);
+ }
+ 
+-void
+-put_nfs4_file(struct nfs4_file *fi)
++static struct inode *put_nfs4_file_common(struct nfs4_file *fi)
+ {
+ 	if (atomic_dec_and_lock(&fi->fi_ref, &recall_lock)) {
++		struct inode *ino;
 +
- 	if (pipe->dentry) {
- 		rpc_unlink(pipe->dentry);
- 		pipe->dentry = NULL;
+ 		hlist_del(&fi->fi_hash);
+ 		spin_unlock(&recall_lock);
+-		iput(fi->fi_inode);
++		ino = fi->fi_inode;
+ 		nfsd4_free_file(fi);
++
++		return ino;
++	}
++	return NULL;
++}
++
++void
++put_nfs4_file(struct nfs4_file *fi)
++{
++	struct inode *ino;
++
++	ino = put_nfs4_file_common(fi);
++	if (ino)
++		iput(ino);
++}
++
++void
++put_nfs4_file_locked(struct nfs4_file *fi)
++{
++	struct inode *ino;
++
++	nfs4_assert_state_locked();
++	ino = put_nfs4_file_common(fi);
++	if (ino) {
++		nfs4_unlock_state();
++		iput(ino);
++		nfs4_lock_state();
  	}
  }
  
--static int __nfs_idmap_register(struct dentry *dir,
--				     struct idmap *idmap,
--				     struct rpc_pipe *pipe)
-+static int nfs_idmap_pipe_create(struct dentry *dir,
-+		struct rpc_pipe_dir_object *pdo)
- {
-+	struct idmap *idmap = pdo->pdo_data;
-+	struct rpc_pipe *pipe = idmap->idmap_pipe;
- 	struct dentry *dentry;
- 
- 	dentry = rpc_mkpipe_dentry(dir, "idmap", idmap, pipe);
-@@ -423,36 +429,10 @@ static int __nfs_idmap_register(struct dentry *dir,
- 	return 0;
- }
- 
--static void nfs_idmap_unregister(struct nfs_client *clp,
--				      struct rpc_pipe *pipe)
--{
--	struct net *net = clp->cl_net;
--	struct super_block *pipefs_sb;
--
--	pipefs_sb = rpc_get_sb_net(net);
--	if (pipefs_sb) {
--		__nfs_idmap_unregister(pipe);
--		rpc_put_sb_net(net);
--	}
--}
--
--static int nfs_idmap_register(struct nfs_client *clp,
--				   struct idmap *idmap,
--				   struct rpc_pipe *pipe)
--{
--	struct net *net = clp->cl_net;
--	struct super_block *pipefs_sb;
--	int err = 0;
--
--	pipefs_sb = rpc_get_sb_net(net);
--	if (pipefs_sb) {
--		if (clp->cl_rpcclient->cl_dentry)
--			err = __nfs_idmap_register(clp->cl_rpcclient->cl_dentry,
--						   idmap, pipe);
--		rpc_put_sb_net(net);
--	}
--	return err;
--}
-+static const struct rpc_pipe_dir_object_ops nfs_idmap_pipe_dir_object_ops = {
-+	.create = nfs_idmap_pipe_create,
-+	.destroy = nfs_idmap_pipe_destroy,
-+};
- 
- int
- nfs_idmap_new(struct nfs_client *clp)
-@@ -465,23 +445,31 @@ nfs_idmap_new(struct nfs_client *clp)
- 	if (idmap == NULL)
- 		return -ENOMEM;
- 
-+	rpc_init_pipe_dir_object(&idmap->idmap_pdo,
-+			&nfs_idmap_pipe_dir_object_ops,
-+			idmap);
-+
- 	pipe = rpc_mkpipe_data(&idmap_upcall_ops, 0);
- 	if (IS_ERR(pipe)) {
- 		error = PTR_ERR(pipe);
--		kfree(idmap);
--		return error;
--	}
--	error = nfs_idmap_register(clp, idmap, pipe);
--	if (error) {
--		rpc_destroy_pipe_data(pipe);
--		kfree(idmap);
--		return error;
-+		goto err;
- 	}
- 	idmap->idmap_pipe = pipe;
- 	mutex_init(&idmap->idmap_mutex);
- 
-+	error = rpc_add_pipe_dir_object(clp->cl_net,
-+			&clp->cl_rpcclient->cl_pipedir_objects,
-+			&idmap->idmap_pdo);
-+	if (error)
-+		goto err_destroy_pipe;
-+
- 	clp->cl_idmap = idmap;
- 	return 0;
-+err_destroy_pipe:
-+	rpc_destroy_pipe_data(idmap->idmap_pipe);
-+err:
-+	kfree(idmap);
-+	return error;
- }
- 
- void
-@@ -491,130 +479,26 @@ nfs_idmap_delete(struct nfs_client *clp)
- 
- 	if (!idmap)
- 		return;
--	nfs_idmap_unregister(clp, idmap->idmap_pipe);
--	rpc_destroy_pipe_data(idmap->idmap_pipe);
- 	clp->cl_idmap = NULL;
-+	rpc_remove_pipe_dir_object(clp->cl_net,
-+			&clp->cl_rpcclient->cl_pipedir_objects,
-+			&idmap->idmap_pdo);
-+	rpc_destroy_pipe_data(idmap->idmap_pipe);
- 	kfree(idmap);
- }
- 
--static int __rpc_pipefs_event(struct nfs_client *clp, unsigned long event,
--			      struct super_block *sb)
--{
--	int err = 0;
--
--	switch (event) {
--	case RPC_PIPEFS_MOUNT:
--		err = __nfs_idmap_register(clp->cl_rpcclient->cl_dentry,
--						clp->cl_idmap,
--						clp->cl_idmap->idmap_pipe);
--		break;
--	case RPC_PIPEFS_UMOUNT:
--		if (clp->cl_idmap->idmap_pipe) {
--			struct dentry *parent;
--
--			parent = clp->cl_idmap->idmap_pipe->dentry->d_parent;
--			__nfs_idmap_unregister(clp->cl_idmap->idmap_pipe);
--			/*
--			 * Note: This is a dirty hack. SUNRPC hook has been
--			 * called already but simple_rmdir() call for the
--			 * directory returned with error because of idmap pipe
--			 * inside. Thus now we have to remove this directory
--			 * here.
--			 */
--			if (rpc_rmdir(parent))
--				printk(KERN_ERR "NFS: %s: failed to remove "
--					"clnt dir!\n", __func__);
--		}
--		break;
--	default:
--		printk(KERN_ERR "NFS: %s: unknown event: %ld\n", __func__,
--			event);
--		return -ENOTSUPP;
--	}
--	return err;
--}
--
--static struct nfs_client *nfs_get_client_for_event(struct net *net, int event)
--{
--	struct nfs_net *nn = net_generic(net, nfs_net_id);
--	struct dentry *cl_dentry;
--	struct nfs_client *clp;
--	int err;
--
--restart:
--	spin_lock(&nn->nfs_client_lock);
--	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
--		/* Wait for initialisation to finish */
--		if (clp->cl_cons_state == NFS_CS_INITING) {
--			atomic_inc(&clp->cl_count);
--			spin_unlock(&nn->nfs_client_lock);
--			err = nfs_wait_client_init_complete(clp);
--			nfs_put_client(clp);
--			if (err)
--				return NULL;
--			goto restart;
--		}
--		/* Skip nfs_clients that failed to initialise */
--		if (clp->cl_cons_state < 0)
--			continue;
--		smp_rmb();
--		if (clp->rpc_ops != &nfs_v4_clientops)
--			continue;
--		cl_dentry = clp->cl_idmap->idmap_pipe->dentry;
--		if (((event == RPC_PIPEFS_MOUNT) && cl_dentry) ||
--		    ((event == RPC_PIPEFS_UMOUNT) && !cl_dentry))
--			continue;
--		atomic_inc(&clp->cl_count);
--		spin_unlock(&nn->nfs_client_lock);
--		return clp;
--	}
--	spin_unlock(&nn->nfs_client_lock);
--	return NULL;
--}
--
--static int rpc_pipefs_event(struct notifier_block *nb, unsigned long event,
--			    void *ptr)
--{
--	struct super_block *sb = ptr;
--	struct nfs_client *clp;
--	int error = 0;
--
--	if (!try_module_get(THIS_MODULE))
--		return 0;
--
--	while ((clp = nfs_get_client_for_event(sb->s_fs_info, event))) {
--		error = __rpc_pipefs_event(clp, event, sb);
--		nfs_put_client(clp);
--		if (error)
--			break;
--	}
--	module_put(THIS_MODULE);
--	return error;
--}
--
--#define PIPEFS_NFS_PRIO		1
--
--static struct notifier_block nfs_idmap_block = {
--	.notifier_call	= rpc_pipefs_event,
--	.priority	= SUNRPC_PIPEFS_NFS_PRIO,
--};
--
- int nfs_idmap_init(void)
- {
- 	int ret;
- 	ret = nfs_idmap_init_keyring();
- 	if (ret != 0)
- 		goto out;
--	ret = rpc_pipefs_notifier_register(&nfs_idmap_block);
--	if (ret != 0)
--		nfs_idmap_quit_keyring();
- out:
- 	return ret;
- }
- 
- void nfs_idmap_quit(void)
- {
--	rpc_pipefs_notifier_unregister(&nfs_idmap_block);
- 	nfs_idmap_quit_keyring();
- }
- 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 1ef09ae..3be7507 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -491,6 +491,7 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
+ extern void nfsd4_free_slab(struct kmem_cache **);
+ extern struct nfs4_file *find_alloc_file(struct inode *, struct svc_fh *);
+ extern void put_nfs4_file(struct nfs4_file *);
++extern void put_nfs4_file_locked(struct nfs4_file *);
+ extern void get_nfs4_file(struct nfs4_file *);
+ extern struct nfs4_client *find_confirmed_client(clientid_t *, bool sessions, struct nfsd_net *);
+ extern struct nfs4_stid *nfsd4_alloc_stid(struct nfs4_client *cl, struct kmem_cache *slab);
 -- 
 1.8.3.1
 
