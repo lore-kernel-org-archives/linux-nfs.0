@@ -1,107 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f48.google.com ([74.125.82.48]:60245 "EHLO
-	mail-wg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750732Ab3IXScK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Sep 2013 14:32:10 -0400
-Received: by mail-wg0-f48.google.com with SMTP id n12so5024661wgh.15
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Sep 2013 11:32:08 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1380045482-4895-1-git-send-email-dros@netapp.com>
-References: <1380045482-4895-1-git-send-email-dros@netapp.com>
-From: Anna Schumaker <schumaker.anna@gmail.com>
-Date: Tue, 24 Sep 2013 14:31:47 -0400
-Message-ID: <CAFX2JfnMgp+tgCbaV8WDwPRygearSNrV6bdsxiUhqp-scaqCZg@mail.gmail.com>
-Subject: Re: [PATCH] NFSv4.1: try SECINFO_NO_NAME flavs until one works
-To: Weston Andros Adamson <dros@netapp.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qe0-f45.google.com ([209.85.128.45]:48619 "EHLO
+	mail-qe0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753553Ab3IZSlk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:41:40 -0400
+Received: by mail-qe0-f45.google.com with SMTP id 6so1099819qea.4
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:41:39 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC v0 26/49] pnfsd: layout state per file tracking
+Date: Thu, 26 Sep 2013 14:41:37 -0400
+Message-Id: <1380220897-13872-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <52447EA0.7070004@primarydata.com>
+References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Dros,
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+---
+ fs/nfsd/nfs4pnfsd.c | 15 +++++++++++----
+ fs/nfsd/nfs4state.c |  3 +++
+ fs/nfsd/pnfsd.h     |  2 ++
+ fs/nfsd/state.h     |  3 +++
+ 4 files changed, 19 insertions(+), 4 deletions(-)
 
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index 2d5ddf7..2c5d30d 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -120,7 +120,8 @@ struct sbid_tracker {
+  * Note: must be called under the state lock
+  */
+ static struct nfs4_layout_state *
+-alloc_init_layout_state(struct nfs4_client *clp, stateid_t *stateid)
++alloc_init_layout_state(struct nfs4_client *clp, struct nfs4_file *fp,
++			stateid_t *stateid)
+ {
+ 	struct nfs4_layout_state *new;
+ 
+@@ -131,9 +132,13 @@ struct sbid_tracker {
+ 	kref_init(&new->ls_ref);
+ 	new->ls_stid.sc_type = NFS4_LAYOUT_STID;
+ 	INIT_LIST_HEAD(&new->ls_perclnt);
++	INIT_LIST_HEAD(&new->ls_perfile);
+ 	new->ls_client = clp;
++	get_nfs4_file(fp);	/* released on destroy_layout_state */
++	new->ls_file = fp;
+ 	spin_lock(&layout_lock);
+ 	list_add(&new->ls_perclnt, &clp->cl_lo_states);
++	list_add(&new->ls_perfile, &fp->fi_lo_states);
+ 	spin_unlock(&layout_lock);
+ 	return new;
+ }
+@@ -149,6 +154,7 @@ struct sbid_tracker {
+ {
+ 	ASSERT_LAYOUT_LOCKED();
+ 	list_del_init(&ls->ls_perclnt);
++	list_del_init(&ls->ls_perfile);
+ }
+ 
+ /*
+@@ -166,6 +172,7 @@ struct sbid_tracker {
+ 		unhash_layout_state(ls);
+ 		spin_unlock(&layout_lock);
+ 	}
++	put_nfs4_file(ls->ls_file);
+ 	nfsd4_free_stid(layout_state_slab, &ls->ls_stid);
+ }
+ 
+@@ -212,7 +219,7 @@ struct sbid_tracker {
+ 
+ 	/* Is this the first use of this layout ? */
+ 	if (stid->sc_type != NFS4_LAYOUT_STID) {
+-		ls = alloc_init_layout_state(clp, stateid);
++		ls = alloc_init_layout_state(clp, fp, stateid);
+ 		if (!ls) {
+ 			status = nfserr_jukebox;
+ 			goto out;
+@@ -266,8 +273,8 @@ static void update_layout_stateid_locked(struct nfs4_layout_state *ls, stateid_t
+ 	    struct nfsd4_layout_seg *seg,
+ 	    stateid_t *stateid)
+ {
+-	dprintk("pNFS %s: lp %p ls %p\n", __func__,
+-		lp, ls);
++	dprintk("pNFS %s: lp %p ls %p ino %lu\n", __func__,
++		lp, ls, ls->ls_file->fi_inode->i_ino);
+ 
+ 	memcpy(&lp->lo_seg, seg, sizeof(lp->lo_seg));
+ 	get_layout_state(ls);		/* put on destroy_layout */
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 0e2266f..e11d96f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2509,6 +2509,9 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino,
+ 	fp->fi_lease = NULL;
+ 	memset(fp->fi_fds, 0, sizeof(fp->fi_fds));
+ 	memset(fp->fi_access, 0, sizeof(fp->fi_access));
++#if defined(CONFIG_PNFSD)
++	INIT_LIST_HEAD(&fp->fi_lo_states);
++#endif /* CONFIG_PNFSD */
+ 	spin_lock(&recall_lock);
+ 	hlist_add_head(&fp->fi_hash, &file_hashtbl[hashval]);
+ 	spin_unlock(&recall_lock);
+diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
+index a0363a7..852c250 100644
+--- a/fs/nfsd/pnfsd.h
++++ b/fs/nfsd/pnfsd.h
+@@ -46,6 +46,8 @@ struct nfs4_layout_state {
+ 	struct kref		ls_ref;
+ 	struct list_head	ls_perclnt;
+ 	struct nfs4_client	*ls_client;
++	struct list_head	ls_perfile;
++	struct nfs4_file	*ls_file;
+ };
+ 
+ /* outstanding layout */
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 187d169..1ef09ae 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -405,6 +405,9 @@ struct nfs4_file {
+ 	atomic_t		fi_delegees;
+ 	struct inode		*fi_inode;
+ 	bool			fi_had_conflict;
++#if defined(CONFIG_PNFSD)
++	struct list_head	fi_lo_states;
++#endif /* CONFIG_PNFSD */
+ };
+ 
+ /* XXX: for first cut may fall back on returning file that doesn't work
+-- 
+1.8.3.1
 
-On Tue, Sep 24, 2013 at 1:58 PM, Weston Andros Adamson <dros@netapp.com> wrote:
->
-> Call nfs4_lookup_root_sec for each flavor returned by SECINFO_NO_NAME until
-> one works.
->
-> One example of a situation this fixes:
->
->  - server configured for krb5
->  - server principal somehow gets deleted from KDC
->  - server still thinking krb is good, sends krb5 as first entry in
->     SECINFO_NO_NAME response
->  - client tries krb5, but this fails without even sending an RPC because
->     gssd's requests to the KDC can't find the server's principal
->
-> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-> ---
->  fs/nfs/nfs4proc.c | 30 +++++++++++++++++++++++++++---
->  1 file changed, 27 insertions(+), 3 deletions(-)
->
-> This is version 2 of the patch.
->
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 989bb9d..a288f15 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -7566,6 +7566,8 @@ nfs41_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
->         struct page *page;
->         rpc_authflavor_t flavor;
->         struct nfs4_secinfo_flavors *flavors;
-> +       struct nfs4_secinfo4 *secinfo;
-> +       int i;
->
->         page = alloc_page(GFP_KERNEL);
->         if (!page) {
-> @@ -7587,9 +7589,31 @@ nfs41_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
->         if (err)
->                 goto out_freepage;
->
-> -       flavor = nfs_find_best_sec(flavors);
-> -       if (err == 0)
-> -               err = nfs4_lookup_root_sec(server, fhandle, info, flavor);
-> +       for (i = 0; i < flavors->num_flavors; i++) {
-> +               secinfo = &flavors->flavors[i];
-> +
-> +               switch (secinfo->flavor) {
-> +               case RPC_AUTH_NULL:
-> +               case RPC_AUTH_UNIX:
-> +               case RPC_AUTH_GSS:
-> +                       flavor = rpcauth_get_pseudoflavor(secinfo->flavor,
-> +                                       &secinfo->flavor_info);
-> +                       break;
-> +               default:
-> +                       flavor = RPC_AUTH_MAXFLAVOR;
-> +                       break;
-> +               }
-> +
-> +               if (flavor != RPC_AUTH_MAXFLAVOR) {
-> +                       err = nfs4_lookup_root_sec(server, fhandle,
-> +                                                  info, flavor);
-> +                       if (!err)
-> +                               break;
-
-
-I think we should only try the next sec flavor if
-nfs4_lookup_root_sec() returns -EACCESS, since this error means there
-was a problem with rpcauth_create() for the given flavor.  Other
-errors should be passed on to the user, since they happen farther on
-in the mount process.
-
-Anna
-
->
-> +               }
-> +       }
-> +
-> +       if (flavor == RPC_AUTH_MAXFLAVOR)
-> +               err = -EPERM;
->
->  out_freepage:
->         put_page(page);
-> --
-> 1.7.12.4 (Apple Git-37)
->
