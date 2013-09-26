@@ -1,108 +1,166 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:31648 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757022Ab3ICRxB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Sep 2013 13:53:01 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 15/33] NFS: Update session draining barriers for
- NFSv4.0 transport blocking
-Date: Tue, 3 Sep 2013 17:52:59 +0000
-Message-ID: <1378230779.6410.13.camel@leira.trondhjem.org>
-References: <20130809161957.5362.90865.stgit@seurat.1015granger.net>
-	 <20130809164956.5362.39856.stgit@seurat.1015granger.net>
-In-Reply-To: <20130809164956.5362.39856.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-qa0-f44.google.com ([209.85.216.44]:33956 "EHLO
+	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753553Ab3IZSlg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:41:36 -0400
+Received: by mail-qa0-f44.google.com with SMTP id j7so4653499qaq.10
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:41:35 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC v0 25/49] pnfsd: layout state per client tracking
+Date: Thu, 26 Sep 2013 14:41:33 -0400
+Message-Id: <1380220893-13824-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <52447EA0.7070004@primarydata.com>
+References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEzLTA4LTA5IGF0IDEyOjQ5IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-U2lnbmVkLW9mZi1ieTogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+IC0t
-LQ0KPiAgZnMvbmZzL25mczRzdGF0ZS5jIHwgICA2MSArKysrKysrKysrKysrKysrKysrKysrKysr
-KysrKy0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ICAxIGZpbGUgY2hhbmdlZCwgMzQgaW5zZXJ0
-aW9ucygrKSwgMjcgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRz
-dGF0ZS5jIGIvZnMvbmZzL25mczRzdGF0ZS5jDQo+IGluZGV4IDg4MjZkZjMuLmQ4MTZkOTMgMTAw
-NjQ0DQo+IC0tLSBhL2ZzL25mcy9uZnM0c3RhdGUuYw0KPiArKysgYi9mcy9uZnMvbmZzNHN0YXRl
-LmMNCj4gQEAgLTIxNSwzMiArMjE1LDYgQEAgb3V0Og0KPiAgCXJldHVybiBjcmVkOw0KPiAgfQ0K
-PiAgDQo+IC0jaWYgZGVmaW5lZChDT05GSUdfTkZTX1Y0XzEpDQo+IC0NCj4gLXN0YXRpYyBpbnQg
-bmZzNDFfc2V0dXBfc3RhdGVfcmVuZXdhbChzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwKQ0KPiAtew0K
-PiAtCWludCBzdGF0dXM7DQo+IC0Jc3RydWN0IG5mc19mc2luZm8gZnNpbmZvOw0KPiAtDQo+IC0J
-aWYgKCF0ZXN0X2JpdChORlNfQ1NfQ0hFQ0tfTEVBU0VfVElNRSwgJmNscC0+Y2xfcmVzX3N0YXRl
-KSkgew0KPiAtCQluZnM0X3NjaGVkdWxlX3N0YXRlX3JlbmV3YWwoY2xwKTsNCj4gLQkJcmV0dXJu
-IDA7DQo+IC0JfQ0KPiAtDQo+IC0Jc3RhdHVzID0gbmZzNF9wcm9jX2dldF9sZWFzZV90aW1lKGNs
-cCwgJmZzaW5mbyk7DQo+IC0JaWYgKHN0YXR1cyA9PSAwKSB7DQo+IC0JCS8qIFVwZGF0ZSBsZWFz
-ZSB0aW1lIGFuZCBzY2hlZHVsZSByZW5ld2FsICovDQo+IC0JCXNwaW5fbG9jaygmY2xwLT5jbF9s
-b2NrKTsNCj4gLQkJY2xwLT5jbF9sZWFzZV90aW1lID0gZnNpbmZvLmxlYXNlX3RpbWUgKiBIWjsN
-Cj4gLQkJY2xwLT5jbF9sYXN0X3JlbmV3YWwgPSBqaWZmaWVzOw0KPiAtCQlzcGluX3VubG9jaygm
-Y2xwLT5jbF9sb2NrKTsNCj4gLQ0KPiAtCQluZnM0X3NjaGVkdWxlX3N0YXRlX3JlbmV3YWwoY2xw
-KTsNCj4gLQl9DQo+IC0NCj4gLQlyZXR1cm4gc3RhdHVzOw0KPiAtfQ0KPiAtDQo+ICBzdGF0aWMg
-dm9pZCBuZnM0X2VuZF9kcmFpbl9zbG90X3RhYmxlKHN0cnVjdCBuZnM0X3Nsb3RfdGFibGUgKnRi
-bCkNCj4gIHsNCj4gIAlpZiAodGVzdF9hbmRfY2xlYXJfYml0KE5GUzRfU0xPVF9UQkxfRFJBSU5J
-TkcsICZ0YmwtPnNsb3RfdGJsX3N0YXRlKSkgew0KPiBAQCAtMjU0LDYgKzIyOCwxMSBAQCBzdGF0
-aWMgdm9pZCBuZnM0X2VuZF9kcmFpbl9zZXNzaW9uKHN0cnVjdCBuZnNfY2xpZW50ICpjbHApDQo+
-ICB7DQo+ICAJc3RydWN0IG5mczRfc2Vzc2lvbiAqc2VzID0gY2xwLT5jbF9zZXNzaW9uOw0KPiAg
-DQo+ICsJaWYgKGNscC0+Y2xfc2xvdF90YmwpIHsNCj4gKwkJbmZzNF9lbmRfZHJhaW5fc2xvdF90
-YWJsZShjbHAtPmNsX3Nsb3RfdGJsKTsNCj4gKwkJcmV0dXJuOw0KPiArCX0NCj4gKw0KPiAgCWlm
-IChzZXMgIT0gTlVMTCkgew0KPiAgCQluZnM0X2VuZF9kcmFpbl9zbG90X3RhYmxlKCZzZXMtPmJj
-X3Nsb3RfdGFibGUpOw0KPiAgCQluZnM0X2VuZF9kcmFpbl9zbG90X3RhYmxlKCZzZXMtPmZjX3Ns
-b3RfdGFibGUpOw0KPiBAQCAtMjc4LDYgKzI1Nyw5IEBAIHN0YXRpYyBpbnQgbmZzNF9iZWdpbl9k
-cmFpbl9zZXNzaW9uKHN0cnVjdCBuZnNfY2xpZW50ICpjbHApDQo+ICAJc3RydWN0IG5mczRfc2Vz
-c2lvbiAqc2VzID0gY2xwLT5jbF9zZXNzaW9uOw0KPiAgCWludCByZXQgPSAwOw0KPiAgDQo+ICsJ
-aWYgKGNscC0+Y2xfc2xvdF90YmwpDQo+ICsJCXJldHVybiBuZnM0X2RyYWluX3Nsb3RfdGJsKGNs
-cC0+Y2xfc2xvdF90YmwpOw0KPiArDQo+ICAJLyogYmFjayBjaGFubmVsICovDQo+ICAJcmV0ID0g
-bmZzNF9kcmFpbl9zbG90X3RibCgmc2VzLT5iY19zbG90X3RhYmxlKTsNCj4gIAlpZiAocmV0KQ0K
-PiBAQCAtMjg2LDYgKzI2OCwzMiBAQCBzdGF0aWMgaW50IG5mczRfYmVnaW5fZHJhaW5fc2Vzc2lv
-bihzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwKQ0KPiAgCXJldHVybiBuZnM0X2RyYWluX3Nsb3RfdGJs
-KCZzZXMtPmZjX3Nsb3RfdGFibGUpOw0KPiAgfQ0KPiAgDQo+ICsjaWYgZGVmaW5lZChDT05GSUdf
-TkZTX1Y0XzEpDQo+ICsNCj4gK3N0YXRpYyBpbnQgbmZzNDFfc2V0dXBfc3RhdGVfcmVuZXdhbChz
-dHJ1Y3QgbmZzX2NsaWVudCAqY2xwKQ0KPiArew0KPiArCWludCBzdGF0dXM7DQo+ICsJc3RydWN0
-IG5mc19mc2luZm8gZnNpbmZvOw0KPiArDQo+ICsJaWYgKCF0ZXN0X2JpdChORlNfQ1NfQ0hFQ0tf
-TEVBU0VfVElNRSwgJmNscC0+Y2xfcmVzX3N0YXRlKSkgew0KPiArCQluZnM0X3NjaGVkdWxlX3N0
-YXRlX3JlbmV3YWwoY2xwKTsNCj4gKwkJcmV0dXJuIDA7DQo+ICsJfQ0KPiArDQo+ICsJc3RhdHVz
-ID0gbmZzNF9wcm9jX2dldF9sZWFzZV90aW1lKGNscCwgJmZzaW5mbyk7DQo+ICsJaWYgKHN0YXR1
-cyA9PSAwKSB7DQo+ICsJCS8qIFVwZGF0ZSBsZWFzZSB0aW1lIGFuZCBzY2hlZHVsZSByZW5ld2Fs
-ICovDQo+ICsJCXNwaW5fbG9jaygmY2xwLT5jbF9sb2NrKTsNCj4gKwkJY2xwLT5jbF9sZWFzZV90
-aW1lID0gZnNpbmZvLmxlYXNlX3RpbWUgKiBIWjsNCj4gKwkJY2xwLT5jbF9sYXN0X3JlbmV3YWwg
-PSBqaWZmaWVzOw0KPiArCQlzcGluX3VubG9jaygmY2xwLT5jbF9sb2NrKTsNCj4gKw0KPiArCQlu
-ZnM0X3NjaGVkdWxlX3N0YXRlX3JlbmV3YWwoY2xwKTsNCj4gKwl9DQo+ICsNCj4gKwlyZXR1cm4g
-c3RhdHVzOw0KPiArfQ0KPiArDQo+ICBzdGF0aWMgdm9pZCBuZnM0MV9maW5pc2hfc2Vzc2lvbl9y
-ZXNldChzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwKQ0KPiAgew0KPiAgCWNsZWFyX2JpdChORlM0Q0xO
-VF9MRUFTRV9DT05GSVJNLCAmY2xwLT5jbF9zdGF0ZSk7DQo+IEBAIC0yMDgzLDcgKzIwOTEsNiBA
-QCBzdGF0aWMgaW50IG5mczRfYmluZF9jb25uX3RvX3Nlc3Npb24oc3RydWN0IG5mc19jbGllbnQg
-KmNscCkNCj4gIH0NCj4gICNlbHNlIC8qIENPTkZJR19ORlNfVjRfMSAqLw0KPiAgc3RhdGljIGlu
-dCBuZnM0X3Jlc2V0X3Nlc3Npb24oc3RydWN0IG5mc19jbGllbnQgKmNscCkgeyByZXR1cm4gMDsg
-fQ0KPiAtc3RhdGljIHZvaWQgbmZzNF9lbmRfZHJhaW5fc2Vzc2lvbihzdHJ1Y3QgbmZzX2NsaWVu
-dCAqY2xwKSB7IH0NCj4gIA0KPiAgc3RhdGljIGludCBuZnM0X2JpbmRfY29ubl90b19zZXNzaW9u
-KHN0cnVjdCBuZnNfY2xpZW50ICpjbHApDQo+ICB7DQo+IA0KPiAtLQ0KPiBUbyB1bnN1YnNjcmli
-ZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBp
-bg0KPiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0K
-PiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9t
-by1pbmZvLmh0bWwNCg0KV2hlbiBjb21waWxpbmcgd2l0aG91dCBDT05GSUdfTkZTX1Y0XzE6DQoN
-Clt0cm9uZG15QGxlaXJhIGxpbnV4LW5mc10kIG1ha2UgTz0uLi9vYmplY3QueDg2XzY0IFc9MSBD
-PTIgZnMvbmZzL25mczRzdGF0ZS5vDQptYWtlWzJdOiBOb3RoaW5nIHRvIGJlIGRvbmUgZm9yIGBh
-bGwnLg0KbWFrZVsyXTogTm90aGluZyB0byBiZSBkb25lIGZvciBgcmVsb2NzJy4NCiAgVXNpbmcg
-L2hvbWUvdHJvbmRteS9kZXZlbC9rZXJuZWwvbGludXgtbmZzIGFzIHNvdXJjZSBmb3Iga2VybmVs
-DQogIEdFTiAgICAgL2hvbWUvdHJvbmRteS9kZXZlbC9rZXJuZWwvb2JqZWN0Lng4Nl82NC9NYWtl
-ZmlsZQ0KICBDSEsgICAgIGluY2x1ZGUvZ2VuZXJhdGVkL3VhcGkvbGludXgvdmVyc2lvbi5oDQog
-IENISyAgICAgaW5jbHVkZS9nZW5lcmF0ZWQvdXRzcmVsZWFzZS5oDQogIENBTEwgICAgL2hvbWUv
-dHJvbmRteS9kZXZlbC9rZXJuZWwvbGludXgtbmZzL3NjcmlwdHMvY2hlY2tzeXNjYWxscy5zaA0K
-ICBDSEVDSyAgIC9ob21lL3Ryb25kbXkvZGV2ZWwva2VybmVsL2xpbnV4LW5mcy9zY3JpcHRzL21v
-ZC9lbXB0eS5jDQogIENIRUNLICAgL2hvbWUvdHJvbmRteS9kZXZlbC9rZXJuZWwvbGludXgtbmZz
-L2ZzL25mcy9uZnM0c3RhdGUuYw0KL2hvbWUvdHJvbmRteS9kZXZlbC9rZXJuZWwvbGludXgtbmZz
-L2luY2x1ZGUvbGludXgvZXJyLmg6MzQ6MTY6IHdhcm5pbmc6IGRlcmVmZXJlbmNlIG9mIG5vZGVy
-ZWYgZXhwcmVzc2lvbg0KL2hvbWUvdHJvbmRteS9kZXZlbC9rZXJuZWwvbGludXgtbmZzL2luY2x1
-ZGUvbGludXgvZXJyLmg6MzQ6MTY6IHdhcm5pbmc6IGRlcmVmZXJlbmNlIG9mIG5vZGVyZWYgZXhw
-cmVzc2lvbg0KL2hvbWUvdHJvbmRteS9kZXZlbC9rZXJuZWwvbGludXgtbmZzL2luY2x1ZGUvbGlu
-dXgvZXJyLmg6Mjk6MjM6IHdhcm5pbmc6IGRlcmVmZXJlbmNlIG9mIG5vZGVyZWYgZXhwcmVzc2lv
-bg0KL2hvbWUvdHJvbmRteS9kZXZlbC9rZXJuZWwvbGludXgtbmZzL2luY2x1ZGUvbGludXgvZXJy
-Lmg6MzQ6MTY6IHdhcm5pbmc6IGRlcmVmZXJlbmNlIG9mIG5vZGVyZWYgZXhwcmVzc2lvbg0KL2hv
-bWUvdHJvbmRteS9kZXZlbC9rZXJuZWwvbGludXgtbmZzL2luY2x1ZGUvbGludXgvZXJyLmg6Mjk6
-MjM6IHdhcm5pbmc6IGRlcmVmZXJlbmNlIG9mIG5vZGVyZWYgZXhwcmVzc2lvbg0KICBDQyBbTV0g
-IGZzL25mcy9uZnM0c3RhdGUubw0KL2hvbWUvdHJvbmRteS9kZXZlbC9rZXJuZWwvbGludXgtbmZz
-L2ZzL25mcy9uZnM0c3RhdGUuYzoyNTU6MTI6IHdhcm5pbmc6IOKAmG5mczRfYmVnaW5fZHJhaW5f
-c2Vzc2lvbuKAmSBkZWZpbmVkIGJ1dCBub3QgdXNlZCBbLVd1bnVzZWQtZnVuY3Rpb25dDQogc3Rh
-dGljIGludCBuZnM0X2JlZ2luX2RyYWluX3Nlc3Npb24oc3RydWN0IG5mc19jbGllbnQgKmNscCkN
-Cg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpO
-ZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+List the layout state on the respective file and client structures and
+list all layout segments associated with the layout state on the respective
+layout state structure.
+
+Use the layout state list (lo_layouts) for looking up the layout.
+
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+---
+ fs/nfsd/nfs4pnfsd.c | 40 +++++++++++++++++++++++++++++++++++++---
+ fs/nfsd/nfs4state.c |  3 +++
+ fs/nfsd/pnfsd.h     |  4 ++++
+ fs/nfsd/state.h     |  3 +++
+ 4 files changed, 47 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index e28c396..2d5ddf7 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -130,6 +130,11 @@ struct sbid_tracker {
+ 		return new;
+ 	kref_init(&new->ls_ref);
+ 	new->ls_stid.sc_type = NFS4_LAYOUT_STID;
++	INIT_LIST_HEAD(&new->ls_perclnt);
++	new->ls_client = clp;
++	spin_lock(&layout_lock);
++	list_add(&new->ls_perclnt, &clp->cl_lo_states);
++	spin_unlock(&layout_lock);
+ 	return new;
+ }
+ 
+@@ -139,6 +144,13 @@ struct sbid_tracker {
+ 	kref_get(&ls->ls_ref);
+ }
+ 
++static void
++unhash_layout_state(struct nfs4_layout_state *ls)
++{
++	ASSERT_LAYOUT_LOCKED();
++	list_del_init(&ls->ls_perclnt);
++}
++
+ /*
+  * Note: must be called under the state lock
+  */
+@@ -149,6 +161,11 @@ struct sbid_tracker {
+ 			container_of(kref, struct nfs4_layout_state, ls_ref);
+ 
+ 	nfsd4_remove_stid(&ls->ls_stid);
++	if (!list_empty(&ls->ls_perclnt)) {
++		spin_lock(&layout_lock);
++		unhash_layout_state(ls);
++		spin_unlock(&layout_lock);
++	}
+ 	nfsd4_free_stid(layout_state_slab, &ls->ls_stid);
+ }
+ 
+@@ -234,13 +251,30 @@ struct sbid_tracker {
+ 	kmem_cache_free(pnfs_layout_slab, lp);
+ }
+ 
++static void update_layout_stateid_locked(struct nfs4_layout_state *ls, stateid_t *sid)
++{
++	update_stateid(&(ls)->ls_stid.sc_stateid);
++	memcpy((sid), &(ls)->ls_stid.sc_stateid, sizeof(stateid_t));
++	dprintk("%s Updated ls_stid to %d on layoutstate %p\n",
++		__func__, sid->si_generation, ls);
++}
++
+ static void
+ init_layout(struct nfs4_layout *lp,
+-	    struct nfsd4_layout_seg *seg)
++	    struct nfs4_layout_state *ls,
++	    struct svc_fh *current_fh,
++	    struct nfsd4_layout_seg *seg,
++	    stateid_t *stateid)
+ {
+-	dprintk("pNFS %s: lp %p\n", __func__, lp);
++	dprintk("pNFS %s: lp %p ls %p\n", __func__,
++		lp, ls);
+ 
+ 	memcpy(&lp->lo_seg, seg, sizeof(lp->lo_seg));
++	get_layout_state(ls);		/* put on destroy_layout */
++	lp->lo_state = ls;
++	spin_lock(&layout_lock);
++	update_layout_stateid_locked(ls, stateid);
++	spin_unlock(&layout_lock);
+ 	dprintk("pNFS %s end\n", __func__);
+ }
+ 
+@@ -443,7 +477,7 @@ struct super_block *
+ 	lgp->lg_seg = res.lg_seg;
+ 	lgp->lg_roc = res.lg_return_on_close;
+ 
+-	init_layout(lp, &res.lg_seg);
++	init_layout(lp, ls, lgp->lg_fhp, &res.lg_seg, &lgp->lg_sid);
+ out_unlock:
+ 	if (ls)
+ 		put_layout_state(ls);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index fa292bb..0e2266f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1363,6 +1363,9 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 	INIT_LIST_HEAD(&clp->cl_idhash);
+ 	INIT_LIST_HEAD(&clp->cl_openowners);
+ 	INIT_LIST_HEAD(&clp->cl_delegations);
++#if defined(CONFIG_PNFSD)
++	INIT_LIST_HEAD(&clp->cl_lo_states);
++#endif /* CONFIG_PNFSD */
+ 	INIT_LIST_HEAD(&clp->cl_lru);
+ 	INIT_LIST_HEAD(&clp->cl_callbacks);
+ 	INIT_LIST_HEAD(&clp->cl_revoked);
+diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
+index c2360e4..a0363a7 100644
+--- a/fs/nfsd/pnfsd.h
++++ b/fs/nfsd/pnfsd.h
+@@ -44,10 +44,14 @@
+ struct nfs4_layout_state {
+ 	struct nfs4_stid	ls_stid; /* must be first field */
+ 	struct kref		ls_ref;
++	struct list_head	ls_perclnt;
++	struct nfs4_client	*ls_client;
+ };
+ 
+ /* outstanding layout */
+ struct nfs4_layout {
++	struct list_head		lo_perstate;
++	struct nfs4_layout_state	*lo_state;
+ 	struct nfsd4_layout_seg		lo_seg;
+ };
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 8c6e097..187d169 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -291,6 +291,9 @@ struct nfs4_client {
+ 	struct rpc_wait_queue	cl_cb_waitq;	/* backchannel callers may */
+ 						/* wait here for slots */
+ 	struct net		*net;
++#if defined(CONFIG_PNFSD)
++	struct list_head	cl_lo_states;	/* outstanding layout states */
++#endif /* CONFIG_PNFSD */
+ };
+ 
+ /* struct nfs4_client_reset
+-- 
+1.8.3.1
+
