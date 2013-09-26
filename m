@@ -1,229 +1,183 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:42124 "EHLO mx2.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:18807 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750819Ab3IGXST (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 7 Sep 2013 19:18:19 -0400
+	id S1754642Ab3IZVpT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Sep 2013 17:45:19 -0400
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: <linux-nfs@vger.kernel.org>
-CC: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/6] NFSv4: Fix security auto-negotiation
-Date: Sat, 7 Sep 2013 19:18:10 -0400
-Message-ID: <1378595893-60395-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1378595893-60395-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1378595893-60395-1-git-send-email-Trond.Myklebust@netapp.com>
- <1378595893-60395-2-git-send-email-Trond.Myklebust@netapp.com>
- <1378595893-60395-3-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH] NFSv4: Honour the 'opened' parameter in the atomic_open() filesystem method
+Date: Thu, 26 Sep 2013 17:44:59 -0400
+Message-ID: <1380231907-13733-1-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFSv4 security auto-negotiation has been broken since
-commit 4580a92d44e2b21c2254fa5fef0f1bfb43c82318 (NFS:
-Use server-recommended security flavor by default (NFSv3))
-because nfs4_try_mount() will automatically select AUTH_SYS
-if it sees no auth flavours.
+Determine if we've created a new file by examining the directory change
+attribute and/or the O_EXCL flag.
+
+This fixes a regression when doing a non-exclusive create of a new file.
+If the FILE_CREATED flag is not set, the atomic_open() command will
+perform full file access permissions checks instead of just checking
+for MAY_OPEN.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/internal.h    |  2 +-
- fs/nfs/nfs4_fs.h     |  2 +-
- fs/nfs/nfs4client.c  | 19 +++++++++++++------
- fs/nfs/nfs4getroot.c |  4 ++--
- fs/nfs/nfs4proc.c    | 17 +++++++++++++----
- fs/nfs/nfs4super.c   |  4 ----
- 6 files changed, 30 insertions(+), 18 deletions(-)
+ fs/nfs/dir.c            |  2 +-
+ fs/nfs/nfs4file.c       |  3 ++-
+ fs/nfs/nfs4proc.c       | 26 +++++++++++++++++++-------
+ include/linux/nfs_xdr.h |  3 ++-
+ 4 files changed, 24 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 23ec6e8..d388302c 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -358,7 +358,7 @@ extern struct dentry *nfs_get_root(struct super_block *, struct nfs_fh *,
- extern struct dentry *nfs4_get_root(struct super_block *, struct nfs_fh *,
- 				    const char *);
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 854a8f0..02b0df7 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1458,7 +1458,7 @@ int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
  
--extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh);
-+extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh, bool);
- #endif
+ 	trace_nfs_atomic_open_enter(dir, ctx, open_flags);
+ 	nfs_block_sillyrename(dentry->d_parent);
+-	inode = NFS_PROTO(dir)->open_context(dir, ctx, open_flags, &attr);
++	inode = NFS_PROTO(dir)->open_context(dir, ctx, open_flags, &attr, opened);
+ 	nfs_unblock_sillyrename(dentry->d_parent);
+ 	if (IS_ERR(inode)) {
+ 		err = PTR_ERR(inode);
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index e5b804d..77efaf1 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -19,6 +19,7 @@ nfs4_file_open(struct inode *inode, struct file *filp)
+ 	struct inode *dir;
+ 	unsigned openflags = filp->f_flags;
+ 	struct iattr attr;
++	int opened = 0;
+ 	int err;
  
- struct nfs_pgio_completion_ops;
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index d2db3ce..f520a11 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -221,7 +221,7 @@ struct vfsmount *nfs4_submount(struct nfs_server *, struct dentry *,
- /* nfs4proc.c */
- extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
- extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct nfs4_setclientid_res *arg, struct rpc_cred *);
--extern int nfs4_proc_get_rootfh(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
-+extern int nfs4_proc_get_rootfh(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *, bool);
- extern int nfs4_proc_bind_conn_to_session(struct nfs_client *, struct rpc_cred *cred);
- extern int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred);
- extern int nfs4_destroy_clientid(struct nfs_client *clp);
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index f798925..cc80085 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -885,7 +885,7 @@ static void nfs4_session_set_rwsize(struct nfs_server *server)
- }
+ 	/*
+@@ -55,7 +56,7 @@ nfs4_file_open(struct inode *inode, struct file *filp)
+ 		nfs_wb_all(inode);
+ 	}
  
- static int nfs4_server_common_setup(struct nfs_server *server,
--		struct nfs_fh *mntfh)
-+		struct nfs_fh *mntfh, bool auth_probe)
- {
- 	struct nfs_fattr *fattr;
- 	int error;
-@@ -917,7 +917,7 @@ static int nfs4_server_common_setup(struct nfs_server *server,
- 
- 
- 	/* Probe the root fh to retrieve its FSID and filehandle */
--	error = nfs4_get_rootfh(server, mntfh);
-+	error = nfs4_get_rootfh(server, mntfh, auth_probe);
- 	if (error < 0)
- 		goto out;
- 
-@@ -949,6 +949,7 @@ out:
- static int nfs4_init_server(struct nfs_server *server,
- 		const struct nfs_parsed_mount_data *data)
- {
-+	rpc_authflavor_t pseudoflavor = RPC_AUTH_UNIX;
- 	struct rpc_timeout timeparms;
- 	int error;
- 
-@@ -961,13 +962,16 @@ static int nfs4_init_server(struct nfs_server *server,
- 	server->flags = data->flags;
- 	server->options = data->options;
- 
-+	if (data->auth_flavor_len >= 1)
-+		pseudoflavor = data->auth_flavors[0];
-+
- 	/* Get a client record */
- 	error = nfs4_set_client(server,
- 			data->nfs_server.hostname,
- 			(const struct sockaddr *)&data->nfs_server.address,
- 			data->nfs_server.addrlen,
- 			data->client_address,
--			data->auth_flavors[0],
-+			pseudoflavor,
- 			data->nfs_server.protocol,
- 			&timeparms,
- 			data->minorversion,
-@@ -987,7 +991,7 @@ static int nfs4_init_server(struct nfs_server *server,
- 
- 	server->port = data->nfs_server.port;
- 
--	error = nfs_init_server_rpcclient(server, &timeparms, data->auth_flavors[0]);
-+	error = nfs_init_server_rpcclient(server, &timeparms, pseudoflavor);
- 
- error:
- 	/* Done */
-@@ -1005,6 +1009,7 @@ struct nfs_server *nfs4_create_server(struct nfs_mount_info *mount_info,
- 				      struct nfs_subversion *nfs_mod)
- {
- 	struct nfs_server *server;
-+	bool auth_probe;
- 	int error;
- 
- 	dprintk("--> nfs4_create_server()\n");
-@@ -1013,12 +1018,14 @@ struct nfs_server *nfs4_create_server(struct nfs_mount_info *mount_info,
- 	if (!server)
- 		return ERR_PTR(-ENOMEM);
- 
-+	auth_probe = mount_info->parsed->auth_flavor_len < 1;
-+
- 	/* set up the general RPC client */
- 	error = nfs4_init_server(server, mount_info->parsed);
- 	if (error < 0)
- 		goto error;
- 
--	error = nfs4_server_common_setup(server, mount_info->mntfh);
-+	error = nfs4_server_common_setup(server, mount_info->mntfh, auth_probe);
- 	if (error < 0)
- 		goto error;
- 
-@@ -1071,7 +1078,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
- 	if (error < 0)
- 		goto error;
- 
--	error = nfs4_server_common_setup(server, mntfh);
-+	error = nfs4_server_common_setup(server, mntfh, false);
- 	if (error < 0)
- 		goto error;
- 
-diff --git a/fs/nfs/nfs4getroot.c b/fs/nfs/nfs4getroot.c
-index 549462e..c0b3a16 100644
---- a/fs/nfs/nfs4getroot.c
-+++ b/fs/nfs/nfs4getroot.c
-@@ -9,7 +9,7 @@
- 
- #define NFSDBG_FACILITY		NFSDBG_CLIENT
- 
--int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh)
-+int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh, bool auth_probe)
- {
- 	struct nfs_fsinfo fsinfo;
- 	int ret = -ENOMEM;
-@@ -21,7 +21,7 @@ int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh)
- 		goto out;
- 
- 	/* Start by getting the root filehandle from the server */
--	ret = nfs4_proc_get_rootfh(server, mntfh, &fsinfo);
-+	ret = nfs4_proc_get_rootfh(server, mntfh, &fsinfo, auth_probe);
- 	if (ret < 0) {
- 		dprintk("nfs4_get_rootfh: getroot error = %d\n", -ret);
- 		goto out;
+-	inode = NFS_PROTO(dir)->open_context(dir, ctx, openflags, &attr);
++	inode = NFS_PROTO(dir)->open_context(dir, ctx, openflags, &attr, &opened);
+ 	if (IS_ERR(inode)) {
+ 		err = PTR_ERR(inode);
+ 		switch (err) {
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index cb56102..68551ea 100644
+index 989bb9d..488ef9b 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -2884,18 +2884,27 @@ static int nfs4_do_find_root_sec(struct nfs_server *server,
-  * @server: initialized nfs_server handle
-  * @fhandle: we fill in the pseudo-fs root file handle
-  * @info: we fill in an FSINFO struct
-+ * @auth_probe: probe the auth flavours
-  *
-  * Returns zero on success, or a negative errno.
-  */
- int nfs4_proc_get_rootfh(struct nfs_server *server, struct nfs_fh *fhandle,
--			 struct nfs_fsinfo *info)
-+			 struct nfs_fsinfo *info,
-+			 bool auth_probe)
+@@ -912,6 +912,7 @@ struct nfs4_opendata {
+ 	struct iattr attrs;
+ 	unsigned long timestamp;
+ 	unsigned int rpc_done : 1;
++	unsigned int file_created : 1;
+ 	unsigned int is_recover : 1;
+ 	int rpc_status;
+ 	int cancelled;
+@@ -1946,8 +1947,13 @@ static int _nfs4_proc_open(struct nfs4_opendata *data)
+ 
+ 	nfs_fattr_map_and_free_names(server, &data->f_attr);
+ 
+-	if (o_arg->open_flags & O_CREAT)
++	if (o_arg->open_flags & O_CREAT) {
+ 		update_changeattr(dir, &o_res->cinfo);
++		if (o_arg->open_flags & O_EXCL)
++			data->file_created = 1;
++		else if (o_res->cinfo.before != o_res->cinfo.after)
++			data->file_created = 1;
++	}
+ 	if ((o_res->rflags & NFS4_OPEN_RESULT_LOCKTYPE_POSIX) == 0)
+ 		server->caps &= ~NFS_CAP_POSIX_LOCK;
+ 	if(o_res->rflags & NFS4_OPEN_RESULT_CONFIRM) {
+@@ -2191,7 +2197,8 @@ static int _nfs4_do_open(struct inode *dir,
+ 			struct nfs_open_context *ctx,
+ 			int flags,
+ 			struct iattr *sattr,
+-			struct nfs4_label *label)
++			struct nfs4_label *label,
++			int *opened)
  {
+ 	struct nfs4_state_owner  *sp;
+ 	struct nfs4_state     *state = NULL;
+@@ -2261,6 +2268,8 @@ static int _nfs4_do_open(struct inode *dir,
+ 			nfs_setsecurity(state->inode, opendata->o_res.f_attr, olabel);
+ 		}
+ 	}
++	if (opendata->file_created)
++		*opened |= FILE_CREATED;
+ 
+ 	if (pnfs_use_threshold(ctx_th, opendata->f_attr.mdsthreshold, server))
+ 		*ctx_th = opendata->f_attr.mdsthreshold;
+@@ -2289,7 +2298,8 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
+ 					struct nfs_open_context *ctx,
+ 					int flags,
+ 					struct iattr *sattr,
+-					struct nfs4_label *label)
++					struct nfs4_label *label,
++					int *opened)
+ {
+ 	struct nfs_server *server = NFS_SERVER(dir);
+ 	struct nfs4_exception exception = { };
+@@ -2297,7 +2307,7 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
  	int status;
  
--	status = nfs4_lookup_root(server, fhandle, info);
--	if ((status == -NFS4ERR_WRONGSEC) &&
--	    !(server->flags & NFS_MOUNT_SECFLAVOUR))
-+	switch (auth_probe) {
-+	case false:
-+		status = nfs4_lookup_root(server, fhandle, info);
-+		if (status != -NFS4ERR_WRONGSEC)
-+			break;
-+		/* Did user force a 'sec=' mount option? */
-+		if (server->flags & NFS_MOUNT_SECFLAVOUR)
-+			break;
-+	default:
- 		status = nfs4_do_find_root_sec(server, fhandle, info);
-+	}
+ 	do {
+-		status = _nfs4_do_open(dir, ctx, flags, sattr, label);
++		status = _nfs4_do_open(dir, ctx, flags, sattr, label, opened);
+ 		res = ctx->state;
+ 		trace_nfs4_open_file(ctx, flags, status);
+ 		if (status == 0)
+@@ -2659,7 +2669,8 @@ out:
+ }
  
- 	if (status == 0)
- 		status = nfs4_server_capabilities(server, fhandle);
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index 4ad837c..e26acdd 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -253,10 +253,6 @@ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
+ static struct inode *
+-nfs4_atomic_open(struct inode *dir, struct nfs_open_context *ctx, int open_flags, struct iattr *attr)
++nfs4_atomic_open(struct inode *dir, struct nfs_open_context *ctx,
++		int open_flags, struct iattr *attr, int *opened)
+ {
+ 	struct nfs4_state *state;
+ 	struct nfs4_label l = {0, 0, 0, NULL}, *label = NULL;
+@@ -2667,7 +2678,7 @@ nfs4_atomic_open(struct inode *dir, struct nfs_open_context *ctx, int open_flags
+ 	label = nfs4_label_init_security(dir, ctx->dentry, attr, &l);
  
- 	dfprintk(MOUNT, "--> nfs4_try_mount()\n");
+ 	/* Protect against concurrent sillydeletes */
+-	state = nfs4_do_open(dir, ctx, open_flags, attr, label);
++	state = nfs4_do_open(dir, ctx, open_flags, attr, label, opened);
  
--	if (data->auth_flavor_len < 1) {
--		data->auth_flavors[0] = RPC_AUTH_UNIX;
--		data->auth_flavor_len = 1;
--	}
- 	export_path = data->nfs_server.export_path;
- 	data->nfs_server.export_path = "/";
- 	root_mnt = nfs_do_root_mount(&nfs4_remote_fs_type, flags, mount_info,
+ 	nfs4_label_release_security(label);
+ 
+@@ -3332,6 +3343,7 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
+ 	struct nfs4_label l, *ilabel = NULL;
+ 	struct nfs_open_context *ctx;
+ 	struct nfs4_state *state;
++	int opened = 0;
+ 	int status = 0;
+ 
+ 	ctx = alloc_nfs_open_context(dentry, FMODE_READ);
+@@ -3341,7 +3353,7 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
+ 	ilabel = nfs4_label_init_security(dir, dentry, sattr, &l);
+ 
+ 	sattr->ia_mode &= ~current_umask();
+-	state = nfs4_do_open(dir, ctx, flags, sattr, ilabel);
++	state = nfs4_do_open(dir, ctx, flags, sattr, ilabel, &opened);
+ 	if (IS_ERR(state)) {
+ 		status = PTR_ERR(state);
+ 		goto out;
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 01fd84b..49f52c8 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1455,7 +1455,8 @@ struct nfs_rpc_ops {
+ 	struct inode * (*open_context) (struct inode *dir,
+ 				struct nfs_open_context *ctx,
+ 				int open_flags,
+-				struct iattr *iattr);
++				struct iattr *iattr,
++				int *);
+ 	int (*have_delegation)(struct inode *, fmode_t);
+ 	int (*return_delegation)(struct inode *);
+ 	struct nfs_client *(*alloc_client) (const struct nfs_client_initdata *);
 -- 
 1.8.3.1
 
