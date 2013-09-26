@@ -1,44 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:8316 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757015Ab3ICTZf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Sep 2013 15:25:35 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: use the mach cred for SECINFO w/ integrity
-Date: Tue, 3 Sep 2013 19:25:28 +0000
-Message-ID: <1378236327.6410.38.camel@leira.trondhjem.org>
-References: <1378235929-4710-1-git-send-email-dros@netapp.com>
-In-Reply-To: <1378235929-4710-1-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-qe0-f45.google.com ([209.85.128.45]:39594 "EHLO
+	mail-qe0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753005Ab3IZSm7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:42:59 -0400
+Received: by mail-qe0-f45.google.com with SMTP id 6so1089336qea.18
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:42:58 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC v0 44/49] posix_acl: resolve compile dependency in posix_acl.h
+Date: Thu, 26 Sep 2013 14:42:54 -0400
+Message-Id: <1380220974-14716-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <52447EA0.7070004@primarydata.com>
+References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEzLTA5LTAzIGF0IDE1OjE4IC0wNDAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
-d3JvdGU6DQo+IENvbW1pdCA1ZWMxNmE4NTAwZDMzOWIwZTdhMGNjNzZiNzg1ZDE4ZGFhZDM1NGQ0
-IGludHJvZHVjZWQgYSByZWdyZXNzaW9uDQo+IHRoYXQgY2F1c2VzIFNFQ0lORk8gdG8gZmFpbCB3
-aXRob3V0IGFjdHVhbHkgc2VuZGluZyBhbiBSUEMgaWY6DQo+IA0KPiAgMSkgdGhlIG5mc19jbGll
-bnQncyBycGNfY2xpZW50IHdhcyB1c2luZyBLUkI1aS9wIChub3cgdHJpZWQgYnkgZGVmYXVsdCkN
-Cj4gIDIpIHRoZSBjdXJyZW50IHVzZXIgZG9lc24ndCBoYXZlIHZhbGlkIGtlcmJlcm9zIGNyZWRl
-bnRpYWxzDQo+IA0KPiBUaGlzIHNpdHVhdGlvbiBpcyBxdWl0ZSBjb21tb24gLSBhcyBvZiBub3cg
-YSBzZWM9c3lzIG1vdW50IHdvdWxkIHVzZQ0KPiBrcmI1aSBmb3IgdGhlIG5mc19jbGllbnQncyBy
-cGNfY2xpZW50IGFuZCBhIHVzZXIgd291bGQgaGFyZGx5IGJlIGZhdWx0ZWQNCj4gZm9yIG5vdCBo
-YXZpbmcgcnVuIGtpbml0Lg0KPiANCj4gVGhlIHNvbHV0aW9uIGlzIHRvIHVzZSB0aGUgbWFjaGlu
-ZSBjcmVkIHdoZW4gdHJ5aW5nIHRvIHVzZSBhbiBpbnRlZ3JpdHkNCj4gcHJvdGVjdGVkIGF1dGgg
-Zmxhdm9yIGZvciBTRUNJTkZPLg0KPiANCj4gT2xkZXIgc2VydmVycyBtYXkgbm90IHN1cHBvcnQg
-dXNpbmcgdGhlIG1hY2hpbmUgY3JlZCBvciBhbiBpbnRlZ3JpdHkNCj4gcHJvdGVjdGVkIGF1dGgg
-Zmxhdm9yIGZvciBTRUNJTkZPIGluIGV2ZXJ5IGNpcmN1bXN0YW5jZSwgc28gd2UgZmFsbCBiYWNr
-DQo+IHRvIHVzaW5nIHRoZSB1c2VyJ3MgY3JlZCBhbmQgdGhlIGZpbGVzeXN0ZW0ncyBhdXRoIGZs
-YXZvciBpbiB0aGlzIGNhc2UuDQo+IA0KPiBXZSBydW4gaW50byBhbm90aGVyIHByb2JsZW0gd2hl
-biBydW5uaW5nIGFnYWluc3QgbGludXggbmZzIHNlcnZlcnMgLQ0KPiB0aGV5IHJldHVybiBORlM0
-RVJSX1dST05HU0VDIHdoZW4gdXNpbmcgaW50ZWdyaXR5IGF1dGggZmxhdm9yICh1bmxlc3MgdGhl
-DQo+IG1vdW50IGlzIGFsc28gdGhhdCBmbGF2b3IpIGV2ZW4gdGhvdWdoIHRoYXQgaXMgbm90IGEg
-dmFsaWQgZXJyb3IgZm9yDQo+IFNFQ0lORk8qLiAgRXZlbiB0aG91Z2ggaXQncyBhZ2FpbnN0IHNw
-ZWMsIGhhbmRsZSBXUk9OR1NFQyBlcnJvcnMgb24gU0VDSU5GTw0KPiBieSBmYWxsaW5nIGJhY2sg
-dG8gdXNpbmcgdGhlIHVzZXIgY3JlZCBhbmQgdGhlIGZpbGVzeXN0ZW0ncyBhdXRoIGZsYXZvci4N
-Cj4gDQo+IFNpZ25lZC1vZmYtYnk6IFdlc3RvbiBBbmRyb3MgQWRhbXNvbiA8ZHJvc0BuZXRhcHAu
-Y29tPg0KPiAtLS0NCg0KVGhhbmtzISBBcHBsaWVkLi4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
-DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RA
-bmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+From: Benny Halevy <bhalevy@panasas.com>
+
+get_cached_acl is defined as inline in posix_acl.h
+requiring the full definition of struct inode as it
+dereferences its struct inode * parameter.
+
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org
+Cc: J. Bruce Fields <bfields@fieldses.org>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+---
+ include/linux/posix_acl.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/include/linux/posix_acl.h b/include/linux/posix_acl.h
+index 7931efe..a7d8b04 100644
+--- a/include/linux/posix_acl.h
++++ b/include/linux/posix_acl.h
+@@ -9,6 +9,7 @@
+ #define __LINUX_POSIX_ACL_H
+ 
+ #include <linux/bug.h>
++#include <linux/fs.h>
+ #include <linux/slab.h>
+ #include <linux/rcupdate.h>
+ 
+-- 
+1.8.3.1
+
