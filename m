@@ -1,129 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39113 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:47792 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753259Ab3ISUuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Sep 2013 16:50:39 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com, Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 09/13] locks: helper functions for delegation breaking
-Date: Thu, 19 Sep 2013 16:50:33 -0400
-Message-Id: <1379623837-30798-10-git-send-email-bfields@redhat.com>
-In-Reply-To: <1379623837-30798-1-git-send-email-bfields@redhat.com>
-References: <1379623837-30798-1-git-send-email-bfields@redhat.com>
+	id S1751006Ab3IZQr4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Sep 2013 12:47:56 -0400
+Message-ID: <524464E6.2060006@redhat.com>
+Date: Thu, 26 Sep 2013 12:46:30 -0400
+From: Ric Wheeler <rwheeler@redhat.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Miklos Szeredi <miklos@szeredi.hu>, Zach Brown <zab@redhat.com>,
+        Anna Schumaker <schumaker.anna@gmail.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Bryan Schumaker <bjschuma@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Wong <normalperson@yhbt.net>
+Subject: Re: [RFC] extending splice for copy offloading
+References: <1378919210-10372-1-git-send-email-zab@redhat.com> <CAELBmZBGD4rph=gjLCPKCdEj+nzEQ-F=DExoL+h3vRm7qF7dCQ@mail.gmail.com> <20130925183828.GA30372@lenny.home.zabbo.net> <CAFX2JfnyF8kyMYzCdqdr2JkoyQCom1bFLpFj89wODjoju54-Ow@mail.gmail.com> <20130925190620.GB30372@lenny.home.zabbo.net> <20130925195526.GA18971@fieldses.org> <20130925210742.GG30372@lenny.home.zabbo.net> <CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com> <20130926153359.GE704@fieldses.org>
+In-Reply-To: <20130926153359.GE704@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On 09/26/2013 11:34 AM, J. Bruce Fields wrote:
+> On Thu, Sep 26, 2013 at 10:58:05AM +0200, Miklos Szeredi wrote:
+>> On Wed, Sep 25, 2013 at 11:07 PM, Zach Brown <zab@redhat.com> wrote:
+>>>> A client-side copy will be slower, but I guess it does have the
+>>>> advantage that the application can track progress to some degree, and
+>>>> abort it fairly quickly without leaving the file in a totally undefined
+>>>> state--and both might be useful if the copy's not a simple constant-time
+>>>> operation.
+>>> I suppose, but can't the app achieve a nice middle ground by copying the
+>>> file in smaller syscalls?  Avoid bulk data motion back to the client,
+>>> but still get notification every, I dunno, few hundred meg?
+>> Yes.  And if "cp"  could just be switched from a read+write syscall
+>> pair to a single splice syscall using the same buffer size.
+> Will the various magic fs-specific copy operations become inefficient
+> when the range copied is too small?
+>
+> (Totally naive question, as I have no idea how they really work.)
+>
+> --b.
 
-We'll need the same logic for rename and link.
+I think that is not really possible to tell when we invoke it. It is very much 
+target device (or file system, etc) dependent on how long it takes. It could be 
+as simple as a reflink copying in a smallish amount of metadata or fall back to 
+a full byte-by-byte copy.  Also note that speed is not the only impact here, 
+some of the mechanisms actually do not consume more space (just increment shared 
+data references).
 
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/namei.c         |   13 +++----------
- include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
- 2 files changed, 34 insertions(+), 12 deletions(-)
+It would probably make more sense to send it off to the target device and have 
+it return an error when not appropriate (then the app can fall back to the old 
+fashion copy).
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 5a5fdb9..58d3557 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3671,14 +3671,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
- 	else {
- 		error = security_inode_unlink(dir, dentry);
- 		if (!error) {
--			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
--			if (error) {
--				if (error == -EWOULDBLOCK && delegated_inode) {
--					*delegated_inode = target;
--					ihold(target);
--				}
-+			error = try_break_deleg(target, delegated_inode);
-+			if (error)
- 				goto out;
--			}
- 			error = dir->i_op->unlink(dir, dentry);
- 			if (!error)
- 				dont_mount(dentry);
-@@ -3748,9 +3743,7 @@ exit2:
- 		iput(inode);	/* truncate the inode here */
- 	inode = NULL;
- 	if (delegated_inode) {
--		error = break_deleg(delegated_inode, O_WRONLY);
--		iput(delegated_inode);
--		delegated_inode = NULL;
-+		error = break_deleg_wait(&delegated_inode);
- 		if (!error)
- 			goto retry_deleg;
- 	}
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index e9c536f..9ca64a4 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1906,6 +1906,9 @@ extern bool fs_fully_visible(struct file_system_type *);
- 
- extern int current_umask(void);
- 
-+extern void ihold(struct inode * inode);
-+extern void iput(struct inode *);
-+
- /* /sys/fs */
- extern struct kobject *fs_kobj;
- 
-@@ -1973,6 +1976,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
- 	return 0;
- }
- 
-+static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
-+{
-+	int ret;
-+
-+	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
-+	if (ret == -EWOULDBLOCK && delegated_inode) {
-+		*delegated_inode = inode;
-+		ihold(inode);
-+	}
-+	return ret;
-+}
-+
-+static inline int break_deleg_wait(struct inode **delegated_inode)
-+{
-+	int ret;
-+
-+	ret = break_deleg(*delegated_inode, O_WRONLY);
-+	iput(*delegated_inode);
-+	*delegated_inode = NULL;
-+	return ret;
-+}
-+
- #else /* !CONFIG_FILE_LOCKING */
- static inline int locks_mandatory_locked(struct inode *inode)
- {
-@@ -2016,6 +2041,12 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
- {
- 	return 0;
- }
-+
-+static inline int try_break_deleg(struct inode *inode, struct delegated_inode **inode)
-+{
-+	return 0;
-+}
-+
- #endif /* CONFIG_FILE_LOCKING */
- 
- /* fs/open.c */
-@@ -2351,8 +2382,6 @@ extern loff_t vfs_llseek(struct file *file, loff_t offset, int whence);
- extern int inode_init_always(struct super_block *, struct inode *);
- extern void inode_init_once(struct inode *);
- extern void address_space_init_once(struct address_space *mapping);
--extern void ihold(struct inode * inode);
--extern void iput(struct inode *);
- extern struct inode * igrab(struct inode *);
- extern ino_t iunique(struct super_block *, ino_t);
- extern int inode_needs_sync(struct inode *inode);
--- 
-1.7.9.5
+ric
+
+>
+>> And then
+>> the user would only notice that things got faster in case of server
+>> side copy.  No problems with long blocking times (at least not much
+>> worse than it was).
+>>
+>> However "cp" doesn't do reflinking by default, it has a switch for
+>> that.  If we just want "cp" and the like to use splice without fearing
+>> side effects then by default we should try to be as close to
+>> read+write behavior as possible.  No?   That's what I'm really
+>> worrying about when you want to wire up splice to reflink by default.
+>> I do think there should be a flag for that.  And if on the block level
+>> some magic happens, so be it.  It's not the fs deverloper's worry any
+>> more ;)
+>>
+>> Thanks,
+>> Miklos
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
 
