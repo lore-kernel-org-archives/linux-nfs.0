@@ -1,103 +1,310 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.gmx.net ([212.227.15.15]:63409 "EHLO mout.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752383Ab3IVQ6l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 22 Sep 2013 12:58:41 -0400
-Received: from [80.171.221.199] ([80.171.221.199]) by mail.gmx.com (mrgmx001)
- with ESMTPSA (Nemesis) id 0MDQp3-1V70ex178v-00Gtvr for
- <linux-nfs@vger.kernel.org>; Sun, 22 Sep 2013 18:58:39 +0200
-Message-ID: <523F21B5.2050305@gmx.de>
-Date: Sun, 22 Sep 2013 18:58:29 +0200
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jan Kara <jack@suse.cz>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        "user-mode-linux-devel@lists.sourceforge.net"
-	<user-mode-linux-devel@lists.sourceforge.net>,
-        linux-ext4@vger.kernel.org,
-        Linux Kernel <linux-kernel@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: Re: Issues with a rather unusual configured NFS server
-References: <52075E01.7030506@gmx.de> <20130812143640.GF4596@quack.suse.cz> <20130813215313.GH17781@fieldses.org> <20130827180655.GE14809@fieldses.org> <521E318C.7040401@gmx.de> <522B9010.8070902@gmx.de> <20130910140937.GD16011@fieldses.org>
-In-Reply-To: <20130910140937.GD16011@fieldses.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qe0-f43.google.com ([209.85.128.43]:63555 "EHLO
+	mail-qe0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753553Ab3IZSmF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:42:05 -0400
+Received: by mail-qe0-f43.google.com with SMTP id gh4so1087216qeb.2
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:42:04 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC v0 32/49] pnfsd: per block device dlm data server list cache
+Date: Thu, 26 Sep 2013 14:42:01 -0400
+Message-Id: <1380220921-14158-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <52447EA0.7070004@primarydata.com>
+References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/10/2013 04:09 PM, J. Bruce Fields wrote:
-> On Sat, Sep 07, 2013 at 10:44:00PM +0200, Toralf Förster wrote:
->> Today I run latest git tree with a patched UML (this patch + one for xterm issues) and got 2 times a core dump
->> when I fuzzy test an UML machine with a nearly identical scenario as already described but just shutdowned
->> both UML images instead of shooting one of it in the head.
-> 
-> This is a slightly different test case, so for now it sounds like this
-> could be a preexisting problem, not a regression?
-> 
-Yes, pre-existing. I'm trying to bisect it, the issue is already in 7d3107d.
+From: Andy Adamson <andros@netapp.com>
 
-But every attempt to get the first bad commit before that commit id
-failed till now. I started many attempts between v3.10 and 7d3107d. I
-could not reproduce that issue 100% in that interval. In that interval
-either all tested commits doesn't show the issue or the NFS client hangs
-during the stop of NFS service infinitely - and counting that as a "bad"
-commit doesn't work.
+Simple linked list cache of per block device dlm pnfs data servers.
 
-FWIW a single test case currently takes 2 1/2 hour and even then I do
-not fully trust the result  (except for a bad commit, that's clear.
+[pnfsd: define dlm export ops for the !CONFIG_PNFSD case]
+[pnfsd: fix pnfs_dlm_device string parsing]
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[pnfsd: more fixes for pnfs_dlm_device string parsing]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[restricted use of CONFIG_PNFSD]
+[use NFSD_DLM_DS_LIST_MAX defined in include/linux/nfsd/nfs4pnfsdlm.h]
+Acked-by: Steven Whitehouse <swhiteho@redhat.com>
+[pnfsd: fix test in nfsd4_find_pnfs_dlm_device]
+Signed-off-by: Eric Anderle <eanderle@umich.edu>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+[nfsd4_pnfs_dlm_shutdown should use list_for_each_entry_safe]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[pnfsd: nfs4pnfsd.c should dprint under NFSDDBG_PNFS]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+[pnfsd: Prevent ipv6 address truncation in /proc/fs/nfsd/pnfs_dlm_device]
+Signed-off-by: Michael Groshans <groshans@umich.edu>
+[pnfsd: Fix num_ds bug in nfsd4_set_pnfs_dlm_device()]
+Signed-off-by: Eric Anderle <eanderle@umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+---
+ fs/nfsd/Makefile                 |   2 +-
+ fs/nfsd/nfs4pnfsdlm.c            | 164 +++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfsctl.c                 |   2 +
+ include/linux/nfsd/nfs4pnfsdlm.h |  49 ++++++++++++
+ 4 files changed, 216 insertions(+), 1 deletion(-)
+ create mode 100644 fs/nfsd/nfs4pnfsdlm.c
+ create mode 100644 include/linux/nfsd/nfs4pnfsdlm.h
 
-
-> --b.
-> 
->>
->> I'll probably need time to figure out a test case, but just as a pre-info here's the back trace:
->>
->> tfoerste@n22 ~ $ gdb --core=/mnt/ramdisk/core /usr/local/bin/linux-v3.11-7550-g768c9d3 -n -batch -ex bt
->>
->> warning: core file may not match specified executable file.
->> [New LWP 7470]
->> [New LWP 7479]
->> [New LWP 7477]
->> [New LWP 7478]
->> Core was generated by `/usr/local/bin/linux-v3.11-7550-g768c9d3 earlyprintk ubda=/home/tfoerste/virtua'.
->> Program terminated with signal 6, Aborted.
->> #0  0xb77be424 in __kernel_vsyscall ()
->> #0  0xb77be424 in __kernel_vsyscall ()
->> #1  0x083aada5 in kill ()
->> #2  0x0807163d in uml_abort () at arch/um/os-Linux/util.c:93
->> #3  0x08071925 in os_dump_core () at arch/um/os-Linux/util.c:138
->> #4  0x080613a7 in panic_exit (self=0x85b1518 <panic_exit_notifier>, unused1=0, unused2=0x85e76e0 <buf.15920>) at arch/um/kernel/um_arch.c:240
->> #5  0x0809a398 in notifier_call_chain (nl=0x0, val=0, v=0x85e76e0 <buf.15920>, nr_to_call=-2, nr_calls=0x0) at kernel/notifier.c:93
->> #6  0x0809a4e3 in __atomic_notifier_call_chain (nr_calls=<optimized out>, nr_to_call=<optimized out>, v=<optimized out>, val=<optimized out>, nh=<optimized out>) at kernel/notifier.c:182
->> #7  atomic_notifier_call_chain (nh=0x85e76c4 <panic_notifier_list>, val=0, v=0x85e76e0 <buf.15920>) at kernel/notifier.c:191
->> #8  0x08408628 in panic (fmt=0x0) at kernel/panic.c:128
->> #9  0x081131c9 in shrink_dcache_for_umount_subtree (dentry=0x428028f0) at fs/dcache.c:941
->> #10 0x08113948 in shrink_dcache_for_umount (sb=0x463b8000) at fs/dcache.c:1002
->> #11 0x08101677 in generic_shutdown_super (sb=0x463b8000) at fs/super.c:404
->> #12 0x08102395 in kill_anon_super (sb=0x0) at fs/super.c:875
->> #13 0x081d3ff8 in nfs_kill_super (s=0x0) at fs/nfs/super.c:2598
->> #14 0x0810153a in deactivate_locked_super (s=0x463b8000) at fs/super.c:294
->> #15 0x081015d1 in deactivate_super (s=0x463b8000) at fs/super.c:319
->> #16 0x08119c0c in mntfree (mnt=<optimized out>) at fs/namespace.c:891
->> #17 mntput_no_expire (mnt=0x0) at fs/namespace.c:929
->> #18 0x0811b195 in SYSC_umount (flags=<optimized out>, name=<optimized out>) at fs/namespace.c:1335
->> #19 SyS_umount (name=134633856, flags=2) at fs/namespace.c:1305
->> #20 0x080618e2 in handle_syscall (r=0x498be5d4) at arch/um/kernel/skas/syscall.c:35
->> #21 0x08073c0d in handle_trap (local_using_sysemu=<optimized out>, regs=<optimized out>, pid=<optimized out>) at arch/um/os-Linux/skas/process.c:198
->> #22 userspace (regs=0x498be5d4) at arch/um/os-Linux/skas/process.c:431
->> #23 0x0805e65c in fork_handler () at arch/um/kernel/process.c:160
->> #24 0x00000000 in ?? ()
->>
->>
->>
->> -- 
->> MfG/Sincerely
->> Toralf Förster
->> pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
-> 
-
-
+diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
+index 5ebe5df..84ae177 100644
+--- a/fs/nfsd/Makefile
++++ b/fs/nfsd/Makefile
+@@ -12,4 +12,4 @@ nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs3xdr.o
+ nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
+ nfsd-$(CONFIG_NFSD_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4idmap.o \
+ 			   nfs4acl.o nfs4callback.o nfs4recover.o
+-nfsd-$(CONFIG_PNFSD)	+= nfs4pnfsd.o
++nfsd-$(CONFIG_PNFSD)	+= nfs4pnfsd.o nfs4pnfsdlm.o
+diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+new file mode 100644
+index 0000000..906c370
+--- /dev/null
++++ b/fs/nfsd/nfs4pnfsdlm.c
+@@ -0,0 +1,164 @@
++/******************************************************************************
++ *
++ * (c) 2007 Network Appliance, Inc.  All Rights Reserved.
++ * (c) 2009 NetApp.  All Rights Reserved.
++ *
++ * NetApp provides this source code under the GPL v2 License.
++ * The GPL v2 license is available at
++ * http://opensource.org/licenses/gpl-license.php.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
++ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
++ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
++ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
++ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
++ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
++ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ ******************************************************************************/
++
++#include <linux/nfsd/debug.h>
++#include <linux/nfsd/nfs4pnfsdlm.h>
++
++#define NFSDDBG_FACILITY                NFSDDBG_FILELAYOUT
++
++/* Just use a linked list. Do not expect more than 32 dlm_device_entries
++ * the first implementation will just use one device per cluster file system
++ */
++
++static LIST_HEAD(dlm_device_list);
++static DEFINE_SPINLOCK(dlm_device_list_lock);
++
++struct dlm_device_entry {
++	struct list_head	dlm_dev_list;
++	char			disk_name[DISK_NAME_LEN];
++	int			num_ds;
++	char			ds_list[NFSD_DLM_DS_LIST_MAX];
++};
++
++static struct dlm_device_entry *
++nfsd4_find_pnfs_dlm_device(char *disk_name)
++{
++	struct dlm_device_entry *dlm_pdev;
++
++	spin_lock(&dlm_device_list_lock);
++	list_for_each_entry(dlm_pdev, &dlm_device_list, dlm_dev_list) {
++		if (!memcmp(dlm_pdev->disk_name, disk_name, strlen(disk_name))) {
++			spin_unlock(&dlm_device_list_lock);
++			return dlm_pdev;
++		}
++	}
++	spin_unlock(&dlm_device_list_lock);
++	return NULL;
++}
++
++/*
++ * pnfs_dlm_device string format:
++ *     block-device-path:<ds1 ipv4 address>,<ds2 ipv4 address>
++ *
++ * Examples
++ *     /dev/sda:192.168.1.96,192.168.1.97' creates a data server list with
++ *     two data servers for the dlm cluster file system mounted on /dev/sda.
++ *
++ *     /dev/sda:192.168.1.96,192.168.1.100'
++ *     replaces the data server list for /dev/sda
++ *
++ *     Only the deviceid == 1 is supported. Can add device id to
++ *     pnfs_dlm_device string when needed.
++ *
++ *     Only the round robin each data server once stripe index is supported.
++ */
++int
++nfsd4_set_pnfs_dlm_device(char *pnfs_dlm_device, int len)
++
++{
++	struct dlm_device_entry *new, *found;
++	char *bufp = pnfs_dlm_device;
++	char *endp = bufp + strlen(bufp);
++	int err = -ENOMEM;
++
++	dprintk("--> %s len %d\n", __func__, len);
++
++	new = kzalloc(sizeof(*new), GFP_KERNEL);
++	if (!new)
++		return err;
++
++	err = -EINVAL;
++	/* disk_name */
++	/* FIXME: need to check for valid disk_name. search superblocks?
++	 * check for slash dev slash ?
++	 */
++	len = strcspn(bufp, ":");
++	if (len > DISK_NAME_LEN)
++		goto out_free;
++	memcpy(new->disk_name, bufp, len);
++
++	err = -EINVAL;
++	bufp += len + 1;
++	if (bufp >= endp)
++		goto out_free;
++
++	/* data server list */
++	/* FIXME: need to check for comma separated valid ip format */
++	len = strlen(bufp);
++	if (len > NFSD_DLM_DS_LIST_MAX)
++		goto out_free;
++	memcpy(new->ds_list, bufp, len);
++
++	/* count the number of comma-delimited DS IPs */
++	new->num_ds = 1;
++	while ((bufp = strchr(bufp, ',')) != NULL) {
++		new->num_ds++;
++		bufp++;
++	}
++
++	dprintk("%s disk_name %s num_ds %d ds_list %s\n", __func__,
++		new->disk_name, new->num_ds, new->ds_list);
++
++	found = nfsd4_find_pnfs_dlm_device(new->disk_name);
++	if (found) {
++		/* FIXME: should compare found->ds_list with new->ds_list
++		 * and if it is different, kick off a CB_NOTIFY change
++		 * deviceid.
++		 */
++		dprintk("%s pnfs_dlm_device %s:%s already in cache "
++			" replace ds_list with new ds_list %s\n", __func__,
++			found->disk_name, found->ds_list, new->ds_list);
++		memset(found->ds_list, 0, DISK_NAME_LEN);
++		memcpy(found->ds_list, new->ds_list, strlen(new->ds_list));
++		found->num_ds = new->num_ds;
++		kfree(new);
++	} else {
++		dprintk("%s Adding pnfs_dlm_device %s:%s\n", __func__,
++				new->disk_name, new->ds_list);
++		spin_lock(&dlm_device_list_lock);
++		list_add(&new->dlm_dev_list, &dlm_device_list);
++		spin_unlock(&dlm_device_list_lock);
++	}
++	dprintk("<-- %s Success\n", __func__);
++	return 0;
++
++out_free:
++	kfree(new);
++	dprintk("<-- %s returns %d\n", __func__, err);
++	return err;
++}
++
++void nfsd4_pnfs_dlm_shutdown(void)
++{
++	struct dlm_device_entry *dlm_pdev, *next;
++
++	dprintk("--> %s\n", __func__);
++
++	spin_lock(&dlm_device_list_lock);
++	list_for_each_entry_safe (dlm_pdev, next, &dlm_device_list,
++				  dlm_dev_list) {
++		list_del(&dlm_pdev->dlm_dev_list);
++		kfree(dlm_pdev);
++	}
++	spin_unlock(&dlm_device_list_lock);
++}
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 7f55517..b8bfa2e 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -15,6 +15,7 @@
+ #include <linux/sunrpc/gss_krb5_enctypes.h>
+ #include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/module.h>
++#include <linux/nfsd/nfs4pnfsdlm.h>
+ 
+ #include "idmap.h"
+ #include "nfsd.h"
+@@ -1210,6 +1211,7 @@ static int __init init_nfsd(void)
+ 
+ static void __exit exit_nfsd(void)
+ {
++	nfsd4_pnfs_dlm_shutdown();
+ 	nfsd_reply_cache_shutdown();
+ 	remove_proc_entry("fs/nfs/exports", NULL);
+ 	remove_proc_entry("fs/nfs", NULL);
+diff --git a/include/linux/nfsd/nfs4pnfsdlm.h b/include/linux/nfsd/nfs4pnfsdlm.h
+new file mode 100644
+index 0000000..63248aa
+--- /dev/null
++++ b/include/linux/nfsd/nfs4pnfsdlm.h
+@@ -0,0 +1,49 @@
++/******************************************************************************
++ *
++ * (c) 2007 Network Appliance, Inc.  All Rights Reserved.
++ * (c) 2009 NetApp.  All Rights Reserved.
++ *
++ * NetApp provides this source code under the GPL v2 License.
++ * The GPL v2 license is available at
++ * http://opensource.org/licenses/gpl-license.php.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
++ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
++ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
++ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
++ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
++ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
++ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ ******************************************************************************/
++#include <linux/genhd.h>
++
++/*
++ * Length of comma separated pnfs data server IPv4 addresses. Enough room for
++ * 32 addresses.
++ */
++#define NFSD_DLM_DS_LIST_MAX   512
++/*
++ * Length of colon separated pnfs dlm device of the form
++ * disk_name:comma separated data server IPv4 address
++ */
++#define NFSD_PNFS_DLM_DEVICE_MAX (NFSD_DLM_DS_LIST_MAX + DISK_NAME_LEN + 1)
++
++#ifdef CONFIG_PNFSD
++
++int nfsd4_set_pnfs_dlm_device(char *pnfs_dlm_device, int len);
++
++void nfsd4_pnfs_dlm_shutdown(void);
++
++#else /* CONFIG_PNFSD */
++
++static inline void nfsd4_pnfs_dlm_shutdown(void)
++{
++	return;
++}
++
++#endif /* CONFIG_PNFSD */
 -- 
-MfG/Sincerely
-Toralf Förster
-pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+1.8.3.1
+
