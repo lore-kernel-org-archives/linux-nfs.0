@@ -1,58 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:21124 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33054 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759409Ab3ICSnZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Sep 2013 14:43:25 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: NeilBrown <neilb@suse.de>
-CC: NFS <linux-nfs@vger.kernel.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-Subject: Re: [PATCH/RFC]  Don't try to recover NFS locks when they are lost.
-Date: Tue, 3 Sep 2013 18:43:23 +0000
-Message-ID: <1378233802.6410.34.camel@leira.trondhjem.org>
-References: <20130815123604.47755509@notabene.brown>
-In-Reply-To: <20130815123604.47755509@notabene.brown>
-Content-Type: text/plain; charset="utf-8"
+	id S1754028Ab3IZSzy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Sep 2013 14:55:54 -0400
+Date: Thu, 26 Sep 2013 11:55:08 -0700
+From: Zach Brown <zab@redhat.com>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Anna Schumaker <schumaker.anna@gmail.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Bryan Schumaker <bjschuma@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Wong <normalperson@yhbt.net>
+Subject: Re: [RFC] extending splice for copy offloading
+Message-ID: <20130926185508.GO30372@lenny.home.zabbo.net>
+References: <1378919210-10372-1-git-send-email-zab@redhat.com>
+ <CAELBmZBGD4rph=gjLCPKCdEj+nzEQ-F=DExoL+h3vRm7qF7dCQ@mail.gmail.com>
+ <20130925183828.GA30372@lenny.home.zabbo.net>
+ <CAFX2JfnyF8kyMYzCdqdr2JkoyQCom1bFLpFj89wODjoju54-Ow@mail.gmail.com>
+ <20130925190620.GB30372@lenny.home.zabbo.net>
+ <20130925195526.GA18971@fieldses.org>
+ <20130925210742.GG30372@lenny.home.zabbo.net>
+ <CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEzLTA4LTE1IGF0IDEyOjM2ICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IA0K
-PiBXaGVuIGFuIE5GUyAoVjQgc3BlY2lmaWNhbGx5KSBjbGllbnQgbG9zZXMgY29udGFjdCB3aXRo
-IHRoZSBzZXJ2ZXIgaXQgY2FuDQo+IGxvc2UgYW55IGxvY2tzIHRoYXQgaXQgaG9sZHMuDQo+IEN1
-cnJlbnRseSB3aGVuIGl0IHJlY29ubmVjdHMgdG8gdGhlIHNlcnZlciBpdCBzaW1wbHkgdHJpZXMg
-dG8gcmVjbGFpbQ0KPiB0aG9zZSBsb2Nrcy4gIFRoaXMgbWlnaHQgc3VjY2VlZCBldmVuIHRob3Vn
-aCBzb21lIG90aGVyIGNsaWVudCBoYXMgaGVsZCBhbmQNCj4gcmVsZWFzZWQgYSBsb2NrIGluIHRo
-ZSBtZWFuIHRpbWUuICBTbyB0aGUgZmlyc3QgY2xpZW50IG1pZ2h0IHRoaW5rIHRoZSBmaWxlDQo+
-IGlzIHVuY2hhbmdlZCwgYnV0IGl0IGlzbid0LiAgVGhpcyBpc24ndCBnb29kLg0KPiANCj4gSWYs
-IHdoZW4gcmVjb3ZlcnkgaGFwcGVucywgdGhlIGxvY2tzIGNhbm5vdCBiZSBjbGFpbWVkIGJlY2F1
-c2Ugc29tZSBvdGhlcg0KPiBjbGllbnQgc3RpbGwgaG9sZHMgdGhlIGxvY2ssIHRoZW4gIHdlIGdl
-dCBhIG1lc3NhZ2UgaW4gdGhlIGtlcm5lbCBsb2dzLCBidXQNCj4gdGhlIGNsaWVudCBjYW4gc3Rp
-bGwgd3JpdGUuICBTbyB0d28gY2xpZW50cyBjYW4gYm90aCB0aGluayB0aGV5IGhhdmUgYSBsb2Nr
-DQo+IGFuZCBjYW4gYm90aCB3cml0ZSBhdCB0aGUgc2FtZSB0aW1lLiAgVGhpcyBpcyBlcXVhbGx5
-IG5vdCBnb29kLg0KPiANCj4gVGhlcmUgd2FzIGEgcGF0Y2ggYSB3aGlsZSBhZ28NCj4gICBodHRw
-Oi8vY29tbWVudHMuZ21hbmUub3JnL2dtYW5lLmxpbnV4Lm5mcy80MTkxNw0KPiANCj4gd2hpY2gg
-dHJpZWQgdG8gYWRkcmVzcyBzb21lIG9mIHRoaXMsIGJ1dCBpdCBkaWRuJ3Qgc2VlbSB0byBnbyBh
-bnl3aGVyZS4NCj4gVGhhdCBwYXRjaCB3b3VsZCBhbHNvIHNlbmQgYSBzaWduYWwgdG8gdGhlIHBy
-b2Nlc3MuICBUaGF0IG1pZ2h0IGJlIHVzZWZ1bA0KPiBidXQgSSdtIHJlYWxseSBqdXN0IGludGVy
-ZXN0ZWQgaW4gZmFpbGluZyB0aGUgd3JpdGVzLg0KPiBGb3IgTkZTdjQgKHVubGlrZSB2Mi92Mykg
-dGhlcmUgaXMgYSBzdHJvbmcgbGluayBiZXR3ZWVuIHRoZSBsb2NrIGFuZCB0aGUNCj4gd3JpdGUg
-cmVxdWVzdCBzbyB3ZSBjYW4gZmFpcmx5IGVhc2lseSBmYWlsIGFuIElPIG9mIHRoZSBsb2NrIGlz
-IGdvbmUuDQo+IA0KPiBUaGUgcGF0Y2ggYmVsb3cgYXR0ZW1wdHMgdG8gZG8gdGhpcy4gIERvZXMg
-aXQgbWFrZSBzZW5zZT8NCj4gQmVjYXVzZSB0aGlzIGlzIGEgZmFpcmx5IGJpZyBjaGFuZ2UgSSBp
-bnRyb2R1Y2VzIGEgbW9kdWxlIHBhcmFtZXRlcg0KPiAicmVjb3Zlcl9sb2NrcyIgd2hpY2ggZGVm
-YXVsdHMgdG8gdHJ1ZSAodGhlIGN1cnJlbnQgYmVoYXZpb3VyKSBidXQgY2FuIGJlIHNldA0KPiB0
-byAiZmFsc2UiIHRvIHRlbGwgdGhlIGNsaWVudCBub3QgdG8gdHJ5IHRvIHJlY292ZXIgdGhpbmdz
-IHRoYXQgd2VyZSBsb3N0Lg0KPiANCj4gQ29tbWVudHM/DQoNCkkgdGhpbmsgdGhpcyBwYXRjaCBp
-cyBjbG9zZSB0byBiZWluZyB1c2FibGUuIEEgY291cGxlIG9mIHF1ZXN0aW9ucywNCnRob3VnaDoN
-Cg0KICAgICAxLiBXaGF0IGhhcHBlbnMgaWYgYW5vdGhlciBwcm9jZXNzJyBvcGVuKCkgY2F1c2Vz
-IHVzIHRvIHJlY2VpdmUgYQ0KICAgICAgICBkZWxlZ2F0aW9uIGFmdGVyIE5GU19MT0NLX0xPU1Qg
-aGFzIGJlZW4gc2V0IG9uIG91ciBsb2NrIHN0YXRlaWQsDQogICAgICAgIGJ1dCBiZWZvcmUgd2Ug
-Y2FsbCBuZnM0X3NldF9yd19zdGF0ZWlkKCk/DQogICAgIDIuIFNob3VsZG4ndCB3ZSBjbGVhciBO
-RlNfTE9DS19MT1NUIGF0IHNvbWUgcG9pbnQ/IEl0IGxvb2tzIHRvIG1lDQogICAgICAgIGFzIGlm
-IGEgcHJvY2VzcyB3aGljaCBzZWVzIHRoZSBFSU8sIGFuZCBkZWNpZGVzIHRvIHJlY292ZXIgYnkN
-CiAgICAgICAgY2FsbGluZyBjbG9zZSgpLCByZW9wZW4oKWluZyB0aGUgZmlsZSBhbmQgdGhlbiBs
-b2NraW5nIGl0IGFnYWluLA0KICAgICAgICBtaWdodCBmaW5kIE5GU19MT0NLX0xPU1Qgc3RpbGwg
-YmVpbmcgc2V0Lg0KDQpDaGVlcnMNCiAgVHJvbmQNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51
-eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBw
-LmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+On Thu, Sep 26, 2013 at 10:58:05AM +0200, Miklos Szeredi wrote:
+> On Wed, Sep 25, 2013 at 11:07 PM, Zach Brown <zab@redhat.com> wrote:
+> >> A client-side copy will be slower, but I guess it does have the
+> >> advantage that the application can track progress to some degree, and
+> >> abort it fairly quickly without leaving the file in a totally undefined
+> >> state--and both might be useful if the copy's not a simple constant-time
+> >> operation.
+> >
+> > I suppose, but can't the app achieve a nice middle ground by copying the
+> > file in smaller syscalls?  Avoid bulk data motion back to the client,
+> > but still get notification every, I dunno, few hundred meg?
+> 
+> Yes.  And if "cp"  could just be switched from a read+write syscall
+> pair to a single splice syscall using the same buffer size.  And then
+> the user would only notice that things got faster in case of server
+> side copy.  No problems with long blocking times (at least not much
+> worse than it was).
+
+Hmm, yes, that would be a nice outcome.
+
+> However "cp" doesn't do reflinking by default, it has a switch for
+> that.  If we just want "cp" and the like to use splice without fearing
+> side effects then by default we should try to be as close to
+> read+write behavior as possible.  No?
+
+I guess?  I don't find requiring --reflink hugely compelling.  But there
+it is.
+
+> That's what I'm really
+> worrying about when you want to wire up splice to reflink by default.
+> I do think there should be a flag for that.  And if on the block level
+> some magic happens, so be it.  It's not the fs deverloper's worry any
+> more ;)
+
+Sure.  So we'd have:
+
+- no flag default that forbids knowingly copying with shared references
+  so that it will be used by default by people who feel strongly about
+  their assumptions about independent write durability.
+
+- a flag that allows shared references for people who would otherwise
+  use the file system shared reference ioctls (ocfs2 reflink, btrfs
+  clone) but would like it to also do server-side read/write copies
+  over nfs without additional intervention.
+
+- a flag that requires shared references for callers who don't want
+  giant copies to take forever if they aren't instant.  (The qemu guys
+  asked for this at Plumbers.)
+
+I think I can live with that.
+
+- z
