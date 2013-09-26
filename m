@@ -1,305 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:8688 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:3180 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753583Ab3IEPO6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Sep 2013 11:14:58 -0400
-From: <andros@netapp.com>
-To: <trond.myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/1] NFSv4.1 Use MDS auth flavor for data server connection
-Date: Thu, 5 Sep 2013 11:14:34 -0400
-Message-ID: <1378394074-2165-1-git-send-email-andros@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1751093Ab3IZPmz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Sep 2013 11:42:55 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <1380209888.17366.68.camel@joe-AO722>
+References: <1380209888.17366.68.camel@joe-AO722> <1380209415.17366.66.camel@joe-AO722> <20130926144502.29424.21633.stgit@warthog.procyon.org.uk> <20130926144525.29424.11130.stgit@warthog.procyon.org.uk> <30597.1380209743@warthog.procyon.org.uk>
+To: Joe Perches <joe@perches.com>
+Cc: dhowells@redhat.com, bfields@fieldses.org, Trond.Myklebust@netapp.com,
+        olof@lixom.net, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 3/4] SunRPC: Use no_printk() for the null dprintk() and dfprintk()
+Date: Thu, 26 Sep 2013 16:42:47 +0100
+Message-ID: <30738.1380210167@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Joe Perches <joe@perches.com> wrote:
 
-Commit 4edaa308 "NFS: Use "krb5i" to establish NFSv4 state whenever possible"
-uses the nfs_client cl_rpcclient for all state management operations, and
-will use krb5i or auth_sys with no regard to the mount command authflavor
-choice.
+> No code is eliminated by the preprocessor
+> with the #define I suggest.
 
-The MDS, as any NFSv4.1 mount point, uses the nfs_server rpc client for all
-non-state management operations with a different nfs_server for each fsid
-encountered traversing the mount point, each with a potentially different
-auth flavor.
+Sorry, I misunderstood.  I assumed you meant comparing to:
 
-pNFS data servers are not mounted in the normal sense as there is no associated
-nfs_server structure. Data servers can also export multiple fsids, each with
-a potentially different auth flavor.
+	#ifdef RPC_DEBUG
+	#define dfprintk(...) ...
+	#else
+	#define dfprintk(...) do {} while(0)
+	#endif
 
-Data servers need to use the same authflavor as the MDS server rpc client for
-non-state management operations. Populate a list of rpc clients with the MDS
-server rpc client auth flavor for the DS to use.
+sort of thing which would certainly eliminate code in cpp.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/internal.h           |  2 ++
- fs/nfs/nfs4client.c         | 75 +++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4filelayout.c     | 35 ++++++++++++++++-----
- include/linux/nfs_fs_sb.h   |  1 +
- include/linux/sunrpc/clnt.h |  2 ++
- net/sunrpc/clnt.c           |  1 +
- 6 files changed, 108 insertions(+), 8 deletions(-)
+So, yes, you're right.  So I shouldn't need to put the
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 2415198..23ec6e8 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -186,6 +186,8 @@ extern struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
- 					     int ds_addrlen, int ds_proto,
- 					     unsigned int ds_timeo,
- 					     unsigned int ds_retrans);
-+extern struct rpc_clnt *nfs4_find_or_create_ds_client(struct nfs_client *,
-+						struct inode *);
- #ifdef CONFIG_PROC_FS
- extern int __init nfs_fs_proc_init(void);
- extern void nfs_fs_proc_exit(void);
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 767a5e3..afea8f0 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -49,10 +49,83 @@ static void nfs4_shutdown_session(struct nfs_client *clp)
- 	}
- 
- }
-+
-+static struct rpc_clnt *
-+nfs4_find_or_add_ds_client(struct nfs_client *ds_clp, rpc_authflavor_t flavor,
-+			   struct rpc_clnt *new)
-+{
-+	struct rpc_clnt *ds_clnt, *tmp;
-+
-+	spin_lock(&ds_clp->cl_lock);
-+	list_for_each_entry_safe(ds_clnt, tmp, &ds_clp->cl_ds_clients,
-+						cl_ds_clnts) {
-+		if (ds_clnt->cl_auth->au_flavor != flavor)
-+			continue;
-+		goto out;
-+	}
-+	if (new)
-+		list_add(&new->cl_ds_clnts, &ds_clp->cl_ds_clients);
-+	ds_clnt = new;
-+out:
-+	spin_unlock(&ds_clp->cl_lock); /* need some lock to protect list */
-+	return ds_clnt;
-+}
-+
-+/**
-+ * Find or create a DS rpc client with th MDS server rpc client auth flavor
-+ * in the nfs_client cl_ds_clients list.
-+ */
-+struct rpc_clnt *
-+nfs4_find_or_create_ds_client(struct nfs_client *ds_clp, struct inode *inode)
-+{
-+	struct rpc_clnt *ds_rpc_client, *new;
-+	rpc_authflavor_t flavor = NFS_SERVER(inode)->client->cl_auth->au_flavor;
-+
-+	ds_rpc_client = nfs4_find_or_add_ds_client(ds_clp, flavor, NULL);
-+	if (ds_rpc_client != NULL)
-+		goto out;
-+	new = rpc_clone_client_set_auth(ds_clp->cl_rpcclient, flavor);
-+	if (IS_ERR(new))
-+		return new;
-+	ds_rpc_client = nfs4_find_or_add_ds_client(ds_clp, flavor, new);
-+	if (ds_rpc_client != new)
-+		rpc_release_client(new);
-+out:
-+	return ds_rpc_client;
-+}
-+EXPORT_SYMBOL_GPL(nfs4_find_or_create_ds_client);
-+
-+static void
-+nfs4_shutdown_ds_clients(struct nfs_client *clp)
-+{
-+	struct rpc_clnt *clnt;
-+	LIST_HEAD(shutdown_list);
-+
-+	spin_lock(&clp->cl_lock);
-+	while (!list_empty(&clp->cl_ds_clients)) {
-+		clnt = list_entry(clp->cl_ds_clients.next,
-+				  struct rpc_clnt, cl_ds_clnts);
-+		list_move(&clnt->cl_ds_clnts, &shutdown_list);
-+	}
-+	spin_unlock(&clp->cl_lock);
-+
-+	while (!list_empty(&shutdown_list)) {
-+		clnt = list_entry(shutdown_list.next,
-+				  struct rpc_clnt, cl_ds_clnts);
-+		list_del(&clnt->cl_ds_clnts);
-+		rpc_shutdown_client(clnt);
-+	}
-+}
-+
- #else /* CONFIG_NFS_V4_1 */
- static void nfs4_shutdown_session(struct nfs_client *clp)
- {
- }
-+
-+static void
-+nfs4_shutdown_ds_clients(struct nfs_client *clp)
-+{
-+}
- #endif /* CONFIG_NFS_V4_1 */
- 
- struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
-@@ -73,6 +146,7 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
- 
- 	spin_lock_init(&clp->cl_lock);
- 	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
-+	INIT_LIST_HEAD(&clp->cl_ds_clients);
- 	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
- 	clp->cl_state = 1 << NFS4CLNT_LEASE_EXPIRED;
- 	clp->cl_minorversion = cl_init->minorversion;
-@@ -97,6 +171,7 @@ static void nfs4_shutdown_client(struct nfs_client *clp)
- {
- 	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
- 		nfs4_kill_renewd(clp);
-+	nfs4_shutdown_ds_clients(clp);
- 	nfs4_shutdown_session(clp);
- 	nfs4_destroy_callback(clp);
- 	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index a70cb3a..b86464b 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -528,6 +528,7 @@ filelayout_read_pagelist(struct nfs_read_data *data)
- 	struct nfs_pgio_header *hdr = data->header;
- 	struct pnfs_layout_segment *lseg = hdr->lseg;
- 	struct nfs4_pnfs_ds *ds;
-+	struct rpc_clnt *ds_clnt;
- 	loff_t offset = data->args.offset;
- 	u32 j, idx;
- 	struct nfs_fh *fh;
-@@ -542,6 +543,11 @@ filelayout_read_pagelist(struct nfs_read_data *data)
- 	ds = nfs4_fl_prepare_ds(lseg, idx);
- 	if (!ds)
- 		return PNFS_NOT_ATTEMPTED;
-+
-+	ds_clnt = nfs4_find_or_create_ds_client(ds->ds_clp, hdr->inode);
-+	if (IS_ERR(ds_clnt))
-+		return PNFS_NOT_ATTEMPTED;
-+
- 	dprintk("%s USE DS: %s cl_count %d\n", __func__,
- 		ds->ds_remotestr, atomic_read(&ds->ds_clp->cl_count));
- 
-@@ -556,7 +562,7 @@ filelayout_read_pagelist(struct nfs_read_data *data)
- 	data->mds_offset = offset;
- 
- 	/* Perform an asynchronous read to ds */
--	nfs_initiate_read(ds->ds_clp->cl_rpcclient, data,
-+	nfs_initiate_read(ds_clnt, data,
- 				  &filelayout_read_call_ops, RPC_TASK_SOFTCONN);
- 	return PNFS_ATTEMPTED;
- }
-@@ -568,6 +574,7 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
- 	struct nfs_pgio_header *hdr = data->header;
- 	struct pnfs_layout_segment *lseg = hdr->lseg;
- 	struct nfs4_pnfs_ds *ds;
-+	struct rpc_clnt *ds_clnt;
- 	loff_t offset = data->args.offset;
- 	u32 j, idx;
- 	struct nfs_fh *fh;
-@@ -578,6 +585,11 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
- 	ds = nfs4_fl_prepare_ds(lseg, idx);
- 	if (!ds)
- 		return PNFS_NOT_ATTEMPTED;
-+
-+	ds_clnt = nfs4_find_or_create_ds_client(ds->ds_clp, hdr->inode);
-+	if (IS_ERR(ds_clnt))
-+		return PNFS_NOT_ATTEMPTED;
-+
- 	dprintk("%s ino %lu sync %d req %Zu@%llu DS: %s cl_count %d\n",
- 		__func__, hdr->inode->i_ino, sync, (size_t) data->args.count,
- 		offset, ds->ds_remotestr, atomic_read(&ds->ds_clp->cl_count));
-@@ -595,7 +607,7 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
- 	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
- 
- 	/* Perform an asynchronous write */
--	nfs_initiate_write(ds->ds_clp->cl_rpcclient, data,
-+	nfs_initiate_write(ds_clnt, data,
- 				    &filelayout_write_call_ops, sync,
- 				    RPC_TASK_SOFTCONN);
- 	return PNFS_ATTEMPTED;
-@@ -1105,16 +1117,19 @@ static int filelayout_initiate_commit(struct nfs_commit_data *data, int how)
- {
- 	struct pnfs_layout_segment *lseg = data->lseg;
- 	struct nfs4_pnfs_ds *ds;
-+	struct rpc_clnt *ds_clnt;
- 	u32 idx;
- 	struct nfs_fh *fh;
- 
- 	idx = calc_ds_index_from_commit(lseg, data->ds_commit_index);
- 	ds = nfs4_fl_prepare_ds(lseg, idx);
--	if (!ds) {
--		prepare_to_resend_writes(data);
--		filelayout_commit_release(data);
--		return -EAGAIN;
--	}
-+	if (!ds)
-+		goto out_err;
-+
-+	ds_clnt = nfs4_find_or_create_ds_client(ds->ds_clp, data->inode);
-+	if (IS_ERR(ds_clnt))
-+		goto out_err;
-+
- 	dprintk("%s ino %lu, how %d cl_count %d\n", __func__,
- 		data->inode->i_ino, how, atomic_read(&ds->ds_clp->cl_count));
- 	data->commit_done_cb = filelayout_commit_done_cb;
-@@ -1123,9 +1138,13 @@ static int filelayout_initiate_commit(struct nfs_commit_data *data, int how)
- 	fh = select_ds_fh_from_commit(lseg, data->ds_commit_index);
- 	if (fh)
- 		data->args.fh = fh;
--	return nfs_initiate_commit(ds->ds_clp->cl_rpcclient, data,
-+	return nfs_initiate_commit(ds_clnt, data,
- 				   &filelayout_commit_call_ops, how,
- 				   RPC_TASK_SOFTCONN);
-+out_err:
-+	prepare_to_resend_writes(data);
-+	filelayout_commit_release(data);
-+	return -EAGAIN;
- }
- 
- static int
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index d221243..4d476e7 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -56,6 +56,7 @@ struct nfs_client {
- 	struct rpc_cred		*cl_machine_cred;
- 
- #if IS_ENABLED(CONFIG_NFS_V4)
-+	struct list_head	cl_ds_clients; /* auth flavor data servers */
- 	u64			cl_clientid;	/* constant */
- 	nfs4_verifier		cl_confirm;	/* Clientid verifier */
- 	unsigned long		cl_state;
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 76c0bf6..3919f2b 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -35,6 +35,8 @@ struct rpc_clnt {
- 	atomic_t		cl_count;	/* Number of references */
- 	struct list_head	cl_clients;	/* Global list of clients */
- 	struct list_head	cl_tasks;	/* List of tasks */
-+	struct list_head	cl_ds_clnts;	/* list of per auth flavor
-+						   data servers */
- 	spinlock_t		cl_lock;	/* spinlock */
- 	struct rpc_xprt __rcu *	cl_xprt;	/* transport */
- 	struct rpc_procinfo *	cl_procinfo;	/* procedure info */
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index baf0df6..3c18394 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -356,6 +356,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args,
- 		goto out_no_stats;
- 	clnt->cl_program  = program;
- 	INIT_LIST_HEAD(&clnt->cl_tasks);
-+	INIT_LIST_HEAD(&clnt->cl_ds_clnts);
- 	spin_lock_init(&clnt->cl_lock);
- 
- 	if (!xprt_bound(xprt))
--- 
-1.8.3.1
+	ifdebug(FACILITY) { ... }
 
+clauses into the code as the function calls in the argument list will be
+behind the if-statement anyway.
+
+David
