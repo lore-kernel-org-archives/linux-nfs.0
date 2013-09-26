@@ -1,75 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f177.google.com ([209.85.128.177]:34281 "EHLO
-	mail-ve0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751394Ab3IJT2b (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Sep 2013 15:28:31 -0400
-Received: by mail-ve0-f177.google.com with SMTP id db12so4818778veb.22
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Sep 2013 12:28:30 -0700 (PDT)
-Subject: [PATCH] nfs(5): Document the "migration" mount option
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Tue, 10 Sep 2013 15:28:28 -0400
-Message-ID: <20130910192730.2394.8803.stgit@seurat.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qc0-f169.google.com ([209.85.216.169]:46099 "EHLO
+	mail-qc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753553Ab3IZSlo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:41:44 -0400
+Received: by mail-qc0-f169.google.com with SMTP id c9so1047556qcz.0
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:41:43 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC v0 27/49] pnfsd: hash layouts on layout state
+Date: Thu, 26 Sep 2013 14:41:41 -0400
+Message-Id: <1380220901-13918-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <52447EA0.7070004@primarydata.com>
+References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
 ---
+ fs/nfsd/nfs4pnfsd.c | 2 ++
+ fs/nfsd/pnfsd.h     | 1 +
+ 2 files changed, 3 insertions(+)
 
-This has been floating around for a while in my nfs-utils repo.
-Now that migration support is getting merged upstream, I propose
-this minor change to nfs(5).
-
-Note that my pending migration patches currently allow migration
-even if the "migration" option is not specified.  In this case,
-standard state recovery will occur on the destination server (aka a
-non-TSM migration) since the destination server can't match up a
-client using the traditional clientid string with incoming migrated
-state.
-
-If we think this is dangerous to allow, then the client can be
-changed to require the "migration" option to enable migration
-support on NFSv4.0 mount points.
-
-Non-TSM migration can still occur if the servers for some reason
-fail to transfer open and lock state during a migration.
-
-Comments...?
-
- utils/mount/nfs.man |   20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
-
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index 2a42b93..e93bd16 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -855,6 +855,26 @@ In the presence of multiple client network interfaces,
- special routing policies,
- or atypical network topologies,
- the exact address to use for callbacks may be nontrivial to determine.
-+.TP 1.5i
-+.BR migration " / " nomigration
-+Selects whether the client uses an identification string that is compatible
-+with NFSv4 Transparent State Migration (TSM).
-+If the mounted server supports NFSv4 migration with TSM, specify the
-+.B migration
-+option.
-+.IP
-+Some server features misbehave in the face of a migration-compatible
-+identification string.
-+The
-+.B nomigration
-+option retains the use of a traditional client indentification string
-+which is compatible with legacy NFS servers.
-+This is also the behavior if neither option is specified.
-+A client's open and lock state cannot be migrated transparently
-+when it identifies itself via a traditional identification string.
-+.IP
-+This mount option has no effect with NFSv4 minor versions greater than zero,
-+as these versions always use TSM-compatible client identification strings.
- .SH nfs4 FILE SYSTEM TYPE
- The
- .BR nfs4
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index 2c5d30d..386afa3 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -133,6 +133,7 @@ struct sbid_tracker {
+ 	new->ls_stid.sc_type = NFS4_LAYOUT_STID;
+ 	INIT_LIST_HEAD(&new->ls_perclnt);
+ 	INIT_LIST_HEAD(&new->ls_perfile);
++	INIT_LIST_HEAD(&new->ls_layouts);
+ 	new->ls_client = clp;
+ 	get_nfs4_file(fp);	/* released on destroy_layout_state */
+ 	new->ls_file = fp;
+@@ -281,6 +282,7 @@ static void update_layout_stateid_locked(struct nfs4_layout_state *ls, stateid_t
+ 	lp->lo_state = ls;
+ 	spin_lock(&layout_lock);
+ 	update_layout_stateid_locked(ls, stateid);
++	list_add_tail(&lp->lo_perstate, &ls->ls_layouts);
+ 	spin_unlock(&layout_lock);
+ 	dprintk("pNFS %s end\n", __func__);
+ }
+diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
+index 852c250..1cd7a87 100644
+--- a/fs/nfsd/pnfsd.h
++++ b/fs/nfsd/pnfsd.h
+@@ -48,6 +48,7 @@ struct nfs4_layout_state {
+ 	struct nfs4_client	*ls_client;
+ 	struct list_head	ls_perfile;
+ 	struct nfs4_file	*ls_file;
++	struct list_head	ls_layouts;
+ };
+ 
+ /* outstanding layout */
+-- 
+1.8.3.1
 
