@@ -1,64 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:49717 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755286Ab3ICTjq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Sep 2013 15:39:46 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: use the mach cred for SECINFO w/ integrity
-Date: Tue, 3 Sep 2013 19:39:45 +0000
-Message-ID: <1378237184.6410.42.camel@leira.trondhjem.org>
-References: <1378235929-4710-1-git-send-email-dros@netapp.com>
-	 <1378236327.6410.38.camel@leira.trondhjem.org>
-	 <5C9B2128-9A64-4231-8FF3-BEDDCB2C733D@netapp.com>
-In-Reply-To: <5C9B2128-9A64-4231-8FF3-BEDDCB2C733D@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-qa0-f52.google.com ([209.85.216.52]:64693 "EHLO
+	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752808Ab3IZSkF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:40:05 -0400
+Received: by mail-qa0-f52.google.com with SMTP id k4so1091998qaq.4
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:40:05 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC v0 03/49] pnfsd: return pnfs flags on exchange_id
+Date: Thu, 26 Sep 2013 14:40:02 -0400
+Message-Id: <1380220802-12810-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <52447EA0.7070004@primarydata.com>
+References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEzLTA5LTAzIGF0IDE5OjMwICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
-PiBPbiBTZXAgMywgMjAxMywgYXQgMzoyNSBQTSwgIk15a2xlYnVzdCwgVHJvbmQiIDxUcm9uZC5N
-eWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gIHdyb3RlOg0KPiANCj4gPiBPbiBUdWUsIDIwMTMtMDkt
-MDMgYXQgMTU6MTggLTA0MDAsIFdlc3RvbiBBbmRyb3MgQWRhbXNvbiB3cm90ZToNCj4gPj4gQ29t
-bWl0IDVlYzE2YTg1MDBkMzM5YjBlN2EwY2M3NmI3ODVkMThkYWFkMzU0ZDQgaW50cm9kdWNlZCBh
-IHJlZ3Jlc3Npb24NCj4gPj4gdGhhdCBjYXVzZXMgU0VDSU5GTyB0byBmYWlsIHdpdGhvdXQgYWN0
-dWFseSBzZW5kaW5nIGFuIFJQQyBpZjoNCj4gPj4gDQo+ID4+IDEpIHRoZSBuZnNfY2xpZW50J3Mg
-cnBjX2NsaWVudCB3YXMgdXNpbmcgS1JCNWkvcCAobm93IHRyaWVkIGJ5IGRlZmF1bHQpDQo+ID4+
-IDIpIHRoZSBjdXJyZW50IHVzZXIgZG9lc24ndCBoYXZlIHZhbGlkIGtlcmJlcm9zIGNyZWRlbnRp
-YWxzDQo+ID4+IA0KPiA+PiBUaGlzIHNpdHVhdGlvbiBpcyBxdWl0ZSBjb21tb24gLSBhcyBvZiBu
-b3cgYSBzZWM9c3lzIG1vdW50IHdvdWxkIHVzZQ0KPiA+PiBrcmI1aSBmb3IgdGhlIG5mc19jbGll
-bnQncyBycGNfY2xpZW50IGFuZCBhIHVzZXIgd291bGQgaGFyZGx5IGJlIGZhdWx0ZWQNCj4gPj4g
-Zm9yIG5vdCBoYXZpbmcgcnVuIGtpbml0Lg0KPiA+PiANCj4gPj4gVGhlIHNvbHV0aW9uIGlzIHRv
-IHVzZSB0aGUgbWFjaGluZSBjcmVkIHdoZW4gdHJ5aW5nIHRvIHVzZSBhbiBpbnRlZ3JpdHkNCj4g
-Pj4gcHJvdGVjdGVkIGF1dGggZmxhdm9yIGZvciBTRUNJTkZPLg0KPiA+PiANCj4gPj4gT2xkZXIg
-c2VydmVycyBtYXkgbm90IHN1cHBvcnQgdXNpbmcgdGhlIG1hY2hpbmUgY3JlZCBvciBhbiBpbnRl
-Z3JpdHkNCj4gPj4gcHJvdGVjdGVkIGF1dGggZmxhdm9yIGZvciBTRUNJTkZPIGluIGV2ZXJ5IGNp
-cmN1bXN0YW5jZSwgc28gd2UgZmFsbCBiYWNrDQo+ID4+IHRvIHVzaW5nIHRoZSB1c2VyJ3MgY3Jl
-ZCBhbmQgdGhlIGZpbGVzeXN0ZW0ncyBhdXRoIGZsYXZvciBpbiB0aGlzIGNhc2UuDQo+ID4+IA0K
-PiA+PiBXZSBydW4gaW50byBhbm90aGVyIHByb2JsZW0gd2hlbiBydW5uaW5nIGFnYWluc3QgbGlu
-dXggbmZzIHNlcnZlcnMgLQ0KPiA+PiB0aGV5IHJldHVybiBORlM0RVJSX1dST05HU0VDIHdoZW4g
-dXNpbmcgaW50ZWdyaXR5IGF1dGggZmxhdm9yICh1bmxlc3MgdGhlDQo+ID4+IG1vdW50IGlzIGFs
-c28gdGhhdCBmbGF2b3IpIGV2ZW4gdGhvdWdoIHRoYXQgaXMgbm90IGEgdmFsaWQgZXJyb3IgZm9y
-DQo+ID4+IFNFQ0lORk8qLiAgRXZlbiB0aG91Z2ggaXQncyBhZ2FpbnN0IHNwZWMsIGhhbmRsZSBX
-Uk9OR1NFQyBlcnJvcnMgb24gU0VDSU5GTw0KPiA+PiBieSBmYWxsaW5nIGJhY2sgdG8gdXNpbmcg
-dGhlIHVzZXIgY3JlZCBhbmQgdGhlIGZpbGVzeXN0ZW0ncyBhdXRoIGZsYXZvci4NCj4gPj4gDQo+
-ID4+IFNpZ25lZC1vZmYtYnk6IFdlc3RvbiBBbmRyb3MgQWRhbXNvbiA8ZHJvc0BuZXRhcHAuY29t
-Pg0KPiA+PiAtLS0NCj4gPiANCj4gPiBUaGFua3MhIEFwcGxpZWTigKYNCj4gDQo+IE9oLCBzb3Jy
-eSwgSSB3YXMgaG9waW5nIHRvIGZvc3RlciBtb3JlIGRpc2N1c3Npb24gYXJvdW5kIENodWNrJ3Mg
-Y29tbWVudHMgdG8gdGhlIG5mc2Qgc2lkZSBvZiB0aGlzIGVmZm9ydCBiZWZvcmUgYWRkaW5nIHRo
-aXMsIGFsdGhvdWdoIGl0J3MgYmV0dGVyIHRoYW4gdGhlIHN0YXRlIHRoZSBjbGllbnQgd2FzIGlu
-IHNpbmNlIDVlYzE2YTg1MDBkMzM5YjBlN2EwY2M3NmI3ODVkMThkYWFkMzU0ZDQuICBTaG91bGQg
-SSBwb3N0IHRoZSBzaW1pbGFyIHBhdGNoZXMgZm9yIFNFQ0lORk9fTk9OQU1FIGFuZCBMQVlPVVRH
-RVQ/DQo+IA0KPiBTcGVjaWZpY2FsbHksIENodWNrJ3MgKHZlcnkgdmFsaWQpIHBvaW50IGlzIHdo
-YXQgZXJyb3Igc2hvdWxkIGEgc2VydmVyIHJldHVybiB0byBTRUNJTkZPIHVzaW5nIGtyYjVpIGlm
-IGl0IGRvZXNuJ3Qgc3VwcG9ydCB0aGF0IGF1dGggZmxhdm9yPyAgIA0KPiBORlM0RVJSX0FDQ0VT
-UyBsb29rcyBsaWtlIHRoZSBiZXN0IGF2YWlsYWJsZSBvcHRpb24gdG8gbWUgLS0gc2hvdWxkIEkg
-dGFrZSB0aGlzIHRvIHRoZSBJRVRGIGxpc3Q/DQoNCklmIHRoZSBzZXJ2ZXIgZG9lc24ndCBzdXBw
-b3J0IGtyYjVpLCB0aGVuIGl0IHdvbid0IGV2ZW4gYmUgYWJsZSB0bw0KcmVjZWl2ZSBvdXIgUlBD
-IGNhbGwsIHNvIGl0IGNhbiBhdCBiZXN0IHJlcGx5IHdpdGggYW4gQVVUSF9CQURDUkVEIHJwYw0K
-bGV2ZWwgZXJyb3IsIHdoaWNoIHJwY192ZXJpZnlfaGVhZGVyKCkgd2lsbCB0cmFuc2xhdGUgYXMg
-RUFDQ0VTLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
-bmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29t
-DQo=
+From: Benny Halevy <bhalevy@panasas.com>
+
+Set the cl_exchange_flags to be non_pnfs if we do not set
+either pnfs or ds (in the plain old nfs41 case).
+
+Note that we always set both MDS and DS exchangeid capability flags
+when CONFIG_PNFSD is enabled.
+The client needs to remember what the session is used for
+if it cares to distiguish between DSs and MDSs.
+
+EXCHGID4_FLAG_USE_NON_PNFS should be set when the server does not support
+operations (e.g. LAYOUTGET) or attributes that pertain to pNFS.
+
+[extraced from pnfsd: Initial pNFS server implementation.]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[pnfsd: Fixup nfsd4_set_ex_flags.]
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+[pnfsd: set EXCHGID4_FLAG_USE_NON_PNFS when !CONFIG_PNFSD]
+[pnfsd: fix compiler warning in nfsd4_set_ex_flags when CONFIG_PNFSD is not defined]
+[pnfsd: always set both MDS and DS exchangeid capability flags]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 57a0340..21c15fc 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1614,8 +1614,12 @@ static bool clp_used_exchangeid(struct nfs4_client *clp)
+ static void
+ nfsd4_set_ex_flags(struct nfs4_client *new, struct nfsd4_exchange_id *clid)
+ {
+-	/* pNFS is not supported */
++#if defined(CONFIG_PNFSD)
++	new->cl_exchange_flags |= EXCHGID4_FLAG_USE_PNFS_MDS |
++				  EXCHGID4_FLAG_USE_PNFS_DS;
++#else  /* CONFIG_PNFSD */
+ 	new->cl_exchange_flags |= EXCHGID4_FLAG_USE_NON_PNFS;
++#endif /* CONFIG_PNFSD */
+ 
+ 	/* Referrals are supported, Migration is not. */
+ 	new->cl_exchange_flags |= EXCHGID4_FLAG_SUPP_MOVED_REFER;
+-- 
+1.8.3.1
+
