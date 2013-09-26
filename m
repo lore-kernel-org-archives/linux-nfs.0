@@ -1,43 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f171.google.com ([209.85.128.171]:58401 "EHLO
-	mail-ve0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932313Ab3ICJdu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Sep 2013 05:33:50 -0400
-Received: by mail-ve0-f171.google.com with SMTP id pa12so3735828veb.2
-        for <linux-nfs@vger.kernel.org>; Tue, 03 Sep 2013 02:33:50 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1378145871-30071-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1378145871-30071-1-git-send-email-Trond.Myklebust@netapp.com>
-From: William Dauchy <wdauchy@gmail.com>
-Date: Tue, 3 Sep 2013 11:33:30 +0200
-Message-ID: <CAJ75kXbRgsYVRNobCmjeL-t+AJproq8jAxXkbkk9DxGnE9eYhQ@mail.gmail.com>
-Subject: Re: [PATCH v2] NFS: Ensure that rmdir() waits for sillyrenames to complete
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>, andros@netapp.com,
-        William Dauchy <william@gandi.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:16556 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751281Ab3IZOsT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Sep 2013 10:48:19 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <20130926144517.29424.12036.stgit@warthog.procyon.org.uk>
+References: <20130926144517.29424.12036.stgit@warthog.procyon.org.uk> <20130926144502.29424.21633.stgit@warthog.procyon.org.uk>
+Cc: dhowells@redhat.com, bfields@fieldses.org, Trond.Myklebust@netapp.com,
+        olof@lixom.net, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 2/4] SunRPC: Declare and use rpc_task_pid() to wrap task->tk_pid
+Date: Thu, 26 Sep 2013 15:48:07 +0100
+Message-ID: <29702.1380206887@warthog.procyon.org.uk>
+To: unlisted-recipients:; (no To-header on input)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 2, 2013 at 8:17 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> If an NFS client does
->
->         mkdir("dir");
->         fd = open("dir/file");
->         unlink("dir/file");
->         close(fd);
->         rmdir("dir");
->
-> then the asynchronous nature of the sillyrename operation means that
-> we can end up getting EBUSY for the rmdir() in the above test. Fix
-> that by ensuring that we wait for any in-progress sillyrenames
-> before sending the rmdir() to the server.
+David Howells <dhowells@redhat.com> wrote:
 
-I tested the patch on top of a 3.10.x
-When doing heavy operations like rm -rf dir/ with lots of data, the
-process gets stuck for ever.
-removing the patch fixes the issue.
+> Declare and use rpc_task_pid() to wrap task->tk_pid (when it exists) and to
+> return 0 when it doesn't.  This allows us to move towards using no_printk().
+> 
+> This was mostly achieved with:
+> 
+>    perl -p -i -e 's/task->tk_pid/rpc_task_pid(task)/g' `git grep -l 'task->tk_pid'`
+>    perl -p -i -e 's/data->task.tk_pid/rpc_task_pid(&data->task)/g' `git grep -l 'data->task.tk_pid'`
 
--- 
-William
+I missed one command out.  This needs to be done first:
+
+	perl -p -i -e 's/req->rq_task->tk_pid/rpc_task_pid(req->rq_task)/g' `git grep -l 'req->rq_task->tk_pid'`
+
+David
