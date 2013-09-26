@@ -1,59 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f53.google.com ([209.85.128.53]:49331 "EHLO
-	mail-qe0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752440Ab3IZSlY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:41:24 -0400
-Received: by mail-qe0-f53.google.com with SMTP id jy17so1105917qeb.26
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:41:23 -0700 (PDT)
-From: Benny Halevy <bhalevy@primarydata.com>
-To: " J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH RFC v0 22/49] nfsd: cleanup free_stid
-Date: Thu, 26 Sep 2013 14:41:21 -0400
-Message-Id: <1380220881-13687-1-git-send-email-bhalevy@primarydata.com>
-In-Reply-To: <52447EA0.7070004@primarydata.com>
-References: <52447EA0.7070004@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:6978 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754058Ab3IZTGo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Sep 2013 15:06:44 -0400
+Date: Thu, 26 Sep 2013 12:06:11 -0700
+From: Zach Brown <zab@redhat.com>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Anna Schumaker <schumaker.anna@gmail.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Bryan Schumaker <bjschuma@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Wong <normalperson@yhbt.net>
+Subject: Re: [RFC] extending splice for copy offloading
+Message-ID: <20130926190611.GP30372@lenny.home.zabbo.net>
+References: <1378919210-10372-1-git-send-email-zab@redhat.com>
+ <CAELBmZBGD4rph=gjLCPKCdEj+nzEQ-F=DExoL+h3vRm7qF7dCQ@mail.gmail.com>
+ <20130925183828.GA30372@lenny.home.zabbo.net>
+ <CAFX2JfnyF8kyMYzCdqdr2JkoyQCom1bFLpFj89wODjoju54-Ow@mail.gmail.com>
+ <20130925190620.GB30372@lenny.home.zabbo.net>
+ <20130925195526.GA18971@fieldses.org>
+ <20130925210742.GG30372@lenny.home.zabbo.net>
+ <CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
+ <20130926153359.GE704@fieldses.org>
+ <CAJfpegsUchb0eX+Hi3rN5Ypje3Y-dgo=pxgM1Y3BQbHVp=1hSw@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAJfpegsUchb0eX+Hi3rN5Ypje3Y-dgo=pxgM1Y3BQbHVp=1hSw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make it symmetric to alloc_stid
+On Thu, Sep 26, 2013 at 08:06:41PM +0200, Miklos Szeredi wrote:
+> On Thu, Sep 26, 2013 at 5:34 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > On Thu, Sep 26, 2013 at 10:58:05AM +0200, Miklos Szeredi wrote:
+> >> On Wed, Sep 25, 2013 at 11:07 PM, Zach Brown <zab@redhat.com> wrote:
+> >> >> A client-side copy will be slower, but I guess it does have the
+> >> >> advantage that the application can track progress to some degree, and
+> >> >> abort it fairly quickly without leaving the file in a totally undefined
+> >> >> state--and both might be useful if the copy's not a simple constant-time
+> >> >> operation.
+> >> >
+> >> > I suppose, but can't the app achieve a nice middle ground by copying the
+> >> > file in smaller syscalls?  Avoid bulk data motion back to the client,
+> >> > but still get notification every, I dunno, few hundred meg?
+> >>
+> >> Yes.  And if "cp"  could just be switched from a read+write syscall
+> >> pair to a single splice syscall using the same buffer size.
+> >
+> > Will the various magic fs-specific copy operations become inefficient
+> > when the range copied is too small?
+> 
+> We could treat spice-copy operations just like write operations (can
+> be buffered, coalesced, synced).
+> 
+> But I'm not sure it's worth the effort; 99% of the use of this
+> interface will be copying whole files.  And for that perhaps we need a
+> different API, one which has been discussed some time ago:
+> asynchronous copyfile() returns immediately with a pollable event
+> descriptor indicating copy progress, and some way to cancel the copy.
+> And that can internally rely on ->direct_splice(), with appropriate
+> algorithms for determine the optimal  chunk size.
 
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
----
- fs/nfsd/nfs4state.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+And perhaps we don't.  Perhaps we can provide this much simpler
+data-plane interface that works well enough for most everyone and can
+avoid going down the async rat hole, yet again.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 214e42d..099976e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -411,11 +411,16 @@ static void remove_stid(struct nfs4_stid *s)
- 	idr_remove(stateids, s->sc_stateid.si_opaque.so_id);
- }
- 
-+static void free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
-+{
-+	kmem_cache_free(slab, s);
-+}
-+
- void
- nfs4_put_delegation(struct nfs4_delegation *dp)
- {
- 	if (atomic_dec_and_test(&dp->dl_count)) {
--		kmem_cache_free(deleg_slab, dp);
-+		free_stid(deleg_slab, &dp->dl_stid);
- 		num_delegations--;
- 	}
- }
-@@ -619,7 +624,7 @@ static void close_generic_stateid(struct nfs4_ol_stateid *stp)
- static void free_generic_stateid(struct nfs4_ol_stateid *stp)
- {
- 	remove_stid(&stp->st_stid);
--	kmem_cache_free(stateid_slab, stp);
-+	free_stid(stateid_slab, &stp->st_stid);
- }
- 
- static void release_lock_stateid(struct nfs4_ol_stateid *stp)
--- 
-1.8.3.1
-
+- z
