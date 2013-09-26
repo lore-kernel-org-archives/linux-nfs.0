@@ -1,103 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41125 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:26961 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757904Ab3IEUpi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Sep 2013 16:45:38 -0400
-Date: Thu, 5 Sep 2013 16:45:36 -0400
-To: Emmanuel Florac <eflorac@intellique.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Hard to debug NFS loss of connectivity
-Message-ID: <20130905204536.GB24805@fieldses.org>
-References: <20130905191800.1c75b2fb@harpe.intellique.com>
+	id S1750800Ab3IZPXq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 11:23:46 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        David Howells <dhowells@redhat.com>
+CC: "olof@lixom.net" <olof@lixom.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: RE: [RFC][PATCH 0/4] SunRPC/NFS: Use no_printk() in
+Date: Thu, 26 Sep 2013 15:23:45 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9467EB040@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20130926144502.29424.21633.stgit@warthog.procyon.org.uk>
+ <20130926152125.GD704@fieldses.org>
+In-Reply-To: <20130926152125.GD704@fieldses.org>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130905191800.1c75b2fb@harpe.intellique.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 05, 2013 at 07:18:00PM +0200, Emmanuel Florac wrote:
+> -----Original Message-----
+> From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> Sent: Thursday, September 26, 2013 10:21 AM
+> To: David Howells
+> Cc: Myklebust, Trond; olof@lixom.net; linux-nfs@vger.kernel.org; linux-
+> kernel@vger.kernel.org
+> Subject: Re: [RFC][PATCH 0/4] SunRPC/NFS: Use no_printk() in
 > 
-> Hi list, I have a serious problem I've never met before. Here is the
-> setup:
+> On Thu, Sep 26, 2013 at 03:45:02PM +0100, David Howells wrote:
+> >
+> >
+> > Here's a series of patches to make SunRPC/NFS use no_printk() to
+> > implement its null dfprintk() macro (ie. when RPC_DEBUG is disabled).
+> > This prevents 'unused variable' errors from occurring when a variable
+> > is set only for use in debugging statements and renders RPC/NFS_IFDEBUG
+> unnecessary.
 > 
-> The NFS server is running Debian 6 amd64 but with a plain vanilla 3.2.50
-> kernel. it shares a large 81 TB volume (XFS over LVM on hardware RAID6)
-> through nfs without any particular options. Here is a glimpse
-> of /etc/exports:
+> Does this patch series fix any actual warnings?  Or does it just change the way
+> that we prevent the warnings?
 > 
-> /mnt/raid 10.1.1.0/255.255.255.128(fsid=1,rw,no_root_squash,async,no_subtree_check)
-> 
-> On the other side is a VMWare ESX VM running Ubuntu 12.04LTS, kernel 3.2.0-52 Ubuntu 
-> amd64 mounting the share. From the fstab:
-> 
-> 10.1.1.99:/mnt/raid          /server         nfs  rw,hard,intr            0    0
-> 
-> The problem is as follow: stat'ing files on the VM makes the 
-> NFS connection drop. For instance:
-> 
-> find /server -type f -ls
-> 
-> It works for a while, then stops responding. The NFS mount is frozen. 
-> The network link is OK; I still can ssh from the server to the VM 
-> and back, I can wget from the VM to the server, ping the server 
-> from the VM, etc. Only NFS is affected.
-> 
-> Restarting NFS on the server does nothing to unfreeze the mount. 
-> Using nfs4 instead of nfs3 does nothing. The only remedy is to reboot the VM.
-> There isn't any error in dmesg, /var/log/syslog or 
-> /var/log/messages in the VM nor the server.
-> 
-> I've tried rebooting the server on a 3.9.7 kernel. Same thing. 
-> Of course there isn't any data corruption of any sort. 
-> Running "find /mnt/raid -type f -ls" on the server works 
-> perfectly and lists about 25000 files without the slightest trouble.
-> 
-> It works equally well if I mount the NFS share on the server itself.
-> 
-> 
-> Now it's becoming crazier: When I run the find command as
-> previously said, it freezes always on the same file, for
-> instance :
-> 
-> /server/folder1/folder2/folder3/folder4/.svn/somefile
-> 
-> However, if after a fresh reboot I do
-> 
-> stat /server/folder1/folder2/folder3/folder4/.svn/somefile
-> 
-> no problem. Even doing this:
-> 
-> cd /server/folder1/folder2/folder3/folder4/ && find . -type f -ls
-> 
-> works. However this
-> 
-> cd /server/folder1/folder2/folder3/ && find . -type f -ls
-> 
-> doesn't fly. It freezes at exactly the same point.
-> In the first test (running directly from /server) it
-> freezes after successfully listing 10000 files. In the last
-> test it freezes after only 25 files. 
-> So apparently it's not about the number of files.
-> 
-> 
-> Now I'm stuck. Out of going through tcpdump, I have absolutely 
-> not the faintest idea about what's going on, except I tend to 
-> think that's some Ubuntu kernel bug.
-> 
-> Any hint, idea, etc would be extremely welcome. Even some
-> debugging method less painful than digging through huge 
-> tcpdumps would be nice :)
 
-Well, it sounds like you have a reproducer that shouldn't be *too* huge
-(the test where it freezes after stat'ing 25 files).
+Right. If this is just code churn, then let's drop it. Otherwise, please explain why it is a good idea.
 
-What do you see on the network in that case?
+Cheers,
+  Trond
 
-Are you literally using just tcpdump?  Wireshark will give more
-(and easier to read) information.
-
-Does the server stop responding at some point, or reply with an error?
-Or does the getattr reply on the problem file look odd in any way?
-
---b.
