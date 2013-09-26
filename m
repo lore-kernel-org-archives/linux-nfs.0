@@ -1,117 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:49546 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751319Ab3IGPAw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 7 Sep 2013 11:00:52 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Quentin Barnes <qbarnes@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
-Date: Sat, 7 Sep 2013 15:00:50 +0000
-Message-ID: <1378566048.2521.2.camel@leira.trondhjem.org>
-References: <20130905162110.GA17920@gmail.com>
-	 <20130905170303.GB17330@us.ibm.com> <20130905191139.GA20830@gmail.com>
-	 <1378411320.5450.27.camel@leira.trondhjem.org>
-	 <20130905213649.GA21944@gmail.com>
-	 <1378418243.5450.29.camel@leira.trondhjem.org>
-	 <20130905223420.GA23192@gmail.com>
-	 <20130906093636.6818e7b2@corrin.poochiereds.net>
-	 <CAKjHkpBW+LWKuKuHnUfKNxwDZeX3SOFKv_jYeNGF8ezdAnKnvg@mail.gmail.com>
-	 <20130907105131.03069f25@tlielax.poochiereds.net>
-In-Reply-To: <20130907105131.03069f25@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from smtprelay0051.hostedemail.com ([216.40.44.51]:46384 "EHLO
+	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753211Ab3IZPiM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 11:38:12 -0400
+Message-ID: <1380209888.17366.68.camel@joe-AO722>
+Subject: Re: [PATCH 3/4] SunRPC: Use no_printk() for the null dprintk() and
+ dfprintk()
+From: Joe Perches <joe@perches.com>
+To: David Howells <dhowells@redhat.com>
+Cc: bfields@fieldses.org, Trond.Myklebust@netapp.com, olof@lixom.net,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Thu, 26 Sep 2013 08:38:08 -0700
+In-Reply-To: <30597.1380209743@warthog.procyon.org.uk>
+References: <1380209415.17366.66.camel@joe-AO722>
+	 <20130926144502.29424.21633.stgit@warthog.procyon.org.uk>
+	 <20130926144525.29424.11130.stgit@warthog.procyon.org.uk>
+	 <30597.1380209743@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="ISO-8859-1"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU2F0LCAyMDEzLTA5LTA3IGF0IDEwOjUxIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gRnJpLCA2IFNlcCAyMDEzIDExOjQ4OjQ1IC0wNTAwDQo+IFF1ZW50aW4gQmFybmVzIDxxYmFy
-bmVzQGdtYWlsLmNvbT4gd3JvdGU6DQo+IA0KPiA+IEplZmYsIGNhbiB5b3VyIHRyeSBvdXQgbXkg
-dGVzdCBwcm9ncmFtIGluIHRoZSBiYXNlIG5vdGUgb24geW91cg0KPiA+IFJIRUw1Ljkgb3IgbGF0
-ZXIgUkhFTDUueCBrZXJuZWxzPw0KPiA+IA0KPiA+IEkgcmV2ZXJpZmllZCB0aGF0IHJ1bm5pbmcg
-dGhlIHRlc3Qgb24gYSAyLjYuMTgtMzQ4LjE2LjEuZWw1IHg4Nl82NA0KPiA+IGtlcm5lbCAobGF0
-ZXN0IHJlbGVhc2VkIFJIRUw1LjkpIGRvZXMgbm90IHNob3cgdGhlIHByb2JsZW0gZm9yIG1lLg0K
-PiA+IEJhc2VkIG9uIHdoYXQgeW91IGFuZCBUcm9uZCBoYXZlIHNhaWQgaW4gdGhpcyB0aHJlYWQg
-dGhvdWdoLCBJJ20NCj4gPiByZWFsbHkgY3VyaW91cyB3aHkgaXQgZG9lc24ndCBoYXZlIHRoZSBw
-cm9ibGVtLg0KPiA+IA0KPiA+IE9uIEZyaSwgU2VwIDYsIDIwMTMgYXQgODozNiBBTSwgSmVmZiBM
-YXl0b24gPGpsYXl0b25AcmVkaGF0LmNvbT4gd3JvdGU6DQo+ID4gPiBPbiBUaHUsIDUgU2VwIDIw
-MTMgMTc6MzQ6MjAgLTA1MDANCj4gPiA+IFF1ZW50aW4gQmFybmVzIDxxYmFybmVzQGdtYWlsLmNv
-bT4gd3JvdGU6DQo+ID4gPg0KPiA+ID4+IE9uIFRodSwgU2VwIDA1LCAyMDEzIGF0IDA5OjU3OjI0
-UE0gKzAwMDAsIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gPj4gPiBPbiBUaHUsIDIwMTMt
-MDktMDUgYXQgMTY6MzYgLTA1MDAsIFF1ZW50aW4gQmFybmVzIHdyb3RlOg0KPiA+ID4+ID4gPiBP
-biBUaHUsIFNlcCAwNSwgMjAxMyBhdCAwODowMjowMVBNICswMDAwLCBNeWtsZWJ1c3QsIFRyb25k
-IHdyb3RlOg0KPiA+ID4+ID4gPiA+IE9uIFRodSwgMjAxMy0wOS0wNSBhdCAxNDoxMSAtMDUwMCwg
-UXVlbnRpbiBCYXJuZXMgd3JvdGU6DQo+ID4gPj4gPiA+ID4gPiBPbiBUaHUsIFNlcCAwNSwgMjAx
-MyBhdCAxMjowMzowM1BNIC0wNTAwLCBNYWxhaGFsIE5haW5lbmkgd3JvdGU6DQo+ID4gPj4gPiA+
-ID4gPiA+IE5laWwgQnJvd24gcG9zdGVkIGEgcGF0Y2ggY291cGxlIGRheXMgYWdvIGZvciB0aGlz
-IQ0KPiA+ID4+ID4gPiA+ID4gPg0KPiA+ID4+ID4gPiA+ID4gPiBodHRwOi8vdGhyZWFkLmdtYW5l
-Lm9yZy9nbWFuZS5saW51eC5uZnMvNTg0NzMNCj4gPiA+PiA+ID4gPiA+DQo+ID4gPj4gPiA+ID4g
-PiBJIHRyaWVkIE5laWwncyBwYXRjaCBvbiBhIHYzLjExIGtlcm5lbC4gIFRoZSByZWJ1aWx0IGtl
-cm5lbCBzdGlsbA0KPiA+ID4+ID4gPiA+ID4gZXhoaWJpdGVkIHRoZSBzYW1lIDEwMDBzIG9mIFdS
-SVRFcy9zZWMgcHJvYmxlbS4NCj4gPiA+PiA+ID4gPiA+DQo+ID4gPj4gPiA+ID4gPiBBbnkgb3Ro
-ZXIgaWRlYXM/DQo+ID4gPj4gPiA+ID4NCj4gPiA+PiA+ID4gPiBZZXMuIFBsZWFzZSB0cnkgdGhl
-IGF0dGFjaGVkIHBhdGNoLg0KPiA+ID4+ID4gPg0KPiA+ID4+ID4gPiBHcmVhdCEgIFRoYXQgZGlk
-IHRoZSB0cmljayENCj4gPiA+PiA+ID4NCj4gPiA+PiA+ID4gRG8geW91IGZlZWwgdGhpcyBwYXRj
-aCBjb3VsZCBiZSB3b3J0aHkgb2YgcHVzaGluZyBpdCB1cHN0cmVhbSBpbiBpdHMNCj4gPiA+PiA+
-ID4gY3VycmVudCBzdGF0ZSBvciB3YXMgaXQganVzdCB0byB2ZXJpZnkgYSB0aGVvcnk/DQo+ID4g
-Pj4gPiA+DQo+ID4gPj4gPiA+DQo+ID4gPj4gPiA+IEluIGNvbXBhcmluZyB0aGUgbmZzX2ZsdXNo
-X2luY29tcGF0aWJsZSgpIGltcGxlbWVudGF0aW9ucyBiZXR3ZWVuDQo+ID4gPj4gPiA+IFJIRUw1
-IGFuZCB2My4xMSAod2l0aG91dCB5b3VyIHBhdGNoKSwgdGhlIGd1dHMgb2YgdGhlIGFsZ29yaXRo
-bSBzZWVtDQo+ID4gPj4gPiA+IG1vcmUgb3IgbGVzcyBsb2dpY2FsbHkgZXF1aXZhbGVudCB0byBt
-ZSBvbiB3aGV0aGVyIG9yIG5vdCB0byBmbHVzaA0KPiA+ID4+ID4gPiB0aGUgcGFnZS4gIEFsc28s
-IHdoZW4gYW5kIHdoZXJlIG5mc19mbHVzaF9pbmNvbXBhdGlibGUoKSBpcyBpbnZva2VkDQo+ID4g
-Pj4gPiA+IHNlZW1zIHRoZSBzYW1lLiAgV291bGQgeW91IHByb3ZpZGUgYSB2ZXJ5IGJyaWVmIHBv
-aW50ZXIgdG8gY2x1ZSBtZQ0KPiA+ID4+ID4gPiBpbiBhcyB0byB3aHkgdGhpcyBwcm9ibGVtIGRp
-ZG4ndCBhbHNvIG1hbmlmZXN0IGNpcmNhIDIuNi4xOCBkYXlzPw0KPiA+ID4+ID4NCj4gPiA+PiA+
-IFRoZXJlIHdhcyBubyBuZnNfdm1fcGFnZV9ta3dyaXRlKCkgdG8gaGFuZGxlIHBhZ2UgZmF1bHRz
-IGluIHRoZSAyLjYuMTgNCj4gPiA+PiA+IGRheXMsIGFuZCBzbyB0aGUgcmlzayB3YXMgdGhhdCB5
-b3VyIG1tYXBwZWQgd3JpdGVzIGNvdWxkIGVuZCB1cCBiZWluZw0KPiA+ID4+ID4gc2VudCB3aXRo
-IHRoZSB3cm9uZyBjcmVkZW50aWFscy4NCj4gPiA+Pg0KPiA+ID4+IEFoISAgWW91J3JlIHJpZ2h0
-IHRoYXQgbmZzX3ZtX3BhZ2VfbWt3cml0ZSgpIHdhcyBtaXNzaW5nIGZyb20NCj4gPiA+PiB0aGUg
-b3JpZ2luYWwgMi42LjE4LCBzbyB0aGF0IG1ha2VzIHNlbnNlLCBob3dldmVyLCBSZWQgSGF0IGhh
-ZA0KPiA+ID4+IGJhY2twb3J0ZWQgdGhhdCBmdW5jdGlvbiBzdGFydGluZyB3aXRoIHRoZWlyIFJI
-RUw1LjkoKikga2VybmVscywNCj4gPiA+PiB5ZXQgdGhlIHByb2JsZW0gZG9lc24ndCBtYW5pZmVz
-dCBvbiBSSEVMNS45LiAgTWF5YmUgdGhlIGFuc3dlciBsaWVzDQo+ID4gPj4gc29tZXdoZXJlIGlu
-IFJIRUw1LjkncyBkb193cF9wYWdlKCksIG9yIHVwIHRoYXQgY2FsbCBwYXRoLCBidXQNCj4gPiA+
-PiBnbGFuY2luZyB0aHJvdWdoIGl0LCBpdCBhbGwgbG9va3MgcHJldHR5IGNsb3NlIHRob3VnaC4N
-Cj4gPiA+Pg0KPiA+ID4+DQo+ID4gPj4gKCopIFRoYXQgd2FzIHRoZSBzb3VyY2UgSSB1c2luZyB3
-aGVuIGNvbXBhcmluZyB3aXRoIHRoZSAzLjExIHNvdXJjZQ0KPiA+ID4+IHdoZW4gc3R1ZHlpbmcg
-eW91ciBwYXRjaCBzaW5jZSBpdCB3YXMgdGhlIGxhc3Qga2VybmVsIGtub3duIHRvIG1lDQo+ID4g
-Pj4gd2l0aG91dCB0aGUgcHJvYmxlbS4NCj4gPiA+Pg0KPiA+ID4NCj4gPiA+IEknbSBwcmV0dHkg
-c3VyZSBSSEVMNSBoYXMgYSBzaW1pbGFyIHByb2JsZW0sIGJ1dCBpdCdzIHVuY2xlYXIgdG8gbWUg
-d2h5DQo+ID4gPiB5b3UncmUgbm90IHNlZWluZyBpdCB0aGVyZS4gSSBoYXZlIGEgUkhCWiBvcGVu
-IHZzLiBSSEVMNSBidXQgaXQncyBtYXJrZWQNCj4gPiA+IHByaXZhdGUgYXQgdGhlIG1vbWVudCAo
-SSdsbCBzZWUgYWJvdXQgb3BlbmluZyBpdCB1cCkuIEkgYnJvdWdodCB0aGlzIHVwDQo+ID4gPiB1
-cHN0cmVhbSBhYm91dCBhIHllYXIgYWdvIHdpdGggdGhpcyBzdHJhd21hbiBwYXRjaDoNCj4gPiA+
-DQo+ID4gPiAgICAgaHR0cDovL2FydGljbGUuZ21hbmUub3JnL2dtYW5lLmxpbnV4Lm5mcy81MTI0
-MA0KPiA+ID4NCj4gPiA+IC4uLmF0IHRoZSB0aW1lIFRyb25kIHNhaWQgaGUgd2FzIHdvcmtpbmcg
-b24gYSBzZXQgb2YgcGF0Y2hlcyB0byB0cmFjaw0KPiA+ID4gdGhlIG9wZW4vbG9jayBzdGF0ZWlk
-IG9uIGEgcGVyLXJlcSBiYXNpcy4gRGlkIHRoYXQgYXBwcm9hY2ggbm90IHBhbg0KPiA+ID4gb3V0
-Pw0KPiA+ID4NCj4gPiA+IEFsc28sIGRvIHlvdSBuZWVkIHRvIGRvIGEgc2ltaWxhciBmaXggdG8g
-bmZzX2Nhbl9jb2FsZXNjZV9yZXF1ZXN0cz8NCj4gPiA+DQo+IA0KPiBZZXMsIEkgc2VlIHRoZSBz
-YW1lIGJlaGF2aW9yIHlvdSBkby4gV2l0aCBhIHJlY2VudCBrZXJuZWwgSSBzZWUgYSB0b24NCj4g
-b2YgV1JJVEUgcmVxdWVzdHMgZ28gb3V0LCB3aXRoIFJIRUw1IGhhcmRseSBhbnkuDQo+IA0KPiBJ
-IGd1ZXNzIEknbSBhIGxpdHRsZSBjb25mdXNlZCBhcyB0byB0aGUgcmV2ZXJzZSBxdWVzdGlvbi4g
-V2h5IGFyZSB3ZQ0KPiBzZWVpbmcgdGhpcyBkYXRhIGdldCBmbHVzaGVkIG91dCBzbyBxdWlja2x5
-IGluIHJlY2VudCBrZXJuZWxzIGZyb20ganVzdA0KPiBjaGFuZ2VzIHRvIHRoZSBtbWFwZWQgcGFn
-ZXM/DQo+IA0KPiBNeSB1bmRlcnN0YW5kaW5nIGhhcyBhbHdheXMgYmVlbiB0aGF0IHdoZW4gYSBw
-YWdlIGlzIGNsZWFuZWQsIHdlIHNldA0KPiB0aGUgV1AgYml0IG9uIGl0LCBhbmQgdGhlbiB3aGVu
-IGl0IGdvZXMgZGlydHkgd2UgY2xlYXIgaXQgYW5kIGFsc28NCj4gY2FsbCBwYWdlX21rd3JpdGUg
-KG5vdCBuZWNlc3NhcmlseSBpbiB0aGF0IG9yZGVyKS4NCj4gDQo+IFNvIGhlcmUgd2UgaGF2ZSB0
-d28gcHJvY2Vzc2VzIHRoYXQgbW1hcCB0aGUgc2FtZSBwYWdlLCBhbmQgdGhlbiBhcmUNCj4gZnVy
-aW91c2x5IHdyaXRpbmcgdG8gaXQuIFRoZSBrZXJuZWwgc2hvdWxkbid0IHJlYWxseSBjYXJlIG9y
-IGJlIGF3YXJlDQo+IG9mIHRoYXQgdGhyYXNoaW5nIHVudGlsIHRoYXQgcGFnZSBnZXRzIGZsdXNo
-ZWQgb3V0IGZvciBzb21lIHJlYXNvbg0KPiAobXN5bmMoKSBjYWxsIG9yIFZNIHByZXNzdXJlKS4N
-Cg0KZm9yaygpIGlzIG5vdCBzdXBwb3NlZCB0byBzaGFyZSBwYWdlIHRhYmxlcyBiZXR3ZWVuIHBh
-cmVudCBhbmQgY2hpbGQNCnByb2Nlc3MuIFNob3VsZG4ndCB0aGF0IGFsc28gaW1wbHkgdGhhdCB0
-aGUgcGFnZSB3cml0ZSBwcm90ZWN0IGJpdHMgYXJlDQpub3Qgc2hhcmVkPw0KDQpJT1c6IGEgd3Jp
-dGUgcHJvdGVjdCBwYWdlIGZhdWx0IGluIHRoZSBwYXJlbnQgcHJvY2VzcyB0aGF0IHNldHMNCnBh
-Z2VfbWt3cml0ZSgpIHNob3VsZCBub3QgcHJldmVudCBhIHNpbWlsYXIgd3JpdGUgcHJvdGVjdCBw
-YWdlIGZhdWx0IGluDQp0aGUgY2hpbGQgcHJvY2VzcyAoYW5kIHN1YnNlcXVlbnQgY2FsbCB0byBw
-YWdlX21rd3JpdGUoKSkuDQoNCi4uLm9yIGlzIG15IHVuZGVyc3RhbmRpbmcgb2YgdGhlIHBhZ2Ug
-ZmF1bHQgc2VtYW50aWNzIHdyb25nPw0KDQo+IElPVywgUkhFTDUgYmVoYXZlcyB0aGUgd2F5IEkn
-ZCBleHBlY3QuIFdoYXQncyB1bmNsZWFyIHRvIG1lIGlzIHdoeSBtb3JlDQo+IHJlY2VudCBrZXJu
-ZWxzIGRvbid0IGJlaGF2ZSB0aGF0IHdheS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
-IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAu
-Y29tDQp3d3cubmV0YXBwLmNvbQ0K
+On Thu, 2013-09-26 at 16:35 +0100, David Howells wrote:
+> Joe Perches <joe@perches.com> wrote:
+> 
+> > no_printk doesn't prevent any argument side-effects
+> > from being optimized away by the compiler.
+> > 
+> > ie:
+> > 	dprintk("%d", func())
+> > func is now always called when before it wasn't.
+> 
+> Yes, I know.  There are half a dozen places where this is the case.  Those
+> I've wrapped in ifdebug(FACILITY) { ... } in the code.  It's not the nicest,
+> but at least the compiler always gets to see everything, rather than bits of
+> it getting hidden by the preprocessor - which means the call points will be
+> less likely to bit rot over time.
+
+No code is eliminated by the preprocessor
+with the #define I suggest.
+
+
