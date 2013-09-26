@@ -1,123 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:57507 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755426Ab3I3R3q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Sep 2013 13:29:46 -0400
-Message-ID: <5249B21E.70603@itwm.fraunhofer.de>
-Date: Mon, 30 Sep 2013 19:17:18 +0200
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-MIME-Version: 1.0
-To: Miklos Szeredi <miklos@szeredi.hu>, Ric Wheeler <rwheeler@redhat.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Zach Brown <zab@redhat.com>, Anna Schumaker <schumaker.anna@gmail.com>,
-        Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        Eric Wong <normalperson@yhbt.net>
-Subject: Re: [RFC] extending splice for copy offloading
-References: <20130930143432.GG16579@fieldses.org> <CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com> <52499026.3090802@redhat.com> <CAJfpegtpXuh9070ALGy16Y8kdgioBqSf4JQqBBCF4FHvFJWAWQ@mail.gmail.com> <52498AA8.2090204@redhat.com> <CAJfpegv_C6cLOuA-mNtgtf2QbmmmcHwjQVo8mAnhf_wbJ8iRhg@mail.gmail.com> <52498DB6.7060901@redhat.com> <CAJfpegsvrr7x3MbdpvxUmzq0ZfDHfZkzAar6Od2G7wg8DgPLYQ@mail.gmail.com> <52498F68.8050200@redhat.com> <CAJfpegvvN_5c5oMv8UoODXQHc-DQnijhOtPDXmNamVpQLDoWMQ@mail.gmail.com> <20130930163159.GA14242@tucsk.piliscsaba.szeredi.hu>
-In-Reply-To: <20130930163159.GA14242@tucsk.piliscsaba.szeredi.hu>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mail-qe0-f54.google.com ([209.85.128.54]:51892 "EHLO
+	mail-qe0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752808Ab3IZSkO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:40:14 -0400
+Received: by mail-qe0-f54.google.com with SMTP id cy11so1086705qeb.41
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:40:14 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
+Date: Thu, 26 Sep 2013 14:40:10 -0400
+Message-Id: <1380220810-12909-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <52447EA0.7070004@primarydata.com>
+References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/30/2013 06:31 PM, Miklos Szeredi wrote:
-> Here's an example "cp" app using direct splice (and without fallback to
-> non-splice, which is obviously required unless the kernel is known to support
-> direct splice).
->
-> Untested, but trivial enough...
->
-> The important part is, I think, that the app must not assume that the kernel can
-> complete the request in one go.
->
-> Thanks,
-> Miklos
->
-> ----
-> #define _GNU_SOURCE
->
-> #include <stdio.h>
-> #include <fcntl.h>
-> #include <unistd.h>
-> #include <limits.h>
-> #include <sys/stat.h>
-> #include <err.h>
->
-> #ifndef SPLICE_F_DIRECT
-> #define SPLICE_F_DIRECT        (0x10)  /* neither splice fd is a pipe */
-> #endif
->
-> int main(int argc, char *argv[])
-> {
-> 	struct stat stbuf;
-> 	int in_fd;
-> 	int out_fd;
-> 	int res;
-> 	off_t off;
+From: Andy Adamson <andros@umich.edu>
 
-off_t off = 0;
+pnfsd data structures used internally and over the export API.
 
->
-> 	if (argc != 3)
-> 		errx(1, "usage: %s from to", argv[0]);
->
-> 	in_fd = open(argv[1], O_RDONLY);
-> 	if (in_fd == -1)
-> 		err(1, "opening %s", argv[1]);
->
-> 	res = fstat(in_fd, &stbuf);
-> 	if (res == -1)
-> 		err(1, "fstat");
->
-> 	out_fd = open(argv[2], O_CREAT | O_WRONLY | O_TRUNC, stbuf.st_mode);
-> 	if (out_fd == -1)
-> 		err(1, "opening %s", argv[2]);
->
-> 	do {
-> 		off_t in_off = off, out_off = off;
-> 		ssize_t rres;
->
-> 		rres = splice(in_fd, &in_off, out_fd, &out_off, SSIZE_MAX,
-> 			     SPLICE_F_DIRECT);
-> 		if (rres == -1)
-> 			err(1, "splice");
-> 		if (rres == 0)
-> 			break;
->
-> 		off += rres;
-> 	} while (off < stbuf.st_size);
->
-> 	res = close(in_fd);
-> 	if (res == -1)
-> 		err(1, "close");
->
-> 	res = fsync(out_fd);
-> 	if (res == -1)
-> 		err(1, "fsync");
->
-> 	res = close(out_fd);
-> 	if (res == -1)
-> 		err(1, "close");
->
-> 	return 0;
-> }
+[extracted from pnfsd: Initial pNFS server implementation.]
+[pnfsd: remove CONFIG_PNFSD from nfsd4_pnfs.h]
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[moved {include/linux,fs}/nfsd/pnfsd.h]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+---
+ fs/nfsd/pnfsd.h                 | 37 +++++++++++++++++++++++++++++++++++++
+ include/linux/nfsd/nfsd4_pnfs.h | 37 +++++++++++++++++++++++++++++++++++++
+ 2 files changed, 74 insertions(+)
+ create mode 100644 fs/nfsd/pnfsd.h
+ create mode 100644 include/linux/nfsd/nfsd4_pnfs.h
 
-
-It would be nice if there would be way if the file system would get a 
-hint that the target file is supposed to be copy of another file. That 
-way distributed file systems could also create the target-file with the 
-correct meta-information (same storage targets as in-file has).
-Well, if we cannot agree on that, file system with a custom protocol at 
-least can detect from 0 to SSIZE_MAX and then reset metadata. I'm not 
-sure if this would work for pNFS, though.
-
-
-Bernd
-
-
+diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
+new file mode 100644
+index 0000000..65fb57e
+--- /dev/null
++++ b/fs/nfsd/pnfsd.h
+@@ -0,0 +1,37 @@
++/*
++ *  Copyright (c) 2005 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Andy Adamson <andros@umich.edu>
++ *
++ *  Redistribution and use in source and binary forms, with or without
++ *  modification, are permitted provided that the following conditions
++ *  are met:
++ *
++ *  1. Redistributions of source code must retain the above copyright
++ *     notice, this list of conditions and the following disclaimer.
++ *  2. Redistributions in binary form must reproduce the above copyright
++ *     notice, this list of conditions and the following disclaimer in the
++ *     documentation and/or other materials provided with the distribution.
++ *  3. Neither the name of the University nor the names of its
++ *     contributors may be used to endorse or promote products derived
++ *     from this software without specific prior written permission.
++ *
++ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
++ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
++ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
++ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
++ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#ifndef LINUX_NFSD_PNFSD_H
++#define LINUX_NFSD_PNFSD_H
++
++#endif /* LINUX_NFSD_PNFSD_H */
+diff --git a/include/linux/nfsd/nfsd4_pnfs.h b/include/linux/nfsd/nfsd4_pnfs.h
+new file mode 100644
+index 0000000..9e7d95e
+--- /dev/null
++++ b/include/linux/nfsd/nfsd4_pnfs.h
+@@ -0,0 +1,37 @@
++/*
++ *  Copyright (c) 2006 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Andy Adamson <andros@umich.edu>
++ *
++ *  Redistribution and use in source and binary forms, with or without
++ *  modification, are permitted provided that the following conditions
++ *  are met:
++ *
++ *  1. Redistributions of source code must retain the above copyright
++ *     notice, this list of conditions and the following disclaimer.
++ *  2. Redistributions in binary form must reproduce the above copyright
++ *     notice, this list of conditions and the following disclaimer in the
++ *     documentation and/or other materials provided with the distribution.
++ *  3. Neither the name of the University nor the names of its
++ *     contributors may be used to endorse or promote products derived
++ *     from this software without specific prior written permission.
++ *
++ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
++ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
++ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
++ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
++ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#ifndef _LINUX_NFSD_NFSD4_PNFS_H
++#define _LINUX_NFSD_NFSD4_PNFS_H
++
++#endif /* _LINUX_NFSD_NFSD4_PNFS_H */
+-- 
+1.8.3.1
 
