@@ -1,51 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:51705 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752645Ab3IJVxa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Sep 2013 17:53:30 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFSv4.1: clean up after using machine cred
-Date: Tue, 10 Sep 2013 21:53:28 +0000
-Message-ID: <1378850003.21916.24.camel@leira.trondhjem.org>
-References: <1378839358-10389-1-git-send-email-dros@netapp.com>
-	 <1378839358-10389-2-git-send-email-dros@netapp.com>
-	 <1378841499.21916.22.camel@leira.trondhjem.org>
-	 <99A4AB2C-5C44-4F9D-8D7A-4601AC07DCB0@netapp.com>
-In-Reply-To: <99A4AB2C-5C44-4F9D-8D7A-4601AC07DCB0@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-qc0-f179.google.com ([209.85.216.179]:50048 "EHLO
+	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752440Ab3IZSlU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:41:20 -0400
+Received: by mail-qc0-f179.google.com with SMTP id l4so1034908qcv.38
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:41:19 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC v0 21/49] nfsd: no need to unhash_stid before free
+Date: Thu, 26 Sep 2013 14:41:16 -0400
+Message-Id: <1380220876-13642-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <52447EA0.7070004@primarydata.com>
+References: <52447EA0.7070004@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEzLTA5LTEwIGF0IDIxOjA4ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
-PiBZZXMsIEkgdGhvdWdodCBhYm91dCB0aGlzIGFwcHJvYWNoLCBidXQgYmFja2VkIGF3YXkgc2lu
-Y2Ugd2UgZG8gZ2V0L3B1dF9ycGNjcmVkIG9uIHRoZSBjbF9tYWNoaW5lX2NyZWQgZWxzZXdoZXJl
-IChsaWtlIG5mczRfZ2V0X21hY2hpbmVfY3JlZF9sb2NrZWQpLg0KPiANCj4gU2hhbGwgSSBzdWJt
-aXQgYSBuZXcgcGF0Y2ggdGhhdCBnZXRzIHJpZCBvZiBnZXQvcHV0X3JwY2NyZWQ/DQoNClBsZWFz
-ZSBkby4NCg0KPiBEbyB3ZSBhbHNvIHdhbnQgdG8gY2hhbmdlIG90aGVyIHVzZXMgb2YgY2xfbWFj
-aGluZV9jcmVkPw0KDQpOb3QgZm9yIG5vdzsgbGV0J3Mgd2FpdCBmb3IgYW5vdGhlciBtZXJnZSBj
-eWNsZSBiZWZvcmUgZG9pbmcgdGhhdC4NCg0KPiBUaGFua3MsDQo+IC1kcm9zDQo+IA0KPiBPbiBT
-ZXAgMTAsIDIwMTMsIGF0IDM6MzEgUE0sICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJvbmQuTXlrbGVi
-dXN0QG5ldGFwcC5jb20+DQo+ICB3cm90ZToNCj4gDQo+ID4gT24gVHVlLCAyMDEzLTA5LTEwIGF0
-IDE0OjU1IC0wNDAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24gd3JvdGU6DQo+ID4+IENsaWVudCBj
-YWxscyBnZXRfcnBjY3JlZCB3aGVuIHJlZmVyZW5jaW5nIHRoZSBtYWNoaW5lIGNyZWQsIHNvIGl0
-IG11c3QgY2FsbA0KPiA+PiBwdXRfcnBjY3JlZCBhZnRlciBwYXNzaW5nIGNyZWQgdG8gcnBjIGxh
-eWVyLg0KPiA+PiANCj4gPj4gVGhpcyBwYXRjaCBhbHNvIG1vdmVzIG5mczRfc3A0X2luaXQgKGZv
-cm1lcmx5IG5mczRfc3RhdGVfcHJvdGVjdCkgdG8gcmlnaHQNCj4gPj4gYmVmb3JlIHRoZSBjYWxs
-IHRvIHJwY19ydW5fdGFzayAoYW5kIHdyYXBwZXJzIG9mIHJwY19ydW5fdGFzaykgdG8gbWluaW1p
-emUNCj4gPj4gZXJyb3IgcGF0aCBjbGVhbnVwIGNvZGUuDQo+ID4+IA0KPiA+IA0KPiA+IERvIHdl
-IHJlYWxseSBuZWVkIHRoaXM/IEFGQUlDUyBvbmNlIHRoZSBjbHAtPmNsX21hY2hpbmVfY3JlZCBp
-cyBzZXQsIGl0DQo+ID4gaXNuJ3QgZnJlZWQgdW50aWwgdGhlIGNhbGwgdG8gbmZzX2ZyZWVfY2xp
-ZW50KCkuIEluIGZhY3QsIHdlIHByb2JhYmx5DQo+ID4gX3JlbHlfIG9uIHRoaXMgYmVpbmcgdGhl
-IGNhc2UgZm9yIFNQNF9NQUNIX0NSRUQsIHNpbmNlIGlmIHRoZSBtYWNoaW5lDQo+ID4gY3JlZCB3
-ZXJlIHRvIGNoYW5nZSwgd2UnZCBubyBsb25nZXIgYmUgYWJsZSB0byBjaGFuZ2Ugb3VyIHNlc3Np
-b24gb3INCj4gPiBsZWFzZS4NCj4gPiANCj4gPiBJT1c6IGluc3RlYWQgb2YgcmVmZXJlbmNpbmcg
-dGhlIGNyZWQgdmlhIGdldC9wdXRfcnBjY3JlZCgpLCBtYXliZSB3ZSBjYW4NCj4gPiBqdXN0IGZl
-ZWQgdGhlIGN1cnJlbnQgdmFsdWUgb2YgY2xwLT5jbF9tYWNoaW5lX2NyZWQgaW50byB0aGUNCj4g
-PiBtc2ctPnJwY19jcmVkLg0KPiA+IA0KPiA+IC0tIA0KPiA+IFRyb25kIE15a2xlYnVzdA0KPiA+
-IExpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KPiA+IA0KPiA+IE5ldEFwcA0KPiA+IFRyb25k
-Lk15a2xlYnVzdEBuZXRhcHAuY29tDQo+ID4gd3d3Lm5ldGFwcC5jb20NCj4gDQoNCi0tIA0KVHJv
-bmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9u
-ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+idr_remove is about to be called before kmem_cache_free so unhashing it
+is redundant
+
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index a8a18d4..214e42d 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -677,7 +677,6 @@ static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
+ static void release_open_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	unhash_open_stateid(stp);
+-	unhash_stid(&stp->st_stid);
+ 	free_generic_stateid(stp);
+ }
+ 
+@@ -699,7 +698,6 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+ 	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
+ 
+ 	if (s) {
+-		unhash_stid(&s->st_stid);
+ 		free_generic_stateid(s);
+ 		oo->oo_last_closed_stid = NULL;
+ 	}
+@@ -4043,10 +4041,9 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+ 
+ 	nfsd4_close_open_stateid(stp);
+ 
+-	if (cstate->minorversion) {
+-		unhash_stid(&stp->st_stid);
++	if (cstate->minorversion)
+ 		free_generic_stateid(stp);
+-	} else
++	else
+ 		oo->oo_last_closed_stid = stp;
+ 
+ 	if (list_empty(&oo->oo_owner.so_stateids)) {
+-- 
+1.8.3.1
+
