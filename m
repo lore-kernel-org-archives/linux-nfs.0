@@ -1,52 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from dcvr.yhbt.net ([64.71.152.64]:37397 "EHLO dcvr.yhbt.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757248Ab3IKVYM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Sep 2013 17:24:12 -0400
-Date: Wed, 11 Sep 2013 21:17:23 +0000
-From: Eric Wong <normalperson@yhbt.net>
-To: Zach Brown <zab@redhat.com>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Bryan Schumaker <bjschuma@netapp.com>,
-        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>
-Subject: Re: [RFC] extending splice for copy offloading
-Message-ID: <20130911211722.GA9725@dcvr.yhbt.net>
-References: <1378919210-10372-1-git-send-email-zab@redhat.com>
+Received: from mail-qa0-f49.google.com ([209.85.216.49]:53124 "EHLO
+	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750823Ab3I0BJn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 21:09:43 -0400
+Received: by mail-qa0-f49.google.com with SMTP id k15so87974qaq.8
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 18:09:43 -0700 (PDT)
+Message-ID: <5244DAD5.1070803@primarydata.com>
+Date: Thu, 26 Sep 2013 21:09:41 -0400
+From: Benny Halevy <bhalevy@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1378919210-10372-1-git-send-email-zab@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC v0 03/49] pnfsd: return pnfs flags on exchange_id
+References: <52447EA0.7070004@primarydata.com> <1380220802-12810-1-git-send-email-bhalevy@primarydata.com> <20130926215534.GB24894@pad.fieldses.org>
+In-Reply-To: <20130926215534.GB24894@pad.fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Zach Brown <zab@redhat.com> wrote:
-> Towards the end of that thread Eric Wong asked why we didn't just
-> extend splice.  I immediately replied with some dumb dismissive
-> answer.  Once I sat down and looked at it, though, it does make a
-> lot of sense.  So good job, Eric.  +10 Dummie points for me.
+On 2013-09-26 17:55, J. Bruce Fields wrote:
+> On Thu, Sep 26, 2013 at 02:40:02PM -0400, Benny Halevy wrote:
+>> From: Benny Halevy <bhalevy@panasas.com>
+>>
+>> Set the cl_exchange_flags to be non_pnfs if we do not set
+>> either pnfs or ds (in the plain old nfs41 case).
+>>
+>> Note that we always set both MDS and DS exchangeid capability flags
+>> when CONFIG_PNFSD is enabled.
+>> The client needs to remember what the session is used for
+>> if it cares to distiguish between DSs and MDSs.
+>>
+>> EXCHGID4_FLAG_USE_NON_PNFS should be set when the server does not support
+>> operations (e.g. LAYOUTGET) or attributes that pertain to pNFS.
+> 
+> Minor nit: since we don't actually support those operations yet, this
+> patch should probably come later in the series.
 
-Thanks for revisiting that :>
+Right. It was originally placed first to allow testing of early patches.
+I'll move it later when the implementation supports getdeviceinfo and layoutget.
 
-> Some things to talk about:
-> - I really don't care about the naming here.  If you do, holler.
+Benny
 
-Exposing "DIRECT" to userspace now might confuse users into expecting
-O_DIRECT behavior.  I say this as an easily-confused user.
-
-In the future, perhaps O_DIRECT behavior can become per-splice (instead
-of just per-open) and can save SPLICE_F_DIRECT for that.
-
-> - We might want different flags for file-to-file splicing and acceleration
-> - We might want flags to require or forbid acceleration
-
-> - We might want to provide all these flags to sendfile, too
-
-Another syscall?  I prefer not.  Better to just maintain the sendfile
-API as-is for compatibility reasons and nudge users towards splice.
-
-> Thoughts?  Objections?
-
-I'll try to test/comment more in a week or two (not much time for
-computing until then).
+> 
+> --b.
+> 
+>>
+>> [extraced from pnfsd: Initial pNFS server implementation.]
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> [pnfsd: Fixup nfsd4_set_ex_flags.]
+>> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+>> [pnfsd: set EXCHGID4_FLAG_USE_NON_PNFS when !CONFIG_PNFSD]
+>> [pnfsd: fix compiler warning in nfsd4_set_ex_flags when CONFIG_PNFSD is not defined]
+>> [pnfsd: always set both MDS and DS exchangeid capability flags]
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+>> ---
+>>  fs/nfsd/nfs4state.c | 6 +++++-
+>>  1 file changed, 5 insertions(+), 1 deletion(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 57a0340..21c15fc 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -1614,8 +1614,12 @@ static bool clp_used_exchangeid(struct nfs4_client *clp)
+>>  static void
+>>  nfsd4_set_ex_flags(struct nfs4_client *new, struct nfsd4_exchange_id *clid)
+>>  {
+>> -	/* pNFS is not supported */
+>> +#if defined(CONFIG_PNFSD)
+>> +	new->cl_exchange_flags |= EXCHGID4_FLAG_USE_PNFS_MDS |
+>> +				  EXCHGID4_FLAG_USE_PNFS_DS;
+>> +#else  /* CONFIG_PNFSD */
+>>  	new->cl_exchange_flags |= EXCHGID4_FLAG_USE_NON_PNFS;
+>> +#endif /* CONFIG_PNFSD */
+>>  
+>>  	/* Referrals are supported, Migration is not. */
+>>  	new->cl_exchange_flags |= EXCHGID4_FLAG_SUPP_MOVED_REFER;
+>> -- 
+>> 1.8.3.1
+>>
