@@ -1,99 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:24836 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754549Ab3IXTR0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Sep 2013 15:17:26 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r8OJHPjI013739
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 24 Sep 2013 15:17:26 -0400
-Message-ID: <5241E561.3030406@RedHat.com>
-Date: Tue, 24 Sep 2013 15:17:53 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-qc0-f176.google.com ([209.85.216.176]:51932 "EHLO
+	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750808Ab3I0ErG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Sep 2013 00:47:06 -0400
+Received: by mail-qc0-f176.google.com with SMTP id t7so1430494qcv.35
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 21:47:05 -0700 (PDT)
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCHv2 3/3] gssd: let tgtname override clp->servicename
-References: <1379624239-31199-2-git-send-email-bfields@redhat.com> <1379624632-31476-1-git-send-email-bfields@redhat.com> <1379624632-31476-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1379624632-31476-3-git-send-email-bfields@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+In-Reply-To: <5244A5E7.90808@redhat.com>
+References: <1378919210-10372-1-git-send-email-zab@redhat.com>
+	<CAELBmZBGD4rph=gjLCPKCdEj+nzEQ-F=DExoL+h3vRm7qF7dCQ@mail.gmail.com>
+	<20130925183828.GA30372@lenny.home.zabbo.net>
+	<CAFX2JfnyF8kyMYzCdqdr2JkoyQCom1bFLpFj89wODjoju54-Ow@mail.gmail.com>
+	<20130925190620.GB30372@lenny.home.zabbo.net>
+	<20130925195526.GA18971@fieldses.org>
+	<20130925210742.GG30372@lenny.home.zabbo.net>
+	<CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
+	<20130926153359.GE704@fieldses.org>
+	<CAJfpegsUchb0eX+Hi3rN5Ypje3Y-dgo=pxgM1Y3BQbHVp=1hSw@mail.gmail.com>
+	<20130926190611.GP30372@lenny.home.zabbo.net>
+	<CAJfpegvvWhs+jv2J9kOQrB31PEO3kyn_sLm_e2w9YKp=y6EDhA@mail.gmail.com>
+	<5244A5E7.90808@redhat.com>
+Date: Fri, 27 Sep 2013 06:47:03 +0200
+Message-ID: <CAJfpegufnsU0LLvvZDmKpvRn8AaJ7NvKeegg-4YJ5AK9mBDBYQ@mail.gmail.com>
+Subject: Re: [RFC] extending splice for copy offloading
+From: Miklos Szeredi <miklos@szeredi.hu>
+To: Ric Wheeler <rwheeler@redhat.com>
+Cc: Zach Brown <zab@redhat.com>, "J. Bruce Fields" <bfields@fieldses.org>,
+        Anna Schumaker <schumaker.anna@gmail.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Bryan Schumaker <bjschuma@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Wong <normalperson@yhbt.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Sep 26, 2013 at 11:23 PM, Ric Wheeler <rwheeler@redhat.com> wrote:
+> On 09/26/2013 03:53 PM, Miklos Szeredi wrote:
+>>
+>> On Thu, Sep 26, 2013 at 9:06 PM, Zach Brown <zab@redhat.com> wrote:
+>>
+>>>> But I'm not sure it's worth the effort; 99% of the use of this
+>>>> interface will be copying whole files.  And for that perhaps we need a
+>>>> different API, one which has been discussed some time ago:
+>>>> asynchronous copyfile() returns immediately with a pollable event
+>>>> descriptor indicating copy progress, and some way to cancel the copy.
+>>>> And that can internally rely on ->direct_splice(), with appropriate
+>>>> algorithms for determine the optimal  chunk size.
+>>>
+>>> And perhaps we don't.  Perhaps we can provide this much simpler
+>>> data-plane interface that works well enough for most everyone and can
+>>> avoid going down the async rat hole, yet again.
+>>
+>> I think either buffering or async is needed to get good perforrmace
+>> without too much complexity in the app (which is not good).  Buffering
+>> works quite well for regular I/O, so maybe its the way to go here as
+>> well.
+>>
+>> Thanks,
+>> Miklos
+>>
+>
+> Buffering  misses the whole point of the copy offload - the idea is *not* to
+> read or write the actual data in the most interesting cases which offload
+> the operation to a smart target device or file system.
+
+I meant buffering the COPY, not the data.  Doing the COPY
+synchronously will always incur a performance penalty, the amount
+depending on the latency, which can be significant with networking.
+
+We think of write(2) as a synchronous interface, because that's the
+appearance we get from all that hard work the page cache and delayed
+writeback code does to make an asynchronous operation look as if it
+was synchronous.  So from a userspace API perspective a sync interface
+is nice, but inside we almost always have async interfaces to do the
+actual work.
+
+Thanks,
+Miklos
 
 
-On 19/09/13 17:03, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> When the kernel provides an explicit "target=" name in the upcall, that
-> should override the name in clp->servicename.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-Committed...
-
-steved.
-
-> ---
->  utils/gssd/gssd_proc.c | 15 +++++++++------
->  1 file changed, 9 insertions(+), 6 deletions(-)
-> 
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index 7200a78..e58c341 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -822,6 +822,7 @@ set_port:
->   */
->  static int
->  create_auth_rpc_client(struct clnt_info *clp,
-> +		       char *tgtname,
->  		       CLIENT **clnt_return,
->  		       AUTH **auth_return,
->  		       uid_t uid,
-> @@ -926,14 +927,16 @@ create_auth_rpc_client(struct clnt_info *clp,
->  			 clnt_spcreateerror(rpc_errmsg));
->  		goto out_fail;
->  	}
-> +	if (!tgtname)
-> +		tgtname = clp->servicename;
->  
-> -	printerr(2, "creating context with server %s\n", clp->servicename);
-> -	auth = authgss_create_default(rpc_clnt, clp->servicename, &sec);
-> +	printerr(2, "creating context with server %s\n", tgtname);
-> +	auth = authgss_create_default(rpc_clnt, tgtname, &sec);
->  	if (!auth) {
->  		/* Our caller should print appropriate message */
->  		printerr(2, "WARNING: Failed to create krb5 context for "
->  			    "user with uid %d for server %s\n",
-> -			 uid, clp->servername);
-> +			 uid, tgtname);
->  		goto out_fail;
->  	}
->  
-> @@ -1015,7 +1018,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
->  		/* Try first to acquire credentials directly via GSSAPI */
->  		err = gssd_acquire_user_cred(uid, &gss_cred);
->  		if (!err)
-> -			create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
-> +			create_resp = create_auth_rpc_client(clp, tgtname, &rpc_clnt, &auth, uid,
->  							     AUTHTYPE_KRB5, gss_cred);
->  		/* if create_auth_rplc_client fails try the traditional method of
->  		 * trolling for credentials */
-> @@ -1024,7 +1027,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
->  			if (err == -EKEYEXPIRED)
->  				downcall_err = -EKEYEXPIRED;
->  			else if (!err)
-> -				create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
-> +				create_resp = create_auth_rpc_client(clp, tgtname, &rpc_clnt, &auth, uid,
->  							     AUTHTYPE_KRB5, GSS_C_NO_CREDENTIAL);
->  		}
->  	}
-> @@ -1048,7 +1051,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
->  				}
->  				for (ccname = credlist; ccname && *ccname; ccname++) {
->  					gssd_setup_krb5_machine_gss_ccache(*ccname);
-> -					if ((create_auth_rpc_client(clp, &rpc_clnt,
-> +					if ((create_auth_rpc_client(clp, tgtname, &rpc_clnt,
->  								    &auth, uid,
->  								    AUTHTYPE_KRB5,
->  								    GSS_C_NO_CREDENTIAL)) == 0) {
-> 
+>
+> Regards,
+>
+> Ric
+>
