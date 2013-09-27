@@ -1,160 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f48.google.com ([209.85.128.48]:61372 "EHLO
-	mail-qe0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753047Ab3IZSk1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:40:27 -0400
-Received: by mail-qe0-f48.google.com with SMTP id nd7so1091391qeb.7
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:40:26 -0700 (PDT)
-From: Benny Halevy <bhalevy@primarydata.com>
-To: " J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH RFC v0 08/49] pnfsd: layout verify
-Date: Thu, 26 Sep 2013 14:40:24 -0400
-Message-Id: <1380220824-13047-1-git-send-email-bhalevy@primarydata.com>
-In-Reply-To: <52447EA0.7070004@primarydata.com>
-References: <52447EA0.7070004@primarydata.com>
+Received: from natasha.panasas.com ([67.152.220.90]:56070 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752639Ab3I0Qhn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Sep 2013 12:37:43 -0400
+Message-ID: <5245B44B.2080508@panasas.com>
+Date: Fri, 27 Sep 2013 12:37:31 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Benny Halevy <bhalevy@primarydata.com>
+CC: "J. Bruce Fields" <bfields@redhat.com>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Lev Solomonov <solo@primarydata.com>,
+        Idan Kedar <idank@primarydata.com>,
+        Nadav Shemer <nadav@primarydata.com>
+Subject: Re: [PATCH RFC v0 0/49] pnfsd-dlm
+References: <52447EA0.7070004@primarydata.com> <524588C7.9040500@panasas.com> <CAEMWVhsD-f2wZJzASMtC10XHPH2aSTzVLtYje3U8ezP_+67rWw@mail.gmail.com>
+In-Reply-To: <CAEMWVhsD-f2wZJzASMtC10XHPH2aSTzVLtYje3U8ezP_+67rWw@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@panasas.com>
+On 09/27/2013 09:34 AM, Benny Halevy wrote:
+>> I thought that we said that exofs server is going in first. What happened?
+> 
+> exofs requires much more functionality.
+> To help review the code we need to go through this milestone in any case.
+> 
 
-Verify whether the server and file system support the given layout type.
+That is not true. Look at the way I staged the pnfsd-exofs patches. after
+the LO_GET LO_COMMIT and LO_RETURN patches you have a full functioning
+git cloning exofs. (BTW exofs does not need DEVICELIST)
 
-[was pnfsd: Streamline error code checking for non-pnfs filesystems]
-Signed-off-by: Dean Hildebrand <seattleplus@gmail.com>
-[pnfsd: Add super block to layout_type()]
-Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-[pnfsd: Fix order of ops in nfsd4_layout_verify]
-Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
-[pnfsd: convert generic code to use new pnfs api]
-[pnfsd: define pnfs_export_operations]
-[pnfsd: obliterate old vfs api]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[pnfsd: layout verify all layout types]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[pnfsd: tone nfsd4_layout_verify printk down to dprintk]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[pnfsd: check ex_pnfs in nfsd4_verify_layout]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[pnfsd: handle s_pnfs_op==NULL]
-[pnfsd: verify export option only if svc_export is present]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
----
- fs/nfsd/export.c                |  6 ++++++
- fs/nfsd/nfs4proc.c              | 39 +++++++++++++++++++++++++++++++++++++++
- fs/nfsd/pnfsd.h                 |  2 ++
- include/linux/nfsd/nfsd4_pnfs.h |  5 ++++-
- 4 files changed, 51 insertions(+), 1 deletion(-)
+So OK your patches do not have LO_COMMIT but this code path is trivial
+and what is that contraption of returning "no-layout" for writes and
+then not having the LO_COMMIT support. This is plain hacky and not
+in accord to the pNFS philosophy of things.
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 7730dfd..d803414 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -376,6 +376,12 @@ static int check_export(struct inode *inode, int *flags, unsigned char *uuid)
- 		return -EINVAL;
- 	}
- 
-+	if (inode->i_sb->s_pnfs_op &&
-+	    !inode->i_sb->s_pnfs_op->layout_type) {
-+		dprintk("exp_export: export of invalid fs pnfs export ops.\n");
-+		return -EINVAL;
-+	}
-+
- 	return 0;
- 
- }
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 419572f..576b635 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -41,6 +41,7 @@
- #include "vfs.h"
- #include "current_stateid.h"
- #include "netns.h"
-+#include "pnfsd.h"
- 
- #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
- #include <linux/security.h>
-@@ -1109,6 +1110,44 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
- 	return status == nfserr_same ? nfs_ok : status;
- }
- 
-+#if defined(CONFIG_PNFSD)
-+static __be32
-+nfsd4_layout_verify(struct super_block *sb, struct svc_export *exp,
-+		    unsigned int layout_type)
-+{
-+	int status, type;
-+
-+	/* check to see if pNFS  is supported. */
-+	status = nfserr_layoutunavailable;
-+	if (exp && exp->ex_pnfs == 0) {
-+		dprintk("%s: Underlying file system "
-+			"is not exported over pNFS\n", __func__);
-+		goto out;
-+	}
-+	if (!sb->s_pnfs_op || !sb->s_pnfs_op->layout_type) {
-+		dprintk("%s: Underlying file system "
-+			"does not support pNFS\n", __func__);
-+		goto out;
-+	}
-+
-+	type = sb->s_pnfs_op->layout_type(sb);
-+
-+	/* check to see if requested layout type is supported. */
-+	status = nfserr_unknown_layouttype;
-+	if (!type)
-+		dprintk("BUG: %s: layout_type 0 is reserved and must not be "
-+			"used by filesystem\n", __func__);
-+	else if (type != layout_type)
-+		dprintk("%s: requested layout type %d "
-+		       "does not match supported type %d\n",
-+			__func__, layout_type, type);
-+	else
-+		status = nfs_ok;
-+out:
-+	return status;
-+}
-+#endif /* CONFIG_PNFSD */
-+
- /*
-  * NULL call.
-  */
-diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
-index 65fb57e..7c46791 100644
---- a/fs/nfsd/pnfsd.h
-+++ b/fs/nfsd/pnfsd.h
-@@ -34,4 +34,6 @@
- #ifndef LINUX_NFSD_PNFSD_H
- #define LINUX_NFSD_PNFSD_H
- 
-+#include <linux/nfsd/nfsd4_pnfs.h>
-+
- #endif /* LINUX_NFSD_PNFSD_H */
-diff --git a/include/linux/nfsd/nfsd4_pnfs.h b/include/linux/nfsd/nfsd4_pnfs.h
-index ff6613e..d44669e 100644
---- a/include/linux/nfsd/nfsd4_pnfs.h
-+++ b/include/linux/nfsd/nfsd4_pnfs.h
-@@ -34,6 +34,8 @@
- #ifndef _LINUX_NFSD_NFSD4_PNFS_H
- #define _LINUX_NFSD_NFSD4_PNFS_H
- 
-+#include <linux/exportfs.h>
-+
- /*
-  * pNFS export operations vector.
-  *
-@@ -45,7 +47,8 @@
-  * All other methods are optional and can be set to NULL if not implemented.
-  */
- struct pnfs_export_operations {
--	/* stub */
-+	/* Returns the supported pnfs_layouttype4. */
-+	int (*layout_type) (struct super_block *);
- };
- 
- #endif /* _LINUX_NFSD_NFSD4_PNFS_H */
--- 
-1.8.3.1
+And We can farther split my original set to do read-only with out LO_COMMIT
+and add a simple LO_COMMIT stage with enable of write LAYOUTs, easily.
+Which is what you have with much less code.
 
+The recall comes in at a different patch that can be staged later and is
+effectively not needed for normal operations.
+
+Actually the all code including the exofs patches first stage is smaller and
+simpler then the DLM contraption. And it only touches exofs code which
+does not involve other sensitive subsystems.
+
+I have a deja vu about this. Why won't you talk to me before working on such
+DLM crap that is not at all pnfs, but a hack that demonstrates nothing?
+
+Please do the right thing, since you are already putting all this effort. And I can
+help as well with the pnfsd-exofs patches part.
+
+BTW: Thank you for doing this, it is about time someone should put some mainline love
+to the pNFS server
+
+Thanks
+Boaz
