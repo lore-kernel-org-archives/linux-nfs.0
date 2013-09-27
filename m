@@ -1,135 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54064 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752511Ab3IEQiz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Sep 2013 12:38:55 -0400
-Date: Thu, 5 Sep 2013 12:38:55 -0400
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, jlayton@redhat.com,
-        Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 1/4] rpc: clean up decoding of gssproxy linux creds
-Message-ID: <20130905163855.GA22521@fieldses.org>
-References: <1378398620-23018-1-git-send-email-bfields@redhat.com>
- <1378398620-23018-2-git-send-email-bfields@redhat.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:59478 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752643Ab3I0PXN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Sep 2013 11:23:13 -0400
+Message-ID: <5245A2DE.9020307@opengridcomputing.com>
+Date: Fri, 27 Sep 2013 10:23:10 -0500
+From: Tom Tucker <tom@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1378398620-23018-2-git-send-email-bfields@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Dan Carpenter <dan.carpenter@oracle.com>
+CC: Tom Tucker <tom@ogc.us>, "J. Bruce Fields" <bfields@redhat.com>,
+        netdev@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: question about map_read_chunks()
+References: <20120220095019.GA21338@elgon.mountain> <20130927122108.GF6247@mwanda>
+In-Reply-To: <20130927122108.GF6247@mwanda>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 05, 2013 at 12:30:05PM -0400, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> We can use the normal coding infrastructure here.
-> 
-> Two minor behavior changes:
-> 
-> 	- we're assuming no wasted space at the end of the linux cred.
-> 	  That seems to match gss-proxy's behavior, and I can't see why
-> 	  it would need to do differently in the future.
-> 
-> 	- NGROUPS_MAX check added: note groups_alloc doesn't do this,
-> 	  this is the caller's responsibility.
+Hi Dan,
 
-Ignore the "n/4" patches, apologies, some left-over patches that got
-picked up by the glob in my "git send-email 00*" command!
+On 9/27/13 7:21 AM, Dan Carpenter wrote:
+> I have looked at this again, and I still worry that it looks like a bug.
+> (remote security related blah blah blah).
+>
+> regards,
+> dan carpenter
+>
+> On Mon, Feb 20, 2012 at 12:50:19PM +0300, Dan Carpenter wrote:
+>> I had a couple questions about some map_read_chunks().
+>>
+>> net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>>
+>>     150          ch_bytes = ntohl(ch->rc_target.rs_length);
+>>                  ^^^^^^^^
+>> It look like this is 32 bits from the network?
+>>
+>>     151          head->arg.head[0] = rqstp->rq_arg.head[0];
+>>     152          head->arg.tail[0] = rqstp->rq_arg.tail[0];
+>>     153          head->arg.pages = &head->pages[head->count];
+>>     154          head->hdr_count = head->count; /* save count of hdr pages */
+>>     155          head->arg.page_base = 0;
+>>     156          head->arg.page_len = ch_bytes;
+>>     157          head->arg.len = rqstp->rq_arg.len + ch_bytes;
+>>                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>> Can overflow.
+>>     158          head->arg.buflen = rqstp->rq_arg.buflen + ch_bytes;
+agreed.
+>>                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>> Same.  I didn't follow it through to see if an overflow matters.  Does
+>> it?
+>>
+>>     159          head->count++;
+>>     160          chl_map->ch[0].start = 0;
+>>     161          while (byte_count) {
+>>     162                  rpl_map->sge[sge_no].iov_base =
+>>     163                          page_address(rqstp->rq_arg.pages[page_no]) + page_off;
+>>     164                  sge_bytes = min_t(int, PAGE_SIZE-page_off, ch_bytes);
+>>                                            ^^^
+>> This is the wrong cast to use.  A large ch_bytes would be counted as a
+>> negative value and get around the cap here.
+True, but if we validate the wire data like we should, that's probably 
+not an issue.
 
---b.
-
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  net/sunrpc/auth_gss/gss_rpc_xdr.c |   32 +++++++++++++-------------------
->  1 file changed, 13 insertions(+), 19 deletions(-)
-> 
-> diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-> index 3c85d1c..f5067b2 100644
-> --- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
-> +++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-> @@ -166,14 +166,14 @@ static int dummy_dec_opt_array(struct xdr_stream *xdr,
->  	return 0;
->  }
->  
-> -static int get_s32(void **p, void *max, s32 *res)
-> +static int get_s32(struct xdr_stream *xdr, s32 *res)
->  {
-> -	void *base = *p;
-> -	void *next = (void *)((char *)base + sizeof(s32));
-> -	if (unlikely(next > max || next < base))
-> +	__be32 *p;
-> +
-> +	p = xdr_inline_decode(xdr, 4);
-> +	if (!p)
->  		return -EINVAL;
-> -	memcpy(res, base, sizeof(s32));
-> -	*p = next;
-> +	memcpy(res, p, sizeof(s32));
->  	return 0;
->  }
->  
-> @@ -182,7 +182,6 @@ static int gssx_dec_linux_creds(struct xdr_stream *xdr,
->  {
->  	u32 length;
->  	__be32 *p;
-> -	void *q, *end;
->  	s32 tmp;
->  	int N, i, err;
->  
-> @@ -192,33 +191,28 @@ static int gssx_dec_linux_creds(struct xdr_stream *xdr,
->  
->  	length = be32_to_cpup(p);
->  
-> -	/* FIXME: we do not want to use the scratch buffer for this one
-> -	 * may need to use functions that allows us to access an io vector
-> -	 * directly */
-> -	p = xdr_inline_decode(xdr, length);
-> -	if (unlikely(p == NULL))
-> +	if (length > (3 + NGROUPS_MAX) * sizeof(u32))
->  		return -ENOSPC;
->  
-> -	q = p;
-> -	end = q + length;
-> -
->  	/* uid */
-> -	err = get_s32(&q, end, &tmp);
-> +	err = get_s32(xdr, &tmp);
->  	if (err)
->  		return err;
->  	creds->cr_uid = make_kuid(&init_user_ns, tmp);
->  
->  	/* gid */
-> -	err = get_s32(&q, end, &tmp);
-> +	err = get_s32(xdr, &tmp);
->  	if (err)
->  		return err;
->  	creds->cr_gid = make_kgid(&init_user_ns, tmp);
->  
->  	/* number of additional gid's */
-> -	err = get_s32(&q, end, &tmp);
-> +	err = get_s32(xdr, &tmp);
->  	if (err)
->  		return err;
->  	N = tmp;
-> +	if ((3 + N) * sizeof(u32) != length)
-> +		return -EINVAL;
->  	creds->cr_group_info = groups_alloc(N);
->  	if (creds->cr_group_info == NULL)
->  		return -ENOMEM;
-> @@ -226,7 +220,7 @@ static int gssx_dec_linux_creds(struct xdr_stream *xdr,
->  	/* gid's */
->  	for (i = 0; i < N; i++) {
->  		kgid_t kgid;
-> -		err = get_s32(&q, end, &tmp);
-> +		err = get_s32(xdr, &tmp);
->  		if (err)
->  			goto out_free_groups;
->  		err = -EINVAL;
-> -- 
-> 1.7.9.5
-> 
+>>     165                  rpl_map->sge[sge_no].iov_len = sge_bytes;
+>>
+>> regards,
+>> dan carpenter
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
