@@ -1,97 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61708 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750846Ab3IGXSU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 7 Sep 2013 19:18:20 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 5/6] NFSv4: Allow security autonegotiation for submounts
-Date: Sat, 7 Sep 2013 19:18:12 -0400
-Message-ID: <1378595893-60395-6-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1378595893-60395-5-git-send-email-Trond.Myklebust@netapp.com>
-References: <1378595893-60395-1-git-send-email-Trond.Myklebust@netapp.com>
- <1378595893-60395-2-git-send-email-Trond.Myklebust@netapp.com>
- <1378595893-60395-3-git-send-email-Trond.Myklebust@netapp.com>
- <1378595893-60395-4-git-send-email-Trond.Myklebust@netapp.com>
- <1378595893-60395-5-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-ve0-f176.google.com ([209.85.128.176]:43860 "EHLO
+	mail-ve0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753284Ab3I0UUN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Sep 2013 16:20:13 -0400
+Received: by mail-ve0-f176.google.com with SMTP id jx11so2396511veb.35
+        for <linux-nfs@vger.kernel.org>; Fri, 27 Sep 2013 13:20:12 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain
+In-Reply-To: <5245B44B.2080508@panasas.com>
+References: <52447EA0.7070004@primarydata.com> <524588C7.9040500@panasas.com>
+ <CAEMWVhsD-f2wZJzASMtC10XHPH2aSTzVLtYje3U8ezP_+67rWw@mail.gmail.com> <5245B44B.2080508@panasas.com>
+From: Benny Halevy <bhalevy@primarydata.com>
+Date: Fri, 27 Sep 2013 16:19:52 -0400
+Message-ID: <CAEMWVhtE9TTB4i4iidfayVwWWX5aTtQ7pnKXPfba3YUZ2fapfg@mail.gmail.com>
+Subject: Re: [PATCH RFC v0 0/49] pnfsd-dlm
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Lev Solomonov <solo@primarydata.com>,
+        Idan Kedar <idank@primarydata.com>,
+        Nadav Shemer <nadav@primarydata.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In cases where the parent super block was not mounted with a 'sec=' line,
-allow autonegotiation of security for the submounts.
+On Fri, Sep 27, 2013 at 12:37 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+> On 09/27/2013 09:34 AM, Benny Halevy wrote:
+>>> I thought that we said that exofs server is going in first. What happened?
+>>
+>> exofs requires much more functionality.
+>> To help review the code we need to go through this milestone in any case.
+>>
+>
+> That is not true. Look at the way I staged the pnfsd-exofs patches. after
+> the LO_GET LO_COMMIT and LO_RETURN patches you have a full functioning
+> git cloning exofs. (BTW exofs does not need DEVICELIST)
+>
+> So OK your patches do not have LO_COMMIT but this code path is trivial
+> and what is that contraption of returning "no-layout" for writes and
+> then not having the LO_COMMIT support. This is plain hacky and not
+> in accord to the pNFS philosophy of things.
+>
+> And We can farther split my original set to do read-only with out LO_COMMIT
+> and add a simple LO_COMMIT stage with enable of write LAYOUTs, easily.
+> Which is what you have with much less code.
+>
+> The recall comes in at a different patch that can be staged later and is
+> effectively not needed for normal operations.
+>
+> Actually the all code including the exofs patches first stage is smaller and
+> simpler then the DLM contraption. And it only touches exofs code which
+> does not involve other sensitive subsystems.
+>
+> I have a deja vu about this. Why won't you talk to me before working on such
+> DLM crap that is not at all pnfs, but a hack that demonstrates nothing?
+>
+> Please do the right thing, since you are already putting all this effort. And I can
+> help as well with the pnfsd-exofs patches part.
+>
+> BTW: Thank you for doing this, it is about time someone should put some mainline love
+> to the pNFS server
+>
+> Thanks
+> Boaz
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4client.c    |  3 ++-
- fs/nfs/nfs4namespace.c | 21 +++++++++++++++++----
- 2 files changed, 19 insertions(+), 5 deletions(-)
+Boaz, sorry but the files layout went first to production on the
+client side in all major
+enterprise distributions so it doesn't make sense to submit exofs first.
+As for your patch series, I respect the work you did on it but
+a. as you said it is your patch series, not mine
+b. the forward port from 3.10 on changed the layout state handling
+radically (for the better I hope :)
+solving numerous correctness issues.
+The motivation behind the dlm based implementation is to have a
+minimal useful pnfs implementation
+that folks can use and test the client against.
+On this basis, writes layout can be added, and further on, exofs
+support can submitted as the next stage.
 
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index cc80085..a860ab5 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -1078,7 +1078,8 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
- 	if (error < 0)
- 		goto error;
- 
--	error = nfs4_server_common_setup(server, mntfh, false);
-+	error = nfs4_server_common_setup(server, mntfh,
-+			!(parent_server->flags & NFS_MOUNT_SECFLAVOUR));
- 	if (error < 0)
- 		goto error;
- 
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index cdb0b41..2288cd3 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -11,6 +11,7 @@
- #include <linux/mount.h>
- #include <linux/namei.h>
- #include <linux/nfs_fs.h>
-+#include <linux/nfs_mount.h>
- #include <linux/slab.h>
- #include <linux/string.h>
- #include <linux/sunrpc/clnt.h>
-@@ -369,21 +370,33 @@ out:
- struct vfsmount *nfs4_submount(struct nfs_server *server, struct dentry *dentry,
- 			       struct nfs_fh *fh, struct nfs_fattr *fattr)
- {
-+	rpc_authflavor_t flavor = server->client->cl_auth->au_flavor;
- 	struct dentry *parent = dget_parent(dentry);
-+	struct inode *dir = parent->d_inode;
-+	struct qstr *name = &dentry->d_name;
- 	struct rpc_clnt *client;
- 	struct vfsmount *mnt;
- 
- 	/* Look it up again to get its attributes and sec flavor */
--	client = nfs4_proc_lookup_mountpoint(parent->d_inode, &dentry->d_name, fh, fattr);
-+	client = nfs4_proc_lookup_mountpoint(dir, name, fh, fattr);
- 	dput(parent);
- 	if (IS_ERR(client))
- 		return ERR_CAST(client);
- 
--	if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
-+	if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) {
- 		mnt = nfs_do_refmount(client, dentry);
--	else
--		mnt = nfs_do_submount(dentry, fh, fattr, client->cl_auth->au_flavor);
-+		goto out;
-+	}
- 
-+	if (client->cl_auth->au_flavor != flavor)
-+		flavor = client->cl_auth->au_flavor;
-+	else if (!(server->flags & NFS_MOUNT_SECFLAVOUR)) {
-+		rpc_authflavor_t new = nfs4_negotiate_security(dir, name);
-+		if ((int)new >= 0)
-+			flavor = new;
-+	}
-+	mnt = nfs_do_submount(dentry, fh, fattr, flavor);
-+out:
- 	rpc_shutdown_client(client);
- 	return mnt;
- }
--- 
-1.8.3.1
-
+Benny
