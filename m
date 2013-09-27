@@ -1,140 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:37320 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:34574 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755681Ab3IBSRF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Sep 2013 14:17:05 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-CC: <andros@netapp.com>
-Subject: [PATCH v3 01/17] SUNRPC: Deprecate rpc_client->cl_protname
-Date: Mon, 2 Sep 2013 14:16:44 -0400
-Message-ID: <1378145820-29990-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751719Ab3I0Ojd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Sep 2013 10:39:33 -0400
+Date: Fri, 27 Sep 2013 10:39:29 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Benny Halevy <bhalevy@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC v0 06/49] pnfsd: define pnfs_export_operations
+Message-ID: <20130927143929.GC9946@pad.fieldses.org>
+References: <52447EA0.7070004@primarydata.com>
+ <1380220815-12955-1-git-send-email-bhalevy@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1380220815-12955-1-git-send-email-bhalevy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It just duplicates the cl_program->name, and is not used in any fast
-paths where the extra dereference will cause a hit.
+On Thu, Sep 26, 2013 at 02:40:15PM -0400, Benny Halevy wrote:
+> From: Benny Halevy <bhalevy@panasas.com>
+> 
+> struct pnfs_export_operations defines the VFS level API for pNFS,
+> not including callbacks.  A pnfs-exportable filesystem sets
+> a pointer to its pnfs export vector in its struct super_block.s_pnfs_op.
+> 
+> The file system provides the per-superblock layout_type method that
+> determines if it supports pnfs for the filesystem identified by
+> the superblock, and if so, with which layout type (only one per-sb is
+> supported).
+> 
+> Device ops:
+> get_device_iter is used to fill-in the device list for GETDEVICELIST
+> and get_device_info is used to encode the device info for GETDEVICEINFO.
+> 
+> Layout ops:
+> layout_get, layout_commit, and layout_return implement the file system- and
+> layout type- specific parts of their respective protocol operations: LAYOUTGET,
+> LAYOUTCOMMIT, and LAYOUTRETURN.
+> 
+> The following methods are mandatory to be implemented:
+> layout_type, get_device_info, and layout_get.
+> 
+> Note: define pnfs export operations in a stub form in this patch.
+> Actual operations are defined along with their usage.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- net/sunrpc/clnt.c     | 18 +++++++++---------
- net/sunrpc/rpc_pipe.c |  2 +-
- net/sunrpc/stats.c    |  2 +-
- 3 files changed, 11 insertions(+), 11 deletions(-)
+Patches touching the superblock or the new pnfs export operations should
+probably all be cc'd to linux-fsdevel.
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 74f6a70..e862f8c 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -629,7 +629,7 @@ void rpc_shutdown_client(struct rpc_clnt *clnt)
- 	might_sleep();
- 
- 	dprintk_rcu("RPC:       shutting down %s client for %s\n",
--			clnt->cl_protname,
-+			clnt->cl_program->name,
- 			rcu_dereference(clnt->cl_xprt)->servername);
- 
- 	while (!list_empty(&clnt->cl_tasks)) {
-@@ -649,7 +649,7 @@ static void
- rpc_free_client(struct rpc_clnt *clnt)
- {
- 	dprintk_rcu("RPC:       destroying %s client for %s\n",
--			clnt->cl_protname,
-+			clnt->cl_program->name,
- 			rcu_dereference(clnt->cl_xprt)->servername);
- 	if (clnt->cl_parent != clnt)
- 		rpc_release_client(clnt->cl_parent);
-@@ -1299,7 +1299,7 @@ call_start(struct rpc_task *task)
- 	struct rpc_clnt	*clnt = task->tk_client;
- 
- 	dprintk("RPC: %5u call_start %s%d proc %s (%s)\n", task->tk_pid,
--			clnt->cl_protname, clnt->cl_vers,
-+			clnt->cl_program->name, clnt->cl_vers,
- 			rpc_proc_name(task),
- 			(RPC_IS_ASYNC(task) ? "async" : "sync"));
- 
-@@ -1908,7 +1908,7 @@ call_status(struct rpc_task *task)
- 	default:
- 		if (clnt->cl_chatty)
- 			printk("%s: RPC call returned error %d\n",
--			       clnt->cl_protname, -status);
-+			       clnt->cl_program->name, -status);
- 		rpc_exit(task, status);
- 	}
- }
-@@ -1939,7 +1939,7 @@ call_timeout(struct rpc_task *task)
- 		if (clnt->cl_chatty) {
- 			rcu_read_lock();
- 			printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
--				clnt->cl_protname,
-+				clnt->cl_program->name,
- 				rcu_dereference(clnt->cl_xprt)->servername);
- 			rcu_read_unlock();
- 		}
-@@ -1955,7 +1955,7 @@ call_timeout(struct rpc_task *task)
- 		if (clnt->cl_chatty) {
- 			rcu_read_lock();
- 			printk(KERN_NOTICE "%s: server %s not responding, still trying\n",
--			clnt->cl_protname,
-+			clnt->cl_program->name,
- 			rcu_dereference(clnt->cl_xprt)->servername);
- 			rcu_read_unlock();
- 		}
-@@ -1990,7 +1990,7 @@ call_decode(struct rpc_task *task)
- 		if (clnt->cl_chatty) {
- 			rcu_read_lock();
- 			printk(KERN_NOTICE "%s: server %s OK\n",
--				clnt->cl_protname,
-+				clnt->cl_program->name,
- 				rcu_dereference(clnt->cl_xprt)->servername);
- 			rcu_read_unlock();
- 		}
-@@ -2015,7 +2015,7 @@ call_decode(struct rpc_task *task)
- 			goto out_retry;
- 		}
- 		dprintk("RPC:       %s: too small RPC reply size (%d bytes)\n",
--				clnt->cl_protname, task->tk_status);
-+				clnt->cl_program->name, task->tk_status);
- 		task->tk_action = call_timeout;
- 		goto out_retry;
- 	}
-@@ -2287,7 +2287,7 @@ static void rpc_show_task(const struct rpc_clnt *clnt,
- 	printk(KERN_INFO "%5u %04x %6d %8p %8p %8ld %8p %sv%u %s a:%ps q:%s\n",
- 		task->tk_pid, task->tk_flags, task->tk_status,
- 		clnt, task->tk_rqstp, task->tk_timeout, task->tk_ops,
--		clnt->cl_protname, clnt->cl_vers, rpc_proc_name(task),
-+		clnt->cl_program->name, clnt->cl_vers, rpc_proc_name(task),
- 		task->tk_action, rpc_waitq);
- }
- 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 017aedc..b36bfb9 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -409,7 +409,7 @@ rpc_show_info(struct seq_file *m, void *v)
- 	rcu_read_lock();
- 	seq_printf(m, "RPC server: %s\n",
- 			rcu_dereference(clnt->cl_xprt)->servername);
--	seq_printf(m, "service: %s (%d) version %d\n", clnt->cl_protname,
-+	seq_printf(m, "service: %s (%d) version %d\n", clnt->cl_program->name,
- 			clnt->cl_prog, clnt->cl_vers);
- 	seq_printf(m, "address: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_ADDR));
- 	seq_printf(m, "protocol: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_PROTO));
-diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
-index 21b75cb..5453049 100644
---- a/net/sunrpc/stats.c
-+++ b/net/sunrpc/stats.c
-@@ -188,7 +188,7 @@ void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt)
- 
- 	seq_printf(seq, "\tRPC iostats version: %s  ", RPC_IOSTATS_VERS);
- 	seq_printf(seq, "p/v: %u/%u (%s)\n",
--			clnt->cl_prog, clnt->cl_vers, clnt->cl_protname);
-+			clnt->cl_prog, clnt->cl_vers, clnt->cl_program->name);
- 
- 	rcu_read_lock();
- 	xprt = rcu_dereference(clnt->cl_xprt);
--- 
-1.8.3.1
+--b.
 
+> 
+> [pnfsd: provide default no-op operations]
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> [pnfsd: compile fixes for pnfsd branch]
+> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+> [gfs2: set pnfs_dlm_export_ops only for CONFIG_PNFSD]
+> [pnfsd: handle s_pnfs_op==NULL]
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+> ---
+>  fs/nfsd/export.c                |  2 +-
+>  include/linux/fs.h              |  2 ++
+>  include/linux/nfsd/nfsd4_pnfs.h | 14 ++++++++++++++
+>  3 files changed, 17 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+> index 5f38ea3..f26b0b9 100644
+> --- a/fs/nfsd/export.c
+> +++ b/fs/nfsd/export.c
+> @@ -16,7 +16,7 @@
+>  #include <linux/module.h>
+>  #include <linux/exportfs.h>
+>  #include <linux/sunrpc/svc_xprt.h>
+> -
+> +#include <linux/nfsd/nfsd4_pnfs.h>
+>  #include <net/ipv6.h>
+>  
+>  #include "nfsd.h"
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 3f40547..d9186a4 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -34,6 +34,7 @@
+>  #include <uapi/linux/fs.h>
+>  
+>  struct export_operations;
+> +struct pnfs_export_operations;
+>  struct hd_geometry;
+>  struct iovec;
+>  struct nameidata;
+> @@ -1251,6 +1252,7 @@ struct super_block {
+>  	const struct dquot_operations	*dq_op;
+>  	const struct quotactl_ops	*s_qcop;
+>  	const struct export_operations *s_export_op;
+> +	const struct pnfs_export_operations *s_pnfs_op;
+>  	unsigned long		s_flags;
+>  	unsigned long		s_magic;
+>  	struct dentry		*s_root;
+> diff --git a/include/linux/nfsd/nfsd4_pnfs.h b/include/linux/nfsd/nfsd4_pnfs.h
+> index 9e7d95e..ff6613e 100644
+> --- a/include/linux/nfsd/nfsd4_pnfs.h
+> +++ b/include/linux/nfsd/nfsd4_pnfs.h
+> @@ -34,4 +34,18 @@
+>  #ifndef _LINUX_NFSD_NFSD4_PNFS_H
+>  #define _LINUX_NFSD_NFSD4_PNFS_H
+>  
+> +/*
+> + * pNFS export operations vector.
+> + *
+> + * The filesystem must implement the following methods:
+> + *   layout_type
+> + *   get_device_info
+> + *   layout_get
+> + *
+> + * All other methods are optional and can be set to NULL if not implemented.
+> + */
+> +struct pnfs_export_operations {
+> +	/* stub */
+> +};
+> +
+>  #endif /* _LINUX_NFSD_NFSD4_PNFS_H */
+> -- 
+> 1.8.3.1
+> 
