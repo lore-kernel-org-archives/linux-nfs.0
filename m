@@ -1,117 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:63097 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:47997 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757225Ab3IDQNZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Sep 2013 12:13:25 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] NFSv4: use mach cred for SECINFO_NO_NAME w/ integrity
-Date: Wed, 4 Sep 2013 12:13:19 -0400
-Message-ID: <1378311199-1695-1-git-send-email-dros@netapp.com>
+	id S1752238Ab3I0UPX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Sep 2013 16:15:23 -0400
+Date: Fri, 27 Sep 2013 16:15:19 -0400
+To: Tom Tucker <tom@opengridcomputing.com>
+Cc: Dan Carpenter <dan.carpenter@oracle.com>, Tom Tucker <tom@ogc.us>,
+        "J. Bruce Fields" <bfields@redhat.com>, netdev@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: question about map_read_chunks()
+Message-ID: <20130927201519.GC22640@fieldses.org>
+References: <20120220095019.GA21338@elgon.mountain>
+ <20130927122108.GF6247@mwanda>
+ <5245A2DE.9020307@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5245A2DE.9020307@opengridcomputing.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 97431204ea005ec8070ac94bc3251e836daa7ca7 introduced a regression
-that causes SECINFO_NO_NAME to fail without sending an RPC if:
+On Fri, Sep 27, 2013 at 10:23:10AM -0500, Tom Tucker wrote:
+> Hi Dan,
+> 
+> On 9/27/13 7:21 AM, Dan Carpenter wrote:
+> >I have looked at this again, and I still worry that it looks like a bug.
+> >(remote security related blah blah blah).
+> >
+> >regards,
+> >dan carpenter
+> >
+> >On Mon, Feb 20, 2012 at 12:50:19PM +0300, Dan Carpenter wrote:
+> >>I had a couple questions about some map_read_chunks().
+> >>
+> >>net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> >>
+> >>    150          ch_bytes = ntohl(ch->rc_target.rs_length);
+> >>                 ^^^^^^^^
+> >>It look like this is 32 bits from the network?
+> >>
+> >>    151          head->arg.head[0] = rqstp->rq_arg.head[0];
+> >>    152          head->arg.tail[0] = rqstp->rq_arg.tail[0];
+> >>    153          head->arg.pages = &head->pages[head->count];
+> >>    154          head->hdr_count = head->count; /* save count of hdr pages */
+> >>    155          head->arg.page_base = 0;
+> >>    156          head->arg.page_len = ch_bytes;
+> >>    157          head->arg.len = rqstp->rq_arg.len + ch_bytes;
+> >>                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> >>Can overflow.
+> >>    158          head->arg.buflen = rqstp->rq_arg.buflen + ch_bytes;
+> agreed.
+> >>                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> >>Same.  I didn't follow it through to see if an overflow matters.  Does
+> >>it?
+> >>
+> >>    159          head->count++;
+> >>    160          chl_map->ch[0].start = 0;
+> >>    161          while (byte_count) {
+> >>    162                  rpl_map->sge[sge_no].iov_base =
+> >>    163                          page_address(rqstp->rq_arg.pages[page_no]) + page_off;
+> >>    164                  sge_bytes = min_t(int, PAGE_SIZE-page_off, ch_bytes);
+> >>                                           ^^^
+> >>This is the wrong cast to use.  A large ch_bytes would be counted as a
+> >>negative value and get around the cap here.
+> True, but if we validate the wire data like we should, that's
+> probably not an issue.
 
- 1) the nfs_client's rpc_client is using krb5i/p (now tried by default)
- 2) the current user doesn't have valid kerberos credentials
+Well, my last attempt to do rdma nfs io resulted in an instant server
+reboot, so I can take a look at this but it may be the least of our
+problems....
 
-This situation is quite common - as of now a sec=sys mount would use
-krb5i for the nfs_client's rpc_client and a user would hardly be faulted
-for not having run kinit.
-
-The solution is to use the machine cred when trying to use an integrity
-protected auth flavor for SECINFO_NO_NAME.
-
-Older servers may not support using the machine cred or an integrity
-protected auth flavor for SECINFO_NO_NAME in every circumstance, so we fall
-back to using the user's cred and the filesystem's auth flavor in this case.
-
-We run into another problem when running against linux nfs servers -
-they return NFS4ERR_WRONGSEC when using integrity auth flavor (unless the
-mount is also that flavor) even though that is not a valid error for
-SECINFO*.  Even though it's against spec, handle WRONGSEC errors on
-SECINFO_NO_NAME by falling back to using the user cred and the
-filesystem's auth flavor.
-
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
-
-This patch goes along with yesterday's SECINFO patch
-
- fs/nfs/nfs4proc.c | 41 +++++++++++++++++++++++++++++++++++++----
- 1 file changed, 37 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ab1461e..74b37f5 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7291,7 +7291,8 @@ out:
-  */
- static int
- _nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
--		    struct nfs_fsinfo *info, struct nfs4_secinfo_flavors *flavors)
-+		    struct nfs_fsinfo *info,
-+		    struct nfs4_secinfo_flavors *flavors, bool use_integrity)
- {
- 	struct nfs41_secinfo_no_name_args args = {
- 		.style = SECINFO_STYLE_CURRENT_FH,
-@@ -7304,8 +7305,23 @@ _nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
- 		.rpc_argp = &args,
- 		.rpc_resp = &res,
- 	};
--	return nfs4_call_sync(server->nfs_client->cl_rpcclient, server, &msg,
--				&args.seq_args, &res.seq_res, 0);
-+	struct rpc_clnt *clnt = server->client;
-+	int status;
-+
-+	if (use_integrity) {
-+		clnt = server->nfs_client->cl_rpcclient;
-+		msg.rpc_cred = nfs4_get_clid_cred(server->nfs_client);
-+	}
-+
-+	dprintk("--> %s\n", __func__);
-+	status = nfs4_call_sync(clnt, server, &msg, &args.seq_args,
-+				&res.seq_res, 0);
-+	dprintk("<-- %s status=%d\n", __func__, status);
-+
-+	if (msg.rpc_cred)
-+		put_rpccred(msg.rpc_cred);
-+
-+	return status;
- }
- 
- static int
-@@ -7315,7 +7331,24 @@ nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = _nfs41_proc_secinfo_no_name(server, fhandle, info, flavors);
-+		/* first try using integrity protection */
-+		err = -NFS4ERR_WRONGSEC;
-+
-+		/* try to use integrity protection with machine cred */
-+		if (_nfs4_is_integrity_protected(server->nfs_client))
-+			err = _nfs41_proc_secinfo_no_name(server, fhandle, info,
-+							  flavors, true);
-+
-+		/*
-+		 * if unable to use integrity protection, or SECINFO with
-+		 * integrity protection returns NFS4ERR_WRONGSEC (which is
-+		 * disallowed by spec, but exists in deployed servers) use
-+		 * the current filesystem's rpc_client and the user cred.
-+		 */
-+		if (err == -NFS4ERR_WRONGSEC)
-+			err = _nfs41_proc_secinfo_no_name(server, fhandle, info,
-+							  flavors, false);
-+
- 		switch (err) {
- 		case 0:
- 		case -NFS4ERR_WRONGSEC:
--- 
-1.7.12.4 (Apple Git-37)
-
+--b.
