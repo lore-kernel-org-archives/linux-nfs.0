@@ -1,143 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:40905 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760609Ab3ICS0i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Sep 2013 14:26:38 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] nfsd: SECINFO* can use integrity protected flavors
-Date: Tue, 3 Sep 2013 14:26:12 -0400
-Message-ID: <1378232772-4066-1-git-send-email-dros@netapp.com>
+Received: from mail-we0-f182.google.com ([74.125.82.182]:61111 "EHLO
+	mail-we0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751019Ab3I2Kvc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Sep 2013 06:51:32 -0400
+Received: by mail-we0-f182.google.com with SMTP id q59so4334051wes.41
+        for <linux-nfs@vger.kernel.org>; Sun, 29 Sep 2013 03:51:30 -0700 (PDT)
+Message-ID: <5248062F.4080909@primarydata.com>
+Date: Sun, 29 Sep 2013 13:51:27 +0300
+From: Benny Halevy <bhalevy@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC v0 07/49] pnfsd: add pnfs export option
+References: <52447EA0.7070004@primarydata.com> <1380220819-12999-1-git-send-email-bhalevy@primarydata.com> <20130927143635.GB9946@pad.fieldses.org>
+In-Reply-To: <20130927143635.GB9946@pad.fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SECINFO and SECINFO_NONAME should be able to use integrity protected auth
-flavors even if the export wasn't explicitly configured to use them.
+On 2013-09-27 17:36, J. Bruce Fields wrote:
+> Is this really necessary?  What would we lose if we just used pnfs
+> automatically when the filesystem supports it and all other necessary
+> configuration is in place?
 
-An example is a sec=sys export - upstream linux clients will attempt to use
-krb5i for EXCHANGE_ID, CREATE_SESSION, DESTROY_SESSION, etc.  If this is
-successful, the client will try to use the same auth flavor for SECINFO
-as described in the Security Considerations sections of rfc3530 and rfc5661.
+We can do that and let the client decide whether to use pnfs or not.
+Though I think that to deal with client interoperability issues, one
+would want to control that.  If we don't provide a way to enable/disable
+pnfs at the export level every file system that supports pnfs would probably
+need a mount option to control pnfs exportability...
 
-This patch adds a nfsd4_op_flag to describe operations that may use these
-auth flavors to get around nfsd_access() checks. This should be useful in
-future implementations of SP4_MACH_CRED (nfsd_permission still needs to be
-handled).
+Benny
 
-This patch also stops SECINFO* from returning NFS4ERR_WRONGSEC which is
-not allowed by either rfc3530 (not in list of allowed errors) or rfc6551
-(section 2.6.3.1.1.5 says it MUST NOT).
-
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- fs/nfsd/export.c   | 10 ++++++++++
- fs/nfsd/nfs4proc.c | 27 ++++++++++++++++++++++++---
- fs/nfsd/xdr4.h     |  2 ++
- 3 files changed, 36 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 5f38ea3..e2e5a13 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -22,6 +22,7 @@
- #include "nfsd.h"
- #include "nfsfh.h"
- #include "netns.h"
-+#include "xdr4.h"
- 
- #define NFSDDBG_FACILITY	NFSDDBG_EXPORT
- 
-@@ -909,6 +910,15 @@ __be32 check_nfsd_access(struct svc_export *exp, struct svc_rqst *rqstp)
- 		    rqstp->rq_cred.cr_flavor == RPC_AUTH_UNIX)
- 			return 0;
- 	}
-+
-+	/* some operations allow use of integrity even though the mount
-+	 * may not be */
-+	if (nfsd4_allow_integrity(rqstp)) {
-+		if (rqstp->rq_cred.cr_flavor == RPC_AUTH_GSS_KRB5I ||
-+		    rqstp->rq_cred.cr_flavor == RPC_AUTH_GSS_KRB5P)
-+			return 0;
-+	}
-+
- 	return nfserr_wrongsec;
- }
- 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 0d4c410..ce79483 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1158,6 +1158,11 @@ enum nfsd4_op_flags {
- 	 * These are ops which clear current state id.
- 	 */
- 	OP_CLEAR_STATEID = 1 << 7,
-+	/*
-+	 * Procedures that can use auth flavors other than flavors
-+	 * specified in the export as long as they are integrity protected.
-+	 */
-+	OP_ALLOW_INTEGRITY = 1 << 8,
- };
- 
- struct nfsd4_operation {
-@@ -1249,7 +1254,23 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
- 	 * errors themselves as necessary; others should check for them
- 	 * now:
- 	 */
--	return !(nextd->op_flags & OP_HANDLES_WRONGSEC);
-+	return !(nextd->op_flags & (OP_HANDLES_WRONGSEC | OP_ALLOW_INTEGRITY));
-+}
-+
-+bool
-+nfsd4_allow_integrity(struct svc_rqst *rqstp)
-+{
-+	struct nfsd4_compoundres *resp = rqstp->rq_resp;
-+	struct nfsd4_compoundargs *argp = rqstp->rq_argp;
-+	struct nfsd4_op *this = &argp->ops[resp->opcnt - 1];
-+	struct nfsd4_operation *thisd;
-+
-+	thisd = OPDESC(this);
-+
-+	if (thisd->op_flags & OP_ALLOW_INTEGRITY)
-+		return true;
-+
-+	return false;
- }
- 
- /*
-@@ -1727,7 +1748,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	},
- 	[OP_SECINFO] = {
- 		.op_func = (nfsd4op_func)nfsd4_secinfo,
--		.op_flags = OP_HANDLES_WRONGSEC,
-+		.op_flags = OP_ALLOW_INTEGRITY,
- 		.op_name = "OP_SECINFO",
- 	},
- 	[OP_SETATTR] = {
-@@ -1825,7 +1846,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	},
- 	[OP_SECINFO_NO_NAME] = {
- 		.op_func = (nfsd4op_func)nfsd4_secinfo_no_name,
--		.op_flags = OP_HANDLES_WRONGSEC,
-+		.op_flags = OP_ALLOW_INTEGRITY,
- 		.op_name = "OP_SECINFO_NO_NAME",
- 	},
- 	[OP_TEST_STATEID] = {
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index b3ed644..ed79b6d 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -481,6 +481,8 @@ struct nfsd4_op {
- 
- bool nfsd4_cache_this_op(struct nfsd4_op *);
- 
-+bool nfsd4_allow_integrity(struct svc_rqst *);
-+
- struct nfsd4_compoundargs {
- 	/* scratch variables for XDR decode */
- 	__be32 *			p;
--- 
-1.7.12.4 (Apple Git-37)
-
+> 
+> On Thu, Sep 26, 2013 at 02:40:19PM -0400, Benny Halevy wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> This is a boolean for now. When more layouttypes are supported, this can
+>> change to "pnfs=", similar to "sec=".
+>>
+>> The ctl interface is not enhanced.
+>>
+>> Note: Export option strings are not guaranteed to be present in every call to
+>> svc_export_parse. For example, nfs-utils-1.1.2 exportfs validates the export
+>> with a test call that does not include the 'pnfs' export option even though
+>> it is set in /etc/exports.
+>>
+>> nfsd4_layout_verify() checks if ex_pnfs is set so the ex_pnfs check in
+>> check_export is not needed.
+>>
+>> Furthermore,the pnfs_export_operations super block pointer should not be
+>> changed because a) it is a const and b) the exports options can be changed
+>> while the file system is mounted.
+>>
+>> Remove the ex_pnfs check from check_export to prevent the pnfs_export_operations
+>> superblock pointer from being set to NULL.
+> 
+> This patch doesn't touch check_export.  Is this describing a change from
+> a previous version of the patch?  If so, either drop this comment or
+> write it in a way that will make sense to someone who hasn't seen the
+> previous version.
+> 
+> --b.
+> 
+> 
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> [pnfsd: fix cosmetic checkpatch warnings]
+>> [pnfsd: test pnfs export option in check_export]
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> [pnfsd: fix ex_pnfs check_export bug]
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+>> ---
+>>  fs/nfsd/export.c            | 6 ++++++
+>>  include/linux/nfsd/export.h | 1 +
+>>  2 files changed, 7 insertions(+)
+>>
+>> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+>> index f26b0b9..7730dfd 100644
+>> --- a/fs/nfsd/export.c
+>> +++ b/fs/nfsd/export.c
+>> @@ -567,6 +567,8 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
+>>  					if (exp.ex_uuid == NULL)
+>>  						err = -ENOMEM;
+>>  				}
+>> +			} else if (strcmp(buf, "pnfs") == 0) {
+>> +				exp.ex_pnfs = 1;
+>>  			} else if (strcmp(buf, "secinfo") == 0)
+>>  				err = secinfo_parse(&mesg, buf, &exp);
+>>  			else
+>> @@ -639,6 +641,8 @@ static int svc_export_show(struct seq_file *m,
+>>  				seq_printf(m, "%02x", exp->ex_uuid[i]);
+>>  			}
+>>  		}
+>> +		if (exp->ex_pnfs)
+>> +			seq_puts(m, ",pnfs");
+>>  		show_secinfo(m, exp);
+>>  	}
+>>  	seq_puts(m, ")\n");
+>> @@ -666,6 +670,7 @@ static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
+>>  	new->ex_fslocs.locations_count = 0;
+>>  	new->ex_fslocs.migrated = 0;
+>>  	new->ex_uuid = NULL;
+>> +	new->ex_pnfs = 0;
+>>  	new->cd = item->cd;
+>>  }
+>>  
+>> @@ -679,6 +684,7 @@ static void export_update(struct cache_head *cnew, struct cache_head *citem)
+>>  	new->ex_anon_uid = item->ex_anon_uid;
+>>  	new->ex_anon_gid = item->ex_anon_gid;
+>>  	new->ex_fsid = item->ex_fsid;
+>> +	new->ex_pnfs = item->ex_pnfs;
+>>  	new->ex_uuid = item->ex_uuid;
+>>  	item->ex_uuid = NULL;
+>>  	new->ex_fslocs.locations = item->ex_fslocs.locations;
+>> diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
+>> index 7898c99..b03ceee 100644
+>> --- a/include/linux/nfsd/export.h
+>> +++ b/include/linux/nfsd/export.h
+>> @@ -52,6 +52,7 @@ struct svc_export {
+>>  	kuid_t			ex_anon_uid;
+>>  	kgid_t			ex_anon_gid;
+>>  	int			ex_fsid;
+>> +	int			ex_pnfs;
+>>  	unsigned char *		ex_uuid; /* 16 byte fsid */
+>>  	struct nfsd4_fs_locations ex_fslocs;
+>>  	int			ex_nflavors;
+>> -- 
+>> 1.8.3.1
+>>
