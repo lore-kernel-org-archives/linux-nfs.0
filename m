@@ -1,119 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37197 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753562Ab3IEPtn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Sep 2013 11:49:43 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/4] rpc: clean up decoding of gssproxy linux creds
-Date: Thu,  5 Sep 2013 11:49:30 -0400
-Message-Id: <1378396173-22352-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1378396173-22352-1-git-send-email-bfields@redhat.com>
-References: <1378396173-22352-1-git-send-email-bfields@redhat.com>
+Received: from mail-we0-f181.google.com ([74.125.82.181]:52349 "EHLO
+	mail-we0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751159Ab3I2Kxa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Sep 2013 06:53:30 -0400
+Received: by mail-we0-f181.google.com with SMTP id p61so4438484wes.12
+        for <linux-nfs@vger.kernel.org>; Sun, 29 Sep 2013 03:53:29 -0700 (PDT)
+Message-ID: <524806A5.4090007@primarydata.com>
+Date: Sun, 29 Sep 2013 13:53:25 +0300
+From: Benny Halevy <bhalevy@primarydata.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC v0 06/49] pnfsd: define pnfs_export_operations
+References: <52447EA0.7070004@primarydata.com> <1380220815-12955-1-git-send-email-bhalevy@primarydata.com> <20130927143929.GC9946@pad.fieldses.org>
+In-Reply-To: <20130927143929.GC9946@pad.fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On 2013-09-27 17:39, J. Bruce Fields wrote:
+> On Thu, Sep 26, 2013 at 02:40:15PM -0400, Benny Halevy wrote:
+>> From: Benny Halevy <bhalevy@panasas.com>
+>>
+>> struct pnfs_export_operations defines the VFS level API for pNFS,
+>> not including callbacks.  A pnfs-exportable filesystem sets
+>> a pointer to its pnfs export vector in its struct super_block.s_pnfs_op.
+>>
+>> The file system provides the per-superblock layout_type method that
+>> determines if it supports pnfs for the filesystem identified by
+>> the superblock, and if so, with which layout type (only one per-sb is
+>> supported).
+>>
+>> Device ops:
+>> get_device_iter is used to fill-in the device list for GETDEVICELIST
+>> and get_device_info is used to encode the device info for GETDEVICEINFO.
+>>
+>> Layout ops:
+>> layout_get, layout_commit, and layout_return implement the file system- and
+>> layout type- specific parts of their respective protocol operations: LAYOUTGET,
+>> LAYOUTCOMMIT, and LAYOUTRETURN.
+>>
+>> The following methods are mandatory to be implemented:
+>> layout_type, get_device_info, and layout_get.
+>>
+>> Note: define pnfs export operations in a stub form in this patch.
+>> Actual operations are defined along with their usage.
+> 
+> Patches touching the superblock or the new pnfs export operations should
+> probably all be cc'd to linux-fsdevel.
 
-We can use the normal coding infrastructure here.
+Absolutely.
+I'll add linux-fsdevel in the next iteration.
 
-Two minor behavior changes:
+Benny
 
-	- we're assuming no wasted space at the end of the linux cred.
-	  That seems to match gss-proxy's behavior, and I can't see why
-	  it would need to do differently in the future.
-
-	- NGROUPS_MAX check added: note groups_alloc doesn't do this,
-	  this is the caller's responsibility.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/auth_gss/gss_rpc_xdr.c |   32 +++++++++++++-------------------
- 1 file changed, 13 insertions(+), 19 deletions(-)
-
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-index 3c85d1c..f5067b2 100644
---- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-@@ -166,14 +166,14 @@ static int dummy_dec_opt_array(struct xdr_stream *xdr,
- 	return 0;
- }
- 
--static int get_s32(void **p, void *max, s32 *res)
-+static int get_s32(struct xdr_stream *xdr, s32 *res)
- {
--	void *base = *p;
--	void *next = (void *)((char *)base + sizeof(s32));
--	if (unlikely(next > max || next < base))
-+	__be32 *p;
-+
-+	p = xdr_inline_decode(xdr, 4);
-+	if (!p)
- 		return -EINVAL;
--	memcpy(res, base, sizeof(s32));
--	*p = next;
-+	memcpy(res, p, sizeof(s32));
- 	return 0;
- }
- 
-@@ -182,7 +182,6 @@ static int gssx_dec_linux_creds(struct xdr_stream *xdr,
- {
- 	u32 length;
- 	__be32 *p;
--	void *q, *end;
- 	s32 tmp;
- 	int N, i, err;
- 
-@@ -192,33 +191,28 @@ static int gssx_dec_linux_creds(struct xdr_stream *xdr,
- 
- 	length = be32_to_cpup(p);
- 
--	/* FIXME: we do not want to use the scratch buffer for this one
--	 * may need to use functions that allows us to access an io vector
--	 * directly */
--	p = xdr_inline_decode(xdr, length);
--	if (unlikely(p == NULL))
-+	if (length > (3 + NGROUPS_MAX) * sizeof(u32))
- 		return -ENOSPC;
- 
--	q = p;
--	end = q + length;
--
- 	/* uid */
--	err = get_s32(&q, end, &tmp);
-+	err = get_s32(xdr, &tmp);
- 	if (err)
- 		return err;
- 	creds->cr_uid = make_kuid(&init_user_ns, tmp);
- 
- 	/* gid */
--	err = get_s32(&q, end, &tmp);
-+	err = get_s32(xdr, &tmp);
- 	if (err)
- 		return err;
- 	creds->cr_gid = make_kgid(&init_user_ns, tmp);
- 
- 	/* number of additional gid's */
--	err = get_s32(&q, end, &tmp);
-+	err = get_s32(xdr, &tmp);
- 	if (err)
- 		return err;
- 	N = tmp;
-+	if ((3 + N) * sizeof(u32) != length)
-+		return -EINVAL;
- 	creds->cr_group_info = groups_alloc(N);
- 	if (creds->cr_group_info == NULL)
- 		return -ENOMEM;
-@@ -226,7 +220,7 @@ static int gssx_dec_linux_creds(struct xdr_stream *xdr,
- 	/* gid's */
- 	for (i = 0; i < N; i++) {
- 		kgid_t kgid;
--		err = get_s32(&q, end, &tmp);
-+		err = get_s32(xdr, &tmp);
- 		if (err)
- 			goto out_free_groups;
- 		err = -EINVAL;
--- 
-1.7.9.5
-
+> 
+> --b.
+> 
+>>
+>> [pnfsd: provide default no-op operations]
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> [pnfsd: compile fixes for pnfsd branch]
+>> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+>> [gfs2: set pnfs_dlm_export_ops only for CONFIG_PNFSD]
+>> [pnfsd: handle s_pnfs_op==NULL]
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+>> ---
+>>  fs/nfsd/export.c                |  2 +-
+>>  include/linux/fs.h              |  2 ++
+>>  include/linux/nfsd/nfsd4_pnfs.h | 14 ++++++++++++++
+>>  3 files changed, 17 insertions(+), 1 deletion(-)
+>>
+>> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+>> index 5f38ea3..f26b0b9 100644
+>> --- a/fs/nfsd/export.c
+>> +++ b/fs/nfsd/export.c
+>> @@ -16,7 +16,7 @@
+>>  #include <linux/module.h>
+>>  #include <linux/exportfs.h>
+>>  #include <linux/sunrpc/svc_xprt.h>
+>> -
+>> +#include <linux/nfsd/nfsd4_pnfs.h>
+>>  #include <net/ipv6.h>
+>>  
+>>  #include "nfsd.h"
+>> diff --git a/include/linux/fs.h b/include/linux/fs.h
+>> index 3f40547..d9186a4 100644
+>> --- a/include/linux/fs.h
+>> +++ b/include/linux/fs.h
+>> @@ -34,6 +34,7 @@
+>>  #include <uapi/linux/fs.h>
+>>  
+>>  struct export_operations;
+>> +struct pnfs_export_operations;
+>>  struct hd_geometry;
+>>  struct iovec;
+>>  struct nameidata;
+>> @@ -1251,6 +1252,7 @@ struct super_block {
+>>  	const struct dquot_operations	*dq_op;
+>>  	const struct quotactl_ops	*s_qcop;
+>>  	const struct export_operations *s_export_op;
+>> +	const struct pnfs_export_operations *s_pnfs_op;
+>>  	unsigned long		s_flags;
+>>  	unsigned long		s_magic;
+>>  	struct dentry		*s_root;
+>> diff --git a/include/linux/nfsd/nfsd4_pnfs.h b/include/linux/nfsd/nfsd4_pnfs.h
+>> index 9e7d95e..ff6613e 100644
+>> --- a/include/linux/nfsd/nfsd4_pnfs.h
+>> +++ b/include/linux/nfsd/nfsd4_pnfs.h
+>> @@ -34,4 +34,18 @@
+>>  #ifndef _LINUX_NFSD_NFSD4_PNFS_H
+>>  #define _LINUX_NFSD_NFSD4_PNFS_H
+>>  
+>> +/*
+>> + * pNFS export operations vector.
+>> + *
+>> + * The filesystem must implement the following methods:
+>> + *   layout_type
+>> + *   get_device_info
+>> + *   layout_get
+>> + *
+>> + * All other methods are optional and can be set to NULL if not implemented.
+>> + */
+>> +struct pnfs_export_operations {
+>> +	/* stub */
+>> +};
+>> +
+>>  #endif /* _LINUX_NFSD_NFSD4_PNFS_H */
+>> -- 
+>> 1.8.3.1
+>>
