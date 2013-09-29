@@ -1,62 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:5444 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754910Ab3IYVQu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Sep 2013 17:16:50 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: Give "flavor" an initial value to fix a compile
- warning
-Date: Wed, 25 Sep 2013 21:16:49 +0000
-Message-ID: <204AA022-3981-4505-BB0D-A7E9C8C769C8@netapp.com>
-References: <1380142968-9515-1-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1380142968-9515-1-git-send-email-bjschuma@netapp.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mail-we0-f177.google.com ([74.125.82.177]:52335 "EHLO
+	mail-we0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751143Ab3I2Lyr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Sep 2013 07:54:47 -0400
+Received: by mail-we0-f177.google.com with SMTP id t60so4238648wes.8
+        for <linux-nfs@vger.kernel.org>; Sun, 29 Sep 2013 04:54:45 -0700 (PDT)
+Message-ID: <52481502.1010108@primarydata.com>
+Date: Sun, 29 Sep 2013 14:54:42 +0300
+From: Benny Halevy <bhalevy@primarydata.com>
 MIME-Version: 1.0
+To: Christoph Hellwig <hch@infradead.org>
+CC: "J. Bruce Fields" <bfields@redhat.com>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Lev Solomonov <solo@primarydata.com>,
+        Idan Kedar <idank@primarydata.com>,
+        Nadav Shemer <nadav@primarydata.com>
+Subject: Re: [PATCH RFC v0 0/49] pnfsd-dlm
+References: <52447EA0.7070004@primarydata.com> <20130929114240.GA25750@infradead.org>
+In-Reply-To: <20130929114240.GA25750@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Sep 25, 2013, at 5:02 PM, bjschuma@netapp.com wrote:
-
-> From: Anna Schumaker <bjschuma@netapp.com>
+On 2013-09-29 14:42, Christoph Hellwig wrote:
+> On Thu, Sep 26, 2013 at 02:36:16PM -0400, Benny Halevy wrote:
+>> The following patchset implements an extension to nfsd
+>> providing a complete minimal pnfs server exporting
+>> DLM-based clustered file systems such as GFS2 or OCFS2.
 > 
-> cd3c993 introduces a compile warning by not assigning an initial value
-> to the "flavor" variable.  This could only be a problem if the server
-> returns a supported secflavor list of length zero, but it's better to
-> fix this before it's ever hit.
+> Does this actually buy us anything by now?  Last time I saw numbers for
+> this implementation it was slower than an active/passive setup over
+> those filesystem due to the way their cluster locking works.
 > 
-> Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
 
-Acked-by: Weston Andros Adamson <dros@netapp.com>
+Was this for write sharing or read only?
+As far as I understand, the share locks do not cause arbitration
+and they do provide bandwidth scalability via multiple nodes.
+That said, it is worth measuring.
 
-Thanks!
--dros
-
-> ---
-> fs/nfs/nfs4proc.c | 2 +-
-> 1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index f5fe16b..d53d678 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -7576,7 +7576,7 @@ nfs41_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
-> {
-> 	int err;
-> 	struct page *page;
-> -	rpc_authflavor_t flavor;
-> +	rpc_authflavor_t flavor = RPC_AUTH_MAXFLAVOR;
-> 	struct nfs4_secinfo_flavors *flavors;
-> 	struct nfs4_secinfo4 *secinfo;
-> 	int i;
-> -- 
-> 1.8.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+Benny
