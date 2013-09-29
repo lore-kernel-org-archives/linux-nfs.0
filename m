@@ -1,89 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12950 "EHLO mx1.redhat.com"
+Received: from mout.gmx.net ([212.227.15.15]:49640 "EHLO mout.gmx.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752770Ab3IRP5D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Sep 2013 11:57:03 -0400
-Message-ID: <5239CD64.1000709@RedHat.com>
-Date: Wed, 18 Sep 2013 11:57:24 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1755695Ab3I2TsP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 29 Sep 2013 15:48:15 -0400
+Received: from [80.171.220.192] ([80.171.220.192]) by mail.gmx.com (mrgmx102)
+ with ESMTPSA (Nemesis) id 0LhCDT-1WEbcI29At-00oUf1 for
+ <linux-nfs@vger.kernel.org>; Sun, 29 Sep 2013 21:48:14 +0200
+Message-ID: <524883F9.6060403@gmx.de>
+Date: Sun, 29 Sep 2013 21:48:09 +0200
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs(5): Document the "migration" mount option
-References: <20130910192730.2394.8803.stgit@seurat.1015granger.net>
-In-Reply-To: <20130910192730.2394.8803.stgit@seurat.1015granger.net>
+To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+CC: UML devel <user-mode-linux-devel@lists.sourceforge.net>,
+        Linux Kernel <linux-kernel@vger.kernel.org>
+Subject: fuzz tested UML cores in pshrink_dcache_for_umount_subtree (dentry=0x47bd7840)
+ at fs/dcache.c:928
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The following commit was bisected 2 times in a row to be the trigger(*) of the given back trace.
+The core dump happens at a 32 bit user mode linux image (stable Gentoo) fuzzy tested with trinity.
+It crashed often if 3 NFS shares heavily used by trinity were tried to be remounted.
 
 
-On 10/09/13 15:28, Chuck Lever wrote:
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
-> This has been floating around for a while in my nfs-utils repo.
-> Now that migration support is getting merged upstream, I propose
-> this minor change to nfs(5).
-> 
-> Note that my pending migration patches currently allow migration
-> even if the "migration" option is not specified.  In this case,
-> standard state recovery will occur on the destination server (aka a
-> non-TSM migration) since the destination server can't match up a
-> client using the traditional clientid string with incoming migrated
-> state.
-> 
-> If we think this is dangerous to allow, then the client can be
-> changed to require the "migration" option to enable migration
-> support on NFSv4.0 mount points.
-> 
-> Non-TSM migration can still occur if the servers for some reason
-> fail to transfer open and lock state during a migration.
-> 
-> Comments...?
-This looks find to me... When the migration code "hits the streets"
-I'll commit this... Until then I'll keep on my TODO que... 
 
-steved.
- 
-> 
->  utils/mount/nfs.man |   20 ++++++++++++++++++++
->  1 file changed, 20 insertions(+)
-> 
-> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-> index 2a42b93..e93bd16 100644
-> --- a/utils/mount/nfs.man
-> +++ b/utils/mount/nfs.man
-> @@ -855,6 +855,26 @@ In the presence of multiple client network interfaces,
->  special routing policies,
->  or atypical network topologies,
->  the exact address to use for callbacks may be nontrivial to determine.
-> +.TP 1.5i
-> +.BR migration " / " nomigration
-> +Selects whether the client uses an identification string that is compatible
-> +with NFSv4 Transparent State Migration (TSM).
-> +If the mounted server supports NFSv4 migration with TSM, specify the
-> +.B migration
-> +option.
-> +.IP
-> +Some server features misbehave in the face of a migration-compatible
-> +identification string.
-> +The
-> +.B nomigration
-> +option retains the use of a traditional client indentification string
-> +which is compatible with legacy NFS servers.
-> +This is also the behavior if neither option is specified.
-> +A client's open and lock state cannot be migrated transparently
-> +when it identifies itself via a traditional identification string.
-> +.IP
-> +This mount option has no effect with NFSv4 minor versions greater than zero,
-> +as these versions always use TSM-compatible client identification strings.
->  .SH nfs4 FILE SYSTEM TYPE
->  The
->  .BR nfs4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
+BAD commit
+Sun Sep 29 07:34:02 CEST 2013
+=======================================================================
+
+275bb307865a316cef390e01e6ab5e21e97023a2 is the first bad commit
+commit 275bb307865a316cef390e01e6ab5e21e97023a2
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Wed May 29 13:11:28 2013 -0400
+
+    NFSv4: Move dentry instantiation into the NFSv4-specific atomic open
+code
+
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+:040000 040000 075a18b71db9f50ad71f4637315f7f9c7cc19545
+9bead78040810cb77ced8c134a8315e2e90eb237 M fs
+bisect run success
+
+
+back trace :
+
+tfoerste@n22 ~ $ cat /mnt/ramdisk/bt.v3.10-rc1-24-g275bb30
+[New LWP 5953]
+[New LWP 5962]
+Core was generated by `/home/tfoerste/devel/linux/linux earlyprintk ubda=/home/tfoerste/virtual/uml/tr'.
+Program terminated with signal 6, Aborted.
+#0  0xb77dd424 in __kernel_vsyscall ()
+#0  0xb77dd424 in __kernel_vsyscall ()
+#1  0x0839bc45 in kill ()
+#2  0x0807155d in uml_abort () at arch/um/os-Linux/util.c:93
+#3  0x08071845 in os_dump_core () at arch/um/os-Linux/util.c:138
+#4  0x08061197 in panic_exit (self=0x8599518 <panic_exit_notifier>, unused1=0, unused2=0x85ced60 <buf.12233>) at arch/um/kernel/um_arch.c:240
+#5  0x0809dac8 in notifier_call_chain (nl=0x0, val=0, v=0x85ced60 <buf.12233>, nr_to_call=-2, nr_calls=0x0) at kernel/notifier.c:93
+#6  0x0809dc13 in __atomic_notifier_call_chain (nr_calls=<optimized out>, nr_to_call=<optimized out>, v=<optimized out>, val=<optimized out>, nh=<optimized out>) at kernel/notifier.c:182
+#7  atomic_notifier_call_chain (nh=0x85ced44 <panic_notifier_list>, val=0, v=0x85ced60 <buf.12233>) at kernel/notifier.c:191
+#8  0x083f8fc8 in panic (fmt=0x0) at kernel/panic.c:127
+#9  0x0810fee2 in shrink_dcache_for_umount_subtree (dentry=0x47bd7840) at fs/dcache.c:928
+#10 0x08110628 in shrink_dcache_for_umount (sb=0x47eeef50) at fs/dcache.c:989
+#11 0x080fed47 in generic_shutdown_super (sb=0x47eeef50) at fs/super.c:409
+#12 0x080ffad5 in kill_anon_super (sb=0x0) at fs/super.c:880
+#13 0x081cdea8 in nfs_kill_super (s=0x0) at fs/nfs/super.c:2563
+#14 0x080fec0a in deactivate_locked_super (s=0x47eeef50) at fs/super.c:299
+#15 0x080feca1 in deactivate_super (s=0x47eeef50) at fs/super.c:324
+#16 0x0811686c in mntfree (mnt=<optimized out>) at fs/namespace.c:891
+#17 mntput_no_expire (mnt=0x0) at fs/namespace.c:929
+#18 0x08117d55 in SYSC_umount (flags=<optimized out>, name=<optimized out>) at fs/namespace.c:1335
+#19 SyS_umount (name=134634000, flags=1) at fs/namespace.c:1305
+#20 0x080616d2 in handle_syscall (r=0x4653f7d4) at arch/um/kernel/skas/syscall.c:35
+#21 0x08073b1d in handle_trap (local_using_sysemu=<optimized out>, regs=<optimized out>, pid=<optimized out>) at arch/um/os-Linux/skas/process.c:198
+#22 userspace (regs=0x4653f7d4) at arch/um/os-Linux/skas/process.c:431
+#23 0x0805e44c in fork_handler () at arch/um/kernel/process.c:160
+#24 0x00000000 in ?? ()
+
+
+
+(*) due to the erratic nature of the issue the used test case is not 100% reproducible.
+Therefore although bisected 2 times in a row there's a chance that this commit is rather the upper limit instead of the 1st bad commit
+
+-- 
+MfG/Sincerely
+Toralf Förster
+pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
