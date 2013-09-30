@@ -1,48 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:64218 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:53824 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755216Ab3IYUU6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Sep 2013 16:20:58 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, andros@netapp.com
-Subject: [PATCH] nfs: fix NULL pointer dereference in nfs4_fl_prepare_ds
-Date: Wed, 25 Sep 2013 16:20:57 -0400
-Message-Id: <1380140457-27408-1-git-send-email-jlayton@redhat.com>
+	id S1755816Ab3I3UKN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Sep 2013 16:10:13 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+CC: Miklos Szeredi <miklos@szeredi.hu>, Ric Wheeler <rwheeler@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Zach Brown <zab@redhat.com>,
+        "Anna Schumaker" <schumaker.anna@gmail.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Wong <normalperson@yhbt.net>
+Subject: Re: [RFC] extending splice for copy offloading
+Date: Mon, 30 Sep 2013 20:10:09 +0000
+Message-ID: <1380571802.6501.71.camel@leira.trondhjem.org>
+References: <20130930143432.GG16579@fieldses.org>
+				 <CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com>
+				 <52499026.3090802@redhat.com>
+				 <CAJfpegtpXuh9070ALGy16Y8kdgioBqSf4JQqBBCF4FHvFJWAWQ@mail.gmail.com>
+				 <52498AA8.2090204@redhat.com>
+				 <CAJfpegv_C6cLOuA-mNtgtf2QbmmmcHwjQVo8mAnhf_wbJ8iRhg@mail.gmail.com>
+				 <52498DB6.7060901@redhat.com>
+				 <CAJfpegsvrr7x3MbdpvxUmzq0ZfDHfZkzAar6Od2G7wg8DgPLYQ@mail.gmail.com>
+				 <52498F68.8050200@redhat.com>
+				 <CAJfpegvvN_5c5oMv8UoODXQHc-DQnijhOtPDXmNamVpQLDoWMQ@mail.gmail.com>
+				 <20130930163159.GA14242@tucsk.piliscsaba.szeredi.hu>
+				 <5249B21E.70603@itwm.fraunhofer.de>
+			 <1380563050.6501.15.camel@leira.trondhjem.org>
+			 <5249B987.8020807@itwm.fraunhofer.de>
+		 <1380564126.6501.23.camel@leira.trondhjem.org>
+		 <5249C7C7.7020207@itwm.fraunhofer.de>
+	 <1380569663.6501.63.camel@leira.trondhjem.org>
+	 <5249D86A.7080603@itwm.fraunhofer.de>
+In-Reply-To: <5249D86A.7080603@itwm.fraunhofer.de>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In the event that there is an error connecting to a DS, we currently
-zero out the ds pointer and then try to dereference it to clear the
-NFS4DS_CONNECTING bit.
-
-Fix this by clearing the bit unconditionally before zeroing out the
-pointer.
-
-Cc: Andy Adamson <andros@netapp.com>
-Cc: <stable@vger.kernel.org> # v3.10+
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/nfs4filelayoutdev.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index 95604f6..816cda8 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -819,11 +819,11 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
- 		int err;
- 
- 		err = nfs4_ds_connect(s, ds);
-+		nfs4_clear_ds_conn_bit(ds);
- 		if (err) {
- 			nfs4_mark_deviceid_unavailable(devid);
- 			ds = NULL;
- 		}
--		nfs4_clear_ds_conn_bit(ds);
- 	} else {
- 		/* Either ds is connected, or ds is NULL */
- 		nfs4_wait_ds_connect(ds);
--- 
-1.7.1
-
+T24gTW9uLCAyMDEzLTA5LTMwIGF0IDIyOjAwICswMjAwLCBCZXJuZCBTY2h1YmVydCB3cm90ZToN
+Cj4gT24gMDkvMzAvMjAxMyAwOTozNCBQTSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4gPiBP
+biBNb24sIDIwMTMtMDktMzAgYXQgMjA6NDkgKzAyMDAsIEJlcm5kIFNjaHViZXJ0IHdyb3RlOg0K
+PiA+PiBPbiAwOS8zMC8yMDEzIDA4OjAyIFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+
+Pj4gT24gTW9uLCAyMDEzLTA5LTMwIGF0IDE5OjQ4ICswMjAwLCBCZXJuZCBTY2h1YmVydCB3cm90
+ZToNCj4gPj4+PiBPbiAwOS8zMC8yMDEzIDA3OjQ0IFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3Rl
+Og0KPiA+Pj4+PiBPbiBNb24sIDIwMTMtMDktMzAgYXQgMTk6MTcgKzAyMDAsIEJlcm5kIFNjaHVi
+ZXJ0IHdyb3RlOg0KPiA+Pj4+Pj4gSXQgd291bGQgYmUgbmljZSBpZiB0aGVyZSB3b3VsZCBiZSB3
+YXkgaWYgdGhlIGZpbGUgc3lzdGVtIHdvdWxkIGdldCBhDQo+ID4+Pj4+PiBoaW50IHRoYXQgdGhl
+IHRhcmdldCBmaWxlIGlzIHN1cHBvc2VkIHRvIGJlIGNvcHkgb2YgYW5vdGhlciBmaWxlLiBUaGF0
+DQo+ID4+Pj4+PiB3YXkgZGlzdHJpYnV0ZWQgZmlsZSBzeXN0ZW1zIGNvdWxkIGFsc28gY3JlYXRl
+IHRoZSB0YXJnZXQtZmlsZSB3aXRoIHRoZQ0KPiA+Pj4+Pj4gY29ycmVjdCBtZXRhLWluZm9ybWF0
+aW9uIChzYW1lIHN0b3JhZ2UgdGFyZ2V0cyBhcyBpbi1maWxlIGhhcykuDQo+ID4+Pj4+PiBXZWxs
+LCBpZiB3ZSBjYW5ub3QgYWdyZWUgb24gdGhhdCwgZmlsZSBzeXN0ZW0gd2l0aCBhIGN1c3RvbSBw
+cm90b2NvbCBhdA0KPiA+Pj4+Pj4gbGVhc3QgY2FuIGRldGVjdCBmcm9tIDAgdG8gU1NJWkVfTUFY
+IGFuZCB0aGVuIHJlc2V0IG1ldGFkYXRhLiBJJ20gbm90DQo+ID4+Pj4+PiBzdXJlIGlmIHRoaXMg
+d291bGQgd29yayBmb3IgcE5GUywgdGhvdWdoLg0KPiA+Pj4+Pg0KPiA+Pj4+PiBzcGxpY2UoKSBk
+b2VzIG5vdCBjcmVhdGUgbmV3IGZpbGVzLiBXaGF0IHlvdSBhcHBlYXIgdG8gYmUgYXNraW5nIGZv
+cg0KPiA+Pj4+PiBsaWVzIHdheSBvdXRzaWRlIHRoZSBzY29wZSBvZiB0aGF0IHN5c3RlbSBjYWxs
+IGludGVyZmFjZS4NCj4gPj4+Pj4NCj4gPj4+Pg0KPiA+Pj4+IFNvcnJ5IEkga25vdywgZGVmaW5p
+dGVseSBvdXRzaWRlIHRoZSBzY29wZSBvZiBzcGxpY2UsIGJ1dCBpbiB0aGUgY29udGV4dA0KPiA+
+Pj4+IG9mIG9mZmxvYWRlZCBmaWxlIGNvcGllcy4gU28gdGhlIHF1ZXN0aW9uIGlzLCB3aGF0IGlz
+IHRoZSBiZXN0IHdheSB0bw0KPiA+Pj4+IGFkZHJlc3MvZGlzY3VzcyB0aGF0Pw0KPiA+Pj4NCj4g
+Pj4+IFdoeSBkb2VzIGl0IG5lZWQgdG8gYmUgYWRkcmVzc2VkIGluIHRoZSBmaXJzdCBwbGFjZT8N
+Cj4gPj4NCj4gPj4gQW4gb2ZmbG9hZGVkIGNvcHkgaXMgc3RpbGwgbm90IGVmZmljaWVudCBpZiBk
+aWZmZXJlbnQgc3RvcmFnZQ0KPiA+PiBzZXJ2ZXJzL3RhcmdldHMgdXNlZCBieSBmcm9tLWZpbGUg
+YW5kIHRvLWZpbGUuDQo+ID4NCj4gPiBTbz8NCj4gDQo+IG1kczE6IG9yaWctZmlsZQ0KPiBvc3Mx
+L3RhcmdldDE6IG9yaWctY2h1bmsxDQo+IA0KPiBtZHMxOiB0YXJnZXQtZmlsZQ0KPiBvc3NOL3Rh
+cmdldE46IHRhcmdldC1jaHVuazENCj4gDQo+IGNsaWVudE46IFBlcmZvcm1zIHRoZSBjb3B5DQo+
+IA0KPiBJZGVhbGx5LCBvcmlnLWNodW5rMSBhbmQgdGFyZ2V0LWNodW5rMSBhcmUgb24gdGhlIHNh
+bWUgc2VydmVyIGFuZCBzYW1lIA0KPiB0YXJnZXQuIENvcHkgb2ZmbG9hZCB0aGVuIGV2ZW4gY291
+bGQgZG9uZSBmcm9tIHRoZSB1bmRlcmx5aW5nIGZzLCANCj4gc2ltaWxpYXIgYXMgbG9jYWwgc3Bs
+aWNlLg0KPiBJZiBkaWZmZXJlbnQgb3NzTiBzZXJ2ZXJzIGFyZSB1c2VkIGNvcGllcyBzdGlsbCBo
+YXZlIHRvIGJlIGRvbmUgb3ZlciANCj4gbmV0d29yayBieSB0aGVzZSBzdG9yYWdlIHNlcnZlcnMs
+IGFsdGhvdWdoIHRoZSBjbGllbnQgb25seSB3b3VsZCBuZWVkIHRvIA0KPiBpbml0aWF0ZSB0aGUg
+Y29weS4gU3RpbGwgZmFzdGVyLCBidXQgYWxzbyBub3QgaWRlYWwuDQo+IA0KPiA+DQo+ID4+Pg0K
+PiA+Pj4gV2hhdCBpcyBwcmV2ZW50aW5nIGFuIGFwcGxpY2F0aW9uIGZyb20gcmV0cmlldmluZyBh
+bmQgc2V0dGluZyB0aGlzDQo+ID4+PiBpbmZvcm1hdGlvbiB1c2luZyBzdGFuZGFyZCBsaWJjIGZ1
+bmN0aW9ucyBzdWNoIGFzIGZzdGF0KCkrb3BlbigpLCBhbmQNCj4gPj4+IHN1cHBsZW1lbnRlZCB3
+aXRoIGxpYmF0dHIgYXR0cl9zZXRmL2dldGYoKSwgYW5kIGxpYmFjbCBhY2xfZ2V0X2ZkL3NldF9m
+ZA0KPiA+Pj4gd2hlcmUgYXBwcm9wcmlhdGU/DQo+ID4+Pg0KPiA+Pg0KPiA+PiBBdCBhIG1pbmlt
+dW0gdGhpcyByZXF1aXJlcyBuZXR3b3JrIGFuZCBtZXRhZGF0YSBvdmVyaGVhZC4gQW5kIHdoaWxl
+IEknbQ0KPiA+PiB3b3JraW5nIG9uIEZoR0ZTIG5vdywgSSBzdGlsbCB3b25kZXIgd2hhdCBvdGhl
+ciBmaWxlIHN5c3RlbSBuZWVkIHRvIGRvIC0NCj4gPj4gZm9yIGV4YW1wbGUgTHVzdHJlIHByZS1h
+bGxvY2F0ZXMgc3RvcmFnZS10YXJnZXQgZmlsZXMgb24gY3JlYXRpbmcgYQ0KPiA+PiBmaWxlLCBz
+byBmaWxlIGxheW91dCBjaGFuZ2VzIG1lYW4gZXZlbiBtb3JlIG92ZXJoZWFkIHRoZXJlLg0KPiA+
+DQo+ID4gVGhlIHByb2JsZW0geW91IGFyZSBkZXNjcmliaW5nIGlzIGxpbWl0ZWQgdG8gYSBuYXJy
+b3cgc2V0IG9mIHN0b3JhZ2UNCj4gPiBhcmNoaXRlY3R1cmVzLiBJZiBjb3B5IG9mZmxvYWQgdXNp
+bmcgc3BsaWNlKCkgZG9lc24ndCBtYWtlIHNlbnNlIGZvcg0KPiA+IHRob3NlIGFyY2hpdGVjdHVy
+ZXMsIHRoZW4gZG9uJ3QgaW1wbGVtZW50IGl0IGZvciB0aGVtLg0KPiANCj4gQnV0IGl0IF9kb2Vz
+XyBtYWtlIHNlbnNlLiBUaGUgZmlsZSBzeXN0ZW0ganVzdCBuZWVkcyBhIGhpbnQgdGhhdCBhIA0K
+PiBzcGxpY2UgY29weSBpcyBnb2luZyB0byBjb21lIHVwLg0KDQpKdXN0IHdhaXQgZm9yIHRoZSBz
+cGxpY2UoKSBzeXN0ZW0gY2FsbC4gSG93IGlzIHRoaXMgYW55IGRpZmZlcmVudCBmcm9tDQp3cml0
+ZSgpPw0KDQo+ID4gWW91IG1pZ2h0IGJlIGFibGUgdG8gcHJvdmlkZSBpb2N0bHMoKSB0byBkbyB0
+aGVzZSBzcGVjaWFsIGhpbnRlZCBmaWxlDQo+ID4gY3JlYXRpb25zIGZvciB0aG9zZSBmaWxlc3lz
+dGVtcyB0aGF0IG5lZWQgaXQsIGJ1dCB0aGUgdmFzdCBtYWpvcml0eQ0KPiA+IGRvbid0LCBhbmQg
+eW91IHNob3VsZG4ndCBlbmZvcmNlIGl0IG9uIHRoZW0uDQo+IA0KPiBBbmQgZXhhY3RseSBmb3Ig
+dGhhdCB3ZSBuZWVkIGEgc3RhbmRhcmQgLSBpdCBkb2VzIG5vdCBtYWtlIHNlbnNlIGlmIGVhY2gg
+DQo+IGFuZCBldmVyeSBkaXN0cmlidXRlZCBmaWxlIHN5c3RlbSBpbXBsZW1lbnRzIGl0cyBvd24g
+DQo+IGlvY3RsL2xpYmF0dHIvbGliYWNsIGludGVyZmFjZSBmb3IgdGhhdC4NCj4gDQo+ID4NCj4g
+Pj4gQW55d2F5LCBpZiB3ZSBjb3VsZCBhZ3JlZSBvbiB0byB1c2UgbGliYXR0ciBvciBsaWJhY2wg
+dG8gdGVhY2ggdGhlIGZpbGUNCj4gPj4gc3lzdGVtIGFib3V0IHRoZSB1cGNvbWluZyBzcGxpY2Ug
+Y2FsbCBJIHdvdWxkIGJlIGZpbmUuDQo+ID4NCj4gPiBsaWJhdHRyIGFuZCBsaWJhY2wgYXJlIGdl
+bmVyaWMgbGlicmFyaWVzIHRoYXQgZXhpc3QgdG8gbWFuaXB1bGF0ZSB4YXR0cnMNCj4gPiBhbmQg
+YWNscy4gVGhleSBkbyBub3QgbmVlZCB0byBjb250YWluIEx1c3RyZS1zcGVjaWZpYyBjb2RlLg0K
+PiA+DQo+IA0KPiBwTkZTLCBGaEdGUywgTHVzdHJlLCBDZXBoLCBldGMuLCBhbGwgb2YgdGhlbSBz
+aGFsbCBpbXBsZW1lbnQgdGhlaXIgb3duIA0KPiBpbnRlcmZhY2U/IEFuZCB1c2Vyc3BhY2UgbmVl
+ZHMgdG8gYWRkcmVzcyBhbGwgb2YgdGhlbSBkaWZmZXJlbnRseT8NCj4NCj4gSSdtIGp1c3QgYXNr
+aW5nIGZvciBzb21ldGhpbmcgbGlrZSBhIHZmcyBpb2N0bCBTUExJQ0VfTUVUQV9DT1BZIChzb3Jy
+eSwgDQo+IGRpZG4ndCBmaW5kIGEgYmV0dGVyIG5hbWUgeWV0KSwgd2hpY2ggd291bGQgdGFrZSBp
+bi1maWxlLXBhdGggYW5kIA0KPiBvdXQtZmlsZS1wYXRoIGFuZCBhbGxvdyB0aGUgZmlsZSBzeXN0
+ZW0gdG8gY3JlYXRlIG91dC1maWxlLXBhdGggd2l0aCB0aGUgDQo+IHNhbWUgbWV0YS1sYXlvdXQg
+YXMgaW4tZmlsZS1wYXRoLiBBbmQgaXQgd291bGQgbmVlZCBzb21lIGZsYWdzLCBzdWNoIGFzIA0K
+PiBBVVRPIChmaWxlIHN5c3RlbSBkZWNpZGVzIGlmIGl0IG1ha2VzIHNlbnNlIHRvIGRvIGEgbG9j
+YWwgY29weSkgYW5kIA0KPiBGT1JDRSAoYWx3YXlzIHRyeSBhIGxvY2FsIGNvcHkpLg0KDQpzcGxp
+Y2UoKSBpcyBub3QgYSB3aG9sZS1maWxlIGNvcHkgb3BlcmF0aW9uOyBpdCdzIGEgYnl0ZSByYW5n
+ZSBjb3B5LiBIb3cNCmRvZXMgdGhlIGFib3ZlIGhlbHAgb3RoZXIgdGhhbiBpbiB0aGUgd2hvbGUt
+ZmlsZSBjYXNlPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
+dGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAu
+Y29tDQo=
