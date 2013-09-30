@@ -1,62 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:64173 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752189Ab3IVR7U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 22 Sep 2013 13:59:20 -0400
-Date: Sun, 22 Sep 2013 19:52:56 +0200
-From: Oleg Nesterov <oleg@redhat.com>
-To: Toralf =?iso-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>
-Cc: "Serge E. Hallyn" <serue@us.ibm.com>, Andrey Vagin <avagin@openvz.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: fuzz tested user mode linux core dumps in
-	fs/lockd/clntproc.c:131
-Message-ID: <20130922175256.GA18473@redhat.com>
-References: <51F39AE8.3090401@gmx.de> <20130727170051.GA31447@redhat.com> <523F22EA.2050609@gmx.de>
+Received: from mail-qe0-f43.google.com ([209.85.128.43]:42116 "EHLO
+	mail-qe0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755167Ab3I3Pqj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Sep 2013 11:46:39 -0400
+Received: by mail-qe0-f43.google.com with SMTP id gh4so3885910qeb.16
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Sep 2013 08:46:39 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <523F22EA.2050609@gmx.de>
+In-Reply-To: <52498DB6.7060901@redhat.com>
+References: <20130925210742.GG30372@lenny.home.zabbo.net>
+	<CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
+	<20130926185508.GO30372@lenny.home.zabbo.net>
+	<5244A68F.906@redhat.com>
+	<20130927200550.GA22640@fieldses.org>
+	<20130927205013.GZ30372@lenny.home.zabbo.net>
+	<CAJfpegtdiQzP7t5hc_OaHjSGTrjdZLfKi6fiKqBQ_+AP2Y0-oQ@mail.gmail.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA9467EF2D7@SACEXCMBX04-PRD.hq.netapp.com>
+	<52474839.2080201@redhat.com>
+	<CAJfpegsN7Hu8uecSVQrhax+n+zhq=uUgpzOk=qZ6_n383tdNCQ@mail.gmail.com>
+	<20130930143432.GG16579@fieldses.org>
+	<CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com>
+	<52499026.3090802@redhat.com>
+	<CAJfpegtpXuh9070ALGy16Y8kdgioBqSf4JQqBBCF4FHvFJWAWQ@mail.gmail.com>
+	<52498AA8.2090204@redhat.com>
+	<CAJfpegv_C6cLOuA-mNtgtf2QbmmmcHwjQVo8mAnhf_wbJ8iRhg@mail.gmail.com>
+	<52498DB6.7060901@redhat.com>
+Date: Mon, 30 Sep 2013 17:46:38 +0200
+Message-ID: <CAJfpegsvrr7x3MbdpvxUmzq0ZfDHfZkzAar6Od2G7wg8DgPLYQ@mail.gmail.com>
+Subject: Re: [RFC] extending splice for copy offloading
+From: Miklos Szeredi <miklos@szeredi.hu>
+To: Ric Wheeler <rwheeler@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Zach Brown <zab@redhat.com>, Anna Schumaker <schumaker.anna@gmail.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Wong <normalperson@yhbt.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/22, Toralf Förster wrote:
+On Mon, Sep 30, 2013 at 4:41 PM, Ric Wheeler <rwheeler@redhat.com> wrote:
+> The way the array based offload (and some software side reflink works) is
+> not a byte by byte copy. We cannot assume that a valid count can be returned
+> or that such a count would be an indication of a sequential segment of good
+> data.  The whole thing would normally have to be reissued.
 >
-> On 07/27/2013 07:00 PM, Oleg Nesterov wrote:
-> >
-> > So nlmclnt_setlockargs()->utsname() crashes and we probably need
-> > the patch below.
-> >
-> > But is it correct? I know _absolutely_ nothing about nfs/sunrpc/etc and
-> > I never looked into this code before, most probably I am wrong.
-> >
-> > But it seems that __nlm_async_call() relies on workqueues.
-> > nlmclnt_async_call() does rpc_wait_for_completion_task(), but what if
-> > the caller is killed?
-> >
-> > nlm_rqst can't go away, ->a_count was incremented. But can't the caller
-> > exit before call->name is used? In this case the memory it points to
-> > can be already freed.
-> >
-> > Oleg.
-> >
-> > --- x/kernel/exit.c
-> > +++ x/kernel/exit.c
-> > @@ -783,8 +783,8 @@ void do_exit(long code)
-> >  	exit_shm(tsk);
-> >  	exit_files(tsk);
-> >  	exit_fs(tsk);
-> > -	exit_task_namespaces(tsk);
-> >  	exit_task_work(tsk);
-> > +	exit_task_namespaces(tsk);
-> >  	check_stack_usage();
-> >  	exit_thread();
-> >
-> >
-> >
-> /me wonders if/when this will go in the main kernel ?
+> To make that a true assumption, you would have to mandate that in each of
+> the specifications (and sw targets)...
 
-I think this was fixed by 9a1b6bf818e74 ?
+You're missing my point.
 
-Oleg.
+ - user issues SIZE_MAX splice request
+ - fs issues *64M* (or whatever) request to offload
+ - when that completes *fully* then we return 64M to userspace
+ - if it completes partially, then we return an error to userspace
 
+Again, wouldn't that work?
+
+Thanks,
+Miklos
