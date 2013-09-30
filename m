@@ -1,68 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49117 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:43995 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753503Ab3IFPny (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Sep 2013 11:43:54 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Nick Piggin <npiggin@kernel.dk>
-Subject: [PATCH 2/3] dcache: Don't set DISCONNECTED on "pseudo filesystem" dentries
-Date: Fri,  6 Sep 2013 11:43:49 -0400
-Message-Id: <1378482230-16312-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1378482230-16312-1-git-send-email-bfields@redhat.com>
-References: <1378482230-16312-1-git-send-email-bfields@redhat.com>
+	id S1755674Ab3I3UJZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Sep 2013 16:09:25 -0400
+Message-ID: <5249DA50.5060105@redhat.com>
+Date: Mon, 30 Sep 2013 16:08:48 -0400
+From: Ric Wheeler <rwheeler@redhat.com>
+MIME-Version: 1.0
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Zach Brown <zab@redhat.com>,
+        Anna Schumaker <schumaker.anna@gmail.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Wong <normalperson@yhbt.net>
+Subject: Re: [RFC] extending splice for copy offloading
+References: <20130930143432.GG16579@fieldses.org>			 <CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com>			 <52499026.3090802@redhat.com>			 <CAJfpegtpXuh9070ALGy16Y8kdgioBqSf4JQqBBCF4FHvFJWAWQ@mail.gmail.com>			 <52498AA8.2090204@redhat.com>			 <CAJfpegv_C6cLOuA-mNtgtf2QbmmmcHwjQVo8mAnhf_wbJ8iRhg@mail.gmail.com>			 <52498DB6.7060901@redhat.com>			 <CAJfpegsvrr7x3MbdpvxUmzq0ZfDHfZkzAar6Od2G7wg8DgPLYQ@mail.gmail.com>			 <52498F68.8050200@redhat.com>			 <CAJfpegvvN_5c5oMv8UoODXQHc-DQnijhOtPDXmNamVpQLDoWMQ@mail.gmail.com>			 <20130930163159.GA14242@tucsk.piliscsaba.szeredi.hu>			 <5249B21E.70603@itwm.fraunhofer.de>		 <1380563050.6501.15.camel@leira.trondhjem.org>		 <5249B987.8020807@itwm.fraunhofer.de>	 <1380564126.6501.23.camel@leira.trondhjem.org>	 <5249C7C7.7020207@itwm.fraunhofer.de> <1380569663.6501.63.camel@leira.trondhjem.org> <5249D86A.7080603@itwm.fraunhofer.de>
+In-Reply-To: <5249D86A.7080603@itwm.fraunhofer.de>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On 09/30/2013 04:00 PM, Bernd Schubert wrote:
+> pNFS, FhGFS, Lustre, Ceph, etc., all of them shall implement their own 
+> interface? And userspace needs to address all of them differently? 
 
-I can't for the life of me see any reason why anyone would care whether
-a dentry that is never hooked into the dentry cache would need
-DCACHE_DISCONNECTED set.
+The NFS and SCSI groups have each defined a standard which Zach's proposal 
+abstracts into a common user API.
 
-This originates from 4b936885ab04dc6e0bb0ef35e0e23c1a7364d9e5 "fs:
-improve scalability of pseudo filesystems", which probably just made the
-false assumption the DCACHE_DISCONNECTED was meant to be set on anything
-not connected to a parent somehow.
+Distributed file systems tend to be rather unique and do not have similar 
+standard bodies, but a lot of them could hide server specific implementations 
+under the current proposed interfaces.
 
-So this is just confusing.  Ideally the only uses of DCACHE_DISCONNECTED
-would be in the filehandle-lookup code, which needs it to ensure
-dentries are connected into the dentry tree before use.
+What is not a good idea is to drag out the core, simple copy offload discussion 
+for another 5 years to pull in every odd use case :)
 
-I left d_alloc_pseudo there even though it's now equivalent to
-__d_alloc(), just on the theory the name is better documentation of its
-intended use outside dcache.c.
-
-Cc: Nick Piggin <npiggin@kernel.dk>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/dcache.c |    9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
-
-diff --git a/fs/dcache.c b/fs/dcache.c
-index 934f02d..ec66780 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -1308,12 +1308,13 @@ struct dentry *d_alloc(struct dentry * parent, const struct qstr *name)
- }
- EXPORT_SYMBOL(d_alloc);
- 
-+/*
-+ * For filesystems that do not actually use the dentry cache at all, and
-+ * only ever deal in IS_ROOT() dentries:
-+ */
- struct dentry *d_alloc_pseudo(struct super_block *sb, const struct qstr *name)
- {
--	struct dentry *dentry = __d_alloc(sb, name);
--	if (dentry)
--		dentry->d_flags |= DCACHE_DISCONNECTED;
--	return dentry;
-+	return __d_alloc(sb, name);
- }
- EXPORT_SYMBOL(d_alloc_pseudo);
- 
--- 
-1.7.9.5
+ric
 
