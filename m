@@ -1,60 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:45471 "EHLO mx1.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751047Ab3IJVIw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Sep 2013 17:08:52 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFSv4.1: clean up after using machine cred
-Date: Tue, 10 Sep 2013 21:08:31 +0000
-Message-ID: <99A4AB2C-5C44-4F9D-8D7A-4601AC07DCB0@netapp.com>
-References: <1378839358-10389-1-git-send-email-dros@netapp.com>
- <1378839358-10389-2-git-send-email-dros@netapp.com>
- <1378841499.21916.22.camel@leira.trondhjem.org>
-In-Reply-To: <1378841499.21916.22.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:58379 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755110Ab3I3RtC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Sep 2013 13:49:02 -0400
+Message-ID: <5249B987.8020807@itwm.fraunhofer.de>
+Date: Mon, 30 Sep 2013 19:48:55 +0200
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
 MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Miklos Szeredi <miklos@szeredi.hu>, Ric Wheeler <rwheeler@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Zach Brown <zab@redhat.com>,
+        Anna Schumaker <schumaker.anna@gmail.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Wong <normalperson@yhbt.net>
+Subject: Re: [RFC] extending splice for copy offloading
+References: <20130930143432.GG16579@fieldses.org>	 <CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com>	 <52499026.3090802@redhat.com>	 <CAJfpegtpXuh9070ALGy16Y8kdgioBqSf4JQqBBCF4FHvFJWAWQ@mail.gmail.com>	 <52498AA8.2090204@redhat.com>	 <CAJfpegv_C6cLOuA-mNtgtf2QbmmmcHwjQVo8mAnhf_wbJ8iRhg@mail.gmail.com>	 <52498DB6.7060901@redhat.com>	 <CAJfpegsvrr7x3MbdpvxUmzq0ZfDHfZkzAar6Od2G7wg8DgPLYQ@mail.gmail.com>	 <52498F68.8050200@redhat.com>	 <CAJfpegvvN_5c5oMv8UoODXQHc-DQnijhOtPDXmNamVpQLDoWMQ@mail.gmail.com>	 <20130930163159.GA14242@tucsk.piliscsaba.szeredi.hu>	 <5249B21E.70603@itwm.fraunhofer.de> <1380563050.6501.15.camel@leira.trondhjem.org>
+In-Reply-To: <1380563050.6501.15.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Yes, I thought about this approach, but backed away since we do get/put_rpccred on the cl_machine_cred elsewhere (like nfs4_get_machine_cred_locked).
+On 09/30/2013 07:44 PM, Myklebust, Trond wrote:
+> On Mon, 2013-09-30 at 19:17 +0200, Bernd Schubert wrote:
+>> It would be nice if there would be way if the file system would get a
+>> hint that the target file is supposed to be copy of another file. That
+>> way distributed file systems could also create the target-file with the
+>> correct meta-information (same storage targets as in-file has).
+>> Well, if we cannot agree on that, file system with a custom protocol at
+>> least can detect from 0 to SSIZE_MAX and then reset metadata. I'm not
+>> sure if this would work for pNFS, though.
+>
+> splice() does not create new files. What you appear to be asking for
+> lies way outside the scope of that system call interface.
+>
 
-Shall I submit a new patch that gets rid of get/put_rpccred?
-
-Do we also want to change other uses of cl_machine_cred?
+Sorry I know, definitely outside the scope of splice, but in the context 
+of offloaded file copies. So the question is, what is the best way to 
+address/discuss that?
 
 Thanks,
--dros
-
-On Sep 10, 2013, at 3:31 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
- wrote:
-
-> On Tue, 2013-09-10 at 14:55 -0400, Weston Andros Adamson wrote:
->> Client calls get_rpccred when referencing the machine cred, so it must call
->> put_rpccred after passing cred to rpc layer.
->> 
->> This patch also moves nfs4_sp4_init (formerly nfs4_state_protect) to right
->> before the call to rpc_run_task (and wrappers of rpc_run_task) to minimize
->> error path cleanup code.
->> 
-> 
-> Do we really need this? AFAICS once the clp->cl_machine_cred is set, it
-> isn't freed until the call to nfs_free_client(). In fact, we probably
-> _rely_ on this being the case for SP4_MACH_CRED, since if the machine
-> cred were to change, we'd no longer be able to change our session or
-> lease.
-> 
-> IOW: instead of referencing the cred via get/put_rpccred(), maybe we can
-> just feed the current value of clp->cl_machine_cred into the
-> msg->rpc_cred.
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-
+Bernd
