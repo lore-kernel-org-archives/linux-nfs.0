@@ -1,65 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:42993 "EHLO mx11.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:47727 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750709Ab3IFTRN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Sep 2013 15:17:13 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 3 1/1] NFSv4.1 Use MDS auth flavor for data
- server connection
-Date: Fri, 6 Sep 2013 19:17:11 +0000
-Message-ID: <A25844A6-98C0-473F-9ABF-E10320BC18FA@netapp.com>
-References: <1378491240-1848-1-git-send-email-andros@netapp.com>
- <1378493274.10582.14.camel@leira.trondhjem.org>
-In-Reply-To: <1378493274.10582.14.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="us-ascii"
+	id S1755883Ab3I3Pdt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Sep 2013 11:33:49 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Ric Wheeler <rwheeler@redhat.com>, Miklos Szeredi <miklos@szeredi.hu>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, Zach Brown <zab@redhat.com>,
+        Anna Schumaker <schumaker.anna@gmail.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Wong <normalperson@yhbt.net>
+Subject: RE: [RFC] extending splice for copy offloading
+Date: Mon, 30 Sep 2013 15:33:46 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9467F3C78@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20130925210742.GG30372@lenny.home.zabbo.net>
+ <CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
+ <20130926185508.GO30372@lenny.home.zabbo.net> <5244A68F.906@redhat.com>
+ <20130927200550.GA22640@fieldses.org>
+ <20130927205013.GZ30372@lenny.home.zabbo.net>
+ <CAJfpegtdiQzP7t5hc_OaHjSGTrjdZLfKi6fiKqBQ_+AP2Y0-oQ@mail.gmail.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9467EF2D7@SACEXCMBX04-PRD.hq.netapp.com>
+ <52474839.2080201@redhat.com>
+ <CAJfpegsN7Hu8uecSVQrhax+n+zhq=uUgpzOk=qZ6_n383tdNCQ@mail.gmail.com>
+ <20130930143432.GG16579@fieldses.org>
+ <CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com>
+ <52499026.3090802@redhat.com>
+ <CAJfpegtpXuh9070ALGy16Y8kdgioBqSf4JQqBBCF4FHvFJWAWQ@mail.gmail.com>
+ <52498AA8.2090204@redhat.com>
+In-Reply-To: <52498AA8.2090204@redhat.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Sep 6, 2013, at 2:47 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
- wrote:
-
-> On Fri, 2013-09-06 at 14:14 -0400, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->> 
->> Commit 4edaa308 "NFS: Use "krb5i" to establish NFSv4 state whenever possible"
->> uses the nfs_client cl_rpcclient for all state management operations, and
->> will use krb5i or auth_sys with no regard to the mount command authflavor
->> choice.
->> 
->> The MDS, as any NFSv4.1 mount point, uses the nfs_server rpc client for all
->> non-state management operations with a different nfs_server for each fsid
->> encountered traversing the mount point, each with a potentially different
->> auth flavor.
->> 
->> pNFS data servers are not mounted in the normal sense as there is no associated
->> nfs_server structure. Data servers can also export multiple fsids, each with
->> a potentially different auth flavor.
->> 
->> Data servers need to use the same authflavor as the MDS server rpc client for
->> non-state management operations. Populate a list of rpc clients with the MDS
->> server rpc client auth flavor for the DS to use.
->> 
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->> 
-> 
-> Thank you Andy! Unless something comes up, I'm applying this one.
-
-Good - thanks for all the valuable review :)
-
--->Andy
-
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBSaWMgV2hlZWxlciBbbWFpbHRv
+OnJ3aGVlbGVyQHJlZGhhdC5jb21dDQo+IFNlbnQ6IE1vbmRheSwgU2VwdGVtYmVyIDMwLCAyMDEz
+IDEwOjI5IEFNDQo+IFRvOiBNaWtsb3MgU3plcmVkaQ0KPiBDYzogSi4gQnJ1Y2UgRmllbGRzOyBN
+eWtsZWJ1c3QsIFRyb25kOyBaYWNoIEJyb3duOyBBbm5hIFNjaHVtYWtlcjsgS2VybmVsDQo+IE1h
+aWxpbmcgTGlzdDsgTGludXgtRnNkZXZlbDsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgU2No
+dW1ha2VyLCBCcnlhbjsNCj4gTWFydGluIEsuIFBldGVyc2VuOyBKZW5zIEF4Ym9lOyBNYXJrIEZh
+c2hlaDsgSm9lbCBCZWNrZXI7IEVyaWMgV29uZw0KPiBTdWJqZWN0OiBSZTogW1JGQ10gZXh0ZW5k
+aW5nIHNwbGljZSBmb3IgY29weSBvZmZsb2FkaW5nDQo+IA0KPiBPbiAwOS8zMC8yMDEzIDEwOjI0
+IEFNLCBNaWtsb3MgU3plcmVkaSB3cm90ZToNCj4gPiBPbiBNb24sIFNlcCAzMCwgMjAxMyBhdCA0
+OjUyIFBNLCBSaWMgV2hlZWxlciA8cndoZWVsZXJAcmVkaGF0LmNvbT4NCj4gd3JvdGU6DQo+ID4+
+IE9uIDA5LzMwLzIwMTMgMTA6NTEgQU0sIE1pa2xvcyBTemVyZWRpIHdyb3RlOg0KPiA+Pj4gT24g
+TW9uLCBTZXAgMzAsIDIwMTMgYXQgNDozNCBQTSwgSi4gQnJ1Y2UgRmllbGRzDQo+ID4+PiA8YmZp
+ZWxkc0BmaWVsZHNlcy5vcmc+DQo+ID4+PiB3cm90ZToNCj4gPj4+Pj4gTXkgb3RoZXIgd29ycnkg
+aXMgYWJvdXQgaW50ZXJydXB0aWJpbGl0eS9yZXN0YXJ0YWJpbGl0eS4gIElkZWFzPw0KPiA+Pj4+
+Pg0KPiA+Pj4+PiBXaGF0IGhhcHBlbnMgb24gc3BsaWNlKGZyb20sIHRvLCA0RykgYW5kIGl0J3Mg
+YSBub24tcmVmbGluayBjb3B5Pw0KPiA+Pj4+PiBDYW4gdGhlIHBhZ2UgY2FjaGUgY29weSBiZSBt
+YWRlIHJlc3RhcnRhYmxlPyAgIE9yIHNob3VsZCBzcGxpY2UoKSBiZQ0KPiA+Pj4+PiBhbGxvd2Vk
+IHRvIHJldHVybiBhIHNob3J0IGNvdW50PyAgV2hhdCBoYXBwZW5zIG9uIChub24tcmVmbGluaykN
+Cj4gPj4+Pj4gcmVtb3RlIGNvcGllcyBhbmQgaHVnZSByZXF1ZXN0IHNpemVzPw0KPiA+Pj4+IElm
+IEkgd2VyZSB3cml0aW5nIGFuIGFwcGxpY2F0aW9uIHRoYXQgcmVxdWlyZWQgY29waWVzIHRvIGJl
+DQo+ID4+Pj4gcmVzdGFydGFibGUsIEknZCBwcm9iYWJseSB1c2UgdGhlIGxhcmdlc3QgcG9zc2li
+bGUgcmFuZ2UgaW4gdGhlDQo+ID4+Pj4gcmVmbGluayBjYXNlIGJ1dCBicmVhayB0aGUgY29weSBp
+bnRvIHNtYWxsZXIgY2h1bmtzIGluIHRoZSBzcGxpY2UgY2FzZS4NCj4gPj4+Pg0KPiA+Pj4gVGhl
+IGFwcCByZWFsbHkgZG9lc24ndCB3YW50IHRvIGNhcmUgYWJvdXQgdGhhdC4gIEFuZCBpdCBkb2Vz
+bid0IHdhbnQNCj4gPj4+IHRvIGNhcmUgYWJvdXQgcmVzdGFydGFiaWxpdHksIGV0Yy4uICBJdCdz
+IHNvbWV0aGluZyB0aGUgKmtlcm5lbCogaGFzDQo+ID4+PiB0byBjYXJlIGFib3V0LiAgIFlvdSBq
+dXN0IGNhbid0IGhhdmUgdW5pbnRlcnJ1cHRpYmxlIHN5c2NhbGxzIHRoYXQNCj4gPj4+IHNsZWVw
+IGZvciBhICJsb25nIiB0aW1lLCBvdGhlcndpc2UgZmlyc3QgeW91J2xsIGp1c3QgaGF2ZSBhbm5v
+eWVkDQo+ID4+PiB1c2VycyBwcmVzc2luZyBeQyBpbiB2YWluOyB0aGVuLCBpZiB0aGUgc2xlZXAg
+aXMgZXZlbiBsb25nZXIsDQo+ID4+PiB3YXJuaW5ncyBhYm91dCB0YXNrIHNsZWVwaW5nIHRvbyBs
+b25nLg0KPiA+Pj4NCj4gPj4+IE9uZSBpZGVhIGlzIGxldHRpbmcgc3BsaWNlKCkgcmV0dXJuIGEg
+c2hvcnQgY291bnQsIGFuZCBzbyB0aGUgYXBwDQo+ID4+PiBjYW4gc2FmZWx5IGlzc3VlIFNJWkVf
+TUFYIHJlcXVlc3RzIGFuZCB0aGUga2VybmVsIGNhbiBkZWNpZGUgaWYgaXQNCj4gPj4+IGNhbiBj
+b3B5IHRoZSB3aG9sZSBmaWxlIGluIG9uZSBnbyBvciBpZiBpdCB3YW50cyB0byBkbyBpdCBpbiBz
+bWFsbGVyDQo+ID4+PiBjaHVua3MuDQo+ID4+Pg0KPiA+PiBZb3UgY2Fubm90IHJlbHkgb24gYSBz
+aG9ydCBjb3VudC4gVGhhdCBpbXBsaWVzIHRoYXQgYW4gb2ZmbG9hZGVkIGNvcHkNCj4gPj4gc3Rh
+cnRzIGF0IGJ5dGUgMCBhbmQgdGhlIHNob3J0IGNvdW50IGZpcnN0IGJ5dGVzIGFyZSBhbGwgdmFs
+aWQuDQo+ID4gSHVoPw0KPiA+DQo+ID4gLSBhcHAgY2FsbHMgc3BsaWNlKGZyb20sIDAsIHRvLCAw
+LCBTSVpFX01BWCkNCj4gPiAgIDEpIFZGUyBjYWxscyAtPmRpcmVjdF9zcGxpY2UoZnJvbSwgMCwg
+IHRvLCAwLCBTSVpFX01BWCkNCj4gPiAgICAgIDEuYSkgZnMgcmVmbGlua3MgdGhlIHdob2xlIGZp
+bGUgaW4gYSBqaWZmeSBhbmQgcmV0dXJucyB0aGUgc2l6ZSBvZiB0aGUgZmlsZQ0KPiA+ICAgICAg
+MSBiKSBmcyBkb2VzIGNvcHkgb2ZmbG9hZCBvZiwgc2F5LCA2NE1CIGFuZCByZXR1cm5zIDY0TQ0K
+PiA+ICAgMikgVkZTIGRvZXMgcGFnZSBjb3B5IG9mLCBzYXksIDFNQiBhbmQgcmV0dXJucyAxTUIN
+Cj4gPiAtIGFwcCBjYWxscyBzcGxpY2UoZnJvbSwgWCwgdG8sIFgsIFNJWkVfTUFYKSB3aGVyZSBY
+IGlzIHRoZSBuZXcgb2Zmc2V0DQo+ID4gLi4uDQo+ID4NCj4gPiBUaGUgcG9pbnQgaXM6IHRoZSBh
+cHAgaXMgYWx3YXlzIGRvaW5nIHRoZSBzYW1lIChpbmNyZW1lbnRpbmcgb2Zmc2V0DQo+ID4gd2l0
+aCB0aGUgcmV0dXJuIHZhbHVlIGZyb20gc3BsaWNlKSBhbmQgdGhlIGtlcm5lbCBjYW4gZGVjaWRl
+IHdoYXQgaXMNCj4gPiB0aGUgYmVzdCBzaXplIGl0IGNhbiBzZXJ2aWNlIHdpdGhpbiBhIHNpbmds
+ZSB1bmludGVycnVwdGlibGUgc3lzY2FsbC4NCj4gPg0KPiA+IFdvdWxkbid0IHRoYXQgd29yaz8N
+Cj4gPg0KPiA+IFRoYW5rcywNCj4gPiBNaWtsb3MNCj4gDQo+IE5vLg0KPiANCj4gS2VlcCBpbiBt
+aW5kIHRoYXQgdGhlIG9mZmxvYWQgb3BlcmF0aW9uIGluICgxKSBtaWdodCBmYWlsIHBhcnRpYWxs
+eS4gVGhlIHRhcmdldA0KPiBmaWxlICh0aGUgY29weSkgaXMgYWxsb2NhdGVkLCB0aGUgcXVlc3Rp
+b24gaXMgd2hhdCByYW5nZXMgaGF2ZSB2YWxpZCBkYXRhLg0KPiANCj4gSSBkb24ndCBzZWUgdGhh
+dCAoMikgaXMgaW50ZXJlc3Rpbmcgb3IgcmVhbGx5IG5lZWRlZCB0byBiZSBkb25lIGluIHRoZSBr
+ZXJuZWwuDQo+IElmIG5vdGhpbmcgZWxzZSwgaXQgdGVuZHMgdG8gY29uZnVzZSB0aGUgZGlzY3Vz
+c2lvbi4uLi4NCj4gDQoNCkFubmEncyBmaWd1cmVzLCB0aGF0IHdlcmUgcHJlc2VudGVkIGF0IFBs
+dW1iZXIncywgc2hvdyB0aGF0ICgyKSBpcyBzdGlsbCB3b3J0aCBkb2luZyBvbiB0aGUgX3NlcnZl
+cl8gZm9yIHRoZSBjYXNlIG9mIE5GUy4NCg0KQ2hlZXJzDQogIFRyb25kDQo=
