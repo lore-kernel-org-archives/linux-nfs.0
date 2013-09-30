@@ -1,22 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:60024 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751227Ab3I2MQk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Sep 2013 08:16:40 -0400
-Date: Sun, 29 Sep 2013 05:16:39 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: " J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC v0 20/49] pnfsd: filelayout: layout encoding
-Message-ID: <20130929121639.GD21083@infradead.org>
-References: <52447EA0.7070004@primarydata.com>
- <1380220872-13597-1-git-send-email-bhalevy@primarydata.com>
+Received: from mx12.netapp.com ([216.240.18.77]:49596 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756211Ab3I3WCH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Sep 2013 18:02:07 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        "Linux Kernel mailing list" <linux-kernel@vger.kernel.org>
+Subject: [GIT PULL] Please pull NFS client bugfixes
+Date: Mon, 30 Sep 2013 22:02:03 +0000
+Message-ID: <1380578523.15488.0.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1380220872-13597-1-git-send-email-bhalevy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The actual XDR encoding doesn't have business being under fs/exportfs
-and should be in the NFSD code itself.
-
+DQpIaSBMaW51cywNCg0KVGhlIGZvbGxvd2luZyBjaGFuZ2VzIHNpbmNlIGNvbW1pdCA0YTEwYzJh
+YzJmMzY4NTgzMTM4Yjc3NGNhNDFmYWM0MjA3OTExOTgzOg0KDQogIExpbnV4IDMuMTItcmMyICgy
+MDEzLTA5LTIzIDE1OjQxOjA5IC0wNzAwKQ0KDQphcmUgYXZhaWxhYmxlIGluIHRoZSBnaXQgcmVw
+b3NpdG9yeSBhdDoNCg0KICBnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9wcm9qZWN0cy90cm9uZG15
+L2xpbnV4LW5mcy5naXQgdGFncy9uZnMtZm9yLTMuMTItNA0KDQpmb3IgeW91IHRvIGZldGNoIGNo
+YW5nZXMgdXAgdG8gMzY3MTU2ZDlhODdiMjFiNTIzMmRkOTMxMDdjNWZjNjFiMDliYTJlZjoNCg0K
+ICBORlM6IEdpdmUgImZsYXZvciIgYW4gaW5pdGlhbCB2YWx1ZSB0byBmaXggYSBjb21waWxlIHdh
+cm5pbmcgKDIwMTMtMDktMjkgMTY6MDM6MzQgLTA0MDApDQoNCi0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCk5GUyBjbGllbnQg
+YnVnZml4ZXMgZm9yIDMuMTINCg0KLSBTdGFibGUgZml4IGZvciBPb3BzZXMgaW4gdGhlIHBORlMg
+ZmlsZXMgbGF5b3V0IGRyaXZlcg0KLSBGaXggYSByZWdyZXNzaW9uIHdoZW4gZG9pbmcgYSBub24t
+ZXhjbHVzaXZlIGZpbGUgY3JlYXRlIG9uIE5GU3Y0LngNCi0gTkZTdjQuMSBzZWN1cml0eSBuZWdv
+dGlhdGlvbiBmaXhlcyB3aGVuIGxvb2tpbmcgdXAgdGhlIHJvb3QgZmlsZXN5c3RlbQ0KLSBGaXgg
+YSBtZW1vcnkgb3JkZXJpbmcgaXNzdWUgaW4gdGhlIHBORlMgZmlsZXMgbGF5b3V0IGRyaXZlcg0K
+DQotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tDQpBbm5hIFNjaHVtYWtlciAoMSk6DQogICAgICBORlM6IEdpdmUgImZsYXZvciIg
+YW4gaW5pdGlhbCB2YWx1ZSB0byBmaXggYSBjb21waWxlIHdhcm5pbmcNCg0KVHJvbmQgTXlrbGVi
+dXN0ICgzKToNCiAgICAgIE5GU3Y0OiBIb25vdXIgdGhlICdvcGVuZWQnIHBhcmFtZXRlciBpbiB0
+aGUgYXRvbWljX29wZW4oKSBmaWxlc3lzdGVtIG1ldGhvZA0KICAgICAgTkZTdjQuMTogbmZzNF9m
+bF9wcmVwYXJlX2RzIC0gZml4IGJ1Z3Mgd2hlbiB0aGUgY29ubmVjdCBhdHRlbXB0IGZhaWxzDQog
+ICAgICBORlN2NC4xOiBFbnN1cmUgbWVtb3J5IG9yZGVyaW5nIGJldHdlZW4gbmZzNF9kc19jb25u
+ZWN0IGFuZCBuZnM0X2ZsX3ByZXBhcmVfZHMNCg0KV2VzdG9uIEFuZHJvcyBBZGFtc29uICgxKToN
+CiAgICAgIE5GU3Y0LjE6IHRyeSBTRUNJTkZPX05PX05BTUUgZmxhdnMgdW50aWwgb25lIHdvcmtz
+DQoNCiBmcy9uZnMvZGlyLmMgICAgICAgICAgICAgICB8ICAyICstDQogZnMvbmZzL25mczRmaWxl
+LmMgICAgICAgICAgfCAgMyArKy0NCiBmcy9uZnMvbmZzNGZpbGVsYXlvdXRkZXYuYyB8IDIwICsr
+KysrKysrKy0tLS0tLS0NCiBmcy9uZnMvbmZzNHByb2MuYyAgICAgICAgICB8IDU4ICsrKysrKysr
+KysrKysrKysrKysrKysrKysrKysrKysrKysrKystLS0tLS0tLS0NCiBpbmNsdWRlL2xpbnV4L25m
+c194ZHIuaCAgICB8ICAzICsrLQ0KIDUgZmlsZXMgY2hhbmdlZCwgNjMgaW5zZXJ0aW9ucygrKSwg
+MjMgZGVsZXRpb25zKC0pDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50
+IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5l
+dGFwcC5jb20NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
+aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
+bQ0K
