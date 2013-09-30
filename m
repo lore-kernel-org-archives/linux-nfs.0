@@ -1,65 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f52.google.com ([209.85.216.52]:64693 "EHLO
-	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752808Ab3IZSkF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:40:05 -0400
-Received: by mail-qa0-f52.google.com with SMTP id k4so1091998qaq.4
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:40:05 -0700 (PDT)
-From: Benny Halevy <bhalevy@primarydata.com>
-To: " J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH RFC v0 03/49] pnfsd: return pnfs flags on exchange_id
-Date: Thu, 26 Sep 2013 14:40:02 -0400
-Message-Id: <1380220802-12810-1-git-send-email-bhalevy@primarydata.com>
-In-Reply-To: <52447EA0.7070004@primarydata.com>
-References: <52447EA0.7070004@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:49972 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756014Ab3I3WL3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Sep 2013 18:11:29 -0400
+Date: Mon, 30 Sep 2013 18:11:27 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Frank Filz <ffilzlnx@mindspring.com>
+Cc: Kernel NFS List <linux-nfs@vger.kernel.org>,
+        "'Ganesha NFS List'" <nfs-ganesha-devel@lists.sourceforge.net>
+Subject: Re: pynfs updates
+Message-ID: <20130930221126.GD26382@fieldses.org>
+References: <003301cebe09$5bf81090$13e831b0$@mindspring.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <003301cebe09$5bf81090$13e831b0$@mindspring.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@panasas.com>
+On Mon, Sep 30, 2013 at 02:17:43PM -0400, Frank Filz wrote:
+> Bruce,
+> 
+> Please pull the following branch that contains the pynfs updates I made at
+> BAT:
+> 
+> https://github.com/ffilz/pynfs/commits/master
 
-Set the cl_exchange_flags to be non_pnfs if we do not set
-either pnfs or ds (in the plain old nfs41 case).
+Thanks!  A few questions:
 
-Note that we always set both MDS and DS exchangeid capability flags
-when CONFIG_PNFSD is enabled.
-The client needs to remember what the session is used for
-if it cares to distiguish between DSs and MDSs.
+	- "4.1 server tests: Fix some exception handling": could you
+	  include in the changelog and explanation of what problem this
+	  fixes?  (And ditto, maybe, for the following commit?)
 
-EXCHGID4_FLAG_USE_NON_PNFS should be set when the server does not support
-operations (e.g. LAYOUTGET) or attributes that pertain to pNFS.
+	- "Fix SEQ9d to work in home directory instead of root": did you
+	  intend to include the chunk in nfs4.1/nfs4lib.py?  It looks
+	  irrelevant.
 
-[extraced from pnfsd: Initial pNFS server implementation.]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[pnfsd: Fixup nfsd4_set_ex_flags.]
-Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
-[pnfsd: set EXCHGID4_FLAG_USE_NON_PNFS when !CONFIG_PNFSD]
-[pnfsd: fix compiler warning in nfsd4_set_ex_flags when CONFIG_PNFSD is not defined]
-[pnfsd: always set both MDS and DS exchangeid capability flags]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
----
- fs/nfsd/nfs4state.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+	- "Add two SECINFO_NO_NAME tests for SECINFO_STYLE4_PARENT":
+		- SECNN3: is / required to have no parent?  (I'd assumed
+		  here that it would also be OK to follow the convention
+		  that / is its own parent, but I'll admit to not having
+		  thought about this much.)
+		- SECNN4: is env.home necessarily unequal to "/"?  Would
+		  seem better to do the lookup in a subdirectory just to
+		  be certain.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 57a0340..21c15fc 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1614,8 +1614,12 @@ static bool clp_used_exchangeid(struct nfs4_client *clp)
- static void
- nfsd4_set_ex_flags(struct nfs4_client *new, struct nfsd4_exchange_id *clid)
- {
--	/* pNFS is not supported */
-+#if defined(CONFIG_PNFSD)
-+	new->cl_exchange_flags |= EXCHGID4_FLAG_USE_PNFS_MDS |
-+				  EXCHGID4_FLAG_USE_PNFS_DS;
-+#else  /* CONFIG_PNFSD */
- 	new->cl_exchange_flags |= EXCHGID4_FLAG_USE_NON_PNFS;
-+#endif /* CONFIG_PNFSD */
- 
- 	/* Referrals are supported, Migration is not. */
- 	new->cl_exchange_flags |= EXCHGID4_FLAG_SUPP_MOVED_REFER;
--- 
-1.8.3.1
-
+--b.
