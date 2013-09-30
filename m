@@ -1,14 +1,12 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40226 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:46369 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755073Ab3I3Ptg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Sep 2013 11:49:36 -0400
-Message-ID: <52498F68.8050200@redhat.com>
-Date: Mon, 30 Sep 2013 09:49:12 -0500
-From: Ric Wheeler <rwheeler@redhat.com>
-MIME-Version: 1.0
+	id S1753979Ab3I3Oei (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Sep 2013 10:34:38 -0400
+Date: Mon, 30 Sep 2013 10:34:32 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Miklos Szeredi <miklos@szeredi.hu>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
+Cc: Ric Wheeler <rwheeler@redhat.com>,
         "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
         Zach Brown <zab@redhat.com>, Anna Schumaker <schumaker.anna@gmail.com>,
         Kernel Mailing List <linux-kernel@vger.kernel.org>,
@@ -19,37 +17,78 @@ CC: "J. Bruce Fields" <bfields@fieldses.org>,
         Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
         Eric Wong <normalperson@yhbt.net>
 Subject: Re: [RFC] extending splice for copy offloading
-References: <20130925210742.GG30372@lenny.home.zabbo.net> <CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com> <20130926185508.GO30372@lenny.home.zabbo.net> <5244A68F.906@redhat.com> <20130927200550.GA22640@fieldses.org> <20130927205013.GZ30372@lenny.home.zabbo.net> <CAJfpegtdiQzP7t5hc_OaHjSGTrjdZLfKi6fiKqBQ_+AP2Y0-oQ@mail.gmail.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9467EF2D7@SACEXCMBX04-PRD.hq.netapp.com> <52474839.2080201@redhat.com> <CAJfpegsN7Hu8uecSVQrhax+n+zhq=uUgpzOk=qZ6_n383tdNCQ@mail.gmail.com> <20130930143432.GG16579@fieldses.org> <CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com> <52499026.3090802@redhat.com> <CAJfpegtpXuh9070ALGy16Y8kdgioBqSf4JQqBBCF4FHvFJWAWQ@mail.gmail.com> <52498AA8.2090204@redhat.com> <CAJfpegv_C6cLOuA-mNtgtf2QbmmmcHwjQVo8mAnhf_wbJ8iRhg@mail.gmail.com> <52498DB6.7060901@redhat.com> <CAJfpegsvrr7x3MbdpvxUmzq0ZfDHfZkzAar6Od2G7wg8DgPLYQ@mail.gmail.com>
-In-Reply-To: <CAJfpegsvrr7x3MbdpvxUmzq0ZfDHfZkzAar6Od2G7wg8DgPLYQ@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Message-ID: <20130930143432.GG16579@fieldses.org>
+References: <20130925210742.GG30372@lenny.home.zabbo.net>
+ <CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
+ <20130926185508.GO30372@lenny.home.zabbo.net>
+ <5244A68F.906@redhat.com>
+ <20130927200550.GA22640@fieldses.org>
+ <20130927205013.GZ30372@lenny.home.zabbo.net>
+ <CAJfpegtdiQzP7t5hc_OaHjSGTrjdZLfKi6fiKqBQ_+AP2Y0-oQ@mail.gmail.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9467EF2D7@SACEXCMBX04-PRD.hq.netapp.com>
+ <52474839.2080201@redhat.com>
+ <CAJfpegsN7Hu8uecSVQrhax+n+zhq=uUgpzOk=qZ6_n383tdNCQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <CAJfpegsN7Hu8uecSVQrhax+n+zhq=uUgpzOk=qZ6_n383tdNCQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/30/2013 10:46 AM, Miklos Szeredi wrote:
-> On Mon, Sep 30, 2013 at 4:41 PM, Ric Wheeler <rwheeler@redhat.com> wrote:
->> The way the array based offload (and some software side reflink works) is
->> not a byte by byte copy. We cannot assume that a valid count can be returned
->> or that such a count would be an indication of a sequential segment of good
->> data.  The whole thing would normally have to be reissued.
->>
->> To make that a true assumption, you would have to mandate that in each of
->> the specifications (and sw targets)...
-> You're missing my point.
->
->   - user issues SIZE_MAX splice request
->   - fs issues *64M* (or whatever) request to offload
->   - when that completes *fully* then we return 64M to userspace
->   - if it completes partially, then we return an error to userspace
->
-> Again, wouldn't that work?
->
-> Thanks,
-> Miklos
+On Mon, Sep 30, 2013 at 02:20:30PM +0200, Miklos Szeredi wrote:
+> On Sat, Sep 28, 2013 at 11:20 PM, Ric Wheeler <rwheeler@redhat.com> wrote:
+> 
+> >>> I don't see the safety argument very compelling either.  There are real
+> >>> semantic differences, however: ENOSPC on a write to a
+> >>> (apparentlíy) already allocated block.  That could be a bit unexpected.
+> >>> Do we
+> >>> need a fallocate extension to deal with shared blocks?
+> >>
+> >> The above has been the case for all enterprise storage arrays ever since
+> >> the invention of snapshots. The NFSv4.2 spec does allow you to set a
+> >> per-file attribute that causes the storage server to always preallocate
+> >> enough buffers to guarantee that you can rewrite the entire file, however
+> >> the fact that we've lived without it for said 20 years leads me to believe
+> >> that demand for it is going to be limited. I haven't put it top of the list
+> >> of features we care to implement...
+> >>
+> >> Cheers,
+> >>     Trond
+> >
+> >
+> > I agree - this has been common behaviour for a very long time in the array
+> > space. Even without an array,  this is the same as overwriting a block in
+> > btrfs or any file system with a read-write LVM snapshot.
+> 
+> Okay, I'm convinced.
+> 
+> So I suggest
+> 
+>  - mount(..., MNT_REFLINK): *allow* splice to reflink.  If this is not
+> set, fall back to page cache copy.
+>  - splice(... SPLICE_REFLINK):  fail non-reflink copy.  With this app
+> can force reflink.
+> 
+> Both are trivial to implement and make sure that no backward
+> incompatibility surprises happen.
+> 
+> My other worry is about interruptibility/restartability.  Ideas?
+> 
+> What happens on splice(from, to, 4G) and it's a non-reflink copy?
+> Can the page cache copy be made restartable?   Or should splice() be
+> allowed to return a short count?  What happens on (non-reflink) remote
+> copies and huge request sizes?
 
-Yes, if you send a copy offload command and it works, you can assume that it 
-worked fully. It would be pretty interesting if that were not true :)
+If I were writing an application that required copies to be restartable,
+I'd probably use the largest possible range in the reflink case but
+break the copy into smaller chunks in the splice case.
 
-If it fails, we cannot assume anything about partial completion.
+For that reason I don't like the idea of a mount option--the choice is
+something that the application probably wants to make (or at least to
+know about).
 
-Ric
+The NFS COPY operation, as specified in current drafts, allows for
+asynchronous copies but leaves the state of the file undefined in the
+case of an aborted COPY.  I worry that agreeing on standard behavior in
+the case of an abort might be difficult.
 
+--b.
