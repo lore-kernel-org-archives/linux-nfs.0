@@ -1,75 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:50426 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756780Ab3ICTwY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Sep 2013 15:52:24 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: use the mach cred for SECINFO w/ integrity
-Date: Tue, 3 Sep 2013 19:52:23 +0000
-Message-ID: <1378237941.6410.46.camel@leira.trondhjem.org>
-References: <1378235929-4710-1-git-send-email-dros@netapp.com>
-	 <1378236327.6410.38.camel@leira.trondhjem.org>
-	 <5C9B2128-9A64-4231-8FF3-BEDDCB2C733D@netapp.com>
-	 <1378237184.6410.42.camel@leira.trondhjem.org>
-	 <1A867669-31A4-40E4-9FBB-EA344687FAEA@oracle.com>
-In-Reply-To: <1A867669-31A4-40E4-9FBB-EA344687FAEA@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:33323 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755828Ab3I3Sts (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Sep 2013 14:49:48 -0400
+Message-ID: <5249C7C7.7020207@itwm.fraunhofer.de>
+Date: Mon, 30 Sep 2013 20:49:43 +0200
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
 MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Miklos Szeredi <miklos@szeredi.hu>, Ric Wheeler <rwheeler@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Zach Brown <zab@redhat.com>,
+        Anna Schumaker <schumaker.anna@gmail.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Wong <normalperson@yhbt.net>
+Subject: Re: [RFC] extending splice for copy offloading
+References: <20130930143432.GG16579@fieldses.org>		 <CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com>		 <52499026.3090802@redhat.com>		 <CAJfpegtpXuh9070ALGy16Y8kdgioBqSf4JQqBBCF4FHvFJWAWQ@mail.gmail.com>		 <52498AA8.2090204@redhat.com>		 <CAJfpegv_C6cLOuA-mNtgtf2QbmmmcHwjQVo8mAnhf_wbJ8iRhg@mail.gmail.com>		 <52498DB6.7060901@redhat.com>		 <CAJfpegsvrr7x3MbdpvxUmzq0ZfDHfZkzAar6Od2G7wg8DgPLYQ@mail.gmail.com>		 <52498F68.8050200@redhat.com>		 <CAJfpegvvN_5c5oMv8UoODXQHc-DQnijhOtPDXmNamVpQLDoWMQ@mail.gmail.com>		 <20130930163159.GA14242@tucsk.piliscsaba.szeredi.hu>		 <5249B21E.70603@itwm.fraunhofer.de>	 <1380563050.6501.15.camel@leira.trondhjem.org>	 <5249B987.8020807@itwm.fraunhofer.de> <1380564126.6501.23.camel@leira.trondhjem.org>
+In-Reply-To: <1380564126.6501.23.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEzLTA5LTAzIGF0IDE1OjQwIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gU2VwIDMsIDIwMTMsIGF0IDM6MzkgUE0sICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJvbmQuTXlr
-bGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiANCj4gPiBPbiBUdWUsIDIwMTMtMDktMDMgYXQg
-MTk6MzAgKzAwMDAsIEFkYW1zb24sIERyb3Mgd3JvdGU6DQo+ID4+IE9uIFNlcCAzLCAyMDEzLCBh
-dCAzOjI1IFBNLCAiTXlrbGVidXN0LCBUcm9uZCIgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29t
-Pg0KPiA+PiB3cm90ZToNCj4gPj4gDQo+ID4+PiBPbiBUdWUsIDIwMTMtMDktMDMgYXQgMTU6MTgg
-LTA0MDAsIFdlc3RvbiBBbmRyb3MgQWRhbXNvbiB3cm90ZToNCj4gPj4+PiBDb21taXQgNWVjMTZh
-ODUwMGQzMzliMGU3YTBjYzc2Yjc4NWQxOGRhYWQzNTRkNCBpbnRyb2R1Y2VkIGEgcmVncmVzc2lv
-bg0KPiA+Pj4+IHRoYXQgY2F1c2VzIFNFQ0lORk8gdG8gZmFpbCB3aXRob3V0IGFjdHVhbHkgc2Vu
-ZGluZyBhbiBSUEMgaWY6DQo+ID4+Pj4gDQo+ID4+Pj4gMSkgdGhlIG5mc19jbGllbnQncyBycGNf
-Y2xpZW50IHdhcyB1c2luZyBLUkI1aS9wIChub3cgdHJpZWQgYnkgZGVmYXVsdCkNCj4gPj4+PiAy
-KSB0aGUgY3VycmVudCB1c2VyIGRvZXNuJ3QgaGF2ZSB2YWxpZCBrZXJiZXJvcyBjcmVkZW50aWFs
-cw0KPiA+Pj4+IA0KPiA+Pj4+IFRoaXMgc2l0dWF0aW9uIGlzIHF1aXRlIGNvbW1vbiAtIGFzIG9m
-IG5vdyBhIHNlYz1zeXMgbW91bnQgd291bGQgdXNlDQo+ID4+Pj4ga3JiNWkgZm9yIHRoZSBuZnNf
-Y2xpZW50J3MgcnBjX2NsaWVudCBhbmQgYSB1c2VyIHdvdWxkIGhhcmRseSBiZSBmYXVsdGVkDQo+
-ID4+Pj4gZm9yIG5vdCBoYXZpbmcgcnVuIGtpbml0Lg0KPiA+Pj4+IA0KPiA+Pj4+IFRoZSBzb2x1
-dGlvbiBpcyB0byB1c2UgdGhlIG1hY2hpbmUgY3JlZCB3aGVuIHRyeWluZyB0byB1c2UgYW4gaW50
-ZWdyaXR5DQo+ID4+Pj4gcHJvdGVjdGVkIGF1dGggZmxhdm9yIGZvciBTRUNJTkZPLg0KPiA+Pj4+
-IA0KPiA+Pj4+IE9sZGVyIHNlcnZlcnMgbWF5IG5vdCBzdXBwb3J0IHVzaW5nIHRoZSBtYWNoaW5l
-IGNyZWQgb3IgYW4gaW50ZWdyaXR5DQo+ID4+Pj4gcHJvdGVjdGVkIGF1dGggZmxhdm9yIGZvciBT
-RUNJTkZPIGluIGV2ZXJ5IGNpcmN1bXN0YW5jZSwgc28gd2UgZmFsbCBiYWNrDQo+ID4+Pj4gdG8g
-dXNpbmcgdGhlIHVzZXIncyBjcmVkIGFuZCB0aGUgZmlsZXN5c3RlbSdzIGF1dGggZmxhdm9yIGlu
-IHRoaXMgY2FzZS4NCj4gPj4+PiANCj4gPj4+PiBXZSBydW4gaW50byBhbm90aGVyIHByb2JsZW0g
-d2hlbiBydW5uaW5nIGFnYWluc3QgbGludXggbmZzIHNlcnZlcnMgLQ0KPiA+Pj4+IHRoZXkgcmV0
-dXJuIE5GUzRFUlJfV1JPTkdTRUMgd2hlbiB1c2luZyBpbnRlZ3JpdHkgYXV0aCBmbGF2b3IgKHVu
-bGVzcyB0aGUNCj4gPj4+PiBtb3VudCBpcyBhbHNvIHRoYXQgZmxhdm9yKSBldmVuIHRob3VnaCB0
-aGF0IGlzIG5vdCBhIHZhbGlkIGVycm9yIGZvcg0KPiA+Pj4+IFNFQ0lORk8qLiAgRXZlbiB0aG91
-Z2ggaXQncyBhZ2FpbnN0IHNwZWMsIGhhbmRsZSBXUk9OR1NFQyBlcnJvcnMgb24gU0VDSU5GTw0K
-PiA+Pj4+IGJ5IGZhbGxpbmcgYmFjayB0byB1c2luZyB0aGUgdXNlciBjcmVkIGFuZCB0aGUgZmls
-ZXN5c3RlbSdzIGF1dGggZmxhdm9yLg0KPiA+Pj4+IA0KPiA+Pj4+IFNpZ25lZC1vZmYtYnk6IFdl
-c3RvbiBBbmRyb3MgQWRhbXNvbiA8ZHJvc0BuZXRhcHAuY29tPg0KPiA+Pj4+IC0tLQ0KPiA+Pj4g
-DQo+ID4+PiBUaGFua3MhIEFwcGxpZWTigKYNCj4gPj4gDQo+ID4+IE9oLCBzb3JyeSwgSSB3YXMg
-aG9waW5nIHRvIGZvc3RlciBtb3JlIGRpc2N1c3Npb24gYXJvdW5kIENodWNrJ3MgY29tbWVudHMg
-dG8gdGhlIG5mc2Qgc2lkZSBvZiB0aGlzIGVmZm9ydCBiZWZvcmUgYWRkaW5nIHRoaXMsIGFsdGhv
-dWdoIGl0J3MgYmV0dGVyIHRoYW4gdGhlIHN0YXRlIHRoZSBjbGllbnQgd2FzIGluIHNpbmNlIDVl
-YzE2YTg1MDBkMzM5YjBlN2EwY2M3NmI3ODVkMThkYWFkMzU0ZDQuICBTaG91bGQgSSBwb3N0IHRo
-ZSBzaW1pbGFyIHBhdGNoZXMgZm9yIFNFQ0lORk9fTk9OQU1FIGFuZCBMQVlPVVRHRVQ/DQo+ID4+
-IA0KPiA+PiBTcGVjaWZpY2FsbHksIENodWNrJ3MgKHZlcnkgdmFsaWQpIHBvaW50IGlzIHdoYXQg
-ZXJyb3Igc2hvdWxkIGEgc2VydmVyIHJldHVybiB0byBTRUNJTkZPIHVzaW5nIGtyYjVpIGlmIGl0
-IGRvZXNuJ3Qgc3VwcG9ydCB0aGF0IGF1dGggZmxhdm9yPyAgIA0KPiA+PiBORlM0RVJSX0FDQ0VT
-UyBsb29rcyBsaWtlIHRoZSBiZXN0IGF2YWlsYWJsZSBvcHRpb24gdG8gbWUgLS0gc2hvdWxkIEkg
-dGFrZSB0aGlzIHRvIHRoZSBJRVRGIGxpc3Q/DQo+ID4gDQo+ID4gSWYgdGhlIHNlcnZlciBkb2Vz
-bid0IHN1cHBvcnQga3JiNWksIHRoZW4gaXQgd29uJ3QgZXZlbiBiZSBhYmxlIHRvDQo+ID4gcmVj
-ZWl2ZSBvdXIgUlBDIGNhbGwsIHNvIGl0IGNhbiBhdCBiZXN0IHJlcGx5IHdpdGggYW4gQVVUSF9C
-QURDUkVEIHJwYw0KPiA+IGxldmVsIGVycm9yLCB3aGljaCBycGNfdmVyaWZ5X2hlYWRlcigpIHdp
-bGwgdHJhbnNsYXRlIGFzIEVBQ0NFUy4NCj4gDQo+IFdoYXQgaWYgdGhlIHNlcnZlciBzdXBwb3J0
-cyBSUENTRUNfR1NTLCBidXQgdGhlIGV4cG9ydCBvcHRpb25zIHNwZWNpZnkgb25seSBzZWM9c3lz
-Pw0KDQpSRkM1NjYxIHNwZWNpZmljYWxseSBzdGF0ZXMgdGhhdCBpdCBzaG91bGQgYWNjZXB0IHRo
-ZSBTRUNJTkZPIGNhbGwgd2l0aA0KUlBDU0VDX0dTUyBpbiB0aGF0IGNhc2UuDQoNClJGQzM1MzBi
-aXMgZG9lcyB0b28sIGJ1dCB0aGVyZSBtYXkgYmUgYSBsZWdhY3kgUkZDMzUzMCBpc3N1ZSB0aGVy
-ZS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0K
-DQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+On 09/30/2013 08:02 PM, Myklebust, Trond wrote:
+> On Mon, 2013-09-30 at 19:48 +0200, Bernd Schubert wrote:
+>> On 09/30/2013 07:44 PM, Myklebust, Trond wrote:
+>>> On Mon, 2013-09-30 at 19:17 +0200, Bernd Schubert wrote:
+>>>> It would be nice if there would be way if the file system would get a
+>>>> hint that the target file is supposed to be copy of another file. That
+>>>> way distributed file systems could also create the target-file with the
+>>>> correct meta-information (same storage targets as in-file has).
+>>>> Well, if we cannot agree on that, file system with a custom protocol at
+>>>> least can detect from 0 to SSIZE_MAX and then reset metadata. I'm not
+>>>> sure if this would work for pNFS, though.
+>>>
+>>> splice() does not create new files. What you appear to be asking for
+>>> lies way outside the scope of that system call interface.
+>>>
+>>
+>> Sorry I know, definitely outside the scope of splice, but in the context
+>> of offloaded file copies. So the question is, what is the best way to
+>> address/discuss that?
+>
+> Why does it need to be addressed in the first place?
+
+An offloaded copy is still not efficient if different storage 
+servers/targets used by from-file and to-file.
+
+>
+> What is preventing an application from retrieving and setting this
+> information using standard libc functions such as fstat()+open(), and
+> supplemented with libattr attr_setf/getf(), and libacl acl_get_fd/set_fd
+> where appropriate?
+>
+
+At a minimum this requires network and metadata overhead. And while I'm 
+working on FhGFS now, I still wonder what other file system need to do - 
+for example Lustre pre-allocates storage-target files on creating a 
+file, so file layout changes mean even more overhead there.
+Anyway, if we could agree on to use libattr or libacl to teach the file 
+system about the upcoming splice call I would be fine. Metadata overhead 
+is probably negligible for large files.
+
+
+
+
+Thanks,
+Bernd
+
