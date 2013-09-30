@@ -1,125 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:34574 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751719Ab3I0Ojd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Sep 2013 10:39:33 -0400
-Date: Fri, 27 Sep 2013 10:39:29 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC v0 06/49] pnfsd: define pnfs_export_operations
-Message-ID: <20130927143929.GC9946@pad.fieldses.org>
-References: <52447EA0.7070004@primarydata.com>
- <1380220815-12955-1-git-send-email-bhalevy@primarydata.com>
+Received: from elasmtp-spurfowl.atl.sa.earthlink.net ([209.86.89.66]:42620
+	"EHLO elasmtp-spurfowl.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755355Ab3I3XzA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Sep 2013 19:55:00 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Bruce Fields'" <bfields@fieldses.org>
+Cc: "'Kernel NFS List'" <linux-nfs@vger.kernel.org>,
+        "'Ganesha NFS List'" <nfs-ganesha-devel@lists.sourceforge.net>
+References: <003301cebe09$5bf81090$13e831b0$@mindspring.com> <20130930221126.GD26382@fieldses.org>
+In-Reply-To: <20130930221126.GD26382@fieldses.org>
+Subject: RE: pynfs updates
+Date: Mon, 30 Sep 2013 19:54:52 -0400
+Message-ID: <003f01cebe38$75436480$5fca2d80$@mindspring.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1380220815-12955-1-git-send-email-bhalevy@primarydata.com>
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 26, 2013 at 02:40:15PM -0400, Benny Halevy wrote:
-> From: Benny Halevy <bhalevy@panasas.com>
+> Thanks!  A few questions:
 > 
-> struct pnfs_export_operations defines the VFS level API for pNFS,
-> not including callbacks.  A pnfs-exportable filesystem sets
-> a pointer to its pnfs export vector in its struct super_block.s_pnfs_op.
-> 
-> The file system provides the per-superblock layout_type method that
-> determines if it supports pnfs for the filesystem identified by
-> the superblock, and if so, with which layout type (only one per-sb is
-> supported).
-> 
-> Device ops:
-> get_device_iter is used to fill-in the device list for GETDEVICELIST
-> and get_device_info is used to encode the device info for GETDEVICEINFO.
-> 
-> Layout ops:
-> layout_get, layout_commit, and layout_return implement the file system- and
-> layout type- specific parts of their respective protocol operations: LAYOUTGET,
-> LAYOUTCOMMIT, and LAYOUTRETURN.
-> 
-> The following methods are mandatory to be implemented:
-> layout_type, get_device_info, and layout_get.
-> 
-> Note: define pnfs export operations in a stub form in this patch.
-> Actual operations are defined along with their usage.
+> 	- "4.1 server tests: Fix some exception handling": could you
+> 	  include in the changelog and explanation of what problem this
+> 	  fixes?  (And ditto, maybe, for the following commit?)
 
-Patches touching the superblock or the new pnfs export operations should
-probably all be cc'd to linux-fsdevel.
+Ok, I'll re-examine those. They were some things I stumbled on as I tried to
+resolve some other issues with pynfs.
 
---b.
+> 	- "Fix SEQ9d to work in home directory instead of root": did you
+> 	  intend to include the chunk in nfs4.1/nfs4lib.py?  It looks
+> 	  irrelevant.
 
-> 
-> [pnfsd: provide default no-op operations]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> [pnfsd: compile fixes for pnfsd branch]
-> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-> [gfs2: set pnfs_dlm_export_ops only for CONFIG_PNFSD]
-> [pnfsd: handle s_pnfs_op==NULL]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
-> ---
->  fs/nfsd/export.c                |  2 +-
->  include/linux/fs.h              |  2 ++
->  include/linux/nfsd/nfsd4_pnfs.h | 14 ++++++++++++++
->  3 files changed, 17 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-> index 5f38ea3..f26b0b9 100644
-> --- a/fs/nfsd/export.c
-> +++ b/fs/nfsd/export.c
-> @@ -16,7 +16,7 @@
->  #include <linux/module.h>
->  #include <linux/exportfs.h>
->  #include <linux/sunrpc/svc_xprt.h>
-> -
-> +#include <linux/nfsd/nfsd4_pnfs.h>
->  #include <net/ipv6.h>
->  
->  #include "nfsd.h"
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 3f40547..d9186a4 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -34,6 +34,7 @@
->  #include <uapi/linux/fs.h>
->  
->  struct export_operations;
-> +struct pnfs_export_operations;
->  struct hd_geometry;
->  struct iovec;
->  struct nameidata;
-> @@ -1251,6 +1252,7 @@ struct super_block {
->  	const struct dquot_operations	*dq_op;
->  	const struct quotactl_ops	*s_qcop;
->  	const struct export_operations *s_export_op;
-> +	const struct pnfs_export_operations *s_pnfs_op;
->  	unsigned long		s_flags;
->  	unsigned long		s_magic;
->  	struct dentry		*s_root;
-> diff --git a/include/linux/nfsd/nfsd4_pnfs.h b/include/linux/nfsd/nfsd4_pnfs.h
-> index 9e7d95e..ff6613e 100644
-> --- a/include/linux/nfsd/nfsd4_pnfs.h
-> +++ b/include/linux/nfsd/nfsd4_pnfs.h
-> @@ -34,4 +34,18 @@
->  #ifndef _LINUX_NFSD_NFSD4_PNFS_H
->  #define _LINUX_NFSD_NFSD4_PNFS_H
->  
-> +/*
-> + * pNFS export operations vector.
-> + *
-> + * The filesystem must implement the following methods:
-> + *   layout_type
-> + *   get_device_info
-> + *   layout_get
-> + *
-> + * All other methods are optional and can be set to NULL if not implemented.
-> + */
-> +struct pnfs_export_operations {
-> +	/* stub */
-> +};
-> +
->  #endif /* _LINUX_NFSD_NFSD4_PNFS_H */
-> -- 
-> 1.8.3.1
-> 
+Hmm, will fix that.
+
+> 	- "Add two SECINFO_NO_NAME tests for
+> SECINFO_STYLE4_PARENT":
+> 		- SECNN3: is / required to have no parent?  (I'd assumed
+> 		  here that it would also be OK to follow the convention
+> 		  that / is its own parent, but I'll admit to not having
+> 		  thought about this much.)
+
+>From LOOKUPP:
+
+18.14.3. DESCRIPTION
+The current filehandle is assumed to refer to a regular directory or
+a named attribute directory. LOOKUPP assigns the filehandle for its
+parent directory to be the current filehandle. If there is no parent
+directory, an NFS4ERR_NOENT error must be returned. Therefore,
+NFS4ERR_NOENT will be returned by the server when the current
+filehandle is at the root or top of the server's file tree.
+
+>From SECINFO_NO_NAME:
+
+18.45.3. DESCRIPTION
+
+...
+
+If the style selected is SECINFO_STYLE4_PARENT,
+then SECINFO should apply the same access methodology used for
+LOOKUPP when evaluating the traversal to the parent directory.
+
+...
+
+If SECINFO_STYLE4_PARENT is specified and there is no parent
+directory, SECINFO_NO_NAME MUST return NFS4ERR_NOENT.
+
+
+> 		- SECNN4: is env.home necessarily unequal to "/"?  Would
+> 		  seem better to do the lookup in a subdirectory just to
+> 		  be certain.
+
+Env.home is the directory you specify on the command line, I think the
+presumption is that it is a writeable file system. Pynfs creates tmp and
+tree directories in home (and maybe some files also?). Guess if / was
+writeable, you could specify /, so yea, maybe it should go into tmp.
+
+A better test might actually be to do LOOKUP down to home and even into tmp,
+looking for a junction, and then do the SECINFO_NO_NAME(parent) on the
+directory handle just across the junction if one was found.
+
+Thanks for the review.
+
+Frank
+
