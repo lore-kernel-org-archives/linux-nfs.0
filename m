@@ -1,48 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:9838 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:43388 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751981Ab3IJWoo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Sep 2013 18:44:44 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 3/4] NFSv4.1: sp4_mach_cred: no need to ref count creds
-Date: Tue, 10 Sep 2013 18:44:32 -0400
-Message-ID: <1378853073-13256-4-git-send-email-dros@netapp.com>
-In-Reply-To: <1378853073-13256-1-git-send-email-dros@netapp.com>
-References: <1378853073-13256-1-git-send-email-dros@netapp.com>
+	id S1754842Ab3I3PAT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Sep 2013 11:00:19 -0400
+Date: Mon, 30 Sep 2013 11:00:13 -0400
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Michael Gliwinski <Michael.Gliwinski@henderson-group.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: gss context cache
+Message-ID: <20130930150013.GH16579@fieldses.org>
+References: <1702585.AG7n1MCr0K@hgis96>
+ <20130930100000.70578c80@tlielax.poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130930100000.70578c80@tlielax.poochiereds.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The cl_machine_cred doesn't need to be reference counted here -
-a reference is held is for the lifetime of the struct nfs_client.
-Also, no need to put_rpccred the rpc_message.rpc_cred.
+On Mon, Sep 30, 2013 at 10:00:00AM -0400, Jeff Layton wrote:
+> On Mon, 30 Sep 2013 13:06:47 +0100
+> Michael Gliwinski <Michael.Gliwinski@henderson-group.com> wrote:
+> 
+> > Hi all,
+> > 
+> > On RHEL6 nfs-utils-1.2.3-36
+> > 
+> > man rpc.gssd says it -t wasn't specified then kernel gss contexts will be 
+> > cached for the lifettime of the Kerberos service ticket used in its creation.  
+> > Is there a way to see the contexts + service tickets in that cache?
+> > 
+> 
+> No, AFAIK.
+> 
+> > Also, is there any way short of rebooting the client to evict one entry from 
+> > that cache, or even clear the cache entirely?
+> > 
+> 
+> There is a gss_destroy_creds script which ships as part of nfs-utils.
+> That should basically do what you need, but it's not well-documented so
+> you'll have to play with it some...
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- fs/nfs/nfs4_fs.h | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+My memory is that depended on some undocumented feature of the upcall
+since removed.  (Maybe the ability to send a downcall that isn't a
+response to some upcall?)  But I may be misremembering.  Somebody should
+probably check and remove that script (and gss_cltn_send_err) if I'm
+right.
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index f520a11..07a8aa9 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -279,10 +279,10 @@ _nfs4_state_protect(struct nfs_client *clp, unsigned long sp4_mode,
- 	if (test_bit(sp4_mode, &clp->cl_sp4_flags)) {
- 		spin_lock(&clp->cl_lock);
- 		if (clp->cl_machine_cred != NULL)
--			newcred = get_rpccred(clp->cl_machine_cred);
-+			/* don't call get_rpccred on the machine cred -
-+			 * a reference will be held for life of clp */
-+			newcred = clp->cl_machine_cred;
- 		spin_unlock(&clp->cl_lock);
--		if (msg->rpc_cred)
--			put_rpccred(msg->rpc_cred);
- 		msg->rpc_cred = newcred;
- 
- 		flavor = clp->cl_rpcclient->cl_auth->au_flavor;
--- 
-1.7.12.4 (Apple Git-37)
-
+--b.
+> 
+> > (looking for this as I had situations where access was denied by the NFS 
+> > server and I could see the principal was getting mapped to nfsnobody, etc. and 
+> > was suspecting the account was changed on the KDC and the old context/ticket 
+> > may have been causing problems)
+> > 
+> 
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
