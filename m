@@ -1,91 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40277 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751574Ab3I0Uuy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Sep 2013 16:50:54 -0400
-Date: Fri, 27 Sep 2013 13:50:13 -0700
-From: Zach Brown <zab@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Ric Wheeler <rwheeler@redhat.com>, Miklos Szeredi <miklos@szeredi.hu>,
-        Anna Schumaker <schumaker.anna@gmail.com>,
+Received: from mail-qe0-f49.google.com ([209.85.128.49]:46191 "EHLO
+	mail-qe0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754776Ab3I3Pie (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Sep 2013 11:38:34 -0400
+Received: by mail-qe0-f49.google.com with SMTP id s14so3877919qeb.22
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Sep 2013 08:38:33 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <52498AA8.2090204@redhat.com>
+References: <20130925210742.GG30372@lenny.home.zabbo.net>
+	<CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
+	<20130926185508.GO30372@lenny.home.zabbo.net>
+	<5244A68F.906@redhat.com>
+	<20130927200550.GA22640@fieldses.org>
+	<20130927205013.GZ30372@lenny.home.zabbo.net>
+	<CAJfpegtdiQzP7t5hc_OaHjSGTrjdZLfKi6fiKqBQ_+AP2Y0-oQ@mail.gmail.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA9467EF2D7@SACEXCMBX04-PRD.hq.netapp.com>
+	<52474839.2080201@redhat.com>
+	<CAJfpegsN7Hu8uecSVQrhax+n+zhq=uUgpzOk=qZ6_n383tdNCQ@mail.gmail.com>
+	<20130930143432.GG16579@fieldses.org>
+	<CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com>
+	<52499026.3090802@redhat.com>
+	<CAJfpegtpXuh9070ALGy16Y8kdgioBqSf4JQqBBCF4FHvFJWAWQ@mail.gmail.com>
+	<52498AA8.2090204@redhat.com>
+Date: Mon, 30 Sep 2013 17:38:33 +0200
+Message-ID: <CAJfpegv_C6cLOuA-mNtgtf2QbmmmcHwjQVo8mAnhf_wbJ8iRhg@mail.gmail.com>
+Subject: Re: [RFC] extending splice for copy offloading
+From: Miklos Szeredi <miklos@szeredi.hu>
+To: Ric Wheeler <rwheeler@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Zach Brown <zab@redhat.com>, Anna Schumaker <schumaker.anna@gmail.com>,
         Kernel Mailing List <linux-kernel@vger.kernel.org>,
         Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Bryan Schumaker <bjschuma@netapp.com>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
         "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
         Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
         Eric Wong <normalperson@yhbt.net>
-Subject: Re: [RFC] extending splice for copy offloading
-Message-ID: <20130927205013.GZ30372@lenny.home.zabbo.net>
-References: <CAELBmZBGD4rph=gjLCPKCdEj+nzEQ-F=DExoL+h3vRm7qF7dCQ@mail.gmail.com>
- <20130925183828.GA30372@lenny.home.zabbo.net>
- <CAFX2JfnyF8kyMYzCdqdr2JkoyQCom1bFLpFj89wODjoju54-Ow@mail.gmail.com>
- <20130925190620.GB30372@lenny.home.zabbo.net>
- <20130925195526.GA18971@fieldses.org>
- <20130925210742.GG30372@lenny.home.zabbo.net>
- <CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
- <20130926185508.GO30372@lenny.home.zabbo.net>
- <5244A68F.906@redhat.com>
- <20130927200550.GA22640@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130927200550.GA22640@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, Sep 30, 2013 at 4:28 PM, Ric Wheeler <rwheeler@redhat.com> wrote:
+> On 09/30/2013 10:24 AM, Miklos Szeredi wrote:
+>>
+>> On Mon, Sep 30, 2013 at 4:52 PM, Ric Wheeler <rwheeler@redhat.com> wrote:
+>>>
+>>> On 09/30/2013 10:51 AM, Miklos Szeredi wrote:
+>>>>
+>>>> On Mon, Sep 30, 2013 at 4:34 PM, J. Bruce Fields <bfields@fieldses.org>
+>>>> wrote:
+>>>>>>
+>>>>>> My other worry is about interruptibility/restartability.  Ideas?
+>>>>>>
+>>>>>> What happens on splice(from, to, 4G) and it's a non-reflink copy?
+>>>>>> Can the page cache copy be made restartable?   Or should splice() be
+>>>>>> allowed to return a short count?  What happens on (non-reflink) remote
+>>>>>> copies and huge request sizes?
+>>>>>
+>>>>> If I were writing an application that required copies to be
+>>>>> restartable,
+>>>>> I'd probably use the largest possible range in the reflink case but
+>>>>> break the copy into smaller chunks in the splice case.
+>>>>>
+>>>> The app really doesn't want to care about that.  And it doesn't want
+>>>> to care about restartability, etc..  It's something the *kernel* has
+>>>> to care about.   You just can't have uninterruptible syscalls that
+>>>> sleep for a "long" time, otherwise first you'll just have annoyed
+>>>> users pressing ^C in vain; then, if the sleep is even longer, warnings
+>>>> about task sleeping too long.
+>>>>
+>>>> One idea is letting splice() return a short count, and so the app can
+>>>> safely issue SIZE_MAX requests and the kernel can decide if it can
+>>>> copy the whole file in one go or if it wants to do it in smaller
+>>>> chunks.
+>>>>
+>>> You cannot rely on a short count. That implies that an offloaded copy
+>>> starts
+>>> at byte 0 and the short count first bytes are all valid.
+>>
+>> Huh?
+>>
+>> - app calls splice(from, 0, to, 0, SIZE_MAX)
+>>   1) VFS calls ->direct_splice(from, 0,  to, 0, SIZE_MAX)
+>>      1.a) fs reflinks the whole file in a jiffy and returns the size of
+>> the file
+>>      1 b) fs does copy offload of, say, 64MB and returns 64M
+>>   2) VFS does page copy of, say, 1MB and returns 1MB
+>> - app calls splice(from, X, to, X, SIZE_MAX) where X is the new offset
+>> ...
+>>
+>> The point is: the app is always doing the same (incrementing offset
+>> with the return value from splice) and the kernel can decide what is
+>> the best size it can service within a single uninterruptible syscall.
+>>
+>> Wouldn't that work?
+>>
 
-> > >Sure.  So we'd have:
-> > >
-> > >- no flag default that forbids knowingly copying with shared references
-> > >   so that it will be used by default by people who feel strongly about
-> > >   their assumptions about independent write durability.
-> > >
-> > >- a flag that allows shared references for people who would otherwise
-> > >   use the file system shared reference ioctls (ocfs2 reflink, btrfs
-> > >   clone) but would like it to also do server-side read/write copies
-> > >   over nfs without additional intervention.
-> > >
-> > >- a flag that requires shared references for callers who don't want
-> > >   giant copies to take forever if they aren't instant.  (The qemu guys
-> > >   asked for this at Plumbers.)
-> 
-> Why not implement only the last flag only as  the first step?  It seems
-> like the simplest one.  So I think that would mean:
-> 
-> 	- no worrying about cancelling, etc.
-> 	- apps should be told to pass the entire range at once (normally
-> 	  the whole file).
-> 	- The NFS server probably shouldn't do the internal copy loop by
-> 	  default.
-> 
-> We can't prevent some storage system from implementing a high-latency
-> copy operation, but we can refuse to provide them any help (providing no
-> progress reports or easy way to cancel) and then they can deal with the
-> complaints from their users.
+>
+> No.
+>
+> Keep in mind that the offload operation in (1) might fail partially. The
+> target file (the copy) is allocated, the question is what ranges have valid
+> data.
 
-I can see where you're going with that, yeah.
+You are talking about case 1.a, right?  So if the offload copy 0-64MB
+fails partially, we return failure from splice, yet some of the copy
+did succeed.  Is that the problem?  Why?
 
-It'd make less sense as a splice extension, then, perhaps.  It'd be more
-like a generic entry point for the existing ioctls.  Maybe even just
-defining the semantics of a common ioctl.
-
-Hmm.
-
-> Also, I don't get the first option above at all.  The argument is that
-> it's safer to have more copies?  How much safety does another copy on
-> the same disk really give you?  Do systems that do dedup provide
-> interfaces to turn it off per-file?
-
-Yeah, got me.  It's certainly nonsense on a lot of FTL logging
-implementations (which are making their way into SMR drives in the
-future).
-
-> But I understand that Zach's tired of the woodshedding and I could live
-> with the above I guess....
-
-No, it's fine.  At least people are expressing some interest in the
-interface!  That's a marked improvement over the state of things in the
-past.
-
-- z
+Thanks,
+Miklos
