@@ -1,151 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:41282 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:2108 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932831Ab3ICMSh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Sep 2013 08:18:37 -0400
-Date: Tue, 3 Sep 2013 08:18:34 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: <linux-nfs@vger.kernel.org>, <andros@netapp.com>
-Subject: Re: [PATCH v3 01/17] SUNRPC: Deprecate rpc_client->cl_protname
-Message-ID: <20130903081834.5ec7ca7c@tlielax.poochiereds.net>
-In-Reply-To: <1378145820-29990-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1378145820-29990-1-git-send-email-Trond.Myklebust@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1753638Ab3I3Ro0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Sep 2013 13:44:26 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+CC: Miklos Szeredi <miklos@szeredi.hu>, Ric Wheeler <rwheeler@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Zach Brown <zab@redhat.com>,
+        "Anna Schumaker" <schumaker.anna@gmail.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Wong <normalperson@yhbt.net>
+Subject: Re: [RFC] extending splice for copy offloading
+Date: Mon, 30 Sep 2013 17:44:12 +0000
+Message-ID: <1380563050.6501.15.camel@leira.trondhjem.org>
+References: <20130930143432.GG16579@fieldses.org>
+	 <CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com>
+	 <52499026.3090802@redhat.com>
+	 <CAJfpegtpXuh9070ALGy16Y8kdgioBqSf4JQqBBCF4FHvFJWAWQ@mail.gmail.com>
+	 <52498AA8.2090204@redhat.com>
+	 <CAJfpegv_C6cLOuA-mNtgtf2QbmmmcHwjQVo8mAnhf_wbJ8iRhg@mail.gmail.com>
+	 <52498DB6.7060901@redhat.com>
+	 <CAJfpegsvrr7x3MbdpvxUmzq0ZfDHfZkzAar6Od2G7wg8DgPLYQ@mail.gmail.com>
+	 <52498F68.8050200@redhat.com>
+	 <CAJfpegvvN_5c5oMv8UoODXQHc-DQnijhOtPDXmNamVpQLDoWMQ@mail.gmail.com>
+	 <20130930163159.GA14242@tucsk.piliscsaba.szeredi.hu>
+	 <5249B21E.70603@itwm.fraunhofer.de>
+In-Reply-To: <5249B21E.70603@itwm.fraunhofer.de>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2 Sep 2013 14:16:44 -0400
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-
-> It just duplicates the cl_program->name, and is not used in any fast
-> paths where the extra dereference will cause a hit.
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->  net/sunrpc/clnt.c     | 18 +++++++++---------
->  net/sunrpc/rpc_pipe.c |  2 +-
->  net/sunrpc/stats.c    |  2 +-
->  3 files changed, 11 insertions(+), 11 deletions(-)
-> 
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 74f6a70..e862f8c 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -629,7 +629,7 @@ void rpc_shutdown_client(struct rpc_clnt *clnt)
->  	might_sleep();
->  
->  	dprintk_rcu("RPC:       shutting down %s client for %s\n",
-> -			clnt->cl_protname,
-> +			clnt->cl_program->name,
->  			rcu_dereference(clnt->cl_xprt)->servername);
->  
->  	while (!list_empty(&clnt->cl_tasks)) {
-> @@ -649,7 +649,7 @@ static void
->  rpc_free_client(struct rpc_clnt *clnt)
->  {
->  	dprintk_rcu("RPC:       destroying %s client for %s\n",
-> -			clnt->cl_protname,
-> +			clnt->cl_program->name,
->  			rcu_dereference(clnt->cl_xprt)->servername);
->  	if (clnt->cl_parent != clnt)
->  		rpc_release_client(clnt->cl_parent);
-> @@ -1299,7 +1299,7 @@ call_start(struct rpc_task *task)
->  	struct rpc_clnt	*clnt = task->tk_client;
->  
->  	dprintk("RPC: %5u call_start %s%d proc %s (%s)\n", task->tk_pid,
-> -			clnt->cl_protname, clnt->cl_vers,
-> +			clnt->cl_program->name, clnt->cl_vers,
->  			rpc_proc_name(task),
->  			(RPC_IS_ASYNC(task) ? "async" : "sync"));
->  
-> @@ -1908,7 +1908,7 @@ call_status(struct rpc_task *task)
->  	default:
->  		if (clnt->cl_chatty)
->  			printk("%s: RPC call returned error %d\n",
-> -			       clnt->cl_protname, -status);
-> +			       clnt->cl_program->name, -status);
->  		rpc_exit(task, status);
->  	}
->  }
-> @@ -1939,7 +1939,7 @@ call_timeout(struct rpc_task *task)
->  		if (clnt->cl_chatty) {
->  			rcu_read_lock();
->  			printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
-> -				clnt->cl_protname,
-> +				clnt->cl_program->name,
->  				rcu_dereference(clnt->cl_xprt)->servername);
->  			rcu_read_unlock();
->  		}
-> @@ -1955,7 +1955,7 @@ call_timeout(struct rpc_task *task)
->  		if (clnt->cl_chatty) {
->  			rcu_read_lock();
->  			printk(KERN_NOTICE "%s: server %s not responding, still trying\n",
-> -			clnt->cl_protname,
-> +			clnt->cl_program->name,
->  			rcu_dereference(clnt->cl_xprt)->servername);
->  			rcu_read_unlock();
->  		}
-> @@ -1990,7 +1990,7 @@ call_decode(struct rpc_task *task)
->  		if (clnt->cl_chatty) {
->  			rcu_read_lock();
->  			printk(KERN_NOTICE "%s: server %s OK\n",
-> -				clnt->cl_protname,
-> +				clnt->cl_program->name,
->  				rcu_dereference(clnt->cl_xprt)->servername);
->  			rcu_read_unlock();
->  		}
-> @@ -2015,7 +2015,7 @@ call_decode(struct rpc_task *task)
->  			goto out_retry;
->  		}
->  		dprintk("RPC:       %s: too small RPC reply size (%d bytes)\n",
-> -				clnt->cl_protname, task->tk_status);
-> +				clnt->cl_program->name, task->tk_status);
->  		task->tk_action = call_timeout;
->  		goto out_retry;
->  	}
-> @@ -2287,7 +2287,7 @@ static void rpc_show_task(const struct rpc_clnt *clnt,
->  	printk(KERN_INFO "%5u %04x %6d %8p %8p %8ld %8p %sv%u %s a:%ps q:%s\n",
->  		task->tk_pid, task->tk_flags, task->tk_status,
->  		clnt, task->tk_rqstp, task->tk_timeout, task->tk_ops,
-> -		clnt->cl_protname, clnt->cl_vers, rpc_proc_name(task),
-> +		clnt->cl_program->name, clnt->cl_vers, rpc_proc_name(task),
->  		task->tk_action, rpc_waitq);
->  }
->  
-> diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-> index 017aedc..b36bfb9 100644
-> --- a/net/sunrpc/rpc_pipe.c
-> +++ b/net/sunrpc/rpc_pipe.c
-> @@ -409,7 +409,7 @@ rpc_show_info(struct seq_file *m, void *v)
->  	rcu_read_lock();
->  	seq_printf(m, "RPC server: %s\n",
->  			rcu_dereference(clnt->cl_xprt)->servername);
-> -	seq_printf(m, "service: %s (%d) version %d\n", clnt->cl_protname,
-> +	seq_printf(m, "service: %s (%d) version %d\n", clnt->cl_program->name,
->  			clnt->cl_prog, clnt->cl_vers);
->  	seq_printf(m, "address: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_ADDR));
->  	seq_printf(m, "protocol: %s\n", rpc_peeraddr2str(clnt, RPC_DISPLAY_PROTO));
-> diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
-> index 21b75cb..5453049 100644
-> --- a/net/sunrpc/stats.c
-> +++ b/net/sunrpc/stats.c
-> @@ -188,7 +188,7 @@ void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt)
->  
->  	seq_printf(seq, "\tRPC iostats version: %s  ", RPC_IOSTATS_VERS);
->  	seq_printf(seq, "p/v: %u/%u (%s)\n",
-> -			clnt->cl_prog, clnt->cl_vers, clnt->cl_protname);
-> +			clnt->cl_prog, clnt->cl_vers, clnt->cl_program->name);
->  
->  	rcu_read_lock();
->  	xprt = rcu_dereference(clnt->cl_xprt);
-
-Thanks Trond!
-
-This set looks good to me, and seems to fix the nfsv3/nfsacl + krb5
-problems that were reported recently. I'll plan to do some more
-extensive testing with it as I get time...
-
--- 
-Jeff Layton <jlayton@redhat.com>
+T24gTW9uLCAyMDEzLTA5LTMwIGF0IDE5OjE3ICswMjAwLCBCZXJuZCBTY2h1YmVydCB3cm90ZToN
+Cj4gSXQgd291bGQgYmUgbmljZSBpZiB0aGVyZSB3b3VsZCBiZSB3YXkgaWYgdGhlIGZpbGUgc3lz
+dGVtIHdvdWxkIGdldCBhIA0KPiBoaW50IHRoYXQgdGhlIHRhcmdldCBmaWxlIGlzIHN1cHBvc2Vk
+IHRvIGJlIGNvcHkgb2YgYW5vdGhlciBmaWxlLiBUaGF0IA0KPiB3YXkgZGlzdHJpYnV0ZWQgZmls
+ZSBzeXN0ZW1zIGNvdWxkIGFsc28gY3JlYXRlIHRoZSB0YXJnZXQtZmlsZSB3aXRoIHRoZSANCj4g
+Y29ycmVjdCBtZXRhLWluZm9ybWF0aW9uIChzYW1lIHN0b3JhZ2UgdGFyZ2V0cyBhcyBpbi1maWxl
+IGhhcykuDQo+IFdlbGwsIGlmIHdlIGNhbm5vdCBhZ3JlZSBvbiB0aGF0LCBmaWxlIHN5c3RlbSB3
+aXRoIGEgY3VzdG9tIHByb3RvY29sIGF0IA0KPiBsZWFzdCBjYW4gZGV0ZWN0IGZyb20gMCB0byBT
+U0laRV9NQVggYW5kIHRoZW4gcmVzZXQgbWV0YWRhdGEuIEknbSBub3QgDQo+IHN1cmUgaWYgdGhp
+cyB3b3VsZCB3b3JrIGZvciBwTkZTLCB0aG91Z2guDQoNCnNwbGljZSgpIGRvZXMgbm90IGNyZWF0
+ZSBuZXcgZmlsZXMuIFdoYXQgeW91IGFwcGVhciB0byBiZSBhc2tpbmcgZm9yDQpsaWVzIHdheSBv
+dXRzaWRlIHRoZSBzY29wZSBvZiB0aGF0IHN5c3RlbSBjYWxsIGludGVyZmFjZS4NCg0KLS0gDQpU
+cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
+b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
