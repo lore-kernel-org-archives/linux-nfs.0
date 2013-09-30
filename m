@@ -1,51 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:61092 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:43692 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755681Ab3IBSRL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Sep 2013 14:17:11 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-CC: <andros@netapp.com>
-Subject: [PATCH v3 08/17] NFSv4: Fix a potentially Oopsable condition in __nfs_idmap_unregister
-Date: Mon, 2 Sep 2013 14:16:51 -0400
-Message-ID: <1378145820-29990-8-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1378145820-29990-7-git-send-email-Trond.Myklebust@netapp.com>
-References: <1378145820-29990-1-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-2-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-3-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-4-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-5-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-6-git-send-email-Trond.Myklebust@netapp.com>
- <1378145820-29990-7-git-send-email-Trond.Myklebust@netapp.com>
+	id S1755557Ab3I3Ot7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Sep 2013 10:49:59 -0400
+Message-ID: <52498F4A.2040809@redhat.com>
+Date: Mon, 30 Sep 2013 10:48:42 -0400
+From: Ric Wheeler <rwheeler@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Miklos Szeredi <miklos@szeredi.hu>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Zach Brown <zab@redhat.com>, Anna Schumaker <schumaker.anna@gmail.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Wong <normalperson@yhbt.net>
+Subject: Re: [RFC] extending splice for copy offloading
+References: <20130925210742.GG30372@lenny.home.zabbo.net> <CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com> <20130926185508.GO30372@lenny.home.zabbo.net> <5244A68F.906@redhat.com> <20130927200550.GA22640@fieldses.org> <20130927205013.GZ30372@lenny.home.zabbo.net> <CAJfpegtdiQzP7t5hc_OaHjSGTrjdZLfKi6fiKqBQ_+AP2Y0-oQ@mail.gmail.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9467EF2D7@SACEXCMBX04-PRD.hq.netapp.com> <52474839.2080201@redhat.com> <CAJfpegsN7Hu8uecSVQrhax+n+zhq=uUgpzOk=qZ6_n383tdNCQ@mail.gmail.com> <20130930143432.GG16579@fieldses.org>
+In-Reply-To: <20130930143432.GG16579@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that __nfs_idmap_unregister can be called twice without
-consequences.
+On 09/30/2013 10:34 AM, J. Bruce Fields wrote:
+> On Mon, Sep 30, 2013 at 02:20:30PM +0200, Miklos Szeredi wrote:
+>> On Sat, Sep 28, 2013 at 11:20 PM, Ric Wheeler <rwheeler@redhat.com> wrote:
+>>
+>>>>> I don't see the safety argument very compelling either.  There are real
+>>>>> semantic differences, however: ENOSPC on a write to a
+>>>>> (apparentlíy) already allocated block.  That could be a bit unexpected.
+>>>>> Do we
+>>>>> need a fallocate extension to deal with shared blocks?
+>>>> The above has been the case for all enterprise storage arrays ever since
+>>>> the invention of snapshots. The NFSv4.2 spec does allow you to set a
+>>>> per-file attribute that causes the storage server to always preallocate
+>>>> enough buffers to guarantee that you can rewrite the entire file, however
+>>>> the fact that we've lived without it for said 20 years leads me to believe
+>>>> that demand for it is going to be limited. I haven't put it top of the list
+>>>> of features we care to implement...
+>>>>
+>>>> Cheers,
+>>>>      Trond
+>>>
+>>> I agree - this has been common behaviour for a very long time in the array
+>>> space. Even without an array,  this is the same as overwriting a block in
+>>> btrfs or any file system with a read-write LVM snapshot.
+>> Okay, I'm convinced.
+>>
+>> So I suggest
+>>
+>>   - mount(..., MNT_REFLINK): *allow* splice to reflink.  If this is not
+>> set, fall back to page cache copy.
+>>   - splice(... SPLICE_REFLINK):  fail non-reflink copy.  With this app
+>> can force reflink.
+>>
+>> Both are trivial to implement and make sure that no backward
+>> incompatibility surprises happen.
+>>
+>> My other worry is about interruptibility/restartability.  Ideas?
+>>
+>> What happens on splice(from, to, 4G) and it's a non-reflink copy?
+>> Can the page cache copy be made restartable?   Or should splice() be
+>> allowed to return a short count?  What happens on (non-reflink) remote
+>> copies and huge request sizes?
+> If I were writing an application that required copies to be restartable,
+> I'd probably use the largest possible range in the reflink case but
+> break the copy into smaller chunks in the splice case.
+>
+> For that reason I don't like the idea of a mount option--the choice is
+> something that the application probably wants to make (or at least to
+> know about).
+>
+> The NFS COPY operation, as specified in current drafts, allows for
+> asynchronous copies but leaves the state of the file undefined in the
+> case of an aborted COPY.  I worry that agreeing on standard behavior in
+> the case of an abort might be difficult.
+>
+> --b.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/idmap.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+I think that this is still confusing - reflink and array copy offload should not 
+be differentiated.  In effect, they should often be the same order of magnitude 
+in performance and possibly even use the same or very similar techniques (just 
+on different sides of the initiator/target transaction!).
 
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index e9b0c59..8b7e94a 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -404,8 +404,10 @@ static struct key_type key_type_id_resolver_legacy = {
- 
- static void __nfs_idmap_unregister(struct rpc_pipe *pipe)
- {
--	if (pipe->dentry)
-+	if (pipe->dentry) {
- 		rpc_unlink(pipe->dentry);
-+		pipe->dentry = NULL;
-+	}
- }
- 
- static int __nfs_idmap_register(struct dentry *dir,
--- 
-1.8.3.1
+It is much simpler to let the application fail if the offload (or reflink) is 
+not supported and let it do the traditional copy offload.  Then you always send 
+the largest possible offload operation and do whatever you do now if that fails.
+
+thanks!
+
+Ric
 
