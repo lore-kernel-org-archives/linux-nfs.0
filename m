@@ -1,371 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:55298 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:3915 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752958Ab3IZOpf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Sep 2013 10:45:35 -0400
-Subject: [PATCH 3/4] SunRPC: Use no_printk() for the null dprintk() and
- dfprintk()
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
-From: David Howells <dhowells@redhat.com>
-Cc: olof@lixom.net, linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Thu, 26 Sep 2013 15:45:25 +0100
-Message-ID: <20130926144525.29424.11130.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20130926144502.29424.21633.stgit@warthog.procyon.org.uk>
-References: <20130926144502.29424.21633.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
+	id S1756180Ab3I3Te3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Sep 2013 15:34:29 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+CC: Miklos Szeredi <miklos@szeredi.hu>, Ric Wheeler <rwheeler@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Zach Brown <zab@redhat.com>,
+        "Anna Schumaker" <schumaker.anna@gmail.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Wong <normalperson@yhbt.net>
+Subject: Re: [RFC] extending splice for copy offloading
+Date: Mon, 30 Sep 2013 19:34:26 +0000
+Message-ID: <1380569663.6501.63.camel@leira.trondhjem.org>
+References: <20130930143432.GG16579@fieldses.org>
+			 <CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com>
+			 <52499026.3090802@redhat.com>
+			 <CAJfpegtpXuh9070ALGy16Y8kdgioBqSf4JQqBBCF4FHvFJWAWQ@mail.gmail.com>
+			 <52498AA8.2090204@redhat.com>
+			 <CAJfpegv_C6cLOuA-mNtgtf2QbmmmcHwjQVo8mAnhf_wbJ8iRhg@mail.gmail.com>
+			 <52498DB6.7060901@redhat.com>
+			 <CAJfpegsvrr7x3MbdpvxUmzq0ZfDHfZkzAar6Od2G7wg8DgPLYQ@mail.gmail.com>
+			 <52498F68.8050200@redhat.com>
+			 <CAJfpegvvN_5c5oMv8UoODXQHc-DQnijhOtPDXmNamVpQLDoWMQ@mail.gmail.com>
+			 <20130930163159.GA14242@tucsk.piliscsaba.szeredi.hu>
+			 <5249B21E.70603@itwm.fraunhofer.de>
+		 <1380563050.6501.15.camel@leira.trondhjem.org>
+		 <5249B987.8020807@itwm.fraunhofer.de>
+	 <1380564126.6501.23.camel@leira.trondhjem.org>
+	 <5249C7C7.7020207@itwm.fraunhofer.de>
+In-Reply-To: <5249C7C7.7020207@itwm.fraunhofer.de>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use no_printk() for the null dprintk() and dfprintk() so that the compiler
-doesn't complain about unused variables for stuff that's just printed.
-
-Signed-off-by: David Howells <dhowells@redhat.com>
----
-
- fs/lockd/svc.c               |    6 ++++--
- fs/lockd/svclock.c           |    6 ++++--
- fs/nfs/fscache.c             |    2 +-
- fs/nfsd/nfs4proc.c           |    6 ++----
- fs/nfsd/nfsfh.c              |   10 ++++++----
- include/linux/sunrpc/debug.h |   37 ++++++++++++++++++-------------------
- include/linux/sunrpc/sched.h |   15 +++++++--------
- net/sunrpc/clnt.c            |    4 ++--
- net/sunrpc/sched.c           |   11 +++--------
- net/sunrpc/svcsock.c         |   33 +++++++++++++++++++--------------
- 10 files changed, 66 insertions(+), 64 deletions(-)
-
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 10d6c41..ba73105 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -147,7 +147,6 @@ lockd(void *vrqstp)
- 	 */
- 	while (!kthread_should_stop()) {
- 		long timeout = MAX_SCHEDULE_TIMEOUT;
--		RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
- 
- 		/* update sv_maxconn if it has changed */
- 		rqstp->rq_server->sv_maxconn = nlm_max_connections;
-@@ -167,8 +166,11 @@ lockd(void *vrqstp)
- 		err = svc_recv(rqstp, timeout);
- 		if (err == -EAGAIN || err == -EINTR)
- 			continue;
--		dprintk("lockd: request from %s\n",
-+		ifdebug(FACILITY) {
-+			char buf[RPC_MAX_ADDRBUFLEN];
-+			dprintk("lockd: request from %s\n",
- 				svc_print_addr(rqstp, buf, sizeof(buf)));
-+		}
- 
- 		svc_process(rqstp);
- 	}
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index e066a39..2749f44 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -53,9 +53,9 @@ static const struct rpc_call_ops nlmsvc_grant_ops;
- static LIST_HEAD(nlm_blocked);
- static DEFINE_SPINLOCK(nlm_blocked_lock);
- 
--#ifdef LOCKD_DEBUG
- static const char *nlmdbg_cookie2a(const struct nlm_cookie *cookie)
- {
-+#ifdef LOCKD_DEBUG
- 	/*
- 	 * We can get away with a static buffer because we're only
- 	 * called with BKL held.
-@@ -79,8 +79,10 @@ static const char *nlmdbg_cookie2a(const struct nlm_cookie *cookie)
- 	*p = '\0';
- 
- 	return buf;
--}
-+#else
-+	return "";
- #endif
-+}
- 
- /*
-  * Insert a blocked lock into the global list
-diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
-index 24d1d1c..3e8e0aa 100644
---- a/fs/nfs/fscache.c
-+++ b/fs/nfs/fscache.c
-@@ -317,7 +317,7 @@ void nfs_fscache_reset_inode_cookie(struct inode *inode)
- {
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 	struct nfs_server *nfss = NFS_SERVER(inode);
--	NFS_IFDEBUG(struct fscache_cookie *old = nfsi->fscache);
-+	struct fscache_cookie *old = nfsi->fscache;
- 
- 	nfs_fscache_inode_lock(inode);
- 	if (nfsi->fscache) {
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 419572f..1254635 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1172,9 +1172,7 @@ struct nfsd4_operation {
- 
- static struct nfsd4_operation nfsd4_ops[];
- 
--#ifdef NFSD_DEBUG
- static const char *nfsd4_op_name(unsigned opnum);
--#endif
- 
- /*
-  * Enforce NFSv4.1 COMPOUND ordering rules:
-@@ -1842,14 +1840,14 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	},
- };
- 
--#ifdef NFSD_DEBUG
- static const char *nfsd4_op_name(unsigned opnum)
- {
-+#ifdef NFSD_DEBUG
- 	if (opnum < ARRAY_SIZE(nfsd4_ops))
- 		return nfsd4_ops[opnum].op_name;
-+#endif
- 	return "unknown_operation";
- }
--#endif
- 
- #define nfsd4_voidres			nfsd4_voidargs
- struct nfsd4_voidargs { int dummy; };
-diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index 814afaa..0aba73a 100644
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -87,10 +87,12 @@ static __be32 nfsd_setuser_and_check_port(struct svc_rqst *rqstp,
- 
- 	/* Check if the request originated from a secure port. */
- 	if (!rqstp->rq_secure && !(flags & NFSEXP_INSECURE_PORT)) {
--		RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
--		dprintk(KERN_WARNING
--		       "nfsd: request from insecure port %s!\n",
--		       svc_print_addr(rqstp, buf, sizeof(buf)));
-+		ifdebug(FACILITY) {
-+			char buf[RPC_MAX_ADDRBUFLEN];
-+			dprintk(KERN_WARNING
-+				"nfsd: request from insecure port %s!\n",
-+				svc_print_addr(rqstp, buf, sizeof(buf)));
-+		}
- 		return nfserr_perm;
- 	}
- 
-diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
-index 889474b..60116cb 100644
---- a/include/linux/sunrpc/debug.h
-+++ b/include/linux/sunrpc/debug.h
-@@ -38,30 +38,29 @@ extern unsigned int		nlm_debug;
- #undef ifdebug
- #ifdef RPC_DEBUG			
- # define ifdebug(fac)		if (unlikely(rpc_debug & RPCDBG_##fac))
--
--# define dfprintk(fac, fmt, ...)		\
--	do { \
--		ifdebug(fac) \
--			printk(KERN_DEFAULT fmt, ##__VA_ARGS__);	\
--	} while (0)
--
--# define dfprintk_rcu(fac, fmt, ...)		\
--	do { \
--		ifdebug(fac) { \
--			rcu_read_lock(); \
--			printk(KERN_DEFAULT fmt, ##__VA_ARGS__);	\
--			rcu_read_unlock(); \
--		} \
--	} while (0)
--
-+# define __dprintk(fmt, ...)	printk(KERN_DEFAULT fmt, ##__VA_ARGS__);
- # define RPC_IFDEBUG(x)		x
- #else
--# define ifdebug(fac)			if (0)
--# define dfprintk(fac, fmt, ...)	do {} while (0)
--# define dfprintk_rcu(fac, fmt, ...)	do {} while (0)
-+# define ifdebug(fac)		if (0)
-+# define __dprintk(fmt, ...)	no_printk(KERN_DEFAULT fmt, ##__VA_ARGS__);
- # define RPC_IFDEBUG(x)
- #endif
- 
-+#define dfprintk(fac, fmt, ...)				\
-+	do {						\
-+		ifdebug(fac)				\
-+			__dprintk(fmt, ##__VA_ARGS__);	\
-+	} while (0)
-+
-+#define dfprintk_rcu(fac, fmt, ...)			\
-+	do {						\
-+		ifdebug(fac) {				\
-+			rcu_read_lock();		\
-+			__dprintk(fmt, ##__VA_ARGS__);	\
-+			rcu_read_unlock();		\
-+		}					\
-+	} while (0)
-+
- /*
-  * Sysctl interface for RPC debugging
-  */
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index 01543d0..25523ca 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -250,23 +250,22 @@ static inline int rpc_wait_for_completion_task(struct rpc_task *task)
- 	return __rpc_wait_for_completion_task(task, NULL);
- }
- 
--#if defined(RPC_DEBUG) || defined (RPC_TRACEPOINTS)
- static inline const char * rpc_qname(const struct rpc_wait_queue *q)
- {
--	return ((q && q->name) ? q->name : "unknown");
-+#if defined(RPC_DEBUG) || defined (RPC_TRACEPOINTS)
-+	if (q && q->name)
-+		return q->name;
-+#endif
-+	return "unknown";
- }
- 
- static inline void rpc_assign_waitqueue_name(struct rpc_wait_queue *q,
- 		const char *name)
- {
-+#if defined(RPC_DEBUG) || defined (RPC_TRACEPOINTS)
- 	q->name = name;
--}
--#else
--static inline void rpc_assign_waitqueue_name(struct rpc_wait_queue *q,
--		const char *name)
--{
--}
- #endif
-+}
- 
- static inline unsigned short rpc_task_pid(const struct rpc_task *t)
- {
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index ef452a29..1c6d494 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1282,9 +1282,9 @@ rpc_restart_call(struct rpc_task *task)
- }
- EXPORT_SYMBOL_GPL(rpc_restart_call);
- 
--#ifdef RPC_DEBUG
- static const char *rpc_proc_name(const struct rpc_task *task)
- {
-+#ifdef RPC_DEBUG
- 	const struct rpc_procinfo *proc = task->tk_msg.rpc_proc;
- 
- 	if (proc) {
-@@ -1293,9 +1293,9 @@ static const char *rpc_proc_name(const struct rpc_task *task)
- 		else
- 			return "NULL";
- 	} else
-+#endif
- 		return "no proc";
- }
--#endif
- 
- /*
-  * 0.  Initial state
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 0a4b07c..8e325f5 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -258,18 +258,13 @@ static int rpc_wait_bit_killable(void *word)
- 	return 0;
- }
- 
--#if defined(RPC_DEBUG) || defined(RPC_TRACEPOINTS)
- static void rpc_task_set_debuginfo(struct rpc_task *task)
- {
-+#if defined(RPC_DEBUG) || defined(RPC_TRACEPOINTS)
- 	static atomic_t rpc_pid;
--
--	rpc_task_pid(task) = atomic_inc_return(&rpc_pid);
--}
--#else
--static inline void rpc_task_set_debuginfo(struct rpc_task *task)
--{
--}
-+	task->tk_pid = atomic_inc_return(&rpc_pid);
- #endif
-+}
- 
- static void rpc_set_active(struct rpc_task *task)
- {
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 9c9caaa..67e890e 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -244,7 +244,6 @@ static int svc_sendto(struct svc_rqst *rqstp, struct xdr_buf *xdr)
- 	int		len = 0;
- 	unsigned long tailoff;
- 	unsigned long headoff;
--	RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
- 
- 	if (rqstp->rq_prot == IPPROTO_UDP) {
- 		struct msghdr msg = {
-@@ -267,9 +266,12 @@ static int svc_sendto(struct svc_rqst *rqstp, struct xdr_buf *xdr)
- 			       rqstp->rq_respages[0], tailoff);
- 
- out:
--	dprintk("svc: socket %p sendto([%p %Zu... ], %d) = %d (addr %s)\n",
--		svsk, xdr->head[0].iov_base, xdr->head[0].iov_len,
--		xdr->len, len, svc_print_addr(rqstp, buf, sizeof(buf)));
-+	ifdebug(FACILITY) {
-+		char buf[RPC_MAX_ADDRBUFLEN];
-+		dprintk("svc: socket %p sendto([%p %Zu... ], %d) = %d (addr %s)\n",
-+			svsk, xdr->head[0].iov_base, xdr->head[0].iov_len,
-+			xdr->len, len, svc_print_addr(rqstp, buf, sizeof(buf)));
-+	}
- 
- 	return len;
- }
-@@ -809,7 +811,6 @@ static struct svc_xprt *svc_tcp_accept(struct svc_xprt *xprt)
- 	struct socket	*newsock;
- 	struct svc_sock	*newsvsk;
- 	int		err, slen;
--	RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
- 
- 	dprintk("svc: tcp_accept %p sock %p\n", svsk, sock);
- 	if (!sock)
-@@ -839,14 +840,16 @@ static struct svc_xprt *svc_tcp_accept(struct svc_xprt *xprt)
- 	 * hosts here, but when we get encryption, the IP of the host won't
- 	 * tell us anything.  For now just warn about unpriv connections.
- 	 */
--	if (!svc_port_is_privileged(sin)) {
--		dprintk(KERN_WARNING
--			"%s: connect from unprivileged port: %s\n",
--			serv->sv_name,
--			__svc_print_addr(sin, buf, sizeof(buf)));
-+	ifdebug(FACILITY) {
-+		char buf[RPC_MAX_ADDRBUFLEN];
-+		__svc_print_addr(sin, buf, sizeof(buf));
-+		if (!svc_port_is_privileged(sin)) {
-+			dprintk(KERN_WARNING
-+				"%s: connect from unprivileged port: %s\n",
-+				serv->sv_name, buf);
-+		}
-+		dprintk("%s: connect from %s\n", serv->sv_name, buf);
- 	}
--	dprintk("%s: connect from %s\n", serv->sv_name,
--		__svc_print_addr(sin, buf, sizeof(buf)));
- 
- 	/* make sure that a write doesn't block forever when
- 	 * low on memory
-@@ -1465,11 +1468,13 @@ static struct svc_xprt *svc_create_socket(struct svc_serv *serv,
- 	int		newlen;
- 	int		family;
- 	int		val;
--	RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
- 
--	dprintk("svc: svc_create_socket(%s, %d, %s)\n",
-+	ifdebug(FACILITY) {
-+		char buf[RPC_MAX_ADDRBUFLEN];
-+		dprintk("svc: svc_create_socket(%s, %d, %s)\n",
- 			serv->sv_program->pg_name, protocol,
- 			__svc_print_addr(sin, buf, sizeof(buf)));
-+	}
- 
- 	if (protocol != IPPROTO_UDP && protocol != IPPROTO_TCP) {
- 		printk(KERN_WARNING "svc: only UDP and TCP "
-
+T24gTW9uLCAyMDEzLTA5LTMwIGF0IDIwOjQ5ICswMjAwLCBCZXJuZCBTY2h1YmVydCB3cm90ZToN
+Cj4gT24gMDkvMzAvMjAxMyAwODowMiBQTSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4gPiBP
+biBNb24sIDIwMTMtMDktMzAgYXQgMTk6NDggKzAyMDAsIEJlcm5kIFNjaHViZXJ0IHdyb3RlOg0K
+PiA+PiBPbiAwOS8zMC8yMDEzIDA3OjQ0IFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+
+Pj4gT24gTW9uLCAyMDEzLTA5LTMwIGF0IDE5OjE3ICswMjAwLCBCZXJuZCBTY2h1YmVydCB3cm90
+ZToNCj4gPj4+PiBJdCB3b3VsZCBiZSBuaWNlIGlmIHRoZXJlIHdvdWxkIGJlIHdheSBpZiB0aGUg
+ZmlsZSBzeXN0ZW0gd291bGQgZ2V0IGENCj4gPj4+PiBoaW50IHRoYXQgdGhlIHRhcmdldCBmaWxl
+IGlzIHN1cHBvc2VkIHRvIGJlIGNvcHkgb2YgYW5vdGhlciBmaWxlLiBUaGF0DQo+ID4+Pj4gd2F5
+IGRpc3RyaWJ1dGVkIGZpbGUgc3lzdGVtcyBjb3VsZCBhbHNvIGNyZWF0ZSB0aGUgdGFyZ2V0LWZp
+bGUgd2l0aCB0aGUNCj4gPj4+PiBjb3JyZWN0IG1ldGEtaW5mb3JtYXRpb24gKHNhbWUgc3RvcmFn
+ZSB0YXJnZXRzIGFzIGluLWZpbGUgaGFzKS4NCj4gPj4+PiBXZWxsLCBpZiB3ZSBjYW5ub3QgYWdy
+ZWUgb24gdGhhdCwgZmlsZSBzeXN0ZW0gd2l0aCBhIGN1c3RvbSBwcm90b2NvbCBhdA0KPiA+Pj4+
+IGxlYXN0IGNhbiBkZXRlY3QgZnJvbSAwIHRvIFNTSVpFX01BWCBhbmQgdGhlbiByZXNldCBtZXRh
+ZGF0YS4gSSdtIG5vdA0KPiA+Pj4+IHN1cmUgaWYgdGhpcyB3b3VsZCB3b3JrIGZvciBwTkZTLCB0
+aG91Z2guDQo+ID4+Pg0KPiA+Pj4gc3BsaWNlKCkgZG9lcyBub3QgY3JlYXRlIG5ldyBmaWxlcy4g
+V2hhdCB5b3UgYXBwZWFyIHRvIGJlIGFza2luZyBmb3INCj4gPj4+IGxpZXMgd2F5IG91dHNpZGUg
+dGhlIHNjb3BlIG9mIHRoYXQgc3lzdGVtIGNhbGwgaW50ZXJmYWNlLg0KPiA+Pj4NCj4gPj4NCj4g
+Pj4gU29ycnkgSSBrbm93LCBkZWZpbml0ZWx5IG91dHNpZGUgdGhlIHNjb3BlIG9mIHNwbGljZSwg
+YnV0IGluIHRoZSBjb250ZXh0DQo+ID4+IG9mIG9mZmxvYWRlZCBmaWxlIGNvcGllcy4gU28gdGhl
+IHF1ZXN0aW9uIGlzLCB3aGF0IGlzIHRoZSBiZXN0IHdheSB0bw0KPiA+PiBhZGRyZXNzL2Rpc2N1
+c3MgdGhhdD8NCj4gPg0KPiA+IFdoeSBkb2VzIGl0IG5lZWQgdG8gYmUgYWRkcmVzc2VkIGluIHRo
+ZSBmaXJzdCBwbGFjZT8NCj4gDQo+IEFuIG9mZmxvYWRlZCBjb3B5IGlzIHN0aWxsIG5vdCBlZmZp
+Y2llbnQgaWYgZGlmZmVyZW50IHN0b3JhZ2UgDQo+IHNlcnZlcnMvdGFyZ2V0cyB1c2VkIGJ5IGZy
+b20tZmlsZSBhbmQgdG8tZmlsZS4NCg0KU28/IA0KDQo+ID4NCj4gPiBXaGF0IGlzIHByZXZlbnRp
+bmcgYW4gYXBwbGljYXRpb24gZnJvbSByZXRyaWV2aW5nIGFuZCBzZXR0aW5nIHRoaXMNCj4gPiBp
+bmZvcm1hdGlvbiB1c2luZyBzdGFuZGFyZCBsaWJjIGZ1bmN0aW9ucyBzdWNoIGFzIGZzdGF0KCkr
+b3BlbigpLCBhbmQNCj4gPiBzdXBwbGVtZW50ZWQgd2l0aCBsaWJhdHRyIGF0dHJfc2V0Zi9nZXRm
+KCksIGFuZCBsaWJhY2wgYWNsX2dldF9mZC9zZXRfZmQNCj4gPiB3aGVyZSBhcHByb3ByaWF0ZT8N
+Cj4gPg0KPiANCj4gQXQgYSBtaW5pbXVtIHRoaXMgcmVxdWlyZXMgbmV0d29yayBhbmQgbWV0YWRh
+dGEgb3ZlcmhlYWQuIEFuZCB3aGlsZSBJJ20gDQo+IHdvcmtpbmcgb24gRmhHRlMgbm93LCBJIHN0
+aWxsIHdvbmRlciB3aGF0IG90aGVyIGZpbGUgc3lzdGVtIG5lZWQgdG8gZG8gLSANCj4gZm9yIGV4
+YW1wbGUgTHVzdHJlIHByZS1hbGxvY2F0ZXMgc3RvcmFnZS10YXJnZXQgZmlsZXMgb24gY3JlYXRp
+bmcgYSANCj4gZmlsZSwgc28gZmlsZSBsYXlvdXQgY2hhbmdlcyBtZWFuIGV2ZW4gbW9yZSBvdmVy
+aGVhZCB0aGVyZS4NCg0KVGhlIHByb2JsZW0geW91IGFyZSBkZXNjcmliaW5nIGlzIGxpbWl0ZWQg
+dG8gYSBuYXJyb3cgc2V0IG9mIHN0b3JhZ2UNCmFyY2hpdGVjdHVyZXMuIElmIGNvcHkgb2ZmbG9h
+ZCB1c2luZyBzcGxpY2UoKSBkb2Vzbid0IG1ha2Ugc2Vuc2UgZm9yDQp0aG9zZSBhcmNoaXRlY3R1
+cmVzLCB0aGVuIGRvbid0IGltcGxlbWVudCBpdCBmb3IgdGhlbS4NCllvdSBtaWdodCBiZSBhYmxl
+IHRvIHByb3ZpZGUgaW9jdGxzKCkgdG8gZG8gdGhlc2Ugc3BlY2lhbCBoaW50ZWQgZmlsZQ0KY3Jl
+YXRpb25zIGZvciB0aG9zZSBmaWxlc3lzdGVtcyB0aGF0IG5lZWQgaXQsIGJ1dCB0aGUgdmFzdCBt
+YWpvcml0eQ0KZG9uJ3QsIGFuZCB5b3Ugc2hvdWxkbid0IGVuZm9yY2UgaXQgb24gdGhlbS4NCg0K
+PiBBbnl3YXksIGlmIHdlIGNvdWxkIGFncmVlIG9uIHRvIHVzZSBsaWJhdHRyIG9yIGxpYmFjbCB0
+byB0ZWFjaCB0aGUgZmlsZSANCj4gc3lzdGVtIGFib3V0IHRoZSB1cGNvbWluZyBzcGxpY2UgY2Fs
+bCBJIHdvdWxkIGJlIGZpbmUuDQoNCmxpYmF0dHIgYW5kIGxpYmFjbCBhcmUgZ2VuZXJpYyBsaWJy
+YXJpZXMgdGhhdCBleGlzdCB0byBtYW5pcHVsYXRlIHhhdHRycw0KYW5kIGFjbHMuIFRoZXkgZG8g
+bm90IG5lZWQgdG8gY29udGFpbiBMdXN0cmUtc3BlY2lmaWMgY29kZS4NCg0KLS0gDQpUcm9uZCBN
+eWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15
+a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
