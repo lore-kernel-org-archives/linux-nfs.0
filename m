@@ -1,108 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:10573 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:25341 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751713Ab3IFPDQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Sep 2013 11:03:16 -0400
-Date: Fri, 6 Sep 2013 11:04:29 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Quentin Barnes <qbarnes@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
-Message-ID: <20130906110429.48000442@corrin.poochiereds.net>
-In-Reply-To: <1378479655.3332.3.camel@leira.trondhjem.org>
-References: <20130905162110.GA17920@gmail.com>
-	<20130905170303.GB17330@us.ibm.com>
-	<20130905191139.GA20830@gmail.com>
-	<1378411320.5450.27.camel@leira.trondhjem.org>
-	<20130905213649.GA21944@gmail.com>
-	<1378418243.5450.29.camel@leira.trondhjem.org>
-	<20130905223420.GA23192@gmail.com>
-	<20130906093636.6818e7b2@corrin.poochiereds.net>
-	<1378479655.3332.3.camel@leira.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1754080Ab3I3Oxe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Sep 2013 10:53:34 -0400
+Message-ID: <52499026.3090802@redhat.com>
+Date: Mon, 30 Sep 2013 10:52:22 -0400
+From: Ric Wheeler <rwheeler@redhat.com>
+MIME-Version: 1.0
+To: Miklos Szeredi <miklos@szeredi.hu>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Zach Brown <zab@redhat.com>, Anna Schumaker <schumaker.anna@gmail.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Wong <normalperson@yhbt.net>
+Subject: Re: [RFC] extending splice for copy offloading
+References: <20130925210742.GG30372@lenny.home.zabbo.net> <CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com> <20130926185508.GO30372@lenny.home.zabbo.net> <5244A68F.906@redhat.com> <20130927200550.GA22640@fieldses.org> <20130927205013.GZ30372@lenny.home.zabbo.net> <CAJfpegtdiQzP7t5hc_OaHjSGTrjdZLfKi6fiKqBQ_+AP2Y0-oQ@mail.gmail.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9467EF2D7@SACEXCMBX04-PRD.hq.netapp.com> <52474839.2080201@redhat.com> <CAJfpegsN7Hu8uecSVQrhax+n+zhq=uUgpzOk=qZ6_n383tdNCQ@mail.gmail.com> <20130930143432.GG16579@fieldses.org> <CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com>
+In-Reply-To: <CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 6 Sep 2013 15:00:56 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+On 09/30/2013 10:51 AM, Miklos Szeredi wrote:
+> On Mon, Sep 30, 2013 at 4:34 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>>> My other worry is about interruptibility/restartability.  Ideas?
+>>>
+>>> What happens on splice(from, to, 4G) and it's a non-reflink copy?
+>>> Can the page cache copy be made restartable?   Or should splice() be
+>>> allowed to return a short count?  What happens on (non-reflink) remote
+>>> copies and huge request sizes?
+>> If I were writing an application that required copies to be restartable,
+>> I'd probably use the largest possible range in the reflink case but
+>> break the copy into smaller chunks in the splice case.
+>>
+> The app really doesn't want to care about that.  And it doesn't want
+> to care about restartability, etc..  It's something the *kernel* has
+> to care about.   You just can't have uninterruptible syscalls that
+> sleep for a "long" time, otherwise first you'll just have annoyed
+> users pressing ^C in vain; then, if the sleep is even longer, warnings
+> about task sleeping too long.
+>
+> One idea is letting splice() return a short count, and so the app can
+> safely issue SIZE_MAX requests and the kernel can decide if it can
+> copy the whole file in one go or if it wants to do it in smaller
+> chunks.
+>
+> Thanks,
+> Miklos
 
-> On Fri, 2013-09-06 at 09:36 -0400, Jeff Layton wrote:
-> > On Thu, 5 Sep 2013 17:34:20 -0500
-> > Quentin Barnes <qbarnes@gmail.com> wrote:
-> > 
-> > > On Thu, Sep 05, 2013 at 09:57:24PM +0000, Myklebust, Trond wrote:
-> > > > On Thu, 2013-09-05 at 16:36 -0500, Quentin Barnes wrote:
-> > > > > On Thu, Sep 05, 2013 at 08:02:01PM +0000, Myklebust, Trond wrote:
-> > > > > > On Thu, 2013-09-05 at 14:11 -0500, Quentin Barnes wrote:
-> > > > > > > On Thu, Sep 05, 2013 at 12:03:03PM -0500, Malahal Naineni wrote:
-> > > > > > > > Neil Brown posted a patch couple days ago for this!
-> > > > > > > > 
-> > > > > > > > http://thread.gmane.org/gmane.linux.nfs/58473
-> > > > > > > 
-> > > > > > > I tried Neil's patch on a v3.11 kernel.  The rebuilt kernel still
-> > > > > > > exhibited the same 1000s of WRITEs/sec problem.
-> > > > > > > 
-> > > > > > > Any other ideas?
-> > > > > > 
-> > > > > > Yes. Please try the attached patch.
-> > > > > 
-> > > > > Great!  That did the trick!
-> > > > > 
-> > > > > Do you feel this patch could be worthy of pushing it upstream in its
-> > > > > current state or was it just to verify a theory?
-> > > > > 
-> > > > > 
-> > > > > In comparing the nfs_flush_incompatible() implementations between
-> > > > > RHEL5 and v3.11 (without your patch), the guts of the algorithm seem
-> > > > > more or less logically equivalent to me on whether or not to flush
-> > > > > the page.  Also, when and where nfs_flush_incompatible() is invoked
-> > > > > seems the same.  Would you provide a very brief pointer to clue me
-> > > > > in as to why this problem didn't also manifest circa 2.6.18 days?
-> > > > 
-> > > > There was no nfs_vm_page_mkwrite() to handle page faults in the 2.6.18
-> > > > days, and so the risk was that your mmapped writes could end up being
-> > > > sent with the wrong credentials.
-> > > 
-> > > Ah!  You're right that nfs_vm_page_mkwrite() was missing from
-> > > the original 2.6.18, so that makes sense, however, Red Hat had
-> > > backported that function starting with their RHEL5.9(*) kernels,
-> > > yet the problem doesn't manifest on RHEL5.9.  Maybe the answer lies
-> > > somewhere in RHEL5.9's do_wp_page(), or up that call path, but
-> > > glancing through it, it all looks pretty close though.
-> > > 
-> > > 
-> > > (*) That was the source I using when comparing with the 3.11 source
-> > > when studying your patch since it was the last kernel known to me
-> > > without the problem.
-> > > 
-> > 
-> > I'm pretty sure RHEL5 has a similar problem, but it's unclear to me why
-> > you're not seeing it there. I have a RHBZ open vs. RHEL5 but it's marked
-> > private at the moment (I'll see about opening it up). I brought this up
-> > upstream about a year ago with this strawman patch:
-> > 
-> >     http://article.gmane.org/gmane.linux.nfs/51240
-> > 
-> > ...at the time Trond said he was working on a set of patches to track
-> > the open/lock stateid on a per-req basis. Did that approach not pan
-> > out?
-> 
-> We've achieved what we wanted to do (Neil's lock recovery patch) without
-> that machinery, so for now, we're dropping that.
-> 
-> > Also, do you need to do a similar fix to nfs_can_coalesce_requests?
-> 
-> Yes. Good point!
-> 
+You cannot rely on a short count. That implies that an offloaded copy starts at 
+byte 0 and the short count first bytes are all valid.
 
-Cool. FWIW, here's the original bug that was opened against RHEL5:
+I don't believe that is in fact required by all (any?) versions of the spec :)
 
-    https://bugzilla.redhat.com/show_bug.cgi?id=736578
+Best just to fail and restart the whole operation.
 
-...the reproducer that Max cooked up is not doing mmapped I/O so there
-may be a difference there, but I haven't looked closely at why that is.
+Ric
 
--- 
-Jeff Layton <jlayton@redhat.com>
