@@ -1,102 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:21390 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752302Ab3IEOID convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Sep 2013 10:08:03 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.5 \(1508\))
-Subject: Re: [PATCH] nfsd: SECINFO* can use integrity protected flavors
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130904221829.GH10232@fieldses.org>
-Date: Thu, 5 Sep 2013 10:07:52 -0400
-Cc: "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Message-Id: <59BD1498-C587-4591-98C9-C65EC375F31D@oracle.com>
-References: <1378232772-4066-1-git-send-email-dros@netapp.com> <FA9EEDBA-44B6-4C4D-B981-D5C933A161C2@oracle.com> <CCE068C5-3699-4258-A4ED-552E44B39173@netapp.com> <20130904221829.GH10232@fieldses.org>
-To: bfields@fieldses.org
+Received: from mx1.redhat.com ([209.132.183.28]:43916 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755108Ab3I3SEG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Sep 2013 14:04:06 -0400
+Date: Mon, 30 Sep 2013 14:04:00 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Michael Gliwinski <Michael.Gliwinski@henderson-group.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: gss context cache
+Message-ID: <20130930140400.71637e95@corrin.poochiereds.net>
+In-Reply-To: <20130930150013.GH16579@fieldses.org>
+References: <1702585.AG7n1MCr0K@hgis96>
+	<20130930100000.70578c80@tlielax.poochiereds.net>
+	<20130930150013.GH16579@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, 30 Sep 2013 11:00:13 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-On Sep 4, 2013, at 6:18 PM, bfields@fieldses.org wrote:
-
-> On Tue, Sep 03, 2013 at 07:11:57PM +0000, Adamson, Dros wrote:
->> 
->> On Sep 3, 2013, at 2:48 PM, Chuck Lever <chuck.lever@oracle.com>
->> wrote:
->> 
->>> 
->>> On Sep 3, 2013, at 2:26 PM, Weston Andros Adamson <dros@netapp.com> wrote:
->>> 
->>>> SECINFO and SECINFO_NONAME should be able to use integrity protected auth
->>>> flavors even if the export wasn't explicitly configured to use them.
->>>> 
->>>> An example is a sec=sys export - upstream linux clients will attempt to use
->>>> krb5i for EXCHANGE_ID, CREATE_SESSION, DESTROY_SESSION, etc.  If this is
->>>> successful, the client will try to use the same auth flavor for SECINFO
->>>> as described in the Security Considerations sections of rfc3530 and rfc5661.
->>> 
->>> The reason krb5i can work for lease management operations is because those operations are not connected to any particular export, so typically they are not controlled directly by export security settings.
->>> 
->>> But I'm not sure all server implementations will allow a SECINFO on an FSID using a flavor not allowed by the FSID's export options.  SECINFO is definitely connected to a particular FSID, unlike lease management operations.
->> 
->> I understand how these operations are different from SECINFO, but the spec is pretty clear that krb5i/p should be used if at all possible.
->> 
->>> 
->>> Given FreeBSD's implementation choices wrt lease management security flavors, that would be the first server I'd check.
->>> 
->>>> This patch adds a nfsd4_op_flag to describe operations that may use these
->>>> auth flavors to get around nfsd_access() checks. This should be useful in
->>>> future implementations of SP4_MACH_CRED (nfsd_permission still needs to be
->>>> handled).
->>>> 
->>>> This patch also stops SECINFO* from returning NFS4ERR_WRONGSEC which is
->>>> not allowed by either rfc3530 (not in list of allowed errors) or rfc6551
->>> 
->>> 5661
->> 
->> Heh, good catch!
->> 
->>> 
->>>> (section 2.6.3.1.1.5 says it MUST NOT).
->>> 
->>> That sounds inconsistent with the Security Considerations recommendation.
->> 
->> How so? Just because we don't know what error to return if the server doesn't support the recommendation to use integrity protection for SECINFO?
->> 
->>> 
->>> Recommending that a client use integrity protection means servers MUST support it, or the client has to be prepared to retry it with some other flavor, and the server MUST have a way to ask for a retry (ie in that case, wouldn't WRONGSEC be the correct way to make such a request?).
->> 
->> So, I'm preparing to post a client-side patch that retries (with filesystem's rpc_client) if the server returns NFS4ERR_WRONGSEC as Trond doesn't want the client to be broken against deployed linux servers, but this is a good question - what error should a server return in this case?
->> 
->>> 
->>> Is there anything more in these RFCs that would require a server to support SECINFO via krb5i?
->>> 
->>> Thus I wonder if clients can depend on a krb5i SECINFO on a sec=sys FSID working everywhere.
->> 
->> Sections 17 of rfc3530bis and 21 of rfc 5661 clearly state that it's RECOMMENDED to use integrity protection for SECINFO and SECINFO_NONAME, so I think we should try, but your point remains - what error should a server return if the server doesn't support this?
+> On Mon, Sep 30, 2013 at 10:00:00AM -0400, Jeff Layton wrote:
+> > On Mon, 30 Sep 2013 13:06:47 +0100
+> > Michael Gliwinski <Michael.Gliwinski@henderson-group.com> wrote:
+> > 
+> > > Hi all,
+> > > 
+> > > On RHEL6 nfs-utils-1.2.3-36
+> > > 
+> > > man rpc.gssd says it -t wasn't specified then kernel gss contexts will be 
+> > > cached for the lifettime of the Kerberos service ticket used in its creation.  
+> > > Is there a way to see the contexts + service tickets in that cache?
+> > > 
+> > 
+> > No, AFAIK.
+> > 
+> > > Also, is there any way short of rebooting the client to evict one entry from 
+> > > that cache, or even clear the cache entirely?
+> > > 
+> > 
+> > There is a gss_destroy_creds script which ships as part of nfs-utils.
+> > That should basically do what you need, but it's not well-documented so
+> > you'll have to play with it some...
 > 
-> I'm confused--we should just allow SECINFO/SECINFO_NO_NAME in these
-> cases and then we don't have to decide, right?
+> My memory is that depended on some undocumented feature of the upcall
+> since removed.  (Maybe the ability to send a downcall that isn't a
+> response to some upcall?)  But I may be misremembering.  Somebody should
+> probably check and remove that script (and gss_cltn_send_err) if I'm
+> right.
+> 
 
-I've finally read the relevant sections of the RFCs (doi!).  RFC 5661 section 2.6.3.1.1.4 and following discuss SECINFO/SECINFO_NO_NAME and NFS4ERR_WRONGSEC in some detail.
+That appears to be correct. gss_clnt_send_err just does an unsolicited
+downcall to the given clnt directory for a given uid. AFAICT, that
+functionality was ripped out by this commit:
 
-The way I read this, a server MUST NOT return NFS4ERR_WRONGSEC on any SECINFO or SECINFO_NO_NAME request, and MUST NOT return NFS4ERR_WRONGSEC on a PUTFH if the subsequent operation is SECINFO or SECINFO_NO_NAME.
+    commit 3b68aaeaf54065e5c44583a1d33ffb7793953ba4
+    Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+    Date:   Thu Jun 7 10:14:15 2007 -0400
 
-Section 2.6.3.1.1.5 explicitly says "In theory, there is no connection between the security flavor used by SECINFO or SECINFO_NO_NAME and those supported by the security policy."  Despite the fact that both of these operations take a FH, and thus would be otherwise subject to the security policy in place for the containing FSID, they should be permitted under all security flavors a server supports.
+        SUNRPC: Always match an upcall message in gss_pipe_downcall()
+    
+...so Bruce appears to be correct and this command no longer serves any
+purpose. I'll spin up a patch to remove it.
 
-If the server truly does not support the specified security flavor, an RPC-level error occurs, as Trond points out, and as the first paragraph of section 2.6.3.1.1.5 says.  This is an indication to the client that it should retry the SECINFO with another flavor.
-
-RFC 3530bis does not state a similar strong requirement.  However, NFS4ERR_WRONGSEC is not listed in the valid status codes for the SECINFO operation, so we might assume that a client should expect similar behavior for NFSv4.0.
-
-For the server, "we should just allow SECINFO/SECINFO_NO_NAME in these cases".  Perhaps there should be no security check at all -- the RPC layer should already cover the totally unsupported flavor case.  The only detail is ignoring security policy conflicts in a preceding PUTFH in the same compound.
-
-I think the main difficulty now is that some versions of the Linux server do not behave this way.
-
+Michael, you can disregard my earlier suggestion to use it....
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Jeff Layton <jlayton@redhat.com>
