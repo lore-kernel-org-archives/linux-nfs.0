@@ -1,253 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f177.google.com ([209.85.214.177]:45735 "EHLO
-	mail-ob0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753376Ab3IEVgz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Sep 2013 17:36:55 -0400
-Received: by mail-ob0-f177.google.com with SMTP id f8so2622762obp.8
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Sep 2013 14:36:54 -0700 (PDT)
-Date: Thu, 5 Sep 2013 16:36:49 -0500
-From: Quentin Barnes <qbarnes@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs-backed mmap file results in 1000s of WRITEs per second
-Message-ID: <20130905213649.GA21944@gmail.com>
-References: <20130905162110.GA17920@gmail.com>
- <20130905170303.GB17330@us.ibm.com>
- <20130905191139.GA20830@gmail.com>
- <1378411320.5450.27.camel@leira.trondhjem.org>
+Received: from mx1.redhat.com ([209.132.183.28]:60134 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754486Ab3I3Pm1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Sep 2013 11:42:27 -0400
+Message-ID: <52498DB6.7060901@redhat.com>
+Date: Mon, 30 Sep 2013 09:41:58 -0500
+From: Ric Wheeler <rwheeler@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1378411320.5450.27.camel@leira.trondhjem.org>
+To: Miklos Szeredi <miklos@szeredi.hu>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Zach Brown <zab@redhat.com>, Anna Schumaker <schumaker.anna@gmail.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Wong <normalperson@yhbt.net>
+Subject: Re: [RFC] extending splice for copy offloading
+References: <20130925210742.GG30372@lenny.home.zabbo.net> <CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com> <20130926185508.GO30372@lenny.home.zabbo.net> <5244A68F.906@redhat.com> <20130927200550.GA22640@fieldses.org> <20130927205013.GZ30372@lenny.home.zabbo.net> <CAJfpegtdiQzP7t5hc_OaHjSGTrjdZLfKi6fiKqBQ_+AP2Y0-oQ@mail.gmail.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9467EF2D7@SACEXCMBX04-PRD.hq.netapp.com> <52474839.2080201@redhat.com> <CAJfpegsN7Hu8uecSVQrhax+n+zhq=uUgpzOk=qZ6_n383tdNCQ@mail.gmail.com> <20130930143432.GG16579@fieldses.org> <CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com> <52499026.3090802@redhat.com> <CAJfpegtpXuh9070ALGy16Y8kdgioBqSf4JQqBBCF4FHvFJWAWQ@mail.gmail.com> <52498AA8.2090204@redhat.com> <CAJfpegv_C6cLOuA-mNtgtf2QbmmmcHwjQVo8mAnhf_wbJ8iRhg@mail.gmail.com>
+In-Reply-To: <CAJfpegv_C6cLOuA-mNtgtf2QbmmmcHwjQVo8mAnhf_wbJ8iRhg@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 05, 2013 at 08:02:01PM +0000, Myklebust, Trond wrote:
-> On Thu, 2013-09-05 at 14:11 -0500, Quentin Barnes wrote:
-> > On Thu, Sep 05, 2013 at 12:03:03PM -0500, Malahal Naineni wrote:
-> > > Neil Brown posted a patch couple days ago for this!
-> > > 
-> > > http://thread.gmane.org/gmane.linux.nfs/58473
-> > 
-> > I tried Neil's patch on a v3.11 kernel.  The rebuilt kernel still
-> > exhibited the same 1000s of WRITEs/sec problem.
-> > 
-> > Any other ideas?
-> 
-> Yes. Please try the attached patch.
+On 09/30/2013 10:38 AM, Miklos Szeredi wrote:
+> On Mon, Sep 30, 2013 at 4:28 PM, Ric Wheeler <rwheeler@redhat.com> wrote:
+>> On 09/30/2013 10:24 AM, Miklos Szeredi wrote:
+>>> On Mon, Sep 30, 2013 at 4:52 PM, Ric Wheeler <rwheeler@redhat.com> wrote:
+>>>> On 09/30/2013 10:51 AM, Miklos Szeredi wrote:
+>>>>> On Mon, Sep 30, 2013 at 4:34 PM, J. Bruce Fields <bfields@fieldses.org>
+>>>>> wrote:
+>>>>>>> My other worry is about interruptibility/restartability.  Ideas?
+>>>>>>>
+>>>>>>> What happens on splice(from, to, 4G) and it's a non-reflink copy?
+>>>>>>> Can the page cache copy be made restartable?   Or should splice() be
+>>>>>>> allowed to return a short count?  What happens on (non-reflink) remote
+>>>>>>> copies and huge request sizes?
+>>>>>> If I were writing an application that required copies to be
+>>>>>> restartable,
+>>>>>> I'd probably use the largest possible range in the reflink case but
+>>>>>> break the copy into smaller chunks in the splice case.
+>>>>>>
+>>>>> The app really doesn't want to care about that.  And it doesn't want
+>>>>> to care about restartability, etc..  It's something the *kernel* has
+>>>>> to care about.   You just can't have uninterruptible syscalls that
+>>>>> sleep for a "long" time, otherwise first you'll just have annoyed
+>>>>> users pressing ^C in vain; then, if the sleep is even longer, warnings
+>>>>> about task sleeping too long.
+>>>>>
+>>>>> One idea is letting splice() return a short count, and so the app can
+>>>>> safely issue SIZE_MAX requests and the kernel can decide if it can
+>>>>> copy the whole file in one go or if it wants to do it in smaller
+>>>>> chunks.
+>>>>>
+>>>> You cannot rely on a short count. That implies that an offloaded copy
+>>>> starts
+>>>> at byte 0 and the short count first bytes are all valid.
+>>> Huh?
+>>>
+>>> - app calls splice(from, 0, to, 0, SIZE_MAX)
+>>>    1) VFS calls ->direct_splice(from, 0,  to, 0, SIZE_MAX)
+>>>       1.a) fs reflinks the whole file in a jiffy and returns the size of
+>>> the file
+>>>       1 b) fs does copy offload of, say, 64MB and returns 64M
+>>>    2) VFS does page copy of, say, 1MB and returns 1MB
+>>> - app calls splice(from, X, to, X, SIZE_MAX) where X is the new offset
+>>> ...
+>>>
+>>> The point is: the app is always doing the same (incrementing offset
+>>> with the return value from splice) and the kernel can decide what is
+>>> the best size it can service within a single uninterruptible syscall.
+>>>
+>>> Wouldn't that work?
+>>>
+>> No.
+>>
+>> Keep in mind that the offload operation in (1) might fail partially. The
+>> target file (the copy) is allocated, the question is what ranges have valid
+>> data.
+> You are talking about case 1.a, right?  So if the offload copy 0-64MB
+> fails partially, we return failure from splice, yet some of the copy
+> did succeed.  Is that the problem?  Why?
+>
+> Thanks,
+> Miklos
 
-Great!  That did the trick!
+The way the array based offload (and some software side reflink works) is not a 
+byte by byte copy. We cannot assume that a valid count can be returned or that 
+such a count would be an indication of a sequential segment of good data.  The 
+whole thing would normally have to be reissued.
 
-Do you feel this patch could be worthy of pushing it upstream in its
-current state or was it just to verify a theory?
+To make that a true assumption, you would have to mandate that in each of the 
+specifications (and sw targets)...
 
+ric
 
-In comparing the nfs_flush_incompatible() implementations between
-RHEL5 and v3.11 (without your patch), the guts of the algorithm seem
-more or less logically equivalent to me on whether or not to flush
-the page.  Also, when and where nfs_flush_incompatible() is invoked
-seems the same.  Would you provide a very brief pointer to clue me
-in as to why this problem didn't also manifest circa 2.6.18 days?
-
-Quentin
-
-
-
-> > > Regards, Malahal.
-> > > 
-> > > Quentin Barnes [qbarnes@gmail.com] wrote:
-> > > > If two (or more) processes are doing nothing more than writing to
-> > > > the memory addresses of an mmapped shared file on an NFS mounted
-> > > > file system, it results in the kernel scribbling WRITEs to the
-> > > > server as fast as it can (1000s per second) even while no syscalls
-> > > > are going on.
-> > > > 
-> > > > The problems happens on NFS clients mounting NFSv3 or NFSv4.  I've
-> > > > reproduced this on the 3.11 kernel, and it happens as far back as
-> > > > RHEL6 (2.6.32 based), however, it is not a problem on RHEL5 (2.6.18
-> > > > based).  (All x86_64 systems.)  I didn't try anything in between.
-> > > > 
-> > > > I've created a self-contained program below that will demonstrate
-> > > > the problem (call it "t1").  Assuming /mnt has an NFS file system:
-> > > > 
-> > > >   $ t1 /mnt/mynfsfile 1    # Fork 1 writer, kernel behaves normally
-> > > >   $ t1 /mnt/mynfsfile 2    # Fork 2 writers, kernel goes crazy WRITEing
-> > > > 
-> > > > Just run "watch -d nfsstat" in another window while running the two
-> > > > writer test and watch the WRITE count explode.
-> > > > 
-> > > > I don't see anything particularly wrong with what the example code
-> > > > is doing with its use of mmap.  Is there anything undefined about
-> > > > the code that would explain this behavior, or is this a NFS bug
-> > > > that's really lived this long?
-> > > > 
-> > > > Quentin
-> > > > 
-> > > > 
-> > > > 
-> > > > #include <sys/stat.h>
-> > > > #include <sys/mman.h>
-> > > > #include <sys/stat.h>
-> > > > #include <sys/wait.h>
-> > > > #include <errno.h>
-> > > > #include <fcntl.h>
-> > > > #include <stdio.h>
-> > > > #include <stdlib.h>
-> > > > #include <signal.h>
-> > > > #include <string.h>
-> > > > #include <unistd.h>
-> > > > 
-> > > > int
-> > > > kill_children()
-> > > > {
-> > > > 	int		cnt = 0;
-> > > > 	siginfo_t	infop;
-> > > > 
-> > > > 	signal(SIGINT, SIG_IGN);
-> > > > 	kill(0, SIGINT);
-> > > > 	while (waitid(P_ALL, 0, &infop, WEXITED) != -1) ++cnt;
-> > > > 
-> > > > 	return cnt;
-> > > > }
-> > > > 
-> > > > void
-> > > > sighandler(int sig)
-> > > > {
-> > > > 	printf("Cleaning up all children.\n");
-> > > > 	int cnt = kill_children();
-> > > > 	printf("Cleaned up %d child%s.\n", cnt, cnt == 1 ? "" : "ren");
-> > > > 
-> > > > 	exit(0);
-> > > > }
-> > > > 
-> > > > int
-> > > > do_child(volatile int *iaddr)
-> > > > {
-> > > > 	while (1) *iaddr = 1;
-> > > > }
-> > > > 
-> > > > int
-> > > > main(int argc, char **argv)
-> > > > {
-> > > > 	const char	*path;
-> > > > 	int		fd;
-> > > > 	ssize_t		wlen;
-> > > > 	int		*ip;
-> > > > 	int		fork_count = 1;
-> > > > 
-> > > > 	if (argc == 1) {
-> > > > 		fprintf(stderr, "Usage: %s {filename} [fork_count].\n",
-> > > > 			argv[0]);
-> > > > 		return 1;
-> > > > 	}
-> > > > 
-> > > > 	path = argv[1];
-> > > > 
-> > > > 	if (argc > 2) {
-> > > > 		int fc = atoi(argv[2]);
-> > > > 		if (fc >= 0)
-> > > > 			fork_count = fc;
-> > > > 	}
-> > > > 
-> > > > 	fd = open(path, O_CREAT|O_TRUNC|O_RDWR|O_APPEND, S_IRUSR|S_IWUSR);
-> > > > 	if (fd < 0) {
-> > > > 		fprintf(stderr, "Open of '%s' failed: %s (%d)\n",
-> > > > 			path, strerror(errno), errno);
-> > > > 		return 1;
-> > > > 	}
-> > > > 
-> > > > 	wlen = write(fd, &(int){0}, sizeof(int));
-> > > > 	if (wlen != sizeof(int)) {
-> > > > 		if (wlen < 0)
-> > > > 			fprintf(stderr, "Write of '%s' failed: %s (%d)\n",
-> > > > 				path, strerror(errno), errno);
-> > > > 		else
-> > > > 			fprintf(stderr, "Short write to '%s'\n", path);
-> > > > 		return 1;
-> > > > 	}
-> > > > 
-> > > > 	ip = (int *)mmap(NULL, sizeof(int), PROT_READ|PROT_WRITE,
-> > > > 			   MAP_SHARED, fd, 0);
-> > > > 	if (ip == MAP_FAILED) {
-> > > > 		fprintf(stderr, "Mmap of '%s' failed: %s (%d)\n",
-> > > > 			path, strerror(errno), errno);
-> > > > 		return 1;
-> > > > 	}
-> > > > 
-> > > > 	signal(SIGINT, sighandler);
-> > > > 
-> > > > 	while (fork_count-- > 0) {
-> > > > 		switch(fork()) {
-> > > > 		case -1:
-> > > > 			fprintf(stderr, "Fork failed: %s (%d)\n",
-> > > > 				strerror(errno), errno);
-> > > > 			kill_children();
-> > > > 			return 1;
-> > > > 		case 0:   /* child  */
-> > > > 			signal(SIGINT, SIG_DFL);
-> > > > 			do_child(ip);
-> > > > 			break;
-> > > > 		default:  /* parent */
-> > > > 			break;
-> > > > 		}
-> > > > 	}
-> > > > 
-> > > > 	printf("Press ^C to terminate test.\n");
-> > > > 	pause();
-> > > > 
-> > > > 	return 0;
-> > > > }
-> > > > --
-> > > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > > > the body of a message to majordomo@vger.kernel.org
-> > > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > > > 
-> > > 
-> > 
-> > Quentin
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-
-> From 903ebaeefae78e6e03f3719aafa8fd5dd22d3288 Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date: Thu, 5 Sep 2013 15:52:51 -0400
-> Subject: [PATCH] NFS: Don't check lock owner compatibility in writes unless
->  file is locked
-> 
-> If we're doing buffered writes, and there is no file locking involved,
-> then we don't have to worry about whether or not the lock owner information
-> is identical.
-> By relaxing this check, we ensure that fork()ed child processes can write
-> to a page without having to first sync dirty data that was written
-> by the parent to disk.
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->  fs/nfs/write.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 40979e8..ac1dc33 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -863,7 +863,7 @@ int nfs_flush_incompatible(struct file *file, struct page *page)
->  			return 0;
->  		l_ctx = req->wb_lock_context;
->  		do_flush = req->wb_page != page || req->wb_context != ctx;
-> -		if (l_ctx) {
-> +		if (l_ctx && ctx->dentry->d_inode->i_flock != NULL) {
->  			do_flush |= l_ctx->lockowner.l_owner != current->files
->  				|| l_ctx->lockowner.l_pid != current->tgid;
->  		}
-> -- 
-> 1.8.3.1
-> 
