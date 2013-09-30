@@ -1,11 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:47727 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755883Ab3I3Pdt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Sep 2013 11:33:49 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Ric Wheeler <rwheeler@redhat.com>, Miklos Szeredi <miklos@szeredi.hu>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, Zach Brown <zab@redhat.com>,
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:35172 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754134Ab3I3MUb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Sep 2013 08:20:31 -0400
+Received: by mail-qc0-f175.google.com with SMTP id v2so3519099qcr.6
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Sep 2013 05:20:31 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <52474839.2080201@redhat.com>
+References: <CAELBmZBGD4rph=gjLCPKCdEj+nzEQ-F=DExoL+h3vRm7qF7dCQ@mail.gmail.com>
+	<20130925183828.GA30372@lenny.home.zabbo.net>
+	<CAFX2JfnyF8kyMYzCdqdr2JkoyQCom1bFLpFj89wODjoju54-Ow@mail.gmail.com>
+	<20130925190620.GB30372@lenny.home.zabbo.net>
+	<20130925195526.GA18971@fieldses.org>
+	<20130925210742.GG30372@lenny.home.zabbo.net>
+	<CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
+	<20130926185508.GO30372@lenny.home.zabbo.net>
+	<5244A68F.906@redhat.com>
+	<20130927200550.GA22640@fieldses.org>
+	<20130927205013.GZ30372@lenny.home.zabbo.net>
+	<CAJfpegtdiQzP7t5hc_OaHjSGTrjdZLfKi6fiKqBQ_+AP2Y0-oQ@mail.gmail.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA9467EF2D7@SACEXCMBX04-PRD.hq.netapp.com>
+	<52474839.2080201@redhat.com>
+Date: Mon, 30 Sep 2013 14:20:30 +0200
+Message-ID: <CAJfpegsN7Hu8uecSVQrhax+n+zhq=uUgpzOk=qZ6_n383tdNCQ@mail.gmail.com>
+Subject: Re: [RFC] extending splice for copy offloading
+From: Miklos Szeredi <miklos@szeredi.hu>
+To: Ric Wheeler <rwheeler@redhat.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Zach Brown <zab@redhat.com>, "J. Bruce Fields" <bfields@fieldses.org>,
         Anna Schumaker <schumaker.anna@gmail.com>,
         Kernel Mailing List <linux-kernel@vger.kernel.org>,
         Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
@@ -14,84 +36,52 @@ CC: "J. Bruce Fields" <bfields@fieldses.org>, Zach Brown <zab@redhat.com>,
         "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
         Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
         Eric Wong <normalperson@yhbt.net>
-Subject: RE: [RFC] extending splice for copy offloading
-Date: Mon, 30 Sep 2013 15:33:46 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9467F3C78@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20130925210742.GG30372@lenny.home.zabbo.net>
- <CAJfpegsQ0A3T+46o9nsPwaH83JCbgyhgRNGPgzTqs0EcsmDuiQ@mail.gmail.com>
- <20130926185508.GO30372@lenny.home.zabbo.net> <5244A68F.906@redhat.com>
- <20130927200550.GA22640@fieldses.org>
- <20130927205013.GZ30372@lenny.home.zabbo.net>
- <CAJfpegtdiQzP7t5hc_OaHjSGTrjdZLfKi6fiKqBQ_+AP2Y0-oQ@mail.gmail.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9467EF2D7@SACEXCMBX04-PRD.hq.netapp.com>
- <52474839.2080201@redhat.com>
- <CAJfpegsN7Hu8uecSVQrhax+n+zhq=uUgpzOk=qZ6_n383tdNCQ@mail.gmail.com>
- <20130930143432.GG16579@fieldses.org>
- <CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com>
- <52499026.3090802@redhat.com>
- <CAJfpegtpXuh9070ALGy16Y8kdgioBqSf4JQqBBCF4FHvFJWAWQ@mail.gmail.com>
- <52498AA8.2090204@redhat.com>
-In-Reply-To: <52498AA8.2090204@redhat.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBSaWMgV2hlZWxlciBbbWFpbHRv
-OnJ3aGVlbGVyQHJlZGhhdC5jb21dDQo+IFNlbnQ6IE1vbmRheSwgU2VwdGVtYmVyIDMwLCAyMDEz
-IDEwOjI5IEFNDQo+IFRvOiBNaWtsb3MgU3plcmVkaQ0KPiBDYzogSi4gQnJ1Y2UgRmllbGRzOyBN
-eWtsZWJ1c3QsIFRyb25kOyBaYWNoIEJyb3duOyBBbm5hIFNjaHVtYWtlcjsgS2VybmVsDQo+IE1h
-aWxpbmcgTGlzdDsgTGludXgtRnNkZXZlbDsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgU2No
-dW1ha2VyLCBCcnlhbjsNCj4gTWFydGluIEsuIFBldGVyc2VuOyBKZW5zIEF4Ym9lOyBNYXJrIEZh
-c2hlaDsgSm9lbCBCZWNrZXI7IEVyaWMgV29uZw0KPiBTdWJqZWN0OiBSZTogW1JGQ10gZXh0ZW5k
-aW5nIHNwbGljZSBmb3IgY29weSBvZmZsb2FkaW5nDQo+IA0KPiBPbiAwOS8zMC8yMDEzIDEwOjI0
-IEFNLCBNaWtsb3MgU3plcmVkaSB3cm90ZToNCj4gPiBPbiBNb24sIFNlcCAzMCwgMjAxMyBhdCA0
-OjUyIFBNLCBSaWMgV2hlZWxlciA8cndoZWVsZXJAcmVkaGF0LmNvbT4NCj4gd3JvdGU6DQo+ID4+
-IE9uIDA5LzMwLzIwMTMgMTA6NTEgQU0sIE1pa2xvcyBTemVyZWRpIHdyb3RlOg0KPiA+Pj4gT24g
-TW9uLCBTZXAgMzAsIDIwMTMgYXQgNDozNCBQTSwgSi4gQnJ1Y2UgRmllbGRzDQo+ID4+PiA8YmZp
-ZWxkc0BmaWVsZHNlcy5vcmc+DQo+ID4+PiB3cm90ZToNCj4gPj4+Pj4gTXkgb3RoZXIgd29ycnkg
-aXMgYWJvdXQgaW50ZXJydXB0aWJpbGl0eS9yZXN0YXJ0YWJpbGl0eS4gIElkZWFzPw0KPiA+Pj4+
-Pg0KPiA+Pj4+PiBXaGF0IGhhcHBlbnMgb24gc3BsaWNlKGZyb20sIHRvLCA0RykgYW5kIGl0J3Mg
-YSBub24tcmVmbGluayBjb3B5Pw0KPiA+Pj4+PiBDYW4gdGhlIHBhZ2UgY2FjaGUgY29weSBiZSBt
-YWRlIHJlc3RhcnRhYmxlPyAgIE9yIHNob3VsZCBzcGxpY2UoKSBiZQ0KPiA+Pj4+PiBhbGxvd2Vk
-IHRvIHJldHVybiBhIHNob3J0IGNvdW50PyAgV2hhdCBoYXBwZW5zIG9uIChub24tcmVmbGluaykN
-Cj4gPj4+Pj4gcmVtb3RlIGNvcGllcyBhbmQgaHVnZSByZXF1ZXN0IHNpemVzPw0KPiA+Pj4+IElm
-IEkgd2VyZSB3cml0aW5nIGFuIGFwcGxpY2F0aW9uIHRoYXQgcmVxdWlyZWQgY29waWVzIHRvIGJl
-DQo+ID4+Pj4gcmVzdGFydGFibGUsIEknZCBwcm9iYWJseSB1c2UgdGhlIGxhcmdlc3QgcG9zc2li
-bGUgcmFuZ2UgaW4gdGhlDQo+ID4+Pj4gcmVmbGluayBjYXNlIGJ1dCBicmVhayB0aGUgY29weSBp
-bnRvIHNtYWxsZXIgY2h1bmtzIGluIHRoZSBzcGxpY2UgY2FzZS4NCj4gPj4+Pg0KPiA+Pj4gVGhl
-IGFwcCByZWFsbHkgZG9lc24ndCB3YW50IHRvIGNhcmUgYWJvdXQgdGhhdC4gIEFuZCBpdCBkb2Vz
-bid0IHdhbnQNCj4gPj4+IHRvIGNhcmUgYWJvdXQgcmVzdGFydGFiaWxpdHksIGV0Yy4uICBJdCdz
-IHNvbWV0aGluZyB0aGUgKmtlcm5lbCogaGFzDQo+ID4+PiB0byBjYXJlIGFib3V0LiAgIFlvdSBq
-dXN0IGNhbid0IGhhdmUgdW5pbnRlcnJ1cHRpYmxlIHN5c2NhbGxzIHRoYXQNCj4gPj4+IHNsZWVw
-IGZvciBhICJsb25nIiB0aW1lLCBvdGhlcndpc2UgZmlyc3QgeW91J2xsIGp1c3QgaGF2ZSBhbm5v
-eWVkDQo+ID4+PiB1c2VycyBwcmVzc2luZyBeQyBpbiB2YWluOyB0aGVuLCBpZiB0aGUgc2xlZXAg
-aXMgZXZlbiBsb25nZXIsDQo+ID4+PiB3YXJuaW5ncyBhYm91dCB0YXNrIHNsZWVwaW5nIHRvbyBs
-b25nLg0KPiA+Pj4NCj4gPj4+IE9uZSBpZGVhIGlzIGxldHRpbmcgc3BsaWNlKCkgcmV0dXJuIGEg
-c2hvcnQgY291bnQsIGFuZCBzbyB0aGUgYXBwDQo+ID4+PiBjYW4gc2FmZWx5IGlzc3VlIFNJWkVf
-TUFYIHJlcXVlc3RzIGFuZCB0aGUga2VybmVsIGNhbiBkZWNpZGUgaWYgaXQNCj4gPj4+IGNhbiBj
-b3B5IHRoZSB3aG9sZSBmaWxlIGluIG9uZSBnbyBvciBpZiBpdCB3YW50cyB0byBkbyBpdCBpbiBz
-bWFsbGVyDQo+ID4+PiBjaHVua3MuDQo+ID4+Pg0KPiA+PiBZb3UgY2Fubm90IHJlbHkgb24gYSBz
-aG9ydCBjb3VudC4gVGhhdCBpbXBsaWVzIHRoYXQgYW4gb2ZmbG9hZGVkIGNvcHkNCj4gPj4gc3Rh
-cnRzIGF0IGJ5dGUgMCBhbmQgdGhlIHNob3J0IGNvdW50IGZpcnN0IGJ5dGVzIGFyZSBhbGwgdmFs
-aWQuDQo+ID4gSHVoPw0KPiA+DQo+ID4gLSBhcHAgY2FsbHMgc3BsaWNlKGZyb20sIDAsIHRvLCAw
-LCBTSVpFX01BWCkNCj4gPiAgIDEpIFZGUyBjYWxscyAtPmRpcmVjdF9zcGxpY2UoZnJvbSwgMCwg
-IHRvLCAwLCBTSVpFX01BWCkNCj4gPiAgICAgIDEuYSkgZnMgcmVmbGlua3MgdGhlIHdob2xlIGZp
-bGUgaW4gYSBqaWZmeSBhbmQgcmV0dXJucyB0aGUgc2l6ZSBvZiB0aGUgZmlsZQ0KPiA+ICAgICAg
-MSBiKSBmcyBkb2VzIGNvcHkgb2ZmbG9hZCBvZiwgc2F5LCA2NE1CIGFuZCByZXR1cm5zIDY0TQ0K
-PiA+ICAgMikgVkZTIGRvZXMgcGFnZSBjb3B5IG9mLCBzYXksIDFNQiBhbmQgcmV0dXJucyAxTUIN
-Cj4gPiAtIGFwcCBjYWxscyBzcGxpY2UoZnJvbSwgWCwgdG8sIFgsIFNJWkVfTUFYKSB3aGVyZSBY
-IGlzIHRoZSBuZXcgb2Zmc2V0DQo+ID4gLi4uDQo+ID4NCj4gPiBUaGUgcG9pbnQgaXM6IHRoZSBh
-cHAgaXMgYWx3YXlzIGRvaW5nIHRoZSBzYW1lIChpbmNyZW1lbnRpbmcgb2Zmc2V0DQo+ID4gd2l0
-aCB0aGUgcmV0dXJuIHZhbHVlIGZyb20gc3BsaWNlKSBhbmQgdGhlIGtlcm5lbCBjYW4gZGVjaWRl
-IHdoYXQgaXMNCj4gPiB0aGUgYmVzdCBzaXplIGl0IGNhbiBzZXJ2aWNlIHdpdGhpbiBhIHNpbmds
-ZSB1bmludGVycnVwdGlibGUgc3lzY2FsbC4NCj4gPg0KPiA+IFdvdWxkbid0IHRoYXQgd29yaz8N
-Cj4gPg0KPiA+IFRoYW5rcywNCj4gPiBNaWtsb3MNCj4gDQo+IE5vLg0KPiANCj4gS2VlcCBpbiBt
-aW5kIHRoYXQgdGhlIG9mZmxvYWQgb3BlcmF0aW9uIGluICgxKSBtaWdodCBmYWlsIHBhcnRpYWxs
-eS4gVGhlIHRhcmdldA0KPiBmaWxlICh0aGUgY29weSkgaXMgYWxsb2NhdGVkLCB0aGUgcXVlc3Rp
-b24gaXMgd2hhdCByYW5nZXMgaGF2ZSB2YWxpZCBkYXRhLg0KPiANCj4gSSBkb24ndCBzZWUgdGhh
-dCAoMikgaXMgaW50ZXJlc3Rpbmcgb3IgcmVhbGx5IG5lZWRlZCB0byBiZSBkb25lIGluIHRoZSBr
-ZXJuZWwuDQo+IElmIG5vdGhpbmcgZWxzZSwgaXQgdGVuZHMgdG8gY29uZnVzZSB0aGUgZGlzY3Vz
-c2lvbi4uLi4NCj4gDQoNCkFubmEncyBmaWd1cmVzLCB0aGF0IHdlcmUgcHJlc2VudGVkIGF0IFBs
-dW1iZXIncywgc2hvdyB0aGF0ICgyKSBpcyBzdGlsbCB3b3J0aCBkb2luZyBvbiB0aGUgX3NlcnZl
-cl8gZm9yIHRoZSBjYXNlIG9mIE5GUy4NCg0KQ2hlZXJzDQogIFRyb25kDQo=
+On Sat, Sep 28, 2013 at 11:20 PM, Ric Wheeler <rwheeler@redhat.com> wrote:
+
+>>> I don't see the safety argument very compelling either.  There are real
+>>> semantic differences, however: ENOSPC on a write to a
+>>> (apparentlíy) already allocated block.  That could be a bit unexpected.
+>>> Do we
+>>> need a fallocate extension to deal with shared blocks?
+>>
+>> The above has been the case for all enterprise storage arrays ever since
+>> the invention of snapshots. The NFSv4.2 spec does allow you to set a
+>> per-file attribute that causes the storage server to always preallocate
+>> enough buffers to guarantee that you can rewrite the entire file, however
+>> the fact that we've lived without it for said 20 years leads me to believe
+>> that demand for it is going to be limited. I haven't put it top of the list
+>> of features we care to implement...
+>>
+>> Cheers,
+>>     Trond
+>
+>
+> I agree - this has been common behaviour for a very long time in the array
+> space. Even without an array,  this is the same as overwriting a block in
+> btrfs or any file system with a read-write LVM snapshot.
+
+Okay, I'm convinced.
+
+So I suggest
+
+ - mount(..., MNT_REFLINK): *allow* splice to reflink.  If this is not
+set, fall back to page cache copy.
+ - splice(... SPLICE_REFLINK):  fail non-reflink copy.  With this app
+can force reflink.
+
+Both are trivial to implement and make sure that no backward
+incompatibility surprises happen.
+
+My other worry is about interruptibility/restartability.  Ideas?
+
+What happens on splice(from, to, 4G) and it's a non-reflink copy?
+Can the page cache copy be made restartable?   Or should splice() be
+allowed to return a short count?  What happens on (non-reflink) remote
+copies and huge request sizes?
+
+Thanks,
+Miklos
