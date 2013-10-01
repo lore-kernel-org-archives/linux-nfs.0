@@ -1,29 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:6340 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751613Ab3IRRkV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Sep 2013 13:40:21 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r8IHeLpu005985
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 18 Sep 2013 13:40:21 -0400
-Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r8IHeLob012195
-	for <linux-nfs@vger.kernel.org>; Wed, 18 Sep 2013 13:40:21 -0400
-Message-ID: <5239E59C.7080400@RedHat.com>
-Date: Wed, 18 Sep 2013 13:40:44 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from natasha.panasas.com ([67.152.220.90]:34753 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754816Ab3JAAa0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Sep 2013 20:30:26 -0400
+Message-ID: <524A1782.40403@panasas.com>
+Date: Mon, 30 Sep 2013 17:29:54 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Linux NFS town hall  meeting  09/19/13 (Cancelled)
-Content-Type: text/plain; charset=UTF-8
+To: Benny Halevy <bhalevy@primarydata.com>
+CC: "J. Bruce Fields" <bfields@redhat.com>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Lev Solomonov <solo@primarydata.com>,
+        Idan Kedar <idank@primarydata.com>,
+        Nadav Shemer <nadav@primarydata.com>,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH RFC v0 0/49] pnfsd-dlm
+References: <52447EA0.7070004@primarydata.com> <524588C7.9040500@panasas.com> <CAEMWVhsD-f2wZJzASMtC10XHPH2aSTzVLtYje3U8ezP_+67rWw@mail.gmail.com> <5245B44B.2080508@panasas.com> <CAEMWVhtE9TTB4i4iidfayVwWWX5aTtQ7pnKXPfba3YUZ2fapfg@mail.gmail.com> <524A161D.50408@panasas.com>
+In-Reply-To: <524A161D.50408@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It sound a lot of people are travelling this week, 
-so lets cancel this week's meeting.
+On 09/30/2013 05:23 PM, Boaz Harrosh wrote:
+> But the fact is that no
+> one cares for a files-layout open-source server.
+> 
 
-See ya in two weeks...   
+Actually I was wrong about this. Ganesha project has
+3-4 open-source implementations of real pnfs.
 
-steved.
+Cheers
+Boaz
+
 
