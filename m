@@ -1,35 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f43.google.com ([74.125.83.43]:50967 "EHLO
-	mail-ee0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751184Ab3JAGEf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Oct 2013 02:04:35 -0400
-Received: by mail-ee0-f43.google.com with SMTP id e52so3177940eek.30
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Sep 2013 23:04:34 -0700 (PDT)
-Message-ID: <524A65ED.5060806@primarydata.com>
-Date: Tue, 01 Oct 2013 09:04:29 +0300
-From: Benny Halevy <bhalevy@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:55351 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751575Ab3JASpN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Oct 2013 14:45:13 -0400
+Date: Tue, 1 Oct 2013 14:45:12 -0400
+From: "'Bruce Fields'" <bfields@fieldses.org>
+To: Frank Filz <ffilzlnx@mindspring.com>
+Cc: "'Kernel NFS List'" <linux-nfs@vger.kernel.org>,
+        "'Ganesha NFS List'" <nfs-ganesha-devel@lists.sourceforge.net>
+Subject: Re: pynfs updates
+Message-ID: <20131001184512.GN26382@fieldses.org>
+References: <003301cebe09$5bf81090$13e831b0$@mindspring.com>
+ <20130930221126.GD26382@fieldses.org>
+ <003f01cebe38$75436480$5fca2d80$@mindspring.com>
+ <20131001142601.GG26382@fieldses.org>
+ <009a01cebed2$fcdacb50$f69061f0$@mindspring.com>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC v0 20/49] pnfsd: filelayout: layout encoding
-References: <52447EA0.7070004@primarydata.com> <1380220872-13597-1-git-send-email-bhalevy@primarydata.com> <20130929121639.GD21083@infradead.org>
-In-Reply-To: <20130929121639.GD21083@infradead.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <009a01cebed2$fcdacb50$f69061f0$@mindspring.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-09-29 15:16, Christoph Hellwig wrote:
-> The actual XDR encoding doesn't have business being under fs/exportfs
-> and should be in the NFSD code itself.
-
-Hmm, I thought of it as in the family of fh encoding and decoding...
-But I'm not married to this idea.
-
-Benny
-
+On Tue, Oct 01, 2013 at 02:21:01PM -0400, Frank Filz wrote:
+> > > > 		- SECNN4: is env.home necessarily unequal to "/"?  Would
+> > > > 		  seem better to do the lookup in a subdirectory just to
+> > > > 		  be certain.
+> > >
+> > > Env.home is the directory you specify on the command line, I think the
+> > > presumption is that it is a writeable file system. Pynfs creates tmp
+> > > and tree directories in home (and maybe some files also?). Guess if /
+> > > was writeable, you could specify /, so yea, maybe it should go into tmp.
+> > 
+> > Sounds good.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+> env.home does actually include traversing into tmp, so I will leave this
+> test alone.
+
+OK!
+
+--b.
