@@ -1,76 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:44510 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758210Ab3JQSMT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 14:12:19 -0400
-Received: from acsinet22.oracle.com (acsinet22.oracle.com [141.146.126.238])
-	by aserp1040.oracle.com (Sentrion-MTA-4.3.1/Sentrion-MTA-4.3.1) with ESMTP id r9HICHe1004608
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:12:18 GMT
-Received: from nfsvm18.us.oracle.com (nfsvm18.us.oracle.com [10.135.198.118])
-	by acsinet22.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id r9HICHrk009739
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:12:17 GMT
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 01/21] SUNRPC: Modify synopsis of rpc_client_register()
-Date: Thu, 17 Oct 2013 14:12:17 -0400
-Message-Id: <20131017181217.1073.35663.stgit@nfsvm18.us.oracle.com>
-In-Reply-To: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
-References: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
+Received: from mail-ee0-f52.google.com ([74.125.83.52]:63413 "EHLO
+	mail-ee0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751624Ab3JAIcm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Oct 2013 04:32:42 -0400
+Received: by mail-ee0-f52.google.com with SMTP id c41so3259417eek.11
+        for <linux-nfs@vger.kernel.org>; Tue, 01 Oct 2013 01:32:41 -0700 (PDT)
+Message-ID: <524A88A6.8030501@primarydata.com>
+Date: Tue, 01 Oct 2013 11:32:38 +0300
+From: Benny Halevy <bhalevy@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC v0 29/49] pnfsd: support layout_type attribute
+References: <52447EA0.7070004@primarydata.com> <1380220908-14009-1-git-send-email-bhalevy@primarydata.com> <20130929121723.GE21083@infradead.org> <524A237F.2060100@panasas.com>
+In-Reply-To: <524A237F.2060100@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The rpc_client_register() helper was added in commit e73f4cc0,
-"SUNRPC: split client creation routine into setup and registration,"
-Mon Jun 24 11:52:52 2013.  In a subsequent patch, I'd like to invoke
-rpc_client_register() from a context where a struct rpc_create_args
-is not available.
+On 2013-10-01 04:21, Boaz Harrosh wrote:
+> On 09/29/2013 05:17 AM, Christoph Hellwig wrote:
+>> Seems like layout_type should just be a field in the export ops instead
+>> of a method.
+> 
+> No! this field does not make any sense at all it should just be
+> removed.
+> 
+> There is a pNFS inquiry a client sends that asks for an array
+> of all the types supported by this mount point. So these method
+> should be returning an array. If at all.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/clnt.c |   13 +++++++------
- 1 file changed, 7 insertions(+), 6 deletions(-)
+We're not there yet.
+The pnfs generic implementation and none of the filesystems do that
+at the moment.  When we go there we should revise the interface.
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 7747960..1aa361b 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -272,12 +272,13 @@ static void rpc_clnt_set_nodename(struct rpc_clnt *clnt, const char *nodename)
- 	memcpy(clnt->cl_nodename, nodename, clnt->cl_nodelen);
- }
- 
--static int rpc_client_register(const struct rpc_create_args *args,
--			       struct rpc_clnt *clnt)
-+static int rpc_client_register(struct rpc_clnt *clnt,
-+			       rpc_authflavor_t pseudoflavor,
-+			       const char *client_name)
- {
- 	struct rpc_auth_create_args auth_args = {
--		.pseudoflavor = args->authflavor,
--		.target_name = args->client_name,
-+		.pseudoflavor = pseudoflavor,
-+		.target_name = client_name,
- 	};
- 	struct rpc_auth *auth;
- 	struct net *net = rpc_net_ns(clnt);
-@@ -298,7 +299,7 @@ static int rpc_client_register(const struct rpc_create_args *args,
- 	auth = rpcauth_create(&auth_args, clnt);
- 	if (IS_ERR(auth)) {
- 		dprintk("RPC:       Couldn't create auth handle (flavor %u)\n",
--				args->authflavor);
-+				pseudoflavor);
- 		err = PTR_ERR(auth);
- 		goto err_auth;
- 	}
-@@ -398,7 +399,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args,
- 	/* save the nodename */
- 	rpc_clnt_set_nodename(clnt, utsname()->nodename);
- 
--	err = rpc_client_register(args, clnt);
-+	err = rpc_client_register(clnt, args->authflavor, args->client_name);
- 	if (err)
- 		goto out_no_path;
- 	if (parent)
+> 
+> The layout_type is just an input to some operations and are
+> no concern of NFSD. This is not a yes/no flag for pNFS the
+> opts vector should be the flag.
 
+We can push the check for the layout type down to file system
+but then it will have to encode FATTR4_WORD1_FS_LAYOUT_TYPES
+and FATTR4_WORD2_LAYOUT_TYPES.
+
+Benny
+
+> 
+> Cheers
+> Boaz
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
