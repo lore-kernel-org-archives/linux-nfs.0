@@ -1,65 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:32097 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:36251 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751330Ab3JaUyq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 Oct 2013 16:54:46 -0400
-Message-ID: <5272C397.6020201@redhat.com>
-Date: Thu, 31 Oct 2013 13:54:47 -0700
-From: Anand Avati <aavati@redhat.com>
+	id S1752262Ab3JAOrS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Oct 2013 10:47:18 -0400
+Date: Tue, 1 Oct 2013 10:47:16 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Wendy Cheng <s.wendy.cheng@gmail.com>
+Cc: Jongman Heo <jongman.heo@samsung.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Re: Regression caused by commit 4bdc33ed ("NFSDv4.2: Add NFS
+ v4.2 support to the NFS server")
+Message-ID: <20131001144716.GK26382@fieldses.org>
+References: <42.19.15034.896B3425@epcpsbgx2.samsung.com>
+ <20130926174742.GA5066@fieldses.org>
+ <CABgxfbHyE04V_7YH2Zcqm+TAgCjT73kKWVGmKD30YxsriT+FMw@mail.gmail.com>
 MIME-Version: 1.0
-To: eshel@us.ibm.com, Linux NFS list <linux-nfs@vger.kernel.org>,
-        nfsv4@ietf.org, nfsv4-bounces@ietf.org,
-        Steve Dickson <SteveD@redhat.com>
-Subject: Re: XATTRs in NFS
-References: <OF7DBE5533.A67587D8-ON88257C12.007C1560-88257C12.007CA986@us.ibm.com> <5272742D.7000905@redhat.com>
-In-Reply-To: <5272742D.7000905@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CABgxfbHyE04V_7YH2Zcqm+TAgCjT73kKWVGmKD30YxsriT+FMw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Sep 26, 2013 at 11:35:46AM -0700, Wendy Cheng wrote:
+> On Thu, Sep 26, 2013 at 10:47 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> 
+> > (BTW, out of curiosity: what kind of client is this that only supports
+> > NFSv2 and NFSv3?  Even for an embedded system that's a bit surprising.)
+> >
+> 
+> There are few floating around - at least I'm working on one at this moment.
+> 
+> Look to me the upgrade issue is with user space packages (e.g. where
+> "mount" lives). Embedded systems can take their user space packages
+> from certain "distribution"s that are not necessarily sync well with
+> individual linux upstream tool distribution, even the kernel itself is
+> reasonably updated.
+> 
+> And don't shoot a messenger :) .. I'm just describing the practices I
+> have been observed.
 
-> -------- Original Message --------
-> Subject:     XATTRs in NFS
-> Date:     Mon, 28 Oct 2013 15:41:37 -0700
-> From:     Marc Eshel <eshel@us.ibm.com>
-> To:     Marc Eshel <eshel@us.ibm.com>
-> CC:     Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-> nfsv4@ietf.org, nfsv4-bounces@ietf.org
->
->
->
-> This is a clean start to discuss extended attributes over NFS in the
-> mailing list first.
->
-> 1. What are the requirements and why? which applications are using them
-> and how.
+OK.  I'm not sure what standard to hold this sort of change to.  I'm
+inclined to use the same "it's OK if and only if nobody notices"
+standard as for normal kernel interfaces.  Which means we've already got
+enough evidence to put off dropping NFSv2 support for a few more years,
+at least on the server side....
 
-Reiterating, one of the applications (glusterfs - a distributed 
-filesystem) has been using filesystems with extended attribute support 
-by annotating files and dirs with crucial info for its operation (uses 
-xattrs as a dumb key/value store). Usage of xattrs is crucial for the 
-operation as glusterfs avoids using any sort of "external" meta-data 
-database or metadata server for its operation (as a philosophy/design 
-principle focused on robustness). Lack of xattrs on NFS prevents using 
-NFS volumes as gluster bricks.
-
-To that end, if NFS can map user.XXX values to user.XXX named attributes 
-and vice versa in the NFS client and NFS server respectively, that would 
-make NFS volumes be usable as gluster bricks.
-
-> 2. Why are current named attributes in NFS not the right answer.
-
-I think they might be, if we can map user.XXXX xattrs to named 
-attributes and avoid any sort of interpretation of they key/values by 
-NFS. Though from my point of view, all I care is for getxattr/setxattr 
-of user.XXX keys to "just work" (whether they are mapped to named 
-attributes or implemented as a separate feature).
-
-Avati
-
-> 3. What does the new protocol enhancements should look like?
->
-> Thanks, Marc.
->
-
-
+--b.
