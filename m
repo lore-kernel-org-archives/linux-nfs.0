@@ -1,57 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:53669 "EHLO mx1.redhat.com"
+Received: from e8.ny.us.ibm.com ([32.97.182.138]:57896 "EHLO e8.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934006Ab3JPN4s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Oct 2013 09:56:48 -0400
-Date: Wed, 16 Oct 2013 09:56:25 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-fsdevel@vger.kernel.org, Al Viro <viro@ZenIV.linux.org.uk>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/5] exportfs: clear DISCONNECTED on all parents sooner
-Message-ID: <20131016135625.GB3759@pad.fieldses.org>
-References: <1381869574-10662-1-git-send-email-bfields@redhat.com>
- <1381869574-10662-2-git-send-email-bfields@redhat.com>
- <20131016071343.GB27799@infradead.org>
+	id S1751184Ab3JASR4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Oct 2013 14:17:56 -0400
+Received: from /spool/local
+	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Tue, 1 Oct 2013 14:17:55 -0400
+Received: from b01cxnp22036.gho.pok.ibm.com (b01cxnp22036.gho.pok.ibm.com [9.57.198.26])
+	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id 91AB0C90045
+	for <linux-nfs@vger.kernel.org>; Tue,  1 Oct 2013 14:17:52 -0400 (EDT)
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by b01cxnp22036.gho.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r91IHqFb65404976
+	for <linux-nfs@vger.kernel.org>; Tue, 1 Oct 2013 18:17:52 GMT
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r91IHqip020562
+	for <linux-nfs@vger.kernel.org>; Tue, 1 Oct 2013 12:17:52 -0600
+Received: from malahal (malahal.austin.ibm.com [9.41.105.170])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id r91IHquH020541
+	for <linux-nfs@vger.kernel.org>; Tue, 1 Oct 2013 12:17:52 -0600
+Date: Tue, 1 Oct 2013 13:17:50 -0500
+From: Malahal Naineni <malahal@us.ibm.com>
+To: linux-nfs@vger.kernel.org
+Subject: NFS with ActiveDirectory+Kerberos
+Message-ID: <20131001181750.GA24424@us.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131016071343.GB27799@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 16, 2013 at 12:13:43AM -0700, Christoph Hellwig wrote:
-> On Tue, Oct 15, 2013 at 04:39:29PM -0400, J. Bruce Fields wrote:
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > Once we've found any connected parent, we know all our parents are
-> > connected--that's true even if there's a concurrent rename.  May as well
-> > clear them all at once.
-> > 
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> Looks good,
-> 
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
-> 
-> >  		if (!IS_ROOT(pd)) {
-> >  			/* must have found a connected parent - great */
-> > -			spin_lock(&pd->d_lock);
-> > -			pd->d_flags &= ~DCACHE_DISCONNECTED;
-> > -			spin_unlock(&pd->d_lock);
-> > +			clear_disconnected(target_dir);
-> >  			noprogress = 0;
-> >  		} else if (pd == mnt->mnt_sb->s_root) {
-> >  			printk(KERN_ERR "export: Eeek filesystem root is not connected, impossible\n");
-> 
-> You might as well throw a patch in to make this condition a BUG_ON, it
-> would indicate a nasty bug in the dcache and has never triggered in the
-> last 10 years as far as I know.
+Hi All,
 
-We've seen some ugly crashes made uglier by unnecessary BUG()s.  I guess
-that wouldn't be the case here as we're not holding any critical locks
-and all we're going to kill is an nfsd thread or open_by_handle caller.
-And like you say it's a very unlikely case anyway.
+We are using RHEL6.1 as an NFS server, and we have configured an RHEL6.2
+system as an NFS client. We configured AD+Kerberos set up on both these
+machines. The kerberos TGT ticket is set to expire after a long time,
+but the kerberos service ticket is set to expire only after a short time
+(10 minutes), but the service ticket is renewable!  NFS I/O fails around
+when service ticket expires (EIO or EACCESS). If we retry the command
+(or any command that generates NFS I/O), the service ticket gets renewed
+and everything works until the next service expiry time.
 
-So, OK, I'll turn this case into a BUG_ON in a separate patch.
+Could this be an AD (Active Directory) related issue? Do auto renewing
+service tickets work in NFS (nfs-utils-1.2.3-15.el6.x86_64)?  We have
+tried with 10 hour service ticket expiry time as well. Same issue, the 
+I/O fails after 10 hours!
 
---b.
+I am not familiar with kerberos and NFS security. Is there a way to
+manually (cron/script) renew those tickets and make it work without NFS
+errors? I would appreciate any help.
+
+Regards, Malahal.
+
