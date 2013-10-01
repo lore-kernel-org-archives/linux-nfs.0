@@ -1,72 +1,180 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:2270 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:1971 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751292Ab3J2Mld convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Oct 2013 08:41:33 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Weston Andros Adamson <dros@netapp.com>
-CC: Mailing List Linux NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/5] NFSv4: clean up state ref counting in open recover
-Date: Tue, 29 Oct 2013 12:41:32 +0000
-Message-ID: <26918CDF-B736-44AB-8F98-500EAF8E6D5B@netapp.com>
-References: <1382375414-5854-1-git-send-email-dros@netapp.com>
- <1382375414-5854-4-git-send-email-dros@netapp.com>
- <1382994367.3314.7.camel@leira.trondhjem.org>
- <24EA4861-1E1E-4904-9E80-322EB0522917@netapp.com>
- <AF88BDE0-01D7-4B5C-B50D-A232AE7849AE@netapp.com>
-In-Reply-To: <AF88BDE0-01D7-4B5C-B50D-A232AE7849AE@netapp.com>
-Content-Type: text/plain; charset="us-ascii"
+	id S1751812Ab3JAWOg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Oct 2013 18:14:36 -0400
+Date: Tue, 1 Oct 2013 18:14:34 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Benny Halevy <bhalevy@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC v0 10/49] pnfsd: use sbid hash table to map
+ super_blocks to devid major identifiers
+Message-ID: <20131001221433.GB30994@pad.fieldses.org>
+References: <52447EA0.7070004@primarydata.com>
+ <1380220831-13136-1-git-send-email-bhalevy@primarydata.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1380220831-13136-1-git-send-email-bhalevy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+See previous comments.  What guarantees these superblock pointers stay
+good as long as they're in the cache?
 
-On Oct 29, 2013, at 8:33 AM, Weston Andros Adamson <dros@netapp.com> wrote:
+--b.
 
+On Thu, Sep 26, 2013 at 02:40:31PM -0400, Benny Halevy wrote:
+> From: Benny Halevy <bhalevy@panasas.com>
 > 
-> On Oct 29, 2013, at 8:32 AM, Weston Andros Adamson <dros@netapp.com> wrote:
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> [pnfsd: alloc_sid should kmalloc a object not a pointer]
+> Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+> ---
+>  fs/nfsd/nfs4pnfsd.c | 120 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfsd/pnfsd.h     |   2 +
+>  2 files changed, 122 insertions(+)
 > 
->> On Oct 28, 2013, at 5:06 PM, Myklebust, Trond <Trond.Myklebust@netapp.com> wrote:
->> 
->>> On Mon, 2013-10-21 at 13:10 -0400, Weston Andros Adamson wrote:
->>>> There's already a valid state (the one being recovered), so just
->>>> reference it. Also clean up error paths to avoid ref leaks.
->>>> 
->>>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->>>> ---
->>>> fs/nfs/nfs4proc.c | 13 ++++++++-----
->>>> 1 file changed, 8 insertions(+), 5 deletions(-)
->>>> 
->>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>>> index 8140366..8ae1589 100644
->>>> --- a/fs/nfs/nfs4proc.c
->>>> +++ b/fs/nfs/nfs4proc.c
->>>> @@ -1323,14 +1323,14 @@ _nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
->>>> 		goto err;
->>>> 	}
->>>> 
->>>> -	ret = -ENOMEM;
->>>> -	state = nfs4_get_open_state(inode, data->owner);
->>>> -	if (state == NULL)
->>>> +	/* referenced the passed state */
->>>> +	ret = -EINVAL;
->>>> +	if (state == NULL || !atomic_inc_not_zero(&state->count))
->>>> 		goto err;
->>> 
->>> We already know that state != NULL, and that state->count != 0 here, so
->>> I applied a simplified version of this patch that just does an
->>> atomic_inc(&state->count) just before the function return.
->> 
->> I just checked out the simplified patch - it looks good.
->> 
->> Acked-by: Weston Andros Adamson <dros@netapp.com>
+> diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+> index cb28207..9a7cbc9 100644
+> --- a/fs/nfsd/nfs4pnfsd.c
+> +++ b/fs/nfsd/nfs4pnfsd.c
+> @@ -25,3 +25,123 @@
+>  
+>  #define NFSDDBG_FACILITY                NFSDDBG_PNFS
+>  
+> +static DEFINE_SPINLOCK(layout_lock);
+> +
+> +/* hash table for nfsd4_pnfs_deviceid.sbid */
+> +#define SBID_HASH_BITS	8
+> +#define SBID_HASH_SIZE	(1 << SBID_HASH_BITS)
+> +#define SBID_HASH_MASK	(SBID_HASH_SIZE - 1)
+> +
+> +struct sbid_tracker {
+> +	u64 id;
+> +	struct super_block *sb;
+> +	struct list_head hash;
+> +};
+> +
+> +static u64 current_sbid;
+> +static struct list_head sbid_hashtbl[SBID_HASH_SIZE];
+> +
+> +static unsigned long
+> +sbid_hashval(struct super_block *sb)
+> +{
+> +	return hash_ptr(sb, SBID_HASH_BITS);
+> +}
+> +
+> +static struct sbid_tracker *
+> +alloc_sbid(void)
+> +{
+> +	return kmalloc(sizeof(struct sbid_tracker), GFP_KERNEL);
+> +}
+> +
+> +static void
+> +destroy_sbid(struct sbid_tracker *sbid)
+> +{
+> +	spin_lock(&layout_lock);
+> +	list_del(&sbid->hash);
+> +	spin_unlock(&layout_lock);
+> +	kfree(sbid);
+> +}
+> +
+> +void
+> +nfsd4_free_pnfs_slabs(void)
+> +{
+> +	int i;
+> +	struct sbid_tracker *sbid;
+> +
+> +	for (i = 0; i < SBID_HASH_SIZE; i++) {
+> +		while (!list_empty(&sbid_hashtbl[i])) {
+> +			sbid = list_first_entry(&sbid_hashtbl[i],
+> +						struct sbid_tracker,
+> +						hash);
+> +			destroy_sbid(sbid);
+> +		}
+> +	}
+> +}
+> +
+> +int
+> +nfsd4_init_pnfs_slabs(void)
+> +{
+> +	int i;
+> +
+> +	for (i = 0; i < SBID_HASH_SIZE; i++)
+> +		INIT_LIST_HEAD(&sbid_hashtbl[i]);
+> +
+> +	return 0;
+> +}
+> +
+> +static u64
+> +alloc_init_sbid(struct super_block *sb)
+> +{
+> +	struct sbid_tracker *sbid;
+> +	struct sbid_tracker *new = alloc_sbid();
+> +	unsigned long hash_idx = sbid_hashval(sb);
+> +	u64 id = 0;
+> +
+> +	if (likely(new)) {
+> +		spin_lock(&layout_lock);
+> +		id = ++current_sbid;
+> +		new->id = (id << SBID_HASH_BITS) | (hash_idx & SBID_HASH_MASK);
+> +		id = new->id;
+> +		BUG_ON(id == 0);
+> +		new->sb = sb;
+> +
+> +		list_for_each_entry (sbid, &sbid_hashtbl[hash_idx], hash)
+> +			if (sbid->sb == sb) {
+> +				kfree(new);
+> +				id = sbid->id;
+> +				spin_unlock(&layout_lock);
+> +				return id;
+> +			}
+> +		list_add(&new->hash, &sbid_hashtbl[hash_idx]);
+> +		spin_unlock(&layout_lock);
+> +	}
+> +	return id;
+> +}
+> +
+> +static u64
+> +find_create_sbid(struct super_block *sb)
+> +{
+> +	struct sbid_tracker *sbid;
+> +	unsigned long hash_idx = sbid_hashval(sb);
+> +	int pos = 0;
+> +	u64 id = 0;
+> +
+> +	spin_lock(&layout_lock);
+> +	list_for_each_entry (sbid, &sbid_hashtbl[hash_idx], hash) {
+> +		pos++;
+> +		if (sbid->sb != sb)
+> +			continue;
+> +		if (pos > 1) {
+> +			list_del(&sbid->hash);
+> +			list_add(&sbid->hash, &sbid_hashtbl[hash_idx]);
+> +		}
+> +		id = sbid->id;
+> +		break;
+> +	}
+> +	spin_unlock(&layout_lock);
+> +
+> +	if (!id)
+> +		id = alloc_init_sbid(sb);
+> +
+> +	return id;
+> +}
+> diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
+> index 7c46791..29ea2e7 100644
+> --- a/fs/nfsd/pnfsd.h
+> +++ b/fs/nfsd/pnfsd.h
+> @@ -36,4 +36,6 @@
+>  
+>  #include <linux/nfsd/nfsd4_pnfs.h>
+>  
+> +#include "xdr4.h"
+> +
+>  #endif /* LINUX_NFSD_PNFSD_H */
+> -- 
+> 1.8.3.1
 > 
-> Oh, besides redundant CC lines?
-> 
->    Cc: stable@vger.kernel.org # 3.7.x: a43ec98b72a: NFSv4: don't fail on missing
->    Cc: stable@vger.kernel.org # 3.7.x
-
-Those are there to indicate a dependency on the other patch. I believe this is in accordance with Documentation/stable-patches.txt...
-
-Cheers
-  Trond
