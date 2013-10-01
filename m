@@ -1,64 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50025 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:43397 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756339Ab3J1SIn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Oct 2013 14:08:43 -0400
-Date: Mon, 28 Oct 2013 14:08:38 -0400
-From: Dr Fields James Bruce <bfields@fieldses.org>
-To: Ric Wheeler <rwheeler@redhat.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Christoph Anton Mitterer <calestyo@scientia.net>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-        Steve Dickson <SteveD@redhat.com>
-Subject: Re: XATTRs in NFS?
-Message-ID: <20131028180838.GG31322@fieldses.org>
-References: <1382807547.29041.12.camel@heisenberg.scientia.net>
- <20131027191512.GA31322@fieldses.org>
- <1382911068.6932.20.camel@heisenberg.scientia.net>
- <8DB0D7A2-BA2A-4001-A01C-D498C777B243@netapp.com>
- <1382920068.6932.46.camel@heisenberg.scientia.net>
- <2E672741-FE4F-4287-8D00-B7634A71709E@netapp.com>
- <526E8562.3040809@redhat.com>
- <1382976943.8774.10.camel@heisenberg.scientia.net>
- <FD29488A-348B-48BA-9B1D-4ACF997BC794@netapp.com>
- <526EA65A.7010209@redhat.com>
+	id S1752964Ab3JAUbN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Oct 2013 16:31:13 -0400
+Date: Tue, 1 Oct 2013 16:30:47 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Benny Halevy <bhalevy@primarydata.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
+Message-ID: <20131001203047.GH16245@pad.fieldses.org>
+References: <52447EA0.7070004@primarydata.com>
+ <1380220810-12909-1-git-send-email-bhalevy@primarydata.com>
+ <20130929114327.GB25750@infradead.org>
+ <52481939.7060405@primarydata.com>
+ <20130929121345.GA21083@infradead.org>
+ <52481B11.2080407@primarydata.com>
+ <20130929122130.GI21083@infradead.org>
+ <20130929123553.GA7510@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <526EA65A.7010209@redhat.com>
+In-Reply-To: <20130929123553.GA7510@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 28, 2013 at 02:00:58PM -0400, Ric Wheeler wrote:
-> On 10/28/2013 01:49 PM, Myklebust, Trond wrote:
-> >On Oct 28, 2013, at 12:15 PM, Christoph Anton Mitterer <calestyo@scientia.net> wrote:
-> >
-> >>On Mon, 2013-10-28 at 11:40 -0400, Ric Wheeler wrote:
-> >>>Then you end up with large directories and an extra name per inode that needs to
-> >>>be stored and extra lookups for each file when you do a whole file system crawl.
-> >>>
-> >>>Certainly not as easy as adding and xattrs with that information :)
-> >>And I think there's another reason why it wouldn't work...
-> >>
-> >>Imagine I change my system to encode what should be XATTRs in hardlink
-> >>pseudo files...
-> >>
-> >>If I have such pair locally e.g. on my ext4:
-> >>/foo/bar/actual/file
-> >>/meta/<SHA512 identifier>.2342348324
-> >>
-> >>And now move/copy the file via the network to the archive, I'd have to
-> >>copy both files (which is really annoying), and I'd guess the inode
-> >>coupling would get los (and at least the name wouldn't fit anymore).
-> >>
-> >>So the whole thing is IMHO not even a workaround.
-> >OK. So you're going to do XATTRs for us?
-> >
-> >Trond
+On Sun, Sep 29, 2013 at 05:35:53AM -0700, Christoph Hellwig wrote:
+> On Sun, Sep 29, 2013 at 05:21:30AM -0700, Christoph Hellwig wrote:
+> > > Bruce - are you ok with moving the pnfs interface definitions to
+> > > include/linux/exportfs.h along with struct export_operations?
+> > > 
+> > > In fact we can actually extend struct export_operations rather
+> > > than adding pnfs_export_operations...
+> > 
+> > Yes, it probably should go into the export ops, although the actual
+> > method signatures might need to be made a litle less nfs-specific for
+> > that.
 > 
-> Now that pNFS is perfect and labeled NFS has made it upstream, I
-> think that Steve D must be looking for something to keep him busy :)
+> I jsut took a brief look over the diff for the whole series in the git
+> tree and the old tree that still had block and exofs servers and have
+> revised my opinion a little bit:
+> 
+> 
+>  - the should be a layout_type field in struct export_operations,
+>    indicating that a filesystem support some sort of pnfs-like export.
+>  - there should be a struct pnfs_operations, but it should be confined
+>    to fs/nfsd: each layout can be a separate loadable module and gets
+>    registered there.  For the initial file layout that module is
+>    self-contained, but for e.g. block or objects it would have
+>    call into the filesystem through export_ops, although way lower level
+>    than the NFS XDR level, e.g. for block there would be one of to get
+>    the extent map, and one to allocate an extent.
 
-I agree with Trond that we first really need good evidence about exactly
-who wants this and why.
+That sounds OK to me.
+
+My (possibly faulty) memory of how the xdr-encoding-in-the-fs came
+about: I think people weren't willing to commit to any reasonable upper
+limit on the size of the layout.  So they originally considered
+something more like readdir that would loop over extents and pass them
+to a callback for encoding.  But xdr isn't complicated so you could
+instead give the filesystem a simple library of xdr encoders to call.
+
+But it sounds like that's not exactly what got implemented.  And maybe
+nobody actually has such big layouts.
+
+> This way we alsod avoid the dependcy on nfsd in the filesystems that the
+> cureent version introduces.
+
+Ugh--thanks for catching that.
 
 --b.
