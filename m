@@ -1,99 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:14956 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:24951 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751714Ab3JUR3m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Oct 2013 13:29:42 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9LHTgmd001455
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 21 Oct 2013 13:29:42 -0400
-Message-ID: <526564AE.3010507@RedHat.com>
-Date: Mon, 21 Oct 2013 13:30:22 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1751856Ab3JAWMD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Oct 2013 18:12:03 -0400
+Date: Tue, 1 Oct 2013 18:12:00 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Benny Halevy <bhalevy@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC v0 08/49] pnfsd: layout verify
+Message-ID: <20131001221200.GA30994@pad.fieldses.org>
+References: <52447EA0.7070004@primarydata.com>
+ <1380220824-13047-1-git-send-email-bhalevy@primarydata.com>
+ <20130927144448.GD9946@pad.fieldses.org>
+ <52480C18.6070105@primarydata.com>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: ssorce@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 1/2] gssd: have process_krb5_upcall fork before handling
- upcall
-References: <1381350116-10464-1-git-send-email-jlayton@redhat.com> <1381350116-10464-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1381350116-10464-2-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <52480C18.6070105@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 09/10/13 16:21, Jeff Layton wrote:
-> Most krb5 installations use credcache locations that contain %{uid},
-> which expands to the real UID of the current process. In order for
-> GSSAPI to find those properly, we need to be able to switch the real UID
-> of the process to the designated one. That however, opens the door to
-> allowing gssd to be killed or reniced during the window where we've
-> switched credentials.
+On Sun, Sep 29, 2013 at 02:16:40PM +0300, Benny Halevy wrote:
+> On 2013-09-27 17:44, J. Bruce Fields wrote:
+> > On Thu, Sep 26, 2013 at 02:40:24PM -0400, Benny Halevy wrote:
+> >>  	return 0;
+> >>  
+> >>  }
+> >> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> >> index 419572f..576b635 100644
+> >> --- a/fs/nfsd/nfs4proc.c
+> >> +++ b/fs/nfsd/nfs4proc.c
+> >> @@ -41,6 +41,7 @@
+> >>  #include "vfs.h"
+> >>  #include "current_stateid.h"
+> >>  #include "netns.h"
+> >> +#include "pnfsd.h"
+> >>  
+> >>  #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> >>  #include <linux/security.h>
+> >> @@ -1109,6 +1110,44 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
+> >>  	return status == nfserr_same ? nfs_ok : status;
+> >>  }
+> >>  
+> >> +#if defined(CONFIG_PNFSD)
+> >> +static __be32
+> >> +nfsd4_layout_verify(struct super_block *sb, struct svc_export *exp,
+> >> +		    unsigned int layout_type)
+> >> +{
+> >> +	int status, type;
+> >> +
+> >> +	/* check to see if pNFS  is supported. */
+> >> +	status = nfserr_layoutunavailable;
+> >> +	if (exp && exp->ex_pnfs == 0) {
+> > 
+> > Can this really be called with exp == NULL?  If so don't you want to
+> > fail that as well?
 > 
-> To combat this, change gssd to fork before trying to handle each upcall.
-> The child will do the work to establish the context and the parent task
-> will just wait for it to exit. It's still possible for the child to be
-> killed or reniced, but that would only affect a single upcall instead of
-> the entire daemon. Also, If the process is killed prematurely, then log
-> an error to tip off the admin that there was a problem.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Committed...
+> It is called with exp == NULL from nfsd4_getdevinfo where it shouldn't
+> cause an error return.
 
-steved.
+Looking through the sbid code, this is making me uncomfortable.
 
-> ---
->  utils/gssd/gssd_proc.c | 24 +++++++++++++++++++++++-
->  1 file changed, 23 insertions(+), 1 deletion(-)
-> 
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index e58c341..99537d9 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -67,6 +67,8 @@
->  #include <errno.h>
->  #include <gssapi/gssapi.h>
->  #include <netdb.h>
-> +#include <sys/types.h>
-> +#include <sys/wait.h>
->  
->  #include "gssd.h"
->  #include "err_util.h"
-> @@ -982,6 +984,26 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
->  	int			err, downcall_err = -EACCES;
->  	gss_cred_id_t		gss_cred;
->  	OM_uint32		maj_stat, min_stat, lifetime_rec;
-> +	pid_t			pid;
-> +
-> +	pid = fork();
-> +	switch(pid) {
-> +	case 0:
-> +		/* Child: fall through to rest of function */
-> +		break;
-> +	case -1:
-> +		/* fork() failed! */
-> +		printerr(0, "WARNING: unable to fork() to handle upcall: %s\n",
-> +				strerror(errno));
-> +		return;
-> +	default:
-> +		/* Parent: just wait on child to exit and return */
-> +		wait(&err);
-> +		if (WIFSIGNALED(err))
-> +			printerr(0, "WARNING: forked child was killed with signal %d\n",
-> +					WTERMSIG(err));
-> +		return;
-> +	}
->  
->  	printerr(1, "handling krb5 upcall (%s)\n", clp->dirname);
->  
-> @@ -1121,7 +1143,7 @@ out:
->  		AUTH_DESTROY(auth);
->  	if (rpc_clnt)
->  		clnt_destroy(rpc_clnt);
-> -	return;
-> +	exit(0);
->  
->  out_return_error:
->  	do_error_downcall(fd, uid, downcall_err);
-> 
+Among other things this allows you to perform getdeviceinfo even against
+filesystems that aren't exported.  Maybe that's not awful, but.
+
+Also the sbid hash holds all these pointers to superblocks, but does it
+take a reference to them anywhere?  I can't see it, in which case
+there's a crash waiting to happen here if one of them is unmounted.
+
+I'm inclined to think these should be referencing exports, not
+superblocks.
+
+--b.
