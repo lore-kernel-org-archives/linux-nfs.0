@@ -1,45 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:20952 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751230Ab3JUQyd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Oct 2013 12:54:33 -0400
-Message-ID: <52655C68.1000604@RedHat.com>
-Date: Mon, 21 Oct 2013 12:55:04 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from elasmtp-banded.atl.sa.earthlink.net ([209.86.89.70]:44948 "EHLO
+	elasmtp-banded.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751781Ab3JAPml (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Oct 2013 11:42:41 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Bruce Fields'" <bfields@fieldses.org>
+Cc: "'Kernel NFS List'" <linux-nfs@vger.kernel.org>,
+        "'Ganesha NFS List'" <nfs-ganesha-devel@lists.sourceforge.net>
+References: <003301cebe09$5bf81090$13e831b0$@mindspring.com> <20130930221126.GD26382@fieldses.org> <003f01cebe38$75436480$5fca2d80$@mindspring.com> <20131001142601.GG26382@fieldses.org> <20131001143051.GH26382@fieldses.org>
+In-Reply-To: <20131001143051.GH26382@fieldses.org>
+Subject: RE: pynfs updates
+Date: Tue, 1 Oct 2013 11:42:31 -0400
+Message-ID: <007201cebebc$d83f4fc0$88bdef40$@mindspring.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Tony Asleson <tasleson@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] exportfs: Add -s option.
-References: <1380734389-8202-1-git-send-email-tasleson@redhat.com> <20131002214015.GA20902@fieldses.org> <5265315D.9030008@RedHat.com> <20131021140114.GE18657@fieldses.org>
-In-Reply-To: <20131021140114.GE18657@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+> One more problem: CSID10 is failing against the Linux server with
+> NFS4ERR_TOO_MANY_OPS, because each of those lookups is actually a full
+> lookup from PUTROOTFH to /, resulting in 17 ops on my setup.  Could we
+> maybe work relative to the parent directory instead?
+
+Sure, I'll rework that one.
+
+> > A better test might actually be to do LOOKUP down to home and even
+> > into tmp, looking for a junction, and then do the
+> > SECINFO_NO_NAME(parent) on the directory handle just across the
+> junction if one was found.
+> 
+> Yeah it'd be nice to check that cross-filesystem case but I don't think
+it's
+> necessary (and you still have to deal with the case where a mountpoint's
+not
+> found).
+
+Well, the cross file system case is actually where you would need to use
+SECINFO_NO_NAME. For some reason, you just have a handle to a directory
+inside the export and want to navigate back up the tree. In doing so, you
+cross back over a junction to a file system that is exported with a
+different security flavor.
+
+On the other hand, generally that higher level file system should include
+all the security flavors used by the lower level file systems. Unless
+SECINFO_NO_NAME lets you cross a junction where the new file system doesn't
+have security flavors in common with the upper level file system, but I
+don't think it does. Does anyone know the rationale of SECINFO_NO_NAME
+(parent)? In fact is there really any use of SECINFO_NO_NAME other than to
+get the secinfo for the root or public file handle? I guess it does also
+allow a client to recover from the security flavors for a given file system
+being changed on the fly (or perhaps after a migration event).
+
+> If tests at mountpoints were useful perhaps we could pass in a mountpoint
+> on the commandline.  Or add some sort of export-configuration interface to
+> the serverhelper script and let pynfs setup exports itself.
+
+Frank
 
 
-On 21/10/13 10:01, J. Bruce Fields wrote:
-> On Mon, Oct 21, 2013 at 09:51:25AM -0400, Steve Dickson wrote:
->> I guess we could change -v to used what the -s is proposing,
->> but that could break someone's existing configuration...  
-> 
-> Also, looking at my home server....  It would be annoying to get:
-> 
-> 	/export *(rw,sync,wdelay,hide,nocrossmnt,insecure,no_root_squash,no_all_squash,no_subtree_check,secure_locks,acl,anonuid=65534,anongid=65534)
-> 
-> when all you need is:
-> 
-> 	/export <world>(rw,wdelay,insecure,no_root_squash,no_subtree_check)
-> 
-> (Actually I wonder why it's even showing wdelay and no_subtree_check
-> when those are both defaults?  But this is on F16, maybe it's different
-> now.  I should really update that machine.)
-No, the defaults have not changed for (quite) a while... 
-The defaults are: 
-    ro, root_squash, wdelay, no_subtree_check
-
-Now it turns out wdelay (aka NFSEXP_GATHERED_WRITES) is a v2 only thing... 
-So do we really need to have that on by default, now that we are 
-slowly moving away from v2 support?
-
-steved.
