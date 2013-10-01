@@ -1,56 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43635 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761425Ab3JPShJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Oct 2013 14:37:09 -0400
-Date: Wed, 16 Oct 2013 14:37:07 -0400
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] rpc: change BUG to WARN in gss_encode_v1_msg
-Message-ID: <20131016183707.GB19067@fieldses.org>
-References: <1380721695-14755-1-git-send-email-bfields@redhat.com>
- <1381947473.17178.2.camel@leira.trondhjem.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:38963 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752765Ab3JANdi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Oct 2013 09:33:38 -0400
+Date: Tue, 1 Oct 2013 06:33:35 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Benny Halevy <bhalevy@primarydata.com>,
+        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
+Message-ID: <20131001133335.GB32431@infradead.org>
+References: <52447EA0.7070004@primarydata.com>
+ <1380220810-12909-1-git-send-email-bhalevy@primarydata.com>
+ <20130929114327.GB25750@infradead.org>
+ <52481939.7060405@primarydata.com>
+ <20130929121345.GA21083@infradead.org>
+ <52481B11.2080407@primarydata.com>
+ <20130929122130.GI21083@infradead.org>
+ <20130929123553.GA7510@infradead.org>
+ <524A1FCE.5030306@panasas.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1381947473.17178.2.camel@leira.trondhjem.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <524A1FCE.5030306@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 16, 2013 at 06:17:54PM +0000, Myklebust, Trond wrote:
-> On Wed, 2013-10-02 at 09:48 -0400, J. Bruce Fields wrote:
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > Failure of this assertion would indeed be serious, but as we've seen a
-> > BUG() in a worker thread (this can run from rpciod context) can screw up
-> > the system so badly that the oops doesn't even get to the logs; better
-> > to WARN() and soldier on.
-> > 
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > ---
-> >  net/sunrpc/auth_gss/auth_gss.c |    2 +-
-> >  1 file changed, 1 insertion(+), 1 deletion(-)
-> > 
-> > diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> > index 0846566..254a9f0 100644
-> > --- a/net/sunrpc/auth_gss/auth_gss.c
-> > +++ b/net/sunrpc/auth_gss/auth_gss.c
-> > @@ -454,7 +454,7 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
-> >  	gss_msg->msg.len += len;
-> >  
-> >  	gss_msg->msg.data = gss_msg->databuf;
-> > -	BUG_ON(gss_msg->msg.len > UPCALL_BUF_LEN);
-> > +	WARN_ON_ONCE(gss_msg->msg.len > UPCALL_BUF_LEN);
-> >  }
-> >  
-> >  static struct gss_upcall_msg *
+On Mon, Sep 30, 2013 at 06:05:18PM -0700, Boaz Harrosh wrote:
+> The pnfs protocol and people have plans to, allow a multi typed
+> layouts from the same super-block. It is a per file attribute.
+> It even allows a multi protocol access to the same file.
+> The only flag should be the presence of the layout_get vector
+> that should indicate support or lack of it.
+
+The current method doesn't help with that as it can return a single type
+only anyway.  So in principle I agree with you, but the way to fix it is
+not to keep the method, but to make sure it returns a bitmap of
+supported layouts.
+
+> >  - there should be a struct pnfs_operations, but it should be confined
+> >    to fs/nfsd: each layout can be a separate loadable module and gets
+> >    registered there.  For the initial file layout that module is
+> >    self-contained, but for e.g. block or objects it would have
+> >    call into the filesystem through export_ops, although way lower level
+> >    than the NFS XDR level, e.g. for block there would be one of to get
+> >    the extent map, and one to allocate an extent.
+> >
 > 
-> Umm.... Why aren't we using scnprintf() in order to prevent string
-> buffer overflows before they happen?
+> No! This does not make any sense. What you say does not fit any model of any
+> cluster filesystem today.
+> 
+> - Again the FS can support any protocol.
+> - Only the FS understand the structure and layout of the file access. Any
+>   other model is a specific implementation and breaks abstraction. The only true
+>   abstraction is the LO_GET LO_RETURN LO_COMMIT DEVICE_INFO and LO_CB_RECALL. anything
+>   else is making assumptions.
+> 
+> There is a pnfs vector and it is at this abstraction level exactly.
 
-Yeah, this should really be caught earlier.
+No, the problem is that the pnfs_export_operations are entirely at the
+wrong level, as I tried to explain.  The right level is very different
+for the different layouts:
 
-And we want to actually fail, not give gssd a truncated request.
+ - for files it needs to boil down to a:
 
---b.
+	 - get a list of devices
+	 - given an inode/offset return the layout
+
+ - for block it's get a block map for a file / create an unwritten
+   extent / convert it to written
+
+ - for object it seems (not too familar):
+
+    - get a list of devices for this fs
+    - given an inode/offset return the layout
+    - tell the fs that I/O has finished
+
+As all the layouts operate on different data structures it makes sense
+to make the methods operate on those, and keep the boilerplate code
+including the XDR encoding/decoding in one single place.
+
+Now how these pnfsd object layout drivers communicate with the fs I
+don't have an opinion on until we see the actual code, maybe we need a
+pnfs_<layout>_ops if it's complicated enough.  For the files case that
+can just call into dlm directly currently as we have no other
+interesting cluster fs in tree it's a mood point.  For block it's simple
+enough that I'd just add it to export_ops, if not by that time we redo
+the current get_blocks mess in a way that we can simply piggyback it on
+that which would be even easier.
+
+> > This way we alsod avoid the dependcy on nfsd in the filesystems that the
+> > cureent version introduces.
+> 
+> There is no "dependency on nfsd in the filesystems"
+
+The patchset as pulled will created a depency on nfsd.ko from gfs2.ko
+
+> The only dependency the FS has is an import of some library routines
+> at exportfs that take an abstract layout and device descriptions and encode
+> them into an XDR buffer. But the FS knows nothing of the XDR and the
+> NFSD is free to unload at any moment without forcing the FS to unload
+> first or at all.
+> This is actually tested, in fact I do this all the time when I want to
+> start fresh and have NFSD close all resources on the FS. 
+
+That's not what happens with the file layout as posted, and it's not
+something I want to see happen every, btw.  In Linux we're all about
+proper abstractions, and letting a fs control all pnfs aspects directly
+instead of having common code is a receipe for tons of copy & pasted
+code full of different bugs if we ever get additional implementations of
+a layout.  Not that I really expect any in tree as all the other
+"interested partied" have shown to be leechers that just want to keep
+their filesystems out of tree and most of the time as illegal propritary
+modules anyway.
+
