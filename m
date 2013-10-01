@@ -1,105 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ye0-f175.google.com ([209.85.213.175]:46967 "EHLO
-	mail-ye0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754042Ab3IZSgZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Sep 2013 14:36:25 -0400
-Received: by mail-ye0-f175.google.com with SMTP id q8so534820yen.34
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Sep 2013 11:36:24 -0700 (PDT)
-Message-ID: <52447EA0.7070004@primarydata.com>
-Date: Thu, 26 Sep 2013 14:36:16 -0400
-From: Benny Halevy <bhalevy@primarydata.com>
+Received: from natasha.panasas.com ([67.152.220.90]:37446 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754625Ab3JABV3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Sep 2013 21:21:29 -0400
+Message-ID: <524A237F.2060100@panasas.com>
+Date: Mon, 30 Sep 2013 18:21:03 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: NFS list <linux-nfs@vger.kernel.org>, Lev Solomonov <solo@primarydata.com>,
-        Idan Kedar <idank@primarydata.com>,
-        Nadav Shemer <nadav@primarydata.com>
-Subject: [PATCH RFC v0 0/49] pnfsd-dlm
-Content-Type: text/plain; charset=ISO-8859-1
+To: Christoph Hellwig <hch@infradead.org>,
+        Benny Halevy <bhalevy@primarydata.com>
+CC: "J. Bruce Fields" <bfields@redhat.com>, <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH RFC v0 29/49] pnfsd: support layout_type attribute
+References: <52447EA0.7070004@primarydata.com> <1380220908-14009-1-git-send-email-bhalevy@primarydata.com> <20130929121723.GE21083@infradead.org>
+In-Reply-To: <20130929121723.GE21083@infradead.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following patchset implements an extension to nfsd
-providing a complete minimal pnfs server exporting
-DLM-based clustered file systems such as GFS2 or OCFS2.
+On 09/29/2013 05:17 AM, Christoph Hellwig wrote:
+> Seems like layout_type should just be a field in the export ops instead
+> of a method.
 
-The pNFS operations that are implemented are
-GETDEVICELIST and GETDEVICEINFO,
-LAYOUTGET and LAYOUTRETURN.
+No! this field does not make any sense at all it should just be
+removed.
 
-The server does the bookkeeping of the outstanding layout
-state in response to layout get and return.
+There is a pNFS inquiry a client sends that asks for an array
+of all the types supported by this mount point. So these method
+should be returning an array. If at all.
 
-Also, the implementation cleans up the client layout state
-opon client expiry and on CLOSE when the return_on_close
-flag is set on the LAYOUTGET response.  The latter is the
-default behavior until layout recalls are implemented
-with which the server can reclaim its resources in case
-the client holds layout state post closing files.
+The layout_type is just an input to some operations and are
+no concern of NFSD. This is not a yes/no flag for pNFS the
+opts vector should be the flag.
 
-The patchset is based on v3.12-rc2 and it's available also online here:
-git://linux-nfs.org/~bhalevy/linux-pnfs.git pnfsd-dlm-3.12-rc2-2013-09-26
+Cheers
+Boaz
 
-Benny
-
-General infrastructure:
-[PATCH RFC v0 01/49] pnfsd: Define CONFIG_PNFSD
-[PATCH RFC v0 02/49] pnfsd: define NFSDDBG_PNFS
-[PATCH RFC v0 03/49] pnfsd: return pnfs flags on exchange_id
-[PATCH RFC v0 04/49] pnfsd: don't set up back channel on create_session for ds
-[PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
-[PATCH RFC v0 06/49] pnfsd: define pnfs_export_operations
-[PATCH RFC v0 07/49] pnfsd: add pnfs export option
-[PATCH RFC v0 08/49] pnfsd: layout verify
-[PATCH RFC v0 09/49] pnfsd: initial stub
-
-Device ops:
-[PATCH RFC v0 10/49] pnfsd: use sbid hash table to map super_blocks to devid major identifiers
-[PATCH RFC v0 11/49] NFSD: introduce exp_xdr.h
-[PATCH RFC v0 12/49] pnfsd: get device list/info
-[PATCH RFC v0 13/49] pnfsd: filelayout: get device list/info
-[PATCH RFC v0 14/49] pnfsd: provide helper for xdr encoding of deviceid
-[PATCH RFC v0 15/49] pnfsd: add helper functions for identifying DS filehandles
-[PATCH RFC v0 16/49] pnfsd: accept all ds stateids
-
-layout get:
-[PATCH RFC v0 17/49] DEBUG: nfsd: more client_lock asserts
-[PATCH RFC v0 18/49] pnfsd: nfs4_assert_state_locked
-[PATCH RFC v0 19/49] pnfsd: layout get
-[PATCH RFC v0 20/49] pnfsd: filelayout: layout encoding
-
-layout state handling for layout get:
-[PATCH RFC v0 21/49] nfsd: no need to unhash_stid before free
-[PATCH RFC v0 22/49] nfsd: cleanup free_stid
-[PATCH RFC v0 23/49] pnfsd: layout state allocation
-[PATCH RFC v0 24/49] pnfsd: process the layout stateid
-[PATCH RFC v0 25/49] pnfsd: layout state per client tracking
-[PATCH RFC v0 26/49] pnfsd: layout state per file tracking
-[PATCH RFC v0 27/49] pnfsd: hash layouts on layout state
-[PATCH RFC v0 28/49] pnfsd: support layout segment merging
-
-pnfs attributes:
-[PATCH RFC v0 29/49] pnfsd: support layout_type attribute
-[PATCH RFC v0 30/49] pnfsd: make pnfs server return layout_blksize when the client asks for it
-[PATCH RFC v0 31/49] pnfsd: add support for per-file layout_types attribute
-
-pnfsd over dlm:
-[PATCH RFC v0 32/49] pnfsd: per block device dlm data server list cache
-[PATCH RFC v0 33/49] pnfsd: Add IP address validation to nfsd4_set_pnfs_dlm_device()
-[PATCH RFC v0 34/49] pnfsd: new nfsd filesystem file: pnfs_dlm_device
-[PATCH RFC v0 35/49] pnfsd: nfsd4_pnfs_dlm_getdeviter
-[PATCH RFC v0 36/49] pnfsd: nfsd4_pnfs_dlm_getdevinfo
-[PATCH RFC v0 37/49] pnfsd: make /proc/fs/nfsd/pnfs_dlm_device report dlm device list.
-[PATCH RFC v0 38/49] pnfsd: nfsd4_pnfs_dlm_layoutget
-[PATCH RFC v0 39/49] pnfsd: DLM file layout only support read iomode layouts
-[PATCH RFC v0 40/49] pnfsd: add dlm file layout layout-type
-[PATCH RFC v0 41/49] pnfsd: dlm pnfs_export_operations
-[PATCH RFC v0 42/49] pnfsd: gfs2: use generic file layout pnfs operations vector
-
-layout return / expire / return_on_close:
-[PATCH RFC v0 43/49] pnfsd: release state lock around iput in put_nfs4_file
-[PATCH RFC v0 44/49] posix_acl: resolve compile dependency in posix_acl.h
-[PATCH RFC v0 45/49] nfs: resolve compile dependency in nfs_xdr.h
-[PATCH RFC v0 46/49] pnfsd: layout return generic implementation
-[PATCH RFC v0 47/49] pnfsd: pnfs_expire_client
-[PATCH RFC v0 48/49] pnfsd: return on close
-[PATCH RFC v0 49/49] pnfsd: dlm set return_on_close to true
