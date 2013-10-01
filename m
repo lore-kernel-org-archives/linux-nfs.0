@@ -1,88 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:5125 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751061Ab3IYSjF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Sep 2013 14:39:05 -0400
-Date: Wed, 25 Sep 2013 11:38:28 -0700
-From: Zach Brown <zab@redhat.com>
-To: Szeredi Miklos <miklos@szeredi.hu>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Bryan Schumaker <bjschuma@netapp.com>,
-        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        Eric Wong <normalperson@yhbt.net>
-Subject: Re: [RFC] extending splice for copy offloading
-Message-ID: <20130925183828.GA30372@lenny.home.zabbo.net>
-References: <1378919210-10372-1-git-send-email-zab@redhat.com>
- <CAELBmZBGD4rph=gjLCPKCdEj+nzEQ-F=DExoL+h3vRm7qF7dCQ@mail.gmail.com>
+Received: from natasha.panasas.com ([67.152.220.90]:37132 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754834Ab3JABPo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Sep 2013 21:15:44 -0400
+Message-ID: <524A2225.8020000@panasas.com>
+Date: Mon, 30 Sep 2013 18:15:17 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAELBmZBGD4rph=gjLCPKCdEj+nzEQ-F=DExoL+h3vRm7qF7dCQ@mail.gmail.com>
+To: Christoph Hellwig <hch@infradead.org>,
+        Benny Halevy <bhalevy@primarydata.com>
+CC: "J. Bruce Fields" <bfields@redhat.com>, <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH RFC v0 20/49] pnfsd: filelayout: layout encoding
+References: <52447EA0.7070004@primarydata.com> <1380220872-13597-1-git-send-email-bhalevy@primarydata.com> <20130929121639.GD21083@infradead.org>
+In-Reply-To: <20130929121639.GD21083@infradead.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-Hrmph.  I had composed a reply to you during Plumbers but.. something
-happened to it :).  Here's another try now that I'm back.
-
-> > Some things to talk about:
-> > - I really don't care about the naming here.  If you do, holler.
-> > - We might want different flags for file-to-file splicing and acceleration
+On 09/29/2013 05:16 AM, Christoph Hellwig wrote:
+> The actual XDR encoding doesn't have business being under fs/exportfs
+> and should be in the NFSD code itself.
 > 
-> Yes, I think "copy" and "reflink" needs to be differentiated.
 
-I initially agreed but I'm not so sure now.  The problem is that we
-can't know whether the acceleration is copying or not.  XCOPY on some
-array may well do some shared referencing tricks.  The nfs COPY op can
-have a server use btrfs reflink, or ext* and XCOPY, or .. who knows.  At
-some point we have to admit that we have no way to determine the
-relative durability of writes.  Storage can do a lot to make writes more
-or less fragile that we have no visibility of.  SSD FTLs can log a bunch
-of unrelated sectors on to one flash failure domain.
+This is so FSs will not depend on NFSD. Though the actual implementtation
+could be done via a vector that gets set at NFSD load.
+ 
+Though I would like to keep it here, because I have a patchset
+which implements pNFS without NFSD at all. It enables a set
+of IOCTLs or syscalls and uses the same exact FS interface
+introduced here but sends the info to a user mode server.
 
-And if such a flag couldn't *actually* guarantee anything for a bunch of
-storage topologies, well, let's not bother with it.
+Though again it can be just its own library without regard
+to exportfs at all. linked in by any user code that needs
+it.
 
-The only flag I'm in favour of now is one that has splice return rather
-than falling back to manual page cache reads and writes.  It's more like
-O_NONBLOCK than any kind of data durability hint.
+Cheers
+Boaz
 
-> > - We might want flags to require or forbid acceleration
-> > - We might want to provide all these flags to sendfile, too
-> >
-> > Thoughts?  Objections?
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-> Can filesystem support "whole file copy" only?  Or arbitrary
-> block-to-block copy should be mandatory?
 
-I'm not sure I understand what you're asking.  The interface specifies
-byte ranges.  File systems can return errors if they can't accelerate
-the copy.  We *can't* mandate copy acceleration granularity as some
-formats and protocols just can't do it.  splice() will fall back to
-doing buffered copies when the file system returns an error.
-
-> Splice has size_t argument for the size, which is limited to 4G on 32
-> bit.  Won't this be an issue for whole-file-copy?  We could have
-> special value (-1) for whole file, but that's starting to be hackish.
-
-It will be an issue, yeah.  Just like it is with write() today.  I think
-it's reasonable to start with a simple interface that matches current IO
-syscalls.  I won't implement a special whole-file value, no.
-
-And it's not just 32bit size_t.  While do_splice_direct() doesn't use
-the truncated length that's returned from rw_verify_area(), it then
-silently truncates the lengths to unsigned int in the splice_desc struct
-fields.  It seems like we might want to address that :/.
-
-> We are talking about copying large amounts of data in a single
-> syscall, which will possibly take a long time.  Will the syscall be
-> interruptible?  Restartable?
-
-In as much as file systems let it be, yeah.  As ever, you're not going
-to have a lot of luck interrupting a process stuck in lock_page(),
-mutex_lock(), wait_on_page_writeback(), etc.   Though you did remind me
-to investigate restarting.  Thanks.
-
-- z
