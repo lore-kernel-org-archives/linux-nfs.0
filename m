@@ -1,61 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from elasmtp-banded.atl.sa.earthlink.net ([209.86.89.70]:44948 "EHLO
-	elasmtp-banded.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751781Ab3JAPml (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Oct 2013 11:42:41 -0400
-From: "Frank Filz" <ffilzlnx@mindspring.com>
-To: "'Bruce Fields'" <bfields@fieldses.org>
-Cc: "'Kernel NFS List'" <linux-nfs@vger.kernel.org>,
-        "'Ganesha NFS List'" <nfs-ganesha-devel@lists.sourceforge.net>
-References: <003301cebe09$5bf81090$13e831b0$@mindspring.com> <20130930221126.GD26382@fieldses.org> <003f01cebe38$75436480$5fca2d80$@mindspring.com> <20131001142601.GG26382@fieldses.org> <20131001143051.GH26382@fieldses.org>
-In-Reply-To: <20131001143051.GH26382@fieldses.org>
-Subject: RE: pynfs updates
-Date: Tue, 1 Oct 2013 11:42:31 -0400
-Message-ID: <007201cebebc$d83f4fc0$88bdef40$@mindspring.com>
+Received: from mx2.netapp.com ([216.240.18.37]:41121 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751418Ab3JAWAc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Oct 2013 18:00:32 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH] NFSv4: Fix a use-after-free situation in _nfs4_proc_getlk()
+Date: Tue, 1 Oct 2013 18:00:29 -0400
+Message-ID: <1380664829-6450-1-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> One more problem: CSID10 is failing against the Linux server with
-> NFS4ERR_TOO_MANY_OPS, because each of those lookups is actually a full
-> lookup from PUTROOTFH to /, resulting in 17 ops on my setup.  Could we
-> maybe work relative to the parent directory instead?
+In nfs4_proc_getlk(), when some error causes a retry of the call to
+_nfs4_proc_getlk(), we can end up with Oopses of the form
 
-Sure, I'll rework that one.
+ BUG: unable to handle kernel NULL pointer dereference at 0000000000000134
+ IP: [<ffffffff8165270e>] _raw_spin_lock+0xe/0x30
+<snip>
+ Call Trace:
+  [<ffffffff812f287d>] _atomic_dec_and_lock+0x4d/0x70
+  [<ffffffffa053c4f2>] nfs4_put_lock_state+0x32/0xb0 [nfsv4]
+  [<ffffffffa053c585>] nfs4_fl_release_lock+0x15/0x20 [nfsv4]
+  [<ffffffffa0522c06>] _nfs4_proc_getlk.isra.40+0x146/0x170 [nfsv4]
+  [<ffffffffa052ad99>] nfs4_proc_lock+0x399/0x5a0 [nfsv4]
 
-> > A better test might actually be to do LOOKUP down to home and even
-> > into tmp, looking for a junction, and then do the
-> > SECINFO_NO_NAME(parent) on the directory handle just across the
-> junction if one was found.
-> 
-> Yeah it'd be nice to check that cross-filesystem case but I don't think
-it's
-> necessary (and you still have to deal with the case where a mountpoint's
-not
-> found).
+The problem is that we don't clear the request->fl_ops after the first
+try and so when we retry, nfs4_set_lock_state() exits early without
+setting the lock stateid.
+Regression introduced by commit 70cc6487a4e08b8698c0e2ec935fb48d10490162
+(locks: make ->lock release private data before returning in GETLK case)
 
-Well, the cross file system case is actually where you would need to use
-SECINFO_NO_NAME. For some reason, you just have a handle to a directory
-inside the export and want to navigate back up the tree. In doing so, you
-cross back over a junction to a file system that is exported with a
-different security flavor.
+Reported-by: Weston Andros Adamson <dros@netapp.com>
+Reported-by: Jorge Mora <mora@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: <stable@vger.kernel.org> #2.6.22+
+---
+ fs/nfs/nfs4proc.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-On the other hand, generally that higher level file system should include
-all the security flavors used by the lower level file systems. Unless
-SECINFO_NO_NAME lets you cross a junction where the new file system doesn't
-have security flavors in common with the upper level file system, but I
-don't think it does. Does anyone know the rationale of SECINFO_NO_NAME
-(parent)? In fact is there really any use of SECINFO_NO_NAME other than to
-get the secinfo for the root or public file handle? I guess it does also
-allow a client to recover from the security flavors for a given file system
-being changed on the fly (or perhaps after a migration event).
-
-> If tests at mountpoints were useful perhaps we could pass in a mountpoint
-> on the commandline.  Or add some sort of export-configuration interface to
-> the serverhelper script and let pynfs setup exports itself.
-
-Frank
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d53d678..d2b4845 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5106,6 +5106,7 @@ static int _nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock
+ 			status = 0;
+ 	}
+ 	request->fl_ops->fl_release_private(request);
++	request->fl_ops = NULL;
+ out:
+ 	return status;
+ }
+-- 
+1.8.3.1
 
