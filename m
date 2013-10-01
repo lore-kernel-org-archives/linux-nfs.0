@@ -1,338 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:48449 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:35788 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751765Ab3JUWZd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Oct 2013 18:25:33 -0400
-Date: Tue, 22 Oct 2013 09:25:19 +1100
-From: NeilBrown <neilb@suse.de>
-To: Tony Asleson <tasleson@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] exportfs: Return non-zero exit value on error
-Message-ID: <20131022092519.4f4683a8@notabene.brown>
-In-Reply-To: <1380756584-13335-1-git-send-email-tasleson@redhat.com>
-References: <1380756584-13335-1-git-send-email-tasleson@redhat.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/NKgq0.hlSTdRbrq.TT8rvVR"; protocol="application/pgp-signature"
+	id S1751030Ab3JAOeA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Oct 2013 10:34:00 -0400
+Date: Tue, 1 Oct 2013 10:34:00 -0400
+To: Marc Meledandri <m.meledandri@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Issues with a rather unusual configured NFS server
+Message-ID: <20131001143400.GI26382@fieldses.org>
+References: <CACFbnrwWJz8her6a4PRn-a0sTF2ci2VY7xOdgRS3zhFpYfxfug@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CACFbnrwWJz8her6a4PRn-a0sTF2ci2VY7xOdgRS3zhFpYfxfug@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/NKgq0.hlSTdRbrq.TT8rvVR
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Sat, Sep 28, 2013 at 11:37:40AM -0400, Marc Meledandri wrote:
+> I was pointed at this thread by the linux-ext4 folks as relevant to my
+> issue on kernels in
+> the 3.10.x series. I see this commit was tagged for 3.12-rc2 on git,
+> and wondering if it will be
+> rebased for previous kernels? Maybe my issue (oops at shutdown) is
+> caused by something
+> else entirely? Thanks!
 
-On Wed,  2 Oct 2013 18:29:44 -0500 Tony Asleson <tasleson@redhat.com> wrote:
+That patch probably should have been cc'd to stable for kernels since
+3.10....
 
-> To improve error handling when scripting exportfs it's useful
-> to have non-zero exit codes when the requested operation did not
-> succeed.
->=20
-> This patch also returns a non-zero exit code if you request to
-> unexport a non-existant share.
->=20
-> Signed-off-by: Tony Asleson <tasleson@redhat.com>
-> ---
->  support/export/hostname.c |  2 ++
->  utils/exportfs/exportfs.c | 37 +++++++++++++++++++++++++++----------
->  2 files changed, 29 insertions(+), 10 deletions(-)
->=20
-> diff --git a/support/export/hostname.c b/support/export/hostname.c
-> index 3e949a1..e53d692 100644
-> --- a/support/export/hostname.c
-> +++ b/support/export/hostname.c
-> @@ -175,10 +175,12 @@ host_addrinfo(const char *hostname)
->  	case 0:
->  		return ai;
->  	case EAI_SYSTEM:
-> +		export_errno =3D errno;
->  		xlog(D_GENERAL, "%s: failed to resolve %s: (%d) %m",
->  				__func__, hostname, errno);
->  		break;
->  	default:
-> +		export_errno =3D EINVAL;
->  		xlog(D_GENERAL, "%s: failed to resolve %s: %s",
->  				__func__, hostname, gai_strerror(error));
->  		break;
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index 52fc03d..318deb3 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -35,8 +35,8 @@
->  #include "xlog.h"
-> =20
->  static void	export_all(int verbose);
-> -static void	exportfs(char *arg, char *options, int verbose);
-> -static void	unexportfs(char *arg, int verbose);
-> +static int	exportfs(char *arg, char *options, int verbose);
-> +static int	unexportfs(char *arg, int verbose);
->  static void	exports_update(int verbose);
->  static void	dump(int verbose, int export_format);
->  static void	error(nfs_export *exp, int err);
-> @@ -187,8 +187,12 @@ main(int argc, char **argv)
->  		if (f_all)
->  			export_all(f_verbose);
->  		else
-> -			for (i =3D optind; i < argc ; i++)
-> -				exportfs(argv[i], options, f_verbose);
-> +			for (i =3D optind; i < argc ; i++) {
-> +				if(!exportfs(argv[i], options, f_verbose)) {
-> +					/* Only flag a generic EINVAL if no errno is set */
-> +					export_errno =3D (export_errno) ? export_errno : EINVAL;
-> +				}
-> +			}
->  	}
->  	/* If we are unexporting everything, then
->  	 * don't care about what should be exported, as that
-> @@ -201,8 +205,12 @@ main(int argc, char **argv)
->  		if (!f_reexport)
->  			xtab_export_read();
->  		if (!f_export)
-> -			for (i =3D optind ; i < argc ; i++)
-> -				unexportfs(argv[i], f_verbose);
-> +			for (i =3D optind ; i < argc ; i++) {
-> +				if (!unexportfs(argv[i], f_verbose)) {
-> +					/* Only flag a generic EINVAL if no errno is set */
-> +					export_errno =3D (export_errno) ? export_errno : EINVAL;
-> +				}
-> +			}
->  		if (!new_cache)
->  			rmtab_read();
->  	}
-> @@ -296,9 +304,10 @@ export_all(int verbose)
->  }
-> =20
-> =20
-> -static void
-> +static int
->  exportfs(char *arg, char *options, int verbose)
->  {
-> +	int rc =3D 0;
->  	struct exportent *eep;
->  	nfs_export	*exp =3D NULL;
->  	struct addrinfo	*ai =3D NULL;
-> @@ -311,7 +320,8 @@ exportfs(char *arg, char *options, int verbose)
-> =20
->  	if (!path || *path !=3D '/') {
->  		xlog(L_ERROR, "Invalid exporting option: %s", arg);
-> -		return;
-> +		export_errno =3D EINVAL;
-> +		return rc;
->  	}
-> =20
->  	if ((htype =3D client_gettype(hname)) =3D=3D MCL_FQDN) {
-> @@ -339,13 +349,16 @@ exportfs(char *arg, char *options, int verbose)
->  	exp->m_warned =3D 0;
->  	validate_export(exp);
-> =20
-> +	rc =3D 1;
->  out:
->  	freeaddrinfo(ai);
-> +	return rc;
->  }
-> =20
-> -static void
-> +static int
->  unexportfs(char *arg, int verbose)
->  {
-> +	int rc =3D 0;
->  	nfs_export	*exp;
->  	struct addrinfo *ai =3D NULL;
->  	char		*path;
-> @@ -357,7 +370,8 @@ unexportfs(char *arg, int verbose)
-> =20
->  	if (!path || *path !=3D '/') {
->  		xlog(L_ERROR, "Invalid unexporting option: %s", arg);
-> -		return;
-> +		export_errno =3D EINVAL;
-> +		return rc;
->  	}
-> =20
->  	if ((htype =3D client_gettype(hname)) =3D=3D MCL_FQDN) {
-> @@ -397,9 +411,11 @@ unexportfs(char *arg, int verbose)
->  #endif
->  		exp->m_xtabent =3D 0;
->  		exp->m_mayexport =3D 0;
-> +		rc =3D 1;
->  	}
-> =20
->  	freeaddrinfo(ai);
-> +	return rc;
->  }
-> =20
->  static int can_test(void)
-> @@ -728,6 +744,7 @@ error(nfs_export *exp, int err)
->  {
->  	xlog(L_ERROR, "%s:%s: %s", exp->m_client->m_hostname,
->  		exp->m_export.e_path, strerror(err));
-> +	export_errno =3D (export_errno) ? export_errno : err;
->  }
-> =20
->  static void
+Do you have a reproduceable test case?  Would it be possible for you to
+confirm that this fixes your problem if applied on top of 3.10.x?
 
-This seems the have been forgotten, so maybe by replying to it someone will
-notice (hi Steve).
+--b.
 
-Though I agree with the need for the patch, I don't much like it's shape.
-
-Why change exportfs and unexportfs to return a status?  The status is only
-used to set export_errno, and they sometimes set export_errno anyway, so why
-not leave them returning  void and just setting export_errno as needed?
-
-
-My preference is actually to get 'xlog' to set export_errno.
-
-See below.
-
-Thanks,
-NeilBrown
-
-
-
-=46rom 2f63d6c3c38e673216a3351aff47d32059056638 Mon Sep 17 00:00:00 2001
-From: Neil Brown <neilb@suse.de>
-Date: Mon, 21 Oct 2013 17:40:55 +1100
-Subject: [PATCH] exportfs: exit with error code if there was any error.
-
-exportfs currently exits with a non-zero error for some errors,
-but not for others.
-
-It does this by having various support routines set the global
-variable "export_errno".
-
-Change this to have 'xlog' set export_errno if an ERROR is
-reported.  That way all errors will be caught.
-
-Note that the exit error code is changed from 22 (EINVAL)
-to the more traditional '1'.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
-
-diff --git a/support/include/exportfs.h b/support/include/exportfs.h
-index 1fbf754..97b2327 100644
---- a/support/include/exportfs.h
-+++ b/support/include/exportfs.h
-@@ -179,7 +179,4 @@ struct export_features {
- struct export_features *get_export_features(void);
- void fix_pseudoflavor_flags(struct exportent *ep);
-=20
--/* Record export error.  */
--extern int export_errno;
--
- #endif /* EXPORTFS_H */
-diff --git a/support/include/xlog.h b/support/include/xlog.h
-index fd1a3f4..fd34ec2 100644
---- a/support/include/xlog.h
-+++ b/support/include/xlog.h
-@@ -35,6 +35,7 @@ struct xlog_debugfac {
- 	int		df_fac;
- };
-=20
-+extern int export_errno;
- void			xlog_open(char *progname);
- void			xlog_stderr(int on);
- void			xlog_syslog(int on);
-diff --git a/support/nfs/exports.c b/support/nfs/exports.c
-index d3160d3..d18667f 100644
---- a/support/nfs/exports.c
-+++ b/support/nfs/exports.c
-@@ -47,8 +47,6 @@ struct flav_info flav_map[] =3D {
-=20
- const int flav_map_size =3D sizeof(flav_map)/sizeof(flav_map[0]);
-=20
--int export_errno;
--
- static char	*efname =3D NULL;
- static XFILE	*efp =3D NULL;
- static int	first;
-@@ -133,7 +131,6 @@ getexportent(int fromkernel, int fromexports)
- 	}
- 	if (ok < 0) {
- 		xlog(L_ERROR, "expected client(options...)");
--		export_errno =3D EINVAL;
- 		return NULL;
- 	}
- 	first =3D 0;
-@@ -153,7 +150,6 @@ getexportent(int fromkernel, int fromexports)
- 		ok =3D getexport(exp, sizeof(exp));
- 		if (ok < 0) {
- 			xlog(L_ERROR, "expected client(options...)");
--			export_errno =3D EINVAL;
- 			return NULL;
- 		}
- 	}
-@@ -173,7 +169,6 @@ getexportent(int fromkernel, int fromexports)
- 		*opt++ =3D '\0';
- 		if (!(sp =3D strchr(opt, ')')) || sp[1] !=3D '\0') {
- 			syntaxerr("bad option list");
--			export_errno =3D EINVAL;
- 			return NULL;
- 		}
- 		*sp =3D '\0';
-@@ -590,7 +585,6 @@ parseopts(char *cp, struct exportent *ep, int warn, int=
- *had_subtree_opt_ptr)
- 				     flname, flline, opt);=09
- bad_option:
- 				free(opt);
--				export_errno =3D EINVAL;
- 				return -1;
- 			}
- 		} else if (strncmp(opt, "anongid=3D", 8) =3D=3D 0) {
-diff --git a/support/nfs/xlog.c b/support/nfs/xlog.c
-index 6820346..9f9e63e 100644
---- a/support/nfs/xlog.c
-+++ b/support/nfs/xlog.c
-@@ -38,6 +38,8 @@ static int  logmask =3D 0;		/* What will be logged		*/
- static char log_name[256];		/* name of this program		*/
- static int  log_pid =3D -1;		/* PID of this program		*/
-=20
-+int export_errno =3D 0;
-+
- static void	xlog_toggle(int sig);
- static struct xlog_debugfac	debugnames[] =3D {
- 	{ "general",	D_GENERAL, },
-@@ -189,6 +191,8 @@ void
- xlog(int kind, const char* fmt, ...)
- {
- 	va_list args;
-+	if (kind & (L_ERROR|D_GENERAL))
-+		export_errno =3D 1;
-=20
- 	va_start(args, fmt);
- 	xlog_backend(kind, fmt, args);
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index 4331697..c2cb2fc 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -103,8 +103,6 @@ main(int argc, char **argv)
- 	xlog_stderr(1);
- 	xlog_syslog(0);
-=20
--	export_errno =3D 0;
--
- 	while ((c =3D getopt(argc, argv, "afhio:ruv")) !=3D EOF) {
- 		switch(c) {
- 		case 'a':
-
---Sig_/NKgq0.hlSTdRbrq.TT8rvVR
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBUmWpzznsnt1WYoG5AQI3HhAAhWICEllV8Zs4lcL8/c6Z36IFzrWMdS3P
-AaBt0FqqNYI8xU0jO+MVcd8F02fzC6O6rI1fqWD/N/WZYQpYV0EFSeuUT+RfPKtK
-KUaf4bS1R+K4VUWPkBoBuDGf93CizEvZS4P34iVL5hg9m5iqgyLXR9yDk6L9Ehx2
-P1xd6CjsiI7X/WDxrfeGcIXiWW7HyFufrTWDUqJd9i0XpIG+TWuHjjnP+bWMGhEW
-y1CX+6Edtgo2LbZldSKVQlMGVwBQPWoeK1XwH7h/ZT6GDw2PH3/+a6ZW8oAPhcFT
-4SL5PYAbyhaClvyP1F310TVHSzjidFkwe778UNS+JHB/Ii7G2KP5uCcckXeGnChM
-+eGoB0qbtmrJ+t+xtExI3Ii2UG/0K8zl30v9d9sF9a2MgTk/IYHl1hFOGIJFoNQC
-U1kXRw1OjNPFD60Bru0M3MYggLMcI2+SYTuWtEsoY/RaReoL9zvXcdaZBTWhB+v5
-IjZNS0UTf/LwxOwTsLOGVOUjLXfQNu1R6IpWQDnasbhjjM4A262L2VCPLJXPwywv
-0zONpWtsQ1gRHsc4TKg6RYj/anLa1QhLZrEZfhGR9CVW6MYRlziaqzBXaPY1230h
-QbsHNDBbEIarR07clmdmkV/bceT7D151glhMVQe70O5VnpNnWcaSNITBHgv/O6fy
-x/VwcNGk5o0=
-=gdLK
------END PGP SIGNATURE-----
-
---Sig_/NKgq0.hlSTdRbrq.TT8rvVR--
+> 
+> [183727.974779] EXT4-fs (dm-0): sb orphan head is 47193630
+> [183727.974864] sb_info orphan list:
+> [183727.974932]   inode dm-0:47193630 at ffff8802b98950f0: mode
+> 100644, nlink 0, next 0
+> [183727.975039] ------------[ cut here ]------------
+> [183727.975108] kernel BUG at fs/ext4/super.c:804!
+> [183727.975177] invalid opcode: 0000 [#1] SMP
+> [183727.975341] Modules linked in: btrfs zlib_deflate ufs qnx4 hfsplus
+> hfs minix ntfs vfat msdos fat jfs xfs libcrc32c reiserfs ext3 jbd ext2
+> efivars cpuid fuse ecb pci_stub parport_pc ppdev lp parport
+> cpufreq_userspace cpufreq_stats cpufreq_conservative cpufreq_powersave
+> binfmt_misc nfsd auth_rpcgss oid_registry nfs_acl nfs lockd fscache
+> sunrpc usblp hid_microsoft dm_crypt dm_mod loop ecryptfs joydev
+> nvidia(PO) snd_hda_codec_realtek snd_hda_intel iTCO_wdt
+> iTCO_vendor_support snd_hda_codec mxm_wmi evdev snd_hwdep snd_pcm
+> snd_page_alloc coretemp snd_seq snd_timer snd_seq_device psmouse wmi
+> serio_raw snd i2c_i801 lpc_ich soundcore mfd_core i2c_core ehci_pci
+> ehci_hcd acpi_cpufreq mperf processor button thermal_sys ext4 crc16
+> jbd2 mbcache raid456 async_raid6_recov async_memcpy async_pq async_xor
+> async_tx xor raid6_pq md_mod sg sr_mod cdrom sd_mod crc_t10dif
+> hid_generic usbhid hid crc32c_intel ghash_clmulni_intel ahci libahci
+> libata scsi_mod aesni_intel xhci_hcd aes_x86_64 ablk_helper cryptd lrw
+> gf128mul glue_helper microcode usbcore usb_common e1000e ptp pps_core
+> [last unloaded: vboxdrv]
+> [183727.981527] CPU: 2 PID: 24609 Comm: umount Tainted: P           O
+> 3.10.10+mfm #1
+> [183727.981614] Hardware name:                  /DZ68BC, BIOS
+> BCZ6810H.86A.0027.2011.1013.1636 10/13/2011
+> [183727.981703] task: ffff8803e7b06810 ti: ffff8803fffe0000 task.ti:
+> ffff8803fffe0000
+> [183727.981790] RIP: 0010:[<ffffffffa0209b62>]  [<ffffffffa0209b62>]
+> ext4_put_super+0x256/0x310 [ext4]
+> [183727.981933] RSP: 0018:ffff8803fffe1e78  EFLAGS: 00010287
+> [183727.982003] RAX: 0000000000000047 RBX: ffff88040de47000 RCX:
+> 00000000d2a7d2a7
+> [183727.982088] RDX: 000000000000508c RSI: 0000000000000046 RDI:
+> ffffffff817a94a4
+> [183727.982174] RBP: ffff88040beb0800 R08: 0000000000000000 R09:
+> 0000000000000100
+> [183727.982260] R10: 0000000000000100 R11: 0000000000000100 R12:
+> ffff88040de47200
+> [183727.982345] R13: ffff88040de47200 R14: ffff88040de47190 R15:
+> ffff8803fffe1f38
+> [183727.982432] FS:  00007fb64bfc17e0(0000) GS:ffff88041f500000(0000)
+> knlGS:0000000000000000
+> [183727.982519] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> [183727.982590] CR2: 00007f3fd0af4f80 CR3: 00000002e46b5000 CR4:
+> 00000000000407e0
+> [183727.982676] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
+> 0000000000000000
+> [183727.982762] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7:
+> 0000000000000400
+> [183727.982847] Stack:
+> [183727.982911]  ffff880300000000 ffff8803fffe1e78 ffff88040beb0800
+> ffff88040beb08a0
+> [183727.983190]  ffffffffa0228fb0 ffff88040ea052a0 ffff88040ea05280
+> ffffffff810f9415
+> [183727.983468]  ffff88041e59dbc0 0000000000000083 ffff88040ea05280
+> ffffffff810f94ab
+> [183727.983745] Call Trace:
+> [183727.983813]  [<ffffffff810f9415>] ? generic_shutdown_super+0x4d/0xc5
+> [183727.983885]  [<ffffffff810f94ab>] ? kill_block_super+0x1e/0x5f
+> [183727.983958]  [<ffffffff810f97b2>] ? deactivate_locked_super+0x1b/0x46
+> [183727.984030]  [<ffffffff8110e8b0>] ? SyS_umount+0x2d0/0x2f1
+> [183727.984102]  [<ffffffff8136b912>] ? system_call_fastpath+0x16/0x1b
+> [183727.984173] Code: c7 c7 04 1b 23 a0 49 8b 54 24 78 48 81 c6 20 03
+> 00 00 89 04 24 31 c0 e8 de 72 15 e1 4d 8b 24 24 4d 39 ec 0f 84 6e ff
+> ff ff eb b7 <0f> 0b 48 8b bd 20 01 00 00 e8 b5 65 f1 e0 48 8b bb 50 02
+> 00 00
+> [183727.987403] RIP  [<ffffffffa0209b62>] ext4_put_super+0x256/0x310 [ext4]
+> [183727.987525]  RSP <ffff8803fffe1e78>
+> [183727.987597] ---[ end trace eb19380900af1108 ]---
+> [183728.094179] EXT4-fs (sda2): re-mounted. Opts: (null)
+> [184000.112039] SysRq : Keyboard mode set to system default
+> [184001.631989] SysRq : Terminate All Tasks
+> [184269.335155] EXT4-fs (sda2): re-mounted. Opts: discard,errors=remount-ro
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
