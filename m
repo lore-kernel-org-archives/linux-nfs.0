@@ -1,58 +1,32 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtprelay0191.hostedemail.com ([216.40.44.191]:58376 "EHLO
-	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754793Ab3JVWbn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Oct 2013 18:31:43 -0400
-From: Joe Perches <joe@perches.com>
-To: linux-kernel@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH 13/24] lockd: Convert use of typedef ctl_table to struct ctl_table
-Date: Tue, 22 Oct 2013 15:29:56 -0700
-Message-Id: <7dc73d7664e7f1d1cff10102bbcee82d06c6aac5.1382480758.git.joe@perches.com>
-In-Reply-To: <cover.1382480758.git.joe@perches.com>
-References: <cover.1382480758.git.joe@perches.com>
+Received: from mail-we0-f181.google.com ([74.125.82.181]:52265 "EHLO
+	mail-we0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752781Ab3JBORq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Oct 2013 10:17:46 -0400
+Received: by mail-we0-f181.google.com with SMTP id p61so998483wes.40
+        for <linux-nfs@vger.kernel.org>; Wed, 02 Oct 2013 07:17:45 -0700 (PDT)
+Message-ID: <524C2B05.5070809@primarydata.com>
+Date: Wed, 02 Oct 2013 17:17:41 +0300
+From: Benny Halevy <bhalevy@primarydata.com>
+MIME-Version: 1.0
+To: Christoph Hellwig <hch@infradead.org>
+CC: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC v0 44/49] posix_acl: resolve compile dependency in
+ posix_acl.h
+References: <52447EA0.7070004@primarydata.com> <1380220974-14716-1-git-send-email-bhalevy@primarydata.com> <20130929121919.GG21083@infradead.org>
+In-Reply-To: <20130929121919.GG21083@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This typedef is unnecessary and should just be removed.
+On 2013-09-29 15:19, Christoph Hellwig wrote:
+> Should go straight to Al independent of this series.
 
-Signed-off-by: Joe Perches <joe@perches.com>
----
- fs/lockd/svc.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+OK.
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 10d6c41..140cc67 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -435,7 +435,7 @@ EXPORT_SYMBOL_GPL(lockd_down);
-  * Sysctl parameters (same as module parameters, different interface).
-  */
- 
--static ctl_table nlm_sysctls[] = {
-+static struct ctl_table nlm_sysctls[] = {
- 	{
- 		.procname	= "nlm_grace_period",
- 		.data		= &nlm_grace_period,
-@@ -489,7 +489,7 @@ static ctl_table nlm_sysctls[] = {
- 	{ }
- };
- 
--static ctl_table nlm_sysctl_dir[] = {
-+static struct ctl_table nlm_sysctl_dir[] = {
- 	{
- 		.procname	= "nfs",
- 		.mode		= 0555,
-@@ -498,7 +498,7 @@ static ctl_table nlm_sysctl_dir[] = {
- 	{ }
- };
- 
--static ctl_table nlm_sysctl_root[] = {
-+static struct ctl_table nlm_sysctl_root[] = {
- 	{
- 		.procname	= "fs",
- 		.mode		= 0555,
--- 
-1.8.1.2.459.gbcd45b4.dirty
-
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
