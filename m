@@ -1,100 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50197 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:51253 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753272Ab3JYUaj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Oct 2013 16:30:39 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>, Al Viro <viro@ZenIV.linux.org.uk>,
-        linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 0/8] simplify reconnecting dentries looked up by filehandle (v2)
-Date: Fri, 25 Oct 2013 16:29:57 -0400
-Message-Id: <1382733005-6006-1-git-send-email-bfields@redhat.com>
+	id S1753837Ab3JBNy1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Oct 2013 09:54:27 -0400
+Date: Wed, 2 Oct 2013 09:54:23 -0400
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, jlayton@redhat.com,
+        Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 00/13] Implement NFSv4 delegations, take 12
+Message-ID: <20131002135423.GA14808@fieldses.org>
+References: <1379623837-30798-1-git-send-email-bfields@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1379623837-30798-1-git-send-email-bfields@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Thu, Sep 19, 2013 at 04:50:24PM -0400, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> Al, if you don't see any objections, could you queue this up for 3.13?
 
-This is a revised version of patches to simplify the code that
-reconnects directories looked up by filehandle.  Thanks to Christoph for
-review.  Changes since v1 include:
+Note: if it's more convenient, the identical patches are also available
+from
 
-	- BUG_ON finding a filesystem root with DCACHE_DISCONNECTED
-	- fix some dentry reference leaks
-	- only do the dentry_connected() check when we actually hit a
-	  race--it's redundant in the normal case.
-	- simplify some of the logic
-	- add detail to changelogs and comments
-	- sequence the patches slightly differently (hopefully it's
-	  clearer)
-
-Christoph, I credited one minor patch to you, and I ignored several
-Reviewed-by's you posted since I wasn't sure if you'd want them on the
-revised patches.
-
-The following explanation is mostly unchanged from before, including the
-performance results.  (I didn't redo them, but a couple quick checks
-didn't suggest any significant difference from the revisions.)
+	git://linux-nfs.org/~bfields/linux.git for-viro
 
 --b.
 
-When we lookup a filehandle for a directory not already in the dentry
-cache, fs/exportfs/expfs.c:reconnect_path() is what populates the dentry
-cache with the directory and its parents.
-
-The current code is more complicated than necessary:
-
-	- after looking up the parent, it searches the parent directory
-	  for our target dentry.  If that search fails with -ENOENT, it
-	  retries up to 10 times.  I don't understand why.  This should
-	  only happen if there's a concurrent rename or rmdir, in which
-	  case that concurrent operation should have reconnected the
-	  dentry for us, and we're done.
-
-	- each time it succesfully connects a dentry to its parent, it
-	  restarts from scratch with the original dentry.  Why not
-	  continue working with the parent we just found?
-
-Patches showing the resulting simplification follow.
-
-I tested performance with a script that creates an N-deep directory
-tree, gets a filehandle for the bottom directory, writes 2 to
-/proc/sys/vm/drop_caches, then times an open_by_handle_at() of the
-filehandle.  Code at
-
-	git://linux-nfs.org/~bfields/fhtests.git
-
-For directories of various depths, some example observed times (median
-results of 3 similar runs, in seconds), were:
-
-		depth:	8000	2000	200
-	no patches:	11	0.7	0.02
-	all patches:	 0.1	0.03	0.01
-
-For depths < 2000 I used an ugly hack to shrink_slab_node() to force
-drop_caches to free more dentries.  Difference look lost in the noise
-for much smaller depths.
-
-Nesting that deep sounds crazy to me, and cold lookup of a
-filehandle isn't the common case.  But maybe it's worth not having to
-worry about the awful performance in these pathalogical cases.  And it
-does simplify the code.
-
-Christoph Hellwig (1):
-  exportfs: BUG_ON in crazy corner case
-
-J. Bruce Fields (7):
-  exportfs: more detailed comment for path_reconnect
-  exportfs: clear DISCONNECTED on all parents sooner
-  exportfs: stop retrying once we race with rename/remove
-  exportfs: eliminate unused "noprogress" counter
-  exportfs: move most of reconnect_path to helper function
-  exportfs: better variable name
-  exportfs: fix quadratic behavior in filehandle lookup
-
- fs/exportfs/expfs.c |  249 +++++++++++++++++++++++++++------------------------
- 1 file changed, 133 insertions(+), 116 deletions(-)
-
--- 
-1.7.9.5
-
+> 
+> Changes since version 11:
+> 	- rebase to 3.12-rc1
+> 	- fix to lock class in single-lock case of
+> 	  lock_two_nondirectories
+> 
+> Changes since version 10:
+> 	- appended Jeff's fix for a setlease/open race (otherwise
+> 	  unrelated to this series, but there are some minor conficts to
+> 	  resolve).
+> 
+> Changes since version 9:
+> 	- just a rebase to 3.11-rc6
+> 
+> Changes since version 8:
+> 	- additional warnings in lock_two_nondirectories
+> 	- lock_two_nondirectories handles NULL second argument,
+> 	  simplifying vfs_rename_other
+> 	- kerneldoc comments on notify_change, vfs_link, vfs_rename,
+> 	  vfs_unlink, to explain delegated_inode argument.
+> 	- make clear non-support of write delegations in
+> 	  generic_add_lease
+> 	- rebase to 3.11-rc1
+> 
+> Introduction copied from previous posting:
+> 
+> This patch series implements read delegations, which allow NFSv4 clients
+> to perform read opens without contacting the server, by promising to
+> call back to clients before modifying the data, metadata, or set of
+> links pointing to a file.
+> 
+> The main recent change was in response to review from Linus, who didn't
+> want us to hang under directory i_mutex's on timeouts communicating with
+> unresponsive clients.
+> 
+> So, this version of the series drops the i_mutex before waiting.  The
+> logic ends up looking something like:
+> 
+>         acquire locks
+>         look up inode
+>         test for delegation; if found:
+>                 take reference on inode
+>                 release locks
+>                 wait for delegation break
+>                 drop reference on inode
+>                 retry
+> 
+> The initial test for a delegation happens after the lock on the
+> delegated inode is acquired, but additional directory mutexes may have
+> been acquired further up the call stack.  I therefore add a "struct
+> inode **" argument to any intervening functions, which we use to pass
+> the inode back up to the caller in the case it needs to wait for the
+> delegation to be broken.
+> 
+> I also allow callers to pass in NULL for the "struct inode **" argument
+> to indicate they'd rather just fail than wait for a delegation.  For
+> example, as long as ecryptfs isn't exportable I assume they'd rather not
+> see retry logic there that they won't use.  But I may have misjudged in
+> some of these cases.
+> 
+> J. Bruce Fields (12):
+>   vfs: pull ext4's double-i_mutex-locking into common code
+>   vfs: don't use PARENT/CHILD lock classes for non-directories
+>   vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
+>   vfs: take i_mutex on renamed file
+>   locks: introduce new FL_DELEG lock flag
+>   locks: implement delegations
+>   namei: minor vfs_unlink cleanup
+>   locks: break delegations on unlink
+>   locks: helper functions for delegation breaking
+>   locks: break delegations on rename
+>   locks: break delegations on link
+>   locks: break delegations on any attribute modification
+> 
+> Jeff Layton (1):
+>   locks: close potential race between setlease and open
+> 
+>  Documentation/filesystems/directory-locking |   31 ++++--
+>  drivers/base/devtmpfs.c                     |    6 +-
+>  fs/attr.c                                   |   25 ++++-
+>  fs/cachefiles/interface.c                   |    4 +-
+>  fs/cachefiles/namei.c                       |    4 +-
+>  fs/ecryptfs/inode.c                         |    6 +-
+>  fs/ext4/ext4.h                              |    2 -
+>  fs/ext4/ioctl.c                             |    4 +-
+>  fs/ext4/move_extent.c                       |   40 +-------
+>  fs/hpfs/namei.c                             |    2 +-
+>  fs/inode.c                                  |   42 ++++++++-
+>  fs/locks.c                                  |  130 +++++++++++++++++++++-----
+>  fs/namei.c                                  |  135 +++++++++++++++++++++++----
+>  fs/nfsd/nfs4state.c                         |    2 +-
+>  fs/nfsd/vfs.c                               |   14 ++-
+>  fs/open.c                                   |   22 ++++-
+>  fs/utimes.c                                 |    9 +-
+>  include/linux/fs.h                          |   78 +++++++++++++---
+>  ipc/mqueue.c                                |    2 +-
+>  19 files changed, 428 insertions(+), 130 deletions(-)
+> 
+> -- 
+> 1.7.9.5
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
