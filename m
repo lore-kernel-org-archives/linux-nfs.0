@@ -1,47 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59333 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:41615 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755456Ab3JJPPH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Oct 2013 11:15:07 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>, Simo Sorce <simo@redhat.com>
-Subject: [PATCH 1/4] svcrpc: fix gss-proxy NULL dereference in some error cases
-Date: Thu, 10 Oct 2013 11:15:00 -0400
-Message-Id: <1381418103-3852-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1381418103-3852-1-git-send-email-bfields@redhat.com>
-References: <1381418103-3852-1-git-send-email-bfields@redhat.com>
+	id S1753668Ab3JBSPY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Oct 2013 14:15:24 -0400
+Date: Wed, 2 Oct 2013 14:14:57 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, sandeen@redhat.com
+Subject: Re: why is i_ino unsigned long, anyway?
+Message-ID: <20131002181457.GG14808@fieldses.org>
+References: <20130912160324.GE1462@fieldses.org>
+ <20130912193328.GP13318@ZenIV.linux.org.uk>
+ <20130929115454.GA3953@infradead.org>
+ <20131002142527.GD14808@fieldses.org>
+ <20131002154320.GE14808@fieldses.org>
+ <20131002160448.GA23875@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131002160448.GA23875@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, Oct 02, 2013 at 09:04:48AM -0700, Christoph Hellwig wrote:
+> On Wed, Oct 02, 2013 at 11:43:20AM -0400, J. Bruce Fields wrote:
+> > 
+> > Just for fun, I took a stab at an xfs-specific method.
+> > 
+> > Pretty much untested and probably wrong as I know nothing about xfs, but
+> > it does seem like it allows some minor simplifications compared to the
+> > common helper.
+> > 
+> > But as Christoph says other filesystems have the same problem so we
+> > probably want to fix the common helper anyway.
+> 
+> You'll need this in at least ext4, btrfs, gfs2, ocfs2 and probably more.
+> So fixing this for real sounds like the best deal.
 
-We depend on the xdr decoder to set this pointer, but if we error out
-before we decode this piece it could be left NULL.
+Based on "git grep '\bget_name\b' fs/".... Actually gfs2 and btrfs
+already have their own get_name methods.  They look like they probably
+handle 64-bit inodes fine.
 
-I think this is probably tough to hit without a buggy gss-proxy.
+That leaves xfs, ext4, and ocfs2.
 
-Reported-by: Andi Kleen <andi@firstfloor.org>
-Cc: Simo Sorce <simo@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/auth_gss/gss_rpc_upcall.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+Anyway I'm still in favor of fixing the helper.
 
-diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-index f1eb0d1..458f85e 100644
---- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-@@ -298,7 +298,8 @@ int gssp_accept_sec_context_upcall(struct net *net,
- 	if (res.context_handle) {
- 		data->out_handle = rctxh.exported_context_token;
- 		data->mech_oid.len = rctxh.mech.len;
--		memcpy(data->mech_oid.data, rctxh.mech.data,
-+		if (rctxh.mech.data)
-+			memcpy(data->mech_oid.data, rctxh.mech.data,
- 						data->mech_oid.len);
- 		client_name = rctxh.src_name.display_name;
- 	}
--- 
-1.7.9.5
-
+--b.
