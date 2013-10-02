@@ -1,75 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:31506 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:24218 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751884Ab3JVMfo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Oct 2013 08:35:44 -0400
-Subject: Re: Strange cred expiry behavior
-From: Simo Sorce <simo@redhat.com>
-To: Weston Andros Adamson <dros@netapp.com>
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>
-In-Reply-To: <DCD436E3-9464-4BFB-8C1A-19912522824D@netapp.com>
-References: <85F2BCBA-9565-497F-BFF4-FEB29301D655@netapp.com>
-	 <DCD436E3-9464-4BFB-8C1A-19912522824D@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 22 Oct 2013 08:20:01 -0400
-Message-ID: <1382444401.9794.19.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+	id S1753697Ab3JBP1d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Oct 2013 11:27:33 -0400
+Date: Wed, 2 Oct 2013 11:26:47 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Benny Halevy <bhalevy@primarydata.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC v0 43/49] pnfsd: release state lock around iput in
+ put_nfs4_file
+Message-ID: <20131002152647.GD2002@pad.fieldses.org>
+References: <52447EA0.7070004@primarydata.com>
+ <1380220968-14669-1-git-send-email-bhalevy@primarydata.com>
+ <20130929121903.GF21083@infradead.org>
+ <524ACEA9.1040304@primarydata.com>
+ <20131001133739.GA13149@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131001133739.GA13149@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-10-21 at 23:53 +0000, Weston Andros Adamson wrote:
-> I traced this behavior back to:
+On Tue, Oct 01, 2013 at 06:37:39AM -0700, Christoph Hellwig wrote:
+> On Tue, Oct 01, 2013 at 04:31:21PM +0300, Benny Halevy wrote:
+> > So the reason not to hold it is that the nfs state lock is global to the
+> > server and blocks all state modifying operations such as:
+> > open, close, lock, clientid, session operations, etc.
 > 
-> commit 302de786930a2c533068f9d8909a817b40f07c32
-> Author: Simo Sorce <simo@redhat.com>
-> Date:   Fri Apr 19 13:02:36 2013 -0400
-> 
->     gssd: Allow GSSAPI to try to acquire credentials first.
-> 
-> 
-> And in particular:
-> 
-> -               for (dirname = ccachesearch; *dirname != NULL; dirname++) {
-> +               /* Try first to acquire credentials directly via GSSAPI */
-> +               err = gssd_acquire_user_cred(uid, &gss_cred);
-> +               if (!err)
-> +                       create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
-> +                                                            AUTHTYPE_KRB5, gss_cred);
-> +               /* if create_auth_rplc_client fails try the traditional method of
-> +                * trolling for credentials */
-> +               for (dirname = ccachesearch; create_resp != 0 && *dirname != NULL; dirname++) {
-> 
-> A couple of things:
-> 
->   - If I get rid of the "Try first to acquire credentials directly via
-> GSSAPI" part, expiry works as before.
+> While not really related to this patch: what's the reason it's not
+> split?  The way nfsd works there should be almost no state that isn't
+> per-export.
 
-Interesting, this call is necessary to make rpc.gssd work with gss-proxy
-and I had not experienced an issue so far. We can try to add a
-gss_inquire_cred() to gssd_acquire_user_cred() to force checking the
-credentials for expiration, as that check may be deferred in some cases
-in GSSAPI.
+There's the NFSv4 client, but yes, the global state lock is an
+embarassment....
 
->   - It says "if create_auth_rplc_client fails try the traditional
-> method of trolling for credentials" but I see nothing that checks to
-> see if create_resp != 0 before falling back to the old method.
-
-It's the check condition in the for loop, that's why I have not repeated
-it before the for loop.
-
->   I added this check and everything seems right (it doesn't fix the
-> expiry issue).
-
-Yeah I didn't think it would.
-
-> I should have some time tomorrow to look further at the expiry issue…
-
-If you can add an explicit check with gss_inquire_creds() I think you'll
-get the right behavior.
-
-Let me know if you need help.
-Simo.
-
--- 
-Simo Sorce * Red Hat, Inc * New York
-
+--b.
