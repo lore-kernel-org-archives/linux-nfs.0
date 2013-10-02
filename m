@@ -1,23 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:47857 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751379Ab3J3QKO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Oct 2013 12:10:14 -0400
-Date: Wed, 30 Oct 2013 09:10:13 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-        Al Viro <viro@ZenIV.linux.org.uk>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/8] simplify reconnecting dentries looked up by
- filehandle (v2)
-Message-ID: <20131030161013.GA19668@infradead.org>
-References: <1382733005-6006-1-git-send-email-bfields@redhat.com>
+Received: from elasmtp-dupuy.atl.sa.earthlink.net ([209.86.89.62]:58866 "EHLO
+	elasmtp-dupuy.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753274Ab3JBP7B (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Oct 2013 11:59:01 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Bruce Fields'" <bfields@fieldses.org>
+Cc: "'Kernel NFS List'" <linux-nfs@vger.kernel.org>,
+        "'Ganesha NFS List'" <nfs-ganesha-devel@lists.sourceforge.net>
+References: <003301cebe09$5bf81090$13e831b0$@mindspring.com> <20130930221126.GD26382@fieldses.org> <003f01cebe38$75436480$5fca2d80$@mindspring.com> <20131001142601.GG26382@fieldses.org> <20131001143051.GH26382@fieldses.org> <00b801cebed9$312b6030$93822090$@mindspring.com> <20131002113607.GA7906@fieldses.org>
+In-Reply-To: <20131002113607.GA7906@fieldses.org>
+Subject: RE: pynfs updates
+Date: Wed, 2 Oct 2013 11:58:52 -0400
+Message-ID: <00f701cebf88$4b8a37d0$e29ea770$@mindspring.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1382733005-6006-1-git-send-email-bfields@redhat.com>
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The whole series looks good to me,
+> > The new branch is here:
+> >
+> > https://github.com/ffilz/pynfs/commits/master
+> 
+> Pulled, thanks!
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+And thank you. Bakeathon was very productive for Ganesha in this department.
+We went from 34 failures to 10 failures.
+
+Thanks
+
+Frank
+
+
