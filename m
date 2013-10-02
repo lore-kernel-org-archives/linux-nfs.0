@@ -1,122 +1,168 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:43056 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:5818 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753185Ab3JWAYZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Oct 2013 20:24:25 -0400
-Date: Wed, 23 Oct 2013 08:30:19 +1100
-From: NeilBrown <neilb@suse.de>
-To: Anna Schumaker <bjschuma@netapp.com>
-Cc: NFS <linux-nfs@vger.kernel.org>, David Howells <dhowells@redhat.com>
-Subject: Re: What is the long term fix for the idmapper key-quota problem.
-Message-ID: <20131023083019.7dfc39f9@notabene.brown>
-In-Reply-To: <52669069.5050700@netapp.com>
-References: <20131021160514.4dbcbf12@notabene.brown>
-	<52669069.5050700@netapp.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/Q+8qe2g1T3T9g6823IKaUVd"; protocol="application/pgp-signature"
+	id S1753089Ab3JBX3p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Oct 2013 19:29:45 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r92NTjq0028076
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 2 Oct 2013 19:29:45 -0400
+Received: from tasleson.csb (vpn-239-58.phx2.redhat.com [10.3.239.58])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r92NTiaA021469
+	for <linux-nfs@vger.kernel.org>; Wed, 2 Oct 2013 19:29:44 -0400
+From: Tony Asleson <tasleson@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] exportfs: Return non-zero exit value on error
+Date: Wed,  2 Oct 2013 18:29:44 -0500
+Message-Id: <1380756584-13335-1-git-send-email-tasleson@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/Q+8qe2g1T3T9g6823IKaUVd
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+To improve error handling when scripting exportfs it's useful
+to have non-zero exit codes when the requested operation did not
+succeed.
 
-On Tue, 22 Oct 2013 10:49:13 -0400 Anna Schumaker <bjschuma@netapp.com> wro=
-te:
+This patch also returns a non-zero exit code if you request to
+unexport a non-existant share.
 
-> On Mon 21 Oct 2013 01:05:14 AM EDT, NeilBrown wrote:
-> >
-> > Hi,
-> >  as you probably know, request_key() imposes a quota on
-> > the number of keys that can be requested, which by default is quite low=
- (200).
-> > When idmap exceeds this quota, request_key() returns an error and
-> > the result is userspace sees "nobody" as the owner.
-> >
-> > A short term fix is to fiddle some sysctl values, but I wonder if any l=
-ong
-> > term fix is being planned.
->=20
-> I don't have anything planned.
+Signed-off-by: Tony Asleson <tasleson@redhat.com>
+---
+ support/export/hostname.c |  2 ++
+ utils/exportfs/exportfs.c | 37 +++++++++++++++++++++++++++----------
+ 2 files changed, 29 insertions(+), 10 deletions(-)
 
-Maybe it is time to start planning then.  This is a very real regression th=
-at
-needs to be fixed.
+diff --git a/support/export/hostname.c b/support/export/hostname.c
+index 3e949a1..e53d692 100644
+--- a/support/export/hostname.c
++++ b/support/export/hostname.c
+@@ -175,10 +175,12 @@ host_addrinfo(const char *hostname)
+ 	case 0:
+ 		return ai;
+ 	case EAI_SYSTEM:
++		export_errno = errno;
+ 		xlog(D_GENERAL, "%s: failed to resolve %s: (%d) %m",
+ 				__func__, hostname, errno);
+ 		break;
+ 	default:
++		export_errno = EINVAL;
+ 		xlog(D_GENERAL, "%s: failed to resolve %s: %s",
+ 				__func__, hostname, gai_strerror(error));
+ 		break;
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index 52fc03d..318deb3 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -35,8 +35,8 @@
+ #include "xlog.h"
+ 
+ static void	export_all(int verbose);
+-static void	exportfs(char *arg, char *options, int verbose);
+-static void	unexportfs(char *arg, int verbose);
++static int	exportfs(char *arg, char *options, int verbose);
++static int	unexportfs(char *arg, int verbose);
+ static void	exports_update(int verbose);
+ static void	dump(int verbose, int export_format);
+ static void	error(nfs_export *exp, int err);
+@@ -187,8 +187,12 @@ main(int argc, char **argv)
+ 		if (f_all)
+ 			export_all(f_verbose);
+ 		else
+-			for (i = optind; i < argc ; i++)
+-				exportfs(argv[i], options, f_verbose);
++			for (i = optind; i < argc ; i++) {
++				if(!exportfs(argv[i], options, f_verbose)) {
++					/* Only flag a generic EINVAL if no errno is set */
++					export_errno = (export_errno) ? export_errno : EINVAL;
++				}
++			}
+ 	}
+ 	/* If we are unexporting everything, then
+ 	 * don't care about what should be exported, as that
+@@ -201,8 +205,12 @@ main(int argc, char **argv)
+ 		if (!f_reexport)
+ 			xtab_export_read();
+ 		if (!f_export)
+-			for (i = optind ; i < argc ; i++)
+-				unexportfs(argv[i], f_verbose);
++			for (i = optind ; i < argc ; i++) {
++				if (!unexportfs(argv[i], f_verbose)) {
++					/* Only flag a generic EINVAL if no errno is set */
++					export_errno = (export_errno) ? export_errno : EINVAL;
++				}
++			}
+ 		if (!new_cache)
+ 			rmtab_read();
+ 	}
+@@ -296,9 +304,10 @@ export_all(int verbose)
+ }
+ 
+ 
+-static void
++static int
+ exportfs(char *arg, char *options, int verbose)
+ {
++	int rc = 0;
+ 	struct exportent *eep;
+ 	nfs_export	*exp = NULL;
+ 	struct addrinfo	*ai = NULL;
+@@ -311,7 +320,8 @@ exportfs(char *arg, char *options, int verbose)
+ 
+ 	if (!path || *path != '/') {
+ 		xlog(L_ERROR, "Invalid exporting option: %s", arg);
+-		return;
++		export_errno = EINVAL;
++		return rc;
+ 	}
+ 
+ 	if ((htype = client_gettype(hname)) == MCL_FQDN) {
+@@ -339,13 +349,16 @@ exportfs(char *arg, char *options, int verbose)
+ 	exp->m_warned = 0;
+ 	validate_export(exp);
+ 
++	rc = 1;
+ out:
+ 	freeaddrinfo(ai);
++	return rc;
+ }
+ 
+-static void
++static int
+ unexportfs(char *arg, int verbose)
+ {
++	int rc = 0;
+ 	nfs_export	*exp;
+ 	struct addrinfo *ai = NULL;
+ 	char		*path;
+@@ -357,7 +370,8 @@ unexportfs(char *arg, int verbose)
+ 
+ 	if (!path || *path != '/') {
+ 		xlog(L_ERROR, "Invalid unexporting option: %s", arg);
+-		return;
++		export_errno = EINVAL;
++		return rc;
+ 	}
+ 
+ 	if ((htype = client_gettype(hname)) == MCL_FQDN) {
+@@ -397,9 +411,11 @@ unexportfs(char *arg, int verbose)
+ #endif
+ 		exp->m_xtabent = 0;
+ 		exp->m_mayexport = 0;
++		rc = 1;
+ 	}
+ 
+ 	freeaddrinfo(ai);
++	return rc;
+ }
+ 
+ static int can_test(void)
+@@ -728,6 +744,7 @@ error(nfs_export *exp, int err)
+ {
+ 	xlog(L_ERROR, "%s:%s: %s", exp->m_client->m_hostname,
+ 		exp->m_export.e_path, strerror(err));
++	export_errno = (export_errno) ? export_errno : err;
+ }
+ 
+ static void
+-- 
+1.8.2.1
 
-
->=20
-> >
-> > Probably the sensible thing would be for nfs-idmap to bypass the quota.
-> > As keys are not held active for very long at a time, they should be gar=
-bage
-> > collected in due course.
-> > There is currently no interface to request this but I suspect one could=
- be
-> > added.
->=20
-> Adding a new keyring interface might be a better question for David=20
-> Howells, since he's done a lot of keyring work.
-
-Let's add David to Cc then.  Hi David!
-
->=20
-> How many idmap keys do you have active at once?  I'm guessing the quota=20
-> is there for a reason, and increasing it in-kernel would probably be=20
-> much easier than adding a new interface for short-lived keys.
-
-Only 1 or 2 active at once.  Lots active sequentially in a short period of
-time.
-
-The problem, as I see it, is that you are trying to use a keyring like a
-cache, and it doesn't seem to be designed for that purpose.
-
-It certainly has some of the attributes of a cache, like an LRU list and a
-garbage collector.  However the garbage collector doesn't discard entries
-simply because they are old (as you would expect for a cache).  It discards
-them because they have expired or have been marked as dead.
-
-To get the keyring to act like a cache you need some way to discard the
-"oldest" when the keyring is full.
-
-Though as the quotas are per-user rather than per-keyring I'm not sure that
-is really a well defined concept.
-
-I was imagining something like
-  while (request_key(&key_type_id_resolver, ...) =3D=3D -EDQUOT)
-        discard_oldest_key(&key_type_id_resolver);
-
-but it is entirely possible that root's entire quota is used for some other
-key_type so this could fail.
-
-David: is there some way that keyrings can be used as a simple FIFO cache
-with some minimum number of entries?  If not, this might require a major
-redesign.
-
-
-NeilBrown
-
-
---Sig_/Q+8qe2g1T3T9g6823IKaUVd
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBUmbuaznsnt1WYoG5AQJUGQ/5AdR2k1agSRUDbTsTLIihQ1udeU/utZ8M
-fXr5zk6xLVp8/bsF/P70dOdw1pnh90B3ikGiadZv+2i0c1qVtJn/0LcJlUZrVvtw
-xQVBsh13OHR1iL7ifFY0BQIlwHBxZ8YnEUaPnVuy9gNO0G8IDsm0HhTHBykppQ6X
-ybLBQyN1fofb2AjWg5SqhDfk9qnFlUgbssjW6rrGFceNtBZXRsdd5R8dP1nOhF/X
-tCYiKeybZ5iGDjyjJYIaAV+Xai4YIBRIja8N7c6YDTq7WAS5HsLNXVgzxZOOIFH6
-JeY8zf1WQUmdFtgfOSXWxI5JO5MtDyoGzMjhvJibig/dyng/0Imq19Eb79aByRCI
-TjUQ5ZGd8CAEZ1H4prc6oMgnDEaq601s+CwI3evIpcSJDPVnspH/2sL7TDAcbTEl
-wneamb4C1ZGsohwib69QckoCQ2pTfEa+julDKqmoEUdMd25+v8Mg1gtkTzIyqx6P
-23K+CgJwh60JBssNW/e1azK4saWmHyDt6/W8zDlgS7aSmx/w3EZa2aWXVhN4i130
-zKP5Kqi7ma0Pfh/w+lET2FPxoIie+oV3PpPExvXoy3CIa56VK+sGd7R/q59u7xj3
-gx1PleiQvSjZm6BSfPCUr8HCh27igqGPr8PY0lZ+Z1b3XN1REaS36xYYzlzwgusy
-tyaawx95Qxo=
-=Vvxc
------END PGP SIGNATURE-----
-
---Sig_/Q+8qe2g1T3T9g6823IKaUVd--
