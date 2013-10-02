@@ -1,49 +1,158 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40789 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:53302 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753769Ab3JZSzs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 26 Oct 2013 14:55:48 -0400
-Date: Sat, 26 Oct 2013 14:55:47 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/3] mountd: disabling turning off TCP listeners (v2)
-Message-ID: <20131026185547.GB17487@fieldses.org>
-References: <1382638633-6710-1-git-send-email-steved@redhat.com>
- <20131024144507.72aa34a8@tlielax.poochiereds.net>
- <526978BF.7020202@RedHat.com>
- <20131025074316.2affe9e9@tlielax.poochiereds.net>
- <526A62C1.6060803@RedHat.com>
- <20131025142012.GC20497@fieldses.org>
- <526A8BAB.8040704@RedHat.com>
+	id S1753783Ab3JBVkQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Oct 2013 17:40:16 -0400
+Date: Wed, 2 Oct 2013 17:40:15 -0400
+To: Tony Asleson <tasleson@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] exportfs: Add -s option.
+Message-ID: <20131002214015.GA20902@fieldses.org>
+References: <1380734389-8202-1-git-send-email-tasleson@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <526A8BAB.8040704@RedHat.com>
+In-Reply-To: <1380734389-8202-1-git-send-email-tasleson@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 25, 2013 at 11:18:03AM -0400, Steve Dickson wrote:
-> On 25/10/13 10:20, J. Bruce Fields wrote:
-> >> I ideally it would be best not to have mountd at all on NFSv4-only server.
-> >> > Basically, have the kernel get its exports like it gets it ID mappings.
-> >> > Until that day comes, which I hope fill be soon, the TCP listener 
-> >> > only effects v3 mounts and we definitely want people to use TCP
-> >> > with v3. 
-> > I'm not sure if we want to do that, but note one thing we'll need to do
-> > before then is solve the namespace problems.  (We don't currently have a
-> > good way to run the usermode helper in the right container.)
-> 
-> Sorry for not keeping up on the container work and possibly asking
-> dumb question... but there can be different exports per container?
+On Wed, Oct 02, 2013 at 12:19:49PM -0500, Tony Asleson wrote:
+> Adds '-s' option which outputs the current exports in a format
+> suitable for /etc/exports.
 
-Yes, definitely.
+Sounds like a good idea....
 
-> I thought it was just different IPs per container....
-> 
-> If so, how does that work today? 
+Is there any difference between this and what's written to
+/var/lib/nfs/etab?
 
-It should work (except possibly for state recovery).  I haven't tested
-it yet, though I hope to.  Stanislav has.
+OK looks like the latter is more verbose--it doesn't skip default
+options.
+
+Still can't help thinking there must be some needlessly duplicated code
+here.
 
 --b.
+
+> 
+> Signed-off-by: Tony Asleson <tasleson@redhat.com>
+> ---
+>  utils/exportfs/exportfs.c   | 23 ++++++++++++++---------
+>  utils/exportfs/exportfs.man |  5 ++++-
+>  2 files changed, 18 insertions(+), 10 deletions(-)
+> 
+> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> index 4331697..52fc03d 100644
+> --- a/utils/exportfs/exportfs.c
+> +++ b/utils/exportfs/exportfs.c
+> @@ -38,7 +38,7 @@ static void	export_all(int verbose);
+>  static void	exportfs(char *arg, char *options, int verbose);
+>  static void	unexportfs(char *arg, int verbose);
+>  static void	exports_update(int verbose);
+> -static void	dump(int verbose);
+> +static void	dump(int verbose, int export_format);
+>  static void	error(nfs_export *exp, int err);
+>  static void	usage(const char *progname, int n);
+>  static void	validate_export(nfs_export *exp);
+> @@ -88,6 +88,7 @@ main(int argc, char **argv)
+>  	int	f_export = 1;
+>  	int	f_all = 0;
+>  	int	f_verbose = 0;
+> +	int	f_export_format = 0;
+>  	int	f_reexport = 0;
+>  	int	f_ignore = 0;
+>  	int	i, c;
+> @@ -105,7 +106,7 @@ main(int argc, char **argv)
+>  
+>  	export_errno = 0;
+>  
+> -	while ((c = getopt(argc, argv, "afhio:ruv")) != EOF) {
+> +	while ((c = getopt(argc, argv, "afhio:ruvs")) != EOF) {
+>  		switch(c) {
+>  		case 'a':
+>  			f_all = 1;
+> @@ -132,6 +133,9 @@ main(int argc, char **argv)
+>  		case 'v':
+>  			f_verbose = 1;
+>  			break;
+> +		case 's':
+> +			f_export_format = 1;
+> +			break;
+>  		default:
+>  			usage(progname, 1);
+>  			break;
+> @@ -164,7 +168,7 @@ main(int argc, char **argv)
+>  			return 0;
+>  		} else {
+>  			xtab_export_read();
+> -			dump(f_verbose);
+> +			dump(f_verbose, f_export_format);
+>  			return 0;
+>  		}
+>  	}
+> @@ -634,7 +638,7 @@ dumpopt(char c, char *fmt, ...)
+>  }
+>  
+>  static void
+> -dump(int verbose)
+> +dump(int verbose, int export_format)
+>  {
+>  	nfs_export	*exp;
+>  	struct exportent *ep;
+> @@ -647,14 +651,15 @@ dump(int verbose)
+>  			if (!exp->m_xtabent)
+>  			    continue; /* neilb */
+>  			if (htype == MCL_ANONYMOUS)
+> -				hname = "<world>";
+> +				hname = (export_format) ? "*" : "<world>";
+>  			else
+>  				hname = ep->e_hostname;
+> -			if (strlen(ep->e_path) > 14)
+> +			if (strlen(ep->e_path) > 14 && !export_format)
+>  				printf("%-14s\n\t\t%s", ep->e_path, hname);
+>  			else
+> -				printf("%-14s\t%s", ep->e_path, hname);
+> -			if (!verbose) {
+> +				printf(((export_format)? "%s %s" : "%-14s\t%s"), ep->e_path, hname);
+> +
+> +			if (!verbose && !export_format) {
+>  				printf("\n");
+>  				continue;
+>  			}
+> @@ -728,6 +733,6 @@ error(nfs_export *exp, int err)
+>  static void
+>  usage(const char *progname, int n)
+>  {
+> -	fprintf(stderr, "usage: %s [-afhioruv] [host:/path]\n", progname);
+> +	fprintf(stderr, "usage: %s [-afhioruvs] [host:/path]\n", progname);
+>  	exit(n);
+>  }
+> diff --git a/utils/exportfs/exportfs.man b/utils/exportfs/exportfs.man
+> index 8853486..590f9cf 100644
+> --- a/utils/exportfs/exportfs.man
+> +++ b/utils/exportfs/exportfs.man
+> @@ -3,7 +3,7 @@
+>  .\" Copyright (C) 1995 Olaf Kirch <okir@monad.swb.de>
+>  .\" Modifications 1999-2003 Neil Brown <neilb@cse.unsw.edu.au>
+>  .\"
+> -.TH exportfs 8 "31 December 2009"
+> +.TH exportfs 8 "30 September 2013"
+>  .SH NAME
+>  exportfs \- maintain table of exported NFS file systems
+>  .SH SYNOPSIS
+> @@ -133,6 +133,9 @@ when they make their next NFS mount request.
+>  Be verbose. When exporting or unexporting, show what's going on. When
+>  displaying the current export list, also display the list of export
+>  options.
+> +.TP
+> +.B -s
+> +Display the current export list suitable for /etc/exports.
+>  .SH DISCUSSION
+>  .SS Exporting Directories
+>  The first synopsis shows how to invoke
+> -- 
+> 1.8.2.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
