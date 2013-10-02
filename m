@@ -1,55 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46899 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:39263 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753264Ab3J2OrA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Oct 2013 10:47:00 -0400
-Date: Tue, 29 Oct 2013 10:46:58 -0400
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/7] nfsd4: fix recall_lock use in unhash_delegation
-Message-ID: <20131029144658.GR31322@fieldses.org>
-References: <526F81DE.6060704@primarydata.com>
- <1383039544-27157-1-git-send-email-bhalevy@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1383039544-27157-1-git-send-email-bhalevy@primarydata.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1754189Ab3JBNsS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Oct 2013 09:48:18 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/2] sunrpc: comment typo fix
+Date: Wed,  2 Oct 2013 09:48:15 -0400
+Message-Id: <1380721695-14755-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1380721695-14755-1-git-send-email-bfields@redhat.com>
+References: <1380721695-14755-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 29, 2013 at 11:39:04AM +0200, Benny Halevy wrote:
-> Access to dp->dl_perclnt must be synchronized by the recall_lock
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Are you sure?  recall_lock is for stuff that's needed in the delegation
-break callback (nfsd_break_deleg_cb() and any of the subsequent callback
-handling).  I don't think that includes dl_perclnt.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/xprtsock.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
---b.
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index ee03d35..940d723 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2859,8 +2859,8 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+ 	if (args->bc_xprt->xpt_bc_xprt) {
+ 		/*
+ 		 * This server connection already has a backchannel
+-		 * export; we can't create a new one, as we wouldn't be
+-		 * able to match replies based on xid any more.  So,
++		 * transport; we can't create a new one, as we wouldn't
++		 * be able to match replies based on xid any more.  So,
+ 		 * reuse the already-existing one:
+ 		 */
+ 		 return args->bc_xprt->xpt_bc_xprt;
+-- 
+1.7.9.5
 
-> 
-> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index a90949a..a403502 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -436,8 +436,8 @@ static void unhash_stid(struct nfs4_stid *s)
->  static void
->  unhash_delegation(struct nfs4_delegation *dp)
->  {
-> -	list_del_init(&dp->dl_perclnt);
->  	spin_lock(&recall_lock);
-> +	list_del_init(&dp->dl_perclnt);
->  	list_del_init(&dp->dl_perfile);
->  	list_del_init(&dp->dl_recall_lru);
->  	spin_unlock(&recall_lock);
-> -- 
-> 1.8.3.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
