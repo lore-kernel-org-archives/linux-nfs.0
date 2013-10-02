@@ -1,96 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:20518 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:56713 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752733Ab3JVAEF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Oct 2013 20:04:05 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Ben Greear <greearb@candelatech.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Getting 'not supported' when trying to mount IPv6 NFS v3 server.
-Date: Tue, 22 Oct 2013 00:04:04 +0000
-Message-ID: <EAF9A96E-EAF9-43C4-A520-B5A971E67DE5@netapp.com>
-References: <52659D69.1020609@candelatech.com>
- <4682F017-7329-4690-B336-233DB50537F0@netapp.com>
- <5265BECD.1060601@candelatech.com>
-In-Reply-To: <5265BECD.1060601@candelatech.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1753050Ab3JBUQ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Oct 2013 16:16:29 -0400
+Date: Wed, 2 Oct 2013 16:16:27 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, jlayton@redhat.com,
+        Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 00/13] Implement NFSv4 delegations, take 12
+Message-ID: <20131002201627.GI14808@fieldses.org>
+References: <1379623837-30798-1-git-send-email-bfields@redhat.com>
+ <20131002135423.GA14808@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131002135423.GA14808@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Oct 21, 2013, at 7:54 PM, Ben Greear <greearb@candelatech.com>
- wrote:
-
-> On 10/21/2013 04:44 PM, Weston Andros Adamson wrote:
->> 
->> On Oct 21, 2013, at 5:32 PM, Ben Greear <greearb@candelatech.com> wrote:
->> 
->>> So, the problem I reported earlier with failing to unmount was fixed
->>> by the back-ported patch.
->>> 
->>> Now, another problem is reported by my user.  In this case, they are
->>> trying to mount an IPv6 NFS server using NFSv3.  Kernel is 3.9.11+,
->>> with patches to support binding mount points to local IP (v4/v6) addresses.
->>> 
->>> Some NFS over IPv6 mounts work fine, but some do not.  A reboot of the
->>> NFS client machine did not fix the problem.
->>> 
->>> I have tried to reproduce the problem locally, but so far everything works fine
->>> for us.
->>> 
->>> From my own app's logs:
->>> 
->>> # mount -t nfs [4001:1::1:1]:/vol/vol1 /mnt/lf/RDnfse11c0 -o srcaddr=4001:1::1:201,vers=3
->>> # requested NFS version or transport protocol is not supported
->>> 
->>> When this problem happens, I do not see any network traffic when trying to mount.
->> 
->> Did you look for the mount protocol when getting a network trace (filter "rpc" in wireshark).
+On Wed, Oct 02, 2013 at 09:54:23AM -0400, bfields wrote:
+> On Thu, Sep 19, 2013 at 04:50:24PM -0400, J. Bruce Fields wrote:
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > Al, if you don't see any objections, could you queue this up for 3.13?
 > 
-> I saw zero NFS related packets on the wire when hitting this problem.
-> But, there could have been packets earlier that put it into a funky
-> state, or a bit less likely, they could have been going out some of the
-> other virtual interfaces on the system.
+> Note: if it's more convenient, the identical patches are also available
+> from
+> 
+> 	git://linux-nfs.org/~bfields/linux.git for-viro
 
-Ok, I wanted to make sure you weren't just looking at port 2049...
+But kbuild points out I forgot to fix up some calls in ecryptfs.
 
-> 
->> Could you:
->> 
->>  1) run "rpcdebug -m nfs -s mount" before mounting, post output of dmesg after mount fails.
->> 
->>  2) add -v to the mount command and post the output
-> 
-> I can try this.
-> 
->>  3) maybe get rid of srcaddr= option / post info about the ip configuration
-> 
-> I can't easily do this, as the user's setup requires the srcaddr to route properly
-> to the filer.
+I'll push out another version with the below folded in, once I've
+checked whether there's anything else I touched that got turned off in
+my test .config....
 
-I just want to make sure it's not a configuration error, but the outputs of 1) and 2) will help us determine what's happening.
+--b.
 
-> 
-> I am also going to run a kernel with printks added around all the EOPNOTSUPP
-> returns that I can find to try to track down what part of the kernel is
-> complaining.
-
-The rpcdebug part should help with that.  Maybe you should turn on everything (rpcdebug -m nfs -s all) since it's just a (failed) mount.
-
--dros
-
-> 
-> Thanks,
-> Ben
-> 
-> 
-> -- 
-> Ben Greear <greearb@candelatech.com>
-> Candela Technologies Inc  http://www.candelatech.com
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+index 7b19ebb..a842ced 100644
+--- a/fs/ecryptfs/inode.c
++++ b/fs/ecryptfs/inode.c
+@@ -208,7 +208,7 @@ ecryptfs_do_create(struct inode *directory_inode,
+ 	inode = __ecryptfs_get_inode(lower_dentry->d_inode,
+ 				     directory_inode->i_sb);
+ 	if (IS_ERR(inode)) {
+-		vfs_unlink(lower_dir_dentry->d_inode, lower_dentry);
++		vfs_unlink(lower_dir_dentry->d_inode, lower_dentry, NULL);
+ 		goto out_lock;
+ 	}
+ 	fsstack_copy_attr_times(directory_inode, lower_dir_dentry->d_inode);
+@@ -640,7 +640,8 @@ ecryptfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 		goto out_lock;
+ 	}
+ 	rc = vfs_rename(lower_old_dir_dentry->d_inode, lower_old_dentry,
+-			lower_new_dir_dentry->d_inode, lower_new_dentry);
++			lower_new_dir_dentry->d_inode, lower_new_dentry,
++			NULL);
+ 	if (rc)
+ 		goto out_lock;
+ 	if (target_inode)
+@@ -891,7 +892,7 @@ int ecryptfs_truncate(struct dentry *dentry, loff_t new_length)
+ 		struct dentry *lower_dentry = ecryptfs_dentry_to_lower(dentry);
+ 
+ 		mutex_lock(&lower_dentry->d_inode->i_mutex);
+-		rc = notify_change(lower_dentry, &lower_ia);
++		rc = notify_change(lower_dentry, &lower_ia, NULL);
+ 		mutex_unlock(&lower_dentry->d_inode->i_mutex);
+ 	}
+ 	return rc;
