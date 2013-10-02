@@ -1,129 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx3-phx2.redhat.com ([209.132.183.24]:45927 "EHLO
-	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751577Ab3JDTqm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Oct 2013 15:46:42 -0400
-Date: Fri, 4 Oct 2013 15:46:42 -0400 (EDT)
-From: Simo Sorce <ssorce@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Message-ID: <1937105088.1804058.1380916002471.JavaMail.root@redhat.com>
-In-Reply-To: <1380829760-4928-3-git-send-email-jlayton@redhat.com>
-References: <1380829760-4928-1-git-send-email-jlayton@redhat.com> <1380829760-4928-3-git-send-email-jlayton@redhat.com>
-Subject: Re: [PATCH v2 2/2] gssd: switch real uid instead of just fsuid when
- looking for user creds
+Received: from mail.lang.hm ([64.81.33.126]:43652 "EHLO bifrost.lang.hm"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753559Ab3JBNcs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Oct 2013 09:32:48 -0400
+Date: Wed, 2 Oct 2013 06:31:36 -0700 (PDT)
+From: David Lang <david@lang.hm>
+To: Jan Kara <jack@suse.cz>
+cc: Zach Brown <zab@redhat.com>, Miklos Szeredi <miklos@szeredi.hu>,
+        Ric Wheeler <rwheeler@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Anna Schumaker <schumaker.anna@gmail.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Wong <normalperson@yhbt.net>
+Subject: Re: [RFC] extending splice for copy offloading
+In-Reply-To: <20131002125837.GA32181@quack.suse.cz>
+Message-ID: <alpine.DEB.2.02.1310020630480.18715@nftneq.ynat.uz>
+References: <20130927205013.GZ30372@lenny.home.zabbo.net> <CAJfpegtdiQzP7t5hc_OaHjSGTrjdZLfKi6fiKqBQ_+AP2Y0-oQ@mail.gmail.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9467EF2D7@SACEXCMBX04-PRD.hq.netapp.com> <52474839.2080201@redhat.com>
+ <CAJfpegsN7Hu8uecSVQrhax+n+zhq=uUgpzOk=qZ6_n383tdNCQ@mail.gmail.com> <20130930143432.GG16579@fieldses.org> <CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com> <52499026.3090802@redhat.com> <CAJfpegtpXuh9070ALGy16Y8kdgioBqSf4JQqBBCF4FHvFJWAWQ@mail.gmail.com>
+ <20131001195817.GE10831@lenny.home.zabbo.net> <20131002125837.GA32181@quack.suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, 2 Oct 2013, Jan Kara wrote:
 
+> On Tue 01-10-13 12:58:17, Zach Brown wrote:
+>>> - app calls splice(from, 0, to, 0, SIZE_MAX)
+>>>  1) VFS calls ->direct_splice(from, 0,  to, 0, SIZE_MAX)
+>>>     1.a) fs reflinks the whole file in a jiffy and returns the size of the file
+>>>     1 b) fs does copy offload of, say, 64MB and returns 64M
+>>>  2) VFS does page copy of, say, 1MB and returns 1MB
+>>> - app calls splice(from, X, to, X, SIZE_MAX) where X is the new offset
+>>
+>> (It's not SIZE_MAX.  It's MAX_RW_COUNT.  INT_MAX with some
+>> PAGE_CACHE_SIZE rounding noise.  For fear of weird corners of fs code
+>> paths that still use int, one assumes.)
+>>
+>>> The point is: the app is always doing the same (incrementing offset
+>>> with the return value from splice) and the kernel can decide what is
+>>> the best size it can service within a single uninterruptible syscall.
+>>>
+>>> Wouldn't that work?
+>>
+>> It seems like it should, if people are willing to allow splice() to
+>> return partial counts.  Quite a lot of IO syscalls technically do return
+>> partial counts today if you try to write > MAX_RW_COUNT :).
+>  Yes. Also POSIX says that application must handle such case for read &
+> write. But in practice programmers are lazy.
+>
+>> But returning partial counts on the order of a handful of megs that the
+>> file systems make up as the point of diminishing returns is another
+>> thing entirely.  I can imagine people being anxious about that.
+>>
+>> I guess we'll find out!
+>  Return 4 KB once in a while to screw up buggy applications from the
+> start :-p
 
------ Original Message -----
-> The part of process_krb5_upcall that handles non-machine user creds
-> first tries to query GSSAPI for credentials. If that fails, it then
-> falls back to trawling through likely credcache locations to find them
-> and then points $KRB5CCNAME at it before proceeding. There are a number
-> of bugs in this code that this patch attempts to address.
-> 
-> The code that queries GSSAPI for credentials does it as root and that
-> almost universally fails to do anything useful unless we happen to be
-> looking for non-machine root creds. Because of this, gssd almost always
-> falls back to having to search for credcaches "manually" and then set
-> $KRB5CCNAME if and when they are found. The code that handles credential
-> switching is in create_auth_rpc_client, so it's too late to be of any
-> use here.
-> 
-> Worse yet, the GSSAPI code that handles finding credcaches does it based
-> on the return from getuid(), so just switching the fsuid or even euid is
-> insufficient. You must switch the real uid.
+or at least have a debugging option early on that does this so people can use it 
+to find such buggy apps.
 
-In what case does it do this ?
-If it is unconditional this is a bug in GSSAPI and we should fix it there.
-
-You shouldn't really change the real uid of gssd because then the user can
-send a kill to the gssd process, only euid should be changed IMO.
-
-Simo.
-
-> This code moves the credential switching into process_krb5_upcall and
-> makes it use setuid() instead of setfsuid(). That's of course
-> irreversible so we can't switch back to root after doing so. No matter
-> though since it's probably safer to do all of this as an unprivileged
-> user anyway.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  utils/gssd/gssd_proc.c | 26 ++++++++++----------------
->  1 file changed, 10 insertions(+), 16 deletions(-)
-> 
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index fd258f7..4856d08 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -834,7 +834,6 @@ create_auth_rpc_client(struct clnt_info *clp,
->  	CLIENT			*rpc_clnt = NULL;
->  	struct rpc_gss_sec	sec;
->  	AUTH			*auth = NULL;
-> -	uid_t			save_uid = -1;
->  	int			retval = -1;
->  	OM_uint32		min_stat;
->  	char			rpc_errmsg[1024];
-> @@ -843,16 +842,6 @@ create_auth_rpc_client(struct clnt_info *clp,
->  	struct sockaddr		*addr = (struct sockaddr *) &clp->addr;
->  	socklen_t		salen;
->  
-> -	/* Create the context as the user (not as root) */
-> -	save_uid = geteuid();
-> -	if (setfsuid(uid) != 0) {
-> -		printerr(0, "WARNING: Failed to setfsuid for "
-> -			    "user with uid %d\n", uid);
-> -		goto out_fail;
-> -	}
-> -	printerr(2, "creating context using fsuid %d (save_uid %d)\n",
-> -			uid, save_uid);
-> -
->  	sec.qop = GSS_C_QOP_DEFAULT;
->  	sec.svc = RPCSEC_GSS_SVC_NONE;
->  	sec.cred = cred;
-> @@ -951,11 +940,6 @@ create_auth_rpc_client(struct clnt_info *clp,
->    out:
->  	if (sec.cred != GSS_C_NO_CREDENTIAL)
->  		gss_release_cred(&min_stat, &sec.cred);
-> -	/* Restore euid to original value */
-> -	if (((int)save_uid != -1) && (setfsuid(save_uid) != (int)uid)) {
-> -		printerr(0, "WARNING: Failed to restore fsuid"
-> -			    " to uid %d from %d\n", save_uid, uid);
-> -	}
->  	return retval;
->  
->    out_fail:
-> @@ -1033,6 +1017,16 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid,
-> int fd, char *tgtname,
->  		 service ? service : "<null>");
->  	if (uid != 0 || (uid == 0 && root_uses_machine_creds == 0 &&
->  				service == NULL)) {
-> +
-> +		/* Create the context as the user (not as root) */
-> +		if (setuid(uid) != 0) {
-> +			printerr(0, "WARNING: Failed to setuid for "
-> +					"user with uid %d\n", uid);
-> +			goto out_return_error;
-> +		}
-> +
-> +		printerr(2, "creating context using real uid %d\n", uid);
-> +
->  		/* Tell krb5 gss which credentials cache to use */
->  		/* Try first to acquire credentials directly via GSSAPI */
->  		err = gssd_acquire_user_cred(uid, &gss_cred);
-> --
-> 1.8.3.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
--- 
-Simo Sorce * Red Hat, Inc. * New York
+David Lang
