@@ -1,56 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46242 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:38197 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755066Ab3J2NGu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Oct 2013 09:06:50 -0400
-Date: Tue, 29 Oct 2013 09:06:49 -0400
+	id S1752927Ab3JBO0A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Oct 2013 10:26:00 -0400
+Date: Wed, 2 Oct 2013 10:25:27 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Anna Schumaker <bjschuma@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/4] NFSD: Add WRITE_PLUS support for hole punches
-Message-ID: <20131029130649.GA29606@fieldses.org>
-References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
- <1382972247-1108-4-git-send-email-bjschuma@netapp.com>
- <20131028214030.GO31322@fieldses.org>
- <526FAF30.3060502@netapp.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, sandeen@redhat.com
+Subject: Re: why is i_ino unsigned long, anyway?
+Message-ID: <20131002142527.GD14808@fieldses.org>
+References: <20130912160324.GE1462@fieldses.org>
+ <20130912193328.GP13318@ZenIV.linux.org.uk>
+ <20130929115454.GA3953@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <526FAF30.3060502@netapp.com>
+In-Reply-To: <20130929115454.GA3953@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 29, 2013 at 08:50:56AM -0400, Anna Schumaker wrote:
-> On Mon 28 Oct 2013 05:40:30 PM EDT, J. Bruce Fields wrote:
-> > On Mon, Oct 28, 2013 at 10:57:25AM -0400, Anna Schumaker wrote:
-> >> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> >> index 419572f..3210c6f 100644
-> >> --- a/fs/nfsd/nfs4proc.c
-> >> +++ b/fs/nfsd/nfs4proc.c
-> >> @@ -1028,6 +1028,42 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> >>  	return status;
-> >>  }
-> >>
-> >> +static __be32
-> >> +nfsd4_write_plus_hole(struct file *file, struct nfsd4_write_plus *writeplus,
-> >> +		      struct net *net)
-> >> +{
-> >> +	__be32 status;
-> >> +
-> >> +	status = nfsd4_vfs_fallocate(file, writeplus->wp_allocated,
-> >> +				writeplus->wp_offset, writeplus->wp_length);
-> >> +	if (status == nfs_ok) {
-> >> +		writeplus->wp_res.wr_stid = NULL;
-> >> +		writeplus->wp_res.wr_bytes_written = writeplus->wp_length;
-> >> +		writeplus->wp_res.wr_stable_how = NFS_FILE_SYNC;
-> >
-> > Do we need to sync?
+On Sun, Sep 29, 2013 at 04:54:54AM -0700, Christoph Hellwig wrote:
+> On Thu, Sep 12, 2013 at 08:33:28PM +0100, Al Viro wrote:
+> > i_ino use is entirely up to filesystem; it may be used by library helpers,
+> > provided that the choice of using or not using those is, again, up to
+> > filesystem in question.
 > 
-> I did the sync in nfsd4_vfs_fallocate (below), but I can move it if 
-> that would make more sense.
+> With more and more filesystems using large inode numbers I'm starting to
+> wonder if this still makes sense.  But given that it's been this way for
+> a long time we should have more documentation of it for sure.
+> 
+> > NFSD has no damn business looking at it; library
+> > helpers in fs/exportfs might, but that makes them not suitable for use
+> > by filesystems without inode numbers or with 64bit ones.
+> > 
+> > The reason why it's there at all is that it serves as convenient icache
+> > search key for many filesystems.  IOW, it's used by iget_locked() and
+> > avoiding the overhead of 64bit comparisons on 32bit hosts is the main
+> > reason to avoid making it u64.
+> > 
+> > Again, no fs-independent code has any business looking at it, 64bit or
+> > not.  From the VFS point of view there is no such thing as inode number.
+> > And get_name() is just a library helper.  For many fs types it works
+> > as suitable ->s_export_op->get_name() instance, but decision to use it
+> > or not belongs to filesystem in question and frankly, it's probably better
+> > to provide an instance of your own anyway.
+> 
+> Given that these days most exportable filesystems use 64-bit inode
+> numbers I think we should put the patch from Bruce in.  Nevermind that
+> it's in a slow path, so the overhead of vfs_getattr really doesn't hurt.
 
-What I meant was--why are we doing a sync at all, instead of returning
-NFS_UNSTABLE and making the client commit?
+Calling vfs_getattr adds a security_inode_getattr() call that wasn't
+there before.  Any chance of that being a problem?
 
-Honest question, I haven't thought about which is best.
+If so then it's no huge code duplication to it by hand:
+
+	if (inode->i_op->getattr)
+		inode->i_op->getattr(path->mnt, path->dentry, &stat);
+	else
+		generic_fillattr(inode, &stat);
 
 --b.
