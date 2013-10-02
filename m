@@ -1,51 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:1168 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:39266 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752613Ab3JVPXR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Oct 2013 11:23:17 -0400
-Message-ID: <52669862.6030409@redhat.com>
-Date: Tue, 22 Oct 2013 10:23:14 -0500
-From: Tony Asleson <tasleson@redhat.com>
-Reply-To: tasleson@redhat.com
-MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: linux-nfs@vger.kernel.org, Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] exportfs: Return non-zero exit value on error
-References: <1380756584-13335-1-git-send-email-tasleson@redhat.com> <20131022092519.4f4683a8@notabene.brown>
-In-Reply-To: <20131022092519.4f4683a8@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1754189Ab3JBNsT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Oct 2013 09:48:19 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/2] rpc: change BUG to WARN in gss_encode_v1_msg
+Date: Wed,  2 Oct 2013 09:48:14 -0400
+Message-Id: <1380721695-14755-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/21/2013 05:25 PM, NeilBrown wrote:
-> On Wed,  2 Oct 2013 18:29:44 -0500 Tony Asleson <tasleson@redhat.com> wrote:
-> 
->> To improve error handling when scripting exportfs it's useful
->> to have non-zero exit codes when the requested operation did not
->> succeed.
->>
->> This patch also returns a non-zero exit code if you request to
->> unexport a non-existant share.
->>
->> Signed-off-by: Tony Asleson <tasleson@redhat.com>
-> 
-> This seems the have been forgotten, so maybe by replying to it someone will
-> notice (hi Steve).
-> 
-> Though I agree with the need for the patch, I don't much like it's shape.
-> 
-> Why change exportfs and unexportfs to return a status?  The status is only
-> used to set export_errno, and they sometimes set export_errno anyway, so why
-> not leave them returning  void and just setting export_errno as needed?
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-The reason I chose to return values was to make sure requested operation
-actually completed requested operation.  Unexporting a non-existent
-export is not considered an error and returns no indication you did
-absolutely nothing.
+Failure of this assertion would indeed be serious, but as we've seen a
+BUG() in a worker thread (this can run from rpciod context) can screw up
+the system so badly that the oops doesn't even get to the logs; better
+to WARN() and soldier on.
 
-When scripting exportfs from another program I wanted to know that the
-operation I requested actually did what I asked so that I could catch
-bad calls to it.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/auth_gss/auth_gss.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Regards,
-Tony
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 0846566..254a9f0 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -454,7 +454,7 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+ 	gss_msg->msg.len += len;
+ 
+ 	gss_msg->msg.data = gss_msg->databuf;
+-	BUG_ON(gss_msg->msg.len > UPCALL_BUF_LEN);
++	WARN_ON_ONCE(gss_msg->msg.len > UPCALL_BUF_LEN);
+ }
+ 
+ static struct gss_upcall_msg *
+-- 
+1.7.9.5
+
