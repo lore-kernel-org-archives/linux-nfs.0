@@ -1,58 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ea0-f175.google.com ([209.85.215.175]:53836 "EHLO
-	mail-ea0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752781Ab3JBORY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Oct 2013 10:17:24 -0400
-Received: by mail-ea0-f175.google.com with SMTP id m14so431257eaj.34
-        for <linux-nfs@vger.kernel.org>; Wed, 02 Oct 2013 07:17:23 -0700 (PDT)
-Message-ID: <524C2AF0.4000602@primarydata.com>
-Date: Wed, 02 Oct 2013 17:17:20 +0300
-From: Benny Halevy <bhalevy@primarydata.com>
-MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC v0 43/49] pnfsd: release state lock around iput in
- put_nfs4_file
-References: <52447EA0.7070004@primarydata.com> <1380220968-14669-1-git-send-email-bhalevy@primarydata.com> <20130929121903.GF21083@infradead.org> <524ACEA9.1040304@primarydata.com> <20131001133739.GA13149@infradead.org>
-In-Reply-To: <20131001133739.GA13149@infradead.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qe0-f43.google.com ([209.85.128.43]:58728 "EHLO
+	mail-qe0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754577Ab3JCTta (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Oct 2013 15:49:30 -0400
+Received: by mail-qe0-f43.google.com with SMTP id gh4so2173671qeb.30
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Oct 2013 12:49:29 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 1/2] gssd: have process_krb5_upcall fork before handling upcall
+Date: Thu,  3 Oct 2013 15:49:19 -0400
+Message-Id: <1380829760-4928-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1380829760-4928-1-git-send-email-jlayton@redhat.com>
+References: <1380829760-4928-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-10-01 16:37, Christoph Hellwig wrote:
-> On Tue, Oct 01, 2013 at 04:31:21PM +0300, Benny Halevy wrote:
->> So the reason not to hold it is that the nfs state lock is global to the
->> server and blocks all state modifying operations such as:
->> open, close, lock, clientid, session operations, etc.
-> 
-> While not really related to this patch: what's the reason it's not
-> split?  The way nfsd works there should be almost no state that isn't
-> per-export.
+In order to handle KEYRING: caches, we need to be able to switch the
+real UID of the process to the designated one, but that opens the door
+to allowing gssd to be killed or reniced during the window where we've
+switched credentials.
 
-I'll defer to Bruce.  We did reduce the use of the state_lock in the past
-but I think there is potential for further reducing what it covers.
+Change gssd to fork before trying to handle each upcall. The child will
+do the work to establish the context and the parent task will just wait
+for it to exit. It's still possible for the child to be killed or
+reniced, but that would only affect a single upcall instead of the
+entire daemon.
 
-Memory allocations for client, file, stateid etc. and can be optimized for
-the common path by opportunistically allocating these after a quick
-search (lockless of rcu_read is possible)
-In the uncommon case insertion of the newly allocated stuff would fail and
-they will be freed.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/gssd/gssd_proc.c | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
 
-The candidates I can quickly see are:
-- the idr calls manipulating and looking up the different stateid hash tables,
-- clientid rb_trees, and
-- file hash table
-  - currently protected with the recall_lock spin_lock but we can factor out,
-    I think, the call to nfsd4_alloc_file and combine find_file and nfsd4_init_file
-    for conditional insertion under the recall_lock.
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index e58c341..fd258f7 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -67,6 +67,8 @@
+ #include <errno.h>
+ #include <gssapi/gssapi.h>
+ #include <netdb.h>
++#include <sys/types.h>
++#include <sys/wait.h>
+ 
+ #include "gssd.h"
+ #include "err_util.h"
+@@ -982,6 +984,23 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+ 	int			err, downcall_err = -EACCES;
+ 	gss_cred_id_t		gss_cred;
+ 	OM_uint32		maj_stat, min_stat, lifetime_rec;
++	pid_t			pid;
++
++	pid = fork();
++	switch(pid) {
++	case 0:
++		/* Child: fall through to rest of function */
++		break;
++	case -1:
++		/* fork() failed! */
++		printerr(0, "WARNING: unable to fork() to handle upcall: %s\n",
++				strerror(errno));
++		return;
++	default:
++		/* Parent: just wait on child to exit and return */
++		wait(&err);
++		return;
++	}
+ 
+ 	printerr(1, "handling krb5 upcall (%s)\n", clp->dirname);
+ 
+@@ -1121,7 +1140,7 @@ out:
+ 		AUTH_DESTROY(auth);
+ 	if (rpc_clnt)
+ 		clnt_destroy(rpc_clnt);
+-	return;
++	exit(0);
+ 
+ out_return_error:
+ 	do_error_downcall(fd, uid, downcall_err);
+-- 
+1.8.3.1
 
-Benny
-
-
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
