@@ -1,89 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59339 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755472Ab3JJPPI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Oct 2013 11:15:08 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/4] svcrpc: handle some gssproxy encoding errors
-Date: Thu, 10 Oct 2013 11:15:02 -0400
-Message-Id: <1381418103-3852-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1381418103-3852-1-git-send-email-bfields@redhat.com>
-References: <1381418103-3852-1-git-send-email-bfields@redhat.com>
+Received: from mail-wg0-f49.google.com ([74.125.82.49]:58628 "EHLO
+	mail-wg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752257Ab3JCM3O (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Oct 2013 08:29:14 -0400
+Received: by mail-wg0-f49.google.com with SMTP id l18so2329689wgh.28
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Oct 2013 05:29:12 -0700 (PDT)
+Message-ID: <524D6312.7020709@primarydata.com>
+Date: Thu, 03 Oct 2013 15:29:06 +0300
+From: Benny Halevy <bhalevy@primarydata.com>
+MIME-Version: 1.0
+To: Christoph Hellwig <hch@infradead.org>
+CC: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
+References: <20130929114327.GB25750@infradead.org> <52481939.7060405@primarydata.com> <20130929121345.GA21083@infradead.org> <52481B11.2080407@primarydata.com> <20130929122130.GI21083@infradead.org> <20130929123553.GA7510@infradead.org> <20131001203047.GH16245@pad.fieldses.org> <524C0556.9070705@primarydata.com> <20131002160759.GB27988@infradead.org> <524D0873.40602@primarydata.com> <20131003095511.GA30147@infradead.org>
+In-Reply-To: <20131003095511.GA30147@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On 2013-10-03 12:55, Christoph Hellwig wrote:
+> On Thu, Oct 03, 2013 at 09:02:27AM +0300, Benny Halevy wrote:
+>> Just that this is dlm specific logic.
+>> For example, using dlm_ino_hash() in nfsd4_pnfs_dlm_layoutget().
+>> Or even knowing that
+>> 	layout->lg_stripe_type = STRIPE_SPARSE;
+>> assumes knowledge of the underlying cluster fs implementation.
+> 
+> Which in-tree or soon in-tree filesystem do you care about?  And why
+> don't we see pnfs support for it submitted instead of the fairly useless
+> gfs2 support?
 
-Reported-by: Andi Kleen <andi@firstfloor.org>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/auth_gss/gss_rpc_xdr.c |   29 ++++++++++++++---------------
- 1 file changed, 14 insertions(+), 15 deletions(-)
+I picked gfs2 as the initial use case for simplicity and ease of review.
+If there is a rough consensus that it's useless and not worthy of inclusion
+then the one we care about the most is exofs that has a more complete pnfs
+implementation.
 
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-index f0f78c5..1ec19f6 100644
---- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-@@ -559,6 +559,8 @@ static int gssx_enc_cred(struct xdr_stream *xdr,
- 
- 	/* cred->elements */
- 	err = dummy_enc_credel_array(xdr, &cred->elements);
-+	if (err)
-+		return err;
- 
- 	/* cred->cred_handle_reference */
- 	err = gssx_enc_buffer(xdr, &cred->cred_handle_reference);
-@@ -740,22 +742,20 @@ void gssx_enc_accept_sec_context(struct rpc_rqst *req,
- 		goto done;
- 
- 	/* arg->context_handle */
--	if (arg->context_handle) {
-+	if (arg->context_handle)
- 		err = gssx_enc_ctx(xdr, arg->context_handle);
--		if (err)
--			goto done;
--	} else {
-+	else
- 		err = gssx_enc_bool(xdr, 0);
--	}
-+	if (err)
-+		goto done;
- 
- 	/* arg->cred_handle */
--	if (arg->cred_handle) {
-+	if (arg->cred_handle)
- 		err = gssx_enc_cred(xdr, arg->cred_handle);
--		if (err)
--			goto done;
--	} else {
-+	else
- 		err = gssx_enc_bool(xdr, 0);
--	}
-+	if (err)
-+		goto done;
- 
- 	/* arg->input_token */
- 	err = gssx_enc_in_token(xdr, &arg->input_token);
-@@ -763,13 +763,12 @@ void gssx_enc_accept_sec_context(struct rpc_rqst *req,
- 		goto done;
- 
- 	/* arg->input_cb */
--	if (arg->input_cb) {
-+	if (arg->input_cb)
- 		err = gssx_enc_cb(xdr, arg->input_cb);
--		if (err)
--			goto done;
--	} else {
-+	else
- 		err = gssx_enc_bool(xdr, 0);
--	}
-+	if (err)
-+		goto done;
- 
- 	err = gssx_enc_bool(xdr, arg->ret_deleg_cred);
- 	if (err)
--- 
-1.7.9.5
+Benny
 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
