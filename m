@@ -1,109 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36887 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:19166 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754061Ab3J3WUB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Oct 2013 18:20:01 -0400
-Date: Wed, 30 Oct 2013 18:19:59 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/7] nfsd4: fix recall_lock use in unhash_delegation
-Message-ID: <20131030221958.GA24795@fieldses.org>
-References: <526F81DE.6060704@primarydata.com>
- <1383039544-27157-1-git-send-email-bhalevy@primarydata.com>
- <20131029144658.GR31322@fieldses.org>
- <52711187.10202@primarydata.com>
- <20131030143552.GE3227@fieldses.org>
- <52711AF7.4070100@primarydata.com>
+	id S1753728Ab3JCNMv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Oct 2013 09:12:51 -0400
+Message-ID: <524D6D38.1040506@redhat.com>
+Date: Thu, 03 Oct 2013 09:12:24 -0400
+From: Ric Wheeler <rwheeler@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <52711AF7.4070100@primarydata.com>
+To: Benny Halevy <bhalevy@primarydata.com>
+CC: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        Steven Whitehouse <swhiteho@redhat.com>,
+        Bob Peterson <rpeterso@redhat.com>, Abhijith Das <adas@redhat.com>,
+        Andrew Price <anprice@redhat.com>, Paul Evans <pevans@redhat.com>
+Subject: Re: [PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
+References: <20130929114327.GB25750@infradead.org> <52481939.7060405@primarydata.com> <20130929121345.GA21083@infradead.org> <52481B11.2080407@primarydata.com> <20130929122130.GI21083@infradead.org> <20130929123553.GA7510@infradead.org> <20131001203047.GH16245@pad.fieldses.org> <524C0556.9070705@primarydata.com> <20131002160759.GB27988@infradead.org> <524D0873.40602@primarydata.com> <20131003095511.GA30147@infradead.org> <524D6312.7020709@primarydata.com>
+In-Reply-To: <524D6312.7020709@primarydata.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 30, 2013 at 04:43:03PM +0200, Benny Halevy wrote:
-> On 2013-10-30 16:35, J. Bruce Fields wrote:
-> > On Wed, Oct 30, 2013 at 04:02:47PM +0200, Benny Halevy wrote:
-> >> On 2013-10-29 16:46, J. Bruce Fields wrote:
-> >>> On Tue, Oct 29, 2013 at 11:39:04AM +0200, Benny Halevy wrote:
-> >>>> Access to dp->dl_perclnt must be synchronized by the recall_lock
-> >>>
-> >>> Are you sure?  recall_lock is for stuff that's needed in the delegation
-> >>> break callback (nfsd_break_deleg_cb() and any of the subsequent callback
-> >>> handling).  I don't think that includes dl_perclnt.
-> >>
-> >> I was mislead by the fact that destroy_client and nfs4_state_shutdown_net
-> >> care to acquire the recall_lock for traversing the clp->cl_delegations
-> >> and nn->del_recall_lru lists, respectively.
-> >>
-> >> Now nfs4_state_shutdown_net, although its comment says it should be
-> >> called with the state lock held (SHOULD or should, or should it be MUST? :)
-> >> It doesn't seem like nfsd_shutdown_net acquires the state lock.
-> > 
-> > Good point.
-> > 
-> >> Therefore, we either need to grab the state lock in nfs4_state_shutdown_net
-> >> which adds yet another problem to fix,
-> > 
-> > That sounds simplest as the short-term fix....  What problem do you see?
-> 
-> Nothing specific, just the general use of the global state lock...
-> 
-> > 
-> > --b.
-> > 
-> > commit 2c9407ae694dad8a1ad6394d9bf6077024b9fae7
-> > Author: J. Bruce Fields <bfields@redhat.com>
-> > Date:   Wed Oct 30 10:33:09 2013 -0400
-> > 
-> >     nfsd4: nfsd_shutdown_net needs state lock
-> >     
-> >     A comment claims the caller should take it, but that's not being done.
-> >     Note we don't want it around the cancel_delayed_work_sync since that may
-> >     wait on work which holds the client lock.
-> >     
-> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> Ack
+On 10/03/2013 08:29 AM, Benny Halevy wrote:
+> On 2013-10-03 12:55, Christoph Hellwig wrote:
+>> >On Thu, Oct 03, 2013 at 09:02:27AM +0300, Benny Halevy wrote:
+>>> >>Just that this is dlm specific logic.
+>>> >>For example, using dlm_ino_hash() in nfsd4_pnfs_dlm_layoutget().
+>>> >>Or even knowing that
+>>> >>	layout->lg_stripe_type = STRIPE_SPARSE;
+>>> >>assumes knowledge of the underlying cluster fs implementation.
+>> >
+>> >Which in-tree or soon in-tree filesystem do you care about?  And why
+>> >don't we see pnfs support for it submitted instead of the fairly useless
+>> >gfs2 support?
+> I picked gfs2 as the initial use case for simplicity and ease of review.
+> If there is a rough consensus that it's useless and not worthy of inclusion
+> then the one we care about the most is exofs that has a more complete pnfs
+> implementation.
+>
+> Benny
+>
 
-Thanks, done, and pushed out to
+I don't see having GFS2 supported as a base for pNFS as useless. Christoph, is 
+this a concern about GFS2 being too complicated for normal deployment or a lack 
+in the pNFS support on top of it?
 
-	git://linux-nfs.org/~bfields/linux.git for-3.13
+thanks!
 
---b.
+Ric
 
-> 
-> > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index 21eb678..e03e8ef 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -5124,7 +5124,6 @@ out_recovery:
-> >  	return ret;
-> >  }
-> >  
-> > -/* should be called with the state lock held */
-> >  void
-> >  nfs4_state_shutdown_net(struct net *net)
-> >  {
-> > @@ -5135,6 +5134,7 @@ nfs4_state_shutdown_net(struct net *net)
-> >  	cancel_delayed_work_sync(&nn->laundromat_work);
-> >  	locks_end_grace(&nn->nfsd4_manager);
-> >  
-> > +	nfs4_lock_state();
-> >  	INIT_LIST_HEAD(&reaplist);
-> >  	spin_lock(&recall_lock);
-> >  	list_for_each_safe(pos, next, &nn->del_recall_lru) {
-> > @@ -5149,6 +5149,7 @@ nfs4_state_shutdown_net(struct net *net)
-> >  
-> >  	nfsd4_client_tracking_exit(net);
-> >  	nfs4_state_destroy_net(net);
-> > +	nfs4_unlock_state();
-> >  }
-> >  
-> >  void
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
