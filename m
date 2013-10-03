@@ -1,66 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51257 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933957Ab3JOUkA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Oct 2013 16:40:00 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>, Al Viro <viro@ZenIV.linux.org.uk>,
-        linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/5] exportfs: slight reorganization of reconnect loop
-Date: Tue, 15 Oct 2013 16:39:32 -0400
-Message-Id: <1381869574-10662-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1381869574-10662-1-git-send-email-bfields@redhat.com>
-References: <1381869574-10662-1-git-send-email-bfields@redhat.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:48318 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751628Ab3JCNRw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Oct 2013 09:17:52 -0400
+Date: Thu, 3 Oct 2013 06:17:50 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Ric Wheeler <rwheeler@redhat.com>
+Cc: Benny Halevy <bhalevy@primarydata.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        Steven Whitehouse <swhiteho@redhat.com>,
+        Bob Peterson <rpeterso@redhat.com>, Abhijith Das <adas@redhat.com>,
+        Andrew Price <anprice@redhat.com>, Paul Evans <pevans@redhat.com>
+Subject: Re: [PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
+Message-ID: <20131003131750.GA23408@infradead.org>
+References: <52481B11.2080407@primarydata.com>
+ <20130929122130.GI21083@infradead.org>
+ <20130929123553.GA7510@infradead.org>
+ <20131001203047.GH16245@pad.fieldses.org>
+ <524C0556.9070705@primarydata.com>
+ <20131002160759.GB27988@infradead.org>
+ <524D0873.40602@primarydata.com>
+ <20131003095511.GA30147@infradead.org>
+ <524D6312.7020709@primarydata.com>
+ <524D6D38.1040506@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <524D6D38.1040506@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Thu, Oct 03, 2013 at 09:12:24AM -0400, Ric Wheeler wrote:
+> >>>Which in-tree or soon in-tree filesystem do you care about?  And why
+> >>>don't we see pnfs support for it submitted instead of the fairly useless
+> >>>gfs2 support?
+> >I picked gfs2 as the initial use case for simplicity and ease of review.
+> >If there is a rough consensus that it's useless and not worthy of inclusion
+> >then the one we care about the most is exofs that has a more complete pnfs
+> >implementation.
+> >
+> >Benny
+> >
+> 
+> I don't see having GFS2 supported as a base for pNFS as useless.
+> Christoph, is this a concern about GFS2 being too complicated for
+> normal deployment or a lack in the pNFS support on top of it?
 
-Just cleanup, no change in functionality
+Fairly useless was specific to the particular implementation:
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/exportfs/expfs.c |   22 +++++++++++++---------
- 1 file changed, 13 insertions(+), 9 deletions(-)
+ - which in the stipped down version here only supports DS access for
+   reads
+ - which in the previous version showed worse performance than always
+   going through the MDS
 
-diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
-index 24fb763..afa7c9c 100644
---- a/fs/exportfs/expfs.c
-+++ b/fs/exportfs/expfs.c
-@@ -208,19 +208,23 @@ reconnect_path(struct vfsmount *mnt, struct dentry *target_dir, char *nbuf)
- 			/* must have found a connected parent - great */
- 			clear_disconnected(target_dir);
- 			noprogress = 0;
--		} else if (dentry == mnt->mnt_sb->s_root) {
-+			dput(dentry);
-+			continue;
-+		}
-+		if (dentry == mnt->mnt_sb->s_root) {
- 			printk(KERN_ERR "export: Eeek filesystem root is not connected, impossible\n");
- 			clear_disconnected(target_dir);
- 			noprogress = 0;
--		} else {
--			/*
--			 * We have hit the top of a disconnected path, try to
--			 * find parent and connect.
--			 */
--			err = reconnect_one(mnt, dentry, nbuf, &noprogress);
--			if (err)
--				return err;
-+			dput(dentry);
-+			continue;
- 		}
-+		/*
-+		 * We have hit the top of a disconnected path, try to
-+		 * find parent and connect.
-+		 */
-+		err = reconnect_one(mnt, dentry, nbuf, &noprogress);
-+		if (err)
-+			return err;
- 		dput(dentry);
- 	}
- 
--- 
-1.7.9.5
+I don't have a problem with using GFS2 by itself, but any implementation
+proposed should actually show signifiant real life benefits before it
+gets merged.
 
