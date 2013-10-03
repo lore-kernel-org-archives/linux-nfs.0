@@ -1,29 +1,27 @@
-From: "Dr. Mack Nellie" <notiffication-14/PbEeleRQIcrcdlntqAk7Sfu5ARAybgJmBf7UdkjU@public.gmane.org>
-Subject: I am expecting your urgent response
-Date: Tue, 8 Oct 2013 02:51:57 +0530
-Message-ID: <02937474-81bf-41b1-9264-536edffb6023@SIXPR04MB014.apcprd04.prod.outlook.com>
-Reply-To: <dr.macknellie-pveGkIeVMScAvxtiuMwx3w@public.gmane.org>
+From: Aijaz Lending <yin01-3M0T/LkHzJdO0n7uQEQMm4CZgX+1HZI1@public.gmane.org>
+Subject: looking for loan
+Date: Fri, 4 Oct 2013 01:33:30 +0530
+Message-ID: <41e3a874-225e-4fe4-904b-95e064df876a__45744.184885598$1380830664$gmane$org@HKXPR02MB213.apcprd02.prod.outlook.com>
+Reply-To: <sg.loan.sg@outlook.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
-To: Recipients <notiffication-14/PbEeleRQIcrcdlntqAk7Sfu5ARAybgJmBf7UdkjU@public.gmane.org>
+To: Recipients <yin01-3M0T/LkHzJdO0n7uQEQMm4CZgX+1HZI1@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from emea01-db3-ndr.ptr.protection.outlook.com ([157.56.120.99]:27429
+Received: from emea01-db3-ndr.ptr.protection.outlook.com ([157.56.120.100]:50229
 	"EHLO emea01-db3-obe.outbound.protection.outlook.com"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752719Ab3JGVWT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Oct 2013 17:22:19 -0400
+	id S1755215Ab3JCUEL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Oct 2013 16:04:11 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Do you have a firm or company that need loan to start up a business or need,personal loan, Debt consolidation? For more information,Contact us now for a guarantee loan with low interest rate. We will provide you with loan to meet your needs. For more information contact us with the following information's.
+Full name:
+country:
+Address:
+Phone Number:
+Amount needed:
+Duration of loan:
 
-
- Compliment of the day.
- 
-I am Dr. Mack Nellie. I am looking for a reliable Indian partner that understands the India local language and English as well; I have a business proposal that will benefit both of us outside our individual professions.
-Kindly contact me for the supply details on my personal email address;  dr.macknellie-/E1597aS9LSlP80pJB477g@public.gmane.org  I will furnish you with more details as soon as I receive your mail.
-I am expecting your urgent response   
-
-Regards 
-Dr. Mack Nellie
-Tel: +447014245023 
-E-Mail(dr.macknellie-pveGkIeVMScAvxtiuMwx3w@public.gmane.org)
+sg.loan.sg@outlook.com
+Kind regards
