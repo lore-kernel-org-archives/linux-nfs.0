@@ -1,43 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f54.google.com ([209.85.213.54]:43494 "EHLO
-	mail-yh0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750735Ab3JaRDL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Oct 2013 13:03:11 -0400
-Received: by mail-yh0-f54.google.com with SMTP id b20so1324885yha.13
-        for <linux-nfs@vger.kernel.org>; Thu, 31 Oct 2013 10:03:10 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, neilb@suse.de
-Subject: [PATCH] nfs: fix inverted test for delegation in nfs4_reclaim_open_state
-Date: Thu, 31 Oct 2013 13:03:04 -0400
-Message-Id: <1383238984-11063-1-git-send-email-jlayton@redhat.com>
+Received: from aa.linuxbox.com ([69.128.83.226]:4657 "EHLO aa.linuxbox.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752248Ab3JCNAP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Oct 2013 09:00:15 -0400
+Date: Thu, 3 Oct 2013 08:58:08 -0400 (EDT)
+From: "Matt W. Benjamin" <matt@linuxbox.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        Benny Halevy <bhalevy@primarydata.com>
+Message-ID: <592699116.20.1380805088543.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <1588761701.18.1380804942396.JavaMail.root@thunderbeast.private.linuxbox.com>
+Subject: Re: [PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-commit 6686390bab6a0e0 (NFS: remove incorrect "Lock reclaim failed!"
-warning.) added a test for a delegation before checking to see if any
-reclaimed locks failed. The test however is backward and is only doing
-that check when a delegation is held instead of when one isn't.
+Hi,
 
-Cc: NeilBrown <neilb@suse.de>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/nfs4state.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+I think saying exofs is a proof of concept/toy is missing the point.
+Exofs is an implementation baseline that provides insight into the
+scalability/performance values that a pnfs implementation can achieve,
+and potentially how to achieve them.
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 452f4c8..c8e729d 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1476,7 +1476,7 @@ restart:
- 		if (status >= 0) {
- 			status = nfs4_reclaim_locks(state, ops);
- 			if (status >= 0) {
--				if (test_bit(NFS_DELEGATED_STATE, &state->flags) != 0) {
-+				if (!test_bit(NFS_DELEGATED_STATE, &state->flags)) {
- 					spin_lock(&state->state_lock);
- 					list_for_each_entry(lock, &state->lock_states, ls_locks) {
- 						if (!test_bit(NFS_LOCK_INITIALIZED, &lock->ls_flags))
+Matt
+
+----- "Christoph Hellwig" <hch@infradead.org> wrote:
+
+> On Thu, Oct 03, 2013 at 03:29:06PM +0300, Benny Halevy wrote:
+> > I picked gfs2 as the initial use case for simplicity and ease of
+> review.
+> > If there is a rough consensus that it's useless and not worthy of
+> inclusion
+> > then the one we care about the most is exofs that has a more
+> complete pnfs
+> > implementation.
+> 
+> This was in reference to file layout implementation details, so exofs
+> isn't a contender there.
+> 
+> As far as exofs is concerned a pnfs implementation based on it has
+> just
+> as much toy status as the current gfs2 one.  While the pnfs side of
+> it
+> might as well be a lot better, a filesystem that lacks all the
+> integrity
+> and scalability features developed in the last 30 years can't be
+> considered more than a proof of concept.
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-1.8.3.1
+Matt Benjamin
+The Linux Box
+206 South Fifth Ave. Suite 150
+Ann Arbor, MI  48104
 
+http://linuxbox.com
+
+tel.  734-761-4689 
+fax.  734-769-8938 
+cel.  734-216-5309 
