@@ -1,167 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-o-3.desy.de ([131.169.56.156]:41640 "EHLO smtp-o-3.desy.de"
+Received: from fieldses.org ([174.143.236.118]:38005 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754219Ab3JJOsy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Oct 2013 10:48:54 -0400
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 087EB28095C
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2013 16:48:53 +0200 (CEST)
-Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
-	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id EC90210F2
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2013 16:48:52 +0200 (MEST)
-Date: Thu, 10 Oct 2013 16:48:52 +0200 (CEST)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Weston Andros Adamson <dros@netapp.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>,
-        Andy Adamson <William.Adamson@netapp.com>,
-        Steve Dickson <steved@redhat.com>
-Message-ID: <1732606875.591017.1381416532236.JavaMail.zimbra@desy.de>
-In-Reply-To: <FB2C39E8-D3A1-46E4-83A8-1EC9D5EB327B@netapp.com>
-References: <1667669326.580689.1381351712928.JavaMail.zimbra@desy.de> <1232423514.586176.1381399016371.JavaMail.zimbra@desy.de> <4A5C5668-CBB0-444B-A726-BF6E0D22866B@netapp.com> <FB2C39E8-D3A1-46E4-83A8-1EC9D5EB327B@netapp.com>
-Subject: Re: DoS with NFSv4.1 client
+	id S1751174Ab3JDUUk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Oct 2013 16:20:40 -0400
+Date: Fri, 4 Oct 2013 16:20:33 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: David Quigley <selinux@davequigley.com>
+Cc: Daniel J Walsh <dwalsh@redhat.com>, Stephen Smalley <sds@tycho.nsa.gov>,
+        Eric Paris <eparis@redhat.com>, Steve Dickson <SteveD@redhat.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: Hey we are seeing a big problem with Labeled NFS
+Message-ID: <20131004202033.GB18051@fieldses.org>
+References: <524EB4C2.6070804@redhat.com>
+ <a72f70f2dce1409f383d634c06b17b40@countercultured.net>
+ <20131004143549.GC1577@fieldses.org>
+ <46df4f789cbeb203d1355adbd3a346c6@countercultured.net>
+ <20131004150505.GD1577@fieldses.org>
+ <7392559a27900ee1dfe69ebbe0fd468e@countercultured.net>
+ <20131004152944.GE1577@fieldses.org>
+ <cc6c106aa0b1ead440ff70a2ca002f69@countercultured.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cc6c106aa0b1ead440ff70a2ca002f69@countercultured.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Oct 04, 2013 at 11:39:54AM -0400, David Quigley wrote:
+> ( Adding linux-nfs to the list of people)
+> 
+> Here is a summary of the discussion so far.
+> 
+> Dan Walsh is seeing issues with Labeled NFS. The issue he is seeing
+> is that a label change on the server is not reflected on the client
+> until a remount of the client. There should be a delay in the label
+> change being reflected in the client as we don't yet have the label
+> change notification in. However it should only be until the cache
+> for the file attribute is invalidated and the next getfattr call
+> revalidates the label. It is unclear why a remount is needed at this
+> time.
+> 
+> Bruce has expressed the concern that the label change notification
+> was not designed for this particular use case and the
+> protocol/implementation may need to be reworked.
+> 
+> My understanding of the usecases discussed for Labeled NFS have
+> sVirt and NFS mounted home. Both of which will make label changes
+> quite often. Part of SVirt is support in libvirt to change the
+> category fields on the vm images to match that of the starting qemu
+> process. This gives the process separation that just using types
+> alone would make difficult. For home directories labels may change
+> all the time from a client perspective if another client is
+> modifying file labels. I think what we conveyed a while back (I
+> don't remember the conversation) is that a whole sale relabel of the
+> server from underneath the clients is unlikely to happen. However
+> there is definitely a real use case where client A modifies the
+> label on a file and Client B needs to see that. Without having full
+> support where the server enforces policy we're relying on the client
+> to enforce those policies which they can't reliably do without
+> knowing about the label change. One thing we had discussed in the
+> past though is that the cache timeout could be sufficient in the
+> situation where we lack the label change notification under the
+> assumption that if the file was opened with that label at least for
+> that short time it should still be ok for it to still read/write to
+> that file. There are situations where that is not ideal though. Its
+> not clear to me why the client is requiring a remount to get the
+> label change though. Upon cache invalidation another getfattr call
+> for the label should be sent and it should pull it back.
 
+I haven't actually checked, but I suspect we need to implement the
+label_change attribute (on both client and server) before that works
+well.
 
------ Original Message -----
-> From: "Weston Andros Adamson" <dros@netapp.com>
-> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
-> Cc: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>, "Andy Adamson" <William.Adamson@netapp.com>, "Steve
-> Dickson" <steved@redhat.com>
-> Sent: Thursday, October 10, 2013 4:35:25 PM
-> Subject: Re: DoS with NFSv4.1 client
-> 
-> Well, it'd be nice not to loop forever, but my question remains, is this due
-> to a server bug (the DS not knowing about new stateid from MDS)?
-> 
-
-Up to now, we have pushed open state id to the DS only on LAYOUTGET.
-This have to be changed, as the behaviour is not spec compliant.
-
-Tigran.
-
-> -dros
-> 
-> On Oct 10, 2013, at 10:14 AM, Weston Andros Adamson <dros@netapp.com> wrote:
-> 
-> > So is this a server bug? It seems like the client is behaving correctly...
-> > 
-> > -dros
-> > 
-> > On Oct 10, 2013, at 5:56 AM, "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-> > wrote:
-> > 
-> >> 
-> >> 
-> >> Today we was 'luck' to have such situation at day time.
-> >> Here is what happens:
-> >> 
-> >> The client sends an OPEN and gets an open state id.
-> >> This is followed by LAYOUTGET ... and READ to DS.
-> >> At some point, server returns back BAD_STATEID.
-> >> This triggers client to issue a new OPEN and use
-> >> new open stateid with READ request to DS. As new
-> >> stateid is not known to DS, it keeps returning
-> >> BAD_STATEID and becomes an infinite loop.
-> >> 
-> >> Regards,
-> >>  Tigran.
-> >> 
-> >> 
-> >> 
-> >> ----- Original Message -----
-> >>> From: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
-> >>> To: linux-nfs@vger.kernel.org
-> >>> Cc: "Andy Adamson" <william.adamson@netapp.com>, "Steve Dickson"
-> >>> <steved@redhat.com>
-> >>> Sent: Wednesday, October 9, 2013 10:48:32 PM
-> >>> Subject: DoS with NFSv4.1 client
-> >>> 
-> >>> 
-> >>> Hi,
-> >>> 
-> >>> last night we got a DoS attack with one of the NFS clients.
-> >>> The farm node, which was accessing data with pNFS,
-> >>> went mad and have tried to kill dCache NFS server. As usually
-> >>> this have happened over night and we was not able to
-> >>> get a network traffic or bump the debug level.
-> >>> 
-> >>> The symptoms are:
-> >>> 
-> >>> client starts to bombard the MDS with OPEN requests. As we see
-> >>> state created on the server side, the requests was processed by
-> >>> server. Nevertheless, for some reason, client did not like it. Here
-> >>> is the result of mountstats:
-> >>> 
-> >>> OPEN:
-> >>> 	17087065 ops (99%) 	1 retrans (0%) 	0 major timeouts
-> >>> 	avg bytes sent per op: 356	avg bytes received per op: 455
-> >>> 	backlog wait: 0.014707 	RTT: 4.535704 	total execute time: 4.574094
-> >>> 	(milliseconds)
-> >>> CLOSE:
-> >>> 	290 ops (0%) 	0 retrans (0%) 	0 major timeouts
-> >>> 	avg bytes sent per op: 247	avg bytes received per op: 173
-> >>> 	backlog wait: 308.827586 	RTT: 1748.479310 	total execute time:
-> >>> 	2057.365517
-> >>> 	(milliseconds)
-> >>> 
-> >>> 
-> >>> As you can see there is a quite a big difference between number of open
-> >>> and
-> >>> close requests.
-> >>> The same picture we can see on the server side as well:
-> >>> 
-> >>> NFSServerV41 Stats:                   average±stderr(ns)       min(ns)
-> >>> max(ns)            Sampes
-> >>> DESTROY_SESSION                          26056±4511.89        13000
-> >>> 97000                17
-> >>> OPEN                                    1197297±  0.00       816000
-> >>> 31924558000          54398533
-> >>> RESTOREFH                                     0±  0.00            0
-> >>> 25018778000          54398533
-> >>> SEQUENCE                                   1000±  0.00         1000
-> >>> 26066722000          55601046
-> >>> LOOKUP                                  4607959±  0.00       375000
-> >>> 26977455000             32118
-> >>> GETDEVICEINFO                             13158±100.88         4000
-> >>> 655000             11378
-> >>> CLOSE                                  16236211±  0.00         5000
-> >>> 21021819000             20420
-> >>> LAYOUTGET                             271736361±  0.00     10003000
-> >>> 68414723000             21095
-> >>> 
-> >>> The last column is the number of requests.
-> >>> 
-> >>> This is with RHEL6.4 as the client. By looking at the code,
-> >>> I can see a loop at nfs4proc.c#nfs4_do_open() which can be
-> >>> the cause of the problem. Nevertheless, I can't
-> >>> fine any reason why this look turned into an 'infinite' one.
-> >>> 
-> >>> At the and our server ran out of memory and we have returned
-> >>> NFSERR_SERVERFAULT to the client. This triggered client to
-> >>> reestablish the session and all open state ids was
-> >>> invalidated and cleaned up.
-> >>> 
-> >>> I am still trying to reproduce this behavior (on client
-> >>> and server) and any hint is welcome.
-> >>> 
-> >>> Tigran.
-> >>> --
-> >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >>> the body of a message to majordomo@vger.kernel.org
-> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>> 
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
+--b.
