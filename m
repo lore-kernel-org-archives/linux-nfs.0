@@ -1,70 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:14550 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:59075 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751539Ab3JUXpA convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Oct 2013 19:45:00 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Ben Greear <greearb@candelatech.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Getting 'not supported' when trying to mount IPv6 NFS v3 server.
-Date: Mon, 21 Oct 2013 23:44:55 +0000
-Message-ID: <4682F017-7329-4690-B336-233DB50537F0@netapp.com>
-References: <52659D69.1020609@candelatech.com>
-In-Reply-To: <52659D69.1020609@candelatech.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1752629Ab3JDWMu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Oct 2013 18:12:50 -0400
+Date: Fri, 4 Oct 2013 18:12:16 -0400
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        sandeen@redhat.com
+Subject: Re: [PATCH 2/2] exportfs: fix 32-bit nfsd handling of 64-bit inode
+ numbers
+Message-ID: <20131004221216.GC18051@fieldses.org>
+References: <20131002210736.GA20598@fieldses.org>
+ <1380749295-20854-1-git-send-email-bfields@redhat.com>
+ <1380749295-20854-2-git-send-email-bfields@redhat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1380749295-20854-2-git-send-email-bfields@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, Oct 02, 2013 at 05:28:14PM -0400, J. Bruce Fields wrote:
+> @@ -268,6 +268,16 @@ static int get_name(const struct path *path, char *name, struct dentry *child)
+>  	if (!dir->i_fop)
+>  		goto out;
+>  	/*
+> +	 * inode->i_ino is unsigned long, kstat->ino is u64, so the
+> +	 * former would be insufficient on 32-bit hosts when the
+> +	 * filesystem supports 64-bit inode numbers.  So we need to
+> +	 * actually call ->getattr, not just read i_ino:
+> +	 */
+> +	error = vfs_getattr_nosec(path, &stat);
 
-On Oct 21, 2013, at 5:32 PM, Ben Greear <greearb@candelatech.com> wrote:
+Doh, "path" here is for the parent....  The following works better!
 
-> So, the problem I reported earlier with failing to unmount was fixed
-> by the back-ported patch.
-> 
-> Now, another problem is reported by my user.  In this case, they are
-> trying to mount an IPv6 NFS server using NFSv3.  Kernel is 3.9.11+,
-> with patches to support binding mount points to local IP (v4/v6) addresses.
-> 
-> Some NFS over IPv6 mounts work fine, but some do not.  A reboot of the
-> NFS client machine did not fix the problem.
-> 
-> I have tried to reproduce the problem locally, but so far everything works fine
-> for us.
-> 
-> From my own app's logs:
-> 
-> # mount -t nfs [4001:1::1:1]:/vol/vol1 /mnt/lf/RDnfse11c0 -o srcaddr=4001:1::1:201,vers=3
-> # requested NFS version or transport protocol is not supported
-> 
-> When this problem happens, I do not see any network traffic when trying to mount.
+--b.
 
-Did you look for the mount protocol when getting a network trace (filter "rpc" in wireshark).
+commit 231d38b6f775c4677a61b4d7dc15e0a0d6bbb709
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Tue Sep 10 11:41:12 2013 -0400
 
-Could you:
+    exportfs: fix 32-bit nfsd handling of 64-bit inode numbers
+    
+    Symptoms were spurious -ENOENTs on stat of an NFS filesystem from a
+    32-bit NFS server exporting a very large XFS filesystem, when the
+    server's cache is cold (so the inodes in question are not in cache).
+    
+    Reviewed-by: Christoph Hellwig <hch@lst.de>
+    Reported-by: Trevor Cordes <trevor@tecnopolis.ca>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-  1) run "rpcdebug -m nfs -s mount" before mounting, post output of dmesg after mount fails.
-
-  2) add -v to the mount command and post the output
-
-  3) maybe get rid of srcaddr= option / post info about the ip configuration
-  
--dros
-
-> 
-> 
-> I am curious if anyone else has seen errors similar to this?
-> 
-> 
-> Thanks,
-> Ben
-> 
-> -- 
-> Ben Greear <greearb@candelatech.com>
-> Candela Technologies Inc  http://www.candelatech.com
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
+index a235f00..c43fe9b 100644
+--- a/fs/exportfs/expfs.c
++++ b/fs/exportfs/expfs.c
+@@ -215,7 +215,7 @@ struct getdents_callback {
+ 	struct dir_context ctx;
+ 	char *name;		/* name that was found. It already points to a
+ 				   buffer NAME_MAX+1 is size */
+-	unsigned long ino;	/* the inum we are looking for */
++	u64 ino;		/* the inum we are looking for */
+ 	int found;		/* inode matched? */
+ 	int sequence;		/* sequence counter */
+ };
+@@ -255,10 +255,14 @@ static int get_name(const struct path *path, char *name, struct dentry *child)
+ 	struct inode *dir = path->dentry->d_inode;
+ 	int error;
+ 	struct file *file;
++	struct kstat stat;
++	struct path child_path = {
++		.mnt = path->mnt,
++		.dentry = child,
++	};
+ 	struct getdents_callback buffer = {
+ 		.ctx.actor = filldir_one,
+ 		.name = name,
+-		.ino = child->d_inode->i_ino
+ 	};
+ 
+ 	error = -ENOTDIR;
+@@ -268,6 +272,16 @@ static int get_name(const struct path *path, char *name, struct dentry *child)
+ 	if (!dir->i_fop)
+ 		goto out;
+ 	/*
++	 * inode->i_ino is unsigned long, kstat->ino is u64, so the
++	 * former would be insufficient on 32-bit hosts when the
++	 * filesystem supports 64-bit inode numbers.  So we need to
++	 * actually call ->getattr, not just read i_ino:
++	 */
++	error = vfs_getattr_nosec(&child_path, &stat);
++	if (error)
++		return error;
++	buffer.ino = stat.ino;
++	/*
+ 	 * Open the directory ...
+ 	 */
+ 	file = dentry_open(path, O_RDONLY, cred);
