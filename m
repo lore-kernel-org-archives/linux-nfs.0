@@ -1,65 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f193.google.com ([209.85.212.193]:53905 "EHLO
-	mail-wi0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751358Ab3JaGtD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Oct 2013 02:49:03 -0400
-Received: by mail-wi0-f193.google.com with SMTP id cb5so568907wib.0
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Oct 2013 23:49:01 -0700 (PDT)
-MIME-Version: 1.0
-Date: Thu, 31 Oct 2013 12:19:01 +0530
-Message-ID: <CA+uAZNPquD-JA1SDpFHtx9ZawQA5=o+fBigOTy+9NEiDL+hmyw@mail.gmail.com>
-Subject: Need help with NFS Server SUNRPC performance issue
-From: Shyam Kaushik <shyamnfs1@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from smtp-o-3.desy.de ([131.169.56.156]:36379 "EHLO smtp-o-3.desy.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750983Ab3JDUiO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Oct 2013 16:38:14 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 955E02809BF
+	for <linux-nfs@vger.kernel.org>; Fri,  4 Oct 2013 22:28:32 +0200 (CEST)
+Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 89C4F10D2
+	for <linux-nfs@vger.kernel.org>; Fri,  4 Oct 2013 22:28:32 +0200 (MEST)
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH] st_destroy_session: remove invalid testcase
+Date: Fri,  4 Oct 2013 22:28:12 +0200
+Message-Id: <1380918492-8413-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Folks,
+we cant expect NFS4ERR_NOT_ONLY_OP if spec
+enforces NFS4ERR_OP_NOT_IN_SESSION
 
-I am chasing a NFS server performance issue on Ubuntu
-3.8.13-030813-generic kernel. We setup 32 NFSD threads on our NFS
-server.
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+---
+ nfs4.1/server41tests/st_destroy_session.py | 3 ---
+ 1 file changed, 3 deletions(-)
 
-The issue is:
-# I am using fio to generate 4K random writes (over a sync mounted NFS
-server filesystem) with 64 outstanding IOs per job for 10 jobs. fio
-direct flag is set.
-# When doing fio randwrite 4K IOs, realized that we cannot exceed 2.5K
-IOPs on the NFS server from a single client.
-# With multiple clients we can do more IOPs (like 3x more IOPs with 3 clients)
-# Further chasing the issue, I realized that at any point in time only
-8 NFSD threads are active doing vfs_wrte(). Remaining 24 threads are
-sleeping within svc_recv()/svc_get_next_xprt().
-# First I thought its TCP socket contention/sleeping at the wrong
-time. I introduced a one-sec sleep around vfs_write() within NFSD
-using msleep(). With this I can clearly see that only 8 NFSD threads
-are active doing the write+sleep loop while all other threads are
-sleeping.
-# I enabled rpcdebug/nfs debug on NFS client side + used tcpdump on
-NFS server side to confirm that client is queuing all the outstanding
-IOs concurrently & its not a NFS client side problem.
+diff --git a/nfs4.1/server41tests/st_destroy_session.py b/nfs4.1/server41tests/st_destroy_session.py
+index 1feb671..f4f0762 100644
+--- a/nfs4.1/server41tests/st_destroy_session.py
++++ b/nfs4.1/server41tests/st_destroy_session.py
+@@ -164,6 +164,3 @@ def testDestoryNotSoleOps(t, env):
+     sid = sess1.sessionid
+     res = c.c.compound([op.destroy_session(sess1.sessionid), op.putrootfh()])
+     check(res, NFS4ERR_NOT_ONLY_OP)
+-
+-    res = c.c.compound([op.putrootfh(), op.destroy_session(sess1.sessionid)])
+-    check(res, NFS4ERR_NOT_ONLY_OP)
+-- 
+1.8.3.1
 
-Now the question is what is holding up the sunrpc layer to do only 8
-outstanding IOs? Is there some TCP level buffer size limitation or so
-that is causing this issue? I also added counters around which all
-nfsd threads get to process the SVC xport & I see always only the
-first 10 threads being used up all the time. The rest of the NFSD
-threads never receive a packet at all to handle.
-
-I already setup number of RPC slots tuneable to 128 on both server &
-client before the mount, so this is not the issue.
-
-Are there some other tuneables that control this behaviour? I think if
-I cross the 8 concurrent IOs per client<>server, I will be able to get
->2.5K IOPs.
-
-I also confirmed that each NFS multi-step operation that comes from
-client has an OP_PUTFH/OP_WRITE/OP_GETATTR. I dont see any other
-unnecessary NFS packets in the flow.
-
-Any help/inputs on this topic greatly appreciated.
-
-Thanks.
-
---Shyam
