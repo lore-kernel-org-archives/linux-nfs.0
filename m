@@ -1,52 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.gmx.net ([212.227.15.15]:51718 "EHLO mout.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752128Ab3JSS1q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 19 Oct 2013 14:27:46 -0400
-Received: from [192.168.178.60] ([84.173.16.34]) by mail.gmx.com (mrgmx001)
- with ESMTPSA (Nemesis) id 0M5dMm-1VvbM82pL6-00xZE0 for
- <linux-nfs@vger.kernel.org>; Sat, 19 Oct 2013 20:27:44 +0200
-Message-ID: <5262CF20.20301@gmx.de>
-Date: Sat, 19 Oct 2013 20:27:44 +0200
-From: Helge Deller <deller@gmx.de>
+Received: from mail.linuxfoundation.org ([140.211.169.12]:46134 "EHLO
+	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751739Ab3JFGKq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Oct 2013 02:10:46 -0400
+Date: Sat, 5 Oct 2013 16:45:23 -0700
+From: Greg KH <gregkh@linuxfoundation.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: stable@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Marc Meledandri <m.meledandri@gmail.com>
+Subject: Re: [PATCH] nfsd4: fix leak of inode reference on delegation failure
+Message-ID: <20131005234523.GC18223@kroah.com>
+References: <20131001144250.GJ26382@fieldses.org>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Linux Kernel Development <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        linux-parisc <linux-parisc@vger.kernel.org>
-Subject: Re: 3.12-rcX - NFS regression - kswapd0 / kswapd1 stays using 100%
- CPU?
-References: <52604BA9.20104@gmx.de>		 <1382044045.3216.44.camel@leira.trondhjem.org> <52618B5F.4000508@gmx.de>	 <1382124981.20461.4.camel@leira.trondhjem.org> <5261940A.4090101@gmx.de> <1382127133.20461.9.camel@leira.trondhjem.org>
-In-Reply-To: <1382127133.20461.9.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=UTF-7
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131001144250.GJ26382@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/18/2013 10:12 PM, Myklebust, Trond wrote:
-> On Fri, 2013-10-18 at 22:03 +0200, Helge Deller wrote:
->> On 10/18/2013 09:36 PM, Myklebust, Trond wrote:
->>> Also, could you please try a sysRQ-t the next time it happens, so that
->>> we can get a trace of where the mount program is hanging. Knowing that
->>> the mount is stuck in "__schedule()" is not really interesting unless we
->>> know from where that was called.
->>
->> Actually, the machine was still running in this state.
->> Here is sysrq-t:
->> [112009.084000] mount           S 00000000401040c0     0 25331      1 0x00000010
->> [112009.084000] Backtrace:
->> [112009.084000]  [<0000000040113a68>] __schedule
->> [112009.232000]
->> [112009.232000] mount.nfs       D 00000000401040c0     0 25332  25331 0x00000010
->> [112009.232000] Backtrace:
->> [112009.232000]  [<0000000040113a68>] __schedule
+On Tue, Oct 01, 2013 at 10:42:50AM -0400, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
 > 
-> That makes no sense unless sysrq-t works differently on parisc than on
-> other platforms. I'd expect the backtrace to at least include a system
-> call. Parisc experts?
+> commit bf7bd3e98be5c74813bee6ad496139fb0a011b3b upstream, for >= 3.10.
 
-sysrq-t doesn't work differently on parisc. For other processes I do get
-a backtrace like the one on x86_64.
-That's the main reason why I asked for ideas here on the list.
-I do see the stuck process, but don't see any indications where it comes from.
+This doesn't apply at all to 3.10, but does to 3.11.  If you want it in
+3.10, can you provide a backport that works?
 
-Helge
+thanks,
+
+greg k-h
