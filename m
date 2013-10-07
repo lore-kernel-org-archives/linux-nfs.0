@@ -1,75 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56256 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751642Ab3J3W0V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Oct 2013 18:26:21 -0400
-Date: Wed, 30 Oct 2013 18:26:19 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Anna Schumaker <bjschuma@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSD: Add support for NFS v4.2 operation checking
-Message-ID: <20131030222619.GB24795@fieldses.org>
-References: <1383154693-29741-1-git-send-email-bjschuma@netapp.com>
+Received: from elasmtp-spurfowl.atl.sa.earthlink.net ([209.86.89.66]:33373
+	"EHLO elasmtp-spurfowl.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751288Ab3JGRtl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Oct 2013 13:49:41 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Mkrtchyan, Tigran'" <tigran.mkrtchyan@desy.de>
+Cc: "'J. Bruce Fields'" <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
+References: <1381004835-7485-1-git-send-email-tigran.mkrtchyan@desy.de> <20131007150507.GE18051@fieldses.org> <00e001cec377$0e814340$2b83c9c0$@mindspring.com> <1832028240.530852.1381167926616.JavaMail.zimbra@desy.de>
+In-Reply-To: <1832028240.530852.1381167926616.JavaMail.zimbra@desy.de>
+Subject: RE: [PATCH] pynfs: fix reporting of ignored tests
+Date: Mon, 7 Oct 2013 10:48:26 -0700
+Message-ID: <00e501cec385$7c97c170$75c74450$@mindspring.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1383154693-29741-1-git-send-email-bjschuma@netapp.com>
+Content-Type: text/plain;
+	charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 30, 2013 at 01:38:13PM -0400, Anna Schumaker wrote:
-> The server does allow NFS over v4.2, even if it doesn't add any new
-> operations yet.
+> > Tigran,
+> >
+> Hi Frank,
 > 
-> I also switch to using constants to represent the last operation for
-> each minor version since this makes the code cleaner and easier to
-> understand at a quick glance.
+> > You also modified DSESS9005, should that actually be split into two
+> > separate test cases?
+> 
+> I was thinking to add one with compound: SEQ, PUTROOTFH,
+> DESTROY_SESSION
 
-Looks good to me.  Thanks!
+Yea, that would be good.
 
---b.
+Frank
 
-> 
-> Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
-> ---
->  fs/nfsd/nfs4xdr.c    | 8 +++++---
->  include/linux/nfs4.h | 3 +++
->  2 files changed, 8 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 99bebea..83db5a7 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -1585,11 +1585,13 @@ static nfsd4_dec nfsd4_dec_ops[] = {
->  static inline bool
->  nfsd4_opnum_in_range(struct nfsd4_compoundargs *argp, struct nfsd4_op *op)
->  {
-> -	if (op->opnum < FIRST_NFS4_OP || op->opnum > LAST_NFS4_OP)
-> +	if (op->opnum < FIRST_NFS4_OP)
->  		return false;
-> -	else if (argp->minorversion == 0 && op->opnum > OP_RELEASE_LOCKOWNER)
-> +	else if (argp->minorversion == 0 && op->opnum > LAST_NFS40_OP)
->  		return false;
-> -	else if (argp->minorversion == 1 && op->opnum > OP_RECLAIM_COMPLETE)
-> +	else if (argp->minorversion == 1 && op->opnum > LAST_NFS41_OP)
-> +		return false;
-> +	else if (argp->minorversion == 2 && op->opnum > LAST_NFS42_OP)
->  		return false;
->  	return true;
->  }
-> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> index c56fa8f..9577769 100644
-> --- a/include/linux/nfs4.h
-> +++ b/include/linux/nfs4.h
-> @@ -118,6 +118,9 @@ Needs to be updated if more operations are defined in future.*/
->  
->  #define FIRST_NFS4_OP	OP_ACCESS
->  #define LAST_NFS4_OP 	OP_RECLAIM_COMPLETE
-> +#define LAST_NFS40_OP	OP_RELEASE_LOCKOWNER
-> +#define LAST_NFS41_OP	OP_RECLAIM_COMPLETE
-> +#define LAST_NFS42_OP	OP_RECLAIM_COMPLETE
->  
->  enum nfsstat4 {
->  	NFS4_OK = 0,
-> -- 
-> 1.8.4.2
-> 
+
