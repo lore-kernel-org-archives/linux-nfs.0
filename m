@@ -1,149 +1,147 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:58960 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752785Ab3JGXd6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Oct 2013 19:33:58 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] NFSv4: Fix NULL dereference in recovery path
-Date: Mon, 7 Oct 2013 19:33:53 -0400
-Message-ID: <1381188833-3728-1-git-send-email-dros@netapp.com>
+Received: from mail-wi0-f179.google.com ([209.85.212.179]:48052 "EHLO
+	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751234Ab3JGPp1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Oct 2013 11:45:27 -0400
+Received: by mail-wi0-f179.google.com with SMTP id hm2so5073476wib.12
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Oct 2013 08:45:26 -0700 (PDT)
+Message-ID: <5252D713.7000004@primarydata.com>
+Date: Mon, 07 Oct 2013 18:45:23 +0300
+From: Benny Halevy <bhalevy@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: linux-nfs@vger.kernel.org
+CC: Christoph Hellwig <hch@infradead.org>,
+        Nadav Shemer <nadav@primarydata.com>
+Subject: [PATCH v2 2/4] SQUASHME: pnfsd: nfs4_find_create_layout_stateid
+References: <5251140B.4000203@primarydata.com> <1381045468-30670-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <1381045468-30670-1-git-send-email-bhalevy@primarydata.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-_nfs4_opendata_reclaim_to_nfs4_state doesn't expect to see a cached
-open CLAIM_PREVIOUS, but this can happen. An example is when there are
-RDWR openers and RDONLY openers on a delegation stateid. The recovery
-path will first try an open CLAIM_PREVIOUS for the RDWR openers, this
-marks the delegation as not needing RECLAIM anymore, so the open
-CLAIM_PREVIOUS for the RDONLY openers will not actually send an rpc.
+Split off nfs4_process_layout_stateid functionality for layout get.
+layout commit and return never allocate a new layout stateid.
 
-The NULL dereference is due to _nfs4_opendata_reclaim_to_nfs4_state
-returning PTR_ERR(rpc_status) when !rpc_done. When the open is
-cached, rpc_done == 0 and rpc_status == 0, thus
-_nfs4_opendata_reclaim_to_nfs4_state returns NULL - this is unexpected
-by callers of nfs4_opendata_to_nfs4_state().
-
-This can be reproduced easily by opening the same file two times on an
-NFSv4.0 mount with delegations enabled, once as RDONLY and once as RDWR then
-sleeping for a long time.  While the files are held open, kick off state
-recovery and this NULL dereference will be hit every time.
-
-An example OOPS:
-
-[   65.003602] BUG: unable to handle kernel NULL pointer dereference at 00000000
-00000030
-[   65.005312] IP: [<ffffffffa037d6ee>] __nfs4_close+0x1e/0x160 [nfsv4]
-[   65.006820] PGD 7b0ea067 PUD 791ff067 PMD 0
-[   65.008075] Oops: 0000 [#1] SMP
-[   65.008802] Modules linked in: rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache
- snd_ens1371 gameport nfsd snd_rawmidi snd_ac97_codec ac97_bus btusb snd_seq snd
-_seq_device snd_pcm ppdev bluetooth auth_rpcgss coretemp snd_page_alloc crc32_pc
-lmul crc32c_intel ghash_clmulni_intel microcode rfkill nfs_acl vmw_balloon serio
-_raw snd_timer lockd parport_pc e1000 snd soundcore parport i2c_piix4 shpchp vmw
-_vmci sunrpc ata_generic mperf pata_acpi mptspi vmwgfx ttm scsi_transport_spi dr
-m mptscsih mptbase i2c_core
-[   65.018684] CPU: 0 PID: 473 Comm: 192.168.10.85-m Not tainted 3.11.2-201.fc19
-.x86_64 #1
-[   65.020113] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop
- Reference Platform, BIOS 6.00 07/31/2013
-[   65.022012] task: ffff88003707e320 ti: ffff88007b906000 task.ti: ffff88007b906000
-[   65.023414] RIP: 0010:[<ffffffffa037d6ee>]  [<ffffffffa037d6ee>] __nfs4_close+0x1e/0x160 [nfsv4]
-[   65.025079] RSP: 0018:ffff88007b907d10  EFLAGS: 00010246
-[   65.026042] RAX: 0000000000000000 RBX: 0000000000000000 RCX: 0000000000000000
-[   65.027321] RDX: 0000000000000050 RSI: 0000000000000001 RDI: 0000000000000000
-[   65.028691] RBP: ffff88007b907d38 R08: 0000000000016f60 R09: 0000000000000000
-[   65.029990] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000001
-[   65.031295] R13: 0000000000000050 R14: 0000000000000000 R15: 0000000000000001
-[   65.032527] FS:  0000000000000000(0000) GS:ffff88007f600000(0000) knlGS:0000000000000000
-[   65.033981] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[   65.035177] CR2: 0000000000000030 CR3: 000000007b27f000 CR4: 00000000000407f0
-[   65.036568] Stack:
-[   65.037011]  0000000000000000 0000000000000001 ffff88007b907d90 ffff88007a880220
-[   65.038472]  ffff88007b768de8 ffff88007b907d48 ffffffffa037e4a5 ffff88007b907d80
-[   65.039935]  ffffffffa036a6c8 ffff880037020e40 ffff88007a880000 ffff880037020e40
-[   65.041468] Call Trace:
-[   65.042050]  [<ffffffffa037e4a5>] nfs4_close_state+0x15/0x20 [nfsv4]
-[   65.043209]  [<ffffffffa036a6c8>] nfs4_open_recover_helper+0x148/0x1f0 [nfsv4]
-[   65.044529]  [<ffffffffa036a886>] nfs4_open_recover+0x116/0x150 [nfsv4]
-[   65.045730]  [<ffffffffa036d98d>] nfs4_open_reclaim+0xad/0x150 [nfsv4]
-[   65.046905]  [<ffffffffa037d979>] nfs4_do_reclaim+0x149/0x5f0 [nfsv4]
-[   65.048071]  [<ffffffffa037e1dc>] nfs4_run_state_manager+0x3bc/0x670 [nfsv4]
-[   65.049436]  [<ffffffffa037de20>] ? nfs4_do_reclaim+0x5f0/0x5f0 [nfsv4]
-[   65.050686]  [<ffffffffa037de20>] ? nfs4_do_reclaim+0x5f0/0x5f0 [nfsv4]
-[   65.051943]  [<ffffffff81088640>] kthread+0xc0/0xd0
-[   65.052831]  [<ffffffff81088580>] ? insert_kthread_work+0x40/0x40
-[   65.054697]  [<ffffffff8165686c>] ret_from_fork+0x7c/0xb0
-[   65.056396]  [<ffffffff81088580>] ? insert_kthread_work+0x40/0x40
-[   65.058208] Code: 5c 41 5d 5d c3 0f 1f 84 00 00 00 00 00 66 66 66 66 90 55 48 89 e5 41 57 41 89 f7 41 56 41 89 ce 41 55 41 89 d5 41 54 53 48 89 fb <4c> 8b 67 30 f0 41 ff 44 24 44 49 8d 7c 24 40 e8 0e 0a 2d e1 44
-[   65.065225] RIP  [<ffffffffa037d6ee>] __nfs4_close+0x1e/0x160 [nfsv4]
-[   65.067175]  RSP <ffff88007b907d10>
-[   65.068570] CR2: 0000000000000030
-[   65.070098] ---[ end trace 0d1fe4f5c7dd6f8b ]---
-
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
 ---
- fs/nfs/nfs4proc.c | 25 ++++++++++++++++++++-----
- 1 file changed, 20 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs4pnfsd.c | 77 ++++++++++++++++++++++++++++++++++++++++++-----------
+ 1 file changed, 61 insertions(+), 16 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index d2b4845..58658db 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1316,16 +1316,27 @@ _nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
- 	struct inode *inode = data->state->inode;
- 	struct nfs4_state *state = data->state;
- 	int ret;
-+	bool cached_open = false;
- 
- 	if (!data->rpc_done) {
--		ret = data->rpc_status;
--		goto err;
-+		if (data->rpc_status) {
-+			ret = data->rpc_status;
-+			goto err;
-+		} else
-+			/*
-+			 * This is a cached open from an earlier operation
-+			 * of the current state recovery event so there is
-+			 * no need to update or check anything, just lookup
-+			 * the open state.
-+			 */
-+			cached_open = true;
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index 2b421e0..84f0283 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -193,23 +193,20 @@ struct sbid_tracker {
+ }
+
+ /*
+- * We have looked up the nfs4_file corresponding to the current_fh, and
+- * confirmed the clientid. Pull the few tests from nfs4_preprocess_stateid_op()
+- * that make sense with a layout stateid.
+- *
+  * If the layout state was found in cache, grab a reference count on it;
+- * otherwise, allocate a new layout state if "do_alloc" is set.
++ * otherwise, allocate a new layout state if the client provided a open/
++ * lock/deleg stateid.
+  *
+  * Called with the state_lock held
+- * Returns zero and stateid is updated, or error.
++ * Returns zero and the layout state in *lsp, or error.
+  */
+ static __be32
+-nfs4_process_layout_stateid(struct nfs4_client *clp, struct nfs4_file *fp,
+-			    stateid_t *stateid, unsigned char typemask,
+-			    struct nfs4_layout_state **lsp)
++nfs4_find_create_layout_stateid(struct nfs4_client *clp, struct nfs4_file *fp,
++				stateid_t *stateid, unsigned char typemask,
++				struct nfs4_layout_state **lsp)
+ {
+ 	struct nfs4_layout_state *ls = NULL;
+-	__be32 status = 0;
++	__be32 status;
+ 	struct nfs4_stid *stid;
+
+ 	dprintk("--> %s clp %p fp %p operation stateid=" STATEID_FMT "\n",
+@@ -233,13 +230,61 @@ struct sbid_tracker {
+
+ 		/* BAD STATEID */
+ 		if (stateid->si_generation > ls->ls_stid.sc_stateid.si_generation) {
+-			dprintk("%s bad stateid 1\n", __func__);
+ 			status = nfserr_bad_stateid;
+ 			goto out;
+ 		}
+ 		get_layout_state(ls);
  	}
- 
- 	ret = -ESTALE;
--	if (!(data->f_attr.valid & NFS_ATTR_FATTR_TYPE) ||
--	    !(data->f_attr.valid & NFS_ATTR_FATTR_FILEID) ||
--	    !(data->f_attr.valid & NFS_ATTR_FATTR_CHANGE))
-+	if (!cached_open &&
-+	    (!(data->f_attr.valid & NFS_ATTR_FATTR_TYPE) ||
-+	     !(data->f_attr.valid & NFS_ATTR_FATTR_FILEID) ||
-+	     !(data->f_attr.valid & NFS_ATTR_FATTR_CHANGE)))
- 		goto err;
- 
- 	ret = -ENOMEM;
-@@ -1333,6 +1344,9 @@ _nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
- 	if (state == NULL)
- 		goto err;
- 
-+	if (cached_open)
+-	status = 0;
++
++	dprintk("%s: layout stateid=" STATEID_FMT " ref=%d\n", __func__,
++		STATEID_VAL(&ls->ls_stid.sc_stateid), atomic_read(&ls->ls_ref.refcount));
++
++	*lsp = ls;
++out:
++	dprintk("<-- %s status %d\n", __func__, htonl(status));
++
++	return status;
++}
++
++/*
++ * If the layout state was found in cache, grab a reference count on it.
++ *
++ * Called with the state_lock held
++ * Returns zero and the layout state in *lsp, or error.
++ */
++static __be32
++nfs4_process_layout_stateid(struct nfs4_client *clp, struct nfs4_file *fp,
++			    stateid_t *stateid, unsigned char typemask,
++			    struct nfs4_layout_state **lsp)
++{
++	struct nfs4_layout_state *ls = NULL;
++	__be32 status;
++	struct nfs4_stid *stid;
++
++	dprintk("--> %s clp %p fp %p operation stateid=" STATEID_FMT "\n",
++		__func__, clp, fp, STATEID_VAL(stateid));
++
++	nfs4_assert_state_locked();
++	status = nfsd4_lookup_stateid(stateid, typemask, &stid, true,
++				      net_generic(clp->net, nfsd_net_id));
++	if (status)
 +		goto out;
 +
- 	ret = nfs_refresh_inode(inode, &data->f_attr);
- 	if (ret)
- 		goto err;
-@@ -1344,6 +1358,7 @@ _nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
- 	update_open_stateid(state, &data->o_res.stateid, NULL,
- 			    data->o_arg.fmode);
- 
-+out:
- 	return state;
- err:
- 	return ERR_PTR(ret);
++	/* Is this the first use of this layout ? */
++	if (stid->sc_type != NFS4_LAYOUT_STID) {
++		status = nfserr_bad_stateid;
++		goto out;
++	}
++
++	ls = container_of(stid, struct nfs4_layout_state, ls_stid);
++
++	/* BAD STATEID */
++	if (stateid->si_generation > ls->ls_stid.sc_stateid.si_generation) {
++		dprintk("%s bad stateid 1\n", __func__);
++		status = nfserr_bad_stateid;
++		goto out;
++	}
++	get_layout_state(ls);
+
+ 	*lsp = ls;
+ 	dprintk("%s: layout stateid=" STATEID_FMT " ref=%d\n", __func__,
+@@ -576,10 +621,10 @@ struct super_block *
+ 	}
+
+ 	/* Check decoded layout stateid */
+-	nfserr = nfs4_process_layout_stateid(clp, fp, &lgp->lg_sid,
+-					     (NFS4_OPEN_STID | NFS4_LOCK_STID |
+-					      NFS4_DELEG_STID | NFS4_LAYOUT_STID),
+-					     &ls);
++	nfserr = nfs4_find_create_layout_stateid(clp, fp, &lgp->lg_sid,
++						 (NFS4_OPEN_STID | NFS4_LOCK_STID |
++						  NFS4_DELEG_STID | NFS4_LAYOUT_STID),
++						 &ls);
+ 	if (nfserr)
+ 		goto out_unlock;
+
 -- 
-1.7.12.4 (Apple Git-37)
+1.8.3.1
+
 
