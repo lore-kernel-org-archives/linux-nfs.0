@@ -1,61 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:64404 "EHLO mx11.netapp.com"
+Received: from smtp-o-3.desy.de ([131.169.56.156]:44312 "EHLO smtp-o-3.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753327Ab3J2Nls convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Oct 2013 09:41:48 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Hellwig Christoph <hch@infradead.org>,
-        "Haynes, Tom" <Tom.Haynes@netapp.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/3] NFS: Allow for asynchronous WRITE_PLUS calls
-Date: Tue, 29 Oct 2013 13:41:47 +0000
-Message-ID: <EC4979D8-9963-4BAF-BB30-15EA4FEBD5E3@netapp.com>
-References: <1382972418-2249-1-git-send-email-bjschuma@netapp.com>
- <1382972418-2249-3-git-send-email-bjschuma@netapp.com>
- <20131029073943.GD10889@infradead.org>
- <BF996CAD-1032-4434-A538-B678D047884B@netapp.com>
- <20131029124836.GA13482@infradead.org>
- <58212CB2-A01A-43F1-8760-5ED8ED75E081@netapp.com>
- <20131029130857.GB32094@infradead.org>
- <78317EB5-0325-429B-89C8-F4092B677EC4@netapp.com>
- <20131029132421.GA13880@infradead.org>
-In-Reply-To: <20131029132421.GA13880@infradead.org>
-Content-Type: text/plain; charset="us-ascii"
+	id S1751576Ab3JGRr7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Oct 2013 13:47:59 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id B9EDC28043A
+	for <linux-nfs@vger.kernel.org>; Mon,  7 Oct 2013 19:47:58 +0200 (CEST)
+Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id A8F9F10FF
+	for <linux-nfs@vger.kernel.org>; Mon,  7 Oct 2013 19:47:58 +0200 (MEST)
+Date: Mon, 7 Oct 2013 19:47:58 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <926019798.530894.1381168078530.JavaMail.zimbra@desy.de>
+In-Reply-To: <20131007150507.GE18051@fieldses.org>
+References: <1381004835-7485-1-git-send-email-tigran.mkrtchyan@desy.de> <20131007150507.GE18051@fieldses.org>
+Subject: Re: [PATCH] pynfs: fix reporting of ignored tests
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Oct 29, 2013, at 9:24 AM, Hellwig Christoph <hch@infradead.org> wrote:
 
-> On Tue, Oct 29, 2013 at 01:21:26PM +0000, Myklebust, Trond wrote:
->> The current draft spec even allows the client to specify a "pattern" to be written to the "hole".
+----- Original Message -----
+> From: "J. Bruce Fields" <bfields@fieldses.org>
+> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
+> Cc: linux-nfs@vger.kernel.org
+> Sent: Monday, October 7, 2013 5:05:07 PM
+> Subject: Re: [PATCH] pynfs: fix reporting of ignored tests
 > 
-> That's indeed the WRITE SAME lookalike then.  At least the SCSI people
-> were smart enough to define an unmap bit for "hole punching" and allow
-> the target to reject all other versions if they don't want to support
-> it.
+> On Sat, Oct 05, 2013 at 10:27:15PM +0200, Tigran Mkrtchyan wrote:
+> > currently, ignored tests reported as failure, which
+> > makes fixing them quite hard.
 > 
-> Given that NFS v4.2 isn't finalized I'd very much recommend to
+> Thanks.  And it's not counting warnings either?  I wonder if
+
+The JUnit format does not have WARN. I can count them as failed.
+> printresults and xml_printresults should be sharing some code?
+
+I can will check how code duplication can be reduced as well as make
+nfsv4.0 able to use it as well.
+
+Tigran.
 > 
-> a) properly separate those case s
-> b) do not make the async version mandatory
-
-   union write_plus_arg4 switch (data_content4 wpa_content) {
-   case NFS4_CONTENT_DATA:
-           data4           wpa_data;
-   case NFS4_CONTENT_APP_DATA_HOLE:
-           app_data_hole4  wpa_adh;
-   case NFS4_CONTENT_HOLE:
-           data_info4      wpa_hole;
-   default:
-           void;
-   };
-
-I suppose we could add cases: NFS4_CONTENT_APP_DATA_HOLE_SYNC, NFS4_CONTENT_HOLE_SYNC to allow the client to specify that it doesn't want asynchronous behaviour (and add error cases to allow the server to specify that it cannot safely do so).
-
-There is already a 'di_allocated' boolean for the NFS4_CONTENT_HOLE case (which is used to distinguish between holes and zeroed extents). The only thing missing there is an error case, AFAICS, to allow the server to return that it doesn't support holes.
-
-Tom, any thoughts on whether or not this kind of change to the spec is doable at this time?
-
+> --b.
+> 
+> > 
+> > Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> > ---
+> >  nfs4.1/testmod.py | 8 +++++++-
+> >  1 file changed, 7 insertions(+), 1 deletion(-)
+> > 
+> > diff --git a/nfs4.1/testmod.py b/nfs4.1/testmod.py
+> > index 3d74efe..68855de 100644
+> > --- a/nfs4.1/testmod.py
+> > +++ b/nfs4.1/testmod.py
+> > @@ -439,6 +439,7 @@ def printresults(tests, opts, file=None):
+> >  def xml_printresults(tests, file_name, suite='all'):
+> >      with open(file_name, 'w') as fd:
+> >          failures = 0
+> > +        skipped = 0
+> >          total_time = 0
+> >          doc = xml.dom.minidom.Document()
+> >          testsuite = doc.createElement("testsuite")
+> > @@ -455,14 +456,19 @@ def xml_printresults(tests, file_name, suite='all'):
+> >              testcase.setAttribute("time", str(t.time_taken))
+> >  
+> >              total_time += t.time_taken
+> > -            if t.result not in (TEST_PASS, TEST_WARN):
+> > +            if t.result == TEST_FAIL:
+> >                  failures += 1
+> >                  failure = doc.createElement("failure")
+> >                  failure.setAttribute("message", t.result.msg)
+> >                  err = doc.createCDATASection(''.join(t.result.tb))
+> >                  failure.appendChild(err)
+> >                  testcase.appendChild(failure)
+> > +            elif t.result == TEST_OMIT:
+> > +                skipped += 1
+> > +                skip = doc.createElement("skipped")
+> > +                testcase.appendChild(skip)
+> >  
+> >          testsuite.setAttribute("failures", str(failures))
+> > +        testsuite.setAttribute("skipped", str(skipped))
+> >          testsuite.setAttribute("time", str(total_time))
+> >          fd.write(doc.toprettyxml(indent="  "))
+> > --
+> > 1.8.3.1
+> > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
