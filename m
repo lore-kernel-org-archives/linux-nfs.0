@@ -1,60 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:28568 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:52082 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758168Ab3JQSc2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 14:32:28 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Ben Greear <greearb@candelatech.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: 'umount -f /mnt/foo' fails if server IP is gone.
-Date: Thu, 17 Oct 2013 18:32:27 +0000
-Message-ID: <1382034747.3216.8.camel@leira.trondhjem.org>
-References: <525D899F.5010604@candelatech.com>
-	  <52601FED.6070708@candelatech.com>
-	 <1382033137.3216.3.camel@leira.trondhjem.org>
-	 <52602835.4000701@candelatech.com>
-In-Reply-To: <52602835.4000701@candelatech.com>
-Content-Type: text/plain; charset="utf-7"
+	id S1751475Ab3JGSZI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Oct 2013 14:25:08 -0400
+Date: Mon, 7 Oct 2013 14:25:06 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] pynfs: fix reporting of ignored tests
+Message-ID: <20131007182506.GA26432@fieldses.org>
+References: <1381004835-7485-1-git-send-email-tigran.mkrtchyan@desy.de>
+ <20131007150507.GE18051@fieldses.org>
+ <926019798.530894.1381168078530.JavaMail.zimbra@desy.de>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <926019798.530894.1381168078530.JavaMail.zimbra@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-10-17 at 11:11 -0700, Ben Greear wrote:
-+AD4- On 10/17/2013 11:05 AM, Myklebust, Trond wrote:
-+AD4- +AD4- On Thu, 2013-10-17 at 10:35 -0700, Ben Greear wrote:
-+AD4- +AD4APg- On 10/15/2013 11:29 AM, Ben Greear wrote:
-+AD4- +AD4APgA+- Is 'umount -f' supposed to always work, even if the file server
-+AD4- +AD4APgA+- goes away?
-+AD4- +AD4APgA+-
-+AD4- +AD4APgA+- I have a user's system that just hangs forever in this case.
-+AD4- +AD4APgA+-
-+AD4- +AD4APgA+- Could be local changes we have made, but I'm curious about
-+AD4- +AD4APgA+- the expected behaviour before I go digging too deep...
-+AD4- +AD4APg-
-+AD4- +AD4APg- Any input on this?  I don't mind trying to fix it, but I
-+AD4- +AD4APg- would like to know how it is supposed to work.
-+AD4- +AD4- 
-+AD4- +AD4- 'umount -f' has always been iffy. It just kills any pending RPC calls
-+AD4- +AD4- +AF8-before+AF8- trying to unmount. Since the unmount itself can trigger
-+AD4- +AD4- writeback flushes (and hence more RPC calls), the trace you are seeing
-+AD4- +AD4- is indeed possible.
-+AD4- 
-+AD4- I tried 'umount -f -l', and that also does not work.
-+AD4- 
-+AD4- Any ideas on how to fix this properly?
+On Mon, Oct 07, 2013 at 07:47:58PM +0200, Mkrtchyan, Tigran wrote:
+> 
+> 
+> ----- Original Message -----
+> > From: "J. Bruce Fields" <bfields@fieldses.org>
+> > To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
+> > Cc: linux-nfs@vger.kernel.org
+> > Sent: Monday, October 7, 2013 5:05:07 PM
+> > Subject: Re: [PATCH] pynfs: fix reporting of ignored tests
+> > 
+> > On Sat, Oct 05, 2013 at 10:27:15PM +0200, Tigran Mkrtchyan wrote:
+> > > currently, ignored tests reported as failure, which
+> > > makes fixing them quite hard.
+> > 
+> > Thanks.  And it's not counting warnings either?  I wonder if
+> 
+> The JUnit format does not have WARN. I can count them as failed.
+> > printresults and xml_printresults should be sharing some code?
+> 
+> I can will check how code duplication can be reduced
 
-'umount -f -l' should normally work to at least hide the gruesome
-details of your hanging superblock.
+Thanks!
 
-I'm guessing that you're falling afoul of the path revalidation that
-Chuck alluded to. There should already be a fix for that problem with
-the path+AF8-umountat() patches that went into Linux 3.12-rc1. Are those
-failing to help?
+> as well as make nfsv4.0 able to use it as well.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Note testmod.py is actually shared between the two (it's a symlink), so
+this should be done.
 
-NetApp
-Trond.Myklebust+AEA-netapp.com
-www.netapp.com
+--b.
+
+
+> 
+> Tigran.
+> > 
+> > --b.
+> > 
+> > > 
+> > > Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> > > ---
+> > >  nfs4.1/testmod.py | 8 +++++++-
+> > >  1 file changed, 7 insertions(+), 1 deletion(-)
+> > > 
+> > > diff --git a/nfs4.1/testmod.py b/nfs4.1/testmod.py
+> > > index 3d74efe..68855de 100644
+> > > --- a/nfs4.1/testmod.py
+> > > +++ b/nfs4.1/testmod.py
+> > > @@ -439,6 +439,7 @@ def printresults(tests, opts, file=None):
+> > >  def xml_printresults(tests, file_name, suite='all'):
+> > >      with open(file_name, 'w') as fd:
+> > >          failures = 0
+> > > +        skipped = 0
+> > >          total_time = 0
+> > >          doc = xml.dom.minidom.Document()
+> > >          testsuite = doc.createElement("testsuite")
+> > > @@ -455,14 +456,19 @@ def xml_printresults(tests, file_name, suite='all'):
+> > >              testcase.setAttribute("time", str(t.time_taken))
+> > >  
+> > >              total_time += t.time_taken
+> > > -            if t.result not in (TEST_PASS, TEST_WARN):
+> > > +            if t.result == TEST_FAIL:
+> > >                  failures += 1
+> > >                  failure = doc.createElement("failure")
+> > >                  failure.setAttribute("message", t.result.msg)
+> > >                  err = doc.createCDATASection(''.join(t.result.tb))
+> > >                  failure.appendChild(err)
+> > >                  testcase.appendChild(failure)
+> > > +            elif t.result == TEST_OMIT:
+> > > +                skipped += 1
+> > > +                skip = doc.createElement("skipped")
+> > > +                testcase.appendChild(skip)
+> > >  
+> > >          testsuite.setAttribute("failures", str(failures))
+> > > +        testsuite.setAttribute("skipped", str(skipped))
+> > >          testsuite.setAttribute("time", str(total_time))
+> > >          fd.write(doc.toprettyxml(indent="  "))
+> > > --
+> > > 1.8.3.1
+> > > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
