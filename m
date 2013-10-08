@@ -1,64 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48203 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:41158 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751167Ab3J1VCx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Oct 2013 17:02:53 -0400
-Date: Mon, 28 Oct 2013 17:02:47 -0400
+	id S1753397Ab3JHV5b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Oct 2013 17:57:31 -0400
+Date: Tue, 8 Oct 2013 17:56:56 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Haynes, Tom" <Tom.Haynes@netapp.com>
-Cc: Marc Eshel <eshel@us.ibm.com>, Spencer Shepler <spencer.shepler@gmail.com>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-        Christoph Anton Mitterer <calestyo@scientia.net>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Steve Dickson <SteveD@redhat.com>,
-        "nfsv4@ietf.org nfsv4@ietf.org" <nfsv4@ietf.org>,
-        Ric Wheeler <ric.wheeler@usenix.org>,
-        "linux-nfs-owner@vger.kernel.org" <linux-nfs-owner@vger.kernel.org>
-Subject: Re: [nfsv4] XATTRs in NFS?
-Message-ID: <20131028210247.GM31322@fieldses.org>
-References: <1382920068.6932.46.camel@heisenberg.scientia.net>
- <2E672741-FE4F-4287-8D00-B7634A71709E@netapp.com>
- <526E8562.3040809@redhat.com>
- <1382976943.8774.10.camel@heisenberg.scientia.net>
- <FD29488A-348B-48BA-9B1D-4ACF997BC794@netapp.com>
- <526EA65A.7010209@redhat.com>
- <20131028180838.GG31322@fieldses.org>
- <526EAD86.6090507@redhat.com>
- <OFA4C7B613.86F16AC7-ON88257C12.006FE486-88257C12.0071EE79@us.ibm.com>
- <C2C70C2E-100E-40BD-A919-A4F649077059@netapp.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        sandeen@redhat.com
+Subject: Re: [PATCH 2/2] exportfs: fix 32-bit nfsd handling of 64-bit inode
+ numbers
+Message-ID: <20131008215656.GA3456@fieldses.org>
+References: <20131002210736.GA20598@fieldses.org>
+ <1380749295-20854-1-git-send-email-bfields@redhat.com>
+ <1380749295-20854-2-git-send-email-bfields@redhat.com>
+ <20131004221216.GC18051@fieldses.org>
+ <20131004221522.GD18051@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <C2C70C2E-100E-40BD-A919-A4F649077059@netapp.com>
+In-Reply-To: <20131004221522.GD18051@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 28, 2013 at 08:55:06PM +0000, Haynes, Tom wrote:
-> 
-> On Oct 28, 2013, at 1:44 PM, Marc Eshel <eshel@us.ibm.com> wrote:
-> 
-> > Hi Spencer, 
-> > Is it still possible to get on the agenda fir IETF 88, I just got approval 
-> > to travel. We can use about 15 minutes, or what ever is available to 
-> > discussion the future of named attributes in NFS. The two main questions 
-> > that we need answer are: 
-> > 1. Do we need them? what applications use them and how. 
-> > 2. Can we have a more simple model that handles just user attributes.
+On Fri, Oct 04, 2013 at 06:15:22PM -0400, J. Bruce Fields wrote:
+> On Fri, Oct 04, 2013 at 06:12:16PM -0400, bfields wrote:
+> > On Wed, Oct 02, 2013 at 05:28:14PM -0400, J. Bruce Fields wrote:
+> > > @@ -268,6 +268,16 @@ static int get_name(const struct path *path, char *name, struct dentry *child)
+> > >  	if (!dir->i_fop)
+> > >  		goto out;
+> > >  	/*
+> > > +	 * inode->i_ino is unsigned long, kstat->ino is u64, so the
+> > > +	 * former would be insufficient on 32-bit hosts when the
+> > > +	 * filesystem supports 64-bit inode numbers.  So we need to
+> > > +	 * actually call ->getattr, not just read i_ino:
+> > > +	 */
+> > > +	error = vfs_getattr_nosec(path, &stat);
 > > 
-> > Input is welcome to help me make the case at the meeting.
-> > 
-> > Thanks, Marc.
-> > 
+> > Doh, "path" here is for the parent....  The following works better!
 > 
+> By the way, I'm testing this with:
 > 
-> Be sure to call out why they currently do or do not work.
+> 	- create a bunch of nested subdirectories, use
+> 	  name_to_fhandle_at to get a handle for the bottom directory.
+> 	- echo 2 >/proc/sys/vm/drop_caches
+> 	- open_by_fhandle_at on the filehandle
+> 
+> But this only actually exercises the reconnect path on the first run
+> after boot.  Is there something obvious I'm missing here?
 
-And we also need to keep clear the distinctions between:
+Looking at the code....  OK, most of the work of drop_caches is done by
+shrink_slab_node, which doesn't actually try to free every single thing
+that it could free--in particular, it won't try to free anything if it
+thinks there are less than shrinker->batch_size (1024 in the
+super_block->s_shrink case) objects to free.
 
-	- NFSv4 named attributes/streams/forks and "extended attributes"
-	  as implemented in Linux and elsewhere.
-	- user.* xattrs and "back-door ioctls".
-
-(Your description above seems to confuse named attributes and Linux
-extended attributes.)
+So for now I'm just nesting deeper (2048 subdirectories) to get a
+reliable way to exercise reconnect_path.
 
 --b.
