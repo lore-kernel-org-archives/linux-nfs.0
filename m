@@ -1,54 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fifo99.com ([67.223.236.141]:38049 "EHLO fifo99.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752793Ab3J0PKA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 27 Oct 2013 11:10:00 -0400
-Date: Sun, 27 Oct 2013 08:09:53 -0700
-From: Daniel Walker <dwalker@fifo99.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 2/3] fs: nfsd: remove calls to simple_strtoll
-Message-ID: <20131027150952.GA4801@fifo99.com>
-References: <1382754793-8827-2-git-send-email-dwalker@fifo99.com>
- <20131026184124.GA17487@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131026184124.GA17487@fieldses.org>
+Received: from mail-qc0-f173.google.com ([209.85.216.173]:42084 "EHLO
+	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751986Ab3JIUWC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Oct 2013 16:22:02 -0400
+Received: by mail-qc0-f173.google.com with SMTP id l13so536340qcy.32
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Oct 2013 13:22:01 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: ssorce@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH v3 0/2] gssd: allow gssd to work with KEYRING: credcaches
+Date: Wed,  9 Oct 2013 16:21:54 -0400
+Message-Id: <1381350116-10464-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Oct 26, 2013 at 02:41:24PM -0400, J. Bruce Fields wrote:
-> On Fri, Oct 25, 2013 at 07:33:12PM -0700, Daniel Walker wrote:
-> > Signed-off-by: Daniel Walker <dwalker@fifo99.com>
-> > ---
-> >  fs/nfsd/fault_inject.c | 12 ++++++++----
-> >  1 file changed, 8 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-> > index d620e7f..41165f0 100644
-> > --- a/fs/nfsd/fault_inject.c
-> > +++ b/fs/nfsd/fault_inject.c
-> > @@ -125,20 +125,24 @@ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
-> >  	size_t size = min(sizeof(write_buf) - 1, len);
-> >  	struct net *net = current->nsproxy->net_ns;
-> >  	struct sockaddr_storage sa;
-> > +	int ret = -EFAULT;
-> >  	u64 val;
-> >  
-> >  	if (copy_from_user(write_buf, buf, size))
-> > -		return -EFAULT;
-> > +		return ret;
-> >  	write_buf[size] = '\0';
-> >  
-> >  	size = rpc_pton(net, write_buf, size, (struct sockaddr *)&sa, sizeof(sa));
-> >  	if (size > 0)
-> >  		nfsd_inject_set_client(file_inode(file)->i_private, &sa, size);
-> 
-> If we take this branch, don't we end up returning -EFAULT below?
-> 
+Changes since original set:
+v3:
+- have parent check to see if child was signalled and log a warning if so
+- drop supplimentary groups and change gid before acquiring creds. Keep
+  suid and sgid as well to hamper ptrace.
 
+v2:
+- fix bisectability. The original set added includes in the wrong
+  place in patch #1 and then fixed it in patch #2. The final result
+  of this set is the same but should bisect cleanly.
 
-Looks like it .. I wasn't try to change that behavior, I'll update the
-patch and resend.
+This patchset fixes up gssd to work with KEYRING: style credcaches. At
+the same time, it also fixes gssd not to need to trawl through likely
+credcache locations by allowing GSSAPI to find them in the intended
+fashion.
 
-Daniel
+The basic idea is to have gssd fork() after reading off the pipe, but
+before handling the upcall and to do a more thorough job of changing
+credentials.
+
+Jeff Layton (2):
+  gssd: have process_krb5_upcall fork before handling upcall
+  gssd: do a more thorough change of identity after forking
+
+ utils/gssd/gssd_proc.c | 106 +++++++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 89 insertions(+), 17 deletions(-)
+
+-- 
+1.8.3.1
+
