@@ -1,67 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47394 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:41740 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753264Ab3J2Py2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Oct 2013 11:54:28 -0400
-Date: Tue, 29 Oct 2013 11:54:27 -0400
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/7] nfsd4: hash deleg stateid only on successful
- nfs4_set_delegation
-Message-ID: <20131029155427.GU31322@fieldses.org>
-References: <526F81DE.6060704@primarydata.com>
- <1383039561-27308-1-git-send-email-bhalevy@primarydata.com>
+	id S1752515Ab3JIOxt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Oct 2013 10:53:49 -0400
+Date: Wed, 9 Oct 2013 10:53:20 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Dave Chinner <david@fromorbit.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, Al Viro <viro@ZenIV.linux.org.uk>,
+        Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, sandeen@redhat.com
+Subject: Re: [PATCH 2/2] exportfs: fix 32-bit nfsd handling of 64-bit inode
+ numbers
+Message-ID: <20131009145320.GD3456@fieldses.org>
+References: <20131002210736.GA20598@fieldses.org>
+ <1380749295-20854-1-git-send-email-bfields@redhat.com>
+ <1380749295-20854-2-git-send-email-bfields@redhat.com>
+ <20131004221216.GC18051@fieldses.org>
+ <20131004221522.GD18051@fieldses.org>
+ <20131008215656.GA3456@fieldses.org>
+ <20131009001631.GD4446@dastard>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1383039561-27308-1-git-send-email-bhalevy@primarydata.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20131009001631.GD4446@dastard>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 29, 2013 at 11:39:21AM +0200, Benny Halevy wrote:
-> We don't want the stateid to be found in the hash table before the delegation
-> is granted.
+On Wed, Oct 09, 2013 at 11:16:31AM +1100, Dave Chinner wrote:
+> On Tue, Oct 08, 2013 at 05:56:56PM -0400, J. Bruce Fields wrote:
+> > On Fri, Oct 04, 2013 at 06:15:22PM -0400, J. Bruce Fields wrote:
+> > > On Fri, Oct 04, 2013 at 06:12:16PM -0400, bfields wrote:
+> > > > On Wed, Oct 02, 2013 at 05:28:14PM -0400, J. Bruce Fields wrote:
+> > > > > @@ -268,6 +268,16 @@ static int get_name(const struct path *path, char *name, struct dentry *child)
+> > > > >  	if (!dir->i_fop)
+> > > > >  		goto out;
+> > > > >  	/*
+> > > > > +	 * inode->i_ino is unsigned long, kstat->ino is u64, so the
+> > > > > +	 * former would be insufficient on 32-bit hosts when the
+> > > > > +	 * filesystem supports 64-bit inode numbers.  So we need to
+> > > > > +	 * actually call ->getattr, not just read i_ino:
+> > > > > +	 */
+> > > > > +	error = vfs_getattr_nosec(path, &stat);
+> > > > 
+> > > > Doh, "path" here is for the parent....  The following works better!
+> > > 
+> > > By the way, I'm testing this with:
+> > > 
+> > > 	- create a bunch of nested subdirectories, use
+> > > 	  name_to_fhandle_at to get a handle for the bottom directory.
+> > > 	- echo 2 >/proc/sys/vm/drop_caches
+> > > 	- open_by_fhandle_at on the filehandle
+> > > 
+> > > But this only actually exercises the reconnect path on the first run
+> > > after boot.  Is there something obvious I'm missing here?
+> > 
+> > Looking at the code....  OK, most of the work of drop_caches is done by
+> > shrink_slab_node, which doesn't actually try to free every single thing
+> > that it could free--in particular, it won't try to free anything if it
+> > thinks there are less than shrinker->batch_size (1024 in the
+> > super_block->s_shrink case) objects to free.
 
-With all this code and any find_stateid calls under the state lock, this
-isn't currently an issue, right?
+(Oops, sorry, that should have been "less than half of
+shrinker->batch_size", see below.)
 
-The changelog needs to make clear whether this is fixing a current bug
-or preparing to allow dropping of the state lock somewhere.  If the
-latter, it needs to outline what the expected change is that we're
-preparing for.
+> That's not quite right. Yes, the shrinker won't be called if the
+> calculated scan count is less than the batch size, but the left over
+> is added back the shrinker scan count to carry over to the next call
+> to the shrinker. Hence if you repeated call the shrinker on a small
+> cache with a large batch size, it will eventually aggregate the scan
+> counts to over the batch size and trim the cache....
+
+No, in shrink_slab_count, we do this:
+
+	if (total_scan > max_pass * 2)
+		total_scan = max_pass * 2;
+
+	while (total_scan >= batch_size) {
+		...
+	}
+
+where max_pass is the value returned from count_objects.  So as long as
+count_objects returns less than half batch_size, nothing ever happens.
+
+(I wonder if that check's correct?  The "forever" in the comment above
+it seems wrong at least.)
 
 --b.
-
-> 
-> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 405649f..64fcdd6 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -375,7 +375,6 @@ static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
->  	dp = delegstateid(nfs4_alloc_stid(clp, deleg_slab));
->  	if (dp == NULL)
->  		return dp;
-> -	dp->dl_stid.sc_type = NFS4_DELEG_STID;
->  	/*
->  	 * delegation seqid's are never incremented.  The 4.1 special
->  	 * meaning of seqid 0 isn't meaningful, really, but let's avoid
-> @@ -3079,6 +3078,7 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
->  	atomic_inc(&fp->fi_delegees);
->  	hash_delegation_locked(dp, fp);
->  	spin_unlock(&recall_lock);
-> +	dp->dl_stid.sc_type = NFS4_DELEG_STID;
->  	return 0;
->  out_free:
->  	put_nfs4_file(fp);
-> -- 
-> 1.8.3.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
