@@ -1,74 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:49653 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751398Ab3JIQ24 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Oct 2013 12:28:56 -0400
-Date: Wed, 9 Oct 2013 12:28:38 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Andi Kleen <andi@firstfloor.org>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Jeff Layton <jlayton@redhat.com>, Coffman Kevin <kwc@citi.umich.edu>,
-        linux-nfs@vger.kernel.org
-Subject: Re: unread variables in sunrpc kerberos code
-Message-ID: <20131009162838.GA29734@pad.fieldses.org>
-References: <20130930183926.GB6931@two.firstfloor.org>
- <20131004031643.GA13502@two.firstfloor.org>
- <20131004062915.48772e4b@tlielax.poochiereds.net>
- <DD6C34BD-1F21-4355-BE73-56538E5B29D4@netapp.com>
- <20131007131237.GA20881@pad.fieldses.org>
- <20131008222029.GP6882@two.firstfloor.org>
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:18971 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757143Ab3JIAQl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Oct 2013 20:16:41 -0400
+Date: Wed, 9 Oct 2013 11:16:31 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, Al Viro <viro@ZenIV.linux.org.uk>,
+        Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, sandeen@redhat.com
+Subject: Re: [PATCH 2/2] exportfs: fix 32-bit nfsd handling of 64-bit inode
+ numbers
+Message-ID: <20131009001631.GD4446@dastard>
+References: <20131002210736.GA20598@fieldses.org>
+ <1380749295-20854-1-git-send-email-bfields@redhat.com>
+ <1380749295-20854-2-git-send-email-bfields@redhat.com>
+ <20131004221216.GC18051@fieldses.org>
+ <20131004221522.GD18051@fieldses.org>
+ <20131008215656.GA3456@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131008222029.GP6882@two.firstfloor.org>
+In-Reply-To: <20131008215656.GA3456@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Adding the linux-nfs list on the cc in case somebody else has looked at
-this more recently than me....
+On Tue, Oct 08, 2013 at 05:56:56PM -0400, J. Bruce Fields wrote:
+> On Fri, Oct 04, 2013 at 06:15:22PM -0400, J. Bruce Fields wrote:
+> > On Fri, Oct 04, 2013 at 06:12:16PM -0400, bfields wrote:
+> > > On Wed, Oct 02, 2013 at 05:28:14PM -0400, J. Bruce Fields wrote:
+> > > > @@ -268,6 +268,16 @@ static int get_name(const struct path *path, char *name, struct dentry *child)
+> > > >  	if (!dir->i_fop)
+> > > >  		goto out;
+> > > >  	/*
+> > > > +	 * inode->i_ino is unsigned long, kstat->ino is u64, so the
+> > > > +	 * former would be insufficient on 32-bit hosts when the
+> > > > +	 * filesystem supports 64-bit inode numbers.  So we need to
+> > > > +	 * actually call ->getattr, not just read i_ino:
+> > > > +	 */
+> > > > +	error = vfs_getattr_nosec(path, &stat);
+> > > 
+> > > Doh, "path" here is for the parent....  The following works better!
+> > 
+> > By the way, I'm testing this with:
+> > 
+> > 	- create a bunch of nested subdirectories, use
+> > 	  name_to_fhandle_at to get a handle for the bottom directory.
+> > 	- echo 2 >/proc/sys/vm/drop_caches
+> > 	- open_by_fhandle_at on the filehandle
+> > 
+> > But this only actually exercises the reconnect path on the first run
+> > after boot.  Is there something obvious I'm missing here?
+> 
+> Looking at the code....  OK, most of the work of drop_caches is done by
+> shrink_slab_node, which doesn't actually try to free every single thing
+> that it could free--in particular, it won't try to free anything if it
+> thinks there are less than shrinker->batch_size (1024 in the
+> super_block->s_shrink case) objects to free.
 
-On Wed, Oct 09, 2013 at 12:20:29AM +0200, Andi Kleen wrote:
-> > I think it's probably harmless, though it wouldn't be a bad idea to
-> > review it if somebody had the time.
->
-> Can you explain why it is harmless? Is the sequence number
-> checked elsewhere? If yes, where?
+That's not quite right. Yes, the shrinker won't be called if the
+calculated scan count is less than the batch size, but the left over
+is added back the shrinker scan count to carry over to the next call
+to the shrinker. Hence if you repeated call the shrinker on a small
+cache with a large batch size, it will eventually aggregate the scan
+counts to over the batch size and trim the cache....
 
-I really don't remember.
+Cheers,
 
-OK, I give in, I'll go look:
-
-RFC 1964 section 1.2.1.2 says
-
-	The sequence number provides a basis for detection of replayed
-	tokens.  Replay detection *can* be performed using state
-	information retained on received sequence numbers...
-
-(emphasis mine), and
-
-	Provision of per-message replay and out-of-sequence detection
-	services is optional for implementation of the Kerberos V5
-	GSS-API mechanism.
-
-For some reason RFC 4121, which appears to be the one describing the v2
-tokens, doesn't have similar text that I can find.  I can't tell what
-they think you're supposed to do with sequence numbers, if anything.
-
-RPC's (hence gss tokens) can be processed out of order, so it's a little
-unclear how the sequence numbers would be checked.  You'd have to choose
-a window of sequence numbers to track, I guess, and just reject anything
-older.  Absence any guidance about how to do this in the RFC's this
-sounds like a potential source of interoperability problems.
-
-RPCSEC_GSS also has its own sequence number that's included in all the
-data we encrypt or checksum, so should provide sufficient replay
-protection on its own.  And the RPCSEC_GSS RPC's do tell you how to
-determine the window and handle old tokens.
-
-So I may be missing something--more review always welcomed--but I think
-it's all OK.
-
-Unless someone else has more to add I'll cook up a patch that attempts
-to make the situation clearer to future unfortunate readers of this
-code.
-
---b.
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
