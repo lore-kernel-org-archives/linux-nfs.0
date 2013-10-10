@@ -1,86 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:32087 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:51147 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753077Ab3JVMwy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Oct 2013 08:52:54 -0400
-From: Weston Andros Adamson <dros@netapp.com>
+	id S1756454Ab3JJTXQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Oct 2013 15:23:16 -0400
+Date: Thu, 10 Oct 2013 15:23:15 -0400
 To: Simo Sorce <simo@redhat.com>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: Strange cred expiry behavior
-Date: Tue, 22 Oct 2013 12:52:53 +0000
-Message-ID: <00287231-A3A3-42B8-AEC6-0472E50FE17A@netapp.com>
-References: <85F2BCBA-9565-497F-BFF4-FEB29301D655@netapp.com>
- <DCD436E3-9464-4BFB-8C1A-19912522824D@netapp.com>
- <1382444401.9794.19.camel@willson.li.ssimo.org>
-In-Reply-To: <1382444401.9794.19.camel@willson.li.ssimo.org>
-Content-Type: text/plain; charset="Windows-1252"
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/4] svcrpc: fix error-handling on badd gssproxy downcall
+Message-ID: <20131010192315.GA7463@fieldses.org>
+References: <1381418103-3852-1-git-send-email-bfields@redhat.com>
+ <1381418103-3852-3-git-send-email-bfields@redhat.com>
+ <1381419432.2684.15.camel@willson.li.ssimo.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1381419432.2684.15.camel@willson.li.ssimo.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks Simo!
+On Thu, Oct 10, 2013 at 11:37:12AM -0400, Simo Sorce wrote:
+> On Thu, 2013-10-10 at 11:15 -0400, J. Bruce Fields wrote:
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > For every other problem here we bail out with an error, but here for
+> > some reason we're setting a negative cache entry (with, note, an
+> > undefined expiry).
+> > 
+> > It seems simplest just to bail out in the same way as we do in other
+> > cases.
+> > 
+> > Cc: Simo Sorce <simo@redhat.com>
+> > Reported-by: Andi Kleen <andi@firstfloor.org>
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  net/sunrpc/auth_gss/svcauth_gss.c |    4 ++--
+> >  1 file changed, 2 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+> > index 09fb638..008cdad 100644
+> > --- a/net/sunrpc/auth_gss/svcauth_gss.c
+> > +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+> > @@ -1167,8 +1167,8 @@ static int gss_proxy_save_rsc(struct cache_detail *cd,
+> >  	if (!ud->found_creds) {
+> >  		/* userspace seem buggy, we should always get at least a
+> >  		 * mapping to nobody */
+> > -		dprintk("RPC:       No creds found, marking Negative!\n");
+> > -		set_bit(CACHE_NEGATIVE, &rsci.h.flags);
+> > +		dprintk("RPC:       No creds found!\n");
+> > +		goto out;
+> >  	} else {
+> >  
+> >  		/* steal creds */
+> 
+> IIRC, we are doing this to avoid rapid upcall loops in the kernel, where
+> we keep hammering upcalls out and keep getting an error back.
 
-I'll try doing the gss_inquire_creds() first and if that fixes things.
+Looks like returning an error instead results in closing the connection
+to the client, so, depends how the client replies I guess.
 
--dros
+In any case I don't see why we'd treat this particular gss-proxy bug
+differently than we would any other (like, say, passing down bad xdr, or
+a gss context that we can't import).
 
-On Oct 22, 2013, at 8:20 AM, Simo Sorce <simo@redhat.com>
- wrote:
+--b.
 
-> On Mon, 2013-10-21 at 23:53 +0000, Weston Andros Adamson wrote:
->> I traced this behavior back to:
->> 
->> commit 302de786930a2c533068f9d8909a817b40f07c32
->> Author: Simo Sorce <simo@redhat.com>
->> Date:   Fri Apr 19 13:02:36 2013 -0400
->> 
->>    gssd: Allow GSSAPI to try to acquire credentials first.
->> 
->> 
->> And in particular:
->> 
->> -               for (dirname = ccachesearch; *dirname != NULL; dirname++) {
->> +               /* Try first to acquire credentials directly via GSSAPI */
->> +               err = gssd_acquire_user_cred(uid, &gss_cred);
->> +               if (!err)
->> +                       create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
->> +                                                            AUTHTYPE_KRB5, gss_cred);
->> +               /* if create_auth_rplc_client fails try the traditional method of
->> +                * trolling for credentials */
->> +               for (dirname = ccachesearch; create_resp != 0 && *dirname != NULL; dirname++) {
->> 
->> A couple of things:
->> 
->>  - If I get rid of the "Try first to acquire credentials directly via
->> GSSAPI" part, expiry works as before.
-> 
-> Interesting, this call is necessary to make rpc.gssd work with gss-proxy
-> and I had not experienced an issue so far. We can try to add a
-> gss_inquire_cred() to gssd_acquire_user_cred() to force checking the
-> credentials for expiration, as that check may be deferred in some cases
-> in GSSAPI.
-> 
->>  - It says "if create_auth_rplc_client fails try the traditional
->> method of trolling for credentials" but I see nothing that checks to
->> see if create_resp != 0 before falling back to the old method.
-> 
-> It's the check condition in the for loop, that's why I have not repeated
-> it before the for loop.
-> 
->>  I added this check and everything seems right (it doesn't fix the
->> expiry issue).
-> 
-> Yeah I didn't think it would.
-> 
->> I should have some time tomorrow to look further at the expiry issue…
-> 
-> If you can add an explicit check with gss_inquire_creds() I think you'll
-> get the right behavior.
-> 
-> Let me know if you need help.
-> Simo.
-> 
-> -- 
-> Simo Sorce * Red Hat, Inc * New York
-> 
-
+> I am not sure it is wise to not set a temp negative cache here.
