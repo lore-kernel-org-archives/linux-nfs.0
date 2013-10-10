@@ -1,46 +1,23 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:9006 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:59332 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751825Ab3J2AxL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Oct 2013 20:53:11 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Christoph Anton Mitterer <calestyo@scientia.net>
-CC: Anand Avati <aavati@redhat.com>,
-        Dr Fields James Bruce <bfields@redhat.com>,
-        Wheeler Ric <rwheeler@redhat.com>,
-        "Mailing List Linux NFS" <linux-nfs@vger.kernel.org>,
-        Dickson Steve <steved@redhat.com>
-Subject: Re: XATTRs in NFS?
-Date: Tue, 29 Oct 2013 00:53:09 +0000
-Message-ID: <05E44689-68BD-43AE-A5C8-409883E84227@netapp.com>
-References: <20131028180838.GG31322@fieldses.org>
- <526EC3F7.3090601@gmail.com> <526EFFCC.2060506@redhat.com>
- <1383007167.8774.52.camel@heisenberg.scientia.net>
-In-Reply-To: <1383007167.8774.52.camel@heisenberg.scientia.net>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+	id S1752443Ab3JJPPH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Oct 2013 11:15:07 -0400
+Received: from bfields by fieldses.org with local (Exim 4.76)
+	(envelope-from <bfields@fieldses.org>)
+	id 1VUHxD-00011M-9P
+	for linux-nfs@vger.kernel.org; Thu, 10 Oct 2013 11:15:07 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: miscellaneous gss-proxy & krb5 fixes for 3.13
+Date: Thu, 10 Oct 2013 11:14:59 -0400
+Message-Id: <1381418103-3852-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+These are some (what look like mostly minor) fixes prompted by some
+static checker results from Andi Kleen.  I'm planning to queue them up
+for 3.13.
 
-On Oct 28, 2013, at 8:39 PM, Christoph Anton Mitterer <calestyo@scientia.net> wrote:
+--b.
 
-> I might add a similar use case which we have at the faculty respectively
-> the local supercomputing centre:
-> 
-> What we have there is big cluster filesystems (used to be Lustre but
-> nowadays I think they use GPFS).
-> There are custom (i.e. local) applications where XATTRs are used to
-> attach some metadata to files, which works fine in these cluster
-> filesystems since they have native support.
-> 
-> Now what they sometimes do (AFAIU) is, export the cluster fs via NFS, to
-> nodes which don't have support for the cluster fs itself (sometimes the
-> OS is simply too old, but one common use case is also, that they simply
-> don't allow direct mounts outside of e.g. the super computer).
-> 
-> At that point, NFS looses the XATTRs.
-
-Why do these nodes need access to the xattrs? What applications are they running that need them? Why can't those applications run on the native cluster instead?
-
-Trond
