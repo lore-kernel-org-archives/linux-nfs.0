@@ -1,59 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:48318 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751628Ab3JCNRw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Oct 2013 09:17:52 -0400
-Date: Thu, 3 Oct 2013 06:17:50 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Ric Wheeler <rwheeler@redhat.com>
-Cc: Benny Halevy <bhalevy@primarydata.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
-        Steven Whitehouse <swhiteho@redhat.com>,
-        Bob Peterson <rpeterso@redhat.com>, Abhijith Das <adas@redhat.com>,
-        Andrew Price <anprice@redhat.com>, Paul Evans <pevans@redhat.com>
-Subject: Re: [PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
-Message-ID: <20131003131750.GA23408@infradead.org>
-References: <52481B11.2080407@primarydata.com>
- <20130929122130.GI21083@infradead.org>
- <20130929123553.GA7510@infradead.org>
- <20131001203047.GH16245@pad.fieldses.org>
- <524C0556.9070705@primarydata.com>
- <20131002160759.GB27988@infradead.org>
- <524D0873.40602@primarydata.com>
- <20131003095511.GA30147@infradead.org>
- <524D6312.7020709@primarydata.com>
- <524D6D38.1040506@redhat.com>
+Received: from smtp-o-1.desy.de ([131.169.56.154]:33724 "EHLO smtp-o-1.desy.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752847Ab3JJJ46 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Oct 2013 05:56:58 -0400
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 608672805BB
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2013 11:56:57 +0200 (CEST)
+Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 53E8A13E8F
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2013 11:56:56 +0200 (MEST)
+Date: Thu, 10 Oct 2013 11:56:56 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: linux-nfs@vger.kernel.org
+Cc: Andy Adamson <william.adamson@netapp.com>,
+        Steve Dickson <steved@redhat.com>
+Message-ID: <1232423514.586176.1381399016371.JavaMail.zimbra@desy.de>
+In-Reply-To: <1667669326.580689.1381351712928.JavaMail.zimbra@desy.de>
+References: <1667669326.580689.1381351712928.JavaMail.zimbra@desy.de>
+Subject: Re: DoS with NFSv4.1 client
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <524D6D38.1040506@redhat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 03, 2013 at 09:12:24AM -0400, Ric Wheeler wrote:
-> >>>Which in-tree or soon in-tree filesystem do you care about?  And why
-> >>>don't we see pnfs support for it submitted instead of the fairly useless
-> >>>gfs2 support?
-> >I picked gfs2 as the initial use case for simplicity and ease of review.
-> >If there is a rough consensus that it's useless and not worthy of inclusion
-> >then the one we care about the most is exofs that has a more complete pnfs
-> >implementation.
-> >
-> >Benny
-> >
+
+
+Today we was 'luck' to have such situation at day time.
+Here is what happens:
+
+The client sends an OPEN and gets an open state id.
+This is followed by LAYOUTGET ... and READ to DS.
+At some point, server returns back BAD_STATEID.
+This triggers client to issue a new OPEN and use
+new open stateid with READ request to DS. As new 
+stateid is not known to DS, it keeps returning
+BAD_STATEID and becomes an infinite loop.
+
+Regards,
+   Tigran.
+
+ 
+
+----- Original Message -----
+> From: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
+> To: linux-nfs@vger.kernel.org
+> Cc: "Andy Adamson" <william.adamson@netapp.com>, "Steve Dickson" <steved@redhat.com>
+> Sent: Wednesday, October 9, 2013 10:48:32 PM
+> Subject: DoS with NFSv4.1 client
 > 
-> I don't see having GFS2 supported as a base for pNFS as useless.
-> Christoph, is this a concern about GFS2 being too complicated for
-> normal deployment or a lack in the pNFS support on top of it?
-
-Fairly useless was specific to the particular implementation:
-
- - which in the stipped down version here only supports DS access for
-   reads
- - which in the previous version showed worse performance than always
-   going through the MDS
-
-I don't have a problem with using GFS2 by itself, but any implementation
-proposed should actually show signifiant real life benefits before it
-gets merged.
-
+> 
+> Hi,
+> 
+> last night we got a DoS attack with one of the NFS clients.
+> The farm node, which was accessing data with pNFS,
+> went mad and have tried to kill dCache NFS server. As usually
+> this have happened over night and we was not able to
+> get a network traffic or bump the debug level.
+> 
+> The symptoms are:
+> 
+> client starts to bombard the MDS with OPEN requests. As we see
+> state created on the server side, the requests was processed by
+> server. Nevertheless, for some reason, client did not like it. Here
+> is the result of mountstats:
+> 
+> OPEN:
+> 	17087065 ops (99%) 	1 retrans (0%) 	0 major timeouts
+> 	avg bytes sent per op: 356	avg bytes received per op: 455
+> 	backlog wait: 0.014707 	RTT: 4.535704 	total execute time: 4.574094
+> 	(milliseconds)
+> CLOSE:
+> 	290 ops (0%) 	0 retrans (0%) 	0 major timeouts
+> 	avg bytes sent per op: 247	avg bytes received per op: 173
+> 	backlog wait: 308.827586 	RTT: 1748.479310 	total execute time: 2057.365517
+> 	(milliseconds)
+> 
+> 
+> As you can see there is a quite a big difference between number of open and
+> close requests.
+> The same picture we can see on the server side as well:
+> 
+> NFSServerV41 Stats:                   average±stderr(ns)       min(ns)
+> max(ns)            Sampes
+>   DESTROY_SESSION                          26056±4511.89        13000
+>   97000                17
+>   OPEN                                    1197297±  0.00       816000
+>   31924558000          54398533
+>   RESTOREFH                                     0±  0.00            0
+>   25018778000          54398533
+>   SEQUENCE                                   1000±  0.00         1000
+>   26066722000          55601046
+>   LOOKUP                                  4607959±  0.00       375000
+>   26977455000             32118
+>   GETDEVICEINFO                             13158±100.88         4000
+>   655000             11378
+>   CLOSE                                  16236211±  0.00         5000
+>   21021819000             20420
+>   LAYOUTGET                             271736361±  0.00     10003000
+>   68414723000             21095
+> 
+> The last column is the number of requests.
+> 
+> This is with RHEL6.4 as the client. By looking at the code,
+> I can see a loop at nfs4proc.c#nfs4_do_open() which can be
+> the cause of the problem. Nevertheless, I can't
+> fine any reason why this look turned into an 'infinite' one.
+> 
+> At the and our server ran out of memory and we have returned
+> NFSERR_SERVERFAULT to the client. This triggered client to
+> reestablish the session and all open state ids was
+> invalidated and cleaned up.
+> 
+> I am still trying to reproduce this behavior (on client
+> and server) and any hint is welcome.
+> 
+> Tigran.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
