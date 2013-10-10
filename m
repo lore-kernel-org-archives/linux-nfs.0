@@ -1,48 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f47.google.com ([209.85.128.47]:54598 "EHLO
-	mail-qe0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932189Ab3JNUcJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Oct 2013 16:32:09 -0400
-MIME-Version: 1.0
-In-Reply-To: <1381782256-2434-1-git-send-email-geyslan@gmail.com>
-References: <1381782256-2434-1-git-send-email-geyslan@gmail.com>
-Date: Mon, 14 Oct 2013 17:32:08 -0300
-Message-ID: <CAGG-pURU_8p2-2EQH5hK_NX+1PjEBCMhe05KFVfvD3E0zXZuhQ@mail.gmail.com>
-Subject: Re: [PATCH v2] nfs: Use PTR_ERR_OR_ZERO in 'nfs41_callback_up' function
-From: =?UTF-8?Q?Geyslan_Greg=C3=B3rio_Bem?= <geyslan@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: schumaker.anna@gmail.com, linux-nfs@vger.kernel.org,
-        LKML <linux-kernel@vger.kernel.org>,
-        kernel-br <kernel-br@googlegroups.com>,
-        "Geyslan G. Bem" <geyslan@gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:59333 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755456Ab3JJPPH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Oct 2013 11:15:07 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>, Simo Sorce <simo@redhat.com>
+Subject: [PATCH 1/4] svcrpc: fix gss-proxy NULL dereference in some error cases
+Date: Thu, 10 Oct 2013 11:15:00 -0400
+Message-Id: <1381418103-3852-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1381418103-3852-1-git-send-email-bfields@redhat.com>
+References: <1381418103-3852-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2013/10/14 Geyslan G. Bem <geyslan@gmail.com>:
-> Use 'PTR_ERR_OR_ZERO()' rather than 'IS_ERR(...) ? PTR_ERR(...) : 0'.
->
-> Signed-off-by: Geyslan G. Bem <geyslan@gmail.com>
-> ---
->  fs/nfs/callback.c | 3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
->
-> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> index 67cd732..073b4cf 100644
-> --- a/fs/nfs/callback.c
-> +++ b/fs/nfs/callback.c
-> @@ -164,8 +164,7 @@ nfs41_callback_up(struct svc_serv *serv)
->                 svc_xprt_put(serv->sv_bc_xprt);
->                 serv->sv_bc_xprt = NULL;
->         }
-> -       dprintk("--> %s return %ld\n", __func__,
-> -               IS_ERR(rqstp) ? PTR_ERR(rqstp) : 0);
-> +       dprintk("--> %s return %d\n", __func__, PTR_ERR_OR_ZERO(rqstp));
->         return rqstp;
->  }
->
-> --
-> 1.8.4
->
-In this version (v2):
-Format changed from %ld to %d.
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+We depend on the xdr decoder to set this pointer, but if we error out
+before we decode this piece it could be left NULL.
+
+I think this is probably tough to hit without a buggy gss-proxy.
+
+Reported-by: Andi Kleen <andi@firstfloor.org>
+Cc: Simo Sorce <simo@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/auth_gss/gss_rpc_upcall.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+index f1eb0d1..458f85e 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
++++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+@@ -298,7 +298,8 @@ int gssp_accept_sec_context_upcall(struct net *net,
+ 	if (res.context_handle) {
+ 		data->out_handle = rctxh.exported_context_token;
+ 		data->mech_oid.len = rctxh.mech.len;
+-		memcpy(data->mech_oid.data, rctxh.mech.data,
++		if (rctxh.mech.data)
++			memcpy(data->mech_oid.data, rctxh.mech.data,
+ 						data->mech_oid.len);
+ 		client_name = rctxh.src_name.display_name;
+ 	}
+-- 
+1.7.9.5
+
