@@ -1,50 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:19166 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:59335 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753728Ab3JCNMv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Oct 2013 09:12:51 -0400
-Message-ID: <524D6D38.1040506@redhat.com>
-Date: Thu, 03 Oct 2013 09:12:24 -0400
-From: Ric Wheeler <rwheeler@redhat.com>
-MIME-Version: 1.0
-To: Benny Halevy <bhalevy@primarydata.com>
-CC: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
-        Steven Whitehouse <swhiteho@redhat.com>,
-        Bob Peterson <rpeterso@redhat.com>, Abhijith Das <adas@redhat.com>,
-        Andrew Price <anprice@redhat.com>, Paul Evans <pevans@redhat.com>
-Subject: Re: [PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
-References: <20130929114327.GB25750@infradead.org> <52481939.7060405@primarydata.com> <20130929121345.GA21083@infradead.org> <52481B11.2080407@primarydata.com> <20130929122130.GI21083@infradead.org> <20130929123553.GA7510@infradead.org> <20131001203047.GH16245@pad.fieldses.org> <524C0556.9070705@primarydata.com> <20131002160759.GB27988@infradead.org> <524D0873.40602@primarydata.com> <20131003095511.GA30147@infradead.org> <524D6312.7020709@primarydata.com>
-In-Reply-To: <524D6312.7020709@primarydata.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+	id S1755406Ab3JJPPH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Oct 2013 11:15:07 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 4/4] gss_krb5: document that we ignore sequence number
+Date: Thu, 10 Oct 2013 11:15:03 -0400
+Message-Id: <1381418103-3852-5-git-send-email-bfields@redhat.com>
+In-Reply-To: <1381418103-3852-1-git-send-email-bfields@redhat.com>
+References: <1381418103-3852-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/03/2013 08:29 AM, Benny Halevy wrote:
-> On 2013-10-03 12:55, Christoph Hellwig wrote:
->> >On Thu, Oct 03, 2013 at 09:02:27AM +0300, Benny Halevy wrote:
->>> >>Just that this is dlm specific logic.
->>> >>For example, using dlm_ino_hash() in nfsd4_pnfs_dlm_layoutget().
->>> >>Or even knowing that
->>> >>	layout->lg_stripe_type = STRIPE_SPARSE;
->>> >>assumes knowledge of the underlying cluster fs implementation.
->> >
->> >Which in-tree or soon in-tree filesystem do you care about?  And why
->> >don't we see pnfs support for it submitted instead of the fairly useless
->> >gfs2 support?
-> I picked gfs2 as the initial use case for simplicity and ease of review.
-> If there is a rough consensus that it's useless and not worthy of inclusion
-> then the one we care about the most is exofs that has a more complete pnfs
-> implementation.
->
-> Benny
->
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-I don't see having GFS2 supported as a base for pNFS as useless. Christoph, is 
-this a concern about GFS2 being too complicated for normal deployment or a lack 
-in the pNFS support on top of it?
+A couple times recently somebody has noticed that we're ignoring a
+sequence number here and wondered whether there's a bug.
 
-thanks!
+In fact, there's not.  Thanks to Andy Adamson for pointing out a useful
+explanation in rfc 2203.  Add comments citing that rfc, and remove
+"seqnum" to prevent static checkers complaining about unused variables.
 
-Ric
+Reported-by: Andi Kleen <andi@firstfloor.org>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/auth_gss/gss_krb5_unseal.c |    8 ++++----
+ net/sunrpc/auth_gss/gss_krb5_wrap.c   |    6 ++++--
+ 2 files changed, 8 insertions(+), 6 deletions(-)
+
+diff --git a/net/sunrpc/auth_gss/gss_krb5_unseal.c b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+index 6cd930f..6c981dd 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_unseal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+@@ -150,7 +150,6 @@ gss_verify_mic_v2(struct krb5_ctx *ctx,
+ 	struct xdr_netobj cksumobj = {.len = sizeof(cksumdata),
+ 				      .data = cksumdata};
+ 	s32 now;
+-	u64 seqnum;
+ 	u8 *ptr = read_token->data;
+ 	u8 *cksumkey;
+ 	u8 flags;
+@@ -197,9 +196,10 @@ gss_verify_mic_v2(struct krb5_ctx *ctx,
+ 	if (now > ctx->endtime)
+ 		return GSS_S_CONTEXT_EXPIRED;
+ 
+-	/* do sequencing checks */
+-
+-	seqnum = be64_to_cpup((__be64 *)ptr + 8);
++	/*
++	 * NOTE: the sequence number at ptr + 8 is skipped, rpcsec_gss
++	 * doesn't want it checked; see page 6 of rfc 2203.
++	 */
+ 
+ 	return GSS_S_COMPLETE;
+ }
+diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+index 1da52d1..5040a46 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
++++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+@@ -489,7 +489,6 @@ static u32
+ gss_unwrap_kerberos_v2(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
+ {
+ 	s32		now;
+-	u64		seqnum;
+ 	u8		*ptr;
+ 	u8		flags = 0x00;
+ 	u16		ec, rrc;
+@@ -525,7 +524,10 @@ gss_unwrap_kerberos_v2(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
+ 	ec = be16_to_cpup((__be16 *)(ptr + 4));
+ 	rrc = be16_to_cpup((__be16 *)(ptr + 6));
+ 
+-	seqnum = be64_to_cpup((__be64 *)(ptr + 8));
++	/*
++	 * NOTE: the sequence number at ptr + 8 is skipped, rpcsec_gss
++	 * doesn't want it checked; see page 6 of rfc 2203.
++	 */
+ 
+ 	if (rrc != 0)
+ 		rotate_left(offset + 16, buf, rrc);
+-- 
+1.7.9.5
 
