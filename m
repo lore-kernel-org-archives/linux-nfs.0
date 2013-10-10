@@ -1,49 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:22095 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60615 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752928Ab3JVISv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Oct 2013 04:18:51 -0400
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9M8Ios6006553
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 22 Oct 2013 04:18:51 -0400
-Received: from smallhat.boston.devel.redhat.com.org (vpn-59-139.rdu2.redhat.com [10.10.59.139])
-	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r9M8Inoh017257
-	for <linux-nfs@vger.kernel.org>; Tue, 22 Oct 2013 04:18:49 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/3] mountd: disabling turning off TCP listeners
-Date: Tue, 22 Oct 2013 04:19:23 -0400
-Message-Id: <1382429966-14531-1-git-send-email-steved@redhat.com>
+	id S1755336Ab3JJUpz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Oct 2013 16:45:55 -0400
+Subject: Re: [PATCH 2/4] svcrpc: fix error-handling on badd gssproxy
+ downcall
+From: Simo Sorce <simo@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+In-Reply-To: <20131010192315.GA7463@fieldses.org>
+References: <1381418103-3852-1-git-send-email-bfields@redhat.com>
+	 <1381418103-3852-3-git-send-email-bfields@redhat.com>
+	 <1381419432.2684.15.camel@willson.li.ssimo.org>
+	 <20131010192315.GA7463@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 10 Oct 2013 16:45:52 -0400
+Message-ID: <1381437952.2684.64.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Recently it was pointed out to me that the [-n | --no-tcp] flags 
-were broken in mountd. Sure enough they are and they broke 
-when nfs-utils moved to using libtirpc, which was years ago.
+On Thu, 2013-10-10 at 15:23 -0400, J. Bruce Fields wrote:
+> On Thu, Oct 10, 2013 at 11:37:12AM -0400, Simo Sorce wrote:
+> > On Thu, 2013-10-10 at 11:15 -0400, J. Bruce Fields wrote:
+> > > From: "J. Bruce Fields" <bfields@redhat.com>
+> > > 
+> > > For every other problem here we bail out with an error, but here for
+> > > some reason we're setting a negative cache entry (with, note, an
+> > > undefined expiry).
+> > > 
+> > > It seems simplest just to bail out in the same way as we do in other
+> > > cases.
+> > > 
+> > > Cc: Simo Sorce <simo@redhat.com>
+> > > Reported-by: Andi Kleen <andi@firstfloor.org>
+> > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > > ---
+> > >  net/sunrpc/auth_gss/svcauth_gss.c |    4 ++--
+> > >  1 file changed, 2 insertions(+), 2 deletions(-)
+> > > 
+> > > diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+> > > index 09fb638..008cdad 100644
+> > > --- a/net/sunrpc/auth_gss/svcauth_gss.c
+> > > +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+> > > @@ -1167,8 +1167,8 @@ static int gss_proxy_save_rsc(struct cache_detail *cd,
+> > >  	if (!ud->found_creds) {
+> > >  		/* userspace seem buggy, we should always get at least a
+> > >  		 * mapping to nobody */
+> > > -		dprintk("RPC:       No creds found, marking Negative!\n");
+> > > -		set_bit(CACHE_NEGATIVE, &rsci.h.flags);
+> > > +		dprintk("RPC:       No creds found!\n");
+> > > +		goto out;
+> > >  	} else {
+> > >  
+> > >  		/* steal creds */
+> > 
+> > IIRC, we are doing this to avoid rapid upcall loops in the kernel, where
+> > we keep hammering upcalls out and keep getting an error back.
+> 
+> Looks like returning an error instead results in closing the connection
+> to the client, so, depends how the client replies I guess.
+> 
+> In any case I don't see why we'd treat this particular gss-proxy bug
+> differently than we would any other (like, say, passing down bad xdr, or
+> a gss context that we can't import).
 
-Obviously nobody is using these flags since has not been 
-notice until now, but it seemed to me it no longer makes 
-any sense to have flags. We really want people to use TCP 
-so why should there be a way to turn it off? It should be
-the opposite... They should be able to turn off UDP listeners
-not TCP... 
+Uhmm I did not recall that, I guess the change is ok then.
 
-So this patch set does just that. It  deprecate the ability to 
-disable TCP listeners and addd the ability to disable UDP listeners.
+Simo.
 
-Steve Dickson (3):
-  mountd: Use protocol bit fields to turn protocols off.
-  mountd: Deprecate the ability to disable TCP listeners.
-  mountd: Add the ability to disable UDP listeners.
+> --b.
+> 
+> > I am not sure it is wise to not set a temp negative cache here.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
- support/include/rpcmisc.h |  2 +-
- support/nfs/rpcmisc.c     | 19 ++++++++++++++-----
- support/nfs/svc_create.c  |  5 +++++
- utils/mountd/mountd.c     | 15 +++++++++++----
- utils/mountd/mountd.man   |  6 +++---
- 5 files changed, 34 insertions(+), 13 deletions(-)
 
 -- 
-1.8.3.1
+Simo Sorce * Red Hat, Inc * New York
 
