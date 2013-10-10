@@ -1,35 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from tuna.sandelman.ca ([209.87.252.184]:58951 "EHLO
-	tuna.sandelman.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752762Ab3JVOZu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Oct 2013 10:25:50 -0400
-From: Michael Richardson <mcr@sandelman.ca>
-To: Ben Greear <greearb@candelatech.com>
-cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Getting 'not supported' when trying to mount IPv6 NFS v3 server.
-In-Reply-To: <52659D69.1020609@candelatech.com>
-References: <52659D69.1020609@candelatech.com>
-Date: Tue, 22 Oct 2013 10:19:14 -0400
-Message-ID: <357.1382451554@obiwan.sandelman.ca>
+Received: from fieldses.org ([174.143.236.118]:59339 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755472Ab3JJPPI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Oct 2013 11:15:08 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/4] svcrpc: handle some gssproxy encoding errors
+Date: Thu, 10 Oct 2013 11:15:02 -0400
+Message-Id: <1381418103-3852-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1381418103-3852-1-git-send-email-bfields@redhat.com>
+References: <1381418103-3852-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Ben Greear <greearb@candelatech.com> wrote:
-    > From my own app's logs:
+Reported-by: Andi Kleen <andi@firstfloor.org>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/auth_gss/gss_rpc_xdr.c |   29 ++++++++++++++---------------
+ 1 file changed, 14 insertions(+), 15 deletions(-)
 
-    > # mount -t nfs [4001:1::1:1]:/vol/vol1 /mnt/lf/RDnfse11c0 -o
-    > srcaddr=4001:1::1:201,vers=3 # requested NFS version or transport
-    > protocol is not supported
-
-    > When this problem happens, I do not see any network traffic when trying
-    > to mount.
-
-That sounds like the error that one would get when *mount* was compiled with
-the v6-incompatible sunrpc library rather than tirpc.
-
+diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+index f0f78c5..1ec19f6 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
++++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+@@ -559,6 +559,8 @@ static int gssx_enc_cred(struct xdr_stream *xdr,
+ 
+ 	/* cred->elements */
+ 	err = dummy_enc_credel_array(xdr, &cred->elements);
++	if (err)
++		return err;
+ 
+ 	/* cred->cred_handle_reference */
+ 	err = gssx_enc_buffer(xdr, &cred->cred_handle_reference);
+@@ -740,22 +742,20 @@ void gssx_enc_accept_sec_context(struct rpc_rqst *req,
+ 		goto done;
+ 
+ 	/* arg->context_handle */
+-	if (arg->context_handle) {
++	if (arg->context_handle)
+ 		err = gssx_enc_ctx(xdr, arg->context_handle);
+-		if (err)
+-			goto done;
+-	} else {
++	else
+ 		err = gssx_enc_bool(xdr, 0);
+-	}
++	if (err)
++		goto done;
+ 
+ 	/* arg->cred_handle */
+-	if (arg->cred_handle) {
++	if (arg->cred_handle)
+ 		err = gssx_enc_cred(xdr, arg->cred_handle);
+-		if (err)
+-			goto done;
+-	} else {
++	else
+ 		err = gssx_enc_bool(xdr, 0);
+-	}
++	if (err)
++		goto done;
+ 
+ 	/* arg->input_token */
+ 	err = gssx_enc_in_token(xdr, &arg->input_token);
+@@ -763,13 +763,12 @@ void gssx_enc_accept_sec_context(struct rpc_rqst *req,
+ 		goto done;
+ 
+ 	/* arg->input_cb */
+-	if (arg->input_cb) {
++	if (arg->input_cb)
+ 		err = gssx_enc_cb(xdr, arg->input_cb);
+-		if (err)
+-			goto done;
+-	} else {
++	else
+ 		err = gssx_enc_bool(xdr, 0);
+-	}
++	if (err)
++		goto done;
+ 
+ 	err = gssx_enc_bool(xdr, arg->ret_deleg_cred);
+ 	if (err)
 -- 
-]               Never tell me the odds!                 | ipv6 mesh networks [ 
-]   Michael Richardson, Sandelman Software Works        | network architect  [ 
-]     mcr@sandelman.ca  http://www.sandelman.ca/        |   ruby on rails    [ 
-	
+1.7.9.5
+
