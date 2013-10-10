@@ -1,159 +1,193 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailgw02.dd24.net ([193.46.215.43]:34955 "EHLO
-	mailgw02.dd24.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754507Ab3J1A1z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Oct 2013 20:27:55 -0400
-Message-ID: <1382920068.6932.46.camel@heisenberg.scientia.net>
-Subject: Re: XATTRs in NFS?
-From: Christoph Anton Mitterer <calestyo@scientia.net>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-        Dr Fields James Bruce <bfields@fieldses.org>
-Date: Mon, 28 Oct 2013 01:27:48 +0100
-In-Reply-To: <8DB0D7A2-BA2A-4001-A01C-D498C777B243@netapp.com>
-References: <1382560643.6924.12.camel@heisenberg.scientia.net>
-	 <EFB2CFAD-FACC-401D-BF0C-1C573B23A873@netapp.com>
-	 <1382624000.6907.8.camel@heisenberg.scientia.net>
-	 <E0F4C952-02DE-4778-A779-FB7AE111EC46@netapp.com>
-	 <1382630468.6907.58.camel@heisenberg.scientia.net>
-	 <625CAA34-BD6C-4283-86D0-3F8B460D54D0@netapp.com>
-	 <1382635350.6907.83.camel@heisenberg.scientia.net>
-	 <20131025140846.GB20497@fieldses.org>
-	 <1382807547.29041.12.camel@heisenberg.scientia.net>
-	 <20131027191512.GA31322@fieldses.org>
-	 <1382911068.6932.20.camel@heisenberg.scientia.net>
-	 <8DB0D7A2-BA2A-4001-A01C-D498C777B243@netapp.com>
-Content-Type: multipart/signed; micalg="sha-512";
-	protocol="application/x-pkcs7-signature";
-	boundary="=-UAGSyhOkyZEkcaosMhnn"
-Mime-Version: 1.0
+Received: from smtp-o-1.desy.de ([131.169.56.154]:55061 "EHLO smtp-o-1.desy.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751948Ab3JJPL4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Oct 2013 11:11:56 -0400
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 5430C280930
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2013 17:11:55 +0200 (CEST)
+Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 8AD1A13E99
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2013 17:11:52 +0200 (MEST)
+Date: Thu, 10 Oct 2013 17:11:52 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Weston Andros Adamson <dros@netapp.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>,
+        Andy Adamson <William.Adamson@netapp.com>,
+        Steve Dickson <steved@redhat.com>
+Message-ID: <1777495627.591249.1381417912773.JavaMail.zimbra@desy.de>
+In-Reply-To: <1732606875.591017.1381416532236.JavaMail.zimbra@desy.de>
+References: <1667669326.580689.1381351712928.JavaMail.zimbra@desy.de> <1232423514.586176.1381399016371.JavaMail.zimbra@desy.de> <4A5C5668-CBB0-444B-A726-BF6E0D22866B@netapp.com> <FB2C39E8-D3A1-46E4-83A8-1EC9D5EB327B@netapp.com> <1732606875.591017.1381416532236.JavaMail.zimbra@desy.de>
+Subject: Re: DoS with NFSv4.1 client
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
---=-UAGSyhOkyZEkcaosMhnn
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
 
-On Mon, 2013-10-28 at 00:17 +0000, Myklebust, Trond wrote:
-> ...and if the checksums are any good, then all you need to do to
-> substitute a database is to realise that a good data checksum is
-> invariant under renames.
+This is probably a question to IEFT working group, but anyway.
+If my layout has a flag 'return-on-close' and open state id
+is not valid any more should client expect layout to be still valid?
 
-Don't quite see what you mean...
+Tigran.
 
-Sure the checksums stay the same, but consider you have many millions of
-files, and you moved them around and thus the paths in the DB are
-incorrect... verifying the files will become very much a pain in the
-a**, especially when multiple files don't verify anymore.
-
-
-Or what if you have many small similar files, where errors could lead to
-a checksum that was a correct one for another file,... when the paths
-are no longer valid you cannot know if this was a correct file or not.
-
-
-Cheers,
-Chris.
-
-
---=-UAGSyhOkyZEkcaosMhnn
-Content-Type: application/x-pkcs7-signature; name="smime.p7s"
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Transfer-Encoding: base64
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExDzANBglghkgBZQMEAgMFADCABgkqhkiG9w0BBwEAAKCCEP4w
-ggV1MIIDXaADAgECAgMBAYIwDQYJKoZIhvcNAQEFBQAwVDEUMBIGA1UEChMLQ0FjZXJ0IEluYy4x
-HjAcBgNVBAsTFWh0dHA6Ly93d3cuQ0FjZXJ0Lm9yZzEcMBoGA1UEAxMTQ0FjZXJ0IENsYXNzIDMg
-Um9vdDAeFw0xMjA3MjMxNDU2NDVaFw0xNDA3MjMxNDU2NDVaMHwxITAfBgNVBAMTGENocmlzdG9w
-aCBBbnRvbiBNaXR0ZXJlcjEkMCIGCSqGSIb3DQEJARYVY2FsZXN0eW9Ac2NpZW50aWEubmV0MTEw
-LwYJKoZIhvcNAQkBFiJtYWlsQGNocmlzdG9waC5hbnRvbi5taXR0ZXJlci5uYW1lMIIBIjANBgkq
-hkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqv+F91K5vyBwiGFMqj6wTehWdqZnfFeXqT8g5b3qrXWL
-ywSzcoD9xtyoRqAgOCX+PSmBpm6pPhe31VnBtc3HcBMe4rSico9/Z2H9h1l6IMVEnyhabWzoKbE3
-BFrsYJGthJCbhK072G8AhCk+5p+L+knLhQXN0Ph7MJbdY26o3M4vjsXFNbJL8TOYxo80cGD1LIh2
-SUZFqaIG24TVmTW8F4jD5Z9/NEwJa8kQK+VBNHUntXYNah4Reh0jSsGnq9Pg3Hf4KC+F0IR8QgBm
-SnwitMFUX9UnhLEvRQxjDI1tm+h6RxfjlV7moI68Ulh7bcdPhM/z2Q16XmaY12rc85pSRQIDAQAB
-o4IBJjCCASIwDAYDVR0TAQH/BAIwADBWBglghkgBhvhCAQ0ESRZHVG8gZ2V0IHlvdXIgb3duIGNl
-cnRpZmljYXRlIGZvciBGUkVFIGhlYWQgb3ZlciB0byBodHRwOi8vd3d3LkNBY2VydC5vcmcwQAYD
-VR0lBDkwNwYIKwYBBQUHAwQGCCsGAQUFBwMCBgorBgEEAYI3CgMEBgorBgEEAYI3CgMDBglghkgB
-hvhCBAEwMgYIKwYBBQUHAQEEJjAkMCIGCCsGAQUFBzABhhZodHRwOi8vb2NzcC5jYWNlcnQub3Jn
-MEQGA1UdEQQ9MDuBFWNhbGVzdHlvQHNjaWVudGlhLm5ldIEibWFpbEBjaHJpc3RvcGguYW50b24u
-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
-+G8T/HNZ92ZCdB6K4/jc0m+YnMtHmJVABfvpAgMBAAGjgb8wgbwwDwYDVR0TAQH/BAUwAwEB/zBd
-BggrBgEFBQcBAQRRME8wIwYIKwYBBQUHMAGGF2h0dHA6Ly9vY3NwLkNBY2VydC5vcmcvMCgGCCsG
-AQUFBzAChhxodHRwOi8vd3d3LkNBY2VydC5vcmcvY2EuY3J0MEoGA1UdIARDMEEwPwYIKwYBBAGB
-kEowMzAxBggrBgEFBQcCARYlaHR0cDovL3d3dy5DQWNlcnQub3JnL2luZGV4LnBocD9pZD0xMDAN
-BgkqhkiG9w0BAQQFAAOCAgEAfwiIodoaUEnaifuhCHLzivcexDq0eVsgMLFF3sJd02Vp8cJdVFQ8
-hV+5e0KRwpn9G1Gbq0aloRBTnm2IrHNuLDOm8PSe4HXBPohFqeFmQ/5WWtF6QXj3QNpKOvELW6W7
-FgbmwueTuYVNl0+xHjhDgO+bDYzvuKdgAIdXfR5EHMsj75s8mZ2vtSkcRXkWlk0nbfEcbMPCVWSz
-vBTi86QfHjL8JxUFz90urj6CYXvwIRAY9kTqUzn53NCaIODGu+C7Wk/EmcgHvbW9otsuYg1CNEG8
-/4uK9VEiqogwAOKw1Ly+ZbrVA1d5m+jcyE34UO2RpVIooqz7Nlg+6ZQrkVCHG9Ze1ozM9w8QDFJO
-0BZh5eUKbL8Xx3JGV5yY9WxgY3pvXrlOL8i5ubtqhbyYDe35PpeENJSuAK+h5eeSbk698+LZFItc
-0usBbKAXpS0Q65x6Sr297s797SJAq3A4iPUKh2rCqwVgyUgF2lPB3kR3arPzPDztgLymOEopJF/+
-WTubJXpWYwBkuV2kYn1XNk+tg+8fklOgjndX3eVhET0jAJBMPPqjYJMEo6819g5qj09KYKeFBWxG
-oY/0x3bjoVlX93GyxG4UXG1tQWbfG5Ox1ADD7svPPD0hgKlfY2X83eBfpPQr8IVxQdRnJfsasZeu
-1pmCE0HSbqUbmSeA5wupqAAxggLtMIIC6QIBATBbMFQxFDASBgNVBAoTC0NBY2VydCBJbmMuMR4w
-HAYDVQQLExVodHRwOi8vd3d3LkNBY2VydC5vcmcxHDAaBgNVBAMTE0NBY2VydCBDbGFzcyAzIFJv
-b3QCAwEBgjANBglghkgBZQMEAgMFAKCCAWMwGAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkq
-hkiG9w0BCQUxDxcNMTMxMDI4MDAyNzQ4WjBPBgkqhkiG9w0BCQQxQgRA9xdKi53Y72sdFDDlMcvu
-Qk+5WfqC7qQQHzX/5S9y0gnmEoFh7MYZqECfuZjbvpefq7CkBR8y4AZlc6yV5f8qtzBqBgkrBgEE
-AYI3EAQxXTBbMFQxFDASBgNVBAoTC0NBY2VydCBJbmMuMR4wHAYDVQQLExVodHRwOi8vd3d3LkNB
-Y2VydC5vcmcxHDAaBgNVBAMTE0NBY2VydCBDbGFzcyAzIFJvb3QCAwEBgjBsBgsqhkiG9w0BCRAC
-CzFdoFswVDEUMBIGA1UEChMLQ0FjZXJ0IEluYy4xHjAcBgNVBAsTFWh0dHA6Ly93d3cuQ0FjZXJ0
-Lm9yZzEcMBoGA1UEAxMTQ0FjZXJ0IENsYXNzIDMgUm9vdAIDAQGCMA0GCSqGSIb3DQEBAQUABIIB
-AKDoBRtYUrjQ7kraeY9BhUK/xCMDK4uqJD0szzALaj8PrfcjxhdC6ZJZxtgMAeSGapdyruW1Yd5m
-cD5MewqN+n3gG2kvQJTVjurU8z06P/7hEq9D0byYjOsrkae0+VB3u1qf7iD4zZbBs/NpEDPckz4a
-uf+R8+35ZKv5TMYOaYTOciDuCXomI9KA+cw/b1zY7aAcgq5pEmRC4NdVYoX6fmlBw2wr7n4fx+N6
-gKcM2MsOwYyP71xnN6QZVyiHxxIwG00034LvpX2BKrHYudZUYzoTqF2/3AaqCJPhPl8KHYfJpaYy
-PC7/qFc0353NiqoEwZ1n1JGr1mD8mttAGmW07vgAAAAAAAA=
-
-
---=-UAGSyhOkyZEkcaosMhnn--
-
+----- Original Message -----
+> From: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
+> To: "Weston Andros Adamson" <dros@netapp.com>
+> Cc: "linux-nfs" <linux-nfs@vger.kernel.org>, "Andy Adamson" <William.Adamson@netapp.com>, "Steve Dickson"
+> <steved@redhat.com>
+> Sent: Thursday, October 10, 2013 4:48:52 PM
+> Subject: Re: DoS with NFSv4.1 client
+> 
+> 
+> 
+> ----- Original Message -----
+> > From: "Weston Andros Adamson" <dros@netapp.com>
+> > To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
+> > Cc: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>, "Andy
+> > Adamson" <William.Adamson@netapp.com>, "Steve
+> > Dickson" <steved@redhat.com>
+> > Sent: Thursday, October 10, 2013 4:35:25 PM
+> > Subject: Re: DoS with NFSv4.1 client
+> > 
+> > Well, it'd be nice not to loop forever, but my question remains, is this
+> > due
+> > to a server bug (the DS not knowing about new stateid from MDS)?
+> > 
+> 
+> Up to now, we have pushed open state id to the DS only on LAYOUTGET.
+> This have to be changed, as the behaviour is not spec compliant.
+> 
+> Tigran.
+> 
+> > -dros
+> > 
+> > On Oct 10, 2013, at 10:14 AM, Weston Andros Adamson <dros@netapp.com>
+> > wrote:
+> > 
+> > > So is this a server bug? It seems like the client is behaving
+> > > correctly...
+> > > 
+> > > -dros
+> > > 
+> > > On Oct 10, 2013, at 5:56 AM, "Mkrtchyan, Tigran"
+> > > <tigran.mkrtchyan@desy.de>
+> > > wrote:
+> > > 
+> > >> 
+> > >> 
+> > >> Today we was 'luck' to have such situation at day time.
+> > >> Here is what happens:
+> > >> 
+> > >> The client sends an OPEN and gets an open state id.
+> > >> This is followed by LAYOUTGET ... and READ to DS.
+> > >> At some point, server returns back BAD_STATEID.
+> > >> This triggers client to issue a new OPEN and use
+> > >> new open stateid with READ request to DS. As new
+> > >> stateid is not known to DS, it keeps returning
+> > >> BAD_STATEID and becomes an infinite loop.
+> > >> 
+> > >> Regards,
+> > >>  Tigran.
+> > >> 
+> > >> 
+> > >> 
+> > >> ----- Original Message -----
+> > >>> From: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
+> > >>> To: linux-nfs@vger.kernel.org
+> > >>> Cc: "Andy Adamson" <william.adamson@netapp.com>, "Steve Dickson"
+> > >>> <steved@redhat.com>
+> > >>> Sent: Wednesday, October 9, 2013 10:48:32 PM
+> > >>> Subject: DoS with NFSv4.1 client
+> > >>> 
+> > >>> 
+> > >>> Hi,
+> > >>> 
+> > >>> last night we got a DoS attack with one of the NFS clients.
+> > >>> The farm node, which was accessing data with pNFS,
+> > >>> went mad and have tried to kill dCache NFS server. As usually
+> > >>> this have happened over night and we was not able to
+> > >>> get a network traffic or bump the debug level.
+> > >>> 
+> > >>> The symptoms are:
+> > >>> 
+> > >>> client starts to bombard the MDS with OPEN requests. As we see
+> > >>> state created on the server side, the requests was processed by
+> > >>> server. Nevertheless, for some reason, client did not like it. Here
+> > >>> is the result of mountstats:
+> > >>> 
+> > >>> OPEN:
+> > >>> 	17087065 ops (99%) 	1 retrans (0%) 	0 major timeouts
+> > >>> 	avg bytes sent per op: 356	avg bytes received per op: 455
+> > >>> 	backlog wait: 0.014707 	RTT: 4.535704 	total execute time: 4.574094
+> > >>> 	(milliseconds)
+> > >>> CLOSE:
+> > >>> 	290 ops (0%) 	0 retrans (0%) 	0 major timeouts
+> > >>> 	avg bytes sent per op: 247	avg bytes received per op: 173
+> > >>> 	backlog wait: 308.827586 	RTT: 1748.479310 	total execute time:
+> > >>> 	2057.365517
+> > >>> 	(milliseconds)
+> > >>> 
+> > >>> 
+> > >>> As you can see there is a quite a big difference between number of open
+> > >>> and
+> > >>> close requests.
+> > >>> The same picture we can see on the server side as well:
+> > >>> 
+> > >>> NFSServerV41 Stats:                   average±stderr(ns)       min(ns)
+> > >>> max(ns)            Sampes
+> > >>> DESTROY_SESSION                          26056±4511.89        13000
+> > >>> 97000                17
+> > >>> OPEN                                    1197297±  0.00       816000
+> > >>> 31924558000          54398533
+> > >>> RESTOREFH                                     0±  0.00            0
+> > >>> 25018778000          54398533
+> > >>> SEQUENCE                                   1000±  0.00         1000
+> > >>> 26066722000          55601046
+> > >>> LOOKUP                                  4607959±  0.00       375000
+> > >>> 26977455000             32118
+> > >>> GETDEVICEINFO                             13158±100.88         4000
+> > >>> 655000             11378
+> > >>> CLOSE                                  16236211±  0.00         5000
+> > >>> 21021819000             20420
+> > >>> LAYOUTGET                             271736361±  0.00     10003000
+> > >>> 68414723000             21095
+> > >>> 
+> > >>> The last column is the number of requests.
+> > >>> 
+> > >>> This is with RHEL6.4 as the client. By looking at the code,
+> > >>> I can see a loop at nfs4proc.c#nfs4_do_open() which can be
+> > >>> the cause of the problem. Nevertheless, I can't
+> > >>> fine any reason why this look turned into an 'infinite' one.
+> > >>> 
+> > >>> At the and our server ran out of memory and we have returned
+> > >>> NFSERR_SERVERFAULT to the client. This triggered client to
+> > >>> reestablish the session and all open state ids was
+> > >>> invalidated and cleaned up.
+> > >>> 
+> > >>> I am still trying to reproduce this behavior (on client
+> > >>> and server) and any hint is welcome.
+> > >>> 
+> > >>> Tigran.
+> > >>> --
+> > >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > >>> the body of a message to majordomo@vger.kernel.org
+> > >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > >>> 
+> > >> --
+> > >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > >> the body of a message to majordomo@vger.kernel.org
+> > >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > > 
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
