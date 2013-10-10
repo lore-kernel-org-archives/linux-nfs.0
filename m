@@ -1,66 +1,167 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:11350 "EHLO mx12.netapp.com"
+Received: from smtp-o-3.desy.de ([131.169.56.156]:41640 "EHLO smtp-o-3.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753327Ab3J2N2V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Oct 2013 09:28:21 -0400
-Message-ID: <526FB7F0.6010401@netapp.com>
-Date: Tue, 29 Oct 2013 09:28:16 -0400
-From: Anna Schumaker <bjschuma@netapp.com>
+	id S1754219Ab3JJOsy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Oct 2013 10:48:54 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 087EB28095C
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2013 16:48:53 +0200 (CEST)
+Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id EC90210F2
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2013 16:48:52 +0200 (MEST)
+Date: Thu, 10 Oct 2013 16:48:52 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Weston Andros Adamson <dros@netapp.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>,
+        Andy Adamson <William.Adamson@netapp.com>,
+        Steve Dickson <steved@redhat.com>
+Message-ID: <1732606875.591017.1381416532236.JavaMail.zimbra@desy.de>
+In-Reply-To: <FB2C39E8-D3A1-46E4-83A8-1EC9D5EB327B@netapp.com>
+References: <1667669326.580689.1381351712928.JavaMail.zimbra@desy.de> <1232423514.586176.1381399016371.JavaMail.zimbra@desy.de> <4A5C5668-CBB0-444B-A726-BF6E0D22866B@netapp.com> <FB2C39E8-D3A1-46E4-83A8-1EC9D5EB327B@netapp.com>
+Subject: Re: DoS with NFSv4.1 client
 MIME-Version: 1.0
-To: "Myklebust, Trond" <trond.myklebust@netapp.com>
-CC: "Schumaker, Bryan" <bryan.schumaker@netapp.com>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-        Dr Fields James Bruce <bfields@fieldses.org>
-Subject: Re: [PATCH 3/4] NFSD: Add WRITE_PLUS support for hole punches
-References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com> <1382972247-1108-4-git-send-email-bjschuma@netapp.com> <20131028214030.GO31322@fieldses.org> <526FAF30.3060502@netapp.com> <20131029130649.GA29606@fieldses.org> <C034E301-5FCB-4CD1-B01B-1BE5AF6087C0@netapp.com>
-In-Reply-To: <C034E301-5FCB-4CD1-B01B-1BE5AF6087C0@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue 29 Oct 2013 09:23:19 AM EDT, Myklebust, Trond wrote:
->
-> On Oct 29, 2013, at 9:06 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
->
->> On Tue, Oct 29, 2013 at 08:50:56AM -0400, Anna Schumaker wrote:
->>> On Mon 28 Oct 2013 05:40:30 PM EDT, J. Bruce Fields wrote:
->>>> On Mon, Oct 28, 2013 at 10:57:25AM -0400, Anna Schumaker wrote:
->>>>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->>>>> index 419572f..3210c6f 100644
->>>>> --- a/fs/nfsd/nfs4proc.c
->>>>> +++ b/fs/nfsd/nfs4proc.c
->>>>> @@ -1028,6 +1028,42 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>>>> 	return status;
->>>>> }
->>>>>
->>>>> +static __be32
->>>>> +nfsd4_write_plus_hole(struct file *file, struct nfsd4_write_plus *writeplus,
->>>>> +		      struct net *net)
->>>>> +{
->>>>> +	__be32 status;
->>>>> +
->>>>> +	status = nfsd4_vfs_fallocate(file, writeplus->wp_allocated,
->>>>> +				writeplus->wp_offset, writeplus->wp_length);
->>>>> +	if (status == nfs_ok) {
->>>>> +		writeplus->wp_res.wr_stid = NULL;
->>>>> +		writeplus->wp_res.wr_bytes_written = writeplus->wp_length;
->>>>> +		writeplus->wp_res.wr_stable_how = NFS_FILE_SYNC;
->>>>
->>>> Do we need to sync?
->>>
->>> I did the sync in nfsd4_vfs_fallocate (below), but I can move it if
->>> that would make more sense.
->>
->> What I meant was--why are we doing a sync at all, instead of returning
->> NFS_UNSTABLE and making the client commit?
->
-> What if the client specifies FILE_SYNC? The spec doesn't allow the server to return UNSTABLE in that situation.
-
-I don't have that check in there either, but I do think it would be 
-useful if the client were prepared to handle an UNSTABLE reply from the 
-server...
-
->
-> Trond
 
 
+----- Original Message -----
+> From: "Weston Andros Adamson" <dros@netapp.com>
+> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
+> Cc: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>, "Andy Adamson" <William.Adamson@netapp.com>, "Steve
+> Dickson" <steved@redhat.com>
+> Sent: Thursday, October 10, 2013 4:35:25 PM
+> Subject: Re: DoS with NFSv4.1 client
+> 
+> Well, it'd be nice not to loop forever, but my question remains, is this due
+> to a server bug (the DS not knowing about new stateid from MDS)?
+> 
+
+Up to now, we have pushed open state id to the DS only on LAYOUTGET.
+This have to be changed, as the behaviour is not spec compliant.
+
+Tigran.
+
+> -dros
+> 
+> On Oct 10, 2013, at 10:14 AM, Weston Andros Adamson <dros@netapp.com> wrote:
+> 
+> > So is this a server bug? It seems like the client is behaving correctly...
+> > 
+> > -dros
+> > 
+> > On Oct 10, 2013, at 5:56 AM, "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+> > wrote:
+> > 
+> >> 
+> >> 
+> >> Today we was 'luck' to have such situation at day time.
+> >> Here is what happens:
+> >> 
+> >> The client sends an OPEN and gets an open state id.
+> >> This is followed by LAYOUTGET ... and READ to DS.
+> >> At some point, server returns back BAD_STATEID.
+> >> This triggers client to issue a new OPEN and use
+> >> new open stateid with READ request to DS. As new
+> >> stateid is not known to DS, it keeps returning
+> >> BAD_STATEID and becomes an infinite loop.
+> >> 
+> >> Regards,
+> >>  Tigran.
+> >> 
+> >> 
+> >> 
+> >> ----- Original Message -----
+> >>> From: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
+> >>> To: linux-nfs@vger.kernel.org
+> >>> Cc: "Andy Adamson" <william.adamson@netapp.com>, "Steve Dickson"
+> >>> <steved@redhat.com>
+> >>> Sent: Wednesday, October 9, 2013 10:48:32 PM
+> >>> Subject: DoS with NFSv4.1 client
+> >>> 
+> >>> 
+> >>> Hi,
+> >>> 
+> >>> last night we got a DoS attack with one of the NFS clients.
+> >>> The farm node, which was accessing data with pNFS,
+> >>> went mad and have tried to kill dCache NFS server. As usually
+> >>> this have happened over night and we was not able to
+> >>> get a network traffic or bump the debug level.
+> >>> 
+> >>> The symptoms are:
+> >>> 
+> >>> client starts to bombard the MDS with OPEN requests. As we see
+> >>> state created on the server side, the requests was processed by
+> >>> server. Nevertheless, for some reason, client did not like it. Here
+> >>> is the result of mountstats:
+> >>> 
+> >>> OPEN:
+> >>> 	17087065 ops (99%) 	1 retrans (0%) 	0 major timeouts
+> >>> 	avg bytes sent per op: 356	avg bytes received per op: 455
+> >>> 	backlog wait: 0.014707 	RTT: 4.535704 	total execute time: 4.574094
+> >>> 	(milliseconds)
+> >>> CLOSE:
+> >>> 	290 ops (0%) 	0 retrans (0%) 	0 major timeouts
+> >>> 	avg bytes sent per op: 247	avg bytes received per op: 173
+> >>> 	backlog wait: 308.827586 	RTT: 1748.479310 	total execute time:
+> >>> 	2057.365517
+> >>> 	(milliseconds)
+> >>> 
+> >>> 
+> >>> As you can see there is a quite a big difference between number of open
+> >>> and
+> >>> close requests.
+> >>> The same picture we can see on the server side as well:
+> >>> 
+> >>> NFSServerV41 Stats:                   average±stderr(ns)       min(ns)
+> >>> max(ns)            Sampes
+> >>> DESTROY_SESSION                          26056±4511.89        13000
+> >>> 97000                17
+> >>> OPEN                                    1197297±  0.00       816000
+> >>> 31924558000          54398533
+> >>> RESTOREFH                                     0±  0.00            0
+> >>> 25018778000          54398533
+> >>> SEQUENCE                                   1000±  0.00         1000
+> >>> 26066722000          55601046
+> >>> LOOKUP                                  4607959±  0.00       375000
+> >>> 26977455000             32118
+> >>> GETDEVICEINFO                             13158±100.88         4000
+> >>> 655000             11378
+> >>> CLOSE                                  16236211±  0.00         5000
+> >>> 21021819000             20420
+> >>> LAYOUTGET                             271736361±  0.00     10003000
+> >>> 68414723000             21095
+> >>> 
+> >>> The last column is the number of requests.
+> >>> 
+> >>> This is with RHEL6.4 as the client. By looking at the code,
+> >>> I can see a loop at nfs4proc.c#nfs4_do_open() which can be
+> >>> the cause of the problem. Nevertheless, I can't
+> >>> fine any reason why this look turned into an 'infinite' one.
+> >>> 
+> >>> At the and our server ran out of memory and we have returned
+> >>> NFSERR_SERVERFAULT to the client. This triggered client to
+> >>> reestablish the session and all open state ids was
+> >>> invalidated and cleaned up.
+> >>> 
+> >>> I am still trying to reproduce this behavior (on client
+> >>> and server) and any hint is welcome.
+> >>> 
+> >>> Tigran.
+> >>> --
+> >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>> the body of a message to majordomo@vger.kernel.org
+> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >>> 
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
