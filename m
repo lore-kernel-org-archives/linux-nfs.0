@@ -1,86 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f46.google.com ([74.125.82.46]:52507 "EHLO
-	mail-wg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753728Ab3J2JjV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Oct 2013 05:39:21 -0400
-Received: by mail-wg0-f46.google.com with SMTP id m15so7931660wgh.25
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Oct 2013 02:39:20 -0700 (PDT)
-From: Benny Halevy <bhalevy@primarydata.com>
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@primarydata.com>
-Subject: [PATCH 3/7] nfsd4: properly hash delegation in nfs4_setlease
-Date: Tue, 29 Oct 2013 11:39:16 +0200
-Message-Id: <1383039556-27257-1-git-send-email-bhalevy@primarydata.com>
-In-Reply-To: <526F81DE.6060704@primarydata.com>
-References: <526F81DE.6060704@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:34338 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755827Ab3JJPfZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Oct 2013 11:35:25 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9AFZOKY008228
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2013 11:35:25 -0400
+Subject: Re: [PATCH 1/4] svcrpc: fix gss-proxy NULL dereference in some
+ error cases
+From: Simo Sorce <simo@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <1381418103-3852-2-git-send-email-bfields@redhat.com>
+References: <1381418103-3852-1-git-send-email-bfields@redhat.com>
+	 <1381418103-3852-2-git-send-email-bfields@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 10 Oct 2013 11:35:23 -0400
+Message-ID: <1381419323.2684.13.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-keep all accesses via dl_perclnt under the recall_lock.
+On Thu, 2013-10-10 at 11:15 -0400, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> We depend on the xdr decoder to set this pointer, but if we error out
+> before we decode this piece it could be left NULL.
+> 
+> I think this is probably tough to hit without a buggy gss-proxy.
+> 
+> Reported-by: Andi Kleen <andi@firstfloor.org>
+> Cc: Simo Sorce <simo@redhat.com>
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  net/sunrpc/auth_gss/gss_rpc_upcall.c |    3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+> index f1eb0d1..458f85e 100644
+> --- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
+> +++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+> @@ -298,7 +298,8 @@ int gssp_accept_sec_context_upcall(struct net *net,
+>  	if (res.context_handle) {
+>  		data->out_handle = rctxh.exported_context_token;
+>  		data->mech_oid.len = rctxh.mech.len;
+> -		memcpy(data->mech_oid.data, rctxh.mech.data,
+> +		if (rctxh.mech.data)
+> +			memcpy(data->mech_oid.data, rctxh.mech.data,
+>  						data->mech_oid.len);
+>  		client_name = rctxh.src_name.display_name;
+>  	}
 
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
----
- fs/nfsd/nfs4state.c | 17 ++++++++++++-----
- 1 file changed, 12 insertions(+), 5 deletions(-)
+Reviewed-by: Simo Sorce <simo@redhat.com>
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a66b0ad..405649f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -432,6 +432,13 @@ static void unhash_stid(struct nfs4_stid *s)
- 	s->sc_type = 0;
- }
- 
-+static void
-+hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
-+{
-+	list_add(&dp->dl_perfile, &fp->fi_delegations);
-+	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
-+}
-+
- /* Called under the state lock. */
- static void
- unhash_delegation(struct nfs4_delegation *dp)
-@@ -3035,17 +3042,17 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
- 	if (!fl)
- 		return -ENOMEM;
- 	fl->fl_file = find_readable_file(fp);
--	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
- 	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
- 	if (status) {
--		list_del_init(&dp->dl_perclnt);
- 		locks_free_lock(fl);
- 		return status;
- 	}
- 	fp->fi_lease = fl;
- 	fp->fi_deleg_file = get_file(fl->fl_file);
- 	atomic_set(&fp->fi_delegees, 1);
--	list_add(&dp->dl_perfile, &fp->fi_delegations);
-+	spin_lock(&recall_lock);
-+	hash_delegation_locked(dp, fp);
-+	spin_unlock(&recall_lock);
- 	return 0;
- }
- 
-@@ -3070,9 +3077,8 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
- 		goto out_free;
- 	}
- 	atomic_inc(&fp->fi_delegees);
--	list_add(&dp->dl_perfile, &fp->fi_delegations);
-+	hash_delegation_locked(dp, fp);
- 	spin_unlock(&recall_lock);
--	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
- 	return 0;
- out_free:
- 	put_nfs4_file(fp);
-@@ -4871,6 +4877,7 @@ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
- 	struct nfs4_delegation *dp, *next;
- 	u64 count = 0;
- 
-+	lockdep_assert_held(&recall_lock);
- 	list_for_each_entry_safe(dp, next, &clp->cl_delegations, dl_perclnt) {
- 		if (victims)
- 			list_move(&dp->dl_recall_lru, victims);
 -- 
-1.8.3.1
+Simo Sorce * Red Hat, Inc * New York
 
