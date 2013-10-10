@@ -1,55 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:44842 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756699Ab3JKVE0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Oct 2013 17:04:26 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
-Subject: Re: nfs4.1  pseudo filesystem
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20131011205836.GC22160@fieldses.org>
-Date: Fri, 11 Oct 2013 17:04:09 -0400
-Cc: Ming Lei <Ming.Lei@riverbed.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <0D65655C-7CC3-4003-A2D4-5D871F599701@oracle.com>
-References: <loom.20131010T232229-437@post.gmane.org> <20131011163022.GA22214@fieldses.org> <2CE44BD3DBCF9541909CCB42F11CA3921C774298@sfo1exc-mbxp08.nbttech.com> <20131011182942.GA22160@fieldses.org> <20131011205836.GC22160@fieldses.org>
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:65496 "EHLO
+	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751857Ab3JJWeq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Oct 2013 18:34:46 -0400
+Date: Fri, 11 Oct 2013 09:28:07 +1100
+From: Dave Chinner <david@fromorbit.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, Al Viro <viro@ZenIV.linux.org.uk>,
+        Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, sandeen@redhat.com
+Subject: Re: [PATCH 2/2] exportfs: fix 32-bit nfsd handling of 64-bit inode
+ numbers
+Message-ID: <20131010222807.GB4446@dastard>
+References: <20131002210736.GA20598@fieldses.org>
+ <1380749295-20854-1-git-send-email-bfields@redhat.com>
+ <1380749295-20854-2-git-send-email-bfields@redhat.com>
+ <20131004221216.GC18051@fieldses.org>
+ <20131004221522.GD18051@fieldses.org>
+ <20131008215656.GA3456@fieldses.org>
+ <20131009001631.GD4446@dastard>
+ <20131009145320.GD3456@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131009145320.GD3456@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Oct 11, 2013, at 4:58 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Fri, Oct 11, 2013 at 02:29:42PM -0400, J. Bruce Fields wrote:
->> On Fri, Oct 11, 2013 at 04:51:29PM +0000, Ming Lei wrote:
->>> I want to cherry-pick a few subdirectories under say /root, but I don't want to specifies all these mount directories one by one just like NFSv2/3.
->> 
->> Well, you're kind of stuck enumerating them whether as exports or bind
->> mounts.
->> 
->>> Does pseudo filesystem in kernel v3.11 work well enough?
->> 
->> But it should work anyway, yes.
->> 
->> Oh, wait, I see the problem: it doesn't work well if you're exporting
->> subdirectories and not full filesystems.  Unless you do something
->> special at the export points  (e.g. mount --bind them over themselves),
->> knfsd doesn't know when you've crossed an export point.
+On Wed, Oct 09, 2013 at 10:53:20AM -0400, J. Bruce Fields wrote:
+> On Wed, Oct 09, 2013 at 11:16:31AM +1100, Dave Chinner wrote:
+> > On Tue, Oct 08, 2013 at 05:56:56PM -0400, J. Bruce Fields wrote:
+> > > On Fri, Oct 04, 2013 at 06:15:22PM -0400, J. Bruce Fields wrote:
+> > > > On Fri, Oct 04, 2013 at 06:12:16PM -0400, bfields wrote:
+> > > > > On Wed, Oct 02, 2013 at 05:28:14PM -0400, J. Bruce Fields wrote:
+> > > > > > @@ -268,6 +268,16 @@ static int get_name(const struct path *path, char *name, struct dentry *child)
+> > > > > >  	if (!dir->i_fop)
+> > > > > >  		goto out;
+> > > > > >  	/*
+> > > > > > +	 * inode->i_ino is unsigned long, kstat->ino is u64, so the
+> > > > > > +	 * former would be insufficient on 32-bit hosts when the
+> > > > > > +	 * filesystem supports 64-bit inode numbers.  So we need to
+> > > > > > +	 * actually call ->getattr, not just read i_ino:
+> > > > > > +	 */
+> > > > > > +	error = vfs_getattr_nosec(path, &stat);
+> > > > > 
+> > > > > Doh, "path" here is for the parent....  The following works better!
+> > > > 
+> > > > By the way, I'm testing this with:
+> > > > 
+> > > > 	- create a bunch of nested subdirectories, use
+> > > > 	  name_to_fhandle_at to get a handle for the bottom directory.
+> > > > 	- echo 2 >/proc/sys/vm/drop_caches
+> > > > 	- open_by_fhandle_at on the filehandle
+> > > > 
+> > > > But this only actually exercises the reconnect path on the first run
+> > > > after boot.  Is there something obvious I'm missing here?
+> > > 
+> > > Looking at the code....  OK, most of the work of drop_caches is done by
+> > > shrink_slab_node, which doesn't actually try to free every single thing
+> > > that it could free--in particular, it won't try to free anything if it
+> > > thinks there are less than shrinker->batch_size (1024 in the
+> > > super_block->s_shrink case) objects to free.
 > 
-> I wonder if exportfs should be taught to mark export points as
-> junctions.  That might fix this kind of problem?
+> (Oops, sorry, that should have been "less than half of
+> shrinker->batch_size", see below.)
+> 
+> > That's not quite right. Yes, the shrinker won't be called if the
+> > calculated scan count is less than the batch size, but the left over
+> > is added back the shrinker scan count to carry over to the next call
+> > to the shrinker. Hence if you repeated call the shrinker on a small
+> > cache with a large batch size, it will eventually aggregate the scan
+> > counts to over the batch size and trim the cache....
+> 
+> No, in shrink_slab_count, we do this:
+> 
+> 	if (total_scan > max_pass * 2)
+> 		total_scan = max_pass * 2;
+> 
+> 	while (total_scan >= batch_size) {
+> 		...
+> 	}
+> 
+> where max_pass is the value returned from count_objects.  So as long as
+> count_objects returns less than half batch_size, nothing ever happens.
 
-A junction is always an unreadable directory.
+Ah, right - I hadn't considered what that does to small caches - the
+intended purpose of that is to limit the scan size when caches are
+extremely large and lots of deferral has occurred. Perhaps we need
+to consider the batch size in this? e.g.:
 
-We'd be better off with a generic "please upcall" bit for directories.  Then mountd could sort out what are junctions and what are legitimate exports, and the kernel would leave all the other directories in an export alone.
+	total_scan = min(total_scan, max(max_pass * 2, batch_size));
 
-> It might mean creating junctions never get cleaned up, which is ugly
-> though perhaps unlikely to be a serious problem in practice.
+Hence for small caches (max_pass <<< batch_size), it evaluates as:
 
+	total_scan = min(total_scan, batch_size);
+
+and hence once aggregation of repeated calls pushes us over the
+batch size we run the shrinker.
+
+For large caches (max_pass >>> batch_size), it evaluates as:
+
+	total_scan = min(total_scan, max_pass * 2);
+
+which gives us the same behaviour as the current code.
+
+I'll write up a patch to do this...
+
+Cheers,
+
+Dave.
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Dave Chinner
+david@fromorbit.com
