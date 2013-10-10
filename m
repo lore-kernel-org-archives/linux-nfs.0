@@ -1,68 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46146 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:52585 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751756Ab3J1VLT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Oct 2013 17:11:19 -0400
-Date: Mon, 28 Oct 2013 17:11:19 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/4] NFSD: Create nfs v4.2 decode ops
-Message-ID: <20131028211118.GN31322@fieldses.org>
-References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
- <1382972247-1108-3-git-send-email-bjschuma@netapp.com>
- <20131028205414.GL31322@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9534E7CEF@SACEXCMBX04-PRD.hq.netapp.com>
+	id S1754751Ab3JJOf0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Oct 2013 10:35:26 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
+        "Adamson, Andy" <William.Adamson@netapp.com>,
+        Steve Dickson <steved@redhat.com>
+Subject: Re: DoS with NFSv4.1 client
+Date: Thu, 10 Oct 2013 14:35:25 +0000
+Message-ID: <FB2C39E8-D3A1-46E4-83A8-1EC9D5EB327B@netapp.com>
+References: <1667669326.580689.1381351712928.JavaMail.zimbra@desy.de>
+ <1232423514.586176.1381399016371.JavaMail.zimbra@desy.de>
+ <4A5C5668-CBB0-444B-A726-BF6E0D22866B@netapp.com>
+In-Reply-To: <4A5C5668-CBB0-444B-A726-BF6E0D22866B@netapp.com>
+Content-Type: text/plain; charset="iso-8859-1"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9534E7CEF@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 28, 2013 at 08:59:59PM +0000, Myklebust, Trond wrote:
-> > -----Original Message-----
-> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
-> > Sent: Monday, October 28, 2013 4:54 PM
-> > To: Schumaker, Bryan
-> > Cc: linux-nfs@vger.kernel.org
-> > Subject: Re: [PATCH 2/4] NFSD: Create nfs v4.2 decode ops
-> > 
-> > On Mon, Oct 28, 2013 at 10:57:24AM -0400, Anna Schumaker wrote:
-> > > I'm doing this in a separate patch to keep from putting in a lot of
-> > > extra code when I go to add operations to the server for real.
-> > 
-> > Makes sense.
-> > 
-> > But: now we're duplicating the list of 4.0 op decoders 3 times and the
-> > 4.1 ops twice.  We'll never need different decoders for different
-> > minorversions (worst case we can test for the minorversion in the decoder if
-> > necessary).
-> > 
-> > I wonder if there's a better way to organize this....  Maybe something more
-> > like a single array with
-> > 
-> > 	[OP_SETCLIENTID] = {
-> > 		.op_decode = (nfsd4_dec)nfsd4_decode_access,
-> > 		.op_unsupported_since_version = 1,
-> > 	}
-> > 	...
-> > 	[OP_EXCHANGE_ID] = {
-> > 		.op_decode = (nfsd4_dec)nfsd4_decode_exchange_id,
-> > 		.op_first_supported_in_version = 1,
-> > 	}
-> > 
-> > ?
+Well, it'd be nice not to loop forever, but my question remains, is this due to a server bug (the DS not knowing about new stateid from MDS)?
+
+-dros
+
+On Oct 10, 2013, at 10:14 AM, Weston Andros Adamson <dros@netapp.com> wrote:
+
+> So is this a server bug? It seems like the client is behaving correctly...
 > 
-> Is that really necessary? Why not just have a single array and have nfsd4_decode_clientid itself check the minor version?
+> -dros
+> 
+> On Oct 10, 2013, at 5:56 AM, "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de> wrote:
+> 
+>> 
+>> 
+>> Today we was 'luck' to have such situation at day time.
+>> Here is what happens:
+>> 
+>> The client sends an OPEN and gets an open state id.
+>> This is followed by LAYOUTGET ... and READ to DS.
+>> At some point, server returns back BAD_STATEID.
+>> This triggers client to issue a new OPEN and use
+>> new open stateid with READ request to DS. As new 
+>> stateid is not known to DS, it keeps returning
+>> BAD_STATEID and becomes an infinite loop.
+>> 
+>> Regards,
+>>  Tigran.
+>> 
+>> 
+>> 
+>> ----- Original Message -----
+>>> From: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
+>>> To: linux-nfs@vger.kernel.org
+>>> Cc: "Andy Adamson" <william.adamson@netapp.com>, "Steve Dickson" <steved@redhat.com>
+>>> Sent: Wednesday, October 9, 2013 10:48:32 PM
+>>> Subject: DoS with NFSv4.1 client
+>>> 
+>>> 
+>>> Hi,
+>>> 
+>>> last night we got a DoS attack with one of the NFS clients.
+>>> The farm node, which was accessing data with pNFS,
+>>> went mad and have tried to kill dCache NFS server. As usually
+>>> this have happened over night and we was not able to
+>>> get a network traffic or bump the debug level.
+>>> 
+>>> The symptoms are:
+>>> 
+>>> client starts to bombard the MDS with OPEN requests. As we see
+>>> state created on the server side, the requests was processed by
+>>> server. Nevertheless, for some reason, client did not like it. Here
+>>> is the result of mountstats:
+>>> 
+>>> OPEN:
+>>> 	17087065 ops (99%) 	1 retrans (0%) 	0 major timeouts
+>>> 	avg bytes sent per op: 356	avg bytes received per op: 455
+>>> 	backlog wait: 0.014707 	RTT: 4.535704 	total execute time: 4.574094
+>>> 	(milliseconds)
+>>> CLOSE:
+>>> 	290 ops (0%) 	0 retrans (0%) 	0 major timeouts
+>>> 	avg bytes sent per op: 247	avg bytes received per op: 173
+>>> 	backlog wait: 308.827586 	RTT: 1748.479310 	total execute time: 2057.365517
+>>> 	(milliseconds)
+>>> 
+>>> 
+>>> As you can see there is a quite a big difference between number of open and
+>>> close requests.
+>>> The same picture we can see on the server side as well:
+>>> 
+>>> NFSServerV41 Stats:                   average±stderr(ns)       min(ns)
+>>> max(ns)            Sampes
+>>> DESTROY_SESSION                          26056±4511.89        13000
+>>> 97000                17
+>>> OPEN                                    1197297±  0.00       816000
+>>> 31924558000          54398533
+>>> RESTOREFH                                     0±  0.00            0
+>>> 25018778000          54398533
+>>> SEQUENCE                                   1000±  0.00         1000
+>>> 26066722000          55601046
+>>> LOOKUP                                  4607959±  0.00       375000
+>>> 26977455000             32118
+>>> GETDEVICEINFO                             13158±100.88         4000
+>>> 655000             11378
+>>> CLOSE                                  16236211±  0.00         5000
+>>> 21021819000             20420
+>>> LAYOUTGET                             271736361±  0.00     10003000
+>>> 68414723000             21095
+>>> 
+>>> The last column is the number of requests.
+>>> 
+>>> This is with RHEL6.4 as the client. By looking at the code,
+>>> I can see a loop at nfs4proc.c#nfs4_do_open() which can be
+>>> the cause of the problem. Nevertheless, I can't
+>>> fine any reason why this look turned into an 'infinite' one.
+>>> 
+>>> At the and our server ran out of memory and we have returned
+>>> NFSERR_SERVERFAULT to the client. This triggered client to
+>>> reestablish the session and all open state ids was
+>>> invalidated and cleaned up.
+>>> 
+>>> I am still trying to reproduce this behavior (on client
+>>> and server) and any hint is welcome.
+>>> 
+>>> Tigran.
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-That'd work too.  Every operation that's been introduced more recently
-than 4.0 or that's since been deprecated would need a version check at
-the top of its decoder.  That'd be a dozen or so.
-
-But the information has to go somewhere and perhaps that's more
-straightforward than sticking this in data....  OK, I'd be fine with
-that.
-
---b.
