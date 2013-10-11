@@ -1,50 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:60903 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932188Ab3J1O5c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Oct 2013 10:57:32 -0400
-From: Anna Schumaker <bjschuma@netapp.com>
-To: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/4] NFSD: Add support for WRITE_PLUS and SEEK
-Date: Mon, 28 Oct 2013 10:57:22 -0400
-Message-ID: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-yh0-f50.google.com ([209.85.213.50]:33587 "EHLO
+	mail-yh0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932190Ab3JKUWH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Oct 2013 16:22:07 -0400
+From: "Geyslan G. Bem" <geyslan@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, joe@perches.com,
+        kernel-br@googlegroups.com, "Geyslan G. Bem" <geyslan@gmail.com>
+Subject: [PATCH] nfs: Remove useless 'error' assignment
+Date: Fri, 11 Oct 2013 17:15:54 -0300
+Message-Id: <1381522554-22243-1-git-send-email-geyslan@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch series adds server support for the NFS v4.2 operations WRITE_PLUS
-and SEEK.  The first few patches fix up error codes to match the current draft
-of the spec and then add in the NFS v4.2 decode operations array so later
-patches can focus on only adding in the new operations.
+the 'error' variable was been assigned twice in vain.
 
-Patch 3 (Add WRITE_PLUS support for hole punches) exports the do_fallocate()
-function from fs/open.c.  Should this be its own patch submitted somewhere
-else?  Is there a better way to get into the VFS fallocate routines?
+Signed-off-by: Geyslan G. Bem <geyslan@gmail.com>
+---
+ fs/nfs/unlink.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-The final patch is not meant to be applied, and is only included as an example
-of what I did to add offload handling to the client.
-
-Questions, comments and thoughts are appreciated!
-
-Anna
-
-Anna Schumaker (4):
-  NFSD: Update error codes
-  NFSD: Create nfs v4.2 decode ops
-  NFSD: Add WRITE_PLUS support for hole punches
-  NFSD: Implement SEEK
-
- fs/nfsd/nfs4proc.c   |  89 +++++++++++++++++++++++++
- fs/nfsd/nfs4xdr.c    | 179 ++++++++++++++++++++++++++++++++++++++++++++++++++-
- fs/nfsd/nfsd.h       |   2 +-
- fs/nfsd/vfs.c        |  14 ++++
- fs/nfsd/vfs.h        |   1 +
- fs/nfsd/xdr4.h       |  39 +++++++++++
- fs/open.c            |   1 +
- include/linux/nfs4.h |  21 +++++-
- 8 files changed, 342 insertions(+), 4 deletions(-)
-
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index bb939ed..0c29b1b 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -493,7 +493,7 @@ nfs_sillyrename(struct inode *dir, struct dentry *dentry)
+ 	unsigned long long fileid;
+ 	struct dentry *sdentry;
+ 	struct rpc_task *task;
+-	int            error = -EIO;
++	int            error = -EBUSY;
+ 
+ 	dfprintk(VFS, "NFS: silly-rename(%s/%s, ct=%d)\n",
+ 		dentry->d_parent->d_name.name, dentry->d_name.name,
+@@ -503,7 +503,6 @@ nfs_sillyrename(struct inode *dir, struct dentry *dentry)
+ 	/*
+ 	 * We don't allow a dentry to be silly-renamed twice.
+ 	 */
+-	error = -EBUSY;
+ 	if (dentry->d_flags & DCACHE_NFSFS_RENAMED)
+ 		goto out;
+ 
 -- 
-1.8.4.1
+1.8.4
 
