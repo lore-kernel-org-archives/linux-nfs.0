@@ -1,98 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ea0-f181.google.com ([209.85.215.181]:55319 "EHLO
-	mail-ea0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752293Ab3JGPDg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Oct 2013 11:03:36 -0400
-Received: by mail-ea0-f181.google.com with SMTP id d10so3262321eaj.26
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Oct 2013 08:03:35 -0700 (PDT)
-Message-ID: <5252CD43.6000101@primarydata.com>
-Date: Mon, 07 Oct 2013 18:03:31 +0300
-From: Benny Halevy <bhalevy@primarydata.com>
-MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/4] SQUASHME: pnfsd: nfs4_find_create_layout_stateid
-References: <5251140B.4000203@primarydata.com> <1381045468-30670-1-git-send-email-bhalevy@primarydata.com> <20131006152916.GA8801@infradead.org>
-In-Reply-To: <20131006152916.GA8801@infradead.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from userp1040.oracle.com ([156.151.31.81]:44842 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756699Ab3JKVE0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Oct 2013 17:04:26 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: nfs4.1  pseudo filesystem
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20131011205836.GC22160@fieldses.org>
+Date: Fri, 11 Oct 2013 17:04:09 -0400
+Cc: Ming Lei <Ming.Lei@riverbed.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <0D65655C-7CC3-4003-A2D4-5D871F599701@oracle.com>
+References: <loom.20131010T232229-437@post.gmane.org> <20131011163022.GA22214@fieldses.org> <2CE44BD3DBCF9541909CCB42F11CA3921C774298@sfo1exc-mbxp08.nbttech.com> <20131011182942.GA22160@fieldses.org> <20131011205836.GC22160@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-10-06 18:29, Christoph Hellwig wrote:
->> + * If the layout state was found in cache, grab a reference count on it;
->> + * otherwise, allocate a new layout state if "do_alloc" is set.
+
+On Oct 11, 2013, at 4:58 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Fri, Oct 11, 2013 at 02:29:42PM -0400, J. Bruce Fields wrote:
+>> On Fri, Oct 11, 2013 at 04:51:29PM +0000, Ming Lei wrote:
+>>> I want to cherry-pick a few subdirectories under say /root, but I don't want to specifies all these mount directories one by one just like NFSv2/3.
+>> 
+>> Well, you're kind of stuck enumerating them whether as exports or bind
+>> mounts.
+>> 
+>>> Does pseudo filesystem in kernel v3.11 work well enough?
+>> 
+>> But it should work anyway, yes.
+>> 
+>> Oh, wait, I see the problem: it doesn't work well if you're exporting
+>> subdirectories and not full filesystems.  Unless you do something
+>> special at the export points  (e.g. mount --bind them over themselves),
+>> knfsd doesn't know when you've crossed an export point.
 > 
-> There is no do_alloc parameter to the function.
-> 
+> I wonder if exportfs should be taught to mark export points as
+> junctions.  That might fix this kind of problem?
 
-Yup. Silly copy+paste...
+A junction is always an unreadable directory.
 
->> + *
->> + * Called with the state_lock held
->> + * Returns zero and the layout state in *lsp, or error.
->> + */
->> +static __be32
->> +nfs4_find_create_layout_stateid(struct nfs4_client *clp, struct nfs4_file *fp,
->> +				stateid_t *stateid, unsigned char typemask,
->> +				struct nfs4_layout_state **lsp)
->> +{
->> +	struct nfs4_layout_state *ls = NULL;
->> +	__be32 status = 0;
->> +	struct nfs4_stid *stid;
->> +
->> +	dprintk("--> %s clp %p fp %p operation stateid=" STATEID_FMT "\n",
->> +		__func__, clp, fp, STATEID_VAL(stateid));
->> +
->> +	nfs4_assert_state_locked();
->> +	status = nfsd4_lookup_stateid(stateid, typemask, &stid, true,
->> +				      net_generic(clp->net, nfsd_net_id));
->> +	if (status)
->> +		goto out;
->> +
->> +	/* Is this the first use of this layout ? */
->> +	if (stid->sc_type != NFS4_LAYOUT_STID) {
->> +		ls = alloc_init_layout_state(clp, fp, stateid);
->> +		if (!ls) {
->> +			status = nfserr_jukebox;
->> +			goto out;
->> +		}
->> +	} else {
->> +		ls = container_of(stid, struct nfs4_layout_state, ls_stid);
->> +
->> +		/* BAD STATEID */
->> +		if (stateid->si_generation > ls->ls_stid.sc_stateid.si_generation) {
->> +			status = nfserr_bad_stateid;
->> +			goto out;
->> +		}
->> +		get_layout_state(ls);
->> +	}
->> +	status = 0;
->> +
->> +	dprintk("%s: layout stateid=" STATEID_FMT " ref=%d\n", __func__,
->> +		STATEID_VAL(&ls->ls_stid.sc_stateid), atomic_read(&ls->ls_ref.refcount));
->> +
->> +	*lsp = ls;
->> +out:
->> +	dprintk("<-- %s status %d\n", __func__, htonl(status));
->> +
->> +	return status;
->> +}
-> 
-> Shouldn't there be a corresponding removal of the alloc code from
-> nfs4_process_layout_stateid?
+We'd be better off with a generic "please upcall" bit for directories.  Then mountd could sort out what are junctions and what are legitimate exports, and the kernel would leave all the other directories in an export alone.
 
-Yes, the corresponding code in nfs4_process_layout_stateid
-can and should be removed.
+> It might mean creating junctions never get cleaned up, which is ugly
+> though perhaps unlikely to be a serious problem in practice.
 
-I'll resend a new version of this patch.
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Thanks!
 
-Benny
 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
