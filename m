@@ -1,44 +1,27 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:35016 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751444Ab3JURKU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Oct 2013 13:10:20 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 0/5] Clean up open CLAIM_PREVIOUS code path
-Date: Mon, 21 Oct 2013 13:10:09 -0400
-Message-ID: <1382375414-5854-1-git-send-email-dros@netapp.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:56579 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758440Ab3JKT4J (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Oct 2013 15:56:09 -0400
+Date: Fri, 11 Oct 2013 12:56:08 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Benny Halevy <bhalevy@primarydata.com>
+Cc: " J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC v0 10/49] pnfsd: use sbid hash table to map
+ super_blocks to devid major identifiers
+Message-ID: <20131011195608.GA18634@infradead.org>
+References: <52447EA0.7070004@primarydata.com>
+ <1380220831-13136-1-git-send-email-bhalevy@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1380220831-13136-1-git-send-email-bhalevy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-My original patch was to just fix the NULL dereference, but Trond noticed
-some other problems in _nfs4_opendata_reclaim_to_nfs4_state, so I went ahead
-and fixed them.
+On Thu, Sep 26, 2013 at 02:40:31PM -0400, Benny Halevy wrote:
+> From: Benny Halevy <bhalevy@panasas.com>
 
-I separated this into multiple patches for increased bisectability and made
-sure the NULL dereference patch was first so that stable@ / distros can choose
-to just fix the crash if they wish. 
-
-I went a bit further than the issues Trond raised with the last patch, but I
-think it's good for consistency and catching reference counting bugs as errors
-and not BUG()s.
-
- -dros
-
-Weston Andros Adamson (5):
-  NFSv4: fix NULL dereference in open recover
-  NFSv4: don't fail on missing fattr in open recover
-  NFSv4: clean up state ref counting in open recover
-  NFSv4: don't reprocess cached open CLAIM_PREVIOUS
-  NFSv4: clean up nfs4_state reference counting
-
- fs/nfs/nfs4proc.c  | 39 +++++++++++++++++++++++++--------------
- fs/nfs/nfs4state.c |  3 ++-
- 2 files changed, 27 insertions(+), 15 deletions(-)
-
--- 
-1.7.12.4 (Apple Git-37)
+This is entirely unessecary.  Just make sure all layouts set the sbid
+field in getdevicelist to the s_dev value of the filesystem and you
+can just use user_get_super.
 
