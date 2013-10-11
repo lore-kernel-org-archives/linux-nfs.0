@@ -1,99 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f181.google.com ([209.85.214.181]:63640 "EHLO
-	mail-ob0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750861Ab3JVXx3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Oct 2013 19:53:29 -0400
-Message-ID: <52670FF4.8070701@gmail.com>
-Date: Tue, 22 Oct 2013 16:53:24 -0700
-From: David Daney <ddaney.cavm@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:43108 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752172Ab3JKVyW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Oct 2013 17:54:22 -0400
+Date: Fri, 11 Oct 2013 17:53:51 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Dave Chinner <david@fromorbit.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, Al Viro <viro@ZenIV.linux.org.uk>,
+        Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, sandeen@redhat.com
+Subject: Re: [PATCH 2/2] exportfs: fix 32-bit nfsd handling of 64-bit inode
+ numbers
+Message-ID: <20131011215351.GE22160@fieldses.org>
+References: <20131002210736.GA20598@fieldses.org>
+ <1380749295-20854-1-git-send-email-bfields@redhat.com>
+ <1380749295-20854-2-git-send-email-bfields@redhat.com>
+ <20131004221216.GC18051@fieldses.org>
+ <20131004221522.GD18051@fieldses.org>
+ <20131008215656.GA3456@fieldses.org>
+ <20131009001631.GD4446@dastard>
+ <20131009145320.GD3456@fieldses.org>
+ <20131010222807.GB4446@dastard>
 MIME-Version: 1.0
-To: Joe Perches <joe@perches.com>
-CC: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
-        linux-ia64@vger.kernel.org, linux-s390@vger.kernel.org,
-        linux-rdma@vger.kernel.org, linux-raid@vger.kernel.org,
-        linux-scsi@vger.kernel.org, codalist@TELEMANN.coda.cs.cmu.edu,
-        linux-fsdevel@vger.kernel.org, linux-cachefs@redhat.com,
-        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        ocfs2-devel@oss.oracle.com, keyrings@linux-nfs.org, linux-mm@kvack.org,
-        linux-security-module@vger.kernel.org
-Subject: Re: [PATCH 00/24] treewide: Convert use of typedef ctl_table to struct
- ctl_table
-References: <cover.1382480758.git.joe@perches.com>
-In-Reply-To: <cover.1382480758.git.joe@perches.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131010222807.GB4446@dastard>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/22/2013 03:29 PM, Joe Perches wrote:
-> Joe Perches (24):
->    arm: Convert use of typedef ctl_table to struct ctl_table
->    ia64: Convert use of typedef ctl_table to struct ctl_table
->    s390: Convert use of typedef ctl_table to struct ctl_table
->    tile: Convert use of typedef ctl_table to struct ctl_table
->    cdrom: Convert use of typedef ctl_table to struct ctl_table
->    random: Convert use of typedef ctl_table to struct ctl_table
->    infiniband: Convert use of typedef ctl_table to struct ctl_table
->    md: Convert use of typedef ctl_table to struct ctl_table
->    parport: Convert use of typedef ctl_table to struct ctl_table
->    scsi: Convert use of typedef ctl_table to struct ctl_table
->    coda: Convert use of typedef ctl_table to struct ctl_table
->    fscache: Convert use of typedef ctl_table to struct ctl_table
->    lockd: Convert use of typedef ctl_table to struct ctl_table
->    nfs: Convert use of typedef ctl_table to struct ctl_table
->    inotify: Convert use of typedef ctl_table to struct ctl_table
->    ntfs: Convert use of typedef ctl_table to struct ctl_table
->    ocfs2: Convert use of typedef ctl_table to struct ctl_table
->    proc: Convert use of typedef ctl_table to struct ctl_table
->    fs: Convert use of typedef ctl_table to struct ctl_table
->    key: Convert use of typedef ctl_table to struct ctl_table
->    ipc: Convert use of typedef ctl_table to struct ctl_table
->    kernel: Convert use of typedef ctl_table to struct ctl_table
->    mm: Convert use of typedef ctl_table to struct ctl_table
->    security:keys: Convert use of typedef ctl_table to struct ctl_table
+On Fri, Oct 11, 2013 at 09:28:07AM +1100, Dave Chinner wrote:
+> On Wed, Oct 09, 2013 at 10:53:20AM -0400, J. Bruce Fields wrote:
+> > On Wed, Oct 09, 2013 at 11:16:31AM +1100, Dave Chinner wrote:
+> > > On Tue, Oct 08, 2013 at 05:56:56PM -0400, J. Bruce Fields wrote:
+> > > > On Fri, Oct 04, 2013 at 06:15:22PM -0400, J. Bruce Fields wrote:
+> > > > > On Fri, Oct 04, 2013 at 06:12:16PM -0400, bfields wrote:
+> > > > > > On Wed, Oct 02, 2013 at 05:28:14PM -0400, J. Bruce Fields wrote:
+> > > > > > > @@ -268,6 +268,16 @@ static int get_name(const struct path *path, char *name, struct dentry *child)
+> > > > > > >  	if (!dir->i_fop)
+> > > > > > >  		goto out;
+> > > > > > >  	/*
+> > > > > > > +	 * inode->i_ino is unsigned long, kstat->ino is u64, so the
+> > > > > > > +	 * former would be insufficient on 32-bit hosts when the
+> > > > > > > +	 * filesystem supports 64-bit inode numbers.  So we need to
+> > > > > > > +	 * actually call ->getattr, not just read i_ino:
+> > > > > > > +	 */
+> > > > > > > +	error = vfs_getattr_nosec(path, &stat);
+> > > > > > 
+> > > > > > Doh, "path" here is for the parent....  The following works better!
+> > > > > 
+> > > > > By the way, I'm testing this with:
+> > > > > 
+> > > > > 	- create a bunch of nested subdirectories, use
+> > > > > 	  name_to_fhandle_at to get a handle for the bottom directory.
+> > > > > 	- echo 2 >/proc/sys/vm/drop_caches
+> > > > > 	- open_by_fhandle_at on the filehandle
+> > > > > 
+> > > > > But this only actually exercises the reconnect path on the first run
+> > > > > after boot.  Is there something obvious I'm missing here?
+> > > > 
+> > > > Looking at the code....  OK, most of the work of drop_caches is done by
+> > > > shrink_slab_node, which doesn't actually try to free every single thing
+> > > > that it could free--in particular, it won't try to free anything if it
+> > > > thinks there are less than shrinker->batch_size (1024 in the
+> > > > super_block->s_shrink case) objects to free.
+> > 
+> > (Oops, sorry, that should have been "less than half of
+> > shrinker->batch_size", see below.)
+> > 
+> > > That's not quite right. Yes, the shrinker won't be called if the
+> > > calculated scan count is less than the batch size, but the left over
+> > > is added back the shrinker scan count to carry over to the next call
+> > > to the shrinker. Hence if you repeated call the shrinker on a small
+> > > cache with a large batch size, it will eventually aggregate the scan
+> > > counts to over the batch size and trim the cache....
+> > 
+> > No, in shrink_slab_count, we do this:
+> > 
+> > 	if (total_scan > max_pass * 2)
+> > 		total_scan = max_pass * 2;
+> > 
+> > 	while (total_scan >= batch_size) {
+> > 		...
+> > 	}
+> > 
+> > where max_pass is the value returned from count_objects.  So as long as
+> > count_objects returns less than half batch_size, nothing ever happens.
+> 
+> Ah, right - I hadn't considered what that does to small caches - the
+> intended purpose of that is to limit the scan size when caches are
+> extremely large and lots of deferral has occurred. Perhaps we need
+> to consider the batch size in this? e.g.:
+> 
+> 	total_scan = min(total_scan, max(max_pass * 2, batch_size));
+> 
+> Hence for small caches (max_pass <<< batch_size), it evaluates as:
+> 
+> 	total_scan = min(total_scan, batch_size);
+> 
+> and hence once aggregation of repeated calls pushes us over the
+> batch size we run the shrinker.
+> 
+> For large caches (max_pass >>> batch_size), it evaluates as:
+> 
+> 	total_scan = min(total_scan, max_pass * 2);
+> 
+> which gives us the same behaviour as the current code.
+> 
+> I'll write up a patch to do this...
 
-After all this work, why not go ahead and remove the typedef?  That way 
-people won't add more users of this abomination.
+It all feels a bit ad-hoc, but OK.
 
-David Daney
+drop_caches could still end up leaving some small caches alone, right?
 
+I hadn't expected that, but then again maybe I don't really understand
+what drop_caches is for.
 
-
->
->   arch/arm/kernel/isa.c              |  6 ++---
->   arch/ia64/kernel/crash.c           |  4 +--
->   arch/ia64/kernel/perfmon.c         |  6 ++---
->   arch/s390/appldata/appldata_base.c | 10 ++++----
->   arch/s390/kernel/debug.c           |  2 +-
->   arch/s390/mm/cmm.c                 |  8 +++---
->   arch/tile/kernel/proc.c            |  4 +--
->   drivers/cdrom/cdrom.c              | 10 ++++----
->   drivers/char/random.c              |  4 +--
->   drivers/infiniband/core/ucma.c     |  2 +-
->   drivers/md/md.c                    |  6 ++---
->   drivers/parport/procfs.c           | 52 ++++++++++++++++++--------------------
->   drivers/scsi/scsi_sysctl.c         |  6 ++---
->   fs/coda/sysctl.c                   |  4 +--
->   fs/dcache.c                        |  2 +-
->   fs/drop_caches.c                   |  2 +-
->   fs/eventpoll.c                     |  2 +-
->   fs/file_table.c                    |  4 +--
->   fs/fscache/main.c                  |  4 +--
->   fs/inode.c                         |  2 +-
->   fs/lockd/svc.c                     |  6 ++---
->   fs/nfs/nfs4sysctl.c                |  6 ++---
->   fs/nfs/sysctl.c                    |  6 ++---
->   fs/notify/inotify/inotify_user.c   |  2 +-
->   fs/ntfs/sysctl.c                   |  4 +--
->   fs/ocfs2/stackglue.c               |  8 +++---
->   fs/proc/proc_sysctl.c              |  2 +-
->   include/linux/key.h                |  2 +-
->   ipc/ipc_sysctl.c                   | 14 +++++-----
->   ipc/mq_sysctl.c                    | 10 ++++----
->   kernel/sysctl.c                    |  2 +-
->   kernel/utsname_sysctl.c            |  6 ++---
->   mm/page-writeback.c                |  2 +-
->   mm/page_alloc.c                    | 12 ++++-----
->   security/keys/sysctl.c             |  2 +-
->   35 files changed, 111 insertions(+), 113 deletions(-)
->
-
+--b.
