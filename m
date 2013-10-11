@@ -1,59 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40834 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:52837 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751723Ab3J2PEQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Oct 2013 11:04:16 -0400
-Date: Tue, 29 Oct 2013 11:04:14 -0400
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/7] nfsd4: need to destroy revoked delegations in
- destroy_client
-Message-ID: <20131029150414.GS31322@fieldses.org>
-References: <526F81DE.6060704@primarydata.com>
- <1383039552-27209-1-git-send-email-bhalevy@primarydata.com>
+	id S1756101Ab3JKU6h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Oct 2013 16:58:37 -0400
+Date: Fri, 11 Oct 2013 16:58:36 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Ming Lei <Ming.Lei@riverbed.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: nfs4.1  pseudo filesystem
+Message-ID: <20131011205836.GC22160@fieldses.org>
+References: <loom.20131010T232229-437@post.gmane.org>
+ <20131011163022.GA22214@fieldses.org>
+ <2CE44BD3DBCF9541909CCB42F11CA3921C774298@sfo1exc-mbxp08.nbttech.com>
+ <20131011182942.GA22160@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1383039552-27209-1-git-send-email-bhalevy@primarydata.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20131011182942.GA22160@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Whoops, yes, looks like a good fix.
+On Fri, Oct 11, 2013 at 02:29:42PM -0400, J. Bruce Fields wrote:
+> On Fri, Oct 11, 2013 at 04:51:29PM +0000, Ming Lei wrote:
+> > I want to cherry-pick a few subdirectories under say /root, but I don't want to specifies all these mount directories one by one just like NFSv2/3.
+> 
+> Well, you're kind of stuck enumerating them whether as exports or bind
+> mounts.
+> 
+> > Does pseudo filesystem in kernel v3.11 work well enough?
+> 
+> But it should work anyway, yes.
+> 
+> Oh, wait, I see the problem: it doesn't work well if you're exporting
+> subdirectories and not full filesystems.  Unless you do something
+> special at the export points  (e.g. mount --bind them over themselves),
+> knfsd doesn't know when you've crossed an export point.
 
-I'm not convinced of the need for the recall_lock here for reasons given
-before.  Could you just drop the recall_lock here and resend?
+I wonder if exportfs should be taught to mark export points as
+junctions.  That might fix this kind of problem?
+
+It might mean creating junctions never get cleaned up, which is ugly
+though perhaps unlikely to be a serious problem in practice.
 
 --b.
-
-On Tue, Oct 29, 2013 at 11:39:12AM +0200, Benny Halevy wrote:
-> [use list_splice_init]
-> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 7 +++++++
->  1 file changed, 7 insertions(+)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index a403502..a66b0ad 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1129,6 +1129,13 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
->  		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
->  		destroy_delegation(dp);
->  	}
-> +	spin_lock(&recall_lock);
-> +	list_splice_init(&clp->cl_revoked, &reaplist);
-> +	spin_unlock(&recall_lock);
-> +	while (!list_empty(&reaplist)) {
-> +		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
-> +		destroy_revoked_delegation(dp);
-> +	}
->  	while (!list_empty(&clp->cl_openowners)) {
->  		oo = list_entry(clp->cl_openowners.next, struct nfs4_openowner, oo_perclient);
->  		release_openowner(oo);
-> -- 
-> 1.8.3.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
