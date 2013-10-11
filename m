@@ -1,65 +1,28 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50196 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753271Ab3JYUaj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Oct 2013 16:30:39 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>, Al Viro <viro@ZenIV.linux.org.uk>,
-        linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 5/8] exportfs: eliminate unused "noprogress" counter
-Date: Fri, 25 Oct 2013 16:30:02 -0400
-Message-Id: <1382733005-6006-6-git-send-email-bfields@redhat.com>
-In-Reply-To: <1382733005-6006-1-git-send-email-bfields@redhat.com>
-References: <1382733005-6006-1-git-send-email-bfields@redhat.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:56501 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758238Ab3JKThX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Oct 2013 15:37:23 -0400
+Date: Fri, 11 Oct 2013 12:37:21 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Benny Halevy <bhalevy@primarydata.com>
+Cc: " J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC v0 21/49] nfsd: no need to unhash_stid before free
+Message-ID: <20131011193721.GA4941@infradead.org>
+References: <52447EA0.7070004@primarydata.com>
+ <1380220876-13642-1-git-send-email-bhalevy@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1380220876-13642-1-git-send-email-bhalevy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Thu, Sep 26, 2013 at 02:41:16PM -0400, Benny Halevy wrote:
+> idr_remove is about to be called before kmem_cache_free so unhashing it
+> is redundant
+> 
+> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
 
-Note this counter is now being set to 0 on every pass through the loop,
-so it no longer serves any useful purpose.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/exportfs/expfs.c |   15 ++-------------
- 1 file changed, 2 insertions(+), 13 deletions(-)
-
-diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
-index 6b5ddd5..d8ba88a 100644
---- a/fs/exportfs/expfs.c
-+++ b/fs/exportfs/expfs.c
-@@ -145,18 +145,9 @@ static void clear_disconnected(struct dentry *dentry)
- static int
- reconnect_path(struct vfsmount *mnt, struct dentry *target_dir, char *nbuf)
- {
--	int noprogress = 0;
- 	int err = -ESTALE;
- 
--	/*
--	 * It is possible that a confused file system might not let us complete
--	 * the path to the root.  For example, if get_parent returns a directory
--	 * in which we cannot find a name for the child.  While this implies a
--	 * very sick filesystem we don't want it to cause knfsd to spin.  Hence
--	 * the noprogress counter.  If we go through the loop 10 times (2 is
--	 * probably enough) without getting anywhere, we just give up
--	 */
--	while (target_dir->d_flags & DCACHE_DISCONNECTED && noprogress++ < 10) {
-+	while (target_dir->d_flags & DCACHE_DISCONNECTED) {
- 		struct dentry *pd = find_disconnected_root(target_dir);
- 
- 		BUG_ON(pd == mnt->mnt_sb->s_root);
-@@ -230,9 +221,7 @@ reconnect_path(struct vfsmount *mnt, struct dentry *target_dir, char *nbuf)
- 			 */
- 			dput(npd);
- 			dput(ppd);
--			if (npd == pd)
--				noprogress = 0;
--			else
-+			if (npd != pd)
- 				goto out_reconnected;
- 			if (IS_ROOT(pd)) {
- 				/* something went wrong, we have to give up */
--- 
-1.7.9.5
+This is probably something thast should go straight to Bruce, same for
+the next one in the series.
 
