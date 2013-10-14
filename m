@@ -1,74 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38005 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751174Ab3JDUUk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Oct 2013 16:20:40 -0400
-Date: Fri, 4 Oct 2013 16:20:33 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: David Quigley <selinux@davequigley.com>
-Cc: Daniel J Walsh <dwalsh@redhat.com>, Stephen Smalley <sds@tycho.nsa.gov>,
-        Eric Paris <eparis@redhat.com>, Steve Dickson <SteveD@redhat.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: Hey we are seeing a big problem with Labeled NFS
-Message-ID: <20131004202033.GB18051@fieldses.org>
-References: <524EB4C2.6070804@redhat.com>
- <a72f70f2dce1409f383d634c06b17b40@countercultured.net>
- <20131004143549.GC1577@fieldses.org>
- <46df4f789cbeb203d1355adbd3a346c6@countercultured.net>
- <20131004150505.GD1577@fieldses.org>
- <7392559a27900ee1dfe69ebbe0fd468e@countercultured.net>
- <20131004152944.GE1577@fieldses.org>
- <cc6c106aa0b1ead440ff70a2ca002f69@countercultured.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cc6c106aa0b1ead440ff70a2ca002f69@countercultured.net>
+Received: from mail-ee0-f52.google.com ([74.125.83.52]:58834 "EHLO
+	mail-ee0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751280Ab3JNGEz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Oct 2013 02:04:55 -0400
+Received: by mail-ee0-f52.google.com with SMTP id c41so3147345eek.11
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Oct 2013 23:04:54 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@primarydata.com>
+Subject: [PATCH] nfsd: cleanup free_stid
+Date: Mon, 14 Oct 2013 09:04:51 +0300
+Message-Id: <1381730691-18105-1-git-send-email-bhalevy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 04, 2013 at 11:39:54AM -0400, David Quigley wrote:
-> ( Adding linux-nfs to the list of people)
-> 
-> Here is a summary of the discussion so far.
-> 
-> Dan Walsh is seeing issues with Labeled NFS. The issue he is seeing
-> is that a label change on the server is not reflected on the client
-> until a remount of the client. There should be a delay in the label
-> change being reflected in the client as we don't yet have the label
-> change notification in. However it should only be until the cache
-> for the file attribute is invalidated and the next getfattr call
-> revalidates the label. It is unclear why a remount is needed at this
-> time.
-> 
-> Bruce has expressed the concern that the label change notification
-> was not designed for this particular use case and the
-> protocol/implementation may need to be reworked.
-> 
-> My understanding of the usecases discussed for Labeled NFS have
-> sVirt and NFS mounted home. Both of which will make label changes
-> quite often. Part of SVirt is support in libvirt to change the
-> category fields on the vm images to match that of the starting qemu
-> process. This gives the process separation that just using types
-> alone would make difficult. For home directories labels may change
-> all the time from a client perspective if another client is
-> modifying file labels. I think what we conveyed a while back (I
-> don't remember the conversation) is that a whole sale relabel of the
-> server from underneath the clients is unlikely to happen. However
-> there is definitely a real use case where client A modifies the
-> label on a file and Client B needs to see that. Without having full
-> support where the server enforces policy we're relying on the client
-> to enforce those policies which they can't reliably do without
-> knowing about the label change. One thing we had discussed in the
-> past though is that the cache timeout could be sufficient in the
-> situation where we lack the label change notification under the
-> assumption that if the file was opened with that label at least for
-> that short time it should still be ok for it to still read/write to
-> that file. There are situations where that is not ideal though. Its
-> not clear to me why the client is requiring a remount to get the
-> label change though. Upon cache invalidation another getfattr call
-> for the label should be sent and it should pull it back.
+Make it symmetric to alloc_stid
 
-I haven't actually checked, but I suspect we need to implement the
-label_change attribute (on both client and server) before that works
-well.
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
---b.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 06984e3..c6625f2 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -402,11 +402,16 @@ static void remove_stid(struct nfs4_stid *s)
+ 	idr_remove(stateids, s->sc_stateid.si_opaque.so_id);
+ }
+ 
++static void free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
++{
++	kmem_cache_free(slab, s);
++}
++
+ void
+ nfs4_put_delegation(struct nfs4_delegation *dp)
+ {
+ 	if (atomic_dec_and_test(&dp->dl_count)) {
+-		kmem_cache_free(deleg_slab, dp);
++		free_stid(deleg_slab, &dp->dl_stid);
+ 		num_delegations--;
+ 	}
+ }
+@@ -610,7 +615,7 @@ static void close_generic_stateid(struct nfs4_ol_stateid *stp)
+ static void free_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	remove_stid(&stp->st_stid);
+-	kmem_cache_free(stateid_slab, stp);
++	free_stid(stateid_slab, &stp->st_stid);
+ }
+ 
+ static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+-- 
+1.8.3.1
+
