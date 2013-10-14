@@ -1,72 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56713 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753050Ab3JBUQ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Oct 2013 16:16:29 -0400
-Date: Wed, 2 Oct 2013 16:16:27 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, jlayton@redhat.com,
-        Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 00/13] Implement NFSv4 delegations, take 12
-Message-ID: <20131002201627.GI14808@fieldses.org>
-References: <1379623837-30798-1-git-send-email-bfields@redhat.com>
- <20131002135423.GA14808@fieldses.org>
+Received: from szxga02-in.huawei.com ([119.145.14.65]:64580 "EHLO
+	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932121Ab3JNM20 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Oct 2013 08:28:26 -0400
+From: Kefeng Wang <wangkefeng.wang@huawei.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>
+CC: John McCutchan <john@johnmccutchan.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Eric Paris <eparis@redhat.com>, Robert Love <rlove@rlove.org>,
+        <linux-kernel@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/3] fs: use helper function path_foo() to simpily code
+Date: Mon, 14 Oct 2013 20:25:59 +0800
+Message-ID: <1381753562-47884-1-git-send-email-wangkefeng.wang@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131002135423.GA14808@fieldses.org>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 02, 2013 at 09:54:23AM -0400, bfields wrote:
-> On Thu, Sep 19, 2013 at 04:50:24PM -0400, J. Bruce Fields wrote:
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > Al, if you don't see any objections, could you queue this up for 3.13?
-> 
-> Note: if it's more convenient, the identical patches are also available
-> from
-> 
-> 	git://linux-nfs.org/~bfields/linux.git for-viro
+Use helper function patch_equal() and path_put() to simpily code.
 
-But kbuild points out I forgot to fix up some calls in ecryptfs.
+Kefeng Wang (3):
+  fs: use path_equal() and path_put() to simplify code
+  fs: nfsd: use path_equal() to simply code
+  fs: notify: use path_equal() to simply code
 
-I'll push out another version with the below folded in, once I've
-checked whether there's anything else I touched that got turned off in
-my test .config....
+ fs/namei.c                           | 20 ++++++--------------
+ fs/nfsd/export.c                     |  3 +--
+ fs/nfsd/nfs4xdr.c                    |  2 +-
+ fs/notify/fanotify/fanotify.c        |  3 +--
+ fs/notify/inotify/inotify_fsnotify.c |  3 +--
+ 5 files changed, 10 insertions(+), 21 deletions(-)
 
---b.
+-- 
+1.8.2.1
 
-diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-index 7b19ebb..a842ced 100644
---- a/fs/ecryptfs/inode.c
-+++ b/fs/ecryptfs/inode.c
-@@ -208,7 +208,7 @@ ecryptfs_do_create(struct inode *directory_inode,
- 	inode = __ecryptfs_get_inode(lower_dentry->d_inode,
- 				     directory_inode->i_sb);
- 	if (IS_ERR(inode)) {
--		vfs_unlink(lower_dir_dentry->d_inode, lower_dentry);
-+		vfs_unlink(lower_dir_dentry->d_inode, lower_dentry, NULL);
- 		goto out_lock;
- 	}
- 	fsstack_copy_attr_times(directory_inode, lower_dir_dentry->d_inode);
-@@ -640,7 +640,8 @@ ecryptfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		goto out_lock;
- 	}
- 	rc = vfs_rename(lower_old_dir_dentry->d_inode, lower_old_dentry,
--			lower_new_dir_dentry->d_inode, lower_new_dentry);
-+			lower_new_dir_dentry->d_inode, lower_new_dentry,
-+			NULL);
- 	if (rc)
- 		goto out_lock;
- 	if (target_inode)
-@@ -891,7 +892,7 @@ int ecryptfs_truncate(struct dentry *dentry, loff_t new_length)
- 		struct dentry *lower_dentry = ecryptfs_dentry_to_lower(dentry);
- 
- 		mutex_lock(&lower_dentry->d_inode->i_mutex);
--		rc = notify_change(lower_dentry, &lower_ia);
-+		rc = notify_change(lower_dentry, &lower_ia, NULL);
- 		mutex_unlock(&lower_dentry->d_inode->i_mutex);
- 	}
- 	return rc;
+
