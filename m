@@ -1,147 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f179.google.com ([209.85.212.179]:48052 "EHLO
-	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751234Ab3JGPp1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Oct 2013 11:45:27 -0400
-Received: by mail-wi0-f179.google.com with SMTP id hm2so5073476wib.12
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Oct 2013 08:45:26 -0700 (PDT)
-Message-ID: <5252D713.7000004@primarydata.com>
-Date: Mon, 07 Oct 2013 18:45:23 +0300
-From: Benny Halevy <bhalevy@primarydata.com>
+Received: from elasmtp-dupuy.atl.sa.earthlink.net ([209.86.89.62]:51439 "EHLO
+	elasmtp-dupuy.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756756Ab3JNPZK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Oct 2013 11:25:10 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Weston Andros Adamson'" <dros@netapp.com>
+Cc: "'Anna Schumaker'" <schumaker.anna@gmail.com>,
+        "'J. Bruce Fields'" <bfields@fieldses.org>,
+        "'Myklebust, Trond'" <Trond.Myklebust@netapp.com>,
+        <linux-nfs@vger.kernel.org>,
+        "'Ganesha NFS List'" <nfs-ganesha-devel@lists.sourceforge.net>
+References: <1381517062-11267-1-git-send-email-dros@netapp.com> <20131011210104.GD22160@fieldses.org> <525BEDA8.3000309@gmail.com> <07F13874-0BD4-4A90-BB98-B902A8D00065@netapp.com> <02a801cec8f0$b208f200$161ad600$@mindspring.com> <B072FFC7-EB7C-413C-958A-7CB3AED96FEF@netapp.com>
+In-Reply-To: <B072FFC7-EB7C-413C-958A-7CB3AED96FEF@netapp.com>
+Subject: RE: [PATCH] NFS: Add support for multiple sec= mount options
+Date: Mon, 14 Oct 2013 08:25:03 -0700
+Message-ID: <02aa01cec8f1$8edd89c0$ac989d40$@mindspring.com>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-CC: Christoph Hellwig <hch@infradead.org>,
-        Nadav Shemer <nadav@primarydata.com>
-Subject: [PATCH v2 2/4] SQUASHME: pnfsd: nfs4_find_create_layout_stateid
-References: <5251140B.4000203@primarydata.com> <1381045468-30670-1-git-send-email-bhalevy@primarydata.com>
-In-Reply-To: <1381045468-30670-1-git-send-email-bhalevy@primarydata.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Split off nfs4_process_layout_stateid functionality for layout get.
-layout commit and return never allocate a new layout stateid.
 
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
----
- fs/nfsd/nfs4pnfsd.c | 77 ++++++++++++++++++++++++++++++++++++++++++-----------
- 1 file changed, 61 insertions(+), 16 deletions(-)
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index 2b421e0..84f0283 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -193,23 +193,20 @@ struct sbid_tracker {
- }
+> -----Original Message-----
+> From: Weston Andros Adamson [mailto:dros@netapp.com]
+> Sent: Monday, October 14, 2013 8:23 AM
+> To: Frank Filz
+> Cc: Anna Schumaker; J. Bruce Fields; Myklebust, Trond; <linux-
+> nfs@vger.kernel.org>; Ganesha NFS List
+> Subject: Re: [PATCH] NFS: Add support for multiple sec= mount options
+> 
+> On Oct 14, 2013, at 11:18 AM, Frank Filz <ffilzlnx@mindspring.com> wrote:
+> 
+> >>>>> I wrote a script to verify that I haven't broken anything, it
+> >>>>> tests all vers= and sec= combinations against a server with the
+> exports:
+> >>>>
+> >>>> Is the script something that could be added to Anna's or my regular
+> >>>> regression testing?
+> >>>
+> >>> I looked over the script Friday and I don't think it'll be too
+> >>> difficult to work in to my Jenkins stuff :)
+> >>
+> >> I have a new copy of the script that allows (almost) everything to be
+> > passed
+> >> in as an environment variable.
+> >>
+> >> I'll hand that off to you later today.
+> >
+> > Is this script something that would work well with Linux client
+> > against an arbitrary server? We will eventually need to test the
+> > security negotiation stuff with Ganesha.
+> >
+> > Frank
+> >
+> >
+> 
+> Yes, this script should work well for you. We'll make sure that it's easy
+to run
+> as a standalone thing too.
 
- /*
-- * We have looked up the nfs4_file corresponding to the current_fh, and
-- * confirmed the clientid. Pull the few tests from nfs4_preprocess_stateid_op()
-- * that make sense with a layout stateid.
-- *
-  * If the layout state was found in cache, grab a reference count on it;
-- * otherwise, allocate a new layout state if "do_alloc" is set.
-+ * otherwise, allocate a new layout state if the client provided a open/
-+ * lock/deleg stateid.
-  *
-  * Called with the state_lock held
-- * Returns zero and stateid is updated, or error.
-+ * Returns zero and the layout state in *lsp, or error.
-  */
- static __be32
--nfs4_process_layout_stateid(struct nfs4_client *clp, struct nfs4_file *fp,
--			    stateid_t *stateid, unsigned char typemask,
--			    struct nfs4_layout_state **lsp)
-+nfs4_find_create_layout_stateid(struct nfs4_client *clp, struct nfs4_file *fp,
-+				stateid_t *stateid, unsigned char typemask,
-+				struct nfs4_layout_state **lsp)
- {
- 	struct nfs4_layout_state *ls = NULL;
--	__be32 status = 0;
-+	__be32 status;
- 	struct nfs4_stid *stid;
+Cool, thanks.
 
- 	dprintk("--> %s clp %p fp %p operation stateid=" STATEID_FMT "\n",
-@@ -233,13 +230,61 @@ struct sbid_tracker {
-
- 		/* BAD STATEID */
- 		if (stateid->si_generation > ls->ls_stid.sc_stateid.si_generation) {
--			dprintk("%s bad stateid 1\n", __func__);
- 			status = nfserr_bad_stateid;
- 			goto out;
- 		}
- 		get_layout_state(ls);
- 	}
--	status = 0;
-+
-+	dprintk("%s: layout stateid=" STATEID_FMT " ref=%d\n", __func__,
-+		STATEID_VAL(&ls->ls_stid.sc_stateid), atomic_read(&ls->ls_ref.refcount));
-+
-+	*lsp = ls;
-+out:
-+	dprintk("<-- %s status %d\n", __func__, htonl(status));
-+
-+	return status;
-+}
-+
-+/*
-+ * If the layout state was found in cache, grab a reference count on it.
-+ *
-+ * Called with the state_lock held
-+ * Returns zero and the layout state in *lsp, or error.
-+ */
-+static __be32
-+nfs4_process_layout_stateid(struct nfs4_client *clp, struct nfs4_file *fp,
-+			    stateid_t *stateid, unsigned char typemask,
-+			    struct nfs4_layout_state **lsp)
-+{
-+	struct nfs4_layout_state *ls = NULL;
-+	__be32 status;
-+	struct nfs4_stid *stid;
-+
-+	dprintk("--> %s clp %p fp %p operation stateid=" STATEID_FMT "\n",
-+		__func__, clp, fp, STATEID_VAL(stateid));
-+
-+	nfs4_assert_state_locked();
-+	status = nfsd4_lookup_stateid(stateid, typemask, &stid, true,
-+				      net_generic(clp->net, nfsd_net_id));
-+	if (status)
-+		goto out;
-+
-+	/* Is this the first use of this layout ? */
-+	if (stid->sc_type != NFS4_LAYOUT_STID) {
-+		status = nfserr_bad_stateid;
-+		goto out;
-+	}
-+
-+	ls = container_of(stid, struct nfs4_layout_state, ls_stid);
-+
-+	/* BAD STATEID */
-+	if (stateid->si_generation > ls->ls_stid.sc_stateid.si_generation) {
-+		dprintk("%s bad stateid 1\n", __func__);
-+		status = nfserr_bad_stateid;
-+		goto out;
-+	}
-+	get_layout_state(ls);
-
- 	*lsp = ls;
- 	dprintk("%s: layout stateid=" STATEID_FMT " ref=%d\n", __func__,
-@@ -576,10 +621,10 @@ struct super_block *
- 	}
-
- 	/* Check decoded layout stateid */
--	nfserr = nfs4_process_layout_stateid(clp, fp, &lgp->lg_sid,
--					     (NFS4_OPEN_STID | NFS4_LOCK_STID |
--					      NFS4_DELEG_STID | NFS4_LAYOUT_STID),
--					     &ls);
-+	nfserr = nfs4_find_create_layout_stateid(clp, fp, &lgp->lg_sid,
-+						 (NFS4_OPEN_STID | NFS4_LOCK_STID |
-+						  NFS4_DELEG_STID | NFS4_LAYOUT_STID),
-+						 &ls);
- 	if (nfserr)
- 		goto out_unlock;
-
--- 
-1.8.3.1
-
+Frank
 
