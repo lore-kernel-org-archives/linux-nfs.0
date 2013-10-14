@@ -1,141 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:52585 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754751Ab3JJOf0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Oct 2013 10:35:26 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        Steve Dickson <steved@redhat.com>
-Subject: Re: DoS with NFSv4.1 client
-Date: Thu, 10 Oct 2013 14:35:25 +0000
-Message-ID: <FB2C39E8-D3A1-46E4-83A8-1EC9D5EB327B@netapp.com>
-References: <1667669326.580689.1381351712928.JavaMail.zimbra@desy.de>
- <1232423514.586176.1381399016371.JavaMail.zimbra@desy.de>
- <4A5C5668-CBB0-444B-A726-BF6E0D22866B@netapp.com>
-In-Reply-To: <4A5C5668-CBB0-444B-A726-BF6E0D22866B@netapp.com>
-Content-Type: text/plain; charset="iso-8859-1"
-MIME-Version: 1.0
+Received: from mail-wi0-f170.google.com ([209.85.212.170]:44741 "EHLO
+	mail-wi0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755951Ab3JNKo6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Oct 2013 06:44:58 -0400
+Received: by mail-wi0-f170.google.com with SMTP id l12so3809848wiv.1
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Oct 2013 03:44:57 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@primarydata.com>
+Subject: [PATCH v2] nfsd: nfs4_free_stid
+Date: Mon, 14 Oct 2013 13:44:52 +0300
+Message-Id: <1381747492-14026-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <1381730691-18105-1-git-send-email-bhalevy@primarydata.com>
+References: <1381730691-18105-1-git-send-email-bhalevy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Well, it'd be nice not to loop forever, but my question remains, is this due to a server bug (the DS not knowing about new stateid from MDS)?
+Make it symmetric to nfs4_alloc_stid.
 
--dros
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
-On Oct 10, 2013, at 10:14 AM, Weston Andros Adamson <dros@netapp.com> wrote:
-
-> So is this a server bug? It seems like the client is behaving correctly...
-> 
-> -dros
-> 
-> On Oct 10, 2013, at 5:56 AM, "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de> wrote:
-> 
->> 
->> 
->> Today we was 'luck' to have such situation at day time.
->> Here is what happens:
->> 
->> The client sends an OPEN and gets an open state id.
->> This is followed by LAYOUTGET ... and READ to DS.
->> At some point, server returns back BAD_STATEID.
->> This triggers client to issue a new OPEN and use
->> new open stateid with READ request to DS. As new 
->> stateid is not known to DS, it keeps returning
->> BAD_STATEID and becomes an infinite loop.
->> 
->> Regards,
->>  Tigran.
->> 
->> 
->> 
->> ----- Original Message -----
->>> From: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
->>> To: linux-nfs@vger.kernel.org
->>> Cc: "Andy Adamson" <william.adamson@netapp.com>, "Steve Dickson" <steved@redhat.com>
->>> Sent: Wednesday, October 9, 2013 10:48:32 PM
->>> Subject: DoS with NFSv4.1 client
->>> 
->>> 
->>> Hi,
->>> 
->>> last night we got a DoS attack with one of the NFS clients.
->>> The farm node, which was accessing data with pNFS,
->>> went mad and have tried to kill dCache NFS server. As usually
->>> this have happened over night and we was not able to
->>> get a network traffic or bump the debug level.
->>> 
->>> The symptoms are:
->>> 
->>> client starts to bombard the MDS with OPEN requests. As we see
->>> state created on the server side, the requests was processed by
->>> server. Nevertheless, for some reason, client did not like it. Here
->>> is the result of mountstats:
->>> 
->>> OPEN:
->>> 	17087065 ops (99%) 	1 retrans (0%) 	0 major timeouts
->>> 	avg bytes sent per op: 356	avg bytes received per op: 455
->>> 	backlog wait: 0.014707 	RTT: 4.535704 	total execute time: 4.574094
->>> 	(milliseconds)
->>> CLOSE:
->>> 	290 ops (0%) 	0 retrans (0%) 	0 major timeouts
->>> 	avg bytes sent per op: 247	avg bytes received per op: 173
->>> 	backlog wait: 308.827586 	RTT: 1748.479310 	total execute time: 2057.365517
->>> 	(milliseconds)
->>> 
->>> 
->>> As you can see there is a quite a big difference between number of open and
->>> close requests.
->>> The same picture we can see on the server side as well:
->>> 
->>> NFSServerV41 Stats:                   average±stderr(ns)       min(ns)
->>> max(ns)            Sampes
->>> DESTROY_SESSION                          26056±4511.89        13000
->>> 97000                17
->>> OPEN                                    1197297±  0.00       816000
->>> 31924558000          54398533
->>> RESTOREFH                                     0±  0.00            0
->>> 25018778000          54398533
->>> SEQUENCE                                   1000±  0.00         1000
->>> 26066722000          55601046
->>> LOOKUP                                  4607959±  0.00       375000
->>> 26977455000             32118
->>> GETDEVICEINFO                             13158±100.88         4000
->>> 655000             11378
->>> CLOSE                                  16236211±  0.00         5000
->>> 21021819000             20420
->>> LAYOUTGET                             271736361±  0.00     10003000
->>> 68414723000             21095
->>> 
->>> The last column is the number of requests.
->>> 
->>> This is with RHEL6.4 as the client. By looking at the code,
->>> I can see a loop at nfs4proc.c#nfs4_do_open() which can be
->>> the cause of the problem. Nevertheless, I can't
->>> fine any reason why this look turned into an 'infinite' one.
->>> 
->>> At the and our server ran out of memory and we have returned
->>> NFSERR_SERVERFAULT to the client. This triggered client to
->>> reestablish the session and all open state ids was
->>> invalidated and cleaned up.
->>> 
->>> I am still trying to reproduce this behavior (on client
->>> and server) and any hint is welcome.
->>> 
->>> Tigran.
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 06984e3..64c167f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -402,11 +402,16 @@ static void remove_stid(struct nfs4_stid *s)
+ 	idr_remove(stateids, s->sc_stateid.si_opaque.so_id);
+ }
+ 
++static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
++{
++	kmem_cache_free(slab, s);
++}
++
+ void
+ nfs4_put_delegation(struct nfs4_delegation *dp)
+ {
+ 	if (atomic_dec_and_test(&dp->dl_count)) {
+-		kmem_cache_free(deleg_slab, dp);
++		nfs4_free_stid(deleg_slab, &dp->dl_stid);
+ 		num_delegations--;
+ 	}
+ }
+@@ -610,7 +615,7 @@ static void close_generic_stateid(struct nfs4_ol_stateid *stp)
+ static void free_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	remove_stid(&stp->st_stid);
+-	kmem_cache_free(stateid_slab, stp);
++	nfs4_free_stid(stateid_slab, &stp->st_stid);
+ }
+ 
+ static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+-- 
+1.8.3.1
 
