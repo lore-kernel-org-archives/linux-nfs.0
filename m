@@ -1,42 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:51696 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754507Ab3J1Ach convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Oct 2013 20:32:37 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Christoph Anton Mitterer <calestyo@scientia.net>
-CC: Simo Sorce <simo@redhat.com>, Hellwig Christoph <hch@infradead.org>,
-        "Matt W. Benjamin" <matt@linuxbox.com>,
-        Dr Fields James Bruce <bfields@fieldses.org>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-        Wheeler Ric <ricwheeler@gmail.com>
-Subject: Re: XATTRs in NFS?
-Date: Mon, 28 Oct 2013 00:32:35 +0000
-Message-ID: <B1BC8908-0495-4D73-96C5-9E3E1AA0D883@netapp.com>
-References: <312486415.16.1382796101374.JavaMail.root@thunderbeast.private.linuxbox.com>
- <5FC093E3-1CD3-4AC7-A91F-37C8DEC6BEFE@netapp.com>
- <20131027165628.GA447@infradead.org>
- <95C57010-2A89-423C-8668-DF963ABF8BB6@netapp.com>
- <1382898655.899.122.camel@willson.li.ssimo.org>
- <C586D6EC-47DF-4FAE-8BB3-7D0E7400B86F@netapp.com>
- <1382912457.6932.21.camel@heisenberg.scientia.net>
-In-Reply-To: <1382912457.6932.21.camel@heisenberg.scientia.net>
-Content-Type: text/plain; charset="us-ascii"
+Received: from szxga01-in.huawei.com ([119.145.14.64]:43934 "EHLO
+	szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755661Ab3JNCRF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Oct 2013 22:17:05 -0400
+From: Wangminlan <wangminlan@huawei.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Different sequence of "exportfs" produce different effects on nfs
+ client mounts
+Date: Mon, 14 Oct 2013 02:16:58 +0000
+Message-ID: <3962238FD7EA0F41B1810E7ABEAFBC314CEF9ACF@szxema505-mbs.china.huawei.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Oct 27, 2013, at 6:20 PM, Christoph Anton Mitterer <calestyo@scientia.net> wrote:
-
-> On Sun, 2013-10-27 at 18:41 +0000, Myklebust, Trond wrote:
->> I'm not going to start anything...
-> So that's basically a: "XATTRs in NFS - never"?! :(
-
-Your case for adding the feature seems to be "I have a couple of programs that use xattrs, so NFS should provide it.".
-
-Well, that means at a minimum going to the IETF (possibly also POSIX) to convince them that the feature is worth adding, helping design the protocol to do so, and achieving consensus in a NFSv4.x spec, then doing the work designing and coding up a Linux implementation. Who is volunteering to do all that?
-
-My statement above was that I'm not volunteering to do all this. You haven't convinced me that your programs cannot be modified to use other more portable solutions. You're not even generating the checksums when creating the data, so there is already an existing window during which corruption can occur.
-
-Trond
+44CA44CASGksDQrjgIDjgIAgICAgICAgICBJ4oCZdmUgZ290IGEgcHJvYmxlbSBvbiB0aGUgbmZz
+IGV4cG9ydGZzIGNvbW1hbmQuIEnigJltIG5vdCBzdXJlIGlmIHRoaXMgaXMgdGhlIHJpZ2h0IHBs
+YWNlIHRvIGFzayB0aGlzLCBpZiBub3QsIGNhbiB5b3UgcGxlYXNlIHRlbGwgbWUgd2hlcmU/DQrj
+gIDjgIANCuOAgOOAgCAgICAgICAgIEhlcmXigJlzIHdoYXQgSSBuZWVkOg0K44CA44CAMS4gSSBo
+YXZlIGEgZm9sZGVyIG5hbWVkIC9tbnQvZnMxIHRvIGJlIGV4cG9ydGVkLg0K44CA44CAMi4gQWxs
+IHRoZSBob3N0IGluIHN1Ym5ldHdvcmsgMTkyLjE2OC4wLjAvMTYgc2hvdWxkIGJlIGFibGUgYWNj
+ZXNzIHRoaXMgZm9sZGVyLCBidXQgdGhlaXIgcm9vdCBzaG91bGQgYmUgc3F1YXNoZWQuDQrjgIDj
+gIAzLiBTb21lIHNwZWNpZmllZCBob3N0IGluIHRoZSBzYW1lIHN1Ym5ldHdvcmsgY2FuIGdhaW4g
+dGhlIHJvb3QgcGVybWlzc2lvbiBvbiB0aGUgZm9sZGVyLCBmb3IgZXhhbXBsZTogMTkyLjE2OC4w
+LjIxLCAxOTIuMTY4LjAuMjIuDQrjgIDjgIANCuOAgOOAgEnigJl2ZSBnb3QgYSBTTEVTMTFTUDEg
+Ym94IGFzIHRoZSBuZnMgc2VydmVyLCB0aGUgbmZzIGNsaWVudHMgYXJlIFNMRVMxMVNQMSwgdG9v
+LCBhbmQgdGhlIHByb3RvY29sIHVzZWQgYmV0d2VlbiBjbGllbnRzIGFuZCBzZXJ2ZXIgYXJlIE5G
+U3YzLg0K44CA44CASGVyZSBhcmUgdGhlIGNvbW1hbmRzIEkgdXNlZCB0byBkbyB0aGUgZXhwb3J0
+Og0K44CA44CAI2V4cG9ydGZzIOKAk28gcncscm9vdF9zcXVhc2ggMTkyLjE2OC4wLjAvMTY6L21u
+dC9mczEgDQrjgIDjgIAjZXhwb3J0ZnMg4oCTbyBydyxub19yb290X3NxdWFzaCAxOTIuMTY4LjAu
+MjE6L21udC9mczEgDQrjgIDjgIAjZXhwb3J0ZnMg4oCTbyBydyxub19yb290X3NxdWFzaCAxOTIu
+MTY4LjAuMjI6L21udC9mczENCuOAgOOAgEFmdGVyIHRoaXMsIGV2ZXJ5dGhpbmcgd29ya3MgYXMg
+ZXhwZWN0ZWQuDQrjgIDjgIANCuOAgOOAgEJ1dCwgYWZ0ZXIgdGhlIGZvbGxvd2luZyBvcGVyYXRp
+b25zOg0K44CA44CAI2V4cG9ydGZzIOKAk3UgMTkyLjE2OC4wLjAvMTY6L21udC9mczEgICAgICAg
+ICAgICAgIC8qIERlbGV0ZSB0aGlzIGV4cG9ydCAqLw0K44CA44CAIyBleHBvcnRmcyDigJNvIHJ3
+LHJvb3Rfc3F1YXNoIDE5Mi4xNjguMC4wLzE2Oi9tbnQvZnMxICAgICAgICAgIC8qIEFuZCBhZGQg
+aXQgYWdhaW4gKi8NCuOAgOOAgEhvc3RzIG9uIDE5Mi4xNjguMC4yMSBhbmQgMTkyLjE2OC4wLjIy
+IGRvZXNu4oCZdCBnZXQgcm9vdCBwZXJtaXNzaW9uIGFueSBtb3JlLiB3aGVuIEkgdHJpZWQgdG8g
+d3JpdGUgYSBmaWxlLCBpdCBjb21wbGFpbnMgYWJvdXQg4oCcUGVybWlzc2lvbiBkZW5pZWTigJ0u
+DQrjgIDjgIANCuOAgOOAgFNvLCBkb2VzIHRoZSBvcmRlciBvZiBleHBvcnRmcyBjb21tYW5kIGhh
+cyBzb21ldGhpbmcgdG8gZG8gdGhlIGZpbmFsIHJlc3VsdD8gT3IgYW0gSSBkb2luZyBzb21ldGhp
+bmcgd3Jvbmc/DQrjgIDjgIANCuOAgOOAgEIuUg0K44CA44CATWlubGFuIFdhbmcNCg==
