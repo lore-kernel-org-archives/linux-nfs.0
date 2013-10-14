@@ -1,73 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59430 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755870Ab3J1UDc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Oct 2013 16:03:32 -0400
-Date: Mon, 28 Oct 2013 16:03:31 -0400
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] nfsd: remove_stid can be incorporated into
- nfs4_put_delegation
-Message-ID: <20131028200331.GK31322@fieldses.org>
-References: <525CE711.1040107@primarydata.com>
- <1381820280-14120-1-git-send-email-bhalevy@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1381820280-14120-1-git-send-email-bhalevy@primarydata.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-ea0-f169.google.com ([209.85.215.169]:40082 "EHLO
+	mail-ea0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750731Ab3JNGCB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Oct 2013 02:02:01 -0400
+Received: by mail-ea0-f169.google.com with SMTP id k11so3139996eaj.14
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Oct 2013 23:02:00 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@primarydata.com>
+Subject: [PATCH] nfsd: no need to unhash_stid before free
+Date: Mon, 14 Oct 2013 09:01:55 +0300
+Message-Id: <1381730515-18045-1-git-send-email-bhalevy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 15, 2013 at 09:58:00AM +0300, Benny Halevy wrote:
-> All calls to nfs4_put_delegation are preceded with remove_stid.
+idr_remove is about to be called before kmem_cache_free so unhashing it
+is redundant
 
-Applying, thanks.  Should be at git://linux-nfs.org/~bfields/linux.git
-for-3.13 soon.  Let me know if any you have any other patches ready to
-merge now.
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
---b.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 0874998..06984e3 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -668,7 +668,6 @@ static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
+ static void release_open_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	unhash_open_stateid(stp);
+-	unhash_stid(&stp->st_stid);
+ 	free_generic_stateid(stp);
+ }
+ 
+@@ -690,7 +689,6 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+ 	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
+ 
+ 	if (s) {
+-		unhash_stid(&s->st_stid);
+ 		free_generic_stateid(s);
+ 		oo->oo_last_closed_stid = NULL;
+ 	}
+@@ -3998,10 +3996,9 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+ 
+ 	nfsd4_close_open_stateid(stp);
+ 
+-	if (cstate->minorversion) {
+-		unhash_stid(&stp->st_stid);
++	if (cstate->minorversion)
+ 		free_generic_stateid(stp);
+-	} else
++	else
+ 		oo->oo_last_closed_stid = stp;
+ 
+ 	if (list_empty(&oo->oo_owner.so_stateids)) {
+-- 
+1.8.3.1
 
-> 
-> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 4 +---
->  1 file changed, 1 insertion(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index b8f3c7e..93160b6 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -410,6 +410,7 @@ static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
->  void
->  nfs4_put_delegation(struct nfs4_delegation *dp)
->  {
-> +	remove_stid(&dp->dl_stid);
->  	if (atomic_dec_and_test(&dp->dl_count)) {
->  		nfs4_free_stid(deleg_slab, &dp->dl_stid);
->  		num_delegations--;
-> @@ -450,14 +451,12 @@ static void unhash_stid(struct nfs4_stid *s)
->  static void destroy_revoked_delegation(struct nfs4_delegation *dp)
->  {
->  	list_del_init(&dp->dl_recall_lru);
-> -	remove_stid(&dp->dl_stid);
->  	nfs4_put_delegation(dp);
->  }
->  
->  static void destroy_delegation(struct nfs4_delegation *dp)
->  {
->  	unhash_delegation(dp);
-> -	remove_stid(&dp->dl_stid);
->  	nfs4_put_delegation(dp);
->  }
->  
-> @@ -3157,7 +3156,6 @@ static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status)
->  	open->op_delegate_type = NFS4_OPEN_DELEGATE_READ;
->  	return;
->  out_free:
-> -	remove_stid(&dp->dl_stid);
->  	nfs4_put_delegation(dp);
->  out_no_deleg:
->  	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE;
-> -- 
-> 1.8.3.1
-> 
