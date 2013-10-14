@@ -1,151 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33051 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751825Ab3J2AvR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Oct 2013 20:51:17 -0400
-Date: Mon, 28 Oct 2013 20:51:16 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] SUNRPC: Fix buffer overflow checking in
- gss_encode_v0_msg/gss_encode_v1_msg
-Message-ID: <20131029005116.GB20393@fieldses.org>
-References: <1383001027-62282-1-git-send-email-Trond.Myklebust@netapp.com>
- <1383001027-62282-2-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-qc0-f179.google.com ([209.85.216.179]:48072 "EHLO
+	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933139Ab3JNUdS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Oct 2013 16:33:18 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1383001027-62282-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1381782256-2434-2-git-send-email-geyslan@gmail.com>
+References: <1381782256-2434-1-git-send-email-geyslan@gmail.com>
+	<1381782256-2434-2-git-send-email-geyslan@gmail.com>
+Date: Mon, 14 Oct 2013 17:33:17 -0300
+Message-ID: <CAGG-pUTZGHjzVYj2r0Df_ehUz27FL8=bPCQ5FMBxScN-NNTO2A@mail.gmail.com>
+Subject: Re: [PATCH v2] nfs: Use PTR_ERR_OR_ZERO in 'nfs/nfs4super.c'
+From: =?UTF-8?Q?Geyslan_Greg=C3=B3rio_Bem?= <geyslan@gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: schumaker.anna@gmail.com, linux-nfs@vger.kernel.org,
+        LKML <linux-kernel@vger.kernel.org>,
+        kernel-br <kernel-br@googlegroups.com>,
+        "Geyslan G. Bem" <geyslan@gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 28, 2013 at 06:57:07PM -0400, Trond Myklebust wrote:
-> In gss_encode_v1_msg, it is pointless to BUG() after the overflow has
-> happened. Replace the existing sprintf()-based code with scnprintf(),
-> and warn if an overflow is ever triggered.
-> 
-> In gss_encode_v0_msg, replace the runtime BUG_ON() with an appropriate
-> compile-time BUILD_BUG_ON.
-
-ACK, looks good to me, thanks for fixing this.
-
---b.
-
-> 
-> Reported-by: Bruce Fields <bfields@fieldses.org>
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+2013/10/14 Geyslan G. Bem <geyslan@gmail.com>:
+> Use 'PTR_ERR_OR_ZERO()' rather than 'IS_ERR(...) ? PTR_ERR(...) : 0'.
+>
+> Signed-off-by: Geyslan G. Bem <geyslan@gmail.com>
 > ---
->  net/sunrpc/auth_gss/auth_gss.c | 56 ++++++++++++++++++++++++++++--------------
->  1 file changed, 37 insertions(+), 19 deletions(-)
-> 
-> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> index cc24323d3045..97912b40c254 100644
-> --- a/net/sunrpc/auth_gss/auth_gss.c
-> +++ b/net/sunrpc/auth_gss/auth_gss.c
-> @@ -420,41 +420,53 @@ static void gss_encode_v0_msg(struct gss_upcall_msg *gss_msg)
->  	memcpy(gss_msg->databuf, &uid, sizeof(uid));
->  	gss_msg->msg.data = gss_msg->databuf;
->  	gss_msg->msg.len = sizeof(uid);
-> -	BUG_ON(sizeof(uid) > UPCALL_BUF_LEN);
-> +
-> +	BUILD_BUG_ON(sizeof(uid) > sizeof(gss_msg->databuf));
+>  fs/nfs/nfs4super.c | 12 ++++++------
+>  1 file changed, 6 insertions(+), 6 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+> index e26acdd..65ab0a0 100644
+> --- a/fs/nfs/nfs4super.c
+> +++ b/fs/nfs/nfs4super.c
+> @@ -261,9 +261,9 @@ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
+>
+>         res = nfs_follow_remote_path(root_mnt, export_path);
+>
+> -       dfprintk(MOUNT, "<-- nfs4_try_mount() = %ld%s\n",
+> -                       IS_ERR(res) ? PTR_ERR(res) : 0,
+> -                       IS_ERR(res) ? " [error]" : "");
+> +       dfprintk(MOUNT, "<-- nfs4_try_mount() = %d%s\n",
+> +                PTR_ERR_OR_ZERO(res),
+> +                IS_ERR(res) ? " [error]" : "");
+>         return res;
 >  }
->  
-> -static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
-> +static int gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
->  				const char *service_name,
->  				const char *target_name)
->  {
->  	struct gss_api_mech *mech = gss_msg->auth->mech;
->  	char *p = gss_msg->databuf;
-> -	int len = 0;
-> -
-> -	gss_msg->msg.len = sprintf(gss_msg->databuf, "mech=%s uid=%d ",
-> -				   mech->gm_name,
-> -				   from_kuid(&init_user_ns, gss_msg->uid));
-> -	p += gss_msg->msg.len;
-> +	size_t buflen = sizeof(gss_msg->databuf);
-> +	int len;
-> +
-> +	len = scnprintf(p, buflen, "mech=%s uid=%d ", mech->gm_name,
-> +			from_kuid(&init_user_ns, gss_msg->uid));
-> +	buflen -= len;
-> +	p += len;
-> +	gss_msg->msg.len = len;
->  	if (target_name) {
-> -		len = sprintf(p, "target=%s ", target_name);
-> +		len = scnprintf(p, buflen, "target=%s ", target_name);
-> +		buflen -= len;
->  		p += len;
->  		gss_msg->msg.len += len;
->  	}
->  	if (service_name != NULL) {
-> -		len = sprintf(p, "service=%s ", service_name);
-> +		len = scnprintf(p, buflen, "service=%s ", service_name);
-> +		buflen -= len;
->  		p += len;
->  		gss_msg->msg.len += len;
->  	}
->  	if (mech->gm_upcall_enctypes) {
-> -		len = sprintf(p, "enctypes=%s ", mech->gm_upcall_enctypes);
-> +		len = scnprintf(p, buflen, "enctypes=%s ",
-> +				mech->gm_upcall_enctypes);
-> +		buflen -= len;
->  		p += len;
->  		gss_msg->msg.len += len;
->  	}
-> -	len = sprintf(p, "\n");
-> +	len = scnprintf(p, buflen, "\n");
-> +	if (len == 0)
-> +		goto out_overflow;
->  	gss_msg->msg.len += len;
->  
->  	gss_msg->msg.data = gss_msg->databuf;
-> -	BUG_ON(gss_msg->msg.len > UPCALL_BUF_LEN);
-> +	return 0;
-> +out_overflow:
-> +	WARN_ON_ONCE(1);
-> +	return -ENOMEM;
+>
+> @@ -319,9 +319,9 @@ static struct dentry *nfs4_referral_mount(struct file_system_type *fs_type,
+>         data->mnt_path = export_path;
+>
+>         res = nfs_follow_remote_path(root_mnt, export_path);
+> -       dprintk("<-- nfs4_referral_mount() = %ld%s\n",
+> -                       IS_ERR(res) ? PTR_ERR(res) : 0,
+> -                       IS_ERR(res) ? " [error]" : "");
+> +       dprintk("<-- nfs4_referral_mount() = %d%s\n",
+> +               PTR_ERR_OR_ZERO(res),
+> +               IS_ERR(res) ? " [error]" : "");
+>         return res;
 >  }
->  
->  static struct gss_upcall_msg *
-> @@ -463,15 +475,15 @@ gss_alloc_msg(struct gss_auth *gss_auth,
->  {
->  	struct gss_upcall_msg *gss_msg;
->  	int vers;
-> +	int err = -ENOMEM;
->  
->  	gss_msg = kzalloc(sizeof(*gss_msg), GFP_NOFS);
->  	if (gss_msg == NULL)
-> -		return ERR_PTR(-ENOMEM);
-> +		goto err;
->  	vers = get_pipe_version(gss_auth->net);
-> -	if (vers < 0) {
-> -		kfree(gss_msg);
-> -		return ERR_PTR(vers);
-> -	}
-> +	err = vers;
-> +	if (err < 0)
-> +		goto err_free_msg;
->  	gss_msg->pipe = gss_auth->gss_pipe[vers]->pipe;
->  	INIT_LIST_HEAD(&gss_msg->list);
->  	rpc_init_wait_queue(&gss_msg->rpc_waitqueue, "RPCSEC_GSS upcall waitq");
-> @@ -484,9 +496,15 @@ gss_alloc_msg(struct gss_auth *gss_auth,
->  		gss_encode_v0_msg(gss_msg);
->  		break;
->  	default:
-> -		gss_encode_v1_msg(gss_msg, service_name, gss_auth->target_name);
-> +		err = gss_encode_v1_msg(gss_msg, service_name, gss_auth->target_name);
-> +		if (err)
-> +			goto err_free_msg;
->  	};
->  	return gss_msg;
-> +err_free_msg:
-> +	kfree(gss_msg);
-> +err:
-> +	return ERR_PTR(err);
->  }
->  
->  static struct gss_upcall_msg *
-> -- 
-> 1.8.3.1
-> 
+>
+> --
+> 1.8.4
+>
+
+In this version (v2):
+Format changed from %ld to %d.
