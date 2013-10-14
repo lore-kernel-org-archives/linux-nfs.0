@@ -1,148 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:48623 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751111Ab3JUROG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Oct 2013 13:14:06 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9LHE5lb026533
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 21 Oct 2013 13:14:05 -0400
-Message-ID: <52656105.3060207@RedHat.com>
-Date: Mon, 21 Oct 2013 13:14:45 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from szxga01-in.huawei.com ([119.145.14.64]:29267 "EHLO
+	szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932162Ab3JNM2e (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Oct 2013 08:28:34 -0400
+From: Kefeng Wang <wangkefeng.wang@huawei.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>
+CC: John McCutchan <john@johnmccutchan.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Eric Paris <eparis@redhat.com>, Robert Love <rlove@rlove.org>,
+        <linux-kernel@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/3] fs: nfsd: use path_equal() to simply code
+Date: Mon, 14 Oct 2013 20:26:01 +0800
+Message-ID: <1381753562-47884-3-git-send-email-wangkefeng.wang@huawei.com>
+In-Reply-To: <1381753562-47884-1-git-send-email-wangkefeng.wang@huawei.com>
+References: <1381753562-47884-1-git-send-email-wangkefeng.wang@huawei.com>
 MIME-Version: 1.0
-To: Tony Asleson <tasleson@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] exportfs: Add -s option.
-References: <1380734389-8202-1-git-send-email-tasleson@redhat.com>
-In-Reply-To: <1380734389-8202-1-git-send-email-tasleson@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Kefeng Wang <wangkefeng.wang@huawei.com>
+---
+ fs/nfsd/export.c  | 3 +--
+ fs/nfsd/nfs4xdr.c | 2 +-
+ 2 files changed, 2 insertions(+), 3 deletions(-)
 
-
-On 02/10/13 13:19, Tony Asleson wrote:
-> Adds '-s' option which outputs the current exports in a format
-> suitable for /etc/exports.
-> 
-> Signed-off-by: Tony Asleson <tasleson@redhat.com>
-> ---
->  utils/exportfs/exportfs.c   | 23 ++++++++++++++---------
->  utils/exportfs/exportfs.man |  5 ++++-
->  2 files changed, 18 insertions(+), 10 deletions(-)
-Committed...
-
-steved.
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 5f38ea3..ca3610d 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -649,8 +649,7 @@ static int svc_export_match(struct cache_head *a, struct cache_head *b)
+ 	struct svc_export *orig = container_of(a, struct svc_export, h);
+ 	struct svc_export *new = container_of(b, struct svc_export, h);
+ 	return orig->ex_client == new->ex_client &&
+-		orig->ex_path.dentry == new->ex_path.dentry &&
+-		orig->ex_path.mnt == new->ex_path.mnt;
++		path_equal(&orig->ex_path, &new->ex_path);
+ }
  
-> 
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index 4331697..52fc03d 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -38,7 +38,7 @@ static void	export_all(int verbose);
->  static void	exportfs(char *arg, char *options, int verbose);
->  static void	unexportfs(char *arg, int verbose);
->  static void	exports_update(int verbose);
-> -static void	dump(int verbose);
-> +static void	dump(int verbose, int export_format);
->  static void	error(nfs_export *exp, int err);
->  static void	usage(const char *progname, int n);
->  static void	validate_export(nfs_export *exp);
-> @@ -88,6 +88,7 @@ main(int argc, char **argv)
->  	int	f_export = 1;
->  	int	f_all = 0;
->  	int	f_verbose = 0;
-> +	int	f_export_format = 0;
->  	int	f_reexport = 0;
->  	int	f_ignore = 0;
->  	int	i, c;
-> @@ -105,7 +106,7 @@ main(int argc, char **argv)
->  
->  	export_errno = 0;
->  
-> -	while ((c = getopt(argc, argv, "afhio:ruv")) != EOF) {
-> +	while ((c = getopt(argc, argv, "afhio:ruvs")) != EOF) {
->  		switch(c) {
->  		case 'a':
->  			f_all = 1;
-> @@ -132,6 +133,9 @@ main(int argc, char **argv)
->  		case 'v':
->  			f_verbose = 1;
->  			break;
-> +		case 's':
-> +			f_export_format = 1;
-> +			break;
->  		default:
->  			usage(progname, 1);
->  			break;
-> @@ -164,7 +168,7 @@ main(int argc, char **argv)
->  			return 0;
->  		} else {
->  			xtab_export_read();
-> -			dump(f_verbose);
-> +			dump(f_verbose, f_export_format);
->  			return 0;
->  		}
->  	}
-> @@ -634,7 +638,7 @@ dumpopt(char c, char *fmt, ...)
->  }
->  
->  static void
-> -dump(int verbose)
-> +dump(int verbose, int export_format)
->  {
->  	nfs_export	*exp;
->  	struct exportent *ep;
-> @@ -647,14 +651,15 @@ dump(int verbose)
->  			if (!exp->m_xtabent)
->  			    continue; /* neilb */
->  			if (htype == MCL_ANONYMOUS)
-> -				hname = "<world>";
-> +				hname = (export_format) ? "*" : "<world>";
->  			else
->  				hname = ep->e_hostname;
-> -			if (strlen(ep->e_path) > 14)
-> +			if (strlen(ep->e_path) > 14 && !export_format)
->  				printf("%-14s\n\t\t%s", ep->e_path, hname);
->  			else
-> -				printf("%-14s\t%s", ep->e_path, hname);
-> -			if (!verbose) {
-> +				printf(((export_format)? "%s %s" : "%-14s\t%s"), ep->e_path, hname);
-> +
-> +			if (!verbose && !export_format) {
->  				printf("\n");
->  				continue;
->  			}
-> @@ -728,6 +733,6 @@ error(nfs_export *exp, int err)
->  static void
->  usage(const char *progname, int n)
->  {
-> -	fprintf(stderr, "usage: %s [-afhioruv] [host:/path]\n", progname);
-> +	fprintf(stderr, "usage: %s [-afhioruvs] [host:/path]\n", progname);
->  	exit(n);
->  }
-> diff --git a/utils/exportfs/exportfs.man b/utils/exportfs/exportfs.man
-> index 8853486..590f9cf 100644
-> --- a/utils/exportfs/exportfs.man
-> +++ b/utils/exportfs/exportfs.man
-> @@ -3,7 +3,7 @@
->  .\" Copyright (C) 1995 Olaf Kirch <okir@monad.swb.de>
->  .\" Modifications 1999-2003 Neil Brown <neilb@cse.unsw.edu.au>
->  .\"
-> -.TH exportfs 8 "31 December 2009"
-> +.TH exportfs 8 "30 September 2013"
->  .SH NAME
->  exportfs \- maintain table of exported NFS file systems
->  .SH SYNOPSIS
-> @@ -133,6 +133,9 @@ when they make their next NFS mount request.
->  Be verbose. When exporting or unexporting, show what's going on. When
->  displaying the current export list, also display the list of export
->  options.
-> +.TP
-> +.B -s
-> +Display the current export list suitable for /etc/exports.
->  .SH DISCUSSION
->  .SS Exporting Directories
->  The first synopsis shows how to invoke
-> 
+ static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index d9454fe..6af4ff1 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1829,7 +1829,7 @@ static __be32 nfsd4_encode_path(const struct path *root,
+ 	 * dentries/path components in an array.
+ 	 */
+ 	for (;;) {
+-		if (cur.dentry == root->dentry && cur.mnt == root->mnt)
++		if (path_equal(&cur, root))
+ 			break;
+ 		if (cur.dentry == cur.mnt->mnt_root) {
+ 			if (follow_up(&cur))
+-- 
+1.8.2.1
+
+
