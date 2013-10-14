@@ -1,81 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:36434 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751446Ab3JVOG2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Oct 2013 10:06:28 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: <SteveD@redhat.com>
-CC: <simo@redhat.com>, <linux-nfs@vger.kernel.org>,
-        Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] gssd: validate cred in gssd_acquire_user_cred
-Date: Tue, 22 Oct 2013 10:04:35 -0400
-Message-ID: <1382450675-14636-1-git-send-email-dros@netapp.com>
+Received: from szxga03-in.huawei.com ([119.145.14.66]:4133 "EHLO
+	szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755454Ab3JNBUg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Oct 2013 21:20:36 -0400
+From: Wangminlan <wangminlan@huawei.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: Wangminlan <wangminlan@huawei.com>
+Subject: Different sequence of "exportfs" produce different effects on nfs
+ client mounts
+Date: Mon, 14 Oct 2013 01:20:26 +0000
+Message-ID: <3962238FD7EA0F41B1810E7ABEAFBC314CEF9AA6@szxema505-mbs.china.huawei.com>
+References: <1381522554-22243-1-git-send-email-geyslan@gmail.com>
+In-Reply-To: <1381522554-22243-1-git-send-email-geyslan@gmail.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Call gss_inquire_cred after gssd_acquire_krb5_cred check for expired
-credentials.
+Hi,
+         I've got a problem on the nfs export operation. I'm not sure if this is the right place to ask this, if not, can you please tell me where?
 
-This fixes a recent regression (since 302de786930a2c533068f9d8909a817b40f07c32)
-that causes the user's ticket cache to grow unbounded with expired service
-tickets when the user's credentials expire.
+         Here's what I need:
+1.      I have a folder named /mnt/fs1 to be exported.
+2.      All the host in subnetwork 192.168.0.0/16 should be able access this folder, but their root should be squashed.
+3.      Some specified host in the same subnetwork can gain the root permission on the folder, for example: 192.168.0.21, 192.168.0.22.
 
-To reproduce this issue:
+I've got a SLES11SP1 box as the nfs server, the nfs clients are SLES11SP1, too. And the test uses nfsv3.
+Here are the commands I used to do the export:
+#exportfs -o rw,root_squash 192.168.0.0/16:/mnt/fs1 #exportfs -o rw,no_root_squash 192.168.0.21:/mnt/fs1 #exportfs -o rw,no_root_squash 192.168.0.22:/mnt/fs1
 
- - mount kerberos nfs export
- - kinit for a short lifetime (ie "kinit -l 1m")
- - run a job that opens a file and writes for more than the lifetime
- - run klist a few times after expiry and see the list grow, ie:
+After this, everything works as expected.
+But, after the following operations:
+#exportfs -u 192.168.0.0/16:/mnt/fs1              /* Delete this export */
+# exportfs -o rw,root_squash 192.168.0.0/16:/mnt/fs1          /* And add it again */
 
-Ticket cache: DIR::/run/user/1749600001/krb5cc/tktYmpGlX
-Default principal: dros@APIKIA.FAKE
+Hosts on 192.168.0.21 and 192.168.0.22 doesn't get root permission any more. when I tried to write a file, it complains about "Permission denied".
 
-Valid starting       Expires              Service principal
-10/21/2013 15:39:38  10/21/2013 15:40:35  krbtgt/APIKIA.FAKE@APIKIA.FAKE
-10/21/2013 15:39:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:35  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:36  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+So, does the order of exportfs command has something to do the final result? Or am I doing something wrong?
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- utils/gssd/krb5_util.c | 7 +++++++
- 1 file changed, 7 insertions(+)
-
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index c6e52fd..ec5db83 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -1405,6 +1405,13 @@ gssd_acquire_user_cred(uid_t uid, gss_cred_id_t *gss_cred)
- 
- 	ret = gssd_acquire_krb5_cred(name, gss_cred);
- 
-+	/* force validation of cred to check for expiry */
-+	if (ret == 0) {
-+		if (gss_inquire_cred(min_stat, gss_cred, NULL, NULL,
-+				     NULL, NULL) != GSS_S_COMPLETE)
-+			ret = -1;
-+	}
-+
- 	maj_stat = gss_release_name(&min_stat, &name);
- 	return ret;
- }
--- 
-1.7.12.4 (Apple Git-37)
-
+B.R
+Minlan Wang
