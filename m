@@ -1,161 +1,195 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:44635 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758652Ab3JQSMf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 14:12:35 -0400
-Received: from ucsinet21.oracle.com (ucsinet21.oracle.com [156.151.31.93])
-	by aserp1040.oracle.com (Sentrion-MTA-4.3.1/Sentrion-MTA-4.3.1) with ESMTP id r9HICY0b004819
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:12:35 GMT
-Received: from nfsvm18.us.oracle.com (nfsvm18.us.oracle.com [10.135.198.118])
-	by ucsinet21.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id r9HICY5U004979
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:12:34 GMT
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 04/21] NFS: Add functions to swap transports during migration recovery
-Date: Thu, 17 Oct 2013 14:12:34 -0400
-Message-Id: <20131017181233.1073.82351.stgit@nfsvm18.us.oracle.com>
-In-Reply-To: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
-References: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:51261 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933999Ab3JOUkB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Oct 2013 16:40:01 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>, Al Viro <viro@ZenIV.linux.org.uk>,
+        linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/5] exportfs: move most of reconnect_path to helper function
+Date: Tue, 15 Oct 2013 16:39:30 -0400
+Message-Id: <1381869574-10662-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1381869574-10662-1-git-send-email-bfields@redhat.com>
+References: <1381869574-10662-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Introduce functions that can walk through an array of returned
-fs_locations information and connect a transport to one of the
-destination servers listed therein.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Note that NFS minor version 1 introduces "fs_locations_info" which
-extends the locations array sorting criteria available to clients.
-This is not supported yet.
+Just cleanup, no change in functionality.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/nfs4_fs.h       |    2 +
- fs/nfs/nfs4namespace.c |  101 ++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 103 insertions(+)
+ fs/exportfs/expfs.c |  147 +++++++++++++++++++++++++++------------------------
+ 1 file changed, 79 insertions(+), 68 deletions(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 28842ab..fcae728 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -217,6 +217,8 @@ rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *);
- struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *, struct inode *, struct qstr *);
- struct vfsmount *nfs4_submount(struct nfs_server *, struct dentry *,
- 			       struct nfs_fh *, struct nfs_fattr *);
-+int nfs4_replace_transport(struct nfs_server *server,
-+				const struct nfs4_fs_locations *locations);
- 
- /* nfs4proc.c */
- extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index 2288cd3..ebd8b06 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -400,3 +400,104 @@ out:
- 	rpc_shutdown_client(client);
- 	return mnt;
+diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
+index 455b0bb..63996d2 100644
+--- a/fs/exportfs/expfs.c
++++ b/fs/exportfs/expfs.c
+@@ -107,6 +107,82 @@ static void clear_disconnected(struct dentry *dentry)
  }
+ 
+ /*
++ * Return the parent directory on success.
++ *
++ * Return NULL to keep trying.
++ *
++ * Otherwise return an error.
++ */
++static int reconnect_one(struct vfsmount *mnt, struct dentry *pd, char *nbuf, int *noprogress)
++{
++	struct dentry *ppd;
++	struct dentry *npd;
++	int err;
++	/*
++	 * Getting the parent can't be supported generically, the
++	 * locking is too icky.
++	 *
++	 * If it can't be done, we just return EACCES.  If you were
++	 * depending on the dcache finding the parent for you, you lose
++	 * if there's a reboot or inodes get flushed.
++	 */
++	ppd = ERR_PTR(-EACCES);
++
++	mutex_lock(&pd->d_inode->i_mutex);
++	if (mnt->mnt_sb->s_export_op->get_parent)
++		ppd = mnt->mnt_sb->s_export_op->get_parent(pd);
++	mutex_unlock(&pd->d_inode->i_mutex);
++
++	if (IS_ERR(ppd)) {
++		err = PTR_ERR(ppd);
++		dprintk("%s: get_parent of %ld failed, err %d\n",
++			__func__, dentry->d_inode->i_ino, err);
++		return err;
++	}
++
++	dprintk("%s: find name of %lu in %lu\n", __func__,
++		dentry->d_inode->i_ino, parent->d_inode->i_ino);
++	err = exportfs_get_name(mnt, ppd, nbuf, pd);
++	if (err) {
++		dput(ppd);
++		if (err == -ENOENT)
++			/* some race between get_parent and
++			 * get_name?  just try again
++			 */
++			return 0;
++		return err;
++	}
++	dprintk("%s: found name: %s\n", __func__, nbuf);
++	mutex_lock(&ppd->d_inode->i_mutex);
++	npd = lookup_one_len(nbuf, ppd, strlen(nbuf));
++	mutex_unlock(&ppd->d_inode->i_mutex);
++	if (IS_ERR(npd)) {
++		err = PTR_ERR(npd);
++		dprintk("%s: lookup failed: %d\n",
++			__func__, err);
++		dput(ppd);
++		return err;
++	}
++	/* we didn't really want npd, we really wanted
++	 * a side-effect of the lookup.
++	 * hopefully, npd == pd, though it isn't really
++	 * a problem if it isn't
++	 */
++	if (npd == pd)
++		*noprogress = 0;
++	else
++		printk("%s: npd != pd\n", __func__);
++	dput(npd);
++	dput(ppd);
++	if (IS_ROOT(pd)) {
++		/* something went wrong, we have to give up */
++		dput(pd);
++		return -ESTALE;
++	}
++	return 0;
++}
 +
 +/*
-+ * Try one location from the fs_locations array.
-+ *
-+ * Returns zero on success, or a negative errno value.
-+ */
-+static int nfs4_try_replacing_one_location(struct nfs_server *server,
-+		char *page, char *page2,
-+		const struct nfs4_fs_location *location)
-+{
-+	const size_t addr_bufsize = sizeof(struct sockaddr_storage);
-+	struct sockaddr *sap;
-+	unsigned int s;
-+	size_t salen;
-+	int error;
-+
-+	sap = kmalloc(addr_bufsize, GFP_KERNEL);
-+	if (sap == NULL)
-+		return -ENOMEM;
-+
-+	error = -ENOENT;
-+	for (s = 0; s < location->nservers; s++) {
-+		const struct nfs4_string *buf = &location->servers[s];
-+		char *hostname;
-+
-+		if (buf->len <= 0 || buf->len > PAGE_SIZE)
-+			continue;
-+
-+		if (memchr(buf->data, IPV6_SCOPE_DELIMITER, buf->len) != NULL)
-+			continue;
-+
-+		salen = nfs_parse_server_name(buf->data, buf->len,
-+						sap, addr_bufsize, server);
-+		if (salen == 0)
-+			continue;
-+		rpc_set_port(sap, NFS_PORT);
-+
-+		error = -ENOMEM;
-+		hostname = kstrndup(buf->data, buf->len, GFP_KERNEL);
-+		if (hostname == NULL)
-+			break;
-+
-+		error = nfs4_update_server(server, hostname, sap, salen);
-+		kfree(hostname);
-+		if (error == 0)
-+			break;
-+	}
-+
-+	kfree(sap);
-+	return error;
-+}
-+
-+/**
-+ * nfs4_replace_transport - set up transport to destination server
-+ *
-+ * @server: export being migrated
-+ * @locations: fs_locations array
-+ *
-+ * Returns zero on success, or a negative errno value.
-+ *
-+ * The client tries all the entries in the "locations" array, in the
-+ * order returned by the server, until one works or the end of the
-+ * array is reached.
-+ */
-+int nfs4_replace_transport(struct nfs_server *server,
-+			   const struct nfs4_fs_locations *locations)
-+{
-+	char *page = NULL, *page2 = NULL;
-+	int loc, error;
-+
-+	error = -ENOENT;
-+	if (locations == NULL || locations->nlocations <= 0)
-+		goto out;
-+
-+	error = -ENOMEM;
-+	page = (char *) __get_free_page(GFP_USER);
-+	if (!page)
-+		goto out;
-+	page2 = (char *) __get_free_page(GFP_USER);
-+	if (!page2)
-+		goto out;
-+
-+	for (loc = 0; loc < locations->nlocations; loc++) {
-+		const struct nfs4_fs_location *location =
-+						&locations->locations[loc];
-+
-+		if (location == NULL || location->nservers <= 0 ||
-+		    location->rootpath.ncomponents == 0)
-+			continue;
-+
-+		error = nfs4_try_replacing_one_location(server, page,
-+							page2, location);
-+		if (error == 0)
-+			break;
-+	}
-+
-+out:
-+	free_page((unsigned long)page);
-+	free_page((unsigned long)page2);
-+	return error;
-+}
+  * Make sure target_dir is fully connected to the dentry tree.
+  *
+  * It may already be, as the flag isn't always updated when connection happens.
+@@ -140,75 +216,10 @@ reconnect_path(struct vfsmount *mnt, struct dentry *target_dir, char *nbuf)
+ 			/*
+ 			 * We have hit the top of a disconnected path, try to
+ 			 * find parent and connect.
+-			 *
+-			 * Racing with some other process renaming a directory
+-			 * isn't much of a problem here.  If someone renames
+-			 * the directory, it will end up properly connected,
+-			 * which is what we want
+-			 *
+-			 * Getting the parent can't be supported generically,
+-			 * the locking is too icky.
+-			 *
+-			 * Instead we just return EACCES.  If server reboots
+-			 * or inodes get flushed, you lose
+-			 */
+-			struct dentry *ppd = ERR_PTR(-EACCES);
+-			struct dentry *npd;
+-
+-			mutex_lock(&pd->d_inode->i_mutex);
+-			if (mnt->mnt_sb->s_export_op->get_parent)
+-				ppd = mnt->mnt_sb->s_export_op->get_parent(pd);
+-			mutex_unlock(&pd->d_inode->i_mutex);
+-
+-			if (IS_ERR(ppd)) {
+-				err = PTR_ERR(ppd);
+-				dprintk("%s: get_parent of %ld failed, err %d\n",
+-					__func__, pd->d_inode->i_ino, err);
+-				dput(pd);
+-				break;
+-			}
+-
+-			dprintk("%s: find name of %lu in %lu\n", __func__,
+-				pd->d_inode->i_ino, ppd->d_inode->i_ino);
+-			err = exportfs_get_name(mnt, ppd, nbuf, pd);
+-			if (err) {
+-				dput(ppd);
+-				dput(pd);
+-				if (err == -ENOENT)
+-					/* some race between get_parent and
+-					 * get_name?  just try again
+-					 */
+-					continue;
+-				break;
+-			}
+-			dprintk("%s: found name: %s\n", __func__, nbuf);
+-			mutex_lock(&ppd->d_inode->i_mutex);
+-			npd = lookup_one_len(nbuf, ppd, strlen(nbuf));
+-			mutex_unlock(&ppd->d_inode->i_mutex);
+-			if (IS_ERR(npd)) {
+-				err = PTR_ERR(npd);
+-				dprintk("%s: lookup failed: %d\n",
+-					__func__, err);
+-				dput(ppd);
+-				dput(pd);
+-				break;
+-			}
+-			/* we didn't really want npd, we really wanted
+-			 * a side-effect of the lookup.
+-			 * hopefully, npd == pd, though it isn't really
+-			 * a problem if it isn't
+ 			 */
+-			if (npd == pd)
+-				noprogress = 0;
+-			else
+-				printk("%s: npd != pd\n", __func__);
+-			dput(npd);
+-			dput(ppd);
+-			if (IS_ROOT(pd)) {
+-				/* something went wrong, we have to give up */
+-				dput(pd);
+-				break;
+-			}
++			err = reconnect_one(mnt, pd, nbuf, &noprogress);
++			if (err)
++				return err;
+ 		}
+ 		dput(pd);
+ 	}
+-- 
+1.7.9.5
 
