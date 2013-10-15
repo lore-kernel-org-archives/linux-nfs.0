@@ -1,62 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:60860 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758227Ab3JQSfE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 14:35:04 -0400
-Message-ID: <52602DD7.6050708@candelatech.com>
-Date: Thu, 17 Oct 2013 11:35:03 -0700
-From: Ben Greear <greearb@candelatech.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: 'umount -f /mnt/foo' fails if server IP is gone.
-References: <525D899F.5010604@candelatech.com>   <52601FED.6070708@candelatech.com>  <1382033137.3216.3.camel@leira.trondhjem.org>  <52602835.4000701@candelatech.com> <1382034747.3216.8.camel@leira.trondhjem.org>
-In-Reply-To: <1382034747.3216.8.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=UTF-7
+Received: from fieldses.org ([174.143.236.118]:51260 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933998Ab3JOUkB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Oct 2013 16:40:01 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>, Al Viro <viro@ZenIV.linux.org.uk>,
+        linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/5] exportfs: clear DISCONNECTED on all parents sooner
+Date: Tue, 15 Oct 2013 16:39:29 -0400
+Message-Id: <1381869574-10662-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1381869574-10662-1-git-send-email-bfields@redhat.com>
+References: <1381869574-10662-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/17/2013 11:32 AM, Myklebust, Trond wrote:
-> On Thu, 2013-10-17 at 11:11 -0700, Ben Greear wrote:
->> On 10/17/2013 11:05 AM, Myklebust, Trond wrote:
->>> On Thu, 2013-10-17 at 10:35 -0700, Ben Greear wrote:
->>>> On 10/15/2013 11:29 AM, Ben Greear wrote:
->>>>> Is 'umount -f' supposed to always work, even if the file server
->>>>> goes away?
->>>>>
->>>>> I have a user's system that just hangs forever in this case.
->>>>>
->>>>> Could be local changes we have made, but I'm curious about
->>>>> the expected behaviour before I go digging too deep...
->>>>
->>>> Any input on this?  I don't mind trying to fix it, but I
->>>> would like to know how it is supposed to work.
->>>
->>> 'umount -f' has always been iffy. It just kills any pending RPC calls
->>> _before_ trying to unmount. Since the unmount itself can trigger
->>> writeback flushes (and hence more RPC calls), the trace you are seeing
->>> is indeed possible.
->>
->> I tried 'umount -f -l', and that also does not work.
->>
->> Any ideas on how to fix this properly?
-> 
-> 'umount -f -l' should normally work to at least hide the gruesome
-> details of your hanging superblock.
-> 
-> I'm guessing that you're falling afoul of the path revalidation that
-> Chuck alluded to. There should already be a fix for that problem with
-> the path_umountat() patches that went into Linux 3.12-rc1. Are those
-> failing to help?
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-I have not tried past 3.9.11+ kernel yet.  I will go look for those patches
-you mention as well.  Did any of this go to -stable by chance?
+Once we've found any connected parent, we know all our parents are
+connected--that's true even if there's a concurrent rename.  May as well
+clear them all at once.
 
-Thanks,
-Ben
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/exportfs/expfs.c |   24 ++++++++++++++++++------
+ 1 file changed, 18 insertions(+), 6 deletions(-)
 
-
+diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
+index c43fe9b..455b0bb 100644
+--- a/fs/exportfs/expfs.c
++++ b/fs/exportfs/expfs.c
+@@ -90,6 +90,22 @@ find_disconnected_root(struct dentry *dentry)
+ 	return dentry;
+ }
+ 
++static void clear_disconnected(struct dentry *dentry)
++{
++	dget(dentry);
++	while (dentry->d_flags & DCACHE_DISCONNECTED) {
++		struct dentry *parent = dget_parent(dentry);
++
++		spin_lock(&dentry->d_lock);
++		dentry->d_flags &= ~DCACHE_DISCONNECTED;
++		spin_unlock(&dentry->d_lock);
++
++		dput(dentry);
++		dentry = parent;
++	}
++	dput(dentry);
++}
++
+ /*
+  * Make sure target_dir is fully connected to the dentry tree.
+  *
+@@ -114,15 +130,11 @@ reconnect_path(struct vfsmount *mnt, struct dentry *target_dir, char *nbuf)
+ 
+ 		if (!IS_ROOT(pd)) {
+ 			/* must have found a connected parent - great */
+-			spin_lock(&pd->d_lock);
+-			pd->d_flags &= ~DCACHE_DISCONNECTED;
+-			spin_unlock(&pd->d_lock);
++			clear_disconnected(target_dir);
+ 			noprogress = 0;
+ 		} else if (pd == mnt->mnt_sb->s_root) {
+ 			printk(KERN_ERR "export: Eeek filesystem root is not connected, impossible\n");
+-			spin_lock(&pd->d_lock);
+-			pd->d_flags &= ~DCACHE_DISCONNECTED;
+-			spin_unlock(&pd->d_lock);
++			clear_disconnected(target_dir);
+ 			noprogress = 0;
+ 		} else {
+ 			/*
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+1.7.9.5
 
