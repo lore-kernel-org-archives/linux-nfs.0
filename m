@@ -1,52 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:13633 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56861 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753537Ab3JVRmi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Oct 2013 13:42:38 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Ben Greear <greearb@candelatech.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Failure to mount nfsv4 on 3.12.0-rc5-wl+
-Date: Tue, 22 Oct 2013 17:42:35 +0000
-Message-ID: <C85838C2-1267-4CA4-9C17-1F828B33B01B@netapp.com>
-References: <5266B15B.4020804@candelatech.com>
- <8F3401DF-10CB-43BB-956B-76D166C4B3EA@netapp.com>
- <826B52B7-CB6C-470C-A890-03E9B534B059@netapp.com>
- <5266B574.7030607@candelatech.com>
-In-Reply-To: <5266B574.7030607@candelatech.com>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+	id S932585Ab3JONeV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Oct 2013 09:34:21 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9FDYKRR009290
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Oct 2013 09:34:21 -0400
+Date: Tue, 15 Oct 2013 09:34:19 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: ssorce@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 0/2] gssd: allow gssd to work with KEYRING:
+ credcaches
+Message-ID: <20131015093419.789e4d2a@tlielax.poochiereds.net>
+In-Reply-To: <1381350116-10464-1-git-send-email-jlayton@redhat.com>
+References: <1381350116-10464-1-git-send-email-jlayton@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed,  9 Oct 2013 16:21:54 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
 
-On Oct 22, 2013, at 1:27 PM, Ben Greear <greearb@candelatech.com>
- wrote:
-
-> On 10/22/2013 10:21 AM, Weston Andros Adamson wrote:
->> … and I think it makes sense to me that this behavior was recently introduced and vers=3 fixes things, because nfsv4 has to do the upcall to GSSD even when sec=sys because it attempts to do krb5i on non superblock related operations (if possible will use, otherwise just uses sys) and this behavior was recently added. NFSv3 does not do this.
->> 
->> -dros
+> Changes since original set:
+> v3:
+> - have parent check to see if child was signalled and log a warning if so
+> - drop supplimentary groups and change gid before acquiring creds. Keep
+>   suid and sgid as well to hamper ptrace.
 > 
-> I have a gssd running on the client, from what I can tell, but no idea if it is working properly
-> or not.  It should be whatever is standard with F17.
-
-It's my belief that a GSSD bug is causing this hang and that the bug has been in GSSD for a while, but wasn't hit until recent kernel changes.
-
-I'll share more as soon as I figure it out!
-
--dros
-
+> v2:
+> - fix bisectability. The original set added includes in the wrong
+>   place in patch #1 and then fixed it in patch #2. The final result
+>   of this set is the same but should bisect cleanly.
 > 
-> [root@ct523-9292 ~]# ps -auxww|grep gss
-> root       723  0.0  0.0  35192   504 ?        Ss   10:17   0:00 /usr/sbin/rpc.gssd
-> root      5975  0.0  0.0 109408   872 pts/0    S+   10:25   0:00 grep --color=auto gss
+> This patchset fixes up gssd to work with KEYRING: style credcaches. At
+> the same time, it also fixes gssd not to need to trawl through likely
+> credcache locations by allowing GSSAPI to find them in the intended
+> fashion.
 > 
-> Thanks,
-> Ben
+> The basic idea is to have gssd fork() after reading off the pipe, but
+> before handling the upcall and to do a more thorough job of changing
+> credentials.
 > 
-> -- 
-> Ben Greear <greearb@candelatech.com>
-> Candela Technologies Inc  http://www.candelatech.com
+> Jeff Layton (2):
+>   gssd: have process_krb5_upcall fork before handling upcall
+>   gssd: do a more thorough change of identity after forking
+> 
+>  utils/gssd/gssd_proc.c | 106 +++++++++++++++++++++++++++++++++++++++++--------
+>  1 file changed, 89 insertions(+), 17 deletions(-)
 > 
 
+I had asked Steve to hold off on applying these until now. While they
+work as expected for the most part, they break a the case where gssd is
+set up to use gssproxy to get credentials. Older versions of gssproxy
+relied on the caller having and euid of 0. Simo now has a set of fixes
+queued up for gssproxy to address the problem, so the way should now be
+clear to merge this set into nfs-utils.
+
+One thing we will probably want to do for Fedora at least is to add a
+"Conflicts:" with older versions of gssproxy. That should ensure that
+people relying on gssd + gssproxy won't get any surprises when updating.
+
+Steve, sound reasonable?
+-- 
+Jeff Layton <jlayton@redhat.com>
