@@ -1,49 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mho-02-ewr.mailhop.org ([204.13.248.72]:23278 "EHLO
-	mho-02-ewr.mailhop.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752558Ab3JLR1s (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Oct 2013 13:27:48 -0400
-Received: from [98.156.78.19] (helo=portal.home.hanaden.com)
-	by mho-02-ewr.mailhop.org with esmtpsa (TLSv1:AES128-SHA:128)
-	(Exim 4.72)
-	(envelope-from <hanasaki@hanaden.com>)
-	id 1VV2yh-000DQv-Ef
-	for linux-nfs@vger.kernel.org; Sat, 12 Oct 2013 17:27:47 +0000
-Received: from russia.home.hanaden.com ([10.1.1.30])
-	by portal.home.hanaden.com with esmtps (TLS1.0:DHE_RSA_CAMELLIA_256_CBC_SHA1:256)
-	(Exim 4.80)
-	(envelope-from <hanasaki@hanaden.com>)
-	id 1VV2yc-0004Jt-QI
-	for linux-nfs@vger.kernel.org; Sat, 12 Oct 2013 12:27:46 -0500
-Message-ID: <52598677.1000708@hanaden.com>
-Date: Sat, 12 Oct 2013 12:27:19 -0500
-From: hanasaki <hanasaki@hanaden.com>
+Received: from fieldses.org ([174.143.236.118]:55590 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933271Ab3JOT3g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Oct 2013 15:29:36 -0400
+Date: Tue, 15 Oct 2013 15:29:09 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, "J. Bruce Fields" <bfields@redhat.com>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 4/4] dcache: don't clear DCACHE_DISCONNECTED too early
+Message-ID: <20131015192908.GB10128@fieldses.org>
+References: <1378579561-26868-1-git-send-email-bfields@redhat.com>
+ <1378579561-26868-5-git-send-email-bfields@redhat.com>
+ <20130909004647.GK13318@ZenIV.linux.org.uk>
+ <20130909204655.GA10599@fieldses.org>
+ <20131011160237.GA21258@fieldses.org>
+ <20131012084235.GB5649@infradead.org>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Subject: nfs RPC: AUTH_GSS upcall timed out and running nfs v4 without full
- kerberos : how?
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131012084235.GB5649@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-1. Below appears to require krb for auth.  Is this correct?  How can nfs 
-v4 be setup and used over tcp? udp? and not require a full kerberos 
-server setup?
+On Sat, Oct 12, 2013 at 01:42:35AM -0700, Christoph Hellwig wrote:
+> On Fri, Oct 11, 2013 at 12:02:37PM -0400, J. Bruce Fields wrote:
+> > But just for fun--I did some cleanup and fixed some other quadratic
+> > behavior here and can notice a difference on lookups of very deep
+> > subdirectories.
+> > 
+> > For example I'm seeing an uncached lookup of an 8000-deep directory
+> > taking about 6 seconds, and can get that down to a tenth of a second.
+> > 
+> > I'm not sure yet if the difference on less extreme examples is really
+> > significant, I need to experiment some more.
+> > 
+> > I'll do some more review and post patches and results.
+> 
+> This sounds like and awesome improvement.
 
-2. The stat issue is ok.  It takes a long time to timeout which is 
-causing problems.  Using the full directory path locally on the nfs 
-server works ok without stat issue or long timeouts.
+Nobody should be nesting that deep, but maybe it's useful to have the
+insurance against bad behavior anyway.
 
-3. the user daemon does appear to be running fine.
+> How much code do you have to
+> add for it?
 
-Oct 12 00:49:07 host-01 kernel: [ 1775.106615] RPC: AUTH_GSS upcall 
-timed out.
-Oct 12 00:49:07 host-01 kernel: [ 1775.106615] Please check user daemon
-is running.
-Oct 12 00:49:07 host-01 rpc.mountd[3097]: authenticated mount request
-from 10.1.1.30:762 for /storage/data-01/dist-export/pom.xml
-(/storage/data-01)
-Oct 12 00:49:07 host-01 rpc.mountd[3097]: can't stat exported dir
-/storage/data-01/dist-export/pom.xml: No such file or directory
+ fs/exportfs/expfs.c | 224 ++++++++++++++++++++++++++--------------------------
+ 1 file changed, 112 insertions(+), 112 deletions(-)
 
-linux-nfs@vger.kernel.org
+But maybe I removed some necessary complication.  I'll post the
+patches....
+
+--b.
