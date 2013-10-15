@@ -1,42 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:48587 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753626Ab3JCOV2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Oct 2013 10:21:28 -0400
-Date: Thu, 3 Oct 2013 07:21:27 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: Ric Wheeler <rwheeler@redhat.com>, Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
-        Steven Whitehouse <swhiteho@redhat.com>,
-        Bob Peterson <rpeterso@redhat.com>, Abhijith Das <adas@redhat.com>,
-        Andrew Price <anprice@redhat.com>, Paul Evans <pevans@redhat.com>
-Subject: Re: [PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
-Message-ID: <20131003142127.GA16716@infradead.org>
-References: <20131001203047.GH16245@pad.fieldses.org>
- <524C0556.9070705@primarydata.com>
- <20131002160759.GB27988@infradead.org>
- <524D0873.40602@primarydata.com>
- <20131003095511.GA30147@infradead.org>
- <524D6312.7020709@primarydata.com>
- <524D6D38.1040506@redhat.com>
- <20131003131750.GA23408@infradead.org>
- <524D6EB9.3040309@redhat.com>
- <524D7CF3.6020306@primarydata.com>
+Received: from mail.candelatech.com ([208.74.158.172]:46725 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757002Ab3JOS3w (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Oct 2013 14:29:52 -0400
+Received: from [192.168.100.236] (firewall.candelatech.com [70.89.124.249])
+	(authenticated bits=0)
+	by ns3.lanforge.com (8.14.2/8.14.2) with ESMTP id r9FITpFW011263
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Oct 2013 11:29:51 -0700
+Message-ID: <525D899F.5010604@candelatech.com>
+Date: Tue, 15 Oct 2013 11:29:51 -0700
+From: Ben Greear <greearb@candelatech.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <524D7CF3.6020306@primarydata.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: 'umount -f /mnt/foo' fails if server IP is gone.
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 03, 2013 at 05:19:31PM +0300, Benny Halevy wrote:
-> The question is what is the minimum value for submitting upstream...
-> 
-> The thing pnfs over dlm/gfs2 is missing mostly is supporting read/write layout.
-> One could use them load balancing, e.g. by either redirecting to a node
-> holding an exclusive lock on the file, if there is one, or dlm_ino_hash in its absence.
+Is 'umount -f' supposed to always work, even if the file server
+goes away?
 
-One could do a lot of things, especially given infinite time.  But what
-does the current code buy us?  We need data on that to justify merging
-such a large chunk of code.
+I have a user's system that just hangs forever in this case.
+
+Could be local changes we have made, but I'm curious about
+the expected behaviour before I go digging too deep...
+
+Thanks,
+Ben
+
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
