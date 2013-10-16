@@ -1,222 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:9729 "EHLO mx12.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:36831 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751819Ab3J3Nyd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Oct 2013 09:54:33 -0400
-From: Anna Schumaker <bjschuma@netapp.com>
-To: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2] NFSD: Combine decode operations for v4 and v4.1
-Date: Wed, 30 Oct 2013 09:54:29 -0400
-Message-ID: <1383141269-9675-1-git-send-email-bjschuma@netapp.com>
+	id S1761486Ab3JPUgO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Oct 2013 16:36:14 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Weston Andros Adamson <dros@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: Add support for multiple sec= mount options
+Date: Wed, 16 Oct 2013 20:36:13 +0000
+Message-ID: <1381955772.17178.33.camel@leira.trondhjem.org>
+References: <1381517062-11267-1-git-send-email-dros@netapp.com>
+In-Reply-To: <1381517062-11267-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset="utf-7"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We were using a different array of function pointers to represent each
-minor version.  This makes adding a new minor version tedious, since it
-needs a step to copy, paste and modify a new version of the same
-functions.
+On Fri, 2013-10-11 at 14:44 -0400, Weston Andros Adamson wrote:
++AD4- This patch adds support for multiple security options which can be
++AD4- specified using a colon-delimited list of security flavors (the same
++AD4- syntax as nfsd's exports file).
++AD4- 
++AD4- This is useful, for instance, when NFSv4.x mounts cross SECINFO
++AD4- boundaries. With this patch a user can use +ACI-sec+AD0-krb5i,krb5p+ACI-
++AD4- to mount a remote filesystem using krb5i, but can still cross
++AD4- into krb5p-only exports.
++AD4- 
++AD4- New mounts will try all security options before failing.  NFSv4.x
++AD4- SECINFO results will be compared against the sec+AD0- flavors to
++AD4- find the first flavor in both lists or if no match is found will
++AD4- return EPERM.
++AD4- 
++AD4- This patch cleans up some of the auth flavor logic by separating
++AD4- the parsed mount options from the currently selected flavor and
++AD4- sharing more code between the 'no sec+AD0- specified' and 'sec+AD0- specified'
++AD4- code paths.
++AD4- 
++AD4- Along with this patch I'm posting a patch to nfs-util's nfs.man to
++AD4- reflect these changes.
++AD4- 
++AD4- I wrote a script to verify that I haven't broken anything, it tests
++AD4- all vers+AD0- and sec+AD0- combinations against a server with the exports:
++AD4- 
++AD4-  /export/sys       +ACo-(sec+AD0-sys,rw,no+AF8-root+AF8-squash)
++AD4-  /export/krb5a     +ACo-(sec+AD0-krb5,rw,no+AF8-root+AF8-squash)
++AD4-  /export/krb5i     +ACo-(sec+AD0-krb5i,rw,no+AF8-root+AF8-squash)
++AD4-  /export/krb5p     +ACo-(sec+AD0-krb5p,rw,no+AF8-root+AF8-squash)
++AD4-  /export/krb5ip    +ACo-(sec+AD0-krb5i:krb5p,rw,no+AF8-root+AF8-squash)
++AD4-  /export/krb5aip   +ACo-(sec+AD0-krb5:krb5i:krb5p,rw,no+AF8-root+AF8-squash)
++AD4- 
++AD4- The script runs these tests against all exports, and the versions NFSv3,
++AD4- v4.0, v4.1:
++AD4-  - no sec+AD0- options
++AD4-  - all single sec+AD0- options
++AD4-  - all combinations of multiple sec+AD0- options
++AD4-  - no sec+AD0- SECINFO (mount / then ls export dir, v4.x only)
++AD4-  - single sec+AD0- SECINFO (mount / then ls export dir, v4.x only)
++AD4-  - all combinations of multiple sec+AD0- SECINFO (mount / then ls export dir,
++AD4-     v4.x only)
++AD4- 
++AD4- Signed-off-by: Weston Andros Adamson +ADw-dros+AEA-netapp.com+AD4-
 
-This patch combines the v4 and v4.1 arrays into a single instance and
-will check minor version support inside each decoder function.
+Can you please split this up? It seems to me that there are at least 3
+patches here:
 
-Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/nfs4xdr.c | 97 ++++++++++++++++++++++---------------------------------
- 1 file changed, 39 insertions(+), 58 deletions(-)
+     1. Refactor code to introduce struct nfs+AF8-auth+AF8-info
+     2. Cache struct nfs+AF8-auth+AF8-info in struct nfs+AF8-server
+     3. Extend the mount code to allow multiple auth flavours in the
+        'sec+AD0-' mount options
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index d9454fe..7ea5ad8 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -945,13 +945,16 @@ static __be32
- nfsd4_decode_open_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_open_confirm *open_conf)
- {
- 	DECODE_HEAD;
--		    
-+
-+	if (argp->minorversion >= 1)
-+		return nfserr_notsupp;
-+
- 	status = nfsd4_decode_stateid(argp, &open_conf->oc_req_stateid);
- 	if (status)
- 		return status;
- 	READ_BUF(4);
- 	READ32(open_conf->oc_seqid);
--						        
-+
- 	DECODE_TAIL;
- }
- 
-@@ -991,6 +994,14 @@ nfsd4_decode_putfh(struct nfsd4_compoundargs *argp, struct nfsd4_putfh *putfh)
- }
- 
- static __be32
-+nfsd4_decode_putpubfh(struct nfsd4_compoundargs *argp, void *p)
-+{
-+	if (argp->minorversion == 0)
-+		return nfs_ok;
-+	return nfserr_notsupp;
-+}
-+
-+static __be32
- nfsd4_decode_read(struct nfsd4_compoundargs *argp, struct nfsd4_read *read)
- {
- 	DECODE_HEAD;
-@@ -1061,6 +1072,9 @@ nfsd4_decode_renew(struct nfsd4_compoundargs *argp, clientid_t *clientid)
- {
- 	DECODE_HEAD;
- 
-+	if (argp->minorversion >= 1)
-+		return nfserr_notsupp;
-+
- 	READ_BUF(sizeof(clientid_t));
- 	COPYMEM(clientid, sizeof(clientid_t));
- 
-@@ -1111,6 +1125,9 @@ nfsd4_decode_setclientid(struct nfsd4_compoundargs *argp, struct nfsd4_setclient
- {
- 	DECODE_HEAD;
- 
-+	if (argp->minorversion >= 1)
-+		return nfserr_notsupp;
-+
- 	READ_BUF(NFS4_VERIFIER_SIZE);
- 	COPYMEM(setclientid->se_verf.data, NFS4_VERIFIER_SIZE);
- 
-@@ -1137,6 +1154,9 @@ nfsd4_decode_setclientid_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_s
- {
- 	DECODE_HEAD;
- 
-+	if (argp->minorversion >= 1)
-+		return nfserr_notsupp;
-+
- 	READ_BUF(8 + NFS4_VERIFIER_SIZE);
- 	COPYMEM(&scd_c->sc_clientid, 8);
- 	COPYMEM(&scd_c->sc_confirm, NFS4_VERIFIER_SIZE);
-@@ -1220,6 +1240,9 @@ nfsd4_decode_release_lockowner(struct nfsd4_compoundargs *argp, struct nfsd4_rel
- {
- 	DECODE_HEAD;
- 
-+	if (argp->minorversion >= 1)
-+		return nfserr_notsupp;
-+
- 	READ_BUF(12);
- 	COPYMEM(&rlockowner->rl_clientid, sizeof(clientid_t));
- 	READ32(rlockowner->rl_owner.len);
-@@ -1519,7 +1542,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
- 	[OP_OPEN_CONFIRM]	= (nfsd4_dec)nfsd4_decode_open_confirm,
- 	[OP_OPEN_DOWNGRADE]	= (nfsd4_dec)nfsd4_decode_open_downgrade,
- 	[OP_PUTFH]		= (nfsd4_dec)nfsd4_decode_putfh,
--	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_noop,
-+	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_putpubfh,
- 	[OP_PUTROOTFH]		= (nfsd4_dec)nfsd4_decode_noop,
- 	[OP_READ]		= (nfsd4_dec)nfsd4_decode_read,
- 	[OP_READDIR]		= (nfsd4_dec)nfsd4_decode_readdir,
-@@ -1536,46 +1559,6 @@ static nfsd4_dec nfsd4_dec_ops[] = {
- 	[OP_VERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
- 	[OP_WRITE]		= (nfsd4_dec)nfsd4_decode_write,
- 	[OP_RELEASE_LOCKOWNER]	= (nfsd4_dec)nfsd4_decode_release_lockowner,
--};
--
--static nfsd4_dec nfsd41_dec_ops[] = {
--	[OP_ACCESS]		= (nfsd4_dec)nfsd4_decode_access,
--	[OP_CLOSE]		= (nfsd4_dec)nfsd4_decode_close,
--	[OP_COMMIT]		= (nfsd4_dec)nfsd4_decode_commit,
--	[OP_CREATE]		= (nfsd4_dec)nfsd4_decode_create,
--	[OP_DELEGPURGE]		= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_DELEGRETURN]	= (nfsd4_dec)nfsd4_decode_delegreturn,
--	[OP_GETATTR]		= (nfsd4_dec)nfsd4_decode_getattr,
--	[OP_GETFH]		= (nfsd4_dec)nfsd4_decode_noop,
--	[OP_LINK]		= (nfsd4_dec)nfsd4_decode_link,
--	[OP_LOCK]		= (nfsd4_dec)nfsd4_decode_lock,
--	[OP_LOCKT]		= (nfsd4_dec)nfsd4_decode_lockt,
--	[OP_LOCKU]		= (nfsd4_dec)nfsd4_decode_locku,
--	[OP_LOOKUP]		= (nfsd4_dec)nfsd4_decode_lookup,
--	[OP_LOOKUPP]		= (nfsd4_dec)nfsd4_decode_noop,
--	[OP_NVERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
--	[OP_OPEN]		= (nfsd4_dec)nfsd4_decode_open,
--	[OP_OPENATTR]		= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_OPEN_CONFIRM]	= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_OPEN_DOWNGRADE]	= (nfsd4_dec)nfsd4_decode_open_downgrade,
--	[OP_PUTFH]		= (nfsd4_dec)nfsd4_decode_putfh,
--	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_PUTROOTFH]		= (nfsd4_dec)nfsd4_decode_noop,
--	[OP_READ]		= (nfsd4_dec)nfsd4_decode_read,
--	[OP_READDIR]		= (nfsd4_dec)nfsd4_decode_readdir,
--	[OP_READLINK]		= (nfsd4_dec)nfsd4_decode_noop,
--	[OP_REMOVE]		= (nfsd4_dec)nfsd4_decode_remove,
--	[OP_RENAME]		= (nfsd4_dec)nfsd4_decode_rename,
--	[OP_RENEW]		= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_RESTOREFH]		= (nfsd4_dec)nfsd4_decode_noop,
--	[OP_SAVEFH]		= (nfsd4_dec)nfsd4_decode_noop,
--	[OP_SECINFO]		= (nfsd4_dec)nfsd4_decode_secinfo,
--	[OP_SETATTR]		= (nfsd4_dec)nfsd4_decode_setattr,
--	[OP_SETCLIENTID]	= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_SETCLIENTID_CONFIRM]= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_VERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
--	[OP_WRITE]		= (nfsd4_dec)nfsd4_decode_write,
--	[OP_RELEASE_LOCKOWNER]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 
- 	/* new operations for NFSv4.1 */
- 	[OP_BACKCHANNEL_CTL]	= (nfsd4_dec)nfsd4_decode_backchannel_ctl,
-@@ -1599,23 +1582,22 @@ static nfsd4_dec nfsd41_dec_ops[] = {
- 	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
- };
- 
--struct nfsd4_minorversion_ops {
--	nfsd4_dec *decoders;
--	int nops;
--};
--
--static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
--	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
--	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
--	[2] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
--};
-+static __be32 nfsd4_verify_opnum(struct nfsd4_compoundargs *argp, struct nfsd4_op *op)
-+{
-+	if (op->opnum < FIRST_NFS4_OP || op->opnum > LAST_NFS4_OP)
-+		return nfserr_op_illegal;
-+	else if (argp->minorversion == 0 && op->opnum > OP_RELEASE_LOCKOWNER)
-+		return nfserr_op_illegal;
-+	else if (argp->minorversion == 1 && op->opnum > OP_RECLAIM_COMPLETE)
-+		return nfserr_op_illegal;
-+	return nfs_ok;
-+}
- 
- static __be32
- nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- {
- 	DECODE_HEAD;
- 	struct nfsd4_op *op;
--	struct nfsd4_minorversion_ops *ops;
- 	bool cachethis = false;
- 	int i;
- 
-@@ -1640,10 +1622,9 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 		}
- 	}
- 
--	if (argp->minorversion >= ARRAY_SIZE(nfsd4_minorversion))
-+	if (argp->minorversion > NFSD_SUPPORTED_MINOR_VERSION)
- 		argp->opcnt = 0;
- 
--	ops = &nfsd4_minorversion[argp->minorversion];
- 	for (i = 0; i < argp->opcnt; i++) {
- 		op = &argp->ops[i];
- 		op->replay = NULL;
-@@ -1651,8 +1632,8 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 		READ_BUF(4);
- 		READ32(op->opnum);
- 
--		if (op->opnum >= FIRST_NFS4_OP && op->opnum <= LAST_NFS4_OP)
--			op->status = ops->decoders[op->opnum](argp, &op->u);
-+		if (nfsd4_verify_opnum(argp, op) == nfs_ok)
-+			op->status = nfsd4_dec_ops[op->opnum](argp, &op->u);
- 		else {
- 			op->opnum = OP_ILLEGAL;
- 			op->status = nfserr_op_illegal;
+Thanks
+  Trond
+
 -- 
-1.8.4.2
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
