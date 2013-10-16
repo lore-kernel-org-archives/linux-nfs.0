@@ -1,60 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:58040 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:3989 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753880Ab3J2Qyh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Oct 2013 12:54:37 -0400
-From: Weston Andros Adamson <dros@netapp.com>
+	id S1756196Ab3JPTSo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Oct 2013 15:18:44 -0400
+Date: Wed, 16 Oct 2013 15:18:27 -0400
+From: Jeff Layton <jlayton@redhat.com>
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <steved@redhat.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs.man: add description of multiple sec= options
-Date: Tue, 29 Oct 2013 16:54:35 +0000
-Message-ID: <A6D4D98E-7671-453E-B805-5AC2BB5BD781@netapp.com>
-References: <1383064066-1139-1-git-send-email-dros@netapp.com>
- <27470170-8177-4561-A11A-70CA2EF704A8@oracle.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9534ED3E0@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9534ED3E0@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Andi Kleen <andi@firstfloor.org>,
+        "kwc@citi.umich.edu" <kwc@citi.umich.edu>
+Subject: Re: [PATCH] sunrpc: trim off EC bytes in addition to the checksum
+ blob when doing a GSSAPI v2 unwrap
+Message-ID: <20131016151827.45373f68@tlielax.poochiereds.net>
+In-Reply-To: <1381950587.17178.17.camel@leira.trondhjem.org>
+References: <1381427810-10633-1-git-send-email-jlayton@redhat.com>
+	<1381949005.17178.10.camel@leira.trondhjem.org>
+	<20131016145314.14b2ac32@tlielax.poochiereds.net>
+	<1381950587.17178.17.camel@leira.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQpPbiBPY3QgMjksIDIwMTMsIGF0IDEyOjM2IFBNLCBNeWtsZWJ1c3QsIFRyb25kIDxUcm9uZC5N
-eWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQoNCj4+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0t
-LS0tDQo+PiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnIFttYWlsdG86bGlu
-dXgtbmZzLQ0KPj4gb3duZXJAdmdlci5rZXJuZWwub3JnXSBPbiBCZWhhbGYgT2YgQ2h1Y2sgTGV2
-ZXINCj4+IFNlbnQ6IFR1ZXNkYXksIE9jdG9iZXIgMjksIDIwMTMgMTI6MzAgUE0NCj4+IFRvOiBX
-ZXN0b24gQW5kcm9zIEFkYW1zb24NCj4+IENjOiBzdGV2ZWRAcmVkaGF0LmNvbTsgbGludXgtbmZz
-QHZnZXIua2VybmVsLm9yZw0KPj4gU3ViamVjdDogUmU6IFtQQVRDSF0gbmZzLm1hbjogYWRkIGRl
-c2NyaXB0aW9uIG9mIG11bHRpcGxlIHNlYz0gb3B0aW9ucw0KPj4gDQo+PiANCj4+IE9uIE9jdCAy
-OSwgMjAxMywgYXQgMTI6MjcgUE0sIFdlc3RvbiBBbmRyb3MgQWRhbXNvbiA8ZHJvc0BuZXRhcHAu
-Y29tPg0KPj4gd3JvdGU6DQo+PiANCj4+PiBUaGUgY2xpZW50IG5vdyBzdXBwb3J0cyBtdWx0aXBs
-ZSBzZWM9IG9wdGlvbnMgYXMgYSBjb2xvbiBkZWxpbWl0ZWQgbGlzdC4NCj4+PiANCj4+PiBTaWdu
-ZWQtb2ZmLWJ5OiBXZXN0b24gQW5kcm9zIEFkYW1zb24gPGRyb3NAbmV0YXBwLmNvbT4NCj4+PiAt
-LS0NCj4+PiB1dGlscy9tb3VudC9uZnMubWFuIHwgNyArKysrLS0tDQo+Pj4gMSBmaWxlIGNoYW5n
-ZWQsIDQgaW5zZXJ0aW9ucygrKSwgMyBkZWxldGlvbnMoLSkNCj4+PiANCj4+PiBkaWZmIC0tZ2l0
-IGEvdXRpbHMvbW91bnQvbmZzLm1hbiBiL3V0aWxzL21vdW50L25mcy5tYW4gaW5kZXgNCj4+PiAy
-YTQyYjkzLi4xN2I4ZDg4IDEwMDY0NA0KPj4+IC0tLSBhL3V0aWxzL21vdW50L25mcy5tYW4NCj4+
-PiArKysgYi91dGlscy9tb3VudC9uZnMubWFuDQo+Pj4gQEAgLTM4MCw5ICszODAsMTAgQEAgSWYg
-YSB2YWx1ZSBvZiB6ZXJvIGlzIHNwZWNpZmllZCwgdGhlIC5CUiBtb3VudA0KPj4+ICg4KSBjb21t
-YW5kIGV4aXRzIGltbWVkaWF0ZWx5IGFmdGVyIHRoZSBmaXJzdCBmYWlsdXJlLg0KPj4+IC5UUCAx
-LjVpDQo+Pj4gLS5CSSBzZWM9IGZsYXZvcg0KPj4+IC1UaGUgc2VjdXJpdHkgZmxhdm9yIHRvIHVz
-ZSBmb3IgYWNjZXNzaW5nIGZpbGVzIG9uIHRoaXMgbW91bnQgcG9pbnQuDQo+Pj4gLUlmIHRoZSBz
-ZXJ2ZXIgZG9lcyBub3Qgc3VwcG9ydCB0aGlzIGZsYXZvciwgdGhlIG1vdW50IG9wZXJhdGlvbiBm
-YWlscy4NCj4+PiArLkJJIHNlYz0gZmxhdm9ycw0KPj4+ICtBIGNvbG9uLWRlbGltaXRlZCBsaXN0
-IG9mIHNlY3VyaXR5IGZsYXZvcnMgdG8gdXNlIGZvciBhY2Nlc3NpbmcgZmlsZXMNCj4+PiArb24g
-dGhpcyBtb3VudCBwb2ludC4gSWYgdGhlIHNlcnZlciBkb2VzIG5vdCBzdXBwb3J0IGFueSBvZiB0
-aGVzZQ0KPj4+ICtmbGF2b3JzLCB0aGUgbW91bnQgb3BlcmF0aW9uIGZhaWxzLg0KPj4gDQo+PiBK
-dXN0IGEgbml0OiAgVGhlIG5ldyB0ZXh0IGtpbmQgb2Ygc3VnZ2VzdHMgdGhhdCB0aGUgY29sb25z
-IGFyZSByZXF1aXJlZC4NCj4+ICJzZWM9c2luZ2xlIGZsYXZvciIgaXMgYWxzbyBzdGlsbCBzdXBw
-b3J0ZWQuICBUeXBpY2FsbHkgbWFuIHBhZ2UgbGFuZ3VhZ2UgaXMNCj4+IGNhcmVmdWwgdG8gc2hv
-dyBib3RoLg0KPiANCj4gSG93IGFib3V0ICJjb2xvbi1zZXBhcmF0ZWQgbGlzdCBvZiBvbmUgb3Ig
-bW9yZSBzZWN1cml0eSBmbGF2b3VycyI/IFRoYXQncyBsZXNzIGFtYmlndW91cyB0aGFuICJjb2xv
-bi1kZWxpbWl0ZWQi4oCmDQoNCk9LLCBidXQgZndpdyBJIGFwZWQgdGhhdCBmcm9tIHRoZSBleHBv
-cnRzIG1hbnBhZ2U6DQoNCiAgICAgICBzZWM9ICAgVGhlICBzZWM9IG9wdGlvbiwgZm9sbG93ZWQg
-YnkgYSBjb2xvbi1kZWxpbWl0ZWQgbGlzdCBvZiBzZWN1cml0eQ0KICAgICAgICAgICAgICBmbGF2
-b3JzLCByZXN0cmljdHMgdGhlIGV4cG9ydCB0byBjbGllbnRzICB1c2luZyAgdGhvc2UgIGZsYXZv
-cnMuDQogICAgICAgICAgICAgIEF2YWlsYWJsZSAgc2VjdXJpdHkgZmxhdm9ycyBpbmNsdWRlIHN5
-cyAodGhlIGRlZmF1bHQtLW5vIGNyeXB0b+KAkA0K4oCmDQoNClNvIGl0Og0KIDEpIGlzbuKAmXQg
-Y2xlYXIgdGhhdCBvbmUgZmxhdm9yIGlzIGFuIG9wdGlvbi4NCiAyKSBzYXlzIOKAnGNvbG9uLWRl
-bGltaXRlZCINCg0KU2hvdWxkIHdlIGNsZWFuIHRoaXMgdXAgdG9vPw0KDQotZHJvcw==
+On Wed, 16 Oct 2013 19:09:48 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+
+> On Wed, 2013-10-16 at 14:53 -0400, Jeff Layton wrote:
+> > On Wed, 16 Oct 2013 18:43:26 +0000
+> > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+> > 
+> > > On Thu, 2013-10-10 at 13:56 -0400, Jeff Layton wrote:
+> > > > As Bruce points out in RFC 4121, section 4.2.3:
+> > > > 
+> > > >    "In Wrap tokens that provide for confidentiality, the first 16 octets
+> > > >     of the Wrap token (the "header", as defined in section 4.2.6), SHALL
+> > > >     be appended to the plaintext data before encryption.  Filler octets
+> > > >     MAY be inserted between the plaintext data and the "header.""
+> > > > 
+> > > > ...and...
+> > > > 
+> > > >    "In Wrap tokens with confidentiality, the EC field SHALL be used to
+> > > >     encode the number of octets in the filler..."
+> > > > 
+> > > > It's possible for the client to stuff different data in that area on a
+> > > > retransmission, which could make the checksum come out wrong in the DRC
+> > > > code.
+> > > > 
+> > > > After decrypting the blob, we should trim off any extra count bytes in
+> > > > addition to the checksum blob.
+> > > > 
+> > > > Reported-by: "J. Bruce Fields" <bfields@fieldses.org>
+> > > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > > > ---
+> > > >  net/sunrpc/auth_gss/gss_krb5_wrap.c | 4 ++--
+> > > >  1 file changed, 2 insertions(+), 2 deletions(-)
+> > > > 
+> > > > diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> > > > index 1da52d1..ec1f4d0 100644
+> > > > --- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> > > > +++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> > > > @@ -574,8 +574,8 @@ gss_unwrap_kerberos_v2(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
+> > > >  	buf->head[0].iov_len -= GSS_KRB5_TOK_HDR_LEN + headskip;
+> > > >  	buf->len -= GSS_KRB5_TOK_HDR_LEN + headskip;
+> > > >  
+> > > > -	/* Trim off the checksum blob */
+> > > > -	xdr_buf_trim(buf, GSS_KRB5_TOK_HDR_LEN + tailskip);
+> > > > +	/* Trim off the trailing "extra count" and checksum blob */
+> > > > +	xdr_buf_trim(buf, ec + GSS_KRB5_TOK_HDR_LEN + tailskip);
+> > > >  	return GSS_S_COMPLETE;
+> > > >  }
+> > > >  
+> > > 
+> > > If this is just padding, then why would it be anything other than '0',
+> > > even on a retransmission? Clients are not supposed to leak random data
+> > > to the server...
+> > > 
+> > 
+> > The Linux client routines are actually set up to fill this with 'X'
+> > characters, not nulls. See gss_krb5_aes_encrypt, which does this:
+> > 
+> >         memset(ecptr, 'X', ec);
+> > 
+> > AFAICT, the spec doesn't actually say what's supposed to be in the
+> > padding, just that it's to be ignored. I imagine that most clients will
+> > just set this to a constant value like Linux does, but there doesn't
+> > seem to be any guarantee of that, and there's no real point in keeping
+> > it around.
+> 
+> The only caller of gss_krb5_aes_encrypt is gss_wrap_kerberos_v2(), which
+> sets 'ec' to 0.
+> 
+
+Yes, I realize that. The Linux client currently never sends any
+padding. I was just pointing out that the encrypt_v2 routine is set up
+to handle a non-zero "ec" value, and that when it gets one it fills the
+padding with X's. We could make that not even pass in an "ec" value at
+all of course, but maybe it'll come in handy sometime.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
