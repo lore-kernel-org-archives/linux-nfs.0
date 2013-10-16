@@ -1,66 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50766 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753151Ab3JAO0C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Oct 2013 10:26:02 -0400
-Date: Tue, 1 Oct 2013 10:26:01 -0400
-From: "'Bruce Fields'" <bfields@fieldses.org>
-To: Frank Filz <ffilzlnx@mindspring.com>
-Cc: "'Kernel NFS List'" <linux-nfs@vger.kernel.org>,
-        "'Ganesha NFS List'" <nfs-ganesha-devel@lists.sourceforge.net>
-Subject: Re: pynfs updates
-Message-ID: <20131001142601.GG26382@fieldses.org>
-References: <003301cebe09$5bf81090$13e831b0$@mindspring.com>
- <20130930221126.GD26382@fieldses.org>
- <003f01cebe38$75436480$5fca2d80$@mindspring.com>
+Received: from mail-wi0-f169.google.com ([209.85.212.169]:63353 "EHLO
+	mail-wi0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760162Ab3JPIpc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Oct 2013 04:45:32 -0400
+Received: by mail-wi0-f169.google.com with SMTP id cb5so6650419wib.2
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Oct 2013 01:45:31 -0700 (PDT)
+Message-ID: <525E5228.80200@primarydata.com>
+Date: Wed, 16 Oct 2013 11:45:28 +0300
+From: Benny Halevy <bhalevy@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <003f01cebe38$75436480$5fca2d80$@mindspring.com>
+To: Christoph Hellwig <hch@infradead.org>, bfields@redhat.com
+CC: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: nfs4_file usage
+References: <20131015211445.GA23636@infradead.org> <525E2C5C.4020104@primarydata.com> <20131016064649.GB28758@infradead.org>
+In-Reply-To: <20131016064649.GB28758@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 30, 2013 at 07:54:52PM -0400, Frank Filz wrote:
-> > 	- "Add two SECINFO_NO_NAME tests for
-> > SECINFO_STYLE4_PARENT":
-> > 		- SECNN3: is / required to have no parent?  (I'd assumed
-> > 		  here that it would also be OK to follow the convention
-> > 		  that / is its own parent, but I'll admit to not having
-> > 		  thought about this much.)
+[adding linux-nfs to the Cc]
+
+On 2013-10-16 09:46, Christoph Hellwig wrote:
+> On Wed, Oct 16, 2013 at 09:04:12AM +0300, Benny Halevy wrote:
+>> On 2013-10-16 00:14, Christoph Hellwig wrote:
+>>> it seems like the pnfs tree uses struct nfs4_file for something entirely
+>>> different than the current nfsd usage of it - in fact none of the actual
+>>> fields except for the refcount, hashing and inode reference seems to be
+>>> shared.
+>>
+>> The dlm patchset adds these members:
+>> +	struct list_head	fi_lo_states;
+>>
+>> The fi_lo_states (coupled with nfs4_client.cl_lo_states) use case is equivalent
+>> to fi_delegations.
+>> But that said, it might make sense to move the respective layout state handling
+>> to nfs4state.c.
+>>
+>> +	struct nfs4_fsid	fi_fsid;
+>> fi_fsid is a shorthand for fh_export->ex_fsid and it would be expensive to look
+>> it up on demand (return and recall by fsid)
+>>
+>> Other uses in the full pnfsd patchset add:
+>> +	struct mutex		fi_lo_lock;
+>> for inter-locking layout changing ops (layout get/commit/return) across
+>> down calls to the file system.
+>> I need to see if that can/should be moved to the layout state structure instead.
+>>
+>> +	u32			fi_fhlen;
+>> +	u8			fi_fhval[NFS4_FHSIZE];
+>>
+>> Similar to fi_fsid, a shorthand for layout recall by file (common case).
+>> I don't see a better place to put it.
 > 
-> >From LOOKUPP:
+> Maybe I wasn't clear enough in the first mail.   pnfs still needs a
+> structure the shadows struct inode with all the fields it adds.  I just
+> don't think overlyaing it over nfs4_file makes sense, but rather have
+> something separate ala:
 > 
-> 18.14.3. DESCRIPTION
-> The current filehandle is assumed to refer to a regular directory or
-> a named attribute directory. LOOKUPP assigns the filehandle for its
-> parent directory to be the current filehandle. If there is no parent
-> directory, an NFS4ERR_NOENT error must be returned. Therefore,
-> NFS4ERR_NOENT will be returned by the server when the current
-> filehandle is at the root or top of the server's file tree.
+> struct pnfsd_inode {
+> 	atomic_t                pi_ref;
+> 	struct hlist_node       pi_hash;
+> 	struct list_head        pi_lo_states;
 
-OK, fine.
+I'm reluctant about the layout stateids as it uses common hashing data structs
+locking infrastructure, and code with all other nfsd4 stateids.
 
-> > 		- SECNN4: is env.home necessarily unequal to "/"?  Would
-> > 		  seem better to do the lookup in a subdirectory just to
-> > 		  be certain.
+I hope that the pnfs layer can just carry a pointer to the nfs4_file
+to passed to functions living in nfs4state.c that control the layout state.
+
+> 	struct mutex            pi_lo_lock;
+> 	struct nfs4_fsid        pi_fsid;
+> 	u32                     pi_fhlen;
+> 	u8			pi_fhval[NFS4_FHSIZE];
+> };
 > 
-> Env.home is the directory you specify on the command line, I think the
-> presumption is that it is a writeable file system. Pynfs creates tmp and
-> tree directories in home (and maybe some files also?). Guess if / was
-> writeable, you could specify /, so yea, maybe it should go into tmp.
 
-Sounds good.
+We can have a similar hash table for pnfsd_inode similar to nfs4_file
+Note that nfs4_file is also per inode, not per file as might be reflected from its name.
+Maybe moving it nfs4state.c also warrants renaming it to something more accurate.
+And while there, change file_hashval to hash on i_ino rather than the inode ptr.
 
-> 
-> A better test might actually be to do LOOKUP down to home and even into tmp,
-> looking for a junction, and then do the SECINFO_NO_NAME(parent) on the
-> directory handle just across the junction if one was found.
-
-Yeah it'd be nice to check that cross-filesystem case but I don't think
-it's necessary (and you still have to deal with the case where a
-mountpoint's not found).
-
-If tests at mountpoints were useful perhaps we could pass in a
-mountpoint on the commandline.  Or add some sort of export-configuration
-interface to the serverhelper script and let pynfs setup exports itself.
-
---b.
+Benny
