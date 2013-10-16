@@ -1,69 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.lang.hm ([64.81.33.126]:43652 "EHLO bifrost.lang.hm"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753559Ab3JBNcs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Oct 2013 09:32:48 -0400
-Date: Wed, 2 Oct 2013 06:31:36 -0700 (PDT)
-From: David Lang <david@lang.hm>
-To: Jan Kara <jack@suse.cz>
-cc: Zach Brown <zab@redhat.com>, Miklos Szeredi <miklos@szeredi.hu>,
-        Ric Wheeler <rwheeler@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Anna Schumaker <schumaker.anna@gmail.com>,
-        Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        Eric Wong <normalperson@yhbt.net>
-Subject: Re: [RFC] extending splice for copy offloading
-In-Reply-To: <20131002125837.GA32181@quack.suse.cz>
-Message-ID: <alpine.DEB.2.02.1310020630480.18715@nftneq.ynat.uz>
-References: <20130927205013.GZ30372@lenny.home.zabbo.net> <CAJfpegtdiQzP7t5hc_OaHjSGTrjdZLfKi6fiKqBQ_+AP2Y0-oQ@mail.gmail.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9467EF2D7@SACEXCMBX04-PRD.hq.netapp.com> <52474839.2080201@redhat.com>
- <CAJfpegsN7Hu8uecSVQrhax+n+zhq=uUgpzOk=qZ6_n383tdNCQ@mail.gmail.com> <20130930143432.GG16579@fieldses.org> <CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com> <52499026.3090802@redhat.com> <CAJfpegtpXuh9070ALGy16Y8kdgioBqSf4JQqBBCF4FHvFJWAWQ@mail.gmail.com>
- <20131001195817.GE10831@lenny.home.zabbo.net> <20131002125837.GA32181@quack.suse.cz>
+Received: from mail-we0-f171.google.com ([74.125.82.171]:39478 "EHLO
+	mail-we0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932406Ab3JPMSY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Oct 2013 08:18:24 -0400
+Received: by mail-we0-f171.google.com with SMTP id t60so610521wes.30
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Oct 2013 05:18:23 -0700 (PDT)
+Message-ID: <525E840D.3040509@primarydata.com>
+Date: Wed, 16 Oct 2013 15:18:21 +0300
+From: Benny Halevy <bhalevy@primarydata.com>
 MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+To: Christoph Hellwig <hch@infradead.org>
+CC: bfields@redhat.com, NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: nfs4_file usage
+References: <20131015211445.GA23636@infradead.org> <525E2C5C.4020104@primarydata.com> <20131016064649.GB28758@infradead.org> <525E5228.80200@primarydata.com> <20131016085117.GA21665@infradead.org>
+In-Reply-To: <20131016085117.GA21665@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2 Oct 2013, Jan Kara wrote:
+On 2013-10-16 11:51, Christoph Hellwig wrote:
+> On Wed, Oct 16, 2013 at 11:45:28AM +0300, Benny Halevy wrote:
+>> I'm reluctant about the layout stateids as it uses common hashing data structs
+>> locking infrastructure, and code with all other nfsd4 stateids.
+> 
+> The layout stateids are another thing that confuses me in the current
+> pnfs code.  Depending on what we find the generic state id might be
+> embedded into the layout stateid or they might be separate, but there
+> don't seem to be clear rules on how to deal with freeing things in the
+> later case.  I haven't brought this up because I didn't dig deep into it
+> enough, but it's for sure more than confusing.
+> 
 
-> On Tue 01-10-13 12:58:17, Zach Brown wrote:
->>> - app calls splice(from, 0, to, 0, SIZE_MAX)
->>>  1) VFS calls ->direct_splice(from, 0,  to, 0, SIZE_MAX)
->>>     1.a) fs reflinks the whole file in a jiffy and returns the size of the file
->>>     1 b) fs does copy offload of, say, 64MB and returns 64M
->>>  2) VFS does page copy of, say, 1MB and returns 1MB
->>> - app calls splice(from, X, to, X, SIZE_MAX) where X is the new offset
->>
->> (It's not SIZE_MAX.  It's MAX_RW_COUNT.  INT_MAX with some
->> PAGE_CACHE_SIZE rounding noise.  For fear of weird corners of fs code
->> paths that still use int, one assumes.)
->>
->>> The point is: the app is always doing the same (incrementing offset
->>> with the return value from splice) and the kernel can decide what is
->>> the best size it can service within a single uninterruptible syscall.
->>>
->>> Wouldn't that work?
->>
->> It seems like it should, if people are willing to allow splice() to
->> return partial counts.  Quite a lot of IO syscalls technically do return
->> partial counts today if you try to write > MAX_RW_COUNT :).
->  Yes. Also POSIX says that application must handle such case for read &
-> write. But in practice programmers are lazy.
->
->> But returning partial counts on the order of a handful of megs that the
->> file systems make up as the point of diminishing returns is another
->> thing entirely.  I can imagine people being anxious about that.
->>
->> I guess we'll find out!
->  Return 4 KB once in a while to screw up buggy applications from the
-> start :-p
+The nfs4.1 layout stateid is like any other stateid (open/lock/deleg)
+but it's life time is a bit different as it is not descending from the
+open stateid (though the protocol requires the client to use it
+to acquire the first layout for the file) and it is released via
+either LAYOUTRETURN or CLOSE (in the "return_on_close" case).
+The rules here are different enough from open/lock/deleg stateids that
+pnfsd needs special code to handle the management of the actual layout state
+under the layout stateid and manipulate it accordingly.
 
-or at least have a debugging option early on that does this so people can use it 
-to find such buggy apps.
+>> We can have a similar hash table for pnfsd_inode similar to nfs4_file
+> 
+> Yes, that was the plan.
+> 
+>> Note that nfs4_file is also per inode, not per file as might be reflected from its name.
+>> Maybe moving it nfs4state.c also warrants renaming it to something more accurate.
+> 
+> Yes, it should have an inode instead of file in the name, and it really
+> should be nfsd4_ prefix instead of using the client namespace. Given
+> that it's open/locking specific I'm not even sure that name should be
+> that generic.
 
-David Lang
+Yeah, the server naming conventions are confusing and in many cases
+conflicting with client names (file names, data types, functions, etc.)
+
+> 
+>> And while there, change file_hashval to hash on i_ino rather than the inode ptr.
+> 
+> That's a bad idea.  i_ino is 32-bit only while many NFS-exported
+> filesystems have 64-bit inode numbers.  Hashing on kernel pointers
+> genetrally is a fairly good idea, and we do it for the inode in other
+> places, too.
+> 
+
+How many bits in the kernel address space are unique?
+I am under the impression that they'd differ mostly in their least significant bits anyway.
+Regardless, if it works well now then no reason to change it.
