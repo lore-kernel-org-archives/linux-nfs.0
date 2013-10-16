@@ -1,294 +1,201 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.linuxfoundation.org ([140.211.169.12]:55994 "EHLO
-	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754358Ab3JIWlK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Oct 2013 18:41:10 -0400
-Date: Wed, 9 Oct 2013 15:41:09 -0700
-From: Andrew Morton <akpm@linux-foundation.org>
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Andreas Gruenbacher <agruen@suse.de>
-Subject: Re: [PATCH] posix_acl: resolve compile dependency in posix_acl.h
-Message-Id: <20131009154109.13c7248c53b97d96194ca8f9@linux-foundation.org>
-In-Reply-To: <524C2F6D.1060703@primarydata.com>
-References: <1380220974-14716-1-git-send-email-bhalevy@primarydata.com>
-	<524C2F6D.1060703@primarydata.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mx1.redhat.com ([209.132.183.28]:29952 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760936Ab3JPWjW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Oct 2013 18:39:22 -0400
+Date: Wed, 16 Oct 2013 18:00:14 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-fsdevel@vger.kernel.org, Al Viro <viro@ZenIV.linux.org.uk>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 5/5] exportfs: fix quadratic behavior in filehandle lookup
+Message-ID: <20131016220013.GC7332@pad.fieldses.org>
+References: <1381869574-10662-1-git-send-email-bfields@redhat.com>
+ <1381869574-10662-6-git-send-email-bfields@redhat.com>
+ <20131016080407.GA7390@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131016080407.GA7390@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 02 Oct 2013 17:36:29 +0300 Benny Halevy <bhalevy@primarydata.com> wrote:
-
-> From: Benny Halevy <bhalevy@panasas.com>
+On Wed, Oct 16, 2013 at 01:04:07AM -0700, Christoph Hellwig wrote:
+> On Tue, Oct 15, 2013 at 04:39:33PM -0400, J. Bruce Fields wrote:
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > We shouldn't really have to re-lookup the parents on each pass through.
+> > This should make behavior linear instead of quadratic as a function of
+> > directory depth.
 > 
-> get_cached_acl is defined as inline in posix_acl.h
-> requiring the full definition of struct inode as it
-> dereferences its struct inode * parameter.
-
-That's very old code so you must have a peculiar config.  Please
-describe the circumstances under which this occurs, because I'd like to
-avoid merging this patch.
-
-> --- a/include/linux/posix_acl.h
-> +++ b/include/linux/posix_acl.h
-> @@ -9,6 +9,7 @@
->  #define __LINUX_POSIX_ACL_H
+> This looks valid after going through the nasty cases like a
+> cross-directory rename.  But I'd really prefer the changelog to be way
+> more detailed.
 > 
->  #include <linux/bug.h>
-> +#include <linux/fs.h>
->  #include <linux/slab.h>
->  #include <linux/rcupdate.h>
+> Also a few untested fixups below:
+> 	- document that reconnect_one can only be called for directories
+> 	- make sure we always properly drop the parent dentry on
+> 	  reconnect_one failure
+> 	- warn then the tmp dentry is not the same as the one we started
+> 	  with.  Given that we deal with directories this should not
+> 	  happen
+> 	- add/update a few comments.
+> 	- tidy up the reconnect_path loop so the reconnect case shares
+> 	  more logic with the dget_parent case
+> 
+> 
+> Index: linux/fs/exportfs/expfs.c
+> ===================================================================
+> --- linux.orig/fs/exportfs/expfs.c	2013-10-16 09:58:44.544119517 +0200
+> +++ linux/fs/exportfs/expfs.c	2013-10-16 10:04:19.176127470 +0200
+> @@ -104,38 +104,30 @@ static void clear_disconnected(struct de
+>  }
+>  
+>  /*
+> - * Return the parent directory on success.
+> + * Reconnect a directory dentry with its parent.
+>   *
+> - * If it races with a rename or unlink, assume the other operation
+> - * connected it, but return NULL to indicate the caller should check
+> - * this just to make sure the filesystem isn't nuts.
+> + * Return the parent directory when successfully reconnecting, NULL if it
+> + * raced with another VFS operation, in which case it got connected or
+> + * the whole file handle will become stale.
+>   *
+>   * Otherwise return an error.
+>   */
+> -static struct dentry *reconnect_one(struct vfsmount *mnt, struct dentry *dentry, char *nbuf)
+> +static struct dentry *reconnect_one(struct vfsmount *mnt,
+> +		struct dentry *dentry, char *nbuf)
+>  {
+>  	struct dentry *parent;
+>  	struct dentry *tmp;
+>  	int err;
+> -	/*
+> -	 * Getting the parent can't be supported generically, the
+> -	 * locking is too icky.
+> -	 *
+> -	 * If it can't be done, we just return EACCES.  If you were
+> -	 * depending on the dcache finding the parent for you, you lose
+> -	 * if there's a reboot or inodes get flushed.
+> -	 */
+> -	parent = ERR_PTR(-EACCES);
+>  
+> +	parent = ERR_PTR(-EACCES);
+>  	mutex_lock(&dentry->d_inode->i_mutex);
+>  	if (mnt->mnt_sb->s_export_op->get_parent)
+>  		parent = mnt->mnt_sb->s_export_op->get_parent(dentry);
+>  	mutex_unlock(&dentry->d_inode->i_mutex);
+>  
+>  	if (IS_ERR(parent)) {
+> -		err = PTR_ERR(parent);
+>  		dprintk("%s: get_parent of %ld failed, err %d\n",
+> -			__func__, dentry->d_inode->i_ino, err);
+> +			__func__, dentry->d_inode->i_ino, PTR_ERR(parent));
+>  		return parent;
+>  	}
+>  
+> @@ -143,26 +135,45 @@ static struct dentry *reconnect_one(stru
+>  		dentry->d_inode->i_ino, parent->d_inode->i_ino);
+>  	err = exportfs_get_name(mnt, parent, nbuf, dentry);
+>  	if (err) {
+> +		/*
+> +		 * Someone must have renamed our entry into another parent,
+> +		 * in which case it has been reconnected by the rename.
+> +		 *
+> +		 * Or someone removed it entirely, in which case the file
+> +		 * handle has become stale.
+> +		 */
+>  		if (err == -ENOENT)
+> -			 return NULL;
+> -		dput(parent);
+> -		return ERR_PTR(err);
+> +			goto out_reconnected;
+> +		goto out_err;
+>  	}
+>  	dprintk("%s: found name: %s\n", __func__, nbuf);
+>  	mutex_lock(&parent->d_inode->i_mutex);
+>  	tmp = lookup_one_len(nbuf, parent, strlen(nbuf));
+>  	mutex_unlock(&parent->d_inode->i_mutex);
+>  	if (IS_ERR(tmp)) {
+> -		err = PTR_ERR(tmp);
+> -		dprintk("%s: lookup failed: %d\n",
+> -			__func__, err);
+> -		return NULL;
+> +		dprintk("%s: lookup failed: %d\n", __func__, PTR_ERR(tmp));
+> +		goto out_reconnected;
+> +	}
+> +	if (WARN_ON(tmp != dentry)) {
+> +		dprintk("%s: got different dentry while reconnecting.\n",
+> +			__func__);
+> +		dput(tmp);
+> +		err = -ESTALE;
+> +		goto out_err;
 
-A better fix is to undo all that crazy inlining in posix_acl.h.
+Wait, no, this isn't right.  This isn't a multiple-directory-alias case.
 
+It's just another "out_reconnected" case.  Somebody renamed or removed
+between get_name and lookup_one_len and lookup_one_len() and now
+whatever lookup_one_len() finds could be something totally different.
 
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: posix_acl: uninlining
+--b.
 
-Uninline vast tracts of nested inline functions in
-include/linux/posix_acl.h.
-
-This reduces the text+data+bss size of x86_64 allyesconfig vmlinux by 8026
-bytes.
-
-Also fixes an obscure build error reported by Benny: get_cached_acl()
-needs fs.h for struct inode internals.
-
-The patch also regularises the positioning of the EXPORT_SYMBOLs in
-posix_acl.c.
-
-Reported-by:: Benny Halevy <bhalevy@panasas.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: J. Bruce Fields <bfields@fieldses.org>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Benny Halevy <bhalevy@primarydata.com>
-Cc: Andreas Gruenbacher <agruen@suse.de>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/posix_acl.c            |   84 +++++++++++++++++++++++++++++++++---
- include/linux/posix_acl.h |   78 ++-------------------------------
- 2 files changed, 85 insertions(+), 77 deletions(-)
-
-diff -puN fs/posix_acl.c~posix_acl-uninlining fs/posix_acl.c
---- a/fs/posix_acl.c~posix_acl-uninlining
-+++ a/fs/posix_acl.c
-@@ -22,11 +22,80 @@
- 
- #include <linux/errno.h>
- 
--EXPORT_SYMBOL(posix_acl_init);
--EXPORT_SYMBOL(posix_acl_alloc);
--EXPORT_SYMBOL(posix_acl_valid);
--EXPORT_SYMBOL(posix_acl_equiv_mode);
--EXPORT_SYMBOL(posix_acl_from_mode);
-+struct posix_acl **acl_by_type(struct inode *inode, int type)
-+{
-+	switch (type) {
-+	case ACL_TYPE_ACCESS:
-+		return &inode->i_acl;
-+	case ACL_TYPE_DEFAULT:
-+		return &inode->i_default_acl;
-+	default:
-+		BUG();
-+	}
-+}
-+EXPORT_SYMBOL(acl_by_type);
-+
-+struct posix_acl *get_cached_acl(struct inode *inode, int type)
-+{
-+	struct posix_acl **p = acl_by_type(inode, type);
-+	struct posix_acl *acl = ACCESS_ONCE(*p);
-+	if (acl) {
-+		spin_lock(&inode->i_lock);
-+		acl = *p;
-+		if (acl != ACL_NOT_CACHED)
-+			acl = posix_acl_dup(acl);
-+		spin_unlock(&inode->i_lock);
-+	}
-+	return acl;
-+}
-+EXPORT_SYMBOL(get_cached_acl);
-+
-+struct posix_acl *get_cached_acl_rcu(struct inode *inode, int type)
-+{
-+	return rcu_dereference(*acl_by_type(inode, type));
-+}
-+EXPORT_SYMBOL(get_cached_acl_rcu);
-+
-+void set_cached_acl(struct inode *inode, int type, struct posix_acl *acl)
-+{
-+	struct posix_acl **p = acl_by_type(inode, type);
-+	struct posix_acl *old;
-+	spin_lock(&inode->i_lock);
-+	old = *p;
-+	rcu_assign_pointer(*p, posix_acl_dup(acl));
-+	spin_unlock(&inode->i_lock);
-+	if (old != ACL_NOT_CACHED)
-+		posix_acl_release(old);
-+}
-+EXPORT_SYMBOL(set_cached_acl);
-+
-+void forget_cached_acl(struct inode *inode, int type)
-+{
-+	struct posix_acl **p = acl_by_type(inode, type);
-+	struct posix_acl *old;
-+	spin_lock(&inode->i_lock);
-+	old = *p;
-+	*p = ACL_NOT_CACHED;
-+	spin_unlock(&inode->i_lock);
-+	if (old != ACL_NOT_CACHED)
-+		posix_acl_release(old);
-+}
-+EXPORT_SYMBOL(forget_cached_acl);
-+
-+void forget_all_cached_acls(struct inode *inode)
-+{
-+	struct posix_acl *old_access, *old_default;
-+	spin_lock(&inode->i_lock);
-+	old_access = inode->i_acl;
-+	old_default = inode->i_default_acl;
-+	inode->i_acl = inode->i_default_acl = ACL_NOT_CACHED;
-+	spin_unlock(&inode->i_lock);
-+	if (old_access != ACL_NOT_CACHED)
-+		posix_acl_release(old_access);
-+	if (old_default != ACL_NOT_CACHED)
-+		posix_acl_release(old_default);
-+}
-+EXPORT_SYMBOL(forget_all_cached_acls);
- 
- /*
-  * Init a fresh posix_acl
-@@ -37,6 +106,7 @@ posix_acl_init(struct posix_acl *acl, in
- 	atomic_set(&acl->a_refcount, 1);
- 	acl->a_count = count;
- }
-+EXPORT_SYMBOL(posix_acl_init);
- 
- /*
-  * Allocate a new ACL with the specified number of entries.
-@@ -51,6 +121,7 @@ posix_acl_alloc(int count, gfp_t flags)
- 		posix_acl_init(acl, count);
- 	return acl;
- }
-+EXPORT_SYMBOL(posix_acl_alloc);
- 
- /*
-  * Clone an ACL.
-@@ -146,6 +217,7 @@ posix_acl_valid(const struct posix_acl *
- 		return 0;
- 	return -EINVAL;
- }
-+EXPORT_SYMBOL(posix_acl_valid);
- 
- /*
-  * Returns 0 if the acl can be exactly represented in the traditional
-@@ -186,6 +258,7 @@ posix_acl_equiv_mode(const struct posix_
-                 *mode_p = (*mode_p & ~S_IRWXUGO) | mode;
-         return not_equiv;
- }
-+EXPORT_SYMBOL(posix_acl_equiv_mode);
- 
- /*
-  * Create an ACL representing the file mode permission bits of an inode.
-@@ -207,6 +280,7 @@ posix_acl_from_mode(umode_t mode, gfp_t
- 	acl->a_entries[2].e_perm = (mode & S_IRWXO);
- 	return acl;
- }
-+EXPORT_SYMBOL(posix_acl_from_mode);
- 
- /*
-  * Return 0 if current is granted want access to the inode
-diff -puN include/linux/posix_acl.h~posix_acl-uninlining include/linux/posix_acl.h
---- a/include/linux/posix_acl.h~posix_acl-uninlining
-+++ a/include/linux/posix_acl.h
-@@ -94,78 +94,12 @@ extern int posix_acl_chmod(struct posix_
- extern struct posix_acl *get_posix_acl(struct inode *, int);
- extern int set_posix_acl(struct inode *, int, struct posix_acl *);
- 
--#ifdef CONFIG_FS_POSIX_ACL
--static inline struct posix_acl **acl_by_type(struct inode *inode, int type)
--{
--	switch (type) {
--	case ACL_TYPE_ACCESS:
--		return &inode->i_acl;
--	case ACL_TYPE_DEFAULT:
--		return &inode->i_default_acl;
--	default:
--		BUG();
--	}
--}
--
--static inline struct posix_acl *get_cached_acl(struct inode *inode, int type)
--{
--	struct posix_acl **p = acl_by_type(inode, type);
--	struct posix_acl *acl = ACCESS_ONCE(*p);
--	if (acl) {
--		spin_lock(&inode->i_lock);
--		acl = *p;
--		if (acl != ACL_NOT_CACHED)
--			acl = posix_acl_dup(acl);
--		spin_unlock(&inode->i_lock);
--	}
--	return acl;
--}
--
--static inline struct posix_acl *get_cached_acl_rcu(struct inode *inode, int type)
--{
--	return rcu_dereference(*acl_by_type(inode, type));
--}
--
--static inline void set_cached_acl(struct inode *inode,
--				  int type,
--				  struct posix_acl *acl)
--{
--	struct posix_acl **p = acl_by_type(inode, type);
--	struct posix_acl *old;
--	spin_lock(&inode->i_lock);
--	old = *p;
--	rcu_assign_pointer(*p, posix_acl_dup(acl));
--	spin_unlock(&inode->i_lock);
--	if (old != ACL_NOT_CACHED)
--		posix_acl_release(old);
--}
--
--static inline void forget_cached_acl(struct inode *inode, int type)
--{
--	struct posix_acl **p = acl_by_type(inode, type);
--	struct posix_acl *old;
--	spin_lock(&inode->i_lock);
--	old = *p;
--	*p = ACL_NOT_CACHED;
--	spin_unlock(&inode->i_lock);
--	if (old != ACL_NOT_CACHED)
--		posix_acl_release(old);
--}
--
--static inline void forget_all_cached_acls(struct inode *inode)
--{
--	struct posix_acl *old_access, *old_default;
--	spin_lock(&inode->i_lock);
--	old_access = inode->i_acl;
--	old_default = inode->i_default_acl;
--	inode->i_acl = inode->i_default_acl = ACL_NOT_CACHED;
--	spin_unlock(&inode->i_lock);
--	if (old_access != ACL_NOT_CACHED)
--		posix_acl_release(old_access);
--	if (old_default != ACL_NOT_CACHED)
--		posix_acl_release(old_default);
--}
--#endif
-+struct posix_acl **acl_by_type(struct inode *inode, int type);
-+struct posix_acl *get_cached_acl(struct inode *inode, int type);
-+struct posix_acl *get_cached_acl_rcu(struct inode *inode, int type);
-+void set_cached_acl(struct inode *inode, int type, struct posix_acl *acl);
-+void forget_cached_acl(struct inode *inode, int type);
-+void forget_all_cached_acls(struct inode *inode);
- 
- static inline void cache_no_acl(struct inode *inode)
- {
-_
-
+>  	}
+> -	/* Note tmp != dentry is possible at this point, but that's OK */
+>  	dput(tmp);
+> -	if (IS_ROOT(dentry))
+> -		return ERR_PTR(-ESTALE);
+> +	if (IS_ROOT(dentry)) {
+> +		err = -ESTALE;
+> +		goto out_err;
+> +	}
+>  	return parent;
+> +
+> +out_err:
+> +	dput(parent);
+> +	return ERR_PTR(err);
+> +out_reconnected:
+> +	dput(parent);
+> +	return NULL;
+>  }
+>  
+>  /*
+> @@ -178,21 +189,18 @@ reconnect_path(struct vfsmount *mnt, str
+>  	dentry = dget(target_dir);
+>  
+>  	while (dentry->d_flags & DCACHE_DISCONNECTED) {
+> -		if (dentry == mnt->mnt_sb->s_root) {
+> -			WARN_ON_ONCE(1);
+> -			break;
+> -		}
+> -		if (!IS_ROOT(dentry)) {
+> +		BUG_ON(dentry == mnt->mnt_sb->s_root);
+> +
+> +		if (IS_ROOT(dentry)) {
+> +			/*
+> +			 * We have hit the top of a disconnected path, try to
+> +			 * find parent and connect.
+> +			 */
+> +			parent = reconnect_one(mnt, dentry, nbuf);
+> +		} else {
+>  			parent = dget_parent(dentry);
+> -			dput(dentry);
+> -			dentry = parent;
+> -			continue;
+>  		}
+> -		/*
+> -		 * We have hit the top of a disconnected path, try to
+> -		 * find parent and connect.
+> -		 */
+> -		parent = reconnect_one(mnt, dentry, nbuf);
+> +
+>  		dput(dentry);
+>  		if (!parent)
+>  			break;
+> @@ -200,6 +208,7 @@ reconnect_path(struct vfsmount *mnt, str
+>  			return PTR_ERR(parent);
+>  		dentry = parent;
+>  	}
+> +
+>  	/*
+>  	 * Should be unnecessary, but let's be careful:
+>  	 */
