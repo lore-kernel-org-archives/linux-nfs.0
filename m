@@ -1,367 +1,205 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:24157 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48543 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754878Ab3J2MtJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Oct 2013 08:49:09 -0400
-Message-ID: <526FAEC2.1020800@netapp.com>
-Date: Tue, 29 Oct 2013 08:49:06 -0400
-From: Anna Schumaker <bjschuma@netapp.com>
+	id S1761288Ab3JPTW2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Oct 2013 15:22:28 -0400
+Date: Wed, 16 Oct 2013 15:22:03 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-fsdevel@vger.kernel.org, Al Viro <viro@ZenIV.linux.org.uk>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 5/5] exportfs: fix quadratic behavior in filehandle lookup
+Message-ID: <20131016192203.GB7332@pad.fieldses.org>
+References: <1381869574-10662-1-git-send-email-bfields@redhat.com>
+ <1381869574-10662-6-git-send-email-bfields@redhat.com>
+ <20131016080407.GA7390@infradead.org>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/4] NFSD: Add WRITE_PLUS support for hole punches
-References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com> <1382972247-1108-4-git-send-email-bjschuma@netapp.com> <20131028214030.GO31322@fieldses.org>
-In-Reply-To: <20131028214030.GO31322@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131016080407.GA7390@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon 28 Oct 2013 05:40:30 PM EDT, J. Bruce Fields wrote:
-> On Mon, Oct 28, 2013 at 10:57:25AM -0400, Anna Schumaker wrote:
->> This patch only implements DATA_CONTENT_HOLE support, but I tried to
->> write it so other arms of the discriminated union can be added easily
->> later.
->
-> And there's an NFS4ERR_UNION_NOTSUPP to handle that case, OK.  (Though
-> the spec language is a little ambiguous:
->
-> 	If the client asks for a hole and the server does not support
-> 	that arm of the discriminated union, but does support one or
-> 	more additional arms, it can signal to the client that it
-> 	supports the operation, but not the arm with
-> 	NFS4ERR_UNION_NOTSUPP.
->
-> So it's unclear whether we can return this in the case the client is
-> *not* asking for a hole.  Are we sure the NFS4_CONTENT_DATA case is
-> optional?  The language in 5.3 ("Instead a client should utlize
-> READ_PLUS and WRITE_PLUS") also suggests the CONTENT_DATA case might be
-> meant to be mandatory.)
+On Wed, Oct 16, 2013 at 01:04:07AM -0700, Christoph Hellwig wrote:
+> On Tue, Oct 15, 2013 at 04:39:33PM -0400, J. Bruce Fields wrote:
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > We shouldn't really have to re-lookup the parents on each pass through.
+> > This should make behavior linear instead of quadratic as a function of
+> > directory depth.
+> 
+> This looks valid after going through the nasty cases like a
+> cross-directory rename.  But I'd really prefer the changelog to be way
+> more detailed.
+> 
+> Also a few untested fixups below:
+> 	- document that reconnect_one can only be called for directories
+> 	- make sure we always properly drop the parent dentry on
+> 	  reconnect_one failure
+> 	- warn then the tmp dentry is not the same as the one we started
+> 	  with.  Given that we deal with directories this should not
+> 	  happen
+> 	- add/update a few comments.
+> 	- tidy up the reconnect_path loop so the reconnect case shares
+> 	  more logic with the dget_parent case
+> 
+> 
+> Index: linux/fs/exportfs/expfs.c
+> ===================================================================
+> --- linux.orig/fs/exportfs/expfs.c	2013-10-16 09:58:44.544119517 +0200
+> +++ linux/fs/exportfs/expfs.c	2013-10-16 10:04:19.176127470 +0200
+> @@ -104,38 +104,30 @@ static void clear_disconnected(struct de
+>  }
+>  
+>  /*
+> - * Return the parent directory on success.
+> + * Reconnect a directory dentry with its parent.
+>   *
+> - * If it races with a rename or unlink, assume the other operation
+> - * connected it, but return NULL to indicate the caller should check
+> - * this just to make sure the filesystem isn't nuts.
+> + * Return the parent directory when successfully reconnecting, NULL if it
+> + * raced with another VFS operation, in which case it got connected or
+> + * the whole file handle will become stale.
+>   *
+>   * Otherwise return an error.
+>   */
+> -static struct dentry *reconnect_one(struct vfsmount *mnt, struct dentry *dentry, char *nbuf)
+> +static struct dentry *reconnect_one(struct vfsmount *mnt,
+> +		struct dentry *dentry, char *nbuf)
+>  {
+>  	struct dentry *parent;
+>  	struct dentry *tmp;
+>  	int err;
+> -	/*
+> -	 * Getting the parent can't be supported generically, the
+> -	 * locking is too icky.
+> -	 *
+> -	 * If it can't be done, we just return EACCES.  If you were
+> -	 * depending on the dcache finding the parent for you, you lose
+> -	 * if there's a reboot or inodes get flushed.
+> -	 */
+> -	parent = ERR_PTR(-EACCES);
+>  
+> +	parent = ERR_PTR(-EACCES);
+>  	mutex_lock(&dentry->d_inode->i_mutex);
+>  	if (mnt->mnt_sb->s_export_op->get_parent)
+>  		parent = mnt->mnt_sb->s_export_op->get_parent(dentry);
+>  	mutex_unlock(&dentry->d_inode->i_mutex);
+>  
+>  	if (IS_ERR(parent)) {
+> -		err = PTR_ERR(parent);
+>  		dprintk("%s: get_parent of %ld failed, err %d\n",
+> -			__func__, dentry->d_inode->i_ino, err);
+> +			__func__, dentry->d_inode->i_ino, PTR_ERR(parent));
+>  		return parent;
+>  	}
+>  
+> @@ -143,26 +135,45 @@ static struct dentry *reconnect_one(stru
+>  		dentry->d_inode->i_ino, parent->d_inode->i_ino);
+>  	err = exportfs_get_name(mnt, parent, nbuf, dentry);
+>  	if (err) {
+> +		/*
+> +		 * Someone must have renamed our entry into another parent,
+> +		 * in which case it has been reconnected by the rename.
+> +		 *
+> +		 * Or someone removed it entirely, in which case the file
+> +		 * handle has become stale.
+> +		 */
+>  		if (err == -ENOENT)
+> -			 return NULL;
+> -		dput(parent);
+> -		return ERR_PTR(err);
+> +			goto out_reconnected;
+> +		goto out_err;
+>  	}
+>  	dprintk("%s: found name: %s\n", __func__, nbuf);
+>  	mutex_lock(&parent->d_inode->i_mutex);
+>  	tmp = lookup_one_len(nbuf, parent, strlen(nbuf));
+>  	mutex_unlock(&parent->d_inode->i_mutex);
+>  	if (IS_ERR(tmp)) {
+> -		err = PTR_ERR(tmp);
+> -		dprintk("%s: lookup failed: %d\n",
+> -			__func__, err);
+> -		return NULL;
+> +		dprintk("%s: lookup failed: %d\n", __func__, PTR_ERR(tmp));
+> +		goto out_reconnected;
+> +	}
+> +	if (WARN_ON(tmp != dentry)) {
+> +		dprintk("%s: got different dentry while reconnecting.\n",
+> +			__func__);
+> +		dput(tmp);
+> +		err = -ESTALE;
+> +		goto out_err;
+>  	}
+> -	/* Note tmp != dentry is possible at this point, but that's OK */
+>  	dput(tmp);
+> -	if (IS_ROOT(dentry))
+> -		return ERR_PTR(-ESTALE);
+> +	if (IS_ROOT(dentry)) {
+> +		err = -ESTALE;
+> +		goto out_err;
+> +	}
+>  	return parent;
+> +
+> +out_err:
+> +	dput(parent);
+> +	return ERR_PTR(err);
+> +out_reconnected:
+> +	dput(parent);
+> +	return NULL;
+>  }
+>  
+>  /*
+> @@ -178,21 +189,18 @@ reconnect_path(struct vfsmount *mnt, str
+>  	dentry = dget(target_dir);
+>  
+>  	while (dentry->d_flags & DCACHE_DISCONNECTED) {
+> -		if (dentry == mnt->mnt_sb->s_root) {
+> -			WARN_ON_ONCE(1);
+> -			break;
+> -		}
+> -		if (!IS_ROOT(dentry)) {
+> +		BUG_ON(dentry == mnt->mnt_sb->s_root);
+> +
+> +		if (IS_ROOT(dentry)) {
+> +			/*
+> +			 * We have hit the top of a disconnected path, try to
+> +			 * find parent and connect.
+> +			 */
+> +			parent = reconnect_one(mnt, dentry, nbuf);
+> +		} else {
+>  			parent = dget_parent(dentry);
+> -			dput(dentry);
+> -			dentry = parent;
+> -			continue;
+>  		}
+> -		/*
+> -		 * We have hit the top of a disconnected path, try to
+> -		 * find parent and connect.
+> -		 */
+> -		parent = reconnect_one(mnt, dentry, nbuf);
+> +
+>  		dput(dentry);
+>  		if (!parent)
+>  			break;
+> @@ -200,6 +208,7 @@ reconnect_path(struct vfsmount *mnt, str
+>  			return PTR_ERR(parent);
+>  		dentry = parent;
+>  	}
 
-Fair enough.  I wasn't planning on implementing the NFS4_CONTENT_DATA 
-arm on the client right now, but I might be able to hack something 
-together to test this on the server!
+I think this still leaves a leak of dentry in this case the loop
+condition fails.
 
->
->> This patch is missing support for decoding multiple requests on the same
->> file.  The way it's written now only the last range provided by the
->> client will be written to.
->
-> But that doesn't seem to be a limitation anticipated by the spec, so I
-> guess we need to fix that.
->
-> (Why is there an array, anyway?  Wouldn't it work just as well to send
-> multiple RPC's, or a single RPC with multiple WRITE_PLUS ops?)
+Other suggestions look good, thanks!
 
-Yeah, I'll fix that up.  The Linux client will send requests one at a 
-time, so that's what I tested against.
+Now that I look at it I think this all works out a bit more neatly if
+the dget_parent() moves to reconnect_one().
 
->
->>
->> Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
->> ---
->>  fs/nfsd/nfs4proc.c   | 45 ++++++++++++++++++++++++++++++++++++++
->>  fs/nfsd/nfs4xdr.c    | 62 ++++++++++++++++++++++++++++++++++++++++++++++++++--
->>  fs/nfsd/vfs.c        | 14 ++++++++++++
->>  fs/nfsd/vfs.h        |  1 +
->>  fs/nfsd/xdr4.h       | 24 ++++++++++++++++++++
->>  fs/open.c            |  1 +
->>  include/linux/nfs4.h |  8 ++++++-
->>  7 files changed, 152 insertions(+), 3 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->> index 419572f..3210c6f 100644
->> --- a/fs/nfsd/nfs4proc.c
->> +++ b/fs/nfsd/nfs4proc.c
->> @@ -1028,6 +1028,42 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>  	return status;
->>  }
->>
->> +static __be32
->> +nfsd4_write_plus_hole(struct file *file, struct nfsd4_write_plus *writeplus,
->> +		      struct net *net)
->> +{
->> +	__be32 status;
->> +
->> +	status = nfsd4_vfs_fallocate(file, writeplus->wp_allocated,
->> +				writeplus->wp_offset, writeplus->wp_length);
->> +	if (status == nfs_ok) {
->> +		writeplus->wp_res.wr_stid = NULL;
->> +		writeplus->wp_res.wr_bytes_written = writeplus->wp_length;
->> +		writeplus->wp_res.wr_stable_how = NFS_FILE_SYNC;
->
-> Do we need to sync?
->
->> +		gen_boot_verifier(&writeplus->wp_res.wr_verifier, net);
->> +	}
->> +
->> +	return status;
->
-> Nit, but I like the usual idiom better in most cases:
->
-> 	if (status)
-> 		return status;
-> 	normal case here...
-> 	return 0;
->
-> --b.
->
->> +}
->> +
->> +static __be32
->> +nfsd4_write_plus(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->> +		struct nfsd4_write_plus *writeplus)
->> +{
->> +	struct file *file;
->> +	__be32 status;
->> +	struct net *net = SVC_NET(rqstp);
->> +
->> +	status = nfs4_preprocess_stateid_op(net, cstate, &writeplus->wp_stateid,
->> +					    WR_STATE, &file);
->> +	if (status)
->> +		return status;
->> +
->> +	if (writeplus->wp_data_content == NFS4_CONTENT_HOLE)
->> +		return nfsd4_write_plus_hole(file, writeplus, net);
->> +	return nfserr_union_notsupp;
->> +}
->> +
->>  /* This routine never returns NFS_OK!  If there are no other errors, it
->>   * will return NFSERR_SAME or NFSERR_NOT_SAME depending on whether the
->>   * attributes matched.  VERIFY is implemented by mapping NFSERR_SAME
->> @@ -1840,6 +1876,15 @@ static struct nfsd4_operation nfsd4_ops[] = {
->>  		.op_get_currentstateid = (stateid_getter)nfsd4_get_freestateid,
->>  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
->>  	},
->> +
->> +	/* NFSv4.2 operations */
->> +	[OP_WRITE_PLUS] = {
->> +		.op_func = (nfsd4op_func)nfsd4_write_plus,
->> +		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
->> +		.op_name = "OP_WRITE_PLUS",
->> +		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
->> +		.op_get_currentstateid = (stateid_getter)nfsd4_get_writestateid,
->> +	},
->>  };
->>
->>  #ifdef NFSD_DEBUG
->> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->> index 60f5a1f..1e4e9af 100644
->> --- a/fs/nfsd/nfs4xdr.c
->> +++ b/fs/nfsd/nfs4xdr.c
->> @@ -1485,6 +1485,32 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
->>  }
->>
->>  static __be32
->> +nfsd4_decode_write_plus(struct nfsd4_compoundargs *argp,
->> +			struct nfsd4_write_plus *writeplus)
->> +{
->> +	DECODE_HEAD;
->> +	unsigned int i;
->> +
->> +	status = nfsd4_decode_stateid(argp, &writeplus->wp_stateid);
->> +	if (status)
->> +		return status;
->> +
->> +	READ_BUF(8);
->> +	READ32(writeplus->wp_stable_how);
->> +	READ32(writeplus->wp_data_length);
->> +
->> +	for (i = 0; i < writeplus->wp_data_length; i++) {
->> +		READ_BUF(24);
->> +		READ32(writeplus->wp_data_content);
->> +		READ64(writeplus->wp_offset);
->> +		READ64(writeplus->wp_length);
->> +		READ32(writeplus->wp_allocated);
->> +	}
->> +
->> +	DECODE_TAIL;
->> +}
->> +
->> +static __be32
->>  nfsd4_decode_noop(struct nfsd4_compoundargs *argp, void *p)
->>  {
->>  	return nfs_ok;
->> @@ -1665,7 +1691,7 @@ static nfsd4_dec nfsd42_dec_ops[] = {
->>  	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_notsupp,
->>  	[OP_OFFLOAD_REVOKE]	= (nfsd4_dec)nfsd4_decode_notsupp,
->>  	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_notsupp,
->> -	[OP_WRITE_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
->> +	[OP_WRITE_PLUS]		= (nfsd4_dec)nfsd4_decode_write_plus,
->>  	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
->>  	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_notsupp,
->>  	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
->> @@ -3591,6 +3617,38 @@ nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, __be32 nfserr,
->>  	return nfserr;
->>  }
->>
->> +static void
->> +nfsd42_encode_write_res(struct nfsd4_compoundres *resp, struct nfsd42_write_res *write)
->> +{
->> +	__be32 *p;
->> +
->> +	RESERVE_SPACE(4);
->> +
->> +	if (write->wr_stid == NULL) {
->> +		WRITE32(0);
->> +		ADJUST_ARGS();
->> +	} else {
->> +		WRITE32(1);
->> +		ADJUST_ARGS();
->> +		nfsd4_encode_stateid(resp, &write->wr_stid->sc_stateid);
->> +	}
->> +
->> +	RESERVE_SPACE(12 + NFS4_VERIFIER_SIZE);
->> +	WRITE64(write->wr_bytes_written);
->> +	WRITE32(write->wr_stable_how);
->> +	WRITEMEM(write->wr_verifier.data, NFS4_VERIFIER_SIZE);
->> +	ADJUST_ARGS();
->> +}
->> +
->> +static __be32
->> +nfsd4_encode_write_plus(struct nfsd4_compoundres *resp, __be32 nfserr,
->> +		        struct nfsd4_write_plus *writeplus)
->> +{
->> +	if (!nfserr)
->> +		nfsd42_encode_write_res(resp, &writeplus->wp_res);
->> +	return nfserr;
->> +}
->> +
->>  static __be32
->>  nfsd4_encode_noop(struct nfsd4_compoundres *resp, __be32 nfserr, void *p)
->>  {
->> @@ -3670,7 +3728,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
->>  	[OP_COPY_NOTIFY]	= (nfsd4_enc)nfsd4_encode_noop,
->>  	[OP_OFFLOAD_REVOKE]	= (nfsd4_enc)nfsd4_encode_noop,
->>  	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_noop,
->> -	[OP_WRITE_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
->> +	[OP_WRITE_PLUS]		= (nfsd4_enc)nfsd4_encode_write_plus,
->>  	[OP_READ_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
->>  	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_noop,
->>  	[OP_IO_ADVISE]		= (nfsd4_enc)nfsd4_encode_noop,
->> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
->> index c827acb..7fec087 100644
->> --- a/fs/nfsd/vfs.c
->> +++ b/fs/nfsd/vfs.c
->> @@ -16,6 +16,7 @@
->>  #include <linux/fs.h>
->>  #include <linux/file.h>
->>  #include <linux/splice.h>
->> +#include <linux/falloc.h>
->>  #include <linux/fcntl.h>
->>  #include <linux/namei.h>
->>  #include <linux/delay.h>
->> @@ -649,6 +650,19 @@ __be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
->>  }
->>  #endif
->>
->> +__be32 nfsd4_vfs_fallocate(struct file *file, bool allocated, loff_t offset, loff_t len)
->> +{
->> +	int error, mode = 0;
->> +
->> +	if (allocated == false)
->> +		mode = FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE;
->> +
->> +	error = do_fallocate(file, mode, offset, len);
->> +	if (error == 0)
->> +		error = vfs_fsync_range(file, offset, offset + len, 0);
->> +	return nfserrno(error);
->> +}
->> +
->>  #endif /* defined(CONFIG_NFSD_V4) */
->>
->>  #ifdef CONFIG_NFSD_V3
->> diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
->> index a4be2e3..187eb95 100644
->> --- a/fs/nfsd/vfs.h
->> +++ b/fs/nfsd/vfs.h
->> @@ -57,6 +57,7 @@ __be32          nfsd4_set_nfs4_acl(struct svc_rqst *, struct svc_fh *,
->>  int             nfsd4_get_nfs4_acl(struct svc_rqst *, struct dentry *, struct nfs4_acl **);
->>  __be32          nfsd4_set_nfs4_label(struct svc_rqst *, struct svc_fh *,
->>  		    struct xdr_netobj *);
->> +__be32		nfsd4_vfs_fallocate(struct file *, bool, loff_t, loff_t);
->>  #endif /* CONFIG_NFSD_V4 */
->>  __be32		nfsd_create(struct svc_rqst *, struct svc_fh *,
->>  				char *name, int len, struct iattr *attrs,
->> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
->> index b3ed644..aaef9ab 100644
->> --- a/fs/nfsd/xdr4.h
->> +++ b/fs/nfsd/xdr4.h
->> @@ -430,6 +430,27 @@ struct nfsd4_reclaim_complete {
->>  	u32 rca_one_fs;
->>  };
->>
->> +struct nfsd42_write_res {
->> +	struct nfs4_stid	*wr_stid;
->> +	u64			wr_bytes_written;
->> +	u32			wr_stable_how;
->> +	nfs4_verifier		wr_verifier;
->> +};
->> +
->> +struct nfsd4_write_plus {
->> +	/* request */
->> +	stateid_t	wp_stateid;
->> +	u32		wp_stable_how;
->> +	u32		wp_data_length;
->> +	u32		wp_data_content;
->> +	u64		wp_offset;
->> +	u64		wp_length;
->> +	u32		wp_allocated;
->> +
->> +	/* response */
->> +	struct nfsd42_write_res	wp_res;
->> +};
->> +
->>  struct nfsd4_op {
->>  	int					opnum;
->>  	__be32					status;
->> @@ -475,6 +496,9 @@ struct nfsd4_op {
->>  		struct nfsd4_reclaim_complete	reclaim_complete;
->>  		struct nfsd4_test_stateid	test_stateid;
->>  		struct nfsd4_free_stateid	free_stateid;
->> +
->> +		/* NFSv4.2 */
->> +		struct nfsd4_write_plus		write_plus;
->>  	} u;
->>  	struct nfs4_replay *			replay;
->>  };
->> diff --git a/fs/open.c b/fs/open.c
->> index d420331..09db2d5 100644
->> --- a/fs/open.c
->> +++ b/fs/open.c
->> @@ -278,6 +278,7 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->>  	sb_end_write(inode->i_sb);
->>  	return ret;
->>  }
->> +EXPORT_SYMBOL_GPL(do_fallocate);
->>
->>  SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
->>  {
->> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
->> index 2bc5217..55ed991 100644
->> --- a/include/linux/nfs4.h
->> +++ b/include/linux/nfs4.h
->> @@ -128,7 +128,7 @@ enum nfs_opnum4 {
->>  Needs to be updated if more operations are defined in future.*/
->>
->>  #define FIRST_NFS4_OP	OP_ACCESS
->> -#define LAST_NFS4_OP 	OP_RECLAIM_COMPLETE
->> +#define LAST_NFS4_OP 	OP_WRITE_PLUS
->>
->>  enum nfsstat4 {
->>  	NFS4_OK = 0,
->> @@ -552,4 +552,10 @@ struct nfs4_deviceid {
->>  	char data[NFS4_DEVICEID4_SIZE];
->>  };
->>
->> +enum data_content4 {
->> +	NFS4_CONTENT_DATA		= 0,
->> +	NFS4_CONTENT_APP_DATA_HOLE	= 1,
->> +	NFS4_CONTENT_HOLE		= 2,
->> +};
->> +
->>  #endif
->> --
->> 1.8.4.1
->>
+I'll fold all this in, retest, and repost....
 
+--b.
 
+> +
+>  	/*
+>  	 * Should be unnecessary, but let's be careful:
+>  	 */
