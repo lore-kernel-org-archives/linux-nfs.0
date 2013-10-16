@@ -1,133 +1,190 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:52989 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751691Ab3JYMWn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Oct 2013 08:22:43 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9PCMfnO009699
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 25 Oct 2013 08:22:42 -0400
-Message-ID: <526A62C1.6060803@RedHat.com>
-Date: Fri, 25 Oct 2013 08:23:29 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:49156 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755193Ab3JPIEI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Oct 2013 04:04:08 -0400
+Date: Wed, 16 Oct 2013 01:04:07 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        Al Viro <viro@ZenIV.linux.org.uk>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 5/5] exportfs: fix quadratic behavior in filehandle lookup
+Message-ID: <20131016080407.GA7390@infradead.org>
+References: <1381869574-10662-1-git-send-email-bfields@redhat.com>
+ <1381869574-10662-6-git-send-email-bfields@redhat.com>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/3] mountd: disabling turning off TCP listeners (v2)
-References: <1382638633-6710-1-git-send-email-steved@redhat.com> <20131024144507.72aa34a8@tlielax.poochiereds.net> <526978BF.7020202@RedHat.com> <20131025074316.2affe9e9@tlielax.poochiereds.net>
-In-Reply-To: <20131025074316.2affe9e9@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1381869574-10662-6-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Oct 15, 2013 at 04:39:33PM -0400, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> We shouldn't really have to re-lookup the parents on each pass through.
+> This should make behavior linear instead of quadratic as a function of
+> directory depth.
+
+This looks valid after going through the nasty cases like a
+cross-directory rename.  But I'd really prefer the changelog to be way
+more detailed.
+
+Also a few untested fixups below:
+	- document that reconnect_one can only be called for directories
+	- make sure we always properly drop the parent dentry on
+	  reconnect_one failure
+	- warn then the tmp dentry is not the same as the one we started
+	  with.  Given that we deal with directories this should not
+	  happen
+	- add/update a few comments.
+	- tidy up the reconnect_path loop so the reconnect case shares
+	  more logic with the dget_parent case
 
 
-On 25/10/13 07:43, Jeff Layton wrote:
-> On Thu, 24 Oct 2013 15:45:03 -0400
-> Steve Dickson <SteveD@redhat.com> wrote:
-> 
->>
->>
->> On 24/10/13 14:45, Jeff Layton wrote:
->>> On Thu, 24 Oct 2013 14:17:10 -0400
->>> Steve Dickson <steved@redhat.com> wrote:
->>>
->>>> [ Here is the second try for these patches incorporating the code review..]
->>>>
->>>> Recently it was pointed out to me that the [-n | --no-tcp] flags 
->>>> were broken in mountd. Sure enough they are and they broke 
->>>> when nfs-utils moved to using libtirpc, which was years ago.
->>>>
->>>> Obviously nobody is using these flags since has not been 
->>>> notice until now, but it seemed to me it no longer makes 
->>>> any sense to have flags. We really want people to use TCP 
->>>> so why should there be a way to turn it off? It should be
->>>> the opposite... They should be able to turn off UDP listeners
->>>> not TCP... 
->>>>
->>>>
->>>> Steve Dickson (3):
->>>>   mountd: Use protocol bit fields to turn protocols off.
->>>>   mountd: Deprecate the ability to disable TCP listeners.
->>>>   mountd: Add the ability to disable UDP listeners.
->>>>
->>>>  support/include/rpcmisc.h |  2 +-
->>>>  support/nfs/rpcmisc.c     | 19 ++++++++++++++-----
->>>>  support/nfs/svc_create.c  |  5 +++++
->>>>  utils/mountd/mountd.c     | 17 ++++++++++++-----
->>>>  utils/mountd/mountd.man   |  6 +++---
->>>>  5 files changed, 35 insertions(+), 14 deletions(-)
->>>>
->>>
->>> Sorry I'm coming in late on this...
->> np... I was expecting more push back! ;-) 
->>
->>>
->>> I don't think we want to remove the ability to disable TCP listeners.
->>>
->>> Why, you ask? We've been on a multi-year effort to move people to
->>> NFSv4, and with that, there's no reason to have mountd listen on the
->>> network at all.
->> True...
->>
->>>
->>> So personally, I think it would make sense to:
->>>
->>> a) allow people to disable listening on UDP in addition to TCP
->> I see no reason whatsoever to turn off TCP listeners especially
->> since that is the protocol of choice... something we have 
->> be spouting about for years...  
->>  
-> 
-> There are reasons to be able to turn off TCP listeners:
-> 
-> If you're running a NFSv4-only server, there's no reason to allow it to
-> listen on TCP _or_ UDP sockets. I think that sort of environment is
-> going to become more prevalent in the future, not less.
-I ideally it would be best not to have mountd at all on NFSv4-only server.
-Basically, have the kernel get its exports like it gets it ID mappings.
-Until that day comes, which I hope fill be soon, the TCP listener 
-only effects v3 mounts and we definitely want people to use TCP
-with v3. 
+Index: linux/fs/exportfs/expfs.c
+===================================================================
+--- linux.orig/fs/exportfs/expfs.c	2013-10-16 09:58:44.544119517 +0200
++++ linux/fs/exportfs/expfs.c	2013-10-16 10:04:19.176127470 +0200
+@@ -104,38 +104,30 @@ static void clear_disconnected(struct de
+ }
  
+ /*
+- * Return the parent directory on success.
++ * Reconnect a directory dentry with its parent.
+  *
+- * If it races with a rename or unlink, assume the other operation
+- * connected it, but return NULL to indicate the caller should check
+- * this just to make sure the filesystem isn't nuts.
++ * Return the parent directory when successfully reconnecting, NULL if it
++ * raced with another VFS operation, in which case it got connected or
++ * the whole file handle will become stale.
+  *
+  * Otherwise return an error.
+  */
+-static struct dentry *reconnect_one(struct vfsmount *mnt, struct dentry *dentry, char *nbuf)
++static struct dentry *reconnect_one(struct vfsmount *mnt,
++		struct dentry *dentry, char *nbuf)
+ {
+ 	struct dentry *parent;
+ 	struct dentry *tmp;
+ 	int err;
+-	/*
+-	 * Getting the parent can't be supported generically, the
+-	 * locking is too icky.
+-	 *
+-	 * If it can't be done, we just return EACCES.  If you were
+-	 * depending on the dcache finding the parent for you, you lose
+-	 * if there's a reboot or inodes get flushed.
+-	 */
+-	parent = ERR_PTR(-EACCES);
  
-> 
->>>
->>> ...or...
->>>
->>> b) add an option that prevents it from listening on any sockets for a
->>>    v4-only configuration
->> In this case it would optimal to not even start mountd, unfortunately
->> due to exports reasons, it not possible... but it should be!! :-) 
->>   
-> 
-> Right, mountd has 2 jobs:
-> 
-> 1) respond to MNT protocol requests from clients
-> 
-> ...and...
-> 
-> 2) feed exports info to the kernel
-> 
-> For v4, you obviously don't need the first role, so being able to
-> disable network listeners is a good thing in such a configuration.
-Again, I would rather build an v4 only environment where mountd
-does not even run... 
-
-steved.
++	parent = ERR_PTR(-EACCES);
+ 	mutex_lock(&dentry->d_inode->i_mutex);
+ 	if (mnt->mnt_sb->s_export_op->get_parent)
+ 		parent = mnt->mnt_sb->s_export_op->get_parent(dentry);
+ 	mutex_unlock(&dentry->d_inode->i_mutex);
  
-> 
->>>
->>> In addition, we generally do want people to use UDP for the MNT
->>> protocol because it's less apt to cause issues with reserved port
->>> exhaustion. Given that it'll continue to listen on a UDP socket by
->>> default, that last point is less of an issue, but that might be a good
->>> reason to rethink this whole plan.
->>>
->> I did think of this.... UDP is on by default... Is up the admin... 
->>
-> 
-> That's good. I have no objection to adding an option to disable UDP
-> listeners if the admin chooses. I just think it would be best to fix
-> the ability to disable TCP listeners as well instead of removing it.
-> 
+ 	if (IS_ERR(parent)) {
+-		err = PTR_ERR(parent);
+ 		dprintk("%s: get_parent of %ld failed, err %d\n",
+-			__func__, dentry->d_inode->i_ino, err);
++			__func__, dentry->d_inode->i_ino, PTR_ERR(parent));
+ 		return parent;
+ 	}
+ 
+@@ -143,26 +135,45 @@ static struct dentry *reconnect_one(stru
+ 		dentry->d_inode->i_ino, parent->d_inode->i_ino);
+ 	err = exportfs_get_name(mnt, parent, nbuf, dentry);
+ 	if (err) {
++		/*
++		 * Someone must have renamed our entry into another parent,
++		 * in which case it has been reconnected by the rename.
++		 *
++		 * Or someone removed it entirely, in which case the file
++		 * handle has become stale.
++		 */
+ 		if (err == -ENOENT)
+-			 return NULL;
+-		dput(parent);
+-		return ERR_PTR(err);
++			goto out_reconnected;
++		goto out_err;
+ 	}
+ 	dprintk("%s: found name: %s\n", __func__, nbuf);
+ 	mutex_lock(&parent->d_inode->i_mutex);
+ 	tmp = lookup_one_len(nbuf, parent, strlen(nbuf));
+ 	mutex_unlock(&parent->d_inode->i_mutex);
+ 	if (IS_ERR(tmp)) {
+-		err = PTR_ERR(tmp);
+-		dprintk("%s: lookup failed: %d\n",
+-			__func__, err);
+-		return NULL;
++		dprintk("%s: lookup failed: %d\n", __func__, PTR_ERR(tmp));
++		goto out_reconnected;
++	}
++	if (WARN_ON(tmp != dentry)) {
++		dprintk("%s: got different dentry while reconnecting.\n",
++			__func__);
++		dput(tmp);
++		err = -ESTALE;
++		goto out_err;
+ 	}
+-	/* Note tmp != dentry is possible at this point, but that's OK */
+ 	dput(tmp);
+-	if (IS_ROOT(dentry))
+-		return ERR_PTR(-ESTALE);
++	if (IS_ROOT(dentry)) {
++		err = -ESTALE;
++		goto out_err;
++	}
+ 	return parent;
++
++out_err:
++	dput(parent);
++	return ERR_PTR(err);
++out_reconnected:
++	dput(parent);
++	return NULL;
+ }
+ 
+ /*
+@@ -178,21 +189,18 @@ reconnect_path(struct vfsmount *mnt, str
+ 	dentry = dget(target_dir);
+ 
+ 	while (dentry->d_flags & DCACHE_DISCONNECTED) {
+-		if (dentry == mnt->mnt_sb->s_root) {
+-			WARN_ON_ONCE(1);
+-			break;
+-		}
+-		if (!IS_ROOT(dentry)) {
++		BUG_ON(dentry == mnt->mnt_sb->s_root);
++
++		if (IS_ROOT(dentry)) {
++			/*
++			 * We have hit the top of a disconnected path, try to
++			 * find parent and connect.
++			 */
++			parent = reconnect_one(mnt, dentry, nbuf);
++		} else {
+ 			parent = dget_parent(dentry);
+-			dput(dentry);
+-			dentry = parent;
+-			continue;
+ 		}
+-		/*
+-		 * We have hit the top of a disconnected path, try to
+-		 * find parent and connect.
+-		 */
+-		parent = reconnect_one(mnt, dentry, nbuf);
++
+ 		dput(dentry);
+ 		if (!parent)
+ 			break;
+@@ -200,6 +208,7 @@ reconnect_path(struct vfsmount *mnt, str
+ 			return PTR_ERR(parent);
+ 		dentry = parent;
+ 	}
++
+ 	/*
+ 	 * Should be unnecessary, but let's be careful:
+ 	 */
