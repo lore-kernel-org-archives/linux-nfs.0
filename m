@@ -1,50 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60292 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755217Ab3J2NoK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Oct 2013 09:44:10 -0400
-Date: Tue, 29 Oct 2013 09:44:08 -0400
-To: Hellwig Christoph <hch@infradead.org>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/3] NFS: Allow for asynchronous WRITE_PLUS calls
-Message-ID: <20131029134408.GH29606@fieldses.org>
-References: <1382972418-2249-1-git-send-email-bjschuma@netapp.com>
- <1382972418-2249-3-git-send-email-bjschuma@netapp.com>
- <20131029073943.GD10889@infradead.org>
- <BF996CAD-1032-4434-A538-B678D047884B@netapp.com>
- <20131029124836.GA13482@infradead.org>
- <58212CB2-A01A-43F1-8760-5ED8ED75E081@netapp.com>
- <20131029130857.GB32094@infradead.org>
- <78317EB5-0325-429B-89C8-F4092B677EC4@netapp.com>
- <20131029132421.GA13880@infradead.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:49006 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753770Ab3JPHQt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Oct 2013 03:16:49 -0400
+Date: Wed, 16 Oct 2013 00:16:48 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        Al Viro <viro@ZenIV.linux.org.uk>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/5] exportfs: move most of reconnect_path to helper
+ function
+Message-ID: <20131016071648.GA28671@infradead.org>
+References: <1381869574-10662-1-git-send-email-bfields@redhat.com>
+ <1381869574-10662-3-git-send-email-bfields@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131029132421.GA13880@infradead.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <1381869574-10662-3-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 29, 2013 at 06:24:21AM -0700, Hellwig Christoph wrote:
-> On Tue, Oct 29, 2013 at 01:21:26PM +0000, Myklebust, Trond wrote:
-> > The current draft spec even allows the client to specify a "pattern" to be written to the "hole".
-> 
-> That's indeed the WRITE SAME lookalike then.  At least the SCSI people
-> were smart enough to define an unmap bit for "hole punching" and allow
-> the target to reject all other versions if they don't want to support
-> it.
-> 
-> Given that NFS v4.2 isn't finalized I'd very much recommend to
-> 
->  a) properly separate those case s
->  b) do not make the async version mandatory
+>  /*
+> + * Return the parent directory on success.
+> + *
+> + * Return NULL to keep trying.
+> + *
+> + * Otherwise return an error.
+> + */
+> +static int reconnect_one(struct vfsmount *mnt, struct dentry *pd, char *nbuf, int *noprogress)
 
-That sounds reasonable to me.
+Please keep the lines under 80 characters.
 
-By the way, source is available from https://github.com/loghyr/NFSv4.2,
-and Tom takes patches.....
+> +	struct dentry *ppd;
+> +	struct dentry *npd;
 
-(Or maybe Anna can be talked into that.)
+Might as well use sensible names already when splitting it out instead
+of renaming them later down the series?
 
---b.
+Otherwise looks good,
+
+Reviewed-by: Christoph Hellwig <hch@lst.de>
