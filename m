@@ -1,62 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:22561 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751735Ab3JKOTt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Oct 2013 10:19:49 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-kernel@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] register_shrinker: shrinker->nr_deferred is never freed
-Date: Fri, 11 Oct 2013 10:19:47 -0400
-Message-Id: <20131011141946.17927.42942.stgit@nfsvm18.us.oracle.com>
+Received: from mx1.redhat.com ([209.132.183.28]:10262 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932406Ab3JPMVz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Oct 2013 08:21:55 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9GCLsRY020179
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 16 Oct 2013 08:21:54 -0400
+Message-ID: <525E850B.5090700@RedHat.com>
+Date: Wed, 16 Oct 2013 08:22:35 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Jeff Layton <jlayton@redhat.com>
+CC: ssorce@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 0/2] gssd: allow gssd to work with KEYRING: credcaches
+References: <1381350116-10464-1-git-send-email-jlayton@redhat.com> <20131015093419.789e4d2a@tlielax.poochiereds.net>
+In-Reply-To: <20131015093419.789e4d2a@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-kmemleak reports a leak after every mount-umount cycle:
 
-unreferenced object 0xffff88006b339150 (size 8):
-  comm "mount.nfs", pid 752, jiffies 4294802777 (age 1515.620s)
-  hex dump (first 8 bytes):
-    00 00 00 00 00 00 00 00                          ........
-  backtrace:
-    [<ffffffff816a9509>] kmemleak_alloc+0x79/0xb0
-    [<ffffffff811a9031>] __kmalloc+0x1e1/0x380
-    [<ffffffff81164110>] register_shrinker+0x40/0x90
-    [<ffffffff811c8f10>] sget+0x680/0x6a0
-    [<ffffffffa026a71c>] nfs_fs_mount_common+0x7c/0x180 [nfs]
-    [<ffffffffa026a8e1>] nfs_xdev_mount+0xc1/0x100 [nfs]
-    [<ffffffff811c9c1b>] mount_fs+0x7b/0x1a0
-    [<ffffffff811e7b0a>] vfs_kern_mount+0x6a/0xf0
-    [<ffffffffa0275735>] nfs_do_submount+0xe5/0x140 [nfs]
-    [<ffffffffa02db6a6>] nfs4_submount+0x806/0x890 [nfsv4]
-    [<ffffffffa02758d2>] nfs_d_automount+0xb2/0x1b0 [nfs]
-    [<ffffffff811d0154>] follow_managed+0x1a4/0x300
-    [<ffffffff816b0533>] lookup_slow+0x7a/0xa9
-    [<ffffffff811d2373>] link_path_walk+0x243/0x8b0
-    [<ffffffff811d2a3b>] path_lookupat+0x5b/0x7c0
-    [<ffffffff811d31cb>] filename_lookup+0x2b/0xc0
 
-Commit 1d3d4437 adds logic to kmalloc an array (nr_deferred) in
-register_shrinker(), but this array is not freed when the shrinker
-is released.
+On 15/10/13 09:34, Jeff Layton wrote:
+> On Wed,  9 Oct 2013 16:21:54 -0400
+> Jeff Layton <jlayton@redhat.com> wrote:
+> 
+>> Changes since original set:
+>> v3:
+>> - have parent check to see if child was signalled and log a warning if so
+>> - drop supplimentary groups and change gid before acquiring creds. Keep
+>>   suid and sgid as well to hamper ptrace.
+>>
+>> v2:
+>> - fix bisectability. The original set added includes in the wrong
+>>   place in patch #1 and then fixed it in patch #2. The final result
+>>   of this set is the same but should bisect cleanly.
+>>
+>> This patchset fixes up gssd to work with KEYRING: style credcaches. At
+>> the same time, it also fixes gssd not to need to trawl through likely
+>> credcache locations by allowing GSSAPI to find them in the intended
+>> fashion.
+>>
+>> The basic idea is to have gssd fork() after reading off the pipe, but
+>> before handling the upcall and to do a more thorough job of changing
+>> credentials.
+>>
+>> Jeff Layton (2):
+>>   gssd: have process_krb5_upcall fork before handling upcall
+>>   gssd: do a more thorough change of identity after forking
+>>
+>>  utils/gssd/gssd_proc.c | 106 +++++++++++++++++++++++++++++++++++++++++--------
+>>  1 file changed, 89 insertions(+), 17 deletions(-)
+>>
+> 
+> I had asked Steve to hold off on applying these until now. While they
+> work as expected for the most part, they break a the case where gssd is
+> set up to use gssproxy to get credentials. Older versions of gssproxy
+> relied on the caller having and euid of 0. Simo now has a set of fixes
+> queued up for gssproxy to address the problem, so the way should now be
+> clear to merge this set into nfs-utils.
+> 
+> One thing we will probably want to do for Fedora at least is to add a
+> "Conflicts:" with older versions of gssproxy. That should ensure that
+> people relying on gssd + gssproxy won't get any surprises when updating.
+> 
+> Steve, sound reasonable?
+I'll queue them up...
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- mm/vmscan.c |    1 +
- 1 file changed, 1 insertion(+)
+steved.
 
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 53f2f82..eea668d 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -211,6 +211,7 @@ void unregister_shrinker(struct shrinker *shrinker)
- 	down_write(&shrinker_rwsem);
- 	list_del(&shrinker->list);
- 	up_write(&shrinker_rwsem);
-+	kfree(shrinker->nr_deferred);
- }
- EXPORT_SYMBOL(unregister_shrinker);
- 
-
+> 
