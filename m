@@ -1,76 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aa.linuxbox.com ([69.128.83.226]:4341 "EHLO aa.linuxbox.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53669 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754695Ab3J0VW6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 27 Oct 2013 17:22:58 -0400
-Date: Sun, 27 Oct 2013 17:22:42 -0400 (EDT)
-From: "Matt W. Benjamin" <matt@linuxbox.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Dr Fields James Bruce <bfields@fieldses.org>,
-        Christoph Anton Mitterer <calestyo@scientia.net>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-        Wheeler Ric <ricwheeler@gmail.com>
-Message-ID: <430357861.50.1382908962268.JavaMail.root@thunderbeast.private.linuxbox.com>
-In-Reply-To: <5FC093E3-1CD3-4AC7-A91F-37C8DEC6BEFE@netapp.com>
-Subject: Re: XATTRs in NFS?
+	id S934006Ab3JPN4s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Oct 2013 09:56:48 -0400
+Date: Wed, 16 Oct 2013 09:56:25 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-fsdevel@vger.kernel.org, Al Viro <viro@ZenIV.linux.org.uk>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/5] exportfs: clear DISCONNECTED on all parents sooner
+Message-ID: <20131016135625.GB3759@pad.fieldses.org>
+References: <1381869574-10662-1-git-send-email-bfields@redhat.com>
+ <1381869574-10662-2-git-send-email-bfields@redhat.com>
+ <20131016071343.GB27799@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131016071343.GB27799@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
-
-I was going for the point you make later in this thread:  "user xattrs are in
-principle harmless."
-
-The exposure policy for non-harmless xattrs issue is real enough, but my point was,
-it seems to be a Linux policy issue, at the NFSv4 level just as it was at the syscall level.
-
-The caching and atomicity issues seem like they actually are issues for NFSv4 discussion.
-If the named attribute interface actually fails to cover xattrs, that's a big gaffe.
-
-Matt
-
-
------ "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
-
-> On Oct 26, 2013, at 10:01 AM, Matt W. Benjamin <matt@linuxbox.com>
-> wrote:
-> 
-> > Hi,
+On Wed, Oct 16, 2013 at 12:13:43AM -0700, Christoph Hellwig wrote:
+> On Tue, Oct 15, 2013 at 04:39:29PM -0400, J. Bruce Fields wrote:
+> > From: "J. Bruce Fields" <bfields@redhat.com>
 > > 
-> > Surely you don't need NFSv4 to standardize the the (empty?) set of
-> system or magic attributes Linux
-> > should export?
+> > Once we've found any connected parent, we know all our parents are
+> > connected--that's true even if there's a concurrent rename.  May as well
+> > clear them all at once.
+> > 
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 > 
-> The NFSv4 working group has no authority to do so. POSIX would be the
-> right address.
+> Looks good,
 > 
-> > Besides, as you're well aware, most people who ask for xattrs are
-> looking for an ability to associate
-> > arbitrary specific data, not a back door ioctl interface.  That's
-> clearly what the NFSv4 named attributes as standardized were intended
-> for.
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
 > 
-> No. I'm not aware of that.
+> >  		if (!IS_ROOT(pd)) {
+> >  			/* must have found a connected parent - great */
+> > -			spin_lock(&pd->d_lock);
+> > -			pd->d_flags &= ~DCACHE_DISCONNECTED;
+> > -			spin_unlock(&pd->d_lock);
+> > +			clear_disconnected(target_dir);
+> >  			noprogress = 0;
+> >  		} else if (pd == mnt->mnt_sb->s_root) {
+> >  			printk(KERN_ERR "export: Eeek filesystem root is not connected, impossible\n");
 > 
-> > I'm well aware of other uses and plans that someone would want to
-> standardize, but it seems
-> > irrelevant to the discussion.
-> 
-> It's very relevant to the discussion as it defines what namespace
-> applications can expect to work.
-> 
-> Trond
+> You might as well throw a patch in to make this condition a BUG_ON, it
+> would indicate a nasty bug in the dcache and has never triggered in the
+> last 10 years as far as I know.
 
--- 
-Matt Benjamin
-The Linux Box
-206 South Fifth Ave. Suite 150
-Ann Arbor, MI  48104
+We've seen some ugly crashes made uglier by unnecessary BUG()s.  I guess
+that wouldn't be the case here as we're not holding any critical locks
+and all we're going to kill is an nfsd thread or open_by_handle caller.
+And like you say it's a very unlikely case anyway.
 
-http://linuxbox.com
+So, OK, I'll turn this case into a BUG_ON in a separate patch.
 
-tel.  734-761-4689 
-fax.  734-769-8938 
-cel.  734-216-5309 
+--b.
