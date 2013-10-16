@@ -1,92 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:44494 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751265Ab3J2RBF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Oct 2013 13:01:05 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
-Subject: Re: [PATCH] nfs.man: add description of multiple sec= options
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <310B7CD4-FDE2-420A-AFE6-C798BA70BE90@netapp.com>
-Date: Tue, 29 Oct 2013 13:00:57 -0400
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <A9BA0018-D9E2-4F67-830F-24D7104094EE@oracle.com>
-References: <1383064066-1139-1-git-send-email-dros@netapp.com> <27470170-8177-4561-A11A-70CA2EF704A8@oracle.com> <310B7CD4-FDE2-420A-AFE6-C798BA70BE90@netapp.com>
-To: Weston Andros Adamson <dros@netapp.com>
+Received: from mail-wg0-f41.google.com ([74.125.82.41]:53422 "EHLO
+	mail-wg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753674Ab3JPIVc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Oct 2013 04:21:32 -0400
+Received: by mail-wg0-f41.google.com with SMTP id b13so4431280wgh.2
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Oct 2013 01:21:30 -0700 (PDT)
+Message-ID: <525E4C88.9050701@primarydata.com>
+Date: Wed, 16 Oct 2013 11:21:28 +0300
+From: Benny Halevy <bhalevy@primarydata.com>
+MIME-Version: 1.0
+To: Christoph Hellwig <hch@infradead.org>
+CC: bfields@redhat.com, NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: state lock elimination
+References: <20131015211445.GA23636@infradead.org> <525DB943.3010707@primarydata.com> <20131016064243.GA28758@infradead.org>
+In-Reply-To: <20131016064243.GA28758@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 2013-10-16 09:42, Christoph Hellwig wrote:
+>> A lot of crap ended up under the client_mutex that we need to untangle.
+>> My general direction is:
+>> - use a spin lock for all non-blocking sections (rename recall_lock to state_lock for that)
+> 
+> Any chance we can avoid global locks for most of this?  Global locks
+> really suck for scalability, and in nfsd we should be able to do most
+> things per-export at least.
+> 
 
-On Oct 29, 2013, at 12:40 PM, Weston Andros Adamson <dros@netapp.com> wrote:
+I tried reducing the lock scope but the problem is that we hash state
+on objects with different scopes of access, particularly net/client vs. file
+and the hashing needs to be consistent and atomic.
+
+>> - for state mutating nfs4 ops like open/close/lock/... use wait_on_bit to serialize access
+>>   *per open owner* rather than globally.
+> 
+> per open owner sounds good.  Not a huge fan of bit locks as they make
+> debugging very hard, though.
+
+I'll try using a refcount and mutex first as per Bruce's current direction with stateowners.
 
 > 
-> On Oct 29, 2013, at 12:30 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> I'll look over your changes soon, btw.
 > 
->> 
->> On Oct 29, 2013, at 12:27 PM, Weston Andros Adamson <dros@netapp.com> wrote:
->> 
->>> The client now supports multiple sec= options as a colon delimited list.
->>> 
->>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->>> ---
->>> utils/mount/nfs.man | 7 ++++---
->>> 1 file changed, 4 insertions(+), 3 deletions(-)
->>> 
->>> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
->>> index 2a42b93..17b8d88 100644
->>> --- a/utils/mount/nfs.man
->>> +++ b/utils/mount/nfs.man
->>> @@ -380,9 +380,10 @@ If a value of zero is specified, the
->>> .BR mount (8)
->>> command exits immediately after the first failure.
->>> .TP 1.5i
->>> -.BI sec= flavor
->>> -The security flavor to use for accessing files on this mount point.
->>> -If the server does not support this flavor, the mount operation fails.
->>> +.BI sec= flavors
->>> +A colon-delimited list of security flavors to use for accessing files on
->>> +this mount point. If the server does not support any of these flavors,
->>> +the mount operation fails.
->> 
->> Just a nit:  The new text kind of suggests that the colons are required.  "sec=single flavor" is also still supported.  Typically man page language is careful to show both.
-> 
-> Good point.
-> 
-> Should there be separate sections or should we do something like:
-> 
-> sec=flavor(s)
-> 
-> The  security flavor or flavors to use for accessing files on this
-> mount point.  Multiple security flavors may be specified as a
-> colon-delimited list. If the server does not support any of these flavors 
-> the mount operation fails.
 
-The current text is:
+Thanks!
 
-       sec=flavor     The security flavor to use for accessing files  on  this  mount
-                      point.   If  the server does not support this flavor, the mount
-                      operation fails.  If sec= is not specified, the client attempts
-                      to  find  a security flavor that both the client and the server
-                      supports.  Valid flavors are none, sys, krb5, krb5i, and krb5p.
-                      Refer to the SECURITY CONSIDERATIONS section for details.
+The WIP version is in git://linux-nfs/~bhalevy/linux-pnfs.git state-lock-elim
+if anyone else is interested in previewing the patchset in its current drafty state)
 
-You might consider:
-
-> sec=flavorlist
-> 
-> The security flavor or flavors to use when accessing files on this mount point.  Multiple flavors are specified as a colon-delimited list.  If sec= is not specified, the mount's security flavor list contains all security flavors the client supports.
-> 
-> The client chooses the strongest flavor on this list that is supported by the export's security policy.  If the server does not support any of these flavors, the mount operation fails.
-> 
-> Valid flavors are ....
-
-
-I think my description of the negotiation strategy could be made more accurate, and you should mention how (whether?) flavor list ordering works.  Do you feel this is too much for a single section?  Some detail can be moved to SECURITY CONSIDERATIONS.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Benny
