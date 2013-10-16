@@ -1,87 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:52386 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60473 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753769Ab3JUOD4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Oct 2013 10:03:56 -0400
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9LE3u8Y001414
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 21 Oct 2013 10:03:56 -0400
-Message-ID: <52653474.1060007@RedHat.com>
-Date: Mon, 21 Oct 2013 10:04:36 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfsmount.conf: Remove duplicate 'bg' and 'fg' from
- parsing string.
-References: <1381267825-27457-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1381267825-27457-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1759947Ab3JPSxb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Oct 2013 14:53:31 -0400
+Date: Wed, 16 Oct 2013 14:53:14 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Andi Kleen <andi@firstfloor.org>,
+        "kwc@citi.umich.edu" <kwc@citi.umich.edu>
+Subject: Re: [PATCH] sunrpc: trim off EC bytes in addition to the checksum
+ blob when doing a GSSAPI v2 unwrap
+Message-ID: <20131016145314.14b2ac32@tlielax.poochiereds.net>
+In-Reply-To: <1381949005.17178.10.camel@leira.trondhjem.org>
+References: <1381427810-10633-1-git-send-email-jlayton@redhat.com>
+	<1381949005.17178.10.camel@leira.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, 16 Oct 2013 18:43:26 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
+> On Thu, 2013-10-10 at 13:56 -0400, Jeff Layton wrote:
+> > As Bruce points out in RFC 4121, section 4.2.3:
+> > 
+> >    "In Wrap tokens that provide for confidentiality, the first 16 octets
+> >     of the Wrap token (the "header", as defined in section 4.2.6), SHALL
+> >     be appended to the plaintext data before encryption.  Filler octets
+> >     MAY be inserted between the plaintext data and the "header.""
+> > 
+> > ...and...
+> > 
+> >    "In Wrap tokens with confidentiality, the EC field SHALL be used to
+> >     encode the number of octets in the filler..."
+> > 
+> > It's possible for the client to stuff different data in that area on a
+> > retransmission, which could make the checksum come out wrong in the DRC
+> > code.
+> > 
+> > After decrypting the blob, we should trim off any extra count bytes in
+> > addition to the checksum blob.
+> > 
+> > Reported-by: "J. Bruce Fields" <bfields@fieldses.org>
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  net/sunrpc/auth_gss/gss_krb5_wrap.c | 4 ++--
+> >  1 file changed, 2 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> > index 1da52d1..ec1f4d0 100644
+> > --- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> > +++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> > @@ -574,8 +574,8 @@ gss_unwrap_kerberos_v2(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
+> >  	buf->head[0].iov_len -= GSS_KRB5_TOK_HDR_LEN + headskip;
+> >  	buf->len -= GSS_KRB5_TOK_HDR_LEN + headskip;
+> >  
+> > -	/* Trim off the checksum blob */
+> > -	xdr_buf_trim(buf, GSS_KRB5_TOK_HDR_LEN + tailskip);
+> > +	/* Trim off the trailing "extra count" and checksum blob */
+> > +	xdr_buf_trim(buf, ec + GSS_KRB5_TOK_HDR_LEN + tailskip);
+> >  	return GSS_S_COMPLETE;
+> >  }
+> >  
+> 
+> If this is just padding, then why would it be anything other than '0',
+> even on a retransmission? Clients are not supposed to leak random data
+> to the server...
+> 
 
-On 08/10/13 17:30, Steve Dickson wrote:
-> When the 'Background' and/or 'Foreground' options are set
-> in multiple sections of the nfsmount.conf file, each instance
-> gets added to the parsing string. This patch makes the first
-> instance of either option override the any others.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed...
+The Linux client routines are actually set up to fill this with 'X'
+characters, not nulls. See gss_krb5_aes_encrypt, which does this:
 
-steved.
-> ---
->  utils/mount/configfile.c | 25 +++++++++++++++++++++++++
->  1 file changed, 25 insertions(+)
-> 
-> diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
-> index 68b9f93..6985ed9 100644
-> --- a/utils/mount/configfile.c
-> +++ b/utils/mount/configfile.c
-> @@ -164,6 +164,20 @@ add_entry(char *opt)
->  	SLIST_INSERT_HEAD(&head, entry, entries);
->  }
->  /*
-> + * Check the alias list to see if the given 
-> + * opt is a alias
-> + */
-> +char *is_alias(char *opt)
-> +{
-> +	int i;
-> +
-> +	for (i=0; i < mnt_alias_sz; i++) {
-> +		if (strcasecmp(opt, mnt_alias_tab[i].alias) == 0)
-> +			return mnt_alias_tab[i].opt; 
-> +	}
-> +	return NULL;
-> +}
-> +/*
->   * See if the given entry exists if the link list,
->   * if so return that entry
->   */
-> @@ -171,10 +185,21 @@ inline static
->  char *lookup_entry(char *opt)
->  {
->  	struct entry *entry;
-> +	char *alias = is_alias(opt);
->  
->  	SLIST_FOREACH(entry, &head, entries) {
->  		if (strcasecmp(entry->opt, opt) == 0)
->  			return opt;
-> +		if (alias && strcasecmp(entry->opt, alias) == 0)
-> +			return opt;
-> +		if (alias && strcasecmp(alias, "fg") == 0) {
-> +			if (strcasecmp(entry->opt, "bg") == 0)
-> +				return opt;
-> +		}
-> +		if (alias && strcasecmp(alias, "bg") == 0) {
-> +			if (strcasecmp(entry->opt, "fg") == 0)
-> +				return opt;
-> +		}
->  	}
->  	return NULL;
->  }
-> 
+        memset(ecptr, 'X', ec);
+
+AFAICT, the spec doesn't actually say what's supposed to be in the
+padding, just that it's to be ignored. I imagine that most clients will
+just set this to a constant value like Linux does, but there doesn't
+seem to be any guarantee of that, and there's no real point in keeping
+it around.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
