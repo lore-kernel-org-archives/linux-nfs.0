@@ -1,38 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:36595 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:43635 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932510Ab3JORnR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Oct 2013 13:43:17 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: William Dauchy <wdauchy@gmail.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Fix NULL dereference in recovery path
-Date: Tue, 15 Oct 2013 17:43:16 +0000
-Message-ID: <300B01EF-CEB0-41EE-BAF4-655728DF90EE@netapp.com>
-References: <1381188833-3728-1-git-send-email-dros@netapp.com>
- <55848506-CAF1-47C5-9442-0E3AB3D2A398@netapp.com>
- <CAJ75kXZT5HPqh8oMw8LTzNMxVYQm8o01+m8_ghufaTfiD60Pew@mail.gmail.com>
-In-Reply-To: <CAJ75kXZT5HPqh8oMw8LTzNMxVYQm8o01+m8_ghufaTfiD60Pew@mail.gmail.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1761425Ab3JPShJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Oct 2013 14:37:09 -0400
+Date: Wed, 16 Oct 2013 14:37:07 -0400
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] rpc: change BUG to WARN in gss_encode_v1_msg
+Message-ID: <20131016183707.GB19067@fieldses.org>
+References: <1380721695-14755-1-git-send-email-bfields@redhat.com>
+ <1381947473.17178.2.camel@leira.trondhjem.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1381947473.17178.2.camel@leira.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I plan on bisecting this next time I get a few spare cycles.
-
--dros
-
-On Oct 14, 2013, at 11:51 AM, William Dauchy <wdauchy@gmail.com> wrote:
-
-> On Tue, Oct 8, 2013 at 1:40 AM, Weston Andros Adamson <dros@netapp.com> wrote:
->> This is the bug I found at the bakeathon. I can finally reproduce it quickly! And in a shockingly easy way!
->> Tomorrow I'll figure out how long this regression has been present and if we need to CC stable.
+On Wed, Oct 16, 2013 at 06:17:54PM +0000, Myklebust, Trond wrote:
+> On Wed, 2013-10-02 at 09:48 -0400, J. Bruce Fields wrote:
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > Failure of this assertion would indeed be serious, but as we've seen a
+> > BUG() in a worker thread (this can run from rpciod context) can screw up
+> > the system so badly that the oops doesn't even get to the logs; better
+> > to WARN() and soldier on.
+> > 
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  net/sunrpc/auth_gss/auth_gss.c |    2 +-
+> >  1 file changed, 1 insertion(+), 1 deletion(-)
+> > 
+> > diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+> > index 0846566..254a9f0 100644
+> > --- a/net/sunrpc/auth_gss/auth_gss.c
+> > +++ b/net/sunrpc/auth_gss/auth_gss.c
+> > @@ -454,7 +454,7 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+> >  	gss_msg->msg.len += len;
+> >  
+> >  	gss_msg->msg.data = gss_msg->databuf;
+> > -	BUG_ON(gss_msg->msg.len > UPCALL_BUF_LEN);
+> > +	WARN_ON_ONCE(gss_msg->msg.len > UPCALL_BUF_LEN);
+> >  }
+> >  
+> >  static struct gss_upcall_msg *
 > 
-> Any news on that? Does it apply on older version?
-> 
-> Thanks,
-> 
-> -- 
-> William
+> Umm.... Why aren't we using scnprintf() in order to prevent string
+> buffer overflows before they happen?
 
+Yeah, this should really be caught earlier.
+
+And we want to actually fail, not give gssd a truncated request.
+
+--b.
